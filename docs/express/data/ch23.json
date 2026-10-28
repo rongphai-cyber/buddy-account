@@ -1,0 +1,904 @@
+{
+ "chapter": 23,
+ "title": "การกำหนดระบบรักษาความปลอดภัย",
+ "book_pages": "355-374",
+ "pdf_pages": "371-390",
+ "screens": [
+  {
+   "id": "S-SEC-01",
+   "name": "กลุ่มผู้ใช้งานระบบ",
+   "menu": "อื่น ๆ > 3. ระบบความปลอดภัย > 1. กลุ่มผู้ใช้งานระบบ",
+   "book_page": 357,
+   "pdf_page": 373,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัสกลุ่ม",
+     "type": "text",
+     "required": true,
+     "note": "******** = บุคคลทั่วไป; [สันนิษฐาน] ≤8 ตัวอักษร"
+    },
+    {
+     "label": "ชื่อกลุ่ม",
+     "type": "text",
+     "required": true,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "ข้อมูล และเมนูที่อนุญาตให้กลุ่มนี้ใช้ <F8>",
+     "fields": [
+      {
+       "label": "ข้อมูล",
+       "type": "lookup",
+       "required": false,
+       "note": "ว่าง=ทุกบริษัท",
+       "lookup": "CompanyData"
+      },
+      {
+       "label": "เมนู",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "Module"
+      },
+      {
+       "label": "ชื่อเมนู",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "เมนูย่อย",
+       "type": "text",
+       "required": false,
+       "note": "[สันนิษฐาน]"
+      },
+      {
+       "label": "อ่าน",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "เพิ่ม",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "แก้ไข",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "ยกเลิก",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "ลบ",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "พิมพ์",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "รับรอง",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      }
+     ]
+    },
+    {
+     "name": "ผู้ใช้ที่อยู่ในกลุ่มนี้ <F7>",
+     "fields": [
+      {
+       "label": "รหัสผู้ใช้",
+       "type": "lookup",
+       "required": false,
+       "note": "[สันนิษฐาน] รายชื่อสมาชิก",
+       "lookup": "User"
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ข้อมูล",
+     "เมนู",
+     "ชื่อเมนู",
+     "เมนูย่อย",
+     "อ่าน",
+     "เพิ่ม",
+     "แก้ไข",
+     "ยกเลิก",
+     "ลบ",
+     "พิมพ์",
+     "รับรอง"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "ไปแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "Ctrl+L ลิสต์กลุ่ม",
+    "ตกลง",
+    "ค้นหา"
+   ],
+   "postings": [],
+   "seed_data": [
+    "******** บุคคลทั่วไป",
+    "ผ-ก/ง แผนกการเงิน",
+    "ผ-ซื้อ แผนกซื้อ",
+    "ผ-บัญชี แผนกบัญชี",
+    "ผ-สโตร์ แผนกสโตร์"
+   ]
+  },
+  {
+   "id": "S-SEC-02",
+   "name": "แฟ้มผู้ใช้งานระบบ",
+   "menu": "อื่น ๆ > 3. ระบบความปลอดภัย > 2. แฟ้มผู้ใช้งานระบบ",
+   "book_page": 358,
+   "pdf_page": 374,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัสผู้ใช้",
+     "type": "text",
+     "required": true,
+     "note": "≤8 ตัวอักษร อังกฤษ/ตัวเลข"
+    },
+    {
+     "label": "ชื่อผู้ใช้",
+     "type": "text",
+     "required": false,
+     "note": "[สันนิษฐาน] ช่องข้างรหัส ไม่มีป้าย"
+    },
+    {
+     "label": "กลุ่มของผู้ใช้",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "UserGroup"
+    },
+    {
+     "label": "ระดับอนุมัติ",
+     "type": "number",
+     "required": true,
+     "note": "0-4 พนักงาน, 5-8 หัวหน้าแผนก, 9 ผู้จัดการระบบ"
+    },
+    {
+     "label": "ตรวจสอบสิทธิ",
+     "type": "select",
+     "required": false,
+     "note": "ไม่ตรวจสอบสิทธิ(0) / ตรวจสอบสิทธิก่อนใช้งาน(1)"
+    },
+    {
+     "label": "สถานะผู้ใช้",
+     "type": "select",
+     "required": false,
+     "note": "ห้ามใช้ / ตรวจสอบเข้มงวด / ปกติ"
+    },
+    {
+     "label": "เครื่องพิมพ์",
+     "type": "lookup",
+     "required": false,
+     "note": "จากเริ่มระบบ ข้อ 6.2",
+     "lookup": "Printer"
+    },
+    {
+     "label": "เมนูเป็นภาษา",
+     "type": "select",
+     "required": false,
+     "note": "เฉพาะเวอร์ชั่นภาษาอังกฤษ ไม่ปรากฏในภาพ"
+    },
+    {
+     "label": "วันที่ใช้ล่าสุด",
+     "type": "date",
+     "required": false,
+     "note": "อ่านอย่างเดียว + เวลา"
+    }
+   ],
+   "tabs": [
+    {
+     "name": "ข้อมูล และเมนูที่อนุญาตให้ผู้ใช้รายนี้ <F8>",
+     "fields": [
+      {
+       "label": "ข้อมูล",
+       "type": "lookup",
+       "required": false,
+       "note": "ว่าง=ทุกบริษัท",
+       "lookup": "CompanyData"
+      },
+      {
+       "label": "เมนู",
+       "type": "lookup",
+       "required": false,
+       "note": "เช่น ก/ง1, เริ่ม1, ทุกระบบ",
+       "lookup": "Module"
+      },
+      {
+       "label": "ชื่อเมนู",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "เมนูย่อย",
+       "type": "text",
+       "required": false,
+       "note": "กด Enter ผ่าน"
+      },
+      {
+       "label": "อ่าน",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "เพิ่ม",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "แก้ไข",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "ยกเลิก",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "ลบ",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "พิมพ์",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "รับรอง",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      }
+     ]
+    },
+    {
+     "name": "ข้อมูล และเมนูที่อนุญาตให้กลุ่มของผู้ใช้ <F7>",
+     "fields": [
+      {
+       "label": "ข้อมูล",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "CompanyData"
+      },
+      {
+       "label": "เมนู",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "Module"
+      },
+      {
+       "label": "ชื่อเมนู",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "เมนูย่อย",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "อ่าน",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "เพิ่ม",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "แก้ไข",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "ยกเลิก",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "ลบ",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "พิมพ์",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "รับรอง",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ข้อมูล",
+     "เมนู",
+     "ชื่อเมนู",
+     "เมนูย่อย",
+     "อ่าน",
+     "เพิ่ม",
+     "แก้ไข",
+     "ยกเลิก",
+     "ลบ",
+     "พิมพ์",
+     "รับรอง"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "ไปแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "Alt+A เพิ่ม",
+    "ตั้งรหัสผ่าน",
+    "F8",
+    "F7"
+   ],
+   "postings": [],
+   "seed_data": [
+    "BIT1 ระดับพนักงาน",
+    "BIT5 ระดับหัวหน้าแผนก",
+    "BIT9 ผู้จัดการระบบ"
+   ]
+  },
+  {
+   "id": "S-SEC-03",
+   "name": "ระบบงานที่อนุญาตให้ใช้",
+   "menu": "อื่น ๆ > 3. ระบบความปลอดภัย > 3. ระบบงานที่อนุญาตให้ใช้",
+   "book_page": 366,
+   "pdf_page": 382,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "เมนู",
+     "type": "text",
+     "required": false,
+     "note": "อ่านอย่างเดียว [สันนิษฐาน]"
+    },
+    {
+     "label": "ชื่อเมนู",
+     "type": "text",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "ผู้ใช้หรือกลุ่มของผู้ใช้ ที่อนุญาตให้เล่นเมนูนี้ได้ <F8>",
+     "fields": [
+      {
+       "label": "ผู้ใช้/กลุ่ม",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "User|UserGroup"
+      },
+      {
+       "label": "ชื่อ",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ข้อมูล",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "CompanyData"
+      },
+      {
+       "label": "เมนูย่อย",
+       "type": "text",
+       "required": false,
+       "note": "[สันนิษฐาน]"
+      },
+      {
+       "label": "อ่าน",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "เพิ่ม",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "แก้ไข",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "ยกเลิก",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "ลบ",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "พิมพ์",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      },
+      {
+       "label": "รับรอง",
+       "type": "select",
+       "required": false,
+       "note": "Y=ใช้ได้, L=ใช้ได้+บันทึกLog, N=ไม่ให้ใช้, S=พิมพ์ออกจอเท่านั้น(เฉพาะช่องพิมพ์)"
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ผู้ใช้/กลุ่ม",
+     "ชื่อ",
+     "ข้อมูล",
+     "เมนูย่อย",
+     "อ่าน",
+     "เพิ่ม",
+     "แก้ไข",
+     "ยกเลิก",
+     "ลบ",
+     "พิมพ์",
+     "รับรอง"
+    ]
+   },
+   "buttons": [
+    "แก้ไข",
+    "ยกเลิก",
+    "บันทึก",
+    "ไปแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "Page Down"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-SEC-04",
+   "name": "แฟ้มบันทึกเหตุการณ์ทำงาน (Log File)",
+   "menu": "อื่น ๆ > 3. ระบบความปลอดภัย > 4. แฟ้มบันทึกเหตุการณ์ทำงาน",
+   "book_page": 367,
+   "pdf_page": 383,
+   "layout": "list",
+   "fields": [
+    {
+     "label": "วันที่ (TRNDATE)",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เวลา (TRNTIME)",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "รหัส (TRNCODE)",
+     "type": "text",
+     "required": false,
+     "note": "เช่น 00, 30-36 ความหมายไม่ระบุ"
+    },
+    {
+     "label": "ผู้ใช้ (USERID)",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ผู้อนุมัติ (AUTHID)",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ข้อมูล (DATA)",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ระบบ (MODULE)",
+     "type": "text",
+     "required": false,
+     "note": "เช่น ขาย4"
+    },
+    {
+     "label": "เอกสาร (DOCNUM)",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "คำอธิบาย",
+     "type": "text",
+     "required": false,
+     "note": "[สันนิษฐาน]"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "วันที่",
+     "เวลา",
+     "รหัส",
+     "ผู้ใช้",
+     "ผู้อนุมัติ",
+     "ข้อมูล",
+     "ระบบ",
+     "เอกสาร",
+     "คำอธิบาย"
+    ]
+   },
+   "buttons": [
+    "ลบ (ลบรายการก่อนวันที่ - เก็บอย่างน้อย 2 ปี)",
+    "ไปแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "1. พิมพ์รายงานบันทึกการทำงานทั้งหมด <Alt+P>",
+    "2. พิมพ์รายงานการแก้ไขปรับปรุงรายการ (Audit Trail) <Alt+2>",
+    "3. พิมพ์รายงานบันทึกการใช้รหัสผ่าน (Password) <Alt+3>",
+    "4. พิมพ์รายงานการดึงข้อมูลสำรองมาใช้ (Decrypting) <Alt+4>",
+    "5. พิมพ์รายงานบันทึกการทำงานโดยกำหนดเงื่อนไข <Alt+5>"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-SEC-04a",
+   "name": "เรียกดูข้อมูล โดยป้อนเงื่อนไข",
+   "menu": "แฟ้มบันทึกเหตุการณ์ทำงาน > พิมพ์ > 5",
+   "book_page": 368,
+   "pdf_page": 384,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "นิพจน์เงื่อนไข",
+     "type": "memo",
+     "required": true,
+     "note": "เช่น USERID='SOMCHAI' .OR. AUTHID='BIT9'; F1 ดูค่า"
+    }
+   ],
+   "buttons": [
+    "ปิด"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-SEC-05",
+   "name": "เปลี่ยนรหัสผ่าน",
+   "menu": "อื่น ๆ > 2. เปลี่ยนรหัสผ่าน",
+   "book_page": 370,
+   "pdf_page": 386,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัสผู้ใช้",
+     "type": "text",
+     "required": false,
+     "note": "อ่านอย่างเดียว"
+    },
+    {
+     "label": "รหัสผ่านเดิม",
+     "type": "text",
+     "required": true,
+     "note": "masked *"
+    },
+    {
+     "label": "รหัสผ่านใหม่",
+     "type": "text",
+     "required": true,
+     "note": "masked"
+    },
+    {
+     "label": "ป้อนอีกครั้ง",
+     "type": "text",
+     "required": true,
+     "note": "ต้องตรงกับรหัสผ่านใหม่"
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-SEC-06",
+   "name": "ตั้งรหัสผ่าน (กรณีลืม)",
+   "menu": "อื่น ๆ > 3.2 แฟ้มผู้ใช้งานระบบ > ตั้งรหัสผ่าน",
+   "book_page": 371,
+   "pdf_page": 387,
+   "layout": "dialog",
+   "fields": [],
+   "buttons": [
+    "ตั้งรหัสผ่าน"
+   ],
+   "postings": [],
+   "note": "รีเซ็ตรหัสผ่าน = รหัสผู้ใช้; ไม่มีภาพหน้าจอ"
+  },
+  {
+   "id": "S-SEC-07",
+   "name": "สำรองข้อมูลผู้ใช้งาน",
+   "menu": "อื่น ๆ > 3. ระบบความปลอดภัย > 5. สำรองข้อมูลผู้ใช้งาน",
+   "book_page": 372,
+   "pdf_page": 388,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ที่เก็บต้นทาง",
+     "type": "text",
+     "required": false,
+     "note": "X:\\Program Files\\ExpressI\\SECURE"
+    },
+    {
+     "label": "ที่เก็บปลายทาง",
+     "type": "text",
+     "required": true,
+     "note": "A:\\ + ปุ่ม ... + เลือกไดรฟ์"
+    },
+    {
+     "label": "ชื่อแฟ้มข้อมูลสำรอง",
+     "type": "text",
+     "required": false,
+     "note": "secure.5"
+    },
+    {
+     "label": "จำนวนแผ่นที่ต้องใช้",
+     "type": "number",
+     "required": false,
+     "note": "1 แผ่น"
+    },
+    {
+     "label": "แฟ้มข้อมูล",
+     "type": "memo",
+     "required": false,
+     "note": "DBINF, ISLOG, SCACCLV, SCCOMP, SCMODUL, SCPRN, SCUSER .DBF"
+    }
+   ],
+   "buttons": [
+    "เริ่มสำรอง",
+    "ยกเลิก"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-SEC-08",
+   "name": "นำข้อมูลที่สำรองไว้ ลงระบบผู้ใช้",
+   "menu": "อื่น ๆ > 3. ระบบความปลอดภัย > 6. นำข้อมูลที่สำรองไว้ ลงระบบผู้ใช้",
+   "book_page": 374,
+   "pdf_page": 390,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "แฟ้มข้อมูลสำรองผู้ใช้งาน",
+     "type": "text",
+     "required": true,
+     "note": "A:\\secure.5 + ปุ่ม ..."
+    },
+    {
+     "label": "ที่เก็บข้อมูล",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "แฟ้มข้อมูล",
+     "type": "memo",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "buttons": [
+    "คลายข้อมูล",
+    "ยกเลิก"
+   ],
+   "postings": []
+  }
+ ],
+ "entities": [
+  {
+   "name": "UserGroup",
+   "fields": [
+    "group_code",
+    "group_name"
+   ],
+   "relations": [
+    "-> User (1:n)",
+    "-> Permission (1:n)"
+   ]
+  },
+  {
+   "name": "User",
+   "fields": [
+    "user_code",
+    "user_name",
+    "group_code",
+    "approval_level",
+    "check_rights",
+    "status",
+    "printer_code",
+    "menu_language",
+    "last_used_datetime",
+    "password_hash"
+   ],
+   "relations": [
+    "-> UserGroup (n:1)",
+    "-> Printer (n:1)",
+    "-> Permission (1:n)",
+    "-> ActivityLog (1:n)"
+   ]
+  },
+  {
+   "name": "Permission",
+   "fields": [
+    "subject_type(user|group)",
+    "subject_code",
+    "data_code",
+    "menu_code",
+    "sub_menu",
+    "can_read",
+    "can_add",
+    "can_edit",
+    "can_cancel",
+    "can_delete",
+    "can_print",
+    "can_approve"
+   ],
+   "relations": [
+    "-> Module (n:1)",
+    "-> CompanyData (n:1)"
+   ]
+  },
+  {
+   "name": "Module",
+   "fields": [
+    "menu_code",
+    "menu_name"
+   ],
+   "relations": [
+    "-> Permission (1:n)"
+   ]
+  },
+  {
+   "name": "CompanyData",
+   "fields": [
+    "data_code",
+    "company_name",
+    "folder"
+   ],
+   "relations": [
+    "-> Permission (1:n)"
+   ]
+  },
+  {
+   "name": "Printer",
+   "fields": [
+    "printer_code",
+    "printer_name"
+   ],
+   "relations": [
+    "-> User (1:n)"
+   ]
+  },
+  {
+   "name": "ActivityLog",
+   "fields": [
+    "TRNDATE",
+    "TRNTIME",
+    "TRNCODE",
+    "USERID",
+    "AUTHID",
+    "DATA",
+    "MODULE",
+    "DOCNUM",
+    "description"
+   ],
+   "relations": [
+    "-> User (n:1)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "ตั้งค่าความปลอดภัย",
+   "steps": [
+    "กำหนดกลุ่มผู้ใช้",
+    "สร้างผู้ใช้ กำหนดระดับอนุมัติ/ตรวจสอบสิทธิ/สถานะ/เครื่องพิมพ์",
+    "ถ้าตรวจสอบสิทธิ=1 กำหนดตารางสิทธิ ข้อมูล x เมนู (ราย user/group/ระบบงาน)",
+    "ผู้ใช้ login ด้วยรหัสผ่าน=รหัสผู้ใช้ แล้วเปลี่ยนรหัสผ่าน",
+    "สำรองข้อมูลความปลอดภัย"
+   ]
+  },
+  {
+   "name": "ตรวจสอบ Log",
+   "steps": [
+    "เปิดแฟ้มบันทึกเหตุการณ์ทำงาน",
+    "กรองด้วยนิพจน์เงื่อนไข หรือพิมพ์รายงาน 4 แบบตามกรมสรรพากร",
+    "ลบ log ที่เก่ากว่า 2 ปี"
+   ]
+  },
+  {
+   "name": "กู้คืน",
+   "steps": [
+    "ผู้ใช้ลืมรหัส: ผู้ดูแลกด ตั้งรหัสผ่าน",
+    "ระบบเสียหาย: นำข้อมูลสำรองกลับ (รหัสผ่านกลับเป็นค่า ณ วันสำรอง)"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,875 @@
+{
+ "chapter": 13,
+ "title": "บันทึกการเคลื่อนไหวบัญชีเงินฝาก",
+ "book_pages": "235-249",
+ "screens": [
+  {
+   "id": "S-BK-01",
+   "name": "รายละเอียดบัญชีเงินฝาก",
+   "menu": "การเงิน > 3.7 รายละเอียดบัญชีเงินฝาก",
+   "book_page": 236,
+   "pdf_page": 252,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "รหัสบัญชี",
+     "type": "text",
+     "required": true,
+     "note": "เช่น C1,S1,CC"
+    },
+    {
+     "label": "ชื่อบัญชีเงินฝาก",
+     "type": "text",
+     "required": true
+    },
+    {
+     "label": "สาขา",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "สมุดบัญชีเลขที่",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ชื่อย่อ",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "เลขที่บัญชี",
+     "type": "lookup",
+     "required": true,
+     "lookup": "Account",
+     "note": "GL เช่น 1112-01; CC ผูก 1111-00"
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-BK-02",
+   "name": "ฝากเงินสด (BD)",
+   "menu": "การเงิน > 3.6.1 ฝากเงินสด",
+   "book_page": 236,
+   "pdf_page": 252,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Department"
+    },
+    {
+     "label": "เลขที่",
+     "type": "text",
+     "required": true,
+     "note": "Enter = running อัตโนมัติ"
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "memo",
+     "required": false
+    },
+    {
+     "label": "ฝากเข้าบัญชี",
+     "type": "lookup",
+     "required": true,
+     "lookup": "BankAccount"
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": true
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์"
+   ],
+   "postings": [
+    "Dr เงินฝาก / Cr เงินสด [สันนิษฐาน]"
+   ]
+  },
+  {
+   "id": "S-BK-03",
+   "name": "BT - โอนเงินระหว่างธนาคาร (TRF)",
+   "menu": "การเงิน > 3.6.3 โอนเงินระหว่างบัญชี",
+   "book_page": 237,
+   "pdf_page": 253,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Department"
+    },
+    {
+     "label": "เลขที่",
+     "type": "text",
+     "required": true,
+     "note": "BT0000001"
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "โอนจากบัญชี",
+     "type": "lookup",
+     "required": true,
+     "lookup": "BankAccount"
+    },
+    {
+     "label": "โอนเข้าบัญชี",
+     "type": "lookup",
+     "required": true,
+     "lookup": "BankAccount"
+    },
+    {
+     "label": "จำนวนเงินที่โอน",
+     "type": "money",
+     "required": true
+    },
+    {
+     "label": "ค่าธรรมเนียม",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "รวมเงินที่โอนออกทั้งสิ้น",
+     "type": "money",
+     "required": false,
+     "note": "อัตโนมัติ"
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "ตกลง (ยืนยันบันทึก)"
+   ],
+   "postings": [
+    "Dr เงินฝากปลายทาง, Dr คชจ.ธนาคาร / Cr เงินฝากต้นทาง [สันนิษฐาน]"
+   ]
+  },
+  {
+   "id": "S-BK-04",
+   "name": "ทะเบียนเช็ครับ",
+   "menu": "การเงิน > 3.3 ทะเบียนเช็ครับ",
+   "book_page": 238,
+   "pdf_page": 254,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "วันที่เช็ค",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "เลขที่เช็ค",
+     "type": "text",
+     "required": true
+    },
+    {
+     "label": "เช็คธนาคาร",
+     "type": "lookup",
+     "required": true,
+     "lookup": "Bank"
+    },
+    {
+     "label": "เช็คสาขา",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "รหัสลูกค้า",
+     "type": "lookup",
+     "required": true,
+     "lookup": "Customer"
+    },
+    {
+     "label": "ผู้สั่งจ่าย",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "memo",
+     "required": false
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Department"
+    },
+    {
+     "label": "วันที่รับเช็ค",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": true
+    },
+    {
+     "label": "สถานะเช็ค",
+     "type": "select",
+     "required": false,
+     "lookup": "ChequeStatus",
+     "note": "00,01,02,10,20,21"
+    },
+    {
+     "label": "วันที่นำฝาก",
+     "type": "date",
+     "required": false
+    },
+    {
+     "label": "เข้าบัญชี",
+     "type": "lookup",
+     "required": false,
+     "lookup": "BankAccount"
+    },
+    {
+     "label": "วันที่ผ่านเช็ค",
+     "type": "date",
+     "required": false
+    },
+    {
+     "label": "ยอดคงเหลือจากชำระใบเสร็จ",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "ยอดที่ตัดเป็นรายได้",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "เลขที่ใบนำฝาก",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ค่าธรรมเนียม",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "เลขที่ใบสำคัญ",
+     "type": "text",
+     "required": false
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ใบเสร็จ# <F8>",
+     "วันที่",
+     "วันชำระ",
+     "จำนวนเงิน",
+     "ยอดชำระ"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "บันทึกประวัติเช็คใบนี้เป็นเช็คคืน",
+    "ตัดยอดคงเหลือเป็นรายได้"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-BK-05",
+   "name": "BQ - ใบนำฝากเช็ค (DEQ)",
+   "menu": "การเงิน > 3.1 บันทึกเช็คนำฝาก > 1 ใช้ใบนำฝาก > ใบนำฝากเช็ค (DEQ)",
+   "book_page": 240,
+   "pdf_page": 256,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "รายการที่นำฝาก <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีซื้อ <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีหัก ณ ที่จ่าย <Ctrl+F10>",
+     "fields": []
+    }
+   ],
+   "fields": [
+    {
+     "label": "เข้าบัญชี",
+     "type": "lookup",
+     "required": true,
+     "lookup": "BankAccount"
+    },
+    {
+     "label": "สถานะ",
+     "type": "text",
+     "required": false,
+     "note": "01 รอเรียกเก็บ"
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "memo",
+     "required": false
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Department"
+    },
+    {
+     "label": "เลขที่ใบนำฝาก",
+     "type": "text",
+     "required": true,
+     "note": "BQ0000001"
+    },
+    {
+     "label": "วันที่นำฝาก",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "วันที่ผ่าน",
+     "type": "date",
+     "required": false
+    },
+    {
+     "label": "ใบกำกับภาษีซื้อ#",
+     "type": "text",
+     "required": false,
+     "note": "ใช้กับขายลดเช็คเท่านั้น"
+    },
+    {
+     "label": "ลวท.",
+     "type": "date",
+     "required": false,
+     "note": "ใช้กับขายลดเช็คเท่านั้น"
+    },
+    {
+     "label": "ยอดรวม",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "หัก ค่าธรรมเนียม",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "ภาษีมูลค่าเพิ่ม (ของค่าธรรมเนียม)",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "หักภาษี ณ ที่จ่ายไว้",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "เงินเข้าบัญชีสุทธิ",
+     "type": "money",
+     "required": false
+    }
+   ],
+   "grid": {
+    "columns": [
+     "เลขที่เช็ค",
+     "วันที่",
+     "ธนาคาร",
+     "ชื่อธนาคาร",
+     "สาขา",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "บันทึกเช็คผ่าน (ทั้งใบนำฝาก)",
+    "พิมพ์ใบนำฝาก"
+   ],
+   "postings": [
+    "นำฝาก: สถานะ 00→01 ไม่ลงบัญชี",
+    "ผ่าน (ทั้งใบเท่านั้น): สถานะ→10 สมุดรายวันรับ 02: Dr เงินฝาก, คชจ.ธนาคาร, ภาษีซื้อ, ภาษีถูกหัก / Cr เช็ครับล่วงหน้า [สันนิษฐาน]"
+   ]
+  },
+  {
+   "id": "S-BK-06",
+   "name": "เลือกเช็คเข้าใบนำฝาก",
+   "menu": "เปิดจาก S-BK-05",
+   "book_page": 241,
+   "pdf_page": 257,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ถูกเลือก",
+     "type": "number",
+     "required": false,
+     "note": "จำนวนรายการ"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "วันที่",
+     "รหัสธนาคาร",
+     "ชื่อธนาคาร",
+     "เลขที่เช็ค",
+     "จำนวนเงิน",
+     "นำฝากบัญชี",
+     "วันที่นำฝาก",
+     "เช็คสาขา"
+    ]
+   },
+   "buttons": [
+    "ทำงาน <F5>",
+    "ยกเลิก",
+    "ค้นหา",
+    "เรียงใหม่ <Tab>",
+    "ดับเบิ้ลคลิก=เลือก"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-BK-07",
+   "name": "บันทึกเช็คนำฝาก (ไม่ใช้ใบนำฝาก)",
+   "menu": "การเงิน > 3.1 > 2 ไม่ใช้ใบนำฝาก (นำฝากเช็คเป็นใบๆ)",
+   "book_page": 242,
+   "pdf_page": 258,
+   "layout": "list",
+   "fields": [
+    {
+     "label": "ธนาคารที่นำฝาก",
+     "type": "lookup",
+     "required": true,
+     "lookup": "BankAccount"
+    },
+    {
+     "label": "วันที่นำฝาก",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": false,
+     "note": "อ่านอย่างเดียว"
+    },
+    {
+     "label": "ค่าธรรมเนียม",
+     "type": "money",
+     "required": false
+    }
+   ],
+   "grid": {
+    "columns": [
+     "วันที่",
+     "ธนาคาร",
+     "เลขที่เช็ค",
+     "จำนวนเงิน",
+     "นำฝากบัญชี",
+     "วันที่นำฝาก",
+     "เช็คสาขา"
+    ]
+   },
+   "buttons": [
+    "ทำงาน <F5>",
+    "ยกเลิก",
+    "ค้นหา",
+    "เรียงใหม่ <Tab>",
+    "dialog: ตกลง/ยกเลิก"
+   ],
+   "postings": [
+    "สถานะ 00→01 ไม่ลงบัญชี"
+   ]
+  },
+  {
+   "id": "S-BK-08",
+   "name": "บันทึกเช็คผ่าน",
+   "menu": "การเงิน > 3.2 บันทึกเช็คผ่าน",
+   "book_page": 244,
+   "pdf_page": 260,
+   "layout": "list",
+   "fields": [
+    {
+     "label": "วันที่ผ่าน",
+     "type": "date",
+     "required": true,
+     "note": "ตาม Bank Statement"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ลงวันที่",
+     "รหัสธนาคาร",
+     "เช็ค ธ.",
+     "เลขที่เช็ค",
+     "จำนวนเงิน",
+     "นำฝากบัญชี",
+     "ชื่อย่อบัญชี",
+     "วันที่นำฝาก",
+     "เช็คสาขา"
+    ]
+   },
+   "buttons": [
+    "ทำงาน <F5>",
+    "ยกเลิก",
+    "ค้นหา",
+    "เรียงใหม่ <Tab>",
+    "dialog: ตกลง/ยกเลิก"
+   ],
+   "postings": [
+    "สถานะ→10; สมุดรายวันรับ 02: Dr เงินฝาก / Cr เช็ครับล่วงหน้า [สันนิษฐาน]",
+    "ผ่านเข้าบัญชี CC (เงินสด): Dr เงินสด / Cr เช็ครับล่วงหน้า (คู่มือระบุ p.248)"
+   ]
+  },
+  {
+   "id": "S-BK-09",
+   "name": "ผ่านเช็คจ่าย",
+   "menu": "การเงิน > 3.4 ผ่านเช็คจ่าย",
+   "book_page": 245,
+   "pdf_page": 261,
+   "layout": "list",
+   "fields": [
+    {
+     "label": "วันที่ผ่านเช็ค",
+     "type": "date",
+     "required": true
+    }
+   ],
+   "grid": {
+    "columns": [
+     "วันที่",
+     "เลขที่เช็ค",
+     "จำนวนเงิน",
+     "ตัดจากบัญชี",
+     "ชื่อย่อบัญชี",
+     "วันที่ผ่าน",
+     "จ่ายให้"
+    ]
+   },
+   "buttons": [
+    "ทำงาน <F5>",
+    "ยกเลิก",
+    "ค้นหา",
+    "เรียงใหม่ <Tab>"
+   ],
+   "postings": [
+    "สถานะ 05→10; สมุดรายวันจ่าย 01: Dr เช็คจ่ายล่วงหน้า / Cr เงินฝาก [สันนิษฐาน]"
+   ]
+  },
+  {
+   "id": "S-BK-10",
+   "name": "บันทึกเช็คยกเลิก/เช็คคืน",
+   "menu": "การเงิน > 3.3 ทะเบียนเช็ครับ > บันทึกประวัติเช็คใบนี้เป็นเช็คคืน",
+   "book_page": 245,
+   "pdf_page": 261,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "วันที่คืน",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "เหตุผล",
+     "type": "lookup",
+     "required": false,
+     "lookup": "MessageList",
+     "note": "ภาพ 02.โปรดติดต่อผู้สั่งจ่าย"
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก"
+   ],
+   "postings": [
+    "เช็คเดิม→02 เช็คคืนยื่นใหม่ + สร้างเช็คเลขเดียวกัน สถานะ 20 เช็คคืน; ไม่ระบุการลงบัญชี"
+   ]
+  },
+  {
+   "id": "S-BK-11",
+   "name": "ตัดยอดคงเหลือในเช็คเป็นรายได้อื่นๆ",
+   "menu": "การเงิน > 3.3 ทะเบียนเช็ครับ > ตัดยอดคงเหลือเป็นรายได้",
+   "book_page": 248,
+   "pdf_page": 264,
+   "layout": "dialog",
+   "fields": [],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก"
+   ],
+   "postings": [
+    "Cr รายได้อื่นๆ (แสดงในรายการเดียวกับรายการผ่านเช็ครับ; Dr ไม่ระบุ)"
+   ]
+  },
+  {
+   "id": "S-BK-12",
+   "name": "ทะเบียนเช็คจ่าย / พิมพ์เช็ค",
+   "menu": "การเงิน > 3.5 ทะเบียนเช็คจ่าย",
+   "book_page": 249,
+   "pdf_page": 265,
+   "layout": "form",
+   "fields": [],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "พิมพ์เอกสาร <Alt+P>"
+   ],
+   "postings": []
+  }
+ ],
+ "cheque_status": {
+  "received": {
+   "00": "เช็คในมือ",
+   "01": "รอเรียกเก็บ",
+   "02": "เช็คคืนยื่นใหม่",
+   "10": "เช็คผ่าน",
+   "20": "เช็คคืน",
+   "21": "ตัดหนี้สูญ"
+  },
+  "paid": {
+   "02": "เช็คคืนยื่นใหม่",
+   "05": "เช็คจ่าย",
+   "10": "เช็คผ่าน",
+   "20": "เช็คคืน"
+  }
+ },
+ "entities": [
+  {
+   "name": "BankAccount",
+   "fields": [
+    "code",
+    "name",
+    "branch",
+    "passbook_no",
+    "short_name",
+    "gl_account"
+   ],
+   "relations": [
+    "-> Account (n:1)",
+    "<- ChequeReceived (1:n)",
+    "<- BankTransaction (1:n)"
+   ]
+  },
+  {
+   "name": "Bank",
+   "fields": [
+    "code",
+    "name"
+   ],
+   "relations": [
+    "<- ChequeReceived (1:n)"
+   ]
+  },
+  {
+   "name": "ChequeReceived",
+   "fields": [
+    "cheque_date",
+    "cheque_no",
+    "bank_code",
+    "branch",
+    "customer_code",
+    "payer",
+    "remark",
+    "department",
+    "receive_date",
+    "amount",
+    "status",
+    "deposit_date",
+    "deposit_account",
+    "pass_date",
+    "remaining_from_receipt",
+    "written_off_to_income",
+    "deposit_slip_no",
+    "fee",
+    "voucher_no"
+   ],
+   "relations": [
+    "-> Customer (n:1)",
+    "-> Bank (n:1)",
+    "-> BankAccount (n:1)",
+    "-> ChequeDepositSlip (n:1)",
+    "<-> Receipt RE (n:m)",
+    "<- ChequeReturnHistory (1:n)"
+   ]
+  },
+  {
+   "name": "ChequeReturnHistory",
+   "fields": [
+    "cheque_id",
+    "return_date",
+    "reason"
+   ],
+   "relations": [
+    "-> ChequeReceived (n:1)"
+   ]
+  },
+  {
+   "name": "ChequePaid",
+   "fields": [
+    "cheque_date",
+    "cheque_no",
+    "amount",
+    "bank_account",
+    "payee",
+    "pass_date",
+    "status"
+   ],
+   "relations": [
+    "-> BankAccount (n:1)",
+    "-> Supplier/Payment (n:1)"
+   ]
+  },
+  {
+   "name": "ChequeDepositSlip",
+   "fields": [
+    "doc_no (BQ/SQ)",
+    "deposit_date",
+    "pass_date",
+    "bank_account",
+    "status",
+    "remark",
+    "department",
+    "total",
+    "fee",
+    "fee_vat",
+    "wht",
+    "net",
+    "tax_invoice_no",
+    "tax_invoice_date"
+   ],
+   "relations": [
+    "-> BankAccount (n:1)",
+    "<- ChequeReceived (1:n)",
+    "<- InputVATLine (1:n)",
+    "<- WHTLine (1:n)"
+   ]
+  },
+  {
+   "name": "BankTransaction",
+   "fields": [
+    "doc_type (BD/BW/BT/BU/BC/BV)",
+    "doc_no",
+    "date",
+    "department",
+    "remark",
+    "from_account",
+    "to_account",
+    "amount",
+    "fee",
+    "total"
+   ],
+   "relations": [
+    "-> BankAccount (n:1, from/to)",
+    "-> JournalEntry (1:1)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "วงจรเช็ครับ",
+   "steps": [
+    "รับชำระด้วยเช็ค → 00 เช็คในมือ",
+    "นำฝาก (ใบนำฝาก BQ หรือเป็นใบๆ) → 01 รอเรียกเก็บ (ไม่เพิ่มเงินฝาก)",
+    "ผ่านเช็คตาม Statement (ทั้งใบนำฝาก / การเงิน 3.2) → 10 เช็คผ่าน ลงสมุดรายวันรับ",
+    "ถ้ามียอดคงเหลือ → ตัดเป็นรายได้อื่นๆ หรือเก็บลดหนี้ครั้งหน้า"
+   ]
+  },
+  {
+   "name": "เช็คคืน",
+   "steps": [
+    "ทะเบียนเช็ครับ → บันทึกเป็นเช็คคืน → ยืนยัน",
+    "ป้อนวันที่คืน + เหตุผล",
+    "เช็คเดิม 02 + ประวัติ 20",
+    "ยื่นใหม่ หรือ Alt+E เปลี่ยนเลขเช็ค หรือ รับเงินสด: สร้างบัญชี CC ผูก 1111-00 แล้วผ่านเช็คเข้า CC (Dr เงินสด / Cr เช็ครับล่วงหน้า)"
+   ]
+  },
+  {
+   "name": "เช็คจ่าย",
+   "steps": [
+    "ทะเบียนเช็คจ่าย พิมพ์เช็ค Alt+P",
+    "05 เช็คจ่าย",
+    "ผ่านเช็คจ่าย 3.4 (หรืออัตโนมัติตาม เริ่มระบบ 1.6) → 10 ลงสมุดรายวันจ่าย"
+   ]
+  },
+  {
+   "name": "เคลื่อนไหวเงินฝาก",
+   "steps": [
+    "การเงิน 3.6.1 ฝากเงินสด",
+    "การเงิน 3.6.3 โอนเงินระหว่างบัญชี (ค่าธรรมเนียม → รวมโอนออก)"
+   ]
+  }
+ ]
+}

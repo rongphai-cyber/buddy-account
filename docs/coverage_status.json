@@ -1,0 +1,808 @@
+{
+ "ch03:S-UI-01": {
+  "status": "done",
+  "where": "เมนูซ้าย + Alt+1–8"
+ },
+ "ch03:S-UI-02": {
+  "note": "โครงหน้าจอเอกสารมาตรฐาน (หัว-ตาราง-ยอดรวม) ใช้กับทุกเอกสาร",
+  "status": "done",
+  "where": "/gl/journals/:id"
+ },
+ "ch03:S-UI-03": {
+  "note": "ใหม่/บันทึก/ยกเลิก/พิมพ์/รายการ + ปุ่มลัด",
+  "status": "done",
+  "where": "แถบเครื่องมือ"
+ },
+ "ch03:S-UI-04": {
+  "note": "เพิ่มรายการใหม่จากหน้าต่างค้นหาได้ (Insert)",
+  "status": "done",
+  "where": "หน้าต่างค้นหา (F4/🔍)"
+ },
+ "ch03:S-UI-05": {
+  "note": "คลิก/Enter เปิดเอกสาร",
+  "status": "done",
+  "where": "หน้ารายการทุกเมนู"
+ },
+ "ch03:S-UI-06": {
+  "status": "done",
+  "where": "ช่องค้นหาในหน้ารายการ"
+ },
+ "ch03:S-UI-07": {
+  "note": "ต้องใส่เหตุผล เก็บใน log",
+  "status": "done",
+  "where": "ยกเลิกเอกสาร Alt+C"
+ },
+ "ch03:S-UI-08": {
+  "status": "todo"
+ },
+ "ch03:S-UI-09": {
+  "note": "จอภาพ/เครื่องพิมพ์/PDF ผ่านหน้าพิมพ์ของเบราว์เซอร์; ส่งออก Excel (CSV)",
+  "status": "wip",
+  "where": "พิมพ์ผ่านเบราว์เซอร์"
+ },
+ "ch03:S-UI-10": {
+  "status": "todo"
+ },
+ "ch03:S-UI-11": {
+  "status": "todo"
+ },
+ "ch03:S-UI-12": {
+  "status": "todo"
+ },
+ "ch03:S-UI-13": {
+  "status": "todo"
+ },
+ "ch04:S-CO-01": {
+  "note": "ไม่มีโฟลเดอร์ข้อมูล — ทุกบริษัทอยู่ในฐานข้อมูลเดียว",
+  "status": "replaced",
+  "where": "ตัวเลือกบริษัทบนแถบบน"
+ },
+ "ch04:S-CO-02": {
+  "note": "Message# 71 วันที่ไม่อยู่ในรอบบัญชี",
+  "status": "done",
+  "where": "ตรวจงวดตอนบันทึก"
+ },
+ "ch04:S-CO-03": {
+  "status": "done",
+  "where": "/companies/new"
+ },
+ "ch04:S-CO-04": {
+  "status": "todo"
+ },
+ "ch04:S-CO-05": {
+  "status": "todo"
+ },
+ "ch04:S-CO-06": {
+  "status": "todo"
+ },
+ "ch04:S-CO-07": {
+  "note": "คัดลอกผังบัญชีได้ — แฟ้มหลักอื่นตามมาในเฟส P2",
+  "status": "wip",
+  "where": "/companies/new"
+ },
+ "ch05:S-SET-01": {
+  "status": "done",
+  "where": "/settings/company"
+ },
+ "ch05:S-SET-02": {
+  "status": "todo"
+ },
+ "ch05:S-SET-03": {
+  "status": "todo"
+ },
+ "ch05:S-SET-04": {
+  "status": "todo"
+ },
+ "ch05:S-SET-05": {
+  "status": "todo"
+ },
+ "ch05:S-SET-06": {
+  "status": "todo"
+ },
+ "ch05:S-SET-07": {
+  "status": "todo"
+ },
+ "ch05:S-SET-08": {
+  "status": "todo"
+ },
+ "ch05:S-SET-09": {
+  "status": "todo"
+ },
+ "ch05:S-SET-10": {
+  "status": "todo"
+ },
+ "ch05:S-SET-11": {
+  "status": "todo"
+ },
+ "ch05:S-SET-12": {
+  "status": "todo"
+ },
+ "ch06:S-SET-01": {
+  "status": "done",
+  "where": "/settings/periods"
+ },
+ "ch06:S-SET-02": {
+  "note": "เพิ่มปีบัญชีใหม่แทนการแก้วันเริ่ม; ปีที่มีรายการแก้ไม่ได้",
+  "status": "replaced",
+  "where": "/settings/periods"
+ },
+ "ch06:S-SET-03": {
+  "status": "done",
+  "where": "/settings/departments"
+ },
+ "ch06:S-TBL-00": {
+  "status": "todo"
+ },
+ "ch06:S-TBL-01": {
+  "status": "todo"
+ },
+ "ch07:R-CQ-01": {
+  "status": "todo"
+ },
+ "ch07:R-GL-01": {
+  "status": "todo"
+ },
+ "ch07:R-IC-01": {
+  "status": "todo"
+ },
+ "ch07:S-AP-01": {
+  "status": "todo"
+ },
+ "ch07:S-AP-02": {
+  "status": "todo"
+ },
+ "ch07:S-AR-01": {
+  "status": "todo"
+ },
+ "ch07:S-CQ-01": {
+  "status": "todo"
+ },
+ "ch07:S-GL-01": {
+  "status": "done",
+  "where": "/gl/accounts"
+ },
+ "ch07:S-GL-02": {
+  "status": "done",
+  "where": "/gl/accounts (Ctrl+G)"
+ },
+ "ch07:S-IC-01": {
+  "status": "todo"
+ },
+ "ch07:S-IC-02": {
+  "status": "todo"
+ },
+ "ch07:S-IC-03": {
+  "status": "todo"
+ },
+ "ch07:S-IC-04": {
+  "status": "todo"
+ },
+ "ch07:S-IC-05": {
+  "status": "todo"
+ },
+ "ch07:S-IC-06": {
+  "status": "todo"
+ },
+ "ch07:S-IC-07": {
+  "status": "todo"
+ },
+ "ch07:S-MF-01": {
+  "status": "done",
+  "where": "หน้าต่างค้นหา"
+ },
+ "ch07:S-MF-02": {
+  "status": "todo"
+ },
+ "ch07:S-MF-03": {
+  "status": "todo"
+ },
+ "ch07:S-SO-01": {
+  "status": "todo"
+ },
+ "ch07:S-SO-02": {
+  "status": "todo"
+ },
+ "ch08:S-OB-01": {
+  "status": "todo"
+ },
+ "ch08:S-OB-02": {
+  "status": "todo"
+ },
+ "ch08:S-OB-03": {
+  "status": "todo"
+ },
+ "ch08:S-OB-04": {
+  "status": "todo"
+ },
+ "ch08:S-OB-05": {
+  "status": "todo"
+ },
+ "ch08:S-OB-06": {
+  "status": "done",
+  "where": "/gl/opening"
+ },
+ "ch08:S-OB-07": {
+  "status": "done",
+  "where": "/reports/trial-balance"
+ },
+ "ch09:S-DN-01": {
+  "status": "todo"
+ },
+ "ch09:S-DN-02": {
+  "status": "todo"
+ },
+ "ch10:S-GL-00": {
+  "status": "todo"
+ },
+ "ch10:S-GL-01": {
+  "status": "todo"
+ },
+ "ch10:S-GL-02": {
+  "status": "todo"
+ },
+ "ch10:S-GL-03": {
+  "note": "บันทึก = ลงบัญชีทันที ไม่ต้องสั่งตรวจ/ลงบัญชีใหม่",
+  "status": "replaced"
+ },
+ "ch10:S-GL-04": {
+  "note": "บันทึก = ลงบัญชีทันที",
+  "status": "replaced"
+ },
+ "ch11:S-PU-01": {
+  "status": "todo"
+ },
+ "ch11:S-PU-02": {
+  "status": "todo"
+ },
+ "ch11:S-PU-03": {
+  "status": "todo"
+ },
+ "ch11:S-PU-03a": {
+  "status": "todo"
+ },
+ "ch11:S-PU-04": {
+  "status": "todo"
+ },
+ "ch11:S-PU-04a": {
+  "status": "todo"
+ },
+ "ch11:S-PU-04b": {
+  "status": "todo"
+ },
+ "ch11:S-PU-05": {
+  "status": "todo"
+ },
+ "ch11:S-PU-05a": {
+  "status": "todo"
+ },
+ "ch11:S-PU-05b": {
+  "status": "todo"
+ },
+ "ch11:S-PU-06": {
+  "status": "todo"
+ },
+ "ch11:S-PU-06a": {
+  "status": "todo"
+ },
+ "ch11:S-PU-07": {
+  "status": "todo"
+ },
+ "ch11:S-PU-07a": {
+  "status": "todo"
+ },
+ "ch11:S-PU-07b": {
+  "status": "todo"
+ },
+ "ch11:S-PU-07d": {
+  "status": "todo"
+ },
+ "ch11:S-PU-08": {
+  "status": "todo"
+ },
+ "ch11:S-PU-C1": {
+  "status": "todo"
+ },
+ "ch11:S-PU-C2": {
+  "status": "todo"
+ },
+ "ch11:S-PU-C3": {
+  "status": "todo"
+ },
+ "ch11:S-PU-C4": {
+  "status": "todo"
+ },
+ "ch11:S-PU-C5": {
+  "status": "todo"
+ },
+ "ch11:S-PU-C6": {
+  "status": "todo"
+ },
+ "ch12:S-AI-01": {
+  "status": "todo"
+ },
+ "ch12:S-BI-01": {
+  "status": "todo"
+ },
+ "ch12:S-BI-02": {
+  "status": "todo"
+ },
+ "ch12:S-CS-01": {
+  "status": "todo"
+ },
+ "ch12:S-DR-01": {
+  "status": "todo"
+ },
+ "ch12:S-IV-01": {
+  "status": "todo"
+ },
+ "ch12:S-IV-02": {
+  "status": "todo"
+ },
+ "ch12:S-IV-03": {
+  "status": "todo"
+ },
+ "ch12:S-IV-04": {
+  "status": "todo"
+ },
+ "ch12:S-OI-01": {
+  "status": "todo"
+ },
+ "ch12:S-PM-01": {
+  "status": "todo"
+ },
+ "ch12:S-QT-01": {
+  "status": "todo"
+ },
+ "ch12:S-RE-01": {
+  "status": "todo"
+ },
+ "ch12:S-SL-01": {
+  "status": "todo"
+ },
+ "ch12:S-SL-02": {
+  "status": "todo"
+ },
+ "ch12:S-SO-01": {
+  "status": "todo"
+ },
+ "ch12:S-SR-01": {
+  "status": "todo"
+ },
+ "ch13:S-BK-01": {
+  "status": "todo"
+ },
+ "ch13:S-BK-02": {
+  "status": "todo"
+ },
+ "ch13:S-BK-03": {
+  "status": "todo"
+ },
+ "ch13:S-BK-04": {
+  "status": "todo"
+ },
+ "ch13:S-BK-05": {
+  "status": "todo"
+ },
+ "ch13:S-BK-06": {
+  "status": "todo"
+ },
+ "ch13:S-BK-07": {
+  "status": "todo"
+ },
+ "ch13:S-BK-08": {
+  "status": "todo"
+ },
+ "ch13:S-BK-09": {
+  "status": "todo"
+ },
+ "ch13:S-BK-10": {
+  "status": "todo"
+ },
+ "ch13:S-BK-11": {
+  "status": "todo"
+ },
+ "ch13:S-BK-12": {
+  "status": "todo"
+ },
+ "ch14:S-IC-01": {
+  "status": "todo"
+ },
+ "ch14:S-IC-02": {
+  "status": "todo"
+ },
+ "ch14:S-IC-03": {
+  "status": "todo"
+ },
+ "ch14:S-IC-04": {
+  "status": "todo"
+ },
+ "ch14:S-IC-05": {
+  "status": "todo"
+ },
+ "ch14:S-IC-06": {
+  "status": "todo"
+ },
+ "ch14:S-IC-07": {
+  "status": "todo"
+ },
+ "ch14:S-IC-08": {
+  "status": "todo"
+ },
+ "ch14:S-IC-09": {
+  "status": "todo"
+ },
+ "ch14:S-IC-10": {
+  "status": "todo"
+ },
+ "ch14:S-IC-11": {
+  "status": "todo"
+ },
+ "ch14:S-IC-12": {
+  "status": "todo"
+ },
+ "ch14:S-IC-13": {
+  "status": "todo"
+ },
+ "ch14:S-IC-14": {
+  "status": "todo"
+ },
+ "ch14:S-IC-15": {
+  "status": "todo"
+ },
+ "ch14:S-IC-16": {
+  "status": "todo"
+ },
+ "ch14:S-IC-17": {
+  "status": "todo"
+ },
+ "ch14:S-IC-18": {
+  "status": "todo"
+ },
+ "ch14:S-IC-19": {
+  "status": "todo"
+ },
+ "ch14:S-IC-20": {
+  "status": "todo"
+ },
+ "ch14:S-IC-21": {
+  "status": "todo"
+ },
+ "ch14:S-IC-22": {
+  "status": "todo"
+ },
+ "ch15:S-GL-01": {
+  "status": "todo"
+ },
+ "ch15:S-GL-02": {
+  "status": "done",
+  "where": "/gl/journals"
+ },
+ "ch15:S-GL-03": {
+  "status": "todo"
+ },
+ "ch15:S-GL-04": {
+  "status": "todo"
+ },
+ "ch15:S-GL-05": {
+  "status": "todo"
+ },
+ "ch15:S-GL-06": {
+  "status": "todo"
+ },
+ "ch15:S-GL-07": {
+  "note": "ไม่มีรายการรอผ่านบัญชี — บันทึกแล้วผ่านบัญชีทันที",
+  "status": "replaced"
+ },
+ "ch15:S-GL-08": {
+  "note": "เก็บค่าก่อนแก้ใน sys_activity_log",
+  "status": "done",
+  "where": "แท็บประวัติการแก้ไข"
+ },
+ "ch15:S-GL-09": {
+  "status": "done",
+  "where": "/gl/books"
+ },
+ "ch15:S-GL-10": {
+  "status": "todo"
+ },
+ "ch15:S-GL-11": {
+  "status": "todo"
+ },
+ "ch15:S-GL-12": {
+  "status": "todo"
+ },
+ "ch15:S-GL-13": {
+  "status": "todo"
+ },
+ "ch15:S-GL-14": {
+  "status": "todo"
+ },
+ "ch15:S-GL-15": {
+  "status": "todo"
+ },
+ "ch15:S-GL-16": {
+  "status": "todo"
+ },
+ "ch15:S-GL-17": {
+  "status": "todo"
+ },
+ "ch16:S-TX-01": {
+  "status": "todo"
+ },
+ "ch16:S-TX-02": {
+  "status": "todo"
+ },
+ "ch16:S-TX-03": {
+  "status": "todo"
+ },
+ "ch16:S-TX-04": {
+  "status": "todo"
+ },
+ "ch16:S-TX-05": {
+  "status": "todo"
+ },
+ "ch16:S-TX-06": {
+  "status": "todo"
+ },
+ "ch16:S-TX-07": {
+  "status": "todo"
+ },
+ "ch16:S-TX-08": {
+  "status": "todo"
+ },
+ "ch16:S-TX-09": {
+  "status": "todo"
+ },
+ "ch16:S-TX-10": {
+  "status": "todo"
+ },
+ "ch16:S-TX-11": {
+  "status": "todo"
+ },
+ "ch17:S-RP-01": {
+  "status": "todo"
+ },
+ "ch17:S-RP-02": {
+  "status": "todo"
+ },
+ "ch17:S-RP-03": {
+  "status": "todo"
+ },
+ "ch17:S-RP-04": {
+  "status": "todo"
+ },
+ "ch18:S-ME-01": {
+  "status": "todo"
+ },
+ "ch18:S-ME-02": {
+  "status": "done",
+  "where": "/settings/periods"
+ },
+ "ch18:S-ME-03": {
+  "status": "done",
+  "where": "ข้อความเมื่อบันทึกในงวดที่ปิด"
+ },
+ "ch19:S-FA-01": {
+  "status": "todo"
+ },
+ "ch19:S-FA-02": {
+  "status": "todo"
+ },
+ "ch19:S-FA-03": {
+  "status": "todo"
+ },
+ "ch19:S-FA-04": {
+  "status": "todo"
+ },
+ "ch20:S-DM-01": {
+  "note": "จัดเรียงแฟ้ม (reindex) เป็นเรื่องของ FoxPro — PostgreSQL ดูแลเอง",
+  "status": "na"
+ },
+ "ch20:S-DM-02": {
+  "status": "todo"
+ },
+ "ch20:S-DM-03": {
+  "status": "todo"
+ },
+ "ch20:S-DM-04": {
+  "status": "todo"
+ },
+ "ch21:S-CK-01": {
+  "note": "ยอดลูกหนี้คำนวณสดจากเอกสาร ไม่ต้องคำนวณใหม่",
+  "status": "replaced"
+ },
+ "ch21:S-CK-02": {
+  "note": "ยอดเจ้าหนี้คำนวณสด",
+  "status": "replaced"
+ },
+ "ch21:S-CK-03": {
+  "note": "บันทึก = ลงบัญชีทันที",
+  "status": "replaced"
+ },
+ "ch21:S-CK-04": {
+  "status": "todo"
+ },
+ "ch21:S-CK-05": {
+  "note": "บันทึก = ลงบัญชีทันที",
+  "status": "replaced"
+ },
+ "ch21:S-CK-06": {
+  "note": "งบทดลองคำนวณสดจากใบสำคัญ",
+  "status": "replaced"
+ },
+ "ch21:S-CK-07": {
+  "status": "todo"
+ },
+ "ch21:S-CK-08": {
+  "status": "todo"
+ },
+ "ch21:S-CK-09": {
+  "status": "todo"
+ },
+ "ch21:S-CK-10": {
+  "status": "todo"
+ },
+ "ch21:S-CK-11": {
+  "status": "todo"
+ },
+ "ch22:S-YE-01": {
+  "status": "todo"
+ },
+ "ch22:S-YE-02": {
+  "status": "todo"
+ },
+ "ch22:S-YE-03": {
+  "note": "กำไรขาดทุนปีก่อนปิดเข้ากำไรสะสมอัตโนมัติ",
+  "status": "replaced"
+ },
+ "ch22:S-YE-04": {
+  "status": "done",
+  "where": "/settings/periods (เพิ่มปีบัญชี)"
+ },
+ "ch23:S-SEC-01": {
+  "note": "สร้างกลุ่มผ่าน API แล้ว หน้าจอจัดการกลุ่ม/สิทธิ์รายเมนูอยู่ใน P6",
+  "status": "wip",
+  "where": "/settings/users"
+ },
+ "ch23:S-SEC-02": {
+  "status": "done",
+  "where": "/settings/users"
+ },
+ "ch23:S-SEC-03": {
+  "status": "todo"
+ },
+ "ch23:S-SEC-04": {
+  "status": "todo"
+ },
+ "ch23:S-SEC-04a": {
+  "status": "todo"
+ },
+ "ch23:S-SEC-05": {
+  "status": "done",
+  "where": "/account/password"
+ },
+ "ch23:S-SEC-06": {
+  "status": "todo"
+ },
+ "ch23:S-SEC-07": {
+  "status": "todo"
+ },
+ "ch23:S-SEC-08": {
+  "status": "todo"
+ },
+ "ch24:S-FS-01": {
+  "status": "done",
+  "where": "/fs/layouts"
+ },
+ "ch24:S-FS-02": {
+  "status": "done",
+  "where": "/fs/layouts (คัดลอก)"
+ },
+ "ch24:S-FS-03": {
+  "status": "done",
+  "where": "/fs/layouts (บรรทัด)"
+ },
+ "ch24:S-FS-04": {
+  "note": "+ ตรวจบัญชีที่แบบงบไม่ได้ดึง และงบตามผังบัญชี",
+  "status": "done",
+  "where": "/fs/statements"
+ },
+ "ch25:S-RD-01": {
+  "status": "todo"
+ },
+ "ch25:S-RD-02": {
+  "status": "todo"
+ },
+ "ch25:S-RD-03": {
+  "status": "todo"
+ },
+ "ch25:S-RD-04": {
+  "status": "todo"
+ },
+ "ch25:S-RD-05": {
+  "status": "todo"
+ },
+ "ch25:S-RD-06": {
+  "status": "todo"
+ },
+ "ch25:S-RD-07": {
+  "status": "todo"
+ },
+ "ch26:S-AP-01": {
+  "status": "todo"
+ },
+ "ch26:S-AP-02": {
+  "status": "todo"
+ },
+ "ch26:S-AP-03": {
+  "status": "todo"
+ },
+ "ch26:S-AP-04": {
+  "status": "todo"
+ },
+ "ch26:S-AP-05": {
+  "status": "todo"
+ },
+ "ch26:S-AP-06": {
+  "status": "todo"
+ },
+ "ch26:S-AP-07": {
+  "status": "todo"
+ },
+ "ch26:S-AP-08": {
+  "status": "todo"
+ },
+ "ch26:S-AP-09": {
+  "status": "todo"
+ },
+ "ch26:S-AP-10": {
+  "status": "todo"
+ },
+ "ch26:S-AP-11": {
+  "status": "todo"
+ },
+ "ch26:S-AP-12": {
+  "status": "todo"
+ },
+ "ch26:S-AP-13": {
+  "status": "todo"
+ },
+ "ch27:S-PR-01": {
+  "note": "ใช้เครื่องพิมพ์ของเบราว์เซอร์/ระบบปฏิบัติการ",
+  "status": "na"
+ },
+ "ch27:S-PR-02": {
+  "note": "ใช้เครื่องพิมพ์ของเบราว์เซอร์/ระบบปฏิบัติการ",
+  "status": "na"
+ },
+ "chAP:S-AX-01": {
+  "status": "done",
+  "where": "กล่องข้อผิดพลาดภาษาไทย"
+ },
+ "chAP:S-AX-02": {
+  "status": "done",
+  "where": "ตัวเลือกบริษัท"
+ },
+ "chAP:S-AX-03": {
+  "status": "todo"
+ },
+ "chAP:S-AX-04": {
+  "status": "done",
+  "where": "ปุ่มวันทำการบนแถบบน"
+ },
+ "chAP:S-AX-05": {
+  "status": "todo"
+ },
+ "chAP:S-AX-06": {
+  "status": "todo"
+ },
+ "chAP:S-AX-07": {
+  "status": "todo"
+ },
+ "chAP:S-AX-08": {
+  "status": "todo"
+ },
+ "chAP:S-AX-09": {
+  "status": "todo"
+ }
+}

@@ -1,0 +1,180 @@
+{
+ "chapter": 27,
+ "title": "การติดตั้งเครื่องพิมพ์",
+ "book_pages": "447-453",
+ "pdf_pages": "463-469",
+ "screens": [
+  {
+   "id": "S-PR-01",
+   "name": "เมนูติดตั้งเครื่องพิมพ์",
+   "menu": "เริ่มระบบ > 6 ติดตั้งเครื่องพิมพ์",
+   "book_page": 447,
+   "pdf_page": 463,
+   "layout": "list",
+   "fields": [
+    {
+     "label": "1. พิมพ์ตารางรหัสเครื่องพิมพ์",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "2. กำหนดรหัสเครื่องพิมพ์",
+     "type": "select",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "buttons": [],
+   "postings": []
+  },
+  {
+   "id": "S-PR-02",
+   "name": "ติดตั้งเครื่องพิมพ์",
+   "menu": "เริ่มระบบ > 6.2 กำหนดรหัสเครื่องพิมพ์",
+   "book_page": 448,
+   "pdf_page": 464,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "ลำดับที่",
+     "type": "number",
+     "required": true,
+     "note": "ห้ามซ้ำ; 0 = เครื่องหลัก"
+    },
+    {
+     "label": "ชื่อเครื่องพิมพ์",
+     "type": "text",
+     "required": true,
+     "note": "ยี่ห้อ/รุ่น หรือ \\\\Computer\\PrinterName"
+    },
+    {
+     "label": "โหมดการพิมพ์",
+     "type": "select",
+     "required": true,
+     "note": "Text Mode | Graphic Mode | Graphic+NoAsk | ไม่ได้ระบุ(Text Mode)"
+    },
+    {
+     "label": "จำนวนบรรทัด",
+     "type": "number",
+     "required": true,
+     "note": "บรรทัด/หน้า; A4=39"
+    },
+    {
+     "label": "รหัสภาษาไทย",
+     "type": "select",
+     "required": false,
+     "note": "Text Mode; เลขตารางภาคผนวก ค เช่น 42=เกษตรสหวิริยา"
+    },
+    {
+     "label": "พิมพ์กรอบตารางได้",
+     "type": "check",
+     "required": false,
+     "note": "Y/N"
+    },
+    {
+     "label": "ระดับการพิมพ์",
+     "type": "select",
+     "required": false,
+     "note": "ภาษาไทย 3 ระดับ"
+    },
+    {
+     "label": "ระยะบรรทัดบน",
+     "type": "number",
+     "required": false,
+     "note": "n/180 นิ้ว ค่าเริ่ม 19"
+    },
+    {
+     "label": "ระยะบรรทัดกลาง",
+     "type": "number",
+     "required": false,
+     "note": "n/180 นิ้ว ค่าเริ่ม 19"
+    },
+    {
+     "label": "ระยะบรรทัดล่าง",
+     "type": "number",
+     "required": false,
+     "note": "n/180 นิ้ว ค่าเริ่ม 7"
+    },
+    {
+     "label": "ชื่อ Batch File",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "Initial ESC Sequence",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "Computer PORT",
+     "type": "text",
+     "required": false,
+     "note": "LPT1"
+    }
+   ],
+   "buttons": [
+    "ใหม่",
+    "แก้ไข",
+    "ลบ",
+    "ปิด",
+    "บันทึก",
+    "เลื่อนระเบียน",
+    "ค้นหา",
+    "พิมพ์",
+    "F7 พิมพ์ทดสอบ",
+    "Ctrl+F7 ทดสอบทุกรหัสภาษาไทย",
+    "Shift+F5 สลับเครื่องพิมพ์"
+   ],
+   "postings": []
+  }
+ ],
+ "entities": [
+  {
+   "name": "Printer",
+   "fields": [
+    "ลำดับที่",
+    "ชื่อเครื่องพิมพ์",
+    "โหมดการพิมพ์",
+    "จำนวนบรรทัด",
+    "รหัสภาษาไทย",
+    "พิมพ์กรอบตาราง",
+    "ระดับการพิมพ์",
+    "ระยะบรรทัดบน",
+    "ระยะบรรทัดกลาง",
+    "ระยะบรรทัดล่าง",
+    "Batch File",
+    "Initial ESC",
+    "Port"
+   ],
+   "relations": [
+    "<- User (1:n) ลำดับเครื่องพิมพ์ของผู้ใช้",
+    "-> ThaiCodeTable (n:1)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "ตั้งค่าเครื่องพิมพ์หัวเข็ม",
+   "steps": [
+    "6.1 พิมพ์ตารางรหัส",
+    "เทียบกับภาคผนวก ค",
+    "6.2 กรอกค่า",
+    "F7/Ctrl+F7 ทดสอบ"
+   ]
+  },
+  {
+   "name": "การทำงานเมื่อสั่งพิมพ์",
+   "steps": [
+    "ล็อกอิน: จำลำดับเครื่องพิมพ์ของผู้ใช้",
+    "ชื่อมี \\ -> ตรวจว่ามีเครื่อง; ไม่มี \\ -> Default Printer",
+    "Text: Batch File > Initial ESC > ส่งข้อความ",
+    "Graphic: จัดหน้าผ่าน Windows ถามรายละเอียด",
+    "Graphic+NoAsk: พิมพ์ทันที",
+    "ส่งงานพิมพ์"
+   ]
+  }
+ ]
+}

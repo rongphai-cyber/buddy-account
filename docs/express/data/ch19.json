@@ -1,0 +1,384 @@
+{
+ "chapter": 19,
+ "title": "ระบบทรัพย์สินถาวร",
+ "book_pages": "319-326",
+ "pdf_pages": "335-342",
+ "screens": [
+  {
+   "id": "S-FA-01",
+   "name": "รายการทรัพย์สิน",
+   "menu": "บัญชี > B รายการทรัพย์สิน",
+   "book_page": 320,
+   "pdf_page": 336,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัส",
+     "type": "text",
+     "required": true,
+     "note": "รูปแบบตามเริ่มระบบ 1.8.1; แก้ได้เฉพาะผ่านเปลี่ยนรหัส"
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": "[สันนิษฐาน] บังคับ"
+    },
+    {
+     "label": "อังกฤษ",
+     "type": "text",
+     "required": false
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายละเอียด",
+     "fields": [
+      {
+       "label": "หมวด",
+       "type": "lookup",
+       "required": true,
+       "lookup": "หมวดทรัพย์สิน"
+      },
+      {
+       "label": "กลุ่มบัญชี",
+       "type": "lookup",
+       "required": true,
+       "lookup": "กลุ่มบัญชีทรัพย์สิน (เริ่มระบบ 1.8.2)",
+       "note": "กำหนดบัญชีค่าเสื่อม/ค่าเสื่อมสะสม"
+      },
+      {
+       "label": "เลขทะเบียน",
+       "type": "text",
+       "required": false,
+       "note": "Serial Number"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "แผนก"
+      },
+      {
+       "label": "คิดค่าเสื่อม?",
+       "type": "check",
+       "required": false,
+       "note": "ไม่ติ๊ก = ไม่คิด เช่น ที่ดิน"
+      },
+      {
+       "label": "วันที่ซื้อ",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "ราคาทุน",
+       "type": "money",
+       "required": true
+      },
+      {
+       "label": "ราคาซาก",
+       "type": "money",
+       "required": true,
+       "note": ">= 1 บาท; ใส่ส่วนเกินเพดานกฎหมาย"
+      },
+      {
+       "label": "วิธีคิดค่าเสื่อม",
+       "type": "select",
+       "required": true,
+       "note": "วิธีเส้นตรง / วิธีลดยอด"
+      },
+      {
+       "label": "วันที่เริ่มใช้",
+       "type": "date",
+       "required": true,
+       "note": "เริ่มคิดค่าเสื่อมจากวันนี้"
+      },
+      {
+       "label": "อายุการใช้งาน (ปี)",
+       "type": "number",
+       "required": true
+      },
+      {
+       "label": "อัตรา (%)",
+       "type": "number",
+       "required": true
+      },
+      {
+       "label": "คิดค่าเสื่อม (รอบ)",
+       "type": "select",
+       "required": true,
+       "note": "รายเดือน / รายปี"
+      },
+      {
+       "label": "ค่าเสื่อมสะสมยกมา",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ค่าเสื่อมที่คำนวณเอง",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "คำนวณเองถึงวันที่",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "ค่าเสื่อมเบื้องต้น",
+       "type": "money",
+       "required": false,
+       "note": "คำนวณ"
+      },
+      {
+       "label": "วันที่ขาย",
+       "type": "date",
+       "required": false,
+       "note": "จาก SOLD F/A"
+      },
+      {
+       "label": "ราคาขาย",
+       "type": "money",
+       "required": false,
+       "note": "จาก SOLD F/A"
+      },
+      {
+       "label": "กำไร/ขาดทุน",
+       "type": "money",
+       "required": false,
+       "note": "คำนวณ"
+      }
+     ]
+    },
+    {
+     "name": "ค่าเสื่อมรายเดือน",
+     "fields": [
+      {
+       "label": "วิธีคิดค่าเสื่อม",
+       "type": "select",
+       "required": false,
+       "note": "แสดง"
+      },
+      {
+       "label": "อัตรา",
+       "type": "number",
+       "required": false,
+       "note": "แสดง"
+      },
+      {
+       "label": "มูลค่าต้นงวด",
+       "type": "money",
+       "required": false,
+       "note": "แสดง"
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "งวด (1-12, รวม)",
+     "ปีปัจจุบัน",
+     "ปีถัดไป"
+    ]
+   },
+   "buttons": [
+    "ใหม่",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "Note",
+    "SOLD F/A บันทึกขายทรัพย์สิน",
+    "REJNL ลงบัญชีใหม่ทั้งแฟ้ม [สันนิษฐาน]",
+    "RECAL F/A คิดค่าเสื่อม+ลงบัญชีทั้งแฟ้ม",
+    "เปลี่ยนรหัสทรัพย์สิน"
+   ],
+   "postings": [
+    "(อัตโนมัติ) Dr ค่าเสื่อมราคา / Cr ค่าเสื่อมราคาสะสม ตามกลุ่มบัญชี รายเดือนหรือรายปี (เช่น FA48010001: Dr 5340-03, 5340-05 / Cr 1420-03, 1420-05)",
+    "(ผู้ใช้) ซื้อ: Dr ทรัพย์สิน / Cr เงินสด/เจ้าหนี้"
+   ]
+  },
+  {
+   "id": "S-FA-02",
+   "name": "เปลี่ยนรหัสหมวดทรัพย์สิน",
+   "menu": "รายการทรัพย์สิน > ไอคอนเปลี่ยนรหัสทรัพย์สิน",
+   "book_page": 324,
+   "pdf_page": 340,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัสทรัพย์สิน เดิม",
+     "type": "text",
+     "required": false,
+     "note": "อ่านอย่างเดียว"
+    },
+    {
+     "label": "เปลี่ยนเป็น",
+     "type": "text",
+     "required": true
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-FA-03",
+   "name": "บันทึกขายทรัพย์สิน",
+   "menu": "รายการทรัพย์สิน > SOLD F/A",
+   "book_page": 325,
+   "pdf_page": 341,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "วันที่ขาย",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "ราคาขาย",
+     "type": "money",
+     "required": true
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก"
+   ],
+   "postings": [
+    "(อัตโนมัติ) Dr ค่าเสื่อมราคา / Cr ค่าเสื่อมราคาสะสม ถึงวันที่ขาย",
+    "(ผู้ใช้) Dr เงินสด, Dr ค่าเสื่อมราคาสะสม / Cr ทรัพย์สิน, Cr(Dr) กำไร-ขาดทุนจากการจำหน่ายทรัพย์สิน"
+   ]
+  },
+  {
+   "id": "S-FA-04",
+   "name": "คำนวณยอดค่าเสื่อมราคาและลงบัญชีใหม่",
+   "menu": "รายการทรัพย์สิน > ไอคอน RECAL F/A / REJNL",
+   "book_page": 324,
+   "pdf_page": 340,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "คิดค่าเสื่อม-ลงบัญชีทั้งแฟ้ม",
+     "type": "check",
+     "required": false,
+     "note": "action: คำนวณใหม่ + ลงบัญชีทุกรหัส"
+    },
+    {
+     "label": "ลงบัญชีใหม่ทั้งแฟ้ม",
+     "type": "check",
+     "required": false,
+     "note": "action: ลงบัญชีค่าเสื่อมที่คำนวณแล้วแต่ยังไม่ผ่าน ไม่คำนวณใหม่"
+    }
+   ],
+   "buttons": [
+    "คิดค่าเสื่อม-ลงบัญชีทั้งแฟ้ม",
+    "ลงบัญชีใหม่ทั้งแฟ้ม"
+   ],
+   "postings": [
+    "Dr ค่าเสื่อมราคา / Cr ค่าเสื่อมราคาสะสม"
+   ]
+  }
+ ],
+ "entities": [
+  {
+   "name": "FixedAsset",
+   "fields": [
+    "code",
+    "name_th",
+    "name_en",
+    "category",
+    "account_group",
+    "serial_no",
+    "department",
+    "depreciate",
+    "purchase_date",
+    "cost",
+    "salvage_value",
+    "method(straight-line/declining)",
+    "start_use_date",
+    "useful_life_years",
+    "rate_pct",
+    "depr_frequency(monthly/yearly)",
+    "accum_depr_bf",
+    "manual_depr",
+    "manual_depr_to_date",
+    "annual_depr",
+    "sold_date",
+    "sold_price",
+    "gain_loss"
+   ],
+   "relations": [
+    "-> AssetCategory (n:1)",
+    "-> AssetAccountGroup (n:1)",
+    "-> Department (n:1)",
+    "-> AssetDepreciationSchedule (1:n)",
+    "-> JournalVoucher FA (1:n)"
+   ]
+  },
+  {
+   "name": "AssetDepreciationSchedule",
+   "fields": [
+    "period(1-12)",
+    "current_year_amount",
+    "next_year_amount"
+   ],
+   "relations": [
+    "-> FixedAsset (n:1)"
+   ]
+  },
+  {
+   "name": "AssetCategory",
+   "fields": [
+    "code",
+    "name"
+   ],
+   "relations": [
+    "-> FixedAsset (1:n)"
+   ]
+  },
+  {
+   "name": "AssetAccountGroup",
+   "fields": [
+    "code",
+    "name",
+    "depr_expense_account [สันนิษฐาน]",
+    "accum_depr_account [สันนิษฐาน]"
+   ],
+   "relations": [
+    "-> FixedAsset (1:n)",
+    "-> ChartOfAccount (n:1)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "วงจรทรัพย์สินถาวร",
+   "steps": [
+    "ตั้งค่า 1.8.1 / 1.8.2 / หมวด",
+    "ซื้อ: ผู้ใช้ลง JV",
+    "บัญชี > B เพิ่มทะเบียน",
+    "โปรแกรมคำนวณตารางค่าเสื่อม 2 ปีและลงบัญชีอัตโนมัติ",
+    "ขาย: SOLD F/A วันที่และราคาขาย",
+    "โปรแกรมลงค่าเสื่อมถึงวันขาย",
+    "ผู้ใช้ลง JV ขาย"
+   ]
+  },
+  {
+   "name": "คำนวณค่าเสื่อมย้อนหลัง",
+   "steps": [
+    "ทะเบียนบันทึกโดยไม่ติ๊กคิดค่าเสื่อม",
+    "ข้อมูลครบแล้ว",
+    "RECAL F/A คิดค่าเสื่อม+ลงบัญชีทั้งแฟ้ม"
+   ]
+  }
+ ]
+}

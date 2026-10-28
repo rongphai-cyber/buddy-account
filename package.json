@@ -1,0 +1,25 @@
+{
+  "name": "buddy-account",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "db:gen": "python3 db/spec/gen.py",
+    "dev:server": "pnpm --filter @buddy/server dev",
+    "dev:web": "pnpm --filter @buddy/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm --filter @buddy/core test && pnpm --filter @buddy/server test",
+    "typecheck": "pnpm -r typecheck",
+    "start": "pnpm --filter @buddy/web build && pnpm --filter @buddy/server start",
+    "coverage": "python3 docs/tools/gen_coverage.py"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+    "kysely": "^0.27.6",
+    "typescript": "^5.9.3"
+  }
+}

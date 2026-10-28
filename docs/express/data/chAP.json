@@ -1,0 +1,455 @@
+{
+ "chapter": "AP",
+ "title": "ภาคผนวก ก/ข/ค และดัชนี",
+ "book_pages": "455-479",
+ "pdf_pages": "471-495",
+ "screens": [
+  {
+   "id": "S-AX-01",
+   "name": "Dialog แจ้ง Error",
+   "menu": "(ระบบ)",
+   "book_page": 455,
+   "pdf_page": 471,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "Error No (รหัสภายใน)",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ข้อความ + path ไฟล์",
+     "type": "memo",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "buttons": [
+    "OK"
+   ],
+   "postings": [],
+   "errors": [
+    {
+     "code": -69,
+     "internal": 84307,
+     "message": "Duplicate Instance Found Error Opening File",
+     "cause": "ไฟล์ถูกจำกัดสิทธิ (LAN/Attrib)",
+     "fix": "เอา Read-only ออก / ติดต่อผู้ดูแลแลน"
+    },
+    {
+     "code": -200,
+     "internal": 83805,
+     "message": "File is not a Data File",
+     "cause": "แฟ้มข้อมูลเสีย",
+     "fix": "กู้จากข้อมูลสำรอง หรือส่งฝ่ายบริการ"
+    },
+    {
+     "code": -310,
+     "internal": 84907,
+     "message": "Not a Correct Index File",
+     "cause": "แฟ้มดัชนีเสีย",
+     "fix": "Scandisk แล้วจัดเรียงข้อมูลใหม่"
+    },
+    {
+     "code": null,
+     "message": "ไม่มีบริษัทให้เลือก",
+     "cause": "ผู้ใช้ไม่มีสิทธิ",
+     "fix": "กำหนดสิทธิ (บทที่ 23)"
+    },
+    {
+     "code": null,
+     "message": "พิมพ์เอกสารไม่ได้",
+     "cause": "Windows spool DOS",
+     "fix": "ปิด Spool MS-DOS print jobs"
+    }
+   ]
+  },
+  {
+   "id": "S-AX-02",
+   "name": "รายการบริษัทตอนเข้าโปรแกรม",
+   "menu": "(เข้าโปรแกรม)",
+   "book_page": 458,
+   "pdf_page": 474,
+   "layout": "list",
+   "grid": {
+    "columns": [
+     "ชื่อข้อมูล",
+     "โฟลเดอร์ (DATAZ)",
+     "[สันนิษฐาน] ชนิด (DAT)"
+    ]
+   },
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก",
+    "ค้นหา"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AX-03",
+   "name": "เครื่องคิดเลข",
+   "menu": "Shift+F2",
+   "book_page": 462,
+   "pdf_page": 478,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "tape ประวัติ",
+     "type": "memo",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ตำแหน่งทศนิยม",
+     "type": "number",
+     "required": false,
+     "note": "ค่าเริ่ม 2"
+    },
+    {
+     "label": "ผลลัพธ์",
+     "type": "number",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "buttons": [
+    "MC",
+    "MR",
+    "M-",
+    "M+",
+    "Copy",
+    "%",
+    "CE",
+    "AC",
+    "0-9",
+    ".",
+    "DEL",
+    "/",
+    "^",
+    "*",
+    "+/-",
+    "-",
+    "+",
+    "="
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AX-04",
+   "name": "เปลี่ยนวันทำการ",
+   "menu": "Shift+F3",
+   "book_page": 462,
+   "pdf_page": 478,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "วันทำการ",
+     "type": "date",
+     "required": true,
+     "note": "ค่าเริ่มต้นวันที่เอกสารทุกหน้าจอ"
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "Esc"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AX-05",
+   "name": "สอบถามยอดสินค้าคงเหลือ",
+   "menu": "Shift+F4",
+   "book_page": 463,
+   "pdf_page": 479,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "รหัสสินค้า",
+     "type": "lookup",
+     "required": true,
+     "note": "",
+     "lookup": "สินค้า"
+    },
+    {
+     "label": "คลังสินค้า",
+     "type": "lookup",
+     "required": true,
+     "note": "",
+     "lookup": "คลัง"
+    },
+    {
+     "label": "จำนวน",
+     "type": "number",
+     "required": false,
+     "note": "ใช้กับสินค้าชุด"
+    },
+    {
+     "label": "ราคาซื้อ",
+     "type": "money",
+     "required": false,
+     "note": "ใช้กับสินค้าชุด"
+    },
+    {
+     "label": "ราคาขาย",
+     "type": "money",
+     "required": false,
+     "note": "ใช้กับสินค้าชุด"
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true,
+     "note": ""
+    }
+   ],
+   "buttons": [
+    "พิมพ์ (แสดงยอด)"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AX-06",
+   "name": "เลือกเครื่องพิมพ์",
+   "menu": "Shift+F5 / Alt+F5",
+   "book_page": 463,
+   "pdf_page": 479,
+   "layout": "list",
+   "grid": {
+    "columns": [
+     "ลำดับ",
+     "ชื่อเครื่องพิมพ์",
+     "รหัสภาษาไทย"
+    ]
+   },
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก",
+    "ค้นหา"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AX-07",
+   "name": "ตั้งชื่อแฟ้มรายงาน",
+   "menu": "Shift+F6",
+   "book_page": 464,
+   "pdf_page": 480,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ชื่อแฟ้มรายงาน",
+     "type": "text",
+     "required": true,
+     "note": "ชื่อ<=8 นามสกุล<=3"
+    }
+   ],
+   "buttons": [
+    "ตกลง"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AX-08",
+   "name": "รายงานหรือฟอร์มตัวอย่าง",
+   "menu": "Shift+F7 / Alt+F7",
+   "book_page": 465,
+   "pdf_page": 481,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ยืนยันเปลี่ยนเป็นแบบตัวอย่าง",
+     "type": "check",
+     "required": false,
+     "note": "toggle; พิมพ์ XXX/999 ตามความยาวฟิลด์"
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AX-09",
+   "name": "แสดงระบบคอมพิวเตอร์",
+   "menu": "Shift+F10",
+   "book_page": 466,
+   "pdf_page": 482,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ชื่อกิจการ (ไทย/อังกฤษ)",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ที่เก็บข้อมูล",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เวอร์ชั่น / S/N",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อเครื่องพิมพ์",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อแฟ้มรายงาน",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ลักษณะรายงาน",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "รหัสผู้ใช้",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ระดับทำงาน",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เชื่อมต่อบัญชี",
+     "type": "text",
+     "required": false,
+     "note": "Y,PERPETUAL"
+    },
+    {
+     "label": "ที่เก็บโปรแกรม",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "วันที่โปรแกรม",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "วันที่ทำการ",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "รอบบัญชี จาก/ถึง",
+     "type": "date",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "buttons": [
+    "ตกลง"
+   ],
+   "postings": []
+  }
+ ],
+ "thai_code_tables": {
+  "11": "สมอ.988 ต่อหัว",
+  "12": "สมอ.988 ไม่ต่อหัว",
+  "13": "สมอ. ไอบีเอ็ม",
+  "14": "NEC TIS-08",
+  "15": "NEC TIS-12",
+  "16": "สหวิริยาเก่า",
+  "17": "สหวิริยาใหม่",
+  "18": "สมอ.ทั่วไป ไม่ต่อหัว",
+  "19": "เอสซีที",
+  "20": "ไมโครวิช",
+  "21": "โอลิมเปีย ISO1",
+  "22": "โอลิมเปีย ISO2",
+  "40": "NEC KU-STD",
+  "41": "NEC KU-15",
+  "42": "เกษตรสหวิริยา",
+  "43": "เกษตรโอลิมเปีย"
+ },
+ "hotkeys": {
+  "Shift+F2": "เครื่องคิดเลข",
+  "Shift+F3": "เปลี่ยนวันทำการ",
+  "Shift+F4": "สอบถามยอดสินค้าคงเหลือ",
+  "Shift+F5": "เลือกเครื่องพิมพ์ (ข้อความ: Alt+F5)",
+  "Shift+F6": "ตั้งชื่อแฟ้มรายงาน",
+  "Shift+F7": "รายงานหรือฟอร์มตัวอย่าง (ข้อความ: Alt+F7)",
+  "Shift+F10": "แสดงระบบคอมพิวเตอร์"
+ },
+ "entities": [
+  {
+   "name": "SessionContext",
+   "fields": [
+    "รหัสผู้ใช้",
+    "ระดับทำงาน",
+    "วันทำการ",
+    "รอบบัญชี",
+    "ที่เก็บข้อมูล",
+    "เครื่องพิมพ์",
+    "ชื่อแฟ้มรายงาน",
+    "ลักษณะรายงาน",
+    "เชื่อมต่อบัญชี/วิธีบันทึกสินค้า"
+   ],
+   "relations": [
+    "-> User (n:1)",
+    "-> Company (n:1)",
+    "-> Printer (n:1)"
+   ]
+  },
+  {
+   "name": "Company",
+   "fields": [
+    "ชื่อกิจการ",
+    "ที่เก็บข้อมูล"
+   ],
+   "relations": [
+    "<-> User (n:m) สิทธิ"
+   ]
+  },
+  {
+   "name": "ThaiCodeTable",
+   "fields": [
+    "เลขตาราง",
+    "ชื่อมาตรฐาน"
+   ],
+   "relations": [
+    "<- Printer (1:n)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "แก้ Error",
+   "steps": [
+    "-69: ปลด Read-only/ตรวจสิทธิแลน",
+    "-200: กู้ข้อมูลสำรอง/ส่งฝ่ายบริการ",
+    "-310: Scandisk + จัดเรียงข้อมูลใหม่",
+    "ไม่มีบริษัท: กำหนดสิทธิผู้ใช้",
+    "พิมพ์ไม่ได้: ปิด Spool MS-DOS print jobs"
+   ]
+  },
+  {
+   "name": "ทำฟอร์มพิมพ์สำเร็จ",
+   "steps": [
+    "Alt/Shift+F7 เปลี่ยนเป็นแบบตัวอย่าง",
+    "เปิดหน้าจอเอกสาร Alt+P",
+    "ส่งผล XXX/999 ให้โรงพิมพ์",
+    "Alt/Shift+F7 กลับเป็นปกติ"
+   ]
+  }
+ ]
+}

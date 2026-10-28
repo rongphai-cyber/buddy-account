@@ -1,0 +1,1789 @@
+{
+ "chapter": 26,
+ "title": "การประยุกต์ใช้งานสำหรับธุรกิจประเภทต่างๆ",
+ "book_pages": "435-446",
+ "pdf_pages": "451-462",
+ "screens": [
+  {
+   "id": "S-AP-01",
+   "name": "รายละเอียดสินค้า (วัตถุดิบ/สินค้าสำเร็จรูป)",
+   "menu": "สินค้า > 2 รายละเอียดสินค้า",
+   "book_page": 436,
+   "pdf_page": 452,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัส",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "บาร์โค้ด",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายละเอียด",
+     "fields": [
+      {
+       "label": "หมวด",
+       "type": "lookup",
+       "required": false,
+       "note": "01 ซีพียู",
+       "lookup": "หมวดสินค้า"
+      },
+      {
+       "label": "กลุ่มบัญชีสินค้า [ป้ายเบลอ]",
+       "type": "lookup",
+       "required": true,
+       "note": "ST01 (F) สินค้าสำเร็จรูป FIFO — กำหนดบัญชีสินค้าคงเหลือ",
+       "lookup": "กลุ่มบัญชีสินค้า"
+      },
+      {
+       "label": "หน่วยนับ x4",
+       "type": "lookup",
+       "required": true,
+       "note": "ป้ายแถวเบลอ",
+       "lookup": "หน่วยนับ"
+      },
+      {
+       "label": "ตัวคูณให้เป็นหน่วยย่อย",
+       "type": "number",
+       "required": false,
+       "note": "1.0"
+      },
+      {
+       "label": "สินค้าทดแทน",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "สินค้า"
+      },
+      {
+       "label": "ส/คติดลบได้?",
+       "type": "select",
+       "required": false,
+       "note": "Y,N,A"
+      },
+      {
+       "label": "ราคาขาย 1-5",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ประเภท VAT",
+       "type": "select",
+       "required": false,
+       "note": "อัตราปกติ"
+      },
+      {
+       "label": "ราคาทุนมาตรฐาน",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "หมายเหตุ",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ยอดคงเหลือ",
+       "type": "number",
+       "required": false,
+       "note": "แสดงผล"
+      },
+      {
+       "label": "ราคาต่อหน่วย",
+       "type": "money",
+       "required": false,
+       "note": "แสดงผล"
+      },
+      {
+       "label": "มูลค่าคงเหลือ",
+       "type": "money",
+       "required": false,
+       "note": "แสดงผล"
+      }
+     ]
+    },
+    {
+     "name": "คลังสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "ล็อตสินค้ายกมา <F7>",
+     "fields": []
+    },
+    {
+     "name": "ฟิลด์เพิ่มเติม",
+     "fields": []
+    }
+   ],
+   "buttons": [
+    "ใหม่",
+    "แก้ไข",
+    "ลบ",
+    "ปิด",
+    "บันทึก",
+    "first",
+    "prev",
+    "next",
+    "last",
+    "ค้นหา",
+    "พิมพ์",
+    "Note",
+    "CHECK B/L",
+    "REAL COST",
+    "OLD/NEW"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AP-02",
+   "name": "รายละเอียดค่าใช้จ่ายอื่นๆ",
+   "menu": "ซื้อ > 7 รายละเอียดค่าใช้จ่าย",
+   "book_page": 436,
+   "pdf_page": 452,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัสค่าใช้จ่าย",
+     "type": "text",
+     "required": true,
+     "note": "97-7100-00"
+    },
+    {
+     "label": "บาร์โค้ด",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายละเอียด",
+     "fields": [
+      {
+       "label": "หมวดสินค้า",
+       "type": "lookup",
+       "required": false,
+       "note": "คช ค่าใช้จ่ายอื่นๆ",
+       "lookup": "หมวดสินค้า"
+      },
+      {
+       "label": "หน่วยนับ",
+       "type": "lookup",
+       "required": false,
+       "note": "คง ครั้ง",
+       "lookup": "หน่วยนับ"
+      },
+      {
+       "label": "ประเภท VAT",
+       "type": "select",
+       "required": false,
+       "note": "ไม่ระบุ"
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "หมายเหตุ",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "บ/ช ค่าใช้จ่าย",
+       "type": "lookup",
+       "required": true,
+       "note": "7100-00",
+       "lookup": "ผังบัญชี"
+      }
+     ]
+    },
+    {
+     "name": "ฟิลด์เพิ่มเติม",
+     "fields": []
+    }
+   ],
+   "buttons": [
+    "ใหม่",
+    "แก้ไข",
+    "ลบ",
+    "ปิด",
+    "บันทึก",
+    "เลื่อนระเบียน",
+    "ค้นหา",
+    "พิมพ์",
+    "Note",
+    "OLD/NEW"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AP-03",
+   "name": "RR - ซื้อเงินเชื่อ (วัตถุดิบ / สินค้านำเข้า)",
+   "menu": "ซื้อ > 4 ซื้อเงินเชื่อ",
+   "book_page": 437,
+   "pdf_page": 453,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "ผู้จำหน่าย",
+     "type": "lookup",
+     "required": true,
+     "note": "",
+     "lookup": "ผู้จำหน่าย"
+    },
+    {
+     "label": "Bill be",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ผู้จำหน่าย"
+    },
+    {
+     "label": "สาขา#",
+     "type": "number",
+     "required": false,
+     "note": "0"
+    },
+    {
+     "label": "เลขที่บิล",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ลวท.",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "แผนก"
+    },
+    {
+     "label": "เลขที่ใบรับสินค้า",
+     "type": "text",
+     "required": true,
+     "note": "RR running"
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "อ้างถึงใบสั่งซื้อ",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ใบสั่งซื้อ"
+    },
+    {
+     "label": "เครดิต",
+     "type": "number",
+     "required": false,
+     "note": "วัน"
+    },
+    {
+     "label": "ครบกำหนด",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ขนส่งโดย",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ประเภทราคา",
+     "type": "select",
+     "required": true,
+     "note": "0-ไม่มี VAT / 1-รวม VAT"
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "หักส่วนลด",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "หักเงินมัดจำ",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ภาษีมูลค่าเพิ่ม %",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "จำนวนเงินรวมทั้งสิ้น",
+     "type": "money",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายละเอียดอื่น <Ctrl+F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการจ่ายชำระ <F7>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีซื้อ <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีหัก ณ ที่จ่าย <Ctrl+F10>",
+     "fields": []
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "รหัส",
+     "รายละเอียด",
+     "คลัง",
+     "จำนวน",
+     "หน่วย",
+     "ราคาต่อหน่วย",
+     "ส่วนลด",
+     "F",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "ปุ่มมาตรฐานเอกสาร"
+   ],
+   "postings": [
+    "[สันนิษฐาน] วัตถุดิบ: Dr วัตถุดิบคงเหลือ + ภาษีซื้อ / Cr เจ้าหนี้",
+    "[สันนิษฐาน] นำเข้า: Dr สินค้าระหว่างทาง 1140-04 / Cr เจ้าหนี้ต่างประเทศ 2120-03"
+   ]
+  },
+  {
+   "id": "S-AP-04",
+   "name": "PD - จ่ายวัตถุดิบเพื่อผลิต",
+   "menu": "สินค้า > 1.1 จ่ายสินค้าภายใน > จ่ายวัตถุดิบเพื่อผลิต",
+   "book_page": 437,
+   "pdf_page": 453,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "สำหรับแผนก",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "แผนก"
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เลขที่เอกสาร",
+     "type": "text",
+     "required": true,
+     "note": "PD running"
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": false,
+     "note": "ผลรวม"
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายละเอียดรายการสินค้าเพิ่มเติม <Ctrl+F8>",
+     "fields": []
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "รหัส",
+     "รายละเอียด",
+     "คลัง",
+     "จำนวน",
+     "หน่วย",
+     "ราคาต่อหน่วย",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "ปุ่มมาตรฐานเอกสาร"
+   ],
+   "postings": [
+    "ตัดวัตถุดิบออกจากสต๊อก",
+    "[สันนิษฐาน] Dr งานระหว่างทำ/ต้นทุน / Cr วัตถุดิบคงเหลือ"
+   ]
+  },
+  {
+   "id": "S-AP-05",
+   "name": "OE - บันทึกค่าใช้จ่ายอื่นๆ",
+   "menu": "ซื้อ > 5 บันทึกค่าใช้จ่ายอื่นๆ",
+   "book_page": 438,
+   "pdf_page": 454,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "ผู้จำหน่าย",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ผู้จำหน่าย"
+    },
+    {
+     "label": "Bill be",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "สาขา#",
+     "type": "number",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เลขที่บิล",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ลวท.",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "คำอธิบาย",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เลขที่เอกสาร",
+     "type": "text",
+     "required": true,
+     "note": "OE running"
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ประเภทราคา",
+     "type": "select",
+     "required": true,
+     "note": "0-ไม่มี VAT"
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ภาษีมูลค่าเพิ่ม %",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "จำนวนเงินรวมทั้งสิ้น",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ดอกเบี้ยจ่าย",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เงินสด",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชำระโดยอื่นๆ(ด้านล่าง)",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ส่วนลดเงินสด",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ภาษีหัก ณ ที่จ่าย",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ยอดจ่ายจริง",
+     "type": "money",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีซื้อ <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีหัก ณ ที่จ่าย <Ctrl+F10>",
+     "fields": []
+    },
+    {
+     "name": "ชำระโดยอื่นๆ <F7>",
+     "fields": [
+      {
+       "label": "ชำระโดยอื่นๆ",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ลงวันที่",
+       "type": "date",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ธนาคาร",
+       "type": "lookup",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ยอดคงเหลือ",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ยอดชำระ",
+       "type": "money",
+       "required": false,
+       "note": ""
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "รหัส",
+     "รายละเอียด",
+     "แผนก",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "ปุ่มมาตรฐานเอกสาร"
+   ],
+   "postings": [
+    "[สันนิษฐาน] Dr บ/ช ค่าใช้จ่ายของรหัส (เช่น 7100-00) / Cr เงินสด/ธนาคาร"
+   ]
+  },
+  {
+   "id": "S-AP-06",
+   "name": "PI - รับสินค้าสำเร็จรูปจากการผลิต",
+   "menu": "สินค้า > 1.3 ปรับปรุงยอดสินค้า > รับส/คสำเร็จรูปจากการผลิต",
+   "book_page": 439,
+   "pdf_page": 455,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "สำหรับแผนก",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เลขที่เอกสาร",
+     "type": "text",
+     "required": true,
+     "note": "PI running"
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ปรับต้นทุนโดยโปรแกรม",
+     "type": "money",
+     "required": false,
+     "note": "แสดงผล"
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายละเอียดรายการสินค้าเพิ่มเติม <Ctrl+F8>",
+     "fields": []
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "รหัส",
+     "รายละเอียด",
+     "คลัง",
+     "จำนวน",
+     "ราคาต่อหน่วย",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "ปุ่มมาตรฐานเอกสาร"
+   ],
+   "postings": [
+    "รับสินค้าสำเร็จรูปเข้าสต๊อกตามต้นทุนที่ผู้ใช้คำนวณเอง",
+    "[สันนิษฐาน] บัญชีตามการเชื่อมต่อบัญชีของเอกสาร PI"
+   ]
+  },
+  {
+   "id": "S-AP-07",
+   "name": "ผังบัญชี",
+   "menu": "บัญชี > 2 ผังบัญชี",
+   "book_page": 440,
+   "pdf_page": 456,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "เลขที่บัญชี",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "บัญชีคุม",
+     "type": "lookup",
+     "required": true,
+     "note": "",
+     "lookup": "ผังบัญชี"
+    },
+    {
+     "label": "ระดับบัญชี",
+     "type": "number",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "หมวดบัญชี",
+     "type": "select",
+     "required": true,
+     "note": "1-สินทรัพย์ ..."
+    },
+    {
+     "label": "ประเภท",
+     "type": "select",
+     "required": true,
+     "note": "0-บัญชีย่อย"
+    },
+    {
+     "label": "แยกแผนก",
+     "type": "check",
+     "required": false,
+     "note": "Y/N"
+    }
+   ],
+   "buttons": [
+    "เรียงตามเลขที่บัญชี",
+    "เรียงตามชื่อบัญชี",
+    "ใหม่",
+    "แก้ไข",
+    "ลบ",
+    "ปิด",
+    "บันทึก",
+    "เลื่อนระเบียน",
+    "OLD/NEW"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AP-08",
+   "name": "รายละเอียดผู้จำหน่าย (เจ้าหนี้ต่างประเทศ)",
+   "menu": "ซื้อ > 6 รายละเอียดผู้จำหน่าย",
+   "book_page": 440,
+   "pdf_page": 456,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัสผู้จำหน่าย",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "คำนำหน้าชื่อ",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อ",
+     "type": "text",
+     "required": true,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายละเอียด",
+     "fields": [
+      {
+       "label": "ที่อยู่ (2 บรรทัด)",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "รหัสไปรษณีย์ [สันนิษฐาน]",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ผู้ติดต่อ [สันนิษฐาน]",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ประเภทผู้จำหน่าย [ป้ายเบลอ]",
+       "type": "lookup",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "เลขที่บัญชี",
+       "type": "lookup",
+       "required": true,
+       "note": "2120-03 เจ้าหนี้ต่างประเทศ",
+       "lookup": "ผังบัญชี"
+      },
+      {
+       "label": "ประเภทราคา",
+       "type": "select",
+       "required": false,
+       "note": "1-รวม VAT"
+      },
+      {
+       "label": "ภาษีมูลค่าเพิ่ม",
+       "type": "number",
+       "required": false,
+       "note": "7.00"
+      },
+      {
+       "label": "ขนส่งโดย",
+       "type": "lookup",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "เครดิต [ป้ายเบลอ]",
+       "type": "number",
+       "required": false,
+       "note": "45"
+      }
+     ]
+    },
+    {
+     "name": "ตารางสะสมยอดเงิน งวด 1-12",
+     "fields": []
+    },
+    {
+     "name": "ตารางสะสมยอดเงิน งวด 13-24",
+     "fields": []
+    },
+    {
+     "name": "รายการเช็คจ่ายที่ยังไม่ผ่านบัญชี",
+     "fields": []
+    },
+    {
+     "name": "รายการบิลที่ค้างชำระ",
+     "fields": []
+    }
+   ],
+   "buttons": [
+    "ใหม่",
+    "แก้ไข",
+    "ลบ",
+    "ปิด",
+    "บันทึก",
+    "เลื่อนระเบียน",
+    "ค้นหา",
+    "พิมพ์",
+    "Note",
+    "OLD/NEW"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AP-09",
+   "name": "รายละเอียดสินค้าบริการ (สินค้าระหว่างทาง)",
+   "menu": "สินค้า > 4 รายละเอียดสินค้าบริการ",
+   "book_page": 441,
+   "pdf_page": 457,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "รหัสสินค้า",
+     "type": "text",
+     "required": true,
+     "note": "ส/คระหว่างทาง"
+    },
+    {
+     "label": "บาร์โค้ด",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "หมวดสินค้า",
+     "type": "lookup",
+     "required": true,
+     "note": "สร"
+    },
+    {
+     "label": "หน่วยนับ",
+     "type": "lookup",
+     "required": true,
+     "note": "คง"
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ประเภท VAT",
+     "type": "select",
+     "required": false,
+     "note": "ไม่ระบุ"
+    },
+    {
+     "label": "ราคาขาย 1-5",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "บัญชีรายได้",
+     "type": "lookup",
+     "required": true,
+     "note": "1140-04 สินค้าระหว่างทาง",
+     "lookup": "ผังบัญชี"
+    },
+    {
+     "label": "บัญชีรับคืน",
+     "type": "lookup",
+     "required": false,
+     "note": "4100-03",
+     "lookup": "ผังบัญชี"
+    },
+    {
+     "label": "ต้นทุนบริการต่อหน่วย",
+     "type": "money",
+     "required": false,
+     "note": "0=ไม่บันทึกบัญชี"
+    },
+    {
+     "label": "Dr.บ/ช ต้นทุนบริการ",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ผังบัญชี"
+    },
+    {
+     "label": "Cr.บ/ช เงินเดือน/ค่าแรง",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ผังบัญชี"
+    }
+   ],
+   "buttons": [
+    "ใหม่",
+    "แก้ไข",
+    "ลบ",
+    "ปิด",
+    "บันทึก",
+    "เลื่อนระเบียน",
+    "ค้นหา",
+    "พิมพ์",
+    "Note",
+    "OLD/NEW"
+   ],
+   "postings": [
+    "ใช้บัญชีรายได้ของสินค้าบริการเมื่อบันทึกในเอกสาร",
+    "ต้นทุนบริการ>0: Dr ต้นทุนบริการ / Cr เงินเดือน/ค่าแรง"
+   ]
+  },
+  {
+   "id": "S-AP-10",
+   "name": "กำหนดเลขที่เอกสาร + รายละเอียดเพิ่มเติม",
+   "menu": "เริ่มระบบ > 4 กำหนดเลขที่เอกสาร",
+   "book_page": 442,
+   "pdf_page": 458,
+   "layout": "list",
+   "grid": {
+    "columns": [
+     "หมวดเอกสาร",
+     "ชื่อเอกสาร",
+     "ชื่อภาษาอังกฤษ",
+     "อักษรนำหน้า",
+     "เลขที่ถัดไป"
+    ]
+   },
+   "fields": [
+    {
+     "label": "ชื่อเอกสาร",
+     "type": "text",
+     "required": false,
+     "note": "แสดงผล"
+    },
+    {
+     "label": "บันทึกบัญชี ลงสมุดรายวัน",
+     "type": "lookup",
+     "required": true,
+     "note": "00 สมุดรายวันทั่วไป",
+     "lookup": "สมุดรายวัน"
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "คำอธิบายในสมุดรายวัน",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "Dr. สินค้า",
+     "type": "lookup",
+     "required": false,
+     "note": "Perpetual: ห้ามป้อน",
+     "lookup": "ผังบัญชี"
+    },
+    {
+     "label": "Cr. ต้นทุนขาย/ค่าใช้จ่าย",
+     "type": "lookup",
+     "required": true,
+     "note": "1140-04",
+     "lookup": "ผังบัญชี"
+    },
+    {
+     "label": "รับรองเอกสาร ต้องขออนุมัติระดับ",
+     "type": "number",
+     "required": false,
+     "note": "0=ไม่ต้อง, 1-9"
+    },
+    {
+     "label": "วิธีการพิมพ์ หรือรับรองเอกสาร",
+     "type": "number",
+     "required": false,
+     "note": "1=พิมพ์ก่อนรับรอง, 2=รับรองก่อนพิมพ์"
+    },
+    {
+     "label": "พิมพ์เอกสารซ้ำ ต้องขออนุมัติระดับ",
+     "type": "number",
+     "required": false,
+     "note": "0=ไม่ต้อง, 1-9"
+    }
+   ],
+   "buttons": [
+    "เพิ่ม (Alt+A)",
+    "ตกลง",
+    "ยกเลิก"
+   ],
+   "postings": [
+    "Periodic: ลงบัญชีเมื่อกำหนดทั้ง Dr/Cr",
+    "Perpetual: กำหนดเฉพาะ Cr; Dr บัญชีสินค้าของแต่ละรายการ",
+    "จำนวนติดลบ: กลับด้าน Dr/Cr อัตโนมัติ",
+    "IM: Dr สินค้าคงเหลือ / Cr สินค้าระหว่างทาง 1140-04"
+   ],
+   "doc_types": [
+    [
+     "HS",
+     "ขายเงินสด",
+     "Cash Sales",
+     "HS"
+    ],
+    [
+     "IV",
+     "ขายเงินเชื่อ",
+     "Credit Sales",
+     "IV"
+    ],
+    [
+     "JU",
+     "รับสินค้าระหว่างทางเข้าสต๊อก",
+     "Import",
+     "IM"
+    ],
+    [
+     "JU",
+     "ปรับปรุงเพิ่ม/ลดสินค้า",
+     "Quantity Adjustment",
+     "JU"
+    ],
+    [
+     "JU",
+     "รับส/คสำเร็จรูปจากการผลิต",
+     "Finished Goods from Process",
+     "PI"
+    ],
+    [
+     "JU",
+     "ปรับปรุงจากการตรวจนับ",
+     "Physical Count Adjustment",
+     "TK"
+    ],
+    [
+     "OE",
+     "บันทึกค่าใช้จ่ายอื่นๆ",
+     "Other Expense",
+     "OE"
+    ],
+    [
+     "OI",
+     "บันทึกรายได้อื่นๆ",
+     "Other Income",
+     "OI"
+    ],
+    [
+     "OU",
+     "จ่ายสินค้าใช้ภายใน",
+     "Internal Issue",
+     "OU"
+    ],
+    [
+     "OU",
+     "จ่ายวัตถุดิบเพื่อผลิต",
+     "Material Issue for Processing",
+     "PD"
+    ],
+    [
+     "OU",
+     "จ่ายสินค้าเป็นตัวอย่าง",
+     "Issue for Sample",
+     "XS"
+    ],
+    [
+     "OU",
+     "ตัดสินค้าชำรุด",
+     "Defect Stock",
+     "ZZ"
+    ],
+    [
+     "PO",
+     "ใบสั่งซื้อ",
+     "Purchase Orders",
+     "PO"
+    ],
+    [
+     "PS",
+     "จ่ายชำระหนี้",
+     "Payments",
+     "PS"
+    ],
+    [
+     "QP",
+     "ถอนเงินสดด้วยเช็ค",
+     "Cheque Withdrawal",
+     "QP"
+    ],
+    [
+     "QT",
+     "ใบเสนอราคา",
+     "Quote",
+     "QT"
+    ],
+    [
+     "RE",
+     "รับชำระหนี้",
+     "Receipt",
+     "RE"
+    ],
+    [
+     "RL",
+     "โอนย้ายระหว่างคลัง",
+     "Relocate Stock",
+     "RL"
+    ],
+    [
+     "RR",
+     "ซื้อเงินเชื่อ",
+     "Credit Purchase",
+     "RR"
+    ],
+    [
+     "SO",
+     "ใบสั่งขาย",
+     "Sales Orders",
+     "SO"
+    ],
+    [
+     "VR",
+     "เบิกชดเชยเงินสดย่อย",
+     "Reimburse Petty Cash",
+     "VR"
+    ]
+   ]
+  },
+  {
+   "id": "S-AP-11",
+   "name": "IM - รับสินค้าระหว่างทางเข้าสต๊อก",
+   "menu": "สินค้า > 1.3 ปรับปรุงยอดสินค้า > รับสินค้าระหว่างทางเข้าสต๊อก",
+   "book_page": 443,
+   "pdf_page": 459,
+   "layout": "header-grid-footer",
+   "fields": [],
+   "grid": {
+    "columns": [
+     "[สันนิษฐาน] เหมือนปรับปรุงเพิ่ม/ลดสินค้า"
+    ]
+   },
+   "buttons": [],
+   "postings": [
+    "Dr สินค้าคงเหลือ (ตามรายการ) / Cr สินค้าระหว่างทาง"
+   ]
+  },
+  {
+   "id": "S-AP-12",
+   "name": "PV - สมุดรายวันจ่าย",
+   "menu": "บัญชี > 1 ลงประจำวัน > สมุดรายวันจ่าย",
+   "book_page": 444,
+   "pdf_page": 460,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "เลขที่ใบสำคัญ",
+     "type": "lookup",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "อ้างอิง",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "รายละเอียด",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "รวมเดบิท",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "รวมเครดิต",
+     "type": "money",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายการที่เดบิท/เครดิต <Alt+E>",
+     "fields": []
+    },
+    {
+     "name": "เช็คจ่าย <F7>",
+     "fields": []
+    },
+    {
+     "name": "เช็ครับ <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "ภาษีซื้อ <F8>",
+     "fields": []
+    },
+    {
+     "name": "ภาษีขาย <Ctrl+F8>",
+     "fields": []
+    },
+    {
+     "name": "ภาษีหัก ณ ที่จ่าย <Ctrl+F10>",
+     "fields": []
+    }
+   ],
+   "grid": {
+    "columns": [
+     "เลขที่บัญชี",
+     "แผนก",
+     "ชื่อบัญชี",
+     "คำอธิบาย",
+     "เดบิท",
+     "เครดิต"
+    ]
+   },
+   "buttons": [
+    "ปุ่มมาตรฐานเอกสาร"
+   ],
+   "postings": [
+    "ค่าใช้จ่ายนำเข้า: Dr 1154-00 ภาษีซื้อ 3,500; Dr 7200-00 ค่าภาษีศุลกากร 5,500; Dr 7300-00 ค่าขนส่งสินค้า 12,000 / Cr 2120-02 เช็คจ่ายล่วงหน้า 21,000",
+    "ชำระหนี้ต่างประเทศ: Dr 2120-03 เจ้าหนี้ต่างประเทศ 50,000 / Cr 2120-02 เช็คจ่ายล่วงหน้า 48,000; Cr 4200-04 กำไรจากอัตราแลกเปลี่ยน 2,000",
+    "สิ้นปีขาดทุน: Dr กำไรขาดทุนจากอัตราแลกเปลี่ยน / Cr เจ้าหนี้ต่างประเทศ",
+    "สิ้นปีกำไร: Dr เจ้าหนี้ต่างประเทศ / Cr กำไรขาดทุนจากอัตราแลกเปลี่ยน"
+   ]
+  },
+  {
+   "id": "S-AP-13",
+   "name": "PS - จ่ายชำระหนี้ (เจ้าหนี้ต่างประเทศ)",
+   "menu": "การเงิน > 2.4 จ่ายชำระหนี้",
+   "book_page": 445,
+   "pdf_page": 461,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "ผู้จำหน่าย",
+     "type": "lookup",
+     "required": true,
+     "note": "",
+     "lookup": "ผู้จำหน่าย"
+    },
+    {
+     "label": "Bill be",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "สาขา#",
+     "type": "number",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เลขที่ใบจ่ายเงิน",
+     "type": "text",
+     "required": true,
+     "note": "PS running"
+    },
+    {
+     "label": "วันที่ทำเอกสาร",
+     "type": "date",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "วันที่จ่ายเงิน",
+     "type": "date",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "VAT(กรณีจ่ายค่าบริการ)",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ยอดชำระตามใบรับสินค้า",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เลขที่บิล",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ลวท.",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ยื่นงวด",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ดอกเบี้ยจ่าย",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เงินสด",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชำระโดยอื่นๆ(ด้านล่าง)",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ส่วนลดเงินสดรับ",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ภาษีหัก ณ ที่จ่าย",
+     "type": "money",
+     "required": false,
+     "note": "ใช้ใส่ผลต่างอัตราแลกเปลี่ยน: ขาดทุนติดลบ กำไรบวก"
+    },
+    {
+     "label": "ยอดจ่ายจริง",
+     "type": "money",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายการบิลที่จ่ายชำระ <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายละเอียดเช็คเพิ่มเติม <Ctrl+F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีซื้อ <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีหัก ณ ที่จ่าย <Ctrl+F10>",
+     "fields": []
+    },
+    {
+     "name": "ชำระโดยอื่นๆ <F7>",
+     "fields": [
+      {
+       "label": "เลขเช็ค",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ลงวันที่",
+       "type": "date",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ธนาคาร",
+       "type": "lookup",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ยอดคงเหลือ",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ยอดชำระ",
+       "type": "money",
+       "required": false,
+       "note": ""
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ใบรับสินค้า#",
+     "วันที่",
+     "ใบรับวางบิล#",
+     "เลขที่",
+     "จำนวนเงิน",
+     "ยอดคงค้าง",
+     "ยอดจ่าย"
+    ]
+   },
+   "buttons": [
+    "ปุ่มมาตรฐานเอกสาร"
+   ],
+   "postings": [
+    "Dr เจ้าหนี้ต่างประเทศ / Cr เช็คจ่ายล่วงหน้า / Cr (WHT->แก้เป็น) กำไรจากอัตราแลกเปลี่ยน"
+   ]
+  }
+ ],
+ "entities": [
+  {
+   "name": "Product",
+   "fields": [
+    "รหัส",
+    "บาร์โค้ด",
+    "ชื่อไทย",
+    "ชื่ออังกฤษ",
+    "หมวด",
+    "กลุ่มบัญชีสินค้า",
+    "หน่วยนับ x4",
+    "ตัวคูณ",
+    "สินค้าทดแทน",
+    "สต็อกติดลบได้",
+    "ราคาขาย1-5",
+    "ประเภทVAT",
+    "ราคาทุนมาตรฐาน",
+    "ยอดคงเหลือ",
+    "มูลค่าคงเหลือ"
+   ],
+   "relations": [
+    "-> ProductAccountGroup (n:1)",
+    "-> Account ผ่านกลุ่มบัญชี"
+   ]
+  },
+  {
+   "name": "ServiceItem",
+   "fields": [
+    "รหัสสินค้า",
+    "ชื่อ",
+    "หมวด",
+    "หน่วยนับ",
+    "ประเภทVAT",
+    "ราคาขาย1-5",
+    "บัญชีรายได้",
+    "บัญชีรับคืน",
+    "ต้นทุนบริการต่อหน่วย",
+    "Dr ต้นทุนบริการ",
+    "Cr เงินเดือน/ค่าแรง"
+   ],
+   "relations": [
+    "-> Account (n:1) x4"
+   ]
+  },
+  {
+   "name": "ExpenseItem",
+   "fields": [
+    "รหัสค่าใช้จ่าย",
+    "ชื่อ",
+    "หมวด",
+    "หน่วยนับ",
+    "ประเภทVAT",
+    "จำนวนเงิน",
+    "บ/ช ค่าใช้จ่าย"
+   ],
+   "relations": [
+    "-> Account (n:1)"
+   ]
+  },
+  {
+   "name": "Account",
+   "fields": [
+    "เลขที่บัญชี",
+    "ชื่อไทย",
+    "ชื่ออังกฤษ",
+    "บัญชีคุม",
+    "ระดับบัญชี",
+    "หมวดบัญชี",
+    "ประเภท",
+    "แยกแผนก"
+   ],
+   "relations": [
+    "-> Account บัญชีคุม (n:1)"
+   ]
+  },
+  {
+   "name": "Vendor",
+   "fields": [
+    "รหัส",
+    "คำนำหน้า",
+    "ชื่อ",
+    "ที่อยู่",
+    "เลขที่บัญชี",
+    "ประเภทราคา",
+    "VAT",
+    "เครดิต",
+    "ขนส่งโดย"
+   ],
+   "relations": [
+    "-> Account (n:1)"
+   ]
+  },
+  {
+   "name": "DocType",
+   "fields": [
+    "หมวดเอกสาร",
+    "ชื่อเอกสาร",
+    "ชื่ออังกฤษ",
+    "อักษรนำหน้า",
+    "เลขที่ถัดไป",
+    "สมุดรายวัน",
+    "แผนก",
+    "คำอธิบายในสมุดรายวัน",
+    "Dr บัญชี",
+    "Cr บัญชี",
+    "ระดับรับรอง",
+    "วิธีพิมพ์/รับรอง",
+    "ระดับอนุมัติพิมพ์ซ้ำ"
+   ],
+   "relations": [
+    "-> Journal (n:1)",
+    "-> Account (n:1) Dr/Cr"
+   ]
+  },
+  {
+   "name": "StockDoc (PD/PI/IM)",
+   "fields": [
+    "เลขที่",
+    "วันที่",
+    "แผนก",
+    "หมายเหตุ",
+    "ปรับต้นทุนโดยโปรแกรม"
+   ],
+   "relations": [
+    "-> StockDocLine (1:n)",
+    "-> DocType (n:1)"
+   ]
+  },
+  {
+   "name": "StockDocLine",
+   "fields": [
+    "No.",
+    "รหัสสินค้า",
+    "คลัง",
+    "จำนวน",
+    "หน่วย",
+    "ราคาต่อหน่วย",
+    "จำนวนเงิน"
+   ],
+   "relations": [
+    "-> Product (n:1)"
+   ]
+  },
+  {
+   "name": "PaymentVoucher (PS)",
+   "fields": [
+    "ผู้จำหน่าย",
+    "เลขที่ใบจ่ายเงิน",
+    "วันที่ทำเอกสาร",
+    "วันที่จ่ายเงิน",
+    "ดอกเบี้ยจ่าย",
+    "เงินสด",
+    "ชำระโดยอื่นๆ",
+    "ส่วนลดเงินสดรับ",
+    "ภาษีหัก ณ ที่จ่าย",
+    "ยอดจ่ายจริง"
+   ],
+   "relations": [
+    "-> บิลค้างชำระ RR (1:n)",
+    "-> เช็คจ่าย (1:n)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "ธุรกิจผลิต",
+   "steps": [
+    "ตั้งรหัสวัตถุดิบ/สินค้าสำเร็จรูป",
+    "ตั้งรหัสค่าใช้จ่ายการผลิต",
+    "RR ซื้อวัตถุดิบ",
+    "PD จ่ายวัตถุดิบเพื่อผลิต",
+    "OE บันทึกค่าแรง/โสหุ้ย",
+    "คำนวณต้นทุนต่อหน่วยเอง",
+    "PI รับสินค้าสำเร็จรูป"
+   ]
+  },
+  {
+   "name": "ธุรกิจนำเข้า",
+   "steps": [
+    "ผังบัญชี: สินค้าระหว่างทาง, เจ้าหนี้ต่างประเทศ",
+    "ผู้จำหน่ายต่างประเทศ (บัญชีเจ้าหนี้ต่างประเทศ)",
+    "สินค้าบริการ ส/คระหว่างทาง",
+    "กำหนดเลขที่เอกสาร IM (Cr สินค้าระหว่างทาง)",
+    "RR ซื้อเงินเชื่อ ประเภทราคา 0 เป็นบาท",
+    "PV ค่าใช้จ่ายนำเข้า",
+    "IM รับสินค้าระหว่างทางเข้าสต๊อก",
+    "PS จ่ายชำระ ผลต่างใส่ช่อง WHT",
+    "PV แก้บัญชี WHT เป็นกำไร/ขาดทุนอัตราแลกเปลี่ยน",
+    "สิ้นปีปรับเจ้าหนี้ต่างประเทศ ต้นปีกลับรายการ"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,58 @@
+{
+ "chapter": 4,
+ "title": "กำหนดบริษัทใหม่",
+ "book_pages": "49-56",
+ "screens": [
+  {"id": "S-CO-01", "name": "เลือกที่เก็บข้อมูลเมื่อเข้าโปรแกรม", "menu": "(เข้าโปรแกรม)", "book_page": 49, "pdf_page": 65, "layout": "dialog",
+   "fields": [],
+   "grid": {"columns": ["ชื่อข้อมูล", "รหัส", "เก็บข้อมูล"]},
+   "buttons": ["ตกลง", "ยกเลิก", "ค้นหา", "เรียงใหม่ <Tab>"], "postings": []},
+  {"id": "S-CO-02", "name": "ตรวจวันที่ทำการกับรอบบัญชี (Message# 71/70)", "menu": "(เข้าโปรแกรม)", "book_page": 50, "pdf_page": 66, "layout": "dialog",
+   "fields": [{"label": "วันที่ทำการ", "type": "date", "required": true, "note": "ค่าเริ่มต้น = วันที่เครื่อง; ต้องอยู่ในรอบบัญชี มิฉะนั้นแจ้ง 'วันที่ไม่อยู่ในงวด'"}],
+   "buttons": ["ตกลง"], "postings": []},
+  {"id": "S-CO-03", "name": "กำหนดบริษัทใหม่", "menu": "เริ่มระบบ > 8. กำหนดบริษัทใหม่", "book_page": 51, "pdf_page": 67, "layout": "list",
+   "fields": [
+    {"label": "ชื่อข้อมูล", "type": "text", "required": true, "note": "ใส่ตัวเลขนำหน้าเพื่อเรียง; แก้ได้"},
+    {"label": "รหัส", "type": "text", "required": true, "note": "กลุ่มบริษัทสำหรับสิทธิ์ เช่น GROUP_A; แก้ได้ [บังคับ: สันนิษฐาน]"},
+    {"label": "ที่เก็บข้อมูล", "type": "text", "required": true, "note": "โฟลเดอร์ ห้ามซ้ำ ≤8 ตัว อังกฤษ/ตัวเลข ไม่มีช่องว่าง; แก้ไม่ได้"},
+    {"label": "วันที่", "type": "date", "required": false, "note": "อัตโนมัติ = วันที่สร้าง; แก้ไม่ได้"}],
+   "grid": {"columns": ["ชื่อข้อมูล", "รหัส", "ที่เก็บข้อมูล", "วันที่"]},
+   "buttons": ["เพิ่มข้อมูล <Alt+A>", "แก้ไขข้อมูล <Alt+E>", "ลบข้อมูล <Alt+D>", "ยกเลิก <Esc>", "บันทึก", "ข้อมูลแรก", "ก่อนหน้า", "ถัดไป", "สุดท้าย", "พิมพ์", "OLD/NEW"], "postings": []},
+  {"id": "S-CO-04", "name": "เลือกแหล่งของข้อมูลที่จะดึงมาใช้", "menu": "เริ่มระบบ > 8. กำหนดบริษัทใหม่ > Enter หลังที่เก็บข้อมูล", "book_page": 52, "pdf_page": 68, "layout": "dialog",
+   "fields": [{"label": "แหล่งข้อมูล", "type": "select", "required": true, "note": "1. สร้างข้อมูลจากแผ่นตัวอย่าง (หรือแผ่นข้อมูลสำรอง) / 2. คัดลอกข้อมูลจากบริษัทที่มีอยู่ในเครื่อง"}],
+   "buttons": ["ตกลง", "ยกเลิก"], "postings": []},
+  {"id": "S-CO-05", "name": "เลือกบริษัทต้นแบบที่จะคัดลอก", "menu": "(ต่อจาก S-CO-04 ข้อ 2)", "book_page": 53, "pdf_page": 69, "layout": "dialog",
+   "fields": [], "grid": {"columns": ["Company Name", "Code", "Path"]},
+   "buttons": ["ตกลง", "ยกเลิก", "ค้นหา"], "postings": []},
+  {"id": "S-CO-06", "name": "แจ้งผลการคัดลอก (Message# 625)", "menu": "(ต่อจาก S-CO-05)", "book_page": 53, "pdf_page": 69, "layout": "dialog",
+   "fields": [], "buttons": ["ตกลง"], "postings": []},
+  {"id": "S-CO-07", "name": "เปิดแฟ้มข้อมูลใหม่", "menu": "อื่น ๆ > 5. เปิดแฟ้มข้อมูลใหม่", "book_page": 55, "pdf_page": 71, "layout": "form",
+   "fields": [
+    {"label": "ชื่อกิจการ", "type": "text", "required": false, "note": "แสดงผล"},
+    {"label": "ข้อมูลปัจจุบันเก็บอยู่ที่", "type": "text", "required": false, "note": "แสดงผล"},
+    {"label": "ยอดยกมา ของทุกระบบ", "type": "check", "required": true, "note": "ติ๊กเสมอ เปลี่ยนไม่ได้"},
+    {"label": "รายการรายวันของทุกระบบ", "type": "check", "required": true, "note": "ติ๊กเสมอ เปลี่ยนไม่ได้"},
+    {"label": "ทะเบียนลูกค้า", "type": "check", "required": false},
+    {"label": "ทะเบียนผู้จำหน่าย", "type": "check", "required": false},
+    {"label": "พนักงานขาย", "type": "check", "required": false},
+    {"label": "บัญชีเงินฝากธนาคาร", "type": "check", "required": false},
+    {"label": "สินค้า", "type": "check", "required": false},
+    {"label": "ทะเบียนหมายเลขสินค้า", "type": "check", "required": false},
+    {"label": "ผังบัญชี", "type": "check", "required": false},
+    {"label": "รายการทรัพย์สิน", "type": "check", "required": false}],
+   "buttons": ["ตกลง", "ยกเลิก"],
+   "postings": ["ลบยอดยกมาและรายการรายวันทุกระบบถาวร (reset ยอดเป็นศูนย์)"]}
+ ],
+ "entities": [
+  {"name": "CompanyRegistry", "fields": ["company_name(ชื่อข้อมูล)", "group_code(รหัส)", "data_path(ที่เก็บข้อมูล, unique, <=8)", "created_date"], "relations": ["-> CompanyDatabase (1:1)", "-> CompanyGroup (n:1)"]},
+  {"name": "CompanyGroup", "fields": ["group_code"], "relations": ["-> UserCompanyGroupAccess (1:n)"]},
+  {"name": "UserCompanyGroupAccess", "fields": ["user_id", "group_code"], "relations": ["-> User (n:1)", "-> CompanyGroup (n:1)"]},
+  {"name": "CompanyDatabase", "fields": ["master files (ลูกค้า, ผู้จำหน่าย, พนักงานขาย, บัญชีเงินฝาก, สินค้า, ทะเบียนหมายเลขสินค้า, ผังบัญชี, ทรัพย์สิน)", "opening balances ทุกระบบ", "daily transactions ทุกระบบ", "settings", "fiscal periods", "doc number series"], "relations": ["-> FiscalPeriod (1:n)"]},
+  {"name": "FiscalPeriod", "fields": ["start_date", "end_date"], "relations": []}
+ ],
+ "flows": [
+  {"name": "เข้าโปรแกรม", "steps": ["เลือกที่เก็บข้อมูล", "ป้อนวันที่ทำการ", "ตรวจว่าอยู่ในรอบบัญชี (Message#70/71)", "เมนูหลัก"]},
+  {"name": "สร้างบริษัทใหม่", "steps": ["เริ่มระบบ > 8. กำหนดบริษัทใหม่", "Alt+A", "ป้อน ชื่อข้อมูล / รหัส / ที่เก็บข้อมูล", "Enter", "เลือกแหล่ง: แผ่นตัวอย่าง หรือ คัดลอกจากบริษัทในเครื่อง", "เลือก ข้อมูลเปล่าของเวอร์ชั่น 1", "Message#625", "Esc", "กำหนดค่าเริ่มต้น + กำหนดเลขที่เอกสาร"]},
+  {"name": "เปิดแฟ้มข้อมูลใหม่", "steps": ["สำรองข้อมูลก่อน", "อื่น ๆ > 5. เปิดแฟ้มข้อมูลใหม่", "เลือกแฟ้มหลักที่ต้องการลบเพิ่ม", "ตกลง", "กำหนดค่าเริ่มต้นต่าง ๆ และกำหนดเลขที่เอกสารใหม่"]}
+ ]
+}

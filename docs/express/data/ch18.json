@@ -1,0 +1,208 @@
+{
+ "chapter": 18,
+ "title": "สิ่งที่ต้องปฏิบัติในทุก ๆ สิ้นเดือน",
+ "book_pages": "315-318",
+ "pdf_pages": "331-334",
+ "screens": [
+  {
+   "id": "S-ME-01",
+   "name": "สมุดรายวันทั่วไป (JV) - ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน",
+   "menu": "บัญชี > 1 ลงประจำวัน > สมุดรายวันทั่วไป [สันนิษฐาน]",
+   "book_page": 316,
+   "pdf_page": 332,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "รายการที่เดบิท/เครดิต <Alt+E>",
+     "fields": []
+    },
+    {
+     "name": "เช็คจ่าย <F7>",
+     "fields": []
+    },
+    {
+     "name": "เช็ครับ <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "ภาษีซื้อ <F8>",
+     "fields": []
+    },
+    {
+     "name": "ภาษีขาย <Ctrl+F8>",
+     "fields": []
+    },
+    {
+     "name": "ภาษีหัก ณ ที่จ่าย <Ctrl+F10>",
+     "fields": []
+    }
+   ],
+   "fields": [
+    {
+     "label": "เลขที่ใบสำคัญ",
+     "type": "lookup",
+     "required": true,
+     "lookup": "ใบสำคัญ",
+     "note": "[สันนิษฐาน] บังคับ"
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "รายละเอียด",
+     "type": "lookup",
+     "required": false,
+     "lookup": "คำอธิบายมาตรฐาน"
+    },
+    {
+     "label": "รวมเดบิท/รวมเครดิต",
+     "type": "money",
+     "required": false,
+     "note": "ต้องเท่ากัน [สันนิษฐาน]"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "เลขที่บัญชี",
+     "แผนก",
+     "คำอธิบาย",
+     "เดบิท",
+     "เครดิต"
+    ]
+   },
+   "buttons": [
+    "ใหม่",
+    "แก้ไข",
+    "คัดลอก [สันนิษฐาน]",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "Note"
+   ],
+   "postings": [
+    "Dr 2135-00 ภาษีขาย [สันนิษฐาน] 21,480.02 / Cr 1154-00 ภาษีซื้อ [สันนิษฐาน] 11,043.39, Cr 2137-00 ภาษีค้างจ่าย [สันนิษฐาน] 10,436.63"
+   ]
+  },
+  {
+   "id": "S-ME-02",
+   "name": "ล็อคงวด",
+   "menu": "เริ่มระบบ > A ล็อคงวด",
+   "book_page": 316,
+   "pdf_page": 333,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "วันที่เริ่มรอบบัญชี",
+     "type": "date",
+     "required": false,
+     "note": "แสดงอย่างเดียว [สันนิษฐาน]"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ล็อคงวด (check) 1-12",
+     "วันสิ้นงวด ปีปัจจุบัน",
+     "ล็อคงวด (check) 13-24",
+     "วันสิ้นงวด ปีใหม่"
+    ]
+   },
+   "buttons": [
+    "แก้ไข",
+    "บันทึก <F9>",
+    "ปิด"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-ME-03",
+   "name": "Message# 1021 วันที่อยู่ในงวดที่ปิดแล้ว",
+   "menu": "เมื่อบันทึก/แก้ไขเอกสารในงวดที่ล็อค",
+   "book_page": 318,
+   "pdf_page": 334,
+   "layout": "dialog",
+   "fields": [],
+   "buttons": [
+    "ตกลง"
+   ],
+   "postings": []
+  }
+ ],
+ "entities": [
+  {
+   "name": "FiscalPeriod",
+   "fields": [
+    "period_no(1-24)",
+    "end_date",
+    "is_locked"
+   ],
+   "relations": [
+    "-> AccountingCycle (n:1)"
+   ]
+  },
+  {
+   "name": "AccountingCycle",
+   "fields": [
+    "start_date"
+   ],
+   "relations": [
+    "-> FiscalPeriod (1:n)"
+   ]
+  },
+  {
+   "name": "JournalVoucher",
+   "fields": [
+    "voucher_no",
+    "date",
+    "description",
+    "journal"
+   ],
+   "relations": [
+    "-> JournalLine (1:n)",
+    "-> FiscalPeriod (n:1, ตรวจ is_locked)"
+   ]
+  },
+  {
+   "name": "JournalLine",
+   "fields": [
+    "account_no",
+    "department",
+    "description",
+    "debit",
+    "credit"
+   ],
+   "relations": [
+    "-> ChartOfAccount (n:1)",
+    "-> Department (n:1)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "งานสิ้นเดือน",
+   "steps": [
+    "ตรวจข้อมูลประจำเดือน",
+    "ดูยอดภาษีซื้อ/ภาษีขายในแยกประเภท ณ สิ้นเดือน",
+    "บันทึก JV ปรับปรุง VAT",
+    "บันทึกรายการปรับปรุงอื่น",
+    "อนุมัติ",
+    "เริ่มระบบ > A ล็อคงวด ติ๊กงวด > F9"
+   ]
+  },
+  {
+   "name": "แก้ไขเอกสารในงวดที่ล็อค",
+   "steps": [
+    "ผู้ใช้บันทึก/แก้ไขเอกสาร",
+    "ตรวจวันที่กับงวดที่ล็อค",
+    "Message 1021 ปฏิเสธ"
+   ]
+  }
+ ]
+}

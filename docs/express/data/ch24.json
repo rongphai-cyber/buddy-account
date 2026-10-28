@@ -1,0 +1,627 @@
+{
+ "chapter": 24,
+ "title": "การสร้างงบการเงิน",
+ "book_pages": "375-394",
+ "pdf_pages": "391-410",
+ "screens": [
+  {
+   "id": "S-FS-01",
+   "name": "สร้างงบการเงิน (หัวรายงาน/คอลัมน์)",
+   "menu": "บัญชี > 9. สร้างงบการเงิน",
+   "book_page": 376,
+   "pdf_page": 392,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัส",
+     "type": "text",
+     "required": true,
+     "note": "≤8 ตัวอักษร แก้ไขไม่ได้"
+    },
+    {
+     "label": "ชื่องบ",
+     "type": "text",
+     "required": false,
+     "note": "[สันนิษฐาน] ไม่มีป้าย"
+    }
+   ],
+   "tabs": [
+    {
+     "name": "คอลัมน์ 1-4",
+     "fields": [
+      {
+       "label": "หัวรายงาน 1",
+       "type": "text",
+       "required": false,
+       "note": "ตัวแปร \\NAME \\END_PRD \\DEPT"
+      },
+      {
+       "label": "หัวรายงาน 2",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "หัวรายงาน 3",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "หัวรายงาน 4",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "รูปแบบตัวเลข",
+       "type": "text",
+       "required": false,
+       "note": "999,999,999.99 หรือ (999,999,999.99)"
+      },
+      {
+       "label": "รูปแบบ %",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "คำสั่งการพิมพ์",
+       "type": "text",
+       "required": false,
+       "note": "escape code เช่น \\027\\033\\001 = 12 ตัว/นิ้ว"
+      },
+      {
+       "label": "ส่วนหัว 1",
+       "type": "text",
+       "required": false,
+       "note": "(ต่อคอลัมน์ 1-4)"
+      },
+      {
+       "label": "ส่วนหัว 2",
+       "type": "text",
+       "required": false,
+       "note": "(ต่อคอลัมน์ 1-4)"
+      },
+      {
+       "label": "ฟิลด์/สูตร",
+       "type": "lookup",
+       "required": false,
+       "note": "เช่น BAL, BAL LY, (C1-C2)*100/C2 (ต่อคอลัมน์ 1-4)",
+       "lookup": "FormulaField"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "note": "(ต่อคอลัมน์ 1-4)",
+       "lookup": "Department"
+      },
+      {
+       "label": "พิมพ์ %",
+       "type": "select",
+       "required": false,
+       "note": "Y/N (ต่อคอลัมน์ 1-4)"
+      },
+      {
+       "label": "แสดงผล",
+       "type": "select",
+       "required": false,
+       "note": "Y/N; N=ใช้คำนวณอย่างเดียว (ต่อคอลัมน์ 1-4)"
+      }
+     ]
+    },
+    {
+     "name": "คอลัมน์ 5-12",
+     "fields": [
+      {
+       "label": "ส่วนหัว 1",
+       "type": "text",
+       "required": false,
+       "note": "(ต่อคอลัมน์ 5-12)"
+      },
+      {
+       "label": "ส่วนหัว 2",
+       "type": "text",
+       "required": false,
+       "note": "(ต่อคอลัมน์ 5-12)"
+      },
+      {
+       "label": "ฟิลด์/สูตร",
+       "type": "lookup",
+       "required": false,
+       "note": "เช่น BAL, BAL LY, (C1-C2)*100/C2 (ต่อคอลัมน์ 5-12)",
+       "lookup": "FormulaField"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "note": "(ต่อคอลัมน์ 5-12)",
+       "lookup": "Department"
+      },
+      {
+       "label": "พิมพ์ %",
+       "type": "select",
+       "required": false,
+       "note": "Y/N (ต่อคอลัมน์ 5-12)"
+      },
+      {
+       "label": "แสดงผล",
+       "type": "select",
+       "required": false,
+       "note": "Y/N; N=ใช้คำนวณอย่างเดียว (ต่อคอลัมน์ 5-12)"
+      }
+     ]
+    },
+    {
+     "name": "คอลัมน์ 13-18",
+     "fields": [
+      {
+       "label": "ส่วนหัว 1",
+       "type": "text",
+       "required": false,
+       "note": "(ต่อคอลัมน์ 13-18)"
+      },
+      {
+       "label": "ส่วนหัว 2",
+       "type": "text",
+       "required": false,
+       "note": "(ต่อคอลัมน์ 13-18)"
+      },
+      {
+       "label": "ฟิลด์/สูตร",
+       "type": "lookup",
+       "required": false,
+       "note": "เช่น BAL, BAL LY, (C1-C2)*100/C2 (ต่อคอลัมน์ 13-18)",
+       "lookup": "FormulaField"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "note": "(ต่อคอลัมน์ 13-18)",
+       "lookup": "Department"
+      },
+      {
+       "label": "พิมพ์ %",
+       "type": "select",
+       "required": false,
+       "note": "Y/N (ต่อคอลัมน์ 13-18)"
+      },
+      {
+       "label": "แสดงผล",
+       "type": "select",
+       "required": false,
+       "note": "Y/N; N=ใช้คำนวณอย่างเดียว (ต่อคอลัมน์ 13-18)"
+      }
+     ]
+    },
+    {
+     "name": "Item Report <F8>",
+     "fields": [],
+     "note": "ดู S-FS-03"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "(แถว)",
+     "คอลัมน์ 1",
+     "คอลัมน์ 2",
+     "คอลัมน์ 3",
+     "คอลัมน์ 4"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "ไปแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "พิมพ์งบการเงิน <Alt+P>",
+    "คัดลอกรายงาน"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-FS-02",
+   "name": "คัดลอกงบการเงิน",
+   "menu": "บัญชี > 9. สร้างงบการเงิน > คัดลอกรายงาน",
+   "book_page": 377,
+   "pdf_page": 393,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รายงานต้นฉบับ",
+     "type": "text",
+     "required": false,
+     "note": "เช่น BALSHT_1"
+    },
+    {
+     "label": "รหัสรายงานใหม่",
+     "type": "text",
+     "required": true,
+     "note": "≤8 ตัวอักษร เช่น BALBAK_1"
+    }
+   ],
+   "buttons": [
+    "คัดลอก",
+    "ยกเลิก"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-FS-03",
+   "name": "Item Report (โครงสร้างบรรทัดงบ)",
+   "menu": "บัญชี > 9. สร้างงบการเงิน > แท็บ Item Report <F8>",
+   "book_page": 380,
+   "pdf_page": 396,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "รหัส",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "รหัสบรรทัด",
+     "type": "text",
+     "required": false,
+     "note": "ชุดบรรทัดแม่แบบ ใช้ร่วมหลายงบ"
+    },
+    {
+     "label": "ลำดับ",
+     "type": "number",
+     "required": true,
+     "note": "0001-9999"
+    },
+    {
+     "label": "ข้อมูล",
+     "type": "select",
+     "required": true,
+     "note": "A/C, VAR, TXT, NUM, ---, ===, BEG, INV, PAG, FF"
+    },
+    {
+     "label": "เลขที่บัญชีหรือตัวแปร",
+     "type": "lookup",
+     "required": false,
+     "note": "A/C=เลขที่บัญชี; VAR=A..E; NUM=ค่าคงที่",
+     "lookup": "ChartOfAccount"
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "Department"
+    },
+    {
+     "label": "+-",
+     "type": "select",
+     "required": false,
+     "note": "+ เฉพาะยอดบวก / - เฉพาะยอดลบ"
+    },
+    {
+     "label": "คำอธิบาย",
+     "type": "text",
+     "required": false,
+     "note": "อัตโนมัติเมื่อเป็น A/C"
+    },
+    {
+     "label": "PC",
+     "type": "select",
+     "required": false,
+     "note": "' ' พิมพ์เสมอ, N ไม่พิมพ์, Z ข้ามถ้าเป็น 0, C พิมพ์กลาง (TXT)"
+    },
+    {
+     "label": "A",
+     "type": "select",
+     "required": false,
+     "note": "ไม่ทำ, +, -, *, /, 0 ล้างค่า, < ถ้าน้อยกว่า, > ถ้ามากกว่า"
+    },
+    {
+     "label": "B",
+     "type": "select",
+     "required": false,
+     "note": "ไม่ทำ, +, -, *, /, 0 ล้างค่า, < ถ้าน้อยกว่า, > ถ้ามากกว่า"
+    },
+    {
+     "label": "C",
+     "type": "select",
+     "required": false,
+     "note": "ไม่ทำ, +, -, *, /, 0 ล้างค่า, < ถ้าน้อยกว่า, > ถ้ามากกว่า"
+    },
+    {
+     "label": "D",
+     "type": "select",
+     "required": false,
+     "note": "ไม่ทำ, +, -, *, /, 0 ล้างค่า, < ถ้าน้อยกว่า, > ถ้ามากกว่า"
+    },
+    {
+     "label": "E",
+     "type": "select",
+     "required": false,
+     "note": "ไม่ทำ, +, -, *, /, 0 ล้างค่า, < ถ้าน้อยกว่า, > ถ้ามากกว่า"
+    },
+    {
+     "label": "%",
+     "type": "select",
+     "required": false,
+     "note": "+ = บรรทัดฐาน 100% [สันนิษฐาน]"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ลำดับ",
+     "ข้อมูล",
+     "เลขที่บัญชีหรือตัวแปร",
+     "แผนก",
+     "+-",
+     "คำอธิบาย",
+     "PC",
+     "A",
+     "B",
+     "C",
+     "D",
+     "E",
+     "%"
+    ]
+   },
+   "buttons": [
+    "ลำดับเลขใหม่",
+    "บันทึก",
+    "ยกเลิก"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-FS-04",
+   "name": "59. งบการเงิน (พิมพ์งบการเงิน)",
+   "menu": "รายงาน > 1. พิมพ์รายงาน > 5. รายงานบัญชี > 9. งบการเงิน",
+   "book_page": 392,
+   "pdf_page": 408,
+   "layout": "report-options",
+   "fields": [
+    {
+     "label": "รหัสงบ",
+     "type": "lookup",
+     "required": true,
+     "note": "",
+     "lookup": "FinancialStatement"
+    },
+    {
+     "label": "งวดบัญชี",
+     "type": "number",
+     "required": true,
+     "note": "0 = ระบุช่วงวันที่เอง"
+    },
+    {
+     "label": "จากวันที่",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ถึงวันที่",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เลือกแผนก",
+     "type": "text",
+     "required": false,
+     "note": "* ทุกแผนก, A*, ?A*"
+    },
+    {
+     "label": "พิมพ์ทุกบรรทัด",
+     "type": "number",
+     "required": false,
+     "note": "0=ทุกบรรทัดยกเว้นยอดเป็น 0"
+    },
+    {
+     "label": "คำอธิบายกว้าง",
+     "type": "number",
+     "required": false,
+     "note": "ค่าปกติ 60"
+    },
+    {
+     "label": "เริ่มพิมพ์หน้า",
+     "type": "number",
+     "required": false,
+     "note": "1"
+    },
+    {
+     "label": "ถึงหน้า",
+     "type": "number",
+     "required": false,
+     "note": "9,999"
+    },
+    {
+     "label": "จำนวนบรรทัด",
+     "type": "number",
+     "required": false,
+     "note": "บรรทัด/หน้า เช่น 61"
+    }
+   ],
+   "buttons": [
+    "ปิด",
+    "พิมพ์",
+    "ไอคอนที่ 3 [สันนิษฐาน]",
+    "ตกลง",
+    "ยกเลิก",
+    "ค้นหา"
+   ],
+   "postings": [],
+   "seed_data": [
+    "BALSHT_1 งบดุล สำหรับการบันทึกแบบ Perpetual",
+    "BALSHT_2 งบดุลเปรียบเทียบ",
+    "BALS_P1 งบดุล สำหรับการบันทึกแบบ Periodic",
+    "COGS_1 งบต้นทุนขาย",
+    "INCS_1 งบกำไรขาดทุน สำหรับการบันทึกแบบ Perpetual",
+    "INCS_2 งบกำไรขาดทุนเปรียบเทียบ ปีปัจจุบัน/ปีที่แล้ว",
+    "INCS_P1 งบกำไรขาดทุน สำหรับการบันทึกแบบ Periodic",
+    "RATIO 1 งบวิเคราะห์อัตราส่วนทางการเงิน"
+   ]
+  }
+ ],
+ "entities": [
+  {
+   "name": "FinancialStatement",
+   "fields": [
+    "fs_code",
+    "fs_name",
+    "header_line1",
+    "header_line2",
+    "header_line3",
+    "header_line4",
+    "number_format",
+    "percent_format",
+    "print_command",
+    "line_set_code"
+   ],
+   "relations": [
+    "-> FSColumn (1:n)",
+    "-> FSLineSet (n:1)"
+   ]
+  },
+  {
+   "name": "FSColumn",
+   "fields": [
+    "fs_code",
+    "column_no(1-18)",
+    "heading1",
+    "heading2",
+    "field_formula",
+    "department",
+    "print_percent",
+    "show"
+   ],
+   "relations": [
+    "-> FinancialStatement (n:1)",
+    "-> Department (n:1)"
+   ]
+  },
+  {
+   "name": "FSLineSet",
+   "fields": [
+    "line_set_code"
+   ],
+   "relations": [
+    "-> FSLine (1:n)",
+    "-> FinancialStatement (1:n)"
+   ]
+  },
+  {
+   "name": "FSLine",
+   "fields": [
+    "line_set_code",
+    "seq",
+    "data_type",
+    "account_or_var",
+    "department",
+    "sign_filter",
+    "description",
+    "print_condition",
+    "op_A",
+    "op_B",
+    "op_C",
+    "op_D",
+    "op_E",
+    "percent_base"
+   ],
+   "relations": [
+    "-> ChartOfAccount (n:1)",
+    "-> Department (n:1)"
+   ]
+  },
+  {
+   "name": "ChartOfAccount",
+   "fields": [
+    "account_no",
+    "account_name",
+    "balances_by_period_dept"
+   ],
+   "relations": [
+    "-> FSLine (1:n)"
+   ]
+  },
+  {
+   "name": "InventoryBalance",
+   "fields": [
+    "account_no",
+    "beginning_balance",
+    "ending_balance",
+    "period"
+   ],
+   "relations": [
+    "-> ChartOfAccount (n:1)"
+   ]
+  },
+  {
+   "name": "Department",
+   "fields": [
+    "dept_code",
+    "dept_name"
+   ],
+   "relations": []
+  },
+  {
+   "name": "FormulaField",
+   "fields": [
+    "code (BAL, BAL LY, ...)",
+    "description"
+   ],
+   "relations": []
+  }
+ ],
+ "flows": [
+  {
+   "name": "สร้าง/แก้ไขงบการเงิน",
+   "steps": [
+    "ศึกษาผังบัญชี (บทที่ 7)",
+    "บัญชี > 9 สร้างงบการเงิน เลือกงบต้นแบบ",
+    "คัดลอกงบเป็นรหัสใหม่",
+    "กำหนดหัวรายงาน 4 บรรทัด รูปแบบตัวเลข/% คำสั่งพิมพ์",
+    "กำหนดคอลัมน์ 1-18 (ส่วนหัว, ฟิลด์/สูตร, แผนก, พิมพ์ %, แสดงผล)",
+    "Item Report: กำหนดบรรทัด ข้อมูล/บัญชี/+-/PC/ทดค่า A-E/%",
+    "ลำดับเลขใหม่และบันทึก"
+   ]
+  },
+  {
+   "name": "พิมพ์งบการเงิน",
+   "steps": [
+    "รายงาน > 1 > 5 รายงานบัญชี > 9 งบการเงิน (หรือ Alt+P)",
+    "เลือกรหัสงบ งวดบัญชี/ช่วงวันที่ แผนก",
+    "กำหนดพิมพ์ทุกบรรทัด ความกว้างคำอธิบาย หน้า จำนวนบรรทัด",
+    "พิมพ์"
+   ]
+  },
+  {
+   "name": "คำนวณกำไรขาดทุนในงบดุล",
+   "steps": [
+    "บรรทัดบัญชีรายได้ PC=N ทด C+",
+    "บรรทัดบัญชีค่าใช้จ่าย PC=N ทด C-",
+    "(Periodic) BEG ต้นงวด + ซื้อ - INV ปลายงวด = ต้นทุนขายใน D แล้วหักจาก C",
+    "VAR C = กำไร(ขาดทุน)สุทธิ ทด B+ รวมในส่วนของผู้ถือหุ้น"
+   ]
+  },
+  {
+   "name": "คำนวณภาษีเงินได้นิติบุคคล",
+   "steps": [
+    "VAR กำไร เก็บที่ C และ D",
+    "NUM 0 ด้วย > ที่ C (ขาดทุน->0)",
+    "NUM .30 คูณ C",
+    "VAR C (ภาษี) หักจาก D",
+    "VAR D = กำไรหลังหักภาษี"
+   ]
+  }
+ ]
+}

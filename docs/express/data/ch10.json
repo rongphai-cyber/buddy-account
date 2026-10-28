@@ -1,0 +1,1190 @@
+{
+ "chapter": 10,
+ "title": "กำหนดการเชื่อมต่อบัญชี",
+ "book_pages": "155-158",
+ "screens": [
+  {
+   "id": "S-GL-00",
+   "name": "เมนูกำหนดการเชื่อมต่อบัญชี",
+   "menu": "เริ่มระบบ > 5",
+   "book_page": 155,
+   "pdf_page": 171,
+   "layout": "list",
+   "fields": [],
+   "grid": {
+    "columns": [
+     "1. กำหนดการผ่านรายการไปสมุดบัญชี",
+     "2. กำหนดบัญชีเพื่อลงรายวัน",
+     "3. สั่งให้ระบบอื่นๆ ตรวจสอบการลงบัญชีใหม่",
+     "4. สั่งให้ระบบอื่นๆ ลงบัญชีใหม่"
+    ]
+   },
+   "buttons": [],
+   "postings": []
+  },
+  {
+   "id": "S-GL-01",
+   "name": "กำหนดการผ่านรายการไปสมุดบัญชี",
+   "menu": "เริ่มระบบ > 5.1",
+   "book_page": 156,
+   "pdf_page": 172,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "เชื่อมต่อระบบบัญชี",
+     "type": "check",
+     "required": false,
+     "note": "N→Y ภายหลังไม่ลงย้อนหลัง ต้องสั่งลงบัญชีใหม่รายเอกสาร"
+    },
+    {
+     "label": "ผ่านเช็คจ่าย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Journal",
+     "note": "ภาพ 01 สมุดรายวันจ่าย"
+    },
+    {
+     "label": "ตัดเช็คจ่ายเกินเป็น คชจ.",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Journal",
+     "note": "ภาพ 01 สมุดรายวันจ่าย"
+    },
+    {
+     "label": "ผ่านเช็ครับ",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Journal",
+     "note": "ภาพ 02 สมุดรายวันรับ"
+    },
+    {
+     "label": "ตัดเช็ครับเกินเป็นรายได้",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Journal",
+     "note": "ภาพ 02 สมุดรายวันรับ"
+    },
+    {
+     "label": "ตัดยอดเช็ครับเป็นหนี้สูญ",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Journal",
+     "note": "ภาพ 01 สมุดรายวันจ่าย"
+    },
+    {
+     "label": "เบิกชดเชยเงินสดย่อย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Journal",
+     "note": "ภาพ 01 สมุดรายวันจ่าย"
+    },
+    {
+     "label": "คิดค่าเสื่อมราคา",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Journal",
+     "note": "ภาพ 00 สมุดรายวันทั่วไป"
+    }
+   ],
+   "buttons": [
+    "แก้ไข",
+    "บันทึก",
+    "ยกเลิก"
+   ],
+   "postings": [
+    "ผ่านเช็คจ่าย → สมุดรายวัน 01",
+    "ตัดเช็คจ่ายเกินเป็น คชจ. → สมุดรายวัน 01",
+    "ผ่านเช็ครับ → สมุดรายวัน 02",
+    "ตัดเช็ครับเกินเป็นรายได้ → สมุดรายวัน 02",
+    "ตัดยอดเช็ครับเป็นหนี้สูญ → สมุดรายวัน 01",
+    "เบิกชดเชยเงินสดย่อย → สมุดรายวัน 01",
+    "คิดค่าเสื่อมราคา → สมุดรายวัน 00",
+    "รายการอื่น → สมุดรายวันที่ เริ่มระบบ 4"
+   ]
+  },
+  {
+   "id": "S-GL-02",
+   "name": "กำหนดบัญชีเพื่อลงรายวัน",
+   "menu": "เริ่มระบบ > 5.2",
+   "book_page": 158,
+   "pdf_page": 174,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "บัญชีกำไรสะสม",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ทั่วไป; ภาพ 3200-00"
+    },
+    {
+     "label": "บัญชีพัก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ทั่วไป; ภาพ 9999-99"
+    },
+    {
+     "label": "เงินสด",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "สินทรัพย์; ภาพ 1111-00"
+    },
+    {
+     "label": "เงินสดย่อย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "สินทรัพย์; ภาพ 1111-50"
+    },
+    {
+     "label": "ลูกหนี้",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "สินทรัพย์; ภาพ 1130-01"
+    },
+    {
+     "label": "เช็ครับล่วงหน้า",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "สินทรัพย์; ภาพ 1130-02"
+    },
+    {
+     "label": "สินค้า",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "สินทรัพย์; ภาพ 1140-02"
+    },
+    {
+     "label": "ภาษีนิติบุคคลจ่ายล่วงหน้า",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "สินทรัพย์; ภาพ 1151-02"
+    },
+    {
+     "label": "ภาษีซื้อ",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "สินทรัพย์; ภาพ 1154-00"
+    },
+    {
+     "label": "ภาษีซื้อยังไม่ถึงกำหนด",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "สินทรัพย์; ภาพ 1155-00"
+    },
+    {
+     "label": "เงินมัดจำจ่ายล่วงหน้า",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "สินทรัพย์; ภาพ 1151-01"
+    },
+    {
+     "label": "เจ้าหนี้",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "หนี้สิน; ภาพ 2120-01"
+    },
+    {
+     "label": "เช็คจ่ายล่วงหน้า",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "หนี้สิน; ภาพ 2120-02"
+    },
+    {
+     "label": "ภาษีหัก ณ ที่จ่ายค้างจ่าย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "หนี้สิน; ภาพ 2132-02"
+    },
+    {
+     "label": "ภาษีขาย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "หนี้สิน; ภาพ 2135-00"
+    },
+    {
+     "label": "ภาษีขาย-รอเรียกเก็บ",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "หนี้สิน; ภาพ 2136-00"
+    },
+    {
+     "label": "เงินมัดจำรับล่วงหน้า",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "หนี้สิน; ภาพ 2133-01"
+    },
+    {
+     "label": "ขายสด",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "รายได้; ภาพ 4100-01"
+    },
+    {
+     "label": "ขายเชื่อ",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "รายได้; ภาพ 4100-01"
+    },
+    {
+     "label": "รับคืน",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "รายได้; ภาพ 4100-03"
+    },
+    {
+     "label": "ส่วนลดจ่าย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "รายได้; ภาพ 4100-04"
+    },
+    {
+     "label": "ดอกเบี้ยรับ",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "รายได้; ภาพ 4200-01"
+    },
+    {
+     "label": "รายได้ธนาคาร",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "รายได้; ภาพ 4200-08"
+    },
+    {
+     "label": "รายได้อื่น ๆ",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "รายได้; ภาพ 4200-08"
+    },
+    {
+     "label": "ต้นทุนขาย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ค่าใช้จ่าย; ภาพ 5110-00"
+    },
+    {
+     "label": "ซื้อสินค้า",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ค่าใช้จ่าย; ภาพ 5130-01"
+    },
+    {
+     "label": "ส่งคืน",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ค่าใช้จ่าย; ภาพ 5130-03"
+    },
+    {
+     "label": "ส่วนลดรับ",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ค่าใช้จ่าย; ภาพ 5130-02"
+    },
+    {
+     "label": "ดอกเบี้ยจ่าย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ค่าใช้จ่าย; ภาพ 5370-01"
+    },
+    {
+     "label": "คชจ.ธนาคาร",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ค่าใช้จ่าย; ภาพ 5360-04"
+    },
+    {
+     "label": "หนี้สูญ",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ค่าใช้จ่าย; ภาพ 5380-00"
+    },
+    {
+     "label": "คชจ. อื่นๆ",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ค่าใช้จ่าย; ภาพ 5370-06"
+    },
+    {
+     "label": "ภาษีซื้อไม่ขอคืน",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ค่าใช้จ่าย; ภาพ 5390-01"
+    },
+    {
+     "label": "ภาษีขอคืนไม่ได้",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ค่าใช้จ่าย; ภาพ 5390-02"
+    }
+   ],
+   "buttons": [
+    "แก้ไข",
+    "บันทึก",
+    "ยกเลิก"
+   ],
+   "postings": [
+    "fallback ชั้นที่ 3 ของการหาเลขที่บัญชีทุกระบบ"
+   ]
+  },
+  {
+   "id": "S-GL-03",
+   "name": "สั่งให้ระบบอื่นๆ ตรวจสอบการลงบัญชีใหม่",
+   "menu": "เริ่มระบบ > 5.3",
+   "book_page": 158,
+   "pdf_page": 174,
+   "layout": "dialog",
+   "fields": [],
+   "buttons": [],
+   "postings": [
+    "ดูบทที่ 21 [สันนิษฐาน: batch ตรวจสอบ]"
+   ]
+  },
+  {
+   "id": "S-GL-04",
+   "name": "สั่งให้ระบบอื่นๆ ลงบัญชีใหม่",
+   "menu": "เริ่มระบบ > 5.4",
+   "book_page": 155,
+   "pdf_page": 171,
+   "layout": "dialog",
+   "fields": [],
+   "buttons": [],
+   "postings": [
+    "re-post ไป GL [สันนิษฐาน]"
+   ]
+  }
+ ],
+ "account_resolution_order": [
+  "1. บัญชีเฉพาะประเภทเอกสาร (เริ่มระบบ 4)",
+  "2. แฟ้มหลัก: Customer.ar_account; Product→ProductAccountGroup (เริ่มระบบ 1.3.2); BankAccount.gl_account; ใบรับมัดจำ",
+  "3. DefaultPostingAccount (เริ่มระบบ 5.2)"
+ ],
+ "default_accounts": [
+  {
+   "role": "บัญชีกำไรสะสม",
+   "account": "3200-00",
+   "group": "ทั่วไป"
+  },
+  {
+   "role": "บัญชีพัก",
+   "account": "9999-99",
+   "group": "ทั่วไป"
+  },
+  {
+   "role": "เงินสด",
+   "account": "1111-00",
+   "group": "สินทรัพย์"
+  },
+  {
+   "role": "เงินสดย่อย",
+   "account": "1111-50",
+   "group": "สินทรัพย์"
+  },
+  {
+   "role": "ลูกหนี้",
+   "account": "1130-01",
+   "group": "สินทรัพย์"
+  },
+  {
+   "role": "เช็ครับล่วงหน้า",
+   "account": "1130-02",
+   "group": "สินทรัพย์"
+  },
+  {
+   "role": "สินค้า",
+   "account": "1140-02",
+   "group": "สินทรัพย์"
+  },
+  {
+   "role": "ภาษีนิติบุคคลจ่ายล่วงหน้า",
+   "account": "1151-02",
+   "group": "สินทรัพย์"
+  },
+  {
+   "role": "ภาษีซื้อ",
+   "account": "1154-00",
+   "group": "สินทรัพย์"
+  },
+  {
+   "role": "ภาษีซื้อยังไม่ถึงกำหนด",
+   "account": "1155-00",
+   "group": "สินทรัพย์"
+  },
+  {
+   "role": "เงินมัดจำจ่ายล่วงหน้า",
+   "account": "1151-01",
+   "group": "สินทรัพย์"
+  },
+  {
+   "role": "เจ้าหนี้",
+   "account": "2120-01",
+   "group": "หนี้สิน"
+  },
+  {
+   "role": "เช็คจ่ายล่วงหน้า",
+   "account": "2120-02",
+   "group": "หนี้สิน"
+  },
+  {
+   "role": "ภาษีหัก ณ ที่จ่ายค้างจ่าย",
+   "account": "2132-02",
+   "group": "หนี้สิน"
+  },
+  {
+   "role": "ภาษีขาย",
+   "account": "2135-00",
+   "group": "หนี้สิน"
+  },
+  {
+   "role": "ภาษีขาย-รอเรียกเก็บ",
+   "account": "2136-00",
+   "group": "หนี้สิน"
+  },
+  {
+   "role": "เงินมัดจำรับล่วงหน้า",
+   "account": "2133-01",
+   "group": "หนี้สิน"
+  },
+  {
+   "role": "ขายสด",
+   "account": "4100-01",
+   "group": "รายได้"
+  },
+  {
+   "role": "ขายเชื่อ",
+   "account": "4100-01",
+   "group": "รายได้"
+  },
+  {
+   "role": "รับคืน",
+   "account": "4100-03",
+   "group": "รายได้"
+  },
+  {
+   "role": "ส่วนลดจ่าย",
+   "account": "4100-04",
+   "group": "รายได้"
+  },
+  {
+   "role": "ดอกเบี้ยรับ",
+   "account": "4200-01",
+   "group": "รายได้"
+  },
+  {
+   "role": "รายได้ธนาคาร",
+   "account": "4200-08",
+   "group": "รายได้"
+  },
+  {
+   "role": "รายได้อื่น ๆ",
+   "account": "4200-08",
+   "group": "รายได้"
+  },
+  {
+   "role": "ต้นทุนขาย",
+   "account": "5110-00",
+   "group": "ค่าใช้จ่าย"
+  },
+  {
+   "role": "ซื้อสินค้า",
+   "account": "5130-01",
+   "group": "ค่าใช้จ่าย"
+  },
+  {
+   "role": "ส่งคืน",
+   "account": "5130-03",
+   "group": "ค่าใช้จ่าย"
+  },
+  {
+   "role": "ส่วนลดรับ",
+   "account": "5130-02",
+   "group": "ค่าใช้จ่าย"
+  },
+  {
+   "role": "ดอกเบี้ยจ่าย",
+   "account": "5370-01",
+   "group": "ค่าใช้จ่าย"
+  },
+  {
+   "role": "คชจ.ธนาคาร",
+   "account": "5360-04",
+   "group": "ค่าใช้จ่าย"
+  },
+  {
+   "role": "หนี้สูญ",
+   "account": "5380-00",
+   "group": "ค่าใช้จ่าย"
+  },
+  {
+   "role": "คชจ. อื่นๆ",
+   "account": "5370-06",
+   "group": "ค่าใช้จ่าย"
+  },
+  {
+   "role": "ภาษีซื้อไม่ขอคืน",
+   "account": "5390-01",
+   "group": "ค่าใช้จ่าย"
+  },
+  {
+   "role": "ภาษีขอคืนไม่ได้",
+   "account": "5390-02",
+   "group": "ค่าใช้จ่าย"
+  }
+ ],
+ "journal_routing": [
+  {
+   "transaction": "ผ่านเช็คจ่าย",
+   "journal": "01",
+   "journal_name": "สมุดรายวันจ่าย"
+  },
+  {
+   "transaction": "ตัดเช็คจ่ายเกินเป็น คชจ.",
+   "journal": "01",
+   "journal_name": "สมุดรายวันจ่าย"
+  },
+  {
+   "transaction": "ผ่านเช็ครับ",
+   "journal": "02",
+   "journal_name": "สมุดรายวันรับ"
+  },
+  {
+   "transaction": "ตัดเช็ครับเกินเป็นรายได้",
+   "journal": "02",
+   "journal_name": "สมุดรายวันรับ"
+  },
+  {
+   "transaction": "ตัดยอดเช็ครับเป็นหนี้สูญ",
+   "journal": "01",
+   "journal_name": "สมุดรายวันจ่าย"
+  },
+  {
+   "transaction": "เบิกชดเชยเงินสดย่อย",
+   "journal": "01",
+   "journal_name": "สมุดรายวันจ่าย"
+  },
+  {
+   "transaction": "คิดค่าเสื่อมราคา",
+   "journal": "00",
+   "journal_name": "สมุดรายวันทั่วไป"
+  }
+ ],
+ "doc_gl_mapping": [
+  {
+   "doc": "IV",
+   "name": "ขายเงินเชื่อ",
+   "journal": "03 (เริ่มระบบ 4)",
+   "dr": [
+    "ลูกหนี้ (Customer.ar_account → 1130-01)",
+    "เงินมัดจำรับล่วงหน้า (จากใบรับมัดจำ → 2133-01)"
+   ],
+   "cr": [
+    "ภาษีขาย 2135-00",
+    "ขายเชื่อ 4100-01"
+   ],
+   "source": "p.153,157",
+   "assumed": false
+  },
+  {
+   "doc": "IV-COGS",
+   "name": "ขายเงินเชื่อ ต้นทุน (Perpetual)",
+   "journal": "03",
+   "dr": [
+    "ต้นทุนขาย 5110-00 (หรือบัญชีในสินค้า)"
+   ],
+   "cr": [
+    "สินค้า (Product→กลุ่มบัญชีสินค้า 1.3.2 → 1140-02)"
+   ],
+   "source": "p.153,157",
+   "assumed": false
+  },
+  {
+   "doc": "CHQ-RET-CASH",
+   "name": "รับเงินสดแทนเช็คคืน (ผ่านเช็คเข้าบัญชี CC)",
+   "journal": "02 [สันนิษฐาน]",
+   "dr": [
+    "เงินสด 1111-00"
+   ],
+   "cr": [
+    "เช็ครับล่วงหน้า 1130-02"
+   ],
+   "source": "ch13 p.248",
+   "assumed": false
+  },
+  {
+   "doc": "CHQ-OVER-INC",
+   "name": "ตัดยอดคงเหลือในเช็ครับเป็นรายได้",
+   "journal": "02",
+   "dr": [
+    "เช็ครับล่วงหน้า/ลูกหนี้ [สันนิษฐาน]"
+   ],
+   "cr": [
+    "รายได้อื่น ๆ 4200-08"
+   ],
+   "source": "p.156; ch13 p.249",
+   "assumed": false
+  },
+  {
+   "doc": "HS",
+   "name": "ขายเงินสด",
+   "journal": "?",
+   "dr": [
+    "เงินสด 1111-00 / เช็ครับล่วงหน้า 1130-02",
+    "ต้นทุนขาย 5110-00 (Perpetual)"
+   ],
+   "cr": [
+    "ขายสด 4100-01",
+    "ภาษีขาย 2135-00",
+    "สินค้า 1140-02 (Perpetual)"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "IV-CASHBASIS",
+   "name": "ขายเชื่อ บริการ/ผ่อนชำระ (เกณฑ์เงินสด)",
+   "journal": "03",
+   "dr": [
+    "ลูกหนี้"
+   ],
+   "cr": [
+    "รายได้",
+    "ภาษีขาย-รอเรียกเก็บ 2136-00"
+   ],
+   "source": "5.2 labels + ch8",
+   "assumed": true
+  },
+  {
+   "doc": "SR",
+   "name": "ใบลดหนี้/รับคืน (หมวด CN)",
+   "journal": "?",
+   "dr": [
+    "รับคืน 4100-03",
+    "ภาษีขาย 2135-00",
+    "สินค้า (Perpetual)"
+   ],
+   "cr": [
+    "ลูกหนี้",
+    "ต้นทุนขาย (Perpetual)"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "AI",
+   "name": "รับเงินมัดจำ",
+   "journal": "?",
+   "dr": [
+    "เงินสด / เช็ครับล่วงหน้า"
+   ],
+   "cr": [
+    "เงินมัดจำรับล่วงหน้า 2133-01"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "RE",
+   "name": "รับชำระหนี้",
+   "journal": "?",
+   "dr": [
+    "เงินสด / เช็ครับล่วงหน้า 1130-02",
+    "ภาษีนิติบุคคลจ่ายล่วงหน้า 1151-02",
+    "ส่วนลดจ่าย 4100-04",
+    "ภาษีขาย-รอเรียกเก็บ 2136-00"
+   ],
+   "cr": [
+    "ลูกหนี้",
+    "ภาษีขาย 2135-00"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "BI",
+   "name": "ใบวางบิล (หมวด BS)",
+   "journal": "-",
+   "dr": [],
+   "cr": [],
+   "source": "ไม่ลงบัญชี",
+   "assumed": true
+  },
+  {
+   "doc": "CASH-PURCHASE",
+   "name": "ซื้อเงินสด",
+   "journal": "?",
+   "dr": [
+    "สินค้า 1140-02 (Perpetual) / ซื้อสินค้า 5130-01 (Periodic)",
+    "ภาษีซื้อ 1154-00"
+   ],
+   "cr": [
+    "เงินสด / เช็คจ่ายล่วงหน้า 2120-02"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "RR",
+   "name": "ซื้อเงินเชื่อ",
+   "journal": "?",
+   "dr": [
+    "สินค้า 1140-02 / ซื้อสินค้า 5130-01",
+    "ภาษีซื้อ 1154-00 หรือ ภาษีซื้อยังไม่ถึงกำหนด 1155-00"
+   ],
+   "cr": [
+    "เจ้าหนี้ 2120-01"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "GR",
+   "name": "ใบลดหนี้/ส่งคืน (หมวด DN)",
+   "journal": "?",
+   "dr": [
+    "เจ้าหนี้"
+   ],
+   "cr": [
+    "ส่งคืน 5130-03 / สินค้า",
+    "ภาษีซื้อ"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "CP",
+   "name": "ใบเพิ่มหนี้ (ของเจ้าหนี้)",
+   "journal": "?",
+   "dr": [
+    "ซื้อสินค้า/สินค้า",
+    "ภาษีซื้อ"
+   ],
+   "cr": [
+    "เจ้าหนี้"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "AE",
+   "name": "จ่ายเงินมัดจำ",
+   "journal": "?",
+   "dr": [
+    "เงินมัดจำจ่ายล่วงหน้า 1151-01"
+   ],
+   "cr": [
+    "เงินสด / เช็คจ่ายล่วงหน้า"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "BR",
+   "name": "ใบรับวางบิล",
+   "journal": "-",
+   "dr": [],
+   "cr": [],
+   "source": "ไม่ลงบัญชี",
+   "assumed": true
+  },
+  {
+   "doc": "PS",
+   "name": "จ่ายชำระหนี้",
+   "journal": "?",
+   "dr": [
+    "เจ้าหนี้",
+    "ภาษีซื้อ 1154-00"
+   ],
+   "cr": [
+    "เงินสด / เช็คจ่ายล่วงหน้า 2120-02",
+    "ภาษีหัก ณ ที่จ่ายค้างจ่าย 2132-02",
+    "ส่วนลดรับ 5130-02",
+    "ภาษีซื้อยังไม่ถึงกำหนด 1155-00"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "BD",
+   "name": "ฝากเงินสดเข้าธนาคาร",
+   "journal": "?",
+   "dr": [
+    "เงินฝาก (BankAccount.gl_account)"
+   ],
+   "cr": [
+    "เงินสด 1111-00"
+   ],
+   "source": "5.2 + ch13",
+   "assumed": true
+  },
+  {
+   "doc": "BQ-DEPOSIT",
+   "name": "ใบนำฝากเช็ค ตอนนำฝาก",
+   "journal": "-",
+   "dr": [],
+   "cr": [],
+   "source": "ch13 p.239 เปลี่ยนสถานะเท่านั้น",
+   "assumed": false
+  },
+  {
+   "doc": "BQ-PASS",
+   "name": "ใบนำฝากเช็ค ตอนผ่านเช็ค",
+   "journal": "02 (5.1)",
+   "dr": [
+    "เงินฝาก",
+    "คชจ.ธนาคาร 5360-04",
+    "ภาษีซื้อ (ค่าธรรมเนียม)",
+    "ภาษีถูกหัก ณ ที่จ่าย"
+   ],
+   "cr": [
+    "เช็ครับล่วงหน้า 1130-02"
+   ],
+   "source": "5.1 + 5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "SQ",
+   "name": "ใบขายลดเช็ค",
+   "journal": "?",
+   "dr": [
+    "เงินฝาก",
+    "ดอกเบี้ยจ่าย/คชจ.ธนาคาร"
+   ],
+   "cr": [
+    "เช็ครับล่วงหน้า"
+   ],
+   "source": "labels",
+   "assumed": true
+  },
+  {
+   "doc": "BT",
+   "name": "โอนเงินระหว่างธนาคาร",
+   "journal": "?",
+   "dr": [
+    "เงินฝากปลายทาง",
+    "คชจ.ธนาคาร 5360-04"
+   ],
+   "cr": [
+    "เงินฝากต้นทาง"
+   ],
+   "source": "ch13 + 5.2",
+   "assumed": true
+  },
+  {
+   "doc": "BU",
+   "name": "รับดอกเบี้ยธนาคาร",
+   "journal": "?",
+   "dr": [
+    "เงินฝาก",
+    "ภาษีนิติบุคคลจ่ายล่วงหน้า 1151-02"
+   ],
+   "cr": [
+    "รายได้ธนาคาร 4200-08 / ดอกเบี้ยรับ 4200-01"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "BC",
+   "name": "จ่ายค่าดอกเบี้ย (หมวด BV)",
+   "journal": "?",
+   "dr": [
+    "ดอกเบี้ยจ่าย 5370-01"
+   ],
+   "cr": [
+    "เงินฝาก"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "BV",
+   "name": "จ่ายค่าธรรมเนียม",
+   "journal": "?",
+   "dr": [
+    "คชจ.ธนาคาร 5360-04"
+   ],
+   "cr": [
+    "เงินฝาก"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "BW",
+   "name": "ถอนเงินสดจากธนาคาร",
+   "journal": "?",
+   "dr": [
+    "เงินสด 1111-00"
+   ],
+   "cr": [
+    "เงินฝาก"
+   ],
+   "source": "labels",
+   "assumed": true
+  },
+  {
+   "doc": "CHQ-PAY-PASS",
+   "name": "ผ่านเช็คจ่าย",
+   "journal": "01 (5.1)",
+   "dr": [
+    "เช็คจ่ายล่วงหน้า 2120-02"
+   ],
+   "cr": [
+    "เงินฝาก"
+   ],
+   "source": "5.1 + 5.2",
+   "assumed": true
+  },
+  {
+   "doc": "CHQ-PAY-OVER",
+   "name": "ตัดเช็คจ่ายเกินเป็น คชจ.",
+   "journal": "01 (5.1)",
+   "dr": [
+    "คชจ. อื่นๆ 5370-06"
+   ],
+   "cr": [
+    "เช็คจ่ายล่วงหน้า"
+   ],
+   "source": "5.1 + 5.2",
+   "assumed": true
+  },
+  {
+   "doc": "CHQ-BADDEBT",
+   "name": "ตัดยอดเช็ครับเป็นหนี้สูญ",
+   "journal": "01 (5.1)",
+   "dr": [
+    "หนี้สูญ 5380-00"
+   ],
+   "cr": [
+    "เช็ครับล่วงหน้า"
+   ],
+   "source": "5.1 + 5.2",
+   "assumed": true
+  },
+  {
+   "doc": "DP",
+   "name": "จ่ายคชจ.จากเงินทดรองจ่ายย่อย",
+   "journal": "?",
+   "dr": [
+    "ค่าใช้จ่าย",
+    "ภาษีซื้อ"
+   ],
+   "cr": [
+    "เงินสดย่อย 1111-50"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "PETTY-REIMB",
+   "name": "เบิกชดเชยเงินสดย่อย",
+   "journal": "01 (5.1)",
+   "dr": [
+    "เงินสดย่อย 1111-50"
+   ],
+   "cr": [
+    "เงินสด / เงินฝาก"
+   ],
+   "source": "5.1 + 5.2",
+   "assumed": true
+  },
+  {
+   "doc": "DEPR",
+   "name": "คิดค่าเสื่อมราคา",
+   "journal": "00 (5.1)",
+   "dr": [
+    "ค่าเสื่อมราคา"
+   ],
+   "cr": [
+    "ค่าเสื่อมราคาสะสม"
+   ],
+   "source": "5.1",
+   "assumed": true
+  },
+  {
+   "doc": "CA/CF/CI",
+   "name": "ปรับต้นทุน/ค่าขนส่ง/ค่าประกันภัย",
+   "journal": "?",
+   "dr": [
+    "สินค้า 1140-02"
+   ],
+   "cr": [
+    "ไม่ระบุ"
+   ],
+   "source": "labels",
+   "assumed": true
+  },
+  {
+   "doc": "VAT-NONCLAIM",
+   "name": "ภาษีซื้อไม่ขอคืน/ขอคืนไม่ได้",
+   "journal": "?",
+   "dr": [
+    "ภาษีซื้อไม่ขอคืน 5390-01 / ภาษีขอคืนไม่ได้ 5390-02"
+   ],
+   "cr": [
+    "ภาษีซื้อ"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "YEAR-END",
+   "name": "ปิดบัญชีสิ้นปี",
+   "journal": "?",
+   "dr": [
+    "รายได้/ค่าใช้จ่าย"
+   ],
+   "cr": [
+    "กำไรสะสม 3200-00"
+   ],
+   "source": "5.2 labels",
+   "assumed": true
+  },
+  {
+   "doc": "SUSPENSE",
+   "name": "รายการหาบัญชีไม่ได้/ไม่ดุล",
+   "journal": "-",
+   "dr": [
+    "บัญชีพัก 9999-99"
+   ],
+   "cr": [
+    "บัญชีพัก 9999-99"
+   ],
+   "source": "p.158",
+   "assumed": false
+  }
+ ],
+ "entities": [
+  {
+   "name": "GLLinkSetting",
+   "fields": [
+    "link_enabled",
+    "journal_0",
+    "journal_1",
+    "journal_2",
+    "journal_3",
+    "journal_4",
+    "journal_5",
+    "journal_6"
+   ],
+   "relations": [
+    "-> Journal (n:1 ต่อแต่ละช่อง)"
+   ]
+  },
+  {
+   "name": "DefaultPostingAccount",
+   "fields": [
+    "role",
+    "account_no"
+   ],
+   "relations": [
+    "-> Account (n:1)"
+   ]
+  },
+  {
+   "name": "ProductAccountGroup",
+   "fields": [
+    "code",
+    "inventory_account",
+    "cogs_account [สันนิษฐาน]",
+    "sales_account [สันนิษฐาน]"
+   ],
+   "relations": [
+    "<- Product (1:n)",
+    "-> Account"
+   ]
+  },
+  {
+   "name": "Journal",
+   "fields": [
+    "code (00/01/02/03…)",
+    "name"
+   ],
+   "relations": [
+    "<- JournalEntry (1:n)",
+    "<- DocType (1:n)"
+   ]
+  },
+  {
+   "name": "JournalEntry",
+   "fields": [
+    "journal_code",
+    "date",
+    "doc_type",
+    "doc_no",
+    "description",
+    "department"
+   ],
+   "relations": [
+    "-> Journal (n:1)",
+    "<- JournalLine (1:n)",
+    "-> source document (1:1)"
+   ]
+  },
+  {
+   "name": "JournalLine",
+   "fields": [
+    "account_no",
+    "department",
+    "debit",
+    "credit"
+   ],
+   "relations": [
+    "-> Account (n:1)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "ตั้งค่าการเชื่อมต่อบัญชี",
+   "steps": [
+    "สร้างผังบัญชี + บัญชีพัก + สมุดรายวัน (บัญชี 8)",
+    "5.1 ติ๊กเชื่อมต่อ + เลือกสมุดรายวัน",
+    "5.2 กำหนดบัญชี default",
+    "เริ่มระบบ 4 override รายเอกสาร (ถ้าต้องการ)",
+    "กำหนดบัญชีในแฟ้มหลัก"
+   ]
+  },
+  {
+   "name": "Post เอกสาร",
+   "steps": [
+    "ตรวจ link_enabled",
+    "เลือกสมุดรายวัน (5.1 หรือ DocType)",
+    "หาเลขที่บัญชีตามลำดับ DocType → Master → Default",
+    "สร้าง JournalEntry",
+    "ตรวจบัญชีพัก ถ้ามียอด → สั่งลงบัญชีใหม่ (5.3/5.4)"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,594 @@
+{
+ "chapter": 21,
+ "title": "การตรวจสอบข้อมูลและการแก้ไขปัญหา",
+ "book_pages": "335-350",
+ "pdf_pages": "351-366",
+ "screens": [
+  {
+   "id": "S-CK-01",
+   "name": "คำนวณยอดลูกหนี้ใหม่",
+   "menu": "ขาย > B คำนวณยอดลูกหนี้ใหม่",
+   "book_page": 338,
+   "pdf_page": 354,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัสลูกค้าจาก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "ลูกค้า"
+    },
+    {
+     "label": "ถึง",
+     "type": "lookup",
+     "required": false,
+     "lookup": "ลูกค้า"
+    },
+    {
+     "label": "ตรวจสอบการตัดยอดมัดจำ และรายได้อื่นๆ (ควรตรวจอย่างน้อยเดือนละครั้ง)",
+     "type": "check",
+     "required": false
+    },
+    {
+     "label": "ปรับปรุงบิลขายที่โอนข้อมูลแล้วเกิด Error (E) ยอดชำระ/ลดหนี้ ผิด",
+     "type": "check",
+     "required": false
+    }
+   ],
+   "buttons": [
+    "คำนวณ"
+   ],
+   "postings": [
+    "ไม่มีรายการบัญชี; อัพเดทยอดลูกหนี้คงค้าง"
+   ]
+  },
+  {
+   "id": "S-CK-02",
+   "name": "คำนวณยอดเจ้าหนี้ใหม่",
+   "menu": "ซื้อ > 8 คำนวณยอดเจ้าหนี้ใหม่",
+   "book_page": 341,
+   "pdf_page": 357,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัสผู้จำหน่ายจาก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "ผู้จำหน่าย"
+    },
+    {
+     "label": "ถึง",
+     "type": "lookup",
+     "required": false,
+     "lookup": "ผู้จำหน่าย"
+    },
+    {
+     "label": "ตรวจสอบการตัดยอดมัดจำ และค่าใช้จ่ายอื่นๆ (ควรตรวจอย่างน้อยเดือนละครั้ง)",
+     "type": "check",
+     "required": false
+    },
+    {
+     "label": "ปรับปรุงบิลซื้อที่โอนข้อมูลแล้วเกิด Error (E) ยอดชำระ/ลดหนี้ ผิด",
+     "type": "check",
+     "required": false
+    }
+   ],
+   "buttons": [
+    "คำนวณ"
+   ],
+   "postings": [
+    "ไม่มีรายการบัญชี; อัพเดทยอดเจ้าหนี้คงค้าง"
+   ]
+  },
+  {
+   "id": "S-CK-03",
+   "name": "สั่งให้ลงบัญชีใหม่ <Alt+J>",
+   "menu": "หน้าจอเอกสารต้นทาง (เช่น IV ขายเงินเชื่อ) > ไอคอน REJNL",
+   "book_page": 343,
+   "pdf_page": 359,
+   "layout": "dialog",
+   "fields": [],
+   "buttons": [
+    "สั่งให้ลงบัญชีใหม่ <Alt+J>"
+   ],
+   "postings": [
+    "สร้างใบสำคัญของเอกสารใหม่ในสมุดรายวัน (ทับรายการเดิม)"
+   ]
+  },
+  {
+   "id": "S-CK-04",
+   "name": "รายงานตรวจสอบข้อมูล 5.A",
+   "menu": "รายงาน > 5 รายงานบัญชี > A ตรวจสอบข้อมูล > 1/2",
+   "book_page": 344,
+   "pdf_page": 360,
+   "layout": "report-options",
+   "fields": [
+    {
+     "label": "เริ่มพิมพ์หน้า",
+     "type": "number",
+     "required": false,
+     "note": "default 1"
+    },
+    {
+     "label": "ถึง (หน้า)",
+     "type": "number",
+     "required": false,
+     "note": "default 9,999"
+    },
+    {
+     "label": "จำนวนบรรทัด (บรรทัด/หน้า)",
+     "type": "number",
+     "required": false,
+     "note": "default 39"
+    }
+   ],
+   "buttons": [
+    "ปิด",
+    "พิมพ์ <F5>"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-CK-05",
+   "name": "ส่งให้ระบบอื่นตรวจสอบการลงบัญชีใหม่",
+   "menu": "ไม่ระบุในคู่มือ",
+   "book_page": 345,
+   "pdf_page": 361,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "สำหรับวันที่จาก/ถึง",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "ข้ามใบสำคัญที่ผู้ใช้แก้ไขเลขที่บัญชีเองหรือไม่",
+     "type": "check",
+     "required": false
+    },
+    {
+     "label": "ตรวจสอบรายการภาษีมูลค่าเพิ่มด้วยหรือไม่",
+     "type": "check",
+     "required": false,
+     "note": "default ติ๊ก"
+    },
+    {
+     "label": "พิมพ์ชื่อบัญชีด้วยหรือไม่",
+     "type": "check",
+     "required": false
+    }
+   ],
+   "tabs": [
+    {
+     "name": "ระบบเจ้าหนี้",
+     "fields": [
+      {
+       "label": "จ่ายเงินมัดจำ",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ซื้อสด",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ซื้อเชื่อ",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "เพิ่มหนี้",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ส่งคืนสินค้า",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "จ่ายชำระหนี้",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "คชจ. อื่น ๆ",
+       "type": "check",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "ระบบลูกหนี้",
+     "fields": [
+      {
+       "label": "รับเงินมัดจำ",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ขายสด",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ขายเงินเชื่อ",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "เพิ่มหนี้",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "รับคืนสินค้า",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "รับชำระหนี้",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "รายได้อื่น ๆ",
+       "type": "check",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "ระบบเช็คและธนาคาร",
+     "fields": [
+      {
+       "label": "ผ่านเช็ครับ",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ผ่านเช็คจ่าย",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ฝากเงินสด",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ถอนเงินสด",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "โอนระหว่างบัญชี",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "รายได้ธนาคาร",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ค่าใช้จ่ายธนาคาร",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ถอนเงินสดโดยใช้เช็ค",
+       "type": "check",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "ระบบสินค้า",
+     "fields": [
+      {
+       "label": "จ่ายภายใน",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ปรับปรุงยอด",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "ปรับต้นทุน",
+       "type": "check",
+       "required": false
+      }
+     ]
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก"
+   ],
+   "postings": [
+    "ทดลองลงบัญชีและเปรียบเทียบกับสมุดรายวัน; รายงานความผิดปกติ (ไม่ระบุว่าแก้ไขอัตโนมัติ)"
+   ]
+  },
+  {
+   "id": "S-CK-06",
+   "name": "คำนวณยอดเปลี่ยนแปลง",
+   "menu": "บัญชี > A คำนวณยอดเปลี่ยนแปลง",
+   "book_page": 347,
+   "pdf_page": 363,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "งวดบัญชี",
+     "type": "number",
+     "required": true,
+     "note": "default 1"
+    },
+    {
+     "label": "ถึง",
+     "type": "number",
+     "required": true,
+     "note": "default 24"
+    },
+    {
+     "label": "A/C No.",
+     "type": "text",
+     "required": false,
+     "note": "แสดงบัญชีที่กำลังคำนวณ"
+    }
+   ],
+   "buttons": [
+    "คำนวณ"
+   ],
+   "postings": [
+    "อัพเดทยอดเปลี่ยนแปลงรายงวดในผังบัญชี"
+   ]
+  },
+  {
+   "id": "S-CK-07",
+   "name": "พิมพ์รายงานตรวจยอดยกมา",
+   "menu": "สินค้า > 7 ซ่อมแซมระบบสินค้า > 1",
+   "book_page": 348,
+   "pdf_page": 364,
+   "layout": "report-options",
+   "fields": [],
+   "buttons": [],
+   "postings": [],
+   "note": "ไม่มีภาพหน้าจอ"
+  },
+  {
+   "id": "S-CK-08",
+   "name": "ปรับปรุงยอดยกมาตามข้อมูลล็อต",
+   "menu": "สินค้า > 7 ซ่อมแซมระบบสินค้า > 2",
+   "book_page": 348,
+   "pdf_page": 364,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัสสินค้า จาก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "สินค้า"
+    },
+    {
+     "label": "ถึง",
+     "type": "lookup",
+     "required": false,
+     "lookup": "สินค้า"
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก"
+   ],
+   "postings": [
+    "ปรับยอดยกมารวมให้เท่ายอดยกมาตามล็อต"
+   ]
+  },
+  {
+   "id": "S-CK-09",
+   "name": "แก้ไขรายการต่าง ๆ ของสินค้า",
+   "menu": "สินค้า > 7 ซ่อมแซมระบบสินค้า > 3",
+   "book_page": 349,
+   "pdf_page": 365,
+   "layout": "form",
+   "fields": [],
+   "buttons": [],
+   "postings": [],
+   "note": "ไม่มีรายละเอียด; ควรได้รับคำแนะนำจากเอ็กซ์เพรส"
+  },
+  {
+   "id": "S-CK-10",
+   "name": "คำนวณยอดสะสม/คงเหลือ/ลงบัญชีสินค้า",
+   "menu": "สินค้า > 7 ซ่อมแซมระบบสินค้า > 4",
+   "book_page": 349,
+   "pdf_page": 365,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัสสินค้าจาก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "สินค้า"
+    },
+    {
+     "label": "ถึง",
+     "type": "lookup",
+     "required": false,
+     "lookup": "สินค้า"
+    },
+    {
+     "label": "ตรวจสอบ 'ตัวคูณเป็นหน่วยย่อย' ในรายการสินค้า (ควรตรวจอย่างน้อยเดือนละครั้ง)",
+     "type": "check",
+     "required": false
+    },
+    {
+     "label": "รหัสสินค้า (กำลังประมวลผล)",
+     "type": "text",
+     "required": false
+    }
+   ],
+   "buttons": [
+    "คำนวณ",
+    "หยุด"
+   ],
+   "postings": [
+    "อัพเดทยอดคงเหลือ/มูลค่าต้นทุน และลงบัญชีสินค้าใหม่ [สันนิษฐาน]"
+   ]
+  },
+  {
+   "id": "S-CK-11",
+   "name": "คำนวณยอดสั่งซื้อ/สั่งขายใหม่",
+   "menu": "สินค้า > 7 ซ่อมแซมระบบสินค้า > 6",
+   "book_page": 349,
+   "pdf_page": 365,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัสสินค้าจาก/ถึง",
+     "type": "lookup",
+     "required": false,
+     "lookup": "สินค้า",
+     "note": "ไม่มีภาพหน้าจอ [สันนิษฐาน]"
+    }
+   ],
+   "buttons": [
+    "ตกลง"
+   ],
+   "postings": [
+    "อัพเดทยอดสั่งซื้อ/สั่งขายตามใบสั่งซื้อ/ใบสั่งขาย"
+   ]
+  }
+ ],
+ "entities": [
+  {
+   "name": "CustomerBalance",
+   "fields": [
+    "customer",
+    "outstanding"
+   ],
+   "relations": [
+    "-> Customer (1:1)",
+    "<- SalesInvoice/Receipt/Deposit (recalc)"
+   ]
+  },
+  {
+   "name": "VendorBalance",
+   "fields": [
+    "vendor",
+    "outstanding"
+   ],
+   "relations": [
+    "-> Vendor (1:1)",
+    "<- PurchaseInvoice/Payment/Deposit (recalc)"
+   ]
+  },
+  {
+   "name": "AccountPeriodBalance",
+   "fields": [
+    "account_no",
+    "period(1-24)",
+    "movement"
+   ],
+   "relations": [
+    "-> ChartOfAccount (n:1)",
+    "<- JournalLine (recalc)"
+   ]
+  },
+  {
+   "name": "ItemBalance",
+   "fields": [
+    "item",
+    "warehouse",
+    "qty_on_hand",
+    "cost_value"
+   ],
+   "relations": [
+    "-> Item (n:1)",
+    "-> Warehouse (n:1)"
+   ]
+  },
+  {
+   "name": "ItemOpeningBalance",
+   "fields": [
+    "item",
+    "level(total/warehouse/lot)",
+    "qty",
+    "value"
+   ],
+   "relations": [
+    "-> Item (n:1)",
+    "-> Lot (n:1, FIFO)"
+   ]
+  },
+  {
+   "name": "ItemOrderQty",
+   "fields": [
+    "item",
+    "on_order_qty",
+    "on_sales_order_qty"
+   ],
+   "relations": [
+    "<- PurchaseOrder/SalesOrder (recalc)"
+   ]
+  },
+  {
+   "name": "SourceDocument",
+   "fields": [
+    "doc_type",
+    "doc_no",
+    "date"
+   ],
+   "relations": [
+    "-> JournalVoucher (1:1, ลงบัญชีอัตโนมัติ/ลงใหม่ Alt+J)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "ตรวจสอบระบบขาย/ลูกหนี้",
+   "steps": [
+    "ตรวจตอนเปิดใบกำกับ",
+    "พิมพ์ 141 เรียงตามเลขที่/วันที่ เทียบเอกสารจริง",
+    "ผิด: แก้ใบสำคัญ",
+    "หน้าจอถูกแต่รายงานผิด: จัดเรียงข้อมูลระบบขาย",
+    "ขาย > B คำนวณยอดลูกหนี้ใหม่",
+    "Message 633 หรือรายการปัญหา"
+   ]
+  },
+  {
+   "name": "ตรวจสอบระบบซื้อ/เจ้าหนี้",
+   "steps": [
+    "ตรวจตอนเปิดใบรับสินค้า",
+    "พิมพ์ 241 เทียบเอกสารจริง",
+    "ผิด: แก้ใบสำคัญ",
+    "จัดเรียงข้อมูลระบบซื้อ",
+    "ซื้อ > 8 คำนวณยอดเจ้าหนี้ใหม่"
+   ]
+  },
+  {
+   "name": "ตรวจสอบระบบบัญชี",
+   "steps": [
+    "พิมพ์ 521 สมุดรายวัน",
+    "ตรวจการลงบัญชี Perpetual/Periodic",
+    "ผิด: เอกสารต้นทาง Alt+J",
+    "รายงาน 5.A",
+    "ส่งให้ระบบอื่นตรวจสอบการลงบัญชีใหม่",
+    "บัญชี > A คำนวณยอดเปลี่ยนแปลง 1-24"
+   ]
+  },
+  {
+   "name": "ซ่อมแซมระบบสินค้า",
+   "steps": [
+    "7.1 พิมพ์รายงานตรวจยอดยกมา",
+    "7.2 ปรับปรุงยอดยกมาตามข้อมูลล็อต",
+    "7.3 แก้ไขรายการต่าง ๆ (ตามคำแนะนำ)",
+    "7.4 คำนวณยอดสะสม/คงเหลือ/ลงบัญชี",
+    "7.6 คำนวณยอดสั่งซื้อ/สั่งขายใหม่"
+   ]
+  }
+ ]
+}

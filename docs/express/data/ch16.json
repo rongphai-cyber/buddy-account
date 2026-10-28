@@ -1,0 +1,44 @@
+{"chapter": 16, "title": "การป้อนข้อมูลในระบบภาษี", "book_pages": "293-305",
+ "screens": [
+  {"id":"S-TX-01","name":"ป้อนงวดที่ต้องการดูข้อมูล (VAT)","menu":"การเงิน > 4. ภาษีมูลค่าเพิ่ม > 1. แฟ้มภาษีซื้อ | 2. แฟ้มภาษีขาย","book_page":294,"pdf_page":310,"layout":"dialog",
+   "fields":[{"label":"ดูเฉพาะรายการที่ยื่นรวมในงวด","type":"text","required":false,"note":"MM/YY; ว่าง=ทุกงวด"}],"buttons":["ตกลง","ยกเลิก"],"postings":[]},
+  {"id":"S-TX-02","name":"แฟ้มภาษีซื้อ","menu":"การเงิน > 4 > 1. แฟ้มภาษีซื้อ","book_page":295,"pdf_page":311,"layout":"list",
+   "fields":[],
+   "grid":{"columns":["ยื่นรวมในงวด","ใบกำกับภาษี-วันที่","ใบกำกับภาษี-เลขที่","เอกสารภายใน-วันที่","เอกสารภายใน-เลขที่","แผนก","รายการ","ภาษีขอคืนได้-มูลค่า","ภาษีขอคืนได้-ภาษี","ภาษีขอคืนไม่ได้-มูลค่า","ภาษีขอคืนไม่ได้-ภาษี","มูลค่าอัตราศูนย์","หมายเหตุ"]},
+   "buttons":["เพิ่ม","แก้ไขข้อมูล <Alt+E>","ลบ","ยกเลิก","บันทึก","เลื่อนรายการ","ค้นหา","พิมพ์ (รูปแบบรายงาน)","RE NUM (ลำดับเลขที่ออกใหม่)"],"postings":[]},
+  {"id":"S-TX-03","name":"ป้อนรายละเอียดรายการภาษีซื้อ","menu":"แฟ้มภาษีซื้อ > แก้ไขข้อมูล <Alt+E>","book_page":296,"pdf_page":312,"layout":"dialog",
+   "fields":[{"label":"เลขที่ใบกำกับภาษี","type":"text","required":true},{"label":"วันที่ใบกำกับภาษี","type":"date","required":true},{"label":"ยื่นภาษีรวมในงวดที่","type":"text","required":true,"note":"MM/YY"},{"label":"ยื่นเพิ่มเติม (พิมพ์แยก?)","type":"check","required":false},{"label":"เลขที่เอกสารภายใน","type":"text","required":false},{"label":"วันที่เอกสารภายใน","type":"date","required":false},{"label":"เป็นรายการของแผนก","type":"lookup","lookup":"Department","required":false},{"label":"เลขที่ออกใหม่","type":"text","required":false},{"label":"ขอคืนได้-มูลค่าสินค้า","type":"money","required":false},{"label":"ขอคืนได้-จำนวนภาษี","type":"money","required":false},{"label":"ขอคืนไม่ได้-มูลค่าสินค้า","type":"money","required":false},{"label":"ขอคืนไม่ได้-จำนวนภาษี","type":"money","required":false},{"label":"มูลค่าสินค้าหรือบริการอัตราศูนย์","type":"money","required":false},{"label":"คำนำหน้าชื่อ","type":"lookup","required":false},{"label":"ชื่อผู้ขาย/ผู้ให้บริการ","type":"text","required":false},{"label":"เลขประจำตัวผู้เสียภาษี","type":"text","required":false},{"label":"สาขา#","type":"number","required":false,"note":"0=สำนักงานใหญ่"},{"label":"หมายเหตุ","type":"text","required":false}],
+   "buttons":["ตกลง","ยกเลิก"],"postings":["แก้ไขแฟ้มภาษีซื้อเท่านั้น (ไม่ระบุผลต่อบัญชี)"]},
+  {"id":"S-TX-04","name":"ลำดับเลขที่ออกใหม่","menu":"แฟ้มภาษีซื้อ > RE NUM > 1 (ตามวันที่ได้รับ, ประกาศฉบับ 89) | 2 (ตามวันที่ใบกำกับ, ประกาศเก่า)","book_page":297,"pdf_page":313,"layout":"dialog",
+   "fields":[{"label":"ลำดับเลขที่ออกใหม่ ของแผนก","type":"lookup","lookup":"Department","required":true,"note":"* = ไม่แยกแผนก; รูปแบบเลข MM/9999999"}],"buttons":["ตกลง","ยกเลิก"],"postings":[]},
+  {"id":"S-TX-05","name":"เลือกรูปแบบรายงานภาษีซื้อ","menu":"แฟ้มภาษีซื้อ > พิมพ์ ▾","book_page":299,"pdf_page":315,"layout":"report-options",
+   "fields":[{"label":"รูปแบบรายงาน","type":"select","required":true,"note":"1 พิมพ์รายงานภาษีซื้อ; 2 แก้ไขแบบทดสอบ; 3 พิมพ์แบบทดสอบ; 4 นำแบบทดสอบไปทับข้อ 1; 5 นำข้อ 1 มาเป็นแบบทดสอบ; 6 มาตรฐาน; 7 แยกขอคืนได้/ไม่ได้; 8 แยกซื้อสด/เชื่อ; 9 ว่าไม่มีรายการ; A แยก 10,7%; B แยก 10,7% และขอคืนไม่ได้; C แยกซื้อสด/เชื่อ 10,7%; D ไม่มีรายการ 10,7%; E ต้นฉบับไม่มีรายการ; F ต้นฉบับไม่มีรายการ 10,7%"}],"buttons":[],"postings":[]},
+  {"id":"S-TX-06","name":"แฟ้มภาษีขาย","menu":"การเงิน > 4 > 2. แฟ้มภาษีขาย","book_page":300,"pdf_page":316,"layout":"list",
+   "fields":[],"grid":{"columns":["ยื่นรวมในงวด","ใบกำกับภาษี-วันที่","ใบกำกับภาษี-เลขที่","แผนก","รายการ","มูลค่าสินค้าหรือบริการ","จำนวนเงินภาษี","มูลค่าอัตราศูนย์","หมายเหตุ"]},
+   "buttons":["เพิ่ม","แก้ไขข้อมูล <Alt+E>","ลบ","ยกเลิก","บันทึก","เลื่อนรายการ","ค้นหา","พิมพ์ (รูปแบบรายงาน)"],"postings":[]},
+  {"id":"S-TX-07","name":"ป้อนรายละเอียดรายการภาษีขาย","menu":"แฟ้มภาษีขาย > แก้ไขข้อมูล <Alt+E>","book_page":301,"pdf_page":317,"layout":"dialog",
+   "fields":[{"label":"เลขที่ใบกำกับภาษี","type":"text","required":true},{"label":"วันที่ใบกำกับภาษี","type":"date","required":true},{"label":"ยื่นภาษีรวมในงวดที่","type":"text","required":true,"note":"MM/YY"},{"label":"ยื่นเพิ่มเติม (พิมพ์แยก?)","type":"check","required":false},{"label":"เลขที่เอกสารภายใน","type":"text","required":false},{"label":"วันที่เอกสารภายใน","type":"date","required":false},{"label":"เป็นรายการของแผนก","type":"lookup","lookup":"Department","required":false},{"label":"ภาษีขายปกติ-มูลค่าสินค้า","type":"money","required":false},{"label":"ภาษีขายปกติ-จำนวนภาษี","type":"money","required":false},{"label":"มูลค่าสินค้าหรือบริการอัตราศูนย์","type":"money","required":false},{"label":"คำนำหน้าชื่อ","type":"lookup","required":false},{"label":"ชื่อผู้ซื้อ/ผู้รับบริการ","type":"text","required":false},{"label":"เลขประจำตัวผู้เสียภาษี","type":"text","required":false},{"label":"สาขา#","type":"number","required":false},{"label":"หมายเหตุ","type":"text","required":false}],
+   "buttons":["ตกลง","ยกเลิก"],"postings":[]},
+  {"id":"S-TX-08","name":"เลือกรูปแบบรายงานภาษีขาย","menu":"แฟ้มภาษีขาย > พิมพ์ ▾","book_page":302,"pdf_page":318,"layout":"report-options",
+   "fields":[{"label":"รูปแบบรายงาน","type":"select","required":true,"note":"1 พิมพ์รายงานภาษีขาย; 2-5 แบบทดสอบ; 6 มาตรฐาน; 7 อัตราศูนย์; 8 แยกขายสด/เชื่อ; 9 ว่าไม่มีรายการ; A แยก 10,7%; B แยก 10,7,0%; C แยกขายสด/เชื่อ 10,7%; D ไม่มีรายการ 10,7%; E/F ต้นฉบับไม่มีรายการ"}],"buttons":[],"postings":[]},
+  {"id":"S-TX-09","name":"เลือก ภงด. และงวด","menu":"การเงิน > 5. ภาษีหัก ณ ที่จ่าย","book_page":303,"pdf_page":319,"layout":"dialog",
+   "fields":[{"label":"ภ.ง.ด.","type":"lookup","lookup":"WHTFormType","required":true,"note":"S03, S53, Z03, Z53"},{"label":"ดูเฉพาะรายการที่ยื่นรวมในงวด","type":"text","required":false,"note":"MM/YY"}],"buttons":["ตกลง","ยกเลิก","ค้นหา"],"postings":[]},
+  {"id":"S-TX-10","name":"แฟ้มภาษีหัก ณ ที่จ่าย","menu":"การเงิน > 5","book_page":304,"pdf_page":320,"layout":"list",
+   "fields":[],"grid":{"columns":["ยื่นรวมในงวด","ใบรับรองการหักภาษี-วันที่","ใบรับรองการหักภาษี-เลขที่","ผู้ถูกหักภาษี","(ไม่ทราบ)","ยอดจ่าย","หักไว้"]},
+   "buttons":["เพิ่ม","แก้ไข","ลบ","ยกเลิก","บันทึก","เลื่อนรายการ","ค้นหา","พิมพ์ ▾ (1 พิมพ์แบบยื่น ภงด.; 2-5 แบบทดสอบ; 6 ต้นฉบับ ภงด.3; 7 ต้นฉบับ ภงด.53)","พิมพ์ใบหักภาษี ▾"],"postings":[]},
+  {"id":"S-TX-11","name":"Which form?","menu":"แฟ้มภาษีหัก ณ ที่จ่าย > พิมพ์ > 6 หรือ 7","book_page":304,"pdf_page":320,"layout":"dialog",
+   "fields":[{"label":"ฟอร์มที่","type":"number","required":true,"note":"เลือก 1"}],"buttons":["OK","Cancel"],"postings":[]}
+ ],
+ "entities":[
+  {"name":"InputVAT","fields":["filing_period","tax_invoice_date","tax_invoice_no","internal_doc_date","internal_doc_no","department","description","claimable_base","claimable_vat","nonclaimable_base","nonclaimable_vat","zero_rate_base","additional_filing","new_seq_no","name_prefix","vendor_name","tax_id","branch_no","remark"],"relations":["-> SourceDocument (n:1: RR/HP/CP/GR/AE/DP/JV)","-> Department (n:1)"]},
+  {"name":"OutputVAT","fields":["filing_period","tax_invoice_date","tax_invoice_no","internal_doc_date","internal_doc_no","department","description","base_amount","vat_amount","zero_rate_base","additional_filing","name_prefix","customer_name","tax_id","branch_no","remark"],"relations":["-> SourceDocument (n:1: IV/HS/SR/AI/DR/OI/HI)","-> Department (n:1)"]},
+  {"name":"WHTRecord","fields":["form_type","filing_period","certificate_date","certificate_no","payee","paid_amount","withheld_amount"],"relations":["-> WHTFormType (n:1)","-> SourceDocument (n:1)"]},
+  {"name":"WHTFormType","fields":["code(S03/S53/Z03/Z53)","description"],"relations":["-> WHTRecord (1:n)"]},
+  {"name":"ReportTemplate","fields":["report_code","variant(original/test)","form_no"],"relations":[]}
+ ],
+ "flows":[
+  {"name":"ตรวจและพิมพ์รายงานภาษีซื้อ","steps":["การเงิน > 4.1","ระบุงวด MM/YY (ว่าง=ทุกงวด)","ตรวจรายการ","Alt+E ย้ายยอดไปขอคืนไม่ได้ หรือเปลี่ยนงวดยื่น/ยื่นเพิ่มเติม","RE NUM เลือกวิธีเรียง (ประกาศ 89 / เก่า) และแผนก","เลือกรูปแบบรายงานและพิมพ์"]},
+  {"name":"ตรวจและพิมพ์รายงานภาษีขาย","steps":["การเงิน > 4.2","ระบุงวด","ตรวจรายการ","Alt+E เปลี่ยนงวดยื่น/ยื่นเพิ่มเติม","เลือกรูปแบบรายงานและพิมพ์"]},
+  {"name":"ภาษีหัก ณ ที่จ่าย","steps":["การเงิน > 5","เลือก ภงด. (S03/S53/Z03/Z53) และงวด","ตรวจรายการ","พิมพ์ > เลือก 6 (ภงด.3) หรือ 7 (ภงด.53)","Which form? เลือกฟอร์ม 1 และยืนยันทับแบบทดสอบ","ข้อ 4 นำแบบทดสอบไปทับข้อ 1","พิมพ์จากเมนูรายงานภาษี"]}
+ ]
+}

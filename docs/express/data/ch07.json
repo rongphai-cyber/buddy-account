@@ -1,0 +1,2588 @@
+{
+ "chapter": 7,
+ "title": "การกำหนดแฟ้มข้อมูลหลัก",
+ "book_pages": "93-138",
+ "pdf_pages": "109-154",
+ "common_definitions": {
+  "ประเภทราคา": "0=ยกเว้นภาษี, 1=รวมภาษีแล้ว (VAT=ราคาx7/107), 2=ยังไม่รวมภาษี (VAT=ราคาx7/100)",
+  "ส่วนลด": "จำนวนเงิน | % | ซ้อน 5+2%; ป้อน 10+ แปลงเป็น 10%",
+  "ราคาขาย1-5": "5 ระดับราคา ตามเครดิตหรือประเภทลูกค้า",
+  "สาขา#": "0=สำนักงานใหญ่, -1=ว่าง, n=ลำดับสาขา",
+  "รูปแบบรหัสสินค้า": "99-!!!!-!!!!!! (กำหนดที่เริ่มระบบ 1.3.1)"
+ },
+ "screens": [
+  {
+   "id": "S-MF-01",
+   "name": "ค้นหาข้อมูลตามรหัส/ชื่อ",
+   "menu": "ไอคอนค้นหา <Alt+S> (ตามชื่อ <Ctrl+S>) ทุกหน้าจอ master",
+   "book_page": 95,
+   "pdf_page": 111,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัส (ลูกค้า/สินค้า/...)",
+     "type": "text",
+     "required": true,
+     "note": "ค้นตามชื่อ: ป้อนตัวอักษรขึ้นต้น ระบบแสดงรายชื่อที่ขึ้นต้นตรง"
+    }
+   ],
+   "buttons": [
+    "ตกลง"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-MF-02",
+   "name": "ป้อนหมายเหตุเพิ่มเติม",
+   "menu": "ไอคอน Note <Alt+R>",
+   "book_page": 96,
+   "pdf_page": 112,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "บรรทัดหมายเหตุ",
+     "type": "text",
+     "required": false,
+     "note": "สินค้า 10 บรรทัด; ลูกค้า/ผู้จำหน่าย 5 บรรทัด",
+     "lookup": "ข้อความสำเร็จรูป [สันนิษฐาน]"
+    }
+   ],
+   "buttons": [
+    "ตกลง <F9>",
+    "ยกเลิก <Esc>",
+    "ลบบรรทัด",
+    "เพิ่มบรรทัด"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-MF-03",
+   "name": "พิมพ์จ่าหน้าซอง/สติ๊กเกอร์",
+   "menu": "ไอคอนพิมพ์ (dropdown) ในลูกค้า/ผู้จำหน่าย/สินค้า",
+   "book_page": 96,
+   "pdf_page": 112,
+   "layout": "dialog",
+   "fields": [],
+   "buttons": [
+    "1. ใบตรวจสอบรายละเอียด [สันนิษฐาน]",
+    "2. จ่าหน้าซองจดหมาย",
+    "3. พิมพ์ชื่อที่อยู่ลูกค้าลงสติ๊กเกอร์"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-GL-01",
+   "name": "กำหนดผังบัญชี",
+   "menu": "บัญชี > 2. ผังบัญชี",
+   "book_page": 97,
+   "pdf_page": 113,
+   "layout": "tree-form",
+   "fields": [
+    {
+     "label": "เลขที่บัญชี",
+     "type": "text",
+     "required": true,
+     "note": "รูปแบบจาก เริ่มระบบ 1.7 เช่น 1000-00"
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "บัญชีคุม",
+     "type": "lookup",
+     "required": false,
+     "note": "บังคับถ้าระดับ>1; ระดับบัญชีคุมสูงกว่าบัญชีย่อย 1 ระดับ",
+     "lookup": "Account"
+    },
+    {
+     "label": "ระดับบัญชี",
+     "type": "number",
+     "required": true,
+     "note": "เริ่ม 1"
+    },
+    {
+     "label": "หมวดบัญชี",
+     "type": "select",
+     "required": true,
+     "note": "1-สินทรัพย์,2-หนี้สิน,3-ทุนหรือส่วนของเจ้าของ,4-รายได้,5-ค่าใช้จ่าย"
+    },
+    {
+     "label": "ประเภท",
+     "type": "select",
+     "required": true,
+     "note": "1-บัญชีคุม, 2-บัญชีย่อย [สันนิษฐานรหัส 2]"
+    },
+    {
+     "label": "แยกแผนก",
+     "type": "check",
+     "required": false,
+     "note": "Y/N ค่าเริ่มต้น N"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "tree: เลขที่บัญชี ชื่อบัญชี"
+    ]
+   },
+   "buttons": [
+    "เรียงตามเลขที่บัญชี",
+    "เรียงตามชื่อบัญชี",
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก/ออก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา <Alt+S>/<Ctrl+S>",
+    "พิมพ์",
+    "ไอคอน tree x3 [สันนิษฐาน ขยาย/ยุบ]",
+    "OLD/NEW เปลี่ยนรหัส <Ctrl+G>"
+   ],
+   "postings": [
+    "โครงสร้างบัญชีที่ทุกการลงบัญชีอ้างอิง; ยอดบัญชีคุม = ผลรวมบัญชีย่อย"
+   ],
+   "rules": [
+    "ห้ามลบบัญชีคุมจนกว่าจะลบบัญชีย่อยหมด (ตรวจด้วยรายงาน 5.5)",
+    "แก้เลขที่บัญชีได้ทันทีถ้ายังไม่ใช้และไม่ใช่บัญชีคุม มิฉะนั้นใช้เปลี่ยนรหัส",
+    "หลังเปลี่ยนผังต้องตรวจเลขที่เอกสาร(บท9) บัญชีลงรายวัน(บท10) งบการเงิน(บท24)"
+   ],
+   "sample_data": [
+    "1000-00 สินทรัพย์",
+    "2000-00 หนี้สิน",
+    "3000-00 ส่วนของผู้ถือหุ้น",
+    "4000-00 รายได้",
+    "5000-00 ค่าใช้จ่าย",
+    "6000-00 ภาษีเงินได้นิติบุคคล",
+    "9999-99 บัญชีพัก"
+   ]
+  },
+  {
+   "id": "S-GL-02",
+   "name": "เปลี่ยนเลขที่บัญชี",
+   "menu": "ผังบัญชี > เปลี่ยนรหัส <Ctrl+G>",
+   "book_page": 100,
+   "pdf_page": 116,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "เลขที่บัญชี เดิม",
+     "type": "text",
+     "required": false,
+     "note": "read-only"
+    },
+    {
+     "label": "เปลี่ยนเป็น",
+     "type": "text",
+     "required": true,
+     "note": ""
+    }
+   ],
+   "buttons": [
+    "ตกลง <F5>",
+    "ยกเลิก"
+   ],
+   "postings": [
+    "แก้เลขที่บัญชีในทุกรายการที่อ้างถึงเลขเดิมอัตโนมัติ"
+   ]
+  },
+  {
+   "id": "R-GL-01",
+   "name": "รายงานรายละเอียดประกอบ",
+   "menu": "รายงาน > 5.5 รายละเอียดประกอบ",
+   "book_page": 100,
+   "pdf_page": 116,
+   "layout": "report-preview",
+   "fields": [
+    {
+     "label": "เลขที่บัญชีคุม",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "Account"
+    },
+    {
+     "label": "ณ วันที่",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เลือกแผนก",
+     "type": "text",
+     "required": false,
+     "note": "* = ทั้งหมด"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "เลขที่บัญชี",
+     "ชื่อบัญชี",
+     "ยอดคงเหลือ",
+     "ยอดเคลื่อนไหว"
+    ]
+   },
+   "buttons": [
+    "พิมพ์",
+    "ค้นหา"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-IC-01",
+   "name": "รายละเอียดสินค้า",
+   "menu": "สินค้า > 2. รายละเอียดสินค้า",
+   "book_page": 101,
+   "pdf_page": 117,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัส",
+     "type": "text",
+     "required": true,
+     "note": "รูปแบบจาก เริ่มระบบ 1.3.1 เช่น 99-!!!!-!!!!!!"
+    },
+    {
+     "label": "บาร์โค้ด",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": "50 ตัวอักษร"
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false,
+     "note": "50 ตัวอักษร"
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายละเอียด",
+     "fields": [
+      {
+       "label": "หมวด",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 22-หมวดสินค้า"
+      },
+      {
+       "label": "กลุ่มบัญชี/ค (กลุ่มบัญชีสินค้า)",
+       "type": "lookup",
+       "required": true,
+       "note": "กำหนดวิธีบันทึกบัญชีและวิธีคิดต้นทุน เช่น ST01 สินค้าสำเร็จรูป FIFO",
+       "lookup": "เริ่มระบบ 1.3.2 กลุ่มบัญชีสินค้า"
+      },
+      {
+       "label": "หน่วยนับ ย่อย",
+       "type": "lookup",
+       "required": true,
+       "note": "หน่วยเล็กสุด สต๊อกเก็บเป็นหน่วยนี้",
+       "lookup": "ตาราง 20-หน่วยนับ"
+      },
+      {
+       "label": "หน่วยนับ ใหญ่",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 20-หน่วยนับ"
+      },
+      {
+       "label": "ตัวคูณหน่วยใหญ่ให้เป็นหน่วยย่อย",
+       "type": "number",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "หน่วยนับ ซื้อ",
+       "type": "lookup",
+       "required": false,
+       "note": "เปลี่ยนในบิลซื้อได้ถ้าอนุญาตที่ เริ่มระบบ 1.5.1",
+       "lookup": "ตาราง 20-หน่วยนับ"
+      },
+      {
+       "label": "ตัวคูณหน่วยซื้อ",
+       "type": "number",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "หน่วยนับ ขาย",
+       "type": "lookup",
+       "required": false,
+       "note": "เปลี่ยนในบิลขายได้ถ้าอนุญาตที่ เริ่มระบบ 1.4.1",
+       "lookup": "ตาราง 20-หน่วยนับ"
+      },
+      {
+       "label": "ตัวคูณหน่วยขาย",
+       "type": "number",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "สินค้าทดแทน",
+       "type": "lookup",
+       "required": false,
+       "note": "เตือนตอนขายเมื่อสินค้าหมด",
+       "lookup": "Product"
+      },
+      {
+       "label": "ส/คติดลบได้?",
+       "type": "select",
+       "required": false,
+       "note": "Y=ยอม, N=ไม่ยอม, A=ยอมเมื่อผู้มีอำนาจอนุมัติ"
+      },
+      {
+       "label": "ราคาขาย 1",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ราคาขาย 2",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ราคาขาย 3",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ราคาขาย 4",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ราคาขาย 5",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "บรรจุ/หีบห่อ",
+       "type": "text",
+       "required": false,
+       "note": "ไม่อธิบาย"
+      },
+      {
+       "label": "ผู้จำหน่าย",
+       "type": "lookup",
+       "required": false,
+       "note": "อ้างอิงเท่านั้น",
+       "lookup": "Supplier"
+      },
+      {
+       "label": "ประเภท VAT",
+       "type": "select",
+       "required": false,
+       "note": "อัตราปกติ/ได้รับยกเว้น VAT"
+      },
+      {
+       "label": "ราคาทุนมาตรฐาน",
+       "type": "money",
+       "required": false,
+       "note": "ใช้เป็นต้นทุนเมื่อจ่ายขณะสต๊อกติดลบ"
+      },
+      {
+       "label": "หมายเหตุ",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ยอดคงเหลือ",
+       "type": "number",
+       "required": false,
+       "note": "read-only คำนวณ"
+      },
+      {
+       "label": "ราคาต่อหน่วย",
+       "type": "money",
+       "required": false,
+       "note": "read-only ต้นทุนต่อหน่วย"
+      },
+      {
+       "label": "มูลค่าคงเหลือ",
+       "type": "money",
+       "required": false,
+       "note": "read-only"
+      }
+     ]
+    },
+    {
+     "name": "คลังสินค้า <F8>",
+     "fields": [
+      {
+       "label": "วันที่ซื้อล่าสุด",
+       "type": "date",
+       "required": false,
+       "note": "ระบบ"
+      },
+      {
+       "label": "ราคาซื้อล่าสุด / หน่วย",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ส่วนลดซื้อล่าสุด",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "จำนวนค้างรับ",
+       "type": "number",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "วันที่ขายล่าสุด",
+       "type": "date",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ราคาขายล่าสุด / หน่วย",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ส่วนลดขายล่าสุด",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "จำนวนค้างส่ง",
+       "type": "number",
+       "required": false,
+       "note": ""
+      }
+     ],
+     "grid": {
+      "columns": [
+       "คลัง",
+       "ชื่อคลัง",
+       "[ยอดยกมา]",
+       "[มูลค่ายกมา]",
+       "ยอดคงเหลือ",
+       "[ราคาต่อหน่วย]",
+       "[มูลค่าคงเหลือ]",
+       "[ชั้นเก็บ]"
+      ],
+      "note": "หัวคอลัมน์อ่านไม่ออก [สันนิษฐาน]; ระบบสร้างคลังหลักอัตโนมัติ; ดับเบิลคลิกบรรทัดว่างเพื่อเพิ่มคลัง"
+     }
+    },
+    {
+     "name": "ล๊อตสินค้ายกมา <F7>",
+     "fields": [
+      {
+       "label": "ยอดยกมารายล็อต",
+       "type": "number",
+       "required": false,
+       "note": "สำหรับต้นทุน FIFO ดูบทที่ 8"
+      }
+     ]
+    },
+    {
+     "name": "ฟิลด์เพิ่มเติม",
+     "fields": [
+      {
+       "label": "ฟิลด์ผู้ใช้กำหนด",
+       "type": "text",
+       "required": false,
+       "note": "กำหนดที่ เริ่มระบบ 1.3.1"
+      }
+     ]
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก/ออก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา <Alt+S>/<Ctrl+S>",
+    "พิมพ์",
+    "Note หมายเหตุเพิ่มเติม <Alt+R>",
+    "CHECK [ไม่อธิบาย]",
+    "RECAL COST [ไม่อธิบาย]",
+    "OLD/NEW เปลี่ยนรหัส <Ctrl+G>"
+   ],
+   "postings": [
+    "บัญชีที่ใช้มาจากกลุ่มบัญชีสินค้า (เริ่มระบบ 1.3.2)",
+    "ยอดคงเหลือ = ยกมา + รับ(ซื้อ/รับคืน/ผลิต) - จ่าย(ขาย/ส่งคืน/ตัดชำรุด)"
+   ]
+  },
+  {
+   "id": "S-IC-02",
+   "name": "เปลี่ยนรหัสสินค้า",
+   "menu": "รายละเอียดสินค้า > เปลี่ยนรหัส <Ctrl+G>",
+   "book_page": 105,
+   "pdf_page": 121,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัสสินค้า เดิม",
+     "type": "text",
+     "required": false,
+     "note": "read-only"
+    },
+    {
+     "label": "เปลี่ยนเป็น",
+     "type": "text",
+     "required": true,
+     "note": ""
+    }
+   ],
+   "buttons": [
+    "ตกลง <F5>",
+    "ยกเลิก"
+   ],
+   "postings": [
+    "แก้รหัสในทุกรายการ (บิลซื้อ/ขาย) อัตโนมัติ"
+   ]
+  },
+  {
+   "id": "S-IC-03",
+   "name": "รายละเอียดสินค้าชุด",
+   "menu": "สินค้า > 3. รายละเอียดสินค้าชุด",
+   "book_page": 107,
+   "pdf_page": 123,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "รหัส",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "บาร์โค้ด",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": "50"
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false,
+     "note": "50"
+    },
+    {
+     "label": "ประเภท",
+     "type": "select",
+     "required": true,
+     "note": "1=ชุดธรรมดา, 2=ชุดพิเศษ"
+    },
+    {
+     "label": "หมวดสินค้า",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 22"
+    },
+    {
+     "label": "หน่วยนับ",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 20"
+    },
+    {
+     "label": "ระดับสินค้า",
+     "type": "lookup",
+     "required": false,
+     "note": "ชุดซ้อนชุดต้องระดับต่างกัน",
+     "lookup": "ตาราง 23-ระดับสินค้า"
+    },
+    {
+     "label": "ราคาทุนมาตรฐาน",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาขาย 1",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาขาย 2",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาขาย 3",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาขาย 4",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาขาย 5",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "text",
+     "required": false,
+     "note": "50"
+    },
+    {
+     "label": "ประเภท VAT",
+     "type": "select",
+     "required": false,
+     "note": "ไม่ระบุ/อัตราปกติ/ได้รับยกเว้น"
+    },
+    {
+     "label": "สินค้าประกอบ (จำนวนรายการ)",
+     "type": "number",
+     "required": false,
+     "note": "read-only"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ที่ (ลำดับ, สูงสุด 999)",
+     "รหัสสินค้าประกอบ",
+     "รายละเอียดสินค้า",
+     "จำนวน",
+     "หน่วย",
+     "ราคาทุน (default ราคาทุนมาตรฐาน)",
+     "ราคาขาย (default ราคาขาย1)"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก/ออก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา <Alt+S>/<Ctrl+S>",
+    "พิมพ์",
+    "Note หมายเหตุเพิ่มเติม <Alt+R>",
+    "ไอคอนระเบิด [ไม่อธิบาย]",
+    "COPY SET คัดลอกสินค้าชุด",
+    "OLD/NEW เปลี่ยนรหัส <Ctrl+G>"
+   ],
+   "postings": [
+    "ชุดธรรมดา: ขายชุด -> ตัดสต๊อกส่วนประกอบทุกตัว และเฉลี่ยราคาขายเข้าส่วนประกอบตามสัดส่วน",
+    "ชุดธรรมดา: ซื้อชุด -> เฉลี่ยราคาทุนเข้าส่วนประกอบตามสัดส่วน (ราคาทุน x จำนวน)",
+    "ชุดพิเศษ: ไม่เฉลี่ย ใช้ราคาขายที่รหัสชุด"
+   ],
+   "rules": [
+    "ราคาส่วนประกอบ 0.00 -> ใช้ราคาทุนมาตรฐาน/ราคาขาย1 ของสินค้านั้นเฉลี่ยแทน",
+    "ตัวอย่าง: A1x10,B2x20,C1x30=80; ซื้อชุด100 -> A12.5,B50,C37.5"
+   ]
+  },
+  {
+   "id": "S-IC-04",
+   "name": "คัดลอกสินค้าชุด",
+   "menu": "สินค้าชุด > COPY SET",
+   "book_page": 109,
+   "pdf_page": 125,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัสสินค้าที่จะคัดลอก",
+     "type": "text",
+     "required": false,
+     "note": "read-only"
+    },
+    {
+     "label": "ตั้งรหัสใหม่เป็น",
+     "type": "text",
+     "required": true,
+     "note": ""
+    }
+   ],
+   "buttons": [
+    "ตกลง <F5>",
+    "ยกเลิก"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-IC-05",
+   "name": "รายละเอียดสินค้าบริการ",
+   "menu": "สินค้า > 4. รายละเอียดสินค้าบริการ",
+   "book_page": 110,
+   "pdf_page": 126,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "รหัสสินค้า",
+     "type": "text",
+     "required": true,
+     "note": "รูปแบบเดียวกับสินค้า เช่น 93-4100-XX"
+    },
+    {
+     "label": "บาร์โค้ด",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": "<=50"
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false,
+     "note": "<=50"
+    },
+    {
+     "label": "หมวดสินค้า",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 22"
+    },
+    {
+     "label": "หน่วยนับ",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 20"
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ประเภท VAT",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาขาย 1",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาขาย 2",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาขาย 3",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาขาย 4",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาขาย 5",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "บัญชีรายได้",
+     "type": "lookup",
+     "required": true,
+     "note": "Cr เมื่อเปิดบิลขาย",
+     "lookup": "Account"
+    },
+    {
+     "label": "บัญชีรับคืน",
+     "type": "lookup",
+     "required": false,
+     "note": "Dr เมื่อเปิดใบลดหนี้; ว่าง=ใช้บัญชีรายได้",
+     "lookup": "Account"
+    },
+    {
+     "label": "ต้นทุนบริการต่อหน่วย",
+     "type": "money",
+     "required": false,
+     "note": "0=ไม่บันทึกบัญชี"
+    },
+    {
+     "label": "Dr.บ/ช ต้นทุนบริการ",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "Account"
+    },
+    {
+     "label": "Cr.บ/ช เงินเดือน/ค่าแรง",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "Account"
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก/ออก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา <Alt+S>/<Ctrl+S>",
+    "พิมพ์",
+    "Note หมายเหตุเพิ่มเติม <Alt+R>",
+    "OLD/NEW เปลี่ยนรหัส <Ctrl+G>"
+   ],
+   "postings": [
+    "ขาย: Cr บัญชีรายได้",
+    "ลดหนี้: Dr บัญชีรับคืน (หรือบัญชีรายได้ถ้าว่าง)",
+    "ถ้าต้นทุนบริการ>0: Dr ต้นทุนบริการ / Cr เงินเดือน/ค่าแรง",
+    "ไม่กระทบสต๊อก"
+   ]
+  },
+  {
+   "id": "S-IC-06",
+   "name": "ตารางราคาขาย",
+   "menu": "สินค้า > 5. ตารางราคาขาย",
+   "book_page": 113,
+   "pdf_page": 129,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "รหัสสินค้า",
+     "type": "lookup",
+     "required": true,
+     "note": "",
+     "lookup": "Product"
+    },
+    {
+     "label": "หน่วยย่อย",
+     "type": "text",
+     "required": false,
+     "note": "read-only"
+    },
+    {
+     "label": "หน่วยขายเป็น",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 20"
+    },
+    {
+     "label": "ตัวคูณให้เป็นหน่วย",
+     "type": "number",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาที่ 1",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาที่ 2",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาที่ 3",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาที่ 4",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ราคาที่ 5",
+     "type": "money",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "grid": {
+    "columns": [
+     "หน่วยขาย (ปริมาณขั้นต่ำ+หน่วย)",
+     "ตัวคูณ",
+     "% (Y=เป็นส่วนลด%)",
+     "ราคาที่ 1",
+     "ราคาที่ 2",
+     "ราคาที่ 3",
+     "ราคาที่ 4",
+     "ราคาที่ 5",
+     "เริ่ม",
+     "สิ้นสุด"
+    ],
+    "name": "ตารางราคาเสริม <F8>"
+   },
+   "buttons": [
+    "แก้ไข",
+    "ยกเลิก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา",
+    "รายงาน",
+    "Price Chang [ไม่อธิบาย]"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-IC-07",
+   "name": "กำหนดจุดสั่งซื้อ",
+   "menu": "สินค้า > 8. กำหนดจุดสั่งซื้อ",
+   "book_page": 115,
+   "pdf_page": 131,
+   "layout": "header-grid-footer",
+   "fields": [
+    {
+     "label": "รหัสสินค้า",
+     "type": "text",
+     "required": false,
+     "note": "read-only"
+    },
+    {
+     "label": "คลัง",
+     "type": "text",
+     "required": false,
+     "note": "read-only แยกตามคลัง"
+    },
+    {
+     "label": "หน่วยนับ",
+     "type": "text",
+     "required": false,
+     "note": "read-only"
+    },
+    {
+     "label": "ชั้นเก็บ",
+     "type": "text",
+     "required": false,
+     "note": "ไม่อธิบาย"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "เดือน/วัน",
+     "จุดสั่งซื้อ",
+     "จำนวนสูงสุด",
+     "ซื้อครั้งละ",
+     "ยอดขายโครงการ"
+    ]
+   },
+   "buttons": [
+    "แก้ไข",
+    "ยกเลิก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา"
+   ],
+   "postings": [],
+   "rules": [
+    "เตือนเมื่อคงเหลือ <= จุดสั่งซื้อ (+ ยอดขายโครงการ ถ้ามี)",
+    "กำหนดหลายช่วงในปีได้; ก่อนวันเริ่มไม่เตือน"
+   ]
+  },
+  {
+   "id": "R-IC-01",
+   "name": "รายงานสินค้าที่ถึงจุดสั่งซื้อ",
+   "menu": "รายงาน > 4.8 จุดสั่งซื้อ (4.8.1-4.8.4)",
+   "book_page": 117,
+   "pdf_page": 133,
+   "layout": "report-options",
+   "fields": [
+    {
+     "label": "สิ้นสุดวันที่",
+     "type": "date",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "รหัสสินค้าจาก",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "Product"
+    },
+    {
+     "label": "รหัสสินค้าถึง",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "Product"
+    },
+    {
+     "label": "คลังสินค้าจาก",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 21"
+    },
+    {
+     "label": "คลังสินค้าถึง",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 21"
+    },
+    {
+     "label": "หมวดสินค้าจาก",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 22"
+    },
+    {
+     "label": "หมวดสินค้าถึง",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 22"
+    },
+    {
+     "label": "รหัสผู้จำหน่ายจาก",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "Supplier"
+    },
+    {
+     "label": "รหัสผู้จำหน่ายถึง",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "Supplier"
+    },
+    {
+     "label": "พิมพ์ประวัติซื้อ",
+     "type": "check",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เริ่มพิมพ์หน้า",
+     "type": "number",
+     "required": false,
+     "note": "1"
+    },
+    {
+     "label": "ถึงหน้า",
+     "type": "number",
+     "required": false,
+     "note": "9,999"
+    },
+    {
+     "label": "จำนวนบรรทัดต่อหน้า",
+     "type": "number",
+     "required": false,
+     "note": "39"
+    }
+   ],
+   "buttons": [
+    "ออก",
+    "พิมพ์",
+    "แสดงจอ [สันนิษฐาน]"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AP-01",
+   "name": "รายละเอียดผู้จำหน่าย",
+   "menu": "ซื้อ > 6. รายละเอียดผู้จำหน่าย",
+   "book_page": 118,
+   "pdf_page": 134,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัสผู้จำหน่าย",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "คำนำหน้าชื่อ",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "คำนำหน้า [สันนิษฐาน]"
+    },
+    {
+     "label": "ชื่อ",
+     "type": "text",
+     "required": true,
+     "note": "60 ตัวอักษร"
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายละเอียด",
+     "fields": [
+      {
+       "label": "ที่อยู่ บรรทัด1",
+       "type": "text",
+       "required": false,
+       "note": "50"
+      },
+      {
+       "label": "ที่อยู่ บรรทัด2",
+       "type": "text",
+       "required": false,
+       "note": "50"
+      },
+      {
+       "label": "ที่อยู่ บรรทัด3 [เห็นในภาพ]",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "รหัสไปรษณีย์",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "โทรศัพท์",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ชื่อผู้ติดต่อ",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "หมายเหตุ",
+       "type": "text",
+       "required": false,
+       "note": "",
+       "lookup": "ข้อความ"
+      },
+      {
+       "label": "เลขประจำตัวผู้เสียภาษี",
+       "type": "text",
+       "required": false,
+       "note": "13 หลัก"
+      },
+      {
+       "label": "สาขา#",
+       "type": "number",
+       "required": false,
+       "note": "0=สนญ., -1=ว่าง"
+      },
+      {
+       "label": "ประเภทเงินได้ที่จ่าย",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ประเภทเงินได้"
+      },
+      {
+       "label": "อัตราภาษีที่หัก",
+       "type": "number",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "หมวดภาษีหัก ณ ที่จ่าย",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 55"
+      },
+      {
+       "label": "เงื่อนไขการหักภาษี",
+       "type": "number",
+       "required": false,
+       "note": "1=หัก ณ ที่จ่าย; ออกให้ตลอดไป/ออกให้ครั้งเดียว"
+      },
+      {
+       "label": "ประเภทผู้จำหน่าย",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 46"
+      },
+      {
+       "label": "เลขที่บัญชี",
+       "type": "lookup",
+       "required": true,
+       "note": "บัญชีเจ้าหนี้ เช่น 2120-01",
+       "lookup": "Account"
+      },
+      {
+       "label": "ประเภทราคา",
+       "type": "select",
+       "required": false,
+       "note": "0 ยกเว้น/1 รวม VAT/2 แยก VAT"
+      },
+      {
+       "label": "ภาษีมูลค่าเพิ่ม",
+       "type": "number",
+       "required": false,
+       "note": "% เช่น 7.00"
+      },
+      {
+       "label": "ขนส่งโดย",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 41"
+      },
+      {
+       "label": "เครดิต (วัน)",
+       "type": "number",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "เงื่อนไขการชำระเงิน",
+       "type": "text",
+       "required": false,
+       "note": "เช่น 2/10,n/30 ไม่คำนวณ"
+      },
+      {
+       "label": "ส่วนลด",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "วงเงินอนุมัติ",
+       "type": "money",
+       "required": false,
+       "note": "เตือนเมื่อซื้อเกิน"
+      },
+      {
+       "label": "ยอดต้นปี",
+       "type": "money",
+       "required": false,
+       "note": "read-only จาก การเงิน 2.5"
+      },
+      {
+       "label": "วันที่บิลล่าสุด",
+       "type": "date",
+       "required": false,
+       "note": "read-only"
+      },
+      {
+       "label": "ยอดคงเหลือ",
+       "type": "money",
+       "required": false,
+       "note": "read-only"
+      },
+      {
+       "label": "เช็คจ่ายล่วงหน้า",
+       "type": "money",
+       "required": false,
+       "note": "read-only"
+      }
+     ]
+    },
+    {
+     "name": "ตารางสะสมยอดเงิน งวด 1-12",
+     "fields": [
+      {
+       "label": "ยอดคงเหลือ",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "เช็คจ่ายล่วงหน้า",
+       "type": "money",
+       "required": false,
+       "note": ""
+      }
+     ],
+     "grid": {
+      "columns": [
+       "งวด",
+       "ซื้อสด",
+       "ซื้อเชื่อ",
+       "เพิ่มหนี้",
+       "ลดหนี้",
+       "จ่ายชำระหนี้"
+      ],
+      "note": "ยอดรวม VAT read-only"
+     }
+    },
+    {
+     "name": "ตารางสะสมยอดเงิน งวด 13-24",
+     "fields": [],
+     "grid": {
+      "columns": [
+       "งวด",
+       "ซื้อสด",
+       "ซื้อเชื่อ",
+       "เพิ่มหนี้",
+       "ลดหนี้",
+       "จ่ายชำระหนี้"
+      ]
+     }
+    },
+    {
+     "name": "รายการเช็คจ่ายที่ยังไม่ผ่านบัญชี",
+     "fields": [],
+     "grid": {
+      "columns": [
+       "วันที่",
+       "เลขที่เช็ค",
+       "ธนาคาร",
+       "จำนวนเงิน",
+       "ยอดคงเหลือ",
+       "สถานะเช็ค"
+      ]
+     }
+    },
+    {
+     "name": "รายการบิลที่ค้างชำระ",
+     "fields": [],
+     "grid": {
+      "columns": [
+       "[วันครบกำหนด]",
+       "[เลขที่เอกสาร]",
+       "วันที่",
+       "เลขที่บิล",
+       "จำนวนเงิน",
+       "ยอดคงเหลือ",
+       "อ้างอิง"
+      ]
+     }
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก/ออก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา <Alt+S>/<Ctrl+S>",
+    "พิมพ์",
+    "Note หมายเหตุเพิ่มเติม <Alt+R>",
+    "OLD/NEW เปลี่ยนรหัส <Ctrl+G>"
+   ],
+   "postings": [
+    "เลขที่บัญชี = บัญชีเจ้าหนี้ที่ใช้ลงสมุดรายวันเมื่อซื้อเชื่อ/จ่ายชำระ"
+   ]
+  },
+  {
+   "id": "S-AR-01",
+   "name": "รายละเอียดลูกค้า",
+   "menu": "[ไม่ระบุ — สันนิษฐาน ขาย > รายละเอียดลูกค้า]",
+   "book_page": 124,
+   "pdf_page": 140,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัสลูกค้า",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "คำนำหน้าชื่อ",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "คำนำหน้า [สันนิษฐาน]"
+    },
+    {
+     "label": "ชื่อ",
+     "type": "text",
+     "required": true,
+     "note": "60 ตัวอักษร"
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายละเอียด",
+     "fields": [
+      {
+       "label": "ที่อยู่ บรรทัด1",
+       "type": "text",
+       "required": false,
+       "note": "50"
+      },
+      {
+       "label": "ที่อยู่ บรรทัด2",
+       "type": "text",
+       "required": false,
+       "note": "50"
+      },
+      {
+       "label": "ที่อยู่ บรรทัด3",
+       "type": "text",
+       "required": false,
+       "note": "30"
+      },
+      {
+       "label": "รหัสไปรษณีย์",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "โทรศัพท์",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ชื่อผู้ติดต่อ",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "หมายเหตุ",
+       "type": "text",
+       "required": false,
+       "note": "เช่น วางบิลทุกวันที่ 15 และ 30"
+      },
+      {
+       "label": "สถานะ",
+       "type": "select",
+       "required": false,
+       "note": "Active (ค่าอื่นไม่อธิบาย)"
+      },
+      {
+       "label": "เลขประจำตัวผู้เสียภาษี",
+       "type": "text",
+       "required": false,
+       "note": "13 หลัก"
+      },
+      {
+       "label": "สาขา#",
+       "type": "number",
+       "required": false,
+       "note": "0=สนญ., -1=ว่าง"
+      },
+      {
+       "label": "ประเภทลูกค้า",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 45"
+      },
+      {
+       "label": "เลขที่บัญชี",
+       "type": "lookup",
+       "required": true,
+       "note": "บัญชีลูกหนี้ เช่น 1130-01",
+       "lookup": "Account"
+      },
+      {
+       "label": "พนักงานขาย",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "Salesperson"
+      },
+      {
+       "label": "เขตการขาย",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 40"
+      },
+      {
+       "label": "ขนส่งโดย",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 41"
+      },
+      {
+       "label": "เครดิต (วัน)",
+       "type": "number",
+       "required": false,
+       "note": "คำนวณวันครบกำหนดในบิลขาย"
+      },
+      {
+       "label": "เงื่อนไขการชำระ",
+       "type": "text",
+       "required": false,
+       "note": "2/10,n/30"
+      },
+      {
+       "label": "ตารางราคา",
+       "type": "select",
+       "required": false,
+       "note": "ราคาขายที่ 1-5"
+      },
+      {
+       "label": "ส่วนลด",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "วงเงินอนุมัติ",
+       "type": "money",
+       "required": false,
+       "note": "เตือนเมื่อขายเกิน"
+      },
+      {
+       "label": "ยอดต้นปี",
+       "type": "money",
+       "required": false,
+       "note": "read-only จาก การเงิน 1.6"
+      },
+      {
+       "label": "วันที่บิลล่าสุด",
+       "type": "date",
+       "required": false,
+       "note": "read-only"
+      },
+      {
+       "label": "ยอดคงเหลือ",
+       "type": "money",
+       "required": false,
+       "note": "read-only"
+      },
+      {
+       "label": "เช็ครับล่วงหน้า",
+       "type": "money",
+       "required": false,
+       "note": "read-only"
+      }
+     ]
+    },
+    {
+     "name": "ตารางสะสมยอดเงิน งวด 1-12",
+     "fields": [
+      {
+       "label": "ยอดคงเหลือ",
+       "type": "money",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "เช็ครับล่วงหน้า",
+       "type": "money",
+       "required": false,
+       "note": ""
+      }
+     ],
+     "grid": {
+      "columns": [
+       "งวด",
+       "ขายสด",
+       "ขายเชื่อ",
+       "เพิ่มหนี้",
+       "ลดหนี้",
+       "รับชำระหนี้"
+      ],
+      "note": "ยอดรวม VAT"
+     }
+    },
+    {
+     "name": "ตารางสะสมยอดเงิน งวด 13-24",
+     "fields": [],
+     "grid": {
+      "columns": [
+       "งวด",
+       "ขายสด",
+       "ขายเชื่อ",
+       "เพิ่มหนี้",
+       "ลดหนี้",
+       "รับชำระหนี้"
+      ]
+     }
+    },
+    {
+     "name": "เช็คที่ยังไม่ผ่านบัญชี",
+     "fields": [],
+     "grid": {
+      "columns": [
+       "วันที่",
+       "เลขที่เช็ค",
+       "ธนาคาร",
+       "จำนวนเงิน",
+       "ยอดคงเหลือ",
+       "สถานะเช็ค"
+      ]
+     }
+    },
+    {
+     "name": "ประวัติเช็คคืน",
+     "fields": [],
+     "grid": {
+      "columns": [
+       "วันที่",
+       "เลขที่เช็ค",
+       "ธนาคาร",
+       "จำนวนเงิน",
+       "ยอดคงเหลือ",
+       "สถานะเช็ค"
+      ]
+     }
+    },
+    {
+     "name": "บิลที่ค้างชำระ",
+     "fields": [],
+     "grid": {
+      "columns": [
+       "[วันครบกำหนด]",
+       "[เลขที่บิล]",
+       "วันที่",
+       "พนักงานขาย",
+       "จำนวนเงิน",
+       "ยอดคงเหลือ",
+       "[อ้างอิง]"
+      ]
+     }
+    },
+    {
+     "name": "สถานที่ส่งสินค้า",
+     "fields": [
+      {
+       "label": "ที่อยู่/โทรศัพท์/ผู้ติดต่อ/หมายเหตุ/เลขผู้เสียภาษี ของลูกค้า",
+       "type": "text",
+       "required": false,
+       "note": "แสดงซ้ำ [สันนิษฐาน read-only]"
+      }
+     ],
+     "grid": {
+      "columns": [
+       "รหัส (เช่น สบ01)",
+       "ที่อยู่",
+       "โทร.",
+       "ชื่อผู้ติดต่อ"
+      ],
+      "name": "รายการสถานที่ส่งสินค้า <Ctrl+F7>"
+     }
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก/ออก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา <Alt+S>/<Ctrl+S>",
+    "พิมพ์",
+    "Note หมายเหตุเพิ่มเติม <Alt+R>",
+    "พิมพ์จ่าหน้าซอง/สติ๊กเกอร์",
+    "OLD/NEW เปลี่ยนรหัส <Ctrl+G>"
+   ],
+   "postings": [
+    "เลขที่บัญชี = บัญชีลูกหนี้ที่ใช้ลงสมุดรายวันเมื่อขายเชื่อ/รับชำระ"
+   ]
+  },
+  {
+   "id": "S-SO-01",
+   "name": "รายละเอียดพนักงานขาย",
+   "menu": "ขาย > 8. รายละเอียดพนักงานขาย",
+   "book_page": 131,
+   "pdf_page": 147,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัสพนักงานขาย",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ชื่อพนักงานขาย",
+     "type": "text",
+     "required": true,
+     "note": "45 ตัวอักษร"
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายละเอียดทั่วไป",
+     "fields": [
+      {
+       "label": "ตำแหน่ง",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "ประเภท",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 47"
+      },
+      {
+       "label": "เขตการขาย",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 40"
+      },
+      {
+       "label": "อัตราค่าคอมฯ",
+       "type": "number",
+       "required": false,
+       "note": "%"
+      },
+      {
+       "label": "ที่อยู่ (3 บรรทัด)",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "รหัสไปรษณีย์",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "โทร.",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "เลขประจำตัวผู้เสียภาษี",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "เลขที่บัตรประกันสังคม",
+       "type": "text",
+       "required": false,
+       "note": ""
+      }
+     ]
+    },
+    {
+     "name": "กำหนดเป้าการขาย",
+     "fields": [
+      {
+       "label": "รวม งวด 1-12",
+       "type": "money",
+       "required": false,
+       "note": "read-only"
+      },
+      {
+       "label": "รวม งวด 13-24",
+       "type": "money",
+       "required": false,
+       "note": "read-only"
+      }
+     ],
+     "grid": {
+      "columns": [
+       "งวด (1-12)",
+       "เป้าการขาย",
+       "งวด (13-24)",
+       "เป้าการขาย"
+      ],
+      "note": "เปรียบเทียบที่รายงาน 774"
+     }
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก/ออก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา <Alt+S>/<Ctrl+S>",
+    "พิมพ์",
+    "OLD/NEW เปลี่ยนรหัส <Ctrl+G>"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-CQ-01",
+   "name": "รายละเอียดบัญชีเงินฝาก",
+   "menu": "การเงิน > 3.7 รายละเอียดบัญชีเงินฝาก",
+   "book_page": 133,
+   "pdf_page": 149,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "รหัสบัญชี",
+     "type": "text",
+     "required": true,
+     "note": "เช่น C1"
+    },
+    {
+     "label": "ชื่อบัญชีเงินฝาก",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "สาขา",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "สมุดบัญชีเลขที่",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อย่อ",
+     "type": "text",
+     "required": false,
+     "note": "BBL, TFB"
+    },
+    {
+     "label": "เลขที่บัญชี",
+     "type": "lookup",
+     "required": true,
+     "note": "บัญชี GL เงินฝาก",
+     "lookup": "Account"
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก/ออก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา <Alt+S>/<Ctrl+S>",
+    "พิมพ์",
+    "พิมพ์รายการเคลื่อนไหว",
+    "ถังขยะ [ไม่อธิบาย]"
+   ],
+   "postings": [
+    "เลขที่บัญชีเป็นฝั่ง Dr/Cr เงินฝากในสมุดรายวัน"
+   ]
+  },
+  {
+   "id": "R-CQ-01",
+   "name": "รายการเคลื่อนไหวบัญชีเงินฝาก",
+   "menu": "บัญชีเงินฝาก > พิมพ์",
+   "book_page": 134,
+   "pdf_page": 150,
+   "layout": "report-preview",
+   "fields": [
+    {
+     "label": "เริ่มพิมพ์จากวันที่",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ถึงวันที่",
+     "type": "date",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "grid": {
+    "columns": [
+     "วันที่",
+     "MNE",
+     "เลขที่",
+     "ยอดถอน",
+     "ยอดฝาก",
+     "ยอดคงเหลือ",
+     "สถานะเช็ค",
+     "หมายเหตุ"
+    ]
+   },
+   "buttons": [
+    "พิมพ์",
+    "ค้นหา"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-AP-02",
+   "name": "รายละเอียดค่าใช้จ่ายอื่นๆ",
+   "menu": "ซื้อ > 7. รายละเอียดค่าใช้จ่ายอื่นๆ",
+   "book_page": 135,
+   "pdf_page": 151,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "รหัสค่าใช้จ่าย",
+     "type": "text",
+     "required": true,
+     "note": "รูปแบบรหัสสินค้า เช่น 95-5200-02"
+    },
+    {
+     "label": "บาร์โค้ด",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "tabs": [
+    {
+     "name": "รายละเอียด",
+     "fields": [
+      {
+       "label": "หมวดสินค้า",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 22"
+      },
+      {
+       "label": "หน่วยนับ",
+       "type": "lookup",
+       "required": false,
+       "note": "",
+       "lookup": "ตาราง 20"
+      },
+      {
+       "label": "ประเภท VAT",
+       "type": "select",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false,
+       "note": "ถ้าจ่ายเท่ากันทุกครั้ง"
+      },
+      {
+       "label": "หมายเหตุ",
+       "type": "text",
+       "required": false,
+       "note": ""
+      },
+      {
+       "label": "บ/ช ค่าใช้จ่าย",
+       "type": "lookup",
+       "required": true,
+       "note": "",
+       "lookup": "Account"
+      }
+     ]
+    },
+    {
+     "name": "ฟิลด์เพิ่มเติม",
+     "fields": []
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก/ออก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา <Alt+S>/<Ctrl+S>",
+    "พิมพ์",
+    "Note หมายเหตุเพิ่มเติม <Alt+R>",
+    "OLD/NEW เปลี่ยนรหัส <Ctrl+G>"
+   ],
+   "postings": [
+    "บันทึกค่าใช้จ่ายอื่น: Dr บ/ช ค่าใช้จ่าย (ฝั่ง Cr ตามเอกสาร — ไม่ระบุในบทนี้)"
+   ]
+  },
+  {
+   "id": "S-SO-02",
+   "name": "รายละเอียดรายได้อื่นๆ",
+   "menu": "ขาย > 7. รายละเอียดรายได้อื่นๆ",
+   "book_page": 136,
+   "pdf_page": 152,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "รหัสรายได้",
+     "type": "text",
+     "required": true,
+     "note": "เช่น 94-4100-02"
+    },
+    {
+     "label": "บาร์โค้ด",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "หมวดสินค้า",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 22"
+    },
+    {
+     "label": "หน่วยนับ",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ตาราง 20"
+    },
+    {
+     "label": "ราคาขาย/จำนวนเงิน",
+     "type": "money",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ประเภท VAT",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "บัญชีรายได้",
+     "type": "lookup",
+     "required": true,
+     "note": "Cr เมื่อบันทึกรายได้อื่น",
+     "lookup": "Account"
+    },
+    {
+     "label": "บัญชีลดหนี้ (บัญชีรับคืน)",
+     "type": "lookup",
+     "required": false,
+     "note": "Dr เมื่อลดหนี้; ว่าง=บัญชีรายได้",
+     "lookup": "Account"
+    },
+    {
+     "label": "ต้นทุนบริการต่อหน่วย",
+     "type": "money",
+     "required": false,
+     "note": "0=ไม่บันทึกบัญชี"
+    },
+    {
+     "label": "Dr.บ/ช ต้นทุนบริการ",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "Account"
+    },
+    {
+     "label": "Cr.บ/ช เงินเดือน/ค่าแรง",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "Account"
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก/ออก",
+    "บันทึก",
+    "รายการแรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "รายการสุดท้าย",
+    "ค้นหา <Alt+S>/<Ctrl+S>",
+    "พิมพ์",
+    "Note หมายเหตุเพิ่มเติม <Alt+R>",
+    "OLD/NEW เปลี่ยนรหัส <Ctrl+G>"
+   ],
+   "postings": [
+    "Cr บัญชีรายได้",
+    "ลดหนี้: Dr บัญชีรับคืน/ลดหนี้",
+    "ต้นทุน>0: Dr ต้นทุนบริการ / Cr เงินเดือน/ค่าแรง"
+   ]
+  }
+ ],
+ "entities": [
+  {
+   "name": "Account",
+   "fields": [
+    "เลขที่บัญชี (PK)",
+    "ชื่อไทย",
+    "ชื่ออังกฤษ",
+    "บัญชีคุม (FK Account)",
+    "ระดับบัญชี",
+    "หมวดบัญชี (1-5)",
+    "ประเภท (คุม/ย่อย)",
+    "แยกแผนก (Y/N)"
+   ],
+   "relations": [
+    "-> Account parent (n:1 self)",
+    "<- Customer, Supplier, BankAccount, Product(service/expense/income) (1:n)"
+   ]
+  },
+  {
+   "name": "Product",
+   "fields": [
+    "รหัส (PK, masked)",
+    "ชนิด (สินค้า/ชุด/บริการ/ค่าใช้จ่ายอื่น/รายได้อื่น) [สันนิษฐาน]",
+    "บาร์โค้ด",
+    "ชื่อไทย(50)",
+    "ชื่ออังกฤษ(50)",
+    "หมวดสินค้า (FK Lookup22)",
+    "กลุ่มบัญชีสินค้า (FK)",
+    "หน่วยย่อย",
+    "หน่วยใหญ่+ตัวคูณ",
+    "หน่วยซื้อ+ตัวคูณ",
+    "หน่วยขาย+ตัวคูณ",
+    "สินค้าทดแทน (FK Product)",
+    "ติดลบได้ (Y/N/A)",
+    "ราคาขาย1-5",
+    "บรรจุ/หีบห่อ",
+    "ผู้จำหน่าย (FK Supplier)",
+    "ประเภท VAT",
+    "ราคาทุนมาตรฐาน",
+    "หมายเหตุ",
+    "หมายเหตุเพิ่มเติม(10 บรรทัด)",
+    "ยอดคงเหลือ*",
+    "ราคาต่อหน่วย*",
+    "มูลค่าคงเหลือ*"
+   ],
+   "relations": [
+    "-> ProductWarehouse (1:n)",
+    "-> ProductOpeningLot (1:n)",
+    "-> ProductSetComponent (1:n ชุด)",
+    "-> PriceSchedule (1:n)",
+    "-> ReorderPoint (1:n)",
+    "-> ServiceAccounting (1:1 บริการ/รายได้อื่น)",
+    "-> ProductExtraField (1:n)"
+   ]
+  },
+  {
+   "name": "ProductWarehouse",
+   "fields": [
+    "สินค้า",
+    "คลัง (FK Lookup21)",
+    "ยอดยกมา",
+    "มูลค่ายกมา",
+    "ยอดคงเหลือ",
+    "ราคาต่อหน่วย",
+    "มูลค่าคงเหลือ",
+    "วันที่/ราคา/ส่วนลด ซื้อล่าสุด",
+    "วันที่/ราคา/ส่วนลด ขายล่าสุด",
+    "จำนวนค้างรับ",
+    "จำนวนค้างส่ง"
+   ],
+   "relations": [
+    "-> Product (n:1)",
+    "-> Warehouse (n:1)"
+   ]
+  },
+  {
+   "name": "ProductSetComponent",
+   "fields": [
+    "สินค้าชุด",
+    "ที่ (ลำดับ <=999)",
+    "สินค้าประกอบ",
+    "จำนวน",
+    "หน่วย",
+    "ราคาทุน",
+    "ราคาขาย"
+   ],
+   "relations": [
+    "-> Product ชุด (n:1)",
+    "-> Product ส่วนประกอบ (n:1)"
+   ]
+  },
+  {
+   "name": "ProductSetHeader(ส่วนขยายของ Product)",
+   "fields": [
+    "ประเภทชุด (1 ธรรมดา/2 พิเศษ)",
+    "ระดับสินค้า (FK Lookup23)"
+   ],
+   "relations": [
+    "-> Product (1:1)"
+   ]
+  },
+  {
+   "name": "ServiceAccounting",
+   "fields": [
+    "บัญชีรายได้",
+    "บัญชีรับคืน/ลดหนี้",
+    "ต้นทุนบริการต่อหน่วย",
+    "Dr บ/ช ต้นทุนบริการ",
+    "Cr บ/ช เงินเดือน/ค่าแรง",
+    "บ/ช ค่าใช้จ่าย (ค่าใช้จ่ายอื่น)",
+    "จำนวนเงิน default"
+   ],
+   "relations": [
+    "-> Account (n:1 หลายฟิลด์)"
+   ]
+  },
+  {
+   "name": "PriceSchedule",
+   "fields": [
+    "สินค้า",
+    "ปริมาณขั้นต่ำ(หน่วยขาย)",
+    "หน่วย",
+    "ตัวคูณ",
+    "เป็น% (Y)",
+    "ราคา1-5",
+    "วันเริ่ม",
+    "วันสิ้นสุด"
+   ],
+   "relations": [
+    "-> Product (n:1)"
+   ]
+  },
+  {
+   "name": "ReorderPoint",
+   "fields": [
+    "สินค้า",
+    "คลัง",
+    "ชั้นเก็บ",
+    "เดือน/วันเริ่ม",
+    "จุดสั่งซื้อ",
+    "จำนวนสูงสุด",
+    "ซื้อครั้งละ",
+    "ยอดขายโครงการ"
+   ],
+   "relations": [
+    "-> ProductWarehouse (n:1)"
+   ]
+  },
+  {
+   "name": "Supplier",
+   "fields": [
+    "รหัส",
+    "คำนำหน้า",
+    "ชื่อ(60)",
+    "ที่อยู่ 2-3 บรรทัด",
+    "รหัสไปรษณีย์",
+    "โทรศัพท์",
+    "ผู้ติดต่อ",
+    "หมายเหตุ",
+    "เลขผู้เสียภาษี(13)",
+    "สาขา# (0/-1/n)",
+    "ประเภทเงินได้ที่จ่าย",
+    "อัตราภาษีที่หัก",
+    "หมวดภาษีหัก ณ ที่จ่าย (FK Lookup55)",
+    "เงื่อนไขการหักภาษี",
+    "ประเภทผู้จำหน่าย (FK Lookup46)",
+    "บัญชีเจ้าหนี้ (FK Account)",
+    "ประเภทราคา (0/1/2)",
+    "%VAT",
+    "ขนส่งโดย (FK Lookup41)",
+    "เครดิต(วัน)",
+    "เงื่อนไขการชำระเงิน",
+    "ส่วนลด",
+    "วงเงินอนุมัติ",
+    "ยอดต้นปี*",
+    "วันที่บิลล่าสุด*",
+    "ยอดคงเหลือ*",
+    "เช็คจ่ายล่วงหน้า*"
+   ],
+   "relations": [
+    "-> SupplierPeriodBalance (1:24)",
+    "<- PurchaseDoc (1:n)",
+    "<- Cheque จ่าย (1:n)",
+    "<- Product.ผู้จำหน่าย (1:n)"
+   ]
+  },
+  {
+   "name": "SupplierPeriodBalance",
+   "fields": [
+    "ผู้จำหน่าย",
+    "งวด 1-24",
+    "ซื้อสด",
+    "ซื้อเชื่อ",
+    "เพิ่มหนี้",
+    "ลดหนี้",
+    "จ่ายชำระหนี้"
+   ],
+   "relations": [
+    "-> Supplier (n:1)",
+    "-> FiscalPeriod (n:1)"
+   ]
+  },
+  {
+   "name": "Customer",
+   "fields": [
+    "รหัส",
+    "คำนำหน้า",
+    "ชื่อ(60)",
+    "ที่อยู่ 3 บรรทัด (50/50/30)",
+    "รหัสไปรษณีย์",
+    "โทรศัพท์",
+    "ผู้ติดต่อ",
+    "หมายเหตุ",
+    "สถานะ (Active)",
+    "เลขผู้เสียภาษี(13)",
+    "สาขา#",
+    "ประเภทลูกค้า (FK Lookup45)",
+    "บัญชีลูกหนี้ (FK Account)",
+    "พนักงานขาย (FK Salesperson)",
+    "เขตการขาย (FK Lookup40)",
+    "ขนส่งโดย (FK Lookup41)",
+    "เครดิต(วัน)",
+    "เงื่อนไขการชำระ",
+    "ตารางราคา (1-5)",
+    "ส่วนลด",
+    "วงเงินอนุมัติ",
+    "ยอดต้นปี*",
+    "วันที่บิลล่าสุด*",
+    "ยอดคงเหลือ*",
+    "เช็ครับล่วงหน้า*"
+   ],
+   "relations": [
+    "-> CustomerPeriodBalance (1:24)",
+    "-> CustomerShipTo (1:n)",
+    "-> Salesperson (n:1)",
+    "<- SalesDoc (1:n)",
+    "<- Cheque รับ (1:n)"
+   ]
+  },
+  {
+   "name": "CustomerPeriodBalance",
+   "fields": [
+    "ลูกค้า",
+    "งวด 1-24",
+    "ขายสด",
+    "ขายเชื่อ",
+    "เพิ่มหนี้",
+    "ลดหนี้",
+    "รับชำระหนี้"
+   ],
+   "relations": [
+    "-> Customer (n:1)"
+   ]
+  },
+  {
+   "name": "CustomerShipTo",
+   "fields": [
+    "ลูกค้า",
+    "รหัสสถานที่ส่ง",
+    "ที่อยู่",
+    "โทร.",
+    "ชื่อผู้ติดต่อ"
+   ],
+   "relations": [
+    "-> Customer (n:1)",
+    "<- SalesDoc/ใบกำกับภาษี (1:n)"
+   ]
+  },
+  {
+   "name": "Salesperson",
+   "fields": [
+    "รหัส",
+    "ชื่อ(45)",
+    "ตำแหน่ง",
+    "ประเภท (FK Lookup47)",
+    "เขตการขาย (FK Lookup40)",
+    "อัตราค่าคอมฯ%",
+    "ที่อยู่",
+    "รหัสไปรษณีย์",
+    "โทร.",
+    "เลขผู้เสียภาษี",
+    "เลขที่บัตรประกันสังคม"
+   ],
+   "relations": [
+    "-> SalesTarget (1:24)",
+    "<- Customer (1:n)",
+    "<- SalesDoc (1:n)"
+   ]
+  },
+  {
+   "name": "SalesTarget",
+   "fields": [
+    "พนักงานขาย",
+    "งวด 1-24",
+    "เป้าการขาย"
+   ],
+   "relations": [
+    "-> Salesperson (n:1)"
+   ]
+  },
+  {
+   "name": "BankAccount",
+   "fields": [
+    "รหัสบัญชี",
+    "ชื่อบัญชีเงินฝาก",
+    "สาขา",
+    "สมุดบัญชีเลขที่",
+    "ชื่อย่อ",
+    "เลขที่บัญชี GL (FK Account)"
+   ],
+   "relations": [
+    "-> Account (n:1)",
+    "<- BankTxn/Cheque (1:n)"
+   ]
+  },
+  {
+   "name": "Cheque (view ใน master)",
+   "fields": [
+    "วันที่",
+    "เลขที่เช็ค",
+    "ธนาคาร",
+    "จำนวนเงิน",
+    "ยอดคงเหลือ",
+    "สถานะเช็ค"
+   ],
+   "relations": [
+    "-> Customer/Supplier (n:1)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "ตั้งค่าแฟ้มข้อมูลหลัก",
+   "steps": [
+    "ตรวจ/ปรับผังบัญชี",
+    "ตรวจเลขที่เอกสาร/บัญชีลงรายวัน/งบการเงิน ถ้าเปลี่ยนผัง",
+    "กำหนดสินค้า",
+    "กำหนดสินค้าชุด",
+    "กำหนดสินค้าบริการ",
+    "ตารางราคาขาย",
+    "จุดสั่งซื้อ",
+    "ผู้จำหน่าย",
+    "พนักงานขาย",
+    "ลูกค้า + สถานที่ส่งของ",
+    "บัญชีเงินฝาก",
+    "ค่าใช้จ่ายอื่น",
+    "รายได้อื่น",
+    "ป้อนยอดยกมา (บทที่ 8)"
+   ]
+  },
+  {
+   "name": "เปลี่ยนรหัส master ที่ถูกใช้แล้ว",
+   "steps": [
+    "เลือก record",
+    "กดเปลี่ยนรหัส <Ctrl+G>",
+    "ป้อนรหัสใหม่",
+    "ตกลง <F5>",
+    "ระบบแก้ทุกรายการที่อ้างถึง"
+   ]
+  },
+  {
+   "name": "ลบบัญชีคุม",
+   "steps": [
+    "พิมพ์รายงาน 5.5 ตรวจบัญชีย่อย",
+    "ลบบัญชีย่อยทั้งหมด",
+    "ลบบัญชีคุม"
+   ]
+  },
+  {
+   "name": "เฉลี่ยราคาสินค้าชุดธรรมดา",
+   "steps": [
+    "รวม (ราคาทุน x จำนวน) ของส่วนประกอบ",
+    "สัดส่วนแต่ละตัว = (ราคา x จำนวน)/รวม",
+    "ราคาซื้อชุด x สัดส่วน = ต้นทุนส่วนประกอบ",
+    "ทำเช่นเดียวกันกับราคาขาย",
+    "ถ้าราคาส่วนประกอบ 0 ใช้ราคาทุนมาตรฐาน/ราคาขาย1"
+   ]
+  },
+  {
+   "name": "เตือนจุดสั่งซื้อ",
+   "steps": [
+    "ตั้งเดือน/วันเริ่ม + จุดสั่งซื้อ (+ยอดขายโครงการ)",
+    "ระบบเปรียบเทียบยอดคงเหลือกับจุดสั่งซื้อ(+โครงการ)",
+    "พิมพ์รายงาน 4.8.2/4.8.3 เพื่อสั่งซื้อ",
+    "4.8.4 ตรวจสินค้าเกินจุดสูงสุด"
+   ]
+  }
+ ]
+}

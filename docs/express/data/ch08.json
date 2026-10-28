@@ -1,0 +1,897 @@
+{
+ "chapter": 8,
+ "title": "การบันทึกยอดยกมาของระบบต่าง ๆ",
+ "book_pages": "139-150",
+ "screens": [
+  {
+   "id": "S-OB-01",
+   "name": "รายละเอียดสินค้า – ล็อตสินค้ายกมา <F7> (FIFO)",
+   "menu": "สินค้า > 2 รายละเอียดสินค้า > แท็บ ล็อตสินค้ายกมา <F7>",
+   "book_page": 140,
+   "pdf_page": 156,
+   "layout": "tabs",
+   "tabs": [
+    {
+     "name": "ล็อตสินค้ายกมา <F7>",
+     "fields": [
+      {
+       "label": "ยอดยกมา",
+       "type": "number",
+       "required": false,
+       "note": "สรุปจากล็อต [สันนิษฐาน]"
+      },
+      {
+       "label": "มูลค่ายกมา",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดคงเหลือ",
+       "type": "number",
+       "required": false,
+       "note": "ระบบคำนวณ"
+      },
+      {
+       "label": "มูลค่าคงเหลือ",
+       "type": "money",
+       "required": false,
+       "note": "ระบบคำนวณ"
+      }
+     ]
+    },
+    {
+     "name": "รายละเอียด",
+     "fields": []
+    },
+    {
+     "name": "คลังสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "ฟิลด์เพิ่มเติม",
+     "fields": []
+    }
+   ],
+   "fields": [
+    {
+     "label": "รหัส",
+     "type": "lookup",
+     "required": true,
+     "lookup": "Product"
+    },
+    {
+     "label": "บาร์โค้ด",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false
+    }
+   ],
+   "grid": {
+    "columns": [
+     "วันที่",
+     "คลัง",
+     "ชื่อคลัง",
+     "เลขที่เอกสาร",
+     "(คอลัมน์ค่า 1 - หัวอ่านไม่ชัด)",
+     "จำนวนเดิม [สันนิษฐาน]",
+     "มูลค่าเดิม [สันนิษฐาน]",
+     "จำนวน ปป.",
+     "มูลค่า ปป."
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "เพิ่มบรรทัด <Alt+A>/ดับเบิ้ลคลิก"
+   ],
+   "postings": [
+    "ไม่ลง GL — สร้างล็อตต้นทุนยกมา FIFO; จำนวนเป็นหน่วยนับย่อย; ไม่ทราบล็อตให้ใส่เลขที่เอกสาร 'ยอดยกมา'"
+   ]
+  },
+  {
+   "id": "S-OB-02",
+   "name": "รายละเอียดสินค้า – คลังสินค้า <F8> (Average)",
+   "menu": "สินค้า > 2 รายละเอียดสินค้า > แท็บ คลังสินค้า <F8>",
+   "book_page": 141,
+   "pdf_page": 157,
+   "layout": "tabs",
+   "tabs": [
+    {
+     "name": "คลังสินค้า <F8>",
+     "fields": [
+      {
+       "label": "วันที่ซื้อล่าสุด",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "ราคาซื้อล่าสุด",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "หน่วย(ซื้อ)",
+       "type": "lookup",
+       "required": false,
+       "lookup": "Unit"
+      },
+      {
+       "label": "ส่วนลดซื้อล่าสุด",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "จำนวนค้างรับ",
+       "type": "number",
+       "required": false
+      },
+      {
+       "label": "วันที่ขายล่าสุด",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "ราคาขายล่าสุด",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "หน่วย(ขาย)",
+       "type": "lookup",
+       "required": false,
+       "lookup": "Unit"
+      },
+      {
+       "label": "ส่วนลดขายล่าสุด",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "จำนวนค้างส่ง",
+       "type": "number",
+       "required": false
+      }
+     ]
+    }
+   ],
+   "fields": [
+    {
+     "label": "รหัส",
+     "type": "lookup",
+     "required": true,
+     "lookup": "Product"
+    },
+    {
+     "label": "บาร์โค้ด",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ชื่อไทย",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ชื่ออังกฤษ",
+     "type": "text",
+     "required": false
+    }
+   ],
+   "grid": {
+    "columns": [
+     "คลัง",
+     "ชื่อย่อ",
+     "ยอดยกมา",
+     "มูลค่ายกมา",
+     "ยอดคงเหลือ",
+     "ราคาต่อหน่วย",
+     "มูลค่าคงเหลือ",
+     "ชั้นเก็บ"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "แก้ไขคลัง <Alt+E>/ดับเบิ้ลคลิก",
+    "ยกเลิก <Esc>"
+   ],
+   "postings": [
+    "ไม่ลง GL — ตั้งยอดสต๊อกยกมารายคลัง; Periodic ต้องบันทึก บัญชี 5 บัญชีสินค้าคงเหลือ เพิ่ม"
+   ]
+  },
+  {
+   "id": "S-OB-03",
+   "name": "RR - ซื้อเงินเชื่อ (ยอดยกมา) / บันทึกรายการเจ้าหนี้คงค้าง-ยกมา",
+   "menu": "การเงิน > 2.5 บันทึกรายการเจ้าหนี้คงค้าง-ยกมา",
+   "book_page": 142,
+   "pdf_page": 158,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "รายการจ่ายชำระ <F7>",
+     "fields": [
+      {
+       "label": "ภาระภาษีซื้อ",
+       "type": "select",
+       "required": false
+      },
+      {
+       "label": "ใบรับวางบิล#",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดชำระ/ลดหนี้",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดคงค้าง",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ชำระเงินเรียบร้อย",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "วันที่เรียบร้อย",
+       "type": "date",
+       "required": false
+      }
+     ]
+    }
+   ],
+   "fields": [
+    {
+     "label": "ผู้จำหน่าย",
+     "type": "lookup",
+     "required": true,
+     "lookup": "Supplier"
+    },
+    {
+     "label": "เลขที่บิล",
+     "type": "text",
+     "required": false,
+     "note": "เลขใบกำกับของผู้จำหน่าย"
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Department"
+    },
+    {
+     "label": "เลขที่เอกสาร",
+     "type": "text",
+     "required": true,
+     "note": "ห้ามซ้ำปีปัจจุบัน เช่น RR43/9568"
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true,
+     "note": "ต้องก่อนวันเริ่มใช้โปรแกรม"
+    },
+    {
+     "label": "เครดิต (วัน)",
+     "type": "number",
+     "required": false
+    },
+    {
+     "label": "ครบกำหนด",
+     "type": "date",
+     "required": false,
+     "note": "คำนวณจากวันเครดิตผู้จำหน่าย"
+    },
+    {
+     "label": "ประเภทราคา",
+     "type": "select",
+     "required": true,
+     "note": "0=ยกเว้นภาษี,1=รวมภาษี,2=แยก VAT"
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "memo",
+     "required": false
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": true
+    },
+    {
+     "label": "หักส่วนลด(สูตร)",
+     "type": "text",
+     "required": false,
+     "note": "ดึงจากผู้จำหน่าย แก้ได้"
+    },
+    {
+     "label": "ยอดหลังหักส่วนลด",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "ภาษีมูลค่าเพิ่ม %",
+     "type": "number",
+     "required": false,
+     "note": "ปัดเศษไม่ตรง → 0% แล้วป้อนจำนวนภาษีเอง"
+    },
+    {
+     "label": "จำนวนภาษี",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "จำนวนเงินรวมทั้งสิ้น",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "ภาษีซื้อเกิดขึ้นแล้วเมื่อ",
+     "type": "date",
+     "required": false,
+     "note": "ว่าง = เกณฑ์เงินสด"
+    },
+    {
+     "label": "ภาระภาษีซื้อ",
+     "type": "select",
+     "required": false,
+     "note": "เกณฑ์สิทธิ/เกณฑ์เงินสด อัตโนมัติ"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ใบจ่ายเงิน #",
+     "วันที่",
+     "วันที่จ่าย",
+     "ยอดจ่าย",
+     "วันที่เรียบร้อย"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "แก้ไขยอดเงิน"
+   ],
+   "postings": [
+    "ตั้งยอดเจ้าหนี้รายตัว + ข้อมูลภาษีซื้อ; ไม่ลง GL [สันนิษฐาน]"
+   ]
+  },
+  {
+   "id": "S-OB-04",
+   "name": "IV - ขายเงินเชื่อ (ยอดยกมา) / บันทึกรายการลูกหนี้คงค้าง-ยกมา",
+   "menu": "การเงิน > 1.6 บันทึกรายการลูกหนี้คงค้าง-ยกมา",
+   "book_page": 145,
+   "pdf_page": 161,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "รายการรับชำระ <F7>",
+     "fields": [
+      {
+       "label": "ภาระภาษีขาย",
+       "type": "select",
+       "required": false
+      },
+      {
+       "label": "ใบวางบิล#",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดชำระ/ลดหนี้",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดคงค้าง",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "คอมมิชชั่น",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ชำระเงินเรียบร้อย",
+       "type": "check",
+       "required": false
+      },
+      {
+       "label": "วันที่เรียบร้อย",
+       "type": "date",
+       "required": false
+      }
+     ]
+    }
+   ],
+   "fields": [
+    {
+     "label": "รหัส(ลูกค้า)",
+     "type": "lookup",
+     "required": true,
+     "lookup": "Customer",
+     "note": "ดึงพนักงานขาย เขต ครบกำหนด %ส่วนลด"
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Department"
+    },
+    {
+     "label": "เลขที่",
+     "type": "text",
+     "required": true,
+     "note": "เช่น IV4800001 ห้ามซ้ำปีปัจจุบัน"
+    },
+    {
+     "label": "วันที่",
+     "type": "date",
+     "required": true,
+     "note": "ก่อนวันเริ่มใช้"
+    },
+    {
+     "label": "เครดิต (วัน)",
+     "type": "number",
+     "required": false
+    },
+    {
+     "label": "ครบ",
+     "type": "date",
+     "required": false
+    },
+    {
+     "label": "พนักงานขาย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "SalesPerson"
+    },
+    {
+     "label": "เขตการขาย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "SalesArea"
+    },
+    {
+     "label": "ขนส่ง",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Shipping"
+    },
+    {
+     "label": "ประเภท(ราคา)",
+     "type": "select",
+     "required": true,
+     "note": "0/1/2"
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": true
+    },
+    {
+     "label": "หักส่วนลด",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ยอดหลังหักส่วนลด",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "ภาษีมูลค่าเพิ่ม %",
+     "type": "number",
+     "required": false
+    },
+    {
+     "label": "จำนวนภาษี",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "จำนวนเงินรวมทั้งสิ้น",
+     "type": "money",
+     "required": false
+    },
+    {
+     "label": "ภาษีขายเกิดขึ้นแล้วเมื่อ",
+     "type": "date",
+     "required": false
+    },
+    {
+     "label": "ภาระภาษี",
+     "type": "select",
+     "required": false
+    }
+   ],
+   "grid": {
+    "columns": [
+     "เลขที่ใบเสร็จ",
+     "วันที่",
+     "วันที่รับชำระ",
+     "จำนวนเงิน",
+     "วันที่เรียบร้อย"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "แก้ไขยอดเงิน"
+   ],
+   "postings": [
+    "ตั้งยอดลูกหนี้รายตัว + ข้อมูลภาษีขาย; ไม่ลง GL [สันนิษฐาน]; อย่ารวมยอดที่ชำระด้วยเช็คยกมาซ้ำ"
+   ]
+  },
+  {
+   "id": "S-OB-05",
+   "name": "ทะเบียนเช็ครับ (ป้อนเช็คยกมา)",
+   "menu": "การเงิน > 3.3 ทะเบียนเช็ครับ (เช็คจ่าย 3.5)",
+   "book_page": 147,
+   "pdf_page": 163,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Department"
+    },
+    {
+     "label": "วันที่เช็ค",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "วันที่รับเช็ค",
+     "type": "date",
+     "required": true
+    },
+    {
+     "label": "เลขที่เช็ค",
+     "type": "text",
+     "required": true
+    },
+    {
+     "label": "เช็คธนาคาร",
+     "type": "lookup",
+     "required": true,
+     "lookup": "Bank"
+    },
+    {
+     "label": "เช็คสาขา",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "รหัสลูกค้า",
+     "type": "lookup",
+     "required": true,
+     "lookup": "Customer",
+     "note": "Enter แล้วถามว่าเป็นเช็คยกมาหรือไม่"
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": true
+    },
+    {
+     "label": "ผู้สั่งจ่าย",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "หมายเหตุ",
+     "type": "memo",
+     "required": false
+    }
+   ],
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา",
+    "พิมพ์",
+    "Dialog: ตกลง (=เช็คยกมา) / ยกเลิก (=เช็ครับล่วงหน้า)"
+   ],
+   "postings": [
+    "สร้างเช็คในทะเบียน; ยอด GL เช็ครับล่วงหน้าป้อนที่ S-OB-06"
+   ]
+  },
+  {
+   "id": "S-OB-06",
+   "name": "บันทึกยอดยกมา",
+   "menu": "บัญชี > 3.1 บันทึกยอดยกมา",
+   "book_page": 149,
+   "pdf_page": 165,
+   "layout": "list",
+   "fields": [
+    {
+     "label": "เลขที่บัญชี",
+     "type": "lookup",
+     "required": true,
+     "lookup": "Account"
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Department"
+    },
+    {
+     "label": "ชื่อบัญชี",
+     "type": "text",
+     "required": false,
+     "note": "แสดงจากผัง"
+    },
+    {
+     "label": "ยอดยกมา",
+     "type": "money",
+     "required": true,
+     "note": "เดบิต=บวก เครดิต=ติดลบ; ไม่ตรวจดุล"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "เลขที่บัญชี",
+     "แผนก",
+     "ชื่อบัญชี",
+     "ยอดยกมา"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม <Alt+A>",
+    "แก้ไข",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย",
+    "ค้นหา"
+   ],
+   "postings": [
+    "ตั้งยอดยกมา GL (signed amount)"
+   ]
+  },
+  {
+   "id": "S-OB-07",
+   "name": "งบทดลองแบบเต็ม (ตรวจยอดยกมา)",
+   "menu": "รายงาน > 5.6.1 งบทดลองแบบเต็ม",
+   "book_page": 150,
+   "pdf_page": 166,
+   "layout": "report-options",
+   "fields": [],
+   "grid": {
+    "columns": [
+     "เลขที่บัญชี",
+     "แผนก",
+     "ชื่อบัญชี",
+     "ยอดยกมา เดบิต",
+     "ยอดยกมา เครดิต"
+    ]
+   },
+   "buttons": [
+    "พิมพ์",
+    "ค้นหา"
+   ],
+   "postings": []
+  }
+ ],
+ "entities": [
+  {
+   "name": "StockLot",
+   "fields": [
+    "product_code",
+    "date",
+    "warehouse_code",
+    "doc_no",
+    "qty_orig",
+    "value_orig",
+    "qty_adj",
+    "value_adj"
+   ],
+   "relations": [
+    "-> Product (n:1)",
+    "-> Warehouse (n:1)"
+   ]
+  },
+  {
+   "name": "ProductWarehouseBalance",
+   "fields": [
+    "product_code",
+    "warehouse_code",
+    "opening_qty",
+    "opening_value",
+    "balance_qty",
+    "unit_cost",
+    "balance_value",
+    "shelf"
+   ],
+   "relations": [
+    "-> Product (n:1)",
+    "-> Warehouse (n:1)"
+   ]
+  },
+  {
+   "name": "APInvoice",
+   "fields": [
+    "doc_no",
+    "date",
+    "is_opening",
+    "supplier_code",
+    "bill_no",
+    "department",
+    "credit_days",
+    "due_date",
+    "price_type",
+    "amount",
+    "discount_formula",
+    "amount_after_discount",
+    "vat_rate",
+    "vat_amount",
+    "net_amount",
+    "input_vat_date",
+    "vat_basis",
+    "remark",
+    "paid_flag",
+    "paid_date",
+    "outstanding"
+   ],
+   "relations": [
+    "-> Supplier (n:1)",
+    "-> Department (n:1)",
+    "<- PaymentLine (1:n)",
+    "-> BillCollectionList BR (n:1)"
+   ]
+  },
+  {
+   "name": "ARInvoice",
+   "fields": [
+    "doc_no",
+    "date",
+    "is_opening",
+    "customer_code",
+    "department",
+    "credit_days",
+    "due_date",
+    "salesperson",
+    "sales_area",
+    "shipping",
+    "price_type",
+    "amount",
+    "discount",
+    "vat_rate",
+    "vat_amount",
+    "net_amount",
+    "output_vat_date",
+    "vat_basis",
+    "paid_flag",
+    "paid_date",
+    "outstanding",
+    "commission"
+   ],
+   "relations": [
+    "-> Customer (n:1)",
+    "-> SalesPerson (n:1)",
+    "-> SalesArea (n:1)",
+    "<- ReceiptLine (1:n)",
+    "-> BillingList BI (n:1)"
+   ]
+  },
+  {
+   "name": "ChequeReceived",
+   "fields": [
+    "cheque_date",
+    "cheque_no",
+    "bank_code",
+    "branch",
+    "customer_code",
+    "payer",
+    "amount",
+    "receive_date",
+    "department",
+    "remark",
+    "is_opening",
+    "status"
+   ],
+   "relations": [
+    "-> Customer (n:1)",
+    "-> Bank (n:1)"
+   ]
+  },
+  {
+   "name": "GLOpeningBalance",
+   "fields": [
+    "account_no",
+    "department",
+    "amount_signed"
+   ],
+   "relations": [
+    "-> Account (n:1)",
+    "-> Department (n:1)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "ตั้งยอดยกมาก่อนเริ่มใช้งาน",
+   "steps": [
+    "กำหนดแฟ้มข้อมูลหลัก",
+    "ยอดยกมาสินค้า: FIFO แท็บ F7 / Average แท็บ F8",
+    "การเงิน 2.5 เจ้าหนี้คงค้าง-ยกมา",
+    "การเงิน 1.6 ลูกหนี้คงค้าง-ยกมา (หักยอดที่ชำระด้วยเช็คแล้ว)",
+    "การเงิน 3.3/3.5 เช็คยกมา ตอบตกลงที่ dialog",
+    "บัญชี 3.1 ยอดยกมา GL (Dr บวก/Cr ลบ) ให้เท่ายอดแฟ้มย่อย",
+    "Periodic: บัญชี 5 บัญชีสินค้าคงเหลือ",
+    "รายงาน 5.6.1 งบทดลองแบบเต็มงวด 1 ตรวจดุล"
+   ]
+  }
+ ]
+}

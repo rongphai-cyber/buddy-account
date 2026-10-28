@@ -1,0 +1,430 @@
+{
+ "chapter": 9,
+ "title": "กำหนดเลขที่เอกสาร",
+ "book_pages": "151-154",
+ "screens": [
+  {
+   "id": "S-DN-01",
+   "name": "กำหนดเลขที่เอกสาร (รายการประเภทเอกสาร)",
+   "menu": "เริ่มระบบ > 4 กำหนดเลขที่เอกสาร",
+   "book_page": 152,
+   "pdf_page": 168,
+   "layout": "list",
+   "fields": [
+    {
+     "label": "หมวด",
+     "type": "text",
+     "required": true
+    },
+    {
+     "label": "ชื่อเอกสาร",
+     "type": "text",
+     "required": true
+    },
+    {
+     "label": "ชื่อภาษาอังกฤษ",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "เลขที่ถัดไป-prefix",
+     "type": "text",
+     "required": true
+    },
+    {
+     "label": "เลขที่ถัดไป-เลข",
+     "type": "text",
+     "required": true,
+     "note": "<=7 หลัก ไม่มีตัวคั่น ไม่ reset รายปี"
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Department",
+     "note": "หัวคอลัมน์อ่านไม่ชัด [สันนิษฐาน]"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "หมวด",
+     "ชื่อเอกสาร",
+     "ชื่อภาษาอังกฤษ",
+     "prefix",
+     "เลขที่ถัดไป",
+     "แผนก"
+    ]
+   },
+   "buttons": [
+    "เพิ่ม",
+    "แก้ไข <Alt+E>",
+    "ลบ",
+    "ยกเลิก",
+    "บันทึก",
+    "แรก",
+    "ก่อนหน้า",
+    "ถัดไป",
+    "สุดท้าย"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-DN-02",
+   "name": "รายละเอียดเอกสาร (ตั้งค่าเอกสาร – ตัวอย่างขายเงินเชื่อ)",
+   "menu": "เริ่มระบบ > 4 > แก้ไขเอกสาร > บันทึก/Enter",
+   "book_page": 153,
+   "pdf_page": 169,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ชื่อเอกสาร",
+     "type": "text",
+     "required": true
+    },
+    {
+     "label": "Eng.",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "เลขที่ถัดไป-prefix",
+     "type": "text",
+     "required": true
+    },
+    {
+     "label": "เลขที่ถัดไป-เลข",
+     "type": "text",
+     "required": true
+    },
+    {
+     "label": "บันทึกบัญชี ลงสมุดรายวัน",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Journal",
+     "note": "ภาพ 03 สมุดรายวันขาย"
+    },
+    {
+     "label": "แผนก",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Department"
+    },
+    {
+     "label": "คำอธิบายในสมุดรายวัน",
+     "type": "text",
+     "required": false,
+     "note": "expression เช่น 'ขายเชื่อให้ ' + (ARMAS->PRENAM - ' ' - ARMAS->CUSNAM)"
+    },
+    {
+     "label": "Dr. ลูกหนี้",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "ว่างไว้=ดึงเลขที่บัญชีในรายละเอียดลูกค้า"
+    },
+    {
+     "label": "เงินมัดจำรับล่วงหน้า",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "อ้างถึงเลขที่บัญชีในใบรับเงินมัดจำ"
+    },
+    {
+     "label": "Cr. ขายสินค้า",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account"
+    },
+    {
+     "label": "ภาษีขาย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account"
+    },
+    {
+     "label": "Dr. ต้นทุนขาย",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "Perpetual; อ้างถึงเลขที่บัญชีในสินค้าแต่ละรายการ"
+    },
+    {
+     "label": "Cr. สินค้า",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Account",
+     "note": "Perpetual; อ้างถึงเลขที่บัญชีในสินค้าแต่ละรายการ"
+    },
+    {
+     "label": "ประเภทราคา",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "อัตราภาษี",
+     "type": "number",
+     "required": false
+    },
+    {
+     "label": "ภาระภาษีขาย (สินค้าบริการ)",
+     "type": "select",
+     "required": false
+    },
+    {
+     "label": "รับรองเอกสาร ต้องขออนุมัติระดับ",
+     "type": "number",
+     "required": false,
+     "note": "0=ไม่ต้องรับรอง หรือ 1-9"
+    },
+    {
+     "label": "วิธีการพิมพ์ หรือรับรองเอกสาร",
+     "type": "number",
+     "required": false,
+     "note": "1=พิมพ์ก่อนรับรอง 2=รับรองก่อนพิมพ์"
+    },
+    {
+     "label": "พิมพ์เอกสารซ้ำ ต้องขออนุมัติระดับ",
+     "type": "number",
+     "required": false,
+     "note": "0=ไม่ต้องขออนุมัติ หรือ 1-9"
+    },
+    {
+     "label": "แยกประเภท VAT ที่รายการสินค้า",
+     "type": "check",
+     "required": false,
+     "note": "Y/N"
+    },
+    {
+     "label": "รหัสคลังสินค้าที่จะตัด",
+     "type": "lookup",
+     "required": false,
+     "lookup": "Warehouse"
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก <Esc>"
+   ],
+   "postings": [
+    "IV ขายเงินเชื่อ: Dr ลูกหนี้ (+Dr เงินมัดจำรับล่วงหน้า) / Cr ขายสินค้า, Cr ภาษีขาย",
+    "Perpetual: Dr ต้นทุนขาย / Cr สินค้า",
+    "ช่องบัญชีว่าง = ใช้แฟ้มหลัก หรือ เริ่มระบบ 5.2"
+   ]
+  }
+ ],
+ "document_types_visible": [
+  {
+   "category": "",
+   "name_th": "รหัสผู้จำหน่าย-สด",
+   "name_en": "Supplier-cash",
+   "prefix": "?",
+   "next_no": "0000001"
+  },
+  {
+   "category": "",
+   "name_th": "รหัสลูกค้า-สด",
+   "name_en": "Customer-cash",
+   "prefix": "?",
+   "next_no": "0000003"
+  },
+  {
+   "category": "AE",
+   "name_th": "จ่ายเงินมัดจำ",
+   "name_en": "Deposit Payment",
+   "prefix": "AE",
+   "next_no": "0000002"
+  },
+  {
+   "category": "AI",
+   "name_th": "รับเงินมัดจำ",
+   "name_en": "Deposit Receive",
+   "prefix": "AI",
+   "next_no": "0000003"
+  },
+  {
+   "category": "BD",
+   "name_th": "ฝากเงินสดเข้าธนาคาร (DEP)",
+   "name_en": "Cash Deposit",
+   "prefix": "BD",
+   "next_no": "0000002"
+  },
+  {
+   "category": "BQ",
+   "name_th": "ใบนำฝากเช็ค (DEQ)",
+   "name_en": "Cheque Deposit",
+   "prefix": "BQ",
+   "next_no": "0000002"
+  },
+  {
+   "category": "BQ",
+   "name_th": "ใบขายลดเช็ค (SQR)",
+   "name_en": "Discounting Cheque",
+   "prefix": "SQ",
+   "next_no": "0000001"
+  },
+  {
+   "category": "BR",
+   "name_th": "ใบรับวางบิล",
+   "name_en": "A/P Bill Collection List",
+   "prefix": "BR",
+   "next_no": "0000002"
+  },
+  {
+   "category": "BS",
+   "name_th": "ใบวางบิล",
+   "name_en": "A/R Bill Collection List",
+   "prefix": "BI",
+   "next_no": "0000003"
+  },
+  {
+   "category": "BT",
+   "name_th": "โอนเงินระหว่างธนาคาร (TRF)",
+   "name_en": "Bank Transfer",
+   "prefix": "BT",
+   "next_no": "0000002"
+  },
+  {
+   "category": "BU",
+   "name_th": "รับดอกเบี้ยธนาคาร (DEP)",
+   "name_en": "Interest Income",
+   "prefix": "BU",
+   "next_no": "0000001"
+  },
+  {
+   "category": "BV",
+   "name_th": "จ่ายค่าดอกเบี้ย (W/D)",
+   "name_en": "Interest Expenses",
+   "prefix": "BC",
+   "next_no": "0000001"
+  },
+  {
+   "category": "BV",
+   "name_th": "จ่ายค่าธรรมเนียม (W/D)",
+   "name_en": "Bank Charges",
+   "prefix": "BV",
+   "next_no": "0000001"
+  },
+  {
+   "category": "BW",
+   "name_th": "ถอนเงินสดจากธนาคาร (W/D)",
+   "name_en": "Cash Withdrawal",
+   "prefix": "BW",
+   "next_no": "0000001"
+  },
+  {
+   "category": "CA",
+   "name_th": "เพิ่ม/ลดต้นทุนสินค้า",
+   "name_en": "Cost Adjustment",
+   "prefix": "CA",
+   "next_no": "0000002"
+  },
+  {
+   "category": "CA",
+   "name_th": "ปรับค่าขนส่งสินค้า",
+   "name_en": "Freight Adjustment",
+   "prefix": "CF",
+   "next_no": "0000002"
+  },
+  {
+   "category": "CA",
+   "name_th": "ปรับปรุงค่าประกันภัย",
+   "name_en": "Insurance Adjustment",
+   "prefix": "CI",
+   "next_no": "0000001"
+  },
+  {
+   "category": "CN",
+   "name_th": "ใบลดหนี้/รับคืน",
+   "name_en": "Sales Returns and Allowances",
+   "prefix": "SR",
+   "next_no": "0000004"
+  },
+  {
+   "category": "CP",
+   "name_th": "ใบเพิ่มหนี้(ของเจ้าหนี้)",
+   "name_en": "A/P Credit Note",
+   "prefix": "CP",
+   "next_no": "0000002"
+  },
+  {
+   "category": "DN",
+   "name_th": "ใบลดหนี้/ส่งคืน",
+   "name_en": "Purchase Returns and Allowance",
+   "prefix": "GR",
+   "next_no": "0000002"
+  },
+  {
+   "category": "DP",
+   "name_th": "จ่ายคชจ.จากเงินทดรองจ่ายย่อย",
+   "name_en": "Disbursement from Petty Cash",
+   "prefix": "DP",
+   "next_no": "0000001"
+  }
+ ],
+ "entities": [
+  {
+   "name": "DocCategory",
+   "fields": [
+    "code",
+    "name"
+   ],
+   "relations": [
+    "<- DocType (1:n)"
+   ]
+  },
+  {
+   "name": "DocType",
+   "fields": [
+    "category",
+    "name_th",
+    "name_en",
+    "prefix",
+    "next_no(7)",
+    "journal_code",
+    "department",
+    "journal_desc_expr",
+    "price_type",
+    "vat_rate",
+    "vat_basis",
+    "approve_level",
+    "print_approve_order",
+    "reprint_approve_level",
+    "split_vat_per_line",
+    "warehouse_code"
+   ],
+   "relations": [
+    "-> DocCategory (n:1)",
+    "-> Journal (n:1)",
+    "-> Department (n:1)",
+    "-> Warehouse (n:1)",
+    "<- DocTypeAccountMap (1:n)"
+   ]
+  },
+  {
+   "name": "DocTypeAccountMap",
+   "fields": [
+    "doc_type",
+    "role (AR/DEPOSIT_RCV/SALES/OUTPUT_VAT/COGS/INVENTORY/...)",
+    "dr_cr",
+    "account_no (null=fallback)"
+   ],
+   "relations": [
+    "-> DocType (n:1)",
+    "-> Account (n:1)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "ตั้งค่าเลขที่และรายละเอียดเอกสาร",
+   "steps": [
+    "เริ่มระบบ 4",
+    "เลือกเอกสาร > แก้ไข Alt+E",
+    "แก้หมวด/ชื่อ/ชื่อ Eng/เลขที่ถัดไป (<=7 หลัก ไม่มีตัวคั่น)",
+    "บันทึก/Enter → หน้าจอรายละเอียด",
+    "ตั้งสมุดรายวัน แผนก คำอธิบาย บัญชีเฉพาะ ค่าควบคุม",
+    "ตกลง หรือ ยกเลิก/Esc"
+   ]
+  }
+ ]
+}

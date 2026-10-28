@@ -1,0 +1,2408 @@
+{
+ "chapter": 12,
+ "title": "การป้อนข้อมูลระบบขายและลูกหนี้",
+ "book_pages": "195-234",
+ "pdf_pages": "211-250",
+ "screens": [
+  {
+   "id": "S-SL-01",
+   "name": "Dialog เลือกภาระภาษีขาย",
+   "menu": "อัตโนมัติขณะบันทึกบิลขายสินค้าบริการ",
+   "book_page": 198,
+   "pdf_page": 214,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ภาระภาษีขาย",
+     "type": "select",
+     "required": true,
+     "note": "เกณฑ์สิทธิ/เกณฑ์เงินสด; ตั้งค่าที่เมนูเริ่มระบบ 1.4.1"
+    }
+   ],
+   "buttons": [
+    "เกณฑ์สิทธิ",
+    "เกณฑ์เงินสด",
+    "ลงบัญชีใหม่ (แก้เกณฑ์ภายหลัง)"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-SL-02",
+   "name": "ป้อนหมายเหตุเพิ่มเติม",
+   "menu": "<Alt+R> ในหน้าจอเอกสาร",
+   "book_page": 199,
+   "pdf_page": 215,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "บรรทัดหมายเหตุ 1..n",
+     "type": "text",
+     "required": false,
+     "lookup": "note_text",
+     "note": "ระดับเอกสาร 5 บรรทัดตามข้อความ (ภาพแสดง 10); ระดับรายการ 10 บรรทัด"
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก",
+    "ลบบรรทัด",
+    "เพิ่มบรรทัด"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-QT-01",
+   "name": "ใบเสนอราคา",
+   "menu": "ระบบขาย > A ใบเสนอราคา",
+   "book_page": 201,
+   "pdf_page": 217,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "Header",
+     "fields": [
+      {
+       "label": "รหัสลูกค้า",
+       "type": "lookup",
+       "required": true,
+       "lookup": "customer",
+       "note": "แสดงชื่อ ที่อยู่ โทร ใต้ช่อง"
+      },
+      {
+       "label": "Bill to",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer",
+       "note": "ชื่อบนใบกำกับ/รายงานภาษีขายเท่านั้น"
+      },
+      {
+       "label": "สาขา#",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 0"
+      },
+      {
+       "label": "อ้างอิง",
+       "type": "text",
+       "required": false,
+       "lookup": "reference_text"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "department"
+      },
+      {
+       "label": "เลขที่ใบเสนอราคา",
+       "type": "text",
+       "required": true,
+       "note": "running QT0000001"
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "กำหนดยืนราคา",
+       "type": "number",
+       "required": false,
+       "note": "วัน; 0=ไม่ตัดออกเมื่ออ้างในบิล อ้างซ้ำได้"
+      },
+      {
+       "label": "ครบกำหนดวันที่",
+       "type": "date",
+       "required": false,
+       "note": "คำนวณอัตโนมัติ"
+      },
+      {
+       "label": "พนักงานขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "salesman"
+      },
+      {
+       "label": "สถานะเอกสาร",
+       "type": "lookup",
+       "required": false,
+       "lookup": "doc_status",
+       "note": "เช่น 10 รอการตัดสินใจ"
+      },
+      {
+       "label": "ประเภทราคา",
+       "type": "select",
+       "required": true,
+       "note": "0=ยกเว้นภาษี,1=รวมภาษี(x7/107),2=แยก VAT(x7/100)"
+      }
+     ]
+    },
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการแสดงยอดสินค้าค้างส่ง <Ctrl+F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการสินค้าที่ส่งแล้ว <F7>",
+     "fields": []
+    },
+    {
+     "name": "Footer",
+     "fields": [
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "หักส่วนลด",
+       "type": "text",
+       "required": false,
+       "note": "จำนวนเงิน/%/ส่วนลดซ้อน 5+2%"
+      },
+      {
+       "label": "ยอดหลังหักส่วนลด",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ภาษีมูลค่าเพิ่ม %",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 7.00; จำนวนปล่อยว่างให้คำนวณ"
+      },
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "แปลงเป็น SO#",
+       "type": "text",
+       "required": false,
+       "note": "readonly [สันนิษฐาน]"
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "รหัส",
+     "รายละเอียด",
+     "จำนวน",
+     "หน่วย",
+     "ราคาต่อหน่วย",
+     "ส่วนลด",
+     "F",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "toolbar มาตรฐาน (บทที่ 3)",
+    "พิมพ์เอกสาร <Alt+P>",
+    "เพิ่ม/แก้ไขหมายเหตุของเอกสาร <Alt+R>",
+    "แปลงเป็นใบสั่งขาย",
+    "ปรับปรุงยอดค้างส่งใหม่"
+   ],
+   "postings": [
+    "ไม่ลงบัญชี [สันนิษฐาน]"
+   ]
+  },
+  {
+   "id": "S-SO-01",
+   "name": "ใบสั่งขาย",
+   "menu": "ระบบขาย > 3 ใบสั่งขาย",
+   "book_page": 204,
+   "pdf_page": 220,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "Header",
+     "fields": [
+      {
+       "label": "รหัสลูกค้า",
+       "type": "lookup",
+       "required": true,
+       "lookup": "customer",
+       "note": "แสดงชื่อ ที่อยู่ โทร ใต้ช่อง"
+      },
+      {
+       "label": "Bill to",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer",
+       "note": "ชื่อบนใบกำกับ/รายงานภาษีขายเท่านั้น"
+      },
+      {
+       "label": "สาขา#",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 0"
+      },
+      {
+       "label": "อ้างอิง",
+       "type": "text",
+       "required": false,
+       "lookup": "reference_text"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "department"
+      },
+      {
+       "label": "ใบสั่งขาย #",
+       "type": "text",
+       "required": true,
+       "note": "running SO0000004"
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "เครดิต",
+       "type": "number",
+       "required": false,
+       "note": "วัน จากลูกค้า"
+      },
+      {
+       "label": "ส่งของวันที่",
+       "type": "date",
+       "required": false,
+       "note": "ค่าเริ่มต้น=วันที่เอกสาร"
+      },
+      {
+       "label": "กำหนดวันส่งของที่สินค้า?",
+       "type": "check",
+       "required": false,
+       "note": "Y=ระบุวันส่งรายสินค้า"
+      },
+      {
+       "label": "พนักงานขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "salesman"
+      },
+      {
+       "label": "เขตการขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "sales_area"
+      },
+      {
+       "label": "ขนส่งโดย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "shipping"
+      },
+      {
+       "label": "ประเภทราคา",
+       "type": "select",
+       "required": true,
+       "note": "0=ยกเว้นภาษี,1=รวมภาษี(x7/107),2=แยก VAT(x7/100)"
+      }
+     ]
+    },
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการแสดงยอดสินค้าค้างส่ง <Ctrl+F8>",
+     "fields": [
+      {
+       "label": "ยกเลิก",
+       "type": "number",
+       "required": false,
+       "note": "จำนวนยกเลิก"
+      },
+      {
+       "label": "วันที่ยกเลิก",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "เหตุผลยกเลิก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "cancel_reason"
+      }
+     ]
+    },
+    {
+     "name": "รายการสินค้าที่ส่งแล้ว <F7>",
+     "fields": [
+      {
+       "label": "รหัส",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "เลขที่เอกสาร",
+       "type": "text",
+       "required": false,
+       "note": "IV"
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "No.",
+       "type": "number",
+       "required": false
+      },
+      {
+       "label": "คลัง",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "จำนวน",
+       "type": "number",
+       "required": false
+      },
+      {
+       "label": "ราคา/หน่วย",
+       "type": "money",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "Footer",
+     "fields": [
+      {
+       "label": "สถานที่ส่งของ",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer_ship_to"
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "หักส่วนลด",
+       "type": "text",
+       "required": false,
+       "note": "จำนวนเงิน/%/ส่วนลดซ้อน 5+2%"
+      },
+      {
+       "label": "ยอดหลังหักส่วนลด",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ภาษีมูลค่าเพิ่ม %",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 7.00; จำนวนปล่อยว่างให้คำนวณ"
+      },
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "แปลงมาจาก",
+       "type": "text",
+       "required": false,
+       "note": "QT ต้นทาง [สันนิษฐาน]"
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "รหัส",
+     "ร",
+     "คลัง",
+     "จำนวน",
+     "หน่วย",
+     "ราคาต่อหน่วย",
+     "ส่วนลด",
+     "F",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "toolbar มาตรฐาน (บทที่ 3)",
+    "พิมพ์เอกสาร <Alt+P>",
+    "เพิ่ม/แก้ไขหมายเหตุของเอกสาร <Alt+R>",
+    "ปรับปรุงยอดค้างส่งใหม่"
+   ],
+   "postings": [
+    "ไม่ลงบัญชี ไม่ตัดสต๊อก; เตือน Message#4106 หากสั่งเกินคงเหลือ"
+   ]
+  },
+  {
+   "id": "S-AI-01",
+   "name": "รับเงินมัดจำ",
+   "menu": "ระบบขาย > 1 รับเงินมัดจำ",
+   "book_page": 209,
+   "pdf_page": 225,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "Header",
+     "fields": [
+      {
+       "label": "รหัสลูกค้า",
+       "type": "lookup",
+       "required": true,
+       "lookup": "customer",
+       "note": "แสดงชื่อ ที่อยู่ โทร ใต้ช่อง"
+      },
+      {
+       "label": "Bill to",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer",
+       "note": "ชื่อบนใบกำกับ/รายงานภาษีขายเท่านั้น"
+      },
+      {
+       "label": "สาขา#",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 0"
+      },
+      {
+       "label": "พนักงานขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "salesman"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "department"
+      },
+      {
+       "label": "ใบรับเงินมัดจำ",
+       "type": "text",
+       "required": true,
+       "note": "running AI0000001"
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "เครดิต",
+       "type": "number",
+       "required": false
+      },
+      {
+       "label": "ครบกำหนด",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "ประเภทราคา",
+       "type": "select",
+       "required": true,
+       "note": "ต้องตรงกับบิลขายที่จะหักมัดจำ"
+      }
+     ]
+    },
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": [
+      {
+       "label": "คำอธิบาย",
+       "type": "text",
+       "required": true
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": true
+      }
+     ]
+    },
+    {
+     "name": "รายการตัดเงินมัดจำ <Ctrl+F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีขาย <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "Footer",
+     "fields": [
+      {
+       "label": "อ้างอิง",
+       "type": "text",
+       "required": false,
+       "lookup": "reference_text"
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ภาษีมูลค่าเพิ่ม %",
+       "type": "number",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "รับชำระ",
+     "fields": [
+      {
+       "label": "เงินสด",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ชำระโดยอื่นๆ (ด้านล่าง)",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ภาษีถูกหัก ณ ที่จ่าย",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดชำระจริง",
+       "type": "money",
+       "required": false
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "คำอธิบาย",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "toolbar มาตรฐาน (บทที่ 3)",
+    "พิมพ์เอกสาร <Alt+P>",
+    "เพิ่ม/แก้ไขหมายเหตุของเอกสาร <Alt+R>",
+    "ดับเบิ้ลคลิก grid ชำระโดยอื่นๆ -> S-PM-01"
+   ],
+   "postings": [
+    "[สันนิษฐาน] Dr เงินสด/เช็ครับ(ตามวิธีชำระ) / Cr เงินรับล่วงหน้า-มัดจำ, Cr ภาษีขาย"
+   ]
+  },
+  {
+   "id": "S-PM-01",
+   "name": "Dialog เลือกวิธีรับชำระ (ชำระโดยอื่นๆ)",
+   "menu": "ดับเบิ้ลคลิก grid ชำระโดยอื่นๆ (AI/RE/OI)",
+   "book_page": 211,
+   "pdf_page": 227,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รหัส",
+     "type": "text",
+     "required": false,
+     "note": "QR เช็ครับ 1130-02; CH รับเงินสด 1111-00; TR เงินโอนเข้าบัญชี(NBD) S1; TF ค่าธรรมเนียมการโอน 5360-04; VS บัตร Visa 1130-02; DC ส่วนลดเงินสด 4100-04; TX ภาษีถูกหัก ณ ที่จ่าย 1151-02; EX กำไรขาดทุนจากอัตราแลกเปลี่ยน 5370-07"
+    },
+    {
+     "label": "รายละเอียด",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "คอลัมน์ที่ 3 (เช่น S1)",
+     "type": "text",
+     "required": false,
+     "note": "[สันนิษฐาน] รหัสบัญชีเงินฝาก"
+    },
+    {
+     "label": "เลขที่บัญชี",
+     "type": "lookup",
+     "required": false,
+     "lookup": "chart_of_accounts"
+    },
+    {
+     "label": "เลขที่เช็ค",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "วันที่เช็ค",
+     "type": "date",
+     "required": false
+    },
+    {
+     "label": "รหัสธนาคาร",
+     "type": "lookup",
+     "required": false,
+     "lookup": "bank"
+    },
+    {
+     "label": "จำนวนเงิน",
+     "type": "money",
+     "required": false
+    }
+   ],
+   "grid": {
+    "columns": [
+     "รหัส",
+     "รายละเอียด",
+     "(?)",
+     "เลขที่บัญชี"
+    ]
+   },
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก",
+    "ค้นหา"
+   ],
+   "postings": [
+    "วิธีชำระผูกบัญชี GL ใช้เป็นฝั่ง Dr [สันนิษฐาน]"
+   ]
+  },
+  {
+   "id": "S-IV-01",
+   "name": "ขายเงินเชื่อ",
+   "menu": "ระบบขาย > 4 ขายเงินเชื่อ",
+   "book_page": 212,
+   "pdf_page": 228,
+   "layout": "tabs",
+   "tabs": [
+    {
+     "name": "Header",
+     "fields": [
+      {
+       "label": "รหัสลูกค้า",
+       "type": "lookup",
+       "required": true,
+       "lookup": "customer",
+       "note": "แสดงชื่อ ที่อยู่ โทร ใต้ช่อง"
+      },
+      {
+       "label": "Bill to",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer",
+       "note": "ชื่อบนใบกำกับ/รายงานภาษีขายเท่านั้น"
+      },
+      {
+       "label": "สาขา#",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 0"
+      },
+      {
+       "label": "อ้างอิง",
+       "type": "text",
+       "required": false,
+       "lookup": "reference_text"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "department"
+      },
+      {
+       "label": "เลขที่เอกสาร",
+       "type": "text",
+       "required": true,
+       "note": "running IV0000007"
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "ใบสั่งขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "sales_order",
+       "note": "เปิด S-IV-02"
+      },
+      {
+       "label": "เครดิต",
+       "type": "number",
+       "required": false,
+       "note": "วัน จากลูกค้า"
+      },
+      {
+       "label": "ครบกำหนด",
+       "type": "date",
+       "required": false,
+       "note": "คำนวณอัตโนมัติ"
+      },
+      {
+       "label": "พนักงานขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "salesman"
+      },
+      {
+       "label": "เขตการขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "sales_area"
+      },
+      {
+       "label": "ขนส่งโดย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "shipping"
+      },
+      {
+       "label": "ประเภทราคา",
+       "type": "select",
+       "required": true,
+       "note": "0=ยกเว้นภาษี,1=รวมภาษี(x7/107),2=แยก VAT(x7/100)"
+      }
+     ]
+    },
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายละเอียดอื่น <Ctrl+F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการรับชำระ <F7>",
+     "fields": [
+      {
+       "label": "ภาระภาษีขาย",
+       "type": "select",
+       "required": false,
+       "note": "เกณฑ์สิทธิ/เกณฑ์เงินสด"
+      },
+      {
+       "label": "ใบวางบิล#",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดชำระ/ลดหนี้",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดคงค้าง",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "คอมมิชชั่น",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ชำระเงินเรียบร้อย",
+       "type": "check",
+       "required": false,
+       "note": "Y/N"
+      },
+      {
+       "label": "วันที่เรียบร้อย",
+       "type": "date",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "รายการภาษีขาย <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "Footer",
+     "fields": [
+      {
+       "label": "สถานที่ส่งของ",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer_ship_to"
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "หักส่วนลด",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "หักเงินมัดจำ",
+       "type": "lookup",
+       "required": false,
+       "lookup": "deposit_AI",
+       "note": "ถามว่าจะนำมัดจำมาหักหรือไม่"
+      },
+      {
+       "label": "แยกยอดเงิน 0.00 %=",
+       "type": "money",
+       "required": false,
+       "note": "เมื่อแยกประเภท VAT=Y"
+      },
+      {
+       "label": "ภาษีมูลค่าเพิ่ม %",
+       "type": "number",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "รหัส",
+     "ร",
+     "คลัง",
+     "จำนวน",
+     "หน่วย",
+     "ราคาต่อหน่วย",
+     "ส่วนลด",
+     "F",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "toolbar มาตรฐาน (บทที่ 3)",
+    "พิมพ์เอกสาร <Alt+P>",
+    "เพิ่ม/แก้ไขหมายเหตุของเอกสาร <Alt+R>",
+    "ลงบัญชีใหม่",
+    "หมายเหตุของใบสั่งขาย",
+    "แก้ไขยอดเงิน (แท็บรับชำระ)",
+    "<Shift+F4> ตรวจยอดคงเหลือ"
+   ],
+   "postings": [
+    "ตั้งยอดลูกหนี้รายตัว (หน้า 211)",
+    "ตัดสต๊อกจากคลังที่ระบุ",
+    "[สันนิษฐาน] Dr ลูกหนี้การค้า / Cr ขาย, Cr ภาษีขาย (เกณฑ์สิทธิ) หรือ ภาษีขายรอเรียกเก็บ (เกณฑ์เงินสด)",
+    "[สันนิษฐาน] หักมัดจำ: Dr เงินรับล่วงหน้า / Cr ลูกหนี้"
+   ]
+  },
+  {
+   "id": "S-CS-01",
+   "name": "ขายเงินสด",
+   "menu": "ระบบขาย > ขายเงินสด [สันนิษฐาน: เลขข้อไม่ระบุ]",
+   "book_page": 211,
+   "pdf_page": 227,
+   "layout": "tabs",
+   "fields": [
+    {
+     "label": "(เหมือน S-IV-01)",
+     "type": "text",
+     "required": false,
+     "note": "คู่มือบอกว่าคล้ายขายเงินเชื่อ ไม่มีภาพ"
+    }
+   ],
+   "buttons": [
+    "toolbar มาตรฐาน (บทที่ 3)",
+    "พิมพ์เอกสาร <Alt+P>",
+    "เพิ่ม/แก้ไขหมายเหตุของเอกสาร <Alt+R>"
+   ],
+   "postings": [
+    "บันทึกรับเงินสด/เช็ครับทันที ไม่ตั้งลูกหนี้ (หน้า 211)",
+    "[สันนิษฐาน] Dr เงินสด/เช็ครับ / Cr ขาย, Cr ภาษีขาย; ตัดสต๊อก"
+   ]
+  },
+  {
+   "id": "S-IV-02",
+   "name": "Dialog เลือกใบสั่งขาย",
+   "menu": "แว่นขยายช่อง ใบสั่งขาย ในหน้าขาย",
+   "book_page": 213,
+   "pdf_page": 229,
+   "layout": "dialog",
+   "grid": {
+    "columns": [
+     "ใบสั่งขาย",
+     "วันที่",
+     "อ้างอิง",
+     "ส่งที่",
+     "วันที่ส่ง",
+     "จำนวนเงิน",
+     "พนักงาน"
+    ]
+   },
+   "fields": [],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก",
+    "ค้นหา"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-IV-03",
+   "name": "เลือกรายการจากใบสั่งขาย",
+   "menu": "Enter เลือก SO",
+   "book_page": 213,
+   "pdf_page": 229,
+   "layout": "list",
+   "grid": {
+    "columns": [
+     "รหัสสินค้า",
+     "คลัง",
+     "สั่ง",
+     "หน่วย",
+     "ค้าง",
+     "จะส่ง",
+     "ชื่อสินค้า"
+    ]
+   },
+   "fields": [
+    {
+     "label": "ถูกเลือก n รายการ",
+     "type": "number",
+     "required": false
+    }
+   ],
+   "buttons": [
+    "ทำงาน <F5>",
+    "ยกเลิก",
+    "ค้นหา",
+    "เลือกทุกรายการ <F6>"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-IV-04",
+   "name": "Dialog ป้อนปริมาณที่จะส่ง",
+   "menu": "เลือกรายการใน S-IV-03",
+   "book_page": 214,
+   "pdf_page": 230,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ชื่อสินค้า",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ตัดจากคลัง",
+     "type": "lookup",
+     "required": true,
+     "lookup": "warehouse"
+    },
+    {
+     "label": "ปริมาณที่ส่ง",
+     "type": "number",
+     "required": true,
+     "note": "หน่วย x ตัวคูณ; ส่งบางส่วนได้"
+    },
+    {
+     "label": "ราคาต่อหน่วย",
+     "type": "money",
+     "required": true
+    },
+    {
+     "label": "ส่วนลด",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "เป็นของแถม",
+     "type": "check",
+     "required": false,
+     "note": "[Y,N, ว่างไว้=N]"
+    }
+   ],
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-DR-01",
+   "name": "ใบเพิ่มหนี้ (ลูกหนี้)",
+   "menu": "การเงิน > 1.3 ใบเพิ่มหนี้",
+   "book_page": 217,
+   "pdf_page": 233,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "Header",
+     "fields": [
+      {
+       "label": "รหัสลูกค้า",
+       "type": "lookup",
+       "required": true,
+       "lookup": "customer",
+       "note": "แสดงชื่อ ที่อยู่ โทร ใต้ช่อง"
+      },
+      {
+       "label": "Bill to",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer",
+       "note": "ชื่อบนใบกำกับ/รายงานภาษีขายเท่านั้น"
+      },
+      {
+       "label": "สาขา#",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 0"
+      },
+      {
+       "label": "อ้างอิง",
+       "type": "text",
+       "required": false,
+       "lookup": "reference_text"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "department"
+      },
+      {
+       "label": "เลขที่ใบเพิ่มหนี้",
+       "type": "text",
+       "required": true,
+       "note": "running DR0000001"
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "เลขที่ใบกำกับ",
+       "type": "lookup",
+       "required": true,
+       "lookup": "ar_invoice_outstanding",
+       "note": "ดึงพนักงาน/เขตการขาย"
+      },
+      {
+       "label": "พนักงานขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "salesman"
+      },
+      {
+       "label": "เขตการขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "sales_area"
+      },
+      {
+       "label": "ประเภทราคา",
+       "type": "select",
+       "required": true,
+       "note": "0=ยกเว้นภาษี,1=รวมภาษี(x7/107),2=แยก VAT(x7/100)"
+      }
+     ]
+    },
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายละเอียดอื่น <Ctrl+F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการรับชำระ <F7>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีขาย <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "Footer",
+     "fields": [
+      {
+       "label": "มูลค่าของสินค้าหรือบริการ ตามใบกำกับภาษีเดิม",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "หักส่วนลด",
+       "type": "text",
+       "required": false,
+       "note": "จำนวนเงิน/%/ส่วนลดซ้อน 5+2%"
+      },
+      {
+       "label": "ยอดหลังหักส่วนลด",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ภาษีมูลค่าเพิ่ม %",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 7.00; จำนวนปล่อยว่างให้คำนวณ"
+      },
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "Dialog ป้อนรายละเอียดสินค้าที่เพิ่มหนี้",
+     "fields": [
+      {
+       "label": "รหัสสินค้า",
+       "type": "lookup",
+       "required": false,
+       "lookup": "product"
+      },
+      {
+       "label": "รายละเอียด",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "เข้าคลัง",
+       "type": "lookup",
+       "required": false,
+       "lookup": "warehouse"
+      },
+      {
+       "label": "จำนวน",
+       "type": "number",
+       "required": false,
+       "note": "ไม่บังคับ"
+      },
+      {
+       "label": "หน่วยละ",
+       "type": "money",
+       "required": false,
+       "note": "ไม่บังคับ"
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false,
+       "lookup": true
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "รหัส",
+     "รายละเอียด",
+     "คลัง",
+     "จำนวน",
+     "หน่วย",
+     "ราคาต่อหน่วย",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "toolbar มาตรฐาน (บทที่ 3)",
+    "พิมพ์เอกสาร <Alt+P>",
+    "เพิ่ม/แก้ไขหมายเหตุของเอกสาร <Alt+R>",
+    "ทำงาน <F5>",
+    "รับเป็นเงินสด",
+    "เก็บไว้รับ ตอนรับชำระหนี้"
+   ],
+   "postings": [
+    "เพิ่มยอดลูกหนี้เท่านั้น ไม่ตัดสต๊อก (หน้า 219)",
+    "[สันนิษฐาน] Dr ลูกหนี้ (หรือเงินสดถ้ารับเป็นเงินสด) / Cr ขาย, Cr ภาษีขาย"
+   ]
+  },
+  {
+   "id": "S-SR-01",
+   "name": "ใบลดหนี้/รับคืนสินค้า",
+   "menu": "การเงิน > 1.4 ลดหนี้/รับคืนสินค้า",
+   "book_page": 220,
+   "pdf_page": 236,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "Header",
+     "fields": [
+      {
+       "label": "รหัสลูกค้า",
+       "type": "lookup",
+       "required": true,
+       "lookup": "customer",
+       "note": "แสดงชื่อ ที่อยู่ โทร ใต้ช่อง"
+      },
+      {
+       "label": "Bill to",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer",
+       "note": "ชื่อบนใบกำกับ/รายงานภาษีขายเท่านั้น"
+      },
+      {
+       "label": "สาขา#",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 0"
+      },
+      {
+       "label": "อ้างอิง",
+       "type": "text",
+       "required": false,
+       "lookup": "reference_text"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "department"
+      },
+      {
+       "label": "เลขที่ใบลดหนี้",
+       "type": "text",
+       "required": true,
+       "note": "running SR0000003"
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "เลขที่ใบกำกับ",
+       "type": "lookup",
+       "required": true,
+       "lookup": "ar_invoice_outstanding"
+      },
+      {
+       "label": "พนักงานขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "salesman"
+      },
+      {
+       "label": "เขตการขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "sales_area"
+      },
+      {
+       "label": "ประเภทราคา",
+       "type": "select",
+       "required": true,
+       "note": "0=ยกเว้นภาษี,1=รวมภาษี(x7/107),2=แยก VAT(x7/100)"
+      }
+     ]
+    },
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายละเอียดอื่น <Ctrl+F8>",
+     "fields": []
+    },
+    {
+     "name": "รับชำระด้วยใบเสร็จ <F7>",
+     "fields": []
+    },
+    {
+     "name": "ตัดกับบิลขาย <Shift+F7>",
+     "fields": []
+    },
+    {
+     "name": "ภาษีขาย <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "ภาษีหัก ณ ที่จ่าย [สันนิษฐาน: ชื่อแท็บถูกตัด]",
+     "fields": []
+    },
+    {
+     "name": "Footer",
+     "fields": [
+      {
+       "label": "มูลค่าของสินค้าหรือบริการ ตามใบกำกับภาษีเดิม",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "หักส่วนลด",
+       "type": "text",
+       "required": false,
+       "note": "จำนวนเงิน/%/ส่วนลดซ้อน 5+2%"
+      },
+      {
+       "label": "ยอดหลังหักส่วนลด",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ภาษีมูลค่าเพิ่ม %",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 7.00; จำนวนปล่อยว่างให้คำนวณ"
+      },
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "Dialog ป้อนรายละเอียดสินค้าที่ลดหนี้หรือรับคืน",
+     "fields": [
+      {
+       "label": "รับคืนสินค้า ?",
+       "type": "check",
+       "required": true,
+       "note": "Y=รับคืนสินค้าด้วย N=แค่ลดหนี้"
+      },
+      {
+       "label": "รหัสสินค้า",
+       "type": "lookup",
+       "required": false,
+       "lookup": "product"
+      },
+      {
+       "label": "เข้าคลัง",
+       "type": "lookup",
+       "required": false,
+       "lookup": "warehouse"
+      },
+      {
+       "label": "รายละเอียด",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "จำนวน",
+       "type": "number",
+       "required": false,
+       "note": "หน่วย x ตัวคูณ; ว่างถ้า N"
+      },
+      {
+       "label": "หน่วยละ",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ส่วนลด",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false,
+       "lookup": true
+      },
+      {
+       "label": "รับของแถมคืน ?",
+       "type": "check",
+       "required": false,
+       "note": "[Y,N, ว่างไว้=N]"
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "รหัส",
+     "ร",
+     "คลัง",
+     "จำนวน",
+     "หน่วย",
+     "ราคาต่อหน่วย",
+     "ส่วนลด",
+     "F",
+     "R",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "toolbar มาตรฐาน (บทที่ 3)",
+    "พิมพ์เอกสาร <Alt+P>",
+    "เพิ่ม/แก้ไขหมายเหตุของเอกสาร <Alt+R>",
+    "ทำงาน <F5>",
+    "ค้นหา"
+   ],
+   "postings": [
+    "N: ลดยอดหนี้อย่างเดียว ไม่เข้าสต๊อก; Y: รับสินค้าเข้าสต๊อก + ลดหนี้ (หน้า 222)",
+    "[สันนิษฐาน] Dr รับคืน/ส่วนลด, Dr ภาษีขาย / Cr ลูกหนี้"
+   ]
+  },
+  {
+   "id": "S-BI-01",
+   "name": "ใบวางบิล",
+   "menu": "การเงิน > 1.1 ใบวางบิล",
+   "book_page": 223,
+   "pdf_page": 239,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "Header",
+     "fields": [
+      {
+       "label": "รหัสลูกค้า",
+       "type": "lookup",
+       "required": true,
+       "lookup": "customer",
+       "note": "แสดงข้อความเงื่อนไขวางบิลของลูกค้า"
+      },
+      {
+       "label": "เงื่อนไขการชำระเงิน",
+       "type": "text",
+       "required": false,
+       "lookup": "payment_terms"
+      },
+      {
+       "label": "หมายเหตุ",
+       "type": "text",
+       "required": false,
+       "lookup": "note_text"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "department"
+      },
+      {
+       "label": "เลขที่ใบวางบิล",
+       "type": "text",
+       "required": true,
+       "note": "running BI0000001"
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "วันที่ไปวางบิล",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "วันที่นัดรับเงิน",
+       "type": "date",
+       "required": false,
+       "note": "ไม่ทราบให้ว่างไว้"
+      }
+     ]
+    },
+    {
+     "name": "รายการที่วางบิล <F8>",
+     "fields": []
+    },
+    {
+     "name": "Footer",
+     "fields": [
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "Dialog เลือกเอกสารที่จะวางบิล",
+     "fields": [
+      {
+       "label": "ใบกำกับ#",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "ครบกำหนด",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ชำระแล้ว",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ค้างชำระ",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "แผนก",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "พนักงานขาย",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "ถูกเลือก",
+       "type": "number",
+       "required": false
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ใบกำกับ#",
+     "วันที่",
+     "ครบกำหนด",
+     "(?)",
+     "(?)",
+     "จำนวนเงิน",
+     "ชำระแล้ว [สันนิษฐาน]",
+     "ค้างชำระ [สันนิษฐาน]"
+    ]
+   },
+   "buttons": [
+    "toolbar มาตรฐาน",
+    "ทำงาน <F5>",
+    "ยกเลิก",
+    "ค้นหา",
+    "เรียงใหม่ <Tab>"
+   ],
+   "postings": [
+    "ไม่ลงบัญชี [สันนิษฐาน]"
+   ]
+  },
+  {
+   "id": "S-BI-02",
+   "name": "บันทึกวันนัดรับชำระเงิน",
+   "menu": "การเงิน > 1.2 บันทึกวันนัดรับชำระเงิน",
+   "book_page": 225,
+   "pdf_page": 241,
+   "layout": "list",
+   "grid": {
+    "columns": [
+     "เลขที่ใบวางบิล",
+     "วันที่",
+     "จำนวนเงิน"
+    ]
+   },
+   "fields": [
+    {
+     "label": "วันที่นัดชำระ",
+     "type": "date",
+     "required": true
+    }
+   ],
+   "buttons": [
+    "ทำงาน <F5>",
+    "ยกเลิก",
+    "ค้นหา",
+    "ตกลง"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-RE-01",
+   "name": "รับชำระหนี้",
+   "menu": "การเงิน > 1.5 รับชำระหนี้",
+   "book_page": 225,
+   "pdf_page": 241,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "Header",
+     "fields": [
+      {
+       "label": "รหัสลูกค้า",
+       "type": "lookup",
+       "required": true,
+       "lookup": "customer",
+       "note": "แสดงชื่อ ที่อยู่ โทร ใต้ช่อง"
+      },
+      {
+       "label": "Bill to",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer",
+       "note": "ชื่อบนใบกำกับ/รายงานภาษีขายเท่านั้น"
+      },
+      {
+       "label": "สาขา#",
+       "type": "number",
+       "required": false,
+       "note": "ค่าเริ่มต้น 0"
+      },
+      {
+       "label": "อ้างอิง",
+       "type": "text",
+       "required": false,
+       "lookup": "reference_text"
+      },
+      {
+       "label": "พนักงานขาย",
+       "type": "lookup",
+       "required": false,
+       "lookup": "salesman"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "department"
+      },
+      {
+       "label": "เลขที่ใบเสร็จ",
+       "type": "text",
+       "required": true,
+       "note": "running RE0000001"
+      },
+      {
+       "label": "วันที่ใบเสร็จ",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "วันที่รับชำระ",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "ยอดเงินไม่เรียบร้อย",
+       "type": "text",
+       "required": false,
+       "note": "label สถานะ"
+      }
+     ]
+    },
+    {
+     "name": "รายการบิลที่รับชำระ <F8>",
+     "fields": []
+    },
+    {
+     "name": "รายละเอียดเช็คเพิ่มเติม <Ctrl+F8>",
+     "fields": []
+    },
+    {
+     "name": "รายการภาษีขาย-กรณีเกณฑ์เงินสด <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "กลาง",
+     "fields": [
+      {
+       "label": "VAT(กรณีรับค่าบริการ)",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดชำระตามใบกำกับ",
+       "type": "money",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "รับชำระ",
+     "fields": [
+      {
+       "label": "ดอกเบี้ยรับ",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "เงินสด",
+       "type": "money",
+       "required": false,
+       "note": "ค่าเริ่มต้นถือว่ารับเงินสด"
+      },
+      {
+       "label": "ชำระโดยอื่นๆ (ด้านล่าง)",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ภาษี ณ ที่จ่าย",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ส่วนลดเงินสด",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดชำระจริง",
+       "type": "money",
+       "required": false,
+       "note": "ต้องเท่ากับยอดรวม/ยอดชำระตามใบกำกับ"
+      }
+     ]
+    },
+    {
+     "name": "Dialog เลือกรายการที่จะรับชำระหนี้",
+     "fields": [
+      {
+       "label": "เลขที่เอกสาร",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "ครบกำหนด",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "ใบวางบิล",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดคงค้าง",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดชำระ",
+       "type": "money",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "Dialog ป้อนยอดเงินที่รับชำระ",
+     "fields": [
+      {
+       "label": "ยอดชำระ",
+       "type": "money",
+       "required": true,
+       "note": "บางส่วนหรือเต็ม"
+      },
+      {
+       "label": "ภาษีมูลค่าเพิ่ม",
+       "type": "money",
+       "required": false,
+       "note": "เฉพาะบริการ/ค่างวด เกณฑ์เงินสด"
+      }
+     ]
+    },
+    {
+     "name": "Dialog เลือกเช็คคงเหลือ",
+     "fields": [
+      {
+       "label": "เลขที่เช็ค",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดคงเหลือ",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "รหัสลูกค้า",
+       "type": "text",
+       "required": false
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "ใบกำกับ#",
+     "วันที่",
+     "ใบวางบิล#",
+     "พนัก",
+     "จำนวนเงิน",
+     "ยอดคงค้าง",
+     "ยอดชำระ"
+    ]
+   },
+   "buttons": [
+    "toolbar มาตรฐาน",
+    "บันทึกข้อมูล <F9>",
+    "แก้ไขข้อมูล <Alt+E>",
+    "ทำงาน <F5>",
+    "เรียงใหม่ <Tab>",
+    "ดับเบิ้ลคลิก เงินสด",
+    "ดับเบิ้ลคลิก grid ชำระโดยอื่นๆ -> S-PM-01"
+   ],
+   "postings": [
+    "ตัดยอดลูกหนี้ค้างชำระรายใบ",
+    "ภาษีขายเกณฑ์เงินสดรับรู้ ณ วันรับชำระ",
+    "[สันนิษฐาน] Dr เงินสด 1111-00/เช็ครับ 1130-02, Dr ส่วนลดเงินสด 4100-04, Dr ภาษีถูกหัก ณ ที่จ่าย 1151-02 / Cr ลูกหนี้การค้า, Cr ดอกเบี้ยรับ"
+   ]
+  },
+  {
+   "id": "S-OI-01",
+   "name": "บันทึกรายได้อื่นๆ",
+   "menu": "ระบบขาย > 5 รายได้อื่นๆ",
+   "book_page": 231,
+   "pdf_page": 247,
+   "layout": "header-grid-footer",
+   "tabs": [
+    {
+     "name": "Header",
+     "fields": [
+      {
+       "label": "รหัสลูกค้า",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer",
+       "note": "ไม่บังคับ"
+      },
+      {
+       "label": "Bill to",
+       "type": "lookup",
+       "required": false,
+       "lookup": "customer"
+      },
+      {
+       "label": "สาขา#",
+       "type": "number",
+       "required": false
+      },
+      {
+       "label": "คำอธิบาย",
+       "type": "text",
+       "required": false,
+       "lookup": "reference_text"
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "department"
+      },
+      {
+       "label": "เลขที่เอกสาร",
+       "type": "text",
+       "required": true,
+       "note": "running OI0000001"
+      },
+      {
+       "label": "วันที่",
+       "type": "date",
+       "required": true
+      },
+      {
+       "label": "ประเภทราคา",
+       "type": "select",
+       "required": true,
+       "note": "0=ยกเว้นภาษี,1=รวมภาษี(x7/107),2=แยก VAT(x7/100)"
+      }
+     ]
+    },
+    {
+     "name": "รายการสินค้า <F8>",
+     "fields": [
+      {
+       "label": "รหัส",
+       "type": "lookup",
+       "required": true,
+       "lookup": "income_code"
+      },
+      {
+       "label": "รายละเอียด",
+       "type": "text",
+       "required": false
+      },
+      {
+       "label": "แผนก",
+       "type": "lookup",
+       "required": false,
+       "lookup": "department",
+       "note": "ว่าง=รายได้รวม"
+      },
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false,
+       "lookup": true
+      }
+     ]
+    },
+    {
+     "name": "รายการภาษีขาย <Ctrl+F7>",
+     "fields": []
+    },
+    {
+     "name": "Footer",
+     "fields": [
+      {
+       "label": "จำนวนเงิน",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ภาษีมูลค่าเพิ่ม %",
+       "type": "number",
+       "required": false
+      },
+      {
+       "label": "จำนวนเงินรวมทั้งสิ้น",
+       "type": "money",
+       "required": false
+      }
+     ]
+    },
+    {
+     "name": "รับชำระ",
+     "fields": [
+      {
+       "label": "ดอกเบี้ยรับ",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "เงินสด",
+       "type": "money",
+       "required": false,
+       "note": "ค่าเริ่มต้นถือว่ารับเงินสด"
+      },
+      {
+       "label": "ชำระโดยอื่นๆ (ด้านล่าง)",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ภาษี ณ ที่จ่าย",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ส่วนลดเงินสด",
+       "type": "money",
+       "required": false
+      },
+      {
+       "label": "ยอดชำระจริง",
+       "type": "money",
+       "required": false,
+       "note": "ต้องเท่ากับยอดรวม/ยอดชำระตามใบกำกับ"
+      }
+     ]
+    }
+   ],
+   "grid": {
+    "columns": [
+     "No.",
+     "รหัส",
+     "รายละเอียด",
+     "แผนก",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "toolbar มาตรฐาน (บทที่ 3)",
+    "พิมพ์เอกสาร <Alt+P>",
+    "เพิ่ม/แก้ไขหมายเหตุของเอกสาร <Alt+R>",
+    "บันทึกข้อมูล"
+   ],
+   "postings": [
+    "[สันนิษฐาน] Dr เงินสด/เช็ครับ / Cr รายได้อื่น (ตามรหัสรายได้ แยกแผนกได้), Cr ภาษีขาย"
+   ]
+  }
+ ],
+ "entities": [
+  {
+   "name": "Customer",
+   "fields": [
+    "code",
+    "name",
+    "address",
+    "phone_fax",
+    "branch_no",
+    "credit_days",
+    "credit_limit",
+    "salesman_code",
+    "sales_area_code",
+    "shipping_code",
+    "discount",
+    "price_table",
+    "ship_to_locations",
+    "payment_terms",
+    "billing_condition_text",
+    "is_walk_in"
+   ],
+   "relations": [
+    "-> SalesDoc (1:n)",
+    "-> CustomerShipTo (1:n)"
+   ]
+  },
+  {
+   "name": "Product",
+   "fields": [
+    "code",
+    "name",
+    "unit_large",
+    "unit_small",
+    "unit_factor",
+    "vat_exempt",
+    "cost"
+   ],
+   "relations": [
+    "-> SalesDocLine (1:n)",
+    "-> StockBalance (1:n)"
+   ]
+  },
+  {
+   "name": "SalesDoc",
+   "fields": [
+    "doc_type(QT|SO|AI|IV|CS|DR|SR|OI)",
+    "doc_no",
+    "doc_date",
+    "customer_code",
+    "bill_to_code",
+    "branch_no",
+    "department",
+    "salesman",
+    "sales_area",
+    "shipping",
+    "price_type(0|1|2)",
+    "credit_days",
+    "due_date",
+    "price_valid_days",
+    "doc_status",
+    "ship_date",
+    "item_ship_date_flag",
+    "ref_text",
+    "ship_to",
+    "discount_text",
+    "deposit_ref",
+    "vat_rate",
+    "amount",
+    "discount_amt",
+    "net_amount",
+    "vat_amount",
+    "total_amount",
+    "tax_point(accrual|cash)",
+    "original_invoice_value",
+    "ref_invoice_no",
+    "ref_so_no",
+    "converted_to_so",
+    "converted_from"
+   ],
+   "relations": [
+    "-> SalesDocLine (1:n)",
+    "-> DocNote (1:n)",
+    "QT -> SO (1:1 แปลง)",
+    "SO -> IV (1:n อ้าง)",
+    "AI -> IV (1:n หักมัดจำ)",
+    "IV -> DR/SR (1:n อ้างใบกำกับ)",
+    "-> PaymentLine (1:n สำหรับ AI/CS/OI)"
+   ]
+  },
+  {
+   "name": "SalesDocLine",
+   "fields": [
+    "line_no",
+    "product_or_income_code",
+    "description",
+    "warehouse",
+    "qty",
+    "unit",
+    "unit_factor",
+    "unit_price",
+    "discount_text",
+    "amount",
+    "is_free_gift",
+    "f_flag",
+    "return_flag(R)",
+    "line_ship_date",
+    "outstanding_qty",
+    "cancel_qty",
+    "cancel_date",
+    "cancel_reason",
+    "ref_so_line",
+    "department"
+   ],
+   "relations": [
+    "-> DocNote (1:n, 10 บรรทัด)"
+   ]
+  },
+  {
+   "name": "DocNote",
+   "fields": [
+    "doc_ref",
+    "line_ref",
+    "line_no",
+    "text"
+   ],
+   "relations": []
+  },
+  {
+   "name": "AROutstanding",
+   "fields": [
+    "doc_no(IV|DR|SR)",
+    "customer",
+    "doc_date",
+    "due_date",
+    "amount",
+    "paid_or_credited",
+    "balance",
+    "billing_no",
+    "paid_flag",
+    "paid_date",
+    "commission"
+   ],
+   "relations": [
+    "-> BillingLine (1:n)",
+    "-> ReceiptLine (1:n)"
+   ]
+  },
+  {
+   "name": "BillingNote",
+   "fields": [
+    "bill_no",
+    "date",
+    "customer",
+    "department",
+    "payment_terms",
+    "note",
+    "visit_date",
+    "appointment_date",
+    "total"
+   ],
+   "relations": [
+    "-> BillingLine (1:n)"
+   ]
+  },
+  {
+   "name": "BillingLine",
+   "fields": [
+    "bill_no",
+    "invoice_no",
+    "invoice_date",
+    "due_date",
+    "amount",
+    "paid",
+    "balance"
+   ],
+   "relations": [
+    "-> AROutstanding (n:1)"
+   ]
+  },
+  {
+   "name": "Receipt",
+   "fields": [
+    "receipt_no",
+    "receipt_date",
+    "payment_date",
+    "customer",
+    "bill_to",
+    "department",
+    "salesman",
+    "ref_text",
+    "service_vat",
+    "total_by_invoice",
+    "interest_income",
+    "cash",
+    "other_payment",
+    "wht",
+    "cash_discount",
+    "actual_paid"
+   ],
+   "relations": [
+    "-> ReceiptLine (1:n)",
+    "-> PaymentLine (1:n)"
+   ]
+  },
+  {
+   "name": "ReceiptLine",
+   "fields": [
+    "receipt_no",
+    "invoice_no",
+    "invoice_date",
+    "billing_no",
+    "salesman",
+    "amount",
+    "balance",
+    "pay_amount",
+    "vat_cash_basis"
+   ],
+   "relations": [
+    "-> AROutstanding (n:1)"
+   ]
+  },
+  {
+   "name": "PaymentLine",
+   "fields": [
+    "doc_ref",
+    "method_code",
+    "cheque_no",
+    "cheque_date",
+    "bank_code",
+    "amount",
+    "balance_left",
+    "pay_amount"
+   ],
+   "relations": [
+    "-> PaymentMethod (n:1)",
+    "-> ChequeReceived (n:1)"
+   ]
+  },
+  {
+   "name": "PaymentMethod",
+   "fields": [
+    "code",
+    "description",
+    "bank_account_code",
+    "gl_account"
+   ],
+   "relations": []
+  },
+  {
+   "name": "ChequeReceived",
+   "fields": [
+    "cheque_no",
+    "date",
+    "bank",
+    "amount",
+    "remaining_balance",
+    "customer"
+   ],
+   "relations": [
+    "-> PaymentLine (1:n ใช้ยอดคงเหลือข้ามใบเสร็จ)"
+   ]
+  },
+  {
+   "name": "Lookup tables",
+   "fields": [
+    "Department",
+    "Salesman",
+    "SalesArea",
+    "Shipping",
+    "Warehouse",
+    "DocStatus",
+    "CancelReason",
+    "IncomeCode",
+    "Bank"
+   ],
+   "relations": []
+  }
+ ],
+ "flows": [
+  {
+   "name": "วงจรขายเชื่อ",
+   "steps": [
+    "ใบเสนอราคา (ถ้ามี)",
+    "แปลงเป็น/เปิดใบสั่งขาย (ถ้ามี)",
+    "รับเงินมัดจำ (ถ้ามี)",
+    "เปิดบิลขายเงินเชื่อ อ้าง SO/QT, หักมัดจำ, เลือกภาระภาษี (บริการ)",
+    "ใบเพิ่มหนี้/ใบลดหนี้-รับคืน (ถ้ามี) อ้างใบกำกับ",
+    "ใบวางบิล (ถ้ามี) + บันทึกวันนัดรับชำระ",
+    "รับชำระหนี้"
+   ]
+  },
+  {
+   "name": "ขายเงินสด",
+   "steps": [
+    "เปิดบิลขายเงินสด",
+    "บันทึกรับเงินสด/เช็คทันที ไม่ตั้งลูกหนี้"
+   ]
+  },
+  {
+   "name": "เปิดบิลจากใบสั่งขาย",
+   "steps": [
+    "ป้อนรหัสลูกค้า",
+    "คลิกแว่นขยายช่องใบสั่งขาย เลือก SO",
+    "เลือกรายการ (หรือ F6 ทั้งหมด)",
+    "ป้อนคลัง/ปริมาณที่ส่ง/ราคา/ส่วนลด/ของแถม",
+    "F5 บันทึกรายการ",
+    "ป้อนข้อมูลหัวเอกสารที่เหลือ"
+   ]
+  },
+  {
+   "name": "ยกเลิกยอดสั่งขาย",
+   "steps": [
+    "เปิดใบสั่งขาย",
+    "แท็บ รายการสินค้า เลื่อนไปขวา (แท็บค้างส่ง)",
+    "ดับเบิ้ลคลิกช่อง ยกเลิก ป้อนจำนวน",
+    "ป้อนวันที่ยกเลิก",
+    "ป้อนเหตุผล (จากตารางข้อมูล)"
+   ]
+  },
+  {
+   "name": "รับชำระหนี้",
+   "steps": [
+    "ป้อนเลขที่/วันที่ใบเสร็จ/ลูกค้า/พนักงาน",
+    "เลือกใบกำกับค้างชำระ (ดับเบิ้ลคลิก) ป้อนยอดชำระ",
+    "F5 บันทึกรายการ",
+    "(ถ้ามีผลต่าง) Alt+E ป้อน ดอกเบี้ยรับ/ส่วนลดเงินสด/ภาษี ณ ที่จ่าย, F9, รับ Message#4025",
+    "เลือกรูปแบบ: เงินสด (ดับเบิ้ลคลิกช่องเงินสด) หรือ เช็ค/อื่นๆ (ดับเบิ้ลคลิก grid -> เลือกวิธี -> ป้อนเช็ค)",
+    "F9 บันทึก"
+   ]
+  },
+  {
+   "name": "ลดหนี้/รับคืน",
+   "steps": [
+    "ป้อนลูกค้า เลขที่ วันที่",
+    "เลือกใบกำกับ ยืนยันมูลค่าตามใบกำกับเดิม",
+    "เลือกรายการสินค้า",
+    "ตอบ รับคืนสินค้า? Y/N และป้อนจำนวน/จำนวนเงิน",
+    "F5 บันทึก"
+   ]
+  }
+ ]
+}

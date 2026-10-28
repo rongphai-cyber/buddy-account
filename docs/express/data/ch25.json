@@ -1,0 +1,714 @@
+{
+ "chapter": 25,
+ "title": "การแก้ไขรายงาน/แบบฟอร์ม",
+ "book_pages": "395-434",
+ "pdf_pages": "411-450",
+ "screens": [
+  {
+   "id": "S-RD-01",
+   "name": "เมนูพิมพ์เอกสาร (ดรอปดาวน์ไอคอนพิมพ์)",
+   "menu": "ขาย > 4 ขายเงินเชื่อ > ไอคอนพิมพ์เอกสาร",
+   "book_page": 397,
+   "pdf_page": 413,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "1. พิมพ์ใบกำกับสินค้า (ฟอร์ม 1-9)",
+     "type": "select",
+     "required": false,
+     "note": "ขายเงินเชื่อ 9 ฟอร์ม เอกสารอื่น 3 ฟอร์ม"
+    },
+    {
+     "label": "2. แก้ไขแบบทดสอบ",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "3. พิมพ์แบบทดสอบ",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "4. นำแบบทดสอบไปทับข้อ 1",
+     "type": "select",
+     "required": false,
+     "note": "เลือกฟอร์ม 1-9 แล้วยืนยัน"
+    },
+    {
+     "label": "5. นำข้อ 1 มาเป็นแบบทดสอบ",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "6. นำต้นฉบับมีเส้น มาเป็นแบบทดสอบ (ฟอร์ม 12)",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "7. นำต้นฉบับไม่มีเส้น มาเป็นแบบทดสอบ (ฟอร์ม 12)",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "8. ต้นฉบับมีเส้น (ฟอร์ม 15)",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "9. ต้นฉบับไม่มีเส้น (ฟอร์ม 15)",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "A. นำต้นฉบับพิมพ์ครึ่งหน้า มาเป็นแบบทดสอบ",
+     "type": "select",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "B. นำต้นฉบับบิลเอ็กซ์เพรส มาเป็นแบบทดสอบ",
+     "type": "select",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "buttons": [
+    "ไอคอนพิมพ์ / Alt+P (พิมพ์ฟอร์ม 1)"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-RD-02",
+   "name": "หน้าต่างแก้ไขแบบทดสอบ (ตัวแก้ไขภาษารายงาน)",
+   "menu": "ไอคอนพิมพ์ > 2 แก้ไขแบบทดสอบ / รายงาน > 1.9.2 > Ctrl+E",
+   "book_page": 399,
+   "pdf_page": 415,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "ข้อความคำสั่งรายงาน",
+     "type": "memo",
+     "required": true,
+     "note": "4 ส่วน [report frame] [print options] [data file] [data spec]"
+    },
+    {
+     "label": "ฟอนต์/ขนาด",
+     "type": "select",
+     "required": false,
+     "note": "ค่าเริ่ม 14"
+    },
+    {
+     "label": "Line/Col/Char/Len/Undo/Redo",
+     "type": "text",
+     "required": false,
+     "note": "แถบสถานะ (แสดงผล)"
+    }
+   ],
+   "buttons": [
+    "Save",
+    "Print",
+    "Cut",
+    "Copy",
+    "Paste",
+    "Clear",
+    "Undo",
+    "Redo",
+    "Find",
+    "FR (ค้นหา/แทนที่) [สันนิษฐาน]",
+    "Esc=ปิด (ถามบันทึก)",
+    "Ctrl+A"
+   ],
+   "postings": [],
+   "sections": {
+    "report_frame_prefixes": {
+     "*": "หมายเหตุ",
+     "**:": "บรรทัด picture/ไม้บรรทัด [สันนิษฐาน]",
+     "Ti:": "Title พิมพ์ครั้งเดียว",
+     "He:": "Header ทุกหน้า",
+     "H1:": "Header เงื่อนไข [สันนิษฐาน]",
+     "Gh:": "Group header (;n FIELD)",
+     "Bo:": "Body ต่อระเบียน master",
+     "Ih:": "Item header นิยาม join master->item",
+     "Ib:": "Item body ต่อบรรทัด item",
+     "If:": "Item footer",
+     "Bt:": "Body template (เส้นแนวตั้ง)",
+     "Fo:": "Footer ทุกหน้า",
+     "Su:": "Summary หน้าสุดท้าย",
+     "Gf:": "Group footer"
+    },
+    "system_functions": {
+     "\\NAME": "ชื่อบริษัท",
+     "\\DATE": "วันที่",
+     "\\TIME": "เวลา",
+     "\\PAGE": "เลขหน้า 8 หลัก",
+     "\\P": "เลขหน้า 3 หลัก",
+     "\\TP": "จำนวนหน้าทั้งหมด",
+     "\\LINE": "เส้นเดี่ยว",
+     "\\DLINE": "เส้นคู่",
+     "\\FEED": "ขึ้นหน้าใหม่",
+     "\\FILE": "ชื่อแฟ้มข้อมูล"
+    },
+    "inline_codes": {
+     "$E..$E": "ตัวขยาย",
+     "$B..$B": "ตัวหนา",
+     "$_..$_": "ขีดเส้นใต้",
+     "^..^": "กึ่งกลาง",
+     "\\027\\074\\<n>": "ป้อนกระดาษ n/180 นิ้ว"
+    },
+    "print_options": {
+     "Top": "0",
+     "Left": "0",
+     "Tabs": "4",
+     "Right": "94",
+     "Lines": "36",
+     "Output": "Select|Printer|Screen|File",
+     "File Name": "ARIVC.TXT",
+     "Print Control": "10cpi \\027\\033\\000; 12 \\027\\033\\001; 15 \\027\\033\\000\\027\\103; 17 \\027\\033\\004; 20 \\027\\033\\005",
+     "Fix Summary Line": "ON",
+     "Select Scope": "OFF",
+     "Form": "ON (ต้อง ON ถ้า Select Scope ON)",
+     "Select Page": "OFF",
+     "Condition": "OFF",
+     "Copy": "2",
+     "Iteration": "ON = พิมพ์ซ้ำต่อระเบียน"
+    },
+    "data_spec_format": "~VAR: len, \"pict\", \"data\", \"exp\" [,ExcelColumn]",
+    "invoice_variables": {
+     "He": [
+      "~CUSCOD",
+      "~CUSNAM",
+      "~ADDR01",
+      "~ADDR02",
+      "~ADDR03",
+      "~TELNUM",
+      "~YOUREF",
+      "~DLVBY",
+      "~DOCNUM",
+      "~DOCDAT",
+      "~CR",
+      "~DUEDAT",
+      "~SONUM",
+      "~SODAT",
+      "~SLMCOD",
+      "~AREA",
+      "~ADDR",
+      "~TEL",
+      "~TAXID"
+     ],
+     "Ti": [
+      "~INIT"
+     ],
+     "Ib": [
+      "~N",
+      "~ARTICLE",
+      "~QTY",
+      "~TQUCOD",
+      "~UNITPR",
+      "~DISC_I",
+      "~NETAMT_I",
+      "~REMARK"
+     ],
+     "Su": [
+      "~AMOUNT",
+      "~DISC",
+      "~DISCAMT",
+      "~AFTDISC",
+      "~ADVNUM",
+      "~ADVAMT",
+      "~TOTAL",
+      "~VAT",
+      "~VATAMT",
+      "~CHKAMT",
+      "~HREM1-5",
+      "~BAHT",
+      "~AMTRATZ",
+      "~AMTRATX",
+      "~NETAMT",
+      "~PRNBY",
+      "~PRNDAT",
+      "~PRNTIM",
+      "~PRNCNT",
+      "~RECBY"
+     ]
+    }
+   }
+  },
+  {
+   "id": "S-RD-03",
+   "name": "สร้างและแก้ไขรายงานด้วยตัวเอง",
+   "menu": "รายงาน > 1 พิมพ์รายงาน > 9 สร้างรายงานด้วยตนเอง > 9.2",
+   "book_page": 423,
+   "pdf_page": 439,
+   "layout": "form",
+   "fields": [
+    {
+     "label": "รหัส",
+     "type": "text",
+     "required": true,
+     "note": "<=8 อักษรอังกฤษ"
+    },
+    {
+     "label": "ชื่อรายงาน",
+     "type": "text",
+     "required": true,
+     "note": ""
+    },
+    {
+     "label": "ต้นฉบับรายงาน",
+     "type": "text",
+     "required": false,
+     "note": "แสดงผล เช่น ar_trn_c"
+    },
+    {
+     "label": "ค่าพิเศษ",
+     "type": "text",
+     "required": false,
+     "note": "[สันนิษฐาน]"
+    },
+    {
+     "label": "ใช้เงื่อนไขมาตรฐาน",
+     "type": "check",
+     "required": false,
+     "note": "ค่าเริ่ม Y"
+    }
+   ],
+   "buttons": [
+    "ใหม่ (Alt+A)",
+    "แก้ไข",
+    "คำสั่งแก้ไข (Ctrl+E)",
+    "ลบ",
+    "ปิด",
+    "บันทึก",
+    "first",
+    "prev",
+    "next",
+    "last",
+    "ค้นหา"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-RD-04",
+   "name": "สร้างรายงานใหม่ (dialog)",
+   "menu": "S-RD-03 > Alt+A",
+   "book_page": 424,
+   "pdf_page": 440,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "รายงานต้นฉบับ",
+     "type": "lookup",
+     "required": true,
+     "note": "เช่น 143",
+     "lookup": "รายงานต้นฉบับ (รหัสไฟล์, ชื่อ, template)"
+    },
+    {
+     "label": "รหัสรายงานใหม่",
+     "type": "text",
+     "required": true,
+     "note": "<=8 อักษรอังกฤษ"
+    },
+    {
+     "label": "ชื่อรายงานใหม่",
+     "type": "text",
+     "required": true,
+     "note": ""
+    }
+   ],
+   "grid": {
+    "columns": [
+     "รหัสไฟล์",
+     "ชื่อรายงาน",
+     "template",
+     "ขนาด [สันนิษฐาน]"
+    ]
+   },
+   "buttons": [
+    "ตกลง",
+    "ยกเลิก",
+    "ค้นหา",
+    "เรียงใหม่ <Tab>"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-RD-05",
+   "name": "เงื่อนไขรายงาน 143 ขายเงินเชื่อ แยกตามลูกค้า",
+   "menu": "รายงาน > 1 รายงานลูกหนี้ > 4 ขายเงินเชื่อ > 3 แยกตามลูกค้า",
+   "book_page": 422,
+   "pdf_page": 438,
+   "layout": "report-options",
+   "fields": [
+    {
+     "label": "รหัสลูกค้า จาก/ถึง",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "ARMAS"
+    },
+    {
+     "label": "วันที่ จาก/ถึง",
+     "type": "date",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "รหัสพนักงานขาย จาก/ถึง",
+     "type": "lookup",
+     "required": false,
+     "note": "",
+     "lookup": "OESLM"
+    },
+    {
+     "label": "เลือกแผนก",
+     "type": "lookup",
+     "required": false,
+     "note": "* = ทั้งหมด",
+     "lookup": "แผนก"
+    },
+    {
+     "label": "พิมพ์รายละเอียด",
+     "type": "check",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เริ่มพิมพ์หน้า/ถึง",
+     "type": "number",
+     "required": false,
+     "note": "1 ถึง 9,999"
+    },
+    {
+     "label": "จำนวนบรรทัด",
+     "type": "number",
+     "required": false,
+     "note": "61 บรรทัด/หน้า"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "วันที่",
+     "เลขที่",
+     "พนักงานขาย",
+     "V",
+     "ส่วนลด",
+     "มูลค่าสินค้า",
+     "VAT",
+     "รวมทั้งสิ้น",
+     "ครบกำหนด",
+     "ใบสั่งขาย",
+     "รายละเอียด",
+     "จำนวน",
+     "ราคาต่อหน่วย",
+     "จำนวนเงิน"
+    ]
+   },
+   "buttons": [
+    "ปิด",
+    "พิมพ์"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-RD-06",
+   "name": "รายละเอียดแฟ้มข้อมูล (กด Tab บนหน้าจอเอกสาร)",
+   "menu": "หน้าจอเอกสาร > Tab (หัว) / F8+Tab (ตาราง)",
+   "book_page": 412,
+   "pdf_page": 428,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "แฟ้มข้อมูล",
+     "type": "text",
+     "required": false,
+     "note": "ARTRN / STCRD"
+    },
+    {
+     "label": "แฟ้มดัชนี",
+     "type": "text",
+     "required": false,
+     "note": "ARTRN2 / STCRD5"
+    },
+    {
+     "label": "นิพจน์ดัชนี",
+     "type": "text",
+     "required": false,
+     "note": "RECTYP+DOCNUM / DOCNUM+SEQNUM"
+    },
+    {
+     "label": "แฟ้มจอภาพ",
+     "type": "text",
+     "required": false,
+     "note": "ARIVC"
+    },
+    {
+     "label": "อ่านข้อมูล",
+     "type": "check",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "เพิ่มข้อมูล",
+     "type": "check",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "แก้ไข",
+     "type": "check",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ยกเลิก",
+     "type": "check",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ลบข้อมูล",
+     "type": "check",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "พิมพ์รายงาน",
+     "type": "check",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "รับรองเอกสาร",
+     "type": "check",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ผู้บันทึก/วันที่",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ผู้พิมพ์/วันที่",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "พิมพ์ครั้งที่/เวลา",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "รับรองโดย/วันที่",
+     "type": "text",
+     "required": false,
+     "note": ""
+    },
+    {
+     "label": "ระเบียนที่ x ซึ่งมีทั้งหมด y รายการ",
+     "type": "text",
+     "required": false,
+     "note": ""
+    }
+   ],
+   "buttons": [
+    "ตกลง"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-RD-07",
+   "name": "เลือกชนิดของแฟ้มข้อมูล",
+   "menu": "ไอคอนพิมพ์ > 3 พิมพ์แบบทดสอบ > แฟ้มข้อมูล",
+   "book_page": 430,
+   "pdf_page": 446,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ชนิดแฟ้ม",
+     "type": "select",
+     "required": false,
+     "note": "แฟ้มข้อมูลชนิดข้อความ (Text File) | แฟ้มข้อมูลมาตรฐาน (SDF File)"
+    },
+    {
+     "label": "ชื่อแฟ้ม",
+     "type": "text",
+     "required": true,
+     "note": "เช่น C:\\SVATXLS.TXT"
+    }
+   ],
+   "buttons": [
+    "OK",
+    "Cancel"
+   ],
+   "postings": []
+  }
+ ],
+ "entities": [
+  {
+   "name": "ARTRN",
+   "fields": [
+    "RECTYP",
+    "DOCNUM",
+    "DOCDAT",
+    "CUSCOD",
+    "SLMCOD",
+    "YOUREF",
+    "PAYTRM",
+    "DUEDAT",
+    "FLGVAT",
+    "DOCSTAT",
+    "AMOUNT",
+    "VATDAT",
+    "VATPRD",
+    "REFNUM",
+    "DESCRP"
+   ],
+   "relations": [
+    "-> STCRD (1:n) DOCNUM",
+    "-> ARMAS (n:1) CUSCOD",
+    "-> OESLM (n:1) SLMCOD"
+   ],
+   "indexes": [
+    "ARTRN1",
+    "ARTRN2=RECTYP+DOCNUM"
+   ]
+  },
+  {
+   "name": "STCRD",
+   "fields": [
+    "DOCNUM",
+    "SEQNUM",
+    "STKCOD",
+    "RDOCNUM",
+    "PEOPLE",
+    "TRNVAL"
+   ],
+   "relations": [
+    "-> ARTRN (n:1)",
+    "-> ARTRNRM (1:n)"
+   ],
+   "indexes": [
+    "STCRD5=DOCNUM+SEQNUM"
+   ]
+  },
+  {
+   "name": "ARTRNRM",
+   "fields": [
+    "DOCNUM",
+    "SEQNUM"
+   ],
+   "relations": [
+    "-> STCRD (n:1) via stcrd->rdocnum / docnum+seqnum"
+   ],
+   "indexes": [
+    "ARTRNRM1"
+   ]
+  },
+  {
+   "name": "ARMAS",
+   "fields": [
+    "CUSCOD",
+    "PRENAM",
+    "CUSNAM",
+    "ADDR01",
+    "ADDR02",
+    "ADDR03",
+    "TELNUM"
+   ],
+   "relations": [
+    "<- ARTRN (1:n)"
+   ],
+   "indexes": [
+    "ARMAS1"
+   ]
+  },
+  {
+   "name": "OESLM",
+   "fields": [
+    "SLMCOD",
+    "SLMNAM"
+   ],
+   "relations": [
+    "<- ARTRN (1:n)"
+   ],
+   "indexes": [
+    "OESLM1=SLMCOD"
+   ]
+  },
+  {
+   "name": "ReportDefinition",
+   "fields": [
+    "รหัส",
+    "ชื่อรายงาน",
+    "ต้นฉบับรายงาน",
+    "ค่าพิเศษ",
+    "ใช้เงื่อนไขมาตรฐาน",
+    "[report frame]",
+    "[print options]",
+    "[data file]",
+    "[data spec]"
+   ],
+   "relations": [
+    "-> รายงานต้นฉบับ (n:1)"
+   ]
+  },
+  {
+   "name": "FormSlot",
+   "fields": [
+    "เอกสาร",
+    "ลำดับฟอร์ม 1-9",
+    "แบบทดสอบ",
+    "ต้นฉบับ (มีเส้น/ไม่มีเส้น/12cpi/15cpi/ครึ่งหน้า/บิล)"
+   ],
+   "relations": [
+    "-> ประเภทเอกสาร (n:1)"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "name": "แก้แบบฟอร์มเอกสาร",
+   "steps": [
+    "หน้าจอเอกสาร > ไอคอนพิมพ์",
+    "นำต้นฉบับมาเป็นแบบทดสอบ (ข้อ 6-9/A/B)",
+    "ข้อ 2 แก้ไขแบบทดสอบ",
+    "บันทึก",
+    "ข้อ 3 พิมพ์แบบทดสอบ วนแก้",
+    "ข้อ 4 นำแบบทดสอบไปทับฟอร์ม 1-9",
+    "สำรองเป็นไฟล์ .RR1"
+   ]
+  },
+  {
+   "name": "สร้างรายงานเอง",
+   "steps": [
+    "รายงาน > 1.9.2 > Alt+A",
+    "เลือกรายงานต้นฉบับ ตั้งรหัส/ชื่อใหม่",
+    "Ctrl+E แก้คำสั่ง (comment บรรทัดเดิม, เพิ่ม relate file)",
+    "บันทึก",
+    "พิมพ์ผ่าน 1.9.1"
+   ]
+  },
+  {
+   "name": "ส่งออกภาษีขายไป Excel",
+   "steps": [
+    "พิมพ์ภาษีขายบนจอ",
+    "การเงิน 4.2 > ไอคอนพิมพ์ > แก้ไขแบบทดสอบ ฟอร์ม 2",
+    "เติม ,A ,B... ท้ายตัวแปรใน data spec",
+    "แปลงข้อความคงที่เป็นตัวแปร (~DATMON)",
+    "พิมพ์แบบทดสอบ > แฟ้มข้อมูล > SDF",
+    "Excel Text Import ตัวคั่น Comma"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,314 @@
+{
+ "chapter": 20,
+ "title": "การจัดเรียงข้อมูลและสำรองข้อมูล",
+ "book_pages": "327-334",
+ "pdf_pages": "343-350",
+ "screens": [
+  {
+   "id": "S-DM-01",
+   "name": "ระบบจัดการแฟ้มข้อมูล (จัดเรียงข้อมูล)",
+   "menu": "อื่น ๆ > 1 จัดการแฟ้มข้อมูล > 6 จัดเรียงข้อมูล",
+   "book_page": 328,
+   "pdf_page": 344,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ที่เก็บข้อมูล",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ชื่อบริษัท",
+     "type": "text",
+     "required": false,
+     "note": "แสดง"
+    },
+    {
+     "label": "ระบบซื้อ",
+     "type": "check",
+     "required": false
+    },
+    {
+     "label": "ระบบขาย",
+     "type": "check",
+     "required": false
+    },
+    {
+     "label": "ระบบสินค้า",
+     "type": "check",
+     "required": false
+    },
+    {
+     "label": "ระบบการเงิน",
+     "type": "check",
+     "required": false
+    },
+    {
+     "label": "ระบบบัญชี",
+     "type": "check",
+     "required": false
+    },
+    {
+     "label": "PACK ข้อมูล",
+     "type": "check",
+     "required": false,
+     "note": "เคลียร์ข้อมูลที่ถูกลบ"
+    },
+    {
+     "label": "ซ่อมแซมข้อมูล",
+     "type": "check",
+     "required": false,
+     "note": "แก้อักขระผิดเพี้ยน"
+    }
+   ],
+   "grid": {
+    "columns": [
+     "แฟ้มข้อมูล (ชื่อไฟล์ .DBF)",
+     "คำอธิบาย"
+    ]
+   },
+   "buttons": [
+    "ทุกระบบ",
+    "ตั้งค่าใหม่",
+    "ทำงาน",
+    "เลิก"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-DM-02",
+   "name": "สำรองข้อมูล",
+   "menu": "อื่น ๆ > 1 จัดการแฟ้มข้อมูล > 1 สำรองข้อมูล",
+   "book_page": 330,
+   "pdf_page": 346,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "ที่เก็บต้นทาง",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ที่เก็บปลายทาง",
+     "type": "text",
+     "required": true,
+     "note": "ปุ่ม … เลือกโฟลเดอร์"
+    },
+    {
+     "label": "A:",
+     "type": "select",
+     "required": false
+    },
+    {
+     "label": "ชื่อแฟ้มข้อมูลสำรอง",
+     "type": "text",
+     "required": true,
+     "note": "แนะนำ YYYYMMDD-xxxxx.5"
+    },
+    {
+     "label": "จำนวนแผ่นที่ต้องใช้",
+     "type": "number",
+     "required": false,
+     "note": "คำนวณ"
+    },
+    {
+     "label": "จำนวนแฟ้ม / ไบท์ / บริษัท",
+     "type": "text",
+     "required": false,
+     "note": "แสดง"
+    },
+    {
+     "label": "กำลังสำรองข้อมูล (progress)",
+     "type": "text",
+     "required": false
+    },
+    {
+     "label": "ผล: เรียบร้อย n แฟ้ม ไบท์ เวลาที่ใช้",
+     "type": "text",
+     "required": false
+    }
+   ],
+   "grid": {
+    "columns": [
+     "แฟ้มข้อมูล (path เต็ม)"
+    ]
+   },
+   "buttons": [
+    "…",
+    "เริ่มสำรอง",
+    "ยกเลิก",
+    "ตกลง (ยืนยัน)",
+    "เรียบร้อย"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-DM-03",
+   "name": "ทดสอบข้อมูลสำรอง",
+   "menu": "อื่น ๆ > 1 จัดการแฟ้มข้อมูล > 2 ทดสอบข้อมูลสำรอง",
+   "book_page": 332,
+   "pdf_page": 348,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "แฟ้มข้อมูลสำรอง",
+     "type": "text",
+     "required": true,
+     "note": "ไม่มีภาพหน้าจอ [สันนิษฐาน]"
+    }
+   ],
+   "buttons": [
+    "…",
+    "ตกลง"
+   ],
+   "postings": []
+  },
+  {
+   "id": "S-DM-04",
+   "name": "นำข้อมูลสำรองมาใช้",
+   "menu": "อื่น ๆ > 1 จัดการแฟ้มข้อมูล > 3 นำข้อมูลสำรองมาใช้",
+   "book_page": 334,
+   "pdf_page": 350,
+   "layout": "dialog",
+   "fields": [
+    {
+     "label": "แฟ้มข้อมูลสำรอง",
+     "type": "text",
+     "required": true
+    },
+    {
+     "label": "ที่เก็บข้อมูล",
+     "type": "text",
+     "required": true
+    }
+   ],
+   "grid": {
+    "columns": [
+     "แฟ้มข้อมูล"
+    ]
+   },
+   "buttons": [
+    "…",
+    "คลายข้อมูล",
+    "ยกเลิก"
+   ],
+   "postings": []
+  }
+ ],
+ "entities": [
+  {
+   "name": "CompanyDataPath",
+   "fields": [
+    "path",
+    "company_name"
+   ],
+   "relations": [
+    "-> DataFile (1:n)",
+    "-> BackupSet (1:n)"
+   ]
+  },
+  {
+   "name": "DataFile",
+   "fields": [
+    "file_name",
+    "description",
+    "system(AP/AR/IC/BK/GL)"
+   ],
+   "relations": [
+    "-> CompanyDataPath (n:1)"
+   ]
+  },
+  {
+   "name": "BackupSet",
+   "fields": [
+    "file_name",
+    "destination",
+    "file_count",
+    "bytes",
+    "elapsed",
+    "date",
+    "operator"
+   ],
+   "relations": [
+    "-> CompanyDataPath (n:1)"
+   ]
+  }
+ ],
+ "data_files_seen": {
+  "AP": [
+   "APRCPCQ.DBF แฟ้มรายการใบจ่ายเงิน(เช็คจ่าย)",
+   "APRCPIT.DBF แฟ้มรายการใบจ่ายเงิน(ใบรับส/ค)",
+   "APTRN.DBF แฟ้มซื้อสด/ใบรับส.ค./ใบลดหนี้"
+  ],
+  "AR": [
+   "ARBAL.DBF แฟ้มสะสมยอดลูกหนี้",
+   "ARBIL.DBF แฟ้มใบวางบิล",
+   "ARMAS.DBF แฟ้มข้อมูลลูกค้า",
+   "ARRCPCQ.DBF แฟ้มรายการใบเสร็จ(เช็ครับ)",
+   "ARRCPIT.DBF แฟ้มรายการใบเสร็จ(ใบกำกับ)",
+   "ARSHIP.DBF แฟ้มสถานที่ส่งของ",
+   "ARTRN.DBF แฟ้มบิลขายสด/ใบกำกับ/ใบลดหนี้",
+   "ARTRNRM.DBF แฟ้มรายการคำอธิบายเพิ่มเติม"
+  ],
+  "BK": [
+   "BKMAS.DBF แฟ้มบัญชีเงินฝากธนาคาร",
+   "BKTRN.DBF แฟ้มรายการเคลื่อนไหวธนาคาร",
+   "BKTRNIT.DBF แฟ้มรายการเคลื่อนไหวธนาคาร"
+  ],
+  "other": [
+   "GLREPTMP.DBF",
+   "GLTPL.DBF",
+   "GLTPLIT.DBF",
+   "ISACC.DBF",
+   "ISFIXCOD.DBF",
+   "ISINFO.DBF",
+   "ISPRD.DBF",
+   "ISREP.DBF",
+   "ISRUN.DBF",
+   "ISSN.DBF",
+   "ISSNIT.DBF",
+   "ISTAB.DBF",
+   "ISTXS02/03/53.RF1/.RR1",
+   "ISVATP.RR1",
+   "ISVATS.RR1",
+   "OEQTQT.RT1/.RX1",
+   "POPRPO.RT1/.RX1"
+  ]
+ },
+ "flows": [
+  {
+   "name": "จัดเรียงข้อมูล",
+   "steps": [
+    "อื่น ๆ > 1.6",
+    "เลือกระบบหรือทุกระบบ",
+    "ตัวเลือก PACK/ซ่อมแซม",
+    "ทำงาน",
+    "Message 5619 เรียบร้อย"
+   ]
+  },
+  {
+   "name": "สำรองข้อมูล",
+   "steps": [
+    "อื่น ๆ > 1.1",
+    "เลือกปลายทาง (…)",
+    "ตั้งชื่อ YYYYMMDD-xxxxx.5",
+    "เริ่มสำรอง",
+    "ยืนยัน ตกลง",
+    "บีบอัดข้อมูล",
+    "เรียบร้อย",
+    "อื่น ๆ > 1.2 ทดสอบข้อมูลสำรอง",
+    "เก็บสื่อในที่ปลอดภัย"
+   ]
+  },
+  {
+   "name": "นำข้อมูลสำรองมาใช้",
+   "steps": [
+    "อื่น ๆ > 1.3",
+    "เลือกแฟ้มสำรอง (…)",
+    "ตรวจที่เก็บข้อมูล",
+    "คลายข้อมูล",
+    "หากผิดพลาด ใช้ชุดก่อนหน้า"
+   ]
+  }
+ ]
+}
