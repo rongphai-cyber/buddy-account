@@ -37,7 +37,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {
-    await app.register(fastifyStatic, { root: cfg.webDist, wildcard: false });
+    await app.register(fastifyStatic, { root: cfg.webDist }); // wildcard: ไฟล์ที่ build ใหม่ใช้ได้ทันทีไม่ต้องเปิด server ใหม่
     app.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith('/api/')) return sendError(reply, new AppError(404, 'NOT_FOUND', 'ไม่พบ API นี้'));
       return reply.sendFile('index.html');
