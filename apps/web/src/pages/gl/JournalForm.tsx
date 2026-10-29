@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { d, fmt, journalTotals, todayIso, formatDate } from '@buddy/core';
+import { d, fmt, journalTotals, todayIso } from '@buddy/core';
 import { api, type Book, type Department, type Template, type TemplateDetail } from '../../api';
 import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
+import { DocActions } from '../../components/DocPrint';
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
 import { JournalPicker } from '../../components/JournalPicker';
 
@@ -157,7 +158,7 @@ export function JournalFormPage() {
   const leave = (to: string) => (dirty && editable ? setLeaveAsk(to) : nav(to));
   useHotkeys({
     F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': () => !isNew && editable && can('cancel') && setCancelAsk(true), 'Ctrl+F6': () => isNew && setCopyPick(true),
-    'Alt+P': () => window.print(), 'Ctrl+Insert': addLine, 'Alt+N': () => leave('/gl/journals/new'), Escape: () => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`),
+    'Ctrl+Insert': addLine, 'Alt+N': () => leave('/gl/journals/new'), Escape: () => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`),
   }, [h, lines, editable, dirty, busy]);
 
   const acctOf = (aid: string | null) => accts.data?.find((a) => a.id === aid);
@@ -187,7 +188,7 @@ export function JournalFormPage() {
         </div>
         <div className="tb-group">
           <button disabled={isNew || !editable || !can('cancel')} onClick={() => setCancelAsk(true)} title={can('cancel') ? 'ยกเลิกเอกสาร (Alt+C)' : 'ไม่มีสิทธิ์ยกเลิกเอกสาร'}>ยกเลิกเอกสาร</button>
-          <button onClick={() => window.print()} title="พิมพ์ (Alt+P)">พิมพ์</button>
+          <DocActions kind="journal" id={isNew ? undefined : id} menu="GL.JNL" typeId={h.journal_book_id} />
         </div>
         <div className="tb-group"><button onClick={() => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`)} title="กลับไปรายการ (Esc)">รายการ <kbd>Esc</kbd></button></div>
       </div>
@@ -259,8 +260,6 @@ export function JournalFormPage() {
       {j && <p className="hint">สร้างโดย {j.created_by_name ?? 'นำเข้าจาก Express'} · <DateText v={j.created_at.slice(0, 10)} /> · แก้ไขล่าสุด <DateText v={j.updated_at.slice(0, 10)} /></p>}
       {vatAsk && <VatClosingModal workDate={h.voucher_date} onClose={() => setVatAsk(false)} onOk={fillVatClosing} />}
       <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี / ต้นแบบ (ที่ช่องเลขที่)'], ['Ctrl+F6', 'คัดลอกจากใบสำคัญอื่น'],['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />
-      <PrintVoucher title={book?.name_th ?? 'ใบสำคัญ'} no={isNew ? nextNo : j?.voucher_no ?? ''} date={formatDate(h.voucher_date, me?.company?.year_system ?? 'B')} desc={h.description} company={me?.company?.name_th ?? ''}
-        lines={lines.filter((l) => l.account_id).map((l) => ({ no: acctOf(l.account_id)?.account_no ?? '', name: acctOf(l.account_id)?.name_th ?? '', desc: l.description, dr: l.debit, cr: l.credit }))} totals={totals} />
       {cancelAsk && <CancelDialog onClose={() => setCancelAsk(false)} onOk={(reason) => api.post(`/api/v1/gl/journals/${id}/cancel`, { reason }).then(() => { toast('ยกเลิกใบสำคัญแล้ว'); setCancelAsk(false); qc.invalidateQueries({ queryKey: ['journal', id] }); qc.invalidateQueries({ queryKey: ['journals'] }); }).catch(toastError)} />}
       {tplPick !== null && (
         <Lookup<Template> title="เลือกต้นแบบวิธีการบันทึก" rows={templates.data ?? []} initial={tplPick}
@@ -297,19 +296,6 @@ export function History({ table, rowId }: { table: string; rowId: string }) {
           {!q.data?.length && <tr><td colSpan={4} className="empty">ยังไม่มีประวัติ (รายการที่นำเข้าจาก Express ไม่มีประวัติก่อนนำเข้า)</td></tr>}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-function PrintVoucher({ title, no, date, desc, company, lines, totals }: { title: string; no: string; date: string; desc: string; company: string; lines: Array<{ no: string; name: string; desc: string; dr: string; cr: string }>; totals: { debit: { toFixed: (n: number) => string }; credit: { toFixed: (n: number) => string } } }) {
-  return (
-    <div className="print-only voucher">
-      <h2>{company}</h2><h3>{title}</h3>
-      <p>เลขที่ <b>{no}</b> &nbsp; วันที่ <b>{date}</b></p><p>คำอธิบาย {desc}</p>
-      <table><thead><tr><th>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th>คำอธิบาย</th><th>เดบิต</th><th>เครดิต</th></tr></thead>
-        <tbody>{lines.map((l, i) => <tr key={i}><td>{l.no}</td><td>{l.name}</td><td>{l.desc}</td><td className="r">{l.dr ? fmt(l.dr) : ''}</td><td className="r">{l.cr ? fmt(l.cr) : ''}</td></tr>)}</tbody>
-        <tfoot><tr><td colSpan={3}>รวม</td><td className="r">{fmt(totals.debit.toFixed(2))}</td><td className="r">{fmt(totals.credit.toFixed(2))}</td></tr></tfoot></table>
-      <div className="signs"><span>ผู้จัดทำ ____________</span><span>ผู้ตรวจ ____________</span><span>ผู้อนุมัติ ____________</span></div>
     </div>
   );
 }

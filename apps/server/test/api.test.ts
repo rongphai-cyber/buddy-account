@@ -2096,6 +2096,88 @@ describe('Buddy Account API (PGlite)', () => {
     for (const id of ids) await sql`UPDATE tax_vat_entry SET doc_status = 'C' WHERE id = ${id}`.execute(database.db);
   });
 
+  it('document printing & approval (T5.8): print data, forms 1–9, approve/reprint rules, range approval, record info, custom reports, isolation', async () => {
+    const admin = cookie;
+    const as = async (u: string, p: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: p })).status).toBe(200); };
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const cus = (await call('GET', '/api/v1/customers?q=C520')).body.rows[0].id;
+    const code = '02-TEST-000058';
+    const item = (await call('POST', '/api/v1/items', { code, name_th: 'สินค้าทดสอบพิมพ์', base_unit_id: unit, std_cost: '1' })).body.id;
+    const sell = async (date: string) => (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: date, party_id: cus, price_type: '2', vat_rate: 7, warehouse_id: w1, lines: [{ item_id: item, qty: 2, unit_price: 150 }] })).body as { id: string; doc_no: string };
+    const iv = await sell('2027-06-05');
+    // ข้อมูลพิมพ์: บรรทัด ยอดรวม จำนวนเงินตัวอักษร · เมนูพิมพ์มีต้นแบบ 1–4
+    const p = (await call('GET', `/api/v1/print/doc/${iv.id}`)).body;
+    expect(p.data.lines[0]).toMatchObject({ code, qty: '2', price: '150.00', amount: '300.00' });
+    expect(p.data.totals.at(-1)).toEqual({ label: 'จำนวนเงินรวมทั้งสิ้น', value: '321.00' });
+    expect(p.data.amount_text).toBe('สามร้อยยี่สิบเอ็ดบาทถ้วน');
+    expect(p.forms.map((f: { slot: number }) => f.slot)).toEqual([1, 2, 3, 4]);
+    // แบบฟอร์มของบริษัท: ทับหมายเลข 1 + เพิ่มหมายเลข 7 (คอลัมน์ที่ไม่รู้จักถูกตัด)
+    expect((await call('PUT', '/api/v1/print-forms/IV/1', { name: 'ใบกำกับภาษี/ใบส่งของ', base: 'plain', layout: { title: 'ใบกำกับภาษี', columns: [{ key: 'name' }, { key: 'amount', label: 'Amount' }, { key: 'bogus' }] } })).status).toBe(200);
+    expect((await call('PUT', '/api/v1/print-forms/IV/7', { name: 'ใบส่งของครึ่งหน้า', base: 'half', layout: {} })).status).toBe(200);
+    const p2 = (await call('GET', `/api/v1/print/doc/${iv.id}`)).body;
+    expect(p2.forms.map((f: { slot: number; custom: boolean }) => `${f.slot}${f.custom ? '*' : ''}`)).toEqual(['1*', '2', '3', '4', '7*']);
+    expect(p2.forms[0].layout.title).toBe('ใบกำกับภาษี');
+    expect(p2.forms[0].layout.columns.filter((c: { show: boolean }) => c.show).map((c: { key: string; label: string }) => `${c.key}:${c.label}`)).toEqual(['name:รายละเอียด', 'amount:Amount']);
+    // พิมพ์ออกเครื่องพิมพ์นับครั้ง
+    expect((await call('POST', `/api/v1/print/doc/${iv.id}/printed`, { slot: 1 })).body.print_count).toBe(1);
+    // กำหนดที่ประเภทเอกสาร: รับรองระดับ 6 · รับรองก่อนพิมพ์ · พิมพ์ซ้ำระดับ 7
+    await sql`UPDATE md_doc_type SET approve_level = 6, approve_method = '2', reprint_level = 7 WHERE id = ${ivType}`.execute(database.db);
+    const blocked = await call('POST', `/api/v1/print/doc/${iv.id}/printed`, {});
+    expect(blocked.status).toBe(409); expect(blocked.body.error.message).toMatch(/ต้องรับรองก่อนพิมพ์/);
+    await as('boss5', 'boss5pass');
+    expect((await call('PUT', '/api/v1/print-forms/IV/2', { name: 'x', base: 'grid', layout: {} })).status).toBe(403);
+    expect((await call('POST', '/api/v1/rpt-custom', { code: 'B5', base_code: '7.6', name: 'x' })).status).toBe(403);
+    const low = await call('POST', `/api/v1/approve/doc/${iv.id}`, {});
+    expect(low.status).toBe(409); expect(low.body.error.message).toMatch(/ตั้งแต่ 6/);
+    cookie = admin;
+    expect((await call('POST', `/api/v1/approve/doc/${iv.id}`, {})).body.approved).toBe(true);
+    expect((await call('POST', `/api/v1/approve/doc/${iv.id}`, {})).body.error.message).toMatch(/รับรองแล้ว/);
+    await as('boss5', 'boss5pass');
+    const re = await call('POST', `/api/v1/print/doc/${iv.id}/printed`, {});
+    expect(re.status).toBe(409); expect(re.body.error.message).toMatch(/พิมพ์ซ้ำต้องใช้ผู้มีระดับอนุมัติตั้งแต่ 7/);
+    await as('clerk0', 'clerk0pass');
+    expect((await call('POST', `/api/v1/approve/doc/${iv.id}`, { undo: true })).status).toBe(403);
+    cookie = admin;
+    expect((await call('POST', `/api/v1/print/doc/${iv.id}/printed`, { slot: 7 })).body.print_count).toBe(2);
+    expect((await call('POST', `/api/v1/approve/doc/${iv.id}`, { undo: true })).body.approved).toBe(false);
+    // รับรองเป็นช่วงเลขที่/วันที่
+    const iv2 = await sell('2027-06-06');
+    const rg = (await call('POST', '/api/v1/approve-range', { kind: 'doc', type_id: ivType, from_no: iv.doc_no, to_no: iv2.doc_no, from_date: '2027-06-01', to_date: '2027-06-30' })).body;
+    expect([rg.approved, rg.not_approved]).toEqual([2, 0]);
+    // รายละเอียดแฟ้มข้อมูล
+    const info = (await call('GET', `/api/v1/record-info/doc/${iv.id}`)).body;
+    expect([info.print_count, info.approved_by.startsWith('admin'), info.rule.reprintLevel, info.line_count]).toEqual([2, true, 7, 1]);
+    expect(info.log.map((l: { action: string }) => l.action)).toEqual(expect.arrayContaining(['APPROVE', 'UNAPPROVE', 'PRINT', 'REPRINT']));
+    // ใบสำคัญที่เกิดจากเอกสาร: พิมพ์ได้ · สมุดไม่ได้กำหนดให้รับรอง
+    const jid = (await call('GET', `/api/v1/docs/${iv.id}/journal`)).body.journals[0].id;
+    const pj = (await call('GET', `/api/v1/print/journal/${jid}`)).body.data;
+    expect(pj.lines.length).toBeGreaterThanOrEqual(2);
+    expect(pj.totals[0].value).toBe(pj.totals[0].value2);
+    expect((await call('POST', `/api/v1/approve/journal/${jid}`, {})).body.error.message).toMatch(/ไม่ต้องรับรอง/);
+    // รายงานที่สร้างเอง
+    const cr = await call('POST', '/api/v1/rpt-custom', { code: 'u01', base_code: '7.6', name: 'กำไรขั้นต้นสินค้าทดสอบ', params: { by: 'item', item_from: code }, hidden_cols: ['pct'] });
+    expect(cr.status).toBe(200);
+    expect((await call('GET', '/api/v1/rpt-custom')).body.find((r: { code: string }) => r.code === 'U01')).toMatchObject({ base_code: '7.6', params: { by: 'item' }, hidden_cols: ['pct'] });
+    expect((await call('POST', '/api/v1/rpt-custom', { code: 'U01', base_code: '7.6', name: 'ซ้ำ' })).body.error.message).toMatch(/มีอยู่แล้ว/);
+    expect((await call('POST', '/api/v1/rpt-custom', { code: 'U02', base_code: '99.9', name: 'ไม่มีต้นฉบับ' })).body.error.message).toMatch(/ไม่พบรายงานต้นฉบับ/);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/print/doc/${iv.id}`)).status).toBe(404);
+    expect((await call('POST', `/api/v1/approve/doc/${iv.id}`, {})).status).toBe(404);
+    expect((await call('GET', `/api/v1/record-info/doc/${iv.id}`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/print-forms?scope=IV')).body.custom).toEqual([]);
+    expect((await call('GET', '/api/v1/rpt-custom')).body).toEqual([]);
+    expect((await call('DELETE', '/api/v1/print-forms/IV/7')).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ล้างข้อมูลทดสอบ
+    await sql`UPDATE md_doc_type SET approve_level = 0, approve_method = NULL, reprint_level = NULL WHERE id = ${ivType}`.execute(database.db);
+    for (const s of [1, 7]) expect((await call('DELETE', `/api/v1/print-forms/IV/${s}`)).status).toBe(200);
+    expect((await call('GET', `/api/v1/print/doc/${iv.id}`)).body.forms.every((f: { custom: boolean }) => !f.custom)).toBe(true);
+    expect((await call('DELETE', `/api/v1/rpt-custom/${cr.body.id}`)).status).toBe(200);
+    for (const x of [iv, iv2]) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

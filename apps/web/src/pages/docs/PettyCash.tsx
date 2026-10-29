@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
 import { nextKey, PaymentsTable, paysBody, paysFrom, type Pay } from './MoneyParts';
 
@@ -138,6 +139,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setPick(new Set()); setPays([]); nav(`${BASE}/${kind}/new`); } }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={save}>บันทึก <kbd>F9</kbd></button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
+        <DocActions kind="doc" id={id} menu={'GL.PC'} />
         <button onClick={() => nav(kind === 'dp' ? BASE : `${BASE}/vr`)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error ?? openDps.error} />

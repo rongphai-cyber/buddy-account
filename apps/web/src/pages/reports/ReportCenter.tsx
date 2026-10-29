@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { fmt, formatDate, REPORT_TREE, todayIso, type ReportDef, type ReportFilter, type ReportNode, type ReportResult, type YearSystem } from '@buddy/core';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { findReport, fmt, formatDate, REPORT_TREE, todayIso, type ReportDef, type ReportFilter, type ReportNode, type ReportResult, type YearSystem } from '@buddy/core';
 import { api } from '../../api';
-import { useSession } from '../../session';
+import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
-import { cx, DateInput, ErrorBox, KeyHints, PageHead, toast, useHotkeys } from '../../ui';
+import { Confirm, cx, DateInput, ErrorBox, Field, KeyHints, Modal, PageHead, toast, useHotkeys } from '../../ui';
 
 /** ศูนย์รายงาน (คู่มือบทที่ 17 S-RP-01..04) — ต้นไม้รายงานตามรหัส Express · ขอบเขต · แสดงผล พิมพ์ ส่งออก */
 type Vals = Record<string, string | boolean>;
+/** รายงานที่ผู้ใช้สร้างจากรายงานต้นฉบับ (S-RD-03/04): ขอบเขตที่บันทึกไว้ + คอลัมน์ที่ซ่อน + ชื่อรายงาน */
+type CustomRpt = { id: string; code: string; base_code: string; name: string; params: Vals; hidden_cols: string[]; landscape: boolean | null };
 const PICK: Partial<Record<string, { endpoint: string; params?: Record<string, string> }>> = {
   customer: { endpoint: '/api/v1/customers' }, supplier: { endpoint: '/api/v1/suppliers' }, item: { endpoint: '/api/v1/item-search', params: { module: 'AR' } },
 };
@@ -110,7 +112,35 @@ export function ReportCenterPage() {
   const [res, setRes] = useState<ReportResult | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
-  const pick = (x: ReportDef) => { setDef(x); setVals(defaults(x, work)); setRes(null); setErr(null); };
+  const qc = useQueryClient();
+  const canCustom = useCan('RP.CUSTOM');
+  const customs = useQuery({ queryKey: ['rpt-custom'], queryFn: () => api.get<CustomRpt[]>('/api/v1/rpt-custom') });
+  const [custom, setCustom] = useState<CustomRpt | null>(null);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [saveAs, setSaveAs] = useState<{ code: string; name: string; landscape: string } | null>(null);
+  const [askDel, setAskDel] = useState(false);
+  const pick = (x: ReportDef) => { setDef(x); setVals(defaults(x, work)); setRes(null); setErr(null); setCustom(null); setHidden(new Set()); };
+  const pickCustom = (c: CustomRpt) => {
+    const base = findReport(c.base_code);
+    if (!base) return toast(`ไม่พบรายงานต้นฉบับ ${c.base_code}`, 'bad');
+    setDef(base); setVals({ ...defaults(base, work), ...c.params }); setRes(null); setErr(null); setCustom(c); setHidden(new Set(c.hidden_cols));
+  };
+  const saveCustom = async (asNew: boolean) => {
+    if (!def) return;
+    const f = asNew && saveAs ? saveAs : { code: custom?.code ?? '', name: custom?.name ?? def.title, landscape: custom?.landscape == null ? '' : custom.landscape ? 'Y' : 'N' };
+    const body = { code: f.code.toUpperCase(), base_code: def.code, name: f.name, params: valsRef.current, hidden_cols: [...hidden], landscape: f.landscape === '' ? null : f.landscape === 'Y' };
+    try {
+      const r = asNew || !custom ? await api.post<{ id: string }>('/api/v1/rpt-custom', body) : await api.put<{ id: string }>(`/api/v1/rpt-custom/${custom.id}`, body);
+      toast(`บันทึกรายงาน ${body.code} ${body.name} แล้ว`); setSaveAs(null);
+      await qc.invalidateQueries({ queryKey: ['rpt-custom'] });
+      setCustom({ id: r.id, ...body }); setOpen((o) => new Set([...o, 'U']));
+    } catch (e) { setErr(e); }
+  };
+  const delCustom = async () => {
+    setAskDel(false);
+    if (!custom) return;
+    try { await api.del(`/api/v1/rpt-custom/${custom.id}`); toast(`ลบรายงาน ${custom.code} แล้ว`); setCustom(null); qc.invalidateQueries({ queryKey: ['rpt-custom'] }); } catch (e) { setErr(e); }
+  };
   const valsRef = useRef(vals);
   valsRef.current = vals;
   // กด F5 ขณะอยู่ในช่องวันที่: ออกจากช่องก่อนให้ค่าที่พิมพ์ถูกบันทึก แล้วจึงอ่านขอบเขตล่าสุด
@@ -124,9 +154,11 @@ export function ReportCenterPage() {
   };
   // Ctrl+F2 = เลือกขอบเขตทั้งหมด (ล้างช่วงรหัส/เลขที่)
   const all = () => { if (!def) return; const v = { ...vals }; for (const f of def.filters) if (f.kind === 'range' || f.kind === 'docNo') { v[`${f.key}_from`] = ''; v[`${f.key}_to`] = ''; } setVals(v); toast('เลือกขอบเขตทั้งหมดแล้ว'); };
+  // ผลที่แสดง/พิมพ์/ส่งออก: ตัดคอลัมน์ที่ซ่อน · ชื่อรายงานของผู้ใช้แทนชื่อต้นฉบับ
+  const view = useMemo(() => res && { ...res, code: custom?.code ?? res.code, title: custom?.name ?? res.title, columns: res.columns.filter((c) => !hidden.has(c.key)), landscape: custom?.landscape ?? res.landscape }, [res, custom, hidden]);
   const print = () => {
     const st = document.createElement('style');
-    st.textContent = `@page { size: A4 ${res?.landscape ? 'landscape' : 'portrait'}; margin: 10mm; }`;
+    st.textContent = `@page { size: A4 ${view?.landscape ? 'landscape' : 'portrait'}; margin: 10mm; }`;
     document.head.appendChild(st); window.print(); setTimeout(() => st.remove(), 500);
   };
   useHotkeys({ F5: run, 'Ctrl+F2': all, 'Ctrl+P': res ? print : undefined }, [def, vals, res]);
@@ -136,31 +168,44 @@ export function ReportCenterPage() {
       <div className="rpt-layout">
         <aside className="rpt-side no-print">
           <ErrorBox error={avail.error} />
-          <Tree nodes={REPORT_TREE} sel={def?.code ?? null} open={open} toggle={(c) => setOpen((o) => { const n = new Set(o); if (n.has(c)) n.delete(c); else n.add(c); return n; })} pick={pick} avail={codes} />
+          <Tree nodes={REPORT_TREE} sel={custom ? null : def?.code ?? null} open={open} toggle={(c) => setOpen((o) => { const n = new Set(o); if (n.has(c)) n.delete(c); else n.add(c); return n; })} pick={pick} avail={codes} />
+          <ul className="rpt-tree">
+            <li><button type="button" className="rpt-node" onClick={() => setOpen((o) => { const n = new Set(o); if (n.has('U')) n.delete('U'); else n.add('U'); return n; })}>{open.has('U') ? '⊟' : '⊞'} U รายงานที่สร้างเอง ({customs.data?.length ?? 0})</button>
+              {open.has('U') && <ul className="rpt-tree">
+                {customs.data?.map((c) => <li key={c.id}><button type="button" className={cx('rpt-leaf', custom?.id === c.id && 'on')} disabled={!codes.has(c.base_code)} onClick={() => pickCustom(c)} title={`จากรายงาน ${c.base_code}`}>{c.code} {c.name}</button></li>)}
+                {!customs.data?.length && <li className="muted small" style={{ padding: '2px 8px' }}>เลือกรายงานต้นฉบับ กำหนดขอบเขต/คอลัมน์ แล้วกด "บันทึกเป็นรายงานของฉัน"</li>}
+              </ul>}
+            </li>
+          </ul>
         </aside>
         <section className="rpt-main">
           {!def && <p className="empty no-print">เลือกรายงานจากต้นไม้ด้านซ้าย</p>}
           {def && <div className="rpt-scope no-print">
-            <h2>{def.code}. {def.title}</h2>
+            <h2>{custom ? <>{custom.code}. {custom.name} <span className="muted small">(จากรายงาน {def.code} {def.title})</span></> : <>{def.code}. {def.title}</>}</h2>
             <div className="rpt-filters">{def.filters.map((f) => <FilterField key={f.key} f={f} v={vals} set={(p) => setVals((x) => ({ ...x, ...p }))} />)}</div>
             <div className="toolbar"><button className="primary" disabled={busy} onClick={run}>{busy ? 'กำลังประมวลผล…' : 'แสดงรายงาน'} <kbd>F5</kbd></button><button onClick={all}>ขอบเขตทั้งหมด <kbd>Ctrl+F2</kbd></button>
-              {res && <><button onClick={print}>🖨 พิมพ์ / PDF <kbd>Ctrl+P</kbd></button><button onClick={() => download(res, 'xls', me?.company?.name_th ?? '', ys)}>Excel</button><button onClick={() => download(res, 'csv', me?.company?.name_th ?? '', ys)}>CSV</button><button onClick={() => download(res, 'txt', me?.company?.name_th ?? '', ys)}>ข้อความ</button></>}</div>
+              {canCustom('add') && <button onClick={() => setSaveAs({ code: '', name: custom?.name ?? def.title, landscape: '' })} title="บันทึกขอบเขตและคอลัมน์ที่เลือกเป็นรายงานใหม่ (S-RD-03/04)">💾 บันทึกเป็นรายงานของฉัน</button>}
+              {custom && canCustom('edit') && <button onClick={() => saveCustom(false)} title="บันทึกขอบเขต/คอลัมน์ปัจจุบันทับรายงานนี้">บันทึกทับ {custom.code}</button>}
+              {custom && canCustom('delete') && <button onClick={() => setAskDel(true)}>ลบรายงาน {custom.code}</button>}
+              {res && <><button onClick={print}>🖨 พิมพ์ / PDF <kbd>Ctrl+P</kbd></button><button onClick={() => download(view!, 'xls', me?.company?.name_th ?? '', ys)}>Excel</button><button onClick={() => download(view!, 'csv', me?.company?.name_th ?? '', ys)}>CSV</button><button onClick={() => download(view!, 'txt', me?.company?.name_th ?? '', ys)}>ข้อความ</button></>}</div>
           </div>}
           <ErrorBox error={err} />
-          {res && <div className="rpt-out">
-            <div className="rpt-head"><b>{me?.company?.name_th}</b><h3>{res.code}. {res.title}</h3>{res.subtitle && <p>{res.subtitle}</p>}<p className="small muted">พิมพ์วันที่ {formatDate(todayIso(), ys)}</p></div>
-            {res.truncated && <p className="bad small no-print">ข้อมูลมาก แสดงบางส่วน — จำกัดขอบเขตให้แคบลง (รายละเอียดแสดงเมื่อไม่เกิน 5,000 เอกสาร)</p>}
+          {view && <div className="rpt-out">
+            {res && <details className="rpt-cols no-print"><summary>คอลัมน์ที่แสดง ({view.columns.length}/{res.columns.length})</summary>
+              {res.columns.map((c) => <label key={c.key}><input type="checkbox" checked={!hidden.has(c.key)} onChange={(e) => setHidden((h) => { const n = new Set(h); if (e.target.checked) n.delete(c.key); else n.add(c.key); return n; })} /> {c.label}</label>)}</details>}
+            <div className="rpt-head"><b>{me?.company?.name_th}</b><h3>{view.code}. {view.title}</h3>{view.subtitle && <p>{view.subtitle}</p>}<p className="small muted">พิมพ์วันที่ {formatDate(todayIso(), ys)}</p></div>
+            {view.truncated && <p className="bad small no-print">ข้อมูลมาก แสดงบางส่วน — จำกัดขอบเขตให้แคบลง (รายละเอียดแสดงเมื่อไม่เกิน 5,000 เอกสาร)</p>}
             <div className="table-wrap">
               <table className="grid report">
-                <thead><tr>{res.columns.map((c) => <th key={c.key} className={cx(['money', 'qty', 'int'].includes(c.kind ?? '') && 'r')} style={c.width ? { width: c.width } : undefined}>{c.label}</th>)}</tr></thead>
+                <thead><tr>{view.columns.map((c) => <th key={c.key} className={cx(['money', 'qty', 'int'].includes(c.kind ?? '') && 'r')} style={c.width ? { width: c.width } : undefined}>{c.label}</th>)}</tr></thead>
                 <tbody>
-                  {res.rows.map((row, i) => (
+                  {view.rows.map((row, i) => (
                     <tr key={i} className={cx(row.t === 'group' && 'rpt-group', row.t === 'sub' && 'rpt-sub', row.t === 'total' && 'rpt-total', row.t === 'detail' && 'rpt-detail', row.muted && 'cancelled', row.link && 'row-open')}
                       onClick={() => row.link && nav(row.link)}>
-                      {res.columns.map((c) => <td key={c.key} className={cx(['money', 'qty', 'int'].includes(c.kind ?? '') && 'r num', c.kind === 'mono' && 'mono')}>{cell(row.t === 'detail' && c.kind === 'date' ? 'text' : c.kind, row.c[c.key], ys)}</td>)}
+                      {view.columns.map((c) => <td key={c.key} className={cx(['money', 'qty', 'int'].includes(c.kind ?? '') && 'r num', c.kind === 'mono' && 'mono')}>{cell(row.t === 'detail' && c.kind === 'date' ? 'text' : c.kind, row.c[c.key], ys)}</td>)}
                     </tr>
                   ))}
-                  {!res.rows.length && <tr><td colSpan={res.columns.length} className="empty">ไม่มีข้อมูลตามขอบเขตนี้</td></tr>}
+                  {!view.rows.length && <tr><td colSpan={view.columns.length} className="empty">ไม่มีข้อมูลตามขอบเขตนี้</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -168,6 +213,15 @@ export function ReportCenterPage() {
           <KeyHints keys={[['F5', 'แสดงรายงาน'], ['Ctrl+F2', 'ขอบเขตทั้งหมด'], ['Ctrl+P', 'พิมพ์'], ['คลิกแถว', 'เปิดเอกสาร']]} />
         </section>
       </div>
+      {saveAs && <Modal title="บันทึกเป็นรายงานของฉัน" size="confirm" onClose={() => setSaveAs(null)} footer={<><button onClick={() => setSaveAs(null)}>ยกเลิก</button><button className="primary" onClick={() => saveCustom(true)}>บันทึก</button></>}>
+        <p className="small muted">จากรายงาน {def?.code} {def?.title} — เก็บขอบเขตที่กรอกไว้ และคอลัมน์ที่ซ่อน</p>
+        <div className="form-grid">
+          <Field label="รหัสรายงาน" req hint="เช่น U01 (อังกฤษ/ตัวเลข ไม่เกิน 10)"><input className="mono" value={saveAs.code} maxLength={10} autoFocus onChange={(e) => setSaveAs({ ...saveAs, code: e.target.value.toUpperCase() })} /></Field>
+          <Field label="พิมพ์แนว"><select value={saveAs.landscape} onChange={(e) => setSaveAs({ ...saveAs, landscape: e.target.value })}><option value="">ตามต้นฉบับ</option><option value="N">แนวตั้ง</option><option value="Y">แนวนอน</option></select></Field>
+          <Field label="ชื่อรายงาน (หัวรายงาน)" req wide><input value={saveAs.name} maxLength={120} onChange={(e) => setSaveAs({ ...saveAs, name: e.target.value })} /></Field>
+        </div>
+      </Modal>}
+      {askDel && custom && <Confirm title="ลบรายงานของฉัน" danger text={`ลบรายงาน ${custom.code} ${custom.name}? (รายงานต้นฉบับ ${custom.base_code} ไม่กระทบ)`} okText="ลบ" onOk={delCustom} onClose={() => setAskDel(false)} />}
     </div>
   );
 }

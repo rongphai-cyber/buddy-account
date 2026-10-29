@@ -36,7 +36,8 @@ export function BooksPage() {
 
 function BookForm({ book, onClose, onSaved }: { book: Book | null; onClose: () => void; onSaved: () => void }) {
   const templates = useTemplates();
-  const [f, setF] = useState({ code: book?.code ?? '', prefix: book?.prefix ?? '', name_th: book?.name_th ?? '', name_en: book?.name_en ?? '', template_id: book?.template_id ?? '' });
+  const [f, setF] = useState({ code: book?.code ?? '', prefix: book?.prefix ?? '', name_th: book?.name_th ?? '', name_en: book?.name_en ?? '', template_id: book?.template_id ?? '',
+    approve_level: String(book?.approve_level ?? 0), approve_method: book?.approve_method ?? '', reprint_level: String(book?.reprint_level ?? 0) });
   const [err, setErr] = useState<unknown>(null);
   const body = { ...f, template_id: f.template_id || null };
   const save = () => (book ? api.put(`/api/v1/gl/books/${book.id}`, body) : api.post('/api/v1/gl/books', body)).then(() => { toast('บันทึกแล้ว'); onSaved(); }).catch(setErr);
@@ -55,6 +56,10 @@ function BookForm({ book, onClose, onSaved }: { book: Book | null; onClose: () =
             {templates.data?.map((t) => <option key={t.id} value={t.id}>{t.code} · {t.name}</option>)}
           </select>
         </Field>
+        <p className="hint wide" style={{ margin: 0 }}>รายละเอียดเพิ่มเติม — การรับรองเอกสาร/พิมพ์ซ้ำ (0 = ไม่ต้องขออนุมัติ)</p>
+        <Field label="รับรองเอกสาร ต้องขออนุมัติระดับ"><select value={f.approve_level} onChange={(e) => setF({ ...f, approve_level: e.target.value })}>{[...Array(10).keys()].map((n) => <option key={n} value={n}>{n === 0 ? '0 ไม่ต้องรับรอง' : n}</option>)}</select></Field>
+        <Field label="วิธีการพิมพ์ หรือรับรองเอกสาร"><select value={f.approve_method} onChange={(e) => setF({ ...f, approve_method: e.target.value })}><option value="">—</option><option value="1">1 พิมพ์ก่อนรับรอง</option><option value="2">2 รับรองก่อนพิมพ์</option></select></Field>
+        <Field label="พิมพ์เอกสารซ้ำ ต้องขออนุมัติระดับ"><select value={f.reprint_level} onChange={(e) => setF({ ...f, reprint_level: e.target.value })}>{[...Array(10).keys()].map((n) => <option key={n} value={n}>{n === 0 ? '0 ไม่ต้องขออนุมัติ' : n}</option>)}</select></Field>
       </div>
     </Modal>
   );

@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { findReport, BANK_KINDS, BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { docMenuOf, findReport, BANK_KINDS, BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -25,7 +25,7 @@ const LABEL = new Map(FLAT.map((m) => [m.code, m.label]));
 /** เมนูกำหนดค่าโปรแกรม: ระดับ 5 ขึ้นไปจึงเพิ่ม/แก้/ลบได้ (คู่มือหน้า 359–360) */
 const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.PAYM', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
 /** ระบบความปลอดภัยและแก้ไขแบบฟอร์ม: ระดับ 9 เท่านั้น */
-const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'OT.LOG']);
+const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG']);
 
 export function baseAllowed(level: number, menu: string, action: Action) {
   if (level >= 9) return true;
@@ -72,6 +72,9 @@ function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action): 
   return { allowed: false, log: false, screenOnly: false };
 }
 
+/** ผลการตรวจสิทธิ์ (เมนู, การทำงาน) ของผู้ใช้ปัจจุบัน — ใช้ใน API ที่ต้องรู้รายละเอียด เช่น สิทธิ์พิมพ์ออกจอเท่านั้น */
+export async function allowedFor(db: Db, a: AuthContext, menu: string, action: Action) { return decide(a, await loadRows(db, a), menu, action); }
+
 /** สิทธิ์ทุกเมนูของผู้ใช้ในบริษัทปัจจุบัน — หน้าจอใช้ซ่อนเมนู/ปุ่ม (ด่านจริงอยู่ที่ API) */
 export async function permissionMatrix(db: Db, a: AuthContext) {
   const rows = await loadRows(db, a);
@@ -97,6 +100,18 @@ const CHQ = (rMenu: string, pMenu: string, action: Action): Rule => ({ kind: 'me
   const id = (p.id as string | undefined) ?? (Array.isArray(b.cheque_ids) ? (b.cheque_ids[0] as string) : undefined);
   if (!dir && id && /^[0-9a-f-]{36}$/i.test(id)) dir = (await db.selectFrom('fin_cheque').select('direction').where('id', '=', id).where('company_id', '=', companyId).executeTakeFirst())?.direction;
   return dir === 'P' ? pMenu : rMenu;
+} });
+/** เอกสารใด ๆ (doc_header/gl_journal ตาม :kind) → เมนูของหมวดเอกสารนั้น */
+const DOC = (action: Action): Rule => ({ kind: 'menu', menu: 'GL.JNL', action, pick: async (req, db, companyId) => {
+  const p = (req.params ?? {}) as Record<string, string>, b = (req.body ?? {}) as Record<string, string>;
+  const kind = p.kind ?? b.kind, id = p.id;
+  if (kind !== 'doc') return 'GL.JNL';
+  if (id && /^[0-9a-f-]{36}$/i.test(id)) {
+    const h = await db.selectFrom('doc_header').select(['doc_class', 'is_opening']).where('id', '=', id).where('company_id', '=', companyId).executeTakeFirst();
+    return h ? docMenuOf(h.doc_class, h.is_opening) : 'GL.JNL';
+  }
+  const t = b.type_id && /^[0-9a-f-]{36}$/i.test(b.type_id) ? await db.selectFrom('md_doc_type').select('doc_class').where('id', '=', b.type_id).where('company_id', '=', companyId).executeTakeFirst() : undefined;
+  return t ? docMenuOf(t.doc_class) : 'GL.JNL';
 } });
 const LOOKUP: Rule = { kind: 'lookup' }, SELF: Rule = { kind: 'self' }, OPEN: Rule = { kind: 'open' };
 export const API_RULES: Record<string, Rule> = {
@@ -205,6 +220,11 @@ export const API_RULES: Record<string, Rule> = {
   // ศูนย์รายงาน: สิทธิ์อ่านตามเมนูของกลุ่มรายงาน (RP.SA RP.PU RP.IC RP.CHQ RP.GL RP.TAX)
   'GET /api/v1/rpt/available': LOOKUP,
   'POST /api/v1/rpt/:code/run': { kind: 'menu', menu: 'RP.CENTER', action: 'read', pick: async (req) => findReport(String((req.params as { code?: string }).code ?? ''))?.menu ?? 'RP.CENTER' },
+  // พิมพ์/รับรองเอกสาร รายละเอียดแฟ้มข้อมูล แบบฟอร์ม รายงานของผู้ใช้ (บทที่ 25 · S-UI-08..12)
+  'GET /api/v1/print/:kind/:id': DOC('read'), 'POST /api/v1/print/:kind/:id/printed': DOC('print'),
+  'POST /api/v1/approve/:kind/:id': DOC('approve'), 'POST /api/v1/approve-range': DOC('approve'), 'GET /api/v1/record-info/:kind/:id': DOC('read'),
+  'GET /api/v1/print-forms': LOOKUP, 'PUT /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'edit'), 'DELETE /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'delete'),
+  'GET /api/v1/rpt-custom': LOOKUP, 'POST /api/v1/rpt-custom': M('RP.CUSTOM', 'add'), 'PUT /api/v1/rpt-custom/:id': M('RP.CUSTOM', 'edit'), 'DELETE /api/v1/rpt-custom/:id': M('RP.CUSTOM', 'delete'),
   'GET /api/v1/bank-recon': M('FI.BK.REC', 'read'), 'PUT /api/v1/bank-recon/statement': M('FI.BK.REC', 'edit'), 'POST /api/v1/bank-recon/clear': M('FI.BK.REC', 'edit'),
   'GET /api/v1/gl/inventory-accounts': M('GL.INV', 'read'), 'GET /api/v1/gl/inventory': M('GL.INV', 'read'), 'PUT /api/v1/gl/inventory': M('GL.INV', 'edit'), 'POST /api/v1/gl/inventory/compute': M('GL.INV', 'edit'),
   // ทะเบียนเช็ค: สิทธิ์ตามทิศทาง เช็ครับ (FI.BK.CR/CL) · เช็คจ่าย (FI.BK.CP/PC)

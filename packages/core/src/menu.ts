@@ -107,7 +107,8 @@ export const MENU: MenuItem[] = [
     m('RP.CHQ', 'รายงานเกี่ยวกับเช็ค', 'P5', '/reports/center?g=3'),
     m('RP.GL', 'รายงานบัญชี (อื่น ๆ)', 'P5', '/reports/center?g=5'),
     m('RP.TAX', 'รายงานภาษี', 'P5', '/reports/center?g=6'),
-    m('RP.CUSTOM', 'สร้างรายงานเอง', 'P5', undefined, ['ch25:S-RD-03']),
+    m('RP.CUSTOM', 'สร้างรายงานเอง', 'P5', '/reports/center?g=U', ['ch25:S-RD-03', 'ch25:S-RD-04']),
+    m('RP.FORM', 'แบบฟอร์มพิมพ์เอกสาร', 'P5', '/settings/print-forms', ['ch25:S-RD-01', 'ch25:S-RD-02', 'ch03:S-UI-08', 'ch03:S-UI-10']),
   ], '6'),
   g('SET', 'เริ่มระบบ', 'P0', [
     m('SET.CO', 'รายละเอียดกิจการ', 'P0', '/settings/company', ['ch05:S-SET-01']),

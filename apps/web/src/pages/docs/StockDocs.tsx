@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
 
 /** รายการประจำวันสินค้า (คู่มือบทที่ 14 S-IC-06/08/10 + เพิ่ม/ลดต้นทุน) — สต๊อกคำนวณสดจากเอกสาร */
@@ -148,6 +149,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
         <button disabled={!id || cancelled || !(cur.data?.editable || cur.data?.from_count) || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร <kbd>Alt+C</kbd></button>
+        <DocActions kind="doc" id={id} menu={MENU} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error ?? defs.error} />

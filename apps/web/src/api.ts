@@ -47,7 +47,7 @@ export interface Account {
   account_group: string; is_control: boolean; normal_side: string; use_department: boolean; status: string; line_count: number; has_children: boolean; balance?: string;
 }
 export interface Department { id: string; code: string; name_th: string; name_en: string | null; short_name_th: string | null; short_name_en: string | null; status: string }
-export interface Book { id: string; code: string; prefix: string; name_th: string; name_en: string | null; journal_count: number; template_id: string | null; template_code: string | null }
+export interface Book { id: string; code: string; prefix: string; name_th: string; name_en: string | null; journal_count: number; template_id: string | null; template_code: string | null; approve_level?: number; approve_method?: string | null; reprint_level?: number | null }
 export interface Template { id: string; code: string; name: string; name_en: string | null; line_count: number; book_codes: string | null }
 export interface TemplateDetail { id: string; code: string; name: string; name_en: string | null; lines: Array<{ line_no: number; account_id: string | null; account_no: string | null; account_name: string | null; department_id: string | null; department_code: string | null; description: string | null; side: 'D' | 'C'; amount: string | null }> }
 export interface FiscalYear { id: string; code: string; start_date: string; end_date: string; status: string; journal_count: number; periods: Array<{ id: string; period_no: number; start_date: string; end_date: string; is_locked: boolean; locked_at: string | null; locked_by_name: string | null }> }

@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { DocActions } from '../../components/DocPrint';
 
 const kindOf = (path: string) => TRADE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: TradeKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -245,6 +246,7 @@ export function TradeFormPage({ path }: { path: string }) {
         <button disabled={busy || readOnly} onClick={() => save(true)}>บันทึก+ใหม่</button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         {K.cls === 'QT' && id && !cancelled && <button disabled={!canSO('add')} onClick={() => setAskConvert(true)}>แปลงเป็นใบสั่งขาย</button>}
+        <DocActions kind="doc" id={id} menu={K.menu} typeId={h?.doc_type_id} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error} />

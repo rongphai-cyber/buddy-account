@@ -193,6 +193,24 @@ add(T('sys_activity_log', 'บันทึกการใช้งาน (Log fi
   C('detail', 'json', th='รายละเอียด/ค่าเดิม-ค่าใหม่'),
 ]))
 
+add(T('sys_print_form', 'แบบฟอร์มพิมพ์เอกสารที่ผู้ใช้กำหนด (ฟอร์ม 1–9 ต่อชนิดเอกสาร) — แทนภาษารายงานของ Express', 'sys', express='*.RPT / FORM*.RPT (บทที่ 25 S-RD-01/02)', cols=[
+  C('scope', 'code10', nn=True, th='ชนิดเอกสาร (doc_class เช่น IV RE PS หรือ GL = ใบสำคัญ)'),
+  C('slot', 'smallint', nn=True, th='หมายเลขฟอร์ม 1–9 (ตรงกับเมนูพิมพ์)', chk='slot BETWEEN 1 AND 9'),
+  C('name', 'str120', nn=True, th='ชื่อแบบฟอร์ม'),
+  C('base', 'code10', nn=True, d="'grid'", th='ต้นแบบ grid=มีเส้น plain=ไม่มีเส้น half=ครึ่งหน้า (A5) cont=ต่อเนื่อง 9.5 นิ้ว'),
+  C('layout', 'json', nn=True, th='รายละเอียดแบบฟอร์ม (หัวเรื่อง คอลัมน์ ช่องลงชื่อ สำเนา ขนาดอักษร …)'),
+  C('status', 'char1', nn=True, d="'A'", th='A=ใช้งาน I=ไม่แสดงในเมนู', chk=ST_ACTIVE),
+], uniq=[('company_id','scope','slot')]))
+
+add(T('sys_report_custom', 'รายงานที่ผู้ใช้สร้างจากรายงานต้นฉบับ (เงื่อนไข + คอลัมน์ที่แสดง)', 'sys', express='สร้างรายงานใหม่ (บทที่ 25 S-RD-03/04)', cols=[
+  C('code', 'code10', nn=True, th='รหัสรายงานของผู้ใช้ เช่น U01'),
+  C('base_code', 'code10', nn=True, th='รหัสรายงานต้นฉบับ เช่น 1.1.1'),
+  C('name', 'str120', nn=True, th='ชื่อรายงาน (หัวรายงาน)'),
+  C('params', 'json', nn=True, th='เงื่อนไขที่บันทึกไว้'),
+  C('hidden_cols', 'json', th='คอลัมน์ที่ซ่อน'),
+  C('landscape', 'bool', th='พิมพ์แนวนอน (ว่าง = ตามต้นฉบับ)'),
+], uniq=[('company_id','code')]))
+
 # =====================================================================
 # GL setup (needed by md)
 # =====================================================================
@@ -236,6 +254,8 @@ add(T('gl_journal_book', 'สมุดรายวัน (00 ทั่วไป 
   C('name_en', 'str120', th='ชื่อภาษาอังกฤษ', src='ISRUN.POSDES2'),
   lk('template_id', 'gl_template', 'แม่แบบรายการบัญชีเริ่มต้น'),
   C('approve_level', 'smallint', nn=True, d='0', th='ระดับอนุมัติ'),
+  C('approve_method', 'char1', th='วิธีการพิมพ์หรือรับรอง 1=พิมพ์ก่อนรับรอง 2=รับรองก่อนพิมพ์', src='ISRUN.APPROV_MET'),
+  C('reprint_level', 'smallint', th='พิมพ์ใบสำคัญซ้ำ ต้องขออนุมัติระดับ', src='ISRUN.REPRN_LEV'),
 ], uniq=[('company_id','code')]))
 
 add(T('gl_default_account', 'บัญชีมาตรฐานสำหรับลงบัญชีอัตโนมัติ (34 บทบาท) — ชั้นที่ 3 ของการหาบัญชี', 'gl', express='ISINFO.ACCNUM00–ACCNUM34 (เริ่มระบบ 5.2)', cols=[
@@ -977,6 +997,9 @@ add(T('gl_journal', 'ใบสำคัญ / รายการสมุดร�
   C('total_credit', 'money', nn=True, d='0', th='รวมเครดิต'),
   C('print_count', 'smallint', nn=True, d='0', th='จำนวนครั้งที่พิมพ์', src='GLJNL.PRNCNT'),
   lk('approved_by', 'sys_user', 'ผู้อนุมัติ', 'GLJNL.APPROVE'),
+  C('approved_at', 'ts', th='เวลารับรอง'),
+  lk('last_printed_by', 'sys_user', 'ผู้พิมพ์ล่าสุด', 'GLJNL.USERPRN'),
+  C('last_printed_at', 'ts', th='วันเวลาพิมพ์ล่าสุด', src='GLJNL.PRNDAT'),
 ], uniq=[('company_id','journal_book_id','voucher_no')], idx=[('company_id','voucher_date'),('source_header_id',)]))
 
 add(T('gl_journal_line', 'รายการเดบิต/เครดิตของใบสำคัญ', 'gl', express='GLJNLIT', cols=[

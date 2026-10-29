@@ -143,7 +143,11 @@
 - ✅ T5.6 `modules/reports/analysis.ts`: 7.1.1/2/3 ประวัติการขาย (ลูกค้า/สินค้า/พนักงานขาย) 7.6 สรุปยอดขาย (สินค้า/ลูกค้า/พนักงาน/เดือน + ต้นทุน กำไรขั้นต้น %) 8.1/8.2 ซื้อ · ใช้ยอดบรรทัดก่อน VAT (หัวเอกสาร price_type 1 ของ Express เก็บยอดรวม VAT — ทะเบียนเอกสารแสดงตามหัว) · ต้นทุนรวมส่วนประกอบชุด (บรรทัด K)
 - ✅ T5.7 `modules/reports/tax.ts`: 6.1 สรุป VAT · 6.2/6.3 รายงานภาษีซื้อ/ขาย (มาตรฐาน แยกขอคืนได้/ไม่ได้ อัตราศูนย์ แยกประเภทบิล ไม่มีรายการ · ยื่นปกติ/เพิ่มเติม) · 6.4 ภ.พ.30 ข้อ 1–12 (ยกมาชำระเกินคำนวณไล่จากงวดก่อน หรือเลือกไม่มี; ยอดขายยกเว้น = เอกสารขายไม่มี VAT ที่ไม่อยู่ในแฟ้มภาษี) · 6.5/6.6 ใบแนบ ภ.ง.ด.3/53
   - ไฟล์ยื่นทางอินเทอร์เน็ต: GET /api/v1/wht/efile?form&month (ข้อความคั่น | — โครงสร้างในคอมเมนต์ wht.ts) ปุ่มที่ /tax/wht · **ยังไม่ได้ตรวจกับโปรแกรม RD Prep จริง** ต้องให้เจ้าของ/สำนักงานบัญชีลองนำเข้าก่อนยื่น
-- ต่อไป: T5.8 แบบฟอร์มเอกสาร (S-RD-01..06, T0.11)
+- ✅ T5.8 พิมพ์/รับรองเอกสาร (migration 0022: `sys_print_form` `sys_report_custom` + gl_journal_book.approve_method/reprint_level + gl_journal.approved_at/last_printed_*)
+  - core `printforms.ts`: printFamily/docMenuOf · PRINT_COLUMNS/PRINT_HEAD_FIELDS · defaultLayout/normalizeLayout (ตัดคีย์ที่ไม่รู้จัก) · printMenu (ต้นแบบ 1 มีเส้น 2 ไม่มีเส้น 3 ครึ่งหน้า A5 4 ต่อเนื่อง + ฟอร์มบริษัททับหมายเลข/ซ่อนได้) · checkPrint/checkApprove/checkUnapprove
+  - server `modules/print.ts`: GET /print/:kind/:id (ข้อมูลพิมพ์รูปแบบเดียวทุกเอกสาร kind=doc|journal) · POST …/printed (ตรวจรับรองก่อนพิมพ์/พิมพ์ซ้ำ/สิทธิ์ S แล้วนับ print_count + log PRINT/REPRINT) · POST /approve/:kind/:id {undo} · POST /approve-range · GET /record-info/:kind/:id · /print-forms (RP.FORM ระดับ 9) · /rpt-custom (RP.CUSTOM ระดับ 9) · สิทธิ์ Rule DOC(action) เลือกเมนูจากหมวดเอกสาร · `allowedFor()` ใน permissions.ts
+  - web `components/DocPrint.tsx` (PrintSheet + DocActions: Alt+P ฟอร์ม 1 · Shift+Alt+P เมนู · 👁 ดูทางจอภาพไม่นับครั้ง · Alt+O/Ctrl+O รับรอง · Alt+Shift+O ช่วง · Ctrl+I รายละเอียดแฟ้มข้อมูล) ใส่ในทุกหน้าเอกสาร + ใบสำคัญ (แทน PrintVoucher เดิม) · `/settings/print-forms` ตัวแก้แบบฟอร์ม+ตัวอย่างเอกสารจริง · ศูนย์รายงาน: ซ่อนคอลัมน์ + 💾 บันทึกเป็นรายงานของฉัน (กลุ่ม U) · สมุดรายวันมีช่องรับรอง/พิมพ์ซ้ำ (S-GL-10)
+- ต่อไป: T5.9 เทียบตัวเลขรายงานหลักกับ Express (ลูกหนี้/เจ้าหนี้คงค้าง สต๊อก ภาษี ยอดขาย/ซื้อ)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

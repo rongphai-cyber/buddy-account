@@ -494,6 +494,80 @@ COMMENT ON COLUMN sys_activity_log.table_name IS 'ตารางที่เก
 COMMENT ON COLUMN sys_activity_log.row_id IS 'แถวที่เกี่ยวข้อง';
 COMMENT ON COLUMN sys_activity_log.detail IS 'รายละเอียด/ค่าเดิม-ค่าใหม่';
 
+-- sys_print_form: แบบฟอร์มพิมพ์เอกสารที่ผู้ใช้กำหนด (ฟอร์ม 1–9 ต่อชนิดเอกสาร) — แทนภาษารายงานของ Express  [Express: *.RPT / FORM*.RPT (บทที่ 25 S-RD-01/02)]
+CREATE TABLE sys_print_form (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  scope varchar(10) NOT NULL,
+  slot smallint NOT NULL CHECK (slot BETWEEN 1 AND 9),
+  name varchar(120) NOT NULL,
+  base varchar(10) DEFAULT 'grid' NOT NULL,
+  layout jsonb NOT NULL,
+  status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_print_form IS 'แบบฟอร์มพิมพ์เอกสารที่ผู้ใช้กำหนด (ฟอร์ม 1–9 ต่อชนิดเอกสาร) — แทนภาษารายงานของ Express | Express: *.RPT / FORM*.RPT (บทที่ 25 S-RD-01/02)';
+COMMENT ON COLUMN sys_print_form.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_print_form.company_id IS 'บริษัท';
+COMMENT ON COLUMN sys_print_form.scope IS 'ชนิดเอกสาร (doc_class เช่น IV RE PS หรือ GL = ใบสำคัญ)';
+COMMENT ON COLUMN sys_print_form.slot IS 'หมายเลขฟอร์ม 1–9 (ตรงกับเมนูพิมพ์)';
+COMMENT ON COLUMN sys_print_form.name IS 'ชื่อแบบฟอร์ม';
+COMMENT ON COLUMN sys_print_form.base IS 'ต้นแบบ grid=มีเส้น plain=ไม่มีเส้น half=ครึ่งหน้า (A5) cont=ต่อเนื่อง 9.5 นิ้ว';
+COMMENT ON COLUMN sys_print_form.layout IS 'รายละเอียดแบบฟอร์ม (หัวเรื่อง คอลัมน์ ช่องลงชื่อ สำเนา ขนาดอักษร …)';
+COMMENT ON COLUMN sys_print_form.status IS 'A=ใช้งาน I=ไม่แสดงในเมนู';
+COMMENT ON COLUMN sys_print_form.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN sys_print_form.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN sys_print_form.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN sys_print_form.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN sys_print_form.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN sys_print_form.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN sys_print_form.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_sys_print_form_company_scope_slot ON sys_print_form (company_id, scope, slot) WHERE deleted_at IS NULL;
+
+-- sys_report_custom: รายงานที่ผู้ใช้สร้างจากรายงานต้นฉบับ (เงื่อนไข + คอลัมน์ที่แสดง)  [Express: สร้างรายงานใหม่ (บทที่ 25 S-RD-03/04)]
+CREATE TABLE sys_report_custom (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  code varchar(10) NOT NULL,
+  base_code varchar(10) NOT NULL,
+  name varchar(120) NOT NULL,
+  params jsonb NOT NULL,
+  hidden_cols jsonb,
+  landscape boolean,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_report_custom IS 'รายงานที่ผู้ใช้สร้างจากรายงานต้นฉบับ (เงื่อนไข + คอลัมน์ที่แสดง) | Express: สร้างรายงานใหม่ (บทที่ 25 S-RD-03/04)';
+COMMENT ON COLUMN sys_report_custom.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_report_custom.company_id IS 'บริษัท';
+COMMENT ON COLUMN sys_report_custom.code IS 'รหัสรายงานของผู้ใช้ เช่น U01';
+COMMENT ON COLUMN sys_report_custom.base_code IS 'รหัสรายงานต้นฉบับ เช่น 1.1.1';
+COMMENT ON COLUMN sys_report_custom.name IS 'ชื่อรายงาน (หัวรายงาน)';
+COMMENT ON COLUMN sys_report_custom.params IS 'เงื่อนไขที่บันทึกไว้';
+COMMENT ON COLUMN sys_report_custom.hidden_cols IS 'คอลัมน์ที่ซ่อน';
+COMMENT ON COLUMN sys_report_custom.landscape IS 'พิมพ์แนวนอน (ว่าง = ตามต้นฉบับ)';
+COMMENT ON COLUMN sys_report_custom.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN sys_report_custom.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN sys_report_custom.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN sys_report_custom.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN sys_report_custom.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN sys_report_custom.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN sys_report_custom.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_sys_report_custom_company_code ON sys_report_custom (company_id, code) WHERE deleted_at IS NULL;
+
 -- gl_fiscal_year: ปีบัญชี  [Express: ISPRD]
 CREATE TABLE gl_fiscal_year (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -627,6 +701,8 @@ CREATE TABLE gl_journal_book (
   name_en varchar(120),
   template_id uuid,
   approve_level smallint DEFAULT 0 NOT NULL,
+  approve_method char(1),
+  reprint_level smallint,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -645,6 +721,8 @@ COMMENT ON COLUMN gl_journal_book.name_th IS 'ชื่อสมุด [Express:
 COMMENT ON COLUMN gl_journal_book.name_en IS 'ชื่อภาษาอังกฤษ [Express: ISRUN.POSDES2]';
 COMMENT ON COLUMN gl_journal_book.template_id IS 'แม่แบบรายการบัญชีเริ่มต้น';
 COMMENT ON COLUMN gl_journal_book.approve_level IS 'ระดับอนุมัติ';
+COMMENT ON COLUMN gl_journal_book.approve_method IS 'วิธีการพิมพ์หรือรับรอง 1=พิมพ์ก่อนรับรอง 2=รับรองก่อนพิมพ์ [Express: ISRUN.APPROV_MET]';
+COMMENT ON COLUMN gl_journal_book.reprint_level IS 'พิมพ์ใบสำคัญซ้ำ ต้องขออนุมัติระดับ [Express: ISRUN.REPRN_LEV]';
 COMMENT ON COLUMN gl_journal_book.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN gl_journal_book.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN gl_journal_book.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -2996,6 +3074,9 @@ CREATE TABLE gl_journal (
   total_credit numeric(18,2) DEFAULT 0 NOT NULL,
   print_count smallint DEFAULT 0 NOT NULL,
   approved_by uuid,
+  approved_at timestamptz,
+  last_printed_by uuid,
+  last_printed_at timestamptz,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -3026,6 +3107,9 @@ COMMENT ON COLUMN gl_journal.total_debit IS 'รวมเดบิต';
 COMMENT ON COLUMN gl_journal.total_credit IS 'รวมเครดิต';
 COMMENT ON COLUMN gl_journal.print_count IS 'จำนวนครั้งที่พิมพ์ [Express: GLJNL.PRNCNT]';
 COMMENT ON COLUMN gl_journal.approved_by IS 'ผู้อนุมัติ [Express: GLJNL.APPROVE]';
+COMMENT ON COLUMN gl_journal.approved_at IS 'เวลารับรอง';
+COMMENT ON COLUMN gl_journal.last_printed_by IS 'ผู้พิมพ์ล่าสุด [Express: GLJNL.USERPRN]';
+COMMENT ON COLUMN gl_journal.last_printed_at IS 'วันเวลาพิมพ์ล่าสุด [Express: GLJNL.PRNDAT]';
 COMMENT ON COLUMN gl_journal.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN gl_journal.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN gl_journal.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -3863,6 +3947,18 @@ ALTER TABLE sys_activity_log ADD CONSTRAINT fk_sys_activity_log_auth_user_id FOR
 CREATE INDEX IF NOT EXISTS ix_fk_sys_activity_log_auth_user_id ON sys_activity_log (auth_user_id);
 ALTER TABLE sys_activity_log ADD CONSTRAINT fk_sys_activity_log_device_id FOREIGN KEY (device_id) REFERENCES sys_device(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_activity_log_device_id ON sys_activity_log (device_id);
+ALTER TABLE sys_print_form ADD CONSTRAINT fk_sys_print_form_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_print_form_company_id ON sys_print_form (company_id);
+ALTER TABLE sys_print_form ADD CONSTRAINT fk_sys_print_form_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_print_form_created_by ON sys_print_form (created_by);
+ALTER TABLE sys_print_form ADD CONSTRAINT fk_sys_print_form_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_print_form_updated_by ON sys_print_form (updated_by);
+ALTER TABLE sys_report_custom ADD CONSTRAINT fk_sys_report_custom_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_report_custom_company_id ON sys_report_custom (company_id);
+ALTER TABLE sys_report_custom ADD CONSTRAINT fk_sys_report_custom_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_report_custom_created_by ON sys_report_custom (created_by);
+ALTER TABLE sys_report_custom ADD CONSTRAINT fk_sys_report_custom_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_report_custom_updated_by ON sys_report_custom (updated_by);
 ALTER TABLE gl_fiscal_year ADD CONSTRAINT fk_gl_fiscal_year_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_gl_fiscal_year_company_id ON gl_fiscal_year (company_id);
 ALTER TABLE gl_fiscal_year ADD CONSTRAINT fk_gl_fiscal_year_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -4449,6 +4545,8 @@ ALTER TABLE gl_journal ADD CONSTRAINT fk_gl_journal_posted_by FOREIGN KEY (poste
 CREATE INDEX IF NOT EXISTS ix_fk_gl_journal_posted_by ON gl_journal (posted_by);
 ALTER TABLE gl_journal ADD CONSTRAINT fk_gl_journal_approved_by FOREIGN KEY (approved_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_gl_journal_approved_by ON gl_journal (approved_by);
+ALTER TABLE gl_journal ADD CONSTRAINT fk_gl_journal_last_printed_by FOREIGN KEY (last_printed_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_gl_journal_last_printed_by ON gl_journal (last_printed_by);
 ALTER TABLE gl_journal ADD CONSTRAINT fk_gl_journal_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_gl_journal_created_by ON gl_journal (created_by);
 ALTER TABLE gl_journal ADD CONSTRAINT fk_gl_journal_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -4699,6 +4797,8 @@ CREATE TRIGGER trg_sys_permission_ver BEFORE UPDATE ON sys_permission FOR EACH R
 CREATE TRIGGER trg_sys_device_ver BEFORE UPDATE ON sys_device FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_setting_ver BEFORE UPDATE ON sys_setting FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_setting_def_ver BEFORE UPDATE ON sys_setting_def FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_sys_print_form_ver BEFORE UPDATE ON sys_print_form FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_sys_report_custom_ver BEFORE UPDATE ON sys_report_custom FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_gl_fiscal_year_ver BEFORE UPDATE ON gl_fiscal_year FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_gl_period_ver BEFORE UPDATE ON gl_period FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_gl_account_ver BEFORE UPDATE ON gl_account FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
@@ -4778,6 +4878,8 @@ CREATE TRIGGER trg_sys_permission_log AFTER INSERT OR UPDATE ON sys_permission F
 CREATE TRIGGER trg_sys_device_log AFTER INSERT OR UPDATE ON sys_device FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_setting_log AFTER INSERT OR UPDATE ON sys_setting FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_setting_def_log AFTER INSERT OR UPDATE ON sys_setting_def FOR EACH ROW EXECUTE FUNCTION sync_log_change();
+CREATE TRIGGER trg_sys_print_form_log AFTER INSERT OR UPDATE ON sys_print_form FOR EACH ROW EXECUTE FUNCTION sync_log_change();
+CREATE TRIGGER trg_sys_report_custom_log AFTER INSERT OR UPDATE ON sys_report_custom FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_gl_fiscal_year_log AFTER INSERT OR UPDATE ON gl_fiscal_year FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_gl_period_log AFTER INSERT OR UPDATE ON gl_period FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_gl_account_log AFTER INSERT OR UPDATE ON gl_account FOR EACH ROW EXECUTE FUNCTION sync_log_change();

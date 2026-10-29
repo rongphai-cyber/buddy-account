@@ -138,11 +138,13 @@ export function glRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/gl/books', async (req) => {
     const a = requireCompany(req);
     return db.selectFrom('gl_journal_book as b').leftJoin('gl_template as t', (j) => j.onRef('t.id', '=', 'b.template_id').on('t.deleted_at', 'is', null))
-      .select(['b.id', 'b.code', 'b.prefix', 'b.name_th', 'b.name_en', 'b.approve_level', 'b.template_id', 't.code as template_code',
+      .select(['b.id', 'b.code', 'b.prefix', 'b.name_th', 'b.name_en', 'b.approve_level', 'b.approve_method', 'b.reprint_level', 'b.template_id', 't.code as template_code',
         sql<number>`(SELECT count(*) FROM gl_journal j WHERE j.journal_book_id = b.id AND j.deleted_at IS NULL)`.as('journal_count')])
       .where('b.company_id', '=', a.companyId).where('b.deleted_at', 'is', null).orderBy('b.code').execute();
   });
-  const bookBody = z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสมุด').max(10), prefix: z.string().trim().min(1, 'ป้อนตัวนำเลขที่').max(10).regex(/^[A-Za-z0-9]+$/, 'ตัวนำเลขที่ใช้ตัวอักษรอังกฤษ/ตัวเลข'), name_th: z.string().trim().min(1, 'ป้อนชื่อสมุด').max(120), name_en: z.string().trim().max(120).nullable().optional(), template_id: uuid.nullable().optional() });
+  const bookBody = z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสมุด').max(10), prefix: z.string().trim().min(1, 'ป้อนตัวนำเลขที่').max(10).regex(/^[A-Za-z0-9]+$/, 'ตัวนำเลขที่ใช้ตัวอักษรอังกฤษ/ตัวเลข'), name_th: z.string().trim().min(1, 'ป้อนชื่อสมุด').max(120), name_en: z.string().trim().max(120).nullable().optional(), template_id: uuid.nullable().optional(),
+    // รายละเอียดเพิ่มเติม (S-GL-10): รับรองเอกสาร ต้องขออนุมัติระดับ · วิธีการพิมพ์หรือรับรอง · พิมพ์ซ้ำต้องขออนุมัติระดับ
+    approve_level: z.coerce.number().int().min(0).max(9).default(0), approve_method: z.enum(['', '1', '2']).nullable().optional().transform((v) => v || null), reprint_level: z.coerce.number().int().min(0).max(9).nullable().optional().transform((v) => v || null) });
   /** ต้นแบบที่ผูกกับสมุด (S-GL-09 ช่อง "ต้นแบบ") ต้องเป็นของบริษัทนี้ */
   async function checkBookTemplate(companyId: string, templateId: string | null | undefined) {
     if (!templateId) return;

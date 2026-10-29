@@ -34,7 +34,7 @@ export function docTypeRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/doc-types', async (req) => {
     const a = requireCompany(req);
     return db.selectFrom('md_doc_type as t').leftJoin('gl_journal_book as b', 'b.id', 't.journal_book_id').leftJoin('md_department as d', 'd.id', 't.department_id')
-      .select(['t.id', 't.code', 't.doc_class', 't.module', 't.name_th', 't.name_en', 't.next_no', 't.status', 'b.code as book_code', 'b.name_th as book_name', 'd.code as department_code',
+      .select(['t.id', 't.code', 't.doc_class', 't.module', 't.name_th', 't.name_en', 't.next_no', 't.status', 't.approve_level', 'b.code as book_code', 'b.name_th as book_name', 'd.code as department_code',
         sql<number>`(SELECT count(*) FROM doc_header h WHERE h.doc_type_id = t.id AND h.deleted_at IS NULL)`.as('doc_count'),
         sql<number>`(SELECT count(*) FROM md_doc_type_account x WHERE x.doc_type_id = t.id AND x.deleted_at IS NULL)`.as('account_count')])
       .where('t.company_id', '=', a.companyId).where('t.deleted_at', 'is', null).orderBy('t.doc_class').orderBy('t.code').execute();

@@ -440,6 +440,72 @@ export interface SysActivityLogTable {
   /** รายละเอียด/ค่าเดิม-ค่าใหม่ */
   detail: Gen<unknown | null>;
 }
+/** แบบฟอร์มพิมพ์เอกสารที่ผู้ใช้กำหนด (ฟอร์ม 1–9 ต่อชนิดเอกสาร) — แทนภาษารายงานของ Express */
+export interface SysPrintFormTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ชนิดเอกสาร (doc_class เช่น IV RE PS หรือ GL = ใบสำคัญ) */
+  scope: string;
+  /** หมายเลขฟอร์ม 1–9 (ตรงกับเมนูพิมพ์) */
+  slot: number;
+  /** ชื่อแบบฟอร์ม */
+  name: string;
+  /** ต้นแบบ grid=มีเส้น plain=ไม่มีเส้น half=ครึ่งหน้า (A5) cont=ต่อเนื่อง 9.5 นิ้ว */
+  base: Gen<string>;
+  /** รายละเอียดแบบฟอร์ม (หัวเรื่อง คอลัมน์ ช่องลงชื่อ สำเนา ขนาดอักษร …) */
+  layout: unknown;
+  /** A=ใช้งาน I=ไม่แสดงในเมนู */
+  status: Gen<string>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** รายงานที่ผู้ใช้สร้างจากรายงานต้นฉบับ (เงื่อนไข + คอลัมน์ที่แสดง) */
+export interface SysReportCustomTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** รหัสรายงานของผู้ใช้ เช่น U01 */
+  code: string;
+  /** รหัสรายงานต้นฉบับ เช่น 1.1.1 */
+  base_code: string;
+  /** ชื่อรายงาน (หัวรายงาน) */
+  name: string;
+  /** เงื่อนไขที่บันทึกไว้ */
+  params: unknown;
+  /** คอลัมน์ที่ซ่อน */
+  hidden_cols: Gen<unknown | null>;
+  /** พิมพ์แนวนอน (ว่าง = ตามต้นฉบับ) */
+  landscape: Gen<boolean | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ปีบัญชี */
 export interface GlFiscalYearTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -569,6 +635,10 @@ export interface GlJournalBookTable {
   template_id: Gen<string | null>;
   /** ระดับอนุมัติ */
   approve_level: Gen<number>;
+  /** วิธีการพิมพ์หรือรับรอง 1=พิมพ์ก่อนรับรอง 2=รับรองก่อนพิมพ์ */
+  approve_method: Gen<string | null>;
+  /** พิมพ์ใบสำคัญซ้ำ ต้องขออนุมัติระดับ */
+  reprint_level: Gen<number | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -2744,6 +2814,12 @@ export interface GlJournalTable {
   print_count: Gen<number>;
   /** ผู้อนุมัติ */
   approved_by: Gen<string | null>;
+  /** เวลารับรอง */
+  approved_at: Gen<string | null>;
+  /** ผู้พิมพ์ล่าสุด */
+  last_printed_by: Gen<string | null>;
+  /** วันเวลาพิมพ์ล่าสุด */
+  last_printed_at: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -3399,6 +3475,8 @@ export interface DB {
   sys_setting: SysSettingTable;
   sys_setting_def: SysSettingDefTable;
   sys_activity_log: SysActivityLogTable;
+  sys_print_form: SysPrintFormTable;
+  sys_report_custom: SysReportCustomTable;
   gl_fiscal_year: GlFiscalYearTable;
   gl_period: GlPeriodTable;
   gl_account: GlAccountTable;

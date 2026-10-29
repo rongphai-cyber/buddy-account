@@ -5,6 +5,7 @@ import { BANK_KINDS, CASH_KINDS, d, SETTLE_KINDS, todayIso, TRADE_KINDS, type Ba
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
 
 /** การเคลื่อนไหวบัญชีเงินฝาก (คู่มือบทที่ 13 S-BK-02/03 + รายได้/ค่าใช้จ่ายธนาคาร) — ลงบัญชีทันทีเมื่อบันทึก */
@@ -123,6 +124,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกรายการ <kbd>Alt+C</kbd></button>
+        <DocActions kind="doc" id={id} menu={MENU} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error ?? defs.error} />

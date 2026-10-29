@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { DocActions } from '../../components/DocPrint';
 
 const kindOf = (path: string) => BILL_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: BillKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -135,6 +136,7 @@ export function BillFormPage({ path }: { path: string }) {
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setPick(new Set()); nav(`${K.route}/new`); } }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={save}>บันทึก <kbd>F9</kbd></button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
+        <DocActions kind="doc" id={id} menu={K.menu} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error ?? open.error} />
