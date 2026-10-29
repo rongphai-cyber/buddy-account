@@ -150,6 +150,21 @@ require('fs').mkdirSync(OUT, { recursive: true });
     if (!toastText.includes(no)) throw new Error('toast ' + toastText);
     await shot('15e-journal-copied');
   });
+  await step('prior-year balances (S-GL-16)', async () => {
+    // DEMO: ปี 2568 มีใบสำคัญ → แสดงยอดรายงวดจากใบสำคัญ ดูอย่างเดียว (ไม่บันทึก)
+    await page.goto(BASE + '/gl/prior-year');
+    await page.waitForSelector('table.grid tbody tr', { timeout: 15000 });
+    await shot('15f-prior-year');
+    await page.keyboard.press('Insert');
+    await page.waitForSelector('.modal');
+    await page.waitForTimeout(500);
+    await page.keyboard.type('1111-00'); await page.keyboard.press('Enter');
+    await page.waitForTimeout(800);
+    if (await page.locator('.modal .lk-table').count()) await page.keyboard.press('Enter');
+    await page.waitForSelector('.modal tbody tr:nth-child(13)', { timeout: 15000 });
+    await shot('15g-prior-year-entry');
+    await page.keyboard.press('Escape');
+  });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });

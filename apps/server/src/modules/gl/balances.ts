@@ -7,6 +7,7 @@ import type { Db } from '../../db.js';
  * - บัญชีงบดุล (หมวด 1–3): ยอดยกมา = ยอดยกมาต้นปีแรก (gl_balance.opening) + รายการทั้งหมดก่อนวันเริ่ม
  * - บัญชีกำไรขาดทุน (หมวด 4 ขึ้นไป): นับเฉพาะในปีบัญชี
  * - กำไร(ขาดทุน)ของปีก่อน ๆ ปิดเข้าบัญชีกำไรสะสม (บทบาท RETAINED_EARNINGS) โดยอัตโนมัติ — แทนการ "ประมวลผลสิ้นปี" (คู่มือบทที่ 22)
+ * - ยอดปีที่แล้วที่ป้อนเอง (gl_prior_year_balance) นับเฉพาะเมื่อช่วงที่คำนวณอยู่ในปีนั้น — ใช้ทำงบเปรียบเทียบ ไม่กระทบยอดปีปัจจุบัน
  */
 export interface AccountRow {
   id: string; account_no: string; name_th: string; name_en: string | null; parent_id: string | null; level: number;
@@ -84,7 +85,17 @@ export async function leafTotals(db: Db, companyId: string, chart: Chart, from: 
       SELECT b.account_id, (p.start_date - 1) AS d, GREATEST(b.opening, 0), GREATEST(-b.opening, 0)
         FROM gl_balance b JOIN gl_period p ON p.id = b.period_id
        WHERE b.company_id = ${companyId} AND b.deleted_at IS NULL AND b.opening <> 0 AND ${branch}::uuid IS NULL
+         AND p.start_date <= ${to}::date
          AND (${dept}::uuid IS NULL OR b.department_id = ${dept}::uuid)
+      UNION ALL
+      -- ยอดปีที่แล้วที่ป้อนเอง (S-GL-16): ใช้เฉพาะเมื่อคำนวณภายในปีนั้น ไม่ยกไปปีถัดไป (ยอดยกมาปีถัดไปมาจากหน้ายอดยกมา)
+      SELECT x.account_id, x.d, x.debit, x.credit FROM (
+        SELECT pb.account_id, CASE WHEN pb.period_no = 0 THEN y.start_date - 1 ELSE pp.end_date END AS d, pb.debit, pb.credit
+          FROM gl_prior_year_balance pb JOIN gl_fiscal_year y ON y.id = pb.fiscal_year_id
+          LEFT JOIN gl_period pp ON pp.fiscal_year_id = pb.fiscal_year_id AND pp.period_no = pb.period_no AND pp.deleted_at IS NULL
+         WHERE pb.company_id = ${companyId} AND pb.deleted_at IS NULL AND pb.fiscal_year_id = ${fy?.id ?? null}::uuid AND ${branch}::uuid IS NULL
+           AND (${dept}::uuid IS NULL OR pb.department_id = ${dept}::uuid)) x
+       WHERE x.d <= ${to}::date
     )
     SELECT mv.account_id, (a.account_group >= '4') AS pl,
            COALESCE(SUM(mv.debit - mv.credit) FILTER (WHERE mv.d < ${from}::date), 0) AS op_bs,

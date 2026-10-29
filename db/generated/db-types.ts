@@ -2740,6 +2740,39 @@ export interface GlBudgetTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** ยอดปีที่แล้วที่ป้อนเอง (คู่มือบทที่ 15 S-GL-16) — ใช้กับปีที่ไม่มีใบสำคัญในระบบ (เริ่มใช้กลางปี/ย้ายจากโปรแกรมอื่น) สำหรับงบเปรียบเทียบเท่านั้น ไม่ยกไปปีถัดไป */
+export interface GlPriorYearBalanceTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ปีบัญชีที่ป้อนยอด */
+  fiscal_year_id: string;
+  /** บัญชี */
+  account_id: string;
+  /** แผนก */
+  department_id: Gen<string | null>;
+  /** 0 = ยอดยกมาต้นปี, 1–12 = งวด */
+  period_no: number;
+  /** เดบิต */
+  debit: Gen<string>;
+  /** เครดิต */
+  credit: Gen<string>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** แบบงบการเงินที่ผู้ใช้สร้าง */
 export interface GlFsReportTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -3228,6 +3261,7 @@ export interface DB {
   gl_journal_line: GlJournalLineTable;
   gl_balance: GlBalanceTable;
   gl_budget: GlBudgetTable;
+  gl_prior_year_balance: GlPriorYearBalanceTable;
   gl_fs_report: GlFsReportTable;
   gl_fs_line: GlFsLineTable;
   tax_vat_entry: TaxVatEntryTable;

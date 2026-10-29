@@ -1457,6 +1457,25 @@ CREATE TABLE IF NOT EXISTS gl_budget (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_gl_budget_company_account_department_period ON gl_budget (company_id, account_id, IFNULL(department_id,''), period_id) WHERE deleted_at IS NULL;
 
+-- gl_prior_year_balance: ยอดปีที่แล้วที่ป้อนเอง (คู่มือบทที่ 15 S-GL-16) — ใช้กับปีที่ไม่มีใบสำคัญในระบบ (เริ่มใช้กลางปี/ย้ายจากโปรแกรมอื่น) สำหรับงบเปรียบเทียบเท่านั้น ไม่ยกไปปีถัดไป
+CREATE TABLE IF NOT EXISTS gl_prior_year_balance (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  fiscal_year_id TEXT NOT NULL REFERENCES gl_fiscal_year(id) DEFERRABLE INITIALLY DEFERRED,
+  account_id TEXT NOT NULL REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED,
+  department_id TEXT REFERENCES md_department(id) DEFERRABLE INITIALLY DEFERRED,
+  period_no INTEGER NOT NULL CHECK (period_no BETWEEN 0 AND 12),
+  debit TEXT NOT NULL DEFAULT '0',
+  credit TEXT NOT NULL DEFAULT '0',
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+
 -- gl_fs_report: แบบงบการเงินที่ผู้ใช้สร้าง
 CREATE TABLE IF NOT EXISTS gl_fs_report (
   id TEXT PRIMARY KEY,
@@ -3056,6 +3075,29 @@ CREATE TRIGGER IF NOT EXISTS trg_gl_budget_ver AFTER UPDATE ON gl_budget
 WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
 BEGIN
   UPDATE gl_budget SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_gl_prior_year_balance_insert_outbox AFTER INSERT ON gl_prior_year_balance
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'gl_prior_year_balance', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'fiscal_year_id', NEW.fiscal_year_id, 'account_id', NEW.account_id, 'department_id', NEW.department_id, 'period_no', NEW.period_no, 'debit', NEW.debit, 'credit', NEW.credit, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_gl_prior_year_balance_update_outbox AFTER UPDATE ON gl_prior_year_balance
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'gl_prior_year_balance', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'fiscal_year_id', NEW.fiscal_year_id, 'account_id', NEW.account_id, 'department_id', NEW.department_id, 'period_no', NEW.period_no, 'debit', NEW.debit, 'credit', NEW.credit, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_gl_prior_year_balance_ver AFTER UPDATE ON gl_prior_year_balance
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE gl_prior_year_balance SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS trg_gl_fs_report_insert_outbox AFTER INSERT ON gl_fs_report
 WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'

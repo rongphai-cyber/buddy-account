@@ -963,6 +963,15 @@ add(T('gl_budget', 'งบประมาณรายงวด', 'gl', express='
   C('amount', 'money', nn=True, th='งบประมาณ', src='GLBUD.AMTn'),
 ], uniq=[('company_id','account_id','department_id','period_id')]))
 
+add(T('gl_prior_year_balance', 'ยอดปีที่แล้วที่ป้อนเอง (คู่มือบทที่ 15 S-GL-16) — ใช้กับปีที่ไม่มีใบสำคัญในระบบ (เริ่มใช้กลางปี/ย้ายจากโปรแกรมอื่น) สำหรับงบเปรียบเทียบเท่านั้น ไม่ยกไปปีถัดไป', 'gl', express='GLBAL (BEGLY + DEBITn/CREDITn ของปีที่แล้ว)', cols=[
+  lk('fiscal_year_id', 'gl_fiscal_year', 'ปีบัญชีที่ป้อนยอด', nn=True),
+  lk('account_id', 'gl_account', 'บัญชี', 'GLBAL.ACCNUM', nn=True),
+  lk('department_id', 'md_department', 'แผนก', 'GLBAL.DEPCOD'),
+  C('period_no', 'smallint', nn=True, th='0 = ยอดยกมาต้นปี, 1–12 = งวด', chk='period_no BETWEEN 0 AND 12'),
+  C('debit', 'money', nn=True, d='0', th='เดบิต', src='GLBAL.DEBITn / BEGLY'),
+  C('credit', 'money', nn=True, d='0', th='เครดิต', src='GLBAL.CREDITn / BEGLY'),
+]))
+
 add(T('gl_fs_report', 'แบบงบการเงินที่ผู้ใช้สร้าง', 'gl', express='GLREP', cols=[
   C('code', 'code10', nn=True, th='รหัสงบ', src='GLREP.REPCOD'),
   C('name', 'str120', nn=True, th='ชื่องบ', src='GLREP.REPNAM'),
