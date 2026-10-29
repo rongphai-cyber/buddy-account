@@ -525,3 +525,32 @@ tr.cancelled td { color: var(--muted); text-decoration: line-through; }
 div.box { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; margin: 8px 0; background: var(--surface); }
 .kind-switch { margin-bottom: 8px; }
 @media (max-width: 900px) { .head-grid.trade-head, .trade-foot { grid-template-columns: 1fr; } .trade-head .col { grid-template-columns: 1fr; } }
+/* ศูนย์รายงาน (บทที่ 17) */
+.rpt-layout { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.rpt-side { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel, #fff); padding: 8px; max-height: calc(100vh - 180px); overflow: auto; position: sticky; top: 8px; }
+.rpt-tree { list-style: none; margin: 0; padding-left: 10px; }
+.rpt-side > .rpt-tree { padding-left: 0; }
+.rpt-tree button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 3px 6px; min-height: 0; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.rpt-tree .rpt-node { font-weight: 600; }
+.rpt-tree .rpt-leaf:hover:not(:disabled), .rpt-tree .rpt-leaf.on { background: var(--tone-soft, #eef); }
+.rpt-tree .rpt-leaf.on { font-weight: 600; }
+.rpt-tree .rpt-leaf:disabled { cursor: default; opacity: .55; }
+.rpt-scope h2 { margin: 0 0 8px; font-size: 17px; }
+.rpt-filters { display: grid; gap: 6px; margin-bottom: 8px; }
+.rpt-f { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rpt-f > label:first-child { min-width: 150px; color: var(--muted); }
+.rpt-f input, .rpt-f select, .rpt-f .pick { width: 190px; }
+.rpt-head { text-align: center; margin: 8px 0; }
+.rpt-head h3 { margin: 2px 0; }
+.rpt-head p { margin: 2px 0; }
+table.report tr.rpt-group td { font-weight: 600; background: var(--tone-soft, #f3f3fb); }
+table.report tr.rpt-sub td { font-weight: 600; border-top: 1px solid var(--line); }
+table.report tr.rpt-total td { font-weight: 700; border-top: 2px solid var(--tone); }
+table.report tr.rpt-detail td { color: var(--muted); font-size: 12px; padding-top: 1px; padding-bottom: 1px; }
+@media print {
+  .rpt-layout { display: block; }
+  .rpt-out .table-wrap { max-height: none; overflow: visible; }
+  table.report { font-size: 10px; }
+  table.report th, table.report td { padding: 1px 4px; }
+}
+@media (max-width: 900px) { .rpt-layout { grid-template-columns: 1fr; } .rpt-side { position: static; max-height: 40vh; } }

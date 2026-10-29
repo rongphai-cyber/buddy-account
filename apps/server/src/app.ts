@@ -39,6 +39,7 @@ import { serialRoutes } from './modules/serials.js';
 import { bankDocRoutes } from './modules/docs/bankdocs.js';
 import { chequeRoutes } from './modules/cheques.js';
 import { bankReconRoutes } from './modules/bankrecon.js';
+import { rptRoutes } from './modules/reports/index.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
@@ -98,6 +99,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   bankDocRoutes(app, db);
   chequeRoutes(app, db);
   bankReconRoutes(app, db);
+  rptRoutes(app, db);
   inventoryAccountRoutes(app, db);
   reportRoutes(app, db);
 

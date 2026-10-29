@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { BANK_KINDS, BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { findReport, BANK_KINDS, BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -202,6 +202,9 @@ export const API_RULES: Record<string, Rule> = {
     [`PUT /api/v1/${k.path}/:id`, M('FI.BK.TX', 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M('FI.BK.TX', 'cancel')],
   ])),
   'GET /api/v1/bank-book': M('FI.BK.BOOK', 'read'),
+  // ศูนย์รายงาน: สิทธิ์อ่านตามเมนูของกลุ่มรายงาน (RP.SA RP.PU RP.IC RP.CHQ RP.GL RP.TAX)
+  'GET /api/v1/rpt/available': LOOKUP,
+  'POST /api/v1/rpt/:code/run': { kind: 'menu', menu: 'RP.CENTER', action: 'read', pick: async (req) => findReport(String((req.params as { code?: string }).code ?? ''))?.menu ?? 'RP.CENTER' },
   'GET /api/v1/bank-recon': M('FI.BK.REC', 'read'), 'PUT /api/v1/bank-recon/statement': M('FI.BK.REC', 'edit'), 'POST /api/v1/bank-recon/clear': M('FI.BK.REC', 'edit'),
   'GET /api/v1/gl/inventory-accounts': M('GL.INV', 'read'), 'GET /api/v1/gl/inventory': M('GL.INV', 'read'), 'PUT /api/v1/gl/inventory': M('GL.INV', 'edit'), 'POST /api/v1/gl/inventory/compute': M('GL.INV', 'edit'),
   // ทะเบียนเช็ค: สิทธิ์ตามทิศทาง เช็ครับ (FI.BK.CR/CL) · เช็คจ่าย (FI.BK.CP/PC)

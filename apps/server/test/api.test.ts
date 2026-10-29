@@ -1929,6 +1929,44 @@ describe('Buddy Account API (PGlite)', () => {
     for (const [path, id] of [['stock-issues', ou.id], ['sales-invoices', iv.id], ['purchase-invoices', r1.id]])
       expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('report center (T5.1): document registers by no/party/due, totals, cancelled option, isolation', async () => {
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const svc = (await sql<{ id: string }>`SELECT id FROM md_item WHERE company_id = ${companyId} AND code = 'SV-TEST-44'`.execute(database.db)).rows[0]!.id;
+    const mk = async (date: string, price: number) => (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: date, party_id: cus, price_type: '2', vat_rate: 7, credit_days: 30, lines: [{ item_id: svc, qty: 1, unit_price: price }] })).body;
+    const a1 = await mk('2027-01-05', 1000), a2 = await mk('2027-01-06', 2000), a3 = await mk('2027-01-07', 500);
+    expect((await call('POST', `/api/v1/sales-invoices/${a3.id}/cancel`, { reason: 'ทดสอบรายงาน' })).status).toBe(200);
+    const run = async (code: string, params: Record<string, unknown>) => (await call('POST', `/api/v1/rpt/${code}/run`, { params })).body;
+    expect((await call('GET', '/api/v1/rpt/available')).body.codes).toEqual(expect.arrayContaining(['1.4.1', '1.4.3', '1.4.7', '2.4.1', '1.9.1']));
+    // 141 เรียงตามเลขที่: 2 ใบ (ใบยกเลิกไม่นับ) · รวม 3,210 · รายละเอียดบรรทัดสินค้า
+    const r = await run('1.4.1', { date_from: '2027-01-01', date_to: '2027-01-31', detail: true });
+    expect(r).toMatchObject({ code: '1.4.1', title: expect.stringContaining('ขายเงินเชื่อ'), landscape: true });
+    const docs = r.rows.filter((x: { t?: string }) => !x.t).map((x: { c: { no: string } }) => x.c.no);
+    expect(docs).toEqual([a1.doc_no, a2.doc_no]);
+    expect(r.rows.at(-1)).toMatchObject({ t: 'total', c: { amount: '3000.00', vat: '210.00', net: '3210.00' } });
+    expect(r.rows.filter((x: { t?: string }) => x.t === 'detail')).toHaveLength(2);
+    expect(r.rows.find((x: { c: { no: string } }) => x.c.no === a1.doc_no).link).toBe(`/sa/invoices/${a1.id}`);
+    // รวมเอกสารยกเลิก: แสดงแต่ไม่รวมยอด · ช่วงเลขที่
+    const rc = await run('1.4.1', { date_from: '2027-01-01', date_to: '2027-01-31', cancelled: true });
+    expect(rc.rows.filter((x: { muted?: boolean }) => x.muted).map((x: { c: { no: string } }) => x.c.no)).toEqual([a3.doc_no]);
+    expect(rc.rows.at(-1).c.net).toBe('3210.00');
+    expect((await run('1.4.1', { date_from: '2027-01-01', date_to: '2027-01-31', doc_no_from: a2.doc_no, doc_no_to: a2.doc_no })).rows.at(-1).c.net).toBe('2140.00');
+    // 143 แยกตามลูกค้า: หัวกลุ่ม + รวมกลุ่ม
+    const g = await run('1.4.3', { date_from: '2027-01-01', date_to: '2027-01-31' });
+    expect(g.rows.map((x: { t?: string }) => x.t ?? 'row')).toEqual(['group', 'row', 'row', 'sub', 'total']);
+    // 147 ถึงกำหนดเก็บเงิน: ตามวันครบกำหนด + ยอดค้าง
+    const due = await run('1.4.7', { date_from: '2027-02-01', date_to: '2027-02-28' });
+    expect(due.rows.at(-1).c.out).toBe('3210.00');
+    expect((await run('1.4.7', { date_from: '2027-01-01', date_to: '2027-01-31' })).rows.filter((x: { t?: string }) => !x.t)).toHaveLength(0);
+    // ขอบเขตผิด · รายงานที่ไม่มี
+    expect((await call('POST', '/api/v1/rpt/1.4.1/run', { params: { date_from: '2027-13-01' } })).body.error.message).toMatch(/วันที่/);
+    expect((await call('POST', '/api/v1/rpt/9.9.9/run', { params: {} })).status).toBe(404);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await run('1.4.1', { date_from: '2027-01-01', date_to: '2027-01-31' })).rows.filter((x: { t?: string }) => !x.t)).toHaveLength(0);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    for (const x of [a1, a2]) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
