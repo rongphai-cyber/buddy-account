@@ -213,6 +213,20 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
     if (mv) await recostAfter(tx, a, hid!);
+    // วงเงินลูกค้า (ค่าเริ่มต้นระบบขาย ข้อ 9/14): ยอดค้างรวมบิลนี้เกินวงเงิน → ไม่อนุญาต เว้นแต่ตั้ง "ยอมให้ออกเอกสารไปก่อน" หรือผู้บันทึกมีระดับอนุมัติตามกำหนด
+    if ((K.cls === 'IV' || K.cls === 'DR') && d(calc.net_amount).gt(0)) {
+      const cl = await tx.selectFrom('md_customer').select(['code', 'credit_limit']).where('id', '=', party.id).executeTakeFirst();
+      if (cl?.credit_limit && d(cl.credit_limit).gt(0)) {
+        const exp = d((await sql<{ v: string }>`SELECT coalesce(sum(outstanding), 0) AS v FROM v_ar_outstanding WHERE company_id = ${a.companyId} AND customer_id = ${party.id}`.execute(tx)).rows[0]!.v);
+        if (exp.gt(cl.credit_limit)) {
+          const cs = await companySettings(tx, a.companyId);
+          const lvl = Number(cs['ar.over_credit_level'] ?? 9);
+          const msg = `ลูกค้า ${cl.code} ขายเกินวงเงิน — ยอดค้างรวมบิลนี้ ${exp.toFixed(2)} วงเงิน ${d(cl.credit_limit).toFixed(2)} (เกิน ${exp.minus(cl.credit_limit).toFixed(2)})`;
+          if (cs['ar.allow_over_credit'] !== true && !a.isAdmin && a.approvalLevel < lvl) throw badRequest(`${msg} — ต้องให้ผู้มีระดับอนุมัติ ${lvl} ขึ้นไปบันทึก หรือขอเพิ่มวงเงินที่รายละเอียดลูกค้า`);
+          warnings.push(msg);
+        }
+      }
+    }
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
     return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: calc.net_amount, warnings };
   });
@@ -371,6 +385,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
     const s = await companySettings(db, a.companyId);
     const types = await db.selectFrom('md_doc_type').select(['id', 'code', 'name_th', 'next_no', 'price_type', 'vat_rate', 'vat_basis', 'warehouse_id', 'department_id'])
       .where('company_id', '=', a.companyId).where('doc_class', '=', cls).where('status', '=', 'A').where('deleted_at', 'is', null).orderBy('code').execute();
-    return { types, vat_rate: s['gen.vat_rate'] ?? 7, price_type: s['gen.price_type'] ?? '2' };
+    // ภาระภาษีของสินค้าบริการ (ค่าเริ่มต้นระบบขาย ข้อ 11): 1 เกณฑ์สิทธิ 2 เกณฑ์เงินสด 3 ให้ผู้ใช้เลือกตอนเปิดบิล
+    return { types, vat_rate: s['gen.vat_rate'] ?? 7, price_type: s['gen.price_type'] ?? '2', service_vat_basis: String(s[cls === 'IV' || cls === 'HS' || cls === 'DR' || cls === 'CN' ? 'ar.service_vat_basis' : 'ap.service_vat_basis'] ?? '3') };
   });
 }

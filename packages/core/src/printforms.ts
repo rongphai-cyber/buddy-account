@@ -90,7 +90,7 @@ export const PRINT_HEAD_FIELDS: Array<{ key: string; label: string; families?: P
   { key: 'payment_terms', label: 'เงื่อนไขการชำระ', families: ['trade', 'bill'] }, { key: 'appointment_date', label: 'วันนัดชำระ', families: ['bill'] },
   { key: 'warehouse', label: 'คลัง', families: ['stock'] }, { key: 'to_warehouse', label: 'คลังปลายทาง', families: ['stock'] },
   { key: 'bank_account', label: 'บัญชีเงินฝาก', families: ['bank'] }, { key: 'to_bank_account', label: 'โอนเข้าบัญชี', families: ['bank'] },
-  { key: 'voucher_no', label: 'เลขที่ใบสำคัญ' }, { key: 'remark', label: 'หมายเหตุ' },
+  { key: 'ref_invoice', label: 'ใบกำกับภาษีเดิม', families: ['trade'] }, { key: 'voucher_no', label: 'เลขที่ใบสำคัญ' }, { key: 'remark', label: 'หมายเหตุ' },
 ];
 
 const SIGN: Record<PrintFamily, string[]> = {
@@ -99,7 +99,7 @@ const SIGN: Record<PrintFamily, string[]> = {
   petty: ['ผู้รับเงิน', 'ผู้จ่ายเงิน', 'ผู้อนุมัติ'], journal: ['ผู้จัดทำ', 'ผู้ตรวจสอบ', 'ผู้อนุมัติ'],
 };
 const HEAD: Record<PrintFamily, string[]> = {
-  trade: ['due_date', 'your_ref', 'salesperson'], settle: ['your_ref', 'voucher_no'], bill: ['due_date', 'appointment_date'], cash: ['your_ref', 'voucher_no'],
+  trade: ['due_date', 'your_ref', 'salesperson', 'ref_invoice'], settle: ['your_ref', 'voucher_no'], bill: ['due_date', 'appointment_date'], cash: ['your_ref', 'voucher_no'],
   stock: ['warehouse', 'to_warehouse', 'department'], bank: ['bank_account', 'to_bank_account', 'voucher_no'], petty: ['voucher_no'], journal: ['remark'],
 };
 

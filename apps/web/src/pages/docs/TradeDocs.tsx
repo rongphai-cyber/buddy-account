@@ -81,6 +81,37 @@ export function DocJournalTab({ id }: { id: string }) {
 /** S-IV-02/03/04 · S-PU-03a: เลือกรายการค้างส่ง/ค้างรับจากใบสั่ง แล้วป้อนจำนวนที่ส่งครั้งนี้ */
 interface OpenLine { header_id: string; doc_no: string; doc_date: string; price_type: string; line_id: string; line_no: number; item_id: string | null; item_code: string | null; description: string | null;
   warehouse_id: string | null; unit_id: string | null; factor: string; unit_price: string; discount_text: string | null; is_free: boolean; delivery_date: string | null; ordered_qty: string; remaining_qty: string }
+type RefLine = { id: string; item_id: string; item_code: string | null; description: string | null; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_price: string; discount_text: string | null; is_free: boolean; vat_code: string | null; line_kind?: string };
+/** เลือกรายการจากใบกำกับเดิม (S-PU-04b / S-PU-05a · ใบเพิ่มหนี้/ลดหนี้): นำสินค้า จำนวน ราคา จากใบกำกับที่อ้างถึงมาแก้ไขต่อ */
+function RefInvoicePicker({ K, refId, onPick, onClose }: { K: TradeKind; refId: string; onPick: (rows: Array<RefLine & { pick_qty: string; pick_price: string }>) => void; onClose: () => void }) {
+  const path = K.module === 'AR' ? 'sales-invoices' : 'purchase-invoices';
+  const q = useQuery({ queryKey: [path, 'one', refId, 'pick'], queryFn: () => api.get<{ doc_no: string; lines: RefLine[] }>(`/api/v1/${path}/${refId}`) });
+  const [sel, setSel] = useState<Record<string, { qty: string; price: string }>>({});
+  const rows = (q.data?.lines ?? []).filter((l) => l.item_id);
+  const chosen = rows.filter((r) => sel[r.id] && d(sel[r.id]!.qty || 0).gt(0));
+  const word = K.cls === 'CN' || K.cls === 'DN' ? 'ลดหนี้/คืน' : 'เพิ่มหนี้';
+  return (
+    <Modal title={`เลือกรายการจากใบกำกับเดิม ${q.data?.doc_no ?? ''}`} size="wide" onClose={onClose}
+      footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" disabled={!chosen.length} onClick={() => onPick(chosen.map((r) => ({ ...r, pick_qty: sel[r.id]!.qty, pick_price: sel[r.id]!.price })))}>นำ {chosen.length} รายการเข้าเอกสาร</button></>}>
+      <ErrorBox error={q.error} />
+      <p className="hint">ติ๊กรายการที่จะ{word} แก้จำนวน/ราคาได้ — {K.cls === 'CN' || K.cls === 'DN' ? 'ลดราคา: ใส่จำนวนตามเดิมและราคาส่วนที่ลด · คืนสินค้า: ใส่จำนวนที่คืน' : 'ใส่จำนวนและราคาส่วนที่เพิ่ม'}</p>
+      <table className="grid">
+        <thead><tr><th style={{ width: 36 }} /><th style={{ width: 130 }}>รหัส</th><th>รายละเอียด</th><th className="r" style={{ width: 90 }}>จำนวนเดิม</th><th className="r" style={{ width: 110 }}>ราคาเดิม</th><th className="r" style={{ width: 100 }}>จำนวน</th><th className="r" style={{ width: 120 }}>ราคา/หน่วย</th></tr></thead>
+        <tbody>
+          {rows.map((r) => { const on = !!sel[r.id]; return (
+            <tr key={r.id} className={cx(on && 'picked')}>
+              <td className="c"><input type="checkbox" checked={on} onChange={(e) => setSel((m) => { const n = { ...m }; if (e.target.checked) n[r.id] = { qty: d(r.qty).toString(), price: d(r.unit_price).toString() }; else delete n[r.id]; return n; })} aria-label={`เลือก ${r.item_code}`} /></td>
+              <td className="mono">{r.item_code}</td><td>{r.description}{r.is_free && <span className="muted small"> (ของแถม)</span>}</td><td className="r">{d(r.qty).toString()}</td><td className="r num">{fmt(r.unit_price)}</td>
+              <td>{on && <input className="r" inputMode="decimal" value={sel[r.id]!.qty} onChange={(e) => setSel((m) => ({ ...m, [r.id]: { ...m[r.id]!, qty: e.target.value.replace(/[^\d.]/g, '') } }))} aria-label="จำนวน" />}</td>
+              <td>{on && <input className="r" inputMode="decimal" value={sel[r.id]!.price} onChange={(e) => setSel((m) => ({ ...m, [r.id]: { ...m[r.id]!, price: e.target.value.replace(/[^\d.]/g, '') } }))} aria-label="ราคา" />}</td>
+            </tr>); })}
+          {q.data && !rows.length && <tr><td colSpan={7} className="empty">ใบกำกับนี้ไม่มีรายการสินค้า</td></tr>}
+        </tbody>
+      </table>
+    </Modal>
+  );
+}
+
 function OrderPicker({ K, partyId, invoiceId, priceType, taken, onPick, onClose }: { K: TradeKind; partyId: string; invoiceId: string | null; priceType: string; taken: string[]; onPick: (rows: Array<OpenLine & { qty: string }>) => void; onClose: () => void }) {
   const open = useQuery({ queryKey: ['orders-open', K.orderRef, partyId, invoiceId], queryFn: () => api.get<{ rows: OpenLine[] }>('/api/v1/orders/open', { cls: K.orderRef!, party_id: partyId, ...(invoiceId ? { invoice_id: invoiceId } : {}) }), staleTime: 0 });
   const [qty, setQty] = useState<Record<string, string>>({});
@@ -133,7 +164,7 @@ export function TradeFormPage({ path }: { path: string }) {
   const can = useCan(K.menu);
   const { me } = useSession();
   const lk = useLookups('40,41,UNIT,WH');
-  const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; next_no: string; price_type: string | null; vat_rate: string | null; vat_basis: string | null }>; vat_rate: number; price_type: string }>(`/api/v1/trade-defaults/${K.cls}`) });
+  const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; next_no: string; price_type: string | null; vat_rate: string | null; vat_basis: string | null }>; vat_rate: number; price_type: string ; service_vat_basis?: string }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const slms = useQuery({ enabled: K.module === 'AR', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const methods = useQuery({ enabled: !!K.payments, queryKey: ['payment-methods', K.module === 'AR' ? 'R' : 'P'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>(`/api/v1/payment-methods/${K.module === 'AR' ? 'R' : 'P'}`) });
@@ -147,6 +178,7 @@ export function TradeFormPage({ path }: { path: string }) {
   const [refDate, setRefDate] = useState('');
   const supInv = K.module === 'AP' && !K.refInvoice && !K.order;
   const [pickOrder, setPickOrder] = useState(false);
+  const [pickRef, setPickRef] = useState(false);
   const [cancelLine, setCancelLine] = useState<Line | null>(null);
   const [askConvert, setAskConvert] = useState(false);
   const canSO = useCan('SA.SO');
@@ -171,7 +203,7 @@ export function TradeFormPage({ path }: { path: string }) {
   if (!h && id && cur.data) {
     const c = cur.data as Record<string, string | null>;
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), party: { id: (c.customer_id ?? c.supplier_id)!, code: c.party_code ?? '', name: c.party_name }, bill_to: c.bill_to_customer_id ? { id: c.bill_to_customer_id, code: '' } : null,
-      party_tax_branch_no: c.party_tax_branch_no ?? '', your_ref: c.your_ref ?? '', ref: c.ref_no ? { id: '', code: c.ref_no } : null, department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '', sales_area_code: c.sales_area_code ?? '', ship_via_code: c.ship_via_code ?? '',
+      party_tax_branch_no: c.party_tax_branch_no ?? '', your_ref: c.your_ref ?? '', ref: c.ref_no ? { id: c.ref_header_id ?? '', code: c.ref_no } : null, department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '', sales_area_code: c.sales_area_code ?? '', ship_via_code: c.ship_via_code ?? '',
       credit_days: c.credit_days === null ? '' : String(c.credit_days), price_type: (c.price_type ?? '2') as Head['price_type'], vat_rate: num(c.vat_rate), vat_basis: (c.vat_basis === '2' ? '2' : '1'), discount_text: c.discount_text ?? '', remark: c.remark ?? '', price_level: '1' });
     setLines(cur.data.lines.map((l) => ({ key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), warehouse_id: (l.warehouse_id as string) ?? null, qty: num(l.qty), unit_id: (l.unit_id as string) ?? null, factor: num(l.factor) || '1',
       unit_price: num(l.unit_price), discount_text: String(l.discount_text ?? ''), is_free: !!l.is_free, return_to_stock: !!l.return_to_stock, vat_exempt: l.vat_code === '0',
@@ -202,7 +234,10 @@ export function TradeFormPage({ path }: { path: string }) {
   const pickItem = (k: number, it: ItemHit | null) => {
     if (!it) return setLine(k, { item_id: '', item_code: '' });
     const first = !lines.some((l) => l.item_id && l.key !== k);
-    if (first && it.item_type === '3' && !K.order && h?.price_type !== '0') setAskBasis(true);
+    if (first && it.item_type === '3' && !K.order && h?.price_type !== '0') {
+      const pref = defs.data?.service_vat_basis ?? '3';
+      if (pref === '1' || pref === '2') set({ vat_basis: pref }); else setAskBasis(true);
+    }
     const ar = K.module === 'AR';
     const price = ar ? (it[`price_${h?.price_level || '1'}` as 'price_1'] ?? it.price_1) : it.std_cost;
     const unit = ar ? (it.sales_unit_id ?? it.base_unit_id) : (it.purchase_unit_id ?? it.base_unit_id);
@@ -240,7 +275,7 @@ export function TradeFormPage({ path }: { path: string }) {
     catch (e) { setAskCancel(false); setErr(e); }
   };
   useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
-    Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); }, 'Ctrl+Insert': readOnly ? undefined : addLine, F6: K.orderRef && !readOnly ? () => setPickOrder(true) : undefined }, []);
+    Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); }, 'Ctrl+Insert': readOnly ? undefined : addLine, F6: K.orderRef && !readOnly ? () => setPickOrder(true) : K.refInvoice && !readOnly && h?.ref?.id ? () => setPickRef(true) : undefined }, []);
   const dtCode = defs.data?.types.find((t) => t.id === h?.doc_type_id);
   const cancelled = cur.data?.doc_status === 'C';
   const docNo = id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : '';
@@ -311,7 +346,7 @@ export function TradeFormPage({ path }: { path: string }) {
                 </tr>
               ))}
             </tbody>
-            {!readOnly && <tfoot><tr><td colSpan={13}><button type="button" onClick={addLine}>+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button>{K.orderRef && <> <button type="button" disabled={!h.party} onClick={() => setPickOrder(true)}>อ้าง{K.orderRef === 'SO' ? 'ใบสั่งขาย' : 'ใบสั่งซื้อ'} <kbd>F6</kbd></button></>} <span className="hint">ราคาตาม{K.module === 'AR' ? 'ตารางราคาของลูกค้า' : 'ราคาทุนมาตรฐาน'} — แก้ได้ · ของแถมติ๊ก F</span></td></tr></tfoot>}
+            {!readOnly && <tfoot><tr><td colSpan={13}><button type="button" onClick={addLine}>+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button>{K.orderRef && <> <button type="button" disabled={!h.party} onClick={() => setPickOrder(true)}>อ้าง{K.orderRef === 'SO' ? 'ใบสั่งขาย' : 'ใบสั่งซื้อ'} <kbd>F6</kbd></button></>}{K.refInvoice && <> <button type="button" disabled={!h.ref?.id} title={h.ref?.id ? '' : 'เลือกเลขที่ใบกำกับที่อ้างถึงก่อน'} onClick={() => setPickRef(true)}>เลือกรายการจากใบกำกับเดิม <kbd>F6</kbd></button></>} <span className="hint">ราคาตาม{K.module === 'AR' ? 'ตารางราคาของลูกค้า' : 'ราคาทุนมาตรฐาน'} — แก้ได้ · ของแถมติ๊ก F</span></td></tr></tfoot>}
           </table>
         </div>}
         {tab === 'pay' && <div className="table-wrap lines">
@@ -380,6 +415,9 @@ export function TradeFormPage({ path }: { path: string }) {
       {pickOrder && h?.party && <OrderPicker K={K} partyId={h.party.id} invoiceId={id} priceType={h.price_type} taken={lines.map((l) => l.source_line_id).filter((x): x is string => !!x)} onClose={() => setPickOrder(false)}
         onPick={(rows) => { setLines((ls) => [...ls.filter((l) => l.item_id), ...rows.map((r) => ({ key: ++seq, item_id: r.item_id ?? '', item_code: r.item_code ?? '', description: r.description ?? '', warehouse_id: r.warehouse_id, qty: r.qty, unit_id: r.unit_id, factor: num(r.factor) || '1',
           unit_price: num(r.unit_price), discount_text: r.discount_text ?? '', is_free: r.is_free, return_to_stock: false, vat_exempt: false, source_line_id: r.line_id, source_no: r.doc_no }))]); setDirty(true); setPickOrder(false); setTab('lines'); }} />}
+      {pickRef && h?.ref?.id && <RefInvoicePicker K={K} refId={h.ref.id} onClose={() => setPickRef(false)}
+        onPick={(rows) => { setLines((ls) => [...ls.filter((l) => l.item_id), ...rows.map((r) => ({ key: ++seq, item_id: r.item_id, item_code: r.item_code ?? '', description: r.description ?? '', warehouse_id: r.warehouse_id, qty: r.pick_qty, unit_id: r.unit_id, factor: num(r.factor) || '1',
+          unit_price: r.pick_price, discount_text: '', is_free: false, return_to_stock: K.cls === 'CN' || K.cls === 'DN', vat_exempt: r.vat_code === '0' }))]); setDirty(true); setPickRef(false); setTab('lines'); }} />}
       {cancelLine && <CancelLineModal K={K} headerId={id!} line={cancelLine} onClose={() => setCancelLine(null)} onDone={async () => { setCancelLine(null); await qc.refetchQueries({ queryKey: [K.path, 'one', id] }); setH(null); qc.invalidateQueries({ queryKey: [K.path] }); }} />}
       {askConvert && <Confirm title="แปลงเป็นใบสั่งขาย" text={<>สร้างใบสั่งขายจาก <b>{cur.data?.doc_no}</b> (คัดลอกลูกค้า รายการสินค้า ราคา ส่วนลด) ลงวันที่ทำงาน</>} okText="สร้างใบสั่งขาย" onClose={() => setAskConvert(false)}
         onOk={async () => { try { const r = await api.post<{ id: string; doc_no: string }>(`/api/v1/quotations/${id}/convert`, { doc_date: me?.work_date ?? todayIso() }); toast(`สร้างใบสั่งขาย ${r.doc_no} แล้ว`); setAskConvert(false); nav(`/sa/orders/${r.id}`); } catch (e) { setAskConvert(false); setErr(e); } }} />}

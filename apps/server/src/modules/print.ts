@@ -119,6 +119,19 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
 
   const nz = (v: unknown) => !d(String(v ?? 0)).isZero();
   const totals: Array<{ label: string; value: string }> = [];
+  // ใบเพิ่มหนี้/ใบลดหนี้ (ประมวลรัษฎากร ม.86/9 86/10 · คู่มือ S-PU-04a): พิมพ์ใบกำกับเดิม มูลค่าตามใบกำกับเดิม มูลค่าที่ถูกต้อง และผลต่าง
+  if (fam === 'trade' && ['CN', 'DR', 'DN', 'CP'].includes(H.scope) && h.ref_no) {
+    const base = (x: Row) => d(String((x.price_type === '0' ? x.amount_after_discount : x.taxable_amount) ?? 0));
+    const ref = (await sql<Row>`SELECT doc_no, doc_date::text AS doc_date, price_type, taxable_amount, amount_after_discount FROM doc_header
+        WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND doc_no = ${h.ref_no} AND doc_class IN (${sql.join(h.module === 'AR' ? ['IV', 'HS'] : ['RR', 'HP'])})
+          AND ${h.customer_id ? sql`customer_id = ${h.customer_id}` : sql`supplier_id = ${h.supplier_id}`} ORDER BY doc_date DESC LIMIT 1`.execute(db)).rows[0];
+    fields.ref_invoice = `${txt(h.ref_no)}${h.ref_date ? ` ลงวันที่ ${h.ref_date}` : ''}`;
+    if (ref) {
+      const orig = base(ref), diff = base(h);
+      const correct = ['CN', 'DN'].includes(H.scope) ? orig.minus(diff) : orig.plus(diff);
+      totals.push({ label: 'มูลค่าสินค้าตามใบกำกับเดิม', value: orig.toFixed(2) }, { label: 'มูลค่าที่ถูกต้อง', value: correct.toFixed(2) }, { label: 'ผลต่าง', value: diff.toFixed(2) });
+    }
+  }
   if (fam === 'trade') {
     totals.push({ label: 'รวมเงิน', value: money(h.amount) });
     if (nz(h.discount_amount)) totals.push({ label: `ส่วนลด ${txt(h.discount_text)}`.trim(), value: money(h.discount_amount) }, { label: 'หลังหักส่วนลด', value: money(h.amount_after_discount) });

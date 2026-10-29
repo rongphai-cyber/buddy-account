@@ -2438,6 +2438,30 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect((await call('PUT', `/api/v1/notes/doc/${iv.id}`, { doc: ['x'] })).body.error.message).toMatch(/ยกเลิกแล้ว/);
   });
+  it('credit limit + credit-note original value (T7.1): over limit blocked below approval level, warned for admin, CN prints original/correct/difference', async () => {
+    const admin = cookie;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cnType = (await call('GET', '/api/v1/trade-defaults/CN')).body.types[0].id;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const cus = (await call('GET', '/api/v1/customers?q=C520')).body.rows[0].id;
+    const item = (await call('POST', '/api/v1/items', { code: '02-TEST-000072', name_th: 'สินค้าวงเงิน', base_unit_id: unit, std_cost: '1' })).body.id;
+    await sql`UPDATE md_customer SET credit_limit = 1 WHERE id = ${cus}`.execute(database.db);
+    const body = { doc_type_id: ivType, doc_date: '2027-09-10', party_id: cus, price_type: '2', vat_rate: 7, warehouse_id: w1, lines: [{ item_id: item, qty: 2, unit_price: 500 }] };
+    cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: 'clerk0', password: 'clerk0pass' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/sales-invoices', body)).body.error.message).toMatch(/เกินวงเงิน.*ระดับอนุมัติ 9/);
+    cookie = admin;
+    const iv = (await call('POST', '/api/v1/sales-invoices', body)).body;
+    expect(iv.warnings.some((w: string) => /เกินวงเงิน/.test(w))).toBe(true);
+    await sql`UPDATE md_customer SET credit_limit = NULL WHERE id = ${cus}`.execute(database.db);
+    // ใบลดหนี้อ้างใบกำกับ: มูลค่าเดิม 1,000 ลด 300 → ที่ถูกต้อง 700
+    const cn = (await call('POST', '/api/v1/ar-credit-notes', { doc_type_id: cnType, doc_date: '2027-09-11', party_id: cus, ref_header_id: iv.id, price_type: '2', vat_rate: 7, lines: [{ item_id: item, qty: 1, unit_price: 300 }] })).body;
+    const pd = (await call('GET', `/api/v1/print/doc/${cn.id}`)).body.data;
+    expect(pd.totals.slice(0, 3)).toEqual([{ label: 'มูลค่าสินค้าตามใบกำกับเดิม', value: '1000.00' }, { label: 'มูลค่าที่ถูกต้อง', value: '700.00' }, { label: 'ผลต่าง', value: '300.00' }]);
+    expect(pd.fields.ref_invoice).toContain(iv.doc_no);
+    expect(pd.totals.at(-1).value).toBe('321.00');
+    for (const [path, x] of [['ar-credit-notes', cn], ['sales-invoices', iv]] as const) expect((await call('POST', `/api/v1/${path}/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)
