@@ -1,5 +1,5 @@
 import { sql } from 'kysely';
-import { d, round2, validateJournal, parseIso, type JournalLineInput } from '@buddy/core';
+import { d, round2, validateJournal, voucherNoPattern, type JournalLineInput } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { AppError, badRequest, notFound } from '../../http.js';
 import { logActivity } from '../../audit.js';
@@ -26,23 +26,22 @@ export async function periodFor(db: Db, companyId: string, date: string) {
 }
 
 /**
- * ออกเลขที่ใบสำคัญอัตโนมัติ แบบ Express (gl.voucher_numbering = '4'): prefix + ปี พ.ศ. 2 หลัก + เดือน + วัน + ลำดับ 3 หลัก
- * เช่น JV520101001 · ตั้งเป็น 'M' ได้: prefix + ปีเดือน + ลำดับ 4 หลัก เช่น JV52010001
+ * ออกเลขที่ใบสำคัญอัตโนมัติตามค่าเริ่มต้น gl.voucher_numbering (คู่มือบทที่ 5 S-SET-10 ข้อ 2):
+ * ตัวนำเลขที่ของสมุด + 1 YMMDDxx / 2 YMMxxxx / 3 YYMMxxxx / 4 YYMMDDxxx เช่น JV520101001 · 0 = ป้อนเลขเอง (คืนค่าว่าง)
  */
 export async function nextVoucherNo(db: Db, companyId: string, bookId: string, date: string, style = '4') {
   const book = await db.selectFrom('gl_journal_book').select(['prefix']).where('id', '=', bookId).where('company_id', '=', companyId).executeTakeFirst();
   if (!book) throw notFound('สมุดรายวัน');
-  const { y, m, d: day } = parseIso(date);
-  const yy = String((y + 543) % 100).padStart(2, '0');
-  const mm = String(m).padStart(2, '0');
-  const base = style === 'M' ? `${book.prefix}${yy}${mm}` : `${book.prefix}${yy}${mm}${String(day).padStart(2, '0')}`;
-  const width = style === 'M' ? 4 : 3;
+  const co = await db.selectFrom('sys_company').select('year_system').where('id', '=', companyId).executeTakeFirst();
+  const pat = voucherNoPattern(style, book.prefix, date, (co?.year_system as 'B' | 'C') ?? 'B');
+  if (!pat) return '';
   const last = await db.selectFrom('gl_journal').select('voucher_no')
-    .where('company_id', '=', companyId).where('voucher_no', 'like', `${base}%`)
-    .where(sql<boolean>`length(voucher_no) = ${base.length + width}`)
+    .where('company_id', '=', companyId).where('voucher_no', 'like', `${pat.base}%`)
+    .where(sql<boolean>`length(voucher_no) = ${pat.base.length + pat.width}`)
     .orderBy('voucher_no', 'desc').limit(1).executeTakeFirst();
-  const n = last ? Number(last.voucher_no.slice(base.length)) + 1 : 1;
-  return base + String(n).padStart(width, '0');
+  const n = last ? Number(last.voucher_no.slice(pat.base.length)) + 1 : 1;
+  if (String(n).length > pat.width) throw badRequest(`เลขที่ใบสำคัญของช่วงนี้เต็มแล้ว (${pat.base}${'9'.repeat(pat.width)}) — เปลี่ยนลำดับเลขที่ที่ เริ่มระบบ › ค่าเริ่มต้นแต่ละระบบ › ระบบบัญชี`);
+  return pat.base + String(n).padStart(pat.width, '0');
 }
 
 async function checkLines(db: Db, companyId: string, lines: JournalInput['lines']) {
@@ -81,6 +80,7 @@ export async function createJournal(db: Db, ctx: { companyId: string; userId: st
     const book = await tx.selectFrom('gl_journal_book').select('id').where('id', '=', input.journal_book_id).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!book) throw badRequest('ไม่พบสมุดรายวันที่เลือก');
     const voucherNo = input.voucher_no?.trim() || (await nextVoucherNo(tx, ctx.companyId, input.journal_book_id, input.voucher_date, style));
+    if (!voucherNo) throw badRequest('ป้อนเลขที่ใบสำคัญ (บริษัทนี้ตั้งลำดับเลขที่เป็น "ป้อนเลขเอง")', [{ field: 'voucher_no', message: 'ป้อนเลขที่ใบสำคัญ' }]);
     const dup = await tx.selectFrom('gl_journal').select('id').where('company_id', '=', ctx.companyId).where('voucher_no', '=', voucherNo).where('deleted_at', 'is', null).executeTakeFirst();
     if (dup) throw badRequest(`เลขที่ใบสำคัญ ${voucherNo} มีอยู่แล้ว`);
     const totalD = round2(lines.reduce((s, l) => s.plus(d(l.debit)), d(0)));

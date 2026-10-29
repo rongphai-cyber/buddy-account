@@ -119,6 +119,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/fs/run': M('RP.FS', 'read'),
   'GET /api/v1/reports/trial-balance': M('RP.TB', 'read'), 'GET /api/v1/reports/ledger': M('RP.LEDGER', 'read'),
   'GET /api/v1/reports/journal-book': M('RP.JNL', 'read'), 'GET /api/v1/reports/account-detail': M('RP.DETAIL', 'read'),
+  // ค่าเริ่มต้นแต่ละระบบ (บทที่ 5)
+  'GET /api/v1/settings': LOOKUP, 'PUT /api/v1/settings': M('SET.DEF', 'edit'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)
   'GET /api/v1/permissions/menus': M('SET.SEC', 'read'), 'GET /api/v1/permissions': M('SET.SEC', 'read'),
   'GET /api/v1/permissions/by-menu': M('SET.SEC', 'read'), 'PUT /api/v1/permissions': M('SET.SEC', 'edit'),

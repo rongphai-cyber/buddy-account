@@ -13,7 +13,8 @@
     "start": "pnpm --filter @buddy/web build && pnpm --filter @buddy/server start",
     "coverage": "python3 docs/tools/gen_coverage.py",
     "pg": "node tools/local-pg/pg.mjs",
-    "start:pg": "pnpm --filter @buddy/web build && node tools/local-pg/pg.mjs run -- pnpm --filter @buddy/server start"
+    "start:pg": "pnpm --filter @buddy/web build && node tools/local-pg/pg.mjs run -- pnpm --filter @buddy/server start",
+    "settings:catalog": "pnpm --filter @buddy/server exec tsx ../../tools/express-import/make_settings_catalog.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -4,3 +4,4 @@ export * from './taxid.js';
 export * from './journal.js';
 export * from './menu.js';
 export * from './fs-layout.js';
+export * from './settings.js';

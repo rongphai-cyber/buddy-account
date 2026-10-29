@@ -31,6 +31,10 @@ export function JournalFormPage() {
   const accts = useAccounts();
   const doc = useQuery({ enabled: !isNew, queryKey: ['journal', id], queryFn: () => api.get<JournalDoc>(`/api/v1/gl/journals/${id}`) });
   const [h, setH] = useState({ journal_book_id: sp.get('book') ?? '', voucher_date: me?.work_date ?? todayIso(), description: '', reference: '' });
+  // ค่าเริ่มต้นระบบบัญชี ข้อ 2: ลำดับเลขที่แบบ 0 = ผู้ใช้ป้อนเลขที่ใบสำคัญเอง
+  const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<{ values: Record<string, unknown> }>('/api/v1/settings'), staleTime: 60_000 });
+  const manualNo = isNew && settings.data?.values['gl.voucher_numbering'] === '0';
+  const [typedNo, setTypedNo] = useState('');
   const [lines, setLines] = useState<Line[]>([blank(), blank()]);
   const [err, setErr] = useState<unknown>(null);
   const [tab, setTab] = useState('lines');
@@ -128,7 +132,7 @@ export function JournalFormPage() {
   const save = async (andNew = false) => {
     if (!editable || busy) return;
     setErr(null); setBusy(true);
-    const body = { ...h, description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0' })) };
+    const body = { ...h, voucher_no: manualNo ? typedNo.trim() || null : undefined, description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0' })) };
     try {
       const r = isNew ? await api.post<{ id: string; voucher_no: string }>('/api/v1/gl/journals', body) : await api.put<{ id: string; voucher_no: string }>(`/api/v1/gl/journals/${id}`, body);
       toast(`บันทึกใบสำคัญ ${r.voucher_no} แล้ว`); setSaves((n) => n + 1);
@@ -184,9 +188,11 @@ export function JournalFormPage() {
               </select>
             </Field>
             <Field label="วันที่" req><DateInput value={h.voucher_date} onChange={(v) => { setDirty(true); setH({ ...h, voucher_date: v }); }} autoFocus={isNew} /></Field>
-            <Field label="เลขที่ใบสำคัญ" hint={isNew ? 'ออกเลขอัตโนมัติตอนบันทึก · 🔍/F4 เลือกต้นแบบ · 📋/Ctrl+F6 คัดลอกจากใบสำคัญอื่น' : undefined}>
+            <Field label="เลขที่ใบสำคัญ" hint={isNew ? `${manualNo ? 'ป้อนเลขเอง (ตามค่าเริ่มต้นระบบบัญชี)' : 'ออกเลขอัตโนมัติตอนบันทึก'} · 🔍/F4 เลือกต้นแบบ · 📋/Ctrl+F6 คัดลอกจากใบสำคัญอื่น` : undefined}>
               <span className="lk-in">
-                <input readOnly value={isNew ? nextNo : j?.voucher_no ?? ''} className="mono" onKeyDown={(e) => { if (isNew && e.key === 'F4') { e.preventDefault(); setTplPick(''); } }} />
+                {manualNo
+                  ? <input value={typedNo} maxLength={30} className="mono" placeholder="ป้อนเลขที่ใบสำคัญ" aria-required onChange={(e) => { setDirty(true); setTypedNo(e.target.value); }} onKeyDown={(e) => { if (e.key === 'F4') { e.preventDefault(); setTplPick(''); } }} />
+                  : <input readOnly value={isNew ? nextNo : j?.voucher_no ?? ''} className="mono" onKeyDown={(e) => { if (isNew && e.key === 'F4') { e.preventDefault(); setTplPick(''); } }} />}
                 {isNew && <button type="button" className="icon-btn" onClick={() => setTplPick('')} title="เลือกต้นแบบวิธีการบันทึก (F4)">🔍</button>}
                 {isNew && <button type="button" className="icon-btn" onClick={() => setCopyPick(true)} title="คัดลอกรายการจากใบสำคัญอื่น (Ctrl+F6)">📋</button>}
               </span>

@@ -12,6 +12,7 @@ import { JournalFormPage } from './pages/gl/JournalForm';
 import { BooksPage } from './pages/gl/Books';
 import { TemplatesPage } from './pages/gl/Templates';
 import { PermissionsPage } from './pages/settings/Permissions';
+import { DefaultsPage } from './pages/settings/Defaults';
 import { PriorYearPage } from './pages/gl/PriorYear';
 import { BudgetPage } from './pages/gl/Budget';
 import { AccountDetailPage } from './pages/reports/AccountDetail';
@@ -114,6 +115,7 @@ function Shell() {
           <Route path="/settings/branches" element={<BranchesPage />} />
           <Route path="/settings/users" element={<UsersPage />} />
           <Route path="/settings/permissions" element={<PermissionsPage />} />
+          <Route path="/settings/defaults" element={<DefaultsPage />} />
           <Route path="/companies/new" element={<NewCompanyPage />} />
           <Route path="/account/password" element={<PasswordPage />} />
           <Route path="/admin/import" element={<ImportPage />} />

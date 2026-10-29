@@ -758,25 +758,49 @@ for r in dbf('STLOC'):
     if len(rows) >= 20000: done('inv_stock_balance', insert('inv_stock_balance', rows), 'STLOC'); rows = []
 done('inv_stock_balance', insert('inv_stock_balance', rows), 'STLOC')
 
-# ------------------------------------------------------------------ ค่าเริ่มต้นจาก ISINFO → sys_setting
+# ------------------------------------------------------------------ ค่าเริ่มต้นจาก ISINFO → sys_setting (คู่มือบทที่ 5)
+# รายการค่าและฟิลด์ต้นทางมาจากแคตตาล็อกเดียวกับหน้าจอ (packages/core/src/settings.ts → settings_catalog.json)
 YN = lambda v: (v or '').strip().upper() in ('Y', 'T', '1')
-SETMAP = {'gen.link_gl': ('LINKGL', YN), 'gen.vat_rate': ('VATRAT', float), 'gen.price_type': ('FLGVAT', str), 'gen.year_system': ('YEARTHAI', lambda v: 'B' if v == '1' else 'C'),
-          'gen.use_department': ('USEDEP', YN), 'gen.use_project': ('USEJOB', YN),
-          'ic.posting_method': ('ISPERPETUA', lambda v: 'PERPETUAL' if YN(v) else 'PERIODIC'), 'ic.cost_method': ('COSMTD', lambda v: 'FIFO' if v == 'F' else 'AVERAGE'),
-          'ic.cost_by_warehouse': ('LOC_COST', YN), 'ic.allow_negative': ('NEGALLOW', YN), 'ic.any_warehouse': ('ANYLOC', YN), 'ic.main_warehouse': ('MAINLOC', str),
-          'ic.use_barcode': ('USEBARCOD', YN), 'ic.use_count_unit': ('USE_CQU', YN), 'ar.allow_over_credit': ('OVRCRALLOW', YN), 'ar.so_credit_lock': ('SO_CR_LOCK', YN),
-          'fn.default_deposit_bank': ('BNKDEP', str), 'fn.default_paid_bank': ('BNKPAID', str), 'fn.auto_pass_cheque_paid': ('PASPCQAUTO', YN),
-          'fn.wht_min_amount': ('MINTAXAMT', float), 'fn.wht_default_rate': ('MINTAXRAT', float), 'gl.account_mask': ('GLPICT', str), 'fa.asset_code_mask': ('FAPICT', str),
-          'tax.input_vat_prorate': ('PVATPRORAT', YN)}
+UDF_FIELDS = (('dat1', 'ST_DAT1'), ('dat2', 'ST_DAT2'), ('num1', 'ST_NUM1'), ('str1', 'ST_STR1'), ('str2', 'ST_STR2'), ('str3', 'ST_STR3'), ('str4', 'ST_STR4'))
+def setting_from_isinfo(spec):
+    fields, kind = spec.rsplit(':', 1)
+    if kind == 'list':
+        vals = [info.get(f) for f in fields.split(',')]
+        return [int(v) for v in vals] if all(v for v in vals) else None
+    if kind == 'udf':
+        out = {}
+        for k, f in UDF_FIELDS:
+            th = st(info.get(f)); use = YN(info.get(f + 'USE'))
+            if th or use: out[k] = {'use': use, 'th': th or '', 'en': st(info.get(f + 'ENG')) or ''}
+        return out
+    if kind == 'tiers':
+        rows = []
+        for c in 'ABCDE':
+            a = info.get(f'CRLINE_{c}'); lv = st(info.get(f'CRLINE_{c}_L')) or ''
+            if a: rows.append({'amount': round(a, 2), 'level': int(lv) if lv.isdigit() else 0})
+        return rows
+    if kind == 'petty':
+        rows = []
+        for i in range(1, 6):
+            th = st(info.get(f'PT_STR{i}'))
+            if th: rows.append({'th': th, 'en': st(info.get(f'PT_STR{i}ENG')) or '', 'account': st(info.get(f'PETTY{i}')) or None})
+        return rows
+    v = info.get(fields)
+    if isinstance(v, str): v = st(v)
+    if v is None or v == '': return None
+    return {'yn': YN, 'num': float, 'int': int, 'str': str,
+            'level': lambda x: int(x) if str(x).strip().isdigit() else None,
+            'yearthai': lambda x: 'B' if x == '1' else 'C',
+            'perpetual': lambda x: 'PERPETUAL' if YN(x) else 'PERIODIC',
+            'prefer': lambda x: {'1': 'CODE', '2': 'NAME'}.get(str(x)),   # สันนิษฐาน 1 = ตามรหัส
+            'ynstr': lambda x: 'true' if YN(x) else 'false'}[kind](v)
+CATALOG = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings_catalog.json'), encoding='utf-8'))
 rows = []
-for k, (f, fn) in SETMAP.items():
-    v = info.get(f)
-    if v is None: continue
-    try: val = fn(st(v) if isinstance(v, str) else v)
-    except Exception: continue
-    rows.append(base(id=U('set', k), branch_id=None, module=k.split('.')[0].upper(), key=k, value=json.dumps(val, ensure_ascii=False)))
-rows.append(base(id=U('set', 'ar.aging_overdue'), branch_id=None, module='AR', key='ar.aging_overdue', value=json.dumps([info.get('AROVR1'), info.get('AROVR2'), info.get('AROVR3')])))
-rows.append(base(id=U('set', 'ap.aging_overdue'), branch_id=None, module='AP', key='ap.aging_overdue', value=json.dumps([info.get('APOVR1'), info.get('APOVR2'), info.get('APOVR3')])))
+for c in CATALOG:
+    try: val = setting_from_isinfo(c['from'])
+    except (ValueError, TypeError): QUALITY['setting_unreadable'].append(c['key']); continue
+    if val is None: continue
+    rows.append(base(id=U('set', c['key']), branch_id=None, module=c['module'], key=c['key'], value=json.dumps(val, ensure_ascii=False)))
 done('sys_setting', insert('sys_setting', rows), 'ISINFO')
 
 # ------------------------------------------------------------------ แบบงบการเงิน (GLREP = หัวงบ/คอลัมน์, GLREPIT = บรรทัด) — Buddy Account

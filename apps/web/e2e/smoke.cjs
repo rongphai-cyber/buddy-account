@@ -209,6 +209,18 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.getByRole('tab', { name: 'ตามเมนู (ระบบงานที่อนุญาต)' }).click();
     await page.waitForSelector('table.grid thead', { timeout: 15000 });
   });
+  await step('system defaults (S-SET-02…11)', async () => {
+    // ดูอย่างเดียว ไม่บันทึก: เปิดทุกหมวด ต้องเห็นรายการค่าเริ่มต้นตามคู่มือบทที่ 5
+    await page.goto(BASE + '/settings/defaults');
+    await page.waitForSelector('.set-row', { timeout: 15000 });
+    for (const t of ['ระบบสินค้าคงเหลือ', 'ระบบขายและลูกหนี้', 'ระบบซื้อและเจ้าหนี้', 'ระบบการเงินและเงินฝากธนาคาร', 'ระบบบัญชี', 'ระบบทรัพย์สินถาวร']) {
+      await page.locator('.settings-nav button', { hasText: t }).click();
+      await page.waitForFunction((x) => document.querySelector('h1')?.textContent?.includes(x), t, { timeout: 15000 });
+    }
+    await page.locator('.settings-nav button', { hasText: 'ระบบสินค้าคงเหลือ' }).click();
+    await page.waitForSelector('.set-row', { timeout: 15000 });
+    await shot('15k-defaults');
+  });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });

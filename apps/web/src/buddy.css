@@ -97,3 +97,16 @@
 .fs-lines td:nth-child(2) select { min-width: 74px; }
 .fs-lines input { padding: 3px 6px; }
 .fs-lines td:nth-child(11) input { min-width: 220px; }
+
+/* ค่าเริ่มต้นแต่ละระบบ (บทที่ 5) */
+.settings-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; align-items: start; }
+.settings-nav { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 110px; }
+.settings-nav button { text-align: left; justify-content: flex-start; }
+.settings-nav button.on { background: var(--tone-soft, var(--surface)); border-color: var(--tone); font-weight: 600; }
+.settings-form { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 4px 14px; margin: 0; min-width: 0; }
+.set-row { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 1.4fr) 110px; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--line); align-items: start; }
+.set-row:last-child { border-bottom: 0; }
+.set-input select, .set-input input:not([type=checkbox]) { max-width: 100%; }
+.set-input .days { display: flex; gap: 10px; flex-wrap: wrap; }
+.grid.mini td, .grid.mini th { padding: 3px 6px; }
+@media (max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } .settings-nav { position: static; flex-direction: row; flex-wrap: wrap; } .set-row { grid-template-columns: 1fr; } }

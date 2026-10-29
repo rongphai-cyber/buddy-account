@@ -1,0 +1,372 @@
+[
+ {
+  "key": "gen.year_system",
+  "module": "GEN",
+  "from": "YEARTHAI:yearthai"
+ },
+ {
+  "key": "gen.vat_rate",
+  "module": "GEN",
+  "from": "VATRAT:num"
+ },
+ {
+  "key": "gen.price_type",
+  "module": "GEN",
+  "from": "FLGVAT:str"
+ },
+ {
+  "key": "tax.input_vat_prorate",
+  "module": "TAX",
+  "from": "PVATPRORAT:str"
+ },
+ {
+  "key": "tax.prorate_claimable",
+  "module": "TAX",
+  "from": "PVAT_RF:num"
+ },
+ {
+  "key": "tax.prorate_nonclaimable",
+  "module": "TAX",
+  "from": "PVAT_NRF:num"
+ },
+ {
+  "key": "gen.approve_level",
+  "module": "GEN",
+  "from": "APPROV_LEV:level"
+ },
+ {
+  "key": "gen.approve_method",
+  "module": "GEN",
+  "from": "APPROV_MET:str"
+ },
+ {
+  "key": "gen.reprint_level",
+  "module": "GEN",
+  "from": "REPRN_LEV:level"
+ },
+ {
+  "key": "gen.vat_in_item",
+  "module": "GEN",
+  "from": "VAT_INITEM:yn"
+ },
+ {
+  "key": "gen.idle_lock_minutes",
+  "module": "GEN",
+  "from": "SAVSCRTIME:int"
+ },
+ {
+  "key": "gen.link_gl",
+  "module": "GEN",
+  "from": "LINKGL:yn"
+ },
+ {
+  "key": "gen.use_department",
+  "module": "GEN",
+  "from": "USEDEP:yn"
+ },
+ {
+  "key": "gen.use_project",
+  "module": "GEN",
+  "from": "USEJOB:yn"
+ },
+ {
+  "key": "ic.item_code_mask",
+  "module": "IC",
+  "from": "STPICT:str"
+ },
+ {
+  "key": "ic.search_by",
+  "module": "IC",
+  "from": "STPREFER:prefer"
+ },
+ {
+  "key": "ic.posting_method",
+  "module": "IC",
+  "from": "ISPERPETUA:perpetual"
+ },
+ {
+  "key": "ic.decimals_price",
+  "module": "IC",
+  "from": "DSIMLPRI:int"
+ },
+ {
+  "key": "ic.decimals_qty",
+  "module": "IC",
+  "from": "DSIMLQTY:int"
+ },
+ {
+  "key": "ic.decimals_factor",
+  "module": "IC",
+  "from": "DSIMLFAC:int"
+ },
+ {
+  "key": "ic.edit_unit_stock",
+  "module": "IC",
+  "from": "TEDITQU:yn"
+ },
+ {
+  "key": "ic.edit_factor_stock",
+  "module": "IC",
+  "from": "TEDITFAC:yn"
+ },
+ {
+  "key": "ic.allow_negative",
+  "module": "IC",
+  "from": "NEGALLOW:str"
+ },
+ {
+  "key": "ic.negative_approve_level",
+  "module": "IC",
+  "from": "NEGAUTH:level"
+ },
+ {
+  "key": "ic.negative_check_level",
+  "module": "IC",
+  "from": "CHKNEGLEV:str"
+ },
+ {
+  "key": "ic.any_warehouse",
+  "module": "IC",
+  "from": "ANYLOC:yn"
+ },
+ {
+  "key": "ic.cost_by_warehouse",
+  "module": "IC",
+  "from": "LOC_COST:yn"
+ },
+ {
+  "key": "ic.main_warehouse",
+  "module": "IC",
+  "from": "MAINLOC:str"
+ },
+ {
+  "key": "ic.show_pack_units",
+  "module": "IC",
+  "from": "USEPACKING:yn"
+ },
+ {
+  "key": "ic.edit_last_prices",
+  "module": "IC",
+  "from": "E_LPURSAL:yn"
+ },
+ {
+  "key": "ic.warn_below_reorder",
+  "module": "IC",
+  "from": "ST_LT_REOP:yn"
+ },
+ {
+  "key": "ic.aging_days",
+  "module": "IC",
+  "from": "STAGE1,STAGE2,STAGE3:list"
+ },
+ {
+  "key": "ic.udf",
+  "module": "IC",
+  "from": "ST_:udf"
+ },
+ {
+  "key": "ic.use_barcode",
+  "module": "IC",
+  "from": "USEBARCOD:yn"
+ },
+ {
+  "key": "ic.use_count_unit",
+  "module": "IC",
+  "from": "USE_CQU:yn"
+ },
+ {
+  "key": "ar.search_by",
+  "module": "AR",
+  "from": "ARPREFER:prefer"
+ },
+ {
+  "key": "ar.edit_item_name",
+  "module": "AR",
+  "from": "ED_SSTKDES:yn"
+ },
+ {
+  "key": "ic.edit_unit_sales",
+  "module": "IC",
+  "from": "SEDITQU:yn"
+ },
+ {
+  "key": "ic.edit_factor_sales",
+  "module": "IC",
+  "from": "SEDITFAC:yn"
+ },
+ {
+  "key": "ar.change_sales_price",
+  "module": "AR",
+  "from": "CHGSALPR:str"
+ },
+ {
+  "key": "ar.warn_below_cost",
+  "module": "AR",
+  "from": "LOSESAL:yn"
+ },
+ {
+  "key": "ar.manual_line_order",
+  "module": "AR",
+  "from": "INSERTIT:yn"
+ },
+ {
+  "key": "ar.credit_note_deduct",
+  "module": "AR",
+  "from": "CNDEDUCT:str"
+ },
+ {
+  "key": "ar.so_credit_lock",
+  "module": "AR",
+  "from": "SO_CR_LOCK:yn"
+ },
+ {
+  "key": "ar.allow_over_credit",
+  "module": "AR",
+  "from": "OVRCRALLOW:yn"
+ },
+ {
+  "key": "ar.so_require_warehouse",
+  "module": "AR",
+  "from": "SO_LOGLOC:yn"
+ },
+ {
+  "key": "ar.service_vat_basis",
+  "module": "AR",
+  "from": "SRV_VATTYP:str"
+ },
+ {
+  "key": "ar.aging_overdue",
+  "module": "AR",
+  "from": "AROVR1,AROVR2,AROVR3:list"
+ },
+ {
+  "key": "ar.aging_due",
+  "module": "AR",
+  "from": "ARDUE1,ARDUE2:list"
+ },
+ {
+  "key": "ar.credit_tiers",
+  "module": "AR",
+  "from": "CRLINE_:tiers"
+ },
+ {
+  "key": "ar.over_credit_level",
+  "module": "AR",
+  "from": "OVRCRAUTH:level"
+ },
+ {
+  "key": "ap.search_by",
+  "module": "AP",
+  "from": "APPREFER:prefer"
+ },
+ {
+  "key": "ap.edit_item_name",
+  "module": "AP",
+  "from": "ED_PSTKDES:yn"
+ },
+ {
+  "key": "ic.edit_unit_purchase",
+  "module": "IC",
+  "from": "PEDITQU:yn"
+ },
+ {
+  "key": "ic.edit_factor_purchase",
+  "module": "IC",
+  "from": "PEDITFAC:yn"
+ },
+ {
+  "key": "ap.debit_note_deduct",
+  "module": "AP",
+  "from": "DNDEDUCT:str"
+ },
+ {
+  "key": "ap.aging_overdue",
+  "module": "AP",
+  "from": "APOVR1,APOVR2,APOVR3:list"
+ },
+ {
+  "key": "ap.aging_due",
+  "module": "AP",
+  "from": "APDUE1,APDUE2:list"
+ },
+ {
+  "key": "fn.auto_pass_cheque_paid",
+  "module": "FN",
+  "from": "PASPCQAUTO:yn"
+ },
+ {
+  "key": "fn.default_deposit_bank",
+  "module": "FN",
+  "from": "BNKDEP:str"
+ },
+ {
+  "key": "fn.default_paid_bank",
+  "module": "FN",
+  "from": "BNKPAID:str"
+ },
+ {
+  "key": "fn.wht_min_amount",
+  "module": "FN",
+  "from": "MINTAXAMT:num"
+ },
+ {
+  "key": "fn.wht_default_rate",
+  "module": "FN",
+  "from": "MINTAXRAT:num"
+ },
+ {
+  "key": "fn.social_security_no",
+  "module": "FN",
+  "from": "SOCIALID:str"
+ },
+ {
+  "key": "fn.compensation_fund_no",
+  "module": "FN",
+  "from": "POVDNTID:str"
+ },
+ {
+  "key": "fn.cheque_received_aging",
+  "module": "FN",
+  "from": "QROVR1,QROVR2,QROVR3:list"
+ },
+ {
+  "key": "fn.cheque_paid_aging",
+  "module": "FN",
+  "from": "QPOVR1,QPOVR2,QPOVR3:list"
+ },
+ {
+  "key": "gl.account_mask",
+  "module": "GL",
+  "from": "GLPICT:str"
+ },
+ {
+  "key": "gl.voucher_numbering",
+  "module": "GL",
+  "from": "GLRUNNING:str"
+ },
+ {
+  "key": "gl.petty_cash_columns",
+  "module": "GL",
+  "from": "PT_STR:petty"
+ },
+ {
+  "key": "fa.asset_code_mask",
+  "module": "FA",
+  "from": "FAPICT:str"
+ },
+ {
+  "key": "fa.depreciate_on_entry",
+  "module": "FA",
+  "from": "FADPRAUTO:ynstr"
+ },
+ {
+  "key": "fa.depreciate_monthly",
+  "module": "FA",
+  "from": "FADPRMONLY:ynstr"
+ },
+ {
+  "key": "fa.depreciation_method",
+  "module": "FA",
+  "from": "DPRMETHOD:str"
+ }
+]

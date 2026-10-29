@@ -15,6 +15,7 @@ import { templateRoutes } from './modules/gl/templates.js';
 import { priorYearRoutes } from './modules/gl/prior-year.js';
 import { budgetRoutes } from './modules/gl/budget.js';
 import { attachPermissions, permissionRoutes, syncMenus } from './modules/permissions.js';
+import { settingsRoutes, syncSettingDefs } from './modules/settings.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -34,6 +35,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
 
   attachAuth(app, db);
   await syncMenus(db);
+  await syncSettingDefs(db);
   const rls = await rlsAvailable(database);
   if (!rls) app.log.warn('ไม่พบ role buddy_app — ปิด Row-Level Security (ใช้การกรองในโค้ดอย่างเดียว)');
   attachPermissions(app, database, rls);
@@ -46,6 +48,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   priorYearRoutes(app, db);
   budgetRoutes(app, db);
   permissionRoutes(app, db);
+  settingsRoutes(app, db);
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {

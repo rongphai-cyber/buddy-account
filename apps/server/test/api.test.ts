@@ -360,6 +360,41 @@ describe('Buddy Account API (PGlite)', () => {
     expect(log.some((x) => x.action === 'USE_ADD' && x.username === 'ctl5')).toBe(true);
   });
 
+  it('company defaults per system (ค่าเริ่มต้นแต่ละระบบ บทที่ 5) and voucher numbering styles', async () => {
+    let g = (await call('GET', '/api/v1/settings')).body;
+    expect([g.values['gen.vat_rate'], g.values['ic.allow_negative'], g.values['ar.aging_overdue'], g.values['gl.voucher_numbering']]).toEqual([7, 'Y', [7, 15, 30], '4']);
+    // ตรวจค่าก่อนบันทึก
+    let r = await call('PUT', '/api/v1/settings', { values: { 'gen.vat_rate': 50, 'ar.aging_overdue': [30, 15, 7] } });
+    expect(r.status).toBe(400); expect(r.body.error.issues).toHaveLength(2); expect(r.body.error.message).toMatch(/ระหว่าง 0 ถึง 30/);
+    expect((await call('PUT', '/api/v1/settings', { values: { 'no.such': 1 } })).body.error.message).toMatch(/ไม่รู้จัก/);
+    r = await call('PUT', '/api/v1/settings', { values: { 'ic.allow_negative': 'A', 'ic.negative_approve_level': 5, 'ar.credit_tiers': [{ amount: 20000, level: 0 }, { amount: 50000, level: 5 }], 'gen.year_system': 'C' } });
+    expect(r.body.changed.sort()).toEqual(['ar.credit_tiers', 'gen.year_system', 'ic.allow_negative', 'ic.negative_approve_level']);
+    g = (await call('GET', '/api/v1/settings')).body;
+    expect([g.values['ic.allow_negative'], g.values['ar.credit_tiers'][1].level]).toEqual(['A', 5]);
+    expect(g.customized).toEqual(expect.arrayContaining(['ic.allow_negative', 'gen.year_system']));
+    expect((await call('GET', '/api/v1/auth/me')).body.company.year_system).toBe('C');   // ระบบปีเก็บที่บริษัทด้วย
+    expect((await call('PUT', '/api/v1/settings', { values: { 'gen.year_system': 'B' } })).body.changed).toEqual(['gen.year_system']);
+    const log = (await call('GET', '/api/v1/activity-log')).body as Array<{ action: string; detail: { changed?: Record<string, unknown> } | null }>;
+    expect(log.find((x) => x.action === 'SETTINGS' && x.detail?.changed?.['ic.allow_negative'])?.detail?.changed?.['ic.allow_negative']).toEqual(['Y', 'A']);
+    // ลำดับเลขที่ใบสำคัญ แบบ 3 = YYMMxxxx · แบบ 0 = ป้อนเลขเอง
+    await call('PUT', '/api/v1/settings', { values: { 'gl.voucher_numbering': '3' } });
+    expect((await call('GET', `/api/v1/gl/journals-next-no?book_id=${bookId}&date=2026-05-10`)).body.voucher_no).toBe('JV69050001');
+    await call('PUT', '/api/v1/settings', { values: { 'gl.voucher_numbering': '0' } });
+    expect((await call('GET', `/api/v1/gl/journals-next-no?book_id=${bookId}&date=2026-05-10`)).body.voucher_no).toBe('');
+    const jv = { journal_book_id: bookId, voucher_date: '2026-05-10', lines: [{ account_id: expense, debit: '1' }, { account_id: cash, credit: '1' }] };
+    expect((await call('POST', '/api/v1/gl/journals', jv)).body.error.message).toMatch(/ป้อนเลขที่ใบสำคัญ/);
+    const manual = await call('POST', '/api/v1/gl/journals', { ...jv, voucher_no: 'MAN-0001' });
+    expect(manual.body.voucher_no).toBe('MAN-0001');
+    await call('POST', `/api/v1/gl/journals/${manual.body.id}/cancel`, { reason: 'ทดสอบเลขที่ป้อนเอง' });   // ไม่ให้กระทบยอดของทดสอบข้อถัดไป
+    await call('PUT', '/api/v1/settings', { values: { 'gl.voucher_numbering': '4' } });
+    // พนักงานระดับ 0–4 แก้ค่าเริ่มต้นไม่ได้ (กำหนดค่าโปรแกรม) แต่อ่านได้
+    const admin = cookie; cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'clerk0', password: 'clerk0pass' }); await call('GET', '/api/v1/auth/me');
+    expect((await call('GET', '/api/v1/settings')).status).toBe(200);
+    expect((await call('PUT', '/api/v1/settings', { values: { 'gen.vat_rate': 7 } })).status).toBe(403);
+    cookie = admin;
+  });
+
   it('keeps companies separate', async () => {
     const mine = (await call('GET', '/api/v1/gl/journals')).body.rows[0];
     otherCompanyId = (await call('POST', '/api/v1/companies', { code: 'OTHER', name_th: 'อีกบริษัท', fiscal_start: '2026-01-01', chart: 'none' })).body.id;
@@ -515,6 +550,7 @@ describe('Buddy Account API (PGlite)', () => {
     const aTpl = (await call('POST', '/api/v1/gl/templates', { code: 'A-TPL', name: 'ต้นแบบของ A', lines: [{ account_id: aAcc[0].id, side: 'D' }, { account_id: aAcc[1].id, side: 'C' }] })).body.id;
     expect(aTpl).toBeTruthy();
     const aFy = (await call('GET', '/api/v1/gl/periods')).body[0].id;
+    expect((await call('PUT', '/api/v1/settings', { values: { 'gen.vat_rate': 10 } })).status).toBe(200);
     expect((await call('PUT', '/api/v1/gl/prior-year/entry', { fiscal_year_id: aFy, account_id: aAcc[0].id, opening: {}, periods: [{ period_no: 1, debit: '7' }] })).status).toBe(200);
     // สิทธิ์รายเมนู (T0.10): กำหนด/ดูสิทธิ์ของกลุ่มลูกค้า B ไม่ได้
     expect((await call('GET', `/api/v1/permissions?subject_type=G&subject_id=${bGroup}`)).status).toBe(404);
@@ -543,6 +579,8 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/gl/templates/${aTpl}`)).status).toBe(404);
     expect((await call('PUT', `/api/v1/gl/templates/${aTpl}`, { code: 'HACK', name: 'x', lines: [{ account_id: aAcc[0].id, side: 'D' }] })).status).toBe(404);
     expect((await call('DELETE', `/api/v1/gl/templates/${aTpl}`)).status).toBe(404);
+    // ค่าเริ่มต้นของลูกค้า A ไม่ปนกับของลูกค้า B
+    expect((await call('GET', '/api/v1/settings')).body.values['gen.vat_rate']).toBe(7);
     // ยอดปีที่แล้วของลูกค้า A — ลูกค้า B อ่าน/เขียนไม่ได้ (S-GL-16)
     expect((await call('GET', `/api/v1/gl/prior-year?fiscal_year_id=${aFy}`)).status).toBe(404);
     const bFy = (await call('GET', '/api/v1/gl/periods')).body[0].id;

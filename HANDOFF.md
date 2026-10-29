@@ -12,6 +12,10 @@
 - P0: T0.10 สิทธิ์ 7 ชนิดรายเมนูเสร็จ (`apps/server/src/modules/permissions.ts` — API ใหม่ต้องเพิ่มกฎใน `API_RULES` ไม่งั้นถูกปฏิเสธ และทดสอบ "every API route has a permission rule" ล้ม)
 - ความครอบคลุมหน้าจอ: เสร็จ 40 / 248 (ดู `docs/04_ความครอบคลุมหน้าจอ.md`)
 
+## กำลังทำ (29/10/2569 — เจ้าของสั่ง "Start P2" ทำต่อจนเสร็จ)
+**T2.1 เสร็จแล้ว** — แคตตาล็อก `packages/core/src/settings.ts` (เพิ่มค่าใหม่ที่นี่ แล้ว `pnpm settings:catalog` สร้าง JSON ให้ importer; ชุดทดสอบ core ตรวจว่าตรงกัน), API `/api/v1/settings`, หน้าจอ `/settings/defaults`; DEMO นำเข้าใหม่แล้ว (ค่าจาก ISINFO 63 ค่า)
+- ต่อไป: T2.2 ลูกค้า/ผู้จำหน่าย/พนักงานขาย → T2.3 สินค้า (+ S-SET-04 กลุ่มบัญชีสินค้า) → T2.4 บัญชีเงินฝาก + วิธีรับ/จ่ายชำระ (S-SET-06/08) → T2.5 เลขที่เอกสาร + การเชื่อมต่อบัญชี → T1.17 ตารางข้อมูล
+
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ
 2. หรือ P2: **T2.1** ค่าเริ่มต้นทุกระบบ → T2.2 … T2.5 (แล้วทำ T1.17 ตารางข้อมูลพร้อมกัน)
@@ -31,7 +35,7 @@
 - รหัสผ่าน admin อยู่ใน `.data/ข้อมูลเข้าระบบ-ผู้ดูแล.txt` (อ่านด้วยสคริปต์ ห้ามแสดง)
 - ชุดทดสอบก่อนส่งงาน (CLAUDE.md ข้อ 14–15):
   - `pnpm test` (core 9 + API 20 + schema) · `pnpm typecheck` · `pnpm --filter @buddy/web build`
-  - smoke: `PASS=<จากไฟล์> BASE=http://localhost:4100 OUT=<scratchpad>/shots node apps/web/e2e/smoke.cjs` (19 ขั้น)
+  - smoke: `PASS=<จากไฟล์> BASE=http://localhost:4100 OUT=<scratchpad>/shots node apps/web/e2e/smoke.cjs` (20 ขั้น)
   - ยอดเงิน: งบทดลอง DEMO ปี 2569 คงเหลือต้องเป็น **245,718,317.16** ทั้งสองด้าน (ปี 2568 คงเหลือ 181,398,941.31)
 - ทดลองหน้าจอที่ "บันทึก" ข้อมูล: ใช้ server ทดสอบแยก (PGlite, `BUDDY_DATA_DIR=<scratchpad>/buddy-test PORT=4101`, admin/buddy1234) อย่าเขียนข้อมูลลง DEMO
 - นำข้อมูลใหม่ทั้งหมด (ถ้าจำเป็น): drop DB buddy → `node tools/local-pg/pg.mjs run -- bash tools/express-import/import.sh D:/ACC-Program/TESTRice - TESTRice` → ตรวจงบทดลอง 2553 = 245,718,317.16 → `... run -- python tools/demo-data/make_demo.py - TESTRice DEMO` → `... run -- pnpm --silent --filter @buddy/server cli create-admin admin "ผู้ดูแลระบบ" <รหัสจากไฟล์>`
