@@ -490,3 +490,11 @@ tr.group-row td { background: var(--surface-2); padding: 6px 10px; }
 details.box { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; margin: 10px 0; background: var(--surface); }
 details.box summary { cursor: pointer; font-weight: 600; }
 details.box .form-grid { margin-top: 8px; }
+
+/* ตารางข้อมูล (บทที่ 6) */
+.tbl-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: start; }
+.tbl-nav { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 56px; }
+.tbl-nav button { text-align: left; }
+.tbl-nav a { padding: 4px 10px; }
+.tbl-title { margin: 0 0 4px; font-size: 18px; }
+@media (max-width: 900px) { .tbl-layout { grid-template-columns: 1fr; } .tbl-nav { position: static; flex-direction: row; flex-wrap: wrap; } }

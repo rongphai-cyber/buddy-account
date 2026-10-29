@@ -106,7 +106,7 @@ export function ItemForm({ kind, id, onClose, onSaved }: { kind: ItemKind; id: s
   const K = ITEM_KINDS[kind];
   const qc = useQueryClient();
   const can = useCan(K.menu);
-  const lk = useLookups('20,22,23,UNIT,IAG,WH');
+  const lk = useLookups('22,23,UNIT,IAG,WH');
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<{ values: Record<string, unknown> }>('/api/v1/settings'), staleTime: 60_000 });
   const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], queryFn: () => api.get<Detail>(`/api/v1/${K.path}/${id}`), staleTime: 0 });
   const [f, setF] = useState<F | null>(id ? null : { ...toForm({}), status: 'A', item_type: kind === 'kit' ? '1' : '', purchase_factor: '1', sales_factor: '1' });

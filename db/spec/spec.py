@@ -299,12 +299,18 @@ add(T('md_unit', 'หน่วยนับ', 'md', express="ISTAB TABTYP '20'", 
   C('code', 'code10', nn=True, th='รหัสหน่วย เช่น PC MT', src='ISTAB.TYPCOD'),
   C('name_th', 'str60', nn=True, th='ชื่อหน่วย', src='ISTAB.TYPDES'),
   C('name_en', 'str60', th='ชื่อภาษาอังกฤษ', src='ISTAB.TYPDES2'),
+  C('short_th', 'str30', th='ชื่อย่อไทย', src='ISTAB.SHORTNAM'),
+  C('short_en', 'str30', th='ชื่อย่ออังกฤษ', src='ISTAB.SHORTNAM2'),
+  C('rate', 'qty', th='อัตรา: ตัวคูณให้เป็นหน่วยย่อย เช่น โหล = 12 (คู่มือหน้า 87)', src='ISTAB.FLD02'),
+  C('status', 'char1', nn=True, d="'A'", th='สถานะ', chk=ST_ACTIVE),
 ], uniq=[('company_id','code')]))
 
 add(T('md_warehouse', 'คลังสินค้า', 'md', express="ISTAB TABTYP '21'", cols=[
   C('code', 'code10', nn=True, th='รหัสคลัง เช่น HO SW', src='ISTAB.TYPCOD'),
   C('name_th', 'str120', nn=True, th='ชื่อคลัง', src='ISTAB.TYPDES'),
   C('name_en', 'str120', th='ชื่อภาษาอังกฤษ', src='ISTAB.TYPDES2'),
+  C('short_th', 'str30', th='ชื่อย่อไทย', src='ISTAB.SHORTNAM'),
+  C('short_en', 'str30', th='ชื่อย่ออังกฤษ', src='ISTAB.SHORTNAM2'),
   lk('branch_id', 'sys_branch', 'สาขาที่คลังสังกัด'),
   C('status', 'char1', nn=True, d="'A'", th='สถานะ', chk=ST_ACTIVE),
 ], uniq=[('company_id','code')]))
@@ -322,6 +328,9 @@ add(T('md_bank', 'ธนาคาร', 'md', express="ISTAB TABTYP '01'", cols=[
   C('code', 'code10', nn=True, th='รหัสธนาคาร', src='ISTAB.TYPCOD'),
   C('name_th', 'str120', nn=True, th='ชื่อธนาคาร', src='ISTAB.TYPDES'),
   C('name_en', 'str120', th='ชื่อภาษาอังกฤษ', src='ISTAB.TYPDES2'),
+  C('short_th', 'str30', th='ชื่อย่อไทย', src='ISTAB.SHORTNAM'),
+  C('short_en', 'str30', th='ชื่อย่ออังกฤษ', src='ISTAB.SHORTNAM2'),
+  C('status', 'char1', nn=True, d="'A'", th='สถานะ', chk=ST_ACTIVE),
 ], uniq=[('company_id','code')]))
 
 add(T('md_project', 'โครงการ / Job', 'md', express='JBMAS', cols=[

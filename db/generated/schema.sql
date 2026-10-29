@@ -902,6 +902,10 @@ CREATE TABLE md_unit (
   code varchar(10) NOT NULL,
   name_th varchar(60) NOT NULL,
   name_en varchar(60),
+  short_th varchar(30),
+  short_en varchar(30),
+  rate numeric(18,4),
+  status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -917,6 +921,10 @@ COMMENT ON COLUMN md_unit.company_id IS 'บริษัท';
 COMMENT ON COLUMN md_unit.code IS 'รหัสหน่วย เช่น PC MT [Express: ISTAB.TYPCOD]';
 COMMENT ON COLUMN md_unit.name_th IS 'ชื่อหน่วย [Express: ISTAB.TYPDES]';
 COMMENT ON COLUMN md_unit.name_en IS 'ชื่อภาษาอังกฤษ [Express: ISTAB.TYPDES2]';
+COMMENT ON COLUMN md_unit.short_th IS 'ชื่อย่อไทย [Express: ISTAB.SHORTNAM]';
+COMMENT ON COLUMN md_unit.short_en IS 'ชื่อย่ออังกฤษ [Express: ISTAB.SHORTNAM2]';
+COMMENT ON COLUMN md_unit.rate IS 'อัตรา: ตัวคูณให้เป็นหน่วยย่อย เช่น โหล = 12 (คู่มือหน้า 87) [Express: ISTAB.FLD02]';
+COMMENT ON COLUMN md_unit.status IS 'สถานะ';
 COMMENT ON COLUMN md_unit.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN md_unit.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN md_unit.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -933,6 +941,8 @@ CREATE TABLE md_warehouse (
   code varchar(10) NOT NULL,
   name_th varchar(120) NOT NULL,
   name_en varchar(120),
+  short_th varchar(30),
+  short_en varchar(30),
   branch_id uuid,
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
   created_at timestamptz DEFAULT now() NOT NULL,
@@ -950,6 +960,8 @@ COMMENT ON COLUMN md_warehouse.company_id IS 'บริษัท';
 COMMENT ON COLUMN md_warehouse.code IS 'รหัสคลัง เช่น HO SW [Express: ISTAB.TYPCOD]';
 COMMENT ON COLUMN md_warehouse.name_th IS 'ชื่อคลัง [Express: ISTAB.TYPDES]';
 COMMENT ON COLUMN md_warehouse.name_en IS 'ชื่อภาษาอังกฤษ [Express: ISTAB.TYPDES2]';
+COMMENT ON COLUMN md_warehouse.short_th IS 'ชื่อย่อไทย [Express: ISTAB.SHORTNAM]';
+COMMENT ON COLUMN md_warehouse.short_en IS 'ชื่อย่ออังกฤษ [Express: ISTAB.SHORTNAM2]';
 COMMENT ON COLUMN md_warehouse.branch_id IS 'สาขาที่คลังสังกัด';
 COMMENT ON COLUMN md_warehouse.status IS 'สถานะ';
 COMMENT ON COLUMN md_warehouse.created_at IS 'เวลาสร้าง';
@@ -1005,6 +1017,9 @@ CREATE TABLE md_bank (
   code varchar(10) NOT NULL,
   name_th varchar(120) NOT NULL,
   name_en varchar(120),
+  short_th varchar(30),
+  short_en varchar(30),
+  status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -1020,6 +1035,9 @@ COMMENT ON COLUMN md_bank.company_id IS 'บริษัท';
 COMMENT ON COLUMN md_bank.code IS 'รหัสธนาคาร [Express: ISTAB.TYPCOD]';
 COMMENT ON COLUMN md_bank.name_th IS 'ชื่อธนาคาร [Express: ISTAB.TYPDES]';
 COMMENT ON COLUMN md_bank.name_en IS 'ชื่อภาษาอังกฤษ [Express: ISTAB.TYPDES2]';
+COMMENT ON COLUMN md_bank.short_th IS 'ชื่อย่อไทย [Express: ISTAB.SHORTNAM]';
+COMMENT ON COLUMN md_bank.short_en IS 'ชื่อย่ออังกฤษ [Express: ISTAB.SHORTNAM2]';
+COMMENT ON COLUMN md_bank.status IS 'สถานะ';
 COMMENT ON COLUMN md_bank.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN md_bank.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN md_bank.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';

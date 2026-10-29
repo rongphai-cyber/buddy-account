@@ -108,7 +108,7 @@ export const MENU: MenuItem[] = [
     m('SET.IAG', 'กลุ่มบัญชีสินค้า', 'P2', '/settings/item-account-groups', ['ch05:S-SET-04']),
     m('SET.PAYM', 'วิธีรับ/จ่ายชำระหนี้', 'P2', '/settings/payment-methods', ['ch05:S-SET-06', 'ch05:S-SET-08']),
     m('SET.PRD', 'รอบบัญชี', 'P1', '/settings/periods', ['ch06:S-SET-01']),
-    m('SET.TBL', 'ตารางข้อมูล', 'P2', undefined, ['ch06:S-TBL-01']),
+    m('SET.TBL', 'ตารางข้อมูล', 'P2', '/settings/data-tables', ['ch06:S-TBL-01']),
     m('SET.DEPT', 'แผนก', 'P1', '/settings/departments', ['ch06:S-SET-03']),
     m('SET.BRANCH', 'สาขา', 'P0', '/settings/branches'),
     m('SET.DOCNO', 'เลขที่เอกสาร', 'P2', '/settings/doc-types', ['ch09:S-DN-01']),
@@ -136,3 +136,30 @@ export function flattenMenu(items: MenuItem[] = MENU, parent?: string): Array<Me
   }
   return out;
 }
+
+/**
+ * ตารางข้อมูล (เริ่มระบบ › 2 ตารางข้อมูล — คู่มือบทที่ 6 S-TBL-00/01)
+ * table: เก็บในตารางของตัวเอง (อ้างด้วย id) หรือ md_lookup (อ้างด้วยรหัส) · refs = ช่องที่อ้างรหัสนี้ (ใช้แล้วห้ามลบ/แก้รหัส)
+ */
+export const DATA_TABLES: Array<{ code: string; label: string; table: 'md_bank' | 'md_unit' | 'md_warehouse' | 'md_lookup'; rate?: boolean; refs?: Array<[string, string]>; hint?: string }> = [
+  { code: '01', label: 'ชื่อธนาคาร', table: 'md_bank', refs: [['md_supplier_bank', 'bank_code']] },
+  { code: '02', label: 'สถานะเช็ค', table: 'md_lookup' },
+  { code: '20', label: 'หน่วยนับ', table: 'md_unit', rate: true, hint: 'อัตรา = ตัวคูณให้เป็นหน่วยย่อย เช่น โหล 12.0 — ใช้กับสินค้าที่หน่วยเป็นโหล โปรแกรมคูณ 12 ก่อนเก็บเป็นหน่วยย่อย' },
+  { code: '21', label: 'คลังสินค้า', table: 'md_warehouse' },
+  { code: '22', label: 'หมวดสินค้า', table: 'md_lookup', refs: [['md_item', 'category_code']] },
+  { code: '23', label: 'ระดับสินค้า', table: 'md_lookup', refs: [['md_item', 'item_level']], hint: 'สินค้าชุดที่ประกอบจากสินค้าทั่วไป = ระดับ 1 · ชุดซ้อนชุดต้องใช้ระดับต่างกัน' },
+  { code: '40', label: 'เขตการขาย', table: 'md_lookup', refs: [['md_customer', 'sales_area_code'], ['md_salesperson', 'sales_area_code']] },
+  { code: '41', label: 'ขนส่งโดย', table: 'md_lookup', refs: [['md_customer', 'ship_via_code'], ['md_supplier', 'ship_via_code']] },
+  { code: '42', label: 'เหตุผลการยกเลิกยอดสั่งขาย', table: 'md_lookup' },
+  { code: '43', label: 'เหตุผลการยกเลิกยอดสั่งซื้อ', table: 'md_lookup' },
+  { code: '44', label: 'สถานะใบเสนอราคา', table: 'md_lookup' },
+  { code: '45', label: 'ประเภทลูกค้า', table: 'md_lookup', refs: [['md_customer', 'customer_type']] },
+  { code: '46', label: 'ประเภทผู้จำหน่าย', table: 'md_lookup', refs: [['md_supplier', 'supplier_type']] },
+  { code: '47', label: 'ประเภทพนักงานขาย', table: 'md_lookup', refs: [['md_salesperson', 'salesperson_type']] },
+  { code: '51', label: 'ข้อความสำเร็จรูป (หมายเหตุ)', table: 'md_lookup', hint: '[สันนิษฐาน] ข้อมูลจาก Express เป็นข้อความอธิบาย เช่น วิธีติดสติ๊กเกอร์ — ใช้เลือกในบรรทัดหมายเหตุของเอกสาร' },
+  { code: '52', label: 'ประเภททรัพย์สิน', table: 'md_lookup', hint: 'แบ่งตามชนิด (รถ คอมพิวเตอร์ เฟอร์นิเจอร์) หรือตามสถานที่ก็ได้' },
+  { code: '53', label: 'สถานะใบเบิกเงินสดย่อย', table: 'md_lookup' },
+  { code: '55', label: 'หมวดภาษีหัก ณ ที่จ่าย', table: 'md_lookup', refs: [['md_supplier', 'wht_form'], ['md_customer', 'wht_category']], hint: 'S03 ภ.ง.ด.3 (บุคคลธรรมดา) · S53 ภ.ง.ด.53 (นิติบุคคล) · Z03/Z53 ถูกหัก (ไม่ยื่น)' },
+  { code: '60', label: 'เฟส / Collection', table: 'md_lookup' },
+  { code: '61', label: 'รหัสต้นทุน', table: 'md_lookup' },
+];

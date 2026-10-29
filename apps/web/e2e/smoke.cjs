@@ -299,6 +299,14 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.waitForSelector('fieldset.box .lk-in input, fieldset.box input', { timeout: 15000 });
     await shot('15q-gl-link');
   });
+  await step('data tables (S-TBL-00/01, view only)', async () => {
+    await page.goto(BASE + '/settings/data-tables');
+    await page.waitForSelector('.lines tbody tr input', { timeout: 15000 });
+    await page.locator('.tbl-nav button', { hasText: 'หมวดสินค้า' }).click();
+    await page.waitForFunction(() => document.querySelector('.tbl-title')?.textContent?.includes('หมวดสินค้า'), null, { timeout: 15000 });
+    await page.waitForSelector('.lines tbody tr input', { timeout: 15000 });
+    await shot('15r-data-tables');
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

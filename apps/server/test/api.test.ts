@@ -765,6 +765,45 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('DELETE', `/api/v1/doc-types/${r.body.id}`)).status).toBe(200);
   });
 
+  it('data tables (S-TBL-00/01): units with rate, lookups, used codes protected', async () => {
+    const list = (await call('GET', '/api/v1/data-tables')).body as Array<{ code: string; count: number; rate: boolean }>;
+    expect(list.find((t) => t.code === '20')).toMatchObject({ rate: true });
+    expect(list.find((t) => t.code === '20')!.count).toBeGreaterThanOrEqual(2);   // PCS BOX จากทดสอบแฟ้มสินค้า
+    let units = (await call('GET', '/api/v1/data-tables/20')).body as Array<{ id: string; code: string; name_th: string; used: number; rate: string | null }>;
+    const pcs = units.find((u) => u.code === 'PCS')!, box = units.find((u) => u.code === 'BOX')!;
+    expect(pcs.used).toBeGreaterThan(0);
+    const keep = units.map(({ used: _u, ...u }) => u);
+    // เพิ่มหน่วยโหล อัตรา 12 · แก้ชื่อหน่วยที่ใช้แล้วได้
+    expect((await call('PUT', '/api/v1/data-tables/20', { rows: [...keep.map((u) => (u.id === pcs.id ? { ...u, name_th: 'ชิ้น (แก้ชื่อ)' } : u)), { code: 'DZ', name_th: 'โหล', name_en: 'Dozens', short_th: 'หล', rate: 12 }] })).status).toBe(200);
+    units = (await call('GET', '/api/v1/data-tables/20')).body;
+    expect(units.find((u) => u.code === 'DZ')).toMatchObject({ name_th: 'โหล' });
+    expect(Number(units.find((u) => u.code === 'DZ')!.rate)).toBe(12);
+    expect(units.find((u) => u.code === 'PCS')!.name_th).toBe('ชิ้น (แก้ชื่อ)');
+    expect((await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT.map((u: { code: string }) => u.code)).toContain('DZ');
+    // รหัสที่ใช้แล้ว ห้ามแก้รหัส/ห้ามลบ (คู่มือหน้า 90)
+    const now = units.map(({ used: _u, ...u }) => u);
+    expect((await call('PUT', '/api/v1/data-tables/20', { rows: now.map((u) => (u.id === pcs.id ? { ...u, code: 'PC' } : u)) })).body.error.message).toMatch(/แก้รหัสไม่ได้/);
+    expect((await call('PUT', '/api/v1/data-tables/20', { rows: now.filter((u) => u.id !== pcs.id) })).body.error.message).toMatch(/ลบไม่ได้/);
+    expect((await call('PUT', '/api/v1/data-tables/20', { rows: [...now, { code: 'DZ', name_th: 'ซ้ำ' }] })).body.error.message).toMatch(/ซ้ำ/);
+    // ตารางในแฟ้ม md_lookup: หมวดสินค้า — อ้างอิงด้วยรหัส
+    expect((await call('PUT', '/api/v1/data-tables/22', { rows: [{ code: '01', name_th: 'ซีพียู', name_en: 'CPU' }, { code: '02', name_th: 'เมนบอร์ด' }] })).status).toBe(200);
+    const cats = (await call('GET', '/api/v1/data-tables/22')).body as Array<{ id: string; code: string; used: number }>;
+    await sql`UPDATE md_item SET category_code = '01' WHERE company_id = ${companyId} AND code = '01-INTL-CL-600'`.execute(database.db);
+    const cats2 = (await call('GET', '/api/v1/data-tables/22')).body as Array<{ id: string; code: string; name_th: string; used: number }>;
+    expect(cats2.find((c) => c.code === '01')!.used).toBe(1);
+    expect((await call('PUT', '/api/v1/data-tables/22', { rows: cats2.filter((c) => c.code !== '01').map(({ used: _u, ...c }) => c) })).body.error.message).toMatch(/01.*ลบไม่ได้/);
+    expect((await call('PUT', '/api/v1/data-tables/22', { rows: cats2.filter((c) => c.code !== '02').map(({ used: _u, ...c }) => c) })).status).toBe(200);   // 02 ยังไม่ใช้ ลบได้
+    expect((await call('GET', '/api/v1/lookups?types=22')).body['22'].map((c: { code: string }) => c.code)).toEqual(['01']);
+    expect((await call('GET', '/api/v1/data-tables/99')).status).toBe(404);
+    // บริษัทอื่น: ไม่เห็น และแก้แถวของบริษัทนี้ไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/data-tables/20')).body.some((u: { code: string }) => u.code === 'DZ')).toBe(false);
+    expect((await call('PUT', '/api/v1/data-tables/20', { rows: [{ id: box.id, code: 'BOX', name_th: 'แฮก' }] })).status).toBe(404);
+    expect((await call('PUT', '/api/v1/data-tables/22', { rows: [{ id: cats[0]!.id, code: '01', name_th: 'แฮก' }] })).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('GET', '/api/v1/data-tables/22')).body[0].name_th).toBe('ซีพียู');
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

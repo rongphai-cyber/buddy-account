@@ -809,6 +809,14 @@ export interface MdUnitTable {
   name_th: string;
   /** ชื่อภาษาอังกฤษ */
   name_en: Gen<string | null>;
+  /** ชื่อย่อไทย */
+  short_th: Gen<string | null>;
+  /** ชื่อย่ออังกฤษ */
+  short_en: Gen<string | null>;
+  /** อัตรา: ตัวคูณให้เป็นหน่วยย่อย เช่น โหล = 12 (คู่มือหน้า 87) */
+  rate: Gen<string | null>;
+  /** สถานะ */
+  status: Gen<string>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -836,6 +844,10 @@ export interface MdWarehouseTable {
   name_th: string;
   /** ชื่อภาษาอังกฤษ */
   name_en: Gen<string | null>;
+  /** ชื่อย่อไทย */
+  short_th: Gen<string | null>;
+  /** ชื่อย่ออังกฤษ */
+  short_en: Gen<string | null>;
   /** สาขาที่คลังสังกัด */
   branch_id: Gen<string | null>;
   /** สถานะ */
@@ -900,6 +912,12 @@ export interface MdBankTable {
   name_th: string;
   /** ชื่อภาษาอังกฤษ */
   name_en: Gen<string | null>;
+  /** ชื่อย่อไทย */
+  short_th: Gen<string | null>;
+  /** ชื่อย่ออังกฤษ */
+  short_en: Gen<string | null>;
+  /** สถานะ */
+  status: Gen<string>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

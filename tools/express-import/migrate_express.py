@@ -132,10 +132,12 @@ for r in dbf('ISTAB'):
     tt, code = st(r['TABTYP']), st(r['TYPCOD'])
     if not tt or not code: continue
     name = r['TYPDES'] or r['SHORTNAM'] or code
-    if tt == '20': UNIT[code] = U('unit', code); insert('md_unit', [base(id=UNIT[code], code=code, name_th=name[:60], name_en=(r['TYPDES2'] or '')[:60] or None)])
-    elif tt == '21': WH[code] = U('wh', code); insert('md_warehouse', [base(id=WH[code], code=code, name_th=name, name_en=r['TYPDES2'], branch_id=BRANCH)])
+    short = dict(short_th=st(r.get('SHORTNAM')), short_en=st(r.get('SHORTNAM2')))
+    if tt == '20': UNIT[code] = U('unit', code); insert('md_unit', [base(id=UNIT[code], code=code, name_th=name[:60], name_en=(r['TYPDES2'] or '')[:60] or None, rate=r['FLD02'], **short)])
+    elif tt == '21': WH[code] = U('wh', code); insert('md_warehouse', [base(id=WH[code], code=code, name_th=name, name_en=r['TYPDES2'], branch_id=BRANCH, **short)])
     elif tt == '50': DEPT[code] = U('dept', code); insert('md_department', [base(id=DEPT[code], code=code, name_th=name, name_en=r['TYPDES2'], short_name_th=st(r.get('SHORTNAM')), short_name_en=st(r.get('SHORTNAM2')))])
-    elif tt == '01': BANK[code] = U('bank', code); insert('md_bank', [base(id=BANK[code], code=code, name_th=name, name_en=r['TYPDES2'])])
+    elif tt == '01': BANK[code] = U('bank', code); insert('md_bank', [base(id=BANK[code], code=code, name_th=name, name_en=r['TYPDES2'], **short)])
+    if tt in ('01', '20', '21', '50'): continue   # มีตารางของตัวเอง (md_bank md_unit md_warehouse md_department) ไม่ต้องซ้ำใน md_lookup
     if (tt, code) in seen:
         n = 2
         while (tt, f'{code}-{n}') in seen: n += 1
