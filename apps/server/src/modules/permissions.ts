@@ -119,7 +119,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/menu': SELF, 'GET /api/v1/auth/me': SELF, 'POST /api/v1/auth/logout': SELF, 'POST /api/v1/auth/password': SELF, 'POST /api/v1/auth/select': SELF,
   'GET /api/v1/users': SELF, 'POST /api/v1/users': SELF, 'PUT /api/v1/users/:id': SELF, 'POST /api/v1/user-groups': SELF,
   'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/companies': SELF,
-  'GET /api/v1/activity-log': LOOKUP,
+  'GET /api/v1/activity-log': LOOKUP, 'GET /api/v1/activity-log/search': M('OT.LOG', 'read'),
   // บริษัท สาขา แผนก รอบบัญชี
   'GET /api/v1/company': LOOKUP, 'PUT /api/v1/company': M('SET.CO', 'edit'),
   'GET /api/v1/branches': LOOKUP, 'POST /api/v1/branches': M('SET.BRANCH', 'add'), 'PUT /api/v1/branches/:id': M('SET.BRANCH', 'edit'),

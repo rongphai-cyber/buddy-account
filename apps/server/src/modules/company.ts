@@ -207,6 +207,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       for (const c of b.companies) await tx.insertInto('sys_user_company').values({ company_id: c, user_id: id, created_by: a.userId }).execute();
       if (b.status === 'I' || b.password) await tx.updateTable('sys_session').set({ ended_at: sql`now()` as never }).where('user_id', '=', id).where('ended_at', 'is', null).where('id', '<>', a.sessionId).execute();
       await logActivity(tx, a, { module: 'SYS', action: 'EDIT_USER', table: 'sys_user', rowId: id, detail: { password_changed: !!b.password } });
+      // ตั้งรหัสผ่านให้ผู้ใช้อื่น (S-SEC-06 กรณีลืมรหัสผ่าน) — แยกเหตุการณ์ไว้ในรายงานการใช้รหัสผ่าน
+      if (b.password && id !== a.userId) await logActivity(tx, a, { module: 'SYS', action: 'RESET_PASSWORD', docNo: b.username, table: 'sys_user', rowId: id });
     });
     return { id };
   });
@@ -270,6 +272,41 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     if (q.table) s = s.where('l.table_name', '=', q.table);
     if (q.row_id) s = s.where('l.row_id', '=', q.row_id);
     return s.orderBy('l.seq', 'desc').limit(q.limit).execute();
+  });
+
+  /**
+   * แฟ้มบันทึกเหตุการณ์ทำงาน (คู่มือบทที่ 23 S-SEC-04 / 04a) — เรียกดูตามเงื่อนไข แทนนิพจน์ FoxPro ของ Express
+   * กลุ่มรายงาน: all ทั้งหมด · audit แก้ไขปรับปรุงรายการ · password การใช้รหัสผ่าน · restore การสำรอง/ดึงข้อมูลสำรองมาใช้
+   * แฟ้มนี้เพิ่มได้อย่างเดียว (ลบ/แก้ไม่ได้ — กรมสรรพากรกำหนดให้เก็บอย่างน้อย 2 ปี)
+   */
+  const PASSWORD_ACTS = ['LOGIN', 'LOGIN_FAIL', 'LOGOUT', 'PASSWORD', 'RESET_PASSWORD', 'EDIT_USER'];
+  const RESTORE_ACTS = ['BACKUP', 'RESTORE', 'BACKUP_USERS', 'RESTORE_USERS'];
+  app.get('/api/v1/activity-log/search', async (req) => {
+    const a = requireAuth(req);
+    const q = parse(z.object({ kind: z.enum(['all', 'audit', 'password', 'restore']).default('all'), from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      time_from: z.string().regex(/^\d{2}:\d{2}$/).optional(), time_to: z.string().regex(/^\d{2}:\d{2}$/).optional(), user: z.string().trim().max(30).optional(), action: z.string().trim().max(20).optional(),
+      module: z.string().trim().max(10).optional(), doc_no: z.string().trim().max(30).optional(), q: z.string().trim().max(100).optional(), limit: z.coerce.number().int().min(1).max(5000).default(1000) }), req.query);
+    let s = db.selectFrom('sys_activity_log as l').leftJoin('sys_user as u', 'u.id', 'l.user_id').leftJoin('sys_user as au', 'au.id', 'l.auth_user_id').leftJoin('sys_company as c', 'c.id', 'l.company_id')
+      .select(['l.seq', 'l.occurred_at', 'l.module', 'l.action', 'l.doc_no', 'l.table_name', 'l.row_id', 'l.detail', 'u.username', 'u.display_name', 'au.username as auth_username', 'c.code as company_code']);
+    if (!a.isPlatform) {
+      const ids = (await companiesForUser(db, a)).map((c) => c.id);
+      s = s.where((eb) => eb.or([eb('l.company_id', 'in', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']), eb.and([eb('l.company_id', 'is', null), eb('u.tenant_id', '=', a.tenantId)])]));
+    }
+    if (a.companyId) s = s.where((eb) => eb.or([eb('l.company_id', '=', a.companyId), eb('l.company_id', 'is', null)]));
+    if (q.kind === 'password') s = s.where('l.action', 'in', PASSWORD_ACTS);
+    else if (q.kind === 'restore') s = s.where('l.action', 'in', RESTORE_ACTS);
+    else if (q.kind === 'audit') s = s.where('l.action', 'not in', [...PASSWORD_ACTS, ...RESTORE_ACTS, 'PRINT', 'REPRINT']).where('l.action', 'not like', 'USE_%');
+    if (q.from) s = s.where(sql<boolean>`(l.occurred_at AT TIME ZONE 'Asia/Bangkok')::date >= ${q.from}::date`);
+    if (q.to) s = s.where(sql<boolean>`(l.occurred_at AT TIME ZONE 'Asia/Bangkok')::date <= ${q.to}::date`);
+    if (q.time_from) s = s.where(sql<boolean>`to_char(l.occurred_at AT TIME ZONE 'Asia/Bangkok', 'HH24:MI') >= ${q.time_from}`);
+    if (q.time_to) s = s.where(sql<boolean>`to_char(l.occurred_at AT TIME ZONE 'Asia/Bangkok', 'HH24:MI') <= ${q.time_to}`);
+    if (q.user) s = s.where('u.username', 'ilike', q.user);
+    if (q.action) s = s.where('l.action', '=', q.action.toUpperCase());
+    if (q.module) s = s.where('l.module', 'ilike', q.module);
+    if (q.doc_no) s = s.where('l.doc_no', 'ilike', `${q.doc_no}%`);
+    if (q.q) s = s.where(sql<boolean>`l.detail::text ILIKE ${'%' + q.q + '%'}`);
+    const rows = await s.orderBy('l.seq', 'desc').limit(q.limit + 1).execute();
+    return { rows: rows.slice(0, q.limit), truncated: rows.length > q.limit };
   });
 }
 

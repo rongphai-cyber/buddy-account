@@ -2384,6 +2384,32 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     if (iss.id) expect((await call('POST', `/api/v1/stock-issues/${iss.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('activity log viewer (T6.6): kinds, filters, password reset event, tenant isolation', async () => {
+    const admin = cookie;
+    cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'wrong-pass' })).status).toBe(401);
+    cookie = admin;
+    const pw = (await call('GET', '/api/v1/activity-log/search?kind=password')).body.rows;
+    expect(pw.some((r: { action: string }) => r.action === 'LOGIN_FAIL')).toBe(true);
+    expect(pw.every((r: { action: string }) => ['LOGIN', 'LOGIN_FAIL', 'LOGOUT', 'PASSWORD', 'RESET_PASSWORD', 'EDIT_USER'].includes(r.action))).toBe(true);
+    const audit = (await call('GET', '/api/v1/activity-log/search?kind=audit&limit=200')).body.rows;
+    expect(audit.length).toBeGreaterThan(0);
+    expect(audit.some((r: { action: string }) => r.action === 'LOGIN' || r.action.startsWith('USE_'))).toBe(false);
+    const today = new Date().toLocaleDateString('sv-SE');
+    expect((await call('GET', `/api/v1/activity-log/search?from=${today}&to=${today}&action=LOGIN_FAIL`)).body.rows.length).toBeGreaterThan(0);
+    expect((await call('GET', '/api/v1/activity-log/search?from=2000-01-01&to=2000-01-02')).body.rows).toEqual([]);
+    // ตั้งรหัสผ่านให้ผู้ใช้ (S-SEC-06) บันทึกเหตุการณ์แยก
+    const u = (await call('GET', '/api/v1/users')).body.users.find((x: { username: string }) => x.username === 'clerk0');
+    expect((await call('PUT', `/api/v1/users/${u.id}`, { username: 'clerk0', display_name: u.display_name, password: 'clerk0pass', approval_level: 0, companies: [companyId] })).status).toBe(200);
+    expect((await call('GET', '/api/v1/activity-log/search?kind=password&action=RESET_PASSWORD')).body.rows[0].doc_no).toBe('clerk0');
+    // ผู้ใช้ระดับต่ำดูแฟ้มบันทึกเหตุการณ์ไม่ได้ · ลูกค้ารายอื่นไม่เห็นเหตุการณ์ของบริษัทนี้
+    cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: 'boss5', password: 'boss5pass' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/activity-log/search')).status).toBe(403);
+    cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: 'bx.admin', password: 'passX1234' })).status).toBe(200);
+    const xs = (await call('GET', '/api/v1/activity-log/search?limit=5000')).body.rows;
+    expect(xs.some((r: { company_code: string | null }) => r.company_code === 'DEMO')).toBe(false);
+    expect(xs.some((r: { username: string | null }) => r.username === 'clerk0')).toBe(false);
+    cookie = admin;
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)
