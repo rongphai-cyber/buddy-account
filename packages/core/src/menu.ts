@@ -65,6 +65,7 @@ export const MENU: MenuItem[] = [
       m('FI.VAT.OUT', 'แฟ้มภาษีขาย', 'P3', undefined, ['ch16:S-TX-06']),
     ]),
     m('FI.WHT', 'ภาษีหัก ณ ที่จ่าย', 'P3', undefined, ['ch16:S-TX-10']),
+    m('FI.WHT.CERT', 'พิมพ์หนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ)', 'P3', '/tax/wht50'),
   ], '3'),
   g('IC', 'สินค้า', 'P4', [
     m('IC.TRN', 'รายการประจำวันสินค้า', 'P4', undefined, ['ch14:S-IC-01', 'ch14:S-IC-06', 'ch14:S-IC-08', 'ch14:S-IC-10']),

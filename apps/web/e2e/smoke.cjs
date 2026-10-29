@@ -238,6 +238,17 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.locator('input[type=search]').fill('zzz-ไม่มี');
     await page.waitForSelector('td.empty', { timeout: 15000 });
   });
+  await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
+    // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
+    await page.goto(BASE + '/tax/wht50');
+    await page.waitForFunction(() => { const i = document.querySelector('.w50-preview img'); return i && i.complete && i.naturalWidth > 2000; }, null, { timeout: 15000 });
+    await page.locator('.w50-editor fieldset').nth(1).locator('input').nth(1).fill('นายทดสอบ ระบบ');
+    const amt = page.locator('.w50-editor tbody tr').first().locator('input').nth(1);
+    await amt.fill('1000'); await amt.press('Tab');
+    await page.waitForFunction(() => document.querySelector('.w50-preview [data-key="tax.total.baht"]')?.textContent === '30', null, { timeout: 5000 });
+    if ((await page.locator('.w50-print .w50-sheet').count()) !== 2) throw new Error('ต้องมีฉบับที่ 1 และ 2');
+    await shot('15m-wht50');
+  });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });
