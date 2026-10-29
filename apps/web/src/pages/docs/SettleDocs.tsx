@@ -69,7 +69,7 @@ export function SettleListPage({ path }: { path: string }) {
 /* ---------------------------------------------------------------- หน้าเอกสาร */
 interface Open { header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string; own: string; vat_basis: string | null; net_amount: string; vat_amount: string; ref_no: string | null; bill_no: string | null }
 interface Head { doc_type_id: string; doc_date: string; payment_date: string; party: { id: string; code: string; name?: string | null } | null; department_id: string; salesperson_id: string; your_ref: string; remark: string;
-  interest: string; discount: string; wht: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
+  interest: string; discount: string; wht: string; fx: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
 interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; settlements: Array<{ invoice_header_id: string; amount: string }>;
   payments: Array<{ payment_method_id: string; amount: string; reference_no: string | null; cheque_date: string | null; bank_id: string | null; bank_branch: string | null }>;
   wht: Array<{ id: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; certificate_no: string | null; certificate_date: string; doc_status: string }> }
@@ -102,11 +102,11 @@ export function SettleFormPage({ path }: { path: string }) {
   const bills = useQuery({ enabled: !!h?.party, queryKey: [K.path, 'bills', h?.party?.id], queryFn: () => api.get<{ rows: Array<{ id: string; doc_no: string; invoice_ids: string[]; total: string }> }>(`/api/v1/${K.path}/bills`, { party_id: h!.party!.id }) });
   const open = useQuery({ enabled: !!h?.party, queryKey: [K.path, 'open', h?.party?.id, id], queryFn: () => api.get<{ rows: Open[] }>(`/api/v1/${K.path}/open-items`, { party_id: h!.party!.id, ...(id ? { receipt_id: id } : {}) }), staleTime: 0 });
   const date0 = me?.work_date ?? todayIso();
-  if (!h && !id && defs.data) setH({ doc_type_id: defs.data.types[0]?.id ?? '', doc_date: date0, payment_date: date0, party: null, department_id: '', salesperson_id: '', your_ref: '', remark: '', interest: '', discount: '', wht: '', cash: '', whtForm: 'S53', whtRate: '3' });
+  if (!h && !id && defs.data) setH({ doc_type_id: defs.data.types[0]?.id ?? '', doc_date: date0, payment_date: date0, party: null, department_id: '', salesperson_id: '', your_ref: '', remark: '', interest: '', discount: '', wht: '', fx: '', cash: '', whtForm: 'S53', whtRate: '3' });
   if (!h && id && cur.data) {
     const c = cur.data as Record<string, string | null>;
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), payment_date: String(c.payment_date ?? c.doc_date).slice(0, 10), party: { id: (c.customer_id ?? c.supplier_id)!, code: c.party_code ?? '', name: c.party_name },
-      department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '', your_ref: c.your_ref ?? '', remark: c.remark ?? '', interest: num(c.interest_amount), discount: num(c.cash_discount_amount), wht: num(c.wht_amount), cash: num(c.cash_amount), whtForm: 'S53', whtRate: '3' });
+      department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '', your_ref: c.your_ref ?? '', remark: c.remark ?? '', interest: num(c.interest_amount), discount: num(c.cash_discount_amount), wht: num(c.wht_amount), fx: num(c.fx_amount), cash: num(c.cash_amount), whtForm: 'S53', whtRate: '3' });
     setPick(Object.fromEntries(cur.data.settlements.map((s) => [s.invoice_header_id, num(s.amount)])));
     setPays(paysFrom(cur.data.payments));
     setWhts(whtsFrom(cur.data.wht));
@@ -117,7 +117,7 @@ export function SettleFormPage({ path }: { path: string }) {
   const chosen = rows.filter((o) => pick[o.header_id] !== undefined);
   const whtTotal = whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0));
   const whtAmount = K.cls === 'PS' && whts.length ? whtTotal.toFixed(2) : h?.wht || '0';
-  const t = useMemo(() => settlementTotals({ settlements: chosen.map((o) => d(pick[o.header_id] || 0).times(o.doc_class === K.neg ? -1 : 1).toFixed(2)), interest: h?.interest || 0, discount: h?.discount || 0, wht: whtAmount,
+  const t = useMemo(() => settlementTotals({ settlements: chosen.map((o) => d(pick[o.header_id] || 0).times(o.doc_class === K.neg ? -1 : 1).toFixed(2)), interest: h?.interest || 0, discount: h?.discount || 0, wht: whtAmount, fx: h?.fx || 0, direction: K.direction,
     payments: pays.filter((p) => p.payment_method_id).map((p) => p.amount || 0), cash: h?.cash === '' || h?.cash === undefined ? null : h.cash }), [chosen, pick, h, pays, whtAmount, K.neg]);
   /** ยอดก่อน VAT ของบิลที่เลือก — ค่าเริ่มต้นของ "จำนวนเงินที่จ่าย" ในภาษีหัก ณ ที่จ่าย */
   const baseOfChosen = chosen.reduce((s, o) => { const n = d(o.net_amount); const p = d(pick[o.header_id] || 0).times(o.doc_class === K.neg ? -1 : 1); return s.plus(n.isZero() ? p : p.times(n.minus(d(o.vat_amount))).div(n)); }, d(0)).toDecimalPlaces(2).toFixed(2);
@@ -136,7 +136,7 @@ export function SettleFormPage({ path }: { path: string }) {
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
-      your_ref: h.your_ref || null, remark: h.remark || null, interest_amount: h.interest || '0', cash_discount_amount: h.discount || '0', wht_amount: K.cls === 'PS' && whts.length ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
+      your_ref: h.your_ref || null, remark: h.remark || null, interest_amount: h.interest || '0', cash_discount_amount: h.discount || '0', fx_amount: h.fx || '0', wht_amount: K.cls === 'PS' && whts.length ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
       settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0' })),
       payments: paysBody(pays), wht: K.cls === 'PS' ? whtsBody(whts) : [] };
     try {
@@ -235,6 +235,7 @@ export function SettleFormPage({ path }: { path: string }) {
             <tr><td>{K.direction === 'R' ? 'หัก ส่วนลดเงินสด' : 'หัก ส่วนลดเงินสดรับ'}</td><td><MoneyInput value={h.discount} disabled={ro} onChange={(v) => set({ discount: v })} aria-label="ส่วนลดเงินสด" /></td></tr>
             <tr><td>หัก {K.direction === 'R' ? 'ภาษีถูกหัก ณ ที่จ่าย' : <a href="#wht" onClick={(e) => { e.preventDefault(); setTab('wht'); }}>ภาษีหัก ณ ที่จ่าย</a>}</td>
               <td>{K.cls === 'PS' && whts.length ? <span className="r num" style={{ display: 'block' }}>{fmt(whtTotal.toFixed(2))}</span> : <MoneyInput value={h.wht} disabled={ro} onChange={(v) => set({ wht: v })} aria-label="ภาษีหัก ณ ที่จ่าย" />}</td></tr>
+            <tr><td title="กำไรป้อนยอดบวก ขาดทุนป้อนยอดติดลบ — ลงบัญชีกำไร(ขาดทุน)จากอัตราแลกเปลี่ยน (เริ่มระบบ › บัญชีเพื่อลงรายวัน)">กำไร(ขาดทุน)อัตราแลกเปลี่ยน</td><td><MoneyInput value={h.fx} disabled={ro} onChange={(v) => set({ fx: v })} aria-label="ผลต่างอัตราแลกเปลี่ยน" /></td></tr>
             <tr className="grand"><td>ยอดที่ต้อง{rp(K)}</td><td className="r"><Money v={t.due} /></td></tr>
             <tr><td>ชำระโดยอื่น ๆ (เช็ค/โอน)</td><td className="r"><Money v={t.other} /></td></tr>
             <tr><td>เงินสด</td><td><MoneyInput value={h.cash} disabled={ro} placeholder={fmt(t.cash)} onChange={(v) => set({ cash: v })} aria-label="เงินสด" /></td></tr>

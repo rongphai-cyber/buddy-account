@@ -31,6 +31,7 @@ export const GL_ROLES: Array<{ role: string; section: string; label: string; hin
   { role: 'INTEREST_INCOME', section: 'รายได้', label: 'ดอกเบี้ยรับ' },
   { role: 'BANK_INCOME', section: 'รายได้', label: 'รายได้ธนาคาร' },
   { role: 'OTHER_INCOME', section: 'รายได้', label: 'รายได้อื่น ๆ' },
+  { role: 'FX_GAIN_LOSS', section: 'รายได้', label: 'กำไร(ขาดทุน)จากอัตราแลกเปลี่ยน', hint: 'ใช้เมื่อรับ/จ่ายชำระหนี้ต่างประเทศมีผลต่างอัตราแลกเปลี่ยน' },
   { role: 'COGS', section: 'ค่าใช้จ่าย', label: 'ต้นทุนขาย' },
   { role: 'PURCHASES', section: 'ค่าใช้จ่าย', label: 'ซื้อสินค้า' },
   { role: 'PURCHASE_RETURN', section: 'ค่าใช้จ่าย', label: 'ส่งคืน' },

@@ -22,7 +22,7 @@ const body = z.object({
   department_id: optId, salesperson_id: optId, your_ref: str(60), remark: str(2000),
   settlements: z.array(z.object({ invoice_header_id: uuid, amount: num, vat_amount: num.nullable().optional() }))
     .min(1, 'เลือกบิลที่จะตัดชำระอย่างน้อย 1 ใบ (F5 เลือกบิลค้าง)').max(500),
-  interest_amount: num.default('0'), cash_discount_amount: num.default('0'), wht_amount: num.default('0'),
+  interest_amount: num.default('0'), cash_discount_amount: num.default('0'), wht_amount: num.default('0'), fx_amount: num.default('0'),
   /** ว่าง = ส่วนที่เหลือหลังชำระโดยวิธีอื่นเป็นเงินสด */
   cash_amount: num.nullable().optional(),
   payments: paymentsSchema,
@@ -80,10 +80,10 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
   const mById = await loadMethods(db, a.companyId, K.direction, b.payments);
 
   const t = settlementTotals({ settlements: setts.map((s) => d(s.amount).times(s.sign).toFixed(2)), interest: b.interest_amount, discount: b.cash_discount_amount, wht: wht.toFixed(2),
-    payments: b.payments.map((p) => p.amount), cash: b.cash_amount });
+    fx: b.fx_amount, direction: K.direction, payments: b.payments.map((p) => p.amount), cash: b.cash_amount });
   if (d(t.due).lt(0)) throw badRequest(`ยอดชำระตามใบกำกับติดลบ (${t.due}) — ใบลดหนี้มากกว่าบิลที่เลือก`);
   if (d(t.cash).lt(0)) throw badRequest(`ชำระโดยวิธีอื่นรวม ${t.other} มากกว่ายอดที่ต้อง${K.direction === 'R' ? 'รับ' : 'จ่าย'} ${t.due}`);
-  if (!t.ok) throw badRequest(`ยอดชำระตามใบกำกับ ${t.due} ไม่เท่ากับยอดชำระจริง ${t.paid} (Message# ${K.cls === 'RE' ? '4025' : '4066'}) — ปรับเงินสด ส่วนลด ดอกเบี้ย หรือภาษีหัก ณ ที่จ่าย`);
+  if (!t.ok) throw badRequest(`ยอดชำระตามใบกำกับ ${t.due} ไม่เท่ากับยอดชำระจริง ${t.paid} (Message# ${K.cls === 'RE' ? '4025' : '4066'}) — ปรับเงินสด ส่วนลด ดอกเบี้ย ภาษีหัก ณ ที่จ่าย หรือผลต่างอัตราแลกเปลี่ยน`);
 
   const header = {
     doc_type_id: dt.id, doc_class: K.cls, module: K.module, doc_date: b.doc_date, payment_date: payDate,
@@ -92,7 +92,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
     party_tax_id: party.tax_id, party_tax_branch_no: party.tax_branch_no, department_id: b.department_id ?? dt.department_id, salesperson_id: b.salesperson_id,
     your_ref: b.your_ref, remark: b.remark, price_type: '0', amount: t.billed, net_amount: t.billed,
     vat_amount: money(setts.reduce((s, x) => s.plus(d(x.vat).times(x.sign)), d(0))), vat_date: payDate,
-    wht_amount: money(wht), interest_amount: money(d(b.interest_amount)), cash_discount_amount: money(d(b.cash_discount_amount)),
+    wht_amount: money(wht), interest_amount: money(d(b.interest_amount)), cash_discount_amount: money(d(b.cash_discount_amount)), fx_amount: money(d(b.fx_amount)),
     cash_amount: t.cash, cheque_amount: t.other, updated_by: a.userId,
   };
   return db.transaction().execute(async (tx) => {

@@ -2151,6 +2151,7 @@ CREATE TABLE doc_header (
   cheque_amount numeric(18,2) DEFAULT 0 NOT NULL,
   interest_amount numeric(18,2) DEFAULT 0 NOT NULL,
   cash_discount_amount numeric(18,2) DEFAULT 0 NOT NULL,
+  fx_amount numeric(18,2) DEFAULT 0 NOT NULL,
   settled_amount numeric(18,2) DEFAULT 0 NOT NULL,
   outstanding_amount numeric(18,2) DEFAULT 0 NOT NULL,
   commission_amount numeric(18,2) DEFAULT 0 NOT NULL,
@@ -2240,6 +2241,7 @@ COMMENT ON COLUMN doc_header.cash_amount IS 'รับ/จ่ายเป็น�
 COMMENT ON COLUMN doc_header.cheque_amount IS 'รับ/จ่ายเป็นเช็ค/อื่น [Express: CHQRCV / CHQPAY]';
 COMMENT ON COLUMN doc_header.interest_amount IS 'ดอกเบี้ยรับ/จ่าย [Express: INTRCV / INTPAY]';
 COMMENT ON COLUMN doc_header.cash_discount_amount IS 'ส่วนลดเงินสด';
+COMMENT ON COLUMN doc_header.fx_amount IS 'กำไร(+)/ขาดทุน(−) จากอัตราแลกเปลี่ยน ในใบเสร็จ/ใบสำคัญจ่าย (บทที่ 26 — Express ใช้ช่องภาษีหัก ณ ที่จ่ายแทน)';
 COMMENT ON COLUMN doc_header.settled_amount IS 'ยอดที่ชำระ/ตัดแล้ว [Express: RCVAMT / PAYAMT]';
 COMMENT ON COLUMN doc_header.outstanding_amount IS 'ยอดคงค้าง [Express: REMAMT]';
 COMMENT ON COLUMN doc_header.commission_amount IS 'ค่าคอมมิชชั่น [Express: COMAMT]';

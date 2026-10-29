@@ -2002,6 +2002,8 @@ export interface DocHeaderTable {
   interest_amount: Gen<string>;
   /** ส่วนลดเงินสด */
   cash_discount_amount: Gen<string>;
+  /** กำไร(+)/ขาดทุน(−) จากอัตราแลกเปลี่ยน ในใบเสร็จ/ใบสำคัญจ่าย (บทที่ 26 — Express ใช้ช่องภาษีหัก ณ ที่จ่ายแทน) */
+  fx_amount: Gen<string>;
   /** ยอดที่ชำระ/ตัดแล้ว */
   settled_amount: Gen<string>;
   /** ยอดคงค้าง */

@@ -2531,6 +2531,49 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/doc-status/doc/${qt.id}`)).body.status_code).toBe('WIN');
     expect((await call('POST', `/api/v1/quotations/${qt.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
   });
+  it('manufacturing + import (T7.2/T7.3 บทที่ 26): production cost sources, FX gain/loss on foreign AP payment, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const raw = (await call('POST', '/api/v1/items', { code: '02-TEST-000081', name_th: 'วัตถุดิบ A', base_unit_id: unit, std_cost: '1' })).body.id;
+    const fg = (await call('POST', '/api/v1/items', { code: '02-TEST-000082', name_th: 'สินค้าสำเร็จรูป A', base_unit_id: unit, std_cost: '1' })).body.id;
+    // ซื้อวัตถุดิบ (ปรับเพิ่ม) → เบิกไปผลิต 6 × 10 = 60 · ค่าแรง 940 (OE ไม่รวม VAT)
+    const adj = (await call('POST', '/api/v1/stock-adjustments', { doc_type_id: await typeOf('JU'), doc_date: '2027-11-01', lines: [{ item_id: raw, warehouse_id: w1, qty: 10, unit_cost: 10 }] })).body;
+    const pd = (await call('POST', '/api/v1/stock-issues', { doc_type_id: await typeOf('OU'), doc_date: '2027-11-02', remark: 'เบิกวัตถุดิบ Job 1', lines: [{ item_id: raw, warehouse_id: w1, qty: 6 }] })).body;
+    const lab = (await call('POST', '/api/v1/other-expenses', { code: '95-7100-81', name_th: 'ค่าแรงผลิต', accounts: { expense: expense } })).body.id;
+    const oe = (await call('POST', '/api/v1/other-expense-docs', { doc_type_id: await typeOf('OE'), doc_date: '2027-11-03', party_name: 'ค่าแรง', price_type: '2', vat_rate: 7, lines: [{ item_id: lab, amount: 940 }] })).body;
+    expect([adj.id, pd.id, oe.id].every(Boolean)).toBe(true);
+    const pc = (await call('GET', '/api/v1/stock/production-costs?from=2027-11-01&to=2027-11-30')).body;
+    expect(pc.issues.map((x: { doc_no: string; amount: string }) => `${x.doc_no}:${x.amount}`)).toEqual([`${pd.doc_no}:60.00`]);
+    expect(pc.expenses.map((x: { doc_no: string; amount: string }) => `${x.doc_no}:${x.amount}`)).toEqual([`${oe.doc_no}:940.00`]);
+    // รับสินค้าสำเร็จรูป 4 หน่วย ทุน (60 + 940) ÷ 4 = 250 → Dr สินค้า / Cr บัญชีปรับปรุง
+    const pi = (await call('POST', '/api/v1/stock-adjustments', { doc_type_id: await typeOf('JU'), doc_date: '2027-11-30', lines: [{ item_id: fg, warehouse_id: w1, qty: 4, unit_cost: 250 }] })).body;
+    expect((await call('GET', `/api/v1/stock-adjustments/${pi.id}`)).body.lines[0]).toMatchObject({ cost_amount: '1000.00' });
+    expect((await call('GET', `/api/v1/stock-adjustments?type_id=${await typeOf('JU')}&q=${pi.doc_no}`)).body.rows.map((r: { doc_no: string }) => r.doc_no)).toEqual([pi.doc_no]);
+
+    // เจ้าหนี้ต่างประเทศ 50,000 จ่ายโอน 48,000 → กำไรจากอัตราแลกเปลี่ยน 2,000 (คู่มือหน้า 446)
+    const fxRow = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control)[8] as { id: string; account_no: string };
+    const fxAcc = fxRow.id;
+    await sql`INSERT INTO gl_default_account (company_id, role, account_id) VALUES (${companyId}, 'FX_GAIN_LOSS', ${fxAcc})`.execute(database.db);
+    const sup = (await call('POST', '/api/v1/suppliers', { code: 'S781', name: 'Foreign Supplier Ltd.', tax_id: '0105537095903' })).body.id;
+    const rr = (await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2027-11-05', party_id: sup, price_type: '0', vat_rate: 0, warehouse_id: w1, lines: [{ item_id: raw, qty: 100, unit_price: 500 }] })).body;
+    const tn = (await call('GET', '/api/v1/payment-methods/P')).body.find((m: { creates_cheque: boolean }) => !m.creates_cheque);
+    const ps = { doc_type_id: await typeOf('PS'), doc_date: '2027-11-20', party_id: sup, settlements: [{ invoice_header_id: rr.id, amount: 50000 }], payments: [{ payment_method_id: tn.id, amount: 48000 }], cash_amount: 0 };
+    expect((await call('POST', '/api/v1/ap-payments', ps)).body.error.message).toMatch(/Message# 4066.*อัตราแลกเปลี่ยน/);
+    const p = await call('POST', '/api/v1/ap-payments', { ...ps, fx_amount: 2000 });
+    expect(p.body).toMatchObject({ net_amount: '50000.00', cash_amount: '0.00' });
+    expect((await call('GET', `/api/v1/ap-payments/${p.body.id}`)).body.fx_amount).toBe('2000.00');
+    const jl = (await call('GET', `/api/v1/docs/${p.body.id}/journal`)).body.journals[0].lines as Array<{ posting_role: string; account_no: string; debit: string; credit: string }>;
+    expect(jl.map((l) => `${l.posting_role}:${l.debit}:${l.credit}`)).toEqual(['AP:50000.00:0.00', 'FX:0.00:2000.00', 'PAYMENT:0.00:48000.00']);
+    expect(jl.find((l) => l.posting_role === 'FX')!.account_no).toBe(fxRow.account_no);
+    expect((await call('GET', `/api/v1/print/doc/${p.body.id}`)).body.data.totals.some((t: { label: string; value: string }) => t.label === 'กำไรจากอัตราแลกเปลี่ยน' && t.value === '2000.00')).toBe(true);
+    // ข้ามบริษัทไม่เห็นต้นทุนการผลิตของบริษัทนี้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/stock/production-costs?from=2027-11-01&to=2027-11-30')).body).toEqual({ issues: [], expenses: [] });
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    for (const [path, x] of [['ap-payments', p.body], ['purchase-invoices', rr], ['stock-adjustments', pi], ['other-expense-docs', oe], ['stock-issues', pd], ['stock-adjustments', adj]] as const)
+      expect((await call('POST', `/api/v1/${path}/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

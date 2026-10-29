@@ -211,7 +211,7 @@ export const API_RULES: Record<string, Rule> = {
     [`GET /api/v1/${k.path}`, M('IC.TRN', 'read')], [`GET /api/v1/${k.path}/:id`, M('IC.TRN', 'read')], [`POST /api/v1/${k.path}`, M('IC.TRN', 'add')],
     [`PUT /api/v1/${k.path}/:id`, M('IC.TRN', 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M('IC.TRN', 'cancel')],
   ])),
-  'GET /api/v1/stock/lots': M('IC.TRN', 'read'),
+  'GET /api/v1/stock/lots': M('IC.TRN', 'read'), 'GET /api/v1/stock/production-costs': M('IC.TRN', 'read'),
   'GET /api/v1/stock-counts/dates': M('IC.COUNT', 'read'), 'GET /api/v1/stock-counts': M('IC.COUNT', 'read'), 'POST /api/v1/stock-counts/prepare': M('IC.COUNT', 'add'),
   'POST /api/v1/stock-counts/rows': M('IC.COUNT', 'add'), 'PUT /api/v1/stock-counts/entries': M('IC.COUNT', 'edit'), 'DELETE /api/v1/stock-counts/:id': M('IC.COUNT', 'delete'),
   'POST /api/v1/stock-counts/adjust': M('IC.COUNT', 'approve'), 'POST /api/v1/stock-counts/reopen': M('IC.COUNT', 'cancel'),

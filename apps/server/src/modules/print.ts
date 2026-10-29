@@ -142,6 +142,7 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     totals.push({ label: 'รวมยอดชำระ', value: lines.reduce((s, l) => s.plus(d(l.amount || 0)), d(0)).toFixed(2) });
     if (nz(h.cash_discount_amount)) totals.push({ label: 'ส่วนลดเงินสด', value: money(h.cash_discount_amount) });
     if (nz(h.interest_amount)) totals.push({ label: 'ดอกเบี้ย', value: money(h.interest_amount) });
+    if (nz(h.fx_amount)) totals.push({ label: d(h.fx_amount).gt(0) ? 'กำไรจากอัตราแลกเปลี่ยน' : 'ขาดทุนจากอัตราแลกเปลี่ยน', value: money(d(h.fx_amount).abs()) });
     if (nz(h.wht_amount)) totals.push({ label: 'ภาษีหัก ณ ที่จ่าย', value: money(h.wht_amount) });
     totals.push({ label: 'ยอดสุทธิ', value: money(h.net_amount) });
   } else if (fam === 'stock') {

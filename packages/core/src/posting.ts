@@ -10,7 +10,7 @@ export interface PostHeader {
   id: string; doc_class: string; doc_type_id: string | null; customer_id: string | null; supplier_id: string | null;
   net_amount: MoneyInput; vat_amount: MoneyInput; deposit_amount: MoneyInput; vat_basis: string | null;
   /** ใบเสร็จ/ใบจ่าย: ภาษีหัก ณ ที่จ่าย ส่วนลดเงินสด ดอกเบี้ย (ผลต่างระหว่างยอดตัดหนี้กับเงินที่รับ/จ่ายจริง) */
-  wht_amount?: MoneyInput; cash_discount_amount?: MoneyInput; interest_amount?: MoneyInput;
+  wht_amount?: MoneyInput; cash_discount_amount?: MoneyInput; interest_amount?: MoneyInput; fx_amount?: MoneyInput;
 }
 /** บรรทัดสินค้า (item_id) หรือบรรทัดบัญชี (account_id — เงินสดย่อย) */
 export interface PostLine { item_id: string | null; net_amount: MoneyInput; account_id?: string | null; /** Perpetual: ต้นทุนของบรรทัดที่ตัด/รับสต๊อก */ cost_amount?: MoneyInput; stock_effect?: number | null; movement_code?: string | null }
@@ -136,11 +136,13 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
       }
     }
     // ผลต่าง (คู่มือหน้า 186, 229): RE Dr ภาษีถูกหัก + Dr ส่วนลดจ่าย / Cr ดอกเบี้ยรับ · PS Cr ภาษีหัก ณ ที่จ่ายค้างจ่าย + Cr ส่วนลดรับ / Dr ดอกเบี้ยจ่าย
-    const wht = d(h.wht_amount ?? 0), disc = d(h.cash_discount_amount ?? 0), intr = d(h.interest_amount ?? 0);
+    const wht = d(h.wht_amount ?? 0), disc = d(h.cash_discount_amount ?? 0), intr = d(h.interest_amount ?? 0), fx = d(h.fx_amount ?? 0);
     (isRe ? D : C)(pick(['3', r.def(isRe ? 'PREPAID_TAX' : 'WHT_PAYABLE')]), wht, 'WHT');
     (isRe ? D : C)(pick(['3', r.def(isRe ? 'SALES_DISCOUNT' : 'PURCHASE_DISCOUNT')]), disc, 'CASH_DISCOUNT');
     (isRe ? C : D)(pick(['3', r.def(isRe ? 'INTEREST_INCOME' : 'INTEREST_EXPENSE')]), intr, 'INTEREST');
-    (isRe ? D : C)(cash, cashRest(partyTotal.minus(wht).minus(disc).plus(intr)), 'CASH');
+    // ผลต่างอัตราแลกเปลี่ยน (บทที่ 26): กำไร Cr / ขาดทุน Dr บัญชีกำไร(ขาดทุน)จากอัตราแลกเปลี่ยน — รับ: กำไรได้เงินมากขึ้น · จ่าย: กำไรจ่ายน้อยลง
+    if (!fx.isZero()) { const fxAcct = pick(['3', r.def('FX_GAIN_LOSS')]); if (fx.gt(0)) C(fxAcct, fx, 'FX'); else D(fxAcct, fx.neg(), 'FX'); }
+    (isRe ? D : C)(cash, cashRest(partyTotal.minus(wht).minus(disc).plus(intr).plus(isRe ? fx : fx.neg())), 'CASH');
     for (const p of pays) (isRe ? D : C)(payAcct(p), d(p.amount), 'PAYMENT');
   } else if (cls === 'AI' || cls === 'OI') {
     // ภาษีถูกหัก ณ ที่จ่าย: Dr ภาษีจ่ายล่วงหน้า แทนเงินสดส่วนนั้น
@@ -209,9 +211,11 @@ export function netByAccount(lines: PostingLine[]): Map<string | null, Decimal> 
  * ยอดของใบเสร็จ/ใบจ่าย (คู่มือหน้า 185, 228): ยอดชำระตามใบกำกับ (ยอดตัดหนี้ ใบลดหนี้ติดลบ) + ดอกเบี้ย − ส่วนลด − ภาษีหัก ณ ที่จ่าย
  * ต้องเท่ากับยอดชำระจริง (เงินสด + ชำระโดยอื่น) — ไม่ระบุเงินสด = ส่วนที่เหลือเป็นเงินสด
  */
-export function settlementTotals(x: { settlements: MoneyInput[]; interest?: MoneyInput; discount?: MoneyInput; wht?: MoneyInput; payments: MoneyInput[]; cash?: MoneyInput | null }) {
+/** fx = กำไร(+)/ขาดทุน(−) จากอัตราแลกเปลี่ยน · direction R (รับ) กำไรเพิ่มยอดที่ได้รับ · P (จ่าย) กำไรลดยอดที่ต้องจ่าย */
+export function settlementTotals(x: { settlements: MoneyInput[]; interest?: MoneyInput; discount?: MoneyInput; wht?: MoneyInput; fx?: MoneyInput; direction?: 'R' | 'P'; payments: MoneyInput[]; cash?: MoneyInput | null }) {
   const billed = x.settlements.reduce<Decimal>((s, a) => s.plus(d(a)), d(0));
-  const due = billed.plus(d(x.interest ?? 0)).minus(d(x.discount ?? 0)).minus(d(x.wht ?? 0));
+  const fx = d(x.fx || 0).times(x.direction === 'R' ? 1 : -1);
+  const due = billed.plus(d(x.interest ?? 0)).minus(d(x.discount ?? 0)).minus(d(x.wht ?? 0)).plus(fx);
   const other = x.payments.reduce<Decimal>((s, a) => s.plus(d(a)), d(0));
   const cash = x.cash === null || x.cash === undefined || x.cash === '' ? due.minus(other) : d(x.cash);
   const paid = cash.plus(other);

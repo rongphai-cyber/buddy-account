@@ -713,6 +713,7 @@ add(T('doc_header', 'หัวเอกสารทุกชนิด (ขาย
   C('cheque_amount', 'money', nn=True, d='0', th='รับ/จ่ายเป็นเช็ค/อื่น', src='CHQRCV / CHQPAY'),
   C('interest_amount', 'money', nn=True, d='0', th='ดอกเบี้ยรับ/จ่าย', src='INTRCV / INTPAY'),
   C('cash_discount_amount', 'money', nn=True, d='0', th='ส่วนลดเงินสด'),
+  C('fx_amount', 'money', nn=True, d='0', th='กำไร(+)/ขาดทุน(−) จากอัตราแลกเปลี่ยน ในใบเสร็จ/ใบสำคัญจ่าย (บทที่ 26 — Express ใช้ช่องภาษีหัก ณ ที่จ่ายแทน)'),
   C('settled_amount', 'money', nn=True, d='0', th='ยอดที่ชำระ/ตัดแล้ว', src='RCVAMT / PAYAMT'),
   C('outstanding_amount', 'money', nn=True, d='0', th='ยอดคงค้าง', src='REMAMT'),
   C('commission_amount', 'money', nn=True, d='0', th='ค่าคอมมิชชั่น', src='COMAMT'),

@@ -5,7 +5,7 @@ import { d, fmt, STOCK_KINDS, todayIso, type StockKind } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
-import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
 
@@ -19,20 +19,23 @@ const LEAD: Record<StockKind['cls'], string> = {
   CA: 'เพิ่ม (+) หรือลด (−) มูลค่าต้นทุนโดยไม่เปลี่ยนจำนวน เช่น ค่าขนส่งที่มาภายหลัง · สินค้า FIFO ต้องเลือกล็อตรับเข้าที่ปรับ',
 };
 
-interface Row { id: string; doc_no: string; doc_date: string; remark: string | null; net_amount: string; doc_status: string; warehouse_code: string | null; to_warehouse_code: string | null; lines: number }
+interface Row { id: string; doc_no: string; doc_date: string; remark: string | null; net_amount: string; doc_status: string; warehouse_code: string | null; to_warehouse_code: string | null; type_code: string | null; lines: number }
 export function StockDocListPage({ cls }: { cls: StockKind['cls'] }) {
   const K = kindOf(cls);
   const nav = useNavigate();
   const can = useCan(MENU);
   const [q, setQ] = useState('');
-  const list = useQuery({ queryKey: [K.path, q], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { q }), placeholderData: (p) => p });
+  const [type, setType] = useState('');
+  const types = useQuery({ queryKey: ['trade-defaults', cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string }> }>(`/api/v1/trade-defaults/${cls}`) });
+  const list = useQuery({ queryKey: [K.path, q, type], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { q, type_id: type || undefined }), placeholderData: (p) => p });
   useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, [K.route]);
   return (
     <div className="page" data-tone="inventory">
       <PageHead eyebrow="สินค้า › รายการประจำวันสินค้า" title={K.label} lead={LEAD[cls]}
         actions={can('add') && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ เพิ่มเอกสาร <kbd>Ins</kbd></button>} />
       <Tabs active={cls} onChange={(c) => nav(kindOf(c).route)} tabs={STOCK_KINDS.map((k) => ({ key: k.cls, label: k.label }))} />
-      <div className="toolbar"><input type="search" autoFocus placeholder="ค้นหาเลขที่ หรือหมายเหตุ" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" /></div>
+      <div className="toolbar"><input type="search" autoFocus placeholder="ค้นหาเลขที่ หรือหมายเหตุ" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" />
+        {(types.data?.types.length ?? 0) > 1 && <select value={type} onChange={(e) => setType(e.target.value)} aria-label="ประเภทเอกสาร" title="แยกตามประเภทเอกสาร เช่น จ่ายวัตถุดิบเพื่อผลิต / รับสินค้าสำเร็จรูป / รับสินค้าระหว่างทาง"><option value="">ทุกประเภทเอกสาร</option>{types.data!.types.map((t) => <option key={t.id} value={t.id}>{t.code} {t.name_th}</option>)}</select>}</div>
       <ErrorBox error={list.error} />
       <div className="table-wrap">
         <table className="grid">
@@ -40,7 +43,7 @@ export function StockDocListPage({ cls }: { cls: StockKind['cls'] }) {
           <tbody>
             {list.data?.rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
-                <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td>{cls === 'RL' && <td className="mono">{r.warehouse_code} → {r.to_warehouse_code}</td>}<td>{r.remark}</td>
+                <td className="mono" title={r.type_code ? `ประเภทเอกสาร ${r.type_code}` : undefined}>{r.doc_no}</td><td><DateText v={r.doc_date} /></td>{cls === 'RL' && <td className="mono">{r.warehouse_code} → {r.to_warehouse_code}</td>}<td>{r.remark}</td>
                 <td className="r">{r.lines}</td><td className="r"><Money v={r.net_amount} /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ปกติ</Pill>}</td>
               </tr>
             ))}
@@ -90,6 +93,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   const [dirty, setDirty] = useState(false);
   const [askCancel, setAskCancel] = useState(false);
   const [reason, setReason] = useState('');
+  const [prodCost, setProdCost] = useState(false);
   if (!h && !id && defs.data) {
     const t = defs.data.types[0];
     setH({ doc_type_id: t?.id ?? '', doc_date: me?.work_date ?? todayIso(), department_id: t?.department_id ?? '', remark: '', your_ref: '', warehouse_id: t?.warehouse_id ?? null, to_warehouse_id: null });
@@ -150,6 +154,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
         <button disabled={!id || cancelled || !(cur.data?.editable || cur.data?.from_count) || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร <kbd>Alt+C</kbd></button>
         <DocActions kind="doc" id={id} menu={MENU} />
+        {cls === 'JU' && !ro && <button disabled={!used.some((l) => d(l.qty || 0).gt(0))} onClick={() => setProdCost(true)} title="รวมต้นทุนจากการเบิกวัตถุดิบและค่าแรง/โสหุ้ย แล้วกระจายเป็นทุนต่อหน่วยของสินค้าที่รับเข้า (บทที่ 26)">🏭 ต้นทุนการผลิต</button>}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error ?? defs.error} />
@@ -204,9 +209,65 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
         </div>}
       </div>}
       <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาสินค้า'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
+      {prodCost && h && <ProductionCost date={h.doc_date} departmentId={h.department_id} lines={used} onClose={() => setProdCost(false)}
+        onApply={(costs, note) => { setLines((ls) => ls.map((l) => (costs[l.key] !== undefined ? { ...l, unit_cost: costs[l.key]!, cost_amount: null, cost_unit: null } : l))); if (!h.remark) set({ remark: note.slice(0, 200) }); setDirty(true); setProdCost(false); }} />}
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? สต๊อกและใบสำคัญจะกลับคืน (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
       </Confirm>}
     </div>
+  );
+}
+
+type CostDoc = { id: string; doc_no: string; doc_date: string; type_code: string | null; party_name?: string | null; remark: string | null; department_code: string | null; amount: string };
+/**
+ * ต้นทุนการผลิต (บทที่ 26 S-AP-06 "ปรับต้นทุนโดยโปรแกรม"): รวมเบิกวัตถุดิบ (OU) + ค่าแรง/โสหุ้ย (OE ไม่รวม VAT) ที่เลือก
+ * แล้วกระจายเป็นทุนต่อหน่วยตามจำนวนหน่วยย่อยของบรรทัดรับเข้า (จำนวน × ตัวคูณ) — ผู้ใช้ตรวจ/แก้ทุนต่อหน่วยได้ก่อนบันทึก
+ */
+function ProductionCost({ date, departmentId, lines, onClose, onApply }: { date: string; departmentId: string; lines: Line[]; onClose: () => void; onApply: (costs: Record<number, string>, note: string) => void }) {
+  const [from, setFrom] = useState(date.slice(0, 8) + '01');
+  const [to, setTo] = useState(date);
+  const [dept, setDept] = useState(!!departmentId);
+  const q = useQuery({ queryKey: ['production-costs', from, to, dept && departmentId], queryFn: () => api.get<{ issues: CostDoc[]; expenses: CostDoc[] }>('/api/v1/stock/production-costs', { from, to, department_id: dept && departmentId ? departmentId : undefined }), staleTime: 0 });
+  const [off, setOff] = useState<Set<string>>(new Set());
+  const [extra, setExtra] = useState('');
+  const all = [...(q.data?.issues ?? []), ...(q.data?.expenses ?? [])];
+  const sum = (xs: CostDoc[]) => xs.filter((x) => !off.has(x.id)).reduce((s, x) => s.plus(x.amount), d(0));
+  const mat = sum(q.data?.issues ?? []), oh = sum(q.data?.expenses ?? []);
+  const total = mat.plus(oh).plus(d(extra || 0));
+  const recv = lines.filter((l) => d(l.qty || 0).gt(0));
+  const units = recv.reduce((s, l) => s.plus(d(l.qty).times(d(l.factor || 1))), d(0));
+  const perBase = units.gt(0) ? total.div(units) : d(0);
+  const costs = Object.fromEntries(recv.map((l) => [l.key, perBase.times(d(l.factor || 1)).toDecimalPlaces(4).toString()]));
+  const applied = recv.reduce((s, l) => s.plus(d(l.qty).times(costs[l.key]!).toDecimalPlaces(2)), d(0));
+  const toggle = (id: string) => setOff((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const table = (title: string, xs: CostDoc[], party: boolean) => <>
+    <h3 className="small">{title} ({xs.length})</h3>
+    <table className="grid"><thead><tr><th style={{ width: 30 }} /><th>เลขที่</th><th>วันที่</th><th>แผนก</th><th>{party ? 'ผู้จำหน่าย / คำอธิบาย' : 'หมายเหตุ'}</th><th className="r">จำนวนเงิน</th></tr></thead>
+      <tbody>{xs.map((x) => <tr key={x.id} className={cx('row-open', off.has(x.id) && 'cancelled')} onClick={() => toggle(x.id)}>
+        <td><input type="checkbox" checked={!off.has(x.id)} onChange={() => toggle(x.id)} onClick={(e) => e.stopPropagation()} aria-label={`เลือก ${x.doc_no}`} /></td>
+        <td className="mono">{x.doc_no}</td><td><DateText v={x.doc_date} /></td><td>{x.department_code}</td><td>{[x.party_name, x.remark].filter(Boolean).join(' · ')}</td><td className="r"><Money v={x.amount} /></td></tr>)}
+        {q.data && !xs.length && <tr><td colSpan={6} className="empty">ไม่มีเอกสารในช่วงนี้</td></tr>}</tbody></table>
+  </>;
+  return (
+    <Modal title="ต้นทุนการผลิต — กระจายเป็นทุนต่อหน่วย" size="wide" onClose={onClose} footer={<><button onClick={onClose}>ปิด</button>
+      <button className="primary" disabled={!units.gt(0) || !total.gt(0)} onClick={() => onApply(costs, `ต้นทุนผลิต ${fmt(total.toFixed(2))} จาก ${all.filter((x) => !off.has(x.id)).map((x) => x.doc_no).join(', ')}`)}>ใช้ทุนต่อหน่วยนี้</button></>}>
+      <div className="toolbar">
+        <label>ตั้งแต่ <DateInput value={from} onChange={setFrom} /></label><label>ถึง <DateInput value={to} onChange={setTo} /></label>
+        {departmentId && <label className="check"><input type="checkbox" checked={dept} onChange={(e) => setDept(e.target.checked)} /> เฉพาะแผนกของเอกสารนี้</label>}
+      </div>
+      <ErrorBox error={q.error} />
+      {table('เบิกวัตถุดิบเพื่อผลิต (จ่ายสินค้าใช้ภายใน) — มูลค่าตามต้นทุนที่ตัดสต๊อก', q.data?.issues ?? [], false)}
+      {table('ค่าแรง/โสหุ้ยการผลิต (บันทึกค่าใช้จ่ายอื่น ๆ) — ไม่รวม VAT', q.data?.expenses ?? [], true)}
+      <table className="totals-table" style={{ marginTop: 8 }}><tbody>
+        <tr><td>วัตถุดิบ</td><td className="r"><Money v={mat.toFixed(2)} /></td></tr>
+        <tr><td>ค่าแรง/โสหุ้ย</td><td className="r"><Money v={oh.toFixed(2)} /></td></tr>
+        <tr><td>ต้นทุนอื่น (+)/ปรับลด (−)</td><td><MoneyInput value={extra} onChange={setExtra} aria-label="ต้นทุนอื่น" /></td></tr>
+        <tr className="grand"><td>รวมต้นทุนการผลิต</td><td className="r"><Money v={total.toFixed(2)} /></td></tr>
+        <tr><td>จำนวนรับเข้า (หน่วยย่อย)</td><td className="r">{units.toString()}</td></tr>
+        <tr><td>ทุนต่อหน่วยย่อย</td><td className="r">{fmt(perBase.toFixed(4), { places: 4 })}</td></tr>
+        {!applied.minus(total).isZero() && units.gt(0) && <tr><td className="muted">ผลต่างจากปัดเศษ</td><td className="r muted"><Money v={applied.minus(total).toFixed(2)} /></td></tr>}
+      </tbody></table>
+      <p className="hint">เลือก/ไม่เลือกเอกสารโดยคลิกแถว · ทุนต่อหน่วยกระจายตามจำนวนหน่วยย่อยของบรรทัดที่รับเข้า (จำนวนบวก) — แก้รายบรรทัดได้หลังกด "ใช้"</p>
+    </Modal>
   );
 }

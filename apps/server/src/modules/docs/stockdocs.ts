@@ -151,13 +151,13 @@ export function stockDocRoutes(app: FastifyInstance, db: Db) {
     const base = `/api/v1/${K.path}`;
     app.get(base, async (req) => {
       const a = requireCompany(req);
-      const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), status: z.enum(['N', 'C', 'all']).default('all'), limit: z.coerce.number().int().min(1).max(1000).default(300) }), req.query);
+      const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), status: z.enum(['N', 'C', 'all']).default('all'), type_id: uuid.optional(), limit: z.coerce.number().int().min(1).max(1000).default(300) }), req.query);
       const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
-      const rows = (await sql`SELECT h.id, h.doc_no, h.doc_date, h.remark, h.net_amount, h.doc_status, w.code AS warehouse_code, tw.code AS to_warehouse_code,
+      const rows = (await sql`SELECT h.id, h.doc_no, h.doc_date, h.remark, h.net_amount, h.doc_status, w.code AS warehouse_code, tw.code AS to_warehouse_code, (SELECT t.code FROM md_doc_type t WHERE t.id = h.doc_type_id) AS type_code,
           (SELECT count(*) FROM doc_line l WHERE l.header_id = h.id AND l.deleted_at IS NULL AND (h.doc_class <> 'RL' OR l.stock_effect = -1))::int AS lines
           FROM doc_header h LEFT JOIN md_warehouse w ON w.id = h.warehouse_id LEFT JOIN md_warehouse tw ON tw.id = h.to_warehouse_id
          WHERE h.company_id = ${a.companyId} AND h.doc_class = ${K.cls} AND h.deleted_at IS NULL ${q.from ? sql`AND h.doc_date >= ${q.from}` : sql``} ${q.to ? sql`AND h.doc_date <= ${q.to}` : sql``}
-           ${q.status !== 'all' ? sql`AND h.doc_status = ${q.status}` : sql``} ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})` : sql``}
+           ${q.status !== 'all' ? sql`AND h.doc_status = ${q.status}` : sql``} ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})` : sql``} ${q.type_id ? sql`AND h.doc_type_id = ${q.type_id}` : sql``}
          ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT ${q.limit}`.execute(db)).rows;
       return { rows };
     });
@@ -184,6 +184,28 @@ export function stockDocRoutes(app: FastifyInstance, db: Db) {
       return cancelStockDoc(db, a, id, reason);
     });
   }
+  /**
+   * ต้นทุนการผลิต (บทที่ 26 S-AP-06): Express ไม่คำนวณให้ ผู้ใช้รวมเอง — ช่วยรวมจาก
+   * เบิกวัตถุดิบ (จ่ายใช้ภายใน OU มูลค่าตามต้นทุนที่ตัดสต๊อก) + ค่าแรง/โสหุ้ย (บันทึกค่าใช้จ่ายอื่น ๆ OE ไม่รวม VAT) ในช่วงวันที่/แผนก
+   * ผู้ใช้เลือกเอกสารแล้วกระจายเป็นทุนต่อหน่วยของสินค้าสำเร็จรูปในเอกสารปรับปรุงเพิ่ม (JU)
+   */
+  app.get('/api/v1/stock/production-costs', async (req) => {
+    const a = requireCompany(req);
+    const q = parse(z.object({ from: isoDate, to: isoDate, department_id: uuid.optional() }), req.query);
+    const dept = q.department_id ? sql`AND h.department_id = ${q.department_id}` : sql``;
+    const base = sql`h.company_id = ${a.companyId} AND h.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_date BETWEEN ${q.from} AND ${q.to} ${dept}`;
+    const issues = (await sql<{ id: string; doc_no: string; doc_date: string; type_code: string | null; remark: string | null; department_code: string | null; amount: string }>`
+        SELECT h.id, h.doc_no, h.doc_date, t.code AS type_code, h.remark, dp.code AS department_code,
+               coalesce((SELECT sum(l.cost_amount) FROM doc_line l WHERE l.header_id = h.id AND l.deleted_at IS NULL AND l.stock_effect = -1), 0) AS amount
+          FROM doc_header h LEFT JOIN md_doc_type t ON t.id = h.doc_type_id LEFT JOIN md_department dp ON dp.id = h.department_id
+         WHERE h.doc_class = 'OU' AND ${base} ORDER BY h.doc_date, h.doc_no LIMIT 500`.execute(db)).rows;
+    const expenses = (await sql<{ id: string; doc_no: string; doc_date: string; type_code: string | null; party_name: string | null; remark: string | null; department_code: string | null; amount: string }>`
+        SELECT h.id, h.doc_no, h.doc_date, t.code AS type_code, h.party_name, h.remark, dp.code AS department_code, h.net_amount - h.vat_amount AS amount
+          FROM doc_header h LEFT JOIN md_doc_type t ON t.id = h.doc_type_id LEFT JOIN md_department dp ON dp.id = h.department_id
+         WHERE h.doc_class = 'OE' AND ${base} ORDER BY h.doc_date, h.doc_no LIMIT 500`.execute(db)).rows;
+    return { issues, expenses };
+  });
+
   /** CA FIFO: ล็อตรับเข้าของสินค้า (บรรทัดที่รับเข้า) ให้เลือกปรับต้นทุน */
   app.get('/api/v1/stock/lots', async (req) => {
     const a = requireCompany(req);

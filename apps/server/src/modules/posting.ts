@@ -51,8 +51,8 @@ export async function loadResolver(db: Db, companyId: string, scope?: { customer
 export async function loadPostingInput(db: Db, companyId: string, headerIds: string[] | null) {
   const where = headerIds === null ? sql`true` : sql`h.id = ANY(${headerIds}::uuid[])`;
   const H = (await sql<{ id: string; doc_class: string; doc_type_id: string | null; customer_id: string | null; supplier_id: string | null; net_amount: string; vat_amount: string; deposit_amount: string; vat_basis: string | null; doc_no: string;
-    wht_amount: string; cash_discount_amount: string; interest_amount: string }>`
-    SELECT h.id, h.doc_class, h.doc_type_id, h.customer_id, h.supplier_id, h.net_amount, h.vat_amount, h.deposit_amount, h.vat_basis, h.doc_no, h.wht_amount, h.cash_discount_amount, h.interest_amount
+    wht_amount: string; cash_discount_amount: string; interest_amount: string; fx_amount: string }>`
+    SELECT h.id, h.doc_class, h.doc_type_id, h.customer_id, h.supplier_id, h.net_amount, h.vat_amount, h.deposit_amount, h.vat_basis, h.doc_no, h.wht_amount, h.cash_discount_amount, h.interest_amount, h.fx_amount
     FROM doc_header h WHERE h.company_id = ${companyId} AND h.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_class = ANY(${[...POSTING_CLASSES]}::text[]) AND ${where}`.execute(db)).rows;
   const hid = H.map((h) => h.id);
   const group = <T extends { header_id: string }>(rows: T[]) => { const m = new Map<string, T[]>(); for (const r of rows) { if (!m.has(r.header_id)) m.set(r.header_id, []); m.get(r.header_id)!.push(r); } return m; };

@@ -56,6 +56,24 @@ describe('posting engine (บทที่ 10)', () => {
     expect(settlementTotals({ settlements: ['1605'], wht: '45', payments: ['1000'], cash: '500' })).toMatchObject({ diff: '60.00', ok: false });
     expect(settlementTotals({ settlements: ['100'], payments: ['150'] }).ok).toBe(false);   // เงินสดติดลบ
   });
+  it('foreign AP/AR settlement with exchange gain/loss (บทที่ 26 S-AP-13)', () => {
+    // คู่มือหน้า 446: เจ้าหนี้ 50,000 จ่ายเช็ค 48,000 → กำไร 2,000 · เดิม Express ใช้ช่องภาษีหัก ณ ที่จ่ายแทน
+    const fxr = { ...r, def: (k: string) => (k === 'FX_GAIN_LOSS' ? 'fx' : DEF[k] ?? null), paymentMethod: (id: string) => (id === 'QP' ? 'chq-paid' : null) };
+    expect(settlementTotals({ settlements: ['50000'], fx: '2000', direction: 'P', payments: ['48000'] })).toMatchObject({ due: '48000.00', cash: '0.00', ok: true });
+    const g = buildPosting({ id: 'h', doc_class: 'PS', doc_type_id: null, customer_id: null, supplier_id: 's1', net_amount: '50000', vat_amount: '0', deposit_amount: '0', vat_basis: null, fx_amount: '2000' },
+      [], [{ method_id: 'QP', amount: '48000', cheque_id: null }], [{ amount: '50000', vat: '0', party_id: 's1', rectype: '3' }], fxr);
+    expect(postingBalanced(g)).toBe(true);
+    expect(net(g)).toEqual({ ap: '50000.00', 'chq-paid': '-48000.00', fx: '-2000.00' });
+    // ขาดทุน: จ่าย 51,000 สำหรับหนี้ 50,000
+    const l = buildPosting({ id: 'h', doc_class: 'PS', doc_type_id: null, customer_id: null, supplier_id: 's1', net_amount: '50000', vat_amount: '0', deposit_amount: '0', vat_basis: null, fx_amount: '-1000' },
+      [], [], [{ amount: '50000', vat: '0', party_id: 's1', rectype: '3' }], fxr);
+    expect(net(l)).toEqual({ ap: '50000.00', fx: '1000.00', cash: '-51000.00' });
+    // ลูกหนี้ต่างประเทศ: หนี้ 10,000 รับจริง 10,300 → กำไร 300
+    expect(settlementTotals({ settlements: ['10000'], fx: '300', direction: 'R', payments: [] })).toMatchObject({ due: '10300.00', cash: '10300.00', ok: true });
+    const e = buildPosting({ id: 'h', doc_class: 'RE', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '10000', vat_amount: '0', deposit_amount: '0', vat_basis: null, fx_amount: '300' },
+      [], [], [{ amount: '10000', vat: '0', party_id: 'c1', rectype: '3' }], fxr);
+    expect(net(e)).toEqual({ 'ar-c1': '-10000.00', fx: '-300.00', cash: '10300.00' });
+  });
   it('cash purchase of an expense code paid partly by cheque; missing accounts go to suspense', () => {
     const p = buildPosting({ id: 'h', doc_class: 'HP', doc_type_id: null, customer_id: null, supplier_id: null, net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1' },
       [{ item_id: 'svc', net_amount: '1000' }], [{ method_id: 'QP', amount: '1000', cheque_id: null }], [], r);
