@@ -90,7 +90,13 @@
 - ✅ T3.10: importer — เอกสารที่สร้างจากบัตรสต๊อก (ไม่มีใน ARTRN/APTRN) เป็น module IC/PC ไม่เข้าลูกหนี้/เจ้าหนี้ (RR0000064 = ต้นเหตุ 7,454.69) · ปรับยอดตัดของใบลดหนี้ (NETAMT − REMAMT) และมัดจำคงเหลือ = REMAMT ผ่านเอกสาร MIG-ADJ-AR/AP (doc_link DEPOSIT ปรับปรุง) → DEMO (สร้างใหม่) ตรง Express ทุกยอด, งบทดลองเท่าเดิม, posting-compare 97.3%
   - ลูกหนี้/เจ้าหนี้ยกมา: doc_header.is_opening (migration 0015) · `modules/docs/opening.ts` /ar-opening /ap-opening (เลขที่ป้อนเอง วันที่ก่อนปีบัญชีแรกที่ยังเปิด ยอดเงินอย่างเดียว) · postDocument/syncVatEntries ข้ามเอกสารยกมา · cancelDocument ไม่ตรวจงวดของเอกสารยกมา · trade แก้เอกสารยกมาไม่ได้ · หน้า `pages/docs/OpeningDocs.tsx`
 - ✅ T3.11: GET /customers|suppliers/:id/activity (ยอดรายงวดของปีบัญชี คำนวณสดจาก doc_header ไม่รวมยกมา/ยกเลิก + ยอดต้นปี + เช็ค status 00 ที่ยังไม่ผ่าน) · แท็บ ยอดรายงวด / เช็คที่ยังไม่ผ่านบัญชี ใน Parties.tsx
-- **P3 ครบทุกงานแล้ว (29/10/2569)** — ต่อไป P4 (สินค้าคงคลัง/ต้นทุน + ระบบเช็ค/ธนาคาร) ตาม docs/03_แผนพัฒนา.md — ถามเจ้าของก่อนเริ่ม
+- **P3 ครบทุกงานแล้ว (29/10/2569)**
+
+**P4 เริ่มแล้ว (เจ้าของสั่ง "เริ่ม P4" 29/10/2569) — แผน T4.1–T4.8 ใน TASKS.md**
+- ✅ T4.1 ยอดสต๊อก: view `v_stock_move` (บรรทัดเอกสาร stock_effect ≠ 0: qty = base_qty × stock_effect, value = cost_amount × stock_effect ยกเว้น movement 8 = cost_amount ตามเครื่องหมาย) + `v_stock_balance` (migration 0016) · API `modules/stock.ts` /stock/balances /stock/card · หน้า `pages/inventory/Stock.tsx` (/ic/stock, เมนู IC.STOCK)
+  - STLOC ของ Express 158 คู่ไม่ตรงกับความเคลื่อนไหวใน STCRD ของตัวเอง (ตรวจจาก DBF แล้ว) → importer สร้างใบปรับปรุง MIG-ADJ-IC (JU, movement 8) ให้ยอดสดเท่า STLOC ทั้งจำนวนและมูลค่า → DEMO (สร้างใหม่อีกครั้ง) ตรง 11,802/11,802 คู่ งบทดลองเท่าเดิม
+  - inv_stock_balance (STLOC ที่นำเข้า) เก็บไว้ตรวจเทียบเท่านั้น ไม่ใช้ในโปรแกรม · inv_stock_ledger/inv_cost_layer ยังไม่ใช้
+- ต่อไป: T4.2 เอกสารขาย/ซื้อตัดสต๊อก/รับเข้า + คิดต้นทุน (ic.posting_method DEMO = PERIODIC, ic.cost_by_warehouse = true)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

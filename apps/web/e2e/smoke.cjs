@@ -420,6 +420,13 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.goto(BASE + '/fi/ar/opening/new');
     await page.waitForSelector('.trade-head', { timeout: 15000 });
   });
+  await step('stock balances + stock card (T4.1, view only)', async () => {
+    await page.goto(BASE + '/ic/stock');
+    await page.locator('table.grid tbody tr.row-open').first().click({ timeout: 20000 });
+    await page.waitForSelector('.modal table.grid tbody tr', { timeout: 15000 });
+    await shot('16a-stock-card');
+    await page.keyboard.press('Escape');
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

@@ -807,6 +807,26 @@ for r in dbf('STLOC'):
     if len(rows) >= 20000: done('inv_stock_balance', insert('inv_stock_balance', rows), 'STLOC'); rows = []
 done('inv_stock_balance', insert('inv_stock_balance', rows), 'STLOC')
 
+# ปรับยอดสต๊อกให้ตรงยอดคงเหลือของ Express (STLOC.LOCBAL/LOCVAL) ณ วันย้ายระบบ — ยอดคงเหลือในระบบใหม่คำนวณสดจากบรรทัดเอกสาร
+# STLOC ของ Express บางคู่สินค้า×คลังไม่ตรงกับความเคลื่อนไหวใน STCRD (ยอดสะสมไม่ได้คำนวณใหม่) จึงสร้างใบปรับปรุง 1 ใบ (movement 8 = มูลค่าตามเครื่องหมาย)
+cur.execute("""
+WITH live AS (SELECT l.item_id, l.warehouse_id, sum(l.base_qty * l.stock_effect) q,
+                     sum(CASE WHEN l.movement_code = '8' THEN coalesce(l.cost_amount, 0) ELSE coalesce(l.cost_amount, 0) * l.stock_effect END) v
+                FROM doc_line l JOIN doc_header h ON h.id = l.header_id
+               WHERE h.company_id = %s AND h.doc_status <> 'C' AND l.stock_effect <> 0 AND l.item_id IS NOT NULL AND l.warehouse_id IS NOT NULL GROUP BY 1, 2),
+     b AS (SELECT item_id, warehouse_id, qty_on_hand q, value_on_hand v FROM inv_stock_balance WHERE company_id = %s AND item_id IS NOT NULL AND warehouse_id IS NOT NULL)
+SELECT coalesce(b.item_id, live.item_id), coalesce(b.warehouse_id, live.warehouse_id), coalesce(b.q, 0) - coalesce(live.q, 0), coalesce(b.v, 0) - coalesce(live.v, 0)
+  FROM b FULL JOIN live ON live.item_id = b.item_id AND live.warehouse_id = b.warehouse_id""", (COMPANY, COMPANY))
+stk = [(i, w, float(dq), float(dv)) for i, w, dq, dv in cur.fetchall() if abs(float(dq)) >= 0.0001 or abs(float(dv)) >= 0.005]
+if stk:
+    last_day = max(p[1] for p in PERIODS if p[0].year <= (prd['END12NY'].year if prd and prd.get('END12NY') else 9999))
+    hrow = hdr_row('MIG-ADJ-IC', 'JU', 'IC', last_day, force_class='JU', remark='[ย้ายข้อมูล] ปรับยอดสต๊อกให้ตรงยอดคงเหลือของ Express (STLOC)')
+    insert('doc_header', [hrow]); done('doc_header', 1, 'ปรับปรุงสต๊อกการย้ายข้อมูล')
+    done('doc_line', insert('doc_line', [base(id=U('stkadj', i, w), header_id=hrow['id'], line_no=n + 1, line_kind='I', item_id=i, warehouse_id=w, description='[ย้ายข้อมูล] ปรับยอดตาม STLOC',
+         qty=round(dq, 4), factor=1, base_qty=round(abs(dq), 4), stock_effect=1 if dq >= 0 else -1, movement_code='8', cost_unit=0, cost_amount=round(dv, 2))
+         for n, (i, w, dq, dv) in enumerate(stk)]), 'STLOC (ปรับปรุง)')
+    QUALITY['stock_adjusted_to_stloc'].append(len(stk))
+
 # ------------------------------------------------------------------ ค่าเริ่มต้นจาก ISINFO → sys_setting (คู่มือบทที่ 5)
 # รายการค่าและฟิลด์ต้นทางมาจากแคตตาล็อกเดียวกับหน้าจอ (packages/core/src/settings.ts → settings_catalog.json)
 YN = lambda v: (v or '').strip().upper() in ('Y', 'T', '1')

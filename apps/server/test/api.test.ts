@@ -1362,6 +1362,28 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
 
+  it('stock balances (T4.1): live from document lines, stock card running balance, isolation', async () => {
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const wh = (await call('GET', '/api/v1/lookups?types=WH')).body.WH[0].id;
+    const ju = (await sql<{ id: string }>`SELECT id FROM md_doc_type WHERE company_id = ${companyId} AND doc_class = 'JU' LIMIT 1`.execute(database.db)).rows[0];
+    // รับเข้า 10 @100 แล้วจ่าย 4 (บรรทัดเอกสารสินค้าโดยตรง — เอกสารสินค้าเต็มรูปแบบมาใน T4.3)
+    const h = (await sql<{ id: string }>`INSERT INTO doc_header (company_id, branch_id, doc_type_id, doc_class, module, doc_no, doc_date)
+      VALUES (${companyId}, (SELECT id FROM sys_branch WHERE company_id = ${companyId} LIMIT 1), ${ju?.id ?? (await sql<{ id: string }>`SELECT id FROM md_doc_type WHERE company_id = ${companyId} LIMIT 1`.execute(database.db)).rows[0]!.id}, 'JU', 'IC', 'T41-001', '2026-05-01') RETURNING id`.execute(database.db)).rows[0]!.id;
+    await sql`INSERT INTO doc_line (company_id, header_id, line_no, item_id, warehouse_id, qty, base_qty, stock_effect, movement_code, cost_amount) VALUES
+      (${companyId}, ${h}, 1, ${cpu}, ${wh}, 10, 10, 1, '1', 1000), (${companyId}, ${h}, 2, ${cpu}, ${wh}, 4, 4, -1, '6', 400)`.execute(database.db);
+    const bal = (await call('GET', `/api/v1/stock/balances?item_id=${cpu}`)).body;
+    expect(bal.rows.find((r: { warehouse_id: string }) => r.warehouse_id === wh)).toMatchObject({ qty: '6.0000', value: '600.00', avg_cost: '100.0000' });
+    const card = (await call('GET', `/api/v1/stock/card?item_id=${cpu}&warehouse_id=${wh}&from=2026-05-01&to=2026-05-31`)).body;
+    expect(card.lines.map((l: { balance_qty: string }) => l.balance_qty)).toEqual(['10', '6']);
+    expect(card).toMatchObject({ opening: { qty: '0' }, closing: { qty: '6', value: '600.00' }, in: { qty: '10' }, out: { qty: '4' } });
+    expect((await call('GET', `/api/v1/stock/card?item_id=${cpu}&from=2026-06-01&to=2026-06-30`)).body.opening).toMatchObject({ qty: '6', value: '600.00' });
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/stock/balances')).body.rows).toEqual([]);
+    expect((await call('GET', `/api/v1/stock/card?item_id=${cpu}&from=2026-01-01&to=2026-12-31`)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    await sql`UPDATE doc_header SET doc_status = 'C' WHERE id = ${h}`.execute(database.db);
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

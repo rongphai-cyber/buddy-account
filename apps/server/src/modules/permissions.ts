@@ -177,6 +177,7 @@ export const API_RULES: Record<string, Rule> = {
     [`PUT /api/v1/${p}/:id`, M('GL.PC', 'edit')], [`POST /api/v1/${p}/:id/cancel`, M('GL.PC', 'cancel')],
   ])),
   'GET /api/v1/gl/vat-closing': M('GL.JNL', 'add'),
+  'GET /api/v1/stock/balances': M('IC.STOCK', 'read'), 'GET /api/v1/stock/card': M('IC.STOCK', 'read'),
   // แฟ้มภาษีซื้อ/ขาย (บทที่ 16)
   ...Object.fromEntries([['P', 'FI.VAT.IN'], ['S', 'FI.VAT.OUT']].flatMap(([k, m]) => [
     [`GET /api/v1/vat/${k}`, M(m!, 'read')], [`POST /api/v1/vat/${k}`, M(m!, 'add')], [`PUT /api/v1/vat/${k}/:id`, M(m!, 'edit')], [`POST /api/v1/vat/${k}/:id/cancel`, M(m!, 'cancel')],

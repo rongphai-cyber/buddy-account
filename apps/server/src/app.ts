@@ -31,6 +31,7 @@ import { pettyCashRoutes } from './modules/docs/pettycash.js';
 import { openingRoutes } from './modules/docs/opening.js';
 import { whtRoutes } from './modules/wht.js';
 import { vatRoutes } from './modules/vat.js';
+import { stockRoutes } from './modules/stock.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -81,6 +82,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   openingRoutes(app, db);
   whtRoutes(app, db);
   vatRoutes(app, db);
+  stockRoutes(app, db);
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {
