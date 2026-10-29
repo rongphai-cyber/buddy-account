@@ -211,7 +211,7 @@ export function SettleFormPage({ path }: { path: string }) {
             {chosen.length > 0 && <tfoot><tr><td colSpan={K.module === 'AP' ? 9 : 8} className="r">เลือก {chosen.length} ใบ — ยอดชำระตามใบกำกับ (ใบลดหนี้หักออก)</td><td className="r"><b><Money v={t.billed} /></b></td></tr></tfoot>}
           </table>}
         </div>}
-        {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} readOnly={ro} payDate={h.payment_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
+        {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} partyId={h.party?.id ?? null} readOnly={ro} payDate={h.payment_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
         {tab === 'wht' && K.cls === 'PS' && <WhtTable whts={whts} setWhts={setWhts} readOnly={ro} base={baseOfChosen} defaults={{ form: h.whtForm, rate: h.whtRate }} canAdd={chosen.length > 0} dirty={dirty} onDirty={() => setDirty(true)} />}
         {tab === 'gl' && id && <DocJournalTab id={id} />}
         <div className="trade-foot">

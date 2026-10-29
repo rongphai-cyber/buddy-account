@@ -215,7 +215,7 @@ export function CashFormPage({ path }: { path: string }) {
             {!ro && <tfoot><tr><td colSpan={5}><button type="button" onClick={addLine}>+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button></td></tr></tfoot>}
           </table>
         </div>}
-        {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} readOnly={ro} payDate={h.doc_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
+        {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} partyId={h.party?.id ?? null} readOnly={ro} payDate={h.doc_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
         {tab === 'wht' && K.whtEntries && <WhtTable whts={whts} setWhts={setWhts} readOnly={ro} base={base} defaults={{ form: h.party ? h.whtForm : 'S03', rate: h.whtRate }} canAdd={used.length > 0} dirty={dirty} onDirty={() => setDirty(true)} />}
         {tab === 'used' && cur.data && <table className="grid"><thead><tr><th>บิล</th><th>วันที่</th><th className="r">ยอดที่หัก</th></tr></thead>
           <tbody>{cur.data.used_by.map((u) => <tr key={u.id}><td className="mono">{u.doc_no}</td><td><DateText v={u.doc_date} /></td><td className="r"><Money v={u.amount} /></td></tr>)}

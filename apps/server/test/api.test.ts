@@ -1865,6 +1865,41 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', `/api/v1/cheque-deposits/${sq.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     for (const id of ids) expect((await call('DELETE', `/api/v1/cheques/${id}`)).status).toBe(200);
   });
+  it('cheque larger than the debt leaves a remaining balance that a later receipt can use (S-BK-04)', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const svc = (await sql<{ id: string }>`SELECT id FROM md_item WHERE company_id = ${companyId} AND code = 'SV-TEST-44'`.execute(database.db)).rows[0]!.id;
+    const iv = async (price: number) => (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2026-12-01', party_id: cus, price_type: '0', vat_rate: 0, lines: [{ item_id: svc, qty: 1, unit_price: price }] })).body;
+    const iv1 = await iv(900), iv2 = await iv(400);
+    const chq = (await call('GET', '/api/v1/payment-methods/R')).body.find((m: { creates_cheque: boolean }) => m.creates_cheque);
+    const remaining = async () => (await call('GET', `/api/v1/cheques?direction=R&q=QR-REM-1`)).body.rows[0].remaining_amount as string;
+    expect((await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2026-12-05', party_id: cus, settlements: [{ invoice_header_id: iv1.id, amount: 900 }],
+      payments: [{ payment_method_id: chq.id, amount: 900, cheque_amount: 800, reference_no: 'QR-REM-X', cheque_date: '2026-12-05' }] })).body.error.message).toMatch(/ไม่น้อยกว่ายอดที่ใช้ชำระ/);
+    // เช็ค 1,000 ชำระบิล 900 → เหลือในเช็ค 100
+    const r1 = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2026-12-05', party_id: cus, settlements: [{ invoice_header_id: iv1.id, amount: 900 }],
+      payments: [{ payment_method_id: chq.id, amount: 900, cheque_amount: 1000, reference_no: 'QR-REM-1', cheque_date: '2026-12-05' }] })).body;
+    expect(r1.error).toBeUndefined();
+    expect(await remaining()).toBe('100.00');
+    const c = (await call('GET', '/api/v1/cheques?direction=R&q=QR-REM-1')).body.rows[0];
+    expect(c.amount).toBe('1000.00');
+    expect((await call('GET', `/api/v1/cheques?direction=R&remaining=Y&party_id=${cus}`)).body.rows.map((x: { id: string }) => x.id)).toContain(c.id);
+    // ใบเสร็จถัดไป: ใช้ยอดคงเหลือ 100 + เงินสด 300 (ใช้เกินยอดไม่ได้)
+    const re2 = { doc_type_id: await typeOf('RE'), doc_date: '2026-12-06', party_id: cus, settlements: [{ invoice_header_id: iv2.id, amount: 400 }], payments: [{ payment_method_id: chq.id, amount: 100, cheque_id: c.id }] };
+    expect((await call('POST', '/api/v1/ar-receipts', { ...re2, payments: [{ payment_method_id: chq.id, amount: 150, cheque_id: c.id }] })).body.error.message).toMatch(/เหลือยอดใช้ได้ 100\.00/);
+    const r2 = (await call('POST', '/api/v1/ar-receipts', re2)).body;
+    expect(r2.error).toBeUndefined();
+    expect(await remaining()).toBe('0.00');
+    expect((await call('GET', `/api/v1/cheques/${c.id}`)).body.docs.map((x: { doc_no: string }) => x.doc_no).sort()).toEqual([r1.doc_no, r2.doc_no].sort());
+    const det = (await call('GET', `/api/v1/ar-receipts/${r2.id}`)).body;
+    expect(det.payments[0]).toMatchObject({ cheque_id: c.id, own_cheque: false });
+    // ยกเลิกใบเสร็จแรกไม่ได้ขณะยอดคงเหลือถูกใช้อยู่ · ยกเลิกใบที่สอง → ยอดคงเหลือกลับมา
+    expect((await call('POST', `/api/v1/ar-receipts/${r1.id}/cancel`, { reason: 'x' })).body.error.message).toMatch(/ถูกใช้ใน/);
+    expect((await call('POST', `/api/v1/ar-receipts/${r2.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect(await remaining()).toBe('100.00');
+    expect((await call('POST', `/api/v1/ar-receipts/${r1.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    for (const x of [iv1, iv2]) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

@@ -6,7 +6,8 @@ import { api } from '../../api';
 import { LkSelect, useLookups } from '../../components/LkSelect';
 import { DateInput, Money, MoneyInput } from '../../ui';
 
-export interface Pay { key: number; payment_method_id: string; amount: string; reference_no: string; cheque_date: string; bank_id: string | null; bank_branch: string }
+/** cheque_amount: หน้าเช็คเมื่อมากกว่ายอดที่ใช้ (เหลือในเช็ค) · cheque_id: ใช้ยอดคงเหลือของเช็คเดิม */
+export interface Pay { key: number; payment_method_id: string; amount: string; reference_no: string; cheque_date: string; bank_id: string | null; bank_branch: string; cheque_amount?: string; cheque_id?: string | null; cheque_label?: string }
 export interface Wht { key: number; id?: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; taxEdited: boolean; certificate_no: string; certificate_date: string }
 interface Method { id: string; code: string; name_th: string; status: string; creates_cheque: boolean }
 let seq = 0;
@@ -15,19 +16,24 @@ const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(
 export const taxOf = (paid: string, rate: string) => (paid ? d(paid).times(d(rate || 0)).div(100).toDecimalPlaces(2).toFixed(2) : '');
 
 /** แปลงข้อมูลจากเซิร์ฟเวอร์ → แถวบนหน้าจอ */
-export const paysFrom = (rows: Array<{ payment_method_id: string; amount: string; reference_no: string | null; cheque_date: string | null; bank_id: string | null; bank_branch: string | null }>): Pay[] =>
-  rows.map((p) => ({ key: nextKey(), payment_method_id: p.payment_method_id, amount: num(p.amount), reference_no: p.reference_no ?? '', cheque_date: p.cheque_date ? String(p.cheque_date).slice(0, 10) : '', bank_id: p.bank_id, bank_branch: p.bank_branch ?? '' }));
+export const paysFrom = (rows: Array<{ payment_method_id: string; amount: string; reference_no: string | null; cheque_date: string | null; bank_id: string | null; bank_branch: string | null; cheque_id?: string | null; cheque_face?: string | null; own_cheque?: boolean | null; cheque_no?: string | null }>): Pay[] =>
+  rows.map((p) => ({ key: nextKey(), payment_method_id: p.payment_method_id, amount: num(p.amount), reference_no: p.reference_no ?? '', cheque_date: p.cheque_date ? String(p.cheque_date).slice(0, 10) : '', bank_id: p.bank_id, bank_branch: p.bank_branch ?? '',
+    cheque_amount: p.own_cheque && p.cheque_face && d(p.cheque_face).gt(d(p.amount)) ? num(p.cheque_face) : '', cheque_id: p.cheque_id && p.own_cheque === false ? p.cheque_id : null, cheque_label: p.own_cheque === false ? p.cheque_no ?? '' : undefined }));
 export const whtsFrom = (rows: Array<{ id: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; certificate_no: string | null; certificate_date: string; doc_status: string }>): Wht[] =>
   rows.filter((w) => w.doc_status !== 'C').map((w) => ({ key: nextKey(), id: w.id, form_type: w.form_type, income_type: w.income_type, rate: num(w.rate), paid_amount: num(w.paid_amount), tax_amount: num(w.tax_amount), taxEdited: true, certificate_no: w.certificate_no ?? '', certificate_date: String(w.certificate_date).slice(0, 10) }));
 /** ส่งให้เซิร์ฟเวอร์ */
-export const paysBody = (pays: Pay[]) => pays.filter((p) => p.payment_method_id && !d(p.amount || 0).isZero()).map((p) => ({ payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no || null, cheque_date: p.cheque_date || null, bank_id: p.bank_id || null, bank_branch: p.bank_branch || null }));
+export const paysBody = (pays: Pay[]) => pays.filter((p) => p.payment_method_id && !d(p.amount || 0).isZero()).map((p) => ({ payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.cheque_id ? null : p.reference_no || null, cheque_date: p.cheque_date || null, bank_id: p.bank_id || null, bank_branch: p.bank_branch || null,
+  cheque_amount: p.cheque_amount || null, cheque_id: p.cheque_id || null }));
 export const whtsBody = (whts: Wht[]) => whts.map((w) => ({ form_type: w.form_type, income_type: w.income_type, rate: w.rate || '0', paid_amount: w.paid_amount || '0', tax_amount: w.tax_amount || '0', certificate_no: w.certificate_no || null, certificate_date: w.certificate_date || null }));
 export const usePaymentMethods = (direction: 'R' | 'P') => useQuery({ queryKey: ['payment-methods', direction], queryFn: () => api.get<Method[]>(`/api/v1/payment-methods/${direction}`) });
 
 /** แท็บ ชำระโดยอื่น ๆ (S-PM-01 / S-PU-C6): วิธีที่ออกเช็คต้องมีเลขที่เช็ค → เข้าทะเบียนเช็คอัตโนมัติ */
-export function PaymentsTable({ pays, setPays, direction, readOnly, payDate, rest, onDirty }: {
-  pays: Pay[]; setPays: (f: (p: Pay[]) => Pay[]) => void; direction: 'R' | 'P'; readOnly: boolean; payDate: string; rest: string; onDirty: () => void;
+export function PaymentsTable({ pays, setPays, direction, readOnly, payDate, rest, onDirty, partyId }: {
+  pays: Pay[]; setPays: (f: (p: Pay[]) => Pay[]) => void; direction: 'R' | 'P'; readOnly: boolean; payDate: string; rest: string; onDirty: () => void; partyId?: string | null;
 }) {
+  // เช็คเดิมของคู่ค้าที่ยังมียอดคงเหลือ (S-BK-04) — นำมาลดหนี้ครั้งนี้ได้
+  const left = useQuery({ enabled: direction === 'R' && !!partyId && !readOnly, queryKey: ['cheques', 'remaining', partyId], queryFn: () => api.get<{ rows: Array<{ id: string; cheque_no: string; cheque_date: string; remaining_amount: string; written_off_amount: string; method_id: string | null }> }>('/api/v1/cheques', { direction: 'R', remaining: 'Y', party_id: partyId!, instrument: 'all' }) });
+  const avail = (left.data?.rows ?? []).filter((c) => !pays.some((p) => p.cheque_id === c.id));
   const methods = usePaymentMethods(direction);
   const lk = useLookups('BANK');
   const mById = new Map((methods.data ?? []).map((m) => [m.id, m]));
@@ -37,25 +43,27 @@ export function PaymentsTable({ pays, setPays, direction, readOnly, payDate, res
   return (
     <div className="table-wrap lines">
       <table className="grid">
-        <thead><tr><th>วิธีชำระ</th><th style={{ width: 150 }}>เลขที่เช็ค/อ้างอิง</th><th style={{ width: 130 }}>ลงวันที่</th><th style={{ width: 170 }}>ธนาคาร</th><th style={{ width: 140 }}>สาขา</th><th className="r" style={{ width: 140 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>
+        <thead><tr><th>วิธีชำระ</th><th style={{ width: 150 }}>เลขที่เช็ค/อ้างอิง</th><th style={{ width: 130 }}>ลงวันที่</th><th style={{ width: 170 }}>ธนาคาร</th><th style={{ width: 140 }}>สาขา</th><th className="r" style={{ width: 140 }}>จำนวนเงิน</th>{direction === 'R' && <th className="r" style={{ width: 130 }} title="เช็คมากกว่าหนี้ — ส่วนเกินเป็นยอดคงเหลือในเช็ค">หน้าเช็ค (ถ้ามากกว่า)</th>}<th style={{ width: 36 }} /></tr></thead>
         <tbody>
           {pays.map((p) => {
             const m = mById.get(p.payment_method_id);
             return (
               <tr key={p.key}>
                 <td><select value={p.payment_method_id} disabled={readOnly} onChange={(e) => set(p.key, { payment_method_id: e.target.value })} aria-label="วิธีชำระ"><option value="">— เลือก —</option>{methods.data?.filter((x) => x.status === 'A' || x.id === p.payment_method_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></td>
-                <td><input value={p.reference_no} maxLength={30} disabled={readOnly} placeholder={m?.creates_cheque ? 'เลขที่เช็ค (ต้องป้อน)' : ''} onChange={(e) => set(p.key, { reference_no: e.target.value })} aria-label="เลขที่เช็ค" /></td>
+                <td>{p.cheque_id ? <span className="mono" title="ใช้ยอดคงเหลือในเช็คเดิม">↺ {p.cheque_label}</span> : <input value={p.reference_no} maxLength={30} disabled={readOnly} placeholder={m?.creates_cheque ? 'เลขที่เช็ค (ต้องป้อน)' : ''} onChange={(e) => set(p.key, { reference_no: e.target.value })} aria-label="เลขที่เช็ค" />}</td>
                 <td>{m?.creates_cheque ? <DateInput value={p.cheque_date} disabled={readOnly} onChange={(v) => set(p.key, { cheque_date: v })} /> : null}</td>
                 <td>{m?.creates_cheque && direction === 'R' ? <LkSelect byId rows={lk.data?.BANK} value={p.bank_id} disabled={readOnly} onChange={(v) => set(p.key, { bank_id: v || null })} aria-label="ธนาคาร" /> : null}</td>
                 <td>{m?.creates_cheque && direction === 'R' ? <input value={p.bank_branch} maxLength={60} disabled={readOnly} onChange={(e) => set(p.key, { bank_branch: e.target.value })} aria-label="สาขาธนาคาร" /> : null}</td>
                 <td><MoneyInput value={p.amount} disabled={readOnly} onChange={(v) => set(p.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
+                {direction === 'R' && <td>{m?.creates_cheque && !p.cheque_id ? <MoneyInput value={p.cheque_amount ?? ''} disabled={readOnly} placeholder="เท่ายอดชำระ" onChange={(v) => set(p.key, { cheque_amount: v })} aria-label="จำนวนเงินหน้าเช็ค" /> : null}</td>}
                 <td>{!readOnly && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setPays((ps) => ps.filter((x) => x.key !== p.key)); onDirty(); }}>✕</button>}</td>
               </tr>
             );
           })}
-          {!pays.length && <tr><td colSpan={7} className="empty">{rp}เป็นเงินสดทั้งหมด — เพิ่มวิธีชำระสำหรับเช็ค เงินโอน บัตรเครดิต</td></tr>}
+          {!pays.length && <tr><td colSpan={8} className="empty">{rp}เป็นเงินสดทั้งหมด — เพิ่มวิธีชำระสำหรับเช็ค เงินโอน บัตรเครดิต</td></tr>}
         </tbody>
-        <tfoot><tr><td colSpan={5}>{!readOnly && <button type="button" onClick={() => { setPays((ps) => [...ps, { key: nextKey(), payment_method_id: '', amount: d(rest || 0).gt(0) ? rest : '', reference_no: '', cheque_date: payDate, bank_id: null, bank_branch: '' }]); onDirty(); }}>+ เพิ่มวิธีชำระ</button>} <span className="hint">เช็คจะเข้าทะเบียนเช็ค{rp}อัตโนมัติ · ยอดลบใช้กับค่าธรรมเนียมที่หักออก</span></td><td className="r"><b><Money v={total.toFixed(2)} /></b></td><td /></tr></tfoot>
+        <tfoot><tr><td colSpan={5}>{!readOnly && <button type="button" onClick={() => { setPays((ps) => [...ps, { key: nextKey(), payment_method_id: '', amount: d(rest || 0).gt(0) ? rest : '', reference_no: '', cheque_date: payDate, bank_id: null, bank_branch: '' }]); onDirty(); }}>+ เพิ่มวิธีชำระ</button>} {!readOnly && avail.length > 0 && <select value="" aria-label="ใช้ยอดคงเหลือในเช็ค" onChange={(e) => { const c = avail.find((x) => x.id === e.target.value); if (!c) return; const lft = d(c.remaining_amount).minus(d(c.written_off_amount)); setPays((ps) => [...ps, { key: nextKey(), payment_method_id: c.method_id ?? '', amount: (d(rest || 0).gt(0) && d(rest).lt(lft) ? d(rest) : lft).toFixed(2), reference_no: '', cheque_date: String(c.cheque_date).slice(0, 10), bank_id: null, bank_branch: '', cheque_id: c.id, cheque_label: c.cheque_no }]); onDirty(); }}>
+          <option value="">↺ ใช้ยอดคงเหลือในเช็คเดิม ({avail.length})</option>{avail.map((c) => <option key={c.id} value={c.id}>{c.cheque_no} เหลือ {d(c.remaining_amount).minus(d(c.written_off_amount)).toFixed(2)}</option>)}</select>} <span className="hint">เช็คจะเข้าทะเบียนเช็ค{rp}อัตโนมัติ · ยอดลบใช้กับค่าธรรมเนียมที่หักออก</span></td><td className="r"><b><Money v={total.toFixed(2)} /></b></td>{direction === 'R' && <td />}<td /></tr></tfoot>
       </table>
     </div>
   );
