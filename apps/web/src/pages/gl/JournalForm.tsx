@@ -178,7 +178,7 @@ export function JournalFormPage() {
       <div className="doc-title">
         <div>
           <p className="eyebrow">บัญชี › ลงประจำวัน › {book ? `${book.code} ${book.name_th}` : 'สมุดรายวัน'}</p>
-          <h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}{book && <span className="book-pill" title="สมุดรายวันของใบสำคัญนี้">{isNew ? 'กำลังบันทึก: ' : ''}{book.prefix} {book.name_th}</span>}</h1>
+          <div className="title-row"><h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}</h1>{book && <span className="book-pill" title="สมุดรายวันของใบสำคัญนี้">{isNew ? 'กำลังบันทึก: ' : ''}{book.prefix} {book.name_th}</span>}</div>
         </div>
         <div className="doc-state">
           {isNew && <Pill tone="d">ใหม่ — ยังไม่บันทึก</Pill>}
