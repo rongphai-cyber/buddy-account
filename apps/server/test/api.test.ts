@@ -2370,6 +2370,20 @@ describe('Buddy Account API (PGlite)', () => {
     cookie = admin;
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
+  it('stock data check report 4.6 (T6.5): negative balance and value without quantity flagged, isolation', async () => {
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const code = '02-TEST-000065';
+    const item = (await call('POST', '/api/v1/items', { code, name_th: 'สินค้าตรวจยอด', base_unit_id: unit, std_cost: '5' })).body.id;
+    const iss = (await call('POST', '/api/v1/stock-issues', { doc_type_id: (await call('GET', '/api/v1/trade-defaults/OU')).body.types[0].id, doc_date: '2027-08-01', warehouse_id: w1, lines: [{ item_id: item, qty: 3, warehouse_id: w1 }] })).body;
+    const run = async () => (await call('POST', '/api/v1/rpt/4.6/run', { params: { as_of: '2027-12-31', item_from: code, item_to: code, snapshot: true } })).body;
+    const r = await run();
+    expect(r.rows[0].c).toMatchObject({ code, qty: '-3', issue: expect.stringMatching(/จำนวนติดลบ/) });
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await run()).rows.at(-1).c.name).toBe('ไม่พบรายการผิดปกติ');
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    if (iss.id) expect((await call('POST', `/api/v1/stock-issues/${iss.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

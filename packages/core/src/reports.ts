@@ -141,6 +141,7 @@ export const REPORT_TREE: ReportNode[] = [
     leaf('4.3', 'สินค้าต่ำกว่าจุดสั่งซื้อ', 'RP.IC', [F.asOf, F.item, F.wh]),
     leaf('4.4', 'ใบเบิก/โอน/ปรับปรุงสินค้า', 'RP.IC', [F.date, F.detail, F.cancelled], { landscape: true }),
     leaf('4.5', 'รายละเอียดสินค้า', 'RP.IC', [F.item], { landscape: true }),
+    leaf('4.6', 'ตรวจยอดสินค้า (ติดลบ/มูลค่าค้าง/เทียบยอดที่ย้ายมา)', 'RP.IC', [F.asOf, F.item, { key: 'snapshot', kind: 'check', label: 'เทียบยอดคงเหลือที่ย้ายมาจาก Express', default: true }], { landscape: true }),
   ] },
   { code: '5', title: 'รายงานบัญชี', children: [
     leaf('5.1', 'ผังบัญชี', 'RP.GL', [F.acc]),
