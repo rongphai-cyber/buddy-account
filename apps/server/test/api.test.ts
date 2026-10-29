@@ -1997,6 +1997,31 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', `/api/v1/ar-receipts/${re.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     for (const x of [i1, i2]) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('cheque + inventory reports (T5.4): balances as of, movement card, cheques in hand, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const cus = (await call('GET', '/api/v1/customers?q=C520')).body.rows[0].id;
+    const code = '02-TEST-000054';
+    const it = (await call('POST', '/api/v1/items', { code, name_th: 'สินค้ารายงาน', base_unit_id: unit, std_cost: '1' })).body.id;
+    const ju = (await call('POST', '/api/v1/stock-adjustments', { doc_type_id: await typeOf('JU'), doc_date: '2027-04-01', lines: [{ item_id: it, warehouse_id: w1, qty: 10, unit_cost: 5 }] })).body;
+    const ou = (await call('POST', '/api/v1/stock-issues', { doc_type_id: await typeOf('OU'), doc_date: '2027-04-10', lines: [{ item_id: it, warehouse_id: w1, qty: 4 }] })).body;
+    const chq = (await call('POST', '/api/v1/cheques', { direction: 'R', cheque_no: 'QR-RPT-54', cheque_date: '2027-04-05', customer_id: cus, amount: 777 })).body.id;
+    const run = async (c: string, params: Record<string, unknown>) => (await call('POST', `/api/v1/rpt/${c}/run`, { params: { item_from: code, item_to: code, ...params } })).body;
+    expect((await run('4.2.7', { as_of: '2027-04-05' })).rows[0].c).toMatchObject({ code, qty: '10.0000', value: '50.00' });
+    expect((await run('4.2.1', { as_of: '2027-04-30' })).rows.at(-1).c).toMatchObject({ qty: '6', value: '30.00' });
+    const card = await run('4.1.1', { date_from: '2027-04-05', date_to: '2027-04-30' });
+    expect(card.rows.map((r: { t?: string; c: { bal?: string } }) => `${r.t ?? 'row'}:${r.c.bal ?? ''}`)).toEqual(['group:', 'row:10', 'row:6', 'sub:6', 'total:']);
+    expect((await run('4.4', { date_from: '2027-04-01', date_to: '2027-04-30', detail: true })).rows.filter((r: { t?: string }) => !r.t).map((r: { c: { no: string } }) => r.c.no)).toEqual(expect.arrayContaining([ju.doc_no, ou.doc_no]));
+    const inHand = await run('3.1', { as_of: '2027-04-30', customer_from: 'C520', customer_to: 'C520' });
+    expect(inHand.rows.at(-1).c).toMatchObject({ amount: '777.00' });
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await run('4.2.1', { as_of: '2027-04-30' })).rows).toHaveLength(1);
+    expect((await run('3.1', { as_of: '2027-04-30' })).rows.at(-1).c.amount).toBe('0.00');
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('DELETE', `/api/v1/cheques/${chq}`)).status).toBe(200);
+    for (const [path, id] of [['stock-issues', ou.id], ['stock-adjustments', ju.id]]) expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
