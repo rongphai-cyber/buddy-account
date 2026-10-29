@@ -5,6 +5,7 @@ import { api } from '../../api';
 import { useCan } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
+import { MasterNotesDialog } from '../../components/Notes';
 import { Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 
 type F = Record<string, string | null>;
@@ -141,7 +142,7 @@ export function ItemForm({ kind, id, onClose, onSaved }: { kind: ItemKind; id: s
   };
   const remove = () => api.del(`/api/v1/${K.path}/${id}`).then(() => { toast(`ลบ${K.label}แล้ว`); onSaved(); }).catch((e) => { setAsk(null); toastError(e); });
   const copy = () => api.post<{ id: string }>(`/api/v1/kits/${id}/copy`, { code: copyCode }).then(() => { toast(`คัดลอกเป็น ${copyCode.toUpperCase()} แล้ว`); setAsk(null); onSaved(); }).catch((e) => toastError(e));
-  useHotkeys({ F9: allowed ? save : undefined, 'Ctrl+S': allowed ? save : undefined }, []);
+  useHotkeys({ F9: allowed ? save : undefined, 'Ctrl+S': allowed ? save : undefined, 'Alt+R': id ? () => setShowNotes(true) : undefined }, []);
 
   const udf = (settings.data?.values['ic.udf'] ?? {}) as Record<string, { use?: boolean; th?: string }>;
   const udfOn = Object.entries(UDF_LABELS).filter(([k]) => udf[k]?.use);
@@ -153,10 +154,12 @@ export function ItemForm({ kind, id, onClose, onSaved }: { kind: ItemKind; id: s
     ...((kind === 'stock' || kind === 'expense') && udfOn.length ? [{ key: 'udf', label: 'ฟิลด์เพิ่มเติม' }] : []),
     ...(id && cur.data?.used_in_kits.length ? [{ key: 'kits', label: 'อยู่ในสินค้าชุด', badge: cur.data.used_in_kits.length }] : [])];
   const priceLabel = kind === 'income' || kind === 'expense';
+  const [showNotes, setShowNotes] = useState(false);
 
   return (
     <Modal title={id ? `แก้ไข${K.label} ${f?.code ?? ''}` : `เพิ่ม${K.label}`} size="wide" onClose={onClose}
       footer={<>
+        {id && <button onClick={() => setShowNotes(true)} title="หมายเหตุเพิ่มเติม (Alt+R)">📝 หมายเหตุ</button>}
         {id && kind === 'kit' && can('add') && <button onClick={() => { setCopyCode(''); setAsk('copy'); }}>คัดลอกสินค้าชุด</button>}
         {id && can('delete') && <button className="danger" onClick={() => setAsk('delete')}>ลบ</button>}
         <button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button>
@@ -233,6 +236,7 @@ export function ItemForm({ kind, id, onClose, onSaved }: { kind: ItemKind; id: s
       {ask === 'copy' && <Confirm title="คัดลอกสินค้าชุด" text={<>สร้างชุดใหม่ที่เหมือน <b>{f?.code}</b> ทุกอย่าง ยกเว้นรหัส</>} okText="คัดลอก" onClose={() => setAsk(null)} onOk={copy}>
         <Field label="ตั้งรหัสใหม่เป็น" req><input autoFocus className="mono" value={copyCode} maxLength={30} onChange={(e) => setCopyCode(e.target.value.toUpperCase())} /></Field>
       </Confirm>}
+      {showNotes && id && <MasterNotesDialog entity="item" id={id} title={f?.code ?? ''} canEdit={can('edit')} onClose={() => setShowNotes(false)} />}
     </Modal>
   );
 }

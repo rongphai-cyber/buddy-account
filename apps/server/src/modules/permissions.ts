@@ -113,6 +113,9 @@ const DOC = (action: Action): Rule => ({ kind: 'menu', menu: 'GL.JNL', action, p
   const t = b.type_id && /^[0-9a-f-]{36}$/i.test(b.type_id) ? await db.selectFrom('md_doc_type').select('doc_class').where('id', '=', b.type_id).where('company_id', '=', companyId).executeTakeFirst() : undefined;
   return t ? docMenuOf(t.doc_class) : 'GL.JNL';
 } });
+/** หมายเหตุแฟ้มหลัก: สิทธิ์ตามเมนูของแฟ้ม (สินค้า/ลูกค้า/ผู้จำหน่าย) */
+const NOTE_MENU: Record<string, string> = { item: 'IC.ITEM', customer: 'SA.CUS', supplier: 'PU.SUP' };
+const MNOTE = (action: Action): Rule => ({ kind: 'menu', menu: 'IC.ITEM', action, pick: async (req) => NOTE_MENU[String((req.params as { entity?: string }).entity)] ?? 'IC.ITEM' });
 const LOOKUP: Rule = { kind: 'lookup' }, SELF: Rule = { kind: 'self' }, OPEN: Rule = { kind: 'open' };
 export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/health': OPEN, 'GET /api/v1/setup/status': OPEN, 'POST /api/v1/setup': OPEN, 'POST /api/v1/auth/login': OPEN,
@@ -221,6 +224,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/rpt/available': LOOKUP,
   'POST /api/v1/rpt/:code/run': { kind: 'menu', menu: 'RP.CENTER', action: 'read', pick: async (req) => findReport(String((req.params as { code?: string }).code ?? ''))?.menu ?? 'RP.CENTER' },
   // พิมพ์/รับรองเอกสาร รายละเอียดแฟ้มข้อมูล แบบฟอร์ม รายงานของผู้ใช้ (บทที่ 25 · S-UI-08..12)
+  'GET /api/v1/notes/:kind/:id': DOC('read'), 'PUT /api/v1/notes/:kind/:id': DOC('edit'),
+  'GET /api/v1/master-notes/:entity/:id': MNOTE('read'), 'PUT /api/v1/master-notes/:entity/:id': MNOTE('edit'),
   'GET /api/v1/print/:kind/:id': DOC('read'), 'POST /api/v1/print/:kind/:id/printed': DOC('print'),
   'POST /api/v1/approve/:kind/:id': DOC('approve'), 'POST /api/v1/approve-range': DOC('approve'), 'GET /api/v1/record-info/:kind/:id': DOC('read'),
   'GET /api/v1/print-forms': LOOKUP, 'PUT /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'edit'), 'DELETE /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'delete'),

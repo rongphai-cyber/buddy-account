@@ -156,6 +156,10 @@ export function TradeFormPage({ path }: { path: string }) {
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [askCancel, setAskCancel] = useState(false);
+  // ถามภาระภาษีเมื่อรายการแรกเป็นสินค้าบริการ (S-SL-01 / S-PU-C1) · ถามของแถมเมื่อไม่ป้อนราคา (S-PU-C3)
+  const [askBasis, setAskBasis] = useState(false);
+  const [askFree, setAskFree] = useState<{ key: number; andNew: boolean } | null>(null);
+  const [notFree, setNotFree] = useState<Set<number>>(new Set());
   const [reason, setReason] = useState('');
   const [dirty, setDirty] = useState(false);
   const date0 = me?.work_date ?? todayIso();
@@ -197,6 +201,8 @@ export function TradeFormPage({ path }: { path: string }) {
   };
   const pickItem = (k: number, it: ItemHit | null) => {
     if (!it) return setLine(k, { item_id: '', item_code: '' });
+    const first = !lines.some((l) => l.item_id && l.key !== k);
+    if (first && it.item_type === '3' && !K.order && h?.price_type !== '0') setAskBasis(true);
     const ar = K.module === 'AR';
     const price = ar ? (it[`price_${h?.price_level || '1'}` as 'price_1'] ?? it.price_1) : it.std_cost;
     const unit = ar ? (it.sales_unit_id ?? it.base_unit_id) : (it.purchase_unit_id ?? it.base_unit_id);
@@ -206,8 +212,10 @@ export function TradeFormPage({ path }: { path: string }) {
   const addLine = () => { setLines((ls) => [...ls, { key: ++seq, item_id: '', item_code: '', description: '', warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: '', unit_id: null, factor: '1', unit_price: '', discount_text: '', is_free: false, return_to_stock: K.cls === 'CN' || K.cls === 'DN', vat_exempt: false }]); };
   if (h && !lines.length && !id) addLine();
 
-  const save = async (andNew = false) => {
+  const save = async (andNew = false, ok: Set<number> = notFree) => {
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
+    const zero = lines.find((l) => l.item_id && !l.is_free && !ok.has(l.key) && d(l.unit_price || 0).isZero() && K.cls !== 'QT');
+    if (zero) { setAskFree({ key: zero.key, andNew }); return; }
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, party_id: h.party?.id, bill_to_customer_id: h.bill_to?.id ?? null, party_tax_branch_no: h.party_tax_branch_no || null, your_ref: h.your_ref || null,
       ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, ref_date: supInv ? refDate || null : null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
@@ -273,6 +281,7 @@ export function TradeFormPage({ path }: { path: string }) {
             {K.module === 'AR' && <Field label="เขตการขาย"><LkSelect rows={lk.data?.['40']} value={h.sales_area_code} disabled={readOnly} onChange={(v) => set({ sales_area_code: v })} /></Field>}
             <Field label="ขนส่งโดย"><LkSelect rows={lk.data?.['41']} value={h.ship_via_code} disabled={readOnly} onChange={(v) => set({ ship_via_code: v })} /></Field>
             <Field label="ประเภทราคา"><select value={h.price_type} disabled={readOnly} onChange={(e) => set({ price_type: e.target.value as Head['price_type'] })}><option value="0">0 ยกเว้นภาษี</option><option value="1">1 รวมภาษีแล้ว</option><option value="2">2 แยก VAT</option></select></Field>
+            {K.module === 'AP' && !K.order && <Field label="ภาระภาษีซื้อ" hint="บริการ: เกณฑ์เงินสด = ภาษีซื้อเกิดเมื่อจ่ายเงิน"><select value={h.vat_basis} disabled={readOnly} onChange={(e) => set({ vat_basis: e.target.value as '1' | '2' })}><option value="1">เกณฑ์สิทธิ</option><option value="2">เกณฑ์เงินสด</option></select></Field>}
             {K.module === 'AR' && !K.order && <Field label="ภาระภาษีขาย" hint="บริการ/ผ่อนชำระ เลือกเกณฑ์เงินสดได้"><select value={h.vat_basis} disabled={readOnly} onChange={(e) => set({ vat_basis: e.target.value as '1' | '2' })}><option value="1">เกณฑ์สิทธิ</option><option value="2">เกณฑ์เงินสด</option></select></Field>}
           </div>
         </div>
@@ -374,6 +383,16 @@ export function TradeFormPage({ path }: { path: string }) {
       {cancelLine && <CancelLineModal K={K} headerId={id!} line={cancelLine} onClose={() => setCancelLine(null)} onDone={async () => { setCancelLine(null); await qc.refetchQueries({ queryKey: [K.path, 'one', id] }); setH(null); qc.invalidateQueries({ queryKey: [K.path] }); }} />}
       {askConvert && <Confirm title="แปลงเป็นใบสั่งขาย" text={<>สร้างใบสั่งขายจาก <b>{cur.data?.doc_no}</b> (คัดลอกลูกค้า รายการสินค้า ราคา ส่วนลด) ลงวันที่ทำงาน</>} okText="สร้างใบสั่งขาย" onClose={() => setAskConvert(false)}
         onOk={async () => { try { const r = await api.post<{ id: string; doc_no: string }>(`/api/v1/quotations/${id}/convert`, { doc_date: me?.work_date ?? todayIso() }); toast(`สร้างใบสั่งขาย ${r.doc_no} แล้ว`); setAskConvert(false); nav(`/sa/orders/${r.id}`); } catch (e) { setAskConvert(false); setErr(e); } }} />}
+      {askBasis && h && <Modal title={K.module === 'AR' ? 'ภาระภาษีขาย' : 'ภาระภาษีซื้อ'} size="confirm" onClose={() => setAskBasis(false)}
+        footer={<><button className="primary" autoFocus onClick={() => { set({ vat_basis: '1' }); setAskBasis(false); }}>เกณฑ์สิทธิ</button><button onClick={() => { set({ vat_basis: '2' }); setAskBasis(false); }}>เกณฑ์เงินสด</button></>}>
+        <p>ภาษี{K.module === 'AR' ? 'ขาย' : 'ซื้อ'}ของสินค้าบริการในที่นี้เป็นแบบ</p>
+        <p className="small muted">เกณฑ์สิทธิ = ภาษีเกิด ณ วันที่ใบกำกับ · เกณฑ์เงินสด = ภาษีเกิดเมื่อ{K.module === 'AR' ? 'รับ' : 'จ่าย'}ชำระ (แก้ภายหลังได้ที่ช่อง "ภาระภาษี")</p>
+      </Modal>}
+      {askFree && (() => { const l = lines.find((x) => x.key === askFree.key); return <Modal title="ไม่ได้ป้อนราคา" size="confirm" onClose={() => setAskFree(null)}
+        footer={<><button onClick={() => setAskFree(null)}>ป้อนใหม่</button><button className="primary" autoFocus onClick={() => { const k = askFree.key; setAskFree(null); setLines((ls) => ls.map((x) => (x.key === k ? { ...x, is_free: true } : x))); setDirty(true); toast(`ทำเครื่องหมายของแถม ${l?.item_code ?? ''} แล้ว — กดบันทึกอีกครั้ง`); }}>ของแถม</button>
+          <button onClick={() => { const ok = new Set(notFree).add(askFree.key); setNotFree(ok); const n = askFree.andNew; setAskFree(null); void save(n, ok); }}>ไม่ใช่</button></>}>
+        <p>รายการ <b className="mono">{l?.item_code}</b> {l?.description} ไม่ได้ป้อนราคา — เป็นรายการ{K.module === 'AR' ? 'แถมให้ลูกค้า' : 'ที่ผู้จำหน่ายแถมให้'}ใช่หรือไม่?</p>
+      </Modal>; })()}
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ)</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
       </Confirm>}

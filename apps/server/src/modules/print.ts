@@ -92,14 +92,18 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
         WHERE b.bill_header_id = ${id} AND b.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows
       .map((r, i) => ({ no: String(i + 1), code: txt(r.doc_no), ref_date: txt(r.doc_date), due_date: txt(r.due_date), name: DOC_CLASSES[r.doc_class ?? '']?.label ?? '', amount: money(r.amount) }));
   } else {
-    const rows = (await sql<Row & { is_free: boolean }>`SELECT l.line_kind, it.code AS item_code, g.account_no, g.name_th AS account_name, l.description, w.code AS wh, l.qty, u.name_th AS unit,
+    const rows = (await sql<Row & { is_free: boolean }>`SELECT l.id AS line_id, l.line_kind, it.code AS item_code, g.account_no, g.name_th AS account_name, l.description, w.code AS wh, l.qty, u.name_th AS unit,
           l.unit_price, l.discount_text, l.line_amount, l.cost_unit, l.cost_amount, l.is_free, dp.code AS dept
         FROM doc_line l LEFT JOIN md_item it ON it.id = l.item_id LEFT JOIN gl_account g ON g.id = l.account_id LEFT JOIN md_warehouse w ON w.id = l.warehouse_id
         LEFT JOIN md_unit u ON u.id = l.unit_id LEFT JOIN md_department dp ON dp.id = l.department_id
        WHERE l.header_id = ${id} AND l.deleted_at IS NULL AND l.line_kind <> 'K' ORDER BY l.line_no`.execute(db)).rows;
     const stockCost = fam === 'stock';
+    const lineNotes = new Map<string, string[]>();
+    for (const n of (await sql<{ line_id: string; text: string }>`SELECT line_id, text FROM doc_note WHERE header_id = ${id} AND line_id IS NOT NULL AND deleted_at IS NULL ORDER BY seq`.execute(db)).rows) {
+      if (!lineNotes.has(n.line_id)) lineNotes.set(n.line_id, []); lineNotes.get(n.line_id)!.push(n.text);
+    }
     lines = rows.map((r, i) => ({
-      no: String(i + 1), code: txt(r.item_code || r.account_no), name: txt(r.description || r.account_name) + (r.is_free ? ' (ของแถม)' : ''), wh: txt(r.wh), dept: txt(r.dept),
+      no: String(i + 1), code: txt(r.item_code || r.account_no), name: txt(r.description || r.account_name) + (r.is_free ? ' (ของแถม)' : '') + (lineNotes.get(r.line_id!) ? '\n' + lineNotes.get(r.line_id!)!.join('\n') : ''), wh: txt(r.wh), dept: txt(r.dept),
       qty: r.qty !== null && !d(r.qty).isZero() ? d(r.qty).toString() : '', unit: txt(r.unit),
       price: stockCost ? (r.cost_unit ? d(r.cost_unit).toFixed(2) : '') : r.unit_price !== null && !d(r.unit_price).isZero() ? d(r.unit_price).toFixed(2) : '',
       disc: txt(r.discount_text), amount: stockCost ? (r.cost_amount ? money(r.cost_amount) : '') : money(r.line_amount),

@@ -640,3 +640,6 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .pair.three { grid-template-columns: 1fr 1fr 1fr; }
 @media (max-width: 1100px) { .fa-grid { grid-template-columns: 1fr; } }
 .fa-grid .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.note-lines { display: grid; gap: 4px; margin-top: 8px; }
+.note-line { display: grid; grid-template-columns: 24px 1fr 28px; gap: 4px; align-items: center; }
+.doc-sheet table.ds-lines td { white-space: pre-line; }

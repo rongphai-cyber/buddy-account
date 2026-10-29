@@ -2410,6 +2410,34 @@ describe('Buddy Account API (PGlite)', () => {
     expect(xs.some((r: { username: string | null }) => r.username === 'clerk0')).toBe(false);
     cookie = admin;
   });
+  it('notes Alt+R (T7.1): document + line notes printed, master notes, cancelled doc locked, isolation', async () => {
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const cus = (await call('GET', '/api/v1/customers?q=C520')).body.rows[0].id;
+    const item = (await call('POST', '/api/v1/items', { code: '02-TEST-000071', name_th: 'สินค้าหมายเหตุ', base_unit_id: unit, std_cost: '1' })).body.id;
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2027-09-01', party_id: cus, price_type: '0', vat_rate: 0, warehouse_id: w1, lines: [{ item_id: item, qty: 1, unit_price: 50 }] })).body;
+    const n0 = (await call('GET', `/api/v1/notes/doc/${iv.id}`)).body;
+    expect([n0.editable, n0.doc, n0.lines.length]).toEqual([true, [], 1]);
+    const lid = n0.lines[0].line_id;
+    expect((await call('PUT', `/api/v1/notes/doc/${iv.id}`, { doc: ['ส่งของก่อน 10 โมง', ' ', 'โทรก่อนส่ง'], lines: { [lid]: ['สีแดง'] } })).status).toBe(200);
+    const n1 = (await call('GET', `/api/v1/notes/doc/${iv.id}`)).body;
+    expect([n1.doc, n1.lines[0].notes]).toEqual([['ส่งของก่อน 10 โมง', 'โทรก่อนส่ง'], ['สีแดง']]);
+    const p = (await call('GET', `/api/v1/print/doc/${iv.id}`)).body.data;
+    expect([p.notes, p.lines[0].name.endsWith('\nสีแดง')]).toEqual([['ส่งของก่อน 10 โมง', 'โทรก่อนส่ง'], true]);
+    expect((await call('PUT', `/api/v1/notes/doc/${iv.id}`, { doc: [], lines: { [cus]: ['x'] } })).body.error.message).toMatch(/ไม่อยู่ในเอกสารนี้/);
+    // แฟ้มหลัก: สินค้า 10 บรรทัด ลูกค้า 5 บรรทัด
+    expect((await call('PUT', `/api/v1/master-notes/item/${item}`, { notes: ['เก็บในที่แห้ง'] })).status).toBe(200);
+    expect((await call('GET', `/api/v1/master-notes/item/${item}`)).body).toEqual({ max: 10, notes: ['เก็บในที่แห้ง'] });
+    expect((await call('PUT', `/api/v1/master-notes/customer/${cus}`, { notes: ['1', '2', '3', '4', '5', '6'] })).status).toBe(400);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/notes/doc/${iv.id}`)).status).toBe(404);
+    expect((await call('PUT', `/api/v1/master-notes/item/${item}`, { notes: ['x'] })).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('PUT', `/api/v1/notes/doc/${iv.id}`, { doc: ['x'] })).body.error.message).toMatch(/ยกเลิกแล้ว/);
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

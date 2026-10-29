@@ -6,6 +6,7 @@ import { fmt, formatDate, PRINT_HEAD_FIELDS, type PrintFamily, type PrintFormEnt
 import { api } from '../api';
 import { useCan, useSession } from '../session';
 import { DateInput, ErrorBox, Field, Modal, Pill, toast, toastError, useHotkeys, useYearSystem } from '../ui';
+import { DocNotesDialog } from './Notes';
 
 export interface PrintData {
   kind: 'doc' | 'journal'; scope: string; family: PrintFamily; title: string; title_en: string; doc_no: string; doc_date: string; cancelled: boolean;
@@ -100,6 +101,7 @@ export function DocActions({ kind, id: rawId, menu, typeId }: { kind: 'doc' | 'j
   const [printing, setPrinting] = useState<PrintFormEntry | null>(null);
   const [info, setInfo] = useState(false);
   const [range, setRange] = useState(false);
+  const [notes, setNotes] = useState(false);
   const r = q.data;
   const approved = !!r?.data.approved;
   const screenOnly = me?.perms?.[menu]?.print === 'S';
@@ -138,6 +140,7 @@ export function DocActions({ kind, id: rawId, menu, typeId }: { kind: 'doc' | 'j
     'Ctrl+O': id && can('approve') && approved ? () => approve(true) : undefined,
     'Alt+Shift+O': can('approve') ? () => setRange(true) : undefined,
     'Ctrl+I': id ? () => setInfo(true) : undefined,
+    'Alt+R': id && kind === 'doc' ? () => setNotes(true) : undefined,
   });
 
   return (
@@ -153,6 +156,7 @@ export function DocActions({ kind, id: rawId, menu, typeId }: { kind: 'doc' | 'j
       </span>
       {id && r && (approved ? <button disabled={!can('approve')} onClick={() => approve(true)} title="ยกเลิกการรับรอง (Ctrl+O)">✔ รับรองแล้ว · ยกเลิก</button>
         : r.rule.approveLevel > 0 && <button disabled={!can('approve')} onClick={() => approve(false)} title={`รับรองเอกสาร — ต้องระดับ ${r.rule.approveLevel} ขึ้นไป (Alt+O)`}>✔ รับรอง <kbd>Alt+O</kbd></button>)}
+      {kind === 'doc' && <button disabled={!id} onClick={() => setNotes(true)} title={id ? 'หมายเหตุเพิ่มเติม (Alt+R)' : 'บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุได้'}>📝 หมายเหตุ</button>}
       <button disabled={!id} onClick={() => setInfo(true)} title="รายละเอียดแฟ้มข้อมูล (Ctrl+I)">ℹ</button>
       {r && r.data.print_count > 0 && <Pill tone="n">พิมพ์แล้ว {r.data.print_count} ครั้ง</Pill>}
       {preview && r && <Modal title={`ดูทางจอภาพ — ${preview.slot}. ${preview.name}`} size="wide" onClose={() => setPreview(null)}
@@ -162,6 +166,7 @@ export function DocActions({ kind, id: rawId, menu, typeId }: { kind: 'doc' | 'j
       </Modal>}
       {printing && r && createPortal(<div className="doc-print"><PrintSheet data={r.data} form={printing} ys={ys} /></div>, document.body)}
       {info && id && <RecordInfo kind={kind} id={id} onClose={() => setInfo(false)} />}
+      {notes && id && <DocNotesDialog id={id} canEdit={can('edit')} onClose={() => setNotes(false)} />}
       {range && <ApproveRange kind={kind} scope={r?.data.scope} typeId={typeId ?? null} onClose={() => setRange(false)} onDone={() => qc.invalidateQueries({ queryKey: ['print'] })} />}
     </>
   );

@@ -5,6 +5,7 @@ import { api, type FiscalYear } from '../../api';
 import { useCan } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, useLookups } from '../../components/LkSelect';
+import { MasterNotesDialog } from '../../components/Notes';
 import { Confirm, cx, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 
 /* ---------------------------------------------------------------- ส่วนร่วม */
@@ -128,17 +129,19 @@ const toForm = (r: Record<string, unknown>, keys: string[]): Form => Object.from
 }));
 
 /** โครงหน้าต่างแก้ไขลูกค้า/ผู้จำหน่าย/พนักงานขาย: บันทึก F9, ลบเมื่อยังไม่มีเอกสาร */
-function MasterModal({ title, menu, isNew, busy, ready, err, onClose, onSave, onDelete, children, delText }: { title: string; menu: string; isNew: boolean; busy: boolean; ready: boolean; err: unknown; onClose: () => void; onSave: () => void; onDelete: () => Promise<void>; children: ReactNode; delText: string }) {
+function MasterModal({ title, menu, isNew, busy, ready, err, onClose, onSave, onDelete, children, delText, notes }: { title: string; menu: string; isNew: boolean; busy: boolean; ready: boolean; err: unknown; onClose: () => void; onSave: () => void; onDelete: () => Promise<void>; children: ReactNode; delText: string; notes?: { entity: 'customer' | 'supplier'; id: string | null; code: string } }) {
   const can = useCan(menu);
   const [ask, setAsk] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const allowed = can(isNew ? 'add' : 'edit');
-  useHotkeys({ F9: allowed ? onSave : undefined, 'Ctrl+S': allowed ? onSave : undefined }, []);
+  useHotkeys({ F9: allowed ? onSave : undefined, 'Ctrl+S': allowed ? onSave : undefined, 'Alt+R': notes?.id ? () => setShowNotes(true) : undefined }, []);
   return (
     <Modal title={title} size="wide" onClose={onClose}
-      footer={<>{!isNew && can('delete') && <button className="danger" onClick={() => setAsk(true)}>ลบ</button>}<button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button>
+      footer={<>{notes?.id && <button onClick={() => setShowNotes(true)} title="หมายเหตุเพิ่มเติม (Alt+R)">📝 หมายเหตุ</button>}{!isNew && can('delete') && <button className="danger" onClick={() => setAsk(true)}>ลบ</button>}<button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button>
         <button className="primary" disabled={!ready || busy || !allowed} title={allowed ? undefined : 'ไม่มีสิทธิ์'} onClick={onSave}>บันทึก <kbd>F9</kbd></button></>}>
       <ErrorBox error={err} />
       {ready && <div onKeyDown={navKey}>{children}</div>}
+      {showNotes && notes?.id && <MasterNotesDialog entity={notes.entity} id={notes.id} title={notes.code} canEdit={can('edit')} onClose={() => setShowNotes(false)} />}
       {ask && <Confirm danger title="ลบข้อมูล" text={delText} okText="ลบ" onClose={() => setAsk(false)} onOk={() => onDelete().then(() => setAsk(false)).catch((e) => { setAsk(false); toastError(e); })} />}
     </Modal>
   );
@@ -186,7 +189,7 @@ export function CustomerForm({ id, onClose, onSaved }: { id: string | null; onCl
   const remove = () => api.del(`/api/v1/customers/${id}`).then(() => { toast('ลบลูกค้าแล้ว'); onSaved(); });
   const setShip = (i: number, p: Partial<ShipTo>) => setShips((s) => s.map((x, k) => (k === i ? { ...x, ...p } : x)));
   return (
-    <MasterModal title={id ? `แก้ไขลูกค้า ${val(f ?? {}, 'code')}` : 'เพิ่มลูกค้า'} menu="SA.CUS" isNew={!id} busy={busy} ready={!!f} err={err ?? cur.error} onClose={onClose} onSave={save} onDelete={remove}
+    <MasterModal notes={{ entity: 'customer', id, code: val(f ?? {}, 'code') }} title={id ? `แก้ไขลูกค้า ${val(f ?? {}, 'code')}` : 'เพิ่มลูกค้า'} menu="SA.CUS" isNew={!id} busy={busy} ready={!!f} err={err ?? cur.error} onClose={onClose} onSave={save} onDelete={remove}
       delText={`ลบลูกค้า ${val(f ?? {}, 'code')}? ลบได้เฉพาะลูกค้าที่ยังไม่มีเอกสาร — ถ้ามีเอกสารแล้วให้เปลี่ยนสถานะเป็นเลิกใช้`}>
       {f && <>
         <div className="form-grid party-head">
@@ -317,7 +320,7 @@ export function SupplierForm({ id, onClose, onSaved }: { id: string | null; onCl
   const remove = () => api.del(`/api/v1/suppliers/${id}`).then(() => { toast('ลบผู้จำหน่ายแล้ว'); onSaved(); });
   const setBank = (i: number, p: Partial<BankRow>) => setBanks((s) => s.map((x, k) => (k === i ? { ...x, ...p } : p.is_default ? { ...x, is_default: false } : x)));
   return (
-    <MasterModal title={id ? `แก้ไขผู้จำหน่าย ${val(f ?? {}, 'code')}` : 'เพิ่มผู้จำหน่าย'} menu="PU.SUP" isNew={!id} busy={busy} ready={!!f} err={err ?? cur.error} onClose={onClose} onSave={save} onDelete={remove}
+    <MasterModal notes={{ entity: 'supplier', id, code: val(f ?? {}, 'code') }} title={id ? `แก้ไขผู้จำหน่าย ${val(f ?? {}, 'code')}` : 'เพิ่มผู้จำหน่าย'} menu="PU.SUP" isNew={!id} busy={busy} ready={!!f} err={err ?? cur.error} onClose={onClose} onSave={save} onDelete={remove}
       delText={`ลบผู้จำหน่าย ${val(f ?? {}, 'code')}? ลบได้เฉพาะผู้จำหน่ายที่ยังไม่มีเอกสาร — ถ้ามีเอกสารแล้วให้เปลี่ยนสถานะเป็นเลิกใช้`}>
       {f && <>
         <div className="form-grid party-head">
