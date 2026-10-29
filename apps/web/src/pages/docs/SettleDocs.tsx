@@ -11,6 +11,7 @@ import { DocJournalTab } from './TradeDocs';
 import { PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
+import { DocVatTab, VatCheckAfterSave, vatTabLabel } from '../../components/DocTaxTabs';
 
 const kindOf = (path: string) => SETTLE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: SettleKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -98,6 +99,7 @@ export function SettleFormPage({ path }: { path: string }) {
   const [pays, setPays] = useState<Pay[]>([]);
   const [whts, setWhts] = useState<Wht[]>([]);
   const [tab, setTab] = useState('bills');
+  const [vatCheck, setVatCheck] = useState<string | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [askCancel, setAskCancel] = useState(false);
@@ -152,7 +154,8 @@ export function SettleFormPage({ path }: { path: string }) {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
       toast(`บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว`);
       setDirty(false);
-      qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] });
+      qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] }); qc.invalidateQueries({ queryKey: ['doc-vat'] });
+      if (K.cls === 'PS') setVatCheck(r.id);   // ภาษีซื้อเกณฑ์เงินสด (ค่าบริการ) เกิดตอนจ่าย: ตรวจรายการในแฟ้มภาษีซื้อ (ไม่มีรายการ = ปิดเอง)
       if (andNew) { setH(null); setPick({}); setPays([]); setWhts([]); nav(`${K.route}/new`, { replace: true }); }
       // โหลดจากเซิร์ฟเวอร์ใหม่ (ได้รหัสรายการภาษีหัก ณ ที่จ่ายสำหรับพิมพ์ 50 ทวิ)
       else if (!id) { nav(`${K.route}/${r.id}`, { replace: true }); setH(null); }
@@ -163,7 +166,7 @@ export function SettleFormPage({ path }: { path: string }) {
     try { await api.post(`/api/v1/${K.path}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว — บิลกลับเป็นค้างชำระ'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.path] }); nav(K.route); }
     catch (e) { setAskCancel(false); setErr(e); }
   };
-  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F5: () => setTab('bills'), F7: () => setTab('pay'),
+  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F5: () => setTab('bills'), F7: () => setTab('pay'), 'Ctrl+F7': id ? () => setTab('vat') : undefined, 'Ctrl+F10': K.cls === 'PS' ? () => setTab('wht') : undefined,
     'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
@@ -211,7 +214,7 @@ export function SettleFormPage({ path }: { path: string }) {
           </div>
         </div>
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'bills', label: `รายการบิลที่${rp(K)}ชำระ`, badge: chosen.length || undefined }, { key: 'pay', label: 'ชำระโดยอื่น ๆ (เช็ค/โอน)', badge: pays.length || undefined },
-          ...(K.cls === 'PS' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(id ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+          ...(K.cls === 'PS' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
         {tab === 'bills' && <div className="table-wrap lines">
           {!h.party ? <p className="empty">เลือก{partyWord(K)}ก่อน แล้วติ๊กบิลที่จะ{rp(K)}ชำระ</p> : <table className="grid">
             <thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={allOn} disabled={ro || !rows.length} onChange={(e) => { setPick(e.target.checked ? Object.fromEntries(rows.map((o) => [o.header_id, num(o.outstanding)])) : {}); setDirty(true); }} aria-label="เลือกทั้งหมด" /></th>
@@ -237,6 +240,7 @@ export function SettleFormPage({ path }: { path: string }) {
         </div>}
         {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} partyId={h.party?.id ?? null} readOnly={ro} payDate={h.payment_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
         {tab === 'wht' && K.cls === 'PS' && <WhtTable whts={whts} setWhts={setWhts} readOnly={ro} base={baseOfChosen} defaults={{ form: h.whtForm, rate: h.whtRate }} canAdd={chosen.length > 0} dirty={dirty} onDirty={() => setDirty(true)} />}
+        {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} vatBasis="2" />}
         {tab === 'gl' && id && <DocJournalTab id={id} />}
         <div className="trade-foot">
           <Field label="หมายเหตุ"><textarea rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
@@ -255,6 +259,7 @@ export function SettleFormPage({ path }: { path: string }) {
           </tbody></table>
         </div>
       </div>}
+      {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
       <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหารหัส'], ['F5', 'บิลค้าง'], ['F7', 'ชำระโดยอื่น'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ) · บิลที่ตัดกลับเป็นค้างชำระ · เช็คออกจากทะเบียน{K.cls === 'PS' ? ' · ภาษีหัก ณ ที่จ่ายยกเลิก' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>

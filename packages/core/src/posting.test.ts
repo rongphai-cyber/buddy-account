@@ -35,6 +35,19 @@ describe('posting engine (บทที่ 10)', () => {
       [], [], [{ amount: '1605', vat: '0', party_id: 's1', rectype: '3' }], r);
     expect(net(q)).toEqual({ ap: '1605.00', 'wht-p': '-45.00', cash: '-1560.00' });
   });
+  it('cash purchase / cash sale with WHT: WHT replaces that part of cash', () => {
+    const hp = buildPosting({ id: 'h', doc_class: 'HP', doc_type_id: null, customer_id: null, supplier_id: 's1', net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1', wht_amount: '30' },
+      [{ item_id: 'svc', net_amount: '1000' }], [], [], r);
+    expect(postingBalanced(hp)).toBe(true);
+    expect(net(hp)).toMatchObject({ ivat: '70.00', 'wht-p': '-30.00', cash: '-1040.00' });
+    const hs = buildPosting({ id: 'h', doc_class: 'HS', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1', wht_amount: '30' },
+      [{ item_id: 'svc', net_amount: '1000' }], [], [], r);
+    expect(postingBalanced(hs)).toBe(true);
+    expect(net(hs)).toMatchObject({ 'wht-r': '30.00', cash: '1040.00' });
+    // ไม่มีภาษีหัก ณ ที่จ่าย: เหมือนเดิม
+    expect(net(buildPosting({ id: 'h', doc_class: 'HP', doc_type_id: null, customer_id: null, supplier_id: 's1', net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1' },
+      [{ item_id: 'svc', net_amount: '1000' }], [], [], r))).toMatchObject({ cash: '-1070.00' });
+  });
   it('other expense with WHT: Dr expense + VAT, Cr WHT payable, rest cash (S-PU-08)', () => {
     const p = buildPosting({ id: 'h', doc_class: 'OE', doc_type_id: null, customer_id: null, supplier_id: null, net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1', wht_amount: '30' },
       [{ item_id: 'svc', net_amount: '1000' }], [], [], r);

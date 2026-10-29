@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { computeDoc, d, dueDate, fmt, TRADE_KINDS, todayIso, type TradeKind } from '@buddy/core';
+import { computeDoc, d, dueDate, fmt, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
@@ -10,6 +10,8 @@ import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
+import { DocVatTab, DocWhtList, VAT_KIND_OF, VatCheckAfterSave, vatTabLabel } from '../../components/DocTaxTabs';
+import { WhtTable, whtsBody, whtsFrom, type Wht } from './MoneyParts';
 
 const kindOf = (path: string) => TRADE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: TradeKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -190,6 +192,11 @@ export function TradeFormPage({ path }: { path: string }) {
   /** หักเงินมัดจำ: ใบมัดจำ → ยอดที่หัก */
   const [deps, setDeps] = useState<Record<string, string>>({});
   const [tab, setTab] = useState('lines');
+  /** ซื้อเงินสด: ภาษีหัก ณ ที่จ่าย (รายละเอียด) · ขายเงินสด: ยอดที่ลูกค้าหักไว้ · หลังบันทึก: เปิดรายการภาษีซื้อให้ตรวจ */
+  const [whts, setWhts] = useState<Wht[]>([]);
+  const [whtAmt, setWhtAmt] = useState('');
+  const [whtDef, setWhtDef] = useState<{ form: 'S03' | 'S53'; rate: string }>({ form: 'S53', rate: '3' });
+  const [vatCheck, setVatCheck] = useState<string | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [askCancel, setAskCancel] = useState(false);
@@ -210,6 +217,7 @@ export function TradeFormPage({ path }: { path: string }) {
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), party: { id: (c.customer_id ?? c.supplier_id)!, code: c.party_code ?? '', name: c.party_name }, bill_to: c.bill_to_customer_id ? { id: c.bill_to_customer_id, code: '' } : null,
       party_tax_branch_no: c.party_tax_branch_no ?? '', your_ref: c.your_ref ?? '', ref: c.ref_no ? { id: c.ref_header_id ?? '', code: c.ref_no } : null, department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '', sales_area_code: c.sales_area_code ?? '', ship_via_code: c.ship_via_code ?? '',
       credit_days: c.credit_days === null ? '' : String(c.credit_days), price_type: (c.price_type ?? '2') as Head['price_type'], vat_rate: num(c.vat_rate), vat_basis: (c.vat_basis === '2' ? '2' : '1'), discount_text: c.discount_text ?? '', remark: c.remark ?? '', price_level: '1' });
+    setWhts(whtsFrom((cur.data as { wht?: Parameters<typeof whtsFrom>[0] }).wht ?? [])); setWhtAmt(d(c.wht_amount ?? 0).isZero() ? '' : num(c.wht_amount));
     setLines(cur.data.lines.map((l) => ({ key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), warehouse_id: (l.warehouse_id as string) ?? null, qty: num(l.qty), unit_id: (l.unit_id as string) ?? null, factor: num(l.factor) || '1',
       unit_price: num(l.unit_price), discount_text: String(l.discount_text ?? ''), is_free: !!l.is_free, return_to_stock: !!l.return_to_stock, vat_exempt: l.vat_code === '0',
       source_line_id: (l.source_line_id as string) ?? null, source_no: (l.source as { doc_no?: string } | null)?.doc_no ?? null, line_id: l.id as string,
@@ -227,11 +235,14 @@ export function TradeFormPage({ path }: { path: string }) {
   const depOpen = useQuery({ enabled: canDeposit && !!h?.party, queryKey: ['deposits-open', K.module, h?.party?.id, id], queryFn: () => api.get<{ rows: Array<{ header_id: string; doc_no: string; doc_date: string; price_type: string; amount: string; outstanding: string }> }>('/api/v1/deposits/open', { module: K.module, party_id: h!.party!.id, ...(id ? { invoice_id: id } : {}) }), staleTime: 0 });
   const calc = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, deposit_amount: depTotal.toFixed(2), lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_exempt: l.vat_exempt })) }), [h, lines, depTotal]);
   const payTotal = pays.reduce((s, p) => s.plus(d(p.amount || 0)), d(0));
+  const whtTotal = K.cls === 'HP' ? whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0)) : K.cls === 'HS' ? d(whtAmt || 0) : d(0);
+  const cashLeft = calc ? d(calc.net_amount).minus(payTotal).minus(whtTotal) : d(0);
 
   const pickParty = async (p: { id: string; code: string; name: string } | null) => {
     setDeps({});
     if (!p) return set({ party: null });
     const x = await api.get<Record<string, string | null>>(`${partyEndpoint(K)}/${p.id}`);
+    if (K.cls === 'HP') setWhtDef({ form: wht50FormOf(x.wht_form, x.tax_id) === '3' ? 'S03' : 'S53', rate: x.wht_rate && !d(x.wht_rate).isZero() ? d(x.wht_rate).toString() : '3' });
     set({ party: p, credit_days: x.credit_days === null || x.credit_days === undefined ? '' : String(x.credit_days), discount_text: x.discount_text ?? '', party_tax_branch_no: x.tax_branch_no ?? '',
       ...(K.party === 'customer' ? { salesperson_id: x.salesperson_id ?? '', sales_area_code: x.sales_area_code ?? '', ship_via_code: x.ship_via_code ?? '', price_level: x.price_level && x.price_level !== '0' ? x.price_level : '1' }
         : { ship_via_code: x.ship_via_code ?? '', ...(x.price_type ? { price_type: x.price_type as Head['price_type'] } : {}), ...(x.vat_rate ? { vat_rate: num(x.vat_rate) } : {}) }) });
@@ -283,15 +294,18 @@ export function TradeFormPage({ path }: { path: string }) {
       lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1', unit_price: l.unit_price || '0', discount_text: l.discount_text || null, is_free: l.is_free, return_to_stock: l.return_to_stock, source_line_id: l.source_line_id ?? null })),
       delivery_date: K.order && K.cls !== 'QT' ? delivery || null : null,
       payments: pays.filter((p) => p.payment_method_id && d(p.amount || 0).gt(0)).map((p) => ({ payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no || null })),
-      deposits: Object.entries(deps).filter(([, v]) => d(v || 0).gt(0)).map(([header_id, amount]) => ({ header_id, amount })) };
+      deposits: Object.entries(deps).filter(([, v]) => d(v || 0).gt(0)).map(([header_id, amount]) => ({ header_id, amount })),
+      wht: K.cls === 'HP' ? whtsBody(whts) : [], wht_amount: K.cls === 'HS' ? whtAmt || '0' : '0' };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string; warnings?: string[] }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; warnings?: string[] }>(`/api/v1/${K.path}`, body);
       toast(`บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว`);
       // ขายต่ำกว่าทุน (ค่าเริ่มต้นระบบขาย ข้อ 5): บันทึกแล้ว แจ้งเตือนให้ตรวจราคา
       for (const w of r.warnings ?? []) toast(`คำเตือน ${r.doc_no}: ${w}`, 'warn');
       setDirty(false);
-      qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] });
-      if (andNew) { setH(null); setLines([]); setPays([]); setDeps({}); nav(`${K.route}/new`, { replace: true }); }
+      qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] }); qc.invalidateQueries({ queryKey: ['doc-vat'] });
+      // มีภาษีซื้อ: เปิดรายการในแฟ้มภาษีซื้อให้ตรวจเลขที่/วันที่ใบกำกับทันที (แบบ Express)
+      if (VAT_KIND_OF[K.cls] === 'P' && !K.order && calc && !d(calc.vat_amount).isZero() && h.vat_basis !== '2') setVatCheck(r.id);
+      if (andNew) { setH(null); setLines([]); setPays([]); setDeps({}); setWhts([]); setWhtAmt(''); nav(`${K.route}/new`, { replace: true }); }
       else if (!id) nav(`${K.route}/${r.id}`, { replace: true });
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
@@ -299,7 +313,8 @@ export function TradeFormPage({ path }: { path: string }) {
     try { await api.post(`/api/v1/${K.path}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.path] }); nav(K.route); }
     catch (e) { setAskCancel(false); setErr(e); }
   };
-  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
+  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Ctrl+F7': id && !K.order && VAT_KIND_OF[K.cls] ? () => setTab('vat') : undefined,
+    'Ctrl+F10': K.cls === 'HP' ? () => setTab('wht') : id && (K.cls === 'RR' || K.cls === 'CP') ? () => setTab('whtb') : undefined, 'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); }, 'Ctrl+Insert': readOnly ? undefined : addLine, F6: K.orderRef && !readOnly ? () => setPickOrder(true) : K.refInvoice && !readOnly && h?.ref?.id ? () => setPickRef(true) : undefined }, []);
   const dtCode = defs.data?.types.find((t) => t.id === h?.doc_type_id);
   const cancelled = cur.data?.doc_status === 'C';
@@ -351,7 +366,9 @@ export function TradeFormPage({ path }: { path: string }) {
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการสินค้า', badge: lines.filter((l) => l.item_id).length || undefined }, ...(K.payments ? [{ key: 'pay', label: `${K.module === 'AR' ? 'รับ' : 'จ่าย'}ชำระด้วยวิธีอื่น`, badge: pays.length || undefined }] : []),
           ...(canDeposit ? [{ key: 'deposit', label: 'หักเงินมัดจำ', badge: Object.keys(deps).length || undefined }] : []),
           ...(K.order && K.cls !== 'QT' && id ? [{ key: 'delivered', label: K.module === 'AR' ? 'ส่งแล้ว / ยกเลิกยอด' : 'รับแล้ว / ยกเลิกยอด', badge: cur.data?.deliveries.length || undefined }] : []),
-          ...(id && !K.payments && !K.order ? [{ key: 'settle', label: `รายการ${K.module === 'AR' ? 'รับ' : 'จ่าย'}ชำระ`, badge: cur.data?.settlements.length || undefined }] : []), ...(id && !K.order ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+          ...(id && !K.payments && !K.order ? [{ key: 'settle', label: `รายการ${K.module === 'AR' ? 'รับ' : 'จ่าย'}ชำระ`, badge: cur.data?.settlements.length || undefined }] : []),
+          ...(K.cls === 'HP' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(id && !K.order && VAT_KIND_OF[K.cls] ? [{ key: 'vat', label: vatTabLabel(K.cls) }] : []),
+          ...(id && (K.cls === 'RR' || K.cls === 'CP') ? [{ key: 'whtb', label: 'รายการภาษีหัก ณ ที่จ่าย' }] : []), ...(id && !K.order ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
         {tab === 'lines' && <div className="table-wrap lines">
           <table className="grid">
             <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 210 }}>รหัส</th><th>รายละเอียด</th><th style={{ width: 90 }}>คลัง</th><th className="r" style={{ width: 90 }}>จำนวน</th><th style={{ width: 80 }}>หน่วย</th><th className="r" style={{ width: 110 }}>ราคา/หน่วย</th><th style={{ width: 90 }}>ส่วนลด</th><th style={{ width: 36 }} title="ของแถม">F</th>{(K.cls === 'CN' || K.cls === 'DN') && <th style={{ width: 36 }} title={K.cls === 'CN' ? 'รับคืนสินค้า' : 'ส่งคืนสินค้า'}>R</th>}<th className="r" style={{ width: 120 }}>จำนวนเงิน</th>{K.order && K.cls !== 'QT' && id && <th className="r" style={{ width: 90 }}>ค้าง{K.module === 'AR' ? 'ส่ง' : 'รับ'}</th>}<th style={{ width: 36 }} /></tr></thead>
@@ -391,7 +408,7 @@ export function TradeFormPage({ path }: { path: string }) {
               ))}
               {!pays.length && <tr><td colSpan={4} className="empty">{K.module === 'AR' ? 'รับ' : 'จ่าย'}เป็นเงินสดทั้งหมด</td></tr>}
             </tbody>
-            <tfoot><tr><td>{!readOnly && <button type="button" onClick={() => setPays((ps) => [...ps, { key: ++seq, payment_method_id: '', amount: calc ? d(calc.net_amount).minus(payTotal).toFixed(2) : '', reference_no: '' }])}>+ เพิ่มวิธีชำระ</button>} เงินสด <b><Money v={calc ? d(calc.net_amount).minus(payTotal).toFixed(2) : '0'} /></b></td><td className="r"><b><Money v={payTotal.toFixed(2)} /></b></td><td colSpan={2} /></tr></tfoot>
+            <tfoot><tr><td>{!readOnly && <button type="button" onClick={() => setPays((ps) => [...ps, { key: ++seq, payment_method_id: '', amount: cashLeft.gt(0) ? cashLeft.toFixed(2) : '', reference_no: '' }])}>+ เพิ่มวิธีชำระ</button>} เงินสด <b><Money v={cashLeft.toFixed(2)} /></b></td><td className="r"><b><Money v={payTotal.toFixed(2)} /></b></td><td colSpan={2} /></tr></tfoot>
           </table>
         </div>}
         {tab === 'settle' && cur.data && <table className="grid"><thead><tr><th>เลขที่</th><th>วันที่</th><th className="r">จำนวนเงิน</th><th>สถานะ</th></tr></thead>
@@ -425,6 +442,9 @@ export function TradeFormPage({ path }: { path: string }) {
             <tfoot><tr><td colSpan={6} className="r">หักเงินมัดจำรวม (ตามประเภทราคาของบิล)</td><td className="r"><b><Money v={depTotal.toFixed(2)} /></b></td></tr></tfoot>
           </table>}
         </div>}
+        {tab === 'wht' && K.cls === 'HP' && <WhtTable whts={whts} setWhts={setWhts} readOnly={readOnly} base={calc ? d(calc.net_amount).minus(calc.vat_amount).toFixed(2) : ''} defaults={whtDef} canAdd={!!h.party} dirty={dirty} onDirty={() => setDirty(true)} />}
+        {tab === 'whtb' && id && <DocWhtList headerId={id} />}
+        {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} vatBasis={h.vat_basis} />}
         {tab === 'gl' && id && <DocJournalTab id={id} />}
         <div className="trade-foot">
           <Field label="หมายเหตุ"><textarea rows={2} value={h.remark} maxLength={2000} disabled={readOnly} onChange={(e) => set({ remark: e.target.value })} /></Field>
@@ -435,10 +455,14 @@ export function TradeFormPage({ path }: { path: string }) {
             {d(calc.zero_rate_amount).gt(0) && h.price_type !== '0' && <tr><td>แยกยอดเงิน 0.00 %=</td><td className="r"><Money v={calc.zero_rate_amount} /></td></tr>}
             <tr><td>ภาษีมูลค่าเพิ่ม <input className="r" inputMode="decimal" value={h.vat_rate} disabled={readOnly || h.price_type === '0'} onChange={(e) => set({ vat_rate: e.target.value.replace(/[^\d.]/g, '') })} aria-label="อัตราภาษี" style={{ width: 60 }} /> %</td><td className="r"><Money v={calc.vat_amount} /></td></tr>
             <tr className="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td className="r"><Money v={calc.net_amount} /></td></tr>
+            {K.cls === 'HP' && <tr><td><a href="#wht" onClick={(e) => { e.preventDefault(); setTab('wht'); }}>หักภาษี ณ ที่จ่าย</a></td><td className="r"><Money v={whtTotal.toFixed(2)} blankZero /></td></tr>}
+            {K.cls === 'HS' && <tr><td>ภาษีถูกหัก ณ ที่จ่าย</td><td className="r"><MoneyInput value={whtAmt} disabled={readOnly} onChange={(v) => { setWhtAmt(v); setDirty(true); }} aria-label="ภาษีถูกหัก ณ ที่จ่าย" style={{ width: 130 }} /></td></tr>}
+            {K.payments && !whtTotal.isZero() && <tr><td>ยอด{K.module === 'AR' ? 'รับ' : 'จ่าย'}จริง</td><td className="r"><b><Money v={d(calc.net_amount).minus(whtTotal).toFixed(2)} /></b></td></tr>}
             {calc.errors.length > 0 && <tr><td colSpan={2} className="bad small">{calc.errors[0]}</td></tr>}
           </tbody></table>}
         </div>
       </div>}
+      {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
       <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       {pickOrder && h?.party && <OrderPicker K={K} partyId={h.party.id} invoiceId={id} priceType={h.price_type} taken={lines.map((l) => l.source_line_id).filter((x): x is string => !!x)} onClose={() => setPickOrder(false)}
         onPick={(rows) => { setLines((ls) => [...ls.filter((l) => l.item_id), ...rows.map((r) => ({ key: ++seq, item_id: r.item_id ?? '', item_code: r.item_code ?? '', description: r.description ?? '', warehouse_id: r.warehouse_id, qty: r.qty, unit_id: r.unit_id, factor: num(r.factor) || '1',

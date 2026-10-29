@@ -1001,6 +1001,9 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/docs/${p1.body.id}/journal`)).body.journals[0].lines.map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${l.debit}:${l.credit}`))
       .toEqual(['AP:1605.00:0.00', 'WHT:0.00:45.00', 'CASH:0.00:1560.00']);
     // แฟ้มภาษีหัก ณ ที่จ่าย: ดู แก้เลขที่หนังสือรับรอง (ยอดเงินแก้ที่เอกสารต้นทาง) เพิ่มเอง ยกเลิก
+    // แท็บภาษีของบิล: ภาษีหัก ณ ที่จ่ายที่หักตอนจ่ายชำระบิลนี้ + ภาษีซื้อของบิล
+    expect((await call('GET', `/api/v1/wht?invoice_id=${rr.id}&status=all`)).body.rows.map((x: { doc_no: string }) => x.doc_no)).toEqual([p1.body.doc_no]);
+    expect((await call('GET', `/api/v1/vat/P?invoice_id=${rr.id}&status=all`)).body.rows.map((x: { doc_no: string; vat_amount: string }) => `${x.doc_no}:${x.vat_amount}`)).toEqual([`${rr.doc_no}:105.00`]);
     const reg = (await call('GET', '/api/v1/wht?form=S53&month=2026-07')).body;
     expect(reg).toMatchObject({ total_tax: '45.00' });
     expect(reg.rows[0]).toMatchObject({ doc_no: p1.body.doc_no, payee_name: 'ผู้รับจ้างทดสอบ', tax_month: '2026-07' });
@@ -1023,12 +1026,43 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/ar-receipts/open-items?party_id=${cus}`)).status).toBe(404);
     expect((await call('GET', `/api/v1/wht/${wid}`)).status).toBe(404);
     expect((await call('GET', '/api/v1/wht')).body.rows).toHaveLength(0);
+    expect((await call('GET', `/api/v1/wht?invoice_id=${rr.id}&status=all`)).body.rows).toHaveLength(0);
+    expect((await call('GET', `/api/v1/vat/P?invoice_id=${rr.id}&status=all`)).body.rows).toHaveLength(0);
     expect((await call('PUT', `/api/v1/wht/${wid}`, wput)).status).toBe(400);   // ผู้จำหน่ายของบริษัทอื่น
     expect((await call('POST', `/api/v1/ap-payments/${p1.body.id}/cancel`, { reason: 'x' })).status).toBe(404);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     // ยกเลิกใบสำคัญจ่าย → รายการภาษีหัก ณ ที่จ่ายยกเลิกด้วย
     expect((await call('POST', `/api/v1/ap-payments/${p1.body.id}/cancel`, { reason: 'จ่ายซ้ำ' })).status).toBe(200);
     expect((await call('GET', '/api/v1/wht?form=S53&month=2026-07&status=C')).body.rows[0]).toMatchObject({ id: wid, doc_status: 'C' });
+    // ซื้อเงินสดหักภาษี ณ ที่จ่าย 3% (คำขอเจ้าของ 30/10/2569): จ่ายเงินสด 1,605 − 45 · เข้าแฟ้ม ภ.ง.ด.53 · Cr ภาษีหัก ณ ที่จ่ายค้างจ่าย
+    const hpBody = { doc_type_id: await typeOf('HP'), doc_date: '2026-07-05', party_id: sup, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 1500 }],
+      wht: [{ form_type: 'S53', income_type: 'ค่าบริการ', rate: 3, paid_amount: 1500, tax_amount: 45 }] };
+    expect((await call('POST', '/api/v1/cash-purchases', { ...hpBody, wht: [], wht_amount: 45 })).body.error.message).toMatch(/รายละเอียดภาษีหัก/);
+    expect((await call('POST', '/api/v1/purchase-invoices', { ...hpBody, doc_type_id: await typeOf('RR') })).body.error.message).toMatch(/ตอนรับ\/จ่ายชำระ/);
+    expect((await call('POST', '/api/v1/cash-purchases', { ...hpBody, wht: [{ ...hpBody.wht[0], tax_amount: 2000, paid_amount: 2000 }] })).body.error.message).toMatch(/มากกว่ายอดเงินรวมทั้งสิ้น/);
+    const hp = await call('POST', '/api/v1/cash-purchases', hpBody);
+    expect(hp.body.error?.message ?? 'ok').toBe('ok');
+    const hpd = (await call('GET', `/api/v1/cash-purchases/${hp.body.id}`)).body;
+    expect(hpd).toMatchObject({ net_amount: '1605.00', wht_amount: '45.00', cash_amount: '1560.00' });
+    expect(hpd.wht[0]).toMatchObject({ form_type: 'S53', certificate_no: hp.body.doc_no, tax_amount: '45.00' });
+    const roles = async (hid: string) => ((await call('GET', `/api/v1/docs/${hid}/journal`)).body.journals[0].lines as Array<{ posting_role: string; debit: string; credit: string }>).map((l) => `${l.posting_role}:${l.debit}:${l.credit}`).sort();
+    expect(await roles(hp.body.id)).toEqual(expect.arrayContaining(['WHT:0.00:45.00', 'CASH:0.00:1560.00', 'INPUT_VAT:105.00:0.00']));
+    expect((await call('GET', `/api/v1/wht?header_id=${hp.body.id}`)).body.rows).toHaveLength(1);
+    expect((await call('GET', `/api/v1/vat/P?header_id=${hp.body.id}`)).body.rows[0]).toMatchObject({ doc_no: hp.body.doc_no, vat_amount: '105.00' });
+    // แก้ไข: ไม่หักแล้ว → รายการเดิมหายจากแฟ้ม เงินสดเต็มจำนวน
+    expect((await call('PUT', `/api/v1/cash-purchases/${hp.body.id}`, { ...hpBody, wht: [] })).status).toBe(200);
+    expect((await call('GET', `/api/v1/wht?header_id=${hp.body.id}&status=all`)).body.rows).toHaveLength(0);
+    expect((await call('GET', `/api/v1/cash-purchases/${hp.body.id}`)).body).toMatchObject({ wht_amount: '0.00', cash_amount: '1605.00' });
+    expect((await call('PUT', `/api/v1/cash-purchases/${hp.body.id}`, hpBody)).status).toBe(200);
+    expect((await call('GET', `/api/v1/wht?header_id=${hp.body.id}`)).body.rows).toHaveLength(1);
+    expect((await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body.balanced).toBe(true);
+    // บริษัทอื่นไม่เห็น · ยกเลิก → รายการภาษีหัก ณ ที่จ่ายยกเลิกด้วย
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/wht?header_id=${hp.body.id}&status=all`)).body.rows).toHaveLength(0);
+    expect((await call('GET', `/api/v1/vat/P?header_id=${hp.body.id}&status=all`)).body.rows).toHaveLength(0);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('POST', `/api/v1/cash-purchases/${hp.body.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/wht?header_id=${hp.body.id}&status=all`)).body.rows[0]).toMatchObject({ doc_status: 'C' });
     // ใบเสร็จ/ใบจ่ายยกเลิกแล้ว → บิลยกเลิกได้ (คืนสมุดบัญชีให้ทดสอบถัดไป)
     for (const [path, id] of [['purchase-invoices', rr.id], ['ar-credit-notes', cn.id], ['sales-invoices', iv1.id], ['sales-invoices', iv2.id]])
       expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);

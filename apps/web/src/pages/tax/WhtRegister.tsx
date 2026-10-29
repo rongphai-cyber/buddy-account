@@ -6,12 +6,13 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys, useYearSystem } from '../../ui';
+import { DOC_ROUTE as VAT_DOC_ROUTE } from './VatRegister';
 
 const MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 const FORM_TH: Record<string, string> = { S03: 'ภ.ง.ด.3', S53: 'ภ.ง.ด.53' };
 const COND_TH: Record<string, string> = { '1': 'หัก ณ ที่จ่าย', '2': 'ออกให้ตลอดไป', '3': 'ออกให้ครั้งเดียว' };
 /** เอกสารต้นทางที่เปิดได้จากแฟ้ม */
-const DOC_ROUTE: Record<string, string> = { PS: '/fi/ap/payments' };
+const DOC_ROUTE: Record<string, string> = { ...VAT_DOC_ROUTE, DP: '/gl/petty-cash/dp' };
 
 interface Row { id: string; form_type: string; certificate_no: string | null; certificate_date: string; tax_month: string; is_late: boolean; payee_name: string; payee_tax_id: string | null; income_type: string | null;
   paid_amount: string; rate: string; tax_amount: string; condition: string | null; doc_status: string; print_count: number; header_id: string | null; doc_no: string | null; doc_class: string | null }

@@ -95,7 +95,9 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
   if (cls === 'IV' || cls === 'DR' || cls === 'HS') {
     if (cls !== 'HS') D(partyAr, net, 'AR');
     else {   // ขายเงินสด: วิธีรับชำระอื่นลงตามบัญชีของวิธีนั้น ที่เหลือเป็นเงินสด
-      D(pick(['3', r.def('CASH')]), cashRest(net), 'CASH');
+      const wht = d(h.wht_amount ?? 0);
+      D(pick(['3', r.def('PREPAID_TAX')]), wht, 'WHT');
+      D(pick(['3', r.def('CASH')]), cashRest(net.minus(wht)), 'CASH');
       for (const p of pays) D(payAcct(p), d(p.amount), 'PAYMENT');
     }
     for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'SALES');
@@ -111,7 +113,9 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     for (const l of lines) D(lineAccount('PURCHASE', l.item_id), d(l.net_amount), 'PURCHASE');
     D(pick(['3', r.def(vatRole('INPUT_VAT'))]), vat, 'INPUT_VAT');
     if (cls === 'HP') {
-      C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(net), 'CASH');
+      const wht = d(h.wht_amount ?? 0);
+      C(pick(['3', r.def('WHT_PAYABLE')]), wht, 'WHT');
+      C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(net.minus(wht)), 'CASH');
       for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
     } else C(partyAp, net, 'AP');
     if (!depositUsed.isZero() && cls !== 'CP') C(pick(['3', r.def('DEPOSIT_PAID')]), depositUsed, 'DEPOSIT_PAID');

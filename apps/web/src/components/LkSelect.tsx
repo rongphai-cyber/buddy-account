@@ -28,24 +28,28 @@ export function SearchPick<T extends { id: string }>({ endpoint, params, value, 
 }) {
   const [q, setQ] = useState<string | null>(null);
   const [sel, setSel] = useState(0);
+  /** เปิดรายการจากปุ่ม 🔍 / F4 โดยยังไม่พิมพ์ — แสดงรายการแรก ๆ ให้เลือก */
+  const [browse, setBrowse] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  const res = useQuery({ enabled: !!q?.trim(), queryKey: ['pick', endpoint, params, q], queryFn: () => api.get<{ rows: T[] }>(endpoint, { ...params, q: q ?? '', limit: 15 }), placeholderData: (p) => p });
+  const res = useQuery({ enabled: !!q?.trim() || (browse && q !== null), queryKey: ['pick', endpoint, params, q], queryFn: () => api.get<{ rows: T[] }>(endpoint, { ...params, q: q ?? '', limit: 15 }), placeholderData: (p) => p });
   const rows = (res.data?.rows ?? []).filter((r) => !exclude?.includes(r.id));
   useEffect(() => setSel(0), [q]);
-  const pick = (r: T | null) => { onPick(r); setQ(null); };
+  const pick = (r: T | null) => { onPick(r); setQ(null); setBrowse(false); };
+  const openList = () => { setBrowse(true); setQ(''); box.current?.querySelector('input')?.focus(); };
   const shown = q ?? (value ? `${value.code}${value.name ? ' ' + value.name : ''}` : '');
   return (
-    <div className="pick" ref={box} onBlur={(e) => { if (!box.current?.contains(e.relatedTarget as Node)) setQ(null); }}>
+    <div className="pick" ref={box} onBlur={(e) => { if (!box.current?.contains(e.relatedTarget as Node)) { setQ(null); setBrowse(false); } }}>
       <input value={shown} placeholder={placeholder} data-noenter={q !== null ? '' : undefined} {...rest}
         onChange={(e) => { setQ(e.target.value); if (!e.target.value) onPick(null); }}
         onKeyDown={(e) => {
-          if (q === null) { if (e.key === 'F4' || e.key === 'ArrowDown') { e.preventDefault(); setQ(value?.code ?? ''); } return; }
+          if (q === null) { if (e.key === 'F4' || e.key === 'ArrowDown') { e.preventDefault(); setBrowse(true); setQ(value?.code ?? ''); } return; }
           if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, rows.length - 1)); }
           else if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
           else if (e.key === 'Enter') { e.preventDefault(); if (rows[sel]) pick(rows[sel]!); }
-          else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setQ(null); }
+          else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setQ(null); setBrowse(false); }
         }} />
-      {q !== null && q.trim() && (
+      {!rest.disabled && <button type="button" className="pick-btn" tabIndex={-1} title="ค้นหา (F4)" aria-label="ค้นหา" onMouseDown={(e) => e.preventDefault()} onClick={() => (q === null ? openList() : (setQ(null), setBrowse(false)))}>🔍</button>}
+      {q !== null && (q.trim() || browse) && (
         <ul className="pick-list" role="listbox">
           {rows.map((r, i) => <li key={r.id} role="option" aria-selected={i === sel} tabIndex={-1} className={i === sel ? 'on' : undefined} onMouseDown={(e) => { e.preventDefault(); pick(r); }}>
             <b className="mono">{codeOf ? codeOf(r) : (r as unknown as { code: string }).code}</b> {label ? label(r) : ''} {describe && <span className="muted small">{describe(r)}</span>}

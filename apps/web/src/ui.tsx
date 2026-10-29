@@ -136,12 +136,63 @@ export function DateInput({ value, onChange, id, disabled, invalid, autoFocus }:
     const iso = parseDateInput(txt, ys, value || me?.work_date || undefined);
     if (iso) { onChange(iso); setTxt(formatDate(iso, ys)); } else setTxt(formatDate(value, ys));
   };
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const out = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', out);
+    return () => document.removeEventListener('mousedown', out);
+  }, [open]);
   return (
-    <span className="date-in">
+    <span className="date-in" ref={box}>
       <input id={id} value={txt} disabled={disabled} autoFocus={autoFocus} aria-invalid={invalid || undefined} placeholder={ys === 'B' ? 'วว/ดด/ปปปป' : 'dd/mm/yyyy'} inputMode="numeric"
-        onChange={(e) => setTxt(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') commit(); }} />
+        onChange={(e) => setTxt(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') commit(); else if (e.key === 'F4' || (e.altKey && e.key === 'ArrowDown')) { e.preventDefault(); setOpen(true); } }} />
+      <button type="button" className="cal-btn" tabIndex={-1} disabled={disabled} title="เลือกจากปฏิทิน (F4)" aria-label="เลือกจากปฏิทิน" onClick={() => setOpen((x) => !x)}>📅</button>
       <span className="cal" aria-hidden="true">{ys === 'B' ? 'พ.ศ.' : 'ค.ศ.'}</span>
+      {open && <Calendar value={value || me?.work_date || null} ys={ys} onPick={(iso) => { onChange(iso); setTxt(formatDate(iso, ys)); setOpen(false); box.current?.querySelector('input')?.focus(); }} onClose={() => setOpen(false)} />}
     </span>
+  );
+}
+
+const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const TH_DAYS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const isoOf = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+/** ปฏิทินเลือกวันที่ (ปีตามระบบปีของบริษัท) — ลูกศรเลื่อนวัน PageUp/PageDown เลื่อนเดือน Enter เลือก Esc ปิด */
+function Calendar({ value, ys, onPick, onClose }: { value: string | null; ys: YearSystem; onPick: (iso: string) => void; onClose: () => void }) {
+  const today = new Date();
+  const todayIso = isoOf(today.getFullYear(), today.getMonth(), today.getDate());
+  const [cur, setCur] = useState(() => (value && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : todayIso));
+  const y = Number(cur.slice(0, 4)), m = Number(cur.slice(5, 7)) - 1;
+  const first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
+  const move = (dd: number, mm = 0) => {
+    const nd = mm ? new Date(y, m + mm, Math.min(Number(cur.slice(8, 10)), new Date(y, m + mm + 1, 0).getDate())) : new Date(y, m, Number(cur.slice(8, 10)) + dd);
+    setCur(isoOf(nd.getFullYear(), nd.getMonth(), nd.getDate()));
+  };
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { ref.current?.focus(); }, []);
+  const key = (e: RKE<HTMLDivElement>) => {
+    const k: Record<string, () => void> = { ArrowLeft: () => move(-1), ArrowRight: () => move(1), ArrowUp: () => move(-7), ArrowDown: () => move(7), PageUp: () => move(0, -1), PageDown: () => move(0, 1), Enter: () => onPick(cur), Escape: onClose };
+    if (k[e.key]) { e.preventDefault(); e.stopPropagation(); k[e.key]!(); }
+  };
+  const cells: Array<number | null> = [...Array(first).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
+  return (
+    <div className="calendar" role="dialog" aria-label="ปฏิทิน" tabIndex={-1} ref={ref} onKeyDown={key}>
+      <div className="cal-head">
+        <button type="button" onClick={() => move(0, -12)} title="ปีก่อน" aria-label="ปีก่อน">«</button>
+        <button type="button" onClick={() => move(0, -1)} title="เดือนก่อน (PageUp)" aria-label="เดือนก่อน">‹</button>
+        <b>{TH_MONTHS[m]} {ys === 'B' ? y + 543 : y}</b>
+        <button type="button" onClick={() => move(0, 1)} title="เดือนถัดไป (PageDown)" aria-label="เดือนถัดไป">›</button>
+        <button type="button" onClick={() => move(0, 12)} title="ปีถัดไป" aria-label="ปีถัดไป">»</button>
+      </div>
+      <div className="cal-grid">
+        {TH_DAYS.map((x) => <span key={x} className="cal-dow">{x}</span>)}
+        {cells.map((n, i) => n === null ? <span key={'b' + i} /> : (
+          <button type="button" key={n} className={cx(isoOf(y, m, n) === cur && 'on', isoOf(y, m, n) === todayIso && 'today', isoOf(y, m, n) === value?.slice(0, 10) && 'sel')} onClick={() => onPick(isoOf(y, m, n))}>{n}</button>
+        ))}
+      </div>
+      <div className="cal-foot"><button type="button" onClick={() => onPick(todayIso)}>วันนี้</button></div>
+    </div>
   );
 }
 

@@ -28,13 +28,13 @@ const entry = z.object({
 export function whtRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/wht', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ header_id: uuid.optional(), form: z.enum(['S03', 'S53', 'all']).default('all'), month: z.string().regex(/^\d{4}-\d{2}$/).optional(), q: z.string().optional(),
+    const q = parse(z.object({ header_id: uuid.optional(), invoice_id: uuid.optional(), form: z.enum(['S03', 'S53', 'all']).default('all'), month: z.string().regex(/^\d{4}-\d{2}$/).optional(), q: z.string().optional(),
       status: z.enum(['N', 'C', 'all']).default('N'), limit: z.coerce.number().int().min(1).max(2000).default(500) }), req.query);
     const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
     const where = sql.join([
       sql`w.company_id = ${a.companyId}`, sql`w.deleted_at IS NULL`,
       ...(q.form !== 'all' ? [sql`w.form_type = ${q.form}`] : []), ...(q.status !== 'all' ? [sql`w.doc_status = ${q.status}`] : []),
-      ...(q.month ? [sql`to_char(p.start_date, 'YYYY-MM') = ${q.month}`] : []), ...(q.header_id ? [sql`w.header_id = ${q.header_id}`] : []),
+      ...(q.month ? [sql`to_char(p.start_date, 'YYYY-MM') = ${q.month}`] : []), ...(q.header_id ? [sql`w.header_id = ${q.header_id}`] : []), ...(q.invoice_id ? [sql`(w.header_id = ${q.invoice_id} OR w.header_id IN (SELECT s.payment_header_id FROM doc_settlement s WHERE s.invoice_header_id = ${q.invoice_id} AND s.company_id = ${a.companyId} AND s.deleted_at IS NULL))`] : []),
       ...(like ? [sql`(w.payee_name ILIKE ${like} OR w.certificate_no ILIKE ${like} OR h.doc_no ILIKE ${like} OR w.payee_tax_id ILIKE ${like})`] : []),
     ], sql` AND `);
     const rows = (await sql`SELECT w.id, w.form_type, w.certificate_no, w.certificate_date, to_char(p.start_date, 'YYYY-MM') AS tax_month, w.is_late, w.payee_name, w.payee_tax_id,

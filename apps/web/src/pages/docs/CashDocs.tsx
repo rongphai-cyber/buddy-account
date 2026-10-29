@@ -12,6 +12,7 @@ import { DocJournalTab } from './TradeDocs';
 import { nextKey, PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
+import { DocVatTab, VatCheckAfterSave, vatTabLabel } from '../../components/DocTaxTabs';
 
 const kindOf = (path: string) => CASH_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: CashKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -99,6 +100,7 @@ export function CashFormPage({ path }: { path: string }) {
   const [pays, setPays] = useState<Pay[]>([]);
   const [whts, setWhts] = useState<Wht[]>([]);
   const [tab, setTab] = useState('lines');
+  const [vatCheck, setVatCheck] = useState<string | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [askCancel, setAskCancel] = useState(false);
@@ -165,7 +167,8 @@ export function CashFormPage({ path }: { path: string }) {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
       toast(`บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว`);
       setDirty(false);
-      qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] });
+      qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] }); qc.invalidateQueries({ queryKey: ['doc-vat'] });
+      if (K.module === 'AP' && calc && !d(calc.vat_amount).isZero()) setVatCheck(r.id);   // มีภาษีซื้อ: ตรวจรายการในแฟ้มภาษีซื้อทันที
       if (andNew) { setH(null); setLines([]); setPays([]); setWhts([]); nav(`${K.route}/new`, { replace: true }); }
       else if (!id) { nav(`${K.route}/${r.id}`, { replace: true }); setH(null); }
       else { await qc.refetchQueries({ queryKey: [K.path, 'one', id] }); setH(null); }
@@ -176,7 +179,7 @@ export function CashFormPage({ path }: { path: string }) {
     catch (e) { setAskCancel(false); setErr(e); }
   };
   const addLine = () => { setLines((ls) => [...ls, blankLine()]); };
-  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F7: () => setTab('pay'), 'Ctrl+Insert': ro ? undefined : addLine,
+  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F7: () => setTab('pay'), 'Ctrl+F7': id ? () => setTab('vat') : undefined, 'Ctrl+F10': K.whtEntries ? () => setTab('wht') : undefined, 'Ctrl+Insert': ro ? undefined : addLine,
     'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
@@ -220,7 +223,7 @@ export function CashFormPage({ path }: { path: string }) {
         </div>
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: K.deposit ? 'รายการมัดจำ' : `รายการ${K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}`, badge: used.length || undefined },
           { key: 'pay', label: 'ชำระโดยอื่น ๆ (เช็ค/โอน)', badge: pays.length || undefined }, ...(K.whtEntries ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []),
-          ...(K.deposit && id ? [{ key: 'used', label: 'หักในบิลแล้ว', badge: cur.data?.used_by.length || undefined }] : []), ...(id ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+          ...(K.deposit && id ? [{ key: 'used', label: 'หักในบิลแล้ว', badge: cur.data?.used_by.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
         {tab === 'lines' && <div className="table-wrap lines">
           <table className="grid">
             <thead><tr><th style={{ width: 36 }}>#</th>{K.lines === 'code' && <th style={{ width: 220 }}>รหัส{K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}</th>}<th>{K.lines === 'code' ? 'รายละเอียด' : 'คำอธิบาย'}</th><th className="r" style={{ width: 160 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>
@@ -244,6 +247,7 @@ export function CashFormPage({ path }: { path: string }) {
         {tab === 'used' && cur.data && <table className="grid"><thead><tr><th>บิล</th><th>วันที่</th><th className="r">ยอดที่หัก</th></tr></thead>
           <tbody>{cur.data.used_by.map((u) => <tr key={u.id}><td className="mono">{u.doc_no}</td><td><DateText v={u.doc_date} /></td><td className="r"><Money v={u.amount} /></td></tr>)}
             {!cur.data.used_by.length && <tr><td colSpan={3} className="empty">ยังไม่ได้หักในบิล — คงเหลือ <Money v={cur.data.remaining} /></td></tr>}</tbody></table>}
+        {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} />}
         {tab === 'gl' && id && <DocJournalTab id={id} />}
         <div className="trade-foot">
           <Field label="หมายเหตุ"><textarea rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
@@ -260,6 +264,7 @@ export function CashFormPage({ path }: { path: string }) {
           </tbody></table>}
         </div>
       </div>}
+      {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
       <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['F7', 'ชำระโดยอื่น'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ) · เช็คออกจากทะเบียน{K.whtEntries ? ' · ภาษีหัก ณ ที่จ่ายยกเลิก' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>

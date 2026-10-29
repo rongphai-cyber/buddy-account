@@ -9,6 +9,7 @@ import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
 import { activeSettlement, cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
 import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
+import { checkWht, readMoneyParts, whtSchema, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -35,6 +36,8 @@ const body = z.object({
   payments: z.array(z.object({ payment_method_id: uuid, amount: num, reference_no: str(30) })).max(20).default([]),
   /** หักเงินมัดจำ (AI → บิลขาย, AE → บิลซื้อ) ยอดตามประเภทราคาของบิล */
   deposits: z.array(z.object({ header_id: uuid, amount: num })).max(20).default([]),
+  /** ซื้อเงินสด: ภาษีหัก ณ ที่จ่าย (เข้าแฟ้ม ภ.ง.ด.3/53 + 50 ทวิ) · ขายเงินสด: ยอดที่ลูกค้าหักไว้ (ลูกค้าออก 50 ทวิ ให้) */
+  wht: whtSchema, wht_amount: num.default('0'),
 });
 type Body = z.infer<typeof body>;
 /** บิลที่หักเงินมัดจำได้ (ขายเชื่อ/ขายสด/ซื้อเชื่อ/ซื้อสด) */
@@ -112,7 +115,11 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
   if (calc.errors.length) throw badRequest(calc.errors[0]!, calc.errors.map((m) => ({ message: m })));
   const payTotal = b.payments.reduce((s, p) => s.plus(d(p.amount)), d(0));
   if (!K.payments && b.payments.length) throw badRequest(`${K.label}ไม่มีการรับ/จ่ายเงินในเอกสาร — ใช้เมนูรับ/จ่ายชำระหนี้`);
-  if (payTotal.gt(d(calc.net_amount))) throw badRequest('ยอดชำระด้วยวิธีอื่นมากกว่ายอดเงินรวมทั้งสิ้น');
+  if (b.wht.length && K.cls !== 'HP') throw badRequest(K.cls === 'HS' ? 'ขายเงินสดป้อนเพียงยอดภาษีที่ถูกหัก — หนังสือรับรอง 50 ทวิ ลูกค้าเป็นผู้ออก' : `${K.label}ไม่มีภาษีหัก ณ ที่จ่ายในเอกสาร — ป้อนตอนรับ/จ่ายชำระ`);
+  if (!d(b.wht_amount).isZero() && K.cls !== 'HS') throw badRequest(K.cls === 'HP' ? 'ซื้อเงินสด: ป้อนรายละเอียดภาษีหัก ณ ที่จ่าย (แบบ ประเภทเงินได้ อัตรา) ไม่ใช่ยอดอย่างเดียว' : `${K.label}ไม่มีภาษีหัก ณ ที่จ่ายในเอกสาร — ป้อนตอนรับ/จ่ายชำระ`);
+  const wht = K.cls === 'HP' ? checkWht(b.wht) : d(b.wht_amount);
+  if (wht.lt(0)) throw badRequest('ภาษีหัก ณ ที่จ่ายต้องไม่ติดลบ');
+  if (payTotal.plus(wht).gt(d(calc.net_amount))) throw badRequest('ยอดชำระด้วยวิธีอื่นรวมภาษีหัก ณ ที่จ่าย มากกว่ายอดเงินรวมทั้งสิ้น');
   const credit = b.credit_days ?? (K.payments || K.cls === 'QT' || K.cls === 'PO' ? 0 : party.credit_days ?? 0);
   const header = {
     doc_type_id: dt.id, doc_class: K.cls, module: K.order ?? K.module, doc_date: b.doc_date, delivery_date: K.order && K.cls !== 'QT' ? b.delivery_date ?? b.doc_date : null,
@@ -124,7 +131,7 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
     credit_days: credit, due_date: b.due_date ?? dueDate(b.doc_date, credit), price_type: b.price_type, vat_rate: b.vat_rate, vat_basis: b.vat_basis ?? '1',
     amount: calc.amount, discount_text: b.discount_text, discount_amount: calc.discount_amount, amount_after_discount: calc.amount_after_discount,
     deposit_amount: calc.deposit_amount, zero_rate_amount: calc.zero_rate_amount, taxable_amount: calc.taxable_amount, vat_amount: calc.vat_amount, net_amount: calc.net_amount,
-    cash_amount: K.payments ? d(calc.net_amount).minus(payTotal).toFixed(2) : '0', cheque_amount: K.payments ? payTotal.toFixed(2) : '0',
+    cash_amount: K.payments ? d(calc.net_amount).minus(payTotal).minus(wht).toFixed(2) : '0', cheque_amount: K.payments ? payTotal.toFixed(2) : '0', wht_amount: wht.toFixed(2),
     remark: b.remark, payment_terms: b.payment_terms, vat_date: b.doc_date, updated_by: a.userId,
   };
   return db.transaction().execute(async (tx) => {
@@ -141,7 +148,7 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
         throw badRequest(`${cur.doc_no} มีการรับ/จ่ายชำระแล้ว แก้ไขไม่ได้ — ยกเลิกใบเสร็จ/ใบสำคัญจ่ายที่ตัดเอกสารนี้ก่อน`);
       docNo = cur.doc_no;
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
-      for (const t of ['doc_line', 'doc_payment'] as const) await tx.updateTable(t).set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
+      for (const t of ['doc_line', 'doc_payment', 'tax_wht_entry'] as const) await tx.updateTable(t).set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
       await tx.updateTable('doc_link').set({ deleted_at: sql`now()` as never }).where('to_header_id', '=', id).where('link_type', '=', 'DEPOSIT').where('deleted_at', 'is', null).execute();
     } else {
       docNo = await issueDocNo(tx, a.companyId, dt.id);
@@ -208,6 +215,8 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
     }
     if (b.deposits.length) await tx.insertInto('doc_link').values(b.deposits.map((x) => ({ company_id: a.companyId, from_header_id: x.header_id, to_header_id: hid!, link_type: 'DEPOSIT', amount: d(x.amount).toFixed(2), created_by: a.userId }))).execute();
     if (b.payments.length) await tx.insertInto('doc_payment').values(b.payments.map((p, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no, created_by: a.userId }))).execute();
+    if (b.wht.length) await writeWht(tx, a, { headerId: hid!, docNo, payDate: b.doc_date, wht: b.wht, supplierId: header.supplier_id, departmentId: header.department_id,
+      payee: { name: header.party_name, address: header.party_address, tax_id: header.party_tax_id, branch_no: header.party_tax_branch_no } });
     // บันทึก = ลงบัญชีทันที (แก้ไข = ลงใบสำคัญเดิมใหม่)
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const posted = await postDocument(tx, a, hid!, curJ?.id);
@@ -320,7 +329,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       const converted = K.cls === 'QT' ? (await sql<{ id: string; doc_no: string; doc_date: string }>`SELECT t.id, t.doc_no, t.doc_date FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id
           WHERE l.from_header_id = ${id} AND l.link_type = 'CONVERT' AND l.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL ORDER BY t.doc_date`.execute(db)).rows : [];
       return { ...h, converted, party_code: pc?.code ?? null, lines: lines.map((l) => ({ ...l, ...(orderLines.find((o) => o.line_no === l.line_no) ?? {}), source: sources.find((x) => x.line_id === (l as { id?: string }).id) ?? null })),
-        deliveries, cancels, payments, deposits, settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !h.is_opening && !settled.some((x) => x.doc_status !== 'C') && !(deliveries as unknown[]).length };
+        deliveries, cancels, payments, deposits, wht: K.payments ? (await readMoneyParts(db, a.companyId, id)).wht : [], settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !h.is_opening && !settled.some((x) => x.doc_status !== 'C') && !(deliveries as unknown[]).length };
     });
     app.post(base, async (req) => saveTrade(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => saveTrade(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));
@@ -330,7 +339,9 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       const { reason } = parse(z.object({ reason: z.string().trim().min(1, 'ป้อนเหตุผลที่ยกเลิก').max(200) }), req.body);
       const h = await db.selectFrom('doc_header').select('id').where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
-      return cancelDocument(db, a, id, reason, K.order ? async (tx) => {
+      return cancelDocument(db, a, id, reason, K.payments ? async (tx) => {
+        await tx.updateTable('tax_wht_entry').set({ doc_status: 'C', updated_by: a.userId }).where('company_id', '=', a.companyId).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
+      } : K.order ? async (tx) => {
         if (await orderDelivered(tx, id)) throw badRequest(`มีการ${K.module === 'AR' ? 'ส่งของ' : 'รับของ'}ตามใบสั่งนี้แล้ว — ยกเลิกยอดค้างรายบรรทัดแทน`);
       } : undefined);
     });

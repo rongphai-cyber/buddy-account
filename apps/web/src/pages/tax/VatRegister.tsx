@@ -9,11 +9,11 @@ import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Mon
 
 const MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 /** เอกสารต้นทางที่เปิดได้จากแฟ้ม */
-const DOC_ROUTE: Record<string, string> = {
+export const DOC_ROUTE: Record<string, string> = {
   IV: '/sa/invoices', HS: '/sa/cash-sales', DR: '/fi/ar/debit-notes', CN: '/fi/ar/credit-notes', AI: '/sa/deposits', OI: '/sa/other-income', RE: '/fi/ar/receipts',
   RR: '/pu/invoices', HP: '/pu/cash-purchases', CP: '/fi/ap/debit-notes', DN: '/fi/ap/credit-notes', AE: '/pu/deposits', OE: '/pu/other-expense', PS: '/fi/ap/payments',
 };
-interface Row { id: string; tax_invoice_no: string | null; tax_invoice_date: string; doc_no: string; doc_date: string; month: string; is_late: boolean; description: string | null; party_name: string | null; party_tax_id: string | null; party_tax_branch_no: string | null;
+export interface Row { id: string; tax_invoice_no: string | null; tax_invoice_date: string; doc_no: string; doc_date: string; month: string; is_late: boolean; description: string | null; party_name: string | null; party_tax_id: string | null; party_tax_branch_no: string | null;
   base_amount: string; vat_amount: string; zero_rate_amount: string; nonclaim_base: string; nonclaim_vat: string; is_manual: boolean; is_modified: boolean; doc_status: string; remark: string | null; header_id: string | null; doc_class: string | null; sign: number }
 interface Totals { base: string; vat: string; zero: string; nonclaim_base: string; nonclaim_vat: string }
 const signed = (r: Row, v: string) => d(v).times(r.sign).toFixed(2);
@@ -92,7 +92,9 @@ export function VatRegisterPage({ kind }: { kind: 'P' | 'S' }) {
   );
 }
 
-function VatEditor({ kind, row, defaultMonth, onOpenDoc, onClose, onSaved }: { kind: 'P' | 'S'; row: Row | null; defaultMonth: string; onOpenDoc: (r: Row) => void; onClose: () => void; onSaved: () => void }) {
+export type VatRow = Row;
+/** แก้รายการในแฟ้มภาษี — ใช้ในแฟ้มภาษีและแท็บภาษีของเอกสาร (intro = ข้อความนำ, ไม่มี onOpenDoc = ไม่แสดงปุ่มเปิดเอกสาร) */
+export function VatEditor({ kind, row, defaultMonth, onOpenDoc, onClose, onSaved, intro }: { kind: 'P' | 'S'; row: Row | null; defaultMonth: string; onOpenDoc?: (r: Row) => void; onClose: () => void; onSaved: () => void; intro?: string }) {
   const can = useCan(kind === 'P' ? 'FI.VAT.IN' : 'FI.VAT.OUT');
   const ys = useYearSystem();
   const { me } = useSession();
@@ -121,11 +123,12 @@ function VatEditor({ kind, row, defaultMonth, onOpenDoc, onClose, onSaved }: { k
   return (
     <Modal title={row ? `รายการภาษี${kind === 'P' ? 'ซื้อ' : 'ขาย'} ${row.tax_invoice_no ?? row.doc_no}` : `เพิ่มรายการภาษี${kind === 'P' ? 'ซื้อ' : 'ขาย'}`} size="wide" onClose={onClose}
       footer={<>
-        {fromDoc && row?.doc_class && <button onClick={() => onOpenDoc(row)}>เปิดเอกสาร {row.doc_no}</button>}
+        {fromDoc && row?.doc_class && onOpenDoc && <button onClick={() => onOpenDoc(row)}>เปิดเอกสาร {row.doc_no}</button>}
         {row?.is_manual && row.doc_status !== 'C' && can('cancel') && <button className="danger" onClick={() => setAskCancel(true)}>ยกเลิกรายการ</button>}
         <button onClick={onClose}>ปิด <kbd>Esc</kbd></button>
         {!ro && <button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button>}
       </>}>
+      {intro && <div className="notebox">{intro}</div>}
       <ErrorBox error={err} />
       {fromDoc && <p className="hint">มาจากเอกสาร <b className="mono">{row!.doc_no}</b> — ยอดรวมแก้ที่เอกสารต้นทาง ที่นี่แก้เลขที่/วันที่ใบกำกับ งวดที่ยื่น ยื่นเพิ่มเติม{kind === 'P' ? ' และย้ายยอดเป็นภาษีขอคืนไม่ได้' : ''} · บันทึกเอกสารซ้ำแล้วค่าที่แก้ยังอยู่</p>}
       <div className="form-grid" onKeyDown={navKey}>
