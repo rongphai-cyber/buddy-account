@@ -2465,6 +2465,28 @@ describe('Buddy Account API (PGlite)', () => {
     expect(pd.totals.at(-1).value).toBe('321.00');
     for (const [path, x] of [['ar-credit-notes', cn], ['sales-invoices', iv]] as const) expect((await call('POST', `/api/v1/${path}/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('JV VAT + cheque detail (T7.1 S-GL-03/04): entries linked to the voucher, cancel cascades, cross-company blocked', async () => {
+    const roles = (await call('GET', '/api/v1/gl/default-accounts')).body as Array<{ role: string; account_id: string }>;
+    const vatAcc = roles.find((r) => r.role === 'INPUT_VAT')!.account_id, chqAcc = roles.find((r) => r.role === 'CHEQUE_PAID')!.account_id;
+    const bank = (await call('GET', '/api/v1/bank-accounts')).body[0].id;
+    const jv = (await call('POST', '/api/v1/gl/journals', { journal_book_id: bookId, voucher_date: '2027-10-05', lines: [{ account_id: expense, debit: '1000' }, { account_id: vatAcc, debit: '70' }, { account_id: chqAcc, credit: '1070' }] })).body;
+    const v = await call('POST', '/api/v1/vat/P', { journal_id: jv.id, tax_invoice_no: 'JV-TAX-1', tax_invoice_date: '2027-10-05', month: '2027-10', party_name: 'ผู้ขายทดสอบ', base_amount: '1000', vat_amount: '70' });
+    expect(v.status).toBe(200);
+    const listed = (await call('GET', `/api/v1/vat/P?journal_id=${jv.id}&status=all`)).body.rows;
+    expect(listed.map((r: { tax_invoice_no: string; doc_no: string }) => `${r.tax_invoice_no}:${r.doc_no}`)).toEqual([`JV-TAX-1:${jv.voucher_no}`]);
+    const c = await call('POST', '/api/v1/cheques', { direction: 'P', cheque_no: 'JV-CHQ-1', cheque_date: '2027-10-20', bank_account_id: bank, payee_name: 'ผู้ขายทดสอบ', amount: '1070', source_journal_id: jv.id });
+    expect(c.status).toBe(200);
+    expect((await call('GET', `/api/v1/cheques?direction=P&journal_id=${jv.id}`)).body.rows.map((r: { cheque_no: string }) => r.cheque_no)).toEqual(['JV-CHQ-1']);
+    // ข้ามบริษัท: อ้างใบสำคัญของบริษัทอื่นไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('POST', '/api/v1/vat/P', { journal_id: jv.id, tax_invoice_no: 'X', tax_invoice_date: '2027-10-05', month: '2027-10', base_amount: '1', vat_amount: '0' })).body.error.message).toMatch(/ไม่พบใบสำคัญ|ไม่พบงวด/);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ยกเลิกใบสำคัญ → ภาษียกเลิก เช็คออกจากทะเบียน
+    expect((await call('POST', `/api/v1/gl/journals/${jv.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/vat/P?journal_id=${jv.id}&status=all`)).body.rows[0].doc_status).toBe('C');
+    expect((await call('GET', `/api/v1/cheques?direction=P&journal_id=${jv.id}`)).body.rows).toEqual([]);
+    expect((await call('POST', '/api/v1/vat/P', { journal_id: jv.id, tax_invoice_no: 'JV-TAX-2', tax_invoice_date: '2027-10-05', month: '2027-10', base_amount: '1', vat_amount: '0' })).body.error.message).toMatch(/ยกเลิกแล้ว/);
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

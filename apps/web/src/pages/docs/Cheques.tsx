@@ -92,24 +92,25 @@ export function ChequeRegisterPage({ direction }: { direction: Dir }) {
   );
 }
 
-function AddCheque({ direction, onClose }: { direction: Dir; onClose: () => void }) {
+/** เพิ่มเช็คในทะเบียน: เช็คยกมา (S-OB-05) หรือป้อนจากสมุดรายวัน (S-GL-04 — journal = ใบสำคัญที่มีบรรทัดเช็คจ่าย/เช็ครับล่วงหน้า) */
+export function AddCheque({ direction, onClose, journal }: { direction: Dir; onClose: () => void; journal?: { id: string; voucher_no: string; date: string; amount: string } }) {
   const qc = useQueryClient();
   const lk = useLookups('BANK');
   const { me } = useSession();
-  const [f, setF] = useState({ cheque_no: '', cheque_date: me?.work_date ?? todayIso(), bank_id: '', bank_branch: '', party: null as { id: string; code: string; name?: string | null } | null, payee_name: '', amount: '', received_date: '', bank_account_id: '', remark: '' });
+  const [f, setF] = useState({ cheque_no: '', cheque_date: journal?.date ?? me?.work_date ?? todayIso(), bank_id: '', bank_branch: '', party: null as { id: string; code: string; name?: string | null } | null, payee_name: '', amount: journal?.amount ?? '', received_date: '', bank_account_id: '', remark: journal ? `ใบสำคัญ ${journal.voucher_no}` : '' });
   const [err, setErr] = useState<unknown>(null);
   const ok = async () => {
     setErr(null);
     try {
       await api.post('/api/v1/cheques', { direction, cheque_no: f.cheque_no, cheque_date: f.cheque_date, bank_id: f.bank_id || null, bank_branch: f.bank_branch || null, customer_id: direction === 'R' ? f.party?.id ?? null : null, supplier_id: direction === 'P' ? f.party?.id ?? null : null,
-        payee_name: f.payee_name || null, amount: f.amount || '0', received_date: f.received_date || null, bank_account_id: f.bank_account_id || null, remark: f.remark || null });
-      toast(`เพิ่มเช็ค ${f.cheque_no} แล้ว`); refresh(qc); onClose();
+        payee_name: f.payee_name || null, amount: f.amount || '0', received_date: f.received_date || null, bank_account_id: f.bank_account_id || null, remark: f.remark || null, source_journal_id: journal?.id ?? null });
+      toast(`เพิ่มเช็ค ${f.cheque_no} แล้ว`); refresh(qc); qc.invalidateQueries({ queryKey: ['jv-cheques'] }); onClose();
     } catch (e) { setErr(e); }
   };
   return (
-    <Modal title={`เพิ่ม${direction === 'R' ? 'เช็ครับ' : 'เช็คจ่าย'}ในทะเบียน (เช็คยกมา)`} onClose={onClose} footer={<><button className="primary" onClick={ok}>บันทึก</button><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button></>}>
+    <Modal title={journal ? `รายละเอียด${direction === 'R' ? 'เช็ครับ' : 'เช็คจ่าย'} — ใบสำคัญ ${journal.voucher_no}` : `เพิ่ม${direction === 'R' ? 'เช็ครับ' : 'เช็คจ่าย'}ในทะเบียน (เช็คยกมา)`} onClose={onClose} footer={<><button className="primary" onClick={ok}>บันทึก</button><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button></>}>
       <ErrorBox error={err} />
-      <p className="hint">สำหรับเช็คที่ค้าง ณ วันเริ่มใช้โปรแกรม — ไม่ลงบัญชี (ยอดบัญชีเช็ครับ/จ่ายล่วงหน้าป้อนที่ บันทึกยอดยกมา) · เช็คที่รับ/จ่ายตามปกติให้บันทึกในใบเสร็จ/ใบจ่าย</p>
+      {journal ? <p className="hint">บันทึกเช็คเข้าทะเบียนเช็ค (ใบสำคัญลงบัญชีแล้ว) — นำฝาก/ผ่านเช็คต่อที่ทะเบียนเช็ค · ยกเลิกใบสำคัญแล้วเช็คที่ยังไม่นำฝากถูกยกเลิกตาม</p> : <p className="hint">สำหรับเช็คที่ค้าง ณ วันเริ่มใช้โปรแกรม — ไม่ลงบัญชี (ยอดบัญชีเช็ครับ/จ่ายล่วงหน้าป้อนที่ บันทึกยอดยกมา) · เช็คที่รับ/จ่ายตามปกติให้บันทึกในใบเสร็จ/ใบจ่าย</p>}
       <div className="form-grid" onKeyDown={navKey}>
         <Field label="เลขที่เช็ค" req><input className="mono" value={f.cheque_no} maxLength={30} autoFocus onChange={(e) => setF({ ...f, cheque_no: e.target.value })} /></Field>
         <Field label="วันที่เช็ค" req><DateInput value={f.cheque_date} onChange={(v) => setF({ ...f, cheque_date: v })} /></Field>

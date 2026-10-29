@@ -7,6 +7,7 @@ import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
 import { DocActions } from '../../components/DocPrint';
+import { JvChequeTab, JvVatTab } from './JvLinks';
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
 import { JournalPicker } from '../../components/JournalPicker';
 
@@ -162,6 +163,10 @@ export function JournalFormPage() {
   }, [h, lines, editable, dirty, busy]);
 
   const acctOf = (aid: string | null) => accts.data?.find((a) => a.id === aid);
+  // บรรทัดบัญชีภาษีซื้อ/ภาษีขาย/เช็คจ่าย/เช็ครับล่วงหน้า → แท็บป้อนรายละเอียด (S-GL-03 / S-GL-04)
+  const roles = useQuery({ queryKey: ['default-accounts'], queryFn: () => api.get<Array<{ role: string; account_id: string }>>('/api/v1/gl/default-accounts') });
+  const roleSum = (role: string, side: 1 | -1) => { const acc = roles.data?.find((r) => r.role === role)?.account_id; return acc ? lines.filter((l) => l.account_id === acc).reduce((t, l) => t.plus(d(l.debit || 0).minus(d(l.credit || 0)).times(side)), d(0)) : d(0); };
+  const linkTabs = isNew || !doc.data ? [] : ([['vatP', 'ภาษีซื้อ', roleSum('INPUT_VAT', 1)], ['vatS', 'ภาษีขาย', roleSum('OUTPUT_VAT', -1)], ['chqP', 'เช็คจ่าย', roleSum('CHEQUE_PAID', -1)], ['chqR', 'เช็ครับ', roleSum('CHEQUE_RECEIVED', 1)]] as const).filter(([, , v]) => !v.isZero());
   const issueLines = new Set(((err as { issues?: Array<{ line?: number }> })?.issues ?? []).map((i) => i.line).filter((x) => x !== undefined));
   const book = books.data?.find((b) => b.id === h.journal_book_id);
   const j = doc.data;
@@ -224,7 +229,7 @@ export function JournalFormPage() {
             </div>
           </div>
         </div>
-        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการบัญชี', badge: lines.filter((l) => l.account_id).length }, ...(!isNew ? [{ key: 'history', label: 'ประวัติการแก้ไข' }] : [])]} />
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการบัญชี', badge: lines.filter((l) => l.account_id).length }, ...linkTabs.map(([key, label]) => ({ key, label })), ...(!isNew ? [{ key: 'history', label: 'ประวัติการแก้ไข' }] : [])]} />
         {tab === 'lines' && (
           <div className="table-wrap lines" ref={gridRef} onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).dataset.last != null && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); addLine(); } }}>
             <table className="grid">
@@ -257,6 +262,9 @@ export function JournalFormPage() {
         )}
       </fieldset>
       {tab === 'history' && id && <History table="gl_journal" rowId={id} />}
+      {id && doc.data && linkTabs.map(([key, , v]) => tab !== key ? null : key.startsWith('vat')
+        ? <JvVatTab key={key} kind={key === 'vatP' ? 'P' : 'S'} journal={{ id, voucher_no: doc.data!.voucher_no, date: String(doc.data!.voucher_date).slice(0, 10) }} lineVat={v.toFixed(2)} editable={doc.data!.doc_status === 'N' && doc.data!.editable} />
+        : <JvChequeTab key={key} direction={key === 'chqP' ? 'P' : 'R'} journal={{ id, voucher_no: doc.data!.voucher_no, date: String(doc.data!.voucher_date).slice(0, 10) }} lineAmount={v.toFixed(2)} editable={doc.data!.doc_status === 'N' && doc.data!.editable} />)}
       {j && <p className="hint">สร้างโดย {j.created_by_name ?? 'นำเข้าจาก Express'} · <DateText v={j.created_at.slice(0, 10)} /> · แก้ไขล่าสุด <DateText v={j.updated_at.slice(0, 10)} /></p>}
       {vatAsk && <VatClosingModal workDate={h.voucher_date} onClose={() => setVatAsk(false)} onOk={fillVatClosing} />}
       <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี / ต้นแบบ (ที่ช่องเลขที่)'], ['Ctrl+F6', 'คัดลอกจากใบสำคัญอื่น'],['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />

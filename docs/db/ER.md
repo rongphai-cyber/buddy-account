@@ -31,6 +31,7 @@ erDiagram
     sys_branch |o--o{ fin_cheque : "branch_id"
     gl_journal |o--o{ fin_cheque : "writeoff_journal_id"
     doc_header |o--o{ fin_cheque : "source_header_id"
+    gl_journal |o--o{ fin_cheque : "source_journal_id"
     doc_header |o--o{ fin_cheque : "deposit_header_id"
     gl_journal |o--o{ fin_cheque : "pass_journal_id"
     sys_branch |o--o{ gl_journal : "branch_id"

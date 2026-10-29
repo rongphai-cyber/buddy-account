@@ -2624,6 +2624,7 @@ CREATE TABLE fin_cheque (
   status varchar(4) NOT NULL,
   is_settled boolean DEFAULT false NOT NULL,
   source_header_id uuid,
+  source_journal_id uuid,
   deposit_header_id uuid,
   pass_journal_id uuid,
   remark varchar(200),
@@ -2663,6 +2664,7 @@ COMMENT ON COLUMN fin_cheque.writeoff_journal_id IS 'ใบสำคัญตั
 COMMENT ON COLUMN fin_cheque.status IS 'สถานะเช็ค (ISTAB 02): 00 ในมือ 01 รอเรียกเก็บ 02 คืนยื่นใหม่ 05 คืน 10 ผ่าน 19 ผ่าน(โอน) … [Express: BKTRN.CHQSTAT]';
 COMMENT ON COLUMN fin_cheque.is_settled IS 'ใช้ตัดหนี้ครบแล้ว [Express: BKTRN.CMPLAPP]';
 COMMENT ON COLUMN fin_cheque.source_header_id IS 'เอกสารที่รับ/จ่ายเช็คนี้ [Express: BKTRN.VOUCHER]';
+COMMENT ON COLUMN fin_cheque.source_journal_id IS 'ใบสำคัญที่ป้อนเช็คนี้ (บันทึกจากสมุดรายวัน S-GL-04)';
 COMMENT ON COLUMN fin_cheque.deposit_header_id IS 'ใบนำฝากเช็ค BQ/SQ [Express: BKTRNIT.DEPNUM]';
 COMMENT ON COLUMN fin_cheque.pass_journal_id IS 'ใบสำคัญผ่านเช็ค';
 COMMENT ON COLUMN fin_cheque.remark IS 'หมายเหตุ [Express: BKTRN.REMARK]';
@@ -4427,6 +4429,8 @@ ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_writeoff_journal_id FOREIGN 
 CREATE INDEX IF NOT EXISTS ix_fk_fin_cheque_writeoff_journal_id ON fin_cheque (writeoff_journal_id);
 ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_source_header_id FOREIGN KEY (source_header_id) REFERENCES doc_header(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_fin_cheque_source_header_id ON fin_cheque (source_header_id);
+ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_source_journal_id FOREIGN KEY (source_journal_id) REFERENCES gl_journal(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_fin_cheque_source_journal_id ON fin_cheque (source_journal_id);
 ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_deposit_header_id FOREIGN KEY (deposit_header_id) REFERENCES doc_header(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_fin_cheque_deposit_header_id ON fin_cheque (deposit_header_id);
 ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_pass_journal_id FOREIGN KEY (pass_journal_id) REFERENCES gl_journal(id) DEFERRABLE INITIALLY DEFERRED;

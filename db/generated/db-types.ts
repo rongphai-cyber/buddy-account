@@ -2408,6 +2408,8 @@ export interface FinChequeTable {
   is_settled: Gen<boolean>;
   /** เอกสารที่รับ/จ่ายเช็คนี้ */
   source_header_id: Gen<string | null>;
+  /** ใบสำคัญที่ป้อนเช็คนี้ (บันทึกจากสมุดรายวัน S-GL-04) */
+  source_journal_id: Gen<string | null>;
   /** ใบนำฝากเช็ค BQ/SQ */
   deposit_header_id: Gen<string | null>;
   /** ใบสำคัญผ่านเช็ค */

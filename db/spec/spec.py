@@ -863,6 +863,7 @@ add(T('fin_cheque', 'ทะเบียนเช็ครับ/เช็คจ�
   C('status', 'code4', nn=True, th='สถานะเช็ค (ISTAB 02): 00 ในมือ 01 รอเรียกเก็บ 02 คืนยื่นใหม่ 05 คืน 10 ผ่าน 19 ผ่าน(โอน) …', src='BKTRN.CHQSTAT'),
   C('is_settled', 'bool', nn=True, d='false', th='ใช้ตัดหนี้ครบแล้ว', src='BKTRN.CMPLAPP'),
   lk('source_header_id', 'doc_header', 'เอกสารที่รับ/จ่ายเช็คนี้', 'BKTRN.VOUCHER'),
+  lk('source_journal_id', 'gl_journal', 'ใบสำคัญที่ป้อนเช็คนี้ (บันทึกจากสมุดรายวัน S-GL-04)'),
   lk('deposit_header_id', 'doc_header', 'ใบนำฝากเช็ค BQ/SQ', 'BKTRNIT.DEPNUM'),
   lk('pass_journal_id', 'gl_journal', 'ใบสำคัญผ่านเช็ค'),
   C('remark', 'str200', th='หมายเหตุ', src='BKTRN.REMARK'),

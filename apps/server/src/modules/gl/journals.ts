@@ -140,6 +140,12 @@ export async function updateJournal(db: Db, ctx: { companyId: string; userId: st
 export async function cancelJournal(db: Db, ctx: { companyId: string; userId: string }, id: string, reason: string) {
   return db.transaction().execute(async (tx) => {
     const j = await loadEditable(tx, ctx.companyId, id);
+    // รายการภาษี/เช็คที่ป้อนจากใบสำคัญนี้ (S-GL-03/04) ยกเลิกตาม — เช็คที่นำฝาก/ผ่านแล้วต้องยกเลิกที่ทะเบียนเช็คก่อน
+    const used = await tx.selectFrom('fin_cheque').select('cheque_no').where('source_journal_id', '=', id).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null)
+      .where((eb) => eb.or([eb('status', 'not in', ['00', '05']), eb('deposit_header_id', 'is not', null)])).executeTakeFirst();
+    if (used) throw badRequest(`เช็คเลขที่ ${used.cheque_no} ของใบสำคัญนี้นำฝาก/ผ่านแล้ว — ยกเลิกการผ่าน/นำฝากที่ทะเบียนเช็คก่อน`);
+    await tx.updateTable('fin_cheque').set({ deleted_at: sql`now()` as never, updated_by: ctx.userId }).where('source_journal_id', '=', id).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).execute();
+    await tx.updateTable('tax_vat_entry').set({ doc_status: 'C', updated_by: ctx.userId }).where('journal_id', '=', id).where('company_id', '=', ctx.companyId).where('is_manual', '=', true).execute();
     await tx.updateTable('gl_journal').set({ doc_status: 'C', updated_by: ctx.userId }).where('id', '=', id).execute();
     await logActivity(tx, ctx, { module: 'GL', action: 'CANCEL', docNo: j.voucher_no, table: 'gl_journal', rowId: id, detail: { reason } });
     return { id, voucher_no: j.voucher_no };

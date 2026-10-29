@@ -87,6 +87,8 @@ export async function passOne(tx: Db, a: Ctx, c: Chq, date: string, reason: stri
 const chequeBody = z.object({
   direction: z.enum(['R', 'P']), cheque_no: z.string().trim().min(1, 'ป้อนเลขที่เช็ค').max(30), cheque_date: isoDate, bank_id: optId, bank_branch: str(60), bank_account_id: optId,
   customer_id: optId, supplier_id: optId, payee_name: str(120), department_id: optId, received_date: isoDate.nullable().optional().transform((v) => v ?? null), amount: money, remark: str(200),
+  /** ป้อนจากสมุดรายวัน (S-GL-04): ใบสำคัญที่มีบรรทัดเช็คจ่าย/เช็ครับล่วงหน้า */
+  source_journal_id: optId,
 });
 const depBody = z.object({ cheque_ids: z.array(uuid).min(1, 'เลือกเช็คที่นำฝากอย่างน้อย 1 ใบ').max(500), bank_account_id: uuid, doc_date: isoDate, doc_type_id: optId, remark: str(200), department_id: optId, charge: money.optional(), vat: money.optional(), wht: money.optional(),
   /** ใบขายลดเช็ค (SQR): ธนาคารรับซื้อเช็คก่อนกำหนด — ผ่านทันทีวันที่ขายลด ค่าขายลดลงดอกเบี้ยจ่าย · ใบกำกับภาษีซื้อ#/ลวท. ของค่าธรรมเนียม */
@@ -124,7 +126,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/cheques', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ direction: z.enum(['R', 'P']), status: z.string().regex(/^[0-9]{2}(,[0-9]{2})*$/).optional(), q: z.string().optional(), bank_account_id: uuid.optional(),
-      instrument: z.enum(['CHEQUE', 'TRANSFER', 'all']).default('CHEQUE'), from: isoDate.optional(), to: isoDate.optional(), loose: z.enum(['Y', 'N']).default('N'), remaining: z.enum(['Y', 'N']).default('N'), party_id: uuid.optional(), limit: z.coerce.number().int().min(1).max(5000).default(1000) }), req.query);
+      instrument: z.enum(['CHEQUE', 'TRANSFER', 'all']).default('CHEQUE'), journal_id: uuid.optional(), from: isoDate.optional(), to: isoDate.optional(), loose: z.enum(['Y', 'N']).default('N'), remaining: z.enum(['Y', 'N']).default('N'), party_id: uuid.optional(), limit: z.coerce.number().int().min(1).max(5000).default(1000) }), req.query);
     const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
     const st = q.status?.split(',');
     const rows = (await sql`SELECT f.id, f.direction, f.instrument, f.cheque_no, f.cheque_date, f.received_date, f.deposit_date, f.pass_date, f.amount, f.charge, f.net_amount, f.remaining_amount, f.written_off_amount, f.status,
@@ -135,7 +137,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
        WHERE f.company_id = ${a.companyId} AND f.deleted_at IS NULL AND f.direction = ${q.direction} ${q.instrument !== 'all' ? sql`AND f.instrument = ${q.instrument}` : sql``}
          ${st ? sql`AND f.status IN (${sql.join(st)})` : sql``} ${q.bank_account_id ? sql`AND f.bank_account_id = ${q.bank_account_id}` : sql``}
          ${q.loose === 'Y' ? sql`AND f.deposit_header_id IS NULL` : sql``} ${q.remaining === 'Y' ? sql`AND f.remaining_amount - f.written_off_amount > 0` : sql``}
-         ${q.party_id ? sql`AND (f.customer_id = ${q.party_id} OR f.supplier_id = ${q.party_id})` : sql``} ${q.from ? sql`AND f.cheque_date >= ${q.from}` : sql``} ${q.to ? sql`AND f.cheque_date <= ${q.to}` : sql``}
+         ${q.party_id ? sql`AND (f.customer_id = ${q.party_id} OR f.supplier_id = ${q.party_id})` : sql``} ${q.journal_id ? sql`AND f.source_journal_id = ${q.journal_id}` : sql``} ${q.from ? sql`AND f.cheque_date >= ${q.from}` : sql``} ${q.to ? sql`AND f.cheque_date <= ${q.to}` : sql``}
          ${like ? sql`AND (f.cheque_no ILIKE ${like} OR f.payee_name ILIKE ${like} OR c.name ILIKE ${like} OR s.name ILIKE ${like} OR c.code ILIKE ${like} OR s.code ILIKE ${like} OR h.doc_no ILIKE ${like})` : sql``}
        ORDER BY f.cheque_date DESC, f.cheque_no LIMIT ${q.limit}`.execute(db)).rows;
     const sum = (await sql<{ status: string; n: number; amount: string }>`SELECT status, count(*)::int AS n, sum(amount) AS amount FROM fin_cheque WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND direction = ${q.direction}
@@ -166,6 +168,10 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
     if (d(b.amount).lte(0)) throw badRequest('จำนวนเงินต้องมากกว่า 0');
     if (b.direction === 'P' && !b.bank_account_id) throw badRequest('เช็คจ่าย: เลือกบัญชีเงินฝากที่สั่งจ่าย');
     if (b.direction === 'R' && !b.customer_id && !b.payee_name) throw badRequest('เลือกรหัสลูกค้า หรือป้อนผู้สั่งจ่าย');
+    if (b.source_journal_id) {
+      const jv = await db.selectFrom('gl_journal').select('doc_status').where('id', '=', b.source_journal_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+      if (!jv || jv.doc_status === 'C') throw badRequest('ไม่พบใบสำคัญที่อ้างถึง (หรือถูกยกเลิกแล้ว)');
+    }
     for (const [tbl, v] of [['md_customer', b.customer_id], ['md_supplier', b.supplier_id], ['md_bank', b.bank_id], ['md_bank_account', b.bank_account_id]] as const)
       if (v && !(await db.selectFrom(tbl).select('id').where('id', '=', v).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบข้อมูลที่เลือก (ลูกค้า/ผู้จำหน่าย/ธนาคาร/บัญชีเงินฝาก)');
     return db.transaction().execute(async (tx) => {
