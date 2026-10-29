@@ -48,7 +48,11 @@
 **T1.17 เสร็จแล้ว — เฟส P2 ครบทุกงาน (29/10/2569)** — `modules/data-tables.ts` /data-tables/:code (SET.TBL) · `DATA_TABLES` ใน core/menu.ts · หน้าจอ `pages/settings/DataTables.tsx`
 - หน่วยนับ (20) คลัง (21) ธนาคาร (01) อยู่ในตารางของตัวเอง (migration 0011 ย้ายชื่อย่อ/อัตราจาก md_lookup แล้วเลิกใช้สำเนา — importer ไม่ซ้ำแล้ว) · แผนก (50) อยู่หน้าแผนก
 - รหัสที่ใช้แล้ว: ตารางของตัวเองหาจาก foreign key ทุกตัว (pg_constraint), md_lookup หาจาก DATA_TABLES.refs — ตารางใหม่ที่อ้างรหัส md_lookup ต้องเพิ่ม refs
-- ต่อไป: P3 (เอกสารซื้อ/ขาย/การเงิน + ระบบลงบัญชีอัตโนมัติ) — รอเจ้าของสั่ง
+**P3 เริ่มแล้ว (เจ้าของสั่ง "เริ่ม P3" 29/10/2569) — แผนงาน T3.1–T3.11 อยู่ใน TASKS.md**
+- ✅ T3.1 เครื่องลงบัญชี: `packages/core/src/posting.ts` (`buildPosting` บริสุทธิ์ + unit test) · `apps/server/src/modules/posting.ts` (`loadResolver` 3 ชั้น + `loadPostingInput` + `comparePosting`)
+  - ตรวจ: `node tools/local-pg/pg.mjs run -- pnpm --silent --filter @buddy/server cli posting-compare DEMO` → ต้องได้ ≥ 97.0% (ตอนนี้ 14,923/15,382 เท่าต้นแบบ Python ทุกหมวด)
+  - วิธีชำระเงินโอนที่ไม่มีบัญชี ใช้บัญชีของบัญชีเงินฝากที่ผูก (เพิ่มจากต้นแบบ — ผลไม่เปลี่ยน)
+- ต่อไป: T3.2 แกนเอกสาร (ออกเลข บันทึก=ลงบัญชีทรานแซกชันเดียว ยกเลิก=C+กลับรายการ) แล้ว T3.3 ขาย
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

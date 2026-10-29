@@ -3,6 +3,7 @@
  *   migrate                              รัน migration
  *   create-admin <user> <ชื่อ> <รหัสผ่าน>  สร้างผู้ดูแลระบบ (ถ้ายังไม่มีกลุ่ม ADMIN จะสร้างให้)
  *   company-template <company_id>        ใส่กฎการลงบัญชี + เส้นทางสมุดรายวันให้บริษัท (หลังย้ายข้อมูลจาก Express)
+ *   posting-compare <รหัสบริษัท>          เทียบเครื่องลงบัญชีกับใบสำคัญที่ Express ลงไว้ (เกณฑ์ P3 ≥ 97%)
  */
 import { mkdirSync } from 'node:fs';
 import bcrypt from 'bcryptjs';
@@ -10,6 +11,7 @@ import { loadConfig } from './config.js';
 import { openDatabase } from './db.js';
 import { migrate } from './migrate.js';
 import { applyPostingTemplate } from './company-template.js';
+import { comparePosting } from './modules/posting.js';
 
 const [cmd, ...args] = process.argv.slice(2);
 const cfg = loadConfig();
@@ -34,8 +36,18 @@ try {
     if (!id) throw new Error('ใช้: company-template <company_id>');
     await applyPostingTemplate(database.execScript, id);
     console.log('ใส่กฎการลงบัญชีแล้ว');
+  } else if (cmd === 'posting-compare') {
+    const [code] = args;
+    const c = await db.selectFrom('sys_company').select('id').where('code', '=', code ?? '').where('deleted_at', 'is', null).executeTakeFirst();
+    if (!c) throw new Error('ใช้: posting-compare <รหัสบริษัท>');
+    const r = await comparePosting(db, c.id);
+    let n = 0, ok = 0, same = 0;
+    console.log('หมวด   ใบสำคัญ   ตรงทุกบัญชี        ยอดรวมตรงแต่บัญชีต่าง');
+    for (const x of r.byClass) { n += x.n; ok += x.exact; same += x.sameTotal; console.log(`${x.doc_class.padEnd(5)} ${String(x.n).padStart(8)} ${String(x.exact).padStart(8)} (${(100 * x.exact / x.n).toFixed(1).padStart(5)}%) ${String(x.sameTotal).padStart(7)}   เช่น ${x.examples.join(' ')}`); }
+    console.log(`รวม ${n} ตรง ${ok} (${(100 * ok / n).toFixed(1)}%) ยอดรวมตรง ${same}`);
+    console.log('หาบัญชีได้จากชั้น:', JSON.stringify(r.layers));
   } else {
-    console.log('คำสั่ง: migrate | create-admin <user> <ชื่อ> <รหัสผ่าน> | company-template <company_id>');
+    console.log('คำสั่ง: migrate | create-admin <user> <ชื่อ> <รหัสผ่าน> | company-template <company_id> | posting-compare <รหัสบริษัท>');
   }
 } finally {
   await database.close();

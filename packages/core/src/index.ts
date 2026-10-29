@@ -9,3 +9,4 @@ export * from './baht.js';
 export * from './forms/wht50.js';
 export * from './items.js';
 export * from './gl-link.js';
+export * from './posting.js';
