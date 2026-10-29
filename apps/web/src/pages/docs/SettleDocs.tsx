@@ -90,6 +90,7 @@ export function SettleFormPage({ path }: { path: string }) {
   const [h, setH] = useState<Head | null>(null);
   /** บิลที่เลือก: header_id → ยอดชำระ */
   const [pick, setPick] = useState<Record<string, string>>({});
+  const [billRef, setBillRef] = useState('');
   const [pays, setPays] = useState<Pay[]>([]);
   const [whts, setWhts] = useState<Wht[]>([]);
   const [tab, setTab] = useState('bills');
@@ -98,6 +99,7 @@ export function SettleFormPage({ path }: { path: string }) {
   const [askCancel, setAskCancel] = useState(false);
   const [reason, setReason] = useState('');
   const [dirty, setDirty] = useState(false);
+  const bills = useQuery({ enabled: !!h?.party, queryKey: [K.path, 'bills', h?.party?.id], queryFn: () => api.get<{ rows: Array<{ id: string; doc_no: string; invoice_ids: string[]; total: string }> }>(`/api/v1/${K.path}/bills`, { party_id: h!.party!.id }) });
   const open = useQuery({ enabled: !!h?.party, queryKey: [K.path, 'open', h?.party?.id, id], queryFn: () => api.get<{ rows: Open[] }>(`/api/v1/${K.path}/open-items`, { party_id: h!.party!.id, ...(id ? { receipt_id: id } : {}) }), staleTime: 0 });
   const date0 = me?.work_date ?? todayIso();
   if (!h && !id && defs.data) setH({ doc_type_id: defs.data.types[0]?.id ?? '', doc_date: date0, payment_date: date0, party: null, department_id: '', salesperson_id: '', your_ref: '', remark: '', interest: '', discount: '', wht: '', cash: '', whtForm: 'S53', whtRate: '3' });
@@ -178,6 +180,15 @@ export function SettleFormPage({ path }: { path: string }) {
           <div className="col">
             <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
+            {!ro && <Field label={K.module === 'AR' ? 'อ้างใบวางบิล' : 'อ้างใบรับวางบิล'} hint="เลือกแล้วติ๊กบิลทุกใบในใบวางบิลให้ (ยอดค้างเต็ม) — แก้ยอดได้"><select value={billRef} disabled={!h.party} onChange={(e) => {
+              const b = bills.data?.rows.find((x) => x.id === e.target.value); setBillRef(e.target.value);
+              if (!b) return;
+              const sel = rows.filter((o) => b.invoice_ids.includes(o.header_id));
+              setPick((m) => ({ ...m, ...Object.fromEntries(sel.map((o) => [o.header_id, num(o.outstanding)])) }));
+              if (!h.your_ref) set({ your_ref: b.doc_no });
+              setDirty(true); setTab('bills');
+              toast(sel.length ? `เลือกบิลตาม ${b.doc_no} ${sel.length} ใบ` : `บิลใน ${b.doc_no} ชำระครบแล้ว`, sel.length ? 'ok' : 'warn');
+            }}><option value="">—</option>{bills.data?.rows.map((b) => <option key={b.id} value={b.id}>{b.doc_no} · {b.invoice_ids.length} ใบ · {fmt(b.total)}</option>)}</select></Field>}
             <Field label="อ้างอิง/หมายเหตุสั้น"><input value={h.your_ref} maxLength={60} disabled={ro} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
             {K.module === 'AR' && <Field label="พนักงานเก็บเงิน"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></Field>}
           </div>

@@ -1169,6 +1169,9 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/docs/${b1.body.id}/journal`)).body.journals).toEqual([]);
     expect(await open()).toEqual([]);
     expect(await open(b1.body.id)).toEqual([i1.doc_no, i2.doc_no].sort());     // แก้ใบเดิม: บิลของใบนี้เลือกได้
+    // อ้างใบวางบิลในใบเสร็จ (T7.1): ใบวางบิลของลูกค้าพร้อมใบกำกับในใบ
+    const bl = (await call('GET', `/api/v1/ar-receipts/bills?party_id=${cus}`)).body.rows.find((x: { id: string }) => x.id === b1.body.id);
+    expect([bl.doc_no, [...bl.invoice_ids].sort()]).toEqual([b1.body.doc_no, [i1.id, i2.id].sort()]);
     expect((await call('POST', '/api/v1/ar-bills', bs)).body.error.message).toMatch(/อยู่ในใบวางบิลอื่นแล้ว/);
     expect((await call('POST', `/api/v1/ar-bills/${b1.body.id}/appointment`, { date: '2026-10-30' })).status).toBe(200);
     expect((await call('GET', '/api/v1/ar-bills?order=appointment')).body.rows[0]).toMatchObject({ doc_no: b1.body.doc_no, bills: 2 });

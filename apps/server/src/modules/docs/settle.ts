@@ -155,6 +155,18 @@ export function settleRoutes(app: FastifyInstance, db: Db) {
       if (!p) throw notFound(K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย');
       return { rows: await openItems(db, a.companyId, K, p.id, q.receipt_id ?? null) };
     });
+    /** ใบวางบิล/ใบรับวางบิลของคู่ค้า (อ้างใบวางบิลในใบเสร็จ/ใบสำคัญจ่าย — S-PU-07 "ใบรับวางบิล#") */
+    app.get(`${base}/bills`, async (req) => {
+      const a = requireCompany(req);
+      const q = parse(z.object({ party_id: uuid }), req.query);
+      const rows = (await sql<{ id: string; doc_no: string; doc_date: string; appointment_date: string | null; invoice_ids: string[]; total: string }>`
+        SELECT h.id, h.doc_no, h.doc_date, h.appointment_date, array_agg(b.invoice_header_id) AS invoice_ids, coalesce(sum(b.amount), 0) AS total
+          FROM doc_header h JOIN doc_bill_item b ON b.bill_header_id = h.id AND b.deleted_at IS NULL
+         WHERE h.company_id = ${a.companyId} AND h.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_class = ${K.module === 'AR' ? 'BS' : 'BR'}
+           AND ${sql.ref(K.party === 'customer' ? 'h.customer_id' : 'h.supplier_id')} = ${q.party_id}
+         GROUP BY h.id, h.doc_no, h.doc_date, h.appointment_date ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT 100`.execute(db)).rows;
+      return { rows };
+    });
     app.get(`${base}/:id`, async (req) => {
       const a = requireCompany(req);
       const { id } = parse(z.object({ id: uuid }), req.params);
