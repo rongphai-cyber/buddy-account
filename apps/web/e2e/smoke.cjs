@@ -392,6 +392,18 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.goto(BASE + '/gl/petty-cash/dp/new');
     await page.waitForSelector('.trade-head', { timeout: 15000 });
   });
+  await step('VAT registers (S-TX-02, S-TX-06, view only)', async () => {
+    for (const k of ['P', 'S']) {
+      await page.goto(BASE + '/tax/vat/' + k);
+      await page.waitForSelector('table.grid tbody tr', { timeout: 15000 });
+      if (await page.locator('table.grid tbody tr.row-open').count()) {
+        await page.locator('table.grid tbody tr.row-open').first().click();
+        await page.waitForSelector('.modal', { timeout: 10000 });
+        await page.keyboard.press('Escape');
+      }
+      await shot('15z-vat-' + k);
+    }
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

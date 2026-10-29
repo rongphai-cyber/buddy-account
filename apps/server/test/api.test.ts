@@ -1243,6 +1243,60 @@ describe('Buddy Account API (PGlite)', () => {
     for (const id of [dp1.id, dp2.id]) expect((await call('POST', `/api/v1/petty-payments/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
+  it('VAT registers (T3.9): documents write entries, credit notes negative, cash-basis at receipt, edit/reclassify, manual, cancel, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const sup = (await call('GET', '/api/v1/suppliers?q=S200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const reg = async (k: 'P' | 'S', extra = '') => (await call('GET', `/api/v1/vat/${k}?month=2026-12${extra}`)).body;
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2026-12-01', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 1000 }] })).body;
+    const cn = (await call('POST', '/api/v1/ar-credit-notes', { doc_type_id: await typeOf('CN'), doc_date: '2026-12-03', party_id: cus, ref_header_id: iv.id, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 200 }] })).body;
+    let s = await reg('S');
+    expect(s.rows.find((r: { doc_no: string }) => r.doc_no === iv.doc_no)).toMatchObject({ tax_invoice_no: iv.doc_no, base_amount: '1000.00', vat_amount: '70.00', description: expect.stringMatching(/^ขายเชื่อให้/), month: '2026-12' });
+    expect(s.rows.find((r: { doc_no: string }) => r.doc_no === cn.doc_no)).toMatchObject({ base_amount: '200.00', vat_amount: '14.00', sign: -1 });
+    expect(s.totals).toMatchObject({ base: '800.00', vat: '56.00' });
+    // ภาษีเกณฑ์เงินสด: บิลไม่เข้าแฟ้ม เกิดตอนรับชำระ
+    const iv2 = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2026-12-05', party_id: cus, price_type: '2', vat_rate: 7, vat_basis: '2', lines: [{ item_id: cpu, qty: 1, unit_price: 2000 }] })).body;
+    expect((await reg('S')).rows.some((r: { doc_no: string }) => r.doc_no === iv2.doc_no)).toBe(false);
+    const re = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2026-12-10', party_id: cus, settlements: [{ invoice_header_id: iv2.id, amount: 2140 }] })).body;
+    expect((await reg('S')).rows.find((r: { doc_no: string }) => r.doc_no === re.doc_no)).toMatchObject({ base_amount: '2000.00', vat_amount: '140.00', description: expect.stringMatching(/^รับชำระหนี้จาก/) });
+    // ภาษีซื้อ: เลขที่/วันที่ใบกำกับของผู้จำหน่าย · ย้ายเป็นขอคืนไม่ได้ + ยื่นเพิ่มเติม
+    const rr = { doc_type_id: await typeOf('RR'), doc_date: '2026-12-02', party_id: sup, ref_no: 'INV-S1', ref_date: '2026-11-28', price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 500 }] };
+    const r1 = (await call('POST', '/api/v1/purchase-invoices', rr)).body;
+    const p1 = (await reg('P')).rows.find((r: { doc_no: string }) => r.doc_no === r1.doc_no);
+    expect(p1).toMatchObject({ tax_invoice_no: 'INV-S1', base_amount: '500.00', vat_amount: '35.00', description: expect.stringMatching(/^ซื้อเชื่อจาก/) });
+    expect(String(p1.tax_invoice_date).slice(0, 10)).toBe('2026-11-28');
+    const edit = { tax_invoice_no: 'INV-S1', tax_invoice_date: '2026-11-28', month: '2026-12', is_late: true, base_amount: 0, vat_amount: 0, nonclaim_base: 500, nonclaim_vat: 35, remark: 'ใบกำกับไม่สมบูรณ์' };
+    expect((await call('PUT', `/api/v1/vat/P/${p1.id}`, { ...edit, nonclaim_vat: 30 })).body.error.message).toMatch(/ย้ายยอด/);
+    expect((await call('PUT', `/api/v1/vat/S/${p1.id}`, edit)).status).toBe(404);   // คนละแฟ้ม
+    expect((await call('PUT', `/api/v1/vat/P/${p1.id}`, edit)).status).toBe(200);
+    expect((await reg('P', '&late=Y')).totals).toMatchObject({ vat: '0.00', nonclaim_vat: '35.00' });
+    // บันทึกเอกสารซ้ำโดยยอดเท่าเดิม → รายการที่แก้คงอยู่ · ยอดเปลี่ยน → สร้างใหม่ แต่คงเลขที่/งวด/ยื่นเพิ่มเติม
+    expect((await call('PUT', `/api/v1/purchase-invoices/${r1.id}`, rr)).status).toBe(200);
+    expect((await reg('P')).rows.find((r: { doc_no: string }) => r.doc_no === r1.doc_no)).toMatchObject({ nonclaim_vat: '35.00', is_modified: true, remark: 'ใบกำกับไม่สมบูรณ์' });
+    expect((await call('PUT', `/api/v1/purchase-invoices/${r1.id}`, { ...rr, lines: [{ item_id: cpu, qty: 2, unit_price: 500 }] })).status).toBe(200);
+    expect((await reg('P')).rows.find((r: { doc_no: string }) => r.doc_no === r1.doc_no)).toMatchObject({ base_amount: '1000.00', vat_amount: '70.00', nonclaim_vat: '0.00', is_late: true, tax_invoice_no: 'INV-S1' });
+    // เพิ่มรายการเอง · ยกเลิกได้เฉพาะที่เพิ่มเอง · ยกเลิกเอกสาร → รายการยกเลิก
+    const m = await call('POST', '/api/v1/vat/S', { tax_invoice_no: 'MAN-01', tax_invoice_date: '2026-12-20', month: '2026-12', party_name: 'ลูกค้าทั่วไป', base_amount: 100, vat_amount: 7 });
+    expect(m.status).toBe(200);
+    expect((await call('POST', `/api/v1/vat/S/${p1.id}/cancel`, {})).status).toBe(404);
+    const ivEntry = (await reg('S')).rows.find((r: { doc_no: string }) => r.doc_no === iv.doc_no);
+    expect((await call('POST', `/api/v1/vat/S/${ivEntry.id}/cancel`, {})).body.error.message).toMatch(/เอกสารต้นทาง/);
+    expect((await call('POST', `/api/v1/vat/S/${m.body.id}/cancel`, {})).status).toBe(200);
+    // บริษัทอื่น
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/vat/S')).body.rows).toEqual([]);
+    expect((await call('PUT', `/api/v1/vat/P/${p1.id}`, edit)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ล้างข้อมูลทดสอบ
+    for (const [path, id] of [['ar-receipts', re.id], ['ar-credit-notes', cn.id], ['sales-invoices', iv.id], ['sales-invoices', iv2.id], ['purchase-invoices', r1.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    s = await reg('S');
+    expect(s.totals).toMatchObject({ base: '0.00', vat: '0.00' });
+    expect((await reg('S', '&status=C')).rows.length).toBeGreaterThanOrEqual(3);
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

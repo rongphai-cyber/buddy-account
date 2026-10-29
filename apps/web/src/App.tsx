@@ -44,6 +44,7 @@ import { CashFormPage, CashListPage } from './pages/docs/CashDocs';
 import { BillFormPage, BillListPage } from './pages/docs/BillDocs';
 import { PettyFormPage, PettyListPage } from './pages/docs/PettyCash';
 import { WhtRegisterPage } from './pages/tax/WhtRegister';
+import { VatRegisterPage } from './pages/tax/VatRegister';
 import { BILL_KINDS, CASH_KINDS, SETTLE_KINDS, TRADE_KINDS } from '@buddy/core';
 
 export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
@@ -135,6 +136,8 @@ function Shell() {
           <Route path="/ar/salespersons" element={<SalespersonsPage />} />
           <Route path="/tax/wht50" element={<Wht50Page />} />
           <Route path="/tax/wht" element={<WhtRegisterPage />} />
+          <Route path="/tax/vat/P" element={<VatRegisterPage key="P" kind="P" />} />
+          <Route path="/tax/vat/S" element={<VatRegisterPage key="S" kind="S" />} />
           <Route path="/ic/items" element={<StockItemsPage />} />
           <Route path="/ic/kits" element={<KitsPage />} />
           <Route path="/ic/services" element={<ServicesPage />} />

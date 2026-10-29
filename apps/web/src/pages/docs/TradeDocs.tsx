@@ -142,6 +142,9 @@ export function TradeFormPage({ path }: { path: string }) {
   const [lines, setLines] = useState<Line[]>([]);
   const [pays, setPays] = useState<Pay[]>([]);
   const [delivery, setDelivery] = useState('');
+  /** บิลซื้อ: วันที่ใบกำกับภาษีของผู้จำหน่าย (เข้าแฟ้มภาษีซื้อ) */
+  const [refDate, setRefDate] = useState('');
+  const supInv = K.module === 'AP' && !K.refInvoice && !K.order;
   const [pickOrder, setPickOrder] = useState(false);
   const [cancelLine, setCancelLine] = useState<Line | null>(null);
   const [askConvert, setAskConvert] = useState(false);
@@ -170,6 +173,7 @@ export function TradeFormPage({ path }: { path: string }) {
       source_line_id: (l.source_line_id as string) ?? null, source_no: (l.source as { doc_no?: string } | null)?.doc_no ?? null, line_id: l.id as string,
       remaining: (l.remaining_qty as string) ?? null, delivered: (l.delivered_qty as string) ?? null, cancelled: (l.cancelled_qty as string) ?? null })));
     setDelivery(c.delivery_date ? String(c.delivery_date).slice(0, 10) : '');
+    setRefDate(c.ref_date ? String(c.ref_date).slice(0, 10) : '');
     setPays(cur.data.payments.map((p) => ({ key: ++seq, payment_method_id: String(p.payment_method_id), amount: num(p.amount), reference_no: String(p.reference_no ?? '') })));
     setDeps(Object.fromEntries(cur.data.deposits.map((x) => [x.header_id, num(x.amount)])));
   }
@@ -205,7 +209,7 @@ export function TradeFormPage({ path }: { path: string }) {
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, party_id: h.party?.id, bill_to_customer_id: h.bill_to?.id ?? null, party_tax_branch_no: h.party_tax_branch_no || null, your_ref: h.your_ref || null,
-      ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
+      ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, ref_date: supInv ? refDate || null : null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
       credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type, vat_rate: h.vat_rate || '0', vat_basis: h.vat_basis, discount_text: h.discount_text || null, remark: h.remark || null,
       lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1', unit_price: l.unit_price || '0', discount_text: l.discount_text || null, is_free: l.is_free, return_to_stock: l.return_to_stock, source_line_id: l.source_line_id ?? null })),
       delivery_date: K.order && K.cls !== 'QT' ? delivery || null : null,
@@ -251,6 +255,7 @@ export function TradeFormPage({ path }: { path: string }) {
             {K.party === 'customer' && <Field label="Bill to" hint="ชื่อบนใบกำกับ ถ้าเรียกเก็บในนามอื่น"><SearchPick endpoint="/api/v1/customers" value={h.bill_to} disabled={readOnly} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => set({ bill_to: r })} /></Field>}
             <Field label="สาขา#"><input className="mono" value={h.party_tax_branch_no} maxLength={5} disabled={readOnly} onChange={(e) => set({ party_tax_branch_no: e.target.value })} /></Field>
             <Field label="อ้างอิง"><input value={h.your_ref} maxLength={30} disabled={readOnly} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
+            {supInv && <Field label="เลขที่ใบกำกับ/บิลผู้จำหน่าย / ลงวันที่" hint="เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่/วันที่เอกสาร"><div className="pair" style={{ gridTemplateColumns: 'minmax(0, 1fr) 150px' }}><input value={h.ref?.code ?? ''} maxLength={30} disabled={readOnly} onChange={(e) => set({ ref: e.target.value ? { id: '', code: e.target.value } : null })} aria-label="เลขที่ใบกำกับผู้จำหน่าย" /><DateInput value={refDate} disabled={readOnly} onChange={(v) => { setRefDate(v); setDirty(true); }} /></div></Field>}
             {K.refInvoice && <Field label="เลขที่ใบกำกับที่อ้างถึง" req><SearchPick<{ id: string; doc_no: string; party_name: string; net_amount: string }> endpoint={`/api/v1/${K.module === 'AR' ? 'sales-invoices' : 'purchase-invoices'}`} params={h.party ? { party_id: h.party.id, status: 'N' } : undefined} value={h.ref} disabled={readOnly || !h.party}
               codeOf={(r: { doc_no: string }) => r.doc_no} label={(r: { party_name: string; net_amount: string }) => `${r.party_name} ${fmt(r.net_amount)}`} onPick={(r: { id: string; doc_no: string } | null) => set({ ref: r ? { id: r.id, code: r.doc_no } : null })} placeholder={h.party ? 'พิมพ์เลขที่ใบกำกับ' : `เลือก${partyWord(K)}ก่อน`} /></Field>}
           </div>

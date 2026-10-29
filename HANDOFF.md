@@ -81,7 +81,12 @@
 - ✅ T3.8 เงินสดย่อย: `modules/docs/pettycash.ts` /petty-payments (DP, ไม่ลงบัญชี, บรรทัด line_kind G + account_id) /petty-reimbursements (VR, รวม DP ตามบัญชี/แผนก → ลงบัญชี) · DP→VR ผูก doc_link REIMBURSE (ข้อมูลที่ย้ายมาใช้ DP.ref_no = เลขที่ VR) · เครื่องลงบัญชีเพิ่ม VR (Dr บัญชีของบรรทัด / Cr เงินสด-วิธีจ่าย) — ตรง Express 68/68 · posting-compare รวม 15,032/15,450 (97.3%)
   - loadPostingInput โหลดบรรทัด G (account_id) ด้วย — ใช้เฉพาะ VR · หน้า `pages/docs/PettyCash.tsx` (/gl/petty-cash, /gl/petty-cash/vr)
   - เหลือ: ประเภท/สถานะเงินสดย่อย (ตาราง 53), แท็บภาษีซื้อของ DP (T3.9)
-- ต่อไป: T3.9 แฟ้มภาษีซื้อ/ขาย + รายงานรายเดือน (บทที่ 16) — T1.15
+- ✅ T3.9 แฟ้มภาษีซื้อ/ขาย: `modules/vat.ts` — `syncVatEntries` เรียกใน postDocument (ก่อนเช็ค gen.link_gl) สร้าง/แทน tax_vat_entry ของเอกสาร (S: IV HS DR CN AI OI RE · P: RR HP CP DN AE OE PS · เกณฑ์เงินสดเกิดที่ RE/PS จาก doc_settlement.vat_amount) · cancelDocument → รายการ C
+  - ยอดเก็บเป็นบวกแบบ Express — CN/DN แสดง/รวมเป็นลบ (sign จาก doc_class) · รายการที่ผู้ใช้แก้ (is_modified) คงเลขที่/วันที่ใบกำกับ งวด ยื่นเพิ่มเติม หมายเหตุ เมื่อบันทึกเอกสารซ้ำ (ยอดเท่าเดิม = คงทั้งแถว)
+  - API /vat/P|S (+ /:id PUT แก้/ย้ายขอคืนไม่ได้, POST เพิ่มเอง, /:id/cancel เฉพาะเพิ่มเอง) สิทธิ์ FI.VAT.IN / FI.VAT.OUT · หน้า `pages/tax/VatRegister.tsx` (/tax/vat/P, /tax/vat/S) + พิมพ์รายงานแบบมาตรฐาน (portal .vat-print)
+  - บิลซื้อ/ซื้อสด: ช่องเลขที่ใบกำกับผู้จำหน่าย/ลงวันที่ (ref_no/ref_date) → แฟ้มภาษีซื้อ
+  - เหลือ: T1.15 JV ปรับปรุงภาษีประจำเดือน, แยกรายงานตามประเภทบิล, ภาษีซื้อของเงินสดย่อย DP
+- ต่อไป: T1.15 JV ปรับปรุงภาษีประจำเดือน (S-ME-01) แล้ว T3.10 ยอดยกมาลูกหนี้/เจ้าหนี้ + กระทบยอดกับ Express
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

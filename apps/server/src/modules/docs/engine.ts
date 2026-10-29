@@ -6,6 +6,7 @@ import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
 import { loadPostingInput, loadResolver } from '../posting.js';
+import { cancelVatEntries, syncVatEntries } from '../vat.js';
 
 type Ctx = { companyId: string; userId: string; branchId?: string | null };
 
@@ -71,6 +72,8 @@ export async function postDocument(tx: Db, ctx: Ctx, headerId: string, existingJ
     .where('h.id', '=', headerId).where('h.company_id', '=', ctx.companyId).where('h.deleted_at', 'is', null).executeTakeFirst();
   if (!h) throw notFound('เอกสาร');
   if (h.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว');
+  // แฟ้มภาษีซื้อ/ขาย (บทที่ 16) เกิดพร้อมเอกสารเสมอ แม้ไม่เชื่อมต่อระบบบัญชี
+  await syncVatEntries(tx, ctx, headerId);
   if ((await companySettings(tx, ctx.companyId))['gen.link_gl'] === false) return { journal_id: null };
   const pv = await previewPosting(tx, ctx.companyId, headerId);
   if (!pv || !pv.lines.length) return { journal_id: null };   // หมวดที่ไม่ลงบัญชี (ใบเสนอราคา ใบสั่งขาย ฯลฯ)
@@ -161,6 +164,7 @@ export async function cancelDocument(db: Db, ctx: Ctx, headerId: string, reason:
     if (before) await before(tx);
     await unpostDocument(tx, ctx, headerId);
     await tx.updateTable('doc_header').set({ doc_status: 'C', cancel_reason: reason.slice(0, 200), updated_by: ctx.userId }).where('id', '=', headerId).execute();
+    await cancelVatEntries(tx, ctx.companyId, headerId);
     await logActivity(tx, ctx, { module: 'DOC', action: 'CANCEL', docNo: h.doc_no, table: 'doc_header', rowId: headerId, detail: { reason } });
     return { ok: true };
   });
