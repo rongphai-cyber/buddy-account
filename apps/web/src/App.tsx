@@ -40,6 +40,7 @@ import { DocTypesPage, GlLinkPage } from './pages/settings/DocTypes';
 import { PrintFormsPage } from './pages/settings/PrintForms';
 import { AssetAccountGroupsPage, AssetFormPage, AssetsPage, DepreciationPage } from './pages/fa/Assets';
 import { YearEndPage } from './pages/gl/YearEnd';
+import { BackupPage } from './pages/settings/Backup';
 import { DataTablesPage } from './pages/settings/DataTables';
 import { TradeFormPage, TradeListPage } from './pages/docs/TradeDocs';
 import { SettleFormPage, SettleListPage } from './pages/docs/SettleDocs';
@@ -186,6 +187,7 @@ function Shell() {
           <Route path="/fa/assets/:id" element={<AssetFormPage />} />
           <Route path="/fa/depreciation" element={<DepreciationPage />} />
           <Route path="/gl/year-end" element={<YearEndPage />} />
+          <Route path="/tools/backup" element={<BackupPage />} />
           <Route path="/settings/gl-link" element={<GlLinkPage />} />
           <Route path="/settings/data-tables" element={<DataTablesPage />} />
           {TRADE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<TradeListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<TradeFormPage key={k.path} path={k.path} />} />])}

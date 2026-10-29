@@ -2307,6 +2307,69 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', '/api/v1/gl/year-end/reopen', { fiscal_year_id: y69.id })).status).toBe(404);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
+  it('backup / verify / restore per company and users (T6.4): replace only this company, tamper checks, cross-company/tenant blocked', async () => {
+    const admin = cookie;
+    const { gunzipSync, gzipSync } = await import('node:zlib');
+    const raw = async (method: 'GET' | 'POST', url: string, payload?: Buffer) => {
+      const r = await app.inject({ method, url, payload, headers: { ...(cookie ? { cookie } : {}), ...(payload ? { 'content-type': 'application/octet-stream' } : {}) } });
+      return { status: r.statusCode, buf: r.rawPayload, json: (() => { try { return JSON.parse(r.body); } catch { return null; } })(), disp: String(r.headers['content-disposition'] ?? '') };
+    };
+    const login = async (u: string, p: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: p })).status).toBe(200); };
+    expect((await call('GET', '/api/v1/backup/users')).body.error.message).toMatch(/ผู้ดูแลของลูกค้า/);
+    expect((await call('POST', '/api/v1/tenants', { code: 'BKUPX', name: 'ลูกค้าสำรอง X', admin_username: 'bx.admin', admin_name: 'ผู้ดูแล X', admin_password: 'passX1234' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { code: 'BKUPY', name: 'ลูกค้าสำรอง Y', admin_username: 'by.admin', admin_name: 'ผู้ดูแล Y', admin_password: 'passY1234' })).status).toBe(200);
+    await login('bx.admin', 'passX1234');
+    const x1 = (await call('POST', '/api/v1/companies', { code: 'X1', name_th: 'บริษัท เอ็กซ์ จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: x1 });
+    const dept = (await call('POST', '/api/v1/departments', { code: 'D1', name_th: 'ฝ่ายขาย' })).body.id;
+    const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const acc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control);
+    const jv = (n: string) => call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: '2026-03-01', lines: [{ account_id: acc[0].id, debit: n }, { account_id: acc[1].id, credit: n }] });
+    expect((await jv('10.25')).status).toBe(200);
+    const tb = async () => (await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body.totals;
+    const before = await tb();
+    // สำรอง → ทดสอบ
+    const b = await raw('GET', '/api/v1/backup/company');
+    expect([b.status, /\d{8}-X1\.buddy/.test(b.disp)]).toEqual([200, true]);
+    const v = (await raw('POST', '/api/v1/backup/verify', b.buf)).json;
+    expect([v.same_company, v.schema_ok, v.company.code, v.rows > 100]).toEqual([true, true, 'X1', true]);
+    expect((await raw('POST', '/api/v1/backup/verify', Buffer.from('not a backup'))).json.error.message).toMatch(/เสียหาย/);
+    const text = gunzipSync(b.buf).toString('utf-8');
+    expect((await raw('POST', '/api/v1/backup/verify', gzipSync(Buffer.from(text.replace('ฝ่ายขาย', 'ฝ่ายขโมย'))))).json.error.message).toMatch(/ไม่สมบูรณ์/);
+    // เปลี่ยนข้อมูลหลังสำรอง แล้วนำข้อมูลสำรองกลับ
+    expect((await call('PUT', `/api/v1/departments/${dept}`, { code: 'D1', name_th: 'ฝ่ายขายใหม่' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/departments', { code: 'D2', name_th: 'ฝ่ายบัญชี' })).status).toBe(200);
+    expect((await jv('99')).status).toBe(200);
+    expect((await raw('POST', '/api/v1/backup/restore', b.buf)).json.error.message).toMatch(/ป้อน YES/);
+    const r = await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf);
+    expect([r.status, r.json.restored]).toEqual([200, 'X1']);
+    const depts = (await call('GET', '/api/v1/departments')).body as Array<{ code: string; name_th: string }>;
+    expect(depts.map((x) => `${x.code}:${x.name_th}`).filter((x) => x.startsWith('D'))).toEqual(['D1:ฝ่ายขาย']);
+    expect(await tb()).toEqual(before);
+    // ข้อมูลผู้ใช้: สำรอง → เปลี่ยนชื่อ → นำกลับ
+    const u = (await call('POST', '/api/v1/users', { username: 'bx.user1', display_name: 'พนักงาน เอ็กซ์', password: 'userX1234', companies: [x1] })).body.id;
+    const ub = await raw('GET', '/api/v1/backup/users');
+    expect(ub.status).toBe(200);
+    expect((await call('PUT', `/api/v1/users/${u}`, { username: 'bx.user1', display_name: 'ชื่อเปลี่ยนแล้ว', companies: [x1] })).status).toBe(200);
+    expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', ub.buf)).status).toBe(200);
+    expect((await call('GET', '/api/v1/users')).body.users.find((x: { id: string }) => x.id === u).display_name).toBe('พนักงาน เอ็กซ์');
+    expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', b.buf)).json.error.message).toMatch(/ไม่ใช่แฟ้มสำรองข้อมูลผู้ใช้/);
+    // ลูกค้ารายอื่น: นำแฟ้มของ X มาใช้ไม่ได้ · แก้หัวแฟ้มเป็นบริษัทตัวเองก็ทับข้อมูลของ X ไม่ได้
+    await login('by.admin', 'passY1234');
+    const y1 = (await call('POST', '/api/v1/companies', { code: 'Y1', name_th: 'บริษัท วาย จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: y1 });
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf)).json.error.message).toMatch(/เป็นของบริษัท X1/);
+    const nl = text.indexOf('\n'), head = JSON.parse(text.slice(0, nl));
+    const forged = gzipSync(Buffer.from(JSON.stringify({ ...head, company: { ...head.company, id: y1 } }) + '\n' + text.slice(nl + 1)));
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', forged)).status).not.toBe(200);
+    expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', ub.buf)).json.error.message).toMatch(/ลูกค้ารายอื่น/);
+    await login('bx.admin', 'passX1234');
+    await call('POST', '/api/v1/auth/select', { company_id: x1 });
+    expect((await call('GET', '/api/v1/departments')).body.some((x: { code: string }) => x.code === 'D1')).toBe(true);
+    expect(await tb()).toEqual(before);
+    cookie = admin;
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

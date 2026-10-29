@@ -230,6 +230,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/fa/assets': M('FA.ASSET', 'read'), 'GET /api/v1/fa/assets/:id': M('FA.ASSET', 'read'), 'POST /api/v1/fa/assets': M('FA.ASSET', 'add'), 'PUT /api/v1/fa/assets/:id': M('FA.ASSET', 'edit'),
   'POST /api/v1/fa/assets/:id/recode': M('FA.ASSET', 'edit'), 'DELETE /api/v1/fa/assets/:id': M('FA.ASSET', 'delete'),
   'POST /api/v1/fa/assets/:id/sell': M('FA.ASSET', 'edit'), 'POST /api/v1/fa/assets/:id/unsell': M('FA.ASSET', 'cancel'),
+  'GET /api/v1/backup/company': M('OT.BACKUP', 'add'), 'POST /api/v1/backup/verify': M('OT.BACKUP', 'read'), 'POST /api/v1/backup/restore': M('OT.BACKUP', 'edit'),
+  'GET /api/v1/backup/users': M('SET.SEC', 'read'), 'POST /api/v1/backup/users/restore': M('SET.SEC', 'edit'),
   'GET /api/v1/gl/year-end': M('OT.YE', 'read'), 'POST /api/v1/gl/year-end/inventory-jv': M('OT.YE', 'add'), 'POST /api/v1/gl/year-end/close': M('OT.YE', 'edit'), 'POST /api/v1/gl/year-end/reopen': M('OT.YE', 'cancel'),
   'POST /api/v1/fa/depreciate': M('FA.DEPR', 'add'), 'GET /api/v1/fa/depreciation-periods': M('FA.DEPR', 'read'),
   'GET /api/v1/bank-recon': M('FI.BK.REC', 'read'), 'PUT /api/v1/bank-recon/statement': M('FI.BK.REC', 'edit'), 'POST /api/v1/bank-recon/clear': M('FI.BK.REC', 'edit'),
