@@ -9,6 +9,8 @@ import { d, type Decimal, type MoneyInput } from './money.js';
 export interface PostHeader {
   id: string; doc_class: string; doc_type_id: string | null; customer_id: string | null; supplier_id: string | null;
   net_amount: MoneyInput; vat_amount: MoneyInput; deposit_amount: MoneyInput; vat_basis: string | null;
+  /** ใบเสร็จ/ใบจ่าย: ภาษีหัก ณ ที่จ่าย ส่วนลดเงินสด ดอกเบี้ย (ผลต่างระหว่างยอดตัดหนี้กับเงินที่รับ/จ่ายจริง) */
+  wht_amount?: MoneyInput; cash_discount_amount?: MoneyInput; interest_amount?: MoneyInput;
 }
 export interface PostLine { item_id: string; net_amount: MoneyInput }
 export interface PostPayment { method_id: string | null; amount: MoneyInput; cheque_id: string | null }
@@ -114,7 +116,12 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
         else { D(pick(['3', r.def('INPUT_VAT')]), v, 'INPUT_VAT'); C(pick(['3', r.def('INPUT_VAT_PENDING')]), v, 'INPUT_VAT_PENDING'); }
       }
     }
-    (isRe ? D : C)(cash, cashRest(partyTotal), 'CASH');
+    // ผลต่าง (คู่มือหน้า 186, 229): RE Dr ภาษีถูกหัก + Dr ส่วนลดจ่าย / Cr ดอกเบี้ยรับ · PS Cr ภาษีหัก ณ ที่จ่ายค้างจ่าย + Cr ส่วนลดรับ / Dr ดอกเบี้ยจ่าย
+    const wht = d(h.wht_amount ?? 0), disc = d(h.cash_discount_amount ?? 0), intr = d(h.interest_amount ?? 0);
+    (isRe ? D : C)(pick(['3', r.def(isRe ? 'PREPAID_TAX' : 'WHT_PAYABLE')]), wht, 'WHT');
+    (isRe ? D : C)(pick(['3', r.def(isRe ? 'SALES_DISCOUNT' : 'PURCHASE_DISCOUNT')]), disc, 'CASH_DISCOUNT');
+    (isRe ? C : D)(pick(['3', r.def(isRe ? 'INTEREST_INCOME' : 'INTEREST_EXPENSE')]), intr, 'INTEREST');
+    (isRe ? D : C)(cash, cashRest(partyTotal.minus(wht).minus(disc).plus(intr)), 'CASH');
     for (const p of pays) (isRe ? D : C)(payAcct(p), d(p.amount), 'PAYMENT');
   } else if (cls === 'AI' || cls === 'OI') {
     D(cash, cashRest(net), 'CASH');
@@ -138,6 +145,19 @@ export function netByAccount(lines: PostingLine[]): Map<string | null, Decimal> 
   for (const l of lines) m.set(l.account_id, (m.get(l.account_id) ?? d(0)).plus(l.debit).minus(l.credit));
   return m;
 }
+/**
+ * ยอดของใบเสร็จ/ใบจ่าย (คู่มือหน้า 185, 228): ยอดชำระตามใบกำกับ (ยอดตัดหนี้ ใบลดหนี้ติดลบ) + ดอกเบี้ย − ส่วนลด − ภาษีหัก ณ ที่จ่าย
+ * ต้องเท่ากับยอดชำระจริง (เงินสด + ชำระโดยอื่น) — ไม่ระบุเงินสด = ส่วนที่เหลือเป็นเงินสด
+ */
+export function settlementTotals(x: { settlements: MoneyInput[]; interest?: MoneyInput; discount?: MoneyInput; wht?: MoneyInput; payments: MoneyInput[]; cash?: MoneyInput | null }) {
+  const billed = x.settlements.reduce<Decimal>((s, a) => s.plus(d(a)), d(0));
+  const due = billed.plus(d(x.interest ?? 0)).minus(d(x.discount ?? 0)).minus(d(x.wht ?? 0));
+  const other = x.payments.reduce<Decimal>((s, a) => s.plus(d(a)), d(0));
+  const cash = x.cash === null || x.cash === undefined || x.cash === '' ? due.minus(other) : d(x.cash);
+  const paid = cash.plus(other);
+  return { billed: billed.toFixed(2), due: due.toFixed(2), other: other.toFixed(2), cash: cash.toFixed(2), paid: paid.toFixed(2), diff: due.minus(paid).toFixed(2), ok: due.minus(paid).abs().lt('0.005') && cash.gte(0) };
+}
+
 export function postingBalanced(lines: PostingLine[]): boolean {
   return lines.reduce((s, l) => s.plus(l.debit).minus(l.credit), d(0)).abs().lt('0.005');
 }

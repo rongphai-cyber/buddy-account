@@ -1,0 +1,294 @@
+import { useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { d, fmt, SETTLE_KINDS, settlementTotals, todayIso, WHT_INCOME_TYPES, wht50FormOf, type SettleKind } from '@buddy/core';
+import { api } from '../../api';
+import { useCan, useSession } from '../../session';
+import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
+import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { DocJournalTab } from './TradeDocs';
+
+const kindOf = (path: string) => SETTLE_KINDS.find((k) => k.path === path)!;
+const partyEndpoint = (K: SettleKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
+const partyWord = (K: SettleKind) => (K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย');
+const rp = (K: SettleKind) => (K.direction === 'R' ? 'รับ' : 'จ่าย');
+const CLASS_TH: Record<string, string> = { IV: 'บิลขาย', DR: 'เพิ่มหนี้', CN: 'ลดหนี้', RR: 'บิลซื้อ', CP: 'เพิ่มหนี้', DN: 'ลดหนี้' };
+
+/* ---------------------------------------------------------------- รายการใบเสร็จ/ใบสำคัญจ่าย */
+interface ListRow { id: string; doc_no: string; doc_date: string; payment_date: string | null; party_name: string; party_code: string | null; net_amount: string; wht_amount: string; cash_amount: string; cheque_amount: string; doc_status: string; bills: number }
+export function SettleListPage({ path }: { path: string }) {
+  const K = kindOf(path);
+  const nav = useNavigate();
+  const can = useCan(K.menu);
+  const { me } = useSession();
+  const today = me?.work_date ?? todayIso();
+  const [q, setQ] = useState('');
+  const [from, setFrom] = useState(today.slice(0, 8) + '01');
+  const [to, setTo] = useState(today);
+  const [status, setStatus] = useState<'N' | 'C' | 'all'>('all');
+  const list = useQuery({ queryKey: [K.path, q, from, to, status], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { q, from, to, status, limit: 500 }), placeholderData: (p) => p });
+  useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, []);
+  const sum = (k: 'net_amount' | 'wht_amount') => list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r[k])), d(0)).toFixed(2);
+  return (
+    <div className="page" data-tone="finance">
+      <PageHead eyebrow={`การเงิน › ${K.module === 'AR' ? 'ลูกหนี้' : 'เจ้าหนี้'}`} title={K.label}
+        lead={`ตัดบิลค้างได้หลายใบในใบเดียว (ใบลดหนี้นำมาหักได้) · ${rp(K)}เป็นเงินสด เช็ค เงินโอน ผสมกันได้ · บันทึกแล้วลงบัญชีทันที · ยกเลิกแล้วบิลกลับเป็นค้าง`}
+        actions={can('add') && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ {K.label} <kbd>Ins</kbd></button>} />
+      <div className="toolbar">
+        <input type="search" autoFocus placeholder={`ค้นหาเลขที่ ${partyWord(K)} หรืออ้างอิง`} value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาเอกสาร" />
+        <label>ตั้งแต่ <DateInput value={from} onChange={setFrom} /></label>
+        <label>ถึง <DateInput value={to} onChange={setTo} /></label>
+        <select value={status} onChange={(e) => setStatus(e.target.value as 'N')} aria-label="สถานะ"><option value="all">ทุกสถานะ</option><option value="N">ปกติ</option><option value="C">ยกเลิก</option></select>
+        <span className="muted small">{list.data ? `${list.data.rows.length.toLocaleString()} จาก ${list.data.total.toLocaleString()} ใบ` : ''}</span>
+      </div>
+      <ErrorBox error={list.error} />
+      <div className="table-wrap">
+        <table className="grid">
+          <thead><tr><th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 110 }}>วันที่{rp(K)}เงิน</th><th style={{ width: 100 }}>รหัส</th><th>{partyWord(K)}</th><th className="r" style={{ width: 60 }}>บิล</th>
+            <th className="r" style={{ width: 140 }}>ยอดตามใบกำกับ</th><th className="r" style={{ width: 110 }}>ภาษีหัก ณ ที่จ่าย</th><th className="r" style={{ width: 120 }}>เงินสด</th><th className="r" style={{ width: 130 }}>เช็ค/อื่น ๆ</th><th style={{ width: 80 }}>สถานะ</th></tr></thead>
+          <tbody>
+            {list.data?.rows.map((r) => (
+              <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
+                <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td><DateText v={r.payment_date} /></td><td className="mono">{r.party_code}</td><td>{r.party_name}</td><td className="r">{r.bills}</td>
+                <td className="r"><Money v={r.net_amount} /></td><td className="r"><Money v={r.wht_amount} blankZero /></td><td className="r"><Money v={r.cash_amount} blankZero /></td><td className="r"><Money v={r.cheque_amount} blankZero /></td>
+                <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ปกติ</Pill>}</td>
+              </tr>
+            ))}
+            {list.data && !list.data.rows.length && <tr><td colSpan={11} className="empty">ไม่มีเอกสารในช่วงนี้ — กด Ins เพื่อเพิ่ม</td></tr>}
+          </tbody>
+          {!!list.data?.rows.length && <tfoot><tr><td colSpan={6} className="r">รวม (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={sum('net_amount')} /></b></td><td className="r"><b><Money v={sum('wht_amount')} blankZero /></b></td><td colSpan={3} /></tr></tfoot>}
+        </table>
+      </div>
+      <KeyHints keys={[['Ins', `เพิ่ม${K.label}`], ['คลิก/Enter', 'เปิดเอกสาร']]} />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- หน้าเอกสาร */
+interface Open { header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string; own: string; vat_basis: string | null; net_amount: string; vat_amount: string; ref_no: string | null }
+interface Pay { key: number; payment_method_id: string; amount: string; reference_no: string; cheque_date: string; bank_id: string | null; bank_branch: string }
+interface Wht { key: number; id?: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; taxEdited: boolean; certificate_no: string; certificate_date: string }
+interface Head { doc_type_id: string; doc_date: string; payment_date: string; party: { id: string; code: string; name?: string | null } | null; department_id: string; salesperson_id: string; your_ref: string; remark: string;
+  interest: string; discount: string; wht: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
+interface Method { id: string; code: string; name_th: string; status: string; creates_cheque: boolean; kind: string }
+interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; settlements: Array<{ invoice_header_id: string; amount: string }>;
+  payments: Array<{ payment_method_id: string; amount: string; reference_no: string | null; cheque_date: string | null; bank_id: string | null; bank_branch: string | null }>;
+  wht: Array<{ id: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; certificate_no: string | null; certificate_date: string; doc_status: string }> }
+let seq = 0;
+const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(v as string).toString());
+const taxOf = (paid: string, rate: string) => (paid ? d(paid).times(d(rate || 0)).div(100).toDecimalPlaces(2).toFixed(2) : '');
+
+export function SettleFormPage({ path }: { path: string }) {
+  const K = kindOf(path);
+  const { id: routeId } = useParams();
+  const id = routeId && routeId !== 'new' ? routeId : null;
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const can = useCan(K.menu);
+  const { me } = useSession();
+  const lk = useLookups('BANK');
+  const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string }> }>(`/api/v1/trade-defaults/${K.cls}`) });
+  const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
+  const slms = useQuery({ enabled: K.module === 'AR', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
+  const methods = useQuery({ queryKey: ['payment-methods', K.direction], queryFn: () => api.get<Method[]>(`/api/v1/payment-methods/${K.direction}`) });
+  const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], queryFn: () => api.get<Detail>(`/api/v1/${K.path}/${id}`), staleTime: 0 });
+  const [h, setH] = useState<Head | null>(null);
+  /** บิลที่เลือก: header_id → ยอดชำระ */
+  const [pick, setPick] = useState<Record<string, string>>({});
+  const [pays, setPays] = useState<Pay[]>([]);
+  const [whts, setWhts] = useState<Wht[]>([]);
+  const [tab, setTab] = useState('bills');
+  const [err, setErr] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const [askCancel, setAskCancel] = useState(false);
+  const [reason, setReason] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const open = useQuery({ enabled: !!h?.party, queryKey: [K.path, 'open', h?.party?.id, id], queryFn: () => api.get<{ rows: Open[] }>(`/api/v1/${K.path}/open-items`, { party_id: h!.party!.id, ...(id ? { receipt_id: id } : {}) }), staleTime: 0 });
+  const date0 = me?.work_date ?? todayIso();
+  if (!h && !id && defs.data) setH({ doc_type_id: defs.data.types[0]?.id ?? '', doc_date: date0, payment_date: date0, party: null, department_id: '', salesperson_id: '', your_ref: '', remark: '', interest: '', discount: '', wht: '', cash: '', whtForm: 'S53', whtRate: '3' });
+  if (!h && id && cur.data) {
+    const c = cur.data as Record<string, string | null>;
+    setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), payment_date: String(c.payment_date ?? c.doc_date).slice(0, 10), party: { id: (c.customer_id ?? c.supplier_id)!, code: c.party_code ?? '', name: c.party_name },
+      department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '', your_ref: c.your_ref ?? '', remark: c.remark ?? '', interest: num(c.interest_amount), discount: num(c.cash_discount_amount), wht: num(c.wht_amount), cash: num(c.cash_amount), whtForm: 'S53', whtRate: '3' });
+    setPick(Object.fromEntries(cur.data.settlements.map((s) => [s.invoice_header_id, num(s.amount)])));
+    setPays(cur.data.payments.map((p) => ({ key: ++seq, payment_method_id: p.payment_method_id, amount: num(p.amount), reference_no: p.reference_no ?? '', cheque_date: p.cheque_date ? String(p.cheque_date).slice(0, 10) : '', bank_id: p.bank_id, bank_branch: p.bank_branch ?? '' })));
+    setWhts(cur.data.wht.filter((w) => w.doc_status !== 'C').map((w) => ({ key: ++seq, id: w.id, form_type: w.form_type, income_type: w.income_type, rate: num(w.rate), paid_amount: num(w.paid_amount), tax_amount: num(w.tax_amount), taxEdited: true, certificate_no: w.certificate_no ?? '', certificate_date: String(w.certificate_date).slice(0, 10) })));
+  }
+  const readOnly = !!id && (!cur.data?.editable || !can('edit'));
+  const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
+  const rows = open.data?.rows ?? [];
+  const chosen = rows.filter((o) => pick[o.header_id] !== undefined);
+  const mById = new Map((methods.data ?? []).map((m) => [m.id, m]));
+  const whtTotal = whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0));
+  const whtAmount = K.cls === 'PS' && whts.length ? whtTotal.toFixed(2) : h?.wht || '0';
+  const t = useMemo(() => settlementTotals({ settlements: chosen.map((o) => d(pick[o.header_id] || 0).times(o.doc_class === K.neg ? -1 : 1).toFixed(2)), interest: h?.interest || 0, discount: h?.discount || 0, wht: whtAmount,
+    payments: pays.filter((p) => p.payment_method_id).map((p) => p.amount || 0), cash: h?.cash === '' || h?.cash === undefined ? null : h.cash }), [chosen, pick, h, pays, whtAmount, K.neg]);
+  /** ยอดก่อน VAT ของบิลที่เลือก — ค่าเริ่มต้นของ "จำนวนเงินที่จ่าย" ในภาษีหัก ณ ที่จ่าย */
+  const baseOfChosen = chosen.reduce((s, o) => { const n = d(o.net_amount); const p = d(pick[o.header_id] || 0).times(o.doc_class === K.neg ? -1 : 1); return s.plus(n.isZero() ? p : p.times(n.minus(d(o.vat_amount))).div(n)); }, d(0)).toDecimalPlaces(2).toFixed(2);
+
+  const pickParty = async (p: { id: string; code: string; name: string } | null) => {
+    setPick({}); setWhts([]);
+    if (!p) return set({ party: null });
+    const x = await api.get<Record<string, string | null>>(`${partyEndpoint(K)}/${p.id}`);
+    set({ party: p, ...(K.module === 'AR' ? { salesperson_id: x.salesperson_id ?? '' } : {}),
+      whtForm: wht50FormOf(x.wht_form, x.tax_id) === '3' ? 'S03' : 'S53', whtRate: x.wht_rate && !d(x.wht_rate).isZero() ? d(x.wht_rate).toString() : '3' });
+  };
+  const toggle = (o: Open, on: boolean) => { setPick((m) => { const n = { ...m }; if (on) n[o.header_id] = num(o.outstanding); else delete n[o.header_id]; return n; }); setDirty(true); };
+  const allOn = rows.length > 0 && rows.every((o) => pick[o.header_id] !== undefined);
+  const setPay = (k: number, p: Partial<Pay>) => { setPays((ps) => ps.map((x) => (x.key === k ? { ...x, ...p } : x))); setDirty(true); };
+  const addPay = () => { setPays((ps) => [...ps, { key: ++seq, payment_method_id: '', amount: d(t.cash).gt(0) && !h?.cash ? t.cash : '', reference_no: '', cheque_date: h?.payment_date ?? date0, bank_id: null, bank_branch: '' }]); setDirty(true); };
+  const setW = (k: number, p: Partial<Wht>) => { setWhts((ws) => ws.map((w) => { if (w.key !== k) return w; const n = { ...w, ...p }; if ((p.paid_amount !== undefined || p.rate !== undefined) && !n.taxEdited) n.tax_amount = taxOf(n.paid_amount, n.rate); return n; })); setDirty(true); };
+  const addWht = () => { if (!h) return; setWhts((ws) => [...ws, { key: ++seq, form_type: h.whtForm, income_type: 'ค่าบริการ', rate: h.whtRate, paid_amount: baseOfChosen, tax_amount: taxOf(baseOfChosen, h.whtRate), taxEdited: false, certificate_no: '', certificate_date: '' }]); setDirty(true); };
+
+  const save = async (andNew = false) => {
+    if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
+    setErr(null); setBusy(true);
+    const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
+      your_ref: h.your_ref || null, remark: h.remark || null, interest_amount: h.interest || '0', cash_discount_amount: h.discount || '0', wht_amount: K.cls === 'PS' && whts.length ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
+      settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0' })),
+      payments: pays.filter((p) => p.payment_method_id && !d(p.amount || 0).isZero()).map((p) => ({ payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no || null, cheque_date: p.cheque_date || null, bank_id: p.bank_id || null, bank_branch: p.bank_branch || null })),
+      wht: K.cls === 'PS' ? whts.map((w) => ({ form_type: w.form_type, income_type: w.income_type, rate: w.rate || '0', paid_amount: w.paid_amount || '0', tax_amount: w.tax_amount || '0', certificate_no: w.certificate_no || null, certificate_date: w.certificate_date || null })) : [] };
+    try {
+      const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
+      toast(`บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว`);
+      setDirty(false);
+      qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] });
+      if (andNew) { setH(null); setPick({}); setPays([]); setWhts([]); nav(`${K.route}/new`, { replace: true }); }
+      // โหลดจากเซิร์ฟเวอร์ใหม่ (ได้รหัสรายการภาษีหัก ณ ที่จ่ายสำหรับพิมพ์ 50 ทวิ)
+      else if (!id) { nav(`${K.route}/${r.id}`, { replace: true }); setH(null); }
+      else { await qc.refetchQueries({ queryKey: [K.path, 'one', id] }); setH(null); }
+    } catch (e) { setErr(e); } finally { setBusy(false); }
+  };
+  const cancelDoc = async () => {
+    try { await api.post(`/api/v1/${K.path}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว — บิลกลับเป็นค้างชำระ'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.path] }); nav(K.route); }
+    catch (e) { setAskCancel(false); setErr(e); }
+  };
+  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F5: () => setTab('bills'), F7: () => setTab('pay'),
+    'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
+    Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
+  const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
+  const cancelled = cur.data?.doc_status === 'C';
+  const docNo = id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : '';
+  const ro = readOnly;
+  return (
+    <div className="page" data-tone="finance">
+      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{docNo}</h1>
+        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}
+          {h?.party && chosen.length > 0 && !t.ok && !ro && <Pill tone="d">ยอดเงินไม่เรียบร้อย</Pill>}</span></div>
+      <div className="toolbar">
+        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setPick({}); setPays([]); setWhts([]); nav(`${K.route}/new`); } }}>+ ใหม่</button>
+        <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
+        <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
+        <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
+        <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
+      </div>
+      <ErrorBox error={err ?? cur.error ?? open.error} />
+      {h && <div onKeyDown={navKey}>
+        <div className="head-grid trade-head">
+          <div className="col">
+            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
+              onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
+            <Field label="อ้างอิง/หมายเหตุสั้น"><input value={h.your_ref} maxLength={60} disabled={ro} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
+            {K.module === 'AR' && <Field label="พนักงานเก็บเงิน"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></Field>}
+          </div>
+          <div className="col">
+            <Field label="ประเภทเอกสาร"><select value={h.doc_type_id} disabled={!!id} onChange={(e) => set({ doc_type_id: e.target.value })}>{defs.data?.types.map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
+            <Field label={K.cls === 'RE' ? 'วันที่ใบเสร็จ' : 'วันที่ทำเอกสาร'} req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v, ...(h.payment_date === h.doc_date ? { payment_date: v } : {}) })} /></Field>
+            <Field label={`วันที่${rp(K)}เงิน`} hint="วันรับ/จ่ายเงินจริง ไม่ต้องตรงวันที่เอกสาร"><DateInput value={h.payment_date} disabled={ro} onChange={(v) => set({ payment_date: v })} /></Field>
+            <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
+          </div>
+        </div>
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'bills', label: `รายการบิลที่${rp(K)}ชำระ`, badge: chosen.length || undefined }, { key: 'pay', label: 'ชำระโดยอื่น ๆ (เช็ค/โอน)', badge: pays.length || undefined },
+          ...(K.cls === 'PS' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(id ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+        {tab === 'bills' && <div className="table-wrap lines">
+          {!h.party ? <p className="empty">เลือก{partyWord(K)}ก่อน แล้วติ๊กบิลที่จะ{rp(K)}ชำระ</p> : <table className="grid">
+            <thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={allOn} disabled={ro || !rows.length} onChange={(e) => { setPick(e.target.checked ? Object.fromEntries(rows.map((o) => [o.header_id, num(o.outstanding)])) : {}); setDirty(true); }} aria-label="เลือกทั้งหมด" /></th>
+              <th style={{ width: 140 }}>เลขที่</th><th style={{ width: 80 }}>ชนิด</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 110 }}>ครบกำหนด</th>{K.module === 'AP' && <th>เลขที่บิลผู้จำหน่าย</th>}
+              <th className="r" style={{ width: 130 }}>จำนวนเงิน</th><th className="r" style={{ width: 130 }}>ยอดคงค้าง</th><th className="r" style={{ width: 150 }}>ยอดชำระ</th></tr></thead>
+            <tbody>
+              {rows.map((o) => {
+                const on = pick[o.header_id] !== undefined;
+                return (
+                  <tr key={o.header_id} className={cx('row-open', on && 'picked')} onClick={(e) => { if (!ro && !(e.target as HTMLElement).matches('input')) toggle(o, !on); }}>
+                    <td className="c"><input type="checkbox" checked={on} disabled={ro} onChange={(e) => toggle(o, e.target.checked)} aria-label={`เลือก ${o.doc_no}`} /></td>
+                    <td className="mono">{o.doc_no}</td><td>{o.doc_class === K.neg ? <Pill tone="c">{CLASS_TH[o.doc_class]}</Pill> : CLASS_TH[o.doc_class]}{o.vat_basis === '2' && <span className="muted small"> ภาษีเกณฑ์เงินสด</span>}</td>
+                    <td><DateText v={o.doc_date} /></td><td><DateText v={o.due_date} /></td>{K.module === 'AP' && <td className="mono">{o.ref_no}</td>}
+                    <td className="r"><Money v={o.doc_class === K.neg ? d(o.amount).neg().toFixed(2) : o.amount} /></td><td className="r"><Money v={o.doc_class === K.neg ? d(o.outstanding).neg().toFixed(2) : o.outstanding} /></td>
+                    <td>{on && <MoneyInput value={pick[o.header_id]} disabled={ro} onChange={(v) => { setPick((m) => ({ ...m, [o.header_id]: v })); setDirty(true); }} aria-label={`ยอดชำระ ${o.doc_no}`} />}</td>
+                  </tr>
+                );
+              })}
+              {open.data && !rows.length && <tr><td colSpan={9} className="empty">ไม่มีบิลค้างชำระของ{partyWord(K)}รายนี้</td></tr>}
+            </tbody>
+            {chosen.length > 0 && <tfoot><tr><td colSpan={K.module === 'AP' ? 8 : 7} className="r">เลือก {chosen.length} ใบ — ยอดชำระตามใบกำกับ (ใบลดหนี้หักออก)</td><td className="r"><b><Money v={t.billed} /></b></td></tr></tfoot>}
+          </table>}
+        </div>}
+        {tab === 'pay' && <div className="table-wrap lines">
+          <table className="grid">
+            <thead><tr><th>วิธีชำระ</th><th style={{ width: 150 }}>เลขที่เช็ค/อ้างอิง</th><th style={{ width: 130 }}>ลงวันที่</th><th style={{ width: 170 }}>ธนาคาร</th><th style={{ width: 140 }}>สาขา</th><th className="r" style={{ width: 140 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>
+            <tbody>
+              {pays.map((p) => {
+                const m = mById.get(p.payment_method_id);
+                return (
+                  <tr key={p.key}>
+                    <td><select value={p.payment_method_id} disabled={ro} onChange={(e) => setPay(p.key, { payment_method_id: e.target.value })} aria-label="วิธีชำระ"><option value="">— เลือก —</option>{methods.data?.filter((x) => x.status === 'A' || x.id === p.payment_method_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></td>
+                    <td><input value={p.reference_no} maxLength={30} disabled={ro} placeholder={m?.creates_cheque ? 'เลขที่เช็ค (ต้องป้อน)' : ''} onChange={(e) => setPay(p.key, { reference_no: e.target.value })} aria-label="เลขที่เช็ค" /></td>
+                    <td>{m?.creates_cheque ? <DateInput value={p.cheque_date} disabled={ro} onChange={(v) => setPay(p.key, { cheque_date: v })} /> : null}</td>
+                    <td>{m?.creates_cheque && K.direction === 'R' ? <LkSelect byId rows={lk.data?.BANK} value={p.bank_id} disabled={ro} onChange={(v) => setPay(p.key, { bank_id: v || null })} aria-label="ธนาคาร" /> : null}</td>
+                    <td>{m?.creates_cheque && K.direction === 'R' ? <input value={p.bank_branch} maxLength={60} disabled={ro} onChange={(e) => setPay(p.key, { bank_branch: e.target.value })} aria-label="สาขาธนาคาร" /> : null}</td>
+                    <td><MoneyInput value={p.amount} disabled={ro} onChange={(v) => setPay(p.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
+                    <td>{!ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setPays((ps) => ps.filter((x) => x.key !== p.key)); setDirty(true); }}>✕</button>}</td>
+                  </tr>
+                );
+              })}
+              {!pays.length && <tr><td colSpan={7} className="empty">{rp(K)}เป็นเงินสดทั้งหมด — เพิ่มวิธีชำระสำหรับเช็ค เงินโอน บัตรเครดิต</td></tr>}
+            </tbody>
+            <tfoot><tr><td colSpan={5}>{!ro && <button type="button" onClick={addPay}>+ เพิ่มวิธีชำระ</button>} <span className="hint">เช็คจะเข้าทะเบียนเช็ค{rp(K)}อัตโนมัติ · ยอดลบใช้กับค่าธรรมเนียมที่หักออก</span></td><td className="r"><b><Money v={t.other} /></b></td><td /></tr></tfoot>
+          </table>
+        </div>}
+        {tab === 'wht' && K.cls === 'PS' && <div className="table-wrap lines">
+          <table className="grid">
+            <thead><tr><th style={{ width: 120 }}>แบบ</th><th>ประเภทเงินได้</th><th className="r" style={{ width: 80 }}>อัตรา %</th><th className="r" style={{ width: 140 }}>จำนวนเงินที่จ่าย</th><th className="r" style={{ width: 120 }}>ภาษีที่หักไว้</th><th style={{ width: 130 }}>เลขที่หนังสือรับรอง</th><th style={{ width: 130 }}>วันที่ออก</th><th style={{ width: 90 }} /></tr></thead>
+            <tbody>
+              {whts.map((w) => (
+                <tr key={w.key}>
+                  <td><select value={w.form_type} disabled={ro} onChange={(e) => setW(w.key, { form_type: e.target.value as Wht['form_type'] })} aria-label="แบบ ภ.ง.ด."><option value="S03">ภ.ง.ด.3</option><option value="S53">ภ.ง.ด.53</option></select></td>
+                  <td><input list="wht-income-types" value={w.income_type} maxLength={60} disabled={ro} onChange={(e) => { const hit = WHT_INCOME_TYPES.find((x) => x.text === e.target.value); setW(w.key, { income_type: e.target.value, ...(hit ? { rate: hit.rate } : {}) }); }} aria-label="ประเภทเงินได้" /></td>
+                  <td><input className="r" inputMode="decimal" value={w.rate} disabled={ro} onChange={(e) => setW(w.key, { rate: e.target.value.replace(/[^\d.]/g, '') })} aria-label="อัตรา" /></td>
+                  <td><MoneyInput value={w.paid_amount} disabled={ro} onChange={(v) => setW(w.key, { paid_amount: v })} aria-label="จำนวนเงินที่จ่าย" /></td>
+                  <td><MoneyInput value={w.tax_amount} disabled={ro} onChange={(v) => setW(w.key, { tax_amount: v, taxEdited: true })} aria-label="ภาษีที่หัก" /></td>
+                  <td><input value={w.certificate_no} maxLength={30} disabled={ro} placeholder="= เลขที่เอกสาร" onChange={(e) => setW(w.key, { certificate_no: e.target.value })} aria-label="เลขที่หนังสือรับรอง" /></td>
+                  <td><DateInput value={w.certificate_date} disabled={ro} onChange={(v) => setW(w.key, { certificate_date: v })} /></td>
+                  <td>{w.id && !dirty ? <button type="button" onClick={() => nav(`/tax/wht50?entry=${w.id}`)}>🖨 50 ทวิ</button> : !ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setWhts((ws) => ws.filter((x) => x.key !== w.key)); setDirty(true); }}>✕</button>}</td>
+                </tr>
+              ))}
+              {!whts.length && <tr><td colSpan={8} className="empty">ไม่มีการหักภาษี ณ ที่จ่าย</td></tr>}
+            </tbody>
+            <tfoot><tr><td colSpan={4}>{!ro && whts.length < 2 && <button type="button" onClick={addWht} disabled={!chosen.length}>+ หักภาษี ณ ที่จ่าย</button>} <span className="hint">ได้ 2 ประเภทเงินได้ · ยอดเข้าแฟ้ม ภ.ง.ด.3/53 · พิมพ์ 50 ทวิ ได้หลังบันทึก</span></td><td className="r"><b><Money v={whtTotal.toFixed(2)} /></b></td><td colSpan={3} /></tr></tfoot>
+          </table>
+          <datalist id="wht-income-types">{WHT_INCOME_TYPES.map((x) => <option key={x.text} value={x.text}>{`${x.rate}%`}</option>)}</datalist>
+        </div>}
+        {tab === 'gl' && id && <DocJournalTab id={id} />}
+        <div className="trade-foot">
+          <Field label="หมายเหตุ"><textarea rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
+          <table className="totals-table"><tbody>
+            <tr><td>ยอดชำระตามใบกำกับ</td><td className="r"><Money v={t.billed} /></td></tr>
+            <tr><td>{K.direction === 'R' ? 'ดอกเบี้ยรับ (รับเกิน)' : 'ดอกเบี้ยจ่าย (จ่ายล่าช้า)'}</td><td><MoneyInput value={h.interest} disabled={ro} onChange={(v) => set({ interest: v })} aria-label="ดอกเบี้ย" /></td></tr>
+            <tr><td>{K.direction === 'R' ? 'หัก ส่วนลดเงินสด' : 'หัก ส่วนลดเงินสดรับ'}</td><td><MoneyInput value={h.discount} disabled={ro} onChange={(v) => set({ discount: v })} aria-label="ส่วนลดเงินสด" /></td></tr>
+            <tr><td>หัก {K.direction === 'R' ? 'ภาษีถูกหัก ณ ที่จ่าย' : <a href="#wht" onClick={(e) => { e.preventDefault(); setTab('wht'); }}>ภาษีหัก ณ ที่จ่าย</a>}</td>
+              <td>{K.cls === 'PS' && whts.length ? <span className="r num" style={{ display: 'block' }}>{fmt(whtTotal.toFixed(2))}</span> : <MoneyInput value={h.wht} disabled={ro} onChange={(v) => set({ wht: v })} aria-label="ภาษีหัก ณ ที่จ่าย" />}</td></tr>
+            <tr className="grand"><td>ยอดที่ต้อง{rp(K)}</td><td className="r"><Money v={t.due} /></td></tr>
+            <tr><td>ชำระโดยอื่น ๆ (เช็ค/โอน)</td><td className="r"><Money v={t.other} /></td></tr>
+            <tr><td>เงินสด</td><td><MoneyInput value={h.cash} disabled={ro} placeholder={fmt(t.cash)} onChange={(v) => set({ cash: v })} aria-label="เงินสด" /></td></tr>
+            <tr><td>ยอดชำระจริง</td><td className="r"><b><Money v={t.paid} /></b></td></tr>
+            {!t.ok && chosen.length > 0 && <tr><td colSpan={2} className="bad small">{d(t.cash).lt(0) ? `ชำระโดยวิธีอื่นมากกว่ายอดที่ต้อง${rp(K)} ${fmt(d(t.cash).neg().toFixed(2))}` : `ยอดชำระตามใบกำกับไม่เท่ากับยอดชำระจริง ต่าง ${fmt(t.diff)} — ล้างช่องเงินสดให้คำนวณเอง หรือปรับส่วนลด/ดอกเบี้ย`}</td></tr>}
+          </tbody></table>
+        </div>
+      </div>}
+      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหารหัส'], ['F5', 'บิลค้าง'], ['F7', 'ชำระโดยอื่น'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+      {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ) · บิลที่ตัดกลับเป็นค้างชำระ · เช็คออกจากทะเบียน{K.cls === 'PS' ? ' · ภาษีหัก ณ ที่จ่ายยกเลิก' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
+        <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
+      </Confirm>}
+    </div>
+  );
+}

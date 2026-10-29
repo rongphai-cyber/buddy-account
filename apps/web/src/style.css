@@ -500,6 +500,8 @@ details.box .form-grid { margin-top: 8px; }
 @media (max-width: 900px) { .tbl-layout { grid-template-columns: 1fr; } .tbl-nav { position: static; flex-direction: row; flex-wrap: wrap; } }
 
 /* เอกสารซื้อ/ขาย (บทที่ 11–12) */
+/* ใบเสร็จ/ใบสำคัญจ่าย: บิลที่ติ๊กเลือก */
+table.grid tr.picked td { background: var(--accent-soft); }
 .head-grid.trade-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 18px; margin-bottom: 10px; }
 .trade-head .col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; align-content: start; }
 .trade-foot { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; margin-top: 12px; align-items: start; }

@@ -198,14 +198,16 @@ END $$;
 
 PG_VIEWS = r"""
 -- ---------------------------------------------------------------- Views (แทนยอดสะสมที่ Express เก็บในแฟ้มหลัก)
--- ลูกหนี้คงค้างรายใบ (แทน ARMAS.BALANCE / ARTRN.REMAMT)
+-- ลูกหนี้คงค้างรายใบ (แทน ARMAS.BALANCE / ARTRN.REMAMT) · ยอดตัด (settled) เป็นบวกเสมอ ใบลดหนี้คงค้าง = −(ยอด − ที่ตัดแล้ว) · ไม่นับใบเสร็จ/ใบสำคัญที่ยกเลิก
 CREATE OR REPLACE VIEW v_ar_outstanding AS
 SELECT h.company_id, h.customer_id, h.id AS header_id, h.doc_class, h.doc_no, h.doc_date, h.due_date,
        CASE WHEN h.doc_class = 'CN' THEN -h.net_amount ELSE h.net_amount END AS amount,
        COALESCE(s.settled, 0) AS settled,
-       CASE WHEN h.doc_class = 'CN' THEN -h.net_amount ELSE h.net_amount END - COALESCE(s.settled, 0) AS outstanding
+       CASE WHEN h.doc_class = 'CN' THEN -(h.net_amount - COALESCE(s.settled, 0)) ELSE h.net_amount - COALESCE(s.settled, 0) END AS outstanding
 FROM doc_header h
-LEFT JOIN (SELECT invoice_header_id, sum(amount) settled FROM doc_settlement WHERE deleted_at IS NULL GROUP BY 1) s
+LEFT JOIN (SELECT s.invoice_header_id, sum(s.amount) settled FROM doc_settlement s
+             LEFT JOIN doc_header p ON p.id = s.payment_header_id LEFT JOIN gl_journal j ON j.id = s.payment_journal_id
+            WHERE s.deleted_at IS NULL AND COALESCE(p.doc_status, 'N') <> 'C' AND COALESCE(j.doc_status, 'N') <> 'C' GROUP BY 1) s
        ON s.invoice_header_id = h.id
 WHERE h.module = 'AR' AND h.doc_class IN ('IV','DR','CN') AND h.doc_status <> 'C' AND h.deleted_at IS NULL;
 
@@ -214,9 +216,11 @@ CREATE OR REPLACE VIEW v_ap_outstanding AS
 SELECT h.company_id, h.supplier_id, h.id AS header_id, h.doc_class, h.doc_no, h.doc_date, h.due_date,
        CASE WHEN h.doc_class = 'DN' THEN -h.net_amount ELSE h.net_amount END AS amount,
        COALESCE(s.settled, 0) AS settled,
-       CASE WHEN h.doc_class = 'DN' THEN -h.net_amount ELSE h.net_amount END - COALESCE(s.settled, 0) AS outstanding
+       CASE WHEN h.doc_class = 'DN' THEN -(h.net_amount - COALESCE(s.settled, 0)) ELSE h.net_amount - COALESCE(s.settled, 0) END AS outstanding
 FROM doc_header h
-LEFT JOIN (SELECT invoice_header_id, sum(amount) settled FROM doc_settlement WHERE deleted_at IS NULL GROUP BY 1) s
+LEFT JOIN (SELECT s.invoice_header_id, sum(s.amount) settled FROM doc_settlement s
+             LEFT JOIN doc_header p ON p.id = s.payment_header_id LEFT JOIN gl_journal j ON j.id = s.payment_journal_id
+            WHERE s.deleted_at IS NULL AND COALESCE(p.doc_status, 'N') <> 'C' AND COALESCE(j.doc_status, 'N') <> 'C' GROUP BY 1) s
        ON s.invoice_header_id = h.id
 WHERE h.module = 'AP' AND h.doc_class IN ('RR','CP','DN') AND h.doc_status <> 'C' AND h.deleted_at IS NULL;
 

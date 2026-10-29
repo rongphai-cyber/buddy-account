@@ -703,6 +703,7 @@ add(T('doc_header', 'หัวเอกสารทุกชนิด (ขาย
   C('is_settled', 'bool', nn=True, d='false', th='ตัดชำระ/ส่งของครบแล้ว', src='CMPLAPP'),
   C('settled_date', 'date', th='วันที่ครบ', src='CMPLDAT'),
   C('appointment_date', 'date', th='วันนัดชำระ (ใบวางบิล)', src='ARBIL/APBIL.APPDAT'),
+  C('payment_date', 'date', th='วันที่รับ/จ่ายเงินจริง (ใบเสร็จ RE / ใบสำคัญจ่าย PS) — ไม่จำเป็นต้องตรงวันที่เอกสาร'),
   C('payment_terms', 'str60', th='เงื่อนไขการชำระ', src='PAYCOND'),
   C('remark', 'text', th='หมายเหตุสั้น', src='REMARK'),
   C('gl_posted', 'char1', nn=True, d="'N'", th='N=ยังไม่ลงบัญชี Y=ลงแล้ว P=รอเซิร์ฟเวอร์ลง', src='POSTGL'),

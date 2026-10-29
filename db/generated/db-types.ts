@@ -1952,6 +1952,8 @@ export interface DocHeaderTable {
   settled_date: Gen<string | null>;
   /** วันนัดชำระ (ใบวางบิล) */
   appointment_date: Gen<string | null>;
+  /** วันที่รับ/จ่ายเงินจริง (ใบเสร็จ RE / ใบสำคัญจ่าย PS) — ไม่จำเป็นต้องตรงวันที่เอกสาร */
+  payment_date: Gen<string | null>;
   /** เงื่อนไขการชำระ */
   payment_terms: Gen<string | null>;
   /** หมายเหตุสั้น */

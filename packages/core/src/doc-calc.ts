@@ -105,3 +105,15 @@ export const TRADE_KINDS: TradeKind[] = [
   { path: 'ap-debit-notes', cls: 'CP', module: 'AP', menu: 'FI.AP.CP', party: 'supplier', label: 'ใบเพิ่มหนี้ (เจ้าหนี้)', refInvoice: true, route: '/fi/ap/debit-notes' },
   { path: 'ap-credit-notes', cls: 'DN', module: 'AP', menu: 'FI.AP.GR', party: 'supplier', label: 'ใบลดหนี้/ส่งคืนสินค้า', refInvoice: true, route: '/fi/ap/credit-notes' },
 ];
+
+/** ใบเสร็จรับเงิน RE (คู่มือบทที่ 12 S-RE-01) / ใบสำคัญจ่าย PS (บทที่ 11 S-PU-07): ตัดบิลค้างได้หลายใบ ใบลดหนี้ (neg) นำมาหักเป็นยอดลบ */
+export interface SettleKind {
+  path: string; cls: 'RE' | 'PS'; module: 'AR' | 'AP'; menu: string; party: 'customer' | 'supplier'; label: string; route: string;
+  /** หมวดบิลที่ตัดได้ → รหัสรายการตัด (express_rectype: 3 บิล 4 เพิ่มหนี้ 5 ลดหนี้) */
+  open: Record<string, '3' | '4' | '5'>; neg: string; direction: 'R' | 'P';
+}
+export const SETTLE_KINDS: SettleKind[] = [
+  { path: 'ar-receipts', cls: 'RE', module: 'AR', menu: 'FI.AR.RE', party: 'customer', label: 'รับชำระหนี้', route: '/fi/ar/receipts', open: { IV: '3', DR: '4', CN: '5' }, neg: 'CN', direction: 'R' },
+  { path: 'ap-payments', cls: 'PS', module: 'AP', menu: 'FI.AP.PS', party: 'supplier', label: 'จ่ายชำระหนี้', route: '/fi/ap/payments', open: { RR: '3', CP: '4', DN: '5' }, neg: 'DN', direction: 'P' },
+];
+

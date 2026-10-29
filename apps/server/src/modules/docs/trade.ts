@@ -7,7 +7,7 @@ import { badRequest, notFound, parse, requireCompany, type AuthContext } from '.
 import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
-import { cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
+import { activeSettlement, cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -87,7 +87,7 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
       if (!cur || cur.doc_class !== K.cls) throw notFound(K.label);
       if (cur.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว แก้ไขไม่ได้');
       await periodFor(tx, a.companyId, String(cur.doc_date).slice(0, 10));
-      if (await tx.selectFrom('doc_settlement').select('id').where('invoice_header_id', '=', id).where('deleted_at', 'is', null).executeTakeFirst())
+      if (await activeSettlement(tx, a.companyId, id))
         throw badRequest(`${cur.doc_no} มีการรับ/จ่ายชำระแล้ว แก้ไขไม่ได้ — ยกเลิกใบเสร็จ/ใบสำคัญจ่ายที่ตัดเอกสารนี้ก่อน`);
       docNo = cur.doc_no;
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
@@ -152,7 +152,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       const view = K.module === 'AR' ? 'v_ar_outstanding' : 'v_ap_outstanding';
       const out = (await sql<{ outstanding: string }>`SELECT outstanding FROM ${sql.table(view)} WHERE header_id = ${id}`.execute(db)).rows[0];
       const pc = await db.selectFrom(K.party === 'customer' ? 'md_customer' : 'md_supplier').select('code').where('id', '=', (h.customer_id ?? h.supplier_id)!).executeTakeFirst();
-      return { ...h, party_code: pc?.code ?? null, lines, payments, settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !settled.length };
+      return { ...h, party_code: pc?.code ?? null, lines, payments, settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !settled.some((x) => x.doc_status !== 'C') };
     });
     app.post(base, async (req) => saveTrade(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => saveTrade(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));

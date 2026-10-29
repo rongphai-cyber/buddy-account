@@ -906,6 +906,119 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/customers/${cus}`)).body.balance).toBe('-1070.00');   // เหลือใบลดหนี้
   });
 
+  it('receipts/payments (T3.5): settle bills + credit note, WHT/discount/interest, cheques, edit, cancel, WHT register, isolation', async () => {
+    type Row = { doc_class: string; doc_no: string; outstanding: string; header_id: string };
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cus = (await call('POST', '/api/v1/customers', { code: 'C200', name: 'ลูกค้ารับชำระ', tax_id: '0105537095903', credit_days: 30 })).body.id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const mk = async (path: string, type: string, price: number, extra: object = {}) =>
+      (await call('POST', path, { doc_type_id: type, doc_date: '2026-07-01', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: price }], ...extra })).body;
+    const iv1 = await mk('/api/v1/sales-invoices', ivType, 10000);   // 10,700
+    const iv2 = await mk('/api/v1/sales-invoices', ivType, 5000);    // 5,350
+    const cn = await mk('/api/v1/ar-credit-notes', await typeOf('CN'), 1000, { ref_header_id: iv1.id });   // 1,070
+    const open = async () => ((await call('GET', `/api/v1/ar-receipts/open-items?party_id=${cus}`)).body.rows as Row[]).map((o) => `${o.doc_no}:${o.outstanding}`).sort();
+    expect(await open()).toEqual([`${cn.doc_no}:1070.00`, `${iv1.doc_no}:10700.00`, `${iv2.doc_no}:5350.00`].sort());
+    const chq = (await call('GET', '/api/v1/payment-methods/R')).body.find((m: { creates_cheque: boolean }) => m.creates_cheque);
+    const tn = (await call('GET', '/api/v1/payment-methods/P')).body[0];
+    // บิล 10,700 − ลดหนี้ 1,070 + บิลบางส่วน 2,000 = 11,630 · +ดอกเบี้ย 100 −ส่วนลด 60 −ถูกหัก 270 = 11,400 → เช็ค 9,000 + เงินสด 2,400
+    const re = { doc_type_id: await typeOf('RE'), doc_date: '2026-07-20', payment_date: '2026-07-21', party_id: cus, wht_amount: 270, cash_discount_amount: 60, interest_amount: 100,
+      settlements: [{ invoice_header_id: iv1.id, amount: 10700 }, { invoice_header_id: cn.id, amount: 1070 }, { invoice_header_id: iv2.id, amount: 2000 }],
+      payments: [{ payment_method_id: chq.id, amount: 9000, reference_no: 'CQ1001', cheque_date: '2026-07-25' }] };
+    const err = async (b: object) => (await call('POST', '/api/v1/ar-receipts', { ...re, ...b })).body.error.message as string;
+    expect(await err({ settlements: [{ invoice_header_id: iv2.id, amount: 6000 }] })).toMatch(/มากกว่ายอดคงค้าง/);
+    expect(await err({ settlements: [] })).toMatch(/อย่างน้อย 1 ใบ/);
+    expect(await err({ cash_amount: 100 })).toMatch(/Message# 4025/);
+    expect(await err({ payments: [{ payment_method_id: chq.id, amount: 9000 }] })).toMatch(/เลขที่เช็ค/);
+    expect(await err({ payments: [{ payment_method_id: tn.id, amount: 9000 }] })).toMatch(/ไม่พบวิธีรับชำระ/);
+    expect(await err({ payments: [{ payment_method_id: chq.id, amount: 20000, reference_no: 'X' }] })).toMatch(/มากกว่ายอดที่ต้องรับ/);
+    expect(await err({ wht: [{ form_type: 'S53', income_type: 'ค่าบริการ', rate: 3, paid_amount: 9000, tax_amount: 270 }] })).toMatch(/ใบเสร็จรับเงินป้อนเพียง/);
+    const c100 = (await call('GET', '/api/v1/customers?q=C100')).body.rows[0].id;
+    expect(await err({ party_id: c100 })).toMatch(/ไม่พบบิลค้างของC100/);
+    const r = await call('POST', '/api/v1/ar-receipts', re);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ doc_no: expect.stringMatching(/^RE\d{7}$/), net_amount: '11630.00', cash_amount: '2400.00' });
+    const det = (await call('GET', `/api/v1/ar-receipts/${r.body.id}`)).body;
+    expect(det).toMatchObject({ wht_amount: '270.00', cash_discount_amount: '60.00', interest_amount: '100.00', cheque_amount: '9000.00', editable: true, party_code: 'C200' });
+    expect(String(det.payment_date).slice(0, 10)).toBe('2026-07-21');
+    expect(det.payments[0]).toMatchObject({ reference_no: 'CQ1001', cheque_status: '00' });
+    const j = (await call('GET', `/api/v1/docs/${r.body.id}/journal`)).body.journals;
+    expect(j).toHaveLength(1);
+    expect(j[0]).toMatchObject({ voucher_no: r.body.doc_no, total_debit: '12800.00' });
+    expect([...new Set(j[0].lines.map((l: { posting_role: string }) => l.posting_role))].sort()).toEqual(['AR', 'CASH', 'CASH_DISCOUNT', 'INTEREST', 'PAYMENT', 'WHT']);
+    expect(await open()).toEqual([`${iv2.doc_no}:3350.00`]);
+    expect((await call('GET', `/api/v1/customers/${cus}`)).body.balance).toBe('3350.00');
+    expect((await call('GET', '/api/v1/ar-receipts?q=C200')).body.rows[0]).toMatchObject({ doc_no: r.body.doc_no, bills: 3 });
+    // บิลที่รับชำระแล้ว แก้/ยกเลิกไม่ได้ · เช็คเลขซ้ำไม่ได้
+    expect((await call('POST', `/api/v1/sales-invoices/${iv1.id}/cancel`, { reason: 'x' })).body.error.message).toMatch(/รับ\/จ่ายชำระแล้ว/);
+    expect((await call('GET', `/api/v1/sales-invoices/${iv1.id}`)).body.editable).toBe(false);
+    expect(await err({ settlements: [{ invoice_header_id: iv2.id, amount: 1000 }], wht_amount: 0, cash_discount_amount: 0, interest_amount: 0, payments: [{ payment_method_id: chq.id, amount: 1000, reference_no: 'CQ1001' }] })).toMatch(/มีในทะเบียนเช็ค/);
+    // แก้ไข: ตัดบิลที่ 2 เต็มจำนวน (ยอดที่ใบนี้ตัดไว้เดิมนับกลับเป็นค้าง) · ใบสำคัญเดิม
+    expect((await call('PUT', `/api/v1/ar-receipts/${r.body.id}`, { ...re, settlements: [re.settlements[0], re.settlements[1], { invoice_header_id: iv2.id, amount: 5350 }] })).body).toMatchObject({ doc_no: r.body.doc_no, cash_amount: '5750.00' });
+    expect((await call('GET', `/api/v1/docs/${r.body.id}/journal`)).body.journals.map((x: { voucher_no: string; total_debit: string }) => `${x.voucher_no}:${x.total_debit}`)).toEqual([`${r.body.doc_no}:16150.00`]);
+    expect(await open()).toEqual([]);
+    const cheques = async () => (await sql<{ cheque_no: string; amount: string; status: string }>`SELECT cheque_no, amount, status FROM fin_cheque WHERE source_header_id = ${r.body.id} AND deleted_at IS NULL`.execute(database.db)).rows;
+    expect(await cheques()).toEqual([{ cheque_no: 'CQ1001', amount: '9000.00', status: '00' }]);
+    expect((await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body.balanced).toBe(true);
+    // ยกเลิก: เช็คที่นำฝากแล้วยกเลิกไม่ได้ · ยกเลิกแล้วบิลกลับเป็นค้าง เช็คออกจากทะเบียน
+    await sql`UPDATE fin_cheque SET status = '10' WHERE source_header_id = ${r.body.id}`.execute(database.db);
+    expect((await call('POST', `/api/v1/ar-receipts/${r.body.id}/cancel`, { reason: 'ผิด' })).body.error.message).toMatch(/นำฝาก\/ผ่านแล้ว/);
+    await sql`UPDATE fin_cheque SET status = '00' WHERE source_header_id = ${r.body.id}`.execute(database.db);
+    expect((await call('POST', `/api/v1/ar-receipts/${r.body.id}/cancel`, { reason: '' })).status).toBe(400);
+    expect((await call('POST', `/api/v1/ar-receipts/${r.body.id}/cancel`, { reason: 'รับเงินผิดราย' })).status).toBe(200);
+    expect(await open()).toEqual([`${cn.doc_no}:1070.00`, `${iv1.doc_no}:10700.00`, `${iv2.doc_no}:5350.00`].sort());
+    expect(await cheques()).toEqual([]);
+    expect((await call('GET', `/api/v1/sales-invoices/${iv1.id}`)).body.editable).toBe(true);
+    expect((await call('PUT', `/api/v1/ar-receipts/${r.body.id}`, re)).body.error.message).toMatch(/ยกเลิกแล้ว/);
+
+    // จ่ายชำระ: ภาษีหัก ณ ที่จ่าย 3% ของค่าบริการ 1,500 → แฟ้ม ภ.ง.ด.53 · ยอดชำระ 1,605 = เงินสด 1,560 + ภาษี 45 (คู่มือรูปที่ 29)
+    const sup = (await call('POST', '/api/v1/suppliers', { code: 'S200', name: 'ผู้รับจ้างทดสอบ', tax_id: '0105537095903' })).body.id;
+    const rr = (await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2026-07-02', party_id: sup, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 1500 }] })).body;
+    const ps = { doc_type_id: await typeOf('PS'), doc_date: '2026-07-31', party_id: sup, settlements: [{ invoice_header_id: rr.id, amount: 1605 }],
+      wht: [{ form_type: 'S53', income_type: 'ค่าบริการ', rate: 3, paid_amount: 1500, tax_amount: 45 }] };
+    expect((await call('POST', '/api/v1/ap-payments', { ...ps, wht: [ps.wht[0], ps.wht[0], ps.wht[0]] })).status).toBe(400);
+    const p1 = await call('POST', '/api/v1/ap-payments', ps);
+    expect(p1.body.error?.message ?? 'ok').toBe('ok');
+    expect(p1.body).toMatchObject({ net_amount: '1605.00', cash_amount: '1560.00' });
+    const pd = (await call('GET', `/api/v1/ap-payments/${p1.body.id}`)).body;
+    expect(pd).toMatchObject({ wht_amount: '45.00' });
+    expect(pd.wht[0]).toMatchObject({ form_type: 'S53', certificate_no: p1.body.doc_no, tax_amount: '45.00' });
+    expect((await call('GET', `/api/v1/docs/${p1.body.id}/journal`)).body.journals[0].lines.map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${l.debit}:${l.credit}`))
+      .toEqual(['AP:1605.00:0.00', 'WHT:0.00:45.00', 'CASH:0.00:1560.00']);
+    // แฟ้มภาษีหัก ณ ที่จ่าย: ดู แก้เลขที่หนังสือรับรอง (ยอดเงินแก้ที่เอกสารต้นทาง) เพิ่มเอง ยกเลิก
+    const reg = (await call('GET', '/api/v1/wht?form=S53&month=2026-07')).body;
+    expect(reg).toMatchObject({ total_tax: '45.00' });
+    expect(reg.rows[0]).toMatchObject({ doc_no: p1.body.doc_no, payee_name: 'ผู้รับจ้างทดสอบ', tax_month: '2026-07' });
+    const wid = reg.rows[0].id;
+    const w = (await call('GET', `/api/v1/wht/${wid}`)).body;
+    expect(w.lines).toHaveLength(1);
+    const wput = { form_type: 'S53', certificate_no: 'B1/0001', certificate_date: '2026-07-31', supplier_id: sup, payee_name: w.payee_name, payee_tax_id: w.payee_tax_id, income_type: 'ค่าบริการ', paid_amount: 1500, rate: 3, tax_amount: 45 };
+    expect((await call('PUT', `/api/v1/wht/${wid}`, wput)).status).toBe(200);
+    expect((await call('PUT', `/api/v1/wht/${wid}`, { ...wput, tax_amount: 40 })).body.error.message).toMatch(/เอกสารต้นทาง/);
+    expect((await call('POST', `/api/v1/wht/${wid}/cancel`, {})).body.error.message).toMatch(/เอกสารต้นทาง/);
+    const manual = (await call('POST', '/api/v1/wht', { ...wput, form_type: 'S03', certificate_no: 'M-1', payee_name: 'นายช่าง ทดสอบ', payee_tax_id: '1234567890123', supplier_id: null })).body.id;
+    expect((await call('GET', '/api/v1/wht?form=S03&month=2026-07')).body.rows.map((x: { certificate_no: string }) => x.certificate_no)).toEqual(['M-1']);
+    expect((await call('POST', `/api/v1/wht/${manual}/printed`, {})).status).toBe(200);
+    expect((await call('POST', `/api/v1/wht/${manual}/cancel`, {})).status).toBe(200);
+    expect((await call('GET', '/api/v1/wht?form=S03&month=2026-07')).body.rows).toHaveLength(0);
+    // บริษัทอื่น: มองไม่เห็นใบเสร็จ บิลค้าง แฟ้มภาษี
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/ar-receipts/${r.body.id}`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/ap-payments')).body.total).toBe(0);
+    expect((await call('GET', `/api/v1/ar-receipts/open-items?party_id=${cus}`)).status).toBe(404);
+    expect((await call('GET', `/api/v1/wht/${wid}`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/wht')).body.rows).toHaveLength(0);
+    expect((await call('PUT', `/api/v1/wht/${wid}`, wput)).status).toBe(400);   // ผู้จำหน่ายของบริษัทอื่น
+    expect((await call('POST', `/api/v1/ap-payments/${p1.body.id}/cancel`, { reason: 'x' })).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ยกเลิกใบสำคัญจ่าย → รายการภาษีหัก ณ ที่จ่ายยกเลิกด้วย
+    expect((await call('POST', `/api/v1/ap-payments/${p1.body.id}/cancel`, { reason: 'จ่ายซ้ำ' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/wht?form=S53&month=2026-07&status=C')).body.rows[0]).toMatchObject({ id: wid, doc_status: 'C' });
+    // ใบเสร็จ/ใบจ่ายยกเลิกแล้ว → บิลยกเลิกได้ (คืนสมุดบัญชีให้ทดสอบถัดไป)
+    for (const [path, id] of [['purchase-invoices', rr.id], ['ar-credit-notes', cn.id], ['sales-invoices', iv1.id], ['sales-invoices', iv2.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

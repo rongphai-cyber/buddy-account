@@ -154,7 +154,12 @@ export function MoneyInput({ value, onChange, disabled, invalid, className, ...r
     <input {...rest} className={cx('num', className)} inputMode="decimal" value={shown} disabled={disabled} aria-invalid={invalid || undefined}
       onFocus={(e) => { setFocus(true); setDraft(value && parseFloat(value) !== 0 ? value : ''); setTimeout(() => e.target.select(), 0); }}
       onBlur={() => { setFocus(false); const v = parseInput(draft); onChange(v === null ? (value ?? '') : v.isZero() ? '' : v.toFixed(2)); }}
-      onChange={(e) => setDraft(e.target.value)} />
+      onChange={(e) => {
+        // ส่งค่าทันทีที่พิมพ์ (ไม่รอออกจากช่อง) — กด F9 ขณะอยู่ในช่องแล้วบันทึกค่าที่เพิ่งพิมพ์
+        setDraft(e.target.value);
+        const v = e.target.value.trim() ? parseInput(e.target.value) : null;
+        if (!e.target.value.trim()) onChange(''); else if (v !== null) onChange(v.isZero() ? '' : v.toFixed(2));
+      }} />
   );
 }
 

@@ -140,14 +140,24 @@ export async function repostDocument(db: Db, ctx: Ctx, headerId: string) {
 }
 
 /** ยกเลิกเอกสาร: สถานะ C (ไม่ลบ) + ยกเลิกใบสำคัญที่เกิดจากเอกสาร (กติกาข้อ 6) */
-export async function cancelDocument(db: Db, ctx: Ctx, headerId: string, reason: string) {
+/** ใบเสร็จ/ใบสำคัญจ่ายที่ยังไม่ยกเลิกซึ่งตัดเอกสารนี้ (ใบแรก) — ใช้กันแก้/ยกเลิกบิลที่รับ/จ่ายชำระแล้ว */
+export async function activeSettlement(db: Db, companyId: string, invoiceId: string) {
+  return (await sql<{ doc_no: string }>`SELECT coalesce(p.doc_no, j.voucher_no) AS doc_no FROM doc_settlement s
+      LEFT JOIN doc_header p ON p.id = s.payment_header_id LEFT JOIN gl_journal j ON j.id = s.payment_journal_id
+     WHERE s.company_id = ${companyId} AND s.invoice_header_id = ${invoiceId} AND s.deleted_at IS NULL
+       AND coalesce(p.doc_status, 'N') <> 'C' AND coalesce(j.doc_status, 'N') <> 'C' LIMIT 1`.execute(db)).rows[0];
+}
+
+/** before: งานเพิ่มเติมของเอกสารแต่ละชนิดในทรานแซกชันเดียวกัน (เช่น ใบเสร็จ: ยกเลิกเช็ค/ภาษีหัก ณ ที่จ่าย) */
+export async function cancelDocument(db: Db, ctx: Ctx, headerId: string, reason: string, before?: (tx: Db) => Promise<void>) {
   return db.transaction().execute(async (tx) => {
     const h = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_date']).where('id', '=', headerId).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!h) throw notFound('เอกสาร');
     if (h.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว');
-    const paid = await tx.selectFrom('doc_settlement').select('id').where('company_id', '=', ctx.companyId).where('invoice_header_id', '=', headerId).where('deleted_at', 'is', null).executeTakeFirst();
+    const paid = await activeSettlement(tx, ctx.companyId, headerId);
     if (paid) throw badRequest(`เอกสาร ${h.doc_no} มีการรับ/จ่ายชำระแล้ว — ยกเลิกใบเสร็จ/ใบสำคัญจ่ายที่ตัดเอกสารนี้ก่อน`);
     await periodFor(tx, ctx.companyId, String(h.doc_date).slice(0, 10));
+    if (before) await before(tx);
     await unpostDocument(tx, ctx, headerId);
     await tx.updateTable('doc_header').set({ doc_status: 'C', cancel_reason: reason.slice(0, 200), updated_by: ctx.userId }).where('id', '=', headerId).execute();
     await logActivity(tx, ctx, { module: 'DOC', action: 'CANCEL', docNo: h.doc_no, table: 'doc_header', rowId: headerId, detail: { reason } });

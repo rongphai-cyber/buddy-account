@@ -154,3 +154,21 @@ export function wht50FormOf(code: string | null | undefined, taxId?: string | nu
   const t = (taxId ?? '').replace(/\D/g, '');
   return t.length === 13 && t[0] !== '0' ? '3' : '53';
 }
+
+/** ประเภทเงินได้ที่ใช้บ่อย (คู่มือ S-PU-C5) → บรรทัดบนแบบ 50 ทวิ และอัตราตามกฎหมาย (ป้อนเองเป็นข้อความอื่นได้) */
+export const WHT_INCOME_TYPES: Array<{ text: string; row: Wht50Row; rate: string }> = [
+  { text: 'ค่าบริการ', row: '5', rate: '3' }, { text: 'ค่าจ้างทำของ', row: '5', rate: '3' }, { text: 'ค่าขนส่ง', row: '5', rate: '1' },
+  { text: 'ค่าเช่า', row: '5', rate: '5' }, { text: 'ค่าโฆษณา', row: '5', rate: '2' }, { text: 'ค่ารางวัล ส่งเสริมการขาย', row: '5', rate: '3' },
+  { text: 'ค่านายหน้า', row: '2', rate: '3' }, { text: 'ค่าวิชาชีพอิสระ', row: '6', rate: '3' }, { text: 'ดอกเบี้ย', row: '4a', rate: '1' },
+  { text: 'เงินปันผล', row: '4b1.1', rate: '10' }, { text: 'เงินเดือน ค่าจ้าง', row: '1', rate: '0' },
+];
+/** ข้อความประเภทเงินได้ (เช่น "2.ค่านายหน้า" ของ Express) → บรรทัดบนแบบ · ไม่รู้จัก = ข้อ 5 */
+export function wht50RowOf(text: string | null | undefined): Wht50Row {
+  const t = (text ?? '').replace(/\s+/g, '');
+  const m = /^(1|2|3|4\(ก\)|5|6)\./.exec(t);
+  const byNo: Record<string, Wht50Row> = { '1': '1', '2': '2', '3': '3', '4(ก)': '4a', '5': '5', '6': '6' };
+  if (m) return byNo[m[1]!]!;
+  const hit = WHT_INCOME_TYPES.find((x) => t.includes(x.text.replace(/\s+/g, '')));
+  return hit?.row ?? (/เงินเดือน|โบนัส/.test(t) ? '1' : /นายหน้า|ค่าธรรมเนียม/.test(t) ? '2' : /ลิขสิทธิ์/.test(t) ? '3' : /ดอกเบี้ย/.test(t) ? '4a' : /ปันผล/.test(t) ? '4b1.1' : '5');
+}
+

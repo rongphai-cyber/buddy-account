@@ -1,7 +1,8 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
-import { d, fmt, todayIso, wht50FormOf, wht50Layout, WHT50_FORMS, WHT50_ROWS, type Wht50Data, type Wht50Form, type Wht50Item, type Wht50Row } from '@buddy/core';
+import { useSearchParams } from 'react-router-dom';
+import { d, fmt, todayIso, wht50FormOf, wht50Layout, wht50RowOf, WHT50_FORMS, WHT50_ROWS, type Wht50Data, type Wht50Form, type Wht50Item, type Wht50Row } from '@buddy/core';
 import { api } from '../../api';
 import { DateInput, ErrorBox, Field, KeyHints, MoneyInput, navKey, PageHead, useHotkeys } from '../../ui';
 
@@ -48,6 +49,10 @@ const joinAddr = (...a: Array<string | null | undefined>) => a.map((x) => (x ?? 
  * พิมพ์หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ) สำหรับ ภ.ง.ด.3 / ภ.ง.ด.53 — ตามแบบของกรมสรรพากรทุกประการ
  * ตอนนี้ป้อนเองหรือเลือกผู้จำหน่าย; เมื่อมีเอกสารจ่ายชำระ (P3) จะพิมพ์จากรายการหัก ณ ที่จ่ายที่บันทึกไว้โดยตรง
  */
+interface WhtEntry { id: string; form_type: string; certificate_no: string | null; certificate_date: string; payee_name: string; payee_address: string | null; payee_tax_id: string | null; payee_tax_branch_no: string | null;
+  condition: string | null; social_security_amount: string | null; provident_fund_amount: string | null;
+  lines: Array<{ id: string; income_type: string | null; rate: string; paid_amount: string; tax_amount: string; certificate_date: string }> }
+
 export function Wht50Page() {
   const company = useQuery({ queryKey: ['company'], queryFn: () => api.get<Company>('/api/v1/company') });
   const [payer, setPayer] = useState<{ name: string; address: string; tax_id: string; branch_no: string } | null>(null);
@@ -59,6 +64,23 @@ export function Wht50Page() {
   const [copies, setCopies] = useState({ c1: true, c2: true });
   const [q, setQ] = useState('');
   const [err, setErr] = useState<unknown>(null);
+  // พิมพ์จากรายการในแฟ้มภาษีหัก ณ ที่จ่าย (?entry=) — รายการแบบเดียวกันของเอกสารเดียวกันรวมในฉบับเดียว
+  const [params] = useSearchParams();
+  const entryId = params.get('entry');
+  const entry = useQuery({ enabled: !!entryId, queryKey: ['wht', 'one', entryId], queryFn: () => api.get<WhtEntry>(`/api/v1/wht/${entryId}`) });
+  const [loaded, setLoaded] = useState<string | null>(null);
+  if (entry.data && loaded !== entry.data.id) {
+    const w = entry.data;
+    setLoaded(w.id);
+    setPayee({ name: w.payee_name, address: w.payee_address ?? '', tax_id: w.payee_tax_id ?? '', branch_no: w.payee_tax_branch_no ?? '' });
+    const [book, run] = (w.certificate_no ?? '').includes('/') ? (w.certificate_no ?? '').split('/', 2) : ['', w.certificate_no ?? ''];
+    const date = String(w.certificate_date).slice(0, 10);
+    const rows = w.lines.map((l) => ({ row: wht50RowOf(l.income_type), l }));
+    setH((x) => ({ ...x, book_no: book ?? '', run_no: run ?? '', form: w.form_type === 'S03' ? '3' : '53', condition: (['1', '2', '3'].includes(w.condition ?? '') ? w.condition : '1') as Wht50Data['condition'], issue_date: date,
+      text_6: rows.find((r) => r.row === '6')?.l.income_type ?? '', sso: w.social_security_amount ? d(w.social_security_amount).toString() : '', pvd: w.provident_fund_amount ? d(w.provident_fund_amount).toString() : '' }));
+    setLines(rows.map(({ row, l }) => ({ key: ++seq, row, date: String(l.certificate_date).slice(0, 10), amount: d(l.paid_amount).toFixed(2), tax: d(l.tax_amount).toFixed(2), taxEdited: true })));
+    if (w.lines[0]) setRate(d(w.lines[0].rate).toString());
+  }
   const sups = useQuery({ enabled: q.trim().length > 0, queryKey: ['suppliers', 'w50', q], queryFn: () => api.get<{ rows: SupRow[] }>('/api/v1/suppliers', { q, limit: 12 }), placeholderData: (p) => p });
 
   const pickSupplier = async (id: string) => {
@@ -94,15 +116,15 @@ export function Wht50Page() {
     payee.tax_id && ![10, 13].includes(payee.tax_id.replace(/\D/g, '').length) && 'เลขผู้เสียภาษีของผู้ถูกหักต้องเป็น 13 หลัก',
     !copies.c1 && !copies.c2 && 'เลือกฉบับที่จะพิมพ์',
   ].filter(Boolean) as string[];
-  const print = () => { if (!problems.length) window.print(); };
+  const print = () => { if (problems.length) return; window.print(); if (entryId) api.post(`/api/v1/wht/${entryId}/printed`, {}).catch(() => undefined); };
   useHotkeys({ 'Ctrl+P': print, F9: print }, []);
 
   return (
     <div className="page" data-tone="finance">
       <PageHead eyebrow="การเงิน › ภาษีหัก ณ ที่จ่าย" title="พิมพ์หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ)"
-        lead="ตามแบบของกรมสรรพากร สำหรับผู้ถูกหักตาม ภ.ง.ด.3 และ ภ.ง.ด.53 — เลือกผู้จำหน่ายเพื่อดึงชื่อ ที่อยู่ เลขผู้เสียภาษี แบบ และอัตราที่หักอัตโนมัติ (ยังไม่บันทึกลงทะเบียนภาษีหัก ณ ที่จ่าย — มาพร้อมเอกสารจ่ายชำระในเฟส P3)"
+        lead="ตามแบบของกรมสรรพากร สำหรับผู้ถูกหักตาม ภ.ง.ด.3 และ ภ.ง.ด.53 — เลือกผู้จำหน่ายเพื่อดึงชื่อ ที่อยู่ เลขผู้เสียภาษี แบบ และอัตราที่หักอัตโนมัติ · พิมพ์จากรายการที่บันทึกแล้วได้ที่ แฟ้มภาษีหัก ณ ที่จ่าย"
         actions={<button className="primary" disabled={problems.length > 0} title={problems[0]} onClick={print}>🖨 พิมพ์ <kbd>Ctrl+P</kbd></button>} />
-      <ErrorBox error={err ?? company.error} />
+      <ErrorBox error={err ?? company.error ?? entry.error} />
       <div className="w50-layout">
         <div className="w50-editor no-print" onKeyDown={navKey}>
           <fieldset><legend>ผู้มีหน้าที่หักภาษี ณ ที่จ่าย (บริษัท)</legend>
