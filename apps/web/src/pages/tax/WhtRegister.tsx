@@ -47,7 +47,7 @@ export function WhtRegisterPage() {
   const years = Array.from({ length: 7 }, (_, i) => Number(today.slice(0, 4)) - 5 + i);
   return (
     <div className="page" data-tone="finance">
-      <PageHead eyebrow="การเงิน › ภาษีหัก ณ ที่จ่าย" title="แฟ้มภาษีหัก ณ ที่จ่าย"
+      <PageHead eyebrow="ภาษี › ภาษีหัก ณ ที่จ่าย" title="แฟ้มภาษีหัก ณ ที่จ่าย"
         lead="รายการเกิดจากใบสำคัญจ่ายชำระหนี้อัตโนมัติ (ยอดเงินแก้ที่เอกสารต้นทาง) หรือเพิ่มเองในแฟ้ม · คลิกรายการเพื่อแก้เลขที่หนังสือรับรอง หรือพิมพ์ 50 ทวิ"
         actions={<>{can('add') && <button className="primary" onClick={() => setEdit(blank())}>+ เพิ่มรายการ <kbd>Ins</kbd></button>}<button onClick={() => nav('/tax/wht50')}>🖨 พิมพ์ 50 ทวิ (ป้อนเอง)</button>
           {form !== 'all' && <button title="ข้อความคั่นด้วย | สำหรับนำเข้าโปรแกรมยื่นแบบของกรมสรรพากร (ตรวจกับโปรแกรมก่อนยื่นจริง)" onClick={async () => {

@@ -320,13 +320,26 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
 /** รายการเมนูในตาราง sys_menu ให้ตรงกับเมนูของโปรแกรม (รวม "ทุกระบบ") — เรียกตอนเปิด server */
 export async function syncMenus(db: Db) {
   const want = [{ code: ALL_MENU, name_th: 'ทุกระบบงาน', parent: null as string | null, sort: 0 }, ...FLAT.map((m, i) => ({ code: m.code, name_th: m.label, parent: m.parent ?? null, sort: i + 1 }))];
-  const have = new Map((await db.selectFrom('sys_menu').select(['id', 'code', 'name_th', 'sort_order']).where('deleted_at', 'is', null).execute()).map((r) => [r.code, r]));
+  const have = new Map((await db.selectFrom('sys_menu').select(['id', 'code', 'name_th', 'sort_order', 'parent_id']).where('deleted_at', 'is', null).execute()).map((r) => [r.code, r]));
+  const created = new Set<string>();
   for (const w of want) {
     const h = have.get(w.code);
-    if (!h) have.set(w.code, { ...(await db.insertInto('sys_menu').values({ code: w.code, name_th: w.name_th, sort_order: w.sort }).returning(['id', 'code', 'name_th', 'sort_order']).executeTakeFirstOrThrow()) });
+    if (!h) { have.set(w.code, { ...(await db.insertInto('sys_menu').values({ code: w.code, name_th: w.name_th, sort_order: w.sort }).returning(['id', 'code', 'name_th', 'sort_order', 'parent_id']).executeTakeFirstOrThrow()) }); created.add(w.code); }
     else if (h.name_th !== w.name_th || h.sort_order !== w.sort) await db.updateTable('sys_menu').set({ name_th: w.name_th, sort_order: w.sort }).where('id', '=', h.id).execute();
   }
-  for (const w of want) if (w.parent) await db.updateTable('sys_menu').set({ parent_id: have.get(w.parent)!.id }).where('id', '=', have.get(w.code)!.id).where(sql<boolean>`parent_id IS DISTINCT FROM ${have.get(w.parent)!.id}::uuid`).execute();
+  for (const w of want) {
+    const h = have.get(w.code)!;
+    const parentId = w.parent ? have.get(w.parent)!.id : null;
+    if ((h.parent_id ?? null) === parentId) continue;
+    // ย้ายเมนูออกจากกลุ่มเดิม (เช่น ธนาคาร/ภาษี ออกจาก การเงิน): สิทธิ์ที่ตั้งไว้ที่กลุ่มเดิมคัดลอกไปที่กลุ่มใหม่ หรือที่เมนูนั้นเองเมื่อกลายเป็นเมนูหลัก
+    const target = !created.has(w.code) && h.parent_id ? (w.parent ? (created.has(w.parent) ? parentId : null) : h.id) : null;
+    if (target) await sql`INSERT INTO sys_permission (company_id, subject_type, subject_id, menu_id, can_read, can_add, can_edit, can_cancel, can_delete, can_print, can_approve)
+        SELECT p.company_id, p.subject_type, p.subject_id, ${target}, p.can_read, p.can_add, p.can_edit, p.can_cancel, p.can_delete, p.can_print, p.can_approve FROM sys_permission p
+         WHERE p.menu_id = ${h.parent_id} AND p.deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM sys_permission q WHERE q.company_id = p.company_id AND q.subject_type = p.subject_type
+           AND q.subject_id = p.subject_id AND q.menu_id = ${target} AND q.deleted_at IS NULL)`.execute(db);
+    await db.updateTable('sys_menu').set({ parent_id: parentId }).where('id', '=', h.id).execute();
+    h.parent_id = parentId;
+  }
 }
 
 /** หน้าจอกำหนดสิทธิ์ — ตามกลุ่ม (S-SEC-01) ตามผู้ใช้ (S-SEC-02) และตามเมนู (S-SEC-03) ของบริษัทปัจจุบัน */

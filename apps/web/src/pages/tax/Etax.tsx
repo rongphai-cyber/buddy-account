@@ -46,7 +46,7 @@ export function EtaxPage() {
   const toggle = (id: string) => setPick((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   return (
     <div className="page" data-tone="tax">
-      <PageHead eyebrow="การเงิน › ภาษีมูลค่าเพิ่ม" title="ส่งออก e-Tax Invoice (XML)"
+      <PageHead eyebrow="ภาษี › ภาษีมูลค่าเพิ่ม" title="ส่งออก e-Tax Invoice (XML)"
         lead={<>สร้างแฟ้ม XML ตามมาตรฐาน ETDA ขมธอ. 3-2560 จากใบกำกับภาษีขาย ใบลดหนี้ และใบเพิ่มหนี้ที่บันทึกแล้ว — <b>ยังไม่ลงลายมือชื่ออิเล็กทรอนิกส์</b> (ต้องใช้ใบรับรองของกิจการ) จึงยังยื่นกรมสรรพากรโดยตรงไม่ได้ ใช้ส่งให้ผู้ให้บริการลงนาม/นำส่ง หรือตรวจข้อมูลล่วงหน้า</>}
         actions={can('print') && <button className="primary" disabled={busy || !ok.length} onClick={exportZip}>⬇ ดาวน์โหลด {pick.size ? `ที่เลือก ${[...pick].filter((id) => ok.some((r) => r.id === id)).length}` : `ทั้งหมด ${ok.length}`} ฉบับ (zip) <kbd>F9</kbd></button>} />
       <div className="toolbar">

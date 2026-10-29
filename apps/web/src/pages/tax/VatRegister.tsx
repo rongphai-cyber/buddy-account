@@ -45,7 +45,7 @@ export function VatRegisterPage({ kind }: { kind: 'P' | 'S' }) {
   const period = `${MONTHS[month - 1]} ${ys === 'B' ? year + 543 : year}`;
   return (
     <div className="page" data-tone="tax">
-      <PageHead eyebrow="การเงิน › ภาษีมูลค่าเพิ่ม" title={title}
+      <PageHead eyebrow="ภาษี › ภาษีมูลค่าเพิ่ม" title={title}
         lead={`รายการเกิดจากเอกสารอัตโนมัติ (ภาษีเกณฑ์เงินสดเกิดตอน${kind === 'P' ? 'จ่าย' : 'รับ'}ชำระ) — ตรวจ แก้เลขที่/วันที่ใบกำกับ งวดที่ยื่น ยื่นเพิ่มเติม${kind === 'P' ? ' ย้ายเป็นภาษีขอคืนไม่ได้' : ''} · ใบลดหนี้แสดงเป็นยอดลบ`}
         actions={<>{can('add') && <button onClick={() => setEdit('new')}>+ เพิ่มรายการ <kbd>Ins</kbd></button>}<button className="primary" onClick={print}>🖨 พิมพ์รายงาน{kind === 'P' ? 'ภาษีซื้อ' : 'ภาษีขาย'} <kbd>Ctrl+P</kbd></button></>} />
       <div className="toolbar">

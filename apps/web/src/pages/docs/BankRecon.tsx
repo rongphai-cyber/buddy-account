@@ -36,7 +36,7 @@ export function BankReconPage() {
   const lines = (x?.lines ?? []).filter((l) => filter === 'all' || !l.cleared);
   return (
     <div className="page" data-tone="finance">
-      <PageHead eyebrow="การเงิน › ธนาคาร" title="กระทบยอดเงินฝากธนาคาร" lead="ป้อนยอดตามใบแจ้งยอด (Bank statement) แล้วติ๊กรายการที่ธนาคารแสดงแล้ว — ยอดตามบัญชี − เงินฝากระหว่างทาง + รายการจ่ายที่ธนาคารยังไม่ตัด ต้องเท่ายอดตามใบแจ้งยอด (ผลต่าง 0)" />
+      <PageHead eyebrow="ธนาคาร" title="กระทบยอดเงินฝากธนาคาร" lead="ป้อนยอดตามใบแจ้งยอด (Bank statement) แล้วติ๊กรายการที่ธนาคารแสดงแล้ว — ยอดตามบัญชี − เงินฝากระหว่างทาง + รายการจ่ายที่ธนาคารยังไม่ตัด ต้องเท่ายอดตามใบแจ้งยอด (ผลต่าง 0)" />
       <div className="toolbar">
         <label>บัญชีเงินฝาก <select value={cur} onChange={(e) => setBank(e.target.value)} aria-label="บัญชีเงินฝาก">{banks.data?.filter((b) => b.status === 'A').map((b) => <option key={b.id} value={b.id}>{b.code} {b.name}</option>)}</select></label>
         <label>วันที่ใบแจ้งยอด <DateInput value={date} onChange={(v) => { setDate(v); setStmt(null); }} /></label>

@@ -121,7 +121,7 @@ export function Wht50Page() {
 
   return (
     <div className="page" data-tone="finance">
-      <PageHead eyebrow="การเงิน › ภาษีหัก ณ ที่จ่าย" title="พิมพ์หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ)"
+      <PageHead eyebrow="ภาษี › ภาษีหัก ณ ที่จ่าย" title="พิมพ์หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ)"
         lead="ตามแบบของกรมสรรพากร สำหรับผู้ถูกหักตาม ภ.ง.ด.3 และ ภ.ง.ด.53 — เลือกผู้จำหน่ายเพื่อดึงชื่อ ที่อยู่ เลขผู้เสียภาษี แบบ และอัตราที่หักอัตโนมัติ · พิมพ์จากรายการที่บันทึกแล้วได้ที่ แฟ้มภาษีหัก ณ ที่จ่าย"
         actions={<button className="primary" disabled={problems.length > 0} title={problems[0]} onClick={print}>🖨 พิมพ์ <kbd>Ctrl+P</kbd></button>} />
       <ErrorBox error={err ?? company.error ?? entry.error} />

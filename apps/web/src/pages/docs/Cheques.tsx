@@ -62,7 +62,7 @@ export function ChequeRegisterPage({ direction }: { direction: Dir }) {
   const title = direction === 'R' ? 'ทะเบียนเช็ครับ' : 'ทะเบียนเช็คจ่าย';
   return (
     <div className="page" data-tone="finance">
-      <PageHead eyebrow="การเงิน › ธนาคาร" title={title} lead={direction === 'R' ? 'เช็คที่รับชำระ: ในมือ → นำฝาก (รอเรียกเก็บ) → ผ่าน (เงินฝากเพิ่ม) · คลิกเพื่อดูรายละเอียด บันทึกเช็คคืน ตัดยอดคงเหลือเป็นรายได้' : 'เช็คที่สั่งจ่าย: เช็คจ่าย → ผ่าน (เงินฝากลด) · คลิกเพื่อดูรายละเอียดและพิมพ์เช็ค'}
+      <PageHead eyebrow="ธนาคาร" title={title} lead={direction === 'R' ? 'เช็คที่รับชำระ: ในมือ → นำฝาก (รอเรียกเก็บ) → ผ่าน (เงินฝากเพิ่ม) · คลิกเพื่อดูรายละเอียด บันทึกเช็คคืน ตัดยอดคงเหลือเป็นรายได้' : 'เช็คที่สั่งจ่าย: เช็คจ่าย → ผ่าน (เงินฝากลด) · คลิกเพื่อดูรายละเอียดและพิมพ์เช็ค'}
         actions={can('add') && <button onClick={() => setAdd(true)}>+ เพิ่มเช็ค (ยกมา) <kbd>Ins</kbd></button>} />
       <Tabs active={inst} onChange={(k) => setInst(k as 'CHEQUE' | 'TRANSFER')} tabs={[{ key: 'CHEQUE', label: 'เช็ค' }, { key: 'TRANSFER', label: 'เงินโอน/บัตร' }]} />
       <div className="toolbar">
@@ -232,7 +232,7 @@ export function ChequeActionPage({ mode }: { mode: 'deposit' | 'pass' | 'pass-pa
   const title = mode === 'deposit' ? 'บันทึกเช็คนำฝาก' : mode === 'pass' ? 'บันทึกเช็คผ่าน' : 'ผ่านเช็คจ่าย';
   return (
     <div className="page" data-tone="finance">
-      <PageHead eyebrow="การเงิน › ธนาคาร" title={title} lead={mode === 'deposit' ? 'นำฝากเช็คเป็นใบๆ (ไม่ใช้ใบนำฝาก): เลือกเช็คแล้วกด ทำงาน F5 ป้อนธนาคาร วันที่นำฝาก ค่าธรรมเนียม · ยังไม่เพิ่มยอดเงินฝากจนกว่าจะผ่านเช็ค'
+      <PageHead eyebrow="ธนาคาร" title={title} lead={mode === 'deposit' ? 'นำฝากเช็คเป็นใบๆ (ไม่ใช้ใบนำฝาก): เลือกเช็คแล้วกด ทำงาน F5 ป้อนธนาคาร วันที่นำฝาก ค่าธรรมเนียม · ยังไม่เพิ่มยอดเงินฝากจนกว่าจะผ่านเช็ค'
         : mode === 'pass' ? 'เช็ครับที่นำฝากเป็นใบๆ: ป้อนวันที่ผ่านตามใบแจ้งยอดธนาคาร (ยังไม่นำฝาก = ป้อนธนาคารที่นำฝากด้วย · ลูกค้าจ่ายเงินสดแทนเช็คคืน = เลือกบัญชีเงินฝากที่ผูกบัญชีเงินสด) · ลงบัญชี Dr เงินฝาก / Cr เช็ครับ'
           : 'เช็คจ่ายที่ธนาคารตัดบัญชีแล้ว: ป้อนวันที่ผ่านตามใบแจ้งยอด · ลงบัญชี Dr เช็คจ่าย / Cr เงินฝาก'}
         actions={<>{mode === 'deposit' && <button onClick={() => nav('/fi/cheques/slips')}>ใช้ใบนำฝาก (BQ)</button>}{can('add') && <button className="primary" disabled={!sel.size} onClick={() => setDlg(true)}>ทำงาน <kbd>F5</kbd></button>}</>} />
@@ -262,7 +262,7 @@ export function ChequeSlipListPage() {
   useHotkeys({ Insert: can('add') ? () => nav('/fi/cheques/slips/new') : undefined }, []);
   return (
     <div className="page" data-tone="finance">
-      <PageHead eyebrow="การเงิน › ธนาคาร" title="ใบนำฝากเช็ค" lead="นำฝากเช็คหลายใบพร้อมกัน ป้อนธนาคารและวันที่ครั้งเดียว พิมพ์ใบนำฝากได้ · ผ่านเช็คทั้งใบเมื่อธนาคารเรียกเก็บได้ (ลงบัญชี)"
+      <PageHead eyebrow="ธนาคาร" title="ใบนำฝากเช็ค" lead="นำฝากเช็คหลายใบพร้อมกัน ป้อนธนาคารและวันที่ครั้งเดียว พิมพ์ใบนำฝากได้ · ผ่านเช็คทั้งใบเมื่อธนาคารเรียกเก็บได้ (ลงบัญชี)"
         actions={<><button onClick={() => nav('/fi/cheques/deposit')}>นำฝากเป็นใบๆ</button>{can('add') && <button className="primary" onClick={() => nav('/fi/cheques/slips/new')}>+ ใบนำฝากใหม่ <kbd>Ins</kbd></button>}</>} />
       <div className="toolbar"><input type="search" autoFocus placeholder="ค้นหาเลขที่ หรือหมายเหตุ" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" /></div>
       <ErrorBox error={list.error} />
@@ -322,7 +322,7 @@ export function ChequeSlipFormPage() {
   const ys: YearSystem = me?.company?.year_system ?? 'B';
   return (
     <div className="page" data-tone="finance">
-      <div className="doc-title"><p className="eyebrow">การเงิน › ธนาคาร › ใบนำฝากเช็ค</p><h1>{id ? c?.doc_no : 'ใบนำฝากใหม่'}</h1>
+      <div className="doc-title"><p className="eyebrow">ธนาคาร › ใบนำฝากเช็ค</p><h1>{id ? c?.doc_no : 'ใบนำฝากใหม่'}</h1>
         <span className="doc-state">{c?.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : c?.passed ? <Pill tone="n">10 เช็คผ่าน{c.pass_voucher_no ? ` · ${c.pass_voucher_no}` : ''}</Pill> : <Pill tone="c">01 รอเรียกเก็บ</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={ro} onClick={save}>บันทึก <kbd>F9</kbd></button>

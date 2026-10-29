@@ -9,7 +9,7 @@ import { sql } from 'kysely';
 import { migrate } from '../src/migrate.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
-import { API_RULES, REGISTERED_ROUTES } from '../src/modules/permissions.js';
+import { API_RULES, REGISTERED_ROUTES, syncMenus } from '../src/modules/permissions.js';
 import { setAiClientFactory } from '../src/modules/ai.js';
 
 let database: Database;
@@ -2782,6 +2782,27 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/ai/usage')).body).toEqual([]);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     expect((await call('PUT', '/api/v1/ai/config', { api_key: null, monthly_limit_usd: 20 })).body.has_key).toBe(false);
+  });
+  it('menu move: ธนาคาร and ภาษี become top-level menus; rights set on การเงิน carry over (nobody gains access)', async () => {
+    const id = async (code: string) => (await sql<{ id: string; parent_id: string | null }>`SELECT id, parent_id FROM sys_menu WHERE code = ${code} AND deleted_at IS NULL`.execute(database.db)).rows[0];
+    const fi = (await id('FI'))!.id;
+    expect([(await id('FI.BK'))!.parent_id, (await id('FI.VAT'))!.parent_id === (await id('TX'))!.id]).toEqual([null, true]);
+    // จำลองโครงเดิม: ธนาคาร/ภาษีอยู่ใต้ การเงิน และยังไม่มีเมนู ภาษี
+    await sql`UPDATE sys_menu SET parent_id = ${fi} WHERE code IN ('FI.BK', 'FI.VAT', 'FI.WHT')`.execute(database.db);
+    await sql`UPDATE sys_menu SET deleted_at = now(), code = code || '-old' WHERE code IN ('TX', 'TX.WHT')`.execute(database.db);
+    const tenant_id = (await call('GET', '/api/v1/tenants')).body.find((t: { code: string }) => t.code === 'DEFAULT').id;
+    const grp = (await call('POST', '/api/v1/user-groups', { code: 'NOFIN', name: 'ห้ามการเงิน', tenant_id })).body.id;
+    await sql`INSERT INTO sys_permission (company_id, subject_type, subject_id, menu_id, can_read, can_add, can_edit, can_cancel, can_delete, can_print, can_approve)
+      VALUES (${companyId}, 'G', ${grp}, ${fi}, 'N', 'N', 'N', 'N', 'N', 'N', 'N')`.execute(database.db);
+    await syncMenus(database.db);
+    const tx = (await id('TX'))!;
+    expect([(await id('FI.BK'))!.parent_id, tx.parent_id, (await id('FI.VAT'))!.parent_id, (await id('FI.WHT'))!.parent_id === (await id('TX.WHT'))!.id]).toEqual([null, null, tx.id, true]);
+    const rows = (await sql<{ code: string; can_read: string }>`SELECT m.code, p.can_read FROM sys_permission p JOIN sys_menu m ON m.id = p.menu_id
+      WHERE p.subject_id = ${grp} AND p.deleted_at IS NULL ORDER BY m.code`.execute(database.db)).rows;
+    expect(rows.map((r) => `${r.code}:${r.can_read}`)).toEqual(expect.arrayContaining(['FI:N', 'FI.BK:N', 'TX:N']));
+    // ซิงก์ซ้ำไม่คัดลอกอีก
+    await syncMenus(database.db);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE subject_id = ${grp} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(rows.length);
   });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

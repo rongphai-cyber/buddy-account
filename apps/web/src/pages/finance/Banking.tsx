@@ -21,7 +21,7 @@ export function BankAccountsPage() {
   useHotkeys({ Insert: can('add') ? () => setEdit('new') : undefined }, []);
   return (
     <div className="page" data-tone="finance">
-      <PageHead eyebrow="การเงิน › เงินฝากธนาคาร › รายละเอียดบัญชีเงินฝาก" title="รายละเอียดบัญชีเงินฝาก"
+      <PageHead eyebrow="ธนาคาร › รายละเอียดบัญชีเงินฝาก" title="รายละเอียดบัญชีเงินฝาก"
         lead="บัญชีเงินฝากของกิจการ ใช้กับรายการฝาก-ถอน รับ-จ่ายเช็ค โอนเงินระหว่างบัญชี และโอนชำระหนี้ — เลขที่บัญชีในผังบัญชีคือบัญชีที่ลงสมุดรายวันเมื่อมีรายการผ่านบัญชีนี้ · รับเงินสดแทนเช็คคืนใช้บัญชีเงินฝากหลอกที่ผูกกับบัญชีเงินสด"
         actions={can('add') && <button className="primary" onClick={() => setEdit('new')}>+ เพิ่มบัญชีเงินฝาก <kbd>Ins</kbd></button>} />
       <ErrorBox error={list.error} />

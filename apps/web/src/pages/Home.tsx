@@ -41,7 +41,7 @@ export function HomePage() {
             <button onClick={() => nav('/gl/accounts')}>ผังบัญชี</button>
             <button onClick={() => nav('/settings/periods')}>ปิดงวด</button>
           </div>
-          <p className="hint">ปุ่มลัด: Alt+1 ถึง Alt+8 เปิดเมนูหลักตามลำดับ Express · Alt+H กลับหน้าแรก</p>
+          <p className="hint">ปุ่มลัด: Alt+1 ถึง Alt+8 เปิดเมนูหลักตามลำดับ Express · Alt+9 ธนาคาร · Alt+0 ภาษี · Alt+H กลับหน้าแรก</p>
         </section>
         <section className="card">
           <h2>ความพร้อมของโปรแกรม</h2>

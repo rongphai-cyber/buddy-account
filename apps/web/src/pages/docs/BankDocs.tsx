@@ -37,7 +37,7 @@ export function BankDocListPage({ cls }: { cls: BankKind['cls'] }) {
   useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, [K.route]);
   return (
     <div className="page" data-tone="finance">
-      <PageHead eyebrow="การเงิน › ธนาคาร" title={K.label} lead={LEAD[cls]} actions={can('add') && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ เพิ่มรายการ <kbd>Ins</kbd></button>} />
+      <PageHead eyebrow="ธนาคาร" title={K.label} lead={LEAD[cls]} actions={can('add') && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ เพิ่มรายการ <kbd>Ins</kbd></button>} />
       <Tabs active={cls} onChange={(c) => nav(kindOf(c).route)} tabs={BANK_KINDS.map((k) => ({ key: k.cls, label: k.label.replace(/ \(.*\)$/, '') }))} />
       <div className="toolbar">
         <input type="search" autoFocus placeholder="ค้นหาเลขที่ หรือหมายเหตุ" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" />
@@ -118,7 +118,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
   const bankLabel = cls === 'BT' ? 'โอนจากบัญชี' : cls === 'BD' || cls === 'BU' ? 'เข้าบัญชีเงินฝาก' : 'จากบัญชีเงินฝาก';
   return (
     <div className="page" data-tone="finance">
-      <div className="doc-title"><p className="eyebrow">การเงิน › ธนาคาร › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1>
+      <div className="doc-title"><p className="eyebrow">ธนาคาร › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1>
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
@@ -175,7 +175,7 @@ export function BankBookPage() {
   const open = (r: NonNullable<typeof b>['rows'][number]) => { const to2 = r.source_doc_class ? DOC_ROUTE[r.source_doc_class] : null; nav(r.source_header_id && to2 ? `${to2}/${r.source_header_id}` : `/gl/journals/${r.journal_id}`); };
   return (
     <div className="page" data-tone="finance">
-      <PageHead eyebrow="การเงิน › ธนาคาร" title="สมุดเงินฝาก" lead="ความเคลื่อนไหวของบัญชีเงินฝาก คำนวณสดจากใบสำคัญของเลขที่บัญชีที่ผูกไว้ (ตรงกับงบทดลองเสมอ) · คลิกรายการเพื่อเปิดเอกสาร" />
+      <PageHead eyebrow="ธนาคาร" title="สมุดเงินฝาก" lead="ความเคลื่อนไหวของบัญชีเงินฝาก คำนวณสดจากใบสำคัญของเลขที่บัญชีที่ผูกไว้ (ตรงกับงบทดลองเสมอ) · คลิกรายการเพื่อเปิดเอกสาร" />
       <div className="toolbar">
         <label>บัญชีเงินฝาก <BankSelect value={cur} onChange={setBank} label="บัญชีเงินฝาก" /></label>
         <label>ตั้งแต่ <DateInput value={from} onChange={setFrom} /></label>
