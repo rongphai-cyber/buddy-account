@@ -337,6 +337,21 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.waitForSelector('table.grid tbody tr', { timeout: 15000 });
     await shot('15u-wht-register');
   });
+  await step('deposits + other income/expense (S-AI-01, S-PU-02, S-OI-01, S-PU-08, view only)', async () => {
+    for (const url of ['/pu/deposits', '/pu/other-expense', '/sa/deposits']) {
+      await page.goto(BASE + url);
+      await page.waitForSelector('.toolbar input[type=search]', { timeout: 15000 });
+      const from = page.locator('.toolbar .date-in input').first();
+      await from.fill('01/01/2550'); await from.press('Enter');
+      await page.locator('table.grid tbody tr.row-open').first().click({ timeout: 15000 });
+      await page.waitForSelector('.trade-head', { timeout: 15000 });
+      await page.getByRole('tab', { name: 'ใบสำคัญที่ลงบัญชี' }).click();
+      await page.waitForSelector('div.box table, .muted', { timeout: 15000 });
+      await shot('15v-' + url.split('/')[2] + '-doc');
+    }
+    await page.goto(BASE + '/sa/other-income/new');
+    await page.waitForSelector('.trade-head', { timeout: 15000 });
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { d, fmt, SETTLE_KINDS, settlementTotals, todayIso, WHT_INCOME_TYPES, wht50FormOf, type SettleKind } from '@buddy/core';
+import { d, fmt, SETTLE_KINDS, settlementTotals, todayIso, wht50FormOf, type SettleKind } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
-import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
+import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { DocJournalTab } from './TradeDocs';
+import { PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
 
 const kindOf = (path: string) => SETTLE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: SettleKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -66,17 +67,12 @@ export function SettleListPage({ path }: { path: string }) {
 
 /* ---------------------------------------------------------------- หน้าเอกสาร */
 interface Open { header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string; own: string; vat_basis: string | null; net_amount: string; vat_amount: string; ref_no: string | null }
-interface Pay { key: number; payment_method_id: string; amount: string; reference_no: string; cheque_date: string; bank_id: string | null; bank_branch: string }
-interface Wht { key: number; id?: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; taxEdited: boolean; certificate_no: string; certificate_date: string }
 interface Head { doc_type_id: string; doc_date: string; payment_date: string; party: { id: string; code: string; name?: string | null } | null; department_id: string; salesperson_id: string; your_ref: string; remark: string;
   interest: string; discount: string; wht: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
-interface Method { id: string; code: string; name_th: string; status: string; creates_cheque: boolean; kind: string }
 interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; settlements: Array<{ invoice_header_id: string; amount: string }>;
   payments: Array<{ payment_method_id: string; amount: string; reference_no: string | null; cheque_date: string | null; bank_id: string | null; bank_branch: string | null }>;
   wht: Array<{ id: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; certificate_no: string | null; certificate_date: string; doc_status: string }> }
-let seq = 0;
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(v as string).toString());
-const taxOf = (paid: string, rate: string) => (paid ? d(paid).times(d(rate || 0)).div(100).toDecimalPlaces(2).toFixed(2) : '');
 
 export function SettleFormPage({ path }: { path: string }) {
   const K = kindOf(path);
@@ -86,11 +82,9 @@ export function SettleFormPage({ path }: { path: string }) {
   const qc = useQueryClient();
   const can = useCan(K.menu);
   const { me } = useSession();
-  const lk = useLookups('BANK');
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string }> }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const slms = useQuery({ enabled: K.module === 'AR', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
-  const methods = useQuery({ queryKey: ['payment-methods', K.direction], queryFn: () => api.get<Method[]>(`/api/v1/payment-methods/${K.direction}`) });
   const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], queryFn: () => api.get<Detail>(`/api/v1/${K.path}/${id}`), staleTime: 0 });
   const [h, setH] = useState<Head | null>(null);
   /** บิลที่เลือก: header_id → ยอดชำระ */
@@ -111,14 +105,13 @@ export function SettleFormPage({ path }: { path: string }) {
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), payment_date: String(c.payment_date ?? c.doc_date).slice(0, 10), party: { id: (c.customer_id ?? c.supplier_id)!, code: c.party_code ?? '', name: c.party_name },
       department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '', your_ref: c.your_ref ?? '', remark: c.remark ?? '', interest: num(c.interest_amount), discount: num(c.cash_discount_amount), wht: num(c.wht_amount), cash: num(c.cash_amount), whtForm: 'S53', whtRate: '3' });
     setPick(Object.fromEntries(cur.data.settlements.map((s) => [s.invoice_header_id, num(s.amount)])));
-    setPays(cur.data.payments.map((p) => ({ key: ++seq, payment_method_id: p.payment_method_id, amount: num(p.amount), reference_no: p.reference_no ?? '', cheque_date: p.cheque_date ? String(p.cheque_date).slice(0, 10) : '', bank_id: p.bank_id, bank_branch: p.bank_branch ?? '' })));
-    setWhts(cur.data.wht.filter((w) => w.doc_status !== 'C').map((w) => ({ key: ++seq, id: w.id, form_type: w.form_type, income_type: w.income_type, rate: num(w.rate), paid_amount: num(w.paid_amount), tax_amount: num(w.tax_amount), taxEdited: true, certificate_no: w.certificate_no ?? '', certificate_date: String(w.certificate_date).slice(0, 10) })));
+    setPays(paysFrom(cur.data.payments));
+    setWhts(whtsFrom(cur.data.wht));
   }
   const readOnly = !!id && (!cur.data?.editable || !can('edit'));
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const rows = open.data?.rows ?? [];
   const chosen = rows.filter((o) => pick[o.header_id] !== undefined);
-  const mById = new Map((methods.data ?? []).map((m) => [m.id, m]));
   const whtTotal = whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0));
   const whtAmount = K.cls === 'PS' && whts.length ? whtTotal.toFixed(2) : h?.wht || '0';
   const t = useMemo(() => settlementTotals({ settlements: chosen.map((o) => d(pick[o.header_id] || 0).times(o.doc_class === K.neg ? -1 : 1).toFixed(2)), interest: h?.interest || 0, discount: h?.discount || 0, wht: whtAmount,
@@ -135,10 +128,6 @@ export function SettleFormPage({ path }: { path: string }) {
   };
   const toggle = (o: Open, on: boolean) => { setPick((m) => { const n = { ...m }; if (on) n[o.header_id] = num(o.outstanding); else delete n[o.header_id]; return n; }); setDirty(true); };
   const allOn = rows.length > 0 && rows.every((o) => pick[o.header_id] !== undefined);
-  const setPay = (k: number, p: Partial<Pay>) => { setPays((ps) => ps.map((x) => (x.key === k ? { ...x, ...p } : x))); setDirty(true); };
-  const addPay = () => { setPays((ps) => [...ps, { key: ++seq, payment_method_id: '', amount: d(t.cash).gt(0) && !h?.cash ? t.cash : '', reference_no: '', cheque_date: h?.payment_date ?? date0, bank_id: null, bank_branch: '' }]); setDirty(true); };
-  const setW = (k: number, p: Partial<Wht>) => { setWhts((ws) => ws.map((w) => { if (w.key !== k) return w; const n = { ...w, ...p }; if ((p.paid_amount !== undefined || p.rate !== undefined) && !n.taxEdited) n.tax_amount = taxOf(n.paid_amount, n.rate); return n; })); setDirty(true); };
-  const addWht = () => { if (!h) return; setWhts((ws) => [...ws, { key: ++seq, form_type: h.whtForm, income_type: 'ค่าบริการ', rate: h.whtRate, paid_amount: baseOfChosen, tax_amount: taxOf(baseOfChosen, h.whtRate), taxEdited: false, certificate_no: '', certificate_date: '' }]); setDirty(true); };
 
   const save = async (andNew = false) => {
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
@@ -146,8 +135,7 @@ export function SettleFormPage({ path }: { path: string }) {
     const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
       your_ref: h.your_ref || null, remark: h.remark || null, interest_amount: h.interest || '0', cash_discount_amount: h.discount || '0', wht_amount: K.cls === 'PS' && whts.length ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
       settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0' })),
-      payments: pays.filter((p) => p.payment_method_id && !d(p.amount || 0).isZero()).map((p) => ({ payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no || null, cheque_date: p.cheque_date || null, bank_id: p.bank_id || null, bank_branch: p.bank_branch || null })),
-      wht: K.cls === 'PS' ? whts.map((w) => ({ form_type: w.form_type, income_type: w.income_type, rate: w.rate || '0', paid_amount: w.paid_amount || '0', tax_amount: w.tax_amount || '0', certificate_no: w.certificate_no || null, certificate_date: w.certificate_date || null })) : [] };
+      payments: paysBody(pays), wht: K.cls === 'PS' ? whtsBody(whts) : [] };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
       toast(`บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว`);
@@ -223,51 +211,8 @@ export function SettleFormPage({ path }: { path: string }) {
             {chosen.length > 0 && <tfoot><tr><td colSpan={K.module === 'AP' ? 8 : 7} className="r">เลือก {chosen.length} ใบ — ยอดชำระตามใบกำกับ (ใบลดหนี้หักออก)</td><td className="r"><b><Money v={t.billed} /></b></td></tr></tfoot>}
           </table>}
         </div>}
-        {tab === 'pay' && <div className="table-wrap lines">
-          <table className="grid">
-            <thead><tr><th>วิธีชำระ</th><th style={{ width: 150 }}>เลขที่เช็ค/อ้างอิง</th><th style={{ width: 130 }}>ลงวันที่</th><th style={{ width: 170 }}>ธนาคาร</th><th style={{ width: 140 }}>สาขา</th><th className="r" style={{ width: 140 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>
-            <tbody>
-              {pays.map((p) => {
-                const m = mById.get(p.payment_method_id);
-                return (
-                  <tr key={p.key}>
-                    <td><select value={p.payment_method_id} disabled={ro} onChange={(e) => setPay(p.key, { payment_method_id: e.target.value })} aria-label="วิธีชำระ"><option value="">— เลือก —</option>{methods.data?.filter((x) => x.status === 'A' || x.id === p.payment_method_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></td>
-                    <td><input value={p.reference_no} maxLength={30} disabled={ro} placeholder={m?.creates_cheque ? 'เลขที่เช็ค (ต้องป้อน)' : ''} onChange={(e) => setPay(p.key, { reference_no: e.target.value })} aria-label="เลขที่เช็ค" /></td>
-                    <td>{m?.creates_cheque ? <DateInput value={p.cheque_date} disabled={ro} onChange={(v) => setPay(p.key, { cheque_date: v })} /> : null}</td>
-                    <td>{m?.creates_cheque && K.direction === 'R' ? <LkSelect byId rows={lk.data?.BANK} value={p.bank_id} disabled={ro} onChange={(v) => setPay(p.key, { bank_id: v || null })} aria-label="ธนาคาร" /> : null}</td>
-                    <td>{m?.creates_cheque && K.direction === 'R' ? <input value={p.bank_branch} maxLength={60} disabled={ro} onChange={(e) => setPay(p.key, { bank_branch: e.target.value })} aria-label="สาขาธนาคาร" /> : null}</td>
-                    <td><MoneyInput value={p.amount} disabled={ro} onChange={(v) => setPay(p.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
-                    <td>{!ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setPays((ps) => ps.filter((x) => x.key !== p.key)); setDirty(true); }}>✕</button>}</td>
-                  </tr>
-                );
-              })}
-              {!pays.length && <tr><td colSpan={7} className="empty">{rp(K)}เป็นเงินสดทั้งหมด — เพิ่มวิธีชำระสำหรับเช็ค เงินโอน บัตรเครดิต</td></tr>}
-            </tbody>
-            <tfoot><tr><td colSpan={5}>{!ro && <button type="button" onClick={addPay}>+ เพิ่มวิธีชำระ</button>} <span className="hint">เช็คจะเข้าทะเบียนเช็ค{rp(K)}อัตโนมัติ · ยอดลบใช้กับค่าธรรมเนียมที่หักออก</span></td><td className="r"><b><Money v={t.other} /></b></td><td /></tr></tfoot>
-          </table>
-        </div>}
-        {tab === 'wht' && K.cls === 'PS' && <div className="table-wrap lines">
-          <table className="grid">
-            <thead><tr><th style={{ width: 120 }}>แบบ</th><th>ประเภทเงินได้</th><th className="r" style={{ width: 80 }}>อัตรา %</th><th className="r" style={{ width: 140 }}>จำนวนเงินที่จ่าย</th><th className="r" style={{ width: 120 }}>ภาษีที่หักไว้</th><th style={{ width: 130 }}>เลขที่หนังสือรับรอง</th><th style={{ width: 130 }}>วันที่ออก</th><th style={{ width: 90 }} /></tr></thead>
-            <tbody>
-              {whts.map((w) => (
-                <tr key={w.key}>
-                  <td><select value={w.form_type} disabled={ro} onChange={(e) => setW(w.key, { form_type: e.target.value as Wht['form_type'] })} aria-label="แบบ ภ.ง.ด."><option value="S03">ภ.ง.ด.3</option><option value="S53">ภ.ง.ด.53</option></select></td>
-                  <td><input list="wht-income-types" value={w.income_type} maxLength={60} disabled={ro} onChange={(e) => { const hit = WHT_INCOME_TYPES.find((x) => x.text === e.target.value); setW(w.key, { income_type: e.target.value, ...(hit ? { rate: hit.rate } : {}) }); }} aria-label="ประเภทเงินได้" /></td>
-                  <td><input className="r" inputMode="decimal" value={w.rate} disabled={ro} onChange={(e) => setW(w.key, { rate: e.target.value.replace(/[^\d.]/g, '') })} aria-label="อัตรา" /></td>
-                  <td><MoneyInput value={w.paid_amount} disabled={ro} onChange={(v) => setW(w.key, { paid_amount: v })} aria-label="จำนวนเงินที่จ่าย" /></td>
-                  <td><MoneyInput value={w.tax_amount} disabled={ro} onChange={(v) => setW(w.key, { tax_amount: v, taxEdited: true })} aria-label="ภาษีที่หัก" /></td>
-                  <td><input value={w.certificate_no} maxLength={30} disabled={ro} placeholder="= เลขที่เอกสาร" onChange={(e) => setW(w.key, { certificate_no: e.target.value })} aria-label="เลขที่หนังสือรับรอง" /></td>
-                  <td><DateInput value={w.certificate_date} disabled={ro} onChange={(v) => setW(w.key, { certificate_date: v })} /></td>
-                  <td>{w.id && !dirty ? <button type="button" onClick={() => nav(`/tax/wht50?entry=${w.id}`)}>🖨 50 ทวิ</button> : !ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setWhts((ws) => ws.filter((x) => x.key !== w.key)); setDirty(true); }}>✕</button>}</td>
-                </tr>
-              ))}
-              {!whts.length && <tr><td colSpan={8} className="empty">ไม่มีการหักภาษี ณ ที่จ่าย</td></tr>}
-            </tbody>
-            <tfoot><tr><td colSpan={4}>{!ro && whts.length < 2 && <button type="button" onClick={addWht} disabled={!chosen.length}>+ หักภาษี ณ ที่จ่าย</button>} <span className="hint">ได้ 2 ประเภทเงินได้ · ยอดเข้าแฟ้ม ภ.ง.ด.3/53 · พิมพ์ 50 ทวิ ได้หลังบันทึก</span></td><td className="r"><b><Money v={whtTotal.toFixed(2)} /></b></td><td colSpan={3} /></tr></tfoot>
-          </table>
-          <datalist id="wht-income-types">{WHT_INCOME_TYPES.map((x) => <option key={x.text} value={x.text}>{`${x.rate}%`}</option>)}</datalist>
-        </div>}
+        {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} readOnly={ro} payDate={h.payment_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
+        {tab === 'wht' && K.cls === 'PS' && <WhtTable whts={whts} setWhts={setWhts} readOnly={ro} base={baseOfChosen} defaults={{ form: h.whtForm, rate: h.whtRate }} canAdd={chosen.length > 0} dirty={dirty} onDirty={() => setDirty(true)} />}
         {tab === 'gl' && id && <DocJournalTab id={id} />}
         <div className="trade-foot">
           <Field label="หมายเหตุ"><textarea rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>

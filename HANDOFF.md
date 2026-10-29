@@ -66,7 +66,13 @@
   - แก้ MoneyInput (ui.tsx) ส่งค่าทันทีที่พิมพ์ — เดิมกด F9 ขณะอยู่ในช่องเงินจะบันทึกค่าเก่า
   - เหลือ: ใช้ยอดคงเหลือในเช็คครั้งก่อน (P4 ทะเบียนเช็ค) · พิมพ์ใบเสร็จ (P5) · แบบยื่น ภ.ง.ด.3/53 (T3.9)
   - ⚠️ server ทดสอบเสิร์ฟ apps/web/dist ที่ build ไว้ — แก้หน้าจอแล้วต้อง `pnpm --filter @buddy/web build` ก่อนทดสอบ (scratchpad/settle_ui.cjs)
-- ต่อไป: T3.6 มัดจำรับ/จ่าย AI/AE + รายได้/ค่าใช้จ่ายอื่น OI/OE
+- ✅ T3.6 มัดจำ/รายได้-ค่าใช้จ่ายอื่น: core `CASH_KINDS` (doc-calc.ts) · API `modules/docs/cashdocs.ts` /ar-deposits /ap-deposits /other-income-docs /other-expense-docs (+cancel) + /deposits/open
+  - ส่วนชำระใช้ร่วม `modules/docs/payments.ts` (loadMethods/writePayments/writeWht/releaseCheques/readMoneyParts) — settle.ts ใช้ด้วย · หน้าจอใช้ร่วม `pages/docs/MoneyParts.tsx` (PaymentsTable/WhtTable)
+  - หักมัดจำในบิล IV/HS/RR/HP: body.deposits → doc_link DEPOSIT (amount ตามประเภทราคาของบิล) · มัดจำคงเหลือ = view v_deposit_outstanding (migration 0013) · ประเภทราคาต้องตรงกัน · มัดจำที่หักแล้วยกเลิก/ลดยอดไม่ได้
+  - เครื่องลงบัญชี: AE/OE Cr WHT_PAYABLE · AI/OI Dr PREPAID_TAX · HS วิธีรับชำระอื่นลงบัญชีของวิธีนั้น (เดิมลงเงินสดทั้งหมด) · HP หักมัดจำ Cr DEPOSIT_PAID → posting-compare 14,964/15,382 (97.3%)
+  - OI/OE ไม่ระบุคู่ค้าได้ (party_name) · รหัสบรรทัด OI = item_type 4 · OE = 5 หรือ 2 (ข้อมูล Express) · /item-search?types=
+  - ⚠️ มัดจำคงเหลือของข้อมูลที่ย้ายมาไม่ตรง REMAMT ของ Express (AE: view 39.9 ล้าน vs Express 16.3 ล้าน) เพราะ Express หักมัดจำผ่านวิธีชำระ "หัก เงินมัดจำ" ในใบสำคัญจ่ายโดยไม่ผูกใบ — แก้ใน T3.10 (importer สร้าง doc_link ปรับปรุงให้คงเหลือ = REMAMT)
+- ต่อไป: T3.7 ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อ/วางบิล/รับวางบิล (ไม่ลงบัญชี)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

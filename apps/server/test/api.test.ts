@@ -878,6 +878,8 @@ describe('Buddy Account API (PGlite)', () => {
     const hs = await call('POST', '/api/v1/cash-sales', { doc_type_id: hsType, doc_date: '2026-06-16', party_id: cus, price_type: '1', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 1070 }], payments: [{ payment_method_id: pm.id, amount: 500 }] });
     expect(hs.status).toBe(200);
     expect((await call('GET', `/api/v1/cash-sales/${hs.body.id}`)).body).toMatchObject({ net_amount: '1070.00', vat_amount: '70.00', cash_amount: '570.00', cheque_amount: '500.00' });
+    expect((await call('GET', `/api/v1/docs/${hs.body.id}/journal`)).body.journals[0].lines.map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${l.debit}:${l.credit}`))
+      .toEqual(['CASH:570.00:0.00', 'PAYMENT:500.00:0.00', 'SALES:0.00:1000.00', 'OUTPUT_VAT:0.00:70.00']);   // วิธีรับชำระอื่นลงบัญชีของวิธีนั้น
     expect((await call('POST', '/api/v1/sales-invoices', { ...iv, payments: [{ payment_method_id: pm.id, amount: 1 }] })).body.error.message).toMatch(/ไม่มีการรับ\/จ่ายเงิน/);
     // ใบลดหนี้อ้างใบกำกับ: ต้องระบุใบเดิม
     const cnType = (await call('GET', '/api/v1/trade-defaults/CN')).body.types[0].id;
@@ -1017,6 +1019,78 @@ describe('Buddy Account API (PGlite)', () => {
     // ใบเสร็จ/ใบจ่ายยกเลิกแล้ว → บิลยกเลิกได้ (คืนสมุดบัญชีให้ทดสอบถัดไป)
     for (const [path, id] of [['purchase-invoices', rr.id], ['ar-credit-notes', cn.id], ['sales-invoices', iv1.id], ['sales-invoices', iv2.id]])
       expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
+  it('deposits + other income/expense (T3.6): AI → deduct in invoice, OE with WHT and no supplier, cancel rules, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const roles = async (id: string) => (await call('GET', `/api/v1/docs/${id}/journal`)).body.journals[0].lines.map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${l.debit}:${l.credit}`);
+    // รับเงินมัดจำ 10% (ราคาแยก VAT): Dr เงินสด 1,070 / Cr มัดจำรับ 1,000 + ภาษีขาย 70
+    const ai = { doc_type_id: await typeOf('AI'), doc_date: '2026-08-01', party_id: cus, price_type: '2', vat_rate: 7, credit_days: 15, lines: [{ description: 'รับมัดจำ 10% คอมพิวเตอร์', amount: 1000 }] };
+    expect((await call('POST', '/api/v1/ar-deposits', { ...ai, party_id: null })).body.error.message).toMatch(/เลือกลูกค้า/);
+    expect((await call('POST', '/api/v1/ar-deposits', { ...ai, lines: [{ item_id: cpu, amount: 1000 }] })).body.error.message).toMatch(/คำอธิบายและจำนวนเงินเท่านั้น/);
+    expect((await call('POST', '/api/v1/ar-deposits', { ...ai, cash_amount: 10 })).body.error.message).toMatch(/ไม่เท่ากับยอดชำระจริง/);
+    const a1 = await call('POST', '/api/v1/ar-deposits', ai);
+    expect(a1.body).toMatchObject({ doc_no: expect.stringMatching(/^AI\d{7}$/), net_amount: '1070.00', cash_amount: '1070.00' });
+    expect(await roles(a1.body.id)).toEqual(['CASH:1070.00:0.00', 'DEPOSIT_RECEIVED:0.00:1000.00', 'OUTPUT_VAT:0.00:70.00']);
+    expect((await call('GET', `/api/v1/ar-deposits/${a1.body.id}`)).body).toMatchObject({ remaining: '1000.00', used_by: [] });
+    expect(String((await call('GET', `/api/v1/ar-deposits/${a1.body.id}`)).body.due_date).slice(0, 10)).toBe('2026-08-16');
+    const open = async () => (await call('GET', `/api/v1/deposits/open?module=AR&party_id=${cus}`)).body.rows.map((r: { doc_no: string; outstanding: string }) => `${r.doc_no}:${r.outstanding}`);
+    expect(await open()).toEqual([`${a1.body.doc_no}:1000.00`]);
+    // บิลขายหักมัดจำ: 5,000 − 1,000 = 4,000 + VAT 280 = 4,280 · Dr ลูกหนี้ 4,280 + มัดจำรับ 1,000 / Cr ขาย 5,000 + VAT 280
+    const iv = { doc_type_id: ivType, doc_date: '2026-08-10', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 5000 }], deposits: [{ header_id: a1.body.id, amount: 1000 }] };
+    expect((await call('POST', '/api/v1/sales-invoices', { ...iv, price_type: '1' })).body.error.message).toMatch(/ประเภทราคา/);
+    expect((await call('POST', '/api/v1/sales-invoices', { ...iv, deposits: [{ header_id: a1.body.id, amount: 1500 }] })).body.error.message).toMatch(/ไม่เกินยอดคงเหลือ/);
+    expect((await call('POST', '/api/v1/ar-debit-notes', { ...iv, doc_type_id: await typeOf('DR'), ref_no: 'X' })).body.error.message).toMatch(/หักเงินมัดจำไม่ได้/);
+    const i1 = await call('POST', '/api/v1/sales-invoices', iv);
+    expect(i1.body).toMatchObject({ net_amount: '4280.00' });
+    expect((await call('GET', `/api/v1/sales-invoices/${i1.body.id}`)).body).toMatchObject({ deposit_amount: '1000.00', vat_amount: '280.00', deposits: [{ doc_no: a1.body.doc_no, amount: '1000.00' }] });
+    expect(await roles(i1.body.id)).toEqual(['AR:4280.00:0.00', 'SALES:0.00:5000.00', 'OUTPUT_VAT:0.00:280.00', 'DEPOSIT_RECEIVED:1000.00:0.00']);
+    expect(await open()).toEqual([]);
+    expect((await call('GET', `/api/v1/ar-deposits/${a1.body.id}`)).body).toMatchObject({ remaining: '0.00', used_by: [{ doc_no: i1.body.doc_no, amount: '1000.00' }] });
+    // มัดจำที่หักแล้ว: ยกเลิกไม่ได้ ลดยอดต่ำกว่าที่หักไม่ได้ · แก้บิลโดยหักยอดเดิมได้ (นับยอดที่บิลนี้หักไว้กลับ)
+    expect((await call('POST', `/api/v1/ar-deposits/${a1.body.id}/cancel`, { reason: 'x' })).body.error.message).toMatch(/หักในบิลแล้ว/);
+    expect((await call('PUT', `/api/v1/ar-deposits/${a1.body.id}`, { ...ai, lines: [{ description: 'ลด', amount: 500 }] })).body.error.message).toMatch(/ไม่น้อยกว่านี้/);
+    expect((await call('PUT', `/api/v1/sales-invoices/${i1.body.id}`, iv)).body).toMatchObject({ net_amount: '4280.00' });
+    expect((await call('POST', `/api/v1/sales-invoices/${i1.body.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect(await open()).toEqual([`${a1.body.doc_no}:1000.00`]);
+    expect((await call('POST', `/api/v1/ar-deposits/${a1.body.id}/cancel`, { reason: 'ลูกค้ายกเลิกสั่งซื้อ' })).status).toBe(200);
+    expect(await open()).toEqual([]);
+
+    // ค่าใช้จ่ายอื่น ไม่ระบุผู้จำหน่าย + ภาษีหัก ณ ที่จ่าย 3% → แฟ้ม ภ.ง.ด.3 · Dr ค่าใช้จ่าย 1,000 + ภาษีซื้อ 70 / Cr ภาษีหัก 30 + เงินสด 1,040
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; is_control: boolean }>;
+    const leaf = accs.filter((x) => !x.is_control);
+    const exp = (await call('POST', '/api/v1/other-expenses', { code: '95-5300-01', name_th: 'ค่าจ้างซ่อมแซม', accounts: { expense: leaf[6]!.id } })).body.id;
+    const inc = (await call('POST', '/api/v1/other-incomes', { code: '94-4200-01', name_th: 'ค่าบริการรับ', accounts: { revenue: leaf[7]!.id } })).body.id;
+    const oe = { doc_type_id: await typeOf('OE'), doc_date: '2026-08-05', party_name: 'นายช่าง ใจดี', price_type: '2', vat_rate: 7, ref_no: 'INV-77', lines: [{ item_id: exp, amount: 1000 }],
+      wht: [{ form_type: 'S03', income_type: 'ค่าจ้างทำของ', rate: 3, paid_amount: 1000, tax_amount: 30 }] };
+    expect((await call('POST', '/api/v1/other-expense-docs', { ...oe, lines: [{ item_id: inc, amount: 1000 }] })).body.error.message).toMatch(/ไม่ใช่รหัสค่าใช้จ่ายอื่น/);
+    expect((await call('POST', '/api/v1/other-expense-docs', { ...oe, lines: [{ description: 'ไม่มีรหัส', amount: 1000 }] })).body.error.message).toMatch(/เลือกรหัสค่าใช้จ่าย/);
+    const o1 = await call('POST', '/api/v1/other-expense-docs', oe);
+    expect(o1.body).toMatchObject({ doc_no: expect.stringMatching(/^OE\d{7}$/), net_amount: '1070.00', cash_amount: '1040.00' });
+    expect(await roles(o1.body.id)).toEqual(['EXPENSE:1000.00:0.00', 'INPUT_VAT:70.00:0.00', 'WHT:0.00:30.00', 'CASH:0.00:1040.00']);
+    const od = (await call('GET', `/api/v1/other-expense-docs/${o1.body.id}`)).body;
+    expect(od).toMatchObject({ party_name: 'นายช่าง ใจดี', supplier_id: null, ref_no: 'INV-77', wht_amount: '30.00', lines: [{ item_id: exp, amount: '1000.00' }] });
+    expect(od.wht[0]).toMatchObject({ form_type: 'S03', tax_amount: '30.00', certificate_no: o1.body.doc_no });
+    expect((await call('GET', '/api/v1/wht?form=S03&month=2026-08')).body.rows[0]).toMatchObject({ payee_name: 'นายช่าง ใจดี', doc_no: o1.body.doc_no });
+    // รายได้อื่น ลูกค้าหักภาษีไว้ 1%: Dr ภาษีจ่ายล่วงหน้า 20 + เงินสด 1,980 / Cr รายได้ 2,000 (ยกเว้น VAT)
+    const oi = await call('POST', '/api/v1/other-income-docs', { doc_type_id: await typeOf('OI'), doc_date: '2026-08-06', party_id: cus, price_type: '0', vat_rate: 0, wht_amount: 20, lines: [{ item_id: inc, amount: 2000 }] });
+    expect(oi.body).toMatchObject({ net_amount: '2000.00', cash_amount: '1980.00' });
+    expect(await roles(oi.body.id)).toEqual(['WHT:20.00:0.00', 'CASH:1980.00:0.00', 'OTHER_INCOME:0.00:2000.00']);
+    expect((await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body.balanced).toBe(true);
+    // บริษัทอื่นมองไม่เห็น
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/other-expense-docs/${o1.body.id}`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/ar-deposits')).body.total).toBe(0);
+    expect((await call('GET', `/api/v1/deposits/open?module=AR&party_id=${cus}`)).body.rows).toEqual([]);
+    expect((await call('POST', `/api/v1/other-income-docs/${oi.body.id}/cancel`, { reason: 'x' })).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ยกเลิก → ภาษีหัก ณ ที่จ่ายยกเลิกด้วย (คืนสมุดบัญชีให้ทดสอบถัดไป)
+    for (const [path, id] of [['other-expense-docs', o1.body.id], ['other-income-docs', oi.body.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/wht?form=S03&month=2026-08')).body.rows).toHaveLength(0);
   });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {

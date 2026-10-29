@@ -40,8 +40,9 @@ import { DocTypesPage, GlLinkPage } from './pages/settings/DocTypes';
 import { DataTablesPage } from './pages/settings/DataTables';
 import { TradeFormPage, TradeListPage } from './pages/docs/TradeDocs';
 import { SettleFormPage, SettleListPage } from './pages/docs/SettleDocs';
+import { CashFormPage, CashListPage } from './pages/docs/CashDocs';
 import { WhtRegisterPage } from './pages/tax/WhtRegister';
-import { SETTLE_KINDS, TRADE_KINDS } from '@buddy/core';
+import { CASH_KINDS, SETTLE_KINDS, TRADE_KINDS } from '@buddy/core';
 
 export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
 const PHASE_TH: Record<string, string> = { P0: 'ฐานระบบ', P1: 'บัญชีแยกประเภท', P2: 'แฟ้มหลัก', P3: 'ซื้อ ขาย ภาษี', P4: 'ธนาคาร สินค้า', P5: 'รายงาน', P6: 'ผู้ดูแลระบบ', P7: 'ต่อยอด' };
@@ -147,6 +148,7 @@ function Shell() {
           <Route path="/settings/data-tables" element={<DataTablesPage />} />
           {TRADE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<TradeListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<TradeFormPage key={k.path} path={k.path} />} />])}
           {SETTLE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<SettleListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<SettleFormPage key={k.path} path={k.path} />} />])}
+          {CASH_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<CashListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<CashFormPage key={k.path} path={k.path} />} />])}
           <Route path="/companies/new" element={<NewCompanyPage />} />
           <Route path="/account/password" element={<PasswordPage />} />
           <Route path="/admin/import" element={<ImportPage />} />

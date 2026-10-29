@@ -7,12 +7,12 @@ import { badRequest, notFound, parse, requireCompany, type AuthContext } from '.
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
+import { branchOf, checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
 const optId = uuid.nullable().optional().transform((v) => v ?? null);
 const str = (max: number) => z.string().trim().max(max).nullable().optional().transform((v) => (v ? v : null));
-const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 const money = (v: ReturnType<typeof d>) => v.toDecimalPlaces(2).toFixed(2);
 
@@ -25,13 +25,9 @@ const body = z.object({
   interest_amount: num.default('0'), cash_discount_amount: num.default('0'), wht_amount: num.default('0'),
   /** ว่าง = ส่วนที่เหลือหลังชำระโดยวิธีอื่นเป็นเงินสด */
   cash_amount: num.nullable().optional(),
-  payments: z.array(z.object({ payment_method_id: uuid, amount: num, reference_no: str(30), cheque_date: isoDate.nullable().optional(), bank_id: optId, bank_branch: str(60) })).max(20).default([]),
+  payments: paymentsSchema,
   /** รายละเอียดภาษีหัก ณ ที่จ่าย (S-PU-C4) สำหรับทะเบียน ภ.ง.ด.3/53 และพิมพ์ 50 ทวิ — ได้ 2 ประเภทเงินได้ */
-  wht: z.array(z.object({
-    form_type: z.enum(['S03', 'S53'], { errorMap: () => ({ message: 'เลือกแบบ ภ.ง.ด.3 หรือ ภ.ง.ด.53' }) }),
-    income_type: z.string().trim().min(1, 'ป้อนประเภทเงินได้').max(60), rate: num, paid_amount: num, tax_amount: num,
-    condition: z.enum(['1', '2', '3']).default('1'), certificate_no: str(30), certificate_date: isoDate.nullable().optional(), is_late: z.boolean().default(false),
-  })).max(2, 'ป้อนภาษีหัก ณ ที่จ่ายได้ไม่เกิน 2 ประเภทเงินได้').default([]),
+  wht: whtSchema,
 });
 type Body = z.infer<typeof body>;
 
@@ -76,23 +72,10 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
 
   // ภาษีหัก ณ ที่จ่าย: ใบสำคัญจ่ายป้อนรายละเอียดได้ → ยอดรวมแทนช่องยอด
   if (b.wht.length && K.cls !== 'PS') throw badRequest('ใบเสร็จรับเงินป้อนเพียงยอดภาษีที่ถูกหัก — รายละเอียด 50 ทวิ ออกโดยลูกค้า');
-  b.wht.forEach((w, i) => {
-    if (d(w.paid_amount).lte(0)) throw badRequest(`ภาษีหัก ณ ที่จ่ายกลุ่ม ${i + 1}: ป้อนจำนวนเงินที่จ่าย`);
-    if (d(w.tax_amount).lt(0) || d(w.rate).lt(0) || d(w.rate).gt(100)) throw badRequest(`ภาษีหัก ณ ที่จ่ายกลุ่ม ${i + 1}: อัตราหรือภาษีไม่ถูกต้อง`);
-  });
-  const wht = b.wht.length ? b.wht.reduce((s, w) => s.plus(d(w.tax_amount)), d(0)) : d(b.wht_amount);
+  const wht = b.wht.length ? checkWht(b.wht) : d(b.wht_amount);
   for (const [v, n] of [[wht, 'ภาษีหัก ณ ที่จ่าย'], [d(b.cash_discount_amount), 'ส่วนลดเงินสด'], [d(b.interest_amount), 'ดอกเบี้ย']] as const) if (v.lt(0)) throw badRequest(`${n}ต้องไม่ติดลบ`);
 
-  // วิธีชำระ: ต้องเป็นวิธีของฝั่งรับ/จ่ายนี้ · วิธีที่ออกเช็ค ต้องมีเลขที่เช็ค
-  const methods = b.payments.length ? await db.selectFrom('md_payment_method').select(['id', 'code', 'name_th', 'kind', 'creates_cheque', 'bank_account_id', 'status'])
-    .where('company_id', '=', a.companyId).where('direction', '=', K.direction).where('id', 'in', [...new Set(b.payments.map((p) => p.payment_method_id))]).where('deleted_at', 'is', null).execute() : [];
-  const mById = new Map(methods.map((m) => [m.id, m]));
-  b.payments.forEach((p, i) => {
-    const m = mById.get(p.payment_method_id);
-    if (!m) throw badRequest(`ชำระโดยอื่นบรรทัดที่ ${i + 1}: ไม่พบวิธี${K.direction === 'R' ? 'รับ' : 'จ่าย'}ชำระนี้ — ดูที่ เริ่มระบบ › วิธีรับ/จ่ายชำระหนี้`);
-    if (d(p.amount).isZero()) throw badRequest(`ชำระโดยอื่นบรรทัดที่ ${i + 1} (${m.code}): ป้อนจำนวนเงิน`);
-    if (m.creates_cheque && !p.reference_no) throw badRequest(`ชำระโดยอื่นบรรทัดที่ ${i + 1} (${m.code}): ป้อนเลขที่เช็ค`);
-  });
+  const mById = await loadMethods(db, a.companyId, K.direction, b.payments);
 
   const t = settlementTotals({ settlements: setts.map((s) => d(s.amount).times(s.sign).toFixed(2)), interest: b.interest_amount, discount: b.cash_discount_amount, wht: wht.toFixed(2),
     payments: b.payments.map((p) => p.amount), cash: b.cash_amount });
@@ -121,58 +104,23 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
       await releaseCheques(tx, a, id, cur.doc_no);
       docNo = cur.doc_no;
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
-      for (const tb of ['doc_payment', 'doc_settlement', 'tax_wht_entry'] as const)
-        await tx.updateTable(tb).set({ deleted_at: sql`now()` as never }).where(tb === 'doc_settlement' ? 'payment_header_id' : 'header_id', '=', id).where('deleted_at', 'is', null).execute();
+      await clearMoneyParts(tx, id);
+      await tx.updateTable('doc_settlement').set({ deleted_at: sql`now()` as never }).where('payment_header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
       docNo = await issueDocNo(tx, a.companyId, dt.id);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     // express_rectype: รหัสรายการตัดแบบ Express (3 บิล 4 เพิ่มหนี้ 5 ลดหนี้) — เครื่องลงบัญชีใช้กลับเครื่องหมายใบลดหนี้
     await tx.insertInto('doc_settlement').values(setts.map((s) => ({ company_id: a.companyId, payment_header_id: hid!, invoice_header_id: s.o.header_id, express_rectype: s.rectype, amount: s.amount, vat_amount: s.vat, created_by: a.userId }))).execute();
-    const branchId = await branchOf(tx, a);
-    for (const [i, p] of b.payments.entries()) {
-      const m = mById.get(p.payment_method_id)!;
-      let chequeId: string | null = null;
-      if (m.creates_cheque) {
-        const dup = await tx.selectFrom('fin_cheque').select('id').where('company_id', '=', a.companyId).where('direction', '=', K.direction).where('cheque_no', '=', p.reference_no!)
-          .where('deleted_at', 'is', null).where(sql<boolean>`coalesce(bank_account_id::text, '') = ${m.bank_account_id ?? ''}`).executeTakeFirst();
-        if (dup) throw badRequest(`เลขที่เช็ค ${p.reference_no} มีในทะเบียนเช็ค${K.direction === 'R' ? 'รับ' : 'จ่าย'}แล้ว`);
-        chequeId = (await tx.insertInto('fin_cheque').values({
-          company_id: a.companyId, branch_id: branchId, direction: K.direction, instrument: m.kind === 'TRANSFER' ? 'TRANSFER' : m.kind === 'CARD' ? 'CARD' : 'CHEQUE',
-          cheque_no: p.reference_no!, cheque_date: p.cheque_date ?? payDate, bank_id: p.bank_id, bank_branch: p.bank_branch, bank_account_id: m.bank_account_id,
-          customer_id: header.customer_id, supplier_id: header.supplier_id, payee_name: header.party_name.slice(0, 120), department_id: header.department_id,
-          received_date: K.direction === 'R' ? payDate : null, amount: p.amount, charge: '0', net_amount: p.amount, remaining_amount: '0', status: '00', source_header_id: hid, created_by: a.userId,
-        }).returning('id').executeTakeFirstOrThrow()).id;
-      }
-      await tx.insertInto('doc_payment').values({ company_id: a.companyId, header_id: hid!, line_no: i + 1, payment_method_id: m.id, amount: p.amount, reference_no: p.reference_no, cheque_id: chequeId, created_by: a.userId }).execute();
-    }
-    for (const w of b.wht) {
-      const cdate = w.certificate_date ?? payDate;
-      const per = await periodFor(tx, a.companyId, cdate);
-      await tx.insertInto('tax_wht_entry').values({
-        company_id: a.companyId, form_type: w.form_type, header_id: hid, branch_id: branchId, certificate_no: w.certificate_no ?? docNo, certificate_date: cdate, tax_period_id: per.id, is_late: w.is_late,
-        supplier_id: header.supplier_id, payee_name: header.party_name || party.code, payee_address: header.party_address, payee_tax_id: party.tax_id, payee_tax_branch_no: party.tax_branch_no,
-        income_type: w.income_type, paid_amount: money(d(w.paid_amount)), rate: w.rate, tax_amount: money(d(w.tax_amount)), condition: w.condition, department_id: header.department_id, created_by: a.userId,
-      }).execute();
-    }
+    await writePayments(tx, a, { headerId: hid!, direction: K.direction, payDate, methods: mById, payments: b.payments, customerId: header.customer_id, supplierId: header.supplier_id, partyName: header.party_name, departmentId: header.department_id });
+    await writeWht(tx, a, { headerId: hid!, docNo, payDate, wht: b.wht, supplierId: header.supplier_id, departmentId: header.department_id,
+      payee: { name: header.party_name || party.code, address: header.party_address, tax_id: party.tax_id, branch_no: party.tax_branch_no } });
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
     return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: t.billed, cash_amount: t.cash };
   });
-}
-
-async function branchOf(db: Db, a: Ctx) {
-  return a.branchId ?? (await db.selectFrom('sys_branch').select('id').where('company_id', '=', a.companyId).where('is_head_office', '=', true).executeTakeFirstOrThrow()).id;
-}
-
-/** เช็คที่ใบนี้ออก: ยังไม่นำฝาก/ผ่าน จึงแก้หรือยกเลิกใบได้ (นำออกจากทะเบียนเช็ค) */
-async function releaseCheques(db: Db, a: Ctx, headerId: string, docNo: string) {
-  const used = await db.selectFrom('fin_cheque').select('cheque_no').where('company_id', '=', a.companyId).where('source_header_id', '=', headerId).where('deleted_at', 'is', null)
-    .where((e) => e.or([e('status', '<>', '00'), e('deposit_header_id', 'is not', null), e('pass_journal_id', 'is not', null)])).executeTakeFirst();
-  if (used) throw badRequest(`เช็ค ${used.cheque_no} ของ ${docNo} นำฝาก/ผ่านแล้ว — ยกเลิกรายการเช็คก่อน (บทที่ 13)`);
-  await db.updateTable('fin_cheque').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('company_id', '=', a.companyId).where('source_header_id', '=', headerId).where('deleted_at', 'is', null).execute();
 }
 
 export function settleRoutes(app: FastifyInstance, db: Db) {
@@ -215,11 +163,7 @@ export function settleRoutes(app: FastifyInstance, db: Db) {
         .select(['s.invoice_header_id', 'i.doc_class', 'i.doc_no', 'i.doc_date', 'i.due_date', 'i.net_amount as invoice_amount', 's.amount', 's.vat_amount'])
         .where('s.payment_header_id', '=', id).where('s.deleted_at', 'is', null).orderBy('i.doc_date').orderBy('i.doc_no').execute();
       const open = new Map((await openItems(db, a.companyId, K, partyId, id, settlements.map((s) => s.invoice_header_id))).map((o) => [o.header_id, o.outstanding]));
-      const payments = await db.selectFrom('doc_payment as p').leftJoin('md_payment_method as m', 'm.id', 'p.payment_method_id').leftJoin('fin_cheque as c', 'c.id', 'p.cheque_id')
-        .select(['p.line_no', 'p.payment_method_id', 'm.code as method_code', 'm.name_th as method_name', 'm.creates_cheque', 'p.amount', 'p.reference_no', 'c.cheque_date', 'c.bank_id', 'c.bank_branch', 'c.status as cheque_status'])
-        .where('p.header_id', '=', id).where('p.deleted_at', 'is', null).orderBy('p.line_no').execute();
-      const wht = await db.selectFrom('tax_wht_entry').select(['id', 'form_type', 'income_type', 'rate', 'paid_amount', 'tax_amount', 'condition', 'certificate_no', 'certificate_date', 'is_late', 'doc_status'])
-        .where('header_id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('created_at').execute();
+      const { payments, wht } = await readMoneyParts(db, a.companyId, id);
       const pc = await db.selectFrom(partyTbl).select('code').where('id', '=', partyId).executeTakeFirst();
       return { ...h, party_code: pc?.code ?? null, settlements: settlements.map((s) => ({ ...s, outstanding: open.get(s.invoice_header_id) ?? s.amount })), payments, wht, editable: h.doc_status !== 'C' };
     });

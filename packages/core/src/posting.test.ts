@@ -35,6 +35,12 @@ describe('posting engine (บทที่ 10)', () => {
       [], [], [{ amount: '1605', vat: '0', party_id: 's1', rectype: '3' }], r);
     expect(net(q)).toEqual({ ap: '1605.00', 'wht-p': '-45.00', cash: '-1560.00' });
   });
+  it('other expense with WHT: Dr expense + VAT, Cr WHT payable, rest cash (S-PU-08)', () => {
+    const p = buildPosting({ id: 'h', doc_class: 'OE', doc_type_id: null, customer_id: null, supplier_id: null, net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1', wht_amount: '30' },
+      [{ item_id: 'svc', net_amount: '1000' }], [], [], r);
+    expect(postingBalanced(p)).toBe(true);
+    expect(net(p)).toEqual({ 'exp-svc': '1000.00', ivat: '70.00', 'wht-p': '-30.00', cash: '-1040.00' });
+  });
   it('settlement totals: due must equal paid; blank cash takes the rest', () => {
     expect(settlementTotals({ settlements: ['10700', '-1070'], wht: '270', discount: '60', interest: '100', payments: ['9000'] })).toMatchObject({ billed: '9630.00', due: '9400.00', cash: '400.00', ok: true });
     expect(settlementTotals({ settlements: ['1605'], wht: '45', payments: ['1000'], cash: '500' })).toMatchObject({ diff: '60.00', ok: false });

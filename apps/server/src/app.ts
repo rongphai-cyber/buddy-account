@@ -25,6 +25,7 @@ import { dataTableRoutes } from './modules/data-tables.js';
 import { docRoutes } from './modules/docs/routes.js';
 import { tradeRoutes } from './modules/docs/trade.js';
 import { settleRoutes } from './modules/docs/settle.js';
+import { cashDocRoutes } from './modules/docs/cashdocs.js';
 import { whtRoutes } from './modules/wht.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
@@ -70,6 +71,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   docRoutes(app, db);
   tradeRoutes(app, db);
   settleRoutes(app, db);
+  cashDocRoutes(app, db);
   whtRoutes(app, db);
   reportRoutes(app, db);
 

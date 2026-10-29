@@ -5,12 +5,14 @@ import { computeDoc, d, dueDate, fmt, TRADE_KINDS, todayIso, type TradeKind } fr
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
-import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 
 const kindOf = (path: string) => TRADE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: TradeKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
 const partyWord = (K: TradeKind) => (K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย');
 const TONE = (K: TradeKind) => (K.module === 'AR' ? 'sales' : 'purchase');
+/** บิลที่หักเงินมัดจำได้ (S-IV-01 ช่องหักมัดจำ, S-PU-03) */
+const DEPOSIT_CLASSES = ['IV', 'HS', 'RR', 'HP'];
 
 /* ---------------------------------------------------------------- รายการเอกสาร */
 interface ListRow { id: string; doc_no: string; doc_date: string; due_date: string | null; party_name: string; party_code: string | null; net_amount: string; vat_amount: string; doc_status: string; gl_posted: string; ref_no: string | null; outstanding: string | null }
@@ -97,10 +99,12 @@ export function TradeFormPage({ path }: { path: string }) {
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const slms = useQuery({ enabled: K.module === 'AR', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const methods = useQuery({ enabled: !!K.payments, queryKey: ['payment-methods', K.module === 'AR' ? 'R' : 'P'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>(`/api/v1/payment-methods/${K.module === 'AR' ? 'R' : 'P'}`) });
-  const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], queryFn: () => api.get<Record<string, unknown> & { lines: Array<Record<string, unknown>>; payments: Array<Record<string, unknown>>; settlements: Array<{ id: string; doc_no: string; doc_date: string; amount: string; doc_status: string }>; editable: boolean; doc_no: string; doc_status: string; outstanding: string | null }>(`/api/v1/${K.path}/${id}`), staleTime: 0 });
+  const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], queryFn: () => api.get<Record<string, unknown> & { lines: Array<Record<string, unknown>>; payments: Array<Record<string, unknown>>; settlements: Array<{ id: string; doc_no: string; doc_date: string; amount: string; doc_status: string }>; deposits: Array<{ header_id: string; doc_no: string; amount: string }>; editable: boolean; doc_no: string; doc_status: string; outstanding: string | null }>(`/api/v1/${K.path}/${id}`), staleTime: 0 });
   const [h, setH] = useState<Head | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [pays, setPays] = useState<Pay[]>([]);
+  /** หักเงินมัดจำ: ใบมัดจำ → ยอดที่หัก */
+  const [deps, setDeps] = useState<Record<string, string>>({});
   const [tab, setTab] = useState('lines');
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -121,14 +125,19 @@ export function TradeFormPage({ path }: { path: string }) {
     setLines(cur.data.lines.map((l) => ({ key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), warehouse_id: (l.warehouse_id as string) ?? null, qty: num(l.qty), unit_id: (l.unit_id as string) ?? null, factor: num(l.factor) || '1',
       unit_price: num(l.unit_price), discount_text: String(l.discount_text ?? ''), is_free: !!l.is_free, return_to_stock: !!l.return_to_stock, vat_exempt: l.vat_code === '0' })));
     setPays(cur.data.payments.map((p) => ({ key: ++seq, payment_method_id: String(p.payment_method_id), amount: num(p.amount), reference_no: String(p.reference_no ?? '') })));
+    setDeps(Object.fromEntries(cur.data.deposits.map((x) => [x.header_id, num(x.amount)])));
   }
   const readOnly = !!id && (!cur.data?.editable || !can('edit'));
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const setLine = (k: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === k ? { ...l, ...p } : l))); setDirty(true); };
-  const calc = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_exempt: l.vat_exempt })) }), [h, lines]);
+  const canDeposit = DEPOSIT_CLASSES.includes(K.cls);
+  const depTotal = Object.values(deps).reduce((s, v) => s.plus(d(v || 0)), d(0));
+  const depOpen = useQuery({ enabled: canDeposit && !!h?.party, queryKey: ['deposits-open', K.module, h?.party?.id, id], queryFn: () => api.get<{ rows: Array<{ header_id: string; doc_no: string; doc_date: string; price_type: string; amount: string; outstanding: string }> }>('/api/v1/deposits/open', { module: K.module, party_id: h!.party!.id, ...(id ? { invoice_id: id } : {}) }), staleTime: 0 });
+  const calc = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, deposit_amount: depTotal.toFixed(2), lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_exempt: l.vat_exempt })) }), [h, lines, depTotal]);
   const payTotal = pays.reduce((s, p) => s.plus(d(p.amount || 0)), d(0));
 
   const pickParty = async (p: { id: string; code: string; name: string } | null) => {
+    setDeps({});
     if (!p) return set({ party: null });
     const x = await api.get<Record<string, string | null>>(`${partyEndpoint(K)}/${p.id}`);
     set({ party: p, credit_days: x.credit_days === null || x.credit_days === undefined ? '' : String(x.credit_days), discount_text: x.discount_text ?? '', party_tax_branch_no: x.tax_branch_no ?? '',
@@ -153,13 +162,14 @@ export function TradeFormPage({ path }: { path: string }) {
       ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
       credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type, vat_rate: h.vat_rate || '0', vat_basis: h.vat_basis, discount_text: h.discount_text || null, remark: h.remark || null,
       lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1', unit_price: l.unit_price || '0', discount_text: l.discount_text || null, is_free: l.is_free, return_to_stock: l.return_to_stock })),
-      payments: pays.filter((p) => p.payment_method_id && d(p.amount || 0).gt(0)).map((p) => ({ payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no || null })) };
+      payments: pays.filter((p) => p.payment_method_id && d(p.amount || 0).gt(0)).map((p) => ({ payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no || null })),
+      deposits: Object.entries(deps).filter(([, v]) => d(v || 0).gt(0)).map(([header_id, amount]) => ({ header_id, amount })) };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
       toast(`บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว`);
       setDirty(false);
       qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] });
-      if (andNew) { setH(null); setLines([]); setPays([]); nav(`${K.route}/new`, { replace: true }); }
+      if (andNew) { setH(null); setLines([]); setPays([]); setDeps({}); nav(`${K.route}/new`, { replace: true }); }
       else if (!id) nav(`${K.route}/${r.id}`, { replace: true });
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
@@ -177,7 +187,7 @@ export function TradeFormPage({ path }: { path: string }) {
       <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1>
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{readOnly && !cancelled && id && <Pill tone="d">ชำระแล้ว — แก้ไขไม่ได้</Pill>}</span></div>
       <div className="toolbar">
-        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setPays([]); nav(`${K.route}/new`); } }}>+ ใหม่</button>
+        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setPays([]); setDeps({}); nav(`${K.route}/new`); } }}>+ ใหม่</button>
         <button className="primary" disabled={busy || readOnly} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         <button disabled={busy || readOnly} onClick={() => save(true)}>บันทึก+ใหม่</button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
@@ -208,6 +218,7 @@ export function TradeFormPage({ path }: { path: string }) {
           </div>
         </div>
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการสินค้า', badge: lines.filter((l) => l.item_id).length || undefined }, ...(K.payments ? [{ key: 'pay', label: `${K.module === 'AR' ? 'รับ' : 'จ่าย'}ชำระด้วยวิธีอื่น`, badge: pays.length || undefined }] : []),
+          ...(canDeposit ? [{ key: 'deposit', label: 'หักเงินมัดจำ', badge: Object.keys(deps).length || undefined }] : []),
           ...(id && !K.payments ? [{ key: 'settle', label: `รายการ${K.module === 'AR' ? 'รับ' : 'จ่าย'}ชำระ`, badge: cur.data?.settlements.length || undefined }] : []), ...(id ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
         {tab === 'lines' && <div className="table-wrap lines">
           <table className="grid">
@@ -253,12 +264,34 @@ export function TradeFormPage({ path }: { path: string }) {
         {tab === 'settle' && cur.data && <table className="grid"><thead><tr><th>เลขที่</th><th>วันที่</th><th className="r">จำนวนเงิน</th><th>สถานะ</th></tr></thead>
           <tbody>{cur.data.settlements.map((s) => <tr key={s.id}><td className="mono">{s.doc_no}</td><td><DateText v={s.doc_date} /></td><td className="r"><Money v={s.amount} /></td><td>{s.doc_status === 'C' ? 'ยกเลิก' : ''}</td></tr>)}
             {!cur.data.settlements.length && <tr><td colSpan={4} className="empty">ยังไม่มีการชำระ · ค้างชำระ <Money v={cur.data.outstanding} /></td></tr>}</tbody></table>}
+        {tab === 'deposit' && canDeposit && <div className="table-wrap lines">
+          {!h.party ? <p className="empty">เลือก{partyWord(K)}ก่อน</p> : <table className="grid">
+            <thead><tr><th style={{ width: 36 }} /><th style={{ width: 140 }}>ใบมัดจำ</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 120 }}>ประเภทราคา</th><th className="r" style={{ width: 130 }}>ยอดมัดจำ</th><th className="r" style={{ width: 130 }}>คงเหลือ</th><th className="r" style={{ width: 150 }}>หักในบิลนี้</th></tr></thead>
+            <tbody>
+              {depOpen.data?.rows.map((o) => {
+                const on = deps[o.header_id] !== undefined;
+                const bad = o.price_type !== h.price_type;
+                return (
+                  <tr key={o.header_id} className={cx(on && 'picked')}>
+                    <td className="c"><input type="checkbox" checked={on} disabled={readOnly || (bad && !on)} onChange={(e) => { setDeps((m) => { const n = { ...m }; if (e.target.checked) n[o.header_id] = num(o.outstanding); else delete n[o.header_id]; return n; }); setDirty(true); }} aria-label={`หักมัดจำ ${o.doc_no}`} /></td>
+                    <td className="mono">{o.doc_no}</td><td><DateText v={o.doc_date} /></td><td>{o.price_type}{bad && <span className="bad small"> ไม่ตรงกับบิล</span>}</td>
+                    <td className="r"><Money v={o.amount} /></td><td className="r"><Money v={o.outstanding} /></td>
+                    <td>{on && <MoneyInput value={deps[o.header_id]} disabled={readOnly} onChange={(v) => { setDeps((m) => ({ ...m, [o.header_id]: v })); setDirty(true); }} aria-label={`ยอดหักมัดจำ ${o.doc_no}`} />}</td>
+                  </tr>
+                );
+              })}
+              {depOpen.data && !depOpen.data.rows.length && <tr><td colSpan={7} className="empty">ไม่มีเงินมัดจำคงเหลือของ{partyWord(K)}รายนี้</td></tr>}
+            </tbody>
+            <tfoot><tr><td colSpan={6} className="r">หักเงินมัดจำรวม (ตามประเภทราคาของบิล)</td><td className="r"><b><Money v={depTotal.toFixed(2)} /></b></td></tr></tfoot>
+          </table>}
+        </div>}
         {tab === 'gl' && id && <DocJournalTab id={id} />}
         <div className="trade-foot">
           <Field label="หมายเหตุ"><textarea rows={2} value={h.remark} maxLength={2000} disabled={readOnly} onChange={(e) => set({ remark: e.target.value })} /></Field>
           {calc && <table className="totals-table"><tbody>
             <tr><td>จำนวนเงิน</td><td className="r"><Money v={calc.amount} /></td></tr>
             <tr><td>หักส่วนลด <input value={h.discount_text} maxLength={20} disabled={readOnly} onChange={(e) => set({ discount_text: e.target.value })} placeholder="10% หรือ 500" aria-label="ส่วนลดท้ายบิล" style={{ width: 110 }} /></td><td className="r"><Money v={calc.discount_amount} /></td></tr>
+            {d(calc.deposit_amount).gt(0) && <tr><td><a href="#deposit" onClick={(e) => { e.preventDefault(); setTab('deposit'); }}>หักเงินมัดจำ</a></td><td className="r"><Money v={calc.deposit_amount} /></td></tr>}
             {d(calc.zero_rate_amount).gt(0) && h.price_type !== '0' && <tr><td>แยกยอดเงิน 0.00 %=</td><td className="r"><Money v={calc.zero_rate_amount} /></td></tr>}
             <tr><td>ภาษีมูลค่าเพิ่ม <input className="r" inputMode="decimal" value={h.vat_rate} disabled={readOnly || h.price_type === '0'} onChange={(e) => set({ vat_rate: e.target.value.replace(/[^\d.]/g, '') })} aria-label="อัตราภาษี" style={{ width: 60 }} /> %</td><td className="r"><Money v={calc.vat_amount} /></td></tr>
             <tr className="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td className="r"><Money v={calc.net_amount} /></td></tr>

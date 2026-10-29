@@ -117,3 +117,18 @@ export const SETTLE_KINDS: SettleKind[] = [
   { path: 'ap-payments', cls: 'PS', module: 'AP', menu: 'FI.AP.PS', party: 'supplier', label: 'จ่ายชำระหนี้', route: '/fi/ap/payments', open: { RR: '3', CP: '4', DN: '5' }, neg: 'DN', direction: 'P' },
 ];
 
+/**
+ * เอกสารรับ/จ่ายเงินทันที (ไม่ตั้งลูกหนี้/เจ้าหนี้): มัดจำรับ AI (S-AI-01) มัดจำจ่าย AE (S-PU-02) รายได้อื่น OI (S-OI-01) ค่าใช้จ่ายอื่น OE (S-PU-08)
+ * lines: text = คำอธิบาย + จำนวนเงิน (มัดจำ) · code = รหัสรายได้/ค่าใช้จ่าย (item_type) · whtEntries = ป้อนรายละเอียดภาษีหัก ณ ที่จ่ายเข้าแฟ้ม ภ.ง.ด.
+ */
+export interface CashKind {
+  path: string; cls: 'AI' | 'AE' | 'OI' | 'OE'; module: 'AR' | 'AP'; menu: string; party: 'customer' | 'supplier'; partyRequired: boolean; label: string; route: string;
+  lines: 'text' | 'code'; itemType?: '4' | '5'; direction: 'R' | 'P'; whtEntries: boolean; deposit: boolean;
+}
+export const CASH_KINDS: CashKind[] = [
+  { path: 'ar-deposits', cls: 'AI', module: 'AR', menu: 'SA.AI', party: 'customer', partyRequired: true, label: 'รับเงินมัดจำ', route: '/sa/deposits', lines: 'text', direction: 'R', whtEntries: false, deposit: true },
+  { path: 'other-income-docs', cls: 'OI', module: 'AR', menu: 'SA.OI', party: 'customer', partyRequired: false, label: 'บันทึกรายได้อื่น ๆ', route: '/sa/other-income', lines: 'code', itemType: '4', direction: 'R', whtEntries: false, deposit: false },
+  { path: 'ap-deposits', cls: 'AE', module: 'AP', menu: 'PU.AE', party: 'supplier', partyRequired: true, label: 'จ่ายเงินมัดจำ', route: '/pu/deposits', lines: 'text', direction: 'P', whtEntries: true, deposit: true },
+  { path: 'other-expense-docs', cls: 'OE', module: 'AP', menu: 'PU.OE', party: 'supplier', partyRequired: false, label: 'บันทึกค่าใช้จ่ายอื่น ๆ', route: '/pu/other-expense', lines: 'code', itemType: '5', direction: 'P', whtEntries: true, deposit: false },
+];
+

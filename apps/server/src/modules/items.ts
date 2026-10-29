@@ -99,8 +99,9 @@ export function itemRoutes(app: FastifyInstance, db: Db) {
   /** ค้นหารหัสสำหรับป้อนในเอกสาร: ขาย = สินค้า ชุด บริการ รายได้อื่น · ซื้อ = สินค้า ชุด บริการ ค่าใช้จ่ายอื่น */
   app.get('/api/v1/item-search', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ q: z.string().optional(), module: z.enum(['AR', 'AP']), limit: z.coerce.number().int().min(1).max(50).default(15) }), req.query);
-    const types = q.module === 'AR' ? ['0', '1', '2', '3', '4'] : ['0', '1', '2', '3', '5'];
+    const q = parse(z.object({ q: z.string().optional(), module: z.enum(['AR', 'AP']), types: z.string().regex(/^[0-5](,[0-5])*$/).optional(), limit: z.coerce.number().int().min(1).max(50).default(15) }), req.query);
+    // types: จำกัดชนิดรหัส เช่น 4 = รหัสรายได้อื่น (OI) · 5,2 = รหัสค่าใช้จ่าย (OE; '2' ตามข้อมูลที่ย้ายจาก Express)
+    const types = (q.module === 'AR' ? ['0', '1', '2', '3', '4'] : ['0', '1', '2', '3', '5']).filter((t) => !q.types || q.types.split(',').includes(t));
     let s = db.selectFrom('md_item as i').leftJoin('md_unit as bu', 'bu.id', 'i.base_unit_id').leftJoin('md_unit as su', 'su.id', 'i.sales_unit_id').leftJoin('md_unit as pu', 'pu.id', 'i.purchase_unit_id')
       .select(['i.id', 'i.code', 'i.name_th', 'i.item_type', 'i.vat_code', 'i.base_unit_id', 'bu.code as base_unit_code', 'i.sales_unit_id', 'su.code as sales_unit_code', 'i.sales_factor', 'i.purchase_unit_id', 'pu.code as purchase_unit_code', 'i.purchase_factor',
         'i.price_1', 'i.price_2', 'i.price_3', 'i.price_4', 'i.price_5', 'i.std_cost'])

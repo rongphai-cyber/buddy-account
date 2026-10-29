@@ -28,8 +28,12 @@ const body = z.object({
     discount_text: str(20), is_free: z.boolean().default(false), return_to_stock: z.boolean().default(false), department_id: optId,
   })).min(1, 'ป้อนรายการสินค้าอย่างน้อย 1 บรรทัด').max(500),
   payments: z.array(z.object({ payment_method_id: uuid, amount: num, reference_no: str(30) })).max(20).default([]),
+  /** หักเงินมัดจำ (AI → บิลขาย, AE → บิลซื้อ) ยอดตามประเภทราคาของบิล */
+  deposits: z.array(z.object({ header_id: uuid, amount: num })).max(20).default([]),
 });
 type Body = z.infer<typeof body>;
+/** บิลที่หักเงินมัดจำได้ (ขายเชื่อ/ขายสด/ซื้อเชื่อ/ซื้อสด) */
+const DEPOSIT_CLASSES = ['IV', 'HS', 'RR', 'HP'];
 
 /** หัว + บรรทัด + วิธีชำระของเอกสาร (บันทึกใหม่หรือแก้ไข) แล้วลงบัญชีในทรานแซกชันเดียวกัน */
 async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Body) {
@@ -59,7 +63,23 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
     if (!ref) throw badRequest('ไม่พบใบกำกับที่อ้างถึง');
     b.ref_no = ref.doc_no; b.ref_date = String(ref.doc_date).slice(0, 10);
   }
-  const calc = computeDoc({ price_type: b.price_type, vat_rate: b.vat_rate, discount_text: b.discount_text,
+  // หักมัดจำ: ใบมัดจำของคู่ค้ารายนี้ ประเภทราคาเดียวกับบิล ไม่เกินยอดคงเหลือ (ยอดที่บิลนี้หักไว้เดิมนับกลับ)
+  if (b.deposits.length && !DEPOSIT_CLASSES.includes(K.cls)) throw badRequest(`${K.label}หักเงินมัดจำไม่ได้`);
+  const depIds = b.deposits.map((x) => x.header_id);
+  if (new Set(depIds).size !== depIds.length) throw badRequest('เลือกใบมัดจำซ้ำ');
+  const depRows = depIds.length ? (await sql<{ header_id: string; doc_no: string; price_type: string; outstanding: string; party: string | null }>`
+      SELECT o.header_id, o.doc_no, o.price_type, o.outstanding + coalesce((SELECT sum(l.amount) FROM doc_link l WHERE l.from_header_id = o.header_id AND l.to_header_id = ${id} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL), 0) AS outstanding,
+             coalesce(o.customer_id, o.supplier_id) AS party
+        FROM v_deposit_outstanding o WHERE o.company_id = ${a.companyId} AND o.module = ${K.module} AND o.header_id = ANY(${depIds}::uuid[])`.execute(db)).rows : [];
+  const depById = new Map(depRows.map((x) => [x.header_id, x]));
+  const depositTotal = b.deposits.reduce((sum, x, i) => {
+    const o = depById.get(x.header_id);
+    if (!o || o.party !== party.id) throw badRequest(`หักมัดจำบรรทัดที่ ${i + 1}: ไม่พบใบมัดจำของ${party.code}`);
+    if (o.price_type !== b.price_type) throw badRequest(`${o.doc_no}: ประเภทราคาของใบมัดจำต้องเหมือนกับบิล (คู่มือหน้า 210)`);
+    if (d(x.amount).lte(0) || d(x.amount).gt(d(o.outstanding))) throw badRequest(`${o.doc_no}: หักมัดจำได้ไม่เกินยอดคงเหลือ ${d(o.outstanding).toFixed(2)}`);
+    return sum.plus(d(x.amount));
+  }, d(0));
+  const calc = computeDoc({ price_type: b.price_type, vat_rate: b.vat_rate, discount_text: b.discount_text, deposit_amount: depositTotal.toFixed(2),
     lines: b.lines.map((l) => ({ qty: l.qty, unit_price: l.is_free ? 0 : l.unit_price, discount_text: l.discount_text, vat_exempt: byId.get(l.item_id)?.vat_code === '0' })) });
   if (calc.errors.length) throw badRequest(calc.errors[0]!, calc.errors.map((m) => ({ message: m })));
   const payTotal = b.payments.reduce((s, p) => s.plus(d(p.amount)), d(0));
@@ -92,6 +112,7 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
       docNo = cur.doc_no;
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
       for (const t of ['doc_line', 'doc_payment'] as const) await tx.updateTable(t).set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
+      await tx.updateTable('doc_link').set({ deleted_at: sql`now()` as never }).where('to_header_id', '=', id).where('link_type', '=', 'DEPOSIT').where('deleted_at', 'is', null).execute();
     } else {
       docNo = await issueDocNo(tx, a.companyId, dt.id);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: a.branchId ?? (await tx.selectFrom('sys_branch').select('id').where('company_id', '=', a.companyId).where('is_head_office', '=', true).executeTakeFirstOrThrow()).id,
@@ -104,6 +125,7 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
       discount_amount: calc.lines[i]!.discount_amount, line_amount: calc.lines[i]!.line_amount, net_amount: calc.lines[i]!.net_amount,
       vat_code: byId.get(l.item_id)!.vat_code, is_free: l.is_free, return_to_stock: l.return_to_stock, salesperson_id: b.salesperson_id, created_by: a.userId,
     }))).execute();
+    if (b.deposits.length) await tx.insertInto('doc_link').values(b.deposits.map((x) => ({ company_id: a.companyId, from_header_id: x.header_id, to_header_id: hid!, link_type: 'DEPOSIT', amount: d(x.amount).toFixed(2), created_by: a.userId }))).execute();
     if (b.payments.length) await tx.insertInto('doc_payment').values(b.payments.map((p, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no, created_by: a.userId }))).execute();
     // บันทึก = ลงบัญชีทันที (แก้ไข = ลงใบสำคัญเดิมใหม่)
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
@@ -152,7 +174,9 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       const view = K.module === 'AR' ? 'v_ar_outstanding' : 'v_ap_outstanding';
       const out = (await sql<{ outstanding: string }>`SELECT outstanding FROM ${sql.table(view)} WHERE header_id = ${id}`.execute(db)).rows[0];
       const pc = await db.selectFrom(K.party === 'customer' ? 'md_customer' : 'md_supplier').select('code').where('id', '=', (h.customer_id ?? h.supplier_id)!).executeTakeFirst();
-      return { ...h, party_code: pc?.code ?? null, lines, payments, settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !settled.some((x) => x.doc_status !== 'C') };
+      const deposits = (await sql<{ header_id: string; doc_no: string; amount: string }>`SELECT l.from_header_id AS header_id, f.doc_no, l.amount FROM doc_link l JOIN doc_header f ON f.id = l.from_header_id
+          WHERE l.to_header_id = ${id} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL ORDER BY f.doc_no`.execute(db)).rows;
+      return { ...h, party_code: pc?.code ?? null, lines, payments, deposits, settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !settled.some((x) => x.doc_status !== 'C') };
     });
     app.post(base, async (req) => saveTrade(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => saveTrade(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));
