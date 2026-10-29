@@ -2487,6 +2487,23 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/cheques?direction=P&journal_id=${jv.id}`)).body.rows).toEqual([]);
     expect((await call('POST', '/api/v1/vat/P', { journal_id: jv.id, tax_invoice_no: 'JV-TAX-2', tax_invoice_date: '2027-10-05', month: '2027-10', base_amount: '1', vat_amount: '0' })).body.error.message).toMatch(/ยกเลิกแล้ว/);
   });
+  it('copy company setup + masters (T7.1 S-CO-04/05/06): new ids, references remapped, no transactions, posting works', async () => {
+    const srcAcc = (await call('GET', '/api/v1/gl/accounts')).body.length;
+    const srcTypes = ((await call('GET', '/api/v1/doc-types')).body as Array<{ code: string }>).map((t) => t.code).sort();
+    const srcCus = (await call('GET', '/api/v1/customers?q=C520')).body.rows[0];
+    const r = await call('POST', '/api/v1/companies', { code: 'COPY1', name_th: 'บริษัทคัดลอก จำกัด', fiscal_start: '2027-01-01', chart: 'copy', copy_from_company_id: companyId, copy_scope: 'all' });
+    expect(r.status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: r.body.id });
+    expect((await call('GET', '/api/v1/gl/accounts')).body.length).toBe(srcAcc);
+    expect(((await call('GET', '/api/v1/doc-types')).body as Array<{ code: string }>).map((t) => t.code).sort()).toEqual(srcTypes);
+    const cus = (await call('GET', '/api/v1/customers?q=C520')).body.rows[0];
+    expect([cus.code, cus.id === srcCus.id]).toEqual([srcCus.code, false]);
+    expect((await call('GET', '/api/v1/gl/journals')).body.rows ?? (await call('GET', '/api/v1/gl/journals')).body).toHaveLength(0);
+    const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const acc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control);
+    expect((await call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: '2027-02-01', lines: [{ account_id: acc[0].id, debit: '5' }, { account_id: acc[1].id, credit: '5' }] })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

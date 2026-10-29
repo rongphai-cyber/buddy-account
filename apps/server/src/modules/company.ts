@@ -6,6 +6,7 @@ import { checkTaxId } from '@buddy/core';
 import type { Database, Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth, requireCompany, type AuthContext } from '../http.js';
 import { canAccessCompany, companiesForUser } from './auth.js';
+import { copyCompanyData } from '../company-copy.js';
 import { logActivity } from '../audit.js';
 import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, setSetting } from '../company-template.js';
 
@@ -72,6 +73,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       code: z.string().trim().min(1, 'ป้อนรหัสบริษัท').max(20).regex(/^[A-Za-z0-9_-]+$/, 'รหัสบริษัทใช้ตัวอักษรอังกฤษ ตัวเลข _ -'),
       name_th: z.string().trim().min(1, 'ป้อนชื่อบริษัท').max(120), tax_id: z.string().trim().optional(),
       fiscal_start: isoDate, chart: z.enum(['express', 'th_en', 'copy', 'none']).default('express'), copy_from_company_id: uuid.optional(),
+      /** คัดลอกจากบริษัทต้นแบบ (S-CO-04/05): chart = เฉพาะผังบัญชี · setup = ค่าตั้งระบบทั้งหมด · all = ค่าตั้ง + แฟ้มหลัก (ลูกค้า ผู้จำหน่าย สินค้า พนักงานขาย) */
+      copy_scope: z.enum(['chart', 'setup', 'all']).default('chart'),
       tenant_id: uuid.optional(),
     }), req.body);
     // ผู้ดูแลของลูกค้าสร้างได้เฉพาะใน tenant ตัวเอง; ผู้ให้บริการเลือก tenant ได้ (ไม่ระบุ = ลูกค้าเริ่มต้น)
@@ -91,13 +94,17 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       const c = await tx.insertInto('sys_company').values({ tenant_id: tenantId, code: b.code, name_th: b.name_th, tax_id: taxId, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
       await tx.insertInto('sys_branch').values({ company_id: c.id, code: '00000', name: 'สำนักงานใหญ่', tax_branch_no: '00000', is_head_office: true, created_by: a.userId }).execute();
       await createFiscalYear(tx, c.id, b.fiscal_start, a.userId);
-      await seedChart(tx, c.id, { chart: b.chart === 'express' || b.chart === 'th_en' ? b.chart : null });
-      await seedDocTypes(tx, c.id);
-      if (b.chart === 'copy') {
-        if (!b.copy_from_company_id) throw badRequest('เลือกบริษัทต้นแบบที่จะคัดลอก');
-        await copyChart(tx, b.copy_from_company_id, c.id);
+      let copied: Record<string, number> | null = null;
+      if (b.chart === 'copy' && !b.copy_from_company_id) throw badRequest('เลือกบริษัทต้นแบบที่จะคัดลอก');
+      if (b.chart === 'copy' && b.copy_scope !== 'chart') {
+        copied = await copyCompanyData(tx, b.copy_from_company_id!, c.id, a.userId, b.copy_scope === 'all');
+        if (!copied.gl_account) throw new AppError(400, 'EMPTY_CHART', 'บริษัทต้นแบบไม่มีผังบัญชี');
+      } else {
+        await seedChart(tx, c.id, { chart: b.chart === 'express' || b.chart === 'th_en' ? b.chart : null });
+        await seedDocTypes(tx, c.id);
+        if (b.chart === 'copy') await copyChart(tx, b.copy_from_company_id!, c.id);
       }
-      await logActivity(tx, { companyId: c.id, userId: a.userId }, { module: 'SYS', action: 'NEW_COMPANY', table: 'sys_company', rowId: c.id, detail: { code: b.code, tenant_id: tenantId } });
+      await logActivity(tx, { companyId: c.id, userId: a.userId }, { module: 'SYS', action: 'NEW_COMPANY', table: 'sys_company', rowId: c.id, detail: { code: b.code, tenant_id: tenantId, copied_from: b.copy_from_company_id ?? null, copied } });
       return c.id;
     });
     await applyPostingTemplate(database.execScript, id);

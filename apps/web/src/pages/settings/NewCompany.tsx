@@ -8,7 +8,7 @@ import { DateInput, ErrorBox, Field, navKey, PageHead, toast } from '../../ui';
 export function NewCompanyPage() {
   const { me, select } = useSession();
   const nav = useNavigate();
-  const [f, setF] = useState({ code: '', name_th: '', tax_id: '', fiscal_start: `${new Date().getFullYear()}-01-01`, chart: 'express', copy_from_company_id: '' });
+  const [f, setF] = useState({ code: '', name_th: '', tax_id: '', fiscal_start: `${new Date().getFullYear()}-01-01`, chart: 'express', copy_from_company_id: '', copy_scope: 'setup' });
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const go = async () => {
@@ -38,6 +38,9 @@ export function NewCompanyPage() {
           </select>
         </Field>
         {f.chart === 'copy' && <Field label="บริษัทต้นแบบ" req wide><select value={f.copy_from_company_id} onChange={(e) => setF({ ...f, copy_from_company_id: e.target.value })}><option value="">— เลือก —</option>{me?.companies.map((c) => <option key={c.id} value={c.id}>{c.code} {c.name_th}</option>)}</select></Field>}
+        {f.chart === 'copy' && <Field label="ข้อมูลที่คัดลอก" req wide hint="ไม่คัดลอกรายการประจำวัน ยอดยกมา และสิทธิ์ผู้ใช้ — เริ่มบันทึกได้ทันที"><select value={f.copy_scope} onChange={(e) => setF({ ...f, copy_scope: e.target.value })}>
+          <option value="chart">เฉพาะผังบัญชีและบัญชีเพื่อลงรายวัน</option><option value="setup">ค่าตั้งระบบทั้งหมด (ผังบัญชี ประเภทเอกสาร สมุดรายวัน แผนก คลัง หน่วยนับ ตารางข้อมูล ค่าเริ่มต้น แบบฟอร์ม งบการเงิน)</option>
+          <option value="all">ค่าตั้งระบบ + แฟ้มหลัก (ลูกค้า ผู้จำหน่าย สินค้า พนักงานขาย)</option></select></Field>}
       </div>
       <div className="actions"><button className="primary" disabled={busy} onClick={go}>{busy ? 'กำลังสร้าง…' : 'สร้างบริษัท'}</button><button onClick={() => nav(-1)}>ยกเลิก</button></div>
     </div>
