@@ -227,13 +227,22 @@ export function TradeFormPage({ path }: { path: string }) {
     setPays(cur.data.payments.map((p) => ({ key: ++seq, payment_method_id: String(p.payment_method_id), amount: num(p.amount), reference_no: String(p.reference_no ?? '') })));
     setDeps(Object.fromEntries(cur.data.deposits.map((x) => [x.header_id, num(x.amount)])));
   }
-  const readOnly = !!id && (!cur.data?.editable || !can('edit'));
+  /** เอกสารที่ย้ายมาจาก Express โดยไม่มีบรรทัดรายการ (Express เก็บแต่ยอด) — แสดงยอดตามเอกสาร และแก้ไขไม่ได้ */
+  const noLines = !!id && !!cur.data && cur.data.lines.length === 0 && !d(String((cur.data as Record<string, unknown>).net_amount ?? 0)).isZero();
+  const storedCalc = <T extends object>(c: T): T => {
+    const s = cur.data as Record<string, string | null>;
+    const v = (k: string) => d(s[k] ?? 0).toFixed(2);
+    return { ...c, amount: v('amount'), discount_amount: v('discount_amount'), amount_after_discount: v('amount_after_discount'), deposit_amount: v('deposit_amount'), zero_rate_amount: v('zero_rate_amount'),
+      taxable_amount: v('taxable_amount'), vat_amount: v('vat_amount'), net_amount: v('net_amount'), errors: [] };
+  };
+  const readOnly = !!id && (!cur.data?.editable || !can('edit') || noLines);
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const setLine = (k: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === k ? { ...l, ...p } : l))); setDirty(true); };
   const canDeposit = DEPOSIT_CLASSES.includes(K.cls);
   const depTotal = Object.values(deps).reduce((s, v) => s.plus(d(v || 0)), d(0));
   const depOpen = useQuery({ enabled: canDeposit && !!h?.party, queryKey: ['deposits-open', K.module, h?.party?.id, id], queryFn: () => api.get<{ rows: Array<{ header_id: string; doc_no: string; doc_date: string; price_type: string; amount: string; outstanding: string }> }>('/api/v1/deposits/open', { module: K.module, party_id: h!.party!.id, ...(id ? { invoice_id: id } : {}) }), staleTime: 0 });
-  const calc = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, deposit_amount: depTotal.toFixed(2), lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_exempt: l.vat_exempt })) }), [h, lines, depTotal]);
+  const calc0 = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, deposit_amount: depTotal.toFixed(2), lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_exempt: l.vat_exempt })) }), [h, lines, depTotal]);
+  const calc = calc0 && noLines ? storedCalc(calc0) : calc0;
   const payTotal = pays.reduce((s, p) => s.plus(d(p.amount || 0)), d(0));
   const whtTotal = K.cls === 'HP' ? whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0)) : K.cls === 'HS' ? d(whtAmt || 0) : d(0);
   const cashLeft = calc ? d(calc.net_amount).minus(payTotal).minus(whtTotal) : d(0);
@@ -369,6 +378,7 @@ export function TradeFormPage({ path }: { path: string }) {
           ...(id && !K.payments && !K.order ? [{ key: 'settle', label: `รายการ${K.module === 'AR' ? 'รับ' : 'จ่าย'}ชำระ`, badge: cur.data?.settlements.length || undefined }] : []),
           ...(K.cls === 'HP' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(id && !K.order && VAT_KIND_OF[K.cls] ? [{ key: 'vat', label: vatTabLabel(K.cls) }] : []),
           ...(id && (K.cls === 'RR' || K.cls === 'CP') ? [{ key: 'whtb', label: 'รายการภาษีหัก ณ ที่จ่าย' }] : []), ...(id && !K.order ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+        {tab === 'lines' && noLines && <div className="notebox">เอกสารนี้ย้ายมาจาก Express โดยไม่มีรายการสินค้า (Express เก็บเฉพาะยอดเงิน) — แสดงยอดตามเอกสาร · แก้ไขไม่ได้ ยกเลิกหรือดูการลงบัญชีได้ตามปกติ</div>}
         {tab === 'lines' && <div className="table-wrap lines">
           <table className="grid">
             <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 210 }}>รหัส</th><th>รายละเอียด</th><th style={{ width: 90 }}>คลัง</th><th className="r" style={{ width: 90 }}>จำนวน</th><th style={{ width: 80 }}>หน่วย</th><th className="r" style={{ width: 110 }}>ราคา/หน่วย</th><th style={{ width: 90 }}>ส่วนลด</th><th style={{ width: 36 }} title="ของแถม">F</th>{(K.cls === 'CN' || K.cls === 'DN') && <th style={{ width: 36 }} title={K.cls === 'CN' ? 'รับคืนสินค้า' : 'ส่งคืนสินค้า'}>R</th>}<th className="r" style={{ width: 120 }}>จำนวนเงิน</th>{K.order && K.cls !== 'QT' && id && <th className="r" style={{ width: 90 }}>ค้าง{K.module === 'AR' ? 'ส่ง' : 'รับ'}</th>}<th style={{ width: 36 }} /></tr></thead>

@@ -125,12 +125,22 @@ export function CashFormPage({ path }: { path: string }) {
     setPays(paysFrom(cur.data.payments));
     setWhts(whtsFrom(cur.data.wht));
   }
-  const readOnly = !!id && (!cur.data?.editable || !can('edit'));
+  /** เอกสารที่ย้ายมาจาก Express โดยไม่มีบรรทัดรายการ (Express เก็บแต่ยอด) — แสดงยอดตามเอกสาร และแก้ไขไม่ได้ */
+  const noLines = !!id && !!cur.data && cur.data.lines.length === 0 && !d(String((cur.data as Record<string, unknown>).net_amount ?? 0)).isZero();
+  const storedCalc = <T extends object>(c: T): T => {
+    const s = cur.data as Record<string, string | null>;
+    const v = (k: string) => d(s[k] ?? 0).toFixed(2);
+    return { ...c, amount: v('amount'), discount_amount: v('discount_amount'), amount_after_discount: v('amount_after_discount'), deposit_amount: v('deposit_amount'), zero_rate_amount: v('zero_rate_amount'),
+      taxable_amount: v('taxable_amount'), vat_amount: v('vat_amount'), net_amount: v('net_amount'), errors: [] };
+  };
+  const readOnly = !!id && (!cur.data?.editable || !can('edit') || noLines);
   const ro = readOnly;
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const setLine = (k: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === k ? { ...l, ...p } : l))); setDirty(true); };
   const used = lines.filter((l) => (K.lines === 'code' ? l.item_id : l.description || l.amount));
-  const calc = h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, lines: used.map((l) => ({ qty: 1, unit_price: l.amount || 0 })) });
+
+  const calc0 = h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, lines: used.map((l) => ({ qty: 1, unit_price: l.amount || 0 })) });
+  const calc = calc0 && noLines ? storedCalc(calc0) : calc0;
   const whtAmount = K.whtEntries ? whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0)).toFixed(2) : h?.wht || '0';
   const t = settlementTotals({ settlements: [calc?.net_amount ?? '0'], wht: whtAmount, payments: pays.filter((p) => p.payment_method_id).map((p) => p.amount || 0), cash: h?.cash ? h.cash : null });
   const base = calc ? d(calc.net_amount).minus(d(calc.vat_amount)).toFixed(2) : '0';
@@ -224,6 +234,7 @@ export function CashFormPage({ path }: { path: string }) {
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: K.deposit ? 'รายการมัดจำ' : `รายการ${K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}`, badge: used.length || undefined },
           { key: 'pay', label: 'ชำระโดยอื่น ๆ (เช็ค/โอน)', badge: pays.length || undefined }, ...(K.whtEntries ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []),
           ...(K.deposit && id ? [{ key: 'used', label: 'หักในบิลแล้ว', badge: cur.data?.used_by.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+        {tab === 'lines' && noLines && <div className="notebox">เอกสารนี้ย้ายมาจาก Express โดยไม่มีรายการ (Express เก็บเฉพาะยอดเงิน) — แสดงยอดตามเอกสาร · แก้ไขไม่ได้ ยกเลิกหรือดูการลงบัญชีได้ตามปกติ</div>}
         {tab === 'lines' && <div className="table-wrap lines">
           <table className="grid">
             <thead><tr><th style={{ width: 36 }}>#</th>{K.lines === 'code' && <th style={{ width: 220 }}>รหัส{K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}</th>}<th>{K.lines === 'code' ? 'รายละเอียด' : 'คำอธิบาย'}</th><th className="r" style={{ width: 160 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>
