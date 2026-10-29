@@ -36,6 +36,20 @@ tools/express-import/import.sh <โฟลเดอร์ข้อมูล Expre
 pnpm --filter @buddy/server cli create-admin admin "ผู้ดูแลระบบ" <รหัสผ่าน>
 ```
 
+### ข้อมูลตัวอย่างสมมุติ (ปี 2568–2569)
+
+```bash
+tools/express-import/import.sh <โฟลเดอร์ TESTRice> postgres://…/buddy TESTRice
+python3 tools/demo-data/make_demo.py postgres://…/buddy TESTRice DEMO
+pnpm --filter @buddy/server cli create-admin admin "ผู้ดูแลระบบ" <รหัสผ่าน>
+```
+
+ได้บริษัท DEMO "บริษัท บัดดี้ ดีไซน์ (ตัวอย่าง) จำกัด" ในลูกค้า DEMO — ชื่อและเลขผู้เสียภาษีสมมุติทั้งหมด ยอดเงินเท่าข้อมูลเดิม
+
+### หลายลูกค้า
+
+ผู้ดูแลระบบที่สร้างด้วย `create-admin` คือเจ้าหน้าที่ผู้ให้บริการ — เพิ่มลูกค้าที่เมนู เริ่มระบบ › ลูกค้าผู้ใช้บริการ (ดู `docs/05_หลายลูกค้าและความปลอดภัย.md`)
+
 ### ทดสอบ
 
 ```bash
@@ -51,6 +65,7 @@ node apps/web/e2e/smoke.cjs     # ทดสอบหน้าจอด้วย 
 | `docs/02_สถาปัตยกรรม.md` | การตัดสินใจหลัก โหมดติดตั้ง โครงสร้างโค้ด มาตรฐานหน้าจอ |
 | `docs/03_แผนพัฒนา.md` | เฟส P0–P7 และเกณฑ์รับงาน |
 | `docs/04_ความครอบคลุมหน้าจอ.md` | ทุกหน้าจอในคู่มือ Express → สถานะใน Buddy Account (สร้างอัตโนมัติ) |
+| `docs/05_หลายลูกค้าและความปลอดภัย.md` | แยกข้อมูลลูกค้าแต่ละราย สิทธิ์ งานเสริมความปลอดภัย |
 | `docs/db/` | พจนานุกรมข้อมูลและ ER (สร้างจาก `db/spec/spec.py`) |
 | `docs/express/` | ผลวิเคราะห์คู่มือ Express ทุกบท + โครงสร้างข้อมูลเดิม + mapping |
 | `TASKS.md` | งานถัดไป |

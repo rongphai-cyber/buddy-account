@@ -76,7 +76,14 @@ def done(tbl, n, src=''): counts[tbl] = (counts.get(tbl, (0, ''))[0] + n, src)
 
 # ------------------------------------------------------------------ company / periods
 info = next(dbf('ISINFO'), {}) or {}
-insert('sys_company', [{'id': COMPANY, 'code': CO[:20], 'name_th': info.get('THINAM') or CO, 'name_en': info.get('ENGNAM'),
+# ลูกค้าผู้ใช้บริการ (tenant): ใช้ BUDDY_TENANT (รหัส) ถ้ากำหนด ไม่งั้นใช้ลูกค้าเริ่มต้น DEFAULT
+TENANT_CODE = os.environ.get('BUDDY_TENANT', 'DEFAULT')
+cur.execute("SELECT id FROM sys_tenant WHERE code = %s AND deleted_at IS NULL", (TENANT_CODE,))
+_t = cur.fetchone()
+if _t: TENANT = _t[0]
+else:
+    cur.execute("INSERT INTO sys_tenant (code, name) VALUES (%s, %s) RETURNING id", (TENANT_CODE, 'ลูกค้าเริ่มต้น' if TENANT_CODE == 'DEFAULT' else TENANT_CODE)); TENANT = cur.fetchone()[0]
+insert('sys_company', [{'id': COMPANY, 'tenant_id': TENANT, 'code': CO[:20], 'name_th': info.get('THINAM') or CO, 'name_en': info.get('ENGNAM'),
         'address_th': ' '.join(x for x in [info.get('ADDR01'), info.get('ADDR02')] if x), 'phone': info.get('TELNUM'),
         'tax_id': (info.get('TAXID') or '')[:13] or None, 'trade_reg_no': info.get('TRDREG'), 'year_system': 'B' if info.get('YEARTHAI') == '1' else 'C'}])
 BRANCH = U('branch', 'HO')

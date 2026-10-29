@@ -95,7 +95,7 @@ def gen_pg():
             where = ' WHERE deleted_at IS NULL' if t.common else ''
             cols_u = ', '.join(u)
             # treat NULL branch/line as a value for uniqueness
-            NULLABLE = ('branch_id','line_id','department_id','customer_id','payment_header_id','payment_journal_id','bank_account_id')
+            NULLABLE = ('tenant_id','branch_id','line_id','department_id','customer_id','payment_header_id','payment_journal_id','bank_account_id')
             if any(x in NULLABLE for x in u):
                 cols_u = ', '.join(f"COALESCE({x}, '00000000-0000-0000-0000-000000000000'::uuid)" if x in NULLABLE else x for x in u)
             L.append(f'CREATE UNIQUE INDEX {nm[:60]} ON {t.name} ({cols_u}){where};')
@@ -276,7 +276,7 @@ def gen_lite():
         L.append(');')
         for u in t.uniq:
             nm = f'uq_{t.name}_' + '_'.join(x.replace('_id','') for x in u)
-            cols_u = ', '.join(f"IFNULL({x},'')" if x in ('branch_id','line_id','department_id','customer_id','payment_header_id','payment_journal_id','bank_account_id') else x for x in u)
+            cols_u = ', '.join(f"IFNULL({x},'')" if x in ('tenant_id','branch_id','line_id','department_id','customer_id','payment_header_id','payment_journal_id','bank_account_id') else x for x in u)
             where = ' WHERE deleted_at IS NULL' if t.common else ''
             L.append(f'CREATE UNIQUE INDEX IF NOT EXISTS {nm} ON {t.name} ({cols_u}){where};')
         for i in t.idx:

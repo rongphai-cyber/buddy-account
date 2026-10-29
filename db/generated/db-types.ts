@@ -1,10 +1,49 @@
 // สร้างอัตโนมัติจาก db/spec/spec.py ด้วย `pnpm db:gen` — ห้ามแก้ไฟล์นี้ด้วยมือ
 import type { ColumnType } from 'kysely';
 type Gen<T> = ColumnType<T, T | undefined, T>;
+/** ลูกค้าผู้ใช้บริการ (tenant) — หนึ่งรายมีได้หลายบริษัท ข้อมูลแต่ละรายแยกขาดจากกัน — Buddy Account */
+export interface SysTenantTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** รหัสลูกค้าผู้ใช้บริการ */
+  code: string;
+  /** ชื่อลูกค้าผู้ใช้บริการ (เจ้าของบัญชี) */
+  name: string;
+  /** อีเมลผู้ติดต่อ */
+  contact_email: Gen<string | null>;
+  /** โทรศัพท์ผู้ติดต่อ */
+  contact_phone: Gen<string | null>;
+  /** แพ็กเกจ */
+  plan: Gen<string>;
+  /** จำนวนบริษัทสูงสุด (ว่าง = ไม่จำกัด) */
+  max_companies: Gen<number | null>;
+  /** จำนวนผู้ใช้สูงสุด (ว่าง = ไม่จำกัด) */
+  max_users: Gen<number | null>;
+  /** วันหมดอายุการใช้งาน */
+  expires_on: Gen<string | null>;
+  /** A=ใช้งาน S=ระงับ I=เลิกใช้ */
+  status: Gen<string>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** บริษัท (หนึ่งฐานข้อมูลรองรับหลายบริษัท) */
 export interface SysCompanyTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
   id: Gen<string>;
+  /** ลูกค้าผู้ใช้บริการที่เป็นเจ้าของบริษัทนี้ */
+  tenant_id: string;
   /** รหัสบริษัท (เดิมคือชื่อโฟลเดอร์ข้อมูล เช่น TESTRice) */
   code: string;
   /** ชื่อกิจการภาษาไทย */
@@ -83,6 +122,8 @@ export interface SysBranchTable {
 export interface SysUserTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
   id: Gen<string>;
+  /** ลูกค้าผู้ใช้บริการที่ผู้ใช้สังกัด (ว่าง = เจ้าหน้าที่ผู้ให้บริการโปรแกรม) */
+  tenant_id: Gen<string | null>;
   /** รหัสผู้ใช้ (USERID ใน Express ยาว 8) */
   username: string;
   /** ชื่อผู้ใช้ */
@@ -159,6 +200,8 @@ export interface SysSessionTable {
 export interface SysUserGroupTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
   id: Gen<string>;
+  /** ลูกค้าผู้ใช้บริการ (ว่าง = กลุ่มของผู้ให้บริการ) */
+  tenant_id: Gen<string | null>;
   /** รหัสกลุ่ม */
   code: string;
   /** ชื่อกลุ่ม */
@@ -3116,6 +3159,7 @@ export interface SyncConflictTable {
   origin_device_id: Gen<string | null>;
 }
 export interface DB {
+  sys_tenant: SysTenantTable;
   sys_company: SysCompanyTable;
   sys_branch: SysBranchTable;
   sys_user: SysUserTable;

@@ -18,29 +18,50 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     .selectFrom('sys_session as s')
     .innerJoin('sys_user as u', 'u.id', 's.user_id')
     .leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id')
-    .select(['s.id', 's.user_id', 's.current_company_id', 's.current_branch_id', 's.work_date', 'u.username', 'u.display_name', 'u.status', 'g.code as group_code'])
+    .leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
+    .select(['s.id', 's.user_id', 's.current_company_id', 's.current_branch_id', 's.work_date', 'u.username', 'u.display_name', 'u.status', 'u.tenant_id',
+      'g.code as group_code', 'g.tenant_id as group_tenant_id', 't.status as tenant_status', 't.expires_on as tenant_expires'])
     .where('s.token_hash', '=', sha(token))
     .where('s.ended_at', 'is', null)
     .where('s.expires_at', '>', sql<string>`now()`)
     .where('s.deleted_at', 'is', null)
     .executeTakeFirst();
   if (!row || row.status !== 'A') return undefined;
-  return {
+  if (row.tenant_id && !tenantActive(row.tenant_status, row.tenant_expires)) return undefined;
+  // กลุ่ม ADMIN นับเฉพาะกลุ่มของ tenant เดียวกับผู้ใช้ (กันการผูกกลุ่มข้าม tenant)
+  const isAdmin = row.group_code === ADMIN_GROUP && (row.group_tenant_id ?? null) === (row.tenant_id ?? null);
+  const a: AuthContext = {
     sessionId: row.id, userId: row.user_id, username: row.username, displayName: row.display_name,
-    isAdmin: row.group_code === ADMIN_GROUP, companyId: row.current_company_id, branchId: row.current_branch_id, workDate: row.work_date,
+    tenantId: row.tenant_id, isAdmin, isPlatform: isAdmin && !row.tenant_id,
+    companyId: row.current_company_id, branchId: row.current_branch_id, workDate: row.work_date,
   };
+  // บริษัทที่ค้างใน session ต้องยังเข้าได้ (เช่น ถูกถอนสิทธิ์ หรือเป็นของ tenant อื่น)
+  if (a.companyId && !(await canAccessCompany(db, a, a.companyId))) { a.companyId = null; a.branchId = null; }
+  return a;
 }
 
-/** บริษัทที่ผู้ใช้เข้าได้ (ผู้ดูแลระบบเข้าได้ทุกบริษัท) */
-export async function companiesForUser(db: Db, a: Pick<AuthContext, 'userId' | 'isAdmin'>) {
-  let q = db.selectFrom('sys_company as c').select(['c.id', 'c.code', 'c.name_th', 'c.name_en', 'c.year_system']).where('c.deleted_at', 'is', null).where('c.status', '=', 'A');
-  if (!a.isAdmin) {
-    q = q.where((eb) => eb.exists(eb.selectFrom('sys_user_company as uc').select('uc.id').whereRef('uc.company_id', '=', 'c.id').where('uc.user_id', '=', a.userId).where('uc.deleted_at', 'is', null)));
+export function tenantActive(status: string | null | undefined, expires: string | null | undefined) {
+  if (status !== 'A') return false;
+  return !expires || expires >= new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * บริษัทที่ผู้ใช้เข้าได้ — หลักแยกข้อมูลลูกค้า:
+ * - เจ้าหน้าที่ผู้ให้บริการ (ADMIN ไม่มี tenant): ทุกบริษัท
+ * - ผู้ดูแลของลูกค้า (ADMIN ใน tenant): ทุกบริษัทของ tenant ตัวเองเท่านั้น
+ * - ผู้ใช้ทั่วไป: เฉพาะบริษัทที่ได้รับสิทธิ์ และต้องอยู่ใน tenant ตัวเอง
+ */
+export async function companiesForUser(db: Db, a: Pick<AuthContext, 'userId' | 'isAdmin' | 'isPlatform' | 'tenantId'>) {
+  let q = db.selectFrom('sys_company as c').select(['c.id', 'c.code', 'c.name_th', 'c.name_en', 'c.year_system', 'c.tenant_id']).where('c.deleted_at', 'is', null).where('c.status', '=', 'A');
+  if (!a.isPlatform) {
+    if (!a.tenantId) return [];
+    q = q.where('c.tenant_id', '=', a.tenantId);
+    if (!a.isAdmin) q = q.where((eb) => eb.exists(eb.selectFrom('sys_user_company as uc').select('uc.id').whereRef('uc.company_id', '=', 'c.id').where('uc.user_id', '=', a.userId).where('uc.deleted_at', 'is', null)));
   }
   return q.orderBy('c.code').execute();
 }
 
-export async function canAccessCompany(db: Db, a: Pick<AuthContext, 'userId' | 'isAdmin'>, companyId: string) {
+export async function canAccessCompany(db: Db, a: Pick<AuthContext, 'userId' | 'isAdmin' | 'isPlatform' | 'tenantId'>, companyId: string) {
   return (await companiesForUser(db, a)).some((c) => c.id === companyId);
 }
 
@@ -75,7 +96,8 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const token = await db.transaction().execute(async (tx) => {
       const n = await tx.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).executeTakeFirstOrThrow();
       if (Number(n.n) > 0) throw new AppError(409, 'ALREADY_SETUP', 'ตั้งค่าผู้ดูแลระบบไปแล้ว');
-      let grp = await tx.selectFrom('sys_user_group').select('id').where('code', '=', ADMIN_GROUP).executeTakeFirst();
+      // ผู้ใช้คนแรก = ผู้ดูแลระบบของผู้ให้บริการ (ไม่สังกัด tenant)
+      let grp = await tx.selectFrom('sys_user_group').select('id').where('code', '=', ADMIN_GROUP).where('tenant_id', 'is', null).executeTakeFirst();
       if (!grp) grp = await tx.insertInto('sys_user_group').values({ code: ADMIN_GROUP, name: 'ผู้ดูแลระบบ' }).returning('id').executeTakeFirstOrThrow();
       const u = await tx.insertInto('sys_user').values({
         username: body.username, display_name: body.display_name, password_hash: await bcrypt.hash(body.password, 10),
@@ -90,12 +112,14 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
 
   app.post('/api/v1/auth/login', async (req, reply) => {
     const body = parse(z.object({ username: z.string().trim().min(1, 'ป้อนรหัสผู้ใช้'), password: z.string().min(1, 'ป้อนรหัสผ่าน'), work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }), req.body);
-    const u = await db.selectFrom('sys_user').select(['id', 'password_hash', 'status']).where(sql`lower(username)`, '=', body.username.toLowerCase()).where('deleted_at', 'is', null).executeTakeFirst();
+    const u = await db.selectFrom('sys_user as u').leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
+      .select(['u.id', 'u.password_hash', 'u.status', 'u.tenant_id', 't.status as tenant_status', 't.expires_on']).where(sql`lower(u.username)`, '=', body.username.toLowerCase()).where('u.deleted_at', 'is', null).executeTakeFirst();
     const ok = u && u.status === 'A' && u.password_hash && (await bcrypt.compare(body.password, u.password_hash));
     if (!u || !ok) {
       await logActivity(db, { companyId: null, userId: u?.id ?? null }, { module: 'SYS', action: 'LOGIN_FAIL', detail: { username: body.username, ip: req.ip } });
       throw new AppError(401, 'LOGIN_FAILED', 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
     }
+    if (u.tenant_id && !tenantActive(u.tenant_status, u.expires_on)) throw new AppError(403, 'TENANT_SUSPENDED', 'บัญชีผู้ใช้บริการนี้ถูกระงับหรือหมดอายุ กรุณาติดต่อผู้ให้บริการ');
     const token = await newSession(db, cfg, u.id, req, body.work_date);
     await db.updateTable('sys_user').set({ last_login_at: sql`now()` }).where('id', '=', u.id).execute();
     await logActivity(db, { companyId: null, userId: u.id }, { module: 'SYS', action: 'LOGIN', detail: { ip: req.ip } });
@@ -125,7 +149,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const branches = company ? await db.selectFrom('sys_branch').select(['id', 'code', 'name', 'tax_branch_no', 'is_head_office']).where('company_id', '=', company.id).where('deleted_at', 'is', null).orderBy('code').execute() : [];
     const branch = branches.find((b) => b.id === branchId) ?? null;
     return {
-      user: { id: a.userId, username: a.username, display_name: a.displayName, is_admin: a.isAdmin },
+      user: { id: a.userId, username: a.username, display_name: a.displayName, is_admin: a.isAdmin, is_platform: a.isPlatform, tenant_id: a.tenantId },
       company, branch, branches, companies, work_date: a.workDate,
     };
   });

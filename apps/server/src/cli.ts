@@ -22,11 +22,11 @@ try {
   else if (cmd === 'create-admin') {
     const [username, name, password] = args;
     if (!username || !name || !password) throw new Error('ใช้: create-admin <user> <ชื่อ> <รหัสผ่าน>');
-    let g = await db.selectFrom('sys_user_group').select('id').where('code', '=', 'ADMIN').executeTakeFirst();
+    let g = await db.selectFrom('sys_user_group').select('id').where('code', '=', 'ADMIN').where('tenant_id', 'is', null).executeTakeFirst(); // ผู้ดูแลของผู้ให้บริการ (ไม่สังกัด tenant)
     if (!g) g = await db.insertInto('sys_user_group').values({ code: 'ADMIN', name: 'ผู้ดูแลระบบ' }).returning('id').executeTakeFirstOrThrow();
     const hash = await bcrypt.hash(password, 10);
     const ex = await db.selectFrom('sys_user').select('id').where('username', '=', username).where('deleted_at', 'is', null).executeTakeFirst();
-    if (ex) await db.updateTable('sys_user').set({ password_hash: hash, user_group_id: g.id, status: 'A' }).where('id', '=', ex.id).execute();
+    if (ex) await db.updateTable('sys_user').set({ password_hash: hash, user_group_id: g.id, status: 'A', tenant_id: null }).where('id', '=', ex.id).execute();
     else await db.insertInto('sys_user').values({ username, display_name: name, password_hash: hash, user_group_id: g.id, approval_level: 9 }).execute();
     console.log(`สร้างผู้ดูแลระบบ ${username} แล้ว`);
   } else if (cmd === 'company-template') {

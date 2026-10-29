@@ -18,6 +18,7 @@ import { UsersPage } from './pages/settings/Users';
 import { NewCompanyPage } from './pages/settings/NewCompany';
 import { PasswordPage } from './pages/settings/Password';
 import { ImportPage } from './pages/settings/Import';
+import { TenantsPage } from './pages/settings/Tenants';
 import { TrialBalancePage } from './pages/reports/TrialBalance';
 import { LedgerPage } from './pages/reports/Ledger';
 import { JournalBookPage } from './pages/reports/JournalBook';
@@ -106,6 +107,7 @@ function Shell() {
           <Route path="/companies/new" element={<NewCompanyPage />} />
           <Route path="/account/password" element={<PasswordPage />} />
           <Route path="/admin/import" element={<ImportPage />} />
+          <Route path="/admin/tenants" element={<TenantsPage />} />
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
           <Route path="/reports/ledger" element={<LedgerPage />} />
           <Route path="/reports/journal-book" element={<JournalBookPage />} />

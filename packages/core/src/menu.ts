@@ -112,6 +112,7 @@ export const MENU: MenuItem[] = [
     m('SET.LINK', 'การเชื่อมต่อบัญชี', 'P2', undefined, ['ch10:S-GL-01', 'ch10:S-GL-02']),
     m('SET.SEC', 'ผู้ใช้งานและสิทธิ์', 'P0', '/settings/users', ['ch23:S-SEC-01', 'ch23:S-SEC-02']),
     m('SET.NEWCO', 'กำหนดบริษัทใหม่', 'P0', '/companies/new', ['ch04:S-CO-03']),
+    m('SET.TENANT', 'ลูกค้าผู้ใช้บริการ (ผู้ให้บริการ)', 'P0', '/admin/tenants'),
   ], '7'),
   g('OT', 'อื่น ๆ', 'P1', [
     m('OT.LOCK', 'ปิดงวด / ล็อคงวด', 'P1', '/settings/periods', ['ch18:S-ME-02']),

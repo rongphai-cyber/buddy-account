@@ -35,7 +35,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.keyboard.press('Escape');
   });
   await step('journals list', async () => {
-    await page.goto(BASE + '/gl/journals?from=2010-12-01&to=2010-12-31');
+    await page.goto(BASE + '/gl/journals?from=2026-09-01&to=2026-09-30');
     await page.waitForSelector('table.grid tbody tr.row-open', { timeout: 15000 });
     await shot('04-journals');
     await page.locator('table.grid tbody tr.row-open').first().click();
@@ -48,7 +48,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.goto(BASE + '/gl/journals/new');
     await page.waitForSelector('.lines tbody tr');
     const date = page.locator('.head-grid .date-in input');
-    await date.fill('15/12/2553'); await date.press('Enter');
+    await date.fill('15/10/2569'); await date.press('Enter');
     await page.locator('.head-grid input').nth(2).fill('ทดสอบ');
     await page.locator('.head-grid input').nth(3).fill('ปรับปรุงค่าใช้จ่ายค้างจ่าย (ทดสอบ)');
     const acc = page.locator('.lines tbody tr').nth(0).locator('.lk-in input');
@@ -72,7 +72,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.waitForURL(/\/gl\/journals\/[0-9a-f-]{36}$/, { timeout: 10000 });
     await page.waitForFunction(() => /^JV/.test(document.querySelector('.doc-title h1')?.textContent ?? ''), null, { timeout: 10000 });
     newNo = (await page.locator('.doc-title h1').textContent()).trim();
-    if (!/^JV531215\d{3}$/.test(newNo)) throw new Error('voucher no ' + newNo);
+    if (!/^JV691015\d{3}$/.test(newNo)) throw new Error('voucher no ' + newNo);
     await shot('08-journal-saved');
   });
   await step('cancel journal (Alt+C)', async () => {
@@ -95,7 +95,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await shot('09-journal-error');
   });
   await step('trial balance', async () => {
-    await page.goto(BASE + '/reports/trial-balance?from=2010-01-01&to=2010-12-31');
+    await page.goto(BASE + '/reports/trial-balance?from=2026-01-01&to=2026-12-31');
     await page.waitForSelector('table.report tfoot', { timeout: 20000 });
     const foot = await page.locator('table.report tfoot').textContent();
     if (!(await page.locator('.pill.st-m', { hasText: 'ดุล' }).count())) throw new Error('TB not balanced: ' + foot);

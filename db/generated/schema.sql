@@ -4,9 +4,51 @@
 -- =====================================================================
 -- ต้องใช้ PostgreSQL 13+ (gen_random_uuid มีในตัว) — ใช้ได้ทั้ง PostgreSQL และ PGlite
 
+-- sys_tenant: ลูกค้าผู้ใช้บริการ (tenant) — หนึ่งรายมีได้หลายบริษัท ข้อมูลแต่ละรายแยกขาดจากกัน — Buddy Account  [Express: (ใหม่)]
+CREATE TABLE sys_tenant (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  code varchar(20) NOT NULL,
+  name varchar(120) NOT NULL,
+  contact_email varchar(120),
+  contact_phone varchar(60),
+  plan varchar(20) DEFAULT 'standard' NOT NULL,
+  max_companies integer,
+  max_users integer,
+  expires_on date,
+  status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','S','I')),
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_tenant IS 'ลูกค้าผู้ใช้บริการ (tenant) — หนึ่งรายมีได้หลายบริษัท ข้อมูลแต่ละรายแยกขาดจากกัน — Buddy Account | Express: (ใหม่)';
+COMMENT ON COLUMN sys_tenant.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_tenant.code IS 'รหัสลูกค้าผู้ใช้บริการ';
+COMMENT ON COLUMN sys_tenant.name IS 'ชื่อลูกค้าผู้ใช้บริการ (เจ้าของบัญชี)';
+COMMENT ON COLUMN sys_tenant.contact_email IS 'อีเมลผู้ติดต่อ';
+COMMENT ON COLUMN sys_tenant.contact_phone IS 'โทรศัพท์ผู้ติดต่อ';
+COMMENT ON COLUMN sys_tenant.plan IS 'แพ็กเกจ';
+COMMENT ON COLUMN sys_tenant.max_companies IS 'จำนวนบริษัทสูงสุด (ว่าง = ไม่จำกัด)';
+COMMENT ON COLUMN sys_tenant.max_users IS 'จำนวนผู้ใช้สูงสุด (ว่าง = ไม่จำกัด)';
+COMMENT ON COLUMN sys_tenant.expires_on IS 'วันหมดอายุการใช้งาน';
+COMMENT ON COLUMN sys_tenant.status IS 'A=ใช้งาน S=ระงับ I=เลิกใช้';
+COMMENT ON COLUMN sys_tenant.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN sys_tenant.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN sys_tenant.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN sys_tenant.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN sys_tenant.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN sys_tenant.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN sys_tenant.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_sys_tenant_code ON sys_tenant (code) WHERE deleted_at IS NULL;
+
 -- sys_company: บริษัท (หนึ่งฐานข้อมูลรองรับหลายบริษัท)  [Express: ISINFO + ทะเบียนบริษัท (บทที่ 4)]
 CREATE TABLE sys_company (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
+  tenant_id uuid NOT NULL,
   code varchar(20) NOT NULL,
   name_th varchar(120) NOT NULL,
   name_en varchar(120),
@@ -30,6 +72,7 @@ CREATE TABLE sys_company (
 );
 COMMENT ON TABLE sys_company IS 'บริษัท (หนึ่งฐานข้อมูลรองรับหลายบริษัท) | Express: ISINFO + ทะเบียนบริษัท (บทที่ 4)';
 COMMENT ON COLUMN sys_company.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_company.tenant_id IS 'ลูกค้าผู้ใช้บริการที่เป็นเจ้าของบริษัทนี้';
 COMMENT ON COLUMN sys_company.code IS 'รหัสบริษัท (เดิมคือชื่อโฟลเดอร์ข้อมูล เช่น TESTRice) [Express: DATA PATH]';
 COMMENT ON COLUMN sys_company.name_th IS 'ชื่อกิจการภาษาไทย [Express: ISINFO.THINAM]';
 COMMENT ON COLUMN sys_company.name_en IS 'ชื่อกิจการภาษาอังกฤษ [Express: ISINFO.ENGNAM]';
@@ -93,6 +136,7 @@ CREATE UNIQUE INDEX uq_sys_branch_company_code ON sys_branch (company_id, code) 
 -- sys_user: ผู้ใช้งาน  [Express: SCUSER (ไฟล์ระบบรักษาความปลอดภัย บทที่ 23)]
 CREATE TABLE sys_user (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
+  tenant_id uuid,
   username varchar(30) NOT NULL,
   display_name varchar(120) NOT NULL,
   password_hash text,
@@ -114,6 +158,7 @@ CREATE TABLE sys_user (
 );
 COMMENT ON TABLE sys_user IS 'ผู้ใช้งาน | Express: SCUSER (ไฟล์ระบบรักษาความปลอดภัย บทที่ 23)';
 COMMENT ON COLUMN sys_user.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_user.tenant_id IS 'ลูกค้าผู้ใช้บริการที่ผู้ใช้สังกัด (ว่าง = เจ้าหน้าที่ผู้ให้บริการโปรแกรม)';
 COMMENT ON COLUMN sys_user.username IS 'รหัสผู้ใช้ (USERID ใน Express ยาว 8) [Express: USERID]';
 COMMENT ON COLUMN sys_user.display_name IS 'ชื่อผู้ใช้';
 COMMENT ON COLUMN sys_user.password_hash IS 'รหัสผ่านแบบ hash (argon2/bcrypt) — เก็บใน client เพื่อเข้าระบบตอนออฟไลน์';
@@ -177,6 +222,7 @@ CREATE UNIQUE INDEX uq_sys_session_token_hash ON sys_session (token_hash) WHERE 
 -- sys_user_group: กลุ่มผู้ใช้  [Express: SCUSER (กลุ่ม)]
 CREATE TABLE sys_user_group (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
+  tenant_id uuid,
   code varchar(20) NOT NULL,
   name varchar(120) NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
@@ -190,6 +236,7 @@ CREATE TABLE sys_user_group (
 );
 COMMENT ON TABLE sys_user_group IS 'กลุ่มผู้ใช้ | Express: SCUSER (กลุ่ม)';
 COMMENT ON COLUMN sys_user_group.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_user_group.tenant_id IS 'ลูกค้าผู้ใช้บริการ (ว่าง = กลุ่มของผู้ให้บริการ)';
 COMMENT ON COLUMN sys_user_group.code IS 'รหัสกลุ่ม';
 COMMENT ON COLUMN sys_user_group.name IS 'ชื่อกลุ่ม';
 COMMENT ON COLUMN sys_user_group.created_at IS 'เวลาสร้าง';
@@ -199,7 +246,7 @@ COMMENT ON COLUMN sys_user_group.updated_by IS 'ผู้แก้ไขล่�
 COMMENT ON COLUMN sys_user_group.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
 COMMENT ON COLUMN sys_user_group.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
 COMMENT ON COLUMN sys_user_group.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
-CREATE UNIQUE INDEX uq_sys_user_group_code ON sys_user_group (code) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uq_sys_user_group_tenant_code ON sys_user_group (COALESCE(tenant_id, '00000000-0000-0000-0000-000000000000'::uuid), code) WHERE deleted_at IS NULL;
 
 -- sys_user_company: ผู้ใช้ ↔ บริษัท/สาขาที่เข้าได้  [Express: กลุ่มบริษัท (บทที่ 4)]
 CREATE TABLE sys_user_company (
@@ -3476,6 +3523,12 @@ COMMENT ON COLUMN sync_state.value IS 'ค่า';
 
 -- ---------------------------------------------------------------- Foreign keys
 -- DEFERRABLE INITIALLY DEFERRED: ให้รับข้อมูลซิงก์หลายตารางในทรานแซกชันเดียวโดยไม่ต้องเรียงลำดับ
+ALTER TABLE sys_tenant ADD CONSTRAINT fk_sys_tenant_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_tenant_created_by ON sys_tenant (created_by);
+ALTER TABLE sys_tenant ADD CONSTRAINT fk_sys_tenant_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_tenant_updated_by ON sys_tenant (updated_by);
+ALTER TABLE sys_company ADD CONSTRAINT fk_sys_company_tenant_id FOREIGN KEY (tenant_id) REFERENCES sys_tenant(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_company_tenant_id ON sys_company (tenant_id);
 ALTER TABLE sys_company ADD CONSTRAINT fk_sys_company_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_company_created_by ON sys_company (created_by);
 ALTER TABLE sys_company ADD CONSTRAINT fk_sys_company_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -3488,6 +3541,8 @@ ALTER TABLE sys_branch ADD CONSTRAINT fk_sys_branch_created_by FOREIGN KEY (crea
 CREATE INDEX IF NOT EXISTS ix_fk_sys_branch_created_by ON sys_branch (created_by);
 ALTER TABLE sys_branch ADD CONSTRAINT fk_sys_branch_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_branch_updated_by ON sys_branch (updated_by);
+ALTER TABLE sys_user ADD CONSTRAINT fk_sys_user_tenant_id FOREIGN KEY (tenant_id) REFERENCES sys_tenant(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_user_tenant_id ON sys_user (tenant_id);
 ALTER TABLE sys_user ADD CONSTRAINT fk_sys_user_user_group_id FOREIGN KEY (user_group_id) REFERENCES sys_user_group(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_user_user_group_id ON sys_user (user_group_id);
 ALTER TABLE sys_user ADD CONSTRAINT fk_sys_user_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -3504,6 +3559,8 @@ ALTER TABLE sys_session ADD CONSTRAINT fk_sys_session_created_by FOREIGN KEY (cr
 CREATE INDEX IF NOT EXISTS ix_fk_sys_session_created_by ON sys_session (created_by);
 ALTER TABLE sys_session ADD CONSTRAINT fk_sys_session_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_session_updated_by ON sys_session (updated_by);
+ALTER TABLE sys_user_group ADD CONSTRAINT fk_sys_user_group_tenant_id FOREIGN KEY (tenant_id) REFERENCES sys_tenant(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_user_group_tenant_id ON sys_user_group (tenant_id);
 ALTER TABLE sys_user_group ADD CONSTRAINT fk_sys_user_group_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_user_group_created_by ON sys_user_group (created_by);
 ALTER TABLE sys_user_group ADD CONSTRAINT fk_sys_user_group_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -4401,6 +4458,7 @@ CREATE TRIGGER trg_md_asset_account_group_ver BEFORE UPDATE ON md_asset_account_
 CREATE TRIGGER trg_fa_asset_ver BEFORE UPDATE ON fa_asset FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_fa_depreciation_ver BEFORE UPDATE ON fa_depreciation FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sync_conflict_ver BEFORE UPDATE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_sys_tenant_ver BEFORE UPDATE ON sys_tenant FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_session_ver BEFORE UPDATE ON sys_session FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_fin_bank_ledger_ver BEFORE UPDATE ON fin_bank_ledger FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_inv_stock_ledger_ver BEFORE UPDATE ON inv_stock_ledger FOR EACH ROW EXECUTE FUNCTION sys_bump_version();

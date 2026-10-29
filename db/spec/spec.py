@@ -55,7 +55,20 @@ def add(t): TABLES.append(t); return t
 # =====================================================================
 # SYS
 # =====================================================================
+add(T('sys_tenant', 'ลูกค้าผู้ใช้บริการ (tenant) — หนึ่งรายมีได้หลายบริษัท ข้อมูลแต่ละรายแยกขาดจากกัน — Buddy Account', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
+  C('code', 'code20', nn=True, th='รหัสลูกค้าผู้ใช้บริการ'),
+  C('name', 'str120', nn=True, th='ชื่อลูกค้าผู้ใช้บริการ (เจ้าของบัญชี)'),
+  C('contact_email', 'str120', th='อีเมลผู้ติดต่อ'),
+  C('contact_phone', 'str60', th='โทรศัพท์ผู้ติดต่อ'),
+  C('plan', 'code20', nn=True, d="'standard'", th='แพ็กเกจ'),
+  C('max_companies', 'int', th='จำนวนบริษัทสูงสุด (ว่าง = ไม่จำกัด)'),
+  C('max_users', 'int', th='จำนวนผู้ใช้สูงสุด (ว่าง = ไม่จำกัด)'),
+  C('expires_on', 'date', th='วันหมดอายุการใช้งาน'),
+  C('status', 'char1', nn=True, d="'A'", th='A=ใช้งาน S=ระงับ I=เลิกใช้', chk="status IN ('A','S','I')"),
+], uniq=[('code',)]))
+
 add(T('sys_company', 'บริษัท (หนึ่งฐานข้อมูลรองรับหลายบริษัท)', 'sys', express='ISINFO + ทะเบียนบริษัท (บทที่ 4)', company=False, cols=[
+  lk('tenant_id', 'sys_tenant', 'ลูกค้าผู้ใช้บริการที่เป็นเจ้าของบริษัทนี้', nn=True),
   C('code', 'code20', nn=True, th='รหัสบริษัท (เดิมคือชื่อโฟลเดอร์ข้อมูล เช่น TESTRice)', src='DATA PATH'),
   C('name_th', 'str120', nn=True, th='ชื่อกิจการภาษาไทย', src='ISINFO.THINAM'),
   C('name_en', 'str120', th='ชื่อกิจการภาษาอังกฤษ', src='ISINFO.ENGNAM'),
@@ -81,6 +94,7 @@ add(T('sys_branch', 'สาขา / จุดทำงาน (สำนักง
 ], uniq=[('company_id','code')]))
 
 add(T('sys_user', 'ผู้ใช้งาน', 'sys', express='SCUSER (ไฟล์ระบบรักษาความปลอดภัย บทที่ 23)', company=False, cols=[
+  lk('tenant_id', 'sys_tenant', 'ลูกค้าผู้ใช้บริการที่ผู้ใช้สังกัด (ว่าง = เจ้าหน้าที่ผู้ให้บริการโปรแกรม)'),
   C('username', 'code30', nn=True, th='รหัสผู้ใช้ (USERID ใน Express ยาว 8)', src='USERID'),
   C('display_name', 'str120', nn=True, th='ชื่อผู้ใช้'),
   C('password_hash', 'text', th='รหัสผ่านแบบ hash (argon2/bcrypt) — เก็บใน client เพื่อเข้าระบบตอนออฟไลน์'),
@@ -106,9 +120,10 @@ add(T('sys_session', 'การเข้าระบบ (session) ของผ�
 ], uniq=[('token_hash',)]))
 
 add(T('sys_user_group', 'กลุ่มผู้ใช้', 'sys', express='SCUSER (กลุ่ม)', company=False, cols=[
+  lk('tenant_id', 'sys_tenant', 'ลูกค้าผู้ใช้บริการ (ว่าง = กลุ่มของผู้ให้บริการ)'),
   C('code', 'code20', nn=True, th='รหัสกลุ่ม'),
   C('name', 'str120', nn=True, th='ชื่อกลุ่ม'),
-], uniq=[('code',)]))
+], uniq=[('tenant_id','code')]))
 
 add(T('sys_user_company', 'ผู้ใช้ ↔ บริษัท/สาขาที่เข้าได้', 'sys', express='กลุ่มบริษัท (บทที่ 4)', cols=[
   lk('user_id', 'sys_user', 'ผู้ใช้', nn=True),

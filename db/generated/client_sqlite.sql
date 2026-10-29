@@ -10,6 +10,7 @@ PRAGMA journal_mode = WAL;
 -- sys_company: บริษัท (หนึ่งฐานข้อมูลรองรับหลายบริษัท)
 CREATE TABLE IF NOT EXISTS sys_company (
   id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
   code TEXT NOT NULL,
   name_th TEXT NOT NULL,
   name_en TEXT,
@@ -56,6 +57,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_sys_branch_company_code ON sys_branch (comp
 -- sys_user: ผู้ใช้งาน
 CREATE TABLE IF NOT EXISTS sys_user (
   id TEXT PRIMARY KEY,
+  tenant_id TEXT,
   username TEXT NOT NULL,
   display_name TEXT NOT NULL,
   password_hash TEXT,
@@ -79,6 +81,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_sys_user_username ON sys_user (username) WH
 -- sys_user_group: กลุ่มผู้ใช้
 CREATE TABLE IF NOT EXISTS sys_user_group (
   id TEXT PRIMARY KEY,
+  tenant_id TEXT,
   code TEXT NOT NULL,
   name TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -89,7 +92,7 @@ CREATE TABLE IF NOT EXISTS sys_user_group (
   deleted_at TEXT,
   origin_device_id TEXT
 );
-CREATE UNIQUE INDEX IF NOT EXISTS uq_sys_user_group_code ON sys_user_group (code) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_sys_user_group_tenant_code ON sys_user_group (IFNULL(tenant_id,''), code) WHERE deleted_at IS NULL;
 
 -- sys_user_company: ผู้ใช้ ↔ บริษัท/สาขาที่เข้าได้
 CREATE TABLE IF NOT EXISTS sys_user_company (
@@ -1702,7 +1705,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_company', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'code', NEW.code, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'address_th', NEW.address_th, 'address_en', NEW.address_en, 'phone', NEW.phone, 'tax_id', NEW.tax_id, 'trade_reg_no', NEW.trade_reg_no, 'social_security_no', NEW.social_security_no, 'base_currency', NEW.base_currency, 'year_system', NEW.year_system, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'tenant_id', NEW.tenant_id, 'code', NEW.code, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'address_th', NEW.address_th, 'address_en', NEW.address_en, 'phone', NEW.phone, 'tax_id', NEW.tax_id, 'trade_reg_no', NEW.trade_reg_no, 'social_security_no', NEW.social_security_no, 'base_currency', NEW.base_currency, 'year_system', NEW.year_system, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sys_company_update_outbox AFTER UPDATE ON sys_company
@@ -1711,7 +1714,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_company', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'code', NEW.code, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'address_th', NEW.address_th, 'address_en', NEW.address_en, 'phone', NEW.phone, 'tax_id', NEW.tax_id, 'trade_reg_no', NEW.trade_reg_no, 'social_security_no', NEW.social_security_no, 'base_currency', NEW.base_currency, 'year_system', NEW.year_system, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'tenant_id', NEW.tenant_id, 'code', NEW.code, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'address_th', NEW.address_th, 'address_en', NEW.address_en, 'phone', NEW.phone, 'tax_id', NEW.tax_id, 'trade_reg_no', NEW.trade_reg_no, 'social_security_no', NEW.social_security_no, 'base_currency', NEW.base_currency, 'year_system', NEW.year_system, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sys_company_ver AFTER UPDATE ON sys_company
@@ -1748,7 +1751,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_user', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'username', NEW.username, 'display_name', NEW.display_name, 'password_hash', NEW.password_hash, 'user_group_id', NEW.user_group_id, 'approval_level', NEW.approval_level, 'check_rights', NEW.check_rights, 'menu_language', NEW.menu_language, 'default_printer', NEW.default_printer, 'status', NEW.status, 'last_login_at', NEW.last_login_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'tenant_id', NEW.tenant_id, 'username', NEW.username, 'display_name', NEW.display_name, 'password_hash', NEW.password_hash, 'user_group_id', NEW.user_group_id, 'approval_level', NEW.approval_level, 'check_rights', NEW.check_rights, 'menu_language', NEW.menu_language, 'default_printer', NEW.default_printer, 'status', NEW.status, 'last_login_at', NEW.last_login_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sys_user_update_outbox AFTER UPDATE ON sys_user
@@ -1757,7 +1760,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_user', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'username', NEW.username, 'display_name', NEW.display_name, 'password_hash', NEW.password_hash, 'user_group_id', NEW.user_group_id, 'approval_level', NEW.approval_level, 'check_rights', NEW.check_rights, 'menu_language', NEW.menu_language, 'default_printer', NEW.default_printer, 'status', NEW.status, 'last_login_at', NEW.last_login_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'tenant_id', NEW.tenant_id, 'username', NEW.username, 'display_name', NEW.display_name, 'password_hash', NEW.password_hash, 'user_group_id', NEW.user_group_id, 'approval_level', NEW.approval_level, 'check_rights', NEW.check_rights, 'menu_language', NEW.menu_language, 'default_printer', NEW.default_printer, 'status', NEW.status, 'last_login_at', NEW.last_login_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sys_user_ver AFTER UPDATE ON sys_user
@@ -1771,7 +1774,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_user_group', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'code', NEW.code, 'name', NEW.name, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'tenant_id', NEW.tenant_id, 'code', NEW.code, 'name', NEW.name, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sys_user_group_update_outbox AFTER UPDATE ON sys_user_group
@@ -1780,7 +1783,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_user_group', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'code', NEW.code, 'name', NEW.name, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'tenant_id', NEW.tenant_id, 'code', NEW.code, 'name', NEW.name, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sys_user_group_ver AFTER UPDATE ON sys_user_group

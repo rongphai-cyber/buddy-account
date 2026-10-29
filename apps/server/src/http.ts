@@ -49,7 +49,11 @@ export interface AuthContext {
   userId: string;
   username: string;
   displayName: string;
+  /** ADMIN ของ tenant ตัวเอง หรือของผู้ให้บริการ */
   isAdmin: boolean;
+  /** เจ้าหน้าที่ผู้ให้บริการโปรแกรม (ADMIN ไม่สังกัด tenant) — เห็นทุก tenant */
+  isPlatform: boolean;
+  tenantId: string | null;
   companyId: string | null;
   branchId: string | null;
   workDate: string | null;

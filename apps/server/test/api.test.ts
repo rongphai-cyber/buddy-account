@@ -169,4 +169,53 @@ describe('Buddy Account API (PGlite)', () => {
     expect(vals).toEqual(['1005000.25', '1005000.25']);
     expect(accts.length).toBeGreaterThan(0);
   });
+
+  it('separates customer tenants completely (หลายลูกค้า ข้อมูลไม่ปนกัน)', async () => {
+    const platform = cookie;
+    // เจ้าหน้าที่ผู้ให้บริการสร้างลูกค้า 2 ราย
+    const ta = await call('POST', '/api/v1/tenants', { code: 'CUSTA', name: 'ลูกค้า A', admin_username: 'a.admin', admin_name: 'ผู้ดูแล A', admin_password: 'passA1234', max_companies: 2 });
+    const tb = await call('POST', '/api/v1/tenants', { code: 'CUSTB', name: 'ลูกค้า B', admin_username: 'b.admin', admin_name: 'ผู้ดูแล B', admin_password: 'passB1234' });
+    expect(ta.status).toBe(200); expect(tb.status).toBe(200);
+    const login = async (u: string, p: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: p }); return r; };
+
+    // ลูกค้า A สร้างบริษัทของตัวเอง
+    expect((await login('a.admin', 'passA1234')).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.companies).toHaveLength(0);   // ไม่เห็นบริษัทของผู้ให้บริการ/ลูกค้าอื่น
+    const ca = (await call('POST', '/api/v1/companies', { code: 'A-CO1', name_th: 'บริษัท เอ จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: ca });
+    const aBook = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const aAcc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control);
+    expect((await call('POST', '/api/v1/gl/journals', { journal_book_id: aBook, voucher_date: '2026-03-01', lines: [{ account_id: aAcc[0].id, debit: '10' }, { account_id: aAcc[1].id, credit: '10' }] })).status).toBe(200);
+    // คัดลอกผังบัญชีจากบริษัทของลูกค้าอื่นไม่ได้
+    expect((await call('POST', '/api/v1/companies', { code: 'A-CO2', name_th: 'x', fiscal_start: '2026-01-01', chart: 'copy', copy_from_company_id: companyId })).status).toBe(403);
+    expect((await call('GET', '/api/v1/tenants')).status).toBe(403);
+    const aUsers = (await call('GET', '/api/v1/users')).body.users.map((u: { username: string }) => u.username);
+    expect(aUsers).toEqual(['a.admin']);
+    // ให้สิทธิ์ผู้ใช้ของตัวเองเข้าบริษัทลูกค้าอื่นไม่ได้
+    expect((await call('POST', '/api/v1/users', { username: 'a.clerk', display_name: 'พนักงาน A', password: 'clerk1234', companies: [companyId] })).status).toBe(400);
+    expect((await call('POST', '/api/v1/users', { username: 'a.clerk', display_name: 'พนักงาน A', password: 'clerk1234', companies: [ca] })).status).toBe(200);
+
+    // ลูกค้า B มองไม่เห็นและเข้าบริษัทของ A ไม่ได้
+    expect((await login('b.admin', 'passB1234')).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.companies).toHaveLength(0);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: ca })).status).toBe(400);
+    expect((await call('GET', '/api/v1/gl/accounts')).status).toBe(400);            // ยังไม่มีบริษัท = ไม่มีข้อมูล
+    expect((await call('GET', '/api/v1/users')).body.users.map((u: { username: string }) => u.username)).toEqual(['b.admin']);
+    const aClerk = await call('GET', '/api/v1/activity-log');
+    expect(JSON.stringify(aClerk.body)).not.toContain('A-CO1');
+
+    // พนักงานของ A เห็นเฉพาะบริษัทที่ได้รับสิทธิ์
+    expect((await login('a.clerk', 'clerk1234')).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toEqual(['A-CO1']);
+    expect((await call('GET', '/api/v1/users')).status).toBe(403);
+
+    // ระงับลูกค้า A → เข้าระบบไม่ได้ และ session เดิมหมดทันที
+    cookie = platform;
+    await call('PUT', `/api/v1/tenants/${ta.body.id}`, { code: 'CUSTA', name: 'ลูกค้า A', status: 'S' });
+    expect((await login('a.admin', 'passA1234')).status).toBe(403);
+    // ผู้ให้บริการยังเห็นทุกบริษัท
+    cookie = platform;
+    const all = (await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code);
+    expect(all).toEqual(expect.arrayContaining(['A-CO1', 'DEMO', 'OTHER']));
+  });
 });
