@@ -139,7 +139,7 @@ export const MENU: MenuItem[] = [
     m('OT.BACKUP', 'สำรองข้อมูล / นำข้อมูลสำรองมาใช้', 'P6', '/tools/backup', ['ch20:S-DM-02', 'ch20:S-DM-03', 'ch20:S-DM-04', 'ch23:S-SEC-07', 'ch23:S-SEC-08']),
     m('OT.CHECK', 'ตรวจสอบข้อมูล', 'P6', undefined, ['ch21:S-CK-04']),
     m('OT.LOG', 'แฟ้มบันทึกเหตุการณ์ทำงาน', 'P6', '/tools/activity-log', ['ch23:S-SEC-04', 'ch23:S-SEC-04a']),
-    m('OT.PASS', 'เปลี่ยนรหัสผ่าน', 'P0', '/account/password', ['ch23:S-SEC-05']),
+    m('OT.PASS', 'รหัสผ่านและยืนยันตัวตน', 'P0', '/account/password', ['ch23:S-SEC-05']),
     m('OT.IMPORT', 'นำข้อมูลจาก Express', 'P0', '/admin/import'),
   ]),
 ];

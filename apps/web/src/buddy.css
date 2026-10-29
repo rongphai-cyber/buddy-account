@@ -110,3 +110,17 @@
 .set-input .days { display: flex; gap: 10px; flex-wrap: wrap; }
 .grid.mini td, .grid.mini th { padding: 3px 6px; }
 @media (max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } .settings-nav { position: static; flex-direction: row; flex-wrap: wrap; } .set-row { grid-template-columns: 1fr; } }
+
+/* ยืนยันตัวตนสองขั้น (T0.16) */
+.mfa-card { width: min(460px, 100%); }
+.mfa-step { display: flex; flex-direction: column; gap: 10px; }
+.mfa-howto { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.mfa-secret { font-family: var(--mono, ui-monospace, monospace); font-size: 18px; letter-spacing: 1px; text-align: center; padding: 10px; border: 1px dashed var(--line); border-radius: 8px; background: var(--bar); user-select: all; }
+.mfa-secret span { white-space: nowrap; display: inline-block; margin: 0 4px; }
+.mfa-links { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.mfa-codes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.mfa-codes code { text-align: center; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-size: 15px; }
+.mfa-box { margin-top: 16px; }
+.mfa-box h3 { margin: 0 0 6px; }
+.topbar .user.link { color: inherit; text-decoration: none; font: inherit; }
+.topbar .user.link:hover { text-decoration: underline; }

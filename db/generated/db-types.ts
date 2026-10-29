@@ -159,6 +159,43 @@ export interface SysUserTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** ความปลอดภัยการเข้าระบบของผู้ใช้ (T0.16): ยืนยันตัวตนสองขั้น TOTP + ล็อกเมื่อใส่รหัสผ่านผิด — อยู่เฉพาะเซิร์ฟเวอร์ ไม่ซิงก์ลงเครื่องลูก */
+export interface SysUserSecurityTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** ผู้ใช้ */
+  user_id: string;
+  /** กุญแจ TOTP (เข้ารหัส AES-256-GCM ด้วยกุญแจหลักของเครื่องแม่ข่าย) */
+  totp_secret_enc: Gen<string | null>;
+  /** เปิดยืนยันตัวตนสองขั้นแล้ว (ยืนยันรหัสจากแอปสำเร็จ) */
+  totp_enabled: Gen<boolean>;
+  /** เปิดยืนยันตัวตนสองขั้นเมื่อ */
+  totp_enabled_at: Gen<string | null>;
+  /** ช่วงเวลา (30 วินาที) ของรหัสที่ใช้ล่าสุด — กันใช้รหัสเดิมซ้ำ */
+  totp_last_step: Gen<number | null>;
+  /** รหัสสำรอง (SHA-256) ใช้ได้ครั้งละหนึ่งรหัสเมื่อไม่มีมือถือ */
+  totp_recovery: Gen<unknown | null>;
+  /** จำนวนครั้งที่ใส่รหัสผิดติดกัน */
+  failed_logins: Gen<number>;
+  /** ล็อกถึงเวลานี้ (ใส่รหัสผิด 5 ครั้ง = 15 นาที) */
+  locked_until: Gen<string | null>;
+  /** เปลี่ยนรหัสผ่านล่าสุด */
+  password_changed_at: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** การเข้าระบบ (session) ของผู้ใช้ — Buddy Account */
 export interface SysSessionTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -3589,6 +3626,7 @@ export interface DB {
   sys_company: SysCompanyTable;
   sys_branch: SysBranchTable;
   sys_user: SysUserTable;
+  sys_user_security: SysUserSecurityTable;
   sys_session: SysSessionTable;
   sys_user_group: SysUserGroupTable;
   sys_user_company: SysUserCompanyTable;

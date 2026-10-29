@@ -32,7 +32,7 @@ export const api = {
 
 /* ---------------------------------------------------------------- ชนิดข้อมูลที่ใช้บ่อย */
 export interface Me {
-  user: { id: string; username: string; display_name: string; is_admin: boolean; is_platform: boolean; tenant_id: string | null; approval_level: number; check_rights: boolean };
+  user: { id: string; username: string; display_name: string; is_admin: boolean; is_platform: boolean; tenant_id: string | null; approval_level: number; check_rights: boolean; mfa_setup_required?: boolean };
   company: { id: string; code: string; name_th: string; name_en: string | null; year_system: 'B' | 'C' } | null;
   branch: { id: string; code: string; name: string; tax_branch_no: string } | null;
   branches: Array<{ id: string; code: string; name: string; tax_branch_no: string; is_head_office: boolean }>;

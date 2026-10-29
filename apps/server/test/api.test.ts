@@ -11,6 +11,7 @@ import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import { API_RULES, REGISTERED_ROUTES, syncMenus } from '../src/modules/permissions.js';
 import { setAiClientFactory } from '../src/modules/ai.js';
+import { base32Decode, stepOf, totpAt } from '../src/modules/security.js';
 
 let database: Database;
 let app: FastifyInstance;
@@ -33,6 +34,8 @@ async function keyCall(key: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE', u
 
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
+  process.env.BUDDY_REQUIRE_ADMIN_2FA = '0';   // ทดสอบบังคับ 2FA แยกในชุด T0.16
+  process.env.BUDDY_SECRET_KEY ??= Buffer.alloc(32, 7).toString('base64');   // ไม่แตะแฟ้มกุญแจจริงใน .data
   const cfg = { ...loadConfig({}), databaseUrl: undefined, dataDir: 'memory://' };
   database = await openDatabase(cfg);
   await migrate(database, cfg.migrationsDir, () => {});
@@ -2958,5 +2961,132 @@ describe('Buddy Account API (PGlite)', () => {
     cookie = platform;
     const all = (await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code);
     expect(all).toEqual(expect.arrayContaining(['A-CO1', 'DEMO', 'OTHER']));
+  });
+});
+
+describe('ความปลอดภัยการเข้าระบบ (T0.16)', () => {
+  const login = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };
+  let admin = '', demo = '', lockId = '';
+  const secRow = (id: string) => database.db.selectFrom('sys_user_security').selectAll().where('user_id', '=', id).executeTakeFirst();
+
+  it('TOTP matches RFC 6238 test vectors', () => {
+    const k = Buffer.from('12345678901234567890');
+    expect(totpAt(k, stepOf(59_000), 8)).toBe('94287082');
+    expect(totpAt(k, stepOf(1_111_111_109_000), 8)).toBe('07081804');
+    expect(totpAt(k, stepOf(59_000))).toBe('287082');
+  });
+
+  it('enforces the password policy', async () => {
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    admin = cookie;
+    demo = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    const weak = await call('POST', '/api/v1/users', { username: 'sec.weak', display_name: 'อ่อน', password: 'abcdefgh', companies: [demo] });
+    expect(weak.status).toBe(400); expect(JSON.stringify(weak.body)).toMatch(/ตัวอักษรและตัวเลข/);
+    expect((await call('POST', '/api/v1/users', { username: 'sec.weak', display_name: 'อ่อน', password: 'ab1', companies: [demo] })).status).toBe(400);
+    expect((await call('POST', '/api/v1/auth/password', { old_password: 'secret123', new_password: '12345678' })).status).toBe(400);
+    expect((await call('POST', '/api/v1/auth/password', { old_password: 'secret123', new_password: 'secret123' })).body.error.message).toMatch(/ไม่ซ้ำกับรหัสเดิม/);
+    const r = await call('POST', '/api/v1/users', { username: 'sec.lock', display_name: 'ทดสอบล็อก', password: 'lockMe123', companies: [demo] });
+    expect(r.status).toBe(200); lockId = r.body.id;
+    expect((await secRow(lockId))?.password_changed_at).toBeTruthy();
+  });
+
+  it('locks the account for 15 minutes after 5 wrong passwords; admin or time unlocks', async () => {
+    for (let i = 0; i < 4; i++) expect((await login('sec.lock', 'wrongPass1')).status).toBe(401);
+    const r5 = await login('sec.lock', 'wrongPass1');
+    expect(r5.status).toBe(423); expect(r5.body.error.code).toBe('ACCOUNT_LOCKED'); expect(r5.body.error.message).toMatch(/ผู้ดูแลระบบปลดล็อก/);
+    expect((await login('sec.lock', 'lockMe123')).status).toBe(423);   // รหัสถูกก็เข้าไม่ได้ระหว่างล็อก
+    const until = new Date((await secRow(lockId))!.locked_until!).getTime();
+    expect(until - Date.now()).toBeGreaterThan(14 * 60_000); expect(until - Date.now()).toBeLessThanOrEqual(15 * 60_000);
+    expect((await database.db.selectFrom('sys_activity_log').select('action').where('action', '=', 'LOGIN_LOCKED').where('user_id', '=', lockId).execute()).length).toBe(1);
+    cookie = admin;
+    expect((await call('GET', '/api/v1/users')).body.users.find((u: { id: string }) => u.id === lockId).locked_until).toBeTruthy();
+    expect((await call('POST', `/api/v1/users/${lockId}/unlock`)).status).toBe(200);
+    expect((await call('GET', '/api/v1/users')).body.users.find((u: { id: string }) => u.id === lockId).locked_until).toBeNull();
+    expect((await login('sec.lock', 'lockMe123')).status).toBe(200);
+    // ผิด 4 แล้วถูก = เริ่มนับใหม่
+    for (let i = 0; i < 4; i++) await login('sec.lock', 'wrongPass1');
+    expect((await login('sec.lock', 'lockMe123')).status).toBe(200);
+    expect((await login('sec.lock', 'wrongPass1')).status).toBe(401);
+    // ล็อกครบเวลาแล้วเข้าได้เอง
+    for (let i = 0; i < 4; i++) await login('sec.lock', 'wrongPass1');
+    expect((await login('sec.lock', 'lockMe123')).status).toBe(423);
+    await database.db.updateTable('sys_user_security').set({ locked_until: new Date(Date.now() - 60_000).toISOString() }).where('user_id', '=', lockId).execute();
+    expect((await login('sec.lock', 'lockMe123')).status).toBe(200);
+    // ผู้ใช้ทั่วไปปลดล็อกคนอื่นไม่ได้
+    expect((await call('POST', `/api/v1/users/${lockId}/unlock`)).status).toBe(403);
+  });
+
+  it('two-factor login: enroll, second step, replay rejected, recovery codes used once', async () => {
+    expect((await login('sec.lock', 'lockMe123')).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/2fa')).body).toEqual({ enabled: false, required: false, recovery_left: 0 });
+    const s = (await call('POST', '/api/v1/auth/2fa/setup')).body;
+    expect(s.otpauth).toMatch(/^otpauth:\/\/totp\/Buddy/); expect(s.secret).toMatch(/^[A-Z2-7]{32}$/);
+    expect((await secRow(lockId))?.totp_secret_enc).not.toContain(s.secret);   // เก็บแบบเข้ารหัส
+    const key = base32Decode(s.secret);
+    const now = stepOf();
+    expect((await call('POST', '/api/v1/auth/2fa/enable', { code: 'abc' })).status).toBe(400);
+    const en = await call('POST', '/api/v1/auth/2fa/enable', { code: totpAt(key, now) });
+    expect(en.status).toBe(200); expect(en.body.recovery_codes).toHaveLength(10);
+    expect((await call('POST', '/api/v1/auth/2fa/setup')).status).toBe(400);   // เปิดอยู่แล้ว
+    // รหัสผ่านถูก → ยังไม่ได้ session ต้องผ่านขั้นที่ 2
+    const r = await login('sec.lock', 'lockMe123');
+    expect(r.body).toEqual({ need_totp: true, ticket: expect.any(String) }); expect(cookie).toBe('');
+    expect((await call('GET', '/api/v1/auth/me')).status).toBe(401);
+    expect((await call('POST', '/api/v1/auth/login/totp', { ticket: r.body.ticket, code: totpAt(key, now) })).status).toBe(401);   // รหัสเดิมใช้ซ้ำไม่ได้
+    expect((await call('POST', '/api/v1/auth/login/totp', { ticket: 'x'.repeat(20), code: totpAt(key, now + 1) })).body.error.code).toBe('MFA_EXPIRED');
+    expect((await call('POST', '/api/v1/auth/login/totp', { ticket: r.body.ticket, code: totpAt(key, now + 1) })).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.user.username).toBe('sec.lock');
+    expect((await call('POST', '/api/v1/auth/login/totp', { ticket: r.body.ticket, code: totpAt(key, now + 1) })).status).toBe(401);   // ตั๋วใช้ได้ครั้งเดียว
+    // รหัสสำรอง: ใช้ได้ครั้งเดียว (ไม่สนตัวพิมพ์/ขีด)
+    const rc = en.body.recovery_codes[0] as string;
+    const t2 = (await login('sec.lock', 'lockMe123')).body.ticket;
+    expect((await call('POST', '/api/v1/auth/login/totp', { ticket: t2, code: rc.toUpperCase().replace('-', ' ') })).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/2fa')).body).toMatchObject({ enabled: true, recovery_left: 9 });
+    const t3 = (await login('sec.lock', 'lockMe123')).body.ticket;
+    expect((await call('POST', '/api/v1/auth/login/totp', { ticket: t3, code: rc })).status).toBe(401);
+    // รหัสผ่านถูกไม่ล้างตัวนับ — ผิดขั้นที่ 2 สะสมจนล็อก
+    for (let i = 0; i < 3; i++) await call('POST', '/api/v1/auth/login/totp', { ticket: t3, code: '000001' });
+    const t4 = (await login('sec.lock', 'lockMe123')).body.ticket;
+    expect((await call('POST', '/api/v1/auth/login/totp', { ticket: t4, code: '000002' })).status).toBe(423);
+    await database.db.updateTable('sys_user_security').set({ locked_until: null }).where('user_id', '=', lockId).execute();
+    // สร้างรหัสสำรองใหม่ / ปิด ต้องยืนยันรหัสผ่าน
+    const t5 = (await login('sec.lock', 'lockMe123')).body.ticket;
+    expect((await call('POST', '/api/v1/auth/login/totp', { ticket: t5, code: en.body.recovery_codes[1] })).status).toBe(200);
+    expect((await call('POST', '/api/v1/auth/2fa/recovery', { password: 'nope1234' })).status).toBe(400);
+    const nr = await call('POST', '/api/v1/auth/2fa/recovery', { password: 'lockMe123' });
+    expect(nr.body.recovery_codes).toHaveLength(10); expect(nr.body.recovery_codes).not.toContain(en.body.recovery_codes[2]);
+    expect((await call('POST', '/api/v1/auth/2fa/disable', { password: 'lockMe123' })).status).toBe(200);
+    expect((await login('sec.lock', 'lockMe123')).body).toEqual({ ok: true });
+    const acts = (await database.db.selectFrom('sys_activity_log').select('action').where('user_id', '=', lockId).execute()).map((x) => x.action);
+    expect(acts).toEqual(expect.arrayContaining(['MFA_ENABLE', 'MFA_RECOVERY_USED', 'MFA_RECOVERY_NEW', 'MFA_DISABLE']));
+  });
+
+  it('admins must set up two-factor before using anything else; admins reset only their own tenant', async () => {
+    process.env.BUDDY_REQUIRE_ADMIN_2FA = '1';
+    try {
+      expect((await login('b.admin', 'passB1234')).status).toBe(200);
+      expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(true);
+      const blocked = await call('GET', '/api/v1/users');
+      expect(blocked.status).toBe(403); expect(blocked.body.error.code).toBe('MFA_SETUP_REQUIRED');
+      expect((await call('GET', '/api/v1/auth/2fa')).body.required).toBe(true);
+      const key = base32Decode((await call('POST', '/api/v1/auth/2fa/setup')).body.secret);
+      expect((await call('POST', '/api/v1/auth/2fa/enable', { code: totpAt(key, stepOf()) })).status).toBe(200);
+      expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(false);
+      expect((await call('GET', '/api/v1/users')).status).toBe(200);
+      // ผู้ดูแลของลูกค้า B แตะผู้ใช้ของผู้ให้บริการไม่ได้
+      expect((await call('POST', `/api/v1/users/${lockId}/unlock`)).status).toBe(404);
+      expect((await call('POST', `/api/v1/users/${lockId}/reset-2fa`)).status).toBe(404);
+      const bId = (await call('GET', '/api/v1/auth/me')).body.user.id;
+      expect((await call('POST', `/api/v1/users/${bId}/reset-2fa`)).status).toBe(400);   // ล้างของตัวเองไม่ได้
+      const bCookie = cookie;
+      cookie = admin;
+      // ผู้ดูแลของผู้ให้บริการเองก็ต้องตั้งก่อน
+      expect((await call('POST', `/api/v1/users/${bId}/reset-2fa`)).body.error.code).toBe('MFA_SETUP_REQUIRED');
+      // ผู้ให้บริการล้าง 2FA ให้ (มือถือหาย) → session เดิมหมด
+      process.env.BUDDY_REQUIRE_ADMIN_2FA = '0';
+      expect((await call('POST', `/api/v1/users/${bId}/reset-2fa`)).status).toBe(200);
+      cookie = bCookie; expect((await call('GET', '/api/v1/auth/me')).status).toBe(401);
+      expect((await login('b.admin', 'passB1234')).body).toEqual({ ok: true });
+    } finally { process.env.BUDDY_REQUIRE_ADMIN_2FA = '0'; }
   });
 });

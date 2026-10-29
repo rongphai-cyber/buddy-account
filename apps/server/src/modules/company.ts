@@ -1,3 +1,4 @@
+import { passwordProblem } from '@buddy/core';
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
@@ -8,6 +9,7 @@ import { AppError, badRequest, forbidden, notFound, parse, requireAuth, requireC
 import { canAccessCompany, companiesForUser } from './auth.js';
 import { copyCompanyData } from '../company-copy.js';
 import { logActivity } from '../audit.js';
+import { markPasswordChanged, setSec } from './security.js';
 import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, setSetting } from '../company-template.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
@@ -158,12 +160,14 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     let gq = db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id']).where('deleted_at', 'is', null);
     if (!a.isPlatform) { uq = uq.where('u.tenant_id', '=', a.tenantId!); gq = gq.where('tenant_id', '=', a.tenantId!); }
     const users = await uq.orderBy('u.username').execute();
+    // ยืนยันตัวตนสองขั้น / ล็อก (T0.16)
+    const secs = users.length ? await db.selectFrom('sys_user_security').select(['user_id', 'totp_enabled', 'locked_until']).where('user_id', 'in', users.map((u) => u.id)).where('deleted_at', 'is', null).execute() : [];
     const links = users.length ? await db.selectFrom('sys_user_company').select(['user_id', 'company_id']).where('user_id', 'in', users.map((u) => u.id)).where('deleted_at', 'is', null).execute() : [];
-    return { users: users.map((u) => ({ ...u, companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id) })), groups: await gq.orderBy('code').execute() };
+    return { users: users.map((u) => { const sc = secs.find((x) => x.user_id === u.id); return { ...u, companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id), mfa_enabled: !!sc?.totp_enabled, locked_until: sc?.locked_until && new Date(sc.locked_until).getTime() > Date.now() ? sc.locked_until : null }; }), groups: await gq.orderBy('code').execute() };
   });
   const userBody = z.object({
     username: z.string().trim().min(1, 'ป้อนรหัสผู้ใช้').max(30).regex(/^[A-Za-z0-9_.@-]+$/, 'รหัสผู้ใช้ใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข _ . @ -'),
-    display_name: z.string().trim().min(1, 'ป้อนชื่อผู้ใช้').max(120), password: z.string().min(8, 'รหัสผ่านอย่างน้อย 8 ตัวอักษร').optional(),
+    display_name: z.string().trim().min(1, 'ป้อนชื่อผู้ใช้').max(120), password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })).optional(),
     user_group_id: uuid.nullable().optional(), approval_level: z.coerce.number().int().min(0).max(9).default(0), check_rights: z.boolean().default(false), status: z.enum(['A', 'I']).default('A'),
     companies: z.array(uuid).default([]), tenant_id: uuid.nullable().optional(),
   });
@@ -194,6 +198,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     return db.transaction().execute(async (tx) => {
       const u = await tx.insertInto('sys_user').values({ tenant_id: tenantId, username: b.username, display_name: b.display_name, password_hash: await bcrypt.hash(b.password!, 10), user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, status: b.status, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
       for (const c of b.companies) await tx.insertInto('sys_user_company').values({ company_id: c, user_id: u.id, created_by: a.userId }).execute();
+      await markPasswordChanged(tx, u.id);
       await logActivity(tx, a, { module: 'SYS', action: 'ADD_USER', table: 'sys_user', rowId: u.id, detail: { username: b.username, tenant_id: tenantId } });
       return u;
     });
@@ -210,6 +215,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       const patch: Record<string, unknown> = { username: b.username, display_name: b.display_name, user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, status: b.status, updated_by: a.userId };
       if (b.password) patch.password_hash = await bcrypt.hash(b.password, 10);
       await tx.updateTable('sys_user').set(patch).where('id', '=', id).execute();
+      if (b.password) await setSec(tx, id, { password_changed_at: new Date().toISOString(), failed_logins: 0, locked_until: null }); // ตั้งรหัสใหม่ = ปลดล็อกด้วย
       await tx.deleteFrom('sys_user_company').where('user_id', '=', id).execute();
       for (const c of b.companies) await tx.insertInto('sys_user_company').values({ company_id: c, user_id: id, created_by: a.userId }).execute();
       if (b.status === 'I' || b.password) await tx.updateTable('sys_session').set({ ended_at: sql`now()` as never }).where('user_id', '=', id).where('ended_at', 'is', null).where('id', '<>', a.sessionId).execute();
@@ -243,7 +249,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   /** สร้างลูกค้าใหม่ + กลุ่ม ADMIN ของลูกค้า + ผู้ดูแลคนแรกของลูกค้า */
   app.post('/api/v1/tenants', async (req) => {
     const a = requirePlatform(req);
-    const b = parse(tenantBody.extend({ admin_username: userBody.shape.username, admin_name: userBody.shape.display_name, admin_password: z.string().min(8, 'รหัสผ่านอย่างน้อย 8 ตัวอักษร') }), req.body);
+    const b = parse(tenantBody.extend({ admin_username: userBody.shape.username, admin_name: userBody.shape.display_name, admin_password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })) }), req.body);
     return db.transaction().execute(async (tx) => {
       const t = await tx.insertInto('sys_tenant').values({ code: b.code, name: b.name, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, plan: b.plan, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, status: b.status, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
       const g = await tx.insertInto('sys_user_group').values({ tenant_id: t.id, code: 'ADMIN', name: 'ผู้ดูแลระบบของลูกค้า', created_by: a.userId }).returning('id').executeTakeFirstOrThrow();

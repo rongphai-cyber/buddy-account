@@ -178,6 +178,47 @@ COMMENT ON COLUMN sys_user.deleted_at IS 'ลบแบบ soft delete (Express �
 COMMENT ON COLUMN sys_user.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_sys_user_username ON sys_user (username) WHERE deleted_at IS NULL;
 
+-- sys_user_security: ความปลอดภัยการเข้าระบบของผู้ใช้ (T0.16): ยืนยันตัวตนสองขั้น TOTP + ล็อกเมื่อใส่รหัสผ่านผิด — อยู่เฉพาะเซิร์ฟเวอร์ ไม่ซิงก์ลงเครื่องลูก  [Express: (ใหม่)]
+CREATE TABLE sys_user_security (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  user_id uuid NOT NULL,
+  totp_secret_enc text,
+  totp_enabled boolean DEFAULT false NOT NULL,
+  totp_enabled_at timestamptz,
+  totp_last_step bigint,
+  totp_recovery jsonb,
+  failed_logins smallint DEFAULT 0 NOT NULL,
+  locked_until timestamptz,
+  password_changed_at timestamptz,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_user_security IS 'ความปลอดภัยการเข้าระบบของผู้ใช้ (T0.16): ยืนยันตัวตนสองขั้น TOTP + ล็อกเมื่อใส่รหัสผ่านผิด — อยู่เฉพาะเซิร์ฟเวอร์ ไม่ซิงก์ลงเครื่องลูก | Express: (ใหม่)';
+COMMENT ON COLUMN sys_user_security.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_user_security.user_id IS 'ผู้ใช้';
+COMMENT ON COLUMN sys_user_security.totp_secret_enc IS 'กุญแจ TOTP (เข้ารหัส AES-256-GCM ด้วยกุญแจหลักของเครื่องแม่ข่าย)';
+COMMENT ON COLUMN sys_user_security.totp_enabled IS 'เปิดยืนยันตัวตนสองขั้นแล้ว (ยืนยันรหัสจากแอปสำเร็จ)';
+COMMENT ON COLUMN sys_user_security.totp_enabled_at IS 'เปิดยืนยันตัวตนสองขั้นเมื่อ';
+COMMENT ON COLUMN sys_user_security.totp_last_step IS 'ช่วงเวลา (30 วินาที) ของรหัสที่ใช้ล่าสุด — กันใช้รหัสเดิมซ้ำ';
+COMMENT ON COLUMN sys_user_security.totp_recovery IS 'รหัสสำรอง (SHA-256) ใช้ได้ครั้งละหนึ่งรหัสเมื่อไม่มีมือถือ';
+COMMENT ON COLUMN sys_user_security.failed_logins IS 'จำนวนครั้งที่ใส่รหัสผิดติดกัน';
+COMMENT ON COLUMN sys_user_security.locked_until IS 'ล็อกถึงเวลานี้ (ใส่รหัสผิด 5 ครั้ง = 15 นาที)';
+COMMENT ON COLUMN sys_user_security.password_changed_at IS 'เปลี่ยนรหัสผ่านล่าสุด';
+COMMENT ON COLUMN sys_user_security.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN sys_user_security.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN sys_user_security.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN sys_user_security.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN sys_user_security.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN sys_user_security.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN sys_user_security.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_sys_user_security_user ON sys_user_security (user_id) WHERE deleted_at IS NULL;
+
 -- sys_session: การเข้าระบบ (session) ของผู้ใช้ — Buddy Account  [Express: (ใหม่)]
 CREATE TABLE sys_session (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -4013,6 +4054,12 @@ ALTER TABLE sys_user ADD CONSTRAINT fk_sys_user_created_by FOREIGN KEY (created_
 CREATE INDEX IF NOT EXISTS ix_fk_sys_user_created_by ON sys_user (created_by);
 ALTER TABLE sys_user ADD CONSTRAINT fk_sys_user_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_user_updated_by ON sys_user (updated_by);
+ALTER TABLE sys_user_security ADD CONSTRAINT fk_sys_user_security_user_id FOREIGN KEY (user_id) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_user_security_user_id ON sys_user_security (user_id);
+ALTER TABLE sys_user_security ADD CONSTRAINT fk_sys_user_security_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_user_security_created_by ON sys_user_security (created_by);
+ALTER TABLE sys_user_security ADD CONSTRAINT fk_sys_user_security_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_user_security_updated_by ON sys_user_security (updated_by);
 ALTER TABLE sys_session ADD CONSTRAINT fk_sys_session_user_id FOREIGN KEY (user_id) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_session_user_id ON sys_session (user_id);
 ALTER TABLE sys_session ADD CONSTRAINT fk_sys_session_current_company_id FOREIGN KEY (current_company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
@@ -5020,6 +5067,7 @@ CREATE TRIGGER trg_fa_asset_ver BEFORE UPDATE ON fa_asset FOR EACH ROW EXECUTE F
 CREATE TRIGGER trg_fa_depreciation_ver BEFORE UPDATE ON fa_depreciation FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sync_conflict_ver BEFORE UPDATE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_tenant_ver BEFORE UPDATE ON sys_tenant FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_sys_user_security_ver BEFORE UPDATE ON sys_user_security FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_session_ver BEFORE UPDATE ON sys_session FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_api_key_ver BEFORE UPDATE ON sys_api_key FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_secret_ver BEFORE UPDATE ON sys_secret FOR EACH ROW EXECUTE FUNCTION sys_bump_version();

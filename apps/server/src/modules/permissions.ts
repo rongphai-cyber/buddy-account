@@ -6,6 +6,7 @@ import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
 import { checkApiKeyRule } from './apikeys.js';
+import { checkMfaGate } from './security.js';
 
 /**
  * สิทธิ์ 7 ชนิดรายเมนู — คู่มือบทที่ 23 (S-SEC-01/02/03)
@@ -119,7 +120,9 @@ const NOTE_MENU: Record<string, string> = { item: 'IC.ITEM', customer: 'SA.CUS',
 const MNOTE = (action: Action): Rule => ({ kind: 'menu', menu: 'IC.ITEM', action, pick: async (req) => NOTE_MENU[String((req.params as { entity?: string }).entity)] ?? 'IC.ITEM' });
 const LOOKUP: Rule = { kind: 'lookup' }, SELF: Rule = { kind: 'self' }, OPEN: Rule = { kind: 'open' };
 export const API_RULES: Record<string, Rule> = {
-  'GET /api/v1/health': OPEN, 'GET /api/v1/setup/status': OPEN, 'POST /api/v1/setup': OPEN, 'POST /api/v1/auth/login': OPEN,
+  'GET /api/v1/health': OPEN, 'GET /api/v1/setup/status': OPEN, 'POST /api/v1/setup': OPEN, 'POST /api/v1/auth/login': OPEN, 'POST /api/v1/auth/login/totp': OPEN,
+  'GET /api/v1/auth/2fa': SELF, 'POST /api/v1/auth/2fa/setup': SELF, 'POST /api/v1/auth/2fa/enable': SELF, 'POST /api/v1/auth/2fa/recovery': SELF, 'POST /api/v1/auth/2fa/disable': SELF,
+  'POST /api/v1/users/:id/unlock': SELF, 'POST /api/v1/users/:id/reset-2fa': SELF,
   'GET /api/v1/menu': SELF, 'GET /api/v1/auth/me': SELF, 'POST /api/v1/auth/logout': SELF, 'POST /api/v1/auth/password': SELF, 'POST /api/v1/auth/select': SELF,
   'GET /api/v1/ai/status': LOOKUP, 'GET /api/v1/ai/config': M('SET.AI', 'read'), 'PUT /api/v1/ai/config': M('SET.AI', 'edit'), 'GET /api/v1/ai/usage': M('SET.AI', 'read'),
   'POST /api/v1/ai/read-bill': { kind: 'menu', menu: 'PU.RR', action: 'add', pick: async (req) => AI_BILL_TARGETS.find((k) => k.path === (req.body as { target?: string } | undefined)?.target)?.menu ?? 'PU.RR' },
@@ -303,6 +306,7 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     const method = req.method === 'HEAD' ? 'GET' : req.method;
     const rule = API_RULES[`${method} ${url}`];
     if (!rule) throw forbidden('API นี้ยังไม่ได้กำหนดสิทธิ์ — แจ้งผู้พัฒนาโปรแกรม');
+    checkMfaGate(req, method, url);
     if (rule.kind === 'open') return;
     if (rule.kind === 'self') { if (req.auth) checkApiKeyRule(req.auth, method, url, 'self', null); return; }
     const a = requireCompany(req);

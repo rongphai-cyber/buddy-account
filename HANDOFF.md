@@ -177,11 +177,14 @@
 - ✅ T7.7 AI อ่านบิล: `core/ai-bill.ts` (ราคา/aiCost, BILL_SCHEMA anyOf-null, normalizeBill, AI_BILL_TARGETS) · `modules/ai.ts` (SDK `@anthropic-ai/sdk` 0.133.0 — เจ้าของอนุญาตดาวน์โหลด; beta.messages.parse + fallbacks 'default'; ข้อผิดพลาดหลังเรียกใช้ reply.code().send ไม่ throw เพื่อให้ usage ไม่ถูก rollback) · `secret.ts` AES-256-GCM (BUDDY_SECRET_KEY/FILE; launcher ตั้งไฟล์ในโฟลเดอร์ข้อมูล) · migration 0028 · SET.AI อยู่ใน SECURITY + API_KEY_BLOCKED · sys_secret ไม่อยู่ใน backup · ทดสอบ UI ด้วย route mock (ไม่บันทึกบน DEMO) · ห้ามคัดลอกกุญแจจาก WTS-ERP — เจ้าของใส่เอง
   - T7.7 เพิ่ม: checkSupplier (match/name_mismatch/branch_mismatch/tax_mismatch/no_tax/new + checksum) · บิลซ้ำตาม ref_no · suggestLines: ประวัติ RR/HP/OE 3 ปี (textSim bigram) + แฟ้มรหัส + Claude ครั้งที่ 2 (SUGGEST_SCHEMA, effort low, ตัดรหัสที่ไม่มีจริง) · ตั้งค่า ai.business_type / ai.guidance · month_count นับเฉพาะ purpose BILL
 - เมนู (คำขอเจ้าของ 29/10/2569): ธนาคาร (FI.BK) และ ภาษี (TX: FI.VAT + TX.WHT) เป็นเมนูหลัก · ยกเลิกปุ่มลัด Alt+ตัวเลขของเมนูหลัก (เมนูเกิน 10 กลุ่มใช้ไม่ได้) → ไอคอนแทนตัวเลข + ค้นหาเมนู Ctrl+K (`components/MenuSearch.tsx`) · Alt+H หน้าแรกยังอยู่ · syncMenus คัดลอกสิทธิ์กลุ่มเดิมเมื่อย้ายเมนู
+- ✅ T0.16 ความปลอดภัยการเข้าระบบ (เจ้าของเลือก 29/10/2569: 2FA บังคับเฉพาะผู้ดูแล · ผิด 5 ครั้งล็อก 15 นาที · ไม่บังคับเปลี่ยนรหัสตามรอบ): `modules/security.ts` (TOTP HMAC-SHA1 6 หลัก ±1 ช่วง ไม่ยอมช่วงที่ใช้แล้ว · ตั๋วขั้นที่ 2 ในหน่วยความจำ 5 นาที · รหัสสำรอง sha256 · registerFail/lockedError 423 · checkMfaGate 403 MFA_SETUP_REQUIRED อนุญาตเฉพาะ MFA_SETUP_ALLOWED) · `sys_user_security` migration 0029 ไม่มี RLS (เหมือน sys_session) · core `password.ts` passwordProblem/PASSWORD_RULE · login: รหัสถูก + เปิด 2FA → `{need_totp, ticket}` → POST /auth/login/totp · รหัสผ่านถูกไม่ล้างตัวนับถ้าเปิด 2FA (ล้างเมื่อผ่านขั้นที่ 2) · ผู้ดูแลตั้งรหัสใหม่ให้ = ปลดล็อกด้วย · หน้าจอ `pages/settings/TwoFactor.tsx` (MfaRequiredPage เต็มจอ, TwoFactorCard ในหน้า /account/password — คลิกชื่อผู้ใช้มุมขวาบน) · หน้าผู้ใช้: คอลัมน์ยืนยันสองขั้น + ปุ่มปลดล็อก/ล้าง 2FA · CLI `unlock <user>` / `reset-2fa <user>` (ต้องปิด server ก่อนถ้าใช้ PGlite) · ยังไม่มี QR code (ต้องดาวน์โหลด package — ถามเจ้าของก่อน) ใช้พิมพ์กุญแจ/ลิงก์ otpauth แทน
+  - ทดสอบอัตโนมัติ (smoke/สคริปต์ Playwright บน DEMO) ต้องเปิด server ด้วย `BUDDY_REQUIRE_ADMIN_2FA=0` ไม่งั้นติดหน้าตั้งค่า 2FA · launcher ของเจ้าของบังคับเปิดอยู่
+  - กับดัก: TaskStop ของ `pnpm ... start` ไม่ปิด node ลูก — ปิดตามพอร์ต (Get-NetTCPConnection → Stop-Process) ก่อนเปิดใหม่ / ก่อนรัน CLI บนข้อมูล PGlite เดียวกัน
   - กับดัก: heredoc + python ทำ '
 ' ใน TS กลายเป็นขึ้นบรรทัดจริง — เขียนสคริปต์ patch ด้วย Write แทน · แก้ WHT ต้องไม่เขียน header_id ทับตอนแก้ไข
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
-1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ
+1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.12 นำเข้า Express ผ่านหน้าจอ · T0.17 PDPA · T0.18 ฐานข้อมูลแยกต่อลูกค้า
 2. หรือ P2: **T2.1** ค่าเริ่มต้นทุกระบบ → T2.2 … T2.5 (แล้วทำ T1.17 ตารางข้อมูลพร้อมกัน)
 - ไฟล์ของเจ้าของ `docs/50ทวิ.pdf` (ใช้ทำแบบ 50 ทวิ) และ `docs/ChartOfAccount_with_English.xlsx` (ใช้ทำผังบัญชีไทย–อังกฤษ) — ใช้แล้ว ห้าม commit
 - ข้อสันนิษฐานที่รอยืนยัน: ฐานของคอลัมน์ "% ของยอดขาย" (PCENTn) = บรรทัดแรกที่มียอด
@@ -199,7 +202,7 @@
 - รหัสผ่าน admin อยู่ใน `.data/ข้อมูลเข้าระบบ-ผู้ดูแล.txt` (อ่านด้วยสคริปต์ ห้ามแสดง)
 - ชุดทดสอบก่อนส่งงาน (CLAUDE.md ข้อ 14–15):
   - `pnpm test` (core 9 + API 20 + schema) · `pnpm typecheck` · `pnpm --filter @buddy/web build`
-  - smoke: `PASS=<จากไฟล์> BASE=http://localhost:4100 OUT=<scratchpad>/shots node apps/web/e2e/smoke.cjs` (20 ขั้น)
+  - smoke: `PASS=<จากไฟล์> BASE=http://localhost:4100 OUT=<scratchpad>/shots node apps/web/e2e/smoke.cjs` (20 ขั้น) — server ต้องเปิดด้วย `BUDDY_REQUIRE_ADMIN_2FA=0` (T0.16)
   - เทียบรายงานกับ Express: `tools/express-import/compare_reports.py` (ดู T5.9) ต้องตรง 183/183
   - ยอดเงิน: งบทดลอง DEMO ปี 2569 คงเหลือต้องเป็น **245,718,317.16** ทั้งสองด้าน (ปี 2568 คงเหลือ 181,398,941.31)
 - ทดลองหน้าจอที่ "บันทึก" ข้อมูล: ใช้ server ทดสอบแยก (PGlite, `BUDDY_DATA_DIR=<scratchpad>/buddy-testN PORT=4101` (สร้างใหม่ได้ด้วย cli create-admin), admin/buddy1234) อย่าเขียนข้อมูลลง DEMO

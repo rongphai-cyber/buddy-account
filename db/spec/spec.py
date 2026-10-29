@@ -107,6 +107,18 @@ add(T('sys_user', 'ผู้ใช้งาน', 'sys', express='SCUSER (ไฟ�
   C('last_login_at', 'ts', th='เข้าระบบครั้งล่าสุด'),
 ], uniq=[('username',)]))
 
+add(T('sys_user_security', 'ความปลอดภัยการเข้าระบบของผู้ใช้ (T0.16): ยืนยันตัวตนสองขั้น TOTP + ล็อกเมื่อใส่รหัสผ่านผิด — อยู่เฉพาะเซิร์ฟเวอร์ ไม่ซิงก์ลงเครื่องลูก', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
+  lk('user_id', 'sys_user', 'ผู้ใช้', nn=True),
+  C('totp_secret_enc', 'text', th='กุญแจ TOTP (เข้ารหัส AES-256-GCM ด้วยกุญแจหลักของเครื่องแม่ข่าย)'),
+  C('totp_enabled', 'bool', nn=True, d='false', th='เปิดยืนยันตัวตนสองขั้นแล้ว (ยืนยันรหัสจากแอปสำเร็จ)'),
+  C('totp_enabled_at', 'ts', th='เปิดยืนยันตัวตนสองขั้นเมื่อ'),
+  C('totp_last_step', 'bigint', th='ช่วงเวลา (30 วินาที) ของรหัสที่ใช้ล่าสุด — กันใช้รหัสเดิมซ้ำ'),
+  C('totp_recovery', 'json', th='รหัสสำรอง (SHA-256) ใช้ได้ครั้งละหนึ่งรหัสเมื่อไม่มีมือถือ'),
+  C('failed_logins', 'smallint', nn=True, d='0', th='จำนวนครั้งที่ใส่รหัสผิดติดกัน'),
+  C('locked_until', 'ts', th='ล็อกถึงเวลานี้ (ใส่รหัสผิด 5 ครั้ง = 15 นาที)'),
+  C('password_changed_at', 'ts', th='เปลี่ยนรหัสผ่านล่าสุด'),
+], uniq=[('user_id',)]))
+
 add(T('sys_session', 'การเข้าระบบ (session) ของผู้ใช้ — Buddy Account', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
   lk('user_id', 'sys_user', 'ผู้ใช้', nn=True),
   C('token_hash', 'str100', nn=True, th='SHA-256 ของ token ใน cookie (ไม่เก็บ token จริง)'),

@@ -25,6 +25,7 @@ import { BranchesPage } from './pages/settings/Branches';
 import { UsersPage } from './pages/settings/Users';
 import { NewCompanyPage } from './pages/settings/NewCompany';
 import { PasswordPage } from './pages/settings/Password';
+import { MfaRequiredPage } from './pages/settings/TwoFactor';
 import { ImportPage } from './pages/settings/Import';
 import { TenantsPage } from './pages/settings/Tenants';
 import { TrialBalancePage } from './pages/reports/TrialBalance';
@@ -78,6 +79,7 @@ export function App() {
   if (loading) return <div className="boot">กำลังเปิด Buddy Account…</div>;
   if (needsSetup) return <><SetupPage /><Toasts /></>;
   if (!me) return <><LoginPage /><Toasts /></>;
+  if (me.user.mfa_setup_required) return <><MfaRequiredPage /><Toasts /></>;
   return <><Shell /><AuxTools /><Toasts /></>;
 }
 
@@ -120,7 +122,7 @@ function Shell() {
             </select>
           )}
           <button className="period" onClick={() => setWorkDateOpen(true)} title="เปลี่ยนวันทำการ">วันทำการ {formatDate(me.work_date ?? new Date().toISOString().slice(0, 10), ys)}</button>
-          <span className="user" title={me.user.username}>{me.user.display_name}</span>
+          <button className="user link" title={`${me.user.username} — รหัสผ่านและยืนยันตัวตนสองขั้น`} onClick={() => nav('/account/password')}>{me.user.display_name}</button>
           <button onClick={() => logout()} title="ออกจากระบบ">ออก</button>
         </div>
       </header>

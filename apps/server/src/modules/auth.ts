@@ -9,6 +9,8 @@ import { AppError, badRequest, parse, requireAuth, unauthorized, type AuthContex
 import { logActivity } from '../audit.js';
 import type { Config } from '../config.js';
 import { loadApiKey } from './apikeys.js';
+import { passwordProblem } from '@buddy/core';
+import { adminMfaRequired, clearFails, finishSecondStep, lockedError, lockedUntil, markPasswordChanged, registerFail, secOf, startSecondStep } from './security.js';
 
 export const SESSION_COOKIE = 'buddy_session';
 const ADMIN_GROUP = 'ADMIN';
@@ -21,7 +23,8 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     .innerJoin('sys_user as u', 'u.id', 's.user_id')
     .leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id')
     .leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
-    .select(['s.id', 's.user_id', 's.current_company_id', 's.current_branch_id', 's.work_date', 'u.username', 'u.display_name', 'u.status', 'u.tenant_id', 'u.approval_level', 'u.check_rights', 'u.user_group_id',
+    .leftJoin('sys_user_security as sec', (j) => j.onRef('sec.user_id', '=', 'u.id').on('sec.deleted_at', 'is', null))
+    .select(['sec.totp_enabled', 's.id', 's.user_id', 's.current_company_id', 's.current_branch_id', 's.work_date', 'u.username', 'u.display_name', 'u.status', 'u.tenant_id', 'u.approval_level', 'u.check_rights', 'u.user_group_id',
       'g.code as group_code', 'g.tenant_id as group_tenant_id', 't.status as tenant_status', 't.expires_on as tenant_expires'])
     .where('s.token_hash', '=', sha(token))
     .where('s.ended_at', 'is', null)
@@ -37,6 +40,7 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     tenantId: row.tenant_id, isAdmin, isPlatform: isAdmin && !row.tenant_id,
     companyId: row.current_company_id, branchId: row.current_branch_id, workDate: row.work_date,
     approvalLevel: row.approval_level, checkRights: row.check_rights, groupId: row.user_group_id,
+    mfaSetupRequired: isAdmin && !row.totp_enabled && adminMfaRequired(),
   };
   // บริษัทที่ค้างใน session ต้องยังเข้าได้ (เช่น ถูกถอนสิทธิ์ หรือเป็นของ tenant อื่น)
   if (a.companyId && !(await canAccessCompany(db, a, a.companyId))) { a.companyId = null; a.branchId = null; }
@@ -94,7 +98,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const body = parse(z.object({
       username: z.string().trim().min(1, 'ป้อนรหัสผู้ใช้').max(30).regex(/^[A-Za-z0-9_.-]+$/, 'รหัสผู้ใช้ใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข _ . -'),
       display_name: z.string().trim().min(1, 'ป้อนชื่อผู้ใช้').max(120),
-      password: z.string().min(8, 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร').max(200),
+      password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })),
     }), req.body);
     const token = await db.transaction().execute(async (tx) => {
       const n = await tx.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).executeTakeFirstOrThrow();
@@ -117,15 +121,38 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const body = parse(z.object({ username: z.string().trim().min(1, 'ป้อนรหัสผู้ใช้'), password: z.string().min(1, 'ป้อนรหัสผ่าน'), work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }), req.body);
     const u = await db.selectFrom('sys_user as u').leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
       .select(['u.id', 'u.password_hash', 'u.status', 'u.tenant_id', 't.status as tenant_status', 't.expires_on']).where(sql`lower(u.username)`, '=', body.username.toLowerCase()).where('u.deleted_at', 'is', null).executeTakeFirst();
+    const sec = u ? await secOf(db, u.id) : undefined;
+    const until = lockedUntil(sec);
+    if (u && until) {
+      await logActivity(db, { companyId: null, userId: u.id }, { module: 'SYS', action: 'LOGIN_FAIL', detail: { username: body.username, ip: req.ip, locked: true } });
+      throw lockedError(until);
+    }
     const ok = u && u.status === 'A' && u.password_hash && (await bcrypt.compare(body.password, u.password_hash));
     if (!u || !ok) {
       await logActivity(db, { companyId: null, userId: u?.id ?? null }, { module: 'SYS', action: 'LOGIN_FAIL', detail: { username: body.username, ip: req.ip } });
-      throw new AppError(401, 'LOGIN_FAILED', 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+      const locked = u ? await registerFail(db, u.id, req.ip) : null;
+      if (locked) throw lockedError(locked);
+      throw new AppError(401, 'LOGIN_FAILED', 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง (ใส่ผิด 5 ครั้งติดกัน บัญชีจะถูกล็อก 15 นาที)');
     }
+    // เปิด 2FA: ล้างตัวนับเมื่อผ่านขั้นที่ 2 เท่านั้น (กันเดารหัสจากแอปโดยใส่รหัสผ่านถูกสลับไปเรื่อย ๆ)
+    if (!sec?.totp_enabled) await clearFails(db, u.id);
     if (u.tenant_id && !tenantActive(u.tenant_status, u.expires_on)) throw new AppError(403, 'TENANT_SUSPENDED', 'บัญชีผู้ใช้บริการนี้ถูกระงับหรือหมดอายุ กรุณาติดต่อผู้ให้บริการ');
+    // เปิดยืนยันตัวตนสองขั้น: ยังไม่ออก session — ต้องใส่รหัสจากแอปก่อน (ภายใน 5 นาที)
+    if (sec?.totp_enabled) return { need_totp: true, ticket: startSecondStep(u.id, body.work_date) };
     const token = await newSession(db, cfg, u.id, req, body.work_date);
     await db.updateTable('sys_user').set({ last_login_at: sql`now()` }).where('id', '=', u.id).execute();
     await logActivity(db, { companyId: null, userId: u.id }, { module: 'SYS', action: 'LOGIN', detail: { ip: req.ip } });
+    reply.setCookie(SESSION_COOKIE, token, cookieOpts);
+    return { ok: true };
+  });
+
+  /** ขั้นที่ 2: รหัส 6 หลักจากแอป หรือรหัสสำรอง */
+  app.post('/api/v1/auth/login/totp', async (req, reply) => {
+    const b = parse(z.object({ ticket: z.string().min(10).max(100), code: z.string().trim().min(1, 'ป้อนรหัสจากแอป').max(20) }), req.body);
+    const r = await finishSecondStep(db, b.ticket, b.code, req.ip);
+    const token = await newSession(db, cfg, r.userId, req, r.workDate);
+    await db.updateTable('sys_user').set({ last_login_at: sql`now()` }).where('id', '=', r.userId).execute();
+    await logActivity(db, { companyId: null, userId: r.userId }, { module: 'SYS', action: 'LOGIN', detail: { ip: req.ip, mfa: r.via } });
     reply.setCookie(SESSION_COOKIE, token, cookieOpts);
     return { ok: true };
   });
@@ -153,7 +180,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const branches = company ? await db.selectFrom('sys_branch').select(['id', 'code', 'name', 'tax_branch_no', 'is_head_office']).where('company_id', '=', company.id).where('deleted_at', 'is', null).orderBy('code').execute() : [];
     const branch = branches.find((b) => b.id === branchId) ?? null;
     return {
-      user: { id: a.userId, username: a.username, display_name: a.displayName, is_admin: a.isAdmin, is_platform: a.isPlatform, tenant_id: a.tenantId, approval_level: a.approvalLevel, check_rights: a.checkRights },
+      user: { id: a.userId, username: a.username, display_name: a.displayName, is_admin: a.isAdmin, is_platform: a.isPlatform, tenant_id: a.tenantId, approval_level: a.approvalLevel, check_rights: a.checkRights, mfa_setup_required: !!a.mfaSetupRequired },
       company, branch, branches, companies, work_date: a.workDate,
       // สิทธิ์รายเมนูของบริษัทนี้ — หน้าจอใช้ซ่อนเมนู/ปุ่ม (ด่านจริงอยู่ที่ API)
       perms: company ? await permissionMatrix(db, { ...a, companyId: company.id }) : {},
@@ -184,10 +211,13 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
 
   app.post('/api/v1/auth/password', async (req) => {
     const a = requireAuth(req);
-    const body = parse(z.object({ old_password: z.string().min(1, 'ป้อนรหัสผ่านเดิม'), new_password: z.string().min(8, 'รหัสผ่านใหม่ต้องยาวอย่างน้อย 8 ตัวอักษร') }), req.body);
+    const body = parse(z.object({ old_password: z.string().min(1, 'ป้อนรหัสผ่านเดิม'), new_password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })) }), req.body);
     const u = await db.selectFrom('sys_user').select('password_hash').where('id', '=', a.userId).executeTakeFirstOrThrow();
     if (!u.password_hash || !(await bcrypt.compare(body.old_password, u.password_hash))) throw badRequest('รหัสผ่านเดิมไม่ถูกต้อง');
+    if (await bcrypt.compare(body.new_password, u.password_hash)) throw badRequest('รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสเดิม');
+    if (body.new_password.toLowerCase() === a.username.toLowerCase()) throw badRequest('รหัสผ่านต้องไม่เหมือนรหัสผู้ใช้');
     await db.updateTable('sys_user').set({ password_hash: await bcrypt.hash(body.new_password, 10), updated_by: a.userId }).where('id', '=', a.userId).execute();
+    await markPasswordChanged(db, a.userId);
     await logActivity(db, { companyId: a.companyId, userId: a.userId }, { module: 'SYS', action: 'PASSWORD' });
     return { ok: true };
   });
@@ -201,7 +231,7 @@ export function attachAuth(app: FastifyInstance, db: Db) {
     if (authz && /^Bearer\s+bk_/i.test(authz)) { req.auth = await loadApiKey(db, authz, req.ip); return; }
     const token = req.cookies?.[SESSION_COOKIE];
     req.auth = await loadSession(db, token);
-    const open = ['/api/v1/setup', '/api/v1/setup/status', '/api/v1/auth/login', '/api/v1/health'];
+    const open = ['/api/v1/setup', '/api/v1/setup/status', '/api/v1/auth/login', '/api/v1/auth/login/totp', '/api/v1/health'];
     if (!req.auth && !open.some((p) => req.url.split('?')[0] === p)) throw unauthorized();
   });
 }

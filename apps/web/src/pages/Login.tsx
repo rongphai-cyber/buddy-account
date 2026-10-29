@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { api } from '../api';
+import { api, ApiError } from '../api';
 import { useSession } from '../session';
+import { PASSWORD_RULE } from '@buddy/core';
 import { ErrorBox, Field, navKey } from '../ui';
 
 export function LoginPage() {
@@ -8,11 +9,35 @@ export function LoginPage() {
   const [f, setF] = useState({ username: '', password: '' });
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+  const [ticket, setTicket] = useState<string | null>(null); // เปิดยืนยันตัวตนสองขั้น → ขั้นที่ 2
+  const [code, setCode] = useState('');
   const go = async () => {
     setBusy(true); setErr(null);
-    try { await api.post('/api/v1/auth/login', { ...f, work_date: new Date().toISOString().slice(0, 10) }); await refresh(); }
+    try {
+      const r = await api.post<{ need_totp?: boolean; ticket?: string }>('/api/v1/auth/login', { ...f, work_date: new Date().toISOString().slice(0, 10) });
+      if (r.need_totp && r.ticket) { setTicket(r.ticket); setCode(''); return; }
+      await refresh();
+    }
     catch (e) { setErr(e); } finally { setBusy(false); }
   };
+  const go2 = async () => {
+    setBusy(true); setErr(null);
+    try { await api.post('/api/v1/auth/login/totp', { ticket, code }); await refresh(); }
+    catch (e) { setErr(e); if (e instanceof ApiError && (e.code === 'MFA_EXPIRED' || e.status === 423)) setTicket(null); }
+    finally { setBusy(false); }
+  };
+  if (ticket) return (
+    <div className="login" data-tone="home">
+      <form className="login-card" onSubmit={(e) => { e.preventDefault(); go2(); }}>
+        <div className="login-brand"><b>ยืนยันตัวตนขั้นที่ 2</b><span>ป้อนรหัส 6 หลักจากแอปในมือถือ ({f.username})</span></div>
+        <ErrorBox error={err} />
+        <Field label="รหัสจากแอป หรือรหัสสำรอง" req><input autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={11} value={code} onChange={(e) => setCode(e.target.value)} /></Field>
+        <button className="primary" type="submit" disabled={busy || !code.trim()}>{busy ? 'กำลังตรวจ…' : 'ยืนยัน'}</button>
+        <button type="button" className="link" onClick={() => { setTicket(null); setErr(null); }}>กลับไปหน้าเข้าระบบ</button>
+        <p className="hint">มือถือหาย: ใช้รหัสสำรองที่เก็บไว้ (เช่น abcde-12345) หรือให้ผู้ดูแลระบบล้างยืนยันตัวตนสองขั้นให้</p>
+      </form>
+    </div>
+  );
   return (
     <div className="login" data-tone="home">
       <form className="login-card" onKeyDown={navKey} onSubmit={(e) => { e.preventDefault(); go(); }}>
@@ -44,7 +69,7 @@ export function SetupPage() {
         <ErrorBox error={err} />
         <Field label="รหัสผู้ใช้" req><input autoFocus value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>
         <Field label="ชื่อผู้ใช้" req><input value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} /></Field>
-        <Field label="รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)" req><input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
+        <Field label="รหัสผ่าน" hint={PASSWORD_RULE} req><input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
         <Field label="ยืนยันรหัสผ่าน" req><input type="password" value={f.confirm} onChange={(e) => setF({ ...f, confirm: e.target.value })} /></Field>
         <button className="primary" type="submit">สร้างผู้ดูแลระบบ</button>
       </form>
