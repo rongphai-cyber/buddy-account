@@ -2640,6 +2640,52 @@ describe('Buddy Account API (PGlite)', () => {
     expect(docs).toEqual(expect.arrayContaining(['GET /api/v1/customers', 'POST /api/v1/gl/journals', 'GET /api/v1/auth/me']));
     expect(docs.some((d: string) => /\/users|\/api-keys|\/backup|auth\/select/.test(d))).toBe(false);
   });
+  it('e-Tax Invoice XML (T7.6 ETDA ขมธอ. 3-2560): check list, single XML, zip, credit note vs original excl. VAT, cancelled skipped, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const item = (await call('POST', '/api/v1/items', { code: '02-TEST-000091', name_th: 'สินค้า e-Tax', base_unit_id: unit, std_cost: '1' })).body.id;
+    const cus = (await call('POST', '/api/v1/customers', { code: 'ETX1', name: 'บริษัท ผู้ซื้อ จำกัด', tax_id: '0105537095903', tax_branch_no: '1', address_1: '1 ถนนสุขุมวิท', address_2: 'กรุงเทพฯ', zip_code: '10110' })).body.id;
+    const saved = (await sql<{ tax_id: string | null; address_th: string | null }>`SELECT tax_id, address_th FROM sys_company WHERE id = ${companyId}`.execute(database.db)).rows[0]!;
+    await sql`UPDATE sys_company SET tax_id = '0105537095903', address_th = NULL WHERE id = ${companyId}`.execute(database.db);
+    // ราคารวม VAT 7%: 2 × 535 = 1,070 → ฐาน 1,000 VAT 70
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2027-12-05', party_id: cus, price_type: '1', vat_rate: 7, warehouse_id: w1, your_ref: 'PO-77', lines: [{ item_id: item, qty: 2, unit_price: 535 }] })).body;
+    const cn = (await call('POST', '/api/v1/ar-credit-notes', { doc_type_id: await typeOf('CN'), doc_date: '2027-12-06', party_id: cus, ref_header_id: iv.id, price_type: '1', vat_rate: 7, remark: 'ลดราคาตามข้อตกลง', lines: [{ item_id: item, qty: 1, unit_price: 107 }] })).body;
+    const list = async () => (await call('GET', '/api/v1/etax/docs?from=2027-12-01&to=2027-12-31')).body.rows as Array<{ id: string; doc_no: string; type_code: string; purpose_code: string | null; errors: string[] }>;
+    let rows = await list();
+    expect(rows.map((r) => `${r.doc_no}:${r.type_code}`)).toEqual([`${iv.doc_no}:T02`, `${cn.doc_no}:81`]);
+    expect(rows[0]!.errors.some((e) => /ที่อยู่กิจการ/.test(e))).toBe(true);
+    expect((await call('GET', `/api/v1/etax/doc/${iv.id}`)).body.error.message).toMatch(/ที่อยู่กิจการ/);
+    await sql`UPDATE sys_company SET address_th = '99 ถนนพระราม 4 เขตบางรัก กรุงเทพมหานคร 10500' WHERE id = ${companyId}`.execute(database.db);
+    rows = await list();
+    expect(rows.map((r) => r.errors)).toEqual([[], []]);
+    expect(rows[1]!.purpose_code).toBe('CDNG99');
+    const x = (await call('GET', `/api/v1/etax/doc/${iv.id}?iv_type=T04`)).body as string;
+    for (const part of ['<rsm:TaxInvoice_CrossIndustryInvoice', '<ram:TypeCode>T04</ram:TypeCode>', `<ram:ID>${iv.doc_no}</ram:ID>`, 'schemeID="TXID">010553709590300001', '<ram:PostcodeCode>10110',
+      'BasisAmount currencyID="THB">1000.00', 'CalculatedAmount currencyID="THB">70.00', 'GrandTotalAmount currencyID="THB">1070.00', 'ChargeAmount currencyID="THB">500.00', 'NetLineTotalAmount currencyID="THB">1000.00', '<ram:IssuerAssignedID>PO-77'])
+      expect(x, part).toContain(part);
+    const c = (await call('GET', `/api/v1/etax/doc/${cn.id}`)).body as string;
+    for (const part of ['<rsm:DebitCreditNote_CrossIndustryInvoice', '<ram:PurposeCode>CDNG99', '<ram:Purpose>ลดราคาตามข้อตกลง', `<ram:IssuerAssignedID>${iv.doc_no}`, '<ram:ReferenceTypeCode>T02',
+      'OriginalInformationAmount currencyID="THB">1000.00', 'LineTotalAmount currencyID="THB">900.00', 'DifferenceInformationAmount currencyID="THB">100.00', 'TaxTotalAmount currencyID="THB">7.00', 'GrandTotalAmount currencyID="THB">107.00'])
+      expect(c, part).toContain(part);
+    // พิมพ์ใบลดหนี้: มูลค่าไม่รวม VAT แม้ราคารวม VAT
+    expect((await call('GET', `/api/v1/print/doc/${cn.id}`)).body.data.totals.slice(0, 3).map((t: { value: string }) => t.value)).toEqual(['1000.00', '900.00', '100.00']);
+    // zip: แฟ้มละฉบับ + สรุป.csv
+    const z = await app.inject({ method: 'GET', url: '/api/v1/etax/export?from=2027-12-01&to=2027-12-31', headers: { cookie } });
+    expect([z.statusCode, z.headers['content-type'], z.rawPayload.readUInt32LE(0)]).toEqual([200, 'application/zip', 0x04034b50]);
+    const names = z.rawPayload.toString('utf8');
+    expect([names.includes(`T02_${iv.doc_no}.xml`), names.includes(`81_${cn.doc_no}.xml`), names.includes('สรุป.csv')]).toEqual([true, true, true]);
+    // ยกเลิกแล้วไม่ส่งออก · บริษัทอื่นเปิดไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/etax/doc/${iv.id}`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/etax/docs?from=2027-12-01&to=2027-12-31')).body.rows).toEqual([]);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    for (const [path, d] of [['ar-credit-notes', cn], ['sales-invoices', iv]] as const) expect((await call('POST', `/api/v1/${path}/${d.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect(await list()).toEqual([]);
+    expect((await call('GET', '/api/v1/etax/export?from=2027-12-01&to=2027-12-31')).body.error.message).toMatch(/ไม่มีเอกสารขาย/);
+    await sql`UPDATE sys_company SET tax_id = ${saved.tax_id}, address_th = ${saved.address_th} WHERE id = ${companyId}`.execute(database.db);
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

@@ -46,6 +46,7 @@ import { yearEndRoutes } from './modules/gl/yearend.js';
 import { backupRoutes } from './modules/backup.js';
 import { noteRoutes } from './modules/notes.js';
 import { apiKeyRoutes } from './modules/apikeys.js';
+import { etaxRoutes } from './modules/etax.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
@@ -113,6 +114,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   backupRoutes(app, db);
   noteRoutes(app, db);
   apiKeyRoutes(app, db);
+  etaxRoutes(app, db);
   inventoryAccountRoutes(app, db);
   reportRoutes(app, db);
 

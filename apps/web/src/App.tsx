@@ -42,6 +42,7 @@ import { AssetAccountGroupsPage, AssetFormPage, AssetsPage, DepreciationPage } f
 import { YearEndPage } from './pages/gl/YearEnd';
 import { BackupPage } from './pages/settings/Backup';
 import { ApiKeysPage } from './pages/settings/ApiKeys';
+import { EtaxPage } from './pages/tax/Etax';
 import { ActivityLogPage } from './pages/settings/ActivityLog';
 import { AuxTools } from './components/AuxTools';
 import { DataTablesPage } from './pages/settings/DataTables';
@@ -173,6 +174,7 @@ function Shell() {
           {STOCK_KINDS.flatMap((k) => [<Route key={k.cls} path={k.route} element={<StockDocListPage key={k.cls} cls={k.cls} />} />, <Route key={k.cls + '-f'} path={`${k.route}/:id`} element={<StockDocFormPage key={k.cls + '-f'} cls={k.cls} />} />])}
           <Route path="/tax/vat/P" element={<VatRegisterPage key="P" kind="P" />} />
           <Route path="/tax/vat/S" element={<VatRegisterPage key="S" kind="S" />} />
+          <Route path="/tax/etax" element={<EtaxPage />} />
           <Route path="/ic/items" element={<StockItemsPage />} />
           <Route path="/ic/kits" element={<KitsPage />} />
           <Route path="/ic/services" element={<ServicesPage />} />

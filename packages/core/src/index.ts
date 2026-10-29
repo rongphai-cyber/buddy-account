@@ -14,3 +14,4 @@ export * from './doc-calc.js';
 export * from './reports.js';
 export * from './printforms.js';
 export * from './fixedasset.js';
+export * from './etax.js';

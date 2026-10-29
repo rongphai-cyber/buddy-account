@@ -65,6 +65,7 @@ export const MENU: MenuItem[] = [
     g('FI.VAT', 'ภาษีมูลค่าเพิ่ม', 'P3', [
       m('FI.VAT.IN', 'แฟ้มภาษีซื้อ', 'P3', '/tax/vat/P', ['ch16:S-TX-01', 'ch16:S-TX-02', 'ch16:S-TX-03', 'ch16:S-TX-04', 'ch16:S-TX-05']),
       m('FI.VAT.OUT', 'แฟ้มภาษีขาย', 'P3', '/tax/vat/S', ['ch16:S-TX-06', 'ch16:S-TX-07', 'ch16:S-TX-08']),
+      m('FI.VAT.ETAX', 'ส่งออก e-Tax Invoice (XML)', 'P7', '/tax/etax'),
     ]),
     m('FI.WHT', 'ภาษีหัก ณ ที่จ่าย', 'P3', '/tax/wht', ['ch16:S-TX-09', 'ch16:S-TX-10']),
     m('FI.WHT.CERT', 'พิมพ์หนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ)', 'P3', '/tax/wht50'),
