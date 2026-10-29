@@ -69,7 +69,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   const rls = await rlsAvailable(database);
   if (!rls) app.log.warn('ไม่พบ role buddy_app — ปิด Row-Level Security (ใช้การกรองในโค้ดอย่างเดียว)');
   attachPermissions(app, database, rls);
-  app.get('/api/v1/health', async () => ({ ok: true, mode: database.mode, version: '0.1.0' }));
+  app.get('/api/v1/health', async () => ({ ok: true, mode: database.mode, version: process.env.BUDDY_VERSION ?? '0.1.0' }));
   app.get('/api/v1/menu', async () => MENU);
   authRoutes(app, db, cfg);
   companyRoutes(app, database);

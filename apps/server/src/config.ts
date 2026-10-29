@@ -2,7 +2,8 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-export const REPO_ROOT = resolve(here, '../../..');
+/** รากของไฟล์ที่โปรแกรมอ่าน (migration แบบผังบัญชี หน้าเว็บ) — ตัวติดตั้ง Windows ตั้ง BUDDY_ROOT เป็นโฟลเดอร์ app ของโปรแกรม */
+export const REPO_ROOT = process.env.BUDDY_ROOT ?? resolve(here, '../../..');
 
 export interface Config {
   port: number;
