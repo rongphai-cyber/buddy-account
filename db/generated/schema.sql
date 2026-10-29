@@ -2084,6 +2084,7 @@ CREATE TABLE doc_header (
   settled_date date,
   appointment_date date,
   payment_date date,
+  is_opening boolean DEFAULT false NOT NULL,
   payment_terms varchar(60),
   remark text,
   gl_posted char(1) DEFAULT 'N' NOT NULL,
@@ -2170,6 +2171,7 @@ COMMENT ON COLUMN doc_header.is_settled IS 'ตัดชำระ/ส่งข�
 COMMENT ON COLUMN doc_header.settled_date IS 'วันที่ครบ [Express: CMPLDAT]';
 COMMENT ON COLUMN doc_header.appointment_date IS 'วันนัดชำระ (ใบวางบิล) [Express: ARBIL/APBIL.APPDAT]';
 COMMENT ON COLUMN doc_header.payment_date IS 'วันที่รับ/จ่ายเงินจริง (ใบเสร็จ RE / ใบสำคัญจ่าย PS) — ไม่จำเป็นต้องตรงวันที่เอกสาร';
+COMMENT ON COLUMN doc_header.is_opening IS 'ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04): ลงวันที่ก่อนเริ่มใช้ ไม่ลงบัญชี ไม่ตัดสต๊อก ไม่เข้าแฟ้มภาษี';
 COMMENT ON COLUMN doc_header.payment_terms IS 'เงื่อนไขการชำระ [Express: PAYCOND]';
 COMMENT ON COLUMN doc_header.remark IS 'หมายเหตุสั้น [Express: REMARK]';
 COMMENT ON COLUMN doc_header.gl_posted IS 'N=ยังไม่ลงบัญชี Y=ลงแล้ว P=รอเซิร์ฟเวอร์ลง [Express: POSTGL]';

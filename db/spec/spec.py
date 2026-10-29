@@ -704,6 +704,7 @@ add(T('doc_header', 'หัวเอกสารทุกชนิด (ขาย
   C('settled_date', 'date', th='วันที่ครบ', src='CMPLDAT'),
   C('appointment_date', 'date', th='วันนัดชำระ (ใบวางบิล)', src='ARBIL/APBIL.APPDAT'),
   C('payment_date', 'date', th='วันที่รับ/จ่ายเงินจริง (ใบเสร็จ RE / ใบสำคัญจ่าย PS) — ไม่จำเป็นต้องตรงวันที่เอกสาร'),
+  C('is_opening', 'bool', nn=True, d='false', th='ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04): ลงวันที่ก่อนเริ่มใช้ ไม่ลงบัญชี ไม่ตัดสต๊อก ไม่เข้าแฟ้มภาษี'),
   C('payment_terms', 'str60', th='เงื่อนไขการชำระ', src='PAYCOND'),
   C('remark', 'text', th='หมายเหตุสั้น', src='REMARK'),
   C('gl_posted', 'char1', nn=True, d="'N'", th='N=ยังไม่ลงบัญชี Y=ลงแล้ว P=รอเซิร์ฟเวอร์ลง', src='POSTGL'),

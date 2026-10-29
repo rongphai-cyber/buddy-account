@@ -1954,6 +1954,8 @@ export interface DocHeaderTable {
   appointment_date: Gen<string | null>;
   /** วันที่รับ/จ่ายเงินจริง (ใบเสร็จ RE / ใบสำคัญจ่าย PS) — ไม่จำเป็นต้องตรงวันที่เอกสาร */
   payment_date: Gen<string | null>;
+  /** ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04): ลงวันที่ก่อนเริ่มใช้ ไม่ลงบัญชี ไม่ตัดสต๊อก ไม่เข้าแฟ้มภาษี */
+  is_opening: Gen<boolean>;
   /** เงื่อนไขการชำระ */
   payment_terms: Gen<string | null>;
   /** หมายเหตุสั้น */

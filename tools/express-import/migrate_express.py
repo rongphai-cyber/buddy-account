@@ -514,7 +514,8 @@ for r in dbf('GLPTTIT'):
     if dn and not H(dn) and dn not in SYN: SYN[dn] = (None, 'DP', None)
 rows = []
 for dn, (d, cls, loc) in SYN.items():
-    module = MODULE.get(cls, 'IC'); module = 'IC' if cls in ('JU', 'RL', 'OU', 'CA') else module
+    # เอกสารที่มีเฉพาะในบัตรสต๊อก (ไม่อยู่ใน ARTRN/APTRN) ไม่ใช่ลูกหนี้/เจ้าหนี้ → ระบบสินค้า (กันยอดคงค้างเพี้ยน เช่น RR ที่ถูกตัดชำระแต่ไม่มีบิล)
+    module = 'PC' if cls == 'DP' else 'IC'
     if cls == 'OB' and 'OB' not in DT:
         DT['OB'] = U('dt', 'OB'); DTCLASS['OB'] = 'OB'
         insert('md_doc_type', [base(id=DT['OB'], code='OB', doc_class='OB', module='IC', name_th='ยอดยกมาสินค้า (จากการย้ายข้อมูล)', name_en='Opening stock')])
@@ -691,20 +692,35 @@ done('doc_settlement', insert('doc_settlement', rows), 'ARRCPIT/APRCPIT (ตั�
 for module, table, amtf in (('AR', 'ARTRN', 'RCVAMT'), ('AP', 'APTRN', 'PAYAMT')):
     cur.execute('SELECT invoice_header_id, sum(amount) FROM doc_settlement GROUP BY 1')
     settled = {k: float(v) for k, v in cur.fetchall()}
-    adj = []
+    cur.execute("SELECT l.from_header_id, sum(l.amount) FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id WHERE l.link_type = 'DEPOSIT' AND t.doc_status <> 'C' GROUP BY 1")
+    used = {k: float(v or 0) for k, v in cur.fetchall()}
+    adj, dep = [], []
     for r in dbf(table):
-        if r['RECTYP'] not in ('3', '4') or r['DOCSTAT'] == 'C': continue
-        hid = H(r['DOCNUM'], module); diff = round((r[amtf] or 0) - settled.get(hid, 0), 2)
-        if hid and abs(diff) >= 0.01: adj.append((hid, diff, st(r['DOCNUM'])))
-    if adj:
+        if r['DOCSTAT'] == 'C': continue
+        hid = H(r['DOCNUM'], module)
+        if not hid: continue
+        if r['RECTYP'] in ('3', '4', '5'):
+            # บิล/เพิ่มหนี้: ที่ตัดแล้ว = RCVAMT/PAYAMT · ใบลดหนี้: ที่นำไปหักแล้ว = NETAMT − REMAMT (ยอดตัดเก็บเป็นบวก)
+            target = (r[amtf] or 0) if r['RECTYP'] != '5' else (r['NETAMT'] or 0) - (r['REMAMT'] or 0)
+            diff = round(target - settled.get(hid, 0), 2)
+            if abs(diff) >= 0.01: adj.append((hid, diff, st(r['DOCNUM'])))
+        elif r['RECTYP'] == '0':
+            # มัดจำ: คงเหลือ (v_deposit_outstanding = AMOUNT − ที่หักแล้ว) ให้เท่า REMAMT ของ Express
+            diff = round((r['AMOUNT'] or 0) - used.get(hid, 0) - (r['REMAMT'] or 0), 2)
+            if abs(diff) >= 0.01: dep.append((hid, diff, st(r['DOCNUM'])))
+    if adj or dep:
         mdn = f'MIG-ADJ-{module}'
         last_day = max(p[1] for p in PERIODS if p[0].year <= (prd['END12NY'].year if prd and prd.get('END12NY') else 9999))
         hrow = hdr_row(mdn, 'RE' if module == 'AR' else 'PS', module, last_day,
-                       remark='[ย้ายข้อมูล] ปรับยอดตัดชำระให้ตรงกับ Express (ชำระนอกใบเสร็จ/ใบสำคัญจ่าย)', net_amount=money(sum(a[1] for a in adj)))
+                       remark='[ย้ายข้อมูล] ปรับยอดตัดชำระ/มัดจำคงเหลือให้ตรงกับ Express (ชำระนอกใบเสร็จ/ใบสำคัญจ่าย)', net_amount=money(sum(a[1] for a in adj)))
         insert('doc_header', [hrow]); done('doc_header', 1, 'ปรับปรุงการย้ายข้อมูล')
-        done('doc_settlement', insert('doc_settlement', [base(id=U('setadj', module, d), payment_header_id=hrow['id'], invoice_header_id=h, amount=a, vat_amount=0)
-                                                           for h, a, d in adj]), f'{table}.{amtf} (ปรับปรุง)')
-        QUALITY[f'{module}_settlement_adjusted'].extend(f'{d}:{a}' for h, a, d in adj)
+        if adj:
+            done('doc_settlement', insert('doc_settlement', [base(id=U('setadj', module, d), payment_header_id=hrow['id'], invoice_header_id=h, amount=a, vat_amount=0)
+                                                               for h, a, d in adj]), f'{table}.{amtf} (ปรับปรุง)')
+            QUALITY[f'{module}_settlement_adjusted'].extend(f'{d}:{a}' for h, a, d in adj)
+        if dep:
+            done('doc_link', insert('doc_link', [base(id=U('depadj', module, d), from_header_id=h, to_header_id=hrow['id'], link_type='DEPOSIT', amount=a) for h, a, d in dep]), f'{table}.REMAMT มัดจำ (ปรับปรุง)')
+            QUALITY[f'{module}_deposit_adjusted'].extend(f'{d}:{a}' for h, a, d in dep)
 
 # ------------------------------------------------------------------ GL ยอดยกมาต้นปีแรก จาก GLBAL (ยอดปีก่อน = BEGLY + ΣDEBITnLY − ΣCREDITnLY + ปิดบัญชี)
 first = min(PERIODS, key=lambda p: p[0]) if PERIODS else None

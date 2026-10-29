@@ -1306,6 +1306,46 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/gl/vat-closing?month=2026-13')).status).toBe(400);
   });
 
+  it('opening AR/AP (T3.10): bills before go-live, no GL/VAT, settled by receipt (cash-basis VAT at receipt), locked in trade screens, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const sup = (await call('GET', '/api/v1/suppliers?q=S200')).body.rows[0].id;
+    const ob = { party_id: cus, doc_no: 'IV68/0001', doc_date: '2024-12-15', price_type: '2', amount: 1000, vat_rate: 7 };
+    expect((await call('POST', '/api/v1/ar-opening', { ...ob, doc_date: '2025-01-05' })).body.error.message).toMatch(/ก่อนวันเริ่มใช้/);
+    const o1 = await call('POST', '/api/v1/ar-opening', ob);
+    expect(o1.body).toMatchObject({ doc_no: 'IV68/0001', net_amount: '1070.00' });
+    expect((await call('POST', '/api/v1/ar-opening', ob)).body.error.message).toMatch(/มีอยู่แล้ว/);
+    // ปัดเศษไม่ตรงบิล: อัตรา 0% แล้วป้อนภาษีเอง
+    const o2 = await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0002', vat_rate: 0, vat_amount: 69.99 });
+    expect(o2.body).toMatchObject({ net_amount: '1069.99' });
+    expect((await call('GET', `/api/v1/docs/${o1.body.id}/journal`)).body.journals).toEqual([]);
+    expect((await call('GET', '/api/v1/ar-opening')).body).toMatchObject({ total: '2139.99', start_date: '2025-01-01' });
+    // ปรากฏเป็นบิลค้าง · รับชำระในระบบ → ภาษีเกณฑ์เงินสดเกิดที่ใบเสร็จ
+    const open = (await call('GET', `/api/v1/ar-receipts/open-items?party_id=${cus}`)).body.rows.map((r: { doc_no: string }) => r.doc_no);
+    expect(open).toEqual(expect.arrayContaining(['IV68/0001', 'IV68/0002']));
+    const re = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2026-02-01', party_id: cus, settlements: [{ invoice_header_id: o1.body.id, amount: 1070 }] })).body;
+    expect((await call('GET', '/api/v1/vat/S?month=2026-02')).body.rows.find((r: { doc_no: string }) => r.doc_no === re.doc_no)).toMatchObject({ base_amount: '1000.00', vat_amount: '70.00' });
+    expect((await call('PUT', `/api/v1/ar-opening/${o1.body.id}`, ob)).body.error.message).toMatch(/รับ\/จ่ายชำระแล้ว/);
+    // หน้าบิลขายปกติ: ดู/อ้างได้ แต่แก้ไม่ได้
+    expect((await call('GET', `/api/v1/sales-invoices/${o2.body.id}`)).body).toMatchObject({ is_opening: true, editable: false });
+    expect((await call('PUT', `/api/v1/sales-invoices/${o2.body.id}`, { doc_type_id: await typeOf('IV'), doc_date: '2026-03-01', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id, qty: 1, unit_price: 1 }] })).body.error.message).toMatch(/ยอดยกมา/);
+    // เจ้าหนี้ยกมา
+    const p1 = await call('POST', '/api/v1/ap-opening', { party_id: sup, doc_no: 'RR68/0001', doc_date: '2024-12-20', ref_no: 'BILL-9', vat_date: '2024-12-20', price_type: '1', amount: 535, vat_rate: 7 });
+    expect(p1.body).toMatchObject({ net_amount: '535.00' });
+    expect((await call('GET', `/api/v1/ap-opening/${p1.body.id}`)).body).toMatchObject({ ref_no: 'BILL-9', vat_basis: '1', outstanding: '535.00', editable: true });
+    // บริษัทอื่น
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/ar-opening')).body.rows).toEqual([]);
+    expect((await call('GET', `/api/v1/ap-opening/${p1.body.id}`)).status).toBe(404);
+    expect((await call('POST', '/api/v1/ar-opening', ob)).status).toBe(400);   // ลูกค้าของบริษัทอื่น
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ยกเลิก (ไม่มีงวด — ไม่ตรวจงวด) · ใบเสร็จก่อน
+    expect((await call('POST', `/api/v1/ar-receipts/${re.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    for (const [path, id] of [['ar-opening', o1.body.id], ['ar-opening', o2.body.id], ['ap-opening', p1.body.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/ar-opening')).body.total).toBe('0.00');
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

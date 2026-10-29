@@ -30,10 +30,10 @@ async function periodIdOf(db: Db, companyId: string, date: string) {
 
 /** สร้าง/แทนรายการภาษีของเอกสาร (เรียกตอนบันทึกเอกสาร) — รายการที่ผู้ใช้แก้ในแฟ้มคงเลขที่/วันที่ใบกำกับ งวด ยื่นเพิ่มเติม ไว้ */
 export async function syncVatEntries(tx: Db, ctx: Ctx, headerId: string) {
-  const h = await tx.selectFrom('doc_header').select(['id', 'doc_class', 'doc_no', 'doc_date', 'payment_date', 'vat_date', 'vat_basis', 'price_type', 'ref_no', 'ref_date', 'your_ref', 'branch_id', 'department_id',
+  const h = await tx.selectFrom('doc_header').select(['id', 'doc_class', 'doc_no', 'doc_date', 'payment_date', 'vat_date', 'vat_basis', 'price_type', 'ref_no', 'ref_date', 'your_ref', 'branch_id', 'department_id', 'is_opening',
     'party_name', 'party_tax_id', 'party_tax_branch_no', 'taxable_amount', 'vat_amount', 'zero_rate_amount', 'doc_status'])
     .where('id', '=', headerId).where('company_id', '=', ctx.companyId).executeTakeFirst();
-  if (!h) return;
+  if (!h || h.is_opening) return;
   const kind = VAT_CLASSES.S.includes(h.doc_class) ? 'S' : VAT_CLASSES.P.includes(h.doc_class) ? 'P' : null;
   if (!kind) return;
   let base = d(0), vat = d(0), zero = d(0);

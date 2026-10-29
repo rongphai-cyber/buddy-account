@@ -68,10 +68,12 @@ function mergeLines(lines: PostingLine[]) {
  */
 export async function postDocument(tx: Db, ctx: Ctx, headerId: string, existingJournalId?: string | null): Promise<{ journal_id: string | null }> {
   const h = await tx.selectFrom('doc_header as h').innerJoin('md_doc_type as t', 't.id', 'h.doc_type_id')
-    .select(['h.id', 'h.doc_no', 'h.doc_date', 'h.doc_class', 'h.branch_id', 'h.doc_status', 'h.journal_id', 'h.party_name', 'h.remark', 'h.department_id', 't.journal_book_id', 't.journal_desc_template', 't.name_th as type_name', 'h.customer_id', 'h.supplier_id'])
+    .select(['h.id', 'h.doc_no', 'h.doc_date', 'h.doc_class', 'h.branch_id', 'h.doc_status', 'h.journal_id', 'h.is_opening', 'h.party_name', 'h.remark', 'h.department_id', 't.journal_book_id', 't.journal_desc_template', 't.name_th as type_name', 'h.customer_id', 'h.supplier_id'])
     .where('h.id', '=', headerId).where('h.company_id', '=', ctx.companyId).where('h.deleted_at', 'is', null).executeTakeFirst();
   if (!h) throw notFound('เอกสาร');
   if (h.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว');
+  // ลูกหนี้/เจ้าหนี้ยกมา: ยอดบัญชีอยู่ในยอดยกมาแล้ว ภาษีเกิดก่อนเริ่มใช้ (หรือเกิดตอนชำระถ้าเกณฑ์เงินสด)
+  if (h.is_opening) return { journal_id: null };
   // แฟ้มภาษีซื้อ/ขาย (บทที่ 16) เกิดพร้อมเอกสารเสมอ แม้ไม่เชื่อมต่อระบบบัญชี
   await syncVatEntries(tx, ctx, headerId);
   if ((await companySettings(tx, ctx.companyId))['gen.link_gl'] === false) return { journal_id: null };
@@ -155,12 +157,13 @@ export async function activeSettlement(db: Db, companyId: string, invoiceId: str
 /** before: งานเพิ่มเติมของเอกสารแต่ละชนิดในทรานแซกชันเดียวกัน (เช่น ใบเสร็จ: ยกเลิกเช็ค/ภาษีหัก ณ ที่จ่าย) */
 export async function cancelDocument(db: Db, ctx: Ctx, headerId: string, reason: string, before?: (tx: Db) => Promise<void>) {
   return db.transaction().execute(async (tx) => {
-    const h = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_date']).where('id', '=', headerId).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    const h = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_date', 'is_opening']).where('id', '=', headerId).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!h) throw notFound('เอกสาร');
     if (h.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว');
     const paid = await activeSettlement(tx, ctx.companyId, headerId);
     if (paid) throw badRequest(`เอกสาร ${h.doc_no} มีการรับ/จ่ายชำระแล้ว — ยกเลิกใบเสร็จ/ใบสำคัญจ่ายที่ตัดเอกสารนี้ก่อน`);
-    await periodFor(tx, ctx.companyId, String(h.doc_date).slice(0, 10));
+    // ยอดยกมาลงวันที่ก่อนเริ่มใช้ (ไม่มีงวด) — ไม่ตรวจงวด
+    if (!h.is_opening) await periodFor(tx, ctx.companyId, String(h.doc_date).slice(0, 10));
     if (before) await before(tx);
     await unpostDocument(tx, ctx, headerId);
     await tx.updateTable('doc_header').set({ doc_status: 'C', cancel_reason: reason.slice(0, 200), updated_by: ctx.userId }).where('id', '=', headerId).execute();

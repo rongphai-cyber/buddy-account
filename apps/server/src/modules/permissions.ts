@@ -165,6 +165,11 @@ export const API_RULES: Record<string, Rule> = {
     [`POST /api/v1/${k.path}/:id/appointment`, M(k.module === 'AR' ? 'FI.AR.BD' : k.menu, 'edit')],
   ])),
   'POST /api/v1/quotations/:id/convert': M('SA.SO', 'add'),
+  // ลูกหนี้/เจ้าหนี้คงค้างยกมา (S-OB-03/04)
+  ...Object.fromEntries([['ar-opening', 'FI.AR.OB'], ['ap-opening', 'FI.AP.OB']].flatMap(([p, m]) => [
+    [`GET /api/v1/${p}`, M(m!, 'read')], [`GET /api/v1/${p}/:id`, M(m!, 'read')], [`POST /api/v1/${p}`, M(m!, 'add')],
+    [`PUT /api/v1/${p}/:id`, M(m!, 'edit')], [`POST /api/v1/${p}/:id/cancel`, M(m!, 'cancel')],
+  ])),
   // เงินสดย่อย (บทที่ 15)
   ...Object.fromEntries(['petty-payments', 'petty-reimbursements'].flatMap((p) => [
     [`GET /api/v1/${p}`, M('GL.PC', 'read')], [`GET /api/v1/${p}/:id`, M('GL.PC', 'read')], [`POST /api/v1/${p}`, M('GL.PC', 'add')],

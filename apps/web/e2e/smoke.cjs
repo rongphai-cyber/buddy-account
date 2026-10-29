@@ -412,6 +412,14 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.waitForFunction(() => document.querySelectorAll('.modal').length === 0, null, { timeout: 10000 });
     await shot('15zz-vat-closing');
   });
+  await step('opening AR/AP lists (S-OB-03/04, view only)', async () => {
+    for (const url of ['/fi/ar/opening', '/fi/ap/opening']) {
+      await page.goto(BASE + url);
+      await page.waitForSelector('table.grid tbody tr', { timeout: 15000 });
+    }
+    await page.goto(BASE + '/fi/ar/opening/new');
+    await page.waitForSelector('.trade-head', { timeout: 15000 });
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

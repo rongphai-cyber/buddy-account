@@ -43,6 +43,7 @@ import { SettleFormPage, SettleListPage } from './pages/docs/SettleDocs';
 import { CashFormPage, CashListPage } from './pages/docs/CashDocs';
 import { BillFormPage, BillListPage } from './pages/docs/BillDocs';
 import { PettyFormPage, PettyListPage } from './pages/docs/PettyCash';
+import { OpeningFormPage, OpeningListPage } from './pages/docs/OpeningDocs';
 import { WhtRegisterPage } from './pages/tax/WhtRegister';
 import { VatRegisterPage } from './pages/tax/VatRegister';
 import { BILL_KINDS, CASH_KINDS, SETTLE_KINDS, TRADE_KINDS } from '@buddy/core';
@@ -155,6 +156,10 @@ function Shell() {
           {SETTLE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<SettleListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<SettleFormPage key={k.path} path={k.path} />} />])}
           {CASH_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<CashListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<CashFormPage key={k.path} path={k.path} />} />])}
           {BILL_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<BillListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<BillFormPage key={k.path} path={k.path} />} />])}
+          <Route path="/fi/ar/opening" element={<OpeningListPage key="ar" kind="ar" />} />
+          <Route path="/fi/ar/opening/:id" element={<OpeningFormPage key="ar-f" kind="ar" />} />
+          <Route path="/fi/ap/opening" element={<OpeningListPage key="ap" kind="ap" />} />
+          <Route path="/fi/ap/opening/:id" element={<OpeningFormPage key="ap-f" kind="ap" />} />
           <Route path="/gl/petty-cash" element={<PettyListPage key="dp" kind="dp" />} />
           <Route path="/gl/petty-cash/vr" element={<PettyListPage key="vr" kind="vr" />} />
           <Route path="/gl/petty-cash/dp/:id" element={<PettyFormPage key="dp-f" kind="dp" />} />

@@ -28,6 +28,7 @@ import { settleRoutes } from './modules/docs/settle.js';
 import { cashDocRoutes } from './modules/docs/cashdocs.js';
 import { billRoutes } from './modules/docs/bills.js';
 import { pettyCashRoutes } from './modules/docs/pettycash.js';
+import { openingRoutes } from './modules/docs/opening.js';
 import { whtRoutes } from './modules/wht.js';
 import { vatRoutes } from './modules/vat.js';
 
@@ -77,6 +78,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   cashDocRoutes(app, db);
   billRoutes(app, db);
   pettyCashRoutes(app, db);
+  openingRoutes(app, db);
   whtRoutes(app, db);
   vatRoutes(app, db);
   reportRoutes(app, db);

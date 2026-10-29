@@ -125,8 +125,9 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
     await periodFor(tx, a.companyId, b.doc_date);
     let hid = id, docNo: string;
     if (id) {
-      const cur = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_class', 'doc_date']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+      const cur = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_class', 'doc_date', 'is_opening']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
       if (!cur || cur.doc_class !== K.cls) throw notFound(K.label);
+      if (cur.is_opening) throw badRequest(`${cur.doc_no} เป็นยอดยกมา — แก้ที่เมนู บันทึกรายการ${K.module === 'AR' ? 'ลูกหนี้' : 'เจ้าหนี้'}คงค้าง-ยกมา`);
       if (cur.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว แก้ไขไม่ได้');
       await periodFor(tx, a.companyId, String(cur.doc_date).slice(0, 10));
       if (K.order && (await orderDelivered(tx, id))) throw badRequest(`${cur.doc_no} มีการ${K.module === 'AR' ? 'ส่งของ' : 'รับของ'}แล้ว แก้ไขไม่ได้ — ยกเลิกยอดค้างรายบรรทัดแทน`);
@@ -232,7 +233,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       const converted = K.cls === 'QT' ? (await sql<{ id: string; doc_no: string; doc_date: string }>`SELECT t.id, t.doc_no, t.doc_date FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id
           WHERE l.from_header_id = ${id} AND l.link_type = 'CONVERT' AND l.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL ORDER BY t.doc_date`.execute(db)).rows : [];
       return { ...h, converted, party_code: pc?.code ?? null, lines: lines.map((l) => ({ ...l, ...(orderLines.find((o) => o.line_no === l.line_no) ?? {}), source: sources.find((x) => x.line_id === (l as { id?: string }).id) ?? null })),
-        deliveries, cancels, payments, deposits, settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !settled.some((x) => x.doc_status !== 'C') && !(deliveries as unknown[]).length };
+        deliveries, cancels, payments, deposits, settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !h.is_opening && !settled.some((x) => x.doc_status !== 'C') && !(deliveries as unknown[]).length };
     });
     app.post(base, async (req) => saveTrade(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => saveTrade(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));
