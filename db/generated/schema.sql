@@ -1399,6 +1399,10 @@ CREATE TABLE md_customer (
   payer_id uuid,
   wht_form varchar(4),
   wht_rate numeric(9,4),
+  wht_category varchar(4),
+  wht_condition char(1),
+  default_ship_to varchar(10),
+  track_sales char(1),
   remark text,
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
   inactive_date date,
@@ -1440,6 +1444,10 @@ COMMENT ON COLUMN md_customer.ar_account_id IS 'บัญชีลูกหน�
 COMMENT ON COLUMN md_customer.payer_id IS 'ผู้ชำระเงินแทน [Express: ARMAS.PAYER]';
 COMMENT ON COLUMN md_customer.wht_form IS 'แบบภาษีหัก ณ ที่จ่ายที่ลูกค้าหักเรา [Express: ARMAS.TAXTYP]';
 COMMENT ON COLUMN md_customer.wht_rate IS 'อัตราภาษีหัก ณ ที่จ่าย [Express: ARMAS.TAXRAT]';
+COMMENT ON COLUMN md_customer.wht_category IS 'หมวดภาษีหัก ณ ที่จ่าย (ตาราง 55) [สันนิษฐาน] [Express: ARMAS.TAXGRP]';
+COMMENT ON COLUMN md_customer.wht_condition IS 'เงื่อนไขการหักภาษี 1=หัก ณ ที่จ่าย 2=ออกให้ตลอดไป 3=ออกให้ครั้งเดียว [Express: ARMAS.TAXCOND]';
+COMMENT ON COLUMN md_customer.default_ship_to IS 'รหัสสถานที่ส่งของประจำ [Express: ARMAS.SHIPTO]';
+COMMENT ON COLUMN md_customer.track_sales IS 'ติดตามการขาย [สันนิษฐาน] [Express: ARMAS.TRACKSAL]';
 COMMENT ON COLUMN md_customer.remark IS 'หมายเหตุ [Express: ARMAS.REMARK]';
 COMMENT ON COLUMN md_customer.status IS 'สถานะ [Express: ARMAS.STATUS]';
 COMMENT ON COLUMN md_customer.inactive_date IS 'วันที่เลิกใช้ [Express: ARMAS.INACTDAT]';
@@ -1578,6 +1586,86 @@ COMMENT ON COLUMN md_supplier.origin_device_id IS 'เครื่องที�
 CREATE UNIQUE INDEX uq_md_supplier_company_code ON md_supplier (company_id, code) WHERE deleted_at IS NULL;
 CREATE INDEX ix_md_supplier_company_name ON md_supplier (company_id, name);
 
+-- md_party_contact: ผู้ติดต่อของลูกค้า/ผู้จำหน่าย (ข้อเสนอ: หลายคน — Express มีช่องเดียว)  [Express: (ใหม่) ARMAS/APMAS.CONTACT]
+CREATE TABLE md_party_contact (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  party_type char(1) NOT NULL CHECK (party_type IN ('C','S')),
+  party_id uuid NOT NULL,
+  line_no smallint NOT NULL,
+  name varchar(120) NOT NULL,
+  position varchar(60),
+  phone varchar(60),
+  email varchar(120),
+  is_primary boolean DEFAULT false NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE md_party_contact IS 'ผู้ติดต่อของลูกค้า/ผู้จำหน่าย (ข้อเสนอ: หลายคน — Express มีช่องเดียว) | Express: (ใหม่) ARMAS/APMAS.CONTACT';
+COMMENT ON COLUMN md_party_contact.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN md_party_contact.company_id IS 'บริษัท';
+COMMENT ON COLUMN md_party_contact.party_type IS 'C=ลูกค้า S=ผู้จำหน่าย';
+COMMENT ON COLUMN md_party_contact.party_id IS 'id ของลูกค้าหรือผู้จำหน่าย';
+COMMENT ON COLUMN md_party_contact.line_no IS 'ลำดับ';
+COMMENT ON COLUMN md_party_contact.name IS 'ชื่อผู้ติดต่อ';
+COMMENT ON COLUMN md_party_contact.position IS 'ตำแหน่ง/หน้าที่ เช่น จัดซื้อ บัญชี';
+COMMENT ON COLUMN md_party_contact.phone IS 'โทรศัพท์';
+COMMENT ON COLUMN md_party_contact.email IS 'อีเมล';
+COMMENT ON COLUMN md_party_contact.is_primary IS 'ผู้ติดต่อหลัก (แสดงในเอกสาร)';
+COMMENT ON COLUMN md_party_contact.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN md_party_contact.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN md_party_contact.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN md_party_contact.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN md_party_contact.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN md_party_contact.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN md_party_contact.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_md_party_contact_company_party_type_party_line_no ON md_party_contact (company_id, party_type, party_id, line_no) WHERE deleted_at IS NULL;
+
+-- md_supplier_bank: บัญชีธนาคารของผู้จำหน่าย (ข้อเสนอ: ใช้โอนจ่ายชำระหนี้)  [Express: (ใหม่)]
+CREATE TABLE md_supplier_bank (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  supplier_id uuid NOT NULL,
+  line_no smallint NOT NULL,
+  bank_code varchar(10) NOT NULL,
+  branch varchar(60),
+  account_no varchar(20) NOT NULL,
+  account_name varchar(120),
+  is_default boolean DEFAULT false NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE md_supplier_bank IS 'บัญชีธนาคารของผู้จำหน่าย (ข้อเสนอ: ใช้โอนจ่ายชำระหนี้) | Express: (ใหม่)';
+COMMENT ON COLUMN md_supplier_bank.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN md_supplier_bank.company_id IS 'บริษัท';
+COMMENT ON COLUMN md_supplier_bank.supplier_id IS 'ผู้จำหน่าย';
+COMMENT ON COLUMN md_supplier_bank.line_no IS 'ลำดับ';
+COMMENT ON COLUMN md_supplier_bank.bank_code IS 'ธนาคาร (ตารางธนาคาร)';
+COMMENT ON COLUMN md_supplier_bank.branch IS 'สาขา';
+COMMENT ON COLUMN md_supplier_bank.account_no IS 'เลขที่บัญชี';
+COMMENT ON COLUMN md_supplier_bank.account_name IS 'ชื่อบัญชี';
+COMMENT ON COLUMN md_supplier_bank.is_default IS 'บัญชีที่ใช้โอนเป็นประจำ';
+COMMENT ON COLUMN md_supplier_bank.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN md_supplier_bank.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN md_supplier_bank.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN md_supplier_bank.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN md_supplier_bank.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN md_supplier_bank.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN md_supplier_bank.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_md_supplier_bank_company_supplier_line_no ON md_supplier_bank (company_id, supplier_id, line_no) WHERE deleted_at IS NULL;
+
 -- md_salesperson: พนักงานขาย  [Express: OESLM]
 CREATE TABLE md_salesperson (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1589,6 +1677,7 @@ CREATE TABLE md_salesperson (
   sales_area_code varchar(10),
   commission_rate numeric(9,4),
   address text,
+  zip_code varchar(10),
   phone varchar(60),
   tax_id varchar(13),
   social_security_no varchar(20),
@@ -1612,6 +1701,7 @@ COMMENT ON COLUMN md_salesperson.salesperson_type IS 'ประเภท lookup 
 COMMENT ON COLUMN md_salesperson.sales_area_code IS 'เขตการขาย [Express: OESLM.AREACOD]';
 COMMENT ON COLUMN md_salesperson.commission_rate IS 'อัตราค่าคอมมิชชั่น % [Express: OESLM.COMRATE]';
 COMMENT ON COLUMN md_salesperson.address IS 'ที่อยู่ [Express: OESLM.ADDR01-03]';
+COMMENT ON COLUMN md_salesperson.zip_code IS 'รหัสไปรษณีย์ [Express: OESLM.ZIPCOD]';
 COMMENT ON COLUMN md_salesperson.phone IS 'โทรศัพท์ [Express: OESLM.TELNUM]';
 COMMENT ON COLUMN md_salesperson.tax_id IS 'เลขผู้เสียภาษี [Express: OESLM.TAXID]';
 COMMENT ON COLUMN md_salesperson.social_security_no IS 'เลขประกันสังคม [Express: OESLM.SOCIALID]';
@@ -3877,6 +3967,20 @@ ALTER TABLE md_supplier ADD CONSTRAINT fk_md_supplier_created_by FOREIGN KEY (cr
 CREATE INDEX IF NOT EXISTS ix_fk_md_supplier_created_by ON md_supplier (created_by);
 ALTER TABLE md_supplier ADD CONSTRAINT fk_md_supplier_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_md_supplier_updated_by ON md_supplier (updated_by);
+ALTER TABLE md_party_contact ADD CONSTRAINT fk_md_party_contact_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_party_contact_company_id ON md_party_contact (company_id);
+ALTER TABLE md_party_contact ADD CONSTRAINT fk_md_party_contact_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_party_contact_created_by ON md_party_contact (created_by);
+ALTER TABLE md_party_contact ADD CONSTRAINT fk_md_party_contact_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_party_contact_updated_by ON md_party_contact (updated_by);
+ALTER TABLE md_supplier_bank ADD CONSTRAINT fk_md_supplier_bank_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_supplier_bank_company_id ON md_supplier_bank (company_id);
+ALTER TABLE md_supplier_bank ADD CONSTRAINT fk_md_supplier_bank_supplier_id FOREIGN KEY (supplier_id) REFERENCES md_supplier(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_supplier_bank_supplier_id ON md_supplier_bank (supplier_id);
+ALTER TABLE md_supplier_bank ADD CONSTRAINT fk_md_supplier_bank_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_supplier_bank_created_by ON md_supplier_bank (created_by);
+ALTER TABLE md_supplier_bank ADD CONSTRAINT fk_md_supplier_bank_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_supplier_bank_updated_by ON md_supplier_bank (updated_by);
 ALTER TABLE md_salesperson ADD CONSTRAINT fk_md_salesperson_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_md_salesperson_company_id ON md_salesperson (company_id);
 ALTER TABLE md_salesperson ADD CONSTRAINT fk_md_salesperson_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -4476,6 +4580,8 @@ CREATE TRIGGER trg_md_item_reorder_ver BEFORE UPDATE ON md_item_reorder FOR EACH
 CREATE TRIGGER trg_md_customer_ver BEFORE UPDATE ON md_customer FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_md_customer_ship_to_ver BEFORE UPDATE ON md_customer_ship_to FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_md_supplier_ver BEFORE UPDATE ON md_supplier FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_md_party_contact_ver BEFORE UPDATE ON md_party_contact FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_md_supplier_bank_ver BEFORE UPDATE ON md_supplier_bank FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_md_salesperson_ver BEFORE UPDATE ON md_salesperson FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_md_sales_target_ver BEFORE UPDATE ON md_sales_target FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_md_bank_account_ver BEFORE UPDATE ON md_bank_account FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
@@ -4551,6 +4657,8 @@ CREATE TRIGGER trg_md_item_reorder_log AFTER INSERT OR UPDATE ON md_item_reorder
 CREATE TRIGGER trg_md_customer_log AFTER INSERT OR UPDATE ON md_customer FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_md_customer_ship_to_log AFTER INSERT OR UPDATE ON md_customer_ship_to FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_md_supplier_log AFTER INSERT OR UPDATE ON md_supplier FOR EACH ROW EXECUTE FUNCTION sync_log_change();
+CREATE TRIGGER trg_md_party_contact_log AFTER INSERT OR UPDATE ON md_party_contact FOR EACH ROW EXECUTE FUNCTION sync_log_change();
+CREATE TRIGGER trg_md_supplier_bank_log AFTER INSERT OR UPDATE ON md_supplier_bank FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_md_salesperson_log AFTER INSERT OR UPDATE ON md_salesperson FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_md_sales_target_log AFTER INSERT OR UPDATE ON md_sales_target FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_md_bank_account_log AFTER INSERT OR UPDATE ON md_bank_account FOR EACH ROW EXECUTE FUNCTION sync_log_change();

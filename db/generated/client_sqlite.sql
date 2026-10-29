@@ -712,6 +712,10 @@ CREATE TABLE IF NOT EXISTS md_customer (
   payer_id TEXT REFERENCES md_customer(id) DEFERRABLE INITIALLY DEFERRED,
   wht_form TEXT,
   wht_rate TEXT,
+  wht_category TEXT,
+  wht_condition TEXT,
+  default_ship_to TEXT,
+  track_sales TEXT,
   remark TEXT,
   status TEXT NOT NULL DEFAULT 'A' CHECK (status IN ('A','I')),
   inactive_date TEXT,
@@ -792,6 +796,49 @@ CREATE TABLE IF NOT EXISTS md_supplier (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_md_supplier_company_code ON md_supplier (company_id, code) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS ix_md_supplier_company_name ON md_supplier (company_id, name);
 
+-- md_party_contact: ผู้ติดต่อของลูกค้า/ผู้จำหน่าย (ข้อเสนอ: หลายคน — Express มีช่องเดียว)
+CREATE TABLE IF NOT EXISTS md_party_contact (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  party_type TEXT NOT NULL CHECK (party_type IN ('C','S')),
+  party_id TEXT NOT NULL,
+  line_no INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  position TEXT,
+  phone TEXT,
+  email TEXT,
+  is_primary INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_md_party_contact_company_party_type_party_line_no ON md_party_contact (company_id, party_type, party_id, line_no) WHERE deleted_at IS NULL;
+
+-- md_supplier_bank: บัญชีธนาคารของผู้จำหน่าย (ข้อเสนอ: ใช้โอนจ่ายชำระหนี้)
+CREATE TABLE IF NOT EXISTS md_supplier_bank (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  supplier_id TEXT NOT NULL REFERENCES md_supplier(id) DEFERRABLE INITIALLY DEFERRED,
+  line_no INTEGER NOT NULL,
+  bank_code TEXT NOT NULL,
+  branch TEXT,
+  account_no TEXT NOT NULL,
+  account_name TEXT,
+  is_default INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_md_supplier_bank_company_supplier_line_no ON md_supplier_bank (company_id, supplier_id, line_no) WHERE deleted_at IS NULL;
+
 -- md_salesperson: พนักงานขาย
 CREATE TABLE IF NOT EXISTS md_salesperson (
   id TEXT PRIMARY KEY,
@@ -803,6 +850,7 @@ CREATE TABLE IF NOT EXISTS md_salesperson (
   sales_area_code TEXT,
   commission_rate TEXT,
   address TEXT,
+  zip_code TEXT,
   phone TEXT,
   tax_id TEXT,
   social_security_no TEXT,
@@ -2461,7 +2509,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_customer', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'customer_type', NEW.customer_type, 'title', NEW.title, 'name', NEW.name, 'name_en', NEW.name_en, 'address_1', NEW.address_1, 'address_2', NEW.address_2, 'address_3', NEW.address_3, 'zip_code', NEW.zip_code, 'phone', NEW.phone, 'email', NEW.email, 'contact', NEW.contact, 'tax_id', NEW.tax_id, 'tax_branch_no', NEW.tax_branch_no, 'salesperson_id', NEW.salesperson_id, 'sales_area_code', NEW.sales_area_code, 'ship_via_code', NEW.ship_via_code, 'credit_days', NEW.credit_days, 'payment_terms', NEW.payment_terms, 'price_level', NEW.price_level, 'discount_text', NEW.discount_text, 'credit_limit', NEW.credit_limit, 'ar_account_id', NEW.ar_account_id, 'payer_id', NEW.payer_id, 'wht_form', NEW.wht_form, 'wht_rate', NEW.wht_rate, 'remark', NEW.remark, 'status', NEW.status, 'inactive_date', NEW.inactive_date, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'customer_type', NEW.customer_type, 'title', NEW.title, 'name', NEW.name, 'name_en', NEW.name_en, 'address_1', NEW.address_1, 'address_2', NEW.address_2, 'address_3', NEW.address_3, 'zip_code', NEW.zip_code, 'phone', NEW.phone, 'email', NEW.email, 'contact', NEW.contact, 'tax_id', NEW.tax_id, 'tax_branch_no', NEW.tax_branch_no, 'salesperson_id', NEW.salesperson_id, 'sales_area_code', NEW.sales_area_code, 'ship_via_code', NEW.ship_via_code, 'credit_days', NEW.credit_days, 'payment_terms', NEW.payment_terms, 'price_level', NEW.price_level, 'discount_text', NEW.discount_text, 'credit_limit', NEW.credit_limit, 'ar_account_id', NEW.ar_account_id, 'payer_id', NEW.payer_id, 'wht_form', NEW.wht_form, 'wht_rate', NEW.wht_rate, 'wht_category', NEW.wht_category, 'wht_condition', NEW.wht_condition, 'default_ship_to', NEW.default_ship_to, 'track_sales', NEW.track_sales, 'remark', NEW.remark, 'status', NEW.status, 'inactive_date', NEW.inactive_date, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_customer_update_outbox AFTER UPDATE ON md_customer
@@ -2470,7 +2518,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_customer', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'customer_type', NEW.customer_type, 'title', NEW.title, 'name', NEW.name, 'name_en', NEW.name_en, 'address_1', NEW.address_1, 'address_2', NEW.address_2, 'address_3', NEW.address_3, 'zip_code', NEW.zip_code, 'phone', NEW.phone, 'email', NEW.email, 'contact', NEW.contact, 'tax_id', NEW.tax_id, 'tax_branch_no', NEW.tax_branch_no, 'salesperson_id', NEW.salesperson_id, 'sales_area_code', NEW.sales_area_code, 'ship_via_code', NEW.ship_via_code, 'credit_days', NEW.credit_days, 'payment_terms', NEW.payment_terms, 'price_level', NEW.price_level, 'discount_text', NEW.discount_text, 'credit_limit', NEW.credit_limit, 'ar_account_id', NEW.ar_account_id, 'payer_id', NEW.payer_id, 'wht_form', NEW.wht_form, 'wht_rate', NEW.wht_rate, 'remark', NEW.remark, 'status', NEW.status, 'inactive_date', NEW.inactive_date, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'customer_type', NEW.customer_type, 'title', NEW.title, 'name', NEW.name, 'name_en', NEW.name_en, 'address_1', NEW.address_1, 'address_2', NEW.address_2, 'address_3', NEW.address_3, 'zip_code', NEW.zip_code, 'phone', NEW.phone, 'email', NEW.email, 'contact', NEW.contact, 'tax_id', NEW.tax_id, 'tax_branch_no', NEW.tax_branch_no, 'salesperson_id', NEW.salesperson_id, 'sales_area_code', NEW.sales_area_code, 'ship_via_code', NEW.ship_via_code, 'credit_days', NEW.credit_days, 'payment_terms', NEW.payment_terms, 'price_level', NEW.price_level, 'discount_text', NEW.discount_text, 'credit_limit', NEW.credit_limit, 'ar_account_id', NEW.ar_account_id, 'payer_id', NEW.payer_id, 'wht_form', NEW.wht_form, 'wht_rate', NEW.wht_rate, 'wht_category', NEW.wht_category, 'wht_condition', NEW.wht_condition, 'default_ship_to', NEW.default_ship_to, 'track_sales', NEW.track_sales, 'remark', NEW.remark, 'status', NEW.status, 'inactive_date', NEW.inactive_date, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_customer_ver AFTER UPDATE ON md_customer
@@ -2524,13 +2572,59 @@ WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state 
 BEGIN
   UPDATE md_supplier SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
+CREATE TRIGGER IF NOT EXISTS trg_md_party_contact_insert_outbox AFTER INSERT ON md_party_contact
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_party_contact', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'party_type', NEW.party_type, 'party_id', NEW.party_id, 'line_no', NEW.line_no, 'name', NEW.name, 'position', NEW.position, 'phone', NEW.phone, 'email', NEW.email, 'is_primary', NEW.is_primary, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_party_contact_update_outbox AFTER UPDATE ON md_party_contact
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_party_contact', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'party_type', NEW.party_type, 'party_id', NEW.party_id, 'line_no', NEW.line_no, 'name', NEW.name, 'position', NEW.position, 'phone', NEW.phone, 'email', NEW.email, 'is_primary', NEW.is_primary, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_party_contact_ver AFTER UPDATE ON md_party_contact
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE md_party_contact SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_supplier_bank_insert_outbox AFTER INSERT ON md_supplier_bank
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_supplier_bank', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'supplier_id', NEW.supplier_id, 'line_no', NEW.line_no, 'bank_code', NEW.bank_code, 'branch', NEW.branch, 'account_no', NEW.account_no, 'account_name', NEW.account_name, 'is_default', NEW.is_default, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_supplier_bank_update_outbox AFTER UPDATE ON md_supplier_bank
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_supplier_bank', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'supplier_id', NEW.supplier_id, 'line_no', NEW.line_no, 'bank_code', NEW.bank_code, 'branch', NEW.branch, 'account_no', NEW.account_no, 'account_name', NEW.account_name, 'is_default', NEW.is_default, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_supplier_bank_ver AFTER UPDATE ON md_supplier_bank
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE md_supplier_bank SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
 CREATE TRIGGER IF NOT EXISTS trg_md_salesperson_insert_outbox AFTER INSERT ON md_salesperson
 WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
 BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_salesperson', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'name', NEW.name, 'position', NEW.position, 'salesperson_type', NEW.salesperson_type, 'sales_area_code', NEW.sales_area_code, 'commission_rate', NEW.commission_rate, 'address', NEW.address, 'phone', NEW.phone, 'tax_id', NEW.tax_id, 'social_security_no', NEW.social_security_no, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'name', NEW.name, 'position', NEW.position, 'salesperson_type', NEW.salesperson_type, 'sales_area_code', NEW.sales_area_code, 'commission_rate', NEW.commission_rate, 'address', NEW.address, 'zip_code', NEW.zip_code, 'phone', NEW.phone, 'tax_id', NEW.tax_id, 'social_security_no', NEW.social_security_no, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_salesperson_update_outbox AFTER UPDATE ON md_salesperson
@@ -2539,7 +2633,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_salesperson', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'name', NEW.name, 'position', NEW.position, 'salesperson_type', NEW.salesperson_type, 'sales_area_code', NEW.sales_area_code, 'commission_rate', NEW.commission_rate, 'address', NEW.address, 'phone', NEW.phone, 'tax_id', NEW.tax_id, 'social_security_no', NEW.social_security_no, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'name', NEW.name, 'position', NEW.position, 'salesperson_type', NEW.salesperson_type, 'sales_area_code', NEW.sales_area_code, 'commission_rate', NEW.commission_rate, 'address', NEW.address, 'zip_code', NEW.zip_code, 'phone', NEW.phone, 'tax_id', NEW.tax_id, 'social_security_no', NEW.social_security_no, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_salesperson_ver AFTER UPDATE ON md_salesperson

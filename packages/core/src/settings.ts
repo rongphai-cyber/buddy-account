@@ -45,6 +45,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
     S('gen.approve_method', '6.', 'วิธีการพิมพ์ หรือรับรองเอกสาร', sel(['', 'อะไรก่อนก็ได้'], ['1', '1 พิมพ์ก่อนรับรอง'], ['2', '2 รับรองก่อนพิมพ์']), '1', 'APPROV_MET:str'),
     S('gen.reprint_level', '7.', 'พิมพ์เอกสารซ้ำ ต้องขออนุมัติระดับ', level, null, 'REPRN_LEV:level', { hint: 'กันพิมพ์ใบกำกับภาษีซ้ำ' }),
     S('gen.vat_in_item', '8.', 'แยกประเภท VAT ที่รายการสินค้า', bool, false, 'VAT_INITEM:yn', { hint: 'ใบกำกับเดียวมีทั้งสินค้ามี VAT และยกเว้น VAT' }),
+    S('gen.allow_blank_party_tax_id', '', 'ยอมให้เลขประจำตัวผู้เสียภาษีในทะเบียนลูกค้า/ผู้จำหน่ายว่างได้', bool, false, undefined, { hint: 'คู่มือบทที่ 5 รายละเอียดกิจการ ข้อ 5.3 · ไม่ติ๊ก = บังคับป้อน' }),
     S('gen.idle_lock_minutes', '', 'ตั้งเวลาพักหน้าจอ (นาที)', { t: 'int', min: 0, max: 480 }, 0, 'SAVSCRTIME:int', { hint: '0 = ไม่ล็อก (คู่มือหน้า 59)' }),
     S('gen.link_gl', '', 'เชื่อมต่อระบบบัญชี (ลงบัญชีอัตโนมัติจากเอกสาร)', bool, true, 'LINKGL:yn', { hint: 'ฟิลด์ใน ISINFO ที่ไม่อยู่บนหน้าจอบทที่ 5' }),
     S('gen.use_department', '', 'ใช้แผนก', bool, true, 'USEDEP:yn'),

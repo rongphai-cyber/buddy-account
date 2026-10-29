@@ -121,6 +121,13 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/reports/journal-book': M('RP.JNL', 'read'), 'GET /api/v1/reports/account-detail': M('RP.DETAIL', 'read'),
   // ค่าเริ่มต้นแต่ละระบบ (บทที่ 5)
   'GET /api/v1/settings': LOOKUP, 'PUT /api/v1/settings': M('SET.DEF', 'edit'),
+  'GET /api/v1/lookups': LOOKUP,
+  'GET /api/v1/customers': LOOKUP, 'GET /api/v1/customers/:id': LOOKUP, 'POST /api/v1/customers': M('SA.CUS', 'add'),
+  'PUT /api/v1/customers/:id': M('SA.CUS', 'edit'), 'DELETE /api/v1/customers/:id': M('SA.CUS', 'delete'),
+  'GET /api/v1/suppliers': LOOKUP, 'GET /api/v1/suppliers/:id': LOOKUP, 'POST /api/v1/suppliers': M('PU.SUP', 'add'),
+  'PUT /api/v1/suppliers/:id': M('PU.SUP', 'edit'), 'DELETE /api/v1/suppliers/:id': M('PU.SUP', 'delete'),
+  'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),
+  'PUT /api/v1/salespersons/:id': M('SA.SLM', 'edit'), 'DELETE /api/v1/salespersons/:id': M('SA.SLM', 'delete'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)
   'GET /api/v1/permissions/menus': M('SET.SEC', 'read'), 'GET /api/v1/permissions': M('SET.SEC', 'read'),
   'GET /api/v1/permissions/by-menu': M('SET.SEC', 'read'), 'PUT /api/v1/permissions': M('SET.SEC', 'edit'),

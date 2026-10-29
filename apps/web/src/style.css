@@ -421,3 +421,13 @@ pre { background: var(--surface-2); border: 1px solid var(--line); border-radius
 .vat-form .field.wide { grid-column: span 3; }
 @media (max-width: 900px) { .vat-form .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .vat-form .field.wide { grid-column: 1 / -1; } }
 @media (max-width: 640px) { .vat-form .form-grid { grid-template-columns: 1fr; } }
+
+/* แฟ้มลูกค้า/ผู้จำหน่าย/พนักงานขาย (บทที่ 7) */
+.form-grid.party-head { grid-template-columns: 180px 170px minmax(0, 1fr) 170px; margin-bottom: 10px; }
+.form-grid.party-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 10px; }
+.field.party-stats { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 18px; padding: 8px 10px; background: var(--surface-2, var(--surface)); border: 1px dashed var(--line); border-radius: var(--radius); }
+.field label.check, label.check { display: flex; align-items: center; gap: 6px; font-weight: normal; }
+.target-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 10px; }
+.target-grid .target-total { grid-column: 1 / -1; text-align: right; margin: 0; }
+@media (max-width: 900px) { .form-grid.party-head, .form-grid.party-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .form-grid.party-head, .form-grid.party-grid, .target-grid { grid-template-columns: 1fr; } }

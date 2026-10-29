@@ -280,13 +280,22 @@ done('md_item_account_group', len(IAG), "ISACC 'S'"); done('md_asset_account_gro
 
 # ------------------------------------------------------------------ parties
 SLM, CUS, SUP, ITEM, SHIP, BKA = {}, {}, {}, {}, {}, {}
-rows = []
+rows, targets = [], []
 for r in dbf('OESLM'):
     c = st(r['SLMCOD']); SLM[c] = U('slm', c)
     rows.append(base(id=SLM[c], code=c, name=r['SLMNAM'] or c, position=r['POSITN'], salesperson_type=st(r['SLMTYP']), sales_area_code=st(r['AREACOD']),
-                     commission_rate=r['COMRATE'], address=' '.join(x for x in [r['ADDR01'], r['ADDR02'], r['ADDR03']] if x) or None,
-                     phone=r['TELNUM'], tax_id=(r['TAXID'] or '')[:13] or None, social_security_no=r['SOCIALID']))
+                     commission_rate=r['COMRATE'], address='\n'.join(x for x in [r['ADDR01'], r['ADDR02'], r['ADDR03']] if x) or None, zip_code=st(r.get('ZIPCOD')),
+                     phone=r['TELNUM'], tax_id=(r['TAXID'] or '')[:13] or None, social_security_no=r['SOCIALID'],
+                     status='I' if r.get('STATUS') == 'I' else 'A'))
+    # เป้าการขาย 24 งวด: TAR1–12 ปีปัจจุบัน, TAR1NY–12NY ปีหน้า (คู่มือบทที่ 7 S-SO-01)
+    if prd:
+        for i in range(1, 13):
+            for col, sfx in ((f'TAR{i}', ''), (f'TAR{i}NY', 'NY')):
+                amt = money(r.get(col)); start = prd.get(f'BEG{i}{sfx}')
+                pid = period_of(start, create=False) if amt and start else None
+                if pid: targets.append(base(id=U('slmtar', c, pid), salesperson_id=SLM[c], period_id=pid, target_amount=amt))
 done('md_salesperson', insert('md_salesperson', rows), 'OESLM')
+done('md_sales_target', insert('md_sales_target', targets), 'OESLM.TAR1–TAR12NY')
 def nz(v): return v if v else None
 rows = []
 for r in dbf('ARMAS'):
@@ -297,6 +306,7 @@ for r in dbf('ARMAS'):
                      sales_area_code=st(r['AREACOD']), ship_via_code=st(r['DLVBY']), credit_days=int(r['PAYTRM']) if r['PAYTRM'] else None,
                      payment_terms=r['PAYCOND'], price_level=r['TABPR'], discount_text=st(r['DISC']), credit_limit=nz(r['CRLINE']),
                      ar_account_id=acc(r['ACCNUM']), wht_form=st(r['TAXTYP']), wht_rate=r['TAXRAT'], remark=r['REMARK'],
+                     wht_category=st(r.get('TAXGRP')), wht_condition=st(r.get('TAXCOND')), default_ship_to=st(r.get('SHIPTO')), track_sales=st(r.get('TRACKSAL')),
                      status='I' if r['STATUS'] == 'I' else 'A', inactive_date=r['INACTDAT']))
 done('md_customer', insert('md_customer', rows), 'ARMAS')
 rows = []

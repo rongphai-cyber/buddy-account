@@ -1284,6 +1284,14 @@ export interface MdCustomerTable {
   wht_form: Gen<string | null>;
   /** อัตราภาษีหัก ณ ที่จ่าย */
   wht_rate: Gen<string | null>;
+  /** หมวดภาษีหัก ณ ที่จ่าย (ตาราง 55) [สันนิษฐาน] */
+  wht_category: Gen<string | null>;
+  /** เงื่อนไขการหักภาษี 1=หัก ณ ที่จ่าย 2=ออกให้ตลอดไป 3=ออกให้ครั้งเดียว */
+  wht_condition: Gen<string | null>;
+  /** รหัสสถานที่ส่งของประจำ */
+  default_ship_to: Gen<string | null>;
+  /** ติดตามการขาย [สันนิษฐาน] */
+  track_sales: Gen<string | null>;
   /** หมายเหตุ */
   remark: Gen<string | null>;
   /** สถานะ */
@@ -1421,6 +1429,78 @@ export interface MdSupplierTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** ผู้ติดต่อของลูกค้า/ผู้จำหน่าย (ข้อเสนอ: หลายคน — Express มีช่องเดียว) */
+export interface MdPartyContactTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** C=ลูกค้า S=ผู้จำหน่าย */
+  party_type: string;
+  /** id ของลูกค้าหรือผู้จำหน่าย */
+  party_id: string;
+  /** ลำดับ */
+  line_no: number;
+  /** ชื่อผู้ติดต่อ */
+  name: string;
+  /** ตำแหน่ง/หน้าที่ เช่น จัดซื้อ บัญชี */
+  position: Gen<string | null>;
+  /** โทรศัพท์ */
+  phone: Gen<string | null>;
+  /** อีเมล */
+  email: Gen<string | null>;
+  /** ผู้ติดต่อหลัก (แสดงในเอกสาร) */
+  is_primary: Gen<boolean>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** บัญชีธนาคารของผู้จำหน่าย (ข้อเสนอ: ใช้โอนจ่ายชำระหนี้) */
+export interface MdSupplierBankTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ผู้จำหน่าย */
+  supplier_id: string;
+  /** ลำดับ */
+  line_no: number;
+  /** ธนาคาร (ตารางธนาคาร) */
+  bank_code: string;
+  /** สาขา */
+  branch: Gen<string | null>;
+  /** เลขที่บัญชี */
+  account_no: string;
+  /** ชื่อบัญชี */
+  account_name: Gen<string | null>;
+  /** บัญชีที่ใช้โอนเป็นประจำ */
+  is_default: Gen<boolean>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** พนักงานขาย */
 export interface MdSalespersonTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -1441,6 +1521,8 @@ export interface MdSalespersonTable {
   commission_rate: Gen<string | null>;
   /** ที่อยู่ */
   address: Gen<string | null>;
+  /** รหัสไปรษณีย์ */
+  zip_code: Gen<string | null>;
   /** โทรศัพท์ */
   phone: Gen<string | null>;
   /** เลขผู้เสียภาษี */
@@ -3232,6 +3314,8 @@ export interface DB {
   md_customer: MdCustomerTable;
   md_customer_ship_to: MdCustomerShipToTable;
   md_supplier: MdSupplierTable;
+  md_party_contact: MdPartyContactTable;
+  md_supplier_bank: MdSupplierBankTable;
   md_salesperson: MdSalespersonTable;
   md_sales_target: MdSalesTargetTable;
   md_bank_account: MdBankAccountTable;

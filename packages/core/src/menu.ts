@@ -22,7 +22,7 @@ export const MENU: MenuItem[] = [
     m('PU.PO', 'ใบสั่งซื้อ', 'P3', undefined, ['ch11:S-PU-01']),
     m('PU.RR', 'ซื้อเงินเชื่อ / ซื้อเงินสด', 'P3', undefined, ['ch11:S-PU-03']),
     m('PU.OE', 'บันทึกค่าใช้จ่ายอื่น ๆ', 'P3', undefined, ['ch11:S-PU-08']),
-    m('PU.SUP', 'รายละเอียดผู้จำหน่าย', 'P2', undefined, ['ch07:S-AP-01']),
+    m('PU.SUP', 'รายละเอียดผู้จำหน่าย', 'P2', '/ap/suppliers', ['ch07:S-AP-01']),
     m('PU.EXP', 'รายละเอียดค่าใช้จ่ายอื่น ๆ', 'P2', undefined, ['ch07:S-AP-02']),
   ], '1'),
   g('SA', 'ขาย', 'P3', [
@@ -31,9 +31,9 @@ export const MENU: MenuItem[] = [
     m('SA.SO', 'ใบสั่งขาย', 'P3', undefined, ['ch12:S-SO-01']),
     m('SA.IV', 'ขายเงินเชื่อ / ขายเงินสด', 'P3', undefined, ['ch12:S-IV-01', 'ch12:S-CS-01']),
     m('SA.OI', 'บันทึกรายได้อื่น ๆ', 'P3', undefined, ['ch12:S-OI-01']),
-    m('SA.CUS', 'รายละเอียดลูกค้า', 'P2', undefined, ['ch07:S-AR-01']),
+    m('SA.CUS', 'รายละเอียดลูกค้า', 'P2', '/ar/customers', ['ch07:S-AR-01']),
     m('SA.INC', 'รายละเอียดรายได้อื่น ๆ', 'P2', undefined, ['ch07:S-SO-02']),
-    m('SA.SLM', 'รายละเอียดพนักงานขาย', 'P2', undefined, ['ch07:S-SO-01']),
+    m('SA.SLM', 'รายละเอียดพนักงานขาย', 'P2', '/ar/salespersons', ['ch07:S-SO-01']),
   ], '2'),
   g('FI', 'การเงิน', 'P3', [
     g('FI.AR', 'ลูกหนี้', 'P3', [

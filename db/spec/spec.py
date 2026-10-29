@@ -454,6 +454,10 @@ add(T('md_customer', 'ลูกค้า', 'md', express='ARMAS', cols=[
   lk('payer_id', 'md_customer', 'ผู้ชำระเงินแทน', 'ARMAS.PAYER'),
   C('wht_form', 'code4', th='แบบภาษีหัก ณ ที่จ่ายที่ลูกค้าหักเรา', src='ARMAS.TAXTYP'),
   C('wht_rate', 'rate', th='อัตราภาษีหัก ณ ที่จ่าย', src='ARMAS.TAXRAT'),
+  C('wht_category', 'code4', th='หมวดภาษีหัก ณ ที่จ่าย (ตาราง 55) [สันนิษฐาน]', src='ARMAS.TAXGRP'),
+  C('wht_condition', 'char1', th='เงื่อนไขการหักภาษี 1=หัก ณ ที่จ่าย 2=ออกให้ตลอดไป 3=ออกให้ครั้งเดียว', src='ARMAS.TAXCOND'),
+  C('default_ship_to', 'code10', th='รหัสสถานที่ส่งของประจำ', src='ARMAS.SHIPTO'),
+  C('track_sales', 'char1', th='ติดตามการขาย [สันนิษฐาน]', src='ARMAS.TRACKSAL'),
   C('remark', 'text', th='หมายเหตุ', src='ARMAS.REMARK'),
   C('status', 'char1', nn=True, d="'A'", th='สถานะ', src='ARMAS.STATUS', chk=ST_ACTIVE),
   C('inactive_date', 'date', th='วันที่เลิกใช้', src='ARMAS.INACTDAT'),
@@ -503,6 +507,27 @@ add(T('md_supplier', 'ผู้จำหน่าย / เจ้าหนี้'
   C('inactive_date', 'date', th='วันที่เลิกใช้', src='APMAS.INACTDAT'),
 ], uniq=[('company_id','code')], idx=[('company_id','name')]))
 
+add(T('md_party_contact', 'ผู้ติดต่อของลูกค้า/ผู้จำหน่าย (ข้อเสนอ: หลายคน — Express มีช่องเดียว)', 'md', express='(ใหม่) ARMAS/APMAS.CONTACT', cols=[
+  C('party_type', 'char1', nn=True, th='C=ลูกค้า S=ผู้จำหน่าย', chk="party_type IN ('C','S')"),
+  C('party_id', 'uuid', nn=True, th='id ของลูกค้าหรือผู้จำหน่าย'),
+  C('line_no', 'smallint', nn=True, th='ลำดับ'),
+  C('name', 'str120', nn=True, th='ชื่อผู้ติดต่อ'),
+  C('position', 'str60', th='ตำแหน่ง/หน้าที่ เช่น จัดซื้อ บัญชี'),
+  C('phone', 'str60', th='โทรศัพท์'),
+  C('email', 'str120', th='อีเมล'),
+  C('is_primary', 'bool', nn=True, d='false', th='ผู้ติดต่อหลัก (แสดงในเอกสาร)'),
+], uniq=[('company_id','party_type','party_id','line_no')]))
+
+add(T('md_supplier_bank', 'บัญชีธนาคารของผู้จำหน่าย (ข้อเสนอ: ใช้โอนจ่ายชำระหนี้)', 'md', express='(ใหม่)', cols=[
+  lk('supplier_id', 'md_supplier', 'ผู้จำหน่าย', nn=True),
+  C('line_no', 'smallint', nn=True, th='ลำดับ'),
+  C('bank_code', 'code10', nn=True, th='ธนาคาร (ตารางธนาคาร)'),
+  C('branch', 'str60', th='สาขา'),
+  C('account_no', 'code20', nn=True, th='เลขที่บัญชี'),
+  C('account_name', 'str120', th='ชื่อบัญชี'),
+  C('is_default', 'bool', nn=True, d='false', th='บัญชีที่ใช้โอนเป็นประจำ'),
+], uniq=[('company_id','supplier_id','line_no')]))
+
 add(T('md_salesperson', 'พนักงานขาย', 'md', express='OESLM', cols=[
   C('code', 'code20', nn=True, th='รหัสพนักงานขาย', src='OESLM.SLMCOD'),
   C('name', 'str120', nn=True, th='ชื่อ', src='OESLM.SLMNAM'),
@@ -511,6 +536,7 @@ add(T('md_salesperson', 'พนักงานขาย', 'md', express='OESLM',
   C('sales_area_code', 'code10', th='เขตการขาย', src='OESLM.AREACOD'),
   C('commission_rate', 'rate', th='อัตราค่าคอมมิชชั่น %', src='OESLM.COMRATE'),
   C('address', 'text', th='ที่อยู่', src='OESLM.ADDR01-03'),
+  C('zip_code', 'code10', th='รหัสไปรษณีย์', src='OESLM.ZIPCOD'),
   C('phone', 'str60', th='โทรศัพท์', src='OESLM.TELNUM'),
   C('tax_id', 'code13', th='เลขผู้เสียภาษี', src='OESLM.TAXID'),
   C('social_security_no', 'code20', th='เลขประกันสังคม', src='OESLM.SOCIALID'),

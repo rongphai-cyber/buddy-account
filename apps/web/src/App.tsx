@@ -31,6 +31,7 @@ import { LedgerPage } from './pages/reports/Ledger';
 import { JournalBookPage } from './pages/reports/JournalBook';
 import { StatementsPage } from './pages/reports/Statements';
 import { FsLayoutsPage } from './pages/reports/FsLayouts';
+import { CustomersPage, SalespersonsPage, SuppliersPage } from './pages/parties/Parties';
 
 export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
 const PHASE_TH: Record<string, string> = { P0: 'ฐานระบบ', P1: 'บัญชีแยกประเภท', P2: 'แฟ้มหลัก', P3: 'ซื้อ ขาย ภาษี', P4: 'ธนาคาร สินค้า', P5: 'รายงาน', P6: 'ผู้ดูแลระบบ', P7: 'ต่อยอด' };
@@ -116,6 +117,9 @@ function Shell() {
           <Route path="/settings/users" element={<UsersPage />} />
           <Route path="/settings/permissions" element={<PermissionsPage />} />
           <Route path="/settings/defaults" element={<DefaultsPage />} />
+          <Route path="/ar/customers" element={<CustomersPage />} />
+          <Route path="/ap/suppliers" element={<SuppliersPage />} />
+          <Route path="/ar/salespersons" element={<SalespersonsPage />} />
           <Route path="/companies/new" element={<NewCompanyPage />} />
           <Route path="/account/password" element={<PasswordPage />} />
           <Route path="/admin/import" element={<ImportPage />} />

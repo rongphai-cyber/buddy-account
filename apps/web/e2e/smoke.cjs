@@ -221,6 +221,23 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.waitForSelector('.set-row', { timeout: 15000 });
     await shot('15k-defaults');
   });
+  await step('customers / suppliers / salespersons (S-AR-01 / S-AP-01 / S-SO-01)', async () => {
+    // ดูอย่างเดียว ไม่บันทึก: รายการ → เปิดรายแรก → ทุกแท็บ → Esc
+    for (const [url, tabs] of [['/ar/customers', ['ผู้ติดต่อ', 'บิลที่ค้างชำระ', 'สถานที่ส่งสินค้า', 'รายละเอียด']], ['/ap/suppliers', ['ผู้ติดต่อ', 'บัญชีธนาคาร', 'บิลที่ค้างชำระ', 'รายละเอียด']], ['/ar/salespersons', ['กำหนดเป้าการขาย', 'รายละเอียดทั่วไป']]]) {
+      await page.goto(BASE + url);
+      const row = page.locator('table.grid tbody tr.row-open').first();
+      if (!(await row.count()) && !(await row.waitFor({ timeout: 8000 }).then(() => true).catch(() => false))) { await page.waitForSelector('td.empty', { timeout: 15000 }); continue; }
+      await row.click();
+      await page.waitForSelector('.modal .party-head input', { timeout: 15000 });
+      for (const t of tabs) await page.getByRole('tab', { name: t }).click();
+      await shot('15l-' + url.split('/').pop());
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.modal', { state: 'detached', timeout: 5000 });
+    }
+    await page.goto(BASE + '/ar/customers');
+    await page.locator('input[type=search]').fill('zzz-ไม่มี');
+    await page.waitForSelector('td.empty', { timeout: 15000 });
+  });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });
