@@ -2,7 +2,7 @@
 """
 แปลงข้อมูลที่นำเข้าจาก Express ให้เป็น "ข้อมูลตัวอย่างสมมุติ ปี 2568–2569" สำหรับสาธิตและทดสอบ Buddy Account
 
-ใช้:  python3 tools/demo-data/make_demo.py <DATABASE_URL> <รหัสบริษัทที่นำเข้า> [รหัสบริษัทใหม่=DEMO] [--years 16]
+ใช้:  python3 tools/demo-data/make_demo.py <DATABASE_URL หรือ -> <รหัสบริษัทที่นำเข้า> [รหัสบริษัทใหม่=DEMO] [--years 16]
       รันบนฐานข้อมูลที่เพิ่งนำเข้าจาก Express เท่านั้น (สคริปต์แก้ข้อมูลในที่ — รันซ้ำบนบริษัทเดิมไม่ได้)
 
 ทำอะไรบ้าง
@@ -19,11 +19,12 @@
  7. งวดบัญชี: ปี 2568 ปิดทั้งปี, ปี 2569 ปิดถึง ก.ย. เปิด ต.ค.–ธ.ค. สำหรับทดลองบันทึก
 ยอดเงินทุกตัวไม่เปลี่ยน — งบทดลอง ลูกหนี้ เจ้าหนี้ สต๊อก ยังกระทบกับ Express ได้เหมือนเดิม
 """
-import sys, re, hashlib, json, random
+import os, sys, re, hashlib, json, random
 import psycopg2
 
 args = [a for a in sys.argv[1:] if not a.startswith('--')]
 DSN, SRC_CODE = args[0], args[1]
+if DSN == '-': DSN = os.environ['DATABASE_URL']   # ใส่ - = ใช้ DATABASE_URL (รันผ่าน node tools/local-pg/pg.mjs run -- …)
 NEW_CODE = args[2] if len(args) > 2 else 'DEMO'
 YEARS = int(sys.argv[sys.argv.index('--years') + 1]) if '--years' in sys.argv else 16
 

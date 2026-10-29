@@ -11,14 +11,20 @@
     "test": "pnpm --filter @buddy/core test && pnpm --filter @buddy/server test",
     "typecheck": "pnpm -r typecheck",
     "start": "pnpm --filter @buddy/web build && pnpm --filter @buddy/server start",
-    "coverage": "python3 docs/tools/gen_coverage.py"
+    "coverage": "python3 docs/tools/gen_coverage.py",
+    "pg": "node tools/local-pg/pg.mjs",
+    "start:pg": "pnpm --filter @buddy/web build && node tools/local-pg/pg.mjs run -- pnpm --filter @buddy/server start"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@embedded-postgres/darwin-arm64",
+      "@embedded-postgres/linux-x64",
+      "@embedded-postgres/windows-x64",
       "esbuild"
     ]
   },
   "devDependencies": {
+    "embedded-postgres": "16.14.0-beta.17",
     "kysely": "^0.27.6",
     "typescript": "^5.9.3"
   }

@@ -29,6 +29,18 @@ DATABASE_URL=postgres://user:pass@localhost/buddy pnpm dev:server
 
 เปิด http://localhost:4100 — ครั้งแรกจะให้สร้างผู้ดูแลระบบ · พัฒนาหน้าจอแบบ hot reload: `pnpm dev:web` (http://localhost:5173)
 
+### PostgreSQL 16 ของ Buddy บนเครื่องนี้ (แยกจาก WTS-ERP)
+
+`tools/local-pg/pg.mjs` เปิด PostgreSQL 16 (embedded-postgres) ที่โฟลเดอร์ `.data/pg` พอร์ต 5544 สร้างฐานข้อมูล `buddy` และสุ่มรหัสผ่านเก็บใน `.data/pg/settings.json` (ไม่อยู่ใน git)
+
+```bash
+pnpm pg start | stop | status
+node tools/local-pg/pg.mjs run -- <คำสั่ง>   # เปิดฐานข้อมูลแล้วรันคำสั่งโดยตั้ง DATABASE_URL ให้
+pnpm start:pg                                 # build หน้าจอ + เปิดโปรแกรมบน PostgreSQL ของ Buddy
+```
+
+ผู้ใช้ทั่วไป: ดับเบิลคลิก `เปิด Buddy Account.cmd` (ปิดหน้าต่าง = ปิดโปรแกรม) · `ปิดฐานข้อมูล Buddy Account.cmd` ปิดฐานข้อมูล
+
 ### นำข้อมูลจาก Express
 
 ```bash
@@ -42,6 +54,9 @@ pnpm --filter @buddy/server cli create-admin admin "ผู้ดูแลระ�
 tools/express-import/import.sh <โฟลเดอร์ TESTRice> postgres://…/buddy TESTRice
 python3 tools/demo-data/make_demo.py postgres://…/buddy TESTRice DEMO
 pnpm --filter @buddy/server cli create-admin admin "ผู้ดูแลระบบ" <รหัสผ่าน>
+# หรือใช้ PostgreSQL ของ Buddy บนเครื่องนี้ (ใส่ - แทน URL)
+node tools/local-pg/pg.mjs run -- bash tools/express-import/import.sh D:/ACC-Program/TESTRice - TESTRice
+node tools/local-pg/pg.mjs run -- python tools/demo-data/make_demo.py - TESTRice DEMO
 ```
 
 ได้บริษัท DEMO "บริษัท บัดดี้ ดีไซน์ (ตัวอย่าง) จำกัด" ในลูกค้า DEMO — ชื่อและเลขผู้เสียภาษีสมมุติทั้งหมด ยอดเงินเท่าข้อมูลเดิม
@@ -54,7 +69,8 @@ pnpm --filter @buddy/server cli create-admin admin "ผู้ดูแลระ�
 
 ```bash
 pnpm test                       # core + API (PGlite) + ตรวจว่า migration ตรงกับ spec
-node apps/web/e2e/smoke.cjs     # ทดสอบหน้าจอด้วย Playwright (ต้องเปิด server ก่อน)
+node apps/web/e2e/smoke.cjs     # ทดสอบหน้าจอด้วย Playwright บนข้อมูล DEMO (ต้องเปิด server ก่อน; PASS=รหัสผ่าน admin)
+# ครั้งแรก: cd apps/web && npx playwright install chromium
 ```
 
 ## เอกสาร

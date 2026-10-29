@@ -123,6 +123,20 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await shot('15-layout-editor');
     await page.keyboard.press('Escape');
   });
+  await step('journal templates (S-GL-01/05)', async () => {
+    await page.goto(BASE + '/gl/templates');
+    await page.waitForSelector('table.grid tbody tr.row-open', { timeout: 15000 });
+    await shot('15b-templates');
+    // ใบสำคัญใหม่: 🔍 ที่ช่องเลขที่ → เลือกต้นแบบแรก → บรรทัดต้องเติมจากต้นแบบ (ไม่บันทึก)
+    // ต้นแบบตัวอย่างของ TESTRice อ้างบัญชีที่ไม่มีในผัง จึงตรวจคำอธิบายรายการแทนเลขที่บัญชี
+    await page.goto(BASE + '/gl/journals/new');
+    await page.waitForSelector('.lines tbody tr');
+    await page.locator('button[title^="เลือกต้นแบบวิธีการบันทึก"]').click();
+    await page.waitForSelector('.modal tbody tr.row-open');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => [...document.querySelectorAll('.lines tbody tr')].filter((tr) => tr.querySelector('td:nth-child(5) input')?.value).length >= 2, null, { timeout: 15000 });
+    await shot('15c-journal-from-template');
+  });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });

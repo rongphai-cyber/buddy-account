@@ -200,7 +200,10 @@ for r in dbf('GLTPLIT'):          # ลำดับบรรทัด = ลำ�
     c = st(r['TPLCOD'])
     if c not in TPL: QUALITY['template_line_without_header'].append(c); continue
     tpl_no[c] += 1
-    tpl_rows.append(base(id=U('tplit', c, tpl_no[c]), template_id=TPL[c], line_no=tpl_no[c], account_id=acc(r['ACCNUM']),
+    # ต้นแบบตัวอย่างของ Express อ้างเลขบัญชีจากผังอื่นได้ — ไม่สร้างบัญชี placeholder ในผังบัญชี แต่เว้นบัญชีว่างให้ผู้ใช้เลือกตอนใช้
+    a = st(r['ACCNUM'])
+    if a and a not in ACC: QUALITY['template_account_missing'].append(f'{c}:{a}')
+    tpl_rows.append(base(id=U('tplit', c, tpl_no[c]), template_id=TPL[c], line_no=tpl_no[c], account_id=ACC.get(a) if a else None,
                          department_id=(DEPT.get(st(r['DEPCOD'])) or ref(DEPT, 'md_department', r['DEPCOD'], 'dept')) if st(r['DEPCOD']) else None,
                          description=r['DESCRP'], side='C' if r['JNLTYP'] == '1' else 'D', amount=money(r['AMOUNT']) or None))
 done('gl_template_line', insert('gl_template_line', tpl_rows), 'GLTPLIT')
