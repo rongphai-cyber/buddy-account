@@ -13,6 +13,8 @@ require('fs').mkdirSync(OUT, { recursive: true });
   page.on('console', (m) => { if (m.type() === 'error' && !/fonts.googleapis|ERR_|401|400/.test(m.text())) errors.push('console: ' + m.text()); });
   const shot = (n) => page.screenshot({ path: `${OUT}/${n}.png`, fullPage: false });
   const step = async (name, fn) => { try { await fn(); console.log('✓', name); } catch (e) { console.log('✗', name, e.message.split('\n')[0]); errors.push(name + ': ' + e.message.split('\n')[0]); await shot('fail-' + name.replace(/\W+/g, '_')); } };
+  // ใบสำคัญใหม่ในสมุดรายวันทั่วไป (เลือกสมุดจากแถบ — ไม่มีสมุดเริ่มต้นให้เองแล้ว)
+  const jvNew = async () => { const bs = await (await page.request.get(BASE + '/api/v1/gl/books')).json(); return BASE + '/gl/journals/new?book=' + (bs.find((b) => b.code === '00') ?? bs[0]).id; };
 
   await step('login', async () => {
     await page.goto(BASE + '/');
@@ -53,7 +55,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
   });
   let newNo = '';
   await step('new journal (keyboard)', async () => {
-    await page.goto(BASE + '/gl/journals/new');
+    await page.goto(await jvNew());
     await page.waitForSelector('.lines tbody tr');
     const date = page.locator('.head-grid .date-in input');
     await date.fill('15/10/2569'); await date.press('Enter');
@@ -92,7 +94,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await shot('08b-journal-cancelled');
   });
   await step('validation error shown', async () => {
-    await page.goto(BASE + '/gl/journals/new');
+    await page.goto(await jvNew());
     await page.waitForSelector('.lines tbody tr');
     await page.waitForLoadState('networkidle');   // รอผังบัญชีโหลดก่อนพิมพ์เลขที่บัญชี (ไม่งั้นหน้าต่างค้นหาเปิด)
     const acc = page.locator('.lines tbody tr').nth(0).locator('.lk-in input');
@@ -138,7 +140,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await shot('15b-templates');
     // ใบสำคัญใหม่: 🔍 ที่ช่องเลขที่ → เลือกต้นแบบแรก → บรรทัดต้องเติมจากต้นแบบ (ไม่บันทึก)
     // ต้นแบบตัวอย่างของ TESTRice อ้างบัญชีที่ไม่มีในผัง จึงตรวจคำอธิบายรายการแทนเลขที่บัญชี
-    await page.goto(BASE + '/gl/journals/new');
+    await page.goto(await jvNew());
     await page.waitForSelector('.lines tbody tr');
     await page.locator('button[title^="เลือกต้นแบบวิธีการบันทึก"]').click();
     await page.waitForSelector('.modal tbody tr.row-open');
@@ -147,7 +149,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await shot('15c-journal-from-template');
   });
   await step('copy from another voucher (Ctrl+F6, S-GL-06)', async () => {
-    await page.goto(BASE + '/gl/journals/new');
+    await page.goto(await jvNew());
     await page.waitForSelector('.lines tbody tr');
     await page.keyboard.press('Control+F6');
     await page.waitForSelector('.modal tbody tr.row-open', { timeout: 15000 });
@@ -405,7 +407,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
     }
   });
   await step('month-end VAT closing fill (S-ME-01, not saved)', async () => {
-    await page.goto(BASE + '/gl/journals/new');
+    await page.goto(await jvNew());
     await page.getByTitle('ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน').click({ timeout: 15000 });
     await page.waitForSelector('.modal', { timeout: 10000 });
     await page.getByRole('button', { name: 'เติมรายการ' }).click();
@@ -441,7 +443,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });
-  await step('mobile', async () => { await page.setViewportSize({ width: 390, height: 844 }); await page.goto(BASE + '/gl/journals/new'); await page.waitForSelector('.lines'); await shot('19-mobile');
+  await step('mobile', async () => { await page.setViewportSize({ width: 390, height: 844 }); await page.goto(await jvNew()); await page.waitForSelector('.lines'); await shot('19-mobile');
     const w = await page.evaluate(() => document.documentElement.scrollWidth); if (w > 400) throw new Error('horizontal overflow ' + w); });
   console.log('new voucher', newNo);
   console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no page errors');

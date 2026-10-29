@@ -112,8 +112,9 @@ export function JournalFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew, bookTpl.data]);
 
+  // สมุดเดียว: เลือกให้เลย · หลายสมุด: ให้ผู้ใช้เลือกจากแถบก่อน (ไม่ตั้งเป็นสมุดทั่วไปเอง)
   useEffect(() => {
-    if (isNew && !h.journal_book_id && books.data?.length) setH((x) => ({ ...x, journal_book_id: books.data!.find((b) => b.code === '00')?.id ?? books.data![0]!.id }));
+    if (isNew && !h.journal_book_id && books.data?.length === 1) setH((x) => ({ ...x, journal_book_id: books.data![0]!.id }));
   }, [books.data, isNew, h.journal_book_id]);
   useEffect(() => {
     if (!doc.data) return;
@@ -146,6 +147,7 @@ export function JournalFormPage() {
 
   const save = async (andNew = false) => {
     if (!editable || busy) return;
+    if (!h.journal_book_id) { setErr(new Error('เลือกสมุดรายวัน (แถบด้านบน) ก่อนบันทึก')); return; }
     setErr(null); setBusy(true);
     const body = { ...h, voucher_no: manualNo ? typedNo.trim() || null : undefined, description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0' })) };
     try {
@@ -197,15 +199,14 @@ export function JournalFormPage() {
         </div>
         <div className="tb-group"><button onClick={() => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`)} title="กลับไปรายการ (Esc)">รายการ <kbd>Esc</kbd></button></div>
       </div>
+      {/* สมุดรายวันเป็นแถบ: ใบใหม่เลือกได้ · ใบที่บันทึกแล้วแสดงเฉพาะสมุดของใบนั้น (เปลี่ยนสมุดไม่ได้) */}
+      <Tabs active={h.journal_book_id} onChange={(k) => { if (isNew && k !== h.journal_book_id) { setDirty(true); setH({ ...h, journal_book_id: k }); } }}
+        tabs={(books.data ?? []).filter((b) => isNew || b.id === h.journal_book_id).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}` }))} />
+      {isNew && !h.journal_book_id && books.data && <p className="notebox">เลือกสมุดรายวันจากแถบด้านบนก่อน — เลขที่ใบสำคัญและต้นแบบรายการตามสมุดที่เลือก</p>}
       <ErrorBox error={err ?? doc.error} />
       <fieldset disabled={!editable} onKeyDown={navKey}>
         <div className="head-grid">
           <div className="col">
-            <Field label="สมุดรายวัน" req>
-              <select value={h.journal_book_id} onChange={(e) => { setDirty(true); setH({ ...h, journal_book_id: e.target.value }); }} disabled={!isNew}>
-                {books.data?.map((b) => <option key={b.id} value={b.id}>{b.code} {b.prefix} · {b.name_th}</option>)}
-              </select>
-            </Field>
             <Field label="วันที่" req><DateInput value={h.voucher_date} onChange={(v) => { setDirty(true); setH({ ...h, voucher_date: v }); }} autoFocus={isNew} /></Field>
             <Field label="เลขที่ใบสำคัญ" hint={isNew ? `${manualNo ? 'ป้อนเลขเอง (ตามค่าเริ่มต้นระบบบัญชี)' : 'ออกเลขอัตโนมัติตอนบันทึก'} · 🔍/F4 เลือกต้นแบบ · 📋/Ctrl+F6 คัดลอกจากใบสำคัญอื่น` : undefined}>
               <span className="lk-in">

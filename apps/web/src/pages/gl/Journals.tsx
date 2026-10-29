@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addMonths, todayIso } from '@buddy/core';
 import { api, type Book } from '../../api';
 import { useSession } from '../../session';
-import { cx, DateInput, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, useHotkeys } from '../../ui';
+import { cx, DateInput, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, Tabs, useHotkeys } from '../../ui';
 
 interface Row { id: string; voucher_no: string; voucher_date: string; description: string | null; reference: string | null; total_debit: string; doc_status: string; source_module: string | null; source_header_id: string | null; book_code: string; source_doc_no: string | null; source_doc_class: string | null }
 
@@ -23,17 +23,16 @@ export function JournalsPage() {
   const rows = list.data?.rows ?? [];
   const set = (p: Partial<typeof f>) => { const n = { ...f, ...p }; setF(n); setPage(0); setSel(0); setSp({ book: n.book_id, from: n.from, to: n.to }, { replace: true }); };
   const newUrl = `/gl/journals/new${f.book_id ? `?book=${f.book_id}` : ''}`;
+  const curBook = books.data?.find((b) => b.id === f.book_id);
   useHotkeys({ Insert: () => nav(newUrl), 'Alt+A': () => nav(newUrl), ArrowDown: () => setSel((s) => Math.min(s + 1, rows.length - 1)), ArrowUp: () => setSel((s) => Math.max(0, s - 1)), Enter: () => rows[sel] && nav(`/gl/journals/${rows[sel]!.id}`) }, [rows, sel, newUrl]);
   const total = useMemo(() => rows.filter((r) => r.doc_status === 'N').reduce((s, r) => s + Number(r.total_debit), 0), [rows]);
   return (
     <div className="page" data-tone="gl">
       <PageHead eyebrow="บัญชี › ลงประจำวัน" title="สมุดรายวัน" lead="ใบสำคัญที่บันทึกเองและที่ลงบัญชีอัตโนมัติจากระบบอื่น — คลิกแถวเพื่อเปิด"
-        actions={<button className="primary" onClick={() => nav(newUrl)}>+ บันทึกใบสำคัญ <kbd>Ins</kbd></button>} />
+        actions={<button className="primary" onClick={() => nav(newUrl)} title={curBook ? `บันทึกใบสำคัญใน${curBook.name_th}` : 'บันทึกใบสำคัญ — เลือกสมุดรายวันในหน้าถัดไป'}>+ บันทึกใบสำคัญ{curBook ? ` ${curBook.prefix}` : ''} <kbd>Ins</kbd></button>} />
+      {/* สมุดรายวันเป็นแถบ: เลือกสมุดก่อน แล้ว "บันทึกใบสำคัญ" ลงสมุดนั้น */}
+      <Tabs active={f.book_id} onChange={(k) => set({ book_id: k })} tabs={[{ key: '', label: 'ทุกสมุดรายวัน' }, ...(books.data ?? []).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}` }))]} />
       <div className="filters">
-        <select value={f.book_id} onChange={(e) => set({ book_id: e.target.value })} aria-label="สมุดรายวัน">
-          <option value="">ทุกสมุดรายวัน</option>
-          {books.data?.map((b) => <option key={b.id} value={b.id}>{b.code} {b.prefix} · {b.name_th}</option>)}
-        </select>
         <span className="inline">ตั้งแต่ <DateInput value={f.from} onChange={(v) => set({ from: v })} /></span>
         <span className="inline">ถึง <DateInput value={f.to} onChange={(v) => set({ to: v })} /></span>
         <input className="search" placeholder="ค้นหาเลขที่ คำอธิบาย อ้างอิง" value={f.q} onChange={(e) => set({ q: e.target.value })} data-noenter />
