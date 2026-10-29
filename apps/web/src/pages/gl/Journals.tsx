@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addMonths, todayIso } from '@buddy/core';
 import { api, type Book } from '../../api';
+import { bookColor, bookStyle } from '../../bookColor';
 import { useSession } from '../../session';
 import { cx, DateInput, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, Tabs, useHotkeys } from '../../ui';
 
@@ -29,9 +30,9 @@ export function JournalsPage() {
   return (
     <div className="page" data-tone="gl">
       <PageHead eyebrow="บัญชี › ลงประจำวัน" title="สมุดรายวัน" lead="ใบสำคัญที่บันทึกเองและที่ลงบัญชีอัตโนมัติจากระบบอื่น — คลิกแถวเพื่อเปิด"
-        actions={<button className="primary" onClick={() => nav(newUrl)} title={curBook ? `บันทึกใบสำคัญใน${curBook.name_th}` : 'บันทึกใบสำคัญ — เลือกสมุดรายวันในหน้าถัดไป'}>+ บันทึกใบสำคัญ{curBook ? ` ${curBook.prefix}` : ''} <kbd>Ins</kbd></button>} />
+        actions={<button className={cx('primary', curBook && 'book-btn')} style={bookStyle(bookColor(curBook))} onClick={() => nav(newUrl)} title={curBook ? `บันทึกใบสำคัญใน${curBook.name_th}` : 'บันทึกใบสำคัญ — เลือกสมุดรายวันในหน้าถัดไป'}>+ บันทึกใบสำคัญ{curBook ? ` ${curBook.prefix}` : ''} <kbd>Ins</kbd></button>} />
       {/* สมุดรายวันเป็นแถบ: เลือกสมุดก่อน แล้ว "บันทึกใบสำคัญ" ลงสมุดนั้น */}
-      <Tabs active={f.book_id} onChange={(k) => set({ book_id: k })} tabs={[{ key: '', label: 'ทุกสมุดรายวัน' }, ...(books.data ?? []).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}` }))]} />
+      <Tabs active={f.book_id} onChange={(k) => set({ book_id: k })} tabs={[{ key: '', label: 'ทุกสมุดรายวัน' }, ...(books.data ?? []).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}`, color: bookColor(b) }))]} />
       <div className="filters">
         <span className="inline">ตั้งแต่ <DateInput value={f.from} onChange={(v) => set({ from: v })} /></span>
         <span className="inline">ถึง <DateInput value={f.to} onChange={(v) => set({ to: v })} /></span>

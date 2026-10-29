@@ -163,11 +163,12 @@ export function MoneyInput({ value, onChange, disabled, invalid, className, ...r
   );
 }
 
-export function Tabs({ tabs, active, onChange }: { tabs: Array<{ key: string; label: string; badge?: number | string }>; active: string; onChange: (k: string) => void }) {
+export function Tabs({ tabs, active, onChange }: { tabs: Array<{ key: string; label: string; badge?: number | string; color?: string }>; active: string; onChange: (k: string) => void }) {
   return (
     <div className="tabs" role="tablist">
       {tabs.map((t) => (
-        <button key={t.key} role="tab" aria-selected={active === t.key} className={cx('tab', active === t.key && 'on')} onClick={() => onChange(t.key)}>
+        <button key={t.key} role="tab" aria-selected={active === t.key} className={cx('tab', active === t.key && 'on', t.color && 'colored')} onClick={() => onChange(t.key)}
+          style={t.color ? ({ ['--tab-c' as string]: t.color } as React.CSSProperties) : undefined}>
           {t.label}{t.badge ? <span className="badge">{t.badge}</span> : null}
         </button>
       ))}

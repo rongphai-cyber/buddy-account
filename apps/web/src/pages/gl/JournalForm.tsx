@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { d, fmt, journalTotals, todayIso } from '@buddy/core';
 import { api, type Book, type Department, type Template, type TemplateDetail } from '../../api';
+import { bookColor, bookStyle } from '../../bookColor';
 import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
@@ -173,11 +174,11 @@ export function JournalFormPage() {
   const book = books.data?.find((b) => b.id === h.journal_book_id);
   const j = doc.data;
   return (
-    <div className="page" data-tone="gl">
+    <div className={cx('page', book && 'book-colored')} data-tone="gl" style={bookStyle(bookColor(book))}>
       <div className="doc-title">
         <div>
           <p className="eyebrow">บัญชี › ลงประจำวัน › {book ? `${book.code} ${book.name_th}` : 'สมุดรายวัน'}</p>
-          <h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}</h1>
+          <h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}{book && <span className="book-pill" title="สมุดรายวันของใบสำคัญนี้">{isNew ? 'กำลังบันทึก: ' : ''}{book.prefix} {book.name_th}</span>}</h1>
         </div>
         <div className="doc-state">
           {isNew && <Pill tone="d">ใหม่ — ยังไม่บันทึก</Pill>}
@@ -201,7 +202,7 @@ export function JournalFormPage() {
       </div>
       {/* สมุดรายวันเป็นแถบ: ใบใหม่เลือกได้ · ใบที่บันทึกแล้วแสดงเฉพาะสมุดของใบนั้น (เปลี่ยนสมุดไม่ได้) */}
       <Tabs active={h.journal_book_id} onChange={(k) => { if (isNew && k !== h.journal_book_id) { setDirty(true); setH({ ...h, journal_book_id: k }); } }}
-        tabs={(books.data ?? []).filter((b) => isNew || b.id === h.journal_book_id).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}` }))} />
+        tabs={(books.data ?? []).filter((b) => isNew || b.id === h.journal_book_id).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}`, color: bookColor(b) }))} />
       {isNew && !h.journal_book_id && books.data && <p className="notebox">เลือกสมุดรายวันจากแถบด้านบนก่อน — เลขที่ใบสำคัญและต้นแบบรายการตามสมุดที่เลือก</p>}
       <ErrorBox error={err ?? doc.error} />
       <fieldset disabled={!editable} onKeyDown={navKey}>
