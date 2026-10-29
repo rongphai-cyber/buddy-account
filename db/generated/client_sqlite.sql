@@ -1493,6 +1493,7 @@ CREATE TABLE IF NOT EXISTS gl_journal_line (
   project_phase TEXT,
   cost_code TEXT,
   description TEXT,
+  bank_cleared_date TEXT,
   debit TEXT NOT NULL DEFAULT '0',
   credit TEXT NOT NULL DEFAULT '0',
   posting_role TEXT,
@@ -1509,6 +1510,44 @@ CREATE TABLE IF NOT EXISTS gl_journal_line (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_gl_journal_line_journal_line_no ON gl_journal_line (journal_id, line_no) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS ix_gl_journal_line_account ON gl_journal_line (account_id);
+
+-- gl_inventory_balance: บัญชีสินค้าคงเหลือ (Periodic) — ยอดคงเหลือปลายงวดที่ผู้ใช้ยืนยัน ใช้ในงบการเงินแทนยอดบัญชี
+CREATE TABLE IF NOT EXISTS gl_inventory_balance (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  fiscal_year_id TEXT NOT NULL REFERENCES gl_fiscal_year(id) DEFERRABLE INITIALLY DEFERRED,
+  account_id TEXT NOT NULL REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED,
+  department_id TEXT REFERENCES md_department(id) DEFERRABLE INITIALLY DEFERRED,
+  period_no INTEGER NOT NULL,
+  amount TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'M' CHECK (source IN ('M','S')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_gl_inventory_balance_company_fiscal_year_account ON gl_inventory_balance (company_id, fiscal_year_id, account_id);
+
+-- fin_bank_statement: ยอดตามใบแจ้งยอดธนาคาร (Bank statement) สำหรับกระทบยอดเงินฝาก
+CREATE TABLE IF NOT EXISTS fin_bank_statement (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  bank_account_id TEXT NOT NULL REFERENCES md_bank_account(id) DEFERRABLE INITIALLY DEFERRED,
+  statement_date TEXT NOT NULL,
+  closing_balance TEXT NOT NULL,
+  remark TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fin_bank_statement_company_bank_account_statement_date ON fin_bank_statement (company_id, IFNULL(bank_account_id,''), statement_date) WHERE deleted_at IS NULL;
 
 -- gl_budget: งบประมาณรายงวด
 CREATE TABLE IF NOT EXISTS gl_budget (
@@ -3153,7 +3192,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'gl_journal_line', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'journal_id', NEW.journal_id, 'line_no', NEW.line_no, 'account_id', NEW.account_id, 'department_id', NEW.department_id, 'project_id', NEW.project_id, 'project_phase', NEW.project_phase, 'cost_code', NEW.cost_code, 'description', NEW.description, 'debit', NEW.debit, 'credit', NEW.credit, 'posting_role', NEW.posting_role, 'resolved_from', NEW.resolved_from, 'changed_from_account_id', NEW.changed_from_account_id, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'journal_id', NEW.journal_id, 'line_no', NEW.line_no, 'account_id', NEW.account_id, 'department_id', NEW.department_id, 'project_id', NEW.project_id, 'project_phase', NEW.project_phase, 'cost_code', NEW.cost_code, 'description', NEW.description, 'bank_cleared_date', NEW.bank_cleared_date, 'debit', NEW.debit, 'credit', NEW.credit, 'posting_role', NEW.posting_role, 'resolved_from', NEW.resolved_from, 'changed_from_account_id', NEW.changed_from_account_id, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_gl_journal_line_update_outbox AFTER UPDATE ON gl_journal_line
@@ -3162,13 +3201,59 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'gl_journal_line', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'journal_id', NEW.journal_id, 'line_no', NEW.line_no, 'account_id', NEW.account_id, 'department_id', NEW.department_id, 'project_id', NEW.project_id, 'project_phase', NEW.project_phase, 'cost_code', NEW.cost_code, 'description', NEW.description, 'debit', NEW.debit, 'credit', NEW.credit, 'posting_role', NEW.posting_role, 'resolved_from', NEW.resolved_from, 'changed_from_account_id', NEW.changed_from_account_id, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'journal_id', NEW.journal_id, 'line_no', NEW.line_no, 'account_id', NEW.account_id, 'department_id', NEW.department_id, 'project_id', NEW.project_id, 'project_phase', NEW.project_phase, 'cost_code', NEW.cost_code, 'description', NEW.description, 'bank_cleared_date', NEW.bank_cleared_date, 'debit', NEW.debit, 'credit', NEW.credit, 'posting_role', NEW.posting_role, 'resolved_from', NEW.resolved_from, 'changed_from_account_id', NEW.changed_from_account_id, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_gl_journal_line_ver AFTER UPDATE ON gl_journal_line
 WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
 BEGIN
   UPDATE gl_journal_line SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_gl_inventory_balance_insert_outbox AFTER INSERT ON gl_inventory_balance
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'gl_inventory_balance', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'fiscal_year_id', NEW.fiscal_year_id, 'account_id', NEW.account_id, 'department_id', NEW.department_id, 'period_no', NEW.period_no, 'amount', NEW.amount, 'source', NEW.source, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_gl_inventory_balance_update_outbox AFTER UPDATE ON gl_inventory_balance
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'gl_inventory_balance', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'fiscal_year_id', NEW.fiscal_year_id, 'account_id', NEW.account_id, 'department_id', NEW.department_id, 'period_no', NEW.period_no, 'amount', NEW.amount, 'source', NEW.source, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_gl_inventory_balance_ver AFTER UPDATE ON gl_inventory_balance
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE gl_inventory_balance SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_fin_bank_statement_insert_outbox AFTER INSERT ON fin_bank_statement
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'fin_bank_statement', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'bank_account_id', NEW.bank_account_id, 'statement_date', NEW.statement_date, 'closing_balance', NEW.closing_balance, 'remark', NEW.remark, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_fin_bank_statement_update_outbox AFTER UPDATE ON fin_bank_statement
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'fin_bank_statement', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'bank_account_id', NEW.bank_account_id, 'statement_date', NEW.statement_date, 'closing_balance', NEW.closing_balance, 'remark', NEW.remark, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_fin_bank_statement_ver AFTER UPDATE ON fin_bank_statement
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE fin_bank_statement SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS trg_gl_budget_insert_outbox AFTER INSERT ON gl_budget
 WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'

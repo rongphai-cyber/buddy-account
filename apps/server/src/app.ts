@@ -38,6 +38,8 @@ import { stockOpeningRoutes } from './modules/docs/stockopening.js';
 import { serialRoutes } from './modules/serials.js';
 import { bankDocRoutes } from './modules/docs/bankdocs.js';
 import { chequeRoutes } from './modules/cheques.js';
+import { bankReconRoutes } from './modules/bankrecon.js';
+import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -95,6 +97,8 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   serialRoutes(app, db);
   bankDocRoutes(app, db);
   chequeRoutes(app, db);
+  bankReconRoutes(app, db);
+  inventoryAccountRoutes(app, db);
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {

@@ -59,6 +59,7 @@ export const MENU: MenuItem[] = [
       m('FI.BK.CP', 'ทะเบียนเช็คจ่าย', 'P4', '/fi/cheques/paid', ['ch13:S-BK-12']),
       m('FI.BK.TX', 'ฝาก / ถอน / โอนเงิน', 'P4', '/fi/bank/deposits', ['ch13:S-BK-02', 'ch13:S-BK-03']),
       m('FI.BK.BOOK', 'สมุดเงินฝาก', 'P4', '/fi/bank/book'),
+      m('FI.BK.REC', 'กระทบยอดเงินฝากธนาคาร', 'P4', '/fi/bank/reconcile'),
       m('FI.BK.ACC', 'รายละเอียดบัญชีเงินฝาก', 'P2', '/fi/bank-accounts', ['ch07:S-CQ-01', 'ch13:S-BK-01']),
     ]),
     g('FI.VAT', 'ภาษีมูลค่าเพิ่ม', 'P3', [
@@ -86,7 +87,7 @@ export const MENU: MenuItem[] = [
     m('GL.OB', 'บันทึกยอดยกมา', 'P1', '/gl/opening', ['ch08:S-OB-06']),
     m('GL.LY', 'ยอดปีที่แล้ว', 'P1', '/gl/prior-year', ['ch15:S-GL-16']),
     m('GL.BUD', 'งบประมาณ', 'P1', '/gl/budget', ['ch15:S-GL-17']),
-    m('GL.INV', 'บัญชีสินค้าคงเหลือ', 'P4', undefined, ['ch15:S-GL-14']),
+    m('GL.INV', 'บัญชีสินค้าคงเหลือ', 'P4', '/gl/inventory', ['ch15:S-GL-14', 'ch15:S-GL-15']),
     m('GL.PC', 'เงินสดย่อย', 'P3', '/gl/petty-cash', ['ch15:S-GL-11', 'ch15:S-GL-12', 'ch15:S-GL-13']),
     m('GL.TPL', 'ต้นแบบวิธีการบันทึก', 'P1', '/gl/templates', ['ch15:S-GL-01']),
     m('GL.BOOK', 'สร้างสมุดรายวัน', 'P1', '/gl/books', ['ch15:S-GL-09']),

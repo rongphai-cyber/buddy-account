@@ -202,6 +202,8 @@ export const API_RULES: Record<string, Rule> = {
     [`PUT /api/v1/${k.path}/:id`, M('FI.BK.TX', 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M('FI.BK.TX', 'cancel')],
   ])),
   'GET /api/v1/bank-book': M('FI.BK.BOOK', 'read'),
+  'GET /api/v1/bank-recon': M('FI.BK.REC', 'read'), 'PUT /api/v1/bank-recon/statement': M('FI.BK.REC', 'edit'), 'POST /api/v1/bank-recon/clear': M('FI.BK.REC', 'edit'),
+  'GET /api/v1/gl/inventory-accounts': M('GL.INV', 'read'), 'GET /api/v1/gl/inventory': M('GL.INV', 'read'), 'PUT /api/v1/gl/inventory': M('GL.INV', 'edit'), 'POST /api/v1/gl/inventory/compute': M('GL.INV', 'edit'),
   // ทะเบียนเช็ค: สิทธิ์ตามทิศทาง เช็ครับ (FI.BK.CR/CL) · เช็คจ่าย (FI.BK.CP/PC)
   'GET /api/v1/cheques': CHQ('FI.BK.CR', 'FI.BK.CP', 'read'), 'GET /api/v1/cheques/:id': CHQ('FI.BK.CR', 'FI.BK.CP', 'read'), 'POST /api/v1/cheques': CHQ('FI.BK.CR', 'FI.BK.CP', 'add'),
   'PUT /api/v1/cheques/:id': CHQ('FI.BK.CR', 'FI.BK.CP', 'edit'), 'DELETE /api/v1/cheques/:id': CHQ('FI.BK.CR', 'FI.BK.CP', 'delete'),

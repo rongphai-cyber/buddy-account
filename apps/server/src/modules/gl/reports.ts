@@ -295,6 +295,16 @@ async function statementContext(db: Db, companyId: string, chart: Chart, end: st
   const fyLY = await fiscalYearOf(db, companyId, endLY);
   const periodsOf = async (fyId: string | undefined) => fyId ? await db.selectFrom('gl_period').select(['period_no', 'start_date', 'end_date']).where('company_id', '=', companyId).where('fiscal_year_id', '=', fyId).where('deleted_at', 'is', null).execute() : [];
   const pCur = await periodsOf(fy.id), pLY = await periodsOf(fyLY?.id);
+  // บัญชีสินค้าคงเหลือ Periodic (S-GL-14): ยอดปลายงวดที่ผู้ใช้ยืนยัน (GLINV) ใช้กับข้อมูลชนิด INV — ไม่มี = ใช้ยอดบัญชี
+  const invRows = await db.selectFrom('gl_inventory_balance as b').innerJoin('gl_account as g', 'g.id', 'b.account_id').leftJoin('md_department as dp', 'dp.id', 'b.department_id')
+    .select(['b.fiscal_year_id', 'g.account_no', 'dp.code as dept', 'b.period_no', 'b.amount']).where('b.company_id', '=', companyId).where('b.deleted_at', 'is', null)
+    .where('b.fiscal_year_id', 'in', [fy.id, fyLY?.id ?? fy.id]).execute();
+  const invOf = (no: string, ly: boolean, dept: string | null) => {
+    const yr = ly ? fyLY : fy, ps = ly ? pLY : pCur, e = ly ? endLY : end;
+    const per = ps.find((x) => String(x.start_date).slice(0, 10) <= e && String(x.end_date).slice(0, 10) >= e);
+    const r = yr && per ? invRows.find((x) => x.fiscal_year_id === yr.id && x.account_no === no && (x.dept ?? null) === (dept || null) && x.period_no === per.period_no) : undefined;
+    return r ? d(r.amount) : null;
+  };
   const depts = await db.selectFrom('md_department').select(['id', 'code']).where('company_id', '=', companyId).where('deleted_at', 'is', null).execute();
   /** รหัส/wildcard แผนก → ตัวกรอง (null = ไม่กรองเพิ่ม) */
   const deptFilter = (code: string | null): BalanceFilter => {
@@ -350,8 +360,8 @@ async function statementContext(db: Db, companyId: string, chart: Chart, end: st
       }
       const m = tot.get(keyOf(s.range, s.ly, dk));
       if (dt === 'BEG') return nat(no, m, 'opening');
-      // INV: สินค้าคงเหลือปลายงวด — Periodic ใช้ยอดบัญชีสินค้าคงเหลือ ณ สิ้นงวด (เฟส 4: ใช้ยอดตรวจนับ/บัญชีสินค้าคงเหลือ)
-      if (dt === 'INV') return nat(no, tot.get(keyOf('YTD', s.ly, dk)), 'closing');
+      // INV: สินค้าคงเหลือปลายงวด — ยอดที่ยืนยันในบัญชีสินค้าคงเหลือ (Periodic) ก่อน ไม่มีจึงใช้ยอดบัญชี ณ สิ้นงวด
+      if (dt === 'INV') return invOf(no, s.ly, dk) ?? nat(no, tot.get(keyOf('YTD', s.ly, dk)), 'closing');
       // ยอดสะสม: บัญชีงบดุลใช้ยอดคงเหลือ บัญชีกำไรขาดทุนใช้ยอดตั้งแต่ต้นปี (ยกมาเป็นศูนย์) · รายงวด: ยอดเคลื่อนไหวในงวด
       return nat(no, m, s.range === 'YTD' ? 'closing' : 'move');
     },

@@ -1730,6 +1730,56 @@ describe('Buddy Account API (PGlite)', () => {
     for (const id of [c1, c2, c3, cp]) expect((await call('DELETE', `/api/v1/cheques/${id}`)).status).toBe(200);
     expect(await book()).toBe('0.00');
   });
+  it('bank reconciliation + periodic inventory account (T4.8): cleared lines vs statement, period-end stock from inventory system, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const banks = (await call('GET', '/api/v1/bank-accounts')).body as Array<{ id: string; code: string }>;
+    const t1 = banks.find((b) => b.code === 'T1')!.id, t2 = banks.find((b) => b.code === 'T2')!.id;
+    const bd = (await call('POST', '/api/v1/bank-deposits', { doc_type_id: await typeOf('BD'), doc_date: '2026-10-05', bank_account_id: t1, amount: 1000 })).body;
+    const bw = (await call('POST', '/api/v1/bank-withdrawals', { doc_type_id: await typeOf('BW'), doc_date: '2026-10-06', bank_account_id: t1, amount: 200 })).body;
+    const bv = (await call('POST', '/api/v1/bank-expenses', { doc_type_id: await typeOf('BV'), doc_date: '2026-10-07', bank_account_id: t2, amount: 30 })).body;
+    const recon = async () => (await call('GET', `/api/v1/bank-recon?bank_account_id=${t1}&statement_date=2026-10-31&from=2026-10-01`)).body;
+    let r = await recon();
+    expect([r.book_balance, r.deposits_in_transit, r.outstanding_payments, r.adjusted_balance, r.statement_balance]).toEqual(['800.00', '1000.00', '200.00', '0.00', null]);
+    expect(r.lines).toHaveLength(2);
+    // ธนาคารแสดงเฉพาะเงินฝาก 1,000 → ติ๊กรายการนั้น → ผลต่าง 0
+    expect((await call('PUT', '/api/v1/bank-recon/statement', { bank_account_id: t1, statement_date: '2026-10-31', closing_balance: '1000' })).status).toBe(200);
+    const dep = r.lines.find((l: { debit: string }) => Number(l.debit) > 0).id;
+    expect((await call('POST', '/api/v1/bank-recon/clear', { bank_account_id: t1, statement_date: '2026-10-31', line_ids: [dep], cleared: true })).body.updated).toBe(1);
+    r = await recon();
+    expect([r.deposits_in_transit, r.outstanding_payments, r.adjusted_balance, r.statement_balance, r.difference]).toEqual(['0.00', '200.00', '1000.00', '1000.00', '0.00']);
+    expect(r.lines.find((l: { id: string }) => l.id === dep).cleared).toBe(true);
+    // บรรทัดของบัญชีอื่นติ๊กไม่ได้
+    const other = (await call('GET', `/api/v1/bank-recon?bank_account_id=${t2}&statement_date=2026-10-31&from=2026-10-01`)).body.lines[0].id;
+    expect((await call('POST', '/api/v1/bank-recon/clear', { bank_account_id: t1, statement_date: '2026-10-31', line_ids: [other], cleared: true })).body.error.message).toMatch(/ไม่ใช่ของบัญชีเงินฝากนี้/);
+    // บัญชีสินค้าคงเหลือ Periodic: ยอดจากระบบสินค้า ณ สิ้นงวด → คำนวณ (F5) / ป้อนเอง
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const it = (await call('POST', '/api/v1/items', { code: '02-TEST-000048', name_th: 'สินค้าบัญชีคงเหลือ', base_unit_id: unit, std_cost: '10' })).body.id;
+    const ju = (await call('POST', '/api/v1/stock-adjustments', { doc_type_id: await typeOf('JU'), doc_date: '2026-10-01', lines: [{ item_id: it, qty: 10, unit_cost: 10 }] })).body;
+    const invAcc = (await sql<{ id: string }>`SELECT account_id AS id FROM gl_default_account WHERE company_id = ${companyId} AND role = 'INVENTORY' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.id;
+    expect((await call('GET', '/api/v1/gl/inventory-accounts')).body.rows.map((x: { id: string }) => x.id)).toContain(invAcc);
+    let inv = (await call('GET', `/api/v1/gl/inventory?account_id=${invAcc}`)).body;
+    expect(inv.rows).toHaveLength(13);
+    const p10 = inv.rows.find((x: { period_no: number }) => x.period_no === 10), p9 = inv.rows.find((x: { period_no: number }) => x.period_no === 9);
+    expect(Number(p10.system) - Number(p9.system)).toBe(100);
+    expect(p10.entered).toBeNull();
+    expect((await call('POST', '/api/v1/gl/inventory/compute', { account_id: invAcc, fiscal_year_id: inv.fiscal_year.id, period: -1 })).body.saved).toBe(13);
+    inv = (await call('GET', `/api/v1/gl/inventory?account_id=${invAcc}`)).body;
+    expect(inv.rows.find((x: { period_no: number }) => x.period_no === 10)).toMatchObject({ entered: p10.system, source: 'S' });
+    expect((await call('PUT', '/api/v1/gl/inventory', { account_id: invAcc, fiscal_year_id: inv.fiscal_year.id, rows: [{ period_no: 12, amount: '-1' }] })).body.error.message).toMatch(/ไม่ติดลบ/);
+    expect((await call('PUT', '/api/v1/gl/inventory', { account_id: invAcc, fiscal_year_id: inv.fiscal_year.id, rows: [{ period_no: 12, amount: '555', source: 'M' }] })).body.saved).toBe(1);
+    inv = (await call('GET', `/api/v1/gl/inventory?account_id=${invAcc}`)).body;
+    expect(inv.rows.filter((x: { entered: string | null }) => x.entered !== null).map((x: { period_no: number; entered: string }) => [x.period_no, x.entered])).toEqual([[12, '555.00']]);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/bank-recon?bank_account_id=${t1}&statement_date=2026-10-31`)).status).toBe(404);
+    expect((await call('POST', '/api/v1/bank-recon/clear', { bank_account_id: t1, statement_date: '2026-10-31', line_ids: [dep], cleared: false })).status).toBe(404);
+    expect((await call('GET', `/api/v1/gl/inventory?account_id=${invAcc}`)).status).toBe(404);
+    expect((await call('PUT', '/api/v1/gl/inventory', { account_id: invAcc, fiscal_year_id: inv.fiscal_year.id, rows: [] })).body.error.message).toMatch(/ไม่พบ/);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('PUT', '/api/v1/gl/inventory', { account_id: invAcc, fiscal_year_id: inv.fiscal_year.id, rows: [] })).body.saved).toBe(0);
+    for (const [path, id] of [['bank-deposits', bd.id], ['bank-withdrawals', bw.id], ['bank-expenses', bv.id], ['stock-adjustments', ju.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

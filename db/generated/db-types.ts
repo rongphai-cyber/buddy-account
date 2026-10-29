@@ -2781,6 +2781,8 @@ export interface GlJournalLineTable {
   cost_code: Gen<string | null>;
   /** คำอธิบายรายการ */
   description: Gen<string | null>;
+  /** กระทบยอดธนาคาร: วันที่รายการปรากฏใน Bank statement (เฉพาะบรรทัดบัญชีเงินฝาก) */
+  bank_cleared_date: Gen<string | null>;
   /** เดบิต */
   debit: Gen<string>;
   /** เครดิต */
@@ -2824,6 +2826,68 @@ export interface GlBalanceTable {
   debit: Gen<string>;
   /** รวมเครดิตในงวด */
   credit: Gen<string>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** บัญชีสินค้าคงเหลือ (Periodic) — ยอดคงเหลือปลายงวดที่ผู้ใช้ยืนยัน ใช้ในงบการเงินแทนยอดบัญชี */
+export interface GlInventoryBalanceTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ปีบัญชี */
+  fiscal_year_id: string;
+  /** บัญชีสินค้าคงเหลือ */
+  account_id: string;
+  /** แผนก */
+  department_id: Gen<string | null>;
+  /** งวด 1–12 (0 = ยอดยกมาปีปัจจุบัน) */
+  period_no: number;
+  /** ยอดคงเหลือปลายงวด */
+  amount: string;
+  /** M=ป้อนเอง S=คำนวณจากระบบสินค้า (F5) */
+  source: Gen<string>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** ยอดตามใบแจ้งยอดธนาคาร (Bank statement) สำหรับกระทบยอดเงินฝาก */
+export interface FinBankStatementTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** บัญชีเงินฝาก */
+  bank_account_id: string;
+  /** วันที่ใบแจ้งยอด */
+  statement_date: string;
+  /** ยอดคงเหลือตามใบแจ้งยอด */
+  closing_balance: string;
+  /** หมายเหตุ */
+  remark: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -3390,6 +3454,8 @@ export interface DB {
   gl_journal: GlJournalTable;
   gl_journal_line: GlJournalLineTable;
   gl_balance: GlBalanceTable;
+  gl_inventory_balance: GlInventoryBalanceTable;
+  fin_bank_statement: FinBankStatementTable;
   gl_budget: GlBudgetTable;
   gl_prior_year_balance: GlPriorYearBalanceTable;
   gl_fs_report: GlFsReportTable;

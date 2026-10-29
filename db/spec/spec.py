@@ -988,6 +988,7 @@ add(T('gl_journal_line', 'รายการเดบิต/เครดิต�
   C('project_phase', 'code10', th='ขั้นตอนโครงการ', src='GLJNLIT.PHASE'),
   C('cost_code', 'code10', th='รหัสต้นทุน', src='GLJNLIT.COSCOD'),
   C('description', 'str200', th='คำอธิบายรายการ', src='GLJNLIT.DESCRP'),
+  C('bank_cleared_date', 'date', th='กระทบยอดธนาคาร: วันที่รายการปรากฏใน Bank statement (เฉพาะบรรทัดบัญชีเงินฝาก)'),
   C('debit', 'money', nn=True, d='0', th='เดบิต', src="GLJNLIT.AMOUNT เมื่อ TRNTYP='0'"),
   C('credit', 'money', nn=True, d='0', th='เครดิต', src="GLJNLIT.AMOUNT เมื่อ TRNTYP='1'"),
   C('posting_role', 'code30', th='บทบาทที่กฎใช้หาบัญชี (ตรวจย้อนได้ว่าทำไมลงบัญชีนี้)'),
@@ -1004,6 +1005,22 @@ add(T('gl_balance', 'ยอดสะสมรายงวดต่อบัญ�
   C('debit', 'money', nn=True, d='0', th='รวมเดบิตในงวด', src='GLBAL.DEBITn'),
   C('credit', 'money', nn=True, d='0', th='รวมเครดิตในงวด', src='GLBAL.CREDITn'),
 ], uniq=[('company_id','account_id','department_id','period_id')]))
+
+add(T('gl_inventory_balance', 'บัญชีสินค้าคงเหลือ (Periodic) — ยอดคงเหลือปลายงวดที่ผู้ใช้ยืนยัน ใช้ในงบการเงินแทนยอดบัญชี', 'gl', express='GLINV', cols=[
+  lk('fiscal_year_id', 'gl_fiscal_year', 'ปีบัญชี', nn=True),
+  lk('account_id', 'gl_account', 'บัญชีสินค้าคงเหลือ', 'GLINV.ACCNUM', nn=True),
+  lk('department_id', 'md_department', 'แผนก', 'GLINV.DEPCOD'),
+  C('period_no', 'smallint', nn=True, th='งวด 1–12 (0 = ยอดยกมาปีปัจจุบัน)', src='GLINV.BEG/BAL1..12'),
+  C('amount', 'money', nn=True, th='ยอดคงเหลือปลายงวด', src='GLINV.BAL1..12'),
+  C('source', 'char1', nn=True, d="'M'", th='M=ป้อนเอง S=คำนวณจากระบบสินค้า (F5)', chk="source IN ('M','S')"),
+], idx=[('company_id','fiscal_year_id','account_id')]))
+
+add(T('fin_bank_statement', 'ยอดตามใบแจ้งยอดธนาคาร (Bank statement) สำหรับกระทบยอดเงินฝาก', 'fin', express='(ใหม่)', cols=[
+  lk('bank_account_id', 'md_bank_account', 'บัญชีเงินฝาก', nn=True),
+  C('statement_date', 'date', nn=True, th='วันที่ใบแจ้งยอด'),
+  C('closing_balance', 'money', nn=True, th='ยอดคงเหลือตามใบแจ้งยอด'),
+  C('remark', 'str200', th='หมายเหตุ'),
+], uniq=[('company_id','bank_account_id','statement_date')]))
 
 add(T('gl_budget', 'งบประมาณรายงวด', 'gl', express='GLBUD', cols=[
   lk('account_id', 'gl_account', 'บัญชี', 'GLBUD.ACCNUM', nn=True),

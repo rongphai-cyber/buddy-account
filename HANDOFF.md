@@ -119,7 +119,13 @@
   - เช็คคืน = fin_cheque_event (20) + สถานะ 02 (ไม่สร้างแถวซ้ำแบบ Express) · ตัดยอดคงเหลือ = migration 0019 written_off_amount/writeoff_journal_id (Express REMCUT)
   - เช็คจ่ายที่สร้างจากใบจ่ายตอนนี้สถานะ 05 (เดิม 00) · สิทธิ์ตามทิศทาง: permissions `CHQ(rMenu, pMenu)` เลือกเมนูจาก direction/เช็คที่อ้างถึง (Rule.pick)
   - importer: แถวซ้ำทุกช่องใน BKTRN ได้ id ต่างกัน (เดิมหาย 1 แถว) → ทะเบียนเช็คตรง Express 1,193/1,193 (scratchpad/cheque_compare.py) · DEMO สร้างใหม่แล้ว
-- ต่อไป: T4.8 กระทบยอดเงินฝากธนาคาร + บัญชีสินค้าคงเหลือ Periodic (S-GL-14/15, GLINV)
+- ✅ T4.8: migration 0020 (ตาราง gl_inventory_balance + fin_bank_statement มี RLS, gl_journal_line.bank_cleared_date)
+  - บัญชีสินค้าคงเหลือ `modules/gl/inventory.ts` (/gl/inventory-accounts, /gl/inventory GET/PUT, /compute) หน้า `pages/gl/InventoryAccount.tsx` (/gl/inventory เมนู GL.INV) · งบการเงิน INV: `statementContext` ใช้ยอดที่ยืนยัน (invOf) ไม่มี = ยอดบัญชี (เหมือน Express GLINV) · ยอดระบบสินค้า = v_stock_move ของสินค้าที่กลุ่มผูกบัญชีนี้ (+บัญชี INVENTORY ของบัญชีเพื่อลงรายวันรวมสินค้าไม่ผูก)
+  - GLINV ของ TESTRice มีแถวเดียวยอดศูนย์ทั้งหมด → ไม่นำเข้า (ถ้านำเข้าศูนย์ งบจะเปลี่ยน) · DEMO ยังไม่มียอดที่ยืนยัน งบเท่าเดิม
+  - กระทบยอดเงินฝาก `modules/bankrecon.ts` (/bank-recon, /statement, /clear) หน้า `pages/docs/BankRecon.tsx` (/fi/bank/reconcile เมนู FI.BK.REC): ยอดตามบัญชี − เงินฝากระหว่างทาง + จ่ายที่ธนาคารยังไม่ตัด = ยอด statement · รายการก่อน "ตั้งแต่" (ต้นปีบัญชี) ถือว่ากระทบแล้ว · แก้ใบสำคัญ GL = บรรทัดใหม่ ต้องติ๊กใหม่
+- **P4 เสร็จครบ T4.1–T4.8** (29/10/2569) — เกณฑ์: สต๊อกตรง STLOC 40,768/40,768 คู่ · ทะเบียนเช็คตรง BKTRN 1,193/1,193 · งบทดลองเท่าเดิม 2569/2568 · parity 97.3%
+- ⚠️ server ทดสอบ PGlite: TaskStop ปิดแค่ shell แต่ node ยังฟังพอร์ต และการ Stop-Process ทำให้ข้อมูล PGlite เสีย (เป็นแล้ว 2 ครั้ง) → ใช้โฟลเดอร์ใหม่ได้เสมอ: `BUDDY_DATA_DIR=<scratchpad>/buddy-testN pnpm --filter @buddy/server cli create-admin admin "ผู้ดูแลระบบ" buddy1234` (ล่าสุด buddy-test3 ซึ่งอาจเสียแล้ว) — สคริปต์ UI สร้างบริษัทเอง (scratchpad/t48_ui.cjs)
+- ต่อไป: P5 (ถามเจ้าของก่อน) · งานค้างของ P4 ที่บันทึกไว้: ใช้ยอดคงเหลือในเช็คกับใบเสร็จถัดไป, ใบขายลดเช็ค SQR, ผ่านเช็คจ่ายอัตโนมัติ, สินค้าชุดตัดส่วนประกอบ, เตือนขายต่ำกว่าทุน, คิดต้นทุนย้อนหลังเมื่อแก้เอกสารย้อนหลัง, นำเข้าประวัติ STTAK
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ
@@ -142,7 +148,7 @@
   - `pnpm test` (core 9 + API 20 + schema) · `pnpm typecheck` · `pnpm --filter @buddy/web build`
   - smoke: `PASS=<จากไฟล์> BASE=http://localhost:4100 OUT=<scratchpad>/shots node apps/web/e2e/smoke.cjs` (20 ขั้น)
   - ยอดเงิน: งบทดลอง DEMO ปี 2569 คงเหลือต้องเป็น **245,718,317.16** ทั้งสองด้าน (ปี 2568 คงเหลือ 181,398,941.31)
-- ทดลองหน้าจอที่ "บันทึก" ข้อมูล: ใช้ server ทดสอบแยก (PGlite, `BUDDY_DATA_DIR=<scratchpad>/buddy-test2 PORT=4101`, admin/buddy1234) อย่าเขียนข้อมูลลง DEMO
+- ทดลองหน้าจอที่ "บันทึก" ข้อมูล: ใช้ server ทดสอบแยก (PGlite, `BUDDY_DATA_DIR=<scratchpad>/buddy-testN PORT=4101` (สร้างใหม่ได้ด้วย cli create-admin), admin/buddy1234) อย่าเขียนข้อมูลลง DEMO
 - นำข้อมูลใหม่ทั้งหมด (ถ้าจำเป็น): drop DB buddy → `node tools/local-pg/pg.mjs run -- bash tools/express-import/import.sh D:/ACC-Program/TESTRice - TESTRice` → ตรวจงบทดลอง 2553 = 245,718,317.16 → `... run -- python tools/demo-data/make_demo.py - TESTRice DEMO` → `... run -- pnpm --silent --filter @buddy/server cli create-admin admin "ผู้ดูแลระบบ" <รหัสจากไฟล์>`
 
 ## รูปแบบงานที่ใช้ (ทำซ้ำได้)
