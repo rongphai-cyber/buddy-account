@@ -2695,7 +2695,13 @@ describe('Buddy Account API (PGlite)', () => {
       subtotal: '1300', discount: null, vat_amount: '91', total: '1391', notes: [] };
     const sent: Array<Record<string, any>> = [];
     let next: () => unknown = () => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: raw });
-    setAiClientFactory((apiKey) => ({ beta: { messages: { parse: async (params: Record<string, any>) => { sent.push({ ...params, apiKey }); return next(); } } } }) as never);
+    // การเรียกครั้งที่ 2 (แนะนำรหัส): ค่าเริ่มต้นแนะนำกระดาษ A4 และไม่มีรหัสค่าขนส่ง
+    let suggestOut: unknown = { lines: [{ index: 0, code: '02-TEST-000095', confidence: 'high', reason: 'ชื่อตรงกับรหัสสินค้า' }, { index: 1, code: null, confidence: 'low', reason: 'ไม่มีรหัสค่าขนส่ง' }] };
+    setAiClientFactory((apiKey) => ({ beta: { messages: { parse: async (params: Record<string, any>) => {
+      sent.push({ ...params, apiKey });
+      if (String(params.system).includes('เลือกรหัส')) return { model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 1000, output_tokens: 200 }, parsed_output: suggestOut };
+      return next();
+    } } } }) as never);
     const img = Buffer.from('fake-image-bytes').toString('base64');
     const read = (target: string, body: object = {}) => call('POST', '/api/v1/ai/read-bill', { target, file_name: 'bill.jpg', media_type: 'image/jpeg', data: img, ...body });
     expect((await call('GET', '/api/v1/ai/status')).body).toMatchObject({ has_key: false, available: false });
@@ -2711,23 +2717,49 @@ describe('Buddy Account API (PGlite)', () => {
     const item = (await call('POST', '/api/v1/items', { code: '02-TEST-000095', name_th: 'กระดาษ A4 ทดสอบ AI', base_unit_id: unit, std_cost: '1' })).body.id;
     const sup = (await call('POST', '/api/v1/suppliers', { code: 'S-AI1', name: 'บริษัท ขายส่ง จำกัด', tax_id: '0105537095903', tax_branch_no: '0' })).body.id;
     expect([item, sup].every(Boolean)).toBe(true);
+    await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: 20, business_type: 'trading', guidance: 'ค่าขนส่งสินค้าเข้า ลงรหัสค่าขนส่ง' });
     const r = await read('purchase-invoices');
     expect(r.status).toBe(200);
+    expect(r.body.supplier_check).toMatchObject({ status: 'match' });
+    expect(r.body.supplier_check.message).toMatch(/S-AI1/);
+    expect(r.body.lines[0].suggestion).toMatchObject({ source: 'ai', confidence: 'high', item: { code: '02-TEST-000095' } });
+    expect(r.body.lines[1]).toMatchObject({ suggestion: null, note: 'ไม่มีรหัสที่เหมาะ: ไม่มีรหัสค่าขนส่ง' });
+    const sq = sent.at(-1)!;   // คำขอแนะนำรหัส: ข้อมูลบริษัทนี้ + ไม่มีรูป (ข้อความล้วน)
+    expect([sq.output_config.effort, typeof sq.messages[0].content]).toEqual(['low', 'string']);
+    for (const part of ['ซื้อมาขายไป', 'ค่าขนส่งสินค้าเข้า ลงรหัสค่าขนส่ง', '02-TEST-000095', 'S-AI1'.length ? 'บริษัท ขายส่ง จำกัด' : '']) expect(sq.messages[0].content).toContain(part);
     expect(r.body.supplier).toMatchObject({ id: sup, code: 'S-AI1' });
     expect(r.body.lines.map((l: { item: { id: string } | null }) => l.item?.id ?? null)).toEqual([item, null]);
     expect(r.body.bill).toMatchObject({ price_type: '2', vat_rate: '7', doc_no: 'INV-9001', doc_date: '2027-12-15', total: '1391.00', warnings: [] });
-    expect(r.body.usage).toMatchObject({ cost_usd: '0.0280', monthly_limit_usd: 20 });
+    expect(r.body.usage).toMatchObject({ cost_usd: '0.0360', monthly_limit_usd: 20 });   // อ่านบิล 0.028 + แนะนำรหัส 0.008
     // คำขอที่ส่งให้ Claude: รุ่น/fallback/โครงข้อมูล/รูปแบบแฟ้ม และกุญแจของบริษัท
-    const q = sent.at(-1)!;
+    const q = sent.at(-2)!;
     expect([q.apiKey, q.model, q.fallbacks, q.betas[0], q.output_config.effort, q.output_config.format.type]).toEqual([key, 'claude-opus-5-5', 'default', 'server-side-fallback-2026-07-01', 'medium', 'json_schema']);
     expect(q.messages[0].content[0]).toMatchObject({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } });
-    await read('other-expense-docs', { media_type: 'application/pdf', file_name: 'bill.pdf' });
-    expect(sent.at(-1)!.messages[0].content[0].type).toBe('document');
-    // บันทึกค่าใช้จ่าย → เพดาน
-    expect((await call('GET', '/api/v1/ai/config')).body).toMatchObject({ month_cost_usd: '0.0560', month_count: 2 });
-    await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: 0.05 });
+    // ประวัติ: บันทึกค่าใช้จ่ายที่ยืนยันแล้ว → ครั้งต่อไปแนะนำรหัสเดิม (แม้ AI ไม่เลือก) · รหัสที่ AI ตอบแต่ไม่มีจริงถูกตัดทิ้ง
+    const freight = (await call('POST', '/api/v1/other-expenses', { code: '95-7300-91', name_th: 'ค่าขนส่งรายเดือน', accounts: { expense } })).body.id;
+    const oeType = (await call('GET', '/api/v1/trade-defaults/OE')).body.types[0].id;
+    const oe = (await call('POST', '/api/v1/other-expense-docs', { doc_type_id: oeType, doc_date: '2027-12-01', party_id: sup, price_type: '2', vat_rate: 7, lines: [{ item_id: freight, description: 'ค่าขนส่งทดสอบ AI', amount: 100 }] })).body;
+    expect(oe.id).toBeTruthy();
+    suggestOut = { lines: [{ index: 0, code: 'NOPE-404', confidence: 'high', reason: 'เดา' }, { index: 1, code: null, confidence: 'low', reason: '' }] };
+    const r2 = await read('other-expense-docs', { media_type: 'application/pdf', file_name: 'bill.pdf' });
+    expect(sent.at(-2)!.messages[0].content[0].type).toBe('document');
+    expect(r2.body.lines[0].suggestion).toBeNull();   // กระดาษ A4 เป็นสินค้า ไม่ใช่รหัสค่าใช้จ่าย และรหัส NOPE-404 ไม่มีจริง
+    expect(r2.body.lines[1].suggestion).toMatchObject({ source: 'history', item: { id: freight, code: '95-7300-91' } });
+    expect(r2.body.lines[1].suggestion.reason).toMatch(/เคยลงรหัสนี้ 1 ครั้ง \(กับผู้จำหน่ายนี้ 1 ครั้ง\)/);
+    // บิลซ้ำ: เลขที่บิลเดียวกันของผู้จำหน่ายนี้ถูกบันทึกแล้ว
+    await call('PUT', `/api/v1/other-expense-docs/${oe.id}`, { doc_type_id: oeType, doc_date: '2027-12-01', party_id: sup, ref_no: 'INV-9001', ref_date: '2027-12-15', price_type: '2', vat_rate: 7, lines: [{ item_id: freight, description: 'ค่าขนส่งทดสอบ AI', amount: 100 }] });
+    expect((await read('purchase-invoices')).body.duplicate).toMatchObject({ doc_no: oe.doc_no });
+    expect((await call('POST', `/api/v1/other-expense-docs/${oe.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    // ชื่อคล้ายแต่เลขผู้เสียภาษีในบิลไม่ตรงกับแฟ้ม
+    next = () => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: { ...raw, supplier: { ...raw.supplier, tax_id: '0105537095911' } } });
+    const r3 = await read('purchase-invoices');
+    expect([r3.body.supplier, r3.body.supplier_check.status, r3.body.supplier_check.candidate?.code]).toEqual([null, 'tax_mismatch', 'S-AI1']);
+    next = () => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: raw });
+    // บันทึกค่าใช้จ่าย → เพดาน (นับเฉพาะการอ่านบิล · ค่าใช้จ่ายรวมทั้ง 2 ขั้น)
+    expect((await call('GET', '/api/v1/ai/config')).body).toMatchObject({ month_cost_usd: '0.1440', month_count: 4, business_type: 'trading' });
+    await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: 0.14 });
     expect((await call('GET', '/api/v1/ai/status')).body.available).toBe(false);
-    expect((await read('purchase-invoices')).body.error.message).toMatch(/ครบเพดาน 0.05/);
+    expect((await read('purchase-invoices')).body.error.message).toMatch(/ครบเพดาน 0.14/);
     await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null });
     expect((await call('GET', '/api/v1/ai/config')).body).toMatchObject({ has_key: true, monthly_limit_usd: null, available: true });
     // ผิดพลาด/ปฏิเสธ → บันทึกการใช้ ไม่เติมร่าง
@@ -2736,6 +2768,7 @@ describe('Buddy Account API (PGlite)', () => {
     next = () => ({ model: 'claude-opus-5-5', stop_reason: 'refusal', usage: { input_tokens: 100, output_tokens: 0 }, parsed_output: null });
     expect((await read('purchase-invoices')).status).toBe(422);
     expect((await call('GET', '/api/v1/ai/usage')).body.map((u: { status: string }) => u.status).slice(0, 2)).toEqual(['REFUSED', 'ERROR']);
+    expect((await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null, business_type: 'bogus' })).status).toBe(400);
     expect((await read('sales-invoices')).status).toBe(400);   // อ่านบิลได้เฉพาะเอกสารซื้อ
     // สิทธิ์: พนักงานระดับ 0 ตั้งค่า/ดูการใช้ไม่ได้ แต่เห็นสถานะ · กุญแจ API ของระบบอื่นใช้หน้าตั้งค่าไม่ได้
     const admin = cookie;

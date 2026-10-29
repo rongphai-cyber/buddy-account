@@ -135,3 +135,69 @@ export function normalizeBill(raw: RawBill): BillDraft {
     subtotal: fx(sub), discount: fx(disc), vat_amount: fx(vat), total: fx(total), warnings: w,
   };
 }
+
+/* ───────── แนะนำการลงบัญชีรายบรรทัด (ใช้ข้อมูลของบริษัทนั้นเท่านั้น) ───────── */
+
+/** ประเภทธุรกิจ — ใช้เป็นบริบทให้ AI แนะนำว่ารายการควรเป็นสินค้าหรือค่าใช้จ่าย */
+export const AI_BUSINESS_TYPES: Record<string, string> = {
+  trading: 'ซื้อมาขายไป (ของที่ซื้อมาขายต่อ = สินค้า ของใช้ในกิจการ = ค่าใช้จ่าย)',
+  service: 'ธุรกิจบริการ (ส่วนใหญ่เป็นค่าใช้จ่าย/ต้นทุนบริการ)',
+  manufacturing: 'ผลิต (วัตถุดิบ = สินค้า ค่าแรง/โสหุ้ย = ค่าใช้จ่าย)',
+  construction: 'รับเหมาก่อสร้าง (วัสดุเข้างาน/ค่าแรงผู้รับเหมาช่วง)',
+  other: 'อื่น ๆ',
+};
+
+const norm = (s: string) => s.toLowerCase().replace(/[\s.,\-_/()[\]"'*:;#]+/g, '').normalize('NFC');
+const grams = (s: string) => { const t = norm(s); const g = new Map<string, number>(); for (let i = 0; i < t.length - 1; i++) { const k = t.slice(i, i + 2); g.set(k, (g.get(k) ?? 0) + 1); } return { g, n: Math.max(0, t.length - 1), t }; };
+/** ความคล้ายของข้อความ 0–1 (Dice ของตัวอักษรคู่ติดกัน — ใช้กับภาษาไทยที่ไม่เว้นวรรคได้) */
+export function textSim(a: string | null | undefined, b: string | null | undefined): number {
+  if (!a || !b) return 0;
+  const A = grams(a), B = grams(b);
+  if (!A.t || !B.t) return 0;
+  if (A.t === B.t) return 1;
+  if (A.n === 0 || B.n === 0) return A.t.includes(B.t) || B.t.includes(A.t) ? 0.5 : 0;
+  let both = 0;
+  for (const [k, v] of A.g) both += Math.min(v, B.g.get(k) ?? 0);
+  return (2 * both) / (A.n + B.n);
+}
+
+/** คำตอบของ AI เมื่อแนะนำรหัส (เลือกได้เฉพาะรหัสในรายการที่ให้ไป) */
+export const SUGGEST_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['lines'],
+  properties: {
+    lines: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false, required: ['index', 'code', 'confidence', 'reason'],
+        properties: {
+          index: { type: 'integer' }, code: str,
+          confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+          reason: { type: 'string' },
+        },
+      },
+    },
+  },
+} as const;
+
+export const SUGGEST_SYSTEM_PROMPT = `คุณช่วยพนักงานบัญชีของกิจการไทยเลือกรหัสสินค้า/รหัสค่าใช้จ่ายให้รายการในบิลซื้อ ผลเป็นคำแนะนำที่พนักงานบัญชีจะตรวจและยืนยันเอง
+- เลือก code ได้เฉพาะรหัสที่อยู่ใน candidates ของบรรทัดนั้น (หรือ expense_codes) เท่านั้น ถ้าไม่มีรหัสที่เหมาะ ให้ code = null และอธิบาย
+- ให้น้ำหนักกับประวัติการลงบัญชีของกิจการ (history: เคยลงรหัสนี้กี่ครั้ง กับผู้จำหน่ายรายนี้หรือไม่) มากที่สุด รองลงมาคือแนวทางของกิจการ (guidance) และประเภทธุรกิจ
+- ธุรกิจซื้อมาขายไป: ของที่ซื้อมาเพื่อขาย = รหัสสินค้า · ของใช้สิ้นเปลือง ค่าบริการ ค่าสาธารณูปโภค = รหัสค่าใช้จ่าย
+- ทรัพย์สินถาวรราคาสูง (เครื่องจักร คอมพิวเตอร์ ยานพาหนะ) ที่ไม่มีรหัสเหมาะ ให้ code = null และบอกว่าควรบันทึกเป็นสินทรัพย์
+- confidence: high = ตรงกับประวัติหรือชื่อรหัสชัดเจน · medium = น่าจะใช่ · low = เดา
+- reason ภาษาไทยสั้น ๆ ไม่เกิน 1 ประโยค`;
+
+export interface SuggestCandidate { code: string; name: string; kind: 'item' | 'expense'; account?: string | null; history?: number; sameSupplier?: number }
+/** ข้อความที่ส่งให้ AI (ข้อมูลของบริษัทนี้เท่านั้น) */
+export function suggestPrompt(x: { businessType?: string | null; guidance?: string | null; target: 'purchase' | 'expense'; supplierName: string; supplierKnown: boolean;
+  lines: Array<{ index: number; description: string; amount: string; candidates: SuggestCandidate[] }>; expenseCodes: SuggestCandidate[] }) {
+  const biz = x.businessType ? AI_BUSINESS_TYPES[x.businessType] ?? x.businessType : 'ไม่ระบุ';
+  return [
+    `ประเภทธุรกิจ: ${biz}`,
+    `แนวทางการลงบัญชีของกิจการ (guidance): ${x.guidance?.trim() || '— ไม่มี —'}`,
+    `เอกสารที่จะบันทึก: ${x.target === 'purchase' ? 'ซื้อเงินเชื่อ/เงินสด (ใช้ได้ทั้งรหัสสินค้าและรหัสค่าใช้จ่าย)' : 'บันทึกค่าใช้จ่ายอื่น ๆ (ใช้ได้เฉพาะรหัสค่าใช้จ่าย)'}`,
+    `ผู้จำหน่าย: ${x.supplierName || 'ไม่ทราบ'}${x.supplierKnown ? ' (มีในแฟ้มผู้จำหน่าย)' : ' (ไม่พบในแฟ้ม)'}`,
+    `expense_codes (รหัสค่าใช้จ่ายทั้งหมดที่ใช้ได้): ${JSON.stringify(x.expenseCodes.map((c) => ({ code: c.code, name: c.name, account: c.account ?? undefined })))}`,
+    `lines: ${JSON.stringify(x.lines.map((l) => ({ index: l.index, description: l.description, amount: l.amount, candidates: l.candidates.map((c) => ({ code: c.code, name: c.name, kind: c.kind, account: c.account ?? undefined, history: c.history || undefined, same_supplier: c.sameSupplier || undefined })) })))}`,
+  ].join('\n');
+}

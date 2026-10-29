@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { jsonSchemaOutputFormat } from '@anthropic-ai/sdk/helpers/json-schema';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, AI_MODEL, aiCost, BILL_SCHEMA, BILL_SYSTEM_PROMPT, d, normalizeBill, type RawBill } from '@buddy/core';
+import { AI_BILL_TARGETS, AI_BUSINESS_TYPES, AI_MODEL, aiCost, BILL_SCHEMA, BILL_SYSTEM_PROMPT, checkTaxId, d, normalizeBill, SUGGEST_SCHEMA, SUGGEST_SYSTEM_PROMPT, suggestPrompt, textSim, type BillDraft, type RawBill, type SuggestCandidate } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -34,19 +34,20 @@ async function limitOf(db: Db, companyId: string): Promise<number | null> {
   return v === undefined ? DEFAULT_LIMIT : v === null || v === '' ? null : Number(v);
 }
 async function monthUsage(db: Db, companyId: string) {
-  const r = (await sql<{ cost: string; n: number }>`SELECT coalesce(sum(cost_usd), 0)::text AS cost, count(*) FILTER (WHERE status = 'OK')::int AS n FROM sys_ai_usage
+  const r = (await sql<{ cost: string; n: number }>`SELECT coalesce(sum(cost_usd), 0)::text AS cost, count(*) FILTER (WHERE status = 'OK' AND purpose = 'BILL')::int AS n FROM sys_ai_usage
       WHERE company_id = ${companyId} AND deleted_at IS NULL AND created_at >= date_trunc('month', now())`.execute(db)).rows[0]!;
   return { cost: d(r.cost), count: r.n };
 }
 async function status(db: Db, companyId: string) {
   const [k, limit, u] = await Promise.all([apiKeyOf(db, companyId), limitOf(db, companyId), monthUsage(db, companyId)]);
+  const st = await companySettings(db, companyId);
   return { model: AI_MODEL, has_key: !!k?.key, key_hint: k?.hint ?? null, key_broken: !!k && !k.key, monthly_limit_usd: limit, month_cost_usd: u.cost.toFixed(4), month_count: u.count,
-    available: !!k?.key && (limit === null || u.cost.lt(limit)) };
+    available: !!k?.key && (limit === null || u.cost.lt(limit)), business_type: (st['ai.business_type'] as string | null) ?? null, guidance: (st['ai.guidance'] as string | null) ?? null };
 }
 
-async function record(db: Db, a: AuthContext & { companyId: string }, v: { model?: string | null; usage?: Anthropic.Beta.BetaUsage | null; cost?: string; status: 'OK' | 'ERROR' | 'REFUSED'; file_name: string; file_size: number; message?: string | null }) {
+async function record(db: Db, a: AuthContext & { companyId: string }, v: { model?: string | null; usage?: Anthropic.Beta.BetaUsage | null; cost?: string; status: 'OK' | 'ERROR' | 'REFUSED'; file_name: string; file_size: number; message?: string | null; purpose?: 'BILL' | 'SUGGEST' }) {
   await db.insertInto('sys_ai_usage').values({
-    company_id: a.companyId, user_id: a.userId, purpose: 'BILL', model: v.model ?? null,
+    company_id: a.companyId, user_id: a.userId, purpose: v.purpose ?? 'BILL', model: v.model ?? null,
     input_tokens: v.usage?.input_tokens ?? 0, output_tokens: v.usage?.output_tokens ?? 0,
     cache_read_tokens: v.usage?.cache_read_input_tokens ?? 0, cache_write_tokens: v.usage?.cache_creation_input_tokens ?? 0,
     cost_usd: v.cost ?? '0', status: v.status, file_name: v.file_name.slice(0, 200), file_size: v.file_size, message: v.message?.slice(0, 500) ?? null, created_by: a.userId, updated_by: a.userId,
@@ -69,6 +70,8 @@ export function aiRoutes(app: FastifyInstance, db: Db) {
       /** ไม่ส่ง = ไม่เปลี่ยน · null = ลบกุญแจ */
       api_key: z.string().trim().regex(/^sk-ant-[A-Za-z0-9_-]{20,}$/, 'กุญแจ API ของ Anthropic ขึ้นต้นด้วย sk-ant- — คัดลอกจาก console.anthropic.com › API Keys').nullable().optional(),
       monthly_limit_usd: z.union([z.number().min(0).max(100000), z.null()]),
+      business_type: z.enum(Object.keys(AI_BUSINESS_TYPES) as [string, ...string[]]).nullable().optional(),
+      guidance: z.string().max(4000, 'แนวทางยาวได้ไม่เกิน 4,000 ตัวอักษร').nullable().optional(),
     }), req.body);
     await db.transaction().execute(async (tx) => {
       if (b.api_key !== undefined) {
@@ -76,6 +79,8 @@ export function aiRoutes(app: FastifyInstance, db: Db) {
         if (b.api_key) await tx.insertInto('sys_secret').values({ company_id: a.companyId, code: SECRET, value_enc: encryptSecret(b.api_key), hint: `…${b.api_key.slice(-4)}`, created_by: a.userId, updated_by: a.userId }).execute();
       }
       await setSetting(tx, a.companyId, LIMIT_KEY, b.monthly_limit_usd, a.userId);
+      if (b.business_type !== undefined) await setSetting(tx, a.companyId, 'ai.business_type', b.business_type, a.userId);
+      if (b.guidance !== undefined) await setSetting(tx, a.companyId, 'ai.guidance', b.guidance?.trim() || null, a.userId);
       await logActivity(tx, a, { module: 'SET.AI', action: b.api_key === undefined ? 'AI_CONFIG' : b.api_key ? 'AI_KEY_SET' : 'AI_KEY_REMOVE', table: 'sys_secret', detail: { monthly_limit_usd: b.monthly_limit_usd } });
     });
     return status(db, a.companyId);
@@ -141,19 +146,133 @@ export function aiRoutes(app: FastifyInstance, db: Db) {
     await record(db, a, { model: res.model, usage: res.usage, cost, status: 'OK', file_name: b.file_name, file_size: size });
     const bill = normalizeBill(res.parsed_output as unknown as RawBill);
 
-    // จับคู่กับแฟ้มหลัก: ผู้จำหน่ายตามเลขผู้เสียภาษี (+สาขา) · รายการตามชื่อสินค้า/ค่าใช้จ่ายที่ตรงกัน
-    const sup = bill.supplier.tax_id ? (await sql<{ id: string; code: string; name: string; tax_branch_no: string | null }>`SELECT id, code, name, tax_branch_no FROM md_supplier
-        WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND status = 'A' AND replace(tax_id, '-', '') = ${bill.supplier.tax_id} ORDER BY (tax_branch_no IS NOT DISTINCT FROM ${bill.supplier.branch_no}) DESC, code LIMIT 1`.execute(db)).rows[0] ?? null : null;
     const K = AI_BILL_TARGETS.find((k) => k.path === b.target)!;
-    const service = K.service;
-    const names = [...new Set(bill.lines.map((l) => l.description.toLowerCase()).filter(Boolean))];
-    const items = names.length ? (await sql<{ id: string; code: string; name_th: string; base_unit_id: string | null }>`SELECT id, code, name_th, base_unit_id FROM md_item
-        WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND status = 'A' AND lower(name_th) = ANY(${names}::text[]) AND ${service ? sql`item_type = '5'` : sql`item_type <> '5'`}`.execute(db)).rows : [];
-    await logActivity(db, a, { module: K.menu, action: 'AI_READ_BILL', docNo: bill.doc_no || null, detail: { file: b.file_name, cost_usd: cost, supplier: sup?.code ?? null } });
+    const sc = await checkSupplier(db, a.companyId, bill);
+    const dup = sc.supplier && bill.doc_no ? (await sql<{ doc_no: string; doc_class: string; doc_date: string }>`SELECT doc_no, doc_class, doc_date::text AS doc_date FROM doc_header
+        WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND doc_status <> 'C' AND supplier_id = ${sc.supplier.id} AND ref_no = ${bill.doc_no} ORDER BY doc_date DESC LIMIT 1`.execute(db)).rows[0] ?? null : null;
+    const sg = await suggestLines(db, a, key.key, K.service, bill, sc.supplier, b.file_name, size);
+    const total = d(cost).plus(sg.cost).toFixed(4);
+    await logActivity(db, a, { module: K.menu, action: 'AI_READ_BILL', docNo: bill.doc_no || null, detail: { file: b.file_name, cost_usd: total, supplier: sc.supplier?.code ?? null, supplier_check: sc.status, duplicate: dup?.doc_no ?? null } });
     return {
-      bill, supplier: sup,
-      lines: bill.lines.map((l) => ({ ...l, item: items.find((i) => i.name_th.toLowerCase() === l.description.toLowerCase()) ?? null })),
-      usage: { model: res.model, cost_usd: cost, month_cost_usd: used.cost.plus(cost).toFixed(4), monthly_limit_usd: limit },
+      bill, supplier: sc.supplier, supplier_check: { status: sc.status, message: sc.message, candidate: sc.candidate }, duplicate: dup,
+      lines: bill.lines.map((l, i) => ({ ...l, ...sg.lines[i]! })), suggest_note: sg.note,
+      usage: { model: res.model, cost_usd: total, month_cost_usd: used.cost.plus(total).toFixed(4), monthly_limit_usd: limit },
     };
   });
+}
+
+type Sup = { id: string; code: string; name: string; tax_id: string | null; tax_branch_no: string | null };
+/**
+ * ตรวจผู้จำหน่ายกับแฟ้มของบริษัท: เลขผู้เสียภาษีถูกรูปแบบ · พบตามเลข (ชื่อ/สาขาตรงไหม) · ไม่พบตามเลขแต่มีชื่อคล้าย (เลขในระบบต่างกัน) · ผู้จำหน่ายใหม่
+ */
+async function checkSupplier(db: Db, companyId: string, bill: BillDraft): Promise<{ supplier: Sup | null; status: string; message: string; candidate: Sup | null }> {
+  const tax = bill.supplier.tax_id;
+  const all = (await sql<Sup>`SELECT id, code, name, replace(coalesce(tax_id, ''), '-', '') AS tax_id, tax_branch_no FROM md_supplier WHERE company_id = ${companyId} AND deleted_at IS NULL AND status = 'A' LIMIT 20000`.execute(db)).rows;
+  const ck = tax ? checkTaxId(tax) : null;
+  const badTax = ck && !ck.ok ? ` · เลขผู้เสียภาษีในบิล ${tax} ${ck.error} (อ่านผิดหรือบิลพิมพ์ผิด)` : '';
+  const byTax = tax ? all.filter((x) => x.tax_id === tax) : [];
+  if (byTax.length) {
+    const s = byTax.find((x) => (x.tax_branch_no ?? null) === (bill.supplier.branch_no ?? null)) ?? byTax[0]!;
+    const sim = textSim(bill.supplier.name, s.name);
+    if (bill.supplier.name && sim < 0.45) return { supplier: s, status: 'name_mismatch', message: `เลขผู้เสียภาษีตรงกับ ${s.code} ${s.name} แต่ชื่อในบิล "${bill.supplier.name}" ต่างกัน — ตรวจว่าเป็นรายเดียวกัน${badTax}`, candidate: null };
+    if (bill.supplier.branch_no && s.tax_branch_no && s.tax_branch_no !== bill.supplier.branch_no) return { supplier: s, status: 'branch_mismatch', message: `ผู้จำหน่าย ${s.code}: สาขาในบิล ${bill.supplier.branch_no} ไม่ตรงกับแฟ้ม (${s.tax_branch_no}) — ภาษีซื้อต้องใช้สาขาตามใบกำกับ`, candidate: null };
+    return { supplier: s, status: 'match', message: `ตรงกับผู้จำหน่าย ${s.code} ${s.name} (เลขผู้เสียภาษี${bill.supplier.branch_no ? ` สาขา ${bill.supplier.branch_no}` : ''} ตรงกัน)${badTax}`, candidate: null };
+  }
+  const near = bill.supplier.name ? all.map((x) => ({ x, sim: textSim(bill.supplier.name, x.name) })).filter((r) => r.sim >= 0.6).sort((p, q) => q.sim - p.sim)[0]?.x ?? null : null;
+  if (near) {
+    if (!near.tax_id) return { supplier: null, status: 'no_tax', message: `พบผู้จำหน่ายชื่อคล้าย ${near.code} ${near.name} แต่แฟ้มยังไม่มีเลขผู้เสียภาษี${tax ? ` — ถ้าเป็นรายเดียวกัน เพิ่มเลข ${tax} ที่แฟ้มผู้จำหน่าย` : ''}${badTax}`, candidate: near };
+    return { supplier: null, status: 'tax_mismatch', message: `ชื่อคล้ายผู้จำหน่าย ${near.code} ${near.name} แต่เลขผู้เสียภาษีในแฟ้ม (${near.tax_id}) ไม่ตรงกับบิล (${tax ?? 'ไม่มี'}) — ตรวจว่าบิลหรือแฟ้มผิด${badTax}`, candidate: near };
+  }
+  return { supplier: null, status: 'new', message: `ผู้จำหน่ายใหม่ ยังไม่มีในแฟ้ม${tax ? ` (เลขผู้เสียภาษี ${tax})` : ''} — เพิ่มที่ รายละเอียดผู้จำหน่าย ก่อนบันทึก${badTax}`, candidate: null };
+}
+
+type Cat = { id: string; code: string; name_th: string; item_type: string; remark: string | null; base_unit_id: string | null; account: string | null };
+type Suggestion = { item: { id: string; code: string; name_th: string; item_type: string; base_unit_id: string | null }; kind: 'item' | 'expense'; account: string | null; confidence: 'high' | 'medium' | 'low'; reason: string; source: 'ai' | 'history' | 'name' };
+const kindOf = (t: string) => (t === '5' || t === '2' ? 'expense' : 'item') as 'item' | 'expense';
+const pickOf = (c: Cat) => ({ id: c.id, code: c.code, name_th: c.name_th, item_type: c.item_type, base_unit_id: c.base_unit_id });
+
+/**
+ * แนะนำรหัส (สินค้า/ค่าใช้จ่าย) รายบรรทัด จากข้อมูลของบริษัทนี้เท่านั้น:
+ * 1) ประวัติ: บรรทัดซื้อ/ค่าใช้จ่ายที่บันทึกแล้ว (ผ่านการยืนยันของพนักงานบัญชี) ที่คำอธิบายคล้ายกัน — ผู้จำหน่ายรายเดียวกันได้น้ำหนักมากกว่า
+ * 2) แฟ้มรหัส: ชื่อ/หมายเหตุของรหัสสินค้าและรหัสค่าใช้จ่ายที่คล้ายกัน
+ * 3) Claude เลือกจากรายการข้อ 1–2 ตามประเภทธุรกิจและแนวทางของบริษัท (ตั้งที่ เริ่มระบบ › AI อ่านบิล) — ผิดพลาดใช้ประวัติแทน
+ */
+async function suggestLines(db: Db, a: AuthContext & { companyId: string }, apiKey: string, expenseOnly: boolean, bill: BillDraft, sup: Sup | null, fileName: string, size: number) {
+  const types = expenseOnly ? ['5', '2'] : ['0', '1', '2', '3', '5'];
+  const cat = (await sql<Cat>`SELECT i.id, i.code, i.name_th, i.item_type, i.remark, i.base_unit_id,
+        (SELECT ac.account_no || ' ' || ac.name_th FROM gl_account ac WHERE ac.id = CASE WHEN i.item_type IN ('5', '2') THEN g.inventory_account_id ELSE coalesce(g.purchase_account_id, g.inventory_account_id) END) AS account
+      FROM md_item i LEFT JOIN md_item_account_group g ON g.id = i.account_group_id
+     WHERE i.company_id = ${a.companyId} AND i.deleted_at IS NULL AND i.status = 'A' AND i.item_type = ANY(${types}::text[]) ORDER BY i.code LIMIT 8000`.execute(db)).rows;
+  const byId = new Map(cat.map((c) => [c.id, c])), byCode = new Map(cat.map((c) => [c.code, c]));
+  const hist = (await sql<{ description: string | null; item_id: string; supplier_id: string | null }>`SELECT l.description, l.item_id, h.supplier_id FROM doc_line l JOIN doc_header h ON h.id = l.header_id
+      WHERE h.company_id = ${a.companyId} AND h.deleted_at IS NULL AND l.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_class IN ('RR', 'HP', 'OE') AND l.item_id IS NOT NULL
+        AND h.doc_date >= (current_date - 1095) ORDER BY h.doc_date DESC LIMIT 4000`.execute(db)).rows;
+  const per = bill.lines.map((l) => {
+    const agg = new Map<string, { n: number; same: number; best: number }>();
+    for (const r of hist) {
+      if (!byId.has(r.item_id)) continue;
+      const sim = Math.max(textSim(l.description, r.description), textSim(l.description, byId.get(r.item_id)!.name_th) * 0.95);
+      if (sim < 0.6) continue;
+      const g = agg.get(r.item_id) ?? { n: 0, same: 0, best: 0 };
+      g.n++; if (sup && r.supplier_id === sup.id) g.same++; g.best = Math.max(g.best, sim);
+      agg.set(r.item_id, g);
+    }
+    const history = [...agg.entries()].sort((p, q) => q[1].same - p[1].same || q[1].n - p[1].n || q[1].best - p[1].best).slice(0, 3).map(([id, g]) => ({ c: byId.get(id)!, ...g }));
+    const names = cat.map((c) => ({ c, sim: Math.max(textSim(l.description, c.name_th), textSim(l.description, c.remark) * 0.9) })).filter((x) => x.sim >= 0.3)
+      .sort((p, q) => q.sim - p.sim).slice(0, 5);
+    return { history, names };
+  });
+  const expenses = cat.filter((c) => kindOf(c.item_type) === 'expense');
+  const expList = (expenses.length <= 200 ? expenses : expenses.map((c) => ({ c, s: Math.max(...bill.lines.map((l) => textSim(l.description, c.name_th))) })).sort((p, q) => q.s - p.s).slice(0, 30).map((x) => x.c));
+
+  // ค่าเริ่มต้น: ประวัติที่คล้ายมาก หรือชื่อรหัสตรงกัน
+  const local = (i: number): Suggestion | null => {
+    const h = per[i]!.history[0];
+    if (h && h.best >= 0.8) return { item: pickOf(h.c), kind: kindOf(h.c.item_type), account: h.c.account, confidence: h.same >= 1 && h.n >= 2 ? 'high' : 'medium', reason: `เคยลงรหัสนี้ ${h.n} ครั้ง${h.same ? ` (กับผู้จำหน่ายนี้ ${h.same} ครั้ง)` : ''}`, source: 'history' };
+    const n = per[i]!.names[0];
+    if (n && n.sim >= 0.85) return { item: pickOf(n.c), kind: kindOf(n.c.item_type), account: n.c.account, confidence: 'medium', reason: 'ชื่อตรงกับรหัสในแฟ้ม', source: 'name' };
+    return null;
+  };
+  type AiPick = { index: number; code: string | null; confidence: 'high' | 'medium' | 'low'; reason: string };
+  let ai: AiPick[] | null = null;
+  let cost = d(0), note: string | null = null;
+  if (bill.lines.length && cat.length) {
+    const s = await companySettings(db, a.companyId);
+    const cand = (i: number) => {
+      const seen = new Set<string>(); const out: SuggestCandidate[] = [];
+      for (const h of per[i]!.history) if (!seen.has(h.c.id)) { seen.add(h.c.id); out.push({ code: h.c.code, name: h.c.name_th, kind: kindOf(h.c.item_type), account: h.c.account, history: h.n, sameSupplier: h.same }); }
+      for (const n of per[i]!.names) if (!seen.has(n.c.id)) { seen.add(n.c.id); out.push({ code: n.c.code, name: n.c.name_th + (n.c.remark ? ` (${n.c.remark.slice(0, 60)})` : ''), kind: kindOf(n.c.item_type), account: n.c.account }); }
+      return out;
+    };
+    try {
+      const res = await makeClient(apiKey).beta.messages.parse({
+        model: AI_MODEL, max_tokens: 8000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+        output_config: { effort: 'low', format: jsonSchemaOutputFormat(SUGGEST_SCHEMA as never) },
+        system: SUGGEST_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: suggestPrompt({ businessType: s['ai.business_type'] as string | null, guidance: s['ai.guidance'] as string | null, target: expenseOnly ? 'expense' : 'purchase',
+          supplierName: sup?.name ?? bill.supplier.name, supplierKnown: !!sup, lines: bill.lines.map((l, i) => ({ index: i, description: l.description, amount: l.amount, candidates: cand(i) })),
+          expenseCodes: expList.map((c) => ({ code: c.code, name: c.name_th, kind: 'expense', account: c.account })) }) }],
+      });
+      cost = aiCost(res.usage, AI_MODEL, res.model);
+      const ok = res.stop_reason !== 'refusal' && res.stop_reason !== 'max_tokens' && res.parsed_output;
+      await record(db, a, { model: res.model, usage: res.usage, cost: cost.toFixed(4), status: ok ? 'OK' : res.stop_reason === 'refusal' ? 'REFUSED' : 'ERROR', file_name: fileName, file_size: size, purpose: 'SUGGEST', message: ok ? null : 'แนะนำรหัสไม่สำเร็จ' });
+      if (ok) ai = (res.parsed_output as unknown as { lines: AiPick[] }).lines;
+      else note = 'AI แนะนำรหัสไม่สำเร็จ — ใช้ประวัติการลงบัญชีแทน';
+    } catch (e) {
+      note = 'AI แนะนำรหัสไม่สำเร็จ — ใช้ประวัติการลงบัญชีแทน';
+      await record(db, a, { status: 'ERROR', file_name: fileName, file_size: size, purpose: 'SUGGEST', message: `แนะนำรหัส: ${(e as Error).message.slice(0, 200)}` });
+    }
+  }
+  const lines = bill.lines.map((_, i) => {
+    const r = ai?.find((x) => x.index === i);
+    const c = r?.code ? byCode.get(r.code) : undefined;
+    let suggestion: Suggestion | null = c ? { item: pickOf(c), kind: kindOf(c.item_type), account: c.account, confidence: r!.confidence, reason: r!.reason, source: 'ai' } : local(i);
+    if (suggestion && suggestion.source === 'ai' && !per[i]!.history.some((h) => h.c.id === suggestion!.item.id) && !per[i]!.names.some((n) => n.c.id === suggestion!.item.id) && suggestion.kind === 'item') suggestion = { ...suggestion, confidence: 'low' };
+    const alts = [...per[i]!.history.map((h) => h.c), ...per[i]!.names.map((n) => n.c)].filter((x, k, arr) => arr.findIndex((y) => y.id === x.id) === k && x.id !== suggestion?.item.id).slice(0, 4)
+      .map((x) => ({ ...pickOf(x), kind: kindOf(x.item_type), account: x.account }));
+    const warn = !suggestion ? (r?.reason ? `ไม่มีรหัสที่เหมาะ: ${r.reason}` : null)
+      : !expenseOnly ? null : suggestion.kind !== 'expense' ? 'รายการนี้น่าจะเป็นสินค้า — ควรบันทึกที่ ซื้อเงินเชื่อ/เงินสด' : null;
+    return { suggestion, alternatives: alts, item: suggestion?.item ?? null, note: warn };
+  });
+  return { lines, cost, note };
 }

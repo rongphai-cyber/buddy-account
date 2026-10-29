@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aiCost, normalizeBill, type RawBill } from './ai-bill.js';
+import { aiCost, normalizeBill, suggestPrompt, textSim, type RawBill } from './ai-bill.js';
 
 const raw: RawBill = {
   doc_kind: 'tax_invoice', supplier: { name: 'บริษัท ขายส่ง จำกัด', tax_id: '0-1055-37095-90-3', branch_no: '0', address: '1 ถนนพระราม 4 กรุงเทพฯ 10500' },
@@ -33,5 +33,18 @@ describe('AI อ่านบิล (T7.7)', () => {
     const all = b.warnings.join('\n');
     for (const re of [/AI: ตัวเลขบรรทัด 2 เลือน/, /อย่างย่อ/, /ปี พ\.ศ\./, /บรรทัดที่ 3: อ่านราคาไม่ได้/, /ไม่สอดคล้องกับยอดรวมทั้งสิ้น 1500\.00/, /VAT 50\.00 ไม่เท่ากับ 7%/]) expect(all).toMatch(re);
     expect(normalizeBill({ ...raw, price_type: 'incl_vat', subtotal: '1391', vat_amount: '91', total: '1300' }).price_type).toBe('1');
+  });
+  it('Thai text similarity (no word spaces) and suggestion prompt carries only this company data', () => {
+    expect(textSim('ค่าน้ำมันรถ', 'ค่าน้ำมันรถ')).toBe(1);
+    expect(textSim('น้ำมันดีเซล 50 ลิตร', 'น้ำมันดีเซล')).toBeGreaterThan(0.7);
+    expect(textSim('กระดาษ A4 80 แกรม', 'ค่าไฟฟ้า')).toBeLessThan(0.2);
+    expect(textSim('', 'x')).toBe(0);
+    const p = suggestPrompt({ businessType: 'trading', guidance: 'ค่าน้ำมันรถส่งของ ลงรหัส 95-5300-01', target: 'expense', supplierName: 'ปั๊ม ก', supplierKnown: true,
+      lines: [{ index: 0, description: 'ดีเซล', amount: '500.00', candidates: [{ code: '95-5300-01', name: 'ค่าน้ำมัน', kind: 'expense', history: 4, sameSupplier: 3 }] }],
+      expenseCodes: [{ code: '95-5300-01', name: 'ค่าน้ำมัน', kind: 'expense', account: '5300-01 ค่าน้ำมัน' }] });
+    expect(p).toContain('ซื้อมาขายไป');
+    expect(p).toContain('ลงรหัส 95-5300-01');
+    expect(p).toContain('ใช้ได้เฉพาะรหัสค่าใช้จ่าย');
+    expect(p).toContain('"history":4');
   });
 });
