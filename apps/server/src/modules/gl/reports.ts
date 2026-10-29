@@ -1,14 +1,28 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { d, ZERO, addMonths, addDays, formatDate, runFsLayout, expandHeader, isFormulaColumn, type FsColumn, type FsLine, Decimal } from '@buddy/core';
+import { d, ZERO, addMonths, addDays, formatDate, runFsLayout, expandHeader, isFormulaColumn, type FsColumn, type FsLine, type FsRow, Decimal } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../../http.js';
-import { closingOf, fiscalYearOf, isPL, leafTotals, loadChart, rollUp, type Chart, type Totals } from './balances.js';
+import { closingOf, fiscalYearOf, isPL, leafTotals, loadChart, rollUp, type BalanceFilter, type Chart, type Totals } from './balances.js';
 import { logActivity } from '../../audit.js';
 import { budgetTotals } from './budget.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
+
+/**
+ * คอลัมน์ของแบบงบ (GLREP: Cn_HD1/2, FLDn, DEPn, PCENTn, PRINTn)
+ * department_code = แผนกของคอลัมน์ (รหัสหรือ wildcard) · percent = พิมพ์คอลัมน์ % ของยอดขายต่อท้าย
+ * percent_base = เลขบรรทัดที่เป็นฐาน 100% (ว่าง = บรรทัดแรกที่มียอด) · hidden = คำนวณอย่างเดียว ไม่พิมพ์ (PRINTn = N)
+ */
+interface FsCol { expr: string; head1: string; head2: string; department_code: string | null; percent: boolean; percent_base: number | null; hidden: boolean }
+const normCols = (raw: unknown): FsCol[] => ((raw as Array<Record<string, unknown>> | null) ?? []).map((c) => ({
+  expr: String(c.expr ?? ''), head1: String(c.head1 ?? ''), head2: String(c.head2 ?? ''),
+  department_code: (String(c.department_code ?? c.department ?? '').trim() || null),
+  percent: c.percent === true || c.percent === 'Y',
+  percent_base: typeof c.percent_base === 'number' ? c.percent_base : null,
+  hidden: c.hidden === true || c.print === 'N',
+}));
 const uuid = z.string().uuid();
 const t2 = (t: Totals) => ({ opening: t.opening.toFixed(2), debit: t.debit.toFixed(2), credit: t.credit.toFixed(2), closing: closingOf(t).toFixed(2) });
 
@@ -113,7 +127,7 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
     const reps = await db.selectFrom('gl_fs_report').select(['id', 'code', 'name', 'header_lines', 'columns', 'line_set_code', 'number_format']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute();
     const counts = await db.selectFrom('gl_fs_line').select(['line_set_code', sql<number>`count(*)`.as('n')]).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).groupBy('line_set_code').execute();
     const m = new Map(counts.map((c) => [c.line_set_code, Number(c.n)]));
-    return reps.map((r) => ({ ...r, line_count: m.get(r.line_set_code ?? r.code) ?? 0 }));
+    return reps.map((r) => ({ ...r, columns: normCols(r.columns), line_count: m.get(r.line_set_code ?? r.code) ?? 0 }));
   });
 
   app.get('/api/v1/fs/layouts/:id', async (req) => {
@@ -124,7 +138,7 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
     const lines = await db.selectFrom('gl_fs_line').select(['id', 'line_no', 'data_type', 'source', 'sign_filter', 'print_condition', 'accumulate', 'description_th', 'description_en', 'department_id'])
       .where('company_id', '=', a.companyId).where('line_set_code', '=', r.line_set_code ?? r.code).where('deleted_at', 'is', null).orderBy('line_no').execute();
     const shared = await db.selectFrom('gl_fs_report').select(['code', 'name']).where('company_id', '=', a.companyId).where('line_set_code', '=', r.line_set_code ?? r.code).where('id', '<>', id).where('deleted_at', 'is', null).execute();
-    return { ...r, lines, shared_with: shared };
+    return { ...r, columns: normCols(r.columns), lines, shared_with: shared };
   });
 
   const fsLineBody = z.object({
@@ -134,10 +148,16 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
     print_condition: z.enum(['', 'Z', 'N', 'C']).nullable().optional(),
     accumulate: z.record(z.enum(['A', 'B', 'C', 'D', 'E']), z.enum(['', '+', '-', '0', '/'])).nullable().optional(),
     description_th: z.string().max(120).nullable().optional(), description_en: z.string().max(120).nullable().optional(),
+    department_id: uuid.nullable().optional(),
+  });
+  const fsColBody = z.object({
+    expr: z.string().trim().min(1).max(40), head1: z.string().max(40).optional(), head2: z.string().max(40).optional(),
+    department_code: z.string().trim().max(20).nullable().optional(), percent: z.boolean().optional(),
+    percent_base: z.coerce.number().int().min(1).max(99999).nullable().optional(), hidden: z.boolean().optional(),
   });
   const fsBody = z.object({
     code: z.string().trim().min(1, 'ป้อนรหัสงบ').max(10), name: z.string().trim().min(1, 'ป้อนชื่องบ').max(120),
-    header_lines: z.array(z.string().max(120)).max(4), columns: z.array(z.object({ expr: z.string().trim().min(1).max(40), head1: z.string().max(40).optional(), head2: z.string().max(40).optional() })).min(1, 'ต้องมีอย่างน้อย 1 คอลัมน์').max(18),
+    header_lines: z.array(z.string().max(120)).max(4), columns: z.array(fsColBody).min(1, 'ต้องมีอย่างน้อย 1 คอลัมน์').max(18),
     line_set_code: z.string().trim().min(1).max(10), lines: z.array(fsLineBody).optional(),
   });
 
@@ -147,7 +167,8 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
 
   async function saveLayout(a: ReturnType<typeof requireCompany>, id: string | null, b: z.infer<typeof fsBody>) {
     return db.transaction().execute(async (tx) => {
-      const vals = { code: b.code, name: b.name, header_lines: JSON.stringify(b.header_lines), columns: JSON.stringify(b.columns), line_set_code: b.line_set_code };
+      if (b.columns.every((c) => c.hidden)) throw badRequest('ต้องมีอย่างน้อย 1 คอลัมน์ที่พิมพ์ (ไม่ได้ซ่อน)');
+      const vals = { code: b.code, name: b.name, header_lines: JSON.stringify(b.header_lines), columns: JSON.stringify(normCols(b.columns)), line_set_code: b.line_set_code };
       let rid = id;
       if (id) {
         const r = await tx.updateTable('gl_fs_report').set({ ...vals, updated_by: a.userId }).where('id', '=', id).where('company_id', '=', a.companyId).executeTakeFirst();
@@ -158,12 +179,15 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
       if (b.lines) {
         const nos = new Set<number>();
         for (const l of b.lines) { if (nos.has(l.line_no)) throw badRequest(`เลขบรรทัด ${l.line_no} ซ้ำ`); nos.add(l.line_no); }
+        const deps = new Set((await tx.selectFrom('md_department').select('id').where('company_id', '=', a.companyId).where('deleted_at', 'is', null).execute()).map((x) => x.id));
+        const badDep = b.lines.find((l) => l.department_id && !deps.has(l.department_id));
+        if (badDep) throw badRequest(`บรรทัด ${badDep.line_no}: ไม่พบแผนกนี้`);
         await tx.deleteFrom('gl_fs_line').where('company_id', '=', a.companyId).where('line_set_code', '=', b.line_set_code).execute();
         for (const l of b.lines) {
           await tx.insertInto('gl_fs_line').values({
             company_id: a.companyId, line_set_code: b.line_set_code, line_no: l.line_no, data_type: l.data_type, source: l.source ?? null,
             sign_filter: l.sign_filter || null, print_condition: l.print_condition || null, accumulate: JSON.stringify(l.accumulate ?? {}),
-            description_th: l.description_th ?? null, description_en: l.description_en ?? null, created_by: a.userId,
+            description_th: l.description_th ?? null, description_en: l.description_en ?? null, department_id: l.department_id ?? null, created_by: a.userId,
           }).execute();
         }
       }
@@ -197,19 +221,48 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
     const q = parse(z.object({ layout_id: uuid.optional(), kind: z.enum(['BS', 'PL']).optional(), end: isoDate, branch_id: uuid.optional(), department_id: uuid.optional(), lang: z.enum(['th', 'en']).default('th') }), req.query);
     const company = await db.selectFrom('sys_company').select(['name_th', 'name_en', 'year_system']).where('id', '=', a.companyId).executeTakeFirstOrThrow();
     const chart = await loadChart(db, a.companyId);
-    const ctx = await statementContext(db, a.companyId, chart, q.end, { branchId: q.branch_id, departmentId: q.department_id });
+    const f = { branchId: q.branch_id, departmentId: q.department_id };
     const ys = (company.year_system as 'B' | 'C') ?? 'B';
     const endText = formatDate(q.end, ys);
     if (q.layout_id) {
       const rep = await db.selectFrom('gl_fs_report').selectAll().where('id', '=', q.layout_id).where('company_id', '=', a.companyId).executeTakeFirst();
       if (!rep) throw notFound('แบบงบการเงิน');
       const lines = await db.selectFrom('gl_fs_line').selectAll().where('company_id', '=', a.companyId).where('line_set_code', '=', rep.line_set_code ?? rep.code).where('deleted_at', 'is', null).execute();
-      const cols = ((rep.columns as unknown as Array<FsColumn & { department?: string | null }>) ?? []).map((c) => ({ ...c, department_code: c.department ?? null }));
-      const res = runFsLayout(lines.map((l) => ({ ...l, accumulate: (l.accumulate as FsLine['accumulate']) ?? {} })), cols, ctx.provider);
+      const depCode = new Map((await db.selectFrom('md_department').select(['id', 'code']).where('company_id', '=', a.companyId).execute()).map((x) => [x.id, x.code]));
+      const fsLines: FsLine[] = lines.map((l) => ({ ...l, accumulate: (l.accumulate as FsLine['accumulate']) ?? {}, department_code: l.department_id ? depCode.get(l.department_id) ?? null : null }));
+      const cols = normCols(rep.columns);
+      // ยอดที่ต้องเตรียม: ทุกคอลัมน์ × (แผนกของคอลัมน์ และแผนกของบรรทัดที่ระบุแผนกเอง) + ยอดสะสมทั้งบริษัทสำหรับตรวจบัญชีที่งบไม่ได้ดึง
+      const lineDepts = [...new Set(fsLines.map((l) => l.department_code).filter((x): x is string => !!x))];
+      const combos: Array<[string, string | null]> = [['BAL', null]];
+      for (const c of cols) if (!isFormulaColumn(c.expr)) for (const dep of [c.department_code, ...lineDepts]) combos.push([c.expr, dep]);
+      const ctx = await statementContext(db, a.companyId, chart, q.end, f, combos);
+      const res = runFsLayout(fsLines, cols.map((c): FsColumn => ({ expr: c.expr, head1: c.head1, head2: c.head2, department_code: c.department_code })), ctx.provider);
+      // คอลัมน์ % ของยอดขาย (PCENTn): ฐาน 100% = บรรทัดที่กำหนด หรือบรรทัดแรกที่มียอดในคอลัมน์นั้น
+      const valueRows = res.rows.filter((r): r is Extract<FsRow, { kind: 'value' }> => r.kind === 'value');
+      const bases = cols.map((c, i) => {
+        if (!c.percent) return null;
+        const r = c.percent_base != null ? valueRows.find((x) => x.line_no === c.percent_base) : valueRows.find((x) => x.values[i] !== null && !d(x.values[i]).isZero());
+        return r && r.values[i] !== null && !d(r.values[i]).isZero() ? d(r.values[i]) : null;
+      });
+      const pick: Array<{ i: number; pct: boolean }> = [];
+      const outCols: Array<{ expr: string; head1: string; head2: string; formula: boolean; department_code: string | null }> = [];
+      cols.forEach((c, i) => {
+        if (!c.hidden) { pick.push({ i, pct: false }); outCols.push({ expr: c.expr, head1: c.head1 || defaultHead(c.expr), head2: c.head2 || (c.department_code ? `แผนก ${c.department_code}` : ''), formula: isFormulaColumn(c.expr), department_code: c.department_code }); }
+        if (c.percent) { pick.push({ i, pct: true }); outCols.push({ expr: '%', head1: '%', head2: 'ของยอดขาย', formula: true, department_code: c.department_code }); }
+      });
+      const rows = res.rows.map((r) => r.kind !== 'value' ? r : {
+        ...r, values: pick.map(({ i, pct }) => {
+          const v = r.values[i] ?? null;
+          if (!pct) return v;
+          const b = bases[i];
+          return v === null || !b ? null : d(v).times(100).div(b).toFixed(2);
+        }),
+      });
       const heads = ((rep.header_lines as unknown as string[]) ?? []).map((h) => expandHeader(h ?? '', { companyName: q.lang === 'en' ? company.name_en || company.name_th : company.name_th, endDateText: endText }));
       const coverage = coverageOf(chart, ctx, lines, rep.line_set_code ?? rep.code);
-      return { kind: 'layout', title: rep.name, headers: heads, columns: cols.map((c) => ({ expr: c.expr, head1: c.head1 || defaultHead(c.expr), head2: c.head2 ?? '', formula: isFormulaColumn(c.expr) })), rows: res.rows, missing_accounts: res.missingAccounts, coverage, end: q.end, fiscal_year: ctx.fy };
+      return { kind: 'layout', title: rep.name, headers: heads, columns: outCols, rows, missing_accounts: res.missingAccounts, coverage, end: q.end, fiscal_year: ctx.fy };
     }
+    const ctx = await statementContext(db, a.companyId, chart, q.end, f);
     const kind = q.kind ?? 'BS';
     return { kind: 'chart', title: kind === 'BS' ? 'งบแสดงฐานะการเงิน (ตามผังบัญชี)' : 'งบกำไรขาดทุน (ตามผังบัญชี)', headers: [company.name_th, kind === 'BS' ? 'งบแสดงฐานะการเงิน' : 'งบกำไรขาดทุน', `${kind === 'BS' ? 'ณ วันที่' : 'สำหรับงวดสิ้นสุดวันที่'} ${endText}`],
       columns: [{ expr: 'BAL', head1: 'ปีปัจจุบัน', head2: '', formula: false }, { expr: 'BAL LY', head1: 'ปีที่แล้ว', head2: '', formula: false }, { expr: '(C1-C2)*100/C2', head1: '% เปลี่ยนแปลง', head2: '', formula: true }],
@@ -217,32 +270,80 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
   });
 }
 
-const defaultHead = (e: string) => ({ BAL: 'ยอดสะสม', PTD: 'ประจำงวด', 'BAL LY': 'ปีที่แล้ว', 'PTD LY': 'งวดเดียวกันปีที่แล้ว', BUD: 'งบประมาณสะสม', 'PTD BUD': 'งบประมาณงวดนี้' } as Record<string, string>)[e.trim().toUpperCase()] ?? e;
+const defaultHead = (e: string) => {
+  const k = e.trim().toUpperCase().replace(/\s+/g, ' ');
+  const m = k.match(/^PTD ?(\d{1,2})( LY)?( BUD)?$/);
+  if (m) return `${m[3] ? 'งบประมาณ' : ''}งวดที่ ${Number(m[1])}${m[2] ? ' ปีที่แล้ว' : ''}`;
+  return ({ BAL: 'ยอดสะสม', PTD: 'ประจำงวด', 'BAL LY': 'ปีที่แล้ว', 'PTD LY': 'งวดเดียวกันปีที่แล้ว', BUD: 'งบประมาณสะสม', 'PTD BUD': 'งบประมาณงวดนี้' } as Record<string, string>)[k] ?? e;
+};
 
 interface StatementCtx {
   fy: { code: string; start_date: string; end_date: string } | null;
-  provider: { value: (kind: string, accountNo: string, dt: 'A/C' | 'BEG' | 'INV') => Decimal | null; accountExists: (no: string) => boolean };
+  provider: { value: (kind: string, accountNo: string, dt: 'A/C' | 'BEG' | 'INV', departmentCode?: string | null) => Decimal | null; accountExists: (no: string) => boolean };
   bal: (accountNo: string, which: 'BAL' | 'BAL LY') => Decimal | null;
 }
 
-/** เตรียมยอดของทุกบัญชีที่งบต้องใช้: สิ้นงวด, ประจำงวด, ปีที่แล้ว, ต้นปี/ต้นงวด */
-async function statementContext(db: Db, companyId: string, chart: Chart, end: string, f: { branchId?: string; departmentId?: string }): Promise<StatementCtx> {
+/**
+ * ชนิดคอลัมน์ของแบบงบ: BAL ยอดสะสม · PTD เฉพาะงวด · PTD1–PTD12 งวดที่ 1–12 ของปี (งบ 12 เดือน) · ต่อท้าย LY = ปีที่แล้ว
+ * BUD / PTD BUD / PTDn BUD = งบประมาณ (S-GL-17)
+ */
+function parseKind(kind: string): { range: string; ly: boolean; bud: boolean } | null {
+  const k = kind.trim().toUpperCase().replace(/\s+/g, ' ');
+  const bud = /\bBUD\b/.test(k), ly = /\bLY\b/.test(k);
+  const m = k.match(/^PTD ?(\d{1,2})\b/);
+  if (m) { const n = Number(m[1]); return n >= 1 && n <= 12 ? { range: `P${n}`, ly, bud } : null; }
+  if (k.startsWith('PTD')) return { range: 'PTD', ly, bud };
+  if (k.startsWith('BAL') || k === 'BUD' || k.startsWith('BUD ')) return { range: 'YTD', ly, bud };
+  return null;
+}
+const keyOf = (range: string, ly: boolean, dept: string | null) => `${range}${ly ? '-LY' : ''}|${dept ?? ''}`;
+
+/**
+ * เตรียมยอดของทุกบัญชีที่งบต้องใช้ ตามคู่ (ชนิดคอลัมน์, แผนก) ที่แบบงบอ้างถึง
+ * แผนกระบุเป็นรหัสหรือ wildcard เช่น ขาย* (คู่มือบทที่ 6) — ว่าง/* = ทุกแผนก (หรือแผนกที่เลือกตอนพิมพ์)
+ */
+async function statementContext(db: Db, companyId: string, chart: Chart, end: string, f: { branchId?: string; departmentId?: string },
+  combos: Array<[string, string | null]> = [['BAL', null], ['BAL LY', null]]): Promise<StatementCtx> {
   const fy = await fiscalYearOf(db, companyId, end);
   if (!fy) throw badRequest('วันที่สิ้นงวดไม่อยู่ในรอบบัญชี');
   const p = await db.selectFrom('gl_period').select(['start_date']).where('company_id', '=', companyId).where('deleted_at', 'is', null).where('start_date', '<=', end).where('end_date', '>=', end).orderBy('period_no').executeTakeFirst();
   const pStart = p?.start_date ?? end;
   const endLY = addDays(addMonths(addDays(end, 1), -12), -1);
   const fyLY = await fiscalYearOf(db, companyId, endLY);
-  const pStartLY = addMonths(pStart, -12);
-  const ytd = rollUp(chart, await leafTotals(db, companyId, chart, fy.start_date, end, f));
-  const ptd = rollUp(chart, await leafTotals(db, companyId, chart, pStart, end, f));
-  const hasLY = !!fyLY;
-  const ytdLY = hasLY ? rollUp(chart, await leafTotals(db, companyId, chart, fyLY!.start_date, endLY, f)) : null;
-  const ptdLY = hasLY ? rollUp(chart, await leafTotals(db, companyId, chart, pStartLY, endLY, f)) : null;
-  // งบประมาณ (S-GL-17): BUD = ต้นปีถึงสิ้นงวด, PTD BUD = เฉพาะงวด
-  const budYtd = await budgetTotals(db, companyId, chart, fy.start_date, end, f.departmentId);
-  const budPtd = await budgetTotals(db, companyId, chart, pStart, end, f.departmentId);
-  const nat = (no: string, m: Map<string, Totals> | null, part: 'closing' | 'move' | 'opening') => {
+  const periodsOf = async (fyId: string | undefined) => fyId ? await db.selectFrom('gl_period').select(['period_no', 'start_date', 'end_date']).where('company_id', '=', companyId).where('fiscal_year_id', '=', fyId).where('deleted_at', 'is', null).execute() : [];
+  const pCur = await periodsOf(fy.id), pLY = await periodsOf(fyLY?.id);
+  const depts = await db.selectFrom('md_department').select(['id', 'code']).where('company_id', '=', companyId).where('deleted_at', 'is', null).execute();
+  /** รหัส/wildcard แผนก → ตัวกรอง (null = ไม่กรองเพิ่ม) */
+  const deptFilter = (code: string | null): BalanceFilter => {
+    const c = (code ?? '').trim();
+    if (!c || c === '*') return { branchId: f.branchId, departmentId: f.departmentId };
+    const re = new RegExp('^' + c.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
+    return { branchId: f.branchId, departmentIds: depts.filter((x) => re.test(x.code)).map((x) => x.id) };
+  };
+  /** ช่วงวันที่ของแต่ละชนิด (null = ไม่มีปี/งวดนั้น) */
+  const rangeOf = (range: string, ly: boolean): [string, string] | null => {
+    if (ly && !fyLY) return null;
+    if (range === 'YTD') return ly ? [fyLY!.start_date, endLY] : [fy.start_date, end];
+    if (range === 'PTD') return ly ? [addMonths(pStart, -12), endLY] : [pStart, end];
+    const n = Number(range.slice(1));
+    const per = (ly ? pLY : pCur).find((x) => x.period_no === n);
+    return per ? [per.start_date, per.end_date] : null;
+  };
+  const tot = new Map<string, Map<string, Totals> | null>();
+  const bud = new Map<string, Map<string, Decimal> | null>();
+  for (const [kind, dept] of combos) {
+    const s = parseKind(kind);
+    if (!s) continue;
+    const dk = (dept ?? '').trim() || null;
+    // สินค้าคงเหลือปลายงวด (INV) ใช้ยอดสะสม จึงเตรียม YTD คู่กันเสมอ
+    for (const range of s.bud ? [s.range] : [...new Set([s.range, 'YTD'])]) {
+      const k = keyOf(range, s.ly, dk);
+      const r = rangeOf(range, s.ly);
+      if (s.bud) { if (!s.ly && !bud.has(k)) bud.set(k, r ? await budgetTotals(db, companyId, chart, r[0], r[1], deptFilter(dk)) : null); }
+      else if (!tot.has(k)) tot.set(k, r ? rollUp(chart, await leafTotals(db, companyId, chart, r[0], r[1], deptFilter(dk))) : null);
+    }
+  }
+  const nat = (no: string, m: Map<string, Totals> | null | undefined, part: 'closing' | 'move' | 'opening') => {
     if (!m) return null;
     const acc = chart.byNo.get(no);
     if (!acc) return ZERO;
@@ -253,21 +354,23 @@ async function statementContext(db: Db, companyId: string, chart: Chart, end: st
   };
   const provider = {
     accountExists: (no: string) => chart.byNo.has(no),
-    value(kind: string, no: string, dt: 'A/C' | 'BEG' | 'INV') {
-      const ly = kind.includes('LY');
-      const isPtd = kind.startsWith('PTD');
-      if (kind.includes('BUD')) {
-        if (dt !== 'A/C') return null;
+    value(kind: string, no: string, dt: 'A/C' | 'BEG' | 'INV', departmentCode?: string | null) {
+      const s = parseKind(kind);
+      if (!s) return null;
+      const dk = (departmentCode ?? '').trim() || null;
+      if (s.bud) {
+        if (dt !== 'A/C' || s.ly) return null;
+        const m = bud.get(keyOf(s.range, false, dk));
+        if (!m) return null;
         const acc = chart.byNo.get(no);
-        return acc ? (isPtd ? budPtd : budYtd).get(acc.id) ?? ZERO : ZERO;
+        return acc ? m.get(acc.id) ?? ZERO : ZERO;
       }
-      if (dt === 'BEG') return nat(no, ly ? (isPtd ? ptdLY : ytdLY) : isPtd ? ptd : ytd, 'opening');
+      const m = tot.get(keyOf(s.range, s.ly, dk));
+      if (dt === 'BEG') return nat(no, m, 'opening');
       // INV: สินค้าคงเหลือปลายงวด — Periodic ใช้ยอดบัญชีสินค้าคงเหลือ ณ สิ้นงวด (เฟส 4: ใช้ยอดตรวจนับ/บัญชีสินค้าคงเหลือ)
-      if (dt === 'INV') return nat(no, ly ? ytdLY : ytd, 'closing');
-      if (isPtd) return nat(no, ly ? ptdLY : ptd, 'move');
-      const acc = chart.byNo.get(no);
-      // บัญชีงบดุล ใช้ยอดคงเหลือ; บัญชีกำไรขาดทุน ใช้ยอดสะสมตั้งแต่ต้นปี (closing ของช่วงต้นปี–สิ้นงวด เพราะยกมาเป็นศูนย์)
-      return nat(no, ly ? ytdLY : ytd, acc && isPL(acc.account_group) ? 'closing' : 'closing');
+      if (dt === 'INV') return nat(no, tot.get(keyOf('YTD', s.ly, dk)), 'closing');
+      // ยอดสะสม: บัญชีงบดุลใช้ยอดคงเหลือ บัญชีกำไรขาดทุนใช้ยอดตั้งแต่ต้นปี (ยกมาเป็นศูนย์) · รายงวด: ยอดเคลื่อนไหวในงวด
+      return nat(no, m, s.range === 'YTD' ? 'closing' : 'move');
     },
   };
   return { fy: { code: fy.code, start_date: fy.start_date, end_date: fy.end_date }, provider, bal: (no, which) => provider.value(which, no, 'A/C') };

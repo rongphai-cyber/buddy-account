@@ -5,7 +5,7 @@ import { d, ZERO, addMonths, type Decimal } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
-import { fiscalYearOf, isPL, type Chart } from './balances.js';
+import { deptCsv, fiscalYearOf, isPL, type BalanceFilter, type Chart } from './balances.js';
 
 const uuid = z.string().uuid();
 const money = z.union([z.string(), z.number()]).nullable().optional();
@@ -23,12 +23,13 @@ async function yearOf(db: Db, a: AuthContext & { companyId: string }, id?: strin
  * งบประมาณของทุกบัญชี (รวมขึ้นบัญชีคุม) ในช่วง [from, to] ตามด้านปกติของบัญชี — ใช้กับคอลัมน์ BUD / PTD BUD ของแบบงบ
  * งบประมาณป้อนเป็นยอดตามด้านปกติ (ค่าใช้จ่าย/รายได้ที่คาดไว้เป็นบวก) จึงไม่ต้องกลับเครื่องหมาย
  */
-export async function budgetTotals(db: Db, companyId: string, chart: Chart, from: string, to: string, departmentId?: string | null): Promise<Map<string, Decimal>> {
+export async function budgetTotals(db: Db, companyId: string, chart: Chart, from: string, to: string, f: BalanceFilter = {}): Promise<Map<string, Decimal>> {
+  const dept = deptCsv(f);
   const rows = await sql<{ account_id: string; amt: string }>`
     SELECT b.account_id, sum(b.amount) AS amt
       FROM gl_budget b JOIN gl_period p ON p.id = b.period_id
      WHERE b.company_id = ${companyId} AND b.deleted_at IS NULL AND p.start_date >= ${from}::date AND p.end_date <= ${to}::date
-       AND (${departmentId ?? null}::uuid IS NULL OR b.department_id = ${departmentId ?? null}::uuid)
+       AND (${dept}::text IS NULL OR b.department_id = ANY(string_to_array(${dept}::text, ',')::uuid[]))
      GROUP BY b.account_id`.execute(db);
   const out = new Map<string, Decimal>();
   for (const r of rows.rows) {

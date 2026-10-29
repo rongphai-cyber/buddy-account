@@ -704,6 +704,7 @@
   "status": "todo"
  },
  "ch24:S-FS-01": {
+  "note": "คอลัมน์ครบตาม GLREP: หัว 1/2, ฟิลด์/สูตร (BAL PTD PTD1–12 LY BUD), แผนกต่อคอลัมน์ (wildcard), % ของยอดขาย (PCENTn, ฐาน = บรรทัดที่กำหนดหรือบรรทัดแรกที่มียอด [สันนิษฐาน]), ไม่พิมพ์ (PRINTn=N), ปุ่มงบ 12 เดือน; แผนกต่อบรรทัด (GLREPIT.DEPCOD)",
   "status": "done",
   "where": "/fs/layouts"
  },

@@ -247,6 +247,49 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/reports/account-detail?account_id=${assets.id}&as_of=2001-01-01`)).body.error.message).toMatch(/Message# 71/);
   });
 
+  it('layout columns: department per column/line, wildcard, PTDn months, hidden, % of sales (T1.16)', async () => {
+    const s1 = (await call('POST', '/api/v1/departments', { code: 'SALE1', name_th: 'ขายหน้าร้าน' })).body.id;
+    const s2 = (await call('POST', '/api/v1/departments', { code: 'SALE2', name_th: 'ขายออนไลน์' })).body.id;
+    const jv = async (lines: object[]) => (await call('POST', '/api/v1/gl/journals', { journal_book_id: bookId, voucher_date: '2026-03-15', lines })).body.id;
+    const j1 = await jv([{ account_id: cash, debit: '1000' }, { account_id: revenue, department_id: s1, credit: '600' }, { account_id: revenue, department_id: s2, credit: '400' }]);
+    const j2 = await jv([{ account_id: expense, department_id: s1, debit: '100' }, { account_id: expense, department_id: s2, debit: '50' }, { account_id: cash, credit: '150' }]);
+    const lay = await call('POST', '/api/v1/fs/layouts', {
+      code: 'DEPT12', name: 'กำไรขาดทุนแยกแผนก', header_lines: ['\\NAME'], line_set_code: 'DEPT12',
+      columns: [
+        { expr: 'BAL', percent: true },
+        { expr: 'BAL', department_code: 'SALE1' },
+        { expr: 'BAL', department_code: 'SALE*' },
+        { expr: 'PTD3' },
+        { expr: 'BAL', department_code: 'SALE2', hidden: true },
+        { expr: 'C2+C5', head1: 'SALE1+SALE2' },
+        { expr: 'PTD12' },
+      ],
+      lines: [
+        { line_no: 10, data_type: 'A/C', source: '4100-11', accumulate: {}, description_th: 'รายได้จากการขาย' },
+        { line_no: 20, data_type: 'A/C', source: '5380-06', accumulate: {}, description_th: 'ค่าใช้จ่าย' },
+        { line_no: 30, data_type: 'A/C', source: '4100-11', accumulate: {}, description_th: 'รายได้ขายออนไลน์', department_id: s2 },
+      ],
+    });
+    expect(lay.status).toBe(200);
+    const saved = (await call('GET', `/api/v1/fs/layouts/${lay.body.id}`)).body;
+    expect(saved.lines.find((l: { line_no: number }) => l.line_no === 30).department_id).toBe(s2);
+    expect([saved.columns[0].percent, saved.columns[4].hidden, saved.columns[1].department_code]).toEqual([true, true, 'SALE1']);
+    const run = (await call('GET', `/api/v1/fs/run?layout_id=${lay.body.id}&end=2026-12-31`)).body;
+    // คอลัมน์ที่ซ่อนไม่พิมพ์ แต่ใช้ในสูตรได้ · % ต่อท้ายคอลัมน์ที่ตั้งไว้
+    expect(run.columns.map((c: { head1: string }) => c.head1)).toEqual(['ยอดสะสม', '%', 'ยอดสะสม', 'ยอดสะสม', 'งวดที่ 3', 'SALE1+SALE2', 'งวดที่ 12']);
+    expect(run.columns[2].head2).toBe('แผนก SALE1');
+    const [rev, exp, online] = run.rows.filter((r: { kind: string }) => r.kind === 'value').map((r: { values: (string | null)[] }) => r.values);
+    expect([rev[2], rev[3], rev[5]]).toEqual(['600.00', '1000.00', '1000.00']);
+    expect([exp[2], exp[3], exp[5]]).toEqual(['100.00', '150.00', '150.00']);
+    expect(rev[1]).toBe('100.00');
+    expect(exp[1]).toBe((Number(exp[0]) * 100 / Number(rev[0])).toFixed(2));
+    expect(Number(rev[4])).toBeGreaterThanOrEqual(1000);   // งวดที่ 3 (มี.ค.) รวมรายการที่ลงวันที่ 15/03
+    expect([online[0], online[2], online[3]]).toEqual(['400.00', '400.00', '400.00']);   // แผนกของบรรทัดแทนแผนกของคอลัมน์
+    expect((await call('POST', '/api/v1/fs/layouts', { code: 'BADDEP', name: 'x', header_lines: [], line_set_code: 'BADDEP', columns: [{ expr: 'BAL' }], lines: [{ line_no: 1, data_type: 'A/C', source: '1111-00', department_id: '00000000-0000-4000-8000-000000000000' }] })).body.error.message).toMatch(/ไม่พบแผนก/);
+    expect((await call('POST', '/api/v1/fs/layouts', { code: 'HIDDEN', name: 'x', header_lines: [], line_set_code: 'HIDDEN', columns: [{ expr: 'BAL', hidden: true }] })).body.error.message).toMatch(/อย่างน้อย 1 คอลัมน์ที่พิมพ์/);
+    for (const id of [j1, j2]) await call('POST', `/api/v1/gl/journals/${id}/cancel`, { reason: 'ทดสอบแบบงบแยกแผนก' });   // ไม่ให้กระทบยอดของทดสอบข้อถัดไป
+  });
+
   it('keeps companies separate', async () => {
     const mine = (await call('GET', '/api/v1/gl/journals')).body.rows[0];
     otherCompanyId = (await call('POST', '/api/v1/companies', { code: 'OTHER', name_th: 'อีกบริษัท', fiscal_start: '2026-01-01', chart: 'none' })).body.id;

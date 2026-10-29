@@ -66,7 +66,9 @@
 .col-chip { display: inline-flex; gap: 4px; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
 .col-chip input:first-child { width: 140px; font-family: var(--mono); }
 .col-chip input:nth-child(2) { width: 130px; }
-.fs-lines { max-height: 52vh; overflow: auto; }
+.fs-lines { max-height: 52vh; min-height: 200px; overflow: auto; flex-shrink: 0; }
+/* ตารางในหน้าต่าง (modal-body เป็น flex) ห้ามหดจนมองไม่เห็นแถว — ให้หน้าต่างเลื่อนแทน */
+.modal-body > .table-wrap { flex-shrink: 0; }
 .fs-lines select.var { width: 44px; padding: 2px; }
 .notebox summary { cursor: pointer; font-weight: 600; }
 .print-only { display: none; }
