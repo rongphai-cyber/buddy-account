@@ -80,3 +80,29 @@ describe('items (บทที่ 7)', () => {
     expect(itemKindOf('2')).toBe('kit'); expect(itemKindOf('3')).toBe('service');
   });
 });
+
+import { checkDocNumbering, formatDocNo, GL_ROLES, slotLabel } from './gl-link.js';
+describe('document numbering & GL link (บทที่ 9–10)', () => {
+  it('formats and validates Express-style document numbers', () => {
+    expect(formatDocNo('IV', 101)).toBe('IV0000101');
+    expect(checkDocNumbering('IV', '0000101')).toBeNull();
+    expect(checkDocNumbering('IV', 12345678)).toMatch(/7 หลัก/);
+    expect(checkDocNumbering('IV/', 1)).toMatch(/คั่น/);
+    expect(checkDocNumbering('IV', 0)).toMatch(/ตั้งแต่ 1/);
+  });
+  it('has all 34 default posting roles and slot labels', () => {
+    expect(new Set(GL_ROLES.map((r) => r.role)).size).toBe(34);
+    expect(slotLabel('RR', 3)).toBe('Cr. เจ้าหนี้');
+    expect(slotLabel('IV', 4)).toBe('ช่องที่ 4');
+  });
+});
+
+import { renderJournalDesc } from './gl-link.js';
+describe('journal description template', () => {
+  it('renders party/bank fields and collapses blanks', () => {
+    expect(renderJournalDesc('ขายเชื่อให้ {party.title} {party.name}', { party: { title: 'บริษัท', name: 'ลูกค้า จำกัด' } })).toBe('ขายเชื่อให้ บริษัท ลูกค้า จำกัด');
+    expect(renderJournalDesc('ขายเชื่อให้ {party.title} {party.name}', { party: { title: null, name: 'นายเอ' } })).toBe('ขายเชื่อให้ นายเอ');
+    expect(renderJournalDesc('ถอนเงินจากบัญชี {bank.short_name} {doc.remark}', { bank: { short_name: 'BBL-CA' } })).toBe('ถอนเงินจากบัญชี BBL-CA');
+    expect(renderJournalDesc(null, {})).toBe('');
+  });
+});

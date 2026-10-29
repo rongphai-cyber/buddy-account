@@ -1811,6 +1811,7 @@ CREATE TABLE md_doc_type (
   name_th varchar(120) NOT NULL,
   name_en varchar(120),
   short_name varchar(10),
+  next_no bigint DEFAULT 1 NOT NULL,
   journal_book_id uuid,
   journal_desc_template varchar(200),
   department_id uuid,
@@ -1848,6 +1849,7 @@ COMMENT ON COLUMN md_doc_type.module IS 'ระบบ AR AP SO PO IC BK GL PC';
 COMMENT ON COLUMN md_doc_type.name_th IS 'ชื่อเอกสาร [Express: ISRUN.POSDES]';
 COMMENT ON COLUMN md_doc_type.name_en IS 'ชื่อภาษาอังกฤษ [Express: ISRUN.POSDES2]';
 COMMENT ON COLUMN md_doc_type.short_name IS 'ชื่อย่อ [Express: ISRUN.SHORTNAM]';
+COMMENT ON COLUMN md_doc_type.next_no IS 'เลขที่ถัดไป (ส่วนตัวเลข 7 หลักต่อท้าย prefix ไม่เริ่มใหม่ทุกปี — คู่มือบทที่ 9) [Express: ISRUN.DOCNUM]';
 COMMENT ON COLUMN md_doc_type.journal_book_id IS 'สมุดรายวันที่ลงบัญชี [Express: ISRUN.JNLTYP]';
 COMMENT ON COLUMN md_doc_type.journal_desc_template IS 'สูตรคำอธิบายรายการบัญชี เช่น "ขายเชื่อให้ {party.name}" [Express: ISRUN.JNLEXP]';
 COMMENT ON COLUMN md_doc_type.department_id IS 'แผนก default [Express: ISRUN.DEPCOD]';

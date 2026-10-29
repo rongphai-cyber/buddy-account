@@ -7,7 +7,7 @@ import type { Database, Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth, requireCompany, type AuthContext } from '../http.js';
 import { canAccessCompany, companiesForUser } from './auth.js';
 import { logActivity } from '../audit.js';
-import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, setSetting } from '../company-template.js';
+import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, setSetting } from '../company-template.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
 const uuid = z.string().uuid();
@@ -92,6 +92,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       await tx.insertInto('sys_branch').values({ company_id: c.id, code: '00000', name: 'สำนักงานใหญ่', tax_branch_no: '00000', is_head_office: true, created_by: a.userId }).execute();
       await createFiscalYear(tx, c.id, b.fiscal_start, a.userId);
       await seedChart(tx, c.id, { chart: b.chart === 'express' || b.chart === 'th_en' ? b.chart : null });
+      await seedDocTypes(tx, c.id);
       if (b.chart === 'copy') {
         if (!b.copy_from_company_id) throw badRequest('เลือกบริษัทต้นแบบที่จะคัดลอก');
         await copyChart(tx, b.copy_from_company_id, c.id);

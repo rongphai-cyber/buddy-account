@@ -20,10 +20,14 @@ export function AccountCell({ value, onChange, postableOnly = true, autoFocus, i
   const [lookup, setLookup] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
   useEffect(() => setTxt(cur?.account_no ?? ''), [cur?.account_no]);
+  // พิมพ์เลขที่แล้ว Enter ก่อนผังบัญชีโหลดเสร็จ: จำไว้แล้วค่อยหาเมื่อโหลดเสร็จ (ไม่เปิดหน้าต่างค้นหาผิด ๆ)
+  const [pending, setPending] = useState(false);
+  useEffect(() => { if (pending && accts.data) { setPending(false); resolve(); } }, [pending, accts.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const resolve = () => {
     const t = txt.trim();
     if (!t) { if (value) onChange(null); return true; }
     if (cur && cur.account_no === t) return true;
+    if (!accts.data) { setPending(true); return true; }
     const exact = accts.data?.find((a) => a.account_no === t || a.account_no.replace(/-/g, '') === t.replace(/-/g, ''));
     if (exact && (!postableOnly || !exact.is_control)) { onChange(exact); setTxt(exact.account_no); return true; }
     setLookup(t);

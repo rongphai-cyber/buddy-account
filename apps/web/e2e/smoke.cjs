@@ -286,6 +286,19 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.waitForSelector('.lines tbody tr input', { timeout: 15000 });
     await shot('15p-payment-methods');
   });
+  await step('document numbers + GL link (S-DN-01/02, S-GL-01/02, view only)', async () => {
+    await page.goto(BASE + '/settings/doc-types');
+    await page.locator('table.grid tbody tr.row-open').filter({ hasText: 'PO' }).first().click({ timeout: 15000 });
+    await page.waitForSelector('.modal fieldset.box input', { timeout: 15000 });
+    await shot('15q-doc-type');
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.modal', { state: 'detached', timeout: 5000 });
+    await page.goto(BASE + '/settings/gl-link');
+    await page.waitForSelector('fieldset.box select', { timeout: 15000 });
+    await page.getByRole('tab', { name: /บัญชีเพื่อลงรายวัน/ }).click();
+    await page.waitForSelector('fieldset.box .lk-in input, fieldset.box input', { timeout: 15000 });
+    await shot('15q-gl-link');
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

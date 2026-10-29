@@ -210,6 +210,21 @@ done('gl_template_line', insert('gl_template_line', tpl_rows), 'GLTPLIT')
 MODULE = {'OB':'IC','QT':'SO','SO':'SO','AI':'AR','IV':'AR','HS':'AR','DR':'AR','CN':'AR','OI':'AR','BS':'AR','RE':'AR',
           'PO':'PO','AE':'AP','RR':'AP','HP':'AP','CP':'AP','DN':'AP','OE':'AP','BR':'AP','PS':'AP',
           'OU':'IC','RL':'IC','JU':'IC','CA':'IC','BD':'BK','BW':'BK','BT':'BK','BU':'BK','BV':'BK','BQ':'BK','QP':'BK','DP':'PC','VR':'PC'}
+# คำอธิบายในสมุดรายวันของ Express เป็นนิพจน์ xBase (เช่น 'ขายเชื่อให้ ' + (ARMAS->PRENAM - ' ' - ARMAS->CUSNAM))
+# แปลงเป็นแม่แบบของระบบใหม่ {party.title} {party.name} — ช่องที่ไม่รู้จักคงนิพจน์เดิมไว้ (renderJournalDesc ใน packages/core)
+JNL_FIELD = {'ARMAS->PRENAM': '{party.title}', 'ARMAS->CUSNAM': '{party.name}', 'APMAS->PRENAM': '{party.title}', 'APMAS->SUPNAM': '{party.name}',
+             'BKMAS->SHORTNAM': '{bank.short_name}', 'BKMAS->BNKNAM': '{bank.name}', 'BKTRN->REMARK': '{doc.remark}', 'STCRD->STKDES': '{line.item_name}'}
+def jnl_tpl(e):
+    if not e or not e.strip(): return None
+    out = []
+    for t in re.split(r"(?:\+|-(?!>))(?=(?:[^']*'[^']*')*[^']*$)", e):
+        t = t.strip().strip('()').strip()
+        if not t: continue
+        if len(t) >= 2 and t[0] == "'" and t[-1] == "'": out.append(t[1:-1]); continue
+        f = JNL_FIELD.get(t.upper())
+        if not f: QUALITY['journal_desc_kept_express'].append(e.strip()); return e.strip()
+        out.append(f)
+    return re.sub(r'\s+', ' ', ''.join(out)).strip() or None
 dt_rows, dta_rows, pm_rows = [], [], []
 for r in run:
     typ, pre = st(r['DOCTYP']), st(r['PREFIX'])
@@ -227,7 +242,8 @@ for r in run:
     if pre in DT: QUALITY['doc_type_duplicate_prefix'].append(pre); continue
     DT[pre] = U('dt', pre); DTCLASS[pre] = typ
     dt_rows.append(base(id=DT[pre], code=pre, doc_class=typ, module=MODULE.get(typ, 'GL'), name_th=r['POSDES'] or pre, name_en=r['POSDES2'],
-                        short_name=st(r['SHORTNAM']), journal_book_id=JB.get(st(r['JNLTYP'])), journal_desc_template=r['JNLEXP'],
+                        short_name=st(r['SHORTNAM']), next_no=int(st(r['DOCNUM'])) if st(r['DOCNUM']).isdigit() and int(st(r['DOCNUM'])) > 0 else 1,
+                        journal_book_id=JB.get(st(r['JNLTYP'])), journal_desc_template=jnl_tpl(r['JNLEXP']),
                         warehouse_id=WH.get(st(r['LOCCOD'])), price_type=r['FLGVAT'] if r['FLGVAT'] in ('0','1','2') else None, vat_rate=r['VATRAT'],
                         vat_basis=r['SRV_VATTYP'] if r['SRV_VATTYP'] in ('1','2','3') else None,
                         approve_method=r['APPROV_MET'], approve_level=int(r['APPROV_LEV']) if (r['APPROV_LEV'] or '').isdigit() else None,

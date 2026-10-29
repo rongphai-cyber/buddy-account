@@ -20,6 +20,7 @@ import { lookupRoutes, partyRoutes } from './modules/parties.js';
 import { itemAccountGroupRoutes, itemRoutes } from './modules/items.js';
 import { chartTemplateRoutes } from './modules/gl/chart-templates.js';
 import { bankingRoutes } from './modules/banking.js';
+import { docTypeRoutes } from './modules/doc-types.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -59,6 +60,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   itemRoutes(app, db);
   chartTemplateRoutes(app, db);
   bankingRoutes(app, db);
+  docTypeRoutes(app, db);
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {

@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { sql, type Kysely } from 'kysely';
 import type { DB } from './db.js';
 import { REPO_ROOT } from './config.js';
-import { addMonths, isoDate, parseIso } from '@buddy/core';
+import { addMonths, DOC_CLASSES, isoDate, parseIso, STANDARD_DOC_TYPES } from '@buddy/core';
 
 interface ChartTemplate {
   accounts: Array<{ no: string; th: string; en: string | null; parent: string | null; level: number; group: string; control: boolean; side: string; dept: boolean }>;
@@ -84,4 +84,13 @@ export async function setSetting(db: Kysely<DB>, companyId: string, key: string,
   const cur = await db.selectFrom('sys_setting').select('id').where('company_id', '=', companyId).where('branch_id', 'is', null).where('key', '=', key).where('deleted_at', 'is', null).executeTakeFirst();
   if (cur) await db.updateTable('sys_setting').set({ value: sql`${json}::jsonb`, updated_by: userId ?? null }).where('id', '=', cur.id).execute();
   else await db.insertInto('sys_setting').values({ company_id: companyId, branch_id: null, module, key, value: sql`${json}::jsonb`, created_by: userId ?? null }).execute();
+}
+
+/** ประเภทเอกสารมาตรฐาน (คู่มือบทที่ 9) สำหรับบริษัทใหม่ — สมุดรายวันตามรหัส 00–04 ที่สร้างพร้อมบริษัท */
+export async function seedDocTypes(db: Kysely<DB>, companyId: string) {
+  const books = new Map((await db.selectFrom('gl_journal_book').select(['id', 'code']).where('company_id', '=', companyId).where('deleted_at', 'is', null).execute()).map((b) => [b.code, b.id]));
+  for (const t of STANDARD_DOC_TYPES) {
+    await db.insertInto('md_doc_type').values({ company_id: companyId, code: t.code, doc_class: t.cls, module: DOC_CLASSES[t.cls]?.module ?? 'GL', name_th: t.th, name_en: t.en,
+      journal_book_id: t.book ? books.get(t.book) ?? null : null, is_tax_invoice: ['IV', 'HS', 'DR', 'CN', 'AI', 'RE'].includes(t.cls) }).onConflict((oc) => oc.doNothing()).execute();
+  }
 }

@@ -1642,6 +1642,8 @@ export interface MdDocTypeTable {
   name_en: Gen<string | null>;
   /** ชื่อย่อ */
   short_name: Gen<string | null>;
+  /** เลขที่ถัดไป (ส่วนตัวเลข 7 หลักต่อท้าย prefix ไม่เริ่มใหม่ทุกปี — คู่มือบทที่ 9) */
+  next_no: Gen<number>;
   /** สมุดรายวันที่ลงบัญชี */
   journal_book_id: Gen<string | null>;
   /** สูตรคำอธิบายรายการบัญชี เช่น "ขายเชื่อให้ {party.name}" */

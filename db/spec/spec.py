@@ -573,6 +573,7 @@ add(T('md_doc_type', 'ประเภทเอกสารและพฤติ�
   C('name_th', 'str120', nn=True, th='ชื่อเอกสาร', src='ISRUN.POSDES'),
   C('name_en', 'str120', th='ชื่อภาษาอังกฤษ', src='ISRUN.POSDES2'),
   C('short_name', 'code10', th='ชื่อย่อ', src='ISRUN.SHORTNAM'),
+  C('next_no', 'bigint', nn=True, d='1', th='เลขที่ถัดไป (ส่วนตัวเลข 7 หลักต่อท้าย prefix ไม่เริ่มใหม่ทุกปี — คู่มือบทที่ 9)', src='ISRUN.DOCNUM'),
   lk('journal_book_id', 'gl_journal_book', 'สมุดรายวันที่ลงบัญชี', 'ISRUN.JNLTYP'),
   C('journal_desc_template', 'str200', th='สูตรคำอธิบายรายการบัญชี เช่น "ขายเชื่อให้ {party.name}"', src='ISRUN.JNLEXP'),
   lk('department_id', 'md_department', 'แผนก default', 'ISRUN.DEPCOD'),

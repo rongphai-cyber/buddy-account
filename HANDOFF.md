@@ -40,7 +40,12 @@
 **T2.4 เสร็จแล้ว** — `modules/banking.ts`: /bank-accounts (FI.BK.ACC) · /payment-methods/:direction R|P (เมนูใหม่ SET.PAYM บันทึกทั้งตาราง สลับรหัสได้ ลบได้เฉพาะที่ยังไม่ใช้ใน doc_payment) · หน้าจอ `pages/finance/Banking.tsx`
 - ⚠️ **ตรวจ typecheck ต้องดู exit code**: `pnpm -s typecheck` (silent) ซ่อนข้อผิดพลาด — ใช้ `pnpm typecheck; echo exit=$?` (เจอว่าล้มมาตั้งแต่ T2.2 แก้แล้ว 29/10/2569)
 - view (v_ar_outstanding ฯลฯ) ไม่อยู่ในชนิดของ Kysely → ใช้ `sql\`...\`` ตรง (ดู outstandingBills ใน parties.ts)
-- ต่อไป: T2.5 เลขที่เอกสาร + การเชื่อมต่อบัญชี → T1.17 ตารางข้อมูล
+**T2.5 เสร็จแล้ว** — `modules/doc-types.ts`: /doc-types (SET.DOCNO) · /gl/link (SET.LINK: gen.link_gl + gl_journal_route + gl_default_account) · หน้าจอ `pages/settings/DocTypes.tsx`
+- เลขที่เอกสาร = md_doc_type.code + next_no 7 หลัก (migration 0010, นำเข้าจาก ISRUN.DOCNUM) — `formatDocNo`/`checkDocNumbering` ใน core; md_doc_number_block (ช่วงเลขของเครื่องออฟไลน์) ยังไม่ใช้
+- บริษัทใหม่ได้ STANDARD_DOC_TYPES 34 ประเภท (`seedDocTypes`) · ความหมายช่องบัญชี DOC_SLOT_ROLES (ซ้ำกับ posting_engine.py SLOT_ROLE — แก้ให้ตรงกันทั้งสองที่)
+- คำอธิบายในสมุดรายวัน: importer แปลงนิพจน์ xBase → `{party.title} {party.name}` / `{bank.short_name}` / `{doc.remark}` / `{line.item_name}` · P3 ใช้ `renderJournalDesc()`
+- ช่องเลขที่บัญชี (AccountCell) กด Enter ก่อนผังโหลดเสร็จ: จำไว้แล้วค่อยหา (เดิมเปิดหน้าต่างค้นหาผิด ๆ — smoke ล้มเป็นครั้งคราว)
+- ต่อไป: T1.17 ตารางข้อมูล (หน่วยนับ คลัง ธนาคาร ตาราง md_lookup ทุกชนิด) — แล้ว P2 ครบ
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

@@ -715,6 +715,56 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
 
+  it('document types & numbering (S-DN-01/02) and GL link (S-GL-01/02)', async () => {
+    const list = (await call('GET', '/api/v1/doc-types')).body as Array<{ id: string; code: string; doc_class: string; book_code: string | null; next_no: string }>;
+    expect(list.length).toBe(34);                                           // ประเภทเอกสารมาตรฐานของบริษัทใหม่
+    expect(list.find((t) => t.code === 'IV')).toMatchObject({ doc_class: 'IV', book_code: '03' });
+    expect(list.find((t) => t.code === 'SR')!.doc_class).toBe('CN');        // หมวดกับ prefix ต่างกันได้
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
+    const leaf = accs.filter((x) => !x.is_control), control = accs.find((x) => x.is_control)!.id;
+    const books = (await call('GET', '/api/v1/gl/books')).body as Array<{ id: string; code: string }>;
+    const ie = { code: 'ie', doc_class: 'IV', name_th: 'ขายเงินเชื่อ-ต่างประเทศ', name_en: 'Export Sales', next_no: '0000101', journal_book_id: books.find((b) => b.code === '03')!.id, approve_level: 5, vat_rate: 0 };
+    expect((await call('POST', '/api/v1/doc-types', { ...ie, code: 'I/' })).body.error.message).toMatch(/คั่น/);
+    expect((await call('POST', '/api/v1/doc-types', { ...ie, next_no: '12345678' })).body.error.message).toMatch(/7 หลัก/);
+    expect((await call('POST', '/api/v1/doc-types', { ...ie, doc_class: 'ZZ' })).status).toBe(400);
+    expect((await call('POST', '/api/v1/doc-types', { ...ie, code: 'IV' })).status).toBe(409);
+    expect((await call('POST', '/api/v1/doc-types', { ...ie, approve_level: 12 })).status).toBe(400);
+    const r = await call('POST', '/api/v1/doc-types', ie);
+    expect(r.status).toBe(200);
+    expect((await call('PUT', `/api/v1/doc-types/${r.body.id}`, { ...ie, accounts: [{ slot: 1, account_id: control }] })).body.error.message).toMatch(/บัญชีคุม/);
+    expect((await call('PUT', `/api/v1/doc-types/${r.body.id}`, { ...ie, accounts: [{ slot: 1, account_id: leaf[0]!.id }, { slot: 1, account_id: leaf[1]!.id }] })).body.error.message).toMatch(/ซ้ำ/);
+    expect((await call('PUT', `/api/v1/doc-types/${r.body.id}`, { ...ie, accounts: [{ slot: 1, account_id: leaf[0]!.id }, { slot: 3, account_id: leaf[1]!.id }] })).status).toBe(200);
+    const det = (await call('GET', `/api/v1/doc-types/${r.body.id}`)).body;
+    expect(det).toMatchObject({ code: 'IE', next_no: expect.anything(), approve_level: 5, doc_count: 0 });
+    expect(Number(det.next_no)).toBe(101);
+    expect(det.accounts.map((x: { slot: number }) => x.slot)).toEqual([1, 3]);
+    expect((await call('PUT', `/api/v1/doc-types/${r.body.id}`, { ...ie, accounts: [] })).status).toBe(200);
+    expect((await call('GET', `/api/v1/doc-types/${r.body.id}`)).body.accounts).toHaveLength(0);
+    // การเชื่อมต่อบัญชี: บัญชีเพื่อลงรายวัน 34 บทบาท + สมุดรายวันของรายการ
+    const link = (await call('GET', '/api/v1/gl/link')).body;
+    expect(link.link_gl).toBe(true);
+    expect(link.defaults.length).toBe(34);
+    expect((await call('PUT', '/api/v1/gl/link', { link_gl: true, defaults: [{ role: 'SUSPENSE', account_id: null }] })).body.error.message).toMatch(/บัญชีพัก/);
+    expect((await call('PUT', '/api/v1/gl/link', { link_gl: true, defaults: [{ role: 'CASH', account_id: control }] })).body.error.message).toMatch(/บัญชีคุม/);
+    expect((await call('PUT', '/api/v1/gl/link', { link_gl: true, routes: [{ txn_kind: 'NOPE', journal_book_id: null }] })).status).toBe(400);
+    const b01 = books.find((b) => b.code === '01')!.id;
+    expect((await call('PUT', '/api/v1/gl/link', { link_gl: false, routes: [{ txn_kind: 'DEPRECIATION', journal_book_id: b01 }], defaults: [{ role: 'CASH', account_id: leaf[2]!.id }] })).status).toBe(200);
+    const link2 = (await call('GET', '/api/v1/gl/link')).body;
+    expect(link2.link_gl).toBe(false);
+    expect(link2.routes.find((x: { txn_kind: string }) => x.txn_kind === 'DEPRECIATION').journal_book_id).toBe(b01);
+    expect(link2.defaults.find((x: { role: string }) => x.role === 'CASH').account_id).toBe(leaf[2]!.id);
+    expect((await call('PUT', '/api/v1/gl/link', { link_gl: true, routes: [{ txn_kind: 'DEPRECIATION', journal_book_id: null }] })).status).toBe(200);
+    expect((await call('GET', '/api/v1/gl/link')).body.routes.some((x: { txn_kind: string }) => x.txn_kind === 'DEPRECIATION')).toBe(false);
+    // บริษัทอื่นมองไม่เห็น/แก้ไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/doc-types/${r.body.id}`)).status).toBe(404);
+    expect((await call('PUT', `/api/v1/doc-types/${r.body.id}`, ie)).status).toBe(404);
+    expect((await call('DELETE', `/api/v1/doc-types/${r.body.id}`)).status).toBe(404);
+    expect((await call('PUT', '/api/v1/gl/link', { link_gl: true, defaults: [{ role: 'CASH', account_id: leaf[2]!.id }] })).status).toBe(400);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('DELETE', `/api/v1/doc-types/${r.body.id}`)).status).toBe(200);
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)
