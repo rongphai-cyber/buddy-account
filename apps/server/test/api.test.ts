@@ -2038,6 +2038,29 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await run('5.3', { date_from: '2026-01-01', date_to: '2026-12-31' })).rows.at(-1).c.debit).not.toBe(tb.totals.debit);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
+  it('sales/purchase analysis (T5.6): history by customer/item, summary with cost and gross profit, returns negative', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const cus = (await call('GET', '/api/v1/customers?q=C520')).body.rows[0].id;
+    const sup = (await call('GET', '/api/v1/suppliers?q=S200')).body.rows[0].id;
+    const code = '02-TEST-000056';
+    const it = (await call('POST', '/api/v1/items', { code, name_th: 'สินค้าวิเคราะห์', base_unit_id: unit, std_cost: '1' })).body.id;
+    const rr = (await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2027-05-01', party_id: sup, price_type: '0', vat_rate: 0, warehouse_id: w1, lines: [{ item_id: it, qty: 10, unit_price: 40 }] })).body;
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2027-05-02', party_id: cus, price_type: '2', vat_rate: 7, warehouse_id: w1, lines: [{ item_id: it, qty: 4, unit_price: 100 }] })).body;
+    const cn = (await call('POST', '/api/v1/ar-credit-notes', { doc_type_id: await typeOf('CN'), doc_date: '2027-05-03', party_id: cus, ref_header_id: iv.id, price_type: '2', vat_rate: 7, lines: [{ item_id: it, qty: 1, unit_price: 100, return_to_stock: true }] })).body;
+    const run = async (c: string, params: Record<string, unknown>) => (await call('POST', `/api/v1/rpt/${c}/run`, { params: { date_from: '2027-05-01', date_to: '2027-05-31', item_from: code, item_to: code, ...params } })).body;
+    // ขาย 400 − คืน 100 = 300 · ต้นทุน 4×40 − 1×40 = 120 · กำไร 180 (60%)
+    expect((await run('7.6', { by: 'item' })).rows[0].c).toMatchObject({ code, qty: '3', net: '300.00', cost: '120.00', gp: '180.00', pct: '60.00' });
+    const h = await run('7.1.1', {});
+    expect(h.rows.filter((r: { t?: string }) => !r.t).map((r: { c: { net: string } }) => r.c.net)).toEqual(['400.00', '-100.00']);
+    expect((await run('8.2', { by: 'supplier' })).rows.at(-1).c.net).toBe('400.00');
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await run('7.6', {})).rows.at(-1).c.net).toBe('0.00');
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    for (const [path, id] of [['ar-credit-notes', cn.id], ['sales-invoices', iv.id], ['purchase-invoices', rr.id]]) expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
