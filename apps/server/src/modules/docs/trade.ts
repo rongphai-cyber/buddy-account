@@ -229,7 +229,9 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       const cancels = K.order ? await db.selectFrom('doc_line').select(['id', 'line_no', 'cancelled_qty', 'cancel_reason_code', 'cancel_date']).where('header_id', '=', id).where('deleted_at', 'is', null).where('cancelled_qty', '>', '0').orderBy('line_no').execute() : [];
       const sources = K.orderRef ? (await sql<{ line_id: string; source_line_id: string; doc_no: string }>`SELECT x.id AS line_id, x.source_line_id, oh.doc_no FROM doc_line x JOIN doc_line o ON o.id = x.source_line_id JOIN doc_header oh ON oh.id = o.header_id
           WHERE x.header_id = ${id} AND x.deleted_at IS NULL`.execute(db)).rows : [];
-      return { ...h, party_code: pc?.code ?? null, lines: lines.map((l) => ({ ...l, ...(orderLines.find((o) => o.line_no === l.line_no) ?? {}), source: sources.find((x) => x.line_id === (l as { id?: string }).id) ?? null })),
+      const converted = K.cls === 'QT' ? (await sql<{ id: string; doc_no: string; doc_date: string }>`SELECT t.id, t.doc_no, t.doc_date FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id
+          WHERE l.from_header_id = ${id} AND l.link_type = 'CONVERT' AND l.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL ORDER BY t.doc_date`.execute(db)).rows : [];
+      return { ...h, converted, party_code: pc?.code ?? null, lines: lines.map((l) => ({ ...l, ...(orderLines.find((o) => o.line_no === l.line_no) ?? {}), source: sources.find((x) => x.line_id === (l as { id?: string }).id) ?? null })),
         deliveries, cancels, payments, deposits, settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !settled.some((x) => x.doc_status !== 'C') && !(deliveries as unknown[]).length };
     });
     app.post(base, async (req) => saveTrade(db, requireCompany(req), K, null, parse(body, req.body)));
@@ -266,6 +268,28 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       });
     }
   }
+  /** แปลงใบเสนอราคาเป็นใบสั่งขาย (คู่มือหน้า 203) — คัดลอกหัวและบรรทัด ผูก doc_link CONVERT */
+  app.post('/api/v1/quotations/:id/convert', async (req) => {
+    const a = requireCompany(req);
+    const { id } = parse(z.object({ id: uuid }), req.params);
+    const b = parse(z.object({ doc_type_id: uuid.optional(), doc_date: isoDate, delivery_date: isoDate.nullable().optional() }), req.body);
+    const qt = await db.selectFrom('doc_header').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', 'QT').where('deleted_at', 'is', null).executeTakeFirst();
+    if (!qt) throw notFound('ใบเสนอราคา');
+    if (qt.doc_status === 'C') throw badRequest('ใบเสนอราคานี้ถูกยกเลิกแล้ว');
+    const soType = b.doc_type_id ?? (await db.selectFrom('md_doc_type').select('id').where('company_id', '=', a.companyId).where('doc_class', '=', 'SO').where('status', '=', 'A').where('deleted_at', 'is', null).orderBy('code').executeTakeFirst())?.id;
+    if (!soType) throw badRequest('ยังไม่มีประเภทเอกสารใบสั่งขาย — เพิ่มที่ เริ่มระบบ › เลขที่เอกสาร');
+    const lines = await db.selectFrom('doc_line').select(['item_id', 'description', 'warehouse_id', 'qty', 'unit_id', 'factor', 'unit_price', 'discount_text', 'is_free', 'department_id'])
+      .where('header_id', '=', id).where('deleted_at', 'is', null).where('item_id', 'is not', null).orderBy('line_no').execute();
+    const K = TRADE_KINDS.find((k) => k.cls === 'SO')!;
+    const so = await saveTrade(db, a, K, null, parse(body, {
+      doc_type_id: soType, doc_date: b.doc_date, delivery_date: b.delivery_date ?? b.doc_date, party_id: qt.customer_id, bill_to_customer_id: qt.bill_to_customer_id, party_tax_branch_no: qt.party_tax_branch_no,
+      your_ref: qt.your_ref, department_id: qt.department_id, salesperson_id: qt.salesperson_id, sales_area_code: qt.sales_area_code, ship_via_code: qt.ship_via_code,
+      price_type: qt.price_type, vat_rate: qt.vat_rate ?? 0, discount_text: qt.discount_text, remark: qt.remark,
+      lines: lines.map((l) => ({ ...l, qty: l.qty, factor: l.factor, unit_price: l.unit_price })),
+    }));
+    await db.insertInto('doc_link').values({ company_id: a.companyId, from_header_id: id, to_header_id: so.id!, link_type: 'CONVERT', created_by: a.userId }).execute();
+    return so;
+  });
   /** ค่าตั้งต้นของหน้าจอเอกสาร: ประเภทเอกสารของหมวด อัตรา VAT ประเภทราคา (ค่าเริ่มต้นระบบ → ประเภทเอกสาร) */
   app.get('/api/v1/trade-defaults/:cls', async (req) => {
     const a = requireCompany(req);

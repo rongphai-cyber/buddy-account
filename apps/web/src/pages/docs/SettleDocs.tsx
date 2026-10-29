@@ -66,7 +66,7 @@ export function SettleListPage({ path }: { path: string }) {
 }
 
 /* ---------------------------------------------------------------- หน้าเอกสาร */
-interface Open { header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string; own: string; vat_basis: string | null; net_amount: string; vat_amount: string; ref_no: string | null }
+interface Open { header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string; own: string; vat_basis: string | null; net_amount: string; vat_amount: string; ref_no: string | null; bill_no: string | null }
 interface Head { doc_type_id: string; doc_date: string; payment_date: string; party: { id: string; code: string; name?: string | null } | null; department_id: string; salesperson_id: string; your_ref: string; remark: string;
   interest: string; discount: string; wht: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
 interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; settlements: Array<{ invoice_header_id: string; amount: string }>;
@@ -191,7 +191,7 @@ export function SettleFormPage({ path }: { path: string }) {
         {tab === 'bills' && <div className="table-wrap lines">
           {!h.party ? <p className="empty">เลือก{partyWord(K)}ก่อน แล้วติ๊กบิลที่จะ{rp(K)}ชำระ</p> : <table className="grid">
             <thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={allOn} disabled={ro || !rows.length} onChange={(e) => { setPick(e.target.checked ? Object.fromEntries(rows.map((o) => [o.header_id, num(o.outstanding)])) : {}); setDirty(true); }} aria-label="เลือกทั้งหมด" /></th>
-              <th style={{ width: 140 }}>เลขที่</th><th style={{ width: 80 }}>ชนิด</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 110 }}>ครบกำหนด</th>{K.module === 'AP' && <th>เลขที่บิลผู้จำหน่าย</th>}
+              <th style={{ width: 140 }}>เลขที่</th><th style={{ width: 80 }}>ชนิด</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 110 }}>ครบกำหนด</th><th style={{ width: 120 }}>{K.module === 'AR' ? 'ใบวางบิล#' : 'ใบรับวางบิล#'}</th>{K.module === 'AP' && <th>เลขที่บิลผู้จำหน่าย</th>}
               <th className="r" style={{ width: 130 }}>จำนวนเงิน</th><th className="r" style={{ width: 130 }}>ยอดคงค้าง</th><th className="r" style={{ width: 150 }}>ยอดชำระ</th></tr></thead>
             <tbody>
               {rows.map((o) => {
@@ -200,15 +200,15 @@ export function SettleFormPage({ path }: { path: string }) {
                   <tr key={o.header_id} className={cx('row-open', on && 'picked')} onClick={(e) => { if (!ro && !(e.target as HTMLElement).matches('input')) toggle(o, !on); }}>
                     <td className="c"><input type="checkbox" checked={on} disabled={ro} onChange={(e) => toggle(o, e.target.checked)} aria-label={`เลือก ${o.doc_no}`} /></td>
                     <td className="mono">{o.doc_no}</td><td>{o.doc_class === K.neg ? <Pill tone="c">{CLASS_TH[o.doc_class]}</Pill> : CLASS_TH[o.doc_class]}{o.vat_basis === '2' && <span className="muted small"> ภาษีเกณฑ์เงินสด</span>}</td>
-                    <td><DateText v={o.doc_date} /></td><td><DateText v={o.due_date} /></td>{K.module === 'AP' && <td className="mono">{o.ref_no}</td>}
+                    <td><DateText v={o.doc_date} /></td><td><DateText v={o.due_date} /></td><td className="mono">{o.bill_no}</td>{K.module === 'AP' && <td className="mono">{o.ref_no}</td>}
                     <td className="r"><Money v={o.doc_class === K.neg ? d(o.amount).neg().toFixed(2) : o.amount} /></td><td className="r"><Money v={o.doc_class === K.neg ? d(o.outstanding).neg().toFixed(2) : o.outstanding} /></td>
                     <td>{on && <MoneyInput value={pick[o.header_id]} disabled={ro} onChange={(v) => { setPick((m) => ({ ...m, [o.header_id]: v })); setDirty(true); }} aria-label={`ยอดชำระ ${o.doc_no}`} />}</td>
                   </tr>
                 );
               })}
-              {open.data && !rows.length && <tr><td colSpan={9} className="empty">ไม่มีบิลค้างชำระของ{partyWord(K)}รายนี้</td></tr>}
+              {open.data && !rows.length && <tr><td colSpan={10} className="empty">ไม่มีบิลค้างชำระของ{partyWord(K)}รายนี้</td></tr>}
             </tbody>
-            {chosen.length > 0 && <tfoot><tr><td colSpan={K.module === 'AP' ? 8 : 7} className="r">เลือก {chosen.length} ใบ — ยอดชำระตามใบกำกับ (ใบลดหนี้หักออก)</td><td className="r"><b><Money v={t.billed} /></b></td></tr></tfoot>}
+            {chosen.length > 0 && <tfoot><tr><td colSpan={K.module === 'AP' ? 9 : 8} className="r">เลือก {chosen.length} ใบ — ยอดชำระตามใบกำกับ (ใบลดหนี้หักออก)</td><td className="r"><b><Money v={t.billed} /></b></td></tr></tfoot>}
           </table>}
         </div>}
         {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} readOnly={ro} payDate={h.payment_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}

@@ -366,6 +366,19 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.goto(BASE + '/sa/quotations/new');
     await page.waitForSelector('.trade-head', { timeout: 15000 });
   });
+  await step('billing notes + appointments (S-BI-01, S-BI-02, S-PU-06, view only)', async () => {
+    for (const url of ['/fi/ar/bills', '/fi/ap/bills']) {
+      await page.goto(BASE + url);
+      await page.waitForSelector('.toolbar input[type=search]', { timeout: 15000 });
+      const from = page.locator('.toolbar .date-in input').first();
+      await from.fill('01/01/2550'); await from.press('Enter');
+      await page.locator('table.grid tbody tr.row-open').first().click({ timeout: 15000 });
+      await page.waitForSelector('.trade-head', { timeout: 15000 });
+      await shot('15x-' + url.split('/')[2] + '-bill');
+    }
+    await page.goto(BASE + '/fi/ar/bill-appointments');
+    await page.waitForSelector('table.grid tbody tr', { timeout: 15000 });
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

@@ -141,3 +141,10 @@ export const CASH_KINDS: CashKind[] = [
   { path: 'other-expense-docs', cls: 'OE', module: 'AP', menu: 'PU.OE', party: 'supplier', partyRequired: false, label: 'บันทึกค่าใช้จ่ายอื่น ๆ', route: '/pu/other-expense', lines: 'code', itemType: '5', direction: 'P', whtEntries: true, deposit: false },
 ];
 
+/** ใบวางบิล BS (คู่มือ S-BI-01) / ใบรับวางบิล BR (S-PU-06): รวมบิลค้างของคู่ค้าเพื่อนัดรับ/จ่ายเงิน — ไม่ลงบัญชี */
+export interface BillKind { path: string; cls: 'BS' | 'BR'; module: 'AR' | 'AP'; menu: string; party: 'customer' | 'supplier'; label: string; route: string; open: string[] }
+export const BILL_KINDS: BillKind[] = [
+  { path: 'ar-bills', cls: 'BS', module: 'AR', menu: 'FI.AR.BI', party: 'customer', label: 'ใบวางบิล', route: '/fi/ar/bills', open: ['IV', 'DR', 'CN'] },
+  { path: 'ap-bills', cls: 'BR', module: 'AP', menu: 'FI.AP.BR', party: 'supplier', label: 'ใบรับวางบิล', route: '/fi/ap/bills', open: ['RR', 'CP', 'DN'] },
+];
+

@@ -72,10 +72,13 @@
   - เครื่องลงบัญชี: AE/OE Cr WHT_PAYABLE · AI/OI Dr PREPAID_TAX · HS วิธีรับชำระอื่นลงบัญชีของวิธีนั้น (เดิมลงเงินสดทั้งหมด) · HP หักมัดจำ Cr DEPOSIT_PAID → posting-compare 14,964/15,382 (97.3%)
   - OI/OE ไม่ระบุคู่ค้าได้ (party_name) · รหัสบรรทัด OI = item_type 4 · OE = 5 หรือ 2 (ข้อมูล Express) · /item-search?types=
   - ⚠️ มัดจำคงเหลือของข้อมูลที่ย้ายมาไม่ตรง REMAMT ของ Express (AE: view 39.9 ล้าน vs Express 16.3 ล้าน) เพราะ Express หักมัดจำผ่านวิธีชำระ "หัก เงินมัดจำ" ในใบสำคัญจ่ายโดยไม่ผูกใบ — แก้ใน T3.10 (importer สร้าง doc_link ปรับปรุงให้คงเหลือ = REMAMT)
-- ⏳ T3.7 ส่วนที่ 1 ✅ ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อ: เพิ่มใน `TRADE_KINDS` (order: 'SO'|'PO' — หัวเอกสาร module SO/PO, ไม่ลงบัญชี) ใช้ TradeFormPage เดียวกัน · IV/HS อ้าง SO, RR/HP อ้าง PO (`orderRef`, ปุ่ม/F6 → OrderPicker) บรรทัดบิลเก็บ `source_line_id`
+- ✅ T3.7 ส่วนที่ 1: ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อ: เพิ่มใน `TRADE_KINDS` (order: 'SO'|'PO' — หัวเอกสาร module SO/PO, ไม่ลงบัญชี) ใช้ TradeFormPage เดียวกัน · IV/HS อ้าง SO, RR/HP อ้าง PO (`orderRef`, ปุ่ม/F6 → OrderPicker) บรรทัดบิลเก็บ `source_line_id`
   - ยอดค้างส่ง/รับ = view `v_order_line` (migration 0014): สั่ง − ยกเลิก − ส่งแล้ว · บรรทัดที่ย้ายจาก Express ใช้ remaining_qty (REMQTY) เป็นยอดตั้งต้น และการยกเลิกยอดบรรทัดเหล่านี้ลด remaining_qty ด้วย
   - /api/v1/orders/open?cls&party_id&invoice_id · POST /{sales-orders|purchase-orders}/:id/lines/:lineId/cancel (qty, reason_code ตาราง 42/43, date) · ใบสั่งที่มีบิลอ้างแล้วแก้/ยกเลิกทั้งใบไม่ได้
-  - ต่อไป (ส่วนที่ 2): แปลงใบเสนอราคา→ใบสั่งขาย, ใบวางบิล BS (FI.AR.BI, doc_bill_item) + บันทึกวันนัดรับชำระ S-BI-02, ใบรับวางบิล BR (FI.AP.BR), แสดงใบวางบิล# ในรายการบิลค้างของใบเสร็จ
+  - ✅ ส่วนที่ 2: `modules/docs/bills.ts` + core `BILL_KINDS` — /ar-bills /ap-bills (+open-items, /:id/appointment, cancel) doc_bill_item ยอดค้าง ณ วันทำใบ · บิลหนึ่งใบอยู่ในใบวางบิลที่ไม่ยกเลิกได้ใบเดียว · ref_date = วันที่ไปวางบิล · หน้า `pages/docs/BillDocs.tsx` (+ /fi/ar/bill-appointments = S-BI-02)
+  - POST /quotations/:id/convert → ใบสั่งขาย (ใช้ saveTrade, doc_link CONVERT) · ใบเสร็จ/ใบจ่ายแสดงใบวางบิล# (settle openItems.bill_no)
+  - เหลือใน T3.7: สถานะใบเสนอราคา (ตาราง 44 — ยังไม่มีคอลัมน์), อ้างใบเสนอราคาในบิลขายโดยตรง
+- ต่อไป: T3.8 เงินสดย่อย DP/VR (บทที่ 15)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

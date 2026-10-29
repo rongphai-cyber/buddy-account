@@ -1150,6 +1150,53 @@ describe('Buddy Account API (PGlite)', () => {
       expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
+  it('billing notes + quotation → order (T3.7): BS groups open bills, one bill per invoice, appointment date, bill no in receipts, convert QT', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const mk = async (price: number) => (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2026-10-01', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: price }] })).body;
+    const i1 = await mk(1000), i2 = await mk(2000);
+    const open = async (bill?: string) => ((await call('GET', `/api/v1/ar-bills/open-items?party_id=${cus}${bill ? `&bill_id=${bill}` : ''}`)).body.rows as Array<{ doc_no: string }>).map((r) => r.doc_no).sort();
+    expect(await open()).toEqual([i1.doc_no, i2.doc_no].sort());
+    const bs = { doc_type_id: await typeOf('BS'), doc_date: '2026-10-05', visit_date: '2026-10-06', party_id: cus, items: [{ invoice_header_id: i1.id }, { invoice_header_id: i2.id }] };
+    expect((await call('POST', '/api/v1/ar-bills', { ...bs, items: [] })).body.error.message).toMatch(/อย่างน้อย 1 ใบ/);
+    const b1 = await call('POST', '/api/v1/ar-bills', bs);
+    expect(b1.body).toMatchObject({ doc_no: expect.stringMatching(/^BI\d{7}$/), net_amount: '3210.00' });
+    expect((await call('GET', `/api/v1/docs/${b1.body.id}/journal`)).body.journals).toEqual([]);
+    expect(await open()).toEqual([]);
+    expect(await open(b1.body.id)).toEqual([i1.doc_no, i2.doc_no].sort());     // แก้ใบเดิม: บิลของใบนี้เลือกได้
+    expect((await call('POST', '/api/v1/ar-bills', bs)).body.error.message).toMatch(/อยู่ในใบวางบิลอื่นแล้ว/);
+    expect((await call('POST', `/api/v1/ar-bills/${b1.body.id}/appointment`, { date: '2026-10-30' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/ar-bills?order=appointment')).body.rows[0]).toMatchObject({ doc_no: b1.body.doc_no, bills: 2 });
+    const det = (await call('GET', `/api/v1/ar-bills/${b1.body.id}`)).body;
+    expect(String(det.appointment_date).slice(0, 10)).toBe('2026-10-30');
+    expect(String(det.visit_date).slice(0, 10)).toBe('2026-10-06');
+    expect(det.items.map((x: { amount: string }) => x.amount)).toEqual(['1070.00', '2140.00']);
+    // ใบเสร็จแสดงเลขที่ใบวางบิล
+    expect((await call('GET', `/api/v1/ar-receipts/open-items?party_id=${cus}`)).body.rows.find((r: { doc_no: string }) => r.doc_no === i1.doc_no).bill_no).toBe(b1.body.doc_no);
+    // แก้: เหลือบิลเดียว · ยกเลิก → บิลกลับมาวางได้
+    expect((await call('PUT', `/api/v1/ar-bills/${b1.body.id}`, { ...bs, items: [{ invoice_header_id: i1.id }] })).body).toMatchObject({ net_amount: '1070.00' });
+    expect(await open()).toEqual([i2.doc_no]);
+    expect((await call('POST', `/api/v1/ar-bills/${b1.body.id}/cancel`, { reason: 'วางบิลใหม่' })).status).toBe(200);
+    expect(await open()).toEqual([i1.doc_no, i2.doc_no].sort());
+    expect((await call('POST', `/api/v1/ar-bills/${b1.body.id}/appointment`, { date: '2026-11-01' })).body.error.message).toMatch(/ยกเลิกแล้ว/);
+    // แปลงใบเสนอราคาเป็นใบสั่งขาย
+    const qt = (await call('POST', '/api/v1/quotations', { doc_type_id: await typeOf('QT'), doc_date: '2026-10-02', party_id: cus, price_type: '2', vat_rate: 7, discount_text: '5%', lines: [{ item_id: cpu, qty: 3, unit_price: 500 }] })).body;
+    const so = await call('POST', `/api/v1/quotations/${qt.id}/convert`, { doc_date: '2026-10-03' });
+    expect(so.body).toMatchObject({ doc_no: expect.stringMatching(/^SO\d{7}$/), net_amount: qt.net_amount });
+    expect((await call('GET', `/api/v1/quotations/${qt.id}`)).body.converted).toEqual([expect.objectContaining({ doc_no: so.body.doc_no })]);
+    expect((await call('GET', `/api/v1/sales-orders/${so.body.id}`)).body.lines[0]).toMatchObject({ remaining_qty: '3.0000' });
+    // บริษัทอื่น
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/ar-bills/${b1.body.id}`)).status).toBe(404);
+    expect((await call('POST', `/api/v1/quotations/${qt.id}/convert`, { doc_date: '2026-10-03' })).status).toBe(404);
+    expect((await call('GET', `/api/v1/ar-bills/open-items?party_id=${cus}`)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    for (const [path, id] of [['sales-orders', so.body.id], ['quotations', qt.id], ['sales-invoices', i1.id], ['sales-invoices', i2.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

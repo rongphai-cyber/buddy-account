@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -159,6 +159,12 @@ export const API_RULES: Record<string, Rule> = {
     [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M(k.menu, 'cancel')],
   ])),
   'GET /api/v1/deposits/open': LOOKUP,
+  ...Object.fromEntries(BILL_KINDS.flatMap((k) => [
+    [`GET /api/v1/${k.path}`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/open-items`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/:id`, M(k.menu, 'read')],
+    [`POST /api/v1/${k.path}`, M(k.menu, 'add')], [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M(k.menu, 'cancel')],
+    [`POST /api/v1/${k.path}/:id/appointment`, M(k.module === 'AR' ? 'FI.AR.BD' : k.menu, 'edit')],
+  ])),
+  'POST /api/v1/quotations/:id/convert': M('SA.SO', 'add'),
   'GET /api/v1/wht': M('FI.WHT', 'read'), 'GET /api/v1/wht/:id': M('FI.WHT', 'read'), 'POST /api/v1/wht': M('FI.WHT', 'add'),
   'PUT /api/v1/wht/:id': M('FI.WHT', 'edit'), 'POST /api/v1/wht/:id/cancel': M('FI.WHT', 'cancel'), 'POST /api/v1/wht/:id/printed': M('FI.WHT.CERT', 'read'),
   'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),

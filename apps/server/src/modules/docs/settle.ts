@@ -36,9 +36,11 @@ async function openItems(db: Db, companyId: string, K: SettleKind, partyId: stri
   const view = K.module === 'AR' ? 'v_ar_outstanding' : 'v_ap_outstanding';
   const partyCol = K.party === 'customer' ? 'customer_id' : 'supplier_id';
   const own = receiptId ? sql`(SELECT coalesce(sum(s.amount), 0) FROM doc_settlement s WHERE s.payment_header_id = ${receiptId} AND s.invoice_header_id = o.header_id AND s.deleted_at IS NULL)` : sql`0`;
-  return (await sql<{ header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string; own: string; vat_basis: string | null; net_amount: string; vat_amount: string; ref_no: string | null }>`
+  return (await sql<{ header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string; own: string; vat_basis: string | null; net_amount: string; vat_amount: string; ref_no: string | null; bill_no: string | null }>`
     SELECT o.header_id, o.doc_class, o.doc_no, o.doc_date, o.due_date, abs(o.amount) AS amount, abs(o.outstanding) + ${own} AS outstanding, ${own} AS own,
-           h.vat_basis, h.net_amount, h.vat_amount, h.ref_no
+           h.vat_basis, h.net_amount, h.vat_amount, h.ref_no,
+           (SELECT b.doc_no FROM doc_bill_item bi JOIN doc_header b ON b.id = bi.bill_header_id
+             WHERE bi.invoice_header_id = o.header_id AND bi.deleted_at IS NULL AND b.doc_status <> 'C' AND b.deleted_at IS NULL ORDER BY b.doc_date DESC LIMIT 1) AS bill_no
       FROM ${sql.table(view)} o JOIN doc_header h ON h.id = o.header_id
      WHERE o.company_id = ${companyId} AND o.${sql.ref(partyCol)} = ${partyId}
        AND ${only ? sql`o.header_id = ANY(${only}::uuid[])` : sql`(o.outstanding <> 0 OR ${own} <> 0)`}

@@ -137,13 +137,15 @@ export function TradeFormPage({ path }: { path: string }) {
   const slms = useQuery({ enabled: K.module === 'AR', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const methods = useQuery({ enabled: !!K.payments, queryKey: ['payment-methods', K.module === 'AR' ? 'R' : 'P'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>(`/api/v1/payment-methods/${K.module === 'AR' ? 'R' : 'P'}`) });
   const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], queryFn: () => api.get<Record<string, unknown> & { lines: Array<Record<string, unknown>>; payments: Array<Record<string, unknown>>; settlements: Array<{ id: string; doc_no: string; doc_date: string; amount: string; doc_status: string }>; deposits: Array<{ header_id: string; doc_no: string; amount: string }>; deliveries: Array<{ doc_no: string; doc_date: string; order_line_no: number; item_code: string | null; qty: string }>;
-    cancels: Array<{ id: string; line_no: number; cancelled_qty: string; cancel_reason_code: string | null; cancel_date: string | null }>; editable: boolean; doc_no: string; doc_status: string; outstanding: string | null }>(`/api/v1/${K.path}/${id}`), staleTime: 0 });
+    cancels: Array<{ id: string; line_no: number; cancelled_qty: string; cancel_reason_code: string | null; cancel_date: string | null }>; converted: Array<{ id: string; doc_no: string; doc_date: string }>; editable: boolean; doc_no: string; doc_status: string; outstanding: string | null }>(`/api/v1/${K.path}/${id}`), staleTime: 0 });
   const [h, setH] = useState<Head | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [pays, setPays] = useState<Pay[]>([]);
   const [delivery, setDelivery] = useState('');
   const [pickOrder, setPickOrder] = useState(false);
   const [cancelLine, setCancelLine] = useState<Line | null>(null);
+  const [askConvert, setAskConvert] = useState(false);
+  const canSO = useCan('SA.SO');
   /** หักเงินมัดจำ: ใบมัดจำ → ยอดที่หัก */
   const [deps, setDeps] = useState<Record<string, string>>({});
   const [tab, setTab] = useState('lines');
@@ -236,9 +238,11 @@ export function TradeFormPage({ path }: { path: string }) {
         <button className="primary" disabled={busy || readOnly} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         <button disabled={busy || readOnly} onClick={() => save(true)}>บันทึก+ใหม่</button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
+        {K.cls === 'QT' && id && !cancelled && <button disabled={!canSO('add')} onClick={() => setAskConvert(true)}>แปลงเป็นใบสั่งขาย</button>}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error} />
+      {K.cls === 'QT' && !!cur.data?.converted.length && <p className="hint">แปลงเป็นใบสั่งขายแล้ว: {cur.data.converted.map((x) => <a key={x.id} href={`/sa/orders/${x.id}`} onClick={(e) => { e.preventDefault(); nav(`/sa/orders/${x.id}`); }} className="mono">{x.doc_no} </a>)}</p>}
       {h && <div onKeyDown={navKey}>
         <div className="head-grid trade-head">
           <div className="col">
@@ -359,6 +363,8 @@ export function TradeFormPage({ path }: { path: string }) {
         onPick={(rows) => { setLines((ls) => [...ls.filter((l) => l.item_id), ...rows.map((r) => ({ key: ++seq, item_id: r.item_id ?? '', item_code: r.item_code ?? '', description: r.description ?? '', warehouse_id: r.warehouse_id, qty: r.qty, unit_id: r.unit_id, factor: num(r.factor) || '1',
           unit_price: num(r.unit_price), discount_text: r.discount_text ?? '', is_free: r.is_free, return_to_stock: false, vat_exempt: false, source_line_id: r.line_id, source_no: r.doc_no }))]); setDirty(true); setPickOrder(false); setTab('lines'); }} />}
       {cancelLine && <CancelLineModal K={K} headerId={id!} line={cancelLine} onClose={() => setCancelLine(null)} onDone={async () => { setCancelLine(null); await qc.refetchQueries({ queryKey: [K.path, 'one', id] }); setH(null); qc.invalidateQueries({ queryKey: [K.path] }); }} />}
+      {askConvert && <Confirm title="แปลงเป็นใบสั่งขาย" text={<>สร้างใบสั่งขายจาก <b>{cur.data?.doc_no}</b> (คัดลอกลูกค้า รายการสินค้า ราคา ส่วนลด) ลงวันที่ทำงาน</>} okText="สร้างใบสั่งขาย" onClose={() => setAskConvert(false)}
+        onOk={async () => { try { const r = await api.post<{ id: string; doc_no: string }>(`/api/v1/quotations/${id}/convert`, { doc_date: me?.work_date ?? todayIso() }); toast(`สร้างใบสั่งขาย ${r.doc_no} แล้ว`); setAskConvert(false); nav(`/sa/orders/${r.id}`); } catch (e) { setAskConvert(false); setErr(e); } }} />}
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ)</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
       </Confirm>}

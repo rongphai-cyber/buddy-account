@@ -37,15 +37,15 @@ export const MENU: MenuItem[] = [
   ], '2'),
   g('FI', 'การเงิน', 'P3', [
     g('FI.AR', 'ลูกหนี้', 'P3', [
-      m('FI.AR.BI', 'ใบวางบิล', 'P3', undefined, ['ch12:S-BI-01']),
-      m('FI.AR.BD', 'บันทึกวันนัดรับชำระเงิน', 'P3', undefined, ['ch12:S-BI-02']),
+      m('FI.AR.BI', 'ใบวางบิล', 'P3', '/fi/ar/bills', ['ch12:S-BI-01']),
+      m('FI.AR.BD', 'บันทึกวันนัดรับชำระเงิน', 'P3', '/fi/ar/bill-appointments', ['ch12:S-BI-02']),
       m('FI.AR.DR', 'ใบเพิ่มหนี้', 'P3', '/fi/ar/debit-notes', ['ch12:S-DR-01']),
       m('FI.AR.SR', 'ลดหนี้ / รับคืนสินค้า', 'P3', '/fi/ar/credit-notes', ['ch12:S-SR-01']),
       m('FI.AR.RE', 'รับชำระหนี้', 'P3', '/fi/ar/receipts', ['ch12:S-RE-01', 'ch12:S-PM-01']),
       m('FI.AR.OB', 'บันทึกรายการลูกหนี้คงค้าง-ยกมา', 'P3', undefined, ['ch08:S-OB-04']),
     ]),
     g('FI.AP', 'เจ้าหนี้', 'P3', [
-      m('FI.AP.BR', 'ใบรับวางบิล', 'P3', undefined, ['ch11:S-PU-06']),
+      m('FI.AP.BR', 'ใบรับวางบิล', 'P3', '/fi/ap/bills', ['ch11:S-PU-06']),
       m('FI.AP.CP', 'ใบเพิ่มหนี้', 'P3', '/fi/ap/debit-notes', ['ch11:S-PU-04']),
       m('FI.AP.GR', 'ลดหนี้ / ส่งคืนสินค้า', 'P3', '/fi/ap/credit-notes', ['ch11:S-PU-05']),
       m('FI.AP.PS', 'จ่ายชำระหนี้', 'P3', '/fi/ap/payments', ['ch11:S-PU-07', 'ch11:S-PU-C4', 'ch11:S-PU-C5', 'ch11:S-PU-C6']),
