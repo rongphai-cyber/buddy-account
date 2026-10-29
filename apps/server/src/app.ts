@@ -3,7 +3,7 @@ import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import { existsSync } from 'node:fs';
 import { MENU } from '@buddy/core';
-import type { Database } from './db.js';
+import { rlsAvailable, type Database } from './db.js';
 import type { Config } from './config.js';
 import { AppError, pgToAppError, sendError, zodToAppError } from './http.js';
 import { ZodError } from 'zod';
@@ -34,7 +34,9 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
 
   attachAuth(app, db);
   await syncMenus(db);
-  attachPermissions(app, db);
+  const rls = await rlsAvailable(database);
+  if (!rls) app.log.warn('ไม่พบ role buddy_app — ปิด Row-Level Security (ใช้การกรองในโค้ดอย่างเดียว)');
+  attachPermissions(app, database, rls);
   app.get('/api/v1/health', async () => ({ ok: true, mode: database.mode, version: '0.1.0' }));
   app.get('/api/v1/menu', async () => MENU);
   authRoutes(app, db, cfg);

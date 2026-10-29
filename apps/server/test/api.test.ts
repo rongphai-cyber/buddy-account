@@ -4,7 +4,8 @@
  */
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { openDatabase, type Database } from '../src/db.js';
+import { openDatabase, rlsAvailable, runInCompanyScope, type Database } from '../src/db.js';
+import { sql } from 'kysely';
 import { migrate } from '../src/migrate.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
@@ -436,6 +437,43 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('DELETE', `/api/v1/gl/templates/${tplId}`)).status).toBe(200);
     expect((await call('GET', '/api/v1/gl/templates')).body).toHaveLength(0);
     expect((await call('GET', `/api/v1/gl/templates/${tplId}`)).status).toBe(404);
+  });
+
+  it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
+    expect(await rlsAvailable(database)).toBe(true);
+    // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)
+    const noRls = await sql<{ t: string }>`SELECT c.table_name AS t FROM information_schema.columns c
+        JOIN information_schema.tables x ON x.table_schema = c.table_schema AND x.table_name = c.table_name AND x.table_type = 'BASE TABLE'
+        JOIN pg_class k ON k.relname = c.table_name AND k.relkind = 'r'
+       WHERE c.table_schema = 'public' AND c.column_name = 'company_id' AND NOT k.relrowsecurity ORDER BY 1`.execute(database.db);
+    expect(noRls.rows.map((r) => r.t)).toEqual([]);
+    const tenant = (await sql<{ t: string }>`SELECT tenant_id AS t FROM sys_company WHERE id = ${companyId}`.execute(database.db)).rows[0]!.t;
+    const count = async (q: string) => Number((await sql<{ n: number }>`${sql.raw(q)}`.execute(database.db)).rows[0]!.n);
+    // ข้อมูลของบริษัทอื่นที่ต้องมองไม่เห็น (สร้างในฐานะเจ้าของฐานข้อมูล)
+    await sql`INSERT INTO md_department (company_id, code, name_th) VALUES (${otherCompanyId}, 'OTHER1', 'แผนกของบริษัทอื่น')`.execute(database.db);
+    await sql`INSERT INTO gl_account (company_id, account_no, name_th, level, account_group, is_control, normal_side) VALUES (${otherCompanyId}, '9999-99', 'บัญชีของบริษัทอื่น', 1, '1', false, 'D')`.execute(database.db);
+    const all = await count('SELECT count(*) AS n FROM gl_account');
+    const mine = await count(`SELECT count(*) AS n FROM gl_account WHERE company_id = '${companyId}'`);
+    expect(all).toBeGreaterThan(mine);
+    await runInCompanyScope(database, { companyId, tenantId: tenant, isPlatform: false }, async () => {
+      // query ที่ "ลืม" กรองบริษัท ยังเห็นเฉพาะบริษัทของคำขอ
+      expect(await count('SELECT count(*) AS n FROM gl_account')).toBe(mine);
+      expect(await count(`SELECT count(*) AS n FROM gl_account WHERE company_id = '${otherCompanyId}'`)).toBe(0);
+      expect(await count(`SELECT count(*) AS n FROM gl_journal WHERE company_id <> '${companyId}'`)).toBe(0);
+      expect(await count("SELECT count(*) AS n FROM md_department WHERE code = 'OTHER1'")).toBe(0);
+      // บริษัท/ลูกค้า: เห็นเฉพาะของลูกค้าเดียวกัน
+      expect(await count(`SELECT count(*) AS n FROM sys_company WHERE tenant_id IS DISTINCT FROM '${tenant}'`)).toBe(0);
+      expect(await count('SELECT count(*) AS n FROM sys_tenant')).toBe(1);
+    });
+    // เขียนข้อมูลให้บริษัทอื่นไม่ได้ (นโยบาย WITH CHECK)
+    await expect(runInCompanyScope(database, { companyId, tenantId: tenant, isPlatform: false }, () =>
+      sql`INSERT INTO md_department (company_id, code, name_th) VALUES (${otherCompanyId}, 'RLS', 'ทดสอบ RLS')`.execute(database.db))).rejects.toThrow(/row-level security/);
+    // แก้ข้อมูลบริษัทอื่นด้วยคำสั่งที่ไม่กรองบริษัท = ไม่โดนแถวใดเลย
+    await runInCompanyScope(database, { companyId, tenantId: tenant, isPlatform: false }, async () => {
+      const r = await sql`UPDATE md_department SET name_th = 'ถูกแก้' WHERE code = 'OTHER1'`.execute(database.db);
+      expect(Number(r.numAffectedRows ?? 0)).toBe(0);
+    });
+    expect((await sql<{ n: string }>`SELECT name_th AS n FROM md_department WHERE code = 'OTHER1'`.execute(database.db)).rows[0]!.n).toBe('แผนกของบริษัทอื่น');
   });
 
   it('runs an Express-style layout with variables', async () => {

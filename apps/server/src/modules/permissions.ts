@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { MENU, flattenMenu } from '@buddy/core';
-import type { Db } from '../db.js';
+import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
 
@@ -127,11 +127,25 @@ export const API_RULES: Record<string, Rule> = {
 /** API ที่ลงทะเบียนแล้วทั้งหมด (ชุดทดสอบใช้ตรวจว่าทุกเส้นมีกฎสิทธิ์) */
 export const REGISTERED_ROUTES = new Set<string>();
 
-/** ตรวจสิทธิ์ทุกคำขอ API ตามกฎด้านบน (หลังตรวจการเข้าระบบ) — ต้องเรียกก่อนลงทะเบียน API */
-export function attachPermissions(app: FastifyInstance, db: Db) {
+/**
+ * ตรวจสิทธิ์ทุกคำขอ API ตามกฎด้านบน (หลังตรวจการเข้าระบบ) — ต้องเรียกก่อนลงทะเบียน API
+ * rls = true: API ข้อมูลบริษัท (menu/lookup) ทำงานทั้งคำขอในขอบเขต Row-Level Security ของบริษัทที่เลือก (T0.14)
+ */
+export function attachPermissions(app: FastifyInstance, database: Database, rls: boolean) {
+  const db = database.db;
   app.addHook('onRoute', (r) => {
     if (!r.url.startsWith('/api/')) return;
-    for (const m of [r.method].flat()) if (m !== 'HEAD') REGISTERED_ROUTES.add(`${m} ${r.url}`);
+    const methods = [r.method].flat().filter((m) => m !== 'HEAD');
+    for (const m of methods) REGISTERED_ROUTES.add(`${m} ${r.url}`);
+    if (!rls) return;
+    const rule = API_RULES[`${methods[0]} ${r.url}`];
+    if (!rule || (rule.kind !== 'menu' && rule.kind !== 'lookup')) return;
+    const handler = r.handler;
+    r.handler = function (this: FastifyInstance, req, reply) {
+      const a = req.auth;
+      if (!a?.companyId) return handler.call(this, req, reply);
+      return runInCompanyScope(database, { companyId: a.companyId, tenantId: a.tenantId, isPlatform: a.isPlatform }, async () => handler.call(this, req, reply));
+    };
   });
   app.addHook('preHandler', async (req) => {
     if (!req.url.startsWith('/api/')) return;

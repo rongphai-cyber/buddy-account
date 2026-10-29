@@ -1,4 +1,5 @@
-import { Kysely, PostgresDialect, CompiledQuery, type Dialect, type DatabaseConnection, type Driver, type QueryResult, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler } from 'kysely';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { Kysely, PostgresDialect, CompiledQuery, sql, type Transaction, type Dialect, type DatabaseConnection, type Driver, type QueryResult, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler } from 'kysely';
 import pg from 'pg';
 import { PGlite } from '@electric-sql/pglite';
 import type { DB } from '../../../db/generated/db-types.js';
@@ -15,7 +16,10 @@ pg.types.setTypeParser(OID.TIMESTAMPTZ, (v) => new Date(v).toISOString());
 pg.types.setTypeParser(OID.NUMERIC, (v) => v);
 
 export interface Database {
+  /** ใช้ในโค้ดทั่วไป: ถ้าอยู่ในคำขอที่เปิดทรานแซกชันระดับบริษัท จะใช้ทรานแซกชันนั้นอัตโนมัติ */
   db: Db;
+  /** การเชื่อมต่อจริง (เจ้าของฐานข้อมูล) — ใช้เปิดทรานแซกชันต่อคำขอเท่านั้น */
+  raw: Db;
   mode: 'postgres' | 'pglite';
   /** รันสคริปต์ SQL หลายคำสั่ง (ใช้กับ migration) */
   execScript(sqlText: string): Promise<void>;
@@ -76,25 +80,25 @@ async function openPglite(dataDir: string): Promise<Database> {
     createIntrospector: (db) => new PostgresIntrospector(db),
     createQueryCompiler: () => new PostgresQueryCompiler(),
   };
-  const db = new Kysely<DB>({ dialect });
+  const raw = new Kysely<DB>({ dialect });
   return {
-    db, mode: 'pglite',
+    db: scoped(raw), raw, mode: 'pglite',
     async execScript(text) { await client.exec(text); },
-    async close() { await db.destroy(); },
+    async close() { await raw.destroy(); },
   };
 }
 
 /* ------------------------------------------------------------------ PostgreSQL (Cloud / Server) */
 async function openPostgres(url: string): Promise<Database> {
   const pool = new pg.Pool({ connectionString: url, max: 10 });
-  const db = new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
+  const raw = new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
   return {
-    db, mode: 'postgres',
+    db: scoped(raw), raw, mode: 'postgres',
     async execScript(text) {
       const c = await pool.connect();
       try { await c.query(text); } finally { c.release(); }
     },
-    async close() { await db.destroy(); },
+    async close() { await raw.destroy(); },
   };
 }
 
@@ -102,4 +106,41 @@ export async function openDatabase(opts: { databaseUrl?: string; dataDir?: strin
   if (opts.databaseUrl) return openPostgres(opts.databaseUrl);
   if (opts.dataDir) return openPglite(opts.dataDir);
   throw new Error('ต้องกำหนด DATABASE_URL (PostgreSQL) หรือ BUDDY_DATA_DIR (ติดตั้งในเครื่อง)');
+}
+
+/* ------------------------------------------------------------------ Row-Level Security (T0.14) */
+/**
+ * คำขอที่ทำงานกับข้อมูลของบริษัท: เปิดทรานแซกชันเดียวทั้งคำขอ สลับเป็น role buddy_app (ไม่ใช่เจ้าของตาราง จึงอยู่ใต้ RLS)
+ * และตั้ง app.company_id / app.tenant_id — นโยบาย RLS ในฐานข้อมูลให้เห็น/เขียนได้เฉพาะแถวของบริษัทนั้น
+ * แม้โค้ดลืมกรอง company_id ก็ข้ามบริษัทไม่ได้ (ป้องกันชั้นที่สอง)
+ */
+const scope = new AsyncLocalStorage<{ tx: Transaction<DB> }>();
+export const APP_ROLE = 'buddy_app';
+
+/** Kysely ที่ส่งต่อไปยังทรานแซกชันของคำขอปัจจุบัน (ถ้ามี) — db.transaction() ภายในคำขอใช้ทรานแซกชันเดิม */
+function scoped(base: Db): Db {
+  return new Proxy(base, {
+    get(target, prop) {
+      const store = scope.getStore();
+      if (store && prop === 'transaction') return () => ({ execute: <T>(fn: (tx: Transaction<DB>) => Promise<T>) => fn(store.tx), setIsolationLevel() { return this; } });
+      const cur = store?.tx ?? target;
+      const v = Reflect.get(cur, prop, cur);
+      return typeof v === 'function' ? v.bind(cur) : v;
+    },
+  });
+}
+
+/** RLS ใช้ได้เมื่อมี role buddy_app และผู้ใช้ที่เชื่อมต่อสลับเป็น role นี้ได้ (โฮสต์บางแห่งสร้าง role ไม่ได้ → ทำงานแบบเดิม) */
+export async function rlsAvailable(database: Database): Promise<boolean> {
+  const r = await sql<{ ok: boolean }>`SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${APP_ROLE}) AND pg_has_role(current_user, ${APP_ROLE}, 'MEMBER') AS ok`.execute(database.raw);
+  return !!r.rows[0]?.ok;
+}
+
+/** ทำงานในขอบเขตของบริษัท (ใต้ RLS) — ทุก query ผ่าน database.db ภายใน fn ใช้ทรานแซกชันนี้ */
+export function runInCompanyScope<T>(database: Database, ctx: { companyId: string; tenantId: string | null; isPlatform: boolean }, fn: () => Promise<T>): Promise<T> {
+  return database.raw.transaction().execute(async (tx) => {
+    await sql.raw(`SET LOCAL ROLE ${APP_ROLE}`).execute(tx);
+    await sql`SELECT set_config('app.company_id', ${ctx.companyId}, true), set_config('app.tenant_id', ${ctx.tenantId ?? ''}, true), set_config('app.platform', ${ctx.isPlatform ? '1' : '0'}, true)`.execute(tx);
+    return scope.run({ tx }, fn);
+  });
 }
