@@ -129,7 +129,7 @@ export const MENU: MenuItem[] = [
   ], '7'),
   g('OT', 'อื่น ๆ', 'P1', [
     m('OT.LOCK', 'ปิดงวด / ล็อคงวด', 'P1', '/settings/periods', ['ch18:S-ME-02']),
-    m('OT.YE', 'ประมวลผลสิ้นปี', 'P6', undefined, ['ch22:S-YE-02']),
+    m('OT.YE', 'ประมวลผลสิ้นปี', 'P6', '/gl/year-end', ['ch22:S-YE-01', 'ch22:S-YE-02', 'ch22:S-YE-03']),
     m('OT.BACKUP', 'สำรองข้อมูล / นำข้อมูลสำรองมาใช้', 'P6', undefined, ['ch20:S-DM-02', 'ch20:S-DM-04']),
     m('OT.CHECK', 'ตรวจสอบข้อมูล', 'P6', undefined, ['ch21:S-CK-04']),
     m('OT.LOG', 'แฟ้มบันทึกเหตุการณ์ทำงาน', 'P6', undefined, ['ch23:S-SEC-04']),

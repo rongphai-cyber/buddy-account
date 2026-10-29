@@ -2267,6 +2267,46 @@ describe('Buddy Account API (PGlite)', () => {
     for (const id of [a1, a2]) expect((await call('DELETE', `/api/v1/fa/assets/${id}`)).status).toBe(200);
     expect((await call('DELETE', `/api/v1/asset-account-groups/${g}`)).status).toBe(200);
   });
+  it('year-end (T6.3): checklist, close in order with YES, periods locked, next year, reopen latest first, periodic inventory JV guard, isolation', async () => {
+    const st = async (fy?: string) => (await call('GET', `/api/v1/gl/year-end${fy ? `?fiscal_year_id=${fy}` : ''}`)).body;
+    const s0 = await st();
+    const byCode = (c: string) => s0.years.find((y: { code: string }) => y.code === c);
+    const y69 = byCode('2569');
+    const earlier = s0.years.filter((y: { end: string; status: string }) => y.end < y69.start && y.status === 'O');
+    const s69 = await st(y69.id);
+    expect(s69.checks.find((c: { key: string }) => c.key === 'tb').ok).toBe(true);
+    if (earlier.length) {
+      expect(s69.checks.find((c: { key: string }) => c.key === 'earlier').ok).toBe(false);
+      expect((await call('POST', '/api/v1/gl/year-end/close', { fiscal_year_id: y69.id, confirm: 'YES' })).body.error.message).toMatch(/ปิดตามลำดับปี/);
+      for (const e of earlier) expect((await call('POST', '/api/v1/gl/year-end/close', { fiscal_year_id: e.id, confirm: 'yes' })).status).toBe(200);
+    }
+    expect((await call('POST', '/api/v1/gl/year-end/close', { fiscal_year_id: y69.id, confirm: 'no' })).body.error.message).toMatch(/ป้อน YES/);
+    const c = await call('POST', '/api/v1/gl/year-end/close', { fiscal_year_id: y69.id, confirm: 'YES' });
+    expect([c.status, c.body.closed]).toEqual([200, '2569']);
+    const after = await st(y69.id);
+    expect([after.fiscal_year.status, after.unlocked_periods, after.next_year.code, !!after.next_year.id]).toEqual(['C', 0, '2570', true]);
+    // ปีที่ปิดแล้วลงใบสำคัญไม่ได้
+    const jv = await call('POST', '/api/v1/gl/journals', { journal_book_id: bookId, voucher_date: '2026-06-30', lines: [{ account_id: expense, debit: '5' }, { account_id: cash, credit: '5' }] });
+    expect(jv.body.error.message).toMatch(/งวดที่ปิดแล้ว/);
+    expect((await call('POST', '/api/v1/gl/year-end/close', { fiscal_year_id: y69.id, confirm: 'YES' })).body.error.message).toMatch(/ปิดแล้ว/);
+    // เปิดกลับย้อนจากปีล่าสุด
+    if (earlier.length) expect((await call('POST', '/api/v1/gl/year-end/reopen', { fiscal_year_id: earlier[0].id })).body.error.message).toMatch(/ต้องเปิดปี 2569 ก่อน/);
+    expect((await call('POST', '/api/v1/gl/year-end/reopen', { fiscal_year_id: y69.id })).status).toBe(200);
+    for (const e of [...earlier].reverse()) expect((await call('POST', '/api/v1/gl/year-end/reopen', { fiscal_year_id: e.id })).status).toBe(200);
+    expect((await st(y69.id)).unlocked_periods).toBeGreaterThanOrEqual(12);
+    // ใบสำคัญปิดสินค้า: Perpetual ไม่ต้อง · Periodic ต้องยืนยันยอดปลายปีก่อน
+    expect((await call('POST', '/api/v1/gl/year-end/inventory-jv', { fiscal_year_id: y69.id })).body.error.message).toMatch(/Perpetual/);
+    await sql`INSERT INTO sys_setting (company_id, module, key, value) VALUES (${companyId}, 'IC', 'ic.posting_method', '"PERIODIC"')`.execute(database.db);
+    const sp = await st(y69.id);
+    expect([sp.periodic, sp.checks.some((x: { key: string }) => x.key === 'inv')]).toEqual([true, true]);
+    if (sp.inventory.length) expect((await call('POST', '/api/v1/gl/year-end/inventory-jv', { fiscal_year_id: y69.id })).body.error.message).toMatch(/ยืนยันยอดสินค้าคงเหลือปลายปี/);
+    await sql`DELETE FROM sys_setting WHERE company_id = ${companyId} AND key = 'ic.posting_method'`.execute(database.db);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('POST', '/api/v1/gl/year-end/close', { fiscal_year_id: y69.id, confirm: 'YES' })).status).toBe(404);
+    expect((await call('POST', '/api/v1/gl/year-end/reopen', { fiscal_year_id: y69.id })).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)
