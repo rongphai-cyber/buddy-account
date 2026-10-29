@@ -129,7 +129,7 @@ def gen_pg():
     L.append('CREATE TRIGGER trg_activity_log_ro BEFORE UPDATE OR DELETE ON sys_activity_log FOR EACH ROW EXECUTE FUNCTION sys_append_only();')
     L.append('')
     L.append(PG_VIEWS)
-    open(os.path.join(OUT, 'schema.sql'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
+    open(os.path.join(OUT, 'schema.sql'), 'w', encoding='utf-8', newline='').write('\n'.join(L) + '\n')
     return synced
 
 def pg_str(s):
@@ -320,7 +320,7 @@ WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state 
 BEGIN
   UPDATE {t.name} SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;""")
-    open(os.path.join(OUT, 'client_sqlite.sql'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
+    open(os.path.join(OUT, 'client_sqlite.sql'), 'w', encoding='utf-8', newline='').write('\n'.join(L) + '\n')
 
 # ---------------------------------------------------------------- Data dictionary
 def gen_dict():
@@ -353,7 +353,7 @@ def gen_dict():
             if t.idx: keys.append('Index: ' + '; '.join('(' + ', '.join(u) + ')' for u in t.idx))
             if keys: L.append(''); L.append(' · '.join(keys))
             L.append('')
-    open(os.path.join(ROOT, 'docs', 'db', 'พจนานุกรมข้อมูล.md'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
+    open(os.path.join(ROOT, 'docs', 'db', 'พจนานุกรมข้อมูล.md'), 'w', encoding='utf-8', newline='').write('\n'.join(L) + '\n')
 
 # ---------------------------------------------------------------- ER (mermaid)
 def gen_er():
@@ -379,7 +379,7 @@ def gen_er():
                     card = '||--o{' if c.nn else '|o--o{'
                     L.append(f'    {c.fk} {card} {n} : "{c.name}"')
         L.append('```'); L.append('')
-    open(os.path.join(ROOT, 'docs', 'db', 'ER.md'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
+    open(os.path.join(ROOT, 'docs', 'db', 'ER.md'), 'w', encoding='utf-8', newline='').write('\n'.join(L) + '\n')
 
 def ts_type(t):
     if t in ('int','smallint','bigserial'): return 'number'
@@ -410,7 +410,7 @@ def gen_ts():
         if t.sync == 'client': continue
         L.append(f'  {t.name}: {"".join(p.capitalize() for p in t.name.split("_"))}Table;')
     L.append('}')
-    open(os.path.join(OUT, 'db-types.ts'), 'w', encoding='utf-8').write('\n'.join(x for x in L if x != '') + '\n')
+    open(os.path.join(OUT, 'db-types.ts'), 'w', encoding='utf-8', newline='').write('\n'.join(x for x in L if x != '') + '\n')
 
 if __name__ == '__main__':
     gen_pg(); gen_lite(); gen_dict(); gen_er(); gen_ts()

@@ -137,16 +137,23 @@ export function glRoutes(app: FastifyInstance, db: Db) {
   /* ---------------------------------------------------------------- สมุดรายวัน (บทที่ 15: สร้างสมุดรายวัน) */
   app.get('/api/v1/gl/books', async (req) => {
     const a = requireCompany(req);
-    return db.selectFrom('gl_journal_book as b')
-      .select(['b.id', 'b.code', 'b.prefix', 'b.name_th', 'b.name_en', 'b.approve_level',
+    return db.selectFrom('gl_journal_book as b').leftJoin('gl_template as t', (j) => j.onRef('t.id', '=', 'b.template_id').on('t.deleted_at', 'is', null))
+      .select(['b.id', 'b.code', 'b.prefix', 'b.name_th', 'b.name_en', 'b.approve_level', 'b.template_id', 't.code as template_code',
         sql<number>`(SELECT count(*) FROM gl_journal j WHERE j.journal_book_id = b.id AND j.deleted_at IS NULL)`.as('journal_count')])
       .where('b.company_id', '=', a.companyId).where('b.deleted_at', 'is', null).orderBy('b.code').execute();
   });
-  const bookBody = z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสมุด').max(10), prefix: z.string().trim().min(1, 'ป้อนตัวนำเลขที่').max(10).regex(/^[A-Za-z0-9]+$/, 'ตัวนำเลขที่ใช้ตัวอักษรอังกฤษ/ตัวเลข'), name_th: z.string().trim().min(1, 'ป้อนชื่อสมุด').max(120), name_en: z.string().trim().max(120).nullable().optional() });
+  const bookBody = z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสมุด').max(10), prefix: z.string().trim().min(1, 'ป้อนตัวนำเลขที่').max(10).regex(/^[A-Za-z0-9]+$/, 'ตัวนำเลขที่ใช้ตัวอักษรอังกฤษ/ตัวเลข'), name_th: z.string().trim().min(1, 'ป้อนชื่อสมุด').max(120), name_en: z.string().trim().max(120).nullable().optional(), template_id: uuid.nullable().optional() });
+  /** ต้นแบบที่ผูกกับสมุด (S-GL-09 ช่อง "ต้นแบบ") ต้องเป็นของบริษัทนี้ */
+  async function checkBookTemplate(companyId: string, templateId: string | null | undefined) {
+    if (!templateId) return;
+    const t = await db.selectFrom('gl_template').select('id').where('id', '=', templateId).where('company_id', '=', companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!t) throw badRequest('ไม่พบต้นแบบวิธีการบันทึกที่เลือก', [{ field: 'template_id', message: 'ไม่พบต้นแบบ' }]);
+  }
   app.post('/api/v1/gl/books', async (req) => {
     const a = requireCompany(req);
     const b = parse(bookBody, req.body);
-    const r = await db.insertInto('gl_journal_book').values({ ...b, name_en: b.name_en ?? null, company_id: a.companyId, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+    await checkBookTemplate(a.companyId, b.template_id);
+    const r = await db.insertInto('gl_journal_book').values({ ...b, name_en: b.name_en ?? null, template_id: b.template_id ?? null, company_id: a.companyId, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
     await logActivity(db, a, { module: 'GL', action: 'ADD', docNo: b.code, table: 'gl_journal_book', rowId: r.id });
     return r;
   });
@@ -154,7 +161,8 @@ export function glRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(bookBody, req.body);
-    const r = await db.updateTable('gl_journal_book').set({ ...b, name_en: b.name_en ?? null, updated_by: a.userId }).where('id', '=', id).where('company_id', '=', a.companyId).executeTakeFirst();
+    await checkBookTemplate(a.companyId, b.template_id);
+    const r = await db.updateTable('gl_journal_book').set({ ...b, name_en: b.name_en ?? null, template_id: b.template_id ?? null, updated_by: a.userId }).where('id', '=', id).where('company_id', '=', a.companyId).executeTakeFirst();
     if (!Number(r.numUpdatedRows)) throw notFound('สมุดรายวัน');
     return { id };
   });

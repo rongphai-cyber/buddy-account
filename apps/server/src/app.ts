@@ -11,6 +11,7 @@ import { attachAuth, authRoutes } from './modules/auth.js';
 import { companyRoutes } from './modules/company.js';
 import { glRoutes } from './modules/gl/routes.js';
 import { reportRoutes } from './modules/gl/reports.js';
+import { templateRoutes } from './modules/gl/templates.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -34,6 +35,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   authRoutes(app, db, cfg);
   companyRoutes(app, database);
   glRoutes(app, db);
+  templateRoutes(app, db);
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {

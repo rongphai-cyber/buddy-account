@@ -761,6 +761,7 @@ CREATE TABLE gl_template (
   company_id uuid NOT NULL,
   code varchar(10) NOT NULL,
   name varchar(120) NOT NULL,
+  name_en varchar(120),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -775,6 +776,7 @@ COMMENT ON COLUMN gl_template.id IS 'รหัสแถว UUIDv7 (สร้า�
 COMMENT ON COLUMN gl_template.company_id IS 'บริษัท';
 COMMENT ON COLUMN gl_template.code IS 'รหัสแม่แบบ [Express: GLTPL.TPLCOD]';
 COMMENT ON COLUMN gl_template.name IS 'คำอธิบาย [Express: GLTPL.DESCRP]';
+COMMENT ON COLUMN gl_template.name_en IS 'คำอธิบายภาษาอังกฤษ [Express: GLTPL.DESCRP2]';
 COMMENT ON COLUMN gl_template.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN gl_template.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN gl_template.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';

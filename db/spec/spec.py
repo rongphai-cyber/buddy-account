@@ -263,6 +263,7 @@ add(T('gl_posting_rule', 'กฎการลงบัญชีอัตโนม
 add(T('gl_template', 'แม่แบบรายการบัญชี', 'gl', express='GLTPL', cols=[
   C('code', 'code10', nn=True, th='รหัสแม่แบบ', src='GLTPL.TPLCOD'),
   C('name', 'str120', nn=True, th='คำอธิบาย', src='GLTPL.DESCRP'),
+  C('name_en', 'str120', th='คำอธิบายภาษาอังกฤษ', src='GLTPL.DESCRP2'),
 ], uniq=[('company_id','code')]))
 add(T('gl_template_line', 'บรรทัดของแม่แบบ', 'gl', express='GLTPLIT', cols=[
   lk('template_id', 'gl_template', 'แม่แบบ', nn=True),

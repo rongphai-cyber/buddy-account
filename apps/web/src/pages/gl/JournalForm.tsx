@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { d, fmt, journalTotals, todayIso, formatDate } from '@buddy/core';
-import { api, type Book, type Department } from '../../api';
+import { api, type Book, type Department, type Template, type TemplateDetail } from '../../api';
 import { useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
-import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
+import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
+import { TemplateForm, templateToLines, useTemplates } from './Templates';
 
 interface Line { key: number; account_id: string | null; department_id: string | null; description: string; debit: string; credit: string }
 interface JournalDoc {
@@ -37,8 +38,40 @@ export function JournalFormPage() {
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [nextNo, setNextNo] = useState('');
+  const [saves, setSaves] = useState(0); // นับครั้งที่บันทึก — ให้ดึงเลขที่ถัดไปใหม่หลัง "บันทึก+ใหม่"
   const gridRef = useRef<HTMLDivElement>(null);
   const editable = isNew || !!doc.data?.editable;
+  // ต้นแบบวิธีการบันทึก (S-GL-05): เลือกจาก 🔍/F4 ที่ช่องเลขที่ใบสำคัญ หรือขึ้นอัตโนมัติตามต้นแบบของสมุด (S-GL-09)
+  const templates = useTemplates();
+  const [tplPick, setTplPick] = useState<string | null>(null);
+  const [tplAdd, setTplAdd] = useState<string | null>(null);
+  const [tplReplace, setTplReplace] = useState<TemplateDetail | null>(null);
+  const bookTplId = isNew ? books.data?.find((b) => b.id === h.journal_book_id)?.template_id ?? null : null;
+  const bookTpl = useQuery({ enabled: !!bookTplId, queryKey: ['template', bookTplId], queryFn: () => api.get<TemplateDetail>(`/api/v1/gl/templates/${bookTplId}`) });
+  const freshLines = (t?: TemplateDetail | null): Line[] => (t?.lines.length ? templateToLines(t).map((l) => ({ ...l, key: ++seq })) : [blank(), blank()]);
+  const linesBlank = lines.every((l) => !l.account_id && !l.debit && !l.credit && !l.description);
+  const applyTemplate = (t: TemplateDetail) => {
+    setLines(freshLines(t)); setDirty(true); setTplReplace(null);
+    const missing = t.lines.some((l) => !l.amount || d(l.amount).isZero());
+    toast(`ใช้ต้นแบบ ${t.code} แล้ว${missing ? ' — ป้อนจำนวนเงินที่ยังว่าง' : ''}`);
+    // ไปที่ช่องจำนวนเงินแรกที่ยังว่าง (ไม่มีก็ไปช่องคำอธิบาย)
+    setTimeout(() => {
+      const g = gridRef.current;
+      const firstEmpty = missing ? [...(g?.querySelectorAll<HTMLInputElement>('tbody tr') ?? [])].map((tr) => [...tr.querySelectorAll<HTMLInputElement>('input.num')]).find((xs) => xs.every((x) => !x.value))?.[0] : undefined;
+      (firstEmpty ?? document.querySelector<HTMLInputElement>('.head-grid .col:nth-child(2) input'))?.focus();
+    }, 0);
+  };
+  const pickTemplate = async (tid: string) => {
+    setTplPick(null);
+    try {
+      const t = await qc.fetchQuery({ queryKey: ['template', tid], queryFn: () => api.get<TemplateDetail>(`/api/v1/gl/templates/${tid}`), staleTime: 0 });
+      if (linesBlank) applyTemplate(t); else setTplReplace(t);
+    } catch (e) { toastError(e); }
+  };
+  useEffect(() => {
+    if (isNew && bookTpl.data && linesBlank) setLines(freshLines(bookTpl.data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, bookTpl.data]);
 
   useEffect(() => {
     if (isNew && !h.journal_book_id && books.data?.length) setH((x) => ({ ...x, journal_book_id: books.data!.find((b) => b.code === '00')?.id ?? books.data![0]!.id }));
@@ -52,7 +85,7 @@ export function JournalFormPage() {
   useEffect(() => {
     if (!isNew || !h.journal_book_id || !h.voucher_date) return;
     api.get<{ voucher_no: string }>('/api/v1/gl/journals-next-no', { book_id: h.journal_book_id, date: h.voucher_date }).then((r) => setNextNo(r.voucher_no)).catch(() => setNextNo(''));
-  }, [isNew, h.journal_book_id, h.voucher_date]);
+  }, [isNew, h.journal_book_id, h.voucher_date, saves]);
 
   const totals = useMemo(() => journalTotals(lines), [lines]);
   const setLine = (k: number, p: Partial<Line>) => { setDirty(true); setLines((ls) => ls.map((l) => (l.key === k ? { ...l, ...p } : l))); };
@@ -78,10 +111,10 @@ export function JournalFormPage() {
     const body = { ...h, description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0' })) };
     try {
       const r = isNew ? await api.post<{ id: string; voucher_no: string }>('/api/v1/gl/journals', body) : await api.put<{ id: string; voucher_no: string }>(`/api/v1/gl/journals/${id}`, body);
-      toast(`บันทึกใบสำคัญ ${r.voucher_no} แล้ว`);
+      toast(`บันทึกใบสำคัญ ${r.voucher_no} แล้ว`); setSaves((n) => n + 1);
       setDirty(false);
       qc.invalidateQueries({ queryKey: ['journals'] }); qc.invalidateQueries({ queryKey: ['journal', r.id] }); qc.invalidateQueries({ queryKey: ['accounts', 'bal'] });
-      if (andNew || isNew) { setLines([blank(), blank()]); setH((x) => ({ ...x, description: '', reference: '' })); if (!andNew) nav(`/gl/journals/${r.id}`, { replace: true }); else nav(`/gl/journals/new?book=${h.journal_book_id}`, { replace: true }); }
+      if (andNew || isNew) { setLines(andNew ? freshLines(bookTpl.data) : [blank(), blank()]); setH((x) => ({ ...x, description: '', reference: '' })); if (!andNew) nav(`/gl/journals/${r.id}`, { replace: true }); else nav(`/gl/journals/new?book=${h.journal_book_id}`, { replace: true }); }
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const leave = (to: string) => (dirty && editable ? setLeaveAsk(to) : nav(to));
@@ -131,7 +164,12 @@ export function JournalFormPage() {
               </select>
             </Field>
             <Field label="วันที่" req><DateInput value={h.voucher_date} onChange={(v) => { setDirty(true); setH({ ...h, voucher_date: v }); }} autoFocus={isNew} /></Field>
-            <Field label="เลขที่ใบสำคัญ" hint={isNew ? 'ออกเลขอัตโนมัติตอนบันทึก' : undefined}><input readOnly value={isNew ? nextNo : j?.voucher_no ?? ''} className="mono" /></Field>
+            <Field label="เลขที่ใบสำคัญ" hint={isNew ? 'ออกเลขอัตโนมัติตอนบันทึก · 🔍/F4 เลือกต้นแบบวิธีการบันทึก' : undefined}>
+              <span className="lk-in">
+                <input readOnly value={isNew ? nextNo : j?.voucher_no ?? ''} className="mono" onKeyDown={(e) => { if (isNew && e.key === 'F4') { e.preventDefault(); setTplPick(''); } }} />
+                {isNew && <button type="button" className="icon-btn" onClick={() => setTplPick('')} title="เลือกต้นแบบวิธีการบันทึก (F4)">🔍</button>}
+              </span>
+            </Field>
             <Field label="อ้างอิง"><input value={h.reference} maxLength={30} onChange={(e) => { setDirty(true); setH({ ...h, reference: e.target.value }); }} /></Field>
           </div>
           <div className="col">
@@ -178,10 +216,17 @@ export function JournalFormPage() {
       </fieldset>
       {tab === 'history' && id && <History table="gl_journal" rowId={id} />}
       {j && <p className="hint">สร้างโดย {j.created_by_name ?? 'นำเข้าจาก Express'} · <DateText v={j.created_at.slice(0, 10)} /> · แก้ไขล่าสุด <DateText v={j.updated_at.slice(0, 10)} /></p>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี / ต้นแบบ (ที่ช่องเลขที่)'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />
       <PrintVoucher title={book?.name_th ?? 'ใบสำคัญ'} no={isNew ? nextNo : j?.voucher_no ?? ''} date={formatDate(h.voucher_date, me?.company?.year_system ?? 'B')} desc={h.description} company={me?.company?.name_th ?? ''}
         lines={lines.filter((l) => l.account_id).map((l) => ({ no: acctOf(l.account_id)?.account_no ?? '', name: acctOf(l.account_id)?.name_th ?? '', desc: l.description, dr: l.debit, cr: l.credit }))} totals={totals} />
       {cancelAsk && <CancelDialog onClose={() => setCancelAsk(false)} onOk={(reason) => api.post(`/api/v1/gl/journals/${id}/cancel`, { reason }).then(() => { toast('ยกเลิกใบสำคัญแล้ว'); setCancelAsk(false); qc.invalidateQueries({ queryKey: ['journal', id] }); qc.invalidateQueries({ queryKey: ['journals'] }); }).catch(toastError)} />}
+      {tplPick !== null && (
+        <Lookup<Template> title="เลือกต้นแบบวิธีการบันทึก" rows={templates.data ?? []} initial={tplPick}
+          cols={[{ key: 'code', label: 'รหัส', w: 120 }, { key: 'name', label: 'รายละเอียด' }, { key: 'line_count', label: 'บรรทัด', w: 70, num: true }]}
+          onPick={(t) => pickTemplate(t.id)} onClose={() => setTplPick(null)} onAdd={(t) => { setTplPick(null); setTplAdd(t); }} />
+      )}
+      {tplAdd !== null && <TemplateForm id={null} initialCode={tplAdd} onClose={() => setTplAdd(null)} onSaved={(tid) => { setTplAdd(null); pickTemplate(tid); }} />}
+      {tplReplace && <Confirm title={`ใช้ต้นแบบ ${tplReplace.code}`} text="รายการบัญชีที่ป้อนไว้จะถูกแทนด้วยรายการจากต้นแบบ ต้องการทำต่อหรือไม่?" okText="แทนด้วยต้นแบบ" onClose={() => setTplReplace(null)} onOk={() => applyTemplate(tplReplace)} />}
       {leaveAsk && <Confirm title="ยังไม่ได้บันทึก" text="มีการแก้ไขที่ยังไม่บันทึก ต้องการออกโดยไม่บันทึกหรือไม่?" okText="ออกโดยไม่บันทึก" danger onClose={() => setLeaveAsk(null)} onOk={() => { const to = leaveAsk; setLeaveAsk(null); setDirty(false); nav(to); }} />}
     </div>
   );

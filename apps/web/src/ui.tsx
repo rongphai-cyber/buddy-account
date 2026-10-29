@@ -37,7 +37,8 @@ export function Modal({ title, onClose, children, size = 'form', footer }: { tit
       if (all[all.length - 1] === ref.current) { e.preventDefault(); e.stopPropagation(); onClose(); }
     };
     window.addEventListener('keydown', esc, true);
-    return () => { window.removeEventListener('keydown', esc, true); prev?.focus?.(); };
+    const popLayer = pushHotkeyLayer({});
+    return () => { window.removeEventListener('keydown', esc, true); popLayer(); prev?.focus?.(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
@@ -74,23 +75,41 @@ export function navKey(e: RKE<HTMLElement>) {
   else box.dispatchEvent(new CustomEvent('navend', { bubbles: true }));
 }
 
-/** ปุ่มลัดของหน้าจอ: { 'F9': save, 'Ctrl+S': save, 'Alt+C': cancel } */
-export function useHotkeys(map: Record<string, (() => void) | undefined | false>, deps: unknown[] = []) {
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (document.querySelector('.modal') && !(e.target as HTMLElement)?.closest('.modal')) return;
-      const k = [e.ctrlKey || e.metaKey ? 'Ctrl' : '', e.altKey ? 'Alt' : '', e.shiftKey ? 'Shift' : '', e.key.length === 1 ? e.key.toUpperCase() : e.key].filter(Boolean).join('+');
-      const fn = map[k];
-      if (!fn) return;
-      // ปุ่มธรรมดา (ลูกศร Enter Delete) ไม่ทำงานขณะพิมพ์ในช่องข้อมูล — ใช้ได้เฉพาะ F-keys, Insert, Ctrl/Alt
-      const inField = (e.target as HTMLElement)?.matches?.('input, select, textarea');
-      if (inField && !/^F\d+$/.test(e.key) && e.key !== 'Insert' && !e.ctrlKey && !e.altKey && !e.metaKey) return;
-      e.preventDefault(); e.stopPropagation(); fn();
-    };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+/**
+ * ชั้นของปุ่มลัด เรียงตามลำดับที่เปิด: หน้าจอ → หน้าต่าง (Modal) → ฟอร์มในหน้าต่าง …
+ * กดปุ่มแล้วหาจากชั้นบนสุดลงมา; Modal เป็น "กำแพง" ไม่ให้ปุ่มลัดทะลุไปถึงหน้าจอข้างหลัง
+ * (เช่น F9 ในหน้าต่างเพิ่มบัญชี/ต้นแบบ ต้องไม่บันทึกใบสำคัญที่เปิดอยู่ข้างหลังด้วย)
+ */
+type HotkeyMap = Record<string, (() => void) | undefined | false>;
+const hotkeyLayers: Array<{ map?: { current: HotkeyMap } }> = [];
+function onHotkey(e: KeyboardEvent) {
+  const k = [e.ctrlKey || e.metaKey ? 'Ctrl' : '', e.altKey ? 'Alt' : '', e.shiftKey ? 'Shift' : '', e.key.length === 1 ? e.key.toUpperCase() : e.key].filter(Boolean).join('+');
+  for (let i = hotkeyLayers.length - 1; i >= 0; i--) {
+    const layer = hotkeyLayers[i]!;
+    if (!layer.map) return;
+    const fn = layer.map.current[k];
+    if (!fn) continue;
+    // ปุ่มธรรมดา (ลูกศร Enter Delete) ไม่ทำงานขณะพิมพ์ในช่องข้อมูล — ใช้ได้เฉพาะ F-keys, Insert, Ctrl/Alt
+    const inField = (e.target as HTMLElement)?.matches?.('input, select, textarea');
+    if (inField && !/^F\d+$/.test(e.key) && e.key !== 'Insert' && !e.ctrlKey && !e.altKey && !e.metaKey) return;
+    e.preventDefault(); e.stopPropagation(); fn();
+    return;
+  }
+}
+function pushHotkeyLayer(layer: (typeof hotkeyLayers)[number]) {
+  if (!hotkeyLayers.length) window.addEventListener('keydown', onHotkey);
+  hotkeyLayers.push(layer);
+  return () => {
+    hotkeyLayers.splice(hotkeyLayers.indexOf(layer), 1);
+    if (!hotkeyLayers.length) window.removeEventListener('keydown', onHotkey);
+  };
+}
+
+/** ปุ่มลัดของหน้าจอ: { 'F9': save, 'Ctrl+S': save, 'Alt+C': cancel } — ใช้ค่าล่าสุดของ map เสมอ (deps คงไว้เพื่อเข้ากันได้กับโค้ดเดิม) */
+export function useHotkeys(map: HotkeyMap, _deps: unknown[] = []) {
+  const ref = useRef(map);
+  ref.current = map;
+  useEffect(() => pushHotkeyLayer({ map: ref }), []);
 }
 
 export function Field({ label, hint, error, children, wide, req }: { label: string; hint?: ReactNode; error?: string; children: ReactNode; wide?: boolean; req?: boolean }) {

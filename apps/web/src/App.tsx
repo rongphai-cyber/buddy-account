@@ -9,6 +9,7 @@ import { AccountsPage } from './pages/gl/Accounts';
 import { JournalsPage } from './pages/gl/Journals';
 import { JournalFormPage } from './pages/gl/JournalForm';
 import { BooksPage } from './pages/gl/Books';
+import { TemplatesPage } from './pages/gl/Templates';
 import { OpeningPage } from './pages/gl/Opening';
 import { CompanyPage } from './pages/settings/Company';
 import { PeriodsPage } from './pages/settings/Periods';
@@ -98,6 +99,7 @@ function Shell() {
           <Route path="/gl/journals/new" element={<JournalFormPage />} />
           <Route path="/gl/journals/:id" element={<JournalFormPage />} />
           <Route path="/gl/books" element={<BooksPage />} />
+          <Route path="/gl/templates" element={<TemplatesPage />} />
           <Route path="/gl/opening" element={<OpeningPage />} />
           <Route path="/settings/company" element={<CompanyPage />} />
           <Route path="/settings/periods" element={<PeriodsPage />} />

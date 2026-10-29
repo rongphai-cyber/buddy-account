@@ -683,6 +683,8 @@ export interface GlTemplateTable {
   code: string;
   /** คำอธิบาย */
   name: string;
+  /** คำอธิบายภาษาอังกฤษ */
+  name_en: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

@@ -67,7 +67,7 @@ def main():
         if r['key'] not in status:
             status[r['key']] = {'status': 'todo'}; changed = True
     if changed:
-        json.dump(status, open(STATUS_FILE, 'w', encoding='utf-8'), ensure_ascii=False, indent=1, sort_keys=True)
+        json.dump(status, open(STATUS_FILE, 'w', encoding='utf-8', newline=''), ensure_ascii=False, indent=1, sort_keys=True)
 
     L = ['# ความครอบคลุมหน้าจอเทียบคู่มือ Express', '',
          '> สร้างอัตโนมัติด้วย `python3 docs/tools/gen_coverage.py` จากผลวิเคราะห์คู่มือ (`docs/express/data`) และสถานะใน `docs/coverage_status.json`',
@@ -88,7 +88,7 @@ def main():
             menu = r['menu'].replace('|', '/')[:70]
             L.append(f"| `{r['key']}` | {r['name']} | {menu} | {r['page'] or ''} | {r['nf']} | {r['module']} | {STATUS_TH.get(r['status'], r['status'])} | {where} |")
         L.append('')
-    open(os.path.join(DOCS, '04_ความครอบคลุมหน้าจอ.md'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
+    open(os.path.join(DOCS, '04_ความครอบคลุมหน้าจอ.md'), 'w', encoding='utf-8', newline='').write('\n'.join(L) + '\n')
     print('screens', len(rows), dict(c))
 
 if __name__ == '__main__':

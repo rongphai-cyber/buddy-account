@@ -186,6 +186,24 @@ for r in run:
         c = st(r['DOCCOD']); JB[c] = U('jb', c)
         insert('gl_journal_book', [base(id=JB[c], code=c, prefix=st(r['PREFIX']), name_th=r['POSDES'], name_en=r['POSDES2'])])
 done('gl_journal_book', len(JB), "ISRUN DOCTYP='GL'")
+
+# ------------------------------------------------------------------ ต้นแบบวิธีการบันทึก (GLTPL / GLTPLIT — คู่มือบทที่ 15 S-GL-01)
+TPL = {}
+for r in dbf('GLTPL'):
+    c = st(r['TPLCOD'])
+    if not c or c in TPL: continue
+    TPL[c] = U('tpl', c)
+    insert('gl_template', [base(id=TPL[c], code=c, name=r['DESCRP'] or c, name_en=r.get('DESCRP2'))])
+done('gl_template', len(TPL), 'GLTPL')
+tpl_rows, tpl_no = [], collections.Counter()
+for r in dbf('GLTPLIT'):          # ลำดับบรรทัด = ลำดับในแฟ้ม (GLTPLIT ไม่มีเลขบรรทัด)
+    c = st(r['TPLCOD'])
+    if c not in TPL: QUALITY['template_line_without_header'].append(c); continue
+    tpl_no[c] += 1
+    tpl_rows.append(base(id=U('tplit', c, tpl_no[c]), template_id=TPL[c], line_no=tpl_no[c], account_id=acc(r['ACCNUM']),
+                         department_id=(DEPT.get(st(r['DEPCOD'])) or ref(DEPT, 'md_department', r['DEPCOD'], 'dept')) if st(r['DEPCOD']) else None,
+                         description=r['DESCRP'], side='C' if r['JNLTYP'] == '1' else 'D', amount=money(r['AMOUNT']) or None))
+done('gl_template_line', insert('gl_template_line', tpl_rows), 'GLTPLIT')
 MODULE = {'OB':'IC','QT':'SO','SO':'SO','AI':'AR','IV':'AR','HS':'AR','DR':'AR','CN':'AR','OI':'AR','BS':'AR','RE':'AR',
           'PO':'PO','AE':'AP','RR':'AP','HP':'AP','CP':'AP','DN':'AP','OE':'AP','BR':'AP','PS':'AP',
           'OU':'IC','RL':'IC','JU':'IC','CA':'IC','BD':'BK','BW':'BK','BT':'BK','BU':'BK','BV':'BK','BQ':'BK','QP':'BK','DP':'PC','VR':'PC'}

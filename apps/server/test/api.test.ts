@@ -152,6 +152,54 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
 
+  it('manages journal templates (ต้นแบบวิธีการบันทึก S-GL-01) and isolates them per company', async () => {
+    const control = (await call('GET', '/api/v1/gl/accounts')).body.find((a: { account_no: string }) => a.account_no === '1110-00').id;
+    // ตรวจข้อมูล: บัญชีคุม, ไม่มีบรรทัด, เงินติดลบ
+    let r = await call('POST', '/api/v1/gl/templates', { code: 'BAD', name: 'x', lines: [{ account_id: control, side: 'D' }] });
+    expect(r.status).toBe(400); expect(r.body.error.message).toMatch(/บัญชีคุม/);
+    expect((await call('POST', '/api/v1/gl/templates', { code: 'BAD', name: 'x', lines: [] })).status).toBe(400);
+    expect((await call('POST', '/api/v1/gl/templates', { code: 'BAD', name: 'x', lines: [{ account_id: cash, side: 'D', amount: '-1' }] })).body.error.message).toMatch(/ติดลบ/);
+    // สร้าง: จำนวนเงินว่างได้ (ป้อนตอนใช้) หรือกำหนดไว้ก่อน
+    r = await call('POST', '/api/v1/gl/templates', { code: 'EXPENSE', name: 'ต้นแบบ บันทึกค่าใช้จ่ายประจำเดือน', lines: [
+      { account_id: expense, side: 'D', description: 'ค่าน้ำประจำเดือน' }, { account_id: cash, side: 'C', description: 'จ่ายค่าใช้จ่ายประจำเดือน', amount: '' }] });
+    expect(r.status).toBe(200);
+    const tplId = r.body.id;
+    expect((await call('POST', '/api/v1/gl/templates', { code: 'EXPENSE', name: 'ซ้ำ', lines: [{ account_id: cash, side: 'D' }] })).status).toBe(409);
+    let t = (await call('GET', `/api/v1/gl/templates/${tplId}`)).body;
+    expect(t.lines.map((l: { account_no: string; side: string; amount: string | null }) => [l.account_no, l.side, l.amount])).toEqual([['5380-06', 'D', null], ['1111-00', 'C', null]]);
+    // แก้ไข: แทนบรรทัดทั้งชุด เก็บค่าก่อนแก้ใน log
+    expect((await call('PUT', `/api/v1/gl/templates/${tplId}`, { code: 'EXPENSE', name: 'ต้นแบบ ค่าใช้จ่าย', name_en: 'Monthly expense', lines: [
+      { account_id: expense, side: 'D', amount: '1500.50' }, { account_id: revenue, side: 'D', amount: '0' }, { account_id: cash, side: 'C', amount: '1500.50' }] })).status).toBe(200);
+    t = (await call('GET', `/api/v1/gl/templates/${tplId}`)).body;
+    expect(t.name_en).toBe('Monthly expense');
+    expect(t.lines.map((l: { line_no: number; amount: string | null }) => [l.line_no, l.amount === null ? null : Number(l.amount)])).toEqual([[1, 1500.5], [2, null], [3, 1500.5]]);
+    const list = (await call('GET', '/api/v1/gl/templates')).body;
+    expect(list).toHaveLength(1); expect(Number(list[0].line_count)).toBe(3);
+    const log = (await call('GET', `/api/v1/activity-log?table=gl_template&row_id=${tplId}`)).body;
+    expect(log.map((x: { action: string }) => x.action)).toEqual(expect.arrayContaining(['ADD', 'EDIT']));
+    // ผูกต้นแบบกับสมุดรายวัน (S-GL-09) → ลบต้นแบบไม่ได้จนกว่าจะเอาออก
+    const book = (await call('GET', '/api/v1/gl/books')).body.find((b: { code: string }) => b.code === '00');
+    expect((await call('PUT', `/api/v1/gl/books/${book.id}`, { code: book.code, prefix: book.prefix, name_th: book.name_th, template_id: tplId })).status).toBe(200);
+    expect((await call('GET', '/api/v1/gl/books')).body.find((b: { code: string }) => b.code === '00').template_code).toBe('EXPENSE');
+    expect((await call('DELETE', `/api/v1/gl/templates/${tplId}`)).body.error.message).toMatch(/สมุดรายวัน 00/);
+
+    // บริษัทอื่นมองไม่เห็น แก้/ลบ/ผูกกับสมุดไม่ได้ และใช้บัญชีของบริษัทนี้ในต้นแบบไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/gl/templates')).body).toHaveLength(0);
+    expect((await call('GET', `/api/v1/gl/templates/${tplId}`)).status).toBe(404);
+    expect((await call('PUT', `/api/v1/gl/templates/${tplId}`, { code: 'X', name: 'x', lines: [{ account_id: cash, side: 'D' }] })).status).toBe(404);
+    expect((await call('DELETE', `/api/v1/gl/templates/${tplId}`)).status).toBe(404);
+    expect((await call('POST', '/api/v1/gl/templates', { code: 'X', name: 'x', lines: [{ account_id: cash, side: 'D' }] })).body.error.message).toMatch(/ไม่พบบัญชี/);
+    const ob = (await call('GET', '/api/v1/gl/books')).body[0];
+    expect((await call('PUT', `/api/v1/gl/books/${ob.id}`, { code: ob.code, prefix: ob.prefix, name_th: ob.name_th, template_id: tplId })).status).toBe(400);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+
+    expect((await call('PUT', `/api/v1/gl/books/${book.id}`, { code: book.code, prefix: book.prefix, name_th: book.name_th, template_id: null })).status).toBe(200);
+    expect((await call('DELETE', `/api/v1/gl/templates/${tplId}`)).status).toBe(200);
+    expect((await call('GET', '/api/v1/gl/templates')).body).toHaveLength(0);
+    expect((await call('GET', `/api/v1/gl/templates/${tplId}`)).status).toBe(404);
+  });
+
   it('runs an Express-style layout with variables', async () => {
     const accts = (await call('GET', '/api/v1/gl/accounts')).body;
     const r = await call('POST', '/api/v1/fs/layouts', {
@@ -186,6 +234,8 @@ describe('Buddy Account API (PGlite)', () => {
     const aBook = (await call('GET', '/api/v1/gl/books')).body[0].id;
     const aAcc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control);
     expect((await call('POST', '/api/v1/gl/journals', { journal_book_id: aBook, voucher_date: '2026-03-01', lines: [{ account_id: aAcc[0].id, debit: '10' }, { account_id: aAcc[1].id, credit: '10' }] })).status).toBe(200);
+    const aTpl = (await call('POST', '/api/v1/gl/templates', { code: 'A-TPL', name: 'ต้นแบบของ A', lines: [{ account_id: aAcc[0].id, side: 'D' }, { account_id: aAcc[1].id, side: 'C' }] })).body.id;
+    expect(aTpl).toBeTruthy();
     // คัดลอกผังบัญชีจากบริษัทของลูกค้าอื่นไม่ได้
     expect((await call('POST', '/api/v1/companies', { code: 'A-CO2', name_th: 'x', fiscal_start: '2026-01-01', chart: 'copy', copy_from_company_id: companyId })).status).toBe(403);
     expect((await call('GET', '/api/v1/tenants')).status).toBe(403);
@@ -203,6 +253,13 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/users')).body.users.map((u: { username: string }) => u.username)).toEqual(['b.admin']);
     const aClerk = await call('GET', '/api/v1/activity-log');
     expect(JSON.stringify(aClerk.body)).not.toContain('A-CO1');
+    // ต้นแบบวิธีการบันทึกของลูกค้า A — ลูกค้า B เปิด/แก้/ลบไม่ได้ แม้รู้รหัส
+    const cb = (await call('POST', '/api/v1/companies', { code: 'B-CO1', name_th: 'บริษัท บี จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: cb });
+    expect((await call('GET', '/api/v1/gl/templates')).body).toHaveLength(0);
+    expect((await call('GET', `/api/v1/gl/templates/${aTpl}`)).status).toBe(404);
+    expect((await call('PUT', `/api/v1/gl/templates/${aTpl}`, { code: 'HACK', name: 'x', lines: [{ account_id: aAcc[0].id, side: 'D' }] })).status).toBe(404);
+    expect((await call('DELETE', `/api/v1/gl/templates/${aTpl}`)).status).toBe(404);
 
     // พนักงานของ A เห็นเฉพาะบริษัทที่ได้รับสิทธิ์
     expect((await login('a.clerk', 'clerk1234')).status).toBe(200);
