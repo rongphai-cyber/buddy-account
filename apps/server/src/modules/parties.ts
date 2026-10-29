@@ -99,6 +99,44 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     return { total: Number(total.n), rows: await s.orderBy('c.code').limit(q.limit).offset(q.offset).execute() };
   });
 
+  /**
+   * ตารางสะสมยอดเงินรายงวด (คู่มือ S-AR-01/S-AP-01 แท็บงวด 1–24) — คำนวณสดจากเอกสาร ยอดรวม VAT
+   * + ยอดต้นปี (ลูกหนี้/เจ้าหนี้ยกมา) + เช็คที่ยังไม่ผ่านบัญชี
+   */
+  for (const [path, mod] of [['customers', 'AR'], ['suppliers', 'AP']] as const) {
+    app.get(`/api/v1/${path}/:id/activity`, async (req) => {
+      const a = requireCompany(req);
+      const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
+      const q = parse(z.object({ fiscal_year_id: z.string().uuid().optional() }), req.query);
+      const tbl = mod === 'AR' ? 'md_customer' : 'md_supplier';
+      const party = await db.selectFrom(tbl).select('id').where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+      if (!party) throw notFound(mod === 'AR' ? 'ลูกค้า' : 'ผู้จำหน่าย');
+      const years = await db.selectFrom('gl_fiscal_year').select(['id', 'code', 'start_date', 'end_date', 'status']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('start_date', 'desc').execute();
+      const today = new Date().toISOString().slice(0, 10);
+      const fy = years.find((y) => y.id === q.fiscal_year_id) ?? years.find((y) => String(y.start_date).slice(0, 10) <= today && String(y.end_date).slice(0, 10) >= today) ?? years.find((y) => y.status !== 'C') ?? years[0];
+      const col = mod === 'AR' ? 'customer_id' : 'supplier_id';
+      // คอลัมน์: AR ขายสด ขายเชื่อ เพิ่มหนี้ ลดหนี้ รับชำระ · AP ซื้อสด ซื้อเชื่อ เพิ่มหนี้ ลดหนี้ จ่ายชำระ
+      const [cash, credit, dn, cn, pay] = mod === 'AR' ? ['HS', 'IV', 'DR', 'CN', 'RE'] : ['HP', 'RR', 'CP', 'DN', 'PS'];
+      const periods = fy ? (await sql<{ period_no: number; start_date: string; end_date: string; cash: string; credit: string; debit_note: string; credit_note: string; settled: string }>`
+        SELECT p.period_no, p.start_date, p.end_date,
+               coalesce(sum(h.net_amount) FILTER (WHERE h.doc_class = ${cash}), 0) AS cash, coalesce(sum(h.net_amount) FILTER (WHERE h.doc_class = ${credit}), 0) AS credit,
+               coalesce(sum(h.net_amount) FILTER (WHERE h.doc_class = ${dn}), 0) AS debit_note, coalesce(sum(h.net_amount) FILTER (WHERE h.doc_class = ${cn}), 0) AS credit_note,
+               coalesce(sum(h.net_amount) FILTER (WHERE h.doc_class = ${pay}), 0) AS settled
+          FROM gl_period p LEFT JOIN doc_header h ON h.company_id = p.company_id AND h.${sql.ref(col)} = ${id} AND h.doc_status <> 'C' AND h.deleted_at IS NULL AND NOT h.is_opening
+               AND h.doc_class IN (${cash}, ${credit}, ${dn}, ${cn}, ${pay}) AND h.doc_date BETWEEN p.start_date AND p.end_date
+         WHERE p.fiscal_year_id = ${fy.id} AND p.deleted_at IS NULL GROUP BY p.period_no, p.start_date, p.end_date ORDER BY p.period_no`.execute(db)).rows : [];
+      const opening = (await sql<{ v: string }>`SELECT coalesce(sum(o.outstanding), 0) AS v FROM ${sql.table(mod === 'AR' ? 'v_ar_outstanding' : 'v_ap_outstanding')} o JOIN doc_header h ON h.id = o.header_id
+          WHERE o.company_id = ${a.companyId} AND o.${sql.ref(col)} = ${id} AND h.is_opening`.execute(db)).rows[0]!.v;
+      const openingTotal = (await sql<{ v: string }>`SELECT coalesce(sum(net_amount), 0) AS v FROM doc_header WHERE company_id = ${a.companyId} AND ${sql.ref(col)} = ${id} AND is_opening AND doc_status <> 'C' AND deleted_at IS NULL`.execute(db)).rows[0]!.v;
+      const cheques = await db.selectFrom('fin_cheque as c').leftJoin('md_bank as b', 'b.id', 'c.bank_id')
+        .select(['c.id', 'c.cheque_date', 'c.cheque_no', 'b.code as bank_code', 'b.short_th as bank_name', 'c.amount', 'c.remaining_amount', 'c.status', 'c.instrument'])
+        .where('c.company_id', '=', a.companyId).where(`c.${col}`, '=', id).where('c.deleted_at', 'is', null).where('c.pass_date', 'is', null).where('c.status', '=', '00')
+        .orderBy('c.cheque_date').execute();
+      return { fiscal_years: years.map((y) => ({ id: y.id, code: y.code, start_date: y.start_date })), fiscal_year_id: fy?.id ?? null, periods, opening_total: openingTotal, opening_outstanding: opening,
+        cheques, cheque_total: cheques.reduce((t, c) => t.plus(d(c.amount)), ZERO).toFixed(2) };
+    });
+  }
+
   app.get('/api/v1/customers/:id', async (req) => {
     const a = requireCompany(req);
     const { id } = parse(z.object({ id: uuid }), req.params);

@@ -232,7 +232,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
   });
   await step('customers / suppliers / salespersons (S-AR-01 / S-AP-01 / S-SO-01)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: รายการ → เปิดรายแรก → ทุกแท็บ → Esc
-    for (const [url, tabs] of [['/ar/customers', ['ผู้ติดต่อ', 'บิลที่ค้างชำระ', 'สถานที่ส่งสินค้า', 'รายละเอียด']], ['/ap/suppliers', ['ผู้ติดต่อ', 'บัญชีธนาคาร', 'บิลที่ค้างชำระ', 'รายละเอียด']], ['/ar/salespersons', ['กำหนดเป้าการขาย', 'รายละเอียดทั่วไป']]]) {
+    for (const [url, tabs] of [['/ar/customers', ['ผู้ติดต่อ', 'บิลที่ค้างชำระ', 'เช็คที่ยังไม่ผ่านบัญชี', 'ยอดรายงวด', 'สถานที่ส่งสินค้า', 'รายละเอียด']], ['/ap/suppliers', ['ผู้ติดต่อ', 'บัญชีธนาคาร', 'บิลที่ค้างชำระ', 'เช็คจ่ายที่ยังไม่ผ่านบัญชี', 'ยอดรายงวด', 'รายละเอียด']], ['/ar/salespersons', ['กำหนดเป้าการขาย', 'รายละเอียดทั่วไป']]]) {
       await page.goto(BASE + url);
       const row = page.locator('table.grid tbody tr.row-open').first();
       if (!(await row.count()) && !(await row.waitFor({ timeout: 8000 }).then(() => true).catch(() => false))) { await page.waitForSelector('td.empty', { timeout: 15000 }); continue; }

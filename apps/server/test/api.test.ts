@@ -1346,6 +1346,22 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/ar-opening')).body.total).toBe('0.00');
   });
 
+  it('party activity (T3.11): per-period totals incl. VAT from live documents, cheques not yet passed, isolation', async () => {
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2026-03-10', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 1000 }] })).body;
+    const act = (await call('GET', `/api/v1/customers/${cus}/activity`)).body;
+    expect(act.periods).toHaveLength(12);
+    expect(act.periods.find((p: { period_no: number }) => p.period_no === 3)).toMatchObject({ credit: '1070.00', cash: '0', settled: '0' });
+    expect(act).toMatchObject({ opening_total: '0', cheques: [], cheque_total: '0.00' });
+    expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/customers/${cus}/activity`)).body.periods.find((p: { period_no: number }) => p.period_no === 3).credit).toBe('0');
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/customers/${cus}/activity`)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

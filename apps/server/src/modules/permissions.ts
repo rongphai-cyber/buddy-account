@@ -123,6 +123,7 @@ export const API_RULES: Record<string, Rule> = {
   // ค่าเริ่มต้นแต่ละระบบ (บทที่ 5)
   'GET /api/v1/settings': LOOKUP, 'PUT /api/v1/settings': M('SET.DEF', 'edit'),
   'GET /api/v1/lookups': LOOKUP,
+  'GET /api/v1/customers/:id/activity': M('SA.CUS', 'read'), 'GET /api/v1/suppliers/:id/activity': M('PU.SUP', 'read'),
   'GET /api/v1/customers': LOOKUP, 'GET /api/v1/customers/:id': LOOKUP, 'POST /api/v1/customers': M('SA.CUS', 'add'),
   'PUT /api/v1/customers/:id': M('SA.CUS', 'edit'), 'DELETE /api/v1/customers/:id': M('SA.CUS', 'delete'),
   'GET /api/v1/suppliers': LOOKUP, 'GET /api/v1/suppliers/:id': LOOKUP, 'POST /api/v1/suppliers': M('PU.SUP', 'add'),

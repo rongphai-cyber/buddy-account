@@ -195,7 +195,7 @@ export function CustomerForm({ id, onClose, onSaved }: { id: string | null; onCl
           <Field label="ชื่อลูกค้า" req><input {...t('name', 120)} /></Field>
           <Field label="สถานะ"><select value={val(f, 'status')} onChange={(e) => set({ status: e.target.value })}><option value="A">ใช้งาน (Active)</option><option value="I">เลิกใช้ (Inactive)</option></select></Field>
         </div>
-        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียด' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, { key: 'ship', label: 'สถานที่ส่งสินค้า', badge: ships.length || undefined }]} />
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียด' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, ...(id ? [{ key: 'periods', label: 'ยอดรายงวด' }, { key: 'cheques', label: 'เช็คที่ยังไม่ผ่านบัญชี' }] : []), { key: 'ship', label: 'สถานที่ส่งสินค้า', badge: ships.length || undefined }]} />
         {tab === 'main' && <div className="form-grid party-grid">
           <Field label="ที่อยู่" wide><input {...t('address_1', 100)} placeholder="บรรทัด 1" /></Field>
           <Field label="" wide><input {...t('address_2', 100)} placeholder="บรรทัด 2" aria-label="ที่อยู่ บรรทัด 2" /></Field>
@@ -240,6 +240,7 @@ export function CustomerForm({ id, onClose, onSaved }: { id: string | null; onCl
         </div>}
         {tab === 'contacts' && <ContactsGrid rows={contacts} onChange={setContacts} />}
         {tab === 'bills' && (id ? <BillsGrid rows={cur.data?.outstanding_bills ?? []} /> : <p className="muted">บันทึกลูกค้าก่อน</p>)}
+        {(tab === 'periods' || tab === 'cheques') && id && <PartyActivity mod="AR" id={id} view={tab} />}
         {tab === 'ship' && <>
           <div className="form-grid">
             <Field label="สถานที่ส่งของประจำ" hint="ขึ้นอัตโนมัติในใบกำกับภาษี/ใบส่งของ">
@@ -325,7 +326,7 @@ export function SupplierForm({ id, onClose, onSaved }: { id: string | null; onCl
           <Field label="ชื่อผู้จำหน่าย" req><input {...t('name', 120)} /></Field>
           <Field label="สถานะ"><select value={val(f, 'status')} onChange={(e) => set({ status: e.target.value })}><option value="A">ใช้งาน (Active)</option><option value="I">เลิกใช้ (Inactive)</option></select></Field>
         </div>
-        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียด' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'banks', label: 'บัญชีธนาคาร', badge: banks.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }]} />
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียด' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'banks', label: 'บัญชีธนาคาร', badge: banks.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, ...(id ? [{ key: 'periods', label: 'ยอดรายงวด' }, { key: 'cheques', label: 'เช็คจ่ายที่ยังไม่ผ่านบัญชี' }] : [])]} />
         {tab === 'main' && <div className="form-grid party-grid">
           <Field label="ที่อยู่" wide><input {...t('address_1', 100)} placeholder="บรรทัด 1" /></Field>
           <Field label="" wide><input {...t('address_2', 100)} placeholder="บรรทัด 2" aria-label="ที่อยู่ บรรทัด 2" /></Field>
@@ -378,6 +379,7 @@ export function SupplierForm({ id, onClose, onSaved }: { id: string | null; onCl
           </table>
         </div>}
         {tab === 'bills' && (id ? <BillsGrid rows={cur.data?.outstanding_bills ?? []} /> : <p className="muted">บันทึกผู้จำหน่ายก่อน</p>)}
+        {(tab === 'periods' || tab === 'cheques') && id && <PartyActivity mod="AP" id={id} view={tab} />}
         <datalist id="sup-titles"><option value="บริษัท" /><option value="ห้างหุ้นส่วนจำกัด" /><option value="ร้าน" /><option value="คุณ" /></datalist>
         <datalist id="wht-income"><option value="ค่าจ้างทำของ" /><option value="ค่าบริการ" /><option value="ค่าโฆษณา" /><option value="ค่าขนส่ง" /><option value="ค่าเช่า" /><option value="ค่านายหน้า" /><option value="ค่าวิชาชีพอิสระ" /></datalist>
       </>}
@@ -507,5 +509,40 @@ export function SalespersonForm({ id, onClose, onSaved }: { id: string | null; o
         </>}
       </>}
     </MasterModal>
+  );
+}
+
+/** ตารางสะสมยอดเงินรายงวด (ยอดรวม VAT) + ยอดต้นปี + เช็คที่ยังไม่ผ่านบัญชี — คำนวณสดจากเอกสาร */
+function PartyActivity({ mod, id, view }: { mod: 'AR' | 'AP'; id: string; view: 'periods' | 'cheques' }) {
+  const [fy, setFy] = useState<string | undefined>(undefined);
+  const q = useQuery({ queryKey: ['party-activity', mod, id, fy], queryFn: () => api.get<{ fiscal_years: Array<{ id: string; code: string }>; fiscal_year_id: string | null; opening_total: string; opening_outstanding: string;
+    periods: Array<{ period_no: number; start_date: string; end_date: string; cash: string; credit: string; debit_note: string; credit_note: string; settled: string }>;
+    cheques: Array<{ id: string; cheque_date: string; cheque_no: string; bank_code: string | null; bank_name: string | null; amount: string; remaining_amount: string; status: string; instrument: string }>; cheque_total: string }>(
+    `/api/v1/${mod === 'AR' ? 'customers' : 'suppliers'}/${id}/activity`, fy ? { fiscal_year_id: fy } : {}) });
+  const ar = mod === 'AR';
+  const sum = (k: 'cash' | 'credit' | 'debit_note' | 'credit_note' | 'settled') => (q.data?.periods ?? []).reduce((t, p) => t.plus(d(p[k])), d(0)).toFixed(2);
+  if (view === 'cheques') return (
+    <div className="table-wrap"><ErrorBox error={q.error} />
+      <table className="grid"><thead><tr><th style={{ width: 110 }}>วันที่</th><th style={{ width: 140 }}>เลขที่เช็ค</th><th>ธนาคาร</th><th className="r" style={{ width: 140 }}>จำนวนเงิน</th><th className="r" style={{ width: 140 }}>ยอดคงเหลือ</th><th style={{ width: 90 }}>ชนิด</th></tr></thead>
+        <tbody>{q.data?.cheques.map((c) => <tr key={c.id}><td><DateText v={c.cheque_date} /></td><td className="mono">{c.cheque_no}</td><td>{c.bank_code} {c.bank_name}</td><td className="r"><Money v={c.amount} /></td><td className="r"><Money v={c.remaining_amount} blankZero /></td><td>{c.instrument === 'CHEQUE' ? 'เช็ค' : c.instrument === 'TRANSFER' ? 'โอน' : c.instrument}</td></tr>)}
+          {q.data && !q.data.cheques.length && <tr><td colSpan={6} className="empty">ไม่มีเช็ค{ar ? 'รับ' : 'จ่าย'}ที่ยังไม่ผ่านบัญชี</td></tr>}</tbody>
+        {!!q.data?.cheques.length && <tfoot><tr><td colSpan={3} className="r">รวม{ar ? 'เช็ครับล่วงหน้า' : 'เช็คจ่ายล่วงหน้า'}</td><td className="r"><b><Money v={q.data.cheque_total} /></b></td><td colSpan={2} /></tr></tfoot>}
+      </table>
+      <p className="hint">ประวัติเช็คคืน/ผ่านเช็คมาพร้อมระบบเช็คและธนาคาร (P4)</p>
+    </div>
+  );
+  return (
+    <div className="table-wrap"><ErrorBox error={q.error} />
+      <div className="toolbar">
+        <label>ปีบัญชี <select value={fy ?? q.data?.fiscal_year_id ?? ''} onChange={(e) => setFy(e.target.value)} aria-label="ปีบัญชี">{q.data?.fiscal_years.map((y) => <option key={y.id} value={y.id}>{y.code}</option>)}</select></label>
+        <span className="muted small">ยอดต้นปี (ยกมา) <b><Money v={q.data?.opening_total} /></b> · ยังค้าง <Money v={q.data?.opening_outstanding} /> · ยอดรวม VAT ใช้ออกรายงานสถานะ{ar ? 'ลูกหนี้' : 'เจ้าหนี้'}</span>
+      </div>
+      <table className="grid">
+        <thead><tr><th style={{ width: 60 }}>งวด</th><th style={{ width: 200 }}>ช่วงวันที่</th><th className="r">{ar ? 'ขายสด' : 'ซื้อสด'}</th><th className="r">{ar ? 'ขายเชื่อ' : 'ซื้อเชื่อ'}</th><th className="r">เพิ่มหนี้</th><th className="r">ลดหนี้</th><th className="r">{ar ? 'รับชำระหนี้' : 'จ่ายชำระหนี้'}</th></tr></thead>
+        <tbody>{q.data?.periods.map((p) => <tr key={p.period_no}><td>{p.period_no}</td><td className="small"><DateText v={p.start_date} /> – <DateText v={p.end_date} /></td>
+          <td className="r"><Money v={p.cash} blankZero /></td><td className="r"><Money v={p.credit} blankZero /></td><td className="r"><Money v={p.debit_note} blankZero /></td><td className="r"><Money v={p.credit_note} blankZero /></td><td className="r"><Money v={p.settled} blankZero /></td></tr>)}</tbody>
+        {!!q.data?.periods.length && <tfoot><tr><td colSpan={2} className="r">รวมทั้งปี</td><td className="r"><b><Money v={sum('cash')} blankZero /></b></td><td className="r"><b><Money v={sum('credit')} blankZero /></b></td><td className="r"><b><Money v={sum('debit_note')} blankZero /></b></td><td className="r"><b><Money v={sum('credit_note')} blankZero /></b></td><td className="r"><b><Money v={sum('settled')} blankZero /></b></td></tr></tfoot>}
+      </table>
+    </div>
   );
 }
