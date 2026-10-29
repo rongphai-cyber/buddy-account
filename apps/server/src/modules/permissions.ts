@@ -147,7 +147,7 @@ export const API_RULES: Record<string, Rule> = {
     [`GET /api/v1/${k.path}`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/:id`, M(k.menu, 'read')], [`POST /api/v1/${k.path}`, M(k.menu, 'add')],
     [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M(k.menu, 'cancel')],
   ])),
-  'GET /api/v1/trade-defaults/:cls': LOOKUP,
+  'GET /api/v1/trade-defaults/:cls': LOOKUP, 'GET /api/v1/item-search': LOOKUP,
   'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),
   'PUT /api/v1/salespersons/:id': M('SA.SLM', 'edit'), 'DELETE /api/v1/salespersons/:id': M('SA.SLM', 'delete'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)

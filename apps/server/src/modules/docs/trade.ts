@@ -151,7 +151,8 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
         .where('s.invoice_header_id', '=', id).where('s.deleted_at', 'is', null).orderBy('r.doc_date').execute();
       const view = K.module === 'AR' ? 'v_ar_outstanding' : 'v_ap_outstanding';
       const out = (await sql<{ outstanding: string }>`SELECT outstanding FROM ${sql.table(view)} WHERE header_id = ${id}`.execute(db)).rows[0];
-      return { ...h, lines, payments, settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !settled.length };
+      const pc = await db.selectFrom(K.party === 'customer' ? 'md_customer' : 'md_supplier').select('code').where('id', '=', (h.customer_id ?? h.supplier_id)!).executeTakeFirst();
+      return { ...h, party_code: pc?.code ?? null, lines, payments, settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !settled.length };
     });
     app.post(base, async (req) => saveTrade(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => saveTrade(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));

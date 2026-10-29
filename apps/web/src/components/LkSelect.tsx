@@ -22,8 +22,8 @@ export function LkSelect({ rows, value, onChange, blank = '—', byId, missing =
 }
 
 /** ช่องค้นหาแล้วเลือก (สินค้า ผู้จำหน่าย) — พิมพ์รหัส/ชื่อ เลือกจากรายการ · F4 / ลูกศรลง เปิดรายการ */
-export function SearchPick<T extends { id: string; code: string }>({ endpoint, params, value, label, onPick, placeholder = 'พิมพ์รหัสหรือชื่อเพื่อค้นหา', describe, exclude, ...rest }: {
-  endpoint: string; params?: Record<string, string>; value: { id: string; code: string; name?: string | null } | null; label?: (r: T) => string;
+export function SearchPick<T extends { id: string }>({ endpoint, params, value, label, onPick, placeholder = 'พิมพ์รหัสหรือชื่อเพื่อค้นหา', describe, exclude, codeOf, ...rest }: {
+  endpoint: string; params?: Record<string, string>; value: { id: string; code: string; name?: string | null } | null; label?: (r: T) => string; codeOf?: (r: T) => string;
   onPick: (r: T | null) => void; placeholder?: string; describe?: (r: T) => string; exclude?: string[]; [k: string]: unknown;
 }) {
   const [q, setQ] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export function SearchPick<T extends { id: string; code: string }>({ endpoint, p
       {q !== null && q.trim() && (
         <ul className="pick-list" role="listbox">
           {rows.map((r, i) => <li key={r.id} role="option" aria-selected={i === sel} tabIndex={-1} className={i === sel ? 'on' : undefined} onMouseDown={(e) => { e.preventDefault(); pick(r); }}>
-            <b className="mono">{r.code}</b> {label ? label(r) : ''} {describe && <span className="muted small">{describe(r)}</span>}
+            <b className="mono">{codeOf ? codeOf(r) : (r as unknown as { code: string }).code}</b> {label ? label(r) : ''} {describe && <span className="muted small">{describe(r)}</span>}
           </li>)}
           {res.data && !rows.length && <li className="muted">ไม่พบ</li>}
         </ul>

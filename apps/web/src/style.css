@@ -498,3 +498,15 @@ details.box .form-grid { margin-top: 8px; }
 .tbl-nav a { padding: 4px 10px; }
 .tbl-title { margin: 0 0 4px; font-size: 18px; }
 @media (max-width: 900px) { .tbl-layout { grid-template-columns: 1fr; } .tbl-nav { position: static; flex-direction: row; flex-wrap: wrap; } }
+
+/* เอกสารซื้อ/ขาย (บทที่ 11–12) */
+.head-grid.trade-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 18px; margin-bottom: 10px; }
+.trade-head .col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; align-content: start; }
+.trade-foot { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; margin-top: 12px; align-items: start; }
+.totals-table { width: 100%; border-collapse: collapse; }
+.totals-table td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.totals-table tr.grand td { font-weight: 700; font-size: 16px; border-top: 2px solid var(--tone); }
+tr.cancelled td { color: var(--muted); text-decoration: line-through; }
+div.box { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; margin: 8px 0; background: var(--surface); }
+.kind-switch { margin-bottom: 8px; }
+@media (max-width: 900px) { .head-grid.trade-head, .trade-foot { grid-template-columns: 1fr; } .trade-head .col { grid-template-columns: 1fr; } }

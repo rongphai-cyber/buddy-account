@@ -38,6 +38,8 @@ import { ItemAccountGroupsPage, PricesPage, ReorderPage } from './pages/items/It
 import { BankAccountsPage, PaymentMethodsPage } from './pages/finance/Banking';
 import { DocTypesPage, GlLinkPage } from './pages/settings/DocTypes';
 import { DataTablesPage } from './pages/settings/DataTables';
+import { TradeFormPage, TradeListPage } from './pages/docs/TradeDocs';
+import { TRADE_KINDS } from '@buddy/core';
 
 export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
 const PHASE_TH: Record<string, string> = { P0: 'ฐานระบบ', P1: 'บัญชีแยกประเภท', P2: 'แฟ้มหลัก', P3: 'ซื้อ ขาย ภาษี', P4: 'ธนาคาร สินค้า', P5: 'รายงาน', P6: 'ผู้ดูแลระบบ', P7: 'ต่อยอด' };
@@ -140,6 +142,7 @@ function Shell() {
           <Route path="/settings/doc-types" element={<DocTypesPage />} />
           <Route path="/settings/gl-link" element={<GlLinkPage />} />
           <Route path="/settings/data-tables" element={<DataTablesPage />} />
+          {TRADE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<TradeListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<TradeFormPage key={k.path} path={k.path} />} />])}
           <Route path="/companies/new" element={<NewCompanyPage />} />
           <Route path="/account/password" element={<PasswordPage />} />
           <Route path="/admin/import" element={<ImportPage />} />
