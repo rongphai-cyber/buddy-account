@@ -45,7 +45,11 @@ export function sendError(reply: FastifyReply, e: AppError) {
 }
 
 export interface AuthContext {
+  /** ว่าง = เข้าด้วยกุญแจ API (ไม่มี session) */
   sessionId: string;
+  /** เข้าด้วยกุญแจ API (T7.5): รหัสกุญแจ · อ่านอย่างเดียว */
+  apiKeyId?: string;
+  apiKeyReadOnly?: boolean;
   userId: string;
   username: string;
   displayName: string;

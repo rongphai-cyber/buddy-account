@@ -8,6 +8,7 @@ import type { Db } from '../db.js';
 import { AppError, badRequest, parse, requireAuth, unauthorized, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
 import type { Config } from '../config.js';
+import { loadApiKey } from './apikeys.js';
 
 export const SESSION_COOKIE = 'buddy_session';
 const ADMIN_GROUP = 'ADMIN';
@@ -140,7 +141,8 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
 
   app.get('/api/v1/auth/me', async (req) => {
     const a = requireAuth(req);
-    const companies = await companiesForUser(db, a);
+    // กุญแจ API ผูกบริษัทเดียว
+    const companies = (await companiesForUser(db, a)).filter((c) => !a.apiKeyId || c.id === a.companyId);
     let company = companies.find((c) => c.id === a.companyId) ?? null;
     let branchId = a.branchId;
     if (!company && companies.length) {
@@ -194,6 +196,9 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
 export function attachAuth(app: FastifyInstance, db: Db) {
   app.addHook('onRequest', async (req) => {
     if (!req.url.startsWith('/api/')) return;
+    // ระบบอื่นส่งกุญแจ API ใน header (T7.5) — มี header แล้วใช้กุญแจเสมอ ไม่ดู cookie
+    const authz = req.headers.authorization;
+    if (authz && /^Bearer\s+bk_/i.test(authz)) { req.auth = await loadApiKey(db, authz, req.ip); return; }
     const token = req.cookies?.[SESSION_COOKIE];
     req.auth = await loadSession(db, token);
     const open = ['/api/v1/setup', '/api/v1/setup/status', '/api/v1/auth/login', '/api/v1/health'];

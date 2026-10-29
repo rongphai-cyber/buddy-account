@@ -506,6 +506,45 @@ export interface SysReportCustomTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** กุญแจ API ให้ระบบอื่นเชื่อมต่อ (T7.5) — ทำงานในนามผู้ใช้ที่ผูกไว้ ในบริษัทนี้เท่านั้น สิทธิ์ตามผู้ใช้นั้น */
+export interface SysApiKeyTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ทำงานในนามผู้ใช้ (สิทธิ์ตามผู้ใช้นี้) */
+  user_id: string;
+  /** ชื่อกุญแจ เช่น ระบบหน้าร้าน */
+  name: string;
+  /** ส่วนต้นของกุญแจ (เปิดเผยได้ ใช้ค้นหา/แสดงในรายการ) */
+  key_prefix: string;
+  /** SHA-256 ของส่วนลับ (ไม่เก็บกุญแจจริง — แสดงครั้งเดียวตอนสร้าง) */
+  key_hash: string;
+  /** อ่านอย่างเดียว (GET เท่านั้น) */
+  read_only: Gen<boolean>;
+  /** หมดอายุ (ว่าง = ไม่หมดอายุ) */
+  expires_on: Gen<string | null>;
+  /** A=ใช้งาน I=ยกเลิกแล้ว */
+  status: Gen<string>;
+  /** ใช้ครั้งล่าสุด */
+  last_used_at: Gen<string | null>;
+  /** IP ที่ใช้ครั้งล่าสุด */
+  last_used_ip: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ปีบัญชี */
 export interface GlFiscalYearTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -3489,6 +3528,7 @@ export interface DB {
   sys_activity_log: SysActivityLogTable;
   sys_print_form: SysPrintFormTable;
   sys_report_custom: SysReportCustomTable;
+  sys_api_key: SysApiKeyTable;
   gl_fiscal_year: GlFiscalYearTable;
   gl_period: GlPeriodTable;
   gl_account: GlAccountTable;

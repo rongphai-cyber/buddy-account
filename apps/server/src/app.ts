@@ -45,6 +45,7 @@ import { faPostingRoutes, faRoutes } from './modules/fa.js';
 import { yearEndRoutes } from './modules/gl/yearend.js';
 import { backupRoutes } from './modules/backup.js';
 import { noteRoutes } from './modules/notes.js';
+import { apiKeyRoutes } from './modules/apikeys.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
@@ -111,6 +112,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   yearEndRoutes(app, db);
   backupRoutes(app, db);
   noteRoutes(app, db);
+  apiKeyRoutes(app, db);
   inventoryAccountRoutes(app, db);
   reportRoutes(app, db);
 

@@ -124,6 +124,7 @@ export const MENU: MenuItem[] = [
     m('SET.DOCNO', 'เลขที่เอกสาร', 'P2', '/settings/doc-types', ['ch09:S-DN-01', 'ch26:S-AP-10']),
     m('SET.LINK', 'การเชื่อมต่อบัญชี', 'P2', '/settings/gl-link', ['ch10:S-GL-01', 'ch10:S-GL-02']),
     m('SET.SEC', 'ผู้ใช้งานและสิทธิ์', 'P0', '/settings/users', ['ch23:S-SEC-01', 'ch23:S-SEC-02', 'ch23:S-SEC-03']),
+    m('SET.API', 'กุญแจ API (เชื่อมต่อระบบอื่น)', 'P7', '/settings/api-keys'),
     m('SET.NEWCO', 'กำหนดบริษัทใหม่', 'P0', '/companies/new', ['ch04:S-CO-03']),
     m('SET.TENANT', 'ลูกค้าผู้ใช้บริการ (ผู้ให้บริการ)', 'P0', '/admin/tenants'),
   ], '7'),

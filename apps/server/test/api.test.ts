@@ -24,6 +24,12 @@ async function call(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, body
   return { status: r.statusCode, body: parsed };
 }
 
+/** เรียกด้วยกุญแจ API (ไม่มี cookie) */
+async function keyCall(key: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, body?: unknown) {
+  const r = await app.inject({ method, url, payload: body as object, headers: { authorization: `Bearer ${key}` } });
+  return { status: r.statusCode, body: r.body ? JSON.parse(r.body) : null };
+}
+
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
   const cfg = { ...loadConfig({}), databaseUrl: undefined, dataDir: 'memory://' };
@@ -2574,6 +2580,66 @@ describe('Buddy Account API (PGlite)', () => {
     for (const [path, x] of [['ap-payments', p.body], ['purchase-invoices', rr], ['stock-adjustments', pi], ['other-expense-docs', oe], ['stock-issues', pd], ['stock-adjustments', adj]] as const)
       expect((await call('POST', `/api/v1/${path}/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('API keys (T7.5): bearer auth as the bound user + company, read-only, blocked menus, revoke/expiry, docs, isolation', async () => {
+    const users = (await call('GET', '/api/v1/users')).body.users as Array<{ id: string; username: string }>;
+    const clerk = users.find((u) => u.username === 'clerk0')!.id;
+    const adminId = (await call('GET', '/api/v1/auth/me')).body.user.id;
+    expect((await call('POST', '/api/v1/api-keys', { name: '', user_id: clerk })).status).toBe(400);
+    expect((await call('POST', '/api/v1/api-keys', { name: 'x', user_id: '00000000-0000-4000-8000-000000000000' })).status).toBe(404);
+    const ro = await call('POST', '/api/v1/api-keys', { name: 'ระบบหน้าร้าน (อ่าน)', user_id: clerk, read_only: true });
+    expect(ro.status).toBe(200);
+    expect(ro.body.key).toMatch(/^bk_[0-9a-f]{12}_[A-Za-z0-9_-]{20,}$/);
+    const rw = (await call('POST', '/api/v1/api-keys', { name: 'เชื่อมต่อบัญชี', user_id: adminId })).body;
+    // เก็บเฉพาะ hash
+    const stored = (await sql<{ key_hash: string }>`SELECT key_hash FROM sys_api_key WHERE id = ${ro.body.id}`.execute(database.db)).rows[0]!.key_hash;
+    expect(ro.body.key.includes(stored)).toBe(false);
+    expect((await call('GET', '/api/v1/api-keys')).body.map((k: { name: string; key_prefix: string }) => k.key_prefix)).toEqual(expect.arrayContaining([ro.body.key_prefix, rw.key_prefix]));
+
+    // ใช้กุญแจ: ผู้ใช้ + บริษัทตามที่ผูกไว้
+    const me = await keyCall(ro.body.key, 'GET', '/api/v1/auth/me');
+    expect([me.status, me.body.user.username, me.body.company?.id]).toEqual([200, 'clerk0', companyId]);
+    expect((await keyCall(ro.body.key, 'GET', '/api/v1/customers?q=C520')).body.rows).toHaveLength(1);
+    const book = (await keyCall(ro.body.key, 'GET', '/api/v1/gl/books')).body[0].id;
+    const jvBody = { journal_book_id: book, voucher_date: '2027-12-01', description: 'จากระบบอื่น', lines: [{ account_id: expense, debit: '100.00' }, { account_id: expense, credit: '100.00' }] };
+    expect((await keyCall(ro.body.key, 'POST', '/api/v1/gl/journals', jvBody)).body.error.message).toMatch(/อ่านอย่างเดียว/);
+    // กุญแจบันทึกได้: ลงบัญชี + log ในนามผู้ใช้ของกุญแจ
+    const jv = await keyCall(rw.key, 'POST', '/api/v1/gl/journals', jvBody);
+    expect(jv.status).toBe(200);
+    const log = (await sql<{ user_id: string }>`SELECT user_id FROM sys_activity_log WHERE company_id = ${companyId} AND row_id = ${jv.body.id} ORDER BY seq LIMIT 1`.execute(database.db)).rows[0];
+    expect(log?.user_id).toBe(adminId);
+    expect((await keyCall(rw.key, 'POST', `/api/v1/gl/journals/${jv.body.id}/cancel`, { reason: 'ทดสอบกุญแจ' })).status).toBe(200);
+    // ห้าม: จัดการผู้ใช้/เลือกบริษัท/กุญแจ/สำรองข้อมูล แม้เป็นผู้ดูแล
+    expect((await keyCall(rw.key, 'GET', '/api/v1/users')).status).toBe(403);
+    expect((await keyCall(rw.key, 'POST', '/api/v1/auth/select', { company_id: otherCompanyId })).status).toBe(403);
+    expect((await keyCall(rw.key, 'GET', '/api/v1/api-keys')).status).toBe(403);
+    expect((await keyCall(rw.key, 'POST', '/api/v1/api-keys', { name: 'x', user_id: adminId })).status).toBe(403);
+    expect((await keyCall(rw.key, 'GET', '/api/v1/backup/company')).status).toBe(403);
+    // ข้อมูลบริษัทอื่นไม่เห็น
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    const otherCus = (await call('POST', '/api/v1/customers', { code: 'K-OTHER', name: 'ลูกค้าบริษัทอื่น', tax_id: '0105537095903' })).body.id;
+    expect((await call('POST', `/api/v1/api-keys/${ro.body.id}/revoke`, {})).status).toBe(404);   // กุญแจของบริษัทอื่น
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await keyCall(rw.key, 'GET', '/api/v1/customers?q=K-OTHER')).body.rows).toHaveLength(0);
+    expect((await keyCall(rw.key, 'GET', `/api/v1/customers/${otherCus}`)).status).toBe(404);
+    // กุญแจผิด/ยกเลิก/หมดอายุ → 401 พร้อมเหตุผล
+    expect((await keyCall('bk_nothex', 'GET', '/api/v1/auth/me')).body.error.message).toMatch(/ไม่ถูกรูปแบบ/);
+    expect((await keyCall(`${ro.body.key.slice(0, 16)}${'A'.repeat(32)}`, 'GET', '/api/v1/auth/me')).body.error.message).toMatch(/ไม่พบกุญแจ/);
+    expect((await call('POST', `/api/v1/api-keys/${ro.body.id}/revoke`, {})).status).toBe(200);
+    expect((await keyCall(ro.body.key, 'GET', '/api/v1/auth/me')).body.error.message).toMatch(/ถูกยกเลิก/);
+    await sql`UPDATE sys_api_key SET expires_on = '2020-01-01' WHERE id = ${rw.id}`.execute(database.db);
+    expect((await keyCall(rw.key, 'GET', '/api/v1/auth/me')).body.error.message).toMatch(/หมดอายุ/);
+    expect((await call('POST', '/api/v1/api-keys', { name: 'x', user_id: clerk, expires_on: '2020-01-01' })).body.error.message).toMatch(/ไม่ก่อนวันนี้/);
+    // ผู้ใช้ถูกถอนสิทธิ์บริษัท → กุญแจใช้ไม่ได้ทันที
+    const k3 = (await call('POST', '/api/v1/api-keys', { name: 'k3', user_id: clerk })).body.key;
+    await sql`UPDATE sys_user_company SET deleted_at = now() WHERE user_id = ${clerk} AND company_id = ${companyId}`.execute(database.db);
+    expect((await keyCall(k3, 'GET', '/api/v1/auth/me')).body.error.message).toMatch(/ไม่มีสิทธิ์เข้าบริษัทนี้/);
+    await sql`UPDATE sys_user_company SET deleted_at = NULL WHERE user_id = ${clerk} AND company_id = ${companyId}`.execute(database.db);
+    // บันทึกเหตุการณ์ + รายการ API (ไม่มีเส้นที่กุญแจใช้ไม่ได้)
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${companyId} AND action IN ('API_KEY_CREATE', 'API_KEY_REVOKE')`.execute(database.db)).rows[0]!.n).toBeGreaterThanOrEqual(4);
+    const docs = (await call('GET', '/api/v1/api-docs')).body.rows.map((r: { method: string; path: string }) => `${r.method} ${r.path}`);
+    expect(docs).toEqual(expect.arrayContaining(['GET /api/v1/customers', 'POST /api/v1/gl/journals', 'GET /api/v1/auth/me']));
+    expect(docs.some((d: string) => /\/users|\/api-keys|\/backup|auth\/select/.test(d))).toBe(false);
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)
@@ -2657,6 +2723,13 @@ describe('Buddy Account API (PGlite)', () => {
     const aFy = (await call('GET', '/api/v1/gl/periods')).body[0].id;
     const aCus = (await call('POST', '/api/v1/customers', { code: 'A-C1', name: 'ลูกค้าของ A', tax_id: '0105537095903' })).body.id;
     expect(aCus).toBeTruthy();
+    // กุญแจ API (T7.5): ลูกค้า A ผูกผู้ใช้ของลูกค้าอื่นไม่ได้ · กุญแจของ A เห็นเฉพาะข้อมูลของ A
+    const otherUser = (await sql<{ id: string }>`SELECT id FROM sys_user WHERE username = 'clerk0'`.execute(database.db)).rows[0]!.id;
+    expect((await call('POST', '/api/v1/api-keys', { name: 'ข้ามลูกค้า', user_id: otherUser })).status).toBe(404);
+    const aKey = (await call('POST', '/api/v1/api-keys', { name: 'ระบบของ A', user_id: (await call('GET', '/api/v1/auth/me')).body.user.id, read_only: true })).body.key as string;
+    expect((await keyCall(aKey, 'GET', `/api/v1/customers/${aCus}`)).status).toBe(200);
+    expect((await keyCall(aKey, 'GET', '/api/v1/customers?q=C520')).body.rows).toHaveLength(0);
+    expect((await keyCall(aKey, 'GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toEqual(['A-CO1']);
     expect((await call('PUT', '/api/v1/settings', { values: { 'gen.vat_rate': 10 } })).status).toBe(200);
     expect((await call('PUT', '/api/v1/gl/prior-year/entry', { fiscal_year_id: aFy, account_id: aAcc[0].id, opening: {}, periods: [{ period_no: 1, debit: '7' }] })).status).toBe(200);
     // สิทธิ์รายเมนู (T0.10): กำหนด/ดูสิทธิ์ของกลุ่มลูกค้า B ไม่ได้

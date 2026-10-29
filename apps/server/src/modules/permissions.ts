@@ -5,6 +5,7 @@ import { docMenuOf, findReport, BANK_KINDS, BILL_KINDS, CASH_KINDS, ITEM_KINDS, 
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
+import { checkApiKeyRule } from './apikeys.js';
 
 /**
  * สิทธิ์ 7 ชนิดรายเมนู — คู่มือบทที่ 23 (S-SEC-01/02/03)
@@ -25,7 +26,7 @@ const LABEL = new Map(FLAT.map((m) => [m.code, m.label]));
 /** เมนูกำหนดค่าโปรแกรม: ระดับ 5 ขึ้นไปจึงเพิ่ม/แก้/ลบได้ (คู่มือหน้า 359–360) */
 const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.FAG', 'SET.PAYM', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
 /** ระบบความปลอดภัยและแก้ไขแบบฟอร์ม: ระดับ 9 เท่านั้น */
-const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG']);
+const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'SET.API', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG']);
 
 export function baseAllowed(level: number, menu: string, action: Action) {
   if (level >= 9) return true;
@@ -120,6 +121,7 @@ const LOOKUP: Rule = { kind: 'lookup' }, SELF: Rule = { kind: 'self' }, OPEN: Ru
 export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/health': OPEN, 'GET /api/v1/setup/status': OPEN, 'POST /api/v1/setup': OPEN, 'POST /api/v1/auth/login': OPEN,
   'GET /api/v1/menu': SELF, 'GET /api/v1/auth/me': SELF, 'POST /api/v1/auth/logout': SELF, 'POST /api/v1/auth/password': SELF, 'POST /api/v1/auth/select': SELF,
+  'GET /api/v1/api-keys': M('SET.API', 'read'), 'POST /api/v1/api-keys': M('SET.API', 'add'), 'POST /api/v1/api-keys/:id/revoke': M('SET.API', 'cancel'), 'GET /api/v1/api-docs': M('SET.API', 'read'),
   'GET /api/v1/users': SELF, 'POST /api/v1/users': SELF, 'PUT /api/v1/users/:id': SELF, 'POST /api/v1/user-groups': SELF,
   'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/companies': SELF,
   'GET /api/v1/activity-log': LOOKUP, 'GET /api/v1/activity-log/search': M('OT.LOG', 'read'),
@@ -298,10 +300,12 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     const method = req.method === 'HEAD' ? 'GET' : req.method;
     const rule = API_RULES[`${method} ${url}`];
     if (!rule) throw forbidden('API นี้ยังไม่ได้กำหนดสิทธิ์ — แจ้งผู้พัฒนาโปรแกรม');
-    if (rule.kind === 'open' || rule.kind === 'self') return;
+    if (rule.kind === 'open') return;
+    if (rule.kind === 'self') { if (req.auth) checkApiKeyRule(req.auth, method, url, 'self', null); return; }
     const a = requireCompany(req);
-    if (rule.kind === 'lookup') return;
+    if (rule.kind === 'lookup') { checkApiKeyRule(a, method, url, 'lookup', null); return; }
     const menu = rule.pick ? await rule.pick(req, db, a.companyId) : rule.menu;
+    checkApiKeyRule(a, method, url, 'menu', menu);
     const r = decide(a, await loadRows(db, a), menu, rule.action);
     if (!r.allowed) {
       throw forbidden(`ไม่มีสิทธิ์${ACTION_TH[rule.action]}ในเมนู "${LABEL.get(menu) ?? menu}" — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ (เมนู อื่น ๆ › ผู้ใช้งานและสิทธิ์)`);

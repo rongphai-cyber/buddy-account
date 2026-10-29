@@ -41,6 +41,7 @@ import { PrintFormsPage } from './pages/settings/PrintForms';
 import { AssetAccountGroupsPage, AssetFormPage, AssetsPage, DepreciationPage } from './pages/fa/Assets';
 import { YearEndPage } from './pages/gl/YearEnd';
 import { BackupPage } from './pages/settings/Backup';
+import { ApiKeysPage } from './pages/settings/ApiKeys';
 import { ActivityLogPage } from './pages/settings/ActivityLog';
 import { AuxTools } from './components/AuxTools';
 import { DataTablesPage } from './pages/settings/DataTables';
@@ -190,6 +191,7 @@ function Shell() {
           <Route path="/fa/depreciation" element={<DepreciationPage />} />
           <Route path="/gl/year-end" element={<YearEndPage />} />
           <Route path="/tools/backup" element={<BackupPage />} />
+          <Route path="/settings/api-keys" element={<ApiKeysPage />} />
           <Route path="/tools/activity-log" element={<ActivityLogPage />} />
           <Route path="/settings/gl-link" element={<GlLinkPage />} />
           <Route path="/settings/data-tables" element={<DataTablesPage />} />

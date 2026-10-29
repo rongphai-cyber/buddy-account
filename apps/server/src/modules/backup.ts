@@ -15,7 +15,7 @@ type Ctx = AuthContext & { companyId: string };
 const FORMAT = 'buddy-backup';
 const USER_FORMAT = 'buddy-users';
 /** ตารางที่ไม่สำรอง/ไม่แทนที่: บันทึกเหตุการณ์ (ห้ามลบ) · คิวซิงก์ · การเข้าระบบ · สิทธิ์ผู้ใช้ (อยู่ในแฟ้มสำรองผู้ใช้ S-SEC-07 แบบ Express) */
-const SKIP = new Set(['sys_activity_log', 'sync_change_log', 'sync_inbox', 'sys_session', 'sys_company', 'sys_user_company', 'sys_permission']);
+const SKIP = new Set(['sys_activity_log', 'sync_change_log', 'sync_inbox', 'sys_session', 'sys_api_key', 'sys_company', 'sys_user_company', 'sys_permission']);
 const MAX_UPLOAD = 1024 * 1024 * 1024;
 
 async function companyTables(db: Db) {
