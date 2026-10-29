@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, type Account } from '../../api';
 import { useSession } from '../../session';
+import { ChartTemplateDialog } from './ChartTemplate';
 import { Confirm, cx, downloadCsv, ErrorBox, Field, GROUP_TH, Modal, Money, PageHead, Pill, toast, toastError, useHotkeys, KeyHints } from '../../ui';
 
 /** ผังบัญชี — คู่มือบทที่ 7 หน้า 96 (S-GL-01) + เปลี่ยนเลขที่บัญชี (S-GL-02) */
@@ -17,6 +18,7 @@ export function AccountsPage() {
   const [renum, setRenum] = useState<Account | null>(null);
   const [del, setDel] = useState<Account | null>(null);
   const [sel, setSel] = useState(0);
+  const [tpl, setTpl] = useState(false);
   const asOf = me?.work_date ?? undefined;
   const accts = useQuery({ queryKey: ['accounts', 'bal', asOf], queryFn: () => api.get<Account[]>('/api/v1/gl/accounts', { with_balance: 1, as_of: asOf }) });
   const list = useMemo(() => {
@@ -34,6 +36,7 @@ export function AccountsPage() {
         actions={<>
           <button className="primary" onClick={() => setEdit('new')}>+ เพิ่มบัญชี <kbd>Ins</kbd></button>
           <button disabled={!cur} onClick={() => cur && setRenum(cur)}>เปลี่ยนเลขที่บัญชี <kbd>Ctrl+G</kbd></button>
+          <button onClick={() => setTpl(true)} title="เพิ่มบัญชี/ชื่อภาษาอังกฤษจากผังบัญชีตัวอย่าง">ผังบัญชีตัวอย่าง</button>
           <button onClick={() => downloadCsv('ผังบัญชี', ['เลขที่บัญชี', 'ชื่อบัญชี', 'ชื่ออังกฤษ', 'บัญชีคุม', 'ระดับ', 'หมวด', 'ประเภท', 'แยกแผนก', 'ยอดคงเหลือ'], list.map((a) => [a.account_no, a.name_th, a.name_en, a.parent_no, a.level, a.account_group, a.is_control ? 'คุม' : 'ย่อย', a.use_department ? 'Y' : 'N', a.balance]))}>ส่งออก Excel</button>
         </>} />
       <div className="filters">
@@ -63,6 +66,7 @@ export function AccountsPage() {
         </table>
       </div>
       <KeyHints keys={[['Ins', 'เพิ่ม'], ['Enter', 'แก้ไข'], ['Ctrl+G', 'เปลี่ยนเลขที่บัญชี'], ['Alt+D', 'ลบ'], ['↑↓', 'เลือก']]} />
+      {tpl && <ChartTemplateDialog onClose={() => setTpl(false)} />}
       {edit && <AccountForm acct={edit === 'new' ? null : edit} all={accts.data ?? []} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
       {renum && <RenumberDialog acct={renum} onClose={() => setRenum(null)} onDone={() => { setRenum(null); reload(); }} />}
       {del && <Confirm title="ลบบัญชี" danger okText="ลบ" text={`ลบบัญชี ${del.account_no} ${del.name_th} ?`} onClose={() => setDel(null)}

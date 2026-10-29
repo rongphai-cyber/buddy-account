@@ -71,7 +71,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const b = parse(z.object({
       code: z.string().trim().min(1, 'ป้อนรหัสบริษัท').max(20).regex(/^[A-Za-z0-9_-]+$/, 'รหัสบริษัทใช้ตัวอักษรอังกฤษ ตัวเลข _ -'),
       name_th: z.string().trim().min(1, 'ป้อนชื่อบริษัท').max(120), tax_id: z.string().trim().optional(),
-      fiscal_start: isoDate, chart: z.enum(['express', 'copy', 'none']).default('express'), copy_from_company_id: uuid.optional(),
+      fiscal_start: isoDate, chart: z.enum(['express', 'th_en', 'copy', 'none']).default('express'), copy_from_company_id: uuid.optional(),
       tenant_id: uuid.optional(),
     }), req.body);
     // ผู้ดูแลของลูกค้าสร้างได้เฉพาะใน tenant ตัวเอง; ผู้ให้บริการเลือก tenant ได้ (ไม่ระบุ = ลูกค้าเริ่มต้น)
@@ -91,7 +91,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       const c = await tx.insertInto('sys_company').values({ tenant_id: tenantId, code: b.code, name_th: b.name_th, tax_id: taxId, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
       await tx.insertInto('sys_branch').values({ company_id: c.id, code: '00000', name: 'สำนักงานใหญ่', tax_branch_no: '00000', is_head_office: true, created_by: a.userId }).execute();
       await createFiscalYear(tx, c.id, b.fiscal_start, a.userId);
-      await seedChart(tx, c.id, { withChart: b.chart === 'express' });
+      await seedChart(tx, c.id, { chart: b.chart === 'express' || b.chart === 'th_en' ? b.chart : null });
       if (b.chart === 'copy') {
         if (!b.copy_from_company_id) throw badRequest('เลือกบริษัทต้นแบบที่จะคัดลอก');
         await copyChart(tx, b.copy_from_company_id, c.id);

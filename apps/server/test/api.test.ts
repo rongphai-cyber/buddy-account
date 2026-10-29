@@ -639,6 +639,40 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
 
+  it('sample Thai–English chart: new company template, add accounts, fill English names', async () => {
+    expect((await call('GET', '/api/v1/gl/chart-templates')).body.map((t: { key: string }) => t.key)).toEqual(['express', 'th_en']);
+    // บริษัทใหม่จากผังตัวอย่าง: บัญชีครบ + บทบาทบัญชีลงรายวันอัตโนมัติครบ
+    const th = (await call('POST', '/api/v1/companies', { code: 'THEN', name_th: 'ผังไทยอังกฤษ', fiscal_start: '2026-01-01', chart: 'th_en' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: th });
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ account_no: string; name_en: string | null; is_control: boolean; level: number }>;
+    expect(accs.length).toBeGreaterThan(250);
+    expect(accs.find((x) => x.account_no === '1111-01')).toMatchObject({ name_en: 'Cash', is_control: false });
+    const roles = (await sql<{ n: number }>`SELECT count(*) AS n FROM gl_default_account WHERE company_id = ${th}`.execute(database.db)).rows[0]!.n;
+    expect(Number(roles)).toBe(34);
+    // บริษัทที่ไม่มีผัง: เพิ่มบัญชีจากผังตัวอย่าง (บัญชีคุมเพิ่มให้เอง)
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    const before = (await call('GET', '/api/v1/gl/accounts')).body.length;
+    const cmp = (await call('GET', '/api/v1/gl/chart-templates/th_en')).body;
+    expect(cmp.accounts.find((x: { no: string }) => x.no === '4400-01').exists).toBe(false);
+    const r = await call('POST', '/api/v1/gl/chart-templates/th_en/apply', { add: ['4400-01', '4400-02'] });
+    expect(r.body.added).toEqual(['4000-00', '4400-00', '4400-01', '4400-02']);
+    const after = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ account_no: string; parent_id: string | null; id: string; level: number }>;
+    expect(after.length).toBe(before + 4);
+    const p = after.find((x) => x.account_no === '4400-00')!;
+    expect(after.find((x) => x.account_no === '4400-01')).toMatchObject({ parent_id: p.id, level: p.level + 1 });
+    expect((await call('POST', '/api/v1/gl/chart-templates/th_en/apply', { add: ['4400-01'] })).body.added).toEqual([]);   // มีแล้วไม่เพิ่มซ้ำ
+    expect((await call('POST', '/api/v1/gl/chart-templates/th_en/apply', { add: ['0000-00'] })).status).toBe(400);
+    // เติมชื่ออังกฤษตามชื่อไทยที่ตรงกัน (ไม่ทับชื่อเดิม)
+    await sql`UPDATE gl_account SET name_en = NULL WHERE company_id = ${otherCompanyId} AND account_no = '4400-02'`.execute(database.db);
+    await sql`INSERT INTO gl_account (company_id, account_no, name_th, name_en, level, account_group, is_control, normal_side) VALUES (${otherCompanyId}, '4400-09', 'ค่าแปลเอกสาร', 'My own name', 3, '4', false, 'C')`.execute(database.db);
+    expect((await call('GET', '/api/v1/gl/chart-templates/th_en')).body.english_fillable).toBe(1);
+    expect((await call('POST', '/api/v1/gl/chart-templates/th_en/apply', { fill_english: true })).body.filled).toBe(1);
+    const en = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ account_no: string; name_en: string | null }>;
+    expect(en.find((x) => x.account_no === '4400-02')!.name_en).toBe('Language Teaching Revenue');
+    expect(en.find((x) => x.account_no === '4400-09')!.name_en).toBe('My own name');
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

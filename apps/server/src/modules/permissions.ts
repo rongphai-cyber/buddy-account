@@ -105,6 +105,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/gl/accounts': LOOKUP, 'POST /api/v1/gl/accounts': M('GL.ACC', 'add'), 'PUT /api/v1/gl/accounts/:id': M('GL.ACC', 'edit'),
   'POST /api/v1/gl/accounts/:id/renumber': M('GL.ACC', 'edit'), 'DELETE /api/v1/gl/accounts/:id': M('GL.ACC', 'delete'),
   'GET /api/v1/gl/default-accounts': LOOKUP,
+  'GET /api/v1/gl/chart-templates': LOOKUP, 'GET /api/v1/gl/chart-templates/:key': M('GL.ACC', 'read'), 'POST /api/v1/gl/chart-templates/:key/apply': M('GL.ACC', 'add'),
   'GET /api/v1/gl/books': LOOKUP, 'POST /api/v1/gl/books': M('GL.BOOK', 'add'), 'PUT /api/v1/gl/books/:id': M('GL.BOOK', 'edit'),
   'GET /api/v1/gl/journals': M('GL.JNL', 'read'), 'GET /api/v1/gl/journals/:id': M('GL.JNL', 'read'), 'GET /api/v1/gl/journals-next-no': M('GL.JNL', 'read'),
   'POST /api/v1/gl/journals': M('GL.JNL', 'add'), 'PUT /api/v1/gl/journals/:id': M('GL.JNL', 'edit'), 'POST /api/v1/gl/journals/:id/cancel': M('GL.JNL', 'cancel'),

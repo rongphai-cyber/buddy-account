@@ -34,6 +34,14 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await shot('03-account-form');
     await page.keyboard.press('Escape');
   });
+  await step('sample chart of accounts (ไทย–อังกฤษ, view only)', async () => {
+    await page.goto(BASE + '/gl/accounts');
+    await page.getByRole('button', { name: 'ผังบัญชีตัวอย่าง' }).click();
+    await page.waitForSelector('.modal table.grid tbody tr', { timeout: 15000 });
+    await shot('02b-chart-template');
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.modal', { state: 'detached', timeout: 5000 });
+  });
   await step('journals list', async () => {
     await page.goto(BASE + '/gl/journals?from=2026-09-01&to=2026-09-30');
     await page.waitForSelector('table.grid tbody tr.row-open', { timeout: 15000 });
@@ -86,6 +94,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
   await step('validation error shown', async () => {
     await page.goto(BASE + '/gl/journals/new');
     await page.waitForSelector('.lines tbody tr');
+    await page.waitForLoadState('networkidle');   // รอผังบัญชีโหลดก่อนพิมพ์เลขที่บัญชี (ไม่งั้นหน้าต่างค้นหาเปิด)
     const acc = page.locator('.lines tbody tr').nth(0).locator('.lk-in input');
     await acc.fill('5390-01'); await acc.press('Enter');
     await page.locator('.lines tbody tr').nth(0).locator('input.num').nth(0).fill('100');

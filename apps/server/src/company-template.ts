@@ -11,8 +11,11 @@ interface ChartTemplate {
   journal_books: Array<{ code: string; prefix: string; th: string; en: string | null }>;
 }
 
-export async function loadChartTemplate(): Promise<ChartTemplate> {
-  return JSON.parse(await readFile(resolve(REPO_ROOT, 'db/seed/chart_template_express.json'), 'utf8'));
+/** แม่แบบผังบัญชี: express = ผังมาตรฐาน Express · th_en = ผังตัวอย่างไทย–อังกฤษของเจ้าของ (tools/chart/xlsx_chart.py) */
+export const CHART_TEMPLATES = { express: 'ผังบัญชีมาตรฐาน (Express)', th_en: 'ผังบัญชีตัวอย่าง ไทย–อังกฤษ' } as const;
+export type ChartTemplateKey = keyof typeof CHART_TEMPLATES;
+export async function loadChartTemplate(key: ChartTemplateKey = 'express'): Promise<ChartTemplate> {
+  return JSON.parse(await readFile(resolve(REPO_ROOT, `db/seed/chart_template_${key}.json`), 'utf8'));
 }
 
 /** กฎการลงบัญชี + เส้นทางสมุดรายวัน (db/generated/seed_company_template.sql) สำหรับบริษัท */
@@ -46,12 +49,12 @@ function addDays(iso: string, n: number) {
 }
 
 /** ผังบัญชีมาตรฐาน + บทบาทบัญชี + สมุดรายวัน 00–04 */
-export async function seedChart(db: Kysely<DB>, companyId: string, opts: { withChart: boolean }) {
-  const t = await loadChartTemplate();
+export async function seedChart(db: Kysely<DB>, companyId: string, opts: { chart: ChartTemplateKey | null }) {
+  const t = await loadChartTemplate(opts.chart ?? 'express');
   for (const b of t.journal_books) {
     await db.insertInto('gl_journal_book').values({ company_id: companyId, code: b.code, prefix: b.prefix, name_th: b.th, name_en: b.en }).onConflict((oc) => oc.doNothing()).execute();
   }
-  if (!opts.withChart) return;
+  if (!opts.chart) return;
   const ids = new Map<string, string>();
   for (const a of [...t.accounts].sort((x, y) => x.level - y.level || x.no.localeCompare(y.no))) {
     const r = await db.insertInto('gl_account').values({

@@ -32,6 +32,7 @@ export function NewCompanyPage() {
         <Field label="ผังบัญชีเริ่มต้น" req>
           <select value={f.chart} onChange={(e) => setF({ ...f, chart: e.target.value })}>
             <option value="express">ผังบัญชีมาตรฐาน (แบบ Express 292 บัญชี)</option>
+            <option value="th_en">ผังบัญชีตัวอย่าง ไทย–อังกฤษ (287 บัญชี)</option>
             <option value="copy">คัดลอกจากบริษัทที่มีอยู่</option>
             <option value="none">ไม่มี (สร้างเอง)</option>
           </select>
