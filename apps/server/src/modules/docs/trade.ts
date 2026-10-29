@@ -8,7 +8,7 @@ import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
 import { activeSettlement, cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
-import { checkNegative, issueCost, stockSettings } from './stockcost.js';
+import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -212,6 +212,7 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
+    if (mv) await recostAfter(tx, a, hid!);
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
     return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: calc.net_amount, warnings };
   });

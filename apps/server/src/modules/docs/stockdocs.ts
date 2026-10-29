@@ -8,7 +8,7 @@ import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
 import { branchOf } from './payments.js';
-import { checkNegative, issueCost, stockSettings } from './stockcost.js';
+import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
 
 /**
  * รายการประจำวันสินค้า (คู่มือบทที่ 14) — ยอดสต๊อกคำนวณสดจากบรรทัด (v_stock_move)
@@ -131,6 +131,7 @@ export async function writeStockDoc(db: Db, a: Ctx, K: StockKind, id: string | n
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
+    await recostAfter(tx, a, hid!);
     await logActivity(tx, a, { module: 'IC', action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
     return { id: hid!, doc_no: docNo, journal_id: posted.journal_id, net_amount: total };
   }

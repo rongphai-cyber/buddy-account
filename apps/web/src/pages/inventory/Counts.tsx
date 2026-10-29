@@ -106,8 +106,8 @@ export function CountsPage() {
                   <td>{r.unit_code}</td>
                   <td className={cx('r', diff && diff.lt(0) && 'bad')}>{diff ? fmt(diff.toString(), { places: 2 }) : ''}</td>
                   <td className="r">{r.flag === '6' && r.adjust_value !== null ? <Money v={r.adjust_value} /> : diff && r.avg_cost ? <Money v={diff.times(d(r.avg_cost)).toFixed(2)} /> : ''}</td>
-                  <td>{r.flag === '6' ? <><Pill tone="n">ปรับปรุงแล้ว</Pill> <button className="link" onClick={() => setReopen({ id: r.adjust_header_id!, doc_no: r.adjust_doc_no! })} title="ยกเลิกใบปรับปรุงเพื่อแก้ยอดนับ (Ctrl+R ของ Express)">{r.adjust_doc_no}</button>
-                    {d(r.system_qty).minus(d(r.counted_qty ?? 0)).abs().gt(0) && <span className="bad small" title="มีรายการย้อนหลังหลังปรับปรุง ยอด ณ วันนับไม่เท่ายอดนับแล้ว — ยกเลิกใบปรับปรุงแล้วปรับปรุงใหม่"> ⚠ ยอดเปลี่ยน</span>}</>
+                  <td>{r.flag === '6' ? <><Pill tone="n">ปรับปรุงแล้ว</Pill> {r.adjust_header_id && <button className="link" onClick={() => setReopen({ id: r.adjust_header_id!, doc_no: r.adjust_doc_no! })} title="ยกเลิกใบปรับปรุงเพื่อแก้ยอดนับ (Ctrl+R ของ Express)">{r.adjust_doc_no}</button>}
+                    {r.adjust_header_id && d(r.system_qty).minus(d(r.counted_qty ?? 0)).abs().gt(0) && <span className="bad small" title="มีรายการย้อนหลังหลังปรับปรุง ยอด ณ วันนับไม่เท่ายอดนับแล้ว — ยกเลิกใบปรับปรุงแล้วปรับปรุงใหม่"> ⚠ ยอดเปลี่ยน</span>}</>
                     : <Pill tone={FLAG[r.flag][1]}>{FLAG[r.flag][0]}</Pill>}</td>
                 </tr>
               );

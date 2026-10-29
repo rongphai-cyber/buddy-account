@@ -1900,6 +1900,35 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', `/api/v1/ar-receipts/${r1.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     for (const x of [iv1, iv2]) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('back-dated documents re-cost later issues automatically (average), journals follow, cancel restores', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const sup = (await call('GET', '/api/v1/suppliers?q=S200')).body.rows[0].id;
+    const it = (await call('POST', '/api/v1/items', { code: '02-TEST-000051', name_th: 'สินค้าคิดทุนย้อนหลัง', base_unit_id: unit, std_cost: '1' })).body.id;
+    const rr = (date: string, price: number) => call('POST', '/api/v1/purchase-invoices', { doc_type_id: '', doc_date: date, party_id: sup, price_type: '0', vat_rate: 0, warehouse_id: w1, lines: [{ item_id: it, qty: 10, unit_price: price }] });
+    const r1 = (await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2026-03-01', party_id: sup, price_type: '0', vat_rate: 0, warehouse_id: w1, lines: [{ item_id: it, qty: 10, unit_price: 100 }] })).body;
+    void rr;
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2026-03-10', party_id: cus, price_type: '0', vat_rate: 0, warehouse_id: w1, lines: [{ item_id: it, qty: 5, unit_price: 300 }] })).body;
+    const ou = (await call('POST', '/api/v1/stock-issues', { doc_type_id: await typeOf('OU'), doc_date: '2026-03-12', lines: [{ item_id: it, warehouse_id: w1, qty: 2 }] })).body;
+    const cost = async () => (await call('GET', `/api/v1/stock/card?item_id=${it}&from=2026-03-01&to=2026-03-31`)).body.lines.map((l: { doc_no: string; value: string }) => l.value);
+    const cogs = async () => (await call('GET', `/api/v1/docs/${iv.id}/journal`)).body.journals[0].lines.filter((l: { posting_role: string }) => l.posting_role === 'COGS').map((l: { debit: string }) => l.debit);
+    expect(await cost()).toEqual(['1000.00', '-500.00', '-200.00']);
+    expect(await cogs()).toEqual(['500.00']);
+    // ซื้อย้อนหลัง 5/3 10 @200 → ถัวเฉลี่ย ณ 10/3 = 150 · เบิก 12/3 = (3000 − 750) / 15 = 150
+    const r2 = (await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2026-03-05', party_id: sup, price_type: '0', vat_rate: 0, warehouse_id: w1, lines: [{ item_id: it, qty: 10, unit_price: 200 }] })).body;
+    expect(await cost()).toEqual(['1000.00', '2000.00', '-750.00', '-300.00']);
+    expect(await cogs()).toEqual(['750.00']);
+    expect((await call('GET', `/api/v1/stock-issues/${ou.id}`)).body.net_amount).toBe('300.00');
+    // ยกเลิกใบซื้อย้อนหลัง → กลับเป็นต้นทุนเดิม
+    expect((await call('POST', `/api/v1/purchase-invoices/${r2.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect(await cost()).toEqual(['1000.00', '-500.00', '-200.00']);
+    expect(await cogs()).toEqual(['500.00']);
+    for (const [path, id] of [['stock-issues', ou.id], ['sales-invoices', iv.id], ['purchase-invoices', r1.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

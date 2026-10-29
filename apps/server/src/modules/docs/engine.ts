@@ -5,6 +5,7 @@ import { badRequest, notFound } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
+import { recostAfter } from './stockcost.js';
 import { loadPostingInput, loadResolver } from '../posting.js';
 import { cancelVatEntries, syncVatEntries } from '../vat.js';
 
@@ -169,6 +170,8 @@ export async function cancelDocument(db: Db, ctx: Ctx, headerId: string, reason:
     await unpostDocument(tx, ctx, headerId);
     await tx.updateTable('doc_header').set({ doc_status: 'C', cancel_reason: reason.slice(0, 200), updated_by: ctx.userId }).where('id', '=', headerId).execute();
     await cancelVatEntries(tx, ctx.companyId, headerId);
+    // ยกเลิกเอกสารที่ตัด/รับสต๊อก → คิดต้นทุนของรายการจ่ายที่ตามมาใหม่
+    await recostAfter(tx, ctx, headerId);
     await logActivity(tx, ctx, { module: 'DOC', action: 'CANCEL', docNo: h.doc_no, table: 'doc_header', rowId: headerId, detail: { reason } });
     return { ok: true };
   });

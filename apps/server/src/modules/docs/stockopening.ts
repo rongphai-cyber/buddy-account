@@ -7,6 +7,7 @@ import { badRequest, notFound, parse, requireCompany, type AuthContext } from '.
 import { logActivity } from '../../audit.js';
 import { cancelDocument } from './engine.js';
 import { branchOf } from './payments.js';
+import { recostAfter } from './stockcost.js';
 
 /**
  * ยอดยกมาสินค้า (คู่มือบทที่ 8 S-OB-01 ล็อตยกมา FIFO / S-OB-02 ยอดยกมารายคลัง Average)
@@ -75,6 +76,7 @@ async function save(db: Db, a: Ctx, id: string | null, b: z.infer<typeof body>) 
       return { company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'I', item_id: it.id, description: l.description || it.name_th, warehouse_id: l.warehouse_id, unit_id: it.base_unit_id, factor: '1',
         qty: q.toString(), base_qty: q.toString(), stock_effect: 1, movement_code: '1', cost_amount: v.toFixed(2), cost_unit: v.div(q).toDecimalPlaces(4).toString(), line_amount: v.toFixed(2), net_amount: v.toFixed(2), created_by: a.userId };
     })).execute();
+    await recostAfter(tx, a, hid!);
     await logActivity(tx, a, { module: 'IC', action: id ? 'EDIT' : 'ADD', docNo: b.doc_no, table: 'doc_header', rowId: hid });
     return { id: hid, doc_no: b.doc_no, net_amount: total };
   });
