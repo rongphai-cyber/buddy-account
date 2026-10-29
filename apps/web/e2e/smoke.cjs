@@ -238,6 +238,31 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.locator('input[type=search]').fill('zzz-ไม่มี');
     await page.waitForSelector('td.empty', { timeout: 15000 });
   });
+  await step('item master (S-IC-01/03/05/06/07, S-SO-02, S-AP-02, S-SET-04)', async () => {
+    // ดูอย่างเดียว ไม่บันทึก: ทุกชนิดรหัส เปิดรายการแรก ทุกแท็บ แล้ว Esc
+    for (const url of ['/ic/items', '/ic/kits', '/ic/services', '/ar/other-incomes', '/ap/other-expenses', '/settings/item-account-groups']) {
+      await page.goto(BASE + url);
+      const row = page.locator('table.grid tbody tr.row-open').first();
+      if (!(await row.waitFor({ timeout: 10000 }).then(() => true).catch(() => false))) { await page.waitForSelector('td.empty', { timeout: 10000 }); continue; }
+      await row.click();
+      await page.waitForSelector('.modal .form-grid input', { timeout: 15000 });
+      for (const t of await page.locator('.modal [role=tab]').all()) await t.click();
+      await shot('15n-' + url.split('/').pop());
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.modal', { state: 'detached', timeout: 5000 });
+    }
+    await page.goto(BASE + '/ic/items');
+    await page.locator('input[type=search]').fill('zzz-ไม่มี');
+    await page.waitForSelector('td.empty', { timeout: 15000 });
+    for (const url of ['/ic/prices', '/ic/reorder']) {
+      await page.goto(BASE + url);
+      const pick = page.locator('.toolbar .pick input');
+      await pick.fill('A');
+      await page.locator('.pick-list li[role=option]').first().click({ timeout: 15000 });
+      await page.waitForSelector(url === '/ic/prices' ? 'fieldset.box' : 'table.grid', { timeout: 15000 });
+      await shot('15o-' + url.split('/').pop());
+    }
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

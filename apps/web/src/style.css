@@ -457,3 +457,26 @@ pre { background: var(--surface-2); border: 1px solid var(--line); border-radius
   .w50-print .w50-sheet:last-child { break-after: auto; }
 }
 @media (max-width: 1200px) { .w50-layout { grid-template-columns: minmax(0, 1fr); } .w50-preview { position: static; } .form-grid.w50-grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ช่องค้นหาแล้วเลือก (SearchPick) */
+.pick { position: relative; }
+.pick input { width: 100%; }
+.pick-list { position: absolute; z-index: 25; left: 0; right: 0; min-width: 320px; margin: 2px 0 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 6px 18px rgba(0,0,0,.12); max-height: 300px; overflow: auto; }
+.pick-list li { padding: 4px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick-list li.on, .pick-list li:hover { background: color-mix(in srgb, var(--tone) 16%, transparent); }
+
+/* แฟ้มสินค้า (บทที่ 7) */
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) 90px; gap: 6px; }
+.prices5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.form-grid.price-main { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+fieldset.box { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px 12px; margin: 10px 0; background: var(--surface); }
+fieldset.box legend { font-weight: 700; padding: 0 6px; }
+.chip { display: inline-block; padding: 1px 8px; margin: 0 6px 4px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+ul.plain { list-style: none; padding: 0; margin: 8px 0; } ul.plain li { padding: 3px 0; }
+@media (max-width: 900px) { .form-grid.price-main { grid-template-columns: repeat(2, minmax(0, 1fr)); } .prices5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* แถบเครื่องมือ: ช่องค้นหายืดได้ ช่องเลือกกว้างตามเนื้อหา (input/select ทั่วไปกว้าง 100%) */
+.toolbar { align-items: center; }
+.toolbar > select { width: auto; max-width: 260px; }
+.toolbar > input[type=search] { width: auto; flex: 1 1 280px; max-width: 520px; }
+.toolbar > label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.toolbar > label > select { width: auto; }

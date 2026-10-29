@@ -1111,6 +1111,7 @@ CREATE TABLE md_item_account_group (
   name_th varchar(120) NOT NULL,
   name_en varchar(120),
   cost_method char(1) CHECK (cost_method IS NULL OR cost_method IN ('F','A')),
+  item_specific boolean DEFAULT false NOT NULL,
   inventory_account_id uuid,
   cogs_account_id uuid,
   sales_account_id uuid,
@@ -1133,6 +1134,7 @@ COMMENT ON COLUMN md_item_account_group.code IS 'รหัสกลุ่ม [Ex
 COMMENT ON COLUMN md_item_account_group.name_th IS 'ชื่อกลุ่ม [Express: ISACC.ACCDES]';
 COMMENT ON COLUMN md_item_account_group.name_en IS 'ชื่อภาษาอังกฤษ [Express: ISACC.ACCDES2]';
 COMMENT ON COLUMN md_item_account_group.cost_method IS 'F=FIFO A=ถัวเฉลี่ย (ว่าง=ตามค่าบริษัท) [Express: ISACC.METHOD]';
+COMMENT ON COLUMN md_item_account_group.item_specific IS 'กลุ่มเฉพาะของสินค้าบริการ/รายได้อื่น/ค่าใช้จ่ายอื่น 1 รายการ (Express METHOD=''-'') — ไม่แสดงในรายการกลุ่มบัญชี แก้ที่หน้าจอสินค้า [Express: ISACC.METHOD=''-'']';
 COMMENT ON COLUMN md_item_account_group.inventory_account_id IS 'บัญชีสินค้า (ค่าใช้จ่าย สำหรับรหัสค่าใช้จ่ายอื่น) [Express: ISACC.ACCNUM01]';
 COMMENT ON COLUMN md_item_account_group.cogs_account_id IS 'บัญชีต้นทุนขาย [Express: ISACC.ACCNUM02]';
 COMMENT ON COLUMN md_item_account_group.sales_account_id IS 'บัญชีขาย [Express: ISACC.ACCNUM03]';
@@ -1183,6 +1185,8 @@ CREATE TABLE md_item (
   udf_3 varchar(30),
   udf_4 varchar(30),
   udf_date_1 date,
+  udf_date_2 date,
+  udf_num_1 numeric(18,4),
   remark text,
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
   inactive_date date,
@@ -1199,7 +1203,7 @@ COMMENT ON TABLE md_item IS 'สินค้า / บริการ / รหั
 COMMENT ON COLUMN md_item.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
 COMMENT ON COLUMN md_item.company_id IS 'บริษัท';
 COMMENT ON COLUMN md_item.code IS 'รหัสสินค้า [Express: STMAS.STKCOD]';
-COMMENT ON COLUMN md_item.item_type IS '0=สินค้า 1=สินค้าชุด 2=บริการ 4=รายได้อื่น 5=ค่าใช้จ่ายอื่น [Express: STMAS.STKTYP]';
+COMMENT ON COLUMN md_item.item_type IS '0=สินค้า 1=สินค้าชุดธรรมดา 2=สินค้าชุดพิเศษ 3=สินค้าบริการ 4=รายได้อื่น 5=ค่าใช้จ่ายอื่น [Express: STMAS.STKTYP]';
 COMMENT ON COLUMN md_item.barcode IS 'บาร์โค้ด [Express: STMAS.BARCOD]';
 COMMENT ON COLUMN md_item.name_th IS 'ชื่อสินค้า [Express: STMAS.STKDES]';
 COMMENT ON COLUMN md_item.name_en IS 'ชื่อภาษาอังกฤษ [Express: STMAS.STKDES2]';
@@ -1229,6 +1233,8 @@ COMMENT ON COLUMN md_item.udf_2 IS 'ช่องกำหนดเอง 2 [Expr
 COMMENT ON COLUMN md_item.udf_3 IS 'ช่องกำหนดเอง 3 [Express: STMAS.STR3]';
 COMMENT ON COLUMN md_item.udf_4 IS 'ช่องกำหนดเอง 4 [Express: STMAS.STR4]';
 COMMENT ON COLUMN md_item.udf_date_1 IS 'วันที่กำหนดเอง (เช่น วันหมดอายุ) [Express: STMAS.DAT1]';
+COMMENT ON COLUMN md_item.udf_date_2 IS 'วันที่กำหนดเอง 2 [Express: STMAS.DAT2]';
+COMMENT ON COLUMN md_item.udf_num_1 IS 'ตัวเลขกำหนดเอง [Express: STMAS.NUM1]';
 COMMENT ON COLUMN md_item.remark IS 'หมายเหตุ [Express: STMAS.REMARK]';
 COMMENT ON COLUMN md_item.status IS 'สถานะ [Express: STMAS.STATUS]';
 COMMENT ON COLUMN md_item.inactive_date IS 'วันที่เลิกใช้ [Express: STMAS.INACTDAT]';

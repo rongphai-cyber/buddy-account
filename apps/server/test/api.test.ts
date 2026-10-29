@@ -545,6 +545,100 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/suppliers/${s1.body.id}`)).status).toBe(404);
   });
 
+  it('item master: account groups, items, kits, services, other income/expense, prices, reorder (บทที่ 7 / S-SET-04)', async () => {
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
+    const leaf = accs.filter((x) => !x.is_control);
+    const acc = (no: string) => accs.find((x) => x.account_no === no)?.id ?? leaf[0]!.id;
+    const control = accs.find((x) => x.is_control)!.id;
+    // หน่วยนับ/คลัง ยังไม่มีหน้าจอ (T1.17) — ใส่ตรงเข้าฐานข้อมูล
+    const ins = async (t: string, code: string, name: string) => (await sql<{ id: string }>`INSERT INTO ${sql.table(t)} (company_id, code, name_th) VALUES (${companyId}, ${code}, ${name}) RETURNING id`.execute(database.db)).rows[0]!.id;
+    const pcs = await ins('md_unit', 'PCS', 'ชิ้น'), box = await ins('md_unit', 'BOX', 'กล่อง');
+    const wh1 = await ins('md_warehouse', '01', 'สนญ.'), wh2 = await ins('md_warehouse', '02', 'คลังสาขา');
+    expect(Object.keys((await call('GET', '/api/v1/lookups?types=UNIT,WH,IAG,22')).body).sort()).toEqual(['22', 'IAG', 'UNIT', 'WH']);
+    // กลุ่มบัญชีสินค้า (S-SET-04)
+    const grpBody = { code: 'st01', name_th: 'สินค้าสำเร็จรูป FIFO', cost_method: 'F', inventory_account_id: leaf[0]!.id, cogs_account_id: leaf[1]!.id };
+    expect((await call('POST', '/api/v1/item-account-groups', { ...grpBody, cogs_account_id: null })).status).toBe(400);
+    expect((await call('POST', '/api/v1/item-account-groups', { ...grpBody, sales_account_id: control })).body.error.message).toMatch(/บัญชีคุม/);
+    expect((await call('POST', '/api/v1/item-account-groups', { ...grpBody, code: 'TOOLONG' })).status).toBe(400);
+    const grp = (await call('POST', '/api/v1/item-account-groups', grpBody)).body.id;
+    expect((await call('POST', '/api/v1/item-account-groups', grpBody)).status).toBe(409);
+    expect((await call('GET', '/api/v1/item-account-groups')).body.map((g: { code: string }) => g.code)).toEqual(['ST01']);
+    // สินค้า (S-IC-01) — รหัสตามรูปแบบ เริ่มระบบ 1.3.1
+    await call('PUT', '/api/v1/settings', { values: { 'ic.item_code_mask': '99-!!!!-!!!!!!' } });
+    const item = { code: '01-intl-cl-600', name_th: 'ซีพียู อินเทล', base_unit_id: pcs, sales_unit_id: box, sales_factor: 10, account_group_id: grp, price_1: '7500', std_cost: '6000', vat_code: '1', allow_negative: 'N', udf_date_1: '2027-01-31' };
+    expect((await call('POST', '/api/v1/items', { ...item, code: 'AB-INTL' })).body.error.message).toMatch(/รูปแบบ 99-!!!!-!!!!!!/);
+    expect((await call('POST', '/api/v1/items', { ...item, base_unit_id: null })).body.error.message).toMatch(/หน่วยนับ/);
+    expect((await call('POST', '/api/v1/items', { ...item, sales_factor: 0 })).status).toBe(400);
+    const cpu = await call('POST', '/api/v1/items', item);
+    expect(cpu.status).toBe(200);
+    const cpuD = (await call('GET', `/api/v1/items/${cpu.body.id}`)).body;
+    expect(cpuD).toMatchObject({ code: '01-INTL-CL-600', item_type: '0', account_group: { code: 'ST01' }, totals: { qty: '0' } });
+    expect((await call('POST', '/api/v1/items', { ...item, name_th: 'ซ้ำ' })).status).toBe(409);
+    const ram = (await call('POST', '/api/v1/items', { ...item, code: '03-KING-8GB', name_th: 'แรม', price_1: '900', std_cost: '700', udf_date_1: null })).body.id;
+    expect((await call('GET', '/api/v1/items?q=INTL')).body.rows.map((r: { code: string }) => r.code)).toEqual(['01-INTL-CL-600']);
+    // สินค้าชุด (S-IC-03/04) — ชุดธรรมดา 1 / ชุดพิเศษ 2, ส่วนประกอบต้องมีอยู่แล้ว
+    const kit = { code: '80-PMTH-CL600', name_th: 'ชุดคอมพิวเตอร์', item_type: '1', base_unit_id: pcs, item_level: '11', price_1: '27500', bom: [{ component_item_id: cpu.body.id, qty: 1 }, { component_item_id: ram, qty: '2', sell_price: '900' }] };
+    expect((await call('POST', '/api/v1/kits', { ...kit, bom: [] })).body.error.message).toMatch(/อย่างน้อย 1/);
+    const k1 = await call('POST', '/api/v1/kits', kit);
+    expect(k1.status).toBe(200);
+    expect((await call('PUT', `/api/v1/kits/${k1.body.id}`, { ...kit, bom: [{ component_item_id: k1.body.id, qty: 1 }] })).body.error.message).toMatch(/ตัวสินค้าชุดเอง/);
+    const k2 = (await call('POST', '/api/v1/kits', { ...kit, code: '81-SETB-BIG', item_type: '2', item_level: '12', bom: [{ component_item_id: k1.body.id, qty: 1 }] })).body.id;
+    expect((await call('PUT', `/api/v1/kits/${k1.body.id}`, { ...kit, bom: [{ component_item_id: k2, qty: 1 }] })).body.error.message).toMatch(/วนกลับ/);
+    expect((await call('POST', '/api/v1/kits', { ...kit, code: '82-SAME-LVL', bom: [{ component_item_id: k1.body.id, qty: 1 }] })).body.error.message).toMatch(/ระดับสินค้าต่างกัน/);
+    const kd = (await call('GET', `/api/v1/kits/${k1.body.id}`)).body;
+    expect(kd.bom.map((b: { component_code: string; qty: string }) => [b.component_code, Number(b.qty)])).toEqual([['01-INTL-CL-600', 1], ['03-KING-8GB', 2]]);
+    const copy = await call('POST', `/api/v1/kits/${k1.body.id}/copy`, { code: '80-PMTH-COPY' });
+    expect(copy.status).toBe(200);
+    expect((await call('GET', `/api/v1/kits/${copy.body.id}`)).body.bom).toHaveLength(2);
+    expect((await call('GET', `/api/v1/items/${k1.body.id}`)).status).toBe(404);          // ชุดไม่อยู่ในหน้าสินค้า
+    expect((await call('DELETE', `/api/v1/items/${ram}`)).body.error.message).toMatch(/สินค้าประกอบ/);
+    // สินค้าบริการ (S-IC-05): บัญชีเก็บในกลุ่มเฉพาะสินค้า ไม่แสดงในรายการกลุ่ม
+    const rev = acc('4100-01'), cost = leaf[2]!.id, wage = leaf[3]!.id;
+    const srv = { code: '93-4100-XX', name_th: 'ค่าติดตั้ง', base_unit_id: pcs, price_1: '500', accounts: { revenue: rev } };
+    expect((await call('POST', '/api/v1/services', { ...srv, accounts: {} })).body.error.message).toMatch(/บัญชีรายได้/);
+    expect((await call('POST', '/api/v1/services', { ...srv, std_cost: '100' })).body.error.message).toMatch(/ต้นทุนบริการ/);
+    const s1 = await call('POST', '/api/v1/services', { ...srv, std_cost: '100', accounts: { revenue: rev, cost_dr: cost, cost_cr: wage } });
+    expect(s1.status).toBe(200);
+    expect((await call('GET', `/api/v1/services/${s1.body.id}`)).body.accounts).toMatchObject({ revenue: rev, revenue_return: null, cost_dr: cost, cost_cr: wage });
+    expect((await call('PUT', `/api/v1/services/${s1.body.id}`, { ...srv, accounts: { revenue: rev, revenue_return: leaf[4]!.id } })).status).toBe(200);
+    expect((await call('GET', `/api/v1/services/${s1.body.id}`)).body.accounts).toMatchObject({ revenue_return: leaf[4]!.id, cost_dr: null });
+    expect((await call('GET', '/api/v1/item-account-groups')).body).toHaveLength(1);
+    // รายได้อื่น (S-SO-02) / ค่าใช้จ่ายอื่น (S-AP-02)
+    expect((await call('POST', '/api/v1/other-incomes', { code: '94-4100-02', name_th: 'ค่าบริการซ่อม', accounts: { revenue: rev } })).status).toBe(200);
+    expect((await call('POST', '/api/v1/other-expenses', { code: '95-5200-02', name_th: 'ค่าโฆษณา' })).body.error.message).toMatch(/บัญชีค่าใช้จ่าย/);
+    const ex = await call('POST', '/api/v1/other-expenses', { code: '95-5200-02', name_th: 'ค่าโฆษณา', price_1: '1500', accounts: { expense: leaf[5]!.id } });
+    expect((await call('GET', `/api/v1/other-expenses/${ex.body.id}`)).body.accounts.expense).toBe(leaf[5]!.id);
+    expect((await call('POST', '/api/v1/other-incomes', { code: '95-5200-02', name_th: 'ซ้ำกับค่าใช้จ่าย', accounts: { revenue: rev } })).body.error.message).toMatch(/ค่าใช้จ่ายอื่น/);
+    // ตารางราคาขาย (S-IC-06): ราคาหลัก + ราคาเสริมตามปริมาณ/ช่วงเวลา
+    const prices = { sales_unit_id: pcs, sales_factor: 1, price_1: '7500', price_2: '7900', breaks: [{ unit_id: pcs, min_qty: 10, price_1: '7000', start_date: '2026-06-08', end_date: '2026-06-16' }, { unit_id: pcs, min_qty: 15, is_percent: true, price_1: '2' }] };
+    expect((await call('PUT', `/api/v1/items/${cpu.body.id}/prices`, { ...prices, breaks: [{ min_qty: 5, start_date: '2026-06-16', end_date: '2026-06-08' }] })).body.error.message).toMatch(/วันสิ้นสุดก่อนวันเริ่ม/);
+    expect((await call('PUT', `/api/v1/items/${cpu.body.id}/prices`, prices)).status).toBe(200);
+    const pr = (await call('GET', `/api/v1/items/${cpu.body.id}/prices`)).body;
+    expect(pr.price_2).toMatch(/^7900/); expect(pr.breaks).toHaveLength(2);
+    // จุดสั่งซื้อ (S-IC-07) แยกคลัง/ช่วงเวลา
+    const ro = { rows: [{ warehouse_id: wh1, start_mmdd: '0101', min_qty: 20, max_qty: 100, order_qty: 50 }, { warehouse_id: wh1, start_mmdd: '1201', min_qty: 50 }, { warehouse_id: wh2, start_mmdd: '0101', min_qty: 5 }] };
+    expect((await call('PUT', `/api/v1/items/${cpu.body.id}/reorder`, { rows: [{ ...ro.rows[0], start_mmdd: '1301' }] })).status).toBe(400);
+    expect((await call('PUT', `/api/v1/items/${cpu.body.id}/reorder`, { rows: [ro.rows[0], ro.rows[0]] })).body.error.message).toMatch(/ซ้ำ/);
+    expect((await call('PUT', `/api/v1/items/${cpu.body.id}/reorder`, { rows: [{ ...ro.rows[0], max_qty: 10 }] })).body.error.message).toMatch(/จำนวนสูงสุด/);
+    expect((await call('PUT', `/api/v1/items/${cpu.body.id}/reorder`, ro)).status).toBe(200);
+    expect((await call('GET', `/api/v1/items/${cpu.body.id}/reorder`)).body.rows).toHaveLength(3);
+    // ลบได้เมื่อไม่มีเอกสาร/สต๊อก — ลบกลุ่มที่ยังใช้อยู่ไม่ได้
+    expect((await call('DELETE', `/api/v1/item-account-groups/${grp}`)).body.error.message).toMatch(/ใช้อยู่กับสินค้า/);
+    expect((await call('DELETE', `/api/v1/other-expenses/${ex.body.id}`)).status).toBe(200);
+    // บริษัทอื่น/ลูกค้ารายอื่นมองไม่เห็น แก้ไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/items?status=all')).body.total).toBe(0);
+    expect((await call('GET', `/api/v1/items/${cpu.body.id}`)).status).toBe(404);
+    expect((await call('PUT', `/api/v1/items/${cpu.body.id}`, { ...item, base_unit_id: null })).status).toBe(404);
+    expect((await call('GET', `/api/v1/items/${cpu.body.id}/prices`)).status).toBe(404);
+    expect((await call('PUT', `/api/v1/items/${cpu.body.id}/reorder`, { rows: [] })).status).toBe(404);
+    expect((await call('POST', `/api/v1/kits/${k1.body.id}/copy`, { code: 'X1' })).status).toBe(404);
+    expect((await call('PUT', `/api/v1/item-account-groups/${grp}`, grpBody)).status).toBe(400);   // บัญชีของบริษัทอื่นอ้างอิงไม่ได้
+    expect((await call('DELETE', `/api/v1/item-account-groups/${grp}`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/item-account-groups')).body).toHaveLength(0);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

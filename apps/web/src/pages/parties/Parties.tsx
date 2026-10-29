@@ -4,24 +4,10 @@ import { d, fmt } from '@buddy/core';
 import { api, type FiscalYear } from '../../api';
 import { useCan } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
+import { LkSelect, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 
 /* ---------------------------------------------------------------- ส่วนร่วม */
-type Lk = Record<string, Array<{ code: string; name: string }>>;
-function useLookups(types: string) {
-  return useQuery({ queryKey: ['lookups', types], queryFn: () => api.get<Lk>('/api/v1/lookups', { types }), staleTime: 60_000 });
-}
-/** ช่องเลือกจากตารางข้อมูล (คู่มือบทที่ 6) — ค่าเดิมที่ไม่อยู่ในตารางยังแสดงอยู่ */
-function LkSelect({ rows, value, onChange, blank = '—' }: { rows?: Array<{ code: string; name: string }>; value: string | null | undefined; onChange: (v: string) => void; blank?: string }) {
-  const v = value ?? '';
-  return (
-    <select value={v} onChange={(e) => onChange(e.target.value)}>
-      <option value="">{blank}</option>
-      {v && !rows?.some((r) => r.code === v) && <option value={v}>{v}</option>}
-      {rows?.map((r) => <option key={r.code} value={r.code}>{r.code} {r.name}</option>)}
-    </select>
-  );
-}
 type Form = Record<string, string | boolean | null>;
 const val = (f: Form, k: string) => (f[k] ?? '') as string;
 /** ช่องข้อความทั่วไปของฟอร์ม */

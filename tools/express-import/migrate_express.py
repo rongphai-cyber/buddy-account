@@ -269,7 +269,7 @@ for r in dbf('ISACC'):
     if r['ACCTYP'] == 'S':
         IAG[c] = U('iag', c)
         insert('md_item_account_group', [base(id=IAG[c], code=c, name_th=r['ACCDES'] or c, name_en=r['ACCDES2'],
-               cost_method=r['METHOD'] if r['METHOD'] in ('F', 'A') else None,
+               cost_method=r['METHOD'] if r['METHOD'] in ('F', 'A') else None, item_specific=r['METHOD'] == '-',
                inventory_account_id=acc(r['ACCNUM01']), cogs_account_id=acc(r['ACCNUM02']), sales_account_id=acc(r['ACCNUM03']),
                sales_return_account_id=acc(r['ACCNUM04']), purchase_account_id=acc(r['ACCNUM05']), purchase_return_account_id=acc(r['ACCNUM06']))])
     else:
@@ -359,7 +359,7 @@ for r in items:
                      std_cost=nz(r['STNPR']), price_1=nz(r['SELLPR1']), price_2=nz(r['SELLPR2']), price_3=nz(r['SELLPR3']), price_4=nz(r['SELLPR4']), price_5=nz(r['SELLPR5']),
                      vat_code=st(r['VATCOD']), allow_negative=st(r['NEGALLOW']), default_supplier_id=sup(r['SUPCOD']) if st(r['SUPCOD']) else None,
                      packing=r['PACKING'], udf_1=st(r['STR1']), udf_2=st(r['STR2']), udf_3=st(r['STR3']), udf_4=(r['STR4'] or '')[:30] or None,
-                     udf_date_1=r['DAT1'], remark=r['REMARK'], status='I' if r['STATUS'] == 'I' else 'A', inactive_date=r['INACTDAT']))
+                     udf_date_1=r['DAT1'], udf_date_2=r['DAT2'], udf_num_1=nz(r['NUM1']), remark=r['REMARK'], status='I' if r['STATUS'] == 'I' else 'A', inactive_date=r['INACTDAT']))
 done('md_item', insert('md_item', rows), 'STMAS')
 rows = [base(id=U('bom', st(r['PSTKCOD']), st(r['SEQNUM'])), parent_item_id=item(r['PSTKCOD']), line_no=int(st(r['SEQNUM']) or 0),
              component_item_id=item(r['STKCOD']), qty=r['BOMQTY'] or 0, std_cost=r['STNPR'], sell_price=r['SELLPR'], warehouse_id=wh(r['LOCCOD']) if st(r['LOCCOD']) else None)

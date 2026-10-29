@@ -17,6 +17,7 @@ import { budgetRoutes } from './modules/gl/budget.js';
 import { attachPermissions, permissionRoutes, syncMenus } from './modules/permissions.js';
 import { settingsRoutes, syncSettingDefs } from './modules/settings.js';
 import { lookupRoutes, partyRoutes } from './modules/parties.js';
+import { itemAccountGroupRoutes, itemRoutes } from './modules/items.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -52,6 +53,8 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   settingsRoutes(app, db);
   lookupRoutes(app, db);
   partyRoutes(app, db);
+  itemAccountGroupRoutes(app, db);
+  itemRoutes(app, db);
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {

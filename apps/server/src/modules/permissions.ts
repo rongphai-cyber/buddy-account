@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { MENU, flattenMenu } from '@buddy/core';
+import { ITEM_KINDS, MENU, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -23,7 +23,7 @@ const FLAT = flattenMenu(MENU);
 const PARENT = new Map(FLAT.map((m) => [m.code, m.parent ?? null]));
 const LABEL = new Map(FLAT.map((m) => [m.code, m.label]));
 /** เมนูกำหนดค่าโปรแกรม: ระดับ 5 ขึ้นไปจึงเพิ่ม/แก้/ลบได้ (คู่มือหน้า 359–360) */
-const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
+const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
 /** ระบบความปลอดภัยและแก้ไขแบบฟอร์ม: ระดับ 9 เท่านั้น */
 const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'OT.LOG']);
 
@@ -126,6 +126,15 @@ export const API_RULES: Record<string, Rule> = {
   'PUT /api/v1/customers/:id': M('SA.CUS', 'edit'), 'DELETE /api/v1/customers/:id': M('SA.CUS', 'delete'),
   'GET /api/v1/suppliers': LOOKUP, 'GET /api/v1/suppliers/:id': LOOKUP, 'POST /api/v1/suppliers': M('PU.SUP', 'add'),
   'PUT /api/v1/suppliers/:id': M('PU.SUP', 'edit'), 'DELETE /api/v1/suppliers/:id': M('PU.SUP', 'delete'),
+  'GET /api/v1/item-account-groups': LOOKUP, 'POST /api/v1/item-account-groups': M('SET.IAG', 'add'),
+  'PUT /api/v1/item-account-groups/:id': M('SET.IAG', 'edit'), 'DELETE /api/v1/item-account-groups/:id': M('SET.IAG', 'delete'),
+  ...Object.fromEntries(Object.values(ITEM_KINDS).flatMap((k) => [
+    [`GET /api/v1/${k.path}`, LOOKUP], [`GET /api/v1/${k.path}/:id`, LOOKUP], [`POST /api/v1/${k.path}`, M(k.menu, 'add')],
+    [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`DELETE /api/v1/${k.path}/:id`, M(k.menu, 'delete')],
+  ])),
+  'POST /api/v1/kits/:id/copy': M('IC.KIT', 'add'),
+  'GET /api/v1/items/:id/prices': M('IC.PRICE', 'read'), 'PUT /api/v1/items/:id/prices': M('IC.PRICE', 'edit'),
+  'GET /api/v1/items/:id/reorder': M('IC.REORDER', 'read'), 'PUT /api/v1/items/:id/reorder': M('IC.REORDER', 'edit'),
   'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),
   'PUT /api/v1/salespersons/:id': M('SA.SLM', 'edit'), 'DELETE /api/v1/salespersons/:id': M('SA.SLM', 'delete'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)

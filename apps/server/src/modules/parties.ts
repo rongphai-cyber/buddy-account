@@ -17,11 +17,16 @@ export function lookupRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/lookups', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ types: z.string().regex(/^[A-Z0-9,]+$/i, 'ระบุชนิดตาราง เช่น 40,41') }), req.query);
+    const SPECIAL = ['BANK', 'UNIT', 'WH', 'IAG'];
     const types = q.types.split(',');
     const rows = await db.selectFrom('md_lookup').select(['type_code', 'code', 'name_th', 'short_th']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null)
-      .where('status', '=', 'A').where('type_code', 'in', types.filter((t) => t !== 'BANK')).orderBy('type_code').orderBy('code').execute();
-    const out: Record<string, Array<{ code: string; name: string }>> = Object.fromEntries(types.map((t) => [t, []]));
+      .where('status', '=', 'A').where('type_code', 'in', [...types.filter((t) => !SPECIAL.includes(t)), '__']).orderBy('type_code').orderBy('code').execute();
+    const out: Record<string, Array<{ id?: string; code: string; name: string }>> = Object.fromEntries(types.map((t) => [t, []]));
     for (const r of rows) out[r.type_code]!.push({ code: r.code, name: r.name_th });
+    // หน่วยนับ คลังสินค้า กลุ่มบัญชีสินค้า (แฟ้มสินค้า บทที่ 7) — มี id สำหรับอ้างอิง
+    if (types.includes('UNIT')) out.UNIT = (await db.selectFrom('md_unit').select(['id', 'code', 'name_th']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute()).map((u) => ({ id: u.id, code: u.code, name: u.name_th }));
+    if (types.includes('WH')) out.WH = (await db.selectFrom('md_warehouse').select(['id', 'code', 'name_th']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('status', '=', 'A').orderBy('code').execute()).map((u) => ({ id: u.id, code: u.code, name: u.name_th }));
+    if (types.includes('IAG')) out.IAG = (await db.selectFrom('md_item_account_group').select(['id', 'code', 'name_th']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('item_specific', '=', false).orderBy('code').execute()).map((u) => ({ id: u.id, code: u.code, name: u.name_th }));
     if (types.includes('BANK')) out.BANK = (await db.selectFrom('md_bank').select(['code', 'name_th']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute()).map((b) => ({ code: b.code, name: b.name_th }));
     return out;
   });
@@ -42,7 +47,7 @@ async function checkTax(db: Db, companyId: string, taxId: string | null, branch:
 }
 
 /** บัญชีลูกหนี้/เจ้าหนี้ต้องเป็นบัญชีย่อยของบริษัทนี้ */
-async function checkAccount(db: Db, companyId: string, id: string | null | undefined, field: string) {
+export async function checkAccount(db: Db, companyId: string, id: string | null | undefined, field: string) {
   if (!id) return null;
   const acc = await db.selectFrom('gl_account').select(['account_no', 'is_control']).where('id', '=', id).where('company_id', '=', companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!acc) throw badRequest('ไม่พบบัญชีนี้ในผังบัญชี', [{ field, message: 'ไม่พบบัญชี' }]);

@@ -346,6 +346,7 @@ add(T('md_item_account_group', 'กลุ่มบัญชีสินค้า
   C('name_th', 'str120', nn=True, th='ชื่อกลุ่ม', src='ISACC.ACCDES'),
   C('name_en', 'str120', th='ชื่อภาษาอังกฤษ', src='ISACC.ACCDES2'),
   C('cost_method', 'char1', th='F=FIFO A=ถัวเฉลี่ย (ว่าง=ตามค่าบริษัท)', src='ISACC.METHOD', chk="cost_method IS NULL OR cost_method IN ('F','A')"),
+  C('item_specific', 'bool', nn=True, d='false', th='กลุ่มเฉพาะของสินค้าบริการ/รายได้อื่น/ค่าใช้จ่ายอื่น 1 รายการ (Express METHOD=\'-\') — ไม่แสดงในรายการกลุ่มบัญชี แก้ที่หน้าจอสินค้า', src="ISACC.METHOD='-'"),
   lk('inventory_account_id', 'gl_account', 'บัญชีสินค้า (ค่าใช้จ่าย สำหรับรหัสค่าใช้จ่ายอื่น)', 'ISACC.ACCNUM01'),
   lk('cogs_account_id', 'gl_account', 'บัญชีต้นทุนขาย', 'ISACC.ACCNUM02'),
   lk('sales_account_id', 'gl_account', 'บัญชีขาย', 'ISACC.ACCNUM03'),
@@ -356,7 +357,7 @@ add(T('md_item_account_group', 'กลุ่มบัญชีสินค้า
 
 add(T('md_item', 'สินค้า / บริการ / รหัสค่าใช้จ่ายอื่น / รหัสรายได้อื่น', 'md', express='STMAS', cols=[
   C('code', 'code30', nn=True, th='รหัสสินค้า', src='STMAS.STKCOD'),
-  C('item_type', 'char1', nn=True, d="'0'", th='0=สินค้า 1=สินค้าชุด 2=บริการ 4=รายได้อื่น 5=ค่าใช้จ่ายอื่น', src='STMAS.STKTYP', chk="item_type IN ('0','1','2','3','4','5')"),
+  C('item_type', 'char1', nn=True, d="'0'", th='0=สินค้า 1=สินค้าชุดธรรมดา 2=สินค้าชุดพิเศษ 3=สินค้าบริการ 4=รายได้อื่น 5=ค่าใช้จ่ายอื่น', src='STMAS.STKTYP', chk="item_type IN ('0','1','2','3','4','5')"),
   C('barcode', 'code30', th='บาร์โค้ด', src='STMAS.BARCOD'),
   C('name_th', 'str120', nn=True, th='ชื่อสินค้า', src='STMAS.STKDES'),
   C('name_en', 'str120', th='ชื่อภาษาอังกฤษ', src='STMAS.STKDES2'),
@@ -386,6 +387,8 @@ add(T('md_item', 'สินค้า / บริการ / รหัสค่�
   C('udf_3', 'str30', th='ช่องกำหนดเอง 3', src='STMAS.STR3'),
   C('udf_4', 'str30', th='ช่องกำหนดเอง 4', src='STMAS.STR4'),
   C('udf_date_1', 'date', th='วันที่กำหนดเอง (เช่น วันหมดอายุ)', src='STMAS.DAT1'),
+  C('udf_date_2', 'date', th='วันที่กำหนดเอง 2', src='STMAS.DAT2'),
+  C('udf_num_1', 'qty', th='ตัวเลขกำหนดเอง', src='STMAS.NUM1'),
   C('remark', 'text', th='หมายเหตุ', src='STMAS.REMARK'),
   C('status', 'char1', nn=True, d="'A'", th='สถานะ', src='STMAS.STATUS', chk=ST_ACTIVE),
   C('inactive_date', 'date', th='วันที่เลิกใช้', src='STMAS.INACTDAT'),

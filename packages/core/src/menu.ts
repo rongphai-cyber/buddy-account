@@ -23,7 +23,7 @@ export const MENU: MenuItem[] = [
     m('PU.RR', 'ซื้อเงินเชื่อ / ซื้อเงินสด', 'P3', undefined, ['ch11:S-PU-03']),
     m('PU.OE', 'บันทึกค่าใช้จ่ายอื่น ๆ', 'P3', undefined, ['ch11:S-PU-08']),
     m('PU.SUP', 'รายละเอียดผู้จำหน่าย', 'P2', '/ap/suppliers', ['ch07:S-AP-01']),
-    m('PU.EXP', 'รายละเอียดค่าใช้จ่ายอื่น ๆ', 'P2', undefined, ['ch07:S-AP-02']),
+    m('PU.EXP', 'รายละเอียดค่าใช้จ่ายอื่น ๆ', 'P2', '/ap/other-expenses', ['ch07:S-AP-02']),
   ], '1'),
   g('SA', 'ขาย', 'P3', [
     m('SA.QT', 'ใบเสนอราคา', 'P3', undefined, ['ch12:S-QT-01']),
@@ -32,7 +32,7 @@ export const MENU: MenuItem[] = [
     m('SA.IV', 'ขายเงินเชื่อ / ขายเงินสด', 'P3', undefined, ['ch12:S-IV-01', 'ch12:S-CS-01']),
     m('SA.OI', 'บันทึกรายได้อื่น ๆ', 'P3', undefined, ['ch12:S-OI-01']),
     m('SA.CUS', 'รายละเอียดลูกค้า', 'P2', '/ar/customers', ['ch07:S-AR-01']),
-    m('SA.INC', 'รายละเอียดรายได้อื่น ๆ', 'P2', undefined, ['ch07:S-SO-02']),
+    m('SA.INC', 'รายละเอียดรายได้อื่น ๆ', 'P2', '/ar/other-incomes', ['ch07:S-SO-02']),
     m('SA.SLM', 'รายละเอียดพนักงานขาย', 'P2', '/ar/salespersons', ['ch07:S-SO-01']),
   ], '2'),
   g('FI', 'การเงิน', 'P3', [
@@ -69,13 +69,13 @@ export const MENU: MenuItem[] = [
   ], '3'),
   g('IC', 'สินค้า', 'P4', [
     m('IC.TRN', 'รายการประจำวันสินค้า', 'P4', undefined, ['ch14:S-IC-01', 'ch14:S-IC-06', 'ch14:S-IC-08', 'ch14:S-IC-10']),
-    m('IC.ITEM', 'รายละเอียดสินค้า', 'P2', undefined, ['ch07:S-IC-01']),
-    m('IC.KIT', 'รายละเอียดสินค้าชุด', 'P2', undefined, ['ch07:S-IC-03']),
-    m('IC.SRV', 'รายละเอียดสินค้าบริการ', 'P2', undefined, ['ch07:S-IC-05']),
-    m('IC.PRICE', 'ตารางราคาขาย', 'P2', undefined, ['ch07:S-IC-06']),
+    m('IC.ITEM', 'รายละเอียดสินค้า', 'P2', '/ic/items', ['ch07:S-IC-01']),
+    m('IC.KIT', 'รายละเอียดสินค้าชุด', 'P2', '/ic/kits', ['ch07:S-IC-03']),
+    m('IC.SRV', 'รายละเอียดสินค้าบริการ', 'P2', '/ic/services', ['ch07:S-IC-05']),
+    m('IC.PRICE', 'ตารางราคาขาย', 'P2', '/ic/prices', ['ch07:S-IC-06']),
     m('IC.COUNT', 'รายการตรวจนับสินค้า', 'P4', undefined, ['ch14:S-IC-15']),
     m('IC.SERIAL', 'ทะเบียนหมายเลขสินค้า', 'P4', undefined, ['ch14:S-IC-12']),
-    m('IC.REORDER', 'กำหนดจุดสั่งซื้อ', 'P2', undefined, ['ch07:S-IC-07']),
+    m('IC.REORDER', 'กำหนดจุดสั่งซื้อ', 'P2', '/ic/reorder', ['ch07:S-IC-07']),
   ], '4'),
   g('GL', 'บัญชี', 'P1', [
     m('GL.JNL', 'ลงประจำวัน (สมุดรายวัน)', 'P1', '/gl/journals', ['ch15:S-GL-02', 'ch15:S-GL-05', 'ch15:S-GL-06']),
@@ -105,6 +105,7 @@ export const MENU: MenuItem[] = [
   g('SET', 'เริ่มระบบ', 'P0', [
     m('SET.CO', 'รายละเอียดกิจการ', 'P0', '/settings/company', ['ch05:S-SET-01']),
     m('SET.DEF', 'ค่าเริ่มต้นแต่ละระบบ', 'P2', '/settings/defaults', ['ch05:S-SET-02', 'ch05:S-SET-03', 'ch05:S-SET-05', 'ch05:S-SET-07', 'ch05:S-SET-09', 'ch05:S-SET-10', 'ch05:S-SET-11']),
+    m('SET.IAG', 'กลุ่มบัญชีสินค้า', 'P2', '/settings/item-account-groups', ['ch05:S-SET-04']),
     m('SET.PRD', 'รอบบัญชี', 'P1', '/settings/periods', ['ch06:S-SET-01']),
     m('SET.TBL', 'ตารางข้อมูล', 'P2', undefined, ['ch06:S-TBL-01']),
     m('SET.DEPT', 'แผนก', 'P1', '/settings/departments', ['ch06:S-SET-03']),

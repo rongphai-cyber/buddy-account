@@ -59,3 +59,24 @@ describe('50 ทวิ layout', () => {
     expect(wht50FormOf(null, '0505566004992')).toBe('53');
   });
 });
+
+import { fitsMask, applyMaskCase, allocateKit, itemKindOf } from './items.js';
+describe('items (บทที่ 7)', () => {
+  it('checks item code mask like Express', () => {
+    expect(fitsMask('99-!!!!-!!!!!!', '01-INTL-CL-600').ok).toBe(true);
+    expect(fitsMask('99-!!!!-!!!!!!', '01-INTL').ok).toBe(true);          // สั้นกว่ารูปแบบได้
+    expect(fitsMask('99-!!!!-!!!!!!', 'A1-INTL').error).toMatch(/ตัวที่ 1/);
+    expect(fitsMask('99-!!!!-!!!!!!', '01/INTL').error).toMatch(/ต้องเป็น "-"/);
+    expect(fitsMask('99-!!!!', '01-INTL-X').error).toMatch(/ยาวเกิน/);
+    expect(fitsMask('!!!!!!!!!!!!!!!!!!!!', 'MELEG-XC06').ok).toBe(true);
+    expect(applyMaskCase('99-!!!!', '01-intl')).toBe('01-INTL');
+  });
+  it('allocates a regular kit by price × qty (คู่มือหน้า 108: 100 → 12.5 / 50 / 37.5)', () => {
+    const r = allocateKit(100, [{ qty: 1, price: 10 }, { qty: 2, price: 20 }, { qty: 1, price: 30 }]);
+    expect(r.map((x) => x.toFixed(2))).toEqual(['12.50', '50.00', '37.50']);
+    const z = allocateKit(100, [{ qty: 1, price: 0, fallback: 10 }, { qty: 1, price: 0, fallback: 20 }]);   // ราคาเป็น 0 ใช้ราคาสำรอง
+    expect(z.map((x) => x.toFixed(2))).toEqual(['33.33', '66.67']);
+    expect(allocateKit(10, [{ qty: 1, price: 1 }, { qty: 1, price: 1 }, { qty: 1, price: 1 }]).reduce((s, x) => s.plus(x)).toFixed(2)).toBe('10.00');
+    expect(itemKindOf('2')).toBe('kit'); expect(itemKindOf('3')).toBe('service');
+  });
+});

@@ -995,6 +995,8 @@ export interface MdItemAccountGroupTable {
   name_en: Gen<string | null>;
   /** F=FIFO A=ถัวเฉลี่ย (ว่าง=ตามค่าบริษัท) */
   cost_method: Gen<string | null>;
+  /** กลุ่มเฉพาะของสินค้าบริการ/รายได้อื่น/ค่าใช้จ่ายอื่น 1 รายการ (Express METHOD='-') — ไม่แสดงในรายการกลุ่มบัญชี แก้ที่หน้าจอสินค้า */
+  item_specific: Gen<boolean>;
   /** บัญชีสินค้า (ค่าใช้จ่าย สำหรับรหัสค่าใช้จ่ายอื่น) */
   inventory_account_id: Gen<string | null>;
   /** บัญชีต้นทุนขาย */
@@ -1030,7 +1032,7 @@ export interface MdItemTable {
   company_id: string;
   /** รหัสสินค้า */
   code: string;
-  /** 0=สินค้า 1=สินค้าชุด 2=บริการ 4=รายได้อื่น 5=ค่าใช้จ่ายอื่น */
+  /** 0=สินค้า 1=สินค้าชุดธรรมดา 2=สินค้าชุดพิเศษ 3=สินค้าบริการ 4=รายได้อื่น 5=ค่าใช้จ่ายอื่น */
   item_type: Gen<string>;
   /** บาร์โค้ด */
   barcode: Gen<string | null>;
@@ -1090,6 +1092,10 @@ export interface MdItemTable {
   udf_4: Gen<string | null>;
   /** วันที่กำหนดเอง (เช่น วันหมดอายุ) */
   udf_date_1: Gen<string | null>;
+  /** วันที่กำหนดเอง 2 */
+  udf_date_2: Gen<string | null>;
+  /** ตัวเลขกำหนดเอง */
+  udf_num_1: Gen<string | null>;
   /** หมายเหตุ */
   remark: Gen<string | null>;
   /** สถานะ */
