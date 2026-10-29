@@ -2178,6 +2178,95 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('DELETE', `/api/v1/rpt-custom/${cr.body.id}`)).status).toBe(200);
     for (const x of [iv, iv2]) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('fixed assets (T6.1): account groups, asset register, live depreciation schedule with posted periods, recode, delete guard, isolation', async () => {
+    const g = await call('POST', '/api/v1/asset-account-groups', { code: 'veh0', name_th: 'ยานพาหนะ', depr_expense_account_id: expense, accum_depr_account_id: cash });
+    expect(g.status).toBe(200);
+    expect((await call('POST', '/api/v1/asset-account-groups', { code: 'VEH0', name_th: 'ซ้ำ', depr_expense_account_id: expense, accum_depr_account_id: cash })).status).toBe(409);
+    expect((await call('POST', '/api/v1/asset-account-groups', { code: 'NOACC', name_th: 'ไม่มีบัญชี' })).body.error.message).toMatch(/บัญชีค่าเสื่อมราคา/);
+    const body = { code: 'car-01', name_th: 'รถกระบะ', account_group_id: g.body.id, purchase_date: '2026-01-01', start_date: '2026-01-01', cost: '36501', salvage_value: '1', method: '1', useful_life_years: 5 };
+    expect((await call('POST', '/api/v1/fa/assets', { ...body, salvage_value: '0' })).body.error.message).toMatch(/อย่างน้อย 1 บาท/);
+    expect((await call('POST', '/api/v1/fa/assets', { ...body, start_date: '2025-12-31' })).body.error.message).toMatch(/ไม่ก่อนวันที่ซื้อ/);
+    expect((await call('POST', '/api/v1/fa/assets', { ...body, accum_depr_bf: '100' })).body.error.message).toMatch(/วันที่ของค่าเสื่อมสะสมยกมา/);
+    const id = (await call('POST', '/api/v1/fa/assets', body)).body.id;
+    expect((await call('POST', '/api/v1/fa/assets', body)).status).toBe(409);
+    // เส้นตรง 36,500 × 20% = 7,300 ต่อปี = 20 บาทต่อวัน · อัตราคำนวณจากอายุ 5 ปี
+    let x = (await call('GET', `/api/v1/fa/assets/${id}`)).body;
+    expect([x.code, Number(x.rate), x.end_date, x.annual]).toEqual(['CAR-01', 20, '2031-01-01', '7300.00']);
+    const y26 = x.schedule.find((y: { start: string }) => y.start === '2026-01-01');
+    expect([y26.months[0].amount, y26.months[1].amount, y26.total, y26.months[0].posted]).toEqual(['620.00', '560.00', '7300.00', false]);
+    // งวดที่ลงบัญชีแล้วใช้ยอดจริง และยอดสะสมต้นปีถัดไปต่อจากยอดจริง
+    const p1 = y26.months[0].period_id;
+    await sql`INSERT INTO fa_depreciation (company_id, asset_id, period_id, amount) VALUES (${companyId}, ${id}, ${p1}, 600)`.execute(database.db);
+    x = (await call('GET', `/api/v1/fa/assets/${id}`)).body;
+    const a26 = x.schedule.find((y: { start: string }) => y.start === '2026-01-01');
+    expect([a26.months[0].amount, a26.months[0].posted, a26.total, x.accumulated, x.book_value]).toEqual(['600.00', true, '7280.00', '600.00', '35901.00']);
+    const a27 = x.schedule.find((y: { start: string }) => y.start === '2027-01-01');
+    if (a27) expect(a27.acc_before).toBe('7280.00');
+    // ยอดลด + ยอดยกมา: (36,501 − 5,000) × 20% = 6,300.20
+    expect((await call('PUT', `/api/v1/fa/assets/${id}`, { ...body, code: 'CAR-01', method: '2', accum_depr_bf: '5000', accum_bf_date: '2026-01-01' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/fa/assets/${id}`)).body.annual).toBe('6300.20');
+    expect((await call('PUT', `/api/v1/fa/assets/${id}`, { ...body, code: 'CAR-02' })).body.error.message).toMatch(/เปลี่ยนรหัสทรัพย์สิน/);
+    // เปลี่ยนรหัส · ลบไม่ได้เมื่อลงค่าเสื่อมแล้ว · ลบกลุ่มที่ใช้อยู่ไม่ได้
+    expect((await call('POST', `/api/v1/fa/assets/${id}/recode`, { code: 'car-99' })).body.code).toBe('CAR-99');
+    expect((await call('GET', '/api/v1/fa/assets?q=CAR-99&status=all')).body.map((r: { code: string; book_value: string }) => `${r.code}:${r.book_value}`)).toEqual(['CAR-99:30901.00']);
+    expect((await call('DELETE', `/api/v1/fa/assets/${id}`)).body.error.message).toMatch(/ลงค่าเสื่อมแล้ว/);
+    expect((await call('DELETE', `/api/v1/asset-account-groups/${g.body.id}`)).body.error.message).toMatch(/ใช้อยู่กับทรัพย์สิน/);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/fa/assets/${id}`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/fa/assets?q=CAR&status=all')).body).toEqual([]);
+    expect((await call('POST', '/api/v1/fa/assets', { ...body, account_group_id: g.body.id })).body.error.message).toMatch(/ไม่พบกลุ่มบัญชี/);
+    expect((await call('POST', `/api/v1/fa/assets/${id}/recode`, { code: 'X' })).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    await sql`DELETE FROM fa_depreciation WHERE asset_id = ${id}`.execute(database.db);
+    expect((await call('DELETE', `/api/v1/fa/assets/${id}`)).status).toBe(200);
+    expect((await call('DELETE', `/api/v1/asset-account-groups/${g.body.id}`)).status).toBe(200);
+  });
+  it('depreciation posting (T6.2): period journals FA…, unchanged = no new voucher, sale stops depreciation and reposts, unsell, post-only, report 5.B, isolation', async () => {
+    const g = (await call('POST', '/api/v1/asset-account-groups', { code: 'DEP0', name_th: 'อุปกรณ์', depr_expense_account_id: expense, accum_depr_account_id: cash })).body.id;
+    const mk = async (code: string, cost: string) => (await call('POST', '/api/v1/fa/assets', { code, name_th: code, account_group_id: g, purchase_date: '2026-01-01', start_date: '2026-01-01', cost, salvage_value: '1', method: '1', rate: '20' })).body.id as string;
+    const a1 = await mk('DEP-A', '36501'), a2 = await mk('DEP-B', '18251');   // 20 / 10 บาทต่อวัน
+    const per = (await call('GET', '/api/v1/fa/depreciation-periods')).body.filter((p: { start_date: string }) => String(p.start_date).startsWith('2026-0'));
+    const jan = per.find((p: { period_no: number }) => p.period_no === 1).id, feb = per.find((p: { period_no: number }) => p.period_no === 2).id;
+    const r1 = (await call('POST', '/api/v1/fa/depreciate', { period_ids: [jan, feb] })).body.periods;
+    expect(r1.map((x: { voucher_no: string; total: string }) => `${x.voucher_no}:${x.total}`)).toEqual(['FA69010001:930.00', 'FA69020001:840.00']);
+    const jid = (await sql<{ id: string }>`SELECT id FROM gl_journal WHERE company_id = ${companyId} AND voucher_no = 'FA69010001'`.execute(database.db)).rows[0]!.id;
+    const j = (await call('GET', `/api/v1/gl/journals/${jid}`)).body;
+    expect([j.editable, j.lines.map((l: { debit: string; credit: string }) => `${l.debit}/${l.credit}`)]).toEqual([false, ['930.00/0.00', '0.00/930.00']]);
+    // คิดซ้ำ ยอดเท่าเดิม = ไม่ออกใบใหม่
+    expect((await call('POST', '/api/v1/fa/depreciate', { period_ids: [jan] })).body.periods[0].changed).toBe(false);
+    // ขาย DEP-A วันที่ 15 ม.ค. → ม.ค. คิดใหม่ (A 300 + B 310) ยกเลิกใบเดิม · ก.พ. เหลือเฉพาะ B
+    const s = (await call('POST', `/api/v1/fa/assets/${a1}/sell`, { sold_date: '2026-01-15', sold_amount: '30000' })).body;
+    expect(s.reposted.map((x: { voucher_no: string; total: string }) => `${x.voucher_no}:${x.total}`)).toEqual(['FA69010002:610.00', 'FA69020002:280.00']);
+    expect((await call('GET', `/api/v1/gl/journals/${jid}`)).body.doc_status).toBe('C');
+    const x1 = (await call('GET', `/api/v1/fa/assets/${a1}`)).body;
+    expect([x1.status, x1.accumulated, x1.book_value, x1.gain_loss]).toEqual(['S', '300.00', '36201.00', '-6201.00']);
+    expect((await call('POST', `/api/v1/fa/assets/${a1}/sell`, { sold_date: '2025-12-31', sold_amount: '1' })).body.error.message).toMatch(/ไม่ก่อนวันที่เริ่มใช้/);
+    // ยกเลิกการขาย → กลับไปคิดเต็มเดือน
+    expect((await call('POST', `/api/v1/fa/assets/${a1}/unsell`, {})).body.reposted.map((x: { total: string }) => x.total)).toEqual(['930.00', '840.00']);
+    // ลงบัญชีใหม่ (ไม่คำนวณ): ค่าเสื่อมที่ไม่มีใบสำคัญ
+    await sql`UPDATE fa_depreciation SET journal_id = NULL WHERE period_id = ${feb} AND deleted_at IS NULL`.execute(database.db);
+    const rp = (await call('POST', '/api/v1/fa/depreciate', { period_ids: [feb], mode: 'post' })).body.periods[0];
+    expect([rp.changed, rp.total]).toEqual([true, '840.00']);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_journal WHERE company_id = ${companyId} AND source_module = 'FA' AND period_id = ${feb} AND doc_status = 'N'`.execute(database.db)).rows[0]!.n).toBe(1);
+    // รายงาน 5.B
+    const rep = (await call('POST', '/api/v1/rpt/5.B/run', { params: { date_from: '2026-01-01', date_to: '2026-02-28' } })).body;
+    expect(rep.rows.find((r: { c: { code?: string } }) => r.c.code === 'DEP-A').c).toMatchObject({ cost: '36501.00', before: '0.00', dep: '1180.00', end: '1180.00', nbv: '35321.00' });
+    // งวดปิดแล้ว · ข้ามบริษัทไม่ได้
+    await sql`UPDATE gl_period SET is_locked = true WHERE id = ${feb}`.execute(database.db);
+    expect((await call('POST', '/api/v1/fa/depreciate', { period_ids: [feb] })).body.error.message).toMatch(/ปิดแล้ว/);
+    await sql`UPDATE gl_period SET is_locked = false WHERE id = ${feb}`.execute(database.db);
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('POST', '/api/v1/fa/depreciate', { period_ids: [jan] })).body.error.message).toMatch(/ไม่พบงวด/);
+    expect((await call('POST', `/api/v1/fa/assets/${a1}/sell`, { sold_date: '2026-01-15', sold_amount: '1' })).status).toBe(404);
+    expect((await call('POST', '/api/v1/rpt/5.B/run', { params: {} })).body.rows.at(-1).c.cost).toBe('0.00');
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ล้างข้อมูลทดสอบ: ยกเลิกใบสำคัญค่าเสื่อม
+    await sql`UPDATE gl_journal SET doc_status = 'C' WHERE company_id = ${companyId} AND source_module = 'FA' AND voucher_no LIKE 'FA69%'`.execute(database.db);
+    await sql`DELETE FROM fa_depreciation WHERE asset_id IN (${a1}, ${a2})`.execute(database.db);
+    for (const id of [a1, a2]) expect((await call('DELETE', `/api/v1/fa/assets/${id}`)).status).toBe(200);
+    expect((await call('DELETE', `/api/v1/asset-account-groups/${g}`)).status).toBe(200);
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

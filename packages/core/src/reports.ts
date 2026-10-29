@@ -150,6 +150,7 @@ export const REPORT_TREE: ReportNode[] = [
     { code: '5.A', title: 'ตรวจสอบข้อมูล', children: [
       leaf('5.A.1', 'รายการที่เลขบัญชีไม่ถูกต้อง', 'RP.GL', []), leaf('5.A.2', 'ใบสำคัญที่ยอดไม่ได้ดุลย์', 'RP.GL', [F.date]),
       leaf('5.A.3', 'รายงานการแก้ไขปรับปรุงรายการ', 'RP.GL', [F.date])] },
+    leaf('5.B', 'รายการทรัพย์สิน', 'RP.GL', [{ key: 'date', kind: 'dateRange', label: 'ค่าเสื่อมงวดวันที่' }, { key: 'status', kind: 'select', label: 'สถานะ', options: [['all', 'ทั้งหมด'], ['A', 'ใช้งานอยู่'], ['S', 'ขาย/ตัดจำหน่ายแล้ว']], default: 'all' }], { landscape: true }),
     leaf('5.C', 'เงินสดย่อย', 'RP.GL', [F.date, F.detail]),
   ] },
   { code: '6', title: 'รายงานภาษี', children: [

@@ -3638,6 +3638,9 @@ CREATE TABLE fa_asset (
   end_date date,
   depr_monthly boolean DEFAULT true NOT NULL,
   accum_depr_bf numeric(18,2) DEFAULT 0 NOT NULL,
+  accum_bf_date date,
+  manual_depr numeric(18,2) DEFAULT 0 NOT NULL,
+  manual_depr_to date,
   sold_date date,
   sold_amount numeric(18,2),
   sold_header_id uuid,
@@ -3673,6 +3676,9 @@ COMMENT ON COLUMN fa_asset.rate IS 'อัตราค่าเสื่อม %
 COMMENT ON COLUMN fa_asset.end_date IS 'วันที่คิดค่าเสื่อมครบ [Express: FAMAS.ENDDAT]';
 COMMENT ON COLUMN fa_asset.depr_monthly IS 'คิดรายเดือน (N=รายปี) [Express: FAMAS.DPRMONLY]';
 COMMENT ON COLUMN fa_asset.accum_depr_bf IS 'ค่าเสื่อมสะสมยกมา [Express: FAMAS.ACCMBF]';
+COMMENT ON COLUMN fa_asset.accum_bf_date IS 'ค่าเสื่อมสะสมยกมา ณ วันที่ (ยอดยกมาครอบคลุมถึงก่อนวันนี้ · ว่าง = ยอดยกมาเป็นศูนย์ เริ่มคิดตั้งแต่วันเริ่มใช้) [Express: ISPRD.BEG1]';
+COMMENT ON COLUMN fa_asset.manual_depr IS 'ค่าเสื่อมที่คำนวณเอง (ตั้งแต่ต้นปีถึงวันที่คำนวณเอง) [Express: FAMAS.DPRAMT]';
+COMMENT ON COLUMN fa_asset.manual_depr_to IS 'คำนวณเองถึงวันที่ — โปรแกรมคิดต่อจากวันถัดไป [Express: FAMAS.LASCAL]';
 COMMENT ON COLUMN fa_asset.sold_date IS 'วันที่ขาย/ตัดจำหน่าย [Express: FAMAS.SALDAT]';
 COMMENT ON COLUMN fa_asset.sold_amount IS 'ราคาขาย [Express: FAMAS.SALAMT]';
 COMMENT ON COLUMN fa_asset.sold_header_id IS 'เอกสารขายทรัพย์สิน';

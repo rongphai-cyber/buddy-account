@@ -23,7 +23,7 @@ const FLAT = flattenMenu(MENU);
 const PARENT = new Map(FLAT.map((m) => [m.code, m.parent ?? null]));
 const LABEL = new Map(FLAT.map((m) => [m.code, m.label]));
 /** เมนูกำหนดค่าโปรแกรม: ระดับ 5 ขึ้นไปจึงเพิ่ม/แก้/ลบได้ (คู่มือหน้า 359–360) */
-const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.PAYM', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
+const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.FAG', 'SET.PAYM', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
 /** ระบบความปลอดภัยและแก้ไขแบบฟอร์ม: ระดับ 9 เท่านั้น */
 const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG']);
 
@@ -225,6 +225,12 @@ export const API_RULES: Record<string, Rule> = {
   'POST /api/v1/approve/:kind/:id': DOC('approve'), 'POST /api/v1/approve-range': DOC('approve'), 'GET /api/v1/record-info/:kind/:id': DOC('read'),
   'GET /api/v1/print-forms': LOOKUP, 'PUT /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'edit'), 'DELETE /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'delete'),
   'GET /api/v1/rpt-custom': LOOKUP, 'POST /api/v1/rpt-custom': M('RP.CUSTOM', 'add'), 'PUT /api/v1/rpt-custom/:id': M('RP.CUSTOM', 'edit'), 'DELETE /api/v1/rpt-custom/:id': M('RP.CUSTOM', 'delete'),
+  // ทรัพย์สินถาวร (บทที่ 19) + กลุ่มบัญชีทรัพย์สิน (S-SET-12)
+  'GET /api/v1/asset-account-groups': LOOKUP, 'POST /api/v1/asset-account-groups': M('SET.FAG', 'add'), 'PUT /api/v1/asset-account-groups/:id': M('SET.FAG', 'edit'), 'DELETE /api/v1/asset-account-groups/:id': M('SET.FAG', 'delete'),
+  'GET /api/v1/fa/assets': M('FA.ASSET', 'read'), 'GET /api/v1/fa/assets/:id': M('FA.ASSET', 'read'), 'POST /api/v1/fa/assets': M('FA.ASSET', 'add'), 'PUT /api/v1/fa/assets/:id': M('FA.ASSET', 'edit'),
+  'POST /api/v1/fa/assets/:id/recode': M('FA.ASSET', 'edit'), 'DELETE /api/v1/fa/assets/:id': M('FA.ASSET', 'delete'),
+  'POST /api/v1/fa/assets/:id/sell': M('FA.ASSET', 'edit'), 'POST /api/v1/fa/assets/:id/unsell': M('FA.ASSET', 'cancel'),
+  'POST /api/v1/fa/depreciate': M('FA.DEPR', 'add'), 'GET /api/v1/fa/depreciation-periods': M('FA.DEPR', 'read'),
   'GET /api/v1/bank-recon': M('FI.BK.REC', 'read'), 'PUT /api/v1/bank-recon/statement': M('FI.BK.REC', 'edit'), 'POST /api/v1/bank-recon/clear': M('FI.BK.REC', 'edit'),
   'GET /api/v1/gl/inventory-accounts': M('GL.INV', 'read'), 'GET /api/v1/gl/inventory': M('GL.INV', 'read'), 'PUT /api/v1/gl/inventory': M('GL.INV', 'edit'), 'POST /api/v1/gl/inventory/compute': M('GL.INV', 'edit'),
   // ทะเบียนเช็ค: สิทธิ์ตามทิศทาง เช็ครับ (FI.BK.CR/CL) · เช็คจ่าย (FI.BK.CP/PC)

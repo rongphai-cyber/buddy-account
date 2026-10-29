@@ -634,3 +634,9 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .rpt-cols { margin: 0 0 8px; font-size: 13px; }
 .rpt-cols summary { cursor: pointer; color: var(--muted); }
 .rpt-cols label { display: inline-flex; gap: 4px; align-items: center; margin: 4px 12px 0 0; }
+/* ทรัพย์สินถาวร (S-FA-01) */
+.fa-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.fa-grid fieldset.box { margin: 10px 0 0; display: grid; gap: 8px; }
+.pair.three { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 1100px) { .fa-grid { grid-template-columns: 1fr; } }
+.fa-grid .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

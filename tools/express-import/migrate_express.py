@@ -679,12 +679,15 @@ for table, module, amtf in (('ARRCPCQ', 'AR', 'RCVAMT'), ('APRCPCQ', 'AP', 'PAYA
 
 # ------------------------------------------------------------------ GL
 JRN = {}
+FA_JNL = {}   # งวด → ใบสำคัญคิดค่าเสื่อม (FAyymmnnnn) ที่ระบบทรัพย์สินของ Express สร้าง
 rows = []
 for r in dbf('GLJNL'):
     v = st(r['VOUCHER']); jb = JB.get(st(r['JNLTYP'])) or JB.get('00')
     jid = U('jnl', st(r['JNLTYP']), v); JRN[v] = jid
+    is_fa = bool(re.match(r'^FA\d{8}$', v or '')) and r['DOCSTAT'] != 'C'
+    if is_fa: FA_JNL.setdefault(period_of(r['VOUDAT']), jid)
     rows.append(base(id=jid, branch_id=BRANCH, journal_book_id=jb, voucher_no=v, voucher_date=r['VOUDAT'], period_id=period_of(r['VOUDAT']),
-                     description=r['DESCRP'], reference=st(r['REFNUM']), source_module=st(r['SRCJNL']), source_header_id=H(v),
+                     description=r['DESCRP'], reference=st(r['REFNUM']), source_module='FA' if is_fa else st(r['SRCJNL']), source_header_id=H(v),
                      status='P' if r['TRNSTAT'] == 'P' else 'U', doc_status='C' if r['DOCSTAT'] == 'C' else 'N',
                      print_count=int(r['PRNCNT'] or 0) if r['PRNCNT'] else 0))
 done('gl_journal', insert('gl_journal', rows), 'GLJNL')
@@ -815,12 +818,14 @@ for r in dbf('FAMAS'):
                      branch_id=BRANCH, purchase_date=r['PURDAT'], cost=money(r['COSVAL']), salvage_value=money(r['SALVAG']),
                      method=r['METHOD'] if r['METHOD'] in ('0','1','2') else '1', start_date=r['STRDAT'] or r['PURDAT'],
                      useful_life_years=int(r['LIFE']) if r['LIFE'] else None, rate=r['RATE'], end_date=r['ENDDAT'], depr_monthly=r['DPRMONLY'] != 'N',
-                     accum_depr_bf=money(r['ACCMBF']), sold_date=r['SALDAT'], sold_amount=r['SALAMT'], status='S' if r['SALDAT'] else 'A'))
+                     accum_depr_bf=money(r['ACCMBF']), accum_bf_date=PERIODS[0][0] if PERIODS else None,   # ACCMBF = ค่าเสื่อมสะสมก่อนปีปัจจุบันของ Express
+                     manual_depr=money(r['DPRAMT']), manual_depr_to=r['LASCAL'],
+                     sold_date=r['SALDAT'], sold_amount=r['SALAMT'], status='S' if r['SALDAT'] else 'A'))
     for i, (suffix) in enumerate([str(m) for m in range(1, 13)] + [f'{m}NY' for m in range(1, 13)]):
         a = r.get(f'DEPR{suffix}')
         if a:
             b, e, pid = PERIODS[i] if i < len(PERIODS) else (None, None, None)
-            if pid: dep.append(base(id=U('dep', c, pid), asset_id=aid, period_id=pid, amount=money(a)))
+            if pid: dep.append(base(id=U('dep', c, pid), asset_id=aid, period_id=pid, amount=money(a), journal_id=FA_JNL.get(pid)))
 done('fa_asset', insert('fa_asset', rows), 'FAMAS'); done('fa_depreciation', insert('fa_depreciation', dep), 'FAMAS.DEPRn')
 
 # ------------------------------------------------------------------ stock balance snapshot

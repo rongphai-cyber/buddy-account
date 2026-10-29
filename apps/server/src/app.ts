@@ -41,6 +41,7 @@ import { chequeRoutes } from './modules/cheques.js';
 import { bankReconRoutes } from './modules/bankrecon.js';
 import { rptRoutes } from './modules/reports/index.js';
 import { printRoutes } from './modules/print.js';
+import { faPostingRoutes, faRoutes } from './modules/fa.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
@@ -102,6 +103,8 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   bankReconRoutes(app, db);
   rptRoutes(app, db);
   printRoutes(app, db);
+  faRoutes(app, db);
+  faPostingRoutes(app, db);
   inventoryAccountRoutes(app, db);
   reportRoutes(app, db);
 

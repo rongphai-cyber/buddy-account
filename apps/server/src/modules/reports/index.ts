@@ -8,6 +8,7 @@ import { registerReports } from './register.js';
 import { partyReports } from './parties.js';
 import { stockReports } from './stock.js';
 import { glReports } from './gl.js';
+import { faReports } from './fa.js';
 import { analysisReports } from './analysis.js';
 import { taxReports } from './tax.js';
 
@@ -66,6 +67,7 @@ export function rptRoutes(app: FastifyInstance, db: Db) {
   partyReports();
   stockReports();
   glReports();
+  faReports();
   analysisReports();
   taxReports();
   app.get('/api/v1/rpt/available', async () => ({ codes: [...RUNNERS.keys()] }));

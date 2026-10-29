@@ -92,7 +92,8 @@ export const MENU: MenuItem[] = [
     m('GL.TPL', 'ต้นแบบวิธีการบันทึก', 'P1', '/gl/templates', ['ch15:S-GL-01']),
     m('GL.BOOK', 'สร้างสมุดรายวัน', 'P1', '/gl/books', ['ch15:S-GL-09']),
     m('GL.FS', 'สร้างงบการเงิน', 'P1', '/fs/layouts', ['ch24:S-FS-01', 'ch24:S-FS-03']),
-    m('FA.ASSET', 'รายการทรัพย์สิน', 'P6', undefined, ['ch19:S-FA-01']),
+    m('FA.ASSET', 'รายการทรัพย์สิน', 'P6', '/fa/assets', ['ch19:S-FA-01', 'ch19:S-FA-02', 'ch19:S-FA-03']),
+    m('FA.DEPR', 'คิดค่าเสื่อม-ลงบัญชี', 'P6', '/fa/depreciation', ['ch19:S-FA-04']),
   ], '5'),
   g('RP', 'รายงาน', 'P1', [
     m('RP.TB', 'งบทดลอง', 'P1', '/reports/trial-balance', ['ch08:S-OB-07']),
@@ -114,6 +115,7 @@ export const MENU: MenuItem[] = [
     m('SET.CO', 'รายละเอียดกิจการ', 'P0', '/settings/company', ['ch05:S-SET-01']),
     m('SET.DEF', 'ค่าเริ่มต้นแต่ละระบบ', 'P2', '/settings/defaults', ['ch05:S-SET-02', 'ch05:S-SET-03', 'ch05:S-SET-05', 'ch05:S-SET-07', 'ch05:S-SET-09', 'ch05:S-SET-10', 'ch05:S-SET-11']),
     m('SET.IAG', 'กลุ่มบัญชีสินค้า', 'P2', '/settings/item-account-groups', ['ch05:S-SET-04']),
+    m('SET.FAG', 'กลุ่มบัญชีทรัพย์สิน', 'P6', '/settings/asset-account-groups', ['ch05:S-SET-12']),
     m('SET.PAYM', 'วิธีรับ/จ่ายชำระหนี้', 'P2', '/settings/payment-methods', ['ch05:S-SET-06', 'ch05:S-SET-08']),
     m('SET.PRD', 'รอบบัญชี', 'P1', '/settings/periods', ['ch06:S-SET-01']),
     m('SET.TBL', 'ตารางข้อมูล', 'P2', '/settings/data-tables', ['ch06:S-TBL-01']),

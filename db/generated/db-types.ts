@@ -3328,6 +3328,12 @@ export interface FaAssetTable {
   depr_monthly: Gen<boolean>;
   /** ค่าเสื่อมสะสมยกมา */
   accum_depr_bf: Gen<string>;
+  /** ค่าเสื่อมสะสมยกมา ณ วันที่ (ยอดยกมาครอบคลุมถึงก่อนวันนี้ · ว่าง = ยอดยกมาเป็นศูนย์ เริ่มคิดตั้งแต่วันเริ่มใช้) */
+  accum_bf_date: Gen<string | null>;
+  /** ค่าเสื่อมที่คำนวณเอง (ตั้งแต่ต้นปีถึงวันที่คำนวณเอง) */
+  manual_depr: Gen<string>;
+  /** คำนวณเองถึงวันที่ — โปรแกรมคิดต่อจากวันถัดไป */
+  manual_depr_to: Gen<string | null>;
   /** วันที่ขาย/ตัดจำหน่าย */
   sold_date: Gen<string | null>;
   /** ราคาขาย */
