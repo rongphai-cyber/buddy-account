@@ -225,7 +225,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/rpt/available': LOOKUP,
   'POST /api/v1/rpt/:code/run': { kind: 'menu', menu: 'RP.CENTER', action: 'read', pick: async (req) => findReport(String((req.params as { code?: string }).code ?? ''))?.menu ?? 'RP.CENTER' },
   // พิมพ์/รับรองเอกสาร รายละเอียดแฟ้มข้อมูล แบบฟอร์ม รายงานของผู้ใช้ (บทที่ 25 · S-UI-08..12)
-  'GET /api/v1/notes/:kind/:id': DOC('read'), 'PUT /api/v1/notes/:kind/:id': DOC('edit'),
+  'GET /api/v1/notes/:kind/:id': DOC('read'), 'PUT /api/v1/notes/:kind/:id': DOC('edit'), 'GET /api/v1/doc-status/:kind/:id': DOC('read'), 'PUT /api/v1/doc-status/:kind/:id': DOC('edit'),
   'GET /api/v1/master-notes/:entity/:id': MNOTE('read'), 'PUT /api/v1/master-notes/:entity/:id': MNOTE('edit'),
   'GET /api/v1/print/:kind/:id': DOC('read'), 'POST /api/v1/print/:kind/:id/printed': DOC('print'),
   'POST /api/v1/approve/:kind/:id': DOC('approve'), 'POST /api/v1/approve-range': DOC('approve'), 'GET /api/v1/record-info/:kind/:id': DOC('read'),

@@ -156,6 +156,7 @@ export function DocActions({ kind, id: rawId, menu, typeId }: { kind: 'doc' | 'j
       </span>
       {id && r && (approved ? <button disabled={!can('approve')} onClick={() => approve(true)} title="ยกเลิกการรับรอง (Ctrl+O)">✔ รับรองแล้ว · ยกเลิก</button>
         : r.rule.approveLevel > 0 && <button disabled={!can('approve')} onClick={() => approve(false)} title={`รับรองเอกสาร — ต้องระดับ ${r.rule.approveLevel} ขึ้นไป (Alt+O)`}>✔ รับรอง <kbd>Alt+O</kbd></button>)}
+      {kind === 'doc' && id && r && ['QT', 'DP', 'VR'].includes(r.data.scope) && <StatusCodeSelect id={id} canEdit={can('edit')} />}
       {kind === 'doc' && <button disabled={!id} onClick={() => setNotes(true)} title={id ? 'หมายเหตุเพิ่มเติม (Alt+R)' : 'บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุได้'}>📝 หมายเหตุ</button>}
       <button disabled={!id} onClick={() => setInfo(true)} title="รายละเอียดแฟ้มข้อมูล (Ctrl+I)">ℹ</button>
       {r && r.data.print_count > 0 && <Pill tone="n">พิมพ์แล้ว {r.data.print_count} ครั้ง</Pill>}
@@ -234,5 +235,17 @@ function ApproveRange({ kind, scope, typeId, onClose, onDone }: { kind: 'doc' | 
       {res && <div className="note-box"><p>รับรองแล้ว <b>{res.approved.toLocaleString()}</b> ใบ · ไม่รับรอง <b>{res.not_approved.toLocaleString()}</b> ใบ</p>
         {res.skipped.length > 0 && <ul className="small">{res.skipped.slice(0, 20).map((s) => <li key={s.doc_no}><span className="mono">{s.doc_no}</span> — {s.reason}</li>)}</ul>}</div>}
     </Modal>
+  );
+}
+
+/** สถานะเอกสารตามตารางข้อมูล (ใบเสนอราคา ตาราง 44 · เงินสดย่อย ตาราง 53) — เปลี่ยนแล้วบันทึกทันที */
+function StatusCodeSelect({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['doc-status', id], queryFn: () => api.get<{ table: string | null; status_code: string | null; options: Array<{ code: string; name_th: string }> }>(`/api/v1/doc-status/doc/${id}`), staleTime: 0 });
+  if (!q.data?.table) return null;
+  return (
+    <label className="small">สถานะ <select value={q.data.status_code ?? ''} disabled={!canEdit} title={`ตารางข้อมูล ${q.data.table}`} onChange={async (e) => {
+      try { await api.put(`/api/v1/doc-status/doc/${id}`, { status_code: e.target.value || null }); toast('เปลี่ยนสถานะแล้ว'); qc.invalidateQueries({ queryKey: ['doc-status', id] }); } catch (err) { toastError(err); }
+    }}><option value="">—</option>{q.data.options.map((o) => <option key={o.code} value={o.code}>{o.code} {o.name_th}</option>)}</select></label>
   );
 }

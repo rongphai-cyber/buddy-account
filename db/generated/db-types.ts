@@ -2018,6 +2018,8 @@ export interface DocHeaderTable {
   vat_late: Gen<boolean>;
   /** D=ร่าง(ออฟไลน์) N=ปกติ M=ใช้ครบ/ปิดแล้ว C=ยกเลิก */
   doc_status: Gen<string>;
+  /** สถานะตามตารางข้อมูล: ใบเสนอราคา ตาราง 44 · ใบเบิก/จ่ายเงินสดย่อย ตาราง 53 */
+  status_code: Gen<string | null>;
   /** ตัดชำระ/ส่งของครบแล้ว */
   is_settled: Gen<boolean>;
   /** วันที่ครบ */

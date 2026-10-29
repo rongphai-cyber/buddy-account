@@ -721,6 +721,7 @@ add(T('doc_header', 'หัวเอกสารทุกชนิด (ขาย
   lk('vat_period_id', 'gl_period', 'งวดภาษีที่ยื่น', 'VATPRD'),
   C('vat_late', 'bool', nn=True, d='false', th='ยื่นเพิ่มเติม (ใบกำกับมาช้า)', src='VATLATE'),
   C('doc_status', 'char1', nn=True, d="'N'", th='D=ร่าง(ออฟไลน์) N=ปกติ M=ใช้ครบ/ปิดแล้ว C=ยกเลิก', src='DOCSTAT', chk=DOC_STATUS),
+  C('status_code', 'code10', th='สถานะตามตารางข้อมูล: ใบเสนอราคา ตาราง 44 · ใบเบิก/จ่ายเงินสดย่อย ตาราง 53', src='QTSTAT / PCSTAT'),
   C('is_settled', 'bool', nn=True, d='false', th='ตัดชำระ/ส่งของครบแล้ว', src='CMPLAPP'),
   C('settled_date', 'date', th='วันที่ครบ', src='CMPLDAT'),
   C('appointment_date', 'date', th='วันนัดชำระ (ใบวางบิล)', src='ARBIL/APBIL.APPDAT'),

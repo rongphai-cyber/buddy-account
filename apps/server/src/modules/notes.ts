@@ -44,6 +44,34 @@ export function noteRoutes(app: FastifyInstance, db: Db) {
     return { ok: true };
   });
 
+  /** สถานะเอกสารตามตารางข้อมูล: ใบเสนอราคา (ตาราง 44 · S-QT-01) · ใบจ่าย/ใบเบิกเงินสดย่อย (ตาราง 53 · S-GL-11) */
+  const STATUS_TABLE: Record<string, string> = { QT: '44', DP: '53', VR: '53' };
+  app.get('/api/v1/doc-status/:kind/:id', async (req) => {
+    const a = requireCompany(req);
+    const { id } = parse(z.object({ kind: z.literal('doc'), id: uuid }), req.params);
+    const h = await db.selectFrom('doc_header').select(['doc_class', 'status_code']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!h) throw notFound('เอกสาร');
+    const table = STATUS_TABLE[h.doc_class] ?? null;
+    const options = table ? await db.selectFrom('md_lookup').select(['code', 'name_th']).where('company_id', '=', a.companyId).where('type_code', '=', table).where('deleted_at', 'is', null).orderBy('code').execute() : [];
+    return { table, status_code: h.status_code, options };
+  });
+  app.put('/api/v1/doc-status/:kind/:id', async (req) => {
+    const a = requireCompany(req);
+    const { id } = parse(z.object({ kind: z.literal('doc'), id: uuid }), req.params);
+    const { status_code } = parse(z.object({ status_code: z.string().trim().max(10).nullable().transform((v) => v || null) }), req.body);
+    const h = await db.selectFrom('doc_header').select(['doc_no', 'doc_class', 'status_code']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!h) throw notFound('เอกสาร');
+    const table = STATUS_TABLE[h.doc_class];
+    if (!table) throw badRequest('เอกสารชนิดนี้ไม่มีสถานะตามตารางข้อมูล');
+    if (status_code && !(await db.selectFrom('md_lookup').select('id').where('company_id', '=', a.companyId).where('type_code', '=', table).where('code', '=', status_code).where('deleted_at', 'is', null).executeTakeFirst()))
+      throw badRequest(`ไม่พบสถานะ ${status_code} ในตารางข้อมูล ${table} — เพิ่มที่ เริ่มระบบ › ตารางข้อมูล`);
+    await db.transaction().execute(async (tx) => {
+      await tx.updateTable('doc_header').set({ status_code, updated_by: a.userId }).where('id', '=', id).execute();
+      await logActivity(tx, a, { module: 'DOC', action: 'EDIT_STATUS', docNo: h.doc_no, table: 'doc_header', rowId: id, detail: { from: h.status_code, to: status_code } });
+    });
+    return { status_code };
+  });
+
   app.get('/api/v1/master-notes/:entity/:id', async (req) => {
     const a = requireCompany(req);
     const p = parse(z.object({ entity: z.enum(['item', 'customer', 'supplier']), id: uuid }), req.params);

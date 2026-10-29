@@ -2518,6 +2518,19 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/vat/P?header_id=${dp.id}&status=all`)).body.rows[0].doc_status).toBe('C');
     expect((await call('GET', `/api/v1/wht?header_id=${dp.id}&status=all`)).body.rows[0].doc_status).toBe('C');
   });
+  it('document status code (T7.1 S-QT-01 table 44): set from lookup, invalid code rejected, only QT/DP/VR', async () => {
+    await sql`INSERT INTO md_lookup (company_id, type_code, code, name_th) VALUES (${companyId}, '44', 'WIN', 'ได้งาน')`.execute(database.db);
+    const qtType = (await call('GET', '/api/v1/trade-defaults/QT')).body.types[0].id;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const cus = (await call('GET', '/api/v1/customers?q=C520')).body.rows[0].id;
+    const item = (await call('POST', '/api/v1/items', { code: '02-TEST-000073', name_th: 'สินค้าเสนอราคา', base_unit_id: unit, std_cost: '1' })).body.id;
+    const qt = (await call('POST', '/api/v1/quotations', { doc_type_id: qtType, doc_date: '2027-10-01', party_id: cus, price_type: '0', vat_rate: 0, lines: [{ item_id: item, qty: 1, unit_price: 10 }] })).body;
+    expect((await call('GET', `/api/v1/doc-status/doc/${qt.id}`)).body).toMatchObject({ table: '44', status_code: null, options: [{ code: 'WIN', name_th: 'ได้งาน' }] });
+    expect((await call('PUT', `/api/v1/doc-status/doc/${qt.id}`, { status_code: 'NOPE' })).body.error.message).toMatch(/ไม่พบสถานะ NOPE/);
+    expect((await call('PUT', `/api/v1/doc-status/doc/${qt.id}`, { status_code: 'WIN' })).body.status_code).toBe('WIN');
+    expect((await call('GET', `/api/v1/doc-status/doc/${qt.id}`)).body.status_code).toBe('WIN');
+    expect((await call('POST', `/api/v1/quotations/${qt.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

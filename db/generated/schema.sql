@@ -2159,6 +2159,7 @@ CREATE TABLE doc_header (
   vat_period_id uuid,
   vat_late boolean DEFAULT false NOT NULL,
   doc_status char(1) DEFAULT 'N' NOT NULL CHECK (doc_status IN ('D','N','M','C')),
+  status_code varchar(10),
   is_settled boolean DEFAULT false NOT NULL,
   settled_date date,
   appointment_date date,
@@ -2247,6 +2248,7 @@ COMMENT ON COLUMN doc_header.vat_date IS 'วันที่ใบกำกั�
 COMMENT ON COLUMN doc_header.vat_period_id IS 'งวดภาษีที่ยื่น [Express: VATPRD]';
 COMMENT ON COLUMN doc_header.vat_late IS 'ยื่นเพิ่มเติม (ใบกำกับมาช้า) [Express: VATLATE]';
 COMMENT ON COLUMN doc_header.doc_status IS 'D=ร่าง(ออฟไลน์) N=ปกติ M=ใช้ครบ/ปิดแล้ว C=ยกเลิก [Express: DOCSTAT]';
+COMMENT ON COLUMN doc_header.status_code IS 'สถานะตามตารางข้อมูล: ใบเสนอราคา ตาราง 44 · ใบเบิก/จ่ายเงินสดย่อย ตาราง 53 [Express: QTSTAT / PCSTAT]';
 COMMENT ON COLUMN doc_header.is_settled IS 'ตัดชำระ/ส่งของครบแล้ว [Express: CMPLAPP]';
 COMMENT ON COLUMN doc_header.settled_date IS 'วันที่ครบ [Express: CMPLDAT]';
 COMMENT ON COLUMN doc_header.appointment_date IS 'วันนัดชำระ (ใบวางบิล) [Express: ARBIL/APBIL.APPDAT]';
