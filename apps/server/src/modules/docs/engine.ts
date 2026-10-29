@@ -13,6 +13,7 @@ type Ctx = { companyId: string; userId: string; branchId?: string | null };
 const ROUTE_OF: Record<string, string> = {
   IV: 'CREDIT_SALE', HS: 'CASH_SALE', DR: 'AR_DEBIT_NOTE', CN: 'SALES_RETURN', RE: 'AR_RECEIPT', AI: 'AR_DEPOSIT', OI: 'OTHER_INCOME',
   RR: 'CREDIT_PURCHASE', HP: 'CASH_PURCHASE', CP: 'AP_CREDIT_NOTE', DN: 'PURCHASE_RETURN', PS: 'AP_PAYMENT', AE: 'AP_DEPOSIT', OE: 'OTHER_EXPENSE',
+  VR: 'PETTY_CASH_REIMBURSE',
 };
 
 /**
@@ -43,7 +44,7 @@ export async function previewPosting(db: Db, companyId: string, headerId: string
   const r = await loadResolver(db, companyId, {
     customers: [h.customer_id, ...ss.map((s) => s.party_id)].filter((x): x is string => !!x),
     suppliers: [h.supplier_id, ...ss.map((s) => s.party_id)].filter((x): x is string => !!x),
-    items: ls.map((l) => l.item_id), cheques: ps.map((p) => p.cheque_id).filter((x): x is string => !!x),
+    items: ls.map((l) => l.item_id).filter((x): x is string => !!x), cheques: ps.map((p) => p.cheque_id).filter((x): x is string => !!x),
   });
   return { header: h, lines: buildPosting(h, ls, ps, ss, r) };
 }

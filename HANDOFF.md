@@ -78,7 +78,10 @@
   - ✅ ส่วนที่ 2: `modules/docs/bills.ts` + core `BILL_KINDS` — /ar-bills /ap-bills (+open-items, /:id/appointment, cancel) doc_bill_item ยอดค้าง ณ วันทำใบ · บิลหนึ่งใบอยู่ในใบวางบิลที่ไม่ยกเลิกได้ใบเดียว · ref_date = วันที่ไปวางบิล · หน้า `pages/docs/BillDocs.tsx` (+ /fi/ar/bill-appointments = S-BI-02)
   - POST /quotations/:id/convert → ใบสั่งขาย (ใช้ saveTrade, doc_link CONVERT) · ใบเสร็จ/ใบจ่ายแสดงใบวางบิล# (settle openItems.bill_no)
   - เหลือใน T3.7: สถานะใบเสนอราคา (ตาราง 44 — ยังไม่มีคอลัมน์), อ้างใบเสนอราคาในบิลขายโดยตรง
-- ต่อไป: T3.8 เงินสดย่อย DP/VR (บทที่ 15)
+- ✅ T3.8 เงินสดย่อย: `modules/docs/pettycash.ts` /petty-payments (DP, ไม่ลงบัญชี, บรรทัด line_kind G + account_id) /petty-reimbursements (VR, รวม DP ตามบัญชี/แผนก → ลงบัญชี) · DP→VR ผูก doc_link REIMBURSE (ข้อมูลที่ย้ายมาใช้ DP.ref_no = เลขที่ VR) · เครื่องลงบัญชีเพิ่ม VR (Dr บัญชีของบรรทัด / Cr เงินสด-วิธีจ่าย) — ตรง Express 68/68 · posting-compare รวม 15,032/15,450 (97.3%)
+  - loadPostingInput โหลดบรรทัด G (account_id) ด้วย — ใช้เฉพาะ VR · หน้า `pages/docs/PettyCash.tsx` (/gl/petty-cash, /gl/petty-cash/vr)
+  - เหลือ: ประเภท/สถานะเงินสดย่อย (ตาราง 53), แท็บภาษีซื้อของ DP (T3.9)
+- ต่อไป: T3.9 แฟ้มภาษีซื้อ/ขาย + รายงานรายเดือน (บทที่ 16) — T1.15
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

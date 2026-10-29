@@ -56,8 +56,10 @@ export async function loadPostingInput(db: Db, companyId: string, headerIds: str
     FROM doc_header h WHERE h.company_id = ${companyId} AND h.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_class = ANY(${[...POSTING_CLASSES]}::text[]) AND ${where}`.execute(db)).rows;
   const hid = H.map((h) => h.id);
   const group = <T extends { header_id: string }>(rows: T[]) => { const m = new Map<string, T[]>(); for (const r of rows) { if (!m.has(r.header_id)) m.set(r.header_id, []); m.get(r.header_id)!.push(r); } return m; };
-  const lines = group((await sql<{ header_id: string; item_id: string; net_amount: string }>`SELECT header_id, item_id, net_amount FROM doc_line
-    WHERE company_id = ${companyId} AND deleted_at IS NULL AND line_kind = 'I' AND item_id IS NOT NULL AND net_amount <> 0 AND header_id = ANY(${hid}::uuid[]) ORDER BY header_id, line_no`.execute(db)).rows);
+  // บรรทัดสินค้า (I) + บรรทัดบัญชี (G — เงินสดย่อย ใช้เฉพาะหมวด VR)
+  const lines = group((await sql<{ header_id: string; item_id: string | null; account_id: string | null; net_amount: string }>`SELECT header_id, item_id, account_id, net_amount FROM doc_line
+    WHERE company_id = ${companyId} AND deleted_at IS NULL AND net_amount <> 0 AND header_id = ANY(${hid}::uuid[])
+      AND ((line_kind = 'I' AND item_id IS NOT NULL) OR (line_kind = 'G' AND account_id IS NOT NULL)) ORDER BY header_id, line_no`.execute(db)).rows);
   const pays = group((await sql<{ header_id: string; method_id: string | null; amount: string; cheque_id: string | null }>`SELECT header_id, payment_method_id AS method_id, amount, cheque_id FROM doc_payment
     WHERE company_id = ${companyId} AND deleted_at IS NULL AND header_id = ANY(${hid}::uuid[]) ORDER BY header_id, line_no`.execute(db)).rows);
   const setts = group((await sql<{ header_id: string; amount: string; vat: string; party_id: string | null; rectype: string | null }>`SELECT s.payment_header_id AS header_id, s.amount, s.vat_amount AS vat, coalesce(i.customer_id, i.supplier_id) AS party_id, s.express_rectype AS rectype

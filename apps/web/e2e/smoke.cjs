@@ -379,6 +379,19 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.goto(BASE + '/fi/ar/bill-appointments');
     await page.waitForSelector('table.grid tbody tr', { timeout: 15000 });
   });
+  await step('petty cash DP/VR (S-GL-11, S-GL-13, view only)', async () => {
+    await page.goto(BASE + '/gl/petty-cash/vr');
+    await page.waitForSelector('.toolbar input[type=search]', { timeout: 15000 });
+    const from = page.locator('.toolbar .date-in input').first();
+    await from.fill('01/01/2550'); await from.press('Enter');
+    await page.locator('table.grid tbody tr.row-open').first().click({ timeout: 15000 });
+    await page.waitForSelector('.trade-head', { timeout: 15000 });
+    await page.getByRole('tab', { name: 'ใบสำคัญที่ลงบัญชี' }).click();
+    await page.waitForSelector('div.box table, .muted', { timeout: 15000 });
+    await shot('15y-petty-vr');
+    await page.goto(BASE + '/gl/petty-cash/dp/new');
+    await page.waitForSelector('.trade-head', { timeout: 15000 });
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

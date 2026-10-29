@@ -165,6 +165,11 @@ export const API_RULES: Record<string, Rule> = {
     [`POST /api/v1/${k.path}/:id/appointment`, M(k.module === 'AR' ? 'FI.AR.BD' : k.menu, 'edit')],
   ])),
   'POST /api/v1/quotations/:id/convert': M('SA.SO', 'add'),
+  // เงินสดย่อย (บทที่ 15)
+  ...Object.fromEntries(['petty-payments', 'petty-reimbursements'].flatMap((p) => [
+    [`GET /api/v1/${p}`, M('GL.PC', 'read')], [`GET /api/v1/${p}/:id`, M('GL.PC', 'read')], [`POST /api/v1/${p}`, M('GL.PC', 'add')],
+    [`PUT /api/v1/${p}/:id`, M('GL.PC', 'edit')], [`POST /api/v1/${p}/:id/cancel`, M('GL.PC', 'cancel')],
+  ])),
   'GET /api/v1/wht': M('FI.WHT', 'read'), 'GET /api/v1/wht/:id': M('FI.WHT', 'read'), 'POST /api/v1/wht': M('FI.WHT', 'add'),
   'PUT /api/v1/wht/:id': M('FI.WHT', 'edit'), 'POST /api/v1/wht/:id/cancel': M('FI.WHT', 'cancel'), 'POST /api/v1/wht/:id/printed': M('FI.WHT.CERT', 'read'),
   'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),

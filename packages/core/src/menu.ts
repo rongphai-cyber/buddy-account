@@ -84,7 +84,7 @@ export const MENU: MenuItem[] = [
     m('GL.LY', 'ยอดปีที่แล้ว', 'P1', '/gl/prior-year', ['ch15:S-GL-16']),
     m('GL.BUD', 'งบประมาณ', 'P1', '/gl/budget', ['ch15:S-GL-17']),
     m('GL.INV', 'บัญชีสินค้าคงเหลือ', 'P4', undefined, ['ch15:S-GL-14']),
-    m('GL.PC', 'เงินสดย่อย', 'P3', undefined, ['ch15:S-GL-11', 'ch15:S-GL-13']),
+    m('GL.PC', 'เงินสดย่อย', 'P3', '/gl/petty-cash', ['ch15:S-GL-11', 'ch15:S-GL-12', 'ch15:S-GL-13']),
     m('GL.TPL', 'ต้นแบบวิธีการบันทึก', 'P1', '/gl/templates', ['ch15:S-GL-01']),
     m('GL.BOOK', 'สร้างสมุดรายวัน', 'P1', '/gl/books', ['ch15:S-GL-09']),
     m('GL.FS', 'สร้างงบการเงิน', 'P1', '/fs/layouts', ['ch24:S-FS-01', 'ch24:S-FS-03']),

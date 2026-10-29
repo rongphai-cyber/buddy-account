@@ -12,7 +12,8 @@ export interface PostHeader {
   /** ใบเสร็จ/ใบจ่าย: ภาษีหัก ณ ที่จ่าย ส่วนลดเงินสด ดอกเบี้ย (ผลต่างระหว่างยอดตัดหนี้กับเงินที่รับ/จ่ายจริง) */
   wht_amount?: MoneyInput; cash_discount_amount?: MoneyInput; interest_amount?: MoneyInput;
 }
-export interface PostLine { item_id: string; net_amount: MoneyInput }
+/** บรรทัดสินค้า (item_id) หรือบรรทัดบัญชี (account_id — เงินสดย่อย) */
+export interface PostLine { item_id: string | null; net_amount: MoneyInput; account_id?: string | null }
 export interface PostPayment { method_id: string | null; amount: MoneyInput; cheque_id: string | null }
 /** รายการตัดหนี้ในใบเสร็จ/ใบจ่าย · rectype '0' = ตัดเงินมัดจำ (ลงผ่านวิธีชำระ) · '5' = ใบลดหนี้ที่นำมาหัก (ยอดลบ) */
 export interface PostSettlement { amount: MoneyInput; vat: MoneyInput; party_id: string | null; rectype: string | null }
@@ -35,7 +36,7 @@ export type Layer = '1' | '2' | '3' | 'S';
 export interface PostingLine { account_id: string | null; debit: Decimal; credit: Decimal; role: string; layer: Layer }
 
 /** หมวดเอกสารที่ลงบัญชีด้วยเครื่องนี้ */
-export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI'] as const;
+export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'VR'] as const;
 
 export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment[], setts: PostSettlement[], r: PostingResolver): PostingLine[] {
   const out: PostingLine[] = [];
@@ -64,8 +65,8 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
   // ส่วนที่เหลือหลังวิธีชำระ = เงินสด (Express เก็บที่หัวเอกสาร)
   const cashRest = (total: Decimal) => (total.minus(paysTotal).gte('0.01') ? total.minus(paysTotal) : d(0));
 
-  const lineAccount = (kind: 'SALES' | 'SALES_RETURN' | 'PURCHASE' | 'PURCHASE_RETURN', itemId: string): Acct => {
-    const { type, group: g } = r.item(itemId);
+  const lineAccount = (kind: 'SALES' | 'SALES_RETURN' | 'PURCHASE' | 'PURCHASE_RETURN', itemId: string | null): Acct => {
+    const { type, group: g } = r.item(itemId ?? '');
     if (kind === 'SALES') return pick(['1', r.slot(dt, cls, 'SALES')], ['2', g.sales], ['3', r.def(cls === 'HS' ? 'CASH_SALES' : 'CREDIT_SALES')]);
     if (kind === 'SALES_RETURN') return pick(['2', g.sret], ['3', r.def('SALES_RETURN')]);
     // รหัสค่าใช้จ่ายอื่น (5) และ '2' ตามข้อมูลที่ย้ายมา → บัญชีค่าใช้จ่ายในกลุ่ม (ช่อง 1) — ดู HANDOFF เรื่องความหมาย item_type
@@ -136,6 +137,11 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     if (cls === 'AI') C(pick(['1', r.slot(dt, cls, 'DEPOSIT_RECEIVED')], ['3', r.def('DEPOSIT_RECEIVED')]), net.minus(vat), 'DEPOSIT_RECEIVED');
     else for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'OTHER_INCOME');
     C(pick(['3', r.def('OUTPUT_VAT')]), vat, 'OUTPUT_VAT');
+  } else if (cls === 'VR') {
+    // เบิกชดเชยเงินสดย่อย (S-GL-13): Dr บัญชีตามรายการจ่าย (ค่าใช้จ่าย/ตั้งวงเงิน) / Cr เงินสดหรือวิธีจ่าย (เช็ค โอน)
+    for (const l of lines) D(pick(['2', l.account_id]), d(l.net_amount), 'EXPENSE');
+    C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(net), 'CASH');
+    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
   } else if (cls === 'AE' || cls === 'OE') {
     if (cls === 'AE') D(pick(['1', r.slot(dt, cls, 'DEPOSIT_PAID')], ['3', r.def('DEPOSIT_PAID')]), net.minus(vat), 'DEPOSIT_PAID');
     else for (const l of lines) D(lineAccount('PURCHASE', l.item_id), d(l.net_amount), 'EXPENSE');
