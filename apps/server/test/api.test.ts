@@ -847,6 +847,65 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
 
+  it('sales documents (T3.3): credit sale posts to GL, edit reposts, cash sale with payments, credit note, cancel, isolation', async () => {
+    const defs = (await call('GET', '/api/v1/trade-defaults/IV')).body;
+    const ivType = defs.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cus = (await call('POST', '/api/v1/customers', { code: 'C100', name: 'ลูกค้าเอกสารขาย', tax_id: '0105537095903', credit_days: 30 })).body.id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const svc = (await call('GET', '/api/v1/other-expenses?status=all')).body.rows[0]?.id;
+    const iv = { doc_type_id: ivType, doc_date: '2026-06-15', party_id: cus, price_type: '2', vat_rate: 7, discount_text: '10%', lines: [{ item_id: cpu, qty: 2, unit_price: 7500 }] };
+    expect((await call('POST', '/api/v1/sales-invoices', { ...iv, lines: [] })).body.error.message).toMatch(/อย่างน้อย 1 บรรทัด/);
+    expect((await call('POST', '/api/v1/sales-invoices', { ...iv, discount_text: 'xx' })).body.error.message).toMatch(/ส่วนลด/);
+    if (svc) expect((await call('POST', '/api/v1/sales-invoices', { ...iv, lines: [{ item_id: svc, qty: 1, unit_price: 1 }] })).body.error.message).toMatch(/ค่าใช้จ่าย/);
+    const r = await call('POST', '/api/v1/sales-invoices', iv);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ doc_no: 'IV0000003', net_amount: '14445.00' });   // 15,000 − 10% = 13,500 + VAT 945
+    const det = (await call('GET', `/api/v1/sales-invoices/${r.body.id}`)).body;
+    expect(det).toMatchObject({ doc_no: 'IV0000003', amount: '15000.00', discount_amount: '1500.00', vat_amount: '945.00', due_date: expect.anything(), outstanding: '14445.00', editable: true, party_name: 'ลูกค้าเอกสารขาย' });
+    expect(String(det.due_date).slice(0, 10)).toBe('2026-07-15');                    // เครดิต 30 วันจากลูกค้า
+    const j = (await call('GET', `/api/v1/docs/${r.body.id}/journal`)).body.journals;
+    expect(j).toHaveLength(1);
+    expect(j[0].lines.map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${l.debit}:${l.credit}`)).toEqual(['AR:14445.00:0.00', 'SALES:0.00:13500.00', 'OUTPUT_VAT:0.00:945.00']);
+    expect((await call('GET', '/api/v1/sales-invoices?q=IV0000003')).body.rows[0]).toMatchObject({ party_code: 'C100', outstanding: '14445.00' });
+    // แก้ไข: ลงใบสำคัญเดิมใหม่ เลขที่เดิม
+    expect((await call('PUT', `/api/v1/sales-invoices/${r.body.id}`, { ...iv, discount_text: null, lines: [{ item_id: cpu, qty: 1, unit_price: 7500 }] })).body).toMatchObject({ doc_no: 'IV0000003', net_amount: '8025.00' });
+    const j2 = (await call('GET', `/api/v1/docs/${r.body.id}/journal`)).body.journals;
+    expect(j2.map((x: { voucher_no: string; total_debit: string }) => `${x.voucher_no}:${x.total_debit}`)).toEqual(['IV0000003:8025.00']);
+    expect((await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body.balanced).toBe(true);
+    // ขายเงินสด: รับด้วยวิธีอื่นบางส่วน ที่เหลือเป็นเงินสด
+    const hsType = (await call('GET', '/api/v1/trade-defaults/HS')).body.types[0].id;
+    const pm = (await call('GET', '/api/v1/payment-methods/R')).body[0];
+    const hs = await call('POST', '/api/v1/cash-sales', { doc_type_id: hsType, doc_date: '2026-06-16', party_id: cus, price_type: '1', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 1070 }], payments: [{ payment_method_id: pm.id, amount: 500 }] });
+    expect(hs.status).toBe(200);
+    expect((await call('GET', `/api/v1/cash-sales/${hs.body.id}`)).body).toMatchObject({ net_amount: '1070.00', vat_amount: '70.00', cash_amount: '570.00', cheque_amount: '500.00' });
+    expect((await call('POST', '/api/v1/sales-invoices', { ...iv, payments: [{ payment_method_id: pm.id, amount: 1 }] })).body.error.message).toMatch(/ไม่มีการรับ\/จ่ายเงิน/);
+    // ใบลดหนี้อ้างใบกำกับ: ต้องระบุใบเดิม
+    const cnType = (await call('GET', '/api/v1/trade-defaults/CN')).body.types[0].id;
+    const cn = { doc_type_id: cnType, doc_date: '2026-06-20', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 1000, return_to_stock: true }] };
+    expect((await call('POST', '/api/v1/ar-credit-notes', cn)).body.error.message).toMatch(/อ้างถึง/);
+    const c1 = await call('POST', '/api/v1/ar-credit-notes', { ...cn, ref_header_id: r.body.id });
+    expect(c1.status).toBe(200);
+    expect((await call('GET', `/api/v1/ar-credit-notes/${c1.body.id}`)).body).toMatchObject({ ref_no: 'IV0000003', net_amount: '1070.00' });
+    expect((await call('GET', `/api/v1/docs/${c1.body.id}/journal`)).body.journals[0].lines.map((l: { posting_role: string; credit: string }) => l.posting_role)).toEqual(['AR', 'SALES_RETURN', 'OUTPUT_VAT']);
+    // ลูกค้าเลิกใช้ เปิดบิลใหม่ไม่ได้
+    const old = (await call('GET', '/api/v1/customers?status=I')).body.rows[0].id;
+    expect((await call('POST', '/api/v1/sales-invoices', { ...iv, party_id: old })).body.error.message).toMatch(/เลิกใช้/);
+    // บริษัทอื่น: มองไม่เห็นเอกสาร ใช้ลูกค้าของบริษัทนี้ไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/sales-invoices/${r.body.id}`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/sales-invoices')).body.total).toBe(0);
+    expect((await call('POST', `/api/v1/sales-invoices/${r.body.id}/cancel`, { reason: 'x' })).status).toBe(404);
+    const otherIv = (await call('GET', '/api/v1/trade-defaults/IV')).body.types[0].id;
+    expect((await call('POST', '/api/v1/sales-invoices', { ...iv, doc_type_id: otherIv })).status).toBe(400);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ยกเลิก: ต้องมีเหตุผล · สถานะ C · ใบสำคัญ C · หายจากลูกหนี้คงค้าง
+    expect((await call('POST', `/api/v1/sales-invoices/${r.body.id}/cancel`, { reason: '' })).status).toBe(400);
+    expect((await call('POST', `/api/v1/sales-invoices/${r.body.id}/cancel`, { reason: 'ป้อนผิด' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/sales-invoices/${r.body.id}`)).body).toMatchObject({ doc_status: 'C', editable: false });
+    expect((await call('PUT', `/api/v1/sales-invoices/${r.body.id}`, iv)).body.error.message).toMatch(/ยกเลิกแล้ว/);
+    expect((await call('GET', `/api/v1/customers/${cus}`)).body.balance).toBe('-1070.00');   // เหลือใบลดหนี้
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

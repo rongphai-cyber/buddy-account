@@ -92,3 +92,16 @@ export function dueDate(docDate: string, creditDays: number | null | undefined):
   t.setUTCDate(t.getUTCDate() + (creditDays ?? 0));
   return t.toISOString().slice(0, 10);
 }
+
+/** เอกสารซื้อ/ขาย (ใช้โครงเดียวกัน) — เส้นทาง API/หน้าจอ, หมวดเอกสาร, เมนูสิทธิ์ */
+export interface TradeKind { path: string; cls: string; module: 'AR' | 'AP'; menu: string; party: 'customer' | 'supplier'; label: string; payments?: boolean; refInvoice?: boolean; route: string }
+export const TRADE_KINDS: TradeKind[] = [
+  { path: 'sales-invoices', cls: 'IV', module: 'AR', menu: 'SA.IV', party: 'customer', label: 'ขายเงินเชื่อ', route: '/sa/invoices' },
+  { path: 'cash-sales', cls: 'HS', module: 'AR', menu: 'SA.IV', party: 'customer', label: 'ขายเงินสด', payments: true, route: '/sa/cash-sales' },
+  { path: 'ar-debit-notes', cls: 'DR', module: 'AR', menu: 'FI.AR.DR', party: 'customer', label: 'ใบเพิ่มหนี้ (ลูกหนี้)', refInvoice: true, route: '/fi/ar/debit-notes' },
+  { path: 'ar-credit-notes', cls: 'CN', module: 'AR', menu: 'FI.AR.SR', party: 'customer', label: 'ใบลดหนี้/รับคืนสินค้า', refInvoice: true, route: '/fi/ar/credit-notes' },
+  { path: 'purchase-invoices', cls: 'RR', module: 'AP', menu: 'PU.RR', party: 'supplier', label: 'ซื้อเงินเชื่อ', route: '/pu/invoices' },
+  { path: 'cash-purchases', cls: 'HP', module: 'AP', menu: 'PU.RR', party: 'supplier', label: 'ซื้อเงินสด', payments: true, route: '/pu/cash-purchases' },
+  { path: 'ap-debit-notes', cls: 'CP', module: 'AP', menu: 'FI.AP.CP', party: 'supplier', label: 'ใบเพิ่มหนี้ (เจ้าหนี้)', refInvoice: true, route: '/fi/ap/debit-notes' },
+  { path: 'ap-credit-notes', cls: 'DN', module: 'AP', menu: 'FI.AP.GR', party: 'supplier', label: 'ใบลดหนี้/ส่งคืนสินค้า', refInvoice: true, route: '/fi/ap/credit-notes' },
+];

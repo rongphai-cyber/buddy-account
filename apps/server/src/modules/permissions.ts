@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { ITEM_KINDS, MENU, flattenMenu } from '@buddy/core';
+import { ITEM_KINDS, MENU, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -143,6 +143,11 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/gl/link': M('SET.LINK', 'read'), 'PUT /api/v1/gl/link': M('SET.LINK', 'edit'),
   'GET /api/v1/data-tables': LOOKUP, 'GET /api/v1/data-tables/:code': LOOKUP, 'PUT /api/v1/data-tables/:code': M('SET.TBL', 'edit'),
   'GET /api/v1/docs/:id/journal': LOOKUP, 'GET /api/v1/docs/:id/posting-preview': LOOKUP, 'POST /api/v1/docs/:id/repost': M('SET.LINK', 'edit'),
+  ...Object.fromEntries(TRADE_KINDS.flatMap((k) => [
+    [`GET /api/v1/${k.path}`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/:id`, M(k.menu, 'read')], [`POST /api/v1/${k.path}`, M(k.menu, 'add')],
+    [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M(k.menu, 'cancel')],
+  ])),
+  'GET /api/v1/trade-defaults/:cls': LOOKUP,
   'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),
   'PUT /api/v1/salespersons/:id': M('SA.SLM', 'edit'), 'DELETE /api/v1/salespersons/:id': M('SA.SLM', 'delete'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)

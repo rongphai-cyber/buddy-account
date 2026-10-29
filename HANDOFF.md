@@ -55,7 +55,8 @@
 - ✅ T3.2 แกนเอกสาร `apps/server/src/modules/docs/engine.ts`: `issueDocNo` (FOR UPDATE, ข้ามเลขที่มีแล้ว) · `postDocument(tx, ctx, headerId)` (ใบสำคัญเลขที่ = เลขที่เอกสาร, สมุดจากประเภทเอกสาร→เส้นทาง→00, คำอธิบายจากแม่แบบ, บรรทัดมี posting_role + resolved_from ชั้น 1/2/3/S, gen.link_gl=false ไม่ลง) · `repostDocument` (แก้ใบเดิมเลขเดิม บรรทัดเก่า soft delete) · `cancelDocument` (C + ใบสำคัญ C; มีการตัดชำระแล้วห้ามยกเลิก)
   - API `modules/docs/routes.ts`: GET /docs/:id/journal · GET /docs/:id/posting-preview · POST /docs/:id/repost (SET.LINK)
   - เอกสารแต่ละระบบ (T3.3+) เรียก issueDocNo + insert doc_* + postDocument ในทรานแซกชันเดียว
-- ต่อไป: T3.3 ขาย IV/HS/DR/CN — เริ่มจาก core คำนวณยอดเอกสาร (ประเภทราคา 0/1/2 ส่วนลด VAT มัดจำ) แล้ว API + หน้าจอ (คู่มือบทที่ 12 + docs/express/data/ch12.json)
+- ⏳ T3.3/T3.4 เอกสารซื้อขาย: ✅ core `doc-calc.ts` (`computeDoc` ตรง Express: line net ไม่รวม VAT หลังเฉลี่ยส่วนลด, `TRADE_KINDS` 8 ชนิด) ✅ API `modules/docs/trade.ts` (/sales-invoices /cash-sales /ar-debit-notes /ar-credit-notes /purchase-invoices /cash-purchases /ap-debit-notes /ap-credit-notes + /:id/cancel + /trade-defaults/:cls; บันทึก/แก้ = ลงบัญชี; แก้ไม่ได้เมื่อมีการตัดชำระ) + ทดสอบ 32 ข้อ — ⏳ หน้าจอ (หน้าเดียวใช้ทุกชนิด) + smoke
+  - ยังไม่ทำในเอกสาร: ตัดสต๊อก/ต้นทุน (P4), แฟ้มภาษีขาย/ซื้อ (T3.9), หักมัดจำ (T3.6), อ้างใบสั่งขาย/ใบสั่งซื้อ (T3.7)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ
