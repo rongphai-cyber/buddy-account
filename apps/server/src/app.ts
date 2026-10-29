@@ -13,6 +13,7 @@ import { glRoutes } from './modules/gl/routes.js';
 import { reportRoutes } from './modules/gl/reports.js';
 import { templateRoutes } from './modules/gl/templates.js';
 import { priorYearRoutes } from './modules/gl/prior-year.js';
+import { budgetRoutes } from './modules/gl/budget.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -38,6 +39,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   glRoutes(app, db);
   templateRoutes(app, db);
   priorYearRoutes(app, db);
+  budgetRoutes(app, db);
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {

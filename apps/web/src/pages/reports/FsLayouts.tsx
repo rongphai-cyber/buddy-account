@@ -83,7 +83,7 @@ function LayoutEditor({ id, onClose, onSaved }: { id: string | null; onClose: ()
       <div className="cols-edit">
         {h.columns.map((c, i) => (
           <span key={i} className="col-chip">
-            <input value={c.expr} title="BAL / PTD / BAL LY / PTD LY หรือสูตร เช่น (C1-C2)*100/C2" onChange={(e) => setH({ ...h, columns: h.columns.map((x, k) => (k === i ? { ...x, expr: e.target.value } : x)) })} />
+            <input value={c.expr} title="BAL / PTD / BAL LY / PTD LY / BUD (งบประมาณสะสม) / PTD BUD (งบประมาณงวดนี้) หรือสูตร เช่น (C1-C2)*100/C2" onChange={(e) => setH({ ...h, columns: h.columns.map((x, k) => (k === i ? { ...x, expr: e.target.value } : x)) })} />
             <input value={c.head1 ?? ''} placeholder="หัวคอลัมน์" onChange={(e) => setH({ ...h, columns: h.columns.map((x, k) => (k === i ? { ...x, head1: e.target.value } : x)) })} />
             <button className="icon-btn" onClick={() => setH({ ...h, columns: h.columns.filter((_, k) => k !== i) })}>✕</button>
           </span>

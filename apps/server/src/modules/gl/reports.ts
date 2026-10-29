@@ -6,6 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../../http.js';
 import { closingOf, fiscalYearOf, isPL, leafTotals, loadChart, rollUp, type Chart, type Totals } from './balances.js';
 import { logActivity } from '../../audit.js';
+import { budgetTotals } from './budget.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
 const uuid = z.string().uuid();
@@ -191,7 +192,7 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
   });
 }
 
-const defaultHead = (e: string) => ({ BAL: 'ยอดสะสม', PTD: 'ประจำงวด', 'BAL LY': 'ปีที่แล้ว', 'PTD LY': 'งวดเดียวกันปีที่แล้ว' } as Record<string, string>)[e.trim().toUpperCase()] ?? e;
+const defaultHead = (e: string) => ({ BAL: 'ยอดสะสม', PTD: 'ประจำงวด', 'BAL LY': 'ปีที่แล้ว', 'PTD LY': 'งวดเดียวกันปีที่แล้ว', BUD: 'งบประมาณสะสม', 'PTD BUD': 'งบประมาณงวดนี้' } as Record<string, string>)[e.trim().toUpperCase()] ?? e;
 
 interface StatementCtx {
   fy: { code: string; start_date: string; end_date: string } | null;
@@ -213,6 +214,9 @@ async function statementContext(db: Db, companyId: string, chart: Chart, end: st
   const hasLY = !!fyLY;
   const ytdLY = hasLY ? rollUp(chart, await leafTotals(db, companyId, chart, fyLY!.start_date, endLY, f)) : null;
   const ptdLY = hasLY ? rollUp(chart, await leafTotals(db, companyId, chart, pStartLY, endLY, f)) : null;
+  // งบประมาณ (S-GL-17): BUD = ต้นปีถึงสิ้นงวด, PTD BUD = เฉพาะงวด
+  const budYtd = await budgetTotals(db, companyId, chart, fy.start_date, end, f.departmentId);
+  const budPtd = await budgetTotals(db, companyId, chart, pStart, end, f.departmentId);
   const nat = (no: string, m: Map<string, Totals> | null, part: 'closing' | 'move' | 'opening') => {
     if (!m) return null;
     const acc = chart.byNo.get(no);
@@ -227,6 +231,11 @@ async function statementContext(db: Db, companyId: string, chart: Chart, end: st
     value(kind: string, no: string, dt: 'A/C' | 'BEG' | 'INV') {
       const ly = kind.includes('LY');
       const isPtd = kind.startsWith('PTD');
+      if (kind.includes('BUD')) {
+        if (dt !== 'A/C') return null;
+        const acc = chart.byNo.get(no);
+        return acc ? (isPtd ? budPtd : budYtd).get(acc.id) ?? ZERO : ZERO;
+      }
       if (dt === 'BEG') return nat(no, ly ? (isPtd ? ptdLY : ytdLY) : isPtd ? ptd : ytd, 'opening');
       // INV: สินค้าคงเหลือปลายงวด — Periodic ใช้ยอดบัญชีสินค้าคงเหลือ ณ สิ้นงวด (เฟส 4: ใช้ยอดตรวจนับ/บัญชีสินค้าคงเหลือ)
       if (dt === 'INV') return nat(no, ly ? ytdLY : ytd, 'closing');

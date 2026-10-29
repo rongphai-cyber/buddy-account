@@ -81,7 +81,7 @@ export const MENU: MenuItem[] = [
     m('GL.ACC', 'ผังบัญชี', 'P1', '/gl/accounts', ['ch07:S-GL-01']),
     m('GL.OB', 'บันทึกยอดยกมา', 'P1', '/gl/opening', ['ch08:S-OB-06']),
     m('GL.LY', 'ยอดปีที่แล้ว', 'P1', '/gl/prior-year', ['ch15:S-GL-16']),
-    m('GL.BUD', 'งบประมาณ', 'P1', undefined, ['ch15:S-GL-17']),
+    m('GL.BUD', 'งบประมาณ', 'P1', '/gl/budget', ['ch15:S-GL-17']),
     m('GL.INV', 'บัญชีสินค้าคงเหลือ', 'P4', undefined, ['ch15:S-GL-14']),
     m('GL.PC', 'เงินสดย่อย', 'P3', undefined, ['ch15:S-GL-11', 'ch15:S-GL-13']),
     m('GL.TPL', 'ต้นแบบวิธีการบันทึก', 'P1', '/gl/templates', ['ch15:S-GL-01']),

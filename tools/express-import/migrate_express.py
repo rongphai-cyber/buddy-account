@@ -691,6 +691,21 @@ if fy_first:
     done('gl_balance', insert('gl_balance', rows), 'GLBAL (ยอดยกมาต้นปีแรก)')
     QUALITY['gl_opening_net_should_be_zero'].append(round(tot, 2))
 
+# ------------------------------------------------------------------ งบประมาณ (GLBUD — คู่มือบทที่ 15 S-GL-17): AMTn ปีปัจจุบัน, AMTnNY ปีหน้า, AMTnLY ปีที่แล้ว (ถ้ามีงวดในระบบ)
+rows = []
+if prd:
+    for r in dbf('GLBUD'):
+        a = st(r['ACCNUM'])
+        if not a: continue
+        for i in range(1, 13):
+            for col, start in ((f'AMT{i}', prd.get(f'BEG{i}')), (f'AMT{i}NY', prd.get(f'BEG{i}NY')),
+                               (f'AMT{i}LY', prd[f'BEG{i}'].replace(year=prd[f'BEG{i}'].year - 1) if prd.get(f'BEG{i}') else None)):
+                amt = money(r.get(col))
+                pid = period_of(start, create=False) if start and amt else None
+                if not pid: continue
+                rows.append(base(id=U('glbud', a, st(r['DEPCOD']), pid), account_id=acc(a), department_id=dept(r['DEPCOD']) if st(r['DEPCOD']) else None, period_id=pid, amount=amt))
+done('gl_budget', insert('gl_budget', rows), 'GLBUD')
+
 # ------------------------------------------------------------------ tax
 rows = []
 for r in dbf('ISVAT'):

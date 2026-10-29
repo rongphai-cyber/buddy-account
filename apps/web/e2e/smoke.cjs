@@ -165,6 +165,20 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await shot('15g-prior-year-entry');
     await page.keyboard.press('Escape');
   });
+  await step('budget (S-GL-17)', async () => {
+    // ดูอย่างเดียว ไม่บันทึก: เปิดหน้าต่างป้อนงบประมาณของเงินสด ต้องเห็น 12 งวดพร้อมยอดจริง
+    await page.goto(BASE + '/gl/budget');
+    await page.waitForSelector('table.grid tbody tr', { timeout: 15000 });
+    await page.keyboard.press('Insert');
+    await page.waitForSelector('.modal');
+    await page.waitForTimeout(500);
+    await page.keyboard.type('1111-00'); await page.keyboard.press('Enter');
+    await page.waitForTimeout(800);
+    if (await page.locator('.modal .lk-table').count()) await page.keyboard.press('Enter');
+    await page.waitForSelector('.modal tbody tr:nth-child(12)', { timeout: 15000 });
+    await shot('15h-budget-entry');
+    await page.keyboard.press('Escape');
+  });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });
