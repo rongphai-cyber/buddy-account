@@ -142,6 +142,7 @@ export const API_RULES: Record<string, Rule> = {
   'PUT /api/v1/doc-types/:id': M('SET.DOCNO', 'edit'), 'DELETE /api/v1/doc-types/:id': M('SET.DOCNO', 'delete'),
   'GET /api/v1/gl/link': M('SET.LINK', 'read'), 'PUT /api/v1/gl/link': M('SET.LINK', 'edit'),
   'GET /api/v1/data-tables': LOOKUP, 'GET /api/v1/data-tables/:code': LOOKUP, 'PUT /api/v1/data-tables/:code': M('SET.TBL', 'edit'),
+  'GET /api/v1/docs/:id/journal': LOOKUP, 'GET /api/v1/docs/:id/posting-preview': LOOKUP, 'POST /api/v1/docs/:id/repost': M('SET.LINK', 'edit'),
   'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),
   'PUT /api/v1/salespersons/:id': M('SA.SLM', 'edit'), 'DELETE /api/v1/salespersons/:id': M('SA.SLM', 'delete'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)

@@ -22,6 +22,7 @@ import { chartTemplateRoutes } from './modules/gl/chart-templates.js';
 import { bankingRoutes } from './modules/banking.js';
 import { docTypeRoutes } from './modules/doc-types.js';
 import { dataTableRoutes } from './modules/data-tables.js';
+import { docRoutes } from './modules/docs/routes.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -63,6 +64,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   bankingRoutes(app, db);
   docTypeRoutes(app, db);
   dataTableRoutes(app, db);
+  docRoutes(app, db);
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {

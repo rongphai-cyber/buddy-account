@@ -52,7 +52,10 @@
 - ✅ T3.1 เครื่องลงบัญชี: `packages/core/src/posting.ts` (`buildPosting` บริสุทธิ์ + unit test) · `apps/server/src/modules/posting.ts` (`loadResolver` 3 ชั้น + `loadPostingInput` + `comparePosting`)
   - ตรวจ: `node tools/local-pg/pg.mjs run -- pnpm --silent --filter @buddy/server cli posting-compare DEMO` → ต้องได้ ≥ 97.0% (ตอนนี้ 14,923/15,382 เท่าต้นแบบ Python ทุกหมวด)
   - วิธีชำระเงินโอนที่ไม่มีบัญชี ใช้บัญชีของบัญชีเงินฝากที่ผูก (เพิ่มจากต้นแบบ — ผลไม่เปลี่ยน)
-- ต่อไป: T3.2 แกนเอกสาร (ออกเลข บันทึก=ลงบัญชีทรานแซกชันเดียว ยกเลิก=C+กลับรายการ) แล้ว T3.3 ขาย
+- ✅ T3.2 แกนเอกสาร `apps/server/src/modules/docs/engine.ts`: `issueDocNo` (FOR UPDATE, ข้ามเลขที่มีแล้ว) · `postDocument(tx, ctx, headerId)` (ใบสำคัญเลขที่ = เลขที่เอกสาร, สมุดจากประเภทเอกสาร→เส้นทาง→00, คำอธิบายจากแม่แบบ, บรรทัดมี posting_role + resolved_from ชั้น 1/2/3/S, gen.link_gl=false ไม่ลง) · `repostDocument` (แก้ใบเดิมเลขเดิม บรรทัดเก่า soft delete) · `cancelDocument` (C + ใบสำคัญ C; มีการตัดชำระแล้วห้ามยกเลิก)
+  - API `modules/docs/routes.ts`: GET /docs/:id/journal · GET /docs/:id/posting-preview · POST /docs/:id/repost (SET.LINK)
+  - เอกสารแต่ละระบบ (T3.3+) เรียก issueDocNo + insert doc_* + postDocument ในทรานแซกชันเดียว
+- ต่อไป: T3.3 ขาย IV/HS/DR/CN — เริ่มจาก core คำนวณยอดเอกสาร (ประเภทราคา 0/1/2 ส่วนลด VAT มัดจำ) แล้ว API + หน้าจอ (คู่มือบทที่ 12 + docs/express/data/ch12.json)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

@@ -804,6 +804,49 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/data-tables/22')).body[0].name_th).toBe('ซีพียู');
   });
 
+  it('document engine (T3.2): numbering, post = GL voucher in one go, repost, cancel', async () => {
+    const { issueDocNo, postDocument, cancelDocument } = await import('../src/modules/docs/engine.js');
+    const iv = (await call('GET', '/api/v1/doc-types')).body.find((t: { code: string }) => t.code === 'IV');
+    const no1 = await issueDocNo(database.db, companyId, iv.id), no2 = await issueDocNo(database.db, companyId, iv.id);
+    expect([no1, no2]).toEqual(['IV0000001', 'IV0000002']);
+    const branch = (await sql<{ id: string }>`SELECT id FROM sys_branch WHERE company_id = ${companyId} AND is_head_office`.execute(database.db)).rows[0]!.id;
+    const cus = (await call('GET', '/api/v1/customers?status=all&q=C001')).body.rows[0].id;
+    const item = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const h = (await sql<{ id: string }>`INSERT INTO doc_header (company_id, branch_id, doc_type_id, doc_class, module, doc_no, doc_date, customer_id, amount, vat_rate, vat_amount, net_amount, vat_basis)
+      VALUES (${companyId}, ${branch}, ${iv.id}, 'IV', 'AR', ${no2}, '2026-05-10', ${cus}, 1000, 7, 70, 1070, '1') RETURNING id`.execute(database.db)).rows[0]!.id;
+    await sql`INSERT INTO doc_line (company_id, header_id, line_no, line_kind, item_id, qty, unit_price, line_amount, net_amount) VALUES (${companyId}, ${h}, 1, 'I', ${item}, 1, 1000, 1000, 1000)`.execute(database.db);
+    const pv = (await call('GET', `/api/v1/docs/${h}/posting-preview`)).body as Array<{ role: string; debit: string; credit: string; layer: string }>;
+    expect(pv.map((l) => [l.role, l.debit, l.credit])).toEqual([['AR', '1070.00', '0.00'], ['SALES', '0.00', '1000.00'], ['OUTPUT_VAT', '0.00', '70.00']]);
+    const admin = (await sql<{ id: string }>`SELECT id FROM sys_user WHERE username = 'admin'`.execute(database.db)).rows[0]!.id;
+    await database.db.transaction().execute((tx) => postDocument(tx, { companyId, userId: admin }, h));
+    const j = (await call('GET', `/api/v1/docs/${h}/journal`)).body;
+    expect(j.doc.gl_posted).toBe('Y');
+    expect(j.journals).toHaveLength(1);
+    expect(j.journals[0]).toMatchObject({ voucher_no: 'IV0000002', book_code: '03', doc_status: 'N', total_debit: '1070.00' });
+    expect(j.journals[0].lines.map((l: { posting_role: string; resolved_from: string }) => `${l.posting_role}:${l.resolved_from}`)).toEqual(['AR:3', 'SALES:3', 'OUTPUT_VAT:3']);
+    const tb = (await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body;
+    expect(tb.balanced).toBe(true);
+    // ลงบัญชีใหม่ หลังกำหนดบัญชีลูกหนี้ที่ตัวลูกค้า: ใบสำคัญเดิมใช้บัญชีจากแฟ้มหลัก (ชั้น 2)
+    const ar = (await call('GET', '/api/v1/gl/accounts')).body.find((x: { is_control: boolean; account_no: string }) => !x.is_control && x.account_no.startsWith('113')).id;
+    await sql`UPDATE md_customer SET ar_account_id = ${ar} WHERE id = ${cus}`.execute(database.db);
+    expect((await call('POST', `/api/v1/docs/${h}/repost`)).status).toBe(200);
+    const j2 = (await call('GET', `/api/v1/docs/${h}/journal`)).body;
+    expect(j2.journals.map((x: { doc_status: string; voucher_no: string }) => `${x.voucher_no}:${x.doc_status}`)).toEqual(['IV0000002:N']);   // ใบเดิม เลขเดิม บรรทัดใหม่
+    expect(j2.journals[0].lines[0]).toMatchObject({ posting_role: 'AR', resolved_from: '2' });
+    expect(j2.journals[0].lines).toHaveLength(3);
+    // ยกเลิกเอกสาร: สถานะ C + ใบสำคัญ C (ไม่ลบ)
+    await cancelDocument(database.db, { companyId, userId: admin }, h, 'ทดสอบยกเลิก');
+    const j3 = (await call('GET', `/api/v1/docs/${h}/journal`)).body;
+    expect(j3.doc).toMatchObject({ doc_status: 'C', gl_posted: 'N' });
+    expect(j3.journals.every((x: { doc_status: string }) => x.doc_status === 'C')).toBe(true);
+    await expect(cancelDocument(database.db, { companyId, userId: admin }, h, 'ซ้ำ')).rejects.toThrow(/ถูกยกเลิกแล้ว/);
+    // บริษัทอื่นมองไม่เห็นเอกสาร/ใบสำคัญ
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/docs/${h}/journal`)).status).toBe(404);
+    expect((await call('POST', `/api/v1/docs/${h}/repost`)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)
