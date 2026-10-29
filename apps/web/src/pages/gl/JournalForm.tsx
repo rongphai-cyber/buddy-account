@@ -5,7 +5,7 @@ import { d, fmt, journalTotals, todayIso, formatDate } from '@buddy/core';
 import { api, type Book, type Department, type Template, type TemplateDetail } from '../../api';
 import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
-import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
+import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
 import { JournalPicker } from '../../components/JournalPicker';
 
@@ -30,6 +30,19 @@ export function JournalFormPage() {
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Department[]>('/api/v1/departments') });
   const accts = useAccounts();
   const doc = useQuery({ enabled: !isNew, queryKey: ['journal', id], queryFn: () => api.get<JournalDoc>(`/api/v1/gl/journals/${id}`) });
+  const [vatAsk, setVatAsk] = useState(false);
+  const ys = useYearSystem();
+  /** S-ME-01: เติมรายการปิดภาษีขาย/ภาษีซื้อของเดือน จากยอดคงเหลือในบัญชี ณ สิ้นเดือน */
+  const fillVatClosing = async (month: string) => {
+    try {
+      const r = await api.get<{ date: string; description: string; lines: Array<{ account_id: string | null; description: string; debit: string; credit: string }>; missing: string | null }>('/api/v1/gl/vat-closing', { month });
+      if (!r.lines.length) { toast('ไม่มียอดภาษีขาย/ภาษีซื้อคงเหลือ ณ สิ้นเดือนนี้', 'bad'); return; }
+      setLines(r.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: null, description: l.description, debit: d(l.debit).isZero() ? '' : l.debit, credit: d(l.credit).isZero() ? '' : l.credit })));
+      setH((x) => ({ ...x, voucher_date: r.date, description: `ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน ${month.slice(5)}/${ys === 'B' ? Number(month.slice(0, 4)) + 543 : month.slice(0, 4)}` }));
+      setDirty(true); setVatAsk(false);
+      if (r.missing) toast(`ยังไม่ได้กำหนดบัญชี${r.missing === 'VAT_PAYABLE' ? 'เจ้าหนี้' : 'ลูกหนี้'}กรมสรรพากร — เลือกบัญชีในบรรทัดสุดท้าย หรือกำหนดที่การเชื่อมต่อบัญชี`, 'bad');
+    } catch (e) { toastError(e); }
+  };
   const [h, setH] = useState({ journal_book_id: sp.get('book') ?? '', voucher_date: me?.work_date ?? todayIso(), description: '', reference: '' });
   // ค่าเริ่มต้นระบบบัญชี ข้อ 2: ลำดับเลขที่แบบ 0 = ผู้ใช้ป้อนเลขที่ใบสำคัญเอง
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<{ values: Record<string, unknown> }>('/api/v1/settings'), staleTime: 60_000 });
@@ -195,6 +208,7 @@ export function JournalFormPage() {
                   : <input readOnly value={isNew ? nextNo : j?.voucher_no ?? ''} className="mono" onKeyDown={(e) => { if (isNew && e.key === 'F4') { e.preventDefault(); setTplPick(''); } }} />}
                 {isNew && <button type="button" className="icon-btn" onClick={() => setTplPick('')} title="เลือกต้นแบบวิธีการบันทึก (F4)">🔍</button>}
                 {isNew && <button type="button" className="icon-btn" onClick={() => setCopyPick(true)} title="คัดลอกรายการจากใบสำคัญอื่น (Ctrl+F6)">📋</button>}
+                {isNew && <button type="button" className="icon-btn" onClick={() => setVatAsk(true)} title="ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน">%</button>}
               </span>
             </Field>
             <Field label="อ้างอิง"><input value={h.reference} maxLength={30} onChange={(e) => { setDirty(true); setH({ ...h, reference: e.target.value }); }} /></Field>
@@ -243,6 +257,7 @@ export function JournalFormPage() {
       </fieldset>
       {tab === 'history' && id && <History table="gl_journal" rowId={id} />}
       {j && <p className="hint">สร้างโดย {j.created_by_name ?? 'นำเข้าจาก Express'} · <DateText v={j.created_at.slice(0, 10)} /> · แก้ไขล่าสุด <DateText v={j.updated_at.slice(0, 10)} /></p>}
+      {vatAsk && <VatClosingModal workDate={h.voucher_date} onClose={() => setVatAsk(false)} onOk={fillVatClosing} />}
       <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี / ต้นแบบ (ที่ช่องเลขที่)'], ['Ctrl+F6', 'คัดลอกจากใบสำคัญอื่น'],['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />
       <PrintVoucher title={book?.name_th ?? 'ใบสำคัญ'} no={isNew ? nextNo : j?.voucher_no ?? ''} date={formatDate(h.voucher_date, me?.company?.year_system ?? 'B')} desc={h.description} company={me?.company?.name_th ?? ''}
         lines={lines.filter((l) => l.account_id).map((l) => ({ no: acctOf(l.account_id)?.account_no ?? '', name: acctOf(l.account_id)?.name_th ?? '', desc: l.description, dr: l.debit, cr: l.credit }))} totals={totals} />
@@ -300,3 +315,21 @@ function PrintVoucher({ title, no, date, desc, company, lines, totals }: { title
 }
 
 export { Money };
+
+/** เลือกเดือนที่จะปรับปรุงภาษีมูลค่าเพิ่ม */
+function VatClosingModal({ workDate, onClose, onOk }: { workDate: string; onClose: () => void; onOk: (month: string) => void }) {
+  const MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const ys = useYearSystem();
+  const y0 = Number(workDate.slice(0, 4));
+  const [y, setY] = useState(y0);
+  const [m, setM] = useState(Number(workDate.slice(5, 7)));
+  return (
+    <Modal title="ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน" size="confirm" onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" autoFocus onClick={() => onOk(`${y}-${String(m).padStart(2, '0')}`)}>เติมรายการ</button></>}>
+      <p>เติมรายการ Dr ภาษีขาย / Cr ภาษีซื้อ / ผลต่างเข้าเจ้าหนี้ (หรือลูกหนี้) กรมสรรพากร จากยอดคงเหลือ ณ สิ้นเดือน — ตรวจแล้วกดบันทึก (คู่มือหน้า 315)</p>
+      <div className="form-grid">
+        <Field label="เดือน"><select value={m} onChange={(e) => setM(Number(e.target.value))}>{MONTHS.map((x, i) => <option key={x} value={i + 1}>{x}</option>)}</select></Field>
+        <Field label="ปี"><select value={y} onChange={(e) => setY(Number(e.target.value))}>{[y0 - 2, y0 - 1, y0, y0 + 1].map((v) => <option key={v} value={v}>{ys === 'B' ? v + 543 : v}</option>)}</select></Field>
+      </div>
+    </Modal>
+  );
+}

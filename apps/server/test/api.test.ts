@@ -648,7 +648,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect(accs.length).toBeGreaterThan(250);
     expect(accs.find((x) => x.account_no === '1111-01')).toMatchObject({ name_en: 'Cash', is_control: false });
     const roles = (await sql<{ n: number }>`SELECT count(*) AS n FROM gl_default_account WHERE company_id = ${th}`.execute(database.db)).rows[0]!.n;
-    expect(Number(roles)).toBe(34);
+    expect(Number(roles)).toBe(36);
     // บริษัทที่ไม่มีผัง: เพิ่มบัญชีจากผังตัวอย่าง (บัญชีคุมเพิ่มให้เอง)
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
     const before = (await call('GET', '/api/v1/gl/accounts')).body.length;
@@ -740,7 +740,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect(det.accounts.map((x: { slot: number }) => x.slot)).toEqual([1, 3]);
     expect((await call('PUT', `/api/v1/doc-types/${r.body.id}`, { ...ie, accounts: [] })).status).toBe(200);
     expect((await call('GET', `/api/v1/doc-types/${r.body.id}`)).body.accounts).toHaveLength(0);
-    // การเชื่อมต่อบัญชี: บัญชีเพื่อลงรายวัน 34 บทบาท + สมุดรายวันของรายการ
+    // การเชื่อมต่อบัญชี: บัญชีเพื่อลงรายวันที่ผังของบริษัทกำหนด (34 บทบาท) + สมุดรายวันของรายการ
     const link = (await call('GET', '/api/v1/gl/link')).body;
     expect(link.link_gl).toBe(true);
     expect(link.defaults.length).toBe(34);
@@ -1295,6 +1295,15 @@ describe('Buddy Account API (PGlite)', () => {
     s = await reg('S');
     expect(s.totals).toMatchObject({ base: '0.00', vat: '0.00' });
     expect((await reg('S', '&status=C')).rows.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('vat closing (T1.15): month-end proposal clears output/input VAT balances, balanced', async () => {
+    const r = (await call('GET', '/api/v1/gl/vat-closing?month=2026-12')).body;
+    expect(r).toMatchObject({ date: '2026-12-31', description: 'ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน 12/2026' });
+    const sum = (k: 'debit' | 'credit') => r.lines.reduce((s: number, l: Record<string, string>) => s + Number(l[k]), 0);
+    expect(Math.abs(sum('debit') - sum('credit'))).toBeLessThan(0.005);
+    expect(Number(r.output_vat) - Number(r.input_vat)).toBeCloseTo(Number(r.net), 2);
+    expect((await call('GET', '/api/v1/gl/vat-closing?month=2026-13')).status).toBe(400);
   });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {

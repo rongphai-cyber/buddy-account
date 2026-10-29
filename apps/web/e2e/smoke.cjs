@@ -404,6 +404,14 @@ require('fs').mkdirSync(OUT, { recursive: true });
       await shot('15z-vat-' + k);
     }
   });
+  await step('month-end VAT closing fill (S-ME-01, not saved)', async () => {
+    await page.goto(BASE + '/gl/journals/new');
+    await page.getByTitle('ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน').click({ timeout: 15000 });
+    await page.waitForSelector('.modal', { timeout: 10000 });
+    await page.getByRole('button', { name: 'เติมรายการ' }).click();
+    await page.waitForFunction(() => document.querySelectorAll('.modal').length === 0, null, { timeout: 10000 });
+    await shot('15zz-vat-closing');
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

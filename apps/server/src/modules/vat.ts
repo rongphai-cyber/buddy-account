@@ -5,6 +5,7 @@ import { d } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
+import { closingOf, leafTotals, loadChart } from './gl/balances.js';
 
 /**
  * แฟ้มภาษีซื้อ/ภาษีขาย (คู่มือบทที่ 16 S-TX-01..08)
@@ -75,7 +76,7 @@ export async function cancelVatEntries(tx: Db, companyId: string, headerId: stri
 }
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
-const month = z.string().regex(/^\d{4}-\d{2}$/, 'งวดไม่ถูกต้อง');
+const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'งวดไม่ถูกต้อง (ปปปป-ดด)');
 const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const str = (max: number) => z.string().trim().max(max).nullable().optional().transform((v) => (v ? v : null));
 const entryBody = z.object({
@@ -169,4 +170,35 @@ export function vatRoutes(app: FastifyInstance, db: Db) {
       return { ok: true };
     });
   }
+
+  /**
+   * T1.15 / S-ME-01: ใบสำคัญปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน — ยอดคงเหลือบัญชีภาษีขาย/ภาษีซื้อ ณ สิ้นเดือน
+   * Dr ภาษีขาย / Cr ภาษีซื้อ / ผลต่าง Cr เจ้าหนี้กรมสรรพากร (หรือ Dr ลูกหนี้กรมสรรพากร เมื่อภาษีซื้อมากกว่า)
+   */
+  app.get('/api/v1/gl/vat-closing', async (req) => {
+    const a = requireCompany(req);
+    const { month: m } = parse(z.object({ month }), req.query);
+    const end = (await sql<{ e: string }>`SELECT (date_trunc('month', ${m + '-01'}::date) + interval '1 month - 1 day')::date::text AS e`.execute(db)).rows[0]!.e;
+    const roles = await db.selectFrom('gl_default_account as r').leftJoin('gl_account as g', 'g.id', 'r.account_id').select(['r.role', 'r.account_id', 'g.account_no', 'g.name_th'])
+      .where('r.company_id', '=', a.companyId).where('r.deleted_at', 'is', null).where('r.role', 'in', ['OUTPUT_VAT', 'INPUT_VAT', 'VAT_PAYABLE', 'VAT_REFUND']).execute();
+    const role = (k: string) => roles.find((r) => r.role === k && r.account_id);
+    // ยอดคงเหลือ ณ สิ้นเดือนแบบเดียวกับแยกประเภท (ยอดยกมา + รายการ)
+    const totals = await leafTotals(db, a.companyId, await loadChart(db, a.companyId), `${m}-01`, end);
+    const bal = async (acc: string | null | undefined) => { const t = acc ? totals.get(acc) : undefined; return t ? closingOf(t) : d(0); };
+    const out = role('OUTPUT_VAT'), inp = role('INPUT_VAT');
+    if (!out || !inp) throw badRequest('ยังไม่ได้กำหนดบัญชีภาษีขาย/ภาษีซื้อ — กำหนดที่ เริ่มระบบ › การเชื่อมต่อบัญชี › บัญชีเพื่อลงรายวัน');
+    const outBal = (await bal(out.account_id)).neg();   // ภาษีขายยอดเครดิต
+    const inBal = await bal(inp.account_id);           // ภาษีซื้อยอดเดบิต
+    const net = outBal.minus(inBal);
+    const settle = net.gte(0) ? role('VAT_PAYABLE') : role('VAT_REFUND');
+    const line = (r: typeof out | undefined, debit: ReturnType<typeof d>, credit: ReturnType<typeof d>, desc: string) =>
+      ({ account_id: r?.account_id ?? null, account_no: r?.account_no ?? null, account_name: r?.name_th ?? null, description: desc, debit: debit.toFixed(2), credit: credit.toFixed(2) });
+    const lines = [
+      ...(!outBal.isZero() ? [line(out, outBal.gt(0) ? outBal : d(0), outBal.lt(0) ? outBal.neg() : d(0), 'ปิดภาษีขาย')] : []),
+      ...(!inBal.isZero() ? [line(inp, inBal.lt(0) ? inBal.neg() : d(0), inBal.gt(0) ? inBal : d(0), 'ปิดภาษีซื้อ')] : []),
+      ...(!net.isZero() ? [line(settle, net.lt(0) ? net.neg() : d(0), net.gt(0) ? net : d(0), net.gt(0) ? 'ภาษีมูลค่าเพิ่มค้างจ่าย' : 'ภาษีมูลค่าเพิ่มรอขอคืน')] : []),
+    ];
+    return { date: end, description: `ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน ${m.slice(5)}/${m.slice(0, 4)}`, output_vat: outBal.toFixed(2), input_vat: inBal.toFixed(2), net: net.toFixed(2), lines,
+      missing: !settle ? (net.gte(0) ? 'VAT_PAYABLE' : 'VAT_REFUND') : null };
+  });
 }

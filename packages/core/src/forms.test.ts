@@ -91,7 +91,7 @@ describe('document numbering & GL link (บทที่ 9–10)', () => {
     expect(checkDocNumbering('IV', 0)).toMatch(/ตั้งแต่ 1/);
   });
   it('has all 34 default posting roles and slot labels', () => {
-    expect(new Set(GL_ROLES.map((r) => r.role)).size).toBe(34);
+    expect(new Set(GL_ROLES.map((r) => r.role)).size).toBe(36);
     expect(slotLabel('RR', 3)).toBe('Cr. เจ้าหนี้');
     expect(slotLabel('IV', 4)).toBe('ช่องที่ 4');
   });

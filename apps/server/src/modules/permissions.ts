@@ -170,6 +170,7 @@ export const API_RULES: Record<string, Rule> = {
     [`GET /api/v1/${p}`, M('GL.PC', 'read')], [`GET /api/v1/${p}/:id`, M('GL.PC', 'read')], [`POST /api/v1/${p}`, M('GL.PC', 'add')],
     [`PUT /api/v1/${p}/:id`, M('GL.PC', 'edit')], [`POST /api/v1/${p}/:id/cancel`, M('GL.PC', 'cancel')],
   ])),
+  'GET /api/v1/gl/vat-closing': M('GL.JNL', 'add'),
   // แฟ้มภาษีซื้อ/ขาย (บทที่ 16)
   ...Object.fromEntries([['P', 'FI.VAT.IN'], ['S', 'FI.VAT.OUT']].flatMap(([k, m]) => [
     [`GET /api/v1/vat/${k}`, M(m!, 'read')], [`POST /api/v1/vat/${k}`, M(m!, 'add')], [`PUT /api/v1/vat/${k}/:id`, M(m!, 'edit')], [`POST /api/v1/vat/${k}/:id/cancel`, M(m!, 'cancel')],
