@@ -51,7 +51,7 @@ async function bankAcc(db: Db, companyId: string, bankAccountId: string | null) 
 }
 const event = (db: Db, a: Ctx, chequeId: string, date: string, from: string | null, to: string, reason: string | null = null, headerId: string | null = null) =>
   db.insertInto('fin_cheque_event').values({ company_id: a.companyId, cheque_id: chequeId, event_date: date, from_status: from, to_status: to, reason, header_id: headerId, created_by: a.userId }).execute();
-async function voidJournal(db: Db, a: Ctx, id: string | null, reason: string) {
+export async function voidJournal(db: Db, a: Ctx, id: string | null, reason: string) {
   if (!id) return;
   const j = await db.selectFrom('gl_journal').select(['voucher_no', 'voucher_date', 'doc_status']).where('id', '=', id).where('company_id', '=', a.companyId).executeTakeFirst();
   if (!j || j.doc_status === 'C') return;
@@ -59,7 +59,7 @@ async function voidJournal(db: Db, a: Ctx, id: string | null, reason: string) {
   await db.updateTable('gl_journal').set({ doc_status: 'C', updated_by: a.userId }).where('id', '=', id).execute();
   await logActivity(db, a, { module: 'GL', action: 'CANCEL', docNo: j.voucher_no, table: 'gl_journal', rowId: id, detail: { reason } });
 }
-type Chq = { id: string; direction: string; cheque_no: string; status: string; amount: string; charge: string; bank_account_id: string | null; deposit_header_id: string | null; pass_journal_id: string | null; remaining_amount: string; written_off_amount: string; writeoff_journal_id: string | null; source_header_id: string | null; department_id: string | null };
+export type Chq = { id: string; direction: string; cheque_no: string; status: string; amount: string; charge: string; bank_account_id: string | null; deposit_header_id: string | null; pass_journal_id: string | null; remaining_amount: string; written_off_amount: string; writeoff_journal_id: string | null; source_header_id: string | null; department_id: string | null };
 async function loadCheques(db: Db, a: Ctx, ids: string[]) {
   const rows = await db.selectFrom('fin_cheque').select(['id', 'direction', 'cheque_no', 'status', 'amount', 'charge', 'bank_account_id', 'deposit_header_id', 'pass_journal_id', 'remaining_amount', 'written_off_amount', 'writeoff_journal_id', 'source_header_id', 'department_id'])
     .where('company_id', '=', a.companyId).where('id', 'in', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']).where('deleted_at', 'is', null).forUpdate().execute() as Chq[];
@@ -69,7 +69,7 @@ async function loadCheques(db: Db, a: Ctx, ids: string[]) {
 const ctxJ = async (db: Db, a: Ctx) => ({ companyId: a.companyId, userId: a.userId, branchId: await branchOf(db, a) });
 
 /** ผ่านเช็คหนึ่งใบ (ไม่อยู่ในใบนำฝาก): ลงบัญชีแล้วเปลี่ยนสถานะ */
-async function passOne(tx: Db, a: Ctx, c: Chq, date: string) {
+export async function passOne(tx: Db, a: Ctx, c: Chq, date: string, reason: string | null = null) {
   const amt = d(c.amount), charge = d(c.charge);
   const bank = await bankAcc(tx, a.companyId, c.bank_account_id);
   const chq = await chequeAcc(tx, a.companyId, c.id, c.direction);
@@ -80,7 +80,7 @@ async function passOne(tx: Db, a: Ctx, c: Chq, date: string) {
   const j = await createJournal(tx, await ctxJ(tx, a), { journal_book_id: await bookOf(tx, a.companyId, c.direction === 'R' ? 'PASS_CHEQUE_RCV' : 'PASS_CHEQUE_PAID'), voucher_date: date,
     description: `${c.direction === 'R' ? 'ผ่านเช็ครับ' : 'ผ่านเช็คจ่าย'} ${c.cheque_no}`, reference: c.cheque_no, lines }, '4', { sourceModule: 'BK' });
   await tx.updateTable('fin_cheque').set({ status: '10', pass_date: date, pass_journal_id: j.id, updated_by: a.userId, updated_at: sql`now()` as never }).where('id', '=', c.id).execute();
-  await event(tx, a, c.id, date, c.status, '10');
+  await event(tx, a, c.id, date, c.status, '10', reason);
   return j;
 }
 

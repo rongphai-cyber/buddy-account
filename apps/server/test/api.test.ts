@@ -1812,6 +1812,38 @@ describe('Buddy Account API (PGlite)', () => {
       expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect([await bal(a), await bal(b)]).toEqual(['0/0', '0/0']);
   });
+  it('pass paid cheques immediately (fn.auto_pass_cheque_paid): paying by cheque passes it on the cheque date, cancel reverses the pass', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const t1 = (await call('GET', '/api/v1/bank-accounts')).body.find((b: { code: string }) => b.code === 'T1').id;
+    const leaf = ((await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; is_control: boolean }>).filter((x) => !x.is_control);
+    const cur = (await call('GET', '/api/v1/payment-methods/P')).body as Array<Record<string, unknown>>;
+    const keep = cur.map((r) => ({ seq: r.seq, code: r.code, name_th: r.name_th, kind: r.kind, creates_cheque: r.creates_cheque, gl_account_id: r.gl_account_id, bank_account_id: r.bank_account_id }));
+    const pm = await call('PUT', '/api/v1/payment-methods/P', { rows: [...keep, { seq: '09', code: 'QX', name_th: 'เช็คจ่าย T1', kind: 'CHEQUE', creates_cheque: true, gl_account_id: leaf[3]!.id, bank_account_id: t1 }] });
+    expect(pm.body.error?.message ?? pm.status).toBe(200);
+    const qx = ((await call('GET', '/api/v1/payment-methods/P')).body as Array<{ id: string; code: string }>).find((m) => m.code === 'QX')!.id;
+    const exp = (await call('GET', '/api/v1/other-expenses?q=95-5300-01')).body.rows[0].id;
+    const book = async () => (await call('GET', `/api/v1/bank-book?bank_account_id=${t1}&from=2026-11-01&to=2026-11-30`)).body.closing as string;
+    const oe = (cheque: string) => ({ doc_type_id: '', doc_date: '2026-11-10', party_name: 'ร้านทดสอบ', price_type: '0', vat_rate: 0, lines: [{ item_id: exp, amount: 300 }],
+      payments: [{ payment_method_id: qx, amount: 300, reference_no: cheque, cheque_date: '2026-11-12' }] });
+    const post = async (no: string) => (await call('POST', '/api/v1/other-expense-docs', { ...oe(no), doc_type_id: await typeOf('OE') })).body;
+    // ปิดค่า: เช็คจ่ายสถานะ 05 ยังไม่ตัดบัญชีเงินฝาก
+    await call('PUT', '/api/v1/settings', { values: { 'fn.auto_pass_cheque_paid': false } });
+    const o1 = await post('QX-AUTO-1');
+    const chq = async (no: string) => (await call('GET', `/api/v1/cheques?direction=P&q=${no}`)).body.rows[0];
+    expect((await chq('QX-AUTO-1')).status).toBe('05');
+    expect(await book()).toBe('0.00');
+    // เปิดค่า: ผ่านทันทีตามวันที่เช็ค
+    await call('PUT', '/api/v1/settings', { values: { 'fn.auto_pass_cheque_paid': true } });
+    const o2 = await post('QX-AUTO-2');
+    expect(o2.error).toBeUndefined();
+    expect(await chq('QX-AUTO-2')).toMatchObject({ status: '10', pass_date: expect.stringContaining('2026-11-1') });
+    expect(await book()).toBe('-300.00');
+    // ยกเลิกเอกสาร → ยกเลิกการผ่านให้เอง
+    expect((await call('POST', `/api/v1/other-expense-docs/${o2.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect(await book()).toBe('0.00');
+    await call('PUT', '/api/v1/settings', { values: { 'fn.auto_pass_cheque_paid': false } });
+    expect((await call('POST', `/api/v1/other-expense-docs/${o1.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

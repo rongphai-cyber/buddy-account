@@ -8,6 +8,8 @@ import { d } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, type AuthContext } from '../../http.js';
 import { periodFor } from '../gl/journals.js';
+import { companySettings } from '../../company-template.js';
+import { passOne, voidJournal } from '../cheques.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -54,7 +56,15 @@ export async function branchOf(db: Db, a: Ctx) {
 }
 
 /** เช็คที่เอกสารนี้ออก: ยังไม่นำฝาก/ผ่าน จึงแก้หรือยกเลิกเอกสารได้ (นำออกจากทะเบียนเช็ค) */
+/** ผ่านเช็คจ่ายทันที (ค่าเริ่มต้นระบบการเงิน ข้อ 1) — ยกเลิก/แก้เอกสารต้นทางจะยกเลิกการผ่านให้เอง */
+export const AUTO_PASS = 'ผ่านเช็คจ่ายทันที (ค่าเริ่มต้นระบบการเงิน)';
 export async function releaseCheques(db: Db, a: Ctx, headerId: string, docNo: string) {
+  for (const c of (await sql<{ id: string; pass_journal_id: string }>`SELECT f.id, f.pass_journal_id FROM fin_cheque f WHERE f.company_id = ${a.companyId} AND f.source_header_id = ${headerId} AND f.deleted_at IS NULL
+      AND f.direction = 'P' AND f.status = '10' AND f.pass_journal_id IS NOT NULL AND f.deposit_header_id IS NULL
+      AND (SELECT e.reason FROM fin_cheque_event e WHERE e.cheque_id = f.id AND e.to_status = '10' ORDER BY e.created_at DESC LIMIT 1) = ${AUTO_PASS}`.execute(db)).rows) {
+    await voidJournal(db, a, c.pass_journal_id, `แก้/ยกเลิก ${docNo}`);
+    await db.updateTable('fin_cheque').set({ status: '05', pass_date: null, pass_journal_id: null }).where('id', '=', c.id).execute();
+  }
   const used = await db.selectFrom('fin_cheque').select('cheque_no').where('company_id', '=', a.companyId).where('source_header_id', '=', headerId).where('deleted_at', 'is', null)
     .where((e) => e.or([e('status', 'not in', ['00', '05']), e('deposit_header_id', 'is not', null), e('pass_journal_id', 'is not', null), e('writeoff_journal_id', 'is not', null)])).executeTakeFirst();
   if (used) throw badRequest(`เช็ค ${used.cheque_no} ของ ${docNo} นำฝาก/ผ่านแล้ว — ยกเลิกรายการเช็คก่อน (บทที่ 13)`);
@@ -65,6 +75,7 @@ export async function releaseCheques(db: Db, a: Ctx, headerId: string, docNo: st
 export async function writePayments(tx: Db, a: Ctx, x: { headerId: string; direction: 'R' | 'P'; payDate: string; methods: Map<string, Method>; payments: Payments;
   customerId: string | null; supplierId: string | null; partyName: string; departmentId: string | null }) {
   const branchId = await branchOf(tx, a);
+  let autoPass: boolean | undefined;
   for (const [i, p] of x.payments.entries()) {
     const m = x.methods.get(p.payment_method_id)!;
     let chequeId: string | null = null;
@@ -80,6 +91,10 @@ export async function writePayments(tx: Db, a: Ctx, x: { headerId: string; direc
       }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_payment').values({ company_id: a.companyId, header_id: x.headerId, line_no: i + 1, payment_method_id: m.id, amount: p.amount, reference_no: p.reference_no, cheque_id: chequeId, created_by: a.userId }).execute();
+    if (chequeId && x.direction === 'P' && m.kind !== 'TRANSFER' && m.kind !== 'CARD' && (autoPass ??= (await companySettings(tx, a.companyId))['fn.auto_pass_cheque_paid'] === true)) {
+      await passOne(tx, a, { id: chequeId, direction: 'P', cheque_no: p.reference_no!, status: '05', amount: p.amount, charge: '0', bank_account_id: m.bank_account_id, deposit_header_id: null, pass_journal_id: null,
+        remaining_amount: '0', written_off_amount: '0', writeoff_journal_id: null, source_header_id: x.headerId, department_id: x.departmentId }, p.cheque_date ?? x.payDate, AUTO_PASS);
+    }
   }
 }
 
