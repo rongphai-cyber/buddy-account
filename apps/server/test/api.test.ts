@@ -2022,6 +2022,22 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('DELETE', `/api/v1/cheques/${chq}`)).status).toBe(200);
     for (const [path, id] of [['stock-issues', ou.id], ['stock-adjustments', ju.id]]) expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('GL reports (T5.5): chart, movement summary = trial balance, worksheet balances, data checks, isolation', async () => {
+    const run = async (c: string, params: Record<string, unknown>) => (await call('POST', `/api/v1/rpt/${c}/run`, { params })).body;
+    const tb = (await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body;
+    const mv = await run('5.3', { date_from: '2026-01-01', date_to: '2026-12-31' });
+    expect(mv.rows.at(-1).c.debit).toBe(tb.totals.debit);
+    const ws = await run('5.8', { date_to: '2026-12-31' });
+    const tot = ws.rows.at(-1).c;
+    expect([tot.pld === tot.plc, tot.bsd === tot.bsc]).toEqual([true, true]);
+    expect(ws.rows.find((r: { t?: string; c: { name: string } }) => r.t === 'sub' && r.c.name === 'รวม').c.tbd).toBe(tb.totals.closing_debit);
+    expect((await run('5.1', {})).rows.length).toBeGreaterThan(5);
+    expect((await run('5.A.2', { date_from: '2026-01-01', date_to: '2026-12-31' })).rows.at(-1).c.desc).toBe('ทุกใบสำคัญดุล');
+    expect((await run('5.A.3', {})).rows.length).toBeGreaterThan(1);
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await run('5.3', { date_from: '2026-01-01', date_to: '2026-12-31' })).rows.at(-1).c.debit).not.toBe(tb.totals.debit);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
