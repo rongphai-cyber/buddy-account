@@ -1428,6 +1428,74 @@ describe('Buddy Account API (PGlite)', () => {
     expect(await bal()).toBe('0/0');
   });
 
+  it('stock documents (T4.3): internal issue, transfer, adjustment, cost adjustment — balances, journals, validation, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1, w2] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const it = (await call('POST', '/api/v1/items', { code: '02-TEST-000043', name_th: 'สินค้าเอกสารคลัง', base_unit_id: unit, std_cost: '10' })).body.id;
+    const bal = async () => (await call('GET', `/api/v1/stock/balances?item_id=${it}`)).body.rows.map((r: { warehouse_id: string; qty: string; value: string }) => `${r.warehouse_id === w1 ? 1 : 2}:${Number(r.qty)}/${r.value}`).sort().join(' ');
+    const roles = async (id: string) => (await call('GET', `/api/v1/docs/${id}/journal`)).body.journals[0]?.lines.map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${Number(l.debit) || -Number(l.credit)}`).sort();
+    // ปรับเพิ่ม 10 @12 → 120 (Perpetual: Dr สินค้า / Cr รายได้อื่น)
+    const ju = (await call('POST', '/api/v1/stock-adjustments', { doc_type_id: await typeOf('JU'), doc_date: '2026-05-01', lines: [{ item_id: it, warehouse_id: w1, qty: 10, unit_cost: 12 }] })).body;
+    expect(ju.doc_no).toBeTruthy();
+    expect(await bal()).toBe('1:10/120.00');
+    expect(await roles(ju.id)).toEqual(['INVENTORY:120', 'STOCK_ADJ:-120']);
+    // จ่ายใช้ภายใน 3 ถัวเฉลี่ย 12 → 36
+    const ouBody = { doc_type_id: await typeOf('OU'), doc_date: '2026-05-02', remark: 'เบิกใช้สำนักงาน', lines: [{ item_id: it, warehouse_id: w1, qty: 3 }] };
+    const ou = (await call('POST', '/api/v1/stock-issues', ouBody)).body;
+    expect(ou.net_amount).toBe('36.00');
+    expect(await roles(ou.id)).toEqual(['INVENTORY:-36', 'ISSUE:36']);
+    expect(await bal()).toBe('1:7/84.00');
+    // แก้เป็น 4 → คิดใหม่
+    expect((await call('PUT', `/api/v1/stock-issues/${ou.id}`, { ...ouBody, lines: [{ item_id: it, warehouse_id: w1, qty: 4 }] })).status).toBe(200);
+    expect(await bal()).toBe('1:6/72.00');
+    // โอนย้าย 2 จากคลัง 1 → 2 (ต้นทุนเดียวกัน ไม่ลงบัญชี) · หน้ารายละเอียดแสดงบรรทัดเดียว
+    const rlBody = { doc_type_id: await typeOf('RL'), doc_date: '2026-05-03', warehouse_id: w1, to_warehouse_id: w2, lines: [{ item_id: it, qty: 2 }] };
+    const rl = (await call('POST', '/api/v1/stock-transfers', rlBody)).body;
+    expect(await bal()).toBe('1:4/48.00 2:2/24.00');
+    expect(rl.journal_id).toBeFalsy();
+    const rlDoc = (await call('GET', `/api/v1/stock-transfers/${rl.id}`)).body;
+    expect(rlDoc.lines).toHaveLength(1);
+    expect(rlDoc.to_warehouse_id).toBe(w2);
+    expect((await call('POST', '/api/v1/stock-transfers', { ...rlBody, to_warehouse_id: w1 })).body.error.message).toMatch(/ต้องต่างกัน/);
+    // ปรับลด 1 ที่คลัง 2 → −12 (Dr ค่าใช้จ่ายอื่น / Cr สินค้า)
+    const ju2 = (await call('POST', '/api/v1/stock-adjustments', { doc_type_id: await typeOf('JU'), doc_date: '2026-05-04', lines: [{ item_id: it, warehouse_id: w2, qty: -1 }] })).body;
+    expect(await bal()).toBe('1:4/48.00 2:1/12.00');
+    expect(await roles(ju2.id)).toEqual(['INVENTORY:-12', 'STOCK_ADJ:12']);
+    // เพิ่มต้นทุน 6 (จำนวนไม่เปลี่ยน) → จ่ายครั้งต่อไปใช้ทุนใหม่ 54/4
+    const ca = (await call('POST', '/api/v1/cost-adjustments', { doc_type_id: await typeOf('CA'), doc_date: '2026-05-05', lines: [{ item_id: it, warehouse_id: w1, amount: 6 }] })).body;
+    expect(await bal()).toBe('1:4/54.00 2:1/12.00');
+    expect(await roles(ca.id)).toEqual(['COST_ADJ:-6', 'INVENTORY:6']);
+    // FIFO ต้องเลือกล็อต · สินค้าบริการตัดสต๊อกไม่ได้ · จำนวนศูนย์
+    const grp = (await sql<{ id: string }>`INSERT INTO md_item_account_group (company_id, code, name_th, cost_method) VALUES (${companyId}, 'FIFO43', 'กลุ่ม FIFO', 'F') RETURNING id`.execute(database.db)).rows[0]!.id;
+    await sql`UPDATE md_item SET account_group_id = ${grp} WHERE id = ${it}`.execute(database.db);
+    expect((await call('POST', '/api/v1/cost-adjustments', { doc_type_id: await typeOf('CA'), doc_date: '2026-05-05', lines: [{ item_id: it, warehouse_id: w1, amount: 6 }] })).body.error.message).toMatch(/เลือกล็อต/);
+    const lot = (await call('GET', `/api/v1/stock/lots?item_id=${it}&warehouse_id=${w1}`)).body.rows[0];
+    expect(lot.doc_no).toBe(ju.doc_no);
+    const svc = (await sql<{ id: string }>`INSERT INTO md_item (company_id, code, name_th, item_type, base_unit_id) VALUES (${companyId}, 'SV-TEST-44', 'บริการ', '3', ${unit}) RETURNING id`.execute(database.db)).rows[0]!.id;
+    expect((await call('POST', '/api/v1/stock-issues', { ...ouBody, lines: [{ item_id: svc, qty: 1 }] })).body.error.message).toMatch(/ไม่ใช่สินค้าที่มีสต๊อก/);
+    expect((await call('POST', '/api/v1/stock-issues', { ...ouBody, lines: [{ item_id: it, qty: 0 }] })).body.error.message).toMatch(/ป้อนจำนวน/);
+    // รายการ + ข้ามบริษัทไม่ได้
+    expect((await call('GET', '/api/v1/stock-issues?q=เบิกใช้สำนักงาน')).body.rows.map((r: { id: string }) => r.id)).toEqual([ou.id]);
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/stock-issues')).body.rows).toHaveLength(0);
+    expect((await call('GET', `/api/v1/stock-transfers/${rl.id}`)).status).toBe(404);
+    expect((await call('POST', `/api/v1/stock-issues/${ou.id}/cancel`, { reason: 'x' })).status).toBe(404);
+    expect((await call('GET', `/api/v1/stock/lots?item_id=${it}`)).body.rows).toHaveLength(0);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ยกเลิก → สต๊อกกลับ (ใบสำคัญยกเลิกด้วย)
+    for (const [path, id] of [['cost-adjustments', ca.id], ['stock-adjustments', ju2.id], ['stock-transfers', rl.id], ['stock-issues', ou.id], ['stock-adjustments', ju.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect(await bal()).toBe('');
+    expect((await call('PUT', `/api/v1/stock-issues/${ou.id}`, ouBody)).body.error.message).toMatch(/ยกเลิกแล้ว/);
+    // ใบปรับยอดตอนย้ายข้อมูลแก้/ยกเลิกไม่ได้
+    await sql`UPDATE doc_header SET doc_no = 'MIG-ADJ-T43' WHERE id = ${ju2.id}`.execute(database.db);
+    await sql`UPDATE doc_header SET doc_status = 'N' WHERE id = ${ju2.id}`.execute(database.db);
+    expect((await call('GET', `/api/v1/stock-adjustments/${ju2.id}`)).body.editable).toBe(false);
+    expect((await call('POST', `/api/v1/stock-adjustments/${ju2.id}/cancel`, { reason: 'x' })).body.error.message).toMatch(/ย้ายข้อมูล/);
+    await sql`UPDATE doc_header SET doc_status = 'C' WHERE id = ${ju2.id}`.execute(database.db);
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

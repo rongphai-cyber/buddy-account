@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -178,6 +178,11 @@ export const API_RULES: Record<string, Rule> = {
   ])),
   'GET /api/v1/gl/vat-closing': M('GL.JNL', 'add'),
   'GET /api/v1/stock/balances': M('IC.STOCK', 'read'), 'GET /api/v1/stock/card': M('IC.STOCK', 'read'),
+  ...Object.fromEntries(STOCK_KINDS.flatMap((k) => [
+    [`GET /api/v1/${k.path}`, M('IC.TRN', 'read')], [`GET /api/v1/${k.path}/:id`, M('IC.TRN', 'read')], [`POST /api/v1/${k.path}`, M('IC.TRN', 'add')],
+    [`PUT /api/v1/${k.path}/:id`, M('IC.TRN', 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M('IC.TRN', 'cancel')],
+  ])),
+  'GET /api/v1/stock/lots': M('IC.TRN', 'read'),
   // แฟ้มภาษีซื้อ/ขาย (บทที่ 16)
   ...Object.fromEntries([['P', 'FI.VAT.IN'], ['S', 'FI.VAT.OUT']].flatMap(([k, m]) => [
     [`GET /api/v1/vat/${k}`, M(m!, 'read')], [`POST /api/v1/vat/${k}`, M(m!, 'add')], [`PUT /api/v1/vat/${k}/:id`, M(m!, 'edit')], [`POST /api/v1/vat/${k}/:id/cancel`, M(m!, 'cancel')],

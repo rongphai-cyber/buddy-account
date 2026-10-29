@@ -99,7 +99,11 @@
 - ✅ T4.2: trade.ts `STOCK_MOVE` (IV/HS 9 −, CN 2 + เฉพาะติ๊กคืน, RR/HP 0 +, DN 7 − เฉพาะติ๊กคืน) เฉพาะ item_type 0 · คลัง = บรรทัด → หัวเอกสาร → ic.main_warehouse → คลังแรก · รับเข้าจากซื้อ = net_amount ของบรรทัด (ก่อน VAT หลังส่วนลด) · จ่าย/รับคืน = ต้นทุน ณ วันที่เอกสาร (`modules/docs/stockcost.ts` + core `averageCost`/`fifoCost` — FIFO คำนวณสดจากประวัติรับเข้า, กลุ่มบัญชี cost_method F) · ตรวจติดลบเมื่อ ic.allow_negative ≠ Y และระดับ ≠ 0
   - Perpetual: buildPosting `perpetualCost` IV/HS Dr COGS/Cr INVENTORY, CN กลับด้าน, DN ส่งคืนเครดิตบัญชีสินค้า · loader ส่ง cost_amount/stock_effect · DEMO = PERIODIC → parity 97.3% เท่าเดิม · บริษัททดสอบ (ค่าเริ่มต้น PERPETUAL) ทดสอบเดิมอัปเดตให้มีบรรทัดต้นทุนขาย
   - แก้เอกสาร = ลบบรรทัดเดิมแล้วคิดต้นทุนใหม่ · เอกสารย้อนหลังไม่คิดต้นทุนของรายการจ่ายที่ตามมาใหม่ (บันทึกไว้ — งานคำนวณต้นทุนย้อนหลังค่อยพิจารณา) · ยังไม่ทำ: สินค้าชุดตัดส่วนประกอบ, เตือนขายต่ำกว่าทุน
-- ต่อไป: T4.3 รายการประจำวันสินค้า OU/RL/JU/CA
+- ✅ T4.3 รายการประจำวันสินค้า: `modules/docs/stockdocs.ts` (STOCK_KINDS ใน core: /stock-issues OU, /stock-transfers RL, /stock-adjustments JU, /cost-adjustments CA + /stock/lots) · หน้า `pages/docs/StockDocs.tsx` (/ic/issues /ic/transfers /ic/adjustments /ic/cost-adjustments, เมนู IC.TRN)
+  - OU movement 6 (−) ต้นทุนตามวิธีของกลุ่ม · RL เก็บคู่บรรทัด ออก 4 (คลังต้นทาง) + เข้า 3 (คลังปลายทาง) ต้นทุนเดียวกัน — รายละเอียดแสดงเฉพาะบรรทัดออก · JU movement 8 qty เก็บ abs + stock_effect ตามเครื่องหมาย, cost_amount มีเครื่องหมาย (เพิ่ม = จำนวน × ทุนที่ป้อน, ว่าง = เฉลี่ย) · CA movement 5 qty 0 มูลค่า ± (FIFO ต้องอ้างล็อต source_line_id → issueCost FIFO บวกมูลค่า CA เข้าล็อตนั้น)
+  - ลงบัญชี (core buildPosting OU/JU/CA): Perpetual หรือ OU ที่ประเภทเอกสารกำหนดบัญชี ISSUE_DEBIT/ISSUE_CREDIT ครบ (Express ลง OU แม้ Periodic → parity OU 17/17) · JU slot ADJ_DEBIT/ADJ_CREDIT → OTHER_EXPENSE/OTHER_INCOME · CA slot COST_ADJ → SUSPENSE · รวม parity 97.3%
+  - ใบ MIG-* (ปรับยอดตอนย้ายข้อมูล) แก้/ยกเลิกไม่ได้ · จ่ายวัตถุดิบผลิต/ตัวอย่าง/ชำรุด/รับสำเร็จรูป/ค่าขนส่ง = ประเภทเอกสารอีกรหัสในหมวดเดียวกัน (replaced)
+- ต่อไป: T4.4 ตรวจนับสินค้า (S-IC-15..22, TK)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

@@ -23,8 +23,11 @@ export async function stockSettings(db: Db, companyId: string): Promise<StockSet
 export async function issueCost(db: Db, companyId: string, x: { itemId: string; warehouseId: string; byWarehouse: boolean; date: string; qty: string; method: string | null; fallbackUnit: string | null }) {
   const wh = x.byWarehouse ? sql`AND warehouse_id = ${x.warehouseId}` : sql``;
   if (x.method === 'F') {
-    const rc = (await sql<{ qty: string; value: string }>`SELECT qty, value FROM v_stock_move WHERE company_id = ${companyId} AND item_id = ${x.itemId} ${wh} AND doc_date <= ${x.date} AND qty > 0
-        ORDER BY doc_date, doc_no, line_no`.execute(db)).rows;
+    // ล็อตรับเข้า + การปรับต้นทุนของล็อต (CA อ้าง source_line_id)
+    const rc = (await sql<{ qty: string; value: string }>`SELECT m.qty, m.value + coalesce((SELECT sum(ca.cost_amount) FROM doc_line ca JOIN doc_header ch ON ch.id = ca.header_id
+          WHERE ca.source_line_id = m.line_id AND ca.deleted_at IS NULL AND ch.doc_status <> 'C' AND ch.doc_class = 'CA' AND ch.doc_date <= ${x.date}), 0) AS value
+        FROM v_stock_move m WHERE m.company_id = ${companyId} AND m.item_id = ${x.itemId} ${x.byWarehouse ? sql`AND m.warehouse_id = ${x.warehouseId}` : sql``} AND m.doc_date <= ${x.date} AND m.qty > 0
+        ORDER BY m.doc_date, m.doc_no, m.line_no`.execute(db)).rows;
     const out = (await sql<{ q: string }>`SELECT coalesce(-sum(qty), 0) AS q FROM v_stock_move WHERE company_id = ${companyId} AND item_id = ${x.itemId} ${wh} AND doc_date <= ${x.date} AND qty < 0`.execute(db)).rows[0]!.q;
     return fifoCost(rc, out, x.qty, x.fallbackUnit ?? 0);
   }

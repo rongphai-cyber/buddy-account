@@ -176,3 +176,12 @@ export function fifoCost(receipts: Array<{ qty: MoneyInput; value: MoneyInput }>
   if (need.gt(0)) cost = cost.plus(need.times(lastUnit));
   return cost.toDecimalPlaces(2).toFixed(2);
 }
+
+/** เอกสารสินค้า (คู่มือบทที่ 14): จ่ายใช้ภายใน OU · โอนย้ายระหว่างคลัง RL · ปรับปรุงเพิ่ม/ลด JU · เพิ่ม/ลดต้นทุน CA */
+export interface StockKind { path: string; cls: 'OU' | 'RL' | 'JU' | 'CA'; label: string; route: string }
+export const STOCK_KINDS: StockKind[] = [
+  { path: 'stock-issues', cls: 'OU', label: 'จ่ายสินค้าใช้ภายใน', route: '/ic/issues' },
+  { path: 'stock-transfers', cls: 'RL', label: 'โอนย้ายระหว่างคลัง', route: '/ic/transfers' },
+  { path: 'stock-adjustments', cls: 'JU', label: 'ปรับปรุงเพิ่ม/ลดสินค้า', route: '/ic/adjustments' },
+  { path: 'cost-adjustments', cls: 'CA', label: 'เพิ่ม/ลดต้นทุนสินค้า', route: '/ic/cost-adjustments' },
+];

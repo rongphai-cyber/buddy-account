@@ -13,7 +13,7 @@ export interface PostHeader {
   wht_amount?: MoneyInput; cash_discount_amount?: MoneyInput; interest_amount?: MoneyInput;
 }
 /** บรรทัดสินค้า (item_id) หรือบรรทัดบัญชี (account_id — เงินสดย่อย) */
-export interface PostLine { item_id: string | null; net_amount: MoneyInput; account_id?: string | null; /** Perpetual: ต้นทุนของบรรทัดที่ตัด/รับสต๊อก */ cost_amount?: MoneyInput; stock_effect?: number | null }
+export interface PostLine { item_id: string | null; net_amount: MoneyInput; account_id?: string | null; /** Perpetual: ต้นทุนของบรรทัดที่ตัด/รับสต๊อก */ cost_amount?: MoneyInput; stock_effect?: number | null; movement_code?: string | null }
 export interface PostPayment { method_id: string | null; amount: MoneyInput; cheque_id: string | null }
 /** รายการตัดหนี้ในใบเสร็จ/ใบจ่าย · rectype '0' = ตัดเงินมัดจำ (ลงผ่านวิธีชำระ) · '5' = ใบลดหนี้ที่นำมาหัก (ยอดลบ) */
 export interface PostSettlement { amount: MoneyInput; vat: MoneyInput; party_id: string | null; rectype: string | null }
@@ -36,7 +36,7 @@ export type Layer = '1' | '2' | '3' | 'S';
 export interface PostingLine { account_id: string | null; debit: Decimal; credit: Decimal; role: string; layer: Layer }
 
 /** หมวดเอกสารที่ลงบัญชีด้วยเครื่องนี้ */
-export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'VR'] as const;
+export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'VR', 'OU', 'JU', 'CA'] as const;
 
 export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment[], setts: PostSettlement[], r: PostingResolver): PostingLine[] {
   const out: PostingLine[] = [];
@@ -156,6 +156,19 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     for (const l of lines) D(pick(['2', l.account_id]), d(l.net_amount), 'EXPENSE');
     C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(net), 'CASH');
     for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
+  } else if ((cls === 'OU' || cls === 'JU' || cls === 'CA') && (r.perpetual || (cls === 'OU' && !!r.slot(dt, cls, 'ISSUE_DEBIT') && !!r.slot(dt, cls, 'ISSUE_CREDIT')))) {
+    // เอกสารสินค้า (บทที่ 14): ลงบัญชีเมื่อ Perpetual — จ่ายใช้ภายในลงด้วยแม้ Periodic เมื่อประเภทเอกสารกำหนดบัญชีครบ 2 ช่อง (ยืนยันจากใบสำคัญ Express เช่น XS: Dr ค่าสินค้าตัวอย่าง / Cr ต้นทุนขาย)
+    for (const l of lines) {
+      if (!l.item_id) continue;
+      const v = l.movement_code === '8' ? d(l.cost_amount) : d(l.cost_amount).times(l.stock_effect ?? 0);   // มูลค่าเข้า(+)/ออก(−)
+      if (v.isZero()) continue;
+      // จ่ายใช้ภายใน: ช่อง 1 = Dr บัญชีเบิกใช้ · ช่อง 2 = Cr (แทนบัญชีสินค้าของกลุ่ม)
+      const inv = pick(...(cls === 'OU' ? [['1', r.slot(dt, cls, 'ISSUE_CREDIT')] as [Layer, string | null]] : []), ['2', r.item(l.item_id).group.inv], ['3', r.def('INVENTORY')]);
+      const other = cls === 'OU' ? pick(['1', r.slot(dt, cls, 'ISSUE_DEBIT')], ['3', r.def('OTHER_EXPENSE')])
+        : cls === 'JU' ? pick(['1', r.slot(dt, cls, v.lt(0) ? 'ADJ_DEBIT' : 'ADJ_CREDIT')], ['3', r.def(v.lt(0) ? 'OTHER_EXPENSE' : 'OTHER_INCOME')])
+          : pick(['1', r.slot(dt, cls, 'COST_ADJ')], ['3', r.def('SUSPENSE')]);
+      if (v.gt(0)) { D(inv, v, 'INVENTORY'); C(other, v, cls === 'CA' ? 'COST_ADJ' : 'STOCK_ADJ'); } else { D(other, v.neg(), cls === 'OU' ? 'ISSUE' : 'STOCK_ADJ'); C(inv, v.neg(), 'INVENTORY'); }
+    }
   } else if (cls === 'AE' || cls === 'OE') {
     if (cls === 'AE') D(pick(['1', r.slot(dt, cls, 'DEPOSIT_PAID')], ['3', r.def('DEPOSIT_PAID')]), net.minus(vat), 'DEPOSIT_PAID');
     else for (const l of lines) D(lineAccount('PURCHASE', l.item_id), d(l.net_amount), 'EXPENSE');

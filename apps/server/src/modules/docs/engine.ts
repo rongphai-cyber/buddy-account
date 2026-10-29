@@ -14,7 +14,7 @@ type Ctx = { companyId: string; userId: string; branchId?: string | null };
 const ROUTE_OF: Record<string, string> = {
   IV: 'CREDIT_SALE', HS: 'CASH_SALE', DR: 'AR_DEBIT_NOTE', CN: 'SALES_RETURN', RE: 'AR_RECEIPT', AI: 'AR_DEPOSIT', OI: 'OTHER_INCOME',
   RR: 'CREDIT_PURCHASE', HP: 'CASH_PURCHASE', CP: 'AP_CREDIT_NOTE', DN: 'PURCHASE_RETURN', PS: 'AP_PAYMENT', AE: 'AP_DEPOSIT', OE: 'OTHER_EXPENSE',
-  VR: 'PETTY_CASH_REIMBURSE',
+  VR: 'PETTY_CASH_REIMBURSE', OU: 'INTERNAL_ISSUE', JU: 'STOCK_COUNT_ADJ', CA: 'COST_ADJ',
 };
 
 /**

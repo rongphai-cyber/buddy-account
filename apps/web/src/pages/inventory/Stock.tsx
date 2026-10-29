@@ -8,7 +8,7 @@ import { LkSelect, useLookups } from '../../components/LkSelect';
 import { cx, DateInput, DateText, ErrorBox, KeyHints, Modal, Money, PageHead } from '../../ui';
 
 /** เอกสารต้นทางที่เปิดได้จากสต๊อกการ์ด */
-const DOC_ROUTE: Record<string, string> = { IV: '/sa/invoices', HS: '/sa/cash-sales', CN: '/fi/ar/credit-notes', RR: '/pu/invoices', HP: '/pu/cash-purchases', DN: '/fi/ap/credit-notes' };
+const DOC_ROUTE: Record<string, string> = { IV: '/sa/invoices', HS: '/sa/cash-sales', CN: '/fi/ar/credit-notes', RR: '/pu/invoices', HP: '/pu/cash-purchases', DN: '/fi/ap/credit-notes', OU: '/ic/issues', RL: '/ic/transfers', JU: '/ic/adjustments', CA: '/ic/cost-adjustments' };
 interface Bal { item_id: string; item_code: string; item_name: string; unit_code: string | null; warehouse_id: string; warehouse_code: string; warehouse_name: string; qty: string; value: string; avg_cost: string | null; last_move_date: string | null }
 
 /** ยอดสินค้าคงเหลือรายคลัง (คำนวณสดจากเอกสาร) — คลิกแถวดูสต๊อกการ์ด */

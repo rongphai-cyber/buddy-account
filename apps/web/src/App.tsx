@@ -47,7 +47,8 @@ import { OpeningFormPage, OpeningListPage } from './pages/docs/OpeningDocs';
 import { WhtRegisterPage } from './pages/tax/WhtRegister';
 import { VatRegisterPage } from './pages/tax/VatRegister';
 import { StockPage } from './pages/inventory/Stock';
-import { BILL_KINDS, CASH_KINDS, SETTLE_KINDS, TRADE_KINDS } from '@buddy/core';
+import { StockDocFormPage, StockDocListPage } from './pages/docs/StockDocs';
+import { BILL_KINDS, CASH_KINDS, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
 
 export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
 const PHASE_TH: Record<string, string> = { P0: 'ฐานระบบ', P1: 'บัญชีแยกประเภท', P2: 'แฟ้มหลัก', P3: 'ซื้อ ขาย ภาษี', P4: 'ธนาคาร สินค้า', P5: 'รายงาน', P6: 'ผู้ดูแลระบบ', P7: 'ต่อยอด' };
@@ -139,6 +140,7 @@ function Shell() {
           <Route path="/tax/wht50" element={<Wht50Page />} />
           <Route path="/tax/wht" element={<WhtRegisterPage />} />
           <Route path="/ic/stock" element={<StockPage />} />
+          {STOCK_KINDS.flatMap((k) => [<Route key={k.cls} path={k.route} element={<StockDocListPage key={k.cls} cls={k.cls} />} />, <Route key={k.cls + '-f'} path={`${k.route}/:id`} element={<StockDocFormPage key={k.cls + '-f'} cls={k.cls} />} />])}
           <Route path="/tax/vat/P" element={<VatRegisterPage key="P" kind="P" />} />
           <Route path="/tax/vat/S" element={<VatRegisterPage key="S" kind="S" />} />
           <Route path="/ic/items" element={<StockItemsPage />} />
