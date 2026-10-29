@@ -32,12 +32,17 @@ const body = z.object({
     /** CA: มูลค่าที่เพิ่ม(+)/ลด(−) */ amount: num.nullable().optional(), source_line_id: optId,
   })).min(1, 'ป้อนรายการสินค้าอย่างน้อย 1 บรรทัด').max(500),
 });
-type Body = z.infer<typeof body>;
+export type StockDocBody = z.infer<typeof body>;
+type Body = StockDocBody;
 /** ใบปรับยอดตอนย้ายข้อมูล (ทำให้สต๊อกเท่า STLOC ของ Express) — แก้/ยกเลิกไม่ได้ */
 const isMigAdj = (docNo: string) => docNo.startsWith('MIG-');
+/** ใบปรับปรุงที่สร้างจากการตรวจนับ — แก้ที่หน้ารายการตรวจนับ (ยกเลิกแล้วผลนับกลับเป็น "บันทึกยอดนับแล้ว") */
+export const countLinked = async (db: Db, headerId: string) => !!(await sql`SELECT 1 FROM inv_stock_count c JOIN doc_line l ON l.id = c.adjust_line_id WHERE l.header_id = ${headerId} AND c.deleted_at IS NULL LIMIT 1`.execute(db)).rows.length;
+const COUNT_MSG = 'เอกสารนี้สร้างจากการตรวจนับ แก้ไขไม่ได้ — ยกเลิกเอกสาร (ผลนับกลับเป็น "บันทึกยอดนับแล้ว") แล้วแก้ยอดนับและปรับปรุงใหม่ที่หน้ารายการตรวจนับ';
 const MIG_MSG = 'เอกสารนี้สร้างตอนย้ายข้อมูลจาก Express เพื่อให้ยอดสต๊อกตรง แก้ไข/ยกเลิกไม่ได้ — ปรับยอดด้วยเอกสารปรับปรุงใบใหม่';
 
-async function save(db: Db, a: Ctx, K: StockKind, id: string | null, b: Body) {
+/** บันทึกเอกสารคลัง (ใน transaction ของผู้เรียก) — allowZero: ใบปรับปรุงจากการตรวจนับสร้างบรรทัดแม้ผลต่างเป็น 0 */
+export async function writeStockDoc(db: Db, a: Ctx, K: StockKind, id: string | null, b: Body, opt: { allowZero?: boolean; fromCount?: boolean } = {}) {
   const dt = await db.selectFrom('md_doc_type').select(['id', 'doc_class', 'department_id', 'warehouse_id', 'status']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!dt || dt.doc_class !== K.cls) throw badRequest(`เลือกประเภทเอกสารของ${K.label}`);
   if (!id && dt.status !== 'A') throw badRequest('ประเภทเอกสารนี้เลิกใช้แล้ว');
@@ -56,13 +61,14 @@ async function save(db: Db, a: Ctx, K: StockKind, id: string | null, b: Body) {
     if (!it) throw badRequest(`บรรทัดที่ ${i + 1}: ไม่พบรหัสสินค้า`);
     if (it.item_type !== '0') throw badRequest(`บรรทัดที่ ${i + 1}: ${it.code} ไม่ใช่สินค้าที่มีสต๊อก (บริการ/สินค้าชุด/รายได้/ค่าใช้จ่าย)`);
     if (K.cls === 'CA') { if (!l.amount || d(l.amount).isZero()) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวนเงินที่เพิ่ม/ลดต้นทุน`); }
-    else if (d(l.qty).isZero()) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวน`);
+    else if (d(l.qty).isZero() && !opt.allowZero) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวน`);
     else if (K.cls !== 'JU' && d(l.qty).lt(0)) throw badRequest(`บรรทัดที่ ${i + 1}: จำนวนต้องมากกว่า 0`);
     if (K.cls === 'CA' && it.cost_method === 'F' && !l.source_line_id) throw badRequest(`บรรทัดที่ ${i + 1}: ${it.code} คิดต้นทุน FIFO — เลือกล็อต (เอกสารรับเข้า) ที่จะปรับ`);
   });
   const header = { doc_type_id: dt.id, doc_class: K.cls, module: 'IC', doc_date: b.doc_date, department_id: b.department_id ?? dt.department_id, remark: b.remark, your_ref: b.your_ref,
     warehouse_id: b.warehouse_id ?? dt.warehouse_id, to_warehouse_id: K.cls === 'RL' ? b.to_warehouse_id : null, price_type: '0', updated_by: a.userId };
-  return db.transaction().execute(async (tx) => {
+  {
+    const tx = db;
     await periodFor(tx, a.companyId, b.doc_date);
     let hid = id, docNo: string;
     if (id) {
@@ -70,6 +76,7 @@ async function save(db: Db, a: Ctx, K: StockKind, id: string | null, b: Body) {
       if (!cur || cur.doc_class !== K.cls) throw notFound(K.label);
       if (cur.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว แก้ไขไม่ได้');
       if (isMigAdj(cur.doc_no)) throw badRequest(MIG_MSG);
+      if (!opt.fromCount && await countLinked(tx, id)) throw badRequest(COUNT_MSG);
       await periodFor(tx, a.companyId, String(cur.doc_date).slice(0, 10));
       docNo = cur.doc_no;
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
@@ -106,7 +113,7 @@ async function save(db: Db, a: Ctx, K: StockKind, id: string | null, b: Body) {
         // เพิ่ม: จำนวน × ทุนต่อหน่วยที่ป้อน (ว่าง = ต้นทุนเฉลี่ยปัจจุบัน) · ลด: ต้นทุนตามวิธีของกลุ่ม — movement 8 มูลค่าตามเครื่องหมาย
         const v = bq.gt(0) ? (l.unit_cost != null && l.unit_cost !== '' ? bq.times(d(l.unit_cost)).toDecimalPlaces(2) : d(await issueCost(tx, a.companyId, { itemId: it.id, warehouseId: wh, byWarehouse: st.byWarehouse, date: b.doc_date, qty: bq.toString(), method: 'A', fallbackUnit: it.std_cost })))
           : d(await cost(bq)).neg();
-        rows.push({ ...baseLine, line_no: ++n, warehouse_id: wh, qty: l.qty, base_qty: bq.abs().toString(), stock_effect: bq.gt(0) ? 1 : -1, movement_code: '8', cost_amount: v.toFixed(2), cost_unit: v.abs().div(bq.abs()).toDecimalPlaces(4).toString(), line_amount: v.abs().toFixed(2), net_amount: v.abs().toFixed(2) });
+        rows.push({ ...baseLine, line_no: ++n, warehouse_id: wh, qty: l.qty, base_qty: bq.abs().toString(), stock_effect: bq.gt(0) ? 1 : -1, movement_code: '8', cost_amount: v.toFixed(2), cost_unit: bq.isZero() ? '0' : v.abs().div(bq.abs()).toDecimalPlaces(4).toString(), line_amount: v.abs().toFixed(2), net_amount: v.abs().toFixed(2) });
         if (bq.lt(0)) out(it.id, wh, bq.abs(), it.code);
       } else {
         if (l.source_line_id) {
@@ -125,8 +132,17 @@ async function save(db: Db, a: Ctx, K: StockKind, id: string | null, b: Body) {
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
     await logActivity(tx, a, { module: 'IC', action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
-    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: total };
-  });
+    return { id: hid!, doc_no: docNo, journal_id: posted.journal_id, net_amount: total };
+  }
+}
+const save = (db: Db, a: Ctx, K: StockKind, id: string | null, b: Body) => db.transaction().execute((tx) => writeStockDoc(tx, a, K, id, b));
+
+/** ยกเลิกเอกสารคลัง — ใบที่มาจากการตรวจนับ: ผลนับกลับเป็นสถานะ 3 (บันทึกยอดนับแล้ว) ให้แก้และปรับปรุงใหม่ได้ */
+export async function cancelStockDoc(db: Db, a: Ctx, id: string, reason: string) {
+  const r = await cancelDocument(db, a, id, reason);
+  await sql`UPDATE inv_stock_count SET flag = '3', adjust_line_id = NULL, system_qty = NULL, diff_qty = NULL, updated_by = ${a.userId}, updated_at = now()
+     WHERE company_id = ${a.companyId} AND adjust_line_id IN (SELECT id FROM doc_line WHERE header_id = ${id})`.execute(db);
+  return r;
 }
 
 export function stockDocRoutes(app: FastifyInstance, db: Db) {
@@ -153,7 +169,7 @@ export function stockDocRoutes(app: FastifyInstance, db: Db) {
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id').leftJoin('md_unit as u', 'u.id', 'l.unit_id')
         .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.cost_unit', 'l.cost_amount', 'l.stock_effect', 'l.source_line_id'])
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).$if(K.cls === 'RL', (qb) => qb.where('l.stock_effect', '=', -1)).orderBy('l.line_no').execute();
-      return { ...h, lines, editable: h.doc_status !== 'C' && !isMigAdj(h.doc_no) };
+      return { ...h, lines, editable: h.doc_status !== 'C' && !isMigAdj(h.doc_no) && !(await countLinked(db, id)), from_count: await countLinked(db, id) };
     });
     app.post(base, async (req) => save(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => save(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));
@@ -164,7 +180,7 @@ export function stockDocRoutes(app: FastifyInstance, db: Db) {
       const h = await db.selectFrom('doc_header').select(['id', 'doc_no']).where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
       if (isMigAdj(h.doc_no)) throw badRequest(MIG_MSG);
-      return cancelDocument(db, a, id, reason);
+      return cancelStockDoc(db, a, id, reason);
     });
   }
   /** CA FIFO: ล็อตรับเข้าของสินค้า (บรรทัดที่รับเข้า) ให้เลือกปรับต้นทุน */

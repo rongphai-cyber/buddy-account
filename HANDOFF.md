@@ -103,7 +103,12 @@
   - OU movement 6 (−) ต้นทุนตามวิธีของกลุ่ม · RL เก็บคู่บรรทัด ออก 4 (คลังต้นทาง) + เข้า 3 (คลังปลายทาง) ต้นทุนเดียวกัน — รายละเอียดแสดงเฉพาะบรรทัดออก · JU movement 8 qty เก็บ abs + stock_effect ตามเครื่องหมาย, cost_amount มีเครื่องหมาย (เพิ่ม = จำนวน × ทุนที่ป้อน, ว่าง = เฉลี่ย) · CA movement 5 qty 0 มูลค่า ± (FIFO ต้องอ้างล็อต source_line_id → issueCost FIFO บวกมูลค่า CA เข้าล็อตนั้น)
   - ลงบัญชี (core buildPosting OU/JU/CA): Perpetual หรือ OU ที่ประเภทเอกสารกำหนดบัญชี ISSUE_DEBIT/ISSUE_CREDIT ครบ (Express ลง OU แม้ Periodic → parity OU 17/17) · JU slot ADJ_DEBIT/ADJ_CREDIT → OTHER_EXPENSE/OTHER_INCOME · CA slot COST_ADJ → SUSPENSE · รวม parity 97.3%
   - ใบ MIG-* (ปรับยอดตอนย้ายข้อมูล) แก้/ยกเลิกไม่ได้ · จ่ายวัตถุดิบผลิต/ตัวอย่าง/ชำรุด/รับสำเร็จรูป/ค่าขนส่ง = ประเภทเอกสารอีกรหัสในหมวดเดียวกัน (replaced)
-- ต่อไป: T4.4 ตรวจนับสินค้า (S-IC-15..22, TK)
+- ✅ T4.4 ตรวจนับ: `modules/docs/stockcount.ts` (/stock-counts dates/prepare/rows/entries/adjust/reopen) · หน้า `pages/inventory/Counts.tsx` (/ic/counts เมนู IC.COUNT) · ตาราง inv_stock_count (มีอยู่แล้วใน baseline, flag 1/3/6, counted_qty null = ยังไม่นับ)
+  - ยอดตามระบบ ณ วันนับคำนวณสดจาก v_stock_move · ปรับปรุง = `writeStockDoc` (stockdocs.ts, ใน transaction เดียวกัน) สร้างใบ JU (ประเภท TK ถ้ามี) ณ วันนับ qty = นับ − ระบบ (allowZero) แล้วบันทึก adjust_line_id/system_qty/diff_qty
+  - ใบที่มาจากการตรวจนับแก้ไม่ได้ (`countLinked`) · ยกเลิกใบ (จากหน้าตรวจนับ reopen หรือหน้าปรับปรุง) → `cancelStockDoc` คืนผลนับเป็น flag 3
+  - ยังไม่ทำ: นำเข้าประวัติ STTAK ของ Express (20,189 แถว ส่วนใหญ่ 31/12/2551 — ใบ TK นำเข้าเป็น JU แล้ว ยอดสต๊อกไม่กระทบ)
+- ⚠️ server ทดสอบ 4101 ย้ายไป `scratchpad/buddy-test2` (buddy-test เดิม PGlite เสียหลังถูกฆ่ากลางทาง) — ฆ่า process ที่ค้างพอร์ตก่อนเปิดใหม่ทุกครั้ง; ฐานใหม่ไม่มีบริษัท สคริปต์ต้องสร้างบริษัทเอง (scratchpad/count_ui.cjs)
+- ต่อไป: T4.5 ยอดยกมาสินค้า (S-OB-01/02) + ทะเบียนหมายเลขสินค้า (S-IC-12..14)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ
@@ -126,7 +131,7 @@
   - `pnpm test` (core 9 + API 20 + schema) · `pnpm typecheck` · `pnpm --filter @buddy/web build`
   - smoke: `PASS=<จากไฟล์> BASE=http://localhost:4100 OUT=<scratchpad>/shots node apps/web/e2e/smoke.cjs` (20 ขั้น)
   - ยอดเงิน: งบทดลอง DEMO ปี 2569 คงเหลือต้องเป็น **245,718,317.16** ทั้งสองด้าน (ปี 2568 คงเหลือ 181,398,941.31)
-- ทดลองหน้าจอที่ "บันทึก" ข้อมูล: ใช้ server ทดสอบแยก (PGlite, `BUDDY_DATA_DIR=<scratchpad>/buddy-test PORT=4101`, admin/buddy1234) อย่าเขียนข้อมูลลง DEMO
+- ทดลองหน้าจอที่ "บันทึก" ข้อมูล: ใช้ server ทดสอบแยก (PGlite, `BUDDY_DATA_DIR=<scratchpad>/buddy-test2 PORT=4101`, admin/buddy1234) อย่าเขียนข้อมูลลง DEMO
 - นำข้อมูลใหม่ทั้งหมด (ถ้าจำเป็น): drop DB buddy → `node tools/local-pg/pg.mjs run -- bash tools/express-import/import.sh D:/ACC-Program/TESTRice - TESTRice` → ตรวจงบทดลอง 2553 = 245,718,317.16 → `... run -- python tools/demo-data/make_demo.py - TESTRice DEMO` → `... run -- pnpm --silent --filter @buddy/server cli create-admin admin "ผู้ดูแลระบบ" <รหัสจากไฟล์>`
 
 ## รูปแบบงานที่ใช้ (ทำซ้ำได้)

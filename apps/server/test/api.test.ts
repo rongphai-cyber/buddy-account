@@ -1495,6 +1495,61 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', `/api/v1/stock-adjustments/${ju2.id}/cancel`, { reason: 'x' })).body.error.message).toMatch(/ย้ายข้อมูล/);
     await sql`UPDATE doc_header SET doc_status = 'C' WHERE id = ${ju2.id}`.execute(database.db);
   });
+  it('stock count (T4.4): prepare, enter counts, live system qty and difference, adjust to a JU/TK document, reopen, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1, w2] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const code = '02-TEST-000045';
+    const it = (await call('POST', '/api/v1/items', { code, name_th: 'สินค้าตรวจนับ', base_unit_id: unit, std_cost: '10' })).body.id;
+    const bal = async () => (await call('GET', `/api/v1/stock/balances?item_id=${it}`)).body.rows.map((r: { warehouse_id: string; qty: string; value: string }) => `${r.warehouse_id === w1 ? 1 : 2}:${Number(r.qty)}/${r.value}`).sort().join(' ');
+    const ju = (await call('POST', '/api/v1/stock-adjustments', { doc_type_id: await typeOf('JU'), doc_date: '2026-06-01', lines: [{ item_id: it, warehouse_id: w1, qty: 10, unit_cost: 10 }] })).body;
+    const D = '2026-06-30';
+    const list = async (extra = '') => (await call('GET', `/api/v1/stock-counts?count_date=${D}&q=${code}${extra}`)).body;
+    // สร้างข้อมูลตรวจนับ: เฉพาะคู่ที่เคยเคลื่อนไหว · สร้างซ้ำไม่ซ้ำแถว
+    const prep = (await call('POST', '/api/v1/stock-counts/prepare', { count_date: D, replace: true, item_from: code, item_to: code })).body;
+    expect(prep.added).toBe(1);
+    expect((await call('POST', '/api/v1/stock-counts/prepare', { count_date: D, replace: false, item_from: code, item_to: code })).body.added).toBe(0);
+    let rows = (await list()).rows;
+    expect(rows.map((r: { warehouse_id: string; flag: string; system_qty: string; counted_qty: string | null }) => [r.warehouse_id === w1, r.flag, Number(r.system_qty), r.counted_qty])).toEqual([[true, '1', 10, null]]);
+    // เพิ่มสินค้าที่พบในคลัง 2 · ห้ามยอดติดลบ · บันทึกยอดนับ
+    const extra = (await call('POST', '/api/v1/stock-counts/rows', { count_date: D, warehouse_id: w2, item_id: it })).body.id;
+    expect((await call('POST', '/api/v1/stock-counts/rows', { count_date: D, warehouse_id: w2, item_id: it })).body.error.message).toMatch(/อยู่ในรายการนับ/);
+    expect((await call('PUT', '/api/v1/stock-counts/entries', { rows: [{ id: rows[0].id, counted_qty: -1 }] })).body.error.message).toMatch(/ไม่ติดลบ/);
+    expect((await call('PUT', '/api/v1/stock-counts/entries', { rows: [{ id: rows[0].id, counted_qty: '7', shelf: 'A-01' }, { id: extra, counted_qty: 2 }] })).body.updated).toBe(2);
+    const counted = await list('&status=diff');
+    expect(counted.rows.map((r: { flag: string; diff_qty: string; diff_value: string | null; shelf: string | null }) => [r.flag, Number(r.diff_qty), r.diff_value, r.shelf])).toEqual([['3', -3, '-30.00', 'A-01'], ['3', 2, '20.00', null]]);
+    // ปรับปรุงยอด → ใบ JU ณ วันนับ · ยอดเท่ายอดนับ · สถานะ 6
+    const adj = (await call('POST', '/api/v1/stock-counts/adjust', { count_date: D, item_from: code, item_to: code })).body;
+    expect(adj.lines).toBe(2);
+    expect(await bal()).toBe('1:7/70.00 2:2/20.00');
+    rows = (await list()).rows;
+    expect(rows.map((r: { flag: string; adjust_doc_no: string; adjusted_diff: string }) => [r.flag, r.adjust_doc_no, Number(r.adjusted_diff)])).toEqual([['6', adj.doc_no, -3], ['6', adj.doc_no, 2]]);
+    expect((await call('PUT', '/api/v1/stock-counts/entries', { rows: [{ id: extra, counted_qty: 3 }] })).body.error.message).toMatch(/ปรับปรุงยอดแล้ว/);
+    expect((await call('GET', `/api/v1/stock-adjustments/${adj.id}`)).body).toMatchObject({ editable: false, from_count: true });
+    expect((await call('PUT', `/api/v1/stock-adjustments/${adj.id}`, { doc_type_id: await typeOf('JU'), doc_date: D, lines: [{ item_id: it, warehouse_id: w1, qty: 1 }] })).body.error.message).toMatch(/สร้างจากการตรวจนับ/);
+    expect((await call('POST', '/api/v1/stock-counts/adjust', { count_date: D, item_from: code, item_to: code })).body.error.message).toMatch(/ไม่มีรายการที่บันทึกยอดนับแล้ว/);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/stock-counts?count_date=${D}`)).body.rows).toHaveLength(0);
+    expect((await call('PUT', '/api/v1/stock-counts/entries', { rows: [{ id: extra, counted_qty: 1 }] })).status).toBe(404);
+    expect((await call('POST', '/api/v1/stock-counts/reopen', { header_id: adj.id, reason: 'x' })).status).toBe(404);
+    expect((await call('DELETE', `/api/v1/stock-counts/${extra}`)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ยกเลิกการปรับปรุง → สถานะ 3 แก้ยอดนับได้ · ผลต่าง 0 ก็สร้างบรรทัด
+    expect((await call('POST', '/api/v1/stock-counts/reopen', { header_id: adj.id, reason: 'นับใหม่' })).status).toBe(200);
+    expect(await bal()).toBe('1:10/100.00');
+    expect((await list()).rows.map((r: { flag: string }) => r.flag)).toEqual(['3', '3']);
+    await call('PUT', '/api/v1/stock-counts/entries', { rows: [{ id: rows[0].id, counted_qty: 10 }, { id: extra, counted_qty: null }] });
+    const adj2 = (await call('POST', '/api/v1/stock-counts/adjust', { count_date: D, item_from: code, item_to: code })).body;
+    expect(adj2.lines).toBe(1);
+    expect((await call('GET', `/api/v1/stock-adjustments/${adj2.id}`)).body.lines.map((l: { qty: string }) => Number(l.qty))).toEqual([0]);
+    expect((await call('DELETE', `/api/v1/stock-counts/${extra}`)).status).toBe(200);
+    // ยกเลิกจากหน้าปรับปรุงก็คืนสถานะ 3
+    expect((await call('POST', `/api/v1/stock-adjustments/${adj2.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await list()).rows.map((r: { flag: string }) => r.flag)).toEqual(['3']);
+    expect((await call('POST', `/api/v1/stock-adjustments/${ju.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect(await bal()).toBe('');
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

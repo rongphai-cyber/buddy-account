@@ -80,7 +80,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   const lk = useLookups('UNIT,WH');
   const defs = useQuery({ queryKey: ['trade-defaults', cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; warehouse_id: string | null; department_id: string | null }> }>(`/api/v1/trade-defaults/${cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
-  const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], staleTime: 0, queryFn: () => api.get<Record<string, string | null> & { editable: boolean; lines: Array<Record<string, string | number | null>> }>(`/api/v1/${K.path}/${id}`) });
+  const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], staleTime: 0, queryFn: () => api.get<Record<string, string | null> & { editable: boolean; from_count?: boolean; lines: Array<Record<string, string | number | null>> }>(`/api/v1/${K.path}/${id}`) });
   const [h, setH] = useState<Head | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [tab, setTab] = useState('lines');
@@ -137,17 +137,17 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
     try { await api.post(`/api/v1/${K.path}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['stock'] }); nav(K.route); }
     catch (e) { setAskCancel(false); setErr(e); }
   };
-  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': id && can('cancel') && cur.data?.editable ? () => setAskCancel(true) : undefined,
+  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': id && can('cancel') && !cancelled && (cur.data?.editable || cur.data?.from_count) ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const whRows = lk.data?.WH;
   return (
     <div className="page" data-tone="inventory">
       <div className="doc-title"><p className="eyebrow">สินค้า › {K.label}</p><h1>{id ? cur.data?.doc_no : 'เอกสารใหม่'}</h1>
-        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">บันทึกแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{!cancelled && cur.data?.doc_no?.startsWith('MIG-') && <Pill tone="d">ปรับยอดตอนย้ายข้อมูล — แก้ไข/ยกเลิกไม่ได้</Pill>}</span></div>
+        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">บันทึกแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{!cancelled && cur.data?.doc_no?.startsWith('MIG-') && <Pill tone="d">ปรับยอดตอนย้ายข้อมูล — แก้ไข/ยกเลิกไม่ได้</Pill>}{!cancelled && cur.data?.from_count && <Pill tone="d">สร้างจากการตรวจนับ — แก้ที่หน้ารายการตรวจนับ</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
-        <button disabled={!id || !cur.data?.editable || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร <kbd>Alt+C</kbd></button>
+        <button disabled={!id || cancelled || !(cur.data?.editable || cur.data?.from_count) || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร <kbd>Alt+C</kbd></button>
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error ?? defs.error} />

@@ -47,6 +47,7 @@ import { OpeningFormPage, OpeningListPage } from './pages/docs/OpeningDocs';
 import { WhtRegisterPage } from './pages/tax/WhtRegister';
 import { VatRegisterPage } from './pages/tax/VatRegister';
 import { StockPage } from './pages/inventory/Stock';
+import { CountsPage } from './pages/inventory/Counts';
 import { StockDocFormPage, StockDocListPage } from './pages/docs/StockDocs';
 import { BILL_KINDS, CASH_KINDS, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
 
@@ -140,6 +141,7 @@ function Shell() {
           <Route path="/tax/wht50" element={<Wht50Page />} />
           <Route path="/tax/wht" element={<WhtRegisterPage />} />
           <Route path="/ic/stock" element={<StockPage />} />
+          <Route path="/ic/counts" element={<CountsPage />} />
           {STOCK_KINDS.flatMap((k) => [<Route key={k.cls} path={k.route} element={<StockDocListPage key={k.cls} cls={k.cls} />} />, <Route key={k.cls + '-f'} path={`${k.route}/:id`} element={<StockDocFormPage key={k.cls + '-f'} cls={k.cls} />} />])}
           <Route path="/tax/vat/P" element={<VatRegisterPage key="P" kind="P" />} />
           <Route path="/tax/vat/S" element={<VatRegisterPage key="S" kind="S" />} />
