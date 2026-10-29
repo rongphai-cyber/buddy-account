@@ -77,7 +77,7 @@ export const MENU: MenuItem[] = [
     m('IC.REORDER', 'กำหนดจุดสั่งซื้อ', 'P2', undefined, ['ch07:S-IC-07']),
   ], '4'),
   g('GL', 'บัญชี', 'P1', [
-    m('GL.JNL', 'ลงประจำวัน (สมุดรายวัน)', 'P1', '/gl/journals', ['ch15:S-GL-02', 'ch15:S-GL-05']),
+    m('GL.JNL', 'ลงประจำวัน (สมุดรายวัน)', 'P1', '/gl/journals', ['ch15:S-GL-02', 'ch15:S-GL-05', 'ch15:S-GL-06']),
     m('GL.ACC', 'ผังบัญชี', 'P1', '/gl/accounts', ['ch07:S-GL-01']),
     m('GL.OB', 'บันทึกยอดยกมา', 'P1', '/gl/opening', ['ch08:S-OB-06']),
     m('GL.LY', 'ยอดปีที่แล้ว', 'P1', undefined, ['ch15:S-GL-16']),

@@ -141,6 +141,7 @@ describe('Buddy Account API (PGlite)', () => {
   });
 
   it('keeps companies separate', async () => {
+    const mine = (await call('GET', '/api/v1/gl/journals')).body.rows[0];
     otherCompanyId = (await call('POST', '/api/v1/companies', { code: 'OTHER', name_th: 'อีกบริษัท', fiscal_start: '2026-01-01', chart: 'none' })).body.id;
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
     expect((await call('GET', '/api/v1/gl/accounts')).body).toHaveLength(0);
@@ -149,7 +150,11 @@ describe('Buddy Account API (PGlite)', () => {
     const r = await call('POST', '/api/v1/gl/journals', { journal_book_id: book2, voucher_date: '2026-03-01', lines: [{ account_id: cash, debit: '1' }, { account_id: capital, credit: '1' }] });
     expect(r.body.error.message).toMatch(/ไม่พบบัญชี/);
     expect((await call('GET', '/api/v1/gl/journals')).body.total).toBe(0);
+    // คัดลอกรายการจากใบสำคัญอื่น (S-GL-06): ค้นหรือเปิดใบสำคัญของบริษัทอื่นไม่ได้ แม้รู้เลขที่/รหัส
+    expect((await call('GET', `/api/v1/gl/journals?q=${mine.voucher_no}`)).body.total).toBe(0);
+    expect((await call('GET', `/api/v1/gl/journals/${mine.id}`)).status).toBe(404);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('GET', `/api/v1/gl/journals/${mine.id}`)).body.lines.length).toBeGreaterThan(0);
   });
 
   it('manages journal templates (ต้นแบบวิธีการบันทึก S-GL-01) and isolates them per company', async () => {
@@ -233,7 +238,8 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: ca });
     const aBook = (await call('GET', '/api/v1/gl/books')).body[0].id;
     const aAcc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control);
-    expect((await call('POST', '/api/v1/gl/journals', { journal_book_id: aBook, voucher_date: '2026-03-01', lines: [{ account_id: aAcc[0].id, debit: '10' }, { account_id: aAcc[1].id, credit: '10' }] })).status).toBe(200);
+    const aJv = await call('POST', '/api/v1/gl/journals', { journal_book_id: aBook, voucher_date: '2026-03-01', lines: [{ account_id: aAcc[0].id, debit: '10' }, { account_id: aAcc[1].id, credit: '10' }] });
+    expect(aJv.status).toBe(200);
     const aTpl = (await call('POST', '/api/v1/gl/templates', { code: 'A-TPL', name: 'ต้นแบบของ A', lines: [{ account_id: aAcc[0].id, side: 'D' }, { account_id: aAcc[1].id, side: 'C' }] })).body.id;
     expect(aTpl).toBeTruthy();
     // คัดลอกผังบัญชีจากบริษัทของลูกค้าอื่นไม่ได้
@@ -260,6 +266,9 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/gl/templates/${aTpl}`)).status).toBe(404);
     expect((await call('PUT', `/api/v1/gl/templates/${aTpl}`, { code: 'HACK', name: 'x', lines: [{ account_id: aAcc[0].id, side: 'D' }] })).status).toBe(404);
     expect((await call('DELETE', `/api/v1/gl/templates/${aTpl}`)).status).toBe(404);
+    // ใบสำคัญของลูกค้า A — ลูกค้า B ค้นหรือเปิดเพื่อคัดลอกรายการไม่ได้ (S-GL-06)
+    expect((await call('GET', `/api/v1/gl/journals?q=${aJv.body.voucher_no}`)).body.total).toBe(0);
+    expect((await call('GET', `/api/v1/gl/journals/${aJv.body.id}`)).status).toBe(404);
 
     // พนักงานของ A เห็นเฉพาะบริษัทที่ได้รับสิทธิ์
     expect((await login('a.clerk', 'clerk1234')).status).toBe(200);

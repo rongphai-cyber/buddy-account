@@ -7,6 +7,7 @@ import { useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
+import { JournalPicker } from '../../components/JournalPicker';
 
 interface Line { key: number; account_id: string | null; department_id: string | null; description: string; debit: string; credit: string }
 interface JournalDoc {
@@ -45,13 +46,15 @@ export function JournalFormPage() {
   const templates = useTemplates();
   const [tplPick, setTplPick] = useState<string | null>(null);
   const [tplAdd, setTplAdd] = useState<string | null>(null);
-  const [tplReplace, setTplReplace] = useState<TemplateDetail | null>(null);
+  // ถามก่อนแทนรายการที่ป้อนไว้ (ใช้ร่วมกับต้นแบบและคัดลอกจากใบสำคัญอื่น)
+  const [replaceAsk, setReplaceAsk] = useState<{ title: string; okText: string; apply: () => void } | null>(null);
+  const [copyPick, setCopyPick] = useState(false);
   const bookTplId = isNew ? books.data?.find((b) => b.id === h.journal_book_id)?.template_id ?? null : null;
   const bookTpl = useQuery({ enabled: !!bookTplId, queryKey: ['template', bookTplId], queryFn: () => api.get<TemplateDetail>(`/api/v1/gl/templates/${bookTplId}`) });
   const freshLines = (t?: TemplateDetail | null): Line[] => (t?.lines.length ? templateToLines(t).map((l) => ({ ...l, key: ++seq })) : [blank(), blank()]);
   const linesBlank = lines.every((l) => !l.account_id && !l.debit && !l.credit && !l.description);
   const applyTemplate = (t: TemplateDetail) => {
-    setLines(freshLines(t)); setDirty(true); setTplReplace(null);
+    setLines(freshLines(t)); setDirty(true); setReplaceAsk(null);
     const missing = t.lines.some((l) => !l.amount || d(l.amount).isZero());
     toast(`ใช้ต้นแบบ ${t.code} แล้ว${missing ? ' — ป้อนจำนวนเงินที่ยังว่าง' : ''}`);
     // ไปที่ช่องจำนวนเงินแรกที่ยังว่าง (ไม่มีก็ไปช่องคำอธิบาย)
@@ -65,7 +68,23 @@ export function JournalFormPage() {
     setTplPick(null);
     try {
       const t = await qc.fetchQuery({ queryKey: ['template', tid], queryFn: () => api.get<TemplateDetail>(`/api/v1/gl/templates/${tid}`), staleTime: 0 });
-      if (linesBlank) applyTemplate(t); else setTplReplace(t);
+      if (linesBlank) applyTemplate(t); else setReplaceAsk({ title: `ใช้ต้นแบบ ${t.code}`, okText: 'แทนด้วยต้นแบบ', apply: () => applyTemplate(t) });
+    } catch (e) { toastError(e); }
+  };
+  // คัดลอกรายการจากใบสำคัญอื่น (S-GL-06): เอาบรรทัดบัญชีมาทั้งหมด ผู้ใช้ป้อนวันที่ใหม่แล้วบันทึกเป็นใบใหม่
+  const applyCopy = (src: JournalDoc) => {
+    setLines(src.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: l.department_id, description: l.description ?? '', debit: d(l.debit).isZero() ? '' : d(l.debit).toFixed(2), credit: d(l.credit).isZero() ? '' : d(l.credit).toFixed(2) })));
+    if (!h.description && src.description) setH((x) => ({ ...x, description: src.description ?? '' }));
+    setDirty(true); setReplaceAsk(null);
+    toast(`คัดลอกรายการจาก ${src.voucher_no} แล้ว — ตรวจวันที่และจำนวนเงินก่อนบันทึก`);
+    setTimeout(() => document.querySelector<HTMLInputElement>('.head-grid .date-in input')?.focus(), 0);
+  };
+  const pickCopy = async (jid: string) => {
+    setCopyPick(false);
+    try {
+      const src = await api.get<JournalDoc>(`/api/v1/gl/journals/${jid}`);
+      if (!src.lines.length) { toast(`ใบสำคัญ ${src.voucher_no} ไม่มีรายการบัญชีให้คัดลอก`, 'warn'); return; }
+      if (linesBlank) applyCopy(src); else setReplaceAsk({ title: `คัดลอกรายการจาก ${src.voucher_no}`, okText: 'แทนด้วยรายการที่คัดลอก', apply: () => applyCopy(src) });
     } catch (e) { toastError(e); }
   };
   useEffect(() => {
@@ -119,7 +138,7 @@ export function JournalFormPage() {
   };
   const leave = (to: string) => (dirty && editable ? setLeaveAsk(to) : nav(to));
   useHotkeys({
-    F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': () => !isNew && editable && setCancelAsk(true),
+    F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': () => !isNew && editable && setCancelAsk(true), 'Ctrl+F6': () => isNew && setCopyPick(true),
     'Alt+P': () => window.print(), 'Ctrl+Insert': addLine, 'Alt+N': () => leave('/gl/journals/new'), Escape: () => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`),
   }, [h, lines, editable, dirty, busy]);
 
@@ -164,10 +183,11 @@ export function JournalFormPage() {
               </select>
             </Field>
             <Field label="วันที่" req><DateInput value={h.voucher_date} onChange={(v) => { setDirty(true); setH({ ...h, voucher_date: v }); }} autoFocus={isNew} /></Field>
-            <Field label="เลขที่ใบสำคัญ" hint={isNew ? 'ออกเลขอัตโนมัติตอนบันทึก · 🔍/F4 เลือกต้นแบบวิธีการบันทึก' : undefined}>
+            <Field label="เลขที่ใบสำคัญ" hint={isNew ? 'ออกเลขอัตโนมัติตอนบันทึก · 🔍/F4 เลือกต้นแบบ · 📋/Ctrl+F6 คัดลอกจากใบสำคัญอื่น' : undefined}>
               <span className="lk-in">
                 <input readOnly value={isNew ? nextNo : j?.voucher_no ?? ''} className="mono" onKeyDown={(e) => { if (isNew && e.key === 'F4') { e.preventDefault(); setTplPick(''); } }} />
                 {isNew && <button type="button" className="icon-btn" onClick={() => setTplPick('')} title="เลือกต้นแบบวิธีการบันทึก (F4)">🔍</button>}
+                {isNew && <button type="button" className="icon-btn" onClick={() => setCopyPick(true)} title="คัดลอกรายการจากใบสำคัญอื่น (Ctrl+F6)">📋</button>}
               </span>
             </Field>
             <Field label="อ้างอิง"><input value={h.reference} maxLength={30} onChange={(e) => { setDirty(true); setH({ ...h, reference: e.target.value }); }} /></Field>
@@ -216,7 +236,7 @@ export function JournalFormPage() {
       </fieldset>
       {tab === 'history' && id && <History table="gl_journal" rowId={id} />}
       {j && <p className="hint">สร้างโดย {j.created_by_name ?? 'นำเข้าจาก Express'} · <DateText v={j.created_at.slice(0, 10)} /> · แก้ไขล่าสุด <DateText v={j.updated_at.slice(0, 10)} /></p>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี / ต้นแบบ (ที่ช่องเลขที่)'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี / ต้นแบบ (ที่ช่องเลขที่)'], ['Ctrl+F6', 'คัดลอกจากใบสำคัญอื่น'],['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />
       <PrintVoucher title={book?.name_th ?? 'ใบสำคัญ'} no={isNew ? nextNo : j?.voucher_no ?? ''} date={formatDate(h.voucher_date, me?.company?.year_system ?? 'B')} desc={h.description} company={me?.company?.name_th ?? ''}
         lines={lines.filter((l) => l.account_id).map((l) => ({ no: acctOf(l.account_id)?.account_no ?? '', name: acctOf(l.account_id)?.name_th ?? '', desc: l.description, dr: l.debit, cr: l.credit }))} totals={totals} />
       {cancelAsk && <CancelDialog onClose={() => setCancelAsk(false)} onOk={(reason) => api.post(`/api/v1/gl/journals/${id}/cancel`, { reason }).then(() => { toast('ยกเลิกใบสำคัญแล้ว'); setCancelAsk(false); qc.invalidateQueries({ queryKey: ['journal', id] }); qc.invalidateQueries({ queryKey: ['journals'] }); }).catch(toastError)} />}
@@ -226,7 +246,8 @@ export function JournalFormPage() {
           onPick={(t) => pickTemplate(t.id)} onClose={() => setTplPick(null)} onAdd={(t) => { setTplPick(null); setTplAdd(t); }} />
       )}
       {tplAdd !== null && <TemplateForm id={null} initialCode={tplAdd} onClose={() => setTplAdd(null)} onSaved={(tid) => { setTplAdd(null); pickTemplate(tid); }} />}
-      {tplReplace && <Confirm title={`ใช้ต้นแบบ ${tplReplace.code}`} text="รายการบัญชีที่ป้อนไว้จะถูกแทนด้วยรายการจากต้นแบบ ต้องการทำต่อหรือไม่?" okText="แทนด้วยต้นแบบ" onClose={() => setTplReplace(null)} onOk={() => applyTemplate(tplReplace)} />}
+      {copyPick && <JournalPicker onClose={() => setCopyPick(false)} onPick={pickCopy} />}
+      {replaceAsk && <Confirm title={replaceAsk.title} text="รายการบัญชีที่ป้อนไว้จะถูกแทนที่ทั้งหมด ต้องการทำต่อหรือไม่?" okText={replaceAsk.okText} onClose={() => setReplaceAsk(null)} onOk={replaceAsk.apply} />}
       {leaveAsk && <Confirm title="ยังไม่ได้บันทึก" text="มีการแก้ไขที่ยังไม่บันทึก ต้องการออกโดยไม่บันทึกหรือไม่?" okText="ออกโดยไม่บันทึก" danger onClose={() => setLeaveAsk(null)} onOk={() => { const to = leaveAsk; setLeaveAsk(null); setDirty(false); nav(to); }} />}
     </div>
   );
