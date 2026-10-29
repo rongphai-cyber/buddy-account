@@ -2504,6 +2504,20 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: '2027-02-01', lines: [{ account_id: acc[0].id, debit: '5' }, { account_id: acc[1].id, credit: '5' }] })).status).toBe(200);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
+  it('petty cash VAT + WHT tabs (T7.1 S-GL-11): entries linked to DP, only DP allowed, cancel cascades', async () => {
+    const dpType = (await call('GET', '/api/v1/petty-payments/defaults')).body?.types?.[0]?.id ?? (await sql<{ id: string }>`SELECT id FROM md_doc_type WHERE company_id = ${companyId} AND doc_class = 'DP' LIMIT 1`.execute(database.db)).rows[0]!.id;
+    const dp = (await call('POST', '/api/v1/petty-payments', { doc_type_id: dpType, doc_date: '2027-10-10', remark: 'ค่าบริการ', lines: [{ account_id: expense, amount: 1070 }] })).body;
+    expect(dp.id).toBeTruthy();
+    expect((await call('POST', '/api/v1/vat/P', { header_id: dp.id, tax_invoice_no: 'DP-TAX-1', tax_invoice_date: '2027-10-10', month: '2027-10', base_amount: '1000', vat_amount: '70' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/wht', { header_id: dp.id, form_type: 'S53', certificate_date: '2027-10-10', payee_name: 'บริษัท บริการ จำกัด', income_type: 'ค่าบริการ', paid_amount: 1000, rate: 3, tax_amount: 30 })).status).toBe(200);
+    expect((await call('GET', `/api/v1/vat/P?header_id=${dp.id}`)).body.rows.map((r: { doc_no: string }) => r.doc_no)).toEqual([dp.doc_no]);
+    expect((await call('GET', `/api/v1/wht?header_id=${dp.id}`)).body.rows).toHaveLength(1);
+    const iv = (await sql<{ id: string }>`SELECT id FROM doc_header WHERE company_id = ${companyId} AND doc_class NOT IN ('DP') AND doc_status <> 'C' AND deleted_at IS NULL LIMIT 1`.execute(database.db)).rows[0]!.id;
+    expect((await call('POST', '/api/v1/vat/P', { header_id: iv, tax_invoice_no: 'X', tax_invoice_date: '2027-10-10', month: '2027-10', base_amount: '1', vat_amount: '0' })).body.error.message).toMatch(/เฉพาะใบจ่ายเงินสดย่อย/);
+    expect((await call('POST', `/api/v1/petty-payments/${dp.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/vat/P?header_id=${dp.id}&status=all`)).body.rows[0].doc_status).toBe('C');
+    expect((await call('GET', `/api/v1/wht?header_id=${dp.id}&status=all`)).body.rows[0].doc_status).toBe('C');
+  });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

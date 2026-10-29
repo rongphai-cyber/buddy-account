@@ -6,6 +6,7 @@ import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../http.js';
 import { logActivity } from '../audit.js';
 import { periodFor } from './gl/journals.js';
+import { manualTaxDoc } from './vat.js';
 
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
@@ -19,19 +20,21 @@ const entry = z.object({
   payee_name: z.string().trim().min(1, 'ป้อนชื่อผู้ถูกหักภาษี').max(200), payee_address: str(500), payee_tax_id: str(13), payee_tax_branch_no: str(5),
   income_type: z.string().trim().min(1, 'ป้อนประเภทเงินได้').max(60), condition: z.enum(['1', '2', '3']).default('1'),
   paid_amount: num, rate: num, tax_amount: num,
+  /** ป้อนจากใบจ่ายเงินสดย่อย DP (S-GL-11 แท็บภาษีหัก ณ ที่จ่าย) */
+  header_id: uuid.nullable().optional().transform((v) => v ?? null),
 });
 
 /** แฟ้มภาษีหัก ณ ที่จ่าย (คู่มือบทที่ 16 S-TX-09/10) — รายการเกิดจากใบสำคัญจ่าย หรือเพิ่มเองในแฟ้ม */
 export function whtRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/wht', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ form: z.enum(['S03', 'S53', 'all']).default('all'), month: z.string().regex(/^\d{4}-\d{2}$/).optional(), q: z.string().optional(),
+    const q = parse(z.object({ header_id: uuid.optional(), form: z.enum(['S03', 'S53', 'all']).default('all'), month: z.string().regex(/^\d{4}-\d{2}$/).optional(), q: z.string().optional(),
       status: z.enum(['N', 'C', 'all']).default('N'), limit: z.coerce.number().int().min(1).max(2000).default(500) }), req.query);
     const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
     const where = sql.join([
       sql`w.company_id = ${a.companyId}`, sql`w.deleted_at IS NULL`,
       ...(q.form !== 'all' ? [sql`w.form_type = ${q.form}`] : []), ...(q.status !== 'all' ? [sql`w.doc_status = ${q.status}`] : []),
-      ...(q.month ? [sql`to_char(p.start_date, 'YYYY-MM') = ${q.month}`] : []),
+      ...(q.month ? [sql`to_char(p.start_date, 'YYYY-MM') = ${q.month}`] : []), ...(q.header_id ? [sql`w.header_id = ${q.header_id}`] : []),
       ...(like ? [sql`(w.payee_name ILIKE ${like} OR w.certificate_no ILIKE ${like} OR h.doc_no ILIKE ${like} OR w.payee_tax_id ILIKE ${like})`] : []),
     ], sql` AND `);
     const rows = (await sql`SELECT w.id, w.form_type, w.certificate_no, w.certificate_date, to_char(p.start_date, 'YYYY-MM') AS tax_month, w.is_late, w.payee_name, w.payee_tax_id,
@@ -87,9 +90,11 @@ export function whtRoutes(app: FastifyInstance, db: Db) {
     if (d(b.tax_amount).lt(0) || d(b.rate).lt(0) || d(b.rate).gt(100)) throw badRequest('อัตราหรือภาษีที่หักไม่ถูกต้อง');
     if (b.payee_tax_id && ![10, 13].includes(b.payee_tax_id.replace(/\D/g, '').length)) throw badRequest('เลขผู้เสียภาษีของผู้ถูกหักต้องเป็น 13 หลัก');
     if (b.supplier_id && !(await db.selectFrom('md_supplier').select('id').where('id', '=', b.supplier_id).where('company_id', '=', a.companyId).executeTakeFirst())) throw badRequest('ไม่พบผู้จำหน่ายนี้');
+    if (b.header_id && !id) await manualTaxDoc(db, a.companyId, b.header_id);
     return db.transaction().execute(async (tx) => {
       const per = await periodFor(tx, a.companyId, b.certificate_date);
-      const vals = { ...b, tax_period_id: per.id, paid_amount: d(b.paid_amount).toFixed(2), tax_amount: d(b.tax_amount).toFixed(2), updated_by: a.userId };
+      const { header_id: hdr, ...rest } = b;   // header_id ใช้ตอนเพิ่มเท่านั้น (แก้ไขไม่เปลี่ยนเอกสารต้นทาง)
+      const vals = { ...rest, tax_period_id: per.id, paid_amount: d(b.paid_amount).toFixed(2), tax_amount: d(b.tax_amount).toFixed(2), updated_by: a.userId };
       let rowId = id;
       if (id) {
         const cur = await tx.selectFrom('tax_wht_entry').select(['header_id', 'doc_status', 'paid_amount', 'tax_amount', 'form_type']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
@@ -101,7 +106,7 @@ export function whtRoutes(app: FastifyInstance, db: Db) {
         await tx.updateTable('tax_wht_entry').set(vals).where('id', '=', id).execute();
       } else {
         const branch = a.branchId ?? (await tx.selectFrom('sys_branch').select('id').where('company_id', '=', a.companyId).where('is_head_office', '=', true).executeTakeFirstOrThrow()).id;
-        rowId = (await tx.insertInto('tax_wht_entry').values({ ...vals, company_id: a.companyId, branch_id: branch, created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
+        rowId = (await tx.insertInto('tax_wht_entry').values({ ...vals, header_id: hdr, company_id: a.companyId, branch_id: branch, created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
       }
       await logActivity(tx, a, { module: 'TAX', action: id ? 'EDIT' : 'ADD', docNo: b.certificate_no ?? b.payee_name, table: 'tax_wht_entry', rowId });
       return { id: rowId };

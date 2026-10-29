@@ -166,7 +166,11 @@ export function pettyCashRoutes(app: FastifyInstance, db: Db) {
     const h = (await sql<{ doc_no: string; vr: string | null }>`SELECT h.doc_no, ${reimbursedBy('h')} AS vr FROM doc_header h WHERE h.id = ${id} AND h.company_id = ${a.companyId} AND h.doc_class = 'DP' AND h.deleted_at IS NULL`.execute(db)).rows[0];
     if (!h) throw notFound('ใบจ่ายเงินสดย่อย');
     if (h.vr) throw badRequest(`${h.doc_no} เบิกชดเชยแล้วใน ${h.vr} — ยกเลิกใบเบิกชดเชยก่อน`);
-    return cancelDocument(db, a, id, reason);
+    // รายการภาษีซื้อ/ภาษีหัก ณ ที่จ่ายที่ป้อนจากใบนี้ยกเลิกตาม
+    return cancelDocument(db, a, id, reason, async (tx) => {
+      await tx.updateTable('tax_vat_entry').set({ doc_status: 'C', updated_by: a.userId }).where('company_id', '=', a.companyId).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
+      await tx.updateTable('tax_wht_entry').set({ doc_status: 'C', updated_by: a.userId }).where('company_id', '=', a.companyId).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
+    });
   });
 
   app.get('/api/v1/petty-reimbursements', async (req) => {

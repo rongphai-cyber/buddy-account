@@ -7,6 +7,7 @@ import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { DocActions } from '../../components/DocPrint';
+import { DocWhtTab, JvVatTab } from '../gl/JvLinks';
 import { DocJournalTab } from './TradeDocs';
 import { nextKey, PaymentsTable, paysBody, paysFrom, type Pay } from './MoneyParts';
 
@@ -152,8 +153,11 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
           </div>
         </div>
         {kind === 'dp' ? <>
-          <Tabs active="lines" onChange={() => undefined} tabs={[{ key: 'lines', label: 'รายการที่จ่าย', badge: lines.filter((l) => l.account_id).length || undefined }]} />
-          <div className="table-wrap lines">
+          <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการที่จ่าย', badge: lines.filter((l) => l.account_id).length || undefined },
+            ...(id ? [{ key: 'vat', label: 'รายการภาษีซื้อ' }, { key: 'wht', label: 'รายการภาษีหัก ณ ที่จ่าย' }] : [])]} />
+          {tab === 'vat' && id && <JvVatTab doc kind="P" journal={{ id, voucher_no: cur.data?.doc_no ?? '', date: h.doc_date }} lineVat="0" editable={!ro && cur.data?.doc_status !== 'C'} />}
+          {tab === 'wht' && id && <DocWhtTab doc={{ id, doc_no: cur.data?.doc_no ?? '', date: h.doc_date }} editable={!ro && cur.data?.doc_status !== 'C'} />}
+          {tab === 'lines' && <div className="table-wrap lines">
             <table className="grid">
               <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 170 }}>เลขที่บัญชี</th><th style={{ width: 220 }}>ชื่อบัญชี</th><th style={{ width: 150 }}>แผนก</th><th>รายละเอียด</th><th className="r" style={{ width: 150 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>
               <tbody>
@@ -171,7 +175,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
               </tbody>
               <tfoot><tr><td colSpan={5}>{!ro && <button type="button" onClick={() => setLines((ls) => [...ls, blank()])}>+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button>} <span className="hint">ตั้งวงเงิน: ใช้บัญชีเงินสดย่อย · จ่ายค่าใช้จ่าย: ใช้บัญชีค่าใช้จ่าย</span></td><td className="r"><b><Money v={dpTotal.toFixed(2)} /></b></td><td /></tr></tfoot>
             </table>
-          </div>
+          </div>}
         </> : <>
           <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'ใบจ่ายที่เบิกชดเชย', badge: chosen.length || undefined }, { key: 'pay', label: 'เบิกชดเชยโดย (เช็ค/โอน)', badge: pays.length || undefined }, ...(id ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
           {tab === 'lines' && <div className="table-wrap lines">
