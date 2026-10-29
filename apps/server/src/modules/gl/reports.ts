@@ -41,6 +41,31 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
     return { from: q.from, to: q.to, fiscal_year: fy ?? null, rows, totals, balanced: totals.debit === totals.credit && totals.closing_debit === totals.closing_credit && totals.opening_debit === totals.opening_credit };
   });
 
+  /* ---------------------------------------------------------------- รายละเอียดประกอบ (รายงาน 5.5, คู่มือบทที่ 7 R-GL-01) */
+  app.get('/api/v1/reports/account-detail', async (req) => {
+    const a = requireCompany(req);
+    const q = parse(z.object({ account_id: uuid, as_of: isoDate, department_id: uuid.optional(), movement: z.enum(['ytd', 'ptd']).default('ytd'), zero: z.enum(['0', '1']).default('1') }), req.query);
+    const chart = await loadChart(db, a.companyId);
+    const root = chart.byId.get(q.account_id);
+    if (!root) throw notFound('บัญชี');
+    const fy = await fiscalYearOf(db, a.companyId, q.as_of);
+    if (!fy) throw badRequest('วันที่ไม่อยู่ในรอบบัญชี (Message# 71)');
+    const p = await db.selectFrom('gl_period').select(['start_date']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('start_date', '<=', q.as_of).where('end_date', '>=', q.as_of).orderBy('period_no').executeTakeFirst();
+    const from = q.movement === 'ptd' ? p?.start_date ?? q.as_of : fy.start_date;
+    const all = rollUp(chart, await leafTotals(db, a.companyId, chart, from, q.as_of, { departmentId: q.department_id }));
+    const ids = chart.family(root.id).map((id) => chart.byId.get(id)!).sort((x, y) => x.account_no.localeCompare(y.account_no));
+    const Z = { opening: ZERO, debit: ZERO, credit: ZERO };
+    // ยอดตามด้านปกติของบัญชี (สินทรัพย์/ค่าใช้จ่ายบวกเมื่อเดบิต, หนี้สิน/ทุน/รายได้บวกเมื่อเครดิต)
+    const rows = ids.map((x) => {
+      const t = all.get(x.id) ?? Z;
+      return { id: x.id, account_no: x.account_no, name_th: x.name_th, name_en: x.name_en, depth: x.level - root.level, is_control: x.is_control, status: x.status,
+        closing: chart.natural(x.id, closingOf(t)).toFixed(2), movement: chart.natural(x.id, t.debit.minus(t.credit)).toFixed(2) };
+    }).filter((r) => q.zero === '1' || r.is_control || !d(r.closing).isZero() || !d(r.movement).isZero());
+    const top = rows.find((r) => r.id === root.id);
+    return { account: { id: root.id, account_no: root.account_no, name_th: root.name_th }, as_of: q.as_of, from, fiscal_year: fy, rows,
+      leaf_count: rows.filter((r) => !r.is_control).length, total_closing: top?.closing ?? '0.00', total_movement: top?.movement ?? '0.00' };
+  });
+
   /* ---------------------------------------------------------------- บัญชีแยกประเภท */
   app.get('/api/v1/reports/ledger', async (req) => {
     const a = requireCompany(req);

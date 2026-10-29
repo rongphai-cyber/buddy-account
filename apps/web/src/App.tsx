@@ -12,6 +12,7 @@ import { BooksPage } from './pages/gl/Books';
 import { TemplatesPage } from './pages/gl/Templates';
 import { PriorYearPage } from './pages/gl/PriorYear';
 import { BudgetPage } from './pages/gl/Budget';
+import { AccountDetailPage } from './pages/reports/AccountDetail';
 import { OpeningPage } from './pages/gl/Opening';
 import { CompanyPage } from './pages/settings/Company';
 import { PeriodsPage } from './pages/settings/Periods';
@@ -116,6 +117,7 @@ function Shell() {
           <Route path="/admin/tenants" element={<TenantsPage />} />
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
           <Route path="/reports/ledger" element={<LedgerPage />} />
+          <Route path="/reports/account-detail" element={<AccountDetailPage />} />
           <Route path="/reports/journal-book" element={<JournalBookPage />} />
           <Route path="/fs/statements" element={<StatementsPage />} />
           <Route path="/fs/layouts" element={<FsLayoutsPage />} />

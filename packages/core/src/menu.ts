@@ -94,7 +94,7 @@ export const MENU: MenuItem[] = [
     m('RP.LEDGER', 'บัญชีแยกประเภท', 'P1', '/reports/ledger'),
     m('RP.JNL', 'รายงานสมุดรายวัน', 'P1', '/reports/journal-book'),
     m('RP.FS', 'งบการเงิน', 'P1', '/fs/statements', ['ch24:S-FS-04']),
-    m('RP.DETAIL', 'รายละเอียดประกอบ', 'P1', undefined, ['ch07:R-GL-01']),
+    m('RP.DETAIL', 'รายละเอียดประกอบ', 'P1', '/reports/account-detail', ['ch07:R-GL-01']),
     m('RP.PU', 'รายงานระบบซื้อและเจ้าหนี้', 'P5'),
     m('RP.SA', 'รายงานระบบขายและลูกหนี้', 'P5'),
     m('RP.IC', 'รายงานสินค้าคงคลัง', 'P5'),
