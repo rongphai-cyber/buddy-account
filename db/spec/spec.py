@@ -838,6 +838,8 @@ add(T('fin_cheque', 'ทะเบียนเช็ครับ/เช็คจ�
   C('charge', 'money', nn=True, d='0', th='ค่าธรรมเนียม', src='BKTRN.CHARGE'),
   C('net_amount', 'money', nn=True, th='ยอดสุทธิเข้าบัญชี', src='BKTRN.NETAMT'),
   C('remaining_amount', 'money', nn=True, d='0', th='ยอดเช็คที่ยังไม่ได้ใช้ตัดหนี้', src='BKTRN.REMAMT'),
+  C('written_off_amount', 'money', nn=True, d='0', th='ยอดคงเหลือในเช็คที่ตัดเป็นรายได้อื่น (S-BK-12)', src='BKTRN.REMCUT'),
+  lk('writeoff_journal_id', 'gl_journal', 'ใบสำคัญตัดยอดคงเหลือเป็นรายได้'),
   C('status', 'code4', nn=True, th='สถานะเช็ค (ISTAB 02): 00 ในมือ 01 รอเรียกเก็บ 02 คืนยื่นใหม่ 05 คืน 10 ผ่าน 19 ผ่าน(โอน) …', src='BKTRN.CHQSTAT'),
   C('is_settled', 'bool', nn=True, d='false', th='ใช้ตัดหนี้ครบแล้ว', src='BKTRN.CMPLAPP'),
   lk('source_header_id', 'doc_header', 'เอกสารที่รับ/จ่ายเช็คนี้', 'BKTRN.VOUCHER'),

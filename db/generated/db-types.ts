@@ -2328,6 +2328,10 @@ export interface FinChequeTable {
   net_amount: string;
   /** ยอดเช็คที่ยังไม่ได้ใช้ตัดหนี้ */
   remaining_amount: Gen<string>;
+  /** ยอดคงเหลือในเช็คที่ตัดเป็นรายได้อื่น (S-BK-12) */
+  written_off_amount: Gen<string>;
+  /** ใบสำคัญตัดยอดคงเหลือเป็นรายได้ */
+  writeoff_journal_id: Gen<string | null>;
   /** สถานะเช็ค (ISTAB 02): 00 ในมือ 01 รอเรียกเก็บ 02 คืนยื่นใหม่ 05 คืน 10 ผ่าน 19 ผ่าน(โอน) … */
   status: string;
   /** ใช้ตัดหนี้ครบแล้ว */

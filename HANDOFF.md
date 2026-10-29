@@ -114,7 +114,12 @@
 - ✅ T4.6 ธนาคาร: core `BANK_KINDS` (BD BW BT BU BV) + buildPosting สาขาเอกสารธนาคาร (บรรทัด line_kind G = บัญชี GL ของบัญชีเงินฝาก ยอด +เข้า/−ออก; อีกฝั่ง CASH/BANK_CHARGE/BANK_INCOME+PREPAID_TAX/BANK_EXPENSE→BANK_CHARGE) · `modules/docs/bankdocs.ts` + /bank-book · migration 0018 doc_header.to_bank_account_id · หน้า `pages/docs/BankDocs.tsx` (/fi/bank/deposits|withdrawals|transfers|incomes|expenses + /fi/bank/book) · journal route BANK_MOVEMENT
   - สมุดเงินฝาก = `ledgerOf` (แยกจาก /reports/ledger ใน gl/reports.ts) ของบัญชี GL ที่ผูก — ตรวจแล้ว BKTRN ของ Express ไม่ครบ (รายการรับ/จ่ายผ่านบัญชีหลายรายการอยู่แค่ใน GL) จึงไม่ใช้ fin_cheque เป็นสมุด
   - DEMO ไม่มีหัวเอกสาร BD/BW/BT ของ Express (โอน BT/Bx อยู่ใน BKTRN → fin_cheque ไม่มีเอกสารต้นทาง 431 แถว) parity คงเดิม
-- ต่อไป: T4.7 เช็ค (ทะเบียนเช็ครับ/จ่าย ใบนำฝาก BQ ผ่าน/คืน/ยกเลิก ยอดคงเหลือในเช็ค เช็คยกมา)
+- ✅ T4.7 เช็ค: `modules/cheques.ts` (/cheques list/detail/add/edit/delete/deposit/undeposit/pass/unpass/return/write-off + /cheque-deposits BQ) · หน้า `pages/docs/Cheques.tsx` (/fi/cheques/received|paid|deposit|pass|pass-paid|slips)
+  - ผ่านเช็ค = ใบสำคัญ source_module BK (createJournal รองรับ transaction ของผู้เรียก + opt.sourceModule): รับ Dr เงินฝาก+ค่าธรรมเนียม / Cr บัญชีของวิธีชำระที่รับเช็ค (→ CHEQUE_RECEIVED) · จ่าย Dr บัญชีวิธีชำระ (→ CHEQUE_PAID) / Cr เงินฝาก · BQ ผ่านทั้งใบ (+ภาษีซื้อ/ภาษีถูกหัก)
+  - เช็คคืน = fin_cheque_event (20) + สถานะ 02 (ไม่สร้างแถวซ้ำแบบ Express) · ตัดยอดคงเหลือ = migration 0019 written_off_amount/writeoff_journal_id (Express REMCUT)
+  - เช็คจ่ายที่สร้างจากใบจ่ายตอนนี้สถานะ 05 (เดิม 00) · สิทธิ์ตามทิศทาง: permissions `CHQ(rMenu, pMenu)` เลือกเมนูจาก direction/เช็คที่อ้างถึง (Rule.pick)
+  - importer: แถวซ้ำทุกช่องใน BKTRN ได้ id ต่างกัน (เดิมหาย 1 แถว) → ทะเบียนเช็คตรง Express 1,193/1,193 (scratchpad/cheque_compare.py) · DEMO สร้างใหม่แล้ว
+- ต่อไป: T4.8 กระทบยอดเงินฝากธนาคาร + บัญชีสินค้าคงเหลือ Periodic (S-GL-14/15, GLINV)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

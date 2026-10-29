@@ -72,9 +72,11 @@ async function checkLines(db: Db, companyId: string, lines: JournalInput['lines'
 
 const usedLines = (lines: JournalInput['lines']) => lines.filter((l) => l.account_id || !d(l.debit).isZero() || !d(l.credit).isZero());
 
-export async function createJournal(db: Db, ctx: { companyId: string; userId: string; branchId: string | null }, input: JournalInput, style = '4') {
+/** sourceModule: ใบสำคัญที่ระบบอื่นสร้าง (เช่น BK ผ่านเช็ค) แก้จากหน้าบัญชีไม่ได้ · เรียกใน transaction ของผู้เรียกได้ (ลงบัญชีพร้อมเอกสาร) */
+export async function createJournal(db: Db, ctx: { companyId: string; userId: string; branchId: string | null }, input: JournalInput, style = '4', opt: { sourceModule?: string } = {}) {
   const lines = usedLines(input.lines);
-  return db.transaction().execute(async (tx) => {
+  const inTx = <T>(f: (tx: Db) => Promise<T>) => (db.isTransaction ? f(db) : db.transaction().execute(f));
+  return inTx(async (tx) => {
     const p = await periodFor(tx, ctx.companyId, input.voucher_date);
     await checkLines(tx, ctx.companyId, lines);
     const book = await tx.selectFrom('gl_journal_book').select('id').where('id', '=', input.journal_book_id).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).executeTakeFirst();
@@ -87,7 +89,7 @@ export async function createJournal(db: Db, ctx: { companyId: string; userId: st
     const j = await tx.insertInto('gl_journal').values({
       company_id: ctx.companyId, branch_id: input.branch_id ?? ctx.branchId, journal_book_id: input.journal_book_id, voucher_no: voucherNo,
       voucher_date: input.voucher_date, period_id: p.id, description: input.description ?? null, reference: input.reference ?? null,
-      source_module: 'GL', status: 'P', doc_status: 'N', posted_by: ctx.userId, posted_at: sql`now()` as never,
+      source_module: opt.sourceModule ?? 'GL', status: 'P', doc_status: 'N', posted_by: ctx.userId, posted_at: sql`now()` as never,
       total_debit: totalD.toFixed(2), total_credit: totalD.toFixed(2), created_by: ctx.userId, updated_by: ctx.userId,
     }).returning(['id', 'voucher_no']).executeTakeFirstOrThrow();
     await insertLines(tx, ctx.companyId, j.id, lines, ctx.userId);

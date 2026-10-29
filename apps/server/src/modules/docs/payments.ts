@@ -56,7 +56,7 @@ export async function branchOf(db: Db, a: Ctx) {
 /** เช็คที่เอกสารนี้ออก: ยังไม่นำฝาก/ผ่าน จึงแก้หรือยกเลิกเอกสารได้ (นำออกจากทะเบียนเช็ค) */
 export async function releaseCheques(db: Db, a: Ctx, headerId: string, docNo: string) {
   const used = await db.selectFrom('fin_cheque').select('cheque_no').where('company_id', '=', a.companyId).where('source_header_id', '=', headerId).where('deleted_at', 'is', null)
-    .where((e) => e.or([e('status', '<>', '00'), e('deposit_header_id', 'is not', null), e('pass_journal_id', 'is not', null)])).executeTakeFirst();
+    .where((e) => e.or([e('status', 'not in', ['00', '05']), e('deposit_header_id', 'is not', null), e('pass_journal_id', 'is not', null), e('writeoff_journal_id', 'is not', null)])).executeTakeFirst();
   if (used) throw badRequest(`เช็ค ${used.cheque_no} ของ ${docNo} นำฝาก/ผ่านแล้ว — ยกเลิกรายการเช็คก่อน (บทที่ 13)`);
   await db.updateTable('fin_cheque').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('company_id', '=', a.companyId).where('source_header_id', '=', headerId).where('deleted_at', 'is', null).execute();
 }
@@ -76,7 +76,7 @@ export async function writePayments(tx: Db, a: Ctx, x: { headerId: string; direc
         company_id: a.companyId, branch_id: branchId, direction: x.direction, instrument: m.kind === 'TRANSFER' ? 'TRANSFER' : m.kind === 'CARD' ? 'CARD' : 'CHEQUE',
         cheque_no: p.reference_no!, cheque_date: p.cheque_date ?? x.payDate, bank_id: p.bank_id, bank_branch: p.bank_branch, bank_account_id: m.bank_account_id,
         customer_id: x.customerId, supplier_id: x.supplierId, payee_name: x.partyName.slice(0, 120) || null, department_id: x.departmentId,
-        received_date: x.direction === 'R' ? x.payDate : null, amount: p.amount, charge: '0', net_amount: p.amount, remaining_amount: '0', status: '00', source_header_id: x.headerId, created_by: a.userId,
+        received_date: x.direction === 'R' ? x.payDate : null, amount: p.amount, charge: '0', net_amount: p.amount, remaining_amount: '0', status: x.direction === 'R' ? '00' : '05', source_header_id: x.headerId, created_by: a.userId,
       }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_payment').values({ company_id: a.companyId, header_id: x.headerId, line_no: i + 1, payment_method_id: m.id, amount: p.amount, reference_no: p.reference_no, cheque_id: chequeId, created_by: a.userId }).execute();

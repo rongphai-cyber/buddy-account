@@ -51,6 +51,7 @@ import { CountsPage } from './pages/inventory/Counts';
 import { StockOpeningFormPage, StockOpeningListPage } from './pages/inventory/StockOpening';
 import { SerialsPage } from './pages/inventory/Serials';
 import { BankBookPage, BankDocFormPage, BankDocListPage } from './pages/docs/BankDocs';
+import { ChequeActionPage, ChequeRegisterPage, ChequeSlipFormPage, ChequeSlipListPage } from './pages/docs/Cheques';
 import { StockDocFormPage, StockDocListPage } from './pages/docs/StockDocs';
 import { BANK_KINDS, BILL_KINDS, CASH_KINDS, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
 
@@ -150,6 +151,13 @@ function Shell() {
           <Route path="/ic/serials" element={<SerialsPage />} />
           {BANK_KINDS.flatMap((k) => [<Route key={k.cls} path={k.route} element={<BankDocListPage key={k.cls} cls={k.cls} />} />, <Route key={k.cls + '-f'} path={`${k.route}/:id`} element={<BankDocFormPage key={k.cls + '-f'} cls={k.cls} />} />])}
           <Route path="/fi/bank/book" element={<BankBookPage />} />
+          <Route path="/fi/cheques/received" element={<ChequeRegisterPage key="R" direction="R" />} />
+          <Route path="/fi/cheques/paid" element={<ChequeRegisterPage key="P" direction="P" />} />
+          <Route path="/fi/cheques/deposit" element={<ChequeActionPage key="dep" mode="deposit" />} />
+          <Route path="/fi/cheques/pass" element={<ChequeActionPage key="pass" mode="pass" />} />
+          <Route path="/fi/cheques/pass-paid" element={<ChequeActionPage key="passp" mode="pass-paid" />} />
+          <Route path="/fi/cheques/slips" element={<ChequeSlipListPage />} />
+          <Route path="/fi/cheques/slips/:id" element={<ChequeSlipFormPage />} />
           {STOCK_KINDS.flatMap((k) => [<Route key={k.cls} path={k.route} element={<StockDocListPage key={k.cls} cls={k.cls} />} />, <Route key={k.cls + '-f'} path={`${k.route}/:id`} element={<StockDocFormPage key={k.cls + '-f'} cls={k.cls} />} />])}
           <Route path="/tax/vat/P" element={<VatRegisterPage key="P" kind="P" />} />
           <Route path="/tax/vat/S" element={<VatRegisterPage key="S" kind="S" />} />

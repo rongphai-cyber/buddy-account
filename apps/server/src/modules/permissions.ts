@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { BANK_KINDS, BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
@@ -87,8 +87,17 @@ export async function permissionMatrix(db: Db, a: AuthContext) {
  * self = ตรวจสิทธิ์เองในตัว API (ผู้ดูแลระบบ/บัญชีของตัวเอง) · open = ไม่ต้องเข้าระบบ
  * API ที่ไม่อยู่ในรายการนี้ถูกปฏิเสธทั้งหมด (และชุดทดสอบตรวจว่าครบ)
  */
-type Rule = { kind: 'menu'; menu: string; action: Action } | { kind: 'lookup' } | { kind: 'self' } | { kind: 'open' };
+/** pick: เลือกเมนูจากคำขอ (เช่น เช็ครับ/เช็คจ่ายใช้ API เดียวกันแต่สิทธิ์คนละเมนู) */
+type Rule = { kind: 'menu'; menu: string; action: Action; pick?: (req: FastifyRequest, db: Db, companyId: string) => Promise<string> } | { kind: 'lookup' } | { kind: 'self' } | { kind: 'open' };
 const M = (menu: string, action: Action): Rule => ({ kind: 'menu', menu, action });
+/** เช็ค: ทิศทางจาก query/body หรือจากเช็คที่อ้างถึง → เมนูเช็ครับ/เช็คจ่าย */
+const CHQ = (rMenu: string, pMenu: string, action: Action): Rule => ({ kind: 'menu', menu: rMenu, action, pick: async (req, db, companyId) => {
+  const q = (req.query ?? {}) as Record<string, unknown>, b = (req.body ?? {}) as Record<string, unknown>, p = (req.params ?? {}) as Record<string, unknown>;
+  let dir = (q.direction ?? b.direction) as string | undefined;
+  const id = (p.id as string | undefined) ?? (Array.isArray(b.cheque_ids) ? (b.cheque_ids[0] as string) : undefined);
+  if (!dir && id && /^[0-9a-f-]{36}$/i.test(id)) dir = (await db.selectFrom('fin_cheque').select('direction').where('id', '=', id).where('company_id', '=', companyId).executeTakeFirst())?.direction;
+  return dir === 'P' ? pMenu : rMenu;
+} });
 const LOOKUP: Rule = { kind: 'lookup' }, SELF: Rule = { kind: 'self' }, OPEN: Rule = { kind: 'open' };
 export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/health': OPEN, 'GET /api/v1/setup/status': OPEN, 'POST /api/v1/setup': OPEN, 'POST /api/v1/auth/login': OPEN,
@@ -193,6 +202,15 @@ export const API_RULES: Record<string, Rule> = {
     [`PUT /api/v1/${k.path}/:id`, M('FI.BK.TX', 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M('FI.BK.TX', 'cancel')],
   ])),
   'GET /api/v1/bank-book': M('FI.BK.BOOK', 'read'),
+  // ทะเบียนเช็ค: สิทธิ์ตามทิศทาง เช็ครับ (FI.BK.CR/CL) · เช็คจ่าย (FI.BK.CP/PC)
+  'GET /api/v1/cheques': CHQ('FI.BK.CR', 'FI.BK.CP', 'read'), 'GET /api/v1/cheques/:id': CHQ('FI.BK.CR', 'FI.BK.CP', 'read'), 'POST /api/v1/cheques': CHQ('FI.BK.CR', 'FI.BK.CP', 'add'),
+  'PUT /api/v1/cheques/:id': CHQ('FI.BK.CR', 'FI.BK.CP', 'edit'), 'DELETE /api/v1/cheques/:id': CHQ('FI.BK.CR', 'FI.BK.CP', 'delete'),
+  'POST /api/v1/cheques/deposit': M('FI.BK.DQ', 'add'), 'POST /api/v1/cheques/undeposit': M('FI.BK.DQ', 'cancel'),
+  'POST /api/v1/cheques/pass': CHQ('FI.BK.CL', 'FI.BK.PC', 'add'), 'POST /api/v1/cheques/:id/unpass': CHQ('FI.BK.CL', 'FI.BK.PC', 'cancel'), 'POST /api/v1/cheques/:id/return': M('FI.BK.CR', 'edit'),
+  'POST /api/v1/cheques/:id/write-off': M('FI.BK.CR', 'approve'), 'POST /api/v1/cheques/:id/write-off/cancel': M('FI.BK.CR', 'cancel'),
+  'GET /api/v1/cheque-deposits': M('FI.BK.DQ', 'read'), 'GET /api/v1/cheque-deposits/:id': M('FI.BK.DQ', 'read'), 'POST /api/v1/cheque-deposits': M('FI.BK.DQ', 'add'),
+  'PUT /api/v1/cheque-deposits/:id': M('FI.BK.DQ', 'edit'), 'POST /api/v1/cheque-deposits/:id/cancel': M('FI.BK.DQ', 'cancel'),
+  'POST /api/v1/cheque-deposits/:id/pass': M('FI.BK.CL', 'add'), 'POST /api/v1/cheque-deposits/:id/unpass': M('FI.BK.CL', 'cancel'),
   'GET /api/v1/serials': M('IC.SERIAL', 'read'), 'GET /api/v1/serials/:id': M('IC.SERIAL', 'read'), 'POST /api/v1/serials': M('IC.SERIAL', 'add'),
   'PUT /api/v1/serials/:id': M('IC.SERIAL', 'edit'), 'DELETE /api/v1/serials/:id': M('IC.SERIAL', 'delete'), 'POST /api/v1/serials/:id/printed': M('IC.SERIAL', 'print'),
   // แฟ้มภาษีซื้อ/ขาย (บทที่ 16)
@@ -241,11 +259,12 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     if (rule.kind === 'open' || rule.kind === 'self') return;
     const a = requireCompany(req);
     if (rule.kind === 'lookup') return;
-    const r = decide(a, await loadRows(db, a), rule.menu, rule.action);
+    const menu = rule.pick ? await rule.pick(req, db, a.companyId) : rule.menu;
+    const r = decide(a, await loadRows(db, a), menu, rule.action);
     if (!r.allowed) {
-      throw forbidden(`ไม่มีสิทธิ์${ACTION_TH[rule.action]}ในเมนู "${LABEL.get(rule.menu) ?? rule.menu}" — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ (เมนู อื่น ๆ › ผู้ใช้งานและสิทธิ์)`);
+      throw forbidden(`ไม่มีสิทธิ์${ACTION_TH[rule.action]}ในเมนู "${LABEL.get(menu) ?? menu}" — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ (เมนู อื่น ๆ › ผู้ใช้งานและสิทธิ์)`);
     }
-    if (r.log) await logActivity(db, a, { module: rule.menu, action: `USE_${rule.action.toUpperCase()}`, detail: { method, url: req.url.split('?')[0] } });
+    if (r.log) await logActivity(db, a, { module: menu, action: `USE_${rule.action.toUpperCase()}`, detail: { method, url: req.url.split('?')[0] } });
   });
 }
 

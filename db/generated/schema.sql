@@ -2541,6 +2541,8 @@ CREATE TABLE fin_cheque (
   charge numeric(18,2) DEFAULT 0 NOT NULL,
   net_amount numeric(18,2) NOT NULL,
   remaining_amount numeric(18,2) DEFAULT 0 NOT NULL,
+  written_off_amount numeric(18,2) DEFAULT 0 NOT NULL,
+  writeoff_journal_id uuid,
   status varchar(4) NOT NULL,
   is_settled boolean DEFAULT false NOT NULL,
   source_header_id uuid,
@@ -2578,6 +2580,8 @@ COMMENT ON COLUMN fin_cheque.amount IS 'จำนวนเงินหน้า�
 COMMENT ON COLUMN fin_cheque.charge IS 'ค่าธรรมเนียม [Express: BKTRN.CHARGE]';
 COMMENT ON COLUMN fin_cheque.net_amount IS 'ยอดสุทธิเข้าบัญชี [Express: BKTRN.NETAMT]';
 COMMENT ON COLUMN fin_cheque.remaining_amount IS 'ยอดเช็คที่ยังไม่ได้ใช้ตัดหนี้ [Express: BKTRN.REMAMT]';
+COMMENT ON COLUMN fin_cheque.written_off_amount IS 'ยอดคงเหลือในเช็คที่ตัดเป็นรายได้อื่น (S-BK-12) [Express: BKTRN.REMCUT]';
+COMMENT ON COLUMN fin_cheque.writeoff_journal_id IS 'ใบสำคัญตัดยอดคงเหลือเป็นรายได้';
 COMMENT ON COLUMN fin_cheque.status IS 'สถานะเช็ค (ISTAB 02): 00 ในมือ 01 รอเรียกเก็บ 02 คืนยื่นใหม่ 05 คืน 10 ผ่าน 19 ผ่าน(โอน) … [Express: BKTRN.CHQSTAT]';
 COMMENT ON COLUMN fin_cheque.is_settled IS 'ใช้ตัดหนี้ครบแล้ว [Express: BKTRN.CMPLAPP]';
 COMMENT ON COLUMN fin_cheque.source_header_id IS 'เอกสารที่รับ/จ่ายเช็คนี้ [Express: BKTRN.VOUCHER]';
@@ -4245,6 +4249,8 @@ ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_supplier_id FOREIGN KEY (sup
 CREATE INDEX IF NOT EXISTS ix_fk_fin_cheque_supplier_id ON fin_cheque (supplier_id);
 ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_department_id FOREIGN KEY (department_id) REFERENCES md_department(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_fin_cheque_department_id ON fin_cheque (department_id);
+ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_writeoff_journal_id FOREIGN KEY (writeoff_journal_id) REFERENCES gl_journal(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_fin_cheque_writeoff_journal_id ON fin_cheque (writeoff_journal_id);
 ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_source_header_id FOREIGN KEY (source_header_id) REFERENCES doc_header(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_fin_cheque_source_header_id ON fin_cheque (source_header_id);
 ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_deposit_header_id FOREIGN KEY (deposit_header_id) REFERENCES doc_header(id) DEFERRABLE INITIALLY DEFERRED;

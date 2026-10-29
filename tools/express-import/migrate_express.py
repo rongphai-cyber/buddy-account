@@ -620,19 +620,23 @@ for table, module, amtf in (('ARRCPIT', 'AR', 'RCVAMT'), ('APRCPIT', 'AP', 'PAYA
 # cheques (BKTRN)
 CHQ = {}
 rows = []
+occ = collections.Counter()
 for r in dbf('BKTRN'):
     t = st(r['BKTRNTYP']) or ''
     direction = 'R' if t in ('QR', 'bR', 'BU', 'BD', 'Bx') else 'P'
     inst = 'CHEQUE' if t in ('QR', 'QP') else 'TRANSFER'
     no = st(r['CHQNUM'])
-    cid = U('chq', t, no, r['CHQDAT'])
+    # แถวซ้ำทุกช่องใน BKTRN (เช่น bR TDRE38/3734 สองแถว) ต้องได้ id ต่างกัน ไม่งั้นถูกตัดทิ้ง — ทะเบียนเช็คต้องเท่า Express
+    occ[(t, no, r['CHQDAT'])] += 1
+    cid = U('chq', t, no, r['CHQDAT']) if occ[(t, no, r['CHQDAT'])] == 1 else U('chq', t, no, r['CHQDAT'], occ[(t, no, r['CHQDAT'])])
+    if occ[(t, no, r['CHQDAT'])] > 1: QUALITY['bktrn_duplicate_row'].append(no)
     CHQ[no] = cid
     party = st(r['CUSCOD'])
     rows.append(base(id=cid, branch_id=BRANCH, direction=direction, instrument=inst, cheque_no=no or '-',
         cheque_date=r['CHQDAT'] or r['TRNDAT'], bank_id=BANK.get(st(r['BNKCOD'])), bank_branch=r['BRANCH'], bank_account_id=BKA.get(st(r['BNKACC'])),
         customer_id=CUS.get(party), supplier_id=SUP.get(party), payee_name=r['NAME'], department_id=dept(r['DEPCOD']) if st(r['DEPCOD']) else None,
         received_date=r['GETDAT'], deposit_date=r['PAYINDAT'], pass_date=r['TRNDAT'], amount=money(r['AMOUNT']), charge=money(r['CHARGE']),
-        net_amount=money(r['NETAMT']), remaining_amount=money(r['REMAMT']), status=st(r['CHQSTAT']) or '00', is_settled=r['CMPLAPP'] == 'Y',
+        net_amount=money(r['NETAMT']), remaining_amount=money(r['REMAMT']), written_off_amount=money(r['REMCUT']), status=st(r['CHQSTAT']) or '00', is_settled=r['CMPLAPP'] == 'Y',
         source_header_id=H(r['VOUCHER']), remark=r['REMARK']))
 seen = set(); dedup = []
 for x in rows:

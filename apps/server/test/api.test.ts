@@ -1657,6 +1657,79 @@ describe('Buddy Account API (PGlite)', () => {
     expect([(await book(t1)).closing, (await book(t2)).closing]).toEqual(['0.00', '0.00']);
     expect((await call('PUT', `/api/v1/bank-deposits/${bd.id}`, { doc_type_id: await typeOf('BD'), doc_date: '2026-08-05', bank_account_id: t1, amount: 1 })).body.error.message).toMatch(/ยกเลิกแล้ว/);
   });
+  it('cheques (T4.7): register, deposit, pass/unpass, return, deposit slip passed as a whole, write-off remaining, paid cheques, isolation', async () => {
+    const t1 = (await call('GET', '/api/v1/bank-accounts')).body.find((b: { code: string }) => b.code === 'T1').id;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const book = async () => (await call('GET', `/api/v1/bank-book?bank_account_id=${t1}&from=2026-09-01&to=2026-09-30`)).body.closing as string;
+    const one = async (id: string) => (await call('GET', `/api/v1/cheques/${id}`)).body;
+    const add = async (no: string, amount: number, direction = 'R') => (await call('POST', '/api/v1/cheques', { direction, cheque_no: no, cheque_date: '2026-09-01', customer_id: direction === 'R' ? cus : null, payee_name: direction === 'P' ? 'ผู้รับเงินทดสอบ' : null, bank_account_id: direction === 'P' ? t1 : null, amount })).body.id as string;
+    const c1 = await add('QR-T47-1', 1000), c2 = await add('QR-T47-2', 500), c3 = await add('QR-T47-3', 300);
+    expect((await call('POST', '/api/v1/cheques', { direction: 'R', cheque_no: 'QR-T47-1', cheque_date: '2026-09-01', customer_id: cus, amount: 1 })).body.error.message).toMatch(/มีในทะเบียนแล้ว/);
+    expect((await call('POST', '/api/v1/cheques', { direction: 'P', cheque_no: 'CP-X', cheque_date: '2026-09-01', amount: 1 })).body.error.message).toMatch(/บัญชีเงินฝาก/);
+    const list = (await call('GET', '/api/v1/cheques?direction=R&status=00&q=QR-T47')).body;
+    expect(list.rows.map((r: { cheque_no: string }) => r.cheque_no).sort()).toEqual(['QR-T47-1', 'QR-T47-2', 'QR-T47-3']);
+    // นำฝากเป็นใบๆ (ค่าธรรมเนียม 10) → ผ่าน: เงินฝากเพิ่ม 990
+    expect((await call('POST', '/api/v1/cheques/deposit', { cheque_ids: [c1], bank_account_id: t1, deposit_date: '2026-09-05', charge: 10 })).status).toBe(200);
+    expect((await one(c1)).status).toBe('01');
+    expect(await book()).toBe('0.00');                                                  // นำฝากยังไม่เพิ่มยอดเงินฝาก
+    const p1 = (await call('POST', '/api/v1/cheques/pass', { cheque_ids: [c1], pass_date: '2026-09-10' })).body;
+    expect(p1.passed).toHaveLength(1);
+    expect(await book()).toBe('990.00');
+    expect((await one(c1))).toMatchObject({ status: '10', pass_voucher_no: p1.passed[0].voucher_no, editable: false });
+    expect((await call('PUT', `/api/v1/cheques/${c1}`, { cheque_no: 'QR-T47-9' })).body.error.message).toMatch(/แก้ไขไม่ได้/);
+    // ยกเลิกผ่าน → คืน → เช็คคืนยื่นใหม่ (ประวัติ 20) → ผ่านใหม่เข้าบัญชีโดยตรง
+    expect((await call('POST', `/api/v1/cheques/${c1}/unpass`, { reason: 'ผ่านผิดวัน' })).body.status).toBe('01');
+    expect(await book()).toBe('0.00');
+    expect((await call('POST', `/api/v1/cheques/${c1}/return`, { return_date: '2026-09-11', reason: 'โปรดติดต่อผู้สั่งจ่าย' })).body.status).toBe('02');
+    const r1 = await one(c1);
+    expect(r1.events.map((e: { to_status: string }) => e.to_status)).toEqual(['00', '01', '10', '01', '20', '02']);
+    expect((await call('POST', '/api/v1/cheques/pass', { cheque_ids: [c1], pass_date: '2026-09-15' })).body.error.message).toMatch(/ยังไม่ได้นำฝาก/);
+    expect((await call('POST', '/api/v1/cheques/pass', { cheque_ids: [c1], pass_date: '2026-09-15', bank_account_id: t1 })).status).toBe(200);
+    expect(await book()).toBe('1000.00');
+    // ใบนำฝาก BQ: 2 ใบ ค่าธรรมเนียม 5 → ผ่านทั้งใบ (เช็คในใบผ่านทีละใบไม่ได้)
+    const bq = (await call('POST', '/api/v1/cheque-deposits', { cheque_ids: [c2, c3], bank_account_id: t1, doc_date: '2026-09-20', charge: 5 })).body;
+    expect(bq.net_amount).toBe('795.00');
+    expect((await call('POST', '/api/v1/cheque-deposits', { cheque_ids: [c2], bank_account_id: t1, doc_date: '2026-09-20' })).body.error.message).toMatch(/ใบนำฝากอื่น|ไม่ใช่เช็ครับในมือ/);
+    expect((await call('POST', '/api/v1/cheques/pass', { cheque_ids: [c2], pass_date: '2026-09-21' })).body.error.message).toMatch(/ทั้งใบนำฝาก/);
+    expect((await call('GET', `/api/v1/cheque-deposits/${bq.id}`)).body).toMatchObject({ cheques: [{ cheque_no: 'QR-T47-2' }, { cheque_no: 'QR-T47-3' }], charge: '5.00', editable: true });
+    expect((await call('POST', `/api/v1/cheque-deposits/${bq.id}/pass`, { pass_date: '2026-09-19' })).body.error.message).toMatch(/ไม่ก่อนวันที่นำฝาก/);
+    expect((await call('POST', `/api/v1/cheque-deposits/${bq.id}/pass`, { pass_date: '2026-09-22' })).status).toBe(200);
+    expect(await book()).toBe('1795.00');
+    expect((await one(c3)).status).toBe('10');
+    expect((await call('POST', `/api/v1/cheque-deposits/${bq.id}/cancel`, { reason: 'x' })).body.error.message).toMatch(/ยกเลิกการผ่านก่อน/);
+    expect((await call('POST', `/api/v1/cheque-deposits/${bq.id}/unpass`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect(await book()).toBe('1000.00');
+    expect((await call('POST', `/api/v1/cheque-deposits/${bq.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect([(await one(c2)).status, (await one(c3)).status]).toEqual(['00', '00']);
+    // ยอดคงเหลือในเช็ค → รายได้อื่น
+    expect((await call('POST', `/api/v1/cheques/${c3}/write-off`, { date: '2026-09-25' })).body.error.message).toMatch(/ไม่มียอดคงเหลือ/);
+    await sql`UPDATE fin_cheque SET remaining_amount = 50 WHERE id = ${c3}`.execute(database.db);
+    expect((await call('POST', `/api/v1/cheques/${c3}/write-off`, { date: '2026-09-25' })).body.amount).toBe('50.00');
+    expect((await call('POST', `/api/v1/cheques/${c3}/write-off`, { date: '2026-09-25' })).body.error.message).toMatch(/ไม่มียอดคงเหลือ|ตัดยอดคงเหลือเป็นรายได้แล้ว/);
+    expect((await one(c3)).writeoff_voucher_no).toBeTruthy();
+    expect((await call('POST', `/api/v1/cheques/${c3}/write-off/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect((await one(c3)).written_off_amount).toBe('0.00');
+    // เช็คจ่าย: 05 → ผ่าน (เงินฝากลด) · แก้เลขเช็คที่ยังไม่ผ่านได้
+    const cp = await add('CP-T47-1', 600, 'P');
+    expect((await one(cp)).status).toBe('05');
+    expect((await call('GET', '/api/v1/cheques?direction=P&status=05&q=CP-T47')).body.rows).toHaveLength(1);
+    expect((await call('POST', '/api/v1/cheques/pass', { cheque_ids: [cp], pass_date: '2026-09-28' })).status).toBe(200);
+    expect(await book()).toBe('400.00');
+    expect((await call('PUT', `/api/v1/cheques/${c2}`, { cheque_no: 'QR-T47-2B' })).status).toBe(200);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/cheques?direction=R&q=QR-T47')).body.rows).toHaveLength(0);
+    expect((await call('GET', `/api/v1/cheques/${c1}`)).status).toBe(404);
+    expect((await call('POST', '/api/v1/cheques/pass', { cheque_ids: [c2], pass_date: '2026-09-28', bank_account_id: t1 })).status).toBe(404);
+    expect((await call('GET', `/api/v1/cheque-deposits/${bq.id}`)).status).toBe(404);
+    expect((await call('POST', `/api/v1/cheques/${c3}/write-off`, { date: '2026-09-25' })).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ล้างข้อมูลทดสอบ
+    for (const id of [c1, cp]) expect((await call('POST', `/api/v1/cheques/${id}/unpass`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/cheques/undeposit', { cheque_ids: [c1] })).status).toBe(200);
+    for (const id of [c1, c2, c3, cp]) expect((await call('DELETE', `/api/v1/cheques/${id}`)).status).toBe(200);
+    expect(await book()).toBe('0.00');
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

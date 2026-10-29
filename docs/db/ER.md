@@ -29,6 +29,7 @@ erDiagram
     doc_header ||--o{ doc_link : "to_header_id"
     gl_account |o--o{ md_payment_method : "gl_account_id"
     sys_branch |o--o{ fin_cheque : "branch_id"
+    gl_journal |o--o{ fin_cheque : "writeoff_journal_id"
     doc_header |o--o{ fin_cheque : "source_header_id"
     doc_header |o--o{ fin_cheque : "deposit_header_id"
     gl_journal |o--o{ fin_cheque : "pass_journal_id"
