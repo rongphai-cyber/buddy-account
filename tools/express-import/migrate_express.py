@@ -825,8 +825,19 @@ done('fa_asset', insert('fa_asset', rows), 'FAMAS'); done('fa_depreciation', ins
 
 # ------------------------------------------------------------------ stock balance snapshot
 rows = []
+# STLOC ของ Express มีแถวซ้ำ (สินค้า×คลังเดียวกันหลายแถว — พบ 43 คู่ใน TESTRice) และรายงานของ Express รวมทุกแถว → รวมยอดก่อน (เดิมเก็บแถวแรก ทำให้ปรับยอดผิด)
+_stloc = collections.OrderedDict()
 for r in dbf('STLOC'):
     if not st(r['STKCOD']): QUALITY['stloc_blank_item'].append('1'); continue
+    k = (st(r['STKCOD']), st(r['LOCCOD']))
+    if k in _stloc:
+        QUALITY['stloc_duplicate'].append('/'.join(k))
+        x = _stloc[k] = dict(_stloc[k])
+        for f in ('LOCBAL', 'LOCVAL', 'LOCREO', 'LOCRES'): x[f] = (x[f] or 0) + (r[f] or 0)
+        for f in ('LPURDAT', 'LSELDAT', 'LMOVDAT', 'TAKDAT'): x[f] = max((v for v in (x[f], r[f]) if v), default=None)
+        x['UNITPR'] = x['UNITPR'] or r['UNITPR']; x['AREA'] = st(x['AREA']) or r['AREA']
+    else: _stloc[k] = r
+for r in _stloc.values():
     rows.append(base(id=U('sb', st(r['STKCOD']), st(r['LOCCOD'])), item_id=item(r['STKCOD']), warehouse_id=wh(r['LOCCOD']),
                      qty_on_hand=qty(r['LOCBAL']), value_on_hand=money(r['LOCVAL']), avg_cost=nz(r['UNITPR']), qty_on_order=qty(r['LOCREO']),
                      qty_reserved=qty(r['LOCRES']), last_purchase_date=r['LPURDAT'], last_sale_date=r['LSELDAT'], last_move_date=r['LMOVDAT'],

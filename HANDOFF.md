@@ -147,7 +147,11 @@
   - core `printforms.ts`: printFamily/docMenuOf · PRINT_COLUMNS/PRINT_HEAD_FIELDS · defaultLayout/normalizeLayout (ตัดคีย์ที่ไม่รู้จัก) · printMenu (ต้นแบบ 1 มีเส้น 2 ไม่มีเส้น 3 ครึ่งหน้า A5 4 ต่อเนื่อง + ฟอร์มบริษัททับหมายเลข/ซ่อนได้) · checkPrint/checkApprove/checkUnapprove
   - server `modules/print.ts`: GET /print/:kind/:id (ข้อมูลพิมพ์รูปแบบเดียวทุกเอกสาร kind=doc|journal) · POST …/printed (ตรวจรับรองก่อนพิมพ์/พิมพ์ซ้ำ/สิทธิ์ S แล้วนับ print_count + log PRINT/REPRINT) · POST /approve/:kind/:id {undo} · POST /approve-range · GET /record-info/:kind/:id · /print-forms (RP.FORM ระดับ 9) · /rpt-custom (RP.CUSTOM ระดับ 9) · สิทธิ์ Rule DOC(action) เลือกเมนูจากหมวดเอกสาร · `allowedFor()` ใน permissions.ts
   - web `components/DocPrint.tsx` (PrintSheet + DocActions: Alt+P ฟอร์ม 1 · Shift+Alt+P เมนู · 👁 ดูทางจอภาพไม่นับครั้ง · Alt+O/Ctrl+O รับรอง · Alt+Shift+O ช่วง · Ctrl+I รายละเอียดแฟ้มข้อมูล) ใส่ในทุกหน้าเอกสาร + ใบสำคัญ (แทน PrintVoucher เดิม) · `/settings/print-forms` ตัวแก้แบบฟอร์ม+ตัวอย่างเอกสารจริง · ศูนย์รายงาน: ซ่อนคอลัมน์ + 💾 บันทึกเป็นรายงานของฉัน (กลุ่ม U) · สมุดรายวันมีช่องรับรอง/พิมพ์ซ้ำ (S-GL-10)
-- ต่อไป: T5.9 เทียบตัวเลขรายงานหลักกับ Express (ลูกหนี้/เจ้าหนี้คงค้าง สต๊อก ภาษี ยอดขาย/ซื้อ)
+- ✅ T5.9 `tools/express-import/compare_reports.py` อ่าน .DBF ของ Express โดยตรง เทียบกับ API รายงาน (อ่านอย่างเดียว): ลูกหนี้/เจ้าหนี้คงค้าง 1.A.1/2.A.1 · สินค้าคงเหลือ 4.2.1 · ทะเบียนเอกสารรายปี 12 กลุ่ม (จำนวนใบ+ยอดสุทธิ) · VAT รายเดือน 6.1 (ขาย/ศูนย์/ซื้อ) — **DEMO ตรง 183/183** (ผลเก็บในเครื่องที่ `tools/express-import/last_compare_reports_TESTRice.json` — ไม่ commit)
+  - คำสั่ง: `BASE=http://127.0.0.1:4100 USER=admin PASS=<จากไฟล์> python tools/express-import/compare_reports.py D:/ACC-Program/TESTRice DEMO <ผล.json> --years 16 --last-year 2010` (DEMO เลื่อนปี +16 และย้ายปีพิมพ์ผิดหลัง 2010 มาปี 2010)
+  - พบและแก้: STLOC ของ Express มีแถวซ้ำ 43 คู่ (สินค้า×คลังเดียวกัน) ตัวนำเข้าเดิมเก็บแถวแรก → ใบปรับปรุง MIG-ADJ-IC ปรับผิด (+70 หน่วย 18,221.00 บาท) · แก้ให้รวมยอดทุกแถวแบบรายงาน Express แล้วสร้าง DEMO ใหม่ (MIG-ADJ-IC ไม่ลงบัญชี — งบทดลองไม่เปลี่ยน)
+  - หมายเหตุ: แฟ้มภาษี Express เก็บใบลดหนี้ (RECTYP 5) เป็นยอดบวก รายงานภาษีต้องหักออก (Buddy 6.1 ถูกแล้ว)
+- **P5 เสร็จครบ T5.1–T5.9 (29/10/2569)** — บทที่ 16/17/25 ปิดครบ 22 หน้าจอ (เสร็จ 15 · ทำแบบใหม่แทน 7)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ
@@ -169,6 +173,7 @@
 - ชุดทดสอบก่อนส่งงาน (CLAUDE.md ข้อ 14–15):
   - `pnpm test` (core 9 + API 20 + schema) · `pnpm typecheck` · `pnpm --filter @buddy/web build`
   - smoke: `PASS=<จากไฟล์> BASE=http://localhost:4100 OUT=<scratchpad>/shots node apps/web/e2e/smoke.cjs` (20 ขั้น)
+  - เทียบรายงานกับ Express: `tools/express-import/compare_reports.py` (ดู T5.9) ต้องตรง 183/183
   - ยอดเงิน: งบทดลอง DEMO ปี 2569 คงเหลือต้องเป็น **245,718,317.16** ทั้งสองด้าน (ปี 2568 คงเหลือ 181,398,941.31)
 - ทดลองหน้าจอที่ "บันทึก" ข้อมูล: ใช้ server ทดสอบแยก (PGlite, `BUDDY_DATA_DIR=<scratchpad>/buddy-testN PORT=4101` (สร้างใหม่ได้ด้วย cli create-admin), admin/buddy1234) อย่าเขียนข้อมูลลง DEMO
 - นำข้อมูลใหม่ทั้งหมด (ถ้าจำเป็น): drop DB buddy → `node tools/local-pg/pg.mjs run -- bash tools/express-import/import.sh D:/ACC-Program/TESTRice - TESTRice` → ตรวจงบทดลอง 2553 = 245,718,317.16 → `... run -- python tools/demo-data/make_demo.py - TESTRice DEMO` → `... run -- pnpm --silent --filter @buddy/server cli create-admin admin "ผู้ดูแลระบบ" <รหัสจากไฟล์>`
