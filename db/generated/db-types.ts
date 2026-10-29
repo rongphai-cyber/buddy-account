@@ -2007,7 +2007,7 @@ export interface DocLineTable {
   header_id: string;
   /** ลำดับบรรทัด */
   line_no: number;
-  /** I=สินค้า/บริการ G=บรรทัดบัญชี (ระบุบัญชีตรง) T=ข้อความ */
+  /** I=สินค้า/บริการ G=บรรทัดบัญชี (ระบุบัญชีตรง) T=ข้อความ K=ส่วนประกอบสินค้าชุดที่ตัด/รับสต๊อก (อ้างบรรทัดชุดด้วย source_line_id) */
   line_kind: Gen<string>;
   /** สินค้า/บริการ/รหัสค่าใช้จ่าย */
   item_id: Gen<string | null>;

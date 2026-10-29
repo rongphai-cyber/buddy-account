@@ -725,7 +725,7 @@ add(T('doc_header', 'หัวเอกสารทุกชนิด (ขาย
 add(T('doc_line', 'บรรทัดรายการของเอกสาร (สินค้า บริการ ค่าใช้จ่าย บัญชี)', 'doc', express='STCRD + OESOIT + POPRIT + GLPTTIT + BKTRNIT', cols=[
   lk('header_id', 'doc_header', 'หัวเอกสาร', 'DOCNUM', nn=True),
   C('line_no', 'smallint', nn=True, th='ลำดับบรรทัด', src='SEQNUM'),
-  C('line_kind', 'char1', nn=True, d="'I'", th='I=สินค้า/บริการ G=บรรทัดบัญชี (ระบุบัญชีตรง) T=ข้อความ', chk="line_kind IN ('I','G','T')"),
+  C('line_kind', 'char1', nn=True, d="'I'", th='I=สินค้า/บริการ G=บรรทัดบัญชี (ระบุบัญชีตรง) T=ข้อความ K=ส่วนประกอบสินค้าชุดที่ตัด/รับสต๊อก (อ้างบรรทัดชุดด้วย source_line_id)', chk="line_kind IN ('I','G','T','K')"),
   lk('item_id', 'md_item', 'สินค้า/บริการ/รหัสค่าใช้จ่าย', 'STCRD.STKCOD'),
   lk('account_id', 'gl_account', 'บัญชี (บรรทัดบัญชี เช่น เงินสดย่อย ค่าใช้จ่ายอื่น)', 'GLPTTIT.ACCNUM'),
   C('description', 'str200', th='รายละเอียด (แก้ชื่อสินค้าได้)', src='STCRD.STKDES'),

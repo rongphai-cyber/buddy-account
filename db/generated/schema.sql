@@ -2205,7 +2205,7 @@ CREATE TABLE doc_line (
   company_id uuid NOT NULL,
   header_id uuid NOT NULL,
   line_no smallint NOT NULL,
-  line_kind char(1) DEFAULT 'I' NOT NULL CHECK (line_kind IN ('I','G','T')),
+  line_kind char(1) DEFAULT 'I' NOT NULL CHECK (line_kind IN ('I','G','T','K')),
   item_id uuid,
   account_id uuid,
   description varchar(200),
@@ -2259,7 +2259,7 @@ COMMENT ON COLUMN doc_line.id IS 'รหัสแถว UUIDv7 (สร้าง�
 COMMENT ON COLUMN doc_line.company_id IS 'บริษัท';
 COMMENT ON COLUMN doc_line.header_id IS 'หัวเอกสาร [Express: DOCNUM]';
 COMMENT ON COLUMN doc_line.line_no IS 'ลำดับบรรทัด [Express: SEQNUM]';
-COMMENT ON COLUMN doc_line.line_kind IS 'I=สินค้า/บริการ G=บรรทัดบัญชี (ระบุบัญชีตรง) T=ข้อความ';
+COMMENT ON COLUMN doc_line.line_kind IS 'I=สินค้า/บริการ G=บรรทัดบัญชี (ระบุบัญชีตรง) T=ข้อความ K=ส่วนประกอบสินค้าชุดที่ตัด/รับสต๊อก (อ้างบรรทัดชุดด้วย source_line_id)';
 COMMENT ON COLUMN doc_line.item_id IS 'สินค้า/บริการ/รหัสค่าใช้จ่าย [Express: STCRD.STKCOD]';
 COMMENT ON COLUMN doc_line.account_id IS 'บัญชี (บรรทัดบัญชี เช่น เงินสดย่อย ค่าใช้จ่ายอื่น) [Express: GLPTTIT.ACCNUM]';
 COMMENT ON COLUMN doc_line.description IS 'รายละเอียด (แก้ชื่อสินค้าได้) [Express: STCRD.STKDES]';

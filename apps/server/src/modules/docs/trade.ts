@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { computeDoc, d, dueDate, TRADE_KINDS, type TradeKind } from '@buddy/core';
+import { allocateKit, computeDoc, d, dueDate, TRADE_KINDS, type TradeKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
@@ -153,20 +153,45 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
     const st = mv ? await stockSettings(tx, a.companyId) : null;
     const stock: Array<{ warehouse_id: string | null; stock_effect: number; movement_code: string | null; cost_amount: string | null; cost_unit: string | null }> = [];
     const issues = new Map<string, { itemId: string; warehouseId: string; qty: ReturnType<typeof d>; code: string }>();
+    const kitRows: Array<{ parent: number; item_id: string; description: string; unit_id: string | null; warehouse_id: string; base_qty: string; stock_effect: number; movement_code: string; cost_amount: string; cost_unit: string }> = [];
+    const warnings: string[] = [];
+    const warnBelow = mv?.eff === -1 && (K.cls === 'IV' || K.cls === 'HS') && (await companySettings(tx, a.companyId))['ar.warn_below_cost'] !== false;
     for (const [i, l] of b.lines.entries()) {
       const it = byId.get(l.item_id)!;
       const wh = l.warehouse_id ?? header.warehouse_id ?? st?.mainWarehouseId ?? null;
-      if (!mv || it.item_type !== '0' || (mv.onlyReturn && !l.return_to_stock)) { stock.push({ warehouse_id: wh, stock_effect: 0, movement_code: null, cost_amount: null, cost_unit: null }); continue; }
+      const isKit = it.item_type === '1' || it.item_type === '2';
+      if (!mv || (it.item_type !== '0' && !isKit) || (mv.onlyReturn && !l.return_to_stock)) { stock.push({ warehouse_id: wh, stock_effect: 0, movement_code: null, cost_amount: null, cost_unit: null }); continue; }
+      if (isKit) {
+        // สินค้าชุด (S-IC-03): ตัด/รับสต๊อกที่ส่วนประกอบ (บรรทัด K อ้างบรรทัดชุด) — รายได้/ราคาซื้ออยู่ที่บรรทัดชุด
+        stock.push({ warehouse_id: wh, stock_effect: 0, movement_code: null, cost_amount: null, cost_unit: null });
+        const comps = await explodeKit(tx, a.companyId, it.id, d(l.qty).times(d(l.factor ?? 1)).abs());
+        if (!comps.length) throw badRequest(`บรรทัดที่ ${i + 1}: สินค้าชุด ${it.code} ยังไม่มีรายการสินค้าประกอบ — กำหนดที่ รายละเอียดสินค้าชุด`);
+        const alloc = mv.eff > 0 && mv.purchase ? allocateKit(calc.lines[i]!.net_amount, comps.map((c) => ({ qty: c.qty.toString(), price: c.std_cost ?? 0, fallback: c.item_std_cost ?? 1 }))) : null;
+        let kitCost = d(0);
+        for (const [ci, c] of comps.entries()) {
+          const cwh = c.warehouse_id ?? wh;
+          if (!cwh) throw badRequest(`บรรทัดที่ ${i + 1}: เลือกคลังสินค้า`);
+          const cc = alloc ? alloc[ci]!.toFixed(2)
+            : await issueCost(tx, a.companyId, { itemId: c.item_id, warehouseId: cwh, byWarehouse: st!.byWarehouse, date: b.doc_date, qty: c.qty.toString(), method: mv.eff > 0 ? 'A' : c.cost_method, fallbackUnit: c.item_std_cost });
+          kitCost = kitCost.plus(d(cc));
+          kitRows.push({ parent: i, item_id: c.item_id, description: c.name_th, unit_id: c.base_unit_id, warehouse_id: cwh, base_qty: c.qty.toString(), stock_effect: mv.eff, movement_code: mv.code, cost_amount: cc, cost_unit: c.qty.isZero() ? '0' : d(cc).div(c.qty).toDecimalPlaces(4).toString() });
+          if (mv.eff < 0) { const k = `${c.item_id}|${cwh}`; const x = issues.get(k); issues.set(k, { itemId: c.item_id, warehouseId: cwh, qty: (x?.qty ?? d(0)).plus(c.qty), code: c.code }); }
+        }
+        if (warnBelow && !l.is_free && d(calc.lines[i]!.net_amount).lt(kitCost)) warnings.push(`บรรทัดที่ ${i + 1}: ${it.code} ขายต่ำกว่าทุน (ยอดขาย ${d(calc.lines[i]!.net_amount).toFixed(2)} < ทุนส่วนประกอบ ${kitCost.toFixed(2)})`);
+        continue;
+      }
       if (!wh) throw badRequest(`บรรทัดที่ ${i + 1}: เลือกคลังสินค้า (หรือกำหนดคลังหลักที่ค่าเริ่มต้นระบบสินค้า)`);
       const bq = d(l.qty).times(d(l.factor ?? 1)).abs();
       // รับเข้าจากการซื้อ = มูลค่าก่อน VAT หลังเฉลี่ยส่วนลด · จ่ายออก/รับคืน = ต้นทุนตามวิธีของกลุ่มบัญชี
       const cost = mv.eff > 0 && mv.purchase ? d(calc.lines[i]!.net_amount).toFixed(2)
         : await issueCost(tx, a.companyId, { itemId: it.id, warehouseId: wh, byWarehouse: st!.byWarehouse, date: b.doc_date, qty: bq.toString(), method: mv.eff > 0 ? 'A' : it.cost_method, fallbackUnit: it.std_cost });
       stock.push({ warehouse_id: wh, stock_effect: mv.eff, movement_code: mv.code, cost_amount: cost, cost_unit: bq.isZero() ? '0' : d(cost).div(bq).toDecimalPlaces(4).toString() });
+      // ขายต่ำกว่าทุนให้เตือน (ค่าเริ่มต้นระบบขาย ข้อ 5) — บันทึกได้ แจ้งให้ทราบ
+      if (warnBelow && !l.is_free && d(calc.lines[i]!.net_amount).lt(d(cost))) warnings.push(`บรรทัดที่ ${i + 1}: ${it.code} ขายต่ำกว่าทุน (ยอดขาย ${d(calc.lines[i]!.net_amount).toFixed(2)} < ทุน ${d(cost).toFixed(2)})`);
       if (mv.eff < 0) { const k = `${it.id}|${wh}`; const x = issues.get(k); issues.set(k, { itemId: it.id, warehouseId: wh, qty: (x?.qty ?? d(0)).plus(bq), code: it.code }); }
     }
     if (st) await checkNegative(tx, a.companyId, st, issues);
-    await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({
+    const inserted = await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({
       company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'I', item_id: l.item_id, description: l.description ?? byId.get(l.item_id)!.name_th,
       warehouse_id: stock[i]!.warehouse_id, stock_effect: stock[i]!.stock_effect, movement_code: stock[i]!.movement_code, cost_amount: stock[i]!.cost_amount, cost_unit: stock[i]!.cost_unit,
       department_id: l.department_id ?? header.department_id, qty: l.qty, unit_id: l.unit_id ?? byId.get(l.item_id)!.base_unit_id,
@@ -174,7 +199,13 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
       discount_amount: calc.lines[i]!.discount_amount, line_amount: calc.lines[i]!.line_amount, net_amount: calc.lines[i]!.net_amount,
       vat_code: byId.get(l.item_id)!.vat_code, is_free: l.is_free, return_to_stock: l.return_to_stock, salesperson_id: b.salesperson_id, created_by: a.userId,
       source_line_id: l.source_line_id, ordered_qty: K.order ? l.qty : null, delivery_date: K.order && K.cls !== 'QT' ? l.delivery_date ?? b.delivery_date ?? b.doc_date : null,
-    }))).execute();
+    }))).returning(['id', 'line_no']).execute();
+    if (kitRows.length) {
+      const idOf = new Map(inserted.map((x) => [x.line_no, x.id]));
+      await tx.insertInto('doc_line').values(kitRows.map((k, n) => ({ company_id: a.companyId, header_id: hid!, line_no: b.lines.length + n + 1, line_kind: 'K', item_id: k.item_id, description: k.description,
+        warehouse_id: k.warehouse_id, department_id: b.lines[k.parent]!.department_id ?? header.department_id, qty: k.base_qty, base_qty: k.base_qty, unit_id: k.unit_id, factor: '1',
+        stock_effect: k.stock_effect, movement_code: k.movement_code, cost_amount: k.cost_amount, cost_unit: k.cost_unit, line_amount: '0', net_amount: '0', source_line_id: idOf.get(k.parent + 1)!, created_by: a.userId }))).execute();
+    }
     if (b.deposits.length) await tx.insertInto('doc_link').values(b.deposits.map((x) => ({ company_id: a.companyId, from_header_id: x.header_id, to_header_id: hid!, link_type: 'DEPOSIT', amount: d(x.amount).toFixed(2), created_by: a.userId }))).execute();
     if (b.payments.length) await tx.insertInto('doc_payment').values(b.payments.map((p, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no, created_by: a.userId }))).execute();
     // บันทึก = ลงบัญชีทันที (แก้ไข = ลงใบสำคัญเดิมใหม่)
@@ -182,14 +213,30 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
-    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: calc.net_amount };
+    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: calc.net_amount, warnings };
   });
+}
+
+type KitPart = { item_id: string; code: string; name_th: string; base_unit_id: string | null; qty: ReturnType<typeof d>; warehouse_id: string | null; std_cost: string | null; item_std_cost: string | null; cost_method: string | null };
+/** ส่วนประกอบของสินค้าชุด (ชุดซ้อนชุดแตกต่อ) × จำนวนชุด — เฉพาะสินค้าที่มีสต๊อก */
+async function explodeKit(db: Db, companyId: string, kitId: string, qty: ReturnType<typeof d>, depth = 0): Promise<KitPart[]> {
+  if (depth > 8) throw badRequest('สินค้าชุดซ้อนกันเกิน 8 ระดับ — ตรวจระดับสินค้าของชุด');
+  const rows = await db.selectFrom('md_item_bom as b').innerJoin('md_item as i', 'i.id', 'b.component_item_id').leftJoin('md_item_account_group as g', 'g.id', 'i.account_group_id')
+    .select(['b.component_item_id as item_id', 'i.code', 'i.name_th', 'i.base_unit_id', 'i.item_type', 'b.qty', 'b.warehouse_id', 'b.std_cost', 'i.std_cost as item_std_cost', 'g.cost_method'])
+    .where('b.parent_item_id', '=', kitId).where('b.company_id', '=', companyId).where('b.deleted_at', 'is', null).where('i.deleted_at', 'is', null).orderBy('b.line_no').execute();
+  const out: KitPart[] = [];
+  for (const r of rows) {
+    const q = qty.times(d(r.qty));
+    if (r.item_type === '1' || r.item_type === '2') out.push(...await explodeKit(db, companyId, r.item_id, q, depth + 1));
+    else if (r.item_type === '0') out.push({ item_id: r.item_id, code: r.code, name_th: r.name_th, base_unit_id: r.base_unit_id, qty: q, warehouse_id: r.warehouse_id, std_cost: r.std_cost, item_std_cost: r.item_std_cost, cost_method: r.cost_method });
+  }
+  return out;
 }
 
 /** มีบิลอ้างใบสั่งนี้แล้วหรือไม่ */
 async function orderDelivered(db: Db, headerId: string) {
   return !!(await sql`SELECT 1 FROM doc_line x JOIN doc_line o ON o.id = x.source_line_id JOIN doc_header t ON t.id = x.header_id
-      WHERE o.header_id = ${headerId} AND x.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL LIMIT 1`.execute(db)).rows.length;
+      WHERE o.header_id = ${headerId} AND x.deleted_at IS NULL AND x.line_kind <> 'K' AND t.doc_status <> 'C' AND t.deleted_at IS NULL LIMIT 1`.execute(db)).rows.length;
 }
 
 export function tradeRoutes(app: FastifyInstance, db: Db) {
@@ -236,7 +283,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       if (!h) throw notFound(K.label);
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id').leftJoin('md_unit as u', 'u.id', 'l.unit_id')
         .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.source_line_id', 'l.delivery_date', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.unit_price', 'l.discount_text', 'l.discount_amount', 'l.line_amount', 'l.net_amount', 'l.vat_code', 'l.is_free', 'l.return_to_stock', 'l.department_id'])
-        .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
+        .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).where('l.line_kind', '<>', 'K').orderBy('l.line_no').execute();
       const payments = await db.selectFrom('doc_payment as p').leftJoin('md_payment_method as m', 'm.id', 'p.payment_method_id').select(['p.line_no', 'p.payment_method_id', 'm.code as method_code', 'm.name_th as method_name', 'p.amount', 'p.reference_no'])
         .where('p.header_id', '=', id).where('p.deleted_at', 'is', null).orderBy('p.line_no').execute();
       const settled = await db.selectFrom('doc_settlement as s').innerJoin('doc_header as r', 'r.id', 's.payment_header_id').select(['r.id', 'r.doc_no', 'r.doc_date', 's.amount', 'r.doc_status'])
@@ -305,7 +352,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
     const soType = b.doc_type_id ?? (await db.selectFrom('md_doc_type').select('id').where('company_id', '=', a.companyId).where('doc_class', '=', 'SO').where('status', '=', 'A').where('deleted_at', 'is', null).orderBy('code').executeTakeFirst())?.id;
     if (!soType) throw badRequest('ยังไม่มีประเภทเอกสารใบสั่งขาย — เพิ่มที่ เริ่มระบบ › เลขที่เอกสาร');
     const lines = await db.selectFrom('doc_line').select(['item_id', 'description', 'warehouse_id', 'qty', 'unit_id', 'factor', 'unit_price', 'discount_text', 'is_free', 'department_id'])
-      .where('header_id', '=', id).where('deleted_at', 'is', null).where('item_id', 'is not', null).orderBy('line_no').execute();
+      .where('header_id', '=', id).where('deleted_at', 'is', null).where('item_id', 'is not', null).where('line_kind', '<>', 'K').orderBy('line_no').execute();
     const K = TRADE_KINDS.find((k) => k.cls === 'SO')!;
     const so = await saveTrade(db, a, K, null, parse(body, {
       doc_type_id: soType, doc_date: b.doc_date, delivery_date: b.delivery_date ?? b.doc_date, party_id: qt.customer_id, bill_to_customer_id: qt.bill_to_customer_id, party_tax_branch_no: qt.party_tax_branch_no,

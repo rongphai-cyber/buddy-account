@@ -1125,7 +1125,7 @@ CREATE TABLE IF NOT EXISTS doc_line (
   company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
   header_id TEXT NOT NULL REFERENCES doc_header(id) DEFERRABLE INITIALLY DEFERRED,
   line_no INTEGER NOT NULL,
-  line_kind TEXT NOT NULL DEFAULT 'I' CHECK (line_kind IN ('I','G','T')),
+  line_kind TEXT NOT NULL DEFAULT 'I' CHECK (line_kind IN ('I','G','T','K')),
   item_id TEXT REFERENCES md_item(id) DEFERRABLE INITIALLY DEFERRED,
   account_id TEXT REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED,
   description TEXT,

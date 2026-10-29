@@ -1780,6 +1780,38 @@ describe('Buddy Account API (PGlite)', () => {
     for (const [path, id] of [['bank-deposits', bd.id], ['bank-withdrawals', bw.id], ['bank-expenses', bv.id], ['stock-adjustments', ju.id]])
       expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('kits issue component stock + sell-below-cost warning (P4 leftovers): sale/purchase of a kit moves components, cost allocation, COGS', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const sup = (await call('GET', '/api/v1/suppliers?q=S200')).body.rows[0].id;
+    const a = (await call('POST', '/api/v1/items', { code: '02-TEST-000049', name_th: 'ส่วนประกอบ A', base_unit_id: unit, std_cost: '10' })).body.id;
+    const b = (await call('POST', '/api/v1/items', { code: '02-TEST-000050', name_th: 'ส่วนประกอบ B', base_unit_id: unit, std_cost: '20' })).body.id;
+    const kitRes = await call('POST', '/api/v1/kits', { code: '80-TEST-000049', name_th: 'ชุดทดสอบ', item_type: '1', base_unit_id: unit, item_level: '11', bom: [{ component_item_id: a, qty: 1 }, { component_item_id: b, qty: 2 }] });
+    expect(kitRes.status).toBe(200);
+    const kit = kitRes.body.id;
+    const bal = async (it: string) => { const r = (await call('GET', `/api/v1/stock/balances?item_id=${it}`)).body.rows[0]; return r ? `${Number(r.qty)}/${r.value}` : '0/0'; };
+    const ju = (await call('POST', '/api/v1/stock-adjustments', { doc_type_id: await typeOf('JU'), doc_date: '2026-11-01', lines: [{ item_id: a, warehouse_id: w1, qty: 10, unit_cost: 10 }, { item_id: b, warehouse_id: w1, qty: 10, unit_cost: 20 }] })).body;
+    // ขายชุด 2 ชุด ราคา 40 (ทุน 2 × (10 + 2×20) = 100) → ตัด A 2 B 4 + เตือนขายต่ำกว่าทุน
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id, doc_date: '2026-11-02', party_id: cus, price_type: '2', vat_rate: 7,
+      warehouse_id: w1, lines: [{ item_id: kit, qty: 2, unit_price: 40 }] })).body;
+    expect(iv.error?.message ?? iv.warnings).toEqual([expect.stringMatching(/80-TEST-000049 ขายต่ำกว่าทุน .*100\.00/)]);
+    expect([await bal(a), await bal(b), await bal(kit)]).toEqual(['8/80.00', '6/120.00', '0/0']);
+    expect((await call('GET', `/api/v1/sales-invoices/${iv.id}`)).body.lines).toHaveLength(1);           // บรรทัดส่วนประกอบไม่แสดงในเอกสาร
+    const roles = (await call('GET', `/api/v1/docs/${iv.id}/journal`)).body.journals[0].lines.map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${Number(l.debit) || -Number(l.credit)}`);
+    expect(roles).toEqual(expect.arrayContaining(['COGS:100', 'INVENTORY:-100']));
+    // ซื้อชุด 1 ชุด 60 → เฉลี่ยตามราคาทุนมาตรฐาน A 12 / B 48
+    const rr = (await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2026-11-03', party_id: sup, price_type: '2', vat_rate: 7, warehouse_id: w1, lines: [{ item_id: kit, qty: 1, unit_price: 60 }] })).body;
+    expect([await bal(a), await bal(b)]).toEqual(['9/92.00', '8/168.00']);
+    // ขายสินค้าธรรมดาเกินทุนไม่เตือน
+    const iv2 = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id, doc_date: '2026-11-04', party_id: cus, price_type: '2', vat_rate: 7,
+      lines: [{ item_id: a, warehouse_id: w1, qty: 1, unit_price: 50 }] })).body;
+    expect(iv2.warnings).toEqual([]);
+    for (const [path, id] of [['sales-invoices', iv2.id], ['purchase-invoices', rr.id], ['sales-invoices', iv.id], ['stock-adjustments', ju.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect([await bal(a), await bal(b)]).toEqual(['0/0', '0/0']);
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

@@ -59,7 +59,7 @@ export async function loadPostingInput(db: Db, companyId: string, headerIds: str
   // บรรทัดสินค้า (I) + บรรทัดบัญชี (G — เงินสดย่อย ใช้เฉพาะหมวด VR)
   const lines = group((await sql<{ header_id: string; item_id: string | null; account_id: string | null; net_amount: string; cost_amount: string | null; stock_effect: number; movement_code: string | null }>`SELECT header_id, item_id, account_id, net_amount, cost_amount, stock_effect, movement_code FROM doc_line
     WHERE company_id = ${companyId} AND deleted_at IS NULL AND (net_amount <> 0 OR coalesce(cost_amount, 0) <> 0) AND header_id = ANY(${hid}::uuid[])
-      AND ((line_kind = 'I' AND item_id IS NOT NULL) OR (line_kind = 'G' AND account_id IS NOT NULL)) ORDER BY header_id, line_no`.execute(db)).rows);
+      AND ((line_kind IN ('I', 'K') AND item_id IS NOT NULL) OR (line_kind = 'G' AND account_id IS NOT NULL)) ORDER BY header_id, line_no`.execute(db)).rows);
   const pays = group((await sql<{ header_id: string; method_id: string | null; amount: string; cheque_id: string | null }>`SELECT header_id, payment_method_id AS method_id, amount, cheque_id FROM doc_payment
     WHERE company_id = ${companyId} AND deleted_at IS NULL AND header_id = ANY(${hid}::uuid[]) ORDER BY header_id, line_no`.execute(db)).rows);
   const setts = group((await sql<{ header_id: string; amount: string; vat: string; party_id: string | null; rectype: string | null }>`SELECT s.payment_header_id AS header_id, s.amount, s.vat_amount AS vat, coalesce(i.customer_id, i.supplier_id) AS party_id, s.express_rectype AS rectype
