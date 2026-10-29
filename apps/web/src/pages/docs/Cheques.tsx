@@ -257,7 +257,7 @@ export function ChequeSlipListPage() {
   const nav = useNavigate();
   const can = useCan('FI.BK.DQ');
   const [q, setQ] = useState('');
-  const list = useQuery({ queryKey: ['cheque-deposits', q], placeholderData: (p) => p, queryFn: () => api.get<{ rows: Array<{ id: string; doc_no: string; doc_date: string; remark: string | null; amount: string; net_amount: string; doc_status: string; account_code: string; account_name: string; voucher_no: string | null; cheques: number; pass_date: string | null }> }>('/api/v1/cheque-deposits', { q }) });
+  const list = useQuery({ queryKey: ['cheque-deposits', q], placeholderData: (p) => p, queryFn: () => api.get<{ rows: Array<{ id: string; doc_no: string; doc_date: string; remark: string | null; amount: string; net_amount: string; doc_status: string; account_code: string; account_name: string; voucher_no: string | null; cheques: number; pass_date: string | null; discount: boolean }> }>('/api/v1/cheque-deposits', { q }) });
   useHotkeys({ Insert: can('add') ? () => nav('/fi/cheques/slips/new') : undefined }, []);
   return (
     <div className="page" data-tone="finance">
@@ -269,7 +269,7 @@ export function ChequeSlipListPage() {
         <thead><tr><th style={{ width: 140 }}>เลขที่</th><th style={{ width: 110 }}>วันที่นำฝาก</th><th style={{ width: 200 }}>เข้าบัญชี</th><th>หมายเหตุ</th><th className="r" style={{ width: 80 }}>เช็ค</th><th className="r" style={{ width: 140 }}>ยอดรวม</th><th style={{ width: 110 }}>วันที่ผ่าน</th><th style={{ width: 110 }}>สถานะ</th></tr></thead>
         <tbody>
           {list.data?.rows.map((r) => <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`/fi/cheques/slips/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`/fi/cheques/slips/${r.id}`)}>
-            <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td>{r.account_code} {r.account_name}</td><td>{r.remark}</td><td className="r">{r.cheques}</td><td className="r"><Money v={r.amount} /></td><td><DateText v={r.voucher_no ? r.pass_date : null} /></td>
+            <td className="mono">{r.doc_no}{r.discount && <> <Pill tone="d">ขายลด</Pill></>}</td><td><DateText v={r.doc_date} /></td><td>{r.account_code} {r.account_name}</td><td>{r.remark}</td><td className="r">{r.cheques}</td><td className="r"><Money v={r.amount} /></td><td><DateText v={r.voucher_no ? r.pass_date : null} /></td>
             <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : r.voucher_no ? <Pill tone="n">เช็คผ่าน</Pill> : <Pill tone="c">รอเรียกเก็บ</Pill>}</td></tr>)}
           {list.data && !list.data.rows.length && <tr><td colSpan={8} className="empty">ยังไม่มีใบนำฝาก — กด Ins เพื่อเพิ่ม</td></tr>}
         </tbody></table></div>
@@ -288,7 +288,7 @@ export function ChequeSlipFormPage() {
   const { me } = useSession();
   const cur = useQuery({ enabled: !!id, queryKey: ['cheque-deposits', 'one', id], staleTime: 0, queryFn: () => api.get<Record<string, string | null> & { editable: boolean; passed: boolean; cheques: Array<{ id: string; cheque_no: string; cheque_date: string; bank_code: string | null; bank_name: string | null; bank_branch: string | null; amount: string; status: string; pass_date: string | null }> }>(`/api/v1/cheque-deposits/${id}`) });
   const open = useCheques({ direction: 'R', status: '00,02', loose: 'Y' });
-  const [h, setH] = useState<{ bank: string; date: string; remark: string; charge: string; vat: string; wht: string } | null>(id ? null : { bank: '', date: me?.work_date ?? todayIso(), remark: '', charge: '', vat: '', wht: '' });
+  const [h, setH] = useState<{ bank: string; date: string; remark: string; charge: string; vat: string; wht: string; discount: boolean; ref_no: string; ref_date: string } | null>(id ? null : { bank: '', date: me?.work_date ?? todayIso(), remark: '', charge: '', vat: '', wht: '', discount: false, ref_no: '', ref_date: '' });
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [picking, setPicking] = useState(false);
   const [err, setErr] = useState<unknown>(null);
@@ -297,7 +297,7 @@ export function ChequeSlipFormPage() {
   const [print, setPrint] = useState(false);
   if (!h && cur.data) {
     const c = cur.data;
-    setH({ bank: c.bank_account_id ?? '', date: String(c.doc_date).slice(0, 10), remark: c.remark ?? '', charge: d(c.charge ?? 0).isZero() ? '' : d(c.charge!).toFixed(2), vat: d(c.vat_amount ?? 0).isZero() ? '' : d(c.vat_amount!).toFixed(2), wht: d(c.wht_amount ?? 0).isZero() ? '' : d(c.wht_amount!).toFixed(2) });
+    setH({ bank: c.bank_account_id ?? '', date: String(c.doc_date).slice(0, 10), remark: c.remark ?? '', charge: d(c.charge ?? 0).isZero() ? '' : d(c.charge!).toFixed(2), vat: d(c.vat_amount ?? 0).isZero() ? '' : d(c.vat_amount!).toFixed(2), wht: d(c.wht_amount ?? 0).isZero() ? '' : d(c.wht_amount!).toFixed(2), discount: !!(c as unknown as { discount: boolean }).discount, ref_no: c.ref_no ?? '', ref_date: c.ref_date ? String(c.ref_date).slice(0, 10) : '' });
     setSel(new Set(c.cheques.map((x) => x.id)));
   }
   const ro = !!id && (!cur.data?.editable || !can('edit'));
@@ -309,7 +309,7 @@ export function ChequeSlipFormPage() {
     if (!h || ro) return;
     setErr(null);
     try {
-      const body = { cheque_ids: [...sel], bank_account_id: h.bank, doc_date: h.date, remark: h.remark || null, charge: h.charge || '0', vat: h.vat || '0', wht: h.wht || '0' };
+      const body = { cheque_ids: [...sel], bank_account_id: h.bank, doc_date: h.date, remark: h.remark || null, charge: h.charge || '0', vat: h.vat || '0', wht: h.wht || '0', discount: h.discount, ref_no: h.ref_no || null, ref_date: h.ref_date || null };
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/cheque-deposits/${id}`, body) : await api.post<{ id: string; doc_no: string }>('/api/v1/cheque-deposits', body);
       toast(`บันทึกใบนำฝาก ${r.doc_no} แล้ว`); refresh(qc);
       if (!id) { setH(null); nav(`/fi/cheques/slips/${r.id}`, { replace: true }); } else { await qc.refetchQueries({ queryKey: ['cheque-deposits', 'one', id] }); setH(null); }
@@ -338,7 +338,12 @@ export function ChequeSlipFormPage() {
             <Field label="เข้าบัญชี" req>{ro ? <span>{c?.account_code} {c?.account_name}</span> : <BankSelect value={h.bank} onChange={(v) => setH({ ...h, bank: v })} label="เข้าบัญชี" />}</Field>
             <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => setH({ ...h, remark: e.target.value })} /></Field>
           </div>
-          <div className="col"><Field label="วันที่นำฝาก" req><DateInput value={h.date} disabled={ro} onChange={(v) => setH({ ...h, date: v })} /></Field></div>
+          <div className="col">
+            <Field label="ชนิด"><select value={h.discount ? 'S' : 'D'} disabled={!!id} onChange={(e) => setH({ ...h, discount: e.target.value === 'S' })} aria-label="ชนิดใบนำฝาก"><option value="D">ใบนำฝากเช็ค (DEQ)</option><option value="S">ใบขายลดเช็ค (SQR) — ผ่านทันที</option></select></Field>
+            <Field label={h.discount ? 'วันที่ขายลด' : 'วันที่นำฝาก'} req><DateInput value={h.date} disabled={ro} onChange={(v) => setH({ ...h, date: v })} /></Field>
+            {h.discount && <><Field label="ใบกำกับภาษีซื้อ#"><input value={h.ref_no} maxLength={30} disabled={ro} onChange={(e) => setH({ ...h, ref_no: e.target.value })} /></Field>
+              <Field label="ลวท."><DateInput value={h.ref_date} disabled={ro} onChange={(v) => setH({ ...h, ref_date: v })} /></Field></>}
+          </div>
         </div>
         <Tabs active="chq" onChange={() => undefined} tabs={[{ key: 'chq', label: 'รายการที่นำฝาก <F8>', badge: chosen.length || undefined }]} />
         <div className="table-wrap"><table className="grid">
@@ -349,7 +354,7 @@ export function ChequeSlipFormPage() {
         {!ro && <button style={{ marginTop: 8 }} onClick={() => setPicking(true)}>+ เลือกเช็ค <kbd>F8</kbd></button>}
         <table className="totals-table" style={{ marginLeft: 'auto', marginTop: 10 }}><tbody>
           <tr><td>ยอดรวม</td><td className="r"><Money v={total.toFixed(2)} /></td></tr>
-          <tr><td>หัก ค่าธรรมเนียม</td><td><MoneyInput value={h.charge} disabled={ro} onChange={(v) => setH({ ...h, charge: v })} aria-label="ค่าธรรมเนียม" /></td></tr>
+          <tr><td>{h.discount ? 'หัก ค่าขายลด (ดอกเบี้ย)' : 'หัก ค่าธรรมเนียม'}</td><td><MoneyInput value={h.charge} disabled={ro} onChange={(v) => setH({ ...h, charge: v })} aria-label="ค่าธรรมเนียม" /></td></tr>
           <tr><td>ภาษีมูลค่าเพิ่ม (ของค่าธรรมเนียม)</td><td><MoneyInput value={h.vat} disabled={ro} onChange={(v) => setH({ ...h, vat: v })} aria-label="ภาษีมูลค่าเพิ่ม" /></td></tr>
           <tr><td>หักภาษี ณ ที่จ่ายไว้</td><td><MoneyInput value={h.wht} disabled={ro} onChange={(v) => setH({ ...h, wht: v })} aria-label="ภาษีหัก ณ ที่จ่าย" /></td></tr>
           <tr className="grand"><td>เงินเข้าบัญชีสุทธิ</td><td className="r"><Money v={net.toFixed(2)} /></td></tr>

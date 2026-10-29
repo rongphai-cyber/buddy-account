@@ -1845,6 +1845,27 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', `/api/v1/other-expense-docs/${o1.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
+  it('discounted cheque slip SQR: passes immediately on the discount date, fee to interest expense, unpass/cancel', async () => {
+    const t1 = (await call('GET', '/api/v1/bank-accounts')).body.find((b: { code: string }) => b.code === 'T1').id;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const ids = [];
+    for (const [no, amt] of [['SQ-T-1', 1000], ['SQ-T-2', 2000]] as const) ids.push((await call('POST', '/api/v1/cheques', { direction: 'R', cheque_no: no, cheque_date: '2026-12-31', customer_id: cus, amount: amt })).body.id as string);
+    const book = async () => (await call('GET', `/api/v1/bank-book?bank_account_id=${t1}&from=2026-11-01&to=2026-11-30`)).body.closing as string;
+    const sq = (await call('POST', '/api/v1/cheque-deposits', { cheque_ids: ids, bank_account_id: t1, doc_date: '2026-11-15', charge: 50, vat: 3.5, discount: true, ref_no: 'TAX-001', ref_date: '2026-11-15' })).body;
+    expect(sq).toMatchObject({ net_amount: '2946.50', voucher_no: expect.any(String) });
+    expect(await book()).toBe('2946.50');
+    const det = (await call('GET', `/api/v1/cheque-deposits/${sq.id}`)).body;
+    expect(det).toMatchObject({ discount: true, ref_no: 'TAX-001', passed: true, cheques: [{ status: '10' }, { status: '10' }] });
+    const j = (await call('GET', `/api/v1/docs/${sq.id}/journal`)).body.journals[0];
+    const intExp = (await sql<{ no: string }>`SELECT g.account_no AS no FROM gl_default_account x JOIN gl_account g ON g.id = x.account_id WHERE x.company_id = ${companyId} AND x.role = 'INTEREST_EXPENSE' AND x.deleted_at IS NULL`.execute(database.db)).rows[0]?.no;
+    if (intExp) expect(j.lines.find((l: { account_no: string }) => l.account_no === intExp)?.debit).toBe('50.00');
+    expect((await call('GET', '/api/v1/cheque-deposits?q=' + sq.doc_no)).body.rows[0].discount).toBe(true);
+    expect((await call('POST', `/api/v1/cheque-deposits/${sq.id}/unpass`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect(await book()).toBe('0.00');
+    expect((await call('POST', `/api/v1/cheque-deposits/${sq.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    for (const id of ids) expect((await call('DELETE', `/api/v1/cheques/${id}`)).status).toBe(200);
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

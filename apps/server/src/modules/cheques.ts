@@ -88,7 +88,36 @@ const chequeBody = z.object({
   direction: z.enum(['R', 'P']), cheque_no: z.string().trim().min(1, 'ป้อนเลขที่เช็ค').max(30), cheque_date: isoDate, bank_id: optId, bank_branch: str(60), bank_account_id: optId,
   customer_id: optId, supplier_id: optId, payee_name: str(120), department_id: optId, received_date: isoDate.nullable().optional().transform((v) => v ?? null), amount: money, remark: str(200),
 });
-const depBody = z.object({ cheque_ids: z.array(uuid).min(1, 'เลือกเช็คที่นำฝากอย่างน้อย 1 ใบ').max(500), bank_account_id: uuid, doc_date: isoDate, doc_type_id: optId, remark: str(200), department_id: optId, charge: money.optional(), vat: money.optional(), wht: money.optional() });
+const depBody = z.object({ cheque_ids: z.array(uuid).min(1, 'เลือกเช็คที่นำฝากอย่างน้อย 1 ใบ').max(500), bank_account_id: uuid, doc_date: isoDate, doc_type_id: optId, remark: str(200), department_id: optId, charge: money.optional(), vat: money.optional(), wht: money.optional(),
+  /** ใบขายลดเช็ค (SQR): ธนาคารรับซื้อเช็คก่อนกำหนด — ผ่านทันทีวันที่ขายลด ค่าขายลดลงดอกเบี้ยจ่าย · ใบกำกับภาษีซื้อ#/ลวท. ของค่าธรรมเนียม */
+  discount: z.boolean().default(false), ref_no: str(30), ref_date: isoDate.nullable().optional().transform((v) => v ?? null) });
+
+/** บันทึกเช็คผ่านทั้งใบนำฝาก/ใบขายลด: Dr เงินฝาก (สุทธิ) + ค่าธรรมเนียม (ขายลด = ดอกเบี้ยจ่าย) + ภาษีซื้อ + ภาษีถูกหัก / Cr บัญชีเช็ครับ */
+async function passSlip(tx: Db, a: Ctx, id: string, pass_date: string) {
+  const h = await tx.selectFrom('doc_header').select(['id', 'doc_no', 'doc_status', 'doc_date', 'journal_id', 'bank_account_id', 'net_amount', 'vat_amount', 'wht_amount', 'discount_amount', 'department_id', 'express_rectype'])
+    .where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', 'BQ').where('deleted_at', 'is', null).executeTakeFirst();
+  if (!h) throw notFound('ใบนำฝากเช็ค');
+  if (h.doc_status === 'C') throw badRequest('ใบนำฝากนี้ถูกยกเลิกแล้ว');
+  if (h.journal_id) throw badRequest('ใบนำฝากนี้ผ่านเช็คแล้ว');
+  if (pass_date < String(h.doc_date).slice(0, 10)) throw badRequest('วันที่ผ่านต้องไม่ก่อนวันที่นำฝาก');
+  const sold = h.express_rectype === 'S';
+  const cs = await tx.selectFrom('fin_cheque').select(['id', 'cheque_no', 'amount', 'status']).where('deposit_header_id', '=', id).where('deleted_at', 'is', null).execute();
+  if (!cs.length) throw badRequest('ใบนำฝากนี้ไม่มีเช็ค');
+  const credits = new Map<string, ReturnType<typeof d>>();
+  for (const c of cs) { const acc = await chequeAcc(tx, a.companyId, c.id, 'R'); credits.set(acc, (credits.get(acc) ?? d(0)).plus(d(c.amount))); }
+  const dr = (acc: string, v: string) => (d(v).isZero() ? [] : [{ account_id: acc, debit: d(v).toFixed(2), credit: '0', department_id: h.department_id }]);
+  const lines = [...dr(await bankAcc(tx, a.companyId, h.bank_account_id), h.net_amount), ...dr(await defAcc(tx, a.companyId, sold ? 'INTEREST_EXPENSE' : 'BANK_CHARGE'), h.discount_amount),
+    ...dr(await defAcc(tx, a.companyId, 'INPUT_VAT'), h.vat_amount), ...dr(await defAcc(tx, a.companyId, 'PREPAID_TAX'), h.wht_amount),
+    ...[...credits].map(([acc, v]) => ({ account_id: acc, debit: '0', credit: v.toFixed(2), department_id: h.department_id }))];
+  const j = await createJournal(tx, await ctxJ(tx, a), { journal_book_id: await bookOf(tx, a.companyId, 'PASS_CHEQUE_RCV'), voucher_date: pass_date, description: `${sold ? 'ขายลดเช็คตามใบขายลด' : 'ผ่านเช็คตามใบนำฝาก'} ${h.doc_no}`, reference: h.doc_no, lines }, '4', { sourceModule: 'BK' });
+  await tx.updateTable('doc_header').set({ journal_id: j.id, gl_posted: 'Y', updated_by: a.userId }).where('id', '=', id).execute();
+  await tx.updateTable('gl_journal').set({ source_header_id: id }).where('id', '=', j.id).execute();
+  for (const c of cs) {
+    await tx.updateTable('fin_cheque').set({ status: '10', pass_date, pass_journal_id: j.id, updated_by: a.userId }).where('id', '=', c.id).execute();
+    await event(tx, a, c.id, pass_date, c.status, '10', sold ? 'ขายลดเช็ค' : null, id);
+  }
+  return { voucher_no: j.voucher_no };
+}
 
 export function chequeRoutes(app: FastifyInstance, db: Db) {
   /** S-BK-04 / S-BK-13 ทะเบียนเช็ครับ/จ่าย + รายการรอนำฝาก/รอผ่าน (S-BK-07/08/09) */
@@ -353,16 +382,18 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
       const net = amount.minus(charge).minus(vat).minus(wht);
       if (charge.lt(0) || vat.lt(0) || wht.lt(0) || net.lte(0)) throw badRequest('ค่าธรรมเนียม/ภาษีต้องไม่ติดลบ และเงินเข้าบัญชีสุทธิต้องมากกว่า 0');
       await tx.updateTable('doc_header').set({ doc_date: b.doc_date, bank_account_id: b.bank_account_id, remark: b.remark, department_id: b.department_id, amount: amount.toFixed(2), discount_amount: charge.toFixed(2),
-        vat_amount: vat.toFixed(2), wht_amount: wht.toFixed(2), net_amount: net.toFixed(2), updated_by: a.userId }).where('id', '=', hid!).execute();
+        vat_amount: vat.toFixed(2), wht_amount: wht.toFixed(2), net_amount: net.toFixed(2), express_rectype: b.discount ? 'S' : null, ref_no: b.discount ? b.ref_no : null, ref_date: b.discount ? b.ref_date : null, updated_by: a.userId }).where('id', '=', hid!).execute();
       await logActivity(tx, a, { module: 'BK', action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
-      return { id: hid!, doc_no: docNo, net_amount: net.toFixed(2) };
+      // ขายลดเช็ค: ธนาคารจ่ายเงินทันที — ผ่านเช็ควันที่ขายลด
+      const passed = b.discount ? await passSlip(tx, a, hid!, b.doc_date) : null;
+      return { id: hid!, doc_no: docNo, net_amount: net.toFixed(2), voucher_no: passed?.voucher_no ?? null };
     });
   };
   app.get('/api/v1/cheque-deposits', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ q: z.string().optional(), limit: z.coerce.number().int().min(1).max(2000).default(300) }), req.query);
     const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
-    const rows = (await sql`SELECT h.id, h.doc_no, h.doc_date, h.remark, h.amount, h.net_amount, h.doc_status, ba.code AS account_code, ba.name AS account_name, j.voucher_no,
+    const rows = (await sql`SELECT h.id, h.doc_no, h.doc_date, h.remark, h.amount, h.net_amount, h.doc_status, h.express_rectype = 'S' AS discount, ba.code AS account_code, ba.name AS account_name, j.voucher_no,
           (SELECT count(*) FROM fin_cheque f WHERE f.deposit_header_id = h.id AND f.deleted_at IS NULL)::int AS cheques, (SELECT max(f.pass_date) FROM fin_cheque f WHERE f.deposit_header_id = h.id AND f.deleted_at IS NULL) AS pass_date
         FROM doc_header h LEFT JOIN md_bank_account ba ON ba.id = h.bank_account_id LEFT JOIN gl_journal j ON j.id = h.journal_id AND j.doc_status <> 'C'
        WHERE h.company_id = ${a.companyId} AND h.doc_class = 'BQ' AND h.deleted_at IS NULL ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})` : sql``}
@@ -373,7 +404,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const h = await slipOf(db, a, id);
-    const full = await db.selectFrom('doc_header as x').leftJoin('md_bank_account as ba', 'ba.id', 'x.bank_account_id').select(['x.doc_type_id', 'x.remark', 'x.discount_amount as charge', 'ba.code as account_code', 'ba.name as account_name']).where('x.id', '=', id).executeTakeFirstOrThrow();
+    const full = await db.selectFrom('doc_header as x').leftJoin('md_bank_account as ba', 'ba.id', 'x.bank_account_id').select(['x.doc_type_id', 'x.remark', 'x.discount_amount as charge', 'ba.code as account_code', 'ba.name as account_name', 'x.ref_no', 'x.ref_date', sql<boolean>`x.express_rectype = 'S'`.as('discount')]).where('x.id', '=', id).executeTakeFirstOrThrow();
     const cheques = await db.selectFrom('fin_cheque as f').leftJoin('md_bank as b', 'b.id', 'f.bank_id').select(['f.id', 'f.cheque_no', 'f.cheque_date', 'b.code as bank_code', 'b.name_th as bank_name', 'f.bank_branch', 'f.amount', 'f.status', 'f.pass_date'])
       .where('f.deposit_header_id', '=', id).where('f.company_id', '=', a.companyId).where('f.deleted_at', 'is', null).orderBy('f.cheque_date').execute();
     const j = h.journal_id ? await db.selectFrom('gl_journal').select(['voucher_no', 'doc_status']).where('id', '=', h.journal_id).executeTakeFirst() : undefined;
@@ -400,29 +431,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const { pass_date } = parse(z.object({ pass_date: isoDate }), req.body);
-    return db.transaction().execute(async (tx) => {
-      const h = await slipOf(tx, a, id);
-      if (h.doc_status === 'C') throw badRequest('ใบนำฝากนี้ถูกยกเลิกแล้ว');
-      if (h.journal_id) throw badRequest('ใบนำฝากนี้ผ่านเช็คแล้ว');
-      if (pass_date < String(h.doc_date).slice(0, 10)) throw badRequest('วันที่ผ่านต้องไม่ก่อนวันที่นำฝาก');
-      const full = await tx.selectFrom('doc_header').select('discount_amount').where('id', '=', id).executeTakeFirstOrThrow();
-      const cs = await tx.selectFrom('fin_cheque').select(['id', 'cheque_no', 'amount', 'status']).where('deposit_header_id', '=', id).where('deleted_at', 'is', null).execute();
-      if (!cs.length) throw badRequest('ใบนำฝากนี้ไม่มีเช็ค');
-      const credits = new Map<string, ReturnType<typeof d>>();
-      for (const c of cs) { const acc = await chequeAcc(tx, a.companyId, c.id, 'R'); credits.set(acc, (credits.get(acc) ?? d(0)).plus(d(c.amount))); }
-      const dr = (acc: string, v: string) => (d(v).isZero() ? [] : [{ account_id: acc, debit: d(v).toFixed(2), credit: '0', department_id: h.department_id }]);
-      const lines = [...dr(await bankAcc(tx, a.companyId, h.bank_account_id), h.net_amount), ...dr(await defAcc(tx, a.companyId, 'BANK_CHARGE'), full.discount_amount),
-        ...dr(await defAcc(tx, a.companyId, 'INPUT_VAT'), h.vat_amount), ...dr(await defAcc(tx, a.companyId, 'PREPAID_TAX'), h.wht_amount),
-        ...[...credits].map(([acc, v]) => ({ account_id: acc, debit: '0', credit: v.toFixed(2), department_id: h.department_id }))];
-      const j = await createJournal(tx, await ctxJ(tx, a), { journal_book_id: await bookOf(tx, a.companyId, 'PASS_CHEQUE_RCV'), voucher_date: pass_date, description: `ผ่านเช็คตามใบนำฝาก ${h.doc_no}`, reference: h.doc_no, lines }, '4', { sourceModule: 'BK' });
-      await tx.updateTable('doc_header').set({ journal_id: j.id, gl_posted: 'Y', updated_by: a.userId }).where('id', '=', id).execute();
-      await tx.updateTable('gl_journal').set({ source_header_id: id }).where('id', '=', j.id).execute();
-      for (const c of cs) {
-        await tx.updateTable('fin_cheque').set({ status: '10', pass_date, pass_journal_id: j.id, updated_by: a.userId }).where('id', '=', c.id).execute();
-        await event(tx, a, c.id, pass_date, c.status, '10', null, id);
-      }
-      return { voucher_no: j.voucher_no };
-    });
+    return db.transaction().execute((tx) => passSlip(tx, a, id, pass_date));
   });
   app.post('/api/v1/cheque-deposits/:id/unpass', async (req) => {
     const a = requireCompany(req);
