@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt } from '@buddy/core';
 import { api, type FiscalYear } from '../../api';
@@ -27,6 +28,7 @@ function PartyList({ kind, eyebrow, title, lead, menu, Form: FormC }: { kind: 'c
   const [status, setStatus] = useState<'A' | 'I' | 'all'>('A');
   const [limit, setLimit] = useState(200);
   const [edit, setEdit] = useState<string | 'new' | null>(null);
+  const [labels, setLabels] = useState(false);
   const list = useQuery({ queryKey: [kind, q, status, limit], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${kind}`, { q, status, limit }), placeholderData: (p) => p });
   useHotkeys({ Insert: can('add') ? () => setEdit('new') : undefined }, []);
   const who = kind === 'customers' ? 'ลูกค้า' : 'ผู้จำหน่าย';
@@ -34,7 +36,8 @@ function PartyList({ kind, eyebrow, title, lead, menu, Form: FormC }: { kind: 'c
   return (
     <div className="page" data-tone={kind === 'customers' ? 'sales' : 'purchase'}>
       <PageHead eyebrow={eyebrow} title={title} lead={lead}
-        actions={can('add') && <button className="primary" onClick={() => setEdit('new')}>+ เพิ่ม{who} <kbd>Ins</kbd></button>} />
+        actions={<>{can('print') && <button onClick={() => setLabels(true)} title="พิมพ์จ่าหน้าซอง/สติ๊กเกอร์ ตามรายการที่ค้นหา">🖨 จ่าหน้าซอง/สติ๊กเกอร์</button>}{can('add') && <button className="primary" onClick={() => setEdit('new')}>+ เพิ่ม{who} <kbd>Ins</kbd></button>}</>} />
+      {labels && <LabelPrint kind={kind} q={q} status={status} onClose={() => setLabels(false)} />}
       <div className="toolbar">
         <input type="search" autoFocus placeholder={`ค้นหารหัส ชื่อ เลขผู้เสียภาษี โทรศัพท์ ผู้ติดต่อ`} value={q} onChange={(e) => { setQ(e.target.value); setLimit(200); }} style={{ minWidth: 320 }} aria-label={`ค้นหา${who}`} />
         <select value={status} onChange={(e) => setStatus(e.target.value as 'A')} aria-label="สถานะ">
@@ -547,5 +550,33 @@ function PartyActivity({ mod, id, view }: { mod: 'AR' | 'AP'; id: string; view: 
         {!!q.data?.periods.length && <tfoot><tr><td colSpan={2} className="r">รวมทั้งปี</td><td className="r"><b><Money v={sum('cash')} blankZero /></b></td><td className="r"><b><Money v={sum('credit')} blankZero /></b></td><td className="r"><b><Money v={sum('debit_note')} blankZero /></b></td><td className="r"><b><Money v={sum('credit_note')} blankZero /></b></td><td className="r"><b><Money v={sum('settled')} blankZero /></b></td></tr></tfoot>}
       </table>
     </div>
+  );
+}
+
+type Label = { id: string; code: string; title: string | null; name: string; address_1: string | null; address_2: string | null; address_3: string | null; zip_code: string | null; phone: string | null; contact: string | null };
+/** พิมพ์รายชื่อลงซองจดหมาย/สติ๊กเกอร์ (คู่มือ S-MF-03) ลูกค้า/ผู้จำหน่ายตามคำค้นของหน้ารายการ */
+function LabelPrint({ kind, q, status, onClose }: { kind: 'customers' | 'suppliers'; q: string; status: string; onClose: () => void }) {
+  const rows = useQuery({ queryKey: [kind, 'labels', q, status], queryFn: () => api.get<Label[]>(`/api/v1/${kind}-labels`, { q, status }) });
+  const [layout, setLayout] = useState<'envelope' | 'sticker'>('sticker');
+  const [attn, setAttn] = useState(true);
+  const [printing, setPrinting] = useState(false);
+  const one = (r: Label) => <div className="lbl">
+    {layout === 'envelope' && <div className="lbl-to">กรุณาส่ง</div>}
+    <b>{[r.title, r.name].filter(Boolean).join(' ')}</b>
+    {attn && r.contact && <div>เรียน คุณ{r.contact}</div>}
+    {[r.address_1, r.address_2, r.address_3].filter(Boolean).map((x, i) => <div key={i}>{x}</div>)}
+    {r.zip_code && <div className="lbl-zip">{r.zip_code}</div>}
+  </div>;
+  const sheet = <div className={`labels l-${layout}`}>{(rows.data ?? []).map((r) => <div key={r.id} className="lbl-cell">{one(r)}</div>)}</div>;
+  return (
+    <Modal title="พิมพ์จ่าหน้าซอง/สติ๊กเกอร์" size="wide" onClose={onClose} footer={<><button onClick={onClose}>ปิด</button><button className="primary" disabled={!rows.data?.length} onClick={() => { setPrinting(true); setTimeout(() => { window.print(); setPrinting(false); }, 80); }}>🖨 พิมพ์ {rows.data?.length ?? 0} รายการ</button></>}>
+      <div className="toolbar">
+        <label>แบบ <select value={layout} onChange={(e) => setLayout(e.target.value as 'sticker')}><option value="sticker">สติ๊กเกอร์ A4 (3 × 8 ดวง)</option><option value="envelope">ซองจดหมาย DL (220 × 110 มม.)</option></select></label>
+        <label className="check"><input type="checkbox" checked={attn} onChange={(e) => setAttn(e.target.checked)} /> พิมพ์ชื่อผู้ติดต่อ</label>
+        <span className="muted small">ตามคำค้น "{q || 'ทั้งหมด'}" · {rows.data?.length ?? 0} รายการ (สูงสุด 2,000)</span>
+      </div>
+      <div className="labels-preview">{sheet}</div>
+      {printing && createPortal(<div className="label-print">{sheet}</div>, document.body)}
+    </Modal>
   );
 }

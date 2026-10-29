@@ -103,6 +103,20 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
    * ตารางสะสมยอดเงินรายงวด (คู่มือ S-AR-01/S-AP-01 แท็บงวด 1–24) — คำนวณสดจากเอกสาร ยอดรวม VAT
    * + ยอดต้นปี (ลูกหนี้/เจ้าหนี้ยกมา) + เช็คที่ยังไม่ผ่านบัญชี
    */
+  /** ที่อยู่สำหรับพิมพ์จ่าหน้าซอง/สติ๊กเกอร์ (S-MF-03) ตามคำค้นและสถานะเดียวกับหน้ารายการ */
+  for (const [path, tbl] of [['customers', 'md_customer'], ['suppliers', 'md_supplier']] as const) {
+    app.get(`/api/v1/${path}-labels`, async (req) => {
+      const a = requireCompany(req);
+      const q = parse(z.object({ q: z.string().optional(), status: z.enum(['A', 'I', 'all']).default('A'), ids: z.string().optional() }), req.query);
+      const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
+      const ids = q.ids?.split(',').filter((x) => /^[0-9a-f-]{36}$/i.test(x));
+      return (await sql`SELECT id, code, title, name, address_1, address_2, address_3, zip_code, phone, contact FROM ${sql.table(tbl)}
+          WHERE company_id = ${a.companyId} AND deleted_at IS NULL ${q.status !== 'all' ? sql`AND status = ${q.status}` : sql``}
+            ${like ? sql`AND (code ILIKE ${like} OR name ILIKE ${like} OR contact ILIKE ${like} OR phone ILIKE ${like})` : sql``} ${ids?.length ? sql`AND id IN (${sql.join(ids)})` : sql``}
+          ORDER BY code LIMIT 2000`.execute(db)).rows;
+    });
+  }
+
   for (const [path, mod] of [['customers', 'AR'], ['suppliers', 'AP']] as const) {
     app.get(`/api/v1/${path}/:id/activity`, async (req) => {
       const a = requireCompany(req);

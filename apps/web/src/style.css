@@ -643,3 +643,28 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .note-lines { display: grid; gap: 4px; margin-top: 8px; }
 .note-line { display: grid; grid-template-columns: 24px 1fr 28px; gap: 4px; align-items: center; }
 .doc-sheet table.ds-lines td { white-space: pre-line; }
+.calc { border: 1px solid var(--line); border-radius: var(--radius); background: #fffef6; padding: 8px; font-family: ui-monospace, monospace; outline: none; }
+.calc:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--tone) 35%, transparent); }
+.calc-tape { max-height: 220px; overflow: auto; text-align: right; }
+.calc-tape div { display: flex; justify-content: flex-end; gap: 8px; } .calc-tape b { width: 16px; text-align: left; }
+.calc-tape .calc-res { border-top: 1px dashed #999; font-weight: 700; }
+.calc-cur { display: flex; justify-content: space-between; font-size: 1.4em; border-top: 2px solid var(--line); margin-top: 6px; padding-top: 4px; }
+/* จ่าหน้าซอง/สติ๊กเกอร์ (S-MF-03) */
+.labels-preview { max-height: 60vh; overflow: auto; background: #e9e9ef; padding: 8px; }
+.labels { background: #fff; color: #000; font-family: 'Sarabun', Tahoma, sans-serif; font-size: 11pt; }
+.labels.l-sticker { display: grid; grid-template-columns: repeat(3, 70mm); grid-auto-rows: 37mm; width: 210mm; padding: 0; }
+.labels.l-sticker .lbl-cell { padding: 4mm 5mm; overflow: hidden; border: 1px dashed #ddd; box-sizing: border-box; }
+.labels.l-envelope .lbl-cell { width: 220mm; height: 110mm; position: relative; border: 1px dashed #ddd; margin-bottom: 4mm; box-sizing: border-box; }
+.labels.l-envelope .lbl { position: absolute; left: 95mm; top: 45mm; font-size: 13pt; }
+.labels .lbl-to { font-size: .9em; margin-bottom: 1mm; }
+.labels .lbl-zip { letter-spacing: 2px; font-weight: 700; }
+.label-print { display: none; }
+@page labels-a4 { size: A4 portrait; margin: 13mm 0 0 0; }
+@page labels-dl { size: 220mm 110mm; margin: 0; }
+@media print {
+  body:has(> .label-print) > #app { display: none !important; }
+  .label-print { display: block; }
+  .label-print .labels.l-sticker { page: labels-a4; }
+  .label-print .lbl-cell { border: 0 !important; }
+  .label-print .labels.l-envelope .lbl-cell { page: labels-dl; break-after: page; margin: 0; }
+}

@@ -42,6 +42,7 @@ import { AssetAccountGroupsPage, AssetFormPage, AssetsPage, DepreciationPage } f
 import { YearEndPage } from './pages/gl/YearEnd';
 import { BackupPage } from './pages/settings/Backup';
 import { ActivityLogPage } from './pages/settings/ActivityLog';
+import { AuxTools } from './components/AuxTools';
 import { DataTablesPage } from './pages/settings/DataTables';
 import { TradeFormPage, TradeListPage } from './pages/docs/TradeDocs';
 import { SettleFormPage, SettleListPage } from './pages/docs/SettleDocs';
@@ -71,7 +72,7 @@ export function App() {
   if (loading) return <div className="boot">กำลังเปิด Buddy Account…</div>;
   if (needsSetup) return <><SetupPage /><Toasts /></>;
   if (!me) return <><LoginPage /><Toasts /></>;
-  return <><Shell /><Toasts /></>;
+  return <><Shell /><AuxTools /><Toasts /></>;
 }
 
 function Shell() {
