@@ -94,16 +94,25 @@ export function dueDate(docDate: string, creditDays: number | null | undefined):
 }
 
 /** เอกสารซื้อ/ขาย (ใช้โครงเดียวกัน) — เส้นทาง API/หน้าจอ, หมวดเอกสาร, เมนูสิทธิ์ */
-export interface TradeKind { path: string; cls: string; module: 'AR' | 'AP'; menu: string; party: 'customer' | 'supplier'; label: string; payments?: boolean; refInvoice?: boolean; route: string }
+export interface TradeKind {
+  path: string; cls: string; module: 'AR' | 'AP'; menu: string; party: 'customer' | 'supplier'; label: string; payments?: boolean; refInvoice?: boolean; route: string;
+  /** ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อ: ไม่ลงบัญชี ไม่ตั้งหนี้ — หัวเอกสารเก็บระบบ SO/PO ตาม Express */
+  order?: 'SO' | 'PO';
+  /** บิลที่อ้างรายการจากใบสั่งขาย (SO) / ใบสั่งซื้อ (PO) ได้ (คู่มือ S-IV-02..04, S-PU-03a) */
+  orderRef?: 'SO' | 'PO';
+}
 export const TRADE_KINDS: TradeKind[] = [
-  { path: 'sales-invoices', cls: 'IV', module: 'AR', menu: 'SA.IV', party: 'customer', label: 'ขายเงินเชื่อ', route: '/sa/invoices' },
-  { path: 'cash-sales', cls: 'HS', module: 'AR', menu: 'SA.IV', party: 'customer', label: 'ขายเงินสด', payments: true, route: '/sa/cash-sales' },
+  { path: 'sales-invoices', cls: 'IV', module: 'AR', menu: 'SA.IV', party: 'customer', label: 'ขายเงินเชื่อ', route: '/sa/invoices', orderRef: 'SO' },
+  { path: 'cash-sales', cls: 'HS', module: 'AR', menu: 'SA.IV', party: 'customer', label: 'ขายเงินสด', payments: true, route: '/sa/cash-sales', orderRef: 'SO' },
   { path: 'ar-debit-notes', cls: 'DR', module: 'AR', menu: 'FI.AR.DR', party: 'customer', label: 'ใบเพิ่มหนี้ (ลูกหนี้)', refInvoice: true, route: '/fi/ar/debit-notes' },
   { path: 'ar-credit-notes', cls: 'CN', module: 'AR', menu: 'FI.AR.SR', party: 'customer', label: 'ใบลดหนี้/รับคืนสินค้า', refInvoice: true, route: '/fi/ar/credit-notes' },
-  { path: 'purchase-invoices', cls: 'RR', module: 'AP', menu: 'PU.RR', party: 'supplier', label: 'ซื้อเงินเชื่อ', route: '/pu/invoices' },
-  { path: 'cash-purchases', cls: 'HP', module: 'AP', menu: 'PU.RR', party: 'supplier', label: 'ซื้อเงินสด', payments: true, route: '/pu/cash-purchases' },
+  { path: 'purchase-invoices', cls: 'RR', module: 'AP', menu: 'PU.RR', party: 'supplier', label: 'ซื้อเงินเชื่อ', route: '/pu/invoices', orderRef: 'PO' },
+  { path: 'cash-purchases', cls: 'HP', module: 'AP', menu: 'PU.RR', party: 'supplier', label: 'ซื้อเงินสด', payments: true, route: '/pu/cash-purchases', orderRef: 'PO' },
   { path: 'ap-debit-notes', cls: 'CP', module: 'AP', menu: 'FI.AP.CP', party: 'supplier', label: 'ใบเพิ่มหนี้ (เจ้าหนี้)', refInvoice: true, route: '/fi/ap/debit-notes' },
   { path: 'ap-credit-notes', cls: 'DN', module: 'AP', menu: 'FI.AP.GR', party: 'supplier', label: 'ใบลดหนี้/ส่งคืนสินค้า', refInvoice: true, route: '/fi/ap/credit-notes' },
+  { path: 'quotations', cls: 'QT', module: 'AR', menu: 'SA.QT', party: 'customer', label: 'ใบเสนอราคา', order: 'SO', route: '/sa/quotations' },
+  { path: 'sales-orders', cls: 'SO', module: 'AR', menu: 'SA.SO', party: 'customer', label: 'ใบสั่งขาย', order: 'SO', route: '/sa/orders' },
+  { path: 'purchase-orders', cls: 'PO', module: 'AP', menu: 'PU.PO', party: 'supplier', label: 'ใบสั่งซื้อ', order: 'PO', route: '/pu/orders' },
 ];
 
 /** ใบเสร็จรับเงิน RE (คู่มือบทที่ 12 S-RE-01) / ใบสำคัญจ่าย PS (บทที่ 11 S-PU-07): ตัดบิลค้างได้หลายใบ ใบลดหนี้ (neg) นำมาหักเป็นยอดลบ */

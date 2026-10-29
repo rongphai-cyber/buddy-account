@@ -19,16 +19,16 @@ const g = (code: string, label: string, phase: MenuItem['phase'], children: Menu
 export const MENU: MenuItem[] = [
   g('PU', 'ซื้อ', 'P3', [
     m('PU.AE', 'จ่ายเงินมัดจำ', 'P3', '/pu/deposits', ['ch11:S-PU-02']),
-    m('PU.PO', 'ใบสั่งซื้อ', 'P3', undefined, ['ch11:S-PU-01']),
+    m('PU.PO', 'ใบสั่งซื้อ', 'P3', '/pu/orders', ['ch11:S-PU-01']),
     m('PU.RR', 'ซื้อเงินเชื่อ / ซื้อเงินสด', 'P3', '/pu/invoices', ['ch11:S-PU-03']),
     m('PU.OE', 'บันทึกค่าใช้จ่ายอื่น ๆ', 'P3', '/pu/other-expense', ['ch11:S-PU-08']),
     m('PU.SUP', 'รายละเอียดผู้จำหน่าย', 'P2', '/ap/suppliers', ['ch07:S-AP-01']),
     m('PU.EXP', 'รายละเอียดค่าใช้จ่ายอื่น ๆ', 'P2', '/ap/other-expenses', ['ch07:S-AP-02']),
   ], '1'),
   g('SA', 'ขาย', 'P3', [
-    m('SA.QT', 'ใบเสนอราคา', 'P3', undefined, ['ch12:S-QT-01']),
+    m('SA.QT', 'ใบเสนอราคา', 'P3', '/sa/quotations', ['ch12:S-QT-01']),
     m('SA.AI', 'รับเงินมัดจำ', 'P3', '/sa/deposits', ['ch12:S-AI-01']),
-    m('SA.SO', 'ใบสั่งขาย', 'P3', undefined, ['ch12:S-SO-01']),
+    m('SA.SO', 'ใบสั่งขาย', 'P3', '/sa/orders', ['ch12:S-SO-01']),
     m('SA.IV', 'ขายเงินเชื่อ / ขายเงินสด', 'P3', '/sa/invoices', ['ch12:S-IV-01', 'ch12:S-CS-01']),
     m('SA.OI', 'บันทึกรายได้อื่น ๆ', 'P3', '/sa/other-income', ['ch12:S-OI-01']),
     m('SA.CUS', 'รายละเอียดลูกค้า', 'P2', '/ar/customers', ['ch07:S-AR-01']),

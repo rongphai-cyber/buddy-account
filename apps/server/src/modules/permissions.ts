@@ -148,6 +148,8 @@ export const API_RULES: Record<string, Rule> = {
     [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M(k.menu, 'cancel')],
   ])),
   'GET /api/v1/trade-defaults/:cls': LOOKUP, 'GET /api/v1/item-search': LOOKUP,
+  'GET /api/v1/orders/open': LOOKUP,
+  ...Object.fromEntries(TRADE_KINDS.filter((k) => k.order && k.cls !== 'QT').map((k) => [`POST /api/v1/${k.path}/:id/lines/:lineId/cancel`, M(k.menu, 'cancel')])),
   ...Object.fromEntries(SETTLE_KINDS.flatMap((k) => [
     [`GET /api/v1/${k.path}`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/open-items`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/:id`, M(k.menu, 'read')],
     [`POST /api/v1/${k.path}`, M(k.menu, 'add')], [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M(k.menu, 'cancel')],

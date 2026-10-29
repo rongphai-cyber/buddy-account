@@ -1093,6 +1093,63 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/wht?form=S03&month=2026-08')).body.rows).toHaveLength(0);
   });
 
+  it('orders (T3.7): quotation/SO/PO no posting, invoice references order lines, remaining qty live, line cancel, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const sup = (await call('GET', '/api/v1/suppliers?q=S200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    // ใบเสนอราคา: กำหนดยืนราคา 30 วัน ไม่ลงบัญชี
+    const qt = await call('POST', '/api/v1/quotations', { doc_type_id: await typeOf('QT'), doc_date: '2026-09-01', party_id: cus, price_type: '2', vat_rate: 7, credit_days: 30, lines: [{ item_id: cpu, qty: 10, unit_price: 100 }] });
+    expect(qt.body).toMatchObject({ doc_no: expect.stringMatching(/^QT\d{7}$/), journal_id: null, net_amount: '1070.00' });
+    expect(String((await call('GET', `/api/v1/quotations/${qt.body.id}`)).body.due_date).slice(0, 10)).toBe('2026-10-01');
+    // ใบสั่งขาย 10 ชิ้น → บิลขายอ้าง 4 ชิ้น → ค้าง 6
+    const so = await call('POST', '/api/v1/sales-orders', { doc_type_id: await typeOf('SO'), doc_date: '2026-09-02', delivery_date: '2026-09-10', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 10, unit_price: 100 }] });
+    expect(so.body).toMatchObject({ journal_id: null });
+    expect((await call('GET', `/api/v1/docs/${so.body.id}/journal`)).body.journals).toEqual([]);
+    const soLine = (await call('GET', `/api/v1/sales-orders/${so.body.id}`)).body.lines[0];
+    expect(soLine).toMatchObject({ ordered_qty: '10.0000', remaining_qty: '10.0000' });
+    expect(String(soLine.delivery_date).slice(0, 10)).toBe('2026-09-10');
+    const open = async () => ((await call('GET', `/api/v1/orders/open?cls=SO&party_id=${cus}`)).body.rows as Array<{ doc_no: string; remaining_qty: string }>).map((r) => `${r.doc_no}:${Number(r.remaining_qty)}`);
+    expect(await open()).toEqual([`${so.body.doc_no}:10`]);
+    const iv = { doc_type_id: ivType, doc_date: '2026-09-05', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 4, unit_price: 100, source_line_id: soLine.id }] };
+    expect((await call('POST', '/api/v1/sales-invoices', { ...iv, lines: [{ ...iv.lines[0], qty: 11 }] })).body.error.message).toMatch(/มากกว่ายอดค้างส่ง/);
+    expect((await call('POST', '/api/v1/ar-debit-notes', { ...iv, doc_type_id: await typeOf('DR'), ref_no: 'X' })).body.error.message).toMatch(/อ้างใบสั่งไม่ได้/);
+    const i1 = await call('POST', '/api/v1/sales-invoices', iv);
+    expect(i1.status).toBe(200);
+    expect(await open()).toEqual([`${so.body.doc_no}:6`]);
+    const sod = (await call('GET', `/api/v1/sales-orders/${so.body.id}`)).body;
+    expect(sod).toMatchObject({ editable: false, deliveries: [{ doc_no: i1.body.doc_no, qty: '4.0000' }] });
+    expect(sod.lines[0]).toMatchObject({ delivered_qty: '4.0000', remaining_qty: '6.0000' });
+    expect((await call('GET', `/api/v1/sales-invoices/${i1.body.id}`)).body.lines[0].source).toMatchObject({ doc_no: so.body.doc_no });
+    expect((await call('PUT', `/api/v1/sales-orders/${so.body.id}`, { doc_type_id: await typeOf('SO'), doc_date: '2026-09-02', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 1 }] })).body.error.message).toMatch(/ส่งของแล้ว/);
+    expect((await call('POST', `/api/v1/sales-orders/${so.body.id}/cancel`, { reason: 'x' })).body.error.message).toMatch(/ยกเลิกยอดค้างรายบรรทัด/);
+    // ยกเลิกยอดค้างรายบรรทัด 2 ชิ้น → ค้าง 4 · บิลแก้เป็น 8 ได้ (4 เดิม + ค้าง 4) → ส่งครบ
+    expect((await call('POST', `/api/v1/sales-orders/${so.body.id}/lines/${soLine.id}/cancel`, { qty: 7, reason_code: '01', date: '2026-09-06' })).body.error.message).toMatch(/ไม่เกินยอดค้าง/);
+    expect((await call('POST', `/api/v1/sales-orders/${so.body.id}/lines/${soLine.id}/cancel`, { qty: 2, reason_code: '01', date: '2026-09-06' })).status).toBe(200);
+    expect(await open()).toEqual([`${so.body.doc_no}:4`]);
+    expect((await call('PUT', `/api/v1/sales-invoices/${i1.body.id}`, { ...iv, lines: [{ ...iv.lines[0], qty: 8 }] })).status).toBe(200);
+    expect(await open()).toEqual([]);
+    expect((await call('POST', `/api/v1/sales-invoices/${i1.body.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect(await open()).toEqual([`${so.body.doc_no}:8`]);
+    // ใบสั่งซื้อ → ซื้อเชื่ออ้างครบ
+    const po = await call('POST', '/api/v1/purchase-orders', { doc_type_id: await typeOf('PO'), doc_date: '2026-09-03', party_id: sup, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 5, unit_price: 80 }] });
+    const poLine = (await call('GET', `/api/v1/purchase-orders/${po.body.id}`)).body.lines[0];
+    const rr = await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2026-09-04', party_id: sup, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 5, unit_price: 80, source_line_id: poLine.id }] });
+    expect(rr.status).toBe(200);
+    expect((await call('GET', `/api/v1/orders/open?cls=PO&party_id=${sup}`)).body.rows).toEqual([]);
+    expect((await call('POST', '/api/v1/sales-invoices', { ...iv, lines: [{ ...iv.lines[0], source_line_id: poLine.id }] })).body.error.message).toMatch(/ไม่พบรายการค้างส่ง/);
+    // บริษัทอื่นมองไม่เห็น
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/orders/open?cls=SO&party_id=${cus}`)).body.rows).toEqual([]);
+    expect((await call('GET', `/api/v1/sales-orders/${so.body.id}`)).status).toBe(404);
+    expect((await call('POST', `/api/v1/sales-orders/${so.body.id}/lines/${soLine.id}/cancel`, { qty: 1, date: '2026-09-06' })).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ล้างข้อมูลทดสอบ (คืนสมุดบัญชีให้ทดสอบถัดไป)
+    for (const [path, id] of [['purchase-invoices', rr.body.id], ['purchase-orders', po.body.id], ['sales-orders', so.body.id], ['quotations', qt.body.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)
