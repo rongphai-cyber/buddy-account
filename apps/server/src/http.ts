@@ -57,6 +57,10 @@ export interface AuthContext {
   companyId: string | null;
   branchId: string | null;
   workDate: string | null;
+  /** ระดับอนุมัติ 0–9 (สิทธิ์พื้นฐาน) · ตรวจสอบสิทธิ์ตามตาราง · กลุ่มผู้ใช้ — ใช้ตรวจสิทธิ์รายเมนู (คู่มือบทที่ 23) */
+  approvalLevel: number;
+  checkRights: boolean;
+  groupId: string | null;
 }
 
 declare module 'fastify' {

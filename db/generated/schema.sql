@@ -142,7 +142,7 @@ CREATE TABLE sys_user (
   password_hash text,
   user_group_id uuid,
   approval_level smallint DEFAULT 0 NOT NULL CHECK (approval_level BETWEEN 0 AND 9),
-  check_rights boolean DEFAULT true NOT NULL,
+  check_rights boolean DEFAULT false NOT NULL,
   menu_language char(2) DEFAULT 'th' NOT NULL,
   default_printer varchar(60),
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
@@ -164,7 +164,7 @@ COMMENT ON COLUMN sys_user.display_name IS 'ชื่อผู้ใช้';
 COMMENT ON COLUMN sys_user.password_hash IS 'รหัสผ่านแบบ hash (argon2/bcrypt) — เก็บใน client เพื่อเข้าระบบตอนออฟไลน์';
 COMMENT ON COLUMN sys_user.user_group_id IS 'กลุ่มผู้ใช้';
 COMMENT ON COLUMN sys_user.approval_level IS 'ระดับอนุมัติ 0–9';
-COMMENT ON COLUMN sys_user.check_rights IS 'ตรวจสิทธิ์ตามตารางสิทธิ์';
+COMMENT ON COLUMN sys_user.check_rights IS 'ตรวจสอบสิทธิ์ก่อนใช้งาน: true = จำกัดเพิ่มตามตารางสิทธิ์รายเมนู (sys_permission), false = ใช้สิทธิ์พื้นฐานตามระดับอนุมัติ (คู่มือบทที่ 23)';
 COMMENT ON COLUMN sys_user.menu_language IS 'ภาษาเมนู th/en';
 COMMENT ON COLUMN sys_user.default_printer IS 'เครื่องพิมพ์ประจำ';
 COMMENT ON COLUMN sys_user.status IS 'สถานะ';

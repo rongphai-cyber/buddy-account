@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MENU, flattenMenu, formatDate, type MenuItem } from '@buddy/core';
 import { useSession } from './session';
+import type { Me } from './api';
 import { cx, DateInput, Modal, Toasts, toastError, useHotkeys } from './ui';
 import { LoginPage, SetupPage } from './pages/Login';
 import { HomePage } from './pages/Home';
@@ -10,6 +11,7 @@ import { JournalsPage } from './pages/gl/Journals';
 import { JournalFormPage } from './pages/gl/JournalForm';
 import { BooksPage } from './pages/gl/Books';
 import { TemplatesPage } from './pages/gl/Templates';
+import { PermissionsPage } from './pages/settings/Permissions';
 import { PriorYearPage } from './pages/gl/PriorYear';
 import { BudgetPage } from './pages/gl/Budget';
 import { AccountDetailPage } from './pages/reports/AccountDetail';
@@ -85,12 +87,12 @@ function Shell() {
       <nav className="sidebar" aria-label="เมนูหลัก">
         <button className="mini-btn" onClick={() => setMini((x) => !x)} title={mini ? 'ขยายเมนู' : 'ย่อเมนู'}>{mini ? '»' : '«'}</button>
         <NavLink to="/" end className={({ isActive }) => cx('menu-home', isActive && 'on')} data-tone="home"><span className="hot">H</span><span className="lbl">หน้าแรก</span></NavLink>
-        {MENU.map((g) => (
+        {MENU.filter((g) => canSee(g, me.perms)).map((g) => (
           <div key={g.code} id={`menu-${g.code}`} className={cx('menu', open === g.code && 'open')} data-tone={TONE[g.code]}>
             <button className="menu-head" onClick={() => { setOpen(open === g.code ? null : g.code); setMini(false); }} aria-expanded={open === g.code} title={`${g.label} (Alt+${g.hotkey})`}>
               <span className="hot">{g.hotkey}</span><span className="lbl">{g.label}</span>
             </button>
-            {open === g.code && !mini && <div className="sub">{g.children!.map((it) => <MenuEntry key={it.code} it={it} />)}</div>}
+            {open === g.code && !mini && <div className="sub">{g.children!.filter((it) => canSee(it, me.perms)).map((it) => <MenuEntry key={it.code} it={it} perms={me.perms} />)}</div>}
           </div>
         ))}
       </nav>
@@ -111,6 +113,7 @@ function Shell() {
           <Route path="/settings/departments" element={<DepartmentsPage />} />
           <Route path="/settings/branches" element={<BranchesPage />} />
           <Route path="/settings/users" element={<UsersPage />} />
+          <Route path="/settings/permissions" element={<PermissionsPage />} />
           <Route path="/companies/new" element={<NewCompanyPage />} />
           <Route path="/account/password" element={<PasswordPage />} />
           <Route path="/admin/import" element={<ImportPage />} />
@@ -130,8 +133,14 @@ function Shell() {
   );
 }
 
-function MenuEntry({ it }: { it: MenuItem }) {
-  if (it.children) return <div className="sub-group"><div className="sub-title">{it.label}</div>{it.children.map((c) => <MenuEntry key={c.code} it={c} />)}</div>;
+/** เมนูที่เปิดใช้แล้วแสดงเฉพาะที่มีสิทธิ์อ่าน (คู่มือบทที่ 23) · เมนูที่อยู่ในแผนแสดงเสมอ */
+function canSee(it: MenuItem, perms: Me['perms'] | undefined): boolean {
+  if (it.children) return it.children.some((c) => canSee(c, perms));
+  return !it.route || perms?.[it.code]?.read !== false;
+}
+
+function MenuEntry({ it, perms }: { it: MenuItem; perms: Me['perms'] | undefined }) {
+  if (it.children) return <div className="sub-group"><div className="sub-title">{it.label}</div>{it.children.filter((c) => canSee(c, perms)).map((c) => <MenuEntry key={c.code} it={c} perms={perms} />)}</div>;
   if (it.route) return <NavLink to={it.route} className={({ isActive }) => cx('sub-item', isActive && 'on')}>{it.label}</NavLink>;
   return <NavLink to={`/planned/${it.code}`} className={({ isActive }) => cx('sub-item', 'planned', isActive && 'on')} title={`อยู่ในแผน เฟส ${it.phase}`}>{it.label}<span className="phase">{it.phase}</span></NavLink>;
 }

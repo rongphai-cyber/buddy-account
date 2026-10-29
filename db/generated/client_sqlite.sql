@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
   password_hash TEXT,
   user_group_id TEXT REFERENCES sys_user_group(id) DEFERRABLE INITIALLY DEFERRED,
   approval_level INTEGER NOT NULL DEFAULT 0 CHECK (approval_level BETWEEN 0 AND 9),
-  check_rights INTEGER NOT NULL DEFAULT 1,
+  check_rights INTEGER NOT NULL DEFAULT 0,
   menu_language TEXT NOT NULL DEFAULT 'th',
   default_printer TEXT,
   status TEXT NOT NULL DEFAULT 'A' CHECK (status IN ('A','I')),

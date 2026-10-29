@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { d, fmt, journalTotals, todayIso, formatDate } from '@buddy/core';
 import { api, type Book, type Department, type Template, type TemplateDetail } from '../../api';
-import { useSession } from '../../session';
+import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
@@ -41,7 +41,8 @@ export function JournalFormPage() {
   const [nextNo, setNextNo] = useState('');
   const [saves, setSaves] = useState(0); // นับครั้งที่บันทึก — ให้ดึงเลขที่ถัดไปใหม่หลัง "บันทึก+ใหม่"
   const gridRef = useRef<HTMLDivElement>(null);
-  const editable = isNew || !!doc.data?.editable;
+  const can = useCan('GL.JNL');
+  const editable = (isNew ? can('add') : can('edit')) && (isNew || !!doc.data?.editable);
   // ต้นแบบวิธีการบันทึก (S-GL-05): เลือกจาก 🔍/F4 ที่ช่องเลขที่ใบสำคัญ หรือขึ้นอัตโนมัติตามต้นแบบของสมุด (S-GL-09)
   const templates = useTemplates();
   const [tplPick, setTplPick] = useState<string | null>(null);
@@ -138,7 +139,7 @@ export function JournalFormPage() {
   };
   const leave = (to: string) => (dirty && editable ? setLeaveAsk(to) : nav(to));
   useHotkeys({
-    F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': () => !isNew && editable && setCancelAsk(true), 'Ctrl+F6': () => isNew && setCopyPick(true),
+    F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': () => !isNew && editable && can('cancel') && setCancelAsk(true), 'Ctrl+F6': () => isNew && setCopyPick(true),
     'Alt+P': () => window.print(), 'Ctrl+Insert': addLine, 'Alt+N': () => leave('/gl/journals/new'), Escape: () => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`),
   }, [h, lines, editable, dirty, busy]);
 
@@ -168,7 +169,7 @@ export function JournalFormPage() {
           <button disabled={!editable || busy} onClick={() => save(true)} title="บันทึกแล้วขึ้นใบใหม่ (Ctrl+Enter)">บันทึก+ใหม่</button>
         </div>
         <div className="tb-group">
-          <button disabled={isNew || !editable} onClick={() => setCancelAsk(true)} title="ยกเลิกเอกสาร (Alt+C)">ยกเลิกเอกสาร</button>
+          <button disabled={isNew || !editable || !can('cancel')} onClick={() => setCancelAsk(true)} title={can('cancel') ? 'ยกเลิกเอกสาร (Alt+C)' : 'ไม่มีสิทธิ์ยกเลิกเอกสาร'}>ยกเลิกเอกสาร</button>
           <button onClick={() => window.print()} title="พิมพ์ (Alt+P)">พิมพ์</button>
         </div>
         <div className="tb-group"><button onClick={() => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`)} title="กลับไปรายการ (Esc)">รายการ <kbd>Esc</kbd></button></div>

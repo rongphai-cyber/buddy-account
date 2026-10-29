@@ -134,7 +134,7 @@ export interface SysUserTable {
   user_group_id: Gen<string | null>;
   /** ระดับอนุมัติ 0–9 */
   approval_level: Gen<number>;
-  /** ตรวจสิทธิ์ตามตารางสิทธิ์ */
+  /** ตรวจสอบสิทธิ์ก่อนใช้งาน: true = จำกัดเพิ่มตามตารางสิทธิ์รายเมนู (sys_permission), false = ใช้สิทธิ์พื้นฐานตามระดับอนุมัติ (คู่มือบทที่ 23) */
   check_rights: Gen<boolean>;
   /** ภาษาเมนู th/en */
   menu_language: Gen<string>;

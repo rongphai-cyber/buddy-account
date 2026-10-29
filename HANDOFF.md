@@ -8,10 +8,11 @@
 ## สถานะ
 - ตั้งค่าครั้งแรกครบ: git + GitHub (`rongphai-cyber/buddy-account`, private), PostgreSQL ของ Buddy, ข้อมูล TESTRice → DEMO, smoke test
 - เฟส P1 ที่ทำได้ตอนนี้เสร็จทั้งหมด (T1.10–T1.14, T1.16) — ค้าง T1.15 (รอ P3 แฟ้มภาษี) และ T1.17 (ทำพร้อม P2)
-- ความครอบคลุมหน้าจอ: เสร็จ 38 / 248 (ดู `docs/04_ความครอบคลุมหน้าจอ.md`)
+- P0: T0.10 สิทธิ์ 7 ชนิดรายเมนูเสร็จ (`apps/server/src/modules/permissions.ts` — API ใหม่ต้องเพิ่มกฎใน `API_RULES` ไม่งั้นถูกปฏิเสธ และทดสอบ "every API route has a permission rule" ล้ม)
+- ความครอบคลุมหน้าจอ: เสร็จ 40 / 248 (ดู `docs/04_ความครอบคลุมหน้าจอ.md`)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
-1. P0 ความปลอดภัย: **T0.10** สิทธิ์ 7 ชนิดรายเมนู (S-SEC-03) บังคับที่ API ทุกเส้น → **T0.14** Row-Level Security
+1. P0 ความปลอดภัย: **T0.14** Row-Level Security (กำลังทำ — เจ้าของสั่ง "Security P0" 29/10/2569)
 2. หรือ P2: **T2.1** ค่าเริ่มต้นทุกระบบ → T2.2 … T2.5 (แล้วทำ T1.17 ตารางข้อมูลพร้อมกัน)
 - คำถามค้าง: เจ้าของวางไฟล์ `docs/50ทวิ.pdf` และ `docs/ChartOfAccount_with_English.xlsx` ไว้ (ยังไม่ commit) — ยังไม่ได้บอกว่าใช้ทำอะไร
 - ข้อสันนิษฐานที่รอยืนยัน: ฐานของคอลัมน์ "% ของยอดขาย" (PCENTn) = บรรทัดแรกที่มียอด
@@ -29,7 +30,7 @@
 - รหัสผ่าน admin อยู่ใน `.data/ข้อมูลเข้าระบบ-ผู้ดูแล.txt` (อ่านด้วยสคริปต์ ห้ามแสดง)
 - ชุดทดสอบก่อนส่งงาน (CLAUDE.md ข้อ 14–15):
   - `pnpm test` (core 9 + API 20 + schema) · `pnpm typecheck` · `pnpm --filter @buddy/web build`
-  - smoke: `PASS=<จากไฟล์> BASE=http://localhost:4100 OUT=<scratchpad>/shots node apps/web/e2e/smoke.cjs` (18 ขั้น)
+  - smoke: `PASS=<จากไฟล์> BASE=http://localhost:4100 OUT=<scratchpad>/shots node apps/web/e2e/smoke.cjs` (19 ขั้น)
   - ยอดเงิน: งบทดลอง DEMO ปี 2569 คงเหลือต้องเป็น **245,718,317.16** ทั้งสองด้าน (ปี 2568 คงเหลือ 181,398,941.31)
 - ทดลองหน้าจอที่ "บันทึก" ข้อมูล: ใช้ server ทดสอบแยก (PGlite, `BUDDY_DATA_DIR=<scratchpad>/buddy-test PORT=4101`, admin/buddy1234) อย่าเขียนข้อมูลลง DEMO
 - นำข้อมูลใหม่ทั้งหมด (ถ้าจำเป็น): drop DB buddy → `node tools/local-pg/pg.mjs run -- bash tools/express-import/import.sh D:/ACC-Program/TESTRice - TESTRice` → ตรวจงบทดลอง 2553 = 245,718,317.16 → `... run -- python tools/demo-data/make_demo.py - TESTRice DEMO` → `... run -- pnpm --silent --filter @buddy/server cli create-admin admin "ผู้ดูแลระบบ" <รหัสจากไฟล์>`
@@ -49,3 +50,5 @@
 - `useHotkeys` เป็นชั้น (layer) — Modal กั้นไม่ให้ปุ่มลัดทะลุไปหน้าหลัง (แก้แล้วใน T1.10)
 - ตารางใน Modal ต้องไม่หด (`.modal-body > .table-wrap { flex-shrink: 0 }`)
 - สถานะ background task "failed exit 127" หลังสั่งปิด server = ปกติ (เราปิดเอง)
+- ทดสอบ API ที่ใช้ผู้ใช้อื่น: บริษัททดสอบอยู่ในลูกค้า DEFAULT — สร้างผู้ใช้/กลุ่มด้วย tenant_id ของ DEFAULT หรือไม่ส่งเลย (ระบบใช้ลูกค้าเจ้าของบริษัทให้เอง)
+- Playwright: แท็บเป็น role="tab" ไม่ใช่ button

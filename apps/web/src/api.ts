@@ -32,13 +32,16 @@ export const api = {
 
 /* ---------------------------------------------------------------- ชนิดข้อมูลที่ใช้บ่อย */
 export interface Me {
-  user: { id: string; username: string; display_name: string; is_admin: boolean; is_platform: boolean; tenant_id: string | null };
+  user: { id: string; username: string; display_name: string; is_admin: boolean; is_platform: boolean; tenant_id: string | null; approval_level: number; check_rights: boolean };
   company: { id: string; code: string; name_th: string; name_en: string | null; year_system: 'B' | 'C' } | null;
   branch: { id: string; code: string; name: string; tax_branch_no: string } | null;
   branches: Array<{ id: string; code: string; name: string; tax_branch_no: string; is_head_office: boolean }>;
   companies: Array<{ id: string; code: string; name_th: string; year_system: 'B' | 'C' }>;
   work_date: string | null;
+  /** สิทธิ์รายเมนูของบริษัทปัจจุบัน: true = ใช้ได้, 'S' = พิมพ์ออกจอเท่านั้น, false = ไม่มีสิทธิ์ */
+  perms: Record<string, Record<PermAction, boolean | 'S'>>;
 }
+export type PermAction = 'read' | 'add' | 'edit' | 'cancel' | 'delete' | 'print' | 'approve';
 export interface Account {
   id: string; account_no: string; name_th: string; name_en: string | null; parent_id: string | null; parent_no: string | null; level: number;
   account_group: string; is_control: boolean; normal_side: string; use_department: boolean; status: string; line_count: number; has_children: boolean; balance?: string;

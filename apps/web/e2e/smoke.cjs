@@ -194,6 +194,21 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.locator('table.grid tbody tr.row-open').nth(3).click();
     await page.waitForURL(/\/reports\/ledger\?account_id=/, { timeout: 15000 });
   });
+  await step('menu permissions (S-SEC-01/02/03)', async () => {
+    // ดูอย่างเดียว ไม่บันทึก: เลือกกลุ่ม/ผู้ใช้แรก ต้องเห็นตารางสิทธิ์ทุกเมนู และมุมมองตามเมนู
+    await page.goto(BASE + '/settings/permissions');
+    const sel = page.locator('.filters select').first();
+    await sel.waitFor({ timeout: 15000 });
+    await page.waitForTimeout(800);
+    const first = (await sel.locator('option').count()) > 1 ? await sel.locator('option').nth(1).getAttribute('value') : null;
+    if (first) {
+      await sel.selectOption(first);
+      await page.waitForSelector('table.grid tbody tr:nth-child(40)', { timeout: 15000 });
+    } else await page.waitForSelector('.notebox', { timeout: 15000 });   // ยังไม่มีกลุ่ม/ผู้ใช้อื่นนอกจากผู้ดูแล
+    await shot('15j-permissions');
+    await page.getByRole('tab', { name: 'ตามเมนู (ระบบงานที่อนุญาต)' }).click();
+    await page.waitForSelector('table.grid thead', { timeout: 15000 });
+  });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });

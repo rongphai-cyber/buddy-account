@@ -8,6 +8,7 @@ import { openDatabase, type Database } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
+import { API_RULES, REGISTERED_ROUTES } from '../src/modules/permissions.js';
 
 let database: Database;
 let app: FastifyInstance;
@@ -290,6 +291,74 @@ describe('Buddy Account API (PGlite)', () => {
     for (const id of [j1, j2]) await call('POST', `/api/v1/gl/journals/${id}/cancel`, { reason: 'ทดสอบแบบงบแยกแผนก' });   // ไม่ให้กระทบยอดของทดสอบข้อถัดไป
   });
 
+  it('every API route has a permission rule (สิทธิ์ T0.10 ครบทุกเส้น)', () => {
+    const missing = [...REGISTERED_ROUTES].filter((r) => !API_RULES[r]);
+    expect(missing).toEqual([]);
+    expect(REGISTERED_ROUTES.size).toBeGreaterThan(60);
+  });
+
+  it('enforces approval-level base rights and the 7-right menu table (สิทธิ์ 7 ชนิด S-SEC-01/02/03)', async () => {
+    const admin = cookie;
+    const as = async (u: string, p: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: p })).status).toBe(200); return (await call('GET', '/api/v1/auth/me')).body; };
+    const tenant_id = (await call('GET', '/api/v1/tenants')).body.find((t: { code: string }) => t.code === 'DEFAULT').id;   // บริษัททดสอบอยู่ในลูกค้าเริ่มต้น
+    const grp = (await call('POST', '/api/v1/user-groups', { code: 'ACC', name: 'แผนกบัญชี', tenant_id })).body.id;
+    expect((await call('POST', '/api/v1/users', { tenant_id, username: 'clerk0', display_name: 'พนักงาน ระดับ 0', password: 'clerk0pass', approval_level: 0, companies: [companyId] })).status).toBe(200);
+    expect((await call('POST', '/api/v1/users', { tenant_id, username: 'boss5', display_name: 'หัวหน้า ระดับ 5', password: 'boss5pass', approval_level: 5, companies: [companyId] })).status).toBe(200);
+    const ctl = (await call('POST', '/api/v1/users', { tenant_id, username: 'ctl5', display_name: 'ตรวจสิทธิ์', password: 'ctl5pass', approval_level: 5, check_rights: true, user_group_id: grp, companies: [companyId] })).body.id;
+    // ผู้ให้บริการเพิ่มผู้ใช้/กลุ่มโดยไม่ระบุลูกค้า = ใช้ลูกค้าเจ้าของบริษัทที่ให้สิทธิ์ (หรือบริษัทที่เลือกอยู่)
+    const inferred = await call('POST', '/api/v1/users', { username: 'noTenant', display_name: 'ไม่ระบุลูกค้า', password: 'noTenant1', companies: [companyId] });
+    expect(inferred.status).toBe(200);
+    const g2 = (await call('POST', '/api/v1/user-groups', { code: 'ACC2', name: 'กลุ่มที่ไม่ระบุลูกค้า' })).body.id;
+    const listed = (await call('GET', '/api/v1/users')).body;
+    expect(listed.users.find((u: { username: string }) => u.username === 'noTenant').tenant_id).toBe(tenant_id);
+    expect(listed.groups.find((g: { id: string }) => g.id === g2).tenant_id).toBe(tenant_id);
+    const jvBody = { journal_book_id: bookId, voucher_date: '2026-04-01', lines: [{ account_id: expense, debit: '10' }, { account_id: cash, credit: '10' }] };
+
+    // ระดับ 0–4: อ่าน/เพิ่ม/แก้ไข/พิมพ์ได้ ยกเลิก/ลบ/กำหนดค่าโปรแกรม/ระบบความปลอดภัยไม่ได้
+    let me = await as('clerk0', 'clerk0pass');
+    expect([me.perms['GL.JNL'].add, me.perms['GL.JNL'].cancel, me.perms['SET.SEC'].read]).toEqual([true, false, false]);
+    expect((await call('GET', '/api/v1/gl/journals')).status).toBe(200);
+    const jv0 = (await call('POST', '/api/v1/gl/journals', jvBody)).body.id;
+    expect(jv0).toBeTruthy();
+    const c0 = await call('POST', `/api/v1/gl/journals/${jv0}/cancel`, { reason: 'ทดสอบ' });
+    expect(c0.status).toBe(403); expect(c0.body.error.message).toMatch(/ไม่มีสิทธิ์ยกเลิก/);
+    expect((await call('POST', '/api/v1/departments', { code: 'X0', name_th: 'x' })).status).toBe(403);
+    expect((await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).status).toBe(200);
+    expect((await call('GET', '/api/v1/permissions/menus')).status).toBe(403);
+
+    // ระดับ 5–8: ยกเลิกเอกสาร/กำหนดค่าโปรแกรมได้ แต่ระบบความปลอดภัยไม่ได้
+    me = await as('boss5', 'boss5pass');
+    expect((await call('POST', `/api/v1/gl/journals/${jv0}/cancel`, { reason: 'หัวหน้ายกเลิก' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/departments', { code: 'B5', name_th: 'แผนกของหัวหน้า' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/permissions/menus')).status).toBe(403);
+
+    // ตรวจสอบสิทธิ์ก่อนใช้งาน: ยังไม่มีตารางสิทธิ์ = ใช้ไม่ได้
+    me = await as('ctl5', 'ctl5pass');
+    expect(me.perms['GL.JNL'].read).toBe(false);
+    expect((await call('GET', '/api/v1/gl/journals')).status).toBe(403);
+    // ผู้ดูแลกำหนดสิทธิ์: กลุ่ม = สมุดรายวัน อ่าน Y เพิ่ม L แก้ไข N พิมพ์ S, รายงานทั้งหมดอ่านได้ · ผู้ใช้ = งบทดลองอ่านไม่ได้ (ทับสิทธิ์กลุ่ม)
+    cookie = admin;
+    const R = (menu_code: string, v: Partial<Record<string, string>>) => ({ menu_code, can_read: '', can_add: '', can_edit: '', can_cancel: '', can_delete: '', can_print: '', can_approve: '', ...v });
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'G', subject_id: grp, rows: [R('GL.JNL', { can_read: 'Y', can_add: 'L', can_edit: 'N', can_cancel: 'Y', can_print: 'S' }), R('RP', { can_read: 'Y' })] })).status).toBe(200);
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'U', subject_id: ctl, rows: [R('RP.TB', { can_read: 'N' })] })).status).toBe(200);
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'U', subject_id: ctl, rows: [R('RP.TB', { can_read: 'S' })] })).body.error.message).toMatch(/S ใช้ได้เฉพาะช่องพิมพ์/);
+    const eff = (await call('GET', `/api/v1/permissions?subject_type=U&subject_id=${ctl}`)).body;
+    expect([eff.effective['GL.JNL'].read, eff.effective['GL.JNL'].edit, eff.effective['GL.JNL'].print, eff.effective['RP.TB'].read, eff.effective['RP.LEDGER'].read]).toEqual([true, false, 'S', false, true]);
+    const byMenu = (await call('GET', '/api/v1/permissions/by-menu?menu_code=GL.JNL')).body;
+    expect(byMenu.map((r: { code: string; can_add: string }) => [r.code, r.can_add])).toEqual([['ACC', 'L']]);
+    me = await as('ctl5', 'ctl5pass');
+    expect((await call('GET', '/api/v1/gl/journals')).status).toBe(200);
+    const jv1 = (await call('POST', '/api/v1/gl/journals', jvBody)).body.id;
+    expect((await call('PUT', `/api/v1/gl/journals/${jv1}`, jvBody)).status).toBe(403);
+    expect((await call('GET', '/api/v1/reports/ledger?account_id=' + cash + '&from=2026-01-01&to=2026-12-31')).status).toBe(200);
+    expect((await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).status).toBe(403);
+    expect((await call('POST', `/api/v1/gl/journals/${jv1}/cancel`, { reason: 'ทดสอบสิทธิ์' })).status).toBe(200);   // ไม่ให้กระทบยอดของทดสอบข้อถัดไป
+    // ค่า L = บันทึกเหตุการณ์การใช้งาน
+    cookie = admin;
+    const log = (await call('GET', '/api/v1/activity-log')).body as Array<{ action: string; username: string | null }>;
+    expect(log.some((x) => x.action === 'USE_ADD' && x.username === 'ctl5')).toBe(true);
+  });
+
   it('keeps companies separate', async () => {
     const mine = (await call('GET', '/api/v1/gl/journals')).body.rows[0];
     otherCompanyId = (await call('POST', '/api/v1/companies', { code: 'OTHER', name_th: 'อีกบริษัท', fiscal_start: '2026-01-01', chart: 'none' })).body.id;
@@ -395,6 +464,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect(ta.status).toBe(200); expect(tb.status).toBe(200);
     const login = async (u: string, p: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: p }); return r; };
 
+    const bGroup = (await call('GET', '/api/v1/users')).body.groups.find((g: { tenant_id: string | null }) => g.tenant_id === tb.body.id).id;
     // ลูกค้า A สร้างบริษัทของตัวเอง
     expect((await login('a.admin', 'passA1234')).status).toBe(200);
     expect((await call('GET', '/api/v1/auth/me')).body.companies).toHaveLength(0);   // ไม่เห็นบริษัทของผู้ให้บริการ/ลูกค้าอื่น
@@ -408,6 +478,9 @@ describe('Buddy Account API (PGlite)', () => {
     expect(aTpl).toBeTruthy();
     const aFy = (await call('GET', '/api/v1/gl/periods')).body[0].id;
     expect((await call('PUT', '/api/v1/gl/prior-year/entry', { fiscal_year_id: aFy, account_id: aAcc[0].id, opening: {}, periods: [{ period_no: 1, debit: '7' }] })).status).toBe(200);
+    // สิทธิ์รายเมนู (T0.10): กำหนด/ดูสิทธิ์ของกลุ่มลูกค้า B ไม่ได้
+    expect((await call('GET', `/api/v1/permissions?subject_type=G&subject_id=${bGroup}`)).status).toBe(404);
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'G', subject_id: bGroup, rows: [] })).status).toBe(404);
     // คัดลอกผังบัญชีจากบริษัทของลูกค้าอื่นไม่ได้
     expect((await call('POST', '/api/v1/companies', { code: 'A-CO2', name_th: 'x', fiscal_start: '2026-01-01', chart: 'copy', copy_from_company_id: companyId })).status).toBe(403);
     expect((await call('GET', '/api/v1/tenants')).status).toBe(403);

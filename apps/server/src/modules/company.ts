@@ -129,11 +129,23 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   const requireAdmin = (req: Parameters<typeof requireAuth>[0]) => { const a = requireAuth(req); if (!a.isAdmin) throw forbidden('เฉพาะผู้ดูแลระบบ'); return a; };
   /** tenant ที่ผู้ดูแลคนนี้จัดการได้: ผู้ให้บริการระบุได้ทุก tenant (ว่าง = เจ้าหน้าที่ผู้ให้บริการ), ลูกค้าได้เฉพาะของตัวเอง */
   const scopeTenant = (a: AuthContext, requested?: string | null) => (a.isPlatform ? (requested === undefined ? a.tenantId : requested) : a.tenantId);
+  /**
+   * ผู้ให้บริการที่ไม่ได้ระบุลูกค้า: ใช้ลูกค้าเจ้าของบริษัทที่ให้สิทธิ์ (หรือบริษัทที่เลือกอยู่) — กันกรณีเพิ่มผู้ใช้/กลุ่มให้บริษัทของลูกค้าแล้วถูกปฏิเสธ
+   * ระบุ tenant_id: null ตรง ๆ = เจ้าหน้าที่ผู้ให้บริการ
+   */
+  async function tenantFor(a: AuthContext, requested: string | null | undefined, companies: string[] = []) {
+    if (!a.isPlatform || requested !== undefined) return scopeTenant(a, requested) ?? null;
+    const ids = companies.length ? companies : a.companyId ? [a.companyId] : [];
+    if (!ids.length) return null;
+    const ts = [...new Set((await db.selectFrom('sys_company').select('tenant_id').where('id', 'in', ids).execute()).map((c) => c.tenant_id))];
+    if (ts.length > 1) throw badRequest('บริษัทที่ให้สิทธิ์ต้องเป็นของลูกค้ารายเดียวกัน');
+    return ts[0] ?? null;
+  }
 
   app.get('/api/v1/users', async (req) => {
     const a = requireAdmin(req);
     let uq = db.selectFrom('sys_user as u').leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id').leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
-      .select(['u.id', 'u.username', 'u.display_name', 'u.status', 'u.approval_level', 'u.last_login_at', 'u.user_group_id', 'u.tenant_id', 't.code as tenant_code', 'g.code as group_code', 'g.name as group_name'])
+      .select(['u.id', 'u.username', 'u.display_name', 'u.status', 'u.approval_level', 'u.check_rights', 'u.last_login_at', 'u.user_group_id', 'u.tenant_id', 't.code as tenant_code', 'g.code as group_code', 'g.name as group_name'])
       .where('u.deleted_at', 'is', null);
     let gq = db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id']).where('deleted_at', 'is', null);
     if (!a.isPlatform) { uq = uq.where('u.tenant_id', '=', a.tenantId!); gq = gq.where('tenant_id', '=', a.tenantId!); }
@@ -144,7 +156,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   const userBody = z.object({
     username: z.string().trim().min(1, 'ป้อนรหัสผู้ใช้').max(30).regex(/^[A-Za-z0-9_.@-]+$/, 'รหัสผู้ใช้ใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข _ . @ -'),
     display_name: z.string().trim().min(1, 'ป้อนชื่อผู้ใช้').max(120), password: z.string().min(8, 'รหัสผ่านอย่างน้อย 8 ตัวอักษร').optional(),
-    user_group_id: uuid.nullable().optional(), approval_level: z.coerce.number().int().min(0).max(9).default(0), status: z.enum(['A', 'I']).default('A'),
+    user_group_id: uuid.nullable().optional(), approval_level: z.coerce.number().int().min(0).max(9).default(0), check_rights: z.boolean().default(false), status: z.enum(['A', 'I']).default('A'),
     companies: z.array(uuid).default([]), tenant_id: uuid.nullable().optional(),
   });
   /** ตรวจว่ากลุ่มและบริษัทที่กำหนดให้ผู้ใช้อยู่ใน tenant เดียวกับผู้ใช้ — กันการให้สิทธิ์ข้ามลูกค้า */
@@ -162,7 +174,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const a = requireAdmin(req);
     const b = parse(userBody, req.body);
     if (!b.password) throw badRequest('ป้อนรหัสผ่านเริ่มต้น');
-    const tenantId = scopeTenant(a, b.tenant_id) ?? null;
+    const tenantId = await tenantFor(a, b.tenant_id, b.companies);
     await checkUserScope(tenantId, b);
     if (tenantId) {
       const t = await db.selectFrom('sys_tenant').select('max_users').where('id', '=', tenantId).executeTakeFirst();
@@ -172,7 +184,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       }
     }
     return db.transaction().execute(async (tx) => {
-      const u = await tx.insertInto('sys_user').values({ tenant_id: tenantId, username: b.username, display_name: b.display_name, password_hash: await bcrypt.hash(b.password!, 10), user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, status: b.status, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+      const u = await tx.insertInto('sys_user').values({ tenant_id: tenantId, username: b.username, display_name: b.display_name, password_hash: await bcrypt.hash(b.password!, 10), user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, status: b.status, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
       for (const c of b.companies) await tx.insertInto('sys_user_company').values({ company_id: c, user_id: u.id, created_by: a.userId }).execute();
       await logActivity(tx, a, { module: 'SYS', action: 'ADD_USER', table: 'sys_user', rowId: u.id, detail: { username: b.username, tenant_id: tenantId } });
       return u;
@@ -187,7 +199,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     if (id === a.userId && b.status === 'I') throw badRequest('ปิดการใช้งานบัญชีของตัวเองไม่ได้');
     await checkUserScope(cur.tenant_id, b);
     await db.transaction().execute(async (tx) => {
-      const patch: Record<string, unknown> = { username: b.username, display_name: b.display_name, user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, status: b.status, updated_by: a.userId };
+      const patch: Record<string, unknown> = { username: b.username, display_name: b.display_name, user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, status: b.status, updated_by: a.userId };
       if (b.password) patch.password_hash = await bcrypt.hash(b.password, 10);
       await tx.updateTable('sys_user').set(patch).where('id', '=', id).execute();
       await tx.deleteFrom('sys_user_company').where('user_id', '=', id).execute();
@@ -200,7 +212,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   app.post('/api/v1/user-groups', async (req) => {
     const a = requireAdmin(req);
     const b = parse(z.object({ code: z.string().trim().min(1).max(20).regex(/^[A-Za-z0-9_-]+$/), name: z.string().trim().min(1).max(120), tenant_id: uuid.nullable().optional() }), req.body);
-    return db.insertInto('sys_user_group').values({ code: b.code, name: b.name, tenant_id: scopeTenant(a, b.tenant_id) ?? null, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+    return db.insertInto('sys_user_group').values({ code: b.code, name: b.name, tenant_id: await tenantFor(a, b.tenant_id), created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
   });
 
   /* ---------------------------------------------------------------- ลูกค้าผู้ใช้บริการ (tenant) — เฉพาะเจ้าหน้าที่ผู้ให้บริการ */

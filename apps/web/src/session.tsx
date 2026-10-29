@@ -31,3 +31,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
+
+/** สิทธิ์ของผู้ใช้ในเมนูนี้ (ใช้ซ่อน/ปิดปุ่ม — API ตรวจซ้ำเสมอ) · เมนูที่ยังไม่มีในตารางถือว่าใช้ได้ */
+export function useCan(menu: string) {
+  const { me } = useSession();
+  const p = me?.perms?.[menu];
+  return (action: import('./api').PermAction) => !p || p[action] !== false;
+}

@@ -100,7 +100,7 @@ add(T('sys_user', 'ผู้ใช้งาน', 'sys', express='SCUSER (ไฟ�
   C('password_hash', 'text', th='รหัสผ่านแบบ hash (argon2/bcrypt) — เก็บใน client เพื่อเข้าระบบตอนออฟไลน์'),
   lk('user_group_id', 'sys_user_group', 'กลุ่มผู้ใช้'),
   C('approval_level', 'smallint', nn=True, d='0', th='ระดับอนุมัติ 0–9', chk='approval_level BETWEEN 0 AND 9'),
-  C('check_rights', 'bool', nn=True, d='true', th='ตรวจสิทธิ์ตามตารางสิทธิ์'),
+  C('check_rights', 'bool', nn=True, d='false', th='ตรวจสอบสิทธิ์ก่อนใช้งาน: true = จำกัดเพิ่มตามตารางสิทธิ์รายเมนู (sys_permission), false = ใช้สิทธิ์พื้นฐานตามระดับอนุมัติ (คู่มือบทที่ 23)'),
   C('menu_language', 'char2', nn=True, d="'th'", th='ภาษาเมนู th/en'),
   C('default_printer', 'str60', th='เครื่องพิมพ์ประจำ'),
   C('status', 'char1', nn=True, d="'A'", th='สถานะ', chk=ST_ACTIVE),

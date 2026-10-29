@@ -14,6 +14,7 @@ import { reportRoutes } from './modules/gl/reports.js';
 import { templateRoutes } from './modules/gl/templates.js';
 import { priorYearRoutes } from './modules/gl/prior-year.js';
 import { budgetRoutes } from './modules/gl/budget.js';
+import { attachPermissions, permissionRoutes, syncMenus } from './modules/permissions.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -31,8 +32,10 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
     return sendError(reply, new AppError(500, 'INTERNAL', 'เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่หรือติดต่อผู้ดูแล'));
   });
 
-  app.get('/api/v1/health', async () => ({ ok: true, mode: database.mode, version: '0.1.0' }));
   attachAuth(app, db);
+  await syncMenus(db);
+  attachPermissions(app, db);
+  app.get('/api/v1/health', async () => ({ ok: true, mode: database.mode, version: '0.1.0' }));
   app.get('/api/v1/menu', async () => MENU);
   authRoutes(app, db, cfg);
   companyRoutes(app, database);
@@ -40,6 +43,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   templateRoutes(app, db);
   priorYearRoutes(app, db);
   budgetRoutes(app, db);
+  permissionRoutes(app, db);
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {

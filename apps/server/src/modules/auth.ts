@@ -3,6 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
 import { z } from 'zod';
+import { permissionMatrix } from './permissions.js';
 import type { Db } from '../db.js';
 import { AppError, badRequest, parse, requireAuth, unauthorized, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -19,7 +20,7 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     .innerJoin('sys_user as u', 'u.id', 's.user_id')
     .leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id')
     .leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
-    .select(['s.id', 's.user_id', 's.current_company_id', 's.current_branch_id', 's.work_date', 'u.username', 'u.display_name', 'u.status', 'u.tenant_id',
+    .select(['s.id', 's.user_id', 's.current_company_id', 's.current_branch_id', 's.work_date', 'u.username', 'u.display_name', 'u.status', 'u.tenant_id', 'u.approval_level', 'u.check_rights', 'u.user_group_id',
       'g.code as group_code', 'g.tenant_id as group_tenant_id', 't.status as tenant_status', 't.expires_on as tenant_expires'])
     .where('s.token_hash', '=', sha(token))
     .where('s.ended_at', 'is', null)
@@ -34,6 +35,7 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     sessionId: row.id, userId: row.user_id, username: row.username, displayName: row.display_name,
     tenantId: row.tenant_id, isAdmin, isPlatform: isAdmin && !row.tenant_id,
     companyId: row.current_company_id, branchId: row.current_branch_id, workDate: row.work_date,
+    approvalLevel: row.approval_level, checkRights: row.check_rights, groupId: row.user_group_id,
   };
   // บริษัทที่ค้างใน session ต้องยังเข้าได้ (เช่น ถูกถอนสิทธิ์ หรือเป็นของ tenant อื่น)
   if (a.companyId && !(await canAccessCompany(db, a, a.companyId))) { a.companyId = null; a.branchId = null; }
@@ -149,8 +151,10 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const branches = company ? await db.selectFrom('sys_branch').select(['id', 'code', 'name', 'tax_branch_no', 'is_head_office']).where('company_id', '=', company.id).where('deleted_at', 'is', null).orderBy('code').execute() : [];
     const branch = branches.find((b) => b.id === branchId) ?? null;
     return {
-      user: { id: a.userId, username: a.username, display_name: a.displayName, is_admin: a.isAdmin, is_platform: a.isPlatform, tenant_id: a.tenantId },
+      user: { id: a.userId, username: a.username, display_name: a.displayName, is_admin: a.isAdmin, is_platform: a.isPlatform, tenant_id: a.tenantId, approval_level: a.approvalLevel, check_rights: a.checkRights },
       company, branch, branches, companies, work_date: a.workDate,
+      // สิทธิ์รายเมนูของบริษัทนี้ — หน้าจอใช้ซ่อนเมนู/ปุ่ม (ด่านจริงอยู่ที่ API)
+      perms: company ? await permissionMatrix(db, { ...a, companyId: company.id }) : {},
     };
   });
 
