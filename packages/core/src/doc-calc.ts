@@ -178,6 +178,15 @@ export function fifoCost(receipts: Array<{ qty: MoneyInput; value: MoneyInput }>
 }
 
 /** เอกสารสินค้า (คู่มือบทที่ 14): จ่ายใช้ภายใน OU · โอนย้ายระหว่างคลัง RL · ปรับปรุงเพิ่ม/ลด JU · เพิ่ม/ลดต้นทุน CA */
+/** เอกสารธนาคาร (คู่มือบทที่ 13 S-BK-02/03 + รายได้/ค่าใช้จ่ายธนาคาร) — ยอดเงินฝากคำนวณสดจากใบสำคัญของบัญชีเงินฝาก */
+export interface BankKind { path: string; cls: 'BD' | 'BW' | 'BT' | 'BU' | 'BV'; label: string; route: string; short: string }
+export const BANK_KINDS: BankKind[] = [
+  { path: 'bank-deposits', cls: 'BD', label: 'ฝากเงินสด', short: 'ฝาก', route: '/fi/bank/deposits' },
+  { path: 'bank-withdrawals', cls: 'BW', label: 'ถอนเงินสด', short: 'ถอน', route: '/fi/bank/withdrawals' },
+  { path: 'bank-transfers', cls: 'BT', label: 'โอนเงินระหว่างบัญชี', short: 'โอน', route: '/fi/bank/transfers' },
+  { path: 'bank-incomes', cls: 'BU', label: 'รายได้ธนาคาร (ดอกเบี้ยรับ)', short: 'รายได้', route: '/fi/bank/incomes' },
+  { path: 'bank-expenses', cls: 'BV', label: 'ค่าใช้จ่ายธนาคาร (ค่าธรรมเนียม/ดอกเบี้ยจ่าย)', short: 'ค่าใช้จ่าย', route: '/fi/bank/expenses' },
+];
 export interface StockKind { path: string; cls: 'OU' | 'RL' | 'JU' | 'CA'; label: string; route: string }
 export const STOCK_KINDS: StockKind[] = [
   { path: 'stock-issues', cls: 'OU', label: 'จ่ายสินค้าใช้ภายใน', route: '/ic/issues' },

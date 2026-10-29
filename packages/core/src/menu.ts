@@ -57,7 +57,8 @@ export const MENU: MenuItem[] = [
       m('FI.BK.CR', 'ทะเบียนเช็ครับ', 'P4', undefined, ['ch13:S-BK-04']),
       m('FI.BK.PC', 'ผ่านเช็คจ่าย', 'P4', undefined, ['ch13:S-BK-09']),
       m('FI.BK.CP', 'ทะเบียนเช็คจ่าย', 'P4', undefined, ['ch13:S-BK-12']),
-      m('FI.BK.TX', 'ฝาก / ถอน / โอนเงิน', 'P4', undefined, ['ch13:S-BK-02', 'ch13:S-BK-03']),
+      m('FI.BK.TX', 'ฝาก / ถอน / โอนเงิน', 'P4', '/fi/bank/deposits', ['ch13:S-BK-02', 'ch13:S-BK-03']),
+      m('FI.BK.BOOK', 'สมุดเงินฝาก', 'P4', '/fi/bank/book'),
       m('FI.BK.ACC', 'รายละเอียดบัญชีเงินฝาก', 'P2', '/fi/bank-accounts', ['ch07:S-CQ-01', 'ch13:S-BK-01']),
     ]),
     g('FI.VAT', 'ภาษีมูลค่าเพิ่ม', 'P3', [

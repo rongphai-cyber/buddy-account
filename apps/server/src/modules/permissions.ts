@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { BANK_KINDS, BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -188,6 +188,11 @@ export const API_RULES: Record<string, Rule> = {
   'POST /api/v1/stock-counts/adjust': M('IC.COUNT', 'approve'), 'POST /api/v1/stock-counts/reopen': M('IC.COUNT', 'cancel'),
   'GET /api/v1/stock-opening': M('IC.OB', 'read'), 'GET /api/v1/stock-opening/:id': M('IC.OB', 'read'), 'POST /api/v1/stock-opening': M('IC.OB', 'add'),
   'PUT /api/v1/stock-opening/:id': M('IC.OB', 'edit'), 'POST /api/v1/stock-opening/:id/cancel': M('IC.OB', 'cancel'),
+  ...Object.fromEntries(BANK_KINDS.flatMap((k) => [
+    [`GET /api/v1/${k.path}`, M('FI.BK.TX', 'read')], [`GET /api/v1/${k.path}/:id`, M('FI.BK.TX', 'read')], [`POST /api/v1/${k.path}`, M('FI.BK.TX', 'add')],
+    [`PUT /api/v1/${k.path}/:id`, M('FI.BK.TX', 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M('FI.BK.TX', 'cancel')],
+  ])),
+  'GET /api/v1/bank-book': M('FI.BK.BOOK', 'read'),
   'GET /api/v1/serials': M('IC.SERIAL', 'read'), 'GET /api/v1/serials/:id': M('IC.SERIAL', 'read'), 'POST /api/v1/serials': M('IC.SERIAL', 'add'),
   'PUT /api/v1/serials/:id': M('IC.SERIAL', 'edit'), 'DELETE /api/v1/serials/:id': M('IC.SERIAL', 'delete'), 'POST /api/v1/serials/:id/printed': M('IC.SERIAL', 'print'),
   // แฟ้มภาษีซื้อ/ขาย (บทที่ 16)

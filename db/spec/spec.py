@@ -667,6 +667,7 @@ add(T('doc_header', 'หัวเอกสารทุกชนิด (ขาย
   lk('warehouse_id', 'md_warehouse', 'คลัง (เอกสารสินค้า)', 'STTRN.LOCCOD'),
   lk('to_warehouse_id', 'md_warehouse', 'คลังปลายทาง (โอนย้าย)', 'STTRN.PEOPLE'),
   lk('bank_account_id', 'md_bank_account', 'บัญชีเงินฝาก (เอกสารธนาคาร/นำฝาก)', 'BKTRN.BNKACC'),
+  lk('to_bank_account_id', 'md_bank_account', 'โอนเข้าบัญชี (โอนเงินระหว่างบัญชี BT)'),
   C('your_ref', 'str60', th='อ้างอิง/เลขที่ PO ของลูกค้า', src='YOUREF'),
   C('ref_no', 'code30', th='เลขที่ใบกำกับ/บิลของผู้จำหน่าย', src='APTRN.REFNUM / STTRN.REFNUM'),
   C('ref_date', 'date', th='วันที่อ้างอิง', src='STTRN.REFDAT'),

@@ -1607,6 +1607,56 @@ describe('Buddy Account API (PGlite)', () => {
       expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect(await bal()).toBe('');
   });
+  it('bank movements (T4.6): deposit, withdraw, transfer with fee, interest with WHT, bank charge — journals, bank book, edit/cancel, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const gl = async (no: string) => (await sql<{ id: string }>`INSERT INTO gl_account (company_id, account_no, name_th, level, account_group, is_control, normal_side) VALUES (${companyId}, ${no}, ${'เงินฝากทดสอบ ' + no}, 3, '1', false, 'D') RETURNING id`.execute(database.db)).rows[0]!.id;
+    const t1 = (await call('POST', '/api/v1/bank-accounts', { code: 'T1', name: 'กระแสรายวันทดสอบ', account_kind: 'C', gl_account_id: await gl('1112-91') })).body.id;
+    const t2 = (await call('POST', '/api/v1/bank-accounts', { code: 'T2', name: 'ออมทรัพย์ทดสอบ', account_kind: 'S', gl_account_id: await gl('1112-92') })).body.id;
+    const roles = async (id: string) => (await call('GET', `/api/v1/docs/${id}/journal`)).body.journals[0]?.lines.map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${Number(l.debit) || -Number(l.credit)}`).sort();
+    const book = async (b: string) => (await call('GET', `/api/v1/bank-book?bank_account_id=${b}&from=2026-08-01&to=2026-08-31`)).body;
+    const post = async (path: string, cls: string, x: Record<string, unknown>) => (await call('POST', `/api/v1/${path}`, { doc_type_id: await typeOf(cls), doc_date: '2026-08-05', ...x })).body;
+    const bd = await post('bank-deposits', 'BD', { bank_account_id: t1, amount: 1000, remark: 'นำเงินสดฝาก' });
+    expect(bd.doc_no).toBeTruthy();
+    expect(await roles(bd.id)).toEqual(['BANK:1000', 'CASH:-1000']);
+    const bt = await post('bank-transfers', 'BT', { bank_account_id: t1, to_bank_account_id: t2, amount: 300, fee: 15 });
+    expect(bt.net_amount).toBe('315.00');
+    expect(await roles(bt.id)).toEqual(['BANK:-315', 'BANK:300', 'BANK_CHARGE:15']);
+    expect((await call('GET', `/api/v1/bank-transfers/${bt.id}`)).body).toMatchObject({ fee: '15.00', to_bank_account_id: t2 });
+    const bu = await post('bank-incomes', 'BU', { bank_account_id: t1, amount: 100, wht: 1 });
+    expect(await roles(bu.id)).toEqual(['BANK:99', 'BANK_INCOME:-100', 'WHT:1']);
+    const bv = await post('bank-expenses', 'BV', { bank_account_id: t2, amount: 20 });
+    expect(await roles(bv.id)).toEqual(['BANK:-20', 'BANK_EXPENSE:20']);
+    const bw = await post('bank-withdrawals', 'BW', { bank_account_id: t1, amount: 50 });
+    expect(await roles(bw.id)).toEqual(['BANK:-50', 'CASH:50']);
+    // ตรวจข้อมูล
+    expect((await post('bank-transfers', 'BT', { bank_account_id: t1, to_bank_account_id: t1, amount: 1 })).error.message).toMatch(/ต้องต่างกัน/);
+    expect((await post('bank-transfers', 'BT', { bank_account_id: t1, amount: 1 })).error.message).toMatch(/โอนเข้า/);
+    expect((await post('bank-deposits', 'BD', { bank_account_id: t1, amount: 0 })).error.message).toMatch(/มากกว่า 0/);
+    expect((await post('bank-incomes', 'BU', { bank_account_id: t1, amount: 10, wht: 10 })).error.message).toMatch(/น้อยกว่าดอกเบี้ย/);
+    expect((await call('POST', '/api/v1/bank-deposits', { doc_type_id: await typeOf('BW'), doc_date: '2026-08-05', bank_account_id: t1, amount: 1 })).body.error.message).toMatch(/เลือกประเภทเอกสาร/);
+    // สมุดเงินฝาก = ใบสำคัญของบัญชีเงินฝาก (คำนวณสด)
+    let b1 = await book(t1);
+    expect([b1.rows.length, b1.closing]).toEqual([4, '734.00']);
+    expect(b1.rows.map((r: { source_doc_no: string }) => r.source_doc_no).sort()).toEqual([bd.doc_no, bt.doc_no, bu.doc_no, bw.doc_no].sort());
+    expect((await book(t2)).closing).toBe('280.00');
+    expect((await call('GET', `/api/v1/bank-transfers?bank_account_id=${t2}`)).body.rows.map((r: { id: string }) => r.id)).toEqual([bt.id]);
+    // แก้ → ใบสำคัญเดิมแก้ตาม
+    expect((await call('PUT', `/api/v1/bank-deposits/${bd.id}`, { doc_type_id: await typeOf('BD'), doc_date: '2026-08-05', bank_account_id: t1, amount: 1200 })).status).toBe(200);
+    b1 = await book(t1);
+    expect([b1.rows.length, b1.closing]).toEqual([4, '934.00']);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/bank-deposits')).body.rows).toHaveLength(0);
+    expect((await call('GET', `/api/v1/bank-transfers/${bt.id}`)).status).toBe(404);
+    expect((await call('POST', `/api/v1/bank-withdrawals/${bw.id}/cancel`, { reason: 'x' })).status).toBe(404);
+    expect((await call('GET', `/api/v1/bank-book?bank_account_id=${t1}&from=2026-08-01&to=2026-08-31`)).status).toBe(404);
+    expect((await call('POST', '/api/v1/bank-deposits', { doc_type_id: bd.id, doc_date: '2026-08-05', bank_account_id: t1, amount: 1 })).body.error.message).toMatch(/เลือกประเภทเอกสาร/);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    for (const [path, id] of [['bank-deposits', bd.id], ['bank-transfers', bt.id], ['bank-incomes', bu.id], ['bank-expenses', bv.id], ['bank-withdrawals', bw.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect([(await book(t1)).closing, (await book(t2)).closing]).toEqual(['0.00', '0.00']);
+    expect((await call('PUT', `/api/v1/bank-deposits/${bd.id}`, { doc_type_id: await typeOf('BD'), doc_date: '2026-08-05', bank_account_id: t1, amount: 1 })).body.error.message).toMatch(/ยกเลิกแล้ว/);
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

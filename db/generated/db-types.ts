@@ -1880,6 +1880,8 @@ export interface DocHeaderTable {
   to_warehouse_id: Gen<string | null>;
   /** บัญชีเงินฝาก (เอกสารธนาคาร/นำฝาก) */
   bank_account_id: Gen<string | null>;
+  /** โอนเข้าบัญชี (โอนเงินระหว่างบัญชี BT) */
+  to_bank_account_id: Gen<string | null>;
   /** อ้างอิง/เลขที่ PO ของลูกค้า */
   your_ref: Gen<string | null>;
   /** เลขที่ใบกำกับ/บิลของผู้จำหน่าย */

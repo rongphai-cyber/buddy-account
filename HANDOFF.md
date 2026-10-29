@@ -111,7 +111,10 @@
 - ✅ T4.5 ยอดยกมาสินค้า: `modules/docs/stockopening.ts` (/stock-opening) หมวด **OS** is_opening ประเภทเอกสาร `OPEN-IC` (สร้างเมื่อใช้ครั้งแรก) · 1 ใบ = 1 ล็อต (เลขที่+วันที่ก่อนวันเริ่มใช้) movement 1 มูลค่า = ที่ป้อน · ไม่ลงบัญชี · หน้า `pages/inventory/StockOpening.tsx` (/ic/opening เมนู IC.OB)
   - **importer แก้แล้ว**: ใบยกมาสังเคราะห์ "OB-ปี" เคยไปจับประเภท OB ของ Express (= ใบเบิก OU) จึงโผล่ในหน้าจ่ายใช้ภายใน → ตอนนี้เป็นหมวด OS ประเภท OPEN-IC is_opening (DEMO สร้างใหม่แล้ว)
   - ทะเบียนหมายเลขสินค้า: `modules/serials.ts` (/serials + /:id/printed) migration 0017 (ref_code, customer_name, salesperson_id, print_count, last_printed_at) · หน้า `pages/inventory/Serials.tsx` (/ic/serials) บัตรรับประกัน + รายงานประวัติบริการ · TESTRice ไม่มีข้อมูล ISSN (0 แถว)
-- ต่อไป: T4.6 ธนาคาร ฝาก/ถอน/โอน BD BW BT + รายได้/ค่าใช้จ่ายธนาคาร + สมุดเงินฝาก (บทที่ 13)
+- ✅ T4.6 ธนาคาร: core `BANK_KINDS` (BD BW BT BU BV) + buildPosting สาขาเอกสารธนาคาร (บรรทัด line_kind G = บัญชี GL ของบัญชีเงินฝาก ยอด +เข้า/−ออก; อีกฝั่ง CASH/BANK_CHARGE/BANK_INCOME+PREPAID_TAX/BANK_EXPENSE→BANK_CHARGE) · `modules/docs/bankdocs.ts` + /bank-book · migration 0018 doc_header.to_bank_account_id · หน้า `pages/docs/BankDocs.tsx` (/fi/bank/deposits|withdrawals|transfers|incomes|expenses + /fi/bank/book) · journal route BANK_MOVEMENT
+  - สมุดเงินฝาก = `ledgerOf` (แยกจาก /reports/ledger ใน gl/reports.ts) ของบัญชี GL ที่ผูก — ตรวจแล้ว BKTRN ของ Express ไม่ครบ (รายการรับ/จ่ายผ่านบัญชีหลายรายการอยู่แค่ใน GL) จึงไม่ใช้ fin_cheque เป็นสมุด
+  - DEMO ไม่มีหัวเอกสาร BD/BW/BT ของ Express (โอน BT/Bx อยู่ใน BKTRN → fin_cheque ไม่มีเอกสารต้นทาง 431 แถว) parity คงเดิม
+- ต่อไป: T4.7 เช็ค (ทะเบียนเช็ครับ/จ่าย ใบนำฝาก BQ ผ่าน/คืน/ยกเลิก ยอดคงเหลือในเช็ค เช็คยกมา)
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

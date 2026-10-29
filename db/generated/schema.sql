@@ -2047,6 +2047,7 @@ CREATE TABLE doc_header (
   warehouse_id uuid,
   to_warehouse_id uuid,
   bank_account_id uuid,
+  to_bank_account_id uuid,
   your_ref varchar(60),
   ref_no varchar(30),
   ref_date date,
@@ -2134,6 +2135,7 @@ COMMENT ON COLUMN doc_header.ship_via_code IS 'ขนส่งโดย [Express
 COMMENT ON COLUMN doc_header.warehouse_id IS 'คลัง (เอกสารสินค้า) [Express: STTRN.LOCCOD]';
 COMMENT ON COLUMN doc_header.to_warehouse_id IS 'คลังปลายทาง (โอนย้าย) [Express: STTRN.PEOPLE]';
 COMMENT ON COLUMN doc_header.bank_account_id IS 'บัญชีเงินฝาก (เอกสารธนาคาร/นำฝาก) [Express: BKTRN.BNKACC]';
+COMMENT ON COLUMN doc_header.to_bank_account_id IS 'โอนเข้าบัญชี (โอนเงินระหว่างบัญชี BT)';
 COMMENT ON COLUMN doc_header.your_ref IS 'อ้างอิง/เลขที่ PO ของลูกค้า [Express: YOUREF]';
 COMMENT ON COLUMN doc_header.ref_no IS 'เลขที่ใบกำกับ/บิลของผู้จำหน่าย [Express: APTRN.REFNUM / STTRN.REFNUM]';
 COMMENT ON COLUMN doc_header.ref_date IS 'วันที่อ้างอิง [Express: STTRN.REFDAT]';
@@ -4119,6 +4121,8 @@ ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_to_warehouse_id FOREIGN KEY 
 CREATE INDEX IF NOT EXISTS ix_fk_doc_header_to_warehouse_id ON doc_header (to_warehouse_id);
 ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_bank_account_id FOREIGN KEY (bank_account_id) REFERENCES md_bank_account(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_doc_header_bank_account_id ON doc_header (bank_account_id);
+ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_to_bank_account_id FOREIGN KEY (to_bank_account_id) REFERENCES md_bank_account(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_doc_header_to_bank_account_id ON doc_header (to_bank_account_id);
 ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_vat_period_id FOREIGN KEY (vat_period_id) REFERENCES gl_period(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_doc_header_vat_period_id ON doc_header (vat_period_id);
 ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_journal_id FOREIGN KEY (journal_id) REFERENCES gl_journal(id) DEFERRABLE INITIALLY DEFERRED;

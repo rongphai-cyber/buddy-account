@@ -36,7 +36,7 @@ export type Layer = '1' | '2' | '3' | 'S';
 export interface PostingLine { account_id: string | null; debit: Decimal; credit: Decimal; role: string; layer: Layer }
 
 /** หมวดเอกสารที่ลงบัญชีด้วยเครื่องนี้ */
-export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'VR', 'OU', 'JU', 'CA'] as const;
+export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'VR', 'OU', 'JU', 'CA', 'BD', 'BW', 'BT', 'BU', 'BV'] as const;
 
 export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment[], setts: PostSettlement[], r: PostingResolver): PostingLine[] {
   const out: PostingLine[] = [];
@@ -169,6 +169,24 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
           : pick(['1', r.slot(dt, cls, 'COST_ADJ')], ['3', r.def('SUSPENSE')]);
       if (v.gt(0)) { D(inv, v, 'INVENTORY'); C(other, v, cls === 'CA' ? 'COST_ADJ' : 'STOCK_ADJ'); } else { D(other, v.neg(), cls === 'OU' ? 'ISSUE' : 'STOCK_ADJ'); C(inv, v.neg(), 'INVENTORY'); }
     }
+  } else if (cls === 'BD' || cls === 'BW' || cls === 'BT' || cls === 'BU' || cls === 'BV') {
+    // เอกสารธนาคาร (บทที่ 13): บรรทัดบัญชี (line_kind G) = บัญชีเงินฝาก ยอดมีเครื่องหมาย (+ เข้า / − ออก) · อีกฝั่งตามประเภทเอกสาร → บัญชีเพื่อลงรายวัน
+    let inn = d(0), outt = d(0);
+    for (const l of lines) {
+      const v = d(l.net_amount);
+      D(pick(['2', l.account_id]), v, 'BANK');
+      if (v.gt(0)) inn = inn.plus(v); else outt = outt.minus(v);
+    }
+    const side = (role: string, fallback = role) => pick(['1', r.slot(dt, cls, role)], ['3', r.def(fallback)]);
+    if (cls === 'BD') C(side('CASH'), inn, 'CASH');
+    else if (cls === 'BW') D(side('CASH'), outt, 'CASH');
+    else if (cls === 'BT') D(pick(['3', r.def('BANK_CHARGE')]), outt.minus(inn), 'BANK_CHARGE');   // ค่าธรรมเนียม = ออก − เข้า
+    else if (cls === 'BU') {
+      // ดอกเบี้ยรับ: ธนาคารหักภาษี ณ ที่จ่าย → ภาษีถูกหัก ณ ที่จ่าย
+      const wht = d(h.wht_amount ?? 0);
+      D(pick(['3', r.def('PREPAID_TAX')]), wht, 'WHT');
+      C(side('BANK_INCOME'), inn.plus(wht), 'BANK_INCOME');
+    } else D(side('BANK_EXPENSE', 'BANK_CHARGE'), outt, 'BANK_EXPENSE');
   } else if (cls === 'AE' || cls === 'OE') {
     if (cls === 'AE') D(pick(['1', r.slot(dt, cls, 'DEPOSIT_PAID')], ['3', r.def('DEPOSIT_PAID')]), net.minus(vat), 'DEPOSIT_PAID');
     else for (const l of lines) D(lineAccount('PURCHASE', l.item_id), d(l.net_amount), 'EXPENSE');
