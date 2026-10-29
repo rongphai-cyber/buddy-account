@@ -516,11 +516,16 @@ rows = []
 for dn, (d, cls, loc) in SYN.items():
     # เอกสารที่มีเฉพาะในบัตรสต๊อก (ไม่อยู่ใน ARTRN/APTRN) ไม่ใช่ลูกหนี้/เจ้าหนี้ → ระบบสินค้า (กันยอดคงค้างเพี้ยน เช่น RR ที่ถูกตัดชำระแต่ไม่มีบิล)
     module = 'PC' if cls == 'DP' else 'IC'
-    if cls == 'OB' and 'OB' not in DT:
-        DT['OB'] = U('dt', 'OB'); DTCLASS['OB'] = 'OB'
-        insert('md_doc_type', [base(id=DT['OB'], code='OB', doc_class='OB', module='IC', name_th='ยอดยกมาสินค้า (จากการย้ายข้อมูล)', name_en='Opening stock')])
-    rows.append(hdr_row(dn, cls, module, d, warehouse_id=None if cls == 'OB' else WH.get(loc),
-                        remark='[ยอดยกมาสินค้ารายล็อต]' if cls == 'OB' else '[สร้างจากบรรทัดรายการ — Express ไม่มีหัวเอกสาร]'))
+    if cls == 'OB':
+        # ยอดยกมาสินค้า = หมวด OS (is_opening) ประเภทเอกสารของโปรแกรมเอง — "OB-ปี" ห้ามไปจับประเภท OB ของ Express (ซึ่งเป็นใบเบิก OU)
+        if 'OPEN-IC' not in DT:
+            DT['OPEN-IC'] = U('dt', 'OPEN-IC'); DTCLASS['OPEN-IC'] = 'OS'
+            insert('md_doc_type', [base(id=DT['OPEN-IC'], code='OPEN-IC', doc_class='OS', module='IC', name_th='ยอดยกมาสินค้า', name_en='Opening stock')])
+        row = hdr_row(dn, 'OS', module, d, force_class='OS', warehouse_id=None, is_opening=True, remark='[ยอดยกมาสินค้ารายล็อต]')
+        row['doc_type_id'] = DT['OPEN-IC']
+        rows.append(row)
+    else:
+        rows.append(hdr_row(dn, cls, module, d, warehouse_id=WH.get(loc), is_opening=False, remark='[สร้างจากบรรทัดรายการ — Express ไม่มีหัวเอกสาร]'))
     QUALITY['header_synthesized_from_lines'].append(dn)
 done('doc_header', insert('doc_header', rows), 'สร้างจาก STCRD/GLPTTIT ที่ไม่มีหัวเอกสาร')
 

@@ -1550,6 +1550,63 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', `/api/v1/stock-adjustments/${ju.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect(await bal()).toBe('');
   });
+  it('opening stock + serial register (T4.5): lots before go-live feed FIFO/average, no journal, serial CRUD with service history, isolation', async () => {
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const [w1, w2] = (await call('GET', '/api/v1/lookups?types=WH')).body.WH.map((w: { id: string }) => w.id);
+    const it = (await call('POST', '/api/v1/items', { code: '02-TEST-000046', name_th: 'สินค้ายกมา', base_unit_id: unit, std_cost: '1' })).body.id;
+    const bal = async () => (await call('GET', `/api/v1/stock/balances?item_id=${it}`)).body.rows.map((r: { warehouse_id: string; qty: string; value: string }) => `${r.warehouse_id === w1 ? 1 : 2}:${Number(r.qty)}/${r.value}`).sort().join(' ');
+    // ต้องก่อนวันเริ่มใช้ · จำนวน > 0 · ห้ามคลังซ้ำในล็อต
+    const start = (await call('GET', '/api/v1/stock-opening')).body.start_date as string;
+    expect((await call('POST', '/api/v1/stock-opening', { doc_no: 'ยอดยกมา', doc_date: start, lines: [{ item_id: it, warehouse_id: w1, qty: 1, value: 1 }] })).body.error.message).toMatch(/ก่อนวันเริ่มใช้/);
+    expect((await call('POST', '/api/v1/stock-opening', { doc_no: 'ยอดยกมา', doc_date: '2024-12-31', lines: [{ item_id: it, warehouse_id: w1, qty: 0, value: 1 }] })).body.error.message).toMatch(/มากกว่า 0/);
+    expect((await call('POST', '/api/v1/stock-opening', { doc_no: 'ยอดยกมา', doc_date: '2024-12-31', lines: [{ item_id: it, warehouse_id: w1, qty: 1, value: 1 }, { item_id: it, warehouse_id: w1, qty: 1, value: 1 }] })).body.error.message).toMatch(/ซ้ำ/);
+    // ล็อตเก่า 10 @30 (คลัง 1) + 5 @20 (คลัง 2) · ล็อตใหม่ 10 @40 (คลัง 1)
+    const o1 = (await call('POST', '/api/v1/stock-opening', { doc_no: 'RR6712/001', doc_date: '2024-11-30', remark: 'ล็อตเก่า', lines: [{ item_id: it, warehouse_id: w1, qty: 10, value: 300 }, { item_id: it, warehouse_id: w2, qty: 5, value: 100 }] })).body;
+    const o2 = (await call('POST', '/api/v1/stock-opening', { doc_no: 'RR6712/009', doc_date: '2024-12-20', lines: [{ item_id: it, warehouse_id: w1, qty: 10, value: 400 }] })).body;
+    expect(o1.net_amount).toBe('400.00');
+    expect(await bal()).toBe('1:20/700.00 2:5/100.00');
+    expect((await call('GET', `/api/v1/docs/${o1.id}/journal`)).body.journals).toHaveLength(0);
+    expect((await call('POST', '/api/v1/stock-opening', { doc_no: 'RR6712/009', doc_date: '2024-12-20', lines: [{ item_id: it, warehouse_id: w1, qty: 1, value: 1 }] })).body.error.message).toMatch(/มีอยู่แล้ว/);
+    // ไม่ปนกับเอกสารคลังอื่น · ค้นด้วยรหัสสินค้าได้
+    expect((await call('GET', '/api/v1/stock-adjustments?q=RR6712')).body.rows).toHaveLength(0);
+    expect((await call('GET', '/api/v1/stock-opening?q=02-TEST-000046')).body.rows.map((r: { doc_no: string }) => r.doc_no)).toEqual(['RR6712/001', 'RR6712/009']);
+    // FIFO: จ่าย 12 = 10 @30 + 2 @40 = 380
+    const grp = (await sql<{ id: string }>`INSERT INTO md_item_account_group (company_id, code, name_th, cost_method) VALUES (${companyId}, 'FIFO46', 'กลุ่ม FIFO', 'F') RETURNING id`.execute(database.db)).rows[0]!.id;
+    await sql`UPDATE md_item SET account_group_id = ${grp} WHERE id = ${it}`.execute(database.db);
+    const ou = (await call('POST', '/api/v1/stock-issues', { doc_type_id: (await call('GET', '/api/v1/trade-defaults/OU')).body.types[0].id, doc_date: '2026-07-01', lines: [{ item_id: it, warehouse_id: w1, qty: 12 }] })).body;
+    expect(ou.net_amount).toBe('380.00');
+    // แก้ล็อต · ยกเลิก
+    const det = (await call('GET', `/api/v1/stock-opening/${o2.id}`)).body;
+    expect(det.lines.map((l: { qty: string; value: string; cost_unit: string }) => [Number(l.qty), l.value, Number(l.cost_unit)])).toEqual([[10, '400.00', 40]]);
+    expect((await call('PUT', `/api/v1/stock-opening/${o2.id}`, { doc_no: 'RR6712/009', doc_date: '2024-12-20', lines: [{ item_id: it, warehouse_id: w1, qty: 8, value: 320 }] })).status).toBe(200);
+    expect(await bal()).toBe('1:6/240.00 2:5/100.00');
+    // ทะเบียนหมายเลขสินค้า
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const sn = (await call('POST', '/api/v1/serials', { serial_no: 'S/N222000111', machine_no: 'PIII-600', ref_code: 'CDROM ASUS 48X', item_id: it, description: 'ซีดีรอม', sale_date: '2026-07-01', warranty_end: '2027-06-30', customer_id: cus,
+      services: [{ service_date: '2026-08-01', service_by: 'ช่างเอ', detail: 'เปลี่ยนสายแพ' }] })).body.id;
+    expect((await call('POST', '/api/v1/serials', { serial_no: 'S/N222000111' })).body.error.message).toMatch(/มีในทะเบียนแล้ว/);
+    expect((await call('POST', '/api/v1/serials', { serial_no: 'S/N9', sale_date: '2026-07-01', warranty_end: '2026-06-30' })).body.error.message).toMatch(/หมดประกัน/);
+    const one = (await call('GET', `/api/v1/serials/${sn}`)).body;
+    expect(one).toMatchObject({ serial_no: 'S/N222000111', item_code: '02-TEST-000046', ref_code: 'CDROM ASUS 48X', print_count: 0 });
+    expect(one.services.map((s: { detail: string }) => s.detail)).toEqual(['เปลี่ยนสายแพ']);
+    const keep = { serial_no: one.serial_no, machine_no: one.machine_no, ref_code: one.ref_code, item_id: one.item_id, description: one.description, sale_date: '2026-07-01', warranty_end: '2027-06-30', customer_id: cus };
+    expect((await call('PUT', `/api/v1/serials/${sn}`, { ...keep, services: [{ service_date: '2026-08-01', service_by: 'ช่างเอ', detail: 'เปลี่ยนสายแพ' }, { service_date: '2026-09-01', service_by: 'ช่างบี', detail: 'ล้างหัวอ่าน' }] })).status).toBe(200);
+    expect((await call('GET', '/api/v1/serials?q=ASUS&with_services=Y')).body.rows[0].services).toHaveLength(2);
+    expect((await call('POST', `/api/v1/serials/${sn}/printed`)).body.print_count).toBe(1);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/stock-opening')).body.rows).toHaveLength(0);
+    expect((await call('GET', `/api/v1/stock-opening/${o1.id}`)).status).toBe(404);
+    expect((await call('POST', `/api/v1/stock-opening/${o1.id}/cancel`, { reason: 'x' })).status).toBe(404);
+    expect((await call('GET', '/api/v1/serials')).body.rows).toHaveLength(0);
+    expect((await call('PUT', `/api/v1/serials/${sn}`, { serial_no: 'X' })).status).toBe(404);
+    expect((await call('POST', '/api/v1/serials', { serial_no: 'S/N222000111', item_id: it })).body.error.message).toMatch(/ไม่พบสินค้า/);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('DELETE', `/api/v1/serials/${sn}`)).status).toBe(200);
+    for (const [path, id] of [['stock-issues', ou.id], ['stock-opening', o2.id], ['stock-opening', o1.id]])
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect(await bal()).toBe('');
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

@@ -2642,6 +2642,16 @@ export interface MdSerialTable {
   customer_id: Gen<string | null>;
   /** รายละเอียด */
   description: Gen<string | null>;
+  /** รหัสอ้างอิง (สื่อความหมาย เช่น CDROM ASUS 48X) */
+  ref_code: Gen<string | null>;
+  /** ชื่อลูกค้า (กรณีไม่มีรหัส) */
+  customer_name: Gen<string | null>;
+  /** ผู้ขาย */
+  salesperson_id: Gen<string | null>;
+  /** จำนวนครั้งที่พิมพ์บัตรรับประกัน */
+  print_count: Gen<number>;
+  /** พิมพ์บัตรรับประกันล่าสุด */
+  last_printed_at: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

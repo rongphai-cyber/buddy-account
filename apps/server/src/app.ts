@@ -34,6 +34,8 @@ import { vatRoutes } from './modules/vat.js';
 import { stockRoutes } from './modules/stock.js';
 import { stockDocRoutes } from './modules/docs/stockdocs.js';
 import { stockCountRoutes } from './modules/docs/stockcount.js';
+import { stockOpeningRoutes } from './modules/docs/stockopening.js';
+import { serialRoutes } from './modules/serials.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -87,6 +89,8 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   stockRoutes(app, db);
   stockDocRoutes(app, db);
   stockCountRoutes(app, db);
+  stockOpeningRoutes(app, db);
+  serialRoutes(app, db);
   reportRoutes(app, db);
 
   if (existsSync(cfg.webDist)) {

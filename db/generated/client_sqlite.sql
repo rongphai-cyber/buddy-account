@@ -1412,6 +1412,11 @@ CREATE TABLE IF NOT EXISTS md_serial (
   warranty_end TEXT,
   customer_id TEXT REFERENCES md_customer(id) DEFERRABLE INITIALLY DEFERRED,
   description TEXT,
+  ref_code TEXT,
+  customer_name TEXT,
+  salesperson_id TEXT REFERENCES md_salesperson(id) DEFERRABLE INITIALLY DEFERRED,
+  print_count INTEGER NOT NULL DEFAULT 0,
+  last_printed_at TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -3076,7 +3081,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_serial', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'serial_no', NEW.serial_no, 'machine_no', NEW.machine_no, 'category_code', NEW.category_code, 'item_id', NEW.item_id, 'sale_line_id', NEW.sale_line_id, 'sale_date', NEW.sale_date, 'warranty_end', NEW.warranty_end, 'customer_id', NEW.customer_id, 'description', NEW.description, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'serial_no', NEW.serial_no, 'machine_no', NEW.machine_no, 'category_code', NEW.category_code, 'item_id', NEW.item_id, 'sale_line_id', NEW.sale_line_id, 'sale_date', NEW.sale_date, 'warranty_end', NEW.warranty_end, 'customer_id', NEW.customer_id, 'description', NEW.description, 'ref_code', NEW.ref_code, 'customer_name', NEW.customer_name, 'salesperson_id', NEW.salesperson_id, 'print_count', NEW.print_count, 'last_printed_at', NEW.last_printed_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_serial_update_outbox AFTER UPDATE ON md_serial
@@ -3085,7 +3090,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_serial', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'serial_no', NEW.serial_no, 'machine_no', NEW.machine_no, 'category_code', NEW.category_code, 'item_id', NEW.item_id, 'sale_line_id', NEW.sale_line_id, 'sale_date', NEW.sale_date, 'warranty_end', NEW.warranty_end, 'customer_id', NEW.customer_id, 'description', NEW.description, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'serial_no', NEW.serial_no, 'machine_no', NEW.machine_no, 'category_code', NEW.category_code, 'item_id', NEW.item_id, 'sale_line_id', NEW.sale_line_id, 'sale_date', NEW.sale_date, 'warranty_end', NEW.warranty_end, 'customer_id', NEW.customer_id, 'description', NEW.description, 'ref_code', NEW.ref_code, 'customer_name', NEW.customer_name, 'salesperson_id', NEW.salesperson_id, 'print_count', NEW.print_count, 'last_printed_at', NEW.last_printed_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_serial_ver AFTER UPDATE ON md_serial

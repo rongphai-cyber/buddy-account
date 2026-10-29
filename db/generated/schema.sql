@@ -2896,6 +2896,11 @@ CREATE TABLE md_serial (
   warranty_end date,
   customer_id uuid,
   description varchar(200),
+  ref_code varchar(30),
+  customer_name varchar(200),
+  salesperson_id uuid,
+  print_count integer DEFAULT 0 NOT NULL,
+  last_printed_at timestamptz,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -2917,6 +2922,11 @@ COMMENT ON COLUMN md_serial.sale_date IS 'วันที่ขาย [Express: 
 COMMENT ON COLUMN md_serial.warranty_end IS 'สิ้นสุดประกัน [Express: ISSN.EXP_DATE]';
 COMMENT ON COLUMN md_serial.customer_id IS 'ลูกค้า [Express: ISSN.CUSCOD]';
 COMMENT ON COLUMN md_serial.description IS 'รายละเอียด [Express: ISSN.DESCRIP]';
+COMMENT ON COLUMN md_serial.ref_code IS 'รหัสอ้างอิง (สื่อความหมาย เช่น CDROM ASUS 48X) [Express: ISSN.M_INFO]';
+COMMENT ON COLUMN md_serial.customer_name IS 'ชื่อลูกค้า (กรณีไม่มีรหัส) [Express: ISSN.CUSNAM]';
+COMMENT ON COLUMN md_serial.salesperson_id IS 'ผู้ขาย [Express: ISSN.SLMNAM]';
+COMMENT ON COLUMN md_serial.print_count IS 'จำนวนครั้งที่พิมพ์บัตรรับประกัน [Express: ISSN.PRNCNT]';
+COMMENT ON COLUMN md_serial.last_printed_at IS 'พิมพ์บัตรรับประกันล่าสุด [Express: ISSN.PRNDAT]';
 COMMENT ON COLUMN md_serial.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN md_serial.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN md_serial.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -4327,6 +4337,8 @@ ALTER TABLE md_serial ADD CONSTRAINT fk_md_serial_sale_line_id FOREIGN KEY (sale
 CREATE INDEX IF NOT EXISTS ix_fk_md_serial_sale_line_id ON md_serial (sale_line_id);
 ALTER TABLE md_serial ADD CONSTRAINT fk_md_serial_customer_id FOREIGN KEY (customer_id) REFERENCES md_customer(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_md_serial_customer_id ON md_serial (customer_id);
+ALTER TABLE md_serial ADD CONSTRAINT fk_md_serial_salesperson_id FOREIGN KEY (salesperson_id) REFERENCES md_salesperson(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_serial_salesperson_id ON md_serial (salesperson_id);
 ALTER TABLE md_serial ADD CONSTRAINT fk_md_serial_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_md_serial_created_by ON md_serial (created_by);
 ALTER TABLE md_serial ADD CONSTRAINT fk_md_serial_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;

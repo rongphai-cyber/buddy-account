@@ -939,6 +939,11 @@ add(T('md_serial', 'ทะเบียนหมายเลขเครื่อ
   C('warranty_end', 'date', th='สิ้นสุดประกัน', src='ISSN.EXP_DATE'),
   lk('customer_id', 'md_customer', 'ลูกค้า', 'ISSN.CUSCOD'),
   C('description', 'str200', th='รายละเอียด', src='ISSN.DESCRIP'),
+  C('ref_code', 'code30', th='รหัสอ้างอิง (สื่อความหมาย เช่น CDROM ASUS 48X)', src='ISSN.M_INFO'),
+  C('customer_name', 'str200', th='ชื่อลูกค้า (กรณีไม่มีรหัส)', src='ISSN.CUSNAM'),
+  lk('salesperson_id', 'md_salesperson', 'ผู้ขาย', 'ISSN.SLMNAM'),
+  C('print_count', 'int', nn=True, d='0', th='จำนวนครั้งที่พิมพ์บัตรรับประกัน', src='ISSN.PRNCNT'),
+  C('last_printed_at', 'ts', th='พิมพ์บัตรรับประกันล่าสุด', src='ISSN.PRNDAT'),
 ], uniq=[('company_id','serial_no')]))
 add(T('md_serial_service', 'ประวัติการซ่อม/บริการของ Serial', 'md', express='ISSNIT', cols=[
   lk('serial_id', 'md_serial', 'Serial', nn=True),

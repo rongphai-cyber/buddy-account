@@ -74,8 +74,9 @@ export const MENU: MenuItem[] = [
     m('IC.KIT', 'รายละเอียดสินค้าชุด', 'P2', '/ic/kits', ['ch07:S-IC-03']),
     m('IC.SRV', 'รายละเอียดสินค้าบริการ', 'P2', '/ic/services', ['ch07:S-IC-05']),
     m('IC.PRICE', 'ตารางราคาขาย', 'P2', '/ic/prices', ['ch07:S-IC-06']),
+    m('IC.OB', 'ยอดยกมาสินค้า', 'P4', '/ic/opening', ['ch08:S-OB-01', 'ch08:S-OB-02']),
     m('IC.COUNT', 'รายการตรวจนับสินค้า', 'P4', '/ic/counts', ['ch14:S-IC-15', 'ch14:S-IC-17', 'ch14:S-IC-20']),
-    m('IC.SERIAL', 'ทะเบียนหมายเลขสินค้า', 'P4', undefined, ['ch14:S-IC-12']),
+    m('IC.SERIAL', 'ทะเบียนหมายเลขสินค้า', 'P4', '/ic/serials', ['ch14:S-IC-12']),
     m('IC.REORDER', 'กำหนดจุดสั่งซื้อ', 'P2', '/ic/reorder', ['ch07:S-IC-07']),
   ], '4'),
   g('GL', 'บัญชี', 'P1', [
