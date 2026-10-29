@@ -1967,6 +1967,36 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     for (const x of [a1, a2]) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('AR/AP party reports (T5.2/T5.3): outstanding as of a date, aging, status, movement, credit limit, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
+    const cus = (await call('POST', '/api/v1/customers', { code: 'C520', name: 'ลูกค้ารายงาน', tax_id: '0105537095903', credit_days: 30, credit_limit: '1000' })).body.id;
+    const svc = (await sql<{ id: string }>`SELECT id FROM md_item WHERE company_id = ${companyId} AND code = 'SV-TEST-44'`.execute(database.db)).rows[0]!.id;
+    const iv = async (date: string, price: number) => (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: date, party_id: cus, price_type: '0', vat_rate: 0, lines: [{ item_id: svc, qty: 1, unit_price: price }] })).body;
+    const i1 = await iv('2027-02-01', 1000), i2 = await iv('2027-03-10', 500);
+    const re = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2027-03-15', party_id: cus, settlements: [{ invoice_header_id: i1.id, amount: 600 }] })).body;
+    const run = async (code: string, params: Record<string, unknown>) => (await call('POST', `/api/v1/rpt/${code}/run`, { params: { customer_from: 'C520', customer_to: 'C520', ...params } })).body;
+    const out = async (asOf: string) => (await run('1.A.1', { as_of: asOf })).rows.at(-1).c.out;
+    // ณ 28/2: 1,000 · ณ 31/3: 1,000 − 600 + 500 = 900 (รับชำระก่อนวันนั้นเท่านั้น)
+    expect([await out('2027-02-28'), await out('2027-03-14'), await out('2027-03-31')]).toEqual(['1000.00', '1500.00', '900.00']);
+    const det = await run('1.A.2', { as_of: '2027-03-31' });
+    expect(det.rows.filter((r: { t?: string }) => !r.t).map((r: { c: { no: string; out: string } }) => `${r.c.no}:${r.c.out}`)).toEqual([`${i1.doc_no}:400.00`, `${i2.doc_no}:500.00`]);
+    // อายุหนี้ ณ 30/4: i1 ครบ 3/3 → 58 วัน (31–60) · i2 ครบ 9/4 → 21 วัน (1–30)
+    const ag = (await run('1.C.1', { as_of: '2027-04-30' })).rows.at(-1).c;
+    expect([ag.b1, ag.b2, ag.out]).toEqual(['500.00', '400.00', '900.00']);
+    // เกินวงเงิน 1,000: ณ 14/3 ค้าง 1,500 → เกิน 500
+    expect((await run('1.E', { as_of: '2027-03-14' })).rows[0].c).toMatchObject({ code: 'C520', over: '500.00' });
+    // สถานะ มี.ค.: ยกมา 1,000 ขาย 500 รับ 600 คงเหลือ 900 · เคลื่อนไหวตรงกัน
+    expect((await run('1.B', { period: '2027-03' })).rows.at(-1).c).toMatchObject({ open: '1000.00', sales: '500.00', paid: '600.00', close: '900.00' });
+    expect((await run('1.D', { date_from: '2027-03-01', date_to: '2027-03-31' })).rows.at(-1).c).toMatchObject({ debit: '500.00', credit: '600.00', bal: '900.00' });
+    expect((await call('POST', '/api/v1/rpt/1.B/run', { params: { period: '2027-13' } })).body.error.message).toMatch(/งวด/);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await run('1.A.1', { as_of: '2027-03-31' })).rows.at(-1).c.out).toBe('0.00');
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('POST', `/api/v1/ar-receipts/${re.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    for (const x of [i1, i2]) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

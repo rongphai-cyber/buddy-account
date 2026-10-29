@@ -5,6 +5,7 @@ import { findReport, formatDate, type ReportResult, type YearSystem } from '@bud
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { registerReports } from './register.js';
+import { partyReports } from './parties.js';
 
 /**
  * ศูนย์รายงาน (คู่มือบทที่ 17) — รายงานทุกตัวรับขอบเขตชุดเดียวกัน คืนผลรูปแบบเดียว (ReportResult) ให้หน้าจอแสดง พิมพ์ ส่งออก
@@ -58,6 +59,7 @@ export class P {
 
 export function rptRoutes(app: FastifyInstance, db: Db) {
   registerReports();
+  partyReports();
   app.get('/api/v1/rpt/available', async () => ({ codes: [...RUNNERS.keys()] }));
   app.post('/api/v1/rpt/:code/run', async (req) => {
     const a = requireCompany(req);
