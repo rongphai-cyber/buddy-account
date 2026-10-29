@@ -13,7 +13,7 @@ export interface PostHeader {
   wht_amount?: MoneyInput; cash_discount_amount?: MoneyInput; interest_amount?: MoneyInput;
 }
 /** บรรทัดสินค้า (item_id) หรือบรรทัดบัญชี (account_id — เงินสดย่อย) */
-export interface PostLine { item_id: string | null; net_amount: MoneyInput; account_id?: string | null }
+export interface PostLine { item_id: string | null; net_amount: MoneyInput; account_id?: string | null; /** Perpetual: ต้นทุนของบรรทัดที่ตัด/รับสต๊อก */ cost_amount?: MoneyInput; stock_effect?: number | null }
 export interface PostPayment { method_id: string | null; amount: MoneyInput; cheque_id: string | null }
 /** รายการตัดหนี้ในใบเสร็จ/ใบจ่าย · rectype '0' = ตัดเงินมัดจำ (ลงผ่านวิธีชำระ) · '5' = ใบลดหนี้ที่นำมาหัก (ยอดลบ) */
 export interface PostSettlement { amount: MoneyInput; vat: MoneyInput; party_id: string | null; rectype: string | null }
@@ -77,7 +77,19 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
       return pick(['2', g.pur], ['3', r.def('PURCHASES')]);
     }
     if (expense) return pick(['2', g.inv], ['3', r.def('OTHER_EXPENSE')]);
+    if (r.perpetual) return pick(['2', g.inv], ['3', r.def('INVENTORY')]);
     return pick(['2', g.pret], ['3', r.def('PURCHASE_RETURN')]);
+  };
+
+  /** Perpetual (ค่าเริ่มต้นระบบสินค้า ข้อ 4): ขาย Dr ต้นทุนขาย / Cr สินค้า · รับคืน กลับด้าน — ตามต้นทุนของบรรทัดที่ตัด/รับสต๊อก */
+  const perpetualCost = (eff: 1 | -1) => {
+    if (!r.perpetual) return;
+    for (const l of lines) {
+      if (l.stock_effect !== eff || !l.item_id || d(l.cost_amount).isZero()) continue;
+      const { group: g } = r.item(l.item_id);
+      const cogs = pick(['2', g.cogs], ['3', r.def('COGS')]), inv = pick(['2', g.inv], ['3', r.def('INVENTORY')]);
+      if (eff < 0) { D(cogs, d(l.cost_amount), 'COGS'); C(inv, d(l.cost_amount), 'INVENTORY'); } else { D(inv, d(l.cost_amount), 'INVENTORY'); C(cogs, d(l.cost_amount), 'COGS'); }
+    }
   };
 
   if (cls === 'IV' || cls === 'DR' || cls === 'HS') {
@@ -89,10 +101,12 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'SALES');
     C(pick(['3', r.def(vatRole('OUTPUT_VAT'))]), vat, 'OUTPUT_VAT');
     if (!depositUsed.isZero()) D(pick(['3', r.def('DEPOSIT_RECEIVED')]), depositUsed, 'DEPOSIT_RECEIVED');
+    perpetualCost(-1);
   } else if (cls === 'CN') {
     C(partyAr, net, 'AR');
     for (const l of lines) D(lineAccount('SALES_RETURN', l.item_id), d(l.net_amount), 'SALES_RETURN');
     D(pick(['3', r.def(vatRole('OUTPUT_VAT'))]), vat, 'OUTPUT_VAT');
+    perpetualCost(1);
   } else if (cls === 'RR' || cls === 'CP' || cls === 'HP') {
     for (const l of lines) D(lineAccount('PURCHASE', l.item_id), d(l.net_amount), 'PURCHASE');
     D(pick(['3', r.def(vatRole('INPUT_VAT'))]), vat, 'INPUT_VAT');

@@ -96,7 +96,10 @@
 - ✅ T4.1 ยอดสต๊อก: view `v_stock_move` (บรรทัดเอกสาร stock_effect ≠ 0: qty = base_qty × stock_effect, value = cost_amount × stock_effect ยกเว้น movement 8 = cost_amount ตามเครื่องหมาย) + `v_stock_balance` (migration 0016) · API `modules/stock.ts` /stock/balances /stock/card · หน้า `pages/inventory/Stock.tsx` (/ic/stock, เมนู IC.STOCK)
   - STLOC ของ Express 158 คู่ไม่ตรงกับความเคลื่อนไหวใน STCRD ของตัวเอง (ตรวจจาก DBF แล้ว) → importer สร้างใบปรับปรุง MIG-ADJ-IC (JU, movement 8) ให้ยอดสดเท่า STLOC ทั้งจำนวนและมูลค่า → DEMO (สร้างใหม่อีกครั้ง) ตรง 11,802/11,802 คู่ งบทดลองเท่าเดิม
   - inv_stock_balance (STLOC ที่นำเข้า) เก็บไว้ตรวจเทียบเท่านั้น ไม่ใช้ในโปรแกรม · inv_stock_ledger/inv_cost_layer ยังไม่ใช้
-- ต่อไป: T4.2 เอกสารขาย/ซื้อตัดสต๊อก/รับเข้า + คิดต้นทุน (ic.posting_method DEMO = PERIODIC, ic.cost_by_warehouse = true)
+- ✅ T4.2: trade.ts `STOCK_MOVE` (IV/HS 9 −, CN 2 + เฉพาะติ๊กคืน, RR/HP 0 +, DN 7 − เฉพาะติ๊กคืน) เฉพาะ item_type 0 · คลัง = บรรทัด → หัวเอกสาร → ic.main_warehouse → คลังแรก · รับเข้าจากซื้อ = net_amount ของบรรทัด (ก่อน VAT หลังส่วนลด) · จ่าย/รับคืน = ต้นทุน ณ วันที่เอกสาร (`modules/docs/stockcost.ts` + core `averageCost`/`fifoCost` — FIFO คำนวณสดจากประวัติรับเข้า, กลุ่มบัญชี cost_method F) · ตรวจติดลบเมื่อ ic.allow_negative ≠ Y และระดับ ≠ 0
+  - Perpetual: buildPosting `perpetualCost` IV/HS Dr COGS/Cr INVENTORY, CN กลับด้าน, DN ส่งคืนเครดิตบัญชีสินค้า · loader ส่ง cost_amount/stock_effect · DEMO = PERIODIC → parity 97.3% เท่าเดิม · บริษัททดสอบ (ค่าเริ่มต้น PERPETUAL) ทดสอบเดิมอัปเดตให้มีบรรทัดต้นทุนขาย
+  - แก้เอกสาร = ลบบรรทัดเดิมแล้วคิดต้นทุนใหม่ · เอกสารย้อนหลังไม่คิดต้นทุนของรายการจ่ายที่ตามมาใหม่ (บันทึกไว้ — งานคำนวณต้นทุนย้อนหลังค่อยพิจารณา) · ยังไม่ทำ: สินค้าชุดตัดส่วนประกอบ, เตือนขายต่ำกว่าทุน
+- ต่อไป: T4.3 รายการประจำวันสินค้า OU/RL/JU/CA
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ที่เหลือ (รอเจ้าของเลือก): T0.15 สำรอง/กู้คืนรายลูกค้า · T0.16 TOTP/ล็อกหลังผิดรหัส · T0.12 นำเข้า Express ผ่านหน้าจอ

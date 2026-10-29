@@ -5,7 +5,7 @@
  * บรรทัด: line_amount = จำนวน × ราคา − ส่วนลดบรรทัด (ตามประเภทราคาของเอกสาร)
  *         net_amount = ยอดไม่รวม VAT หลังเฉลี่ยส่วนลดท้ายบิล (เครื่องลงบัญชีใช้ยอดนี้ลงบัญชีขาย/ซื้อ)
  */
-import { d, type Decimal, type MoneyInput } from './money.js';
+import { d, Decimal, type MoneyInput } from './money.js';
 
 const r2 = (v: Decimal) => v.toDecimalPlaces(2);
 
@@ -148,3 +148,31 @@ export const BILL_KINDS: BillKind[] = [
   { path: 'ap-bills', cls: 'BR', module: 'AP', menu: 'FI.AP.BR', party: 'supplier', label: 'ใบรับวางบิล', route: '/fi/ap/bills', open: ['RR', 'CP', 'DN'] },
 ];
 
+
+/**
+ * ต้นทุนสินค้าที่จ่ายออก (บทที่ 14 · ตั้งต้นที่กลุ่มบัญชีสินค้า): คำนวณสดจากประวัติความเคลื่อนไหว ไม่เก็บล็อตสะสม
+ * ถัวเฉลี่ย = มูลค่าคงเหลือ ÷ จำนวนคงเหลือ · FIFO = ตัดจากรับเข้าเก่าสุด ต่อจากจำนวนที่จ่ายไปก่อนหน้า
+ * ยอดไม่พอ (ติดลบ/ไม่มีรับเข้า) ใช้ต้นทุนหน่วยล่าสุดที่รู้ หรือ fallback (เช่น ราคาทุนมาตรฐาน)
+ */
+export function averageCost(balanceQty: MoneyInput, balanceValue: MoneyInput, qty: MoneyInput, fallbackUnit: MoneyInput = 0): string {
+  const q = d(balanceQty);
+  const unit = q.gt(0) ? d(balanceValue).div(q) : d(fallbackUnit);
+  return unit.times(d(qty)).toDecimalPlaces(2).toFixed(2);
+}
+export function fifoCost(receipts: Array<{ qty: MoneyInput; value: MoneyInput }>, issuedBefore: MoneyInput, qty: MoneyInput, fallbackUnit: MoneyInput = 0): string {
+  let start = d(issuedBefore), need = d(qty), cost = d(0), pos = d(0), lastUnit = d(fallbackUnit);
+  for (const r of receipts) {
+    const rq = d(r.qty);
+    if (rq.lte(0)) continue;
+    const unit = d(r.value).div(rq);
+    lastUnit = unit;
+    const end = pos.plus(rq);
+    if (need.gt(0) && end.gt(start)) {
+      const take = Decimal.min(end.minus(Decimal.max(start, pos)), need);
+      cost = cost.plus(take.times(unit)); need = need.minus(take); start = start.plus(take);
+    }
+    pos = end;
+  }
+  if (need.gt(0)) cost = cost.plus(need.times(lastUnit));
+  return cost.toDecimalPlaces(2).toFixed(2);
+}

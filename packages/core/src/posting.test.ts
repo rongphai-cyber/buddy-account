@@ -41,6 +41,16 @@ describe('posting engine (บทที่ 10)', () => {
     expect(postingBalanced(p)).toBe(true);
     expect(net(p)).toEqual({ 'exp-svc': '1000.00', ivat: '70.00', 'wht-p': '-30.00', cash: '-1040.00' });
   });
+  it('perpetual: sale posts Dr COGS / Cr inventory at line cost; return reverses (T4.2)', () => {
+    const rp = { ...r, perpetual: true, item: () => ({ type: '0', group: { sales: 'sales-g', cogs: 'cogs-g', inv: 'inv-g' } }) };
+    const p = buildPosting({ id: 'h', doc_class: 'IV', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1' },
+      [{ item_id: 'x', net_amount: '1000', cost_amount: '600', stock_effect: -1 }], [], [], rp);
+    expect(net(p)).toEqual({ 'ar-c1': '1070.00', 'sales-g': '-1000.00', ovat: '-70.00', 'cogs-g': '600.00', 'inv-g': '-600.00' });
+    const c = buildPosting({ id: 'h', doc_class: 'CN', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '107', vat_amount: '7', deposit_amount: '0', vat_basis: '1' },
+      [{ item_id: 'x', net_amount: '100', cost_amount: '60', stock_effect: 1 }], [], [], { ...rp, item: () => ({ type: '0', group: { sret: 'sret-g', cogs: 'cogs-g', inv: 'inv-g' } }) });
+    expect(net(c)).toEqual({ 'ar-c1': '-107.00', 'sret-g': '100.00', ovat: '7.00', 'inv-g': '60.00', 'cogs-g': '-60.00' });
+    expect(postingBalanced(p) && postingBalanced(c)).toBe(true);
+  });
   it('settlement totals: due must equal paid; blank cash takes the rest', () => {
     expect(settlementTotals({ settlements: ['10700', '-1070'], wht: '270', discount: '60', interest: '100', payments: ['9000'] })).toMatchObject({ billed: '9630.00', due: '9400.00', cash: '400.00', ok: true });
     expect(settlementTotals({ settlements: ['1605'], wht: '45', payments: ['1000'], cash: '500' })).toMatchObject({ diff: '60.00', ok: false });

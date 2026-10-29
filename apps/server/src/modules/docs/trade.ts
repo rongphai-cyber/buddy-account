@@ -8,6 +8,7 @@ import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
 import { activeSettlement, cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
+import { checkNegative, issueCost, stockSettings } from './stockcost.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -38,6 +39,10 @@ const body = z.object({
 type Body = z.infer<typeof body>;
 /** บิลที่หักเงินมัดจำได้ (ขายเชื่อ/ขายสด/ซื้อเชื่อ/ซื้อสด) */
 const DEPOSIT_CLASSES = ['IV', 'HS', 'RR', 'HP'];
+/** ผลต่อสต๊อกของเอกสาร (รหัส POSOPR ของ Express): 9 ขาย −, 2 รับคืน +, 0 ซื้อ +, 7 ส่งคืน − */
+const STOCK_MOVE: Record<string, { code: string; eff: 1 | -1; purchase?: boolean; onlyReturn?: boolean }> = {
+  IV: { code: '9', eff: -1 }, HS: { code: '9', eff: -1 }, CN: { code: '2', eff: 1, onlyReturn: true }, RR: { code: '0', eff: 1, purchase: true }, HP: { code: '0', eff: 1, purchase: true }, DN: { code: '7', eff: -1, onlyReturn: true },
+};
 
 /** หัว + บรรทัด + วิธีชำระของเอกสาร (บันทึกใหม่หรือแก้ไข) แล้วลงบัญชีในทรานแซกชันเดียวกัน */
 async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Body) {
@@ -52,7 +57,8 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
   const billTo = b.bill_to_customer_id && K.party === 'customer' ? await db.selectFrom('md_customer').select(['title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no']).where('id', '=', b.bill_to_customer_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
   if (b.bill_to_customer_id && K.party === 'customer' && !billTo) throw badRequest('ไม่พบลูกค้า Bill to');
   const shown = billTo ?? party;
-  const items = await db.selectFrom('md_item').select(['id', 'code', 'name_th', 'item_type', 'vat_code', 'base_unit_id', 'status']).where('company_id', '=', a.companyId).where('id', 'in', [...new Set(b.lines.map((l) => l.item_id))]).where('deleted_at', 'is', null).execute();
+  const items = await db.selectFrom('md_item as i').leftJoin('md_item_account_group as g', 'g.id', 'i.account_group_id')
+    .select(['i.id', 'i.code', 'i.name_th', 'i.item_type', 'i.vat_code', 'i.base_unit_id', 'i.status', 'i.std_cost', 'g.cost_method']).where('i.company_id', '=', a.companyId).where('i.id', 'in', [...new Set(b.lines.map((l) => l.item_id))]).where('i.deleted_at', 'is', null).execute();
   const byId = new Map(items.map((i) => [i.id, i]));
   b.lines.forEach((l, i) => {
     const it = byId.get(l.item_id);
@@ -142,10 +148,29 @@ async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Bod
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: a.branchId ?? (await tx.selectFrom('sys_branch').select('id').where('company_id', '=', a.companyId).where('is_head_office', '=', true).executeTakeFirstOrThrow()).id,
         doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
+    // ตัด/รับสต๊อก + ต้นทุน (T4.2): เฉพาะสินค้าทั่วไป (ชนิด 0) · ลดหนี้/ส่งคืนเฉพาะบรรทัดที่ติ๊กคืนสินค้า
+    const mv = STOCK_MOVE[K.cls];
+    const st = mv ? await stockSettings(tx, a.companyId) : null;
+    const stock: Array<{ warehouse_id: string | null; stock_effect: number; movement_code: string | null; cost_amount: string | null; cost_unit: string | null }> = [];
+    const issues = new Map<string, { itemId: string; warehouseId: string; qty: ReturnType<typeof d>; code: string }>();
+    for (const [i, l] of b.lines.entries()) {
+      const it = byId.get(l.item_id)!;
+      const wh = l.warehouse_id ?? header.warehouse_id ?? st?.mainWarehouseId ?? null;
+      if (!mv || it.item_type !== '0' || (mv.onlyReturn && !l.return_to_stock)) { stock.push({ warehouse_id: wh, stock_effect: 0, movement_code: null, cost_amount: null, cost_unit: null }); continue; }
+      if (!wh) throw badRequest(`บรรทัดที่ ${i + 1}: เลือกคลังสินค้า (หรือกำหนดคลังหลักที่ค่าเริ่มต้นระบบสินค้า)`);
+      const bq = d(l.qty).times(d(l.factor ?? 1)).abs();
+      // รับเข้าจากการซื้อ = มูลค่าก่อน VAT หลังเฉลี่ยส่วนลด · จ่ายออก/รับคืน = ต้นทุนตามวิธีของกลุ่มบัญชี
+      const cost = mv.eff > 0 && mv.purchase ? d(calc.lines[i]!.net_amount).toFixed(2)
+        : await issueCost(tx, a.companyId, { itemId: it.id, warehouseId: wh, byWarehouse: st!.byWarehouse, date: b.doc_date, qty: bq.toString(), method: mv.eff > 0 ? 'A' : it.cost_method, fallbackUnit: it.std_cost });
+      stock.push({ warehouse_id: wh, stock_effect: mv.eff, movement_code: mv.code, cost_amount: cost, cost_unit: bq.isZero() ? '0' : d(cost).div(bq).toDecimalPlaces(4).toString() });
+      if (mv.eff < 0) { const k = `${it.id}|${wh}`; const x = issues.get(k); issues.set(k, { itemId: it.id, warehouseId: wh, qty: (x?.qty ?? d(0)).plus(bq), code: it.code }); }
+    }
+    if (st) await checkNegative(tx, a.companyId, st, issues);
     await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({
       company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'I', item_id: l.item_id, description: l.description ?? byId.get(l.item_id)!.name_th,
-      warehouse_id: l.warehouse_id ?? header.warehouse_id, department_id: l.department_id ?? header.department_id, qty: l.qty, unit_id: l.unit_id ?? byId.get(l.item_id)!.base_unit_id,
-      factor: l.factor ?? '1', base_qty: d(l.qty).times(d(l.factor ?? 1)).toString(), unit_price: l.is_free ? '0' : l.unit_price, discount_text: l.discount_text,
+      warehouse_id: stock[i]!.warehouse_id, stock_effect: stock[i]!.stock_effect, movement_code: stock[i]!.movement_code, cost_amount: stock[i]!.cost_amount, cost_unit: stock[i]!.cost_unit,
+      department_id: l.department_id ?? header.department_id, qty: l.qty, unit_id: l.unit_id ?? byId.get(l.item_id)!.base_unit_id,
+      factor: l.factor ?? '1', base_qty: d(l.qty).times(d(l.factor ?? 1)).abs().toString(), unit_price: l.is_free ? '0' : l.unit_price, discount_text: l.discount_text,
       discount_amount: calc.lines[i]!.discount_amount, line_amount: calc.lines[i]!.line_amount, net_amount: calc.lines[i]!.net_amount,
       vat_code: byId.get(l.item_id)!.vat_code, is_free: l.is_free, return_to_stock: l.return_to_stock, salesperson_id: b.salesperson_id, created_by: a.userId,
       source_line_id: l.source_line_id, ordered_qty: K.order ? l.qty : null, delivery_date: K.order && K.cls !== 'QT' ? l.delivery_date ?? b.delivery_date ?? b.doc_date : null,

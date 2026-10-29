@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeDoc, discountAmount, dueDate, normalizeDiscount } from './doc-calc.js';
+import { averageCost, computeDoc, discountAmount, dueDate, fifoCost, normalizeDiscount } from './doc-calc.js';
 
 describe('document totals (บทที่ 11–12)', () => {
   it('parses Express discounts', () => {
@@ -31,5 +31,18 @@ describe('document totals (บทที่ 11–12)', () => {
     expect(computeDoc({ price_type: '0', vat_rate: 7, lines: [{ qty: 3, unit_price: 100 }] })).toMatchObject({ vat_amount: '0.00', net_amount: '300.00' });
     expect(computeDoc({ price_type: '2', vat_rate: 7, discount_text: 'x', lines: [{ qty: 1, unit_price: 1 }] }).errors[0]).toMatch(/ส่วนลดท้ายบิล/);
     expect(dueDate('2026-10-29', 30)).toBe('2026-11-28');
+  });
+});
+
+describe('stock cost (T4.2)', () => {
+  it('average: balance value / qty, fallback when nothing on hand', () => {
+    expect(averageCost(10, 1000, 4)).toBe('400.00');
+    expect(averageCost(0, 0, 2, 55)).toBe('110.00');
+  });
+  it('fifo: consumes oldest receipts after what was issued before; shortfall at last unit cost', () => {
+    const rc = [{ qty: 10, value: 1000 }, { qty: 10, value: 1200 }];
+    expect(fifoCost(rc, 0, 4)).toBe('400.00');
+    expect(fifoCost(rc, 8, 4)).toBe('440.00');      // 2 @100 + 2 @120
+    expect(fifoCost(rc, 18, 5)).toBe('600.00');     // 2 @120 + ขาด 3 @120
   });
 });
