@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.133.0",
     "@buddy/core": "workspace:*",
     "@electric-sql/pglite": "^0.5.13",
     "@fastify/cookie": "^11.0.2",

@@ -223,6 +223,27 @@ add(T('sys_api_key', 'กุญแจ API ให้ระบบอื่นเ�
   C('last_used_ip', 'str60', th='IP ที่ใช้ครั้งล่าสุด'),
 ], uniq=[('key_prefix',)]))
 
+add(T('sys_secret', 'ค่าลับของบริษัท (เข้ารหัส AES-256-GCM ด้วยกุญแจของเครื่องแม่ข่าย) เช่น กุญแจ API ของ Claude (T7.7) — ไม่ส่งกลับหน้าจอ ไม่อยู่ในแฟ้มสำรอง/คัดลอกบริษัท', 'sys', sync='server', express='(ใหม่)', cols=[
+  C('code', 'code20', nn=True, th='ชนิดค่าลับ เช่น ANTHROPIC_KEY'),
+  C('value_enc', 'text', nn=True, th='ค่าที่เข้ารหัสแล้ว (iv.tag.ciphertext แบบ base64)'),
+  C('hint', 'str60', th='ส่วนท้ายสำหรับแสดง เช่น …abcd'),
+], uniq=[('company_id','code')]))
+
+add(T('sys_ai_usage', 'การเรียกใช้ AI อ่านบิล (T7.7) — จำนวนโทเคนและค่าใช้จ่าย ใช้คุมเพดานรายเดือน', 'sys', sync='server', express='(ใหม่)', cols=[
+  lk('user_id', 'sys_user', 'ผู้เรียกใช้'),
+  C('purpose', 'code20', nn=True, d="'BILL'", th='งานที่ใช้ BILL=อ่านบิล'),
+  C('model', 'str60', th='รุ่นโมเดลที่ตอบจริง'),
+  C('input_tokens', 'int', nn=True, d='0', th='โทเคนขาเข้า (ไม่รวมแคช)'),
+  C('output_tokens', 'int', nn=True, d='0', th='โทเคนขาออก'),
+  C('cache_read_tokens', 'int', nn=True, d='0', th='โทเคนที่อ่านจากแคช'),
+  C('cache_write_tokens', 'int', nn=True, d='0', th='โทเคนที่เขียนแคช'),
+  C('cost_usd', 'qty', nn=True, d='0', th='ค่าใช้จ่ายโดยประมาณ (ดอลลาร์สหรัฐ) ตามราคาต่อโทเคน'),
+  C('status', 'code10', nn=True, th='OK / ERROR / REFUSED'),
+  C('file_name', 'str200', th='ชื่อแฟ้มที่อ่าน'),
+  C('file_size', 'int', th='ขนาดแฟ้ม (ไบต์)'),
+  C('message', 'str500', th='ข้อความผิดพลาด'),
+]))
+
 # =====================================================================
 # GL setup (needed by md)
 # =====================================================================

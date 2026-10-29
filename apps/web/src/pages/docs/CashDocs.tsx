@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
 import { nextKey, PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
@@ -134,6 +135,15 @@ export function CashFormPage({ path }: { path: string }) {
     set({ party: p, party_name: '', ...(K.module === 'AR' ? { salesperson_id: x.salesperson_id ?? '' } : {}), ...(K.deposit && x.credit_days ? { credit_days: String(x.credit_days) } : {}),
       whtForm: wht50FormOf(x.wht_form, x.tax_id) === '3' ? 'S03' : 'S53', whtRate: x.wht_rate && !d(x.wht_rate).isZero() ? d(x.wht_rate).toString() : '3' });
   };
+  /** เติมร่างจากบิลที่ AI อ่าน (T7.7): ไม่พบผู้จำหน่าย = ใส่เป็นชื่อ · รายการไม่พบรหัสค่าใช้จ่าย = เลือกเอง */
+  const applyBill = async (r: AiBillResult) => {
+    if (r.supplier) await pickParty({ id: r.supplier.id, code: r.supplier.code, name: r.supplier.name });
+    else if (r.bill.supplier.name) set({ party: null, party_name: r.bill.supplier.name.slice(0, 200) });
+    set({ price_type: r.bill.price_type, vat_rate: r.bill.vat_rate, ref_no: r.bill.doc_no, ref_date: r.bill.doc_date ?? '' });
+    setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l) => ({ ...blankLine(), item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', description: l.description, amount: l.amount }))]);
+    const missing = r.lines.filter((l) => !l.item).length;
+    toast(`เติมจากบิลแล้ว${missing ? ` — เลือกรหัสค่าใช้จ่ายอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
+  };
   const save = async (andNew = false) => {
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
@@ -174,6 +184,7 @@ export function CashFormPage({ path }: { path: string }) {
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} menu={K.menu} />
+        {K.cls === 'OE' && !ro && h && <AiBillButton target={K.path} onApply={applyBill} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error} />

@@ -10,6 +10,7 @@ import { migrate } from '../src/migrate.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import { API_RULES, REGISTERED_ROUTES } from '../src/modules/permissions.js';
+import { setAiClientFactory } from '../src/modules/ai.js';
 
 let database: Database;
 let app: FastifyInstance;
@@ -2685,6 +2686,69 @@ describe('Buddy Account API (PGlite)', () => {
     expect(await list()).toEqual([]);
     expect((await call('GET', '/api/v1/etax/export?from=2027-12-01&to=2027-12-31')).body.error.message).toMatch(/ไม่มีเอกสารขาย/);
     await sql`UPDATE sys_company SET tax_id = ${saved.tax_id}, address_th = ${saved.address_th} WHERE id = ${companyId}`.execute(database.db);
+  });
+  it('AI bill reading (T7.7): encrypted key, Claude request shape, supplier/item matching, cost cap, errors, permissions, isolation (fake client — no real API)', async () => {
+    process.env.BUDDY_SECRET_KEY = Buffer.alloc(32, 7).toString('base64');
+    const raw = { doc_kind: 'tax_invoice', supplier: { name: 'บริษัท ขายส่ง จำกัด', tax_id: '0105537095903', branch_no: '00000', address: '1 ถนนพระราม 4 กรุงเทพฯ 10500' },
+      doc_no: 'INV-9001', doc_date: '2027-12-15', price_type: 'excl_vat', vat_rate: '7',
+      lines: [{ description: 'กระดาษ A4 ทดสอบ AI', qty: '10', unit: 'รีม', unit_price: '120', amount: '1200' }, { description: 'ค่าขนส่งทดสอบ AI', qty: '1', unit: null, unit_price: '100', amount: '100' }],
+      subtotal: '1300', discount: null, vat_amount: '91', total: '1391', notes: [] };
+    const sent: Array<Record<string, any>> = [];
+    let next: () => unknown = () => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: raw });
+    setAiClientFactory((apiKey) => ({ beta: { messages: { parse: async (params: Record<string, any>) => { sent.push({ ...params, apiKey }); return next(); } } } }) as never);
+    const img = Buffer.from('fake-image-bytes').toString('base64');
+    const read = (target: string, body: object = {}) => call('POST', '/api/v1/ai/read-bill', { target, file_name: 'bill.jpg', media_type: 'image/jpeg', data: img, ...body });
+    expect((await call('GET', '/api/v1/ai/status')).body).toMatchObject({ has_key: false, available: false });
+    expect((await read('purchase-invoices')).body.error.message).toMatch(/ยังไม่ได้ตั้งค่า AI/);
+    expect((await call('PUT', '/api/v1/ai/config', { api_key: 'not-a-key', monthly_limit_usd: 20 })).body.error.message).toMatch(/sk-ant-/);
+    const key = 'sk-ant-api03-TESTKEY_' + 'x'.repeat(30) + 'ab12';
+    expect((await call('PUT', '/api/v1/ai/config', { api_key: key, monthly_limit_usd: 20 })).body).toMatchObject({ has_key: true, key_hint: '…ab12', monthly_limit_usd: 20 });
+    const enc = (await sql<{ value_enc: string }>`SELECT value_enc FROM sys_secret WHERE company_id = ${companyId} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.value_enc;
+    expect(enc.includes('TESTKEY')).toBe(false);
+    expect(JSON.stringify((await call('GET', '/api/v1/ai/config')).body).includes('TESTKEY')).toBe(false);
+
+    const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
+    const item = (await call('POST', '/api/v1/items', { code: '02-TEST-000095', name_th: 'กระดาษ A4 ทดสอบ AI', base_unit_id: unit, std_cost: '1' })).body.id;
+    const sup = (await call('POST', '/api/v1/suppliers', { code: 'S-AI1', name: 'บริษัท ขายส่ง จำกัด', tax_id: '0105537095903', tax_branch_no: '0' })).body.id;
+    expect([item, sup].every(Boolean)).toBe(true);
+    const r = await read('purchase-invoices');
+    expect(r.status).toBe(200);
+    expect(r.body.supplier).toMatchObject({ id: sup, code: 'S-AI1' });
+    expect(r.body.lines.map((l: { item: { id: string } | null }) => l.item?.id ?? null)).toEqual([item, null]);
+    expect(r.body.bill).toMatchObject({ price_type: '2', vat_rate: '7', doc_no: 'INV-9001', doc_date: '2027-12-15', total: '1391.00', warnings: [] });
+    expect(r.body.usage).toMatchObject({ cost_usd: '0.0280', monthly_limit_usd: 20 });
+    // คำขอที่ส่งให้ Claude: รุ่น/fallback/โครงข้อมูล/รูปแบบแฟ้ม และกุญแจของบริษัท
+    const q = sent.at(-1)!;
+    expect([q.apiKey, q.model, q.fallbacks, q.betas[0], q.output_config.effort, q.output_config.format.type]).toEqual([key, 'claude-opus-5-5', 'default', 'server-side-fallback-2026-07-01', 'medium', 'json_schema']);
+    expect(q.messages[0].content[0]).toMatchObject({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: img } });
+    await read('other-expense-docs', { media_type: 'application/pdf', file_name: 'bill.pdf' });
+    expect(sent.at(-1)!.messages[0].content[0].type).toBe('document');
+    // บันทึกค่าใช้จ่าย → เพดาน
+    expect((await call('GET', '/api/v1/ai/config')).body).toMatchObject({ month_cost_usd: '0.0560', month_count: 2 });
+    await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: 0.05 });
+    expect((await call('GET', '/api/v1/ai/status')).body.available).toBe(false);
+    expect((await read('purchase-invoices')).body.error.message).toMatch(/ครบเพดาน 0.05/);
+    await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null });
+    expect((await call('GET', '/api/v1/ai/config')).body).toMatchObject({ has_key: true, monthly_limit_usd: null, available: true });
+    // ผิดพลาด/ปฏิเสธ → บันทึกการใช้ ไม่เติมร่าง
+    next = () => { throw new Error('ECONNRESET'); };
+    expect((await read('purchase-invoices')).body.error.message).toMatch(/เชื่อมต่อ Anthropic ไม่ได้/);
+    next = () => ({ model: 'claude-opus-5-5', stop_reason: 'refusal', usage: { input_tokens: 100, output_tokens: 0 }, parsed_output: null });
+    expect((await read('purchase-invoices')).status).toBe(422);
+    expect((await call('GET', '/api/v1/ai/usage')).body.map((u: { status: string }) => u.status).slice(0, 2)).toEqual(['REFUSED', 'ERROR']);
+    expect((await read('sales-invoices')).status).toBe(400);   // อ่านบิลได้เฉพาะเอกสารซื้อ
+    // สิทธิ์: พนักงานระดับ 0 ตั้งค่า/ดูการใช้ไม่ได้ แต่เห็นสถานะ · กุญแจ API ของระบบอื่นใช้หน้าตั้งค่าไม่ได้
+    const admin = cookie;
+    cookie = ''; await call('POST', '/api/v1/auth/login', { username: 'clerk0', password: 'clerk0pass' });
+    expect((await call('GET', '/api/v1/ai/config')).status).toBe(403);
+    expect((await call('GET', '/api/v1/ai/status')).body.has_key).toBe(true);
+    cookie = admin;
+    // บริษัทอื่น: ไม่มีกุญแจ ไม่เห็นการใช้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/ai/config')).body).toMatchObject({ has_key: false, month_count: 0 });
+    expect((await call('GET', '/api/v1/ai/usage')).body).toEqual([]);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('PUT', '/api/v1/ai/config', { api_key: null, monthly_limit_usd: 20 })).body.has_key).toBe(false);
   });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

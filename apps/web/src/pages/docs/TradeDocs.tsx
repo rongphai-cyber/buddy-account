@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
 
 const kindOf = (path: string) => TRADE_KINDS.find((k) => k.path === path)!;
@@ -242,7 +243,22 @@ export function TradeFormPage({ path }: { path: string }) {
     const price = ar ? (it[`price_${h?.price_level || '1'}` as 'price_1'] ?? it.price_1) : it.std_cost;
     const unit = ar ? (it.sales_unit_id ?? it.base_unit_id) : (it.purchase_unit_id ?? it.base_unit_id);
     const factor = ar ? (it.sales_unit_id ? it.sales_factor : '1') : (it.purchase_unit_id ? it.purchase_factor : '1');
-    setLine(k, { item_id: it.id, item_code: it.code, description: it.name_th, unit_id: unit, factor: num(factor) || '1', unit_price: num(price), vat_exempt: it.vat_code === '0', qty: lines.find((l) => l.key === k)?.qty || '1' });
+    const was = lines.find((l) => l.key === k);
+    const fromBill = !!was && !was.item_id && !!was.unit_price;   // บรรทัดที่ AI เติมจากบิล — คงราคาตามบิล
+    setLine(k, { item_id: it.id, item_code: it.code, description: it.name_th, unit_id: unit, factor: num(factor) || '1', unit_price: fromBill ? was.unit_price : num(price), vat_exempt: it.vat_code === '0', qty: was?.qty || '1' });
+  };
+  /** เติมร่างจากบิลที่ AI อ่าน (T7.7) — ยังไม่บันทึก ผู้ใช้ตรวจ/เลือกรหัสที่ยังไม่พบ แล้วบันทึกเอง */
+  const applyBill = async (r: AiBillResult) => {
+    if (r.supplier) await pickParty({ id: r.supplier.id, code: r.supplier.code, name: r.supplier.name });
+    set({ price_type: r.bill.price_type, vat_rate: r.bill.vat_rate, ...(r.bill.doc_no ? { ref: { id: '', code: r.bill.doc_no } } : {}) });
+    if (r.bill.doc_date) setRefDate(r.bill.doc_date);
+    setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l) => {
+      const gross = d(l.qty || 0).times(d(l.unit_price || 0)).toDecimalPlaces(2), disc = l.amount ? gross.minus(d(l.amount)) : d(0);
+      return { key: ++seq, item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', description: l.description, warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: l.qty, unit_id: l.item?.base_unit_id ?? null,
+        factor: '1', unit_price: l.unit_price, discount_text: disc.gt(0.005) ? disc.toFixed(2) : '', is_free: false, return_to_stock: false, vat_exempt: false };
+    })]);
+    const missing = r.lines.filter((l) => !l.item).length;
+    toast(`เติมจากบิลแล้ว${r.supplier ? '' : ' — ไม่พบผู้จำหน่ายตามเลขผู้เสียภาษี เลือก/เพิ่มผู้จำหน่ายเอง'}${missing ? ` · เลือกรหัสสินค้าอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
   };
   const addLine = () => { setLines((ls) => [...ls, { key: ++seq, item_id: '', item_code: '', description: '', warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: '', unit_id: null, factor: '1', unit_price: '', discount_text: '', is_free: false, return_to_stock: K.cls === 'CN' || K.cls === 'DN', vat_exempt: false }]); };
   if (h && !lines.length && !id) addLine();
@@ -290,6 +306,7 @@ export function TradeFormPage({ path }: { path: string }) {
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         {K.cls === 'QT' && id && !cancelled && <button disabled={!canSO('add')} onClick={() => setAskConvert(true)}>แปลงเป็นใบสั่งขาย</button>}
         <DocActions kind="doc" id={id} menu={K.menu} typeId={h?.doc_type_id} />
+        {supInv && !readOnly && h && <AiBillButton target={K.path} onApply={applyBill} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error} />

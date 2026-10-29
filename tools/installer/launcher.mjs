@@ -92,7 +92,7 @@ async function start() {
   const log = openSync(join(LOGS, 'server.log'), 'a');
   const srv = spawn(NODE, [join(APP, 'server', 'main.mjs')], {
     stdio: ['ignore', log, log], windowsHide: true,
-    env: { ...process.env, DATABASE_URL: pgUrl(c), BUDDY_ROOT: APP, PORT: String(c.port), HOST: c.host, BUDDY_VERSION: VERSION.version, NODE_ENV: 'production', LOG_LEVEL: process.env.LOG_LEVEL ?? 'warn' },
+    env: { ...process.env, DATABASE_URL: pgUrl(c), BUDDY_ROOT: APP, BUDDY_SECRET_FILE: join(HOME, 'secret.key'), PORT: String(c.port), HOST: c.host, BUDDY_VERSION: VERSION.version, NODE_ENV: 'production', LOG_LEVEL: process.env.LOG_LEVEL ?? 'warn' },
   });
   closeSync(log);
   writeFileSync(PIDFILE, String(srv.pid));

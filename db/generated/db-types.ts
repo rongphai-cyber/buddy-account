@@ -545,6 +545,78 @@ export interface SysApiKeyTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** ค่าลับของบริษัท (เข้ารหัส AES-256-GCM ด้วยกุญแจของเครื่องแม่ข่าย) เช่น กุญแจ API ของ Claude (T7.7) — ไม่ส่งกลับหน้าจอ ไม่อยู่ในแฟ้มสำรอง/คัดลอกบริษัท */
+export interface SysSecretTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ชนิดค่าลับ เช่น ANTHROPIC_KEY */
+  code: string;
+  /** ค่าที่เข้ารหัสแล้ว (iv.tag.ciphertext แบบ base64) */
+  value_enc: string;
+  /** ส่วนท้ายสำหรับแสดง เช่น …abcd */
+  hint: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** การเรียกใช้ AI อ่านบิล (T7.7) — จำนวนโทเคนและค่าใช้จ่าย ใช้คุมเพดานรายเดือน */
+export interface SysAiUsageTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ผู้เรียกใช้ */
+  user_id: Gen<string | null>;
+  /** งานที่ใช้ BILL=อ่านบิล */
+  purpose: Gen<string>;
+  /** รุ่นโมเดลที่ตอบจริง */
+  model: Gen<string | null>;
+  /** โทเคนขาเข้า (ไม่รวมแคช) */
+  input_tokens: Gen<number>;
+  /** โทเคนขาออก */
+  output_tokens: Gen<number>;
+  /** โทเคนที่อ่านจากแคช */
+  cache_read_tokens: Gen<number>;
+  /** โทเคนที่เขียนแคช */
+  cache_write_tokens: Gen<number>;
+  /** ค่าใช้จ่ายโดยประมาณ (ดอลลาร์สหรัฐ) ตามราคาต่อโทเคน */
+  cost_usd: Gen<string>;
+  /** OK / ERROR / REFUSED */
+  status: string;
+  /** ชื่อแฟ้มที่อ่าน */
+  file_name: Gen<string | null>;
+  /** ขนาดแฟ้ม (ไบต์) */
+  file_size: Gen<number | null>;
+  /** ข้อความผิดพลาด */
+  message: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ปีบัญชี */
 export interface GlFiscalYearTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -3529,6 +3601,8 @@ export interface DB {
   sys_print_form: SysPrintFormTable;
   sys_report_custom: SysReportCustomTable;
   sys_api_key: SysApiKeyTable;
+  sys_secret: SysSecretTable;
+  sys_ai_usage: SysAiUsageTable;
   gl_fiscal_year: GlFiscalYearTable;
   gl_period: GlPeriodTable;
   gl_account: GlAccountTable;
