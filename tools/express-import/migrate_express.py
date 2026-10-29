@@ -563,6 +563,24 @@ for r in dbf('STCRD'):
         reimburse_flag=st(r['REIMBURSE'])))
     if len(rows) >= 20000: done('doc_line', insert('doc_line', rows), 'STCRD'); rows = []
 done('doc_line', insert('doc_line', rows), 'STCRD')
+
+# ------------------------------------------------------------------ ผลการตรวจนับ (STTAK → inv_stock_count, คู่มือบทที่ 14 S-IC-15..22)
+# TAKFLG 1 เตรียมนับ (ยังไม่นับ) · 3 บันทึกยอดนับ · 6 ปรับปรุงแล้ว (อ้างบรรทัดใบ TK ด้วย DOCNUM+SEQNUM) · PHYBAL = ยอดนับ DIFQTY = ผลต่าง
+LINE_BY = {(dn, seq): lid for (dn, seq, _), lid in LINE.items()}
+TAK = collections.OrderedDict()
+for r in dbf('STTAK'):
+    if not (st(r['STKCOD']) and st(r['LOCCOD']) and r['TAKDAT']): continue
+    flag = st(r['TAKFLG']) or '1'
+    counted = None if flag == '1' else qty(r['PHYBAL'])
+    lid = LINE_BY.get((st(r['DOCNUM']), st(r['SEQNUM']))) if flag == '6' and st(r['DOCNUM']) else None
+    # ปรับปรุงแล้วแต่ไม่มีบรรทัดใน STCRD (ผลต่าง 0 ไม่สร้างรายการ) — คงสถานะ 6 ไว้ ไม่ให้ปรับซ้ำ
+    if flag == '6' and not lid: QUALITY['sttak_adjusted_without_line'].append(f"{st(r['DOCNUM'])}/{st(r['SEQNUM'])}")
+    k = (st(r['LOCCOD']), st(r['STKCOD']), r['TAKDAT'])
+    if k in TAK: QUALITY['sttak_duplicate'].append('/'.join(map(str, k)))
+    TAK[k] = base(id=U('tak', *map(str, k)), warehouse_id=wh(r['LOCCOD']), item_id=item(r['STKCOD']), count_date=r['TAKDAT'], shelf=st(r['AREA']) or None,
+        counted_qty=counted, counted_unit_qty=qty(r['CQUQTY']) if (r['CQUQTY'] or 0) >= 0 and flag != '1' else None,
+        system_qty=qty((r['PHYBAL'] or 0) - (r['DIFQTY'] or 0)) if flag == '6' else None, diff_qty=qty(r['DIFQTY']) if flag == '6' else None, flag=flag, adjust_line_id=lid)
+done('inv_stock_count', insert('inv_stock_count', list(TAK.values())), 'STTAK')
 for table, num in (('OESOIT', 'SONUM'), ('POPRIT', 'PONUM')):
     rows = []
     for r in dbf(table):
