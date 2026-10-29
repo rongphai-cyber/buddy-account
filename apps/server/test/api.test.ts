@@ -3124,3 +3124,31 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     } finally { process.env.BUDDY_REQUIRE_ADMIN_2FA = '0'; }
   });
 });
+
+describe('นำข้อมูลจาก Express ผ่านหน้าจอ (T0.12) — สิทธิ์และการตรวจ', () => {
+  const login = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };
+  const put = async (url: string, body: Buffer) => { const r = await app.inject({ method: 'PUT', url, payload: body, headers: { cookie, 'content-type': 'application/octet-stream' } }); return { status: r.statusCode, body: JSON.parse(r.body) }; };
+  it('only admins, only their own tenant, only known .DBF files, required files before run', async () => {
+    expect((await login('sec.lock', 'lockMe123')).status).toBe(200);
+    expect((await call('POST', '/api/v1/express-import/jobs', { code: 'IMPX' })).status).toBe(403);
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    expect((await call('POST', '/api/v1/express-import/jobs', { code: 'DEMO' })).body.error.message).toMatch(/มีอยู่แล้ว/);
+    expect((await call('POST', '/api/v1/express-import/jobs', { code: 'bad code!' })).status).toBe(400);
+    const j = (await call('POST', '/api/v1/express-import/jobs', { code: 'IMPX' })).body;
+    expect(j).toMatchObject({ status: 'upload', missing: ['ISINFO', 'ISPRD', 'GLACC', 'ISRUN'] });
+    expect((await put(`/api/v1/express-import/jobs/${j.id}/files/EVIL`, Buffer.alloc(64))).body.error.message).toMatch(/ไม่ใช่แฟ้มที่ใช้นำเข้า/);
+    expect((await put(`/api/v1/express-import/jobs/${j.id}/files/..%2F..%2Fx`, Buffer.alloc(64))).status).toBe(400);
+    expect((await put(`/api/v1/express-import/jobs/${j.id}/files/ISINFO`, Buffer.alloc(8))).status).toBe(400);
+    expect((await put(`/api/v1/express-import/jobs/${j.id}/files/isinfo`, Buffer.alloc(64))).body.files).toEqual({ ISINFO: 64 });
+    expect((await call('POST', `/api/v1/express-import/jobs/${j.id}/run`)).body.error.message).toMatch(/ISPRD\.DBF, GLACC\.DBF, ISRUN\.DBF/);
+    // ผู้ดูแลของลูกค้าอื่นมองไม่เห็นงานนี้
+    const admin = cookie;
+    expect((await login('b.admin', 'passB1234')).status).toBe(200);
+    expect((await call('GET', `/api/v1/express-import/jobs/${j.id}`)).status).toBe(404);
+    expect((await put(`/api/v1/express-import/jobs/${j.id}/files/ISPRD`, Buffer.alloc(64))).status).toBe(404);
+    expect((await call('DELETE', `/api/v1/express-import/jobs/${j.id}`)).status).toBe(404);
+    cookie = admin;
+    expect((await call('DELETE', `/api/v1/express-import/jobs/${j.id}`)).status).toBe(200);
+    expect((await call('GET', `/api/v1/express-import/jobs/${j.id}`)).status).toBe(404);
+  });
+});

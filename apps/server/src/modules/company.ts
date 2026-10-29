@@ -323,7 +323,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   });
 }
 
-async function defaultTenant(db: Db) {
+export async function defaultTenant(db: Db) {
   const t = await db.selectFrom('sys_tenant').select('id').where('code', '=', 'DEFAULT').where('deleted_at', 'is', null).executeTakeFirst();
   if (t) return t.id;
   return (await db.insertInto('sys_tenant').values({ code: 'DEFAULT', name: 'ลูกค้าเริ่มต้น' }).returning('id').executeTakeFirstOrThrow()).id;

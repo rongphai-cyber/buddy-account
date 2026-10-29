@@ -123,6 +123,9 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/health': OPEN, 'GET /api/v1/setup/status': OPEN, 'POST /api/v1/setup': OPEN, 'POST /api/v1/auth/login': OPEN, 'POST /api/v1/auth/login/totp': OPEN,
   'GET /api/v1/auth/2fa': SELF, 'POST /api/v1/auth/2fa/setup': SELF, 'POST /api/v1/auth/2fa/enable': SELF, 'POST /api/v1/auth/2fa/recovery': SELF, 'POST /api/v1/auth/2fa/disable': SELF,
   'POST /api/v1/users/:id/unlock': SELF, 'POST /api/v1/users/:id/reset-2fa': SELF,
+  // T0.12 นำข้อมูลจาก Express (ผู้ดูแลระบบ — ตรวจในตัว API)
+  'POST /api/v1/express-import/jobs': SELF, 'PUT /api/v1/express-import/jobs/:id/files/:name': SELF, 'POST /api/v1/express-import/jobs/:id/run': SELF,
+  'GET /api/v1/express-import/jobs/:id': SELF, 'DELETE /api/v1/express-import/jobs/:id': SELF, 'GET /api/v1/express-import/files': SELF,
   'GET /api/v1/menu': SELF, 'GET /api/v1/auth/me': SELF, 'POST /api/v1/auth/logout': SELF, 'POST /api/v1/auth/password': SELF, 'POST /api/v1/auth/select': SELF,
   'GET /api/v1/ai/status': LOOKUP, 'GET /api/v1/ai/config': M('SET.AI', 'read'), 'PUT /api/v1/ai/config': M('SET.AI', 'edit'), 'GET /api/v1/ai/usage': M('SET.AI', 'read'),
   'POST /api/v1/ai/read-bill': { kind: 'menu', menu: 'PU.RR', action: 'add', pick: async (req) => AI_BILL_TARGETS.find((k) => k.path === (req.body as { target?: string } | undefined)?.target)?.menu ?? 'PU.RR' },

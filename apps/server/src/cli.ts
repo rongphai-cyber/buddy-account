@@ -3,6 +3,7 @@
  *   migrate                              รัน migration
  *   create-admin <user> <ชื่อ> <รหัสผ่าน>  สร้างผู้ดูแลระบบ (ถ้ายังไม่มีกลุ่ม ADMIN จะสร้างให้)
  *   company-template <company_id>        ใส่กฎการลงบัญชี + เส้นทางสมุดรายวันให้บริษัท (หลังย้ายข้อมูลจาก Express)
+ *   import-express <โฟลเดอร์> <รหัส>       ย้ายข้อมูลจาก Express (.DBF) เป็นบริษัทใหม่ + กฎการลงบัญชี + กระทบยอด (เหมือนหน้าจอ อื่น ๆ › นำข้อมูลจาก Express)
  *   unlock <user>                         ปลดล็อกผู้ใช้ที่ใส่รหัสผิดเกิน 5 ครั้ง
  *   reset-2fa <user>                      ล้างยืนยันตัวตนสองขั้น (ผู้ดูแลทำมือถือหายและไม่มีรหัสสำรอง) — เข้าระบบแล้วตั้งใหม่
  *   posting-compare <รหัสบริษัท>          เทียบเครื่องลงบัญชีกับใบสำคัญที่ Express ลงไว้ (เกณฑ์ P3 ≥ 97%)
@@ -50,6 +51,21 @@ try {
     if (!id) throw new Error('ใช้: company-template <company_id>');
     await applyPostingTemplate(database.execScript, id);
     console.log('ใส่กฎการลงบัญชีแล้ว');
+  } else if (cmd === 'import-express') {
+    // ย้ายข้อมูลจากโฟลเดอร์ Express (.DBF) — พอร์ตของ tools/express-import/import.sh: นำเข้า → กฎการลงบัญชี → กระทบยอด
+    const [folder, code] = args;
+    if (!folder || !code) throw new Error('ใช้: import-express <โฟลเดอร์ข้อมูล Express> <รหัสบริษัท>');
+    const { importExpress, validateExpress, folderSource, pythonSummary } = await import('./import/express/migrate.js');
+    const src = folderSource(folder);
+    const t0 = Date.now();
+    const rep = await importExpress(db, src, { code, tenantId: null, onProgress: (s, p) => console.error(`[${String(p).padStart(3)}%] ${s}`) });
+    console.error(`นำเข้าเสร็จใน ${((Date.now() - t0) / 1000).toFixed(1)} วินาที — บริษัท ${rep.company_id}`);
+    console.log(JSON.stringify(pythonSummary(rep), null, 1));
+    if (process.env.BUDDY_IMPORT_SKIP_TEMPLATE !== '1') {
+      await applyPostingTemplate(database.execScript, rep.company_id);
+      console.error('ใส่กฎการลงบัญชีแล้ว');
+      console.log(JSON.stringify(await validateExpress(db, src, rep.company_id), null, 1));
+    }
   } else if (cmd === 'posting-compare') {
     const [code] = args;
     const c = await db.selectFrom('sys_company').select('id').where('code', '=', code ?? '').where('deleted_at', 'is', null).executeTakeFirst();
