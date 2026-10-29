@@ -7,6 +7,8 @@ import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
+import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
+import { bookStyle, typeColorIn } from '../../bookColor';
 
 /** การเคลื่อนไหวบัญชีเงินฝาก (คู่มือบทที่ 13 S-BK-02/03 + รายได้/ค่าใช้จ่ายธนาคาร) — ลงบัญชีทันทีเมื่อบันทึก */
 const MENU = 'FI.BK.TX';
@@ -33,12 +35,14 @@ export function BankDocListPage({ cls }: { cls: BankKind['cls'] }) {
   const can = useCan(MENU);
   const [q, setQ] = useState('');
   const [bank, setBank] = useState('');
-  const list = useQuery({ queryKey: [K.path, q, bank], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { q, ...(bank ? { bank_account_id: bank } : {}) }), placeholderData: (p) => p });
-  useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, [K.route]);
+  const tt = useTypeTabs(cls);
+  const list = useQuery({ queryKey: [K.path, q, bank, tt.tab], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, ...(bank ? { bank_account_id: bank } : {}) }), placeholderData: (p) => p });
+  useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, K.route]);
   return (
     <div className="page" data-tone="finance">
-      <PageHead eyebrow="ธนาคาร" title={K.label} lead={LEAD[cls]} actions={can('add') && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ เพิ่มรายการ <kbd>Ins</kbd></button>} />
+      <PageHead eyebrow="ธนาคาร" title={K.label} lead={LEAD[cls]} actions={can('add') && <button className={cx('primary', tt.color && 'book-btn')} style={bookStyle(tt.color)} onClick={() => nav(tt.newUrl(`${K.route}/new`))}>+ เพิ่มรายการ {tt.cur ? `${tt.cur.code} ` : ''}<kbd>Ins</kbd></button>} />
       <Tabs active={cls} onChange={(c) => nav(kindOf(c).route)} tabs={BANK_KINDS.map((k) => ({ key: k.cls, label: k.label.replace(/ \(.*\)$/, '') }))} />
+      {tt.tabs()}
       <div className="toolbar">
         <input type="search" autoFocus placeholder="ค้นหาเลขที่ หรือหมายเหตุ" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" />
         <label>บัญชีเงินฝาก <BankSelect value={bank} onChange={setBank} label="บัญชีเงินฝาก" /></label>
@@ -84,7 +88,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
   const [askCancel, setAskCancel] = useState(false);
   const [reason, setReason] = useState('');
   if (!h && !id && defs.data) {
-    const t = defs.data.types[0];
+    const t = initialType(defs.data.types);
     setH({ doc_type_id: t?.id ?? '', doc_date: me?.work_date ?? todayIso(), department_id: t?.department_id ?? '', remark: '', bank_account_id: '', to_bank_account_id: '', amount: '', fee: '', wht: '' });
   }
   if (!h && id && cur.data) {
@@ -96,7 +100,12 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
   const cancelled = cur.data?.doc_status === 'C';
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const total = h ? (cls === 'BT' ? d(h.amount || 0).plus(d(h.fee || 0)) : cls === 'BU' ? d(h.amount || 0).minus(d(h.wht || 0)) : d(h.amount || 0)) : d(0);
+  /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
+  const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.department_id ? { department_id: t.department_id } : {}) }); };
+  const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
+  const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const save = async (andNew = false) => {
+    if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro) return;
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, bank_account_id: h.bank_account_id || undefined,
@@ -117,8 +126,8 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const bankLabel = cls === 'BT' ? 'โอนจากบัญชี' : cls === 'BD' || cls === 'BU' ? 'เข้าบัญชีเงินฝาก' : 'จากบัญชีเงินฝาก';
   return (
-    <div className="page" data-tone="finance">
-      <div className="doc-title"><p className="eyebrow">ธนาคาร › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1>
+    <div className={cx('page', tColor && 'book-colored')} data-tone="finance" style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">ธนาคาร › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
@@ -127,6 +136,8 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
         <DocActions kind="doc" id={id} menu={MENU} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
+      <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
+      <TypeNotice show={!id && !!h && !h.doc_type_id} />
       <ErrorBox error={err ?? cur.error ?? defs.error} />
       {h && <>
         {id && <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียด' }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }]} />}
@@ -141,7 +152,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
               {(cls === 'BT' || cls === 'BU') && <Field label={cls === 'BT' ? 'รวมเงินที่โอนออกทั้งสิ้น' : 'เงินเข้าบัญชีสุทธิ'}><span className="num" style={{ display: 'block', textAlign: 'right' }}><b><Money v={total.toFixed(2)} /></b></span></Field>}
             </div>
             <div className="col">
-              <Field label="ประเภทเอกสาร"><select value={h.doc_type_id} disabled={!!id} onChange={(e) => set({ doc_type_id: e.target.value })}>{defs.data?.types.map((t) => <option key={t.id} value={t.id}>{t.code} {t.name_th}</option>)}</select></Field>
+              
               <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
               <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
               <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>

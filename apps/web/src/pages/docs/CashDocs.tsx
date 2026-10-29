@@ -10,6 +10,8 @@ import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
 import { nextKey, PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
+import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
+import { bookStyle, typeColorIn } from '../../bookColor';
 
 const kindOf = (path: string) => CASH_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: CashKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -30,15 +32,17 @@ export function CashListPage({ path }: { path: string }) {
   const [from, setFrom] = useState(today.slice(0, 8) + '01');
   const [to, setTo] = useState(today);
   const [status, setStatus] = useState<'N' | 'C' | 'all'>('all');
-  const list = useQuery({ queryKey: [K.path, q, from, to, status], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { q, from, to, status, limit: 500 }), placeholderData: (p) => p });
-  useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, []);
+  const tt = useTypeTabs(K.cls);
+  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500 }), placeholderData: (p) => p });
+  useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, ]);
   const total = list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r.net_amount)), d(0));
   return (
     <div className="page" data-tone={TONE(K)}>
       <PageHead eyebrow={`${K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › ${K.label}`} title={K.label}
         lead={K.deposit ? `${rp(K)}เงินมัดจำล่วงหน้า แล้วนำไปหักในบิล${K.module === 'AR' ? 'ขาย' : 'ซื้อ'} (ประเภทราคาต้องเหมือนกัน) · บันทึกแล้วลงบัญชีทันที · ใบที่หักในบิลแล้วยกเลิกไม่ได้`
           : `${K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}ที่ไม่ใช่การ${K.module === 'AR' ? 'ขาย' : 'ซื้อ'}สินค้า ${rp(K)}เงินทันที ไม่ตั้ง${K.module === 'AR' ? 'ลูกหนี้' : 'เจ้าหนี้'} · ไม่ระบุ${partyWord(K)}ได้ · บันทึกแล้วลงบัญชีทันที`}
-        actions={can('add') && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ {K.label} <kbd>Ins</kbd></button>} />
+        actions={can('add') && <button className={cx('primary', tt.color && 'book-btn')} style={bookStyle(tt.color)} onClick={() => nav(tt.newUrl(`${K.route}/new`))}>+ {K.label} {tt.cur ? `${tt.cur.code} ` : ''}<kbd>Ins</kbd></button>} />
+      {tt.tabs()}
       <div className="toolbar">
         <input type="search" autoFocus placeholder={`ค้นหาเลขที่ ${partyWord(K)} หรืออ้างอิง`} value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาเอกสาร" />
         <label>ตั้งแต่ <DateInput value={from} onChange={setFrom} /></label>
@@ -103,7 +107,7 @@ export function CashFormPage({ path }: { path: string }) {
   const date0 = me?.work_date ?? todayIso();
   const blankLine = (): Line => ({ key: nextKey(), item_id: '', item_code: '', description: '', amount: '' });
   if (!h && !id && defs.data) {
-    const t = defs.data.types[0];
+    const t = initialType(defs.data.types);
     setH({ doc_type_id: t?.id ?? '', doc_date: date0, party: null, party_name: '', your_ref: '', ref_no: '', ref_date: '', department_id: '', salesperson_id: '', credit_days: '',
       price_type: (t?.price_type || defs.data.price_type || '2') as Head['price_type'], vat_rate: num(t?.vat_rate ?? defs.data.vat_rate), remark: '', wht: '', cash: '', whtForm: 'S53', whtRate: '3' });
     setLines([blankLine()]);
@@ -144,7 +148,12 @@ export function CashFormPage({ path }: { path: string }) {
     const missing = r.lines.filter((l) => !l.item).length;
     toast(`เติมจากบิลแล้ว${missing ? ` — เลือกรหัสค่าใช้จ่ายอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
   };
+  /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
+  const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.price_type ? { price_type: t.price_type as Head['price_type'] } : {}), ...(t?.vat_rate != null ? { vat_rate: num(t.vat_rate) } : {}) }); };
+  const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
+  const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const save = async (andNew = false) => {
+    if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, party_id: h.party?.id ?? null, party_name: h.party ? null : h.party_name || null, your_ref: h.your_ref || null,
@@ -174,8 +183,8 @@ export function CashFormPage({ path }: { path: string }) {
   const cancelled = cur.data?.doc_status === 'C';
   const docNo = id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : '';
   return (
-    <div className="page" data-tone={TONE(K)}>
-      <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1>
+    <div className={cx('page', tColor && 'book-colored')} data-tone={TONE(K)} style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}
           {K.deposit && id && cur.data?.remaining != null && <Pill tone={d(cur.data.remaining).isZero() ? 'd' : 'm'}>มัดจำคงเหลือ {fmt(cur.data.remaining)}</Pill>}</span></div>
       <div className="toolbar">
@@ -187,6 +196,8 @@ export function CashFormPage({ path }: { path: string }) {
         {K.cls === 'OE' && !ro && h && <AiBillButton target={K.path} onApply={applyBill} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
+      <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
+      <TypeNotice show={!id && !!h && !h.doc_type_id} />
       <ErrorBox error={err ?? cur.error} />
       {h && <div onKeyDown={navKey}>
         <div className="head-grid trade-head">
@@ -200,7 +211,7 @@ export function CashFormPage({ path }: { path: string }) {
             {K.module === 'AR' && <Field label="พนักงานขาย"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></Field>}
           </div>
           <div className="col">
-            <Field label="ประเภทเอกสาร"><select value={h.doc_type_id} disabled={!!id} onChange={(e) => set({ doc_type_id: e.target.value })}>{defs.data?.types.map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
+            
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
             {K.deposit && <Field label="ครบกำหนด (วัน)" hint="ใช้ติดตามว่าตัดสินใจซื้อ/ส่งของเกินกำหนดหรือไม่"><div className="pair"><input type="number" min={0} value={h.credit_days} disabled={ro} onChange={(e) => set({ credit_days: e.target.value })} aria-label="ครบกำหนด (วัน)" /><span className="muted small" style={{ alignSelf: 'center' }}><DateText v={dueDate(h.doc_date, Number(h.credit_days || 0))} /></span></div></Field>}
             <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>

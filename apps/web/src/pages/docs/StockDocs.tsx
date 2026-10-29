@@ -8,6 +8,8 @@ import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
+import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
+import { bookStyle, typeColorIn } from '../../bookColor';
 
 /** รายการประจำวันสินค้า (คู่มือบทที่ 14 S-IC-06/08/10 + เพิ่ม/ลดต้นทุน) — สต๊อกคำนวณสดจากเอกสาร */
 const MENU = 'IC.TRN';
@@ -25,17 +27,16 @@ export function StockDocListPage({ cls }: { cls: StockKind['cls'] }) {
   const nav = useNavigate();
   const can = useCan(MENU);
   const [q, setQ] = useState('');
-  const [type, setType] = useState('');
-  const types = useQuery({ queryKey: ['trade-defaults', cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string }> }>(`/api/v1/trade-defaults/${cls}`) });
-  const list = useQuery({ queryKey: [K.path, q, type], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { q, type_id: type || undefined }), placeholderData: (p) => p });
-  useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, [K.route]);
+  const tt = useTypeTabs(cls);
+  const list = useQuery({ queryKey: [K.path, q, tt.tab], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { q, type_id: tt.tab || undefined }), placeholderData: (p) => p });
+  useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, K.route]);
   return (
     <div className="page" data-tone="inventory">
       <PageHead eyebrow="สินค้า › รายการประจำวันสินค้า" title={K.label} lead={LEAD[cls]}
-        actions={can('add') && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ เพิ่มเอกสาร <kbd>Ins</kbd></button>} />
+        actions={can('add') && <button className={cx('primary', tt.color && 'book-btn')} style={bookStyle(tt.color)} onClick={() => nav(tt.newUrl(`${K.route}/new`))}>+ เพิ่มเอกสาร {tt.cur ? `${tt.cur.code} ` : ''}<kbd>Ins</kbd></button>} />
       <Tabs active={cls} onChange={(c) => nav(kindOf(c).route)} tabs={STOCK_KINDS.map((k) => ({ key: k.cls, label: k.label }))} />
-      <div className="toolbar"><input type="search" autoFocus placeholder="ค้นหาเลขที่ หรือหมายเหตุ" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" />
-        {(types.data?.types.length ?? 0) > 1 && <select value={type} onChange={(e) => setType(e.target.value)} aria-label="ประเภทเอกสาร" title="แยกตามประเภทเอกสาร เช่น จ่ายวัตถุดิบเพื่อผลิต / รับสินค้าสำเร็จรูป / รับสินค้าระหว่างทาง"><option value="">ทุกประเภทเอกสาร</option>{types.data!.types.map((t) => <option key={t.id} value={t.id}>{t.code} {t.name_th}</option>)}</select>}</div>
+      {tt.tabs()}
+      <div className="toolbar"><input type="search" autoFocus placeholder="ค้นหาเลขที่ หรือหมายเหตุ" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" /></div>
       <ErrorBox error={list.error} />
       <div className="table-wrap">
         <table className="grid">
@@ -95,7 +96,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   const [reason, setReason] = useState('');
   const [prodCost, setProdCost] = useState(false);
   if (!h && !id && defs.data) {
-    const t = defs.data.types[0];
+    const t = initialType(defs.data.types);
     setH({ doc_type_id: t?.id ?? '', doc_date: me?.work_date ?? todayIso(), department_id: t?.department_id ?? '', remark: '', your_ref: '', warehouse_id: t?.warehouse_id ?? null, to_warehouse_id: null });
     setLines([blank()]);
   }
@@ -122,7 +123,12 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   };
   const used = lines.filter((l) => l.item_id);
   const total = used.reduce((s, l) => s.plus(d(l.cost_amount ?? 0).abs()), d(0));
+  /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
+  const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.department_id ? { department_id: t.department_id } : {}), ...(t?.warehouse_id ? { warehouse_id: t.warehouse_id } : {}) }); };
+  const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
+  const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const save = async (andNew = false) => {
+    if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro) return;
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, your_ref: h.your_ref || null, warehouse_id: h.warehouse_id, to_warehouse_id: cls === 'RL' ? h.to_warehouse_id : null,
@@ -146,8 +152,8 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const whRows = lk.data?.WH;
   return (
-    <div className="page" data-tone="inventory">
-      <div className="doc-title"><p className="eyebrow">สินค้า › {K.label}</p><h1>{id ? cur.data?.doc_no : 'เอกสารใหม่'}</h1>
+    <div className={cx('page', tColor && 'book-colored')} data-tone="inventory" style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">สินค้า › {K.label}</p><h1>{id ? cur.data?.doc_no : 'เอกสารใหม่'}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">บันทึกแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{!cancelled && cur.data?.doc_no?.startsWith('MIG-') && <Pill tone="d">ปรับยอดตอนย้ายข้อมูล — แก้ไข/ยกเลิกไม่ได้</Pill>}{!cancelled && cur.data?.from_count && <Pill tone="d">สร้างจากการตรวจนับ — แก้ที่หน้ารายการตรวจนับ</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
@@ -157,6 +163,8 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
         {cls === 'JU' && !ro && <button disabled={!used.some((l) => d(l.qty || 0).gt(0))} onClick={() => setProdCost(true)} title="รวมต้นทุนจากการเบิกวัตถุดิบและค่าแรง/โสหุ้ย แล้วกระจายเป็นทุนต่อหน่วยของสินค้าที่รับเข้า (บทที่ 26)">🏭 ต้นทุนการผลิต</button>}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
+      <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
+      <TypeNotice show={!id && !!h && !h.doc_type_id} />
       <ErrorBox error={err ?? cur.error ?? defs.error} />
       {defs.data && !defs.data.types.length && <p className="bad">ยังไม่มีประเภทเอกสารของ{K.label} — เพิ่มที่ ตั้งค่า › ประเภทเอกสาร</p>}
       {h && <div onKeyDown={navKey}>
@@ -169,7 +177,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
             <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
           </div>
           <div className="col">
-            <Field label="ประเภทเอกสาร"><select value={h.doc_type_id} disabled={!!id} onChange={(e) => set({ doc_type_id: e.target.value })}>{defs.data?.types.map((t) => <option key={t.id} value={t.id}>{t.code} {t.name_th}</option>)}</select></Field>
+            
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
             <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
             <Field label="เลขที่อ้างอิง"><input value={h.your_ref} maxLength={60} disabled={ro} onChange={(e) => set({ your_ref: e.target.value })} /></Field>

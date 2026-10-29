@@ -84,12 +84,12 @@ export function billRoutes(app: FastifyInstance, db: Db) {
     const partyTbl = K.party === 'customer' ? 'md_customer' : 'md_supplier';
     app.get(base, async (req) => {
       const a = requireCompany(req);
-      const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), status: z.enum(['N', 'C', 'all']).default('all'), order: z.enum(['date', 'appointment']).default('date'),
+      const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), status: z.enum(['N', 'C', 'all']).default('all'), type_id: uuid.optional(), order: z.enum(['date', 'appointment']).default('date'),
         limit: z.coerce.number().int().min(1).max(1000).default(200) }), req.query);
       const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
       const where = sql.join([
         sql`h.company_id = ${a.companyId}`, sql`h.doc_class = ${K.cls}`, sql`h.deleted_at IS NULL`,
-        ...(q.from ? [sql`h.doc_date >= ${q.from}`] : []), ...(q.to ? [sql`h.doc_date <= ${q.to}`] : []), ...(q.status !== 'all' ? [sql`h.doc_status = ${q.status}`] : []),
+        ...(q.from ? [sql`h.doc_date >= ${q.from}`] : []), ...(q.to ? [sql`h.doc_date <= ${q.to}`] : []), ...(q.status !== 'all' ? [sql`h.doc_status = ${q.status}`] : []), ...(q.type_id ? [sql`h.doc_type_id = ${q.type_id}`] : []),
         ...(like ? [sql`(h.doc_no ILIKE ${like} OR h.party_name ILIKE ${like} OR p.code ILIKE ${like})`] : []),
       ], sql` AND `);
       const from = sql`FROM doc_header h LEFT JOIN ${sql.table(partyTbl)} p ON p.id = h.${sql.ref(partyCol)} WHERE ${where}`;

@@ -17,3 +17,17 @@ export function bookColor(b: { code: string; prefix: string } | null | undefined
 
 /** style ที่ตั้งตัวแปร CSS --book-c */
 export const bookStyle = (c: string | undefined): CSSProperties | undefined => (c ? ({ ['--book-c' as string]: c } as CSSProperties) : undefined);
+
+/** สีประจำประเภทเอกสาร (ขายเชื่อ ซื้อเชื่อ ฯลฯ) — ตามรหัสประเภท สีเดิมทุกครั้ง */
+const TYPE_COLORS = ['#2f7fc2', '#2e9a5e', '#d0573a', '#7a52c7', '#b07d0b', '#c2477f', '#2a948e', '#5866c4', '#8a6d3b', '#b5562e'];
+export function typeColor(code: string): string {
+  const n = [...code.toUpperCase()].reduce((s, ch, i) => s + ch.charCodeAt(0) * (i + 1), 0);
+  return TYPE_COLORS[n % TYPE_COLORS.length]!;
+}
+/** สีของประเภทเอกสารตามลำดับในหมวดเดียวกัน (ประเภทในหน้าเดียวกันสีไม่ซ้ำกัน · หน้ารายการกับฟอร์มใช้รายการเดียวกันจึงสีตรงกัน) */
+export function typeColorIn(types: Array<{ id: string; code: string }> | undefined, id: string | null | undefined): string | undefined {
+  if (!types || !id) return undefined;
+  const sorted = [...types].sort((a, b) => a.code.localeCompare(b.code));
+  const i = sorted.findIndex((t) => t.id === id);
+  return i < 0 ? undefined : TYPE_COLORS[i % TYPE_COLORS.length];
+}

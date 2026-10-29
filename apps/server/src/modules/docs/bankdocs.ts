@@ -89,13 +89,13 @@ export function bankDocRoutes(app: FastifyInstance, db: Db) {
     const base = `/api/v1/${K.path}`;
     app.get(base, async (req) => {
       const a = requireCompany(req);
-      const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), bank_account_id: uuid.optional(), limit: z.coerce.number().int().min(1).max(2000).default(300) }), req.query);
+      const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), bank_account_id: uuid.optional(), type_id: uuid.optional(), limit: z.coerce.number().int().min(1).max(2000).default(300) }), req.query);
       const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
       const rows = (await sql`SELECT h.id, h.doc_no, h.doc_date, h.remark, h.amount, h.wht_amount, h.net_amount, h.doc_status, b.code AS bank_code, b.name AS bank_name, tb.code AS to_bank_code, tb.name AS to_bank_name, j.voucher_no
           FROM doc_header h LEFT JOIN md_bank_account b ON b.id = h.bank_account_id LEFT JOIN md_bank_account tb ON tb.id = h.to_bank_account_id
           LEFT JOIN gl_journal j ON j.id = h.journal_id
          WHERE h.company_id = ${a.companyId} AND h.doc_class = ${K.cls} AND h.deleted_at IS NULL ${q.from ? sql`AND h.doc_date >= ${q.from}` : sql``} ${q.to ? sql`AND h.doc_date <= ${q.to}` : sql``}
-           ${q.bank_account_id ? sql`AND (h.bank_account_id = ${q.bank_account_id} OR h.to_bank_account_id = ${q.bank_account_id})` : sql``} ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})` : sql``}
+           ${q.bank_account_id ? sql`AND (h.bank_account_id = ${q.bank_account_id} OR h.to_bank_account_id = ${q.bank_account_id})` : sql``} ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})` : sql``} ${q.type_id ? sql`AND h.doc_type_id = ${q.type_id}` : sql``}
          ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT ${q.limit}`.execute(db)).rows;
       return { rows };
     });

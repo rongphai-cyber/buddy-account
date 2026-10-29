@@ -10,6 +10,8 @@ import { DocActions } from '../../components/DocPrint';
 import { DocWhtTab, JvVatTab } from '../gl/JvLinks';
 import { DocJournalTab } from './TradeDocs';
 import { nextKey, PaymentsTable, paysBody, paysFrom, type Pay } from './MoneyParts';
+import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
+import { bookStyle, typeColorIn } from '../../bookColor';
 
 /**
  * เงินสดย่อย (คู่มือบทที่ 15 S-GL-11/12/13): DP บันทึกการจ่าย (ยังไม่ลงบัญชี) → VR เบิกชดเชย (รวม DP แล้วลงบัญชี)
@@ -30,15 +32,17 @@ export function PettyListPage({ kind }: { kind: Kind }) {
   const [from, setFrom] = useState(today.slice(0, 5) + '01-01');
   const [to, setTo] = useState(today);
   const [open, setOpen] = useState(false);
-  const list = useQuery({ queryKey: [K.api, q, from, to, open], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.api}`, { q, from, to, ...(open ? { open: 'true' } : {}) }), placeholderData: (p) => p });
-  useHotkeys({ Insert: can('add') ? () => nav(`${BASE}/${kind}/new`) : undefined }, []);
+  const tt = useTypeTabs(K.cls);
+  const list = useQuery({ queryKey: [K.api, q, from, to, open, tt.tab], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.api}`, { type_id: tt.tab || undefined, q, from, to, ...(open ? { open: 'true' } : {}) }), placeholderData: (p) => p });
+  useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${BASE}/${kind}/new`)) : undefined }, [tt.tab, ]);
   const total = list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r.net_amount)), d(0));
   return (
     <div className="page" data-tone="gl">
       <PageHead eyebrow="บัญชี › เงินสดย่อย" title={K.label}
         lead={kind === 'dp' ? 'บันทึกค่าใช้จ่ายที่จ่ายจากเงินสดย่อย (ยังไม่ลงบัญชี) · ตั้งวงเงิน = บรรทัดเป็นบัญชีเงินสดย่อย · ลงบัญชีเมื่อเบิกชดเชย' : 'รวมใบจ่ายที่ยังไม่เบิก แล้วจ่ายชดเชยด้วยเงินสด/เช็ค/โอน — ลงบัญชีทันที (Dr ค่าใช้จ่าย / Cr เงินสด-ธนาคาร)'}
-        actions={can('add') && <button className="primary" onClick={() => nav(`${BASE}/${kind}/new`)}>+ {K.label} <kbd>Ins</kbd></button>} />
+        actions={can('add') && <button className={cx('primary', tt.color && 'book-btn')} style={bookStyle(tt.color)} onClick={() => nav(tt.newUrl(`${BASE}/${kind}/new`))}>+ {K.label} {tt.cur ? `${tt.cur.code} ` : ''}<kbd>Ins</kbd></button>} />
       <div className="seg kind-switch">{(Object.keys(KINDS) as Kind[]).map((k) => <button key={k} className={cx(k === kind && 'on')} onClick={() => nav(k === 'dp' ? BASE : `${BASE}/vr`)}>{KINDS[k].short}</button>)}</div>
+      {tt.tabs()}
       <div className="toolbar">
         <input type="search" autoFocus placeholder="ค้นหาเลขที่ หรือคำอธิบาย" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาเอกสาร" />
         <label>ตั้งแต่ <DateInput value={from} onChange={setFrom} /></label>
@@ -94,7 +98,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const date0 = me?.work_date ?? todayIso();
   const openDps = useQuery({ enabled: kind === 'vr', queryKey: ['petty-payments', 'open', id], queryFn: () => api.get<{ rows: Row[] }>('/api/v1/petty-payments', { open: 'true', limit: 1000, ...(id ? { vr_id: id } : {}) }), staleTime: 0 });
   const blank = (): Line => ({ key: nextKey(), account_id: null, department_id: '', description: '', amount: '' });
-  if (!h && !id && defs.data) { setH({ doc_type_id: defs.data.types[0]?.id ?? '', doc_date: date0, remark: '', cash: '' }); if (kind === 'dp') setLines([blank()]); }
+  if (!h && !id && defs.data) { setH({ doc_type_id: initialType(defs.data.types)?.id ?? '', doc_date: date0, remark: '', cash: '' }); if (kind === 'dp') setLines([blank()]); }
   if (!h && id && cur.data) {
     const c = cur.data;
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), remark: c.remark ?? '', cash: kind === 'vr' ? d(c.cash_amount ?? 0).toString() : '' });
@@ -109,7 +113,12 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const vrTotal = chosen.reduce((s, r) => s.plus(d(r.net_amount)), d(0));
   const dpTotal = lines.reduce((s, l) => s.plus(d(l.amount || 0)), d(0));
   const t = settlementTotals({ settlements: [vrTotal.toFixed(2)], payments: pays.filter((p) => p.payment_method_id).map((p) => p.amount || 0), cash: h?.cash ? h.cash : null });
+  /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
+  const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v }); };
+  const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
+  const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const save = async () => {
+    if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
     const body = kind === 'dp'
@@ -133,8 +142,8 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const acctName = (aid: string | null) => accts.data?.find((a) => a.id === aid)?.name_th ?? '';
   return (
-    <div className="page" data-tone="gl">
-      <div className="doc-title"><p className="eyebrow">บัญชี › เงินสดย่อย › {K.label}</p><h1>{id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : ''}</h1>
+    <div className={cx('page', tColor && 'book-colored')} data-tone="gl" style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">บัญชี › เงินสดย่อย › {K.label}</p><h1>{id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : ''}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{kind === 'vr' ? 'ลงบัญชีแล้ว' : cur.data?.vr_no ? `เบิกชดเชยแล้วใน ${cur.data.vr_no}` : 'รอเบิกชดเชย (ยังไม่ลงบัญชี)'}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setPick(new Set()); setPays([]); nav(`${BASE}/${kind}/new`); } }}>+ ใหม่</button>
@@ -143,12 +152,14 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
         <DocActions kind="doc" id={id} menu={'GL.PC'} />
         <button onClick={() => nav(kind === 'dp' ? BASE : `${BASE}/vr`)}>รายการ <kbd>Esc</kbd></button>
       </div>
+      <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
+      <TypeNotice show={!id && !!h && !h.doc_type_id} />
       <ErrorBox error={err ?? cur.error ?? openDps.error} />
       {h && <div onKeyDown={navKey}>
         <div className="head-grid trade-head">
           <div className="col"><Field label="คำอธิบาย/หมายเหตุ" wide><input value={h.remark} maxLength={200} disabled={ro} autoFocus={!id} onChange={(e) => set({ remark: e.target.value })} placeholder={kind === 'vr' ? 'เช่น เบิกชดเชยเงินสดย่อย 1–15/11' : 'เช่น ค่าเดินทางพนักงานขาย'} /></Field></div>
           <div className="col">
-            <Field label="ประเภทเอกสาร"><select value={h.doc_type_id} disabled={!!id} onChange={(e) => set({ doc_type_id: e.target.value })}>{defs.data?.types.map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
+            
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
           </div>
         </div>

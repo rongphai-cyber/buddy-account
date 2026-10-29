@@ -9,6 +9,8 @@ import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, Mon
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
 import { PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
+import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
+import { bookStyle, typeColorIn } from '../../bookColor';
 
 const kindOf = (path: string) => SETTLE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: SettleKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -28,14 +30,16 @@ export function SettleListPage({ path }: { path: string }) {
   const [from, setFrom] = useState(today.slice(0, 8) + '01');
   const [to, setTo] = useState(today);
   const [status, setStatus] = useState<'N' | 'C' | 'all'>('all');
-  const list = useQuery({ queryKey: [K.path, q, from, to, status], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { q, from, to, status, limit: 500 }), placeholderData: (p) => p });
-  useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, []);
+  const tt = useTypeTabs(K.cls);
+  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500 }), placeholderData: (p) => p });
+  useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, ]);
   const sum = (k: 'net_amount' | 'wht_amount') => list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r[k])), d(0)).toFixed(2);
   return (
     <div className="page" data-tone="finance">
       <PageHead eyebrow={`การเงิน › ${K.module === 'AR' ? 'ลูกหนี้' : 'เจ้าหนี้'}`} title={K.label}
         lead={`ตัดบิลค้างได้หลายใบในใบเดียว (ใบลดหนี้นำมาหักได้) · ${rp(K)}เป็นเงินสด เช็ค เงินโอน ผสมกันได้ · บันทึกแล้วลงบัญชีทันที · ยกเลิกแล้วบิลกลับเป็นค้าง`}
-        actions={can('add') && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ {K.label} <kbd>Ins</kbd></button>} />
+        actions={can('add') && <button className={cx('primary', tt.color && 'book-btn')} style={bookStyle(tt.color)} onClick={() => nav(tt.newUrl(`${K.route}/new`))}>+ {K.label} {tt.cur ? `${tt.cur.code} ` : ''}<kbd>Ins</kbd></button>} />
+      {tt.tabs()}
       <div className="toolbar">
         <input type="search" autoFocus placeholder={`ค้นหาเลขที่ ${partyWord(K)} หรืออ้างอิง`} value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาเอกสาร" />
         <label>ตั้งแต่ <DateInput value={from} onChange={setFrom} /></label>
@@ -102,7 +106,7 @@ export function SettleFormPage({ path }: { path: string }) {
   const bills = useQuery({ enabled: !!h?.party, queryKey: [K.path, 'bills', h?.party?.id], queryFn: () => api.get<{ rows: Array<{ id: string; doc_no: string; invoice_ids: string[]; total: string }> }>(`/api/v1/${K.path}/bills`, { party_id: h!.party!.id }) });
   const open = useQuery({ enabled: !!h?.party, queryKey: [K.path, 'open', h?.party?.id, id], queryFn: () => api.get<{ rows: Open[] }>(`/api/v1/${K.path}/open-items`, { party_id: h!.party!.id, ...(id ? { receipt_id: id } : {}) }), staleTime: 0 });
   const date0 = me?.work_date ?? todayIso();
-  if (!h && !id && defs.data) setH({ doc_type_id: defs.data.types[0]?.id ?? '', doc_date: date0, payment_date: date0, party: null, department_id: '', salesperson_id: '', your_ref: '', remark: '', interest: '', discount: '', wht: '', fx: '', cash: '', whtForm: 'S53', whtRate: '3' });
+  if (!h && !id && defs.data) setH({ doc_type_id: initialType(defs.data.types)?.id ?? '', doc_date: date0, payment_date: date0, party: null, department_id: '', salesperson_id: '', your_ref: '', remark: '', interest: '', discount: '', wht: '', fx: '', cash: '', whtForm: 'S53', whtRate: '3' });
   if (!h && id && cur.data) {
     const c = cur.data as Record<string, string | null>;
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), payment_date: String(c.payment_date ?? c.doc_date).slice(0, 10), party: { id: (c.customer_id ?? c.supplier_id)!, code: c.party_code ?? '', name: c.party_name },
@@ -132,7 +136,12 @@ export function SettleFormPage({ path }: { path: string }) {
   const toggle = (o: Open, on: boolean) => { setPick((m) => { const n = { ...m }; if (on) n[o.header_id] = num(o.outstanding); else delete n[o.header_id]; return n; }); setDirty(true); };
   const allOn = rows.length > 0 && rows.every((o) => pick[o.header_id] !== undefined);
 
+  /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
+  const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v }); };
+  const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
+  const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const save = async (andNew = false) => {
+    if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
@@ -162,8 +171,8 @@ export function SettleFormPage({ path }: { path: string }) {
   const docNo = id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : '';
   const ro = readOnly;
   return (
-    <div className="page" data-tone="finance">
-      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{docNo}</h1>
+    <div className={cx('page', tColor && 'book-colored')} data-tone="finance" style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{docNo}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}
           {h?.party && chosen.length > 0 && !t.ok && !ro && <Pill tone="d">ยอดเงินไม่เรียบร้อย</Pill>}</span></div>
       <div className="toolbar">
@@ -174,6 +183,8 @@ export function SettleFormPage({ path }: { path: string }) {
         <DocActions kind="doc" id={id} menu={K.menu} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
+      <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
+      <TypeNotice show={!id && !!h && !h.doc_type_id} />
       <ErrorBox error={err ?? cur.error ?? open.error} />
       {h && <div onKeyDown={navKey}>
         <div className="head-grid trade-head">
@@ -193,7 +204,7 @@ export function SettleFormPage({ path }: { path: string }) {
             {K.module === 'AR' && <Field label="พนักงานเก็บเงิน"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></Field>}
           </div>
           <div className="col">
-            <Field label="ประเภทเอกสาร"><select value={h.doc_type_id} disabled={!!id} onChange={(e) => set({ doc_type_id: e.target.value })}>{defs.data?.types.map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
+            
             <Field label={K.cls === 'RE' ? 'วันที่ใบเสร็จ' : 'วันที่ทำเอกสาร'} req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v, ...(h.payment_date === h.doc_date ? { payment_date: v } : {}) })} /></Field>
             <Field label={`วันที่${rp(K)}เงิน`} hint="วันรับ/จ่ายเงินจริง ไม่ต้องตรงวันที่เอกสาร"><DateInput value={h.payment_date} disabled={ro} onChange={(v) => set({ payment_date: v })} /></Field>
             <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>

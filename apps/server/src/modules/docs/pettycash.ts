@@ -129,12 +129,12 @@ async function saveVr(db: Db, a: Ctx, id: string | null, b: z.infer<typeof vrBod
 }
 
 export function pettyCashRoutes(app: FastifyInstance, db: Db) {
-  const listQ = z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), status: z.enum(['N', 'C', 'all']).default('all'), open: z.coerce.boolean().optional(), vr_id: uuid.optional(),
+  const listQ = z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), status: z.enum(['N', 'C', 'all']).default('all'), type_id: uuid.optional(), open: z.coerce.boolean().optional(), vr_id: uuid.optional(),
     limit: z.coerce.number().int().min(1).max(1000).default(300) });
   const where = (companyId: string, cls: string, q: z.infer<typeof listQ>) => {
     const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
     return sql.join([sql`h.company_id = ${companyId}`, sql`h.doc_class = ${cls}`, sql`h.deleted_at IS NULL`,
-      ...(q.from ? [sql`h.doc_date >= ${q.from}`] : []), ...(q.to ? [sql`h.doc_date <= ${q.to}`] : []), ...(q.status !== 'all' ? [sql`h.doc_status = ${q.status}`] : []),
+      ...(q.from ? [sql`h.doc_date >= ${q.from}`] : []), ...(q.to ? [sql`h.doc_date <= ${q.to}`] : []), ...(q.status !== 'all' ? [sql`h.doc_status = ${q.status}`] : []), ...(q.type_id ? [sql`h.doc_type_id = ${q.type_id}`] : []),
       ...(like ? [sql`(h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})`] : [])], sql` AND `);
   };
   /** DP · open=true → ยังไม่เบิกชดเชย (vr_id = ใบเบิกที่กำลังแก้ ให้ DP ของใบนั้นเลือกได้) */

@@ -225,6 +225,7 @@ table { border-collapse: collapse; width: 100%; }
 .book-colored .doc-title h1 { color: var(--book-c); }
 .book-colored .head-grid { border-top: 5px solid var(--book-c); background: color-mix(in srgb, var(--book-c) 6%, var(--surface)); }
 .title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.doc-title > .book-pill { margin-right: auto; align-self: center; }   /* ป้ายประเภทติดหลังเลขที่เอกสาร ไม่ลอยกลางแถว */
 .title-row h1 { margin: 0; }
 .book-pill { display: inline-block; font-family: var(--sans); background: var(--book-c); color: #fff; border-radius: 6px; padding: 2px 10px; font-weight: 600; font-size: 14px; }
 button.primary.book-btn { background: var(--book-c); border-color: var(--book-c); }

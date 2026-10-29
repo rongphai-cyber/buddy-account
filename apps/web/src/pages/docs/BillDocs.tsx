@@ -7,6 +7,8 @@ import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { DocActions } from '../../components/DocPrint';
+import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
+import { bookStyle, typeColorIn } from '../../bookColor';
 
 const kindOf = (path: string) => BILL_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: BillKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -28,8 +30,9 @@ export function BillListPage({ path, appointments }: { path: string; appointment
   const [from, setFrom] = useState(appointments ? today.slice(0, 5) + '01-01' : today.slice(0, 8) + '01');
   const [to, setTo] = useState(today);
   const [err, setErr] = useState<unknown>(null);
-  const list = useQuery({ queryKey: [K.path, q, from, to, appointments], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { q, from, to, status: appointments ? 'N' : 'all', order: appointments ? 'appointment' : 'date', limit: 500 }), placeholderData: (p) => p });
-  useHotkeys({ Insert: can('add') && !appointments ? () => nav(`${K.route}/new`) : undefined }, []);
+  const tt = useTypeTabs(K.cls);
+  const list = useQuery({ queryKey: [K.path, q, from, to, appointments, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status: appointments ? 'N' : 'all', order: appointments ? 'appointment' : 'date', limit: 500 }), placeholderData: (p) => p });
+  useHotkeys({ Insert: can('add') && !appointments ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, ]);
   const appoint = async (r: ListRow, date: string) => {
     setErr(null);
     try { await api.post(`/api/v1/${K.path}/${r.id}/appointment`, { date: date || null }); toast(`บันทึกวันนัด${rp(K)}เงินของ ${r.doc_no} แล้ว`); qc.invalidateQueries({ queryKey: [K.path] }); } catch (e) { setErr(e); }
@@ -39,7 +42,8 @@ export function BillListPage({ path, appointments }: { path: string; appointment
     <div className="page" data-tone="finance">
       <PageHead eyebrow={`การเงิน › ${K.module === 'AR' ? 'ลูกหนี้' : 'เจ้าหนี้'}`} title={appointments ? `บันทึกวันนัด${rp(K)}ชำระเงิน` : K.label}
         lead={appointments ? `ใบวางบิลเรียงตามวันนัด${rp(K)}เงิน — แก้วันนัดในแถวได้ทันที (ไม่ทราบให้เว้นว่าง)` : `รวมบิลค้างของ${partyWord(K)}เพื่อนัด${rp(K)}เงิน · ไม่ลงบัญชี · บิลหนึ่งใบอยู่ได้ในใบวางบิลเดียว (ยกเลิกแล้ววางใหม่ได้)`}
-        actions={can('add') && !appointments && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ {K.label} <kbd>Ins</kbd></button>} />
+        actions={can('add') && !appointments && <button className={cx('primary', tt.color && 'book-btn')} style={bookStyle(tt.color)} onClick={() => nav(tt.newUrl(`${K.route}/new`))}>+ {K.label} {tt.cur ? `${tt.cur.code} ` : ''}<kbd>Ins</kbd></button>} />
+      {tt.tabs()}
       <div className="toolbar">
         <input type="search" autoFocus placeholder={`ค้นหาเลขที่ หรือ${partyWord(K)}`} value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาเอกสาร" />
         <label>ตั้งแต่ <DateInput value={from} onChange={setFrom} /></label>
@@ -89,7 +93,7 @@ export function BillFormPage({ path }: { path: string }) {
   const [reason, setReason] = useState('');
   const open = useQuery({ enabled: !!h?.party, queryKey: [K.path, 'open', h?.party?.id, id], queryFn: () => api.get<{ rows: Open[] }>(`/api/v1/${K.path}/open-items`, { party_id: h!.party!.id, ...(id ? { bill_id: id } : {}) }), staleTime: 0 });
   const date0 = me?.work_date ?? todayIso();
-  if (!h && !id && defs.data) setH({ doc_type_id: defs.data.types[0]?.id ?? '', doc_date: date0, visit_date: date0, appointment_date: '', party: null, payment_terms: '', remark: '' });
+  if (!h && !id && defs.data) setH({ doc_type_id: initialType(defs.data.types)?.id ?? '', doc_date: date0, visit_date: date0, appointment_date: '', party: null, payment_terms: '', remark: '' });
   if (!h && id && cur.data) {
     const c = cur.data;
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), visit_date: c.visit_date ? String(c.visit_date).slice(0, 10) : '', appointment_date: c.appointment_date ? String(c.appointment_date).slice(0, 10) : '',
@@ -108,7 +112,12 @@ export function BillFormPage({ path }: { path: string }) {
     set({ party: p, payment_terms: x.payment_terms ?? '' });
   };
   const toggle = (idv: string, on: boolean) => { setPick((s0) => { const s = new Set(s0); if (on) s.add(idv); else s.delete(idv); return s; }); setDirty(true); };
+  /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
+  const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v }); };
+  const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
+  const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const save = async () => {
+    if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, visit_date: h.visit_date || null, appointment_date: h.appointment_date || null, party_id: h.party?.id, payment_terms: h.payment_terms || null, remark: h.remark || null,
@@ -129,8 +138,8 @@ export function BillFormPage({ path }: { path: string }) {
   const cancelled = cur.data?.doc_status === 'C';
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   return (
-    <div className="page" data-tone="finance">
-      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : ''}</h1>
+    <div className={cx('page', tColor && 'book-colored')} data-tone="finance" style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : ''}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">บันทึกแล้ว (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setPick(new Set()); nav(`${K.route}/new`); } }}>+ ใหม่</button>
@@ -139,6 +148,8 @@ export function BillFormPage({ path }: { path: string }) {
         <DocActions kind="doc" id={id} menu={K.menu} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
+      <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
+      <TypeNotice show={!id && !!h && !h.doc_type_id} />
       <ErrorBox error={err ?? cur.error ?? open.error} />
       {h && <div onKeyDown={navKey}>
         <div className="head-grid trade-head">
@@ -148,7 +159,7 @@ export function BillFormPage({ path }: { path: string }) {
             <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
           </div>
           <div className="col">
-            <Field label="ประเภทเอกสาร"><select value={h.doc_type_id} disabled={!!id} onChange={(e) => set({ doc_type_id: e.target.value })}>{defs.data?.types.map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
+            
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
             {K.module === 'AR' && <Field label="วันที่ไปวางบิล"><DateInput value={h.visit_date} disabled={ro} onChange={(v) => set({ visit_date: v })} /></Field>}
             <Field label={`วันที่นัด${rp(K)}เงิน`} hint="ไม่ทราบให้เว้นว่าง ป้อนภายหลังได้"><DateInput value={h.appointment_date} disabled={ro} onChange={(v) => set({ appointment_date: v })} /></Field>

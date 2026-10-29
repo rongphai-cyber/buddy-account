@@ -8,6 +8,8 @@ import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
+import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
+import { bookStyle, typeColorIn } from '../../bookColor';
 
 const kindOf = (path: string) => TRADE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: TradeKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -28,15 +30,17 @@ export function TradeListPage({ path }: { path: string }) {
   const [from, setFrom] = useState(today.slice(0, 8) + '01');
   const [to, setTo] = useState(today);
   const [status, setStatus] = useState<'N' | 'C' | 'all'>('all');
-  const list = useQuery({ queryKey: [K.path, q, from, to, status], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { q, from, to, status, limit: 500 }), placeholderData: (p) => p });
-  useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, []);
+  const tt = useTypeTabs(K.cls);
+  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500 }), placeholderData: (p) => p });
+  useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, ]);
   const total = list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r.net_amount)), d(0));
   return (
     <div className="page" data-tone={TONE(K)}>
       <PageHead eyebrow={`${K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › ${K.label}`} title={K.label}
         lead={`บันทึกแล้วลงบัญชีทันที (ดูใบสำคัญได้ที่เอกสาร) · ยกเลิก = เปลี่ยนสถานะ ไม่ลบ · เอกสารที่${K.module === 'AR' ? 'รับ' : 'จ่าย'}ชำระแล้วแก้ไข/ยกเลิกไม่ได้`}
-        actions={can('add') && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ เพิ่ม{K.label} <kbd>Ins</kbd></button>} />
+        actions={can('add') && <button className={cx('primary', tt.color && 'book-btn')} style={bookStyle(tt.color)} onClick={() => nav(tt.newUrl(`${K.route}/new`))}>+ เพิ่ม{K.label} {tt.cur ? `${tt.cur.code} ` : ''}<kbd>Ins</kbd></button>} />
       {TRADE_KINDS.filter((k) => k.menu === K.menu).length > 1 && <div className="seg kind-switch">{TRADE_KINDS.filter((k) => k.menu === K.menu).map((k) => <button key={k.path} className={cx(k.path === K.path && 'on')} onClick={() => nav(k.route)}>{k.label}</button>)}</div>}
+      {tt.tabs()}
       <div className="toolbar">
         <input type="search" autoFocus placeholder={`ค้นหาเลขที่ ${partyWord(K)} หรืออ้างอิง`} value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาเอกสาร" />
         <label>ตั้งแต่ <DateInput value={from} onChange={setFrom} /></label>
@@ -197,7 +201,7 @@ export function TradeFormPage({ path }: { path: string }) {
   const [dirty, setDirty] = useState(false);
   const date0 = me?.work_date ?? todayIso();
   if (!h && !id && defs.data) {
-    const t = defs.data.types[0];
+    const t = initialType(defs.data.types);
     setH({ doc_type_id: t?.id ?? '', doc_date: date0, party: null, bill_to: null, party_tax_branch_no: '', your_ref: '', ref: null, department_id: '', salesperson_id: '', sales_area_code: '', ship_via_code: '', credit_days: '',
       price_type: ((t?.price_type || defs.data.price_type || '2') as Head['price_type']), vat_rate: num(t?.vat_rate ?? defs.data.vat_rate), vat_basis: (t?.vat_basis === '2' ? '2' : '1'), discount_text: '', remark: '', price_level: '1' });
   }
@@ -263,7 +267,12 @@ export function TradeFormPage({ path }: { path: string }) {
   const addLine = () => { setLines((ls) => [...ls, { key: ++seq, item_id: '', item_code: '', description: '', warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: '', unit_id: null, factor: '1', unit_price: '', discount_text: '', is_free: false, return_to_stock: K.cls === 'CN' || K.cls === 'DN', vat_exempt: false }]); };
   if (h && !lines.length && !id) addLine();
 
+  /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
+  const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.price_type ? { price_type: t.price_type as Head['price_type'] } : {}), ...(t?.vat_rate != null ? { vat_rate: num(t.vat_rate) } : {}), ...(t?.vat_basis ? { vat_basis: (t.vat_basis === '2' ? '2' : '1') as Head['vat_basis'] } : {}) }); };
+  const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
+  const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const save = async (andNew = false, ok: Set<number> = notFree) => {
+    if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
     const zero = lines.find((l) => l.item_id && !l.is_free && !ok.has(l.key) && d(l.unit_price || 0).isZero() && K.cls !== 'QT');
     if (zero) { setAskFree({ key: zero.key, andNew }); return; }
@@ -296,8 +305,8 @@ export function TradeFormPage({ path }: { path: string }) {
   const cancelled = cur.data?.doc_status === 'C';
   const docNo = id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : '';
   return (
-    <div className="page" data-tone={TONE(K)}>
-      <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1>
+    <div className={cx('page', tColor && 'book-colored')} data-tone={TONE(K)} style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{K.order ? 'บันทึกแล้ว (ไม่ลงบัญชี)' : 'ลงบัญชีแล้ว'}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{readOnly && !cancelled && id && <Pill tone="d">{cur.data?.is_opening ? 'ยอดยกมา — แก้ที่เมนูคงค้าง-ยกมา' : K.order ? `${K.module === 'AR' ? 'ส่งของ' : 'รับของ'}แล้ว — แก้ไขไม่ได้` : 'ชำระแล้ว — แก้ไขไม่ได้'}</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setPays([]); setDeps({}); nav(`${K.route}/new`); } }}>+ ใหม่</button>
@@ -309,6 +318,8 @@ export function TradeFormPage({ path }: { path: string }) {
         {supInv && !readOnly && h && <AiBillButton target={K.path} onApply={applyBill} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
+      <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
+      <TypeNotice show={!id && !!h && !h.doc_type_id} />
       <ErrorBox error={err ?? cur.error} />
       {K.cls === 'QT' && !!cur.data?.converted.length && <p className="hint">แปลงเป็นใบสั่งขายแล้ว: {cur.data.converted.map((x) => <a key={x.id} href={`/sa/orders/${x.id}`} onClick={(e) => { e.preventDefault(); nav(`/sa/orders/${x.id}`); }} className="mono">{x.doc_no} </a>)}</p>}
       {h && <div onKeyDown={navKey}>
@@ -324,7 +335,7 @@ export function TradeFormPage({ path }: { path: string }) {
               codeOf={(r: { doc_no: string }) => r.doc_no} label={(r: { party_name: string; net_amount: string }) => `${r.party_name} ${fmt(r.net_amount)}`} onPick={(r: { id: string; doc_no: string } | null) => set({ ref: r ? { id: r.id, code: r.doc_no } : null })} placeholder={h.party ? 'พิมพ์เลขที่ใบกำกับ' : `เลือก${partyWord(K)}ก่อน`} /></Field>}
           </div>
           <div className="col">
-            <Field label="ประเภทเอกสาร"><select value={h.doc_type_id} disabled={!!id} onChange={(e) => set({ doc_type_id: e.target.value })}>{defs.data?.types.map((t) => <option key={t.id} value={t.id}>{t.code} {t.name_th}</option>)}</select></Field>
+            
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={readOnly} onChange={(v) => set({ doc_date: v })} /></Field>
             {K.order && K.cls !== 'QT' && <Field label={K.cls === 'SO' ? 'ส่งของวันที่' : 'รับของวันที่'}><DateInput value={delivery || h.doc_date} disabled={readOnly} onChange={(v) => { setDelivery(v); setDirty(true); }} /></Field>}
             {!K.payments && <Field label={K.cls === 'QT' ? 'กำหนดยืนราคา (วัน) / ครบกำหนด' : 'เครดิต (วัน) / ครบกำหนด'} hint={K.cls === 'QT' ? '0 = ไม่กำหนด ใช้อ้างซ้ำเป็นแม่แบบได้' : undefined}><div className="pair"><input type="number" min={0} value={h.credit_days} disabled={readOnly} onChange={(e) => set({ credit_days: e.target.value })} aria-label="เครดิต" /><span className="muted small" style={{ alignSelf: 'center' }}><DateText v={dueDate(h.doc_date, Number(h.credit_days || 0))} /></span></div></Field>}
