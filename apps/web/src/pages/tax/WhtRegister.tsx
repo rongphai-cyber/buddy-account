@@ -49,7 +49,16 @@ export function WhtRegisterPage() {
     <div className="page" data-tone="finance">
       <PageHead eyebrow="การเงิน › ภาษีหัก ณ ที่จ่าย" title="แฟ้มภาษีหัก ณ ที่จ่าย"
         lead="รายการเกิดจากใบสำคัญจ่ายชำระหนี้อัตโนมัติ (ยอดเงินแก้ที่เอกสารต้นทาง) หรือเพิ่มเองในแฟ้ม · คลิกรายการเพื่อแก้เลขที่หนังสือรับรอง หรือพิมพ์ 50 ทวิ"
-        actions={<>{can('add') && <button className="primary" onClick={() => setEdit(blank())}>+ เพิ่มรายการ <kbd>Ins</kbd></button>}<button onClick={() => nav('/tax/wht50')}>🖨 พิมพ์ 50 ทวิ (ป้อนเอง)</button></>} />
+        actions={<>{can('add') && <button className="primary" onClick={() => setEdit(blank())}>+ เพิ่มรายการ <kbd>Ins</kbd></button>}<button onClick={() => nav('/tax/wht50')}>🖨 พิมพ์ 50 ทวิ (ป้อนเอง)</button>
+          {form !== 'all' && <button title="ข้อความคั่นด้วย | สำหรับนำเข้าโปรแกรมยื่นแบบของกรมสรรพากร (ตรวจกับโปรแกรมก่อนยื่นจริง)" onClick={async () => {
+            try {
+              const res = await fetch(`/api/v1/wht/efile?form=${form}&month=${ym}`, { credentials: 'include' });
+              if (!res.ok) { const j = await res.json().catch(() => null); throw new Error(j?.error?.message ?? 'ส่งออกไม่สำเร็จ'); }
+              const blob = await res.blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+              a.download = `${form === 'S03' ? 'PND3' : 'PND53'}_${ym.replace('-', '')}.txt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            } catch (e) { toast(e instanceof Error ? e.message : String(e), 'bad'); }
+          }}>⬇ ไฟล์ยื่นทางอินเทอร์เน็ต</button>}
+          {form !== 'all' && <button onClick={() => nav(`/reports/center?g=6`)}>ใบแนบ {FORM_TH[form]}</button>}</>} />
       <div className="toolbar">
         <div className="seg">{(['S53', 'S03', 'all'] as const).map((f) => <button key={f} className={cx(form === f && 'on')} onClick={() => setForm(f)}>{f === 'all' ? 'ทุกแบบ' : FORM_TH[f]}</button>)}</div>
         <label>งวด <select value={month} onChange={(e) => setMonth(Number(e.target.value))} aria-label="เดือน">{MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>

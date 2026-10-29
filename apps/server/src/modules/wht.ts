@@ -41,6 +41,35 @@ export function whtRoutes(app: FastifyInstance, db: Db) {
     const sum = (k: 'paid_amount' | 'tax_amount') => rows.reduce((s, r) => s.plus(d(r[k])), d(0)).toFixed(2);
     return { rows, total_paid: sum('paid_amount'), total_tax: sum('tax_amount') };
   });
+  /**
+   * ไฟล์ยื่นแบบทางอินเทอร์เน็ต ภ.ง.ด.3/53 (ข้อความคั่นด้วย | หนึ่งบรรทัดต่อผู้มีเงินได้) สำหรับนำเข้าโปรแกรมของกรมสรรพากร
+   * ภ.ง.ด.3: ลำดับ|เลขประจำตัว|สาขา|คำนำหน้า|ชื่อ|นามสกุล|ที่อยู่|วันที่จ่าย(ววดดปปปป พ.ศ.)|ประเภทเงินได้|อัตรา|จำนวนเงิน|ภาษี|เงื่อนไข
+   * ภ.ง.ด.53: ลำดับ|เลขประจำตัว|สาขา|คำนำหน้า|ชื่อ|ที่อยู่|วันที่จ่าย|ประเภทเงินได้|อัตรา|จำนวนเงิน|ภาษี|เงื่อนไข
+   */
+  app.get('/api/v1/wht/efile', async (req, reply) => {
+    const a = requireCompany(req);
+    const q = parse(z.object({ form: z.enum(['S03', 'S53']), month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'เลือกเดือนภาษี'), late: z.enum(['Y', 'N']).default('N') }), req.query);
+    const rows = (await sql<{ payee_tax_id: string | null; payee_tax_branch_no: string | null; payee_name: string; payee_address: string | null; certificate_date: string; income_type: string; rate: string; paid_amount: string; tax_amount: string; condition: string }>`
+      SELECT w.payee_tax_id, w.payee_tax_branch_no, w.payee_name, w.payee_address, w.certificate_date, w.income_type, w.rate, w.paid_amount, w.tax_amount, w.condition
+        FROM tax_wht_entry w JOIN gl_period p ON p.id = w.tax_period_id
+       WHERE w.company_id = ${a.companyId} AND w.deleted_at IS NULL AND w.doc_status <> 'C' AND w.form_type = ${q.form} AND to_char(p.start_date, 'YYYY-MM') = ${q.month} AND w.is_late = ${q.late === 'Y'}
+       ORDER BY w.certificate_date, w.certificate_no`.execute(db)).rows;
+    if (!rows.length) throw badRequest('ไม่มีรายการภาษีหัก ณ ที่จ่ายของงวดนี้');
+    const TITLES = ['นางสาว', 'นาง', 'นาย', 'น.ส.', 'บริษัท', 'ห้างหุ้นส่วนจำกัด', 'ห้างหุ้นส่วนสามัญ', 'หจก.', 'บจก.'];
+    const clean = (v: string | null | undefined) => (v ?? '').replace(/[|\r\n]+/g, ' ').trim();
+    const lines = rows.map((r, i) => {
+      const name = clean(r.payee_name);
+      const title = TITLES.find((t) => name.startsWith(t)) ?? '';
+      const rest = name.slice(title.length).trim();
+      const [dd, mm, yy] = [r.certificate_date.slice(8, 10), r.certificate_date.slice(5, 7), String(Number(String(r.certificate_date).slice(0, 4)) + 543)];
+      const nameCols = q.form === 'S03' ? [rest.split(/\s+/)[0] ?? '', rest.split(/\s+/).slice(1).join(' ')] : [rest];
+      return [i + 1, clean(r.payee_tax_id), (r.payee_tax_branch_no ?? '00000').padStart(5, '0'), title, ...nameCols, clean(r.payee_address), `${dd}${mm}${yy}`, clean(r.income_type),
+        d(r.rate).toFixed(2), d(r.paid_amount).toFixed(2), d(r.tax_amount).toFixed(2), r.condition || '1'].join('|');
+    });
+    const fname = `${q.form === 'S03' ? 'PND3' : 'PND53'}_${q.month.replace('-', '')}${q.late === 'Y' ? '_ADD' : ''}.txt`;
+    reply.header('content-type', 'text/plain; charset=utf-8').header('content-disposition', `attachment; filename="${fname}"`);
+    return lines.join('\r\n') + '\r\n';
+  });
   /** รายการเดียว + รายการอื่นของเอกสารเดียวกัน แบบเดียวกัน (พิมพ์รวมในหนังสือรับรองฉบับเดียว) */
   app.get('/api/v1/wht/:id', async (req) => {
     const a = requireCompany(req);

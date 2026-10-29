@@ -9,6 +9,7 @@ import { partyReports } from './parties.js';
 import { stockReports } from './stock.js';
 import { glReports } from './gl.js';
 import { analysisReports } from './analysis.js';
+import { taxReports } from './tax.js';
 
 /**
  * ศูนย์รายงาน (คู่มือบทที่ 17) — รายงานทุกตัวรับขอบเขตชุดเดียวกัน คืนผลรูปแบบเดียว (ReportResult) ให้หน้าจอแสดง พิมพ์ ส่งออก
@@ -66,6 +67,7 @@ export function rptRoutes(app: FastifyInstance, db: Db) {
   stockReports();
   glReports();
   analysisReports();
+  taxReports();
   app.get('/api/v1/rpt/available', async () => ({ codes: [...RUNNERS.keys()] }));
   app.post('/api/v1/rpt/:code/run', async (req) => {
     const a = requireCompany(req);

@@ -19,7 +19,9 @@ async function call(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, body
   const r = await app.inject({ method, url, payload: body as object, headers: cookie ? { cookie } : {} });
   const set = r.headers['set-cookie'];
   if (set) cookie = (Array.isArray(set) ? set[0]! : set).split(';')[0]!;
-  return { status: r.statusCode, body: r.body ? JSON.parse(r.body) : null };
+  // ไฟล์ข้อความ (เช่น ไฟล์ยื่นภาษี) คืนเป็นสตริง
+  const parsed = (() => { if (!r.body) return null; try { return JSON.parse(r.body); } catch { return r.body; } })();
+  return { status: r.statusCode, body: parsed };
 }
 
 beforeAll(async () => {
@@ -2060,6 +2062,38 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await run('7.6', {})).rows.at(-1).c.net).toBe('0.00');
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     for (const [path, id] of [['ar-credit-notes', cn.id], ['sales-invoices', iv.id], ['purchase-invoices', rr.id]]) expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+  it('tax reports (T5.7): VAT report variants, PP30 with carry forward, PND attachments, e-filing file, isolation', async () => {
+    const vat = async (kind: 'P' | 'S', no: string, month: string, base: number, v: number, extra: object = {}) => (await call('POST', `/api/v1/vat/${kind}`, { tax_invoice_no: no, tax_invoice_date: `${month}-10`, month, party_name: 'คู่ค้าภาษี', party_tax_id: '0105537095903', base_amount: base, vat_amount: v, ...extra })).body.id as string;
+    const ids = [await vat('S', 'TX-S1', '2027-06', 1000, 70), await vat('P', 'TX-P1', '2027-06', 3000, 210), await vat('P', 'TX-P2', '2027-06', 500, 0, { nonclaim_base: 500, nonclaim_vat: 35 }),
+      await vat('S', 'TX-S2', '2027-07', 5000, 350), await vat('S', 'TX-Z', '2027-07', 0, 0, { zero_rate_amount: 800 })];
+    const run = async (c: string, params: Record<string, unknown>) => (await call('POST', `/api/v1/rpt/${c}/run`, { params })).body;
+    // 6.2 แยกขอคืนได้/ไม่ได้
+    const p = await run('6.2', { period: '2027-06', variant: 'claim' });
+    expect(p.rows.filter((r: { t?: string }) => r.t === 'sub').map((r: { c: { vat: string; nvat: string } }) => `${r.c.vat}/${r.c.nvat}`)).toEqual(['210.00/0.00', '0.00/35.00']);
+    expect((await run('6.3', { period: '2027-07', variant: 'zero' })).rows.at(-1).c.zero).toBe('800.00');
+    expect((await run('6.2', { period: '2027-06', variant: 'nil' })).rows.some((r: { t?: string }) => r.t === 'note')).toBe(true);
+    // ภ.พ.30 มิ.ย.: ขาย 70 − ซื้อ 210 → ชำระเกิน 140 · ก.ค.: 350 − 0 − ยกมา 140 = ต้องชำระ 210
+    const pp = async (m: string) => Object.fromEntries((await run('6.4', { period: m })).rows.filter((r: { c: { no?: string } }) => r.c.no).map((r: { c: { no: string; amount: string } }) => [r.c.no, r.c.amount]));
+    const jun = await pp('2027-06');
+    expect([jun['5'], jun['7'], jun['9'], jun['12']]).toEqual(['70.00', '210.00', '140.00', '140.00']);
+    const jul = await pp('2027-07');
+    expect([jul['1'], jul['2'], jul['4'], jul['10'], jul['11']]).toEqual(['5800.00', '800.00', '5000.00', '140.00', '210.00']);
+    // ภ.ง.ด.53 ใบแนบ + ไฟล์ยื่น
+    const w = (await call('POST', '/api/v1/wht', { form_type: 'S53', certificate_no: 'W53-1', certificate_date: '2027-06-20', payee_name: 'บริษัท ผู้รับเงิน จำกัด', payee_tax_id: '0105537095903', income_type: 'ค่าบริการ', paid_amount: 2000, rate: 3, tax_amount: 60 })).body.id;
+    const att = await run('6.6', { period: '2027-06' });
+    expect(att.rows.find((r: { t?: string }) => r.t === 'total').c).toMatchObject({ paid: '2000.00', wht: '60.00' });
+    const f = await call('GET', '/api/v1/wht/efile?form=S53&month=2027-06');
+    expect(f.status).toBe(200);
+    expect(String(f.body)).toMatch(/^1\|0105537095903\|00000\|บริษัท\|ผู้รับเงิน จำกัด\|\|20062570\|ค่าบริการ\|3\.00\|2000\.00\|60\.00\|1/);
+    expect((await call('GET', '/api/v1/wht/efile?form=S03&month=2027-06')).body.error.message).toMatch(/ไม่มีรายการ/);
+    // ข้ามบริษัทไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await run('6.1', { period: '2027-06' })).rows.at(-1).c.vat).toBe('0.00');
+    expect((await call('GET', '/api/v1/wht/efile?form=S53&month=2027-06')).body.error.message).toMatch(/ไม่มีรายการ/);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('POST', `/api/v1/wht/${w}/cancel`, {})).status).toBe(200);
+    for (const id of ids) await sql`UPDATE tax_vat_entry SET doc_status = 'C' WHERE id = ${id}`.execute(database.db);
   });
 
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {

@@ -16,6 +16,8 @@ export interface ReportColumn { key: string; label: string; kind?: 'text' | 'mon
 export interface ReportRow { t?: 'row' | 'group' | 'sub' | 'detail' | 'total' | 'note'; c: Record<string, string | number | null>; link?: string | null; muted?: boolean }
 export interface ReportResult { code: string; title: string; subtitle?: string; columns: ReportColumn[]; rows: ReportRow[]; truncated?: boolean; landscape?: boolean }
 
+/** การยื่น: ปกติ / ยื่นเพิ่มเติม (ล่าช้า) */
+const FILING: ReportFilter = { key: 'filing', kind: 'select', label: 'การยื่น', options: [['normal', 'ยื่นปกติ'], ['late', 'ยื่นเพิ่มเติม'], ['all', 'ทั้งหมด']], default: 'normal' };
 const F = {
   docNo: { key: 'doc_no', kind: 'docNo' } as ReportFilter,
   date: { key: 'date', kind: 'dateRange' } as ReportFilter,
@@ -150,7 +152,14 @@ export const REPORT_TREE: ReportNode[] = [
       leaf('5.A.3', 'รายงานการแก้ไขปรับปรุงรายการ', 'RP.GL', [F.date])] },
     leaf('5.C', 'เงินสดย่อย', 'RP.GL', [F.date, F.detail]),
   ] },
-  { code: '6', title: 'รายงานภาษี', children: [leaf('6.1', 'รายงานภาษีมูลค่าเพิ่ม (ภาษีซื้อและภาษีขาย)', 'RP.TAX', [F.period], { landscape: true })] },
+  { code: '6', title: 'รายงานภาษี', children: [
+    leaf('6.1', 'รายงานภาษีมูลค่าเพิ่ม (สรุปภาษีซื้อและภาษีขาย)', 'RP.TAX', [F.period, FILING]),
+    leaf('6.2', 'รายงานภาษีซื้อ', 'RP.TAX', [F.period, FILING, { key: 'variant', kind: 'select', label: 'รูปแบบรายงาน', options: [['std', 'ต้นฉบับมาตรฐาน'], ['claim', 'แยกขอคืนได้ / ขอคืนไม่ได้'], ['bill', 'แยกตามประเภทบิล (ซื้อสด/เชื่อ/ลดหนี้/มัดจำ)'], ['nil', 'พิมพ์รายงานว่าไม่มีรายการ']], default: 'std' }, F.dept], { landscape: true }),
+    leaf('6.3', 'รายงานภาษีขาย', 'RP.TAX', [F.period, FILING, { key: 'variant', kind: 'select', label: 'รูปแบบรายงาน', options: [['std', 'ต้นฉบับมาตรฐาน'], ['zero', 'อัตราศูนย์'], ['bill', 'แยกตามประเภทบิล (ขายสด/เชื่อ/ลดหนี้/มัดจำ)'], ['nil', 'พิมพ์รายงานว่าไม่มีรายการ']], default: 'std' }, F.dept], { landscape: true }),
+    leaf('6.4', 'แบบ ภ.พ.30 (แบบแสดงรายการภาษีมูลค่าเพิ่ม)', 'RP.TAX', [F.period, FILING, { key: 'carry', kind: 'select', label: 'ภาษีชำระเกินยกมา', options: [['auto', 'คำนวณจากงวดก่อน'], ['0', 'ไม่มี']], default: 'auto' }]),
+    leaf('6.5', 'ใบแนบ ภ.ง.ด.3 (บุคคลธรรมดา)', 'RP.TAX', [F.period, FILING], { landscape: true }),
+    leaf('6.6', 'ใบแนบ ภ.ง.ด.53 (นิติบุคคล)', 'RP.TAX', [F.period, FILING], { landscape: true }),
+  ] },
   { code: '7', title: 'รายงานวิเคราะห์การขาย', children: [
     { code: '7.1', title: 'ประวัติการขาย', children: [
       leaf('7.1.1', 'แยกตามลูกค้า', 'RP.SA', [F.date, F.cus, F.item, F.slm], { landscape: true }), leaf('7.1.2', 'แยกตามสินค้า', 'RP.SA', [F.date, F.item, F.cus], { landscape: true }),
