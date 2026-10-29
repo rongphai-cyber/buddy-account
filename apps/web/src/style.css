@@ -38,6 +38,7 @@
 [data-tone='inventory'] { --tone: #b58a1c; }
 [data-tone='gl'] { --tone: #7a63c9; }
 [data-tone='tax'] { --tone: #c45a7d; }
+[data-tone='bank'] { --tone: #2f86a6; }
 [data-tone='payroll'] { --tone: #2a948e; }
 [data-tone='hotel'] { --tone: #2f86a6; }
 [data-tone='reports'] { --tone: #5866c4; }
@@ -108,6 +109,12 @@ td.mono { white-space: nowrap; }
 .menu.open .menu-head, .menu-home.on { background: var(--tone); color: #fff; }
 .hot { font-family: var(--mono); font-size: 12px; width: 20px; height: 20px; display: inline-grid; place-items: center; border-radius: 4px; background: color-mix(in srgb, var(--tone) 22%, transparent); flex: none; }
 .menu.open .hot, .menu-home.on .hot { background: rgba(255, 255, 255, 0.25); }
+.menu-search-btn { width: 100%; justify-content: flex-start; gap: 8px; border: 1px dashed var(--line); background: var(--surface); color: var(--muted, inherit); }
+.menu-search-btn kbd { margin-left: auto; }
+.shell.mini .menu-search-btn { justify-content: center; padding: 6px; }
+.menu-search-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 60vh; overflow-y: auto; }
+.menu-search-list li { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.menu-search-list li.on { background: var(--accent-soft, #ece8fb); }
 .sub { display: flex; flex-direction: column; padding: 4px 0 4px 14px; border-left: 2px solid var(--tone); margin-left: 12px; }
 .sub button { border: 0; background: transparent; justify-content: flex-start; text-align: left; padding: 5px 8px; min-height: 30px; }
 .sub button:hover { background: var(--tone-soft); }

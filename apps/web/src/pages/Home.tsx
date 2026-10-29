@@ -41,13 +41,13 @@ export function HomePage() {
             <button onClick={() => nav('/gl/accounts')}>ผังบัญชี</button>
             <button onClick={() => nav('/settings/periods')}>ปิดงวด</button>
           </div>
-          <p className="hint">ปุ่มลัด: Alt+1 ถึง Alt+8 เปิดเมนูหลักตามลำดับ Express · Alt+9 ธนาคาร · Alt+0 ภาษี · Alt+H กลับหน้าแรก</p>
+          <p className="hint">ค้นหาเมนู: Ctrl+K แล้วพิมพ์ชื่อหน้า · Alt+H กลับหน้าแรก</p>
         </section>
         <section className="card">
           <h2>ความพร้อมของโปรแกรม</h2>
           <p>เปิดใช้แล้ว <b>{ready}</b> จาก <b>{all.length}</b> เมนู — เมนูที่ยังไม่เปิดจะแสดงป้ายเฟสพัฒนา</p>
           <ul className="phase-list">
-            {MENU.map((g) => { const items = flattenMenu(g.children).filter((x) => !x.children); const done = items.filter((x) => x.route).length; return <li key={g.code}><span>{g.hotkey}. {g.label}</span><span className="muted">{done}/{items.length}</span></li>; })}
+            {MENU.map((g) => { const items = flattenMenu(g.children).filter((x) => !x.children); const done = items.filter((x) => x.route).length; return <li key={g.code}><span>{g.label}</span><span className="muted">{done}/{items.length}</span></li>; })}
           </ul>
         </section>
       </div>

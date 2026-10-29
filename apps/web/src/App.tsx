@@ -4,6 +4,7 @@ import { MENU, flattenMenu, formatDate, type MenuItem } from '@buddy/core';
 import { useSession } from './session';
 import type { Me } from './api';
 import { cx, DateInput, Modal, Toasts, toastError, useHotkeys } from './ui';
+import { MenuSearch } from './components/MenuSearch';
 import { LoginPage, SetupPage } from './pages/Login';
 import { HomePage } from './pages/Home';
 import { AccountsPage } from './pages/gl/Accounts';
@@ -67,7 +68,9 @@ import { InventoryAccountPage } from './pages/gl/InventoryAccount';
 import { StockDocFormPage, StockDocListPage } from './pages/docs/StockDocs';
 import { BANK_KINDS, BILL_KINDS, CASH_KINDS, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
 
-export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
+export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', 'FI.BK': 'bank', TX: 'tax', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
+/** ไอคอนเมนูหลัก (แทนตัวเลขปุ่มลัดเดิม — เห็นได้แม้ย่อแถบเมนู) */
+const ICON: Record<string, string> = { PU: '🛒', SA: '🏷️', FI: '💰', 'FI.BK': '🏦', TX: '🧾', IC: '📦', GL: '📒', RP: '📊', SET: '⚙️', OT: '🧰' };
 const PHASE_TH: Record<string, string> = { P0: 'ฐานระบบ', P1: 'บัญชีแยกประเภท', P2: 'แฟ้มหลัก', P3: 'ซื้อ ขาย ภาษี', P4: 'ธนาคาร สินค้า', P5: 'รายงาน', P6: 'ผู้ดูแลระบบ', P7: 'ต่อยอด' };
 
 export function App() {
@@ -87,8 +90,9 @@ function Shell() {
   const [workDateOpen, setWorkDateOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   useEffect(() => setMobileMenu(false), [loc.pathname]);
-  const hot = useMemo(() => Object.fromEntries(MENU.map((g) => [`Alt+${g.hotkey}`, () => { setOpen(g.code); setMini(false); setTimeout(() => document.querySelector<HTMLElement>(`#menu-${g.code} .sub a, #menu-${g.code} .sub button`)?.focus(), 0); }])), []);
-  useHotkeys({ ...hot, 'Alt+H': () => nav('/') }, []);
+  // ไม่มีปุ่มลัด Alt+ตัวเลขของเมนูหลักแล้ว (เมนูเพิ่มได้ไม่จำกัด) — ใช้ค้นหาเมนู Ctrl+K แทน
+  const [search, setSearch] = useState(false);
+  useHotkeys({ 'Alt+H': () => nav('/'), 'Ctrl+K': () => setSearch(true) }, []);
   const ys = me?.company?.year_system ?? 'B';
   if (!me?.company) {
     return (
@@ -122,16 +126,18 @@ function Shell() {
       </header>
       <nav className="sidebar" aria-label="เมนูหลัก">
         <button className="mini-btn" onClick={() => setMini((x) => !x)} title={mini ? 'ขยายเมนู' : 'ย่อเมนู'}>{mini ? '»' : '«'}</button>
-        <NavLink to="/" end className={({ isActive }) => cx('menu-home', isActive && 'on')} data-tone="home"><span className="hot">H</span><span className="lbl">หน้าแรก</span></NavLink>
+        <button className="menu-search-btn" onClick={() => setSearch(true)} title="ค้นหาเมนู (Ctrl+K)"><span className="hot">🔍</span><span className="lbl">ค้นหาเมนู</span><kbd className="lbl">Ctrl+K</kbd></button>
+        <NavLink to="/" end className={({ isActive }) => cx('menu-home', isActive && 'on')} data-tone="home" title="หน้าแรก (Alt+H)"><span className="hot">🏠</span><span className="lbl">หน้าแรก</span></NavLink>
         {MENU.filter((g) => canSee(g, me.perms)).map((g) => (
           <div key={g.code} id={`menu-${g.code}`} className={cx('menu', open === g.code && 'open')} data-tone={TONE[g.code]}>
-            <button className="menu-head" onClick={() => { setOpen(open === g.code ? null : g.code); setMini(false); }} aria-expanded={open === g.code} title={`${g.label} (Alt+${g.hotkey})`}>
-              <span className="hot">{g.hotkey}</span><span className="lbl">{g.label}</span>
+            <button className="menu-head" onClick={() => { setOpen(open === g.code ? null : g.code); setMini(false); }} aria-expanded={open === g.code} title={g.label}>
+              <span className="hot">{ICON[g.code] ?? '•'}</span><span className="lbl">{g.label}</span>
             </button>
             {open === g.code && !mini && <div className="sub">{g.children!.filter((it) => canSee(it, me.perms)).map((it) => <MenuEntry key={it.code} it={it} perms={me.perms} />)}</div>}
           </div>
         ))}
       </nav>
+      {search && <MenuSearch perms={me.perms} onClose={() => setSearch(false)} />}
       <main className="main" id="main">
         <Routes>
           <Route path="/" element={<HomePage />} />

@@ -8,13 +8,12 @@ export interface MenuItem {
   label: string;
   route?: string;
   phase: 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7';
-  hotkey?: string;
   screens?: string[];
   children?: MenuItem[];
 }
 
 const m = (code: string, label: string, phase: MenuItem['phase'], route?: string, screens?: string[]): MenuItem => ({ code, label, phase, route, screens });
-const g = (code: string, label: string, phase: MenuItem['phase'], children: MenuItem[], hotkey?: string): MenuItem => ({ code, label, phase, children, hotkey });
+const g = (code: string, label: string, phase: MenuItem['phase'], children: MenuItem[]): MenuItem => ({ code, label, phase, children });
 
 export const MENU: MenuItem[] = [
   g('PU', 'ซื้อ', 'P3', [
@@ -24,7 +23,7 @@ export const MENU: MenuItem[] = [
     m('PU.OE', 'บันทึกค่าใช้จ่ายอื่น ๆ', 'P3', '/pu/other-expense', ['ch11:S-PU-08', 'ch26:S-AP-05']),
     m('PU.SUP', 'รายละเอียดผู้จำหน่าย', 'P2', '/ap/suppliers', ['ch07:S-AP-01', 'ch26:S-AP-08']),
     m('PU.EXP', 'รายละเอียดค่าใช้จ่ายอื่น ๆ', 'P2', '/ap/other-expenses', ['ch07:S-AP-02', 'ch26:S-AP-02']),
-  ], '1'),
+  ]),
   g('SA', 'ขาย', 'P3', [
     m('SA.QT', 'ใบเสนอราคา', 'P3', '/sa/quotations', ['ch12:S-QT-01']),
     m('SA.AI', 'รับเงินมัดจำ', 'P3', '/sa/deposits', ['ch12:S-AI-01']),
@@ -34,7 +33,7 @@ export const MENU: MenuItem[] = [
     m('SA.CUS', 'รายละเอียดลูกค้า', 'P2', '/ar/customers', ['ch07:S-AR-01']),
     m('SA.INC', 'รายละเอียดรายได้อื่น ๆ', 'P2', '/ar/other-incomes', ['ch07:S-SO-02']),
     m('SA.SLM', 'รายละเอียดพนักงานขาย', 'P2', '/ar/salespersons', ['ch07:S-SO-01']),
-  ], '2'),
+  ]),
   g('FI', 'การเงิน', 'P3', [
     g('FI.AR', 'ลูกหนี้', 'P3', [
       m('FI.AR.BI', 'ใบวางบิล', 'P3', '/fi/ar/bills', ['ch12:S-BI-01']),
@@ -51,7 +50,7 @@ export const MENU: MenuItem[] = [
       m('FI.AP.PS', 'จ่ายชำระหนี้', 'P3', '/fi/ap/payments', ['ch11:S-PU-07', 'ch26:S-AP-13', 'ch11:S-PU-C4', 'ch11:S-PU-C5', 'ch11:S-PU-C6']),
       m('FI.AP.OB', 'บันทึกรายการเจ้าหนี้คงค้าง-ยกมา', 'P3', '/fi/ap/opening', ['ch08:S-OB-03']),
     ]),
-  ], '3'),
+  ]),
   g('FI.BK', 'ธนาคาร', 'P4', [
     m('FI.BK.DQ', 'บันทึกเช็คนำฝาก', 'P4', '/fi/cheques/slips', ['ch13:S-BK-05', 'ch13:S-BK-07']),
     m('FI.BK.CL', 'บันทึกเช็คผ่าน', 'P4', '/fi/cheques/pass', ['ch13:S-BK-08']),
@@ -62,7 +61,7 @@ export const MENU: MenuItem[] = [
     m('FI.BK.BOOK', 'สมุดเงินฝาก', 'P4', '/fi/bank/book'),
     m('FI.BK.REC', 'กระทบยอดเงินฝากธนาคาร', 'P4', '/fi/bank/reconcile'),
     m('FI.BK.ACC', 'รายละเอียดบัญชีเงินฝาก', 'P2', '/fi/bank-accounts', ['ch07:S-CQ-01', 'ch13:S-BK-01']),
-  ], '9'),
+  ]),
   g('TX', 'ภาษี', 'P3', [
     g('FI.VAT', 'ภาษีมูลค่าเพิ่ม', 'P3', [
       m('FI.VAT.IN', 'แฟ้มภาษีซื้อ', 'P3', '/tax/vat/P', ['ch16:S-TX-01', 'ch16:S-TX-02', 'ch16:S-TX-03', 'ch16:S-TX-04', 'ch16:S-TX-05']),
@@ -73,7 +72,7 @@ export const MENU: MenuItem[] = [
       m('FI.WHT', 'แฟ้มภาษีหัก ณ ที่จ่าย', 'P3', '/tax/wht', ['ch16:S-TX-09', 'ch16:S-TX-10']),
       m('FI.WHT.CERT', 'พิมพ์หนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ)', 'P3', '/tax/wht50'),
     ]),
-  ], '0'),
+  ]),
   g('IC', 'สินค้า', 'P4', [
     m('IC.STOCK', 'ยอดคงเหลือ / สต๊อกการ์ด', 'P4', '/ic/stock'),
     m('IC.TRN', 'รายการประจำวันสินค้า', 'P4', '/ic/issues', ['ch14:S-IC-01', 'ch14:S-IC-06', 'ch14:S-IC-08', 'ch14:S-IC-10', 'ch26:S-AP-04', 'ch26:S-AP-06', 'ch26:S-AP-11']),
@@ -85,7 +84,7 @@ export const MENU: MenuItem[] = [
     m('IC.COUNT', 'รายการตรวจนับสินค้า', 'P4', '/ic/counts', ['ch14:S-IC-15', 'ch14:S-IC-17', 'ch14:S-IC-20']),
     m('IC.SERIAL', 'ทะเบียนหมายเลขสินค้า', 'P4', '/ic/serials', ['ch14:S-IC-12']),
     m('IC.REORDER', 'กำหนดจุดสั่งซื้อ', 'P2', '/ic/reorder', ['ch07:S-IC-07']),
-  ], '4'),
+  ]),
   g('GL', 'บัญชี', 'P1', [
     m('GL.JNL', 'ลงประจำวัน (สมุดรายวัน)', 'P1', '/gl/journals', ['ch15:S-GL-02', 'ch15:S-GL-05', 'ch15:S-GL-06', 'ch26:S-AP-12']),
     m('GL.ACC', 'ผังบัญชี', 'P1', '/gl/accounts', ['ch07:S-GL-01', 'ch26:S-AP-07']),
@@ -99,7 +98,7 @@ export const MENU: MenuItem[] = [
     m('GL.FS', 'สร้างงบการเงิน', 'P1', '/fs/layouts', ['ch24:S-FS-01', 'ch24:S-FS-03']),
     m('FA.ASSET', 'รายการทรัพย์สิน', 'P6', '/fa/assets', ['ch19:S-FA-01', 'ch19:S-FA-02', 'ch19:S-FA-03']),
     m('FA.DEPR', 'คิดค่าเสื่อม-ลงบัญชี', 'P6', '/fa/depreciation', ['ch19:S-FA-04']),
-  ], '5'),
+  ]),
   g('RP', 'รายงาน', 'P1', [
     m('RP.TB', 'งบทดลอง', 'P1', '/reports/trial-balance', ['ch08:S-OB-07']),
     m('RP.LEDGER', 'บัญชีแยกประเภท', 'P1', '/reports/ledger'),
@@ -115,7 +114,7 @@ export const MENU: MenuItem[] = [
     m('RP.TAX', 'รายงานภาษี', 'P5', '/reports/center?g=6'),
     m('RP.CUSTOM', 'สร้างรายงานเอง', 'P5', '/reports/center?g=U', ['ch25:S-RD-03', 'ch25:S-RD-04']),
     m('RP.FORM', 'แบบฟอร์มพิมพ์เอกสาร', 'P5', '/settings/print-forms', ['ch25:S-RD-01', 'ch25:S-RD-02', 'ch03:S-UI-08', 'ch03:S-UI-10']),
-  ], '6'),
+  ]),
   g('SET', 'เริ่มระบบ', 'P0', [
     m('SET.CO', 'รายละเอียดกิจการ', 'P0', '/settings/company', ['ch05:S-SET-01']),
     m('SET.DEF', 'ค่าเริ่มต้นแต่ละระบบ', 'P2', '/settings/defaults', ['ch05:S-SET-02', 'ch05:S-SET-03', 'ch05:S-SET-05', 'ch05:S-SET-07', 'ch05:S-SET-09', 'ch05:S-SET-10', 'ch05:S-SET-11']),
@@ -133,7 +132,7 @@ export const MENU: MenuItem[] = [
     m('SET.AI', 'AI อ่านบิล (Claude)', 'P7', '/settings/ai'),
     m('SET.NEWCO', 'กำหนดบริษัทใหม่', 'P0', '/companies/new', ['ch04:S-CO-03']),
     m('SET.TENANT', 'ลูกค้าผู้ใช้บริการ (ผู้ให้บริการ)', 'P0', '/admin/tenants'),
-  ], '7'),
+  ]),
   g('OT', 'อื่น ๆ', 'P1', [
     m('OT.LOCK', 'ปิดงวด / ล็อคงวด', 'P1', '/settings/periods', ['ch18:S-ME-02']),
     m('OT.YE', 'ประมวลผลสิ้นปี', 'P6', '/gl/year-end', ['ch22:S-YE-01', 'ch22:S-YE-02', 'ch22:S-YE-03']),
@@ -142,7 +141,7 @@ export const MENU: MenuItem[] = [
     m('OT.LOG', 'แฟ้มบันทึกเหตุการณ์ทำงาน', 'P6', '/tools/activity-log', ['ch23:S-SEC-04', 'ch23:S-SEC-04a']),
     m('OT.PASS', 'เปลี่ยนรหัสผ่าน', 'P0', '/account/password', ['ch23:S-SEC-05']),
     m('OT.IMPORT', 'นำข้อมูลจาก Express', 'P0', '/admin/import'),
-  ], '8'),
+  ]),
 ];
 
 export function flattenMenu(items: MenuItem[] = MENU, parent?: string): Array<MenuItem & { parent?: string }> {
