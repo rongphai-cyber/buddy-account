@@ -673,6 +673,48 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
 
+  it('bank accounts (S-CQ-01) and receipt/payment methods (S-SET-06/08)', async () => {
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
+    const leaf = accs.filter((x) => !x.is_control), control = accs.find((x) => x.is_control)!.id;
+    const bank = (await sql<{ id: string }>`INSERT INTO md_bank (company_id, code, name_th) VALUES (${companyId}, 'BBL', 'ธนาคารกรุงเทพ') RETURNING id`.execute(database.db)).rows[0]!.id;
+    expect((await call('GET', '/api/v1/lookups?types=BANK')).body.BANK[0]).toMatchObject({ id: bank, code: 'BBL' });
+    const c1 = { code: 'c1', name: 'กระแสรายวัน ธ.กรุงเทพ 111222', bank_id: bank, account_number: '123-0-111222', account_kind: 'C', gl_account_id: leaf[0]!.id, opening_balance: '1000.5', opening_date: '2026-01-01' };
+    expect((await call('POST', '/api/v1/bank-accounts', { ...c1, gl_account_id: control })).body.error.message).toMatch(/บัญชีคุม/);
+    expect((await call('POST', '/api/v1/bank-accounts', { ...c1, gl_account_id: null })).status).toBe(400);
+    const b1 = (await call('POST', '/api/v1/bank-accounts', c1)).body.id;
+    expect((await call('POST', '/api/v1/bank-accounts', c1)).status).toBe(409);
+    expect((await call('GET', '/api/v1/bank-accounts')).body[0]).toMatchObject({ code: 'C1', bank_code: 'BBL', opening_balance: '1000.50' });
+    // วิธีรับชำระ: เช็ค (ต้องผ่านเช็ค) · เงินโอน (ต้องเลือกธนาคาร) · เงินสด (เลขที่บัญชี)
+    const rows = [
+      { seq: '01', code: 'qr', name_th: 'เช็ครับ', name_en: 'Cheque', kind: 'CHEQUE', creates_cheque: true, gl_account_id: leaf[1]!.id },
+      { seq: '02', code: 'CH', name_th: 'รับเงินสด', kind: 'CASH', gl_account_id: leaf[2]!.id },
+      { seq: '03', code: 'TR', name_th: 'เงินโอนเข้าบัญชี', kind: 'TRANSFER', bank_account_id: b1 },
+    ];
+    expect((await call('PUT', '/api/v1/payment-methods/R', { rows: [{ ...rows[2], bank_account_id: null }] })).body.error.message).toMatch(/ธนาคาร/);
+    expect((await call('PUT', '/api/v1/payment-methods/R', { rows: [{ ...rows[1], gl_account_id: null }] })).body.error.message).toMatch(/เลขที่บัญชี/);
+    expect((await call('PUT', '/api/v1/payment-methods/R', { rows: [rows[1], rows[1]] })).body.error.message).toMatch(/ซ้ำ/);
+    expect((await call('PUT', '/api/v1/payment-methods/R', { rows })).status).toBe(200);
+    let got = (await call('GET', '/api/v1/payment-methods/R')).body;
+    expect(got.map((r: { code: string }) => r.code)).toEqual(['QR', 'CH', 'TR']);
+    expect((await call('GET', '/api/v1/payment-methods/P')).body).toHaveLength(0);           // รับ/จ่ายแยกกัน
+    // สลับรหัสกันในการบันทึกครั้งเดียวได้ + ลบบรรทัดที่ยังไม่ใช้
+    const swap = got.filter((r: { code: string }) => r.code !== 'TR').map((r: { id: string; code: string }) => ({ ...r, code: r.code === 'QR' ? 'CH' : 'QR', used: undefined, account_no: undefined, bank_code: undefined }));
+    expect((await call('PUT', '/api/v1/payment-methods/R', { rows: swap })).status).toBe(200);
+    got = (await call('GET', '/api/v1/payment-methods/R')).body;
+    expect(got.map((r: { code: string; name_th: string }) => `${r.code}:${r.name_th}`).sort()).toEqual(['CH:เช็ครับ', 'QR:รับเงินสด']);
+    // บัญชีเงินฝากที่ผูกกับวิธีชำระลบไม่ได้ (TR ถูกลบไปแล้ว — ผูกใหม่)
+    await call('PUT', '/api/v1/payment-methods/P', { rows: [{ seq: '01', code: 'TN', name_th: 'เงินโอนถอนจาก C1', kind: 'TRANSFER', bank_account_id: b1 }] });
+    expect((await call('DELETE', `/api/v1/bank-accounts/${b1}`)).body.error.message).toMatch(/เลิกใช้แทน/);
+    // บริษัทอื่นมองไม่เห็น/แก้ไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/bank-accounts')).body).toHaveLength(0);
+    expect((await call('GET', '/api/v1/payment-methods/R')).body).toHaveLength(0);
+    expect((await call('PUT', `/api/v1/bank-accounts/${b1}`, { ...c1, gl_account_id: (await call('GET', '/api/v1/gl/accounts')).body.find((x: { is_control: boolean }) => !x.is_control).id })).status).toBe(404);
+    expect((await call('DELETE', `/api/v1/bank-accounts/${b1}`)).status).toBe(404);
+    expect((await call('PUT', '/api/v1/payment-methods/R', { rows: [{ ...got[0], used: undefined, account_no: undefined, bank_code: undefined }] })).status).toBe(400);   // บัญชีของบริษัทอื่น
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
+
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);
     // ทุกตารางที่มี company_id เปิด RLS แล้ว (ตารางใหม่ใน migration ถัดไปต้องเปิดด้วย)

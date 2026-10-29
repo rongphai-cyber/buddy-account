@@ -483,3 +483,4 @@ ul.plain { list-style: none; padding: 0; margin: 8px 0; } ul.plain li { padding:
 /* ช่องติ๊กไม่ยืดเต็มช่อง (input ทั่วไปกว้าง 100%) และแถบเครื่องมือในหน้าต่างไม่ลอยตามหน้า */
 input[type=checkbox], input[type=radio] { width: auto; min-height: 0; flex: none; }
 .modal .toolbar { position: static; margin-bottom: 6px; }
+button.link { background: none; border: 0; padding: 0; min-height: 0; color: var(--tone); text-decoration: underline; cursor: pointer; }

@@ -10,9 +10,9 @@ function six(s: string, hasLead: boolean): string {
     const n = Number(s[i]);
     const pos = s.length - 1 - i;
     if (n === 0) continue;
-    if (pos === 1) out += n === 1 ? 'สิบ' : n === 2 ? 'ยี่สิบ' : DIGIT[n] + 'สิบ';
+    if (pos === 1) out += n === 1 ? 'สิบ' : n === 2 ? 'ยี่สิบ' : DIGIT[n]! + 'สิบ';
     else if (pos === 0 && n === 1 && (hasLead || s.length > 1)) out += 'เอ็ด';
-    else out += DIGIT[n] + POS[pos];
+    else out += DIGIT[n]! + POS[pos]!;
   }
   return out;
 }

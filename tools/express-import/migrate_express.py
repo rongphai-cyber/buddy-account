@@ -222,7 +222,7 @@ for r in run:
         nm = r['POSDES'] or pre
         kind = 'CHEQUE' if 'เช็ค' in nm else 'CASH' if 'เงินสด' in nm and 'ย่อย' not in nm else 'TRANSFER' if 'โอน' in nm else 'WHT' if 'หัก ณ' in nm or 'หัก\xa0ณ' in nm else 'DEPOSIT' if 'มัดจำ' in nm else 'OTHER'
         pm_rows.append(base(id=PM[(d, pre)], direction=d, code=pre, seq=st(r['DOCCOD']), name_th=nm, name_en=r['POSDES2'], kind=kind,
-                            gl_account_id=acc(accts[0]), creates_cheque=kind in ('CHEQUE', 'TRANSFER')))
+                            gl_account_id=acc(accts[0]), creates_cheque=kind in ('CHEQUE', 'TRANSFER'), bank_account_id=st(r['SHORTNAM'])))   # รหัสบัญชีเงินฝาก (C1 S1) แปลงเป็น id หลังนำเข้า BKMAS
         continue
     if pre in DT: QUALITY['doc_type_duplicate_prefix'].append(pre); continue
     DT[pre] = U('dt', pre); DTCLASS[pre] = typ
@@ -236,7 +236,6 @@ for r in run:
     for i, a in enumerate(accts, 1):
         if a: dta_rows.append(base(id=U('dta', pre, i), doc_type_id=DT[pre], slot=i, account_id=acc(a)))
 done('md_doc_type', insert('md_doc_type', dt_rows), 'ISRUN'); done('md_doc_type_account', insert('md_doc_type_account', dta_rows), 'ISRUN.ACCNUMxx')
-done('md_payment_method', insert('md_payment_method', pm_rows), "ISRUN DOCTYP='ZR'/'ZP'")
 def doc_type(docnum, fallback_class):
     pre = (docnum or '')[:2]
     if pre in DT: return DT[pre], DTCLASS[pre]
@@ -340,6 +339,12 @@ for r in dbf('BKMAS'):
     rows.append(base(id=BKA[c], code=c, name=r['BNKNAM'] or c, branch=r['BRANCH'], short_name=r['SHORTNAM'], account_number=st(r['BNKNUM']),
                      account_kind=c[:1] if c[:1] in 'CSF' else None, gl_account_id=acc(r['ACCNUM']), opening_balance=r['BALFWD'], opening_date=r['BALDAT']))
 done('md_bank_account', insert('md_bank_account', rows), 'BKMAS')
+# วิธีรับ/จ่ายชำระ: ช่อง "ธนาคาร" (ISRUN.SHORTNAM) อ้างบัญชีเงินฝาก — นำเข้าหลัง BKMAS
+for r in pm_rows:
+    b = r['bank_account_id']
+    r['bank_account_id'] = BKA.get(b) if b else None
+    if b and not r['bank_account_id']: QUALITY['payment_method_bank_missing'].append(f"{r['direction']}/{r['code']}:{b}")
+done('md_payment_method', insert('md_payment_method', pm_rows), "ISRUN DOCTYP='ZR'/'ZP'")
 
 # ------------------------------------------------------------------ items
 items = list(dbf('STMAS'))

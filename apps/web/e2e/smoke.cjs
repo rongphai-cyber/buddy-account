@@ -272,6 +272,20 @@ require('fs').mkdirSync(OUT, { recursive: true });
       await shot('15o-' + url.split('/').pop());
     }
   });
+  await step('bank accounts + receipt/payment methods (S-CQ-01, S-SET-06/08, view only)', async () => {
+    await page.goto(BASE + '/fi/bank-accounts');
+    await page.locator('table.grid tbody tr.row-open').first().click({ timeout: 15000 });
+    await page.waitForSelector('.modal .form-grid input', { timeout: 15000 });
+    await shot('15p-bank-account');
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.modal', { state: 'detached', timeout: 5000 });
+    await page.goto(BASE + '/settings/payment-methods');
+    await page.waitForSelector('.lines tbody tr input', { timeout: 15000 });
+    await page.getByRole('tab', { name: /วิธีการจ่ายชำระหนี้/ }).click();
+    await page.waitForFunction(() => document.querySelector('h1')?.textContent?.includes('จ่ายชำระ'), null, { timeout: 15000 });
+    await page.waitForSelector('.lines tbody tr input', { timeout: 15000 });
+    await shot('15p-payment-methods');
+  });
   await step('WHT certificate 50 ทวิ (ภ.ง.ด.3/53)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: ภาพแบบฟอร์มโหลดได้ ป้อนชื่อ/จำนวนเงิน แล้วข้อความลงช่องถูกต้อง
     await page.goto(BASE + '/tax/wht50');

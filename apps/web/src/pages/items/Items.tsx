@@ -208,7 +208,7 @@ export function ItemForm({ kind, id, onClose, onSaved }: { kind: ItemKind; id: s
           <Field label="Dr. บัญชีต้นทุนบริการ" hint="เช่น 5110-00"><AccountCell value={acc.cost_dr ?? null} onChange={(a) => setAcc((x) => ({ ...x, cost_dr: a?.id ?? null }))} /></Field>
           <Field label="Cr. บัญชีเงินเดือน/ค่าแรง" hint="เช่น 5310-01"><AccountCell value={acc.cost_cr ?? null} onChange={(a) => setAcc((x) => ({ ...x, cost_cr: a?.id ?? null }))} /></Field>
         </div>}
-        {tab === 'bom' && <BomGrid rows={bom} onChange={setBom} selfId={id} units={lk.data?.UNIT} warehouses={lk.data?.WH} kitType={f.item_type ?? '1'} kitPrice={f.price_1} />}
+        {tab === 'bom' && <BomGrid rows={bom} onChange={setBom} selfId={id} units={lk.data?.UNIT} warehouses={lk.data?.WH} kitType={f.item_type ?? '1'} kitPrice={f.price_1 ?? null} />}
         {tab === 'wh' && cur.data && <div className="table-wrap">
           <table className="grid">
             <thead><tr><th style={{ width: 70 }}>คลัง</th><th>ชื่อคลัง</th><th className="r">คงเหลือ</th><th className="r">ราคาต่อหน่วย</th><th className="r">มูลค่าคงเหลือ</th><th className="r">ค้างรับ</th><th className="r">ค้างส่ง</th><th>ซื้อล่าสุด</th><th>ขายล่าสุด</th><th>ชั้นเก็บ</th></tr></thead>

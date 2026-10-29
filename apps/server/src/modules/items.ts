@@ -358,7 +358,7 @@ function kindRoutes(app: FastifyInstance, db: Db, K: ItemKindDef) {
     const src = await db.selectFrom('md_item').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('item_type', 'in', K.types).executeTakeFirst();
     if (!src) throw notFound(K.label);
     const bom = await db.selectFrom('md_item_bom').select(['component_item_id', 'qty', 'std_cost', 'sell_price', 'warehouse_id']).where('parent_item_id', '=', id).where('deleted_at', 'is', null).orderBy('line_no').execute();
-    const body = parse(itemBody, { ...Object.fromEntries(Object.entries(src).map(([k, v]) => [k, v instanceof Date ? v.toISOString().slice(0, 10) : v])), code, barcode: null, bom });
+    const body = parse(itemBody, { ...Object.fromEntries(Object.entries(src).map(([k, v]) => [k, (v as unknown) instanceof Date ? (v as unknown as Date).toISOString().slice(0, 10) : v])), code, barcode: null, bom });
     return saveItem(a, null, body);
   });
 }

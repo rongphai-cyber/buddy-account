@@ -23,7 +23,7 @@ const FLAT = flattenMenu(MENU);
 const PARENT = new Map(FLAT.map((m) => [m.code, m.parent ?? null]));
 const LABEL = new Map(FLAT.map((m) => [m.code, m.label]));
 /** เมนูกำหนดค่าโปรแกรม: ระดับ 5 ขึ้นไปจึงเพิ่ม/แก้/ลบได้ (คู่มือหน้า 359–360) */
-const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
+const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.PAYM', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
 /** ระบบความปลอดภัยและแก้ไขแบบฟอร์ม: ระดับ 9 เท่านั้น */
 const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'OT.LOG']);
 
@@ -136,6 +136,8 @@ export const API_RULES: Record<string, Rule> = {
   'POST /api/v1/kits/:id/copy': M('IC.KIT', 'add'),
   'GET /api/v1/items/:id/prices': M('IC.PRICE', 'read'), 'PUT /api/v1/items/:id/prices': M('IC.PRICE', 'edit'),
   'GET /api/v1/items/:id/reorder': M('IC.REORDER', 'read'), 'PUT /api/v1/items/:id/reorder': M('IC.REORDER', 'edit'),
+  'GET /api/v1/bank-accounts': LOOKUP, 'POST /api/v1/bank-accounts': M('FI.BK.ACC', 'add'), 'PUT /api/v1/bank-accounts/:id': M('FI.BK.ACC', 'edit'), 'DELETE /api/v1/bank-accounts/:id': M('FI.BK.ACC', 'delete'),
+  'GET /api/v1/payment-methods/:direction': LOOKUP, 'PUT /api/v1/payment-methods/:direction': M('SET.PAYM', 'edit'),
   'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),
   'PUT /api/v1/salespersons/:id': M('SA.SLM', 'edit'), 'DELETE /api/v1/salespersons/:id': M('SA.SLM', 'delete'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)

@@ -27,7 +27,7 @@ export function lookupRoutes(app: FastifyInstance, db: Db) {
     if (types.includes('UNIT')) out.UNIT = (await db.selectFrom('md_unit').select(['id', 'code', 'name_th']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute()).map((u) => ({ id: u.id, code: u.code, name: u.name_th }));
     if (types.includes('WH')) out.WH = (await db.selectFrom('md_warehouse').select(['id', 'code', 'name_th']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('status', '=', 'A').orderBy('code').execute()).map((u) => ({ id: u.id, code: u.code, name: u.name_th }));
     if (types.includes('IAG')) out.IAG = (await db.selectFrom('md_item_account_group').select(['id', 'code', 'name_th']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('item_specific', '=', false).orderBy('code').execute()).map((u) => ({ id: u.id, code: u.code, name: u.name_th }));
-    if (types.includes('BANK')) out.BANK = (await db.selectFrom('md_bank').select(['code', 'name_th']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute()).map((b) => ({ code: b.code, name: b.name_th }));
+    if (types.includes('BANK')) out.BANK = (await db.selectFrom('md_bank').select(['id', 'code', 'name_th']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute()).map((b) => ({ id: b.id, code: b.code, name: b.name_th }));
     return out;
   });
 }
@@ -53,6 +53,15 @@ export async function checkAccount(db: Db, companyId: string, id: string | null 
   if (!acc) throw badRequest('ไม่พบบัญชีนี้ในผังบัญชี', [{ field, message: 'ไม่พบบัญชี' }]);
   if (acc.is_control) throw badRequest(`บัญชี ${acc.account_no} เป็นบัญชีคุม ให้ใช้บัญชีย่อย`, [{ field, message: 'ต้องเป็นบัญชีย่อย' }]);
   return id;
+}
+
+/** บิลค้างชำระจาก v_ar_outstanding / v_ap_outstanding (view ไม่อยู่ในชนิดของ Kysely จึงใช้ SQL ตรง) */
+interface Bill { header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string }
+async function outstandingBills(db: Db, side: 'AR' | 'AP', companyId: string, partyId: string) {
+  const q = side === 'AR'
+    ? sql<Bill>`SELECT header_id, doc_class, doc_no, doc_date, due_date, amount, outstanding FROM v_ar_outstanding WHERE company_id = ${companyId} AND customer_id = ${partyId} AND outstanding <> 0 ORDER BY due_date, doc_no`
+    : sql<Bill>`SELECT header_id, doc_class, doc_no, doc_date, due_date, amount, outstanding FROM v_ap_outstanding WHERE company_id = ${companyId} AND supplier_id = ${partyId} AND outstanding <> 0 ORDER BY due_date, doc_no`;
+  return (await q.execute(db)).rows;
 }
 
 const contactBody = z.object({ name: z.string().trim().min(1, 'ป้อนชื่อผู้ติดต่อ').max(120), position: str(60), phone: str(60), email: str(120), is_primary: z.boolean().default(false) });
@@ -96,7 +105,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     const c = await db.selectFrom('md_customer').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!c) throw notFound('ลูกค้า');
     const ship_tos = await db.selectFrom('md_customer_ship_to').select(['code', 'address_1', 'address_2', 'address_3', 'zip_code', 'phone', 'contact']).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('deleted_at', 'is', null).orderBy('code').execute();
-    const bills = await db.selectFrom('v_ar_outstanding').select(['header_id', 'doc_class', 'doc_no', 'doc_date', 'due_date', 'amount', 'outstanding']).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('outstanding', '<>', '0').orderBy('due_date').orderBy('doc_no').execute();
+    const bills = await outstandingBills(db, 'AR', a.companyId, id);
     const last = await db.selectFrom('doc_header').select(sql<string | null>`max(doc_date)`.as('d')).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('doc_class', '=', 'IV').where('doc_status', '<>', 'C').where('deleted_at', 'is', null).executeTakeFirst();
     return { ...c, ship_tos, contacts: await contactsOf(db, a.companyId, 'C', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_invoice_date: last?.d ?? null };
   });
@@ -174,7 +183,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     const s = await db.selectFrom('md_supplier').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!s) throw notFound('ผู้จำหน่าย');
     const banks = await db.selectFrom('md_supplier_bank').select(['bank_code', 'branch', 'account_no', 'account_name', 'is_default']).where('company_id', '=', a.companyId).where('supplier_id', '=', id).where('deleted_at', 'is', null).orderBy('line_no').execute();
-    const bills = await db.selectFrom('v_ap_outstanding').select(['header_id', 'doc_class', 'doc_no', 'doc_date', 'due_date', 'amount', 'outstanding']).where('company_id', '=', a.companyId).where('supplier_id', '=', id).where('outstanding', '<>', '0').orderBy('due_date').orderBy('doc_no').execute();
+    const bills = await outstandingBills(db, 'AP', a.companyId, id);
     const last = await db.selectFrom('doc_header').select(sql<string | null>`max(doc_date)`.as('d')).where('company_id', '=', a.companyId).where('supplier_id', '=', id).where('doc_class', '=', 'RR').where('doc_status', '<>', 'C').where('deleted_at', 'is', null).executeTakeFirst();
     return { ...s, banks, contacts: await contactsOf(db, a.companyId, 'S', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_bill_date: last?.d ?? null };
   });

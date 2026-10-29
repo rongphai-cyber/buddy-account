@@ -35,6 +35,7 @@ import { CustomersPage, SalespersonsPage, SuppliersPage } from './pages/parties/
 import { Wht50Page } from './pages/tax/Wht50';
 import { KitsPage, OtherExpensesPage, OtherIncomesPage, ServicesPage, StockItemsPage } from './pages/items/Items';
 import { ItemAccountGroupsPage, PricesPage, ReorderPage } from './pages/items/ItemTables';
+import { BankAccountsPage, PaymentMethodsPage } from './pages/finance/Banking';
 
 export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
 const PHASE_TH: Record<string, string> = { P0: 'ฐานระบบ', P1: 'บัญชีแยกประเภท', P2: 'แฟ้มหลัก', P3: 'ซื้อ ขาย ภาษี', P4: 'ธนาคาร สินค้า', P5: 'รายงาน', P6: 'ผู้ดูแลระบบ', P7: 'ต่อยอด' };
@@ -132,6 +133,8 @@ function Shell() {
           <Route path="/ic/prices" element={<PricesPage />} />
           <Route path="/ic/reorder" element={<ReorderPage />} />
           <Route path="/settings/item-account-groups" element={<ItemAccountGroupsPage />} />
+          <Route path="/fi/bank-accounts" element={<BankAccountsPage />} />
+          <Route path="/settings/payment-methods" element={<PaymentMethodsPage />} />
           <Route path="/companies/new" element={<NewCompanyPage />} />
           <Route path="/account/password" element={<PasswordPage />} />
           <Route path="/admin/import" element={<ImportPage />} />

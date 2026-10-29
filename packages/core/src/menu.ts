@@ -58,7 +58,7 @@ export const MENU: MenuItem[] = [
       m('FI.BK.PC', 'ผ่านเช็คจ่าย', 'P4', undefined, ['ch13:S-BK-09']),
       m('FI.BK.CP', 'ทะเบียนเช็คจ่าย', 'P4', undefined, ['ch13:S-BK-12']),
       m('FI.BK.TX', 'ฝาก / ถอน / โอนเงิน', 'P4', undefined, ['ch13:S-BK-02', 'ch13:S-BK-03']),
-      m('FI.BK.ACC', 'รายละเอียดบัญชีเงินฝาก', 'P2', undefined, ['ch07:S-CQ-01', 'ch13:S-BK-01']),
+      m('FI.BK.ACC', 'รายละเอียดบัญชีเงินฝาก', 'P2', '/fi/bank-accounts', ['ch07:S-CQ-01', 'ch13:S-BK-01']),
     ]),
     g('FI.VAT', 'ภาษีมูลค่าเพิ่ม', 'P3', [
       m('FI.VAT.IN', 'แฟ้มภาษีซื้อ', 'P3', undefined, ['ch16:S-TX-02']),
@@ -106,6 +106,7 @@ export const MENU: MenuItem[] = [
     m('SET.CO', 'รายละเอียดกิจการ', 'P0', '/settings/company', ['ch05:S-SET-01']),
     m('SET.DEF', 'ค่าเริ่มต้นแต่ละระบบ', 'P2', '/settings/defaults', ['ch05:S-SET-02', 'ch05:S-SET-03', 'ch05:S-SET-05', 'ch05:S-SET-07', 'ch05:S-SET-09', 'ch05:S-SET-10', 'ch05:S-SET-11']),
     m('SET.IAG', 'กลุ่มบัญชีสินค้า', 'P2', '/settings/item-account-groups', ['ch05:S-SET-04']),
+    m('SET.PAYM', 'วิธีรับ/จ่ายชำระหนี้', 'P2', '/settings/payment-methods', ['ch05:S-SET-06', 'ch05:S-SET-08']),
     m('SET.PRD', 'รอบบัญชี', 'P1', '/settings/periods', ['ch06:S-SET-01']),
     m('SET.TBL', 'ตารางข้อมูล', 'P2', undefined, ['ch06:S-TBL-01']),
     m('SET.DEPT', 'แผนก', 'P1', '/settings/departments', ['ch06:S-SET-03']),
