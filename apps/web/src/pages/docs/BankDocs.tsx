@@ -9,6 +9,7 @@ import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, Mon
 import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
+import { CancelStamp } from '../../components/DocDelete';
 import { DocJournalTab } from './TradeDocs';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
@@ -132,15 +133,15 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const bankLabel = cls === 'BT' ? 'โอนจากบัญชี' : cls === 'BD' || cls === 'BU' ? 'เข้าบัญชีเงินฝาก' : 'จากบัญชีเงินฝาก';
   return (
-    <div className={cx('page', tColor && 'book-colored')} data-tone="finance" style={bookStyle(tColor)}>
-      <div className="doc-title"><p className="eyebrow">ธนาคาร › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
+    <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="finance" style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">ธนาคาร › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกรายการ <kbd>Alt+C</kbd></button>
-        <DocActions kind="doc" id={id} dirty={dirty} menu={MENU} />
+        <DocActions kind="doc" id={id} dirty={dirty} menu={MENU} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />

@@ -6,6 +6,7 @@ import { api, type Book, type Department, type Template, type TemplateDetail } f
 import { bookColor, bookStyle } from '../../bookColor';
 import { useCan, useSession } from '../../session';
 import { DocLink } from '../../components/DocLink';
+import { CancelStamp } from '../../components/DocDelete';
 import { withPrefix } from '../../components/DocNo';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
@@ -202,11 +203,11 @@ export function JournalFormPage() {
   const book = books.data?.find((b) => b.id === h.journal_book_id);
   const j = doc.data;
   return (
-    <div className={cx('page', book && 'book-colored')} data-tone="gl" style={bookStyle(bookColor(book))}>
+    <div className={cx('page', book && 'book-colored', j?.doc_status === 'C' && 'doc-cancelled')} data-tone="gl" style={bookStyle(bookColor(book))}>
       <div className="doc-title">
         <div>
           <p className="eyebrow">บัญชี › ลงประจำวัน › {book ? `${book.code} ${book.name_th}` : 'สมุดรายวัน'}</p>
-          <div className="title-row"><h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}</h1>{book && <span className="book-pill" title="สมุดรายวันของใบสำคัญนี้">{isNew ? 'กำลังบันทึก: ' : ''}{book.prefix} {book.name_th}</span>}</div>
+          <div className="title-row"><h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}</h1><CancelStamp show={j?.doc_status === 'C'} />{book && <span className="book-pill" title="สมุดรายวันของใบสำคัญนี้">{isNew ? 'กำลังบันทึก: ' : ''}{book.prefix} {book.name_th}</span>}</div>
         </div>
         <div className="doc-state">
           {isNew && <Pill tone="d">ใหม่ — ยังไม่บันทึก</Pill>}
@@ -225,7 +226,8 @@ export function JournalFormPage() {
         </div>
         <div className="tb-group">
           <button disabled={isNew || !editBase || !can('cancel')} onClick={() => setCancelAsk(true)} title={can('cancel') ? 'ยกเลิกเอกสาร (Alt+C)' : 'ไม่มีสิทธิ์ยกเลิกเอกสาร'}>ยกเลิกเอกสาร</button>
-          <DocActions kind="journal" id={isNew ? undefined : id} menu="GL.JNL" typeId={h.journal_book_id} dirty={dirty} />
+          <DocActions kind="journal" id={isNew ? undefined : id} menu="GL.JNL" typeId={h.journal_book_id} dirty={dirty}
+            del={j && !j.source_header_id && (!j.source_module || j.source_module === 'GL') ? { cancelled: j.doc_status === 'C', cancelUrl: `/api/v1/gl/journals/${id}/cancel`, listPath: '/gl/journals', docNo: j.voucher_no } : undefined} />
         </div>
         <div className="tb-group"><button onClick={() => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`)} title="กลับไปรายการ (Esc)">รายการ <kbd>Esc</kbd></button></div>
       </div>

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { fmt, formatDate, PRINT_HEAD_FIELDS, type PrintFamily, type PrintFormEntry, type YearSystem } from '@buddy/core';
+import { CloseScreen, DocDelete } from './DocDelete';
 import { api } from '../api';
 import type { CompanyImages } from './CompanyImages';
 import { useCan, useSession } from '../session';
@@ -94,7 +95,9 @@ export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: 
  * ปุ่มพิมพ์/รับรอง/ข้อมูลเอกสาร บนแถบเครื่องมือของหน้าจอเอกสาร (S-RD-01 · S-UI-08..12 · S-RD-06)
  * Alt+P พิมพ์ฟอร์ม 1 · Shift+Alt+P เลือกแบบฟอร์ม · Alt+O รับรอง · Ctrl+O ยกเลิกรับรอง · Alt+Shift+O รับรองเป็นช่วง · Ctrl+I รายละเอียดแฟ้มข้อมูล
  */
-export function DocActions({ kind, id: rawId, menu, typeId, dirty }: { kind: 'doc' | 'journal'; id: string | null | undefined; menu: string; typeId?: string | null; dirty?: boolean }) {
+export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind: 'doc' | 'journal'; id: string | null | undefined; menu: string; typeId?: string | null; dirty?: boolean;
+  /** ปุ่มลบ (ข้อกำหนดเจ้าของ): สถานะยกเลิก + API ยกเลิก + หน้ารายการที่กลับไปหลังลบ · ไม่ส่ง = ไม่มีปุ่มลบ */
+  del?: { cancelled: boolean; cancelUrl: string; listPath: string; docNo?: string | null } }) {
   const id = rawId ?? undefined;
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -164,6 +167,7 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty }: { kind: 'do
   };
   return (
     <>
+      {del && <DocDelete kind={kind} id={id} docNo={del.docNo ?? r?.data.doc_no} cancelled={del.cancelled} cancelUrl={del.cancelUrl} listPath={del.listPath} canDelete={can('delete')} canCancel={can('cancel')} />}
       {id && <span className="doc-nav">{navBtn('first', '⏮', 'เอกสารแรก')}{navBtn('prev', '◀', 'ก่อนหน้า')}{navBtn('next', '▶', 'ถัดไป')}{navBtn('last', '⏭', 'เอกสารสุดท้าย')}</span>}
       <span className="split-btn" onClick={(e) => e.stopPropagation()}>
         <button disabled={!id || !r || !can('print')} onClick={() => doPrint(1)} title={r?.block ?? 'พิมพ์แบบฟอร์ม 1 (Alt+P)'}>🖨 พิมพ์ <kbd>Alt+P</kbd></button>
@@ -179,6 +183,7 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty }: { kind: 'do
       {kind === 'doc' && id && r && ['QT', 'DP', 'VR'].includes(r.data.scope) && <StatusCodeSelect id={id} canEdit={can('edit')} />}
       {kind === 'doc' && <button disabled={!id} onClick={() => setNotes(true)} title={id ? 'หมายเหตุเพิ่มเติม (Alt+R)' : 'บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุได้'}>📝 หมายเหตุ</button>}
       <button disabled={!id} onClick={() => setInfo(true)} title="รายละเอียดแฟ้มข้อมูล (Ctrl+I)">ℹ</button>
+      <CloseScreen dirty={dirty} />
       {r && r.data.print_count > 0 && <Pill tone="n">พิมพ์แล้ว {r.data.print_count} ครั้ง</Pill>}
       {preview && r && <Modal title={`ดูทางจอภาพ — ${preview.slot}. ${preview.name}`} size="wide" onClose={() => setPreview(null)}
         footer={<><button onClick={() => setPreview(null)}>ปิด</button>{!screenOnly && <button className="primary" disabled={!can('print')} onClick={() => doPrint(preview.slot)}>🖨 พิมพ์</button>}</>}>

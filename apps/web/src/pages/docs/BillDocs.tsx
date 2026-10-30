@@ -10,6 +10,7 @@ import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
+import { CancelStamp } from '../../components/DocDelete';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
 
@@ -144,15 +145,15 @@ export function BillFormPage({ path }: { path: string }) {
   const cancelled = cur.data?.doc_status === 'C';
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   return (
-    <div className={cx('page', tColor && 'book-colored')} data-tone="finance" style={bookStyle(tColor)}>
-      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '')}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
+    <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="finance" style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '')}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">บันทึกแล้ว (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setPick(new Set()); nav(`${K.route}/new`); } }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={save}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
-        <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} />
+        <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />

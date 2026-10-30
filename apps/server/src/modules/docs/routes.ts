@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '../../db.js';
 import { notFound, parse, requireCompany } from '../../http.js';
-import { previewPosting, repostDocument } from './engine.js';
+import { deleteDocument, previewPosting, repostDocument } from './engine.js';
+import { deleteJournal } from '../gl/journals.js';
 
 const idParam = z.object({ id: z.string().uuid() });
 
@@ -30,6 +31,14 @@ export function docRoutes(app: FastifyInstance, db: Db) {
     const accs = new Map((await db.selectFrom('gl_account').select(['id', 'account_no', 'name_th']).where('company_id', '=', a.companyId).where('id', 'in', [...new Set(pv.lines.map((l) => l.account_id).filter((x): x is string => !!x)), '00000000-0000-0000-0000-000000000000']).execute()).map((x) => [x.id, x]));
     return pv.lines.map((l) => ({ account_id: l.account_id, account_no: l.account_id ? accs.get(l.account_id)?.account_no : null, account_name: l.account_id ? accs.get(l.account_id)?.name_th : null,
       debit: l.debit.toFixed(2), credit: l.credit.toFixed(2), role: l.role, layer: l.layer }));
+  });
+
+  /** ปุ่ม "ลบ" ทุกหน้าจอเอกสาร/ใบสำคัญ (ต้องยกเลิกก่อน) — สิทธิ์ "ลบ" ตามเมนูของเอกสาร */
+  app.post('/api/v1/docs/:kind/:id/delete', async (req) => {
+    const a = requireCompany(req);
+    const p = parse(z.object({ kind: z.enum(['doc', 'journal']), id: z.string().uuid() }), req.params);
+    const { reason } = parse(z.object({ reason: z.string().trim().min(1, 'ระบุเหตุผลที่ลบ').max(200) }), req.body);
+    return p.kind === 'doc' ? deleteDocument(db, a, p.id, reason) : deleteJournal(db, a, p.id, reason);
   });
 
   app.post('/api/v1/docs/:id/repost', async (req) => {

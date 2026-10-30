@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, docPath, fmt, formatDate, todayIso, type YearSystem } from '@buddy/core';
 import { api } from '../../api';
+import { CancelStamp, CloseScreen, DocDelete } from '../../components/DocDelete';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
@@ -324,8 +325,8 @@ export function ChequeSlipFormPage() {
   const c = cur.data;
   const ys: YearSystem = me?.company?.year_system ?? 'B';
   return (
-    <div className="page" data-tone="finance">
-      <div className="doc-title"><p className="eyebrow">ธนาคาร › ใบนำฝากเช็ค</p><h1>{id ? c?.doc_no : 'ใบนำฝากใหม่'}</h1>
+    <div className={cx('page', c?.doc_status === 'C' && 'doc-cancelled')} data-tone="finance">
+      <div className="doc-title"><p className="eyebrow">ธนาคาร › ใบนำฝากเช็ค</p><h1>{id ? c?.doc_no : 'ใบนำฝากใหม่'}</h1><CancelStamp show={c?.doc_status === 'C'} reason={c?.cancel_reason} />
         <span className="doc-state">{c?.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : c?.passed ? <Pill tone="n">10 เช็คผ่าน{c.pass_voucher_no ? <> · <DocLink id={c.journal_id} no={c.pass_voucher_no} cls="GL" /></> : ''}</Pill> : <Pill tone="c">01 รอเรียกเก็บ</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={ro} onClick={save}>บันทึก <kbd>F9</kbd></button>
@@ -333,6 +334,8 @@ export function ChequeSlipFormPage() {
         {id && c?.passed && canPass('cancel') && <button onClick={() => setAct('unpass')}>ยกเลิกการผ่าน</button>}
         {id && <button onClick={() => { setPrint(true); setTimeout(() => { window.print(); setPrint(false); }, 100); }}>🖨 พิมพ์ใบนำฝาก</button>}
         <button disabled={!id || c?.doc_status === 'C' || !!c?.passed || !can('cancel')} onClick={() => setAct('cancel')}>ยกเลิกใบนำฝาก</button>
+        <DocDelete kind="doc" id={id} docNo={c?.doc_no} cancelled={c?.doc_status === 'C'} cancelUrl={`/api/v1/cheque-deposits/${id}/cancel`} listPath="/fi/cheques/slips" canDelete={can('delete')} canCancel={can('cancel') && !c?.passed} />
+        <CloseScreen />
         <button onClick={() => nav('/fi/cheques/slips')}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error} />

@@ -9,6 +9,7 @@ import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, 
 import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
+import { CancelStamp } from '../../components/DocDelete';
 import { DocJournalTab } from './TradeDocs';
 import { DocLink } from '../../components/DocLink';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
@@ -158,15 +159,15 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const whRows = lk.data?.WH;
   return (
-    <div className={cx('page', tColor && 'book-colored')} data-tone="inventory" style={bookStyle(tColor)}>
-      <div className="doc-title"><p className="eyebrow">สินค้า › {K.label}</p><h1>{id ? cur.data?.doc_no : 'เอกสารใหม่'}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
+    <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="inventory" style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">สินค้า › {K.label}</p><h1>{id ? cur.data?.doc_no : 'เอกสารใหม่'}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">บันทึกแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}{!cancelled && cur.data?.doc_no?.startsWith('MIG-') && <Pill tone="d">ปรับยอดตอนย้ายข้อมูล — แก้ไข/ยกเลิกไม่ได้</Pill>}{!cancelled && cur.data?.from_count && <Pill tone="d">สร้างจากการตรวจนับ — แก้ที่หน้ารายการตรวจนับ</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
         <button disabled={!id || cancelled || !(cur.data?.editable || cur.data?.from_count) || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร <kbd>Alt+C</kbd></button>
-        <DocActions kind="doc" id={id} dirty={dirty} menu={MENU} />
+        <DocActions kind="doc" id={id} dirty={dirty} menu={MENU} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         {cls === 'JU' && !ro && <button disabled={!used.some((l) => d(l.qty || 0).gt(0))} onClick={() => setProdCost(true)} title="รวมต้นทุนจากการเบิกวัตถุดิบและค่าแรง/โสหุ้ย แล้วกระจายเป็นทุนต่อหน่วยของสินค้าที่รับเข้า (บทที่ 26)">🏭 ต้นทุนการผลิต</button>}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>

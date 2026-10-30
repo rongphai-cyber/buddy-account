@@ -517,6 +517,30 @@
 ]
 },
 {
+"th": "เอกสาร",
+"n": 30,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/neighbors.ts",
+"apps/server/src/modules/notes.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/engine.ts",
+"apps/server/src/modules/docs/routes.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "รับ",
 "n": 29,
 "files": [
@@ -536,30 +560,6 @@
 "apps/server/src/modules/docs/payments.ts",
 "apps/server/src/modules/docs/settle.ts",
 "apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "เอกสาร",
-"n": 29,
-"files": [
-"apps/web/src/components/DocEdit.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/neighbors.ts",
-"apps/server/src/modules/notes.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/engine.ts",
-"apps/server/src/modules/docs/routes.ts",
-"apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts"
 ]
 },
@@ -1548,6 +1548,20 @@
 ]
 },
 {
+"th": "ใบสำคัญ",
+"n": 12,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Books.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/server/src/modules/neighbors.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/journals.ts"
+]
+},
+{
 "th": "งวด",
 "n": 11,
 "files": [
@@ -1641,20 +1655,6 @@
 "packages/core/src/menu.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ใบสำคัญ",
-"n": 11,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Books.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/server/src/modules/neighbors.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/journals.ts"
 ]
 },
 {
@@ -7868,6 +7868,13 @@
 "files": [
 "apps/web/src/components/CompanyImages.tsx",
 "apps/web/src/components/ItemImages.tsx"
+]
+},
+{
+"th": "ลบเอกสาร",
+"n": 2,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
 ]
 },
 {
@@ -20524,6 +20531,13 @@
 ]
 },
 {
+"th": "บันทึกเอกสารก่อน",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
 "th": "บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุได้",
 "n": 1,
 "files": [
@@ -21312,6 +21326,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ปิดหน้าจอนี้ กลับหน้าแรก (Alt+X)",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
 ]
 },
 {
@@ -23513,6 +23534,13 @@
 ]
 },
 {
+"th": "มีการแก้ไขที่ยังไม่บันทึก — ปิดหน้าจอโดยไม่บันทึก?",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
 "th": "มีการแก้ไขที่ยังไม่บันทึก — ไปเอกสารอื่นโดยไม่บันทึก?",
 "n": 1,
 "files": [
@@ -23905,6 +23933,13 @@
 ]
 },
 {
+"th": "ยกเลิกเอกสาร {0} ก่อนจึงลบได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
 "th": "ยกเลิกเอกสาร ต้องขออนุมัติระดับ",
 "n": 1,
 "files": [
@@ -23926,6 +23961,13 @@
 ]
 },
 {
+"th": "ยกเลิกและลบเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
 "th": "ยกเลิกใบนำฝากแล้ว",
 "n": 1,
 "files": [
@@ -23937,6 +23979,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "ยกเลิกใบสำคัญ {0} ก่อนจึงลบได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journals.ts"
 ]
 },
 {
@@ -26593,6 +26642,20 @@
 ]
 },
 {
+"th": "ระบุเหตุผลที่ลบ",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/routes.ts"
+]
+},
+{
+"th": "ระบุเหตุผลที่ลบก่อน",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
 "th": "ระบุแผนก",
 "n": 1,
 "files": [
@@ -27860,6 +27923,27 @@
 ]
 },
 {
+"th": "ลบ {0} ออกจากระบบ?",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
+"th": "ลบ {0} แล้ว — ไม่แสดงในระบบอีก เลขที่นี้ว่างให้ใช้ใหม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
+"th": "ลบ {0} ไม่ได้ — {1} ยังอ้างถึงเอกสารนี้ (ยกเลิกหรือลบ {2} ก่อน)",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
 "th": "ลบ {0}? ลบได้เฉพาะบัญชีที่ยังไม่มีเช็ค/รายการโอน และไม่ได้ผูกกับวิธีรับ-จ่ายชำระ",
 "n": 1,
 "files": [
@@ -28284,6 +28368,13 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "ลบเอกสารนี้ออกจากระบบ — เลขที่ว่างให้ใช้ใหม่ (Alt+D)",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
 ]
 },
 {
@@ -35252,6 +35343,13 @@
 ]
 },
 {
+"th": "เหตุผล: {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
 "th": "เหตุผลการยกเลิกยอดสั่งขาย",
 "n": 1,
 "files": [
@@ -35263,6 +35361,13 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "เหตุผลที่ลบ",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
 ]
 },
 {
@@ -35326,6 +35431,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/etax.ts"
+]
+},
+{
+"th": "เอกสารจะไม่แสดงในรายการ รายงาน และบัญชีแยกประเภทอีก · เลขที่นี้ว่างให้ใช้ใหม่ได้ · ประวัติการลบเก็บไว้ในบันทึกการทำงาน",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
 ]
 },
 {
@@ -35420,6 +35532,13 @@
 ]
 },
 {
+"th": "เอกสารนี้ยังไม่ได้ยกเลิก — ระบบจะยกเลิกให้ก่อน (ยกเลิกใบสำคัญ คืนสต๊อก ฯลฯ) แล้วจึงลบ",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
 "th": "เอกสารนี้ยังไม่ได้รับรอง",
 "n": 1,
 "files": [
@@ -35480,6 +35599,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx"
+]
+},
+{
+"th": "เอกสารยกเลิก",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
 ]
 },
 {
@@ -37366,6 +37492,13 @@
 ]
 },
 {
+"th": "ใบสำคัญ {0} เกิดจากเอกสาร/ระบบอื่น — ลบที่เอกสารต้นทาง",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journals.ts"
+]
+},
+{
 "th": "ใบสำคัญ {0} ไม่มีรายการบัญชีให้คัดลอก",
 "n": 1,
 "files": [
@@ -38423,6 +38556,13 @@
 ]
 },
 {
+"th": "ไม่มีสิทธิ์ลบ",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
 "th": "ไม่มีสิทธิ์เข้าบริษัทนี้",
 "n": 1,
 "files": [
@@ -39256,6 +39396,13 @@
 ]
 },
 {
+"th": "✕ ปิดหน้าจอ",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
 "th": "❌ นำเข้าไม่สำเร็จ",
 "n": 1,
 "files": [
@@ -39512,6 +39659,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Serials.tsx"
+]
+},
+{
+"th": "🗑 ลบ",
+"n": 1,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
 ]
 }
 ]

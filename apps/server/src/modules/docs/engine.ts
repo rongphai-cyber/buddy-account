@@ -201,3 +201,47 @@ export async function cancelDocument(db: Db, ctx: Ctx, headerId: string, reason:
     return { ok: true };
   });
 }
+
+/**
+ * ลบเอกสาร (ข้อกำหนดเจ้าของ 30/10/2569 ปุ่ม "ลบ"): ต้องยกเลิกก่อน (หน้าจอยกเลิกให้ในขั้นเดียว) แล้วซ่อนจากทุกหน้าจอ/รายงาน
+ * และคืนเลขที่ให้ใช้ใหม่ได้ (ดัชนีไม่ซ้ำนับเฉพาะ deleted_at IS NULL) — เก็บประวัติไว้ในบันทึกการทำงาน (ลบไม่ได้) ตามหลักตรวจสอบ
+ */
+export async function deleteDocument(db: Db, ctx: Ctx, headerId: string, reason: string) {
+  return db.transaction().execute(async (tx) => {
+    const h = await tx.selectFrom('doc_header').select(['doc_no', 'doc_class', 'doc_status', 'doc_date', 'is_opening', 'net_amount', 'cancel_reason']).where('id', '=', headerId).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!h) throw notFound('เอกสาร');
+    if (h.doc_status !== 'C') throw badRequest(`ยกเลิกเอกสาร ${h.doc_no} ก่อนจึงลบได้`);
+    if (!h.is_opening) await periodFor(tx, ctx.companyId, String(h.doc_date).slice(0, 10));
+    else await sql`SELECT set_config('app.allow_locked_period', 'on', true)`.execute(tx);
+    // เอกสารอื่นที่ยังใช้งานอ้างถึงเอกสารนี้ → ลบไม่ได้
+    const ref = (await sql<{ doc_no: string }>`
+      SELECT o.doc_no FROM doc_link l JOIN doc_header o ON o.id = CASE WHEN l.from_header_id = ${headerId} THEN l.to_header_id ELSE l.from_header_id END
+       WHERE (l.from_header_id = ${headerId} OR l.to_header_id = ${headerId}) AND l.deleted_at IS NULL AND o.doc_status <> 'C' AND o.deleted_at IS NULL
+      UNION ALL SELECT t.doc_no FROM doc_line x JOIN doc_line s ON s.id = x.source_line_id JOIN doc_header t ON t.id = x.header_id
+       WHERE s.header_id = ${headerId} AND x.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL
+      UNION ALL SELECT b.doc_no FROM doc_bill_item i JOIN doc_header b ON b.id = i.bill_header_id
+       WHERE i.invoice_header_id = ${headerId} AND i.deleted_at IS NULL AND b.doc_status <> 'C' AND b.deleted_at IS NULL
+      UNION ALL SELECT coalesce(p.doc_no, j.voucher_no) FROM doc_settlement s LEFT JOIN doc_header p ON p.id = s.payment_header_id LEFT JOIN gl_journal j ON j.id = s.payment_journal_id
+       WHERE s.invoice_header_id = ${headerId} AND s.deleted_at IS NULL AND coalesce(p.doc_status, j.doc_status) <> 'C' AND p.deleted_at IS NULL AND j.deleted_at IS NULL
+      UNION ALL SELECT f.cheque_no FROM fin_cheque f WHERE f.deposit_header_id = ${headerId} AND f.deleted_at IS NULL
+      UNION ALL SELECT a.code FROM fa_asset a WHERE a.sold_header_id = ${headerId} AND a.deleted_at IS NULL
+      LIMIT 1`.execute(tx)).rows[0];
+    if (ref) throw badRequest(`ลบ ${h.doc_no} ไม่ได้ — ${ref.doc_no} ยังอ้างถึงเอกสารนี้ (ยกเลิกหรือลบ ${ref.doc_no} ก่อน)`);
+    const gone = { deleted_at: sql`now()` as never, updated_by: ctx.userId };
+    const js = (await tx.selectFrom('gl_journal').select('id').where('company_id', '=', ctx.companyId).where('source_header_id', '=', headerId).where('deleted_at', 'is', null).execute()).map((j) => j.id);
+    if (js.length) {
+      await tx.updateTable('gl_journal_line').set(gone).where('journal_id', 'in', js).where('deleted_at', 'is', null).execute();
+      await tx.updateTable('gl_journal').set(gone).where('id', 'in', js).execute();
+    }
+    for (const t of ['doc_line', 'doc_payment', 'doc_note', 'tax_vat_entry', 'tax_wht_entry', 'fin_cheque_event', 'fin_bank_ledger'] as const)
+      await tx.updateTable(t).set(gone).where('header_id', '=', headerId).where('deleted_at', 'is', null).execute();
+    await tx.updateTable('doc_link').set(gone).where((eb) => eb.or([eb('from_header_id', '=', headerId), eb('to_header_id', '=', headerId)])).where('deleted_at', 'is', null).execute();
+    await tx.updateTable('doc_bill_item').set(gone).where((eb) => eb.or([eb('bill_header_id', '=', headerId), eb('invoice_header_id', '=', headerId)])).where('deleted_at', 'is', null).execute();
+    await tx.updateTable('doc_settlement').set(gone).where((eb) => eb.or([eb('payment_header_id', '=', headerId), eb('invoice_header_id', '=', headerId)])).where('deleted_at', 'is', null).execute();
+    await tx.updateTable('fin_cheque').set(gone).where('company_id', '=', ctx.companyId).where('source_header_id', '=', headerId).where('deleted_at', 'is', null).execute();
+    await tx.updateTable('doc_header').set(gone).where('id', '=', headerId).execute();
+    await logActivity(tx, ctx, { module: 'DOC', action: 'DELETE', docNo: h.doc_no, table: 'doc_header', rowId: headerId,
+      detail: { reason, doc_class: h.doc_class, doc_date: String(h.doc_date).slice(0, 10), net_amount: h.net_amount, cancel_reason: h.cancel_reason, journals: js } });
+    return { ok: true, doc_no: h.doc_no };
+  });
+}

@@ -160,11 +160,29 @@ export async function getJournal(db: Db, companyId: string, id: string) {
     .select(['j.id', 'j.voucher_no', 'j.voucher_date', 'j.description', 'j.reference', 'j.journal_book_id', 'j.branch_id', 'j.source_module', 'j.source_header_id',
       'j.status', 'j.doc_status', 'j.total_debit', 'j.total_credit', 'j.created_at', 'j.updated_at', 'j.print_count', 'b.code as book_code', 'b.name_th as book_name',
       'h.doc_no as source_doc_no', 'h.doc_class as source_doc_class', 'u.display_name as created_by_name'])
-    .where('j.id', '=', id).where('j.company_id', '=', companyId).executeTakeFirst();
+    .where('j.id', '=', id).where('j.company_id', '=', companyId).where('j.deleted_at', 'is', null).executeTakeFirst();
   if (!j) throw notFound('ใบสำคัญ');
   const lines = await db.selectFrom('gl_journal_line as l').innerJoin('gl_account as a', 'a.id', 'l.account_id').leftJoin('md_department as dp', 'dp.id', 'l.department_id')
     .select(['l.id', 'l.line_no', 'l.account_id', 'a.account_no', 'a.name_th as account_name', 'l.department_id', 'dp.code as department_code', 'l.description', 'l.debit', 'l.credit', 'l.posting_role', 'l.resolved_from'])
     .where('l.journal_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
   const editable = j.doc_status === 'N' && !j.source_header_id && (!j.source_module || j.source_module === 'GL');
   return { ...j, lines, editable };
+}
+
+/** ลบใบสำคัญที่ป้อนเอง (ปุ่ม "ลบ"): ต้องยกเลิกก่อน · ใบสำคัญที่เกิดจากเอกสาร/ระบบอื่นลบที่ต้นทาง · คืนเลขที่ · เก็บประวัติในบันทึกการทำงาน */
+export async function deleteJournal(db: Db, ctx: { companyId: string; userId: string }, id: string, reason: string) {
+  return db.transaction().execute(async (tx) => {
+    const j = await tx.selectFrom('gl_journal').select(['voucher_no', 'voucher_date', 'doc_status', 'source_header_id', 'source_module', 'total_debit']).where('id', '=', id).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!j) throw notFound('ใบสำคัญ');
+    if (j.source_header_id || (j.source_module && j.source_module !== 'GL')) throw badRequest(`ใบสำคัญ ${j.voucher_no} เกิดจากเอกสาร/ระบบอื่น — ลบที่เอกสารต้นทาง`);
+    if (j.doc_status !== 'C') throw badRequest(`ยกเลิกใบสำคัญ ${j.voucher_no} ก่อนจึงลบได้`);
+    await periodFor(tx, ctx.companyId, String(j.voucher_date).slice(0, 10));
+    const gone = { deleted_at: sql`now()` as never, updated_by: ctx.userId };
+    for (const t of ['gl_journal_line', 'tax_vat_entry', 'tax_wht_entry'] as const)
+      await tx.updateTable(t).set(gone).where('journal_id', '=', id).where('deleted_at', 'is', null).execute();
+    await tx.updateTable('doc_settlement').set(gone).where('payment_journal_id', '=', id).where('deleted_at', 'is', null).execute();
+    await tx.updateTable('gl_journal').set(gone).where('id', '=', id).execute();
+    await logActivity(tx, ctx, { module: 'GL', action: 'DELETE', docNo: j.voucher_no, table: 'gl_journal', rowId: id, detail: { reason, voucher_date: String(j.voucher_date).slice(0, 10), total: j.total_debit } });
+    return { ok: true, doc_no: j.voucher_no };
+  });
 }

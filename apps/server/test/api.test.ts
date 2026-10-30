@@ -1472,6 +1472,43 @@ describe('Buddy Account API (PGlite)', () => {
       expect((await call('POST', `/api/v1/${path}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
+  it('delete button (ข้อกำหนดเจ้าของ): cancel first, then gone everywhere, number freed, history kept, rights + other companies', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0] as { id: string; code: string };
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const iv = await typeOf('IV');
+    const no = `${iv.code}-DEL/001`;
+    const base = { doc_type_id: iv.id, doc_date: '2027-08-08', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 100 }] };
+    const doc = (await call('POST', '/api/v1/sales-invoices', { ...base, doc_no: no })).body;
+    const jid = (await call('GET', `/api/v1/docs/${doc.id}/journal`)).body.journals[0].id;
+    // ยังไม่ยกเลิก → ลบไม่ได้ · ต้องมีเหตุผล
+    expect((await call('POST', `/api/v1/docs/doc/${doc.id}/delete`, { reason: 'คีย์ผิด' })).body.error.message).toMatch(/ยกเลิกเอกสาร.*ก่อน/);
+    expect((await call('POST', `/api/v1/sales-invoices/${doc.id}/cancel`, { reason: 'คีย์ผิด' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/docs/doc/${doc.id}/delete`, { reason: '' })).status).toBe(400);
+    // บริษัทอื่นลบไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('POST', `/api/v1/docs/doc/${doc.id}/delete`, { reason: 'x' })).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('POST', `/api/v1/docs/doc/${doc.id}/delete`, { reason: 'คีย์ผิด ลบทิ้ง' })).body).toMatchObject({ ok: true, doc_no: no });
+    // หายจากหน้าจอ/รายการ/ใบสำคัญ · เลขที่ว่าง ใช้ใหม่ได้ · ประวัติยังอยู่
+    expect((await call('GET', `/api/v1/sales-invoices/${doc.id}`)).status).toBe(404);
+    expect((await call('GET', `/api/v1/sales-invoices?q=${encodeURIComponent(no)}&status=all`)).body.rows).toHaveLength(0);
+    expect((await call('GET', `/api/v1/gl/journals/${jid}`)).status).toBe(404);
+    const again = (await call('POST', '/api/v1/sales-invoices', { ...base, doc_no: no })).body;
+    expect(again.doc_no).toBe(no);
+    const log = (await call('GET', `/api/v1/activity-log?table=doc_header&row_id=${doc.id}`)).body;
+    expect(log.map((x: { action: string }) => x.action)).toEqual(expect.arrayContaining(['CANCEL', 'DELETE']));
+    // เอกสารที่ยังมีเอกสารอื่นอ้างถึง ลบไม่ได้ (ใบเสร็จตัดใบนี้อยู่ → ยกเลิกใบนี้ไม่ได้ตั้งแต่แรก)
+    expect((await call('POST', `/api/v1/sales-invoices/${again.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/docs/doc/${again.id}/delete`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    // ใบสำคัญป้อนเอง: ยกเลิกแล้วลบได้ · ใบสำคัญจากเอกสารลบที่ต้นทาง
+    const jv = (await call('POST', '/api/v1/gl/journals', { journal_book_id: bookId, voucher_date: '2027-08-08', lines: [{ account_id: cash, debit: '5' }, { account_id: capital, credit: '5' }] })).body;
+    expect((await call('POST', `/api/v1/docs/journal/${jv.id}/delete`, { reason: 'x' })).body.error.message).toMatch(/ยกเลิกใบสำคัญ.*ก่อน/);
+    expect((await call('POST', `/api/v1/gl/journals/${jv.id}/cancel`, { reason: 'x' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/docs/journal/${jv.id}/delete`, { reason: 'คีย์ซ้ำ' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/gl/journals/${jv.id}`)).status).toBe(404);
+  });
+
   it('executive dashboard (RP.DASH): sales/AR/cash/aging from live documents, filters, isolation', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;

@@ -12,6 +12,7 @@ import { DocLink } from '../../components/DocLink';
 import { useDocEdit } from '../../components/DocEdit';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
+import { CancelStamp } from '../../components/DocDelete';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { DocVatTab, DocWhtList, VAT_KIND_OF, VatCheckAfterSave, vatTabLabel } from '../../components/DocTaxTabs';
@@ -352,8 +353,8 @@ export function TradeFormPage({ path }: { path: string }) {
   const cancelled = cur.data?.doc_status === 'C';
   const docNo = id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '');
   return (
-    <div className={cx('page', tColor && 'book-colored')} data-tone={TONE(K)} style={bookStyle(tColor)}>
-      <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
+    <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone={TONE(K)} style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{K.order ? 'บันทึกแล้ว (ไม่ลงบัญชี)' : 'ลงบัญชีแล้ว'}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && !cancelled && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}{roBase && !cancelled && id && <Pill tone="d">{cur.data?.is_opening ? 'ยอดยกมา — แก้ที่เมนูคงค้าง-ยกมา' : K.order ? `${K.module === 'AR' ? 'ส่งของ' : 'รับของ'}แล้ว — แก้ไขไม่ได้` : 'ชำระแล้ว — แก้ไขไม่ได้'}</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setPays([]); setDeps({}); nav(`${K.route}/new`); } }}>+ ใหม่</button>
@@ -362,7 +363,7 @@ export function TradeFormPage({ path }: { path: string }) {
         <button disabled={busy || readOnly} onClick={() => save(true)}>บันทึก+ใหม่</button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         {K.cls === 'QT' && id && !cancelled && <button disabled={!canSO('add')} onClick={() => setAskConvert(true)}>แปลงเป็นใบสั่งขาย</button>}
-        <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} typeId={h?.doc_type_id} />
+        <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} typeId={h?.doc_type_id} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         {supInv && !readOnly && h && <AiBillButton target={K.path} onApply={applyBill} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>

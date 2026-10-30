@@ -858,3 +858,10 @@ select { max-width: 100%; }
 .aging-table .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
 @media (max-width: 900px) { .dash-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .dash-filters .inline { flex-wrap: wrap; } .dash-kpis .kpi b.num { font-size: 18px; } }
+
+/* เอกสารยกเลิก (ข้อกำหนดเจ้าของ): ป้ายแดงชัดเจนข้างเลขที่ · ตัวเลข/รายการขีดฆ่า — ยอดไม่นำไปใช้ที่ใด ไม่ลงบัญชี */
+.cancel-stamp { display: inline-flex; align-items: baseline; gap: 6px; margin-left: 12px; padding: 4px 14px; border: 2px solid var(--bad); border-radius: 8px; background: color-mix(in srgb, var(--bad) 12%, var(--surface)); color: var(--bad); font-size: 18px; font-weight: 800; letter-spacing: .5px; vertical-align: middle; }
+.cancel-stamp small { font-size: 13px; font-weight: 500; }
+.page.doc-cancelled .table-wrap.lines td, .page.doc-cancelled .table-wrap.lines input, .page.doc-cancelled .table-wrap.lines select,
+.page.doc-cancelled .totals-table td, .page.doc-cancelled .totals-table input { text-decoration: line-through; text-decoration-color: var(--bad); color: var(--muted); }
+button.danger-outline:not(:disabled) { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); }

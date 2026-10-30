@@ -9,6 +9,7 @@ import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, Mon
 import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
+import { CancelStamp } from '../../components/DocDelete';
 import { DocJournalTab } from './TradeDocs';
 import { DocLink } from '../../components/DocLink';
 import { PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
@@ -180,8 +181,8 @@ export function SettleFormPage({ path }: { path: string }) {
   const docNo = id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '');
   const ro = readOnly;
   return (
-    <div className={cx('page', tColor && 'book-colored')} data-tone="finance" style={bookStyle(tColor)}>
-      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{docNo}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
+    <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="finance" style={bookStyle(tColor)}>
+      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{docNo}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}
           {h?.party && chosen.length > 0 && !t.ok && !ro && <Pill tone="d">ยอดเงินไม่เรียบร้อย</Pill>}</span></div>
       <div className="toolbar">
@@ -190,7 +191,7 @@ export function SettleFormPage({ path }: { path: string }) {
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
-        <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} />
+        <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
