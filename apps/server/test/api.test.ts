@@ -196,8 +196,11 @@ describe('Buddy Account API (PGlite)', () => {
     const bs = (await call('GET', '/api/v1/fs/run?kind=BS&end=2026-12-31')).body.rows.filter((r: { kind: string }) => r.kind === 'value');
     expect(bs.map((r: { values: string[] }) => r.values[0])).toEqual(bs26);
     expect(bs.find((r: { text: string }) => r.text === 'รวมสินทรัพย์').values[1]).toBe('1500.00');
+    expect((await call('GET', '/api/v1/fs/run?kind=BS&end=2026-12-31')).body.balance_diff).toEqual(['0.00', '0.00']);
     // แก้ไขแทนชุดเดิม และเก็บค่าก่อนแก้ใน log
     expect((await put(cash, { debit: '1000' })).status).toBe(200);
+    // เงินสดหายไป 500 แต่รายได้ยังอยู่ → งบปีที่แล้วไม่ดุล (หน้าจอเตือนให้แก้ที่ยอดปีที่แล้ว)
+    expect((await call('GET', '/api/v1/fs/run?kind=BS&end=2026-12-31')).body.balance_diff).toEqual(['0.00', '-500.00']);
     expect((await call('GET', `/api/v1/gl/prior-year/entry?fiscal_year_id=${fy}&account_id=${cash}`)).body.periods[2].debit).toBe('0.00');
     const log = (await call('GET', `/api/v1/activity-log?table=gl_prior_year_balance&row_id=${cash}`)).body;
     expect(log.filter((x: { action: string }) => x.action === 'PRIOR_YEAR')).toHaveLength(2);

@@ -97,6 +97,8 @@ async function runUntil(limit) {
 /* ================================================================== 0. เข้าระบบ + สร้างบริษัท */
 const seedPass = readFileSync(SEED_FILE, 'utf8').match(/รหัสผ่าน:\s*(\S+)/)?.[1];
 if (!seedPass) { console.error('อ่านรหัสผ่าน demo.seed ไม่ได้'); process.exit(2); }
+// รอ server เปิดเสร็จ (สั่งเปิดพร้อมกันได้)
+for (let i = 0; i < 90; i++) { try { await fetch(BASE + '/api/v1/health'); break; } catch { await new Promise((r) => setTimeout(r, 1000)); } }
 await ok('POST', '/api/v1/auth/login', { username: 'demo.seed', password: seedPass, work_date: '2026-10-30' });
 const tenants = await get('/api/v1/tenants');
 const tenant = tenants.find((t) => t.code === CO_CODE);
@@ -527,34 +529,57 @@ const PL25 = { '4100-01': [-1050000, 0.08], '4100-03': [9000, 0.3], '4400-03': [
   '5420-05': [35000, 0], '5430-02': [9200, 0.15], '5430-03': [750, 0.2], '5430-05': [1990, 0], '5300-02': [9000, 0.4], '5300-05': [6500, 0.3], '5440-05': [13083, 0], '5440-04': [2417, 0], '5440-03': [2600, 0.1],
   '5440-06': [3600, 0], '5460-04': [380, 0.4], '5470-03': [6100, 0.05], '4200-01': [-1100, 0.2] };
 let profit25 = D(0);
+const pyMove = Array.from({ length: 13 }, () => D(0));   // ผลรวมเดบิต−เครดิตรายงวดของทุกบัญชีที่ป้อนแล้ว (ใช้ถ่วงดุล)
 for (const [no, [base, vol]] of Object.entries(PL25)) {
   const periods = [];
   for (let p = 1; p <= 12; p++) {
     const v = D(base).times(1 + (rnd() * 2 - 1) * vol).times(1 + (p - 6) * 0.01).toDecimalPlaces(2);
     periods.push({ period_no: p, debit: v.gt(0) ? m2(v) : '0', credit: v.lt(0) ? m2(v.neg()) : '0' });
     profit25 = profit25.minus(v);
+    pyMove[p] = pyMove[p].plus(v);
   }
   await ok('PUT', '/api/v1/gl/prior-year/entry', { account_id: A(no), opening: { debit: '0', credit: '0' }, periods });
 }
-for (const no of ['1111-01', '1112-00', '1113-01', '1113-02', '1130-01', '1140-02', '2120-01', '2210-00', '1410-05', '1420-05', '3100-00', '3200-00']) {
-  const close = OPEN_BAL.get(no) ?? D(0);
-  let open, periods = [];
-  if (no === '3200-00') open = close.plus(profit25);   // กำไรปี 2568 ปิดเข้ากำไรสะสมตอนสิ้นปี
-  else if (no === '3100-00' || no === '1410-05') open = close;
-  else if (no === '2210-00') open = close.minus(300000);
-  else if (no === '1420-05') open = close.plus(157000);
+// บัญชีงบดุลปีที่แล้ว: ครบทุกบัญชีที่มียอดยกมาปี 2569 (ยอดสิ้นปี 2568 = ยอดยกมา 2569) ให้ยอดคงเหลือดุลทุกงวด
+// · กำไรสะสมไม่มีความเคลื่อนไหวระหว่างปี (กำไรปี 2568 อยู่ในบัญชีรายได้/ค่าใช้จ่าย งบรวมให้เอง — ยกเข้ากำไรสะสมตอนขึ้นปีใหม่)
+// · เงินฝาก KBANK (1113-02) ถ่วงดุลทั้งยอดยกมาและยอดรายงวด · สุ่มการกระจายรายงวดด้วยตัวสุ่มแยก ไม่กระทบข้อมูลปี 2569
+for (let k = 0; k < 110; k++) rnd();   // คงลำดับตัวสุ่มหลักเท่าเดิม (ข้อมูลปี 2569 ได้ยอดเดิม)
+const rndPY = mulberry32(2568);
+const PLUG = '1113-02';
+const closeBS = new Map();
+for (const r of glOpen) { const no = accounts.find((a) => a.id === r.account_id).account_no; closeBS.set(no, (closeBS.get(no) ?? D(0)).plus(r.debit).minus(r.credit)); }
+let plugOpen = D(0);
+const bsEntries = [];
+for (const [no, close] of closeBS) {
+  if (no === PLUG) continue;
+  let open;
+  if (no === '3200-00') open = close.plus(profit25);   // กำไรสะสมต้นปี 2568 = ยกมา 2569 − กำไรปี 2568
+  else if (no === '3100-00' || no === '1500-05') open = close;
+  else if (no === '2210-00') open = close.minus(300000);   // เงินกู้ระยะยาว จ่ายคืนปีละ 300,000
   else open = close.times(0.82).toDecimalPlaces(2);
-  const move = close.minus(open);
+  const move = no === '3200-00' ? D(0) : close.minus(open);   // กำไรสะสม: ยอดสิ้นปี 2568 (ก่อนปิดบัญชี) = ยอดต้นปี
+  const periods = [];
   if (!move.isZero()) {
     let left = move;
     for (let p = 1; p <= 12; p++) {
-      const v = p === 12 ? left : move.div(12).times(rf(0.6, 1.4)).toDecimalPlaces(2);
+      const v = p === 12 ? left : move.div(12).times(0.6 + rndPY() * 0.8).toDecimalPlaces(2);
       left = left.minus(v);
+      pyMove[p] = pyMove[p].plus(v);
       periods.push({ period_no: p, debit: v.gt(0) ? m2(v) : '0', credit: v.lt(0) ? m2(v.neg()) : '0' });
     }
   }
-  await ok('PUT', '/api/v1/gl/prior-year/entry', { account_id: A(no), opening: { debit: open.gt(0) ? m2(open) : '0', credit: open.lt(0) ? m2(open.neg()) : '0' }, periods });
+  plugOpen = plugOpen.minus(open);
+  bsEntries.push([no, open, periods]);
 }
+{
+  const periods = [];
+  for (let p = 1; p <= 12; p++) { const v = pyMove[p].neg(); periods.push({ period_no: p, debit: v.gt(0) ? m2(v) : '0', credit: v.lt(0) ? m2(v.neg()) : '0' }); }
+  const plugClose = plugOpen.plus(pyMove.slice(1).reduce((x, y) => x.minus(y), D(0)));
+  if (plugOpen.lt(0) || !plugClose.minus(closeBS.get(PLUG) ?? 0).abs().lt('0.005')) throw new Error(`ยอดปีที่แล้วถ่วงดุลไม่ได้: ${PLUG} ต้นปี ${m2(plugOpen)} สิ้นปี ${m2(plugClose)}`);
+  bsEntries.push([PLUG, plugOpen, periods]);
+}
+for (const [no, open, periods] of bsEntries)
+  await ok('PUT', '/api/v1/gl/prior-year/entry', { account_id: A(no), opening: { debit: open.gt(0) ? m2(open) : '0', credit: open.lt(0) ? m2(open.neg()) : '0' }, periods });
 // งบประมาณ 2569
 const BUDGET = { '4100-01': 1250000, '4400-03': 12000, '4200-08': 2500, '5110-00': 900000, '5411-01': 125000, '5300-11': 72000, '5412-14': 6750, '5420-05': 35000, '5430-02': 10000, '5430-03': 900,
   '5430-05': 1990, '5300-02': 12000, '5300-05': 6000, '5420-02': 2500, '5420-08': 6000, '5420-09': 4500, '5460-04': 450, '5470-03': 5000, '5440-05': 13100 };
@@ -1196,6 +1221,11 @@ const q = async (sqlText, params = [coId]) => (await db.query(sqlText, params)).
 
 const tb = await get('/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31');
 check(tb.balanced, `งบทดลอง 1 ม.ค.–31 ธ.ค. 2569 ดุล (ยกมา Dr ${tb.totals.opening_debit} Cr ${tb.totals.opening_credit} · ระหว่างงวด Dr ${tb.totals.debit} Cr ${tb.totals.credit} · คงเหลือ Dr ${tb.totals.closing_debit} Cr ${tb.totals.closing_credit})`);
+// ยอดปีที่แล้ว (ป้อนเอง) ต้องดุล และงบแสดงฐานะการเงินดุลทั้งสองคอลัมน์
+const py = await get('/api/v1/gl/prior-year');
+const bsRun = await get('/api/v1/fs/run?kind=BS&end=2026-12-31');
+check(py.closing_debit === py.closing_credit && (bsRun.balance_diff ?? []).every((x) => x === '0.00'),
+  `ยอดปีที่แล้ว 2568 ดุล (คงเหลือ Dr ${py.closing_debit} Cr ${py.closing_credit}) · งบแสดงฐานะการเงินดุลทั้งปีนี้และปีที่แล้ว (ต่าง ${(bsRun.balance_diff ?? []).join(' / ')})`);
 const unbalanced = await q(`SELECT j.voucher_no, j.source_module, sum(l.debit) dr, sum(l.credit) cr FROM gl_journal j JOIN gl_journal_line l ON l.journal_id = j.id AND l.deleted_at IS NULL
   WHERE j.company_id = $1 AND j.doc_status = 'N' AND j.deleted_at IS NULL GROUP BY j.id, j.voucher_no, j.source_module HAVING sum(l.debit) <> sum(l.credit)`);
 check(!unbalanced.length, `ใบสำคัญทุกใบดุล (ไม่ดุล ${unbalanced.length} ใบ${unbalanced.length ? ': ' + unbalanced.slice(0, 5).map((r) => r.voucher_no).join(', ') : ''})`);

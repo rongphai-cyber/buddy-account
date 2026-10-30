@@ -249,7 +249,7 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
     const kind = q.kind ?? 'BS';
     return { kind: 'chart', title: kind === 'BS' ? 'งบแสดงฐานะการเงิน (ตามผังบัญชี)' : 'งบกำไรขาดทุน (ตามผังบัญชี)', headers: [company.name_th, kind === 'BS' ? 'งบแสดงฐานะการเงิน' : 'งบกำไรขาดทุน', `${kind === 'BS' ? 'ณ วันที่' : 'สำหรับงวดสิ้นสุดวันที่'} ${endText}`],
       columns: [{ expr: 'BAL', head1: 'ปีปัจจุบัน', head2: '', formula: false }, { expr: 'BAL LY', head1: 'ปีที่แล้ว', head2: '', formula: false }, { expr: '(C1-C2)*100/C2', head1: '% เปลี่ยนแปลง', head2: '', formula: true }],
-      rows: chartStatement(chart, ctx, kind), missing_accounts: [], coverage: null, end: q.end, fiscal_year: ctx.fy };
+      ...chartStatement(chart, ctx, kind), missing_accounts: [], coverage: null, end: q.end, fiscal_year: ctx.fy };
   });
 }
 
@@ -396,6 +396,8 @@ function coverageOf(chart: Chart, ctx: StatementCtx, lines: Array<{ data_type: s
 function chartStatement(chart: Chart, ctx: StatementCtx, kind: 'BS' | 'PL') {
   type Row = { kind: 'text'; text: string; textEn: string; center: boolean; line_no: number } | { kind: 'rule'; double: boolean; line_no: number } | { kind: 'value'; text: string; textEn: string; values: (string | null)[]; account?: string; isTotal: boolean; line_no: number };
   const rows: Row[] = [];
+  /** งบดุล: สินทรัพย์ − (หนี้สิน + ส่วนของผู้ถือหุ้น) ต่อคอลัมน์ — ปีที่แล้วมาจากยอดที่ป้อนเอง (S-GL-16) จึงไม่ดุลได้ */
+  let balance_diff: (string | null)[] = [];
   let n = 0;
   const v = (no: string) => [ctx.bal(no, 'BAL'), ctx.bal(no, 'BAL LY')];
   const pct = (x: (Decimal | null)[]) => (x[0] && x[1] && !x[1].isZero() ? x[0].minus(x[1]).times(100).div(x[1].abs()) : null);
@@ -435,7 +437,9 @@ function chartStatement(chart: Chart, ctx: StatementCtx, kind: 'BS' | 'PL') {
     rows.push({ kind: 'rule', double: false, line_no: ++n });
     rows.push({ kind: 'value', text: '      รวมส่วนของผู้ถือหุ้น', textEn: "      Total Shareholders' Equity", values: fmt(eqT), isTotal: true, line_no: ++n });
     rows.push({ kind: 'rule', double: false, line_no: ++n });
-    rows.push({ kind: 'value', text: 'รวมหนี้สินและส่วนของผู้ถือหุ้น', textEn: "Total Liabilities and Shareholders' Equity", values: fmt([0, 1].map((i) => (liab[i] == null || eqT[i] == null ? null : liab[i]!.plus(eqT[i]!)))), isTotal: true, line_no: ++n });
+    const le = [0, 1].map((i) => (liab[i] == null || eqT[i] == null ? null : liab[i]!.plus(eqT[i]!)));
+    balance_diff = [0, 1].map((i) => (assets[i] == null || le[i] == null ? null : assets[i]!.minus(le[i]!).toFixed(2)));
+    rows.push({ kind: 'value', text: 'รวมหนี้สินและส่วนของผู้ถือหุ้น', textEn: "Total Liabilities and Shareholders' Equity", values: fmt(le), isTotal: true, line_no: ++n });
     rows.push({ kind: 'rule', double: true, line_no: ++n });
   } else {
     const inc = section('4', 'รายได้', 'Revenue');
@@ -448,7 +452,7 @@ function chartStatement(chart: Chart, ctx: StatementCtx, kind: 'BS' | 'PL') {
     rows.push({ kind: 'value', text: 'กำไร (ขาดทุน) สุทธิ', textEn: 'Net Profit (Loss)', values: fmt([0, 1].map((i) => (inc[i] == null || exp[i] == null ? null : inc[i]!.minus(exp[i]!)))), isTotal: true, line_no: ++n });
     rows.push({ kind: 'rule', double: true, line_no: ++n });
   }
-  return rows;
+  return { rows, balance_diff };
 }
 
 /** บัญชีแยกประเภทของบัญชี (รวมบัญชีย่อย) ช่วงวันที่ — ยอดยกมา + รายการ + ยอดคงเหลือสะสม (ใช้กับสมุดเงินฝากด้วย) */

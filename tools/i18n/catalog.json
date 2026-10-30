@@ -5347,6 +5347,30 @@
 ]
 },
 {
+"th": "ก.ค.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
+]
+},
+{
+"th": "ก.พ.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
+]
+},
+{
+"th": "ก.ย.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
+]
+},
+{
 "th": "กระทบยอดเงินฝากธนาคาร",
 "n": 2,
 "files": [
@@ -5987,6 +6011,14 @@
 ]
 },
 {
+"th": "ต.ค.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
+]
+},
+{
 "th": "ตรวจกระทบยอดกับ Express",
 "n": 2,
 "files": [
@@ -6213,6 +6245,14 @@
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "ธ.ค.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
 ]
 },
 {
@@ -6754,6 +6794,22 @@
 ]
 },
 {
+"th": "พ.ค.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
+]
+},
+{
+"th": "พ.ย.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
+]
+},
+{
 "th": "พบ {0} รายการ",
 "n": 2,
 "files": [
@@ -6883,6 +6939,30 @@
 "files": [
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "ม.ค.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
+]
+},
+{
+"th": "มิ.ย.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
+]
+},
+{
+"th": "มี.ค.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
 ]
 },
 {
@@ -7808,6 +7888,14 @@
 ]
 },
 {
+"th": "ส.ค.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
+]
+},
+{
 "th": "สถานที่ส่งของ",
 "n": 2,
 "files": [
@@ -8361,6 +8449,14 @@
 ]
 },
 {
+"th": "เม.ย.",
+"n": 2,
+"files": [
+"packages/core/src/date.ts",
+"packages/core/src/i18n.ts"
+]
+},
+{
 "th": "เมนูหลัก",
 "n": 2,
 "files": [
@@ -8762,6 +8858,14 @@
 "n": 2,
 "files": [
 "apps/server/src/cli.ts"
+]
+},
+{
+"th": "ไทย",
+"n": 2,
+"files": [
+"apps/web/src/components/LangSwitch.tsx",
+"apps/web/src/pages/reports/Statements.tsx"
 ]
 },
 {
@@ -9187,6 +9291,13 @@
 "n": 1,
 "files": [
 "packages/core/src/ai-bill.ts"
+]
+},
+{
+"th": "(ยอดคงเหลือต้องดุล และกำไรปีนั้นต้องอยู่ในบัญชีรายได้/ค่าใช้จ่าย ไม่ใช่กำไรสะสม)",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Statements.tsx"
 ]
 },
 {
@@ -11934,6 +12045,13 @@
 ]
 },
 {
+"th": "· ยอดปีที่แล้วมาจากการป้อนเอง ตรวจและแก้ที่",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Statements.tsx"
+]
+},
+{
 "th": "· ยอดรวม VAT ใช้ออกรายงานสถานะ{0}",
 "n": 1,
 "files": [
@@ -12036,27 +12154,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
-"th": "ก.ค.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
-]
-},
-{
-"th": "ก.พ.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
-]
-},
-{
-"th": "ก.ย.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
 ]
 },
 {
@@ -14699,6 +14796,20 @@
 ]
 },
 {
+"th": "งบปีที่แล้วไม่ดุล — สินทรัพย์ต่างจากหนี้สินและส่วนของผู้ถือหุ้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Statements.tsx"
+]
+},
+{
+"th": "งบปีปัจจุบันไม่ดุล ต่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Statements.tsx"
+]
+},
+{
 "th": "งบแสดงฐานะการเงิน (ตามผังบัญชี)",
 "n": 1,
 "files": [
@@ -16278,13 +16389,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
-"th": "ต.ค.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
 ]
 },
 {
@@ -17961,13 +18065,6 @@
 ]
 },
 {
-"th": "ธ.ค.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
-]
-},
-{
 "th": "ธนาคาร (บัญชีเงินฝาก)",
 "n": 1,
 "files": [
@@ -18938,6 +19035,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Accounts.tsx"
+]
+},
+{
+"th": "บัญชี › ยอดปีที่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Statements.tsx"
 ]
 },
 {
@@ -22063,20 +22167,6 @@
 ]
 },
 {
-"th": "พ.ค.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
-]
-},
-{
-"th": "พ.ย.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
-]
-},
-{
 "th": "พนักงาน",
 "n": 1,
 "files": [
@@ -22553,6 +22643,13 @@
 ]
 },
 {
+"th": "ภาษาไทย",
+"n": 1,
+"files": [
+"apps/web/src/components/LangSwitch.tsx"
+]
+},
+{
 "th": "ภาษี (ขอคืนได้)",
 "n": 1,
 "files": [
@@ -22770,13 +22867,6 @@
 ]
 },
 {
-"th": "ม.ค.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
-]
-},
-{
 "th": "มัดจำ",
 "n": 1,
 "files": [
@@ -22837,20 +22927,6 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "มิ.ย.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
-]
-},
-{
-"th": "มี.ค.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
 ]
 },
 {
@@ -28643,13 +28719,6 @@
 ]
 },
 {
-"th": "ส.ค.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
-]
-},
-{
 "th": "สตางค์",
 "n": 1,
 "files": [
@@ -32367,6 +32436,13 @@
 ]
 },
 {
+"th": "เปลี่ยนเป็นภาษาไทย",
+"n": 1,
+"files": [
+"apps/web/src/components/LangSwitch.tsx"
+]
+},
+{
 "th": "เปลี่ยนเลขที่บัญชีใช้ Ctrl+G ที่หน้ารายการ",
 "n": 1,
 "files": [
@@ -32910,13 +32986,6 @@
 "n": 1,
 "files": [
 "apps/web/src/App.tsx"
-]
-},
-{
-"th": "เม.ย.",
-"n": 1,
-"files": [
-"packages/core/src/date.ts"
 ]
 },
 {
@@ -36749,13 +36818,6 @@
 ]
 },
 {
-"th": "ไทย",
-"n": 1,
-"files": [
-"apps/web/src/pages/reports/Statements.tsx"
-]
-},
-{
 "th": "ไปรษณีย์",
 "n": 1,
 "files": [
@@ -37845,6 +37907,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "— ตรวจผังบัญชี (หมวดบัญชี) ที่ เริ่มระบบ › ผังบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Statements.tsx"
 ]
 },
 {

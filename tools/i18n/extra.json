@@ -15,5 +15,11 @@
  "menu|เริ่มระบบ": "Setup",
  "menu|อื่น ๆ": "Others",
  "menu|หน้าแรก": "Home",
- "กลับรายการ": "Back to list"
+ "กลับรายการ": "Back to list",
+ "(ยอดคงเหลือต้องดุล และกำไรปีนั้นต้องอยู่ในบัญชีรายได้/ค่าใช้จ่าย ไม่ใช่กำไรสะสม)": "(closing balances must balance, and that year's profit must stay in the revenue/expense accounts, not in retained earnings)",
+ "· ยอดปีที่แล้วมาจากการป้อนเอง ตรวจและแก้ที่": "· Prior-year balances are entered manually — check and correct them at",
+ "งบปีที่แล้วไม่ดุล — สินทรัพย์ต่างจากหนี้สินและส่วนของผู้ถือหุ้น": "Prior-year statement does not balance — assets differ from liabilities and shareholders' equity by",
+ "งบปีปัจจุบันไม่ดุล ต่าง": "Current-year statement does not balance, difference",
+ "บัญชี › ยอดปีที่แล้ว": "Accounting › Prior-Year Balances",
+ "— ตรวจผังบัญชี (หมวดบัญชี) ที่ เริ่มระบบ › ผังบัญชี": "— check the account groups at Setup › Chart of Accounts"
 }

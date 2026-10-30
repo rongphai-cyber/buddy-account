@@ -9,7 +9,7 @@ import { cx, ErrorBox, PageHead } from '../../ui';
 
 interface Layout { id: string; code: string; name: string; line_count: number }
 type Row = { kind: 'text'; text: string; textEn: string; center: boolean } | { kind: 'rule'; double: boolean } | { kind: 'value'; text: string; textEn: string; values: (string | null)[]; account?: string; isTotal: boolean };
-interface Run { title: string; headers: string[]; columns: Array<{ head1: string; head2: string; formula: boolean }>; rows: Row[]; missing_accounts: string[]; coverage: { checked: boolean; missing: Array<{ account_no: string; name_th: string; amount: string }> } | null }
+interface Run { title: string; headers: string[]; columns: Array<{ head1: string; head2: string; formula: boolean }>; rows: Row[]; balance_diff?: (string | null)[]; missing_accounts: string[]; coverage: { checked: boolean; missing: Array<{ account_no: string; name_th: string; amount: string }> } | null }
 
 /** พิมพ์งบการเงิน — คู่มือบทที่ 24 S-FS-04 (แบบงบของ Express) + งบตามผังบัญชีที่ดุลกับงบทดลองเสมอ */
 export function StatementsPage() {
@@ -38,6 +38,13 @@ export function StatementsPage() {
         <div className="seg"><button className={cx(lang === 'th' && 'on')} onClick={() => setLang('th')}>ไทย</button><button className={cx(lang === 'en' && 'on')} onClick={() => setLang('en')}>English</button></div>
       </div>
       <ErrorBox error={q.error} />
+      {R?.balance_diff?.map((x, i) => x !== null && Math.abs(Number(x)) >= 0.005 && (
+        <div key={i} className="notebox no-print">
+          {i === 1
+            ? <>งบปีที่แล้วไม่ดุล — สินทรัพย์ต่างจากหนี้สินและส่วนของผู้ถือหุ้น <b className="num">{fmt(x, { paren: true })}</b> · ยอดปีที่แล้วมาจากการป้อนเอง ตรวจและแก้ที่ <button className="linklike" onClick={() => nav('/gl/prior-year')}>บัญชี › ยอดปีที่แล้ว</button> (ยอดคงเหลือต้องดุล และกำไรปีนั้นต้องอยู่ในบัญชีรายได้/ค่าใช้จ่าย ไม่ใช่กำไรสะสม)</>
+            : <>งบปีปัจจุบันไม่ดุล ต่าง <b className="num">{fmt(x, { paren: true })}</b> — ตรวจผังบัญชี (หมวดบัญชี) ที่ เริ่มระบบ › ผังบัญชี</>}
+        </div>
+      ))}
       {R?.coverage?.checked && R.coverage.missing.length > 0 && (
         <details className="notebox no-print">
           <summary>แบบงบนี้ไม่ได้ดึงบัญชีที่มียอดอยู่ {R.coverage.missing.length} บัญชี — งบอาจไม่ดุล (คลิกเพื่อดูรายการ)</summary>
