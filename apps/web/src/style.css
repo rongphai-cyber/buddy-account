@@ -776,3 +776,7 @@ select { max-width: 100%; }
 @media (max-width: 900px) { .sidebar .mini-btn { display: none; } }
 /* จอสัมผัส: ปุ่มและช่องเลือกสูงขึ้นเล็กน้อยให้แตะง่าย */
 @media (pointer: coarse) { button, select { min-height: 36px; } }
+
+/* สลับ 2 ภาษา (ข้อกำหนดเจ้าของข้อ 9) */
+.lang-sw { font-weight: 600; min-width: 44px; justify-content: center; }
+.login-card .login-lang { align-self: flex-end; }

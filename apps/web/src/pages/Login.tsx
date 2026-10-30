@@ -5,6 +5,7 @@ import { PASSWORD_RULE } from '@buddy/core';
 import { ErrorBox, Field, navKey } from '../ui';
 import { useNavigate } from 'react-router-dom';
 import { useSignupMode } from './Signup';
+import { LangSwitch } from '../components/LangSwitch';
 
 export function LoginPage() {
   const { refresh } = useSession();
@@ -52,6 +53,7 @@ export function LoginPage() {
         <button className="primary" type="submit" disabled={busy}>{busy ? 'กำลังเข้าระบบ…' : 'เข้าสู่ระบบ'}</button>
         <p className="hint">Enter ไปช่องถัดไป · ลืมรหัสผ่านให้ผู้ดูแลระบบตั้งรหัสใหม่ให้</p>
         {signup && signup !== 'off' && <button type="button" className="link" onClick={() => nav('/signup')}>ยังไม่มีบัญชี? สมัครใช้งาน</button>}
+        <LangSwitch className="login-lang" />
       </form>
     </div>
   );

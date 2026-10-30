@@ -7,6 +7,7 @@ import { cx, DateInput, Modal, Toasts, toastError, useHotkeys } from './ui';
 import { MenuSearch } from './components/MenuSearch';
 import { LoginPage, SetupPage } from './pages/Login';
 import { SignupPage } from './pages/Signup';
+import { LangSwitch } from './components/LangSwitch';
 import { HomePage } from './pages/Home';
 import { AccountsPage } from './pages/gl/Accounts';
 import { JournalsPage } from './pages/gl/Journals';
@@ -142,6 +143,7 @@ function Shell() {
           <SyncBadge />
           <button className="period" onClick={() => setWorkDateOpen(true)} title="เปลี่ยนวันทำการ">วันทำการ {formatDate(me.work_date ?? new Date().toISOString().slice(0, 10), ys)}</button>
           <button className="user link" title={`${me.user.username} — รหัสผ่านและยืนยันตัวตนสองขั้น`} onClick={() => nav('/account/password')}>{me.user.display_name}</button>
+          <LangSwitch />
           <button onClick={() => logout()} title="ออกจากระบบ">ออก</button>
         </div>
       </header>

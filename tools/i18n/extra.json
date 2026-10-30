@@ -1,0 +1,19 @@
+{
+ "คุม": "Control",
+ "menu|ซื้อ": "Purchasing",
+ "menu|ขาย": "Sales",
+ "menu|การเงิน": "Finance",
+ "menu|ลูกหนี้": "Receivables",
+ "menu|เจ้าหนี้": "Payables",
+ "menu|ธนาคาร": "Bank",
+ "menu|ภาษี": "Tax",
+ "menu|ภาษีมูลค่าเพิ่ม": "VAT",
+ "menu|ภาษีหัก ณ ที่จ่าย": "Withholding Tax",
+ "menu|สินค้า": "Inventory",
+ "menu|บัญชี": "Accounting",
+ "menu|รายงาน": "Reports",
+ "menu|เริ่มระบบ": "Setup",
+ "menu|อื่น ๆ": "Others",
+ "menu|หน้าแรก": "Home",
+ "กลับรายการ": "Back to list"
+}

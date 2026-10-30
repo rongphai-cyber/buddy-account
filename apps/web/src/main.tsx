@@ -6,6 +6,9 @@ import { SessionProvider } from './session';
 import { App } from './App';
 import './style.css';
 import './buddy.css';
+import { startI18n } from './i18n';
+
+void startI18n();
 
 const qc = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1, staleTime: 15_000 } } });
 
