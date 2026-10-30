@@ -69,7 +69,7 @@ const itemBody = z.object({
   category_code: str(10), item_level: str(4), remark: str(2000), packing: str(30),
   account_group_id: optId, base_unit_id: optId, count_unit_id: optId, count_factor: dec, purchase_unit_id: optId, purchase_factor: dec, sales_unit_id: optId, sales_factor: dec,
   std_cost: dec, price_1: dec, price_2: dec, price_3: dec, price_4: dec, price_5: dec,
-  vat_code: z.enum(['', '0', '1']).nullable().optional().transform((v) => v || null), allow_negative: z.enum(['', 'Y', 'N', 'A']).nullable().optional().transform((v) => v || null),
+  vat_code: z.enum(['', '0', '1', '2']).nullable().optional().transform((v) => v || null), allow_negative: z.enum(['', 'Y', 'N', 'A']).nullable().optional().transform((v) => v || null),
   default_supplier_id: optId, substitute_item_id: optId,
   udf_1: str(4), udf_2: str(4), udf_3: str(15), udf_4: str(30), udf_date_1: isoDate, udf_date_2: isoDate, udf_num_1: dec,
   /** บัญชีของ บริการ/รายได้อื่น/ค่าใช้จ่ายอื่น (เก็บในกลุ่มบัญชีเฉพาะสินค้า) */

@@ -4695,11 +4695,29 @@
 ]
 },
 {
+"th": "มูลค่ายกเว้น VAT",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/tax.ts"
+]
+},
+{
 "th": "มูลค่าสินค้า/บริการ",
 "n": 3,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/server/src/modules/print.ts",
+"apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "มูลค่าอัตรา 0%",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
 "apps/server/src/modules/reports/tax.ts"
 ]
 },
@@ -7202,14 +7220,6 @@
 ]
 },
 {
-"th": "มูลค่าอัตราศูนย์",
-"n": 2,
-"files": [
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx"
-]
-},
-{
 "th": "ยกมา",
 "n": 2,
 "files": [
@@ -8319,14 +8329,6 @@
 "files": [
 "apps/web/src/pages/settings/Company.tsx",
 "packages/core/src/settings.ts"
-]
-},
-{
-"th": "อัตราศูนย์",
-"n": 2,
-"files": [
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -10066,10 +10068,24 @@
 ]
 },
 {
+"th": "0 ยกเว้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "0 ยอดยกมา",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/InventoryAccount.tsx"
+]
+},
+{
+"th": "0 ได้รับยกเว้น VAT",
+"n": 1,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -10091,13 +10107,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Books.tsx"
-]
-},
-{
-"th": "0 ไม่มี",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -10129,7 +10138,7 @@
 ]
 },
 {
-"th": "1 = มี VAT · 0 = ยกเว้น VAT",
+"th": "1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0%",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
@@ -10203,6 +10212,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "1 อัตราปกติ (มี VAT)",
+"n": 1,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -10343,6 +10359,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
+"th": "2 อัตรา 0% (เช่น ส่งออก)",
+"n": 1,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -20909,7 +20932,7 @@
 ]
 },
 {
-"th": "ประเภท VAT รายบรรทัด: 1 = มี VAT · 0 = ยกเว้น VAT (ค่าเริ่มต้นตามแฟ้มสินค้า แก้ที่เอกสารได้)",
+"th": "ประเภท VAT รายบรรทัด: 1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0% (ค่าเริ่มต้นตามแฟ้มสินค้า แก้ที่เอกสารได้)",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
@@ -23730,6 +23753,13 @@
 ]
 },
 {
+"th": "มูลค่า 7%",
+"n": 1,
+"files": [
+"apps/web/src/pages/tax/VatRegister.tsx"
+]
+},
+{
 "th": "มูลค่าก่อนภาษี",
 "n": 1,
 "files": [
@@ -23738,6 +23768,13 @@
 },
 {
 "th": "มูลค่าขายที่ต้องเสียภาษี",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "มูลค่าขายที่ได้รับยกเว้น",
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/tax.ts"
@@ -23779,17 +23816,17 @@
 ]
 },
 {
+"th": "มูลค่าที่เสียภาษี (อัตรา 7%)",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/tax.ts"
+]
+},
+{
 "th": "มูลค่ายกมารวม (ไม่รวมที่ยกเลิก)",
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
-"th": "มูลค่ายกเว้น VAT",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -23811,6 +23848,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx"
+]
+},
+{
+"th": "มูลค่าอัตราศูนย์",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JvLinks.tsx"
 ]
 },
 {
@@ -24077,6 +24121,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/trade.ts"
+]
+},
+{
+"th": "ยกเว้น VAT",
+"n": 1,
+"files": [
+"apps/web/src/pages/tax/VatRegister.tsx"
 ]
 },
 {
@@ -27182,6 +27233,13 @@
 },
 {
 "th": "รายการที่เลือก VAT = 0 ยกเว้น — ไม่นำไปคิดภาษี",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "รายการที่เลือก VAT = 2 อัตรา 0% — ภาษี 0 บาท แสดงในรายงานภาษีขายช่องอัตราศูนย์",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
@@ -31507,13 +31565,6 @@
 ]
 },
 {
-"th": "อัตราปกติ",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
-]
-},
-{
 "th": "อัตราภาษี %",
 "n": 1,
 "files": [
@@ -31546,6 +31597,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "อัตราศูนย์",
+"n": 1,
+"files": [
+"packages/core/src/reports.ts"
 ]
 },
 {
@@ -37888,13 +37946,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
-]
-},
-{
-"th": "ได้รับยกเว้น VAT",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {

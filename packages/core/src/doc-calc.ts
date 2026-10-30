@@ -43,12 +43,14 @@ export function discountAmount(text: string | null | undefined, base: MoneyInput
 /** ข้อความแนะนำเมื่อส่วนลดไม่ถูกรูปแบบ */
 export const DISCOUNT_HINT = 'เช่น 200 (บาท) · 5% หรือ 5+ (เปอร์เซ็นต์) · 5+2+ (5% แล้วอีก 2%) · 5+,200 (5% แล้วลดอีก 200 บาท)';
 
-export interface CalcLine { qty: MoneyInput; unit_price: MoneyInput; discount_text?: string | null; vat_exempt?: boolean }
+/** vat_code รายบรรทัด: 0 = ยกเว้น VAT · 1 = มี VAT · 2 = อัตรา 0% (vat_exempt = แบบเดิม เท่ากับ 0) */
+export interface CalcLine { qty: MoneyInput; unit_price: MoneyInput; discount_text?: string | null; vat_exempt?: boolean; vat_code?: string | null }
 export interface CalcInput { price_type: '0' | '1' | '2'; vat_rate: MoneyInput; lines: CalcLine[]; discount_text?: string | null; deposit_amount?: MoneyInput }
 export interface CalcResult {
   lines: Array<{ gross: string; discount_amount: string; line_amount: string; net_amount: string }>;
   amount: string; discount_amount: string; amount_after_discount: string; deposit_amount: string;
-  zero_rate_amount: string; taxable_amount: string; vat_amount: string; net_amount: string;
+  /** zero_rate = รายการอัตรา 0% · exempt = รายการยกเว้น (ประเภทราคา 0 = ยกเว้นทั้งบิล) · taxable = มูลค่าที่คิด VAT */
+  zero_rate_amount: string; exempt_amount: string; taxable_amount: string; vat_amount: string; net_amount: string;
   errors: string[];
 }
 
@@ -72,7 +74,8 @@ export function computeDoc(input: CalcInput): CalcResult {
     if (disc === null) errors.push(`บรรทัดที่ ${i + 1}: ส่วนลด "${l.discount_text}" ไม่ถูกรูปแบบ (${DISCOUNT_HINT})`);
     const dd = disc ?? d(0);
     if (dd.gt(gross.abs())) errors.push(`บรรทัดที่ ${i + 1}: ส่วนลดมากกว่าจำนวนเงิน`);
-    return { gross, disc: dd, amount: gross.minus(dd), exempt: !!l.vat_exempt };
+    const code = l.vat_code === '0' || l.vat_code === '2' ? l.vat_code : l.vat_exempt ? '0' : '1';
+    return { gross, disc: dd, amount: gross.minus(dd), code };
   });
   const amount = lines.reduce((s, l) => s.plus(l.amount), d(0));
   const hd = discountAmount(input.discount_text, amount);
@@ -82,10 +85,10 @@ export function computeDoc(input: CalcInput): CalcResult {
   const deposit = d(input.deposit_amount ?? 0);
   if (deposit.gt(after)) errors.push('ยอดหักเงินมัดจำมากกว่ายอดหลังหักส่วนลด');
   const base = after.minus(deposit);
-  // แยกฐานสินค้ายกเว้นภาษี (แยกประเภท VAT ที่รายการ) ตามสัดส่วนยอดบรรทัด
-  const exemptShare = amount.isZero() ? d(0) : lines.filter((l) => l.exempt).reduce((s, l) => s.plus(l.amount), d(0)).div(amount);
-  const zeroBase = pt === '0' ? base : r2(base.times(exemptShare));
-  const vatBase = base.minus(zeroBase);
+  // แยกฐานรายการยกเว้น (0) และอัตรา 0% (2) ตามสัดส่วนยอดบรรทัด — ส่วนลดท้ายบิล/มัดจำเฉลี่ยตามยอด
+  const sumOf = (c: string) => lines.filter((l) => l.code === c).reduce((s, l) => s.plus(l.amount), d(0));
+  const [exemptBase, zeroBase] = pt === '0' ? [base, d(0)] : amount.isZero() ? [d(0), d(0)] : [r2(base.times(sumOf('0')).div(amount)), r2(base.times(sumOf('2')).div(amount))];
+  const vatBase = base.minus(exemptBase).minus(zeroBase);
   const vat = pt === '0' || rate.isZero() ? d(0) : pt === '1' ? r2(vatBase.times(rate).div(rate.plus(100))) : r2(vatBase.times(rate).div(100));
   const net = pt === '2' ? base.plus(vat) : base;
   // ยอดบรรทัดไม่รวม VAT: (ยอดสุทธิ − VAT) + มัดจำส่วนที่ไม่รวม VAT → เฉลี่ยตามยอดบรรทัด
@@ -94,7 +97,7 @@ export function computeDoc(input: CalcInput): CalcResult {
   return {
     lines: lines.map((l, i) => ({ gross: l.gross.toFixed(2), discount_amount: l.disc.toFixed(2), line_amount: l.amount.toFixed(2), net_amount: lineNet[i]!.toFixed(2) })),
     amount: amount.toFixed(2), discount_amount: hdisc.toFixed(2), amount_after_discount: after.toFixed(2), deposit_amount: deposit.toFixed(2),
-    zero_rate_amount: zeroBase.toFixed(2), taxable_amount: vatBase.toFixed(2), vat_amount: vat.toFixed(2), net_amount: net.toFixed(2), errors,
+    zero_rate_amount: zeroBase.toFixed(2), exempt_amount: exemptBase.toFixed(2), taxable_amount: vatBase.toFixed(2), vat_amount: vat.toFixed(2), net_amount: net.toFixed(2), errors,
   };
 }
 

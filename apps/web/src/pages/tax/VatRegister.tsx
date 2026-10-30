@@ -10,8 +10,8 @@ import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Mon
 
 const MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 export interface Row { id: string; tax_invoice_no: string | null; tax_invoice_date: string; doc_no: string; doc_date: string; month: string; is_late: boolean; description: string | null; party_name: string | null; party_tax_id: string | null; party_tax_branch_no: string | null;
-  base_amount: string; vat_amount: string; zero_rate_amount: string; nonclaim_base: string; nonclaim_vat: string; is_manual: boolean; is_modified: boolean; doc_status: string; remark: string | null; header_id: string | null; doc_class: string | null; sign: number }
-interface Totals { base: string; vat: string; zero: string; nonclaim_base: string; nonclaim_vat: string }
+  base_amount: string; vat_amount: string; zero_rate_amount: string; exempt_amount: string; nonclaim_base: string; nonclaim_vat: string; is_manual: boolean; is_modified: boolean; doc_status: string; remark: string | null; header_id: string | null; doc_class: string | null; sign: number }
+interface Totals { base: string; vat: string; zero: string; exempt: string; nonclaim_base: string; nonclaim_vat: string }
 const signed = (r: Row, v: string) => d(v).times(r.sign).toFixed(2);
 
 /** แฟ้มภาษีซื้อ (P) / ภาษีขาย (S) — คู่มือบทที่ 16 S-TX-01..08 */
@@ -53,21 +53,21 @@ export function VatRegisterPage({ kind }: { kind: 'P' | 'S' }) {
       </div>
       <ErrorBox error={list.error} />
       <div className="table-wrap">
-        <table className="grid">
-          <thead><tr><th style={{ width: 70 }}>งวด</th><th style={{ width: 105 }}>วันที่ใบกำกับ</th><th style={{ width: 130 }}>เลขที่ใบกำกับ</th><th style={{ width: 120 }}>เอกสารภายใน</th><th>รายการ</th><th style={{ width: 130 }}>เลขผู้เสียภาษี</th>
-            <th className="r" style={{ width: 120 }}>มูลค่า</th><th className="r" style={{ width: 100 }}>ภาษี</th>{kind === 'P' && <th className="r" style={{ width: 100 }}>ขอคืนไม่ได้</th>}<th className="r" style={{ width: 110 }}>อัตรา 0%</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
+        <table className="grid" style={{ minWidth: 1180 }}>
+          <thead><tr><th style={{ width: 70 }}>งวด</th><th style={{ width: 105 }}>วันที่ใบกำกับ</th><th style={{ width: 130 }}>เลขที่ใบกำกับ</th><th style={{ width: 120 }}>เอกสารภายใน</th><th style={{ minWidth: 220 }}>รายการ</th><th style={{ width: 130 }}>เลขผู้เสียภาษี</th>
+            <th className="r" style={{ width: 120 }}>{kind === 'S' ? 'มูลค่า 7%' : 'มูลค่า'}</th><th className="r" style={{ width: 100 }}>ภาษี</th>{kind === 'P' && <th className="r" style={{ width: 100 }}>ขอคืนไม่ได้</th>}<th className="r" style={{ width: 110 }}>อัตรา 0%</th>{kind === 'S' && <th className="r" style={{ width: 110 }}>ยกเว้น VAT</th>}<th style={{ width: 90 }}>สถานะ</th></tr></thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => setEdit(r)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r)}>
                 <td className="mono">{r.month.slice(5)}/{ys === 'B' ? Number(r.month.slice(0, 4)) + 543 : r.month.slice(0, 4)}</td><td><DateText v={r.tax_invoice_date} /></td><td className="mono">{r.tax_invoice_no}</td><td><DocLink id={r.header_id} no={r.doc_no} cls={r.doc_class} /></td>
                 <td>{r.description ?? r.party_name}</td><td className="mono">{r.party_tax_id}</td>
-                <td className="r"><Money v={signed(r, r.base_amount)} /></td><td className="r"><Money v={signed(r, r.vat_amount)} /></td>{kind === 'P' && <td className="r"><Money v={signed(r, r.nonclaim_vat)} blankZero /></td>}<td className="r"><Money v={signed(r, r.zero_rate_amount)} blankZero /></td>
+                <td className="r"><Money v={signed(r, r.base_amount)} /></td><td className="r"><Money v={signed(r, r.vat_amount)} /></td>{kind === 'P' && <td className="r"><Money v={signed(r, r.nonclaim_vat)} blankZero /></td>}<td className="r"><Money v={signed(r, r.zero_rate_amount)} blankZero /></td>{kind === 'S' && <td className="r"><Money v={signed(r, r.exempt_amount ?? '0')} blankZero /></td>}
                 <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : r.is_late ? <Pill tone="c">ยื่นเพิ่มเติม</Pill> : r.is_manual ? <Pill tone="m">เพิ่มเอง</Pill> : r.is_modified ? <Pill tone="d">แก้ไขแล้ว</Pill> : <Pill tone="n">ปกติ</Pill>}</td>
               </tr>
             ))}
-            {list.data && !rows.length && <tr><td colSpan={11} className="empty">ไม่มีรายการในงวดนี้</td></tr>}
+            {list.data && !rows.length && <tr><td colSpan={12} className="empty">ไม่มีรายการในงวดนี้</td></tr>}
           </tbody>
-          {t && !!rows.length && <tfoot><tr><td colSpan={6} className="r">รวม {live.length} รายการ (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={t.base} /></b></td><td className="r"><b><Money v={t.vat} /></b></td>{kind === 'P' && <td className="r"><b><Money v={t.nonclaim_vat} blankZero /></b></td>}<td className="r"><b><Money v={t.zero} blankZero /></b></td><td /></tr></tfoot>}
+          {t && !!rows.length && <tfoot><tr><td colSpan={6} className="r">รวม {live.length} รายการ (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={t.base} /></b></td><td className="r"><b><Money v={t.vat} /></b></td>{kind === 'P' && <td className="r"><b><Money v={t.nonclaim_vat} blankZero /></b></td>}<td className="r"><b><Money v={t.zero} blankZero /></b></td>{kind === 'S' && <td className="r"><b><Money v={t.exempt ?? '0'} blankZero /></b></td>}<td /></tr></tfoot>}
         </table>
       </div>
       <KeyHints keys={[['Ins', 'เพิ่มรายการ'], ['คลิก/Enter', 'แก้ไขรายการ'], ['Ctrl+P', 'พิมพ์รายงาน']]} />
@@ -98,7 +98,7 @@ export function VatEditor({ kind, row, defaultMonth, onOpenDoc, onClose, onSaved
   const n = (v: string | undefined) => (v ? d(v).toString() : '');
   const [e, setE] = useState({ tax_invoice_no: row?.tax_invoice_no ?? '', tax_invoice_date: row ? String(row.tax_invoice_date).slice(0, 10) : date0, month: row?.month ?? defaultMonth, is_late: row?.is_late ?? false,
     description: row?.description ?? '', party_name: row?.party_name ?? '', party_tax_id: row?.party_tax_id ?? '', party_tax_branch_no: row?.party_tax_branch_no ?? '', doc_no: row?.doc_no ?? '',
-    base_amount: n(row?.base_amount), vat_amount: n(row?.vat_amount), nonclaim_base: n(row?.nonclaim_base), nonclaim_vat: n(row?.nonclaim_vat), zero_rate_amount: n(row?.zero_rate_amount), remark: row?.remark ?? '' });
+    base_amount: n(row?.base_amount), vat_amount: n(row?.vat_amount), nonclaim_base: n(row?.nonclaim_base), nonclaim_vat: n(row?.nonclaim_vat), zero_rate_amount: n(row?.zero_rate_amount), exempt_amount: n(row?.exempt_amount), remark: row?.remark ?? '' });
   const [err, setErr] = useState<unknown>(null);
   const [askCancel, setAskCancel] = useState(false);
   const fromDoc = !!row && !row.is_manual;
@@ -109,7 +109,7 @@ export function VatEditor({ kind, row, defaultMonth, onOpenDoc, onClose, onSaved
   const save = async () => {
     if (ro) return;
     setErr(null);
-    const body = { ...e, base_amount: e.base_amount || '0', vat_amount: e.vat_amount || '0', nonclaim_base: e.nonclaim_base || '0', nonclaim_vat: e.nonclaim_vat || '0', zero_rate_amount: e.zero_rate_amount || '0',
+    const body = { ...e, base_amount: e.base_amount || '0', vat_amount: e.vat_amount || '0', nonclaim_base: e.nonclaim_base || '0', nonclaim_vat: e.nonclaim_vat || '0', zero_rate_amount: e.zero_rate_amount || '0', exempt_amount: e.exempt_amount || '0',
       description: e.description || null, party_name: e.party_name || null, party_tax_id: e.party_tax_id || null, party_tax_branch_no: e.party_tax_branch_no || null, remark: e.remark || null, doc_no: e.doc_no || null };
     try { if (row) await api.put(`/api/v1/vat/${kind}/${row.id}`, body); else await api.post(`/api/v1/vat/${kind}`, body); toast('บันทึกรายการภาษีแล้ว'); onSaved(); } catch (x) { setErr(x); }
   };
@@ -143,7 +143,8 @@ export function VatEditor({ kind, row, defaultMonth, onOpenDoc, onClose, onSaved
         <Field label={kind === 'P' ? 'ภาษี (ขอคืนได้)' : 'จำนวนภาษี'}><MoneyInput value={e.vat_amount} disabled={ro} onChange={(v) => set({ vat_amount: v })} /></Field>
         {kind === 'P' && <Field label="มูลค่า (ขอคืนไม่ได้)"><MoneyInput value={e.nonclaim_base} disabled={ro} onChange={(v) => set({ nonclaim_base: v })} /></Field>}
         {kind === 'P' && <Field label="ภาษี (ขอคืนไม่ได้)" hint={!ro ? <button type="button" className="link" onClick={moveNonclaim}>ย้ายทั้งหมดเป็นขอคืนไม่ได้</button> : undefined}><MoneyInput value={e.nonclaim_vat} disabled={ro} onChange={(v) => set({ nonclaim_vat: v })} /></Field>}
-        <Field label="มูลค่าอัตราศูนย์"><MoneyInput value={e.zero_rate_amount} disabled={ro || fromDoc} onChange={(v) => set({ zero_rate_amount: v })} /></Field>
+        <Field label="มูลค่าอัตรา 0%"><MoneyInput value={e.zero_rate_amount} disabled={ro || fromDoc} onChange={(v) => set({ zero_rate_amount: v })} /></Field>
+        {kind === 'S' && <Field label="มูลค่ายกเว้น VAT"><MoneyInput value={e.exempt_amount} disabled={ro || fromDoc} onChange={(v) => set({ exempt_amount: v })} /></Field>}
         <Field label="หมายเหตุ" wide><input value={e.remark} maxLength={200} disabled={ro} onChange={(x) => set({ remark: x.target.value })} /></Field>
       </div>
       {askCancel && <Confirm danger title="ยกเลิกรายการ" text="ยกเลิกรายการภาษีที่เพิ่มเองนี้? (เปลี่ยนสถานะ ไม่ลบ)" okText="ยกเลิกรายการ" onClose={() => setAskCancel(false)} onOk={cancel} />}

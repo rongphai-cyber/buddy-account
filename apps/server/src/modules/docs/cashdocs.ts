@@ -53,7 +53,7 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
     else if (!l.description) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนคำอธิบาย`);
     if (d(l.amount).isZero()) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวนเงิน`);
   });
-  const calc = computeDoc({ price_type: b.price_type, vat_rate: b.vat_rate, lines: b.lines.map((l) => ({ qty: 1, unit_price: l.amount, vat_exempt: l.item_id ? byId.get(l.item_id)?.vat_code === '0' : false })) });
+  const calc = computeDoc({ price_type: b.price_type, vat_rate: b.vat_rate, lines: b.lines.map((l) => ({ qty: 1, unit_price: l.amount, vat_code: l.item_id ? byId.get(l.item_id)?.vat_code : null })) });
   if (calc.errors.length) throw badRequest(calc.errors[0]!, calc.errors.map((m) => ({ message: m })));
   if (d(calc.net_amount).lte(0)) throw badRequest('จำนวนเงินรวมทั้งสิ้นต้องมากกว่า 0');
 
@@ -76,7 +76,7 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
     your_ref: b.your_ref, ref_no: b.ref_no, ref_date: b.ref_date ?? null, department_id: b.department_id ?? dt.department_id, salesperson_id: b.salesperson_id,
     credit_days: K.deposit ? credit : null, due_date: K.deposit ? dueDate(b.doc_date, credit) : null,
     price_type: b.price_type, vat_rate: b.vat_rate, vat_basis: '1', vat_date: b.ref_date ?? b.doc_date,
-    amount: calc.amount, amount_after_discount: calc.amount_after_discount, zero_rate_amount: calc.zero_rate_amount, taxable_amount: calc.taxable_amount, vat_amount: calc.vat_amount, net_amount: calc.net_amount,
+    amount: calc.amount, amount_after_discount: calc.amount_after_discount, zero_rate_amount: calc.zero_rate_amount, exempt_amount: calc.exempt_amount, taxable_amount: calc.taxable_amount, vat_amount: calc.vat_amount, net_amount: calc.net_amount,
     wht_amount: wht.toFixed(2), cash_amount: t.cash, cheque_amount: t.other, remark: b.remark, updated_by: a.userId,
   };
   return db.transaction().execute(async (tx) => {

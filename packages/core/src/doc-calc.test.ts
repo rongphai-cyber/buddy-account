@@ -38,8 +38,13 @@ describe('document totals (บทที่ 11–12)', () => {
   });
   it('exempt items and exempt price type; errors in Thai', () => {
     const r = computeDoc({ price_type: '2', vat_rate: 7, lines: [{ qty: 1, unit_price: 1000 }, { qty: 1, unit_price: 500, vat_exempt: true }] });
-    expect(r).toMatchObject({ zero_rate_amount: '500.00', taxable_amount: '1000.00', vat_amount: '70.00', net_amount: '1570.00' });
-    expect(computeDoc({ price_type: '0', vat_rate: 7, lines: [{ qty: 3, unit_price: 100 }] })).toMatchObject({ vat_amount: '0.00', net_amount: '300.00' });
+    expect(r).toMatchObject({ exempt_amount: '500.00', zero_rate_amount: '0.00', taxable_amount: '1000.00', vat_amount: '70.00', net_amount: '1570.00' });
+    expect(computeDoc({ price_type: '0', vat_rate: 7, lines: [{ qty: 3, unit_price: 100 }] })).toMatchObject({ vat_amount: '0.00', net_amount: '300.00', exempt_amount: '300.00', zero_rate_amount: '0.00' });
+    // รหัส VAT รายบรรทัด 0 ยกเว้น · 1 มี VAT · 2 อัตรา 0% — ส่วนลดท้ายบิลเฉลี่ยตามยอด (ข้อกำหนดเจ้าของ)
+    const m = computeDoc({ price_type: '2', vat_rate: 7, discount_text: '10%', lines: [{ qty: 1, unit_price: 1000, vat_code: '1' }, { qty: 1, unit_price: 600, vat_code: '0' }, { qty: 1, unit_price: 400, vat_code: '2' }] });
+    expect(m).toMatchObject({ amount: '2000.00', taxable_amount: '900.00', exempt_amount: '540.00', zero_rate_amount: '360.00', vat_amount: '63.00', net_amount: '1863.00' });
+    // ราคารวมภาษี: VAT คิดจากส่วนที่มี VAT เท่านั้น
+    expect(computeDoc({ price_type: '1', vat_rate: 7, lines: [{ qty: 1, unit_price: 1070 }, { qty: 1, unit_price: 500, vat_code: '2' }] })).toMatchObject({ zero_rate_amount: '500.00', vat_amount: '70.00', net_amount: '1570.00' });
     expect(computeDoc({ price_type: '2', vat_rate: 7, discount_text: 'x', lines: [{ qty: 1, unit_price: 1 }] }).errors[0]).toMatch(/ส่วนลดท้ายบิล/);
     expect(dueDate('2026-10-29', 30)).toBe('2026-11-28');
   });

@@ -1435,7 +1435,7 @@ export interface MdItemTable {
   price_4: Gen<string | null>;
   /** ราคาขาย 5 */
   price_5: Gen<string | null>;
-  /** ประเภท VAT ของสินค้า (0=ยกเว้น 1=มี VAT ว่าง=ตามเอกสาร) */
+  /** ประเภท VAT ของสินค้า (0=ยกเว้น 1=มี VAT 2=อัตรา 0% ว่าง=มี VAT) */
   vat_code: Gen<string | null>;
   /** Y/N/A=ตามค่าบริษัท */
   allow_negative: Gen<string | null>;
@@ -2296,6 +2296,8 @@ export interface DocHeaderTable {
   deposit_amount: Gen<string>;
   /** มูลค่าอัตรา 0% */
   zero_rate_amount: Gen<string>;
+  /** มูลค่าที่ได้รับยกเว้น VAT (รายการรหัส VAT 0 — ภ.พ.30 ข้อ 3) */
+  exempt_amount: Gen<string>;
   /** มูลค่าก่อน VAT */
   taxable_amount: Gen<string>;
   /** อัตรา VAT */
@@ -2429,7 +2431,7 @@ export interface DocLineTable {
   line_amount: Gen<string>;
   /** มูลค่าสุทธิก่อน VAT (หลังเฉลี่ยส่วนลดท้ายบิล) */
   net_amount: Gen<string>;
-  /** ประเภท VAT รายบรรทัด */
+  /** ประเภท VAT รายบรรทัด (0=ยกเว้น 1=มี VAT 2=อัตรา 0%) */
   vat_code: Gen<string | null>;
   /** ของแถม */
   is_free: Gen<boolean>;
@@ -3473,8 +3475,10 @@ export interface TaxVatEntryTable {
   base_amount: Gen<string>;
   /** ภาษี */
   vat_amount: Gen<string>;
-  /** มูลค่าอัตรา 0% / ยกเว้น */
+  /** มูลค่าอัตรา 0% (ข้อมูลที่ย้ายจาก Express รวมยอดยกเว้น) */
   zero_rate_amount: Gen<string>;
+  /** มูลค่าที่ได้รับยกเว้น VAT (ภ.พ.30 ข้อ 3) */
+  exempt_amount: Gen<string>;
   /** มูลค่าภาษีซื้อที่ขอคืนไม่ได้ */
   nonclaim_base: Gen<string>;
   /** ภาษีซื้อที่ขอคืนไม่ได้ */

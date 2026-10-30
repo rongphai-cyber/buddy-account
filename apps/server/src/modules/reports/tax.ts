@@ -17,9 +17,9 @@ const periodOf = (p: P) => {
 const filing = (p: P) => { const f = p.str('filing') ?? 'normal'; return f === 'all' ? sql`` : sql`AND v.is_late = ${f === 'late'}`; };
 const branch = (b: string | null) => (!b || /^0+$/.test(b) ? 'สำนักงานใหญ่' : `สาขาที่ ${b.padStart(5, '0')}`);
 type V = { tax_invoice_date: string; tax_invoice_no: string; doc_no: string | null; doc_class: string | null; party_name: string | null; party_tax_id: string | null; party_tax_branch_no: string | null;
-  base_amount: string; vat_amount: string; zero_rate_amount: string; nonclaim_base: string; nonclaim_vat: string; header_id: string | null };
+  base_amount: string; vat_amount: string; zero_rate_amount: string; exempt_amount: string; nonclaim_base: string; nonclaim_vat: string; header_id: string | null };
 async function vatRows(db: Db, a: Ctx, p: P, kind: 'P' | 'S', per: string) {
-  return (await sql<V>`SELECT v.tax_invoice_date, v.tax_invoice_no, v.doc_no, h.doc_class, v.party_name, v.party_tax_id, v.party_tax_branch_no, v.base_amount, v.vat_amount, v.zero_rate_amount, v.nonclaim_base, v.nonclaim_vat, v.header_id
+  return (await sql<V>`SELECT v.tax_invoice_date, v.tax_invoice_no, v.doc_no, h.doc_class, v.party_name, v.party_tax_id, v.party_tax_branch_no, v.base_amount, v.vat_amount, v.zero_rate_amount, v.exempt_amount, v.nonclaim_base, v.nonclaim_vat, v.header_id
       FROM tax_vat_entry v JOIN gl_period gp ON gp.id = v.vat_period_id LEFT JOIN doc_header h ON h.id = v.header_id LEFT JOIN md_department dp ON dp.id = v.department_id
      WHERE v.company_id = ${a.companyId} AND v.vat_kind = ${kind} AND v.deleted_at IS NULL AND v.doc_status <> 'C' AND to_char(gp.start_date, 'YYYY-MM') = ${per} ${filing(p)} ${p.dept(sql`dp.code`)}
      ORDER BY v.tax_invoice_date, v.tax_invoice_no LIMIT 20000`.execute(db)).rows;
@@ -35,19 +35,19 @@ function vatReport(kind: 'P' | 'S') {
     const list = variant === 'zero' ? all.filter((x) => !d(x.zero_rate_amount).isZero()) : all;
     const sign = (x: V) => (x.doc_class === 'CN' || x.doc_class === 'DN' ? -1 : 1);
     const rows: ReportRow[] = [];
-    const tot = { b: d(0), v: d(0), z: d(0), nb: d(0), nv: d(0) };
+    const tot = { b: d(0), v: d(0), z: d(0), e: d(0), nb: d(0), nv: d(0) };
     const sec = (title: string | null, xs: V[]) => {
       if (title) rows.push({ t: 'group', c: { name: title } });
-      const s = { b: d(0), v: d(0), z: d(0), nb: d(0), nv: d(0) };
+      const s = { b: d(0), v: d(0), z: d(0), e: d(0), nb: d(0), nv: d(0) };
       xs.forEach((x, i) => {
         const g = sign(x);
-        const b = d(x.base_amount).times(g), v = d(x.vat_amount).times(g), z = d(x.zero_rate_amount).times(g), nb = d(x.nonclaim_base).times(g), nv = d(x.nonclaim_vat).times(g);
-        s.b = s.b.plus(b); s.v = s.v.plus(v); s.z = s.z.plus(z); s.nb = s.nb.plus(nb); s.nv = s.nv.plus(nv);
+        const b = d(x.base_amount).times(g), v = d(x.vat_amount).times(g), z = d(x.zero_rate_amount).times(g), e = d(x.exempt_amount).times(g), nb = d(x.nonclaim_base).times(g), nv = d(x.nonclaim_vat).times(g);
+        s.b = s.b.plus(b); s.v = s.v.plus(v); s.z = s.z.plus(z); s.e = s.e.plus(e); s.nb = s.nb.plus(nb); s.nv = s.nv.plus(nv);
         rows.push({ c: { seq: i + 1, date: x.tax_invoice_date, inv: x.tax_invoice_no, doc: x.doc_no, name: x.party_name, tax: x.party_tax_id, br: branch(x.party_tax_branch_no), base: money(b), vat: money(v),
-          ...(kind === 'S' ? { zero: money(z) } : { nbase: money(nb), nvat: money(nv) }) } });
+          ...(kind === 'S' ? { zero: money(z), exempt: money(e) } : { nbase: money(nb), nvat: money(nv) }) } });
       });
-      if (title) rows.push({ t: 'sub', c: { name: `รวม${title} (${xs.length} รายการ)`, base: money(s.b), vat: money(s.v), ...(kind === 'S' ? { zero: money(s.z) } : { nbase: money(s.nb), nvat: money(s.nv) }) } });
-      for (const k of ['b', 'v', 'z', 'nb', 'nv'] as const) tot[k] = tot[k].plus(s[k]);
+      if (title) rows.push({ t: 'sub', c: { name: `รวม${title} (${xs.length} รายการ)`, base: money(s.b), vat: money(s.v), ...(kind === 'S' ? { zero: money(s.z), exempt: money(s.e) } : { nbase: money(s.nb), nvat: money(s.nv) }) } });
+      for (const k of ['b', 'v', 'z', 'e', 'nb', 'nv'] as const) tot[k] = tot[k].plus(s[k]);
     };
     if (variant === 'bill') {
       const names = kind === 'P' ? BILL_P : BILL_S;
@@ -59,24 +59,25 @@ function vatReport(kind: 'P' | 'S') {
       sec('ขอคืนไม่ได้', list.filter((x) => !d(x.nonclaim_vat).isZero()));
     } else sec(null, list);
     if (variant === 'nil' || !list.length) rows.push({ t: 'note', c: { name: 'ไม่มีรายการ' } });
-    rows.push({ t: 'total', c: { name: 'รวมทั้งสิ้น', base: money(tot.b), vat: money(tot.v), ...(kind === 'S' ? { zero: money(tot.z) } : { nbase: money(tot.nb), nvat: money(tot.nv) }) } });
+    rows.push({ t: 'total', c: { name: 'รวมทั้งสิ้น', base: money(tot.b), vat: money(tot.v), ...(kind === 'S' ? { zero: money(tot.z), exempt: money(tot.e) } : { nbase: money(tot.nb), nvat: money(tot.nv) }) } });
     return { title: `${kind === 'P' ? 'รายงานภาษีซื้อ' : 'รายงานภาษีขาย'}${variant === 'zero' ? ' (อัตราศูนย์)' : ''}`, subtitle: `เดือนภาษี ${p.fd(`${per}-01`).slice(3)}${p.str('filing') === 'late' ? ' · ยื่นเพิ่มเติม' : ''}`, rows,
       columns: [{ key: 'seq', label: 'ลำดับ', kind: 'int', width: 50 }, { key: 'date', label: 'วัน เดือน ปี', kind: 'date', width: 90 }, { key: 'inv', label: 'เลขที่ใบกำกับภาษี', kind: 'mono', width: 130 },
         { key: 'doc', label: 'เลขที่เอกสาร', kind: 'mono', width: 120 }, { key: 'name', label: kind === 'P' ? 'ชื่อผู้ขายสินค้า/ผู้ให้บริการ' : 'ชื่อผู้ซื้อสินค้า/ผู้รับบริการ' }, { key: 'tax', label: 'เลขประจำตัวผู้เสียภาษี', kind: 'mono', width: 125 },
-        { key: 'br', label: 'สถานประกอบการ', width: 100 }, { key: 'base', label: 'มูลค่าสินค้า/บริการ', kind: 'money', width: 125 }, { key: 'vat', label: 'จำนวนเงินภาษี', kind: 'money', width: 110 },
-        ...(kind === 'S' ? [{ key: 'zero', label: 'อัตราศูนย์', kind: 'money' as const, width: 100 }] : [{ key: 'nbase', label: 'มูลค่า (ขอคืนไม่ได้)', kind: 'money' as const, width: 115 }, { key: 'nvat', label: 'ภาษี (ขอคืนไม่ได้)', kind: 'money' as const, width: 105 }])] as ReportColumn[] };
+        { key: 'br', label: 'สถานประกอบการ', width: 100 }, { key: 'base', label: kind === 'S' ? 'มูลค่าที่เสียภาษี (อัตรา 7%)' : 'มูลค่าสินค้า/บริการ', kind: 'money', width: 125 }, { key: 'vat', label: 'จำนวนเงินภาษี', kind: 'money', width: 110 },
+        ...(kind === 'S' ? [{ key: 'zero', label: 'มูลค่าอัตรา 0%', kind: 'money' as const, width: 110 }, { key: 'exempt', label: 'มูลค่ายกเว้น VAT', kind: 'money' as const, width: 115 }] : [{ key: 'nbase', label: 'มูลค่า (ขอคืนไม่ได้)', kind: 'money' as const, width: 115 }, { key: 'nvat', label: 'ภาษี (ขอคืนไม่ได้)', kind: 'money' as const, width: 105 }])] as ReportColumn[] };
   };
 }
 
 /** ยอดรวมภาษีของงวด (ใบลดหนี้ติดลบ) */
 async function vatTotals(db: Db, a: Ctx, fil: ReturnType<typeof filing>, per: string) {
-  const r = (await sql<{ kind: string; base: string; vat: string; zero: string; nbase: string; nvat: string; n: number }>`SELECT v.vat_kind AS kind,
+  const r = (await sql<{ kind: string; base: string; vat: string; zero: string; exempt: string; nbase: string; nvat: string; n: number }>`SELECT v.vat_kind AS kind,
         coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.base_amount ELSE v.base_amount END), 0) AS base, coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.vat_amount ELSE v.vat_amount END), 0) AS vat,
-        coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.zero_rate_amount ELSE v.zero_rate_amount END), 0) AS zero, coalesce(sum(v.nonclaim_base), 0) AS nbase, coalesce(sum(v.nonclaim_vat), 0) AS nvat, count(*)::int AS n
+        coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.zero_rate_amount ELSE v.zero_rate_amount END), 0) AS zero,
+        coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.exempt_amount ELSE v.exempt_amount END), 0) AS exempt, coalesce(sum(v.nonclaim_base), 0) AS nbase, coalesce(sum(v.nonclaim_vat), 0) AS nvat, count(*)::int AS n
       FROM tax_vat_entry v JOIN gl_period gp ON gp.id = v.vat_period_id LEFT JOIN doc_header h ON h.id = v.header_id
      WHERE v.company_id = ${a.companyId} AND v.deleted_at IS NULL AND v.doc_status <> 'C' AND to_char(gp.start_date, 'YYYY-MM') = ${per} ${fil} GROUP BY v.vat_kind`.execute(db)).rows;
-  const z = { base: d(0), vat: d(0), zero: d(0), nbase: d(0), nvat: d(0), n: 0 };
-  const get = (k: string) => { const x = r.find((y) => y.kind === k); return x ? { base: d(x.base), vat: d(x.vat), zero: d(x.zero), nbase: d(x.nbase), nvat: d(x.nvat), n: x.n } : z; };
+  const z = { base: d(0), vat: d(0), zero: d(0), exempt: d(0), nbase: d(0), nvat: d(0), n: 0 };
+  const get = (k: string) => { const x = r.find((y) => y.kind === k); return x ? { base: d(x.base), vat: d(x.vat), zero: d(x.zero), exempt: d(x.exempt), nbase: d(x.nbase), nvat: d(x.nvat), n: x.n } : z; };
   return { P: get('P'), S: get('S') };
 }
 /** ยอดขายที่ได้รับยกเว้น: เอกสารขายในเดือนที่ไม่มีภาษี (ประเภทราคา 0) และไม่อยู่ในแฟ้มภาษีขาย */
@@ -98,6 +99,7 @@ export function taxReports() {
       { t: 'group', c: { item: 'ภาษีขาย' } },
       { c: { item: 'มูลค่าขายที่ต้องเสียภาษี', base: money(t.S.base), vat: money(t.S.vat), n: t.S.n } },
       { c: { item: 'มูลค่าขายอัตราศูนย์', base: money(t.S.zero) } },
+      { c: { item: 'มูลค่าขายที่ได้รับยกเว้น', base: money(t.S.exempt.plus(await exemptSales(db, a, per))) } },
       { t: 'group', c: { item: 'ภาษีซื้อ' } },
       { c: { item: 'ขอคืนได้', base: money(t.P.base), vat: money(t.P.vat), n: t.P.n } },
       { c: { item: 'ขอคืนไม่ได้ (ไม่นำมาหัก)', base: money(t.P.nbase), vat: money(t.P.nvat) } },
@@ -110,7 +112,8 @@ export function taxReports() {
   defineReport('6.4', async (db, a, p) => {
     const per = periodOf(p);
     const t = await vatTotals(db, a, filing(p), per);
-    const exempt = await exemptSales(db, a, per);
+    // ยกเว้น = บิลที่ไม่มี VAT ทั้งใบ + รายการยกเว้นในบิลที่มี VAT (รหัส VAT 0)
+    const exempt = (await exemptSales(db, a, per)).plus(t.S.exempt);
     let carry = d(0);
     if ((p.str('carry') ?? 'auto') === 'auto') {
       // ไล่ย้อนจากงวดแรกที่มีข้อมูลถึงงวดก่อน: ชำระเกินยกไปเรื่อย ๆ จนกว่าจะมีภาษีต้องชำระ

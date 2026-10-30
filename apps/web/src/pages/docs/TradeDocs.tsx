@@ -157,9 +157,12 @@ function OrderPicker({ K, partyId, invoiceId, priceType, taken, onPick, onClose 
   );
 }
 
+/** ประเภท VAT รายบรรทัด (ข้อกำหนดเจ้าของ): 0 ยกเว้น · 1 มี VAT · 2 อัตรา 0% — ว่าง/อื่น = มี VAT */
+type VatCode = '0' | '1' | '2';
+const vatOf = (c: string | null | undefined): VatCode => (c === '0' || c === '2' ? c : '1');
 /* ---------------------------------------------------------------- หน้าเอกสาร */
 interface ItemHit { id: string; code: string; name_th: string; item_type: string; vat_code: string | null; base_unit_id: string | null; sales_unit_id: string | null; sales_factor: string | null; purchase_unit_id: string | null; purchase_factor: string | null; price_1: string | null; price_2: string | null; price_3: string | null; price_4: string | null; price_5: string | null; std_cost: string | null }
-interface Line { key: number; item_id: string; item_code: string; description: string; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_price: string; discount_text: string; is_free: boolean; return_to_stock: boolean; vat_exempt: boolean;
+interface Line { key: number; item_id: string; item_code: string; description: string; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_price: string; discount_text: string; is_free: boolean; return_to_stock: boolean; vat: VatCode;
   /** บรรทัดใบสั่งที่อ้าง (บิล) */ source_line_id?: string | null; source_no?: string | null; source_header_id?: string | null;
   /** ใบสั่ง: รหัสบรรทัด + ยอดค้าง (ดูอย่างเดียว) */ line_id?: string; remaining?: string | null; delivered?: string | null; cancelled?: string | null }
 interface Pay { key: number; payment_method_id: string; amount: string; reference_no: string }
@@ -225,7 +228,7 @@ export function TradeFormPage({ path }: { path: string }) {
       credit_days: c.credit_days === null ? '' : String(c.credit_days), price_type: (c.price_type ?? '2') as Head['price_type'], vat_rate: num(c.vat_rate), vat_basis: (c.vat_basis === '2' ? '2' : '1'), discount_text: c.discount_text ?? '', remark: c.remark ?? '', price_level: '1' });
     setWhts(whtsFrom((cur.data as { wht?: Parameters<typeof whtsFrom>[0] }).wht ?? [])); setWhtAmt(d(c.wht_amount ?? 0).isZero() ? '' : num(c.wht_amount));
     setLines(cur.data.lines.map((l) => ({ key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), warehouse_id: (l.warehouse_id as string) ?? null, qty: num(l.qty), unit_id: (l.unit_id as string) ?? null, factor: num(l.factor) || '1',
-      unit_price: num(l.unit_price), discount_text: String(l.discount_text ?? ''), is_free: !!l.is_free, return_to_stock: !!l.return_to_stock, vat_exempt: l.vat_code === '0',
+      unit_price: num(l.unit_price), discount_text: String(l.discount_text ?? ''), is_free: !!l.is_free, return_to_stock: !!l.return_to_stock, vat: vatOf(l.vat_code as string | null),
       source_line_id: (l.source_line_id as string) ?? null, source_no: (l.source as { doc_no?: string } | null)?.doc_no ?? null, source_header_id: (l.source as { header_id?: string } | null)?.header_id ?? null, line_id: l.id as string,
       remaining: (l.remaining_qty as string) ?? null, delivered: (l.delivered_qty as string) ?? null, cancelled: (l.cancelled_qty as string) ?? null })));
     setDelivery(c.delivery_date ? String(c.delivery_date).slice(0, 10) : '');
@@ -257,7 +260,7 @@ export function TradeFormPage({ path }: { path: string }) {
     if (!pid || id || readOnly || depAsked === pid || !depOpen.data?.rows.length || Object.keys(deps).length) return;
     setDepAsked(pid); setDepAsk(true);
   }, [depOpen.data, h?.party?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const calc0 = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, deposit_amount: depTotal.toFixed(2), lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_exempt: l.vat_exempt })) }), [h, lines, depTotal]);
+  const calc0 = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, deposit_amount: depTotal.toFixed(2), lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_code: l.vat })) }), [h, lines, depTotal]);
   const calc = calc0 && noLines ? storedCalc(calc0) : calc0;
   const payTotal = pays.reduce((s, p) => s.plus(d(p.amount || 0)), d(0));
   const whtTotal = K.cls === 'HP' ? whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0)) : K.cls === 'HS' ? d(whtAmt || 0) : d(0);
@@ -287,7 +290,7 @@ export function TradeFormPage({ path }: { path: string }) {
     const fromBill = !!was && !was.item_id && !!was.unit_price;   // บรรทัดที่ AI เติมจากบิล — คงราคาตามบิล
     const stockItem = it.item_type === '0' || it.item_type === '1' || it.item_type === '2';
     const wh = was?.warehouse_id ?? (stockItem ? (defs.data?.types.find((t) => t.id === h?.doc_type_id)?.warehouse_id ?? defs.data?.main_warehouse_id ?? null) : null);
-    setLine(k, { item_id: it.id, item_code: it.code, description: it.name_th, warehouse_id: wh, unit_id: unit, factor: num(factor) || '1', unit_price: fromBill ? was.unit_price : num(price), vat_exempt: it.vat_code === '0', qty: was?.qty || '1' });
+    setLine(k, { item_id: it.id, item_code: it.code, description: it.name_th, warehouse_id: wh, unit_id: unit, factor: num(factor) || '1', unit_price: fromBill ? was.unit_price : num(price), vat: vatOf(it.vat_code), qty: was?.qty || '1' });
   };
   /** เติมร่างจากบิลที่ AI อ่าน (T7.7) — ยังไม่บันทึก ผู้ใช้ตรวจ/เลือกรหัสที่ยังไม่พบ แล้วบันทึกเอง */
   const applyBill = async (r: AiBillResult) => {
@@ -297,12 +300,12 @@ export function TradeFormPage({ path }: { path: string }) {
     setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l) => {
       const gross = d(l.qty || 0).times(d(l.unit_price || 0)).toDecimalPlaces(2), disc = l.amount ? gross.minus(d(l.amount)) : d(0);
       return { key: ++seq, item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', description: l.description, warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: l.qty, unit_id: l.item?.base_unit_id ?? null,
-        factor: '1', unit_price: l.unit_price, discount_text: disc.gt(0.005) ? disc.toFixed(2) : '', is_free: false, return_to_stock: false, vat_exempt: false };
+        factor: '1', unit_price: l.unit_price, discount_text: disc.gt(0.005) ? disc.toFixed(2) : '', is_free: false, return_to_stock: false, vat: '1' as VatCode };
     })]);
     const missing = r.lines.filter((l) => !l.item).length;
     toast(`เติมจากบิลแล้ว${r.supplier ? '' : ' — ไม่พบผู้จำหน่ายตามเลขผู้เสียภาษี เลือก/เพิ่มผู้จำหน่ายเอง'}${missing ? ` · เลือกรหัสสินค้าอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
   };
-  const addLine = () => { setLines((ls) => [...ls, { key: ++seq, item_id: '', item_code: '', description: '', warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: '', unit_id: null, factor: '1', unit_price: '', discount_text: '', is_free: false, return_to_stock: K.cls === 'CN' || K.cls === 'DN', vat_exempt: false }]); };
+  const addLine = () => { setLines((ls) => [...ls, { key: ++seq, item_id: '', item_code: '', description: '', warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: '', unit_id: null, factor: '1', unit_price: '', discount_text: '', is_free: false, return_to_stock: K.cls === 'CN' || K.cls === 'DN', vat: '1' as VatCode }]); };
   if (h && !lines.length && !id) addLine();
 
   /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
@@ -318,7 +321,7 @@ export function TradeFormPage({ path }: { path: string }) {
     const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id, bill_to_customer_id: h.bill_to?.id ?? null, party_tax_branch_no: h.party_tax_branch_no || null, your_ref: h.your_ref || null,
       ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, ref_date: supInv ? refDate || null : null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
       credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type, vat_rate: h.vat_rate || '0', vat_basis: h.vat_basis, discount_text: h.discount_text || null, remark: h.remark || null,
-      lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1', unit_price: l.unit_price || '0', discount_text: l.discount_text || null, is_free: l.is_free, return_to_stock: l.return_to_stock, source_line_id: l.source_line_id ?? null, vat_code: l.vat_exempt ? '0' : '1' })),
+      lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1', unit_price: l.unit_price || '0', discount_text: l.discount_text || null, is_free: l.is_free, return_to_stock: l.return_to_stock, source_line_id: l.source_line_id ?? null, vat_code: l.vat })),
       delivery_date: K.order && K.cls !== 'QT' ? delivery || null : null,
       payments: pays.filter((p) => p.payment_method_id && d(p.amount || 0).gt(0)).map((p) => ({ payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no || null })),
       deposits: Object.entries(deps).filter(([, v]) => d(v || 0).gt(0)).map(([header_id, amount]) => ({ header_id, amount })),
@@ -411,7 +414,7 @@ export function TradeFormPage({ path }: { path: string }) {
         {tab === 'lines' && noLines && <div className="notebox">เอกสารนี้ย้ายมาจาก Express โดยไม่มีรายการสินค้า (Express เก็บเฉพาะยอดเงิน) — แสดงยอดตามเอกสาร · แก้ไขไม่ได้ ยกเลิกหรือดูการลงบัญชีได้ตามปกติ</div>}
         {tab === 'lines' && <div className="table-wrap lines">
           <table className="grid">
-            <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 210 }}>รหัส</th><th>รายละเอียด</th><th style={{ width: 90 }}>คลัง</th><th className="r" style={{ width: 90 }}>จำนวน</th><th style={{ width: 80 }}>หน่วย</th><th className="r" style={{ width: 110 }}>ราคา/หน่วย</th><th style={{ width: 90 }}>ส่วนลด</th><th style={{ width: 36 }} title="ของแถม">F</th><th style={{ width: 92 }} title="ประเภท VAT รายบรรทัด: 1 = มี VAT · 0 = ยกเว้น VAT (ค่าเริ่มต้นตามแฟ้มสินค้า แก้ที่เอกสารได้)">VAT</th>{(K.cls === 'CN' || K.cls === 'DN') && <th style={{ width: 36 }} title={K.cls === 'CN' ? 'รับคืนสินค้า' : 'ส่งคืนสินค้า'}>R</th>}<th className="r" style={{ width: 120 }}>จำนวนเงิน</th>{K.order && K.cls !== 'QT' && id && <th className="r" style={{ width: 90 }}>ค้าง{K.module === 'AR' ? 'ส่ง' : 'รับ'}</th>}<th style={{ width: 36 }} /></tr></thead>
+            <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 210 }}>รหัส</th><th>รายละเอียด</th><th style={{ width: 90 }}>คลัง</th><th className="r" style={{ width: 90 }}>จำนวน</th><th style={{ width: 80 }}>หน่วย</th><th className="r" style={{ width: 110 }}>ราคา/หน่วย</th><th style={{ width: 90 }}>ส่วนลด</th><th style={{ width: 36 }} title="ของแถม">F</th><th style={{ width: 104 }} title="ประเภท VAT รายบรรทัด: 1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0% (ค่าเริ่มต้นตามแฟ้มสินค้า แก้ที่เอกสารได้)">VAT</th>{(K.cls === 'CN' || K.cls === 'DN') && <th style={{ width: 36 }} title={K.cls === 'CN' ? 'รับคืนสินค้า' : 'ส่งคืนสินค้า'}>R</th>}<th className="r" style={{ width: 120 }}>จำนวนเงิน</th>{K.order && K.cls !== 'QT' && id && <th className="r" style={{ width: 90 }}>ค้าง{K.module === 'AR' ? 'ส่ง' : 'รับ'}</th>}<th style={{ width: 36 }} /></tr></thead>
             <tbody>
               {lines.map((l, i) => (
                 <tr key={l.key}>
@@ -425,7 +428,7 @@ export function TradeFormPage({ path }: { path: string }) {
                   <td><NumInput places={2} value={l.unit_price} disabled={readOnly || l.is_free} onChange={(v) => setLine(l.key, { unit_price: v })} aria-label="ราคาต่อหน่วย" /></td>
                   <td><DiscountInput value={l.discount_text} disabled={readOnly} label="ส่วนลด" base={d(l.qty || 0).times(d(l.unit_price || 0)).toFixed(2)} onChange={(v) => setLine(l.key, { discount_text: v })} /></td>
                   <td className="c"><input type="checkbox" checked={l.is_free} disabled={readOnly} onChange={(e) => setLine(l.key, { is_free: e.target.checked })} aria-label="ของแถม" /></td>
-                  <td><select value={h.price_type === '0' || l.vat_exempt ? '0' : '1'} disabled={readOnly || h.price_type === '0'} onChange={(e) => setLine(l.key, { vat_exempt: e.target.value === '0' })} aria-label="ประเภท VAT" title={h.price_type === '0' ? 'ประเภทราคา 0 = ยกเว้นภาษีทั้งบิล' : '1 = มี VAT · 0 = ยกเว้น VAT'}><option value="1">1 VAT</option><option value="0">0 ไม่มี</option></select></td>
+                  <td><select value={h.price_type === '0' ? '0' : l.vat} disabled={readOnly || h.price_type === '0'} onChange={(e) => setLine(l.key, { vat: vatOf(e.target.value) })} aria-label="ประเภท VAT" title={h.price_type === '0' ? 'ประเภทราคา 0 = ยกเว้นภาษีทั้งบิล' : '1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0%'}><option value="1">1 · 7%</option><option value="0">0 ยกเว้น</option><option value="2">2 · 0%</option></select></td>
                   {(K.cls === 'CN' || K.cls === 'DN') && <td className="c"><input type="checkbox" checked={l.return_to_stock} disabled={readOnly} onChange={(e) => setLine(l.key, { return_to_stock: e.target.checked })} aria-label="คืนสินค้า" /></td>}
                   <td><LineAmountInput amount={calc?.lines[lines.filter((x) => x.item_id).indexOf(l)]?.line_amount} qty={l.qty} price={l.unit_price} disabled={readOnly || l.is_free || !l.item_id}
                     onApply={(p) => setLine(l.key, p)} /></td>
@@ -495,7 +498,8 @@ export function TradeFormPage({ path }: { path: string }) {
             <tr><td>จำนวนเงิน</td><td className="r"><Money v={calc.amount} /></td></tr>
             <tr><td>หักส่วนลด <DiscountInput value={h.discount_text} disabled={readOnly} onChange={(v) => set({ discount_text: v })} label="ส่วนลดท้ายบิล" base={calc?.amount} style={{ width: 110 }} /></td><td className="r"><Money v={calc.discount_amount} /></td></tr>
             {d(calc.deposit_amount).gt(0) && <tr><td><a href="#deposit" onClick={(e) => { e.preventDefault(); setTab('deposit'); }}>หักเงินมัดจำ</a></td><td className="r"><Money v={calc.deposit_amount} /></td></tr>}
-            {h.price_type !== '0' && d(calc.zero_rate_amount).gt(0) && <tr title="รายการที่เลือก VAT = 0 ยกเว้น — ไม่นำไปคิดภาษี"><td>มูลค่ายกเว้น VAT</td><td className="r"><Money v={calc.zero_rate_amount} /></td></tr>}
+            {h.price_type !== '0' && d(calc.exempt_amount).gt(0) && <tr title="รายการที่เลือก VAT = 0 ยกเว้น — ไม่นำไปคิดภาษี"><td>มูลค่ายกเว้น VAT</td><td className="r"><Money v={calc.exempt_amount} /></td></tr>}
+            {h.price_type !== '0' && d(calc.zero_rate_amount).gt(0) && <tr title="รายการที่เลือก VAT = 2 อัตรา 0% — ภาษี 0 บาท แสดงในรายงานภาษีขายช่องอัตราศูนย์"><td>มูลค่าอัตรา 0%</td><td className="r"><Money v={calc.zero_rate_amount} /></td></tr>}
             {h.price_type !== '0' && <tr title="ยอดที่นำไปคำนวณภาษีมูลค่าเพิ่ม (ไม่รวมรายการยกเว้น VAT)"><td>มูลค่าที่คิด VAT</td><td className="r"><Money v={calc.taxable_amount} /></td></tr>}
             <tr><td>ภาษีมูลค่าเพิ่ม <input className="r" inputMode="decimal" value={h.vat_rate} disabled={readOnly || h.price_type === '0'} onChange={(e) => set({ vat_rate: e.target.value.replace(/[^\d.]/g, '') })} aria-label="อัตราภาษี" style={{ width: 60 }} /> %</td><td className="r"><Money v={calc.vat_amount} /></td></tr>
             <tr className="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td className="r"><Money v={calc.net_amount} /></td></tr>
@@ -513,10 +517,10 @@ export function TradeFormPage({ path }: { path: string }) {
           <span className="small muted" style={{ display: 'block', marginTop: 6 }}>หักได้บางส่วนหรือเต็มจำนวน (ไม่เกินยอดคงเหลือ) · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้</span></>} />}
       {pickOrder && h?.party && <OrderPicker K={K} partyId={h.party.id} invoiceId={id} priceType={h.price_type} taken={lines.map((l) => l.source_line_id).filter((x): x is string => !!x)} onClose={() => setPickOrder(false)}
         onPick={(rows) => { setLines((ls) => [...ls.filter((l) => l.item_id), ...rows.map((r) => ({ key: ++seq, item_id: r.item_id ?? '', item_code: r.item_code ?? '', description: r.description ?? '', warehouse_id: r.warehouse_id, qty: r.qty, unit_id: r.unit_id, factor: num(r.factor) || '1',
-          unit_price: num(r.unit_price), discount_text: r.discount_text ?? '', is_free: r.is_free, return_to_stock: false, vat_exempt: false, source_line_id: r.line_id, source_no: r.doc_no }))]); setDirty(true); setPickOrder(false); setTab('lines'); }} />}
+          unit_price: num(r.unit_price), discount_text: r.discount_text ?? '', is_free: r.is_free, return_to_stock: false, vat: '1' as VatCode, source_line_id: r.line_id, source_no: r.doc_no }))]); setDirty(true); setPickOrder(false); setTab('lines'); }} />}
       {pickRef && h?.ref?.id && <RefInvoicePicker K={K} refId={h.ref.id} onClose={() => setPickRef(false)}
         onPick={(rows) => { setLines((ls) => [...ls.filter((l) => l.item_id), ...rows.map((r) => ({ key: ++seq, item_id: r.item_id, item_code: r.item_code ?? '', description: r.description ?? '', warehouse_id: r.warehouse_id, qty: r.pick_qty, unit_id: r.unit_id, factor: num(r.factor) || '1',
-          unit_price: r.pick_price, discount_text: '', is_free: false, return_to_stock: K.cls === 'CN' || K.cls === 'DN', vat_exempt: r.vat_code === '0' }))]); setDirty(true); setPickRef(false); setTab('lines'); }} />}
+          unit_price: r.pick_price, discount_text: '', is_free: false, return_to_stock: K.cls === 'CN' || K.cls === 'DN', vat: vatOf(r.vat_code) }))]); setDirty(true); setPickRef(false); setTab('lines'); }} />}
       {cancelLine && <CancelLineModal K={K} headerId={id!} line={cancelLine} onClose={() => setCancelLine(null)} onDone={async () => { setCancelLine(null); await qc.refetchQueries({ queryKey: [K.path, 'one', id] }); setH(null); qc.invalidateQueries({ queryKey: [K.path] }); }} />}
       {askConvert && <Confirm title="แปลงเป็นใบสั่งขาย" text={<>สร้างใบสั่งขายจาก <b>{cur.data?.doc_no}</b> (คัดลอกลูกค้า รายการสินค้า ราคา ส่วนลด) ลงวันที่ทำงาน</>} okText="สร้างใบสั่งขาย" onClose={() => setAskConvert(false)}
         onOk={async () => { try { const r = await api.post<{ id: string; doc_no: string }>(`/api/v1/quotations/${id}/convert`, { doc_date: me?.work_date ?? todayIso() }); toast(`สร้างใบสั่งขาย ${r.doc_no} แล้ว`); setAskConvert(false); nav(`/sa/orders/${r.id}`); } catch (e) { setAskConvert(false); setErr(e); } }} />}

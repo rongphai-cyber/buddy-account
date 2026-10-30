@@ -194,7 +194,7 @@ export function ItemForm({ kind, id, onClose, onSaved, initial }: { kind: ItemKi
             <Field label="ผู้จำหน่าย" hint="อ้างอิงเท่านั้น เช่น ผู้ให้ราคาดีที่สุด"><SearchPick endpoint="/api/v1/suppliers" value={sup} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => setSup(r)} /></Field>
             <Field label="บรรจุ/หีบห่อ"><input {...t('packing', 30)} /></Field>
           </>}
-          <Field label="ประเภท VAT"><select value={f.vat_code ?? ''} onChange={(e) => set({ vat_code: e.target.value })}><option value="">ไม่ระบุ (ตามเอกสาร)</option><option value="1">อัตราปกติ</option><option value="0">ได้รับยกเว้น VAT</option></select></Field>
+          <Field label="ประเภท VAT"><select value={f.vat_code ?? ''} onChange={(e) => set({ vat_code: e.target.value })}><option value="">ไม่ระบุ (ตามเอกสาร)</option><option value="1">1 อัตราปกติ (มี VAT)</option><option value="0">0 ได้รับยกเว้น VAT</option><option value="2">2 อัตรา 0% (เช่น ส่งออก)</option></select></Field>
           {(kind === 'stock' || kind === 'kit') && <Field label="ราคาทุนมาตรฐาน" hint={kind === 'stock' ? 'ใช้เป็นต้นทุนเมื่อจ่ายขณะสต๊อกไม่พอ (ติดลบ)' : undefined}><Dec value={f.std_cost} onChange={(v) => set({ std_cost: v })} /></Field>}
           {priceLabel
             ? <Field label="จำนวนเงิน" hint={`ป้อนถ้า${kind === 'income' ? 'รับ' : 'จ่าย'}เท่ากันทุกครั้ง ว่าง = ป้อนตอนบันทึก`}><Dec value={f.price_1} onChange={(v) => set({ price_1: v })} /></Field>

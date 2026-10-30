@@ -1517,11 +1517,27 @@ describe('Buddy Account API (PGlite)', () => {
     const iv = (await call('POST', '/api/v1/sales-invoices', { ...base, lines: [{ item_id: cpu, qty: 1, unit_price: 1000 }, { item_id: cpu, qty: 1, unit_price: 500, vat_code: '0' }] })).body;
     const doc = (await call('GET', `/api/v1/sales-invoices/${iv.id}`)).body;
     // VAT คิดเฉพาะบรรทัดแรก 1,000 × 7% · บรรทัดที่ 2 ยกเว้น (หน้าเอกสารมาก่อนแฟ้มสินค้า)
-    expect([doc.taxable_amount, doc.zero_rate_amount, doc.vat_amount, doc.net_amount]).toEqual(['1000.00', '500.00', '70.00', '1570.00']);
+    expect([doc.taxable_amount, doc.exempt_amount, doc.zero_rate_amount, doc.vat_amount, doc.net_amount]).toEqual(['1000.00', '500.00', '0.00', '70.00', '1570.00']);
     expect(doc.lines.map((l: { vat_code: string }) => l.vat_code)).toEqual(['1', '0']);
     expect(doc.party_tax_branch_no).toBe('00000');
     expect((await call('GET', `/api/v1/customers/${cus}`)).body.tax_branches).toContain('00000');
     expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    // รหัส 2 = อัตรา 0% แยกจาก 0 = ยกเว้น → แฟ้มภาษีขาย + ภ.พ.30 ข้อ 2 (อัตรา 0) / ข้อ 3 (ยกเว้น)
+    const iv3 = (await call('POST', '/api/v1/sales-invoices', { ...base, doc_date: '2027-11-10', lines: [{ item_id: cpu, qty: 1, unit_price: 1000, vat_code: '1' }, { item_id: cpu, qty: 1, unit_price: 600, vat_code: '0' }, { item_id: cpu, qty: 1, unit_price: 400, vat_code: '2' }] })).body;
+    const d3 = (await call('GET', `/api/v1/sales-invoices/${iv3.id}`)).body;
+    expect([d3.taxable_amount, d3.exempt_amount, d3.zero_rate_amount, d3.vat_amount, d3.net_amount]).toEqual(['1000.00', '600.00', '400.00', '70.00', '2070.00']);
+    expect(d3.lines.map((l: { vat_code: string }) => l.vat_code)).toEqual(['1', '0', '2']);
+    const run = async (c: string, params: Record<string, unknown>) => (await call('POST', `/api/v1/rpt/${c}/run`, { params })).body;
+    const pp = Object.fromEntries((await run('6.4', { period: '2027-11' })).rows.filter((r: { c: { no?: string } }) => r.c.no).map((r: { c: { no: string; amount: string } }) => [r.c.no, r.c.amount]));
+    expect([pp['1'], pp['2'], pp['3'], pp['4'], pp['5']]).toEqual(['2000.00', '400.00', '600.00', '1000.00', '70.00']);
+    // รายงานภาษีขายแยก 3 ประเภท: 7% / 0% / ยกเว้น (บิลยกเว้นทั้งใบก็เข้ารายงาน)
+    const ex = (await call('POST', '/api/v1/sales-invoices', { ...base, doc_date: '2027-11-11', lines: [{ item_id: cpu, qty: 1, unit_price: 300, vat_code: '0' }] })).body;
+    const tot = (await run('6.3', { period: '2027-11' })).rows.at(-1).c;
+    expect([tot.base, tot.vat, tot.zero, tot.exempt]).toEqual(['1000.00', '70.00', '400.00', '900.00']);
+    const pp2 = Object.fromEntries((await run('6.4', { period: '2027-11' })).rows.filter((r: { c: { no?: string } }) => r.c.no).map((r: { c: { no: string; amount: string } }) => [r.c.no, r.c.amount]));
+    expect([pp2['1'], pp2['3']]).toEqual(['2300.00', '900.00']);
+    expect((await call('POST', `/api/v1/sales-invoices/${ex.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/sales-invoices/${iv3.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
   it('executive dashboard (RP.DASH): sales/AR/cash/aging from live documents, filters, isolation', async () => {

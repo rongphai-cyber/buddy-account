@@ -56,7 +56,7 @@ async function loadDocs(db: Db, companyId: string, where: ReturnType<typeof sql>
         unitPrice: incl ? d(l.unit_price ?? 0).times(100).div(rate.plus(100)).toDecimalPlaces(4) : (l.unit_price ?? '0'), net: l.net_amount })),
       vat: pt === '0' ? null : { rate: rate.toString(), basis: vatBasis.toFixed(2), amount: vatAmt.toFixed(2) },
       // ไม่มี VAT: ทั้งฉบับเป็นฐานยกเว้น (ข้อมูลย้ายจาก Express ไม่ได้เก็บแยก)
-      exemptBasis: pt === '0' ? (s(h.net_amount) || '0') : (s(h.zero_rate_amount) || '0'),
+      exemptBasis: pt === '0' ? (s(h.net_amount) || '0') : d(s(h.zero_rate_amount) || '0').plus(d(s(h.exempt_amount) || '0')).toFixed(2),
       deposit: (incl ? deposit.times(100).div(rate.plus(100)).toDecimalPlaces(2) : deposit).toFixed(2),
       grandTotal: s(h.net_amount) || '0',
       dueDate: cls === 'IV' ? h.due_date : null, buyerOrderRef: h.your_ref,

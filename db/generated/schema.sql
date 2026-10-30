@@ -1620,7 +1620,7 @@ COMMENT ON COLUMN md_item.price_2 IS 'ราคาขาย 2 [Express: STMAS.SE
 COMMENT ON COLUMN md_item.price_3 IS 'ราคาขาย 3 [Express: STMAS.SELLPR3]';
 COMMENT ON COLUMN md_item.price_4 IS 'ราคาขาย 4 [Express: STMAS.SELLPR4]';
 COMMENT ON COLUMN md_item.price_5 IS 'ราคาขาย 5 [Express: STMAS.SELLPR5]';
-COMMENT ON COLUMN md_item.vat_code IS 'ประเภท VAT ของสินค้า (0=ยกเว้น 1=มี VAT ว่าง=ตามเอกสาร) [Express: STMAS.VATCOD]';
+COMMENT ON COLUMN md_item.vat_code IS 'ประเภท VAT ของสินค้า (0=ยกเว้น 1=มี VAT 2=อัตรา 0% ว่าง=มี VAT) [Express: STMAS.VATCOD]';
 COMMENT ON COLUMN md_item.allow_negative IS 'Y/N/A=ตามค่าบริษัท [Express: STMAS.NEGALLOW]';
 COMMENT ON COLUMN md_item.default_supplier_id IS 'ผู้จำหน่ายหลัก [Express: STMAS.SUPCOD]';
 COMMENT ON COLUMN md_item.substitute_item_id IS 'สินค้าทดแทน [Express: STMAS.STKCODS]';
@@ -2483,6 +2483,7 @@ CREATE TABLE doc_header (
   amount_after_discount numeric(18,2) DEFAULT 0 NOT NULL,
   deposit_amount numeric(18,2) DEFAULT 0 NOT NULL,
   zero_rate_amount numeric(18,2) DEFAULT 0 NOT NULL,
+  exempt_amount numeric(18,2) DEFAULT 0 NOT NULL,
   taxable_amount numeric(18,2) DEFAULT 0 NOT NULL,
   vat_rate numeric(9,4),
   vat_amount numeric(18,2) DEFAULT 0 NOT NULL,
@@ -2573,6 +2574,7 @@ COMMENT ON COLUMN doc_header.discount_amount IS 'ส่วนลดท้าย�
 COMMENT ON COLUMN doc_header.amount_after_discount IS 'หลังหักส่วนลด [Express: AFTDISC]';
 COMMENT ON COLUMN doc_header.deposit_amount IS 'หักเงินมัดจำ [Express: ADVAMT]';
 COMMENT ON COLUMN doc_header.zero_rate_amount IS 'มูลค่าอัตรา 0% [Express: AMTRAT0]';
+COMMENT ON COLUMN doc_header.exempt_amount IS 'มูลค่าที่ได้รับยกเว้น VAT (รายการรหัส VAT 0 — ภ.พ.30 ข้อ 3)';
 COMMENT ON COLUMN doc_header.taxable_amount IS 'มูลค่าก่อน VAT [Express: TOTAL / NETVAL]';
 COMMENT ON COLUMN doc_header.vat_rate IS 'อัตรา VAT [Express: VATRAT]';
 COMMENT ON COLUMN doc_header.vat_amount IS 'ภาษีมูลค่าเพิ่ม [Express: VATAMT]';
@@ -2700,7 +2702,7 @@ COMMENT ON COLUMN doc_line.discount_text IS 'สูตรส่วนลดร�
 COMMENT ON COLUMN doc_line.discount_amount IS 'ส่วนลดรายบรรทัด [Express: DISCAMT]';
 COMMENT ON COLUMN doc_line.line_amount IS 'จำนวนเงิน (ตามประเภทราคาของเอกสาร) [Express: TRNVAL]';
 COMMENT ON COLUMN doc_line.net_amount IS 'มูลค่าสุทธิก่อน VAT (หลังเฉลี่ยส่วนลดท้ายบิล) [Express: NETVAL]';
-COMMENT ON COLUMN doc_line.vat_code IS 'ประเภท VAT รายบรรทัด [Express: VATCOD]';
+COMMENT ON COLUMN doc_line.vat_code IS 'ประเภท VAT รายบรรทัด (0=ยกเว้น 1=มี VAT 2=อัตรา 0%) [Express: VATCOD]';
 COMMENT ON COLUMN doc_line.is_free IS 'ของแถม [Express: FREE]';
 COMMENT ON COLUMN doc_line.return_to_stock IS 'รับคืน/ส่งคืนแล้วเข้าสต๊อก (ใบลดหนี้) [Express: RETSTK]';
 COMMENT ON COLUMN doc_line.stock_effect IS 'ผลต่อสต๊อก +1 รับเข้า −1 จ่ายออก 0 ไม่กระทบ';
@@ -3803,6 +3805,7 @@ CREATE TABLE tax_vat_entry (
   base_amount numeric(18,2) DEFAULT 0 NOT NULL,
   vat_amount numeric(18,2) DEFAULT 0 NOT NULL,
   zero_rate_amount numeric(18,2) DEFAULT 0 NOT NULL,
+  exempt_amount numeric(18,2) DEFAULT 0 NOT NULL,
   nonclaim_base numeric(18,2) DEFAULT 0 NOT NULL,
   nonclaim_vat numeric(18,2) DEFAULT 0 NOT NULL,
   is_manual boolean DEFAULT false NOT NULL,
@@ -3838,7 +3841,8 @@ COMMENT ON COLUMN tax_vat_entry.party_tax_id IS 'เลขผู้เสีย�
 COMMENT ON COLUMN tax_vat_entry.party_tax_branch_no IS 'สาขา';
 COMMENT ON COLUMN tax_vat_entry.base_amount IS 'มูลค่าสินค้า/บริการ [Express: ISVAT.AMT01]';
 COMMENT ON COLUMN tax_vat_entry.vat_amount IS 'ภาษี [Express: ISVAT.VAT01]';
-COMMENT ON COLUMN tax_vat_entry.zero_rate_amount IS 'มูลค่าอัตรา 0% / ยกเว้น [Express: ISVAT.AMTRAT0]';
+COMMENT ON COLUMN tax_vat_entry.zero_rate_amount IS 'มูลค่าอัตรา 0% (ข้อมูลที่ย้ายจาก Express รวมยอดยกเว้น) [Express: ISVAT.AMTRAT0]';
+COMMENT ON COLUMN tax_vat_entry.exempt_amount IS 'มูลค่าที่ได้รับยกเว้น VAT (ภ.พ.30 ข้อ 3)';
 COMMENT ON COLUMN tax_vat_entry.nonclaim_base IS 'มูลค่าภาษีซื้อที่ขอคืนไม่ได้ [Express: ISVAT.AMT02]';
 COMMENT ON COLUMN tax_vat_entry.nonclaim_vat IS 'ภาษีซื้อที่ขอคืนไม่ได้ [Express: ISVAT.VAT02]';
 COMMENT ON COLUMN tax_vat_entry.is_manual IS 'บันทึกเองในระบบภาษี [Express: ISVAT.SELF_ADDED]';

@@ -32,8 +32,8 @@ export const tradeBody = z.object({
     discount_text: str(20), is_free: z.boolean().default(false), return_to_stock: z.boolean().default(false), department_id: optId,
     /** บิลที่อ้างใบสั่งขาย/ใบสั่งซื้อ: บรรทัดต้นทาง */
     source_line_id: optId, delivery_date: isoDate.nullable().optional(),
-    /** ประเภท VAT รายบรรทัด (ข้อกำหนดเจ้าของ): 0 = ยกเว้น VAT · 1 = มี VAT — ไม่ส่ง = ตามแฟ้มสินค้า · หน้าเอกสารมาก่อนแฟ้มสินค้า */
-    vat_code: z.enum(['0', '1']).nullable().optional(),
+    /** ประเภท VAT รายบรรทัด (ข้อกำหนดเจ้าของ): 0 = ยกเว้น VAT · 1 = มี VAT · 2 = อัตรา 0% — ไม่ส่ง = ตามแฟ้มสินค้า · หน้าเอกสารมาก่อนแฟ้มสินค้า */
+    vat_code: z.enum(['0', '1', '2']).nullable().optional(),
   })).min(1, 'ป้อนรายการสินค้าอย่างน้อย 1 บรรทัด').max(500),
   payments: z.array(z.object({ payment_method_id: uuid, amount: num, reference_no: str(30) })).max(20).default([]),
   /** หักเงินมัดจำ (AI → บิลขาย, AE → บิลซื้อ) ยอดตามประเภทราคาของบิล */
@@ -113,9 +113,9 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     return sum.plus(d(x.amount));
   }, d(0));
   // ประเภท VAT รายบรรทัด: ที่เลือกบนเอกสาร > แฟ้มสินค้า (ว่าง = มี VAT)
-  const lineVat = (l: { item_id: string; vat_code?: '0' | '1' | null }) => l.vat_code ?? (byId.get(l.item_id)?.vat_code === '0' ? '0' : '1');
+  const lineVat = (l: { item_id: string; vat_code?: '0' | '1' | '2' | null }) => { const c = l.vat_code ?? byId.get(l.item_id)?.vat_code; return c === '0' || c === '2' ? c : '1'; };
   const calc = computeDoc({ price_type: b.price_type, vat_rate: b.vat_rate, discount_text: b.discount_text, deposit_amount: depositTotal.toFixed(2),
-    lines: b.lines.map((l) => ({ qty: l.qty, unit_price: l.is_free ? 0 : l.unit_price, discount_text: l.discount_text, vat_exempt: lineVat(l) === '0' })) });
+    lines: b.lines.map((l) => ({ qty: l.qty, unit_price: l.is_free ? 0 : l.unit_price, discount_text: l.discount_text, vat_code: lineVat(l) })) });
   if (calc.errors.length) throw badRequest(calc.errors[0]!, calc.errors.map((m) => ({ message: m })));
   const payTotal = b.payments.reduce((s, p) => s.plus(d(p.amount)), d(0));
   if (!K.payments && b.payments.length) throw badRequest(`${K.label}ไม่มีการรับ/จ่ายเงินในเอกสาร — ใช้เมนูรับ/จ่ายชำระหนี้`);
@@ -134,7 +134,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     sales_area_code: b.sales_area_code, ship_via_code: b.ship_via_code, ship_to_id: b.ship_to_id, warehouse_id: b.warehouse_id ?? dt.warehouse_id,
     credit_days: credit, due_date: b.due_date ?? dueDate(b.doc_date, credit), price_type: b.price_type, vat_rate: b.vat_rate, vat_basis: b.vat_basis ?? '1',
     amount: calc.amount, discount_text: b.discount_text, discount_amount: calc.discount_amount, amount_after_discount: calc.amount_after_discount,
-    deposit_amount: calc.deposit_amount, zero_rate_amount: calc.zero_rate_amount, taxable_amount: calc.taxable_amount, vat_amount: calc.vat_amount, net_amount: calc.net_amount,
+    deposit_amount: calc.deposit_amount, zero_rate_amount: calc.zero_rate_amount, exempt_amount: calc.exempt_amount, taxable_amount: calc.taxable_amount, vat_amount: calc.vat_amount, net_amount: calc.net_amount,
     cash_amount: K.payments ? d(calc.net_amount).minus(payTotal).minus(wht).toFixed(2) : '0', cheque_amount: K.payments ? payTotal.toFixed(2) : '0', wht_amount: wht.toFixed(2),
     remark: b.remark, payment_terms: b.payment_terms, vat_date: b.doc_date, updated_by: a.userId,
   };
@@ -388,7 +388,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       doc_type_id: soType, doc_date: b.doc_date, delivery_date: b.delivery_date ?? b.doc_date, party_id: qt.customer_id, bill_to_customer_id: qt.bill_to_customer_id, party_tax_branch_no: qt.party_tax_branch_no,
       your_ref: qt.your_ref, department_id: qt.department_id, salesperson_id: qt.salesperson_id, sales_area_code: qt.sales_area_code, ship_via_code: qt.ship_via_code,
       price_type: qt.price_type, vat_rate: qt.vat_rate ?? 0, discount_text: qt.discount_text, remark: qt.remark,
-      lines: lines.map((l) => ({ ...l, qty: l.qty, factor: l.factor, unit_price: l.unit_price, vat_code: l.vat_code === '0' || l.vat_code === '1' ? l.vat_code : null })),
+      lines: lines.map((l) => ({ ...l, qty: l.qty, factor: l.factor, unit_price: l.unit_price, vat_code: l.vat_code === '0' || l.vat_code === '1' || l.vat_code === '2' ? l.vat_code : null })),
     }));
     await db.insertInto('doc_link').values({ company_id: a.companyId, from_header_id: id, to_header_id: so.id!, link_type: 'CONVERT', created_by: a.userId }).execute();
     return so;

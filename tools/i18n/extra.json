@@ -196,5 +196,17 @@
  "ยอดที่นำไปคำนวณภาษีมูลค่าเพิ่ม (ไม่รวมรายการยกเว้น VAT)": "Amount used to calculate VAT (excludes VAT-exempt lines)",
  "รายการที่เลือก VAT = 0 ยกเว้น — ไม่นำไปคิดภาษี": "Lines set to VAT 0 (exempt) — not included in VAT",
  "สาขาของคู่ค้า (ว่าง = สำนักงานใหญ่)": "Party branch (blank = head office)",
- "เช่น 00001": "e.g. 00001"
+ "เช่น 00001": "e.g. 00001",
+ "มูลค่าอัตรา 0%": "Zero-rated amount (0%)",
+ "0 ยกเว้น": "0 Exempt",
+ "0 ได้รับยกเว้น VAT": "0 VAT exempt",
+ "1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0%": "1 = VAT 7% · 0 = VAT exempt · 2 = zero-rated (0%)",
+ "1 อัตราปกติ (มี VAT)": "1 Standard rate (VAT)",
+ "2 อัตรา 0% (เช่น ส่งออก)": "2 Zero-rated 0% (e.g. export)",
+ "ประเภท VAT รายบรรทัด: 1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0% (ค่าเริ่มต้นตามแฟ้มสินค้า แก้ที่เอกสารได้)": "Line VAT type: 1 = VAT 7% · 0 = VAT exempt · 2 = zero-rated 0% (defaults from the item, can be changed on the document)",
+ "มูลค่า 7%": "Amount 7%",
+ "มูลค่าขายที่ได้รับยกเว้น": "VAT-exempt sales",
+ "มูลค่าที่เสียภาษี (อัตรา 7%)": "Taxable amount (7%)",
+ "ยกเว้น VAT": "VAT exempt",
+ "รายการที่เลือก VAT = 2 อัตรา 0% — ภาษี 0 บาท แสดงในรายงานภาษีขายช่องอัตราศูนย์": "Lines with VAT 2 (zero-rated) — VAT 0 baht, shown in the zero-rate column of the sales VAT report"
 }
