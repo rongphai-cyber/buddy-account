@@ -99,6 +99,15 @@ function Shell() {
   const [workDateOpen, setWorkDateOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   useEffect(() => setMobileMenu(false), [loc.pathname]);
+  // เมนูแบบเลื่อนออก (มือถือ/แท็บเล็ต) วางใต้แถบบนพอดี ไม่ว่าแถบบนจะสูงกี่แถว
+  useEffect(() => {
+    const bar = document.querySelector('.topbar');
+    if (!bar) return;
+    const set = () => document.documentElement.style.setProperty('--top-h', `${Math.round(bar.getBoundingClientRect().height)}px`);
+    set();
+    const ro = new ResizeObserver(set); ro.observe(bar);
+    return () => ro.disconnect();
+  }, [me?.company?.id]);
   // ไม่มีปุ่มลัด Alt+ตัวเลขของเมนูหลักแล้ว (เมนูเพิ่มได้ไม่จำกัด) — ใช้ค้นหาเมนู Ctrl+K แทน
   const [search, setSearch] = useState(false);
   useHotkeys({ 'Alt+H': () => nav('/'), 'Ctrl+K': () => setSearch(true) }, []);

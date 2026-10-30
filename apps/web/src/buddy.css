@@ -87,8 +87,6 @@
 @media (max-width: 760px) {
   .form-grid, .form-grid.three { grid-template-columns: minmax(0, 1fr); }
   .shell { grid-template-columns: minmax(0, 1fr); }
-  .sidebar { display: none; }
-  .shell.menu-open .sidebar { display: flex; position: fixed; inset: 52px 0 0 0; z-index: 30; }
   .burger { display: inline-flex; }
   .company-sel { max-width: 160px; }
   .scope .user { display: none; }

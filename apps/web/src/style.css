@@ -392,8 +392,8 @@ pre { background: var(--surface-2); border: 1px solid var(--line); border-radius
 @media (max-width: 900px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
   .burger { display: inline-flex; }
-  .sidebar { position: fixed; top: 52px; bottom: 0; left: 0; width: 270px; z-index: 30; transform: translateX(-100%); transition: transform 0.2s; box-shadow: 0 0 30px rgba(0, 0, 0, 0.2); }
-  .shell.nav-open .sidebar { transform: none; }
+  .sidebar { position: fixed; top: var(--top-h, 52px); bottom: 0; left: 0; width: min(290px, 86vw); z-index: 30; transform: translateX(-100%); transition: transform 0.2s; box-shadow: 0 0 30px rgba(0, 0, 0, 0.2); overflow-y: auto; }
+  .shell.menu-open .sidebar { transform: none; }
   .shell.mini .lbl { display: inline; }
   .main { grid-row: 3; }
   .head-grid { grid-template-columns: 1fr; }
@@ -405,11 +405,10 @@ pre { background: var(--surface-2); border: 1px solid var(--line); border-radius
   .scope label { flex: 1; min-width: 0; }
   .scope select { max-width: none; width: 100%; }
   .net { margin-left: auto; }
-  .scope .period { display: none; }
+  .scope .period { font-size: 12.5px; padding: 3px 8px; }
   .brand span { display: none; }
   .doc-state { width: 100%; }
   .pill { white-space: normal; }
-  .sidebar { top: 96px; }
   .head-grid .col, .form-grid, .more-grid { grid-template-columns: 1fr; }
   .hide-sm { display: none; }
   .toolbar { top: 44px; }
@@ -529,7 +528,7 @@ details.box .form-grid { margin-top: 8px; }
 .tbl-nav button { text-align: left; }
 .tbl-nav a { padding: 4px 10px; }
 .tbl-title { margin: 0 0 4px; font-size: 18px; }
-@media (max-width: 900px) { .tbl-layout { grid-template-columns: 1fr; } .tbl-nav { position: static; flex-direction: row; flex-wrap: wrap; } }
+@media (max-width: 900px) { .tbl-layout { grid-template-columns: minmax(0, 1fr); } .tbl-nav { position: static; flex-direction: row; flex-wrap: wrap; } .tbl-nav button { white-space: normal; max-width: 100%; } }
 
 /* เอกสารซื้อ/ขาย (บทที่ 11–12) */
 /* ใบเสร็จ/ใบสำคัญจ่าย: บิลที่ติ๊กเลือก */
@@ -649,7 +648,7 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .pf-preview { position: sticky; top: 150px; }
 .pf-preview .ds-preview { max-height: calc(100vh - 140px); }
 .pf-preview .doc-sheet { zoom: .72; }
-@media (max-width: 1100px) { .pf-layout { grid-template-columns: 1fr; } .pf-preview { position: static; } }
+@media (max-width: 1100px) { .pf-layout { grid-template-columns: minmax(0, 1fr); } .pf-preview { position: static; } }
 .rpt-cols { margin: 0 0 8px; font-size: 13px; }
 .rpt-cols summary { cursor: pointer; color: var(--muted); }
 .rpt-cols label { display: inline-flex; gap: 4px; align-items: center; margin: 4px 12px 0 0; }
@@ -761,3 +760,19 @@ td.img-cell { padding-top: 2px; padding-bottom: 2px; }
 .su-head h2 { margin: 0; }
 .login-card label.chk { white-space: normal; align-items: flex-start; line-height: 1.45; }
 .su-head select { width: auto; min-width: 140px; flex: none; }
+
+/* ตรวจทุกหน้าจอบนมือถือ/แท็บเล็ต (ข้อกำหนดเจ้าของข้อ 10) — ตรวจด้วย tools/demo-check/mobile-sweep.cjs */
+select { max-width: 100%; }
+@media (max-width: 640px) {
+  /* ช่องเลือกในแถบเครื่องมือ: ป้ายกับช่องขึ้นบรรทัดใหม่ได้ ไม่ล้นจอ */
+  .toolbar > label { white-space: normal; flex-wrap: wrap; max-width: 100%; }
+  .toolbar > label > select, .toolbar > select { min-width: 0; max-width: 100%; }
+  .inline { flex-wrap: wrap; white-space: normal; max-width: 100%; }
+  /* ตารางที่ไม่ได้อยู่ในกรอบเลื่อน: เลื่อนซ้ายขวาในตัวเอง */
+  :not(.table-wrap):not(.lines) > table.grid { display: block; overflow-x: auto; max-width: 100%; }
+  .pf-side select, .pf-side input { min-width: 0; }
+}
+@media (max-width: 640px) { .w50-preview { position: static; width: 340px; max-width: 100%; height: calc(297mm * 340 / 793.7); } .w50-preview .w50-sheet { transform: scale(calc(340 / 793.7)); } }
+@media (max-width: 900px) { .sidebar .mini-btn { display: none; } }
+/* จอสัมผัส: ปุ่มและช่องเลือกสูงขึ้นเล็กน้อยให้แตะง่าย */
+@media (pointer: coarse) { button, select { min-height: 36px; } }
