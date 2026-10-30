@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qrEncode, qrSvgPath } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { ErrorBox, Field, Modal, navKey, toast } from '../../ui';
@@ -25,7 +26,7 @@ export function TwoFactorSetup({ onDone }: { onDone: () => void }) {
       <ErrorBox error={err} />
       <ol className="mfa-howto">
         <li>ติดตั้งแอป <b>Google Authenticator</b> หรือ <b>Microsoft Authenticator</b> ในมือถือ (ฟรี)</li>
-        <li>กดปุ่มด้านล่างเพื่อสร้างกุญแจ แล้วเพิ่มกุญแจนี้ในแอป</li>
+        <li>กดปุ่มด้านล่างเพื่อสร้างกุญแจ แล้วสแกน QR code ด้วยแอป (หรือพิมพ์กุญแจเอง)</li>
         <li>ป้อนรหัส 6 หลักที่แอปแสดงเพื่อยืนยัน</li>
       </ol>
       <button className="primary" autoFocus disabled={busy} onClick={start}>สร้างกุญแจ</button>
@@ -34,7 +35,9 @@ export function TwoFactorSetup({ onDone }: { onDone: () => void }) {
   return (
     <div className="mfa-step" onKeyDown={navKey}>
       <ErrorBox error={err} />
-      <p>ในแอป เลือก <b>เพิ่มบัญชี › ป้อนคีย์การตั้งค่า</b> (Enter a setup key) ชื่อบัญชีใส่ Buddy Account แล้วพิมพ์กุญแจนี้ ชนิด <b>ตามเวลา</b></p>
+      <p>ในแอป กด <b>+</b> › <b>สแกนคิวอาร์โค้ด</b> (Scan a QR code) แล้วส่องที่ภาพนี้</p>
+      <QrCode text={key.otpauth} />
+      <p className="small muted">สแกนไม่ได้: เลือก <b>ป้อนคีย์การตั้งค่า</b> (Enter a setup key) ชื่อบัญชีใส่ Buddy Account แล้วพิมพ์กุญแจนี้ ชนิด <b>ตามเวลา</b></p>
       <div className="mfa-secret" aria-label="กุญแจ">{key.secret.match(/.{1,4}/g)?.map((g, i) => <span key={i}>{g}</span>)}</div>
       <div className="mfa-links">
         <button type="button" onClick={() => navigator.clipboard?.writeText(key.secret).then(() => toast('คัดลอกกุญแจแล้ว'))}>คัดลอกกุญแจ</button>
@@ -42,6 +45,18 @@ export function TwoFactorSetup({ onDone }: { onDone: () => void }) {
       </div>
       <Field label="รหัส 6 หลักจากแอป" req><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} data-noenter onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), confirm())} /></Field>
       <button className="primary" disabled={busy || code.length !== 6} onClick={confirm}>ยืนยันและเปิดใช้</button>
+    </div>
+  );
+}
+
+/** QR code ของลิงก์ otpauth:// (สร้างในเครื่อง ไม่ส่งกุญแจไปบริการภายนอก) — ดำบนขาวเสมอแม้ธีมมืด เพื่อให้กล้องอ่านได้ */
+function QrCode({ text }: { text: string }) {
+  const qr = useMemo(() => qrSvgPath(qrEncode(text).modules), [text]);
+  return (
+    <div className="mfa-qr">
+      <svg viewBox={qr.viewBox} role="img" aria-label="QR code สำหรับแอปยืนยันตัวตน" shapeRendering="crispEdges">
+        <rect width="100%" height="100%" fill="#fff" /><path d={qr.d} fill="#000" />
+      </svg>
     </div>
   );
 }
