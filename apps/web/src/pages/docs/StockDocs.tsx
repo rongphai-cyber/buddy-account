@@ -4,8 +4,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt, STOCK_KINDS, todayIso, type StockKind } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
-import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
+import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
@@ -127,11 +128,12 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.department_id ? { department_id: t.department_id } : {}), ...(t?.warehouse_id ? { warehouse_id: t.warehouse_id } : {}) }); };
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
+  const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: ro, resetKey: h ? 'on' : 'off' });
   const save = async (andNew = false) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro) return;
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, your_ref: h.your_ref || null, warehouse_id: h.warehouse_id, to_warehouse_id: cls === 'RL' ? h.to_warehouse_id : null,
+    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, your_ref: h.your_ref || null, warehouse_id: h.warehouse_id, to_warehouse_id: cls === 'RL' ? h.to_warehouse_id : null,
       lines: used.map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: cls === 'RL' ? null : l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1',
         unit_cost: cls === 'JU' && l.unit_cost !== '' ? l.unit_cost : null, amount: cls === 'CA' ? l.amount || '0' : null, source_line_id: cls === 'CA' ? l.source_line_id : null })) };
     try {
@@ -178,6 +180,8 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
           </div>
           <div className="col">
             
+            {dn.field}
+            
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
             <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
             <Field label="เลขที่อ้างอิง"><input value={h.your_ref} maxLength={60} disabled={ro} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
@@ -194,7 +198,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
               {lines.map((l, i) => (
                 <tr key={l.key}>
                   <td className="muted">{i + 1}</td>
-                  <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} disabled={ro} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
+                  <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} disabled={ro} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /></td>
                   {cls !== 'RL' && <td><LkSelect byId rows={whRows} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>}
                   {cls === 'CA' ? <>

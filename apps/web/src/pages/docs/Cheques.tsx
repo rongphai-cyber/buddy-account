@@ -7,6 +7,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { useDocNo } from '../../components/DocNo';
 
 /** เช็ครับ/เช็คจ่าย (คู่มือบทที่ 13 S-BK-04..13) — ยอดเงินฝากเพิ่มเมื่อผ่านเช็คเท่านั้น */
 type Dir = 'R' | 'P';
@@ -302,6 +303,8 @@ export function ChequeSlipFormPage() {
     setSel(new Set(c.cheques.map((x) => x.id)));
   }
   const ro = !!id && (!cur.data?.editable || !can('edit'));
+  const bq = useQuery({ queryKey: ['trade-defaults', 'BQ'], queryFn: () => api.get<{ types: Array<{ id: string; code: string; next_no: string }> }>('/api/v1/trade-defaults/BQ') });
+  const dn = useDocNo(bq.data?.types[0], id ? cur.data?.doc_no : undefined, { disabled: ro, resetKey: h ? 'on' : 'off' });
   const pool: Row[] = [...(cur.data?.cheques ?? []).map((x) => ({ ...x, direction: 'R', status: x.status } as unknown as Row)), ...(open.data?.rows ?? [])];
   const chosen = pool.filter((r, i) => sel.has(r.id) && pool.findIndex((p) => p.id === r.id) === i);
   const total = chosen.reduce((s, r) => s.plus(d(r.amount)), d(0));
@@ -310,7 +313,7 @@ export function ChequeSlipFormPage() {
     if (!h || ro) return;
     setErr(null);
     try {
-      const body = { cheque_ids: [...sel], bank_account_id: h.bank, doc_date: h.date, remark: h.remark || null, charge: h.charge || '0', vat: h.vat || '0', wht: h.wht || '0', discount: h.discount, ref_no: h.ref_no || null, ref_date: h.ref_date || null };
+      const body = { doc_no: dn.value, cheque_ids: [...sel], bank_account_id: h.bank, doc_date: h.date, remark: h.remark || null, charge: h.charge || '0', vat: h.vat || '0', wht: h.wht || '0', discount: h.discount, ref_no: h.ref_no || null, ref_date: h.ref_date || null };
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/cheque-deposits/${id}`, body) : await api.post<{ id: string; doc_no: string }>('/api/v1/cheque-deposits', body);
       toast(`บันทึกใบนำฝาก ${r.doc_no} แล้ว`); refresh(qc);
       if (!id) { setH(null); nav(`/fi/cheques/slips/${r.id}`, { replace: true }); } else { await qc.refetchQueries({ queryKey: ['cheque-deposits', 'one', id] }); setH(null); }
@@ -341,6 +344,7 @@ export function ChequeSlipFormPage() {
           </div>
           <div className="col">
             <Field label="ชนิด"><select value={h.discount ? 'S' : 'D'} disabled={!!id} onChange={(e) => setH({ ...h, discount: e.target.value === 'S' })} aria-label="ชนิดใบนำฝาก"><option value="D">ใบนำฝากเช็ค (DEQ)</option><option value="S">ใบขายลดเช็ค (SQR) — ผ่านทันที</option></select></Field>
+            {dn.field}
             <Field label={h.discount ? 'วันที่ขายลด' : 'วันที่นำฝาก'} req><DateInput value={h.date} disabled={ro} onChange={(v) => setH({ ...h, date: v })} /></Field>
             {h.discount && <><Field label="ใบกำกับภาษีซื้อ#"><input value={h.ref_no} maxLength={30} disabled={ro} onChange={(e) => setH({ ...h, ref_no: e.target.value })} /></Field>
               <Field label="ลวท."><DateInput value={h.ref_date} disabled={ro} onChange={(v) => setH({ ...h, ref_date: v })} /></Field></>}

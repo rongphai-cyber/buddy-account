@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
 import { PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
@@ -146,7 +147,7 @@ export function SettleFormPage({ path }: { path: string }) {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
+    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
       your_ref: h.your_ref || null, remark: h.remark || null, interest_amount: h.interest || '0', cash_discount_amount: h.discount || '0', fx_amount: h.fx || '0', wht_amount: K.cls === 'PS' && whts.length ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
       settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0' })),
       payments: paysBody(pays), wht: K.cls === 'PS' ? whtsBody(whts) : [] };
@@ -169,9 +170,10 @@ export function SettleFormPage({ path }: { path: string }) {
   useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F5: () => setTab('bills'), F7: () => setTab('pay'), 'Ctrl+F7': id ? () => setTab('vat') : undefined, 'Ctrl+F10': K.cls === 'PS' ? () => setTab('wht') : undefined,
     'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
+  const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: readOnly, resetKey: h ? 'on' : 'off' });
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const cancelled = cur.data?.doc_status === 'C';
-  const docNo = id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : '';
+  const docNo = id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '');
   const ro = readOnly;
   return (
     <div className={cx('page', tColor && 'book-colored')} data-tone="finance" style={bookStyle(tColor)}>
@@ -192,7 +194,7 @@ export function SettleFormPage({ path }: { path: string }) {
       {h && <div onKeyDown={navKey}>
         <div className="head-grid trade-head">
           <div className="col">
-            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
+            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {!ro && <Field label={K.module === 'AR' ? 'อ้างใบวางบิล' : 'อ้างใบรับวางบิล'} hint="เลือกแล้วติ๊กบิลทุกใบในใบวางบิลให้ (ยอดค้างเต็ม) — แก้ยอดได้"><select value={billRef} disabled={!h.party} onChange={(e) => {
               const b = bills.data?.rows.find((x) => x.id === e.target.value); setBillRef(e.target.value);
@@ -207,6 +209,8 @@ export function SettleFormPage({ path }: { path: string }) {
             {K.module === 'AR' && <Field label="พนักงานเก็บเงิน"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></Field>}
           </div>
           <div className="col">
+            
+            {dn.field}
             
             <Field label={K.cls === 'RE' ? 'วันที่ใบเสร็จ' : 'วันที่ทำเอกสาร'} req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v, ...(h.payment_date === h.doc_date ? { payment_date: v } : {}) })} /></Field>
             <Field label={`วันที่${rp(K)}เงิน`} hint="วันรับ/จ่ายเงินจริง ไม่ต้องตรงวันที่เอกสาร"><DateInput value={h.payment_date} disabled={ro} onChange={(v) => set({ payment_date: v })} /></Field>

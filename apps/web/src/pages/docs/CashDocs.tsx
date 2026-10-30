@@ -4,8 +4,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CASH_KINDS, computeDoc, d, dueDate, fmt, settlementTotals, todayIso, wht50FormOf, type CashKind } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
-import { SearchPick } from '../../components/LkSelect';
+import { focusAfterTable, SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { useDocNo } from '../../components/DocNo';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
@@ -164,11 +165,12 @@ export function CashFormPage({ path }: { path: string }) {
   const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.price_type ? { price_type: t.price_type as Head['price_type'] } : {}), ...(t?.vat_rate != null ? { vat_rate: num(t.vat_rate) } : {}) }); };
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
+  const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: ro, resetKey: h ? 'on' : 'off' });
   const save = async (andNew = false) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, party_id: h.party?.id ?? null, party_name: h.party ? null : h.party_name || null, your_ref: h.your_ref || null,
+    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id ?? null, party_name: h.party ? null : h.party_name || null, your_ref: h.your_ref || null,
       ref_no: h.ref_no || null, ref_date: h.ref_date || null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, credit_days: h.credit_days === '' ? null : Number(h.credit_days),
       price_type: h.price_type, vat_rate: h.vat_rate || '0', remark: h.remark || null, wht_amount: K.whtEntries ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
       lines: used.map((l) => ({ item_id: K.lines === 'code' ? l.item_id || null : null, description: l.description || null, amount: l.amount || '0' })),
@@ -194,7 +196,7 @@ export function CashFormPage({ path }: { path: string }) {
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const cancelled = cur.data?.doc_status === 'C';
-  const docNo = id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : '';
+  const docNo = id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '');
   return (
     <div className={cx('page', tColor && 'book-colored')} data-tone={TONE(K)} style={bookStyle(tColor)}>
       <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
@@ -225,6 +227,8 @@ export function CashFormPage({ path }: { path: string }) {
           </div>
           <div className="col">
             
+            {dn.field}
+            
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
             {K.deposit && <Field label="ครบกำหนด (วัน)" hint="ใช้ติดตามว่าตัดสินใจซื้อ/ส่งของเกินกำหนดหรือไม่"><div className="pair"><input type="number" min={0} value={h.credit_days} disabled={ro} onChange={(e) => set({ credit_days: e.target.value })} aria-label="ครบกำหนด (วัน)" /><span className="muted small" style={{ alignSelf: 'center' }}><DateText v={dueDate(h.doc_date, Number(h.credit_days || 0))} /></span></div></Field>}
             <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
@@ -242,7 +246,7 @@ export function CashFormPage({ path }: { path: string }) {
               {lines.map((l, i) => (
                 <tr key={l.key}>
                   <td className="muted">{i + 1}</td>
-                  {K.lines === 'code' && <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module, types: K.cls === 'OI' ? '4' : '5,2' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} disabled={ro}
+                  {K.lines === 'code' && <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module, types: K.cls === 'OI' ? '4' : '5,2' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} disabled={ro}
                     label={(r: { name_th: string }) => r.name_th} onPick={(r: { id: string; code: string; name_th: string; price_1: string | null; std_cost: string | null } | null) => setLine(l.key, r ? { item_id: r.id, item_code: r.code, description: r.name_th, amount: l.amount || num(K.module === 'AR' ? r.price_1 : r.std_cost) } : { item_id: '', item_code: '' })} aria-label={`รหัส ${i + 1}`} /></td>}
                   <td><input value={l.description} maxLength={200} disabled={ro} placeholder={K.deposit ? 'เช่น รับเงินมัดจำล่วงหน้า 10% สำหรับคอมพิวเตอร์ 1 ชุด' : ''} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบาย" /></td>
                   <td><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" /></td>

@@ -7,7 +7,7 @@ import { badRequest, notFound, parse, requireCompany, type AuthContext } from '.
 import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
-import { activeSettlement, cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
+import { activeSettlement, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
 import { checkWht, readMoneyParts, whtSchema, writeWht } from './payments.js';
 
@@ -19,7 +19,7 @@ const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ?
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 
 export const tradeBody = z.object({
-  doc_type_id: uuid, doc_date: isoDate, party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'), bill_to_customer_id: optId,
+  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'), bill_to_customer_id: optId,
   party_tax_branch_no: str(5), your_ref: str(30), ref_no: str(30), ref_date: isoDate.nullable().optional(), ref_header_id: optId,
   department_id: optId, salesperson_id: optId, sales_area_code: str(10), ship_via_code: str(10), ship_to_id: optId, warehouse_id: optId,
   credit_days: z.coerce.number().int().min(0).max(999).nullable().optional(), due_date: isoDate.nullable().optional(),
@@ -151,7 +151,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
       for (const t of ['doc_line', 'doc_payment', 'tax_wht_entry'] as const) await tx.updateTable(t).set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
       await tx.updateTable('doc_link').set({ deleted_at: sql`now()` as never }).where('to_header_id', '=', id).where('link_type', '=', 'DEPOSIT').where('deleted_at', 'is', null).execute();
     } else {
-      docNo = await issueDocNo(tx, a.companyId, dt.id);
+      docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: a.branchId ?? (await tx.selectFrom('sys_branch').select('id').where('company_id', '=', a.companyId).where('is_head_office', '=', true).executeTakeFirstOrThrow()).id,
         doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
@@ -397,6 +397,6 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
     const types = await db.selectFrom('md_doc_type').select(['id', 'code', 'name_th', 'next_no', 'price_type', 'vat_rate', 'vat_basis', 'warehouse_id', 'department_id'])
       .where('company_id', '=', a.companyId).where('doc_class', '=', cls).where('status', '=', 'A').where('deleted_at', 'is', null).orderBy('code').execute();
     // ภาระภาษีของสินค้าบริการ (ค่าเริ่มต้นระบบขาย ข้อ 11): 1 เกณฑ์สิทธิ 2 เกณฑ์เงินสด 3 ให้ผู้ใช้เลือกตอนเปิดบิล
-    return { types, vat_rate: s['gen.vat_rate'] ?? 7, price_type: s['gen.price_type'] ?? '2', service_vat_basis: String(s[cls === 'IV' || cls === 'HS' || cls === 'DR' || cls === 'CN' ? 'ar.service_vat_basis' : 'ap.service_vat_basis'] ?? '3') };
+    return { types, main_warehouse_id: (await stockSettings(db, a.companyId)).mainWarehouseId, vat_rate: s['gen.vat_rate'] ?? 7, price_type: s['gen.price_type'] ?? '2', service_vat_basis: String(s[cls === 'IV' || cls === 'HS' || cls === 'DR' || cls === 'CN' ? 'ar.service_vat_basis' : 'ap.service_vat_basis'] ?? '3') };
   });
 }

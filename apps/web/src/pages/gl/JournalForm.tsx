@@ -64,6 +64,9 @@ export function JournalFormPage() {
   const [drafts, setDrafts] = useState<{ vat: VatDraft[]; wht: WhtDraft[] }>({ vat: [], wht: [] });
   const [taxAsk, setTaxAsk] = useState<{ andNew: boolean; gaps: Array<{ key: string; label: string; line: string; entered: string }> } | null>(null);
   const [nextNo, setNextNo] = useState('');
+  // ช่องเลขที่ (ข้อกำหนดเจ้าของ): แสดงตัวนำหน้าของสมุดไว้ให้ คีย์เลขเองได้ · ไม่คีย์ = เลขอัตโนมัติ (ยกเว้นบริษัทตั้ง "ป้อนเลขเอง")
+  const noPrefix = (nextNo.match(/^\D*/)?.[0] ?? '');
+  const ownNo = typedNo.trim() && typedNo.trim().toUpperCase() !== noPrefix.toUpperCase() ? typedNo.trim() : '';
   const [saves, setSaves] = useState(0); // นับครั้งที่บันทึก — ให้ดึงเลขที่ถัดไปใหม่หลัง "บันทึก+ใหม่"
   const gridRef = useRef<HTMLDivElement>(null);
   const can = useCan('GL.JNL');
@@ -163,7 +166,7 @@ export function JournalFormPage() {
       if (gaps.length) { setTaxAsk({ andNew, gaps }); return; }
     }
     setErr(null); setBusy(true);
-    const body = { ...h, voucher_no: manualNo ? typedNo.trim() || null : undefined, description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0' })),
+    const body = { ...h, voucher_no: ownNo || (manualNo ? null : undefined), description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0' })),
       ...(isNew ? { vat: drafts.vat.map(vatPayload), wht: drafts.wht.map(whtPayload) } : {}) };
     try {
       const r = isNew ? await api.post<{ id: string; voucher_no: string }>('/api/v1/gl/journals', body) : await api.put<{ id: string; voucher_no: string }>(`/api/v1/gl/journals/${id}`, body);
@@ -226,11 +229,19 @@ export function JournalFormPage() {
         <div className="head-grid">
           <div className="col">
             <Field label="วันที่" req><DateInput value={h.voucher_date} onChange={(v) => { setDirty(true); setH({ ...h, voucher_date: v }); }} autoFocus={isNew} /></Field>
-            <Field label="เลขที่ใบสำคัญ" hint={isNew ? `${manualNo ? 'ป้อนเลขเอง (ตามค่าเริ่มต้นระบบบัญชี)' : 'ออกเลขอัตโนมัติตอนบันทึก'} · 🔍/F4 เลือกต้นแบบ · 📋/Ctrl+F6 คัดลอกจากใบสำคัญอื่น` : undefined}>
+            <Field label="เลขที่ใบสำคัญ" hint={isNew ? `${manualNo ? 'ป้อนเลขเอง (ตามค่าเริ่มต้นระบบบัญชี)' : ownNo ? 'คีย์เลขเอง — ห้ามซ้ำ' : `เว้นไว้ = เลขอัตโนมัติ ${nextNo}`} · 🔍/F4 เลือกต้นแบบ · 📋/Ctrl+F6 คัดลอกจากใบสำคัญอื่น` : undefined}>
               <span className="lk-in">
-                {manualNo
-                  ? <input value={typedNo} maxLength={30} className="mono" placeholder="ป้อนเลขที่ใบสำคัญ" aria-required onChange={(e) => { setDirty(true); setTypedNo(e.target.value); }} onKeyDown={(e) => { if (e.key === 'F4') { e.preventDefault(); setTplPick(''); } }} />
-                  : <input readOnly value={isNew ? nextNo : j?.voucher_no ?? ''} className="mono" onKeyDown={(e) => { if (isNew && e.key === 'F4') { e.preventDefault(); setTplPick(''); } }} />}
+                {isNew
+                  ? <input value={typedNo || noPrefix} maxLength={30} className="mono" placeholder={manualNo ? 'ป้อนเลขที่ใบสำคัญ' : nextNo} aria-required={manualNo} aria-label="เลขที่ใบสำคัญ"
+                      onChange={(e) => { setDirty(true); setTypedNo(e.target.value.replace(/\s/g, '')); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'F4') { e.preventDefault(); setTplPick(''); }
+                        else if (e.key === 'Enter' && !ownNo) {
+                          if (manualNo) { e.preventDefault(); e.stopPropagation(); toast('บริษัทตั้งให้ป้อนเลขที่ใบสำคัญเอง — คีย์เลขที่ก่อน', 'bad'); }
+                          else toast(`ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ ${nextNo} (ออกเลขจริงตอนบันทึก)`, 'warn');
+                        }
+                      }} />
+                  : <input readOnly value={j?.voucher_no ?? ''} className="mono" />}
                 {isNew && <button type="button" className="icon-btn" onClick={() => setTplPick('')} title="เลือกต้นแบบวิธีการบันทึก (F4)">🔍</button>}
                 {isNew && <button type="button" className="icon-btn" onClick={() => setCopyPick(true)} title="คัดลอกรายการจากใบสำคัญอื่น (Ctrl+F6)">📋</button>}
                 {isNew && <button type="button" className="icon-btn" onClick={() => setVatAsk(true)} title="ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน">%</button>}

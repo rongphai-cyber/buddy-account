@@ -160,7 +160,7 @@ export function stockCountRoutes(app: FastifyInstance, db: Db) {
          ORDER BY w.code, i.code FOR UPDATE OF c`.execute(tx)).rows;
       if (!rows.length) throw badRequest('ไม่มีรายการที่บันทึกยอดนับแล้ว (สถานะ 3) ในช่วงที่เลือก — บันทึกยอดนับก่อน');
       const lines = rows.map((r) => ({ item_id: r.item_id, warehouse_id: r.warehouse_id, qty: d(r.counted_qty).minus(d(r.system_qty)).toString(), description: null, unit_id: null, factor: '1', unit_cost: null, amount: null, source_line_id: null }));
-      const doc = await writeStockDoc(tx, a, JU, null, { doc_type_id: dt.id, doc_date: b.count_date, department_id: null, remark: b.remark || `ปรับปรุงจากการตรวจนับ ${b.count_date}`, your_ref: null, warehouse_id: null, to_warehouse_id: null, lines }, { allowZero: true, fromCount: true });
+      const doc = await writeStockDoc(tx, a, JU, null, { doc_type_id: dt.id, doc_no: null, doc_date: b.count_date, department_id: null, remark: b.remark || `ปรับปรุงจากการตรวจนับ ${b.count_date}`, your_ref: null, warehouse_id: null, to_warehouse_id: null, lines }, { allowZero: true, fromCount: true });
       const ids = await tx.selectFrom('doc_line').select(['id', 'line_no']).where('header_id', '=', doc.id).where('deleted_at', 'is', null).orderBy('line_no').execute();
       for (const [i, r] of rows.entries()) {
         await tx.updateTable('inv_stock_count').set({ flag: '6', adjust_line_id: ids[i]!.id, system_qty: r.system_qty, diff_qty: lines[i]!.qty, updated_by: a.userId, updated_at: sql`now()` as never }).where('id', '=', r.id).execute();

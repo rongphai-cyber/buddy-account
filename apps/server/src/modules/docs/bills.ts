@@ -5,7 +5,7 @@ import { BILL_KINDS, d, type BillKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
-import { cancelDocument, issueDocNo } from './engine.js';
+import { cancelDocument, docNoFor, docNoInput } from './engine.js';
 import { branchOf } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -15,7 +15,7 @@ const str = (max: number) => z.string().trim().max(max).nullable().optional().tr
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 
 const body = z.object({
-  doc_type_id: uuid, doc_date: isoDate, party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'),
+  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'),
   /** วันที่ไปวางบิล (อาจคนละวันกับวันที่เอกสาร) */
   visit_date: isoDate.nullable().optional(),
   appointment_date: isoDate.nullable().optional(), payment_terms: str(60), remark: str(2000), department_id: optId, salesperson_id: optId,
@@ -68,7 +68,7 @@ async function saveBill(db: Db, a: Ctx, K: BillKind, id: string | null, b: Body)
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
       await tx.updateTable('doc_bill_item').set({ deleted_at: sql`now()` as never }).where('bill_header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
-      docNo = await issueDocNo(tx, a.companyId, dt.id);
+      docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_bill_item').values(items.map((o) => ({ company_id: a.companyId, bill_header_id: hid!, invoice_header_id: o.header_id, amount: d(o.outstanding).toFixed(2), created_by: a.userId }))).execute();

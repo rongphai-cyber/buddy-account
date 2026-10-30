@@ -229,7 +229,7 @@ function AddModal({ date, onClose, onDone }: { date: string; onClose: () => void
       <p className="hint">สำหรับสินค้าที่พบในคลังแต่ไม่อยู่ในรายการ (เช่น ไม่เคยมีความเคลื่อนไหวในคลังนี้)</p>
       <div className="form-grid">
         <Field label="คลัง" req><LkSelect byId rows={lk.data?.WH} value={wh} onChange={(v) => setWh(v || null)} aria-label="คลัง" /></Field>
-        <Field label="รหัสสินค้า" req><SearchPick<{ id: string; code: string; name_th: string }> endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={item} autoFocus label={(r: { name_th: string }) => r.name_th}
+        <Field label="รหัสสินค้า" req><SearchPick<{ id: string; code: string; name_th: string }> endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} required value={item} autoFocus label={(r: { name_th: string }) => r.name_th}
           onPick={(r: { id: string; code: string; name_th: string } | null) => setItem(r ? { id: r.id, code: r.code, name: r.name_th } : null)} /></Field>
       </div>
     </Modal>

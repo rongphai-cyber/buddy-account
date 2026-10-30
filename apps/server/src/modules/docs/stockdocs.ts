@@ -6,7 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
-import { cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
+import { cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { branchOf } from './payments.js';
 import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
 
@@ -24,7 +24,7 @@ const str = (max: number) => z.string().trim().max(max).nullable().optional().tr
 const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 const body = z.object({
-  doc_type_id: uuid, doc_date: isoDate, department_id: optId, remark: str(2000), your_ref: str(60),
+  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, department_id: optId, remark: str(2000), your_ref: str(60),
   warehouse_id: optId, to_warehouse_id: optId,
   lines: z.array(z.object({
     item_id: uuid, description: str(200), warehouse_id: optId, qty: num.default('0'), unit_id: optId, factor: num.optional(),
@@ -82,7 +82,7 @@ export async function writeStockDoc(db: Db, a: Ctx, K: StockKind, id: string | n
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
       await tx.updateTable('doc_line').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
-      docNo = await issueDocNo(tx, a.companyId, dt.id);
+      docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     const st = await stockSettings(tx, a.companyId);

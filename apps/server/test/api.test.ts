@@ -1439,6 +1439,29 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/ar-opening')).body.total).toBe('0.00');
   });
 
+  it('document number typed by the user (ข้อกำหนดเจ้าของ): kept, unique per company, blank = automatic', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0] as { id: string; code: string; next_no: string };
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const iv = await typeOf('IV');
+    const base = { doc_type_id: iv.id, doc_date: '2027-08-06', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 100 }] };
+    const own = (await call('POST', '/api/v1/sales-invoices', { ...base, doc_no: 'IV-MAN/001' })).body;
+    expect(own.doc_no).toBe('IV-MAN/001');
+    expect((await call('GET', `/api/v1/docs/${own.id}/journal`)).body.journals[0].voucher_no).toBe('IV-MAN/001');
+    // ซ้ำกับเอกสารอื่น (ประเภทใดก็ได้) → แจ้งให้เปลี่ยนหรือเว้นว่าง
+    const dup = await call('POST', '/api/v1/sales-invoices', { ...base, doc_no: 'IV-MAN/001' });
+    expect([dup.status, dup.body.error.message]).toEqual([400, expect.stringMatching(/IV-MAN\/001 มีอยู่แล้ว.*เว้นว่าง/)]);
+    expect((await call('POST', '/api/v1/sales-invoices', { ...base, doc_no: 'IV 001' })).body.error.message).toMatch(/ไม่มีช่องว่าง/);
+    // ว่าง = เลขอัตโนมัติตามประเภทเอกสาร
+    const auto = (await call('POST', '/api/v1/sales-invoices', { ...base, doc_no: '' })).body;
+    expect(auto.doc_no.startsWith(iv.code)).toBe(true);
+    const re = await typeOf('RE');
+    const rcpt = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: re.id, doc_no: 'RE-MAN/001', doc_date: '2027-08-07', party_id: cus, settlements: [{ invoice_header_id: own.id, amount: 107 }] })).body;
+    expect(rcpt.doc_no).toBe('RE-MAN/001');
+    for (const [path, x] of [['ar-receipts', rcpt.id], ['sales-invoices', own.id], ['sales-invoices', auto.id]])
+      expect((await call('POST', `/api/v1/${path}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('executive dashboard (RP.DASH): sales/AR/cash/aging from live documents, filters, isolation', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;

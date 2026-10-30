@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
@@ -116,11 +117,12 @@ export function BillFormPage({ path }: { path: string }) {
   const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v }); };
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
+  const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: ro, resetKey: h ? 'on' : 'off' });
   const save = async () => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, visit_date: h.visit_date || null, appointment_date: h.appointment_date || null, party_id: h.party?.id, payment_terms: h.payment_terms || null, remark: h.remark || null,
+    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, visit_date: h.visit_date || null, appointment_date: h.appointment_date || null, party_id: h.party?.id, payment_terms: h.payment_terms || null, remark: h.remark || null,
       items: chosen.map((o) => ({ invoice_header_id: o.header_id })) };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
@@ -139,7 +141,7 @@ export function BillFormPage({ path }: { path: string }) {
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   return (
     <div className={cx('page', tColor && 'book-colored')} data-tone="finance" style={bookStyle(tColor)}>
-      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : ''}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
+      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '')}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">บันทึกแล้ว (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setPick(new Set()); nav(`${K.route}/new`); } }}>+ ใหม่</button>
@@ -154,11 +156,13 @@ export function BillFormPage({ path }: { path: string }) {
       {h && <div onKeyDown={navKey}>
         <div className="head-grid trade-head">
           <div className="col">
-            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string }> endpoint={partyEndpoint(K)} value={h.party} disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
+            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string }> endpoint={partyEndpoint(K)} value={h.party} required disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             <Field label="เงื่อนไขการชำระเงิน"><input value={h.payment_terms} maxLength={60} disabled={ro} onChange={(e) => set({ payment_terms: e.target.value })} /></Field>
             <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
           </div>
           <div className="col">
+            
+            {dn.field}
             
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
             {K.module === 'AR' && <Field label="วันที่ไปวางบิล"><DateInput value={h.visit_date} disabled={ro} onChange={(v) => set({ visit_date: v })} /></Field>}

@@ -6,7 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
-import { cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
+import { cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { branchOf, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, writePayments } from './payments.js';
 
 /**
@@ -21,11 +21,11 @@ const str = (max: number) => z.string().trim().max(max).nullable().optional().tr
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 
 const dpBody = z.object({
-  doc_type_id: uuid, doc_date: isoDate, remark: str(2000),
+  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
   lines: z.array(z.object({ account_id: uuid, department_id: optId, description: str(200), amount: num })).min(1, 'ป้อนรายการที่จ่ายอย่างน้อย 1 บรรทัด').max(200),
 });
 const vrBody = z.object({
-  doc_type_id: uuid, doc_date: isoDate, remark: str(2000),
+  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
   dp_ids: z.array(uuid).min(1, 'เลือกใบจ่ายเงินสดย่อยที่จะเบิกชดเชยอย่างน้อย 1 ใบ').max(500),
   cash_amount: num.nullable().optional(), payments: paymentsSchema,
 });
@@ -66,7 +66,7 @@ async function saveDp(db: Db, a: Ctx, id: string | null, b: z.infer<typeof dpBod
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
       await tx.updateTable('doc_line').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
-      docNo = await issueDocNo(tx, a.companyId, dt.id);
+      docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: l.account_id, department_id: l.department_id, description: l.description,
@@ -113,7 +113,7 @@ async function saveVr(db: Db, a: Ctx, id: string | null, b: z.infer<typeof vrBod
       await tx.updateTable('doc_line').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
       await tx.updateTable('doc_link').set({ deleted_at: sql`now()` as never }).where('to_header_id', '=', id).where('link_type', '=', 'REIMBURSE').where('deleted_at', 'is', null).execute();
     } else {
-      docNo = await issueDocNo(tx, a.companyId, dt.id);
+      docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_line').values(agg.map((x, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: x.account_id, department_id: x.department_id,

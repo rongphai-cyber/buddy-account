@@ -92,5 +92,17 @@
  "(ณ สิ้นช่วง)": "(at end of period)",
  "(ณ สิ้นช่วงที่เจาะดู)": "(at end of drilled period)",
  "ลูกหนี้การค้าคงเหลือ {0}": "Outstanding A/R {0}",
- "เจ้าหนี้การค้าคงเหลือ {0}": "Outstanding A/P {0}"
+ "เจ้าหนี้การค้าคงเหลือ {0}": "Outstanding A/P {0}",
+ "ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ {0} (ออกเลขจริงตอนบันทึก)": "No number typed — the automatic number {0} will be used (assigned when saved)",
+ "(ไม่พบ กด Insert เพิ่มใหม่)": "(not found? press Insert to add new)",
+ "คีย์เลขเอง — ห้ามซ้ำ": "Own number — must be unique",
+ "คีย์เลขเอง — ห้ามซ้ำกับเอกสารอื่น": "Own number — must not duplicate another document",
+ "ต้องเลือก{0}ก่อน — พิมพ์รหัส/ชื่อเพื่อค้นหา แล้ว Enter เลือก{1}": "Please choose {0} first — type a code/name to search, then press Enter to select {1}",
+ "บริษัทตั้งให้ป้อนเลขที่ใบสำคัญเอง — คีย์เลขที่ก่อน": "This company requires typing the voucher number — enter a number first",
+ "รหัสสินค้า/บริการ": "an item/service code",
+ "เลขที่ {0} มีอยู่แล้ว (ลงวันที่ {1}) — เปลี่ยนเลขที่ หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ": "Number {0} already exists (dated {1}) — change it, or leave blank for an automatic number",
+ "เลขที่เอกสารยาวไม่เกิน 30 ตัวอักษร": "Document number must be at most 30 characters",
+ "เลขที่เอกสารใช้ได้เฉพาะตัวอักษร ตัวเลข และ / - . _ (ไม่มีช่องว่าง)": "Document number may contain only letters, digits and / - . _ (no spaces)",
+ "เว้นไว้ = เลขอัตโนมัติ {0}": "Leave as is = automatic number {0}",
+ "เอกสารที่อ้างถึง": "the referenced document"
 }

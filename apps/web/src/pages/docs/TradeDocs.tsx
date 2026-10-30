@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computeDoc, d, dueDate, fmt, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
-import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
+import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
+import { useDocNo } from '../../components/DocNo';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
@@ -171,7 +172,7 @@ export function TradeFormPage({ path }: { path: string }) {
   const can = useCan(K.menu);
   const { me } = useSession();
   const lk = useLookups('40,41,UNIT,WH');
-  const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; next_no: string; price_type: string | null; vat_rate: string | null; vat_basis: string | null }>; vat_rate: number; price_type: string ; service_vat_basis?: string }>(`/api/v1/trade-defaults/${K.cls}`) });
+  const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; next_no: string; price_type: string | null; vat_rate: string | null; vat_basis: string | null; warehouse_id?: string | null }>; main_warehouse_id?: string | null; vat_rate: number; price_type: string ; service_vat_basis?: string }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const slms = useQuery({ enabled: K.module === 'AR', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const methods = useQuery({ enabled: !!K.payments, queryKey: ['payment-methods', K.module === 'AR' ? 'R' : 'P'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>(`/api/v1/payment-methods/${K.module === 'AR' ? 'R' : 'P'}`) });
@@ -277,7 +278,9 @@ export function TradeFormPage({ path }: { path: string }) {
     const factor = ar ? (it.sales_unit_id ? it.sales_factor : '1') : (it.purchase_unit_id ? it.purchase_factor : '1');
     const was = lines.find((l) => l.key === k);
     const fromBill = !!was && !was.item_id && !!was.unit_price;   // บรรทัดที่ AI เติมจากบิล — คงราคาตามบิล
-    setLine(k, { item_id: it.id, item_code: it.code, description: it.name_th, unit_id: unit, factor: num(factor) || '1', unit_price: fromBill ? was.unit_price : num(price), vat_exempt: it.vat_code === '0', qty: was?.qty || '1' });
+    const stockItem = it.item_type === '0' || it.item_type === '1' || it.item_type === '2';
+    const wh = was?.warehouse_id ?? (stockItem ? (defs.data?.types.find((t) => t.id === h?.doc_type_id)?.warehouse_id ?? defs.data?.main_warehouse_id ?? null) : null);
+    setLine(k, { item_id: it.id, item_code: it.code, description: it.name_th, warehouse_id: wh, unit_id: unit, factor: num(factor) || '1', unit_price: fromBill ? was.unit_price : num(price), vat_exempt: it.vat_code === '0', qty: was?.qty || '1' });
   };
   /** เติมร่างจากบิลที่ AI อ่าน (T7.7) — ยังไม่บันทึก ผู้ใช้ตรวจ/เลือกรหัสที่ยังไม่พบ แล้วบันทึกเอง */
   const applyBill = async (r: AiBillResult) => {
@@ -305,7 +308,7 @@ export function TradeFormPage({ path }: { path: string }) {
     const zero = lines.find((l) => l.item_id && !l.is_free && !ok.has(l.key) && d(l.unit_price || 0).isZero() && K.cls !== 'QT');
     if (zero) { setAskFree({ key: zero.key, andNew }); return; }
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, party_id: h.party?.id, bill_to_customer_id: h.bill_to?.id ?? null, party_tax_branch_no: h.party_tax_branch_no || null, your_ref: h.your_ref || null,
+    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id, bill_to_customer_id: h.bill_to?.id ?? null, party_tax_branch_no: h.party_tax_branch_no || null, your_ref: h.your_ref || null,
       ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, ref_date: supInv ? refDate || null : null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
       credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type, vat_rate: h.vat_rate || '0', vat_basis: h.vat_basis, discount_text: h.discount_text || null, remark: h.remark || null,
       lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1', unit_price: l.unit_price || '0', discount_text: l.discount_text || null, is_free: l.is_free, return_to_stock: l.return_to_stock, source_line_id: l.source_line_id ?? null })),
@@ -339,8 +342,9 @@ export function TradeFormPage({ path }: { path: string }) {
     'Ctrl+F10': K.cls === 'HP' ? () => setTab('wht') : id && (K.cls === 'RR' || K.cls === 'CP') ? () => setTab('whtb') : undefined, 'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); }, 'Ctrl+Insert': readOnly ? undefined : addLine, F6: K.orderRef && !readOnly ? () => setPickOrder(true) : K.refInvoice && !readOnly && h?.ref?.id ? () => setPickRef(true) : undefined }, []);
   const dtCode = defs.data?.types.find((t) => t.id === h?.doc_type_id);
+  const dn = useDocNo(dtCode, id ? cur.data?.doc_no : undefined, { disabled: readOnly, resetKey: h ? 'on' : 'off' });
   const cancelled = cur.data?.doc_status === 'C';
-  const docNo = id ? cur.data?.doc_no : dtCode ? `${dtCode.code}**NEW**` : '';
+  const docNo = id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '');
   return (
     <div className={cx('page', tColor && 'book-colored')} data-tone={TONE(K)} style={bookStyle(tColor)}>
       <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
@@ -362,17 +366,18 @@ export function TradeFormPage({ path }: { path: string }) {
       {h && <div onKeyDown={navKey}>
         <div className="head-grid trade-head">
           <div className="col">
-            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} disabled={readOnly} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
+            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required disabled={readOnly} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {K.party === 'customer' && <Field label="Bill to" hint="ชื่อบนใบกำกับ ถ้าเรียกเก็บในนามอื่น"><SearchPick endpoint="/api/v1/customers" value={h.bill_to} disabled={readOnly} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => set({ bill_to: r })} /></Field>}
             <Field label="สาขา#"><input className="mono" value={h.party_tax_branch_no} maxLength={5} disabled={readOnly} onChange={(e) => set({ party_tax_branch_no: e.target.value })} /></Field>
             <Field label="อ้างอิง"><input value={h.your_ref} maxLength={30} disabled={readOnly} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
             {supInv && <Field label="เลขที่ใบกำกับ/บิลผู้จำหน่าย / ลงวันที่" hint="เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่/วันที่เอกสาร"><div className="pair" style={{ gridTemplateColumns: 'minmax(0, 1fr) 150px' }}><input value={h.ref?.code ?? ''} maxLength={30} disabled={readOnly} onChange={(e) => set({ ref: e.target.value ? { id: '', code: e.target.value } : null })} aria-label="เลขที่ใบกำกับผู้จำหน่าย" /><DateInput value={refDate} disabled={readOnly} onChange={(v) => { setRefDate(v); setDirty(true); }} /></div></Field>}
-            {K.refInvoice && <Field label="เลขที่ใบกำกับที่อ้างถึง" req><SearchPick<{ id: string; doc_no: string; party_name: string; net_amount: string }> endpoint={`/api/v1/${K.module === 'AR' ? 'sales-invoices' : 'purchase-invoices'}`} params={h.party ? { party_id: h.party.id, status: 'N' } : undefined} value={h.ref} disabled={readOnly || !h.party}
+            {K.refInvoice && <Field label="เลขที่ใบกำกับที่อ้างถึง" req><SearchPick<{ id: string; doc_no: string; party_name: string; net_amount: string }> required endpoint={`/api/v1/${K.module === 'AR' ? 'sales-invoices' : 'purchase-invoices'}`} params={h.party ? { party_id: h.party.id, status: 'N' } : undefined} value={h.ref} disabled={readOnly || !h.party}
               codeOf={(r: { doc_no: string }) => r.doc_no} label={(r: { party_name: string; net_amount: string }) => `${r.party_name} ${fmt(r.net_amount)}`} onPick={(r: { id: string; doc_no: string } | null) => set({ ref: r ? { id: r.id, code: r.doc_no } : null })} placeholder={h.party ? 'พิมพ์เลขที่ใบกำกับ' : `เลือก${partyWord(K)}ก่อน`} /></Field>}
           </div>
           <div className="col">
             
+            {dn.field}
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={readOnly} onChange={(v) => set({ doc_date: v })} /></Field>
             {K.order && K.cls !== 'QT' && <Field label={K.cls === 'SO' ? 'ส่งของวันที่' : 'รับของวันที่'}><DateInput value={delivery || h.doc_date} disabled={readOnly} onChange={(v) => { setDelivery(v); setDirty(true); }} /></Field>}
             {!K.payments && <Field label={K.cls === 'QT' ? 'กำหนดยืนราคา (วัน) / ครบกำหนด' : 'เครดิต (วัน) / ครบกำหนด'} hint={K.cls === 'QT' ? '0 = ไม่กำหนด ใช้อ้างซ้ำเป็นแม่แบบได้' : undefined}><div className="pair"><input type="number" min={0} value={h.credit_days} disabled={readOnly} onChange={(e) => set({ credit_days: e.target.value })} aria-label="เครดิต" /><span className="muted small" style={{ alignSelf: 'center' }}><DateText v={dueDate(h.doc_date, Number(h.credit_days || 0))} /></span></div></Field>}
@@ -399,7 +404,8 @@ export function TradeFormPage({ path }: { path: string }) {
               {lines.map((l, i) => (
                 <tr key={l.key}>
                   <td className="muted">{i + 1}</td>
-                  <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} disabled={readOnly} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
+                  <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} disabled={readOnly} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)}
+                    required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td><input value={l.description} maxLength={200} disabled={readOnly} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" />{l.source_no && <span className="small muted">อ้าง {l.source_no}</span>}</td>
                   <td><LkSelect byId rows={lk.data?.WH} value={l.warehouse_id} disabled={readOnly} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>
                   <td><input className="r" inputMode="decimal" value={l.qty} disabled={readOnly} onChange={(e) => setLine(l.key, { qty: e.target.value.replace(/[^\d.-]/g, '') })} aria-label="จำนวน" /></td>
@@ -470,7 +476,7 @@ export function TradeFormPage({ path }: { path: string }) {
         {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} vatBasis={h.vat_basis} />}
         {tab === 'gl' && id && <DocJournalTab id={id} />}
         <div className="trade-foot">
-          <Field label="หมายเหตุ"><textarea rows={2} value={h.remark} maxLength={2000} disabled={readOnly} onChange={(e) => set({ remark: e.target.value })} /></Field>
+          <Field label="หมายเหตุ"><textarea id="doc-remark" rows={2} value={h.remark} maxLength={2000} disabled={readOnly} onChange={(e) => set({ remark: e.target.value })} /></Field>
           {calc && <table className="totals-table"><tbody>
             <tr><td>จำนวนเงิน</td><td className="r"><Money v={calc.amount} /></td></tr>
             <tr><td>หักส่วนลด <input value={h.discount_text} maxLength={20} disabled={readOnly} onChange={(e) => set({ discount_text: e.target.value })} placeholder="10% หรือ 500" aria-label="ส่วนลดท้ายบิล" style={{ width: 110 }} /></td><td className="r"><Money v={calc.discount_amount} /></td></tr>

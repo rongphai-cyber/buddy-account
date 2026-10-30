@@ -6,7 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
-import { cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
+import { cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { branchOf, checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -18,7 +18,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไ�
 const CODE_TYPES: Record<string, string[]> = { OI: ['4'], OE: ['5', '2'] };
 
 const body = z.object({
-  doc_type_id: uuid, doc_date: isoDate, party_id: optId, party_name: str(200), party_tax_branch_no: str(5), your_ref: str(60),
+  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, party_id: optId, party_name: str(200), party_tax_branch_no: str(5), your_ref: str(60),
   ref_no: str(30), ref_date: isoDate.nullable().optional(), department_id: optId, salesperson_id: optId,
   credit_days: z.coerce.number().int().min(0).max(999).nullable().optional(), price_type: z.enum(['0', '1', '2']), vat_rate: num, remark: str(2000),
   lines: z.array(z.object({ item_id: optId, description: str(200), amount: num, department_id: optId })).min(1, 'ป้อนรายการอย่างน้อย 1 บรรทัด').max(200),
@@ -97,7 +97,7 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
       await clearMoneyParts(tx, id);
       await tx.updateTable('doc_line').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
-      docNo = await issueDocNo(tx, a.companyId, dt.id);
+      docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({

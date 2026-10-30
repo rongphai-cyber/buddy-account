@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
-import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
+import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
 
 /** ยอดยกมาสินค้า (คู่มือ S-OB-01 ล็อตยกมา FIFO / S-OB-02 ยอดยกมารายคลัง Average) — 1 ใบ = 1 ล็อต ไม่ลงบัญชี */
@@ -135,7 +135,7 @@ export function StockOpeningFormPage() {
               {lines.map((l, i) => (
                 <tr key={l.key}>
                   <td className="muted">{i + 1}</td>
-                  <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} disabled={ro} label={(r: { name_th: string }) => r.name_th}
+                  <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} disabled={ro} label={(r: { name_th: string }) => r.name_th}
                     onPick={(r: { id: string; code: string; name_th: string; base_unit_code?: string | null } | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td>{l.item_name}</td>
                   <td><LkSelect byId rows={lk.data?.WH} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>

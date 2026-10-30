@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api';
 import { ITEM_KINDS, itemKindOf } from '@buddy/core';
 import { useCan } from '../session';
+import { toast } from '../ui';
 import type { AddKind } from './AddMaster';
 
 const AddMaster = lazy(() => import('./AddMaster'));
@@ -14,6 +15,16 @@ function addKindOf(endpoint: string, params?: Record<string, string>): AddKind |
   return null;
 }
 const ADD_MENU = (k: AddKind) => (k === 'customer' ? 'SA.CUS' : k === 'supplier' ? 'PU.SUP' : ITEM_KINDS[k].menu);
+/** บรรทัดว่างท้ายตาราง: Enter = จบการคีย์รายการ ไปช่องแรกที่อยู่ถัดจากตาราง (หมายเหตุ ส่วนลด …) */
+export function focusAfterTable(input: HTMLElement) {
+  const table = input.closest('table');
+  if (!table) return;
+  const all = [...document.querySelectorAll<HTMLElement>('input:not([disabled]):not([readonly]):not([type=checkbox]), select:not([disabled]), textarea:not([disabled])')].filter((x) => x.offsetParent);
+  const next = all.find((x) => !table.contains(x) && (table.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING));
+  next?.focus();
+}
+/** คำเรียกสิ่งที่ต้องเลือก (ข้อความเตือนช่องที่ต้องมี) */
+const placeholderWord = (endpoint: string) => (/customers/.test(endpoint) ? 'ลูกค้า' : /suppliers/.test(endpoint) ? 'ผู้จำหน่าย' : /item/.test(endpoint) ? 'รหัสสินค้า/บริการ' : /invoices/.test(endpoint) ? 'เอกสารที่อ้างถึง' : 'รายการ');
 const ADD_WORD = (k: AddKind) => (k === 'customer' ? 'ลูกค้า' : k === 'supplier' ? 'ผู้จำหน่าย' : ITEM_KINDS[k].label);
 
 export type LkRow = { id?: string; code: string; name: string };
@@ -36,11 +47,16 @@ export function LkSelect({ rows, value, onChange, blank = '—', byId, missing =
 }
 
 /** ช่องค้นหาแล้วเลือก (สินค้า ผู้จำหน่าย) — พิมพ์รหัส/ชื่อ เลือกจากรายการ · F4 / ลูกศรลง เปิดรายการ */
-export function SearchPick<T extends { id: string }>({ endpoint, params, value, label, onPick, placeholder = 'พิมพ์รหัสหรือชื่อเพื่อค้นหา', describe, exclude, codeOf, addNew = true, ...rest }: {
+export function SearchPick<T extends { id: string }>({ endpoint, params, value, label, onPick, placeholder = 'พิมพ์รหัสหรือชื่อเพื่อค้นหา', describe, exclude, codeOf, addNew = true, required, onEmptyEnter, ...rest }: {
   endpoint: string; params?: Record<string, string>; value: { id: string; code: string; name?: string | null } | null; label?: (r: T) => string; codeOf?: (r: T) => string;
   onPick: (r: T | null) => void; placeholder?: string; describe?: (r: T) => string; exclude?: string[];
   /** ค้นหาไม่พบ → เพิ่มใหม่จากช่องนี้ (ข้อกำหนดเจ้าของ) — false = ปิด */
-  addNew?: boolean; [k: string]: unknown;
+  addNew?: boolean;
+  /** ช่องที่ต้องมี: Enter ตอนว่างไม่ข้ามไปช่องถัดไป แต่เปิดรายการให้เลือก (ค้นไม่พบ → เพิ่มใหม่) */
+  required?: boolean;
+  /** Enter ตอนว่าง (ไม่บังคับ) — เช่น บรรทัดว่างท้ายตาราง = จบรายการ ไปช่องถัดจากตาราง */
+  onEmptyEnter?: (input: HTMLInputElement) => void;
+  [k: string]: unknown;
 }) {
   const [q, setQ] = useState<string | null>(null);
   const [sel, setSel] = useState(0);
@@ -70,7 +86,15 @@ export function SearchPick<T extends { id: string }>({ endpoint, params, value, 
         onChange={(e) => { setQ(e.target.value); if (!e.target.value) onPick(null); }}
         onKeyDown={(e) => {
           if (e.key === 'Insert' && canAdd) { e.preventDefault(); e.stopPropagation(); startAdd(q ?? ''); return; }
-          if (q === null) { if (e.key === 'F4' || e.key === 'ArrowDown') { e.preventDefault(); setBrowse(true); setQ(value?.code ?? ''); } return; }
+          if (q === null) {
+            if (e.key === 'F4' || e.key === 'ArrowDown') { e.preventDefault(); setBrowse(true); setQ(value?.code ?? ''); }
+            else if (e.key === 'Enter' && !value && !rest.disabled && (required || onEmptyEnter)) {
+              e.preventDefault(); e.stopPropagation();
+              if (required) { setBrowse(true); setQ(''); toast(`ต้องเลือก${placeholderWord(endpoint)}ก่อน — พิมพ์รหัส/ชื่อเพื่อค้นหา แล้ว Enter เลือก${canAdd ? ' (ไม่พบ กด Insert เพิ่มใหม่)' : ''}`, 'warn'); }
+              else onEmptyEnter!(e.currentTarget);
+            }
+            return;
+          }
           if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, rows.length - 1)); }
           else if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
           else if (e.key === 'Enter') { e.preventDefault(); if (rows[sel]) pick(rows[sel]!); else if (canAdd && q.trim() && res.data && !res.isFetching) startAdd(q); }

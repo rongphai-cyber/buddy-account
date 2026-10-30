@@ -6,7 +6,7 @@ import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
 import { createJournal, periodFor } from './gl/journals.js';
-import { issueDocNo } from './docs/engine.js';
+import { docNoFor, docNoInput } from './docs/engine.js';
 import { branchOf } from './docs/payments.js';
 
 /**
@@ -90,7 +90,7 @@ const chequeBody = z.object({
   /** ป้อนจากสมุดรายวัน (S-GL-04): ใบสำคัญที่มีบรรทัดเช็คจ่าย/เช็ครับล่วงหน้า */
   source_journal_id: optId,
 });
-const depBody = z.object({ cheque_ids: z.array(uuid).min(1, 'เลือกเช็คที่นำฝากอย่างน้อย 1 ใบ').max(500), bank_account_id: uuid, doc_date: isoDate, doc_type_id: optId, remark: str(200), department_id: optId, charge: money.optional(), vat: money.optional(), wht: money.optional(),
+const depBody = z.object({ doc_no: docNoInput, cheque_ids: z.array(uuid).min(1, 'เลือกเช็คที่นำฝากอย่างน้อย 1 ใบ').max(500), bank_account_id: uuid, doc_date: isoDate, doc_type_id: optId, remark: str(200), department_id: optId, charge: money.optional(), vat: money.optional(), wht: money.optional(),
   /** ใบขายลดเช็ค (SQR): ธนาคารรับซื้อเช็คก่อนกำหนด — ผ่านทันทีวันที่ขายลด ค่าขายลดลงดอกเบี้ยจ่าย · ใบกำกับภาษีซื้อ#/ลวท. ของค่าธรรมเนียม */
   discount: z.boolean().default(false), ref_no: str(30), ref_date: isoDate.nullable().optional().transform((v) => v ?? null) });
 
@@ -376,7 +376,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
         docNo = h.doc_no;
         await releaseSlip(tx, a, id, b.doc_date);
       } else {
-        docNo = await issueDocNo(tx, a.companyId, dt.id);
+        docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
         hid = (await tx.insertInto('doc_header').values({ company_id: a.companyId, branch_id: await branchOf(tx, a), doc_type_id: dt.id, doc_class: 'BQ', module: 'BK', doc_no: docNo, doc_date: b.doc_date, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
       }
       const cs = await loadCheques(tx, a, b.cheque_ids);

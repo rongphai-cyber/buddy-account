@@ -7,7 +7,7 @@ import { badRequest, notFound, parse, requireCompany, type AuthContext } from '.
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { ledgerOf } from '../gl/reports.js';
-import { cancelDocument, issueDocNo, postDocument } from './engine.js';
+import { cancelDocument, postDocument, docNoFor, docNoInput } from './engine.js';
 import { branchOf } from './payments.js';
 
 /**
@@ -22,7 +22,7 @@ const optId = uuid.nullable().optional().transform((v) => v ?? null);
 const money = z.union([z.number(), z.string()]).transform((v) => String(v === '' || v === null ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 const body = z.object({
-  doc_type_id: uuid, doc_date: isoDate, department_id: optId, remark: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
+  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, department_id: optId, remark: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
   bank_account_id: uuid, to_bank_account_id: optId, amount: money, fee: money.optional(), wht: money.optional(),
 });
 
@@ -72,7 +72,7 @@ async function save(db: Db, a: Ctx, K: BankKind, id: string | null, b: z.infer<t
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
       await tx.updateTable('doc_line').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
-      docNo = await issueDocNo(tx, a.companyId, dt.id);
+      docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_line').values(lines.map((l, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: l.account_id, description: l.description,

@@ -243,38 +243,8 @@
 ]
 },
 {
-"th": "ลบ",
-"n": 40,
-"files": [
-"apps/web/src/components/CompanyImages.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/ItemImages.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/baht.ts"
-]
-},
-{
 "th": "ลูกค้า",
-"n": 40,
+"n": 41,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
@@ -306,8 +276,38 @@
 ]
 },
 {
+"th": "ลบ",
+"n": 40,
+"files": [
+"apps/web/src/components/CompanyImages.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/ItemImages.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/baht.ts"
+]
+},
+{
 "th": "ผู้จำหน่าย",
-"n": 38,
+"n": 39,
 "files": [
 "apps/web/src/components/AiBill.tsx",
 "apps/web/src/components/LkSelect.tsx",
@@ -401,8 +401,9 @@
 },
 {
 "th": "รายการ",
-"n": 34,
+"n": 35,
 "files": [
+"apps/web/src/components/LkSelect.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BankRecon.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
@@ -1645,6 +1646,21 @@
 ]
 },
 {
+"th": "เลขที่เอกสาร",
+"n": 11,
+"files": [
+"apps/web/src/components/DocNo.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ใหม่ — ยังไม่บันทึก",
 "n": 11,
 "files": [
@@ -1898,20 +1914,6 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/server/src/import/express/migrate.ts",
 "apps/server/src/modules/cheques.ts"
-]
-},
-{
-"th": "เลขที่เอกสาร",
-"n": 9,
-"files": [
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2709,6 +2711,17 @@
 ]
 },
 {
+"th": "เลขที่ใบสำคัญ",
+"n": 6,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "เลขผู้เสียภาษี",
 "n": 6,
 "files": [
@@ -3359,17 +3372,6 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/tools/TradeImport.tsx",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เลขที่ใบสำคัญ",
-"n": 5,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -8586,6 +8588,14 @@
 ]
 },
 {
+"th": "เลขที่ซ้ำ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
 "th": "เลขที่บัญชี (ผังบัญชี)",
 "n": 2,
 "files": [
@@ -9140,6 +9150,14 @@
 ]
 },
 {
+"th": "ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ {0} (ออกเลขจริงตอนบันทึก)",
+"n": 2,
+"files": [
+"apps/web/src/components/DocNo.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
 "th": "\",\"voucher_date\":\"2026-03-01\",\"description\":\"จากระบบหน้าร้าน\", \"lines\":[{0}",
 "n": 1,
 "files": [
@@ -9494,6 +9512,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "(ไม่พบ กด Insert เพิ่มใหม่)",
+"n": 1,
+"files": [
+"apps/web/src/components/LkSelect.tsx"
 ]
 },
 {
@@ -14313,6 +14338,20 @@
 ]
 },
 {
+"th": "คีย์เลขเอง — ห้ามซ้ำ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "คีย์เลขเอง — ห้ามซ้ำกับเอกสารอื่น",
+"n": 1,
+"files": [
+"apps/web/src/components/DocNo.tsx"
+]
+},
+{
 "th": "คืนค่าที่บันทึกไว้",
 "n": 1,
 "files": [
@@ -17743,6 +17782,13 @@
 ]
 },
 {
+"th": "ต้องเลือก{0}ก่อน — พิมพ์รหัส/ชื่อเพื่อค้นหา แล้ว Enter เลือก{1}",
+"n": 1,
+"files": [
+"apps/web/src/components/LkSelect.tsx"
+]
+},
+{
 "th": "ต้องเหมือนบัญชีคุม",
 "n": 1,
 "files": [
@@ -19119,6 +19165,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/sync/central.ts"
+]
+},
+{
+"th": "บริษัทตั้งให้ป้อนเลขที่ใบสำคัญเอง — คีย์เลขที่ก่อน",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -25919,6 +25972,13 @@
 ]
 },
 {
+"th": "รหัสสินค้า/บริการ",
+"n": 1,
+"files": [
+"apps/web/src/components/LkSelect.tsx"
+]
+},
+{
 "th": "รหัสสินค้าประกอบ",
 "n": 1,
 "files": [
@@ -30896,13 +30956,6 @@
 ]
 },
 {
-"th": "ออกเลขอัตโนมัติตอนบันทึก",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
 "th": "ออกโดยไม่บันทึก",
 "n": 1,
 "files": [
@@ -33731,6 +33784,13 @@
 ]
 },
 {
+"th": "เลขที่ {0} มีอยู่แล้ว (ลงวันที่ {1}) — เปลี่ยนเลขที่ หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
 "th": "เลขที่ {0} มีอยู่แล้ว — แนะนำใส่ปีนำหน้าเพื่อไม่ให้ซ้ำกับเลขปีปัจจุบัน",
 "n": 1,
 "files": [
@@ -33777,13 +33837,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "เลขที่ซ้ำ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Sync.tsx"
 ]
 },
 {
@@ -34071,6 +34124,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx"
+]
+},
+{
+"th": "เลขที่เอกสารยาวไม่เกิน 30 ตัวอักษร",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
+"th": "เลขที่เอกสารใช้ได้เฉพาะตัวอักษร ตัวเลข และ / - . _ (ไม่มีช่องว่าง)",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
 ]
 },
 {
@@ -34844,6 +34911,13 @@
 ]
 },
 {
+"th": "เว้นไว้ = เลขอัตโนมัติ {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/DocNo.tsx"
+]
+},
+{
 "th": "เสนอขายแทนเมื่อสินค้าหมด",
 "n": 1,
 "files": [
@@ -35002,6 +35076,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "เอกสารที่อ้างถึง",
+"n": 1,
+"files": [
+"apps/web/src/components/LkSelect.tsx"
 ]
 },
 {

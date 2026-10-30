@@ -6,7 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
-import { cancelDocument, issueDocNo, postDocument, unpostDocument } from './engine.js';
+import { cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { branchOf, checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -17,7 +17,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไ�
 const money = (v: ReturnType<typeof d>) => v.toDecimalPlaces(2).toFixed(2);
 
 const body = z.object({
-  doc_type_id: uuid, doc_date: isoDate, payment_date: isoDate.nullable().optional(),
+  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, payment_date: isoDate.nullable().optional(),
   party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'),
   department_id: optId, salesperson_id: optId, your_ref: str(60), remark: str(2000),
   settlements: z.array(z.object({ invoice_header_id: uuid, amount: num, vat_amount: num.nullable().optional() }))
@@ -109,7 +109,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
       await clearMoneyParts(tx, id);
       await tx.updateTable('doc_settlement').set({ deleted_at: sql`now()` as never }).where('payment_header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
-      docNo = await issueDocNo(tx, a.companyId, dt.id);
+      docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     // express_rectype: รหัสรายการตัดแบบ Express (3 บิล 4 เพิ่มหนี้ 5 ลดหนี้) — เครื่องลงบัญชีใช้กลับเครื่องหมายใบลดหนี้

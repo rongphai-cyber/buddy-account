@@ -5,6 +5,7 @@ import { BANK_KINDS, CASH_KINDS, d, SETTLE_KINDS, todayIso, TRADE_KINDS, type Ba
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
@@ -104,11 +105,12 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
   const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.department_id ? { department_id: t.department_id } : {}) }); };
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
+  const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: ro, resetKey: h ? 'on' : 'off' });
   const save = async (andNew = false) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro) return;
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, bank_account_id: h.bank_account_id || undefined,
+    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, bank_account_id: h.bank_account_id || undefined,
       to_bank_account_id: cls === 'BT' ? h.to_bank_account_id || null : null, amount: h.amount || '0', fee: cls === 'BT' ? h.fee || '0' : undefined, wht: cls === 'BU' ? h.wht || '0' : undefined };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
@@ -152,6 +154,8 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
               {(cls === 'BT' || cls === 'BU') && <Field label={cls === 'BT' ? 'รวมเงินที่โอนออกทั้งสิ้น' : 'เงินเข้าบัญชีสุทธิ'}><span className="num" style={{ display: 'block', textAlign: 'right' }}><b><Money v={total.toFixed(2)} /></b></span></Field>}
             </div>
             <div className="col">
+              
+              {dn.field}
               
               <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
               <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>

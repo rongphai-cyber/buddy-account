@@ -1,4 +1,5 @@
 import { sql } from 'kysely';
+import { z } from 'zod';
 import { buildPosting, d, formatDocNo, postingBalanced, renderJournalDesc, round2, type PostingLine } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound } from '../../http.js';
@@ -40,6 +41,20 @@ export async function issueDocNo(tx: Db, companyId: string, docTypeId: string): 
     }
   }
   throw badRequest(`ออกเลขที่เอกสาร ${t.code} ไม่ได้ — ตรวจเลขที่ถัดไปที่ เริ่มระบบ › เลขที่เอกสาร`);
+}
+
+/** ช่องเลขที่เอกสาร (ข้อกำหนดเจ้าของ): ว่าง = ออกเลขอัตโนมัติ · ป้อนเอง = ตัวอักษร/ตัวเลข / - . _ ไม่เกิน 30 ตัว */
+export const docNoInput = z.string().trim().max(30, 'เลขที่เอกสารยาวไม่เกิน 30 ตัวอักษร')
+  .regex(/^[A-Za-z0-9ก-๙/._-]*$/, 'เลขที่เอกสารใช้ได้เฉพาะตัวอักษร ตัวเลข และ / - . _ (ไม่มีช่องว่าง)').nullable().optional().transform((v) => v || null);
+
+/** เลขที่เอกสารของเอกสารใหม่: ป้อนเอง (ห้ามซ้ำกับเอกสาร/ใบสำคัญใดในบริษัท) หรือออกเลขถัดไปของประเภทเอกสาร */
+export async function docNoFor(tx: Db, companyId: string, docTypeId: string, manual?: string | null): Promise<string> {
+  const no = manual?.trim();
+  if (!no) return issueDocNo(tx, companyId, docTypeId);
+  const used = await tx.selectFrom('doc_header').select(['doc_no', 'doc_date']).where('company_id', '=', companyId).where('doc_no', '=', no).where('deleted_at', 'is', null).executeTakeFirst()
+    ?? await tx.selectFrom('gl_journal').select(['voucher_no as doc_no', 'voucher_date as doc_date']).where('company_id', '=', companyId).where('voucher_no', '=', no).where('deleted_at', 'is', null).executeTakeFirst();
+  if (used) throw badRequest(`เลขที่ ${no} มีอยู่แล้ว (ลงวันที่ ${String(used.doc_date).slice(0, 10)}) — เปลี่ยนเลขที่ หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ`, [{ field: 'doc_no', message: 'เลขที่ซ้ำ' }]);
+  return no;
 }
 
 /** สร้างรายการบัญชีของเอกสาร (ยังไม่บันทึก) — ใช้ทั้งดูตัวอย่างและลงบัญชีจริง */
