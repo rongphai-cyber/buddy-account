@@ -67,6 +67,32 @@ function FieldTip({ t }: { t: Toast }) {
 }
 
 /* ---------------------------------------------------------------- modal */
+/**
+ * คีย์บอร์ดในหน้าต่าง: ลูกศร ← → ↑ ↓ เลื่อนระหว่างปุ่มด้านล่าง (Enter = กดปุ่มที่เลือก) · Tab / Shift+Tab วนอยู่ในหน้าต่าง
+ * (ข้อกำหนดเจ้าของ: ใช้คีย์บอร์ดเลือกได้ ไม่ต้องใช้เมาส์) · ช่องกรอก Enter = ช่องถัดไป (navKey)
+ */
+function modalKey(e: RKE<HTMLElement>) {
+  const box = e.currentTarget as HTMLElement, t = e.target as HTMLElement;
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) && t.matches('.modal-foot button')) {
+    const btns = [...box.querySelectorAll<HTMLButtonElement>('.modal-foot button:not([disabled])')].filter((x) => x.offsetParent);
+    const i = btns.indexOf(t as HTMLButtonElement);
+    if (i < 0 || btns.length < 2) return;
+    e.preventDefault();
+    btns[(i + (e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1) + btns.length) % btns.length]!.focus();
+    return;
+  }
+  if (e.key === 'Tab') {
+    const all = [...box.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      .filter((x) => x.offsetParent && x.tabIndex !== -1);
+    if (!all.length) return;
+    const i = all.indexOf(document.activeElement as HTMLElement);
+    const n = i < 0 ? 0 : (i + (e.shiftKey ? -1 : 1) + all.length) % all.length;
+    e.preventDefault();
+    all[n]!.focus();
+    return;
+  }
+  navKey(e);
+}
 export function Modal({ title, onClose, children, size = 'form', footer }: { title: string; onClose: () => void; children: ReactNode; size?: 'form' | 'wide' | 'confirm'; footer?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -85,7 +111,7 @@ export function Modal({ title, onClose, children, size = 'form', footer }: { tit
   }, []);
   return (
     <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={'modal m-' + size} role="dialog" aria-modal="true" aria-label={title} ref={ref} onKeyDown={navKey}>
+      <div className={'modal m-' + size} role="dialog" aria-modal="true" aria-label={title} ref={ref} onKeyDown={modalKey}>
         <div className="modal-head"><h2>{title}</h2><button className="icon-btn" onClick={onClose} aria-label="ปิด" title="ปิด (Esc)">✕</button></div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}

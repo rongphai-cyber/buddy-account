@@ -278,6 +278,8 @@ button.primary.book-btn { background: var(--book-c); border-color: var(--book-c)
 .modal-head h2 { margin: 0; }
 .modal-body { padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
 .modal-foot { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; align-items: center; }
+/* ปุ่มที่เลือกด้วยคีย์บอร์ดในหน้าต่าง เห็นชัด */
+.modal-foot button:focus-visible { outline: 3px solid var(--tone); outline-offset: 2px; box-shadow: 0 0 0 5px color-mix(in srgb, var(--tone) 18%, transparent); }
 .lk-bar { display: flex; gap: 8px; }
 .lk-table { max-height: 52vh; overflow: auto; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }

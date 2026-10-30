@@ -124,5 +124,6 @@
  "+ รับชำระหนี้": "+ Receive Payment",
  "{0} · แดชบอร์ดของบริษัท": "{0} · Company Dashboard",
  "ศูนย์รายงาน": "Report Center",
- "ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ {0} (ออกเลขจริงตอนบันทึก · ต้องการเลขเองให้คลิกช่องแล้วพิมพ์)": "No number typed — the automatic number {0} will be used (assigned when saved · to use your own, click the field and type)"
+ "ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ {0} (ออกเลขจริงตอนบันทึก · ต้องการเลขเองให้คลิกช่องแล้วพิมพ์)": "No number typed — the automatic number {0} will be used (assigned when saved · to use your own, click the field and type)",
+ "← → หรือ Tab เลือกปุ่ม · Enter กดปุ่มที่เลือก · Esc กลับไปแก้": "← → or Tab to choose a button · Enter to press it · Esc to go back"
 }

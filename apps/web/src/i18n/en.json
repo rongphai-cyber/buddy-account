@@ -5231,6 +5231,7 @@
 "— ไม่ใส่รหัส (เลือกเองในเอกสาร) —": "— No code (choose in the document) —",
 "‹ ก่อนหน้า": "‹ Previous",
 "← กลับไปตั้งเป็นเครื่องหลัก": "← Back to setting up as the main machine",
+"← → หรือ Tab เลือกปุ่ม · Enter กดปุ่มที่เลือก · Esc กลับไปแก้": "← → or Tab to choose a button · Enter to press it · Esc to go back",
 "↑ ↓ เลือก · Enter เปิด · Esc ปิด": "↑ ↓ Select · Enter Open · Esc Close",
 "↑ ↓ เลือก · Enter ใช้รายการนี้ {0}· Esc ปิด": "↑ ↓ Select · Enter Use this item {0}· Esc Close",
 "↺ ใช้ยอดคงเหลือในเช็คเดิม ({0})": "↺ Use the remaining balance on the original cheque ({0})",

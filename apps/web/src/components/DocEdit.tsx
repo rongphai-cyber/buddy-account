@@ -32,6 +32,7 @@ export function useDocEdit({ id, allowed, dirty, onSave, onDiscard, word = 'เ�
       <button className="primary" autoFocus onClick={() => save()}>บันทึก <kbd>Enter</kbd></button>
     </>}>
       <p>{id ? `บันทึกการแก้ไข${word}นี้` : `บันทึก${word}ใหม่`}{noNew ? '' : ' หรือบันทึกแล้วเริ่มใบถัดไปทันที'}</p>
+      <p className="hint">← → หรือ Tab เลือกปุ่ม · Enter กดปุ่มที่เลือก · Esc กลับไปแก้</p>
     </Modal>
   );
   return {

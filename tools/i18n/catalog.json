@@ -38908,6 +38908,13 @@
 ]
 },
 {
+"th": "← → หรือ Tab เลือกปุ่ม · Enter กดปุ่มที่เลือก · Esc กลับไปแก้",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
+]
+},
+{
 "th": "↑ ↓ เลือก · Enter เปิด · Esc ปิด",
 "n": 1,
 "files": [
