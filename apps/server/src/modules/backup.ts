@@ -22,14 +22,14 @@ async function companyTables(db: Db) {
   return (await sql<{ t: string }>`SELECT c.table_name AS t FROM information_schema.columns c JOIN information_schema.tables x ON x.table_name = c.table_name AND x.table_schema = c.table_schema
       WHERE c.table_schema = 'public' AND c.column_name = 'company_id' AND x.table_type = 'BASE TABLE' ORDER BY c.table_name`.execute(db)).rows.map((r) => r.t).filter((t) => !SKIP.has(t));
 }
-async function schemaVersion(db: Db) {
+export async function schemaVersion(db: Db) {
   return (await sql<{ v: string | null }>`SELECT max(name) AS v FROM sys_schema_migration`.execute(db)).rows[0]?.v ?? '';
 }
 const ident = (t: string) => { if (!/^[a-z_][a-z0-9_]*$/.test(t)) throw badRequest(`ชื่อตารางในแฟ้มสำรองไม่ถูกต้อง: ${t}`); return sql.id(t); };
 
-type Header = { format: string; version: number; created_at: string; schema: string; company: { id: string; code: string; name: string; tenant_id: string | null }; company_row?: string; tables: Record<string, number>; sha256: string };
+export type Header = { format: string; version: number; created_at: string; schema: string; company: { id: string; code: string; name: string; tenant_id: string | null }; company_row?: string; tables: Record<string, number>; sha256: string };
 /** อ่านและตรวจแฟ้มสำรอง (S-DM-03) — ไม่แตะฐานข้อมูล */
-function readBackup(buf: Buffer, format: string) {
+export function readBackup(buf: Buffer, format: string) {
   let text: string;
   try { text = gunzipSync(buf).toString('utf-8'); } catch { throw badRequest('แฟ้มสำรองเสียหาย อ่านไม่ได้ (พบเครื่องหมายจบแฟ้มที่ไม่สมบูรณ์) — ใช้แฟ้มสำรองชุดอื่น'); }
   const nl = text.indexOf('\n');
@@ -49,7 +49,7 @@ function readBackup(buf: Buffer, format: string) {
   for (const [t, n] of Object.entries(h.tables)) if ((rows.get(t)?.length ?? 0) !== n) throw badRequest(`แฟ้มสำรองไม่สมบูรณ์: ตาราง ${t} มี ${rows.get(t)?.length ?? 0} แถว แต่หัวแฟ้มระบุ ${n}`);
   return { header: h, rows };
 }
-function writeBackup(header: Omit<Header, 'sha256'>, lines: string[]) {
+export function writeBackup(header: Omit<Header, 'sha256'>, lines: string[]) {
   const body = lines.length ? lines.join('\n') + '\n' : '';
   const h: Header = { ...header, sha256: createHash('sha256').update(body).digest('hex') };
   return gzipSync(Buffer.from(JSON.stringify(h) + '\n' + body, 'utf-8'), { level: 6 });
@@ -58,7 +58,7 @@ function writeBackup(header: Omit<Header, 'sha256'>, lines: string[]) {
  * แทรกแถวจากแฟ้ม (ข้อความ JSON ส่งให้ PostgreSQL แปลงชนิดเอง) · companyId = บังคับ company_id ของทุกแถวเป็นบริษัทปัจจุบัน (กันข้อมูลข้ามบริษัทแม้แฟ้มถูกแก้)
  * guard = ปรับปรุงแถวที่มี id ซ้ำเฉพาะเมื่อแถวเดิมผ่านเงื่อนไข (เช่น เป็นของลูกค้ารายนี้) — ไม่ผ่านจะข้าม ไม่ทับข้อมูลรายอื่น
  */
-async function insertJson(tx: Db, table: string, rows: string[], opt: { companyId?: string; guard?: ReturnType<typeof sql> } = {}) {
+export async function insertJson(tx: Db, table: string, rows: string[], opt: { companyId?: string; guard?: ReturnType<typeof sql> } = {}) {
   const cols = opt.guard ? (await sql<{ c: string }>`SELECT column_name AS c FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ${table} ORDER BY ordinal_position`.execute(tx)).rows.map((r) => r.c) : [];
   for (let i = 0; i < rows.length; i += 2000) {
     const chunk = '[' + rows.slice(i, i + 2000).join(',') + ']';

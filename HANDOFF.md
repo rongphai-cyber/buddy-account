@@ -189,9 +189,13 @@
   - API `modules/pdpa.ts` (เมนู SET.PDPA ระดับ 9 + API_KEY_BLOCKED): /pdpa/register · /pdpa/subjects?q · /pdpa/subjects/:kind/:id (+/access บันทึกคำขอ + JSON · +/erase mode CONTACT ทันที / FULL ต้องพ้นระยะเก็บ ยืนยันด้วยรหัส) · /pdpa/requests (ปฏิเสธต้องมีเหตุผล) · FULL แก้ doc_header ในงวดที่ปิดด้วย set_config('app.allow_locked_period','on',true) เฉพาะทรานแซกชันนั้น · log ไม่เก็บค่าที่ลบ
   - เลิกใช้บริการ: PUT /tenants/:id สถานะ I → terminated_on + purge_after · POST /tenants/:id/purge (ผู้ให้บริการ, ครบ 90 วัน, พิมพ์รหัสลูกค้า) `purgeTenant` ลบทุกตาราง company_id (ยกเว้น log/sys_company/sys_device/sys_branch ที่ log อ้างถึง — ปิดบังแทน) + session/2FA/ผู้ใช้ปิดบัง · หน้า `pages/settings/Pdpa.tsx` (/settings/pdpa) + Tenants.tsx (DPA วันที่ลงนาม, วันที่ลบได้, ปุ่มลบ)
   - ข้อจำกัด (บอกเจ้าของแล้ว): log เก่ามีค่าก่อนแก้ไขที่ลบไม่ได้ · แฟ้มสำรองเก่า · แบบร่าง DPA ใน docs/06_PDPA.md ต้องให้นักกฎหมายตรวจ
+- ✅ T0.18 (30/10/2569 เจ้าของสั่ง "Start T0.18"): แบบติดตั้งแยก + ย้ายลูกค้า (ไม่ทำ routing หลายฐานในเครื่องเดียว) · `modules/tenant-move.ts` exportTenant/importTenant (แฟ้ม = MAGIC BUDDYTENANT1 + scrypt/AES-256-GCM ห่อ gzip รูปแบบเดียวกับ backup.ts — readBackup/writeBackup/insertJson export แล้ว) · ค่าลับ (totp_secret_enc, sys_secret) ถอดก่อนใส่แฟ้ม เข้ารหัสใหม่ปลายทาง · FK ไป sys_user ที่ไม่ใช่ผู้ใช้ของลูกค้า → null (หาจาก pg_constraint) · sys_permission.menu_id จับคู่ด้วย _menu_code · activity log ใส่ใหม่ไม่เอา seq · ตรวจซ้ำ (ลูกค้า/บริษัท/ผู้ใช้) 409 · ตรวจรุ่น migration · set_config allow_locked_period ระหว่างนำเข้า · หลังนำเข้าเทียบใบสำคัญ+เดบิต/เครดิตรายบริษัท
+  - API (ผู้ให้บริการ): POST /tenants/:id/export {passphrase} · POST /tenants/import (octet-stream + header x-buddy-passphrase) · PUT /tenants/:id moved_to (ต้องสถานะ I) → login 403 TENANT_MOVED บอกที่อยู่ใหม่ · purge ได้ทันทีเมื่อ moved_to · CLI tenant-export/tenant-import (BUDDY_TENANT_PASSPHRASE)
+  - หน้าจอ Tenants.tsx: ส่งออกเพื่อย้าย / รับลูกค้าที่ย้ายมา / ย้ายไปที่ · App.tsx: ผู้ให้บริการที่ยังไม่มีบริษัทเข้า /admin/tenants ได้จากหน้า "ยังไม่มีบริษัท" (เดิมเข้าไม่ได้ — เครื่องใหม่รับลูกค้าไม่ได้)
+  - DEMO ย้ายไป PGlite ใหม่ (scratchpad/move_demo.mts): 365,695 แถว 26.7 MB ส่งออก 8 วิ นำเข้า 36 วิ ยอดตรง
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
-1. P0 ที่เหลือ: T0.18 ฐานข้อมูลแยกต่อลูกค้า (ทางเลือก — ถามเจ้าของก่อนว่าต้องการไหม)
+1. P0 ครบทุกงานแล้ว · เหลือ: T7.8 ออฟไลน์ (เลื่อน) · ลงนาม e-Tax (รอใบรับรอง) · ทดสอบ AI อ่านบิลจริง (กุญแจของเจ้าของ) · QR code 2FA (ต้องขออนุญาตดาวน์โหลด package)
 2. หรือ P2: **T2.1** ค่าเริ่มต้นทุกระบบ → T2.2 … T2.5 (แล้วทำ T1.17 ตารางข้อมูลพร้อมกัน)
 - ไฟล์ของเจ้าของ `docs/50ทวิ.pdf` (ใช้ทำแบบ 50 ทวิ) และ `docs/ChartOfAccount_with_English.xlsx` (ใช้ทำผังบัญชีไทย–อังกฤษ) — ใช้แล้ว ห้าม commit
 - ข้อสันนิษฐานที่รอยืนยัน: ฐานของคอลัมน์ "% ของยอดขาย" (PCENTn) = บรรทัดแรกที่มียอด

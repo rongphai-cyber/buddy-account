@@ -102,8 +102,10 @@ function Shell() {
       <div className="page narrow">
         <h1>ยังไม่มีบริษัท</h1>
         <p className="lead">เริ่มจากสร้างบริษัทใหม่ หรือนำข้อมูลจากโปรแกรม Express เข้ามา</p>
-        <div className="actions"><button className="primary" onClick={() => nav('/companies/new')}>กำหนดบริษัทใหม่</button><button onClick={() => logout()}>ออกจากระบบ</button></div>
-        <Routes><Route path="/companies/new" element={<NewCompanyPage />} /><Route path="*" element={null} /></Routes>
+        <div className="actions"><button className="primary" onClick={() => nav('/companies/new')}>กำหนดบริษัทใหม่</button>
+          {me?.user.is_platform && <button onClick={() => nav('/admin/tenants')}>ลูกค้าผู้ใช้บริการ / รับลูกค้าที่ย้ายมา</button>}
+          <button onClick={() => logout()}>ออกจากระบบ</button></div>
+        <Routes><Route path="/companies/new" element={<NewCompanyPage />} />{me?.user.is_platform && <Route path="/admin/tenants" element={<TenantsPage />} />}<Route path="*" element={null} /></Routes>
       </div>
     );
   }

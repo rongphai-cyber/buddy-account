@@ -3299,3 +3299,101 @@ describe('ข้อมูลส่วนบุคคล PDPA (T0.17)', () => {
     expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).not.toContain('P-CO1');
   });
 });
+
+describe('ย้ายลูกค้าไปเซิร์ฟเวอร์/ฐานข้อมูลแยก (T0.18)', () => {
+  const login = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };
+  const PASS = 'move-secret-2569';
+  let db2: Database; let app2: FastifyInstance; let cookie2 = '';
+  async function call2(method: 'GET' | 'POST' | 'PUT', url: string, body?: unknown, headers: Record<string, string> = {}, raw?: Buffer) {
+    const r = await app2.inject({ method, url, payload: raw ?? (body as object), headers: { ...(cookie2 ? { cookie: cookie2 } : {}), ...headers } });
+    const set = r.headers['set-cookie'];
+    if (set) cookie2 = (Array.isArray(set) ? set[0]! : set).split(';')[0]!;
+    return { status: r.statusCode, body: r.body ? JSON.parse(r.body) : null };
+  }
+  beforeAll(async () => {
+    const cfg = { ...loadConfig({}), databaseUrl: undefined, dataDir: 'memory://' };
+    db2 = await openDatabase(cfg);
+    await migrate(db2, cfg.migrationsDir, () => {});
+    app2 = await buildApp(db2, cfg);
+  }, 120_000);
+  afterAll(async () => { await app2?.close(); await db2?.close(); });
+
+  it('exports a whole tenant to an encrypted file, imports it on another database, users/2FA/rights/balances intact, source closed', async () => {
+    // ต้นทาง: ลูกค้า M มีบริษัท ใบสำคัญ (งวดปิดแล้ว) ลูกค้า สิทธิ์รายเมนู ผู้ใช้เปิด 2FA และข้อมูลที่เจ้าหน้าที่ผู้ให้บริการเคยบันทึก
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    const t = (await call('POST', '/api/v1/tenants', { code: 'CUSTM', name: 'ลูกค้ารายใหญ่ M', admin_username: 'm.admin', admin_name: 'ผู้ดูแล M', admin_password: 'passM1234' })).body.id as string;
+    expect((await login('m.admin', 'passM1234')).status).toBe(200);
+    const co = (await call('POST', '/api/v1/companies', { code: 'M-CO1', name_th: 'บริษัท เอ็ม จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const acc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control);
+    for (const [d, amt] of [['2026-01-10', '1500.25'], ['2026-02-03', '700.00']] as const)
+      expect((await call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: d, lines: [{ account_id: acc[0].id, debit: amt }, { account_id: acc[1].id, credit: amt }] })).status).toBe(200);
+    const jan = (await call('GET', '/api/v1/gl/periods')).body[0].periods[0];
+    expect((await call('POST', `/api/v1/gl/periods/${jan.id}/lock`, { locked: true })).status).toBe(200);
+    expect((await call('POST', '/api/v1/customers', { code: 'M-C1', name: 'ลูกค้าของ M', tax_id: '0105537095903' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/users', { username: 'm.clerk', display_name: 'พนักงาน M', password: 'clerkM123', companies: [co], check_rights: true })).status).toBe(200);
+    const clerk = (await call('GET', '/api/v1/users')).body.users.find((u: { username: string }) => u.username === 'm.clerk').id;
+    const R = (menu_code: string, v: Partial<Record<string, string>>) => ({ menu_code, can_read: '', can_add: '', can_edit: '', can_cancel: '', can_delete: '', can_print: '', can_approve: '', ...v });
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'U', subject_id: clerk, rows: [R('GL.JNL', { can_read: 'Y' })] })).status).toBe(200);
+    const key = base32Decode((await call('POST', '/api/v1/auth/2fa/setup')).body.secret);
+    const step = stepOf();
+    expect((await call('POST', '/api/v1/auth/2fa/enable', { code: totpAt(key, step) })).status).toBe(200);
+    const tbSrc = (await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body.totals;
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('POST', '/api/v1/customers', { code: 'M-C2', name: 'บันทึกโดยผู้ให้บริการ', tax_id: '0105537095903' })).status).toBe(200);
+
+    // ส่งออก: เฉพาะผู้ให้บริการ · รหัสผ่านแฟ้มสั้นไม่ได้
+    expect((await call('POST', `/api/v1/tenants/${t}/export`, { passphrase: 'short' })).status).toBe(400);
+    const ex = await app.inject({ method: 'POST', url: `/api/v1/tenants/${t}/export`, payload: { passphrase: PASS }, headers: { cookie } });
+    expect(ex.statusCode).toBe(200);
+    expect(ex.headers['content-disposition']).toMatch(/CUSTM\.buddy-tenant/);
+    const file = ex.rawPayload;
+    expect(file.subarray(0, 12).toString()).toBe('BUDDYTENANT1');
+    expect(file.includes(Buffer.from('ลูกค้าของ M'))).toBe(false);   // เข้ารหัสทั้งแฟ้ม
+    const tenantAdmin = await login('b.admin', 'passB1234');
+    expect(tenantAdmin.status).toBe(200);
+    expect((await call('POST', `/api/v1/tenants/${t}/export`, { passphrase: PASS })).status).toBe(403);
+
+    // ปลายทาง: เครื่องใหม่ ฐานข้อมูลใหม่
+    expect((await call2('POST', '/api/v1/setup', { username: 'ops', display_name: 'ผู้ให้บริการเครื่องใหม่', password: 'opsNew1234' })).status).toBe(200);
+    const up = (pass: string) => call2('POST', '/api/v1/tenants/import', undefined, { 'content-type': 'application/octet-stream', 'x-buddy-passphrase': encodeURIComponent(pass) }, file);
+    expect((await up('wrong-passphrase-x')).body.error.message).toMatch(/รหัสผ่านของแฟ้มไม่ถูกต้อง/);
+    const im = await up(PASS);
+    expect(im.status, JSON.stringify(im.body)).toBe(200);
+    expect(im.body.ok).toBe(true);
+    expect(im.body.checks[0]).toMatchObject({ code: 'M-CO1', ok: true, target: { journals: 2 } });
+    expect(im.body.users_cleared).toBeGreaterThan(0);   // ข้อมูลที่เจ้าหน้าที่ผู้ให้บริการเดิมบันทึก → ผู้บันทึกว่าง
+    expect(im.body.counts.sys_user).toBe(2);
+    expect((await up(PASS)).status).toBe(409);           // นำเข้าซ้ำไม่ได้
+
+    // ผู้ใช้ของลูกค้าเข้าเครื่องใหม่ด้วยรหัสผ่านเดิม + 2FA เดิม · ข้อมูลและยอดเท่าเดิม · งวดที่ปิดยังปิด
+    cookie2 = '';
+    const l1 = await call2('POST', '/api/v1/auth/login', { username: 'm.admin', password: 'passM1234' });
+    expect(l1.body.need_totp).toBe(true);
+    expect((await call2('POST', '/api/v1/auth/login/totp', { ticket: l1.body.ticket, code: totpAt(key, step + 1) })).status).toBe(200);
+    const me2 = (await call2('GET', '/api/v1/auth/me')).body;
+    expect(me2.companies.map((c: { code: string }) => c.code)).toEqual(['M-CO1']);
+    await call2('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call2('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body.totals).toEqual(tbSrc);
+    expect((await call2('GET', '/api/v1/customers?q=M-C')).body.rows.map((r: { code: string }) => r.code).sort()).toEqual(['M-C1', 'M-C2']);
+    expect((await call2('GET', '/api/v1/gl/periods')).body[0].periods[0].is_locked).toBe(true);
+    cookie2 = '';
+    expect((await call2('POST', '/api/v1/auth/login', { username: 'm.clerk', password: 'clerkM123' })).status).toBe(200);
+    await call2('POST', '/api/v1/auth/select', { company_id: co });
+    const perms = (await call2('GET', '/api/v1/auth/me')).body.perms;
+    expect(perms['GL.JNL'].read).toBe(true); expect(perms['GL.JNL'].add).toBe(false);   // สิทธิ์รายเมนูตามเดิม (จับคู่ด้วยรหัสเมนู)
+    const logs = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co}`.execute(db2.db)).rows[0]!.n;
+    expect(logs).toBeGreaterThan(3);
+
+    // ต้นทาง: บันทึกที่อยู่ใหม่ → ผู้ใช้เข้าที่เดิมไม่ได้และรู้ที่อยู่ใหม่ · ลบสำเนาเดิมได้ทันที
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    expect((await call('PUT', `/api/v1/tenants/${t}`, { code: 'CUSTM', name: 'ลูกค้ารายใหญ่ M', status: 'A', moved_to: 'https://m.buddy.example' })).body.error.message).toMatch(/เลิกใช้/);
+    expect((await call('PUT', `/api/v1/tenants/${t}`, { code: 'CUSTM', name: 'ลูกค้ารายใหญ่ M', status: 'I', moved_to: 'https://m.buddy.example' })).status).toBe(200);
+    const moved = await login('m.clerk', 'clerkM123');
+    expect(moved.status).toBe(403); expect(moved.body.error.message).toMatch(/https:\/\/m\.buddy\.example/);
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    expect((await call('POST', `/api/v1/tenants/${t}/purge`, { confirm: 'CUSTM' })).status).toBe(200);
+  });
+});

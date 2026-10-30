@@ -7,6 +7,8 @@
  *   unlock <user>                         ปลดล็อกผู้ใช้ที่ใส่รหัสผิดเกิน 5 ครั้ง
  *   reset-2fa <user>                      ล้างยืนยันตัวตนสองขั้น (ผู้ดูแลทำมือถือหายและไม่มีรหัสสำรอง) — เข้าระบบแล้วตั้งใหม่
  *   posting-compare <รหัสบริษัท>          เทียบเครื่องลงบัญชีกับใบสำคัญที่ Express ลงไว้ (เกณฑ์ P3 ≥ 97%)
+ *   tenant-export <รหัสลูกค้า> <แฟ้ม>     ส่งออกลูกค้าทั้งรายเป็นแฟ้ม .buddy-tenant (T0.18 ย้ายไปเซิร์ฟเวอร์แยก) — รหัสผ่านของแฟ้มจาก BUDDY_TENANT_PASSPHRASE
+ *   tenant-import <แฟ้ม>                  นำเข้าแฟ้ม .buddy-tenant ที่เครื่องปลายทาง แล้วตรวจยอดใบสำคัญรายบริษัท
  */
 import { mkdirSync } from 'node:fs';
 import bcrypt from 'bcryptjs';
@@ -66,6 +68,29 @@ try {
       console.error('ใส่กฎการลงบัญชีแล้ว');
       console.log(JSON.stringify(await validateExpress(db, src, rep.company_id), null, 1));
     }
+  } else if (cmd === 'tenant-export' || cmd === 'tenant-import') {
+    // รหัสผ่านของแฟ้มไม่รับทางบรรทัดคำสั่ง (ค้างในประวัติคำสั่ง) — ตั้งตัวแปร BUDDY_TENANT_PASSPHRASE ก่อนรัน
+    const pass = process.env.BUDDY_TENANT_PASSPHRASE ?? '';
+    if (pass.length < 12) throw new Error('ตั้ง BUDDY_TENANT_PASSPHRASE (อย่างน้อย 12 ตัวอักษร) ก่อนรัน');
+    const { exportTenant, importTenant } = await import('./modules/tenant-move.js');
+    const { readFileSync, writeFileSync } = await import('node:fs');
+    if (cmd === 'tenant-export') {
+      const [code, file] = args;
+      if (!code || !file) throw new Error('ใช้: tenant-export <รหัสลูกค้า> <แฟ้ม.buddy-tenant>');
+      const t = await db.selectFrom('sys_tenant').select('id').where('code', '=', code).where('deleted_at', 'is', null).executeTakeFirst();
+      if (!t) throw new Error(`ไม่พบลูกค้า ${code}`);
+      const r = await exportTenant(db, t.id, pass);
+      writeFileSync(file, r.file);
+      await logActivity(db, { companyId: null, userId: null }, { module: 'SYS', action: 'EXPORT_TENANT', docNo: code, table: 'sys_tenant', rowId: t.id, detail: { rows: r.rows, bytes: r.file.length, via: 'cli' } });
+      console.log(`ส่งออกแล้ว ${r.rows} แถว ${(r.file.length / 1048576).toFixed(1)} MB → ${file}`);
+      for (const c of r.header.companies) console.log(`  ${c.code}  ใบสำคัญ ${c.journals}  เดบิต ${c.debit}  เครดิต ${c.credit}`);
+    } else {
+      const [file] = args;
+      if (!file) throw new Error('ใช้: tenant-import <แฟ้ม.buddy-tenant>');
+      const r = await importTenant(db, readFileSync(file), pass, null);
+      console.log(JSON.stringify(r, null, 1));
+      if (!r.ok) process.exitCode = 2;
+    }
   } else if (cmd === 'posting-compare') {
     const [code] = args;
     const c = await db.selectFrom('sys_company').select('id').where('code', '=', code ?? '').where('deleted_at', 'is', null).executeTakeFirst();
@@ -77,7 +102,7 @@ try {
     console.log(`รวม ${n} ตรง ${ok} (${(100 * ok / n).toFixed(1)}%) ยอดรวมตรง ${same}`);
     console.log('หาบัญชีได้จากชั้น:', JSON.stringify(r.layers));
   } else {
-    console.log('คำสั่ง: migrate | create-admin <user> <ชื่อ> <รหัสผ่าน> | unlock <user> | reset-2fa <user> | company-template <company_id> | posting-compare <รหัสบริษัท>');
+    console.log('คำสั่ง: migrate | create-admin <user> <ชื่อ> <รหัสผ่าน> | unlock <user> | reset-2fa <user> | company-template <company_id> | posting-compare <รหัสบริษัท> | tenant-export <รหัสลูกค้า> <แฟ้ม> | tenant-import <แฟ้ม>');
   }
 } finally {
   await database.close();

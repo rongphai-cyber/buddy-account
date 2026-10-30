@@ -132,7 +132,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/etax/docs': M('FI.VAT.ETAX', 'read'), 'GET /api/v1/etax/doc/:id': M('FI.VAT.ETAX', 'print'), 'GET /api/v1/etax/export': M('FI.VAT.ETAX', 'print'),
   'GET /api/v1/api-keys': M('SET.API', 'read'), 'POST /api/v1/api-keys': M('SET.API', 'add'), 'POST /api/v1/api-keys/:id/revoke': M('SET.API', 'cancel'), 'GET /api/v1/api-docs': M('SET.API', 'read'),
   'GET /api/v1/users': SELF, 'POST /api/v1/users': SELF, 'PUT /api/v1/users/:id': SELF, 'POST /api/v1/user-groups': SELF,
-  'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/tenants/:id/purge': SELF, 'POST /api/v1/companies': SELF,
+  'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/tenants/:id/purge': SELF, 'POST /api/v1/tenants/:id/export': SELF, 'POST /api/v1/tenants/import': SELF, 'POST /api/v1/companies': SELF,
   'GET /api/v1/pdpa/register': M('SET.PDPA', 'read'), 'GET /api/v1/pdpa/subjects': M('SET.PDPA', 'read'), 'GET /api/v1/pdpa/subjects/:kind/:id': M('SET.PDPA', 'read'),
   'POST /api/v1/pdpa/subjects/:kind/:id/access': M('SET.PDPA', 'print'), 'POST /api/v1/pdpa/subjects/:kind/:id/erase': M('SET.PDPA', 'delete'),
   'GET /api/v1/pdpa/requests': M('SET.PDPA', 'read'), 'POST /api/v1/pdpa/requests': M('SET.PDPA', 'add'), 'PUT /api/v1/pdpa/requests/:id': M('SET.PDPA', 'edit'),

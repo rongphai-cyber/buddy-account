@@ -31,6 +31,8 @@ export interface SysTenantTable {
   purge_after: Gen<string | null>;
   /** ลบข้อมูลทั้งหมดของลูกค้าแล้วเมื่อ (เหลือเฉพาะรหัสและแฟ้มบันทึกเหตุการณ์) */
   purged_at: Gen<string | null>;
+  /** ย้ายไปใช้เซิร์ฟเวอร์/ฐานข้อมูลแยกแล้ว: ที่อยู่ใหม่ (T0.18) — ผู้ใช้เข้าระบบที่นี่ไม่ได้ ระบบบอกที่อยู่ใหม่ */
+  moved_to: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

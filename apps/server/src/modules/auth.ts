@@ -120,7 +120,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
   app.post('/api/v1/auth/login', async (req, reply) => {
     const body = parse(z.object({ username: z.string().trim().min(1, 'ป้อนรหัสผู้ใช้'), password: z.string().min(1, 'ป้อนรหัสผ่าน'), work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }), req.body);
     const u = await db.selectFrom('sys_user as u').leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
-      .select(['u.id', 'u.password_hash', 'u.status', 'u.tenant_id', 't.status as tenant_status', 't.expires_on']).where(sql`lower(u.username)`, '=', body.username.toLowerCase()).where('u.deleted_at', 'is', null).executeTakeFirst();
+      .select(['u.id', 'u.password_hash', 'u.status', 'u.tenant_id', 't.status as tenant_status', 't.expires_on', 't.moved_to']).where(sql`lower(u.username)`, '=', body.username.toLowerCase()).where('u.deleted_at', 'is', null).executeTakeFirst();
     const sec = u ? await secOf(db, u.id) : undefined;
     const until = lockedUntil(sec);
     if (u && until) {
@@ -136,6 +136,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     }
     // เปิด 2FA: ล้างตัวนับเมื่อผ่านขั้นที่ 2 เท่านั้น (กันเดารหัสจากแอปโดยใส่รหัสผ่านถูกสลับไปเรื่อย ๆ)
     if (!sec?.totp_enabled) await clearFails(db, u.id);
+    if (u.tenant_id && u.moved_to) throw new AppError(403, 'TENANT_MOVED', `บัญชีของท่านย้ายไปใช้ที่ ${u.moved_to} แล้ว — เข้าระบบที่ที่อยู่ใหม่ด้วยรหัสผู้ใช้และรหัสผ่านเดิม`);
     if (u.tenant_id && !tenantActive(u.tenant_status, u.expires_on)) throw new AppError(403, 'TENANT_SUSPENDED', 'บัญชีผู้ใช้บริการนี้ถูกระงับหรือหมดอายุ กรุณาติดต่อผู้ให้บริการ');
     // เปิดยืนยันตัวตนสองขั้น: ยังไม่ออก session — ต้องใส่รหัสจากแอปก่อน (ภายใน 5 นาที)
     if (sec?.totp_enabled) return { need_totp: true, ticket: startSecondStep(u.id, body.work_date) };
