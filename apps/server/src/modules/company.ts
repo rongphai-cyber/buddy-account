@@ -1,4 +1,4 @@
-import { formatDate, passwordProblem, pdpaPurgeAfter } from '@buddy/core';
+import { formatDate, passwordProblem, pdpaPurgeAfter, normalizeUiTheme } from '@buddy/core';
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
@@ -66,6 +66,17 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       await logActivity(tx, a, { module: 'SYS', action: 'EDIT', table: 'sys_company', rowId: a.companyId });
     });
     return { ok: true, warning: tax.kind === 'LEGACY10' ? tax.warning : undefined };
+  });
+
+  /** ธีมของบริษัท (ข้อกำหนดเจ้าของ 30/10/2569) — เลือกจากชุดสีพาสเทลและแบบอักษรที่กำหนดเท่านั้น · ทุกคนในบริษัทเห็นเหมือนกัน */
+  app.put('/api/v1/company/ui-theme', async (req) => {
+    const a = requireCompany(req);
+    const b = parse(z.object({ theme: z.string().max(20), font: z.string().max(20) }), req.body);
+    const v = normalizeUiTheme(b);
+    if (v.theme !== b.theme || v.font !== b.font) throw badRequest('เลือกธีมและแบบอักษรจากรายการ');
+    await setSetting(db, a.companyId, 'ui.theme', v, a.userId);
+    await logActivity(db, a, { module: 'SYS', action: 'SET_THEME', table: 'sys_company', rowId: a.companyId, detail: v });
+    return v;
   });
 
   /* ---------------------------------------------------------------- กำหนดบริษัทใหม่ (บทที่ 4 S-CO-03 / S-CO-07) */

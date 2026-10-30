@@ -9,7 +9,7 @@ import { AppError, badRequest, parse, requireAuth, unauthorized, type AuthContex
 import { logActivity } from '../audit.js';
 import type { Config } from '../config.js';
 import { loadApiKey } from './apikeys.js';
-import { passwordProblem } from '@buddy/core';
+import { passwordProblem, normalizeUiTheme } from '@buddy/core';
 import { adminMfaRequired, clearFails, finishSecondStep, lockedError, lockedUntil, markPasswordChanged, registerFail, secOf, startSecondStep } from './security.js';
 
 export const SESSION_COOKIE = 'buddy_session';
@@ -183,6 +183,8 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     return {
       user: { id: a.userId, username: a.username, display_name: a.displayName, is_admin: a.isAdmin, is_platform: a.isPlatform, tenant_id: a.tenantId, approval_level: a.approvalLevel, check_rights: a.checkRights, mfa_setup_required: !!a.mfaSetupRequired },
       company, branch, branches, companies, work_date: a.workDate,
+      // ธีมของบริษัทนี้ (ข้อกำหนดเจ้าของ) — หน้าจอใส่สีและแบบอักษรทันทีที่เลือกบริษัท
+      ui_theme: normalizeUiTheme(company ? (await db.selectFrom('sys_setting').select('value').where('company_id', '=', company.id).where('branch_id', 'is', null).where('key', '=', 'ui.theme').where('deleted_at', 'is', null).executeTakeFirst())?.value : null),
       // สิทธิ์รายเมนูของบริษัทนี้ — หน้าจอใช้ซ่อนเมนู/ปุ่ม (ด่านจริงอยู่ที่ API)
       perms: company ? await permissionMatrix(db, { ...a, companyId: company.id }) : {},
     };

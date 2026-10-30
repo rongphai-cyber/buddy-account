@@ -728,3 +728,15 @@ td.img-cell { padding-top: 2px; padding-bottom: 2px; }
 .ti-errors { margin-bottom: 12px; border-color: var(--bad); }
 .ti-errors th { background: var(--bad-soft); }
 .warn-text { color: var(--warn); }
+
+/* ธีมของแต่ละบริษัท (ข้อกำหนดเจ้าของ 30/10/2569) — ค่าสีจริงอยู่ใน packages/core/src/theme.ts */
+.theme-card { padding: 12px 14px; }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 10px 0 12px; }
+.theme-swatch { position: relative; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 4px; min-height: 74px; padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; text-align: left; color: #2b2840; }
+.theme-swatch.on { border-color: #2b2840; box-shadow: 0 0 0 2px #fff inset; }
+.theme-swatch:disabled { opacity: 1; cursor: default; }
+.theme-swatch .ts-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+.theme-swatch .ts-name { font-weight: 600; }
+.theme-swatch .ts-cur { position: absolute; top: 6px; right: 8px; font-size: 12px; background: #fff; border-radius: 10px; padding: 0 6px; }
+.theme-sample > span:last-child { display: block; padding: 6px 0; font-size: 16px; }
+.theme-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }

@@ -3662,3 +3662,36 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect((await call('POST', url, { ...base, data: bad })).body.error.message).toMatch(/เลือกประเภทเอกสาร/);
   });
 });
+
+describe('ธีมของแต่ละบริษัท (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
+  it('theme + font per company: default, validated choices only, shown in /auth/me, rights, other companies unaffected', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('GET', '/api/v1/auth/me')).body.ui_theme).toEqual({ theme: 'lavender', font: 'plex' });
+    expect((await call('PUT', '/api/v1/company/ui-theme', { theme: 'neon', font: 'plex' })).body.error.message).toMatch(/เลือกธีม/);
+    expect((await call('PUT', '/api/v1/company/ui-theme', { theme: 'mint', font: 'sarabun' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.ui_theme).toEqual({ theme: 'mint', font: 'sarabun' });
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND action = 'SET_THEME'`.execute(database.db)).rows[0]!.n).toBe(1);
+    // บริษัทอื่นของลูกค้าเดียวกันยังเป็นค่าเริ่มต้น
+    const other = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { id: string }) => c.id !== co);
+    if (other) {
+      await call('POST', '/api/v1/auth/select', { company_id: other.id });
+      expect((await call('GET', '/api/v1/auth/me')).body.ui_theme).toEqual({ theme: 'lavender', font: 'plex' });
+    }
+    // ผู้ใช้ไม่มีสิทธิ์แก้รายละเอียดกิจการ เปลี่ยนไม่ได้ แต่เห็นธีมของบริษัท
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'imp.clerk', password: 'clerkImp123' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('GET', '/api/v1/auth/me')).body.ui_theme).toEqual({ theme: 'mint', font: 'sarabun' });
+    expect((await call('PUT', '/api/v1/company/ui-theme', { theme: 'rose', font: 'plex' })).status).toBe(403);
+    // ลูกค้าอื่น: เปลี่ยนได้เฉพาะบริษัทตัวเอง
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    expect((await call('GET', '/api/v1/auth/me')).body.ui_theme).toEqual({ theme: 'lavender', font: 'plex' });
+    expect((await call('PUT', '/api/v1/company/ui-theme', { theme: 'peach', font: 'system' })).status).toBe(200);
+    expect((await sql<{ v: unknown }>`SELECT value AS v FROM sys_setting WHERE company_id = ${co} AND key = 'ui.theme'`.execute(database.db)).rows[0]!.v).toEqual({ theme: 'mint', font: 'sarabun' });
+  });
+});

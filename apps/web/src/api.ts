@@ -38,6 +38,8 @@ export interface Me {
   branches: Array<{ id: string; code: string; name: string; tax_branch_no: string; is_head_office: boolean }>;
   companies: Array<{ id: string; code: string; name_th: string; year_system: 'B' | 'C' }>;
   work_date: string | null;
+  /** ธีมของบริษัทที่เลือกอยู่ (ชุดสี + แบบอักษร) */
+  ui_theme?: import('@buddy/core').UiTheme;
   /** สิทธิ์รายเมนูของบริษัทปัจจุบัน: true = ใช้ได้, 'S' = พิมพ์ออกจอเท่านั้น, false = ไม่มีสิทธิ์ */
   perms: Record<string, Record<PermAction, boolean | 'S'>>;
 }
