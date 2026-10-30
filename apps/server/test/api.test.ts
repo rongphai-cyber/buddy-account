@@ -1509,6 +1509,21 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/gl/journals/${jv.id}`)).status).toBe(404);
   });
 
+  it('per-line VAT type (ข้อกำหนดเจ้าของ): 0 = exempt overrides the item, base shown, blank branch = head office, branch list', async () => {
+    const t = (await call('GET', '/api/v1/trade-defaults/IV')).body.types[0] as { id: string };
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const base = { doc_type_id: t.id, doc_date: '2027-08-09', party_id: cus, price_type: '2', vat_rate: 7, party_tax_branch_no: '' };
+    const iv = (await call('POST', '/api/v1/sales-invoices', { ...base, lines: [{ item_id: cpu, qty: 1, unit_price: 1000 }, { item_id: cpu, qty: 1, unit_price: 500, vat_code: '0' }] })).body;
+    const doc = (await call('GET', `/api/v1/sales-invoices/${iv.id}`)).body;
+    // VAT คิดเฉพาะบรรทัดแรก 1,000 × 7% · บรรทัดที่ 2 ยกเว้น (หน้าเอกสารมาก่อนแฟ้มสินค้า)
+    expect([doc.taxable_amount, doc.zero_rate_amount, doc.vat_amount, doc.net_amount]).toEqual(['1000.00', '500.00', '70.00', '1570.00']);
+    expect(doc.lines.map((l: { vat_code: string }) => l.vat_code)).toEqual(['1', '0']);
+    expect(doc.party_tax_branch_no).toBe('00000');
+    expect((await call('GET', `/api/v1/customers/${cus}`)).body.tax_branches).toContain('00000');
+    expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('executive dashboard (RP.DASH): sales/AR/cash/aging from live documents, filters, isolation', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;

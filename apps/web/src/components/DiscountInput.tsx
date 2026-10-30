@@ -22,7 +22,7 @@ export function DiscountInput({ value, onChange, base, label, ...rest }: {
     return null;
   };
   return (
-    <input {...rest} value={shown} maxLength={20} aria-label={label} aria-invalid={bad || undefined} placeholder={rest.placeholder ?? '5+ · 200 · 5+,200'}
+    <input {...rest} value={shown} maxLength={20} aria-label={label} aria-invalid={bad || undefined}
       title={DISCOUNT_HINT}
       onFocus={() => setFocus(true)}
       onChange={(e) => { setBad(false); onChange(e.target.value); }}

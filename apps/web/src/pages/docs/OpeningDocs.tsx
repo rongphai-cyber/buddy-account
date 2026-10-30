@@ -150,7 +150,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
           </div>
           {calc && <table className="totals-table"><tbody>
             <tr><td>จำนวนเงิน</td><td><MoneyInput value={h.amount} disabled={ro} onChange={(v) => set({ amount: v })} aria-label="จำนวนเงิน" /></td></tr>
-            <tr><td>หักส่วนลด <DiscountInput value={h.discount_text} disabled={ro} onChange={(v) => set({ discount_text: v })} placeholder="5+ หรือ 500" label="ส่วนลด" base={h.amount || 0} style={{ width: 110 }} /></td><td className="r"><Money v={calc.discount_amount} /></td></tr>
+            <tr><td>หักส่วนลด <DiscountInput value={h.discount_text} disabled={ro} onChange={(v) => set({ discount_text: v })} label="ส่วนลด" base={h.amount || 0} style={{ width: 110 }} /></td><td className="r"><Money v={calc.discount_amount} /></td></tr>
             <tr><td>ภาษีมูลค่าเพิ่ม <input className="r" inputMode="decimal" value={h.vat_rate} disabled={ro || h.price_type === '0'} onChange={(e) => set({ vat_rate: e.target.value.replace(/[^\d.]/g, '') })} aria-label="อัตราภาษี" style={{ width: 60 }} /> %</td>
               <td>{d(h.vat_rate || 0).isZero() && h.price_type !== '0' ? <MoneyInput value={h.vat_amount} disabled={ro} placeholder="ป้อนภาษีเอง" onChange={(v) => set({ vat_amount: v })} aria-label="จำนวนภาษี" /> : <span className="r num" style={{ display: 'block' }}>{fmt(vat.toFixed(2))}</span>}</td></tr>
             <tr className="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td className="r"><Money v={net.toFixed(2)} /></td></tr>

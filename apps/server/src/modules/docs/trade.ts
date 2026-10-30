@@ -32,6 +32,8 @@ export const tradeBody = z.object({
     discount_text: str(20), is_free: z.boolean().default(false), return_to_stock: z.boolean().default(false), department_id: optId,
     /** บิลที่อ้างใบสั่งขาย/ใบสั่งซื้อ: บรรทัดต้นทาง */
     source_line_id: optId, delivery_date: isoDate.nullable().optional(),
+    /** ประเภท VAT รายบรรทัด (ข้อกำหนดเจ้าของ): 0 = ยกเว้น VAT · 1 = มี VAT — ไม่ส่ง = ตามแฟ้มสินค้า · หน้าเอกสารมาก่อนแฟ้มสินค้า */
+    vat_code: z.enum(['0', '1']).nullable().optional(),
   })).min(1, 'ป้อนรายการสินค้าอย่างน้อย 1 บรรทัด').max(500),
   payments: z.array(z.object({ payment_method_id: uuid, amount: num, reference_no: str(30) })).max(20).default([]),
   /** หักเงินมัดจำ (AI → บิลขาย, AE → บิลซื้อ) ยอดตามประเภทราคาของบิล */
@@ -110,8 +112,10 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     if (d(x.amount).lte(0) || d(x.amount).gt(d(o.outstanding))) throw badRequest(`${o.doc_no}: หักมัดจำได้ไม่เกินยอดคงเหลือ ${d(o.outstanding).toFixed(2)}`);
     return sum.plus(d(x.amount));
   }, d(0));
+  // ประเภท VAT รายบรรทัด: ที่เลือกบนเอกสาร > แฟ้มสินค้า (ว่าง = มี VAT)
+  const lineVat = (l: { item_id: string; vat_code?: '0' | '1' | null }) => l.vat_code ?? (byId.get(l.item_id)?.vat_code === '0' ? '0' : '1');
   const calc = computeDoc({ price_type: b.price_type, vat_rate: b.vat_rate, discount_text: b.discount_text, deposit_amount: depositTotal.toFixed(2),
-    lines: b.lines.map((l) => ({ qty: l.qty, unit_price: l.is_free ? 0 : l.unit_price, discount_text: l.discount_text, vat_exempt: byId.get(l.item_id)?.vat_code === '0' })) });
+    lines: b.lines.map((l) => ({ qty: l.qty, unit_price: l.is_free ? 0 : l.unit_price, discount_text: l.discount_text, vat_exempt: lineVat(l) === '0' })) });
   if (calc.errors.length) throw badRequest(calc.errors[0]!, calc.errors.map((m) => ({ message: m })));
   const payTotal = b.payments.reduce((s, p) => s.plus(d(p.amount)), d(0));
   if (!K.payments && b.payments.length) throw badRequest(`${K.label}ไม่มีการรับ/จ่ายเงินในเอกสาร — ใช้เมนูรับ/จ่ายชำระหนี้`);
@@ -125,7 +129,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     doc_type_id: dt.id, doc_class: K.cls, module: K.order ?? K.module, doc_date: b.doc_date, delivery_date: K.order && K.cls !== 'QT' ? b.delivery_date ?? b.doc_date : null,
     customer_id: K.party === 'customer' ? party.id : null, supplier_id: K.party === 'supplier' ? party.id : null, bill_to_customer_id: billTo ? b.bill_to_customer_id : null,
     party_name: [shown.title, shown.name].filter(Boolean).join(' ').slice(0, 200), party_address: [shown.address_1, shown.address_2, shown.address_3, shown.zip_code].filter(Boolean).join(' ').slice(0, 500) || null,
-    party_tax_id: shown.tax_id, party_tax_branch_no: b.party_tax_branch_no ?? shown.tax_branch_no,
+    party_tax_id: shown.tax_id, party_tax_branch_no: b.party_tax_branch_no || shown.tax_branch_no || '00000',
     your_ref: b.your_ref, ref_no: b.ref_no, ref_date: b.ref_date ?? null, department_id: b.department_id ?? dt.department_id, salesperson_id: b.salesperson_id,
     sales_area_code: b.sales_area_code, ship_via_code: b.ship_via_code, ship_to_id: b.ship_to_id, warehouse_id: b.warehouse_id ?? dt.warehouse_id,
     credit_days: credit, due_date: b.due_date ?? dueDate(b.doc_date, credit), price_type: b.price_type, vat_rate: b.vat_rate, vat_basis: b.vat_basis ?? '1',
@@ -204,7 +208,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
       department_id: l.department_id ?? header.department_id, qty: l.qty, unit_id: l.unit_id ?? byId.get(l.item_id)!.base_unit_id,
       factor: l.factor ?? '1', base_qty: d(l.qty).times(d(l.factor ?? 1)).abs().toString(), unit_price: l.is_free ? '0' : l.unit_price, discount_text: l.discount_text,
       discount_amount: calc.lines[i]!.discount_amount, line_amount: calc.lines[i]!.line_amount, net_amount: calc.lines[i]!.net_amount,
-      vat_code: byId.get(l.item_id)!.vat_code, is_free: l.is_free, return_to_stock: l.return_to_stock, salesperson_id: b.salesperson_id, created_by: a.userId,
+      vat_code: lineVat(l), is_free: l.is_free, return_to_stock: l.return_to_stock, salesperson_id: b.salesperson_id, created_by: a.userId,
       source_line_id: l.source_line_id, ordered_qty: K.order ? l.qty : null, delivery_date: K.order && K.cls !== 'QT' ? l.delivery_date ?? b.delivery_date ?? b.doc_date : null,
     }))).returning(['id', 'line_no']).execute();
     if (kitRows.length) {
@@ -377,14 +381,14 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
     if (qt.doc_status === 'C') throw badRequest('ใบเสนอราคานี้ถูกยกเลิกแล้ว');
     const soType = b.doc_type_id ?? (await db.selectFrom('md_doc_type').select('id').where('company_id', '=', a.companyId).where('doc_class', '=', 'SO').where('status', '=', 'A').where('deleted_at', 'is', null).orderBy('code').executeTakeFirst())?.id;
     if (!soType) throw badRequest('ยังไม่มีประเภทเอกสารใบสั่งขาย — เพิ่มที่ เริ่มระบบ › เลขที่เอกสาร');
-    const lines = await db.selectFrom('doc_line').select(['item_id', 'description', 'warehouse_id', 'qty', 'unit_id', 'factor', 'unit_price', 'discount_text', 'is_free', 'department_id'])
+    const lines = await db.selectFrom('doc_line').select(['item_id', 'description', 'warehouse_id', 'qty', 'unit_id', 'factor', 'unit_price', 'discount_text', 'is_free', 'department_id', 'vat_code'])
       .where('header_id', '=', id).where('deleted_at', 'is', null).where('item_id', 'is not', null).where('line_kind', '<>', 'K').orderBy('line_no').execute();
     const K = TRADE_KINDS.find((k) => k.cls === 'SO')!;
     const so = await saveTrade(db, a, K, null, parse(tradeBody, {
       doc_type_id: soType, doc_date: b.doc_date, delivery_date: b.delivery_date ?? b.doc_date, party_id: qt.customer_id, bill_to_customer_id: qt.bill_to_customer_id, party_tax_branch_no: qt.party_tax_branch_no,
       your_ref: qt.your_ref, department_id: qt.department_id, salesperson_id: qt.salesperson_id, sales_area_code: qt.sales_area_code, ship_via_code: qt.ship_via_code,
       price_type: qt.price_type, vat_rate: qt.vat_rate ?? 0, discount_text: qt.discount_text, remark: qt.remark,
-      lines: lines.map((l) => ({ ...l, qty: l.qty, factor: l.factor, unit_price: l.unit_price })),
+      lines: lines.map((l) => ({ ...l, qty: l.qty, factor: l.factor, unit_price: l.unit_price, vat_code: l.vat_code === '0' || l.vat_code === '1' ? l.vat_code : null })),
     }));
     await db.insertInto('doc_link').values({ company_id: a.companyId, from_header_id: id, to_header_id: so.id!, link_type: 'CONVERT', created_by: a.userId }).execute();
     return so;

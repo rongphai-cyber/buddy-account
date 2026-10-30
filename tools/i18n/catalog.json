@@ -5422,14 +5422,6 @@
 ]
 },
 {
-"th": "5+ หรือ 500",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "61–90 วัน",
 "n": 2,
 "files": [
@@ -6682,6 +6674,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ประเภท VAT",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -8157,6 +8157,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "สาขาของคู่ค้า",
+"n": 2,
+"files": [
+"apps/web/src/components/BranchPick.tsx"
 ]
 },
 {
@@ -10087,6 +10094,20 @@
 ]
 },
 {
+"th": "0 ไม่มี",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "00000 สำนักงานใหญ่",
+"n": 1,
+"files": [
+"apps/web/src/components/BranchPick.tsx"
+]
+},
+{
 "th": "01 รอเรียกเก็บ",
 "n": 1,
 "files": [
@@ -10105,6 +10126,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Accounts.tsx"
+]
+},
+{
+"th": "1 = มี VAT · 0 = ยกเว้น VAT",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -11743,6 +11771,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "{0} สาขาที่ {1}",
+"n": 1,
+"files": [
+"apps/web/src/components/BranchPick.tsx"
 ]
 },
 {
@@ -14522,6 +14557,20 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DiscountInput.tsx"
+]
+},
+{
+"th": "คีย์เลขสาขา 5 หลัก — ไม่ครบเติม 0 ข้างหน้าให้ · ว่าง = สำนักงานใหญ่",
+"n": 1,
+"files": [
+"apps/web/src/components/BranchPick.tsx"
+]
+},
+{
+"th": "คีย์เลขสาขาอื่น…",
+"n": 1,
+"files": [
+"apps/web/src/components/BranchPick.tsx"
 ]
 },
 {
@@ -20860,10 +20909,10 @@
 ]
 },
 {
-"th": "ประเภท VAT",
+"th": "ประเภท VAT รายบรรทัด: 1 = มี VAT · 0 = ยกเว้น VAT (ค่าเริ่มต้นตามแฟ้มสินค้า แก้ที่เอกสารได้)",
 "n": 1,
 "files": [
-"apps/web/src/pages/items/Items.tsx"
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -20913,6 +20962,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/finance/Banking.tsx"
+]
+},
+{
+"th": "ประเภทราคา 0 = ยกเว้นภาษีทั้งบิล",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -23709,6 +23765,13 @@
 ]
 },
 {
+"th": "มูลค่าที่คิด VAT",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "มูลค่าที่ถูกต้อง",
 "n": 1,
 "files": [
@@ -23720,6 +23783,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "มูลค่ายกเว้น VAT",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -24315,6 +24385,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "ยอดที่นำไปคำนวณภาษีมูลค่าเพิ่ม (ไม่รวมรายการยกเว้น VAT)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -27101,6 +27178,13 @@
 "n": 1,
 "files": [
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "รายการที่เลือก VAT = 0 ยกเว้น — ไม่นำไปคิดภาษี",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -29897,6 +29981,13 @@
 ]
 },
 {
+"th": "สาขาของคู่ค้า (ว่าง = สำนักงานใหญ่)",
+"n": 1,
+"files": [
+"apps/web/src/components/BranchPick.tsx"
+]
+},
+{
 "th": "สาขาของผู้ซื้อต้องเป็นตัวเลข 5 หลัก (สำนักงานใหญ่ 00000)",
 "n": 1,
 "files": [
@@ -32666,6 +32757,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "เช่น 00001",
+"n": 1,
+"files": [
+"apps/web/src/components/BranchPick.tsx"
 ]
 },
 {
@@ -36544,13 +36642,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Ledger.tsx"
-]
-},
-{
-"th": "แยกยอดเงิน 0.00 %=",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {

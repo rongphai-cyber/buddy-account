@@ -13,6 +13,12 @@ const str = (max: number) => z.string().trim().max(max).nullable().optional().tr
 const num = z.union([z.number(), z.string()]).nullable().optional().transform((v) => (v === '' || v === null || v === undefined ? null : Number(v)));
 
 /** ตารางอ้างอิงที่หน้าจอลูกค้า/ผู้จำหน่าย/พนักงานขายใช้ (คู่มือบทที่ 6 ตารางข้อมูล): 40 เขตการขาย 41 ขนส่งโดย 45 ประเภทลูกค้า 46 ประเภทผู้จำหน่าย 47 ประเภทพนักงานขาย 55 หมวดภาษีหัก ณ ที่จ่าย */
+/** สาขาของคู่ค้าให้เลือกบนเอกสาร (ข้อกำหนดเจ้าของ): สำนักงานใหญ่ + สาขาในแฟ้มคู่ค้า + สาขาที่เคยใช้ในเอกสาร */
+async function taxBranchesOf(db: Db, companyId: string, col: 'customer_id' | 'supplier_id', id: string, master: string | null) {
+  const used = await db.selectFrom('doc_header').select('party_tax_branch_no as no').distinct().where('company_id', '=', companyId).where(col, '=', id).where('deleted_at', 'is', null).where('party_tax_branch_no', 'is not', null).execute();
+  return [...new Set(['00000', master ?? '', ...used.map((u) => u.no ?? '')])].filter((x) => /^\d{5}$/.test(x)).sort();
+}
+
 export function lookupRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/lookups', async (req) => {
     const a = requireCompany(req);
@@ -185,7 +191,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     const ship_tos = await db.selectFrom('md_customer_ship_to').select(['code', 'address_1', 'address_2', 'address_3', 'zip_code', 'phone', 'contact']).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('deleted_at', 'is', null).orderBy('code').execute();
     const bills = await outstandingBills(db, 'AR', a.companyId, id);
     const last = await db.selectFrom('doc_header').select(sql<string | null>`max(doc_date)`.as('d')).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('doc_class', '=', 'IV').where('doc_status', '<>', 'C').where('deleted_at', 'is', null).executeTakeFirst();
-    return { ...c, ship_tos, contacts: await contactsOf(db, a.companyId, 'C', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_invoice_date: last?.d ?? null };
+    return { ...c, tax_branches: await taxBranchesOf(db, a.companyId, 'customer_id', id, c.tax_branch_no), ship_tos, contacts: await contactsOf(db, a.companyId, 'C', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_invoice_date: last?.d ?? null };
   });
 
   async function saveCustomer(a: AuthContext & { companyId: string }, id: string | null, b: z.infer<typeof customerBody>) {
@@ -264,7 +270,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     const banks = await db.selectFrom('md_supplier_bank').select(['bank_code', 'branch', 'account_no', 'account_name', 'is_default']).where('company_id', '=', a.companyId).where('supplier_id', '=', id).where('deleted_at', 'is', null).orderBy('line_no').execute();
     const bills = await outstandingBills(db, 'AP', a.companyId, id);
     const last = await db.selectFrom('doc_header').select(sql<string | null>`max(doc_date)`.as('d')).where('company_id', '=', a.companyId).where('supplier_id', '=', id).where('doc_class', '=', 'RR').where('doc_status', '<>', 'C').where('deleted_at', 'is', null).executeTakeFirst();
-    return { ...s, banks, contacts: await contactsOf(db, a.companyId, 'S', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_bill_date: last?.d ?? null };
+    return { ...s, tax_branches: await taxBranchesOf(db, a.companyId, 'supplier_id', id, s.tax_branch_no), banks, contacts: await contactsOf(db, a.companyId, 'S', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_bill_date: last?.d ?? null };
   });
 
   async function saveSupplier(a: AuthContext & { companyId: string }, id: string | null, b: z.infer<typeof supplierBody>) {
