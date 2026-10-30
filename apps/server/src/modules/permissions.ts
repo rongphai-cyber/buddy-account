@@ -182,7 +182,11 @@ export const API_RULES: Record<string, Rule> = {
   ...Object.fromEntries(Object.values(ITEM_KINDS).flatMap((k) => [
     [`GET /api/v1/${k.path}`, LOOKUP], [`GET /api/v1/${k.path}/:id`, LOOKUP], [`POST /api/v1/${k.path}`, M(k.menu, 'add')],
     [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`DELETE /api/v1/${k.path}/:id`, M(k.menu, 'delete')],
+    // รูปภาพสินค้า (ข้อกำหนดเจ้าของ): ดูได้ทุกคนที่เห็นรหัส · เพิ่ม/ลบ/ตั้งรูปหลัก = สิทธิ์แก้ไขเมนูนั้น
+    [`GET /api/v1/${k.path}/:id/images`, LOOKUP], [`POST /api/v1/${k.path}/:id/images`, M(k.menu, 'edit')],
+    [`PUT /api/v1/${k.path}/:id/images/:imageId/main`, M(k.menu, 'edit')], [`DELETE /api/v1/${k.path}/:id/images/:imageId`, M(k.menu, 'edit')],
   ])),
+  'GET /api/v1/item-images/:imageId': LOOKUP,
   'POST /api/v1/kits/:id/copy': M('IC.KIT', 'add'),
   'GET /api/v1/items/:id/prices': M('IC.PRICE', 'read'), 'PUT /api/v1/items/:id/prices': M('IC.PRICE', 'edit'),
   'GET /api/v1/items/:id/reorder': M('IC.REORDER', 'read'), 'PUT /api/v1/items/:id/reorder': M('IC.REORDER', 'edit'),

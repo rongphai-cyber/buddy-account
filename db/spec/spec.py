@@ -530,6 +530,17 @@ add(T('md_item_reorder', 'จุดสั่งซื้อแยกคลัง
   C('projected_sales', 'qty', th='ยอดขายโครงการ', src='STMIN.PRJSAL'),
 ], uniq=[('item_id','warehouse_id','start_mmdd')]))
 
+add(T('md_item_image', 'รูปภาพสินค้า (ข้อกำหนดเจ้าของ 30/10/2569) — PNG/JPEG ไม่เกิน 300 KB ต่อรูป สูงสุด 8 รูปต่อรหัส · รูปหลักแสดงในรายการและหน้าค้นหา', 'md', express='(ใหม่)', cols=[
+  lk('item_id', 'md_item', 'สินค้า', nn=True),
+  C('line_no', 'smallint', nn=True, th='ลำดับรูป'),
+  C('is_main', 'bool', nn=True, d='false', th='รูปหลัก (แสดงในรายการสินค้าและหน้าค้นหา)'),
+  C('name', 'str120', th='ชื่อแฟ้มรูปเดิม'),
+  C('mime', 'code30', nn=True, th='image/png หรือ image/jpeg'),
+  C('data', 'text', nn=True, th='รูป (base64)'),
+  C('thumb', 'text', nn=True, th='รูปย่อสำหรับรายการ (JPEG ด้านยาวไม่เกิน 160 px, base64)'),
+  C('bytes', 'int', nn=True, th='ขนาดแฟ้มรูป (ไบต์)'),
+]))
+
 add(T('md_customer', 'ลูกค้า', 'md', express='ARMAS', cols=[
   C('code', 'code20', nn=True, th='รหัสลูกค้า', src='ARMAS.CUSCOD'),
   C('customer_type', 'code4', th='ประเภทลูกค้า lookup 45', src='ARMAS.CUSTYP'),

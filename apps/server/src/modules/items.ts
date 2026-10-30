@@ -7,6 +7,7 @@ import { badRequest, conflict, notFound, parse, requireCompany, type AuthContext
 import { logActivity } from '../audit.js';
 import { companySettings } from '../company-template.js';
 import { checkAccount } from './parties.js';
+import { mainImageId } from './item-images.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -104,7 +105,7 @@ export function itemRoutes(app: FastifyInstance, db: Db) {
     const types = (q.module === 'AR' ? ['0', '1', '2', '3', '4'] : ['0', '1', '2', '3', '5']).filter((t) => !q.types || q.types.split(',').includes(t));
     let s = db.selectFrom('md_item as i').leftJoin('md_unit as bu', 'bu.id', 'i.base_unit_id').leftJoin('md_unit as su', 'su.id', 'i.sales_unit_id').leftJoin('md_unit as pu', 'pu.id', 'i.purchase_unit_id')
       .select(['i.id', 'i.code', 'i.name_th', 'i.item_type', 'i.vat_code', 'i.base_unit_id', 'bu.code as base_unit_code', 'i.sales_unit_id', 'su.code as sales_unit_code', 'i.sales_factor', 'i.purchase_unit_id', 'pu.code as purchase_unit_code', 'i.purchase_factor',
-        'i.price_1', 'i.price_2', 'i.price_3', 'i.price_4', 'i.price_5', 'i.std_cost'])
+        'i.price_1', 'i.price_2', 'i.price_3', 'i.price_4', 'i.price_5', 'i.std_cost', mainImageId.as('image_id')])
       .where('i.company_id', '=', a.companyId).where('i.deleted_at', 'is', null).where('i.status', '=', 'A').where('i.item_type', 'in', types);
     if (q.q?.trim()) { const like = `%${q.q.trim()}%`; s = s.where((eb) => eb.or([eb('i.code', 'ilike', like), eb('i.name_th', 'ilike', like), eb('i.barcode', '=', q.q!.trim())])); }
     return { rows: await s.orderBy('i.code').limit(q.limit).execute() };
@@ -205,7 +206,7 @@ function kindRoutes(app: FastifyInstance, db: Db, K: ItemKindDef) {
     const q = parse(z.object({ q: z.string().optional(), status: z.enum(['A', 'I', 'all']).default('A'), category: z.string().optional(), limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0) }), req.query);
     let s = db.selectFrom('md_item as i').leftJoin('md_unit as u', 'u.id', 'i.base_unit_id').leftJoin('md_item_account_group as g', 'g.id', 'i.account_group_id')
       .select(['i.id', 'i.code', 'i.item_type', 'i.name_th', 'i.name_en', 'i.barcode', 'i.category_code', 'i.std_cost', 'i.price_1', 'i.status', 'u.code as unit_code', 'u.name_th as unit_name',
-        sql<string | null>`CASE WHEN g.item_specific THEN NULL ELSE g.code END`.as('group_code'),
+        sql<string | null>`CASE WHEN g.item_specific THEN NULL ELSE g.code END`.as('group_code'), mainImageId.as('image_id'),
         sql<string>`(SELECT coalesce(sum(b.qty_on_hand), 0) FROM inv_stock_balance b WHERE b.item_id = i.id AND b.deleted_at IS NULL)`.as('qty'),
         sql<string>`(SELECT coalesce(sum(b.value_on_hand), 0) FROM inv_stock_balance b WHERE b.item_id = i.id AND b.deleted_at IS NULL)`.as('value')])
       .where('i.company_id', '=', a.companyId).where('i.deleted_at', 'is', null).where('i.item_type', 'in', K.types);

@@ -755,6 +755,27 @@ CREATE TABLE IF NOT EXISTS md_item_reorder (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_md_item_reorder_item_warehouse_start_mmdd ON md_item_reorder (item_id, warehouse_id, start_mmdd) WHERE deleted_at IS NULL;
 
+-- md_item_image: รูปภาพสินค้า (ข้อกำหนดเจ้าของ 30/10/2569) — PNG/JPEG ไม่เกิน 300 KB ต่อรูป สูงสุด 8 รูปต่อรหัส · รูปหลักแสดงในรายการและหน้าค้นหา
+CREATE TABLE IF NOT EXISTS md_item_image (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  item_id TEXT NOT NULL REFERENCES md_item(id) DEFERRABLE INITIALLY DEFERRED,
+  line_no INTEGER NOT NULL,
+  is_main INTEGER NOT NULL DEFAULT 0,
+  name TEXT,
+  mime TEXT NOT NULL,
+  data TEXT NOT NULL,
+  thumb TEXT NOT NULL,
+  bytes INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+
 -- md_customer: ลูกค้า
 CREATE TABLE IF NOT EXISTS md_customer (
   id TEXT PRIMARY KEY,
@@ -2704,6 +2725,29 @@ CREATE TRIGGER IF NOT EXISTS trg_md_item_reorder_ver AFTER UPDATE ON md_item_reo
 WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
 BEGIN
   UPDATE md_item_reorder SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_item_image_insert_outbox AFTER INSERT ON md_item_image
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_item_image', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'item_id', NEW.item_id, 'line_no', NEW.line_no, 'is_main', NEW.is_main, 'name', NEW.name, 'mime', NEW.mime, 'data', NEW.data, 'thumb', NEW.thumb, 'bytes', NEW.bytes, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_item_image_update_outbox AFTER UPDATE ON md_item_image
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_item_image', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'item_id', NEW.item_id, 'line_no', NEW.line_no, 'is_main', NEW.is_main, 'name', NEW.name, 'mime', NEW.mime, 'data', NEW.data, 'thumb', NEW.thumb, 'bytes', NEW.bytes, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_item_image_ver AFTER UPDATE ON md_item_image
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE md_item_image SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_customer_insert_outbox AFTER INSERT ON md_customer
 WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'

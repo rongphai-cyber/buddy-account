@@ -9,7 +9,7 @@ import type { Db } from './db.js';
  */
 export const COPY_SETUP = ['gl_account', 'gl_default_account', 'gl_journal_book', 'gl_template', 'gl_template_line', 'md_lookup', 'md_unit', 'md_warehouse', 'md_department', 'md_bank', 'md_project',
   'md_item_account_group', 'md_asset_account_group', 'md_bank_account', 'md_doc_type', 'md_doc_type_account', 'md_payment_method', 'sys_setting', 'sys_print_form', 'sys_report_custom', 'gl_fs_report', 'gl_fs_line'];
-export const COPY_MASTERS = ['md_salesperson', 'md_customer', 'md_customer_ship_to', 'md_supplier', 'md_party_contact', 'md_supplier_bank', 'md_item', 'md_item_bom', 'md_item_price_break', 'md_item_reorder', 'md_note'];
+export const COPY_MASTERS = ['md_salesperson', 'md_customer', 'md_customer_ship_to', 'md_supplier', 'md_party_contact', 'md_supplier_bank', 'md_item', 'md_item_bom', 'md_item_price_break', 'md_item_reorder', 'md_item_image', 'md_note'];
 
 export async function copyCompanyData(tx: Db, fromId: string, toId: string, userId: string, withMasters: boolean) {
   const has = new Set((await sql<{ t: string }>`SELECT table_name AS t FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'company_id'`.execute(tx)).rows.map((r) => r.t));

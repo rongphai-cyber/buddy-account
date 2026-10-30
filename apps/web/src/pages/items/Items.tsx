@@ -6,10 +6,11 @@ import { useCan } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { MasterNotesDialog } from '../../components/Notes';
+import { ItemImagesTab, ItemThumb } from '../../components/ItemImages';
 import { Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 
 type F = Record<string, string | null>;
-interface Row { id: string; code: string; item_type: string; name_th: string; name_en: string | null; barcode: string | null; category_code: string | null; std_cost: string | null; price_1: string | null; status: string; unit_code: string | null; group_code: string | null; qty: string; value: string }
+interface Row { id: string; image_id: string | null; code: string; item_type: string; name_th: string; name_en: string | null; barcode: string | null; category_code: string | null; std_cost: string | null; price_1: string | null; status: string; unit_code: string | null; group_code: string | null; qty: string; value: string }
 interface BomRow { component_item_id: string; component_code: string; component_name: string; unit_code: string | null; qty: string; std_cost: string | null; sell_price: string | null; warehouse_id: string | null; component_std_cost?: string | null; component_price_1?: string | null }
 interface Detail extends Record<string, unknown> {
   id: string; code: string; item_type: string; account_group: { id: string; code: string } | null; accounts: Record<string, string | null>;
@@ -54,6 +55,8 @@ function ItemsPage({ kind }: { kind: ItemKind }) {
   const list = useQuery({ queryKey: [K.path, q, status, cat, limit], queryFn: () => api.get<{ total: number; rows: Row[] }>(`/api/v1/${K.path}`, { q, status, category: cat, limit }), placeholderData: (p) => p });
   useHotkeys({ Insert: can('add') ? () => setEdit('new') : undefined }, []);
   const stockish = kind === 'stock' || kind === 'kit';
+  // คอลัมน์รูปแสดงเมื่อมีสินค้าที่มีรูปในหน้านี้ (ไม่เปลืองที่สำหรับบริษัทที่ไม่ใช้รูป)
+  const hasImg = !!list.data?.rows.some((r) => r.image_id);
   const title = kind === 'income' ? 'รายละเอียดรายได้อื่น ๆ' : kind === 'expense' ? 'รายละเอียดค่าใช้จ่ายอื่น ๆ' : `รายละเอียด${K.label}`;
   return (
     <div className="page" data-tone={TONE[kind]}>
@@ -69,7 +72,7 @@ function ItemsPage({ kind }: { kind: ItemKind }) {
       <div className="table-wrap">
         <table className="grid">
           <thead><tr>
-            <th style={{ width: 170 }}>รหัส</th><th>ชื่อ</th>{kind === 'kit' && <th style={{ width: 90 }}>ประเภท</th>}<th style={{ width: 80 }}>หมวด</th><th style={{ width: 70 }}>หน่วย</th>
+            {hasImg && <th style={{ width: 44 }} aria-label="รูป" />}<th style={{ width: 170 }}>รหัส</th><th>ชื่อ</th>{kind === 'kit' && <th style={{ width: 90 }}>ประเภท</th>}<th style={{ width: 80 }}>หมวด</th><th style={{ width: 70 }}>หน่วย</th>
             {kind === 'stock' && <th style={{ width: 70 }}>กลุ่มบัญชี</th>}
             {kind !== 'expense' && <th className="r" style={{ width: 110 }}>{kind === 'income' ? 'จำนวนเงิน' : 'ราคาขาย 1'}</th>}
             {kind === 'expense' && <th className="r" style={{ width: 110 }}>จำนวนเงิน</th>}
@@ -79,7 +82,7 @@ function ItemsPage({ kind }: { kind: ItemKind }) {
           <tbody>
             {list.data?.rows.map((r) => (
               <tr key={r.id} className="row-open" tabIndex={0} onClick={() => setEdit(r.id)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r.id)}>
-                <td className="mono">{r.code}</td><td>{r.name_th}{r.name_en && <span className="muted small"> · {r.name_en}</span>}</td>
+                {hasImg && <td className="img-cell"><ItemThumb id={r.image_id} /></td>}<td className="mono">{r.code}</td><td>{r.name_th}{r.name_en && <span className="muted small"> · {r.name_en}</span>}</td>
                 {kind === 'kit' && <td>{ITEM_TYPE_TH[r.item_type]}</td>}
                 <td className="mono">{r.category_code}</td><td>{r.unit_code}</td>
                 {kind === 'stock' && <td className="mono">{r.group_code}</td>}
@@ -153,7 +156,8 @@ export function ItemForm({ kind, id, onClose, onSaved, initial }: { kind: ItemKi
     ...(kind === 'service' || kind === 'income' ? [{ key: 'acc', label: 'บัญชี' }] : []),
     ...(kind === 'stock' && id ? [{ key: 'wh', label: 'คลังสินค้า', badge: cur.data?.warehouses.length || undefined }] : []),
     ...((kind === 'stock' || kind === 'expense') && udfOn.length ? [{ key: 'udf', label: 'ฟิลด์เพิ่มเติม' }] : []),
-    ...(id && cur.data?.used_in_kits.length ? [{ key: 'kits', label: 'อยู่ในสินค้าชุด', badge: cur.data.used_in_kits.length }] : [])];
+    ...(id && cur.data?.used_in_kits.length ? [{ key: 'kits', label: 'อยู่ในสินค้าชุด', badge: cur.data.used_in_kits.length }] : []),
+    { key: 'img', label: 'รูปภาพ' }];
   const priceLabel = kind === 'income' || kind === 'expense';
   const [showNotes, setShowNotes] = useState(false);
 
@@ -231,6 +235,8 @@ export function ItemForm({ kind, id, onClose, onSaved, initial }: { kind: ItemKi
             return <Field key={k} label={lab}><input {...t(col, max)} /></Field>;
           })}
         </div>}
+        {tab === 'img' && (id ? <ItemImagesTab path={K.path} itemId={id} canEdit={can('edit')} />
+          : <p className="hint">บันทึก{K.label}ก่อน (F9) แล้วเปิดแก้ไขอีกครั้งเพื่อเพิ่มรูป</p>)}
         {tab === 'kits' && cur.data && <ul className="plain">{cur.data.used_in_kits.map((k) => <li key={k.id}><b className="mono">{k.code}</b> {k.name_th}</li>)}</ul>}
       </div>}
       {ask === 'delete' && <Confirm danger title={`ลบ${K.label}`} text={`ลบ ${f?.code}? ลบได้เฉพาะรหัสที่ยังไม่มีในเอกสาร ไม่มีสต๊อก และไม่อยู่ในสินค้าชุด — ถ้ามีแล้วให้เปลี่ยนสถานะเป็นเลิกใช้`} okText="ลบ" onClose={() => setAsk(null)} onOk={remove} />}

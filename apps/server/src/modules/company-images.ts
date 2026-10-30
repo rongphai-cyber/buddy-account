@@ -11,11 +11,11 @@ import { logActivity } from '../audit.js';
  * แก้ไขได้เฉพาะผู้มีสิทธิ์แก้แบบฟอร์ม (RP.FORM ระดับ 9) · ทุกคนที่พิมพ์เอกสารได้เห็นรูปในเอกสาร
  */
 export const MAX_IMAGE_BYTES = 300 * 1024;
-const dataUrl = z.string().max(Math.ceil(MAX_IMAGE_BYTES * 1.4) + 100, 'รูปใหญ่เกิน 300 KB — ย่อรูปก่อน').regex(/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/, 'ใช้รูป PNG หรือ JPG เท่านั้น');
+export const imageDataUrl = z.string().max(Math.ceil(MAX_IMAGE_BYTES * 1.4) + 100, 'รูปใหญ่เกิน 300 KB — ย่อรูปก่อน').regex(/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/, 'ใช้รูป PNG หรือ JPG เท่านั้น');
 export type CompanyImages = { logo: string | null; signs: Record<string, { name: string; data: string }> };
 
 /** ตรวจว่าเป็นรูปจริง (ลายเซ็นแฟ้ม) และขนาดไม่เกิน */
-function decode(url: string) {
+export function decodeImage(url: string) {
   const [head, b64] = url.split(',') as [string, string];
   const mime = head.slice(5, head.indexOf(';'));
   const buf = Buffer.from(b64, 'base64');
@@ -44,8 +44,8 @@ export function companyImageRoutes(app: FastifyInstance, db: Db) {
   /** โลโก้: มีได้รูปเดียว — อัปโหลดใหม่แทนรูปเดิม */
   app.put('/api/v1/company-images/logo', async (req) => {
     const a = requireCompany(req);
-    const { data } = parse(z.object({ data: dataUrl }), req.body);
-    const img = decode(data);
+    const { data } = parse(z.object({ data: imageDataUrl }), req.body);
+    const img = decodeImage(data);
     const cur = (await sql<{ id: string }>`SELECT id FROM sys_company_image WHERE company_id = ${a.companyId} AND kind = 'LOGO' AND deleted_at IS NULL`.execute(db)).rows[0];
     if (cur) await sql`UPDATE sys_company_image SET mime = ${img.mime}, data = ${img.b64}, bytes = ${img.bytes}, updated_by = ${a.userId} WHERE id = ${cur.id}`.execute(db);
     else await sql`INSERT INTO sys_company_image (company_id, kind, name, mime, data, bytes, created_by) VALUES (${a.companyId}, 'LOGO', 'LOGO', ${img.mime}, ${img.b64}, ${img.bytes}, ${a.userId})`.execute(db);
@@ -55,8 +55,8 @@ export function companyImageRoutes(app: FastifyInstance, db: Db) {
   /** ลายเซ็น: ตั้งชื่อได้หลายรูป (เช่น กรรมการผู้จัดการ ผู้รับเงิน) — แบบฟอร์มเลือกรูปให้แต่ละช่องลงชื่อ */
   app.post('/api/v1/company-images/signs', async (req) => {
     const a = requireCompany(req);
-    const b = parse(z.object({ name: z.string().trim().min(1, 'ตั้งชื่อลายเซ็น เช่น กรรมการผู้จัดการ').max(120), data: dataUrl }), req.body);
-    const img = decode(b.data);
+    const b = parse(z.object({ name: z.string().trim().min(1, 'ตั้งชื่อลายเซ็น เช่น กรรมการผู้จัดการ').max(120), data: imageDataUrl }), req.body);
+    const img = decodeImage(b.data);
     if ((await sql`SELECT 1 FROM sys_company_image WHERE company_id = ${a.companyId} AND kind = 'SIGN' AND name = ${b.name} AND deleted_at IS NULL`.execute(db)).rows.length)
       throw badRequest(`มีลายเซ็นชื่อ "${b.name}" อยู่แล้ว — ใช้ชื่ออื่น หรือลบรูปเดิมก่อน`);
     const r = (await sql<{ id: string }>`INSERT INTO sys_company_image (company_id, kind, name, mime, data, bytes, created_by) VALUES (${a.companyId}, 'SIGN', ${b.name}, ${img.mime}, ${img.b64}, ${img.bytes}, ${a.userId}) RETURNING id`.execute(db)).rows[0]!;

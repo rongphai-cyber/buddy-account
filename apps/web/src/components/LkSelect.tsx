@@ -80,6 +80,7 @@ export function SearchPick<T extends { id: string }>({ endpoint, params, value, 
       {q !== null && (q.trim() || browse) && (
         <ul className="pick-list" role="listbox">
           {rows.map((r, i) => <li key={r.id} role="option" aria-selected={i === sel} tabIndex={-1} className={i === sel ? 'on' : undefined} onMouseDown={(e) => { e.preventDefault(); pick(r); }}>
+            {(r as { image_id?: string | null }).image_id && <img className="pick-thumb" src={`/api/v1/item-images/${(r as { image_id?: string }).image_id}?size=thumb`} alt="" loading="lazy" />}
             <b className="mono">{codeOf ? codeOf(r) : (r as unknown as { code: string }).code}</b> {label ? label(r) : ''} {describe && <span className="muted small">{describe(r)}</span>}
           </li>)}
           {res.data && !rows.length && <li className="muted">ไม่พบ{canAdd ? ' — กด Enter เพื่อเพิ่มใหม่' : ''}</li>}

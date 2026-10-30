@@ -1550,6 +1550,43 @@ export interface MdItemReorderTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** รูปภาพสินค้า (ข้อกำหนดเจ้าของ 30/10/2569) — PNG/JPEG ไม่เกิน 300 KB ต่อรูป สูงสุด 8 รูปต่อรหัส · รูปหลักแสดงในรายการและหน้าค้นหา */
+export interface MdItemImageTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** สินค้า */
+  item_id: string;
+  /** ลำดับรูป */
+  line_no: number;
+  /** รูปหลัก (แสดงในรายการสินค้าและหน้าค้นหา) */
+  is_main: Gen<boolean>;
+  /** ชื่อแฟ้มรูปเดิม */
+  name: Gen<string | null>;
+  /** image/png หรือ image/jpeg */
+  mime: string;
+  /** รูป (base64) */
+  data: string;
+  /** รูปย่อสำหรับรายการ (JPEG ด้านยาวไม่เกิน 160 px, base64) */
+  thumb: string;
+  /** ขนาดแฟ้มรูป (ไบต์) */
+  bytes: number;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ลูกค้า */
 export interface MdCustomerTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -3749,6 +3786,7 @@ export interface DB {
   md_item_bom: MdItemBomTable;
   md_item_price_break: MdItemPriceBreakTable;
   md_item_reorder: MdItemReorderTable;
+  md_item_image: MdItemImageTable;
   md_customer: MdCustomerTable;
   md_customer_ship_to: MdCustomerShipToTable;
   md_supplier: MdSupplierTable;

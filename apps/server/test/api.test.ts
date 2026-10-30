@@ -3503,3 +3503,60 @@ describe('โลโก้และลายเซ็นในแบบฟอร�
     expect((await call('GET', '/api/v1/company-images')).body.map((x: { kind: string }) => x.kind)).toEqual(['LOGO']);
   });
 });
+
+describe('รูปภาพสินค้า (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  it('upload up to 8, first is main, set main, delete wipes + promotes, image file, list/search show main, rights, other tenants', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const mk = async (code: string, type: string) => (await sql<{ id: string }>`INSERT INTO md_item (company_id, code, name_th, item_type) VALUES (${co}, ${code}, ${'สินค้ามีรูป ' + code}, ${type}) RETURNING id`.execute(database.db)).rows[0]!.id;
+    const item = await mk('PIC-1', '0'), srv = await mk('PIC-SRV', '3');
+    const url = `/api/v1/items/${item}/images`;
+    expect((await call('GET', url)).body).toEqual([]);
+    expect((await call('POST', url, { data: 'data:image/png;base64,' + Buffer.from('not a png').toString('base64'), thumb: PNG })).body.error.message).toMatch(/ไม่ใช่รูป/);
+    expect((await call('POST', url, { data: PNG, thumb: 'data:image/gif;base64,R0lGODlh' })).status).toBe(400);
+    expect((await call('POST', `/api/v1/items/${srv}/images`, { data: PNG, thumb: PNG })).status).toBe(404);          // รหัสบริการต้องใช้เส้นทางของบริการ
+    expect((await call('POST', `/api/v1/services/${srv}/images`, { data: PNG, thumb: PNG })).status).toBe(200);
+    const ids: string[] = [];
+    for (let i = 0; i < 8; i++) { const r = await call('POST', url, { data: PNG, thumb: PNG, name: `รูป${i + 1}.png` }); expect(r.status).toBe(200); ids.push(r.body.id); }
+    expect((await call('POST', url, { data: PNG, thumb: PNG })).body.error.message).toMatch(/ครบ 8 รูป/);
+    let list = (await call('GET', url)).body as Array<{ id: string; is_main: boolean; line_no: number }>;
+    expect(list.filter((x) => x.is_main).map((x) => x.id)).toEqual([ids[0]]);
+    expect((await call('PUT', `${url}/${ids[2]}/main`)).status).toBe(200);
+    list = (await call('GET', url)).body;
+    expect(list[0]).toMatchObject({ id: ids[2], is_main: true }); expect(list.filter((x) => x.is_main)).toHaveLength(1);
+    // แฟ้มรูปสำหรับ <img> (ย่อ/เต็ม)
+    const f = await app.inject({ method: 'GET', url: `/api/v1/item-images/${ids[2]}?size=thumb`, headers: { cookie } });
+    expect(f.statusCode).toBe(200); expect(f.headers['content-type']).toBe('image/png'); expect(f.rawPayload.subarray(1, 4).toString()).toBe('PNG');
+    // รายการสินค้าและหน้าค้นหาบอกรูปหลัก
+    expect((await call('GET', '/api/v1/items?q=PIC-1')).body.rows[0].image_id).toBe(ids[2]);
+    expect((await call('GET', '/api/v1/item-search?module=AR&q=PIC-1')).body.rows[0].image_id).toBe(ids[2]);
+    // ลบรูปหลัก → ล้างรูป และรูปลำดับแรกที่เหลือเป็นรูปหลัก
+    expect((await call('DELETE', `${url}/${ids[2]}`)).status).toBe(200);
+    expect((await sql<{ data: string; thumb: string }>`SELECT data, thumb FROM md_item_image WHERE id = ${ids[2]}`.execute(database.db)).rows[0]).toEqual({ data: '', thumb: '' });
+    list = (await call('GET', url)).body;
+    expect(list).toHaveLength(7); expect(list[0]).toMatchObject({ id: ids[0], is_main: true });
+    expect((await app.inject({ method: 'GET', url: `/api/v1/item-images/${ids[2]}`, headers: { cookie } })).statusCode).toBe(404);
+    expect((await call('POST', url, { data: PNG, thumb: PNG })).status).toBe(200);                                     // ลบแล้วเพิ่มได้อีก
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE table_name = 'md_item_image'`.execute(database.db)).rows[0]!.n).toBeGreaterThanOrEqual(12);
+    // ผู้ใช้ที่ไม่มีสิทธิ์แก้สินค้า ดูรูปได้ แต่เพิ่ม/ลบไม่ได้
+    expect((await call('POST', '/api/v1/users', { username: 'pic.clerk', display_name: 'พนักงานดูสินค้า', password: 'clerkPic123', companies: [co], check_rights: true })).status).toBe(200);
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'pic.clerk', password: 'clerkPic123' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('GET', url)).body).toHaveLength(8);
+    expect((await call('POST', url, { data: PNG, thumb: PNG })).status).toBe(403);
+    expect((await call('DELETE', `${url}/${ids[0]}`)).status).toBe(403);
+    // ลูกค้าอื่นมองไม่เห็น/แก้ไม่ได้ แม้รู้รหัส
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    expect((await call('GET', url)).status).toBe(404);
+    expect((await call('POST', url, { data: PNG, thumb: PNG })).status).toBe(404);
+    expect((await call('PUT', `${url}/${ids[0]}/main`)).status).toBe(404);
+    expect((await call('DELETE', `${url}/${ids[0]}`)).status).toBe(404);
+    expect((await app.inject({ method: 'GET', url: `/api/v1/item-images/${ids[0]}`, headers: { cookie } })).statusCode).toBe(404);
+  });
+});

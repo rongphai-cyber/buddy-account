@@ -266,7 +266,7 @@ button.primary.book-btn { background: var(--book-c); border-color: var(--book-c)
 .empty-state b { color: var(--ink); display: block; margin-bottom: 4px; }
 
 /* modal */
-.modal-back { position: fixed; inset: 0; background: rgba(20, 18, 32, 0.45); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.modal-back { position: fixed; inset: 0; background: rgba(20, 18, 32, 0.45); display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; z-index: 50; padding: 16px; }
 .modal { background: var(--surface); border-radius: 10px; width: 600px; max-width: 100%; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); border-top: 4px solid var(--tone); }
 .modal.m-wide { width: 960px; }
 .modal.m-confirm { width: 640px; }
@@ -696,8 +696,26 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .ci-panel { margin: 8px 0 12px; padding: 10px 14px; }
 .ci-panel summary { cursor: pointer; }
 .ci-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
-.ci-box { border: 1px solid var(--line); border-radius: 8px; padding: 8px; width: 210px; display: flex; flex-direction: column; gap: 6px; background: var(--bg, #fff); }
+.ci-box { border: 1px solid var(--line); border-radius: 8px; padding: 8px; width: 210px; display: flex; flex-direction: column; gap: 6px; background: var(--surface); }
 .ci-img { max-height: 70px; max-width: 100%; object-fit: contain; align-self: flex-start; background: repeating-conic-gradient(#f2f2f2 0 25%, #fff 0 50%) 0 0 / 12px 12px; }
 .ci-empty { height: 70px; display: grid; place-items: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 6px; }
 .ci-acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .ci-acts .btn { display: inline-block; cursor: pointer; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bar); }
+
+/* รูปภาพสินค้า (ข้อกำหนดเจ้าของ 30/10/2569) */
+.item-thumb { display: inline-block; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); background: #fff; vertical-align: middle; }
+.item-thumb.none { border-style: dashed; opacity: .35; background: transparent; }
+td.img-cell { padding-top: 2px; padding-bottom: 2px; }
+.pick-thumb { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; vertical-align: middle; margin-right: 6px; border: 1px solid var(--line); background: #fff; }
+.item-images .ii-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin: 8px 0; }
+.item-images .btn { display: inline-block; cursor: pointer; padding: 5px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bar); }
+.item-images .btn.disabled { opacity: .6; cursor: wait; }
+.ii-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.ii-grid figure { margin: 0; border: 1px solid var(--line); border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 6px; background: var(--surface); }
+.ii-grid figure.is-main { border-color: var(--accent, #9b87d6); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #9b87d6) 35%, transparent); }
+.ii-grid .ii-img { padding: 0; border: 0; background: #fff; cursor: zoom-in; aspect-ratio: 1; display: grid; place-items: center; border-radius: 6px; overflow: hidden; }
+.ii-grid .ii-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ii-grid figcaption { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: space-between; font-size: 13px; }
+.ii-grid figcaption button { padding: 2px 8px; font-size: 13px; }
+.ii-empty { grid-column: 1 / -1; padding: 28px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; }
+.ii-full { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; object-fit: contain; }

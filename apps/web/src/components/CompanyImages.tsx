@@ -16,7 +16,7 @@ export function useCompanyImages() {
 }
 
 /** อ่านรูปจากแฟ้ม — ใหญ่เกิน 300 KB ย่อให้เอง (กว้างสุด 900 px · PNG คงพื้นโปร่งใส ถ้ายังใหญ่ใช้ JPEG) */
-async function readImage(file: File): Promise<string> {
+export async function readImage(file: File): Promise<string> {
   if (!/^image\/(png|jpeg)$/.test(file.type)) throw new Error('ใช้รูป PNG หรือ JPG เท่านั้น');
   const url = await new Promise<string>((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => bad(new Error('อ่านแฟ้มไม่ได้')); r.readAsDataURL(file); });
   if (file.size <= MAX) return url;
