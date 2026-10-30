@@ -160,12 +160,12 @@ export function CustomersPage() {
     lead="ทะเบียนลูกค้า: ที่อยู่ เลขผู้เสียภาษี บัญชีลูกหนี้ เครดิต วงเงิน พนักงานขาย และสถานที่ส่งสินค้า — ค่าเหล่านี้ขึ้นอัตโนมัติตอนเปิดเอกสารขาย (แก้ในเอกสารได้)" />;
 }
 
-export function CustomerForm({ id, onClose, onSaved }: { id: string | null; onClose: () => void; onSaved: () => void }) {
+export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | null; onClose: () => void; onSaved: (saved?: { id: string; code: string }) => void; initial?: Form }) {
   const qc = useQueryClient();
   const lk = useLookups('40,41,45,55');
   const slms = useQuery({ queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const cur = useQuery({ enabled: !!id, queryKey: ['customer', id], queryFn: () => api.get<CustomerDetail>(`/api/v1/customers/${id}`), staleTime: 0 });
-  const [f, setF] = useState<Form | null>(id ? null : { ...toForm({}, CUS_KEYS), status: 'A', tax_branch_no: '00000', price_level: '1', wht_condition: '1' });
+  const [f, setF] = useState<Form | null>(id ? null : { ...toForm({}, CUS_KEYS), status: 'A', tax_branch_no: '00000', price_level: '1', wht_condition: '1', ...initial });
   const [acc, setAcc] = useState<{ ar: string | null; slm: string | null }>({ ar: null, slm: null });
   const [ships, setShips] = useState<ShipTo[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -183,10 +183,10 @@ export function CustomerForm({ id, onClose, onSaved }: { id: string | null; onCl
     setErr(null); setBusy(true);
     const body = { ...f, ar_account_id: acc.ar, salesperson_id: acc.slm, ship_tos: ships.filter((s) => s.code.trim()), contacts: contacts.filter((c) => c.name.trim()) };
     try {
-      if (id) await api.put(`/api/v1/customers/${id}`, body); else await api.post('/api/v1/customers', body);
+      const r = id ? await api.put<{ id: string }>(`/api/v1/customers/${id}`, body) : await api.post<{ id: string }>('/api/v1/customers', body);
       toast(`บันทึกลูกค้า ${f.code} แล้ว`);
-      qc.invalidateQueries({ queryKey: ['customer', id] });
-      onSaved();
+      qc.invalidateQueries({ queryKey: ['customer', id] }); qc.invalidateQueries({ queryKey: ['pick'] });
+      onSaved({ id: id ?? r.id, code: String(f.code ?? '').trim() });
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const remove = () => api.del(`/api/v1/customers/${id}`).then(() => { toast('ลบลูกค้าแล้ว'); onSaved(); });
@@ -293,11 +293,11 @@ export function SuppliersPage() {
     lead="ทะเบียนผู้จำหน่าย: บัญชีเจ้าหนี้ เครดิต ประเภทราคา ภาษีหัก ณ ที่จ่าย และบัญชีธนาคารสำหรับโอนจ่าย — ค่าเหล่านี้ขึ้นอัตโนมัติตอนเปิดเอกสารซื้อ" />;
 }
 
-export function SupplierForm({ id, onClose, onSaved }: { id: string | null; onClose: () => void; onSaved: () => void }) {
+export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | null; onClose: () => void; onSaved: (saved?: { id: string; code: string }) => void; initial?: Form }) {
   const qc = useQueryClient();
   const lk = useLookups('41,46,55,BANK');
   const cur = useQuery({ enabled: !!id, queryKey: ['supplier', id], queryFn: () => api.get<SupplierDetail>(`/api/v1/suppliers/${id}`), staleTime: 0 });
-  const [f, setF] = useState<Form | null>(id ? null : { ...toForm({}, SUP_KEYS), status: 'A', tax_branch_no: '00000', price_type: '2', vat_rate: '7', wht_condition: '1', on_hold: false });
+  const [f, setF] = useState<Form | null>(id ? null : { ...toForm({}, SUP_KEYS), status: 'A', tax_branch_no: '00000', price_type: '2', vat_rate: '7', wht_condition: '1', on_hold: false, ...initial });
   const [ap, setAp] = useState<string | null>(null);
   const [banks, setBanks] = useState<BankRow[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -314,10 +314,10 @@ export function SupplierForm({ id, onClose, onSaved }: { id: string | null; onCl
     setErr(null); setBusy(true);
     const body = { ...f, ap_account_id: ap, banks: banks.filter((b) => b.bank_code || b.account_no), contacts: contacts.filter((c) => c.name.trim()) };
     try {
-      if (id) await api.put(`/api/v1/suppliers/${id}`, body); else await api.post('/api/v1/suppliers', body);
+      const r = id ? await api.put<{ id: string }>(`/api/v1/suppliers/${id}`, body) : await api.post<{ id: string }>('/api/v1/suppliers', body);
       toast(`บันทึกผู้จำหน่าย ${f.code} แล้ว`);
-      qc.invalidateQueries({ queryKey: ['supplier', id] });
-      onSaved();
+      qc.invalidateQueries({ queryKey: ['supplier', id] }); qc.invalidateQueries({ queryKey: ['pick'] });
+      onSaved({ id: id ?? r.id, code: String(f.code ?? '').trim() });
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const remove = () => api.del(`/api/v1/suppliers/${id}`).then(() => { toast('ลบผู้จำหน่ายแล้ว'); onSaved(); });

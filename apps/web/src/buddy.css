@@ -160,3 +160,7 @@
 /* ปุ่มไปเอกสารแรก/ก่อนหน้า/ถัดไป/สุดท้าย (แถบเครื่องมือเอกสาร) */
 .doc-nav { display: inline-flex; gap: 2px; margin-right: 4px; }
 .doc-nav .nav-btn { min-width: 30px; }
+
+/* ช่องค้นหา: เพิ่มข้อมูลหลักใหม่ (ข้อกำหนดเจ้าของ) */
+.pick-list li.pick-add { color: var(--tone); font-weight: 600; border-top: 1px dashed var(--line); cursor: pointer; }
+.pick-list li.pick-add:hover { background: var(--tone-soft); }

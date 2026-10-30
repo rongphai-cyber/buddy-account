@@ -203,6 +203,7 @@
 - ✅ ข้อกำหนดหลักของเจ้าของ (30/10/2569 จาก `docs/ข้อกำหนดและที่จะต้องมีในโปรแกรม.docx` — ไฟล์ของเจ้าของ ไม่ commit): ตารางสถานะทุกข้อ `docs/13_ข้อกำหนดหลักของเจ้าของ.md` + CLAUDE.md ข้อ 12.1
   - สมุดรายวัน: แท็บ ภาษีซื้อ/ภาษีขาย/ภาษีหัก ณ ที่จ่าย/เช็คจ่าย/เช็ครับ แสดงตลอด (ยอดจากบรรทัดบัญชีตามบทบาท INPUT_VAT OUTPUT_VAT WHT_PAYABLE CHEQUE_*) · ใบสำคัญใหม่ป้อนรายละเอียดภาษีเป็น draft แล้ว POST /gl/journals ส่ง `vat`/`wht` มาด้วย (addManualVat/saveWht ในคำขอเดียว = ทรานแซกชันเดียว) · บันทึกโดยยังไม่ป้อน = ถาม · migration 0033 tax_wht_entry.journal_id (ยกเลิกใบสำคัญยกเลิกตาม) · `JvLinks.tsx` WhtTab (ใช้ร่วม DP) + SearchPick คู่ค้าเติมชื่อ/เลขผู้เสียภาษี
   - AccountCell `required`: Enter ตอนว่าง = เปิดหน้าต่างเลือกบัญชี (Insert เพิ่มบัญชี) · DocActions ⏮◀▶⏭ (`modules/neighbors.ts` GET /neighbors/:kind/:id กฎ DOC('read'), prop dirty ถามก่อนไป) · TradeDocs ถามหักมัดจำเมื่อคู่ค้ามีมัดจำคงเหลือ
+  - ✅ ข้อ 1 เพิ่มใหม่จากช่องค้นหา: `SearchPick` (LkSelect.tsx) รู้ชนิดจาก endpoint (/customers /suppliers /item-search + types) · Enter ตอนไม่พบ / Insert / แถว "＋ เพิ่ม…ใหม่" → `components/AddMaster.tsx` (lazy) เปิด CustomerForm/SupplierForm/ItemForm (prop initial + onSaved({id, code})) แล้วค้นด้วยรหัสและเลือกให้ · ตรวจสิทธิ์ add ของเมนูนั้น · ปิดได้ด้วย addNew={false}
   - ⬜ ที่เหลือ (รอเจ้าของจัดลำดับ) อยู่ท้าย docs/13
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)

@@ -103,14 +103,14 @@ function ItemsPage({ kind }: { kind: ItemKind }) {
 const Dec = ({ value, onChange, ...rest }: { value: string | null | undefined; onChange: (v: string) => void; [k: string]: unknown }) =>
   <input inputMode="decimal" className="r" value={value ?? ''} onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))} {...rest} />;
 
-export function ItemForm({ kind, id, onClose, onSaved }: { kind: ItemKind; id: string | null; onClose: () => void; onSaved: () => void }) {
+export function ItemForm({ kind, id, onClose, onSaved, initial }: { kind: ItemKind; id: string | null; onClose: () => void; onSaved: (saved?: { id: string; code: string }) => void; initial?: F }) {
   const K = ITEM_KINDS[kind];
   const qc = useQueryClient();
   const can = useCan(K.menu);
   const lk = useLookups('22,23,UNIT,IAG,WH');
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<{ values: Record<string, unknown> }>('/api/v1/settings'), staleTime: 60_000 });
   const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], queryFn: () => api.get<Detail>(`/api/v1/${K.path}/${id}`), staleTime: 0 });
-  const [f, setF] = useState<F | null>(id ? null : { ...toForm({}), status: 'A', item_type: kind === 'kit' ? '1' : '', purchase_factor: '1', sales_factor: '1' });
+  const [f, setF] = useState<F | null>(id ? null : { ...toForm({}), status: 'A', item_type: kind === 'kit' ? '1' : '', purchase_factor: '1', sales_factor: '1', ...initial });
   const [acc, setAcc] = useState<Record<string, string | null>>({});
   const [bom, setBom] = useState<BomRow[]>([]);
   const [sup, setSup] = useState<Detail['default_supplier']>(null);
@@ -134,10 +134,11 @@ export function ItemForm({ kind, id, onClose, onSaved }: { kind: ItemKind; id: s
     const body = { ...Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v === '' ? null : v])), item_type: kind === 'kit' ? f.item_type : undefined, default_supplier_id: sup?.id ?? null, substitute_item_id: subst?.id ?? null, accounts: acc,
       bom: kind === 'kit' ? bom.filter((b) => b.component_item_id).map((b) => ({ component_item_id: b.component_item_id, qty: b.qty || '0', std_cost: b.std_cost, sell_price: b.sell_price, warehouse_id: b.warehouse_id })) : undefined };
     try {
-      if (id) await api.put(`/api/v1/${K.path}/${id}`, body); else await api.post(`/api/v1/${K.path}`, body);
+      const r = id ? await api.put<{ id: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string }>(`/api/v1/${K.path}`, body);
       toast(`บันทึก${K.label} ${f.code?.toUpperCase()} แล้ว`);
       qc.invalidateQueries({ queryKey: [K.path] });
-      onSaved();
+      qc.invalidateQueries({ queryKey: ['pick'] });
+      onSaved({ id: id ?? r.id, code: String(f.code ?? '').trim() });
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const remove = () => api.del(`/api/v1/${K.path}/${id}`).then(() => { toast(`ลบ${K.label}แล้ว`); onSaved(); }).catch((e) => { setAsk(null); toastError(e); });
