@@ -6,9 +6,17 @@ import { useSession } from './session';
 export const cx = (...a: Array<string | false | null | undefined>) => a.filter(Boolean).join(' ');
 
 /* ---------------------------------------------------------------- toast */
-type Toast = { id: number; text: string; tone: 'ok' | 'bad' | 'warn' };
+/**
+ * ข้อความแจ้ง: ทั่วไปแสดงมุมขวาล่าง · คำเตือน/ข้อผิดพลาดระหว่างคีย์ (มีช่องที่กำลังคีย์อยู่ หรือส่ง anchor มา)
+ * แสดงเป็นกล่องลอยติดช่องนั้น (ข้อกำหนดเจ้าของ: แจ้งใกล้ ๆ ช่องที่เกี่ยวข้อง)
+ */
+type Toast = { id: number; text: string; tone: 'ok' | 'bad' | 'warn'; at?: DOMRect };
 let pushToast: ((t: Omit<Toast, 'id'>) => void) | null = null;
-export function toast(text: string, tone: Toast['tone'] = 'ok') { pushToast?.({ text, tone }); }
+const fieldOf = (el: Element | null | undefined) => (el instanceof HTMLElement && el.matches('input, select, textarea') && el.offsetParent ? el : null);
+export function toast(text: string, tone: Toast['tone'] = 'ok', anchor?: Element | null) {
+  const el = fieldOf(anchor) ?? (tone !== 'ok' ? fieldOf(document.activeElement) : null);
+  pushToast?.({ text, tone, at: el?.getBoundingClientRect() });
+}
 export function toastError(e: unknown) { toast(e instanceof Error ? e.message : String(e), 'bad'); }
 export function Toasts() {
   const [list, setList] = useState<Toast[]>([]);
@@ -16,12 +24,46 @@ export function Toasts() {
     let n = 0;
     pushToast = (t) => {
       const id = ++n;
-      setList((l) => [...l, { ...t, id }].slice(-3));
-      setTimeout(() => setList((l) => l.filter((x) => x.id !== id)), t.tone === 'bad' ? 7000 : 4000);
+      // กล่องติดช่อง: ทีละกล่อง (อันใหม่แทนอันเดิม)
+      setList((l) => [...l.filter((x) => !(t.at && x.at)), { ...t, id }].slice(-3));
+      setTimeout(() => setList((l) => l.filter((x) => x.id !== id)), t.tone === 'bad' ? 7000 : t.at ? 5000 : 4000);
     };
-    return () => { pushToast = null; };
+    // คลิกที่อื่น = ปิดกล่องที่ติดช่อง
+    const close = () => setList((l) => (l.some((x) => x.at) ? l.filter((x) => !x.at) : l));
+    window.addEventListener('mousedown', close);
+    return () => { pushToast = null; window.removeEventListener('mousedown', close); };
   }, []);
-  return <div className="toasts" role="status" aria-live="polite">{list.map((t) => <div key={t.id} className={'toast t-' + t.tone}>{t.text}</div>)}</div>;
+  const tip = list.find((t) => t.at);
+  return <>
+    <div className="toasts" role="status" aria-live="polite">{list.filter((t) => !t.at).map((t) => <div key={t.id} className={'toast t-' + t.tone}>{t.text}</div>)}</div>
+    {tip && <FieldTip t={tip} />}
+  </>;
+}
+/** กล่องข้อความลอยใต้ช่อง (หรือเหนือช่องเมื่อที่ด้านล่างไม่พอ) มีลูกศรชี้ช่อง */
+function FieldTip({ t }: { t: Toast }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; up: boolean; arrow: number } | null>(null);
+  useEffect(() => {
+    const place = () => {
+      const a = t.at!, el = ref.current;
+      if (!el) return;
+      const w = el.offsetWidth, h = el.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+      const left = Math.min(Math.max(8, a.left), vw - w - 8);
+      // รายการค้นหาเปิดอยู่ใต้ช่อง → วางกล่องแจ้งเหนือช่อง ไม่ให้บังรายการ
+      const list = document.querySelector('.pick-list.floating')?.getBoundingClientRect();
+      const listBelow = !!list && list.top >= a.bottom - 4 && list.left < a.right && list.right > a.left;
+      const up = (listBelow || a.bottom + h + 12 > vh) && a.top - h - 12 > 0;
+      setPos({ left, top: up ? a.top - h - 10 : a.bottom + 10, up, arrow: Math.min(Math.max(12, a.left + Math.min(a.width, 160) / 2 - left), w - 16) });
+    };
+    place();
+    const r = requestAnimationFrame(place);   // รายการค้นหาวางตำแหน่งเสร็จหลังเฟรมนี้
+    return () => cancelAnimationFrame(r);
+  }, [t]);
+  return (
+    <div ref={ref} className={cx('field-tip', 't-' + t.tone, pos?.up && 'up')} role="alert" style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0 }}>
+      <i className="field-tip-arrow" style={{ left: pos?.arrow ?? 12 }} />{t.text}
+    </div>
+  );
 }
 
 /* ---------------------------------------------------------------- modal */

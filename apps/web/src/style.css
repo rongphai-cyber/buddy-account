@@ -290,6 +290,15 @@ button.primary.book-btn { background: var(--book-c); border-color: var(--book-c)
 .toast { background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); font-size: 13.5px; }
 .toast.t-bad { background: var(--bad); color: #fff; }
 .toast.t-info { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+/* เลขที่เอกสารอัตโนมัติที่จะได้ (ยังไม่ได้ออกเลขจริง) */
+input.auto-no { color: var(--muted); font-style: italic; }
+/* ข้อความแจ้งติดช่องที่กำลังคีย์ */
+.field-tip { position: fixed; z-index: 61; max-width: min(380px, calc(100vw - 16px)); padding: 8px 12px; border-radius: 8px; font-size: 13.5px; line-height: 1.45;
+  background: var(--warn-soft); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); box-shadow: 0 6px 18px rgba(0,0,0,.14); pointer-events: none; }
+.field-tip.t-bad { background: var(--bad-soft); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+.field-tip.t-ok { background: var(--ok-soft); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.field-tip-arrow { position: absolute; top: -6px; width: 10px; height: 10px; background: inherit; border-left: inherit; border-top: inherit; transform: rotate(45deg); }
+.field-tip.up .field-tip-arrow { top: auto; bottom: -6px; border: 0; border-right: inherit; border-bottom: inherit; }
 
 /* print paper (always light, like paper) */
 .paper { background: var(--paper); color: var(--paper-ink); padding: 28px 32px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; display: flex; flex-direction: column; gap: 14px; }

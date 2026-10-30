@@ -54,6 +54,7 @@ export function JournalFormPage() {
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<{ values: Record<string, unknown> }>('/api/v1/settings'), staleTime: 60_000 });
   const manualNo = isNew && settings.data?.values['gl.voucher_numbering'] === '0';
   const [typedNo, setTypedNo] = useState('');
+  const [noShown, setNoShown] = useState(false);
   const [lines, setLines] = useState<Line[]>([blank(), blank()]);
   const [err, setErr] = useState<unknown>(null);
   const [tab, setTab] = useState('lines');
@@ -238,13 +239,14 @@ export function JournalFormPage() {
             <Field label="เลขที่ใบสำคัญ" hint={isNew ? `${manualNo ? 'ป้อนเลขเอง (ตามค่าเริ่มต้นระบบบัญชี)' : ownNo ? 'คีย์เลขเอง — ห้ามซ้ำ' : `เว้นไว้ = เลขอัตโนมัติ ${nextNo}`} · 🔍/F4 เลือกต้นแบบ · 📋/Ctrl+F6 คัดลอกจากใบสำคัญอื่น` : undefined}>
               <span className="lk-in">
                 {isNew
-                  ? <input value={typedNo || noPrefix} maxLength={30} className="mono" placeholder={manualNo ? 'ป้อนเลขที่ใบสำคัญ' : nextNo} aria-required={manualNo} aria-label="เลขที่ใบสำคัญ"
-                      onChange={(e) => { setDirty(true); setTypedNo(e.target.value.replace(/\s/g, '')); }}
+                  ? <input value={noShown && !ownNo && !manualNo && nextNo ? nextNo : typedNo || noPrefix} maxLength={30} className={'mono' + (noShown && !ownNo && !manualNo ? ' auto-no' : '')} placeholder={manualNo ? 'ป้อนเลขที่ใบสำคัญ' : nextNo} aria-required={manualNo} aria-label="เลขที่ใบสำคัญ"
+                      onChange={(e) => { setDirty(true); setNoShown(false); setTypedNo(e.target.value.replace(/\s/g, '')); }}
+                      onFocus={() => setNoShown(false)}
+                      onBlur={(e) => { if (!ownNo && !manualNo) { setNoShown(true); toast(`ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ ${nextNo} (ออกเลขจริงตอนบันทึก · ต้องการเลขเองให้คลิกช่องแล้วพิมพ์)`, 'warn', e.currentTarget); } }}
                       onKeyDown={(e) => {
                         if (e.key === 'F4') { e.preventDefault(); setTplPick(''); }
                         else if (e.key === 'Enter' && !ownNo) {
                           if (manualNo) { e.preventDefault(); e.stopPropagation(); toast('บริษัทตั้งให้ป้อนเลขที่ใบสำคัญเอง — คีย์เลขที่ก่อน', 'bad'); }
-                          else toast(`ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ ${nextNo} (ออกเลขจริงตอนบันทึก)`, 'warn');
                         }
                       }} />
                   : <input readOnly value={j?.voucher_no ?? ''} className="mono" />}
