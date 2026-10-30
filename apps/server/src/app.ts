@@ -40,6 +40,7 @@ import { bankDocRoutes } from './modules/docs/bankdocs.js';
 import { chequeRoutes } from './modules/cheques.js';
 import { bankReconRoutes } from './modules/bankrecon.js';
 import { rptRoutes } from './modules/reports/index.js';
+import { dashboardRoutes } from './modules/reports/dashboard.js';
 import { printRoutes } from './modules/print.js';
 import { faPostingRoutes, faRoutes } from './modules/fa.js';
 import { yearEndRoutes } from './modules/gl/yearend.js';
@@ -119,6 +120,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   chequeRoutes(app, db);
   bankReconRoutes(app, db);
   rptRoutes(app, db);
+  dashboardRoutes(app, db);
   printRoutes(app, db);
   faRoutes(app, db);
   faPostingRoutes(app, db);

@@ -712,6 +712,28 @@
 ]
 },
 {
+"th": "ถึง",
+"n": 23,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/PeriodPicker.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/tax/Etax.tsx"
+]
+},
+{
 "th": "เลิกใช้",
 "n": 23,
 "files": [
@@ -728,6 +750,21 @@
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/parties.ts",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "ค่าใช้จ่าย",
+"n": 22,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -748,27 +785,6 @@
 "apps/web/src/pages/reports/AccountDetail.tsx",
 "apps/web/src/pages/reports/TrialBalance.tsx",
 "apps/server/src/modules/reports/gl.ts"
-]
-},
-{
-"th": "ถึง",
-"n": 22,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/PeriodPicker.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/tax/Etax.tsx"
 ]
 },
 {
@@ -810,20 +826,6 @@
 ]
 },
 {
-"th": "ค่าใช้จ่าย",
-"n": 21,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts"
-]
-},
-{
 "th": "ธนาคาร",
 "n": 21,
 "files": [
@@ -836,6 +838,22 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/server/src/import/express/migrate.ts",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "รายได้",
+"n": 21,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -909,21 +927,6 @@
 "apps/web/src/pages/settings/Permissions.tsx",
 "apps/web/src/pages/tax/Wht50.tsx",
 "apps/server/src/modules/permissions.ts"
-]
-},
-{
-"th": "รายได้",
-"n": 20,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -1298,6 +1301,24 @@
 ]
 },
 {
+"th": "ตั้งแต่",
+"n": 13,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/tax/Etax.tsx"
+]
+},
+{
 "th": "ปีบัญชี",
 "n": 13,
 "files": [
@@ -1409,23 +1430,6 @@
 ]
 },
 {
-"th": "ตั้งแต่",
-"n": 12,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/tax/Etax.tsx"
-]
-},
-{
 "th": "ต้องเป็นตัวเลข",
 "n": 12,
 "files": [
@@ -1484,6 +1488,40 @@
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
+]
+},
+{
+"th": "ลูกหนี้",
+"n": 12,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "เจ้าหนี้",
+"n": 12,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -1705,22 +1743,6 @@
 ]
 },
 {
-"th": "ลูกหนี้",
-"n": 10,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts"
-]
-},
-{
 "th": "หนี้สิน",
 "n": 10,
 "files": [
@@ -1740,22 +1762,6 @@
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/server/src/import/express/migrate.ts",
 "packages/core/src/gl-link.ts"
-]
-},
-{
-"th": "เจ้าหนี้",
-"n": 10,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -2086,6 +2092,17 @@
 "apps/server/src/modules/items.ts",
 "apps/server/src/modules/reports/fa.ts",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "หมวดสินค้า",
+"n": 8,
+"files": [
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/import/express/migrate.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -2540,6 +2557,17 @@
 ]
 },
 {
+"th": "ประเภทลูกค้า",
+"n": 6,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/import/express/migrate.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "ผลต่าง",
 "n": 6,
 "files": [
@@ -2638,16 +2666,6 @@
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/inventory/Serials.tsx",
 "apps/server/src/modules/reports/fa.ts"
-]
-},
-{
-"th": "หมวดสินค้า",
-"n": 6,
-"files": [
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/server/src/import/express/migrate.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -2978,6 +2996,15 @@
 "apps/web/src/pages/settings/AiSettings.tsx",
 "apps/web/src/pages/settings/Branches.tsx",
 "apps/web/src/pages/settings/Departments.tsx"
+]
+},
+{
+"th": "ปีที่แล้ว",
+"n": 5,
+"files": [
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/gl/reports.ts"
 ]
 },
 {
@@ -3654,16 +3681,6 @@
 ]
 },
 {
-"th": "ประเภทลูกค้า",
-"n": 4,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/server/src/import/express/migrate.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts"
-]
-},
-{
 "th": "ปี",
 "n": 4,
 "files": [
@@ -3671,14 +3688,6 @@
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "ปีที่แล้ว",
-"n": 4,
-"files": [
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/server/src/modules/gl/reports.ts"
 ]
 },
 {
@@ -4791,6 +4800,15 @@
 ]
 },
 {
+"th": "รายเดือน",
+"n": 3,
+"files": [
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"packages/core/src/settings.ts"
+]
+},
+{
 "th": "รายได้อื่น ๆ",
 "n": 3,
 "files": [
@@ -4855,6 +4873,15 @@
 ]
 },
 {
+"th": "วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด",
+"n": 3,
+"files": [
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/dashboard.ts"
+]
+},
+{
 "th": "วิธีการพิมพ์ หรือรับรองเอกสาร",
 "n": 3,
 "files": [
@@ -4886,6 +4913,15 @@
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx",
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "สาขา {0}",
+"n": 3,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -5241,6 +5277,20 @@
 ]
 },
 {
+"th": "(ณ สิ้นช่วง)",
+"n": 2,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "(ณ สิ้นช่วงที่เจาะดู)",
+"n": 2,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "(เพิ่มเติม)",
 "n": 2,
 "files": [
@@ -5292,6 +5342,30 @@
 "files": [
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "1–30 วัน",
+"n": 2,
+"files": [
+"apps/server/src/modules/reports/dashboard.ts",
+"apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "31–60 วัน",
+"n": 2,
+"files": [
+"apps/server/src/modules/reports/dashboard.ts",
+"apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "61–90 วัน",
+"n": 2,
+"files": [
+"apps/server/src/modules/reports/dashboard.ts",
+"apps/server/src/modules/reports/parties.ts"
 ]
 },
 {
@@ -5438,6 +5512,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "กำไร (ขาดทุน)",
+"n": 2,
+"files": [
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -6221,6 +6303,30 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ทุกประเภท",
+"n": 2,
+"files": [
+"apps/web/src/components/DocTypeTabs.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ทุกสาขา",
+"n": 2,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ทุกหมวด",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -7192,6 +7298,14 @@
 ]
 },
 {
+"th": "ยังไม่ถึงกำหนด",
+"n": 2,
+"files": [
+"apps/server/src/modules/reports/dashboard.ts",
+"apps/server/src/modules/reports/parties.ts"
+]
+},
+{
 "th": "ยังไม่มี{0} — กด Ins เพื่อเพิ่ม",
 "n": 2,
 "files": [
@@ -7582,14 +7696,6 @@
 ]
 },
 {
-"th": "รายเดือน",
-"n": 2,
-"files": [
-"apps/web/src/pages/fa/Assets.tsx",
-"packages/core/src/settings.ts"
-]
-},
-{
 "th": "รูปย่อใหญ่เกินไป",
 "n": 2,
 "files": [
@@ -7826,14 +7932,6 @@
 ]
 },
 {
-"th": "วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด",
-"n": 2,
-"files": [
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/reports.ts"
-]
-},
-{
 "th": "วันที่เริ่มรอบบัญชี",
 "n": 2,
 "files": [
@@ -7959,14 +8057,6 @@
 "th": "สั่งจ่ายจากบัญชี",
 "n": 2,
 "files": [
-"apps/web/src/pages/docs/Cheques.tsx"
-]
-},
-{
-"th": "สาขา {0}",
-"n": 2,
-"files": [
-"apps/web/src/components/AiBill.tsx",
 "apps/web/src/pages/docs/Cheques.tsx"
 ]
 },
@@ -8650,6 +8740,14 @@
 ]
 },
 {
+"th": "แดชบอร์ดผู้บริหาร",
+"n": 2,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "แบบฟอร์มพิมพ์เอกสาร",
 "n": 2,
 "files": [
@@ -9003,6 +9101,13 @@
 ]
 },
 {
+"th": "ไม่มียอดขายในช่วงนี้",
+"n": 2,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "ไม่มีรายการ",
 "n": 2,
 "files": [
@@ -9165,6 +9270,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/LkSelect.tsx"
+]
+},
+{
+"th": "({0} ใบ){1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -10008,13 +10120,6 @@
 ]
 },
 {
-"th": "1–30 วัน",
-"n": 1,
-"files": [
-"apps/server/src/modules/reports/parties.ts"
-]
-},
-{
 "th": "1–4 ตัว ไม่มีเครื่องหมายคั่น",
 "n": 1,
 "files": [
@@ -10239,13 +10344,6 @@
 ]
 },
 {
-"th": "31–60 วัน",
-"n": 1,
-"files": [
-"apps/server/src/modules/reports/parties.ts"
-]
-},
-{
 "th": "3ก",
 "n": 1,
 "files": [
@@ -10404,13 +10502,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Company.tsx"
-]
-},
-{
-"th": "61–90 วัน",
-"n": 1,
-"files": [
-"apps/server/src/modules/reports/parties.ts"
 ]
 },
 {
@@ -11317,10 +11408,24 @@
 ]
 },
 {
+"th": "{0} {1}: รายได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "{0} · {1} · ครั้งที่ {2}",
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "{0} · {1} หน่วย",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -11429,6 +11534,13 @@
 ]
 },
 {
+"th": "{0} พัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "{0} มีการ{1}แล้ว แก้ไขไม่ได้ — ยกเลิกยอดค้างรายบรรทัดแทน",
 "n": 1,
 "files": [
@@ -11468,6 +11580,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "{0} ล้าน",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -11982,10 +12101,24 @@
 ]
 },
 {
+"th": "· กำไร",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "· ข้อมูลเป็น JSON (UTF-8) ·",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "· ค่าใช้จ่าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -12028,6 +12161,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "· ปีที่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -12213,6 +12353,13 @@
 ]
 },
 {
+"th": "กรองหมวดสินค้า/ประเภทลูกค้า: มีผลกับยอดขาย สินค้าขายดี{0} (กำไร เงินสด เจ้าหนี้ เป็นยอดทั้งบริษัท)",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "กระจายเท่ากัน 12 งวด",
 "n": 1,
 "files": [
@@ -12262,6 +12409,20 @@
 ]
 },
 {
+"th": "กราฟยอดขายตามช่วงเวลา",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "กราฟรายได้เทียบค่าใช้จ่าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "กรุณาส่ง",
 "n": 1,
 "files": [
@@ -12301,6 +12462,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "กลับไปดูทั้งช่วง",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -12731,6 +12899,13 @@
 ]
 },
 {
+"th": "กำหนดเอง",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "กำหนดแยกคลัง และหลายช่วงในปีได้ (เช่น ปกติ 20 ตัว ตั้งแต่ ธ.ค. 50 ตัว) — เตือนเมื่อยอดคงเหลือต่ำกว่าจุดสั่งซื้อ (หรือจุดสั่งซื้อ + ยอดขายโครงการ) และเมื่อเกินจำนวนสูงสุด",
 "n": 1,
 "files": [
@@ -12742,13 +12917,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Defaults.tsx"
-]
-},
-{
-"th": "กำไร (ขาดทุน)",
-"n": 1,
-"files": [
-"apps/web/src/pages/Home.tsx"
 ]
 },
 {
@@ -12826,6 +12994,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/gl.ts"
+]
+},
+{
+"th": "กำไรสุทธิเบื้องต้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -13396,6 +13571,13 @@
 ]
 },
 {
+"th": "ข้อมูลสดจากเอกสารขาย ซื้อ รับ/จ่ายชำระ และใบสำคัญ · {0} · {1} (เปลี่ยนบริษัท/สาขาที่แถบด้านบน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "ข้อมูลสองเครื่องต่างกัน",
 "n": 1,
 "files": [
@@ -13648,10 +13830,24 @@
 ]
 },
 {
+"th": "คลิกเพื่อกรองหมวดนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "คลิกเพื่อปิดงวดถึงงวดนี้",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
+"th": "คลิกแท่งเพื่อเจาะดูช่วงนั้น · เส้นจาง = ช่วงเดียวกันปีที่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -14992,6 +15188,13 @@
 ]
 },
 {
+"th": "จากบัญชีหมวด 4 และหมวด 5 รายเดือน · คลิกเดือนเพื่อเจาะดู",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "จากบัญชีเงินฝาก",
 "n": 1,
 "files": [
@@ -15510,6 +15713,13 @@
 ]
 },
 {
+"th": "ชี้ที่เดือนเพื่อดูตัวเลข",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "ชื่อ (ไม่มีรหัส)",
 "n": 1,
 "files": [
@@ -15874,10 +16084,24 @@
 ]
 },
 {
+"th": "ช่วงก่อนหน้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "ช่วงที่ {0}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Defaults.tsx"
+]
+},
+{
+"th": "ช่วงที่ดู:",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -15899,6 +16123,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/reports.ts"
+]
+},
+{
+"th": "ช่วงวันที่ยาวเกิน 3 ปี — เลือกช่วงให้สั้นลง",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/dashboard.ts"
 ]
 },
 {
@@ -15955,6 +16186,27 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "ช่วงอายุหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ช่วงเดียวกันปีที่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ช่วงเวลา",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -16371,6 +16623,13 @@
 ]
 },
 {
+"th": "ดูรายวันได้ไม่เกิน 92 วัน — เลือกรายเดือนหรือช่วงที่สั้นลง",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/dashboard.ts"
+]
+},
+{
 "th": "ดูรูปขนาดเต็ม",
 "n": 1,
 "files": [
@@ -16571,6 +16830,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/register.ts"
+]
+},
+{
+"th": "ตัวกรอง",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -16977,6 +17243,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "ตามสินค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ตามหมวด",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -17967,13 +18247,6 @@
 ]
 },
 {
-"th": "ทุกประเภท",
-"n": 1,
-"files": [
-"apps/web/src/components/DocTypeTabs.tsx"
-]
-},
-{
 "th": "ทุกรายการกระทบแล้ว",
 "n": 1,
 "files": [
@@ -17992,20 +18265,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Journals.tsx"
-]
-},
-{
-"th": "ทุกสาขา",
-"n": 1,
-"files": [
-"apps/web/src/App.tsx"
-]
-},
-{
-"th": "ทุกหมวด",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -20872,6 +21131,13 @@
 ]
 },
 {
+"th": "ปีนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "ปีนี้ปิดแล้ว — เปิดปีก่อน",
 "n": 1,
 "files": [
@@ -23427,6 +23693,34 @@
 ]
 },
 {
+"th": "ยอดก่อน VAT หลังหักส่วนลดแล้ว (หักใบลดหนี้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ยอดขาย (ก่อน VAT)",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ยอดขายตามช่วงเวลา",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ยอดขายตามหมวดสินค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "ยอดขายที่ต้องเสียภาษี (1. ลบ 2. และ 3.)",
 "n": 1,
 "files": [
@@ -23438,6 +23732,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "ยอดคงค้าง ณ {0} · คลิกเพื่อเปิดรายงานวิเคราะห์อายุหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -24022,13 +24323,6 @@
 ]
 },
 {
-"th": "ยังไม่ถึงกำหนด",
-"n": 1,
-"files": [
-"apps/server/src/modules/reports/parties.ts"
-]
-},
-{
 "th": "ยังไม่ปิดปี {0} — ปิดตามลำดับปี",
 "n": 1,
 "files": [
@@ -24285,6 +24579,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
+"th": "ยังไม่มีรายการบัญชีในช่วงนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -24915,6 +25216,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
+"th": "รวมทั้งช่วง",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -26024,6 +26332,13 @@
 ]
 },
 {
+"th": "รับ {0} · จ่าย {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "รับของวันที่",
 "n": 1,
 "files": [
@@ -26675,6 +26990,13 @@
 ]
 },
 {
+"th": "รายงาน › แดชบอร์ดผู้บริหาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "รายงาน › แบบฟอร์มพิมพ์เอกสาร",
 "n": 1,
 "files": [
@@ -26906,6 +27228,20 @@
 ]
 },
 {
+"th": "รายวัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "รายวันดูได้ไม่เกิน 92 วัน (เกินกว่านั้นแสดงรายเดือน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "รายได้ธนาคาร",
 "n": 1,
 "files": [
@@ -26917,6 +27253,20 @@
 "n": 1,
 "files": [
 "packages/core/src/doc-calc.ts"
+]
+},
+{
+"th": "รายได้เทียบค่าใช้จ่าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "รายไตรมาส",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -27851,6 +28201,13 @@
 ]
 },
 {
+"th": "ลูกหนี้การค้าคงเหลือ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "ลูกหนี้คงค้าง Express / ระบบใหม่",
 "n": 1,
 "files": [
@@ -28114,6 +28471,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/opening.ts"
+]
+},
+{
+"th": "วันที่ต้องเป็น ปปปป-ดด-วว",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/dashboard.ts"
 ]
 },
 {
@@ -29391,6 +29755,13 @@
 ]
 },
 {
+"th": "สินค้าขายดี 10 อันดับ",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "สินค้าคงเหลือ",
 "n": 1,
 "files": [
@@ -30287,6 +30658,13 @@
 ]
 },
 {
+"th": "หักมัดจำแล้ว: ขาย {0} · ซื้อ {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "หักเงินมัดจำรวม (ตามประเภทราคาของบิล)",
 "n": 1,
 "files": [
@@ -30602,6 +30980,13 @@
 ]
 },
 {
+"th": "อัตรากำไรสุทธิ",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "อัตราค่าคอมฯ (%)",
 "n": 1,
 "files": [
@@ -30718,6 +31103,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
+]
+},
+{
+"th": "อายุลูกหนี้และเจ้าหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -30991,6 +31383,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "เกิน 90 วัน",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/dashboard.ts"
 ]
 },
 {
@@ -31323,6 +31722,13 @@
 ]
 },
 {
+"th": "เงินสดรับ − จ่าย สุทธิ",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "เงินส่งเป็นข้อความทศนิยม",
 "n": 1,
 "files": [
@@ -31358,6 +31764,13 @@
 ]
 },
 {
+"th": "เจาะดู: {0} ✕",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "เจ็ด",
 "n": 1,
 "files": [
@@ -31369,6 +31782,13 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "เจ้าหนี้การค้าคงเหลือ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -32198,6 +32618,13 @@
 ]
 },
 {
+"th": "เดือนนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "เดือนนี้ยังไม่มีการใช้งาน",
 "n": 1,
 "files": [
@@ -32293,6 +32720,27 @@
 "n": 1,
 "files": [
 "packages/core/src/theme.ts"
+]
+},
+{
+"th": "เทียบกับ",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "เทียบช่วงก่อนหน้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "เทียบปีที่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -35600,6 +36048,13 @@
 ]
 },
 {
+"th": "และลูกหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "แล้ว",
 "n": 1,
 "files": [
@@ -35681,6 +36136,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
+"th": "แสดงยอดขาย",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -36818,6 +37280,20 @@
 ]
 },
 {
+"th": "ไตรมาส {0}{1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ไตรมาสนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "ไปรษณีย์",
 "n": 1,
 "files": [
@@ -37714,6 +38190,13 @@
 ]
 },
 {
+"th": "ไม่ระบุหมวด",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/dashboard.ts"
+]
+},
+{
 "th": "ไม่ระบุแผนก",
 "n": 1,
 "files": [
@@ -38134,6 +38617,13 @@
 ]
 },
 {
+"th": "— ไม่มีข้อมูลเทียบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
 "th": "— ไม่ระบุ —",
 "n": 1,
 "files": [
@@ -38467,6 +38957,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
+]
+},
+{
+"th": "📊 แดชบอร์ดผู้บริหาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/Home.tsx"
 ]
 },
 {

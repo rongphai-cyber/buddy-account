@@ -120,6 +120,15 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.waitForSelector('.paper.statement tr.total', { timeout: 20000 });
     await shot('12-bs');
   });
+  await step('executive dashboard (RP.DASH): drill a month', async () => {
+    await page.goto(BASE + '/reports/dashboard?p=year');
+    await page.waitForFunction(() => { const b = document.querySelector('.dash-kpis .kpi b'); return b && !b.textContent.includes('…'); }, null, { timeout: 20000 });
+    await page.locator('.dash-panel.wide').first().locator('g.hit').nth(7).click();
+    await page.waitForSelector('.dash-scope .chip', { timeout: 10000 });
+    await shot('12b-dashboard');
+    await page.locator('.dash-scope .chip').click();
+    await page.waitForSelector('.dash-scope .chip', { state: 'detached', timeout: 5000 });
+  });
   await step('statements express layout', async () => {
     await page.goto(BASE + '/fs/layouts');
     await page.waitForSelector('table.grid tbody tr.row-open');

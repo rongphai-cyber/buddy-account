@@ -1439,6 +1439,47 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/ar-opening')).body.total).toBe('0.00');
   });
 
+  it('executive dashboard (RP.DASH): sales/AR/cash/aging from live documents, filters, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const dash = async (extra = '') => (await call('GET', `/api/v1/dashboard?from=2027-08-01&to=2027-08-31${extra}`)).body;
+    const sum = (xs: (string | null)[]) => xs.reduce((t, x) => t + Number(x ?? 0), 0);
+    const b0 = await dash();
+    expect(b0.trend).toHaveLength(1);
+    expect([b0.prev.from, b0.prev.to, b0.ly.from, b0.ly.to]).toEqual(['2027-07-01', '2027-07-31', '2026-08-01', '2026-08-31']);
+    // ขายเชื่อ 2 × 500 (ก่อน VAT 1,000 · รวม VAT 1,070)
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: await typeOf('IV'), doc_date: '2027-08-05', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 2, unit_price: 500 }] })).body;
+    const b1 = await dash();
+    expect(Number(b1.kpis.current.sales) - Number(b0.kpis.current.sales)).toBeCloseTo(1000, 2);
+    expect(Number(b1.kpis.current.ar) - Number(b0.kpis.current.ar)).toBeCloseTo(1070, 2);
+    expect(Number(b1.trend[0].sales)).toBeCloseTo(Number(b1.kpis.current.sales), 2);
+    expect(sum(b1.aging.ar)).toBeCloseTo(Number(b1.kpis.current.ar), 2);
+    expect(b1.top_items.find((x: { id: string }) => x.id === cpu)).toBeTruthy();
+    expect(Number(b1.kpis.current.revenue) - Number(b0.kpis.current.revenue ?? 0)).toBeCloseTo(1000, 2);
+    // รายวัน: 31 ช่อง ยอดรวมเท่ากัน · กรองหมวดสินค้า
+    const daily = await dash('&grain=day');
+    expect(daily.trend).toHaveLength(31);
+    expect(sum(daily.trend.map((t: { sales: string }) => t.sales))).toBeCloseTo(Number(b1.kpis.current.sales), 2);
+    expect(Number(daily.trend[4].sales)).toBeGreaterThanOrEqual(1000);
+    expect((await dash('&category=ZZZ')).kpis.current.sales).toBe('0.00');
+    expect(Number((await dash('&category=01')).kpis.current.sales)).toBeGreaterThanOrEqual(1000);
+    // รับชำระ → ลูกหนี้กลับเท่าเดิม เงินสดรับเพิ่ม
+    const re = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2027-08-20', party_id: cus, settlements: [{ invoice_header_id: iv.id, amount: 1070 }] })).body;
+    const b2 = await dash();
+    expect(b2.kpis.current.ar).toBe(b0.kpis.current.ar);
+    expect(Number(b2.kpis.current.cash_in) - Number(b0.kpis.current.cash_in)).toBeCloseTo(1070, 2);
+    expect((await call('GET', '/api/v1/dashboard?from=2027-08-31&to=2027-08-01')).status).toBe(400);
+    // บริษัทอื่นไม่เห็นข้อมูลนี้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    const other = await dash();
+    expect([other.kpis.current.sales, other.top_items, sum(other.aging.ar)]).toEqual(['0.00', [], 0]);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('POST', `/api/v1/ar-receipts/${re.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await dash()).kpis.current.sales).toBe(b0.kpis.current.sales);
+  });
+
   it('party activity (T3.11): per-period totals incl. VAT from live documents, cheques not yet passed, isolation', async () => {
     const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;

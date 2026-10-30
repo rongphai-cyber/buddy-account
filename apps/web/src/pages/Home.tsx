@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { MENU, flattenMenu, fmt, formatDate } from '@buddy/core';
 import { api } from '../api';
-import { useSession } from '../session';
+import { useCan, useSession } from '../session';
 import { PageHead } from '../ui';
 
 interface TB { totals: { closing_debit: string; closing_credit: string }; balanced: boolean; rows: Array<{ account_no: string; account_group: string; closing: string; is_control: boolean }>; fiscal_year: { code: string; start_date: string; end_date: string } | null }
@@ -10,6 +10,7 @@ interface TB { totals: { closing_debit: string; closing_credit: string }; balanc
 export function HomePage() {
   const { me } = useSession();
   const nav = useNavigate();
+  const canDash = useCan('RP.DASH')('read');
   const ys = me?.company?.year_system ?? 'B';
   const periods = useQuery({ queryKey: ['periods'], queryFn: () => api.get<Array<{ code: string; start_date: string; end_date: string; journal_count: number }>>('/api/v1/gl/periods') });
   // ปีบัญชีล่าสุดที่มีรายการ
@@ -34,6 +35,7 @@ export function HomePage() {
         <section className="card">
           <h2>เริ่มงานที่ใช้บ่อย</h2>
           <div className="quick">
+            {canDash && <button className="primary" onClick={() => nav('/reports/dashboard')}>📊 แดชบอร์ดผู้บริหาร</button>}
             <button onClick={() => nav('/gl/journals/new')}>+ บันทึกใบสำคัญ</button>
             <button onClick={() => nav('/gl/journals')}>สมุดรายวัน</button>
             <button onClick={() => nav('/reports/trial-balance')}>งบทดลอง</button>

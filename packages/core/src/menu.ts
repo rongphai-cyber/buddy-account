@@ -100,6 +100,7 @@ export const MENU: MenuItem[] = [
     m('FA.DEPR', 'คิดค่าเสื่อม-ลงบัญชี', 'P6', '/fa/depreciation', ['ch19:S-FA-04']),
   ]),
   g('RP', 'รายงาน', 'P1', [
+    m('RP.DASH', 'แดชบอร์ดผู้บริหาร', 'P7', '/reports/dashboard'),
     m('RP.TB', 'งบทดลอง', 'P1', '/reports/trial-balance', ['ch08:S-OB-07']),
     m('RP.LEDGER', 'บัญชีแยกประเภท', 'P1', '/reports/ledger'),
     m('RP.JNL', 'รายงานสมุดรายวัน', 'P1', '/reports/journal-book'),

@@ -179,7 +179,7 @@ export const API_RULES: Record<string, Rule> = {
   // แบบงบและรายงาน
   'GET /api/v1/fs/layouts': LOOKUP, 'GET /api/v1/fs/layouts/:id': LOOKUP, 'POST /api/v1/fs/layouts': M('GL.FS', 'add'),
   'PUT /api/v1/fs/layouts/:id': M('GL.FS', 'edit'), 'POST /api/v1/fs/layouts/:id/copy': M('GL.FS', 'add'),
-  'GET /api/v1/fs/run': M('RP.FS', 'read'),
+  'GET /api/v1/fs/run': M('RP.FS', 'read'), 'GET /api/v1/dashboard': M('RP.DASH', 'read'),
   'GET /api/v1/reports/trial-balance': M('RP.TB', 'read'), 'GET /api/v1/reports/ledger': M('RP.LEDGER', 'read'),
   'GET /api/v1/reports/journal-book': M('RP.JNL', 'read'), 'GET /api/v1/reports/account-detail': M('RP.DETAIL', 'read'),
   // ค่าเริ่มต้นแต่ละระบบ (บทที่ 5)

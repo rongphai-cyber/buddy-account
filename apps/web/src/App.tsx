@@ -70,6 +70,7 @@ import { BankBookPage, BankDocFormPage, BankDocListPage } from './pages/docs/Ban
 import { ChequeActionPage, ChequeRegisterPage, ChequeSlipFormPage, ChequeSlipListPage } from './pages/docs/Cheques';
 import { BankReconPage } from './pages/docs/BankRecon';
 import { ReportCenterPage } from './pages/reports/ReportCenter';
+import { DashboardPage } from './pages/reports/Dashboard';
 import { InventoryAccountPage } from './pages/gl/InventoryAccount';
 import { StockDocFormPage, StockDocListPage } from './pages/docs/StockDocs';
 import { BANK_KINDS, BILL_KINDS, CASH_KINDS, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
@@ -254,6 +255,7 @@ function Shell() {
           <Route path="/reports/account-detail" element={<AccountDetailPage />} />
           <Route path="/reports/journal-book" element={<JournalBookPage />} />
           <Route path="/reports/center" element={<ReportCenterPage />} />
+          <Route path="/reports/dashboard" element={<DashboardPage />} />
           <Route path="/fs/statements" element={<StatementsPage />} />
           <Route path="/fs/layouts" element={<FsLayoutsPage />} />
           <Route path="/planned/:code" element={<PlannedPage />} />
