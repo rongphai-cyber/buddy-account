@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, docMenuOf, findReport, BANK_KINDS, BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { AI_BILL_TARGETS, docMenuOf, findReport, menuOffBy, BANK_KINDS, BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -66,7 +66,16 @@ function tableValue(rows: PermRow[], menu: string, action: Action): string | nul
   return null;
 }
 
-function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action): { allowed: boolean; log: boolean; screenOnly: boolean } {
+/** ระบบที่บริษัทปิดไว้ (ข้อกำหนดเจ้าของ: ปิดบางระบบทั้งบริษัท) — รหัสใน MODULE_SWITCHES */
+export async function modulesOff(db: Db, companyId: string | null): Promise<string[]> {
+  if (!companyId) return [];
+  const r = await db.selectFrom('sys_setting').select('value').where('company_id', '=', companyId).where('branch_id', 'is', null).where('key', '=', 'sys.modules_off').where('deleted_at', 'is', null).executeTakeFirst();
+  return Array.isArray(r?.value) ? (r!.value as unknown[]).map(String) : [];
+}
+
+function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action, off: string[] = []): { allowed: boolean; log: boolean; screenOnly: boolean } {
+  // ระบบที่ปิดทั้งบริษัท: ไม่มีใครใช้ได้ (รวมผู้ดูแลระบบ) จนกว่าจะเปิดกลับ
+  if (off.length && menuOffBy(menu, off)) return { allowed: false, log: false, screenOnly: false };
   if (a.isAdmin) return { allowed: true, log: false, screenOnly: false };
   if (!baseAllowed(a.approvalLevel, menu, action)) return { allowed: false, log: false, screenOnly: false };
   if (!a.checkRights) return { allowed: true, log: false, screenOnly: false };
@@ -77,14 +86,15 @@ function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action): 
 }
 
 /** ผลการตรวจสิทธิ์ (เมนู, การทำงาน) ของผู้ใช้ปัจจุบัน — ใช้ใน API ที่ต้องรู้รายละเอียด เช่น สิทธิ์พิมพ์ออกจอเท่านั้น */
-export async function allowedFor(db: Db, a: AuthContext, menu: string, action: Action) { return decide(a, await loadRows(db, a), menu, action); }
+export async function allowedFor(db: Db, a: AuthContext, menu: string, action: Action) { return decide(a, await loadRows(db, a), menu, action, await modulesOff(db, a.companyId)); }
 
 /** สิทธิ์ทุกเมนูของผู้ใช้ในบริษัทปัจจุบัน — หน้าจอใช้ซ่อนเมนู/ปุ่ม (ด่านจริงอยู่ที่ API) */
 export async function permissionMatrix(db: Db, a: AuthContext) {
   const rows = await loadRows(db, a);
+  const off = await modulesOff(db, a.companyId);
   const out: Record<string, Record<Action, boolean | 'S'>> = {};
   for (const m of FLAT) {
-    out[m.code] = Object.fromEntries(ACTIONS.map((x) => { const r = decide(a, rows, m.code, x); return [x, r.allowed ? (r.screenOnly ? 'S' : true) : false]; })) as Record<Action, boolean | 'S'>;
+    out[m.code] = Object.fromEntries(ACTIONS.map((x) => { const r = decide(a, rows, m.code, x, off); return [x, r.allowed ? (r.screenOnly ? 'S' : true) : false]; })) as Record<Action, boolean | 'S'>;
   }
   return out;
 }
@@ -145,7 +155,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/pdpa/requests': M('SET.PDPA', 'read'), 'POST /api/v1/pdpa/requests': M('SET.PDPA', 'add'), 'PUT /api/v1/pdpa/requests/:id': M('SET.PDPA', 'edit'),
   'GET /api/v1/activity-log': LOOKUP, 'GET /api/v1/activity-log/search': M('OT.LOG', 'read'),
   // บริษัท สาขา แผนก รอบบัญชี
-  'GET /api/v1/company': LOOKUP, 'PUT /api/v1/company': M('SET.CO', 'edit'), 'PUT /api/v1/company/ui-theme': M('SET.CO', 'edit'),
+  'GET /api/v1/company': LOOKUP, 'PUT /api/v1/company': M('SET.CO', 'edit'), 'PUT /api/v1/company/ui-theme': M('SET.CO', 'edit'), 'GET /api/v1/company/modules': LOOKUP, 'PUT /api/v1/company/modules': M('SET.CO', 'edit'),
   'GET /api/v1/branches': LOOKUP, 'POST /api/v1/branches': M('SET.BRANCH', 'add'), 'PUT /api/v1/branches/:id': M('SET.BRANCH', 'edit'),
   'GET /api/v1/departments': LOOKUP, 'POST /api/v1/departments': M('SET.DEPT', 'add'), 'PUT /api/v1/departments/:id': M('SET.DEPT', 'edit'), 'DELETE /api/v1/departments/:id': M('SET.DEPT', 'delete'),
   'GET /api/v1/gl/periods': LOOKUP, 'POST /api/v1/gl/periods/years': M('SET.PRD', 'add'), 'POST /api/v1/gl/periods/:id/lock': M('OT.LOCK', 'edit'),
@@ -341,7 +351,10 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     if (rule.kind === 'lookup') { checkApiKeyRule(a, method, url, 'lookup', null); return; }
     const menu = rule.pick ? await rule.pick(req, db, a.companyId) : rule.menu;
     checkApiKeyRule(a, method, url, 'menu', menu);
-    const r = decide(a, await loadRows(db, a), menu, rule.action);
+    const off = await modulesOff(db, a.companyId);
+    const offBy = menuOffBy(menu, off);
+    if (offBy) throw forbidden(`${offBy.label}ปิดอยู่ในบริษัทนี้ — ผู้มีสิทธิ์เปิดได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน`);
+    const r = decide(a, await loadRows(db, a), menu, rule.action, off);
     if (!r.allowed) {
       throw forbidden(`ไม่มีสิทธิ์${ACTION_TH[rule.action]}ในเมนู "${LABEL.get(menu) ?? menu}" — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ (เมนู อื่น ๆ › ผู้ใช้งานและสิทธิ์)`);
     }

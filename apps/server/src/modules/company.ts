@@ -1,4 +1,4 @@
-import { formatDate, passwordProblem, pdpaPurgeAfter, normalizeUiTheme } from '@buddy/core';
+import { formatDate, passwordProblem, pdpaPurgeAfter, normalizeUiTheme, MODULE_SWITCHES } from '@buddy/core';
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
@@ -11,6 +11,7 @@ import { copyCompanyData } from '../company-copy.js';
 import { logActivity } from '../audit.js';
 import { markPasswordChanged, setSec } from './security.js';
 import { purgeTenant } from './pdpa.js';
+import { modulesOff } from './permissions.js';
 import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, setSetting } from '../company-template.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
@@ -77,6 +78,23 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     await setSetting(db, a.companyId, 'ui.theme', v, a.userId);
     await logActivity(db, a, { module: 'SYS', action: 'SET_THEME', table: 'sys_company', rowId: a.companyId, detail: v });
     return v;
+  });
+
+  /** ระบบที่ใช้งาน (ข้อกำหนดเจ้าของ 30/10/2569: ปิดบางระบบทั้งบริษัท) — ปิด = ซ่อนเมนูและ API ปฏิเสธ ข้อมูลเดิมไม่หาย */
+  app.get('/api/v1/company/modules', async (req) => {
+    const a = requireCompany(req);
+    return { off: await modulesOff(db, a.companyId), modules: MODULE_SWITCHES };
+  });
+  app.put('/api/v1/company/modules', async (req) => {
+    const a = requireCompany(req);
+    const b = parse(z.object({ off: z.array(z.string().max(20)).max(50) }), req.body);
+    const bad = b.off.filter((k) => !MODULE_SWITCHES.some((m) => m.key === k));
+    if (bad.length) throw badRequest(`ไม่รู้จักระบบ ${bad.join(', ')}`);
+    const off = MODULE_SWITCHES.map((m) => m.key).filter((k) => b.off.includes(k));
+    const before = await modulesOff(db, a.companyId);
+    await setSetting(db, a.companyId, 'sys.modules_off', off, a.userId);
+    await logActivity(db, a, { module: 'SYS', action: 'SET_MODULES', table: 'sys_company', rowId: a.companyId, detail: { before, after: off } });
+    return { off };
   });
 
   /* ---------------------------------------------------------------- กำหนดบริษัทใหม่ (บทที่ 4 S-CO-03 / S-CO-07) */

@@ -105,7 +105,7 @@ export function tradeImportRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const K = kindOf(parse(z.object({ path: z.string() }), req.params).path);
     const b = parse(importBody, req.body);
-    if (!(await allowedFor(db, a, K.menu, 'add'))) throw forbidden(`ไม่มีสิทธิ์เพิ่ม${K.label} — นำเข้าไม่ได้`);
+    if (!(await allowedFor(db, a, K.menu, 'add')).allowed) throw forbidden(`ไม่มีสิทธิ์เพิ่ม${K.label} — นำเข้าไม่ได้`);
     const dt = await db.selectFrom('md_doc_type').select(['id', 'code', 'doc_class', 'status', 'price_type', 'vat_rate']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!dt || dt.doc_class !== K.cls || dt.status !== 'A') throw badRequest(`เลือกประเภทเอกสารของ${K.label}ที่ยังใช้งาน`);
     const s = await companySettings(db, a.companyId);

@@ -3695,3 +3695,47 @@ describe('ธีมของแต่ละบริษัท (ข้อกำ�
     expect((await sql<{ v: unknown }>`SELECT value AS v FROM sys_setting WHERE company_id = ${co} AND key = 'ui.theme'`.execute(database.db)).rows[0]!.v).toEqual({ theme: 'mint', font: 'sarabun' });
   });
 });
+
+describe('ปิดบางระบบทั้งบริษัท (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
+  it('switched-off modules: hidden in perms for everyone incl. admin, APIs refused with a clear message, data kept, other companies unaffected', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const g = await call('GET', '/api/v1/company/modules');
+    expect(g.body.off).toEqual([]); expect(g.body.modules.map((m: { key: string }) => m.key)).toContain('BANK');
+    expect((await call('PUT', '/api/v1/company/modules', { off: ['BANK', 'NOPE'] })).body.error.message).toMatch(/ไม่รู้จักระบบ NOPE/);
+    const poBefore = (await call('GET', '/api/v1/purchase-orders')).body;
+    expect((await call('PUT', '/api/v1/company/modules', { off: ['ORDER', 'BANK'] })).body).toEqual({ off: ['ORDER', 'BANK'] });
+    const me = (await call('GET', '/api/v1/auth/me')).body;
+    expect(me.perms['FI.BK.CR'].read).toBe(false); expect(me.perms['PU.PO'].add).toBe(false); expect(me.perms['SA.QT'].read).toBe(false);
+    expect(me.perms['SA.IV'].read).toBe(true); expect(me.perms['SET.CO'].edit).toBe(true);
+    const r = await call('GET', '/api/v1/purchase-orders');
+    expect(r.status).toBe(403); expect(r.body.error.message).toBe('ใบเสนอราคา / ใบสั่งขาย / ใบสั่งซื้อปิดอยู่ในบริษัทนี้ — ผู้มีสิทธิ์เปิดได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน');
+    expect((await call('GET', '/api/v1/cheque-deposits')).status).toBe(403);
+    expect((await call('GET', '/api/v1/sales-invoices')).status).toBe(200);
+    expect((await call('GET', '/api/v1/bank-accounts')).status).toBe(200);           // ข้อมูลอ้างอิงที่ระบบอื่นใช้ยังเรียกได้
+    // ปิดระบบซื้อ → นำเข้าบิลซื้อจาก Excel ก็ไม่ได้ (ตรวจสิทธิ์เพิ่มเอกสารซ้ำในคำขอ)
+    expect((await call('PUT', '/api/v1/company/modules', { off: ['PU'] })).status).toBe(200);
+    const rrType = (await call('GET', '/api/v1/trade-defaults/RR')).body.types[0].id;
+    expect((await call('POST', '/api/v1/trade-import/purchase-invoices', { file_name: 'x.csv', data: 'YQ==', doc_type_id: rrType })).status).toBe(403);
+    // ลูกค้าอื่นไม่ถูกกระทบ และตั้งค่าของบริษัทนี้ไม่ได้
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    expect((await call('GET', '/api/v1/company/modules')).body.off).toEqual([]);
+    expect((await call('GET', '/api/v1/purchase-invoices')).status).toBe(200);
+    // ผู้ไม่มีสิทธิ์แก้รายละเอียดกิจการ เปิด/ปิดระบบไม่ได้
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'imp.clerk', password: 'clerkImp123' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('PUT', '/api/v1/company/modules', { off: [] })).status).toBe(403);
+    // เปิดกลับ → ข้อมูลเดิมยังอยู่ครบ
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('PUT', '/api/v1/company/modules', { off: [] })).status).toBe(200);
+    expect((await call('GET', '/api/v1/purchase-orders')).body).toEqual(poBefore);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND action = 'SET_MODULES'`.execute(database.db)).rows[0]!.n).toBe(3);
+  });
+});

@@ -740,3 +740,12 @@ td.img-cell { padding-top: 2px; padding-bottom: 2px; }
 .theme-swatch .ts-cur { position: absolute; top: 6px; right: 8px; font-size: 12px; background: #fff; border-radius: 10px; padding: 0 6px; }
 .theme-sample > span:last-child { display: block; padding: 6px 0; font-size: 16px; }
 .theme-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+
+/* ระบบที่ใช้งานของบริษัท (ข้อกำหนดเจ้าของ 30/10/2569) */
+.mod-card { padding: 12px 14px; }
+.mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 10px 0; }
+.mod-item { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; }
+.mod-item input { margin-top: 4px; }
+.mod-item.off { background: var(--surface-2); border-style: dashed; }
+.mod-item.off b { color: var(--muted); }
+.mod-off { color: var(--bad); font-size: 12px; font-weight: 600; }

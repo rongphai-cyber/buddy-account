@@ -182,3 +182,36 @@ export const DATA_TABLES: Array<{ code: string; label: string; table: 'md_bank' 
   { code: '60', label: 'เฟส / Collection', table: 'md_lookup' },
   { code: '61', label: 'รหัสต้นทุน', table: 'md_lookup' },
 ];
+
+/**
+ * ระบบที่ปิดได้ทั้งบริษัท (ข้อกำหนดเจ้าของ 30/10/2569: "ปิดบางระบบไม่ให้เห็น/ใช้")
+ * ปิดแล้ว = ทุกคนในบริษัท (รวมผู้ดูแล) ไม่เห็นเมนู และ API ของเมนูเหล่านั้นปฏิเสธ — ข้อมูลเดิมไม่ถูกลบ เปิดกลับได้
+ * menus = รหัสเมนูหรือกลุ่ม (กลุ่ม = ทุกเมนูข้างใต้) · บัญชี เริ่มระบบ และรายการสินค้า/บริการ ปิดไม่ได้ (ระบบอื่นต้องใช้)
+ */
+export interface ModuleSwitch { key: string; label: string; menus: string[]; hint: string }
+export const MODULE_SWITCHES: ModuleSwitch[] = [
+  { key: 'PU', label: 'ระบบซื้อและเจ้าหนี้', menus: ['PU', 'FI.AP', 'RP.PU'], hint: 'ซื้อ ใบสั่งซื้อ จ่ายมัดจำ ค่าใช้จ่ายอื่น เจ้าหนี้ จ่ายชำระ รายงานซื้อ' },
+  { key: 'SA', label: 'ระบบขายและลูกหนี้', menus: ['SA', 'FI.AR', 'RP.SA'], hint: 'ขาย ใบเสนอราคา ใบสั่งขาย รับมัดจำ รายได้อื่น ลูกหนี้ รับชำระ รายงานขาย' },
+  { key: 'ORDER', label: 'ใบเสนอราคา / ใบสั่งขาย / ใบสั่งซื้อ', menus: ['SA.QT', 'SA.SO', 'PU.PO'], hint: 'กิจการที่เปิดบิลทันทีโดยไม่มีใบสั่ง' },
+  { key: 'DEPOSIT', label: 'เงินมัดจำ (รับ/จ่าย)', menus: ['SA.AI', 'PU.AE'], hint: 'รับเงินมัดจำ จ่ายเงินมัดจำ' },
+  { key: 'BILLING', label: 'ใบวางบิล / ใบรับวางบิล', menus: ['FI.AR.BI', 'FI.AR.BD', 'FI.AP.BR'], hint: 'วางบิล นัดรับชำระ รับวางบิล' },
+  { key: 'BANK', label: 'ระบบธนาคารและเช็ค', menus: ['FI.BK', 'RP.CHQ'], hint: 'เช็ครับ/จ่าย นำฝาก ผ่านเช็ค ฝาก/ถอน/โอน สมุดเงินฝาก กระทบยอด' },
+  { key: 'STOCK', label: 'ระบบสินค้าคงคลัง (สต๊อก)', menus: ['IC.STOCK', 'IC.TRN', 'IC.OB', 'IC.COUNT', 'IC.SERIAL', 'IC.REORDER', 'GL.INV', 'RP.IC'], hint: 'ยอดคงเหลือ รายการประจำวันสินค้า ตรวจนับ ยอดยกมา — รายละเอียดสินค้า/บริการยังใช้ได้' },
+  { key: 'FA', label: 'ทรัพย์สินถาวร', menus: ['FA.ASSET', 'FA.DEPR'], hint: 'ทะเบียนทรัพย์สิน คิดค่าเสื่อม' },
+  { key: 'PETTY', label: 'เงินสดย่อย', menus: ['GL.PC'], hint: '' },
+  { key: 'BUDGET', label: 'งบประมาณ', menus: ['GL.BUD'], hint: '' },
+  { key: 'ETAX', label: 'ส่งออก e-Tax Invoice', menus: ['FI.VAT.ETAX'], hint: '' },
+];
+const MENU_PARENT = new Map(flattenMenu().map((m) => [m.code, m.parent ?? null]));
+/** รหัสระบบที่ปิด → ชุดรหัสเมนู/กลุ่มที่ปิด (รหัสที่ไม่รู้จักข้าม) */
+export function offMenus(keys: unknown): Set<string> {
+  const ks = Array.isArray(keys) ? keys.map(String) : [];
+  return new Set(MODULE_SWITCHES.filter((m) => ks.includes(m.key)).flatMap((m) => m.menus));
+}
+/** เมนูนี้อยู่ในระบบที่ปิดหรือไม่ (ตัวเองหรือกลุ่มแม่) — คืนชื่อระบบที่ปิด */
+export function menuOffBy(menu: string, keys: unknown): ModuleSwitch | null {
+  const ks = Array.isArray(keys) ? keys.map(String) : [];
+  const chain: string[] = [];
+  for (let c: string | null | undefined = menu; c; c = MENU_PARENT.get(c)) chain.push(c);
+  return MODULE_SWITCHES.find((m) => ks.includes(m.key) && m.menus.some((x) => chain.includes(x))) ?? null;
+}
