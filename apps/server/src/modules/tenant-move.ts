@@ -24,19 +24,19 @@ const SKIP = new Set(['sync_change_log', 'sync_inbox', 'sync_conflict', 'sys_act
 const passSchema = z.string().min(12, 'รหัสผ่านของแฟ้มต้องยาวอย่างน้อย 12 ตัวอักษร (แฟ้มมีข้อมูลทั้งหมดของลูกค้า)').max(200);
 
 type Obj = Record<string, unknown>;
-type TenantHeader = { format: string; version: number; created_at: string; schema: string; tenant: { id: string; code: string; name: string };
+type TenantHeader = { format: string; version: number; created_at: string; schema: string; pull_seq?: number; tenant: { id: string; code: string; name: string };
   companies: Array<{ id: string; code: string; name: string; journals: number; debit: string; credit: string }>; tables: Record<string, number>; sha256: string };
 const rows = async <T = Obj>(db: Db, q: RawBuilder<unknown>) => (await q.execute(db)).rows as T[];
 const texts = (xs: string[]) => sql.join((xs.length ? xs : ['']).map((x) => sql`${x}`));
 const ids = (xs: string[]) => sql.join((xs.length ? xs : ['00000000-0000-0000-0000-000000000000']).map((x) => sql`${x}::uuid`));
 
-function seal(gz: Buffer, pass: string) {
+export function seal(gz: Buffer, pass: string) {
   const salt = randomBytes(16), iv = randomBytes(12);
   const c = createCipheriv('aes-256-gcm', scryptSync(pass, salt, 32), iv);
   const ct = Buffer.concat([c.update(gz), c.final()]);
   return Buffer.concat([MAGIC, salt, iv, c.getAuthTag(), ct]);
 }
-function unseal(buf: Buffer, pass: string) {
+export function unseal(buf: Buffer, pass: string) {
   if (buf.length < MAGIC.length + 44 || !buf.subarray(0, MAGIC.length).equals(MAGIC)) throw badRequest('ไม่ใช่แฟ้มย้ายลูกค้าของ Buddy Account (.buddy-tenant)');
   let o = MAGIC.length;
   const salt = buf.subarray(o, o += 16), iv = buf.subarray(o, o += 12), tag = buf.subarray(o, o += 16);
@@ -57,8 +57,11 @@ async function checksOf(db: Db, companyId: string) {
       coalesce(sum(debit), 0)::text AS debit, coalesce(sum(credit), 0)::text AS credit FROM gl_journal_line WHERE company_id = ${companyId} AND deleted_at IS NULL`))[0]!;
 }
 
-/** ส่งออกลูกค้าหนึ่งราย → แฟ้มที่เข้ารหัสแล้ว (อ่านในทรานแซกชันเดียว ข้อมูลไม่ขาดตอน) */
-export async function exportTenant(db: Db, tenantId: string, pass: string) {
+/**
+ * ส่งออกลูกค้าหนึ่งราย → แฟ้มที่เข้ารหัสแล้ว (อ่านในทรานแซกชันเดียว ข้อมูลไม่ขาดตอน)
+ * companyIds = เฉพาะบางบริษัท (T7.8 ตั้งเครื่องสาขา) · pull_seq = ลำดับ sync_change_log ล่าสุด ณ เวลาส่งออก (เครื่องสาขาดึงต่อจากนี้)
+ */
+export async function exportTenant(db: Db, tenantId: string, pass: string, opt: { companyIds?: string[] } = {}) {
   return db.transaction().setIsolationLevel('repeatable read').execute(async (tx) => {
     const tenant = (await rows<Obj>(tx, sql`SELECT to_jsonb(t) AS j FROM sys_tenant t WHERE id = ${tenantId} AND deleted_at IS NULL`))[0]?.j as Obj | undefined;
     if (!tenant) throw notFound('ลูกค้าผู้ใช้บริการ');
@@ -77,7 +80,8 @@ export async function exportTenant(db: Db, tenantId: string, pass: string) {
       const plain = typeof r.totp_secret_enc === 'string' ? decryptSecret(r.totp_secret_enc) : null;
       return { ...r, totp_secret_enc: null, _totp_plain: plain, ...(plain ? {} : { totp_enabled: false }) };
     }));
-    const companies = await all(sql`SELECT to_jsonb(x) AS j FROM sys_company x WHERE tenant_id = ${tenantId}`);
+    const only = opt.companyIds ? sql`AND id IN (${ids(opt.companyIds)})` : sql``;
+    const companies = await all(sql`SELECT to_jsonb(x) AS j FROM sys_company x WHERE tenant_id = ${tenantId} ${only}`);
     put('sys_company', companies);
     const cids = companies.map((c) => String(c.id));
     const menus = new Map((await rows<{ id: string; code: string }>(tx, sql`SELECT id, code FROM sys_menu`)).map((m) => [m.id, m.code]));
@@ -89,7 +93,8 @@ export async function exportTenant(db: Db, tenantId: string, pass: string) {
     }
     put('sys_activity_log', await all(sql`SELECT to_jsonb(x) - 'seq' AS j FROM sys_activity_log x
         WHERE company_id IN (${ids(cids)}) OR (company_id IS NULL AND user_id IN (${ids(userIds)})) ORDER BY seq`));
-    const header = { format: FORMAT, version: 1, created_at: new Date().toISOString(), schema: await schemaVersion(tx),
+    const pullSeq = Number((await rows<{ s: string | null }>(tx, sql`SELECT max(seq)::text AS s FROM sync_change_log WHERE company_id IN (${ids(cids)})`))[0]?.s ?? 0);
+    const header = { format: FORMAT, version: 1, created_at: new Date().toISOString(), schema: await schemaVersion(tx), pull_seq: pullSeq,
       tenant: { id: tenantId, code: String(tenant.code), name: String(tenant.name) },
       companies: await Promise.all(companies.map(async (c) => ({ id: String(c.id), code: String(c.code), name: String(c.name_th), ...(await checksOf(tx, String(c.id))) }))), tables };
     const gz = writeBackup(header as unknown as Omit<Header, 'sha256'>, lines);
@@ -164,7 +169,7 @@ export async function importTenant(db: Db, buf: Buffer, pass: string, userId: st
     return { code: c.code, name: c.name, source: { journals: c.journals, debit: c.debit, credit: c.credit }, target: now,
       ok: now.journals === c.journals && Number(now.debit) === Number(c.debit) && Number(now.credit) === Number(c.credit) };
   }));
-  return { tenant: h.tenant, exported_at: h.created_at, counts, users_cleared: cleared, checks, ok: checks.every((c) => c.ok), seconds: Math.round((Date.now() - started) / 100) / 10 };
+  return { tenant: h.tenant, companies: h.companies.map((c) => ({ id: c.id, code: c.code })), pull_seq: h.pull_seq ?? 0, exported_at: h.created_at, counts, users_cleared: cleared, checks, ok: checks.every((c) => c.ok), seconds: Math.round((Date.now() - started) / 100) / 10 };
 }
 
 export function tenantMoveRoutes(app: FastifyInstance, db: Db) {

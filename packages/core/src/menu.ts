@@ -131,6 +131,7 @@ export const MENU: MenuItem[] = [
     m('SET.API', 'กุญแจ API (เชื่อมต่อระบบอื่น)', 'P7', '/settings/api-keys'),
     m('SET.AI', 'AI อ่านบิล (Claude)', 'P7', '/settings/ai'),
     m('SET.PDPA', 'ข้อมูลส่วนบุคคล (PDPA)', 'P0', '/settings/pdpa'),
+    m('SET.DEVICE', 'เครื่องสาขา (ออฟไลน์)', 'P7', '/settings/devices'),
     m('SET.NEWCO', 'กำหนดบริษัทใหม่', 'P0', '/companies/new', ['ch04:S-CO-03']),
     m('SET.TENANT', 'ลูกค้าผู้ใช้บริการ (ผู้ให้บริการ)', 'P0', '/admin/tenants'),
   ]),

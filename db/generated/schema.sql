@@ -5019,6 +5019,42 @@ BEGIN
   RETURN NEW;
 END $$;
 
+-- T7.8 ออฟไลน์สาขา: ลบแถวจริง (เช่น บรรทัดใบสำคัญตอนแก้ไข) ต้องบอกเครื่องสาขาด้วย — op D + แถวไม่มีแล้ว = เครื่องสาขาลบตาม
+-- app.no_sync_log = on (ลบข้อมูลทั้งลูกค้าตาม PDPA) ไม่ต้องบันทึก
+CREATE OR REPLACE FUNCTION sync_log_delete() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE v_company uuid; j jsonb;
+BEGIN
+  IF current_setting('app.no_sync_log', true) = 'on' THEN RETURN OLD; END IF;
+  j := to_jsonb(OLD);
+  v_company := COALESCE((j->>'company_id')::uuid, CASE WHEN TG_TABLE_NAME='sys_company' THEN OLD.id END);
+  IF v_company IS NULL THEN RETURN OLD; END IF;
+  INSERT INTO sync_change_log(company_id, branch_id, table_name, row_id, op, row_version, origin_device_id)
+  VALUES (v_company, (j->>'branch_id')::uuid, TG_TABLE_NAME, OLD.id, 'D', OLD.row_version, NULLIF(current_setting('app.device_id', true), '')::uuid);
+  RETURN OLD;
+END $$;
+
+-- T7.8 ออฟไลน์สาขา: รหัสแถวของเอกสารที่ส่งจากเครื่องสาขา
+--   app.force_ids = {"ตาราง": ["รหัส", …]} (สำนักงานใหญ่ตอนรับเอกสาร) → ใช้รหัสเดิมของเครื่องสาขาตามลำดับ ถ้าลำดับ/จำนวนไม่ตรง = ยกเลิกทั้งเอกสาร
+--   app.capture = on (เครื่องสาขาตอนบันทึก) → จดตาราง:รหัสที่สร้างไว้ใน app.cap เพื่อส่งขึ้นไปพร้อมคำขอ
+CREATE OR REPLACE FUNCTION sync_row_id() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE f text; arr jsonb; p int; k text;
+BEGIN
+  f := current_setting('app.force_ids', true);
+  IF f IS NOT NULL AND f <> '' THEN
+    arr := f::jsonb -> TG_TABLE_NAME;
+    k := 'app.fp_' || TG_TABLE_NAME;
+    p := COALESCE(NULLIF(current_setting(k, true), ''), '0')::int;
+    IF arr IS NULL OR p >= jsonb_array_length(arr) THEN
+      RAISE EXCEPTION 'SYNC_REPLAY_MISMATCH %', TG_TABLE_NAME USING ERRCODE = 'P0002';
+    END IF;
+    NEW.id := (arr ->> p)::uuid;
+    PERFORM set_config(k, (p + 1)::text, true);
+  ELSIF current_setting('app.capture', true) = 'on' THEN
+    PERFORM set_config('app.cap', COALESCE(current_setting('app.cap', true), '') || TG_TABLE_NAME || ':' || NEW.id::text || ',', true);
+  END IF;
+  RETURN NEW;
+END $$;
+
 -- ห้ามแก้/ลบ log (กรมสรรพากรกำหนดให้เก็บ ≥ 2 ปี)
 CREATE OR REPLACE FUNCTION sys_append_only() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN RAISE EXCEPTION 'sys_activity_log is append-only'; END $$;
@@ -5213,6 +5249,157 @@ CREATE TRIGGER trg_md_asset_account_group_log AFTER INSERT OR UPDATE ON md_asset
 CREATE TRIGGER trg_fa_asset_log AFTER INSERT OR UPDATE ON fa_asset FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_fa_depreciation_log AFTER INSERT OR UPDATE ON fa_depreciation FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sync_conflict_log AFTER INSERT OR UPDATE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sync_log_change();
+CREATE TRIGGER trg_sys_company_del AFTER DELETE ON sys_company FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_branch_del AFTER DELETE ON sys_branch FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_user_del AFTER DELETE ON sys_user FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_user_group_del AFTER DELETE ON sys_user_group FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_user_company_del AFTER DELETE ON sys_user_company FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_menu_del AFTER DELETE ON sys_menu FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_permission_del AFTER DELETE ON sys_permission FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_device_del AFTER DELETE ON sys_device FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_setting_del AFTER DELETE ON sys_setting FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_setting_def_del AFTER DELETE ON sys_setting_def FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_print_form_del AFTER DELETE ON sys_print_form FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_report_custom_del AFTER DELETE ON sys_report_custom FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_fiscal_year_del AFTER DELETE ON gl_fiscal_year FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_period_del AFTER DELETE ON gl_period FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_account_del AFTER DELETE ON gl_account FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_journal_book_del AFTER DELETE ON gl_journal_book FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_default_account_del AFTER DELETE ON gl_default_account FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_journal_route_del AFTER DELETE ON gl_journal_route FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_posting_rule_del AFTER DELETE ON gl_posting_rule FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_template_del AFTER DELETE ON gl_template FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_template_line_del AFTER DELETE ON gl_template_line FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_lookup_type_del AFTER DELETE ON md_lookup_type FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_lookup_del AFTER DELETE ON md_lookup FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_unit_del AFTER DELETE ON md_unit FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_warehouse_del AFTER DELETE ON md_warehouse FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_department_del AFTER DELETE ON md_department FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_bank_del AFTER DELETE ON md_bank FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_project_del AFTER DELETE ON md_project FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_project_budget_del AFTER DELETE ON md_project_budget FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_item_account_group_del AFTER DELETE ON md_item_account_group FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_item_del AFTER DELETE ON md_item FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_item_bom_del AFTER DELETE ON md_item_bom FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_item_price_break_del AFTER DELETE ON md_item_price_break FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_item_reorder_del AFTER DELETE ON md_item_reorder FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_customer_del AFTER DELETE ON md_customer FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_customer_ship_to_del AFTER DELETE ON md_customer_ship_to FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_supplier_del AFTER DELETE ON md_supplier FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_party_contact_del AFTER DELETE ON md_party_contact FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_supplier_bank_del AFTER DELETE ON md_supplier_bank FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_salesperson_del AFTER DELETE ON md_salesperson FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_sales_target_del AFTER DELETE ON md_sales_target FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_bank_account_del AFTER DELETE ON md_bank_account FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_doc_type_del AFTER DELETE ON md_doc_type FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_doc_type_account_del AFTER DELETE ON md_doc_type_account FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_payment_method_del AFTER DELETE ON md_payment_method FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_doc_number_block_del AFTER DELETE ON md_doc_number_block FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_doc_header_del AFTER DELETE ON doc_header FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_doc_line_del AFTER DELETE ON doc_line FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_doc_note_del AFTER DELETE ON doc_note FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_note_del AFTER DELETE ON md_note FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_doc_link_del AFTER DELETE ON doc_link FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_doc_bill_item_del AFTER DELETE ON doc_bill_item FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_doc_settlement_del AFTER DELETE ON doc_settlement FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_doc_payment_del AFTER DELETE ON doc_payment FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_fin_cheque_del AFTER DELETE ON fin_cheque FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_fin_cheque_event_del AFTER DELETE ON fin_cheque_event FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_inv_stock_balance_del AFTER DELETE ON inv_stock_balance FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_inv_stock_count_del AFTER DELETE ON inv_stock_count FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_serial_del AFTER DELETE ON md_serial FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_serial_service_del AFTER DELETE ON md_serial_service FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_journal_del AFTER DELETE ON gl_journal FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_journal_line_del AFTER DELETE ON gl_journal_line FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_inventory_balance_del AFTER DELETE ON gl_inventory_balance FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_fin_bank_statement_del AFTER DELETE ON fin_bank_statement FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_budget_del AFTER DELETE ON gl_budget FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_prior_year_balance_del AFTER DELETE ON gl_prior_year_balance FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_fs_report_del AFTER DELETE ON gl_fs_report FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_gl_fs_line_del AFTER DELETE ON gl_fs_line FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_tax_vat_entry_del AFTER DELETE ON tax_vat_entry FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_tax_wht_entry_del AFTER DELETE ON tax_wht_entry FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_asset_account_group_del AFTER DELETE ON md_asset_account_group FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_fa_asset_del AFTER DELETE ON fa_asset FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_fa_depreciation_del AFTER DELETE ON fa_depreciation FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sync_conflict_del AFTER DELETE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_branch_rid BEFORE INSERT ON sys_branch FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_user_company_rid BEFORE INSERT ON sys_user_company FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_permission_rid BEFORE INSERT ON sys_permission FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_device_rid BEFORE INSERT ON sys_device FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_setting_rid BEFORE INSERT ON sys_setting FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_print_form_rid BEFORE INSERT ON sys_print_form FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_report_custom_rid BEFORE INSERT ON sys_report_custom FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_api_key_rid BEFORE INSERT ON sys_api_key FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_pdpa_request_rid BEFORE INSERT ON sys_pdpa_request FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_secret_rid BEFORE INSERT ON sys_secret FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_ai_usage_rid BEFORE INSERT ON sys_ai_usage FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_fiscal_year_rid BEFORE INSERT ON gl_fiscal_year FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_period_rid BEFORE INSERT ON gl_period FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_account_rid BEFORE INSERT ON gl_account FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_journal_book_rid BEFORE INSERT ON gl_journal_book FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_default_account_rid BEFORE INSERT ON gl_default_account FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_journal_route_rid BEFORE INSERT ON gl_journal_route FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_posting_rule_rid BEFORE INSERT ON gl_posting_rule FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_template_rid BEFORE INSERT ON gl_template FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_template_line_rid BEFORE INSERT ON gl_template_line FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_lookup_rid BEFORE INSERT ON md_lookup FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_unit_rid BEFORE INSERT ON md_unit FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_warehouse_rid BEFORE INSERT ON md_warehouse FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_department_rid BEFORE INSERT ON md_department FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_bank_rid BEFORE INSERT ON md_bank FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_project_rid BEFORE INSERT ON md_project FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_project_budget_rid BEFORE INSERT ON md_project_budget FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_item_account_group_rid BEFORE INSERT ON md_item_account_group FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_item_rid BEFORE INSERT ON md_item FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_item_bom_rid BEFORE INSERT ON md_item_bom FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_item_price_break_rid BEFORE INSERT ON md_item_price_break FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_item_reorder_rid BEFORE INSERT ON md_item_reorder FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_customer_rid BEFORE INSERT ON md_customer FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_customer_ship_to_rid BEFORE INSERT ON md_customer_ship_to FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_supplier_rid BEFORE INSERT ON md_supplier FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_party_contact_rid BEFORE INSERT ON md_party_contact FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_supplier_bank_rid BEFORE INSERT ON md_supplier_bank FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_salesperson_rid BEFORE INSERT ON md_salesperson FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_sales_target_rid BEFORE INSERT ON md_sales_target FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_bank_account_rid BEFORE INSERT ON md_bank_account FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_doc_type_rid BEFORE INSERT ON md_doc_type FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_doc_type_account_rid BEFORE INSERT ON md_doc_type_account FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_payment_method_rid BEFORE INSERT ON md_payment_method FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_doc_number_block_rid BEFORE INSERT ON md_doc_number_block FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_doc_header_rid BEFORE INSERT ON doc_header FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_doc_line_rid BEFORE INSERT ON doc_line FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_doc_note_rid BEFORE INSERT ON doc_note FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_note_rid BEFORE INSERT ON md_note FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_doc_link_rid BEFORE INSERT ON doc_link FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_doc_bill_item_rid BEFORE INSERT ON doc_bill_item FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_doc_settlement_rid BEFORE INSERT ON doc_settlement FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_doc_payment_rid BEFORE INSERT ON doc_payment FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_fin_cheque_rid BEFORE INSERT ON fin_cheque FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_fin_cheque_event_rid BEFORE INSERT ON fin_cheque_event FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_fin_bank_ledger_rid BEFORE INSERT ON fin_bank_ledger FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_inv_stock_ledger_rid BEFORE INSERT ON inv_stock_ledger FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_inv_cost_layer_rid BEFORE INSERT ON inv_cost_layer FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_inv_cost_consumption_rid BEFORE INSERT ON inv_cost_consumption FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_inv_stock_balance_rid BEFORE INSERT ON inv_stock_balance FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_inv_stock_count_rid BEFORE INSERT ON inv_stock_count FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_serial_rid BEFORE INSERT ON md_serial FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_serial_service_rid BEFORE INSERT ON md_serial_service FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_journal_rid BEFORE INSERT ON gl_journal FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_journal_line_rid BEFORE INSERT ON gl_journal_line FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_balance_rid BEFORE INSERT ON gl_balance FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_inventory_balance_rid BEFORE INSERT ON gl_inventory_balance FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_fin_bank_statement_rid BEFORE INSERT ON fin_bank_statement FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_budget_rid BEFORE INSERT ON gl_budget FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_prior_year_balance_rid BEFORE INSERT ON gl_prior_year_balance FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_fs_report_rid BEFORE INSERT ON gl_fs_report FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_gl_fs_line_rid BEFORE INSERT ON gl_fs_line FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_tax_vat_entry_rid BEFORE INSERT ON tax_vat_entry FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_tax_wht_entry_rid BEFORE INSERT ON tax_wht_entry FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_asset_account_group_rid BEFORE INSERT ON md_asset_account_group FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_fa_asset_rid BEFORE INSERT ON fa_asset FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_fa_depreciation_rid BEFORE INSERT ON fa_depreciation FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sync_conflict_rid BEFORE INSERT ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE CONSTRAINT TRIGGER trg_gl_journal_balanced AFTER INSERT OR UPDATE ON gl_journal DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION gl_check_balanced();
 CREATE TRIGGER trg_gl_journal_period BEFORE INSERT OR UPDATE ON gl_journal FOR EACH ROW EXECUTE FUNCTION gl_check_period_open();
 CREATE TRIGGER trg_doc_header_period BEFORE INSERT OR UPDATE ON doc_header FOR EACH ROW EXECUTE FUNCTION gl_check_period_open();

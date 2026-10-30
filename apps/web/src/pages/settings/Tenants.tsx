@@ -70,7 +70,7 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
         <Field label="หมดอายุ"><DateInput value={f.expires_on} onChange={(v) => setF({ ...f, expires_on: v })} /></Field>
         <Field label="จำนวนบริษัทสูงสุด" hint="ว่าง = ไม่จำกัด"><input className="num" value={f.max_companies} onChange={(e) => setF({ ...f, max_companies: e.target.value.replace(/\D/g, '') })} /></Field>
         <Field label="จำนวนผู้ใช้สูงสุด" hint="ว่าง = ไม่จำกัด"><input className="num" value={f.max_users} onChange={(e) => setF({ ...f, max_users: e.target.value.replace(/\D/g, '') })} /></Field>
-        <Field label="ลงนามข้อตกลงประมวลผลข้อมูล (DPA)" hint="ดูแบบข้อตกลงใน docs/06_PDPA.md"><DateInput value={f.dpa_signed_on} onChange={(v) => setF({ ...f, dpa_signed_on: v })} /></Field>
+        <Field label="ลงนามข้อตกลงประมวลผลข้อมูล (DPA)" hint="ดูแบบข้อตกลงใน docs/10_PDPA.md"><DateInput value={f.dpa_signed_on} onChange={(v) => setF({ ...f, dpa_signed_on: v })} /></Field>
         {t && <>
           <h3 className="wide">ย้ายไปเซิร์ฟเวอร์/ฐานข้อมูลแยก (ลูกค้ารายใหญ่)</h3>
           <p className="wide small muted">1) ส่งออกแฟ้มย้ายลูกค้า 2) ที่เครื่องใหม่กด "รับลูกค้าที่ย้ายมา" 3) ตรวจผลแล้วกลับมาใส่ที่อยู่ใหม่ และเปลี่ยนสถานะเป็น "เลิกใช้" — ผู้ใช้จะถูกบอกให้ไปเข้าที่อยู่ใหม่ และลบสำเนาที่เครื่องนี้ได้ทันที</p>

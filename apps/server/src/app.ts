@@ -52,6 +52,7 @@ import { securityRoutes } from './modules/security.js';
 import { expressImportRoutes } from './modules/express-import.js';
 import { pdpaRoutes } from './modules/pdpa.js';
 import { tenantMoveRoutes } from './modules/tenant-move.js';
+import { syncRoutes } from './modules/sync/index.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
@@ -125,6 +126,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   expressImportRoutes(app, database);
   pdpaRoutes(app, db);
   tenantMoveRoutes(app, db);
+  await syncRoutes(app, database);
   inventoryAccountRoutes(app, db);
   reportRoutes(app, db);
 

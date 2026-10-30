@@ -3,6 +3,9 @@ import { Kysely, PostgresDialect, CompiledQuery, sql, type Transaction, type Dia
 import pg from 'pg';
 import { PGlite } from '@electric-sql/pglite';
 import type { DB } from '../../../db/generated/db-types.js';
+import { parseCapturedIds } from '@buddy/core';
+import { AppError } from './http.js';
+import { syncCtx } from './sync-context.js';
 
 export type { DB };
 export type Db = Kysely<DB>;
@@ -137,10 +140,26 @@ export async function rlsAvailable(database: Database): Promise<boolean> {
 }
 
 /** ทำงานในขอบเขตของบริษัท (ใต้ RLS) — ทุก query ผ่าน database.db ภายใน fn ใช้ทรานแซกชันนี้ */
-export function runInCompanyScope<T>(database: Database, ctx: { companyId: string; tenantId: string | null; isPlatform: boolean }, fn: () => Promise<T>): Promise<T> {
+export function runInCompanyScope<T>(database: Database, ctx: { companyId: string; tenantId: string | null; isPlatform: boolean; rls?: boolean }, fn: () => Promise<T>): Promise<T> {
   return database.raw.transaction().execute(async (tx) => {
-    await sql.raw(`SET LOCAL ROLE ${APP_ROLE}`).execute(tx);
+    if (ctx.rls !== false) await sql.raw(`SET LOCAL ROLE ${APP_ROLE}`).execute(tx);
     await sql`SELECT set_config('app.company_id', ${ctx.companyId}, true), set_config('app.tenant_id', ${ctx.tenantId ?? ''}, true), set_config('app.platform', ${ctx.isPlatform ? '1' : '0'}, true)`.execute(tx);
-    return scope.run({ tx }, fn);
+    // T7.8 ออฟไลน์สาขา (sync-context.ts)
+    const sc = syncCtx.getStore();
+    if (sc?.replay) await sql`SELECT set_config('app.force_ids', ${JSON.stringify(sc.replay.forceIds)}, true)`.execute(tx);
+    if (sc?.capture) await sql`SELECT set_config('app.capture', 'on', true), set_config('app.cap', '', true)`.execute(tx);
+    const result = await scope.run({ tx }, fn);
+    if (sc?.replay) {
+      // ทุกรหัสที่เครื่องสาขาสร้างต้องถูกใช้ครบ — ไม่ครบ = ผลที่สำนักงานใหญ่ต่างจากที่สาขา → ยกเลิกทั้งเอกสาร
+      for (const [t, ids] of Object.entries(sc.replay.forceIds)) {
+        const used = Number((await sql<{ p: string | null }>`SELECT current_setting(${'app.fp_' + t}, true) AS p`.execute(tx)).rows[0]?.p || 0);
+        if (used !== ids.length) throw new AppError(409, 'SYNC_REPLAY_MISMATCH', `ผลการบันทึกที่สำนักงานใหญ่ไม่ตรงกับที่เครื่องสาขา (${t} ${used}/${ids.length} แถว) — ข้อมูลของสองเครื่องต่างกัน ให้ซิงก์ข้อมูลใหม่แล้วบันทึกเอกสารนี้อีกครั้ง`);
+      }
+    }
+    if (sc?.capture) {
+      const cap = (await sql<{ c: string | null }>`SELECT current_setting('app.cap', true) AS c`.execute(tx)).rows[0]?.c;
+      await sc.capture.onCommit(tx, parseCapturedIds(cap));
+    }
+    return result;
   });
 }

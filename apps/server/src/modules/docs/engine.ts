@@ -6,6 +6,7 @@ import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
 import { recostAfter } from './stockcost.js';
+import { numbering } from '../../sync-context.js';
 import { loadPostingInput, loadResolver } from '../posting.js';
 import { cancelVatEntries, syncVatEntries } from '../vat.js';
 
@@ -24,6 +25,9 @@ const ROUTE_OF: Record<string, string> = {
  * ข้ามเลขที่มีเอกสารอยู่แล้ว (เช่น ตั้งเลขถัดไปย้อนหลัง)
  */
 export async function issueDocNo(tx: Db, companyId: string, docTypeId: string): Promise<string> {
+  // T7.8 ออฟไลน์สาขา: เครื่องสาขาออกเลขจากช่วงที่จอง · สำนักงานใหญ่ใช้เลขเดิมของเอกสารที่ส่งมาจากสาขา
+  const special = await numbering.hook?.(tx, companyId, docTypeId);
+  if (special) return special;
   const t = (await sql<{ code: string; next_no: string }>`SELECT code, next_no FROM md_doc_type WHERE id = ${docTypeId} AND company_id = ${companyId} AND deleted_at IS NULL FOR UPDATE`.execute(tx)).rows[0];
   if (!t) throw notFound('ประเภทเอกสาร');
   let n = Number(t.next_no);

@@ -7,6 +7,8 @@ import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContex
 import { logActivity } from '../audit.js';
 import { checkApiKeyRule } from './apikeys.js';
 import { checkMfaGate } from './security.js';
+import { replays, syncCtx } from '../sync-context.js';
+import { branchCapture, branchStateOf, checkBranchWrite } from './sync/branch.js';
 
 /**
  * สิทธิ์ 7 ชนิดรายเมนู — คู่มือบทที่ 23 (S-SEC-01/02/03)
@@ -27,7 +29,7 @@ const LABEL = new Map(FLAT.map((m) => [m.code, m.label]));
 /** เมนูกำหนดค่าโปรแกรม: ระดับ 5 ขึ้นไปจึงเพิ่ม/แก้/ลบได้ (คู่มือหน้า 359–360) */
 const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.FAG', 'SET.PAYM', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
 /** ระบบความปลอดภัยและแก้ไขแบบฟอร์ม: ระดับ 9 เท่านั้น */
-const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'SET.API', 'SET.AI', 'SET.PDPA', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG']);
+const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'SET.API', 'SET.AI', 'SET.PDPA', 'SET.DEVICE', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG']);
 
 export function baseAllowed(level: number, menu: string, action: Action) {
   if (level >= 9) return true;
@@ -133,6 +135,11 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/api-keys': M('SET.API', 'read'), 'POST /api/v1/api-keys': M('SET.API', 'add'), 'POST /api/v1/api-keys/:id/revoke': M('SET.API', 'cancel'), 'GET /api/v1/api-docs': M('SET.API', 'read'),
   'GET /api/v1/users': SELF, 'POST /api/v1/users': SELF, 'PUT /api/v1/users/:id': SELF, 'POST /api/v1/user-groups': SELF,
   'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/tenants/:id/purge': SELF, 'POST /api/v1/tenants/:id/export': SELF, 'POST /api/v1/tenants/import': SELF, 'POST /api/v1/companies': SELF,
+  // T7.8 ออฟไลน์สาขา: เครื่องสาขา (ผู้ดูแลบริษัท) · API ของเครื่องสาขายืนยันด้วยรหัสเครื่อง (OPEN + ตรวจในตัว) · สถานะ/ส่งใหม่ของเครื่องสาขา (SELF)
+  'GET /api/v1/devices': M('SET.DEVICE', 'read'), 'POST /api/v1/devices': M('SET.DEVICE', 'add'), 'POST /api/v1/devices/:id/new-code': M('SET.DEVICE', 'edit'),
+  'POST /api/v1/devices/:id/suspend': M('SET.DEVICE', 'cancel'), 'GET /api/v1/devices/:id/conflicts': M('SET.DEVICE', 'read'),
+  'POST /api/v1/sync/bootstrap': OPEN, 'POST /api/v1/sync/push': OPEN, 'POST /api/v1/sync/pull': OPEN, 'POST /api/v1/sync/setup-branch': OPEN,
+  'GET /api/v1/sync/status': SELF, 'POST /api/v1/sync/now': SELF, 'POST /api/v1/sync/outbox/:id/retry': SELF, 'POST /api/v1/sync/outbox/:id/discard': SELF,
   'GET /api/v1/pdpa/register': M('SET.PDPA', 'read'), 'GET /api/v1/pdpa/subjects': M('SET.PDPA', 'read'), 'GET /api/v1/pdpa/subjects/:kind/:id': M('SET.PDPA', 'read'),
   'POST /api/v1/pdpa/subjects/:kind/:id/access': M('SET.PDPA', 'print'), 'POST /api/v1/pdpa/subjects/:kind/:id/erase': M('SET.PDPA', 'delete'),
   'GET /api/v1/pdpa/requests': M('SET.PDPA', 'read'), 'POST /api/v1/pdpa/requests': M('SET.PDPA', 'add'), 'PUT /api/v1/pdpa/requests/:id': M('SET.PDPA', 'edit'),
@@ -295,14 +302,21 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     if (!r.url.startsWith('/api/')) return;
     const methods = [r.method].flat().filter((m) => m !== 'HEAD');
     for (const m of methods) REGISTERED_ROUTES.add(`${m} ${r.url}`);
-    if (!rls) return;
     const rule = API_RULES[`${methods[0]} ${r.url}`];
     if (!rule || (rule.kind !== 'menu' && rule.kind !== 'lookup')) return;
+    // ไม่มี RLS: คำขอข้อมูลบริษัทยังทำในทรานแซกชันเดียว (ออฟไลน์สาขาต้องจดรหัสแถว/คิวรอส่งพร้อมเอกสาร) แต่ไม่สลับ role
     const handler = r.handler;
     r.handler = function (this: FastifyInstance, req, reply) {
       const a = req.auth;
       if (!a?.companyId) return handler.call(this, req, reply);
-      return runInCompanyScope(database, { companyId: a.companyId, tenantId: a.tenantId, isPlatform: a.isPlatform }, async () => handler.call(this, req, reply));
+      const run = () => runInCompanyScope(database, { companyId: a.companyId!, tenantId: a.tenantId, isPlatform: a.isPlatform, rls }, async () => handler.call(this, req, reply));
+      // ออฟไลน์สาขา (T7.8): สำนักงานใหญ่รับเอกสารจากสาขา (replay) / เครื่องสาขาจดเอกสารลงคิว (capture)
+      const rk = req.headers['x-buddy-replay'];
+      const replay = typeof rk === 'string' ? replays.get(rk) : undefined;
+      const branch = branchStateOf(database);
+      if (!branch && !replay) return run();
+      const capture = branch ? branchCapture(database, req, `${methods[0]} ${r.url}`) ?? undefined : undefined;
+      return syncCtx.run({ ...syncCtx.getStore(), ...(replay ? { replay } : {}), ...(branch ? { branch } : {}), capture }, run);
     };
   });
   app.addHook('preHandler', async (req) => {
@@ -313,6 +327,7 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     const rule = API_RULES[`${method} ${url}`];
     if (!rule) throw forbidden('API นี้ยังไม่ได้กำหนดสิทธิ์ — แจ้งผู้พัฒนาโปรแกรม');
     checkMfaGate(req, method, url);
+    checkBranchWrite(database, method, url);
     if (rule.kind === 'open') return;
     if (rule.kind === 'self') { if (req.auth) checkApiKeyRule(req.auth, method, url, 'self', null); return; }
     const a = requireCompany(req);

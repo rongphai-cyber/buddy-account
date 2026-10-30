@@ -152,3 +152,7 @@
 .progress > div { height: 100%; background: var(--tone, var(--accent)); transition: width .4s; }
 .file-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .file-chips .chip { padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; font-family: var(--mono, monospace); font-size: 12px; }
+/* T7.8 เครื่องสาขา: สถานะซิงก์ที่แถบด้านบน */
+.sync-badge.off { background: var(--warn-soft); color: var(--warn); }
+.sync-badge.bad { background: var(--bad); color: #fff; }
+.notebox.ok { background: var(--ok-soft, #e7f6ec); color: var(--ok, #1d7a3e); }

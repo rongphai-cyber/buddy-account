@@ -18,7 +18,7 @@ import { API_RULES } from './permissions.js';
  */
 export const API_KEY_MENU = 'SET.API';
 /** เมนูที่กุญแจ API ใช้ไม่ได้แม้ผู้ใช้จะมีสิทธิ์ */
-export const API_KEY_BLOCKED = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG', 'OT.BACKUP', 'SET.NEWCO', 'SET.AI', 'SET.PDPA', API_KEY_MENU]);
+export const API_KEY_BLOCKED = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG', 'OT.BACKUP', 'SET.NEWCO', 'SET.AI', 'SET.PDPA', 'SET.DEVICE', API_KEY_MENU]);
 /** API ชนิด "ของผู้ใช้เอง" ที่กุญแจเรียกได้ */
 export const API_KEY_SELF_OK = new Set(['GET /api/v1/auth/me', 'GET /api/v1/menu']);
 const PER_MINUTE = 600;

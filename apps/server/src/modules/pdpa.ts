@@ -269,6 +269,7 @@ const PURGE_KEEP = new Set(['sys_activity_log', 'sys_company', 'sys_device', 'sy
 export async function purgeTenant(db: Db, tenantId: string) {
   return db.transaction().execute(async (tx) => {
     await sql`SET CONSTRAINTS ALL DEFERRED`.execute(tx);
+    await sql`SELECT set_config('app.no_sync_log', 'on', true)`.execute(tx);   // ไม่ต้องบอกเครื่องสาขาว่าลบ (ลบทั้งลูกค้า)
     const companies = (await tx.selectFrom('sys_company').select('id').where('tenant_id', '=', tenantId).execute()).map((c) => c.id);
     const users = (await tx.selectFrom('sys_user').select('id').where('tenant_id', '=', tenantId).execute()).map((u) => u.id);
     const n: Record<string, number> = {};

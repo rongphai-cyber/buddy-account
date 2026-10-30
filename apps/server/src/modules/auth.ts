@@ -232,7 +232,9 @@ export function attachAuth(app: FastifyInstance, db: Db) {
     if (authz && /^Bearer\s+bk_/i.test(authz)) { req.auth = await loadApiKey(db, authz, req.ip); return; }
     const token = req.cookies?.[SESSION_COOKIE];
     req.auth = await loadSession(db, token);
-    const open = ['/api/v1/setup', '/api/v1/setup/status', '/api/v1/auth/login', '/api/v1/auth/login/totp', '/api/v1/health'];
+    // เครื่องสาขา (T7.8) ยืนยันด้วยรหัสเครื่องใน header x-buddy-device แทนการเข้าระบบ
+    const open = ['/api/v1/setup', '/api/v1/setup/status', '/api/v1/auth/login', '/api/v1/auth/login/totp', '/api/v1/health',
+      '/api/v1/sync/setup-branch', '/api/v1/sync/bootstrap', '/api/v1/sync/push', '/api/v1/sync/pull'];
     if (!req.auth && !open.some((p) => req.url.split('?')[0] === p)) throw unauthorized();
   });
 }

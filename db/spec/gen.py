@@ -123,6 +123,11 @@ def gen_pg():
         L.append(f'CREATE TRIGGER trg_{n}_ver BEFORE UPDATE ON {n} FOR EACH ROW EXECUTE FUNCTION sys_bump_version();')
     for n in synced:
         L.append(f'CREATE TRIGGER trg_{n}_log AFTER INSERT OR UPDATE ON {n} FOR EACH ROW EXECUTE FUNCTION sync_log_change();')
+    for n in synced:
+        L.append(f'CREATE TRIGGER trg_{n}_del AFTER DELETE ON {n} FOR EACH ROW EXECUTE FUNCTION sync_log_delete();')
+    # T7.8 ออฟไลน์สาขา: รหัสแถวที่สร้าง (เครื่องสาขาจดไว้ · สำนักงานใหญ่ใช้รหัสเดิมตอนรับเอกสาร)
+    for n in [t.name for t in TABLES if t.common and t.company]:
+        L.append(f'CREATE TRIGGER trg_{n}_rid BEFORE INSERT ON {n} FOR EACH ROW EXECUTE FUNCTION sync_row_id();')
     L.append('CREATE CONSTRAINT TRIGGER trg_gl_journal_balanced AFTER INSERT OR UPDATE ON gl_journal DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION gl_check_balanced();')
     L.append('CREATE TRIGGER trg_gl_journal_period BEFORE INSERT OR UPDATE ON gl_journal FOR EACH ROW EXECUTE FUNCTION gl_check_period_open();')
     L.append('CREATE TRIGGER trg_doc_header_period BEFORE INSERT OR UPDATE ON doc_header FOR EACH ROW EXECUTE FUNCTION gl_check_period_open();')
@@ -159,6 +164,42 @@ BEGIN
   VALUES (v_company, v_branch, TG_TABLE_NAME, NEW.id,
           CASE WHEN NEW.deleted_at IS NOT NULL THEN 'D' ELSE 'U' END,
           NEW.row_version, NULLIF(current_setting('app.device_id', true), '')::uuid);
+  RETURN NEW;
+END $$;
+
+-- T7.8 ออฟไลน์สาขา: ลบแถวจริง (เช่น บรรทัดใบสำคัญตอนแก้ไข) ต้องบอกเครื่องสาขาด้วย — op D + แถวไม่มีแล้ว = เครื่องสาขาลบตาม
+-- app.no_sync_log = on (ลบข้อมูลทั้งลูกค้าตาม PDPA) ไม่ต้องบันทึก
+CREATE OR REPLACE FUNCTION sync_log_delete() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE v_company uuid; j jsonb;
+BEGIN
+  IF current_setting('app.no_sync_log', true) = 'on' THEN RETURN OLD; END IF;
+  j := to_jsonb(OLD);
+  v_company := COALESCE((j->>'company_id')::uuid, CASE WHEN TG_TABLE_NAME='sys_company' THEN OLD.id END);
+  IF v_company IS NULL THEN RETURN OLD; END IF;
+  INSERT INTO sync_change_log(company_id, branch_id, table_name, row_id, op, row_version, origin_device_id)
+  VALUES (v_company, (j->>'branch_id')::uuid, TG_TABLE_NAME, OLD.id, 'D', OLD.row_version, NULLIF(current_setting('app.device_id', true), '')::uuid);
+  RETURN OLD;
+END $$;
+
+-- T7.8 ออฟไลน์สาขา: รหัสแถวของเอกสารที่ส่งจากเครื่องสาขา
+--   app.force_ids = {"ตาราง": ["รหัส", …]} (สำนักงานใหญ่ตอนรับเอกสาร) → ใช้รหัสเดิมของเครื่องสาขาตามลำดับ ถ้าลำดับ/จำนวนไม่ตรง = ยกเลิกทั้งเอกสาร
+--   app.capture = on (เครื่องสาขาตอนบันทึก) → จดตาราง:รหัสที่สร้างไว้ใน app.cap เพื่อส่งขึ้นไปพร้อมคำขอ
+CREATE OR REPLACE FUNCTION sync_row_id() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE f text; arr jsonb; p int; k text;
+BEGIN
+  f := current_setting('app.force_ids', true);
+  IF f IS NOT NULL AND f <> '' THEN
+    arr := f::jsonb -> TG_TABLE_NAME;
+    k := 'app.fp_' || TG_TABLE_NAME;
+    p := COALESCE(NULLIF(current_setting(k, true), ''), '0')::int;
+    IF arr IS NULL OR p >= jsonb_array_length(arr) THEN
+      RAISE EXCEPTION 'SYNC_REPLAY_MISMATCH %', TG_TABLE_NAME USING ERRCODE = 'P0002';
+    END IF;
+    NEW.id := (arr ->> p)::uuid;
+    PERFORM set_config(k, (p + 1)::text, true);
+  ELSIF current_setting('app.capture', true) = 'on' THEN
+    PERFORM set_config('app.cap', COALESCE(current_setting('app.cap', true), '') || TG_TABLE_NAME || ':' || NEW.id::text || ',', true);
+  END IF;
   RETURN NEW;
 END $$;
 
