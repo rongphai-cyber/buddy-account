@@ -205,7 +205,7 @@ export function CashFormPage({ path }: { path: string }) {
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
-        <DocActions kind="doc" id={id} menu={K.menu} />
+        <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} />
         {K.cls === 'OE' && !ro && h && <AiBillButton target={K.path} onApply={applyBill} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>

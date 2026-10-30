@@ -46,6 +46,7 @@ erDiagram
     sys_branch |o--o{ tax_vat_entry : "branch_id"
     doc_header |o--o{ tax_wht_entry : "header_id"
     sys_branch |o--o{ tax_wht_entry : "branch_id"
+    gl_journal |o--o{ tax_wht_entry : "journal_id"
     doc_line ||--o{ inv_stock_ledger : "line_id"
 ```
 
@@ -160,6 +161,7 @@ erDiagram
     gl_period ||--o{ tax_vat_entry : "vat_period_id"
     doc_header |o--o{ tax_wht_entry : "header_id"
     gl_period ||--o{ tax_wht_entry : "tax_period_id"
+    gl_journal |o--o{ tax_wht_entry : "journal_id"
     md_doc_type ||--o{ doc_header : "doc_type_id"
     gl_period |o--o{ doc_header : "period_id"
     gl_period |o--o{ doc_header : "vat_period_id"

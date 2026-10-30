@@ -146,6 +146,7 @@ export async function cancelJournal(db: Db, ctx: { companyId: string; userId: st
     if (used) throw badRequest(`เช็คเลขที่ ${used.cheque_no} ของใบสำคัญนี้นำฝาก/ผ่านแล้ว — ยกเลิกการผ่าน/นำฝากที่ทะเบียนเช็คก่อน`);
     await tx.updateTable('fin_cheque').set({ deleted_at: sql`now()` as never, updated_by: ctx.userId }).where('source_journal_id', '=', id).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).execute();
     await tx.updateTable('tax_vat_entry').set({ doc_status: 'C', updated_by: ctx.userId }).where('journal_id', '=', id).where('company_id', '=', ctx.companyId).where('is_manual', '=', true).execute();
+    await tx.updateTable('tax_wht_entry').set({ doc_status: 'C', updated_by: ctx.userId }).where('journal_id', '=', id).where('company_id', '=', ctx.companyId).execute();
     await tx.updateTable('gl_journal').set({ doc_status: 'C', updated_by: ctx.userId }).where('id', '=', id).execute();
     await logActivity(tx, ctx, { module: 'GL', action: 'CANCEL', docNo: j.voucher_no, table: 'gl_journal', rowId: id, detail: { reason } });
     return { id, voucher_no: j.voucher_no };

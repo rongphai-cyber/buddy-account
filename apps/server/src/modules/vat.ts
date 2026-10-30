@@ -79,7 +79,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไ�
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'งวดไม่ถูกต้อง (ปปปป-ดด)');
 const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const str = (max: number) => z.string().trim().max(max).nullable().optional().transform((v) => (v ? v : null));
-const entryBody = z.object({
+export const vatEntryBody = z.object({
   tax_invoice_no: z.string().trim().min(1, 'ป้อนเลขที่ใบกำกับภาษี').max(30), tax_invoice_date: isoDate, month, is_late: z.boolean().default(false),
   department_id: z.string().uuid().nullable().optional().transform((v) => v ?? null), description: str(200), party_name: str(200), party_tax_id: str(13), party_tax_branch_no: str(5),
   base_amount: num, vat_amount: num, zero_rate_amount: num.default('0'), nonclaim_base: num.default('0'), nonclaim_vat: num.default('0'), remark: str(200),
@@ -130,7 +130,7 @@ export function vatRoutes(app: FastifyInstance, db: Db) {
     app.put(`/api/v1/vat/${kind}/:id`, async (req) => {
       const a = requireCompany(req);
       const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
-      const b = parse(entryBody, req.body);
+      const b = parse(vatEntryBody, req.body);
       const cur = await db.selectFrom('tax_vat_entry').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('vat_kind', '=', kind).where('deleted_at', 'is', null).executeTakeFirst();
       if (!cur) throw notFound('รายการภาษี');
       if (cur.doc_status === 'C') throw badRequest('รายการนี้ถูกยกเลิกแล้ว');
@@ -151,25 +151,7 @@ export function vatRoutes(app: FastifyInstance, db: Db) {
       return { ok: true };
     });
     /** เพิ่มรายการเอง (เช่น ใบกำกับที่ไม่ได้มาจากเอกสารในระบบ) */
-    app.post(`/api/v1/vat/${kind}`, async (req) => {
-      const a = requireCompany(req);
-      const b = parse(entryBody, req.body);
-      if (kind === 'S' && (!d(b.nonclaim_base).isZero() || !d(b.nonclaim_vat).isZero())) throw badRequest('ภาษีขายไม่มีช่องขอคืนไม่ได้');
-      const per = await periodOfMonth(db, a.companyId, b.month);
-      const jv = b.journal_id ? await db.selectFrom('gl_journal').select(['voucher_no', 'voucher_date', 'doc_status']).where('id', '=', b.journal_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
-      if (b.journal_id && (!jv || jv.doc_status === 'C')) throw badRequest('ไม่พบใบสำคัญที่อ้างถึง (หรือถูกยกเลิกแล้ว)');
-      if (jv) { b.doc_no = b.doc_no ?? jv.voucher_no; b.doc_date = b.doc_date ?? String(jv.voucher_date).slice(0, 10); }
-      if (b.header_id) { const dh = await manualTaxDoc(db, a.companyId, b.header_id); b.doc_no = b.doc_no ?? dh.doc_no; b.doc_date = b.doc_date ?? String(dh.doc_date).slice(0, 10); }
-      return db.transaction().execute(async (tx) => {
-        const branch = a.branchId ?? (await tx.selectFrom('sys_branch').select('id').where('company_id', '=', a.companyId).where('is_head_office', '=', true).executeTakeFirstOrThrow()).id;
-        const r = await tx.insertInto('tax_vat_entry').values({ company_id: a.companyId, vat_kind: kind, branch_id: branch, doc_no: b.doc_no ?? b.tax_invoice_no, doc_date: b.doc_date ?? b.tax_invoice_date,
-          tax_invoice_no: b.tax_invoice_no, tax_invoice_date: b.tax_invoice_date, vat_period_id: per, is_late: b.is_late, department_id: b.department_id, description: b.description, party_name: b.party_name,
-          party_tax_id: b.party_tax_id, party_tax_branch_no: b.party_tax_branch_no, base_amount: d(b.base_amount).toFixed(2), vat_amount: d(b.vat_amount).toFixed(2), zero_rate_amount: d(b.zero_rate_amount).toFixed(2),
-          nonclaim_base: d(b.nonclaim_base).toFixed(2), nonclaim_vat: d(b.nonclaim_vat).toFixed(2), is_manual: true, remark: b.remark, journal_id: b.journal_id, header_id: b.header_id, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
-        await logActivity(tx, a, { module: 'TAX', action: 'ADD', docNo: b.tax_invoice_no, table: 'tax_vat_entry', rowId: r.id });
-        return { id: r.id };
-      });
-    });
+    app.post(`/api/v1/vat/${kind}`, async (req) => addManualVat(db, requireCompany(req), kind, parse(vatEntryBody, req.body)));
     /** ยกเลิกรายการที่เพิ่มเอง (รายการจากเอกสารยกเลิกพร้อมเอกสาร) */
     app.post(`/api/v1/vat/${kind}/:id/cancel`, async (req) => {
       const a = requireCompany(req);
@@ -215,5 +197,24 @@ export function vatRoutes(app: FastifyInstance, db: Db) {
     ];
     return { date: end, description: `ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน ${m.slice(5)}/${m.slice(0, 4)}`, output_vat: outBal.toFixed(2), input_vat: inBal.toFixed(2), net: net.toFixed(2), lines,
       missing: !settle ? (net.gte(0) ? 'VAT_PAYABLE' : 'VAT_REFUND') : null };
+  });
+}
+
+/** เพิ่มรายการภาษีเอง (แฟ้มภาษี / แท็บภาษีของใบสำคัญ / เงินสดย่อย DP) — เรียกในทรานแซกชันของผู้เรียกได้ (บันทึกพร้อมใบสำคัญใหม่) */
+export async function addManualVat(db: Db, a: ReturnType<typeof requireCompany>, kind: 'P' | 'S', b: z.infer<typeof vatEntryBody>) {
+  if (kind === 'S' && (!d(b.nonclaim_base).isZero() || !d(b.nonclaim_vat).isZero())) throw badRequest('ภาษีขายไม่มีช่องขอคืนไม่ได้');
+  const per = await periodOfMonth(db, a.companyId, b.month);
+  const jv = b.journal_id ? await db.selectFrom('gl_journal').select(['voucher_no', 'voucher_date', 'doc_status']).where('id', '=', b.journal_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
+  if (b.journal_id && (!jv || jv.doc_status === 'C')) throw badRequest('ไม่พบใบสำคัญที่อ้างถึง (หรือถูกยกเลิกแล้ว)');
+  if (jv) { b.doc_no = b.doc_no ?? jv.voucher_no; b.doc_date = b.doc_date ?? String(jv.voucher_date).slice(0, 10); }
+  if (b.header_id) { const dh = await manualTaxDoc(db, a.companyId, b.header_id); b.doc_no = b.doc_no ?? dh.doc_no; b.doc_date = b.doc_date ?? String(dh.doc_date).slice(0, 10); }
+  return db.transaction().execute(async (tx) => {
+    const branch = a.branchId ?? (await tx.selectFrom('sys_branch').select('id').where('company_id', '=', a.companyId).where('is_head_office', '=', true).executeTakeFirstOrThrow()).id;
+    const r = await tx.insertInto('tax_vat_entry').values({ company_id: a.companyId, vat_kind: kind, branch_id: branch, doc_no: b.doc_no ?? b.tax_invoice_no, doc_date: b.doc_date ?? b.tax_invoice_date,
+      tax_invoice_no: b.tax_invoice_no, tax_invoice_date: b.tax_invoice_date, vat_period_id: per, is_late: b.is_late, department_id: b.department_id, description: b.description, party_name: b.party_name,
+      party_tax_id: b.party_tax_id, party_tax_branch_no: b.party_tax_branch_no, base_amount: d(b.base_amount).toFixed(2), vat_amount: d(b.vat_amount).toFixed(2), zero_rate_amount: d(b.zero_rate_amount).toFixed(2),
+      nonclaim_base: d(b.nonclaim_base).toFixed(2), nonclaim_vat: d(b.nonclaim_vat).toFixed(2), is_manual: true, remark: b.remark, journal_id: b.journal_id, header_id: b.header_id, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+    await logActivity(tx, a, { module: 'TAX', action: 'ADD', docNo: b.tax_invoice_no, table: 'tax_vat_entry', rowId: r.id });
+    return { id: r.id };
   });
 }

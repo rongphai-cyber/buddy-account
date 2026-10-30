@@ -156,3 +156,7 @@
 .sync-badge.off { background: var(--warn-soft); color: var(--warn); }
 .sync-badge.bad { background: var(--bad); color: #fff; }
 .notebox.ok { background: var(--ok-soft, #e7f6ec); color: var(--ok, #1d7a3e); }
+
+/* ปุ่มไปเอกสารแรก/ก่อนหน้า/ถัดไป/สุดท้าย (แถบเครื่องมือเอกสาร) */
+.doc-nav { display: inline-flex; gap: 2px; margin-right: 4px; }
+.doc-nav .nav-btn { min-width: 30px; }

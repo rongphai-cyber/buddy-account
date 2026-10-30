@@ -8,6 +8,8 @@ import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { createFiscalYear } from '../../company-template.js';
 import { closingOf, fiscalYearOf, leafTotals, loadChart, rollUp } from './balances.js';
+import { addManualVat, vatEntryBody } from '../vat.js';
+import { saveWht, whtEntryBody } from '../wht.js';
 import { cancelJournal, createJournal, getJournal, nextVoucherNo, updateJournal } from './journals.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
@@ -260,11 +262,19 @@ export function glRoutes(app: FastifyInstance, db: Db) {
     description: z.string().trim().max(200).nullable().optional(), reference: z.string().trim().max(30).nullable().optional(),
     lines: z.array(z.object({ account_id: uuid.nullable(), department_id: uuid.nullable().optional(), description: z.string().max(200).nullable().optional(), debit: money, credit: money })).min(1, 'ป้อนรายการบัญชี').max(999),
   });
+  /** ใบสำคัญใหม่: รายละเอียดภาษีซื้อ/ขาย/หัก ณ ที่จ่ายที่ป้อนในแท็บก่อนบันทึก — บันทึกพร้อมใบสำคัญ (ทรานแซกชันเดียวของคำขอ) */
+  const newJournalBody = journalBody.extend({
+    vat: z.array(vatEntryBody.and(z.object({ kind: z.enum(['P', 'S']) }))).max(50).default([]),
+    wht: z.array(whtEntryBody).max(50).default([]),
+  });
   app.post('/api/v1/gl/journals', async (req) => {
     const a = requireCompany(req);
-    const b = parse(journalBody, req.body);
+    const b = parse(newJournalBody, req.body);
     const style = String((await companySettings(db, a.companyId))['gl.voucher_numbering'] ?? '4');
-    return createJournal(db, a, b, style);
+    const j = await createJournal(db, a, b, style);
+    for (const v of b.vat) await addManualVat(db, a, v.kind, { ...v, journal_id: j.id, header_id: null });
+    for (const w of b.wht) await saveWht(db, a, null, { ...w, journal_id: j.id, header_id: null });
+    return j;
   });
   app.put('/api/v1/gl/journals/:id', async (req) => {
     const a = requireCompany(req);

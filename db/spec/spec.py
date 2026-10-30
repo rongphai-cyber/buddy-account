@@ -1202,6 +1202,7 @@ add(T('tax_wht_entry', 'ทะเบียนภาษีหัก ณ ที่
   lk('department_id', 'md_department', 'แผนก', 'ISTAX.DEPCOD'),
   C('print_count', 'smallint', nn=True, d='0', th='จำนวนครั้งที่พิมพ์', src='ISTAX.PRNCNT'),
   C('doc_status', 'char1', nn=True, d="'N'", th='N=ปกติ C=ยกเลิก', chk="doc_status IN ('N','C')"),
+  lk('journal_id', 'gl_journal', 'ใบสำคัญที่ป้อนรายการนี้ (สมุดรายวัน แท็บภาษีหัก ณ ที่จ่าย)'),
 ], idx=[('company_id','form_type','tax_period_id')]))
 
 # =====================================================================

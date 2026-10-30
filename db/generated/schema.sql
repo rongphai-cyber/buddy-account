@@ -3758,6 +3758,7 @@ CREATE TABLE tax_wht_entry (
   department_id uuid,
   print_count smallint DEFAULT 0 NOT NULL,
   doc_status char(1) DEFAULT 'N' NOT NULL CHECK (doc_status IN ('N','C')),
+  journal_id uuid,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -3793,6 +3794,7 @@ COMMENT ON COLUMN tax_wht_entry.provident_fund_amount IS 'เงินสะส�
 COMMENT ON COLUMN tax_wht_entry.department_id IS 'แผนก [Express: ISTAX.DEPCOD]';
 COMMENT ON COLUMN tax_wht_entry.print_count IS 'จำนวนครั้งที่พิมพ์ [Express: ISTAX.PRNCNT]';
 COMMENT ON COLUMN tax_wht_entry.doc_status IS 'N=ปกติ C=ยกเลิก';
+COMMENT ON COLUMN tax_wht_entry.journal_id IS 'ใบสำคัญที่ป้อนรายการนี้ (สมุดรายวัน แท็บภาษีหัก ณ ที่จ่าย)';
 COMMENT ON COLUMN tax_wht_entry.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN tax_wht_entry.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN tax_wht_entry.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -4933,6 +4935,8 @@ ALTER TABLE tax_wht_entry ADD CONSTRAINT fk_tax_wht_entry_customer_id FOREIGN KE
 CREATE INDEX IF NOT EXISTS ix_fk_tax_wht_entry_customer_id ON tax_wht_entry (customer_id);
 ALTER TABLE tax_wht_entry ADD CONSTRAINT fk_tax_wht_entry_department_id FOREIGN KEY (department_id) REFERENCES md_department(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_tax_wht_entry_department_id ON tax_wht_entry (department_id);
+ALTER TABLE tax_wht_entry ADD CONSTRAINT fk_tax_wht_entry_journal_id FOREIGN KEY (journal_id) REFERENCES gl_journal(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_tax_wht_entry_journal_id ON tax_wht_entry (journal_id);
 ALTER TABLE tax_wht_entry ADD CONSTRAINT fk_tax_wht_entry_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_tax_wht_entry_created_by ON tax_wht_entry (created_by);
 ALTER TABLE tax_wht_entry ADD CONSTRAINT fk_tax_wht_entry_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;

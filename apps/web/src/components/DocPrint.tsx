@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { fmt, formatDate, PRINT_HEAD_FIELDS, type PrintFamily, type PrintFormEntry, type YearSystem } from '@buddy/core';
 import { api } from '../api';
 import { useCan, useSession } from '../session';
@@ -87,7 +87,7 @@ export function PrintSheet({ data, form, ys }: { data: PrintData; form: PrintFor
  * ปุ่มพิมพ์/รับรอง/ข้อมูลเอกสาร บนแถบเครื่องมือของหน้าจอเอกสาร (S-RD-01 · S-UI-08..12 · S-RD-06)
  * Alt+P พิมพ์ฟอร์ม 1 · Shift+Alt+P เลือกแบบฟอร์ม · Alt+O รับรอง · Ctrl+O ยกเลิกรับรอง · Alt+Shift+O รับรองเป็นช่วง · Ctrl+I รายละเอียดแฟ้มข้อมูล
  */
-export function DocActions({ kind, id: rawId, menu, typeId }: { kind: 'doc' | 'journal'; id: string | null | undefined; menu: string; typeId?: string | null }) {
+export function DocActions({ kind, id: rawId, menu, typeId, dirty }: { kind: 'doc' | 'journal'; id: string | null | undefined; menu: string; typeId?: string | null; dirty?: boolean }) {
   const id = rawId ?? undefined;
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -143,8 +143,21 @@ export function DocActions({ kind, id: rawId, menu, typeId }: { kind: 'doc' | 'j
     'Alt+R': id && kind === 'doc' ? () => setNotes(true) : undefined,
   });
 
+  // ไปเอกสารแรก/ก่อนหน้า/ถัดไป/สุดท้าย ชนิดเดียวกัน (แทนเลขที่ใน URL) — มีการแก้ไขค้างอยู่ให้ยืนยันก่อน
+  const loc = useLocation();
+  const nb = useQuery({ enabled: !!id, queryKey: ['neighbors', kind, id], queryFn: () => api.get<Record<'first' | 'prev' | 'next' | 'last', { id: string; no: string } | null>>(`/api/v1/neighbors/${kind}/${id}`) });
+  const go = (t: { id: string; no: string } | null | undefined) => {
+    if (!t || !id || t.id === id) return;
+    if (dirty && !window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ไปเอกสารอื่นโดยไม่บันทึก?')) return;
+    nav(loc.pathname.replace(id, t.id) + loc.search);
+  };
+  const navBtn = (k: 'first' | 'prev' | 'next' | 'last', icon: string, label: string) => {
+    const t = nb.data?.[k];
+    return <button key={k} className="icon-btn nav-btn" disabled={!t || t.id === id} onClick={() => go(t)} title={t && t.id !== id ? `${label}: ${t.no}` : label} aria-label={label}>{icon}</button>;
+  };
   return (
     <>
+      {id && <span className="doc-nav">{navBtn('first', '⏮', 'เอกสารแรก')}{navBtn('prev', '◀', 'ก่อนหน้า')}{navBtn('next', '▶', 'ถัดไป')}{navBtn('last', '⏭', 'เอกสารสุดท้าย')}</span>}
       <span className="split-btn" onClick={(e) => e.stopPropagation()}>
         <button disabled={!id || !r || !can('print')} onClick={() => doPrint(1)} title={r?.block ?? 'พิมพ์แบบฟอร์ม 1 (Alt+P)'}>🖨 พิมพ์ <kbd>Alt+P</kbd></button>
         <button className="caret" disabled={!id || !r || !can('print')} onClick={() => setOpen((x) => !x)} title="เลือกแบบฟอร์ม (Shift+Alt+P)" aria-haspopup="menu" aria-expanded={open}>▾</button>

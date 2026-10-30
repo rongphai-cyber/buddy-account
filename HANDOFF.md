@@ -200,6 +200,10 @@
   - `modules/sync/central.ts` (/devices SET.DEVICE ระดับ 9, /sync/bootstrap|push|pull ยืนยันด้วย header x-buddy-device, reserveBlocks 200 เลข <20% เติม, pull ส่ง deleted + users block เข้ารหัส seal(token)) · `modules/sync/branch.ts` (สถานะแยกตาม Database — WeakMap, checkBranchWrite 403 BRANCH_READ_ONLY, branchCapture, syncNow/applyPull ทรานแซกชันเดียว ล้าง FK ผู้ใช้ที่ไม่มี/จับคู่เมนูด้วยรหัส/คงเลขถัดไปที่มากกว่า, setSyncTransport สำหรับทดสอบ, BUDDY_SYNC_SECONDS) · `tenant-move.ts` exportTenant({companyIds}) + pull_seq
   - หน้าจอ: `pages/settings/Sync.tsx` (DevicesPage /settings/devices, SyncPage /sync, SyncBadge ที่แถบบน) · Login.tsx SetupPage → "เครื่องนี้เป็นเครื่องสาขา" · ทดสอบ `apps/server/test/sync.test.ts` (2 ฐาน PGlite) 5 ข้อ + ผ่านหน้าจอจริง 4101→4102 รวมปิดสำนักงานใหญ่แล้วเปิดใหม่
   - เอกสาร docs เปลี่ยนเลข: 06_PDPA → 10_PDPA, 07_ย้ายลูกค้า… → 11_… (เลขชนกับไฟล์เดิม)
+- ✅ ข้อกำหนดหลักของเจ้าของ (30/10/2569 จาก `docs/ข้อกำหนดและที่จะต้องมีในโปรแกรม.docx` — ไฟล์ของเจ้าของ ไม่ commit): ตารางสถานะทุกข้อ `docs/13_ข้อกำหนดหลักของเจ้าของ.md` + CLAUDE.md ข้อ 12.1
+  - สมุดรายวัน: แท็บ ภาษีซื้อ/ภาษีขาย/ภาษีหัก ณ ที่จ่าย/เช็คจ่าย/เช็ครับ แสดงตลอด (ยอดจากบรรทัดบัญชีตามบทบาท INPUT_VAT OUTPUT_VAT WHT_PAYABLE CHEQUE_*) · ใบสำคัญใหม่ป้อนรายละเอียดภาษีเป็น draft แล้ว POST /gl/journals ส่ง `vat`/`wht` มาด้วย (addManualVat/saveWht ในคำขอเดียว = ทรานแซกชันเดียว) · บันทึกโดยยังไม่ป้อน = ถาม · migration 0033 tax_wht_entry.journal_id (ยกเลิกใบสำคัญยกเลิกตาม) · `JvLinks.tsx` WhtTab (ใช้ร่วม DP) + SearchPick คู่ค้าเติมชื่อ/เลขผู้เสียภาษี
+  - AccountCell `required`: Enter ตอนว่าง = เปิดหน้าต่างเลือกบัญชี (Insert เพิ่มบัญชี) · DocActions ⏮◀▶⏭ (`modules/neighbors.ts` GET /neighbors/:kind/:id กฎ DOC('read'), prop dirty ถามก่อนไป) · TradeDocs ถามหักมัดจำเมื่อคู่ค้ามีมัดจำคงเหลือ
+  - ⬜ ที่เหลือ (รอเจ้าของจัดลำดับ) อยู่ท้าย docs/13
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
 1. P0 ครบทุกงานแล้ว · เหลือ: ลงนาม e-Tax (รอใบรับรอง) · ทดสอบ AI อ่านบิลจริง (กุญแจของเจ้าของ)

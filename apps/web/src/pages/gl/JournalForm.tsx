@@ -8,7 +8,7 @@ import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
 import { DocActions } from '../../components/DocPrint';
-import { JvChequeTab, JvVatTab } from './JvLinks';
+import { JvChequeTab, JvVatTab, vatPayload, WhtTab, whtPayload, type VatDraft, type WhtDraft } from './JvLinks';
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
 import { JournalPicker } from '../../components/JournalPicker';
 
@@ -22,6 +22,8 @@ let seq = 0;
 const blank = (): Line => ({ key: ++seq, account_id: null, department_id: null, description: '', debit: '', credit: '' });
 
 /** สมุดรายวัน (JV และเล่มอื่น) — คู่มือบทที่ 15 S-GL-02 */
+const TAX_TABS = [['vatP', 'ภาษีซื้อ'], ['vatS', 'ภาษีขาย'], ['wht', 'ภาษีหัก ณ ที่จ่าย'], ['chqP', 'เช็คจ่าย'], ['chqR', 'เช็ครับ']] as const;
+
 export function JournalFormPage() {
   const { id } = useParams();
   const [sp] = useSearchParams();
@@ -58,6 +60,9 @@ export function JournalFormPage() {
   const [leaveAsk, setLeaveAsk] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
+  // รายละเอียดภาษีที่ป้อนในแท็บก่อนบันทึกใบสำคัญใหม่ — ส่งไปพร้อมใบสำคัญ (บันทึกในทรานแซกชันเดียวกัน)
+  const [drafts, setDrafts] = useState<{ vat: VatDraft[]; wht: WhtDraft[] }>({ vat: [], wht: [] });
+  const [taxAsk, setTaxAsk] = useState<{ andNew: boolean; gaps: Array<{ key: string; label: string; line: string; entered: string }> } | null>(null);
   const [nextNo, setNextNo] = useState('');
   const [saves, setSaves] = useState(0); // นับครั้งที่บันทึก — ให้ดึงเลขที่ถัดไปใหม่หลัง "บันทึก+ใหม่"
   const gridRef = useRef<HTMLDivElement>(null);
@@ -146,15 +151,24 @@ export function JournalFormPage() {
   };
   const delLine = (k: number) => { setDirty(true); setLines((ls) => (ls.length > 1 ? ls.filter((l) => l.key !== k) : [blank()])); };
 
-  const save = async (andNew = false) => {
+  const save = async (andNew = false, skipTaxCheck = false) => {
     if (!editable || busy) return;
     if (!h.journal_book_id) { setErr(new Error('เลือกสมุดรายวัน (แถบด้านบน) ก่อนบันทึก')); return; }
+    // บรรทัดบัญชีภาษีซื้อ/ขาย/หัก ณ ที่จ่ายที่ยังไม่ได้ป้อนรายละเอียด (เลขที่ใบกำกับ ผู้ขาย …) — ถามก่อนบันทึก (ใบสำคัญใหม่)
+    if (isNew && !skipTaxCheck) {
+      const got = { vatP: drafts.vat.filter((v) => v.kind === 'P').reduce((t, v) => t.plus(d(v.vat_amount || 0)).plus(d(v.nonclaim_vat || 0)), d(0)),
+        vatS: drafts.vat.filter((v) => v.kind === 'S').reduce((t, v) => t.plus(d(v.vat_amount || 0)), d(0)), wht: drafts.wht.reduce((t, w) => t.plus(d(w.tax_amount || 0)), d(0)) };
+      const gaps = (['vatP', 'vatS', 'wht'] as const).filter((k) => sums[k].gt(0) && got[k].lt(sums[k]))
+        .map((k) => ({ key: k, label: TAX_TABS.find(([x]) => x === k)![1], line: sums[k].toFixed(2), entered: got[k].toFixed(2) }));
+      if (gaps.length) { setTaxAsk({ andNew, gaps }); return; }
+    }
     setErr(null); setBusy(true);
-    const body = { ...h, voucher_no: manualNo ? typedNo.trim() || null : undefined, description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0' })) };
+    const body = { ...h, voucher_no: manualNo ? typedNo.trim() || null : undefined, description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0' })),
+      ...(isNew ? { vat: drafts.vat.map(vatPayload), wht: drafts.wht.map(whtPayload) } : {}) };
     try {
       const r = isNew ? await api.post<{ id: string; voucher_no: string }>('/api/v1/gl/journals', body) : await api.put<{ id: string; voucher_no: string }>(`/api/v1/gl/journals/${id}`, body);
-      toast(`บันทึกใบสำคัญ ${r.voucher_no} แล้ว`); setSaves((n) => n + 1);
-      setDirty(false);
+      toast(`บันทึกใบสำคัญ ${r.voucher_no} แล้ว${isNew && (drafts.vat.length || drafts.wht.length) ? ' พร้อมรายการภาษี' : ''}`); setSaves((n) => n + 1);
+      setDirty(false); setDrafts({ vat: [], wht: [] }); setTab('lines');
       qc.invalidateQueries({ queryKey: ['journals'] }); qc.invalidateQueries({ queryKey: ['journal', r.id] }); qc.invalidateQueries({ queryKey: ['accounts', 'bal'] });
       if (andNew || isNew) { setLines(andNew ? freshLines(bookTpl.data) : [blank(), blank()]); setH((x) => ({ ...x, description: '', reference: '' })); if (!andNew) nav(`/gl/journals/${r.id}`, { replace: true }); else nav(`/gl/journals/new?book=${h.journal_book_id}`, { replace: true }); }
     } catch (e) { setErr(e); } finally { setBusy(false); }
@@ -163,13 +177,16 @@ export function JournalFormPage() {
   useHotkeys({
     F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': () => !isNew && editable && can('cancel') && setCancelAsk(true), 'Ctrl+F6': () => isNew && setCopyPick(true),
     'Ctrl+Insert': addLine, 'Alt+N': () => leave('/gl/journals/new'), Escape: () => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`),
-  }, [h, lines, editable, dirty, busy]);
+  }, [h, lines, editable, dirty, busy, drafts]);
 
   const acctOf = (aid: string | null) => accts.data?.find((a) => a.id === aid);
   // บรรทัดบัญชีภาษีซื้อ/ภาษีขาย/เช็คจ่าย/เช็ครับล่วงหน้า → แท็บป้อนรายละเอียด (S-GL-03 / S-GL-04)
   const roles = useQuery({ queryKey: ['default-accounts'], queryFn: () => api.get<Array<{ role: string; account_id: string }>>('/api/v1/gl/default-accounts') });
   const roleSum = (role: string, side: 1 | -1) => { const acc = roles.data?.find((r) => r.role === role)?.account_id; return acc ? lines.filter((l) => l.account_id === acc).reduce((t, l) => t.plus(d(l.debit || 0).minus(d(l.credit || 0)).times(side)), d(0)) : d(0); };
-  const linkTabs = isNew || !doc.data ? [] : ([['vatP', 'ภาษีซื้อ', roleSum('INPUT_VAT', 1)], ['vatS', 'ภาษีขาย', roleSum('OUTPUT_VAT', -1)], ['chqP', 'เช็คจ่าย', roleSum('CHEQUE_PAID', -1)], ['chqR', 'เช็ครับ', roleSum('CHEQUE_RECEIVED', 1)]] as const).filter(([, , v]) => !v.isZero());
+  // แท็บแสดงตลอด (ใบสำคัญใหม่ด้วย) พร้อมยอดบรรทัดบัญชีนั้น — ข้อกำหนดเจ้าของ 30/10/2569
+  const sums = { vatP: roleSum('INPUT_VAT', 1), vatS: roleSum('OUTPUT_VAT', -1), wht: roleSum('WHT_PAYABLE', -1), chqP: roleSum('CHEQUE_PAID', -1), chqR: roleSum('CHEQUE_RECEIVED', 1) };
+  const tabEditable = isNew ? editable : !!doc.data && doc.data.doc_status === 'N' && doc.data.editable;
+  const linkInfo = { id: id ?? null, no: doc.data?.voucher_no ?? '', date: String(h.voucher_date).slice(0, 10) };
   const issueLines = new Set(((err as { issues?: Array<{ line?: number }> })?.issues ?? []).map((i) => i.line).filter((x) => x !== undefined));
   const book = books.data?.find((b) => b.id === h.journal_book_id);
   const j = doc.data;
@@ -196,7 +213,7 @@ export function JournalFormPage() {
         </div>
         <div className="tb-group">
           <button disabled={isNew || !editable || !can('cancel')} onClick={() => setCancelAsk(true)} title={can('cancel') ? 'ยกเลิกเอกสาร (Alt+C)' : 'ไม่มีสิทธิ์ยกเลิกเอกสาร'}>ยกเลิกเอกสาร</button>
-          <DocActions kind="journal" id={isNew ? undefined : id} menu="GL.JNL" typeId={h.journal_book_id} />
+          <DocActions kind="journal" id={isNew ? undefined : id} menu="GL.JNL" typeId={h.journal_book_id} dirty={dirty} />
         </div>
         <div className="tb-group"><button onClick={() => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`)} title="กลับไปรายการ (Esc)">รายการ <kbd>Esc</kbd></button></div>
       </div>
@@ -231,7 +248,8 @@ export function JournalFormPage() {
             </div>
           </div>
         </div>
-        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการบัญชี', badge: lines.filter((l) => l.account_id).length }, ...linkTabs.map(([key, label]) => ({ key, label })), ...(!isNew ? [{ key: 'history', label: 'ประวัติการแก้ไข' }] : [])]} />
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการบัญชี', badge: lines.filter((l) => l.account_id).length },
+          ...TAX_TABS.map(([key, label]) => ({ key, label, badge: sums[key].isZero() ? undefined : fmt(sums[key].abs().toFixed(2)) })), ...(!isNew ? [{ key: 'history', label: 'ประวัติการแก้ไข' }] : [])]} />
         {tab === 'lines' && (
           <div className="table-wrap lines" ref={gridRef} onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).dataset.last != null && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); addLine(); } }}>
             <table className="grid">
@@ -242,7 +260,7 @@ export function JournalFormPage() {
                   return (
                     <tr key={l.key} data-k={l.key} className={cx(issueLines.has(i) && 'has-err')}>
                       <td className="muted">{i + 1}</td>
-                      <td><AccountCell value={l.account_id} invalid={issueLines.has(i) && !l.account_id} onChange={(acc) => setLine(l.key, { account_id: acc?.id ?? null, department_id: acc?.use_department ? l.department_id : l.department_id })} /></td>
+                      <td><AccountCell required value={l.account_id} invalid={issueLines.has(i) && !l.account_id} onChange={(acc) => setLine(l.key, { account_id: acc?.id ?? null, department_id: acc?.use_department ? l.department_id : l.department_id })} /></td>
                       <td className="small">{a ? a.name_th : <span className="muted">—</span>}</td>
                       <td>
                         <select value={l.department_id ?? ''} onChange={(e) => setLine(l.key, { department_id: e.target.value || null })} aria-invalid={(a?.use_department && !l.department_id) || undefined}>
@@ -264,9 +282,16 @@ export function JournalFormPage() {
         )}
       </fieldset>
       {tab === 'history' && id && <History table="gl_journal" rowId={id} />}
-      {id && doc.data && linkTabs.map(([key, , v]) => tab !== key ? null : key.startsWith('vat')
-        ? <JvVatTab key={key} kind={key === 'vatP' ? 'P' : 'S'} journal={{ id, voucher_no: doc.data!.voucher_no, date: String(doc.data!.voucher_date).slice(0, 10) }} lineVat={v.toFixed(2)} editable={doc.data!.doc_status === 'N' && doc.data!.editable} />
-        : <JvChequeTab key={key} direction={key === 'chqP' ? 'P' : 'R'} journal={{ id, voucher_no: doc.data!.voucher_no, date: String(doc.data!.voucher_date).slice(0, 10) }} lineAmount={v.toFixed(2)} editable={doc.data!.doc_status === 'N' && doc.data!.editable} />)}
+      {(isNew || doc.data) && (tab === 'vatP' || tab === 'vatS') && <JvVatTab key={tab} kind={tab === 'vatP' ? 'P' : 'S'} journal={linkInfo} lineVat={sums[tab].toFixed(2)} editable={tabEditable}
+        drafts={drafts.vat} onDrafts={(v) => { setDrafts((x) => ({ ...x, vat: v })); setDirty(true); }} />}
+      {(isNew || doc.data) && tab === 'wht' && <WhtTab field="journal_id" link={linkInfo} lineTax={sums.wht.toFixed(2)} editable={tabEditable} drafts={drafts.wht} onDrafts={(w) => { setDrafts((x) => ({ ...x, wht: w })); setDirty(true); }} />}
+      {(isNew || doc.data) && (tab === 'chqP' || tab === 'chqR') && <JvChequeTab key={tab} direction={tab === 'chqP' ? 'P' : 'R'} journal={{ id: linkInfo.id, voucher_no: linkInfo.no, date: linkInfo.date }} lineAmount={sums[tab].toFixed(2)} editable={tabEditable} />}
+      {taxAsk && <Modal size="confirm" title="ยังไม่ได้ป้อนรายละเอียดภาษี" onClose={() => setTaxAsk(null)}
+        footer={<><button onClick={() => setTaxAsk(null)}>กลับไปแก้ <kbd>Esc</kbd></button><button onClick={() => { const a = taxAsk.andNew; setTaxAsk(null); void save(a, true); }}>บันทึกโดยไม่ป้อน</button>
+          <button className="primary" autoFocus onClick={() => { setTab(taxAsk.gaps[0]!.key); setTaxAsk(null); }}>ป้อนรายละเอียด</button></>}>
+        {taxAsk.gaps.map((g) => <p key={g.key}>บรรทัดบัญชี<b>{g.label}</b> {fmt(g.line)} — ป้อนรายละเอียดแล้ว {fmt(g.entered)}</p>)}
+        <p className="small muted">รายละเอียด (เลขที่ใบกำกับ/หนังสือรับรอง ชื่อและเลขผู้เสียภาษีของคู่ค้า) ใช้ทำรายงานภาษีซื้อ-ขาย และแบบ ภ.ง.ด. — ป้อนภายหลังได้ที่แท็บนี้หรือที่แฟ้มภาษี</p>
+      </Modal>}
       {j && <p className="hint">สร้างโดย {j.created_by_name ?? 'นำเข้าจาก Express'} · <DateText v={j.created_at.slice(0, 10)} /> · แก้ไขล่าสุด <DateText v={j.updated_at.slice(0, 10)} /></p>}
       {vatAsk && <VatClosingModal workDate={h.voucher_date} onClose={() => setVatAsk(false)} onOk={fillVatClosing} />}
       <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี / ต้นแบบ (ที่ช่องเลขที่)'], ['Ctrl+F6', 'คัดลอกจากใบสำคัญอื่น'],['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />

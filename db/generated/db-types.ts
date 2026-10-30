@@ -3441,6 +3441,8 @@ export interface TaxWhtEntryTable {
   print_count: Gen<number>;
   /** N=ปกติ C=ยกเลิก */
   doc_status: Gen<string>;
+  /** ใบสำคัญที่ป้อนรายการนี้ (สมุดรายวัน แท็บภาษีหัก ณ ที่จ่าย) */
+  journal_id: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

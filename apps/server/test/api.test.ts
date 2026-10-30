@@ -3397,3 +3397,33 @@ describe('ย้ายลูกค้าไปเซิร์ฟเวอร์/
     expect((await call('POST', `/api/v1/tenants/${t}/purge`, { confirm: 'CUSTM' })).status).toBe(200);
   });
 });
+
+describe('สมุดรายวัน: ภาษีซื้อ/ขาย/หัก ณ ที่จ่ายบันทึกพร้อมใบสำคัญใหม่ (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
+  it('new voucher saves its VAT and WHT details in the same transaction; a bad detail saves nothing; cancel cancels them', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const acc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean; use_department: boolean }) => !x.is_control && !x.use_department);
+    const vat = { kind: 'P', tax_invoice_no: 'TX-JV-01', tax_invoice_date: '2026-07-10', month: '2026-07', is_late: false, party_name: 'ผู้ขายทดสอบ', party_tax_id: '0105537095903', base_amount: '1000', vat_amount: '70' };
+    const wht = { form_type: 'S53', certificate_date: '2026-07-10', payee_name: 'ผู้ขายทดสอบ', income_type: 'ค่าบริการ', paid_amount: '1000', rate: '3', tax_amount: '30' };
+    const body = { journal_book_id: book, voucher_date: '2026-07-10', description: 'JV-TAX-TEST', lines: [{ account_id: acc[0].id, debit: '1000' }, { account_id: acc[1].id, debit: '70' }, { account_id: acc[2].id, credit: '1040' }, { account_id: acc[3].id, credit: '30' }], vat: [vat], wht: [wht] };
+    const count = async () => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_journal WHERE description = 'JV-TAX-TEST'`.execute(database.db)).rows[0]!.n;
+    const bad = await call('POST', '/api/v1/gl/journals', { ...body, wht: [{ ...wht, payee_name: '' }] });
+    expect(bad.status).toBe(400);
+    expect(await count()).toBe(0);   // รายละเอียดภาษีไม่ผ่าน = ไม่มีใบสำคัญ
+    const r = await call('POST', '/api/v1/gl/journals', body);
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    const v = (await call('GET', `/api/v1/vat/P?journal_id=${r.body.id}&status=all`)).body.rows;
+    expect(v).toHaveLength(1); expect(v[0]).toMatchObject({ tax_invoice_no: 'TX-JV-01', doc_no: r.body.voucher_no, vat_amount: '70.00' });
+    const w = (await call('GET', `/api/v1/wht?journal_id=${r.body.id}`)).body.rows;
+    expect(w).toHaveLength(1); expect(w[0]).toMatchObject({ payee_name: 'ผู้ขายทดสอบ', tax_amount: '30.00' });
+    // ใบสำคัญที่บันทึกแล้ว: ป้อนเพิ่มจากแท็บได้ (journal_id)
+    expect((await call('POST', '/api/v1/wht', { ...wht, certificate_no: 'C2', journal_id: r.body.id })).status).toBe(200);
+    expect((await call('GET', `/api/v1/wht?journal_id=${r.body.id}`)).body.rows).toHaveLength(2);
+    expect((await call('POST', `/api/v1/gl/journals/${r.body.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/vat/P?journal_id=${r.body.id}&status=all`)).body.rows[0].doc_status).toBe('C');
+    expect((await sql<{ s: string }>`SELECT string_agg(DISTINCT doc_status, ',') AS s FROM tax_wht_entry WHERE journal_id = ${r.body.id}`.execute(database.db)).rows[0]!.s).toBe('C');
+  });
+});
