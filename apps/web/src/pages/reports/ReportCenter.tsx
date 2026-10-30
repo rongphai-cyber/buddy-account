@@ -105,8 +105,9 @@ export function ReportCenterPage() {
   const ys: YearSystem = me?.company?.year_system ?? 'B';
   const avail = useQuery({ queryKey: ['rpt-available'], queryFn: () => api.get<{ codes: string[] }>('/api/v1/rpt/available') });
   const codes = useMemo(() => new Set(avail.data?.codes ?? []), [avail.data]);
-  const [open, setOpen] = useState<Set<string>>(() => new Set([sp.get('g') ?? '1']));
-  useEffect(() => { const g = sp.get('g'); if (g) setOpen((o) => new Set([...o, g])); }, [sp]);
+  // ?g=5 หรือ ?g=5,5.A (เปิดหลายกลุ่ม เช่น เมนูตรวจสอบข้อมูล)
+  const [open, setOpen] = useState<Set<string>>(() => new Set((sp.get('g') ?? '1').split(',')));
+  useEffect(() => { const g = sp.get('g'); if (g) setOpen((o) => new Set([...o, ...g.split(',')])); }, [sp]);
   const [def, setDef] = useState<ReportDef | null>(null);
   const [vals, setVals] = useState<Vals>({});
   const [res, setRes] = useState<ReportResult | null>(null);
