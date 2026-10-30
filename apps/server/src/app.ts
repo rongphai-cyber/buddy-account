@@ -56,6 +56,7 @@ import { syncRoutes } from './modules/sync/index.js';
 import { neighborRoutes } from './modules/neighbors.js';
 import { companyImageRoutes } from './modules/company-images.js';
 import { itemImageRoutes } from './modules/item-images.js';
+import { tradeImportRoutes } from './modules/trade-import.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
@@ -133,6 +134,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   neighborRoutes(app, db);
   companyImageRoutes(app, db);
   itemImageRoutes(app, db);
+  tradeImportRoutes(app, db);
   inventoryAccountRoutes(app, db);
   reportRoutes(app, db);
 

@@ -49,6 +49,7 @@ import { DevicesPage, SyncPage, SyncBadge } from './pages/settings/Sync';
 import { EtaxPage } from './pages/tax/Etax';
 import { AiSettingsPage } from './pages/settings/AiSettings';
 import { ActivityLogPage } from './pages/settings/ActivityLog';
+import { TradeImportPage } from './pages/tools/TradeImport';
 import { AuxTools } from './components/AuxTools';
 import { DataTablesPage } from './pages/settings/DataTables';
 import { TradeFormPage, TradeListPage } from './pages/docs/TradeDocs';
@@ -213,6 +214,7 @@ function Shell() {
           <Route path="/sync" element={<SyncPage />} />
           <Route path="/settings/ai" element={<AiSettingsPage />} />
           <Route path="/tools/activity-log" element={<ActivityLogPage />} />
+          <Route path="/tools/trade-import" element={<TradeImportPage />} />
           <Route path="/settings/gl-link" element={<GlLinkPage />} />
           <Route path="/settings/data-tables" element={<DataTablesPage />} />
           {TRADE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<TradeListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<TradeFormPage key={k.path} path={k.path} />} />])}

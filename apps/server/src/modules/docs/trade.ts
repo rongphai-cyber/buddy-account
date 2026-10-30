@@ -18,7 +18,7 @@ const str = (max: number) => z.string().trim().max(max).nullable().optional().tr
 const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 
-const body = z.object({
+export const tradeBody = z.object({
   doc_type_id: uuid, doc_date: isoDate, party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'), bill_to_customer_id: optId,
   party_tax_branch_no: str(5), your_ref: str(30), ref_no: str(30), ref_date: isoDate.nullable().optional(), ref_header_id: optId,
   department_id: optId, salesperson_id: optId, sales_area_code: str(10), ship_via_code: str(10), ship_to_id: optId, warehouse_id: optId,
@@ -39,7 +39,7 @@ const body = z.object({
   /** ซื้อเงินสด: ภาษีหัก ณ ที่จ่าย (เข้าแฟ้ม ภ.ง.ด.3/53 + 50 ทวิ) · ขายเงินสด: ยอดที่ลูกค้าหักไว้ (ลูกค้าออก 50 ทวิ ให้) */
   wht: whtSchema, wht_amount: num.default('0'),
 });
-type Body = z.infer<typeof body>;
+type Body = z.infer<typeof tradeBody>;
 /** บิลที่หักเงินมัดจำได้ (ขายเชื่อ/ขายสด/ซื้อเชื่อ/ซื้อสด) */
 const DEPOSIT_CLASSES = ['IV', 'HS', 'RR', 'HP'];
 /** ผลต่อสต๊อกของเอกสาร (รหัส POSOPR ของ Express): 9 ขาย −, 2 รับคืน +, 0 ซื้อ +, 7 ส่งคืน − */
@@ -48,7 +48,7 @@ const STOCK_MOVE: Record<string, { code: string; eff: 1 | -1; purchase?: boolean
 };
 
 /** หัว + บรรทัด + วิธีชำระของเอกสาร (บันทึกใหม่หรือแก้ไข) แล้วลงบัญชีในทรานแซกชันเดียวกัน */
-async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Body) {
+export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Body) {
   const dt = await db.selectFrom('md_doc_type').select(['id', 'doc_class', 'warehouse_id', 'department_id', 'vat_rate', 'price_type', 'status']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!dt || dt.doc_class !== K.cls) throw badRequest(`เลือกประเภทเอกสารของ${K.label}`);
   if (!id && dt.status !== 'A') throw badRequest('ประเภทเอกสารนี้เลิกใช้แล้ว');
@@ -331,8 +331,8 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       return { ...h, converted, party_code: pc?.code ?? null, lines: lines.map((l) => ({ ...l, ...(orderLines.find((o) => o.line_no === l.line_no) ?? {}), source: sources.find((x) => x.line_id === (l as { id?: string }).id) ?? null })),
         deliveries, cancels, payments, deposits, wht: K.payments ? (await readMoneyParts(db, a.companyId, id)).wht : [], settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !h.is_opening && !settled.some((x) => x.doc_status !== 'C') && !(deliveries as unknown[]).length };
     });
-    app.post(base, async (req) => saveTrade(db, requireCompany(req), K, null, parse(body, req.body)));
-    app.put(`${base}/:id`, async (req) => saveTrade(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));
+    app.post(base, async (req) => saveTrade(db, requireCompany(req), K, null, parse(tradeBody, req.body)));
+    app.put(`${base}/:id`, async (req) => saveTrade(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(tradeBody, req.body)));
     app.post(`${base}/:id/cancel`, async (req) => {
       const a = requireCompany(req);
       const { id } = parse(z.object({ id: uuid }), req.params);
@@ -380,7 +380,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
     const lines = await db.selectFrom('doc_line').select(['item_id', 'description', 'warehouse_id', 'qty', 'unit_id', 'factor', 'unit_price', 'discount_text', 'is_free', 'department_id'])
       .where('header_id', '=', id).where('deleted_at', 'is', null).where('item_id', 'is not', null).where('line_kind', '<>', 'K').orderBy('line_no').execute();
     const K = TRADE_KINDS.find((k) => k.cls === 'SO')!;
-    const so = await saveTrade(db, a, K, null, parse(body, {
+    const so = await saveTrade(db, a, K, null, parse(tradeBody, {
       doc_type_id: soType, doc_date: b.doc_date, delivery_date: b.delivery_date ?? b.doc_date, party_id: qt.customer_id, bill_to_customer_id: qt.bill_to_customer_id, party_tax_branch_no: qt.party_tax_branch_no,
       your_ref: qt.your_ref, department_id: qt.department_id, salesperson_id: qt.salesperson_id, sales_area_code: qt.sales_area_code, ship_via_code: qt.ship_via_code,
       price_type: qt.price_type, vat_rate: qt.vat_rate ?? 0, discount_text: qt.discount_text, remark: qt.remark,

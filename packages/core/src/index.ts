@@ -16,6 +16,7 @@ export * from './printforms.js';
 export * from './fixedasset.js';
 export * from './etax.js';
 export * from './ai-bill.js';
+export * from './trade-import.js';
 export * from './password.js';
 export * from './pdpa.js';
 export * from './qr.js';

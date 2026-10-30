@@ -13,6 +13,8 @@ import { API_RULES, REGISTERED_ROUTES, syncMenus } from '../src/modules/permissi
 import { setAiClientFactory } from '../src/modules/ai.js';
 import { base32Decode, stepOf, totpAt } from '../src/modules/security.js';
 import { taxIdCheckDigit } from '@buddy/core';
+import { createZip } from '../src/zip.js';
+import { readTable } from '../src/modules/trade-import.js';
 /** เลขผู้เสียภาษีที่ถูกต้องและไม่ซ้ำกัน สำหรับคู่ค้าทดสอบ (เลข + สาขาซ้ำในบริษัทเดียวกันบันทึกไม่ได้) */
 const tid = (n: number) => { const b = `0105560${String(n).padStart(5, '0')}`; return b + taxIdCheckDigit(b); };
 
@@ -3558,5 +3560,105 @@ describe('รูปภาพสินค้า (ข้อกำหนดเจ�
     expect((await call('PUT', `${url}/${ids[0]}/main`)).status).toBe(404);
     expect((await call('DELETE', `${url}/${ids[0]}`)).status).toBe(404);
     expect((await app.inject({ method: 'GET', url: `/api/v1/item-images/${ids[0]}`, headers: { cookie } })).statusCode).toBe(404);
+  });
+});
+
+describe('นำเข้ารายการขาย/ซื้อจากแฟ้ม Excel (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
+  /** สมุดงาน .xlsx อย่างง่าย (ข้อความใช้ sharedStrings แบบที่ Excel บันทึก) */
+  const xlsx = (rows: string[][]) => {
+    const ss: string[] = [];
+    const cell = (v: string, r: number, c: number) => {
+      const ref = String.fromCharCode(65 + c) + (r + 1);
+      if (/^-?\d+(\.\d+)?$/.test(v)) return `<c r="${ref}"><v>${v}</v></c>`;
+      ss.push(v); return `<c r="${ref}" t="s"><v>${ss.length - 1}</v></c>`;
+    };
+    const sheet = `<worksheet><sheetData>${rows.map((r, i) => `<row r="${i + 1}">${r.map((v, j) => cell(v, i, j)).join('')}</row>`).join('')}</sheetData></worksheet>`;
+    return createZip([
+      { name: 'xl/workbook.xml', data: '<workbook><sheets><sheet name="ขาย" sheetId="1" r:id="rId7"/></sheets></workbook>' },
+      { name: 'xl/_rels/workbook.xml.rels', data: '<Relationships><Relationship Id="rId7" Type="worksheet" Target="worksheets/data.xml"/></Relationships>' },
+      { name: 'xl/worksheets/data.xml', data: sheet },
+      { name: 'xl/sharedStrings.xml', data: `<sst>${ss.map((x) => `<si><t>${x}</t></si>`).join('')}</sst>` },
+    ]).toString('base64');
+  };
+  const csv = (rows: string[][]) => Buffer.from('\uFEFF' + rows.map((r) => r.join(',')).join('\r\n'), 'utf8').toString('base64');
+  const HEAD = ['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน', 'หน่วย', 'ราคาต่อหน่วย', 'ส่วนลด', 'หมายเหตุ'];
+
+  it('template, preview (no save), all-or-nothing commit through normal posting, duplicate guard, rights, other tenants', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const cus = await call('POST', '/api/v1/customers', { code: 'IMP-C1', name: 'ลูกค้านำเข้า', tax_id: tid(950), credit_days: 15 });
+    expect(cus.status).toBe(200);
+    const item = (await call('GET', '/api/v1/services?status=all')).body.rows[0] ?? (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0];
+    expect(item?.code).toBeTruthy();
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types[0].id;
+    const nextNo = async () => (await sql<{ n: string }>`SELECT next_no::text AS n FROM md_doc_type WHERE id = ${ivType}`.execute(database.db)).rows[0]!.n;
+    const ours = async () => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM doc_header WHERE company_id = ${co} AND your_ref LIKE 'XL-%' AND doc_status <> 'C'`.execute(database.db)).rows[0]!.n;
+
+    // แบบฟอร์มตัวอย่าง: .xlsx ที่อ่านกลับได้ หัวตรงตามที่นำเข้า (ลูกค้า/สินค้าตัวอย่างจากข้อมูลจริง)
+    const t = await app.inject({ method: 'GET', url: '/api/v1/trade-import/sales-invoices/template', headers: { cookie } });
+    expect(t.statusCode).toBe(200); expect(t.headers['content-type']).toMatch(/spreadsheetml/);
+    const tr = readTable('import-IV.xlsx', t.rawPayload);
+    expect(tr[0]!.slice(0, 7)).toEqual(['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'รายละเอียด', 'จำนวน', 'หน่วย']);
+    expect(tr).toHaveLength(3);
+    expect((await app.inject({ method: 'GET', url: '/api/v1/trade-import/sales-orders/template', headers: { cookie } })).statusCode).toBe(404);   // ใบสั่งขายไม่ใช่รายการขาย
+
+    const url = '/api/v1/trade-import/sales-invoices';
+    const base = { file_name: 'ขาย.csv', doc_type_id: ivType, price_type: '2', vat_rate: 7 };
+    const bad = csv([HEAD,
+      ['XL-1', '15/07/2569', 'IMP-C1', item.code, '2', '', '"1,000"', '10%', 'จากหน้าร้าน'],
+      ['XL-1', '15/07/2569', 'imp-c1', item.code.toLowerCase(), '1', '', '500', '', ''],
+      ['XL-2', '16/07/2569', 'IMP-C1', item.code, '1', 'ZZZ', '200', '', ''],
+      ['XL-3', '16/07/2569', 'NOPE', item.code, '1', '', '200', '', ''],
+      ['XL-4', '31/02/2569', 'IMP-C1', item.code, '1', '', '200', '', '']]);
+    const before = await nextNo();
+    const pv = await call('POST', url, { ...base, data: bad });
+    expect(pv.status).toBe(200);
+    expect(pv.body.ok).toBe(false); expect(pv.body.committed).toBe(false);
+    expect(pv.body.docs).toEqual([expect.objectContaining({ ref: 'XL-1', row: 2, date: '2026-07-15', party_code: 'IMP-C1', lines: 2, amount: '2300.00', vat_amount: '161.00', net_amount: '2461.00', doc_no: null })]);
+    expect(pv.body.errors.map((e: { row: number }) => e.row)).toEqual([4, 5, 6]);
+    expect(pv.body.errors.map((e: { message: string }) => e.message).join('|')).toMatch(/^หน่วย ZZZ ไม่ใช่หน่วยของสินค้า .*\|ไม่พบรหัสลูกค้า NOPE .*\|วันที่ "31\/02\/2569" ไม่ถูกต้อง/);
+    expect(await ours()).toBe(0); expect(await nextNo()).toBe(before);                                    // ตรวจอย่างเดียว ไม่บันทึก ไม่ใช้เลขที่
+    const cm = await call('POST', url, { ...base, data: bad, commit: true });
+    expect(cm.status).toBe(400); expect(cm.body.error.message).toMatch(/มีข้อผิดพลาด 3 รายการ/);
+    expect(await ours()).toBe(0);
+
+    // แฟ้ม .xlsx ที่แก้แล้ว → บันทึกจริงผ่านการลงบัญชีปกติ
+    const good = xlsx([['ยอดขายเดือนกรกฎาคม'], HEAD,
+      ['XL-1', '15/07/2569', 'IMP-C1', item.code, '2', '', '1000', '10%', 'จากหน้าร้าน'],
+      ['XL-1', '15/07/2569', 'IMP-C1', item.code, '1', '', '500', '', ''],
+      ['XL-2', '46219', 'IMP-C1', item.code, '1', '', '200', '', '']]);
+    const ok = await call('POST', url, { ...base, file_name: 'ขาย.xlsx', data: good, commit: true });
+    expect(ok.body.error?.message ?? 'ok').toBe('ok');
+    expect(ok.body).toMatchObject({ ok: true, committed: true, total_net: '2675.00' });
+    expect(ok.body.docs.map((x: { ref: string; date: string; doc_no: string }) => `${x.ref}:${x.date}:${!!x.doc_no}`)).toEqual(['XL-1:2026-07-15:true', 'XL-2:2026-07-16:true']);
+    const h = (await sql<{ id: string; doc_no: string; your_ref: string; remark: string | null; credit_days: number; net_amount: string; gl_posted: string }>`SELECT id, doc_no, your_ref, remark, credit_days, net_amount, gl_posted FROM doc_header
+        WHERE company_id = ${co} AND your_ref LIKE 'XL-%' ORDER BY your_ref`.execute(database.db)).rows;
+    expect(h.map((x) => [x.doc_no, x.your_ref, x.remark, x.credit_days, x.net_amount, x.gl_posted])).toEqual([
+      [ok.body.docs[0].doc_no, 'XL-1', 'จากหน้าร้าน', 15, '2461.00', 'Y'], [ok.body.docs[1].doc_no, 'XL-2', null, 15, '214.00', 'Y']]);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_journal WHERE source_header_id = ${h[0]!.id} AND doc_status = 'N'`.execute(database.db)).rows[0]!.n).toBe(1);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND action = 'IMPORT'`.execute(database.db)).rows[0]!.n).toBe(1);
+    // นำเข้าซ้ำ → แจ้งเลขที่เดิม ไม่บันทึกซ้ำ
+    const again = await call('POST', url, { ...base, data: good });
+    expect(again.body.errors.map((e: { message: string }) => e.message)).toEqual([`เลขที่อ้างอิง XL-1 เคยนำเข้าแล้วเป็น ${h[0]!.doc_no} — ลบแถวนี้ออก หรือยกเลิก ${h[0]!.doc_no} ก่อน`, expect.stringContaining('XL-2 เคยนำเข้าแล้ว')]);
+    // แฟ้มที่อ่านไม่ได้
+    expect((await call('POST', url, { ...base, file_name: 'old.xls', data: Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 1, 2]).toString('base64') })).body.error.message).toMatch(/\.xls แบบเก่า/);
+    expect((await call('POST', url, { ...base, data: csv([['a', 'b'], ['1', '2']]) })).body.errors[0].message).toMatch(/ไม่พบหัวตาราง/);
+    // ประเภทเอกสารต้องเป็นของชนิดนี้
+    const hsType = (await call('GET', '/api/v1/trade-defaults/HS')).body.types[0].id;
+    expect((await call('POST', url, { ...base, doc_type_id: hsType, data: good })).body.error.message).toMatch(/เลือกประเภทเอกสารของขายเงินเชื่อ/);
+
+    // ผู้ใช้ที่ไม่มีสิทธิ์ (ตรวจสอบสิทธิ์ก่อนใช้งาน ไม่มีแถวสิทธิ์) นำเข้าไม่ได้
+    expect((await call('POST', '/api/v1/users', { username: 'imp.clerk', display_name: 'พนักงานนำเข้า', password: 'clerkImp123', companies: [co], check_rights: true })).status).toBe(200);
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'imp.clerk', password: 'clerkImp123' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('POST', url, { ...base, data: bad })).status).toBe(403);
+    // ลูกค้าอื่น: ใช้ประเภทเอกสาร/ลูกค้าของบริษัทนี้ไม่ได้
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    expect((await call('POST', url, { ...base, data: bad })).body.error.message).toMatch(/เลือกประเภทเอกสาร/);
   });
 });
