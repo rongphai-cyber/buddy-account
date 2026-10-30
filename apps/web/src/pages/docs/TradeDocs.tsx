@@ -7,6 +7,7 @@ import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { useDocNo } from '../../components/DocNo';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { DiscountInput, LineAmountInput } from '../../components/DiscountInput';
 import { useDocEdit } from '../../components/DocEdit';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
@@ -416,10 +417,11 @@ export function TradeFormPage({ path }: { path: string }) {
                   <td><input className="r" inputMode="decimal" value={l.qty} disabled={readOnly} onChange={(e) => setLine(l.key, { qty: e.target.value.replace(/[^\d.-]/g, '') })} aria-label="จำนวน" /></td>
                   <td><LkSelect byId rows={lk.data?.UNIT} value={l.unit_id} disabled={readOnly} onChange={(v) => setLine(l.key, { unit_id: v || null })} aria-label="หน่วย" /></td>
                   <td><input className="r" inputMode="decimal" value={l.unit_price} disabled={readOnly || l.is_free} onChange={(e) => setLine(l.key, { unit_price: e.target.value.replace(/[^\d.]/g, '') })} aria-label="ราคาต่อหน่วย" /></td>
-                  <td><input value={l.discount_text} maxLength={20} disabled={readOnly} placeholder="10% 5+2%" onChange={(e) => setLine(l.key, { discount_text: e.target.value })} aria-label="ส่วนลด" /></td>
+                  <td><DiscountInput value={l.discount_text} disabled={readOnly} label="ส่วนลด" base={d(l.qty || 0).times(d(l.unit_price || 0)).toFixed(2)} onChange={(v) => setLine(l.key, { discount_text: v })} /></td>
                   <td className="c"><input type="checkbox" checked={l.is_free} disabled={readOnly} onChange={(e) => setLine(l.key, { is_free: e.target.checked })} aria-label="ของแถม" /></td>
                   {(K.cls === 'CN' || K.cls === 'DN') && <td className="c"><input type="checkbox" checked={l.return_to_stock} disabled={readOnly} onChange={(e) => setLine(l.key, { return_to_stock: e.target.checked })} aria-label="คืนสินค้า" /></td>}
-                  <td className="r num">{calc?.lines[lines.filter((x) => x.item_id).indexOf(l)] ? fmt(calc.lines[lines.filter((x) => x.item_id).indexOf(l)]!.line_amount) : ''}</td>
+                  <td><LineAmountInput amount={calc?.lines[lines.filter((x) => x.item_id).indexOf(l)]?.line_amount} qty={l.qty} price={l.unit_price} disabled={readOnly || l.is_free || !l.item_id}
+                    onApply={(p) => setLine(l.key, p)} /></td>
                   {K.order && K.cls !== 'QT' && id && <td className="r num">{l.remaining != null && d(l.remaining).toString()}{l.remaining != null && d(l.remaining).gt(0) && can('cancel') && !cancelled && <button type="button" className="icon-btn" title="ยกเลิกยอดค้าง" onClick={() => setCancelLine(l)}>⊘</button>}</td>}
                   <td>{!readOnly && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setLines((ls) => ls.filter((x) => x.key !== l.key)); setDirty(true); }}>✕</button>}</td>
                 </tr>
@@ -484,7 +486,7 @@ export function TradeFormPage({ path }: { path: string }) {
           <Field label="หมายเหตุ"><textarea id="doc-remark" rows={2} value={h.remark} maxLength={2000} disabled={readOnly} onChange={(e) => set({ remark: e.target.value })} /></Field>
           {calc && <table className="totals-table"><tbody>
             <tr><td>จำนวนเงิน</td><td className="r"><Money v={calc.amount} /></td></tr>
-            <tr><td>หักส่วนลด <input value={h.discount_text} maxLength={20} disabled={readOnly} onChange={(e) => set({ discount_text: e.target.value })} placeholder="10% หรือ 500" aria-label="ส่วนลดท้ายบิล" style={{ width: 110 }} /></td><td className="r"><Money v={calc.discount_amount} /></td></tr>
+            <tr><td>หักส่วนลด <DiscountInput value={h.discount_text} disabled={readOnly} onChange={(v) => set({ discount_text: v })} placeholder="5+ หรือ 500" label="ส่วนลดท้ายบิล" base={calc?.amount} style={{ width: 110 }} /></td><td className="r"><Money v={calc.discount_amount} /></td></tr>
             {d(calc.deposit_amount).gt(0) && <tr><td><a href="#deposit" onClick={(e) => { e.preventDefault(); setTab('deposit'); }}>หักเงินมัดจำ</a></td><td className="r"><Money v={calc.deposit_amount} /></td></tr>}
             {d(calc.zero_rate_amount).gt(0) && h.price_type !== '0' && <tr><td>แยกยอดเงิน 0.00 %=</td><td className="r"><Money v={calc.zero_rate_amount} /></td></tr>}
             <tr><td>ภาษีมูลค่าเพิ่ม <input className="r" inputMode="decimal" value={h.vat_rate} disabled={readOnly || h.price_type === '0'} onChange={(e) => set({ vat_rate: e.target.value.replace(/[^\d.]/g, '') })} aria-label="อัตราภาษี" style={{ width: 60 }} /> %</td><td className="r"><Money v={calc.vat_amount} /></td></tr>

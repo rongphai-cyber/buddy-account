@@ -125,5 +125,18 @@
  "{0} · แดชบอร์ดของบริษัท": "{0} · Company Dashboard",
  "ศูนย์รายงาน": "Report Center",
  "ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ {0} (ออกเลขจริงตอนบันทึก · ต้องการเลขเองให้คลิกช่องแล้วพิมพ์)": "No number typed — the automatic number {0} will be used (assigned when saved · to use your own, click the field and type)",
- "← → หรือ Tab เลือกปุ่ม · Enter กดปุ่มที่เลือก · Esc กลับไปแก้": "← → or Tab to choose a button · Enter to press it · Esc to go back"
+ "← → หรือ Tab เลือกปุ่ม · Enter กดปุ่มที่เลือก · Esc กลับไปแก้": "← → or Tab to choose a button · Enter to press it · Esc to go back",
+ "5+ หรือ 500": "5+ or 500",
+ "{0} \"{1}\" ไม่ถูกรูปแบบ — {2}": "{0} \"{1}\" is not a valid format — {2}",
+ "{0}มากกว่าจำนวนเงิน — แก้ส่วนลดใหม่": "{0} is more than the amount — enter the discount again",
+ "คิดราคาต่อหน่วยให้ {0} (จำนวนเงิน ÷ จำนวน)": "Unit price calculated: {0} (amount ÷ quantity)",
+ "คิดส่วนลดให้ {0} บาท (จำนวน × ราคา {1} − {2})": "Discount calculated: {0} baht (quantity × price {1} − {2})",
+ "คีย์จำนวนเงินที่ต้องการ — โปรแกรมคิดส่วนลด (หรือราคาต่อหน่วย) ให้": "Type the amount you want — the discount (or unit price) is calculated for you",
+ "จำนวนเงิน {0} มากกว่า จำนวน × ราคา ({1}) — แก้ราคาต่อหน่วยแทน": "Amount {0} is more than quantity × price ({1}) — change the unit price instead",
+ "จำนวนเงินต้องเป็นตัวเลข เช่น 275 หรือ 1250.50": "Amount must be a number, e.g. 275 or 1250.50",
+ "บรรทัดที่ {0}: ส่วนลด \"{1}\" ไม่ถูกรูปแบบ ({2})": "Line {0}: discount \"{1}\" is not a valid format ({2})",
+ "ป้อนจำนวนก่อน แล้วจึงคีย์จำนวนเงิน": "Enter the quantity first, then the amount",
+ "ส่วนลดท้ายบิล \"{0}\" ไม่ถูกรูปแบบ ({1})": "Bill discount \"{0}\" is not a valid format ({1})",
+ "เช่น 200 (บาท) · 5% หรือ 5+ (เปอร์เซ็นต์) · 5+2+ (5% แล้วอีก 2%) · 5+,200 (5% แล้วลดอีก 200 บาท)": "e.g. 200 (baht) · 5% or 5+ (percent) · 5+2+ (5% then another 2%) · 5+,200 (5% then another 200 baht)",
+ "ไม่มีส่วนลด (จำนวนเงินเท่ากับ จำนวน × ราคา)": "No discount (amount equals quantity × price)"
 }

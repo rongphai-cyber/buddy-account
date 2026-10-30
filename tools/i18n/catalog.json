@@ -189,8 +189,9 @@
 },
 {
 "th": "จำนวนเงิน",
-"n": 49,
+"n": 50,
 "files": [
+"apps/web/src/components/DiscountInput.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
@@ -5387,14 +5388,6 @@
 ]
 },
 {
-"th": "10% หรือ 500",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "1–30 วัน",
 "n": 2,
 "files": [
@@ -5408,6 +5401,14 @@
 "files": [
 "apps/server/src/modules/reports/dashboard.ts",
 "apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "5+ หรือ 500",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -11412,6 +11413,13 @@
 ]
 },
 {
+"th": "{0} \"{1}\" ไม่ถูกรูปแบบ — {2}",
+"n": 1,
+"files": [
+"apps/web/src/components/DiscountInput.tsx"
+]
+},
+{
 "th": "{0} ({1} ราย)",
 "n": 1,
 "files": [
@@ -12081,6 +12089,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/cashdocs.ts"
+]
+},
+{
+"th": "{0}มากกว่าจำนวนเงิน — แก้ส่วนลดใหม่",
+"n": 1,
+"files": [
+"apps/web/src/components/DiscountInput.tsx"
 ]
 },
 {
@@ -14422,6 +14437,20 @@
 ]
 },
 {
+"th": "คิดราคาต่อหน่วยให้ {0} (จำนวนเงิน ÷ จำนวน)",
+"n": 1,
+"files": [
+"apps/web/src/components/DiscountInput.tsx"
+]
+},
+{
+"th": "คิดส่วนลดให้ {0} บาท (จำนวน × ราคา {1} − {2})",
+"n": 1,
+"files": [
+"apps/web/src/components/DiscountInput.tsx"
+]
+},
+{
 "th": "คิดเป็นหน่วยนับย่อย",
 "n": 1,
 "files": [
@@ -14433,6 +14462,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocEdit.tsx"
+]
+},
+{
+"th": "คีย์จำนวนเงินที่ต้องการ — โปรแกรมคิดส่วนลด (หรือราคาต่อหน่วย) ให้",
+"n": 1,
+"files": [
+"apps/web/src/components/DiscountInput.tsx"
 ]
 },
 {
@@ -15472,6 +15508,13 @@
 ]
 },
 {
+"th": "จำนวนเงิน {0} มากกว่า จำนวน × ราคา ({1}) — แก้ราคาต่อหน่วยแทน",
+"n": 1,
+"files": [
+"apps/web/src/components/DiscountInput.tsx"
+]
+},
+{
 "th": "จำนวนเงินของเช็คที่มาจากใบเสร็จ/ใบจ่าย แก้ที่เอกสารต้นทาง",
 "n": 1,
 "files": [
@@ -15490,6 +15533,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/prior-year.ts"
+]
+},
+{
+"th": "จำนวนเงินต้องเป็นตัวเลข เช่น 275 หรือ 1250.50",
+"n": 1,
+"files": [
+"apps/web/src/components/DiscountInput.tsx"
 ]
 },
 {
@@ -19091,7 +19141,7 @@
 ]
 },
 {
-"th": "บรรทัดที่ {0}: ส่วนลด \"{1}\" ไม่ถูกรูปแบบ (เช่น 1500 หรือ 10% หรือ 5+2%)",
+"th": "บรรทัดที่ {0}: ส่วนลด \"{1}\" ไม่ถูกรูปแบบ ({2})",
 "n": 1,
 "files": [
 "packages/core/src/doc-calc.ts"
@@ -21412,6 +21462,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Budget.tsx"
+]
+},
+{
+"th": "ป้อนจำนวนก่อน แล้วจึงคีย์จำนวนเงิน",
+"n": 1,
+"files": [
+"apps/web/src/components/DiscountInput.tsx"
 ]
 },
 {
@@ -30375,7 +30432,7 @@
 ]
 },
 {
-"th": "ส่วนลดท้ายบิล \"{0}\" ไม่ถูกรูปแบบ (เช่น 1500 หรือ 10% หรือ 5+2%)",
+"th": "ส่วนลดท้ายบิล \"{0}\" ไม่ถูกรูปแบบ ({1})",
 "n": 1,
 "files": [
 "packages/core/src/doc-calc.ts"
@@ -32500,6 +32557,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "เช่น 200 (บาท) · 5% หรือ 5+ (เปอร์เซ็นต์) · 5+2+ (5% แล้วอีก 2%) · 5+,200 (5% แล้วลดอีก 200 บาท)",
+"n": 1,
+"files": [
+"packages/core/src/doc-calc.ts"
 ]
 },
 {
@@ -38275,6 +38339,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Stock.tsx"
+]
+},
+{
+"th": "ไม่มีส่วนลด (จำนวนเงินเท่ากับ จำนวน × ราคา)",
+"n": 1,
+"files": [
+"apps/web/src/components/DiscountInput.tsx"
 ]
 },
 {

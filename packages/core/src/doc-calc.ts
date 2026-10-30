@@ -1,7 +1,7 @@
 /**
  * คำนวณยอดเอกสารซื้อ/ขาย (คู่มือบทที่ 11–12 แนวคิดร่วม) — ตรงกับวิธีเก็บของ Express
  * ประเภทราคา: 0 ยกเว้นภาษี · 1 ราคารวมภาษี (VAT = ฐาน × r/(100+r)) · 2 ราคาไม่รวมภาษี (VAT = ฐาน × r/100)
- * ส่วนลด: จำนวนเงิน (1500) · เปอร์เซ็นต์ (10%) · ส่วนลดซ้อน (5+2% = ลด 5% แล้วลดต่ออีก 2%) · "10+" = 10%
+ * ส่วนลด: จำนวนเงิน (1500) · เปอร์เซ็นต์ (10% หรือ 10+) · ส่วนลดซ้อน (5+2% = ลด 5% แล้วลดต่ออีก 2%) · คั่นด้วย , (5+,200) — ดู discountAmount
  * บรรทัด: line_amount = จำนวน × ราคา − ส่วนลดบรรทัด (ตามประเภทราคาของเอกสาร)
  *         net_amount = ยอดไม่รวม VAT หลังเฉลี่ยส่วนลดท้ายบิล (เครื่องลงบัญชีใช้ยอดนี้ลงบัญชีขาย/ซื้อ)
  */
@@ -9,27 +9,36 @@ import { d, Decimal, type MoneyInput } from './money.js';
 
 const r2 = (v: Decimal) => v.toDecimalPlaces(2);
 
-/** "10+" → "10%" แบบ Express · ช่องว่างตัดทิ้ง */
+/** "10+" → "10%" แบบ Express (ทุกช่วงที่คั่นด้วย ,) · ช่องว่างตัดทิ้ง */
 export function normalizeDiscount(text: string | null | undefined): string {
-  const t = (text ?? '').replace(/\s+/g, '');
-  return /^[\d.]+\+$/.test(t) ? t.slice(0, -1) + '%' : t;
+  return (text ?? '').replace(/\s+/g, '').split(',').map((t) => (/^[\d.+]+\+$/.test(t) ? t.slice(0, -1) + '%' : t)).join(',');
 }
 
-/** ส่วนลดเป็นจำนวนเงินจากข้อความ — null = รูปแบบไม่ถูกต้อง */
+/**
+ * ส่วนลดเป็นจำนวนเงินจากข้อความ — null = รูปแบบไม่ถูกต้อง (ข้อกำหนดเจ้าของ 30/10/2569)
+ * - 200 = ลด 200 บาท · 5% หรือ 5+ = ลด 5% (+ ท้ายตัวเลข = % คีย์ง่ายกว่า)
+ * - 5+2% หรือ 5+2+ = ลด 5% แล้วลดต่ออีก 2% (ส่วนลดซ้อนแบบ Express)
+ * - คั่นด้วย , = ลดต่อกันตามลำดับ เช่น 5+,200 = ลด 5% แล้วลดเพิ่มอีก 200 บาท
+ * - +5 (เครื่องหมายนำหน้า) หรือ 5+2 (ไม่มี % / + ปิดท้าย) = ไม่ถูกรูปแบบ
+ */
 export function discountAmount(text: string | null | undefined, base: MoneyInput): Decimal | null {
   const t = normalizeDiscount(text);
   if (!t) return d(0);
   const b = d(base);
-  if (t.endsWith('%')) {
-    const parts = t.slice(0, -1).split('+');
-    if (parts.some((p) => !/^\d+(\.\d+)?$/.test(p))) return null;
-    let rest = b;
-    for (const p of parts) rest = rest.minus(r2(rest.times(d(p)).div(100)));
-    return b.minus(rest);
+  let rest = b;
+  for (const part of t.split(',')) {
+    if (part.endsWith('%')) {
+      const ps = part.slice(0, -1).split('+');
+      if (ps.some((x) => !/^\d+(\.\d+)?$/.test(x))) return null;
+      for (const x of ps) rest = rest.minus(r2(rest.times(d(x)).div(100)));
+    } else if (/^\d+(\.\d+)?$/.test(part)) rest = rest.minus(r2(d(part)));
+    else return null;
   }
-  if (!/^\d+(\.\d+)?$/.test(t)) return null;
-  return r2(d(t));
+  return b.minus(rest);
 }
+
+/** ข้อความแนะนำเมื่อส่วนลดไม่ถูกรูปแบบ */
+export const DISCOUNT_HINT = 'เช่น 200 (บาท) · 5% หรือ 5+ (เปอร์เซ็นต์) · 5+2+ (5% แล้วอีก 2%) · 5+,200 (5% แล้วลดอีก 200 บาท)';
 
 export interface CalcLine { qty: MoneyInput; unit_price: MoneyInput; discount_text?: string | null; vat_exempt?: boolean }
 export interface CalcInput { price_type: '0' | '1' | '2'; vat_rate: MoneyInput; lines: CalcLine[]; discount_text?: string | null; deposit_amount?: MoneyInput }
@@ -57,14 +66,14 @@ export function computeDoc(input: CalcInput): CalcResult {
   const lines = input.lines.map((l, i) => {
     const gross = r2(d(l.qty).times(d(l.unit_price)));
     const disc = discountAmount(l.discount_text, gross);
-    if (disc === null) errors.push(`บรรทัดที่ ${i + 1}: ส่วนลด "${l.discount_text}" ไม่ถูกรูปแบบ (เช่น 1500 หรือ 10% หรือ 5+2%)`);
+    if (disc === null) errors.push(`บรรทัดที่ ${i + 1}: ส่วนลด "${l.discount_text}" ไม่ถูกรูปแบบ (${DISCOUNT_HINT})`);
     const dd = disc ?? d(0);
     if (dd.gt(gross.abs())) errors.push(`บรรทัดที่ ${i + 1}: ส่วนลดมากกว่าจำนวนเงิน`);
     return { gross, disc: dd, amount: gross.minus(dd), exempt: !!l.vat_exempt };
   });
   const amount = lines.reduce((s, l) => s.plus(l.amount), d(0));
   const hd = discountAmount(input.discount_text, amount);
-  if (hd === null) errors.push(`ส่วนลดท้ายบิล "${input.discount_text}" ไม่ถูกรูปแบบ (เช่น 1500 หรือ 10% หรือ 5+2%)`);
+  if (hd === null) errors.push(`ส่วนลดท้ายบิล "${input.discount_text}" ไม่ถูกรูปแบบ (${DISCOUNT_HINT})`);
   const hdisc = hd ?? d(0);
   const after = amount.minus(hdisc);
   const deposit = d(input.deposit_amount ?? 0);

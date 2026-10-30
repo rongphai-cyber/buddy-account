@@ -8,6 +8,14 @@ describe('document totals (บทที่ 11–12)', () => {
     expect(discountAmount('5+2%', 10000)!.toFixed(2)).toBe('690.00');      // 10000 → 9500 → 9310
     expect(normalizeDiscount('10+')).toBe('10%');
     expect(discountAmount('abc', 100)).toBeNull();
+    // ข้อกำหนดเจ้าของ: + ท้ายตัวเลข = % · คั่นด้วย , = ลดต่อกัน · + นำหน้า = ผิด
+    expect(discountAmount('5+', 1000)!.toFixed(2)).toBe('50.00');
+    expect(discountAmount('5+2+', 10000)!.toFixed(2)).toBe('690.00');
+    expect(discountAmount('5+,200', 10000)!.toFixed(2)).toBe('700.00');     // 10000 → 9500 → 9300
+    expect(discountAmount('200,5%', 10000)!.toFixed(2)).toBe('690.00');     // 10000 → 9800 → 9310
+    expect(discountAmount(' 5 + , 200 ', 10000)!.toFixed(2)).toBe('700.00');
+    expect(normalizeDiscount('5+,200')).toBe('5%,200');
+    for (const bad of ['+5', '5+2', '5,,2', ',5', '5%%', '-5', '5+,'] ) expect(discountAmount(bad, 1000)).toBeNull();
   });
   it('VAT-exclusive (price type 2) matches Express RR0001525', () => {
     const r = computeDoc({ price_type: '2', vat_rate: 7, discount_text: '1.50', lines: [{ qty: 1, unit_price: '15335.50' }] });
