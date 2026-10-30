@@ -231,6 +231,25 @@ CREATE TABLE IF NOT EXISTS sys_print_form (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_sys_print_form_company_scope_slot ON sys_print_form (company_id, scope, slot) WHERE deleted_at IS NULL;
 
+-- sys_company_image: รูปของบริษัทสำหรับพิมพ์เอกสาร: โลโก้ และลายเซ็นผู้มีอำนาจ (ข้อกำหนดเจ้าของ 30/10/2569) — PNG/JPEG ไม่เกิน 300 KB
+CREATE TABLE IF NOT EXISTS sys_company_image (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  kind TEXT NOT NULL CHECK (kind IN ('LOGO','SIGN')),
+  name TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  data TEXT NOT NULL,
+  bytes INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_sys_company_image_company_kind_name ON sys_company_image (company_id, kind, name) WHERE deleted_at IS NULL;
+
 -- sys_report_custom: รายงานที่ผู้ใช้สร้างจากรายงานต้นฉบับ (เงื่อนไข + คอลัมน์ที่แสดง)
 CREATE TABLE IF NOT EXISTS sys_report_custom (
   id TEXT PRIMARY KEY,
@@ -2133,6 +2152,29 @@ CREATE TRIGGER IF NOT EXISTS trg_sys_print_form_ver AFTER UPDATE ON sys_print_fo
 WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
 BEGIN
   UPDATE sys_print_form SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_sys_company_image_insert_outbox AFTER INSERT ON sys_company_image
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_company_image', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'kind', NEW.kind, 'name', NEW.name, 'mime', NEW.mime, 'data', NEW.data, 'bytes', NEW.bytes, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_sys_company_image_update_outbox AFTER UPDATE ON sys_company_image
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_company_image', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'kind', NEW.kind, 'name', NEW.name, 'mime', NEW.mime, 'data', NEW.data, 'bytes', NEW.bytes, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_sys_company_image_ver AFTER UPDATE ON sys_company_image
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE sys_company_image SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sys_report_custom_insert_outbox AFTER INSERT ON sys_report_custom
 WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'

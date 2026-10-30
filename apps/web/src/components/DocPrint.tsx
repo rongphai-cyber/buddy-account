@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { fmt, formatDate, PRINT_HEAD_FIELDS, type PrintFamily, type PrintFormEntry, type YearSystem } from '@buddy/core';
 import { api } from '../api';
+import type { CompanyImages } from './CompanyImages';
 import { useCan, useSession } from '../session';
 import { DateInput, ErrorBox, Field, Modal, Pill, toast, toastError, useHotkeys, useYearSystem } from '../ui';
 import { DocNotesDialog } from './Notes';
@@ -16,7 +17,7 @@ export interface PrintData {
   amount_text: string; payments: Array<{ method: string; ref: string; date: string; amount: string }>; notes: string[];
   journal: Array<Record<string, string>>; print_count: number; approved: boolean;
 }
-type PrintResp = { data: PrintData; forms: PrintFormEntry[]; rule: { approveLevel: number; method: string | null; reprintLevel: number }; block: string | null };
+type PrintResp = { data: PrintData; forms: PrintFormEntry[]; rule: { approveLevel: number; method: string | null; reprintLevel: number }; block: string | null; images?: CompanyImages };
 
 const MONEY_KEYS = new Set(['price', 'amount', 'ref_amount', 'debit', 'credit']);
 const DATE_KEYS = new Set(['ref_date', 'due_date', 'date']);
@@ -24,7 +25,7 @@ const DATE_FIELDS = new Set(['due_date', 'delivery_date', 'appointment_date']);
 const cellText = (key: string, v: string | undefined, ys: YearSystem) => (!v ? '' : MONEY_KEYS.has(key) ? fmt(v) : DATE_KEYS.has(key) ? formatDate(v, ys) : v);
 
 /** แผ่นเอกสารตามแบบฟอร์ม — ใช้ทั้งดูทางจอภาพและพิมพ์ (หนึ่งแผ่นต่อสำเนา) */
-export function PrintSheet({ data, form, ys }: { data: PrintData; form: PrintFormEntry; ys: YearSystem }) {
+export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: PrintFormEntry; ys: YearSystem; images?: CompanyImages | null }) {
   const L = form.layout;
   const cols = L.columns.filter((c) => c.show);
   const totalW = cols.reduce((s, c) => s + c.width, 0) || 1;
@@ -32,16 +33,22 @@ export function PrintSheet({ data, form, ys }: { data: PrintData; form: PrintFor
   const fill = Math.max(0, L.min_rows - data.lines.length);
   const heads = L.head_fields.map((k) => ({ k, label: PRINT_HEAD_FIELDS.find((f) => f.key === k)?.label ?? k, v: data.fields[k] ?? '' })).filter((x) => x.v);
   const isJ = data.family === 'journal';
+  // โลโก้/ลายเซ็นของบริษัท (ข้อกำหนดเจ้าของ) — แบบฟอร์มเลือกตำแหน่งโลโก้ และรูปลายเซ็นของแต่ละช่องลงชื่อ
+  const logo = L.logo !== 'none' ? images?.logo ?? null : null;
+  const signOf = (i: number) => { const id = L.signature_images[i]; return id ? images?.signs[id]?.data ?? null : null; };
   return (
     <>
       {copies.map((cp, ci) => (
         <div key={ci} className={`doc-sheet b-${form.base}`} style={{ fontSize: `${L.font_pt}pt` }}>
+          {logo && L.logo === 'center' && <div className="ds-logo-c"><img src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} /></div>}
           <header className="ds-head">
+            {logo && L.logo === 'left' && <img className="ds-logo" src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} />}
             {L.show_company && <div className="ds-co"><b>{data.company.name}</b>{data.company.name_en && <div>{data.company.name_en}</div>}
               <div>{data.company.address}</div>
               <div>{[data.company.phone && `โทร ${data.company.phone}`, data.company.tax_id && `เลขประจำตัวผู้เสียภาษี ${data.company.tax_id}`, data.company.branch].filter(Boolean).join('  ')}</div></div>}
             <div className="ds-title"><h1>{L.title || data.title}</h1>{L.title_en && <div className="ds-en">{L.title_en}</div>}
               {cp && <div className="ds-copy">{cp}</div>}{data.cancelled && <div className="ds-void">ยกเลิก</div>}</div>
+            {logo && L.logo === 'right' && <img className="ds-logo" src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} />}
           </header>
           <div className="ds-info">
             {L.show_party && data.party ? <div className="ds-party">
@@ -75,7 +82,7 @@ export function PrintSheet({ data, form, ys }: { data: PrintData; form: PrintFor
           </div>
           {L.show_journal && !isJ && data.journal.length > 0 && <table className="ds-jnl"><thead><tr><th>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th className="r">เดบิต</th><th className="r">เครดิต</th></tr></thead>
             <tbody>{data.journal.map((j, i) => <tr key={i}><td>{j.code}</td><td>{j.name}</td><td className="r">{j.debit && fmt(j.debit)}</td><td className="r">{j.credit && fmt(j.credit)}</td></tr>)}</tbody></table>}
-          {L.signatures.length > 0 && <div className="ds-sign">{L.signatures.map((s, i) => <div key={i}><div className="ds-line" /><div>{s}</div><div className="ds-muted">วันที่ ......../......../........</div></div>)}</div>}
+          {L.signatures.length > 0 && <div className="ds-sign">{L.signatures.map((s, i) => <div key={i}>{signOf(i) ? <img className="ds-sign-img" src={signOf(i)!} alt="" /> : null}<div className="ds-line" /><div>{s}</div><div className="ds-muted">วันที่ ......../......../........</div></div>)}</div>}
           {L.footer && <div className="ds-footer">{L.footer}</div>}
         </div>
       ))}
@@ -176,9 +183,9 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty }: { kind: 'do
       {preview && r && <Modal title={`ดูทางจอภาพ — ${preview.slot}. ${preview.name}`} size="wide" onClose={() => setPreview(null)}
         footer={<><button onClick={() => setPreview(null)}>ปิด</button>{!screenOnly && <button className="primary" disabled={!can('print')} onClick={() => doPrint(preview.slot)}>🖨 พิมพ์</button>}</>}>
         {r.block && <p className="err-msg">{r.block}</p>}
-        <div className="ds-preview"><PrintSheet data={r.data} form={preview} ys={ys} /></div>
+        <div className="ds-preview"><PrintSheet data={r.data} form={preview} ys={ys} images={r.images} /></div>
       </Modal>}
-      {printing && r && createPortal(<div className="doc-print"><PrintSheet data={r.data} form={printing} ys={ys} /></div>, document.body)}
+      {printing && r && createPortal(<div className="doc-print"><PrintSheet data={r.data} form={printing} ys={ys} images={r.images} /></div>, document.body)}
       {info && id && <RecordInfo kind={kind} id={id} onClose={() => setInfo(false)} />}
       {notes && id && <DocNotesDialog id={id} canEdit={can('edit')} onClose={() => setNotes(false)} />}
       {range && <ApproveRange kind={kind} scope={r?.data.scope} typeId={typeId ?? null} onClose={() => setRange(false)} onDone={() => qc.invalidateQueries({ queryKey: ['print'] })} />}

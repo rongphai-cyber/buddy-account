@@ -520,6 +520,37 @@ export interface SysPrintFormTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** รูปของบริษัทสำหรับพิมพ์เอกสาร: โลโก้ และลายเซ็นผู้มีอำนาจ (ข้อกำหนดเจ้าของ 30/10/2569) — PNG/JPEG ไม่เกิน 300 KB */
+export interface SysCompanyImageTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** LOGO=โลโก้บริษัท SIGN=ลายเซ็น */
+  kind: string;
+  /** ชื่อ เช่น ลายเซ็นกรรมการผู้จัดการ (โลโก้ = LOGO) */
+  name: string;
+  /** image/png หรือ image/jpeg */
+  mime: string;
+  /** รูป (base64) */
+  data: string;
+  /** ขนาดแฟ้ม (ไบต์) */
+  bytes: number;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** รายงานที่ผู้ใช้สร้างจากรายงานต้นฉบับ (เงื่อนไข + คอลัมน์ที่แสดง) */
 export interface SysReportCustomTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -3690,6 +3721,7 @@ export interface DB {
   sys_setting_def: SysSettingDefTable;
   sys_activity_log: SysActivityLogTable;
   sys_print_form: SysPrintFormTable;
+  sys_company_image: SysCompanyImageTable;
   sys_report_custom: SysReportCustomTable;
   sys_api_key: SysApiKeyTable;
   sys_pdpa_request: SysPdpaRequestTable;

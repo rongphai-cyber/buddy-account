@@ -219,6 +219,14 @@ add(T('sys_print_form', 'แบบฟอร์มพิมพ์เอกสา�
   C('status', 'char1', nn=True, d="'A'", th='A=ใช้งาน I=ไม่แสดงในเมนู', chk=ST_ACTIVE),
 ], uniq=[('company_id','scope','slot')]))
 
+add(T('sys_company_image', 'รูปของบริษัทสำหรับพิมพ์เอกสาร: โลโก้ และลายเซ็นผู้มีอำนาจ (ข้อกำหนดเจ้าของ 30/10/2569) — PNG/JPEG ไม่เกิน 300 KB', 'sys', express='(ใหม่)', cols=[
+  C('kind', 'code10', nn=True, th='LOGO=โลโก้บริษัท SIGN=ลายเซ็น', chk="kind IN ('LOGO','SIGN')"),
+  C('name', 'str120', nn=True, th='ชื่อ เช่น ลายเซ็นกรรมการผู้จัดการ (โลโก้ = LOGO)'),
+  C('mime', 'code30', nn=True, th='image/png หรือ image/jpeg'),
+  C('data', 'text', nn=True, th='รูป (base64)'),
+  C('bytes', 'int', nn=True, th='ขนาดแฟ้ม (ไบต์)'),
+], uniq=[('company_id','kind','name')]))
+
 add(T('sys_report_custom', 'รายงานที่ผู้ใช้สร้างจากรายงานต้นฉบับ (เงื่อนไข + คอลัมน์ที่แสดง)', 'sys', express='สร้างรายงานใหม่ (บทที่ 25 S-RD-03/04)', cols=[
   C('code', 'code10', nn=True, th='รหัสรายงานของผู้ใช้ เช่น U01'),
   C('base_code', 'code10', nn=True, th='รหัสรายงานต้นฉบับ เช่น 1.1.1'),

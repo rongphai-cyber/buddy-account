@@ -251,6 +251,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/master-notes/:entity/:id': MNOTE('read'), 'PUT /api/v1/master-notes/:entity/:id': MNOTE('edit'),
   'GET /api/v1/print/:kind/:id': DOC('read'), 'GET /api/v1/neighbors/:kind/:id': DOC('read'), 'POST /api/v1/print/:kind/:id/printed': DOC('print'),
   'POST /api/v1/approve/:kind/:id': DOC('approve'), 'POST /api/v1/approve-range': DOC('approve'), 'GET /api/v1/record-info/:kind/:id': DOC('read'),
+  'GET /api/v1/company-images': LOOKUP, 'PUT /api/v1/company-images/logo': M('RP.FORM', 'edit'), 'POST /api/v1/company-images/signs': M('RP.FORM', 'add'), 'DELETE /api/v1/company-images/:id': M('RP.FORM', 'delete'),
   'GET /api/v1/print-forms': LOOKUP, 'PUT /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'edit'), 'DELETE /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'delete'),
   'GET /api/v1/rpt-custom': LOOKUP, 'POST /api/v1/rpt-custom': M('RP.CUSTOM', 'add'), 'PUT /api/v1/rpt-custom/:id': M('RP.CUSTOM', 'edit'), 'DELETE /api/v1/rpt-custom/:id': M('RP.CUSTOM', 'delete'),
   // ทรัพย์สินถาวร (บทที่ 19) + กลุ่มบัญชีทรัพย์สิน (S-SET-12)

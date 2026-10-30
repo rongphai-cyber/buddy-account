@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { bahtText, checkApprove, checkPrint, checkUnapprove, d, DOC_CLASSES, docMenuOf, findReport, normalizeLayout, PRINT_BASES, printFamily, printMenu, type ApprovalRule, type ApprovalState } from '@buddy/core';
 import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
+import { companyImages } from './company-images.js';
 import { logActivity } from '../audit.js';
 import { allowedFor } from './permissions.js';
 
@@ -170,7 +171,7 @@ export function printRoutes(app: FastifyInstance, db: Db) {
     const { kind, id } = parse(kindParam, req.params);
     const data = await printData(db, a, kind, id);
     const H = await loadHead(db, a, kind, id);
-    return { data, forms: printMenu(data.scope, await formsOf(a, data.scope), data.title), rule: H.rule, block: checkPrint(H.rule, H.state, a.approvalLevel, a.isAdmin) };
+    return { data, forms: printMenu(data.scope, await formsOf(a, data.scope), data.title), rule: H.rule, block: checkPrint(H.rule, H.state, a.approvalLevel, a.isAdmin), images: await companyImages(db, a.companyId) };
   });
 
   /** ก่อนสั่งพิมพ์ออกเครื่องพิมพ์: ตรวจกฎรับรอง/พิมพ์ซ้ำ แล้วนับจำนวนครั้งที่พิมพ์ (ดูทางจอภาพไม่นับ) */

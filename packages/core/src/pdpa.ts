@@ -61,6 +61,7 @@ export const PDPA_REGISTER: PdpaEntry[] = [
   { table: 'sys_session', columns: ['ip_address', 'user_agent'], subject: 'USER', category: 'IP และเบราว์เซอร์ที่เข้าระบบ', purpose: 'ความปลอดภัยการเข้าระบบ', basis: 'LEGIT', retention: SERVICE, erase: 'PURGE' },
   { table: 'sys_activity_log', columns: ['user_id', 'detail'], subject: 'USER', category: 'ผู้ทำรายการ ค่าก่อน/หลังแก้ไข', purpose: 'ตรวจสอบย้อนหลัง (Audit trail)', basis: 'LEGAL', retention: 'อย่างน้อย 2 ปี (เพิ่มได้อย่างเดียว)', erase: 'KEEP' },
   { table: 'sys_tenant', columns: ['name', 'contact_email', 'contact_phone'], subject: 'TENANT', category: 'ชื่อ ข้อมูลติดต่อผู้ใช้บริการ', purpose: 'ให้บริการและเรียกเก็บค่าบริการ', basis: 'CONTRACT', retention: SERVICE, erase: 'PURGE' },
+  { table: 'sys_company_image', columns: ['name', 'data'], subject: 'TENANT', category: 'รูปลายเซ็นผู้มีอำนาจ/ผู้รับเงิน และโลโก้', purpose: 'พิมพ์ในเอกสาร', basis: 'CONTRACT', retention: SERVICE, erase: 'PURGE' },
   { table: 'sys_company', columns: ['name_th', 'name_en', 'address_th', 'address_en', 'phone', 'tax_id', 'social_security_no'], subject: 'TENANT', category: 'ชื่อ ที่อยู่ เลขผู้เสียภาษีของกิจการ (เป็นข้อมูลบุคคลเมื่อเจ้าของเป็นบุคคลธรรมดา)', purpose: 'พิมพ์หัวเอกสาร/แบบยื่นภาษี', basis: 'CONTRACT', retention: SERVICE, erase: 'PURGE' },
 ];
 

@@ -21,7 +21,17 @@ export interface PrintLayout {
   footer: string;
   /** จำนวนบรรทัดขั้นต่ำของตาราง (เติมบรรทัดว่างให้แบบฟอร์มสูงเท่ากันทุกใบ) */
   min_rows: number;
+  /** โลโก้บริษัทที่หัวเอกสาร (ข้อกำหนดเจ้าของ 30/10/2569) — แสดงเมื่อบริษัทมีโลโก้ · none = ไม่แสดง */
+  logo: PrintLogoPos;
+  /** ความสูงโลโก้ (มม.) */
+  logo_mm: number;
+  /** รูปลายเซ็นในช่องลงชื่อแต่ละช่อง (ลำดับเดียวกับ signatures) — รหัสรูปของบริษัท หรือ null = ช่องว่างให้เซ็นมือ */
+  signature_images: Array<string | null>;
 }
+export type PrintLogoPos = 'none' | 'left' | 'center' | 'right';
+export const PRINT_LOGO_POS: Array<{ key: PrintLogoPos; label: string }> = [
+  { key: 'left', label: 'ซ้าย (หน้าชื่อบริษัท)' }, { key: 'center', label: 'กลางหน้า (เหนือชื่อบริษัท)' }, { key: 'right', label: 'ขวา' }, { key: 'none', label: 'ไม่แสดงโลโก้' },
+];
 export interface PrintFormEntry { slot: number; name: string; base: PrintBase; layout: PrintLayout; custom: boolean }
 
 export const PRINT_BASES: Array<{ key: PrintBase; label: string; hint: string }> = [
@@ -114,6 +124,8 @@ export function defaultLayout(scope: string, base: PrintBase, title = ''): Print
     head_fields: HEAD[fam], show_company: base !== 'plain', show_party: fam !== 'journal' && fam !== 'stock' && fam !== 'bank',
     show_amount_text: fam !== 'stock' && fam !== 'journal', show_totals: fam !== 'journal', show_payments: fam === 'settle' || fam === 'cash' || scope === 'HS' || scope === 'HP',
     show_notes: true, show_journal: fam === 'journal', signatures: SIGN[fam], footer: '', min_rows: small ? 0 : base === 'cont' ? 12 : 8,
+    // แบบไม่มีเส้น (พิมพ์ลงกระดาษที่มีหัวแล้ว) และกระดาษต่อเนื่อง ไม่พิมพ์โลโก้
+    logo: base === 'plain' || base === 'cont' ? 'none' : 'left', logo_mm: base === 'half' ? 12 : 18, signature_images: [],
   };
 }
 
@@ -140,6 +152,9 @@ export function normalizeLayout(scope: string, base: PrintBase, raw: unknown): P
     show_totals: bool(x.show_totals, def.show_totals), show_payments: bool(x.show_payments, def.show_payments), show_notes: bool(x.show_notes, def.show_notes),
     show_journal: bool(x.show_journal, def.show_journal), signatures: list(x.signatures, 4, def.signatures), footer: str(x.footer, 300, ''),
     min_rows: Math.min(40, Math.max(0, Math.trunc(Number(x.min_rows ?? def.min_rows)) || 0)),
+    logo: PRINT_LOGO_POS.some((p) => p.key === x.logo) ? (x.logo as PrintLogoPos) : def.logo,
+    logo_mm: Number.isFinite(Number(x.logo_mm)) ? Math.min(40, Math.max(6, Number(x.logo_mm))) : def.logo_mm,
+    signature_images: (Array.isArray(x.signature_images) ? x.signature_images : []).slice(0, 4).map((v) => (typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v) ? v : null)),
   };
 }
 

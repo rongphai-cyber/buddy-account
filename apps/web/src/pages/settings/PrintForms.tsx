@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { DOC_CLASSES, normalizeLayout, PRINT_BASES, PRINT_HEAD_FIELDS, printFamily, type PrintBase, type PrintFormEntry, type PrintLayout } from '@buddy/core';
+import { DOC_CLASSES, normalizeLayout, PRINT_BASES, PRINT_LOGO_POS, PRINT_HEAD_FIELDS, printFamily, type PrintBase, type PrintFormEntry, type PrintLayout } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
 import { Confirm, ErrorBox, Field, PageHead, toast, useHotkeys, useYearSystem } from '../../ui';
 import { PrintSheet, type PrintData } from '../../components/DocPrint';
+import { CompanyImagesPanel, useCompanyImages } from '../../components/CompanyImages';
 
 type FormsResp = { menu: PrintFormEntry[]; custom: Array<{ slot: number; name: string; base: string; status: string }>; sample: { kind: 'doc' | 'journal'; id: string } | null };
 const SCOPES = [...Object.entries(DOC_CLASSES).map(([k, v]) => ({ k, label: `${k} ${v.label}` })), { k: 'GL', label: 'GL ใบสำคัญ (สมุดรายวัน)' }];
@@ -46,6 +47,8 @@ export function PrintFormsPage() {
   const heads = PRINT_HEAD_FIELDS.filter((f) => !f.families || f.families.includes(fam));
   const preview: PrintFormEntry | null = useMemo(() => (L ? { slot, name, base, layout: L, custom: true } : null), [L, slot, name, base]);
   const sampleData: PrintData | undefined = sample.data?.data;
+  const { images } = useCompanyImages();
+  const signList = Object.entries(images.signs);
 
   const save = async () => {
     if (!L || !can('edit')) return;
@@ -80,6 +83,7 @@ export function PrintFormsPage() {
         {!can('edit') && <span className="muted small">ดูได้อย่างเดียว — แก้แบบฟอร์มต้องระดับอนุมัติ 9</span>}
       </div>
       <ErrorBox error={err ?? forms.error} />
+      <CompanyImagesPanel />
       {L && <div className="pf-layout">
         <div className="pf-side">
           <div className="form-grid">
@@ -90,6 +94,8 @@ export function PrintFormsPage() {
             <Field label="สำเนาที่พิมพ์ (คั่นด้วย ,)" wide hint="เช่น ต้นฉบับ, สำเนา — หนึ่งแผ่นต่อคำ ว่าง = แผ่นเดียว"><input defaultValue={L.copies.join(', ')} key={`c${slot}${scope}${L.copies.join()}`} onBlur={(e) => set({ copies: list(e.target.value) })} /></Field>
             <Field label="ขนาดอักษร (pt)"><input type="number" min={7} max={16} value={L.font_pt} onChange={(e) => set({ font_pt: Number(e.target.value) || 10 })} /></Field>
             <Field label="บรรทัดขั้นต่ำในตาราง" hint="เติมบรรทัดว่างให้สูงเท่ากันทุกใบ"><input type="number" min={0} max={40} value={L.min_rows} onChange={(e) => set({ min_rows: Number(e.target.value) || 0 })} /></Field>
+            <Field label="โลโก้บริษัท" hint={images.logo ? undefined : 'ยังไม่มีโลโก้ — อัปโหลดด้านบน'}><select value={L.logo} onChange={(e) => set({ logo: e.target.value as PrintLayout['logo'] })}>{PRINT_LOGO_POS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></Field>
+            <Field label="ความสูงโลโก้ (มม.)"><input type="number" min={6} max={40} value={L.logo_mm} disabled={L.logo === 'none'} onChange={(e) => set({ logo_mm: Number(e.target.value) || 18 })} /></Field>
             <Field label="แสดงในเมนูพิมพ์"><select value={status} onChange={(e) => { setStatus(e.target.value as 'A' | 'I'); setDirty(true); }}><option value="A">แสดง</option><option value="I">ซ่อนหมายเลขนี้</option></select></Field>
           </div>
           <h3 className="small">ส่วนที่พิมพ์</h3>
@@ -111,12 +117,15 @@ export function PrintFormsPage() {
             </tr>)}</tbody></table>
           <div className="form-grid" style={{ marginTop: 10 }}>
             <Field label="ช่องลงชื่อ (คั่นด้วย ,)" wide hint="สูงสุด 4 ช่อง"><input defaultValue={L.signatures.join(', ')} key={`s${slot}${scope}${L.signatures.join()}`} onBlur={(e) => set({ signatures: list(e.target.value) })} /></Field>
+            {L.signatures.map((s, i) => <Field key={`sg${i}${s}`} label={`รูปลายเซ็นช่อง "${s}"`} hint={signList.length ? undefined : 'เพิ่มรูปลายเซ็นด้านบนก่อน'}>
+              <select value={L.signature_images[i] ?? ''} onChange={(e) => { const arr = L.signatures.map((_, k) => L.signature_images[k] ?? null); arr[i] = e.target.value || null; set({ signature_images: arr }); }}>
+                <option value="">— เว้นว่างให้เซ็นมือ —</option>{signList.map(([id, x]) => <option key={id} value={id}>{x.name}</option>)}</select></Field>)}
             <Field label="ข้อความท้ายเอกสาร" wide><input value={L.footer} maxLength={300} placeholder="เช่น สินค้าซื้อแล้วไม่รับคืน" onChange={(e) => set({ footer: e.target.value })} /></Field>
           </div>
         </div>
         <div className="pf-preview">
           <p className="muted small">{sampleData ? `ตัวอย่างจากเอกสารล่าสุด ${sampleData.doc_no}` : sample.isLoading ? 'กำลังโหลดตัวอย่าง…' : 'ยังไม่มีเอกสารชนิดนี้ — ตัวอย่างจะแสดงเมื่อมีเอกสาร'}</p>
-          {sampleData && preview && <div className="ds-preview"><PrintSheet data={sampleData} form={preview} ys={ys} /></div>}
+          {sampleData && preview && <div className="ds-preview"><PrintSheet data={sampleData} form={preview} ys={ys} images={images} /></div>}
         </div>
       </div>}
       {askDel && <Confirm title="กลับไปใช้ต้นแบบ" danger text={`ลบแบบฟอร์มของบริษัท ${scope} หมายเลข ${slot} (${cur?.name ?? ''})?`} okText="ลบ" onOk={remove} onClose={() => setAskDel(false)} />}

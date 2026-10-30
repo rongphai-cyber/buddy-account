@@ -3427,3 +3427,47 @@ describe('สมุดรายวัน: ภาษีซื้อ/ขาย/ห
     expect((await sql<{ s: string }>`SELECT string_agg(DISTINCT doc_status, ',') AS s FROM tax_wht_entry WHERE journal_id = ${r.body.id}`.execute(database.db)).rows[0]!.s).toBe('C');
   });
 });
+
+describe('โลโก้และลายเซ็นในแบบฟอร์มพิมพ์ (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  it('logo and named signatures: upload, used in print data, validation, deletion wipes the image, other tenants cannot see them', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('PUT', '/api/v1/company-images/logo', { data: 'data:image/gif;base64,R0lGODlh' })).status).toBe(400);
+    expect((await call('PUT', '/api/v1/company-images/logo', { data: 'data:image/png;base64,' + Buffer.from('not a png').toString('base64') })).body.error.message).toMatch(/ไม่ใช่รูป/);
+    expect((await call('PUT', '/api/v1/company-images/logo', { data: 'data:image/png;base64,' + Buffer.alloc(400 * 1024).toString('base64') })).status).toBe(400);
+    expect((await call('PUT', '/api/v1/company-images/logo', { data: PNG })).status).toBe(200);
+    expect((await call('PUT', '/api/v1/company-images/logo', { data: PNG })).status).toBe(200);   // แทนรูปเดิม
+    const s1 = await call('POST', '/api/v1/company-images/signs', { name: 'กรรมการผู้จัดการ', data: PNG });
+    expect(s1.status).toBe(200);
+    expect((await call('POST', '/api/v1/company-images/signs', { name: 'กรรมการผู้จัดการ', data: PNG })).body.error.message).toMatch(/มีลายเซ็นชื่อ/);
+    const list = (await call('GET', '/api/v1/company-images')).body as Array<{ kind: string; name: string; data: string }>;
+    expect(list.map((x) => `${x.kind}:${x.name}`)).toEqual(['LOGO:LOGO', 'SIGN:กรรมการผู้จัดการ']);
+    const jid = (await sql<{ id: string }>`SELECT id FROM gl_journal WHERE company_id = ${co} AND deleted_at IS NULL LIMIT 1`.execute(database.db)).rows[0]!.id;
+    const pr = (await call('GET', `/api/v1/print/journal/${jid}`)).body;
+    expect(pr.images.logo).toBe(PNG);
+    expect(pr.images.signs[s1.body.id].name).toBe('กรรมการผู้จัดการ');
+    expect(pr.forms[0].layout).toMatchObject({ logo: 'left', logo_mm: 18, signature_images: [] });
+    // แบบฟอร์มเลือกรูปลายเซ็นให้ช่องลงชื่อ (รหัสที่ไม่ใช่ uuid ถูกตัดทิ้ง)
+    expect((await call('PUT', '/api/v1/print-forms/GL/1', { name: 'ใบสำคัญมีลายเซ็น', base: 'grid', status: 'A', layout: { logo: 'center', logo_mm: 99, signatures: ['ผู้จัดทำ', 'ผู้อนุมัติ'], signature_images: ['bad', s1.body.id] } })).status).toBe(200);
+    const f1 = (await call('GET', `/api/v1/print/journal/${jid}`)).body.forms.find((f: { slot: number }) => f.slot === 1);
+    expect(f1.layout).toMatchObject({ logo: 'center', logo_mm: 40, signature_images: [null, s1.body.id] });
+    await call('DELETE', '/api/v1/print-forms/GL/1');
+    // ลูกค้าอื่นมองไม่เห็น/ลบไม่ได้
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    const bCo = (await call('GET', '/api/v1/auth/me')).body.companies[0].id;
+    await call('POST', '/api/v1/auth/select', { company_id: bCo });
+    expect((await call('GET', '/api/v1/company-images')).body).toEqual([]);
+    expect((await call('DELETE', `/api/v1/company-images/${s1.body.id}`)).status).toBe(404);
+    // ลบแล้วรูปถูกล้าง (ลายเซ็นเป็นข้อมูลส่วนบุคคล)
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('DELETE', `/api/v1/company-images/${s1.body.id}`)).status).toBe(200);
+    expect((await sql<{ data: string }>`SELECT data FROM sys_company_image WHERE id = ${s1.body.id}`.execute(database.db)).rows[0]!.data).toBe('');
+    expect((await call('GET', '/api/v1/company-images')).body.map((x: { kind: string }) => x.kind)).toEqual(['LOGO']);
+  });
+});

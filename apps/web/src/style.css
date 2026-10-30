@@ -687,3 +687,17 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
   .label-print .lbl-cell { border: 0 !important; }
   .label-print .labels.l-envelope .lbl-cell { page: labels-dl; break-after: page; margin: 0; }
 }
+
+/* โลโก้และลายเซ็นในเอกสารพิมพ์ (ข้อกำหนดเจ้าของ 30/10/2569) */
+.doc-sheet .ds-logo { display: block; max-width: 60mm; object-fit: contain; flex: none; }
+.doc-sheet .ds-logo-c { text-align: center; margin-bottom: 2mm; }
+.doc-sheet .ds-logo-c img { max-width: 90mm; object-fit: contain; }
+.doc-sheet .ds-sign-img { display: block; height: 12mm; max-width: 45mm; margin: 0 auto -2mm; object-fit: contain; }
+.ci-panel { margin: 8px 0 12px; padding: 10px 14px; }
+.ci-panel summary { cursor: pointer; }
+.ci-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.ci-box { border: 1px solid var(--line); border-radius: 8px; padding: 8px; width: 210px; display: flex; flex-direction: column; gap: 6px; background: var(--bg, #fff); }
+.ci-img { max-height: 70px; max-width: 100%; object-fit: contain; align-self: flex-start; background: repeating-conic-gradient(#f2f2f2 0 25%, #fff 0 50%) 0 0 / 12px 12px; }
+.ci-empty { height: 70px; display: grid; place-items: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 6px; }
+.ci-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.ci-acts .btn { display: inline-block; cursor: pointer; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bar); }

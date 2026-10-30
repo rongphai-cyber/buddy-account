@@ -582,6 +582,41 @@ COMMENT ON COLUMN sys_print_form.deleted_at IS 'ลบแบบ soft delete (Exp
 COMMENT ON COLUMN sys_print_form.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_sys_print_form_company_scope_slot ON sys_print_form (company_id, scope, slot) WHERE deleted_at IS NULL;
 
+-- sys_company_image: รูปของบริษัทสำหรับพิมพ์เอกสาร: โลโก้ และลายเซ็นผู้มีอำนาจ (ข้อกำหนดเจ้าของ 30/10/2569) — PNG/JPEG ไม่เกิน 300 KB  [Express: (ใหม่)]
+CREATE TABLE sys_company_image (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  kind varchar(10) NOT NULL CHECK (kind IN ('LOGO','SIGN')),
+  name varchar(120) NOT NULL,
+  mime varchar(30) NOT NULL,
+  data text NOT NULL,
+  bytes integer NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_company_image IS 'รูปของบริษัทสำหรับพิมพ์เอกสาร: โลโก้ และลายเซ็นผู้มีอำนาจ (ข้อกำหนดเจ้าของ 30/10/2569) — PNG/JPEG ไม่เกิน 300 KB | Express: (ใหม่)';
+COMMENT ON COLUMN sys_company_image.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_company_image.company_id IS 'บริษัท';
+COMMENT ON COLUMN sys_company_image.kind IS 'LOGO=โลโก้บริษัท SIGN=ลายเซ็น';
+COMMENT ON COLUMN sys_company_image.name IS 'ชื่อ เช่น ลายเซ็นกรรมการผู้จัดการ (โลโก้ = LOGO)';
+COMMENT ON COLUMN sys_company_image.mime IS 'image/png หรือ image/jpeg';
+COMMENT ON COLUMN sys_company_image.data IS 'รูป (base64)';
+COMMENT ON COLUMN sys_company_image.bytes IS 'ขนาดแฟ้ม (ไบต์)';
+COMMENT ON COLUMN sys_company_image.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN sys_company_image.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN sys_company_image.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN sys_company_image.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN sys_company_image.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN sys_company_image.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN sys_company_image.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_sys_company_image_company_kind_name ON sys_company_image (company_id, kind, name) WHERE deleted_at IS NULL;
+
 -- sys_report_custom: รายงานที่ผู้ใช้สร้างจากรายงานต้นฉบับ (เงื่อนไข + คอลัมน์ที่แสดง)  [Express: สร้างรายงานใหม่ (บทที่ 25 S-RD-03/04)]
 CREATE TABLE sys_report_custom (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -4191,6 +4226,12 @@ ALTER TABLE sys_print_form ADD CONSTRAINT fk_sys_print_form_created_by FOREIGN K
 CREATE INDEX IF NOT EXISTS ix_fk_sys_print_form_created_by ON sys_print_form (created_by);
 ALTER TABLE sys_print_form ADD CONSTRAINT fk_sys_print_form_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_print_form_updated_by ON sys_print_form (updated_by);
+ALTER TABLE sys_company_image ADD CONSTRAINT fk_sys_company_image_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_company_image_company_id ON sys_company_image (company_id);
+ALTER TABLE sys_company_image ADD CONSTRAINT fk_sys_company_image_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_company_image_created_by ON sys_company_image (created_by);
+ALTER TABLE sys_company_image ADD CONSTRAINT fk_sys_company_image_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_company_image_updated_by ON sys_company_image (updated_by);
 ALTER TABLE sys_report_custom ADD CONSTRAINT fk_sys_report_custom_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_report_custom_company_id ON sys_report_custom (company_id);
 ALTER TABLE sys_report_custom ADD CONSTRAINT fk_sys_report_custom_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -5104,6 +5145,7 @@ CREATE TRIGGER trg_sys_device_ver BEFORE UPDATE ON sys_device FOR EACH ROW EXECU
 CREATE TRIGGER trg_sys_setting_ver BEFORE UPDATE ON sys_setting FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_setting_def_ver BEFORE UPDATE ON sys_setting_def FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_print_form_ver BEFORE UPDATE ON sys_print_form FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_sys_company_image_ver BEFORE UPDATE ON sys_company_image FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_report_custom_ver BEFORE UPDATE ON sys_report_custom FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_gl_fiscal_year_ver BEFORE UPDATE ON gl_fiscal_year FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_gl_period_ver BEFORE UPDATE ON gl_period FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
@@ -5190,6 +5232,7 @@ CREATE TRIGGER trg_sys_device_log AFTER INSERT OR UPDATE ON sys_device FOR EACH 
 CREATE TRIGGER trg_sys_setting_log AFTER INSERT OR UPDATE ON sys_setting FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_setting_def_log AFTER INSERT OR UPDATE ON sys_setting_def FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_print_form_log AFTER INSERT OR UPDATE ON sys_print_form FOR EACH ROW EXECUTE FUNCTION sync_log_change();
+CREATE TRIGGER trg_sys_company_image_log AFTER INSERT OR UPDATE ON sys_company_image FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_report_custom_log AFTER INSERT OR UPDATE ON sys_report_custom FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_gl_fiscal_year_log AFTER INSERT OR UPDATE ON gl_fiscal_year FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_gl_period_log AFTER INSERT OR UPDATE ON gl_period FOR EACH ROW EXECUTE FUNCTION sync_log_change();
@@ -5264,6 +5307,7 @@ CREATE TRIGGER trg_sys_device_del AFTER DELETE ON sys_device FOR EACH ROW EXECUT
 CREATE TRIGGER trg_sys_setting_del AFTER DELETE ON sys_setting FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sys_setting_def_del AFTER DELETE ON sys_setting_def FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sys_print_form_del AFTER DELETE ON sys_print_form FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_company_image_del AFTER DELETE ON sys_company_image FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sys_report_custom_del AFTER DELETE ON sys_report_custom FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_gl_fiscal_year_del AFTER DELETE ON gl_fiscal_year FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_gl_period_del AFTER DELETE ON gl_period FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
@@ -5333,6 +5377,7 @@ CREATE TRIGGER trg_sys_permission_rid BEFORE INSERT ON sys_permission FOR EACH R
 CREATE TRIGGER trg_sys_device_rid BEFORE INSERT ON sys_device FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_setting_rid BEFORE INSERT ON sys_setting FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_print_form_rid BEFORE INSERT ON sys_print_form FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_company_image_rid BEFORE INSERT ON sys_company_image FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_report_custom_rid BEFORE INSERT ON sys_report_custom FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_api_key_rid BEFORE INSERT ON sys_api_key FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_pdpa_request_rid BEFORE INSERT ON sys_pdpa_request FOR EACH ROW EXECUTE FUNCTION sync_row_id();
