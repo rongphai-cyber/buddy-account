@@ -323,7 +323,12 @@ export function TradeFormPage({ path }: { path: string }) {
       // มีภาษีซื้อ: เปิดรายการในแฟ้มภาษีซื้อให้ตรวจเลขที่/วันที่ใบกำกับทันที (แบบ Express)
       if (VAT_KIND_OF[K.cls] === 'P' && !K.order && calc && !d(calc.vat_amount).isZero() && h.vat_basis !== '2') setVatCheck(r.id);
       if (andNew) { setH(null); setLines([]); setPays([]); setDeps({}); setWhts([]); setWhtAmt(''); nav(`${K.route}/new`, { replace: true }); }
-      else if (!id) nav(`${K.route}/${r.id}`, { replace: true });
+      else {
+        // แสดงเอกสารตามที่บันทึกจริง (ค่าที่ระบบเติมให้ เช่น คลังหลัก) — โหลดใหม่จาก server
+        if (id) await qc.refetchQueries({ queryKey: [K.path, 'one', id] });
+        setH(null); setLines([]);
+        if (!id) nav(`${K.route}/${r.id}`, { replace: true });
+      }
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const cancelDoc = async () => {
