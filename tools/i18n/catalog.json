@@ -518,7 +518,7 @@
 },
 {
 "th": "เอกสาร",
-"n": 30,
+"n": 31,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -757,21 +757,6 @@
 ]
 },
 {
-"th": "ค่าใช้จ่าย",
-"n": 22,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts"
-]
-},
-{
 "th": "ชื่อบัญชี",
 "n": 22,
 "files": [
@@ -856,6 +841,21 @@
 ]
 },
 {
+"th": "ค่าใช้จ่าย",
+"n": 21,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts"
+]
+},
+{
 "th": "ธนาคาร",
 "n": 21,
 "files": [
@@ -868,22 +868,6 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/server/src/import/express/migrate.ts",
 "packages/core/src/menu.ts"
-]
-},
-{
-"th": "รายได้",
-"n": 21,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -932,6 +916,22 @@
 "apps/web/src/pages/settings/Permissions.tsx",
 "apps/web/src/pages/tax/Wht50.tsx",
 "apps/server/src/modules/permissions.ts"
+]
+},
+{
+"th": "รายได้",
+"n": 20,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -2796,6 +2796,17 @@
 ]
 },
 {
+"th": "ใบวางบิล",
+"n": 6,
+"files": [
+"apps/server/src/modules/docs/engine.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "ใบสำคัญที่ลงบัญชี",
 "n": 6,
 "files": [
@@ -3456,16 +3467,6 @@
 ]
 },
 {
-"th": "ใบวางบิล",
-"n": 5,
-"files": [
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts"
-]
-},
-{
 "th": "ไม่พบ{0}นี้",
 "n": 5,
 "files": [
@@ -4078,6 +4079,14 @@
 "packages/core/src/doc-calc.ts",
 "packages/core/src/gl-link.ts",
 "packages/core/src/sync.ts"
+]
+},
+{
+"th": "ใบเบิกชดเชย",
+"n": 4,
+"files": [
+"apps/server/src/modules/docs/engine.ts",
+"apps/server/src/modules/docs/pettycash.ts"
 ]
 },
 {
@@ -5299,13 +5308,6 @@
 ]
 },
 {
-"th": "ใบเบิกชดเชย",
-"n": 3,
-"files": [
-"apps/server/src/modules/docs/pettycash.ts"
-]
-},
-{
 "th": "ไม่พบ",
 "n": 3,
 "files": [
@@ -6051,6 +6053,13 @@
 "files": [
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "ชื่อ (ไม่มีรหัส)",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx"
 ]
 },
 {
@@ -12245,13 +12254,6 @@
 ]
 },
 {
-"th": "{0}เล็กน้อยไม่ต้องระบุ — ป้อนชื่อด้านล่างได้",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx"
-]
-},
-{
 "th": "{0}แล้ว — แก้ไขไม่ได้",
 "n": 1,
 "files": [
@@ -12823,6 +12825,13 @@
 "n": 1,
 "files": [
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "การรับ/จ่ายชำระ",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
 ]
 },
 {
@@ -16025,13 +16034,6 @@
 ]
 },
 {
-"th": "ชื่อ (ไม่มีรหัส)",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx"
-]
-},
-{
 "th": "ชื่อ ข้อมูลติดต่อผู้ใช้บริการ",
 "n": 1,
 "files": [
@@ -17978,6 +17980,13 @@
 ]
 },
 {
+"th": "ต้องมีรหัสหรือชื่อ{0}",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/cashdocs.ts"
+]
+},
+{
 "th": "ต้องมีสิทธิ์ยกเลิก (ผู้ใช้ระดับ 5 ขึ้นไป)",
 "n": 1,
 "files": [
@@ -18297,6 +18306,13 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ทะเบียนทรัพย์สินที่ขายด้วยเอกสารนี้",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
 ]
 },
 {
@@ -20775,6 +20791,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/OpeningDocs.tsx"
+]
+},
+{
+"th": "บิลที่หักมัดจำ",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
+"th": "บิลที่อ้างใบสั่งนี้",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
 ]
 },
 {
@@ -23897,6 +23927,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "ยกเลิก {0} ไม่ได้ — มี{1} {2} อ้างถึงอยู่ ต้องแก้ไขหรือยกเลิก/ลบ {3} ก่อน",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
 ]
 },
 {
@@ -28079,7 +28116,7 @@
 ]
 },
 {
-"th": "ลบ {0} ไม่ได้ — {1} ยังอ้างถึงเอกสารนี้ (ยกเลิกหรือลบ {2} ก่อน)",
+"th": "ลบ {0} ไม่ได้ — มี{1} {2} อ้างถึงอยู่ ต้องแก้ไขหรือยกเลิก/ลบ {3} ก่อน",
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/engine.ts"
@@ -32811,6 +32848,13 @@
 ]
 },
 {
+"th": "เช็คในใบนำฝาก",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
 "th": "เช่น",
 "n": 1,
 "files": [
@@ -35184,6 +35228,13 @@
 ]
 },
 {
+"th": "เลือกรหัส{0} หรือคีย์ชื่อ{1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/cashdocs.ts"
+]
+},
+{
 "th": "เลือกรหัสลูกค้า หรือป้อนผู้สั่งจ่าย",
 "n": 1,
 "files": [
@@ -35569,7 +35620,7 @@
 ]
 },
 {
-"th": "เอกสาร {0} มีการรับ/จ่ายชำระแล้ว — ยกเลิกใบเสร็จ/ใบสำคัญจ่ายที่ตัดเอกสารนี้ก่อน",
+"th": "เอกสาร {0} มีการรับ/จ่ายชำระแล้ว ({1}) — แก้ไขหรือยกเลิกใบเสร็จ/ใบสำคัญจ่าย {2} ที่ตัดเอกสารนี้ก่อน",
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/engine.ts"
@@ -37557,6 +37608,13 @@
 ]
 },
 {
+"th": "ใบลด/เพิ่มหนี้ที่อ้างใบกำกับนี้",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
 "th": "ใบลดหนี้",
 "n": 1,
 "files": [
@@ -37610,6 +37668,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "ใบสั่งขายที่แปลงจากใบนี้",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
 ]
 },
 {
@@ -38621,6 +38686,13 @@
 ]
 },
 {
+"th": "ไม่มีรหัส: คีย์ชื่อ{0}ในช่อง \"ชื่อ (ไม่มีรหัส)\" — ต้องมีอย่างใดอย่างหนึ่ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx"
+]
+},
+{
 "th": "ไม่มีรหัสคู่ค้า",
 "n": 1,
 "files": [
@@ -39045,6 +39117,13 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "ไม่ได้เลือกรหัส{0} — คีย์ชื่อ{1}ในช่องนี้ (ต้องมีรหัสหรือชื่ออย่างใดอย่างหนึ่ง) · มีรหัส กด Shift+Enter กลับไปค้นหา",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx"
 ]
 },
 {

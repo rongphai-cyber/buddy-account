@@ -958,10 +958,13 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     // ยกเลิก: ต้องมีเหตุผล · สถานะ C · ใบสำคัญ C · หายจากลูกหนี้คงค้าง
     expect((await call('POST', `/api/v1/sales-invoices/${r.body.id}/cancel`, { reason: '' })).status).toBe(400);
+    // กฎเหล็ก (ข้อกำหนดเจ้าของ): ใบลดหนี้ยังอ้างใบกำกับนี้อยู่ → ยกเลิก/ลบไม่ได้ ต้องจัดการใบลดหนี้ก่อน
+    expect((await call('POST', `/api/v1/sales-invoices/${r.body.id}/cancel`, { reason: 'ป้อนผิด' })).body.error.message).toMatch(new RegExp(`ใบลด/เพิ่มหนี้.*${c1.body.doc_no}.*ก่อน`));
+    expect((await call('POST', `/api/v1/ar-credit-notes/${c1.body.id}/cancel`, { reason: 'ป้อนผิด' })).status).toBe(200);
     expect((await call('POST', `/api/v1/sales-invoices/${r.body.id}/cancel`, { reason: 'ป้อนผิด' })).status).toBe(200);
     expect((await call('GET', `/api/v1/sales-invoices/${r.body.id}`)).body).toMatchObject({ doc_status: 'C', editable: false });
     expect((await call('PUT', `/api/v1/sales-invoices/${r.body.id}`, iv)).body.error.message).toMatch(/ยกเลิกแล้ว/);
-    expect((await call('GET', `/api/v1/customers/${cus}`)).body.balance).toBe('-1070.00');   // เหลือใบลดหนี้
+    expect((await call('GET', `/api/v1/customers/${cus}`)).body.balance).toBe('0.00');
   });
 
   it('receipts/payments (T3.5): settle bills + credit note, WHT/discount/interest, cheques, edit, cancel, WHT register, isolation', async () => {
@@ -1538,6 +1541,30 @@ describe('Buddy Account API (PGlite)', () => {
     expect([pp2['1'], pp2['3']]).toEqual(['2300.00', '900.00']);
     expect((await call('POST', `/api/v1/sales-invoices/${ex.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect((await call('POST', `/api/v1/sales-invoices/${iv3.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
+  it('iron rule (ข้อกำหนดเจ้าของ): a document used by another active document cannot be cancelled or deleted; other expense needs supplier code or name', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const line = [{ item_id: cpu, qty: 1, unit_price: 100 }];
+    // ใบเสนอราคาที่แปลงเป็นใบสั่งขายแล้ว
+    const qt = (await call('POST', '/api/v1/quotations', { doc_type_id: await typeOf('QT'), doc_date: '2027-08-12', party_id: cus, price_type: '2', vat_rate: 7, lines: line })).body;
+    const so = (await call('POST', `/api/v1/quotations/${qt.id}/convert`, { doc_date: '2027-08-12' })).body;
+    expect((await call('POST', `/api/v1/quotations/${qt.id}/cancel`, { reason: 'x' })).body.error.message).toMatch(new RegExp(`ยกเลิก ${qt.doc_no} ไม่ได้.*${so.doc_no}.*ก่อน`));
+    expect((await call('POST', `/api/v1/docs/doc/${qt.id}/delete`, { reason: 'x' })).body.error.message).toMatch(/ยกเลิกเอกสาร.*ก่อน/);
+    // ใบกำกับที่อยู่ในใบวางบิล
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: await typeOf('IV'), doc_date: '2027-08-12', party_id: cus, price_type: '2', vat_rate: 7, lines: line })).body;
+    const bs = (await call('POST', '/api/v1/ar-bills', { doc_type_id: await typeOf('BS'), doc_date: '2027-08-13', party_id: cus, items: [{ invoice_header_id: iv.id }] })).body;
+    expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'x' })).body.error.message).toMatch(new RegExp(`ใบวางบิล ${bs.doc_no}`));
+    // จัดการเอกสารที่อ้างถึงก่อน แล้วจึงยกเลิกได้
+    expect((await call('POST', `/api/v1/ar-bills/${bs.id}/cancel`, { reason: 'x' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/sales-orders/${so.id}/cancel`, { reason: 'x' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/quotations/${qt.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    // ค่าใช้จ่ายอื่น: ไม่มีทั้งรหัสและชื่อผู้จำหน่าย → บันทึกไม่ได้
+    const exp = (await call('GET', '/api/v1/other-expenses?q=95-5300-01')).body.rows[0].id;
+    expect((await call('POST', '/api/v1/other-expense-docs', { doc_type_id: await typeOf('OE'), doc_date: '2027-08-12', price_type: '0', vat_rate: 0, lines: [{ item_id: exp, amount: 50 }] })).body.error.message).toMatch(/รหัสผู้จำหน่าย หรือคีย์ชื่อ/);
   });
 
   it('executive dashboard (RP.DASH): sales/AR/cash/aging from live documents, filters, isolation', async () => {
@@ -3082,7 +3109,8 @@ describe('Buddy Account API (PGlite)', () => {
     const run = (await call('GET', `/api/v1/fs/run?layout_id=${r.body.id}&end=2026-12-31`)).body;
     expect(run.headers[0]).toBe('บริษัท ทดสอบ จำกัด');
     const vals = run.rows.filter((x: { kind: string }) => x.kind === 'value').map((x: { values: string[] }) => x.values[0]);
-    expect(vals).toEqual(['1005000.25', '1005000.25']);
+    // T3.3 ยกเลิกใบลดหนี้ก่อนใบกำกับ (กฎเหล็กการยกเลิก) → สินค้าที่รับคืน 6,000 ยกเลิกตาม
+    expect(vals).toEqual(['999000.25', '999000.25']);
     expect(accts.length).toBeGreaterThan(0);
   });
 

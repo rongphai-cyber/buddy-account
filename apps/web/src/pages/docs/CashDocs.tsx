@@ -201,6 +201,11 @@ export function CashFormPage({ path }: { path: string }) {
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const cancelled = cur.data?.doc_status === 'C';
+  // รายได้/ค่าใช้จ่ายอื่น: ต้องมีรหัสคู่ค้าหรือชื่อ (ข้อกำหนดเจ้าของ — Enter ห้ามปล่อยผ่าน) · ไม่มีรหัส → ไปช่องชื่อ
+  const noPartyEnter = (el: HTMLInputElement) => {
+    const name = el.closest('.col')?.querySelector<HTMLInputElement>('input[data-noparty-name]');
+    if (name) { name.focus(); toast(`ไม่ได้เลือกรหัส${partyWord(K)} — คีย์ชื่อ${partyWord(K)}ในช่องนี้ (ต้องมีรหัสหรือชื่ออย่างใดอย่างหนึ่ง) · มีรหัส กด Shift+Enter กลับไปค้นหา`, 'warn', name); }
+  };
   const docNo = id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '');
   return (
     <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone={TONE(K)} style={bookStyle(tColor)}>
@@ -224,10 +229,11 @@ export function CashFormPage({ path }: { path: string }) {
       {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col">
-            <Field label={`รหัส${partyWord(K)}`} req={K.partyRequired} hint={K.partyRequired ? undefined : `${K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}เล็กน้อยไม่ต้องระบุ — ป้อนชื่อด้านล่างได้`}>
-              <SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required={K.partyRequired} disabled={ro} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
+            <Field label={`รหัส${partyWord(K)}`} req hint={K.partyRequired ? undefined : `ไม่มีรหัส: คีย์ชื่อ${partyWord(K)}ในช่อง "ชื่อ (ไม่มีรหัส)" — ต้องมีอย่างใดอย่างหนึ่ง`}>
+              <SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required={K.partyRequired} disabled={ro}
+                onEmptyEnter={K.partyRequired ? undefined : (el) => noPartyEnter(el)} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
                 onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
-            {!h.party && !K.partyRequired && <Field label="ชื่อ (ไม่มีรหัส)"><input value={h.party_name} maxLength={200} disabled={ro} onChange={(e) => set({ party_name: e.target.value })} /></Field>}
+            {!h.party && !K.partyRequired && <Field label="ชื่อ (ไม่มีรหัส)" req><input value={h.party_name} data-noparty-name maxLength={200} disabled={ro} onChange={(e) => set({ party_name: e.target.value })} /></Field>}
             {K.module === 'AP' && <Field label="เลขที่บิล / ลงวันที่" hint="ใบกำกับภาษีที่ได้รับจากผู้จำหน่าย"><div className="pair"><input value={h.ref_no} maxLength={30} disabled={ro} onChange={(e) => set({ ref_no: e.target.value })} aria-label="เลขที่บิล" /><DateInput value={h.ref_date} disabled={ro} onChange={(v) => set({ ref_date: v })} /></div></Field>}
             <Field label={K.deposit ? 'หมายเหตุสั้น' : 'คำอธิบาย/อ้างอิง'}><input value={h.your_ref} maxLength={60} disabled={ro} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
             {K.module === 'AR' && <Field label="พนักงานขาย"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></Field>}

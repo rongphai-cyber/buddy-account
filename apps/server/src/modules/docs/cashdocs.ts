@@ -35,6 +35,7 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
   if (!id && dt.status !== 'A') throw badRequest('ประเภทเอกสารนี้เลิกใช้แล้ว');
   const word = K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย';
   if (K.partyRequired && !b.party_id) throw badRequest(`เลือก${word}`, [{ field: 'party_id', message: `เลือก${word}` }]);
+  if (!b.party_id && !b.party_name?.trim()) throw badRequest(`เลือกรหัส${word} หรือคีย์ชื่อ${word}`, [{ field: 'party_id', message: `ต้องมีรหัสหรือชื่อ${word}` }]);
   const partyTbl = K.party === 'customer' ? 'md_customer' : 'md_supplier';
   const party = b.party_id ? await db.selectFrom(partyTbl).select(['id', 'code', 'title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no', 'status', 'credit_days']).where('id', '=', b.party_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : null;
   if (b.party_id && !party) throw badRequest(`ไม่พบ${word}นี้`);

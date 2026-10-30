@@ -187,7 +187,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
                 {lines.map((l, i) => (
                   <tr key={l.key}>
                     <td className="muted">{i + 1}</td>
-                    <td><AccountCell value={l.account_id} disabled={ro} onChange={(a) => setLine(l.key, { account_id: a?.id ?? null })} aria-label={`เลขที่บัญชี ${i + 1}`} /></td>
+                    <td><AccountCell value={l.account_id} disabled={ro} required={!!l.amount || !lines.some((x) => x.account_id && x.key !== l.key)} onChange={(a) => setLine(l.key, { account_id: a?.id ?? null })} aria-label={`เลขที่บัญชี ${i + 1}`} /></td>
                     <td className="small">{acctName(l.account_id)}</td>
                     <td><select value={l.department_id} disabled={ro} onChange={(e) => setLine(l.key, { department_id: e.target.value })} aria-label="แผนก"><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === l.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></td>
                     <td><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /></td>

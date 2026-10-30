@@ -208,5 +208,19 @@
  "มูลค่าขายที่ได้รับยกเว้น": "VAT-exempt sales",
  "มูลค่าที่เสียภาษี (อัตรา 7%)": "Taxable amount (7%)",
  "ยกเว้น VAT": "VAT exempt",
- "รายการที่เลือก VAT = 2 อัตรา 0% — ภาษี 0 บาท แสดงในรายงานภาษีขายช่องอัตราศูนย์": "Lines with VAT 2 (zero-rated) — VAT 0 baht, shown in the zero-rate column of the sales VAT report"
+ "รายการที่เลือก VAT = 2 อัตรา 0% — ภาษี 0 บาท แสดงในรายงานภาษีขายช่องอัตราศูนย์": "Lines with VAT 2 (zero-rated) — VAT 0 baht, shown in the zero-rate column of the sales VAT report",
+ "การรับ/จ่ายชำระ": "receipt/payment",
+ "ต้องมีรหัสหรือชื่อ{0}": "{0} code or name is required",
+ "ทะเบียนทรัพย์สินที่ขายด้วยเอกสารนี้": "asset sold by this document",
+ "บิลที่หักมัดจำ": "bill deducting this deposit",
+ "บิลที่อ้างใบสั่งนี้": "bill referring to this order",
+ "ยกเลิก {0} ไม่ได้ — มี{1} {2} อ้างถึงอยู่ ต้องแก้ไขหรือยกเลิก/ลบ {3} ก่อน": "Cannot cancel {0} — {1} {2} still refers to it; edit, cancel or delete {3} first",
+ "ลบ {0} ไม่ได้ — มี{1} {2} อ้างถึงอยู่ ต้องแก้ไขหรือยกเลิก/ลบ {3} ก่อน": "Cannot delete {0} — {1} {2} still refers to it; edit, cancel or delete {3} first",
+ "เช็คในใบนำฝาก": "cheque in deposit slip",
+ "เลือกรหัส{0} หรือคีย์ชื่อ{1}": "Choose a {0} code or type the {1} name",
+ "เอกสาร {0} มีการรับ/จ่ายชำระแล้ว ({1}) — แก้ไขหรือยกเลิกใบเสร็จ/ใบสำคัญจ่าย {2} ที่ตัดเอกสารนี้ก่อน": "Document {0} has been paid ({1}) — edit or cancel the receipt/payment voucher {2} that settles it first",
+ "ใบลด/เพิ่มหนี้ที่อ้างใบกำกับนี้": "credit/debit note referring to this invoice",
+ "ใบสั่งขายที่แปลงจากใบนี้": "sales order converted from this quotation",
+ "ไม่มีรหัส: คีย์ชื่อ{0}ในช่อง \"ชื่อ (ไม่มีรหัส)\" — ต้องมีอย่างใดอย่างหนึ่ง": "No code: type the {0} name in \"Name (no code)\" — one of the two is required",
+ "ไม่ได้เลือกรหัส{0} — คีย์ชื่อ{1}ในช่องนี้ (ต้องมีรหัสหรือชื่ออย่างใดอย่างหนึ่ง) · มีรหัส กด Shift+Enter กลับไปค้นหา": "No {0} code selected — type the {1} name here (a code or a name is required) · to search a code press Shift+Enter"
 }
