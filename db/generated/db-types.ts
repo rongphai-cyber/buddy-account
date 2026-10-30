@@ -48,6 +48,51 @@ export interface SysTenantTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** ใบสมัครใช้งานจากหน้าสมัครเอง (ข้อกำหนดเจ้าของ 30/10/2569) — ผู้ให้บริการอนุมัติแล้วสร้างลูกค้าผู้ใช้บริการ + ผู้ดูแลคนแรก */
+export interface SysSignupTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** ชื่อกิจการ/ร้านที่สมัคร */
+  business_name: string;
+  /** ชื่อผู้สมัคร (ผู้ติดต่อ) */
+  contact_name: string;
+  /** อีเมลผู้ติดต่อ */
+  contact_email: string;
+  /** โทรศัพท์ผู้ติดต่อ */
+  contact_phone: string;
+  /** รหัสผู้ใช้ที่ขอ (ผู้ดูแลคนแรกของลูกค้า) */
+  username: string;
+  /** รหัสผ่านที่ตั้ง (bcrypt) — ล้างทิ้งเมื่ออนุมัติ/ไม่อนุมัติแล้ว */
+  password_hash: Gen<string | null>;
+  /** เวลาที่ยอมรับเงื่อนไขการใช้บริการและข้อตกลงข้อมูลส่วนบุคคล */
+  accepted_terms_at: string;
+  /** IP ที่ส่งใบสมัคร (กันสแปม) */
+  client_ip: Gen<string | null>;
+  /** P=รออนุมัติ A=อนุมัติแล้ว R=ไม่อนุมัติ */
+  status: Gen<string>;
+  /** ลูกค้าผู้ใช้บริการที่สร้างจากใบสมัครนี้ */
+  tenant_id: Gen<string | null>;
+  /** ผู้อนุมัติ/ไม่อนุมัติ (ว่าง = อนุมัติอัตโนมัติ) */
+  decided_by: Gen<string | null>;
+  /** เวลาที่อนุมัติ/ไม่อนุมัติ */
+  decided_at: Gen<string | null>;
+  /** เหตุผลที่ไม่อนุมัติ */
+  reject_reason: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** บริษัท (หนึ่งฐานข้อมูลรองรับหลายบริษัท) */
 export interface SysCompanyTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -3744,6 +3789,7 @@ export interface SyncConflictTable {
 }
 export interface DB {
   sys_tenant: SysTenantTable;
+  sys_signup: SysSignupTable;
   sys_company: SysCompanyTable;
   sys_branch: SysBranchTable;
   sys_user: SysUserTable;

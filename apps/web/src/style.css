@@ -749,3 +749,15 @@ td.img-cell { padding-top: 2px; padding-bottom: 2px; }
 .mod-item.off { background: var(--surface-2); border-style: dashed; }
 .mod-item.off b { color: var(--muted); }
 .mod-off { color: var(--bad); font-size: 12px; font-weight: 600; }
+
+/* สมัครใช้งานเอง (ข้อกำหนดเจ้าของ 30/10/2569) */
+.login.signup .login-card { width: min(560px, 100%); }
+.hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.login-card .terms { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; background: var(--surface-2); font-size: 13px; }
+.login-card .terms summary { cursor: pointer; font-weight: 600; }
+.login-card .terms ul { margin: 6px 0 2px; padding-left: 18px; }
+.su-panel { padding: 10px 14px; margin-bottom: 14px; }
+.su-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+.su-head h2 { margin: 0; }
+.login-card label.chk { white-space: normal; align-items: flex-start; line-height: 1.45; }
+.su-head select { width: auto; min-width: 140px; flex: none; }

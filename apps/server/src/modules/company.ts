@@ -12,6 +12,7 @@ import { logActivity } from '../audit.js';
 import { markPasswordChanged, setSec } from './security.js';
 import { purgeTenant } from './pdpa.js';
 import { modulesOff } from './permissions.js';
+import { createTenantWithAdmin } from './signup.js';
 import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, setSetting } from '../company-template.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
@@ -283,9 +284,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const a = requirePlatform(req);
     const b = parse(tenantBody.extend({ admin_username: userBody.shape.username, admin_name: userBody.shape.display_name, admin_password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })) }), req.body);
     return db.transaction().execute(async (tx) => {
-      const t = await tx.insertInto('sys_tenant').values({ code: b.code, name: b.name, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, plan: b.plan, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, status: b.status, dpa_signed_on: b.dpa_signed_on ?? null, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
-      const g = await tx.insertInto('sys_user_group').values({ tenant_id: t.id, code: 'ADMIN', name: 'ผู้ดูแลระบบของลูกค้า', created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
-      await tx.insertInto('sys_user').values({ tenant_id: t.id, username: b.admin_username, display_name: b.admin_name, password_hash: await bcrypt.hash(b.admin_password, 10), user_group_id: g.id, approval_level: 9, created_by: a.userId }).execute();
+      const t = await createTenantWithAdmin(tx, a.userId, { ...b, admin_username: b.admin_username, admin_name: b.admin_name, password_hash: await bcrypt.hash(b.admin_password, 10) });
       await logActivity(tx, a, { module: 'SYS', action: 'NEW_TENANT', table: 'sys_tenant', rowId: t.id, detail: { code: b.code } });
       return t;
     });

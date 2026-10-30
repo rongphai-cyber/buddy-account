@@ -3,9 +3,13 @@ import { api, ApiError } from '../api';
 import { useSession } from '../session';
 import { PASSWORD_RULE } from '@buddy/core';
 import { ErrorBox, Field, navKey } from '../ui';
+import { useNavigate } from 'react-router-dom';
+import { useSignupMode } from './Signup';
 
 export function LoginPage() {
   const { refresh } = useSession();
+  const signup = useSignupMode();
+  const nav = useNavigate();
   const [f, setF] = useState({ username: '', password: '' });
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -47,6 +51,7 @@ export function LoginPage() {
         <Field label="รหัสผ่าน" req><input type="password" autoComplete="current-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} data-noenter onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), go())} /></Field>
         <button className="primary" type="submit" disabled={busy}>{busy ? 'กำลังเข้าระบบ…' : 'เข้าสู่ระบบ'}</button>
         <p className="hint">Enter ไปช่องถัดไป · ลืมรหัสผ่านให้ผู้ดูแลระบบตั้งรหัสใหม่ให้</p>
+        {signup && signup !== 'off' && <button type="button" className="link" onClick={() => nav('/signup')}>ยังไม่มีบัญชี? สมัครใช้งาน</button>}
       </form>
     </div>
   );

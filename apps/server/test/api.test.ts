@@ -21,6 +21,8 @@ const tid = (n: number) => { const b = `0105560${String(n).padStart(5, '0')}`; r
 
 let database: Database;
 let app: FastifyInstance;
+/** ค่าตั้งของแอปทดสอบ (ชุดสมัครใช้งานสลับโหมดได้ระหว่างทดสอบ) */
+let appCfg: ReturnType<typeof loadConfig>;
 let cookie = '';
 
 async function call(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, body?: unknown) {
@@ -43,6 +45,7 @@ beforeAll(async () => {
   process.env.BUDDY_REQUIRE_ADMIN_2FA = '0';   // ทดสอบบังคับ 2FA แยกในชุด T0.16
   process.env.BUDDY_SECRET_KEY ??= Buffer.alloc(32, 7).toString('base64');   // ไม่แตะแฟ้มกุญแจจริงใน .data
   const cfg = { ...loadConfig({}), databaseUrl: undefined, dataDir: 'memory://' };
+  appCfg = cfg;
   database = await openDatabase(cfg);
   await migrate(database, cfg.migrationsDir, () => {});
   app = await buildApp(database, cfg);
@@ -3737,5 +3740,68 @@ describe('ปิดบางระบบทั้งบริษัท (ข้�
     expect((await call('PUT', '/api/v1/company/modules', { off: [] })).status).toBe(200);
     expect((await call('GET', '/api/v1/purchase-orders')).body).toEqual(poBefore);
     expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND action = 'SET_MODULES'`.execute(database.db)).rows[0]!.n).toBe(3);
+  });
+});
+
+describe('สมัครใช้งานเอง (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
+  const form = (n: string, extra: object = {}) => ({ business_name: `ร้านทดสอบ ${n}`, contact_name: `คุณ ${n}`, contact_email: `${n}@example.com`, contact_phone: '081-234-5678', username: n, password: 'Signup-Pass99', accept_terms: true, ...extra });
+  it('review mode: validation + anti-spam, staff approve/reject, login only after approval, PDPA wipe, auto/off modes', async () => {
+    cookie = '';
+    expect((await call('GET', '/api/v1/signup/config')).body).toEqual({ mode: 'review' });
+    expect((await call('POST', '/api/v1/signup', form('su.one', { accept_terms: false }))).body.error.message).toMatch(/ยอมรับเงื่อนไข/);
+    expect((await call('POST', '/api/v1/signup', form('su.one', { password: '123' }))).status).toBe(400);
+    expect((await call('POST', '/api/v1/signup', form('su.one', { contact_phone: '12' }))).body.error.message).toMatch(/เบอร์โทรศัพท์/);
+    expect((await call('POST', '/api/v1/signup', form('su.one', { website: 'http://spam' }))).status).toBe(400);   // ช่องดักบอท
+    expect((await call('POST', '/api/v1/signup', form('admin'))).body.error.message).toMatch(/มีผู้ใช้แล้ว/);
+    const s1 = await call('POST', '/api/v1/signup', form('su.one'));
+    expect(s1.status).toBe(200); expect(s1.body).toMatchObject({ status: 'P', username: 'su.one' });
+    expect((await call('POST', '/api/v1/signup', form('SU.ONE', { contact_email: 'x1@example.com' }))).status).toBe(409);   // รหัสซ้ำกับใบที่รออนุมัติ
+    expect((await call('POST', '/api/v1/signup', form('su.other', { contact_email: 'su.one@example.com' }))).body.error.message).toMatch(/อีเมลนี้ส่งใบสมัครไว้แล้ว/);
+    expect((await call('POST', '/api/v1/auth/login', { username: 'su.one', password: 'Signup-Pass99' })).status).toBe(401);   // ยังไม่อนุมัติ
+    expect((await call('POST', '/api/v1/signup', form('su.two'))).status).toBe(200);
+    // ผู้ใช้ของลูกค้า (ไม่ใช่เจ้าหน้าที่ผู้ให้บริการ) ดู/อนุมัติไม่ได้
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/signups')).status).toBe(403);
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const list = (await call('GET', '/api/v1/signups')).body;
+    expect(list.mode).toBe('review');
+    const one = list.rows.find((r: { username: string }) => r.username === 'su.one'), two = list.rows.find((r: { username: string }) => r.username === 'su.two');
+    expect(one).toMatchObject({ business_name: 'ร้านทดสอบ su.one', status: 'P' }); expect(one.password_hash).toBeUndefined();
+    const ap = await call('POST', `/api/v1/signups/${one.id}/approve`, { max_companies: 2 });
+    expect(ap.status).toBe(200); expect(ap.body.code).toBe('SUONE');
+    expect((await call('POST', `/api/v1/signups/${one.id}/approve`, {})).body.error.message).toMatch(/พิจารณาไปแล้ว/);
+    const t = (await sql<{ name: string; max_companies: number; dpa_signed_on: string | null; contact_email: string }>`SELECT name, max_companies, dpa_signed_on::text, contact_email FROM sys_tenant WHERE id = ${ap.body.tenant_id}`.execute(database.db)).rows[0]!;
+    expect(t).toMatchObject({ name: 'ร้านทดสอบ su.one', max_companies: 2, contact_email: 'su.one@example.com' }); expect(t.dpa_signed_on).toBeTruthy();
+    expect((await sql<{ h: string | null }>`SELECT password_hash AS h FROM sys_signup WHERE id = ${one.id}`.execute(database.db)).rows[0]!.h).toBeNull();
+    expect((await call('POST', `/api/v1/signups/${two.id}/reject`, { reason: '' })).status).toBe(400);
+    expect((await call('POST', `/api/v1/signups/${two.id}/reject`, { reason: 'ข้อมูลติดต่อไม่ครบ' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/signups/${two.id}/approve`, {})).status).toBe(400);
+    // ผู้สมัครที่อนุมัติแล้วเข้าระบบได้ด้วยรหัสผ่านที่ตั้งเอง เป็นผู้ดูแลของลูกค้าตัวเอง ยังไม่มีบริษัท
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'su.one', password: 'Signup-Pass99' })).status).toBe(200);
+    const me = (await call('GET', '/api/v1/auth/me')).body;
+    expect(me.user).toMatchObject({ is_admin: true, is_platform: false, tenant_id: ap.body.tenant_id }); expect(me.companies).toEqual([]);
+    expect((await call('GET', '/api/v1/tenants')).status).toBe(403);
+    expect((await call('POST', '/api/v1/auth/login', { username: 'su.two', password: 'Signup-Pass99' })).status).toBe(401);
+    // ไม่เกิน 5 ใบต่อ IP ต่อชั่วโมง
+    cookie = '';
+    for (const n of ['su.c', 'su.d', 'su.e']) expect((await call('POST', '/api/v1/signup', form(n))).status).toBe(200);
+    expect((await call('POST', '/api/v1/signup', form('su.f'))).body.error.message).toMatch(/บ่อยเกินไป/);
+    await sql`UPDATE sys_signup SET created_at = now() - interval '2 hours'`.execute(database.db);
+    // อนุมัติอัตโนมัติ → เข้าระบบได้ทันที · ปิดรับสมัคร → หน้าสมัครใช้ไม่ได้
+    appCfg.signup = 'auto';
+    expect((await call('POST', '/api/v1/signup', form('su.auto'))).body).toMatchObject({ status: 'A' });
+    expect((await call('POST', '/api/v1/auth/login', { username: 'su.auto', password: 'Signup-Pass99' })).status).toBe(200);
+    cookie = '';
+    appCfg.signup = 'off';
+    expect((await call('GET', '/api/v1/signup/config')).body).toEqual({ mode: 'off' });
+    expect((await call('POST', '/api/v1/signup', form('su.off'))).status).toBe(404);
+    appCfg.signup = 'review';
+    // PDPA: ใบที่ไม่อนุมัติครบ 90 วัน ล้างข้อมูลติดต่อ
+    await sql`UPDATE sys_signup SET decided_at = now() - interval '100 days' WHERE id = ${two.id}`.execute(database.db);
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/signups?status=R')).body.rows.find((r: { id: string }) => r.id === two.id)).toMatchObject({ contact_email: '-', contact_name: '-', client_ip: null, reject_reason: 'ข้อมูลติดต่อไม่ครบ' });
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action IN ('SIGNUP', 'SIGNUP_REJECT')`.execute(database.db)).rows[0]!.n).toBe(7);
   });
 });

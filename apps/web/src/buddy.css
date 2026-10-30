@@ -46,7 +46,7 @@
 .period-cell { flex-direction: column; align-items: flex-start; gap: 0; padding: 8px 10px; border-left: 3px solid var(--ok); }
 .period-cell.locked { background: var(--surface-2); border-left-color: var(--bad); }
 .period-cell b { font-size: 16px; }
-.login { min-height: 100%; display: grid; place-items: center; background: var(--bar); padding: 16px; }
+.login { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; background: var(--bar); padding: 16px; }
 .login-card { width: min(400px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 26px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 40px rgba(60, 40, 120, 0.12); }
 .login-brand { display: flex; flex-direction: column; margin-bottom: 4px; }
 .login-brand b { font-size: 24px; color: var(--accent); }

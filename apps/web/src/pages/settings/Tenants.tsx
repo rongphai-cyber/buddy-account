@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { useSession } from '../../session';
+import { SignupsPanel } from './Signups';
 import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, Pill, toast, useHotkeys } from '../../ui';
 
 interface Tenant { id: string; code: string; name: string; contact_email: string | null; contact_phone: string | null; plan: string; max_companies: number | null; max_users: number | null; expires_on: string | null; status: string; company_count: number; user_count: number;
@@ -21,6 +22,7 @@ export function TenantsPage() {
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › ลูกค้าผู้ใช้บริการ" title="ลูกค้าผู้ใช้บริการ" lead="ลูกค้าแต่ละรายเห็นเฉพาะบริษัท ผู้ใช้ และข้อมูลของตัวเอง — ระงับแล้วผู้ใช้ทุกคนของลูกค้ารายนั้นออกจากระบบทันที · เลิกใช้บริการแล้ว 90 วันลบข้อมูลได้ (PDPA)"
         actions={<><button onClick={() => setImporting(true)}>⬆ รับลูกค้าที่ย้ายมา…</button><button className="primary" onClick={() => setEdit('new')}>+ เพิ่มลูกค้า <kbd>Ins</kbd></button></>} />
+      <SignupsPanel onApproved={() => qc.invalidateQueries({ queryKey: ['tenants'] })} />
       <ErrorBox error={q.error} />
       <div className="table-wrap">
         <table className="grid">

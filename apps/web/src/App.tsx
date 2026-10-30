@@ -6,6 +6,7 @@ import type { Me } from './api';
 import { cx, DateInput, Modal, Toasts, toastError, useHotkeys } from './ui';
 import { MenuSearch } from './components/MenuSearch';
 import { LoginPage, SetupPage } from './pages/Login';
+import { SignupPage } from './pages/Signup';
 import { HomePage } from './pages/Home';
 import { AccountsPage } from './pages/gl/Accounts';
 import { JournalsPage } from './pages/gl/Journals';
@@ -79,9 +80,12 @@ const PHASE_TH: Record<string, string> = { P0: 'ฐานระบบ', P1: 'บ
 
 export function App() {
   const { me, loading, needsSetup } = useSession();
+  const loc = useLocation();
+  const nav = useNavigate();
   if (loading) return <div className="boot">กำลังเปิด Buddy Account…</div>;
   if (needsSetup) return <><SetupPage /><Toasts /></>;
-  if (!me) return <><LoginPage /><Toasts /></>;
+  // สมัครใช้งานเอง (ข้อกำหนดเจ้าของ): ลิงก์ /signup เปิดได้โดยไม่ต้องเข้าระบบ
+  if (!me) return <>{loc.pathname === '/signup' ? <SignupPage onBack={() => nav('/')} /> : <LoginPage />}<Toasts /></>;
   if (me.user.mfa_setup_required) return <><MfaRequiredPage /><Toasts /></>;
   return <><Shell /><AuxTools /><Toasts /></>;
 }
