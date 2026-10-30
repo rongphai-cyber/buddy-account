@@ -46,6 +46,32 @@ async function checkTax(db: Db, companyId: string, taxId: string | null, branch:
   return { tax_id: taxId ? taxId.replace(/[\s-]/g, '') : null, tax_branch_no: branch ? branch.padStart(5, '0') : null };
 }
 
+/**
+ * เลขผู้เสียภาษีซ้ำ (ข้อกำหนดเจ้าของ 30/10/2569): เลข + สาขาเดียวกันในลูกค้า (หรือผู้จำหน่าย) ที่ยังใช้อยู่ = ห้าม
+ * กรณีอื่นแค่เตือน — เลขเดียวกันคนละสาขา, ซ้ำกับรายการที่เลิกใช้แล้ว, คู่ค้าที่เป็นทั้งลูกค้าและผู้จำหน่าย
+ * ตรวจเฉพาะตอนเพิ่มใหม่หรือเปลี่ยนเลข/สาขา — ข้อมูลเดิมที่ซ้ำอยู่แล้ว (เช่น ย้ายจาก Express) ยังแก้ช่องอื่นได้
+ */
+async function checkTaxDup(db: Db, companyId: string, kind: 'C' | 'S', id: string | null, tax: { tax_id: string | null; tax_branch_no: string | null },
+  prev?: { tax_id: string | null; tax_branch_no: string | null }): Promise<string[]> {
+  if (!tax.tax_id) return [];
+  const br = tax.tax_branch_no ?? '00000';
+  if (prev && prev.tax_id === tax.tax_id && (prev.tax_branch_no ?? '00000') === br) return [];
+  const [tbl, other, who, otherWho] = kind === 'C' ? ['md_customer', 'md_supplier', 'ลูกค้า', 'ผู้จำหน่าย'] as const : ['md_supplier', 'md_customer', 'ผู้จำหน่าย', 'ลูกค้า'] as const;
+  const same = await db.selectFrom(tbl).select(['id', 'code', 'name', 'status', 'tax_branch_no']).where('company_id', '=', companyId).where('deleted_at', 'is', null)
+    .where('tax_id', '=', tax.tax_id).where('id', '<>', id ?? '00000000-0000-0000-0000-000000000000').orderBy('code').execute();
+  const brOf = (x: { tax_branch_no: string | null }) => x.tax_branch_no ?? '00000';
+  const hit = same.find((x) => brOf(x) === br && x.status !== 'I');
+  if (hit) throw conflict(`เลขผู้เสียภาษี ${tax.tax_id} สาขา ${br} ใช้กับ${who} ${hit.code} ${hit.name} แล้ว — ถ้าเป็นรายเดียวกันให้ใช้รหัสเดิม ถ้าเป็นคนละสาขาให้ใส่เลขสาขาให้ถูกต้อง (สำนักงานใหญ่ = 00000)`);
+  const warn: string[] = [];
+  const off = same.filter((x) => brOf(x) === br);
+  if (off.length) warn.push(`เลขผู้เสียภาษีและสาขาเดียวกับ${who}ที่เลิกใช้แล้ว: ${off.map((x) => x.code).join(', ')}`);
+  const oth = same.filter((x) => brOf(x) !== br);
+  if (oth.length) warn.push(`เลขผู้เสียภาษีเดียวกันมีอยู่ที่สาขาอื่น: ${oth.map((x) => `${x.code} (สาขา ${brOf(x)})`).join(', ')} — ตรวจว่าเลขสาขาถูกต้อง`);
+  const cross = await db.selectFrom(other).select(['code']).where('company_id', '=', companyId).where('deleted_at', 'is', null).where('tax_id', '=', tax.tax_id).orderBy('code').limit(5).execute();
+  if (cross.length) warn.push(`เลขผู้เสียภาษีนี้เป็น${otherWho}ด้วย: ${cross.map((x) => x.code).join(', ')} (ใช้ได้ ถ้าเป็นคู่ค้าที่ทั้งซื้อและขาย)`);
+  return warn;
+}
+
 /** บัญชีลูกหนี้/เจ้าหนี้ต้องเป็นบัญชีย่อยของบริษัทนี้ */
 export async function checkAccount(db: Db, companyId: string, id: string | null | undefined, field: string) {
   if (!id) return null;
@@ -165,8 +191,9 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
   async function saveCustomer(a: AuthContext & { companyId: string }, id: string | null, b: z.infer<typeof customerBody>) {
     const dup = await db.selectFrom('md_customer').select('id').where('company_id', '=', a.companyId).where('code', '=', b.code).where('deleted_at', 'is', null).executeTakeFirst();
     if (dup && dup.id !== id) throw conflict(`รหัสลูกค้า ${b.code} มีอยู่แล้ว`);
-    const prev = id ? await db.selectFrom('md_customer').select('tax_id').where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
+    const prev = id ? await db.selectFrom('md_customer').select(['tax_id', 'tax_branch_no']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const tax = await checkTax(db, a.companyId, b.tax_id, b.tax_branch_no, prev ? prev.tax_id : undefined);
+    const warnings = await checkTaxDup(db, a.companyId, 'C', id, tax, prev);
     await checkAccount(db, a.companyId, b.ar_account_id, 'ar_account_id');
     if (b.salesperson_id && !(await db.selectFrom('md_salesperson').select('id').where('id', '=', b.salesperson_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบพนักงานขายนี้');
     const codes = new Set<string>();
@@ -188,7 +215,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
       if (ship_tos.length) await tx.insertInto('md_customer_ship_to').values(ship_tos.map((s) => ({ ...s, company_id: a.companyId, customer_id: cid!, created_by: a.userId }))).execute();
       await saveContacts(tx, a, 'C', cid!, contacts);
       await logActivity(tx, a, { module: 'AR', action: id ? 'EDIT' : 'ADD', docNo: b.code, table: 'md_customer', rowId: cid, detail: id ? { before } : undefined });
-      return { id: cid };
+      return { id: cid, warnings };
     });
   }
   app.post('/api/v1/customers', async (req) => saveCustomer(requireCompany(req), null, parse(customerBody, req.body)));
@@ -243,8 +270,9 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
   async function saveSupplier(a: AuthContext & { companyId: string }, id: string | null, b: z.infer<typeof supplierBody>) {
     const dup = await db.selectFrom('md_supplier').select('id').where('company_id', '=', a.companyId).where('code', '=', b.code).where('deleted_at', 'is', null).executeTakeFirst();
     if (dup && dup.id !== id) throw conflict(`รหัสผู้จำหน่าย ${b.code} มีอยู่แล้ว`);
-    const prev = id ? await db.selectFrom('md_supplier').select('tax_id').where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
+    const prev = id ? await db.selectFrom('md_supplier').select(['tax_id', 'tax_branch_no']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const tax = await checkTax(db, a.companyId, b.tax_id, b.tax_branch_no, prev ? prev.tax_id : undefined);
+    const warnings = await checkTaxDup(db, a.companyId, 'S', id, tax, prev);
     await checkAccount(db, a.companyId, b.ap_account_id, 'ap_account_id');
     if (b.wht_rate !== null && (b.wht_rate < 0 || b.wht_rate > 100)) throw badRequest('อัตราภาษีที่หักต้องอยู่ระหว่าง 0–100%', [{ field: 'wht_rate', message: '0–100' }]);
     if (b.banks.filter((x) => x.is_default).length > 1) throw badRequest('บัญชีที่ใช้โอนเป็นประจำเลือกได้บัญชีเดียว');
@@ -264,7 +292,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
       if (banks.length) await tx.insertInto('md_supplier_bank').values(banks.map((x, i) => ({ ...x, line_no: i + 1, company_id: a.companyId, supplier_id: sid!, created_by: a.userId }))).execute();
       await saveContacts(tx, a, 'S', sid!, contacts);
       await logActivity(tx, a, { module: 'AP', action: id ? 'EDIT' : 'ADD', docNo: b.code, table: 'md_supplier', rowId: sid, detail: id ? { before } : undefined });
-      return { id: sid };
+      return { id: sid, warnings };
     });
   }
   app.post('/api/v1/suppliers', async (req) => saveSupplier(requireCompany(req), null, parse(supplierBody, req.body)));

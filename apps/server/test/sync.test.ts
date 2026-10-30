@@ -10,6 +10,10 @@ import { migrate } from '../src/migrate.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import { setSyncTransport, syncNow } from '../src/modules/sync/branch.js';
+import { taxIdCheckDigit } from '@buddy/core';
+/** เลขผู้เสียภาษีที่ถูกต้องและไม่ซ้ำกัน สำหรับคู่ค้าทดสอบ (เลข + สาขาซ้ำในบริษัทเดียวกันบันทึกไม่ได้) */
+const tid = (n: number) => { const b = `0105560${String(n).padStart(5, '0')}`; return b + taxIdCheckDigit(b); };
+
 
 type Call = (method: 'GET' | 'POST' | 'PUT', url: string, body?: unknown) => Promise<{ status: number; body: any }>;   // eslint-disable-line @typescript-eslint/no-explicit-any
 function client(app: () => FastifyInstance): Call & { logout: () => void } {
@@ -94,7 +98,7 @@ describe('ออฟไลน์สาขา (T7.8)', () => {
     const a = await B('POST', '/api/v1/cash-sales', hs('2026-06-16'));
     expect(a.status, JSON.stringify(a.body)).toBe(200);
     expect(a.body.doc_no).toBe('HS0000001');
-    const nc = await B('POST', '/api/v1/customers', { code: 'C-BR1', name: 'ลูกค้าใหม่ที่สาขา', tax_id: '0105537095903' });
+    const nc = await B('POST', '/api/v1/customers', { code: 'C-BR1', name: 'ลูกค้าใหม่ที่สาขา', tax_id: tid(11) });
     expect(nc.status).toBe(200);
     const iv = await B('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2026-06-17', party_id: nc.body.id, price_type: '2', vat_rate: 7, lines: [{ item_id: item, qty: 2, unit_price: 500 }] });
     expect(iv.status, JSON.stringify(iv.body)).toBe(200);

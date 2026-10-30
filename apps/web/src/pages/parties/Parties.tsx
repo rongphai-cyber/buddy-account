@@ -183,8 +183,9 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
     setErr(null); setBusy(true);
     const body = { ...f, ar_account_id: acc.ar, salesperson_id: acc.slm, ship_tos: ships.filter((s) => s.code.trim()), contacts: contacts.filter((c) => c.name.trim()) };
     try {
-      const r = id ? await api.put<{ id: string }>(`/api/v1/customers/${id}`, body) : await api.post<{ id: string }>('/api/v1/customers', body);
+      const r = id ? await api.put<{ id: string; warnings?: string[] }>(`/api/v1/customers/${id}`, body) : await api.post<{ id: string; warnings?: string[] }>('/api/v1/customers', body);
       toast(`บันทึกลูกค้า ${f.code} แล้ว`);
+      for (const w of r.warnings ?? []) toast(w, 'warn');
       qc.invalidateQueries({ queryKey: ['customer', id] }); qc.invalidateQueries({ queryKey: ['pick'] });
       onSaved({ id: id ?? r.id, code: String(f.code ?? '').trim() });
     } catch (e) { setErr(e); } finally { setBusy(false); }
@@ -314,8 +315,9 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
     setErr(null); setBusy(true);
     const body = { ...f, ap_account_id: ap, banks: banks.filter((b) => b.bank_code || b.account_no), contacts: contacts.filter((c) => c.name.trim()) };
     try {
-      const r = id ? await api.put<{ id: string }>(`/api/v1/suppliers/${id}`, body) : await api.post<{ id: string }>('/api/v1/suppliers', body);
+      const r = id ? await api.put<{ id: string; warnings?: string[] }>(`/api/v1/suppliers/${id}`, body) : await api.post<{ id: string; warnings?: string[] }>('/api/v1/suppliers', body);
       toast(`บันทึกผู้จำหน่าย ${f.code} แล้ว`);
+      for (const w of r.warnings ?? []) toast(w, 'warn');
       qc.invalidateQueries({ queryKey: ['supplier', id] }); qc.invalidateQueries({ queryKey: ['pick'] });
       onSaved({ id: id ?? r.id, code: String(f.code ?? '').trim() });
     } catch (e) { setErr(e); } finally { setBusy(false); }
