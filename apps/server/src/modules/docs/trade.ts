@@ -7,7 +7,7 @@ import { badRequest, notFound, parse, requireCompany, type AuthContext } from '.
 import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
-import { activeSettlement, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
+import { lineNoteFields, noteCols, activeSettlement, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
 import { checkWht, readMoneyParts, whtSchema, writeWht } from './payments.js';
 
@@ -34,6 +34,7 @@ export const tradeBody = z.object({
     source_line_id: optId, delivery_date: isoDate.nullable().optional(),
     /** ประเภท VAT รายบรรทัด (ข้อกำหนดเจ้าของ): 0 = ยกเว้น VAT · 1 = มี VAT · 2 = อัตรา 0% — ไม่ส่ง = ตามแฟ้มสินค้า · หน้าเอกสารมาก่อนแฟ้มสินค้า */
     vat_code: z.enum(['0', '1', '2']).nullable().optional(),
+    ...lineNoteFields,
   })).min(1, 'ป้อนรายการสินค้าอย่างน้อย 1 บรรทัด').max(500),
   payments: z.array(z.object({ payment_method_id: uuid, amount: num, reference_no: str(30) })).max(20).default([]),
   /** หักเงินมัดจำ (AI → บิลขาย, AE → บิลซื้อ) ยอดตามประเภทราคาของบิล */
@@ -208,7 +209,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
       department_id: l.department_id ?? header.department_id, qty: l.qty, unit_id: l.unit_id ?? byId.get(l.item_id)!.base_unit_id,
       factor: l.factor ?? '1', base_qty: d(l.qty).times(d(l.factor ?? 1)).abs().toString(), unit_price: l.is_free ? '0' : l.unit_price, discount_text: l.discount_text,
       discount_amount: calc.lines[i]!.discount_amount, line_amount: calc.lines[i]!.line_amount, net_amount: calc.lines[i]!.net_amount,
-      vat_code: lineVat(l), is_free: l.is_free, return_to_stock: l.return_to_stock, salesperson_id: b.salesperson_id, created_by: a.userId,
+      ...noteCols(l), vat_code: lineVat(l), is_free: l.is_free, return_to_stock: l.return_to_stock, salesperson_id: b.salesperson_id, created_by: a.userId,
       source_line_id: l.source_line_id, ordered_qty: K.order ? l.qty : null, delivery_date: K.order && K.cls !== 'QT' ? l.delivery_date ?? b.delivery_date ?? b.doc_date : null,
     }))).returning(['id', 'line_no']).execute();
     if (kitRows.length) {
@@ -310,7 +311,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       const h = await db.selectFrom('doc_header').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id').leftJoin('md_unit as u', 'u.id', 'l.unit_id')
-        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.source_line_id', 'l.delivery_date', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.unit_price', 'l.discount_text', 'l.discount_amount', 'l.line_amount', 'l.net_amount', 'l.vat_code', 'l.is_free', 'l.return_to_stock', 'l.department_id'])
+        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.source_line_id', 'l.delivery_date', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.unit_price', 'l.discount_text', 'l.discount_amount', 'l.line_amount', 'l.net_amount', 'l.vat_code', 'l.is_free', 'l.return_to_stock', 'l.department_id', 'l.line_note', 'l.line_note_print'])
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).where('l.line_kind', '<>', 'K').orderBy('l.line_no').execute();
       const payments = await db.selectFrom('doc_payment as p').leftJoin('md_payment_method as m', 'm.id', 'p.payment_method_id').select(['p.line_no', 'p.payment_method_id', 'm.code as method_code', 'm.name_th as method_name', 'p.amount', 'p.reference_no'])
         .where('p.header_id', '=', id).where('p.deleted_at', 'is', null).orderBy('p.line_no').execute();
@@ -381,7 +382,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
     if (qt.doc_status === 'C') throw badRequest('ใบเสนอราคานี้ถูกยกเลิกแล้ว');
     const soType = b.doc_type_id ?? (await db.selectFrom('md_doc_type').select('id').where('company_id', '=', a.companyId).where('doc_class', '=', 'SO').where('status', '=', 'A').where('deleted_at', 'is', null).orderBy('code').executeTakeFirst())?.id;
     if (!soType) throw badRequest('ยังไม่มีประเภทเอกสารใบสั่งขาย — เพิ่มที่ เริ่มระบบ › เลขที่เอกสาร');
-    const lines = await db.selectFrom('doc_line').select(['item_id', 'description', 'warehouse_id', 'qty', 'unit_id', 'factor', 'unit_price', 'discount_text', 'is_free', 'department_id', 'vat_code'])
+    const lines = await db.selectFrom('doc_line').select(['item_id', 'description', 'warehouse_id', 'qty', 'unit_id', 'factor', 'unit_price', 'discount_text', 'is_free', 'department_id', 'vat_code', 'line_note', 'line_note_print'])
       .where('header_id', '=', id).where('deleted_at', 'is', null).where('item_id', 'is not', null).where('line_kind', '<>', 'K').orderBy('line_no').execute();
     const K = TRADE_KINDS.find((k) => k.cls === 'SO')!;
     const so = await saveTrade(db, a, K, null, parse(tradeBody, {

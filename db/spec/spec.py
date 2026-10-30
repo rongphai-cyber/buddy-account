@@ -866,6 +866,8 @@ add(T('doc_line', 'บรรทัดรายการของเอกสา�
   C('net_amount', 'money', nn=True, d='0', th='มูลค่าสุทธิก่อน VAT (หลังเฉลี่ยส่วนลดท้ายบิล)', src='NETVAL'),
   C('vat_code', 'char1', th='ประเภท VAT รายบรรทัด (0=ยกเว้น 1=มี VAT 2=อัตรา 0%)', src='VATCOD'),
   C('is_free', 'bool', nn=True, d='false', th='ของแถม', src='FREE'),
+  C('line_note', 'text', th='หมายเหตุของรายการ (หลายบรรทัด คีย์ตอนคีย์รายการ — ข้อกำหนดเจ้าของ 30/10/2569)', src='ARTRNRM (บรรทัด)'),
+  C('line_note_print', 'bool', nn=True, d='false', th='พิมพ์หมายเหตุรายการใต้บรรทัดนี้ในเอกสาร'),
   C('return_to_stock', 'bool', th='รับคืน/ส่งคืนแล้วเข้าสต๊อก (ใบลดหนี้)', src='RETSTK'),
   C('stock_effect', 'smallint', nn=True, d='0', th='ผลต่อสต๊อก +1 รับเข้า −1 จ่ายออก 0 ไม่กระทบ', chk='stock_effect IN (-1,0,1)'),
   C('movement_code', 'char1', th='รหัสการเคลื่อนไหวเดิม (POSOPR: 0 ซื้อ 1 รับ/ปรับเพิ่ม 2 รับคืน 3 โอนออก 4 โอนเข้า 5 ปรับต้นทุน 6 เบิกใช้ 7 ส่งคืน 8 ปรับปรุง 9 ขาย : ตรวจนับ = เพิ่มหนี้ > คชจ.อื่น)', src='STCRD.POSOPR'),
@@ -924,6 +926,8 @@ add(T('doc_settlement', 'การตัดชำระหนี้ (ใบเ�
   C('express_rectype', 'char1', th='RECTYP ของเอกสารที่ถูกตัด', src='RECTYP'),
   C('amount', 'money', nn=True, th='ยอดที่ตัดชำระ', src='RCVAMT / PAYAMT'),
   C('vat_amount', 'money', nn=True, d='0', th='ภาษีที่ถึงกำหนด (เกณฑ์เงินสด)', src='VATAMT'),
+  C('line_note', 'text', th='หมายเหตุของรายการ (หลายบรรทัด คีย์ตอนคีย์รายการ — ข้อกำหนดเจ้าของ 30/10/2569)'),
+  C('line_note_print', 'bool', nn=True, d='false', th='พิมพ์หมายเหตุรายการใต้บรรทัดนี้ในเอกสาร'),
 ], uniq=[('payment_header_id','payment_journal_id','invoice_header_id')], idx=[('invoice_header_id',)],
  note='ต้องมี payment_header_id หรือ payment_journal_id อย่างใดอย่างหนึ่ง (CHECK)'))
 
@@ -1113,6 +1117,8 @@ add(T('gl_journal_line', 'รายการเดบิต/เครดิต�
   C('project_phase', 'code10', th='ขั้นตอนโครงการ', src='GLJNLIT.PHASE'),
   C('cost_code', 'code10', th='รหัสต้นทุน', src='GLJNLIT.COSCOD'),
   C('description', 'str200', th='คำอธิบายรายการ', src='GLJNLIT.DESCRP'),
+  C('line_note', 'text', th='หมายเหตุของรายการ (หลายบรรทัด คีย์ตอนคีย์รายการ — ข้อกำหนดเจ้าของ 30/10/2569)'),
+  C('line_note_print', 'bool', nn=True, d='false', th='พิมพ์หมายเหตุรายการใต้บรรทัดนี้ในเอกสาร'),
   C('bank_cleared_date', 'date', th='กระทบยอดธนาคาร: วันที่รายการปรากฏใน Bank statement (เฉพาะบรรทัดบัญชีเงินฝาก)'),
   C('debit', 'money', nn=True, d='0', th='เดบิต', src="GLJNLIT.AMOUNT เมื่อ TRNTYP='0'"),
   C('credit', 'money', nn=True, d='0', th='เครดิต', src="GLJNLIT.AMOUNT เมื่อ TRNTYP='1'"),

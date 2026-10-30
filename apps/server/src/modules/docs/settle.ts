@@ -6,7 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
-import { cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
+import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { branchOf, checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -20,7 +20,7 @@ const body = z.object({
   doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, payment_date: isoDate.nullable().optional(),
   party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'),
   department_id: optId, salesperson_id: optId, your_ref: str(60), remark: str(2000),
-  settlements: z.array(z.object({ invoice_header_id: uuid, amount: num, vat_amount: num.nullable().optional() }))
+  settlements: z.array(z.object({ invoice_header_id: uuid, amount: num, vat_amount: num.nullable().optional(), ...lineNoteFields }))
     .min(1, 'เลือกบิลที่จะตัดชำระอย่างน้อย 1 ใบ (F5 เลือกบิลค้าง)').max(500),
   interest_amount: num.default('0'), cash_discount_amount: num.default('0'), wht_amount: num.default('0'), fx_amount: num.default('0'),
   /** ว่าง = ส่วนที่เหลือหลังชำระโดยวิธีอื่นเป็นเงินสด */
@@ -113,7 +113,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     // express_rectype: รหัสรายการตัดแบบ Express (3 บิล 4 เพิ่มหนี้ 5 ลดหนี้) — เครื่องลงบัญชีใช้กลับเครื่องหมายใบลดหนี้
-    await tx.insertInto('doc_settlement').values(setts.map((s) => ({ company_id: a.companyId, payment_header_id: hid!, invoice_header_id: s.o.header_id, express_rectype: s.rectype, amount: s.amount, vat_amount: s.vat, created_by: a.userId }))).execute();
+    await tx.insertInto('doc_settlement').values(setts.map((s, i) => ({ company_id: a.companyId, payment_header_id: hid!, invoice_header_id: s.o.header_id, express_rectype: s.rectype, amount: s.amount, vat_amount: s.vat, ...noteCols(b.settlements[i]!), created_by: a.userId }))).execute();
     await writePayments(tx, a, { headerId: hid!, direction: K.direction, payDate, methods: mById, payments: b.payments, customerId: header.customer_id, supplierId: header.supplier_id, partyName: header.party_name, departmentId: header.department_id });
     await writeWht(tx, a, { headerId: hid!, docNo, payDate, wht: b.wht, supplierId: header.supplier_id, departmentId: header.department_id,
       payee: { name: header.party_name || party.code, address: header.party_address, tax_id: party.tax_id, branch_no: party.tax_branch_no } });
@@ -174,7 +174,7 @@ export function settleRoutes(app: FastifyInstance, db: Db) {
       if (!h) throw notFound(K.label);
       const partyId = (h.customer_id ?? h.supplier_id)!;
       const settlements = await db.selectFrom('doc_settlement as s').innerJoin('doc_header as i', 'i.id', 's.invoice_header_id')
-        .select(['s.invoice_header_id', 'i.doc_class', 'i.doc_no', 'i.doc_date', 'i.due_date', 'i.net_amount as invoice_amount', 's.amount', 's.vat_amount'])
+        .select(['s.invoice_header_id', 'i.doc_class', 'i.doc_no', 'i.doc_date', 'i.due_date', 'i.net_amount as invoice_amount', 's.amount', 's.vat_amount', 's.line_note', 's.line_note_print'])
         .where('s.payment_header_id', '=', id).where('s.deleted_at', 'is', null).orderBy('i.doc_date').orderBy('i.doc_no').execute();
       const open = new Map((await openItems(db, a.companyId, K, partyId, id, settlements.map((s) => s.invoice_header_id))).map((o) => [o.header_id, o.outstanding]));
       const { payments, wht } = await readMoneyParts(db, a.companyId, id);

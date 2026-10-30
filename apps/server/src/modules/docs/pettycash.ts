@@ -6,7 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
-import { cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
+import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { branchOf, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, writePayments } from './payments.js';
 
 /**
@@ -22,7 +22,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไ�
 
 const dpBody = z.object({
   doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
-  lines: z.array(z.object({ account_id: uuid, department_id: optId, description: str(200), amount: num })).min(1, 'ป้อนรายการที่จ่ายอย่างน้อย 1 บรรทัด').max(200),
+  lines: z.array(z.object({ account_id: uuid, department_id: optId, description: str(200), amount: num, ...lineNoteFields })).min(1, 'ป้อนรายการที่จ่ายอย่างน้อย 1 บรรทัด').max(200),
 });
 const vrBody = z.object({
   doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
@@ -73,7 +73,7 @@ async function saveDp(db: Db, a: Ctx, id: string | null, b: z.infer<typeof dpBod
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
-    await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: l.account_id, department_id: l.department_id, description: l.description,
+    await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: l.account_id, department_id: l.department_id, description: l.description, ...noteCols(l),
       line_amount: d(l.amount).toFixed(2), net_amount: d(l.amount).toFixed(2), stock_effect: 0, created_by: a.userId }))).execute();
     await logActivity(tx, a, { module: 'PC', action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
     return { id: hid, doc_no: docNo, net_amount: total };
@@ -157,7 +157,7 @@ export function pettyCashRoutes(app: FastifyInstance, db: Db) {
     const { id } = parse(z.object({ id: uuid }), req.params);
     const h = (await sql<Record<string, unknown> & { doc_status: string; vr_no: string | null }>`SELECT h.*, ${reimbursedBy('h')} AS vr_no, ${reimbursedId('h')} AS vr_id FROM doc_header h WHERE h.id = ${id} AND h.company_id = ${a.companyId} AND h.doc_class = 'DP' AND h.deleted_at IS NULL`.execute(db)).rows[0];
     if (!h) throw notFound('ใบจ่ายเงินสดย่อย');
-    const lines = await db.selectFrom('doc_line as l').leftJoin('gl_account as g', 'g.id', 'l.account_id').select(['l.line_no', 'l.account_id', 'g.account_no', 'g.name_th as account_name', 'l.department_id', 'l.description', 'l.net_amount as amount'])
+    const lines = await db.selectFrom('doc_line as l').leftJoin('gl_account as g', 'g.id', 'l.account_id').select(['l.line_no', 'l.account_id', 'g.account_no', 'g.name_th as account_name', 'l.department_id', 'l.description', 'l.line_note', 'l.line_note_print', 'l.net_amount as amount'])
       .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
     return { ...h, lines, editable: h.doc_status !== 'C' && !h.vr_no };
   });
@@ -190,7 +190,7 @@ export function pettyCashRoutes(app: FastifyInstance, db: Db) {
     const { id } = parse(z.object({ id: uuid }), req.params);
     const h = await db.selectFrom('doc_header').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', 'VR').where('deleted_at', 'is', null).executeTakeFirst();
     if (!h) throw notFound('ใบเบิกชดเชย');
-    const lines = await db.selectFrom('doc_line as l').leftJoin('gl_account as g', 'g.id', 'l.account_id').select(['l.line_no', 'l.account_id', 'g.account_no', 'g.name_th as account_name', 'l.department_id', 'l.description', 'l.net_amount as amount'])
+    const lines = await db.selectFrom('doc_line as l').leftJoin('gl_account as g', 'g.id', 'l.account_id').select(['l.line_no', 'l.account_id', 'g.account_no', 'g.name_th as account_name', 'l.department_id', 'l.description', 'l.line_note', 'l.line_note_print', 'l.net_amount as amount'])
       .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
     // DP ที่เบิก: ลิงก์ (ใหม่) หรือ ref_no = เลขที่ใบนี้ (ข้อมูลที่ย้ายมา)
     const dps = (await sql`SELECT p.id, p.doc_no, p.doc_date, p.remark, p.net_amount FROM doc_header p

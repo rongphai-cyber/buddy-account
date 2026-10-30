@@ -222,5 +222,22 @@
  "ใบลด/เพิ่มหนี้ที่อ้างใบกำกับนี้": "credit/debit note referring to this invoice",
  "ใบสั่งขายที่แปลงจากใบนี้": "sales order converted from this quotation",
  "ไม่มีรหัส: คีย์ชื่อ{0}ในช่อง \"ชื่อ (ไม่มีรหัส)\" — ต้องมีอย่างใดอย่างหนึ่ง": "No code: type the {0} name in \"Name (no code)\" — one of the two is required",
- "ไม่ได้เลือกรหัส{0} — คีย์ชื่อ{1}ในช่องนี้ (ต้องมีรหัสหรือชื่ออย่างใดอย่างหนึ่ง) · มีรหัส กด Shift+Enter กลับไปค้นหา": "No {0} code selected — type the {1} name here (a code or a name is required) · to search a code press Shift+Enter"
+ "ไม่ได้เลือกรหัส{0} — คีย์ชื่อ{1}ในช่องนี้ (ต้องมีรหัสหรือชื่ออย่างใดอย่างหนึ่ง) · มีรหัส กด Shift+Enter กลับไปค้นหา": "No {0} code selected — type the {1} name here (a code or a name is required) · to search a code press Shift+Enter",
+ "หมายเหตุรายการ{0}": "Line note{0}",
+ "(พิมพ์ใต้รายการ)": "(printed under the line)",
+ "(ไม่พิมพ์)": "(not printed)",
+ "ข้อความหมายเหตุรายการ": "Line note text",
+ "บันทึกหมายเหตุเอกสารแล้ว": "Document note saved",
+ "บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุเอกสารได้": "Save the document before adding a document note",
+ "พิมพ์หมายเหตุนี้ในเอกสาร (แสดงเป็นบรรทัดใต้รายการนี้)": "Print this note on the document (as a line under this item)",
+ "พิมพ์ใต้รายการ": "Printed under the line",
+ "หมายเหตุของทั้งเอกสาร — พิมพ์ในกล่องหมายเหตุด้านล่างของเอกสาร (Alt+R) · หมายเหตุรายการ คีย์ที่ปุ่ม 📝 ในบรรทัด (Alt+M)": "Note for the whole document — printed in the notes box at the bottom (Alt+R) · line notes: 📝 button on each line (Alt+M)",
+ "หมายเหตุของทั้งเอกสาร — พิมพ์ในกล่องหมายเหตุด้านล่างของเอกสาร · หมายเหตุของแต่ละรายการ คีย์ที่ปุ่ม 📝 ในบรรทัดรายการ (Alt+M)": "Note for the whole document — printed in the notes box at the bottom · notes for each line: 📝 button on the line (Alt+M)",
+ "หมายเหตุรายการ{0}: {1}": "Line note{0}: {1}",
+ "หมายเหตุรายการยาวเกิน 2,000 ตัวอักษร": "Line note is longer than 2,000 characters",
+ "หมายเหตุเอกสาร {0}": "Document note {0}",
+ "อธิบายรายการเพิ่มเติม (กด Enter ขึ้นบรรทัดใหม่ได้)": "Describe the line further (Enter starts a new line)",
+ "เพิ่มหมายเหตุรายการ (Alt+M)": "Add line note (Alt+M)",
+ "ไม่พิมพ์": "Not printed",
+ "📄 หมายเหตุเอกสาร": "📄 Document note"
 }

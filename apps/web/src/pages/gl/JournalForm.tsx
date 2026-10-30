@@ -10,6 +10,7 @@ import { CancelStamp } from '../../components/DocDelete';
 import { withPrefix } from '../../components/DocNo';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
+import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
 import { DocActions } from '../../components/DocPrint';
 import { JvChequeTab, JvVatTab, vatPayload, WhtTab, whtPayload, type VatDraft, type WhtDraft } from './JvLinks';
@@ -17,11 +18,11 @@ import { TemplateForm, templateToLines, useTemplates } from './Templates';
 import { JournalPicker } from '../../components/JournalPicker';
 
 const FIX_AT_SOURCE = ' — แก้ที่เอกสารต้นทาง';
-interface Line { key: number; account_id: string | null; department_id: string | null; description: string; debit: string; credit: string }
+interface Line { key: number; account_id: string | null; department_id: string | null; description: string; debit: string; credit: string; line_note?: string; line_note_print?: boolean }
 interface JournalDoc {
   id: string; voucher_no: string; voucher_date: string; description: string | null; reference: string | null; journal_book_id: string; doc_status: string; editable: boolean;
   source_module: string | null; source_header_id: string | null; source_doc_no: string | null; source_doc_class: string | null; created_at: string; updated_at: string; created_by_name: string | null;
-  lines: Array<{ account_id: string; department_id: string | null; description: string | null; debit: string; credit: string; account_no: string; account_name: string; posting_role: string | null; resolved_from: string | null }>;
+  lines: Array<{ account_id: string; department_id: string | null; description: string | null; debit: string; credit: string; line_note?: string | null; line_note_print?: boolean; account_no: string; account_name: string; posting_role: string | null; resolved_from: string | null }>;
 }
 let seq = 0;
 const blank = (): Line => ({ key: ++seq, account_id: null, department_id: null, description: '', debit: '', credit: '' });
@@ -62,6 +63,7 @@ export function JournalFormPage() {
   const [lines, setLines] = useState<Line[]>([blank(), blank()]);
   const [err, setErr] = useState<unknown>(null);
   const [tab, setTab] = useState('lines');
+  useLineNoteHotkey();
   const [cancelAsk, setCancelAsk] = useState(false);
   const [leaveAsk, setLeaveAsk] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -137,7 +139,7 @@ export function JournalFormPage() {
   useEffect(() => {
     if (!doc.data) return;
     setH({ journal_book_id: doc.data.journal_book_id, voucher_date: doc.data.voucher_date, description: doc.data.description ?? '', reference: doc.data.reference ?? '' });
-    setLines(doc.data.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: l.department_id, description: l.description ?? '', debit: d(l.debit).isZero() ? '' : l.debit, credit: d(l.credit).isZero() ? '' : l.credit })));
+    setLines(doc.data.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: l.department_id, description: l.description ?? '', line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, debit: d(l.debit).isZero() ? '' : l.debit, credit: d(l.credit).isZero() ? '' : l.credit })));
     setDirty(false);
   }, [doc.data]);
   useEffect(() => {
@@ -175,7 +177,7 @@ export function JournalFormPage() {
       if (gaps.length) { setTaxAsk({ andNew, gaps }); return; }
     }
     setErr(null); setBusy(true);
-    const body = { ...h, voucher_no: ownNo || (manualNo ? null : undefined), description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0' })),
+    const body = { ...h, voucher_no: ownNo || (manualNo ? null : undefined), description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
       ...(isNew ? { vat: drafts.vat.map(vatPayload), wht: drafts.wht.map(whtPayload) } : {}) };
     try {
       const r = isNew ? await api.post<{ id: string; voucher_no: string }>('/api/v1/gl/journals', body) : await api.put<{ id: string; voucher_no: string }>(`/api/v1/gl/journals/${id}`, body);
@@ -292,7 +294,7 @@ export function JournalFormPage() {
                           {depts.data?.filter((x) => x.status === 'A').map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
                         </select>
                       </td>
-                      <td><input value={l.description} maxLength={200} onChange={(e) => setLine(l.key, { description: e.target.value })} /></td>
+                      <td><div className="desc-cell"><input value={l.description} maxLength={200} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบายรายการ" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={!editable} label={l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                       <td><MoneyInput value={l.debit} onChange={(v) => setLine(l.key, { debit: v, credit: v ? '' : l.credit })} /></td>
                       <td><MoneyInput value={l.credit} onChange={(v) => setLine(l.key, { credit: v, debit: v ? '' : l.debit })} {...(i === lines.length - 1 ? { 'data-last': '' } : {})} /></td>
                       <td><button type="button" className="icon-btn" tabIndex={-1} onClick={() => delLine(l.key)} title="ลบบรรทัด">✕</button></td>

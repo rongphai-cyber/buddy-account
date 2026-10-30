@@ -19,37 +19,74 @@ function LinesEditor({ value, onChange, max, disabled }: { value: string[]; onCh
   );
 }
 
-type DocNotes = { doc_no: string; editable: boolean; doc: string[]; lines: Array<{ line_id: string; line_no: number; code: string | null; name: string | null; notes: string[] }> };
-/** หมายเหตุเพิ่มเติมของเอกสาร (Alt+R · S-SL-02 / S-PU-C2): ระดับเอกสาร + รายบรรทัดสินค้า (บันทึกเอกสารก่อน) */
+type DocNotes = { doc_no: string; editable: boolean; doc: string[] };
+/**
+ * หมายเหตุเอกสาร (ทั้งเอกสาร · Alt+R) — พิมพ์ในกล่องหมายเหตุด้านล่างของเอกสาร (ข้อกำหนดเจ้าของ 30/10/2569)
+ * หมายเหตุรายการแยกไปคีย์ที่บรรทัดรายการ (ปุ่ม 📝 / Alt+M) — ดู LineNoteButton
+ */
 export function DocNotesDialog({ id, onClose, canEdit }: { id: string; onClose: () => void; canEdit: boolean }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['doc-notes', id], queryFn: () => api.get<DocNotes>(`/api/v1/notes/doc/${id}`), staleTime: 0 });
   const [doc, setDoc] = useState<string[]>([]);
-  const [lines, setLines] = useState<Record<string, string[]>>({});
-  const [sel, setSel] = useState<string>('');
   const [err, setErr] = useState<unknown>(null);
-  useEffect(() => { if (q.data) { setDoc(q.data.doc); setLines(Object.fromEntries(q.data.lines.map((l) => [l.line_id, l.notes]))); } }, [q.data]);
+  useEffect(() => { if (q.data) setDoc(q.data.doc); }, [q.data]);
   const editable = canEdit && !!q.data?.editable;
   const save = async () => {
     if (!editable) return;
-    try { await api.put(`/api/v1/notes/doc/${id}`, { doc, lines: Object.fromEntries(Object.entries(lines).filter(([, v]) => v.some((x) => x.trim()))) }); toast('บันทึกหมายเหตุแล้ว'); qc.invalidateQueries({ queryKey: ['print'] }); onClose(); }
+    try { await api.put(`/api/v1/notes/doc/${id}`, { doc }); toast('บันทึกหมายเหตุเอกสารแล้ว'); qc.invalidateQueries({ queryKey: ['doc-notes', id] }); qc.invalidateQueries({ queryKey: ['print'] }); onClose(); }
     catch (e) { setErr(e); }
   };
   useHotkeys({ F9: save, 'Ctrl+S': save });
-  const cur = q.data?.lines.find((l) => l.line_id === sel);
   return (
-    <Modal title={`หมายเหตุเพิ่มเติม ${q.data?.doc_no ?? ''}`} onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" disabled={!editable} onClick={save}>ตกลง <kbd>F9</kbd></button></>}>
+    <Modal title={`หมายเหตุเอกสาร ${q.data?.doc_no ?? ''}`} onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" disabled={!editable} onClick={save}>ตกลง <kbd>F9</kbd></button></>}>
       <ErrorBox error={err ?? q.error} />
       {q.data && <>
-        <label className="small">หมายเหตุของ <select value={sel} onChange={(e) => setSel(e.target.value)}><option value="">ทั้งเอกสาร</option>
-          {q.data.lines.map((l) => <option key={l.line_id} value={l.line_id}>บรรทัด {l.line_no} {l.code} {l.name}{(lines[l.line_id] ?? []).some((x) => x.trim()) ? ' ✎' : ''}</option>)}</select></label>
-        {sel ? <LinesEditor key={sel} value={lines[sel] ?? []} onChange={(v) => setLines({ ...lines, [sel]: v })} max={10} disabled={!editable} />
-          : <LinesEditor key="doc" value={doc} onChange={setDoc} max={20} disabled={!editable} />}
-        {cur && <p className="hint">หมายเหตุของรายการ {cur.code} — พิมพ์ต่อท้ายบรรทัดสินค้า</p>}
+        <p className="hint">หมายเหตุของทั้งเอกสาร — พิมพ์ในกล่องหมายเหตุด้านล่างของเอกสาร · หมายเหตุของแต่ละรายการ คีย์ที่ปุ่ม 📝 ในบรรทัดรายการ (Alt+M)</p>
+        <LinesEditor value={doc} onChange={setDoc} max={20} disabled={!editable} />
         {!q.data.editable && <p className="hint">เอกสารถูกยกเลิกแล้ว — ดูได้อย่างเดียว</p>}
       </>}
     </Modal>
   );
+}
+
+/**
+ * หมายเหตุรายการ (ข้อกำหนดเจ้าของ 30/10/2569): คีย์ตอนคีย์รายการ หลายบรรทัด + ติ๊ก "พิมพ์" = แสดงเป็นบรรทัดใต้รายการในเอกสารที่พิมพ์
+ * ปุ่ม 📝 ในบรรทัด (มีหมายเหตุแล้วปุ่มเป็นสี) · Alt+M ขณะอยู่ในบรรทัด = เปิดหมายเหตุของบรรทัดนั้น (useLineNoteHotkey)
+ */
+export function LineNoteButton({ note, print, disabled, label, onChange }: { note: string | null | undefined; print: boolean | null | undefined; disabled?: boolean; label?: string; onChange: (v: { line_note: string; line_note_print: boolean }) => void }) {
+  const [open, setOpen] = useState(false);
+  const has = !!note?.trim();
+  // span กันคลิก (รวมคลิกในหน้าต่าง ซึ่ง React ส่งต่อผ่าน portal) ไม่ให้ไปติ๊ก/เปิดแถวของตาราง
+  return <span className="line-note" onClick={(e) => e.stopPropagation()}>
+    <button type="button" className={'icon-btn line-note-btn' + (has ? ' has-note' : '')} data-line-note tabIndex={-1} onClick={() => setOpen(true)}
+      title={has ? `หมายเหตุรายการ${print ? ' (พิมพ์ใต้รายการ)' : ' (ไม่พิมพ์)'}: ${note}` : 'เพิ่มหมายเหตุรายการ (Alt+M)'} aria-label={`หมายเหตุรายการ${label ? ` ${label}` : ''}`}>📝</button>
+    {open && <LineNoteDialog note={note ?? ''} print={has ? !!print : true} disabled={disabled} label={label} onClose={() => setOpen(false)} onOk={(v) => { onChange(v); setOpen(false); }} />}
+  </span>;
+}
+/** หน้าต่างหมายเหตุรายการ — ปุ่มลัดลงทะเบียนที่นี่ (เหนือ Modal) ให้ F9 ทำงานในหน้าต่าง */
+function LineNoteDialog({ note, print, disabled, label, onClose, onOk }: { note: string; print: boolean; disabled?: boolean; label?: string; onClose: () => void; onOk: (v: { line_note: string; line_note_print: boolean }) => void }) {
+  const [txt, setTxt] = useState(note);
+  const [pr, setPr] = useState(print);
+  const ok = () => { if (!disabled) onOk({ line_note: txt.trim(), line_note_print: !!txt.trim() && pr }); };
+  useHotkeys({ F9: ok, 'Ctrl+S': ok });
+  return (
+    <Modal title={`หมายเหตุรายการ${label ? ` — ${label}` : ''}`} onClose={onClose}
+      footer={<><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" disabled={disabled} onClick={ok}>ตกลง <kbd>F9</kbd></button></>}>
+      <textarea value={txt} rows={5} maxLength={2000} autoFocus disabled={disabled} aria-label="ข้อความหมายเหตุรายการ" placeholder="อธิบายรายการเพิ่มเติม (กด Enter ขึ้นบรรทัดใหม่ได้)" onChange={(e) => setTxt(e.target.value)} style={{ width: '100%' }} />
+      <label className="check" style={{ marginTop: 8 }}><input type="checkbox" checked={pr} disabled={disabled} onChange={(e) => setPr(e.target.checked)} /> พิมพ์หมายเหตุนี้ในเอกสาร (แสดงเป็นบรรทัดใต้รายการนี้)</label>
+    </Modal>
+  );
+}
+
+/** ข้อความหมายเหตุรายการใต้ช่องรายละเอียดในหน้าจอ (ให้เห็นว่ามีหมายเหตุ และจะพิมพ์หรือไม่) */
+export function LineNotePreview({ note, print }: { note: string | null | undefined; print: boolean | null | undefined }) {
+  if (!note?.trim()) return null;
+  return <div className="line-note-preview" title={print ? 'พิมพ์ใต้รายการ' : 'ไม่พิมพ์'}>{print ? '🖨 ' : ''}{note}</div>;
+}
+
+/** Alt+M ขณะเคอร์เซอร์อยู่ในบรรทัดรายการ → เปิดหมายเหตุรายการของบรรทัดนั้น (เรียกครั้งเดียวต่อหน้าจอ) */
+export function useLineNoteHotkey() {
+  useHotkeys({ 'Alt+M': () => { (document.activeElement?.closest('tr')?.querySelector('[data-line-note]') as HTMLButtonElement | null)?.click(); } });
 }
 
 /** หมายเหตุเพิ่มเติมของแฟ้มหลัก (S-MF-02): สินค้า 10 บรรทัด · ลูกค้า/ผู้จำหน่าย 5 บรรทัด */

@@ -1567,6 +1567,30 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', '/api/v1/other-expense-docs', { doc_type_id: await typeOf('OE'), doc_date: '2027-08-12', price_type: '0', vat_rate: 0, lines: [{ item_id: exp, amount: 50 }] })).body.error.message).toMatch(/รหัสผู้จำหน่าย หรือคีย์ชื่อ/);
   });
 
+  it('line notes vs document notes (ข้อกำหนดเจ้าของ): keyed with the line, survive edits, print under the line only when ticked; document notes print in the notes box', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const body = { doc_type_id: await typeOf('IV'), doc_date: '2027-08-14', party_id: cus, price_type: '2', vat_rate: 7,
+      lines: [{ item_id: cpu, qty: 1, unit_price: 100, line_note: 'ประกัน 1 ปี\nS/N 12345', line_note_print: true }, { item_id: cpu, qty: 2, unit_price: 50, line_note: 'ภายในเท่านั้น', line_note_print: false }] };
+    const iv = (await call('POST', '/api/v1/sales-invoices', body)).body;
+    const get = async () => (await call('GET', `/api/v1/sales-invoices/${iv.id}`)).body.lines.map((l: { line_note: string | null; line_note_print: boolean }) => [l.line_note, l.line_note_print]);
+    expect(await get()).toEqual([['ประกัน 1 ปี\nS/N 12345', true], ['ภายในเท่านั้น', false]]);
+    // แก้เอกสาร (บรรทัดถูกสร้างใหม่) หมายเหตุรายการยังอยู่
+    expect((await call('PUT', `/api/v1/sales-invoices/${iv.id}`, { ...body, remark: 'แก้ไข' })).status).toBe(200);
+    expect(await get()).toEqual([['ประกัน 1 ปี\nS/N 12345', true], ['ภายในเท่านั้น', false]]);
+    // หมายเหตุเอกสาร (ทั้งเอกสาร) แยกต่างหาก
+    expect((await call('PUT', `/api/v1/notes/doc/${iv.id}`, { doc: ['ส่งของภายใน 7 วัน'] })).status).toBe(200);
+    const pr = (await call('GET', `/api/v1/print/doc/${iv.id}`)).body.data;
+    expect(pr.lines.map((l: { note?: string }) => l.note ?? null)).toEqual(['ประกัน 1 ปี\nS/N 12345', null]);   // พิมพ์เฉพาะที่ติ๊ก
+    expect(pr.notes).toEqual(['ส่งของภายใน 7 วัน']);
+    // ใบสำคัญ: หมายเหตุรายการต่อบรรทัดบัญชี
+    const jv = (await call('POST', '/api/v1/gl/journals', { journal_book_id: bookId, voucher_date: '2027-08-14', lines: [{ account_id: cash, debit: '5', line_note: 'เงินทอนค้าง', line_note_print: true }, { account_id: capital, credit: '5' }] })).body;
+    expect((await call('GET', `/api/v1/gl/journals/${jv.id}`)).body.lines[0]).toMatchObject({ line_note: 'เงินทอนค้าง', line_note_print: true });
+    expect((await call('GET', `/api/v1/print/journal/${jv.id}`)).body.data.lines[0].note).toBe('เงินทอนค้าง');
+    for (const [u, x] of [['/api/v1/sales-invoices', iv.id], ['/api/v1/gl/journals', jv.id]]) expect((await call('POST', `${u}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('executive dashboard (RP.DASH): sales/AR/cash/aging from live documents, filters, isolation', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
@@ -2683,7 +2707,7 @@ describe('Buddy Account API (PGlite)', () => {
     const n1 = (await call('GET', `/api/v1/notes/doc/${iv.id}`)).body;
     expect([n1.doc, n1.lines[0].notes]).toEqual([['ส่งของก่อน 10 โมง', 'โทรก่อนส่ง'], ['สีแดง']]);
     const p = (await call('GET', `/api/v1/print/doc/${iv.id}`)).body.data;
-    expect([p.notes, p.lines[0].name.endsWith('\nสีแดง')]).toEqual([['ส่งของก่อน 10 โมง', 'โทรก่อนส่ง'], true]);
+    expect([p.notes, p.lines[0].note]).toEqual([['ส่งของก่อน 10 โมง', 'โทรก่อนส่ง'], 'สีแดง']);   // หมายเหตุรายการพิมพ์เป็นบรรทัดใต้รายการ
     expect((await call('PUT', `/api/v1/notes/doc/${iv.id}`, { doc: [], lines: { [cus]: ['x'] } })).body.error.message).toMatch(/ไม่อยู่ในเอกสารนี้/);
     // แฟ้มหลัก: สินค้า 10 บรรทัด ลูกค้า 5 บรรทัด
     expect((await call('PUT', `/api/v1/master-notes/item/${item}`, { notes: ['เก็บในที่แห้ง'] })).status).toBe(200);

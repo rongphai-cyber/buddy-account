@@ -159,7 +159,7 @@ export function stockCountRoutes(app: FastifyInstance, db: Db) {
            ${b.item_from ? sql`AND i.code >= ${b.item_from}` : sql``} ${b.item_to ? sql`AND i.code <= ${b.item_to}` : sql``}
          ORDER BY w.code, i.code FOR UPDATE OF c`.execute(tx)).rows;
       if (!rows.length) throw badRequest('ไม่มีรายการที่บันทึกยอดนับแล้ว (สถานะ 3) ในช่วงที่เลือก — บันทึกยอดนับก่อน');
-      const lines = rows.map((r) => ({ item_id: r.item_id, warehouse_id: r.warehouse_id, qty: d(r.counted_qty).minus(d(r.system_qty)).toString(), description: null, unit_id: null, factor: '1', unit_cost: null, amount: null, source_line_id: null }));
+      const lines = rows.map((r) => ({ item_id: r.item_id, warehouse_id: r.warehouse_id, qty: d(r.counted_qty).minus(d(r.system_qty)).toString(), description: null, unit_id: null, factor: '1', unit_cost: null, amount: null, source_line_id: null, line_note: null, line_note_print: false }));
       const doc = await writeStockDoc(tx, a, JU, null, { doc_type_id: dt.id, doc_no: null, doc_date: b.count_date, department_id: null, remark: b.remark || `ปรับปรุงจากการตรวจนับ ${b.count_date}`, your_ref: null, warehouse_id: null, to_warehouse_id: null, lines }, { allowZero: true, fromCount: true });
       const ids = await tx.selectFrom('doc_line').select(['id', 'line_no']).where('header_id', '=', doc.id).where('deleted_at', 'is', null).orderBy('line_no').execute();
       for (const [i, r] of rows.entries()) {

@@ -6,7 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
-import { cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
+import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { branchOf } from './payments.js';
 import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
 
@@ -30,6 +30,7 @@ const body = z.object({
     item_id: uuid, description: str(200), warehouse_id: optId, qty: num.default('0'), unit_id: optId, factor: num.optional(),
     /** JU เพิ่ม: ทุนต่อหน่วย (ว่าง = ต้นทุนเฉลี่ย/ราคาทุนมาตรฐาน) */ unit_cost: num.nullable().optional(),
     /** CA: มูลค่าที่เพิ่ม(+)/ลด(−) */ amount: num.nullable().optional(), source_line_id: optId,
+    ...lineNoteFields,
   })).min(1, 'ป้อนรายการสินค้าอย่างน้อย 1 บรรทัด').max(500),
 });
 export type StockDocBody = z.infer<typeof body>;
@@ -96,7 +97,7 @@ export async function writeStockDoc(db: Db, a: Ctx, K: StockKind, id: string | n
       if (!wh) throw badRequest(`บรรทัดที่ ${i + 1}: เลือกคลังสินค้า`);
       const factor = d(l.factor ?? 1);
       const bq = d(l.qty).times(factor);
-      const baseLine = { company_id: a.companyId, header_id: hid!, line_kind: 'I', item_id: it.id, description: l.description ?? it.name_th, department_id: header.department_id,
+      const baseLine = { company_id: a.companyId, header_id: hid!, line_kind: 'I', item_id: it.id, description: l.description ?? it.name_th, ...noteCols(l), department_id: header.department_id,
         unit_id: l.unit_id ?? it.base_unit_id, factor: factor.toString(), created_by: a.userId };
       const cost = async (q: ReturnType<typeof d>) => issueCost(tx, a.companyId, { itemId: it.id, warehouseId: wh, byWarehouse: st.byWarehouse, date: b.doc_date, qty: q.abs().toString(), method: it.cost_method, fallbackUnit: it.std_cost });
       if (K.cls === 'OU') {
@@ -168,7 +169,7 @@ export function stockDocRoutes(app: FastifyInstance, db: Db) {
       if (!h) throw notFound(K.label);
       // โอนย้าย: แสดงเฉพาะบรรทัดออก (คู่บรรทัดเข้าเป็นรายการเดียวกัน)
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id').leftJoin('md_unit as u', 'u.id', 'l.unit_id')
-        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.cost_unit', 'l.cost_amount', 'l.stock_effect', 'l.source_line_id'])
+        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.cost_unit', 'l.cost_amount', 'l.stock_effect', 'l.source_line_id', 'l.line_note', 'l.line_note_print'])
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).$if(K.cls === 'RL', (qb) => qb.where('l.stock_effect', '=', -1)).orderBy('l.line_no').execute();
       return { ...h, lines, editable: h.doc_status !== 'C' && !isMigAdj(h.doc_no) && !(await countLinked(db, id)), from_count: await countLinked(db, id) };
     });

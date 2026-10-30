@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
 import { useDocNo } from '../../components/DocNo';
@@ -76,7 +77,7 @@ export function PettyListPage({ kind }: { kind: Kind }) {
   );
 }
 
-interface Line { key: number; account_id: string | null; department_id: string; description: string; amount: string }
+interface Line { key: number; account_id: string | null; department_id: string; description: string; amount: string; line_note?: string; line_note_print?: boolean }
 export function PettyFormPage({ kind }: { kind: Kind }) {
   const K = KINDS[kind];
   const { id: routeId } = useParams();
@@ -89,12 +90,13 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string }> }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const cur = useQuery({ enabled: !!id, queryKey: [K.api, 'one', id], queryFn: () => api.get<Record<string, string | null> & { doc_no: string; doc_status: string; editable: boolean; vr_no?: string | null; vr_id?: string | null;
-    lines: Array<{ account_id: string; account_no: string; account_name: string; department_id: string | null; description: string | null; amount: string }>; dps?: Array<{ id: string }>; payments?: Parameters<typeof paysFrom>[0] }>(`/api/v1/${K.api}/${id}`), staleTime: 0 });
+    lines: Array<{ account_id: string; account_no: string; account_name: string; department_id: string | null; description: string | null; amount: string; line_note?: string | null; line_note_print?: boolean }>; dps?: Array<{ id: string }>; payments?: Parameters<typeof paysFrom>[0] }>(`/api/v1/${K.api}/${id}`), staleTime: 0 });
   const [h, setH] = useState<{ doc_type_id: string; doc_date: string; remark: string; cash: string } | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [pick, setPick] = useState<Set<string>>(new Set());
   const [pays, setPays] = useState<Pay[]>([]);
   const [tab, setTab] = useState('lines');
+  useLineNoteHotkey();
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -107,7 +109,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   if (!h && id && cur.data) {
     const c = cur.data;
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), remark: c.remark ?? '', cash: kind === 'vr' ? d(c.cash_amount ?? 0).toString() : '' });
-    setLines(c.lines.map((l) => ({ key: nextKey(), account_id: l.account_id, department_id: l.department_id ?? '', description: l.description ?? '', amount: d(l.amount).toString() })));
+    setLines(c.lines.map((l) => ({ key: nextKey(), account_id: l.account_id, department_id: l.department_id ?? '', description: l.description ?? '', line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, amount: d(l.amount).toString() })));
     if (kind === 'vr') { setPick(new Set((c.dps ?? []).map((x) => x.id))); setPays(paysFrom(c.payments ?? [])); }
   }
   const roBase = !!id && (!cur.data?.editable || !can('edit'));
@@ -130,7 +132,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
     const body = kind === 'dp'
-      ? { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, lines: lines.filter((l) => l.account_id || l.amount).map((l) => ({ account_id: l.account_id, department_id: l.department_id || null, description: l.description || null, amount: l.amount || '0' })) }
+      ? { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, lines: lines.filter((l) => l.account_id || l.amount).map((l) => ({ account_id: l.account_id, department_id: l.department_id || null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })) }
       : { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, dp_ids: chosen.map((r) => r.id), cash_amount: h.cash === '' ? null : h.cash, payments: paysBody(pays) };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.api}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.api}`, body);
@@ -190,7 +192,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
                     <td><AccountCell value={l.account_id} disabled={ro} required={!!l.amount || !lines.some((x) => x.account_id && x.key !== l.key)} onChange={(a) => setLine(l.key, { account_id: a?.id ?? null })} aria-label={`เลขที่บัญชี ${i + 1}`} /></td>
                     <td className="small">{acctName(l.account_id)}</td>
                     <td><select value={l.department_id} disabled={ro} onChange={(e) => setLine(l.key, { department_id: e.target.value })} aria-label="แผนก"><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === l.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></td>
-                    <td><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /></td>
+                    <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                     <td><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
                     <td>{!ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setLines((ls) => ls.filter((x) => x.key !== l.key)); setDirty(true); }}>✕</button>}</td>
                   </tr>

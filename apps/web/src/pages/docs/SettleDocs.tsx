@@ -12,6 +12,7 @@ import { DocActions } from '../../components/DocPrint';
 import { CancelStamp } from '../../components/DocDelete';
 import { DocJournalTab } from './TradeDocs';
 import { DocLink } from '../../components/DocLink';
+import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
@@ -79,7 +80,7 @@ export function SettleListPage({ path }: { path: string }) {
 interface Open { header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string; own: string; vat_basis: string | null; net_amount: string; vat_amount: string; ref_no: string | null; bill_no: string | null; bill_id: string | null; is_opening: boolean }
 interface Head { doc_type_id: string; doc_date: string; payment_date: string; party: { id: string; code: string; name?: string | null } | null; department_id: string; salesperson_id: string; your_ref: string; remark: string;
   interest: string; discount: string; wht: string; fx: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
-interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; settlements: Array<{ invoice_header_id: string; amount: string }>;
+interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; settlements: Array<{ invoice_header_id: string; amount: string; line_note?: string | null; line_note_print?: boolean }>;
   payments: Array<{ payment_method_id: string; amount: string; reference_no: string | null; cheque_date: string | null; bank_id: string | null; bank_branch: string | null }>;
   wht: Array<{ id: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; certificate_no: string | null; certificate_date: string; doc_status: string }> }
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(v as string).toString());
@@ -103,6 +104,9 @@ export function SettleFormPage({ path }: { path: string }) {
   const [pays, setPays] = useState<Pay[]>([]);
   const [whts, setWhts] = useState<Wht[]>([]);
   const [tab, setTab] = useState('bills');
+  /** หมายเหตุรายการต่อบิลที่ตัด (ข้อกำหนดเจ้าของ) */
+  const [notes, setNotes] = useState<Record<string, { line_note: string; line_note_print: boolean }>>({});
+  useLineNoteHotkey();
   const [vatCheck, setVatCheck] = useState<string | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -118,6 +122,7 @@ export function SettleFormPage({ path }: { path: string }) {
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), payment_date: String(c.payment_date ?? c.doc_date).slice(0, 10), party: { id: (c.customer_id ?? c.supplier_id)!, code: c.party_code ?? '', name: c.party_name },
       department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '', your_ref: c.your_ref ?? '', remark: c.remark ?? '', interest: num(c.interest_amount), discount: num(c.cash_discount_amount), wht: num(c.wht_amount), fx: num(c.fx_amount), cash: num(c.cash_amount), whtForm: 'S53', whtRate: '3' });
     setPick(Object.fromEntries(cur.data.settlements.map((s) => [s.invoice_header_id, num(s.amount)])));
+    setNotes(Object.fromEntries(cur.data.settlements.filter((s) => s.line_note).map((s) => [s.invoice_header_id, { line_note: s.line_note ?? '', line_note_print: !!s.line_note_print }])));
     setPays(paysFrom(cur.data.payments));
     setWhts(whtsFrom(cur.data.wht));
   }
@@ -135,7 +140,7 @@ export function SettleFormPage({ path }: { path: string }) {
   const baseOfChosen = chosen.reduce((s, o) => { const n = d(o.net_amount); const p = d(pick[o.header_id] || 0).times(o.doc_class === K.neg ? -1 : 1); return s.plus(n.isZero() ? p : p.times(n.minus(d(o.vat_amount))).div(n)); }, d(0)).toDecimalPlaces(2).toFixed(2);
 
   const pickParty = async (p: { id: string; code: string; name: string } | null) => {
-    setPick({}); setWhts([]);
+    setPick({}); setNotes({}); setWhts([]);
     if (!p) return set({ party: null });
     const x = await api.get<Record<string, string | null>>(`${partyEndpoint(K)}/${p.id}`);
     set({ party: p, ...(K.module === 'AR' ? { salesperson_id: x.salesperson_id ?? '' } : {}),
@@ -154,7 +159,7 @@ export function SettleFormPage({ path }: { path: string }) {
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
       your_ref: h.your_ref || null, remark: h.remark || null, interest_amount: h.interest || '0', cash_discount_amount: h.discount || '0', fx_amount: h.fx || '0', wht_amount: K.cls === 'PS' && whts.length ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
-      settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0' })),
+      settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0', line_note: notes[o.header_id]?.line_note || null, line_note_print: !!notes[o.header_id]?.line_note_print })),
       payments: paysBody(pays), wht: K.cls === 'PS' ? whtsBody(whts) : [] };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}`, body);
@@ -162,7 +167,7 @@ export function SettleFormPage({ path }: { path: string }) {
       setDirty(false); if (id) ed.lock();
       qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] }); qc.invalidateQueries({ queryKey: ['doc-vat'] });
       if (K.cls === 'PS') setVatCheck(r.id);   // ภาษีซื้อเกณฑ์เงินสด (ค่าบริการ) เกิดตอนจ่าย: ตรวจรายการในแฟ้มภาษีซื้อ (ไม่มีรายการ = ปิดเอง)
-      if (andNew) { setH(null); setPick({}); setPays([]); setWhts([]); nav(`${K.route}/new`, { replace: true }); }
+      if (andNew) { setH(null); setPick({}); setNotes({}); setPays([]); setWhts([]); nav(`${K.route}/new`, { replace: true }); }
       // โหลดจากเซิร์ฟเวอร์ใหม่ (ได้รหัสรายการภาษีหัก ณ ที่จ่ายสำหรับพิมพ์ 50 ทวิ)
       else if (!id) { nav(`${K.route}/${r.id}`, { replace: true }); setH(null); }
       else { await qc.refetchQueries({ queryKey: [K.path, 'one', id] }); setH(null); }
@@ -186,7 +191,7 @@ export function SettleFormPage({ path }: { path: string }) {
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}
           {h?.party && chosen.length > 0 && !t.ok && !ro && <Pill tone="d">ยอดเงินไม่เรียบร้อย</Pill>}</span></div>
       <div className="toolbar">
-        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setPick({}); setPays([]); setWhts([]); nav(`${K.route}/new`); } }}>+ ใหม่</button>
+        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setPick({}); setNotes({}); setPays([]); setWhts([]); nav(`${K.route}/new`); } }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
@@ -237,7 +242,8 @@ export function SettleFormPage({ path }: { path: string }) {
                 return (
                   <tr key={o.header_id} className={cx('row-open', on && 'picked')} onClick={(e) => { if (!ro && !(e.target as HTMLElement).matches('input')) toggle(o, !on); }}>
                     <td className="c"><input type="checkbox" checked={on} disabled={ro} onChange={(e) => toggle(o, e.target.checked)} aria-label={`เลือก ${o.doc_no}`} /></td>
-                    <td><DocLink id={o.header_id} no={o.doc_no} cls={o.doc_class} opening={o.is_opening} keep={dirty} /></td><td>{o.doc_class === K.neg ? <Pill tone="c">{CLASS_TH[o.doc_class]}</Pill> : CLASS_TH[o.doc_class]}{o.vat_basis === '2' && <span className="muted small"> ภาษีเกณฑ์เงินสด</span>}</td>
+                    <td><DocLink id={o.header_id} no={o.doc_no} cls={o.doc_class} opening={o.is_opening} keep={dirty} />{on && <LineNoteButton note={notes[o.header_id]?.line_note} print={notes[o.header_id]?.line_note_print} disabled={ro} label={o.doc_no} onChange={(v) => { setNotes((m) => ({ ...m, [o.header_id]: v })); setDirty(true); }} />}
+                      {on && <LineNotePreview note={notes[o.header_id]?.line_note} print={notes[o.header_id]?.line_note_print} />}</td><td>{o.doc_class === K.neg ? <Pill tone="c">{CLASS_TH[o.doc_class]}</Pill> : CLASS_TH[o.doc_class]}{o.vat_basis === '2' && <span className="muted small"> ภาษีเกณฑ์เงินสด</span>}</td>
                     <td><DateText v={o.doc_date} /></td><td><DateText v={o.due_date} /></td><td><DocLink id={o.bill_id} no={o.bill_no} cls={K.module === 'AR' ? 'BS' : 'BR'} keep={dirty} /></td>{K.module === 'AP' && <td className="mono">{o.ref_no}</td>}
                     <td className="r"><Money v={o.doc_class === K.neg ? d(o.amount).neg().toFixed(2) : o.amount} /></td><td className="r"><Money v={o.doc_class === K.neg ? d(o.outstanding).neg().toFixed(2) : o.outstanding} /></td>
                     <td>{on && <MoneyInput value={pick[o.header_id]} disabled={ro} onChange={(v) => { setPick((m) => ({ ...m, [o.header_id]: v })); setDirty(true); }} aria-label={`ยอดชำระ ${o.doc_no}`} />}</td>

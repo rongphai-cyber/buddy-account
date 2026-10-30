@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -31,7 +31,9 @@ export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: 
   const cols = L.columns.filter((c) => c.show);
   const totalW = cols.reduce((s, c) => s + c.width, 0) || 1;
   const copies = L.copies.length ? L.copies : [''];
-  const fill = Math.max(0, L.min_rows - data.lines.length);
+  const fill = Math.max(0, L.min_rows - data.lines.length - data.lines.filter((l) => l.note).length);
+  // หมายเหตุรายการเริ่มใต้คอลัมน์รายละเอียด (ไม่มี = ใต้คอลัมน์ที่ 2)
+  const noteAt = Math.max(0, cols.findIndex((c) => c.key === 'name')) || Math.min(1, cols.length - 1);
   const heads = L.head_fields.map((k) => ({ k, label: PRINT_HEAD_FIELDS.find((f) => f.key === k)?.label ?? k, v: data.fields[k] ?? '' })).filter((x) => x.v);
   const isJ = data.family === 'journal';
   // โลโก้/ลายเซ็นของบริษัท (ข้อกำหนดเจ้าของ) — แบบฟอร์มเลือกตำแหน่งโลโก้ และรูปลายเซ็นของแต่ละช่องลงชื่อ
@@ -68,7 +70,8 @@ export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: 
             <colgroup>{cols.map((c) => <col key={c.key} style={{ width: `${(c.width / totalW) * 100}%` }} />)}</colgroup>
             <thead><tr>{cols.map((c) => <th key={c.key} className={c.align}>{c.label}</th>)}</tr></thead>
             <tbody>
-              {data.lines.map((l, i) => <tr key={i}>{cols.map((c) => <td key={c.key} className={c.align}>{cellText(c.key, l[c.key], ys)}</td>)}</tr>)}
+              {data.lines.map((l, i) => <Fragment key={i}><tr>{cols.map((c) => <td key={c.key} className={c.align}>{cellText(c.key, l[c.key], ys)}</td>)}</tr>
+                {l.note && <tr className="ds-line-note">{cols.slice(0, noteAt).map((c) => <td key={c.key} />)}<td colSpan={cols.length - noteAt}>{l.note}</td></tr>}</Fragment>)}
               {[...Array(fill).keys()].map((i) => <tr key={`f${i}`} className="ds-fill">{cols.map((c) => <td key={c.key}>&nbsp;</td>)}</tr>)}
             </tbody>
             {isJ && data.totals[0] && <tfoot><tr>{cols.map((c, i) => <td key={c.key} className={c.align}>{c.key === 'debit' ? fmt(data.totals[0]!.value) : c.key === 'credit' ? fmt(data.totals[0]!.value2 ?? '') : i === 0 ? 'รวม' : ''}</td>)}</tr></tfoot>}
@@ -181,7 +184,7 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
       {id && r && (approved ? <button disabled={!can('approve')} onClick={() => approve(true)} title="ยกเลิกการรับรอง (Ctrl+O)">✔ รับรองแล้ว · ยกเลิก</button>
         : r.rule.approveLevel > 0 && <button disabled={!can('approve')} onClick={() => approve(false)} title={`รับรองเอกสาร — ต้องระดับ ${r.rule.approveLevel} ขึ้นไป (Alt+O)`}>✔ รับรอง <kbd>Alt+O</kbd></button>)}
       {kind === 'doc' && id && r && ['QT', 'DP', 'VR'].includes(r.data.scope) && <StatusCodeSelect id={id} canEdit={can('edit')} />}
-      {kind === 'doc' && <button disabled={!id} onClick={() => setNotes(true)} title={id ? 'หมายเหตุเพิ่มเติม (Alt+R)' : 'บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุได้'}>📝 หมายเหตุ</button>}
+      {kind === 'doc' && <button disabled={!id} onClick={() => setNotes(true)} title={id ? 'หมายเหตุของทั้งเอกสาร — พิมพ์ในกล่องหมายเหตุด้านล่างของเอกสาร (Alt+R) · หมายเหตุรายการ คีย์ที่ปุ่ม 📝 ในบรรทัด (Alt+M)' : 'บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุเอกสารได้'}>📄 หมายเหตุเอกสาร <kbd>Alt+R</kbd></button>}
       <button disabled={!id} onClick={() => setInfo(true)} title="รายละเอียดแฟ้มข้อมูล (Ctrl+I)">ℹ</button>
       <CloseScreen dirty={dirty} />
       {r && r.data.print_count > 0 && <Pill tone="n">พิมพ์แล้ว {r.data.print_count} ครั้ง</Pill>}

@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 112,
+"n": 113,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -1046,7 +1046,7 @@
 },
 {
 "th": "ตกลง",
-"n": 16,
+"n": 17,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/Notes.tsx",
@@ -5044,15 +5044,6 @@
 ]
 },
 {
-"th": "หมายเหตุเพิ่มเติม (Alt+R)",
-"n": 3,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
 "th": "ห้างหุ้นส่วนจำกัด",
 "n": 3,
 "files": [
@@ -5339,15 +5330,6 @@
 "apps/web/src/pages/docs/MoneyParts.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/settings/NewCompany.tsx"
-]
-},
-{
-"th": "📝 หมายเหตุ",
-"n": 3,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -5774,6 +5756,13 @@
 "files": [
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/items/ItemTables.tsx"
+]
+},
+{
+"th": "คำอธิบายรายการ",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -6632,13 +6621,6 @@
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx"
-]
-},
-{
-"th": "บันทึกหมายเหตุแล้ว",
-"n": 2,
-"files": [
-"apps/web/src/components/Notes.tsx"
 ]
 },
 {
@@ -8272,10 +8254,18 @@
 ]
 },
 {
-"th": "หมายเหตุเพิ่มเติม {0}",
+"th": "หมายเหตุรายการ{0}",
 "n": 2,
 "files": [
 "apps/web/src/components/Notes.tsx"
+]
+},
+{
+"th": "หมายเหตุเพิ่มเติม (Alt+R)",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -9272,6 +9262,14 @@
 ]
 },
 {
+"th": "📝 หมายเหตุ",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "\",\"voucher_date\":\"2026-03-01\",\"description\":\"จากระบบหน้าร้าน\", \"lines\":[{0}",
 "n": 1,
 "files": [
@@ -9531,6 +9529,13 @@
 ]
 },
 {
+"th": "(พิมพ์ใต้รายการ)",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
+]
+},
+{
 "th": "(มีในแฟ้มผู้จำหน่าย)",
 "n": 1,
 "files": [
@@ -9654,6 +9659,13 @@
 "n": 1,
 "files": [
 "packages/core/src/ai-bill.ts"
+]
+},
+{
+"th": "(ไม่พิมพ์)",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
 ]
 },
 {
@@ -13696,6 +13708,13 @@
 ]
 },
 {
+"th": "ข้อความหมายเหตุรายการ",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
+]
+},
+{
 "th": "ข้อตกลง DPA",
 "n": 1,
 "files": [
@@ -14456,13 +14475,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/CashDocs.tsx"
-]
-},
-{
-"th": "คำอธิบายรายการ",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -18365,13 +18377,6 @@
 ]
 },
 {
-"th": "ทั้งเอกสาร",
-"n": 1,
-"files": [
-"apps/web/src/components/Notes.tsx"
-]
-},
-{
 "th": "ทั้งแถว",
 "n": 1,
 "files": [
@@ -20535,6 +20540,20 @@
 ]
 },
 {
+"th": "บันทึกหมายเหตุเอกสารแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
+]
+},
+{
+"th": "บันทึกหมายเหตุแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
+]
+},
+{
 "th": "บันทึกอัตโนมัติ: เข้า/ออกระบบ ป้อนรหัสผ่านผิด เปลี่ยนรหัสผ่าน เพิ่ม/แก้ไข/ยกเลิกเอกสาร พิมพ์ รับรอง สำรอง/นำข้อมูลกลับ — แฟ้มนี้ลบหรือแก้ไขไม่ได้",
 "n": 1,
 "files": [
@@ -20626,7 +20645,7 @@
 ]
 },
 {
-"th": "บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุได้",
+"th": "บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุเอกสารได้",
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
@@ -23104,6 +23123,13 @@
 ]
 },
 {
+"th": "พิมพ์หมายเหตุนี้ในเอกสาร (แสดงเป็นบรรทัดใต้รายการนี้)",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
+]
+},
+{
 "th": "พิมพ์หัวเอกสาร/แบบยื่นภาษี",
 "n": 1,
 "files": [
@@ -23185,6 +23211,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "พิมพ์ใต้รายการ",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
 ]
 },
 {
@@ -31063,14 +31096,14 @@
 ]
 },
 {
-"th": "หมายเหตุของ",
+"th": "หมายเหตุของทั้งเอกสาร — พิมพ์ในกล่องหมายเหตุด้านล่างของเอกสาร (Alt+R) · หมายเหตุรายการ คีย์ที่ปุ่ม 📝 ในบรรทัด (Alt+M)",
 "n": 1,
 "files": [
-"apps/web/src/components/Notes.tsx"
+"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {
-"th": "หมายเหตุของรายการ {0} — พิมพ์ต่อท้ายบรรทัดสินค้า",
+"th": "หมายเหตุของทั้งเอกสาร — พิมพ์ในกล่องหมายเหตุด้านล่างของเอกสาร · หมายเหตุของแต่ละรายการ คีย์ที่ปุ่ม 📝 ในบรรทัดรายการ (Alt+M)",
 "n": 1,
 "files": [
 "apps/web/src/components/Notes.tsx"
@@ -31105,6 +31138,20 @@
 ]
 },
 {
+"th": "หมายเหตุรายการ{0}: {1}",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
+]
+},
+{
+"th": "หมายเหตุรายการยาวเกิน 2,000 ตัวอักษร",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
 "th": "หมายเหตุสั้น",
 "n": 1,
 "files": [
@@ -31112,10 +31159,24 @@
 ]
 },
 {
+"th": "หมายเหตุเพิ่มเติม {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
+]
+},
+{
 "th": "หมายเหตุเอกสาร",
 "n": 1,
 "files": [
 "apps/server/src/import/express/migrate.ts"
+]
+},
+{
+"th": "หมายเหตุเอกสาร {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
 ]
 },
 {
@@ -31396,6 +31457,13 @@
 "n": 1,
 "files": [
 "apps/web/src/ui.tsx"
+]
+},
+{
+"th": "อธิบายรายการเพิ่มเติม (กด Enter ขึ้นบรรทัดใหม่ได้)",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
 ]
 },
 {
@@ -33972,6 +34040,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Serials.tsx"
+]
+},
+{
+"th": "เพิ่มหมายเหตุรายการ (Alt+M)",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
 ]
 },
 {
@@ -38560,6 +38635,13 @@
 ]
 },
 {
+"th": "ไม่พิมพ์",
+"n": 1,
+"files": [
+"apps/web/src/components/Notes.tsx"
+]
+},
+{
 "th": "ไม่มี (สร้างเอง)",
 "n": 1,
 "files": [
@@ -39761,6 +39843,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
+]
+},
+{
+"th": "📄 หมายเหตุเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {

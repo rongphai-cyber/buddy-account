@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
 import { useDocNo } from '../../components/DocNo';
@@ -80,11 +81,11 @@ export function CashListPage({ path }: { path: string }) {
 }
 
 /* ---------------------------------------------------------------- หน้าเอกสาร */
-interface Line { key: number; item_id: string; item_code: string; description: string; amount: string }
+interface Line { key: number; item_id: string; item_code: string; description: string; amount: string; line_note?: string; line_note_print?: boolean }
 interface Head { doc_type_id: string; doc_date: string; party: { id: string; code: string; name?: string | null } | null; party_name: string; your_ref: string; ref_no: string; ref_date: string;
   department_id: string; salesperson_id: string; credit_days: string; price_type: '0' | '1' | '2'; vat_rate: string; remark: string; wht: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
 interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; remaining: string | null;
-  lines: Array<{ item_id: string | null; item_code: string | null; description: string | null; amount: string }>; used_by: Array<{ id: string; doc_no: string; doc_date: string; doc_class: string; amount: string }>;
+  lines: Array<{ item_id: string | null; item_code: string | null; description: string | null; line_note?: string | null; line_note_print?: boolean; amount: string }>; used_by: Array<{ id: string; doc_no: string; doc_date: string; doc_class: string; amount: string }>;
   payments: Parameters<typeof paysFrom>[0]; wht: Parameters<typeof whtsFrom>[0] }
 
 export function CashFormPage({ path }: { path: string }) {
@@ -104,6 +105,7 @@ export function CashFormPage({ path }: { path: string }) {
   const [pays, setPays] = useState<Pay[]>([]);
   const [whts, setWhts] = useState<Wht[]>([]);
   const [tab, setTab] = useState('lines');
+  useLineNoteHotkey();
   const [vatCheck, setVatCheck] = useState<string | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -125,7 +127,7 @@ export function CashFormPage({ path }: { path: string }) {
       your_ref: c.your_ref ?? '', ref_no: c.ref_no ?? '', ref_date: c.ref_date ? String(c.ref_date).slice(0, 10) : '', department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '',
       credit_days: c.credit_days === null || c.credit_days === undefined ? '' : String(c.credit_days), price_type: (c.price_type ?? '2') as Head['price_type'], vat_rate: num(c.vat_rate), remark: c.remark ?? '',
       wht: K.whtEntries ? '' : num(c.wht_amount), cash: num(c.cash_amount), whtForm: 'S53', whtRate: '3' });
-    setLines(cur.data.lines.map((l) => ({ key: nextKey(), item_id: l.item_id ?? '', item_code: l.item_code ?? '', description: l.description ?? '', amount: num(l.amount) })));
+    setLines(cur.data.lines.map((l) => ({ key: nextKey(), item_id: l.item_id ?? '', item_code: l.item_code ?? '', description: l.description ?? '', line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, amount: num(l.amount) })));
     setPays(paysFrom(cur.data.payments));
     setWhts(whtsFrom(cur.data.wht));
   }
@@ -178,7 +180,7 @@ export function CashFormPage({ path }: { path: string }) {
     const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id ?? null, party_name: h.party ? null : h.party_name || null, your_ref: h.your_ref || null,
       ref_no: h.ref_no || null, ref_date: h.ref_date || null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, credit_days: h.credit_days === '' ? null : Number(h.credit_days),
       price_type: h.price_type, vat_rate: h.vat_rate || '0', remark: h.remark || null, wht_amount: K.whtEntries ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
-      lines: used.map((l) => ({ item_id: K.lines === 'code' ? l.item_id || null : null, description: l.description || null, amount: l.amount || '0' })),
+      lines: used.map((l) => ({ item_id: K.lines === 'code' ? l.item_id || null : null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
       payments: paysBody(pays), wht: K.whtEntries ? whtsBody(whts) : [] };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}`, body);
@@ -261,7 +263,7 @@ export function CashFormPage({ path }: { path: string }) {
                   <td className="muted">{i + 1}</td>
                   {K.lines === 'code' && <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module, types: K.cls === 'OI' ? '4' : '5,2' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} disabled={ro}
                     label={(r: { name_th: string }) => r.name_th} onPick={(r: { id: string; code: string; name_th: string; price_1: string | null; std_cost: string | null } | null) => setLine(l.key, r ? { item_id: r.id, item_code: r.code, description: r.name_th, amount: l.amount || num(K.module === 'AR' ? r.price_1 : r.std_cost) } : { item_id: '', item_code: '' })} aria-label={`รหัส ${i + 1}`} /></td>}
-                  <td><input value={l.description} maxLength={200} disabled={ro} placeholder={K.deposit ? 'เช่น รับเงินมัดจำล่วงหน้า 10% สำหรับคอมพิวเตอร์ 1 ชุด' : ''} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบาย" /></td>
+                  <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} placeholder={K.deposit ? 'เช่น รับเงินมัดจำล่วงหน้า 10% สำหรับคอมพิวเตอร์ 1 ชุด' : ''} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบาย" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.item_code || l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                   <td><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
                   <td>{!ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setLines((ls) => ls.filter((x) => x.key !== l.key)); setDirty(true); }}>✕</button>}</td>
                 </tr>

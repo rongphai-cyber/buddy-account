@@ -11,7 +11,7 @@ export interface JournalInput {
   description?: string | null;
   reference?: string | null;
   branch_id?: string | null;
-  lines: Array<JournalLineInput & { line_no?: number }>;
+  lines: Array<JournalLineInput & { line_no?: number; line_note?: string | null; line_note_print?: boolean }>;
 }
 
 export async function periodFor(db: Db, companyId: string, date: string) {
@@ -104,7 +104,7 @@ async function insertLines(tx: Db, companyId: string, journalId: string, lines: 
     n++;
     await tx.insertInto('gl_journal_line').values({
       company_id: companyId, journal_id: journalId, line_no: n, account_id: l.account_id!, department_id: l.department_id ?? null,
-      description: l.description ?? null, debit: round2(l.debit).toFixed(2), credit: round2(l.credit).toFixed(2), created_by: userId,
+      description: l.description ?? null, debit: round2(l.debit).toFixed(2), credit: round2(l.credit).toFixed(2), line_note: l.line_note || null, line_note_print: !!l.line_note && !!l.line_note_print, created_by: userId,
     }).execute();
   }
 }
@@ -163,7 +163,7 @@ export async function getJournal(db: Db, companyId: string, id: string) {
     .where('j.id', '=', id).where('j.company_id', '=', companyId).where('j.deleted_at', 'is', null).executeTakeFirst();
   if (!j) throw notFound('ใบสำคัญ');
   const lines = await db.selectFrom('gl_journal_line as l').innerJoin('gl_account as a', 'a.id', 'l.account_id').leftJoin('md_department as dp', 'dp.id', 'l.department_id')
-    .select(['l.id', 'l.line_no', 'l.account_id', 'a.account_no', 'a.name_th as account_name', 'l.department_id', 'dp.code as department_code', 'l.description', 'l.debit', 'l.credit', 'l.posting_role', 'l.resolved_from'])
+    .select(['l.id', 'l.line_no', 'l.account_id', 'a.account_no', 'a.name_th as account_name', 'l.department_id', 'dp.code as department_code', 'l.description', 'l.debit', 'l.credit', 'l.posting_role', 'l.resolved_from', 'l.line_note', 'l.line_note_print'])
     .where('l.journal_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
   const editable = j.doc_status === 'N' && !j.source_header_id && (!j.source_module || j.source_module === 'GL');
   return { ...j, lines, editable };

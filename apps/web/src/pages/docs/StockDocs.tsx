@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
@@ -62,7 +63,7 @@ export function StockDocListPage({ cls }: { cls: StockKind['cls'] }) {
 }
 
 interface ItemHit { id: string; code: string; name_th: string; base_unit_id: string | null; std_cost: string | null; cost_method?: string | null }
-interface Line { key: number; item_id: string | null; item_code: string; description: string; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_cost: string; amount: string; source_line_id: string | null; cost_amount: string | null; cost_unit: string | null }
+interface Line { key: number; item_id: string | null; item_code: string; description: string; line_note?: string; line_note_print?: boolean; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_cost: string; amount: string; source_line_id: string | null; cost_amount: string | null; cost_unit: string | null }
 interface Head { doc_type_id: string; doc_date: string; department_id: string; remark: string; your_ref: string; warehouse_id: string | null; to_warehouse_id: string | null }
 let seq = 0;
 const blank = (): Line => ({ key: ++seq, item_id: null, item_code: '', description: '', warehouse_id: null, qty: '', unit_id: null, factor: '1', unit_cost: '', amount: '', source_line_id: null, cost_amount: null, cost_unit: null });
@@ -93,6 +94,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   const [h, setH] = useState<Head | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [tab, setTab] = useState('lines');
+  useLineNoteHotkey();
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -109,7 +111,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), department_id: c.department_id ?? '', remark: c.remark ?? '', your_ref: c.your_ref ?? '', warehouse_id: c.warehouse_id ?? null, to_warehouse_id: c.to_warehouse_id ?? null });
     setLines(c.lines.map((l): Line => {
       const eff = Number(l.stock_effect), qty = d(String(l.qty ?? 0)).times(cls === 'JU' ? eff : 1);
-      return { key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), warehouse_id: (l.warehouse_id as string) ?? null, qty: qty.toString(), unit_id: (l.unit_id as string) ?? null, factor: d(String(l.factor ?? 1)).toString(),
+      return { key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, warehouse_id: (l.warehouse_id as string) ?? null, qty: qty.toString(), unit_id: (l.unit_id as string) ?? null, factor: d(String(l.factor ?? 1)).toString(),
         unit_cost: cls === 'JU' && eff > 0 ? d(String(l.cost_unit ?? 0)).toString() : '', amount: cls === 'CA' ? d(String(l.cost_amount ?? 0)).toString() : '', source_line_id: (l.source_line_id as string) ?? null, cost_amount: (l.cost_amount as string) ?? null, cost_unit: (l.cost_unit as string) ?? null };
     }).concat(c.editable && can('edit') ? [blank()] : []));
   }
@@ -139,7 +141,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
     if (!h || busy || ro) return;
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, your_ref: h.your_ref || null, warehouse_id: h.warehouse_id, to_warehouse_id: cls === 'RL' ? h.to_warehouse_id : null,
-      lines: used.map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: cls === 'RL' ? null : l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1',
+      lines: used.map((l) => ({ item_id: l.item_id, description: l.description || null, line_note: l.line_note || null, line_note_print: !!l.line_note_print, warehouse_id: cls === 'RL' ? null : l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1',
         unit_cost: cls === 'JU' && l.unit_cost !== '' ? l.unit_cost : null, amount: cls === 'CA' ? l.amount || '0' : null, source_line_id: cls === 'CA' ? l.source_line_id : null })) };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
@@ -206,7 +208,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
                 <tr key={l.key}>
                   <td className="muted">{i + 1}</td>
                   <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} disabled={ro} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
-                  <td><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /></td>
+                  <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.item_code} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                   {cls !== 'RL' && <td><LkSelect byId rows={whRows} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>}
                   {cls === 'CA' ? <>
                     <td>{l.item_id && <LotSelect itemId={l.item_id} warehouseId={l.warehouse_id ?? h.warehouse_id} value={l.source_line_id} disabled={ro} onChange={(v) => setLine(l.key, { source_line_id: v })} />}</td>

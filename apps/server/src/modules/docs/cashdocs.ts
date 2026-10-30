@@ -6,7 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
-import { cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
+import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { branchOf, checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -21,7 +21,7 @@ const body = z.object({
   doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, party_id: optId, party_name: str(200), party_tax_branch_no: str(5), your_ref: str(60),
   ref_no: str(30), ref_date: isoDate.nullable().optional(), department_id: optId, salesperson_id: optId,
   credit_days: z.coerce.number().int().min(0).max(999).nullable().optional(), price_type: z.enum(['0', '1', '2']), vat_rate: num, remark: str(2000),
-  lines: z.array(z.object({ item_id: optId, description: str(200), amount: num, department_id: optId })).min(1, 'ป้อนรายการอย่างน้อย 1 บรรทัด').max(200),
+  lines: z.array(z.object({ item_id: optId, description: str(200), amount: num, department_id: optId, ...lineNoteFields })).min(1, 'ป้อนรายการอย่างน้อย 1 บรรทัด').max(200),
   /** มัดจำรับ/รายได้อื่น: ยอดที่ลูกค้าหักภาษี ณ ที่จ่ายไว้ */
   wht_amount: num.default('0'),
   cash_amount: num.nullable().optional(),
@@ -104,7 +104,7 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
     await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({
       company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'I', item_id: l.item_id, description: l.description ?? (l.item_id ? byId.get(l.item_id)!.name_th : null),
       department_id: l.department_id ?? header.department_id, qty: '1', factor: '1', base_qty: '1', unit_price: l.amount, line_amount: calc.lines[i]!.line_amount, net_amount: calc.lines[i]!.net_amount,
-      vat_code: l.item_id ? byId.get(l.item_id)!.vat_code : null, stock_effect: 0, created_by: a.userId,
+      vat_code: l.item_id ? byId.get(l.item_id)!.vat_code : null, stock_effect: 0, ...noteCols(l), created_by: a.userId,
     }))).execute();
     await writePayments(tx, a, { headerId: hid!, direction: K.direction, payDate: b.doc_date, methods, payments: b.payments, customerId: header.customer_id, supplierId: header.supplier_id, partyName: name, departmentId: header.department_id });
     if (b.wht.length) {
@@ -154,7 +154,7 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
       const h = await db.selectFrom('doc_header').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id')
-        .select(['l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.line_amount as amount', 'l.net_amount', 'l.department_id'])
+        .select(['l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.line_amount as amount', 'l.net_amount', 'l.department_id', 'l.line_note', 'l.line_note_print'])
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
       const { payments, wht } = await readMoneyParts(db, a.companyId, id);
       const partyId = h.customer_id ?? h.supplier_id;

@@ -42,11 +42,11 @@ async function loadHead(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
 
 async function journalLines(db: Db, journalIds: string[]) {
   if (!journalIds.length) return [];
-  return (await sql<Row>`SELECT l.journal_id, g.account_no AS code, g.name_th AS account_name, l.description, dp.code AS dept, l.debit, l.credit
+  return (await sql<Row>`SELECT l.journal_id, g.account_no AS code, g.name_th AS account_name, l.description, dp.code AS dept, l.debit, l.credit, CASE WHEN l.line_note_print THEN l.line_note END AS note
       FROM gl_journal_line l JOIN gl_account g ON g.id = l.account_id LEFT JOIN md_department dp ON dp.id = l.department_id
      WHERE l.journal_id IN (${sql.join(journalIds)}) AND l.deleted_at IS NULL ORDER BY l.journal_id, l.line_no`.execute(db)).rows
     .map((l) => ({ code: txt(l.code), name: l.description && l.description !== l.account_name ? `${l.account_name} — ${l.description}` : txt(l.account_name), dept: txt(l.dept),
-      debit: d(l.debit ?? 0).isZero() ? '' : money(l.debit), credit: d(l.credit ?? 0).isZero() ? '' : money(l.credit) }));
+      debit: d(l.debit ?? 0).isZero() ? '' : money(l.debit), credit: d(l.credit ?? 0).isZero() ? '' : money(l.credit), ...(l.note ? { note: txt(l.note) } : {}) }));
 }
 
 /** ข้อมูลสำหรับพิมพ์เอกสาร (รูปแบบเดียวทุกชนิดเอกสาร — แบบฟอร์มเลือกคอลัมน์/ช่องที่จะแสดง) */
@@ -85,26 +85,22 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
 
   let lines: Array<Record<string, string>> = [];
   if (fam === 'settle') {
-    lines = (await sql<Row>`SELECT i.doc_no, i.doc_date, i.due_date, i.doc_class, i.net_amount, s.amount FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id
+    lines = (await sql<Row>`SELECT i.doc_no, i.doc_date, i.due_date, i.doc_class, i.net_amount, s.amount, CASE WHEN s.line_note_print THEN s.line_note END AS note FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id
         WHERE s.payment_header_id = ${id} AND s.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows
-      .map((r, i) => ({ no: String(i + 1), code: txt(r.doc_no), ref_date: txt(r.doc_date), due_date: txt(r.due_date), name: DOC_CLASSES[r.doc_class ?? '']?.label ?? '', ref_amount: money(r.net_amount), amount: money(r.amount) }));
+      .map((r, i) => ({ no: String(i + 1), code: txt(r.doc_no), ref_date: txt(r.doc_date), due_date: txt(r.due_date), name: DOC_CLASSES[r.doc_class ?? '']?.label ?? '', ref_amount: money(r.net_amount), amount: money(r.amount), ...(r.note ? { note: txt(r.note) } : {}) }));
   } else if (fam === 'bill') {
     lines = (await sql<Row>`SELECT i.doc_no, i.doc_date, i.due_date, i.doc_class, b.amount FROM doc_bill_item b JOIN doc_header i ON i.id = b.invoice_header_id
         WHERE b.bill_header_id = ${id} AND b.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows
       .map((r, i) => ({ no: String(i + 1), code: txt(r.doc_no), ref_date: txt(r.doc_date), due_date: txt(r.due_date), name: DOC_CLASSES[r.doc_class ?? '']?.label ?? '', amount: money(r.amount) }));
   } else {
     const rows = (await sql<Row & { is_free: boolean }>`SELECT l.id AS line_id, l.line_kind, it.code AS item_code, g.account_no, g.name_th AS account_name, l.description, w.code AS wh, l.qty, u.name_th AS unit,
-          l.unit_price, l.discount_text, l.line_amount, l.cost_unit, l.cost_amount, l.is_free, dp.code AS dept
+          l.unit_price, l.discount_text, l.line_amount, l.cost_unit, l.cost_amount, l.is_free, dp.code AS dept, CASE WHEN l.line_note_print THEN l.line_note END AS note
         FROM doc_line l LEFT JOIN md_item it ON it.id = l.item_id LEFT JOIN gl_account g ON g.id = l.account_id LEFT JOIN md_warehouse w ON w.id = l.warehouse_id
         LEFT JOIN md_unit u ON u.id = l.unit_id LEFT JOIN md_department dp ON dp.id = l.department_id
        WHERE l.header_id = ${id} AND l.deleted_at IS NULL AND l.line_kind <> 'K' ORDER BY l.line_no`.execute(db)).rows;
     const stockCost = fam === 'stock';
-    const lineNotes = new Map<string, string[]>();
-    for (const n of (await sql<{ line_id: string; text: string }>`SELECT line_id, text FROM doc_note WHERE header_id = ${id} AND line_id IS NOT NULL AND deleted_at IS NULL ORDER BY seq`.execute(db)).rows) {
-      if (!lineNotes.has(n.line_id)) lineNotes.set(n.line_id, []); lineNotes.get(n.line_id)!.push(n.text);
-    }
     lines = rows.map((r, i) => ({
-      no: String(i + 1), code: txt(r.item_code || r.account_no), name: txt(r.description || r.account_name) + (r.is_free ? ' (ของแถม)' : '') + (lineNotes.get(r.line_id!) ? '\n' + lineNotes.get(r.line_id!)!.join('\n') : ''), wh: txt(r.wh), dept: txt(r.dept),
+      no: String(i + 1), code: txt(r.item_code || r.account_no), name: txt(r.description || r.account_name) + (r.is_free ? ' (ของแถม)' : ''), ...(r.note ? { note: txt(r.note) } : {}), wh: txt(r.wh), dept: txt(r.dept),
       qty: r.qty !== null && !d(r.qty).isZero() ? d(r.qty).toString() : '', unit: txt(r.unit),
       price: stockCost ? (r.cost_unit ? d(r.cost_unit).toFixed(2) : '') : r.unit_price !== null && !d(r.unit_price).isZero() ? d(r.unit_price).toFixed(2) : '',
       disc: txt(r.discount_text), amount: stockCost ? (r.cost_amount ? money(r.cost_amount) : '') : money(r.line_amount),

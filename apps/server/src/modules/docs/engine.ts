@@ -44,6 +44,12 @@ export async function issueDocNo(tx: Db, companyId: string, docTypeId: string): 
 }
 
 /** ช่องเลขที่เอกสาร (ข้อกำหนดเจ้าของ): ว่าง = ออกเลขอัตโนมัติ · ป้อนเอง = ตัวอักษร/ตัวเลข / - . _ ไม่เกิน 30 ตัว */
+/** หมายเหตุรายการ (ข้อกำหนดเจ้าของ 30/10/2569): คีย์ตอนคีย์รายการ หลายบรรทัด + ติ๊กพิมพ์ใต้บรรทัดในเอกสาร — แยกจากหมายเหตุเอกสาร */
+export const lineNoteFields = {
+  line_note: z.string().trim().max(2000, 'หมายเหตุรายการยาวเกิน 2,000 ตัวอักษร').nullable().optional().transform((v) => v || null),
+  line_note_print: z.boolean().default(false),
+};
+export const noteCols = (l: { line_note?: string | null; line_note_print?: boolean }) => ({ line_note: l.line_note ?? null, line_note_print: !!l.line_note && !!l.line_note_print });
 export const docNoInput = z.string().trim().max(30, 'เลขที่เอกสารยาวไม่เกิน 30 ตัวอักษร')
   .regex(/^[A-Za-z0-9ก-๙/._-]*$/, 'เลขที่เอกสารใช้ได้เฉพาะตัวอักษร ตัวเลข และ / - . _ (ไม่มีช่องว่าง)').nullable().optional().transform((v) => v || null);
 

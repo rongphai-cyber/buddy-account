@@ -260,7 +260,7 @@ export function glRoutes(app: FastifyInstance, db: Db) {
   const journalBody = z.object({
     journal_book_id: uuid, voucher_date: isoDate, voucher_no: z.string().trim().max(30).nullable().optional(),
     description: z.string().trim().max(200).nullable().optional(), reference: z.string().trim().max(30).nullable().optional(),
-    lines: z.array(z.object({ account_id: uuid.nullable(), department_id: uuid.nullable().optional(), description: z.string().max(200).nullable().optional(), debit: money, credit: money })).min(1, 'ป้อนรายการบัญชี').max(999),
+    lines: z.array(z.object({ account_id: uuid.nullable(), department_id: uuid.nullable().optional(), description: z.string().max(200).nullable().optional(), debit: money, credit: money, line_note: z.string().trim().max(2000).nullable().optional(), line_note_print: z.boolean().default(false) })).min(1, 'ป้อนรายการบัญชี').max(999),
   });
   /** ใบสำคัญใหม่: รายละเอียดภาษีซื้อ/ขาย/หัก ณ ที่จ่ายที่ป้อนในแท็บก่อนบันทึก — บันทึกพร้อมใบสำคัญ (ทรานแซกชันเดียวของคำขอ) */
   const newJournalBody = journalBody.extend({

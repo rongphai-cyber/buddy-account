@@ -2650,6 +2650,8 @@ CREATE TABLE doc_line (
   net_amount numeric(18,2) DEFAULT 0 NOT NULL,
   vat_code char(1),
   is_free boolean DEFAULT false NOT NULL,
+  line_note text,
+  line_note_print boolean DEFAULT false NOT NULL,
   return_to_stock boolean,
   stock_effect smallint DEFAULT 0 NOT NULL CHECK (stock_effect IN (-1,0,1)),
   movement_code char(1),
@@ -2704,6 +2706,8 @@ COMMENT ON COLUMN doc_line.line_amount IS 'จำนวนเงิน (ตา�
 COMMENT ON COLUMN doc_line.net_amount IS 'มูลค่าสุทธิก่อน VAT (หลังเฉลี่ยส่วนลดท้ายบิล) [Express: NETVAL]';
 COMMENT ON COLUMN doc_line.vat_code IS 'ประเภท VAT รายบรรทัด (0=ยกเว้น 1=มี VAT 2=อัตรา 0%) [Express: VATCOD]';
 COMMENT ON COLUMN doc_line.is_free IS 'ของแถม [Express: FREE]';
+COMMENT ON COLUMN doc_line.line_note IS 'หมายเหตุของรายการ (หลายบรรทัด คีย์ตอนคีย์รายการ — ข้อกำหนดเจ้าของ 30/10/2569) [Express: ARTRNRM (บรรทัด)]';
+COMMENT ON COLUMN doc_line.line_note_print IS 'พิมพ์หมายเหตุรายการใต้บรรทัดนี้ในเอกสาร';
 COMMENT ON COLUMN doc_line.return_to_stock IS 'รับคืน/ส่งคืนแล้วเข้าสต๊อก (ใบลดหนี้) [Express: RETSTK]';
 COMMENT ON COLUMN doc_line.stock_effect IS 'ผลต่อสต๊อก +1 รับเข้า −1 จ่ายออก 0 ไม่กระทบ';
 COMMENT ON COLUMN doc_line.movement_code IS 'รหัสการเคลื่อนไหวเดิม (POSOPR: 0 ซื้อ 1 รับ/ปรับเพิ่ม 2 รับคืน 3 โอนออก 4 โอนเข้า 5 ปรับต้นทุน 6 เบิกใช้ 7 ส่งคืน 8 ปรับปรุง 9 ขาย : ตรวจนับ = เพิ่มหนี้ > คชจ.อื่น) [Express: STCRD.POSOPR]';
@@ -2877,6 +2881,8 @@ CREATE TABLE doc_settlement (
   express_rectype char(1),
   amount numeric(18,2) NOT NULL,
   vat_amount numeric(18,2) DEFAULT 0 NOT NULL,
+  line_note text,
+  line_note_print boolean DEFAULT false NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -2896,6 +2902,8 @@ COMMENT ON COLUMN doc_settlement.invoice_header_id IS 'เอกสารที�
 COMMENT ON COLUMN doc_settlement.express_rectype IS 'RECTYP ของเอกสารที่ถูกตัด [Express: RECTYP]';
 COMMENT ON COLUMN doc_settlement.amount IS 'ยอดที่ตัดชำระ [Express: RCVAMT / PAYAMT]';
 COMMENT ON COLUMN doc_settlement.vat_amount IS 'ภาษีที่ถึงกำหนด (เกณฑ์เงินสด) [Express: VATAMT]';
+COMMENT ON COLUMN doc_settlement.line_note IS 'หมายเหตุของรายการ (หลายบรรทัด คีย์ตอนคีย์รายการ — ข้อกำหนดเจ้าของ 30/10/2569)';
+COMMENT ON COLUMN doc_settlement.line_note_print IS 'พิมพ์หมายเหตุรายการใต้บรรทัดนี้ในเอกสาร';
 COMMENT ON COLUMN doc_settlement.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN doc_settlement.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN doc_settlement.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -3482,6 +3490,8 @@ CREATE TABLE gl_journal_line (
   project_phase varchar(10),
   cost_code varchar(10),
   description varchar(200),
+  line_note text,
+  line_note_print boolean DEFAULT false NOT NULL,
   bank_cleared_date date,
   debit numeric(18,2) DEFAULT 0 NOT NULL,
   credit numeric(18,2) DEFAULT 0 NOT NULL,
@@ -3509,6 +3519,8 @@ COMMENT ON COLUMN gl_journal_line.project_id IS 'โครงการ [Express:
 COMMENT ON COLUMN gl_journal_line.project_phase IS 'ขั้นตอนโครงการ [Express: GLJNLIT.PHASE]';
 COMMENT ON COLUMN gl_journal_line.cost_code IS 'รหัสต้นทุน [Express: GLJNLIT.COSCOD]';
 COMMENT ON COLUMN gl_journal_line.description IS 'คำอธิบายรายการ [Express: GLJNLIT.DESCRP]';
+COMMENT ON COLUMN gl_journal_line.line_note IS 'หมายเหตุของรายการ (หลายบรรทัด คีย์ตอนคีย์รายการ — ข้อกำหนดเจ้าของ 30/10/2569)';
+COMMENT ON COLUMN gl_journal_line.line_note_print IS 'พิมพ์หมายเหตุรายการใต้บรรทัดนี้ในเอกสาร';
 COMMENT ON COLUMN gl_journal_line.bank_cleared_date IS 'กระทบยอดธนาคาร: วันที่รายการปรากฏใน Bank statement (เฉพาะบรรทัดบัญชีเงินฝาก)';
 COMMENT ON COLUMN gl_journal_line.debit IS 'เดบิต [Express: GLJNLIT.AMOUNT เมื่อ TRNTYP=''0'']';
 COMMENT ON COLUMN gl_journal_line.credit IS 'เครดิต [Express: GLJNLIT.AMOUNT เมื่อ TRNTYP=''1'']';

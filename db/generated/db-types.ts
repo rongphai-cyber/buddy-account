@@ -2435,6 +2435,10 @@ export interface DocLineTable {
   vat_code: Gen<string | null>;
   /** ของแถม */
   is_free: Gen<boolean>;
+  /** หมายเหตุของรายการ (หลายบรรทัด คีย์ตอนคีย์รายการ — ข้อกำหนดเจ้าของ 30/10/2569) */
+  line_note: Gen<string | null>;
+  /** พิมพ์หมายเหตุรายการใต้บรรทัดนี้ในเอกสาร */
+  line_note_print: Gen<boolean>;
   /** รับคืน/ส่งคืนแล้วเข้าสต๊อก (ใบลดหนี้) */
   return_to_stock: Gen<boolean | null>;
   /** ผลต่อสต๊อก +1 รับเข้า −1 จ่ายออก 0 ไม่กระทบ */
@@ -2624,6 +2628,10 @@ export interface DocSettlementTable {
   amount: string;
   /** ภาษีที่ถึงกำหนด (เกณฑ์เงินสด) */
   vat_amount: Gen<string>;
+  /** หมายเหตุของรายการ (หลายบรรทัด คีย์ตอนคีย์รายการ — ข้อกำหนดเจ้าของ 30/10/2569) */
+  line_note: Gen<string | null>;
+  /** พิมพ์หมายเหตุรายการใต้บรรทัดนี้ในเอกสาร */
+  line_note_print: Gen<boolean>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -3177,6 +3185,10 @@ export interface GlJournalLineTable {
   cost_code: Gen<string | null>;
   /** คำอธิบายรายการ */
   description: Gen<string | null>;
+  /** หมายเหตุของรายการ (หลายบรรทัด คีย์ตอนคีย์รายการ — ข้อกำหนดเจ้าของ 30/10/2569) */
+  line_note: Gen<string | null>;
+  /** พิมพ์หมายเหตุรายการใต้บรรทัดนี้ในเอกสาร */
+  line_note_print: Gen<boolean>;
   /** กระทบยอดธนาคาร: วันที่รายการปรากฏใน Bank statement (เฉพาะบรรทัดบัญชีเงินฝาก) */
   bank_cleared_date: Gen<string | null>;
   /** เดบิต */

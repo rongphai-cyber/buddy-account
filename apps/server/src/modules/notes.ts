@@ -20,10 +20,10 @@ export function noteRoutes(app: FastifyInstance, db: Db) {
     const h = await db.selectFrom('doc_header').select(['doc_no', 'doc_status']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!h) throw notFound('เอกสาร');
     const notes = (await sql<{ line_id: string | null; text: string }>`SELECT line_id, text FROM doc_note WHERE header_id = ${id} AND company_id = ${a.companyId} AND deleted_at IS NULL ORDER BY seq`.execute(db)).rows;
-    const ls = (await sql<{ id: string; line_no: number; code: string | null; name: string | null }>`SELECT l.id, l.line_no, coalesce(i.code, g.account_no) AS code, l.description AS name FROM doc_line l
+    const ls = (await sql<{ id: string; line_no: number; code: string | null; name: string | null; line_note: string | null }>`SELECT l.id, l.line_no, coalesce(i.code, g.account_no) AS code, l.description AS name, l.line_note FROM doc_line l
         LEFT JOIN md_item i ON i.id = l.item_id LEFT JOIN gl_account g ON g.id = l.account_id WHERE l.header_id = ${id} AND l.deleted_at IS NULL AND l.line_kind <> 'K' ORDER BY l.line_no`.execute(db)).rows;
     return { doc_no: h.doc_no, editable: h.doc_status !== 'C', doc: notes.filter((n) => !n.line_id).map((n) => n.text),
-      lines: ls.map((l) => ({ line_id: l.id, line_no: l.line_no, code: l.code, name: l.name, notes: notes.filter((n) => n.line_id === l.id).map((n) => n.text) })) };
+      lines: ls.map((l) => ({ line_id: l.id, line_no: l.line_no, code: l.code, name: l.name, notes: l.line_note ? l.line_note.split('\n') : [] })) };
   });
   app.put('/api/v1/notes/:kind/:id', async (req) => {
     const a = requireCompany(req);
@@ -36,8 +36,10 @@ export function noteRoutes(app: FastifyInstance, db: Db) {
     const bad = Object.keys(b.lines).find((l) => !own.has(l));
     if (bad) throw badRequest('บรรทัดที่ระบุไม่อยู่ในเอกสารนี้');
     await db.transaction().execute(async (tx) => {
-      await tx.deleteFrom('doc_note').where('header_id', '=', id).where('company_id', '=', a.companyId).execute();
-      const rows = [...b.doc.map((text, i) => ({ line_id: null as string | null, seq: i + 1, text })), ...Object.entries(b.lines).flatMap(([line_id, xs]) => xs.map((text, i) => ({ line_id, seq: i + 1, text })))];
+      // หมายเหตุเอกสาร = doc_note (ไม่ผูกบรรทัด) · หมายเหตุรายการเก็บที่บรรทัด (doc_line.line_note) — ข้อกำหนดเจ้าของ 30/10/2569
+      await tx.deleteFrom('doc_note').where('header_id', '=', id).where('company_id', '=', a.companyId).where('line_id', 'is', null).execute();
+      const rows = b.doc.map((text, i) => ({ line_id: null as string | null, seq: i + 1, text }));
+      for (const [lineId, xs] of Object.entries(b.lines)) await tx.updateTable('doc_line').set({ line_note: xs.join('\n') || null, line_note_print: xs.length > 0, updated_by: a.userId }).where('id', '=', lineId).execute();
       if (rows.length) await tx.insertInto('doc_note').values(rows.map((r) => ({ ...r, header_id: id, company_id: a.companyId, created_by: a.userId, updated_by: a.userId }))).execute();
       await logActivity(tx, a, { module: 'DOC', action: 'EDIT_NOTES', docNo: h.doc_no, table: 'doc_note', rowId: id, detail: { lines: rows.length } });
     });
