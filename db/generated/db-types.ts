@@ -23,6 +23,14 @@ export interface SysTenantTable {
   expires_on: Gen<string | null>;
   /** A=ใช้งาน S=ระงับ I=เลิกใช้ */
   status: Gen<string>;
+  /** วันที่ลงนามข้อตกลงการประมวลผลข้อมูลส่วนบุคคล (DPA) กับผู้ให้บริการ (T0.17) */
+  dpa_signed_on: Gen<string | null>;
+  /** วันที่เลิกใช้บริการ (ตั้งเมื่อเปลี่ยนสถานะเป็น I) */
+  terminated_on: Gen<string | null>;
+  /** ลบข้อมูลได้ตั้งแต่วันนี้ (เลิกใช้บริการ + 90 วัน ให้ลูกค้าขอสำเนาข้อมูลก่อน) */
+  purge_after: Gen<string | null>;
+  /** ลบข้อมูลทั้งหมดของลูกค้าแล้วเมื่อ (เหลือเฉพาะรหัสและแฟ้มบันทึกเหตุการณ์) */
+  purged_at: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -567,6 +575,47 @@ export interface SysApiKeyTable {
   last_used_at: Gen<string | null>;
   /** IP ที่ใช้ครั้งล่าสุด */
   last_used_ip: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** ทะเบียนคำขอของเจ้าของข้อมูลส่วนบุคคล (PDPA ม.30–36, บันทึกตาม ม.39) — ขอดู/ขอสำเนา ขอแก้ ขอลบ ขอคัดค้าน และผลการดำเนินการ (T0.17) */
+export interface SysPdpaRequestTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ACCESS=ขอดู/ขอรับสำเนา PORT=ขอโอนย้าย RECTIFY=ขอแก้ไข ERASE=ขอลบ/ทำให้ไม่ระบุตัวตน OBJECT=คัดค้าน/ระงับใช้ */
+  request_type: string;
+  /** CUSTOMER SUPPLIER SALESPERSON CONTACT */
+  subject_type: string;
+  /** id ของเจ้าของข้อมูล (ลูกค้า/ผู้จำหน่าย/พนักงานขาย/ผู้ติดต่อ) */
+  subject_id: Gen<string | null>;
+  /** รหัสของเจ้าของข้อมูล (ไม่เก็บชื่อ — ทะเบียนนี้ต้องไม่เป็นที่เก็บข้อมูลส่วนบุคคลเสียเอง) */
+  subject_code: Gen<string | null>;
+  /** วันที่ได้รับคำขอ */
+  received_on: string;
+  /** O=รอดำเนินการ D=ดำเนินการแล้ว R=ปฏิเสธ */
+  status: Gen<string>;
+  /** การลบที่ทำ: CONTACT=ลบข้อมูลติดต่อ FULL=ปิดบังทั้งหมด */
+  erase_mode: Gen<string | null>;
+  /** เหตุผล (เช่น เหตุที่ปฏิเสธ: ต้องเก็บเอกสารบัญชี/ภาษี 5 ปี) */
+  reason: Gen<string | null>;
+  /** สิ่งที่ดำเนินการ (ชื่อช่อง/จำนวนแถว — ไม่เก็บค่าข้อมูล) */
+  result: Gen<unknown | null>;
+  /** วันที่ดำเนินการเสร็จ/แจ้งผล */
+  completed_on: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -3639,6 +3688,7 @@ export interface DB {
   sys_print_form: SysPrintFormTable;
   sys_report_custom: SysReportCustomTable;
   sys_api_key: SysApiKeyTable;
+  sys_pdpa_request: SysPdpaRequestTable;
   sys_secret: SysSecretTable;
   sys_ai_usage: SysAiUsageTable;
   gl_fiscal_year: GlFiscalYearTable;

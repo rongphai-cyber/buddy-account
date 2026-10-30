@@ -3,7 +3,7 @@
 > **Claude: อ่านไฟล์นี้ก่อนเริ่มทุกครั้ง** (หลังสรุป context อัตโนมัติ หรือเปิด session ใหม่) แล้วทำต่อจาก "งานถัดไป"
 > อัปเดตไฟล์นี้ทุกครั้งที่จบงาน (ก่อน commit) และทันทีเมื่อ context ใกล้เต็ม — เขียนให้คนที่ไม่เคยเห็นบทสนทนาทำต่อได้
 
-อัปเดตล่าสุด: 29/10/2569 · commit ล่าสุดบน GitHub: ดู `git log -1` (main = origin/main)
+อัปเดตล่าสุด: 30/10/2569 · commit ล่าสุดบน GitHub: ดู `git log -1` (main = origin/main)
 
 ## สถานะ
 - ตั้งค่าครั้งแรกครบ: git + GitHub (`rongphai-cyber/buddy-account`, private), PostgreSQL ของ Buddy, ข้อมูล TESTRice → DEMO, smoke test
@@ -185,9 +185,13 @@
   - กับดัก: TaskStop ของ `pnpm ... start` ไม่ปิด node ลูก — ปิดตามพอร์ต (Get-NetTCPConnection → Stop-Process) ก่อนเปิดใหม่ / ก่อนรัน CLI บนข้อมูล PGlite เดียวกัน
   - กับดัก: heredoc + python ทำ '
 ' ใน TS กลายเป็นขึ้นบรรทัดจริง — เขียนสคริปต์ patch ด้วย Write แทน · แก้ WHT ต้องไม่เขียน header_id ทับตอนแก้ไข
+- ✅ T0.17 PDPA (30/10/2569 เจ้าของสั่ง "Start T0.17"): core `pdpa.ts` (PDPA_REGISTER ทะเบียน ม.39 · PDPA_COLUMN_PATTERN/PDPA_NOT_PERSONAL — ชุดทดสอบตรวจทุกช่องในฐานข้อมูลที่ชื่อเหมือนข้อมูลบุคคลต้องอยู่ในทะเบียน **เพิ่มช่องชื่อ/ที่อยู่/โทร/อีเมล/เลขผู้เสียภาษีใหม่ต้องเพิ่มในทะเบียน** · pdpaRetainUntil = สิ้นปีบัญชีของเอกสารล่าสุด + 5 ปี · pdpaPurgeAfter +90 วัน) · migration 0030 (sys_pdpa_request มี RLS + sys_tenant.dpa_signed_on/terminated_on/purge_after/purged_at)
+  - API `modules/pdpa.ts` (เมนู SET.PDPA ระดับ 9 + API_KEY_BLOCKED): /pdpa/register · /pdpa/subjects?q · /pdpa/subjects/:kind/:id (+/access บันทึกคำขอ + JSON · +/erase mode CONTACT ทันที / FULL ต้องพ้นระยะเก็บ ยืนยันด้วยรหัส) · /pdpa/requests (ปฏิเสธต้องมีเหตุผล) · FULL แก้ doc_header ในงวดที่ปิดด้วย set_config('app.allow_locked_period','on',true) เฉพาะทรานแซกชันนั้น · log ไม่เก็บค่าที่ลบ
+  - เลิกใช้บริการ: PUT /tenants/:id สถานะ I → terminated_on + purge_after · POST /tenants/:id/purge (ผู้ให้บริการ, ครบ 90 วัน, พิมพ์รหัสลูกค้า) `purgeTenant` ลบทุกตาราง company_id (ยกเว้น log/sys_company/sys_device/sys_branch ที่ log อ้างถึง — ปิดบังแทน) + session/2FA/ผู้ใช้ปิดบัง · หน้า `pages/settings/Pdpa.tsx` (/settings/pdpa) + Tenants.tsx (DPA วันที่ลงนาม, วันที่ลบได้, ปุ่มลบ)
+  - ข้อจำกัด (บอกเจ้าของแล้ว): log เก่ามีค่าก่อนแก้ไขที่ลบไม่ได้ · แฟ้มสำรองเก่า · แบบร่าง DPA ใน docs/06_PDPA.md ต้องให้นักกฎหมายตรวจ
 
 ## งานถัดไป (รอเจ้าของเลือก — ถ้าเจ้าของบอก "ทำต่อจนเสร็จ" ให้ทำตามลำดับนี้)
-1. P0 ที่เหลือ: T0.17 PDPA · T0.18 ฐานข้อมูลแยกต่อลูกค้า
+1. P0 ที่เหลือ: T0.18 ฐานข้อมูลแยกต่อลูกค้า (ทางเลือก — ถามเจ้าของก่อนว่าต้องการไหม)
 2. หรือ P2: **T2.1** ค่าเริ่มต้นทุกระบบ → T2.2 … T2.5 (แล้วทำ T1.17 ตารางข้อมูลพร้อมกัน)
 - ไฟล์ของเจ้าของ `docs/50ทวิ.pdf` (ใช้ทำแบบ 50 ทวิ) และ `docs/ChartOfAccount_with_English.xlsx` (ใช้ทำผังบัญชีไทย–อังกฤษ) — ใช้แล้ว ห้าม commit
 - ข้อสันนิษฐานที่รอยืนยัน: ฐานของคอลัมน์ "% ของยอดขาย" (PCENTn) = บรรทัดแรกที่มียอด

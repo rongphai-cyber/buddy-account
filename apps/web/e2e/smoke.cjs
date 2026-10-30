@@ -440,6 +440,21 @@ require('fs').mkdirSync(OUT, { recursive: true });
     if ((await page.locator('.w50-print .w50-sheet').count()) !== 2) throw new Error('ต้องมีฉบับที่ 1 และ 2');
     await shot('15m-wht50');
   });
+  await step('PDPA personal data (T0.17, view only)', async () => {
+    // ดูอย่างเดียว ไม่ส่งออก/ไม่ลบ: ทะเบียนข้อมูล → ค้นหาลูกค้า → เปิดรายงานข้อมูลที่เก็บ → ระยะเก็บเอกสาร
+    await page.goto(BASE + '/settings/pdpa');
+    await page.getByRole('tab', { name: 'ทะเบียนข้อมูลส่วนบุคคล' }).click();
+    await page.waitForFunction(() => document.querySelectorAll('table.grid tbody tr').length >= 20, null, { timeout: 15000 });
+    await page.getByRole('tab', { name: 'ทะเบียนคำขอ' }).click();
+    await page.getByRole('tab', { name: 'เจ้าของข้อมูล' }).click();
+    await page.locator('.toolbar input').fill('บริษัท');
+    await page.keyboard.press('Enter');
+    await page.locator('table.grid tbody tr.row-open').first().click({ timeout: 15000 });
+    await page.waitForSelector('.modal table.kv tbody tr', { timeout: 15000 });
+    await page.waitForFunction(() => /เก็บถึง|พ้นระยะเก็บ|ยังไม่มีเอกสาร|ผู้ติดต่อไม่อยู่/.test(document.querySelector('.modal .notebox')?.textContent ?? ''), null, { timeout: 15000 });
+    await shot('15n-pdpa');
+    await page.keyboard.press('Escape');
+  });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });

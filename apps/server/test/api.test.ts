@@ -3152,3 +3152,150 @@ describe('นำข้อมูลจาก Express ผ่านหน้าจ�
     expect((await call('GET', `/api/v1/express-import/jobs/${j.id}`)).status).toBe(404);
   });
 });
+
+describe('ข้อมูลส่วนบุคคล PDPA (T0.17)', () => {
+  const login = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };
+  const TAX = '0105537095903';
+  let tenantId = '', coId = '', cusOld = '', cusNew = '', contactId = '', sup = '';
+
+  it('every personal-data column in the database is in the register (or explicitly not personal)', async () => {
+    const { PDPA_REGISTER, PDPA_COLUMN_PATTERN, PDPA_NOT_PERSONAL } = await import('@buddy/core');
+    const cols = (await sql<{ t: string; c: string }>`SELECT c.table_name AS t, c.column_name AS c FROM information_schema.columns c JOIN information_schema.tables x ON x.table_name = c.table_name AND x.table_schema = c.table_schema
+        WHERE c.table_schema = 'public' AND x.table_type = 'BASE TABLE'`.execute(database.db)).rows;
+    const all = new Set(cols.map((r) => `${r.t}.${r.c}`));
+    const listed = new Set(PDPA_REGISTER.flatMap((e) => e.columns.map((c) => `${e.table}.${c}`)));
+    for (const k of listed) expect(all.has(k), `ทะเบียนอ้างช่องที่ไม่มี: ${k}`).toBe(true);
+    const missing = cols.filter((r) => PDPA_COLUMN_PATTERN.test(r.c)).map((r) => `${r.t}.${r.c}`).filter((k) => !listed.has(k) && !(k in PDPA_NOT_PERSONAL));
+    expect(missing, 'ช่องข้อมูลบุคคลที่ยังไม่อยู่ในทะเบียน PDPA_REGISTER').toEqual([]);
+  });
+
+  it('register, subject search/report, contact erase anytime, full erase only after 5-year retention, request register', async () => {
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    const t = await call('POST', '/api/v1/tenants', { code: 'CUSTP', name: 'ลูกค้า P', admin_username: 'p.admin', admin_name: 'ผู้ดูแล P', admin_password: 'passP1234', dpa_signed_on: '2026-01-15' });
+    expect(t.status).toBe(200); tenantId = t.body.id;
+    expect((await call('GET', '/api/v1/tenants')).body.find((x: { code: string }) => x.code === 'CUSTP').dpa_signed_on).toBe('2026-01-15');
+    expect((await login('p.admin', 'passP1234')).status).toBe(200);
+    coId = (await call('POST', '/api/v1/companies', { code: 'P-CO1', name_th: 'บริษัท พี จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: coId });
+    const mk = async (code: string, name: string, extra: object = {}) => (await call('POST', '/api/v1/customers', { code, name, tax_id: TAX, address_1: '99 ถนนสุขุมวิท', ...extra })).body.id as string;
+    cusOld = await mk('P-OLD', 'นายเก่า ใจดี', { phone: '081-111-1111', email: 'old@example.com' });
+    cusNew = await mk('P-NEW', 'นางใหม่ ใจงาม', { phone: '089-999-9999', email: 'new@example.com', contact: 'คุณแม่บ้าน',
+      ship_tos: [{ code: 'H1', address_1: 'บ้านเลขที่ 1', phone: '02-000-0000', contact: 'ยาม' }], contacts: [{ name: 'สมศรี ฝ่ายบัญชี', phone: '086-555-5555', email: 'somsri@example.com', is_primary: true }] });
+    expect(cusOld && cusNew).toBeTruthy();
+    sup = (await call('POST', '/api/v1/suppliers', { code: 'P-S1', name: 'นายส่งของ', tax_id: TAX, phone: '087-777-7777' })).body.id;
+    // เอกสารยกมา: เก่า (พ้น 5 ปี) และใหม่ (ยังต้องเก็บ)
+    const ob = { doc_no: 'IV58/0001', doc_date: '2015-06-30', price_type: '2', amount: 1000, vat_rate: 7 };
+    expect((await call('POST', '/api/v1/ar-opening', { ...ob, party_id: cusOld })).status).toBe(200);
+    expect((await call('POST', '/api/v1/ar-opening', { ...ob, party_id: cusNew, doc_no: 'IV68/0009', doc_date: '2025-12-20' })).status).toBe(200);
+
+    const regR = await call('GET', '/api/v1/pdpa/register');
+    expect(regR.status, JSON.stringify(regR.body)).toBe(200);
+    const reg = regR.body as Array<{ table: string; erase: string; count: number | null }>;
+    expect(reg.find((e) => e.table === 'md_customer' && e.erase === 'CONTACT')!.count).toBe(2);
+    expect(reg.find((e) => e.table === 'sys_activity_log')!.erase).toBe('KEEP');
+    expect(reg.find((e) => e.table === 'sys_user')!.count).toBeNull();   // ไม่ใช่ข้อมูลรายบริษัท
+
+    expect((await call('GET', '/api/v1/pdpa/subjects?q=x')).status).toBe(400);
+    const found = (await call('GET', '/api/v1/pdpa/subjects?q=086-555')).body as Array<{ kind: string; id: string; code: string }>;
+    expect(found).toEqual([expect.objectContaining({ kind: 'CONTACT', code: 'P-NEW' })]);
+    contactId = found[0]!.id;
+    expect((await call('GET', `/api/v1/pdpa/subjects?q=${encodeURIComponent('ใจ')}`)).body.map((r: { code: string }) => r.code).sort()).toEqual(['P-NEW', 'P-OLD']);
+
+    const repR = await call('GET', `/api/v1/pdpa/subjects/CUSTOMER/${cusNew}`);
+    expect(repR.status, JSON.stringify(repR.body)).toBe(200);
+    const rep = repR.body;
+    expect(rep.master).toMatchObject({ code: 'P-NEW', phone: '089-999-9999', email: 'new@example.com', tax_id: TAX });
+    expect(rep.contacts).toHaveLength(1); expect(rep.ship_to).toHaveLength(1);
+    expect(rep.documents).toMatchObject({ count: 1, last_date: '2025-12-20' });
+    expect(rep.retention).toEqual({ last_activity: '2025-12-20', retain_until: '2030-12-31', full_erase_allowed: false });
+    const acc = await call('POST', `/api/v1/pdpa/subjects/CUSTOMER/${cusNew}/access`, { received_on: '2026-10-01' });
+    expect(acc.status).toBe(200); expect(acc.body.report.master.code).toBe('P-NEW');
+
+    // ยังต้องเก็บเอกสาร → ปิดบังทั้งหมดไม่ได้ · ข้อมูลติดต่อลบได้ (ยืนยันด้วยรหัส)
+    const full = await call('POST', `/api/v1/pdpa/subjects/CUSTOMER/${cusNew}/erase`, { mode: 'FULL', received_on: '2026-10-02', confirm: 'P-NEW' });
+    expect(full.status).toBe(400); expect(full.body.error.message).toMatch(/เก็บเอกสารถึง 31\/12\/2573/);
+    expect((await call('POST', `/api/v1/pdpa/subjects/CUSTOMER/${cusNew}/erase`, { mode: 'CONTACT', received_on: '2026-10-02', confirm: 'P-XXX' })).body.error.message).toMatch(/ป้อนรหัส P-NEW/);
+    const ec = await call('POST', `/api/v1/pdpa/subjects/CUSTOMER/${cusNew}/erase`, { mode: 'CONTACT', received_on: '2026-10-02', confirm: 'p-new' });
+    expect(ec.status).toBe(200);
+    const after = (await call('GET', `/api/v1/customers/${cusNew}`)).body;
+    expect(after).toMatchObject({ name: 'นางใหม่ ใจงาม', tax_id: TAX, address_1: '99 ถนนสุขุมวิท', phone: null, email: null, contact: null });
+    expect(after.contacts).toHaveLength(0);
+    expect(after.ship_tos[0]).toMatchObject({ address_1: 'บ้านเลขที่ 1', phone: null, contact: null });
+    const raw = (await sql<{ j: string }>`SELECT json_agg(x)::text AS j FROM md_party_contact x WHERE party_id = ${cusNew}`.execute(database.db)).rows[0]!.j;
+    expect(raw).not.toContain('086-555'); expect(raw).not.toContain('somsri');
+    expect((await call('GET', '/api/v1/pdpa/subjects?q=086-555')).body).toHaveLength(0);
+
+    // พ้นระยะเก็บแล้ว → ปิดบังชื่อ ที่อยู่ เลขผู้เสียภาษี ทั้งแฟ้มหลักและเอกสาร
+    expect((await call('GET', `/api/v1/pdpa/subjects/CUSTOMER/${cusOld}`)).body.retention).toMatchObject({ retain_until: '2020-12-31', full_erase_allowed: true });
+    const ef = await call('POST', `/api/v1/pdpa/subjects/CUSTOMER/${cusOld}/erase`, { mode: 'FULL', received_on: '2026-10-03', confirm: 'P-OLD' });
+    expect(ef.status).toBe(200); expect(ef.body.rows.doc_header).toBe(1);
+    const old = (await call('GET', `/api/v1/customers/${cusOld}`)).body;
+    expect(old).toMatchObject({ code: 'P-OLD', name: 'ลบตาม PDPA', tax_id: null, address_1: null, phone: null, email: null, status: 'I' });
+    const doc = (await sql<{ party_name: string; party_tax_id: string | null; party_address: string | null; net_amount: string }>`SELECT party_name, party_tax_id, party_address, net_amount FROM doc_header WHERE customer_id = ${cusOld}`.execute(database.db)).rows[0]!;
+    expect(doc).toEqual({ party_name: 'ลบตาม PDPA', party_tax_id: null, party_address: null, net_amount: '1070.00' });   // ยอดเงินไม่เปลี่ยน
+    // ผู้จำหน่ายที่ไม่มีเอกสาร = ปิดบังได้ทันที
+    expect((await call('POST', `/api/v1/pdpa/subjects/SUPPLIER/${sup}/erase`, { mode: 'FULL', received_on: '2026-10-03', confirm: 'P-S1' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/suppliers/${sup}`)).body).toMatchObject({ name: 'ลบตาม PDPA', phone: null, tax_id: null });
+
+    // ทะเบียนคำขอ: ปฏิเสธต้องมีเหตุผล · log ไม่เก็บค่าที่ลบ
+    expect((await call('POST', '/api/v1/pdpa/requests', { request_type: 'ERASE', subject_type: 'CUSTOMER', subject_id: cusNew, received_on: '2026-10-02', status: 'R' })).body.error.message).toMatch(/ต้องระบุเหตุผล/);
+    expect((await call('POST', '/api/v1/pdpa/requests', { request_type: 'ERASE', subject_type: 'CUSTOMER', subject_id: cusNew, received_on: '2026-10-02', status: 'R', reason: 'ต้องเก็บเอกสารภาษีถึง 31/12/2573' })).status).toBe(200);
+    const open = (await call('POST', '/api/v1/pdpa/requests', { request_type: 'OBJECT', subject_type: 'CUSTOMER', subject_id: cusNew, received_on: '2026-10-04', status: 'O' })).body.id;
+    expect((await call('PUT', `/api/v1/pdpa/requests/${open}`, { status: 'D' })).status).toBe(200);
+    expect((await call('PUT', `/api/v1/pdpa/requests/${open}`, { status: 'D' })).status).toBe(400);
+    const reqs = (await call('GET', '/api/v1/pdpa/requests')).body as Array<{ request_type: string; status: string; subject_code: string; erase_mode: string | null }>;
+    expect(reqs.map((r) => `${r.request_type}/${r.status}/${r.subject_code}/${r.erase_mode ?? ''}`).sort()).toEqual(['ACCESS/D/P-NEW/', 'ERASE/D/P-NEW/CONTACT', 'ERASE/D/P-OLD/FULL', 'ERASE/D/P-S1/FULL', 'ERASE/R/P-NEW/', 'OBJECT/D/P-NEW/']);
+    const logs = (await sql<{ j: string }>`SELECT json_agg(detail)::text AS j FROM sys_activity_log WHERE company_id = ${coId} AND action LIKE 'PDPA%'`.execute(database.db)).rows[0]!.j;
+    expect(logs).not.toContain('089-999'); expect(logs).not.toContain('นายเก่า');
+
+    // ผู้ใช้ระดับต่ำกว่า 9 ใช้ไม่ได้ · ข้ามลูกค้าไม่ได้
+    expect((await call('POST', '/api/v1/users', { username: 'p.clerk', display_name: 'พนักงาน P', password: 'clerk1234', approval_level: 8, companies: [coId] })).status).toBe(200);
+    expect((await login('p.clerk', 'clerk1234')).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: coId });
+    expect((await call('GET', '/api/v1/pdpa/register')).status).toBe(403);
+    expect((await login('b.admin', 'passB1234')).status).toBe(200);
+    const bCo = (await call('GET', '/api/v1/auth/me')).body.companies[0].id;
+    await call('POST', '/api/v1/auth/select', { company_id: bCo });
+    expect((await call('GET', `/api/v1/pdpa/subjects/CUSTOMER/${cusNew}`)).status).toBe(404);
+    expect((await call('POST', `/api/v1/pdpa/subjects/CUSTOMER/${cusNew}/erase`, { mode: 'CONTACT', received_on: '2026-10-02', confirm: 'P-NEW' })).status).toBe(404);
+    expect((await call('POST', `/api/v1/pdpa/subjects/CONTACT/${contactId}/access`, { received_on: '2026-10-02' })).status).toBe(404);
+    expect((await call('GET', '/api/v1/pdpa/subjects?q=P-NEW')).body).toHaveLength(0);
+    expect((await call('GET', '/api/v1/pdpa/requests')).body).toHaveLength(0);
+    expect((await call('POST', `/api/v1/tenants/${tenantId}/purge`, { confirm: 'CUSTP' })).status).toBe(403);
+  });
+
+  it('end of service: status I starts 90 days, then the platform purges every company of the tenant (logs kept)', async () => {
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    const otherCustomers = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM md_customer WHERE company_id <> ${coId}`.execute(database.db)).rows[0]!.n;
+    expect((await call('POST', `/api/v1/tenants/${tenantId}/purge`, { confirm: 'CUSTP' })).body.error.message).toMatch(/เลิกใช้/);
+    expect((await call('PUT', `/api/v1/tenants/${tenantId}`, { code: 'CUSTP', name: 'ลูกค้า P', status: 'I' })).status).toBe(200);
+    const t = (await call('GET', '/api/v1/tenants')).body.find((x: { code: string }) => x.code === 'CUSTP');
+    expect(t.terminated_on).toBeTruthy(); expect(t.purge_after > t.terminated_on).toBe(true);
+    expect((await call('POST', `/api/v1/tenants/${tenantId}/purge`, { confirm: 'CUSTP' })).body.error.message).toMatch(/ลบได้ตั้งแต่วันที่/);
+    expect((await login('p.admin', 'passP1234')).status).toBe(403);   // เลิกใช้แล้วเข้าระบบไม่ได้
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    await sql`UPDATE sys_tenant SET purge_after = current_date - 1 WHERE id = ${tenantId}`.execute(database.db);   // จำลองครบ 90 วัน
+    expect((await call('POST', `/api/v1/tenants/${tenantId}/purge`, { confirm: 'WRONG' })).body.error.message).toMatch(/พิมพ์รหัสลูกค้า CUSTP/);
+    const logsBefore = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${coId}`.execute(database.db)).rows[0]!.n;
+    const p = await call('POST', `/api/v1/tenants/${tenantId}/purge`, { confirm: 'custp' });
+    expect(p.status).toBe(200);
+    expect(p.body).toMatchObject({ companies: 1, users: 2 });
+    expect(p.body.rows.md_customer).toBe(2); expect(p.body.rows.doc_header).toBe(2);
+    for (const tbl of ['md_customer', 'md_supplier', 'doc_header', 'gl_account', 'gl_journal', 'sys_pdpa_request', 'md_party_contact'])
+      expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM ${sql.id(tbl)} WHERE company_id = ${coId}`.execute(database.db)).rows[0]!.n, tbl).toBe(0);
+    const co = (await sql<{ name_th: string; tax_id: string | null; deleted: boolean }>`SELECT name_th, tax_id, deleted_at IS NOT NULL AS deleted FROM sys_company WHERE id = ${coId}`.execute(database.db)).rows[0]!;
+    expect(co).toEqual({ name_th: 'ลบตาม PDPA (P-CO1)', tax_id: null, deleted: true });
+    const us = (await sql<{ username: string; display_name: string; password_hash: string | null }>`SELECT username, display_name, password_hash FROM sys_user WHERE tenant_id = ${tenantId}`.execute(database.db)).rows;
+    expect(us).toHaveLength(2);
+    for (const u of us) { expect(u.username).toMatch(/^purged_/); expect(u.display_name).toBe('ลบตาม PDPA'); expect(u.password_hash).toBeNull(); }
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${coId}`.execute(database.db)).rows[0]!.n).toBeGreaterThanOrEqual(logsBefore);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM md_customer WHERE company_id <> ${coId}`.execute(database.db)).rows[0]!.n).toBe(otherCustomers);   // ลูกค้ารายอื่นไม่กระทบ
+    const tt = (await call('GET', '/api/v1/tenants')).body.find((x: { code: string }) => x.code === 'CUSTP');
+    expect(tt).toMatchObject({ name: 'CUSTP', contact_email: null, status: 'I' }); expect(tt.purged_at).toBeTruthy();
+    expect((await call('PUT', `/api/v1/tenants/${tenantId}`, { code: 'CUSTP', name: 'x', status: 'A' })).body.error.message).toMatch(/ลบข้อมูลของลูกค้ารายนี้ไปแล้ว/);
+    expect((await call('POST', `/api/v1/tenants/${tenantId}/purge`, { confirm: 'CUSTP' })).body.error.message).toMatch(/ไปแล้ว/);
+    expect((await login('p.admin', 'passP1234')).status).toBe(401);
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).not.toContain('P-CO1');
+  });
+});

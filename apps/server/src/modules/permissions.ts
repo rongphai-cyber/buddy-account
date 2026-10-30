@@ -27,7 +27,7 @@ const LABEL = new Map(FLAT.map((m) => [m.code, m.label]));
 /** เมนูกำหนดค่าโปรแกรม: ระดับ 5 ขึ้นไปจึงเพิ่ม/แก้/ลบได้ (คู่มือหน้า 359–360) */
 const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.FAG', 'SET.PAYM', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
 /** ระบบความปลอดภัยและแก้ไขแบบฟอร์ม: ระดับ 9 เท่านั้น */
-const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'SET.API', 'SET.AI', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG']);
+const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'SET.API', 'SET.AI', 'SET.PDPA', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG']);
 
 export function baseAllowed(level: number, menu: string, action: Action) {
   if (level >= 9) return true;
@@ -132,7 +132,10 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/etax/docs': M('FI.VAT.ETAX', 'read'), 'GET /api/v1/etax/doc/:id': M('FI.VAT.ETAX', 'print'), 'GET /api/v1/etax/export': M('FI.VAT.ETAX', 'print'),
   'GET /api/v1/api-keys': M('SET.API', 'read'), 'POST /api/v1/api-keys': M('SET.API', 'add'), 'POST /api/v1/api-keys/:id/revoke': M('SET.API', 'cancel'), 'GET /api/v1/api-docs': M('SET.API', 'read'),
   'GET /api/v1/users': SELF, 'POST /api/v1/users': SELF, 'PUT /api/v1/users/:id': SELF, 'POST /api/v1/user-groups': SELF,
-  'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/companies': SELF,
+  'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/tenants/:id/purge': SELF, 'POST /api/v1/companies': SELF,
+  'GET /api/v1/pdpa/register': M('SET.PDPA', 'read'), 'GET /api/v1/pdpa/subjects': M('SET.PDPA', 'read'), 'GET /api/v1/pdpa/subjects/:kind/:id': M('SET.PDPA', 'read'),
+  'POST /api/v1/pdpa/subjects/:kind/:id/access': M('SET.PDPA', 'print'), 'POST /api/v1/pdpa/subjects/:kind/:id/erase': M('SET.PDPA', 'delete'),
+  'GET /api/v1/pdpa/requests': M('SET.PDPA', 'read'), 'POST /api/v1/pdpa/requests': M('SET.PDPA', 'add'), 'PUT /api/v1/pdpa/requests/:id': M('SET.PDPA', 'edit'),
   'GET /api/v1/activity-log': LOOKUP, 'GET /api/v1/activity-log/search': M('OT.LOG', 'read'),
   // บริษัท สาขา แผนก รอบบัญชี
   'GET /api/v1/company': LOOKUP, 'PUT /api/v1/company': M('SET.CO', 'edit'),

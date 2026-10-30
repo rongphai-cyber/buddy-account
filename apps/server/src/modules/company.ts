@@ -1,4 +1,4 @@
-import { passwordProblem } from '@buddy/core';
+import { formatDate, passwordProblem, pdpaPurgeAfter } from '@buddy/core';
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
@@ -10,6 +10,7 @@ import { canAccessCompany, companiesForUser } from './auth.js';
 import { copyCompanyData } from '../company-copy.js';
 import { logActivity } from '../audit.js';
 import { markPasswordChanged, setSec } from './security.js';
+import { purgeTenant } from './pdpa.js';
 import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, setSetting } from '../company-template.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
@@ -236,6 +237,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   app.get('/api/v1/tenants', async (req) => {
     requirePlatform(req);
     return db.selectFrom('sys_tenant as t').select(['t.id', 't.code', 't.name', 't.contact_email', 't.contact_phone', 't.plan', 't.max_companies', 't.max_users', 't.expires_on', 't.status',
+      't.dpa_signed_on', 't.terminated_on', 't.purge_after', 't.purged_at',
       sql<number>`(SELECT count(*) FROM sys_company c WHERE c.tenant_id = t.id AND c.deleted_at IS NULL)`.as('company_count'),
       sql<number>`(SELECT count(*) FROM sys_user u WHERE u.tenant_id = t.id AND u.deleted_at IS NULL)`.as('user_count')])
       .where('t.deleted_at', 'is', null).orderBy('t.code').execute();
@@ -244,14 +246,14 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     code: z.string().trim().min(1, 'ป้อนรหัสลูกค้า').max(20).regex(/^[A-Za-z0-9_-]+$/), name: z.string().trim().min(1, 'ป้อนชื่อลูกค้า').max(120),
     contact_email: z.string().trim().email('อีเมลไม่ถูกต้อง').nullable().optional(), contact_phone: opt(60), plan: z.string().trim().max(20).default('standard'),
     max_companies: z.coerce.number().int().min(1).nullable().optional(), max_users: z.coerce.number().int().min(1).nullable().optional(),
-    expires_on: isoDate.nullable().optional(), status: z.enum(['A', 'S', 'I']).default('A'),
+    expires_on: isoDate.nullable().optional(), status: z.enum(['A', 'S', 'I']).default('A'), dpa_signed_on: isoDate.nullable().optional(),
   });
   /** สร้างลูกค้าใหม่ + กลุ่ม ADMIN ของลูกค้า + ผู้ดูแลคนแรกของลูกค้า */
   app.post('/api/v1/tenants', async (req) => {
     const a = requirePlatform(req);
     const b = parse(tenantBody.extend({ admin_username: userBody.shape.username, admin_name: userBody.shape.display_name, admin_password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })) }), req.body);
     return db.transaction().execute(async (tx) => {
-      const t = await tx.insertInto('sys_tenant').values({ code: b.code, name: b.name, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, plan: b.plan, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, status: b.status, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+      const t = await tx.insertInto('sys_tenant').values({ code: b.code, name: b.name, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, plan: b.plan, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, status: b.status, dpa_signed_on: b.dpa_signed_on ?? null, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
       const g = await tx.insertInto('sys_user_group').values({ tenant_id: t.id, code: 'ADMIN', name: 'ผู้ดูแลระบบของลูกค้า', created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
       await tx.insertInto('sys_user').values({ tenant_id: t.id, username: b.admin_username, display_name: b.admin_name, password_hash: await bcrypt.hash(b.admin_password, 10), user_group_id: g.id, approval_level: 9, created_by: a.userId }).execute();
       await logActivity(tx, a, { module: 'SYS', action: 'NEW_TENANT', table: 'sys_tenant', rowId: t.id, detail: { code: b.code } });
@@ -262,11 +264,32 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const a = requirePlatform(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(tenantBody, req.body);
-    const r = await db.updateTable('sys_tenant').set({ ...b, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, updated_by: a.userId }).where('id', '=', id).executeTakeFirst();
-    if (!Number(r.numUpdatedRows)) throw notFound('ลูกค้าผู้ใช้บริการ');
+    const cur = await db.selectFrom('sys_tenant').select(['status', 'terminated_on', 'purged_at']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!cur) throw notFound('ลูกค้าผู้ใช้บริการ');
+    if (cur.purged_at) throw badRequest('ลบข้อมูลของลูกค้ารายนี้ไปแล้ว (เลิกใช้บริการ) — แก้ไขหรือเปิดใช้อีกไม่ได้ สร้างลูกค้ารายใหม่แทน');
+    // T0.17 เลิกใช้บริการ (I): เริ่มนับ 90 วันให้ลูกค้าขอสำเนาข้อมูลก่อนลบ · กลับมาใช้ (A/S) = ยกเลิกกำหนดลบ
+    const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+    const end = b.status === 'I' ? (cur.status === 'I' && cur.terminated_on ? { terminated_on: cur.terminated_on } : { terminated_on: today, purge_after: pdpaPurgeAfter(today) }) : { terminated_on: null, purge_after: null };
+    await db.updateTable('sys_tenant').set({ ...b, ...end, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, dpa_signed_on: b.dpa_signed_on ?? null, updated_by: a.userId }).where('id', '=', id).execute();
     if (b.status !== 'A') await db.updateTable('sys_session').set({ ended_at: sql`now()` as never }).where('ended_at', 'is', null).where('user_id', 'in', db.selectFrom('sys_user').select('id').where('tenant_id', '=', id)).execute();
     await logActivity(db, a, { module: 'SYS', action: 'EDIT_TENANT', table: 'sys_tenant', rowId: id, detail: { status: b.status } });
     return { id };
+  });
+  /** T0.17 ลบข้อมูลทั้งหมดของลูกค้าที่เลิกใช้บริการครบ 90 วันแล้ว — พิมพ์รหัสลูกค้ายืนยัน · ย้อนกลับไม่ได้ */
+  app.post('/api/v1/tenants/:id/purge', async (req) => {
+    const a = requirePlatform(req);
+    const { id } = parse(z.object({ id: uuid }), req.params);
+    const b = parse(z.object({ confirm: z.string().trim().max(20) }), req.body);
+    const t = await db.selectFrom('sys_tenant').select(['code', 'status', 'purge_after', 'purged_at']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!t) throw notFound('ลูกค้าผู้ใช้บริการ');
+    if (t.purged_at) throw badRequest('ลบข้อมูลของลูกค้ารายนี้ไปแล้ว');
+    if (t.status !== 'I' || !t.purge_after) throw badRequest('เปลี่ยนสถานะลูกค้าเป็น "เลิกใช้" ก่อน — ระบบให้เวลา 90 วันให้ลูกค้าขอสำเนาข้อมูลก่อนลบ');
+    const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+    if (today < t.purge_after) throw badRequest(`ลบได้ตั้งแต่วันที่ ${formatDate(t.purge_after, 'B')} (เลิกใช้บริการ + 90 วัน) — ระหว่างนี้ลูกค้ายังขอสำเนาข้อมูลได้`);
+    if (b.confirm.toUpperCase() !== t.code.toUpperCase()) throw badRequest(`พิมพ์รหัสลูกค้า ${t.code} เพื่อยืนยัน — ข้อมูลทุกบริษัทของลูกค้ารายนี้จะถูกลบถาวร`);
+    const r = await purgeTenant(db, id);
+    await logActivity(db, a, { module: 'SYS', action: 'PURGE_TENANT', docNo: t.code, table: 'sys_tenant', rowId: id, detail: r });
+    return r;
   });
 
   /* ---------------------------------------------------------------- แฟ้มบันทึกเหตุการณ์ (บทที่ 23 S-SEC-04) — อ่านอย่างเดียว */

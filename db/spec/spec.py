@@ -65,6 +65,10 @@ add(T('sys_tenant', 'ลูกค้าผู้ใช้บริการ (ten
   C('max_users', 'int', th='จำนวนผู้ใช้สูงสุด (ว่าง = ไม่จำกัด)'),
   C('expires_on', 'date', th='วันหมดอายุการใช้งาน'),
   C('status', 'char1', nn=True, d="'A'", th='A=ใช้งาน S=ระงับ I=เลิกใช้', chk="status IN ('A','S','I')"),
+  C('dpa_signed_on', 'date', th='วันที่ลงนามข้อตกลงการประมวลผลข้อมูลส่วนบุคคล (DPA) กับผู้ให้บริการ (T0.17)'),
+  C('terminated_on', 'date', th='วันที่เลิกใช้บริการ (ตั้งเมื่อเปลี่ยนสถานะเป็น I)'),
+  C('purge_after', 'date', th='ลบข้อมูลได้ตั้งแต่วันนี้ (เลิกใช้บริการ + 90 วัน ให้ลูกค้าขอสำเนาข้อมูลก่อน)'),
+  C('purged_at', 'ts', th='ลบข้อมูลทั้งหมดของลูกค้าแล้วเมื่อ (เหลือเฉพาะรหัสและแฟ้มบันทึกเหตุการณ์)'),
 ], uniq=[('code',)]))
 
 add(T('sys_company', 'บริษัท (หนึ่งฐานข้อมูลรองรับหลายบริษัท)', 'sys', express='ISINFO + ทะเบียนบริษัท (บทที่ 4)', company=False, cols=[
@@ -234,6 +238,19 @@ add(T('sys_api_key', 'กุญแจ API ให้ระบบอื่นเ�
   C('last_used_at', 'ts', th='ใช้ครั้งล่าสุด'),
   C('last_used_ip', 'str60', th='IP ที่ใช้ครั้งล่าสุด'),
 ], uniq=[('key_prefix',)]))
+
+add(T('sys_pdpa_request', 'ทะเบียนคำขอของเจ้าของข้อมูลส่วนบุคคล (PDPA ม.30–36, บันทึกตาม ม.39) — ขอดู/ขอสำเนา ขอแก้ ขอลบ ขอคัดค้าน และผลการดำเนินการ (T0.17)', 'sys', sync='server', express='(ใหม่)', cols=[
+  C('request_type', 'code10', nn=True, th='ACCESS=ขอดู/ขอรับสำเนา PORT=ขอโอนย้าย RECTIFY=ขอแก้ไข ERASE=ขอลบ/ทำให้ไม่ระบุตัวตน OBJECT=คัดค้าน/ระงับใช้', chk="request_type IN ('ACCESS','PORT','RECTIFY','ERASE','OBJECT')"),
+  C('subject_type', 'code10', nn=True, th='CUSTOMER SUPPLIER SALESPERSON CONTACT', chk="subject_type IN ('CUSTOMER','SUPPLIER','SALESPERSON','CONTACT')"),
+  C('subject_id', 'uuid', th='id ของเจ้าของข้อมูล (ลูกค้า/ผู้จำหน่าย/พนักงานขาย/ผู้ติดต่อ)'),
+  C('subject_code', 'code20', th='รหัสของเจ้าของข้อมูล (ไม่เก็บชื่อ — ทะเบียนนี้ต้องไม่เป็นที่เก็บข้อมูลส่วนบุคคลเสียเอง)'),
+  C('received_on', 'date', nn=True, th='วันที่ได้รับคำขอ'),
+  C('status', 'char1', nn=True, d="'D'", th='O=รอดำเนินการ D=ดำเนินการแล้ว R=ปฏิเสธ', chk="status IN ('O','D','R')"),
+  C('erase_mode', 'code10', th='การลบที่ทำ: CONTACT=ลบข้อมูลติดต่อ FULL=ปิดบังทั้งหมด'),
+  C('reason', 'str200', th='เหตุผล (เช่น เหตุที่ปฏิเสธ: ต้องเก็บเอกสารบัญชี/ภาษี 5 ปี)'),
+  C('result', 'json', th='สิ่งที่ดำเนินการ (ชื่อช่อง/จำนวนแถว — ไม่เก็บค่าข้อมูล)'),
+  C('completed_on', 'date', th='วันที่ดำเนินการเสร็จ/แจ้งผล'),
+], idx=[('company_id','received_on')]))
 
 add(T('sys_secret', 'ค่าลับของบริษัท (เข้ารหัส AES-256-GCM ด้วยกุญแจของเครื่องแม่ข่าย) เช่น กุญแจ API ของ Claude (T7.7) — ไม่ส่งกลับหน้าจอ ไม่อยู่ในแฟ้มสำรอง/คัดลอกบริษัท', 'sys', sync='server', express='(ใหม่)', cols=[
   C('code', 'code20', nn=True, th='ชนิดค่าลับ เช่น ANTHROPIC_KEY'),

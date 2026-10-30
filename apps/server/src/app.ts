@@ -50,6 +50,7 @@ import { etaxRoutes } from './modules/etax.js';
 import { aiRoutes } from './modules/ai.js';
 import { securityRoutes } from './modules/security.js';
 import { expressImportRoutes } from './modules/express-import.js';
+import { pdpaRoutes } from './modules/pdpa.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
@@ -121,6 +122,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   aiRoutes(app, db);
   securityRoutes(app, db);
   expressImportRoutes(app, database);
+  pdpaRoutes(app, db);
   inventoryAccountRoutes(app, db);
   reportRoutes(app, db);
 
