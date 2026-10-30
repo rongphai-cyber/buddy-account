@@ -4,6 +4,7 @@ import { MENU, flattenMenu, fmt, formatDate } from '@buddy/core';
 import { api } from '../api';
 import { useCan, useSession } from '../session';
 import { PageHead } from '../ui';
+import { DashboardPage } from './reports/Dashboard';
 
 interface TB { totals: { closing_debit: string; closing_credit: string }; balanced: boolean; rows: Array<{ account_no: string; account_group: string; closing: string; is_control: boolean }>; fiscal_year: { code: string; start_date: string; end_date: string } | null }
 
@@ -21,6 +22,24 @@ export function HomePage() {
   const show = (v: number) => (tb.data ? fmt(v) : '…');
   const all = flattenMenu().filter((x) => !x.children);
   const ready = all.filter((x) => x.route).length;
+  // หน้าแรก = แดชบอร์ดของบริษัทที่เลือกอยู่ (ผู้มีสิทธิ์ RP.DASH) — ข้อมูลเฉพาะบริษัทนั้น เปลี่ยนบริษัทที่แถบด้านบน
+  if (canDash) return (
+    <DashboardPage home>
+      <section className="card">
+        <h2>เริ่มงานที่ใช้บ่อย</h2>
+        <div className="quick">
+          <button onClick={() => nav('/sa/invoices/new')}>+ ขายเงินเชื่อ</button>
+          <button onClick={() => nav('/pu/invoices/new')}>+ ซื้อเงินเชื่อ</button>
+          <button onClick={() => nav('/fi/ar/receipts/new')}>+ รับชำระหนี้</button>
+          <button onClick={() => nav('/gl/journals/new')}>+ บันทึกใบสำคัญ</button>
+          <button onClick={() => nav('/reports/trial-balance')}>งบทดลอง</button>
+          <button onClick={() => nav('/fs/statements')}>งบการเงิน</button>
+          <button onClick={() => nav('/reports/center')}>ศูนย์รายงาน</button>
+        </div>
+        <p className="hint">ค้นหาเมนู: Ctrl+K แล้วพิมพ์ชื่อหน้า · Alt+H กลับหน้าแรก</p>
+      </section>
+    </DashboardPage>
+  );
   return (
     <div className="page home" data-tone="home">
       <PageHead eyebrow={me?.company?.code} title={me?.company?.name_th ?? ''} lead={year ? `ปีบัญชี ${year.code} (${formatDate(year.start_date, ys)} – ${formatDate(year.end_date, ys)})` : 'ยังไม่ได้กำหนดรอบบัญชี'} />
@@ -35,7 +54,6 @@ export function HomePage() {
         <section className="card">
           <h2>เริ่มงานที่ใช้บ่อย</h2>
           <div className="quick">
-            {canDash && <button className="primary" onClick={() => nav('/reports/dashboard')}>📊 แดชบอร์ดผู้บริหาร</button>}
             <button onClick={() => nav('/gl/journals/new')}>+ บันทึกใบสำคัญ</button>
             <button onClick={() => nav('/gl/journals')}>สมุดรายวัน</button>
             <button onClick={() => nav('/reports/trial-balance')}>งบทดลอง</button>

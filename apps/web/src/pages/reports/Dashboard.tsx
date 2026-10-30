@@ -70,7 +70,8 @@ function useWidth<T extends HTMLElement>(): [React.RefObject<T>, number] {
 }
 const num = (x: Money) => Number(x ?? 0);   // ใช้วาดกราฟเท่านั้น — ตัวเลขที่แสดงใช้ fmt() จากข้อความทศนิยม
 
-export function DashboardPage() {
+/** home = ใช้เป็นหน้าแรกของบริษัทที่เลือกอยู่ (children = ทางลัดใต้แดชบอร์ด) */
+export function DashboardPage({ home, children }: { home?: boolean; children?: ReactNode } = {}) {
   const { me } = useSession();
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
@@ -87,7 +88,7 @@ export function DashboardPage() {
   const [byCat, setByCat] = useState(false);
   const lk = useLookups('22,45');
   useEffect(() => { setFocus(null); }, [range.from, range.to, grain, cat, ctype, me?.branch?.id]);
-  useEffect(() => { setSp({ p: preset, grain, ...(cat ? { cat } : {}), ...(ctype ? { ctype } : {}) }, { replace: true }); }, [preset, grain, cat, ctype, setSp]);
+  useEffect(() => { if (!home) setSp({ p: preset, grain, ...(cat ? { cat } : {}), ...(ctype ? { ctype } : {}) }, { replace: true }); }, [preset, grain, cat, ctype, setSp, home]);
   const effGrain: Grain = grain === 'day' && Date.parse(range.to) - Date.parse(range.from) > 91 * 86400000 ? 'month' : grain;
   const params = (r: Range, g: Grain) => ({ from: r.from, to: r.to, grain: g, branch_id: me?.branch?.id, category: cat || undefined, customer_type: ctype || undefined });
   const all = useQuery({ queryKey: ['dashboard', params(range, effGrain)], queryFn: () => api.get<Dash>('/api/v1/dashboard', params(range, effGrain)) });
@@ -98,8 +99,8 @@ export function DashboardPage() {
   const rangeText = `${formatDate(range.from, ys)} – ${formatDate(range.to, ys)}`;
 
   return (
-    <div className="page dash" data-tone="reports">
-      <PageHead eyebrow="รายงาน › แดชบอร์ดผู้บริหาร" title="แดชบอร์ดผู้บริหาร"
+    <div className="page dash" data-tone={home ? 'home' : 'reports'}>
+      <PageHead eyebrow={home ? `${me?.company?.code ?? ''} · แดชบอร์ดของบริษัท` : 'รายงาน › แดชบอร์ดผู้บริหาร'} title={home ? me?.company?.name_th ?? '' : 'แดชบอร์ดผู้บริหาร'}
         lead={<>ข้อมูลสดจากเอกสารขาย ซื้อ รับ/จ่ายชำระ และใบสำคัญ · {me?.company?.name_th} · {me?.branch ? `สาขา ${me.branch.name}` : 'ทุกสาขา'} (เปลี่ยนบริษัท/สาขาที่แถบด้านบน)</>} />
       <section className="dash-filters card no-print" aria-label="ตัวกรอง">
         <div className="seg" role="group" aria-label="ช่วงเวลา">
@@ -141,6 +142,7 @@ export function DashboardPage() {
           {D && <RevExp data={D} ys={ys} focus={focus} onPick={(m, from, to) => pick(from, to, `${MONTH_TH_SHORT[Number(m.slice(5, 7)) - 1]} ${yy(m, ys)}`)} />}
         </Panel>
       </div>
+      {children}
     </div>
   );
 }

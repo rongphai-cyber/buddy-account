@@ -118,5 +118,10 @@
  "เลิกแก้ไข": "Stop editing",
  "เลิกแก้ไข กลับเป็นดูอย่างเดียว": "Stop editing, back to view only",
  "แก้ไข{0} — แก้แล้วกด F9 เพื่อบันทึก": "Editing {0} — press F9 to save",
- "ดูอย่างเดียว — กด แก้ไข (Alt+E)": "View only — press Edit (Alt+E)"
+ "ดูอย่างเดียว — กด แก้ไข (Alt+E)": "View only — press Edit (Alt+E)",
+ "+ ขายเงินเชื่อ": "+ Credit Sale",
+ "+ ซื้อเงินเชื่อ": "+ Credit Purchase",
+ "+ รับชำระหนี้": "+ Receive Payment",
+ "{0} · แดชบอร์ดของบริษัท": "{0} · Company Dashboard",
+ "ศูนย์รายงาน": "Report Center"
 }

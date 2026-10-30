@@ -2912,6 +2912,15 @@
 ]
 },
 {
+"th": "งบทดลอง",
+"n": 5,
+"files": [
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "งบประมาณ",
 "n": 5,
 "files": [
@@ -3582,11 +3591,11 @@
 ]
 },
 {
-"th": "งบทดลอง",
+"th": "งบการเงิน",
 "n": 4,
 "files": [
 "apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/web/src/pages/reports/Statements.tsx",
 "packages/core/src/menu.ts"
 ]
 },
@@ -4343,15 +4352,6 @@
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx"
-]
-},
-{
-"th": "งบการเงิน",
-"n": 3,
-"files": [
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/reports/Statements.tsx",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -5357,6 +5357,13 @@
 ]
 },
 {
+"th": "+ บันทึกใบสำคัญ",
+"n": 2,
+"files": [
+"apps/web/src/pages/Home.tsx"
+]
+},
+{
 "th": "+ ป้อนรายละเอียด{0}",
 "n": 2,
 "files": [
@@ -5822,6 +5829,13 @@
 "files": [
 "apps/web/src/pages/tax/Wht50.tsx",
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "ค้นหาเมนู: Ctrl+K แล้วพิมพ์ชื่อหน้า · Alt+H กลับหน้าแรก",
+"n": 2,
+"files": [
+"apps/web/src/pages/Home.tsx"
 ]
 },
 {
@@ -8606,6 +8620,13 @@
 ]
 },
 {
+"th": "เริ่มงานที่ใช้บ่อย",
+"n": 2,
+"files": [
+"apps/web/src/pages/Home.tsx"
+]
+},
+{
 "th": "เริ่มระบบ",
 "n": 2,
 "files": [
@@ -9634,6 +9655,13 @@
 ]
 },
 {
+"th": "+ ขายเงินเชื่อ",
+"n": 1,
+"files": [
+"apps/web/src/pages/Home.tsx"
+]
+},
+{
 "th": "+ คอลัมน์",
 "n": 1,
 "files": [
@@ -9641,17 +9669,17 @@
 ]
 },
 {
+"th": "+ ซื้อเงินเชื่อ",
+"n": 1,
+"files": [
+"apps/web/src/pages/Home.tsx"
+]
+},
+{
 "th": "+ บันทึกคำขอ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
-]
-},
-{
-"th": "+ บันทึกใบสำคัญ",
-"n": 1,
-"files": [
-"apps/web/src/pages/Home.tsx"
 ]
 },
 {
@@ -9680,6 +9708,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/PriorYear.tsx"
+]
+},
+{
+"th": "+ รับชำระหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/Home.tsx"
 ]
 },
 {
@@ -11528,6 +11563,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "{0} · แดชบอร์ดของบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -14888,13 +14930,6 @@
 "n": 1,
 "files": [
 "apps/web/src/App.tsx"
-]
-},
-{
-"th": "ค้นหาเมนู: Ctrl+K แล้วพิมพ์ชื่อหน้า · Alt+H กลับหน้าแรก",
-"n": 1,
-"files": [
-"apps/web/src/pages/Home.tsx"
 ]
 },
 {
@@ -29213,6 +29248,13 @@
 ]
 },
 {
+"th": "ศูนย์รายงาน",
+"n": 1,
+"files": [
+"apps/web/src/pages/Home.tsx"
+]
+},
+{
 "th": "ศูนย์รายงาน (พิมพ์รายงาน)",
 "n": 1,
 "files": [
@@ -33627,13 +33669,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
-]
-},
-{
-"th": "เริ่มงานที่ใช้บ่อย",
-"n": 1,
-"files": [
-"apps/web/src/pages/Home.tsx"
 ]
 },
 {
@@ -39157,13 +39192,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
-]
-},
-{
-"th": "📊 แดชบอร์ดผู้บริหาร",
-"n": 1,
-"files": [
-"apps/web/src/pages/Home.tsx"
 ]
 },
 {
