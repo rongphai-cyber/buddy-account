@@ -55,6 +55,8 @@ async function save(db: Db, a: Ctx, id: string | null, b: z.infer<typeof body>) 
     seen.add(k);
   });
   return db.transaction().execute(async (tx) => {
+    // ยอดยกมาไม่ลงบัญชี — ลงวันที่ในปีก่อนที่ปิดงวดแล้วได้ (วันที่ต้องก่อนวันเริ่มใช้โปรแกรม ตรวจแล้วข้างบน)
+    await sql`SELECT set_config('app.allow_locked_period', 'on', true)`.execute(tx);
     const dt = await openType(tx, a);
     const dup = await tx.selectFrom('doc_header').select('id').where('company_id', '=', a.companyId).where('doc_type_id', '=', dt).where('doc_no', '=', b.doc_no).where('doc_date', '=', b.doc_date).where('doc_status', '<>', 'C').where('deleted_at', 'is', null).executeTakeFirst();
     if (dup && dup.id !== id) throw badRequest(`ล็อต ${b.doc_no} วันที่นี้มีอยู่แล้ว — เพิ่มรายการในใบเดิม`);

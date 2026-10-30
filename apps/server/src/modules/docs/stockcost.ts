@@ -50,7 +50,7 @@ export async function checkNegative(db: Db, companyId: string, st: StockSettings
 
 /**
  * คิดต้นทุนใหม่ของรายการจ่ายที่ตามมา เมื่อบันทึก/แก้/ยกเลิกเอกสารย้อนหลัง (บทที่ 14) — อัตโนมัติในทรานแซกชันเดียวกัน ไม่มีเมนู "คำนวณใหม่"
- * ไล่ตามวันที่: ขาย/รับคืน/ส่งคืน/เบิก/โอนออก(+โอนเข้าคู่กัน)/ปรับลด/ส่วนประกอบชุด ของสินค้าที่เกี่ยวข้อง ตั้งแต่วันที่ของเอกสาร · ต้นทุนเปลี่ยน = ลงบัญชีใหม่ (Perpetual)
+ * ไล่ตามวันที่: ขาย/รับคืน/เบิก/โอนออก(+โอนเข้าคู่กัน)/ปรับลด/ส่วนประกอบชุด ของสินค้าที่เกี่ยวข้อง ตั้งแต่วันที่ของเอกสาร · ต้นทุนเปลี่ยน = ลงบัญชีใหม่ (Perpetual)
  */
 export async function recostAfter(tx: Db, a: { companyId: string; userId: string; branchId?: string | null }, headerId: string) {
   const h = await tx.selectFrom('doc_header').select(['doc_date']).where('id', '=', headerId).executeTakeFirst();
@@ -63,7 +63,7 @@ export async function recostAfter(tx: Db, a: { companyId: string; userId: string
         FROM doc_line l JOIN doc_header h ON h.id = l.header_id JOIN md_item i ON i.id = l.item_id LEFT JOIN md_item_account_group g ON g.id = i.account_group_id
        WHERE h.company_id = ${a.companyId} AND h.doc_status <> 'C' AND h.deleted_at IS NULL AND l.deleted_at IS NULL AND NOT h.is_opening AND h.id <> ${headerId}
          AND h.doc_date >= ${date} AND l.item_id IN (${sql.join(items)}) AND l.warehouse_id IS NOT NULL
-         AND ((l.stock_effect = -1 AND l.movement_code IN ('9', '6', '4', '7', '8')) OR (l.stock_effect = 1 AND l.movement_code = '2'))
+         AND ((l.stock_effect = -1 AND l.movement_code IN ('9', '6', '4', '8')) OR (l.stock_effect = 1 AND l.movement_code = '2'))
        ORDER BY h.doc_date, h.doc_no, l.line_no LIMIT 20000`.execute(tx)).rows;
   if (!lines.length) return 0;
   const st = await stockSettings(tx, a.companyId);

@@ -181,6 +181,9 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await put(revenue, {}, [{ period_no: 3, credit: '500' }])).status).toBe(200);
     s = (await call('GET', `/api/v1/gl/prior-year?fiscal_year_id=${fy}`)).body;
     expect(s.prior.id).toBeTruthy();
+    // ปีที่สร้างเพื่อยอดเปรียบเทียบ = ปิดแล้ว → วันเริ่มใช้โปรแกรมไม่เลื่อนไปปีก่อน (ยอดยกมาสินค้ายังลงวันก่อนวันเริ่มใช้ได้)
+    expect((await sql<{ status: string }>`SELECT status FROM gl_fiscal_year WHERE id = ${s.prior.id}`.execute(database.db)).rows[0]!.status).toBe('C');
+    expect((await call('GET', '/api/v1/stock-opening')).body.start_date).toBe('2026-01-01');
     expect([s.rows.length, s.closing_debit, s.closing_credit]).toEqual([3, '1500.00', '1500.00']);
     const e = (await call('GET', `/api/v1/gl/prior-year/entry?fiscal_year_id=${fy}&account_id=${cash}`)).body;
     expect([e.read_only, e.opening.debit, e.periods[2].debit, e.periods[2].start_date]).toEqual([false, '1000.00', '500.00', '2025-03-01']);
@@ -1398,7 +1401,7 @@ describe('Buddy Account API (PGlite)', () => {
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
     const sup = (await call('GET', '/api/v1/suppliers?q=S200')).body.rows[0].id;
     const ob = { party_id: cus, doc_no: 'IV68/0001', doc_date: '2024-12-15', price_type: '2', amount: 1000, vat_rate: 7 };
-    expect((await call('POST', '/api/v1/ar-opening', { ...ob, doc_date: '2025-01-05' })).body.error.message).toMatch(/ก่อนวันเริ่มใช้/);
+    expect((await call('POST', '/api/v1/ar-opening', { ...ob, doc_date: '2026-01-05' })).body.error.message).toMatch(/ก่อนวันเริ่มใช้/);
     const o1 = await call('POST', '/api/v1/ar-opening', ob);
     expect(o1.body).toMatchObject({ doc_no: 'IV68/0001', net_amount: '1070.00' });
     expect((await call('POST', '/api/v1/ar-opening', ob)).body.error.message).toMatch(/มีอยู่แล้ว/);
@@ -1406,7 +1409,7 @@ describe('Buddy Account API (PGlite)', () => {
     const o2 = await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0002', vat_rate: 0, vat_amount: 69.99 });
     expect(o2.body).toMatchObject({ net_amount: '1069.99' });
     expect((await call('GET', `/api/v1/docs/${o1.body.id}/journal`)).body.journals).toEqual([]);
-    expect((await call('GET', '/api/v1/ar-opening')).body).toMatchObject({ total: '2139.99', start_date: '2025-01-01' });
+    expect((await call('GET', '/api/v1/ar-opening')).body).toMatchObject({ total: '2139.99', start_date: '2026-01-01' });
     // ปรากฏเป็นบิลค้าง · รับชำระในระบบ → ภาษีเกณฑ์เงินสดเกิดที่ใบเสร็จ
     const open = (await call('GET', `/api/v1/ar-receipts/open-items?party_id=${cus}`)).body.rows.map((r: { doc_no: string }) => r.doc_no);
     expect(open).toEqual(expect.arrayContaining(['IV68/0001', 'IV68/0002']));
@@ -1491,15 +1494,15 @@ describe('Buddy Account API (PGlite)', () => {
     expect(await bal()).toBe('16/1664.00');
     const card = (await call('GET', `/api/v1/stock/card?item_id=${it}&from=2026-04-01&to=2026-04-30`)).body;
     expect(card.lines.map((l: { doc_no: string; value: string }) => l.value)).toEqual(['1000.00', '1080.00', '-416.00']);
-    // รับคืน 1 (ติ๊ก R) ที่ต้นทุนเฉลี่ย · ส่งคืนผู้จำหน่าย 2 · ไม่ติ๊ก R ไม่กระทบสต๊อก
+    // รับคืน 1 (ติ๊ก R) ที่ต้นทุนเฉลี่ย · ส่งคืนผู้จำหน่าย 2 ที่ราคาคืน (ตรงกับที่ลดสินค้าในบัญชี) · ไม่ติ๊ก R ไม่กระทบสต๊อก
     const cn = (await call('POST', '/api/v1/ar-credit-notes', { doc_type_id: await typeOf('CN'), doc_date: '2026-04-06', party_id: cus, ref_header_id: i1.id, price_type: '2', vat_rate: 7, lines: [{ item_id: it, qty: 1, unit_price: 200, return_to_stock: true }] })).body;
     const cn2 = (await call('POST', '/api/v1/ar-credit-notes', { doc_type_id: await typeOf('CN'), doc_date: '2026-04-06', party_id: cus, ref_header_id: i1.id, price_type: '2', vat_rate: 7, lines: [{ item_id: it, qty: 1, unit_price: 10 }] })).body;
     expect(await bal()).toBe('17/1768.00');
     const dn = (await call('POST', '/api/v1/ap-credit-notes', { doc_type_id: await typeOf('DN'), doc_date: '2026-04-07', party_id: sup, ref_header_id: r1.id, price_type: '2', vat_rate: 7, lines: [{ item_id: it, qty: 2, unit_price: 100, return_to_stock: true }] })).body;
-    expect(await bal()).toBe('15/1560.00');
+    expect(await bal()).toBe('15/1568.00');
     // แก้บิลขายเป็น 5 → คิดใหม่ทั้งบรรทัด · ยกเลิก → สต๊อกกลับ
     expect((await call('PUT', `/api/v1/sales-invoices/${i1.id}`, { ...iv, lines: [{ item_id: it, qty: 5, unit_price: 200 }] })).status).toBe(200);
-    expect(await bal()).toBe('14/1456.00');
+    expect(await bal()).toBe('14/1464.00');
     // FIFO (กลุ่มบัญชีสินค้า F): จ่าย 3 จากล็อตแรก @100
     const grp = (await sql<{ id: string }>`INSERT INTO md_item_account_group (company_id, code, name_th, cost_method) VALUES (${companyId}, 'FIFO', 'กลุ่ม FIFO', 'F') RETURNING id`.execute(database.db)).rows[0]!.id;
     await sql`UPDATE md_item SET account_group_id = ${grp} WHERE id = ${it}`.execute(database.db);

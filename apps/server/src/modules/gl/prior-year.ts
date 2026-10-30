@@ -122,7 +122,12 @@ export function priorYearRoutes(app: FastifyInstance, db: Db) {
       throw badRequest(`บัญชี ${acc.account_no} เป็นบัญชีรายได้/ค่าใช้จ่าย ไม่มียอดยกมา — ป้อนเฉพาะยอดรายงวด`);
     return db.transaction().execute(async (tx) => {
       // ปีที่แล้วยังไม่มีในรอบบัญชี: สร้างให้ และปิดงวดไว้ (ป้อนยอดเองแล้ว จึงไม่ควรมีใบสำคัญในปีนั้นอีก)
-      const fyId = y.prior.id ?? await createFiscalYear(tx, a.companyId, y.prior.start_date, a.userId);
+      let fyId = y.prior.id;
+      if (!fyId) {
+        // ปีที่สร้างเพื่อเก็บยอดเปรียบเทียบอย่างเดียว = ปิดบัญชีแล้ว · ไม่เลื่อนวันเริ่มใช้โปรแกรม (ยอดยกมา/ลูกหนี้-เจ้าหนี้-สินค้ายกมายังลงวันก่อนวันเริ่มใช้ได้)
+        fyId = await createFiscalYear(tx, a.companyId, y.prior.start_date, a.userId);
+        await tx.updateTable('gl_fiscal_year').set({ status: 'C', updated_by: a.userId }).where('id', '=', fyId).execute();
+      }
       await tx.updateTable('gl_period').set({ is_locked: true, locked_by: a.userId, locked_at: sql`now()` as never }).where('company_id', '=', a.companyId).where('fiscal_year_id', '=', fyId).where('is_locked', '=', false).execute();
       const before = await tx.selectFrom('gl_prior_year_balance').select(['period_no', 'debit', 'credit']).where('company_id', '=', a.companyId).where('fiscal_year_id', '=', fyId).where('account_id', '=', acc.id)
         .where(sql<boolean>`department_id IS NOT DISTINCT FROM ${dept}::uuid`).where('deleted_at', 'is', null).orderBy('period_no').execute();

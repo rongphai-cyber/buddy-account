@@ -65,6 +65,8 @@ async function save(db: Db, a: Ctx, K: Kind, id: string | null, b: z.infer<typeo
     vat_amount: vat.toFixed(2), net_amount: net.toFixed(2), vat_basis: b.vat_date ? '1' : '2', vat_date: b.vat_date ?? null, remark: b.remark, gl_posted: 'N', updated_by: a.userId,
   };
   return db.transaction().execute(async (tx) => {
+    // ยอดยกมาไม่ลงบัญชี — ลงวันที่ในปีก่อนที่ปิดงวดแล้วได้ (วันที่ต้องก่อนวันเริ่มใช้โปรแกรม ตรวจแล้วข้างบน)
+    await sql`SELECT set_config('app.allow_locked_period', 'on', true)`.execute(tx);
     const dup = await tx.selectFrom('doc_header').select('id').where('company_id', '=', a.companyId).where('doc_type_id', '=', dt.id).where('doc_no', '=', b.doc_no).where('deleted_at', 'is', null).executeTakeFirst();
     if (dup && dup.id !== id) throw badRequest(`เลขที่ ${b.doc_no} มีอยู่แล้ว — แนะนำใส่ปีนำหน้าเพื่อไม่ให้ซ้ำกับเลขปีปัจจุบัน`);
     let hid = id;

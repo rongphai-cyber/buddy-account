@@ -168,8 +168,9 @@ export async function cancelDocument(db: Db, ctx: Ctx, headerId: string, reason:
     if (h.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว');
     const paid = await activeSettlement(tx, ctx.companyId, headerId);
     if (paid) throw badRequest(`เอกสาร ${h.doc_no} มีการรับ/จ่ายชำระแล้ว — ยกเลิกใบเสร็จ/ใบสำคัญจ่ายที่ตัดเอกสารนี้ก่อน`);
-    // ยอดยกมาลงวันที่ก่อนเริ่มใช้ (ไม่มีงวด) — ไม่ตรวจงวด
+    // ยอดยกมาลงวันที่ก่อนเริ่มใช้ ไม่ลงบัญชี — ไม่ตรวจงวด (ปีก่อนที่ปิดงวดแล้วก็ยกเลิกได้)
     if (!h.is_opening) await periodFor(tx, ctx.companyId, String(h.doc_date).slice(0, 10));
+    else await sql`SELECT set_config('app.allow_locked_period', 'on', true)`.execute(tx);
     if (before) await before(tx);
     await unpostDocument(tx, ctx, headerId);
     await tx.updateTable('doc_header').set({ doc_status: 'C', cancel_reason: reason.slice(0, 200), updated_by: ctx.userId }).where('id', '=', headerId).execute();

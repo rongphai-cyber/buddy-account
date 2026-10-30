@@ -42,9 +42,9 @@ export const tradeBody = z.object({
 type Body = z.infer<typeof tradeBody>;
 /** บิลที่หักเงินมัดจำได้ (ขายเชื่อ/ขายสด/ซื้อเชื่อ/ซื้อสด) */
 const DEPOSIT_CLASSES = ['IV', 'HS', 'RR', 'HP'];
-/** ผลต่อสต๊อกของเอกสาร (รหัส POSOPR ของ Express): 9 ขาย −, 2 รับคืน +, 0 ซื้อ +, 7 ส่งคืน − */
-const STOCK_MOVE: Record<string, { code: string; eff: 1 | -1; purchase?: boolean; onlyReturn?: boolean }> = {
-  IV: { code: '9', eff: -1 }, HS: { code: '9', eff: -1 }, CN: { code: '2', eff: 1, onlyReturn: true }, RR: { code: '0', eff: 1, purchase: true }, HP: { code: '0', eff: 1, purchase: true }, DN: { code: '7', eff: -1, onlyReturn: true },
+/** ผลต่อสต๊อกของเอกสาร (รหัส POSOPR ของ Express): 9 ขาย −, 2 รับคืน +, 0 ซื้อ +, 7 ส่งคืน − (atLine: มูลค่าตามบรรทัด ไม่ใช่ต้นทุนเฉลี่ย) */
+const STOCK_MOVE: Record<string, { code: string; eff: 1 | -1; purchase?: boolean; onlyReturn?: boolean; atLine?: boolean }> = {
+  IV: { code: '9', eff: -1 }, HS: { code: '9', eff: -1 }, CN: { code: '2', eff: 1, onlyReturn: true }, RR: { code: '0', eff: 1, purchase: true }, HP: { code: '0', eff: 1, purchase: true }, DN: { code: '7', eff: -1, onlyReturn: true, atLine: true },
 };
 
 /** หัว + บรรทัด + วิธีชำระของเอกสาร (บันทึกใหม่หรือแก้ไข) แล้วลงบัญชีในทรานแซกชันเดียวกัน */
@@ -173,7 +173,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
         stock.push({ warehouse_id: wh, stock_effect: 0, movement_code: null, cost_amount: null, cost_unit: null });
         const comps = await explodeKit(tx, a.companyId, it.id, d(l.qty).times(d(l.factor ?? 1)).abs());
         if (!comps.length) throw badRequest(`บรรทัดที่ ${i + 1}: สินค้าชุด ${it.code} ยังไม่มีรายการสินค้าประกอบ — กำหนดที่ รายละเอียดสินค้าชุด`);
-        const alloc = mv.eff > 0 && mv.purchase ? allocateKit(calc.lines[i]!.net_amount, comps.map((c) => ({ qty: c.qty.toString(), price: c.std_cost ?? 0, fallback: c.item_std_cost ?? 1 }))) : null;
+        const alloc = (mv.eff > 0 && mv.purchase) || mv.atLine ? allocateKit(calc.lines[i]!.net_amount, comps.map((c) => ({ qty: c.qty.toString(), price: c.std_cost ?? 0, fallback: c.item_std_cost ?? 1 }))) : null;
         let kitCost = d(0);
         for (const [ci, c] of comps.entries()) {
           const cwh = c.warehouse_id ?? wh;
@@ -189,8 +189,8 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
       }
       if (!wh) throw badRequest(`บรรทัดที่ ${i + 1}: เลือกคลังสินค้า (หรือกำหนดคลังหลักที่ค่าเริ่มต้นระบบสินค้า)`);
       const bq = d(l.qty).times(d(l.factor ?? 1)).abs();
-      // รับเข้าจากการซื้อ = มูลค่าก่อน VAT หลังเฉลี่ยส่วนลด · จ่ายออก/รับคืน = ต้นทุนตามวิธีของกลุ่มบัญชี
-      const cost = mv.eff > 0 && mv.purchase ? d(calc.lines[i]!.net_amount).toFixed(2)
+      // รับเข้าจากการซื้อ/ส่งคืนผู้จำหน่าย = มูลค่าก่อน VAT หลังเฉลี่ยส่วนลด (ส่งคืนลดสินค้าในบัญชีด้วยยอดเดียวกัน) · จ่ายออก/รับคืน = ต้นทุนตามวิธีของกลุ่มบัญชี
+      const cost = (mv.eff > 0 && mv.purchase) || mv.atLine ? d(calc.lines[i]!.net_amount).toFixed(2)
         : await issueCost(tx, a.companyId, { itemId: it.id, warehouseId: wh, byWarehouse: st!.byWarehouse, date: b.doc_date, qty: bq.toString(), method: mv.eff > 0 ? 'A' : it.cost_method, fallbackUnit: it.std_cost });
       stock.push({ warehouse_id: wh, stock_effect: mv.eff, movement_code: mv.code, cost_amount: cost, cost_unit: bq.isZero() ? '0' : d(cost).div(bq).toDecimalPlaces(4).toString() });
       // ขายต่ำกว่าทุนให้เตือน (ค่าเริ่มต้นระบบขาย ข้อ 5) — บันทึกได้ แจ้งให้ทราบ

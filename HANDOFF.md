@@ -6,7 +6,8 @@
 อัปเดตล่าสุด: 30/10/2569 · commit ล่าสุดบน GitHub: ดู `git log -1` (main = origin/main)
 
 ## สถานะ
-- ตั้งค่าครั้งแรกครบ: git + GitHub (`rongphai-cyber/buddy-account`, private), PostgreSQL ของ Buddy, ข้อมูล TESTRice → DEMO, smoke test
+- ตั้งค่าครั้งแรกครบ: git + GitHub (`rongphai-cyber/buddy-account`, private), PostgreSQL ของ Buddy, smoke test
+- **ฐานหลัก (30/10/2569): บริษัท DEMO = ข้อมูลทดลองทั้งปี 2569 สร้างด้วย `tools/demo-check/seed-year.mjs`** (ดู `docs/15_ข้อมูลทดลอง.md`) — ข้อมูล Express TESTRice ชุดเดิมไม่อยู่ในฐานหลักแล้ว อยู่ในฐานสำรอง `buddy_backup_20261030` · ตัวเลข DEMO แบบ Express ในบันทึกด้านล่าง (ลูกหนี้ 26.5 ล้าน, งบทดลอง 245 ล้าน, posting-compare, compare_reports, tb_check) เป็นของข้อมูลชุดเดิม ใช้ได้เฉพาะบนสำเนาที่นำกลับจากฐานสำรอง
 - เฟส P1 ที่ทำได้ตอนนี้เสร็จทั้งหมด (T1.10–T1.14, T1.16) — ค้าง T1.15 (รอ P3 แฟ้มภาษี) และ T1.17 (ทำพร้อม P2)
 - P0: T0.14 Row-Level Security เสร็จ (ดู `docs/05_หลายลูกค้าและความปลอดภัย.md` ข้อ 10 — **ตารางใหม่ที่มี company_id ต้องเปิด RLS ใน migration**, โค้ดใช้ `database.db` ไม่ใช่ `database.raw`)
 - P0: T0.10 สิทธิ์ 7 ชนิดรายเมนูเสร็จ (`apps/server/src/modules/permissions.ts` — API ใหม่ต้องเพิ่มกฎใน `API_RULES` ไม่งั้นถูกปฏิเสธ และทดสอบ "every API route has a permission rule" ล้ม)
@@ -219,7 +220,8 @@
 1. **แผนงานครบทุกข้อแล้ว** (30/10/2569): TASKS.md ไม่มีงานค้าง · หน้าจอคู่มือ Express 248 หน้า = เสร็จ 203 / ทำแบบใหม่ 40 / ไม่ต้องทำ 5 · ข้อกำหนดเจ้าของ docs/13 ครบ 10 ข้อ · เมนูมีหน้าจอครบ 101/101
 2. รอเจ้าของ: ลงนาม e-Tax (ใบรับรอง) · ทดสอบ AI อ่านบิลจริง (กุญแจของเจ้าของ) · ยืนยันข้อสันนิษฐาน PCENTn · ตรวจคำแปลภาษาอังกฤษ
 3. งานถัดไปให้เจ้าของเลือก (ไม่มีในแผน) — อย่าเริ่มเองโดยไม่ถาม
-4. ✅ ตรวจความพร้อมก่อนใช้งานจริง (30/10/2569): `docs/14_ตรวจความพร้อมก่อนใช้งานจริง.md` · `tools/demo-check/month-cycle.mjs` (งานเดือน พ.ย. ครบวงจรบนสำเนา + กระทบยอดสมุดย่อย↔GL ตามบทบาท AR/AP/OUTPUT_VAT/INPUT_VAT/WHT; ลดหนี้เก็บค่าบวกในแฟ้มภาษีต้องหักออกเอง) ผ่าน 53/53 · แก้ TradeDocs หลังบันทึกโหลดเอกสารจาก server · ⚠️ ข้อมูล DEMO: ลูกหนี้รายตัว 29.87 ล้าน (ตรง Express) ≠ บัญชีลูกหนี้ 12.34 ล้าน, เจ้าหนี้ 20.21 ล้าน ≠ บัญชีเจ้าหนี้ — ต้องกระทบยอดก่อนใช้จริง
+\1
+5. ✅ ข้อมูลทดลองใหม่ทั้งปี (30/10/2569): ลบ DEMO ชุด Express (สำรองไว้ `buddy_backup_20261030`) แล้วสร้างใหม่ด้วย `seed-year.mjs` (ผ่าน API 3,600+ ครั้ง ตรวจท้ายสคริปต์ 13/13) · เครื่องมือ `db-backup.mjs` `wipe-company.mjs` `seed-user.mjs` · บั๊กที่พบและแก้: (1) `gl/prior-year.ts` บันทึกยอดปีที่แล้วสร้างปีบัญชีก่อนหน้าสถานะเปิด → วันเริ่มใช้โปรแกรมเลื่อนถอยไป — สร้างเป็นสถานะ C · ยอดยกมาลูกหนี้/เจ้าหนี้/สินค้า (ไม่ลงบัญชี) ลงวันที่ในปีที่ปิดงวดแล้วได้ (`set_config('app.allow_locked_period')` ใน opening.ts/stockopening.ts/cancelDocument) (2) ส่งคืนสินค้า DN ติ๊ก R: สต๊อกออกที่ต้นทุนเฉลี่ยแต่บัญชีลดสินค้าตามมูลค่าบรรทัด → สต๊อกออกตามมูลค่าบรรทัด (STOCK_MOVE.DN.atLine, recostAfter ไม่คิดใหม่รหัส 7) · smoke ปรับให้ใช้บัญชีผังใหม่ (5470-08, 2131-06) และแบบงบแถวแรก
 - ไฟล์ของเจ้าของ `docs/50ทวิ.pdf` (ใช้ทำแบบ 50 ทวิ) และ `docs/ChartOfAccount_with_English.xlsx` (ใช้ทำผังบัญชีไทย–อังกฤษ) — ใช้แล้ว ห้าม commit
 - ข้อสันนิษฐานที่รอยืนยัน: ฐานของคอลัมน์ "% ของยอดขาย" (PCENTn) = บรรทัดแรกที่มียอด
 
@@ -238,9 +240,9 @@
   - `pnpm test` (core 9 + API 20 + schema) · `pnpm typecheck` · `pnpm --filter @buddy/web build`
   - smoke: `PASS=<จากไฟล์> BASE=http://localhost:4100 OUT=<scratchpad>/shots node apps/web/e2e/smoke.cjs` (20 ขั้น) — server ต้องเปิดด้วย `BUDDY_REQUIRE_ADMIN_2FA=0` (T0.16)
   - **admin ของ DEMO เปิด 2FA แล้ว (30/10/2569)** — smoke เข้าระบบฐานจริงไม่ได้ (ห้ามใช้กุญแจ 2FA ของเจ้าของ) → ใช้สำเนา: ปิด server → `node tools/local-pg/pg.mjs run -- node tools/demo-check/smoke-copy.mjs create` → เปิด server ด้วย `BUDDY_REQUIRE_ADMIN_2FA=0 node tools/local-pg/pg.mjs run -- node tools/demo-check/smoke-copy.mjs run -- pnpm --filter @buddy/server start` → smoke → ปิด server → `... smoke-copy.mjs drop` → tb_check ฐานจริง
-  - เทียบรายงานกับ Express: `tools/express-import/compare_reports.py` (ดู T5.9) ต้องตรง 183/183
-  - ข้อมูลที่ย้ายมาไม่ถูกแก้: `node tools/local-pg/pg.mjs run -- node tools/demo-check/tb_check.mjs DEMO` ต้องได้ ใบสำคัญ 16627 ใบ · เดบิต=เครดิต 1422342812.87 · เอกสาร 25424 ใบ ยอดรวม 1928493718.33 (30/10/2569) — และแสดงเอกสารที่คีย์เพิ่มทีหลัง (เจ้าของคีย์ทดสอบบน DEMO ได้ เช่น RR0002237 1,070.00 ทำให้งบทดลองปี 2569 เป็น 245,719,387.16 ไม่ใช่ข้อผิดพลาด)
-  - ยอดเงิน: งบทดลอง DEMO ปี 2569 คงเหลือต้องเป็น **245,718,317.16** ทั้งสองด้าน (ปี 2568 คงเหลือ 181,398,941.31)
+  - เทียบรายงานกับ Express / tb_check / ยอด 245,718,317.16: **ใช้กับข้อมูล TESTRice ชุดเดิมเท่านั้น** (นำกลับจาก `buddy_backup_20261030` ลงฐานแยก หรือนำเข้าใหม่) — DEMO ปัจจุบันเป็นข้อมูลทดลอง
+  - ข้อมูลทดลอง DEMO (ฐานหลัก) ยอด 31/12/2569: งบทดลองคงเหลือ 23,313,035.92 · ลูกหนี้ 1,385,612.79 = 1130-01 · เจ้าหนี้ 1,372,181.26 = 2120-01 · สต๊อก 1,034,002.59 = 1140-02 · สร้างซ้ำได้ (สุ่มแบบกำหนดค่าเริ่ม ได้ยอดเดิมทุกครั้ง) ตาม docs/15
+  - `tools/demo-check/month-cycle.mjs` เขียนไว้กับ DEMO ชุด Express — ถ้าจะใช้กับข้อมูลทดลองชุดใหม่ต้องปรับรหัสบัญชี/คู่ค้าในสคริปต์ก่อน
 - ทดลองหน้าจอที่ "บันทึก" ข้อมูล: ใช้ server ทดสอบแยก (PGlite, `BUDDY_DATA_DIR=<scratchpad>/buddy-testN PORT=4101` (สร้างใหม่ได้ด้วย cli create-admin), admin/buddy1234) อย่าเขียนข้อมูลลง DEMO
 - นำข้อมูลใหม่ทั้งหมด (ถ้าจำเป็น): drop DB buddy → `node tools/local-pg/pg.mjs run -- bash tools/express-import/import.sh D:/ACC-Program/TESTRice - TESTRice` → ตรวจงบทดลอง 2553 = 245,718,317.16 → `... run -- python tools/demo-data/make_demo.py - TESTRice DEMO` → `... run -- pnpm --silent --filter @buddy/server cli create-admin admin "ผู้ดูแลระบบ" <รหัสจากไฟล์>`
 
