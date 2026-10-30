@@ -271,6 +271,14 @@ export function glRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const b = parse(newJournalBody, req.body);
     const style = String((await companySettings(db, a.companyId))['gl.voucher_numbering'] ?? '4');
+    // คีย์เลขที่เอง (ไม่ใช่โหมดป้อนเลขเอง): ต้องขึ้นต้นด้วยตัวนำหน้าของสมุด เหมือนเลขที่เอกสาร (ข้อกำหนดเจ้าของ)
+    const own = b.voucher_no?.trim();
+    if (own && style !== '0') {
+      const bk = await db.selectFrom('gl_journal_book').select('prefix').where('id', '=', b.journal_book_id).where('company_id', '=', a.companyId).executeTakeFirst();
+      const pre = bk?.prefix?.trim() ?? '';
+      if (pre && !own.toUpperCase().startsWith(pre.toUpperCase())) throw badRequest(`เลขที่ใบสำคัญต้องขึ้นต้นด้วย ${pre} ตามสมุดรายวัน — หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ`, [{ field: 'voucher_no', message: `ต้องขึ้นต้นด้วย ${pre}` }]);
+      if (pre && own.toUpperCase() === pre.toUpperCase()) b.voucher_no = null;
+    }
     const j = await createJournal(db, a, b, style);
     for (const v of b.vat) await addManualVat(db, a, v.kind, { ...v, journal_id: j.id, header_id: null });
     for (const w of b.wht) await saveWht(db, a, null, { ...w, journal_id: j.id, header_id: null });

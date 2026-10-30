@@ -5,7 +5,7 @@ import { d, fmt, STOCK_KINDS, todayIso, type StockKind } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
-import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
@@ -211,10 +211,10 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
                     <td>{l.item_id && <LotSelect itemId={l.item_id} warehouseId={l.warehouse_id ?? h.warehouse_id} value={l.source_line_id} disabled={ro} onChange={(v) => setLine(l.key, { source_line_id: v })} />}</td>
                     <td><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
                   </> : <>
-                    <td><input className="r" inputMode="decimal" value={l.qty} disabled={ro} onChange={(e) => setLine(l.key, { qty: e.target.value.replace(cls === 'JU' ? /[^\d.-]/g : /[^\d.]/g, '') })} aria-label="จำนวน" /></td>
+                    <td><NumInput neg={cls === 'JU'} value={l.qty} disabled={ro} onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวน" /></td>
                     <td><LkSelect byId rows={lk.data?.UNIT} value={l.unit_id} disabled={ro} onChange={(v) => setLine(l.key, { unit_id: v || null })} aria-label="หน่วย" /></td>
                     <td><input className="r" inputMode="decimal" value={l.factor} disabled={ro} onChange={(e) => setLine(l.key, { factor: e.target.value.replace(/[^\d.]/g, '') })} aria-label="ตัวคูณ" /></td>
-                    {cls === 'JU' && d(l.qty || 0).gt(0) ? <td><input className="r" inputMode="decimal" value={l.unit_cost} disabled={ro} placeholder="เฉลี่ย" onChange={(e) => setLine(l.key, { unit_cost: e.target.value.replace(/[^\d.]/g, '') })} aria-label="ทุนต่อหน่วย" /></td>
+                    {cls === 'JU' && d(l.qty || 0).gt(0) ? <td><NumInput places={2} value={l.unit_cost} disabled={ro} placeholder="เฉลี่ย" onChange={(v) => setLine(l.key, { unit_cost: v })} aria-label="ทุนต่อหน่วย" /></td>
                       : <td className="r muted">{l.cost_unit !== null ? fmt(l.cost_unit, { places: 4 }) : ''}</td>}
                     <td className="r muted">{l.cost_amount !== null ? <Money v={l.cost_amount} /> : l.item_id ? <span className="small">คำนวณเมื่อบันทึก</span> : ''}</td>
                   </>}

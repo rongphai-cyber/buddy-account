@@ -149,5 +149,15 @@
  "เอกสาร {0} ({1}) ไม่มีหน้าจอให้เปิด — ดูได้จากรายงานหรือใบสำคัญที่ลงบัญชี": "Document {0} ({1}) has no screen to open — see it in reports or in its posted voucher",
  "ใบสั่งขายที่อ้าง:": "Referenced sales order:",
  "ใบสั่งซื้อที่อ้าง:": "Referenced purchase order:",
- "— แก้ที่เอกสารต้นทาง": "— edit it at the source document"
+ "— แก้ที่เอกสารต้นทาง": "— edit it at the source document",
+ "บันทึก{0} {1} แล้ว (ไม่ลงบัญชี)": "{0} {1} saved (not posted to the ledger)",
+ "ต้องขึ้นต้นด้วย {0}": "Must start with {0}",
+ "กรอก": "Fill in",
+ "คลิกเพื่อปิด": "Click to close",
+ "คีย์เลขเอง — ขึ้นต้นด้วย {0} เสมอ ห้ามซ้ำกับเอกสารอื่น": "Own number — always starts with {0}, must not duplicate another document",
+ "ช่องนี้": "this field",
+ "ตัวนำหน้า {0} ลบไม่ได้ — เลขที่เอกสารต้องขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร": "Prefix {0} cannot be deleted — document numbers must start with the document type prefix",
+ "ต้อง{0} {1} ก่อน — ช่องที่มี * ต้องมีข้อมูล": "{0} {1} first — fields marked * are required",
+ "เลขที่เอกสารต้องขึ้นต้นด้วย {0} ตามประเภทเอกสาร เช่น {1}{2} — หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ": "Document number must start with {0} (document type prefix), e.g. {1}{2} — or leave blank for an automatic number",
+ "เลขที่ใบสำคัญต้องขึ้นต้นด้วย {0} ตามสมุดรายวัน — หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ": "Voucher number must start with {0} (journal book prefix) — or leave blank for an automatic number"
 }

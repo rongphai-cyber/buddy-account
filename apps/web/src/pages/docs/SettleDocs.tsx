@@ -156,8 +156,8 @@ export function SettleFormPage({ path }: { path: string }) {
       settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0' })),
       payments: paysBody(pays), wht: K.cls === 'PS' ? whtsBody(whts) : [] };
     try {
-      const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
-      toast(`บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว`);
+      const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}`, body);
+      toast(r.journal_id ? `บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก${K.label} ${r.doc_no} แล้ว (ไม่ลงบัญชี)`);
       setDirty(false); if (id) ed.lock();
       qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] }); qc.invalidateQueries({ queryKey: ['doc-vat'] });
       if (K.cls === 'PS') setVatCheck(r.id);   // ภาษีซื้อเกณฑ์เงินสด (ค่าบริการ) เกิดตอนจ่าย: ตรวจรายการในแฟ้มภาษีซื้อ (ไม่มีรายการ = ปิดเอง)

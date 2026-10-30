@@ -6,7 +6,7 @@ import { d, fmt, formatDate, todayIso, type YearSystem } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
-import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, PageHead, Pill, toast, useHotkeys } from '../../ui';
 
 /** ตรวจนับสินค้า (คู่มือบทที่ 14 S-IC-15..22) — ยอดตามระบบ ณ วันนับคำนวณสดทุกครั้ง */
 interface Row { id: string; warehouse_id: string; warehouse_code: string; warehouse_name: string; item_id: string; item_code: string; item_name: string; shelf: string | null; flag: '1' | '3' | '6';
@@ -101,8 +101,8 @@ export function CountsPage() {
                   <td className="mono">{r.warehouse_code}</td><td className="mono">{r.item_code}</td><td>{r.item_name}</td>
                   <td><input value={e.shelf} maxLength={10} disabled={locked} onChange={(x) => setEdit(r, { shelf: x.target.value })} aria-label="ชั้นเก็บ" /></td>
                   <td className="r">{fmt(r.system_qty, { places: 2 })}</td>
-                  <td>{r.count_unit_code && d(r.count_factor || 1).gt(1) ? <input className="r" inputMode="decimal" value={e.big} disabled={locked} title={`1 ${r.count_unit_code} = ${fmt(r.count_factor!, { places: 2 })} ${r.unit_code ?? ''}`} onChange={(x) => setEdit(r, { big: x.target.value.replace(/[^\d.]/g, '') })} aria-label="หน่วยใหญ่" /> : null}</td>
-                  <td><input className="r" inputMode="decimal" value={e.counted} disabled={locked} placeholder="ยังไม่นับ" onChange={(x) => setEdit(r, { counted: x.target.value.replace(/[^\d.]/g, '') })} aria-label={`ยอดนับ ${r.item_code}`} /></td>
+                  <td>{r.count_unit_code && d(r.count_factor || 1).gt(1) ? <NumInput value={e.big} disabled={locked} title={`1 ${r.count_unit_code} = ${fmt(r.count_factor!, { places: 2 })} ${r.unit_code ?? ''}`} onChange={(v) => setEdit(r, { big: v })} aria-label="หน่วยใหญ่" /> : null}</td>
+                  <td><NumInput value={e.counted} disabled={locked} placeholder="ยังไม่นับ" onChange={(v) => setEdit(r, { counted: v })} aria-label={`ยอดนับ ${r.item_code}`} /></td>
                   <td>{r.unit_code}</td>
                   <td className={cx('r', diff && diff.lt(0) && 'bad')}>{diff ? fmt(diff.toString(), { places: 2 }) : ''}</td>
                   <td className="r">{r.flag === '6' && r.adjust_value !== null ? <Money v={r.adjust_value} /> : diff && r.avg_cost ? <Money v={diff.times(d(r.avg_cost)).toFixed(2)} /> : ''}</td>

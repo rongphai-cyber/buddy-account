@@ -291,9 +291,16 @@ button.primary.book-btn { background: var(--book-c); border-color: var(--book-c)
 .kv dd { margin: 0; }
 
 /* toasts */
-.toasts { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; z-index: 60; max-width: min(420px, calc(100% - 32px)); }
-.toast { background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); font-size: 13.5px; }
+/* ข้อความแจ้งทั่วไป: กลางจอ เห็นชัด (ข้อกำหนดเจ้าของ) — คลิกปิดได้ ไม่บังการคลิกส่วนอื่น · ข้อความเกี่ยวกับช่องใช้กล่องติดช่อง (.field-tip) */
+.toasts { position: fixed; left: 50%; top: 38%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 60; width: max-content; max-width: min(560px, calc(100% - 32px)); pointer-events: none; }
+.toast { pointer-events: auto; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; background: var(--ink); color: var(--bg); padding: 14px 20px; border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28); font-size: 15px; line-height: 1.5; animation: toast-in .18s ease-out; }
+.toast::before { content: '✓'; font-weight: 700; }
+.toast.t-ok { background: #2f7d55; color: #fff; }
 .toast.t-bad { background: var(--bad); color: #fff; }
+.toast.t-bad::before { content: '✕'; }
+.toast.t-warn { background: #b26a00; color: #fff; }
+.toast.t-warn::before { content: '⚠'; }
+@keyframes toast-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
 .toast.t-info { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
 /* เลขที่เอกสารอัตโนมัติที่จะได้ (ยังไม่ได้ออกเลขจริง) */
 input.auto-no { color: var(--muted); font-style: italic; }

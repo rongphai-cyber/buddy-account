@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as RKE } from 'react';
-import { fmt, formatDate, parseDateInput, parseInput, type YearSystem } from '@buddy/core';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as RKE, type FocusEvent as RFE } from 'react';
+import { d, fmt, formatDate, parseDateInput, parseInput, type YearSystem } from '@buddy/core';
 import { ApiError } from './api';
 import { useSession } from './session';
 
@@ -35,7 +35,7 @@ export function Toasts() {
   }, []);
   const tip = list.find((t) => t.at);
   return <>
-    <div className="toasts" role="status" aria-live="polite">{list.filter((t) => !t.at).map((t) => <div key={t.id} className={'toast t-' + t.tone}>{t.text}</div>)}</div>
+    <div className="toasts" role="status" aria-live="polite">{list.filter((t) => !t.at).map((t) => <div key={t.id} className={'toast t-' + t.tone} title="คลิกเพื่อปิด" onMouseDown={(e) => e.stopPropagation()} onClick={() => setList((l) => l.filter((x) => x.id !== t.id))}>{t.text}</div>)}</div>
     {tip && <FieldTip t={tip} />}
   </>;
 }
@@ -138,6 +138,16 @@ export function navKey(e: RKE<HTMLElement>, onEnd?: () => void) {
   const i = els.indexOf(t);
   if (i < 0) return;
   e.preventDefault();
+  // ช่องบังคับ (ป้ายมี *) ว่างอยู่ → Enter ไม่ผ่าน เตือนติดช่อง (ข้อกำหนดเจ้าของ: ทุกหน้าจอเอกสาร ช่องที่ต้องมีต้องไม่ปล่อยผ่าน)
+  const field = t.closest('label.field');
+  if (!e.shiftKey && field?.querySelector(':scope > .lbl .req') && field.querySelector('input:not([type=checkbox]):not([type=radio]), select') === t && !(t as HTMLInputElement).value.trim()) {
+    const name = field.querySelector(':scope > .lbl')?.firstChild?.textContent?.trim() ?? '';
+    t.setAttribute('aria-invalid', 'true');
+    t.addEventListener('input', () => t.removeAttribute('aria-invalid'), { once: true });
+    t.addEventListener('change', () => t.removeAttribute('aria-invalid'), { once: true });
+    toast(`ต้อง${t.matches('select') ? 'เลือก' : 'กรอก'} ${name ? `"${name}"` : 'ช่องนี้'} ก่อน — ช่องที่มี * ต้องมีข้อมูล`, 'warn', t);
+    return;
+  }
   const n = els[i + (e.shiftKey ? -1 : 1)];
   if (n) { n.focus(); (n as HTMLInputElement).select?.(); }
   else if (onEnd) onEnd();   // ช่องสุดท้ายของหน้า — เช่น ถามบันทึก (useDocEdit)
@@ -280,6 +290,31 @@ export function MoneyInput({ value, onChange, disabled, invalid, className, ...r
         const v = e.target.value.trim() ? parseInput(e.target.value) : null;
         if (!e.target.value.trim()) onChange(''); else if (v !== null) onChange(v.isZero() ? '' : v.toFixed(2));
       }} />
+  );
+}
+
+/** แสดงตัวเลขมีเครื่องหมายคั่นหลักพัน (ข้อความทศนิยม ไม่ผ่าน number) — places = ทศนิยมอย่างน้อย */
+export function groupNum(v: string | null | undefined, places = 0): string {
+  const raw = (v ?? '').replace(/,/g, '').trim();
+  if (!/^-?\d*\.?\d+$|^-?\d+\.?$/.test(raw)) return v ?? '';
+  const x = d(raw);
+  const s = x.toFixed(Math.max(places, Math.min(x.decimalPlaces(), 6)));
+  const [i, f] = s.split('.');
+  const neg = i!.startsWith('-');
+  return (neg ? '-' : '') + i!.replace('-', '').replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (f ? '.' + f : '');
+}
+/**
+ * ช่องตัวเลข (จำนวน ราคา ต้นทุน): ขณะคีย์แสดงค่าดิบ ออกจากช่องแสดงคั่นหลักพัน (ข้อกำหนดเจ้าของ) · ส่งค่าทันทีที่พิมพ์
+ * places = ทศนิยมที่แสดงอย่างน้อย (ราคา 2 · จำนวน 0) · neg = ติดลบได้
+ */
+export function NumInput({ value, onChange, places = 0, neg, className, ...rest }: { value: string | null | undefined; onChange: (v: string) => void; places?: number; neg?: boolean; className?: string; [k: string]: unknown }) {
+  const [focus, setFocus] = useState(false);
+  const raw = value ?? '';
+  return (
+    <input {...rest} className={cx('r', className)} inputMode="decimal" value={focus ? raw : groupNum(raw, places)}
+      onFocus={(e) => { setFocus(true); const el = e.currentTarget; setTimeout(() => el.select(), 0); (rest.onFocus as ((e: RFE<HTMLInputElement>) => void) | undefined)?.(e); }}
+      onBlur={(e) => { setFocus(false); (rest.onBlur as ((e: RFE<HTMLInputElement>) => void) | undefined)?.(e); }}
+      onChange={(e) => onChange(e.target.value.replace(neg ? /[^\d.-]/g : /[^\d.]/g, ''))} />
   );
 }
 

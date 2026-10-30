@@ -7,7 +7,7 @@ import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { MasterNotesDialog } from '../../components/Notes';
 import { ItemImagesTab, ItemThumb } from '../../components/ItemImages';
-import { Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
+import { NumInput, Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 
 type F = Record<string, string | null>;
 interface Row { id: string; image_id: string | null; code: string; item_type: string; name_th: string; name_en: string | null; barcode: string | null; category_code: string | null; std_cost: string | null; price_1: string | null; status: string; unit_code: string | null; group_code: string | null; qty: string; value: string }
@@ -104,7 +104,7 @@ function ItemsPage({ kind }: { kind: ItemKind }) {
 
 /** ช่องตัวเลขทศนิยม (ราคา จำนวน ตัวคูณ) — เก็บเป็นข้อความ ไม่ใช้ number */
 const Dec = ({ value, onChange, ...rest }: { value: string | null | undefined; onChange: (v: string) => void; [k: string]: unknown }) =>
-  <input inputMode="decimal" className="r" value={value ?? ''} onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))} {...rest} />;
+  <NumInput value={value} onChange={onChange} {...rest} />;
 
 export function ItemForm({ kind, id, onClose, onSaved, initial }: { kind: ItemKind; id: string | null; onClose: () => void; onSaved: (saved?: { id: string; code: string }) => void; initial?: F }) {
   const K = ITEM_KINDS[kind];

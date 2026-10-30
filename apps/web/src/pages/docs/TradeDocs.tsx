@@ -6,7 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { useDocNo } from '../../components/DocNo';
-import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { DiscountInput, LineAmountInput } from '../../components/DiscountInput';
 import { DocLink } from '../../components/DocLink';
 import { useDocEdit } from '../../components/DocEdit';
@@ -113,8 +113,8 @@ function RefInvoicePicker({ K, refId, onPick, onClose }: { K: TradeKind; refId: 
             <tr key={r.id} className={cx(on && 'picked')}>
               <td className="c"><input type="checkbox" checked={on} onChange={(e) => setSel((m) => { const n = { ...m }; if (e.target.checked) n[r.id] = { qty: d(r.qty).toString(), price: d(r.unit_price).toString() }; else delete n[r.id]; return n; })} aria-label={`เลือก ${r.item_code}`} /></td>
               <td className="mono">{r.item_code}</td><td>{r.description}{r.is_free && <span className="muted small"> (ของแถม)</span>}</td><td className="r">{d(r.qty).toString()}</td><td className="r num">{fmt(r.unit_price)}</td>
-              <td>{on && <input className="r" inputMode="decimal" value={sel[r.id]!.qty} onChange={(e) => setSel((m) => ({ ...m, [r.id]: { ...m[r.id]!, qty: e.target.value.replace(/[^\d.]/g, '') } }))} aria-label="จำนวน" />}</td>
-              <td>{on && <input className="r" inputMode="decimal" value={sel[r.id]!.price} onChange={(e) => setSel((m) => ({ ...m, [r.id]: { ...m[r.id]!, price: e.target.value.replace(/[^\d.]/g, '') } }))} aria-label="ราคา" />}</td>
+              <td>{on && <NumInput value={sel[r.id]!.qty} onChange={(v) => setSel((m) => ({ ...m, [r.id]: { ...m[r.id]!, qty: v } }))} aria-label="จำนวน" />}</td>
+              <td>{on && <NumInput places={2} value={sel[r.id]!.price} onChange={(v) => setSel((m) => ({ ...m, [r.id]: { ...m[r.id]!, price: v } }))} aria-label="ราคา" />}</td>
             </tr>); })}
           {q.data && !rows.length && <tr><td colSpan={7} className="empty">ใบกำกับนี้ไม่มีรายการสินค้า</td></tr>}
         </tbody>
@@ -144,7 +144,7 @@ function OrderPicker({ K, partyId, invoiceId, priceType, taken, onPick, onClose 
                 <td className="c"><input type="checkbox" checked={on} disabled={bad} title={bad ? 'ประเภทราคาของใบสั่งไม่ตรงกับบิล' : undefined} onChange={(e) => setQty((m) => { const n = { ...m }; if (e.target.checked) n[r.line_id] = d(r.remaining_qty).toString(); else delete n[r.line_id]; return n; })} aria-label={`เลือก ${r.doc_no} บรรทัด ${r.line_no}`} /></td>
                 <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="mono">{r.item_code}</td><td>{r.description}{bad && <span className="bad small"> ประเภทราคาไม่ตรง</span>}</td><td><DateText v={r.delivery_date} /></td>
                 <td className="r">{d(r.ordered_qty).toString()}</td><td className="r">{d(r.remaining_qty).toString()}</td>
-                <td>{on && <input className="r" inputMode="decimal" value={qty[r.line_id]} onChange={(e) => setQty((m) => ({ ...m, [r.line_id]: e.target.value.replace(/[^\d.]/g, '') }))} aria-label={`จำนวนส่ง ${r.doc_no} ${r.line_no}`} />}</td>
+                <td>{on && <NumInput value={qty[r.line_id]} onChange={(v) => setQty((m) => ({ ...m, [r.line_id]: v }))} aria-label={`จำนวนส่ง ${r.doc_no} ${r.line_no}`} />}</td>
               </tr>
             );
           })}
@@ -322,8 +322,8 @@ export function TradeFormPage({ path }: { path: string }) {
       deposits: Object.entries(deps).filter(([, v]) => d(v || 0).gt(0)).map(([header_id, amount]) => ({ header_id, amount })),
       wht: K.cls === 'HP' ? whtsBody(whts) : [], wht_amount: K.cls === 'HS' ? whtAmt || '0' : '0' };
     try {
-      const r = id ? await api.put<{ id: string; doc_no: string; warnings?: string[] }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; warnings?: string[] }>(`/api/v1/${K.path}`, body);
-      toast(`บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว`);
+      const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null; warnings?: string[] }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null; warnings?: string[] }>(`/api/v1/${K.path}`, body);
+      toast(r.journal_id ? `บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก${K.label} ${r.doc_no} แล้ว (ไม่ลงบัญชี)`);
       // ขายต่ำกว่าทุน (ค่าเริ่มต้นระบบขาย ข้อ 5): บันทึกแล้ว แจ้งเตือนให้ตรวจราคา
       for (const w of r.warnings ?? []) toast(`คำเตือน ${r.doc_no}: ${w}`, 'warn');
       setDirty(false); if (id) ed.lock();
@@ -416,9 +416,9 @@ export function TradeFormPage({ path }: { path: string }) {
                     required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td><input value={l.description} maxLength={200} disabled={readOnly} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" />{l.source_no && <span className="small muted">อ้าง <DocLink id={l.source_header_id} no={l.source_no} cls={K.orderRef} keep={dirty} /></span>}</td>
                   <td><LkSelect byId rows={lk.data?.WH} value={l.warehouse_id} disabled={readOnly} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>
-                  <td><input className="r" inputMode="decimal" value={l.qty} disabled={readOnly} onChange={(e) => setLine(l.key, { qty: e.target.value.replace(/[^\d.-]/g, '') })} aria-label="จำนวน" /></td>
+                  <td><NumInput neg value={l.qty} disabled={readOnly} onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวน" /></td>
                   <td><LkSelect byId rows={lk.data?.UNIT} value={l.unit_id} disabled={readOnly} onChange={(v) => setLine(l.key, { unit_id: v || null })} aria-label="หน่วย" /></td>
-                  <td><input className="r" inputMode="decimal" value={l.unit_price} disabled={readOnly || l.is_free} onChange={(e) => setLine(l.key, { unit_price: e.target.value.replace(/[^\d.]/g, '') })} aria-label="ราคาต่อหน่วย" /></td>
+                  <td><NumInput places={2} value={l.unit_price} disabled={readOnly || l.is_free} onChange={(v) => setLine(l.key, { unit_price: v })} aria-label="ราคาต่อหน่วย" /></td>
                   <td><DiscountInput value={l.discount_text} disabled={readOnly} label="ส่วนลด" base={d(l.qty || 0).times(d(l.unit_price || 0)).toFixed(2)} onChange={(v) => setLine(l.key, { discount_text: v })} /></td>
                   <td className="c"><input type="checkbox" checked={l.is_free} disabled={readOnly} onChange={(e) => setLine(l.key, { is_free: e.target.checked })} aria-label="ของแถม" /></td>
                   {(K.cls === 'CN' || K.cls === 'DN') && <td className="c"><input type="checkbox" checked={l.return_to_stock} disabled={readOnly} onChange={(e) => setLine(l.key, { return_to_stock: e.target.checked })} aria-label="คืนสินค้า" /></td>}
@@ -439,7 +439,7 @@ export function TradeFormPage({ path }: { path: string }) {
               {pays.map((p) => (
                 <tr key={p.key}>
                   <td><select value={p.payment_method_id} disabled={readOnly} onChange={(e) => { setPays((ps) => ps.map((x) => (x.key === p.key ? { ...x, payment_method_id: e.target.value } : x))); setDirty(true); }} aria-label="วิธีชำระ"><option value="">— เลือก —</option>{methods.data?.filter((m) => m.status === 'A' || m.id === p.payment_method_id).map((m) => <option key={m.id} value={m.id}>{m.code} {m.name_th}</option>)}</select></td>
-                  <td><input className="r" inputMode="decimal" value={p.amount} disabled={readOnly} onChange={(e) => { setPays((ps) => ps.map((x) => (x.key === p.key ? { ...x, amount: e.target.value.replace(/[^\d.]/g, '') } : x))); setDirty(true); }} aria-label="จำนวนเงิน" /></td>
+                  <td><NumInput places={2} value={p.amount} disabled={readOnly} onChange={(v) => { setPays((ps) => ps.map((x) => (x.key === p.key ? { ...x, amount: v } : x))); setDirty(true); }} aria-label="จำนวนเงิน" /></td>
                   <td><input value={p.reference_no} maxLength={30} disabled={readOnly} onChange={(e) => { setPays((ps) => ps.map((x) => (x.key === p.key ? { ...x, reference_no: e.target.value } : x))); setDirty(true); }} aria-label="เลขที่อ้างอิง" /></td>
                   <td>{!readOnly && <button type="button" className="icon-btn" tabIndex={-1} onClick={() => setPays((ps) => ps.filter((x) => x.key !== p.key))}>✕</button>}</td>
                 </tr>
@@ -548,7 +548,7 @@ function CancelLineModal({ K, headerId, line, onClose, onDone }: { K: TradeKind;
       <ErrorBox error={err} />
       <p>ค้าง{K.module === 'AR' ? 'ส่ง' : 'รับ'} {line.remaining ? d(line.remaining).toString() : 0} — ยกเลิกบางส่วนหรือทั้งหมดได้ ประวัติยังอยู่ในเอกสาร</p>
       <div className="form-grid">
-        <Field label="จำนวนที่ยกเลิก" req><input className="r" inputMode="decimal" autoFocus value={qty} onChange={(e) => setQty(e.target.value.replace(/[^\d.]/g, ''))} /></Field>
+        <Field label="จำนวนที่ยกเลิก" req><NumInput autoFocus value={qty} onChange={setQty} /></Field>
         <Field label="วันที่ยกเลิก" req><DateInput value={date} onChange={setDate} /></Field>
         <Field label="เหตุผล" wide><LkSelect rows={lk.data?.[table]} value={reason} onChange={setReason} /></Field>
       </div>

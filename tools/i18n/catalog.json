@@ -1174,6 +1174,23 @@
 ]
 },
 {
+"th": "ประเภทเอกสาร",
+"n": 15,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/server/src/modules/doc-types.ts",
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
 "th": "รวม",
 "n": 15,
 "files": [
@@ -1222,23 +1239,6 @@
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "ประเภทเอกสาร",
-"n": 14,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/server/src/modules/doc-types.ts",
-"apps/server/src/modules/docs/engine.ts"
 ]
 },
 {
@@ -4527,6 +4527,15 @@
 ]
 },
 {
+"th": "บันทึก{0} {1} แล้ว (ไม่ลงบัญชี)",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "บันทึก{0} {1} แล้ว — ลงบัญชีแล้ว",
 "n": 3,
 "files": [
@@ -5173,6 +5182,15 @@
 "apps/web/src/components/DocTaxTabs.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx"
+]
+},
+{
+"th": "เลือก",
+"n": 3,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Journals.tsx"
 ]
 },
 {
@@ -6285,6 +6303,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/gl/Books.tsx"
+]
+},
+{
+"th": "ต้องขึ้นต้นด้วย {0}",
+"n": 2,
+"files": [
+"apps/server/src/modules/docs/engine.ts",
+"apps/server/src/modules/gl/routes.ts"
 ]
 },
 {
@@ -8715,14 +8741,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "เลือก",
-"n": 2,
-"files": [
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/Journals.tsx"
 ]
 },
 {
@@ -12484,6 +12502,13 @@
 ]
 },
 {
+"th": "กรอก",
+"n": 1,
+"files": [
+"apps/web/src/ui.tsx"
+]
+},
+{
 "th": "กรอกแล้วเข้าระบบได้ทันที แล้วสร้างบริษัทแรกของคุณ",
 "n": 1,
 "files": [
@@ -13982,6 +14007,13 @@
 ]
 },
 {
+"th": "คลิกเพื่อปิด",
+"n": 1,
+"files": [
+"apps/web/src/ui.tsx"
+]
+},
+{
 "th": "คลิกเพื่อปิดงวดถึงงวดนี้",
 "n": 1,
 "files": [
@@ -14486,17 +14518,17 @@
 ]
 },
 {
+"th": "คีย์เลขเอง — ขึ้นต้นด้วย {0} เสมอ ห้ามซ้ำกับเอกสารอื่น",
+"n": 1,
+"files": [
+"apps/web/src/components/DocNo.tsx"
+]
+},
+{
 "th": "คีย์เลขเอง — ห้ามซ้ำ",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
-"th": "คีย์เลขเอง — ห้ามซ้ำกับเอกสารอื่น",
-"n": 1,
-"files": [
-"apps/web/src/components/DocNo.tsx"
 ]
 },
 {
@@ -16439,6 +16471,13 @@
 ]
 },
 {
+"th": "ช่องนี้",
+"n": 1,
+"files": [
+"apps/web/src/ui.tsx"
+]
+},
+{
 "th": "ช่องบัญชีที่ {0} ซ้ำ",
 "n": 1,
 "files": [
@@ -17094,6 +17133,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
+"th": "ตัวนำหน้า {0} ลบไม่ได้ — เลขที่เอกสารต้องขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/components/DocNo.tsx"
 ]
 },
 {
@@ -17766,6 +17812,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/templates.ts"
+]
+},
+{
+"th": "ต้อง{0} {1} ก่อน — ช่องที่มี * ต้องมีข้อมูล",
+"n": 1,
+"files": [
+"apps/web/src/ui.tsx"
 ]
 },
 {
@@ -34324,6 +34377,13 @@
 ]
 },
 {
+"th": "เลขที่เอกสารต้องขึ้นต้นด้วย {0} ตามประเภทเอกสาร เช่น {1}{2} — หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
 "th": "เลขที่เอกสารต้องมี 1–35 ตัวอักษร",
 "n": 1,
 "files": [
@@ -34412,6 +34472,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/journals.ts"
+]
+},
+{
+"th": "เลขที่ใบสำคัญต้องขึ้นต้นด้วย {0} ตามสมุดรายวัน — หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/routes.ts"
 ]
 },
 {

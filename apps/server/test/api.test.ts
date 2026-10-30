@@ -1452,6 +1452,9 @@ describe('Buddy Account API (PGlite)', () => {
     const dup = await call('POST', '/api/v1/sales-invoices', { ...base, doc_no: 'IV-MAN/001' });
     expect([dup.status, dup.body.error.message]).toEqual([400, expect.stringMatching(/IV-MAN\/001 มีอยู่แล้ว.*เว้นว่าง/)]);
     expect((await call('POST', '/api/v1/sales-invoices', { ...base, doc_no: 'IV 001' })).body.error.message).toMatch(/ไม่มีช่องว่าง/);
+    // ต้องขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร (ลบตัวนำหน้าไม่ได้) · คีย์แค่ตัวนำหน้า = เลขอัตโนมัติ
+    const noPre = await call('POST', '/api/v1/sales-invoices', { ...base, doc_no: '56456644544' });
+    expect([noPre.status, noPre.body.error.message]).toEqual([400, expect.stringContaining(`ต้องขึ้นต้นด้วย ${iv.code}`)]);
     // ว่าง = เลขอัตโนมัติตามประเภทเอกสาร
     const auto = (await call('POST', '/api/v1/sales-invoices', { ...base, doc_no: '' })).body;
     expect(auto.doc_no.startsWith(iv.code)).toBe(true);

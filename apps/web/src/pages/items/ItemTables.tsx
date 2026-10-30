@@ -5,11 +5,11 @@ import { api } from '../../api';
 import { useCan } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
-import { Confirm, DateInput, ErrorBox, Field, KeyHints, Modal, navKey, PageHead, toast, toastError, useHotkeys } from '../../ui';
+import { NumInput, Confirm, DateInput, ErrorBox, Field, KeyHints, Modal, navKey, PageHead, toast, toastError, useHotkeys } from '../../ui';
 
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(v as string).toString());
 const Dec = ({ value, onChange, ...rest }: { value: string | null | undefined; onChange: (v: string) => void; [k: string]: unknown }) =>
-  <input inputMode="decimal" className="r" value={value ?? ''} onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))} {...rest} />;
+  <NumInput value={value} onChange={onChange} {...rest} />;
 type Picked = { id: string; code: string; name: string } | null;
 const KINDS = [['items', 'สินค้า'], ['kits', 'สินค้าชุด'], ['services', 'สินค้าบริการ']] as const;
 

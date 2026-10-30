@@ -12,6 +12,9 @@ describe('document totals (บทที่ 11–12)', () => {
     expect(discountAmount('5+', 1000)!.toFixed(2)).toBe('50.00');
     expect(discountAmount('5+2+', 10000)!.toFixed(2)).toBe('690.00');
     expect(discountAmount('5+,200', 10000)!.toFixed(2)).toBe('700.00');     // 10000 → 9500 → 9300
+    expect(discountAmount('5,000', 10000)?.toFixed(2)).toBe('5000.00');     // คั่นหลักพัน = จำนวนเดียว
+    expect(discountAmount('12,500.50', 20000)?.toFixed(2)).toBe('12500.50');
+    expect(normalizeDiscount('1,000')).toBe('1000');
     expect(discountAmount('200,5%', 10000)!.toFixed(2)).toBe('690.00');     // 10000 → 9800 → 9310
     expect(discountAmount(' 5 + , 200 ', 10000)!.toFixed(2)).toBe('700.00');
     expect(normalizeDiscount('5+,200')).toBe('5%,200');

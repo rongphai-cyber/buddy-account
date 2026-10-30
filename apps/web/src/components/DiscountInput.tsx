@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { d, discountAmount, DISCOUNT_HINT, fmt } from '@buddy/core';
-import { toast } from '../ui';
+import { d, discountAmount, DISCOUNT_HINT, fmt, normalizeDiscount } from '@buddy/core';
+import { groupNum, toast } from '../ui';
 
 /**
  * ช่องส่วนลด (ข้อกำหนดเจ้าของ 30/10/2569): ตรวจรูปแบบทันทีที่ Enter/ออกจากช่อง — ผิดแล้วไม่ให้ Enter ผ่าน เตือนติดช่อง
@@ -11,6 +11,9 @@ export function DiscountInput({ value, onChange, base, label, ...rest }: {
   disabled?: boolean; placeholder?: string; style?: React.CSSProperties; className?: string;
 }) {
   const [bad, setBad] = useState(false);
+  const [focus, setFocus] = useState(false);
+  // ออกจากช่อง: ส่วนลดเป็นจำนวนเงินอย่างเดียว แสดงคั่นหลักพัน (5,000.00) · ขณะคีย์แสดงตามที่พิมพ์
+  const shown = !focus && /^\d+(\.\d+)?$/.test(value.trim()) ? groupNum(value.trim(), 2) : value;
   const problem = () => {
     if (!value.trim()) return null;
     const amt = discountAmount(value, base ?? 0);
@@ -19,15 +22,21 @@ export function DiscountInput({ value, onChange, base, label, ...rest }: {
     return null;
   };
   return (
-    <input {...rest} value={value} maxLength={20} aria-label={label} aria-invalid={bad || undefined} placeholder={rest.placeholder ?? '5+ · 200 · 5+,200'}
+    <input {...rest} value={shown} maxLength={20} aria-label={label} aria-invalid={bad || undefined} placeholder={rest.placeholder ?? '5+ · 200 · 5+,200'}
       title={DISCOUNT_HINT}
+      onFocus={() => setFocus(true)}
       onChange={(e) => { setBad(false); onChange(e.target.value); }}
       onKeyDown={(e) => {
         if (e.key !== 'Enter') return;
         const p = problem();
         if (p) { e.preventDefault(); e.stopPropagation(); setBad(true); toast(p, 'bad', e.currentTarget); }
       }}
-      onBlur={(e) => { const p = problem(); setBad(!!p); if (p) toast(p, 'bad', e.currentTarget); }} />
+      onBlur={(e) => {
+        setFocus(false);
+        const n = normalizeDiscount(value);
+        if (n !== value.replace(/\s+/g, '') && /^\d+(\.\d+)?$/.test(n)) onChange(n);   // 5,000 → 5000 (คั่นหลักพัน)
+        const p = problem(); setBad(!!p); if (p) toast(p, 'bad', e.currentTarget);
+      }} />
   );
 }
 

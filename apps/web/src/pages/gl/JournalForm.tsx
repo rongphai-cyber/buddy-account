@@ -6,6 +6,7 @@ import { api, type Book, type Department, type Template, type TemplateDetail } f
 import { bookColor, bookStyle } from '../../bookColor';
 import { useCan, useSession } from '../../session';
 import { DocLink } from '../../components/DocLink';
+import { withPrefix } from '../../components/DocNo';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
 import { useDocEdit } from '../../components/DocEdit';
@@ -242,7 +243,7 @@ export function JournalFormPage() {
               <span className="lk-in">
                 {isNew
                   ? <input value={noShown && !ownNo && !manualNo && nextNo ? nextNo : typedNo || noPrefix} maxLength={30} className={'mono' + (noShown && !ownNo && !manualNo ? ' auto-no' : '')} placeholder={manualNo ? 'ป้อนเลขที่ใบสำคัญ' : nextNo} aria-required={manualNo} aria-label="เลขที่ใบสำคัญ"
-                      onChange={(e) => { setDirty(true); setNoShown(false); setTypedNo(e.target.value.replace(/\s/g, '')); }}
+                      onChange={(e) => { setDirty(true); setNoShown(false); setTypedNo(manualNo ? e.target.value.replace(/\s/g, '') : withPrefix(noPrefix, e.target.value)); }}
                       onFocus={() => setNoShown(false)}
                       onBlur={(e) => { if (!ownNo && !manualNo) { setNoShown(true); toast(`ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ ${nextNo} (ออกเลขจริงตอนบันทึก · ต้องการเลขเองให้คลิกช่องแล้วพิมพ์)`, 'warn', e.currentTarget); } }}
                       onKeyDown={(e) => {

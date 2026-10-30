@@ -51,6 +51,11 @@ export const docNoInput = z.string().trim().max(30, 'เลขที่เอก
 export async function docNoFor(tx: Db, companyId: string, docTypeId: string, manual?: string | null): Promise<string> {
   const no = manual?.trim();
   if (!no) return issueDocNo(tx, companyId, docTypeId);
+  // ข้อกำหนดเจ้าของ: คีย์เลขเองได้ แต่ต้องขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร (เช่น QT…) — ลบตัวนำหน้าออกไม่ได้
+  const t = await tx.selectFrom('md_doc_type').select('code').where('id', '=', docTypeId).where('company_id', '=', companyId).executeTakeFirst();
+  if (!t) throw notFound('ประเภทเอกสาร');
+  if (no.toUpperCase() === t.code.toUpperCase()) return issueDocNo(tx, companyId, docTypeId);
+  if (!no.toUpperCase().startsWith(t.code.toUpperCase())) throw badRequest(`เลขที่เอกสารต้องขึ้นต้นด้วย ${t.code} ตามประเภทเอกสาร เช่น ${t.code}${no.replace(/^[A-Za-zก-๙]+/, '') || '0000001'} — หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ`, [{ field: 'doc_no', message: `ต้องขึ้นต้นด้วย ${t.code}` }]);
   const used = await tx.selectFrom('doc_header').select(['doc_no', 'doc_date']).where('company_id', '=', companyId).where('doc_no', '=', no).where('deleted_at', 'is', null).executeTakeFirst()
     ?? await tx.selectFrom('gl_journal').select(['voucher_no as doc_no', 'voucher_date as doc_date']).where('company_id', '=', companyId).where('voucher_no', '=', no).where('deleted_at', 'is', null).executeTakeFirst();
   if (used) throw badRequest(`เลขที่ ${no} มีอยู่แล้ว (ลงวันที่ ${String(used.doc_date).slice(0, 10)}) — เปลี่ยนเลขที่ หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ`, [{ field: 'doc_no', message: 'เลขที่ซ้ำ' }]);

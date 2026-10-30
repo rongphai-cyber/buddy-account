@@ -5,7 +5,7 @@ import { d, fmt } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
-import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
 import { useDocEdit } from '../../components/DocEdit';
 
 /** ยอดยกมาสินค้า (คู่มือ S-OB-01 ล็อตยกมา FIFO / S-OB-02 ยอดยกมารายคลัง Average) — 1 ใบ = 1 ล็อต ไม่ลงบัญชี */
@@ -144,7 +144,7 @@ export function StockOpeningFormPage() {
                     onPick={(r: { id: string; code: string; name_th: string; base_unit_code?: string | null } | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td>{l.item_name}</td>
                   <td><LkSelect byId rows={lk.data?.WH} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>
-                  <td><input className="r" inputMode="decimal" value={l.qty} disabled={ro} title="คิดเป็นหน่วยนับย่อย" onChange={(e) => setLine(l.key, { qty: e.target.value.replace(/[^\d.]/g, '') })} aria-label="จำนวนยกมา" /></td>
+                  <td><NumInput value={l.qty} disabled={ro} title="คิดเป็นหน่วยนับย่อย" onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวนยกมา" /></td>
                   <td>{l.unit_code}</td>
                   <td><MoneyInput value={l.value} disabled={ro} onChange={(v) => setLine(l.key, { value: v })} aria-label="มูลค่ายกมา" /></td>
                   <td className="r muted">{l.qty && d(l.qty).gt(0) && l.value ? fmt(d(l.value).div(d(l.qty)).toFixed(4), { places: 4 }) : ''}</td>

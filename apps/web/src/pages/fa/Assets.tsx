@@ -6,7 +6,7 @@ import { api, type Department } from '../../api';
 import { useCan } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, useLookups } from '../../components/LkSelect';
-import { Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
+import { NumInput, Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
 import { DocLink } from '../../components/DocLink';
 
 interface Group { id: string; code: string; name_th: string; name_en: string | null; asset_account_id: string | null; depr_expense_account_id: string | null; accum_depr_account_id: string | null; asset_count: number }
@@ -21,7 +21,7 @@ interface Detail {
 const METHOD: Record<string, string> = { '0': 'ไม่คิดค่าเสื่อม', '1': 'วิธีเส้นตรง', '2': 'วิธีลดยอด' };
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(String(v)).toString());
 const Dec = ({ value, onChange, ...rest }: { value: string; onChange: (v: string) => void; [k: string]: unknown }) =>
-  <input inputMode="decimal" className="r" value={value} onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, ''))} {...rest} />;
+  <NumInput value={value} onChange={onChange} {...rest} />;
 const useGroups = () => useQuery({ queryKey: ['asset-groups'], queryFn: () => api.get<Group[]>('/api/v1/asset-account-groups') });
 
 /** ทะเบียนทรัพย์สินถาวร (คู่มือบทที่ 19 S-FA-01) */

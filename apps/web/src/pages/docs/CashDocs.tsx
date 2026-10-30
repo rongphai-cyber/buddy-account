@@ -180,8 +180,8 @@ export function CashFormPage({ path }: { path: string }) {
       lines: used.map((l) => ({ item_id: K.lines === 'code' ? l.item_id || null : null, description: l.description || null, amount: l.amount || '0' })),
       payments: paysBody(pays), wht: K.whtEntries ? whtsBody(whts) : [] };
     try {
-      const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
-      toast(`บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว`);
+      const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}`, body);
+      toast(r.journal_id ? `บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก${K.label} ${r.doc_no} แล้ว (ไม่ลงบัญชี)`);
       setDirty(false); if (id) ed.lock();
       qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] }); qc.invalidateQueries({ queryKey: ['doc-vat'] });
       if (K.module === 'AP' && calc && !d(calc.vat_amount).isZero()) setVatCheck(r.id);   // มีภาษีซื้อ: ตรวจรายการในแฟ้มภาษีซื้อทันที
@@ -224,7 +224,7 @@ export function CashFormPage({ path }: { path: string }) {
         <div className="head-grid trade-head">
           <div className="col">
             <Field label={`รหัส${partyWord(K)}`} req={K.partyRequired} hint={K.partyRequired ? undefined : `${K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}เล็กน้อยไม่ต้องระบุ — ป้อนชื่อด้านล่างได้`}>
-              <SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} disabled={ro} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
+              <SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required={K.partyRequired} disabled={ro} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
                 onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {!h.party && !K.partyRequired && <Field label="ชื่อ (ไม่มีรหัส)"><input value={h.party_name} maxLength={200} disabled={ro} onChange={(e) => set({ party_name: e.target.value })} /></Field>}
             {K.module === 'AP' && <Field label="เลขที่บิล / ลงวันที่" hint="ใบกำกับภาษีที่ได้รับจากผู้จำหน่าย"><div className="pair"><input value={h.ref_no} maxLength={30} disabled={ro} onChange={(e) => set({ ref_no: e.target.value })} aria-label="เลขที่บิล" /><DateInput value={h.ref_date} disabled={ro} onChange={(v) => set({ ref_date: v })} /></div></Field>}

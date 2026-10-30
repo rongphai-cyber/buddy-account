@@ -11,7 +11,10 @@ const r2 = (v: Decimal) => v.toDecimalPlaces(2);
 
 /** "10+" → "10%" แบบ Express (ทุกช่วงที่คั่นด้วย ,) · ช่องว่างตัดทิ้ง */
 export function normalizeDiscount(text: string | null | undefined): string {
-  return (text ?? '').replace(/\s+/g, '').split(',').map((t) => (/^[\d.+]+\+$/.test(t) ? t.slice(0, -1) + '%' : t)).join(',');
+  const s = (text ?? '').replace(/\s+/g, '');
+  // ตัวเลขมีเครื่องหมายคั่นหลักพัน (5,000 หรือ 12,500.00) = จำนวนเงินตัวเดียว ไม่ใช่ส่วนลดต่อกัน
+  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) return s.replace(/,/g, '');
+  return s.split(',').map((t) => (/^[\d.+]+\+$/.test(t) ? t.slice(0, -1) + '%' : t)).join(',');
 }
 
 /**
