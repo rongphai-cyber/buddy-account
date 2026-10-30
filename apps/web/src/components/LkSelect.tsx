@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api';
 import { ITEM_KINDS, itemKindOf } from '@buddy/core';
@@ -15,6 +16,33 @@ function addKindOf(endpoint: string, params?: Record<string, string>): AddKind |
   return null;
 }
 const ADD_MENU = (k: AddKind) => (k === 'customer' ? 'SA.CUS' : k === 'supplier' ? 'PU.SUP' : ITEM_KINDS[k].menu);
+/**
+ * รายการให้เลือกของช่องค้นหา — ลอยเหนือทุกกรอบ (ตาราง/แท็บ/หน้าต่าง ที่ตัดส่วนเกิน) วางใต้ช่อง หรือเหนือช่องถ้าที่ด้านล่างไม่พอ
+ * ตามช่องเมื่อเลื่อนหน้าจอ/ปรับขนาด (ข้อกำหนดเจ้าของ: รายการต้องแสดงขึ้นมาให้เลือก ไม่ถูกบัง)
+ */
+function PickPopup({ anchor, children }: { anchor: React.RefObject<HTMLDivElement>; children: React.ReactNode }) {
+  const ref = useRef<HTMLUListElement>(null);
+  const [pos, setPos] = useState<React.CSSProperties>({ visibility: 'hidden' });
+  useLayoutEffect(() => {
+    const place = () => {
+      const a = anchor.current?.getBoundingClientRect(), el = ref.current;
+      if (!a || !el) return;
+      const vw = window.innerWidth, vh = window.innerHeight, gap = 2;
+      const width = Math.min(Math.max(a.width, 440), vw - 16);
+      const left = Math.min(Math.max(8, a.left), vw - width - 8);
+      const below = vh - a.bottom - 8, above = a.top - 8;
+      const up = below < Math.min(el.scrollHeight, 300) && above > below;
+      const maxHeight = Math.max(120, Math.min(300, up ? above : below) - gap);
+      setPos(up ? { left, width, bottom: vh - a.top + gap, maxHeight } : { left, width, top: a.bottom + gap, maxHeight });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => { window.removeEventListener('scroll', place, true); window.removeEventListener('resize', place); };
+  }, [anchor, children]);
+  return createPortal(<ul ref={ref} className="pick-list floating" role="listbox" style={pos} onMouseDown={(e) => e.preventDefault()}>{children}</ul>, document.body);
+}
+
 /** บรรทัดว่างท้ายตาราง: Enter = จบการคีย์รายการ ไปช่องแรกที่อยู่ถัดจากตาราง (หมายเหตุ ส่วนลด …) */
 export function focusAfterTable(input: HTMLElement) {
   const table = input.closest('table');
@@ -102,14 +130,14 @@ export function SearchPick<T extends { id: string }>({ endpoint, params, value, 
         }} />
       {!rest.disabled && <button type="button" className="pick-btn" tabIndex={-1} title="ค้นหา (F4)" aria-label="ค้นหา" onMouseDown={(e) => e.preventDefault()} onClick={() => (q === null ? openList() : (setQ(null), setBrowse(false)))}>🔍</button>}
       {q !== null && (q.trim() || browse) && (
-        <ul className="pick-list" role="listbox">
+        <PickPopup anchor={box}>
           {rows.map((r, i) => <li key={r.id} role="option" aria-selected={i === sel} tabIndex={-1} className={i === sel ? 'on' : undefined} onMouseDown={(e) => { e.preventDefault(); pick(r); }}>
             {(r as { image_id?: string | null }).image_id && <img className="pick-thumb" src={`/api/v1/item-images/${(r as { image_id?: string }).image_id}?size=thumb`} alt="" loading="lazy" />}
             <b className="mono">{codeOf ? codeOf(r) : (r as unknown as { code: string }).code}</b> {label ? label(r) : ''} {describe && <span className="muted small">{describe(r)}</span>}
           </li>)}
           {res.data && !rows.length && <li className="muted">ไม่พบ{canAdd ? ' — กด Enter เพื่อเพิ่มใหม่' : ''}</li>}
           {canAdd && <li className="pick-add" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); startAdd(q ?? ''); }}>＋ เพิ่ม{ADD_WORD(addKind!)}ใหม่{q?.trim() ? ` “${q.trim()}”` : ''} <kbd>Ins</kbd></li>}
-        </ul>
+        </PickPopup>
       )}
       {adding !== null && addKind && <Suspense fallback={null}><AddMaster kind={addKind} text={adding} onClose={() => setAdding(null)} onSaved={(code) => void added(code)} /></Suspense>}
     </div>
