@@ -61,7 +61,7 @@ export function Confirm({ title, text, okText = 'ยืนยัน', danger, on
 }
 
 /** Enter = ช่องถัดไป, Shift+Enter = ช่องก่อนหน้า (แบบ Express) */
-export function navKey(e: RKE<HTMLElement>) {
+export function navKey(e: RKE<HTMLElement>, onEnd?: () => void) {
   if (e.key !== 'Enter' || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
   const t = e.target as HTMLElement;
   if (!t.matches('input, select') || t.dataset.noenter != null) return;
@@ -72,6 +72,7 @@ export function navKey(e: RKE<HTMLElement>) {
   e.preventDefault();
   const n = els[i + (e.shiftKey ? -1 : 1)];
   if (n) { n.focus(); (n as HTMLInputElement).select?.(); }
+  else if (onEnd) onEnd();   // ช่องสุดท้ายของหน้า — เช่น ถามบันทึก (useDocEdit)
   else box.dispatchEvent(new CustomEvent('navend', { bubbles: true }));
 }
 

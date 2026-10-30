@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { useDocEdit } from '../../components/DocEdit';
 import { DocActions } from '../../components/DocPrint';
 
 /** ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04) — บิลค้าง ณ วันเริ่มใช้ ไม่ลงบัญชี (ยอดบัญชีป้อนที่ บันทึกยอดยกมา) */
@@ -76,7 +77,9 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
       price_type: (c.price_type ?? '2') as Head['price_type'], amount: d(c.amount ?? 0).toString(), discount_text: c.discount_text ?? '', vat_rate: d(c.vat_rate ?? 0).toString(), vat_amount: d(c.vat_rate ?? 0).isZero() ? d(c.vat_amount ?? 0).toString() : '',
       vat_known: c.vat_basis !== '2', vat_date: c.vat_date ? String(c.vat_date).slice(0, 10) : '', remark: c.remark ?? '' });
   }
-  const ro = !!id && (!cur.data?.editable || !can('edit'));
+  const roBase = !!id && (!cur.data?.editable || !can('edit'));
+  const ed = useDocEdit({ id: id ?? undefined, allowed: !!id && !roBase, dirty, onSave: (n) => void save(!!n), onDiscard: () => { setH(null); setDirty(false); } });
+  const ro = roBase || ed.locked;
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const calc = h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, lines: [{ qty: 1, unit_price: h.amount || 0 }] });
   const manualVat = !!h && d(h.vat_rate || 0).isZero() && h.vat_amount !== '';
@@ -94,7 +97,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
       amount: h.amount || '0', discount_text: h.discount_text || null, vat_rate: h.vat_rate || '0', vat_amount: manualVat ? h.vat_amount : null, vat_date: h.vat_known ? h.vat_date || h.doc_date : null, remark: h.remark || null };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.api}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.api}`, body);
-      toast(`บันทึก ${r.doc_no} แล้ว`); setDirty(false); qc.invalidateQueries({ queryKey: [K.api] });
+      toast(`บันทึก ${r.doc_no} แล้ว`); setDirty(false); if (id) ed.lock(); qc.invalidateQueries({ queryKey: [K.api] });
       if (andNew) { setH((x) => ({ ...x!, party: null, doc_no: '', ref_no: '', amount: '', vat_amount: '', remark: '' })); nav(`${K.route}/new`, { replace: true }); }
       else if (!id) nav(`${K.route}/${r.id}`, { replace: true });
     } catch (e) { setErr(e); } finally { setBusy(false); }
@@ -109,16 +112,18 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
   return (
     <div className="page" data-tone={K.tone}>
       <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1>
-        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ro && !cancelled && id && cur.data && <Pill tone="d">ชำระแล้ว — แก้ไขไม่ได้</Pill>}</span></div>
+        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && !cancelled && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}{roBase && !cancelled && id && cur.data && <Pill tone="d">ชำระแล้ว — แก้ไขไม่ได้</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
+        {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกรายการ</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
+      {ed.dialog}
       <ErrorBox error={err ?? cur.error} />
-      {h && <div onKeyDown={navKey}>
+      {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col">
             <Field label={`รหัส${K.party}`} req><SearchPick<{ id: string; code: string; name: string }> endpoint={K.endpoint} value={h.party} required disabled={ro} autoFocus={!id} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
@@ -150,7 +155,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
           </tbody></table>}
         </div>
       </div>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหารหัส'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกรายการ" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกรายการ" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
       </Confirm>}

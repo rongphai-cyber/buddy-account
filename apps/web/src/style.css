@@ -66,6 +66,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--tone); outline: 
 input[aria-invalid], select[aria-invalid] { border-color: var(--bad); background: var(--bad-soft); }
 input[readonly], input.muted { color: var(--muted); background: var(--surface-2); border-color: var(--line); }
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+/* ช่องที่แก้ไม่ได้ (เช่น เอกสารที่บันทึกแล้วยังไม่กด แก้ไข) พื้นเทาอ่อน ตัวอักษรยังอ่านชัด */
+input:disabled, select:disabled, textarea:disabled { background: var(--surface-2); color: var(--ink); cursor: not-allowed; }
 fieldset:disabled input, fieldset:disabled select, fieldset:disabled textarea { background: transparent; border-color: transparent; color: var(--ink); opacity: 1; }
 kbd { font-family: var(--mono); font-size: 11px; padding: 0 4px; border: 1px solid currentColor; border-radius: 3px; opacity: 0.7; }
 .num { font-variant-numeric: tabular-nums; }

@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocWhtTab, JvVatTab } from '../gl/JvLinks';
@@ -106,7 +107,9 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
     setLines(c.lines.map((l) => ({ key: nextKey(), account_id: l.account_id, department_id: l.department_id ?? '', description: l.description ?? '', amount: d(l.amount).toString() })));
     if (kind === 'vr') { setPick(new Set((c.dps ?? []).map((x) => x.id))); setPays(paysFrom(c.payments ?? [])); }
   }
-  const ro = !!id && (!cur.data?.editable || !can('edit'));
+  const roBase = !!id && (!cur.data?.editable || !can('edit'));
+  const ed = useDocEdit({ id: id ?? undefined, allowed: !!id && !roBase, dirty, onSave: () => void save(), onDiscard: () => { setH(null); setDirty(false); }, noNew: true });
+  const ro = roBase || ed.locked;
   const set = (p: Partial<NonNullable<typeof h>>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const setLine = (k: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === k ? { ...l, ...p } : l))); setDirty(true); };
   const dpRows = openDps.data?.rows ?? [];
@@ -128,7 +131,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
       : { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, dp_ids: chosen.map((r) => r.id), cash_amount: h.cash === '' ? null : h.cash, payments: paysBody(pays) };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.api}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.api}`, body);
-      toast(`บันทึก ${r.doc_no} แล้ว${kind === 'vr' ? ' — ลงบัญชีแล้ว' : ''}`); setDirty(false);
+      toast(`บันทึก ${r.doc_no} แล้ว${kind === 'vr' ? ' — ลงบัญชีแล้ว' : ''}`); setDirty(false); if (id) ed.lock();
       qc.invalidateQueries({ queryKey: [K.api] }); qc.invalidateQueries({ queryKey: ['petty-payments'] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] });
       if (!id) { nav(`${BASE}/${kind}/${r.id}`, { replace: true }); setH(null); } else { await qc.refetchQueries({ queryKey: [K.api, 'one', id] }); setH(null); }
     } catch (e) { setErr(e); } finally { setBusy(false); }
@@ -146,18 +149,20 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   return (
     <div className={cx('page', tColor && 'book-colored')} data-tone="gl" style={bookStyle(tColor)}>
       <div className="doc-title"><p className="eyebrow">บัญชี › เงินสดย่อย › {K.label}</p><h1>{id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '')}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
-        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{kind === 'vr' ? 'ลงบัญชีแล้ว' : cur.data?.vr_no ? `เบิกชดเชยแล้วใน ${cur.data.vr_no}` : 'รอเบิกชดเชย (ยังไม่ลงบัญชี)'}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}</span></div>
+        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{kind === 'vr' ? 'ลงบัญชีแล้ว' : cur.data?.vr_no ? `เบิกชดเชยแล้วใน ${cur.data.vr_no}` : 'รอเบิกชดเชย (ยังไม่ลงบัญชี)'}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setPick(new Set()); setPays([]); nav(`${BASE}/${kind}/new`); } }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={save}>บันทึก <kbd>F9</kbd></button>
+        {ed.editButton}
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={'GL.PC'} />
         <button onClick={() => nav(kind === 'dp' ? BASE : `${BASE}/vr`)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
       <TypeNotice show={!id && !!h && !h.doc_type_id} />
+      {ed.dialog}
       <ErrorBox error={err ?? cur.error ?? openDps.error} />
-      {h && <div onKeyDown={navKey}>
+      {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col"><Field label="คำอธิบาย/หมายเหตุ" wide><input value={h.remark} maxLength={200} disabled={ro} autoFocus={!id} onChange={(e) => set({ remark: e.target.value })} placeholder={kind === 'vr' ? 'เช่น เบิกชดเชยเงินสดย่อย 1–15/11' : 'เช่น ค่าเดินทางพนักงานขาย'} /></Field></div>
           <div className="col">
@@ -226,7 +231,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
           </div>
         </>}
       </div>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี'], ['F9', 'บันทึก'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาบัญชี'], ['F9', 'บันทึก'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? (เปลี่ยนสถานะ ไม่ลบ){kind === 'vr' ? ' ใบจ่ายที่เบิกจะกลับมาเบิกใหม่ได้ · เช็คออกจากทะเบียน' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
       </Confirm>}

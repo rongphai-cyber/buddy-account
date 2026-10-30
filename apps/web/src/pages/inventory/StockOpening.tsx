@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { useDocEdit } from '../../components/DocEdit';
 
 /** ยอดยกมาสินค้า (คู่มือ S-OB-01 ล็อตยกมา FIFO / S-OB-02 ยอดยกมารายคลัง Average) — 1 ใบ = 1 ล็อต ไม่ลงบัญชี */
 const ROUTE = '/ic/opening';
@@ -76,7 +77,9 @@ export function StockOpeningFormPage() {
     setLines([...c.lines.map((l) => ({ key: ++seq, item_id: l.item_id, item_code: l.item_code, item_name: l.item_name, unit_code: l.unit_code, warehouse_id: l.warehouse_id, qty: d(l.qty).toString(), value: d(l.value).toFixed(2) })),
       ...(c.editable && can('edit') && c.lines.length < 300 ? [blank(c.lines[c.lines.length - 1]?.warehouse_id ?? null)] : [])]);
   }
-  const ro = !!id && (!cur.data?.editable || !can('edit'));
+  const roBase = !!id && (!cur.data?.editable || !can('edit'));
+  const ed = useDocEdit({ id: id ?? undefined, allowed: !!id && !roBase, dirty, onSave: (n) => void save(!!n), onDiscard: () => { setH(null); setDirty(false); } });
+  const ro = roBase || ed.locked;
   const cancelled = cur.data?.doc_status === 'C';
   const set = (p: Partial<NonNullable<typeof h>>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const setLine = (key: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...p } : l))); setDirty(true); };
@@ -95,7 +98,7 @@ export function StockOpeningFormPage() {
     const body = { doc_no: h.doc_no, doc_date: h.doc_date, remark: h.remark || null, lines: used.map((l) => ({ item_id: l.item_id, warehouse_id: l.warehouse_id, qty: l.qty || '0', value: l.value || '0' })) };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/stock-opening/${id}`, body) : await api.post<{ id: string; doc_no: string }>('/api/v1/stock-opening', body);
-      toast(`บันทึกล็อต ${r.doc_no} แล้ว`); setDirty(false); await qc.invalidateQueries({ queryKey: ['stock-opening'] }); qc.invalidateQueries({ queryKey: ['stock'] });
+      toast(`บันทึกล็อต ${r.doc_no} แล้ว`); setDirty(false); if (id) ed.lock(); await qc.invalidateQueries({ queryKey: ['stock-opening'] }); qc.invalidateQueries({ queryKey: ['stock'] });
       if (andNew) { setH(null); setLines([]); nav(`${ROUTE}/new`, { replace: true }); }
       else if (!id) { setH(null); setLines([]); nav(`${ROUTE}/${r.id}`, { replace: true }); }
       else { await qc.refetchQueries({ queryKey: ['stock-opening', 'one', id] }); setH(null); }
@@ -110,15 +113,17 @@ export function StockOpeningFormPage() {
   return (
     <div className="page" data-tone="inventory">
       <div className="doc-title"><p className="eyebrow">สินค้า › ยอดยกมาสินค้า</p><h1>{id ? cur.data?.doc_no : 'ล็อตใหม่'}</h1>
-        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}</span></div>
+        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
+        {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกล็อต <kbd>Alt+C</kbd></button>
         <button onClick={() => nav(ROUTE)}>รายการ <kbd>Esc</kbd></button>
       </div>
+      {ed.dialog}
       <ErrorBox error={err ?? cur.error} />
-      {h && <div onKeyDown={navKey}>
+      {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col">
             <Field label="เลขที่เอกสาร (ล็อต)" req hint="FIFO: เลขที่เอกสารรับเข้าเดิม เช่น RR0000002 · ไม่ทราบล็อต ใส่ “ยอดยกมา”"><input className="mono" value={h.doc_no} maxLength={30} disabled={ro} autoFocus={!id} onChange={(e) => set({ doc_no: e.target.value })} /></Field>
@@ -151,7 +156,7 @@ export function StockOpeningFormPage() {
           </table>
         </div>
       </div>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาสินค้า'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาสินค้า'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกล็อตยกมา" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? ยอดสต๊อกยกมาของล็อตนี้จะหายไป (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกล็อต" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
       </Confirm>}

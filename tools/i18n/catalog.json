@@ -59,8 +59,9 @@
 },
 {
 "th": "บันทึก",
-"n": 83,
+"n": 84,
 "files": [
+"apps/web/src/components/DocEdit.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
@@ -563,6 +564,30 @@
 ]
 },
 {
+"th": "เอกสาร",
+"n": 28,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/neighbors.ts",
+"apps/server/src/modules/notes.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/engine.ts",
+"apps/server/src/modules/docs/routes.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "คลัง",
 "n": 27,
 "files": [
@@ -654,29 +679,6 @@
 "packages/core/src/menu.ts",
 "packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เอกสาร",
-"n": 27,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/neighbors.ts",
-"apps/server/src/modules/notes.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/engine.ts",
-"apps/server/src/modules/docs/routes.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -808,6 +810,32 @@
 ]
 },
 {
+"th": "แก้ไข",
+"n": 22,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/InventoryAccount.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Company.tsx",
+"apps/web/src/pages/settings/Defaults.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/reports/gl.ts"
+]
+},
+{
 "th": "ใช้งาน",
 "n": 22,
 "files": [
@@ -882,31 +910,6 @@
 "apps/server/src/modules/docs/stockdocs.ts",
 "apps/server/src/modules/docs/stockopening.ts",
 "apps/server/src/modules/docs/trade.ts"
-]
-},
-{
-"th": "แก้ไข",
-"n": 21,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/InventoryAccount.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Company.tsx",
-"apps/web/src/pages/settings/Defaults.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/reports/gl.ts"
 ]
 },
 {
@@ -1153,27 +1156,6 @@
 "apps/web/src/pages/reports/Ledger.tsx",
 "apps/server/src/modules/trade-import.ts",
 "apps/server/src/modules/reports/gl.ts"
-]
-},
-{
-"th": "ช่องถัดไป",
-"n": 15,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/settings/DataTables.tsx",
-"apps/web/src/pages/tax/Wht50.tsx"
 ]
 },
 {
@@ -1661,6 +1643,20 @@
 ]
 },
 {
+"th": "ใบสำคัญ",
+"n": 11,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Books.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/server/src/modules/neighbors.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/journals.ts"
+]
+},
+{
 "th": "ใหม่ — ยังไม่บันทึก",
 "n": 11,
 "files": [
@@ -1673,6 +1669,22 @@
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)",
+"n": 10,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
 ]
@@ -1793,16 +1805,19 @@
 ]
 },
 {
-"th": "ใบสำคัญ",
+"th": "แก้ไขเอกสารที่บันทึกแล้ว",
 "n": 10,
 "files": [
 "apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Books.tsx",
-"apps/server/src/modules/neighbors.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/journals.ts"
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
 ]
 },
 {
@@ -1828,6 +1843,21 @@
 "apps/web/src/pages/settings/Defaults.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/server/src/modules/reports/gl.ts"
+]
+},
+{
+"th": "ดูอย่างเดียว — กด แก้ไข (Alt+E)",
+"n": 9,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
 ]
 },
 {
@@ -2915,6 +2945,17 @@
 "apps/web/src/pages/inventory/Serials.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ช่องถัดไป",
+"n": 5,
+"files": [
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/settings/DataTables.tsx",
+"apps/web/src/pages/tax/Wht50.tsx"
 ]
 },
 {
@@ -5468,6 +5509,14 @@
 "files": [
 "apps/web/src/pages/Login.tsx",
 "apps/web/src/pages/Signup.tsx"
+]
+},
+{
+"th": "กลับไปแก้",
+"n": 2,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -11972,6 +12021,13 @@
 ]
 },
 {
+"th": "{0}นี้แก้ไขไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
+]
+},
+{
 "th": "{0}ปิดอยู่ในบริษัทนี้ — ผู้มีสิทธิ์เปิดได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน",
 "n": 1,
 "files": [
@@ -12498,13 +12554,6 @@
 },
 {
 "th": "กลับไปรายการ (Esc)",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
-"th": "กลับไปแก้",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
@@ -14335,6 +14384,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "คีย์ครบแล้ว — บันทึก{0}?",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
 ]
 },
 {
@@ -18104,6 +18160,13 @@
 ]
 },
 {
+"th": "ทิ้งการแก้ไขที่ยังไม่บันทึก?",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
+]
+},
+{
 "th": "ที่",
 "n": 1,
 "files": [
@@ -19728,6 +19791,13 @@
 ]
 },
 {
+"th": "บันทึก + เพิ่มใบใหม่",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
+]
+},
+{
 "th": "บันทึก {0} แล้ว{1}",
 "n": 1,
 "files": [
@@ -19749,6 +19819,13 @@
 ]
 },
 {
+"th": "บันทึก{0}ใหม่",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
+]
+},
+{
 "th": "บันทึกการจ่ายเงินสดย่อย",
 "n": 1,
 "files": [
@@ -19767,6 +19844,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "บันทึกการแก้ไข{0}นี้",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
 ]
 },
 {
@@ -30613,6 +30697,13 @@
 ]
 },
 {
+"th": "หรือบันทึกแล้วเริ่มใบถัดไปทันที",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
+]
+},
+{
 "th": "หลักฐานทางบัญชี/ใบกำกับภาษี",
 "n": 1,
 "files": [
@@ -33098,6 +33189,13 @@
 ]
 },
 {
+"th": "เปิดให้แก้ไข{0}นี้",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
+]
+},
+{
 "th": "เป็นรายได้อื่น (Dr บัญชีเช็ครับ / Cr รายได้อื่น)",
 "n": 1,
 "files": [
@@ -34344,6 +34442,20 @@
 ]
 },
 {
+"th": "เลิกแก้ไข",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
+]
+},
+{
+"th": "เลิกแก้ไข กลับเป็นดูอย่างเดียว",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
+]
+},
+{
 "th": "เลิกใช้บริการเมื่อ",
 "n": 1,
 "files": [
@@ -35293,6 +35405,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "แก้ไข{0} — แก้แล้วกด F9 เพื่อบันทึก",
+"n": 1,
+"files": [
+"apps/web/src/components/DocEdit.tsx"
 ]
 },
 {

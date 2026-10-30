@@ -104,5 +104,19 @@
  "เลขที่เอกสารยาวไม่เกิน 30 ตัวอักษร": "Document number must be at most 30 characters",
  "เลขที่เอกสารใช้ได้เฉพาะตัวอักษร ตัวเลข และ / - . _ (ไม่มีช่องว่าง)": "Document number may contain only letters, digits and / - . _ (no spaces)",
  "เว้นไว้ = เลขอัตโนมัติ {0}": "Leave as is = automatic number {0}",
- "เอกสารที่อ้างถึง": "the referenced document"
+ "เอกสารที่อ้างถึง": "the referenced document",
+ "ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)": "Next field (last field = ask to save)",
+ "แก้ไขเอกสารที่บันทึกแล้ว": "Edit a saved document",
+ "{0}นี้แก้ไขไม่ได้": "This {0} cannot be edited",
+ "คีย์ครบแล้ว — บันทึก{0}?": "All fields entered — save {0}?",
+ "ทิ้งการแก้ไขที่ยังไม่บันทึก?": "Discard unsaved changes?",
+ "บันทึก + เพิ่มใบใหม่": "Save + New",
+ "บันทึก{0}ใหม่": "Save the new {0}",
+ "บันทึกการแก้ไข{0}นี้": "Save changes to this {0}",
+ "หรือบันทึกแล้วเริ่มใบถัดไปทันที": " or save and start the next one right away",
+ "เปิดให้แก้ไข{0}นี้": "Unlock this {0} for editing",
+ "เลิกแก้ไข": "Stop editing",
+ "เลิกแก้ไข กลับเป็นดูอย่างเดียว": "Stop editing, back to view only",
+ "แก้ไข{0} — แก้แล้วกด F9 เพื่อบันทึก": "Editing {0} — press F9 to save",
+ "ดูอย่างเดียว — กด แก้ไข (Alt+E)": "View only — press Edit (Alt+E)"
 }

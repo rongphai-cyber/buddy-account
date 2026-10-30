@@ -5,6 +5,7 @@ import { BANK_KINDS, CASH_KINDS, d, SETTLE_KINDS, todayIso, TRADE_KINDS, type Ba
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
@@ -97,7 +98,9 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), department_id: c.department_id ?? '', remark: c.remark ?? '', bank_account_id: c.bank_account_id ?? '', to_bank_account_id: c.to_bank_account_id ?? '',
       amount: d(c.amount ?? 0).toFixed(2), fee: d(c.fee ?? 0).isZero() ? '' : d(c.fee!).toFixed(2), wht: d(c.wht_amount ?? 0).isZero() ? '' : d(c.wht_amount!).toFixed(2) });
   }
-  const ro = !!id && (!cur.data?.editable || !can('edit'));
+  const roBase = !!id && (!cur.data?.editable || !can('edit'));
+  const ed = useDocEdit({ id: id ?? undefined, allowed: !!id && !roBase, dirty, onSave: (n) => void save(!!n), onDiscard: () => { setH(null); setDirty(false); } });
+  const ro = roBase || ed.locked;
   const cancelled = cur.data?.doc_status === 'C';
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const total = h ? (cls === 'BT' ? d(h.amount || 0).plus(d(h.fee || 0)) : cls === 'BU' ? d(h.amount || 0).minus(d(h.wht || 0)) : d(h.amount || 0)) : d(0);
@@ -114,7 +117,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
       to_bank_account_id: cls === 'BT' ? h.to_bank_account_id || null : null, amount: h.amount || '0', fee: cls === 'BT' ? h.fee || '0' : undefined, wht: cls === 'BU' ? h.wht || '0' : undefined };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
-      toast(`บันทึก ${r.doc_no} แล้ว`); setDirty(false); await qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal'] }); qc.invalidateQueries({ queryKey: ['bank-book'] });
+      toast(`บันทึก ${r.doc_no} แล้ว`); setDirty(false); if (id) ed.lock(); await qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal'] }); qc.invalidateQueries({ queryKey: ['bank-book'] });
       if (andNew) { setH(null); nav(`${K.route}/new`, { replace: true }); }
       else if (!id) { setH(null); nav(`${K.route}/${r.id}`, { replace: true }); }
       else { await qc.refetchQueries({ queryKey: [K.path, 'one', id] }); setH(null); }
@@ -130,9 +133,10 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
   return (
     <div className={cx('page', tColor && 'book-colored')} data-tone="finance" style={bookStyle(tColor)}>
       <div className="doc-title"><p className="eyebrow">ธนาคาร › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
-        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}</span></div>
+        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
+        {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกรายการ <kbd>Alt+C</kbd></button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={MENU} />
@@ -140,10 +144,11 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
       </div>
       <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
       <TypeNotice show={!id && !!h && !h.doc_type_id} />
+      {ed.dialog}
       <ErrorBox error={err ?? cur.error ?? defs.error} />
       {h && <>
         {id && <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียด' }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }]} />}
-        {tab === 'gl' && id ? <DocJournalTab id={id} /> : <div onKeyDown={navKey}>
+        {tab === 'gl' && id ? <DocJournalTab id={id} /> : <div onKeyDown={(e) => navKey(e, ed.end)}>
           <div className="head-grid trade-head">
             <div className="col">
               <Field label={bankLabel} req><BankSelect value={h.bank_account_id} disabled={ro} label={bankLabel} onChange={(v) => set({ bank_account_id: v })} /></Field>
@@ -165,7 +170,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
           {defs.data && !defs.data.types.length && <p className="bad">ยังไม่มีประเภทเอกสารของ{K.label} — เพิ่มที่ เริ่มระบบ › เลขที่เอกสาร</p>}
         </div>}
       </>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกรายการ" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? ใบสำคัญจะถูกยกเลิกด้วย (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกรายการ" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
       </Confirm>}

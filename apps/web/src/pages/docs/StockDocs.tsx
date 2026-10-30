@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
@@ -110,7 +111,9 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
         unit_cost: cls === 'JU' && eff > 0 ? d(String(l.cost_unit ?? 0)).toString() : '', amount: cls === 'CA' ? d(String(l.cost_amount ?? 0)).toString() : '', source_line_id: (l.source_line_id as string) ?? null, cost_amount: (l.cost_amount as string) ?? null, cost_unit: (l.cost_unit as string) ?? null };
     }).concat(c.editable && can('edit') ? [blank()] : []));
   }
-  const ro = !!id && (!cur.data?.editable || !can('edit'));
+  const roBase = !!id && (!cur.data?.editable || !can('edit'));
+  const ed = useDocEdit({ id: id ?? undefined, allowed: !!id && !roBase, dirty, onSave: (n) => void save(!!n), onDiscard: () => { setH(null); setDirty(false); } });
+  const ro = roBase || ed.locked;
   const cancelled = cur.data?.doc_status === 'C';
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const setLine = (key: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...p, cost_amount: null, cost_unit: null } : l))); setDirty(true); };
@@ -138,7 +141,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
         unit_cost: cls === 'JU' && l.unit_cost !== '' ? l.unit_cost : null, amount: cls === 'CA' ? l.amount || '0' : null, source_line_id: cls === 'CA' ? l.source_line_id : null })) };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
-      toast(`บันทึก ${r.doc_no} แล้ว`); setDirty(false);
+      toast(`บันทึก ${r.doc_no} แล้ว`); setDirty(false); if (id) ed.lock();
       await qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['stock'] }); qc.invalidateQueries({ queryKey: ['doc-journal'] });
       if (andNew) { setH(null); setLines([]); nav(`${K.route}/new`, { replace: true }); }
       // โหลดเอกสารที่บันทึกใหม่ (ต้นทุนที่คำนวณได้)
@@ -156,9 +159,10 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   return (
     <div className={cx('page', tColor && 'book-colored')} data-tone="inventory" style={bookStyle(tColor)}>
       <div className="doc-title"><p className="eyebrow">สินค้า › {K.label}</p><h1>{id ? cur.data?.doc_no : 'เอกสารใหม่'}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
-        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">บันทึกแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{!cancelled && cur.data?.doc_no?.startsWith('MIG-') && <Pill tone="d">ปรับยอดตอนย้ายข้อมูล — แก้ไข/ยกเลิกไม่ได้</Pill>}{!cancelled && cur.data?.from_count && <Pill tone="d">สร้างจากการตรวจนับ — แก้ที่หน้ารายการตรวจนับ</Pill>}</span></div>
+        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">บันทึกแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}{!cancelled && cur.data?.doc_no?.startsWith('MIG-') && <Pill tone="d">ปรับยอดตอนย้ายข้อมูล — แก้ไข/ยกเลิกไม่ได้</Pill>}{!cancelled && cur.data?.from_count && <Pill tone="d">สร้างจากการตรวจนับ — แก้ที่หน้ารายการตรวจนับ</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
+        {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
         <button disabled={!id || cancelled || !(cur.data?.editable || cur.data?.from_count) || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร <kbd>Alt+C</kbd></button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={MENU} />
@@ -167,9 +171,10 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
       </div>
       <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
       <TypeNotice show={!id && !!h && !h.doc_type_id} />
+      {ed.dialog}
       <ErrorBox error={err ?? cur.error ?? defs.error} />
       {defs.data && !defs.data.types.length && <p className="bad">ยังไม่มีประเภทเอกสารของ{K.label} — เพิ่มที่ ตั้งค่า › ประเภทเอกสาร</p>}
-      {h && <div onKeyDown={navKey}>
+      {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col">
             {cls === 'RL' ? <>
@@ -220,7 +225,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
           </table>
         </div>}
       </div>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาสินค้า'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาสินค้า'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
       {prodCost && h && <ProductionCost date={h.doc_date} departmentId={h.department_id} lines={used} onClose={() => setProdCost(false)}
         onApply={(costs, note) => { setLines((ls) => ls.map((l) => (costs[l.key] !== undefined ? { ...l, unit_cost: costs[l.key]!, cost_amount: null, cost_unit: null } : l))); if (!h.remark) set({ remark: note.slice(0, 200) }); setDirty(true); setProdCost(false); }} />}
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? สต๊อกและใบสำคัญจะกลับคืน (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>

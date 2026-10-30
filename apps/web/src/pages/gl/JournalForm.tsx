@@ -7,6 +7,7 @@ import { bookColor, bookStyle } from '../../bookColor';
 import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
+import { useDocEdit } from '../../components/DocEdit';
 import { DocActions } from '../../components/DocPrint';
 import { JvChequeTab, JvVatTab, vatPayload, WhtTab, whtPayload, type VatDraft, type WhtDraft } from './JvLinks';
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
@@ -70,7 +71,10 @@ export function JournalFormPage() {
   const [saves, setSaves] = useState(0); // นับครั้งที่บันทึก — ให้ดึงเลขที่ถัดไปใหม่หลัง "บันทึก+ใหม่"
   const gridRef = useRef<HTMLDivElement>(null);
   const can = useCan('GL.JNL');
-  const editable = (isNew ? can('add') : can('edit')) && (isNew || !!doc.data?.editable);
+  const editBase = (isNew ? can('add') : can('edit')) && (isNew || !!doc.data?.editable);
+  // ใบสำคัญที่บันทึกแล้ว: ดูอย่างเดียวจนกด แก้ไข (Alt+E) · Enter ช่องสุดท้าย = ถามบันทึก (ข้อกำหนดเจ้าของ)
+  const ed = useDocEdit({ id, allowed: !isNew && editBase, dirty, word: 'ใบสำคัญ', onSave: (n) => void save(!!n), onDiscard: () => { void qc.refetchQueries({ queryKey: ['journal', id] }); setDirty(false); } });
+  const editable = editBase && !ed.locked;
   // ต้นแบบวิธีการบันทึก (S-GL-05): เลือกจาก 🔍/F4 ที่ช่องเลขที่ใบสำคัญ หรือขึ้นอัตโนมัติตามต้นแบบของสมุด (S-GL-09)
   const templates = useTemplates();
   const [tplPick, setTplPick] = useState<string | null>(null);
@@ -171,16 +175,16 @@ export function JournalFormPage() {
     try {
       const r = isNew ? await api.post<{ id: string; voucher_no: string }>('/api/v1/gl/journals', body) : await api.put<{ id: string; voucher_no: string }>(`/api/v1/gl/journals/${id}`, body);
       toast(`บันทึกใบสำคัญ ${r.voucher_no} แล้ว${isNew && (drafts.vat.length || drafts.wht.length) ? ' พร้อมรายการภาษี' : ''}`); setSaves((n) => n + 1);
-      setDirty(false); setDrafts({ vat: [], wht: [] }); setTab('lines');
+      setDirty(false); if (!isNew) ed.lock(); setDrafts({ vat: [], wht: [] }); setTab('lines');
       qc.invalidateQueries({ queryKey: ['journals'] }); qc.invalidateQueries({ queryKey: ['journal', r.id] }); qc.invalidateQueries({ queryKey: ['accounts', 'bal'] });
       if (andNew || isNew) { setLines(andNew ? freshLines(bookTpl.data) : [blank(), blank()]); setH((x) => ({ ...x, description: '', reference: '' })); if (!andNew) nav(`/gl/journals/${r.id}`, { replace: true }); else nav(`/gl/journals/new?book=${h.journal_book_id}`, { replace: true }); }
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const leave = (to: string) => (dirty && editable ? setLeaveAsk(to) : nav(to));
   useHotkeys({
-    F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': () => !isNew && editable && can('cancel') && setCancelAsk(true), 'Ctrl+F6': () => isNew && setCopyPick(true),
+    F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': () => !isNew && editBase && can('cancel') && setCancelAsk(true), 'Ctrl+F6': () => isNew && setCopyPick(true),
     'Ctrl+Insert': addLine, 'Alt+N': () => leave('/gl/journals/new'), Escape: () => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`),
-  }, [h, lines, editable, dirty, busy, drafts]);
+  }, [h, lines, editable, editBase, dirty, busy, drafts]);
 
   const acctOf = (aid: string | null) => accts.data?.find((a) => a.id === aid);
   // บรรทัดบัญชีภาษีซื้อ/ภาษีขาย/เช็คจ่าย/เช็ครับล่วงหน้า → แท็บป้อนรายละเอียด (S-GL-03 / S-GL-04)
@@ -212,10 +216,11 @@ export function JournalFormPage() {
         <div className="tb-group">
           <button onClick={() => leave('/gl/journals/new' + (h.journal_book_id ? `?book=${h.journal_book_id}` : ''))} title="ใบใหม่ (Alt+N)">+ ใหม่</button>
           <button className="primary" disabled={!editable || busy} onClick={() => save()} title="บันทึก (F9 / Ctrl+S)">บันทึก <kbd>F9</kbd></button>
+          {ed.editButton}
           <button disabled={!editable || busy} onClick={() => save(true)} title="บันทึกแล้วขึ้นใบใหม่ (Ctrl+Enter)">บันทึก+ใหม่</button>
         </div>
         <div className="tb-group">
-          <button disabled={isNew || !editable || !can('cancel')} onClick={() => setCancelAsk(true)} title={can('cancel') ? 'ยกเลิกเอกสาร (Alt+C)' : 'ไม่มีสิทธิ์ยกเลิกเอกสาร'}>ยกเลิกเอกสาร</button>
+          <button disabled={isNew || !editBase || !can('cancel')} onClick={() => setCancelAsk(true)} title={can('cancel') ? 'ยกเลิกเอกสาร (Alt+C)' : 'ไม่มีสิทธิ์ยกเลิกเอกสาร'}>ยกเลิกเอกสาร</button>
           <DocActions kind="journal" id={isNew ? undefined : id} menu="GL.JNL" typeId={h.journal_book_id} dirty={dirty} />
         </div>
         <div className="tb-group"><button onClick={() => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`)} title="กลับไปรายการ (Esc)">รายการ <kbd>Esc</kbd></button></div>
@@ -224,8 +229,9 @@ export function JournalFormPage() {
       <Tabs active={h.journal_book_id} onChange={(k) => { if (isNew && k !== h.journal_book_id) { setDirty(true); setH({ ...h, journal_book_id: k }); } }}
         tabs={(books.data ?? []).filter((b) => isNew || b.id === h.journal_book_id).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}`, color: bookColor(b) }))} />
       {isNew && !h.journal_book_id && books.data && <p className="notebox">เลือกสมุดรายวันจากแถบด้านบนก่อน — เลขที่ใบสำคัญและต้นแบบรายการตามสมุดที่เลือก</p>}
+      {ed.dialog}
       <ErrorBox error={err ?? doc.error} />
-      <fieldset disabled={!editable} onKeyDown={navKey}>
+      <fieldset disabled={!editable} onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid">
           <div className="col">
             <Field label="วันที่" req><DateInput value={h.voucher_date} onChange={(v) => { setDirty(true); setH({ ...h, voucher_date: v }); }} autoFocus={isNew} /></Field>
@@ -305,7 +311,7 @@ export function JournalFormPage() {
       </Modal>}
       {j && <p className="hint">สร้างโดย {j.created_by_name ?? 'นำเข้าจาก Express'} · <DateText v={j.created_at.slice(0, 10)} /> · แก้ไขล่าสุด <DateText v={j.updated_at.slice(0, 10)} /></p>}
       {vatAsk && <VatClosingModal workDate={h.voucher_date} onClose={() => setVatAsk(false)} onOk={fillVatClosing} />}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี / ต้นแบบ (ที่ช่องเลขที่)'], ['Ctrl+F6', 'คัดลอกจากใบสำคัญอื่น'],['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาบัญชี / ต้นแบบ (ที่ช่องเลขที่)'], ['Ctrl+F6', 'คัดลอกจากใบสำคัญอื่น'],['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />
       {cancelAsk && <CancelDialog onClose={() => setCancelAsk(false)} onOk={(reason) => api.post(`/api/v1/gl/journals/${id}/cancel`, { reason }).then(() => { toast('ยกเลิกใบสำคัญแล้ว'); setCancelAsk(false); qc.invalidateQueries({ queryKey: ['journal', id] }); qc.invalidateQueries({ queryKey: ['journals'] }); }).catch(toastError)} />}
       {tplPick !== null && (
         <Lookup<Template> title="เลือกต้นแบบวิธีการบันทึก" rows={templates.data ?? []} initial={tplPick}
