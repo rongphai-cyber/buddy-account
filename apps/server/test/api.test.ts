@@ -1458,6 +1458,13 @@ describe('Buddy Account API (PGlite)', () => {
     const re = await typeOf('RE');
     const rcpt = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: re.id, doc_no: 'RE-MAN/001', doc_date: '2027-08-07', party_id: cus, settlements: [{ invoice_header_id: own.id, amount: 107 }] })).body;
     expect(rcpt.doc_no).toBe('RE-MAN/001');
+    // ลิงก์เลขที่อ้างอิง (ข้อกำหนดเจ้าของ): เปิดเอกสารจากรหัสได้ชนิด/ยกมา · แท็บรายการชำระบอกชนิดเอกสาร · บริษัทอื่นเปิดไม่ได้
+    expect((await call('GET', `/api/v1/locate/doc/${rcpt.id}`)).body).toMatchObject({ doc_no: 'RE-MAN/001', doc_class: 'RE', is_opening: false });
+    expect((await call('GET', `/api/v1/sales-invoices/${own.id}`)).body.settlements[0]).toMatchObject({ id: rcpt.id, doc_no: 'RE-MAN/001', doc_class: 'RE' });
+    expect((await call('GET', `/api/v1/locate/doc/${cus}`)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/locate/doc/${own.id}`)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
     for (const [path, x] of [['ar-receipts', rcpt.id], ['sales-invoices', own.id], ['sales-invoices', auto.id]])
       expect((await call('POST', `/api/v1/${path}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });

@@ -1,18 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { d, todayIso, WHT_INCOME_TYPES } from '@buddy/core';
+import { d, docPath, todayIso, WHT_INCOME_TYPES } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys, useYearSystem } from '../../ui';
-import { DOC_ROUTE as VAT_DOC_ROUTE } from './VatRegister';
 
 const MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 const FORM_TH: Record<string, string> = { S03: 'ภ.ง.ด.3', S53: 'ภ.ง.ด.53' };
 const COND_TH: Record<string, string> = { '1': 'หัก ณ ที่จ่าย', '2': 'ออกให้ตลอดไป', '3': 'ออกให้ครั้งเดียว' };
 /** เอกสารต้นทางที่เปิดได้จากแฟ้ม */
-const DOC_ROUTE: Record<string, string> = { ...VAT_DOC_ROUTE, DP: '/gl/petty-cash/dp' };
 
 interface Row { id: string; form_type: string; certificate_no: string | null; certificate_date: string; tax_month: string; is_late: boolean; payee_name: string; payee_tax_id: string | null; income_type: string | null;
   paid_amount: string; rate: string; tax_amount: string; condition: string | null; doc_status: string; print_count: number; header_id: string | null; doc_no: string | null; doc_class: string | null }
@@ -128,7 +126,7 @@ function WhtEditor({ entry, onClose, onSaved }: { entry: Entry; onClose: () => v
     <Modal title={e.id ? `ภาษีหัก ณ ที่จ่าย ${e.certificate_no || ''}` : 'เพิ่มรายการภาษีหัก ณ ที่จ่าย'} size="wide" onClose={onClose}
       footer={<>
         {e.id && e.doc_status !== 'C' && <button onClick={() => nav(`/tax/wht50?entry=${e.id}`)}>🖨 พิมพ์ 50 ทวิ</button>}
-        {e.header_id && e.doc_class && DOC_ROUTE[e.doc_class] && <button onClick={() => nav(`${DOC_ROUTE[e.doc_class!]}/${e.header_id}`)}>เปิดเอกสาร {e.doc_no}</button>}
+        {e.header_id && docPath(e.doc_class, e.header_id) && <button onClick={() => nav(docPath(e.doc_class, e.header_id!)!)}>เปิดเอกสาร {e.doc_no}</button>}
         {e.id && !fromDoc && e.doc_status !== 'C' && can('cancel') && <button className="danger" onClick={() => setAskCancel(true)}>ยกเลิกรายการ</button>}
         <button onClick={onClose}>ปิด <kbd>Esc</kbd></button>
         {!ro && <button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button>}

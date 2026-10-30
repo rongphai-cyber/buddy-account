@@ -325,9 +325,9 @@ export function faPostingRoutes(app: FastifyInstance, db: Db) {
   /** งวดที่ลงค่าเสื่อมแล้ว (สำหรับหน้าคิดค่าเสื่อม) */
   app.get('/api/v1/fa/depreciation-periods', async (req) => {
     const a = requireCompany(req);
-    return (await sql`SELECT p.id, p.period_no, p.start_date, p.end_date, p.is_locked, y.code AS fiscal_year, x.n, x.total, x.voucher_no, x.unposted
+    return (await sql`SELECT p.id, p.period_no, p.start_date, p.end_date, p.is_locked, y.code AS fiscal_year, x.n, x.total, x.voucher_no, x.journal_id, x.unposted
         FROM gl_period p JOIN gl_fiscal_year y ON y.id = p.fiscal_year_id
-        LEFT JOIN (SELECT d.period_id, count(*) AS n, sum(d.amount) AS total, max(j.voucher_no) FILTER (WHERE j.doc_status = 'N') AS voucher_no,
+        LEFT JOIN (SELECT d.period_id, count(*) AS n, sum(d.amount) AS total, max(j.voucher_no) FILTER (WHERE j.doc_status = 'N') AS voucher_no, (array_agg(j.id ORDER BY j.voucher_no DESC) FILTER (WHERE j.doc_status = 'N'))[1] AS journal_id,
                           count(*) FILTER (WHERE d.journal_id IS NULL OR j.doc_status <> 'N') AS unposted
                      FROM fa_depreciation d LEFT JOIN gl_journal j ON j.id = d.journal_id WHERE d.company_id = ${a.companyId} AND d.deleted_at IS NULL GROUP BY d.period_id) x ON x.period_id = p.id
        WHERE p.company_id = ${a.companyId} AND p.deleted_at IS NULL AND p.period_no BETWEEN 1 AND 12 ORDER BY p.start_date`.execute(db)).rows;

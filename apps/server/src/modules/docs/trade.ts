@@ -310,7 +310,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).where('l.line_kind', '<>', 'K').orderBy('l.line_no').execute();
       const payments = await db.selectFrom('doc_payment as p').leftJoin('md_payment_method as m', 'm.id', 'p.payment_method_id').select(['p.line_no', 'p.payment_method_id', 'm.code as method_code', 'm.name_th as method_name', 'p.amount', 'p.reference_no'])
         .where('p.header_id', '=', id).where('p.deleted_at', 'is', null).orderBy('p.line_no').execute();
-      const settled = await db.selectFrom('doc_settlement as s').innerJoin('doc_header as r', 'r.id', 's.payment_header_id').select(['r.id', 'r.doc_no', 'r.doc_date', 's.amount', 'r.doc_status'])
+      const settled = await db.selectFrom('doc_settlement as s').innerJoin('doc_header as r', 'r.id', 's.payment_header_id').select(['r.id', 'r.doc_no', 'r.doc_date', 'r.doc_class', 's.amount', 'r.doc_status'])
         .where('s.invoice_header_id', '=', id).where('s.deleted_at', 'is', null).orderBy('r.doc_date').execute();
       const view = K.module === 'AR' ? 'v_ar_outstanding' : 'v_ap_outstanding';
       const out = (await sql<{ outstanding: string }>`SELECT outstanding FROM ${sql.table(view)} WHERE header_id = ${id}`.execute(db)).rows[0];
@@ -324,7 +324,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
           FROM doc_line x JOIN doc_line o ON o.id = x.source_line_id JOIN doc_header t ON t.id = x.header_id LEFT JOIN md_item i ON i.id = x.item_id
          WHERE o.header_id = ${id} AND x.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL ORDER BY t.doc_date, t.doc_no`.execute(db)).rows : [];
       const cancels = K.order ? await db.selectFrom('doc_line').select(['id', 'line_no', 'cancelled_qty', 'cancel_reason_code', 'cancel_date']).where('header_id', '=', id).where('deleted_at', 'is', null).where('cancelled_qty', '>', '0').orderBy('line_no').execute() : [];
-      const sources = K.orderRef ? (await sql<{ line_id: string; source_line_id: string; doc_no: string }>`SELECT x.id AS line_id, x.source_line_id, oh.doc_no FROM doc_line x JOIN doc_line o ON o.id = x.source_line_id JOIN doc_header oh ON oh.id = o.header_id
+      const sources = K.orderRef ? (await sql<{ line_id: string; source_line_id: string; doc_no: string; header_id: string }>`SELECT x.id AS line_id, x.source_line_id, oh.doc_no, oh.id AS header_id FROM doc_line x JOIN doc_line o ON o.id = x.source_line_id JOIN doc_header oh ON oh.id = o.header_id
           WHERE x.header_id = ${id} AND x.deleted_at IS NULL`.execute(db)).rows : [];
       const converted = K.cls === 'QT' ? (await sql<{ id: string; doc_no: string; doc_date: string }>`SELECT t.id, t.doc_no, t.doc_date FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id
           WHERE l.from_header_id = ${id} AND l.link_type = 'CONVERT' AND l.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL ORDER BY t.doc_date`.execute(db)).rows : [];

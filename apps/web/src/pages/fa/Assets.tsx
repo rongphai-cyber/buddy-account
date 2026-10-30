@@ -7,6 +7,7 @@ import { useCan } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, useLookups } from '../../components/LkSelect';
 import { Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
+import { DocLink } from '../../components/DocLink';
 
 interface Group { id: string; code: string; name_th: string; name_en: string | null; asset_account_id: string | null; depr_expense_account_id: string | null; accum_depr_account_id: string | null; asset_count: number }
 interface Row { id: string; code: string; name_th: string; category_code: string | null; group_code: string; purchase_date: string; cost: string; method: string; rate: string | null; status: string; sold_date: string | null; is_depreciable: boolean; accumulated: string; book_value: string }
@@ -272,7 +273,7 @@ function AssetGroupForm({ g, onClose, onSaved }: { g: Group | null; onClose: () 
   );
 }
 
-interface DepPeriod { id: string; period_no: number; start_date: string; end_date: string; is_locked: boolean; fiscal_year: string; n: string | null; total: string | null; voucher_no: string | null; unposted: string | null }
+interface DepPeriod { id: string; period_no: number; start_date: string; end_date: string; is_locked: boolean; fiscal_year: string; n: string | null; total: string | null; voucher_no: string | null; journal_id: string | null; unposted: string | null }
 type DepResult = Array<{ period: string; voucher_no: string | null; total: string; changed: boolean }>;
 /** คิดค่าเสื่อม-ลงบัญชี (S-FA-04): เลือกงวด → คำนวณใหม่และลงบัญชีแทนของเดิม (RECAL F/A) หรือลงบัญชีเฉพาะที่ยังไม่มีใบสำคัญ (REJNL) */
 export function DepreciationPage() {
@@ -313,7 +314,7 @@ export function DepreciationPage() {
           <thead><tr><th style={{ width: 40 }} /><th style={{ width: 60 }}>งวด</th><th>ช่วงวันที่</th><th className="r">ทรัพย์สิน</th><th className="r">ค่าเสื่อมที่ลงแล้ว</th><th>ใบสำคัญ</th><th /></tr></thead>
           <tbody>{rows.map((p) => <tr key={p.id} className={p.is_locked ? 'cancelled' : 'row-open'} onClick={() => !p.is_locked && toggle(p.id)}>
             <td className="c"><input type="checkbox" checked={sel.has(p.id)} disabled={p.is_locked} readOnly aria-label={`งวด ${p.period_no}`} /></td><td>{p.period_no}</td><td><DateText v={p.start_date} /> – <DateText v={p.end_date} /></td>
-            <td className="r">{p.n ? Number(p.n).toLocaleString() : ''}</td><td className="r"><Money v={p.total} blankZero /></td><td className="mono">{p.voucher_no}</td>
+            <td className="r">{p.n ? Number(p.n).toLocaleString() : ''}</td><td className="r"><Money v={p.total} blankZero /></td><td><DocLink id={p.journal_id} no={p.voucher_no} cls="GL" /></td>
             <td>{p.is_locked ? <Pill tone="d">ปิดงวดแล้ว</Pill> : Number(p.unposted ?? 0) > 0 ? <Pill tone="c">ยังไม่ลงบัญชี {p.unposted}</Pill> : p.n ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : null}</td></tr>)}</tbody>
         </table>
       </div>

@@ -7,6 +7,7 @@ import { useCan, useSession } from '../../session';
 import { focusAfterTable, SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { useDocEdit } from '../../components/DocEdit';
+import { DocLink } from '../../components/DocLink';
 import { useDocNo } from '../../components/DocNo';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
@@ -265,7 +266,7 @@ export function CashFormPage({ path }: { path: string }) {
         {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} partyId={h.party?.id ?? null} readOnly={ro} payDate={h.doc_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
         {tab === 'wht' && K.whtEntries && <WhtTable whts={whts} setWhts={setWhts} readOnly={ro} base={base} defaults={{ form: h.party ? h.whtForm : 'S03', rate: h.whtRate }} canAdd={used.length > 0} dirty={dirty} onDirty={() => setDirty(true)} />}
         {tab === 'used' && cur.data && <table className="grid"><thead><tr><th>บิล</th><th>วันที่</th><th className="r">ยอดที่หัก</th></tr></thead>
-          <tbody>{cur.data.used_by.map((u) => <tr key={u.id}><td className="mono">{u.doc_no}</td><td><DateText v={u.doc_date} /></td><td className="r"><Money v={u.amount} /></td></tr>)}
+          <tbody>{cur.data.used_by.map((u) => <tr key={u.id}><td><DocLink id={u.id} no={u.doc_no} cls={u.doc_class} /></td><td><DateText v={u.doc_date} /></td><td className="r"><Money v={u.amount} /></td></tr>)}
             {!cur.data.used_by.length && <tr><td colSpan={3} className="empty">ยังไม่ได้หักในบิล — คงเหลือ <Money v={cur.data.remaining} /></td></tr>}</tbody></table>}
         {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} />}
         {tab === 'gl' && id && <DocJournalTab id={id} />}

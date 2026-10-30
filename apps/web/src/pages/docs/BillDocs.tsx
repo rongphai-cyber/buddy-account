@@ -7,6 +7,7 @@ import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { useDocEdit } from '../../components/DocEdit';
+import { DocLink } from '../../components/DocLink';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
@@ -186,7 +187,7 @@ export function BillFormPage({ path }: { path: string }) {
                 return (
                   <tr key={o.header_id} className={cx('row-open', on && 'picked')} onClick={(e) => { if (!ro && !(e.target as HTMLElement).matches('input')) toggle(o.header_id, !on); }}>
                     <td className="c"><input type="checkbox" checked={on} disabled={ro} onChange={(e) => toggle(o.header_id, e.target.checked)} aria-label={`เลือก ${o.doc_no}`} /></td>
-                    <td className="mono">{o.doc_no}</td><td>{CLASS_TH[o.doc_class]}</td><td><DateText v={o.doc_date} /></td><td><DateText v={o.due_date} /></td>{K.module === 'AP' && <td className="mono">{o.ref_no}</td>}
+                    <td><DocLink id={o.header_id} no={o.doc_no} keep={dirty} /></td><td>{CLASS_TH[o.doc_class]}</td><td><DateText v={o.doc_date} /></td><td><DateText v={o.due_date} /></td>{K.module === 'AP' && <td className="mono">{o.ref_no}</td>}
                     <td className="r"><Money v={o.amount} /></td><td className="r"><Money v={o.settled} blankZero /></td><td className="r"><Money v={o.outstanding} /></td>
                   </tr>
                 );

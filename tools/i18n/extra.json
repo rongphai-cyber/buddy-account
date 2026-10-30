@@ -138,5 +138,16 @@
  "ป้อนจำนวนก่อน แล้วจึงคีย์จำนวนเงิน": "Enter the quantity first, then the amount",
  "ส่วนลดท้ายบิล \"{0}\" ไม่ถูกรูปแบบ ({1})": "Bill discount \"{0}\" is not a valid format ({1})",
  "เช่น 200 (บาท) · 5% หรือ 5+ (เปอร์เซ็นต์) · 5+2+ (5% แล้วอีก 2%) · 5+,200 (5% แล้วลดอีก 200 บาท)": "e.g. 200 (baht) · 5% or 5+ (percent) · 5+2+ (5% then another 2%) · 5+,200 (5% then another 200 baht)",
- "ไม่มีส่วนลด (จำนวนเงินเท่ากับ จำนวน × ราคา)": "No discount (amount equals quantity × price)"
+ "ไม่มีส่วนลด (จำนวนเงินเท่ากับ จำนวน × ราคา)": "No discount (amount equals quantity × price)",
+ "(แท็บใหม่ — งานที่ยังไม่บันทึกอยู่ที่หน้านี้)": "(new tab — your unsaved work stays on this page)",
+ "กำลังเปิดเอกสาร…": "Opening document…",
+ "มาจาก {0} {1}": "From {0} {1}",
+ "อ้าง": "Ref.",
+ "เบิกชดเชยแล้วใน": "Reimbursed in",
+ "เปิดเอกสาร {0}{1}": "Open document {0}{1}",
+ "เปิดใบกำกับ": "Open invoice",
+ "เอกสาร {0} ({1}) ไม่มีหน้าจอให้เปิด — ดูได้จากรายงานหรือใบสำคัญที่ลงบัญชี": "Document {0} ({1}) has no screen to open — see it in reports or in its posted voucher",
+ "ใบสั่งขายที่อ้าง:": "Referenced sales order:",
+ "ใบสั่งซื้อที่อ้าง:": "Referenced purchase order:",
+ "— แก้ที่เอกสารต้นทาง": "— edit it at the source document"
 }

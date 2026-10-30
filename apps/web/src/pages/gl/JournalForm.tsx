@@ -5,6 +5,7 @@ import { d, fmt, journalTotals, todayIso } from '@buddy/core';
 import { api, type Book, type Department, type Template, type TemplateDetail } from '../../api';
 import { bookColor, bookStyle } from '../../bookColor';
 import { useCan, useSession } from '../../session';
+import { DocLink } from '../../components/DocLink';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
 import { useDocEdit } from '../../components/DocEdit';
@@ -13,10 +14,11 @@ import { JvChequeTab, JvVatTab, vatPayload, WhtTab, whtPayload, type VatDraft, t
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
 import { JournalPicker } from '../../components/JournalPicker';
 
+const FIX_AT_SOURCE = ' — แก้ที่เอกสารต้นทาง';
 interface Line { key: number; account_id: string | null; department_id: string | null; description: string; debit: string; credit: string }
 interface JournalDoc {
   id: string; voucher_no: string; voucher_date: string; description: string | null; reference: string | null; journal_book_id: string; doc_status: string; editable: boolean;
-  source_module: string | null; source_doc_no: string | null; source_doc_class: string | null; created_at: string; updated_at: string; created_by_name: string | null;
+  source_module: string | null; source_header_id: string | null; source_doc_no: string | null; source_doc_class: string | null; created_at: string; updated_at: string; created_by_name: string | null;
   lines: Array<{ account_id: string; department_id: string | null; description: string | null; debit: string; credit: string; account_no: string; account_name: string; posting_role: string | null; resolved_from: string | null }>;
 }
 let seq = 0;
@@ -209,7 +211,7 @@ export function JournalFormPage() {
           {isNew && <Pill tone="d">ใหม่ — ยังไม่บันทึก</Pill>}
           {j && j.doc_status === 'C' && <Pill tone="c">ยกเลิกแล้ว</Pill>}
           {j && j.doc_status === 'N' && <Pill tone="m">ลงบัญชีแล้ว</Pill>}
-          {j && !j.editable && j.doc_status === 'N' && <Pill tone="x">มาจาก {j.source_doc_class ?? j.source_module ?? 'ระบบอื่น'} {j.source_doc_no ?? ''} — แก้ที่เอกสารต้นทาง</Pill>}
+          {j && !j.editable && j.doc_status === 'N' && <Pill tone="x">มาจาก {j.source_doc_class ?? j.source_module ?? 'ระบบอื่น'} {j.source_doc_no && <DocLink id={j.source_header_id} no={j.source_doc_no} cls={j.source_doc_class} />}{FIX_AT_SOURCE}</Pill>}
           {dirty && editable && <Pill tone="d">มีการแก้ไขที่ยังไม่บันทึก</Pill>}
         </div>
       </div>

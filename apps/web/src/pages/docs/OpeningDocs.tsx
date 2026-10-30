@@ -8,6 +8,7 @@ import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
 import { DiscountInput } from '../../components/DiscountInput';
 import { useDocEdit } from '../../components/DocEdit';
+import { DocLink } from '../../components/DocLink';
 import { DocActions } from '../../components/DocPrint';
 
 /** ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04) — บิลค้าง ณ วันเริ่มใช้ ไม่ลงบัญชี (ยอดบัญชีป้อนที่ บันทึกยอดยกมา) */
@@ -59,7 +60,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan(K.menu);
-  const cur = useQuery({ enabled: !!id, queryKey: [K.api, 'one', id], queryFn: () => api.get<Record<string, string | null> & { editable: boolean; settlements: Array<{ doc_no: string; doc_date: string; amount: string; doc_status: string }> }>(`/api/v1/${K.api}/${id}`), staleTime: 0 });
+  const cur = useQuery({ enabled: !!id, queryKey: [K.api, 'one', id], queryFn: () => api.get<Record<string, string | null> & { editable: boolean; settlements: Array<{ id: string; doc_class: string; doc_no: string; doc_date: string; amount: string; doc_status: string }> }>(`/api/v1/${K.api}/${id}`), staleTime: 0 });
   const meta = useQuery({ enabled: !id, queryKey: [K.api, 'meta'], queryFn: () => api.get<{ start_date: string | null }>(`/api/v1/${K.api}`, { limit: 1 }) });
   type Head = { party: { id: string; code: string; name?: string | null } | null; doc_no: string; doc_date: string; ref_no: string; credit_days: string; price_type: '0' | '1' | '2'; amount: string; discount_text: string; vat_rate: string; vat_amount: string; vat_known: boolean; vat_date: string; remark: string };
   const [h, setH] = useState<Head | null>(null);
@@ -144,7 +145,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
               <label className="check"><input type="checkbox" checked={h.vat_known} disabled={ro} onChange={(e) => set({ vat_known: e.target.checked })} /> เกณฑ์สิทธิ</label>
               {h.vat_known && <DateInput value={h.vat_date || h.doc_date} disabled={ro} onChange={(v) => set({ vat_date: v })} />}
             </Field>
-            {id && !!cur.data?.settlements.length && <><p className="hint">รายการ{kind === 'ar' ? 'รับ' : 'จ่าย'}ชำระ</p><table className="grid"><tbody>{cur.data.settlements.map((s, i) => <tr key={i} className={cx(s.doc_status === 'C' && 'cancelled')}><td className="mono">{s.doc_no}</td><td><DateText v={s.doc_date} /></td><td className="r"><Money v={s.amount} /></td></tr>)}</tbody></table></>}
+            {id && !!cur.data?.settlements.length && <><p className="hint">รายการ{kind === 'ar' ? 'รับ' : 'จ่าย'}ชำระ</p><table className="grid"><tbody>{cur.data.settlements.map((s, i) => <tr key={i} className={cx(s.doc_status === 'C' && 'cancelled')}><td><DocLink id={s.id} no={s.doc_no} cls={s.doc_class} /></td><td><DateText v={s.doc_date} /></td><td className="r"><Money v={s.amount} /></td></tr>)}</tbody></table></>}
           </div>
           {calc && <table className="totals-table"><tbody>
             <tr><td>จำนวนเงิน</td><td><MoneyInput value={h.amount} disabled={ro} onChange={(v) => set({ amount: v })} aria-label="จำนวนเงิน" /></td></tr>

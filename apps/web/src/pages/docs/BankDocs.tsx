@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BANK_KINDS, CASH_KINDS, d, SETTLE_KINDS, todayIso, TRADE_KINDS, type BankKind } from '@buddy/core';
+import { BANK_KINDS, d, docPath, todayIso, type BankKind } from '@buddy/core';
+import { DocLink } from '../../components/DocLink';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
@@ -30,7 +31,7 @@ function BankSelect({ value, onChange, disabled, label, exclude }: { value: stri
     {banks.data?.filter((b) => (b.status === 'A' || b.id === value) && b.id !== exclude).map((b) => <option key={b.id} value={b.id}>{b.code} {b.name}{b.account_number ? ` (${b.account_number})` : ''}</option>)}</select>;
 }
 
-interface Row { id: string; doc_no: string; doc_date: string; remark: string | null; amount: string; wht_amount: string; net_amount: string; doc_status: string; bank_code: string; bank_name: string; to_bank_code: string | null; voucher_no: string | null }
+interface Row { id: string; doc_no: string; doc_date: string; remark: string | null; amount: string; wht_amount: string; net_amount: string; doc_status: string; bank_code: string; bank_name: string; to_bank_code: string | null; voucher_no: string | null; journal_id: string | null }
 export function BankDocListPage({ cls }: { cls: BankKind['cls'] }) {
   const K = kindOf(cls);
   const nav = useNavigate();
@@ -58,7 +59,7 @@ export function BankDocListPage({ cls }: { cls: BankKind['cls'] }) {
             {list.data?.rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
                 <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td>{r.bank_code} {cls === 'BT' ? `→ ${r.to_bank_code}` : r.bank_name}</td><td>{r.remark}</td>
-                <td className="r"><Money v={r.amount} /></td><td className="mono">{r.voucher_no}</td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ลงบัญชีแล้ว</Pill>}</td>
+                <td className="r"><Money v={r.amount} /></td><td><DocLink id={r.journal_id} no={r.voucher_no} cls="GL" /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ลงบัญชีแล้ว</Pill>}</td>
               </tr>
             ))}
             {list.data && !list.data.rows.length && <tr><td colSpan={7} className="empty">ยังไม่มีรายการ — กด Ins เพื่อเพิ่ม</td></tr>}
@@ -179,7 +180,6 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
 }
 
 /** สมุดเงินฝาก — รายการเคลื่อนไหวและยอดคงเหลือของบัญชีเงินฝาก (จากใบสำคัญ ตรงกับงบทดลอง) */
-const DOC_ROUTE: Record<string, string> = Object.fromEntries([...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, ...BANK_KINDS].map((k) => [k.cls, k.route]));
 export function BankBookPage() {
   const nav = useNavigate();
   const { me } = useSession();
@@ -192,7 +192,7 @@ export function BankBookPage() {
   const book = useQuery({ enabled: !!cur, queryKey: ['bank-book', cur, from, to], queryFn: () => api.get<{ bank: { code: string; name: string; account_number: string | null }; account: { account_no: string; name_th: string }; opening: string; closing: string; debit: string; credit: string;
     rows: Array<{ journal_id: string; voucher_no: string; voucher_date: string; journal_description: string | null; description: string | null; debit: string; credit: string; balance: string; source_doc_no: string | null; source_header_id: string | null; source_doc_class: string | null; reference: string | null }> }>('/api/v1/bank-book', { bank_account_id: cur, from, to }) });
   const b = book.data;
-  const open = (r: NonNullable<typeof b>['rows'][number]) => { const to2 = r.source_doc_class ? DOC_ROUTE[r.source_doc_class] : null; nav(r.source_header_id && to2 ? `${to2}/${r.source_header_id}` : `/gl/journals/${r.journal_id}`); };
+  const open = (r: NonNullable<typeof b>['rows'][number]) => { const to2 = r.source_header_id ? docPath(r.source_doc_class, r.source_header_id) : null; nav(to2 ?? `/gl/journals/${r.journal_id}`); };
   return (
     <div className="page" data-tone="finance">
       <PageHead eyebrow="ธนาคาร" title="สมุดเงินฝาก" lead="ความเคลื่อนไหวของบัญชีเงินฝาก คำนวณสดจากใบสำคัญของเลขที่บัญชีที่ผูกไว้ (ตรงกับงบทดลองเสมอ) · คลิกรายการเพื่อเปิดเอกสาร" />
@@ -210,7 +210,7 @@ export function BankBookPage() {
             {b && <tr className="muted"><td colSpan={6}>ยอดยกมา</td><td className="r"><Money v={b.opening} /></td></tr>}
             {b?.rows.map((r, i) => (
               <tr key={i} className="row-open" tabIndex={0} onClick={() => open(r)} onKeyDown={(e) => e.key === 'Enter' && open(r)}>
-                <td><DateText v={r.voucher_date} /></td><td className="mono">{r.voucher_no}</td><td className="mono">{r.source_doc_no ?? r.reference}</td><td>{r.description || r.journal_description}</td>
+                <td><DateText v={r.voucher_date} /></td><td><DocLink id={r.journal_id} no={r.voucher_no} cls="GL" /></td><td>{r.source_doc_no ? <DocLink id={r.source_header_id} no={r.source_doc_no} cls={r.source_doc_class} /> : <span className="mono">{r.reference}</span>}</td><td>{r.description || r.journal_description}</td>
                 <td className="r"><Money v={r.debit} blankZero /></td><td className="r"><Money v={r.credit} blankZero /></td><td className={cx('r', d(r.balance).lt(0) && 'bad')}><Money v={r.balance} /></td>
               </tr>
             ))}

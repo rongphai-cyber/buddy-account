@@ -540,6 +540,30 @@
 ]
 },
 {
+"th": "เอกสาร",
+"n": 29,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/neighbors.ts",
+"apps/server/src/modules/notes.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/engine.ts",
+"apps/server/src/modules/docs/routes.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "หมายเหตุ",
 "n": 28,
 "files": [
@@ -562,30 +586,6 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เอกสาร",
-"n": 28,
-"files": [
-"apps/web/src/components/DocEdit.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/neighbors.ts",
-"apps/server/src/modules/notes.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/engine.ts",
-"apps/server/src/modules/docs/routes.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -9572,6 +9572,13 @@
 ]
 },
 {
+"th": "(แท็บใหม่ — งานที่ยังไม่บันทึกอยู่ที่หน้านี้)",
+"n": 1,
+"files": [
+"apps/web/src/components/DocLink.tsx"
+]
+},
+{
 "th": "(แสดง 1,000 รายการล่าสุด — ใส่เงื่อนไขให้แคบลง)",
 "n": 1,
 "files": [
@@ -12915,6 +12922,13 @@
 "n": 1,
 "files": [
 "apps/web/src/App.tsx"
+]
+},
+{
+"th": "กำลังเปิดเอกสาร…",
+"n": 1,
+"files": [
+"apps/web/src/components/DocLink.tsx"
 ]
 },
 {
@@ -23404,7 +23418,7 @@
 ]
 },
 {
-"th": "มาจาก {0} {1} — แก้ที่เอกสารต้นทาง",
+"th": "มาจาก {0} {1}",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
@@ -31517,7 +31531,7 @@
 ]
 },
 {
-"th": "อ้าง {0}",
+"th": "อ้าง",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
@@ -33022,7 +33036,7 @@
 ]
 },
 {
-"th": "เบิกชดเชยแล้วใน {0}",
+"th": "เบิกชดเชยแล้วใน",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/PettyCash.tsx"
@@ -33253,6 +33267,13 @@
 ]
 },
 {
+"th": "เปิดเอกสาร {0}{1}",
+"n": 1,
+"files": [
+"apps/web/src/components/DocLink.tsx"
+]
+},
+{
 "th": "เปิดเอกสาร/ใบสำคัญ",
 "n": 1,
 "files": [
@@ -33278,6 +33299,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "เปิดใบกำกับ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -35203,6 +35231,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/routes.ts"
+]
+},
+{
+"th": "เอกสาร {0} ({1}) ไม่มีหน้าจอให้เปิด — ดูได้จากรายงานหรือใบสำคัญที่ลงบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/components/DocLink.tsx"
 ]
 },
 {
@@ -37229,6 +37264,20 @@
 ]
 },
 {
+"th": "ใบสั่งขายที่อ้าง:",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "ใบสั่งซื้อที่อ้าง:",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ใบสำคัญ (GLJNL)",
 "n": 1,
 "files": [
@@ -38871,6 +38920,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "— แก้ที่เอกสารต้นทาง",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {

@@ -110,7 +110,7 @@ export function openingRoutes(app: FastifyInstance, db: Db) {
       const h = await db.selectFrom('doc_header').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('is_opening', '=', true).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
       const pc = await db.selectFrom(partyTbl).select('code').where('id', '=', (h.customer_id ?? h.supplier_id)!).executeTakeFirst();
-      const settled = (await sql`SELECT coalesce(p.doc_no, j.voucher_no) AS doc_no, coalesce(p.doc_date, j.voucher_date) AS doc_date, s.amount, coalesce(p.doc_status, j.doc_status) AS doc_status
+      const settled = (await sql`SELECT coalesce(p.id, j.id) AS id, CASE WHEN p.id IS NULL THEN 'GL' ELSE p.doc_class END AS doc_class, coalesce(p.doc_no, j.voucher_no) AS doc_no, coalesce(p.doc_date, j.voucher_date) AS doc_date, s.amount, coalesce(p.doc_status, j.doc_status) AS doc_status
           FROM doc_settlement s LEFT JOIN doc_header p ON p.id = s.payment_header_id LEFT JOIN gl_journal j ON j.id = s.payment_journal_id
          WHERE s.invoice_header_id = ${id} AND s.deleted_at IS NULL ORDER BY 2`.execute(db)).rows as Array<{ doc_status: string }>;
       const out = (await sql<{ outstanding: string }>`SELECT outstanding FROM ${sql.table(view)} WHERE header_id = ${id}`.execute(db)).rows[0];

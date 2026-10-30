@@ -31,4 +31,12 @@ export function neighborRoutes(app: FastifyInstance, db: Db) {
       next: await one(sql`SELECT id, voucher_no AS no ${base} AND voucher_no > ${j.voucher_no} ORDER BY voucher_no LIMIT 1`), last: await one(sql`SELECT id, voucher_no AS no ${base} ORDER BY voucher_no DESC LIMIT 1`),
     };
   });
+  /** เปิดเอกสารจากรหัส (ลิงก์เลขที่อ้างอิงในแท็บต่าง ๆ ที่ไม่รู้ชนิดเอกสาร) — สิทธิ์อ่านตามเมนูของเอกสารนั้น */
+  app.get('/api/v1/locate/:kind/:id', async (req) => {
+    const a = requireCompany(req);
+    const p = parse(z.object({ kind: z.enum(['doc']), id: z.string().uuid() }), req.params);
+    const h = await db.selectFrom('doc_header').select(['doc_no', 'doc_class', 'is_opening']).where('id', '=', p.id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!h) throw notFound('เอกสาร');
+    return h;
+  });
 }

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { d, fmt } from '@buddy/core';
+import { d, docPath, fmt } from '@buddy/core';
+import { DocLink } from './DocLink';
 import { api } from '../api';
-import { DOC_ROUTE, VatEditor, type VatRow } from '../pages/tax/VatRegister';
+import { VatEditor, type VatRow } from '../pages/tax/VatRegister';
 import { DateText, ErrorBox, Pill } from '../ui';
 
 /**
@@ -45,7 +46,7 @@ export function DocVatTab({ headerId, cls, vatBasis }: { headerId: string; cls: 
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className={r.doc_status === 'C' ? 'cancelled' : 'row-open'} tabIndex={0} onClick={() => setEdit(r)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r)}>
-                <td className="mono">{r.doc_no}{r.header_id !== headerId && <span className="muted small"> ({r.doc_class})</span>}</td>
+                <td>{r.header_id !== headerId ? <><DocLink id={r.header_id} no={r.doc_no} cls={r.doc_class} /><span className="muted small"> ({r.doc_class})</span></> : <span className="mono">{r.doc_no}</span>}</td>
                 <td className="mono">{r.tax_invoice_no}</td><td><DateText v={r.tax_invoice_date} /></td><td>{r.month}{r.is_late ? ' (เพิ่มเติม)' : ''}</td>
                 <td>{r.party_name}</td><td className="mono small">{r.party_tax_id}{r.party_tax_branch_no ? ` / ${r.party_tax_branch_no}` : ''}</td>
                 <td className="r num">{fmt(r.base_amount)}</td><td className="r num">{fmt(r.vat_amount)}</td>{kind === 'P' && <td className="r num">{d(r.nonclaim_vat).isZero() ? '' : fmt(r.nonclaim_vat)}</td>}
@@ -58,7 +59,7 @@ export function DocVatTab({ headerId, cls, vatBasis }: { headerId: string; cls: 
         </table>
       </div>
       {edit && <VatEditor kind={kind} row={edit} defaultMonth={edit.month}
-        onOpenDoc={edit.header_id !== headerId ? (r) => { const to = r.doc_class && DOC_ROUTE[r.doc_class]; if (to && r.header_id) nav(`${to}/${r.header_id}`); } : undefined}
+        onOpenDoc={edit.header_id !== headerId ? (r) => { const to = r.header_id && docPath(r.doc_class, r.header_id); if (to) nav(to); } : undefined}
         onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['doc-vat'] }); qc.invalidateQueries({ queryKey: ['vat', kind] }); }} />}
     </div>
   );
@@ -98,7 +99,7 @@ export function DocWhtList({ headerId }: { headerId: string }) {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className={r.doc_status === 'C' ? 'cancelled' : undefined}>
-                <td className="mono">{r.doc_no && r.doc_class && DOC_ROUTE[r.doc_class] ? <button type="button" className="linklike" onClick={() => nav(`${DOC_ROUTE[r.doc_class!]}/${r.header_id}`)}>{r.doc_no}</button> : r.doc_no}</td>
+                <td>{r.header_id !== headerId ? <DocLink id={r.header_id} no={r.doc_no} cls={r.doc_class} /> : <span className="mono">{r.doc_no}</span>}</td>
                 <td>{r.form_type === 'S03' ? 'ภ.ง.ด.3' : 'ภ.ง.ด.53'}</td><td className="mono">{r.certificate_no}</td><td><DateText v={r.certificate_date} /></td><td>{r.payee_name}</td><td>{r.income_type}</td>
                 <td className="r num">{fmt(r.paid_amount)}</td><td className="r">{d(r.rate).toString()}%</td><td className="r num">{fmt(r.tax_amount)}</td>
                 <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <button type="button" onClick={() => nav(`/tax/wht50?entry=${r.id}`)}>🖨 50 ทวิ{r.print_count ? ` (${r.print_count})` : ''}</button>}</td>

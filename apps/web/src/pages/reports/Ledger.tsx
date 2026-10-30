@@ -7,8 +7,9 @@ import { useSession } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { PeriodRange } from '../../components/PeriodPicker';
 import { DateText, downloadCsv, Empty, ErrorBox, Money, PageHead } from '../../ui';
+import { DocLink } from '../../components/DocLink';
 
-interface Ledger { account: { account_no: string; name_th: string; is_control: boolean }; opening: string; debit: string; credit: string; closing: string; rows: Array<{ journal_id: string; voucher_no: string; voucher_date: string; description: string | null; journal_description: string | null; debit: string; credit: string; balance: string; account_no: string; department_code: string | null; source_doc_no: string | null }> }
+interface Ledger { account: { account_no: string; name_th: string; is_control: boolean }; opening: string; debit: string; credit: string; closing: string; rows: Array<{ journal_id: string; voucher_no: string; voucher_date: string; description: string | null; journal_description: string | null; debit: string; credit: string; balance: string; account_no: string; department_code: string | null; source_doc_no: string | null; source_header_id: string | null; source_doc_class: string | null }> }
 
 /** บัญชีแยกประเภท — เปิดจากงบทดลอง/ผังบัญชี หรือเลือกบัญชีเอง; คลิกรายการเพื่อเปิดใบสำคัญ */
 export function LedgerPage() {
@@ -40,7 +41,7 @@ export function LedgerPage() {
               {L.rows.map((r, i) => (
                 <tr key={i} className="row-open" onClick={() => nav(`/gl/journals/${r.journal_id}`)}>
                   <td className="mono"><DateText v={r.voucher_date} /></td><td className="mono">{r.voucher_no}</td>{L.account.is_control && <td className="mono">{r.account_no}</td>}
-                  <td>{r.description || r.journal_description}{r.source_doc_no && <span className="muted small"> · {r.source_doc_no}</span>}</td><td className="mono small">{r.department_code}</td>
+                  <td>{r.description || r.journal_description}{r.source_doc_no && <span className="muted small"> · <DocLink id={r.source_header_id} no={r.source_doc_no} cls={r.source_doc_class} /></span>}</td><td className="mono small">{r.department_code}</td>
                   <td className="r"><Money v={r.debit} blankZero /></td><td className="r"><Money v={r.credit} blankZero /></td><td className="r"><Money v={r.balance} paren /></td>
                 </tr>
               ))}

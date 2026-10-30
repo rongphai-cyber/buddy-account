@@ -2,17 +2,13 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { d, fmt, formatDate, todayIso } from '@buddy/core';
+import { d, docPath, fmt, formatDate, todayIso } from '@buddy/core';
+import { DocLink } from '../../components/DocLink';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys, useYearSystem } from '../../ui';
 
 const MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-/** เอกสารต้นทางที่เปิดได้จากแฟ้ม */
-export const DOC_ROUTE: Record<string, string> = {
-  IV: '/sa/invoices', HS: '/sa/cash-sales', DR: '/fi/ar/debit-notes', CN: '/fi/ar/credit-notes', AI: '/sa/deposits', OI: '/sa/other-income', RE: '/fi/ar/receipts',
-  RR: '/pu/invoices', HP: '/pu/cash-purchases', CP: '/fi/ap/debit-notes', DN: '/fi/ap/credit-notes', AE: '/pu/deposits', OE: '/pu/other-expense', PS: '/fi/ap/payments',
-};
 export interface Row { id: string; tax_invoice_no: string | null; tax_invoice_date: string; doc_no: string; doc_date: string; month: string; is_late: boolean; description: string | null; party_name: string | null; party_tax_id: string | null; party_tax_branch_no: string | null;
   base_amount: string; vat_amount: string; zero_rate_amount: string; nonclaim_base: string; nonclaim_vat: string; is_manual: boolean; is_modified: boolean; doc_status: string; remark: string | null; header_id: string | null; doc_class: string | null; sign: number }
 interface Totals { base: string; vat: string; zero: string; nonclaim_base: string; nonclaim_vat: string }
@@ -63,7 +59,7 @@ export function VatRegisterPage({ kind }: { kind: 'P' | 'S' }) {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => setEdit(r)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r)}>
-                <td className="mono">{r.month.slice(5)}/{ys === 'B' ? Number(r.month.slice(0, 4)) + 543 : r.month.slice(0, 4)}</td><td><DateText v={r.tax_invoice_date} /></td><td className="mono">{r.tax_invoice_no}</td><td className="mono">{r.doc_no}</td>
+                <td className="mono">{r.month.slice(5)}/{ys === 'B' ? Number(r.month.slice(0, 4)) + 543 : r.month.slice(0, 4)}</td><td><DateText v={r.tax_invoice_date} /></td><td className="mono">{r.tax_invoice_no}</td><td><DocLink id={r.header_id} no={r.doc_no} cls={r.doc_class} /></td>
                 <td>{r.description ?? r.party_name}</td><td className="mono">{r.party_tax_id}</td>
                 <td className="r"><Money v={signed(r, r.base_amount)} /></td><td className="r"><Money v={signed(r, r.vat_amount)} /></td>{kind === 'P' && <td className="r"><Money v={signed(r, r.nonclaim_vat)} blankZero /></td>}<td className="r"><Money v={signed(r, r.zero_rate_amount)} blankZero /></td>
                 <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : r.is_late ? <Pill tone="c">ยื่นเพิ่มเติม</Pill> : r.is_manual ? <Pill tone="m">เพิ่มเอง</Pill> : r.is_modified ? <Pill tone="d">แก้ไขแล้ว</Pill> : <Pill tone="n">ปกติ</Pill>}</td>
@@ -75,7 +71,7 @@ export function VatRegisterPage({ kind }: { kind: 'P' | 'S' }) {
         </table>
       </div>
       <KeyHints keys={[['Ins', 'เพิ่มรายการ'], ['คลิก/Enter', 'แก้ไขรายการ'], ['Ctrl+P', 'พิมพ์รายงาน']]} />
-      {edit && <VatEditor kind={kind} row={edit === 'new' ? null : edit} defaultMonth={ym} onOpenDoc={(r) => { const to = r.doc_class && DOC_ROUTE[r.doc_class]; if (to && r.header_id) nav(`${to}/${r.header_id}`); }}
+      {edit && <VatEditor kind={kind} row={edit === 'new' ? null : edit} defaultMonth={ym} onOpenDoc={(r) => { const to = r.header_id && docPath(r.doc_class, r.header_id); if (to) nav(to); }}
         onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['vat', kind] }); }} />}
       {createPortal(<div className="vat-print">
         <h2>รายงาน{kind === 'P' ? 'ภาษีซื้อ' : 'ภาษีขาย'}</h2>
@@ -130,7 +126,7 @@ export function VatEditor({ kind, row, defaultMonth, onOpenDoc, onClose, onSaved
       </>}>
       {intro && <div className="notebox">{intro}</div>}
       <ErrorBox error={err} />
-      {fromDoc && <p className="hint">มาจากเอกสาร <b className="mono">{row!.doc_no}</b> — ยอดรวมแก้ที่เอกสารต้นทาง ที่นี่แก้เลขที่/วันที่ใบกำกับ งวดที่ยื่น ยื่นเพิ่มเติม{kind === 'P' ? ' และย้ายยอดเป็นภาษีขอคืนไม่ได้' : ''} · บันทึกเอกสารซ้ำแล้วค่าที่แก้ยังอยู่</p>}
+      {fromDoc && <p className="hint">มาจากเอกสาร <b>{onOpenDoc ? <DocLink id={row!.header_id} no={row!.doc_no} cls={row!.doc_class} /> : <span className="mono">{row!.doc_no}</span>}</b> — ยอดรวมแก้ที่เอกสารต้นทาง ที่นี่แก้เลขที่/วันที่ใบกำกับ งวดที่ยื่น ยื่นเพิ่มเติม{kind === 'P' ? ' และย้ายยอดเป็นภาษีขอคืนไม่ได้' : ''} · บันทึกเอกสารซ้ำแล้วค่าที่แก้ยังอยู่</p>}
       <div className="form-grid" onKeyDown={navKey}>
         <Field label="เลขที่ใบกำกับภาษี" req><input value={e.tax_invoice_no} maxLength={30} disabled={ro} onChange={(x) => set({ tax_invoice_no: x.target.value })} /></Field>
         <Field label="วันที่ใบกำกับภาษี" req><DateInput value={e.tax_invoice_date} disabled={ro} onChange={(v) => set({ tax_invoice_date: v })} /></Field>

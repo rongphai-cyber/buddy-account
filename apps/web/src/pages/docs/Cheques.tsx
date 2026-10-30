@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CASH_KINDS, d, fmt, formatDate, SETTLE_KINDS, todayIso, TRADE_KINDS, type YearSystem } from '@buddy/core';
+import { d, docPath, fmt, formatDate, todayIso, type YearSystem } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { useDocNo } from '../../components/DocNo';
+import { DocLink } from '../../components/DocLink';
 
 /** เช็ครับ/เช็คจ่าย (คู่มือบทที่ 13 S-BK-04..13) — ยอดเงินฝากเพิ่มเมื่อผ่านเช็คเท่านั้น */
 type Dir = 'R' | 'P';
 const ST: Record<string, [string, 'n' | 'c' | 'm' | 'd' | 'x']> = { '00': ['เช็คในมือ', 'm'], '01': ['รอเรียกเก็บ', 'c'], '02': ['เช็คคืนยื่นใหม่', 'd'], '05': ['เช็คจ่าย', 'm'], '10': ['เช็คผ่าน', 'n'], '19': ['ผ่าน (โอน)', 'n'], '20': ['เช็คคืน', 'x'], '21': ['ตัดหนี้สูญ', 'x'] };
 const StatusPill = ({ s }: { s: string }) => <Pill tone={ST[s]?.[1] ?? 'm'}>{s} {ST[s]?.[0] ?? ''}</Pill>;
-const SRC: Record<string, string> = Object.fromEntries([...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS].map((k) => [k.cls, k.route]));
 interface Row { id: string; direction: Dir; cheque_no: string; cheque_date: string; received_date: string | null; deposit_date: string | null; pass_date: string | null; amount: string; charge: string; remaining_amount: string; written_off_amount: string; status: string;
   bank_branch: string | null; bank_code: string | null; bank_name: string | null; account_code: string | null; account_short: string | null; party_name: string | null; party_code: string | null; source_doc_no: string | null; source_doc_class: string | null; source_header_id: string | null;
   deposit_doc_no: string | null; deposit_header_id: string | null; pass_voucher_no: string | null; remark: string | null }
@@ -79,7 +79,7 @@ export function ChequeRegisterPage({ direction }: { direction: Dir }) {
             {list.data?.rows.map((r) => (
               <tr key={r.id} className="row-open" tabIndex={0} onClick={() => setOpen(r.id)} onKeyDown={(e) => e.key === 'Enter' && setOpen(r.id)}>
                 <td><DateText v={r.cheque_date} /></td><td className="mono">{r.cheque_no}</td>{direction === 'R' && <td>{r.bank_code} {r.bank_name}</td>}<td>{r.party_code ? `${r.party_code} ` : ''}{r.party_name}</td>
-                <td className="r"><Money v={r.amount} /></td><td>{r.account_code}</td><td className="mono">{r.source_doc_no ?? r.deposit_doc_no}</td><td><DateText v={r.pass_date} /></td><td><StatusPill s={r.status} /></td>
+                <td className="r"><Money v={r.amount} /></td><td>{r.account_code}</td><td>{r.source_doc_no ? <DocLink id={r.source_header_id} no={r.source_doc_no} cls={r.source_doc_class} /> : <DocLink id={r.deposit_header_id} no={r.deposit_doc_no} cls="BQ" />}</td><td><DateText v={r.pass_date} /></td><td><StatusPill s={r.status} /></td>
               </tr>
             ))}
             {list.data && !list.data.rows.length && <tr><td colSpan={9} className="empty">ไม่มีเช็คตามเงื่อนไขนี้</td></tr>}
@@ -170,14 +170,14 @@ function ChequeDetail({ id, onClose }: { id: string; onClose: () => void }) {
         <div className="box" style={{ marginTop: 10 }}>
           <div className="form-grid">
             <Field label="สถานะเช็ค"><StatusPill s={x.status} /></Field><Field label="วันที่นำฝาก"><DateText v={x.deposit_date} /></Field><Field label="เข้าบัญชี / ตัดจากบัญชี">{x.account_code} {x.account_name}</Field>
-            <Field label="วันที่ผ่านเช็ค"><DateText v={x.pass_date} /></Field><Field label="เลขที่ใบนำฝาก">{x.deposit_doc_no}</Field>
-            <Field label="ค่าธรรมเนียม"><Money v={x.charge ?? '0'} /></Field><Field label="เลขที่ใบสำคัญ (ผ่าน)">{x.pass_voucher_no}</Field>
-            {x.direction === 'R' && <><Field label="ยอดคงเหลือจากชำระใบเสร็จ"><Money v={x.remaining_amount ?? '0'} /></Field><Field label="ยอดที่ตัดเป็นรายได้"><Money v={x.written_off_amount ?? '0'} />{x.writeoff_voucher_no ? ` (${x.writeoff_voucher_no})` : ''}</Field></>}
+            <Field label="วันที่ผ่านเช็ค"><DateText v={x.pass_date} /></Field><Field label="เลขที่ใบนำฝาก"><DocLink id={x.deposit_header_id} no={x.deposit_doc_no} cls="BQ" /></Field>
+            <Field label="ค่าธรรมเนียม"><Money v={x.charge ?? '0'} /></Field><Field label="เลขที่ใบสำคัญ (ผ่าน)"><DocLink id={x.pass_journal_id} no={x.pass_voucher_no} cls="GL" /></Field>
+            {x.direction === 'R' && <><Field label="ยอดคงเหลือจากชำระใบเสร็จ"><Money v={x.remaining_amount ?? '0'} /></Field><Field label="ยอดที่ตัดเป็นรายได้"><Money v={x.written_off_amount ?? '0'} />{x.writeoff_voucher_no ? <> (<DocLink id={x.writeoff_journal_id} no={x.writeoff_voucher_no} cls="GL" />)</> : ''}</Field></>}
           </div>
         </div>
         <Tabs active="docs" onChange={() => undefined} tabs={[{ key: 'docs', label: 'รายการเอกสารที่เกี่ยวข้อง', badge: x.docs.length || undefined }]} />
         <table className="grid"><thead><tr><th>เอกสาร</th><th>วันที่</th><th className="r">ยอดเอกสาร</th><th className="r">ชำระด้วยเช็คนี้</th></tr></thead>
-          <tbody>{x.docs.map((r) => <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} onClick={() => SRC[r.doc_class] && nav(`${SRC[r.doc_class]}/${r.id}`)}><td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="r"><Money v={r.net_amount} /></td><td className="r"><Money v={r.amount} /></td></tr>)}
+          <tbody>{x.docs.map((r) => <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} onClick={() => { const to = docPath(r.doc_class, r.id); if (to) nav(to); }}><td><DocLink id={r.id} no={r.doc_no} cls={r.doc_class} /></td><td><DateText v={r.doc_date} /></td><td className="r"><Money v={r.net_amount} /></td><td className="r"><Money v={r.amount} /></td></tr>)}
             {!x.docs.length && <tr><td colSpan={4} className="empty">ไม่มีเอกสารที่อ้างถึง (เช็คยกมา/ย้ายข้อมูล)</td></tr>}</tbody></table>
         <p className="hint" style={{ marginTop: 10 }}>ประวัติสถานะ</p>
         <table className="grid"><tbody>{x.events.map((e, i) => <tr key={i}><td style={{ width: 110 }}><DateText v={e.event_date} /></td><td style={{ width: 260 }}>{e.from_status ? `${e.from_status} → ` : ''}<StatusPill s={e.to_status} /></td><td>{e.reason}</td></tr>)}
@@ -326,7 +326,7 @@ export function ChequeSlipFormPage() {
   return (
     <div className="page" data-tone="finance">
       <div className="doc-title"><p className="eyebrow">ธนาคาร › ใบนำฝากเช็ค</p><h1>{id ? c?.doc_no : 'ใบนำฝากใหม่'}</h1>
-        <span className="doc-state">{c?.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : c?.passed ? <Pill tone="n">10 เช็คผ่าน{c.pass_voucher_no ? ` · ${c.pass_voucher_no}` : ''}</Pill> : <Pill tone="c">01 รอเรียกเก็บ</Pill>}</span></div>
+        <span className="doc-state">{c?.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : c?.passed ? <Pill tone="n">10 เช็คผ่าน{c.pass_voucher_no ? <> · <DocLink id={c.journal_id} no={c.pass_voucher_no} cls="GL" /></> : ''}</Pill> : <Pill tone="c">01 รอเรียกเก็บ</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={ro} onClick={save}>บันทึก <kbd>F9</kbd></button>
         {id && !c?.passed && c?.doc_status !== 'C' && canPass('add') && <button onClick={() => setAct('pass')}>บันทึกเช็คผ่าน (ทั้งใบนำฝาก)</button>}

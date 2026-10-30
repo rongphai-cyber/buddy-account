@@ -7,6 +7,7 @@ import { useCan } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, useLookups } from '../../components/LkSelect';
 import { MasterNotesDialog } from '../../components/Notes';
+import { DocLink } from '../../components/DocLink';
 import { Confirm, cx, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 
 /* ---------------------------------------------------------------- ส่วนร่วม */
@@ -112,7 +113,7 @@ function BillsGrid({ rows }: { rows: Bill[] }) {
       <table className="grid">
         <thead><tr><th style={{ width: 110 }}>วันครบกำหนด</th><th style={{ width: 70 }}>ชนิด</th><th>เลขที่เอกสาร</th><th style={{ width: 110 }}>วันที่</th><th className="r" style={{ width: 140 }}>จำนวนเงิน</th><th className="r" style={{ width: 140 }}>ยอดคงเหลือ</th></tr></thead>
         <tbody>
-          {rows.map((r) => <tr key={r.header_id}><td><DateText v={r.due_date} /></td><td className="mono">{r.doc_class}</td><td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="r"><Money v={r.amount} /></td><td className="r"><Money v={r.outstanding} /></td></tr>)}
+          {rows.map((r) => <tr key={r.header_id}><td><DateText v={r.due_date} /></td><td className="mono">{r.doc_class}</td><td><DocLink id={r.header_id} no={r.doc_no} /></td><td><DateText v={r.doc_date} /></td><td className="r"><Money v={r.amount} /></td><td className="r"><Money v={r.outstanding} /></td></tr>)}
           {!rows.length && <tr><td colSpan={6} className="empty">ไม่มีบิลค้างชำระ</td></tr>}
         </tbody>
         {!!rows.length && <tfoot><tr><td colSpan={5} className="r">รวม</td><td className="r"><b><Money v={sum.toFixed(2)} /></b></td></tr></tfoot>}

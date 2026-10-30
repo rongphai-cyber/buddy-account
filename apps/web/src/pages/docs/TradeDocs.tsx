@@ -8,6 +8,7 @@ import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../compone
 import { useDocNo } from '../../components/DocNo';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { DiscountInput, LineAmountInput } from '../../components/DiscountInput';
+import { DocLink } from '../../components/DocLink';
 import { useDocEdit } from '../../components/DocEdit';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
@@ -80,7 +81,7 @@ export function DocJournalTab({ id }: { id: string }) {
   const journal = useQuery({ queryKey: ['doc-journal', id], queryFn: () => api.get<{ journals: Array<{ id: string; voucher_no: string; book_code: string; book_name: string; doc_status: string; lines: Array<{ line_no: number; account_no: string; account_name: string; debit: string; credit: string; posting_role: string; resolved_from: string }> }> }>(`/api/v1/docs/${id}/journal`) });
   return (
     <div><ErrorBox error={journal.error} />{journal.data?.journals.map((j) => <div key={j.id} className="box">
-      <p><b className="mono">{j.voucher_no}</b> สมุด {j.book_code} {j.book_name} {j.doc_status === 'C' && <Pill tone="x">ยกเลิก</Pill>}</p>
+      <p><b><DocLink id={j.id} no={j.voucher_no} cls="GL" /></b> สมุด {j.book_code} {j.book_name} {j.doc_status === 'C' && <Pill tone="x">ยกเลิก</Pill>}</p>
       <table className="grid"><thead><tr><th style={{ width: 110 }}>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th className="r">เดบิต</th><th className="r">เครดิต</th><th style={{ width: 150 }}>ที่มาของบัญชี</th></tr></thead>
         <tbody>{j.lines.map((l) => <tr key={l.line_no}><td className="mono">{l.account_no}</td><td>{l.account_name}</td><td className="r"><Money v={l.debit} blankZero /></td><td className="r"><Money v={l.credit} blankZero /></td>
           <td className="small muted">{({ '1': 'ประเภทเอกสาร', '2': 'แฟ้มหลัก', '3': 'บัญชีเพื่อลงรายวัน', S: 'บัญชีพัก ⚠' } as Record<string, string>)[l.resolved_from] ?? ''}</td></tr>)}</tbody></table></div>)}
@@ -157,7 +158,7 @@ function OrderPicker({ K, partyId, invoiceId, priceType, taken, onPick, onClose 
 /* ---------------------------------------------------------------- หน้าเอกสาร */
 interface ItemHit { id: string; code: string; name_th: string; item_type: string; vat_code: string | null; base_unit_id: string | null; sales_unit_id: string | null; sales_factor: string | null; purchase_unit_id: string | null; purchase_factor: string | null; price_1: string | null; price_2: string | null; price_3: string | null; price_4: string | null; price_5: string | null; std_cost: string | null }
 interface Line { key: number; item_id: string; item_code: string; description: string; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_price: string; discount_text: string; is_free: boolean; return_to_stock: boolean; vat_exempt: boolean;
-  /** บรรทัดใบสั่งที่อ้าง (บิล) */ source_line_id?: string | null; source_no?: string | null;
+  /** บรรทัดใบสั่งที่อ้าง (บิล) */ source_line_id?: string | null; source_no?: string | null; source_header_id?: string | null;
   /** ใบสั่ง: รหัสบรรทัด + ยอดค้าง (ดูอย่างเดียว) */ line_id?: string; remaining?: string | null; delivered?: string | null; cancelled?: string | null }
 interface Pay { key: number; payment_method_id: string; amount: string; reference_no: string }
 interface Head { doc_type_id: string; doc_date: string; party: { id: string; code: string; name?: string | null } | null; bill_to: { id: string; code: string; name?: string | null } | null; party_tax_branch_no: string; your_ref: string; ref: { id: string; code: string } | null;
@@ -178,7 +179,7 @@ export function TradeFormPage({ path }: { path: string }) {
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const slms = useQuery({ enabled: K.module === 'AR', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const methods = useQuery({ enabled: !!K.payments, queryKey: ['payment-methods', K.module === 'AR' ? 'R' : 'P'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>(`/api/v1/payment-methods/${K.module === 'AR' ? 'R' : 'P'}`) });
-  const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], queryFn: () => api.get<Record<string, unknown> & { lines: Array<Record<string, unknown>>; payments: Array<Record<string, unknown>>; settlements: Array<{ id: string; doc_no: string; doc_date: string; amount: string; doc_status: string }>; deposits: Array<{ header_id: string; doc_no: string; amount: string }>; deliveries: Array<{ doc_no: string; doc_date: string; order_line_no: number; item_code: string | null; qty: string }>;
+  const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], queryFn: () => api.get<Record<string, unknown> & { lines: Array<Record<string, unknown>>; payments: Array<Record<string, unknown>>; settlements: Array<{ id: string; doc_no: string; doc_date: string; doc_class: string; amount: string; doc_status: string }>; deposits: Array<{ header_id: string; doc_no: string; amount: string }>; deliveries: Array<{ id: string; doc_class: string; doc_no: string; doc_date: string; order_line_no: number; item_code: string | null; qty: string }>;
     cancels: Array<{ id: string; line_no: number; cancelled_qty: string; cancel_reason_code: string | null; cancel_date: string | null }>; converted: Array<{ id: string; doc_no: string; doc_date: string }>; editable: boolean; doc_no: string; doc_status: string; outstanding: string | null }>(`/api/v1/${K.path}/${id}`), staleTime: 0 });
   const [h, setH] = useState<Head | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
@@ -223,7 +224,7 @@ export function TradeFormPage({ path }: { path: string }) {
     setWhts(whtsFrom((cur.data as { wht?: Parameters<typeof whtsFrom>[0] }).wht ?? [])); setWhtAmt(d(c.wht_amount ?? 0).isZero() ? '' : num(c.wht_amount));
     setLines(cur.data.lines.map((l) => ({ key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), warehouse_id: (l.warehouse_id as string) ?? null, qty: num(l.qty), unit_id: (l.unit_id as string) ?? null, factor: num(l.factor) || '1',
       unit_price: num(l.unit_price), discount_text: String(l.discount_text ?? ''), is_free: !!l.is_free, return_to_stock: !!l.return_to_stock, vat_exempt: l.vat_code === '0',
-      source_line_id: (l.source_line_id as string) ?? null, source_no: (l.source as { doc_no?: string } | null)?.doc_no ?? null, line_id: l.id as string,
+      source_line_id: (l.source_line_id as string) ?? null, source_no: (l.source as { doc_no?: string } | null)?.doc_no ?? null, source_header_id: (l.source as { header_id?: string } | null)?.header_id ?? null, line_id: l.id as string,
       remaining: (l.remaining_qty as string) ?? null, delivered: (l.delivered_qty as string) ?? null, cancelled: (l.cancelled_qty as string) ?? null })));
     setDelivery(c.delivery_date ? String(c.delivery_date).slice(0, 10) : '');
     setRefDate(c.ref_date ? String(c.ref_date).slice(0, 10) : '');
@@ -346,6 +347,7 @@ export function TradeFormPage({ path }: { path: string }) {
     'Ctrl+F10': K.cls === 'HP' ? () => setTab('wht') : id && (K.cls === 'RR' || K.cls === 'CP') ? () => setTab('whtb') : undefined, 'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); }, 'Ctrl+Insert': readOnly ? undefined : addLine, F6: K.orderRef && !readOnly ? () => setPickOrder(true) : K.refInvoice && !readOnly && h?.ref?.id ? () => setPickRef(true) : undefined }, []);
   const dtCode = defs.data?.types.find((t) => t.id === h?.doc_type_id);
+  const srcOrders = useMemo(() => [...new Map(lines.filter((l) => l.source_header_id && l.source_no).map((l) => [l.source_header_id!, { id: l.source_header_id!, no: l.source_no! }])).values()], [lines]);
   const dn = useDocNo(dtCode, id ? cur.data?.doc_no : undefined, { disabled: readOnly, resetKey: h ? 'on' : 'off' });
   const cancelled = cur.data?.doc_status === 'C';
   const docNo = id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '');
@@ -368,7 +370,7 @@ export function TradeFormPage({ path }: { path: string }) {
       <TypeNotice show={!id && !!h && !h.doc_type_id} />
       {ed.dialog}
       <ErrorBox error={err ?? cur.error} />
-      {K.cls === 'QT' && !!cur.data?.converted.length && <p className="hint">แปลงเป็นใบสั่งขายแล้ว: {cur.data.converted.map((x) => <a key={x.id} href={`/sa/orders/${x.id}`} onClick={(e) => { e.preventDefault(); nav(`/sa/orders/${x.id}`); }} className="mono">{x.doc_no} </a>)}</p>}
+      {K.cls === 'QT' && !!cur.data?.converted.length && <p className="hint">แปลงเป็นใบสั่งขายแล้ว: {cur.data.converted.map((x) => <span key={x.id}><DocLink id={x.id} no={x.doc_no} cls="SO" /> </span>)}</p>}
       {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col">
@@ -376,9 +378,9 @@ export function TradeFormPage({ path }: { path: string }) {
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {K.party === 'customer' && <Field label="Bill to" hint="ชื่อบนใบกำกับ ถ้าเรียกเก็บในนามอื่น"><SearchPick endpoint="/api/v1/customers" value={h.bill_to} disabled={readOnly} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => set({ bill_to: r })} /></Field>}
             <Field label="สาขา#"><input className="mono" value={h.party_tax_branch_no} maxLength={5} disabled={readOnly} onChange={(e) => set({ party_tax_branch_no: e.target.value })} /></Field>
-            <Field label="อ้างอิง"><input value={h.your_ref} maxLength={30} disabled={readOnly} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
+            <Field label="อ้างอิง" hint={srcOrders.length ? <>{K.orderRef === 'SO' ? 'ใบสั่งขายที่อ้าง:' : 'ใบสั่งซื้อที่อ้าง:'} {srcOrders.map((o) => <span key={o.id}><DocLink id={o.id} no={o.no} cls={K.orderRef} keep={dirty} /> </span>)}</> : undefined}><input value={h.your_ref} maxLength={30} disabled={readOnly} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
             {supInv && <Field label="เลขที่ใบกำกับ/บิลผู้จำหน่าย / ลงวันที่" hint="เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่/วันที่เอกสาร"><div className="pair" style={{ gridTemplateColumns: 'minmax(0, 1fr) 150px' }}><input value={h.ref?.code ?? ''} maxLength={30} disabled={readOnly} onChange={(e) => set({ ref: e.target.value ? { id: '', code: e.target.value } : null })} aria-label="เลขที่ใบกำกับผู้จำหน่าย" /><DateInput value={refDate} disabled={readOnly} onChange={(v) => { setRefDate(v); setDirty(true); }} /></div></Field>}
-            {K.refInvoice && <Field label="เลขที่ใบกำกับที่อ้างถึง" req><SearchPick<{ id: string; doc_no: string; party_name: string; net_amount: string }> required endpoint={`/api/v1/${K.module === 'AR' ? 'sales-invoices' : 'purchase-invoices'}`} params={h.party ? { party_id: h.party.id, status: 'N' } : undefined} value={h.ref} disabled={readOnly || !h.party}
+            {K.refInvoice && <Field label="เลขที่ใบกำกับที่อ้างถึง" req hint={h.ref?.id ? <>เปิดใบกำกับ <DocLink id={h.ref.id} no={h.ref.code} keep={dirty} /></> : undefined}><SearchPick<{ id: string; doc_no: string; party_name: string; net_amount: string }> required endpoint={`/api/v1/${K.module === 'AR' ? 'sales-invoices' : 'purchase-invoices'}`} params={h.party ? { party_id: h.party.id, status: 'N' } : undefined} value={h.ref} disabled={readOnly || !h.party}
               codeOf={(r: { doc_no: string }) => r.doc_no} label={(r: { party_name: string; net_amount: string }) => `${r.party_name} ${fmt(r.net_amount)}`} onPick={(r: { id: string; doc_no: string } | null) => set({ ref: r ? { id: r.id, code: r.doc_no } : null })} placeholder={h.party ? 'พิมพ์เลขที่ใบกำกับ' : `เลือก${partyWord(K)}ก่อน`} /></Field>}
           </div>
           <div className="col">
@@ -412,7 +414,7 @@ export function TradeFormPage({ path }: { path: string }) {
                   <td className="muted">{i + 1}</td>
                   <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} disabled={readOnly} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)}
                     required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
-                  <td><input value={l.description} maxLength={200} disabled={readOnly} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" />{l.source_no && <span className="small muted">อ้าง {l.source_no}</span>}</td>
+                  <td><input value={l.description} maxLength={200} disabled={readOnly} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" />{l.source_no && <span className="small muted">อ้าง <DocLink id={l.source_header_id} no={l.source_no} cls={K.orderRef} keep={dirty} /></span>}</td>
                   <td><LkSelect byId rows={lk.data?.WH} value={l.warehouse_id} disabled={readOnly} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>
                   <td><input className="r" inputMode="decimal" value={l.qty} disabled={readOnly} onChange={(e) => setLine(l.key, { qty: e.target.value.replace(/[^\d.-]/g, '') })} aria-label="จำนวน" /></td>
                   <td><LkSelect byId rows={lk.data?.UNIT} value={l.unit_id} disabled={readOnly} onChange={(v) => setLine(l.key, { unit_id: v || null })} aria-label="หน่วย" /></td>
@@ -448,11 +450,11 @@ export function TradeFormPage({ path }: { path: string }) {
           </table>
         </div>}
         {tab === 'settle' && cur.data && <table className="grid"><thead><tr><th>เลขที่</th><th>วันที่</th><th className="r">จำนวนเงิน</th><th>สถานะ</th></tr></thead>
-          <tbody>{cur.data.settlements.map((s) => <tr key={s.id}><td className="mono">{s.doc_no}</td><td><DateText v={s.doc_date} /></td><td className="r"><Money v={s.amount} /></td><td>{s.doc_status === 'C' ? 'ยกเลิก' : ''}</td></tr>)}
+          <tbody>{cur.data.settlements.map((s) => <tr key={s.id}><td><DocLink id={s.id} no={s.doc_no} cls={s.doc_class} /></td><td><DateText v={s.doc_date} /></td><td className="r"><Money v={s.amount} /></td><td>{s.doc_status === 'C' ? 'ยกเลิก' : ''}</td></tr>)}
             {!cur.data.settlements.length && <tr><td colSpan={4} className="empty">ยังไม่มีการชำระ · ค้างชำระ <Money v={cur.data.outstanding} /></td></tr>}</tbody></table>}
         {tab === 'delivered' && cur.data && <div>
           <table className="grid"><thead><tr><th>เอกสาร</th><th>วันที่</th><th>บรรทัดใบสั่ง</th><th>รหัส</th><th className="r">จำนวน</th></tr></thead>
-            <tbody>{cur.data.deliveries.map((x, i) => <tr key={i}><td className="mono">{x.doc_no}</td><td><DateText v={x.doc_date} /></td><td>{x.order_line_no}</td><td className="mono">{x.item_code}</td><td className="r">{d(x.qty).toString()}</td></tr>)}
+            <tbody>{cur.data.deliveries.map((x, i) => <tr key={i}><td><DocLink id={x.id} no={x.doc_no} cls={x.doc_class} /></td><td><DateText v={x.doc_date} /></td><td>{x.order_line_no}</td><td className="mono">{x.item_code}</td><td className="r">{d(x.qty).toString()}</td></tr>)}
               {!cur.data.deliveries.length && <tr><td colSpan={5} className="empty">ยังไม่มีบิลที่อ้างใบสั่งนี้</td></tr>}</tbody></table>
           {cur.data.cancels.length > 0 && <table className="grid"><thead><tr><th>บรรทัด</th><th className="r">ยกเลิกยอด</th><th>เหตุผล</th><th>วันที่ยกเลิก</th></tr></thead>
             <tbody>{cur.data.cancels.map((x) => <tr key={x.id}><td>{x.line_no}</td><td className="r">{d(x.cancelled_qty).toString()}</td><td>{x.cancel_reason_code}</td><td><DateText v={x.cancel_date} /></td></tr>)}</tbody></table>}
@@ -467,7 +469,7 @@ export function TradeFormPage({ path }: { path: string }) {
                 return (
                   <tr key={o.header_id} className={cx(on && 'picked')}>
                     <td className="c"><input type="checkbox" checked={on} disabled={readOnly || (bad && !on)} onChange={(e) => { setDeps((m) => { const n = { ...m }; if (e.target.checked) n[o.header_id] = num(o.outstanding); else delete n[o.header_id]; return n; }); setDirty(true); }} aria-label={`หักมัดจำ ${o.doc_no}`} /></td>
-                    <td className="mono">{o.doc_no}</td><td><DateText v={o.doc_date} /></td><td>{o.price_type}{bad && <span className="bad small"> ไม่ตรงกับบิล</span>}</td>
+                    <td><DocLink id={o.header_id} no={o.doc_no} cls={K.module === 'AR' ? 'AI' : 'AE'} keep={dirty} /></td><td><DateText v={o.doc_date} /></td><td>{o.price_type}{bad && <span className="bad small"> ไม่ตรงกับบิล</span>}</td>
                     <td className="r"><Money v={o.amount} /></td><td className="r"><Money v={o.outstanding} /></td>
                     <td>{on && <MoneyInput value={deps[o.header_id]} disabled={readOnly} onChange={(v) => { setDeps((m) => ({ ...m, [o.header_id]: v })); setDirty(true); }} aria-label={`ยอดหักมัดจำ ${o.doc_no}`} />}</td>
                   </tr>

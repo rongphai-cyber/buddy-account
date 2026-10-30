@@ -10,6 +10,7 @@ import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
+import { DocLink } from '../../components/DocLink';
 import { PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
@@ -74,7 +75,7 @@ export function SettleListPage({ path }: { path: string }) {
 }
 
 /* ---------------------------------------------------------------- หน้าเอกสาร */
-interface Open { header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string; own: string; vat_basis: string | null; net_amount: string; vat_amount: string; ref_no: string | null; bill_no: string | null }
+interface Open { header_id: string; doc_class: string; doc_no: string; doc_date: string; due_date: string | null; amount: string; outstanding: string; own: string; vat_basis: string | null; net_amount: string; vat_amount: string; ref_no: string | null; bill_no: string | null; bill_id: string | null; is_opening: boolean }
 interface Head { doc_type_id: string; doc_date: string; payment_date: string; party: { id: string; code: string; name?: string | null } | null; department_id: string; salesperson_id: string; your_ref: string; remark: string;
   interest: string; discount: string; wht: string; fx: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
 interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; settlements: Array<{ invoice_header_id: string; amount: string }>;
@@ -235,8 +236,8 @@ export function SettleFormPage({ path }: { path: string }) {
                 return (
                   <tr key={o.header_id} className={cx('row-open', on && 'picked')} onClick={(e) => { if (!ro && !(e.target as HTMLElement).matches('input')) toggle(o, !on); }}>
                     <td className="c"><input type="checkbox" checked={on} disabled={ro} onChange={(e) => toggle(o, e.target.checked)} aria-label={`เลือก ${o.doc_no}`} /></td>
-                    <td className="mono">{o.doc_no}</td><td>{o.doc_class === K.neg ? <Pill tone="c">{CLASS_TH[o.doc_class]}</Pill> : CLASS_TH[o.doc_class]}{o.vat_basis === '2' && <span className="muted small"> ภาษีเกณฑ์เงินสด</span>}</td>
-                    <td><DateText v={o.doc_date} /></td><td><DateText v={o.due_date} /></td><td className="mono">{o.bill_no}</td>{K.module === 'AP' && <td className="mono">{o.ref_no}</td>}
+                    <td><DocLink id={o.header_id} no={o.doc_no} cls={o.doc_class} opening={o.is_opening} keep={dirty} /></td><td>{o.doc_class === K.neg ? <Pill tone="c">{CLASS_TH[o.doc_class]}</Pill> : CLASS_TH[o.doc_class]}{o.vat_basis === '2' && <span className="muted small"> ภาษีเกณฑ์เงินสด</span>}</td>
+                    <td><DateText v={o.doc_date} /></td><td><DateText v={o.due_date} /></td><td><DocLink id={o.bill_id} no={o.bill_no} cls={K.module === 'AR' ? 'BS' : 'BR'} keep={dirty} /></td>{K.module === 'AP' && <td className="mono">{o.ref_no}</td>}
                     <td className="r"><Money v={o.doc_class === K.neg ? d(o.amount).neg().toFixed(2) : o.amount} /></td><td className="r"><Money v={o.doc_class === K.neg ? d(o.outstanding).neg().toFixed(2) : o.outstanding} /></td>
                     <td>{on && <MoneyInput value={pick[o.header_id]} disabled={ro} onChange={(v) => { setPick((m) => ({ ...m, [o.header_id]: v })); setDirty(true); }} aria-label={`ยอดชำระ ${o.doc_no}`} />}</td>
                   </tr>

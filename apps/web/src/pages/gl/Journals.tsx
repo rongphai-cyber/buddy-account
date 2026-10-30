@@ -5,6 +5,7 @@ import { addMonths, todayIso } from '@buddy/core';
 import { api, type Book } from '../../api';
 import { bookColor, bookStyle } from '../../bookColor';
 import { useSession } from '../../session';
+import { DocLink } from '../../components/DocLink';
 import { cx, DateInput, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, Tabs, useHotkeys } from '../../ui';
 
 interface Row { id: string; voucher_no: string; voucher_date: string; description: string | null; reference: string | null; total_debit: string; doc_status: string; source_module: string | null; source_header_id: string | null; book_code: string; source_doc_no: string | null; source_doc_class: string | null }
@@ -49,7 +50,7 @@ export function JournalsPage() {
               <tr key={r.id} className={cx('row-open', i === sel && 'sel', r.doc_status === 'C' && 'void')} onClick={() => nav(`/gl/journals/${r.id}`)} onMouseEnter={() => setSel(i)}>
                 <td className="mono"><DateText v={r.voucher_date} /></td><td className="mono">{r.voucher_no}</td><td className="mono">{r.book_code}</td>
                 <td>{r.description}</td>
-                <td className="small">{r.source_doc_no ? <span>{r.source_doc_class} {r.source_doc_no}</span> : r.reference}</td>
+                <td className="small">{r.source_doc_no ? <span>{r.source_doc_class} <DocLink id={r.source_header_id} no={r.source_doc_no} cls={r.source_doc_class} /></span> : r.reference}</td>
                 <td className="r"><Money v={r.total_debit} /></td>
                 <td>{r.doc_status === 'C' ? <Pill tone="c">ยกเลิก</Pill> : r.source_header_id ? <Pill tone="x">จากระบบอื่น</Pill> : <Pill tone="n">ปกติ</Pill>}</td>
               </tr>

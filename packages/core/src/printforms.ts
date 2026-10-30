@@ -70,6 +70,21 @@ export function docMenuOf(docClass: string, isOpening = false): string {
   return 'GL.JNL';
 }
 
+/**
+ * หน้าจอของเอกสาร (ข้อกำหนดเจ้าของ: เลขที่เอกสารอ้างอิงในทุกแท็บคลิกเปิดเอกสารนั้นได้)
+ * cls = doc_class · opening = เอกสารยกมา · GL = ใบสำคัญ · null = ไม่มีหน้าจอเปิดเอกสารชนิดนี้
+ */
+export function docPath(docClass: string | null | undefined, id: string, isOpening = false): string | null {
+  if (!docClass || !id) return null;
+  if (docClass === 'GL') return `/gl/journals/${id}`;
+  if (docClass === 'OS') return `/ic/opening/${id}`;
+  if (isOpening) return docClass === 'IV' ? `/fi/ar/opening/${id}` : docClass === 'RR' ? `/fi/ap/opening/${id}` : null;
+  if (docClass === 'DP' || docClass === 'VR') return `/gl/petty-cash/${docClass.toLowerCase()}/${id}`;
+  if (docClass === 'BQ' || docClass === 'SQ') return `/fi/cheques/slips/${id}`;
+  const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, ...BILL_KINDS, ...BANK_KINDS, ...STOCK_KINDS].find((x) => x.cls === docClass);
+  return k ? `${k.route}/${id}` : null;
+}
+
 /** คอลัมน์ที่เลือกได้ของแต่ละกลุ่มเอกสาร (key ตรงกับข้อมูลบรรทัดที่ API พิมพ์ส่งมา) */
 export const PRINT_COLUMNS: Record<PrintFamily, Array<Omit<PrintColumn, 'show'> & { show?: boolean }>> = {
   trade: [{ key: 'no', label: 'ลำดับ', width: 6, align: 'c' }, { key: 'code', label: 'รหัสสินค้า', width: 14, align: 'l' }, { key: 'name', label: 'รายละเอียด', width: 34, align: 'l' },

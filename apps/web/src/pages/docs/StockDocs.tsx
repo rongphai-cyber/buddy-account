@@ -10,6 +10,7 @@ import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocJournalTab } from './TradeDocs';
+import { DocLink } from '../../components/DocLink';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
 
@@ -262,7 +263,7 @@ function ProductionCost({ date, departmentId, lines, onClose, onApply }: { date:
     <table className="grid"><thead><tr><th style={{ width: 30 }} /><th>เลขที่</th><th>วันที่</th><th>แผนก</th><th>{party ? 'ผู้จำหน่าย / คำอธิบาย' : 'หมายเหตุ'}</th><th className="r">จำนวนเงิน</th></tr></thead>
       <tbody>{xs.map((x) => <tr key={x.id} className={cx('row-open', off.has(x.id) && 'cancelled')} onClick={() => toggle(x.id)}>
         <td><input type="checkbox" checked={!off.has(x.id)} onChange={() => toggle(x.id)} onClick={(e) => e.stopPropagation()} aria-label={`เลือก ${x.doc_no}`} /></td>
-        <td className="mono">{x.doc_no}</td><td><DateText v={x.doc_date} /></td><td>{x.department_code}</td><td>{[x.party_name, x.remark].filter(Boolean).join(' · ')}</td><td className="r"><Money v={x.amount} /></td></tr>)}
+        <td><DocLink id={x.id} no={x.doc_no} keep /></td><td><DateText v={x.doc_date} /></td><td>{x.department_code}</td><td>{[x.party_name, x.remark].filter(Boolean).join(' · ')}</td><td className="r"><Money v={x.amount} /></td></tr>)}
         {q.data && !xs.length && <tr><td colSpan={6} className="empty">ไม่มีเอกสารในช่วงนี้</td></tr>}</tbody></table>
   </>;
   return (

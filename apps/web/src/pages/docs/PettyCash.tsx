@@ -7,6 +7,7 @@ import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { useDocEdit } from '../../components/DocEdit';
+import { DocLink } from '../../components/DocLink';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { DocWhtTab, JvVatTab } from '../gl/JvLinks';
@@ -23,7 +24,8 @@ const BASE = '/gl/petty-cash';
 const KINDS = { dp: { api: 'petty-payments', label: 'บันทึกการจ่ายเงินสดย่อย', short: 'จ่าย (DP)', cls: 'DP' }, vr: { api: 'petty-reimbursements', label: 'เบิกชดเชยเงินสดย่อย', short: 'เบิกชดเชย (VR)', cls: 'VR' } } as const;
 type Kind = keyof typeof KINDS;
 
-interface Row { id: string; doc_no: string; doc_date: string; remark: string | null; net_amount: string; doc_status: string; vr_no?: string | null; lines?: number; dps?: number; cash_amount?: string; cheque_amount?: string }
+const WAIT_VR = 'รอเบิกชดเชย (ยังไม่ลงบัญชี)';
+interface Row { id: string; doc_no: string; doc_date: string; remark: string | null; net_amount: string; doc_status: string; vr_no?: string | null; vr_id?: string | null; lines?: number; dps?: number; cash_amount?: string; cheque_amount?: string }
 export function PettyListPage({ kind }: { kind: Kind }) {
   const K = KINDS[kind];
   const nav = useNavigate();
@@ -59,7 +61,7 @@ export function PettyListPage({ kind }: { kind: Kind }) {
             {list.data?.rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${BASE}/${kind}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${BASE}/${kind}/${r.id}`)}>
                 <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td>{r.remark}</td>
-                {kind === 'dp' ? <><td className="r">{r.lines}</td><td className="mono">{r.vr_no}</td></> : <><td className="r">{r.dps}</td><td className="r"><Money v={r.cash_amount} blankZero /></td><td className="r"><Money v={r.cheque_amount} blankZero /></td></>}
+                {kind === 'dp' ? <><td className="r">{r.lines}</td><td><DocLink id={r.vr_id} no={r.vr_no} cls="VR" /></td></> : <><td className="r">{r.dps}</td><td className="r"><Money v={r.cash_amount} blankZero /></td><td className="r"><Money v={r.cheque_amount} blankZero /></td></>}
                 <td className="r"><Money v={r.net_amount} /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : kind === 'dp' && !r.vr_no ? <Pill tone="m">รอเบิก</Pill> : <Pill tone="n">ปกติ</Pill>}</td>
               </tr>
             ))}
@@ -85,7 +87,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const accts = useAccounts();
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string }> }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
-  const cur = useQuery({ enabled: !!id, queryKey: [K.api, 'one', id], queryFn: () => api.get<Record<string, string | null> & { doc_no: string; doc_status: string; editable: boolean; vr_no?: string | null;
+  const cur = useQuery({ enabled: !!id, queryKey: [K.api, 'one', id], queryFn: () => api.get<Record<string, string | null> & { doc_no: string; doc_status: string; editable: boolean; vr_no?: string | null; vr_id?: string | null;
     lines: Array<{ account_id: string; account_no: string; account_name: string; department_id: string | null; description: string | null; amount: string }>; dps?: Array<{ id: string }>; payments?: Parameters<typeof paysFrom>[0] }>(`/api/v1/${K.api}/${id}`), staleTime: 0 });
   const [h, setH] = useState<{ doc_type_id: string; doc_date: string; remark: string; cash: string } | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
@@ -149,7 +151,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   return (
     <div className={cx('page', tColor && 'book-colored')} data-tone="gl" style={bookStyle(tColor)}>
       <div className="doc-title"><p className="eyebrow">บัญชี › เงินสดย่อย › {K.label}</p><h1>{id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '')}</h1>{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
-        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{kind === 'vr' ? 'ลงบัญชีแล้ว' : cur.data?.vr_no ? `เบิกชดเชยแล้วใน ${cur.data.vr_no}` : 'รอเบิกชดเชย (ยังไม่ลงบัญชี)'}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
+        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{kind === 'vr' ? 'ลงบัญชีแล้ว' : cur.data?.vr_no ? <>เบิกชดเชยแล้วใน <DocLink id={cur.data.vr_id} no={cur.data.vr_no} cls="VR" /></> : WAIT_VR}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setPick(new Set()); setPays([]); nav(`${BASE}/${kind}/new`); } }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={save}>บันทึก <kbd>F9</kbd></button>
@@ -208,7 +210,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
                   return (
                     <tr key={r.id} className={cx('row-open', on && 'picked')} onClick={(e) => { if (ro || (e.target as HTMLElement).matches('input')) return; setPick((s0) => { const s = new Set(s0); if (on) s.delete(r.id); else s.add(r.id); return s; }); setDirty(true); }}>
                       <td className="c"><input type="checkbox" checked={on} disabled={ro} onChange={(e) => { setPick((s0) => { const s = new Set(s0); if (e.target.checked) s.add(r.id); else s.delete(r.id); return s; }); setDirty(true); }} aria-label={`เลือก ${r.doc_no}`} /></td>
-                      <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td>{r.remark}</td><td className="r">{r.lines}</td><td className="r"><Money v={r.net_amount} /></td>
+                      <td><DocLink id={r.id} no={r.doc_no} cls="DP" keep={dirty} /></td><td><DateText v={r.doc_date} /></td><td>{r.remark}</td><td className="r">{r.lines}</td><td className="r"><Money v={r.net_amount} /></td>
                     </tr>
                   );
                 })}

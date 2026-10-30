@@ -269,7 +269,7 @@ export const API_RULES: Record<string, Rule> = {
   // พิมพ์/รับรองเอกสาร รายละเอียดแฟ้มข้อมูล แบบฟอร์ม รายงานของผู้ใช้ (บทที่ 25 · S-UI-08..12)
   'GET /api/v1/notes/:kind/:id': DOC('read'), 'PUT /api/v1/notes/:kind/:id': DOC('edit'), 'GET /api/v1/doc-status/:kind/:id': DOC('read'), 'PUT /api/v1/doc-status/:kind/:id': DOC('edit'),
   'GET /api/v1/master-notes/:entity/:id': MNOTE('read'), 'PUT /api/v1/master-notes/:entity/:id': MNOTE('edit'),
-  'GET /api/v1/print/:kind/:id': DOC('read'), 'GET /api/v1/neighbors/:kind/:id': DOC('read'), 'POST /api/v1/print/:kind/:id/printed': DOC('print'),
+  'GET /api/v1/print/:kind/:id': DOC('read'), 'GET /api/v1/neighbors/:kind/:id': DOC('read'), 'GET /api/v1/locate/:kind/:id': DOC('read'), 'POST /api/v1/print/:kind/:id/printed': DOC('print'),
   'POST /api/v1/approve/:kind/:id': DOC('approve'), 'POST /api/v1/approve-range': DOC('approve'), 'GET /api/v1/record-info/:kind/:id': DOC('read'),
   'GET /api/v1/company-images': LOOKUP, 'PUT /api/v1/company-images/logo': M('RP.FORM', 'edit'), 'POST /api/v1/company-images/signs': M('RP.FORM', 'add'), 'DELETE /api/v1/company-images/:id': M('RP.FORM', 'delete'),
   'GET /api/v1/print-forms': LOOKUP, 'PUT /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'edit'), 'DELETE /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'delete'),
