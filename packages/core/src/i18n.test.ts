@@ -36,6 +36,7 @@ describe('สลับ 2 ภาษา — ตัวแปลข้อควา�
     expect(t.tr('3 บันทึกยอดนับ')).toBe('3 Record Counts');
     expect(t.tr('เลขที่:')).toBe('No.:');
     expect(t.tr('ม.ค. 2569')).toBe('Jan 2569');
+    expect(t.tr('IV ซื้อ')).toBe('IV Purchase');                  // รหัสนำหน้าชื่อ
     expect(t.tr('+ เพิ่มเอกสาร')).toBe('+ Add Document');   // ไม่ตัดกลางคำด้วยแบบ '+ เพิ่ม{0} {1}'
     expect(t.tr('ซื้อ › ไม่รู้จัก')).toBeNull();          // แปลไม่ครบทุกส่วน = ไม่แปล
   });

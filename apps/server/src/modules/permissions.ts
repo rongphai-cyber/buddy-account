@@ -145,6 +145,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/api-keys': M('SET.API', 'read'), 'POST /api/v1/api-keys': M('SET.API', 'add'), 'POST /api/v1/api-keys/:id/revoke': M('SET.API', 'cancel'), 'GET /api/v1/api-docs': M('SET.API', 'read'),
   'GET /api/v1/users': SELF, 'POST /api/v1/users': SELF, 'PUT /api/v1/users/:id': SELF, 'POST /api/v1/user-groups': SELF,
   // สมัครใช้งานเอง: หน้าสมัครไม่ต้องเข้าระบบ · พิจารณาใบสมัคร = เจ้าหน้าที่ผู้ให้บริการ (ตรวจในตัว API)
+  // ชื่อภาษาอังกฤษของข้อมูลบริษัทนี้ (โหมด EN)
+  'GET /api/v1/i18n/names': LOOKUP,
   'GET /api/v1/signup/config': OPEN, 'POST /api/v1/signup': OPEN, 'GET /api/v1/signups': SELF, 'POST /api/v1/signups/:id/approve': SELF, 'POST /api/v1/signups/:id/reject': SELF,
   'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/tenants/:id/purge': SELF, 'POST /api/v1/tenants/:id/export': SELF, 'POST /api/v1/tenants/import': SELF, 'POST /api/v1/companies': SELF,
   // T7.8 ออฟไลน์สาขา: เครื่องสาขา (ผู้ดูแลบริษัท) · API ของเครื่องสาขายืนยันด้วยรหัสเครื่อง (OPEN + ตรวจในตัว) · สถานะ/ส่งใหม่ของเครื่องสาขา (SELF)

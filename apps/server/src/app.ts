@@ -58,6 +58,7 @@ import { companyImageRoutes } from './modules/company-images.js';
 import { itemImageRoutes } from './modules/item-images.js';
 import { tradeImportRoutes } from './modules/trade-import.js';
 import { signupRoutes } from './modules/signup.js';
+import { i18nNameRoutes } from './modules/i18n-names.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
@@ -137,6 +138,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   itemImageRoutes(app, db);
   tradeImportRoutes(app, db);
   signupRoutes(app, db, cfg);
+  i18nNameRoutes(app, db);
   inventoryAccountRoutes(app, db);
   reportRoutes(app, db);
 

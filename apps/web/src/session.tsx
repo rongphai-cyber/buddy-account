@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type Me, ApiError } from './api';
 import { applyTheme } from './theme';
+import { loadDataNames } from './i18n';
 
 interface SessionValue { me: Me | null; loading: boolean; needsSetup: boolean; refresh: () => Promise<void>; select: (p: { company_id?: string; branch_id?: string | null; work_date?: string | null }) => Promise<void>; logout: () => Promise<void> }
 const Ctx = createContext<SessionValue>({ me: null, loading: true, needsSetup: false, refresh: async () => {}, select: async () => {}, logout: async () => {} });
@@ -22,6 +23,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // ธีมของบริษัทที่เลือกอยู่ (ข้อกำหนดเจ้าของ) — เปลี่ยนบริษัท/ออกจากระบบ ใส่ธีมใหม่ทันที
   const themeKey = JSON.stringify(me.data?.ui_theme ?? null);
   useEffect(() => { applyTheme(me.data?.ui_theme); }, [themeKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // โหมด EN: ชื่อภาษาอังกฤษของข้อมูลบริษัทที่เลือก
+  useEffect(() => { void loadDataNames(me.data?.company?.id); }, [me.data?.company?.id]);
   const refresh = async () => { await qc.invalidateQueries({ queryKey: ['setup'] }); await qc.refetchQueries({ queryKey: ['me'] }); };
   const value: SessionValue = {
     me: me.data ?? null, loading: me.isLoading || setup.isLoading, needsSetup: !!setup.data?.needsSetup, refresh,

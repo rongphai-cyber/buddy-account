@@ -20,6 +20,9 @@ const mine = new WeakMap<Node, { src: string; out: string }>();
 const attrMine = new WeakMap<Element, Record<string, string>>();
 
 let tr: Translator | null = null;
+let uiDict: Record<string, string> = {};
+/** ชื่อภาษาอังกฤษของข้อมูลบริษัทที่เลือก (บัญชี ประเภทเอกสาร สินค้า หน่วย …) — คำแปลหน้าจอมาก่อน */
+let namesFor: string | null = null;
 const skipped = (el: Element | null) => !el || !!el.closest(SKIP);
 const sourceOf = (n: Node) => { const m = mine.get(n); return m && n.nodeValue === m.out ? m.src : n.nodeValue ?? ''; };
 const write = (n: Node, src: string, out: string) => { mine.set(n, { src, out }); if (n.nodeValue !== out) n.nodeValue = out; };
@@ -74,8 +77,8 @@ export async function startI18n() {
   const lang = getLang();
   document.documentElement.lang = lang;
   if (lang !== 'en') return;
-  const dict = (await import('./i18n/en.json')).default as Record<string, string>;
-  tr = makeTranslator(dict);
+  uiDict = (await import('./i18n/en.json')).default as Record<string, string>;
+  tr = makeTranslator(uiDict);
   const fixTitle = () => { const o = tr!.tr(document.title); if (o) document.title = o; };
   walk(document.body); fixTitle();
   new MutationObserver((list) => {
@@ -86,4 +89,21 @@ export async function startI18n() {
     }
   }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: [...ATTRS] });
   new MutationObserver(fixTitle).observe(document.querySelector('title') ?? document.head, { childList: true, subtree: true, characterData: true });
+}
+
+/**
+ * โหมด EN: โหลดชื่อภาษาอังกฤษของข้อมูลบริษัทนี้ แล้วแปลหน้าจอใหม่ (เรียกเมื่อเลือก/เปลี่ยนบริษัท)
+ * แปลเฉพาะข้อความที่แสดง — ช่องกรอกยังเป็นชื่อไทยเดิม แก้ไขแล้วบันทึกไม่กระทบข้อมูล
+ */
+export async function loadDataNames(companyId: string | null | undefined) {
+  if (getLang() !== 'en' || !companyId || namesFor === companyId) return;
+  namesFor = companyId;
+  try {
+    const res = await fetch('/api/v1/i18n/names', { credentials: 'include' });
+    if (!res.ok || namesFor !== companyId) return;
+    const { names } = (await res.json()) as { names: Record<string, string> };
+    while (!tr) await new Promise((r) => setTimeout(r, 50));      // รอพจนานุกรมหน้าจอโหลดเสร็จ
+    tr = makeTranslator({ ...names, ...uiDict });
+    walk(document.body);
+  } catch { /* ไม่มีชื่ออังกฤษก็แสดงชื่อไทย */ }
 }

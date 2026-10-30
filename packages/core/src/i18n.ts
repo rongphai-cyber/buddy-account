@@ -63,6 +63,9 @@ export function makeTranslator(dict: I18nDict): Translator {
       const parts = s.split(sep).map((x) => (TH.test(x) ? core(x.trim(), depth + 1) : x));
       if (parts.every((x) => x !== null)) return parts.join(sep);
     }
+    // รหัสนำหน้าชื่อ เช่น "TI ขายเงินเชื่อ-ในประเทศ" "G-GGS3 ห้างหุ้นส่วน…" → แปลเฉพาะชื่อ
+    const code = /^([A-Za-z0-9][\w.\-/#&]*\s+)([\u0E00-\u0E7F][\s\S]*)$/.exec(s);
+    if (code) { const o = core(code[2]!, depth + 1); if (o !== null) return code[1] + o; }
     const pre = /^([^\u0E00-\u0E7F\p{L}]+)(\S[\s\S]*)$/u.exec(s);
     if (pre) { const o = core(pre[2]!, depth + 1); if (o !== null) return pre[1] + o; }
     const suf = /^([\s\S]*?[\u0E00-\u0E7F)])([\s:*…?!.,]+|\s*\(\d+\))$/.exec(s);

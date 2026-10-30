@@ -3805,3 +3805,29 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action IN ('SIGNUP', 'SIGNUP_REJECT')`.execute(database.db)).rows[0]!.n).toBe(7);
   });
 });
+
+describe('ชื่อภาษาอังกฤษของข้อมูล (โหมด EN)', () => {
+  it('returns Thai → English names of this company only, skips missing/odd names, gzip when asked', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    await sql`INSERT INTO md_item (company_id, code, name_th, name_en, item_type) VALUES (${co}, 'EN-1', 'แก้วน้ำใส', 'Clear Water Glass', '0'),
+      (${co}, 'EN-2', 'ไม่มีชื่ออังกฤษ', NULL, '0'), (${co}, 'EN-3', 'ชื่อแปลก {0}', 'Odd {0}', '0'), (${co}, 'EN-4', 'ชื่อไทยซ้ำ', 'ยังเป็นไทย', '0')`.execute(database.db);
+    const r = await call('GET', '/api/v1/i18n/names');
+    expect(r.status).toBe(200);
+    const n = r.body.names as Record<string, string>;
+    expect(n['แก้วน้ำใส']).toBe('Clear Water Glass');
+    expect('ไม่มีชื่ออังกฤษ' in n).toBe(false); expect('ชื่อแปลก {0}' in n).toBe(false); expect('ชื่อไทยซ้ำ' in n).toBe(false);
+    expect(Object.values(n).some((v) => /[\u0E00-\u0E7F]/.test(v))).toBe(false);
+    const z = await app.inject({ method: 'GET', url: '/api/v1/i18n/names', headers: { cookie, 'accept-encoding': 'gzip' } });
+    expect(z.headers['content-encoding']).toBe('gzip');
+    const { gunzipSync } = await import('node:zlib');
+    expect(JSON.parse(gunzipSync(z.rawPayload).toString()).names['แก้วน้ำใส']).toBe('Clear Water Glass');
+    // ลูกค้าอื่นไม่เห็นชื่อของบริษัทนี้
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    expect('แก้วน้ำใส' in (await call('GET', '/api/v1/i18n/names')).body.names).toBe(false);
+  });
+});
