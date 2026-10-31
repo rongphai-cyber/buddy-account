@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { DOC_CLASSES, formatDocNo, GL_ROLES, JOURNAL_ROUTES, MODULE_TH, slotLabel } from '@buddy/core';
+import { DOC_CLASSES, formatDocNo, GL_ROLES, JOURNAL_ROUTES, MODULE_TH, slotLabel, WHT_INCOME_TYPES } from '@buddy/core';
 import { api, type Book, type Department } from '../../api';
 import { useCan } from '../../session';
-import { AccountCell } from '../../components/AccountCell';
-import { LkSelect, useLookups } from '../../components/LkSelect';
+import { AccountCell, useAccounts } from '../../components/AccountCell';
+import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, ErrorBox, Field, KeyHints, Modal, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 
 /* ---------------------------------------------------------------- เลขที่เอกสาร S-DN-01 */
@@ -56,7 +56,17 @@ export function DocTypesPage() {
 }
 
 /* ---------------------------------------------------------------- รายละเอียดเอกสาร S-DN-02 */
-interface DocTypeDetail extends Record<string, unknown> { id: string; code: string; doc_class: string; next_no: string; accounts: Array<{ slot: number; account_id: string }>; doc_count: number; last_doc_no: string | null }
+interface DocTypeDetail extends Record<string, unknown> { id: string; code: string; doc_class: string; next_no: string; accounts: Array<{ slot: number; account_id: string }>; doc_count: number; last_doc_no: string | null;
+  charges: Array<{ name: string; account_id: string; vat_type: string; wht_income_type: string | null; wht_rate: string }>; charge_supplier: { id: string; code: string; name: string } | null }
+/** รายการหักโดยแพลตฟอร์มของใบเสร็จ (ข้อกำหนดเจ้าของ 31/10/2569) */
+interface Chg { key: number; name: string; account_id: string | null; vat_type: '0' | '1' | '3'; wht_income_type: string; wht_rate: string }
+let chgSeq = 0;
+/** รายการหักที่พบบ่อย (Grab LINE MAN Lazada Shopee Agoda …) + คำค้นบัญชีในผัง */
+const CHARGE_SAMPLES: Array<{ name: string; wht: string; find: string[] }> = [
+  { name: 'ค่า GP/คอมมิชชั่น', wht: 'ค่าบริการ', find: ['คอมมิชชั่น', 'นายหน้า'] }, { name: 'ค่าการตลาด/ส่งเสริมการขาย', wht: 'ค่าบริการ', find: ['ส่งเสริมการขาย', 'การตลาด'] },
+  { name: 'ค่าโฆษณา', wht: 'ค่าโฆษณา', find: ['โฆษณา'] }, { name: 'ค่าธรรมเนียมการชำระเงิน', wht: 'ค่าบริการ', find: ['ค่าธรรมเนียมอื่น', 'ค่าธรรมเนียม'] },
+  { name: 'ค่าขนส่ง', wht: 'ค่าขนส่ง', find: ['ค่าขนส่ง', 'ขนส่ง'] }, { name: 'ค่าบริการอื่นของแพลตฟอร์ม', wht: 'ค่าบริการ', find: ['ค่าใช้จ่ายอื่น'] },
+];
 type F = Record<string, string | boolean | null>;
 const KEYS = ['code', 'doc_class', 'name_th', 'name_en', 'short_name', 'next_no', 'journal_book_id', 'department_id', 'warehouse_id', 'journal_desc_template', 'price_type', 'vat_rate', 'vat_basis', 'approve_level', 'approve_method', 'reprint_level', 'cancel_level', 'delete_level', 'over_limit_level', 'form_no', 'status'];
 const BOOLS = ['vat_per_line', 'auto_print', 'use_barcode'];
@@ -70,11 +80,16 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
   const [f, setF] = useState<F | null>(id ? null : { ...Object.fromEntries(KEYS.map((k) => [k, ''])), doc_class: 'IV', next_no: '1', status: 'A', vat_per_line: false, auto_print: false, use_barcode: false });
   const [accs, setAccs] = useState<Record<number, string | null>>({});
   const [extraSlots, setExtraSlots] = useState<number[]>([]);
+  const [chgs, setChgs] = useState<Chg[]>([]);
+  const [chgSup, setChgSup] = useState<{ id: string; code: string; name?: string | null } | null>(null);
+  const accounts = useAccounts();
   const [err, setErr] = useState<unknown>(null);
   const [ask, setAsk] = useState(false);
   if (id && cur.data && !f) {
     setF({ ...Object.fromEntries(KEYS.map((k) => [k, cur.data[k] === null || cur.data[k] === undefined ? '' : String(cur.data[k])])), ...Object.fromEntries(BOOLS.map((k) => [k, !!cur.data[k]])), next_no: String(cur.data.next_no).padStart(7, '0') });
     setAccs(Object.fromEntries(cur.data.accounts.map((x) => [x.slot, x.account_id])));
+    setChgs((cur.data.charges ?? []).map((c) => ({ key: ++chgSeq, name: c.name, account_id: c.account_id, vat_type: (c.vat_type as Chg['vat_type']) ?? '1', wht_income_type: c.wht_income_type ?? '', wht_rate: String(Number(c.wht_rate)) })));
+    setChgSup(cur.data.charge_supplier ?? null);
   }
   const set = (p: F) => setF((x) => ({ ...x!, ...p }));
   const allowed = can(id ? 'edit' : 'add');
@@ -82,13 +97,22 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
     if (!f || !allowed) return;
     setErr(null);
     const body = { ...Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v === '' ? null : v])), next_no: f.next_no || '1',
-      accounts: Object.entries(accs).filter(([, v]) => v).map(([slot, account_id]) => ({ slot: Number(slot), account_id })) };
+      accounts: Object.entries(accs).filter(([, v]) => v).map(([slot, account_id]) => ({ slot: Number(slot), account_id })),
+      charge_supplier_id: chgSup?.id ?? null, charges: chgs.filter((c) => c.name || c.account_id).map(({ key: _k, ...c }) => ({ ...c, wht_income_type: c.wht_income_type || null, wht_rate: c.wht_rate || '0' })) };
     try { if (id) await api.put(`/api/v1/doc-types/${id}`, body); else await api.post('/api/v1/doc-types', body); toast(`บันทึกประเภทเอกสาร ${String(f.code).toUpperCase()} แล้ว`); onSaved(); } catch (e) { setErr(e); }
   };
   useHotkeys({ F9: save, 'Ctrl+S': save }, []);
   const t = (k: string, max: number) => ({ value: (f?.[k] as string) ?? '', maxLength: max, onChange: (e: { target: { value: string } }) => set({ [k]: e.target.value }) });
   const cls = String(f?.doc_class ?? '');
   const slots = [...new Set([...Object.keys(accs).map(Number), ...extraSlots])].sort((a, b) => a - b);
+  const setChg = (k: number, p: Partial<Chg>) => setChgs((cs) => cs.map((c) => (c.key === k ? { ...c, ...p } : c)));
+  /** ใส่รายการหักที่พบบ่อย — หาบัญชีในผังจากชื่อให้ (แก้ได้) */
+  const addSamples = () => {
+    // เฉพาะบัญชีค่าใช้จ่าย (หมวด 5) ที่ลงรายการได้ · คำค้นตามลำดับ
+    const exp = (accounts.data ?? []).filter((a) => a.account_group === '5' && !a.is_control);
+    const acc = (words: string[]) => words.map((w) => exp.find((a) => a.name_th.includes(w))).find(Boolean)?.id ?? null;
+    setChgs((cs) => [...cs, ...CHARGE_SAMPLES.filter((x) => !cs.some((c) => c.name === x.name)).map((x) => ({ key: ++chgSeq, name: x.name, account_id: acc(x.find), vat_type: '1' as const, wht_income_type: x.wht, wht_rate: WHT_INCOME_TYPES.find((w) => w.text === x.wht)?.rate ?? '3' }))]);
+  };
   const levelSel = (k: string, label: string, hint?: string) => <Field label={label} hint={hint}><select value={(f?.[k] as string) ?? ''} onChange={(e) => set({ [k]: e.target.value })}><option value="">ตามค่าเริ่มต้น</option>{[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => <option key={n} value={n}>{n}{n === 0 ? ' ไม่ต้องขออนุมัติ' : ''}</option>)}</select></Field>;
   return (
     <Modal title={id ? `รายละเอียดเอกสาร ${cur.data?.code ?? ''}` : 'เพิ่มประเภทเอกสาร'} size="wide" onClose={onClose}
@@ -126,6 +150,33 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
             </td></tr></tfoot>
           </table>
         </fieldset>
+        {cls === 'RE' && <fieldset className="box"><legend>รายการหักโดยแพลตฟอร์ม (Grab LINE MAN Lazada Shopee Agoda Booking.com …)</legend>
+          <p className="hint">สำหรับใบเสร็จที่รับเงินจากแพลตฟอร์มออนไลน์ซึ่งหักค่าบริการก่อนโอน — แนะนำให้แยกประเภทเอกสารต่อแพลตฟอร์ม (เช่น RG รับชำระ Grab · RS รับชำระ Shopee) · ใบเสร็จใหม่ของประเภทนี้จะดึงรายการเหล่านี้ให้ป้อนเฉพาะยอด รายการไหนเดือนนี้ไม่ถูกหักเว้นว่างได้ · ลงบัญชีค่าใช้จ่ายตามบัญชีที่ตั้งที่นี่</p>
+          <div className="form-grid party-grid">
+            <Field label="ผู้ให้บริการ (แพลตฟอร์ม)" hint="ผู้จำหน่ายที่ออกใบกำกับ/ถูกหัก ณ ที่จ่าย — ต่างประเทศไม่มีเลขผู้เสียภาษีไทย (ภ.พ.36)">
+              <SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint="/api/v1/suppliers" value={chgSup} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? 'ต่างประเทศ'}
+                onPick={(r: { id: string; code: string; name: string } | null) => setChgSup(r)} aria-label="ผู้ให้บริการของประเภทเอกสาร" /></Field>
+          </div>
+          <table className="grid">
+            <thead><tr><th>ชื่อรายการหัก</th><th style={{ width: 230 }}>เลขที่บัญชี (ค่าใช้จ่าย)</th><th style={{ width: 170 }}>VAT</th><th style={{ width: 170 }}>ประเภทเงินได้ (หัก ณ ที่จ่าย)</th><th className="r" style={{ width: 80 }}>อัตรา %</th><th style={{ width: 36 }} /></tr></thead>
+            <tbody>
+              {chgs.map((c) => <tr key={c.key}>
+                <td><input value={c.name} maxLength={60} placeholder="เช่น ค่า GP/คอมมิชชั่น" onChange={(e) => setChg(c.key, { name: e.target.value })} aria-label="ชื่อรายการหัก" /></td>
+                <td><AccountCell value={c.account_id} required onChange={(a) => setChg(c.key, { account_id: a?.id ?? null })} aria-label="บัญชีของรายการหัก" /></td>
+                <td><select value={c.vat_type} onChange={(e) => setChg(c.key, { vat_type: e.target.value as Chg['vat_type'] })} aria-label="VAT ของรายการหัก"><option value="1">1 · ภาษีซื้อ 7%</option><option value="3">3 · ภ.พ.36 (ต่างประเทศ)</option><option value="0">0 · ไม่มี VAT</option></select></td>
+                <td><input list="dt-wht-income-types" value={c.wht_income_type} maxLength={60} onChange={(e) => { const hit = WHT_INCOME_TYPES.find((x) => x.text === e.target.value); setChg(c.key, { wht_income_type: e.target.value, ...(hit ? { wht_rate: hit.rate } : {}) }); }} aria-label="ประเภทเงินได้ของรายการหัก" /></td>
+                <td><input className="r" inputMode="decimal" value={c.wht_rate} onChange={(e) => setChg(c.key, { wht_rate: e.target.value.replace(/[^\d.]/g, '') })} aria-label="อัตราหัก ณ ที่จ่ายของรายการหัก" /></td>
+                <td><button type="button" className="icon-btn" tabIndex={-1} title="ลบ" onClick={() => setChgs((cs) => cs.filter((x) => x.key !== c.key))}>✕</button></td>
+              </tr>)}
+              {!chgs.length && <tr><td colSpan={6} className="empty">ยังไม่ได้ตั้งรายการหัก — ใบเสร็จจะใช้รหัสค่าใช้จ่ายหรือรายการแบบครั้งก่อนของลูกค้า</td></tr>}
+            </tbody>
+            <tfoot><tr><td colSpan={6}>
+              <button type="button" onClick={() => setChgs((cs) => [...cs, { key: ++chgSeq, name: '', account_id: null, vat_type: '1', wht_income_type: 'ค่าบริการ', wht_rate: '3' }])}>+ เพิ่มรายการหัก</button>{' '}
+              <button type="button" onClick={addSamples} title="ค่า GP/คอมมิชชั่น ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียมการชำระเงิน ค่าขนส่ง ค่าบริการอื่น — หาบัญชีจากผังให้ ตรวจ/แก้ก่อนบันทึก">+ ใส่รายการที่พบบ่อย</button>
+            </td></tr></tfoot>
+          </table>
+          <datalist id="dt-wht-income-types">{WHT_INCOME_TYPES.map((x) => <option key={x.text} value={x.text}>{`${x.rate}%`}</option>)}</datalist>
+        </fieldset>}
         <fieldset className="box"><legend>ค่าควบคุม (ว่าง = ตามค่าเริ่มต้นแต่ละระบบ)</legend>
           <div className="form-grid party-grid">
             <Field label="ประเภทราคา"><select value={(f.price_type as string) ?? ''} onChange={(e) => set({ price_type: e.target.value })}><option value="">ตามค่าเริ่มต้น</option><option value="0">0 ยกเว้นภาษี</option><option value="1">1 ราคารวมภาษี</option><option value="2">2 ราคาไม่รวมภาษี</option></select></Field>

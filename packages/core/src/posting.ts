@@ -21,7 +21,7 @@ export interface PostSettlement { amount: MoneyInput; vat: MoneyInput; party_id:
  * รายการที่แพลตฟอร์มหักก่อนโอน (ใบเสร็จ RE — ข้อกำหนดเจ้าของ 31/10/2569): ค่าบริการ (item_id → บัญชีค่าใช้จ่าย) ก่อน VAT
  * vat_type 0 ไม่มี VAT · 1 ภาษีซื้อ (ถูกหักรวม VAT) · 3 ภ.พ.36 (ถูกหักเฉพาะค่าบริการ เรานำส่ง VAT แทน) · wht_condition 1 เรียกคืนจากแพลตฟอร์ม · 3 ออกภาษีให้
  */
-export interface PostCharge { item_id: string | null; amount: MoneyInput; vat_type: string; vat_amount: MoneyInput; wht_amount: MoneyInput; wht_condition: string }
+export interface PostCharge { item_id: string | null; /** บัญชีจากรายการหักที่ตั้งที่ประเภทเอกสาร (ชั้น 1 มาก่อนรหัสค่าใช้จ่าย) */ account_id?: string | null; amount: MoneyInput; vat_type: string; vat_amount: MoneyInput; wht_amount: MoneyInput; wht_condition: string }
 /** ยอดที่แพลตฟอร์มหักจากเงินโอนจริง = ค่าบริการ + VAT ที่เรียกเก็บ (ภ.พ.36 และภาษีหัก ณ ที่จ่ายไม่กระทบเงินโอน) */
 export const chargeDeducted = (c: Pick<PostCharge, 'amount' | 'vat_type' | 'vat_amount'>) => d(c.amount).plus(c.vat_type === '1' ? d(c.vat_amount) : d(0));
 export interface ItemGroup { inv: string | null; cogs: string | null; sales: string | null; sret: string | null; pur: string | null; pret: string | null }
@@ -157,7 +157,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     // ภาษีหัก ณ ที่จ่ายที่เราหัก: Cr ภาษีหัก ณ ที่จ่ายค้างจ่าย / Dr ภาษีรอเรียกคืนจากแพลตฟอร์ม (หรือค่าใช้จ่ายเมื่อออกภาษีให้)
     let deducted = d(0);
     for (const c of isRe ? charges : []) {
-      const exp = lineAccount('PURCHASE', c.item_id), v = d(c.vat_amount), w = d(c.wht_amount);
+      const exp: Acct = c.account_id ? [c.account_id, '1'] : lineAccount('PURCHASE', c.item_id), v = d(c.vat_amount), w = d(c.wht_amount);
       D(exp, d(c.amount), 'PLATFORM_FEE');
       if (c.vat_type === '1') D(pick(['3', r.def('INPUT_VAT')]), v, 'INPUT_VAT');
       if (c.vat_type === '3') { D(pick(['3', r.def('INPUT_VAT_PP36')], ['3', r.def('INPUT_VAT_PENDING')]), v, 'INPUT_VAT_PP36'); C(pick(['3', r.def('PP36_PAYABLE')], ['3', r.def('VAT_PAYABLE')]), v, 'PP36_PAYABLE'); }

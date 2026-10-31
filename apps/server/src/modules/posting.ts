@@ -65,7 +65,7 @@ export async function loadPostingInput(db: Db, companyId: string, headerIds: str
   const setts = group((await sql<{ header_id: string; amount: string; vat: string; party_id: string | null; rectype: string | null }>`SELECT s.payment_header_id AS header_id, s.amount, s.vat_amount AS vat, coalesce(i.customer_id, i.supplier_id) AS party_id, s.express_rectype AS rectype
     FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id WHERE s.company_id = ${companyId} AND s.deleted_at IS NULL AND s.payment_header_id = ANY(${hid}::uuid[])`.execute(db)).rows);
   // รายการที่แพลตฟอร์มหักก่อนโอน (ใบเสร็จ)
-  const charges = group((await sql<{ header_id: string; item_id: string | null; amount: string; vat_type: string; vat_amount: string; wht_amount: string; wht_condition: string }>`SELECT header_id, item_id, amount, vat_type, vat_amount, wht_amount, wht_condition FROM doc_charge
+  const charges = group((await sql<{ header_id: string; item_id: string | null; account_id: string | null; amount: string; vat_type: string; vat_amount: string; wht_amount: string; wht_condition: string }>`SELECT header_id, item_id, account_id, amount, vat_type, vat_amount, wht_amount, wht_condition FROM doc_charge
     WHERE company_id = ${companyId} AND deleted_at IS NULL AND header_id = ANY(${hid}::uuid[]) ORDER BY header_id, line_no`.execute(db)).rows);
   return { H, lines, pays, setts, charges };
 }

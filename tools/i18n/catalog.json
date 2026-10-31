@@ -245,6 +245,36 @@
 ]
 },
 {
+"th": "ลบ",
+"n": 41,
+"files": [
+"apps/web/src/components/CompanyImages.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/ItemImages.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/baht.ts"
+]
+},
+{
 "th": "ลูกค้า",
 "n": 41,
 "files": [
@@ -275,36 +305,6 @@
 "packages/core/src/pdpa.ts",
 "packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ลบ",
-"n": 40,
-"files": [
-"apps/web/src/components/CompanyImages.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/ItemImages.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/baht.ts"
 ]
 },
 {
@@ -402,33 +402,6 @@
 ]
 },
 {
-"th": "รายละเอียด",
-"n": 36,
-"files": [
-"apps/web/src/components/JournalPicker.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/stock.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "รายการ",
 "n": 35,
 "files": [
@@ -455,6 +428,32 @@
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "รายละเอียด",
+"n": 35,
+"files": [
+"apps/web/src/components/JournalPicker.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/stock.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1284,6 +1283,18 @@
 ]
 },
 {
+"th": "ค่าบริการ",
+"n": 13,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"packages/core/src/forms/wht50.ts"
+]
+},
+{
 "th": "ซื้อ",
 "n": 13,
 "files": [
@@ -2025,17 +2036,6 @@
 ]
 },
 {
-"th": "ค่าบริการ",
-"n": 8,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"packages/core/src/forms/wht50.ts"
-]
-},
-{
 "th": "จ่ายชำระหนี้",
 "n": 8,
 "files": [
@@ -2313,6 +2313,18 @@
 ]
 },
 {
+"th": "ค่าใช้จ่ายอื่น",
+"n": 7,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/server/src/modules/vat.ts",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/reports/stock.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/items.ts"
+]
+},
+{
 "th": "ประเภทราคา",
 "n": 7,
 "files": [
@@ -2538,14 +2550,12 @@
 ]
 },
 {
-"th": "ค่าใช้จ่ายอื่น",
+"th": "ค่าธรรมเนียม",
 "n": 6,
 "files": [
-"apps/server/src/modules/vat.ts",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/reports/stock.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/items.ts"
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -2899,11 +2909,12 @@
 ]
 },
 {
-"th": "ค่าธรรมเนียม",
+"th": "ค่าขนส่ง",
 "n": 5,
 "files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx"
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"packages/core/src/forms/wht50.ts"
 ]
 },
 {
@@ -3353,6 +3364,16 @@
 ]
 },
 {
+"th": "อัตรา %",
+"n": 5,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/reports/tax.ts"
+]
+},
+{
 "th": "อีเมล",
 "n": 5,
 "files": [
@@ -3575,6 +3596,15 @@
 "files": [
 "apps/web/src/pages/fa/Assets.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ค่าโฆษณา",
+"n": 4,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"packages/core/src/forms/wht50.ts"
 ]
 },
 {
@@ -3981,15 +4011,6 @@
 "apps/web/src/App.tsx",
 "apps/web/src/pages/settings/ActivityLog.tsx",
 "apps/web/src/pages/settings/TwoFactor.tsx"
-]
-},
-{
-"th": "อัตรา %",
-"n": 4,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/reports/tax.ts"
 ]
 },
 {
@@ -5084,6 +5105,13 @@
 ]
 },
 {
+"th": "หักโดยแพลตฟอร์ม",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
 "th": "ห้างหุ้นส่วนจำกัด",
 "n": 3,
 "files": [
@@ -5243,14 +5271,14 @@
 ]
 },
 {
-"th": "เลือกผู้ให้บริการ (แพลตฟอร์ม)",
+"th": "เลือกบัญชีของรายการหัก",
 "n": 3,
 "files": [
-"apps/server/src/modules/docs/settle.ts"
+"apps/server/src/modules/doc-types.ts"
 ]
 },
 {
-"th": "เลือกรหัสค่าใช้จ่าย",
+"th": "เลือกผู้ให้บริการ (แพลตฟอร์ม)",
 "n": 3,
 "files": [
 "apps/server/src/modules/docs/settle.ts"
@@ -5461,11 +5489,43 @@
 ]
 },
 {
+"th": "+ เพิ่มรายการหัก",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "0 · ไม่มี VAT",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "1 · ภาษีซื้อ 7%",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "1–30 วัน",
 "n": 2,
 "files": [
 "apps/server/src/modules/reports/dashboard.ts",
 "apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "3 · ภ.พ.36 (ต่างประเทศ)",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -5841,14 +5901,6 @@
 ]
 },
 {
-"th": "ค่าขนส่ง",
-"n": 2,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"packages/core/src/forms/wht50.ts"
-]
-},
-{
 "th": "ค่าจ้างทำของ",
 "n": 2,
 "files": [
@@ -5874,14 +5926,6 @@
 },
 {
 "th": "ค่าเช่า",
-"n": 2,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"packages/core/src/forms/wht50.ts"
-]
-},
-{
-"th": "ค่าโฆษณา",
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx",
@@ -6181,6 +6225,13 @@
 ]
 },
 {
+"th": "ชื่อรายการหัก",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "ชื่อสมุด",
 "n": 2,
 "files": [
@@ -6358,6 +6409,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/gl/Budget.tsx"
+]
+},
+{
+"th": "ต่างประเทศ",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -7014,6 +7073,14 @@
 ]
 },
 {
+"th": "ผู้ให้บริการ (แพลตฟอร์ม)",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "ผ่าน",
 "n": 2,
 "files": [
@@ -7527,13 +7594,6 @@
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "รหัสค่าใช้จ่าย",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx"
 ]
 },
 {
@@ -8341,13 +8401,6 @@
 "files": [
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "หักโดยแพลตฟอร์ม",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -10000,13 +10053,6 @@
 ]
 },
 {
-"th": "+ เพิ่มรายการหัก",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx"
-]
-},
-{
 "th": "+ เพิ่มลูกค้า",
 "n": 1,
 "files": [
@@ -10112,6 +10158,13 @@
 ]
 },
 {
+"th": "+ ใส่รายการที่พบบ่อย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "/ Cr เช็ครับ",
 "n": 1,
 "files": [
@@ -10151,13 +10204,6 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
-]
-},
-{
-"th": "0 · ไม่มี VAT",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx"
 ]
 },
 {
@@ -10246,13 +10292,6 @@
 },
 {
 "th": "1 = มีใบกำกับภาษีในประเทศ (ภาษีซื้อ) · 3 = ผู้ให้บริการต่างประเทศ เรายื่น ภ.พ.36 นำส่งแทน (เป็นภาษีซื้อเดือนถัดไป) · 0 = ไม่มี VAT หรือ VAT ที่ขอคืนไม่ได้ (รวมในค่าบริการ)",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx"
-]
-},
-{
-"th": "1 · ภาษีซื้อ 7%",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
@@ -10606,13 +10645,6 @@
 "n": 1,
 "files": [
 "packages/core/src/forms/wht50.ts"
-]
-},
-{
-"th": "3 · ภ.พ.36 (ต่างประเทศ)",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx"
 ]
 },
 {
@@ -11421,6 +11453,13 @@
 ]
 },
 {
+"th": "VAT ของรายการหัก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "VAT ที่นำส่งแทนผู้ให้บริการต่างประเทศ (Agoda Booking.com Airbnb ฯลฯ) — เป็นภาษีซื้อเดือนถัดไปตอนปรับปรุงภาษีประจำเดือน",
 "n": 1,
 "files": [
@@ -11733,6 +11772,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/sync/central.ts"
+]
+},
+{
+"th": "{0} {1} — ตั้งที่ เริ่มระบบ › ประเภทเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
 ]
 },
 {
@@ -12240,6 +12286,13 @@
 ]
 },
 {
+"th": "{0}: เลือกรายการหัก (ตั้งที่ประเภทเอกสาร) หรือรหัสค่าใช้จ่าย",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/settle.ts"
+]
+},
+{
 "th": "{0}: เลือกใช่/ไม่ใช่",
 "n": 1,
 "files": [
@@ -12251,6 +12304,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "{0}: ไม่พบบัญชีของรายการหักนี้ — ตรวจที่ เริ่มระบบ › ประเภทเอกสาร",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/settle.ts"
 ]
 },
 {
@@ -12982,6 +13042,13 @@
 ]
 },
 {
+"th": "การตลาด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "การตัดชำระและการรับ/จ่ายเงิน",
 "n": 1,
 "files": [
@@ -13560,6 +13627,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Signup.tsx"
+]
+},
+{
+"th": "ขนส่ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -14333,6 +14407,13 @@
 ]
 },
 {
+"th": "คอมมิชชั่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "คอลัมน์ (สูงสุด 18)",
 "n": 1,
 "files": [
@@ -14844,10 +14925,31 @@
 ]
 },
 {
+"th": "ค่า GP/คอมมิชชั่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "ค่า GP/คอมมิชชั่น ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียมการชำระเงิน ค่าขนส่ง ค่าบริการอื่น — หาบัญชีจากผังให้ ตรวจ/แก้ก่อนบันทึก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "ค่า S ใช้ได้เฉพาะช่องพิมพ์ (เมนู {0} ช่อง{1})",
 "n": 1,
 "files": [
 "apps/server/src/modules/permissions.ts"
+]
+},
+{
+"th": "ค่าการตลาด/ส่งเสริมการขาย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -14921,6 +15023,13 @@
 ]
 },
 {
+"th": "ค่าธรรมเนียมการชำระเงิน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "ค่าธรรมเนียมต้องไม่ติดลบและน้อยกว่าจำนวนเงินในเช็ค",
 "n": 1,
 "files": [
@@ -14932,6 +15041,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/cheques.ts"
+]
+},
+{
+"th": "ค่าธรรมเนียมอื่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -14967,6 +15083,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "ค่าบริการอื่นของแพลตฟอร์ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -17105,6 +17228,13 @@
 ]
 },
 {
+"th": "ดึงรายการหักที่ตั้งไว้ที่ประเภทเอกสาร {0} รายการ — ป้อนยอดตามรายงานการโอนที่แท็บ \"หักโดยแพลตฟอร์ม\" (F8)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
 "th": "ดูข้อมูลที่เก็บไว้ / ส่งออก / ลบ",
 "n": 1,
 "files": [
@@ -17623,6 +17753,13 @@
 ]
 },
 {
+"th": "ตั้งรายการหักประจำ (ค่า GP ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียม …) พร้อมบัญชีและผู้ให้บริการได้ที่ เริ่มระบบ › ประเภทเอกสาร (ใบเสร็จแต่ละแพลตฟอร์ม) — ใบใหม่ดึงมาให้ป้อนเฉพาะยอด รายการที่ไม่มียอดไม่บันทึก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
 "th": "ตั้งวงเงิน: ใช้บัญชีเงินสดย่อย · จ่ายค่าใช้จ่าย: ใช้บัญชีค่าใช้จ่าย",
 "n": 1,
 "files": [
@@ -18005,13 +18142,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/check.ts"
-]
-},
-{
-"th": "ต่างประเทศ",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx"
 ]
 },
 {
@@ -18978,6 +19108,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/wht.ts"
+]
+},
+{
+"th": "นายหน้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -19958,6 +20095,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/auth.ts"
+]
+},
+{
+"th": "บัญชีของรายการหัก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -21284,6 +21428,20 @@
 ]
 },
 {
+"th": "ประเภทเงินได้ (หัก ณ ที่จ่าย)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "ประเภทเงินได้ของรายการหัก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "ประเภทเงินได้ที่จ่าย",
 "n": 1,
 "files": [
@@ -21981,6 +22139,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/parties.ts"
+]
+},
+{
+"th": "ป้อนชื่อรายการหัก",
+"n": 1,
+"files": [
+"apps/server/src/modules/doc-types.ts"
 ]
 },
 {
@@ -22691,6 +22856,13 @@
 ]
 },
 {
+"th": "ผู้จำหน่ายที่ออกใบกำกับ/ถูกหัก ณ ที่จ่าย — ต่างประเทศไม่มีเลขผู้เสียภาษีไทย (ภ.พ.36)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "ผู้จำหน่ายใหม่ ยังไม่มีในแฟ้ม{0} — เพิ่มที่ รายละเอียดผู้จำหน่าย ก่อนบันทึก{1}",
 "n": 1,
 "files": [
@@ -22999,10 +23171,10 @@
 ]
 },
 {
-"th": "ผู้ให้บริการ (แพลตฟอร์ม)",
+"th": "ผู้ให้บริการของประเภทเอกสาร",
 "n": 1,
 "files": [
-"apps/web/src/pages/docs/MoneyParts.tsx"
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -25708,6 +25880,13 @@
 ]
 },
 {
+"th": "ยังไม่ได้ตั้งรายการหัก — ใบเสร็จจะใช้รหัสค่าใช้จ่ายหรือรายการแบบครั้งก่อนของลูกค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "ยังไม่ได้บันทึก",
 "n": 1,
 "files": [
@@ -26342,6 +26521,20 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "รหัสค่าใช้จ่าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "รหัสค่าใช้จ่าย / บัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
 ]
 },
 {
@@ -27826,6 +28019,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "รายการหัก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "รายการหักโดยแพลตฟอร์ม (Grab LINE MAN Lazada Shopee Agoda Booking.com …)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -30657,6 +30864,13 @@
 ]
 },
 {
+"th": "สำหรับใบเสร็จที่รับเงินจากแพลตฟอร์มออนไลน์ซึ่งหักค่าบริการก่อนโอน — แนะนำให้แยกประเภทเอกสารต่อแพลตฟอร์ม (เช่น RG รับชำระ Grab · RS รับชำระ Shopee) · ใบเสร็จใหม่ของประเภทนี้จะดึงรายการเหล่านี้ให้ป้อนเฉพาะยอด รายการไหนเดือนนี้ไม่ถูกหักเว้นว่างได้ · ลงบัญชีค่าใช้จ่ายตามบัญชีที่ตั้งที่นี่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "สำเนา",
 "n": 1,
 "files": [
@@ -31081,6 +31295,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "ส่งเสริมการขาย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -32120,6 +32341,13 @@
 ]
 },
 {
+"th": "อัตราภาษีหัก ณ ที่จ่าย 0–100",
+"n": 1,
+"files": [
+"apps/server/src/modules/doc-types.ts"
+]
+},
+{
 "th": "อัตราศูนย์",
 "n": 1,
 "files": [
@@ -32131,6 +32359,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/wht.ts"
+]
+},
+{
+"th": "อัตราหัก ณ ที่จ่ายของรายการหัก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -33489,6 +33724,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "เช่น ค่า GP/คอมมิชชั่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -34945,6 +35187,13 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "เลขที่บัญชี (ค่าใช้จ่าย)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -37468,6 +37717,13 @@
 ]
 },
 {
+"th": "โฆษณา",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "โดย {0}",
 "n": 1,
 "files": [
@@ -38886,6 +39142,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/routes.ts"
+]
+},
+{
+"th": "ไม่พบผู้จำหน่าย",
+"n": 1,
+"files": [
+"apps/server/src/modules/doc-types.ts"
+]
+},
+{
+"th": "ไม่พบผู้ให้บริการ (ผู้จำหน่าย) ที่เลือก",
+"n": 1,
+"files": [
+"apps/server/src/modules/doc-types.ts"
 ]
 },
 {

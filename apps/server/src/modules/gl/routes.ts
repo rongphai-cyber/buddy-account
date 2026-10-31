@@ -122,7 +122,9 @@ export function glRoutes(app: FastifyInstance, db: Db) {
         (SELECT count(*) FROM gl_journal_line WHERE account_id = ${id} AND deleted_at IS NULL)
       + (SELECT count(*) FROM gl_account WHERE parent_id = ${id} AND deleted_at IS NULL)
       + (SELECT count(*) FROM gl_balance WHERE account_id = ${id} AND opening <> 0)
-      + (SELECT count(*) FROM gl_default_account WHERE account_id = ${id} AND deleted_at IS NULL) AS n`.execute(db);
+      + (SELECT count(*) FROM gl_default_account WHERE account_id = ${id} AND deleted_at IS NULL)
+      + (SELECT count(*) FROM md_doc_type_account WHERE account_id = ${id} AND deleted_at IS NULL)
+      + (SELECT count(*) FROM md_doc_type_charge WHERE account_id = ${id} AND deleted_at IS NULL) AS n`.execute(db);
     if (Number(refs.rows[0]?.n ?? 0) > 0) throw badRequest('บัญชีนี้มีรายการ ยอดยกมา บัญชีย่อย หรือถูกใช้เป็นบัญชีมาตรฐานอยู่ ลบไม่ได้ (เปลี่ยนสถานะเป็นเลิกใช้แทน)');
     await db.updateTable('gl_account').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('id', '=', id).execute();
     await logActivity(db, a, { module: 'GL', action: 'DELETE', docNo: cur.account_no, table: 'gl_account', rowId: id });

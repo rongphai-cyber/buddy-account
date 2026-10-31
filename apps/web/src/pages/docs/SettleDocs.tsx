@@ -13,7 +13,7 @@ import { CancelStamp } from '../../components/DocDelete';
 import { DocJournalTab } from './TradeDocs';
 import { DocLink } from '../../components/DocLink';
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
-import { chargesBody, chargesFrom, ChargesTable, chargeTotal, emptyChargeHead, PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type ChargeHead, type ChargeLine, type ChargeRow, type Pay, type Wht } from './MoneyParts';
+import { chargesBody, chargesFrom, ChargesTable, chargeTotal, emptyChargeHead, supplierChargeDefaults, PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type ChargeHead, type ChargeLine, type ChargeRow, type Pay, type Wht } from './MoneyParts';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { DocVatTab, VatCheckAfterSave, vatTabLabel } from '../../components/DocTaxTabs';
@@ -151,19 +151,33 @@ export function SettleFormPage({ path }: { path: string }) {
     setPick({}); setNotes({}); setWhts([]); setChHead(emptyChargeHead()); setCharges([]);
     if (!p) return set({ party: null });
     const x = await api.get<Record<string, string | null>>(`${partyEndpoint(K)}/${p.id}`);
-    // ลูกค้าที่เป็นแพลตฟอร์ม: ดึงรายการหักแบบใบเสร็จครั้งก่อน (ผู้ให้บริการ รหัสค่าใช้จ่าย VAT ภาษีหัก ณ ที่จ่าย) — ป้อนยอดตามรายงานการโอน
-    if (isRe) {
-      const tpl = await api.get<{ rows: ChargeRow[] }>(`/api/v1/${K.path}/charge-template`, { party_id: p.id });
-      if (tpl.rows.length) { const ch = chargesFrom(tpl.rows, false); setChHead(ch.head); setCharges(ch.lines); toast(`ดึงรายการหักของ ${ch.head.supplier?.name ?? ''} แบบครั้งก่อนแล้ว — ป้อนยอดตามรายงานการโอนที่แท็บ "หักโดยแพลตฟอร์ม" (F8)`, 'warn'); }
-    }
+    if (isRe) await loadChargeTemplate(p.id, h?.doc_type_id);
     set({ party: p, ...(K.module === 'AR' ? { salesperson_id: x.salesperson_id ?? '' } : {}),
       whtForm: wht50FormOf(x.wht_form, x.tax_id) === '3' ? 'S03' : 'S53', whtRate: x.wht_rate && !d(x.wht_rate).isZero() ? d(x.wht_rate).toString() : '3' });
+  };
+  /**
+   * ค่าเริ่มต้นรายการที่แพลตฟอร์มหัก (ใบใหม่): รายการที่ตั้งที่ประเภทเอกสาร (ค่า GP ค่าการตลาด ค่าโฆษณา … + บัญชี + ผู้ให้บริการ)
+   * หรือแบบใบเสร็จครั้งก่อนของลูกค้ารายนี้ — ป้อนเฉพาะยอดตามรายงานการโอน
+   */
+  const loadChargeTemplate = async (partyId: string | null | undefined, typeId: string | null | undefined) => {
+    if (!isRe || id || (!partyId && !typeId)) return;
+    const tpl = await api.get<{ source: 'doc_type' | 'last' | null; rows: ChargeRow[] }>(`/api/v1/${K.path}/charge-template`, { ...(partyId ? { party_id: partyId } : {}), ...(typeId ? { type_id: typeId } : {}) });
+    if (!tpl.rows.length) return;
+    const ch = chargesFrom(tpl.rows, false);
+    if (tpl.source === 'doc_type' && ch.head.supplier) ch.head.wht_form = (await supplierChargeDefaults(ch.head.supplier.id)).wht_form;
+    setChHead(ch.head); setCharges(ch.lines);
+    toast(tpl.source === 'doc_type' ? `ดึงรายการหักที่ตั้งไว้ที่ประเภทเอกสาร ${ch.lines.length} รายการ — ป้อนยอดตามรายงานการโอนที่แท็บ "หักโดยแพลตฟอร์ม" (F8)`
+      : `ดึงรายการหักของ ${ch.head.supplier?.name ?? ''} แบบครั้งก่อนแล้ว — ป้อนยอดตามรายงานการโอนที่แท็บ "หักโดยแพลตฟอร์ม" (F8)`, 'warn');
   };
   const toggle = (o: Open, on: boolean) => { setPick((m) => { const n = { ...m }; if (on) n[o.header_id] = num(o.outstanding); else delete n[o.header_id]; return n; }); setDirty(true); };
   const allOn = rows.length > 0 && rows.every((o) => pick[o.header_id] !== undefined);
 
   /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
-  const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v }); };
+  const pickType = (v: string) => {
+    set({ doc_type_id: v });
+    // เปลี่ยนประเภท (เช่น รับชำระ Grab → Shopee) ก่อนป้อนยอดรายการหัก: ดึงรายการหักของประเภทใหม่
+    if (isRe && !id && !charges.some((c) => c.amount)) { setChHead(emptyChargeHead()); setCharges([]); void loadChargeTemplate(h?.party?.id, v); }
+  };
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const save = async (andNew = false) => {

@@ -719,6 +719,7 @@ add(T('md_doc_type', 'ประเภทเอกสารและพฤติ�
   C('form_no', 'smallint', th='ฟอร์มที่ใช้พิมพ์ 1–9', src='ISRUN.WHICHFORM'),
   C('use_barcode', 'bool', nn=True, d='false', th='ป้อนรายการด้วยบาร์โค้ด', src='ISRUN.USEBARCOD'),
   C('is_tax_invoice', 'bool', nn=True, d='false', th='เป็นใบกำกับภาษี (ต้องเรียงเลขต่อเนื่องตามสาขา/เล่ม)'),
+  lk('charge_supplier_id', 'md_supplier', 'ผู้ให้บริการ (แพลตฟอร์ม) ที่หักค่าบริการก่อนโอน — ใบเสร็จประเภทนี้ (ข้อกำหนดเจ้าของ 31/10/2569)'),
   C('status', 'char1', nn=True, d="'A'", th='สถานะ', chk=ST_ACTIVE),
 ], uniq=[('company_id','code')]))
 
@@ -728,6 +729,16 @@ add(T('md_doc_type_account', 'บัญชีที่กำหนดไว้�
   C('role', 'code30', th='บทบาทบัญชีของช่องนี้ (ตาม doc_class)'),
   lk('account_id', 'gl_account', 'บัญชี', nn=True),
 ], uniq=[('doc_type_id','slot')]))
+
+add(T('md_doc_type_charge', 'รายการหักโดยแพลตฟอร์มของประเภทเอกสารใบเสร็จ (ค่า GP ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียม) + บัญชีที่ลง — ข้อกำหนดเจ้าของ 31/10/2569', 'md', cols=[
+  lk('doc_type_id', 'md_doc_type', 'ประเภทเอกสาร (หมวด RE)', nn=True),
+  C('line_no', 'smallint', nn=True, th='ลำดับ'),
+  C('name', 'str60', nn=True, th='ชื่อรายการหัก เช่น ค่า GP/คอมมิชชั่น ค่าการตลาด ค่าโฆษณา'),
+  lk('account_id', 'gl_account', 'บัญชีค่าใช้จ่ายที่ลง', nn=True),
+  C('vat_type', 'char1', nn=True, d="'1'", th='ค่าเริ่มต้น VAT: 0=ไม่มี 1=ภาษีซื้อ 7% 3=ภ.พ.36', chk="vat_type IN ('0','1','3')"),
+  C('wht_income_type', 'str60', th='ประเภทเงินได้ของภาษีหัก ณ ที่จ่าย'),
+  C('wht_rate', 'rate', nn=True, d='0', th='อัตราภาษีหัก ณ ที่จ่าย %'),
+], uniq=[('doc_type_id','line_no')]))
 
 add(T('md_payment_method', 'วิธีรับ/จ่ายเงิน (เงินสด เช็ค โอน หัก ณ ที่จ่าย ส่วนลด ฯลฯ)', 'md', express="ISRUN DOCTYP='ZR'(รับ)/'ZP'(จ่าย) + เริ่มระบบ 1.4.2/1.5.2", cols=[
   C('direction', 'char1', nn=True, th='R=รับ P=จ่าย', src='ISRUN.DOCTYP', chk="direction IN ('R','P')"),
@@ -944,7 +955,8 @@ add(T('doc_charge', 'รายการหักจากยอดรับช�
   lk('header_id', 'doc_header', 'ใบเสร็จรับเงิน (RE) ที่ถูกหัก', nn=True),
   C('line_no', 'smallint', nn=True, th='ลำดับ'),
   lk('supplier_id', 'md_supplier', 'ผู้ให้บริการ (แพลตฟอร์ม) — ผู้ขายในภาษีซื้อ / ผู้ถูกหักในภาษีหัก ณ ที่จ่าย', nn=True),
-  lk('item_id', 'md_item', 'รหัสค่าใช้จ่าย (บัญชีค่าใช้จ่ายตามกลุ่มบัญชีของรหัส)', nn=True),
+  lk('item_id', 'md_item', 'รหัสค่าใช้จ่าย (บัญชีค่าใช้จ่ายตามกลุ่มบัญชีของรหัส) — ว่างเมื่อใช้รายการหักที่ตั้งไว้ที่ประเภทเอกสาร'),
+  lk('account_id', 'gl_account', 'บัญชีค่าใช้จ่ายจากรายการหักที่ตั้งไว้ที่ประเภทเอกสาร (มาก่อนรหัสค่าใช้จ่าย)'),
   C('description', 'str200', th='รายละเอียด'),
   C('amount', 'money', nn=True, th='ค่าบริการก่อนภาษีมูลค่าเพิ่ม (VAT 0 = ยอดที่ถูกหักทั้งหมด)'),
   C('vat_type', 'char1', nn=True, d="'1'", th='0=ไม่มี VAT/ขอคืนไม่ได้ 1=ภาษีซื้อ 7% (ใบกำกับภาษีในประเทศ) 3=ภ.พ.36 (ผู้ให้บริการต่างประเทศ นำส่งภาษีแทน)', chk="vat_type IN ('0','1','3')"),

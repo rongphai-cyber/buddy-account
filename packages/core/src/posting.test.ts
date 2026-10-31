@@ -54,6 +54,10 @@ describe('posting engine (บทที่ 10)', () => {
     const o = buildPosting({ id: 'h', doc_class: 'RE', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '1000', vat_amount: '0', deposit_amount: '0', vat_basis: null },
       [], [], [{ amount: '1000', vat: '0', party_id: 'c1', rectype: '3' }], R, [{ item_id: 'svc', amount: '100', vat_type: '0', vat_amount: '0', wht_amount: '3', wht_condition: '3' }]);
     expect(net(o)).toEqual({ 'ar-c1': '-1000.00', 'exp-svc': '103.00', 'wht-p': '-3.00', cash: '900.00' });
+    // รายการหักที่ตั้งที่ประเภทเอกสาร: บัญชีของรายการมาก่อนรหัสค่าใช้จ่าย (ค่าการตลาด ค่าโฆษณา แยกบัญชี)
+    const m = buildPosting({ id: 'h', doc_class: 'RE', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '1000', vat_amount: '0', deposit_amount: '0', vat_basis: null },
+      [], [], [{ amount: '1000', vat: '0', party_id: 'c1', rectype: '3' }], R, [{ item_id: null, account_id: 'mkt', amount: '50', vat_type: '1', vat_amount: '3.50', wht_amount: '0', wht_condition: '1' }, { item_id: null, account_id: 'ads', amount: '100', vat_type: '1', vat_amount: '7', wht_amount: '2', wht_condition: '1' }]);
+    expect(net(m)).toEqual({ 'ar-c1': '-1000.00', mkt: '50.00', ads: '100.00', ivat: '10.50', 'wht-p': '-2.00', 'wht-rc': '2.00', cash: '839.50' });
   });
   it('cash purchase / cash sale with WHT: WHT replaces that part of cash', () => {
     const hp = buildPosting({ id: 'h', doc_class: 'HP', doc_type_id: null, customer_id: null, supplier_id: 's1', net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1', wht_amount: '30' },

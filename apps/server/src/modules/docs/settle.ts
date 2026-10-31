@@ -7,6 +7,7 @@ import { badRequest, notFound, parse, requireCompany, type AuthContext } from '.
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
+import { docTypeCharges } from '../doc-types.js';
 import { branchOf, checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -19,7 +20,7 @@ const money = (v: ReturnType<typeof d>) => v.toDecimalPlaces(2).toFixed(2);
 /** รายการที่แพลตฟอร์มออนไลน์หักก่อนโอน (ใบเสร็จ — ข้อกำหนดเจ้าของ 31/10/2569) */
 const chargesSchema = z.array(z.object({
   supplier_id: z.string({ required_error: 'เลือกผู้ให้บริการ (แพลตฟอร์ม)', invalid_type_error: 'เลือกผู้ให้บริการ (แพลตฟอร์ม)' }).uuid('เลือกผู้ให้บริการ (แพลตฟอร์ม)'),
-  item_id: z.string({ required_error: 'เลือกรหัสค่าใช้จ่าย', invalid_type_error: 'เลือกรหัสค่าใช้จ่าย' }).uuid('เลือกรหัสค่าใช้จ่าย'), description: str(200), amount: num,
+  item_id: optId, account_id: optId, description: str(200), amount: num,
   vat_type: z.enum(['0', '1', '3']).default('1'), vat_amount: num.default('0'), tax_invoice_no: str(30), tax_invoice_date: isoDate.nullable().optional().transform((v) => v ?? null),
   wht_form: z.enum(['S03', 'S53']).nullable().optional().transform((v) => v ?? null), wht_income_type: str(60), wht_rate: num.default('0'), wht_amount: num.default('0'), wht_condition: z.enum(['1', '3']).default('1'),
 })).max(50).default([]);
@@ -67,12 +68,16 @@ async function checkCharges(db: Db, companyId: string, K: SettleKind, cs: Charge
   if (K.cls !== 'RE') throw badRequest('รายการที่แพลตฟอร์มหักใช้กับใบเสร็จรับเงินเท่านั้น');
   const sup = new Map<string, Supplier>((await db.selectFrom('md_supplier').select(['id', 'code', 'title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no'])
     .where('company_id', '=', companyId).where('id', 'in', [...new Set(cs.map((c) => c.supplier_id))]).where('deleted_at', 'is', null).execute()).map((x) => [x.id, x]));
-  const items = new Set((await db.selectFrom('md_item').select('id').where('company_id', '=', companyId).where('id', 'in', [...new Set(cs.map((c) => c.item_id))]).where('deleted_at', 'is', null).execute()).map((x) => x.id));
+  const itemIds = [...new Set(cs.flatMap((c) => (c.item_id ? [c.item_id] : [])))], accIds = [...new Set(cs.flatMap((c) => (c.account_id ? [c.account_id] : [])))];
+  const items = new Set(itemIds.length ? (await db.selectFrom('md_item').select('id').where('company_id', '=', companyId).where('id', 'in', itemIds).where('deleted_at', 'is', null).execute()).map((x) => x.id) : []);
+  const accs = new Set(accIds.length ? (await db.selectFrom('gl_account').select('id').where('company_id', '=', companyId).where('id', 'in', accIds).where('deleted_at', 'is', null).execute()).map((x) => x.id) : []);
   let deducted = d(0);
   cs.forEach((c, i) => {
     const at = `รายการที่แพลตฟอร์มหัก บรรทัดที่ ${i + 1}`;
     if (!sup.has(c.supplier_id)) throw badRequest(`${at}: ไม่พบผู้ให้บริการ (ผู้จำหน่าย) นี้ — เพิ่มที่ ข้อมูลหลัก › ผู้จำหน่าย`);
-    if (!items.has(c.item_id)) throw badRequest(`${at}: ไม่พบรหัสค่าใช้จ่ายนี้`);
+    if (!c.item_id && !c.account_id) throw badRequest(`${at}: เลือกรายการหัก (ตั้งที่ประเภทเอกสาร) หรือรหัสค่าใช้จ่าย`);
+    if (c.account_id && !accs.has(c.account_id)) throw badRequest(`${at}: ไม่พบบัญชีของรายการหักนี้ — ตรวจที่ เริ่มระบบ › ประเภทเอกสาร`);
+    if (c.item_id && !items.has(c.item_id)) throw badRequest(`${at}: ไม่พบรหัสค่าใช้จ่ายนี้`);
     if (d(c.amount).lte(0)) throw badRequest(`${at}: ป้อนจำนวนเงินที่ถูกหักมากกว่า 0`);
     if (c.vat_type === '0') c.vat_amount = '0';
     if (d(c.vat_amount).lt(0)) throw badRequest(`${at}: ภาษีมูลค่าเพิ่มต้องไม่ติดลบ`);
@@ -90,7 +95,7 @@ async function checkCharges(db: Db, companyId: string, K: SettleKind, cs: Charge
 /** บันทึกรายการที่แพลตฟอร์มหัก + ภาษีหัก ณ ที่จ่ายที่เราหัก (แฟ้ม ภ.ง.ด.3/53 · รวมเป็นหนังสือรับรองเดียวต่อผู้ให้บริการ/ประเภทเงินได้) */
 async function writeCharges(tx: Db, a: Ctx, x: { headerId: string; docNo: string; payDate: string; departmentId: string | null; charges: Charges; suppliers: Map<string, Supplier> }) {
   if (!x.charges.length) return;
-  await tx.insertInto('doc_charge').values(x.charges.map((c, i) => ({ company_id: a.companyId, header_id: x.headerId, line_no: i + 1, supplier_id: c.supplier_id, item_id: c.item_id, description: c.description,
+  await tx.insertInto('doc_charge').values(x.charges.map((c, i) => ({ company_id: a.companyId, header_id: x.headerId, line_no: i + 1, supplier_id: c.supplier_id, item_id: c.item_id, account_id: c.account_id, description: c.description,
     amount: money(d(c.amount)), vat_type: c.vat_type, vat_amount: money(d(c.vat_amount)), tax_invoice_no: c.tax_invoice_no, tax_invoice_date: c.tax_invoice_date,
     wht_form: c.wht_form, wht_income_type: c.wht_form ? c.wht_income_type : null, wht_rate: c.wht_rate, wht_amount: money(d(c.wht_amount)), wht_condition: c.wht_condition, created_by: a.userId }))).execute();
   const groups = new Map<string, { c: Charges[number]; paid: ReturnType<typeof d>; tax: ReturnType<typeof d> }>();
@@ -112,8 +117,8 @@ async function writeCharges(tx: Db, a: Ctx, x: { headerId: string; docNo: string
 }
 
 async function readCharges(db: Db, companyId: string, headerId: string) {
-  return db.selectFrom('doc_charge as c').innerJoin('md_supplier as s', 's.id', 'c.supplier_id').innerJoin('md_item as i', 'i.id', 'c.item_id')
-    .select(['c.line_no', 'c.supplier_id', 's.code as supplier_code', 's.name as supplier_name', 'c.item_id', 'i.code as item_code', 'i.name_th as item_name', 'c.description', 'c.amount', 'c.vat_type', 'c.vat_amount',
+  return db.selectFrom('doc_charge as c').innerJoin('md_supplier as s', 's.id', 'c.supplier_id').leftJoin('md_item as i', 'i.id', 'c.item_id').leftJoin('gl_account as g', 'g.id', 'c.account_id')
+    .select(['c.line_no', 'c.supplier_id', 's.code as supplier_code', 's.name as supplier_name', 'c.item_id', 'i.code as item_code', 'i.name_th as item_name', 'c.account_id', 'g.account_no', 'g.name_th as account_name', 'c.description', 'c.amount', 'c.vat_type', 'c.vat_amount',
       'c.tax_invoice_no', 'c.tax_invoice_date', 'c.wht_form', 'c.wht_income_type', 'c.wht_rate', 'c.wht_amount', 'c.wht_condition'])
     .where('c.company_id', '=', companyId).where('c.header_id', '=', headerId).where('c.deleted_at', 'is', null).orderBy('c.line_no').execute();
 }
@@ -229,13 +234,25 @@ export function settleRoutes(app: FastifyInstance, db: Db) {
       if (!p) throw notFound(K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย');
       return { rows: await openItems(db, a.companyId, K, p.id, q.receipt_id ?? null) };
     });
-    /** รายการที่แพลตฟอร์มหักจากใบเสร็จล่าสุดของลูกค้ารายนี้ (ค่าเริ่มต้นใบใหม่: ผู้ให้บริการ รหัสค่าใช้จ่าย VAT ภาษีหัก ณ ที่จ่าย — ไม่รวมยอดเงิน) */
+    /**
+     * ค่าเริ่มต้นรายการหักของใบใหม่ (ไม่รวมยอดเงิน): 1 รายการหักที่ตั้งไว้ที่ประเภทเอกสาร (ค่า GP ค่าการตลาด ค่าโฆษณา … + บัญชี + ผู้ให้บริการ)
+     * 2 ไม่ได้ตั้ง → รายการหักของใบเสร็จล่าสุดของลูกค้ารายนี้
+     */
     if (K.cls === 'RE') app.get(`${base}/charge-template`, async (req) => {
       const a = requireCompany(req);
-      const q = parse(z.object({ party_id: uuid }), req.query);
+      const q = parse(z.object({ party_id: uuid.optional(), type_id: uuid.optional() }), req.query);
+      if (q.type_id) {
+        const t = await db.selectFrom('md_doc_type as t').leftJoin('md_supplier as s', 's.id', 't.charge_supplier_id').select(['t.id', 't.charge_supplier_id', 's.code', 's.name'])
+          .where('t.id', '=', q.type_id).where('t.company_id', '=', a.companyId).where('t.doc_class', '=', 'RE').where('t.deleted_at', 'is', null).executeTakeFirst();
+        const cfg = t ? await docTypeCharges(db, a.companyId, t.id) : [];
+        if (t && cfg.length) return { source: 'doc_type', rows: cfg.map((c) => ({ line_no: c.line_no, supplier_id: t.charge_supplier_id, supplier_code: t.code, supplier_name: t.name, item_id: null, item_code: null, item_name: null,
+          account_id: c.account_id, account_no: c.account_no, account_name: c.account_name, description: c.name, amount: '0', vat_type: c.vat_type, vat_amount: '0', tax_invoice_no: null, tax_invoice_date: null,
+          wht_form: null, wht_income_type: c.wht_income_type, wht_rate: c.wht_rate, wht_amount: '0', wht_condition: '1' })) };
+      }
+      if (!q.party_id) return { source: null, rows: [] };
       const last = await db.selectFrom('doc_header as h').select('h.id').where('h.company_id', '=', a.companyId).where('h.doc_class', '=', 'RE').where('h.customer_id', '=', q.party_id).where('h.doc_status', '<>', 'C').where('h.deleted_at', 'is', null)
         .where((e) => e.exists(e.selectFrom('doc_charge as c').select('c.id').whereRef('c.header_id', '=', 'h.id').where('c.deleted_at', 'is', null))).orderBy('h.doc_date', 'desc').orderBy('h.doc_no', 'desc').executeTakeFirst();
-      return { rows: last ? (await readCharges(db, a.companyId, last.id)).map((c) => ({ ...c, amount: '0', vat_amount: '0', wht_amount: '0', tax_invoice_no: null, tax_invoice_date: null })) : [] };
+      return { source: last ? 'last' : null, rows: last ? (await readCharges(db, a.companyId, last.id)).map((c) => ({ ...c, amount: '0', vat_amount: '0', wht_amount: '0', tax_invoice_no: null, tax_invoice_date: null })) : [] };
     });
     /** ใบวางบิล/ใบรับวางบิลของคู่ค้า (อ้างใบวางบิลในใบเสร็จ/ใบสำคัญจ่าย — S-PU-07 "ใบรับวางบิล#") */
     app.get(`${base}/bills`, async (req) => {

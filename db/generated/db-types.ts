@@ -2080,6 +2080,8 @@ export interface MdDocTypeTable {
   use_barcode: Gen<boolean>;
   /** เป็นใบกำกับภาษี (ต้องเรียงเลขต่อเนื่องตามสาขา/เล่ม) */
   is_tax_invoice: Gen<boolean>;
+  /** ผู้ให้บริการ (แพลตฟอร์ม) ที่หักค่าบริการก่อนโอน — ใบเสร็จประเภทนี้ (ข้อกำหนดเจ้าของ 31/10/2569) */
+  charge_supplier_id: Gen<string | null>;
   /** สถานะ */
   status: Gen<string>;
   /** เวลาสร้าง */
@@ -2111,6 +2113,41 @@ export interface MdDocTypeAccountTable {
   role: Gen<string | null>;
   /** บัญชี */
   account_id: string;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** รายการหักโดยแพลตฟอร์มของประเภทเอกสารใบเสร็จ (ค่า GP ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียม) + บัญชีที่ลง — ข้อกำหนดเจ้าของ 31/10/2569 */
+export interface MdDocTypeChargeTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ประเภทเอกสาร (หมวด RE) */
+  doc_type_id: string;
+  /** ลำดับ */
+  line_no: number;
+  /** ชื่อรายการหัก เช่น ค่า GP/คอมมิชชั่น ค่าการตลาด ค่าโฆษณา */
+  name: string;
+  /** บัญชีค่าใช้จ่ายที่ลง */
+  account_id: string;
+  /** ค่าเริ่มต้น VAT: 0=ไม่มี 1=ภาษีซื้อ 7% 3=ภ.พ.36 */
+  vat_type: Gen<string>;
+  /** ประเภทเงินได้ของภาษีหัก ณ ที่จ่าย */
+  wht_income_type: Gen<string | null>;
+  /** อัตราภาษีหัก ณ ที่จ่าย % */
+  wht_rate: Gen<string>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -2692,8 +2729,10 @@ export interface DocChargeTable {
   line_no: number;
   /** ผู้ให้บริการ (แพลตฟอร์ม) — ผู้ขายในภาษีซื้อ / ผู้ถูกหักในภาษีหัก ณ ที่จ่าย */
   supplier_id: string;
-  /** รหัสค่าใช้จ่าย (บัญชีค่าใช้จ่ายตามกลุ่มบัญชีของรหัส) */
-  item_id: string;
+  /** รหัสค่าใช้จ่าย (บัญชีค่าใช้จ่ายตามกลุ่มบัญชีของรหัส) — ว่างเมื่อใช้รายการหักที่ตั้งไว้ที่ประเภทเอกสาร */
+  item_id: Gen<string | null>;
+  /** บัญชีค่าใช้จ่ายจากรายการหักที่ตั้งไว้ที่ประเภทเอกสาร (มาก่อนรหัสค่าใช้จ่าย) */
+  account_id: Gen<string | null>;
   /** รายละเอียด */
   description: Gen<string | null>;
   /** ค่าบริการก่อนภาษีมูลค่าเพิ่ม (VAT 0 = ยอดที่ถูกหักทั้งหมด) */
@@ -3910,6 +3949,7 @@ export interface DB {
   md_bank_account: MdBankAccountTable;
   md_doc_type: MdDocTypeTable;
   md_doc_type_account: MdDocTypeAccountTable;
+  md_doc_type_charge: MdDocTypeChargeTable;
   md_payment_method: MdPaymentMethodTable;
   md_doc_number_block: MdDocNumberBlockTable;
   doc_header: DocHeaderTable;

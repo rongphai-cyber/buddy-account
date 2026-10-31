@@ -28,7 +28,18 @@ const docTypeBody = z.object({
   auto_print: z.boolean().default(false), form_no: z.union([z.number(), z.string()]).nullable().optional().transform((v) => (v === '' || v === null || v === undefined ? null : Number(v))),
   use_barcode: z.boolean().default(false), status: z.enum(['A', 'I']).default('A'),
   accounts: z.array(z.object({ slot: z.number().int().min(1).max(12), account_id: uuid })).max(12).default([]),
+  /** ใบเสร็จ (RE): ผู้ให้บริการแพลตฟอร์ม + รายการหัก (ค่า GP ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียม) และบัญชีที่ลง — ข้อกำหนดเจ้าของ 31/10/2569 */
+  charge_supplier_id: optId,
+  charges: z.array(z.object({ name: z.string().trim().min(1, 'ป้อนชื่อรายการหัก').max(60), account_id: z.string({ required_error: 'เลือกบัญชีของรายการหัก', invalid_type_error: 'เลือกบัญชีของรายการหัก' }).uuid('เลือกบัญชีของรายการหัก'),
+    vat_type: z.enum(['0', '1', '3']).default('1'), wht_income_type: str(60), wht_rate: z.union([z.number(), z.string()]).default('0').transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)) && Number(v) >= 0 && Number(v) <= 100, 'อัตราภาษีหัก ณ ที่จ่าย 0–100') })).max(30).default([]),
 });
+
+/** รายการหักโดยแพลตฟอร์มที่ตั้งไว้ที่ประเภทเอกสาร (ใบเสร็จ) */
+export async function docTypeCharges(db: Db, companyId: string, docTypeId: string) {
+  return db.selectFrom('md_doc_type_charge as c').innerJoin('gl_account as g', 'g.id', 'c.account_id')
+    .select(['c.line_no', 'c.name', 'c.account_id', 'g.account_no', 'g.name_th as account_name', 'c.vat_type', 'c.wht_income_type', 'c.wht_rate'])
+    .where('c.company_id', '=', companyId).where('c.doc_type_id', '=', docTypeId).where('c.deleted_at', 'is', null).orderBy('c.line_no').execute();
+}
 
 export function docTypeRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/doc-types', async (req) => {
@@ -47,7 +58,9 @@ export function docTypeRoutes(app: FastifyInstance, db: Db) {
     const accounts = await db.selectFrom('md_doc_type_account as x').innerJoin('gl_account as g', 'g.id', 'x.account_id').select(['x.slot', 'x.role', 'x.account_id', 'g.account_no', 'g.name_th'])
       .where('x.doc_type_id', '=', id).where('x.deleted_at', 'is', null).orderBy('x.slot').execute();
     const docs = await db.selectFrom('doc_header').select([sql<number>`count(*)`.as('n'), sql<string | null>`max(doc_no)`.as('last_no')]).where('company_id', '=', a.companyId).where('doc_type_id', '=', id).where('deleted_at', 'is', null).executeTakeFirstOrThrow();
-    return { ...t, accounts, doc_count: Number(docs.n), last_doc_no: docs.last_no };
+    const charges = await docTypeCharges(db, a.companyId, id);
+    const sup = t.charge_supplier_id ? await db.selectFrom('md_supplier').select(['id', 'code', 'name']).where('id', '=', t.charge_supplier_id).where('company_id', '=', a.companyId).executeTakeFirst() : undefined;
+    return { ...t, accounts, charges, charge_supplier: sup ?? null, doc_count: Number(docs.n), last_doc_no: docs.last_no };
   });
 
   async function save(a: Ctx, id: string | null, b: z.infer<typeof docTypeBody>) {
@@ -60,13 +73,16 @@ export function docTypeRoutes(app: FastifyInstance, db: Db) {
       if (col && !(await db.selectFrom(t).select('id').where('id', '=', col).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest(`ไม่พบ${label}ที่เลือก`);
     const slots = new Set<number>();
     for (const x of b.accounts) { if (slots.has(x.slot)) throw badRequest(`ช่องบัญชีที่ ${x.slot} ซ้ำ`); slots.add(x.slot); await checkAccount(db, a.companyId, x.account_id, `accounts.${x.slot}`); }
+    if (b.doc_class !== 'RE') { b.charges = []; b.charge_supplier_id = null; }
+    if (b.charge_supplier_id && !(await db.selectFrom('md_supplier').select('id').where('id', '=', b.charge_supplier_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบผู้ให้บริการ (ผู้จำหน่าย) ที่เลือก', [{ field: 'charge_supplier_id', message: 'ไม่พบผู้จำหน่าย' }]);
+    for (const [i, c] of b.charges.entries()) await checkAccount(db, a.companyId, c.account_id, `charges.${i}.account_id`);
     if (b.vat_rate !== null && (Number.isNaN(Number(b.vat_rate)) || Number(b.vat_rate) < 0 || Number(b.vat_rate) > 30)) throw badRequest('อัตราภาษี 0–30%');
     // เลขที่ถัดไปต้องไม่ย้อนไปชนเลขที่ใช้แล้ว (คู่มือหน้า 152: นำเลขกลับมาใช้อาจชนเอกสารที่ค้าง)
     if (id) {
       const used = await sql<{ n: number }>`SELECT count(*) AS n FROM doc_header WHERE company_id = ${a.companyId} AND doc_type_id = ${id} AND deleted_at IS NULL AND doc_no = ${b.code + b.next_no.replace(/^0+/, '').padStart(7, '0')}`.execute(db);
       if (Number(used.rows[0]?.n)) throw badRequest(`เลขที่ ${b.code}${b.next_no.replace(/^0+/, '').padStart(7, '0')} ใช้กับเอกสารแล้ว — ตั้งเลขที่ถัดไปให้มากกว่าเลขล่าสุด`, [{ field: 'next_no', message: 'ซ้ำกับเอกสารที่มีอยู่' }]);
     }
-    const { accounts, ...row } = b;
+    const { accounts, charges, ...row } = b;
     const values = { ...row, next_no: Number(row.next_no), module: DOC_CLASSES[b.doc_class]!.module, is_tax_invoice: ['IV', 'HS', 'DR', 'CN', 'AI', 'RE'].includes(b.doc_class) };
     return db.transaction().execute(async (tx) => {
       let tid = id;
@@ -77,6 +93,9 @@ export function docTypeRoutes(app: FastifyInstance, db: Db) {
         await tx.updateTable('md_doc_type').set({ ...values, updated_by: a.userId }).where('id', '=', id).execute();
       } else tid = (await tx.insertInto('md_doc_type').values({ ...values, company_id: a.companyId, created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
       await tx.updateTable('md_doc_type_account').set({ deleted_at: sql`now()` as never }).where('doc_type_id', '=', tid!).where('deleted_at', 'is', null).execute();
+      await tx.updateTable('md_doc_type_charge').set({ deleted_at: sql`now()` as never }).where('doc_type_id', '=', tid!).where('deleted_at', 'is', null).execute();
+      if (charges.length) await tx.insertInto('md_doc_type_charge').values(charges.map((c, i) => ({ company_id: a.companyId, doc_type_id: tid!, line_no: i + 1, name: c.name, account_id: c.account_id, vat_type: c.vat_type,
+        wht_income_type: c.wht_income_type, wht_rate: c.wht_rate, created_by: a.userId }))).execute();
       if (accounts.length) await tx.insertInto('md_doc_type_account').values(accounts.map((x) => ({ company_id: a.companyId, doc_type_id: tid!, slot: x.slot, role: DOC_SLOT_ROLES[b.doc_class]?.[x.slot] ?? null, account_id: x.account_id, created_by: a.userId }))).execute();
       await logActivity(tx, a, { module: 'SET', action: id ? 'EDIT' : 'ADD', docNo: b.code, table: 'md_doc_type', rowId: tid });
       return { id: tid };
@@ -92,6 +111,7 @@ export function docTypeRoutes(app: FastifyInstance, db: Db) {
     if (await db.selectFrom('doc_header').select('id').where('doc_type_id', '=', id).where('deleted_at', 'is', null).executeTakeFirst()) throw badRequest(`ประเภทเอกสาร ${t.code} มีเอกสารแล้ว ลบไม่ได้ — เปลี่ยนสถานะเป็นเลิกใช้แทน`);
     await db.transaction().execute(async (tx) => {
       await tx.updateTable('md_doc_type_account').set({ deleted_at: sql`now()` as never }).where('doc_type_id', '=', id).where('deleted_at', 'is', null).execute();
+      await tx.updateTable('md_doc_type_charge').set({ deleted_at: sql`now()` as never }).where('doc_type_id', '=', id).where('deleted_at', 'is', null).execute();
       await tx.updateTable('md_doc_type').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('id', '=', id).execute();
       await logActivity(tx, a, { module: 'SET', action: 'DELETE', docNo: t.code, table: 'md_doc_type', rowId: id });
     });

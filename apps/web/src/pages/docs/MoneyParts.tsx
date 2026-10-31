@@ -105,9 +105,9 @@ export function WhtTable({ whts, setWhts, readOnly, base, defaults, canAdd, dirt
 /* ---------------------------------------------------------------- หักโดยแพลตฟอร์ม (ใบเสร็จ — ข้อกำหนดเจ้าของ 31/10/2569) */
 /** ผู้ให้บริการ เลขที่/วันที่ใบกำกับ แบบภาษีหัก ณ ที่จ่าย เงื่อนไข — ใช้ร่วมทุกบรรทัดของใบเสร็จ */
 export interface ChargeHead { supplier: { id: string; code: string; name?: string | null } | null; tax_invoice_no: string; tax_invoice_date: string; wht_form: '' | 'S03' | 'S53'; wht_condition: '1' | '3' }
-export interface ChargeLine { key: number; item: { id: string; code: string; name?: string | null } | null; description: string; amount: string; vat_type: '0' | '1' | '3'; vat_amount: string; vatEdited: boolean;
+export interface ChargeLine { key: number; item: { id: string; code: string; name?: string | null } | null; /** รายการหักที่ตั้งที่ประเภทเอกสาร (บัญชีของรายการ) */ account: { id: string; no: string; name: string } | null; description: string; amount: string; vat_type: '0' | '1' | '3'; vat_amount: string; vatEdited: boolean;
   wht_income_type: string; wht_rate: string; wht_amount: string; whtEdited: boolean }
-export type ChargeRow = { supplier_id: string; supplier_code: string; supplier_name: string; item_id: string; item_code: string; item_name: string; description: string | null; amount: string; vat_type: string; vat_amount: string;
+export type ChargeRow = { supplier_id: string | null; supplier_code: string | null; supplier_name: string | null; item_id: string | null; item_code: string | null; item_name: string | null; account_id?: string | null; account_no?: string | null; account_name?: string | null; description: string | null; amount: string; vat_type: string; vat_amount: string;
   tax_invoice_no: string | null; tax_invoice_date: string | null; wht_form: string | null; wht_income_type: string | null; wht_rate: string; wht_amount: string; wht_condition: string };
 export const emptyChargeHead = (): ChargeHead => ({ supplier: null, tax_invoice_no: '', tax_invoice_date: '', wht_form: '', wht_condition: '1' });
 const VAT_RATE = '7';
@@ -117,17 +117,24 @@ export const chargeTotal = (ls: ChargeLine[]) => ls.reduce((s, l) => s.plus(d(l.
 export const chargesFrom = (rows: ChargeRow[], keepAmounts = true): { head: ChargeHead; lines: ChargeLine[] } => {
   const f = rows[0];
   return {
-    head: f ? { supplier: { id: f.supplier_id, code: f.supplier_code, name: f.supplier_name }, tax_invoice_no: keepAmounts ? f.tax_invoice_no ?? '' : '', tax_invoice_date: keepAmounts && f.tax_invoice_date ? String(f.tax_invoice_date).slice(0, 10) : '',
+    head: f ? { supplier: f.supplier_id ? { id: f.supplier_id, code: f.supplier_code ?? '', name: f.supplier_name } : null, tax_invoice_no: keepAmounts ? f.tax_invoice_no ?? '' : '', tax_invoice_date: keepAmounts && f.tax_invoice_date ? String(f.tax_invoice_date).slice(0, 10) : '',
       wht_form: (f.wht_form ?? '') as ChargeHead['wht_form'], wht_condition: f.wht_condition === '3' ? '3' : '1' } : emptyChargeHead(),
-    lines: rows.map((c) => ({ key: nextKey(), item: { id: c.item_id, code: c.item_code, name: c.item_name }, description: c.description ?? '', amount: keepAmounts ? num(c.amount) : '', vat_type: (c.vat_type as ChargeLine['vat_type']) ?? '1',
+    lines: rows.map((c) => ({ key: nextKey(), item: c.item_id ? { id: c.item_id, code: c.item_code ?? '', name: c.item_name } : null, account: c.account_id ? { id: c.account_id, no: c.account_no ?? '', name: c.account_name ?? '' } : null, description: c.description ?? '', amount: keepAmounts ? num(c.amount) : '', vat_type: (c.vat_type as ChargeLine['vat_type']) ?? '1',
       vat_amount: keepAmounts ? num(c.vat_amount) : '', vatEdited: keepAmounts, wht_income_type: c.wht_income_type ?? 'ค่าบริการ', wht_rate: num(c.wht_rate) || '3', wht_amount: keepAmounts ? num(c.wht_amount) : '', whtEdited: keepAmounts })),
   };
 };
-export const chargesBody = (h: ChargeHead, ls: ChargeLine[]) => ls.filter((l) => l.item || !d(l.amount || 0).isZero()).map((l) => ({
-  supplier_id: h.supplier?.id ?? null, item_id: l.item?.id ?? null, description: l.description || null, amount: l.amount || '0', vat_type: l.vat_type, vat_amount: l.vat_type === '0' ? '0' : l.vat_amount || '0',
+/** บรรทัดที่ไม่มียอด (เช่น รายการที่ตั้งไว้แต่เดือนนี้ไม่ถูกหัก) ไม่ส่ง */
+export const chargesBody = (h: ChargeHead, ls: ChargeLine[]) => ls.filter((l) => !d(l.amount || 0).isZero()).map((l) => ({
+  supplier_id: h.supplier?.id ?? null, item_id: l.account ? null : l.item?.id ?? null, account_id: l.account?.id ?? null, description: l.description || null, amount: l.amount || '0', vat_type: l.vat_type, vat_amount: l.vat_type === '0' ? '0' : l.vat_amount || '0',
   tax_invoice_no: h.tax_invoice_no || null, tax_invoice_date: h.tax_invoice_date || null, wht_form: h.wht_form || null, wht_income_type: h.wht_form ? l.wht_income_type || null : null,
   wht_rate: h.wht_form ? l.wht_rate || '0' : '0', wht_amount: h.wht_form ? l.wht_amount || '0' : '0', wht_condition: h.wht_condition }));
-const newCharge = (vat: ChargeLine['vat_type']): ChargeLine => ({ key: nextKey(), item: null, description: '', amount: '', vat_type: vat, vat_amount: '', vatEdited: false, wht_income_type: 'ค่าบริการ', wht_rate: '3', wht_amount: '', whtEdited: false });
+/** แบบภาษีหัก ณ ที่จ่ายจากผู้จำหน่าย: ไม่มีเลขผู้เสียภาษีไทย = ต่างประเทศ (ภ.พ.36 ไม่หัก) */
+export async function supplierChargeDefaults(id: string) {
+  const x = await api.get<{ tax_id: string | null; wht_form: string | null }>(`/api/v1/suppliers/${id}`);
+  const foreign = !x.tax_id;
+  return { foreign, wht_form: (foreign ? '' : wht50FormOf(x.wht_form, x.tax_id) === '3' ? 'S03' : 'S53') as ChargeHead['wht_form'] };
+}
+const newCharge = (vat: ChargeLine['vat_type']): ChargeLine => ({ key: nextKey(), item: null, account: null, description: '', amount: '', vat_type: vat, vat_amount: '', vatEdited: false, wht_income_type: 'ค่าบริการ', wht_rate: '3', wht_amount: '', whtEdited: false });
 
 /**
  * แท็บ หักโดยแพลตฟอร์ม: ค่า GP/คอมมิชชั่น ค่าธรรมเนียม ค่าโฆษณาที่ Grab LINE MAN Agoda Booking.com Airbnb ฯลฯ หักก่อนโอน
@@ -144,10 +151,10 @@ export function ChargesTable({ head, setHead, lines, setLines, readOnly, onDirty
   const pickSupplier = async (s: { id: string; code: string; name: string } | null) => {
     if (!s) return hd({ supplier: null });
     // ไม่มีเลขผู้เสียภาษีไทย = ผู้ให้บริการต่างประเทศ → ภ.พ.36 ไม่หัก ณ ที่จ่าย · มีเลข → ภาษีซื้อ หัก ณ ที่จ่ายตามแบบของผู้จำหน่าย
-    const x = await api.get<{ tax_id: string | null; wht_form: string | null }>(`/api/v1/suppliers/${s.id}`);
-    const foreign = !x.tax_id;
-    setHead({ ...head, supplier: s, wht_form: foreign ? '' : wht50FormOf(x.wht_form, x.tax_id) === '3' ? 'S03' : 'S53' });
-    setLines((ls) => (ls.length ? ls : [newCharge(foreign ? '3' : '1')]).map((l) => (l.amount ? l : calc({ ...l, vat_type: foreign ? '3' : '1' }))));
+    const { foreign, wht_form } = await supplierChargeDefaults(s.id);
+    setHead({ ...head, supplier: s, wht_form });
+    // รายการที่ตั้งที่ประเภทเอกสารคง VAT ตามที่ตั้ง · รายการอื่นที่ยังไม่มียอดปรับตามผู้ให้บริการ
+    setLines((ls) => (ls.length ? ls : [newCharge(foreign ? '3' : '1')]).map((l) => (l.amount || l.account ? l : calc({ ...l, vat_type: foreign ? '3' : '1' }))));
     onDirty();
   };
   return (
@@ -171,13 +178,14 @@ export function ChargesTable({ head, setHead, lines, setLines, readOnly, onDirty
       </div>
       <div className="table-wrap lines">
         <table className="grid">
-          <thead><tr><th style={{ width: 150 }}>รหัสค่าใช้จ่าย</th><th>รายละเอียด</th><th className="r" style={{ width: 130 }}>ค่าบริการ (ก่อน VAT)</th><th style={{ width: 150 }}>VAT</th><th className="r" style={{ width: 110 }}>ภาษีมูลค่าเพิ่ม</th>
+          <thead><tr><th style={{ width: 150 }}>รหัสค่าใช้จ่าย / บัญชี</th><th>รายการหัก</th><th className="r" style={{ width: 130 }}>ค่าบริการ (ก่อน VAT)</th><th style={{ width: 150 }}>VAT</th><th className="r" style={{ width: 110 }}>ภาษีมูลค่าเพิ่ม</th>
             {wht && <><th style={{ width: 140 }}>ประเภทเงินได้</th><th className="r" style={{ width: 70 }}>อัตรา %</th><th className="r" style={{ width: 110 }}>ภาษีที่เราหัก</th></>}<th className="r" style={{ width: 130 }}>ยอดที่ถูกหัก</th><th style={{ width: 36 }} /></tr></thead>
           <tbody>
             {lines.map((l) => (
               <tr key={l.key}>
-                <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '5,2' }} value={l.item} required={!!l.amount} disabled={readOnly} label={(r: { name_th: string }) => r.name_th}
-                  onPick={(r: { id: string; code: string; name_th: string } | null) => set(l.key, r ? { item: { id: r.id, code: r.code, name: r.name_th }, description: l.description || r.name_th } : { item: null })} aria-label="รหัสค่าใช้จ่าย" /></td>
+                <td>{l.account ? <span className="mono" title={`${l.account.no} ${l.account.name} — ตั้งที่ เริ่มระบบ › ประเภทเอกสาร`}>{l.account.no} <span className="muted small">{l.account.name}</span></span>
+                  : <SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '5,2' }} value={l.item} required={!!l.amount} disabled={readOnly} label={(r: { name_th: string }) => r.name_th}
+                  onPick={(r: { id: string; code: string; name_th: string } | null) => set(l.key, r ? { item: { id: r.id, code: r.code, name: r.name_th }, description: l.description || r.name_th } : { item: null })} aria-label="รหัสค่าใช้จ่าย" />}</td>
                 <td><input value={l.description} maxLength={200} disabled={readOnly} placeholder="เช่น ค่า GP 30% · ค่าคอมมิชชั่น · ค่าโฆษณา" onChange={(e) => set(l.key, { description: e.target.value })} aria-label="รายละเอียดรายการหัก" /></td>
                 <td><MoneyInput value={l.amount} disabled={readOnly} onChange={(v) => set(l.key, { amount: v })} aria-label="ค่าบริการ" /></td>
                 <td><select value={l.vat_type} disabled={readOnly} onChange={(e) => set(l.key, { vat_type: e.target.value as ChargeLine['vat_type'], vatEdited: false })} aria-label="ประเภท VAT"
@@ -199,6 +207,7 @@ export function ChargesTable({ head, setHead, lines, setLines, readOnly, onDirty
             <td className="r"><Money v={sum((l) => l.amount)} /></td><td /><td className="r"><Money v={sum((l) => (l.vat_type === '0' ? '' : l.vat_amount))} blankZero /></td>
             {wht && <><td colSpan={2} /><td className="r"><Money v={sum((l) => l.wht_amount)} blankZero /></td></>}<td className="r"><b><Money v={chargeTotal(lines)} /></b></td><td /></tr></tfoot>
         </table>
+        <p className="hint">ตั้งรายการหักประจำ (ค่า GP ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียม …) พร้อมบัญชีและผู้ให้บริการได้ที่ เริ่มระบบ › ประเภทเอกสาร (ใบเสร็จแต่ละแพลตฟอร์ม) — ใบใหม่ดึงมาให้ป้อนเฉพาะยอด รายการที่ไม่มียอดไม่บันทึก</p>
         <p className="hint">ยอดที่ถูกหัก = ค่าบริการ + VAT ที่แพลตฟอร์มเรียกเก็บ (ภ.พ.36 ไม่รวม เพราะเรานำส่งเอง) · ลงบัญชี: ค่าใช้จ่ายตามรหัส · ภาษีซื้อ / ภาษีซื้อรอเครดิต ภ.พ.36 · ภาษีหัก ณ ที่จ่ายค้างจ่าย — ดูรายงาน แบบ ภ.พ.36 ที่ รายงานภาษี 6.7</p>
       </div>
       <datalist id="wht-income-types">{WHT_INCOME_TYPES.map((x) => <option key={x.text} value={x.text}>{`${x.rate}%`}</option>)}</datalist>

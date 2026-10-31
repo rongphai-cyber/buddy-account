@@ -1031,6 +1031,7 @@ CREATE TABLE IF NOT EXISTS md_doc_type (
   form_no INTEGER,
   use_barcode INTEGER NOT NULL DEFAULT 0,
   is_tax_invoice INTEGER NOT NULL DEFAULT 0,
+  charge_supplier_id TEXT REFERENCES md_supplier(id) DEFERRABLE INITIALLY DEFERRED,
   status TEXT NOT NULL DEFAULT 'A' CHECK (status IN ('A','I')),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
@@ -1059,6 +1060,27 @@ CREATE TABLE IF NOT EXISTS md_doc_type_account (
   origin_device_id TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_md_doc_type_account_doc_type_slot ON md_doc_type_account (doc_type_id, slot) WHERE deleted_at IS NULL;
+
+-- md_doc_type_charge: รายการหักโดยแพลตฟอร์มของประเภทเอกสารใบเสร็จ (ค่า GP ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียม) + บัญชีที่ลง — ข้อกำหนดเจ้าของ 31/10/2569
+CREATE TABLE IF NOT EXISTS md_doc_type_charge (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  doc_type_id TEXT NOT NULL REFERENCES md_doc_type(id) DEFERRABLE INITIALLY DEFERRED,
+  line_no INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  account_id TEXT NOT NULL REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED,
+  vat_type TEXT NOT NULL DEFAULT '1' CHECK (vat_type IN ('0','1','3')),
+  wht_income_type TEXT,
+  wht_rate TEXT NOT NULL DEFAULT '0',
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_md_doc_type_charge_doc_type_line_no ON md_doc_type_charge (doc_type_id, line_no) WHERE deleted_at IS NULL;
 
 -- md_payment_method: วิธีรับ/จ่ายเงิน (เงินสด เช็ค โอน หัก ณ ที่จ่าย ส่วนลด ฯลฯ)
 CREATE TABLE IF NOT EXISTS md_payment_method (
@@ -1386,7 +1408,8 @@ CREATE TABLE IF NOT EXISTS doc_charge (
   header_id TEXT NOT NULL REFERENCES doc_header(id) DEFERRABLE INITIALLY DEFERRED,
   line_no INTEGER NOT NULL,
   supplier_id TEXT NOT NULL REFERENCES md_supplier(id) DEFERRABLE INITIALLY DEFERRED,
-  item_id TEXT NOT NULL REFERENCES md_item(id) DEFERRABLE INITIALLY DEFERRED,
+  item_id TEXT REFERENCES md_item(id) DEFERRABLE INITIALLY DEFERRED,
+  account_id TEXT REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED,
   description TEXT,
   amount TEXT NOT NULL,
   vat_type TEXT NOT NULL DEFAULT '1' CHECK (vat_type IN ('0','1','3')),
@@ -2976,7 +2999,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_doc_type', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'doc_class', NEW.doc_class, 'module', NEW.module, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'short_name', NEW.short_name, 'next_no', NEW.next_no, 'journal_book_id', NEW.journal_book_id, 'journal_desc_template', NEW.journal_desc_template, 'department_id', NEW.department_id, 'warehouse_id', NEW.warehouse_id, 'price_type', NEW.price_type, 'vat_rate', NEW.vat_rate, 'vat_basis', NEW.vat_basis, 'vat_per_line', NEW.vat_per_line, 'approve_method', NEW.approve_method, 'approve_level', NEW.approve_level, 'reprint_level', NEW.reprint_level, 'cancel_level', NEW.cancel_level, 'delete_level', NEW.delete_level, 'over_limit_level', NEW.over_limit_level, 'auto_print', NEW.auto_print, 'form_no', NEW.form_no, 'use_barcode', NEW.use_barcode, 'is_tax_invoice', NEW.is_tax_invoice, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'doc_class', NEW.doc_class, 'module', NEW.module, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'short_name', NEW.short_name, 'next_no', NEW.next_no, 'journal_book_id', NEW.journal_book_id, 'journal_desc_template', NEW.journal_desc_template, 'department_id', NEW.department_id, 'warehouse_id', NEW.warehouse_id, 'price_type', NEW.price_type, 'vat_rate', NEW.vat_rate, 'vat_basis', NEW.vat_basis, 'vat_per_line', NEW.vat_per_line, 'approve_method', NEW.approve_method, 'approve_level', NEW.approve_level, 'reprint_level', NEW.reprint_level, 'cancel_level', NEW.cancel_level, 'delete_level', NEW.delete_level, 'over_limit_level', NEW.over_limit_level, 'auto_print', NEW.auto_print, 'form_no', NEW.form_no, 'use_barcode', NEW.use_barcode, 'is_tax_invoice', NEW.is_tax_invoice, 'charge_supplier_id', NEW.charge_supplier_id, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_doc_type_update_outbox AFTER UPDATE ON md_doc_type
@@ -2985,7 +3008,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_doc_type', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'doc_class', NEW.doc_class, 'module', NEW.module, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'short_name', NEW.short_name, 'next_no', NEW.next_no, 'journal_book_id', NEW.journal_book_id, 'journal_desc_template', NEW.journal_desc_template, 'department_id', NEW.department_id, 'warehouse_id', NEW.warehouse_id, 'price_type', NEW.price_type, 'vat_rate', NEW.vat_rate, 'vat_basis', NEW.vat_basis, 'vat_per_line', NEW.vat_per_line, 'approve_method', NEW.approve_method, 'approve_level', NEW.approve_level, 'reprint_level', NEW.reprint_level, 'cancel_level', NEW.cancel_level, 'delete_level', NEW.delete_level, 'over_limit_level', NEW.over_limit_level, 'auto_print', NEW.auto_print, 'form_no', NEW.form_no, 'use_barcode', NEW.use_barcode, 'is_tax_invoice', NEW.is_tax_invoice, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'doc_class', NEW.doc_class, 'module', NEW.module, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'short_name', NEW.short_name, 'next_no', NEW.next_no, 'journal_book_id', NEW.journal_book_id, 'journal_desc_template', NEW.journal_desc_template, 'department_id', NEW.department_id, 'warehouse_id', NEW.warehouse_id, 'price_type', NEW.price_type, 'vat_rate', NEW.vat_rate, 'vat_basis', NEW.vat_basis, 'vat_per_line', NEW.vat_per_line, 'approve_method', NEW.approve_method, 'approve_level', NEW.approve_level, 'reprint_level', NEW.reprint_level, 'cancel_level', NEW.cancel_level, 'delete_level', NEW.delete_level, 'over_limit_level', NEW.over_limit_level, 'auto_print', NEW.auto_print, 'form_no', NEW.form_no, 'use_barcode', NEW.use_barcode, 'is_tax_invoice', NEW.is_tax_invoice, 'charge_supplier_id', NEW.charge_supplier_id, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_doc_type_ver AFTER UPDATE ON md_doc_type
@@ -3015,6 +3038,29 @@ CREATE TRIGGER IF NOT EXISTS trg_md_doc_type_account_ver AFTER UPDATE ON md_doc_
 WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
 BEGIN
   UPDATE md_doc_type_account SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_doc_type_charge_insert_outbox AFTER INSERT ON md_doc_type_charge
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_doc_type_charge', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'doc_type_id', NEW.doc_type_id, 'line_no', NEW.line_no, 'name', NEW.name, 'account_id', NEW.account_id, 'vat_type', NEW.vat_type, 'wht_income_type', NEW.wht_income_type, 'wht_rate', NEW.wht_rate, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_doc_type_charge_update_outbox AFTER UPDATE ON md_doc_type_charge
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_doc_type_charge', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'doc_type_id', NEW.doc_type_id, 'line_no', NEW.line_no, 'name', NEW.name, 'account_id', NEW.account_id, 'vat_type', NEW.vat_type, 'wht_income_type', NEW.wht_income_type, 'wht_rate', NEW.wht_rate, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_doc_type_charge_ver AFTER UPDATE ON md_doc_type_charge
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE md_doc_type_charge SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_payment_method_insert_outbox AFTER INSERT ON md_payment_method
 WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
@@ -3252,7 +3298,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'doc_charge', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'header_id', NEW.header_id, 'line_no', NEW.line_no, 'supplier_id', NEW.supplier_id, 'item_id', NEW.item_id, 'description', NEW.description, 'amount', NEW.amount, 'vat_type', NEW.vat_type, 'vat_amount', NEW.vat_amount, 'tax_invoice_no', NEW.tax_invoice_no, 'tax_invoice_date', NEW.tax_invoice_date, 'wht_form', NEW.wht_form, 'wht_income_type', NEW.wht_income_type, 'wht_rate', NEW.wht_rate, 'wht_amount', NEW.wht_amount, 'wht_condition', NEW.wht_condition, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'header_id', NEW.header_id, 'line_no', NEW.line_no, 'supplier_id', NEW.supplier_id, 'item_id', NEW.item_id, 'account_id', NEW.account_id, 'description', NEW.description, 'amount', NEW.amount, 'vat_type', NEW.vat_type, 'vat_amount', NEW.vat_amount, 'tax_invoice_no', NEW.tax_invoice_no, 'tax_invoice_date', NEW.tax_invoice_date, 'wht_form', NEW.wht_form, 'wht_income_type', NEW.wht_income_type, 'wht_rate', NEW.wht_rate, 'wht_amount', NEW.wht_amount, 'wht_condition', NEW.wht_condition, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_doc_charge_update_outbox AFTER UPDATE ON doc_charge
@@ -3261,7 +3307,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'doc_charge', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'header_id', NEW.header_id, 'line_no', NEW.line_no, 'supplier_id', NEW.supplier_id, 'item_id', NEW.item_id, 'description', NEW.description, 'amount', NEW.amount, 'vat_type', NEW.vat_type, 'vat_amount', NEW.vat_amount, 'tax_invoice_no', NEW.tax_invoice_no, 'tax_invoice_date', NEW.tax_invoice_date, 'wht_form', NEW.wht_form, 'wht_income_type', NEW.wht_income_type, 'wht_rate', NEW.wht_rate, 'wht_amount', NEW.wht_amount, 'wht_condition', NEW.wht_condition, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'header_id', NEW.header_id, 'line_no', NEW.line_no, 'supplier_id', NEW.supplier_id, 'item_id', NEW.item_id, 'account_id', NEW.account_id, 'description', NEW.description, 'amount', NEW.amount, 'vat_type', NEW.vat_type, 'vat_amount', NEW.vat_amount, 'tax_invoice_no', NEW.tax_invoice_no, 'tax_invoice_date', NEW.tax_invoice_date, 'wht_form', NEW.wht_form, 'wht_income_type', NEW.wht_income_type, 'wht_rate', NEW.wht_rate, 'wht_amount', NEW.wht_amount, 'wht_condition', NEW.wht_condition, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_doc_charge_ver AFTER UPDATE ON doc_charge

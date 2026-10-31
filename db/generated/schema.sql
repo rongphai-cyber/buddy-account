@@ -2267,6 +2267,7 @@ CREATE TABLE md_doc_type (
   form_no smallint,
   use_barcode boolean DEFAULT false NOT NULL,
   is_tax_invoice boolean DEFAULT false NOT NULL,
+  charge_supplier_id uuid,
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
@@ -2305,6 +2306,7 @@ COMMENT ON COLUMN md_doc_type.auto_print IS 'พิมพ์อัตโนม�
 COMMENT ON COLUMN md_doc_type.form_no IS 'ฟอร์มที่ใช้พิมพ์ 1–9 [Express: ISRUN.WHICHFORM]';
 COMMENT ON COLUMN md_doc_type.use_barcode IS 'ป้อนรายการด้วยบาร์โค้ด [Express: ISRUN.USEBARCOD]';
 COMMENT ON COLUMN md_doc_type.is_tax_invoice IS 'เป็นใบกำกับภาษี (ต้องเรียงเลขต่อเนื่องตามสาขา/เล่ม)';
+COMMENT ON COLUMN md_doc_type.charge_supplier_id IS 'ผู้ให้บริการ (แพลตฟอร์ม) ที่หักค่าบริการก่อนโอน — ใบเสร็จประเภทนี้ (ข้อกำหนดเจ้าของ 31/10/2569)';
 COMMENT ON COLUMN md_doc_type.status IS 'สถานะ';
 COMMENT ON COLUMN md_doc_type.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN md_doc_type.created_by IS 'ผู้สร้าง [Express: CREBY]';
@@ -2347,6 +2349,45 @@ COMMENT ON COLUMN md_doc_type_account.row_version IS 'เวอร์ชัน�
 COMMENT ON COLUMN md_doc_type_account.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
 COMMENT ON COLUMN md_doc_type_account.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_md_doc_type_account_doc_type_slot ON md_doc_type_account (doc_type_id, slot) WHERE deleted_at IS NULL;
+
+-- md_doc_type_charge: รายการหักโดยแพลตฟอร์มของประเภทเอกสารใบเสร็จ (ค่า GP ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียม) + บัญชีที่ลง — ข้อกำหนดเจ้าของ 31/10/2569
+CREATE TABLE md_doc_type_charge (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  doc_type_id uuid NOT NULL,
+  line_no smallint NOT NULL,
+  name varchar(60) NOT NULL,
+  account_id uuid NOT NULL,
+  vat_type char(1) DEFAULT '1' NOT NULL CHECK (vat_type IN ('0','1','3')),
+  wht_income_type varchar(60),
+  wht_rate numeric(9,4) DEFAULT 0 NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE md_doc_type_charge IS 'รายการหักโดยแพลตฟอร์มของประเภทเอกสารใบเสร็จ (ค่า GP ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียม) + บัญชีที่ลง — ข้อกำหนดเจ้าของ 31/10/2569';
+COMMENT ON COLUMN md_doc_type_charge.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN md_doc_type_charge.company_id IS 'บริษัท';
+COMMENT ON COLUMN md_doc_type_charge.doc_type_id IS 'ประเภทเอกสาร (หมวด RE)';
+COMMENT ON COLUMN md_doc_type_charge.line_no IS 'ลำดับ';
+COMMENT ON COLUMN md_doc_type_charge.name IS 'ชื่อรายการหัก เช่น ค่า GP/คอมมิชชั่น ค่าการตลาด ค่าโฆษณา';
+COMMENT ON COLUMN md_doc_type_charge.account_id IS 'บัญชีค่าใช้จ่ายที่ลง';
+COMMENT ON COLUMN md_doc_type_charge.vat_type IS 'ค่าเริ่มต้น VAT: 0=ไม่มี 1=ภาษีซื้อ 7% 3=ภ.พ.36';
+COMMENT ON COLUMN md_doc_type_charge.wht_income_type IS 'ประเภทเงินได้ของภาษีหัก ณ ที่จ่าย';
+COMMENT ON COLUMN md_doc_type_charge.wht_rate IS 'อัตราภาษีหัก ณ ที่จ่าย %';
+COMMENT ON COLUMN md_doc_type_charge.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN md_doc_type_charge.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN md_doc_type_charge.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN md_doc_type_charge.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN md_doc_type_charge.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN md_doc_type_charge.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN md_doc_type_charge.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_md_doc_type_charge_doc_type_line_no ON md_doc_type_charge (doc_type_id, line_no) WHERE deleted_at IS NULL;
 
 -- md_payment_method: วิธีรับ/จ่ายเงิน (เงินสด เช็ค โอน หัก ณ ที่จ่าย ส่วนลด ฯลฯ)  [Express: ISRUN DOCTYP='ZR'(รับ)/'ZP'(จ่าย) + เริ่มระบบ 1.4.2/1.5.2]
 CREATE TABLE md_payment_method (
@@ -2958,7 +2999,8 @@ CREATE TABLE doc_charge (
   header_id uuid NOT NULL,
   line_no smallint NOT NULL,
   supplier_id uuid NOT NULL,
-  item_id uuid NOT NULL,
+  item_id uuid,
+  account_id uuid,
   description varchar(200),
   amount numeric(18,2) NOT NULL,
   vat_type char(1) DEFAULT '1' NOT NULL CHECK (vat_type IN ('0','1','3')),
@@ -2985,7 +3027,8 @@ COMMENT ON COLUMN doc_charge.company_id IS 'บริษัท';
 COMMENT ON COLUMN doc_charge.header_id IS 'ใบเสร็จรับเงิน (RE) ที่ถูกหัก';
 COMMENT ON COLUMN doc_charge.line_no IS 'ลำดับ';
 COMMENT ON COLUMN doc_charge.supplier_id IS 'ผู้ให้บริการ (แพลตฟอร์ม) — ผู้ขายในภาษีซื้อ / ผู้ถูกหักในภาษีหัก ณ ที่จ่าย';
-COMMENT ON COLUMN doc_charge.item_id IS 'รหัสค่าใช้จ่าย (บัญชีค่าใช้จ่ายตามกลุ่มบัญชีของรหัส)';
+COMMENT ON COLUMN doc_charge.item_id IS 'รหัสค่าใช้จ่าย (บัญชีค่าใช้จ่ายตามกลุ่มบัญชีของรหัส) — ว่างเมื่อใช้รายการหักที่ตั้งไว้ที่ประเภทเอกสาร';
+COMMENT ON COLUMN doc_charge.account_id IS 'บัญชีค่าใช้จ่ายจากรายการหักที่ตั้งไว้ที่ประเภทเอกสาร (มาก่อนรหัสค่าใช้จ่าย)';
 COMMENT ON COLUMN doc_charge.description IS 'รายละเอียด';
 COMMENT ON COLUMN doc_charge.amount IS 'ค่าบริการก่อนภาษีมูลค่าเพิ่ม (VAT 0 = ยอดที่ถูกหักทั้งหมด)';
 COMMENT ON COLUMN doc_charge.vat_type IS '0=ไม่มี VAT/ขอคืนไม่ได้ 1=ภาษีซื้อ 7% (ใบกำกับภาษีในประเทศ) 3=ภ.พ.36 (ผู้ให้บริการต่างประเทศ นำส่งภาษีแทน)';
@@ -4711,6 +4754,8 @@ ALTER TABLE md_doc_type ADD CONSTRAINT fk_md_doc_type_department_id FOREIGN KEY 
 CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_department_id ON md_doc_type (department_id);
 ALTER TABLE md_doc_type ADD CONSTRAINT fk_md_doc_type_warehouse_id FOREIGN KEY (warehouse_id) REFERENCES md_warehouse(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_warehouse_id ON md_doc_type (warehouse_id);
+ALTER TABLE md_doc_type ADD CONSTRAINT fk_md_doc_type_charge_supplier_id FOREIGN KEY (charge_supplier_id) REFERENCES md_supplier(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_charge_supplier_id ON md_doc_type (charge_supplier_id);
 ALTER TABLE md_doc_type ADD CONSTRAINT fk_md_doc_type_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_created_by ON md_doc_type (created_by);
 ALTER TABLE md_doc_type ADD CONSTRAINT fk_md_doc_type_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -4725,6 +4770,16 @@ ALTER TABLE md_doc_type_account ADD CONSTRAINT fk_md_doc_type_account_created_by
 CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_account_created_by ON md_doc_type_account (created_by);
 ALTER TABLE md_doc_type_account ADD CONSTRAINT fk_md_doc_type_account_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_account_updated_by ON md_doc_type_account (updated_by);
+ALTER TABLE md_doc_type_charge ADD CONSTRAINT fk_md_doc_type_charge_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_charge_company_id ON md_doc_type_charge (company_id);
+ALTER TABLE md_doc_type_charge ADD CONSTRAINT fk_md_doc_type_charge_doc_type_id FOREIGN KEY (doc_type_id) REFERENCES md_doc_type(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_charge_doc_type_id ON md_doc_type_charge (doc_type_id);
+ALTER TABLE md_doc_type_charge ADD CONSTRAINT fk_md_doc_type_charge_account_id FOREIGN KEY (account_id) REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_charge_account_id ON md_doc_type_charge (account_id);
+ALTER TABLE md_doc_type_charge ADD CONSTRAINT fk_md_doc_type_charge_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_charge_created_by ON md_doc_type_charge (created_by);
+ALTER TABLE md_doc_type_charge ADD CONSTRAINT fk_md_doc_type_charge_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_doc_type_charge_updated_by ON md_doc_type_charge (updated_by);
 ALTER TABLE md_payment_method ADD CONSTRAINT fk_md_payment_method_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_md_payment_method_company_id ON md_payment_method (company_id);
 ALTER TABLE md_payment_method ADD CONSTRAINT fk_md_payment_method_gl_account_id FOREIGN KEY (gl_account_id) REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED;
@@ -4893,6 +4948,8 @@ ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_supplier_id FOREIGN KEY (sup
 CREATE INDEX IF NOT EXISTS ix_fk_doc_charge_supplier_id ON doc_charge (supplier_id);
 ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_item_id FOREIGN KEY (item_id) REFERENCES md_item(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_doc_charge_item_id ON doc_charge (item_id);
+ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_account_id FOREIGN KEY (account_id) REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_doc_charge_account_id ON doc_charge (account_id);
 ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_doc_charge_created_by ON doc_charge (created_by);
 ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -5367,6 +5424,7 @@ CREATE TRIGGER trg_md_sales_target_ver BEFORE UPDATE ON md_sales_target FOR EACH
 CREATE TRIGGER trg_md_bank_account_ver BEFORE UPDATE ON md_bank_account FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_md_doc_type_ver BEFORE UPDATE ON md_doc_type FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_md_doc_type_account_ver BEFORE UPDATE ON md_doc_type_account FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_md_doc_type_charge_ver BEFORE UPDATE ON md_doc_type_charge FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_md_payment_method_ver BEFORE UPDATE ON md_payment_method FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_md_doc_number_block_ver BEFORE UPDATE ON md_doc_number_block FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_doc_header_ver BEFORE UPDATE ON doc_header FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
@@ -5457,6 +5515,7 @@ CREATE TRIGGER trg_md_sales_target_log AFTER INSERT OR UPDATE ON md_sales_target
 CREATE TRIGGER trg_md_bank_account_log AFTER INSERT OR UPDATE ON md_bank_account FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_md_doc_type_log AFTER INSERT OR UPDATE ON md_doc_type FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_md_doc_type_account_log AFTER INSERT OR UPDATE ON md_doc_type_account FOR EACH ROW EXECUTE FUNCTION sync_log_change();
+CREATE TRIGGER trg_md_doc_type_charge_log AFTER INSERT OR UPDATE ON md_doc_type_charge FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_md_payment_method_log AFTER INSERT OR UPDATE ON md_payment_method FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_md_doc_number_block_log AFTER INSERT OR UPDATE ON md_doc_number_block FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_doc_header_log AFTER INSERT OR UPDATE ON doc_header FOR EACH ROW EXECUTE FUNCTION sync_log_change();
@@ -5534,6 +5593,7 @@ CREATE TRIGGER trg_md_sales_target_del AFTER DELETE ON md_sales_target FOR EACH 
 CREATE TRIGGER trg_md_bank_account_del AFTER DELETE ON md_bank_account FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_md_doc_type_del AFTER DELETE ON md_doc_type FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_md_doc_type_account_del AFTER DELETE ON md_doc_type_account FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_md_doc_type_charge_del AFTER DELETE ON md_doc_type_charge FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_md_payment_method_del AFTER DELETE ON md_payment_method FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_md_doc_number_block_del AFTER DELETE ON md_doc_number_block FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_doc_header_del AFTER DELETE ON doc_header FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
@@ -5609,6 +5669,7 @@ CREATE TRIGGER trg_md_sales_target_rid BEFORE INSERT ON md_sales_target FOR EACH
 CREATE TRIGGER trg_md_bank_account_rid BEFORE INSERT ON md_bank_account FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_md_doc_type_rid BEFORE INSERT ON md_doc_type FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_md_doc_type_account_rid BEFORE INSERT ON md_doc_type_account FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_md_doc_type_charge_rid BEFORE INSERT ON md_doc_type_charge FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_md_payment_method_rid BEFORE INSERT ON md_payment_method FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_md_doc_number_block_rid BEFORE INSERT ON md_doc_number_block FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_doc_header_rid BEFORE INSERT ON doc_header FOR EACH ROW EXECUTE FUNCTION sync_row_id();

@@ -1628,6 +1628,38 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
     expect((await call('GET', `/api/v1/ar-receipts/charge-template?party_id=${cus}`)).body.rows).toEqual([]);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ตั้งรายการหักที่ประเภทเอกสาร (ข้อกำหนดเจ้าของ): ค่า GP / ค่าการตลาด / ค่าโฆษณา แยกบัญชี + ผู้ให้บริการ → ใบใหม่ดึงมาให้ ป้อนเฉพาะยอด
+    const charges = [{ name: 'ค่า GP/คอมมิชชั่น', account_id: await accNo('5200-02'), vat_type: '1', wht_income_type: 'ค่าบริการ', wht_rate: 3 },
+      { name: 'ค่าการตลาด', account_id: await accNo('5360-05'), vat_type: '1', wht_income_type: 'ค่าบริการ', wht_rate: 3 }, { name: 'ค่าโฆษณา', account_id: await accNo('5200-05'), vat_type: '1', wht_income_type: 'ค่าโฆษณา', wht_rate: 2 }];
+    const dtBody = { code: 'RG', doc_class: 'RE', name_th: 'รับชำระ Grab', next_no: '1', charge_supplier_id: grab, charges };
+    expect((await call('POST', '/api/v1/doc-types', { ...dtBody, charges: [{ ...charges[0], account_id: null }] })).body.error.message).toMatch(/เลือกบัญชีของรายการหัก/);
+    const rg = (await call('POST', '/api/v1/doc-types', dtBody)).body.id;
+    const dt = (await call('GET', `/api/v1/doc-types/${rg}`)).body;
+    expect([dt.charge_supplier.code, dt.charges.map((c: { name: string; account_no: string }) => `${c.name}:${c.account_no}`)]).toEqual(['S-GRAB', ['ค่า GP/คอมมิชชั่น:5200-02', 'ค่าการตลาด:5360-05', 'ค่าโฆษณา:5200-05']]);
+    const t2 = (await call('GET', `/api/v1/ar-receipts/charge-template?party_id=${cus}&type_id=${rg}`)).body;
+    expect([t2.source, t2.rows.length, t2.rows[0].supplier_code, t2.rows[2].wht_income_type, Number(t2.rows[2].wht_rate)]).toEqual(['doc_type', 3, 'S-GRAB', 'ค่าโฆษณา', 2]);
+    const iv3 = await iv(1000);   // 1,070 · GP 200+14 · การตลาด 50+3.50 · โฆษณา 100+7 = 374.50 → รับ 695.50 · หัก ณ ที่จ่าย 6+1.50+2 = 9.50
+    const mk = (i: number, amount: number, vat: number, wht: number) => ({ supplier_id: grab, item_id: null, account_id: t2.rows[i].account_id, description: t2.rows[i].description, amount, vat_type: '1', vat_amount: vat,
+      tax_invoice_no: 'GRAB-INV-2', wht_form: 'S53', wht_income_type: t2.rows[i].wht_income_type, wht_rate: t2.rows[i].wht_rate, wht_amount: wht });
+    const errC = async (cs: object[]) => (await call('POST', '/api/v1/ar-receipts', { ...re1, doc_type_id: rg, settlements: [{ invoice_header_id: iv3.id, amount: 1070 }], charges: cs })).body.error.message as string;
+    expect(await errC([{ ...mk(0, 10, 0.7, 0), account_id: null }])).toMatch(/เลือกรายการหัก/);
+    const otherAcc = (await sql<{ id: string }>`SELECT id FROM gl_account WHERE company_id = ${otherCompanyId} LIMIT 1`.execute(database.db)).rows[0]!.id;
+    expect(await errC([{ ...mk(0, 10, 0.7, 0), account_id: otherAcc }])).toMatch(/ไม่พบบัญชีของรายการหัก/);
+    const r3 = (await call('POST', '/api/v1/ar-receipts', { ...re1, doc_type_id: rg, settlements: [{ invoice_header_id: iv3.id, amount: 1070 }], charges: [mk(0, 200, 14, 6), mk(1, 50, 3.5, 1.5), mk(2, 100, 7, 2)] })).body;
+    expect(r3).toMatchObject({ cash_amount: '695.50' });
+    const jl = ((await call('GET', `/api/v1/docs/${r3.id}/journal`)).body.journals[0].lines as Array<{ account_no: string; debit: string; posting_role: string }>).filter((l) => l.posting_role === 'PLATFORM_FEE').map((l) => `${l.account_no}:${l.debit}`).sort();
+    expect(jl).toEqual(['5200-02:200.00', '5200-05:100.00', '5360-05:50.00']);
+    // ภาษีหัก ณ ที่จ่าย: ค่าบริการ 3% รวมใบเดียว (250 → 7.50) · ค่าโฆษณา 2% อีกใบ
+    expect((await call('GET', '/api/v1/wht?form=S53&month=2027-03')).body.rows.filter((w: { doc_no: string }) => w.doc_no === r3.doc_no).map((w: { paid_amount: string; tax_amount: string }) => `${w.paid_amount}:${w.tax_amount}`).sort()).toEqual(['100.00:2.00', '250.00:7.50']);
+    expect((await call('GET', `/api/v1/ar-receipts/${r3.id}`)).body.charges.map((c: { account_no: string; item_id: string | null }) => `${c.account_no}:${c.item_id}`)).toEqual(['5200-02:null', '5360-05:null', '5200-05:null']);
+    // ข้ามบริษัท: บัญชีของบริษัทอื่นใช้ไม่ได้ (ประเภทเอกสาร/ใบเสร็จ) · ประเภทเอกสารของบริษัทอื่นไม่คืนแม่แบบ
+    expect((await call('PUT', `/api/v1/doc-types/${rg}`, { ...dtBody, charges: [{ ...charges[0], account_id: otherAcc }] })).status).toBe(400);
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/ar-receipts/charge-template?type_id=${rg}`)).body.rows).toEqual([]);
+    expect((await call('GET', `/api/v1/doc-types/${rg}`)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('POST', `/api/v1/ar-receipts/${r3.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/sales-invoices/${iv3.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     // ยกเลิก: ภาษีซื้อ/ภ.พ.36/ภาษีหัก ณ ที่จ่ายเป็นยกเลิก
     for (const id of [r1.id, r2.id]) expect((await call('POST', `/api/v1/ar-receipts/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect((await vp(r1.id)).map((v) => v.doc_status)).toEqual(['C']);
