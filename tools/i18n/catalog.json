@@ -2487,6 +2487,18 @@
 ]
 },
 {
+"th": "ใบสำคัญที่ลงบัญชี",
+"n": 7,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ใบเพิ่มหนี้",
 "n": 7,
 "files": [
@@ -2748,6 +2760,15 @@
 ]
 },
 {
+"th": "เงินสดย่อย",
+"n": 6,
+"files": [
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "เบิกชดเชยเงินสดย่อย",
 "n": 6,
 "files": [
@@ -2840,18 +2861,6 @@
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "ใบสำคัญที่ลงบัญชี",
-"n": 6,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -3411,15 +3420,6 @@
 "apps/server/src/modules/reports/parties.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เงินสดย่อย",
-"n": 5,
-"files": [
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -13177,6 +13177,20 @@
 ]
 },
 {
+"th": "การเงิน › เงินสดย่อย",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/PettyCash.tsx"
+]
+},
+{
+"th": "การเงิน › เงินสดย่อย › {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/PettyCash.tsx"
+]
+},
+{
 "th": "การเพิ่มราคาค่าบริการ (บริการเกินกว่าข้อกำหนดที่ตกลงกัน)",
 "n": 1,
 "files": [
@@ -17860,7 +17874,7 @@
 ]
 },
 {
-"th": "ตั้งวงเงิน: ใช้บัญชีเงินสดย่อย · จ่ายค่าใช้จ่าย: ใช้บัญชีค่าใช้จ่าย",
+"th": "ตั้งวงเงิน: ใช้บัญชีเงินสดย่อย · จ่ายค่าใช้จ่าย: ใช้บัญชีค่าใช้จ่าย · บันทึกแล้วลงบัญชีทันที Dr บัญชีตามรายการ / Cr เงินสดย่อย",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/PettyCash.tsx"
@@ -20163,20 +20177,6 @@
 ]
 },
 {
-"th": "บัญชี › เงินสดย่อย",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/PettyCash.tsx"
-]
-},
-{
-"th": "บัญชี › เงินสดย่อย › {0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/PettyCash.tsx"
-]
-},
-{
 "th": "บัญชี/ตัวแปร",
 "n": 1,
 "files": [
@@ -20506,7 +20506,14 @@
 ]
 },
 {
-"th": "บันทึก {0} แล้ว{1}",
+"th": "บันทึก {0} แล้ว (ไม่ลงบัญชี)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/PettyCash.tsx"
+]
+},
+{
+"th": "บันทึก {0} แล้ว — ลงบัญชีแล้ว",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/PettyCash.tsx"
@@ -27954,13 +27961,6 @@
 ]
 },
 {
-"th": "รายการที่ลงบัญชี (รวมตามบัญชี/แผนก)",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/PettyCash.tsx"
-]
-},
-{
 "th": "รายการที่เลขบัญชีไม่ถูกต้อง",
 "n": 1,
 "files": [
@@ -30569,6 +30569,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/etax.ts"
+]
+},
+{
+"th": "สรุปค่าใช้จ่ายของใบจ่ายที่เบิก (รวมตามบัญชี/แผนก — ลงบัญชีแล้วตอนบันทึกใบจ่าย) · ใบเบิกนี้ลงบัญชี Dr เงินสดย่อย / Cr เงินสด-ธนาคาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/PettyCash.tsx"
 ]
 },
 {
@@ -40327,13 +40334,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
-]
-},
-{
-"th": "— ลงบัญชีแล้ว",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/PettyCash.tsx"
 ]
 },
 {

@@ -1293,21 +1293,26 @@ describe('Buddy Account API (PGlite)', () => {
       expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
-  it('petty cash (T3.8): DP not posted, VR reimburses selected DPs and posts, reimbursed DP locked, cancel reopens, isolation', async () => {
+  it('petty cash (T3.8 · ข้อกำหนดเจ้าของ 31/10/2569): DP posts Dr expense / Cr petty cash, VR posts Dr petty cash / Cr bank, old unposted DP posted at VR, reimbursed DP locked, cancel reopens, isolation', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; is_control: boolean }>;
     const leaf = accs.filter((x) => !x.is_control);
     const exp = leaf[8]!.id, petty = leaf[9]!.id, control = accs.find((x) => x.is_control)!.id;
     const dpType = await typeOf('DP');
     expect((await call('POST', '/api/v1/petty-payments', { doc_type_id: dpType, doc_date: '2026-11-01', lines: [{ account_id: control, amount: 10 }] })).body.error.message).toMatch(/บัญชีคุม/);
-    // ตั้งวงเงิน 5,000 + จ่ายค่าใช้จ่าย 500 (ยังไม่ลงบัญชี)
+    // ตั้งวงเงิน 5,000 + จ่ายค่าใช้จ่าย 500 — ลงบัญชีตอนจ่าย Dr ค่าใช้จ่าย / Cr เงินสดย่อย
     const dp1 = (await call('POST', '/api/v1/petty-payments', { doc_type_id: dpType, doc_date: '2026-11-01', remark: 'ตั้งวงเงินสดย่อย', lines: [{ account_id: petty, amount: 5000 }] })).body;
     const dp2 = (await call('POST', '/api/v1/petty-payments', { doc_type_id: dpType, doc_date: '2026-11-03', remark: 'ค่าเดินทาง', lines: [{ account_id: exp, description: 'ค่าแท็กซี่', amount: 300 }, { account_id: exp, description: 'ค่าทางด่วน', amount: 200 }] })).body;
     expect(dp2).toMatchObject({ doc_no: expect.stringMatching(/^DP\d{7}$/), net_amount: '500.00' });
-    expect((await call('GET', `/api/v1/docs/${dp2.id}/journal`)).body.journals).toEqual([]);
+    const jl = async (id: string) => ((await call('GET', `/api/v1/docs/${id}/journal`)).body.journals[0]?.lines ?? []).map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${l.debit}:${l.credit}`).sort();
+    expect(await jl(dp2.id)).toEqual(['EXPENSE:500.00:0.00', 'PETTY_CASH:0.00:500.00']);
+    // ใบจ่ายเดิมที่ยังไม่ลงบัญชี (ก่อนเปลี่ยนวิธี/ย้ายจาก Express) — ลงบัญชีให้ตอนบันทึกใบเบิก
+    await sql`UPDATE gl_journal SET deleted_at = now() WHERE source_header_id = ${dp1.id}`.execute(database.db);
+    await sql`UPDATE doc_header SET journal_id = NULL, gl_posted = 'N' WHERE id = ${dp1.id}`.execute(database.db);
+    expect(await jl(dp1.id)).toEqual([]);
     const open = async () => ((await call('GET', '/api/v1/petty-payments?open=true')).body.rows as Array<{ doc_no: string }>).map((r) => r.doc_no).sort();
     expect(await open()).toEqual([dp1.doc_no, dp2.doc_no].sort());
-    // เบิกชดเชย: โอนจากบัญชีธนาคาร 5,500 → Dr เงินสดย่อย 5,000 + ค่าใช้จ่าย 500 / Cr ธนาคาร 5,500
+    // เบิกชดเชย: โอนจากบัญชีธนาคาร 5,500 → Dr เงินสดย่อย 5,500 / Cr ธนาคาร 5,500
     const tn = (await call('GET', '/api/v1/payment-methods/P')).body[0];
     const vr = { doc_type_id: await typeOf('VR'), doc_date: '2026-11-05', remark: 'เบิกชดเชย 1–3/11', dp_ids: [dp1.id, dp2.id], payments: [{ payment_method_id: tn.id, amount: 5500 }] };
     expect((await call('POST', '/api/v1/petty-reimbursements', { ...vr, dp_ids: [] })).body.error.message).toMatch(/อย่างน้อย 1 ใบ/);
@@ -1316,7 +1321,8 @@ describe('Buddy Account API (PGlite)', () => {
     expect(v1.body).toMatchObject({ doc_no: expect.stringMatching(/^VR\d{7}$/), net_amount: '5500.00', cash_amount: '0.00' });
     const j = (await call('GET', `/api/v1/docs/${v1.body.id}/journal`)).body.journals[0];
     expect(j).toMatchObject({ voucher_no: v1.body.doc_no, total_debit: '5500.00' });
-    expect(j.lines.map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${l.debit}:${l.credit}`).sort()).toEqual(['EXPENSE:500.00:0.00', 'EXPENSE:5000.00:0.00', 'PAYMENT:0.00:5500.00']);
+    expect(j.lines.map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${l.debit}:${l.credit}`).sort()).toEqual(['PAYMENT:0.00:5500.00', 'PETTY_CASH:5500.00:0.00']);
+    expect(await jl(dp1.id)).toEqual(['EXPENSE:5000.00:0.00', 'PETTY_CASH:0.00:5000.00']);
     expect((await call('GET', `/api/v1/petty-reimbursements/${v1.body.id}`)).body).toMatchObject({ dps: [expect.anything(), expect.anything()], lines: [expect.anything(), expect.anything()] });
     expect(await open()).toEqual([]);
     expect((await call('GET', `/api/v1/petty-payments/${dp2.id}`)).body).toMatchObject({ vr_no: v1.body.doc_no, editable: false });

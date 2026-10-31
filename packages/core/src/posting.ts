@@ -43,7 +43,7 @@ export type Layer = '1' | '2' | '3' | 'S';
 export interface PostingLine { account_id: string | null; debit: Decimal; credit: Decimal; role: string; layer: Layer }
 
 /** หมวดเอกสารที่ลงบัญชีด้วยเครื่องนี้ */
-export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'VR', 'OU', 'JU', 'CA', 'BD', 'BW', 'BT', 'BU', 'BV'] as const;
+export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'DP', 'VR', 'OU', 'JU', 'CA', 'BD', 'BW', 'BT', 'BU', 'BV'] as const;
 
 export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment[], setts: PostSettlement[], r: PostingResolver, charges: PostCharge[] = []): PostingLine[] {
   const out: PostingLine[] = [];
@@ -175,10 +175,18 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     if (cls === 'AI') C(pick(['1', r.slot(dt, cls, 'DEPOSIT_RECEIVED')], ['3', r.def('DEPOSIT_RECEIVED')]), net.minus(vat), 'DEPOSIT_RECEIVED');
     else for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'OTHER_INCOME');
     C(pick(['3', r.def('OUTPUT_VAT')]), vat, 'OUTPUT_VAT');
-  } else if (cls === 'VR') {
-    // เบิกชดเชยเงินสดย่อย (S-GL-13): Dr บัญชีตามรายการจ่าย (ค่าใช้จ่าย/ตั้งวงเงิน) / Cr เงินสดหรือวิธีจ่าย (เช็ค โอน)
-    for (const l of lines) D(pick(['2', l.account_id]), d(l.net_amount), 'EXPENSE');
-    C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(net), 'CASH');
+  } else if (cls === 'DP' || cls === 'VR') {
+    // เงินสดย่อย (ข้อกำหนดเจ้าของ 31/10/2569 — ลงบัญชีตอนจ่าย):
+    // DP จ่ายจากเงินสดย่อย: Dr บัญชีตามรายการจ่าย (ค่าใช้จ่าย/ตั้งวงเงิน) / Cr เงินสดย่อย
+    // VR เบิกชดเชย: Dr เงินสดย่อย / Cr เงินสดหรือวิธีจ่าย (เช็ค โอน) — รายการของใบเบิกเป็นสรุปค่าใช้จ่ายของใบจ่าย (ลงบัญชีแล้วที่ใบจ่าย)
+    const petty = pick(['1', r.slot(dt, cls, 'PETTY_CASH')], ['3', r.def('PETTY_CASH')]);
+    if (cls === 'DP') {
+      for (const l of lines) D(pick(['2', l.account_id]), d(l.net_amount), 'EXPENSE');
+      C(petty, net, 'PETTY_CASH');
+      return out;
+    }
+    D(petty, net, 'PETTY_CASH');
+    C(pick(['3', r.def('CASH')]), cashRest(net), 'CASH');
     for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
   } else if ((cls === 'OU' || cls === 'JU' || cls === 'CA') && (r.perpetual || (cls === 'OU' && !!r.slot(dt, cls, 'ISSUE_DEBIT') && !!r.slot(dt, cls, 'ISSUE_CREDIT')))) {
     // เอกสารสินค้า (บทที่ 14): ลงบัญชีเมื่อ Perpetual — จ่ายใช้ภายในลงด้วยแม้ Periodic เมื่อประเภทเอกสารกำหนดบัญชีครบ 2 ช่อง (ยืนยันจากใบสำคัญ Express เช่น XS: Dr ค่าสินค้าตัวอย่าง / Cr ต้นทุนขาย)

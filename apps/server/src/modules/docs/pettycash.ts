@@ -10,7 +10,9 @@ import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument,
 import { branchOf, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, writePayments } from './payments.js';
 
 /**
- * เงินสดย่อย (คู่มือบทที่ 15): DP บันทึกการจ่ายจากเงินสดย่อย (ไม่ลงบัญชี) → VR เบิกชดเชย (รวม DP แล้วลงบัญชี Dr ค่าใช้จ่าย / Cr เงินสด-เช็ค)
+ * เงินสดย่อย (คู่มือบทที่ 15 · ข้อกำหนดเจ้าของ 31/10/2569 ลงบัญชีตอนจ่าย):
+ * DP จ่ายจากเงินสดย่อย → ลงบัญชีทันที Dr ค่าใช้จ่าย / Cr เงินสดย่อย · VR เบิกชดเชย → Dr เงินสดย่อย / Cr เงินสด-ธนาคาร-เช็ค
+ * ใบจ่ายเดิมที่ยังไม่ได้ลงบัญชี (ก่อนเปลี่ยนวิธี/ย้ายจาก Express) ลงบัญชีให้ตอนบันทึกใบเบิกที่เบิกใบนั้น — ค่าใช้จ่ายไม่ตกหล่น
  * การตั้งวงเงิน = DP ที่บรรทัดเป็นบัญชีเงินสดย่อย แล้วเบิกด้วย VR (Dr เงินสดย่อย / Cr ธนาคาร)
  * DP ที่ย้ายจาก Express มี ref_no = เลขที่ VR ที่เบิกแล้ว
  */
@@ -75,8 +77,12 @@ async function saveDp(db: Db, a: Ctx, id: string | null, b: z.infer<typeof dpBod
     }
     await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: l.account_id, department_id: l.department_id, description: l.description, ...noteCols(l),
       line_amount: d(l.amount).toFixed(2), net_amount: d(l.amount).toFixed(2), stock_effect: 0, created_by: a.userId }))).execute();
+    // ลงบัญชีตอนจ่าย: Dr ค่าใช้จ่าย / Cr เงินสดย่อย
+    const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
+    const posted = await postDocument(tx, a, hid!, curJ?.id);
+    if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
     await logActivity(tx, a, { module: 'PC', action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
-    return { id: hid, doc_no: docNo, net_amount: total };
+    return { id: hid, doc_no: docNo, net_amount: total, journal_id: posted.journal_id };
   });
 }
 
@@ -124,6 +130,10 @@ async function saveVr(db: Db, a: Ctx, id: string | null, b: z.infer<typeof vrBod
       description: `เบิกชดเชย ${x.n} รายการ`, line_amount: d(x.amount).toFixed(2), net_amount: d(x.amount).toFixed(2), stock_effect: 0, created_by: a.userId }))).execute();
     await tx.insertInto('doc_link').values(b.dp_ids.map((x) => ({ company_id: a.companyId, from_header_id: x, to_header_id: hid!, link_type: 'REIMBURSE', created_by: a.userId }))).execute();
     await writePayments(tx, a, { headerId: hid!, direction: 'P', payDate: b.doc_date, methods, payments: b.payments, customerId: null, supplierId: null, partyName: b.remark ?? 'เบิกชดเชยเงินสดย่อย', departmentId: header.department_id });
+    // ใบจ่ายที่ยังไม่มีใบสำคัญ (บันทึกก่อนเปลี่ยนเป็นลงบัญชีตอนจ่าย / ย้ายจาก Express) → ลงบัญชีค่าใช้จ่ายตอนนี้ ให้ใบเบิกล้างเงินสดย่อยได้ครบ
+    const unposted = (await sql<{ id: string }>`SELECT p.id FROM doc_header p WHERE p.company_id = ${a.companyId} AND p.id = ANY(${b.dp_ids}::uuid[])
+        AND NOT EXISTS (SELECT 1 FROM gl_journal j WHERE j.source_header_id = p.id AND j.doc_status = 'N' AND j.deleted_at IS NULL)`.execute(tx)).rows;
+    for (const p of unposted) await postDocument(tx, a, p.id);
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);

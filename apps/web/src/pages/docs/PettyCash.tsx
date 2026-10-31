@@ -44,7 +44,7 @@ export function PettyListPage({ kind }: { kind: Kind }) {
   const total = list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r.net_amount)), d(0));
   return (
     <div className="page" data-tone="gl">
-      <PageHead eyebrow="บัญชี › เงินสดย่อย" title={K.label}
+      <PageHead eyebrow="การเงิน › เงินสดย่อย" title={K.label}
         lead={kind === 'dp' ? 'บันทึกค่าใช้จ่ายที่จ่ายจากเงินสดย่อย (ยังไม่ลงบัญชี) · ตั้งวงเงิน = บรรทัดเป็นบัญชีเงินสดย่อย · ลงบัญชีเมื่อเบิกชดเชย' : 'รวมใบจ่ายที่ยังไม่เบิก แล้วจ่ายชดเชยด้วยเงินสด/เช็ค/โอน — ลงบัญชีทันที (Dr ค่าใช้จ่าย / Cr เงินสด-ธนาคาร)'}
         actions={can('add') && <button className={cx('primary', tt.color && 'book-btn')} style={bookStyle(tt.color)} onClick={() => nav(tt.newUrl(`${BASE}/${kind}/new`))}>+ {K.label} {tt.cur ? `${tt.cur.code} ` : ''}<kbd>Ins</kbd></button>} />
       <div className="seg kind-switch">{(Object.keys(KINDS) as Kind[]).map((k) => <button key={k} className={cx(k === kind && 'on')} onClick={() => nav(k === 'dp' ? BASE : `${BASE}/vr`)}>{KINDS[k].short}</button>)}</div>
@@ -135,8 +135,8 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
       ? { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, lines: lines.filter((l) => l.account_id || l.amount).map((l) => ({ account_id: l.account_id, department_id: l.department_id || null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })) }
       : { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, dp_ids: chosen.map((r) => r.id), cash_amount: h.cash === '' ? null : h.cash, payments: paysBody(pays) };
     try {
-      const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.api}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.api}`, body);
-      toast(`บันทึก ${r.doc_no} แล้ว${kind === 'vr' ? ' — ลงบัญชีแล้ว' : ''}`); setDirty(false); if (id) ed.lock();
+      const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.api}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.api}`, body);
+      toast(r.journal_id ? `บันทึก ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก ${r.doc_no} แล้ว (ไม่ลงบัญชี)`); setDirty(false); if (id) ed.lock();
       qc.invalidateQueries({ queryKey: [K.api] }); qc.invalidateQueries({ queryKey: ['petty-payments'] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] });
       if (!id) { nav(`${BASE}/${kind}/${r.id}`, { replace: true }); setH(null); } else { await qc.refetchQueries({ queryKey: [K.api, 'one', id] }); setH(null); }
     } catch (e) { setErr(e); } finally { setBusy(false); }
@@ -153,7 +153,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const acctName = (aid: string | null) => accts.data?.find((a) => a.id === aid)?.name_th ?? '';
   return (
     <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="gl" style={bookStyle(tColor)}>
-      <div className="doc-title"><p className="eyebrow">บัญชี › เงินสดย่อย › {K.label}</p><h1>{id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '')}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
+      <div className="doc-title"><p className="eyebrow">การเงิน › เงินสดย่อย › {K.label}</p><h1>{id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '')}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{kind === 'vr' ? 'ลงบัญชีแล้ว' : cur.data?.vr_no ? <>เบิกชดเชยแล้วใน <DocLink id={cur.data.vr_id} no={cur.data.vr_no} cls="VR" /></> : WAIT_VR}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setPick(new Set()); setPays([]); nav(`${BASE}/${kind}/new`); } }}>+ ใหม่</button>
@@ -179,7 +179,8 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
         </div>
         {kind === 'dp' ? <>
           <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการที่จ่าย', badge: lines.filter((l) => l.account_id).length || undefined },
-            ...(id ? [{ key: 'vat', label: 'รายการภาษีซื้อ' }, { key: 'wht', label: 'รายการภาษีหัก ณ ที่จ่าย' }] : [])]} />
+            ...(id ? [{ key: 'vat', label: 'รายการภาษีซื้อ' }, { key: 'wht', label: 'รายการภาษีหัก ณ ที่จ่าย' }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+          {tab === 'gl' && id && <DocJournalTab id={id} />}
           {tab === 'vat' && id && <JvVatTab doc kind="P" journal={{ id, voucher_no: cur.data?.doc_no ?? '', date: h.doc_date }} lineVat="0" editable={!ro && cur.data?.doc_status !== 'C'} />}
           {tab === 'wht' && id && <DocWhtTab doc={{ id, doc_no: cur.data?.doc_no ?? '', date: h.doc_date }} editable={!ro && cur.data?.doc_status !== 'C'} />}
           {tab === 'lines' && <div className="table-wrap lines">
@@ -198,7 +199,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
                   </tr>
                 ))}
               </tbody>
-              <tfoot><tr><td colSpan={5}>{!ro && <button type="button" onClick={() => setLines((ls) => [...ls, blank()])}>+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button>} <span className="hint">ตั้งวงเงิน: ใช้บัญชีเงินสดย่อย · จ่ายค่าใช้จ่าย: ใช้บัญชีค่าใช้จ่าย</span></td><td className="r"><b><Money v={dpTotal.toFixed(2)} /></b></td><td /></tr></tfoot>
+              <tfoot><tr><td colSpan={5}>{!ro && <button type="button" onClick={() => setLines((ls) => [...ls, blank()])}>+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button>} <span className="hint">ตั้งวงเงิน: ใช้บัญชีเงินสดย่อย · จ่ายค่าใช้จ่าย: ใช้บัญชีค่าใช้จ่าย · บันทึกแล้วลงบัญชีทันที Dr บัญชีตามรายการ / Cr เงินสดย่อย</span></td><td className="r"><b><Money v={dpTotal.toFixed(2)} /></b></td><td /></tr></tfoot>
             </table>
           </div>}
         </> : <>
@@ -221,7 +222,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
               </tbody>
               {chosen.length > 0 && <tfoot><tr><td colSpan={5} className="r">ยอดเงินที่เบิกชดเชย ({chosen.length} ใบ)</td><td className="r"><b><Money v={vrTotal.toFixed(2)} /></b></td></tr></tfoot>}
             </table>
-            {id && !!cur.data?.lines.length && <><p className="hint">รายการที่ลงบัญชี (รวมตามบัญชี/แผนก)</p><table className="grid"><thead><tr><th>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th>รายละเอียด</th><th className="r">จำนวนเงิน</th></tr></thead>
+            {id && !!cur.data?.lines.length && <><p className="hint">สรุปค่าใช้จ่ายของใบจ่ายที่เบิก (รวมตามบัญชี/แผนก — ลงบัญชีแล้วตอนบันทึกใบจ่าย) · ใบเบิกนี้ลงบัญชี Dr เงินสดย่อย / Cr เงินสด-ธนาคาร</p><table className="grid"><thead><tr><th>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th>รายละเอียด</th><th className="r">จำนวนเงิน</th></tr></thead>
               <tbody>{cur.data.lines.map((l, i) => <tr key={i}><td className="mono">{l.account_no}</td><td>{l.account_name}</td><td>{l.description}</td><td className="r"><Money v={l.amount} /></td></tr>)}</tbody></table></>}
           </div>}
           {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction="P" readOnly={ro} payDate={h.doc_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}

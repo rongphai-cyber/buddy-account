@@ -87,10 +87,11 @@ export const DOC_SLOT_ROLES: Record<string, Record<number, string>> = {
   RR: { 3: 'AP' }, CP: { 3: 'AP' }, DN: { 3: 'AP' }, HP: { 3: 'ROUNDING', 4: 'CASH' },
   RE: { 3: 'ROUNDING', 6: 'ROUNDING' }, PS: { 2: 'ROUNDING', 5: 'ROUNDING' }, AE: { 1: 'DEPOSIT_PAID', 3: 'CASH' }, AI: { 3: 'DEPOSIT_RECEIVED' },
   HS: { 5: 'SALES' }, OU: { 1: 'ISSUE_DEBIT', 2: 'ISSUE_CREDIT' }, JU: { 1: 'ADJ_DEBIT', 2: 'ADJ_CREDIT' }, CA: { 2: 'COST_ADJ' },
+  DP: { 1: 'PETTY_CASH' }, VR: { 1: 'PETTY_CASH' },
   BD: { 2: 'CASH' }, BW: { 1: 'CASH' }, QP: { 1: 'CASH' }, BU: { 2: 'BANK_INCOME' }, BV: { 1: 'BANK_EXPENSE' }, BQ: { 2: 'BANK_CHARGE' },
 };
 export const SLOT_ROLE_TH: Record<string, string> = {
-  AP: 'Cr. เจ้าหนี้', ROUNDING: 'ส่วนขาด/เกินการชำระ', CASH: 'เงินสด', DEPOSIT_PAID: 'Dr. เงินมัดจำจ่ายล่วงหน้า', DEPOSIT_RECEIVED: 'Cr. เงินมัดจำรับล่วงหน้า',
+  PETTY_CASH: 'เงินสดย่อย', AP: 'Cr. เจ้าหนี้', ROUNDING: 'ส่วนขาด/เกินการชำระ', CASH: 'เงินสด', DEPOSIT_PAID: 'Dr. เงินมัดจำจ่ายล่วงหน้า', DEPOSIT_RECEIVED: 'Cr. เงินมัดจำรับล่วงหน้า',
   SALES: 'Cr. ขายสินค้า', ISSUE_DEBIT: 'Dr. บัญชีเบิกใช้', ISSUE_CREDIT: 'Cr. บัญชีเบิกใช้', ADJ_DEBIT: 'Dr. บัญชีปรับปรุง', ADJ_CREDIT: 'Cr. บัญชีปรับปรุง',
   COST_ADJ: 'บัญชีปรับปรุงต้นทุน', BANK_INCOME: 'Cr. รายได้ธนาคาร', BANK_EXPENSE: 'Dr. ค่าใช้จ่ายธนาคาร', BANK_CHARGE: 'Dr. ค่าธรรมเนียมธนาคาร',
 };

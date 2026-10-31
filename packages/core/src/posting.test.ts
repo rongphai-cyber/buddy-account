@@ -59,6 +59,16 @@ describe('posting engine (บทที่ 10)', () => {
       [], [], [{ amount: '1000', vat: '0', party_id: 'c1', rectype: '3' }], R, [{ item_id: null, account_id: 'mkt', amount: '50', vat_type: '1', vat_amount: '3.50', wht_amount: '0', wht_condition: '1' }, { item_id: null, account_id: 'ads', amount: '100', vat_type: '1', vat_amount: '7', wht_amount: '2', wht_condition: '1' }]);
     expect(net(m)).toEqual({ 'ar-c1': '-1000.00', mkt: '50.00', ads: '100.00', ivat: '10.50', 'wht-p': '-2.00', 'wht-rc': '2.00', cash: '839.50' });
   });
+  it('petty cash (ข้อกำหนดเจ้าของ 31/10/2569): DP Dr ค่าใช้จ่าย / Cr เงินสดย่อย · VR Dr เงินสดย่อย / Cr เงินสด-โอน', () => {
+    const P = { ...r, paymentMethod: (id: string | null) => (id === 'TR' ? 'bank' : null), def: (k: string) => ({ ...DEF, PETTY_CASH: 'petty' } as Record<string, string>)[k] ?? null };
+    const dp = buildPosting({ id: 'h', doc_class: 'DP', doc_type_id: null, customer_id: null, supplier_id: null, net_amount: '689', vat_amount: '0', deposit_amount: '0', vat_basis: null },
+      [{ item_id: null, account_id: 'post', net_amount: '230' }, { item_id: null, account_id: 'taxi', net_amount: '310' }, { item_id: null, account_id: 'supp', net_amount: '149' }], [], [], P);
+    expect(postingBalanced(dp)).toBe(true);
+    expect(net(dp)).toEqual({ post: '230.00', taxi: '310.00', supp: '149.00', petty: '-689.00' });
+    const vr = buildPosting({ id: 'h', doc_class: 'VR', doc_type_id: null, customer_id: null, supplier_id: null, net_amount: '3154', vat_amount: '0', deposit_amount: '0', vat_basis: null },
+      [{ item_id: null, account_id: 'post', net_amount: '811' }], [{ method_id: 'TR', amount: '3000', cheque_id: null }], [], P);
+    expect(net(vr)).toEqual({ petty: '3154.00', bank: '-3000.00', cash: '-154.00' });
+  });
   it('cash purchase / cash sale with WHT: WHT replaces that part of cash', () => {
     const hp = buildPosting({ id: 'h', doc_class: 'HP', doc_type_id: null, customer_id: null, supplier_id: 's1', net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1', wht_amount: '30' },
       [{ item_id: 'svc', net_amount: '1000' }], [], [], r);
