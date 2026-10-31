@@ -182,8 +182,8 @@ export function SettleFormPage({ path }: { path: string }) {
       : `ดึงรายการหักของ ${ch.head.supplier?.name ?? ''} แบบครั้งก่อนแล้ว — ป้อนยอดตามรายงานการโอนที่แท็บ "หักโดยแพลตฟอร์ม" (F8)`, 'warn');
   };
   const toggle = (o: Open, on: boolean) => { setPick((m) => { const n = { ...m }; if (on) n[o.header_id] = num(o.outstanding); else delete n[o.header_id]; return n; }); setDirty(true); };
-  /** บิลที่ลงวันที่หลังวันที่รับ/จ่ายเงิน: ตัดได้แต่เตือน (รายงานหนี้คงเหลือ ณ วันที่ก่อนบิลเกิดอาจผิด — ข้อกำหนดเจ้าของ 31/10/2569) */
-  const payDay = (h?.payment_date || h?.doc_date || '').slice(0, 10);
+  /** รับ/จ่ายชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้ — ข้อกำหนดเจ้าของ 31/10/2569): เทียบกับวันที่เอกสารและวันที่รับ/จ่ายเงินที่ก่อนกว่า */
+  const payDay = [h?.doc_date, h?.payment_date].filter((x): x is string => !!x).map((x) => x.slice(0, 10)).sort()[0] ?? '';
   const ys = useYearSystem();
   const fmtDate = (v: string) => formatDate(v, ys);
   const isLate = (o: Open) => !!payDay && String(o.doc_date).slice(0, 10) > payDay;
@@ -202,7 +202,7 @@ export function SettleFormPage({ path }: { path: string }) {
   const save = async (andNew = false) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
-    if (lateChosen.length && !window.confirm(`บิล ${lateNos} ลงวันที่หลังวันที่${rp(K)}เงิน (${fmtDate(payDay)})\nตัดชำระได้ แต่รายงานหนี้คงเหลือ ณ วันที่ก่อนบิลเกิดอาจคำนวณผิดพลาด\n\nยืนยันบันทึก?`)) return;
+    if (lateChosen.length) { setErr(new Error(`บิล ${lateNos} ลงวันที่หลังวันที่${rp(K)}เงิน (${fmtDate(payDay)}) — ${rp(K)}ชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้) เปลี่ยนวันที่เอกสาร/วันที่${rp(K)}เงิน หรือเอาบิลออก`)); setTab('bills'); return; }
     setErr(null); setBusy(true);
     const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
       your_ref: h.your_ref || null, remark: h.remark || null, interest_amount: h.interest || '0', cash_discount_amount: h.discount || '0', fx_amount: h.fx || '0', wht_amount: K.cls === 'PS' && whts.length ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
@@ -258,7 +258,9 @@ export function SettleFormPage({ path }: { path: string }) {
             {!ro && <Field label={K.module === 'AR' ? 'อ้างใบวางบิล' : 'อ้างใบรับวางบิล'} hint="เลือกแล้วติ๊กบิลทุกใบในใบวางบิลให้ (ยอดค้างเต็ม) — แก้ยอดได้"><select value={billRef} disabled={!h.party} onChange={(e) => {
               const b = bills.data?.rows.find((x) => x.id === e.target.value); setBillRef(e.target.value);
               if (!b) return;
-              const sel = rows.filter((o) => b.invoice_ids.includes(o.header_id));
+              const inBill = rows.filter((o) => b.invoice_ids.includes(o.header_id));
+              const sel = inBill.filter((o) => !isLate(o));
+              if (sel.length < inBill.length) toast(`บิล ${inBill.filter(isLate).map((o) => o.doc_no).join(', ')} ลงวันที่หลังวันที่${rp(K)}เงิน — ไม่ได้เลือกให้ (${rp(K)}ชำระก่อนวันที่บิลไม่ได้)`, 'warn');
               setPick((m) => ({ ...m, ...Object.fromEntries(sel.map((o) => [o.header_id, num(o.outstanding)])) }));
               if (!h.your_ref) set({ your_ref: b.doc_no });
               setDirty(true); setTab('bills');
@@ -280,7 +282,7 @@ export function SettleFormPage({ path }: { path: string }) {
           ...(K.cls === 'PS' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(isRe ? [{ key: 'fee', label: 'หักโดยแพลตฟอร์ม (GP/ค่าธรรมเนียม)', badge: charges.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
         {tab === 'bills' && <div className="table-wrap lines">
           {!h.party ? <p className="empty">เลือก{partyWord(K)}ก่อน แล้วเลือกบิลที่จะ{rp(K)}ชำระ (F5)</p> : <>
-          {lateChosen.length > 0 && <p className="notebox warn" role="alert">⚠ บิล {lateNos} ลงวันที่หลังวันที่{rp(K)}เงิน ({fmtDate(payDay)}) — ตัดชำระได้ แต่รายงานหนี้คงเหลือ ณ วันที่ก่อนบิลเกิดอาจคำนวณผิดพลาด ตรวจวันที่{rp(K)}เงินอีกครั้ง</p>}
+          {lateChosen.length > 0 && <p className="notebox bad" role="alert">⚠ บิล {lateNos} ลงวันที่หลังวันที่{rp(K)}เงิน ({fmtDate(payDay)}) — {rp(K)}ชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้) · เปลี่ยนวันที่เอกสาร/วันที่{rp(K)}เงิน หรือเอาบิลออก (✕)</p>}
           <table className="grid">
             <thead><tr><th style={{ width: 150 }}>เลขที่</th><th style={{ width: 80 }}>ชนิด</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 110 }}>ครบกำหนด</th><th style={{ width: 120 }}>{K.module === 'AR' ? 'ใบวางบิล#' : 'ใบรับวางบิล#'}</th>{K.module === 'AP' && <th>เลขที่บิลผู้จำหน่าย</th>}
               <th className="r" style={{ width: 130 }}>จำนวนเงิน</th><th className="r" style={{ width: 130 }}>ยอดคงค้าง</th><th className="r" style={{ width: 150 }}>ยอดชำระ</th><th style={{ width: 36 }} /></tr></thead>
@@ -303,8 +305,7 @@ export function SettleFormPage({ path }: { path: string }) {
         </div>}
         {picking && !ro && h.party && rows.length > 0 && <PickBillsDialog K={K} rows={rows} pick={pick} payDay={payDay} onClose={() => setPicking(false)}
           onOk={(sel) => { setPick(sel); setDirty(true); setPicking(false); setTab('bills');
-            const late = rows.filter((o) => sel[o.header_id] !== undefined && String(o.doc_date).slice(0, 10) > payDay);
-            if (late.length) toast(`บิล ${late.map((o) => o.doc_no).join(', ')} ลงวันที่หลังวันที่${rp(K)}เงิน — ตัดได้ แต่รายงานหนี้คงเหลืออาจคำนวณผิดพลาด`, 'warn'); }} />}
+ }} />}
         {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} partyId={h.party?.id ?? null} readOnly={ro} payDate={h.payment_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
         {tab === 'wht' && K.cls === 'PS' && <WhtTable whts={whts} setWhts={setWhts} readOnly={ro} base={baseOfChosen} defaults={{ form: h.whtForm, rate: h.whtRate }} canAdd={chosen.length > 0} dirty={dirty} onDirty={() => setDirty(true)} />}
         {tab === 'fee' && isRe && <ChargesTable head={chHead} setHead={setChHead} lines={charges} setLines={setCharges} readOnly={ro} onDirty={() => setDirty(true)} />}
@@ -349,29 +350,30 @@ function PickBillsDialog({ K, rows, pick, payDay, onClose, onOk }: { K: SettleKi
   useHotkeys({ F5: ok, F9: ok, 'Ctrl+S': ok });
   const shown = q.trim() ? rows.filter((o) => [o.doc_no, o.bill_no, o.ref_no].some((x) => x?.toLowerCase().includes(q.trim().toLowerCase()))) : rows;
   const on = (o: Open) => sel[o.header_id] !== undefined;
-  const flip = (o: Open, v: boolean) => setSel((m) => { const n = { ...m }; if (v) n[o.header_id] = num(o.outstanding); else delete n[o.header_id]; return n; });
+  const lateOf = (o: Open) => !!payDay && String(o.doc_date).slice(0, 10) > payDay;
+  const flip = (o: Open, v: boolean) => { if (v && lateOf(o)) return; setSel((m) => { const n = { ...m }; if (v) n[o.header_id] = num(o.outstanding); else delete n[o.header_id]; return n; }); };
   const signed = (o: Open, v: string) => (o.doc_class === K.neg ? d(v || 0).neg() : d(v || 0));
   const picked = rows.filter(on);
   const total = picked.reduce((s, o) => s.plus(signed(o, sel[o.header_id]!)), d(0));
-  const allOn = shown.length > 0 && shown.every(on);
+  const allOn = shown.some((o) => !lateOf(o)) && shown.filter((o) => !lateOf(o)).every(on);
   return (
     <Modal title={`เลือกบิลค้าง${K.direction === 'R' ? 'รับ' : 'จ่าย'}ชำระ`} size="wide" onClose={onClose}
       footer={<><span className="muted" style={{ marginRight: 'auto' }}>เลือก {picked.length} ใบ · ยอดชำระ <b>{fmt(total.toFixed(2))}</b></span><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" onClick={ok}>ตกลง <kbd>F5</kbd></button></>}>
       <div className="toolbar" style={{ marginBottom: 8 }}><input type="search" value={q} placeholder="ค้นเลขที่บิล / ใบวางบิล" onChange={(e) => setQ(e.target.value)} aria-label="ค้นบิลค้าง" style={{ maxWidth: 280 }} />
-        <span className="hint">ติ๊กบิลที่จะชำระ (ค่าเริ่มต้น = ยอดคงค้างเต็ม แก้ยอดได้) แล้วกด ตกลง/F5 · ⚠ = บิลลงวันที่หลังวันที่{K.direction === 'R' ? 'รับ' : 'จ่าย'}เงิน</span></div>
+        <span className="hint">ติ๊กบิลที่จะชำระ (ค่าเริ่มต้น = ยอดคงค้างเต็ม แก้ยอดได้) แล้วกด ตกลง/F5 · ⚠ = บิลลงวันที่หลังวันที่{K.direction === 'R' ? 'รับ' : 'จ่าย'}เงิน เลือกไม่ได้ — เปลี่ยนวันที่ที่หัวเอกสารก่อน</span></div>
       <div className="table-wrap lines">
         <table className="grid">
-          <thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={allOn} onChange={(e) => setSel((m) => { const n = { ...m }; for (const o of shown) { if (e.target.checked) n[o.header_id] ??= num(o.outstanding); else delete n[o.header_id]; } return n; })} aria-label="เลือกทั้งหมด" /></th>
+          <thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={allOn} onChange={(e) => setSel((m) => { const n = { ...m }; for (const o of shown) { if (e.target.checked) { if (!lateOf(o)) n[o.header_id] ??= num(o.outstanding); } else delete n[o.header_id]; } return n; })} aria-label="เลือกทั้งหมด" /></th>
             <th style={{ width: 130 }}>เลขที่</th><th style={{ width: 80 }}>ชนิด</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 110 }}>ครบกำหนด</th><th style={{ width: 110 }}>{K.module === 'AR' ? 'ใบวางบิล#' : 'ใบรับวางบิล#'}</th>{K.module === 'AP' && <th>เลขที่บิลผู้จำหน่าย</th>}
             <th className="r" style={{ width: 120 }}>ยอดคงค้าง</th><th className="r" style={{ width: 140 }}>ยอดชำระ</th></tr></thead>
           <tbody>
             {shown.map((o) => {
-              const late = !!payDay && String(o.doc_date).slice(0, 10) > payDay;
+              const late = lateOf(o);
               return (
-                <tr key={o.header_id} className={cx('row-open', on(o) && 'picked')} onClick={(e) => { if (!(e.target as HTMLElement).matches('input')) flip(o, !on(o)); }}>
-                  <td className="c"><input type="checkbox" checked={on(o)} onChange={(e) => flip(o, e.target.checked)} aria-label={`เลือก ${o.doc_no}`} /></td>
+                <tr key={o.header_id} className={cx(late ? 'row-late' : 'row-open', on(o) && 'picked')} title={late ? `ลงวันที่หลังวันที่${K.direction === 'R' ? 'รับ' : 'จ่าย'}เงิน — ${K.direction === 'R' ? 'รับ' : 'จ่าย'}ชำระก่อนวันที่บิลไม่ได้` : undefined} onClick={(e) => { if (!(e.target as HTMLElement).matches('input')) flip(o, !on(o)); }}>
+                  <td className="c"><input type="checkbox" checked={on(o)} disabled={late && !on(o)} onChange={(e) => flip(o, e.target.checked)} aria-label={`เลือก ${o.doc_no}`} /></td>
                   <td className="mono">{o.doc_no}</td><td>{o.doc_class === K.neg ? <Pill tone="c">{CLASS_TH[o.doc_class]}</Pill> : CLASS_TH[o.doc_class]}</td>
-                  <td><DateText v={o.doc_date} />{late && <span className="bad small" title={`ลงวันที่หลังวันที่${K.direction === 'R' ? 'รับ' : 'จ่าย'}เงิน — รายงานหนี้คงเหลืออาจคำนวณผิดพลาด`}> ⚠</span>}</td><td><DateText v={o.due_date} /></td>
+                  <td><DateText v={o.doc_date} />{late && <span className="bad small"> ⚠ หลังวันที่{K.direction === 'R' ? 'รับ' : 'จ่าย'}เงิน</span>}</td><td><DateText v={o.due_date} /></td>
                   <td className="mono">{o.bill_no}</td>{K.module === 'AP' && <td className="mono">{o.ref_no}</td>}
                   <td className="r"><Money v={o.doc_class === K.neg ? d(o.outstanding).neg().toFixed(2) : o.outstanding} /></td>
                   <td>{on(o) && <MoneyInput value={sel[o.header_id]!} onChange={(v) => setSel((m) => ({ ...m, [o.header_id]: v }))} aria-label={`ยอดชำระ ${o.doc_no}`} />}</td>

@@ -989,6 +989,9 @@ describe('Buddy Account API (PGlite)', () => {
     const err = async (b: object) => (await call('POST', '/api/v1/ar-receipts', { ...re, ...b })).body.error.message as string;
     expect(await err({ settlements: [{ invoice_header_id: iv2.id, amount: 6000 }] })).toMatch(/มากกว่ายอดคงค้าง/);
     expect(await err({ settlements: [] })).toMatch(/อย่างน้อย 1 ใบ/);
+    // รับชำระก่อนวันที่บิลไม่ได้ (ข้อกำหนดเจ้าของ 31/10/2569) — บิลลงวันที่ 01/07 · วันเดียวกันได้
+    expect(await err({ doc_date: '2026-06-30', payment_date: '2026-06-30' })).toMatch(/รับชำระก่อนวันที่บิลไม่ได้/);
+    expect(await err({ payment_date: '2026-06-30' })).toMatch(/หลังวันที่รับเงิน\/วันที่เอกสาร \(30\/06\/2569\)/);
     expect(await err({ cash_amount: 100 })).toMatch(/Message# 4025/);
     expect(await err({ payments: [{ payment_method_id: chq.id, amount: 9000 }] })).toMatch(/เลขที่เช็ค/);
     expect(await err({ payments: [{ payment_method_id: tn.id, amount: 9000 }] })).toMatch(/ไม่พบวิธีรับชำระ/);

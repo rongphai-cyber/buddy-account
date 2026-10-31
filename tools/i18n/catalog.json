@@ -402,6 +402,29 @@
 ]
 },
 {
+"th": "รับ",
+"n": 36,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "รายการ",
 "n": 35,
 "files": [
@@ -457,6 +480,30 @@
 ]
 },
 {
+"th": "จ่าย",
+"n": 34,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "แผนก",
 "n": 34,
 "files": [
@@ -486,29 +533,6 @@
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "รับ",
-"n": 32,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -561,30 +585,6 @@
 "apps/server/src/modules/docs/engine.ts",
 "apps/server/src/modules/docs/routes.ts",
 "apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "จ่าย",
-"n": 30,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
 "apps/server/src/modules/reports/stock.ts"
 ]
 },
@@ -12029,6 +12029,13 @@
 ]
 },
 {
+"th": "{0} ลงวันที่ {1} หลังวันที่{2}เงิน/วันที่เอกสาร ({3}) — {4}ชำระก่อนวันที่บิลไม่ได้ เปลี่ยนวันที่ หรือเอาบิลออก",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/settle.ts"
+]
+},
+{
 "th": "{0} ล้าน",
 "n": 1,
 "files": [
@@ -18217,7 +18224,7 @@
 ]
 },
 {
-"th": "ติ๊กบิลที่จะชำระ (ค่าเริ่มต้น = ยอดคงค้างเต็ม แก้ยอดได้) แล้วกด ตกลง/F5 · ⚠ = บิลลงวันที่หลังวันที่{0}เงิน",
+"th": "ติ๊กบิลที่จะชำระ (ค่าเริ่มต้น = ยอดคงค้างเต็ม แก้ยอดได้) แล้วกด ตกลง/F5 · ⚠ = บิลลงวันที่หลังวันที่{0}เงิน เลือกไม่ได้ — เปลี่ยนวันที่ที่หัวเอกสารก่อน",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
@@ -21262,14 +21269,14 @@
 ]
 },
 {
-"th": "บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2})\\nตัดชำระได้ แต่รายงานหนี้คงเหลือ ณ วันที่ก่อนบิลเกิดอาจคำนวณผิดพลาด\\n\\nยืนยันบันทึก?",
+"th": "บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2}) — {3}ชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้) เปลี่ยนวันที่เอกสาร/วันที่{4}เงิน หรือเอาบิลออก",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
-"th": "บิล {0} ลงวันที่หลังวันที่{1}เงิน — ตัดได้ แต่รายงานหนี้คงเหลืออาจคำนวณผิดพลาด",
+"th": "บิล {0} ลงวันที่หลังวันที่{1}เงิน — ไม่ได้เลือกให้ ({2}ชำระก่อนวันที่บิลไม่ได้)",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
@@ -28773,7 +28780,7 @@
 ]
 },
 {
-"th": "ลงวันที่หลังวันที่{0}เงิน — รายงานหนี้คงเหลืออาจคำนวณผิดพลาด",
+"th": "ลงวันที่หลังวันที่{0}เงิน — {1}ชำระก่อนวันที่บิลไม่ได้",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
@@ -40596,7 +40603,7 @@
 ]
 },
 {
-"th": "⚠ บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2}) — ตัดชำระได้ แต่รายงานหนี้คงเหลือ ณ วันที่ก่อนบิลเกิดอาจคำนวณผิดพลาด ตรวจวันที่{3}เงินอีกครั้ง",
+"th": "⚠ บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2}) — {3}ชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้) · เปลี่ยนวันที่เอกสาร/วันที่{4}เงิน หรือเอาบิลออก (✕)",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
@@ -40614,6 +40621,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "⚠ หลังวันที่{0}เงิน",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {

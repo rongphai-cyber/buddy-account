@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { chargeDeducted, d, SETTLE_KINDS, settlementTotals, type SettleKind } from '@buddy/core';
+import { chargeDeducted, d, formatDate, SETTLE_KINDS, settlementTotals, type SettleKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
@@ -142,6 +142,9 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
     if (!o) throw badRequest(`บรรทัดที่ ${i + 1}: ไม่พบบิลค้างของ${party.code} (บิลถูกยกเลิก หรือเป็นของคู่ค้ารายอื่น)`);
     const amt = d(s.amount);
     if (amt.lte(0)) throw badRequest(`${o.doc_no}: ป้อนยอดชำระมากกว่า 0`);
+    // รับ/จ่ายชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้ — ข้อกำหนดเจ้าของ 31/10/2569)
+    const billDay = String(o.doc_date).slice(0, 10), earliest = [b.doc_date, payDate].sort()[0]!;
+    if (billDay > earliest) throw badRequest(`${o.doc_no} ลงวันที่ ${formatDate(billDay, 'B')} หลังวันที่${K.direction === 'R' ? 'รับ' : 'จ่าย'}เงิน/วันที่เอกสาร (${formatDate(earliest, 'B')}) — ${K.direction === 'R' ? 'รับ' : 'จ่าย'}ชำระก่อนวันที่บิลไม่ได้ เปลี่ยนวันที่ หรือเอาบิลออก`);
     if (amt.gt(d(o.outstanding))) throw badRequest(`${o.doc_no}: ยอดชำระ ${money(amt)} มากกว่ายอดคงค้าง ${money(d(o.outstanding))}`);
     // ภาษีเกณฑ์เงินสด (ค่าบริการ): ภาษีส่วนที่ชำระ = ยอดชำระ × VAT ÷ ยอดรวมของบิล (คู่มือ S-RE-01b แก้ได้)
     const vat = s.vat_amount != null && s.vat_amount !== '' ? d(s.vat_amount) : o.vat_basis === '2' && !d(o.net_amount).isZero() ? amt.times(d(o.vat_amount)).div(d(o.net_amount)) : d(0);

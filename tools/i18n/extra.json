@@ -393,5 +393,12 @@
  "สรุปค่าใช้จ่ายของใบจ่ายที่เบิก (รวมตามบัญชี/แผนก — ลงบัญชีแล้วตอนบันทึกใบจ่าย) · ใบเบิกนี้ลงบัญชี Dr เงินสดย่อย / Cr เงินสด-ธนาคาร": "Expense summary of the reimbursed payments (by account/department — already posted when the payments were saved) · this reimbursement posts Dr petty cash / Cr cash-bank",
  "ภาษีหัก ณ ที่จ่ายของเอกสารต้นทาง — เข้าแฟ้ม ภ.ง.ด.3/53 · แก้เลขที่/วันที่หนังสือรับรองได้ที่แฟ้มภาษีหัก ณ ที่จ่าย · พิมพ์ 50 ทวิ ได้จากที่นี่": "Withholding tax of the source document — goes to the P.N.D.3/53 file · edit the certificate no./date in the WHT register · print the 50 Tawi certificate here",
  "เอกสารต้นทางไม่มีภาษีหัก ณ ที่จ่าย": "The source document has no withholding tax",
- "จากเอกสารต้นทาง": "From source document"
+ "จากเอกสารต้นทาง": "From source document",
+ "{0} ลงวันที่ {1} หลังวันที่{2}เงิน/วันที่เอกสาร ({3}) — {4}ชำระก่อนวันที่บิลไม่ได้ เปลี่ยนวันที่ หรือเอาบิลออก": "{0} is dated {1}, after the {2} date/document date ({3}) — cannot settle ({4}) before the bill date; change the date or remove the bill",
+ "ติ๊กบิลที่จะชำระ (ค่าเริ่มต้น = ยอดคงค้างเต็ม แก้ยอดได้) แล้วกด ตกลง/F5 · ⚠ = บิลลงวันที่หลังวันที่{0}เงิน เลือกไม่ได้ — เปลี่ยนวันที่ที่หัวเอกสารก่อน": "Tick the bills to settle (default = full outstanding, editable) then press OK/F5 · ⚠ = bill dated after the {0} date, cannot be selected — change the date in the header first",
+ "บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2}) — {3}ชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้) เปลี่ยนวันที่เอกสาร/วันที่{4}เงิน หรือเอาบิลออก": "Bill {0} is dated after the {1} date ({2}) — cannot settle ({3}) before the bill date (same day is OK); change the document/{4} date or remove the bill",
+ "บิล {0} ลงวันที่หลังวันที่{1}เงิน — ไม่ได้เลือกให้ ({2}ชำระก่อนวันที่บิลไม่ได้)": "Bill {0} is dated after the {1} date — not selected (cannot settle ({2}) before the bill date)",
+ "ลงวันที่หลังวันที่{0}เงิน — {1}ชำระก่อนวันที่บิลไม่ได้": "Dated after the {0} date — cannot settle ({1}) before the bill date",
+ "⚠ บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2}) — {3}ชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้) · เปลี่ยนวันที่เอกสาร/วันที่{4}เงิน หรือเอาบิลออก (✕)": "⚠ Bill {0} is dated after the {1} date ({2}) — cannot settle ({3}) before the bill date (same day is OK) · change the document/{4} date or remove the bill (✕)",
+ "⚠ หลังวันที่{0}เงิน": "⚠ after the {0} date"
 }
