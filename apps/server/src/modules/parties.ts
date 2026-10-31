@@ -120,11 +120,14 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
 
   app.get('/api/v1/customers', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ q: z.string().optional(), status: z.enum(['A', 'I', 'all']).default('A'), limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0) }), req.query);
+    // open=1: เฉพาะรายที่มีบิลค้างชำระ (หน้าจอรับชำระหนี้/ใบวางบิล — ข้อกำหนดเจ้าของ 31/10/2569) + จำนวนบิลค้าง
+    const q = parse(z.object({ q: z.string().optional(), open: z.enum(['1']).optional(), status: z.enum(['A', 'I', 'all']).default('A'), limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0) }), req.query);
     let s = db.selectFrom('md_customer as c').leftJoin('md_salesperson as sp', 'sp.id', 'c.salesperson_id')
       .select(['c.id', 'c.code', 'c.title', 'c.name', 'c.tax_id', 'c.tax_branch_no', 'c.phone', 'c.contact', 'c.credit_days', 'c.credit_limit', 'c.status', 'sp.code as salesperson_code',
-        sql<string>`(SELECT coalesce(sum(o.outstanding), 0) FROM v_ar_outstanding o WHERE o.customer_id = c.id)`.as('balance')])
+        sql<string>`(SELECT coalesce(sum(o.outstanding), 0) FROM v_ar_outstanding o WHERE o.customer_id = c.id)`.as('balance'),
+        sql<number>`(SELECT count(*) FROM v_ar_outstanding o WHERE o.customer_id = c.id AND o.outstanding <> 0)::int`.as('open_count')])
       .where('c.company_id', '=', a.companyId).where('c.deleted_at', 'is', null);
+    if (q.open) s = s.where(sql<boolean>`EXISTS (SELECT 1 FROM v_ar_outstanding o WHERE o.customer_id = c.id AND o.outstanding <> 0)`);
     if (q.status !== 'all') s = s.where('c.status', '=', q.status);
     if (q.q?.trim()) { const like = `%${q.q.trim()}%`; s = s.where((eb) => eb.or([eb('c.code', 'ilike', like), eb('c.name', 'ilike', like), eb('c.tax_id', 'ilike', like.replace(/-/g, '')), eb('c.phone', 'ilike', like), eb('c.contact', 'ilike', like)])); }
     const total = await s.clearSelect().select(sql<number>`count(*)`.as('n')).executeTakeFirstOrThrow();
@@ -251,11 +254,13 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
 
   app.get('/api/v1/suppliers', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ q: z.string().optional(), status: z.enum(['A', 'I', 'all']).default('A'), limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0) }), req.query);
+    const q = parse(z.object({ q: z.string().optional(), open: z.enum(['1']).optional(), status: z.enum(['A', 'I', 'all']).default('A'), limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0) }), req.query);
     let s = db.selectFrom('md_supplier as s')
       .select(['s.id', 's.code', 's.title', 's.name', 's.tax_id', 's.tax_branch_no', 's.phone', 's.contact', 's.credit_days', 's.credit_limit', 's.status', 's.on_hold', 's.wht_form',
-        sql<string>`(SELECT coalesce(sum(o.outstanding), 0) FROM v_ap_outstanding o WHERE o.supplier_id = s.id)`.as('balance')])
+        sql<string>`(SELECT coalesce(sum(o.outstanding), 0) FROM v_ap_outstanding o WHERE o.supplier_id = s.id)`.as('balance'),
+        sql<number>`(SELECT count(*) FROM v_ap_outstanding o WHERE o.supplier_id = s.id AND o.outstanding <> 0)::int`.as('open_count')])
       .where('s.company_id', '=', a.companyId).where('s.deleted_at', 'is', null);
+    if (q.open) s = s.where(sql<boolean>`EXISTS (SELECT 1 FROM v_ap_outstanding o WHERE o.supplier_id = s.id AND o.outstanding <> 0)`);
     if (q.status !== 'all') s = s.where('s.status', '=', q.status);
     if (q.q?.trim()) { const like = `%${q.q.trim()}%`; s = s.where((eb) => eb.or([eb('s.code', 'ilike', like), eb('s.name', 'ilike', like), eb('s.tax_id', 'ilike', like.replace(/-/g, '')), eb('s.phone', 'ilike', like), eb('s.contact', 'ilike', like)])); }
     const total = await s.clearSelect().select(sql<number>`count(*)`.as('n')).executeTakeFirstOrThrow();

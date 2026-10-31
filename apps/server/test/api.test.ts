@@ -1580,6 +1580,13 @@ describe('Buddy Account API (PGlite)', () => {
     const agoda = (await sql<{ id: string }>`INSERT INTO md_supplier (company_id, code, name) VALUES (${companyId}, 'S-AGODA', 'Agoda Company Pte. Ltd.') RETURNING id`.execute(database.db)).rows[0]!.id;
     const iv = async (price: number) => (await call('POST', '/api/v1/sales-invoices', { doc_type_id: await typeOf('IV'), doc_date: '2027-03-05', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: price }] })).body;
     const iv1 = await iv(1000), iv2 = await iv(2000);   // 1,070 / 2,140
+    // ค้นหาคู่ค้าในหน้ารับ/จ่ายชำระ (open=1): เฉพาะรายที่มีบิลค้าง พร้อมจำนวนบิล (ข้อกำหนดเจ้าของ 31/10/2569)
+    const oc = (await call('GET', '/api/v1/customers?q=C200&open=1')).body.rows;
+    expect([oc.length, oc[0]?.open_count >= 2]).toEqual([1, true]);
+    expect((await call('POST', '/api/v1/customers', { code: 'C-NOBILL', name: 'ลูกค้าไม่มีบิล', tax_id: tid(32) })).status).toBe(200);
+    expect((await call('GET', '/api/v1/customers?q=C-NOBILL&open=1')).body.rows).toEqual([]);
+    expect((await call('GET', '/api/v1/customers?q=C-NOBILL')).body.rows[0]).toMatchObject({ code: 'C-NOBILL', open_count: 0 });
+    expect((await call('GET', '/api/v1/suppliers?q=S-GRAB&open=1')).body.rows).toEqual([]);
     // Grab: ขาย 1,070 · GP 300 + VAT 21 = 321 → รับ 749 · เราหัก ณ ที่จ่าย 3% = 9 (ภ.ง.ด.53)
     const gp = { supplier_id: grab, item_id: fee, description: 'ค่า GP มี.ค.', amount: 300, vat_type: '1', vat_amount: 21, tax_invoice_no: 'GRAB-INV-1', tax_invoice_date: '2027-03-10', wht_form: 'S53', wht_income_type: 'ค่าบริการ', wht_rate: 3, wht_amount: 9 };
     const re1 = { doc_type_id: await typeOf('RE'), doc_date: '2027-03-12', party_id: cus, settlements: [{ invoice_header_id: iv1.id, amount: 1070 }], charges: [gp] };

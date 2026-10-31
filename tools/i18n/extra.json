@@ -347,5 +347,8 @@
  "เลขที่บัญชี (ค่าใช้จ่าย)": "Account no. (expense)",
  "โฆษณา": "Advertising",
  "ไม่พบผู้จำหน่าย": "Supplier not found",
- "ไม่พบผู้ให้บริการ (ผู้จำหน่าย) ที่เลือก": "The selected service provider (supplier) was not found"
+ "ไม่พบผู้ให้บริการ (ผู้จำหน่าย) ที่เลือก": "The selected service provider (supplier) was not found",
+ "{0} {1} ไม่มีบิลค้างชำระ — เลือก{2}รายอื่น": "{0} {1} has no outstanding bills — choose another {2}",
+ "{0} {1} ไม่มีบิลค้างให้วางบิล — เลือก{2}รายอื่น": "{0} {1} has no outstanding bills to bill — choose another {2}",
+ "ค้าง {0} ใบ · {1}": "{0} open · {1}"
 }

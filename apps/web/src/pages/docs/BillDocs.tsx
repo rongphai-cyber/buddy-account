@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BILL_KINDS, d, todayIso, type BillKind } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
+import { openDescribe, type OpenParty } from './SettleDocs';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
@@ -109,6 +110,12 @@ export function BillFormPage({ path }: { path: string }) {
   const ro = roBase || ed.locked;
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const rows = open.data?.rows ?? [];
+  // เลือกคู่ค้าที่ไม่มีบิลให้วาง → เตือนทันทีและไม่ให้ทำต่อ (ข้อกำหนดเจ้าของ 31/10/2569)
+  useEffect(() => {
+    if (id || !h?.party || !open.data || open.data.rows.length || open.isFetching) return;
+    toast(`${h.party.code} ${h.party.name ?? ''} ไม่มีบิลค้างให้วางบิล — เลือก${partyWord(K)}รายอื่น`, 'warn');
+    setH((x) => (x ? { ...x, party: null } : x));
+  }, [open.data, open.isFetching, h?.party?.id, id]);
   const chosen = rows.filter((o) => pick.has(o.header_id));
   const total = chosen.reduce((s, o) => s.plus(d(o.outstanding)), d(0));
   const pickParty = async (p: { id: string; code: string; name: string } | null) => {
@@ -163,7 +170,7 @@ export function BillFormPage({ path }: { path: string }) {
       {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col">
-            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string }> endpoint={partyEndpoint(K)} value={h.party} required disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
+            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<OpenParty> endpoint={partyEndpoint(K)} params={{ open: '1' }} addNew={false} value={h.party} required disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={openDescribe} onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             <Field label="เงื่อนไขการชำระเงิน"><input value={h.payment_terms} maxLength={60} disabled={ro} onChange={(e) => set({ payment_terms: e.target.value })} /></Field>
             <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
           </div>

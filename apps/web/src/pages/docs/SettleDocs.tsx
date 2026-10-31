@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt, SETTLE_KINDS, settlementTotals, todayIso, wht50FormOf, type SettleKind } from '@buddy/core';
@@ -22,6 +22,9 @@ const kindOf = (path: string) => SETTLE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: SettleKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
 const partyWord = (K: SettleKind) => (K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย');
 const rp = (K: SettleKind) => (K.direction === 'R' ? 'รับ' : 'จ่าย');
+/** รายชื่อคู่ค้าในหน้าตัดชำระ: เฉพาะรายที่มีบิลค้าง พร้อมจำนวนบิลและยอดค้าง (ข้อกำหนดเจ้าของ 31/10/2569) */
+export type OpenParty = { id: string; code: string; name: string; tax_id?: string | null; open_count?: number; balance?: string };
+export const openDescribe = (r: OpenParty) => { const bal = fmt(r.balance ?? 0); return `ค้าง ${r.open_count ?? 0} ใบ · ${bal}`; };
 const CLASS_TH: Record<string, string> = { IV: 'บิลขาย', DR: 'เพิ่มหนี้', CN: 'ลดหนี้', RR: 'บิลซื้อ', CP: 'เพิ่มหนี้', DN: 'ลดหนี้' };
 
 /* ---------------------------------------------------------------- รายการใบเสร็จ/ใบสำคัญจ่าย */
@@ -138,6 +141,12 @@ export function SettleFormPage({ path }: { path: string }) {
   const readOnly = roBase || ed.locked;
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const rows = open.data?.rows ?? [];
+  // เลือกคู่ค้าที่ไม่มีบิลค้าง (เช่น พิมพ์รหัสตรง) → เตือนทันทีและไม่ให้ทำต่อ
+  useEffect(() => {
+    if (id || !h?.party || !open.data || open.data.rows.length || open.isFetching) return;
+    toast(`${h.party.code} ${h.party.name ?? ''} ไม่มีบิลค้างชำระ — เลือก${partyWord(K)}รายอื่น`, 'warn');
+    setH((x) => (x ? { ...x, party: null } : x));
+  }, [open.data, open.isFetching, h?.party?.id, id]);
   const chosen = rows.filter((o) => pick[o.header_id] !== undefined);
   const whtTotal = whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0));
   const whtAmount = K.cls === 'PS' && whts.length ? whtTotal.toFixed(2) : h?.wht || '0';
@@ -233,7 +242,7 @@ export function SettleFormPage({ path }: { path: string }) {
       {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col">
-            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
+            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<OpenParty> endpoint={partyEndpoint(K)} params={{ open: '1' }} addNew={false} value={h.party} required disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={openDescribe}
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {!ro && <Field label={K.module === 'AR' ? 'อ้างใบวางบิล' : 'อ้างใบรับวางบิล'} hint="เลือกแล้วติ๊กบิลทุกใบในใบวางบิลให้ (ยอดค้างเต็ม) — แก้ยอดได้"><select value={billRef} disabled={!h.party} onChange={(e) => {
               const b = bills.data?.rows.find((x) => x.id === e.target.value); setBillRef(e.target.value);

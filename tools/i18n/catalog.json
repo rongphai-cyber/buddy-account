@@ -9472,13 +9472,6 @@
 ]
 },
 {
-"th": "(K.direction === 'R' ? 'รับ' : 'จ่าย'); const CLASS_TH: Record",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx"
-]
-},
-{
 "th": "(K.module === 'AR' ? 'รับ' : 'จ่าย'); const CLASS_TH: Record",
 "n": 1,
 "files": [
@@ -11765,6 +11758,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/trade-import.ts"
+]
+},
+{
+"th": "{0} {1} ไม่มีบิลค้างชำระ — เลือก{2}รายอื่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "{0} {1} ไม่มีบิลค้างให้วางบิล — เลือก{2}รายอื่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx"
 ]
 },
 {
@@ -15482,6 +15489,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "ค้าง {0} ใบ · {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
