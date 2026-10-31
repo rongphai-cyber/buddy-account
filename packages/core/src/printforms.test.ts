@@ -21,6 +21,11 @@ describe('แบบฟอร์มพิมพ์เอกสาร (S-RD-01/02)
     expect(l.columns.find((c) => c.key === 'qty')?.show).toBe(false);
     expect([l.font_pt, l.min_rows, l.head_fields, l.signatures]).toEqual([10, 0, ['due_date'], ['ก', 'ข']]);
     expect(defaultLayout('HS', 'half').columns.find((c) => c.key === 'disc')?.show).toBe(false);
+    // ใบเสร็จ (ข้อกำหนดเจ้าของ 31/10/2569): เลือกแสดงเลขที่บิล/รายการสินค้า · ต้นแบบที่ 5 = รายการสินค้าของบิล
+    expect(normalizeLayout('RE', 'grid', { settle_detail: 'items' }).settle_detail).toBe('items');
+    expect(normalizeLayout('RE', 'grid', { settle_detail: 'bogus' }).settle_detail).toBe('auto');
+    expect(printMenu('RE', []).map((f) => `${f.slot}:${f.layout.settle_detail}`)).toEqual(['1:auto', '2:auto', '3:auto', '4:auto', '5:items']);
+    expect(printMenu('IV', []).length).toBe(4);
   });
   it('กฎรับรอง/พิมพ์ซ้ำ', () => {
     const r = { approveLevel: 5, method: '2', reprintLevel: 7 };

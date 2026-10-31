@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { DOC_CLASSES, normalizeLayout, PRINT_BASES, PRINT_LOGO_POS, PRINT_HEAD_FIELDS, printFamily, type PrintBase, type PrintFormEntry, type PrintLayout } from '@buddy/core';
+import { DOC_CLASSES, normalizeLayout, PRINT_BASES, PRINT_LOGO_POS, PRINT_HEAD_FIELDS, printFamily, SETTLE_DETAILS, type PrintBase, type PrintFormEntry, type PrintLayout } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
 import { Confirm, ErrorBox, Field, PageHead, toast, useHotkeys, useYearSystem } from '../../ui';
@@ -96,6 +96,8 @@ export function PrintFormsPage() {
             <Field label="บรรทัดขั้นต่ำในตาราง" hint="เติมบรรทัดว่างให้สูงเท่ากันทุกใบ"><input type="number" min={0} max={40} value={L.min_rows} onChange={(e) => set({ min_rows: Number(e.target.value) || 0 })} /></Field>
             <Field label="โลโก้บริษัท" hint={images.logo ? undefined : 'ยังไม่มีโลโก้ — อัปโหลดด้านบน'}><select value={L.logo} onChange={(e) => set({ logo: e.target.value as PrintLayout['logo'] })}>{PRINT_LOGO_POS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></Field>
             <Field label="ความสูงโลโก้ (มม.)"><input type="number" min={6} max={40} value={L.logo_mm} disabled={L.logo === 'none'} onChange={(e) => set({ logo_mm: Number(e.target.value) || 18 })} /></Field>
+            {fam === 'settle' && <Field label="รายการในใบเสร็จ" hint="ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด) ควรแสดงรายการสินค้า/บริการ"><select value={L.settle_detail} onChange={(e) => set({ settle_detail: e.target.value as PrintLayout['settle_detail'] })} aria-label="รายการในใบเสร็จ">
+              {SETTLE_DETAILS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}</select></Field>}
             <Field label="แสดงในเมนูพิมพ์"><select value={status} onChange={(e) => { setStatus(e.target.value as 'A' | 'I'); setDirty(true); }}><option value="A">แสดง</option><option value="I">ซ่อนหมายเลขนี้</option></select></Field>
           </div>
           <h3 className="small">ส่วนที่พิมพ์</h3>

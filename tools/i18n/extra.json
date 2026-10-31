@@ -368,5 +368,19 @@
  "เลือกบิลค้างชำระ": "Select outstanding bills",
  "เอาบิลนี้ออก": "Remove this bill",
  "ไม่พบบิลค้างตามคำค้น": "No outstanding bills match the search",
- "บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2})\\nตัดชำระได้ แต่รายงานหนี้คงเหลือ ณ วันที่ก่อนบิลเกิดอาจคำนวณผิดพลาด\\n\\nยืนยันบันทึก?": "Bill {0} is dated after the {1} date ({2})\\nIt can be settled, but outstanding-balance reports as of dates before the bill may be wrong\\n\\nSave anyway?"
+ "บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2})\\nตัดชำระได้ แต่รายงานหนี้คงเหลือ ณ วันที่ก่อนบิลเกิดอาจคำนวณผิดพลาด\\n\\nยืนยันบันทึก?": "Bill {0} is dated after the {1} date ({2})\\nIt can be settled, but outstanding-balance reports as of dates before the bill may be wrong\\n\\nSave anyway?",
+ "รายการในใบเสร็จ": "Receipt lines",
+ "(ชำระบางส่วน)": "(partial payment)",
+ "กำลังเตรียมเอกสาร…": "Preparing document…",
+ "ปิดแท็บ": "Close tab",
+ "มาตรฐาน แสดงรายการสินค้า/บริการของบิล (A4)": "Standard, with the bills' goods/services (A4)",
+ "อัตโนมัติ (ใบกำกับภาษีแสดงรายการสินค้า · ใบเสร็จแสดงเลขที่บิล)": "Automatic (tax invoice shows items · receipt shows bill numbers)",
+ "เปิดเอกสารในแท็บใหม่ แล้วพิมพ์/บันทึกเป็น PDF จากหน้านั้น (ใช้เมื่อกดพิมพ์แล้วไม่ออก)": "Open the document in a new tab, then print/save as PDF from there (use when printing does not come out)",
+ "แสดงรายการสินค้า/บริการของทุกบิล": "Show goods/services of every bill",
+ "แสดงเลขที่บิลที่ชำระ": "Show the bill numbers paid",
+ "ใบสำคัญจ่าย": "Payment voucher",
+ "ใบเสร็จรับเงิน": "Receipt",
+ "ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด) ควรแสดงรายการสินค้า/บริการ": "A receipt/tax invoice (cash-basis VAT) should show the goods/services",
+ "↗ เปิดหน้าพิมพ์ในแท็บใหม่": "↗ Open print page in new tab",
+ "🖨 พิมพ์ (Ctrl+P)": "🖨 Print (Ctrl+P)"
 }

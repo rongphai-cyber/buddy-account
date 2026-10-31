@@ -1667,6 +1667,19 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     expect((await call('POST', `/api/v1/ar-receipts/${r3.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect((await call('POST', `/api/v1/sales-invoices/${iv3.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    // พิมพ์ใบเสร็จ (ข้อกำหนดเจ้าของ): บิลภาษีเกณฑ์สิทธิ = "ใบเสร็จรับเงิน" · มีรายการสินค้าของบิลให้แบบฟอร์มเลือกแสดง · ต้นแบบที่ 5 แสดงรายการสินค้า
+    const p1 = (await call('GET', `/api/v1/print/doc/${r1.id}`)).body;
+    expect([p1.data.title, p1.data.receipt_tax, p1.data.detail.map((x: { kind: string; code: string }) => `${x.kind}:${x.code}`)]).toEqual(['ใบเสร็จรับเงิน', false, [`bill:${iv1.doc_no}`, 'item:01-INTL-CL-600']]);
+    expect(p1.forms.find((f: { slot: number }) => f.slot === 5).layout.settle_detail).toBe('items');
+    // บิลภาษีเกณฑ์เงินสด (ค่าบริการ) → "ใบเสร็จรับเงิน/ใบกำกับภาษี" แยกมูลค่าและภาษีที่ถึงกำหนด
+    const ivS = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: await typeOf('IV'), doc_date: '2027-03-05', party_id: cus, price_type: '2', vat_rate: 7, vat_basis: '2', lines: [{ item_id: cpu, qty: 1, unit_price: 1000 }] })).body;
+    const rS = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2027-03-20', party_id: cus, settlements: [{ invoice_header_id: ivS.id, amount: 1070 }] })).body;
+    const pS = (await call('GET', `/api/v1/print/doc/${rS.id}`)).body.data;
+    expect([pS.title, pS.title_en, pS.receipt_tax]).toEqual(['ใบเสร็จรับเงิน/ใบกำกับภาษี', 'RECEIPT / TAX INVOICE', true]);
+    expect(pS.totals.filter((t: { label: string }) => /มูลค่าสินค้า|ภาษีมูลค่าเพิ่ม/.test(t.label)).map((t: { label: string; value: string }) => `${t.label}:${t.value}`)).toEqual(['มูลค่าสินค้า/บริการ:1000.00', 'ภาษีมูลค่าเพิ่ม:70.00']);
+    expect((await call('GET', `/api/v1/print/doc/${(await call('GET', '/api/v1/ap-payments?limit=1')).body.rows[0].id}`)).body.data.title).toBe('ใบสำคัญจ่าย');
+    expect((await call('POST', `/api/v1/ar-receipts/${rS.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/sales-invoices/${ivS.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     // ยกเลิก: ภาษีซื้อ/ภ.พ.36/ภาษีหัก ณ ที่จ่ายเป็นยกเลิก
     for (const id of [r1.id, r2.id]) expect((await call('POST', `/api/v1/ar-receipts/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect((await vp(r1.id)).map((v) => v.doc_status)).toEqual(['C']);

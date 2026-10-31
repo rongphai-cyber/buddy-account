@@ -84,10 +84,22 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
   };
 
   let lines: Array<Record<string, string>> = [];
+  /** ใบเสร็จ: รายการสินค้า/บริการของทุกบิลที่ชำระ (แบบฟอร์มเลือกแสดงแทนเลขที่บิล) */
+  let detail: Array<Record<string, string>> | undefined;
+  /** ใบเสร็จรับเงิน/ใบกำกับภาษี: ตัดบิลภาษีเกณฑ์เงินสด (ค่าบริการ — ภาษีถึงกำหนดเมื่อรับเงิน) */
+  let vatDue = d(0), paidTotal = d(0);
   if (fam === 'settle') {
-    lines = (await sql<Row>`SELECT i.doc_no, i.doc_date, i.due_date, i.doc_class, i.net_amount, s.amount, CASE WHEN s.line_note_print THEN s.line_note END AS note FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id
-        WHERE s.payment_header_id = ${id} AND s.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows
-      .map((r, i) => ({ no: String(i + 1), code: txt(r.doc_no), ref_date: txt(r.doc_date), due_date: txt(r.due_date), name: DOC_CLASSES[r.doc_class ?? '']?.label ?? '', ref_amount: money(r.net_amount), amount: money(r.amount), ...(r.note ? { note: txt(r.note) } : {}) }));
+    const sr = (await sql<Row>`SELECT i.id, i.doc_no, i.doc_date, i.due_date, i.doc_class, i.net_amount, s.amount, s.vat_amount, s.express_rectype, CASE WHEN s.line_note_print THEN s.line_note END AS note FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id
+        WHERE s.payment_header_id = ${id} AND s.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows;
+    for (const r of sr) { const sg = r.express_rectype === '5' ? -1 : 1; vatDue = vatDue.plus(d(r.vat_amount ?? 0).times(sg)); paidTotal = paidTotal.plus(d(r.amount ?? 0).times(sg)); }
+    const billRow = (r: Row, i: number) => ({ no: String(i + 1), code: txt(r.doc_no), ref_date: txt(r.doc_date), due_date: txt(r.due_date), name: DOC_CLASSES[r.doc_class ?? '']?.label ?? '', ref_amount: money(r.net_amount), amount: money(r.amount) });
+    lines = sr.map((r, i) => ({ ...billRow(r, i), ...(r.note ? { note: txt(r.note) } : {}) }));
+    const items = sr.length ? (await sql<Row>`SELECT l.header_id, it.code AS item_code, l.description, l.qty, u.name_th AS unit, l.unit_price, l.line_amount, CASE WHEN l.line_note_print THEN l.line_note END AS note
+        FROM doc_line l LEFT JOIN md_item it ON it.id = l.item_id LEFT JOIN md_unit u ON u.id = l.unit_id
+       WHERE l.header_id IN (${sql.join(sr.map((r) => r.id))}) AND l.deleted_at IS NULL AND l.line_kind <> 'K' ORDER BY l.line_no`.execute(db)).rows : [];
+    detail = sr.flatMap((r, i) => [{ ...billRow(r, i), kind: 'bill', name: `${DOC_CLASSES[r.doc_class ?? '']?.label ?? ''}${d(r.amount ?? 0).lt(d(r.net_amount ?? 0)) ? ' (ชำระบางส่วน)' : ''}` },
+      ...items.filter((l) => l.header_id === r.id).map((l) => ({ kind: 'item', no: '', code: txt(l.item_code), ref_date: '', due_date: '', amount: '', ref_amount: money(l.line_amount),
+        name: [txt(l.description), l.qty !== null && !d(l.qty).isZero() ? `${d(l.qty).toString()} ${txt(l.unit)} × ${l.unit_price !== null ? d(l.unit_price).toFixed(2) : ''}`.trim() : ''].filter(Boolean).join('  '), ...(l.note ? { note: txt(l.note) } : {}) }))]);
   } else if (fam === 'bill') {
     lines = (await sql<Row>`SELECT i.doc_no, i.doc_date, i.due_date, i.doc_class, b.amount FROM doc_bill_item b JOIN doc_header i ON i.id = b.invoice_header_id
         WHERE b.bill_header_id = ${id} AND b.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows
@@ -141,6 +153,7 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     if (nz(h.cash_discount_amount)) totals.push({ label: 'ส่วนลดเงินสด', value: money(h.cash_discount_amount) });
     if (nz(h.interest_amount)) totals.push({ label: 'ดอกเบี้ย', value: money(h.interest_amount) });
     if (nz(h.fx_amount)) totals.push({ label: d(h.fx_amount).gt(0) ? 'กำไรจากอัตราแลกเปลี่ยน' : 'ขาดทุนจากอัตราแลกเปลี่ยน', value: money(d(h.fx_amount).abs()) });
+    if (!vatDue.isZero()) totals.push({ label: 'มูลค่าสินค้า/บริการ', value: paidTotal.minus(vatDue).toFixed(2) }, { label: 'ภาษีมูลค่าเพิ่ม', value: vatDue.toFixed(2) });
     if (nz(h.wht_amount)) totals.push({ label: 'ภาษีหัก ณ ที่จ่าย', value: money(h.wht_amount) });
     // รายการที่แพลตฟอร์มหักก่อนโอน (ค่าบริการ + VAT ในประเทศ)
     const fee = d((await sql<{ v: string }>`SELECT coalesce(sum(amount + CASE WHEN vat_type = '1' THEN vat_amount ELSE 0 END), 0) AS v FROM doc_charge WHERE header_id = ${id} AND company_id = ${a.companyId} AND deleted_at IS NULL`.execute(db)).rows[0]!.v);
@@ -154,7 +167,11 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     totals.push({ label: 'รวมทั้งสิ้น', value: money(nz(h.net_amount) ? h.net_amount : h.amount) });
   }
   const net = totals.at(-1)?.value ?? '0';
-  return { kind, scope: H.scope, family: fam, title: txt(h.type_name) || DOC_CLASSES[H.scope]?.label || 'เอกสาร', title_en: txt(h.type_name_en), doc_no: txt(h.doc_no), doc_date: txt(h.doc_date),
+  // ใบเสร็จ 2 แบบ (ข้อกำหนดเจ้าของ 31/10/2569): ใบเสร็จรับเงิน (ใบกำกับภาษีออกตอนขายแล้ว) · ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด ถึงกำหนดเมื่อรับเงิน)
+  const receiptTax = H.scope === 'RE' && !vatDue.isZero();
+  const title = H.scope === 'RE' ? (receiptTax ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : H.scope === 'PS' ? 'ใบสำคัญจ่าย' : txt(h.type_name) || DOC_CLASSES[H.scope]?.label || 'เอกสาร';
+  const titleEn = H.scope === 'RE' ? (receiptTax ? 'RECEIPT / TAX INVOICE' : 'RECEIPT') : H.scope === 'PS' ? 'PAYMENT VOUCHER' : txt(h.type_name_en);
+  return { kind, scope: H.scope, family: fam, title, title_en: titleEn, doc_no: txt(h.doc_no), doc_date: txt(h.doc_date), receipt_tax: receiptTax, ...(detail ? { detail } : {}),
     cancelled: h.doc_status === 'C', company, party: partyOut, fields, lines, totals, amount_text: fam === 'stock' ? '' : bahtText(net), payments, notes, journal: jl,
     print_count: H.state.printCount, approved: H.state.approved };
 }

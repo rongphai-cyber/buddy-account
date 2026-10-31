@@ -1766,6 +1766,20 @@
 ]
 },
 {
+"th": "ภาษีมูลค่าเพิ่ม",
+"n": 10,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?",
 "n": 10,
 "files": [
@@ -1908,20 +1922,6 @@
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/server/src/import/express/migrate.ts",
 "apps/server/src/modules/fa.ts"
-]
-},
-{
-"th": "ภาษีมูลค่าเพิ่ม",
-"n": 9,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -3845,6 +3845,15 @@
 ]
 },
 {
+"th": "มูลค่าสินค้า/บริการ",
+"n": 4,
+"files": [
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/reports/tax.ts"
+]
+},
+{
 "th": "ย่อย",
 "n": 4,
 "files": [
@@ -4754,15 +4763,6 @@
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts"
-]
-},
-{
-"th": "มูลค่าสินค้า/บริการ",
-"n": 3,
-"files": [
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/print.ts",
 "apps/server/src/modules/reports/tax.ts"
 ]
 },
@@ -7790,6 +7790,13 @@
 ]
 },
 {
+"th": "รายการในใบเสร็จ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "รายการใหม่",
 "n": 2,
 "files": [
@@ -9214,6 +9221,14 @@
 ]
 },
 {
+"th": "ใบเสร็จรับเงิน/ใบกำกับภาษี",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/etax.ts"
+]
+},
+{
 "th": "ใส่กฎการลงบัญชีแล้ว",
 "n": 2,
 "files": [
@@ -9596,6 +9611,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/ReportCenter.tsx"
+]
+},
+{
+"th": "(ชำระบางส่วน)",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -13292,6 +13314,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
+]
+},
+{
+"th": "กำลังเตรียมเอกสาร…",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {
@@ -21926,6 +21955,13 @@
 ]
 },
 {
+"th": "ปิดแท็บ",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
+]
+},
+{
 "th": "ปิดแล้ว",
 "n": 1,
 "files": [
@@ -24216,6 +24252,13 @@
 },
 {
 "th": "มาตรฐาน มีเส้นตาราง (A4)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "มาตรฐาน แสดงรายการสินค้า/บริการของบิล (A4)",
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
@@ -32489,6 +32532,13 @@
 ]
 },
 {
+"th": "อัตโนมัติ (ใบกำกับภาษีแสดงรายการสินค้า · ใบเสร็จแสดงเลขที่บิล)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "อัปโหลด {0}.DBF ไม่สำเร็จ",
 "n": 1,
 "files": [
@@ -34474,6 +34524,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/BankDocs.tsx"
+]
+},
+{
+"th": "เปิดเอกสารในแท็บใหม่ แล้วพิมพ์/บันทึกเป็น PDF จากหน้านั้น (ใช้เมื่อกดพิมพ์แล้วไม่ออก)",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {
@@ -37809,6 +37866,13 @@
 ]
 },
 {
+"th": "แสดงรายการสินค้า/บริการของทุกบิล",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "แสดงหน่วยใหญ่/หน่วยย่อย ในรายงานสินค้าคงเหลือ",
 "n": 1,
 "files": [
@@ -37827,6 +37891,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "แสดงเลขที่บิลที่ชำระ",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -38642,6 +38713,13 @@
 ]
 },
 {
+"th": "ใบสำคัญจ่าย",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "ใบสำคัญจ่ายเงินสดย่อย",
 "n": 1,
 "files": [
@@ -38782,10 +38860,17 @@
 ]
 },
 {
-"th": "ใบเสร็จรับเงิน/ใบกำกับภาษี",
+"th": "ใบเสร็จรับเงิน",
 "n": 1,
 "files": [
-"packages/core/src/etax.ts"
+"apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด) ควรแสดงรายการสินค้า/บริการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -40441,6 +40526,13 @@
 ]
 },
 {
+"th": "↗ เปิดหน้าพิมพ์ในแท็บใหม่",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
+]
+},
+{
 "th": "↺ ใช้ยอดคงเหลือในเช็คเดิม ({0})",
 "n": 1,
 "files": [
@@ -40781,6 +40873,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "🖨 พิมพ์ (Ctrl+P)",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {

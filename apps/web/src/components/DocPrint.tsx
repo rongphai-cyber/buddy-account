@@ -17,6 +17,8 @@ export interface PrintData {
   fields: Record<string, string>; lines: Array<Record<string, string>>; totals: Array<{ label: string; value: string; value2?: string }>;
   amount_text: string; payments: Array<{ method: string; ref: string; date: string; amount: string }>; notes: string[];
   journal: Array<Record<string, string>>; print_count: number; approved: boolean;
+  /** ใบเสร็จ: ตัดบิลภาษีเกณฑ์เงินสด = ใบเสร็จรับเงิน/ใบกำกับภาษี · detail = บิลพร้อมรายการสินค้า/บริการ (kind bill/item) */
+  receipt_tax?: boolean; detail?: Array<Record<string, string>>;
 }
 type PrintResp = { data: PrintData; forms: PrintFormEntry[]; rule: { approveLevel: number; method: string | null; reprintLevel: number }; block: string | null; images?: CompanyImages };
 
@@ -28,14 +30,19 @@ const cellText = (key: string, v: string | undefined, ys: YearSystem) => (!v ? '
 /** แผ่นเอกสารตามแบบฟอร์ม — ใช้ทั้งดูทางจอภาพและพิมพ์ (หนึ่งแผ่นต่อสำเนา) */
 export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: PrintFormEntry; ys: YearSystem; images?: CompanyImages | null }) {
   const L = form.layout;
-  const cols = L.columns.filter((c) => c.show);
+  // ใบเสร็จ: แสดงรายการสินค้า/บริการของบิล (ฟอร์มเลือก หรืออัตโนมัติเมื่อเป็นใบกำกับภาษี) — คอลัมน์รายการต้องแสดง
+  const items = data.family === 'settle' && !!data.detail && (L.settle_detail === 'items' || (L.settle_detail !== 'bills' && !!data.receipt_tax));
+  const lines = items ? data.detail! : data.lines;
+  const cols = L.columns.filter((c) => c.show || (items && c.key === 'name'));
   const totalW = cols.reduce((s, c) => s + c.width, 0) || 1;
   const copies = L.copies.length ? L.copies : [''];
-  const fill = Math.max(0, L.min_rows - data.lines.length - data.lines.filter((l) => l.note).length);
+  const fill = Math.max(0, L.min_rows - lines.length - lines.filter((l) => l.note).length);
   // หมายเหตุรายการเริ่มใต้คอลัมน์รายละเอียด (ไม่มี = ใต้คอลัมน์ที่ 2)
   const noteAt = Math.max(0, cols.findIndex((c) => c.key === 'name')) || Math.min(1, cols.length - 1);
   const heads = L.head_fields.map((k) => ({ k, label: PRINT_HEAD_FIELDS.find((f) => f.key === k)?.label ?? k, v: data.fields[k] ?? '' })).filter((x) => x.v);
   const isJ = data.family === 'journal';
+  // ใบเสร็จ/ใบสำคัญจ่าย: ชื่ออังกฤษตามชนิด (RECEIPT · RECEIPT / TAX INVOICE · PAYMENT VOUCHER) เมื่อแบบฟอร์มไม่ได้ตั้งเอง
+  const titleEn = data.family === 'settle' && (!L.title || L.title === data.title) ? data.title_en : '';
   // โลโก้/ลายเซ็นของบริษัท (ข้อกำหนดเจ้าของ) — แบบฟอร์มเลือกตำแหน่งโลโก้ และรูปลายเซ็นของแต่ละช่องลงชื่อ
   const logo = L.logo !== 'none' ? images?.logo ?? null : null;
   const signOf = (i: number) => { const id = L.signature_images[i]; return id ? images?.signs[id]?.data ?? null : null; };
@@ -49,7 +56,7 @@ export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: 
             {L.show_company && <div className="ds-co"><b>{data.company.name}</b>{data.company.name_en && <div>{data.company.name_en}</div>}
               <div>{data.company.address}</div>
               <div>{[data.company.phone && `โทร ${data.company.phone}`, data.company.tax_id && `เลขประจำตัวผู้เสียภาษี ${data.company.tax_id}`, data.company.branch].filter(Boolean).join('  ')}</div></div>}
-            <div className="ds-title"><h1>{L.title || data.title}</h1>{L.title_en && <div className="ds-en">{L.title_en}</div>}
+            <div className="ds-title"><h1>{L.title || data.title}</h1>{(L.title_en || titleEn) && <div className="ds-en">{L.title_en || titleEn}</div>}
               {cp && <div className="ds-copy">{cp}</div>}{data.cancelled && <div className="ds-void">ยกเลิก</div>}</div>
             {logo && L.logo === 'right' && <img className="ds-logo" src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} />}
           </header>
@@ -70,7 +77,7 @@ export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: 
             <colgroup>{cols.map((c) => <col key={c.key} style={{ width: `${(c.width / totalW) * 100}%` }} />)}</colgroup>
             <thead><tr>{cols.map((c) => <th key={c.key} className={c.align}>{c.label}</th>)}</tr></thead>
             <tbody>
-              {data.lines.map((l, i) => <Fragment key={i}><tr>{cols.map((c) => <td key={c.key} className={c.align}>{cellText(c.key, l[c.key], ys)}</td>)}</tr>
+              {lines.map((l, i) => <Fragment key={i}><tr className={l.kind === 'bill' && items ? 'ds-bill' : l.kind === 'item' ? 'ds-item' : undefined}>{cols.map((c) => <td key={c.key} className={c.align}>{cellText(c.key, l[c.key], ys)}</td>)}</tr>
                 {l.note && <tr className="ds-line-note">{cols.slice(0, noteAt).map((c) => <td key={c.key} />)}<td colSpan={cols.length - noteAt}>{l.note}</td></tr>}</Fragment>)}
               {[...Array(fill).keys()].map((i) => <tr key={`f${i}`} className="ds-fill">{cols.map((c) => <td key={c.key}>&nbsp;</td>)}</tr>)}
             </tbody>
@@ -121,8 +128,11 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
 
   useEffect(() => {
     if (!printing) return;
-    const t = setTimeout(() => { window.print(); setPrinting(null); }, 80);
-    return () => clearTimeout(t);
+    // เก็บแผ่นเอกสารไว้จนเบราว์เซอร์แจ้งว่าพิมพ์เสร็จ (afterprint) — บางเบราว์เซอร์/แอป window.print ไม่รอหน้าต่างพิมพ์ ถ้าลบทันทีจะพิมพ์ได้หน้าว่าง
+    const done = () => setPrinting(null);
+    window.addEventListener('afterprint', done, { once: true });
+    const t = setTimeout(() => { try { window.focus(); window.print(); } catch { done(); } }, 150);
+    return () => { clearTimeout(t); window.removeEventListener('afterprint', done); };
   }, [printing]);
   useEffect(() => { if (!open) return; const close = () => setOpen(false); window.addEventListener('click', close); return () => window.removeEventListener('click', close); }, [open]);
 
@@ -189,7 +199,8 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
       <CloseScreen dirty={dirty} />
       {r && r.data.print_count > 0 && <Pill tone="n">พิมพ์แล้ว {r.data.print_count} ครั้ง</Pill>}
       {preview && r && <Modal title={`ดูทางจอภาพ — ${preview.slot}. ${preview.name}`} size="wide" onClose={() => setPreview(null)}
-        footer={<><button onClick={() => setPreview(null)}>ปิด</button>{!screenOnly && <button className="primary" disabled={!can('print')} onClick={() => doPrint(preview.slot)}>🖨 พิมพ์</button>}</>}>
+        footer={<><button onClick={() => setPreview(null)}>ปิด</button>{!screenOnly && <button disabled={!can('print') || !id} title="เปิดเอกสารในแท็บใหม่ แล้วพิมพ์/บันทึกเป็น PDF จากหน้านั้น (ใช้เมื่อกดพิมพ์แล้วไม่ออก)" onClick={() => id && window.open(`/print/${kind}/${id}?slot=${preview.slot}`, '_blank')}>↗ เปิดหน้าพิมพ์ในแท็บใหม่</button>}
+          {!screenOnly && <button className="primary" disabled={!can('print')} onClick={() => doPrint(preview.slot)}>🖨 พิมพ์</button>}</>}>
         {r.block && <p className="err-msg">{r.block}</p>}
         <div className="ds-preview"><PrintSheet data={r.data} form={preview} ys={ys} images={r.images} /></div>
       </Modal>}
@@ -198,6 +209,31 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
       {notes && id && <DocNotesDialog id={id} canEdit={can('edit')} onClose={() => setNotes(false)} />}
       {range && <ApproveRange kind={kind} scope={r?.data.scope} typeId={typeId ?? null} onClose={() => setRange(false)} onDone={() => qc.invalidateQueries({ queryKey: ['print'] })} />}
     </>
+  );
+}
+
+/**
+ * หน้าพิมพ์แยก /print/:kind/:id?slot=n — เอกสารอย่างเดียวเต็มหน้า แล้วเปิดหน้าต่างพิมพ์ให้
+ * ใช้เมื่อกดพิมพ์จากหน้าจอเอกสารแล้วไม่ออก (เช่น เปิดโปรแกรมในหน้าต่างที่พิมพ์ไม่ได้) — พิมพ์ซ้ำ/บันทึก PDF ได้ด้วย Ctrl+P
+ */
+export function PrintPage({ kind, id, slot }: { kind: 'doc' | 'journal'; id: string; slot: number }) {
+  const ys = useYearSystem();
+  const q = useQuery({ queryKey: ['print', kind, id], queryFn: () => api.get<PrintResp>(`/api/v1/print/${kind}/${id}`), staleTime: 0 });
+  const f = q.data?.forms.find((x) => x.slot === slot) ?? q.data?.forms[0];
+  const [sent, setSent] = useState(false);
+  useEffect(() => {
+    if (!q.data || !f || sent || q.data.block) return;
+    setSent(true);
+    void api.post(`/api/v1/print/${kind}/${id}/printed`, { slot: f.slot }).catch(() => undefined).finally(() => setTimeout(() => window.print(), 300));
+  }, [q.data, f, sent, kind, id]);
+  if (q.error) return <div className="page"><ErrorBox error={q.error} /></div>;
+  if (!q.data || !f) return <div className="page"><p className="muted">กำลังเตรียมเอกสาร…</p></div>;
+  return (
+    <div className="print-page">
+      <div className="print-page-bar no-print"><b>{q.data.data.doc_no}</b> · {f.slot}. {f.name}{q.data.block && <span className="err-msg"> {q.data.block}</span>}
+        <button className="primary" disabled={!!q.data.block} onClick={() => window.print()}>🖨 พิมพ์ (Ctrl+P)</button><button onClick={() => window.close()}>ปิดแท็บ</button></div>
+      <div className="print-page-body"><PrintSheet data={q.data.data} form={f} ys={ys} images={q.data.images} /></div>
+    </div>
   );
 }
 

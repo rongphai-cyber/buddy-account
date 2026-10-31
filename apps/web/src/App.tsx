@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { PrintPage } from './components/DocPrint';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MENU, flattenMenu, formatDate, type MenuItem } from '@buddy/core';
 import { useSession } from './session';
@@ -90,6 +91,9 @@ export function App() {
   // สมัครใช้งานเอง (ข้อกำหนดเจ้าของ): ลิงก์ /signup เปิดได้โดยไม่ต้องเข้าระบบ
   if (!me) return <>{loc.pathname === '/signup' ? <SignupPage onBack={() => nav('/')} /> : <LoginPage />}<Toasts /></>;
   if (me.user.mfa_setup_required) return <><MfaRequiredPage /><Toasts /></>;
+  // หน้าพิมพ์แยก (เปิดจากปุ่ม "เปิดหน้าพิมพ์ในแท็บใหม่"): เอกสารอย่างเดียว ไม่มีเมนู
+  const pm = /^\/print\/(doc|journal)\/([0-9a-f-]{36})$/.exec(loc.pathname);
+  if (pm) return <><PrintPage kind={pm[1] as 'doc' | 'journal'} id={pm[2]!} slot={Number(new URLSearchParams(loc.search).get('slot')) || 1} /><Toasts /></>;
   return <><Shell /><AuxTools /><Toasts /></>;
 }
 

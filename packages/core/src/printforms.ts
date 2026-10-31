@@ -27,7 +27,16 @@ export interface PrintLayout {
   logo_mm: number;
   /** รูปลายเซ็นในช่องลงชื่อแต่ละช่อง (ลำดับเดียวกับ signatures) — รหัสรูปของบริษัท หรือ null = ช่องว่างให้เซ็นมือ */
   signature_images: Array<string | null>;
+  /**
+   * ใบเสร็จ/ใบสำคัญจ่าย (ข้อกำหนดเจ้าของ 31/10/2569): bills = แสดงเลขที่บิลที่ชำระ · items = แสดงรายการสินค้า/บริการของทุกบิล
+   * auto = ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด) แสดงรายการสินค้า ที่เหลือแสดงเลขที่บิล
+   */
+  settle_detail: SettleDetail;
 }
+export type SettleDetail = 'auto' | 'bills' | 'items';
+export const SETTLE_DETAILS: Array<{ key: SettleDetail; label: string }> = [
+  { key: 'auto', label: 'อัตโนมัติ (ใบกำกับภาษีแสดงรายการสินค้า · ใบเสร็จแสดงเลขที่บิล)' }, { key: 'bills', label: 'แสดงเลขที่บิลที่ชำระ' }, { key: 'items', label: 'แสดงรายการสินค้า/บริการของทุกบิล' },
+];
 export type PrintLogoPos = 'none' | 'left' | 'center' | 'right';
 export const PRINT_LOGO_POS: Array<{ key: PrintLogoPos; label: string }> = [
   { key: 'left', label: 'ซ้าย (หน้าชื่อบริษัท)' }, { key: 'center', label: 'กลางหน้า (เหนือชื่อบริษัท)' }, { key: 'right', label: 'ขวา' }, { key: 'none', label: 'ไม่แสดงโลโก้' },
@@ -140,7 +149,7 @@ export function defaultLayout(scope: string, base: PrintBase, title = ''): Print
     show_amount_text: fam !== 'stock' && fam !== 'journal', show_totals: fam !== 'journal', show_payments: fam === 'settle' || fam === 'cash' || scope === 'HS' || scope === 'HP',
     show_notes: true, show_journal: fam === 'journal', signatures: SIGN[fam], footer: '', min_rows: small ? 0 : base === 'cont' ? 12 : 8,
     // แบบไม่มีเส้น (พิมพ์ลงกระดาษที่มีหัวแล้ว) และกระดาษต่อเนื่อง ไม่พิมพ์โลโก้
-    logo: base === 'plain' || base === 'cont' ? 'none' : 'left', logo_mm: base === 'half' ? 12 : 18, signature_images: [],
+    logo: base === 'plain' || base === 'cont' ? 'none' : 'left', logo_mm: base === 'half' ? 12 : 18, signature_images: [], settle_detail: 'auto',
   };
 }
 
@@ -170,6 +179,7 @@ export function normalizeLayout(scope: string, base: PrintBase, raw: unknown): P
     logo: PRINT_LOGO_POS.some((p) => p.key === x.logo) ? (x.logo as PrintLogoPos) : def.logo,
     logo_mm: Number.isFinite(Number(x.logo_mm)) ? Math.min(40, Math.max(6, Number(x.logo_mm))) : def.logo_mm,
     signature_images: (Array.isArray(x.signature_images) ? x.signature_images : []).slice(0, 4).map((v) => (typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v) ? v : null)),
+    settle_detail: SETTLE_DETAILS.some((o) => o.key === x.settle_detail) ? (x.settle_detail as SettleDetail) : def.settle_detail,
   };
 }
 
@@ -177,6 +187,8 @@ export function normalizeLayout(scope: string, base: PrintBase, raw: unknown): P
 export function printMenu(scope: string, userForms: Array<{ slot: number; name: string; base: string; layout: unknown; status?: string }>, title = ''): PrintFormEntry[] {
   const out = new Map<number, PrintFormEntry>();
   for (const b of BUILTIN_SLOTS) out.set(b.slot, { slot: b.slot, base: b.base, name: PRINT_BASES.find((x) => x.key === b.base)!.label, layout: defaultLayout(scope, b.base, title), custom: false });
+  // ใบเสร็จ/ใบสำคัญจ่าย: ต้นแบบที่ 5 แสดงรายการสินค้า/บริการของทุกบิลที่ชำระ (ข้อกำหนดเจ้าของ 31/10/2569)
+  if (printFamily(scope) === 'settle') out.set(5, { slot: 5, base: 'grid', name: 'มาตรฐาน แสดงรายการสินค้า/บริการของบิล (A4)', layout: { ...defaultLayout(scope, 'grid', title), settle_detail: 'items' }, custom: false });
   for (const f of userForms) {
     if (f.status === 'I') { out.delete(f.slot); continue; }
     const base = (PRINT_BASES.some((b) => b.key === f.base) ? f.base : 'grid') as PrintBase;
