@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 113,
+"n": 114,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -107,7 +107,7 @@
 },
 {
 "th": "วันที่",
-"n": 75,
+"n": 76,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/DocTaxTabs.tsx",
@@ -489,8 +489,31 @@
 ]
 },
 {
+"th": "รับ",
+"n": 32,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "เลขที่",
-"n": 31,
+"n": 32,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/JournalPicker.tsx",
@@ -542,17 +565,19 @@
 ]
 },
 {
-"th": "รับ",
-"n": 29,
+"th": "จ่าย",
+"n": 30,
 "files": [
 "apps/web/src/components/DocTaxTabs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
 "apps/web/src/pages/docs/MoneyParts.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/inventory/Stock.tsx",
 "apps/web/src/pages/items/Items.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
@@ -560,7 +585,6 @@
 "apps/server/src/modules/docs/cashdocs.ts",
 "apps/server/src/modules/docs/payments.ts",
 "apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
 "apps/server/src/modules/reports/stock.ts"
 ]
 },
@@ -634,30 +658,6 @@
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "จ่าย",
-"n": 27,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -1011,6 +1011,22 @@
 ]
 },
 {
+"th": "ตกลง",
+"n": 18,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/components/Notes.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/gl/YearEnd.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
 "th": "รหัสสินค้า",
 "n": 18,
 "files": [
@@ -1043,21 +1059,6 @@
 "apps/server/src/modules/reports/stock.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ตกลง",
-"n": 17,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/components/Notes.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/gl/YearEnd.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/settings/Periods.tsx"
 ]
 },
 {
@@ -1411,6 +1412,20 @@
 ]
 },
 {
+"th": "ชนิด",
+"n": 12,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "ชื่อ",
 "n": 12,
 "files": [
@@ -1627,20 +1642,6 @@
 ]
 },
 {
-"th": "ชนิด",
-"n": 11,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/stock.ts"
-]
-},
-{
 "th": "ผู้ติดต่อ",
 "n": 11,
 "files": [
@@ -1849,6 +1850,18 @@
 ]
 },
 {
+"th": "ครบกำหนด",
+"n": 9,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ชื่อสินค้า",
 "n": 9,
 "files": [
@@ -2021,18 +2034,6 @@
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
-"th": "ครบกำหนด",
-"n": 8,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -2660,6 +2661,15 @@
 ]
 },
 {
+"th": "ยอดคงค้าง",
+"n": 6,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/server/src/modules/reports/parties.ts"
+]
+},
+{
 "th": "ระงับ",
 "n": 6,
 "files": [
@@ -3197,15 +3207,6 @@
 "apps/web/src/pages/docs/PettyCash.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "ยอดคงค้าง",
-"n": 5,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/server/src/modules/reports/parties.ts"
 ]
 },
 {
@@ -4788,6 +4789,14 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "ยอดชำระ",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -7441,11 +7450,10 @@
 ]
 },
 {
-"th": "ยอดชำระ",
+"th": "ยอดชำระ {0}",
 "n": 2,
 "files": [
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"packages/core/src/printforms.ts"
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -8834,6 +8842,13 @@
 ]
 },
 {
+"th": "เลขที่บิลผู้จำหน่าย",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
 "th": "เลขที่เช็ค {0} มีในทะเบียนแล้ว",
 "n": 2,
 "files": [
@@ -9145,6 +9160,13 @@
 ]
 },
 {
+"th": "ใบรับวางบิล#",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
 "th": "ใบลดหนี้/รับคืน",
 "n": 2,
 "files": [
@@ -9174,6 +9196,13 @@
 "files": [
 "packages/core/src/doc-calc.ts",
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "ใบวางบิล#",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -10134,6 +10163,13 @@
 "n": 1,
 "files": [
 "apps/web/src/ui.tsx"
+]
+},
+{
+"th": "+ เลือกบิลค้างชำระ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -15310,6 +15346,13 @@
 ]
 },
 {
+"th": "ค้นบิลค้าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
 "th": "ค้นหา (F4)",
 "n": 1,
 "files": [
@@ -15482,6 +15525,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "ค้นเลขที่บิล / ใบวางบิล",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -18107,6 +18157,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/BankRecon.tsx"
+]
+},
+{
+"th": "ติ๊กบิลที่จะชำระ (ค่าเริ่มต้น = ยอดคงค้างเต็ม แก้ยอดได้) แล้วกด ตกลง/F5 · ⚠ = บิลลงวันที่หลังวันที่{0}เงิน",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -21155,7 +21212,28 @@
 ]
 },
 {
+"th": "บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2})\\nตัดชำระได้ แต่รายงานหนี้คงเหลือ ณ วันที่ก่อนบิลเกิดอาจคำนวณผิดพลาด\\n\\nยืนยันบันทึก?",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "บิล {0} ลงวันที่หลังวันที่{1}เงิน — ตัดได้ แต่รายงานหนี้คงเหลืออาจคำนวณผิดพลาด",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
 "th": "บิลค้าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "บิลค้าง {0} ใบ",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
@@ -24865,13 +24943,6 @@
 ]
 },
 {
-"th": "ยอดชำระ {0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx"
-]
-},
-{
 "th": "ยอดชำระจริง",
 "n": 1,
 "files": [
@@ -25961,6 +26032,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/security.ts"
+]
+},
+{
+"th": "ยังไม่ได้เลือกบิล — กด F5 หรือปุ่ม \"เลือกบิลค้างชำระ\" (มีบิลค้าง {0} ใบ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -28621,6 +28699,20 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ลงวันที่หลังวันที่{0}เงิน",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "ลงวันที่หลังวันที่{0}เงิน — รายงานหนี้คงเหลืออาจคำนวณผิดพลาด",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -35295,13 +35387,6 @@
 ]
 },
 {
-"th": "เลขที่บิลผู้จำหน่าย",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx"
-]
-},
-{
 "th": "เลขที่ล็อต",
 "n": 1,
 "files": [
@@ -35743,6 +35828,13 @@
 ]
 },
 {
+"th": "เลือก {0} ใบ · ยอดชำระ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
 "th": "เลือก {0} ใบ — จำนวนเงินรวมทั้งสิ้น",
 "n": 1,
 "files": [
@@ -35771,7 +35863,7 @@
 ]
 },
 {
-"th": "เลือก{0}ก่อน แล้วติ๊กบิลที่จะ{1}ชำระ",
+"th": "เลือก{0}ก่อน แล้วเลือกบิลที่จะ{1}ชำระ (F5)",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
@@ -35929,6 +36021,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/cheques.ts"
+]
+},
+{
+"th": "เลือกบิลค้าง{0}ชำระ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "เลือกบิลค้างชำระ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -36643,6 +36749,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
+"th": "เอาบิลนี้ออก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -38410,13 +38523,6 @@
 ]
 },
 {
-"th": "ใบรับวางบิล#",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx"
-]
-},
-{
 "th": "ใบรับสินค้า#",
 "n": 1,
 "files": [
@@ -38442,13 +38548,6 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
-]
-},
-{
-"th": "ใบวางบิล#",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -39156,6 +39255,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/routes.ts"
+]
+},
+{
+"th": "ไม่พบบิลค้างตามคำค้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -40360,6 +40466,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
+]
+},
+{
+"th": "⚠ บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2}) — ตัดชำระได้ แต่รายงานหนี้คงเหลือ ณ วันที่ก่อนบิลเกิดอาจคำนวณผิดพลาด ตรวจวันที่{3}เงินอีกครั้ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
