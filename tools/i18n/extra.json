@@ -382,5 +382,7 @@
  "ใบเสร็จรับเงิน": "Receipt",
  "ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด) ควรแสดงรายการสินค้า/บริการ": "A receipt/tax invoice (cash-basis VAT) should show the goods/services",
  "↗ เปิดหน้าพิมพ์ในแท็บใหม่": "↗ Open print page in new tab",
- "🖨 พิมพ์ (Ctrl+P)": "🖨 Print (Ctrl+P)"
+ "🖨 พิมพ์ (Ctrl+P)": "🖨 Print (Ctrl+P)",
+ "จ่ายค่าใช้จ่ายจากเงินสดย่อย (DP)": "Petty cash disbursement (DP)",
+ "เบิกชดเชยเงินสดย่อย (VR)": "Petty cash reimbursement (VR)"
 }

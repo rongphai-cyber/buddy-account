@@ -50,6 +50,11 @@ export const MENU: MenuItem[] = [
       m('FI.AP.PS', 'จ่ายชำระหนี้', 'P3', '/fi/ap/payments', ['ch11:S-PU-07', 'ch26:S-AP-13', 'ch11:S-PU-C4', 'ch11:S-PU-C5', 'ch11:S-PU-C6']),
       m('FI.AP.OB', 'บันทึกรายการเจ้าหนี้คงค้าง-ยกมา', 'P3', '/fi/ap/opening', ['ch08:S-OB-03']),
     ]),
+    // เงินสดย่อย (ข้อกำหนดเจ้าของ 31/10/2569: ย้ายจากเมนูบัญชีมาการเงิน) — สิทธิ์กำหนดที่ GL.PC ใช้กับทั้ง DP และ VR
+    g('GL.PC', 'เงินสดย่อย', 'P3', [
+      m('GL.PC.DP', 'จ่ายค่าใช้จ่ายจากเงินสดย่อย (DP)', 'P3', '/fi/petty-cash', ['ch15:S-GL-11', 'ch15:S-GL-12']),
+      m('GL.PC.VR', 'เบิกชดเชยเงินสดย่อย (VR)', 'P3', '/fi/petty-cash/vr', ['ch15:S-GL-13']),
+    ]),
   ]),
   g('FI.BK', 'ธนาคาร', 'P4', [
     m('FI.BK.DQ', 'บันทึกเช็คนำฝาก', 'P4', '/fi/cheques/slips', ['ch13:S-BK-05', 'ch13:S-BK-07']),
@@ -92,7 +97,6 @@ export const MENU: MenuItem[] = [
     m('GL.LY', 'ยอดปีที่แล้ว', 'P1', '/gl/prior-year', ['ch15:S-GL-16']),
     m('GL.BUD', 'งบประมาณ', 'P1', '/gl/budget', ['ch15:S-GL-17']),
     m('GL.INV', 'บัญชีสินค้าคงเหลือ', 'P4', '/gl/inventory', ['ch15:S-GL-14', 'ch15:S-GL-15']),
-    m('GL.PC', 'เงินสดย่อย', 'P3', '/gl/petty-cash', ['ch15:S-GL-11', 'ch15:S-GL-12', 'ch15:S-GL-13']),
     m('GL.TPL', 'ต้นแบบวิธีการบันทึก', 'P1', '/gl/templates', ['ch15:S-GL-01']),
     m('GL.BOOK', 'สร้างสมุดรายวัน', 'P1', '/gl/books', ['ch15:S-GL-09']),
     m('GL.FS', 'สร้างงบการเงิน', 'P1', '/fs/layouts', ['ch24:S-FS-01', 'ch24:S-FS-03']),

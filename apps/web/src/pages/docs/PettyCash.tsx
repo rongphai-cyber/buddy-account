@@ -22,7 +22,7 @@ import { bookStyle, typeColorIn } from '../../bookColor';
  * เงินสดย่อย (คู่มือบทที่ 15 S-GL-11/12/13): DP บันทึกการจ่าย (ยังไม่ลงบัญชี) → VR เบิกชดเชย (รวม DP แล้วลงบัญชี)
  * ตั้งวงเงิน = DP ที่บรรทัดเป็นบัญชีเงินสดย่อย แล้วเบิกด้วย VR
  */
-const BASE = '/gl/petty-cash';
+const BASE = '/fi/petty-cash';
 const KINDS = { dp: { api: 'petty-payments', label: 'บันทึกการจ่ายเงินสดย่อย', short: 'จ่าย (DP)', cls: 'DP' }, vr: { api: 'petty-reimbursements', label: 'เบิกชดเชยเงินสดย่อย', short: 'เบิกชดเชย (VR)', cls: 'VR' } } as const;
 type Kind = keyof typeof KINDS;
 

@@ -159,7 +159,7 @@ export function glReports() {
     for (const h of hs) {
       if (h.doc_class !== k) { k = h.doc_class; rows.push({ t: 'group', c: { no: k, desc: k === 'DP' ? 'ใบสำคัญจ่ายเงินสดย่อย' : 'เบิกชดเชยเงินสดย่อย' } }); }
       if (h.doc_class === 'DP') { dp = dp.plus(d(h.net_amount)); if (!h.vr_no) open = open.plus(d(h.net_amount)); } else vr = vr.plus(d(h.net_amount));
-      rows.push({ c: { no: h.doc_no, date: h.doc_date, desc: h.remark, vr: h.doc_class === 'DP' ? h.vr_no ?? 'ยังไม่เบิก' : '', amount: h.net_amount }, link: `/gl/petty-cash/${h.doc_class.toLowerCase()}/${h.id}` });
+      rows.push({ c: { no: h.doc_no, date: h.doc_date, desc: h.remark, vr: h.doc_class === 'DP' ? h.vr_no ?? 'ยังไม่เบิก' : '', amount: h.net_amount }, link: `/fi/petty-cash/${h.doc_class.toLowerCase()}/${h.id}` });
       for (const l of ls.filter((x) => x.header_id === h.id)) rows.push({ t: 'detail', c: { desc: `${l.account_no ?? ''} ${l.description ?? ''}`, amount: l.net_amount } });
     }
     rows.push({ t: 'total', c: { desc: `จ่าย ${money(dp)} · เบิกชดเชย ${money(vr)} · ยังไม่เบิก ${money(open)}` } });

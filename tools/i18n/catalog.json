@@ -16243,6 +16243,13 @@
 ]
 },
 {
+"th": "จ่ายค่าใช้จ่ายจากเงินสดย่อย (DP)",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "จ่ายชำระ",
 "n": 1,
 "files": [
@@ -34279,6 +34286,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/pettycash.ts"
+]
+},
+{
+"th": "เบิกชดเชยเงินสดย่อย (VR)",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {

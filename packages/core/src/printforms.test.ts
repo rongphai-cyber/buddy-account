@@ -7,7 +7,7 @@ describe('แบบฟอร์มพิมพ์เอกสาร (S-RD-01/02)
       .toEqual(['trade', 'settle', 'bill', 'cash', 'stock', 'bank', 'petty', 'journal']);
     expect([docMenuOf('IV'), docMenuOf('PS'), docMenuOf('RL'), docMenuOf('BT'), docMenuOf('VR'), docMenuOf('IV', true), docMenuOf('GL')]).toEqual(['SA.IV', 'FI.AP.PS', 'IC.TRN', 'FI.BK.TX', 'GL.PC', 'FI.AR.OB', 'GL.JNL']);
     expect([docPath('IV', 'x'), docPath('IV', 'x', true), docPath('RR', 'x', true), docPath('PS', 'x'), docPath('BT', 'x'), docPath('RL', 'x'), docPath('DP', 'x'), docPath('VR', 'x'), docPath('BQ', 'x'), docPath('OS', 'x', true), docPath('GL', 'x'), docPath('ZZ', 'x'), docPath(null, 'x')])
-      .toEqual(['/sa/invoices/x', '/fi/ar/opening/x', '/fi/ap/opening/x', '/fi/ap/payments/x', '/fi/bank/transfers/x', '/ic/transfers/x', '/gl/petty-cash/dp/x', '/gl/petty-cash/vr/x', '/fi/cheques/slips/x', '/ic/opening/x', '/gl/journals/x', null, null]);
+      .toEqual(['/sa/invoices/x', '/fi/ar/opening/x', '/fi/ap/opening/x', '/fi/ap/payments/x', '/fi/bank/transfers/x', '/ic/transfers/x', '/fi/petty-cash/dp/x', '/fi/petty-cash/vr/x', '/fi/cheques/slips/x', '/ic/opening/x', '/gl/journals/x', null, null]);
   });
   it('ต้นแบบ 1–4 + ฟอร์มของบริษัททับหมายเลขเดิม / ปิดหมายเลขได้', () => {
     const m = printMenu('IV', [{ slot: 1, name: 'ใบกำกับภาษี บริษัท', base: 'plain', layout: { title: 'ใบกำกับภาษี', copies: ['ต้นฉบับ'] } }, { slot: 4, name: 'x', base: 'grid', layout: {}, status: 'I' }, { slot: 7, name: 'ใบส่งของ', base: 'half', layout: {} }], 'ขายเงินเชื่อ');

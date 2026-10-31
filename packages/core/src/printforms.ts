@@ -88,7 +88,7 @@ export function docPath(docClass: string | null | undefined, id: string, isOpeni
   if (docClass === 'GL') return `/gl/journals/${id}`;
   if (docClass === 'OS') return `/ic/opening/${id}`;
   if (isOpening) return docClass === 'IV' ? `/fi/ar/opening/${id}` : docClass === 'RR' ? `/fi/ap/opening/${id}` : null;
-  if (docClass === 'DP' || docClass === 'VR') return `/gl/petty-cash/${docClass.toLowerCase()}/${id}`;
+  if (docClass === 'DP' || docClass === 'VR') return `/fi/petty-cash/${docClass.toLowerCase()}/${id}`;
   if (docClass === 'BQ' || docClass === 'SQ') return `/fi/cheques/slips/${id}`;
   const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, ...BILL_KINDS, ...BANK_KINDS, ...STOCK_KINDS].find((x) => x.cls === docClass);
   return k ? `${k.route}/${id}` : null;

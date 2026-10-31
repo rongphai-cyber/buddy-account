@@ -106,6 +106,11 @@ function Shell() {
   const [workDateOpen, setWorkDateOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   useEffect(() => setMobileMenu(false), [loc.pathname]);
+  // เปลี่ยนหน้า (ลิงก์เอกสาร ที่อยู่เดิมที่ย้ายแล้ว) → กางกลุ่มเมนูของหน้านั้น
+  useEffect(() => {
+    const g = MENU.find((x) => flattenMenu(x.children).some((i) => i.route && loc.pathname.startsWith(i.route)));
+    if (g) setOpen(g.code);
+  }, [loc.pathname]);
   // เมนูแบบเลื่อนออก (มือถือ/แท็บเล็ต) วางใต้แถบบนพอดี ไม่ว่าแถบบนจะสูงกี่แถว
   useEffect(() => {
     const bar = document.querySelector('.topbar');
@@ -246,10 +251,12 @@ function Shell() {
           <Route path="/fi/ar/opening/:id" element={<OpeningFormPage key="ar-f" kind="ar" />} />
           <Route path="/fi/ap/opening" element={<OpeningListPage key="ap" kind="ap" />} />
           <Route path="/fi/ap/opening/:id" element={<OpeningFormPage key="ap-f" kind="ap" />} />
-          <Route path="/gl/petty-cash" element={<PettyListPage key="dp" kind="dp" />} />
-          <Route path="/gl/petty-cash/vr" element={<PettyListPage key="vr" kind="vr" />} />
-          <Route path="/gl/petty-cash/dp/:id" element={<PettyFormPage key="dp-f" kind="dp" />} />
-          <Route path="/gl/petty-cash/vr/:id" element={<PettyFormPage key="vr-f" kind="vr" />} />
+          <Route path="/fi/petty-cash" element={<PettyListPage key="dp" kind="dp" />} />
+          <Route path="/fi/petty-cash/vr" element={<PettyListPage key="vr" kind="vr" />} />
+          <Route path="/fi/petty-cash/dp/:id" element={<PettyFormPage key="dp-f" kind="dp" />} />
+          <Route path="/fi/petty-cash/vr/:id" element={<PettyFormPage key="vr-f" kind="vr" />} />
+          {/* ที่อยู่เดิมของเงินสดย่อย (เมนูบัญชี) — ลิงก์/บุ๊กมาร์กเก่ายังเปิดได้ */}
+          <Route path="/gl/petty-cash/*" element={<MovedTo from="/gl/petty-cash" to="/fi/petty-cash" />} />
           <Route path="/fi/ar/bill-appointments" element={<BillListPage key="appoint" path="ar-bills" appointments />} />
           <Route path="/companies/new" element={<NewCompanyPage />} />
           <Route path="/account/password" element={<PasswordPage />} />
@@ -274,6 +281,12 @@ function Shell() {
 }
 
 /** เมนูที่เปิดใช้แล้วแสดงเฉพาะที่มีสิทธิ์อ่าน (คู่มือบทที่ 23) · เมนูที่อยู่ในแผนแสดงเสมอ */
+/** ย้ายที่อยู่หน้าจอ: ส่งต่อไปที่อยู่ใหม่ (คงส่วนท้ายและ query) */
+function MovedTo({ from, to }: { from: string; to: string }) {
+  const loc = useLocation();
+  return <Navigate to={loc.pathname.replace(from, to) + loc.search} replace />;
+}
+
 function canSee(it: MenuItem, perms: Me['perms'] | undefined): boolean {
   if (it.children) return it.children.some((c) => canSee(c, perms));
   return !it.route || perms?.[it.code]?.read !== false;
