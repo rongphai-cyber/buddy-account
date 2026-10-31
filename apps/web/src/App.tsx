@@ -4,7 +4,7 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams }
 import { MENU, flattenMenu, formatDate, type MenuItem } from '@buddy/core';
 import { useSession } from './session';
 import type { Me } from './api';
-import { cx, DateInput, Modal, Toasts, toastError, useHotkeys } from './ui';
+import { cx, DateInput, focusStart, Modal, Toasts, toastError, useHotkeys } from './ui';
 import { MenuSearch } from './components/MenuSearch';
 import { LoginPage, SetupPage } from './pages/Login';
 import { SignupPage } from './pages/Signup';
@@ -122,7 +122,14 @@ function Shell() {
   }, [me?.company?.id]);
   // ไม่มีปุ่มลัด Alt+ตัวเลขของเมนูหลักแล้ว (เมนูเพิ่มได้ไม่จำกัด) — ใช้ค้นหาเมนู Ctrl+K แทน
   const [search, setSearch] = useState(false);
-  useHotkeys({ 'Alt+H': () => nav('/'), 'Ctrl+K': () => setSearch(true) }, []);
+  useHotkeys({ 'Alt+H': () => nav('/'), 'Ctrl+K': () => setSearch(true),
+    // Alt+A = เพิ่ม (แบบ Express): กดปุ่ม "+ ใหม่" / "+ เพิ่ม…" ของหน้าจอนั้น (หน้าที่กำหนด Alt+A เองใช้ของหน้านั้น)
+    'Alt+A': () => {
+      const btns = [...document.querySelectorAll<HTMLButtonElement>('.page button')].filter((x) => !x.disabled && x.offsetParent !== null && (x.textContent ?? '').trim().startsWith('+'));
+      (btns.find((x) => /^\+\s*ใหม่/.test((x.textContent ?? '').trim())) ?? btns.find((x) => [...x.querySelectorAll('kbd')].some((k) => /^Ins/.test(k.textContent ?? ''))) ?? btns.find((x) => /^\+\s*เพิ่ม/.test((x.textContent ?? '').trim())))?.click();
+    } }, [], { base: true });
+  // เปิดเอกสารใหม่ (+ ใหม่ · + เพิ่ม · Insert · บันทึก+ใหม่) → เคอร์เซอร์ช่องแรกของเอกสาร
+  useEffect(() => { if (/\/new$/.test(loc.pathname)) focusStart(); }, [loc.key]);
   const ys = me?.company?.year_system ?? 'B';
   if (!me?.company) {
     return (

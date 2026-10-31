@@ -175,20 +175,40 @@ function onHotkey(e: KeyboardEvent) {
     return;
   }
 }
-function pushHotkeyLayer(layer: (typeof hotkeyLayers)[number]) {
+function pushHotkeyLayer(layer: (typeof hotkeyLayers)[number], base = false) {
   if (!hotkeyLayers.length) window.addEventListener('keydown', onHotkey);
-  hotkeyLayers.push(layer);
+  if (base) hotkeyLayers.unshift(layer); else hotkeyLayers.push(layer);
   return () => {
     hotkeyLayers.splice(hotkeyLayers.indexOf(layer), 1);
     if (!hotkeyLayers.length) window.removeEventListener('keydown', onHotkey);
   };
 }
 
+/**
+ * เคอร์เซอร์ไปช่องแรกของเอกสารใหม่ (ข้อกำหนดเจ้าของ 31/10/2569: + ใหม่ · Alt+A · + เพิ่ม · บันทึก+ใหม่ → เริ่มคีย์ได้ทันที)
+ * รอให้หน้าจอพร้อม (ข้อมูลตั้งต้นโหลดเสร็จ) แล้วโฟกัสช่องแรกที่คีย์ได้ในส่วนหัวเอกสาร — ถ้าผู้ใช้ย้ายไปช่องอื่นเองแล้วไม่แย่งกลับ
+ */
+const START_FIELD = '.page .head-grid input:not([disabled]):not([readonly]):not([type=checkbox]):not([type=hidden]), .page .head-grid select:not([disabled]), .page .head-grid textarea:not([disabled])';
+let startTimer: ReturnType<typeof setInterval> | null = null;
+export function focusStart() {
+  if (startTimer) clearInterval(startTimer);
+  let n = 0, done: HTMLElement | null = null;
+  startTimer = setInterval(() => {
+    n++;
+    const el = document.querySelector<HTMLElement>(START_FIELD);
+    const a = document.activeElement as HTMLElement | null;
+    const free = !a || a === document.body || !!a.closest('.toolbar, .page-head, .tabs') || (done !== null && !done.isConnected);
+    if (el && !document.querySelector('.modal') && a !== el && (done === null || free)) { el.focus(); (el as HTMLInputElement).select?.(); done = el; }
+    if (n >= 20 || (done && n >= 8 && document.activeElement === done)) { clearInterval(startTimer!); startTimer = null; }
+  }, 100);
+}
+
 /** ปุ่มลัดของหน้าจอ: { 'F9': save, 'Ctrl+S': save, 'Alt+C': cancel } — ใช้ค่าล่าสุดของ map เสมอ (deps คงไว้เพื่อเข้ากันได้กับโค้ดเดิม) */
-export function useHotkeys(map: HotkeyMap, _deps: unknown[] = []) {
+export function useHotkeys(map: HotkeyMap, _deps: unknown[] = [], opts?: { base?: boolean }) {
   const ref = useRef(map);
   ref.current = map;
-  useEffect(() => pushHotkeyLayer({ map: ref }), []);
+  // base = ชั้นล่างสุด (ปุ่มลัดทั้งโปรแกรม) — หน้าจอที่กำหนดปุ่มเดียวกันเองได้ก่อน
+  useEffect(() => pushHotkeyLayer({ map: ref }, opts?.base), []);
 }
 
 export function Field({ label, hint, error, children, wide, req }: { label: string; hint?: ReactNode; error?: string; children: ReactNode; wide?: boolean; req?: boolean }) {

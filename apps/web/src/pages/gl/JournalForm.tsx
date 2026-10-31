@@ -9,7 +9,7 @@ import { DocLink } from '../../components/DocLink';
 import { CancelStamp } from '../../components/DocDelete';
 import { withPrefix } from '../../components/DocNo';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
-import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
+import { Confirm, cx, DateInput, focusStart, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
 import { DocActions } from '../../components/DocPrint';
@@ -185,7 +185,7 @@ export function JournalFormPage() {
       toast(`บันทึกใบสำคัญ ${r.voucher_no} แล้ว${isNew && (drafts.vat.length || drafts.wht.length) ? ' พร้อมรายการภาษี' : ''}`); setSaves((n) => n + 1);
       setDirty(false); if (!isNew) ed.lock(); setDrafts({ vat: [], wht: [] }); setTab('lines');
       qc.invalidateQueries({ queryKey: ['journals'] }); qc.invalidateQueries({ queryKey: ['journal', r.id] }); qc.invalidateQueries({ queryKey: ['accounts', 'bal'] });
-      if (andNew || isNew) { setLines(andNew ? freshLines(bookTpl.data) : [blank(), blank()]); setH((x) => ({ ...x, description: '', reference: '' })); if (!andNew) nav(`/gl/journals/${r.id}`, { replace: true }); else nav(`/gl/journals/new?book=${h.journal_book_id}`, { replace: true }); }
+      if (andNew || isNew) { setLines(andNew ? freshLines(bookTpl.data) : [blank(), blank()]); setH((x) => ({ ...x, description: '', reference: '' })); if (andNew) focusStart(); if (!andNew) nav(`/gl/journals/${r.id}`, { replace: true }); else nav(`/gl/journals/new?book=${h.journal_book_id}`, { replace: true }); }
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const leave = (to: string) => (dirty && editable ? setLeaveAsk(to) : nav(to));
