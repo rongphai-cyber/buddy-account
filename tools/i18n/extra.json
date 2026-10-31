@@ -390,5 +390,8 @@
  "ตั้งวงเงิน: ใช้บัญชีเงินสดย่อย · จ่ายค่าใช้จ่าย: ใช้บัญชีค่าใช้จ่าย · บันทึกแล้วลงบัญชีทันที Dr บัญชีตามรายการ / Cr เงินสดย่อย": "Setting up the fund: use the petty cash account · paying expenses: use the expense account · posts on save: Dr line accounts / Cr petty cash",
  "บันทึก {0} แล้ว (ไม่ลงบัญชี)": "Saved {0} (not posted)",
  "บันทึก {0} แล้ว — ลงบัญชีแล้ว": "Saved {0} — posted",
- "สรุปค่าใช้จ่ายของใบจ่ายที่เบิก (รวมตามบัญชี/แผนก — ลงบัญชีแล้วตอนบันทึกใบจ่าย) · ใบเบิกนี้ลงบัญชี Dr เงินสดย่อย / Cr เงินสด-ธนาคาร": "Expense summary of the reimbursed payments (by account/department — already posted when the payments were saved) · this reimbursement posts Dr petty cash / Cr cash-bank"
+ "สรุปค่าใช้จ่ายของใบจ่ายที่เบิก (รวมตามบัญชี/แผนก — ลงบัญชีแล้วตอนบันทึกใบจ่าย) · ใบเบิกนี้ลงบัญชี Dr เงินสดย่อย / Cr เงินสด-ธนาคาร": "Expense summary of the reimbursed payments (by account/department — already posted when the payments were saved) · this reimbursement posts Dr petty cash / Cr cash-bank",
+ "ภาษีหัก ณ ที่จ่ายของเอกสารต้นทาง — เข้าแฟ้ม ภ.ง.ด.3/53 · แก้เลขที่/วันที่หนังสือรับรองได้ที่แฟ้มภาษีหัก ณ ที่จ่าย · พิมพ์ 50 ทวิ ได้จากที่นี่": "Withholding tax of the source document — goes to the P.N.D.3/53 file · edit the certificate no./date in the WHT register · print the 50 Tawi certificate here",
+ "เอกสารต้นทางไม่มีภาษีหัก ณ ที่จ่าย": "The source document has no withholding tax",
+ "จากเอกสารต้นทาง": "From source document"
 }

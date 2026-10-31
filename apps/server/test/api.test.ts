@@ -1000,6 +1000,11 @@ describe('Buddy Account API (PGlite)', () => {
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ doc_no: expect.stringMatching(/^RE\d{7}$/), net_amount: '11630.00', cash_amount: '2400.00' });
     const det = (await call('GET', `/api/v1/ar-receipts/${r.body.id}`)).body;
+    // เช็คของเอกสาร (แท็บเช็ครับในใบสำคัญที่มาจากเอกสาร) · บริษัทอื่นไม่เห็น
+    expect((await call('GET', `/api/v1/cheques?direction=R&instrument=all&header_id=${r.body.id}`)).body.rows.map((c: { cheque_no: string }) => c.cheque_no)).toEqual(['CQ1001']);
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/cheques?direction=R&instrument=all&header_id=${r.body.id}`)).body.rows).toEqual([]);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
     expect(det).toMatchObject({ wht_amount: '270.00', cash_discount_amount: '60.00', interest_amount: '100.00', cheque_amount: '9000.00', editable: true, party_code: 'C200' });
     expect(String(det.payment_date).slice(0, 10)).toBe('2026-07-21');
     expect(det.payments[0]).toMatchObject({ reference_no: 'CQ1001', cheque_status: '00' });

@@ -13,6 +13,7 @@ import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Lookup, Mo
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
 import { DocActions } from '../../components/DocPrint';
+import { DocVatTab, DocWhtList } from '../../components/DocTaxTabs';
 import { JvChequeTab, JvVatTab, vatPayload, WhtTab, whtPayload, type VatDraft, type WhtDraft } from './JvLinks';
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
 import { JournalPicker } from '../../components/JournalPicker';
@@ -204,6 +205,8 @@ export function JournalFormPage() {
   const issueLines = new Set(((err as { issues?: Array<{ line?: number }> })?.issues ?? []).map((i) => i.line).filter((x) => x !== undefined));
   const book = books.data?.find((b) => b.id === h.journal_book_id);
   const j = doc.data;
+  /** ใบสำคัญที่ระบบลงจากเอกสาร (แก้ที่เอกสารต้นทาง) */
+  const fromDoc = !!j?.source_header_id && !j.editable;
   return (
     <div className={cx('page', book && 'book-colored', j?.doc_status === 'C' && 'doc-cancelled')} data-tone="gl" style={bookStyle(bookColor(book))}>
       <div className="doc-title">
@@ -274,8 +277,11 @@ export function JournalFormPage() {
             </div>
           </div>
         </div>
-        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการบัญชี', badge: lines.filter((l) => l.account_id).length },
-          ...TAX_TABS.map(([key, label]) => ({ key, label, badge: sums[key].isZero() ? undefined : fmt(sums[key].abs().toFixed(2)) })), ...(!isNew ? [{ key: 'history', label: 'ประวัติการแก้ไข' }] : [])]} />
+      </fieldset>
+      {/* แท็บคลิกดูได้เสมอ (ข้อกำหนดเจ้าของ 31/10/2569) — ภาษีและเช็คเป็นระบบแยกจากรายการบัญชี */}
+      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการบัญชี', badge: lines.filter((l) => l.account_id).length },
+        ...TAX_TABS.map(([key, label]) => ({ key, label, badge: sums[key].isZero() ? undefined : fmt(sums[key].abs().toFixed(2)) })), ...(!isNew ? [{ key: 'history', label: 'ประวัติการแก้ไข' }] : [])]} />
+      <fieldset disabled={!editable} onKeyDown={(e) => navKey(e, ed.end)}>
         {tab === 'lines' && (
           <div className="table-wrap lines" ref={gridRef} onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).dataset.last != null && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); addLine(); } }}>
             <table className="grid">
@@ -308,10 +314,15 @@ export function JournalFormPage() {
         )}
       </fieldset>
       {tab === 'history' && id && <History table="gl_journal" rowId={id} />}
-      {(isNew || doc.data) && (tab === 'vatP' || tab === 'vatS') && <JvVatTab key={tab} kind={tab === 'vatP' ? 'P' : 'S'} journal={linkInfo} lineVat={sums[tab].toFixed(2)} editable={tabEditable}
+      {/* ใบสำคัญจากเอกสาร (ซื้อ ขาย รับ/จ่ายชำระ …): รายการภาษี/เช็คอยู่ที่เอกสารต้นทาง — ดู และแก้เลขที่/วันที่ใบกำกับ งวดที่ยื่นได้ที่นี่ */}
+      {fromDoc && (tab === 'vatP' || tab === 'vatS') && <><p className="hint">จากเอกสารต้นทาง <DocLink id={j!.source_header_id} no={j!.source_doc_no} cls={j!.source_doc_class} /></p>
+        <DocVatTab key={tab} headerId={j!.source_header_id!} cls={j!.source_doc_class ?? ''} kind={tab === 'vatP' ? 'P' : 'S'} exact /></>}
+      {fromDoc && tab === 'wht' && <DocWhtList headerId={j!.source_header_id!} by="header" />}
+      {fromDoc && (tab === 'chqP' || tab === 'chqR') && <JvChequeTab key={tab} direction={tab === 'chqP' ? 'P' : 'R'} journal={{ id: linkInfo.id, voucher_no: linkInfo.no, date: linkInfo.date }} lineAmount={sums[tab].toFixed(2)} editable={false} sourceHeaderId={j!.source_header_id} />}
+      {!fromDoc && (isNew || doc.data) && (tab === 'vatP' || tab === 'vatS') && <JvVatTab key={tab} kind={tab === 'vatP' ? 'P' : 'S'} journal={linkInfo} lineVat={sums[tab].toFixed(2)} editable={tabEditable}
         drafts={drafts.vat} onDrafts={(v) => { setDrafts((x) => ({ ...x, vat: v })); setDirty(true); }} />}
-      {(isNew || doc.data) && tab === 'wht' && <WhtTab field="journal_id" link={linkInfo} lineTax={sums.wht.toFixed(2)} editable={tabEditable} drafts={drafts.wht} onDrafts={(w) => { setDrafts((x) => ({ ...x, wht: w })); setDirty(true); }} />}
-      {(isNew || doc.data) && (tab === 'chqP' || tab === 'chqR') && <JvChequeTab key={tab} direction={tab === 'chqP' ? 'P' : 'R'} journal={{ id: linkInfo.id, voucher_no: linkInfo.no, date: linkInfo.date }} lineAmount={sums[tab].toFixed(2)} editable={tabEditable} />}
+      {!fromDoc && (isNew || doc.data) && tab === 'wht' && <WhtTab field="journal_id" link={linkInfo} lineTax={sums.wht.toFixed(2)} editable={tabEditable} drafts={drafts.wht} onDrafts={(w) => { setDrafts((x) => ({ ...x, wht: w })); setDirty(true); }} />}
+      {!fromDoc && (isNew || doc.data) && (tab === 'chqP' || tab === 'chqR') && <JvChequeTab key={tab} direction={tab === 'chqP' ? 'P' : 'R'} journal={{ id: linkInfo.id, voucher_no: linkInfo.no, date: linkInfo.date }} lineAmount={sums[tab].toFixed(2)} editable={tabEditable} />}
       {taxAsk && <Modal size="confirm" title="ยังไม่ได้ป้อนรายละเอียดภาษี" onClose={() => setTaxAsk(null)}
         footer={<><button onClick={() => setTaxAsk(null)}>กลับไปแก้ <kbd>Esc</kbd></button><button onClick={() => { const a = taxAsk.andNew; setTaxAsk(null); void save(a, true); }}>บันทึกโดยไม่ป้อน</button>
           <button className="primary" autoFocus onClick={() => { setTab(taxAsk.gaps[0]!.key); setTaxAsk(null); }}>ป้อนรายละเอียด</button></>}>

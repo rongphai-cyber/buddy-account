@@ -126,7 +126,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/cheques', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ direction: z.enum(['R', 'P']), status: z.string().regex(/^[0-9]{2}(,[0-9]{2})*$/).optional(), q: z.string().optional(), bank_account_id: uuid.optional(),
-      instrument: z.enum(['CHEQUE', 'TRANSFER', 'all']).default('CHEQUE'), journal_id: uuid.optional(), from: isoDate.optional(), to: isoDate.optional(), loose: z.enum(['Y', 'N']).default('N'), remaining: z.enum(['Y', 'N']).default('N'), party_id: uuid.optional(), limit: z.coerce.number().int().min(1).max(5000).default(1000) }), req.query);
+      instrument: z.enum(['CHEQUE', 'TRANSFER', 'all']).default('CHEQUE'), journal_id: uuid.optional(), header_id: uuid.optional(), from: isoDate.optional(), to: isoDate.optional(), loose: z.enum(['Y', 'N']).default('N'), remaining: z.enum(['Y', 'N']).default('N'), party_id: uuid.optional(), limit: z.coerce.number().int().min(1).max(5000).default(1000) }), req.query);
     const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
     const st = q.status?.split(',');
     const rows = (await sql`SELECT f.id, f.direction, f.instrument, f.cheque_no, f.cheque_date, f.received_date, f.deposit_date, f.pass_date, f.amount, f.charge, f.net_amount, f.remaining_amount, f.written_off_amount, f.status,
@@ -137,7 +137,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
        WHERE f.company_id = ${a.companyId} AND f.deleted_at IS NULL AND f.direction = ${q.direction} ${q.instrument !== 'all' ? sql`AND f.instrument = ${q.instrument}` : sql``}
          ${st ? sql`AND f.status IN (${sql.join(st)})` : sql``} ${q.bank_account_id ? sql`AND f.bank_account_id = ${q.bank_account_id}` : sql``}
          ${q.loose === 'Y' ? sql`AND f.deposit_header_id IS NULL` : sql``} ${q.remaining === 'Y' ? sql`AND f.remaining_amount - f.written_off_amount > 0` : sql``}
-         ${q.party_id ? sql`AND (f.customer_id = ${q.party_id} OR f.supplier_id = ${q.party_id})` : sql``} ${q.journal_id ? sql`AND f.source_journal_id = ${q.journal_id}` : sql``} ${q.from ? sql`AND f.cheque_date >= ${q.from}` : sql``} ${q.to ? sql`AND f.cheque_date <= ${q.to}` : sql``}
+         ${q.party_id ? sql`AND (f.customer_id = ${q.party_id} OR f.supplier_id = ${q.party_id})` : sql``} ${q.journal_id ? sql`AND f.source_journal_id = ${q.journal_id}` : sql``} ${q.header_id ? sql`AND f.source_header_id = ${q.header_id}` : sql``} ${q.from ? sql`AND f.cheque_date >= ${q.from}` : sql``} ${q.to ? sql`AND f.cheque_date <= ${q.to}` : sql``}
          ${like ? sql`AND (f.cheque_no ILIKE ${like} OR f.payee_name ILIKE ${like} OR c.name ILIKE ${like} OR s.name ILIKE ${like} OR c.code ILIKE ${like} OR s.code ILIKE ${like} OR h.doc_no ILIKE ${like})` : sql``}
        ORDER BY f.cheque_date DESC, f.cheque_no LIMIT ${q.limit}`.execute(db)).rows;
     const sum = (await sql<{ status: string; n: number; amount: string }>`SELECT status, count(*)::int AS n, sum(amount) AS amount FROM fin_cheque WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND direction = ${q.direction}

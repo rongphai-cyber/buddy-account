@@ -22,9 +22,10 @@ export const vatTabLabel = (cls: string) => `รายการ${vatWord(VAT_KIN
 const useDocVat = (kind: 'P' | 'S', headerId: string, bill: boolean) =>
   useQuery({ queryKey: ['doc-vat', kind, headerId, bill], queryFn: () => api.get<{ rows: VatRow[] }>(`/api/v1/vat/${kind}`, { [bill ? 'invoice_id' : 'header_id']: headerId, status: 'all' }) });
 
-export function DocVatTab({ headerId, cls, vatBasis }: { headerId: string; cls: string; vatBasis?: string | null }) {
-  const kind = VAT_KIND_OF[cls] ?? 'P';
-  const bill = BILLS.includes(cls);
+/** kind = ชนิดภาษีที่ต้องการ (ว่าง = ตามหมวดเอกสาร) · exact = เฉพาะรายการของเอกสารนี้ (ไม่รวมใบเสร็จ/ใบจ่ายที่ตัดบิล) */
+export function DocVatTab({ headerId, cls, vatBasis, kind: kindIn, exact }: { headerId: string; cls: string; vatBasis?: string | null; kind?: 'P' | 'S'; exact?: boolean }) {
+  const kind = kindIn ?? VAT_KIND_OF[cls] ?? 'P';
+  const bill = !exact && BILLS.includes(cls);
   const q = useDocVat(kind, headerId, bill);
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -85,13 +86,14 @@ export function VatCheckAfterSave({ headerId, cls, onDone }: { headerId: string;
 
 type WhtRow = { id: string; form_type: string; certificate_no: string | null; certificate_date: string; tax_month: string; payee_name: string; income_type: string; paid_amount: string; rate: string; tax_amount: string; doc_status: string; header_id: string | null; doc_no: string | null; doc_class: string | null; print_count: number };
 /** ภาษีหัก ณ ที่จ่ายที่เกี่ยวกับบิล (หักตอนจ่ายชำระบิลนี้) — ตรวจ และพิมพ์หนังสือรับรอง 50 ทวิ */
-export function DocWhtList({ headerId }: { headerId: string }) {
+/** by = header: ภาษีหัก ณ ที่จ่ายที่เกิดจากเอกสารนี้เอง (ใบสำคัญที่มาจากเอกสาร) */
+export function DocWhtList({ headerId, by = 'invoice' }: { headerId: string; by?: 'invoice' | 'header' }) {
   const nav = useNavigate();
-  const q = useQuery({ queryKey: ['doc-wht-bill', headerId], queryFn: () => api.get<{ rows: WhtRow[] }>('/api/v1/wht', { invoice_id: headerId, status: 'all' }) });
+  const q = useQuery({ queryKey: ['doc-wht-bill', headerId, by], queryFn: () => api.get<{ rows: WhtRow[] }>('/api/v1/wht', { [by === 'header' ? 'header_id' : 'invoice_id']: headerId, status: 'all' }) });
   const rows = q.data?.rows ?? [];
   return (
     <div>
-      <p className="hint">ภาษีหัก ณ ที่จ่ายของบิลนี้ หักตอนจ่ายชำระ (ใบสำคัญจ่าย) — เข้าแฟ้ม ภ.ง.ด.3/53 · พิมพ์หนังสือรับรอง 50 ทวิ ได้จากที่นี่</p>
+      <p className="hint">{by === 'header' ? 'ภาษีหัก ณ ที่จ่ายของเอกสารต้นทาง — เข้าแฟ้ม ภ.ง.ด.3/53 · แก้เลขที่/วันที่หนังสือรับรองได้ที่แฟ้มภาษีหัก ณ ที่จ่าย · พิมพ์ 50 ทวิ ได้จากที่นี่' : 'ภาษีหัก ณ ที่จ่ายของบิลนี้ หักตอนจ่ายชำระ (ใบสำคัญจ่าย) — เข้าแฟ้ม ภ.ง.ด.3/53 · พิมพ์หนังสือรับรอง 50 ทวิ ได้จากที่นี่'}</p>
       <ErrorBox error={q.error} />
       <div className="table-wrap lines">
         <table className="grid">
@@ -105,7 +107,7 @@ export function DocWhtList({ headerId }: { headerId: string }) {
                 <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <button type="button" onClick={() => nav(`/tax/wht50?entry=${r.id}`)}>🖨 50 ทวิ{r.print_count ? ` (${r.print_count})` : ''}</button>}</td>
               </tr>
             ))}
-            {q.data && !rows.length && <tr><td colSpan={10} className="empty">ยังไม่มีภาษีหัก ณ ที่จ่าย — ป้อนตอนจ่ายชำระบิลนี้ (เมนู จ่ายชำระหนี้)</td></tr>}
+            {q.data && !rows.length && <tr><td colSpan={10} className="empty">{by === 'header' ? 'เอกสารต้นทางไม่มีภาษีหัก ณ ที่จ่าย' : 'ยังไม่มีภาษีหัก ณ ที่จ่าย — ป้อนตอนจ่ายชำระบิลนี้ (เมนู จ่ายชำระหนี้)'}</td></tr>}
           </tbody>
         </table>
       </div>

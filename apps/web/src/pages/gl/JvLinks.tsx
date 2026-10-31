@@ -103,8 +103,9 @@ function VatEntryModal({ kind, link, vat, onClose, doc, onDraft }: { kind: 'P' |
 
 type Chq = { id: string; cheque_no: string; cheque_date: string; amount: string; status: string; party_name: string | null; bank_code: string | null; account_code: string | null };
 /** รายละเอียดเช็คจ่าย/เช็ครับของใบสำคัญ (คู่มือ S-GL-04) — เช็คเข้าทะเบียนเช็คผูกกับใบสำคัญนี้ (ใบสำคัญต้องบันทึกก่อน) */
-export function JvChequeTab({ direction, journal, lineAmount, editable }: { direction: 'P' | 'R'; journal: { id: string | null; voucher_no: string; date: string }; lineAmount: string; editable: boolean }) {
-  const q = useQuery({ enabled: !!journal.id, queryKey: ['jv-cheques', direction, journal.id], queryFn: () => api.get<{ rows: Chq[] }>('/api/v1/cheques', { direction, journal_id: journal.id!, instrument: 'all' }) });
+/** sourceHeaderId = ใบสำคัญที่มาจากเอกสาร: แสดงเช็ค/โอนของเอกสารต้นทาง (ป้อน/แก้ที่เอกสารต้นทาง) */
+export function JvChequeTab({ direction, journal, lineAmount, editable, sourceHeaderId }: { direction: 'P' | 'R'; journal: { id: string | null; voucher_no: string; date: string }; lineAmount: string; editable: boolean; sourceHeaderId?: string | null }) {
+  const q = useQuery({ enabled: !!journal.id || !!sourceHeaderId, queryKey: ['jv-cheques', direction, journal.id, sourceHeaderId], queryFn: () => api.get<{ rows: Chq[] }>('/api/v1/cheques', { direction, ...(sourceHeaderId ? { header_id: sourceHeaderId } : { journal_id: journal.id! }), instrument: 'all' }) });
   const [add, setAdd] = useState(false);
   const entered = (q.data?.rows ?? []).reduce((s, r) => s.plus(r.amount), d(0));
   const left = d(lineAmount).minus(entered);
