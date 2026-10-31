@@ -2951,6 +2951,61 @@ COMMENT ON COLUMN doc_payment.deleted_at IS 'ลบแบบ soft delete (Expres
 COMMENT ON COLUMN doc_payment.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_doc_payment_header_line_no ON doc_payment (header_id, line_no) WHERE deleted_at IS NULL;
 
+-- doc_charge: รายการหักจากยอดรับชำระ: ค่า GP/คอมมิชชั่น ค่าธรรมเนียม ค่าโฆษณาที่แพลตฟอร์มออนไลน์หักก่อนโอน (Grab LINE MAN Agoda Booking.com Airbnb — ข้อกำหนดเจ้าของ 31/10/2569)
+CREATE TABLE doc_charge (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  header_id uuid NOT NULL,
+  line_no smallint NOT NULL,
+  supplier_id uuid NOT NULL,
+  item_id uuid NOT NULL,
+  description varchar(200),
+  amount numeric(18,2) NOT NULL,
+  vat_type char(1) DEFAULT '1' NOT NULL CHECK (vat_type IN ('0','1','3')),
+  vat_amount numeric(18,2) DEFAULT 0 NOT NULL,
+  tax_invoice_no varchar(30),
+  tax_invoice_date date,
+  wht_form varchar(4),
+  wht_income_type varchar(60),
+  wht_rate numeric(9,4) DEFAULT 0 NOT NULL,
+  wht_amount numeric(18,2) DEFAULT 0 NOT NULL,
+  wht_condition char(1) DEFAULT '1' NOT NULL CHECK (wht_condition IN ('1','3')),
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE doc_charge IS 'รายการหักจากยอดรับชำระ: ค่า GP/คอมมิชชั่น ค่าธรรมเนียม ค่าโฆษณาที่แพลตฟอร์มออนไลน์หักก่อนโอน (Grab LINE MAN Agoda Booking.com Airbnb — ข้อกำหนดเจ้าของ 31/10/2569)';
+COMMENT ON COLUMN doc_charge.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN doc_charge.company_id IS 'บริษัท';
+COMMENT ON COLUMN doc_charge.header_id IS 'ใบเสร็จรับเงิน (RE) ที่ถูกหัก';
+COMMENT ON COLUMN doc_charge.line_no IS 'ลำดับ';
+COMMENT ON COLUMN doc_charge.supplier_id IS 'ผู้ให้บริการ (แพลตฟอร์ม) — ผู้ขายในภาษีซื้อ / ผู้ถูกหักในภาษีหัก ณ ที่จ่าย';
+COMMENT ON COLUMN doc_charge.item_id IS 'รหัสค่าใช้จ่าย (บัญชีค่าใช้จ่ายตามกลุ่มบัญชีของรหัส)';
+COMMENT ON COLUMN doc_charge.description IS 'รายละเอียด';
+COMMENT ON COLUMN doc_charge.amount IS 'ค่าบริการก่อนภาษีมูลค่าเพิ่ม (VAT 0 = ยอดที่ถูกหักทั้งหมด)';
+COMMENT ON COLUMN doc_charge.vat_type IS '0=ไม่มี VAT/ขอคืนไม่ได้ 1=ภาษีซื้อ 7% (ใบกำกับภาษีในประเทศ) 3=ภ.พ.36 (ผู้ให้บริการต่างประเทศ นำส่งภาษีแทน)';
+COMMENT ON COLUMN doc_charge.vat_amount IS 'ภาษีมูลค่าเพิ่ม';
+COMMENT ON COLUMN doc_charge.tax_invoice_no IS 'เลขที่ใบกำกับภาษี/ใบแจ้งหนี้ของผู้ให้บริการ';
+COMMENT ON COLUMN doc_charge.tax_invoice_date IS 'วันที่ใบกำกับภาษี';
+COMMENT ON COLUMN doc_charge.wht_form IS 'แบบภาษีหัก ณ ที่จ่ายที่เราหัก S03=ภ.ง.ด.3 S53=ภ.ง.ด.53 (ว่าง = ไม่หัก)';
+COMMENT ON COLUMN doc_charge.wht_income_type IS 'ประเภทเงินได้ (ค่าบริการ ค่านายหน้า ค่าโฆษณา)';
+COMMENT ON COLUMN doc_charge.wht_rate IS 'อัตราภาษีหัก ณ ที่จ่าย %';
+COMMENT ON COLUMN doc_charge.wht_amount IS 'ภาษีหัก ณ ที่จ่าย';
+COMMENT ON COLUMN doc_charge.wht_condition IS '1=หัก ณ ที่จ่าย (แพลตฟอร์มหักเต็มแล้ว → เรียกคืน) 3=ออกภาษีให้ครั้งเดียว (เป็นค่าใช้จ่าย)';
+COMMENT ON COLUMN doc_charge.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN doc_charge.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN doc_charge.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN doc_charge.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN doc_charge.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN doc_charge.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN doc_charge.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_doc_charge_header_line_no ON doc_charge (header_id, line_no) WHERE deleted_at IS NULL;
+
 -- fin_cheque: ทะเบียนเช็ครับ/เช็คจ่าย และรายการโอนผ่านธนาคาร  [Express: BKTRN]
 CREATE TABLE fin_cheque (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -3799,7 +3854,7 @@ CREATE UNIQUE INDEX uq_gl_fs_line_company_line_set_code_line_no ON gl_fs_line (c
 CREATE TABLE tax_vat_entry (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
-  vat_kind char(1) NOT NULL CHECK (vat_kind IN ('P','S')),
+  vat_kind char(1) NOT NULL CHECK (vat_kind IN ('P','S','R')),
   header_id uuid,
   journal_id uuid,
   branch_id uuid,
@@ -3836,7 +3891,7 @@ CREATE TABLE tax_vat_entry (
 COMMENT ON TABLE tax_vat_entry IS 'ทะเบียนภาษีซื้อ/ภาษีขาย (รายงานภาษี ภ.พ.30) | Express: ISVAT';
 COMMENT ON COLUMN tax_vat_entry.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
 COMMENT ON COLUMN tax_vat_entry.company_id IS 'บริษัท';
-COMMENT ON COLUMN tax_vat_entry.vat_kind IS 'P=ภาษีซื้อ S=ภาษีขาย [Express: ISVAT.VATREC]';
+COMMENT ON COLUMN tax_vat_entry.vat_kind IS 'P=ภาษีซื้อ S=ภาษีขาย R=ภ.พ.36 (ภาษีที่นำส่งแทนผู้ให้บริการต่างประเทศ — เครดิตเป็นภาษีซื้อเดือนถัดไป) [Express: ISVAT.VATREC]';
 COMMENT ON COLUMN tax_vat_entry.header_id IS 'เอกสารต้นทาง [Express: ISVAT.DOCNUM]';
 COMMENT ON COLUMN tax_vat_entry.journal_id IS 'ใบสำคัญต้นทาง (บันทึกผ่าน JV/เงินสดย่อย)';
 COMMENT ON COLUMN tax_vat_entry.branch_id IS 'สาขาที่ยื่น';
@@ -4830,6 +4885,18 @@ ALTER TABLE doc_payment ADD CONSTRAINT fk_doc_payment_created_by FOREIGN KEY (cr
 CREATE INDEX IF NOT EXISTS ix_fk_doc_payment_created_by ON doc_payment (created_by);
 ALTER TABLE doc_payment ADD CONSTRAINT fk_doc_payment_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_doc_payment_updated_by ON doc_payment (updated_by);
+ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_doc_charge_company_id ON doc_charge (company_id);
+ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_header_id FOREIGN KEY (header_id) REFERENCES doc_header(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_doc_charge_header_id ON doc_charge (header_id);
+ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_supplier_id FOREIGN KEY (supplier_id) REFERENCES md_supplier(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_doc_charge_supplier_id ON doc_charge (supplier_id);
+ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_item_id FOREIGN KEY (item_id) REFERENCES md_item(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_doc_charge_item_id ON doc_charge (item_id);
+ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_doc_charge_created_by ON doc_charge (created_by);
+ALTER TABLE doc_charge ADD CONSTRAINT fk_doc_charge_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_doc_charge_updated_by ON doc_charge (updated_by);
 ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_fin_cheque_company_id ON fin_cheque (company_id);
 ALTER TABLE fin_cheque ADD CONSTRAINT fk_fin_cheque_branch_id FOREIGN KEY (branch_id) REFERENCES sys_branch(id) DEFERRABLE INITIALLY DEFERRED;
@@ -5310,6 +5377,7 @@ CREATE TRIGGER trg_doc_link_ver BEFORE UPDATE ON doc_link FOR EACH ROW EXECUTE F
 CREATE TRIGGER trg_doc_bill_item_ver BEFORE UPDATE ON doc_bill_item FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_doc_settlement_ver BEFORE UPDATE ON doc_settlement FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_doc_payment_ver BEFORE UPDATE ON doc_payment FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_doc_charge_ver BEFORE UPDATE ON doc_charge FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_fin_cheque_ver BEFORE UPDATE ON fin_cheque FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_fin_cheque_event_ver BEFORE UPDATE ON fin_cheque_event FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_inv_stock_balance_ver BEFORE UPDATE ON inv_stock_balance FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
@@ -5399,6 +5467,7 @@ CREATE TRIGGER trg_doc_link_log AFTER INSERT OR UPDATE ON doc_link FOR EACH ROW 
 CREATE TRIGGER trg_doc_bill_item_log AFTER INSERT OR UPDATE ON doc_bill_item FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_doc_settlement_log AFTER INSERT OR UPDATE ON doc_settlement FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_doc_payment_log AFTER INSERT OR UPDATE ON doc_payment FOR EACH ROW EXECUTE FUNCTION sync_log_change();
+CREATE TRIGGER trg_doc_charge_log AFTER INSERT OR UPDATE ON doc_charge FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_fin_cheque_log AFTER INSERT OR UPDATE ON fin_cheque FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_fin_cheque_event_log AFTER INSERT OR UPDATE ON fin_cheque_event FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_inv_stock_balance_log AFTER INSERT OR UPDATE ON inv_stock_balance FOR EACH ROW EXECUTE FUNCTION sync_log_change();
@@ -5475,6 +5544,7 @@ CREATE TRIGGER trg_doc_link_del AFTER DELETE ON doc_link FOR EACH ROW EXECUTE FU
 CREATE TRIGGER trg_doc_bill_item_del AFTER DELETE ON doc_bill_item FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_doc_settlement_del AFTER DELETE ON doc_settlement FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_doc_payment_del AFTER DELETE ON doc_payment FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_doc_charge_del AFTER DELETE ON doc_charge FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_fin_cheque_del AFTER DELETE ON fin_cheque FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_fin_cheque_event_del AFTER DELETE ON fin_cheque_event FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_inv_stock_balance_del AFTER DELETE ON inv_stock_balance FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
@@ -5549,6 +5619,7 @@ CREATE TRIGGER trg_doc_link_rid BEFORE INSERT ON doc_link FOR EACH ROW EXECUTE F
 CREATE TRIGGER trg_doc_bill_item_rid BEFORE INSERT ON doc_bill_item FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_doc_settlement_rid BEFORE INSERT ON doc_settlement FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_doc_payment_rid BEFORE INSERT ON doc_payment FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_doc_charge_rid BEFORE INSERT ON doc_charge FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_fin_cheque_rid BEFORE INSERT ON fin_cheque FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_fin_cheque_event_rid BEFORE INSERT ON fin_cheque_event FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_fin_bank_ledger_rid BEFORE INSERT ON fin_bank_ledger FOR EACH ROW EXECUTE FUNCTION sync_row_id();

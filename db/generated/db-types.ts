@@ -2680,6 +2680,57 @@ export interface DocPaymentTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** รายการหักจากยอดรับชำระ: ค่า GP/คอมมิชชั่น ค่าธรรมเนียม ค่าโฆษณาที่แพลตฟอร์มออนไลน์หักก่อนโอน (Grab LINE MAN Agoda Booking.com Airbnb — ข้อกำหนดเจ้าของ 31/10/2569) */
+export interface DocChargeTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ใบเสร็จรับเงิน (RE) ที่ถูกหัก */
+  header_id: string;
+  /** ลำดับ */
+  line_no: number;
+  /** ผู้ให้บริการ (แพลตฟอร์ม) — ผู้ขายในภาษีซื้อ / ผู้ถูกหักในภาษีหัก ณ ที่จ่าย */
+  supplier_id: string;
+  /** รหัสค่าใช้จ่าย (บัญชีค่าใช้จ่ายตามกลุ่มบัญชีของรหัส) */
+  item_id: string;
+  /** รายละเอียด */
+  description: Gen<string | null>;
+  /** ค่าบริการก่อนภาษีมูลค่าเพิ่ม (VAT 0 = ยอดที่ถูกหักทั้งหมด) */
+  amount: string;
+  /** 0=ไม่มี VAT/ขอคืนไม่ได้ 1=ภาษีซื้อ 7% (ใบกำกับภาษีในประเทศ) 3=ภ.พ.36 (ผู้ให้บริการต่างประเทศ นำส่งภาษีแทน) */
+  vat_type: Gen<string>;
+  /** ภาษีมูลค่าเพิ่ม */
+  vat_amount: Gen<string>;
+  /** เลขที่ใบกำกับภาษี/ใบแจ้งหนี้ของผู้ให้บริการ */
+  tax_invoice_no: Gen<string | null>;
+  /** วันที่ใบกำกับภาษี */
+  tax_invoice_date: Gen<string | null>;
+  /** แบบภาษีหัก ณ ที่จ่ายที่เราหัก S03=ภ.ง.ด.3 S53=ภ.ง.ด.53 (ว่าง = ไม่หัก) */
+  wht_form: Gen<string | null>;
+  /** ประเภทเงินได้ (ค่าบริการ ค่านายหน้า ค่าโฆษณา) */
+  wht_income_type: Gen<string | null>;
+  /** อัตราภาษีหัก ณ ที่จ่าย % */
+  wht_rate: Gen<string>;
+  /** ภาษีหัก ณ ที่จ่าย */
+  wht_amount: Gen<string>;
+  /** 1=หัก ณ ที่จ่าย (แพลตฟอร์มหักเต็มแล้ว → เรียกคืน) 3=ออกภาษีให้ครั้งเดียว (เป็นค่าใช้จ่าย) */
+  wht_condition: Gen<string>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ทะเบียนเช็ครับ/เช็คจ่าย และรายการโอนผ่านธนาคาร */
 export interface FinChequeTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -3453,7 +3504,7 @@ export interface TaxVatEntryTable {
   id: Gen<string>;
   /** บริษัท */
   company_id: string;
-  /** P=ภาษีซื้อ S=ภาษีขาย */
+  /** P=ภาษีซื้อ S=ภาษีขาย R=ภ.พ.36 (ภาษีที่นำส่งแทนผู้ให้บริการต่างประเทศ — เครดิตเป็นภาษีซื้อเดือนถัดไป) */
   vat_kind: string;
   /** เอกสารต้นทาง */
   header_id: Gen<string | null>;
@@ -3869,6 +3920,7 @@ export interface DB {
   doc_bill_item: DocBillItemTable;
   doc_settlement: DocSettlementTable;
   doc_payment: DocPaymentTable;
+  doc_charge: DocChargeTable;
   fin_cheque: FinChequeTable;
   fin_cheque_event: FinChequeEventTable;
   fin_bank_ledger: FinBankLedgerTable;

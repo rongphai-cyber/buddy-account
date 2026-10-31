@@ -35,6 +35,26 @@ describe('posting engine (บทที่ 10)', () => {
       [], [], [{ amount: '1605', vat: '0', party_id: 's1', rectype: '3' }], r);
     expect(net(q)).toEqual({ ap: '1605.00', 'wht-p': '-45.00', cash: '-1560.00' });
   });
+  it('platform receipt (ข้อกำหนดเจ้าของ 31/10/2569): GP + VAT ในประเทศ หัก ณ ที่จ่าย 3% · ค่าคอมมิชชั่นต่างประเทศ ภ.พ.36', () => {
+    // ขาย 1,000 ผ่าน Grab: GP 300 + VAT 21 = 321 → โอน 679 · เราหัก 3% ของ 300 = 9 (Grab หักเต็มแล้ว → รอเรียกคืน)
+    const R = { ...r, paymentMethod: (id: string | null) => (id === 'TR' ? 'bank' : null), def: (k: string) => ({ ...DEF, INPUT_VAT_PP36: 'ivat36', PP36_PAYABLE: 'pp36', WHT_RECOVERABLE: 'wht-rc' } as Record<string, string>)[k] ?? null };
+    const g = buildPosting({ id: 'h', doc_class: 'RE', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '1000', vat_amount: '0', deposit_amount: '0', vat_basis: null },
+      [], [{ method_id: 'TR', amount: '679', cheque_id: null }], [{ amount: '1000', vat: '0', party_id: 'c1', rectype: '3' }], R,
+      [{ item_id: 'svc', amount: '300', vat_type: '1', vat_amount: '21', wht_amount: '9', wht_condition: '1' }]);
+    expect(postingBalanced(g)).toBe(true);
+    expect(net(g)).toEqual({ 'ar-c1': '-1000.00', 'exp-svc': '300.00', ivat: '21.00', 'wht-p': '-9.00', 'wht-rc': '9.00', bank: '679.00' });
+    // Agoda 2,589.40 หักคอมมิชชั่น 388.41 (ต่างประเทศ ไม่เก็บ VAT) → โอน 2,200.99 · เรานำส่ง ภ.พ.36 27.19
+    const a = buildPosting({ id: 'h', doc_class: 'RE', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '2589.40', vat_amount: '0', deposit_amount: '0', vat_basis: null },
+      [], [{ method_id: 'TR', amount: '2200.99', cheque_id: null }], [{ amount: '2589.40', vat: '0', party_id: 'c1', rectype: '3' }], R,
+      [{ item_id: 'svc', amount: '388.41', vat_type: '3', vat_amount: '27.19', wht_amount: '0', wht_condition: '1' }]);
+    expect(postingBalanced(a)).toBe(true);
+    expect(net(a)).toEqual({ 'ar-c1': '-2589.40', 'exp-svc': '388.41', ivat36: '27.19', pp36: '-27.19', bank: '2200.99' });
+    expect(settlementTotals({ settlements: ['2589.40'], charges: '388.41', direction: 'R', payments: ['2200.99'] })).toMatchObject({ due: '2200.99', ok: true });
+    // ออกภาษีให้ (เงื่อนไข 3): ภาษีหัก ณ ที่จ่ายเป็นค่าใช้จ่าย
+    const o = buildPosting({ id: 'h', doc_class: 'RE', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '1000', vat_amount: '0', deposit_amount: '0', vat_basis: null },
+      [], [], [{ amount: '1000', vat: '0', party_id: 'c1', rectype: '3' }], R, [{ item_id: 'svc', amount: '100', vat_type: '0', vat_amount: '0', wht_amount: '3', wht_condition: '3' }]);
+    expect(net(o)).toEqual({ 'ar-c1': '-1000.00', 'exp-svc': '103.00', 'wht-p': '-3.00', cash: '900.00' });
+  });
   it('cash purchase / cash sale with WHT: WHT replaces that part of cash', () => {
     const hp = buildPosting({ id: 'h', doc_class: 'HP', doc_type_id: null, customer_id: null, supplier_id: 's1', net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1', wht_amount: '30' },
       [{ item_id: 'svc', net_amount: '1000' }], [], [], r);

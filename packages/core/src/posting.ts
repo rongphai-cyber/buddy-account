@@ -17,6 +17,13 @@ export interface PostLine { item_id: string | null; net_amount: MoneyInput; acco
 export interface PostPayment { method_id: string | null; amount: MoneyInput; cheque_id: string | null }
 /** รายการตัดหนี้ในใบเสร็จ/ใบจ่าย · rectype '0' = ตัดเงินมัดจำ (ลงผ่านวิธีชำระ) · '5' = ใบลดหนี้ที่นำมาหัก (ยอดลบ) */
 export interface PostSettlement { amount: MoneyInput; vat: MoneyInput; party_id: string | null; rectype: string | null }
+/**
+ * รายการที่แพลตฟอร์มหักก่อนโอน (ใบเสร็จ RE — ข้อกำหนดเจ้าของ 31/10/2569): ค่าบริการ (item_id → บัญชีค่าใช้จ่าย) ก่อน VAT
+ * vat_type 0 ไม่มี VAT · 1 ภาษีซื้อ (ถูกหักรวม VAT) · 3 ภ.พ.36 (ถูกหักเฉพาะค่าบริการ เรานำส่ง VAT แทน) · wht_condition 1 เรียกคืนจากแพลตฟอร์ม · 3 ออกภาษีให้
+ */
+export interface PostCharge { item_id: string | null; amount: MoneyInput; vat_type: string; vat_amount: MoneyInput; wht_amount: MoneyInput; wht_condition: string }
+/** ยอดที่แพลตฟอร์มหักจากเงินโอนจริง = ค่าบริการ + VAT ที่เรียกเก็บ (ภ.พ.36 และภาษีหัก ณ ที่จ่ายไม่กระทบเงินโอน) */
+export const chargeDeducted = (c: Pick<PostCharge, 'amount' | 'vat_type' | 'vat_amount'>) => d(c.amount).plus(c.vat_type === '1' ? d(c.vat_amount) : d(0));
 export interface ItemGroup { inv: string | null; cogs: string | null; sales: string | null; sret: string | null; pur: string | null; pret: string | null }
 
 export interface PostingResolver {
@@ -38,7 +45,7 @@ export interface PostingLine { account_id: string | null; debit: Decimal; credit
 /** หมวดเอกสารที่ลงบัญชีด้วยเครื่องนี้ */
 export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'VR', 'OU', 'JU', 'CA', 'BD', 'BW', 'BT', 'BU', 'BV'] as const;
 
-export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment[], setts: PostSettlement[], r: PostingResolver): PostingLine[] {
+export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment[], setts: PostSettlement[], r: PostingResolver, charges: PostCharge[] = []): PostingLine[] {
   const out: PostingLine[] = [];
   type Acct = [string | null, Layer];
   const pick = (...c: Array<[Layer, string | null | undefined]>): Acct => {
@@ -146,7 +153,18 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     (isRe ? C : D)(pick(['3', r.def(isRe ? 'INTEREST_INCOME' : 'INTEREST_EXPENSE')]), intr, 'INTEREST');
     // ผลต่างอัตราแลกเปลี่ยน (บทที่ 26): กำไร Cr / ขาดทุน Dr บัญชีกำไร(ขาดทุน)จากอัตราแลกเปลี่ยน — รับ: กำไรได้เงินมากขึ้น · จ่าย: กำไรจ่ายน้อยลง
     if (!fx.isZero()) { const fxAcct = pick(['3', r.def('FX_GAIN_LOSS')]); if (fx.gt(0)) C(fxAcct, fx, 'FX'); else D(fxAcct, fx.neg(), 'FX'); }
-    (isRe ? D : C)(cash, cashRest(partyTotal.minus(wht).minus(disc).plus(intr).plus(isRe ? fx : fx.neg())), 'CASH');
+    // หักโดยแพลตฟอร์ม: Dr ค่าใช้จ่าย + Dr ภาษีซื้อ (ใบกำกับในประเทศ) · ภ.พ.36 Dr ภาษีซื้อรอเครดิต / Cr ภาษีมูลค่าเพิ่มค้างจ่าย ภ.พ.36
+    // ภาษีหัก ณ ที่จ่ายที่เราหัก: Cr ภาษีหัก ณ ที่จ่ายค้างจ่าย / Dr ภาษีรอเรียกคืนจากแพลตฟอร์ม (หรือค่าใช้จ่ายเมื่อออกภาษีให้)
+    let deducted = d(0);
+    for (const c of isRe ? charges : []) {
+      const exp = lineAccount('PURCHASE', c.item_id), v = d(c.vat_amount), w = d(c.wht_amount);
+      D(exp, d(c.amount), 'PLATFORM_FEE');
+      if (c.vat_type === '1') D(pick(['3', r.def('INPUT_VAT')]), v, 'INPUT_VAT');
+      if (c.vat_type === '3') { D(pick(['3', r.def('INPUT_VAT_PP36')], ['3', r.def('INPUT_VAT_PENDING')]), v, 'INPUT_VAT_PP36'); C(pick(['3', r.def('PP36_PAYABLE')], ['3', r.def('VAT_PAYABLE')]), v, 'PP36_PAYABLE'); }
+      if (!w.isZero()) { C(pick(['3', r.def('WHT_PAYABLE')]), w, 'WHT_PAYABLE'); D(c.wht_condition === '3' ? exp : pick(['3', r.def('WHT_RECOVERABLE')]), w, c.wht_condition === '3' ? 'WHT_BORNE' : 'WHT_RECOVERABLE'); }
+      deducted = deducted.plus(chargeDeducted(c));
+    }
+    (isRe ? D : C)(cash, cashRest(partyTotal.minus(wht).minus(disc).plus(intr).plus(isRe ? fx : fx.neg()).minus(deducted)), 'CASH');
     for (const p of pays) (isRe ? D : C)(payAcct(p), d(p.amount), 'PAYMENT');
   } else if (cls === 'AI' || cls === 'OI') {
     // ภาษีถูกหัก ณ ที่จ่าย: Dr ภาษีจ่ายล่วงหน้า แทนเงินสดส่วนนั้น
@@ -215,11 +233,11 @@ export function netByAccount(lines: PostingLine[]): Map<string | null, Decimal> 
  * ยอดของใบเสร็จ/ใบจ่าย (คู่มือหน้า 185, 228): ยอดชำระตามใบกำกับ (ยอดตัดหนี้ ใบลดหนี้ติดลบ) + ดอกเบี้ย − ส่วนลด − ภาษีหัก ณ ที่จ่าย
  * ต้องเท่ากับยอดชำระจริง (เงินสด + ชำระโดยอื่น) — ไม่ระบุเงินสด = ส่วนที่เหลือเป็นเงินสด
  */
-/** fx = กำไร(+)/ขาดทุน(−) จากอัตราแลกเปลี่ยน · direction R (รับ) กำไรเพิ่มยอดที่ได้รับ · P (จ่าย) กำไรลดยอดที่ต้องจ่าย */
-export function settlementTotals(x: { settlements: MoneyInput[]; interest?: MoneyInput; discount?: MoneyInput; wht?: MoneyInput; fx?: MoneyInput; direction?: 'R' | 'P'; payments: MoneyInput[]; cash?: MoneyInput | null }) {
+/** fx = กำไร(+)/ขาดทุน(−) จากอัตราแลกเปลี่ยน · direction R (รับ) กำไรเพิ่มยอดที่ได้รับ · P (จ่าย) กำไรลดยอดที่ต้องจ่าย · charges = ยอดที่แพลตฟอร์มหักก่อนโอน (chargeDeducted) */
+export function settlementTotals(x: { settlements: MoneyInput[]; interest?: MoneyInput; discount?: MoneyInput; wht?: MoneyInput; fx?: MoneyInput; charges?: MoneyInput; direction?: 'R' | 'P'; payments: MoneyInput[]; cash?: MoneyInput | null }) {
   const billed = x.settlements.reduce<Decimal>((s, a) => s.plus(d(a)), d(0));
   const fx = d(x.fx || 0).times(x.direction === 'R' ? 1 : -1);
-  const due = billed.plus(d(x.interest ?? 0)).minus(d(x.discount ?? 0)).minus(d(x.wht ?? 0)).plus(fx);
+  const due = billed.plus(d(x.interest ?? 0)).minus(d(x.discount ?? 0)).minus(d(x.wht ?? 0)).minus(d(x.charges || 0)).plus(fx);
   const other = x.payments.reduce<Decimal>((s, a) => s.plus(d(a)), d(0));
   const cash = x.cash === null || x.cash === undefined || x.cash === '' ? due.minus(other) : d(x.cash);
   const paid = cash.plus(other);

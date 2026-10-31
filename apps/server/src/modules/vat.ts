@@ -36,6 +36,7 @@ export async function syncVatEntries(tx: Db, ctx: Ctx, headerId: string) {
   if (!h || h.is_opening) return;
   const kind = VAT_CLASSES.S.includes(h.doc_class) ? 'S' : VAT_CLASSES.P.includes(h.doc_class) ? 'P' : null;
   if (!kind) return;
+  if (h.doc_class === 'RE') await syncChargeVat(tx, ctx, h);
   let base = d(0), vat = d(0), zero = d(0), exempt = d(0);
   if (h.doc_class === 'RE' || h.doc_class === 'PS') {
     // ภาษีเกณฑ์เงินสด: เกิด ณ วันรับ/จ่ายชำระ ตามยอดภาษีของบิลที่ตัด
@@ -43,7 +44,7 @@ export async function syncVatEntries(tx: Db, ctx: Ctx, headerId: string) {
         coalesce(sum(CASE WHEN express_rectype = '5' THEN -vat_amount ELSE vat_amount END), 0) AS vat FROM doc_settlement WHERE payment_header_id = ${headerId} AND deleted_at IS NULL AND vat_amount <> 0`.execute(tx)).rows[0]!;
     vat = d(s.vat); base = d(s.amount).minus(vat);
   } else if (h.vat_basis !== '2') { base = d(h.taxable_amount); vat = d(h.vat_amount); zero = d(h.zero_rate_amount); exempt = d(h.exempt_amount); }
-  const old = await tx.selectFrom('tax_vat_entry').selectAll().where('header_id', '=', headerId).where('company_id', '=', ctx.companyId).where('is_manual', '=', false).where('deleted_at', 'is', null).execute();
+  const old = await tx.selectFrom('tax_vat_entry').selectAll().where('header_id', '=', headerId).where('company_id', '=', ctx.companyId).where('vat_kind', '=', kind).where('is_manual', '=', false).where('deleted_at', 'is', null).execute();
   // ภาษีขาย: บิลที่มีแต่รายการยกเว้นก็เข้าแฟ้ม (รายงานภาษีขายแยก 3 ประเภท 7% / 0% / ยกเว้น — ข้อกำหนดเจ้าของ)
   if (vat.isZero() && zero.isZero() && (kind !== 'S' || exempt.isZero())) {
     if (old.length) await tx.updateTable('tax_vat_entry').set({ deleted_at: sql`now()` as never }).where('id', 'in', old.map((o) => o.id)).execute();
@@ -69,6 +70,44 @@ export async function syncVatEntries(tx: Db, ctx: Ctx, headerId: string) {
     description: (prev?.description ?? [DESC[h.doc_class], h.party_name].filter(Boolean).join(' ')).slice(0, 200), party_name: h.party_name, party_tax_id: h.party_tax_id, party_tax_branch_no: h.party_tax_branch_no,
     base_amount: abs(base).toFixed(2), vat_amount: abs(vat).toFixed(2), zero_rate_amount: abs(zero).toFixed(2), exempt_amount: abs(exempt).toFixed(2), is_modified: !!prev, remark: prev?.remark ?? null, created_by: ctx.userId,
   }).execute();
+}
+
+/**
+ * ใบเสร็จ: รายการที่แพลตฟอร์มหัก (ข้อกำหนดเจ้าของ 31/10/2569) → ภาษีซื้อ (ใบกำกับในประเทศ) หรือ ภ.พ.36 (ผู้ให้บริการต่างประเทศ งวด = เดือนที่จ่าย)
+ * รายการเดิมที่ยอด/เลขที่เท่าเดิมคงไว้ (รักษาที่ผู้ใช้แก้ในแฟ้มภาษี เช่น งวดที่ยื่น)
+ */
+async function syncChargeVat(tx: Db, ctx: Ctx, h: { id: string; doc_no: string; doc_date: unknown; payment_date: unknown; branch_id: string | null; department_id: string | null; doc_status: string }) {
+  const cs = (await sql<{ vat_type: string; amount: string; vat_amount: string; tax_invoice_no: string | null; tax_invoice_date: string | null; title: string | null; name: string; tax_id: string | null; tax_branch_no: string | null; description: string | null }>`
+    SELECT c.vat_type, c.amount, c.vat_amount, c.tax_invoice_no, c.tax_invoice_date::text, s.title, s.name, s.tax_id, s.tax_branch_no, c.description
+      FROM doc_charge c JOIN md_supplier s ON s.id = c.supplier_id
+     WHERE c.company_id = ${ctx.companyId} AND c.header_id = ${h.id} AND c.deleted_at IS NULL AND c.vat_type IN ('1', '3') AND c.vat_amount <> 0 ORDER BY c.line_no`.execute(tx)).rows;
+  const old = await tx.selectFrom('tax_vat_entry').selectAll().where('header_id', '=', h.id).where('company_id', '=', ctx.companyId).where('vat_kind', 'in', ['P', 'R']).where('is_manual', '=', false).where('deleted_at', 'is', null).execute();
+  const payDate = String(h.payment_date ?? h.doc_date).slice(0, 10), docDate = String(h.doc_date).slice(0, 10);
+  const keep = new Set<string>();
+  for (const c of cs) {
+    const kind = c.vat_type === '3' ? 'R' : 'P';
+    const invNo = c.tax_invoice_no ?? h.doc_no, invDate = kind === 'R' ? payDate : (c.tax_invoice_date ?? payDate);
+    const prev = old.find((o) => !keep.has(o.id) && o.vat_kind === kind && o.tax_invoice_no === invNo && d(o.base_amount).plus(d(o.nonclaim_base)).eq(d(c.amount)) && d(o.vat_amount).plus(d(o.nonclaim_vat)).eq(d(c.vat_amount)));
+    if (prev) { keep.add(prev.id); await tx.updateTable('tax_vat_entry').set({ doc_no: h.doc_no, doc_date: docDate, doc_status: h.doc_status === 'C' ? 'C' : 'N', updated_by: ctx.userId }).where('id', '=', prev.id).execute(); continue; }
+    const party = [c.title, c.name].filter(Boolean).join(' ').slice(0, 200);
+    await tx.insertInto('tax_vat_entry').values({
+      company_id: ctx.companyId, vat_kind: kind, header_id: h.id, branch_id: h.branch_id, doc_no: h.doc_no, doc_date: docDate, tax_invoice_no: invNo, tax_invoice_date: invDate,
+      vat_period_id: await periodIdOf(tx, ctx.companyId, kind === 'R' ? payDate : invDate), is_late: false, department_id: h.department_id,
+      description: (c.description || `${kind === 'R' ? 'ภ.พ.36 ค่าบริการจาก' : 'ค่าบริการแพลตฟอร์ม'} ${party}`).slice(0, 200), party_name: party, party_tax_id: c.tax_id, party_tax_branch_no: c.tax_branch_no,
+      base_amount: d(c.amount).toFixed(2), vat_amount: d(c.vat_amount).toFixed(2), created_by: ctx.userId,
+    }).execute();
+  }
+  const drop = old.filter((o) => !keep.has(o.id)).map((o) => o.id);
+  if (drop.length) await tx.updateTable('tax_vat_entry').set({ deleted_at: sql`now()` as never }).where('id', 'in', drop).execute();
+}
+
+/** ภ.พ.36 ของเดือนก่อน = ภาษีซื้อของเดือนนี้ (ชำระภายในวันที่ 7 ของเดือนถัดไป แล้วใบเสร็จ ภ.พ.36 เป็นใบกำกับภาษีซื้อ) */
+export async function pp36Credit(db: Db, companyId: string, month: string) {
+  const r = (await sql<{ base: string; vat: string; n: number }>`SELECT coalesce(sum(v.base_amount), 0) AS base, coalesce(sum(v.vat_amount), 0) AS vat, count(*)::int AS n
+      FROM tax_vat_entry v JOIN gl_period gp ON gp.id = v.vat_period_id
+     WHERE v.company_id = ${companyId} AND v.vat_kind = 'R' AND v.deleted_at IS NULL AND v.doc_status <> 'C'
+       AND to_char(gp.start_date, 'YYYY-MM') = to_char((${month + '-01'}::date - interval '1 month'), 'YYYY-MM')`.execute(db)).rows[0]!;
+  return { base: d(r.base), vat: d(r.vat), n: r.n };
 }
 
 /** ยกเลิกเอกสาร → รายการภาษีอัตโนมัติของเอกสารเป็นยกเลิก */
@@ -178,7 +217,7 @@ export function vatRoutes(app: FastifyInstance, db: Db) {
     const { month: m } = parse(z.object({ month }), req.query);
     const end = (await sql<{ e: string }>`SELECT (date_trunc('month', ${m + '-01'}::date) + interval '1 month - 1 day')::date::text AS e`.execute(db)).rows[0]!.e;
     const roles = await db.selectFrom('gl_default_account as r').leftJoin('gl_account as g', 'g.id', 'r.account_id').select(['r.role', 'r.account_id', 'g.account_no', 'g.name_th'])
-      .where('r.company_id', '=', a.companyId).where('r.deleted_at', 'is', null).where('r.role', 'in', ['OUTPUT_VAT', 'INPUT_VAT', 'VAT_PAYABLE', 'VAT_REFUND']).execute();
+      .where('r.company_id', '=', a.companyId).where('r.deleted_at', 'is', null).where('r.role', 'in', ['OUTPUT_VAT', 'INPUT_VAT', 'VAT_PAYABLE', 'VAT_REFUND', 'INPUT_VAT_PP36', 'INPUT_VAT_PENDING']).execute();
     const role = (k: string) => roles.find((r) => r.role === k && r.account_id);
     // ยอดคงเหลือ ณ สิ้นเดือนแบบเดียวกับแยกประเภท (ยอดยกมา + รายการ)
     const totals = await leafTotals(db, a.companyId, await loadChart(db, a.companyId), `${m}-01`, end);
@@ -187,16 +226,20 @@ export function vatRoutes(app: FastifyInstance, db: Db) {
     if (!out || !inp) throw badRequest('ยังไม่ได้กำหนดบัญชีภาษีขาย/ภาษีซื้อ — กำหนดที่ เริ่มระบบ › การเชื่อมต่อบัญชี › บัญชีเพื่อลงรายวัน');
     const outBal = (await bal(out.account_id)).neg();   // ภาษีขายยอดเครดิต
     const inBal = await bal(inp.account_id);           // ภาษีซื้อยอดเดบิต
-    const net = outBal.minus(inBal);
+    // ภ.พ.36 ที่นำส่งเดือนก่อน: โอนจากภาษีซื้อรอเครดิตมาหักในเดือนนี้ (ข้อกำหนดเจ้าของ 31/10/2569)
+    const pp36 = (await pp36Credit(db, a.companyId, m)).vat;
+    const pp36Acc = role('INPUT_VAT_PP36') ?? role('INPUT_VAT_PENDING');
+    const net = outBal.minus(inBal).minus(pp36);
     const settle = net.gte(0) ? role('VAT_PAYABLE') : role('VAT_REFUND');
     const line = (r: typeof out | undefined, debit: ReturnType<typeof d>, credit: ReturnType<typeof d>, desc: string) =>
       ({ account_id: r?.account_id ?? null, account_no: r?.account_no ?? null, account_name: r?.name_th ?? null, description: desc, debit: debit.toFixed(2), credit: credit.toFixed(2) });
     const lines = [
       ...(!outBal.isZero() ? [line(out, outBal.gt(0) ? outBal : d(0), outBal.lt(0) ? outBal.neg() : d(0), 'ปิดภาษีขาย')] : []),
       ...(!inBal.isZero() ? [line(inp, inBal.lt(0) ? inBal.neg() : d(0), inBal.gt(0) ? inBal : d(0), 'ปิดภาษีซื้อ')] : []),
+      ...(!pp36.isZero() ? [line(pp36Acc, d(0), pp36, 'ภาษีซื้อจาก ภ.พ.36 เดือนก่อน')] : []),
       ...(!net.isZero() ? [line(settle, net.lt(0) ? net.neg() : d(0), net.gt(0) ? net : d(0), net.gt(0) ? 'ภาษีมูลค่าเพิ่มค้างจ่าย' : 'ภาษีมูลค่าเพิ่มรอขอคืน')] : []),
     ];
-    return { date: end, description: `ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน ${m.slice(5)}/${m.slice(0, 4)}`, output_vat: outBal.toFixed(2), input_vat: inBal.toFixed(2), net: net.toFixed(2), lines,
+    return { date: end, description: `ปรับปรุงภาษีมูลค่าเพิ่มประจำเดือน ${m.slice(5)}/${m.slice(0, 4)}`, output_vat: outBal.toFixed(2), input_vat: inBal.toFixed(2), pp36_vat: pp36.toFixed(2), net: net.toFixed(2), lines,
       missing: !settle ? (net.gte(0) ? 'VAT_PAYABLE' : 'VAT_REFUND') : null };
   });
 }

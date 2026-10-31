@@ -70,16 +70,16 @@ export async function docNoFor(tx: Db, companyId: string, docTypeId: string, man
 
 /** สร้างรายการบัญชีของเอกสาร (ยังไม่บันทึก) — ใช้ทั้งดูตัวอย่างและลงบัญชีจริง */
 export async function previewPosting(db: Db, companyId: string, headerId: string) {
-  const { H, lines, pays, setts } = await loadPostingInput(db, companyId, [headerId]);
+  const { H, lines, pays, setts, charges } = await loadPostingInput(db, companyId, [headerId]);
   const h = H[0];
   if (!h) return null;
-  const ls = lines.get(h.id) ?? [], ps = pays.get(h.id) ?? [], ss = setts.get(h.id) ?? [];
+  const ls = lines.get(h.id) ?? [], ps = pays.get(h.id) ?? [], ss = setts.get(h.id) ?? [], cs = charges.get(h.id) ?? [];
   const r = await loadResolver(db, companyId, {
     customers: [h.customer_id, ...ss.map((s) => s.party_id)].filter((x): x is string => !!x),
     suppliers: [h.supplier_id, ...ss.map((s) => s.party_id)].filter((x): x is string => !!x),
-    items: ls.map((l) => l.item_id).filter((x): x is string => !!x), cheques: ps.map((p) => p.cheque_id).filter((x): x is string => !!x),
+    items: [...ls, ...cs].map((l) => l.item_id).filter((x): x is string => !!x), cheques: ps.map((p) => p.cheque_id).filter((x): x is string => !!x),
   });
-  return { header: h, lines: buildPosting(h, ls, ps, ss, r) };
+  return { header: h, lines: buildPosting(h, ls, ps, ss, r, cs) };
 }
 
 /** รวมบรรทัดบัญชีเดียวกันบทบาทเดียวกัน (Express ลงยอดรวมต่อบัญชี) */
@@ -233,7 +233,7 @@ export async function deleteDocument(db: Db, ctx: Ctx, headerId: string, reason:
       await tx.updateTable('gl_journal_line').set(gone).where('journal_id', 'in', js).where('deleted_at', 'is', null).execute();
       await tx.updateTable('gl_journal').set(gone).where('id', 'in', js).execute();
     }
-    for (const t of ['doc_line', 'doc_payment', 'doc_note', 'tax_vat_entry', 'tax_wht_entry', 'fin_cheque_event', 'fin_bank_ledger'] as const)
+    for (const t of ['doc_line', 'doc_payment', 'doc_charge', 'doc_note', 'tax_vat_entry', 'tax_wht_entry', 'fin_cheque_event', 'fin_bank_ledger'] as const)
       await tx.updateTable(t).set(gone).where('header_id', '=', headerId).where('deleted_at', 'is', null).execute();
     await tx.updateTable('doc_link').set(gone).where((eb) => eb.or([eb('from_header_id', '=', headerId), eb('to_header_id', '=', headerId)])).where('deleted_at', 'is', null).execute();
     await tx.updateTable('doc_bill_item').set(gone).where((eb) => eb.or([eb('bill_header_id', '=', headerId), eb('invoice_header_id', '=', headerId)])).where('deleted_at', 'is', null).execute();

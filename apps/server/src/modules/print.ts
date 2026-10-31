@@ -142,6 +142,9 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     if (nz(h.interest_amount)) totals.push({ label: 'ดอกเบี้ย', value: money(h.interest_amount) });
     if (nz(h.fx_amount)) totals.push({ label: d(h.fx_amount).gt(0) ? 'กำไรจากอัตราแลกเปลี่ยน' : 'ขาดทุนจากอัตราแลกเปลี่ยน', value: money(d(h.fx_amount).abs()) });
     if (nz(h.wht_amount)) totals.push({ label: 'ภาษีหัก ณ ที่จ่าย', value: money(h.wht_amount) });
+    // รายการที่แพลตฟอร์มหักก่อนโอน (ค่าบริการ + VAT ในประเทศ)
+    const fee = d((await sql<{ v: string }>`SELECT coalesce(sum(amount + CASE WHEN vat_type = '1' THEN vat_amount ELSE 0 END), 0) AS v FROM doc_charge WHERE header_id = ${id} AND company_id = ${a.companyId} AND deleted_at IS NULL`.execute(db)).rows[0]!.v);
+    if (!fee.isZero()) totals.push({ label: PLATFORM_FEE_LABEL, value: fee.toFixed(2) });
     totals.push({ label: 'ยอดสุทธิ', value: money(h.net_amount) });
   } else if (fam === 'stock') {
     if (lines.some((l) => l.amount)) totals.push({ label: 'รวมมูลค่า', value: lines.reduce((s, l) => s.plus(d(l.amount || 0)), d(0)).toFixed(2) });
@@ -157,6 +160,8 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
 }
 
 /** พิมพ์เอกสาร (S-RD-01 · S-UI-08/09/10) · รับรองเอกสาร (S-UI-11/12 · S-GL-10) · รายละเอียดแฟ้มข้อมูล (S-RD-06) · แบบฟอร์ม (S-RD-02) · รายงานของผู้ใช้ (S-RD-03/04) */
+const PLATFORM_FEE_LABEL = 'หักค่าบริการแพลตฟอร์ม';
+
 export function printRoutes(app: FastifyInstance, db: Db) {
   const formsOf = async (a: Ctx, scope: string) => (await db.selectFrom('sys_print_form').select(['slot', 'name', 'base', 'layout', 'status', 'updated_at'])
     .where('company_id', '=', a.companyId).where('scope', '=', scope).where('deleted_at', 'is', null).orderBy('slot').execute())

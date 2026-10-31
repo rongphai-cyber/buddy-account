@@ -13,7 +13,7 @@ import { CancelStamp } from '../../components/DocDelete';
 import { DocJournalTab } from './TradeDocs';
 import { DocLink } from '../../components/DocLink';
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
-import { PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
+import { chargesBody, chargesFrom, ChargesTable, chargeTotal, emptyChargeHead, PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type ChargeHead, type ChargeLine, type ChargeRow, type Pay, type Wht } from './MoneyParts';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { DocVatTab, VatCheckAfterSave, vatTabLabel } from '../../components/DocTaxTabs';
@@ -82,7 +82,9 @@ interface Head { doc_type_id: string; doc_date: string; payment_date: string; pa
   interest: string; discount: string; wht: string; fx: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
 interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; settlements: Array<{ invoice_header_id: string; amount: string; line_note?: string | null; line_note_print?: boolean }>;
   payments: Array<{ payment_method_id: string; amount: string; reference_no: string | null; cheque_date: string | null; bank_id: string | null; bank_branch: string | null }>;
-  wht: Array<{ id: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; certificate_no: string | null; certificate_date: string; doc_status: string }> }
+  wht: Array<{ id: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; certificate_no: string | null; certificate_date: string; doc_status: string }>;
+  /** ใบเสร็จ: รายการที่แพลตฟอร์มหัก + ภาษีหัก ณ ที่จ่ายที่เราหักจากรายการนั้น */
+  charges?: ChargeRow[]; charge_wht?: Array<{ id: string; tax_amount: string; doc_status: string }> }
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(v as string).toString());
 
 export function SettleFormPage({ path }: { path: string }) {
@@ -103,6 +105,10 @@ export function SettleFormPage({ path }: { path: string }) {
   const [billRef, setBillRef] = useState('');
   const [pays, setPays] = useState<Pay[]>([]);
   const [whts, setWhts] = useState<Wht[]>([]);
+  /** หักโดยแพลตฟอร์ม (ใบเสร็จ — ข้อกำหนดเจ้าของ 31/10/2569) */
+  const [chHead, setChHead] = useState<ChargeHead>(emptyChargeHead);
+  const [charges, setCharges] = useState<ChargeLine[]>([]);
+  const isRe = K.cls === 'RE';
   const [tab, setTab] = useState('bills');
   /** หมายเหตุรายการต่อบิลที่ตัด (ข้อกำหนดเจ้าของ) */
   const [notes, setNotes] = useState<Record<string, { line_note: string; line_note_print: boolean }>>({});
@@ -125,6 +131,7 @@ export function SettleFormPage({ path }: { path: string }) {
     setNotes(Object.fromEntries(cur.data.settlements.filter((s) => s.line_note).map((s) => [s.invoice_header_id, { line_note: s.line_note ?? '', line_note_print: !!s.line_note_print }])));
     setPays(paysFrom(cur.data.payments));
     setWhts(whtsFrom(cur.data.wht));
+    const ch = chargesFrom(cur.data.charges ?? []); setChHead(ch.head); setCharges(ch.lines);
   }
   const roBase = !!id && (!cur.data?.editable || !can('edit'));
   const ed = useDocEdit({ id: id ?? undefined, allowed: !!id && !roBase, dirty, onSave: (n) => void save(!!n), onDiscard: () => { setH(null); setDirty(false); } });
@@ -134,15 +141,21 @@ export function SettleFormPage({ path }: { path: string }) {
   const chosen = rows.filter((o) => pick[o.header_id] !== undefined);
   const whtTotal = whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0));
   const whtAmount = K.cls === 'PS' && whts.length ? whtTotal.toFixed(2) : h?.wht || '0';
-  const t = useMemo(() => settlementTotals({ settlements: chosen.map((o) => d(pick[o.header_id] || 0).times(o.doc_class === K.neg ? -1 : 1).toFixed(2)), interest: h?.interest || 0, discount: h?.discount || 0, wht: whtAmount, fx: h?.fx || 0, direction: K.direction,
-    payments: pays.filter((p) => p.payment_method_id).map((p) => p.amount || 0), cash: h?.cash === '' || h?.cash === undefined ? null : h.cash }), [chosen, pick, h, pays, whtAmount, K.neg]);
+  const feeTotal = isRe ? chargeTotal(charges) : '0';
+  const t = useMemo(() => settlementTotals({ settlements: chosen.map((o) => d(pick[o.header_id] || 0).times(o.doc_class === K.neg ? -1 : 1).toFixed(2)), interest: h?.interest || 0, discount: h?.discount || 0, wht: whtAmount, fx: h?.fx || 0, charges: feeTotal, direction: K.direction,
+    payments: pays.filter((p) => p.payment_method_id).map((p) => p.amount || 0), cash: h?.cash === '' || h?.cash === undefined ? null : h.cash }), [chosen, pick, h, pays, whtAmount, feeTotal, K.neg]);
   /** ยอดก่อน VAT ของบิลที่เลือก — ค่าเริ่มต้นของ "จำนวนเงินที่จ่าย" ในภาษีหัก ณ ที่จ่าย */
   const baseOfChosen = chosen.reduce((s, o) => { const n = d(o.net_amount); const p = d(pick[o.header_id] || 0).times(o.doc_class === K.neg ? -1 : 1); return s.plus(n.isZero() ? p : p.times(n.minus(d(o.vat_amount))).div(n)); }, d(0)).toDecimalPlaces(2).toFixed(2);
 
   const pickParty = async (p: { id: string; code: string; name: string } | null) => {
-    setPick({}); setNotes({}); setWhts([]);
+    setPick({}); setNotes({}); setWhts([]); setChHead(emptyChargeHead()); setCharges([]);
     if (!p) return set({ party: null });
     const x = await api.get<Record<string, string | null>>(`${partyEndpoint(K)}/${p.id}`);
+    // ลูกค้าที่เป็นแพลตฟอร์ม: ดึงรายการหักแบบใบเสร็จครั้งก่อน (ผู้ให้บริการ รหัสค่าใช้จ่าย VAT ภาษีหัก ณ ที่จ่าย) — ป้อนยอดตามรายงานการโอน
+    if (isRe) {
+      const tpl = await api.get<{ rows: ChargeRow[] }>(`/api/v1/${K.path}/charge-template`, { party_id: p.id });
+      if (tpl.rows.length) { const ch = chargesFrom(tpl.rows, false); setChHead(ch.head); setCharges(ch.lines); toast(`ดึงรายการหักของ ${ch.head.supplier?.name ?? ''} แบบครั้งก่อนแล้ว — ป้อนยอดตามรายงานการโอนที่แท็บ "หักโดยแพลตฟอร์ม" (F8)`, 'warn'); }
+    }
     set({ party: p, ...(K.module === 'AR' ? { salesperson_id: x.salesperson_id ?? '' } : {}),
       whtForm: wht50FormOf(x.wht_form, x.tax_id) === '3' ? 'S03' : 'S53', whtRate: x.wht_rate && !d(x.wht_rate).isZero() ? d(x.wht_rate).toString() : '3' });
   };
@@ -160,14 +173,14 @@ export function SettleFormPage({ path }: { path: string }) {
     const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
       your_ref: h.your_ref || null, remark: h.remark || null, interest_amount: h.interest || '0', cash_discount_amount: h.discount || '0', fx_amount: h.fx || '0', wht_amount: K.cls === 'PS' && whts.length ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
       settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0', line_note: notes[o.header_id]?.line_note || null, line_note_print: !!notes[o.header_id]?.line_note_print })),
-      payments: paysBody(pays), wht: K.cls === 'PS' ? whtsBody(whts) : [] };
+      payments: paysBody(pays), wht: K.cls === 'PS' ? whtsBody(whts) : [], charges: isRe ? chargesBody(chHead, charges) : [] };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}`, body);
       toast(r.journal_id ? `บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก${K.label} ${r.doc_no} แล้ว (ไม่ลงบัญชี)`);
       setDirty(false); if (id) ed.lock();
       qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] }); qc.invalidateQueries({ queryKey: ['doc-vat'] });
       if (K.cls === 'PS') setVatCheck(r.id);   // ภาษีซื้อเกณฑ์เงินสด (ค่าบริการ) เกิดตอนจ่าย: ตรวจรายการในแฟ้มภาษีซื้อ (ไม่มีรายการ = ปิดเอง)
-      if (andNew) { setH(null); setPick({}); setNotes({}); setPays([]); setWhts([]); nav(`${K.route}/new`, { replace: true }); }
+      if (andNew) { setH(null); setPick({}); setNotes({}); setPays([]); setWhts([]); setChHead(emptyChargeHead()); setCharges([]); nav(`${K.route}/new`, { replace: true }); }
       // โหลดจากเซิร์ฟเวอร์ใหม่ (ได้รหัสรายการภาษีหัก ณ ที่จ่ายสำหรับพิมพ์ 50 ทวิ)
       else if (!id) { nav(`${K.route}/${r.id}`, { replace: true }); setH(null); }
       else { await qc.refetchQueries({ queryKey: [K.path, 'one', id] }); setH(null); }
@@ -177,7 +190,7 @@ export function SettleFormPage({ path }: { path: string }) {
     try { await api.post(`/api/v1/${K.path}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว — บิลกลับเป็นค้างชำระ'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.path] }); nav(K.route); }
     catch (e) { setAskCancel(false); setErr(e); }
   };
-  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F5: () => setTab('bills'), F7: () => setTab('pay'), 'Ctrl+F7': id ? () => setTab('vat') : undefined, 'Ctrl+F10': K.cls === 'PS' ? () => setTab('wht') : undefined,
+  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F5: () => setTab('bills'), F7: () => setTab('pay'), F8: isRe ? () => setTab('fee') : undefined, 'Ctrl+F7': id ? () => setTab('vat') : undefined, 'Ctrl+F10': K.cls === 'PS' ? () => setTab('wht') : undefined,
     'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: readOnly, resetKey: h ? 'on' : 'off' });
@@ -191,7 +204,7 @@ export function SettleFormPage({ path }: { path: string }) {
         <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}
           {h?.party && chosen.length > 0 && !t.ok && !ro && <Pill tone="d">ยอดเงินไม่เรียบร้อย</Pill>}</span></div>
       <div className="toolbar">
-        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setPick({}); setNotes({}); setPays([]); setWhts([]); nav(`${K.route}/new`); } }}>+ ใหม่</button>
+        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setPick({}); setNotes({}); setPays([]); setWhts([]); setChHead(emptyChargeHead()); setCharges([]); nav(`${K.route}/new`); } }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
@@ -230,7 +243,7 @@ export function SettleFormPage({ path }: { path: string }) {
           </div>
         </div>
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'bills', label: `รายการบิลที่${rp(K)}ชำระ`, badge: chosen.length || undefined }, { key: 'pay', label: 'ชำระโดยอื่น ๆ (เช็ค/โอน)', badge: pays.length || undefined },
-          ...(K.cls === 'PS' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+          ...(K.cls === 'PS' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(isRe ? [{ key: 'fee', label: 'หักโดยแพลตฟอร์ม (GP/ค่าธรรมเนียม)', badge: charges.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
         {tab === 'bills' && <div className="table-wrap lines">
           {!h.party ? <p className="empty">เลือก{partyWord(K)}ก่อน แล้วติ๊กบิลที่จะ{rp(K)}ชำระ</p> : <table className="grid">
             <thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={allOn} disabled={ro || !rows.length} onChange={(e) => { setPick(e.target.checked ? Object.fromEntries(rows.map((o) => [o.header_id, num(o.outstanding)])) : {}); setDirty(true); }} aria-label="เลือกทั้งหมด" /></th>
@@ -257,7 +270,9 @@ export function SettleFormPage({ path }: { path: string }) {
         </div>}
         {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} partyId={h.party?.id ?? null} readOnly={ro} payDate={h.payment_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
         {tab === 'wht' && K.cls === 'PS' && <WhtTable whts={whts} setWhts={setWhts} readOnly={ro} base={baseOfChosen} defaults={{ form: h.whtForm, rate: h.whtRate }} canAdd={chosen.length > 0} dirty={dirty} onDirty={() => setDirty(true)} />}
+        {tab === 'fee' && isRe && <ChargesTable head={chHead} setHead={setChHead} lines={charges} setLines={setCharges} readOnly={ro} onDirty={() => setDirty(true)} />}
         {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} vatBasis="2" />}
+        {tab === 'vat' && id && isRe && charges.some((c) => c.vat_type === '1') && <><h3 className="section-title">ภาษีซื้อจากรายการที่แพลตฟอร์มหัก</h3><DocVatTab headerId={id} cls="OE" /></>}
         {tab === 'gl' && id && <DocJournalTab id={id} />}
         <div className="trade-foot">
           <Field label="หมายเหตุ"><textarea rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
@@ -267,6 +282,7 @@ export function SettleFormPage({ path }: { path: string }) {
             <tr><td>{K.direction === 'R' ? 'หัก ส่วนลดเงินสด' : 'หัก ส่วนลดเงินสดรับ'}</td><td><MoneyInput value={h.discount} disabled={ro} onChange={(v) => set({ discount: v })} aria-label="ส่วนลดเงินสด" /></td></tr>
             <tr><td>หัก {K.direction === 'R' ? 'ภาษีถูกหัก ณ ที่จ่าย' : <a href="#wht" onClick={(e) => { e.preventDefault(); setTab('wht'); }}>ภาษีหัก ณ ที่จ่าย</a>}</td>
               <td>{K.cls === 'PS' && whts.length ? <span className="r num" style={{ display: 'block' }}>{fmt(whtTotal.toFixed(2))}</span> : <MoneyInput value={h.wht} disabled={ro} onChange={(v) => set({ wht: v })} aria-label="ภาษีหัก ณ ที่จ่าย" />}</td></tr>
+            {isRe && (charges.length > 0 || !ro) && <tr><td>หัก <a href="#fee" onClick={(e) => { e.preventDefault(); setTab('fee'); }}>รายการที่แพลตฟอร์มหัก (GP/ค่าธรรมเนียม)</a></td><td className="r num">{fmt(feeTotal)}</td></tr>}
             <tr><td title="กำไรป้อนยอดบวก ขาดทุนป้อนยอดติดลบ — ลงบัญชีกำไร(ขาดทุน)จากอัตราแลกเปลี่ยน (เริ่มระบบ › บัญชีเพื่อลงรายวัน)">กำไร(ขาดทุน)อัตราแลกเปลี่ยน</td><td><MoneyInput value={h.fx} disabled={ro} onChange={(v) => set({ fx: v })} aria-label="ผลต่างอัตราแลกเปลี่ยน" /></td></tr>
             <tr className="grand"><td>ยอดที่ต้อง{rp(K)}</td><td className="r"><Money v={t.due} /></td></tr>
             <tr><td>ชำระโดยอื่น ๆ (เช็ค/โอน)</td><td className="r"><Money v={t.other} /></td></tr>
@@ -277,7 +293,7 @@ export function SettleFormPage({ path }: { path: string }) {
         </div>
       </div>}
       {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['F5', 'บิลค้าง'], ['F7', 'ชำระโดยอื่น'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['F5', 'บิลค้าง'], ['F7', 'ชำระโดยอื่น'], ...(isRe ? [['F8', 'หักโดยแพลตฟอร์ม'] as [string, string]] : []), ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ) · บิลที่ตัดกลับเป็นค้างชำระ · เช็คออกจากทะเบียน{K.cls === 'PS' ? ' · ภาษีหัก ณ ที่จ่ายยกเลิก' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
       </Confirm>}

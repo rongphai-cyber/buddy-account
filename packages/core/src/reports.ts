@@ -161,6 +161,7 @@ export const REPORT_TREE: ReportNode[] = [
     leaf('6.4', 'แบบ ภ.พ.30 (แบบแสดงรายการภาษีมูลค่าเพิ่ม)', 'RP.TAX', [F.period, FILING, { key: 'carry', kind: 'select', label: 'ภาษีชำระเกินยกมา', options: [['auto', 'คำนวณจากงวดก่อน'], ['0', 'ไม่มี']], default: 'auto' }]),
     leaf('6.5', 'ใบแนบ ภ.ง.ด.3 (บุคคลธรรมดา)', 'RP.TAX', [F.period, FILING], { landscape: true }),
     leaf('6.6', 'ใบแนบ ภ.ง.ด.53 (นิติบุคคล)', 'RP.TAX', [F.period, FILING], { landscape: true }),
+    leaf('6.7', 'แบบ ภ.พ.36 (ภาษีมูลค่าเพิ่มนำส่งแทนผู้ให้บริการต่างประเทศ)', 'RP.TAX', [F.period], { landscape: true }),
   ] },
   { code: '7', title: 'รายงานวิเคราะห์การขาย', children: [
     { code: '7.1', title: 'ประวัติการขาย', children: [

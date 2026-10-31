@@ -223,7 +223,7 @@ export const API_RULES: Record<string, Rule> = {
   ...Object.fromEntries(SETTLE_KINDS.flatMap((k) => [
     [`GET /api/v1/${k.path}`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/open-items`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/:id`, M(k.menu, 'read')],
     [`POST /api/v1/${k.path}`, M(k.menu, 'add')], [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M(k.menu, 'cancel')],
-    [`GET /api/v1/${k.path}/bills`, M(k.menu, 'read')],
+    [`GET /api/v1/${k.path}/bills`, M(k.menu, 'read')], ...(k.cls === 'RE' ? [[`GET /api/v1/${k.path}/charge-template`, M(k.menu, 'read')]] : []),
   ])),
   ...Object.fromEntries(CASH_KINDS.flatMap((k) => [
     [`GET /api/v1/${k.path}`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/:id`, M(k.menu, 'read')], [`POST /api/v1/${k.path}`, M(k.menu, 'add')],

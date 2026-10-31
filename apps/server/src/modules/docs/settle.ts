@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { d, SETTLE_KINDS, settlementTotals, type SettleKind } from '@buddy/core';
+import { chargeDeducted, d, SETTLE_KINDS, settlementTotals, type SettleKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
@@ -16,6 +16,15 @@ const str = (max: number) => z.string().trim().max(max).nullable().optional().tr
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 const money = (v: ReturnType<typeof d>) => v.toDecimalPlaces(2).toFixed(2);
 
+/** รายการที่แพลตฟอร์มออนไลน์หักก่อนโอน (ใบเสร็จ — ข้อกำหนดเจ้าของ 31/10/2569) */
+const chargesSchema = z.array(z.object({
+  supplier_id: z.string({ required_error: 'เลือกผู้ให้บริการ (แพลตฟอร์ม)', invalid_type_error: 'เลือกผู้ให้บริการ (แพลตฟอร์ม)' }).uuid('เลือกผู้ให้บริการ (แพลตฟอร์ม)'),
+  item_id: z.string({ required_error: 'เลือกรหัสค่าใช้จ่าย', invalid_type_error: 'เลือกรหัสค่าใช้จ่าย' }).uuid('เลือกรหัสค่าใช้จ่าย'), description: str(200), amount: num,
+  vat_type: z.enum(['0', '1', '3']).default('1'), vat_amount: num.default('0'), tax_invoice_no: str(30), tax_invoice_date: isoDate.nullable().optional().transform((v) => v ?? null),
+  wht_form: z.enum(['S03', 'S53']).nullable().optional().transform((v) => v ?? null), wht_income_type: str(60), wht_rate: num.default('0'), wht_amount: num.default('0'), wht_condition: z.enum(['1', '3']).default('1'),
+})).max(50).default([]);
+type Charges = z.infer<typeof chargesSchema>;
+
 const body = z.object({
   doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, payment_date: isoDate.nullable().optional(),
   party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'),
@@ -28,6 +37,7 @@ const body = z.object({
   payments: paymentsSchema,
   /** รายละเอียดภาษีหัก ณ ที่จ่าย (S-PU-C4) สำหรับทะเบียน ภ.ง.ด.3/53 และพิมพ์ 50 ทวิ — ได้ 2 ประเภทเงินได้ */
   wht: whtSchema,
+  charges: chargesSchema,
 });
 type Body = z.infer<typeof body>;
 
@@ -45,6 +55,67 @@ async function openItems(db: Db, companyId: string, K: SettleKind, partyId: stri
      WHERE o.company_id = ${companyId} AND o.${sql.ref(partyCol)} = ${partyId}
        AND ${only ? sql`o.header_id = ANY(${only}::uuid[])` : sql`(o.outstanding <> 0 OR ${own} <> 0)`}
      ORDER BY o.due_date NULLS LAST, o.doc_date, o.doc_no`.execute(db)).rows;
+}
+
+type Supplier = { id: string; code: string; title: string | null; name: string; address_1: string | null; address_2: string | null; address_3: string | null; zip_code: string | null; tax_id: string | null; tax_branch_no: string | null };
+/**
+ * ตรวจรายการที่แพลตฟอร์มหัก: ผู้ให้บริการ/รหัสค่าใช้จ่ายของบริษัทนี้ · ภาษีซื้อต้องมีเลขที่ใบกำกับ · ภาษีหัก ณ ที่จ่ายต้องเลือกแบบและประเภทเงินได้
+ * คืนยอดที่ถูกหักจากเงินโอน (ค่าบริการ + VAT ในประเทศ) และข้อมูลผู้ให้บริการสำหรับแฟ้มภาษี
+ */
+async function checkCharges(db: Db, companyId: string, K: SettleKind, cs: Charges) {
+  if (!cs.length) return { deducted: '0', suppliers: new Map<string, Supplier>() };
+  if (K.cls !== 'RE') throw badRequest('รายการที่แพลตฟอร์มหักใช้กับใบเสร็จรับเงินเท่านั้น');
+  const sup = new Map<string, Supplier>((await db.selectFrom('md_supplier').select(['id', 'code', 'title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no'])
+    .where('company_id', '=', companyId).where('id', 'in', [...new Set(cs.map((c) => c.supplier_id))]).where('deleted_at', 'is', null).execute()).map((x) => [x.id, x]));
+  const items = new Set((await db.selectFrom('md_item').select('id').where('company_id', '=', companyId).where('id', 'in', [...new Set(cs.map((c) => c.item_id))]).where('deleted_at', 'is', null).execute()).map((x) => x.id));
+  let deducted = d(0);
+  cs.forEach((c, i) => {
+    const at = `รายการที่แพลตฟอร์มหัก บรรทัดที่ ${i + 1}`;
+    if (!sup.has(c.supplier_id)) throw badRequest(`${at}: ไม่พบผู้ให้บริการ (ผู้จำหน่าย) นี้ — เพิ่มที่ ข้อมูลหลัก › ผู้จำหน่าย`);
+    if (!items.has(c.item_id)) throw badRequest(`${at}: ไม่พบรหัสค่าใช้จ่ายนี้`);
+    if (d(c.amount).lte(0)) throw badRequest(`${at}: ป้อนจำนวนเงินที่ถูกหักมากกว่า 0`);
+    if (c.vat_type === '0') c.vat_amount = '0';
+    if (d(c.vat_amount).lt(0)) throw badRequest(`${at}: ภาษีมูลค่าเพิ่มต้องไม่ติดลบ`);
+    if (c.vat_type === '1' && !c.tax_invoice_no) throw badRequest(`${at}: ป้อนเลขที่ใบกำกับภาษีของผู้ให้บริการ (ภาษีซื้อต้องมีใบกำกับภาษี) — ถ้าไม่มีใบกำกับให้เลือก VAT 0`);
+    if (!c.wht_form || d(c.wht_amount).isZero()) { c.wht_form = null; c.wht_amount = '0'; c.wht_rate = '0'; }
+    else {
+      if (!c.wht_income_type) throw badRequest(`${at}: เลือกประเภทเงินได้ของภาษีหัก ณ ที่จ่าย`);
+      if (d(c.wht_amount).lt(0) || d(c.wht_amount).gt(d(c.amount))) throw badRequest(`${at}: ภาษีหัก ณ ที่จ่ายต้องไม่เกินค่าบริการ`);
+    }
+    deducted = deducted.plus(chargeDeducted(c));
+  });
+  return { deducted: money(deducted), suppliers: sup };
+}
+
+/** บันทึกรายการที่แพลตฟอร์มหัก + ภาษีหัก ณ ที่จ่ายที่เราหัก (แฟ้ม ภ.ง.ด.3/53 · รวมเป็นหนังสือรับรองเดียวต่อผู้ให้บริการ/ประเภทเงินได้) */
+async function writeCharges(tx: Db, a: Ctx, x: { headerId: string; docNo: string; payDate: string; departmentId: string | null; charges: Charges; suppliers: Map<string, Supplier> }) {
+  if (!x.charges.length) return;
+  await tx.insertInto('doc_charge').values(x.charges.map((c, i) => ({ company_id: a.companyId, header_id: x.headerId, line_no: i + 1, supplier_id: c.supplier_id, item_id: c.item_id, description: c.description,
+    amount: money(d(c.amount)), vat_type: c.vat_type, vat_amount: money(d(c.vat_amount)), tax_invoice_no: c.tax_invoice_no, tax_invoice_date: c.tax_invoice_date,
+    wht_form: c.wht_form, wht_income_type: c.wht_form ? c.wht_income_type : null, wht_rate: c.wht_rate, wht_amount: money(d(c.wht_amount)), wht_condition: c.wht_condition, created_by: a.userId }))).execute();
+  const groups = new Map<string, { c: Charges[number]; paid: ReturnType<typeof d>; tax: ReturnType<typeof d> }>();
+  for (const c of x.charges.filter((c) => c.wht_form)) {
+    const k = [c.supplier_id, c.wht_form, c.wht_income_type, d(c.wht_rate).toString(), c.wht_condition].join('|');
+    const g = groups.get(k) ?? { c, paid: d(0), tax: d(0) };
+    g.paid = g.paid.plus(d(c.amount)); g.tax = g.tax.plus(d(c.wht_amount)); groups.set(k, g);
+  }
+  if (!groups.size) return;
+  const per = await periodFor(tx, a.companyId, x.payDate);
+  const branchId = await branchOf(tx, a);
+  for (const { c, paid, tax } of groups.values()) {
+    const s = x.suppliers.get(c.supplier_id)!;
+    await tx.insertInto('tax_wht_entry').values({ company_id: a.companyId, form_type: c.wht_form!, header_id: x.headerId, branch_id: branchId, certificate_no: x.docNo, certificate_date: x.payDate, tax_period_id: per.id,
+      supplier_id: s.id, payee_name: [s.title, s.name].filter(Boolean).join(' ').slice(0, 200) || s.code, payee_address: [s.address_1, s.address_2, s.address_3, s.zip_code].filter(Boolean).join(' ').slice(0, 500) || null,
+      payee_tax_id: s.tax_id, payee_tax_branch_no: s.tax_branch_no, income_type: c.wht_income_type!, paid_amount: money(paid), rate: c.wht_rate, tax_amount: money(tax), condition: c.wht_condition,
+      department_id: x.departmentId, created_by: a.userId }).execute();
+  }
+}
+
+async function readCharges(db: Db, companyId: string, headerId: string) {
+  return db.selectFrom('doc_charge as c').innerJoin('md_supplier as s', 's.id', 'c.supplier_id').innerJoin('md_item as i', 'i.id', 'c.item_id')
+    .select(['c.line_no', 'c.supplier_id', 's.code as supplier_code', 's.name as supplier_name', 'c.item_id', 'i.code as item_code', 'i.name_th as item_name', 'c.description', 'c.amount', 'c.vat_type', 'c.vat_amount',
+      'c.tax_invoice_no', 'c.tax_invoice_date', 'c.wht_form', 'c.wht_income_type', 'c.wht_rate', 'c.wht_amount', 'c.wht_condition'])
+    .where('c.company_id', '=', companyId).where('c.header_id', '=', headerId).where('c.deleted_at', 'is', null).orderBy('c.line_no').execute();
 }
 
 /** ใบเสร็จ/ใบสำคัญจ่าย: ตัดบิล ผลต่าง วิธีชำระ เช็ค ภาษีหัก ณ ที่จ่าย แล้วลงบัญชีในทรานแซกชันเดียวกัน */
@@ -78,12 +149,13 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
   for (const [v, n] of [[wht, 'ภาษีหัก ณ ที่จ่าย'], [d(b.cash_discount_amount), 'ส่วนลดเงินสด'], [d(b.interest_amount), 'ดอกเบี้ย']] as const) if (v.lt(0)) throw badRequest(`${n}ต้องไม่ติดลบ`);
 
   const mById = await loadMethods(db, a.companyId, K.direction, b.payments);
+  const charge = await checkCharges(db, a.companyId, K, b.charges);
 
   const t = settlementTotals({ settlements: setts.map((s) => d(s.amount).times(s.sign).toFixed(2)), interest: b.interest_amount, discount: b.cash_discount_amount, wht: wht.toFixed(2),
-    fx: b.fx_amount, direction: K.direction, payments: b.payments.map((p) => p.amount), cash: b.cash_amount });
+    fx: b.fx_amount, charges: charge.deducted, direction: K.direction, payments: b.payments.map((p) => p.amount), cash: b.cash_amount });
   if (d(t.due).lt(0)) throw badRequest(`ยอดชำระตามใบกำกับติดลบ (${t.due}) — ใบลดหนี้มากกว่าบิลที่เลือก`);
   if (d(t.cash).lt(0)) throw badRequest(`ชำระโดยวิธีอื่นรวม ${t.other} มากกว่ายอดที่ต้อง${K.direction === 'R' ? 'รับ' : 'จ่าย'} ${t.due}`);
-  if (!t.ok) throw badRequest(`ยอดชำระตามใบกำกับ ${t.due} ไม่เท่ากับยอดชำระจริง ${t.paid} (Message# ${K.cls === 'RE' ? '4025' : '4066'}) — ปรับเงินสด ส่วนลด ดอกเบี้ย ภาษีหัก ณ ที่จ่าย หรือผลต่างอัตราแลกเปลี่ยน`);
+  if (!t.ok) throw badRequest(`ยอดชำระตามใบกำกับ ${t.due} ไม่เท่ากับยอดชำระจริง ${t.paid} (Message# ${K.cls === 'RE' ? '4025' : '4066'}) — ปรับเงินสด ส่วนลด ดอกเบี้ย ภาษีหัก ณ ที่จ่าย ${K.cls === 'RE' ? 'รายการที่แพลตฟอร์มหัก ' : ''}หรือผลต่างอัตราแลกเปลี่ยน`);
 
   const header = {
     doc_type_id: dt.id, doc_class: K.cls, module: K.module, doc_date: b.doc_date, payment_date: payDate,
@@ -108,6 +180,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
       await clearMoneyParts(tx, id);
       await tx.updateTable('doc_settlement').set({ deleted_at: sql`now()` as never }).where('payment_header_id', '=', id).where('deleted_at', 'is', null).execute();
+      await tx.updateTable('doc_charge').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
@@ -117,6 +190,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
     await writePayments(tx, a, { headerId: hid!, direction: K.direction, payDate, methods: mById, payments: b.payments, customerId: header.customer_id, supplierId: header.supplier_id, partyName: header.party_name, departmentId: header.department_id });
     await writeWht(tx, a, { headerId: hid!, docNo, payDate, wht: b.wht, supplierId: header.supplier_id, departmentId: header.department_id,
       payee: { name: header.party_name || party.code, address: header.party_address, tax_id: party.tax_id, branch_no: party.tax_branch_no } });
+    await writeCharges(tx, a, { headerId: hid!, docNo, payDate, departmentId: header.department_id, charges: b.charges, suppliers: charge.suppliers });
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
@@ -155,6 +229,14 @@ export function settleRoutes(app: FastifyInstance, db: Db) {
       if (!p) throw notFound(K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย');
       return { rows: await openItems(db, a.companyId, K, p.id, q.receipt_id ?? null) };
     });
+    /** รายการที่แพลตฟอร์มหักจากใบเสร็จล่าสุดของลูกค้ารายนี้ (ค่าเริ่มต้นใบใหม่: ผู้ให้บริการ รหัสค่าใช้จ่าย VAT ภาษีหัก ณ ที่จ่าย — ไม่รวมยอดเงิน) */
+    if (K.cls === 'RE') app.get(`${base}/charge-template`, async (req) => {
+      const a = requireCompany(req);
+      const q = parse(z.object({ party_id: uuid }), req.query);
+      const last = await db.selectFrom('doc_header as h').select('h.id').where('h.company_id', '=', a.companyId).where('h.doc_class', '=', 'RE').where('h.customer_id', '=', q.party_id).where('h.doc_status', '<>', 'C').where('h.deleted_at', 'is', null)
+        .where((e) => e.exists(e.selectFrom('doc_charge as c').select('c.id').whereRef('c.header_id', '=', 'h.id').where('c.deleted_at', 'is', null))).orderBy('h.doc_date', 'desc').orderBy('h.doc_no', 'desc').executeTakeFirst();
+      return { rows: last ? (await readCharges(db, a.companyId, last.id)).map((c) => ({ ...c, amount: '0', vat_amount: '0', wht_amount: '0', tax_invoice_no: null, tax_invoice_date: null })) : [] };
+    });
     /** ใบวางบิล/ใบรับวางบิลของคู่ค้า (อ้างใบวางบิลในใบเสร็จ/ใบสำคัญจ่าย — S-PU-07 "ใบรับวางบิล#") */
     app.get(`${base}/bills`, async (req) => {
       const a = requireCompany(req);
@@ -179,7 +261,9 @@ export function settleRoutes(app: FastifyInstance, db: Db) {
       const open = new Map((await openItems(db, a.companyId, K, partyId, id, settlements.map((s) => s.invoice_header_id))).map((o) => [o.header_id, o.outstanding]));
       const { payments, wht } = await readMoneyParts(db, a.companyId, id);
       const pc = await db.selectFrom(partyTbl).select('code').where('id', '=', partyId).executeTakeFirst();
-      return { ...h, party_code: pc?.code ?? null, settlements: settlements.map((s) => ({ ...s, outstanding: open.get(s.invoice_header_id) ?? s.amount })), payments, wht, editable: h.doc_status !== 'C' };
+      // ใบเสร็จ: ภาษีหัก ณ ที่จ่ายในแฟ้มเป็นของรายการที่แพลตฟอร์มหัก (ส่วนที่ลูกค้าหักเราป้อนเป็นยอดที่หัว)
+      return { ...h, party_code: pc?.code ?? null, settlements: settlements.map((s) => ({ ...s, outstanding: open.get(s.invoice_header_id) ?? s.amount })), payments, wht: K.cls === 'RE' ? [] : wht,
+        charges: K.cls === 'RE' ? await readCharges(db, a.companyId, id) : [], charge_wht: K.cls === 'RE' ? wht : [], editable: h.doc_status !== 'C' };
     });
     app.post(base, async (req) => saveSettle(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => saveSettle(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));

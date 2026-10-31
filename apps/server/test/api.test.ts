@@ -703,7 +703,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect(accs.length).toBeGreaterThan(250);
     expect(accs.find((x) => x.account_no === '1111-01')).toMatchObject({ name_en: 'Cash', is_control: false });
     const roles = (await sql<{ n: number }>`SELECT count(*) AS n FROM gl_default_account WHERE company_id = ${th}`.execute(database.db)).rows[0]!.n;
-    expect(Number(roles)).toBe(36);
+    expect(Number(roles)).toBe(39);
     // บริษัทที่ไม่มีผัง: เพิ่มบัญชีจากผังตัวอย่าง (บัญชีคุมเพิ่มให้เอง)
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
     const before = (await call('GET', '/api/v1/gl/accounts')).body.length;
@@ -1565,6 +1565,75 @@ describe('Buddy Account API (PGlite)', () => {
     // ค่าใช้จ่ายอื่น: ไม่มีทั้งรหัสและชื่อผู้จำหน่าย → บันทึกไม่ได้
     const exp = (await call('GET', '/api/v1/other-expenses?q=95-5300-01')).body.rows[0].id;
     expect((await call('POST', '/api/v1/other-expense-docs', { doc_type_id: await typeOf('OE'), doc_date: '2027-08-12', price_type: '0', vat_rate: 0, lines: [{ item_id: exp, amount: 50 }] })).body.error.message).toMatch(/รหัสผู้จำหน่าย หรือคีย์ชื่อ/);
+  });
+
+  it('platform receipts (ข้อกำหนดเจ้าของ 31/10/2569): GP/commission deducted by Grab (input VAT + our WHT) and Agoda (ภ.พ.36 → input VAT next month), edit keeps tax entries, isolation', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const accNo = async (no: string) => ((await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string }>).find((x) => x.account_no === no)!.id;
+    expect((await call('PUT', '/api/v1/gl/link', { link_gl: true, defaults: [{ role: 'PP36_PAYABLE', account_id: await accNo('2136-03') }, { role: 'INPUT_VAT_PP36', account_id: await accNo('1154-02') }, { role: 'WHT_RECOVERABLE', account_id: await accNo('1130-05') }] })).status).toBe(200);
+    const unit = (await sql<{ u: string }>`SELECT base_unit_id AS u FROM md_item WHERE id = ${cpu}`.execute(database.db)).rows[0]!.u;
+    const fee = (await sql<{ id: string }>`INSERT INTO md_item (company_id, code, name_th, item_type, base_unit_id) VALUES (${companyId}, 'EX-GP', 'ค่า GP แพลตฟอร์ม', '5', ${unit}) RETURNING id`.execute(database.db)).rows[0]!.id;
+    const grab = (await call('POST', '/api/v1/suppliers', { code: 'S-GRAB', name: 'บริษัท แกร็บ ทดสอบ จำกัด', tax_id: tid(31) })).body.id;
+    // ผู้ให้บริการต่างประเทศไม่มีเลขผู้เสียภาษีไทย (บริษัทนี้บังคับเลข — ใส่ตรงในฐานข้อมูล)
+    const agoda = (await sql<{ id: string }>`INSERT INTO md_supplier (company_id, code, name) VALUES (${companyId}, 'S-AGODA', 'Agoda Company Pte. Ltd.') RETURNING id`.execute(database.db)).rows[0]!.id;
+    const iv = async (price: number) => (await call('POST', '/api/v1/sales-invoices', { doc_type_id: await typeOf('IV'), doc_date: '2027-03-05', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: price }] })).body;
+    const iv1 = await iv(1000), iv2 = await iv(2000);   // 1,070 / 2,140
+    // Grab: ขาย 1,070 · GP 300 + VAT 21 = 321 → รับ 749 · เราหัก ณ ที่จ่าย 3% = 9 (ภ.ง.ด.53)
+    const gp = { supplier_id: grab, item_id: fee, description: 'ค่า GP มี.ค.', amount: 300, vat_type: '1', vat_amount: 21, tax_invoice_no: 'GRAB-INV-1', tax_invoice_date: '2027-03-10', wht_form: 'S53', wht_income_type: 'ค่าบริการ', wht_rate: 3, wht_amount: 9 };
+    const re1 = { doc_type_id: await typeOf('RE'), doc_date: '2027-03-12', party_id: cus, settlements: [{ invoice_header_id: iv1.id, amount: 1070 }], charges: [gp] };
+    const err = async (b: object) => (await call('POST', '/api/v1/ar-receipts', { ...re1, ...b })).body.error.message as string;
+    expect(await err({ charges: [{ ...gp, tax_invoice_no: '' }] })).toMatch(/เลขที่ใบกำกับภาษีของผู้ให้บริการ/);
+    expect(await err({ charges: [{ ...gp, wht_income_type: '' }] })).toMatch(/ประเภทเงินได้/);
+    expect(await err({ charges: [{ ...gp, amount: 0 }] })).toMatch(/มากกว่า 0/);
+    expect(await err({ cash_amount: 1070 })).toMatch(/รายการที่แพลตฟอร์มหัก/);
+    // ข้ามบริษัท: ผู้ให้บริการของบริษัทอื่นใช้ไม่ได้
+    const foreign = (await sql<{ id: string }>`INSERT INTO md_supplier (company_id, code, name) VALUES (${otherCompanyId}, 'S-OTHER', 'ผู้ให้บริการบริษัทอื่น') RETURNING id`.execute(database.db)).rows[0]!.id;
+    expect(await err({ charges: [{ ...gp, supplier_id: foreign }] })).toMatch(/ไม่พบผู้ให้บริการ/);
+    const r1 = (await call('POST', '/api/v1/ar-receipts', re1)).body;
+    expect(r1).toMatchObject({ cash_amount: '749.00' });
+    const lines = async (id: string) => ((await call('GET', `/api/v1/docs/${id}/journal`)).body.journals[0].lines as Array<{ posting_role: string; debit: string; credit: string }>).map((l) => `${l.posting_role}:${l.debit}:${l.credit}`).sort();
+    expect(await lines(r1.id)).toEqual(['AR:0.00:1070.00', 'CASH:749.00:0.00', 'INPUT_VAT:21.00:0.00', 'PLATFORM_FEE:300.00:0.00', 'WHT_PAYABLE:0.00:9.00', 'WHT_RECOVERABLE:9.00:0.00']);
+    const vp = async (id: string, k = 'P') => ((await call('GET', `/api/v1/vat/${k}?header_id=${id}&status=all`)).body.rows as Array<{ tax_invoice_no: string; base_amount: string; vat_amount: string; party_name: string; doc_status: string; id: string }>);
+    expect((await vp(r1.id)).map((v) => `${v.tax_invoice_no}:${v.base_amount}:${v.vat_amount}:${v.party_name}`)).toEqual(['GRAB-INV-1:300.00:21.00:บริษัท แกร็บ ทดสอบ จำกัด']);
+    const wht = (await call('GET', '/api/v1/wht?form=S53&month=2027-03')).body.rows.filter((w: { doc_no: string }) => w.doc_no === r1.doc_no);
+    expect(wht).toHaveLength(1);
+    expect(wht[0]).toMatchObject({ payee_name: 'บริษัท แกร็บ ทดสอบ จำกัด', tax_amount: '9.00', paid_amount: '300.00' });
+    const det = (await call('GET', `/api/v1/ar-receipts/${r1.id}`)).body;
+    expect([det.charges.length, det.wht.length, det.charge_wht.length, det.charges[0].supplier_code, det.charges[0].vat_type]).toEqual([1, 0, 1, 'S-GRAB', '1']);
+    // แก้ใบเสร็จ (ยอดเดิม): รายการภาษีซื้อเดิมคงไว้ (เช่นที่แก้งวดในแฟ้มภาษี) · ภาษีหัก ณ ที่จ่ายไม่ซ้ำ
+    const vid = (await vp(r1.id))[0]!.id;
+    expect((await call('PUT', `/api/v1/ar-receipts/${r1.id}`, { ...re1, remark: 'แก้' })).status).toBe(200);
+    expect((await vp(r1.id)).map((v) => v.id)).toEqual([vid]);
+    expect((await call('GET', '/api/v1/wht?form=S53&month=2027-03')).body.rows.filter((w: { doc_no: string }) => w.doc_no === r1.doc_no)).toHaveLength(1);
+    // ใบใหม่ของลูกค้ารายนี้: ดึงรายการหักแบบครั้งก่อน (ไม่รวมยอดเงิน)
+    const tpl = (await call('GET', `/api/v1/ar-receipts/charge-template?party_id=${cus}`)).body.rows;
+    expect(tpl.map((c: { supplier_code: string; item_code: string; amount: string; wht_rate: string }) => `${c.supplier_code}:${c.item_code}:${c.amount}:${Number(c.wht_rate)}`)).toEqual(['S-GRAB:EX-GP:0:3']);
+    // Agoda (ต่างประเทศ): คอมมิชชั่น 300 ไม่เก็บ VAT → รับ 1,840 · เรานำส่ง ภ.พ.36 21 → ภาษีซื้อเดือน เม.ย.
+    const r2 = (await call('POST', '/api/v1/ar-receipts', { ...re1, settlements: [{ invoice_header_id: iv2.id, amount: 2140 }],
+      charges: [{ supplier_id: agoda, item_id: fee, amount: 300, vat_type: '3', vat_amount: 21, tax_invoice_no: 'AG-STMT-03' }] })).body;
+    expect(r2).toMatchObject({ cash_amount: '1840.00' });
+    expect(await lines(r2.id)).toEqual(['AR:0.00:2140.00', 'CASH:1840.00:0.00', 'INPUT_VAT_PP36:21.00:0.00', 'PLATFORM_FEE:300.00:0.00', 'PP36_PAYABLE:0.00:21.00']);
+    expect(await vp(r2.id)).toEqual([]);
+    const run = async (c: string, params: Record<string, unknown>) => (await call('POST', `/api/v1/rpt/${c}/run`, { params })).body;
+    expect((await run('6.7', { period: '2027-03' })).rows.find((x: { t?: string }) => x.t === 'total').c).toMatchObject({ base: '300.00', vat: '21.00' });
+    const s1 = (await run('6.1', { period: '2027-04' })).rows.find((x: { c: { item?: string } }) => /ภ\.พ\.36/.test(x.c.item ?? ''));
+    expect(s1.c).toMatchObject({ vat: '21.00', n: 1 });
+    expect((await run('6.2', { period: '2027-04' })).rows.at(-1).c.vat).toBe('21.00');
+    const vc = (await call('GET', '/api/v1/gl/vat-closing?month=2027-04')).body;
+    expect(vc.pp36_vat).toBe('21.00');
+    expect(vc.lines.find((l: { description: string }) => /ภ\.พ\.36/.test(l.description))).toMatchObject({ credit: '21.00' });
+    // ข้ามบริษัท: แม่แบบเห็นเฉพาะบริษัทตัวเอง
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/ar-receipts/charge-template?party_id=${cus}`)).body.rows).toEqual([]);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ยกเลิก: ภาษีซื้อ/ภ.พ.36/ภาษีหัก ณ ที่จ่ายเป็นยกเลิก
+    for (const id of [r1.id, r2.id]) expect((await call('POST', `/api/v1/ar-receipts/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect((await vp(r1.id)).map((v) => v.doc_status)).toEqual(['C']);
+    expect((await run('6.7', { period: '2027-03' })).rows.find((x: { t?: string }) => x.t === 'total').c.vat).toBe('0.00');
+    expect((await call('GET', '/api/v1/wht?form=S53&month=2027-03')).body.rows.filter((w: { doc_no: string; doc_status: string }) => w.doc_no === r1.doc_no && w.doc_status !== 'C')).toHaveLength(0);
+    for (const x of [iv1, iv2]) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
   it('line notes vs document notes (ข้อกำหนดเจ้าของ): keyed with the line, survive edits, print under the line only when ticked; document notes print in the notes box', async () => {

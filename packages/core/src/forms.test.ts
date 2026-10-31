@@ -90,8 +90,8 @@ describe('document numbering & GL link (บทที่ 9–10)', () => {
     expect(checkDocNumbering('IV/', 1)).toMatch(/คั่น/);
     expect(checkDocNumbering('IV', 0)).toMatch(/ตั้งแต่ 1/);
   });
-  it('has all default posting roles (Express 34 + VAT/RL extras + FX) and slot labels', () => {
-    expect(new Set(GL_ROLES.map((r) => r.role)).size).toBe(37);
+  it('has all default posting roles (Express 34 + VAT/RL extras + FX + platform PP36/WHT) and slot labels', () => {
+    expect(new Set(GL_ROLES.map((r) => r.role)).size).toBe(40);
     expect(slotLabel('RR', 3)).toBe('Cr. เจ้าหนี้');
     expect(slotLabel('IV', 4)).toBe('ช่องที่ 4');
   });
