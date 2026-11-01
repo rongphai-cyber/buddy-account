@@ -519,5 +519,20 @@
  "คัดลอกรายการของใบสำคัญนี้ไปเป็นใบใหม่ (เลขที่ใหม่ วันที่ทำการ)": "Copy this voucher's lines to a new voucher (new number, work date)",
  "คัดลอกรายการจาก {0} แล้ว — ตรวจแล้วกด F9 เพื่อบันทึกเป็นใบใหม่": "Copied lines from {0} — check them, then press F9 to save as a new voucher",
  "ใบใหม่ (Alt+N) — หน้าจอว่าง เริ่มคีย์ใหม่": "New voucher (Alt+N) — blank screen to start keying",
- "📋 คัดลอก": "📋 Copy"
+ "📋 คัดลอก": "📋 Copy",
+ "({0})) }); toast(`บันทึกวิธี${1}ชำระหนี้แล้ว`); qc.invalidateQueries({2}); } catch (e) {3} finally {4} }; const set = (i: number, p: Partial": "({0})) }); toast(`Saved ${1} payment method`); qc.invalidateQueries({2}); } catch (e) {3} finally {4} }; const set = (i: number, p: Partial",
+ "Enter ช่องสุดท้าย → ปุ่มบันทึก · ลบได้เฉพาะแถวที่ยังไม่ถูกใช้": "Enter on the last field → Save button · only unused rows can be deleted",
+ "↑↓ เลือกแถว · คลิกแถว = แก้ไข": "↑↓ select row · click row = edit",
+ "ยกเลิกการแก้ไข": "Discard changes",
+ "ลบ{0} {1} แล้ว": "Deleted {0} {1}",
+ "ลบ{0} {1}? ลบได้เฉพาะรายการที่ยังไม่ถูกใช้ — ถ้าใช้แล้วให้เปลี่ยนเป็นเลิกใช้": "Delete {0} {1}? Only unused records can be deleted — if already used, set it to inactive instead",
+ "ลบแถว": "Delete row",
+ "ลบแผนก {0}? ลบได้เฉพาะแผนกที่ยังไม่มีรายการบัญชี — ถ้ามีแล้วให้กด \"เลิกใช้\"": "Delete department {0}? Only departments with no postings can be deleted — otherwise press \"Deactivate\"",
+ "สำนักงานใหญ่เลิกใช้ไม่ได้": "The head office cannot be deactivated",
+ "เปิดใช้ {0} แล้ว": "Activated {0}",
+ "เพิ่มวิธีชำระ": "Add payment method",
+ "เลิกใช้ {0} แล้ว": "Deactivated {0}",
+ "เลือก:": "Selected:",
+ "แถว:": "Row:",
+ "ใช้ในเอกสารแล้ว ลบไม่ได้ — เปลี่ยนเป็นเลิกใช้": "Already used in documents, cannot delete — set it to inactive instead"
 }

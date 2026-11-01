@@ -903,3 +903,9 @@ button.danger-outline:not(:disabled) { color: var(--bad); border-color: color-mi
 th.sortable { cursor: pointer; user-select: none; }
 th.sortable:hover { color: var(--tone); }
 th.sortable.on { color: var(--tone); }
+/* แถบเครื่องมือหน้ากำหนดข้อมูล (MasterBar) */
+.master-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 10px; }
+.master-bar .hint { margin-left: auto; }
+button.danger-outline { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
+button.danger-outline:not(:disabled):hover { background: var(--bad-soft); }
+tr.sel > td { background: color-mix(in srgb, var(--tone) 10%, transparent); }

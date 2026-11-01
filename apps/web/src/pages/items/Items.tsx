@@ -7,7 +7,8 @@ import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { MasterNotesDialog } from '../../components/Notes';
 import { ItemImagesTab, ItemThumb } from '../../components/ItemImages';
-import { NumInput, Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
+import { NumInput, Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, cx } from '../../ui';
+import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 type F = Record<string, string | null>;
 interface Row { id: string; image_id: string | null; code: string; item_type: string; name_th: string; name_en: string | null; barcode: string | null; category_code: string | null; std_cost: string | null; price_1: string | null; status: string; unit_code: string | null; group_code: string | null; qty: string; value: string }
@@ -53,15 +54,15 @@ function ItemsPage({ kind }: { kind: ItemKind }) {
   const [limit, setLimit] = useState(200);
   const [edit, setEdit] = useState<string | 'new' | null>(null);
   const list = useQuery({ queryKey: [K.path, q, status, cat, limit], queryFn: () => api.get<{ total: number; rows: Row[] }>(`/api/v1/${K.path}`, { q, status, category: cat, limit }), placeholderData: (p) => p });
-  useHotkeys({ Insert: can('add') ? () => setEdit('new') : undefined }, []);
+  const rs = useRowSelect(list.data?.rows);
+  const reload = () => qc.invalidateQueries({ queryKey: [K.path] });
   const stockish = kind === 'stock' || kind === 'kit';
   // คอลัมน์รูปแสดงเมื่อมีสินค้าที่มีรูปในหน้านี้ (ไม่เปลืองที่สำหรับบริษัทที่ไม่ใช้รูป)
   const hasImg = !!list.data?.rows.some((r) => r.image_id);
   const title = kind === 'income' ? 'รายละเอียดรายได้อื่น ๆ' : kind === 'expense' ? 'รายละเอียดค่าใช้จ่ายอื่น ๆ' : `รายละเอียด${K.label}`;
   return (
     <div className="page" data-tone={TONE[kind]}>
-      <PageHead eyebrow={`${EYEBROW[kind]} › ${title}`} title={title} lead={LEADS[kind]}
-        actions={can('add') && <button className="primary" onClick={() => setEdit('new')}>+ เพิ่ม{K.label} <kbd>Ins</kbd></button>} />
+      <PageHead eyebrow={`${EYEBROW[kind]} › ${title}`} title={title} lead={LEADS[kind]} />
       <div className="toolbar">
         <input type="search" autoFocus placeholder="ค้นหารหัส ชื่อ หรือบาร์โค้ด" value={q} onChange={(e) => { setQ(e.target.value); setLimit(200); }} style={{ minWidth: 300 }} aria-label={`ค้นหา${K.label}`} />
         <LkSelect rows={lk.data?.['22']} value={cat} onChange={(v) => { setCat(v); setLimit(200); }} blank="ทุกหมวด" aria-label="หมวดสินค้า" />
@@ -69,6 +70,7 @@ function ItemsPage({ kind }: { kind: ItemKind }) {
         <span className="muted small">{list.data ? `${list.data.rows.length.toLocaleString()} จาก ${list.data.total.toLocaleString()} รายการ` : ''}</span>
       </div>
       <ErrorBox error={list.error} />
+      <MasterBar rs={rs} word={K.label} label={(r) => `${r.code} ${r.name_th}`} onAdd={() => setEdit('new')} onEdit={(r) => setEdit(r.id)} canAdd={can('add')} onDelete={(r) => api.del(`/api/v1/${K.path}/${r.id}`).then(reload)} canDelete={can('delete')} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr>
@@ -80,8 +82,8 @@ function ItemsPage({ kind }: { kind: ItemKind }) {
             <th style={{ width: 80 }}>สถานะ</th>
           </tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
-              <tr key={r.id} className="row-open" tabIndex={0} onClick={() => setEdit(r.id)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r.id)}>
+            {list.data?.rows.map((r, i) => (
+              <tr key={r.id} className={cx('row-open', rs.cls(i))} onMouseEnter={rs.hover(i)} tabIndex={0} onClick={() => setEdit(r.id)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r.id)}>
                 {hasImg && <td className="img-cell"><ItemThumb id={r.image_id} /></td>}<td className="mono">{r.code}</td><td>{r.name_th}{r.name_en && <span className="muted small"> · {r.name_en}</span>}</td>
                 {kind === 'kit' && <td>{ITEM_TYPE_TH[r.item_type]}</td>}
                 <td className="mono">{r.category_code}</td><td>{r.unit_code}</td>

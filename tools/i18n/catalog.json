@@ -61,9 +61,10 @@
 },
 {
 "th": "บันทึก",
-"n": 85,
+"n": 84,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
+"apps/web/src/components/MasterBar.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
@@ -285,6 +286,37 @@
 ]
 },
 {
+"th": "ลบ",
+"n": 43,
+"files": [
+"apps/web/src/components/CompanyImages.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/ItemImages.tsx",
+"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/baht.ts"
+]
+},
+{
 "th": "ผู้จำหน่าย",
 "n": 42,
 "files": [
@@ -317,36 +349,6 @@
 "packages/core/src/doc-calc.ts",
 "packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ลบ",
-"n": 41,
-"files": [
-"apps/web/src/components/CompanyImages.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/ItemImages.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/baht.ts"
 ]
 },
 {
@@ -401,6 +403,69 @@
 ]
 },
 {
+"th": "รายการ",
+"n": 37,
+"files": [
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/settings/DataTables.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/stock.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "แผนก",
+"n": 37,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/reports/AccountDetail.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/doc-types.ts",
+"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ปิด",
 "n": 36,
 "files": [
@@ -432,68 +497,6 @@
 "apps/web/src/pages/settings/Tenants.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "รายการ",
-"n": 36,
-"files": [
-"apps/web/src/components/LkSelect.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/stock.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/printforms.ts"
-]
-},
-{
-"th": "แผนก",
-"n": 36,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/reports/AccountDetail.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/doc-types.ts",
-"apps/server/src/modules/gl/routes.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -601,7 +604,7 @@
 },
 {
 "th": "สาขา",
-"n": 28,
+"n": 29,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/AuxTools.tsx",
@@ -738,6 +741,26 @@
 ]
 },
 {
+"th": "เลิกใช้",
+"n": 26,
+"files": [
+"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/settings/DataTables.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "ทั้งหมด",
 "n": 25,
 "files": [
@@ -779,6 +802,26 @@
 ]
 },
 {
+"th": "ใช้งาน",
+"n": 24,
+"files": [
+"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/settings/DataTables.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ถึง",
 "n": 23,
 "files": [
@@ -801,50 +844,12 @@
 ]
 },
 {
-"th": "เลิกใช้",
-"n": 23,
-"files": [
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/settings/DataTables.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "ชื่อบัญชี",
-"n": 22,
-"files": [
-"apps/web/src/components/AccountCell.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/AccountDetail.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/reports/gl.ts"
-]
-},
-{
 "th": "แก้ไข",
-"n": 22,
+"n": 23,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
 "apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/MasterBar.tsx",
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/web/src/pages/gl/Accounts.tsx",
@@ -866,22 +871,23 @@
 ]
 },
 {
-"th": "ใช้งาน",
+"th": "ชื่อบัญชี",
 "n": 22,
 "files": [
-"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/components/AccountCell.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
 "apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/settings/DataTables.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx"
+"apps/web/src/pages/reports/AccountDetail.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/reports/gl.ts"
 ]
 },
 {
@@ -1070,6 +1076,24 @@
 ]
 },
 {
+"th": "พนักงานขาย",
+"n": 18,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/server/src/modules/parties.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/pdpa.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "รหัสสินค้า",
 "n": 18,
 "files": [
@@ -1105,19 +1129,16 @@
 ]
 },
 {
-"th": "พนักงานขาย",
-"n": 17,
+"th": "บัญชีเงินฝาก",
+"n": 16,
 "files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/server/src/modules/parties.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"packages/core/src/pdpa.ts",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/server/src/modules/banking.ts",
+"apps/server/src/modules/bankrecon.ts",
+"apps/server/src/modules/docs/bankdocs.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/reports.ts"
 ]
@@ -1151,6 +1172,25 @@
 "apps/web/src/pages/gl/Journals.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
+]
+},
+{
+"th": "ประเภทเอกสาร",
+"n": 16,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/server/src/modules/doc-types.ts",
+"apps/server/src/modules/docs/engine.ts"
 ]
 },
 {
@@ -1207,35 +1247,21 @@
 ]
 },
 {
-"th": "บัญชีเงินฝาก",
+"th": "ผู้ใช้",
 "n": 15,
 "files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/server/src/modules/banking.ts",
-"apps/server/src/modules/bankrecon.ts",
-"apps/server/src/modules/docs/bankdocs.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/reports.ts"
-]
-},
-{
-"th": "ประเภทเอกสาร",
-"n": 15,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/server/src/modules/doc-types.ts",
-"apps/server/src/modules/docs/engine.ts"
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/apikeys.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/security.ts",
+"apps/server/src/modules/reports/gl.ts"
 ]
 },
 {
@@ -1278,23 +1304,6 @@
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "ผู้ใช้",
-"n": 14,
-"files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/apikeys.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/security.ts",
-"apps/server/src/modules/reports/gl.ts"
 ]
 },
 {
@@ -1613,6 +1622,23 @@
 ]
 },
 {
+"th": "สมุดรายวัน",
+"n": 12,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/gl/Books.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/doc-types.ts",
+"apps/server/src/modules/gl/journals.ts",
+"apps/server/src/modules/gl/routes.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "เจ้าหนี้",
 "n": 12,
 "files": [
@@ -1712,23 +1738,6 @@
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "สมุดรายวัน",
-"n": 11,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/gl/Books.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/doc-types.ts",
-"apps/server/src/modules/gl/journals.ts",
-"apps/server/src/modules/gl/routes.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -2842,6 +2851,16 @@
 ]
 },
 {
+"th": "วิธีชำระ",
+"n": 6,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/server/src/modules/banking.ts"
+]
+},
+{
 "th": "อีเมล",
 "n": 6,
 "files": [
@@ -2983,6 +3002,16 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/date.ts"
+]
+},
+{
+"th": "กลุ่มบัญชีสินค้า",
+"n": 5,
+"files": [
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/server/src/modules/items.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -3390,15 +3419,6 @@
 ]
 },
 {
-"th": "วิธีชำระ",
-"n": 5,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/banking.ts"
-]
-},
-{
 "th": "สาขาที่ {0}",
 "n": 5,
 "files": [
@@ -3596,16 +3616,6 @@
 ]
 },
 {
-"th": "+ เพิ่มรายการ",
-"n": 4,
-"files": [
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/settings/DataTables.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
 "th": "1 รวมภาษีแล้ว",
 "n": 4,
 "files": [
@@ -3645,11 +3655,11 @@
 ]
 },
 {
-"th": "กลุ่มบัญชีสินค้า",
+"th": "กลุ่มบัญชีทรัพย์สิน",
 "n": 4,
 "files": [
-"apps/web/src/pages/items/Items.tsx",
-"apps/server/src/modules/items.ts",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/server/src/modules/fa.ts",
 "packages/core/src/menu.ts"
 ]
 },
@@ -4271,12 +4281,12 @@
 ]
 },
 {
-"th": "+ เพิ่มวิธีชำระ",
+"th": "+ เพิ่มรายการ",
 "n": 3,
 "files": [
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx"
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -4318,14 +4328,6 @@
 "n": 3,
 "files": [
 "apps/server/src/modules/reports/tax.ts"
-]
-},
-{
-"th": "กลุ่มบัญชีทรัพย์สิน",
-"n": 3,
-"files": [
-"apps/server/src/modules/fa.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -4644,6 +4646,14 @@
 "apps/web/src/pages/inventory/Stock.tsx",
 "apps/server/src/modules/reports/stock.ts",
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ต้นแบบ",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/Books.tsx",
+"apps/web/src/pages/gl/Templates.tsx"
 ]
 },
 {
@@ -5461,6 +5471,14 @@
 ]
 },
 {
+"th": "แถบเครื่องมือ",
+"n": 3,
+"files": [
+"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
 "th": "แพ็กเกจ",
 "n": 3,
 "files": [
@@ -5652,16 +5670,7 @@
 "th": "+ เพิ่ม{0}",
 "n": 2,
 "files": [
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "+ เพิ่มกลุ่มบัญชี",
-"n": 2,
-"files": [
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/items/ItemTables.tsx"
+"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {
@@ -5670,6 +5679,14 @@
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "+ เพิ่มวิธีชำระ",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -6639,13 +6656,6 @@
 ]
 },
 {
-"th": "ต้นแบบ",
-"n": 2,
-"files": [
-"apps/web/src/pages/gl/Books.tsx"
-]
-},
-{
 "th": "ต้องขึ้นต้นด้วย {0}",
 "n": 2,
 "files": [
@@ -6720,6 +6730,14 @@
 "n": 2,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ทิ้งการแก้ไขที่ยังไม่บันทึก?",
+"n": 2,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {
@@ -8182,6 +8200,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ลบ{0}",
+"n": 2,
+"files": [
+"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -9804,7 +9830,7 @@
 ]
 },
 {
-"th": "({0})) }); toast(`บันทึกวิธี${1}ชำระหนี้แล้ว`); qc.invalidateQueries({2}); } catch (e) {3} finally {4} }; useHotkeys({5}, []); const set = (i: number, p: Partial",
+"th": "({0})) }); toast(`บันทึกวิธี${1}ชำระหนี้แล้ว`); qc.invalidateQueries({2}); } catch (e) {3} finally {4} }; const set = (i: number, p: Partial",
 "n": 1,
 "files": [
 "apps/web/src/pages/finance/Banking.tsx"
@@ -10231,13 +10257,6 @@
 ]
 },
 {
-"th": "+ เพิ่มต้นแบบ",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/Templates.tsx"
-]
-},
-{
 "th": "+ เพิ่มทรัพย์สิน",
 "n": 1,
 "files": [
@@ -10266,13 +10285,6 @@
 ]
 },
 {
-"th": "+ เพิ่มบัญชีเงินฝาก",
-"n": 1,
-"files": [
-"apps/web/src/pages/finance/Banking.tsx"
-]
-},
-{
 "th": "+ เพิ่มบัญชีเฉพาะเอกสาร…",
 "n": 1,
 "files": [
@@ -10287,13 +10299,6 @@
 ]
 },
 {
-"th": "+ เพิ่มประเภทเอกสาร",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/DocTypes.tsx"
-]
-},
-{
 "th": "+ เพิ่มปีบัญชี",
 "n": 1,
 "files": [
@@ -10302,20 +10307,6 @@
 },
 {
 "th": "+ เพิ่มผู้ติดต่อ",
-"n": 1,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "+ เพิ่มผู้ใช้",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
-"th": "+ เพิ่มพนักงานขาย",
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
@@ -10354,20 +10345,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "+ เพิ่มสมุด",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/Books.tsx"
-]
-},
-{
-"th": "+ เพิ่มสาขา",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Branches.tsx"
 ]
 },
 {
@@ -11586,6 +11563,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Templates.tsx"
+]
+},
+{
+"th": "Enter ช่องสุดท้าย → ปุ่มบันทึก · ลบได้เฉพาะแถวที่ยังไม่ถูกใช้",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {
@@ -19268,13 +19252,6 @@
 ]
 },
 {
-"th": "ทิ้งการแก้ไขที่ยังไม่บันทึก?",
-"n": 1,
-"files": [
-"apps/web/src/components/DocEdit.tsx"
-]
-},
-{
 "th": "ที่",
 "n": 1,
 "files": [
@@ -25162,6 +25139,13 @@
 ]
 },
 {
+"th": "ยกเลิกการแก้ไข",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
+]
+},
+{
 "th": "ยกเลิกกุญแจ",
 "n": 1,
 "files": [
@@ -29425,10 +29409,17 @@
 ]
 },
 {
-"th": "ลบ{0}",
+"th": "ลบ{0} {1} แล้ว",
 "n": 1,
 "files": [
-"apps/web/src/pages/items/Items.tsx"
+"apps/web/src/components/MasterBar.tsx"
+]
+},
+{
+"th": "ลบ{0} {1}? ลบได้เฉพาะรายการที่ยังไม่ถูกใช้ — ถ้าใช้แล้วให้เปลี่ยนเป็นเลิกใช้",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {
@@ -29824,6 +29815,13 @@
 ]
 },
 {
+"th": "ลบแถว",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
+]
+},
+{
 "th": "ลบแถวตัวอย่างก่อนใช้ · ชื่อหัวคอลัมน์ห้ามแก้ (สลับลำดับได้) · บันทึกเป็น .xlsx หรือ .csv",
 "n": 1,
 "files": [
@@ -29853,6 +29851,13 @@
 },
 {
 "th": "ลบแผนก {0}?",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Departments.tsx"
+]
+},
+{
+"th": "ลบแผนก {0}? ลบได้เฉพาะแผนกที่ยังไม่มีรายการบัญชี — ถ้ามีแล้วให้กด \"เลิกใช้\"",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Departments.tsx"
@@ -31487,6 +31492,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/sync/branch.ts"
+]
+},
+{
+"th": "สำนักงานใหญ่เลิกใช้ไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Branches.tsx"
 ]
 },
 {
@@ -35200,6 +35212,13 @@
 ]
 },
 {
+"th": "เปิดใช้ {0} แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
+]
+},
+{
 "th": "เปิดใช้แล้ว",
 "n": 1,
 "files": [
@@ -35484,6 +35503,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "เพิ่มวิธีชำระ",
+"n": 1,
+"files": [
+"apps/web/src/pages/finance/Banking.tsx"
 ]
 },
 {
@@ -36558,6 +36584,13 @@
 ]
 },
 {
+"th": "เลิกใช้ {0} แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
+]
+},
+{
 "th": "เลิกใช้บริการเมื่อ",
 "n": 1,
 "files": [
@@ -36597,6 +36630,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
+"th": "เลือก:",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {
@@ -37797,13 +37837,6 @@
 ]
 },
 {
-"th": "แถบเครื่องมือ",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
 "th": "แถมให้ลูกค้า",
 "n": 1,
 "files": [
@@ -37815,6 +37848,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
+"th": "แถว:",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {
@@ -39096,6 +39136,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/finance/Banking.tsx"
+]
+},
+{
+"th": "ใช้ในเอกสารแล้ว ลบไม่ได้ — เปลี่ยนเป็นเลิกใช้",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {
@@ -41322,6 +41369,13 @@
 "n": 1,
 "files": [
 "apps/web/src/ui.tsx"
+]
+},
+{
+"th": "↑↓ เลือกแถว · คลิกแถว = แก้ไข",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {

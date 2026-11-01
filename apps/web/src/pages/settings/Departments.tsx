@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type Department } from '../../api';
 import { Confirm, ErrorBox, Field, Modal, PageHead, Pill, toast, toastError, useHotkeys, cx } from '../../ui';
+import { MasterBar, useRowSelect } from '../../components/MasterBar';
+
 
 /** กำหนดแผนก — คู่มือบทที่ 6 S-SET-03 */
 export function DepartmentsPage() {
@@ -9,17 +11,21 @@ export function DepartmentsPage() {
   const q = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Department[]>('/api/v1/departments') });
   const [edit, setEdit] = useState<Department | 'new' | null>(null);
   const [del, setDel] = useState<Department | null>(null);
-  useHotkeys({ Insert: () => setEdit('new') }, []);
+  const rs = useRowSelect(q.data);
+  const reload = () => qc.invalidateQueries({ queryKey: ['departments'] });
   return (
     <div className="page" data-tone="setup">
-      <PageHead eyebrow="เริ่มระบบ › แผนก" title="แผนก" lead="รหัสแผนกใช้ wildcard ได้ตอนพิมพ์งบ เช่น ขาย* = ทุกแผนกที่ขึ้นต้นด้วย ขาย" actions={<button className="primary" onClick={() => setEdit('new')}>+ เพิ่มแผนก <kbd>Ins</kbd></button>} />
+      <PageHead eyebrow="เริ่มระบบ › แผนก" title="แผนก" lead="รหัสแผนกใช้ wildcard ได้ตอนพิมพ์งบ เช่น ขาย* = ทุกแผนกที่ขึ้นต้นด้วย ขาย" />
+      <MasterBar rs={rs} word="แผนก" label={(x) => `${x.code} ${x.name_th}`} onAdd={() => setEdit('new')} onEdit={(x) => setEdit(x)}
+        isActive={(x) => x.status === 'A'} onToggle={(x) => api.put(`/api/v1/departments/${x.id}`, { code: x.code, short_name_th: x.short_name_th ?? '', short_name_en: x.short_name_en ?? '', name_th: x.name_th, name_en: x.name_en ?? '', status: x.status === 'A' ? 'I' : 'A' }).then(reload)}
+        onDelete={(x) => api.del(`/api/v1/departments/${x.id}`).then(reload)} deleteText={(x) => `ลบแผนก ${x.code}? ลบได้เฉพาะแผนกที่ยังไม่มีรายการบัญชี — ถ้ามีแล้วให้กด "เลิกใช้"`} />
       <ErrorBox error={q.error} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th>รหัส</th><th>ชื่อย่อไทย</th><th>ชื่อย่ออังกฤษ</th><th>ชื่อเต็มไทย</th><th>ชื่อเต็มอังกฤษ</th><th>สถานะ</th><th /></tr></thead>
           <tbody>
-            {q.data?.map((x) => (
-              <tr key={x.id} className={cx('row-open', x.status === 'I' && 'void')} onClick={() => setEdit(x)}>
+            {q.data?.map((x, i) => (
+              <tr key={x.id} className={cx('row-open', x.status === 'I' && 'void', rs.cls(i))} onClick={() => { rs.setSel(i); setEdit(x); }} onMouseEnter={rs.hover(i)}>
                 <td className="mono">{x.code}</td><td>{x.short_name_th}</td><td>{x.short_name_en}</td><td>{x.name_th}</td><td className="muted">{x.name_en}</td>
                 <td>{x.status === 'A' ? <Pill tone="n">ใช้งาน</Pill> : <Pill tone="x">เลิกใช้</Pill>}</td>
                 <td><button className="icon-btn" title="ลบ" onClick={(e) => { e.stopPropagation(); setDel(x); }}>✕</button></td>

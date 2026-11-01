@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, type Book } from '../../api';
-import { ErrorBox, Field, Modal, PageHead, toast, useHotkeys } from '../../ui';
+import { ErrorBox, Field, Modal, PageHead, toast, useHotkeys, cx } from '../../ui';
+import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { useTemplates } from './Templates';
 
 /** สร้างสมุดรายวัน — คู่มือบทที่ 15 S-GL-09 */
@@ -11,17 +12,19 @@ export function BooksPage() {
   const nav = useNavigate();
   const books = useQuery({ queryKey: ['books'], queryFn: () => api.get<Book[]>('/api/v1/gl/books') });
   const [edit, setEdit] = useState<Book | 'new' | null>(null);
-  useHotkeys({ Insert: () => setEdit('new') }, []);
+  const rs = useRowSelect(books.data);
+  const reload = () => qc.invalidateQueries({ queryKey: ['books'] });
   return (
     <div className="page" data-tone="gl">
-      <PageHead eyebrow="บัญชี › สร้างสมุดรายวัน" title="สมุดรายวัน" lead="ตัวนำเลขที่ (prefix) ใช้ขึ้นต้นเลขที่ใบสำคัญ เช่น JV520101001" actions={<button className="primary" onClick={() => setEdit('new')}>+ เพิ่มสมุด <kbd>Ins</kbd></button>} />
+      <PageHead eyebrow="บัญชี › สร้างสมุดรายวัน" title="สมุดรายวัน" lead="ตัวนำเลขที่ (prefix) ใช้ขึ้นต้นเลขที่ใบสำคัญ เช่น JV520101001" />
       <ErrorBox error={books.error} />
+      <MasterBar rs={rs} word="สมุดรายวัน" label={(b) => `${b.prefix} ${b.name_th}`} onAdd={() => setEdit('new')} onEdit={(b) => setEdit(b)} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th>รหัส</th><th>ตัวนำเลขที่</th><th>ชื่อสมุด</th><th>ชื่ออังกฤษ</th><th>ต้นแบบ</th><th className="r">ใบสำคัญ</th><th /></tr></thead>
           <tbody>
-            {books.data?.map((b) => (
-              <tr key={b.id} className="row-open" onClick={() => setEdit(b)}>
+            {books.data?.map((b, i) => (
+              <tr key={b.id} className={cx('row-open', rs.cls(i))} onMouseEnter={rs.hover(i)} onClick={() => setEdit(b)}>
                 <td className="mono">{b.code}</td><td className="mono">{b.prefix}</td><td>{b.name_th}</td><td className="muted">{b.name_en}</td><td className="mono">{b.template_code}</td><td className="r">{Number(b.journal_count).toLocaleString()}</td>
                 <td><button className="linklike" onClick={(e) => { e.stopPropagation(); nav(`/gl/journals?book=${b.id}`); }}>ดูรายการ</button></td>
               </tr>

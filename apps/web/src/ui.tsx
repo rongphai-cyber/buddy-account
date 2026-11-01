@@ -91,7 +91,12 @@ function modalKey(e: RKE<HTMLElement>) {
     all[n]!.focus();
     return;
   }
-  navKey(e);
+  navKey(e, () => focusSave(box));
+}
+/** Enter ที่ช่องสุดท้ายของหน้าต่าง → ไปที่ปุ่มบันทึก/ตกลง (Enter อีกครั้ง = บันทึก) — ข้อกำหนดเจ้าของ 01/11/2569 */
+function focusSave(box: HTMLElement) {
+  const b = box.querySelector<HTMLButtonElement>('.modal-foot button.primary:not([disabled])');
+  if (b) b.focus();
 }
 export function Modal({ title, onClose, children, size = 'form', footer }: { title: string; onClose: () => void; children: ReactNode; size?: 'form' | 'wide' | 'confirm'; footer?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -105,8 +110,12 @@ export function Modal({ title, onClose, children, size = 'form', footer }: { tit
       if (all[all.length - 1] === ref.current) { e.preventDefault(); e.stopPropagation(); onClose(); }
     };
     window.addEventListener('keydown', esc, true);
+    // ฟอร์มในหน้าต่างที่ใช้ navKey ของตัวเอง: จบช่องสุดท้ายแล้วส่ง navend → ไปปุ่มบันทึก
+    const box = ref.current;
+    const onEnd = (e: Event) => { e.stopPropagation(); if (box) focusSave(box); };
+    box?.addEventListener('navend', onEnd);
     const popLayer = pushHotkeyLayer({});
-    return () => { window.removeEventListener('keydown', esc, true); popLayer(); prev?.focus?.(); };
+    return () => { window.removeEventListener('keydown', esc, true); box?.removeEventListener('navend', onEnd); popLayer(); prev?.focus?.(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (

@@ -5,7 +5,8 @@ import { api } from '../../api';
 import { useCan } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
-import { NumInput, Confirm, DateInput, ErrorBox, Field, KeyHints, Modal, navKey, PageHead, toast, toastError, useHotkeys } from '../../ui';
+import { NumInput, Confirm, DateInput, ErrorBox, Field, KeyHints, Modal, navKey, PageHead, toast, toastError, useHotkeys, cx } from '../../ui';
+import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(v as string).toString());
 const Dec = ({ value, onChange, ...rest }: { value: string | null | undefined; onChange: (v: string) => void; [k: string]: unknown }) =>
@@ -168,18 +169,19 @@ export function ItemAccountGroupsPage() {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ['iag'], queryFn: () => api.get<Group[]>('/api/v1/item-account-groups') });
   const [edit, setEdit] = useState<Group | 'new' | null>(null);
-  useHotkeys({ Insert: can('add') ? () => setEdit('new') : undefined }, []);
+  const rs = useRowSelect(list.data);
+  const reload = () => qc.invalidateQueries({ queryKey: ['iag'] });
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › กลุ่มบัญชีสินค้า" title="กำหนดกลุ่มบัญชีสินค้า"
-        lead="กำหนดวิธีคิดต้นทุน (FIFO / ถัวเฉลี่ย) และบัญชีที่ใช้ลงรายวันอัตโนมัติของสินค้าแต่ละกลุ่ม — ผูกกลุ่มกับสินค้าที่หน้ารายละเอียดสินค้า · บัญชีที่ว่างใช้บัญชีจาก เริ่มระบบ 5.2"
-        actions={can('add') && <button className="primary" onClick={() => setEdit('new')}>+ เพิ่มกลุ่มบัญชี <kbd>Ins</kbd></button>} />
+        lead="กำหนดวิธีคิดต้นทุน (FIFO / ถัวเฉลี่ย) และบัญชีที่ใช้ลงรายวันอัตโนมัติของสินค้าแต่ละกลุ่ม — ผูกกลุ่มกับสินค้าที่หน้ารายละเอียดสินค้า · บัญชีที่ว่างใช้บัญชีจาก เริ่มระบบ 5.2" />
       <ErrorBox error={list.error} />
+      <MasterBar rs={rs} word="กลุ่มบัญชีสินค้า" label={(g) => `${g.code} ${g.name_th}`} onAdd={() => setEdit('new')} onEdit={(g) => setEdit(g)} canAdd={can('add')} onDelete={(g) => api.del(`/api/v1/item-account-groups/${g.id}`).then(reload)} canDelete={can('delete')} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th style={{ width: 80 }}>รหัส</th><th>คำอธิบาย</th><th>คำอธิบาย (อังกฤษ)</th><th style={{ width: 130 }}>วิธีคิดต้นทุน</th><th className="r" style={{ width: 100 }}>จำนวนสินค้า</th></tr></thead>
           <tbody>
-            {list.data?.map((g) => <tr key={g.id} className="row-open" tabIndex={0} onClick={() => setEdit(g)} onKeyDown={(e) => e.key === 'Enter' && setEdit(g)}>
+            {list.data?.map((g, i) => <tr key={g.id} className={cx('row-open', rs.cls(i))} onMouseEnter={rs.hover(i)} tabIndex={0} onClick={() => setEdit(g)} onKeyDown={(e) => e.key === 'Enter' && setEdit(g)}>
               <td className="mono">{g.code}</td><td>{g.name_th}</td><td className="muted">{g.name_en}</td><td>{g.cost_method === 'A' ? 'ถัวเฉลี่ย' : g.cost_method === 'F' ? 'เข้าก่อนออกก่อน' : '—'}</td><td className="r">{Number(g.item_count).toLocaleString()}</td></tr>)}
             {list.data && !list.data.length && <tr><td colSpan={5} className="empty">ยังไม่มีกลุ่มบัญชีสินค้า — กด Ins เพื่อเพิ่ม</td></tr>}
           </tbody>

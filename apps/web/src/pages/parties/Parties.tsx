@@ -9,6 +9,7 @@ import { LkSelect, useLookups } from '../../components/LkSelect';
 import { MasterNotesDialog } from '../../components/Notes';
 import { DocLink } from '../../components/DocLink';
 import { Confirm, cx, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
+import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 /* ---------------------------------------------------------------- ส่วนร่วม */
 type Form = Record<string, string | boolean | null>;
@@ -31,13 +32,14 @@ function PartyList({ kind, eyebrow, title, lead, menu, Form: FormC }: { kind: 'c
   const [edit, setEdit] = useState<string | 'new' | null>(null);
   const [labels, setLabels] = useState(false);
   const list = useQuery({ queryKey: [kind, q, status, limit], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${kind}`, { q, status, limit }), placeholderData: (p) => p });
-  useHotkeys({ Insert: can('add') ? () => setEdit('new') : undefined }, []);
+  const rs = useRowSelect(list.data?.rows);
+  const reload = () => qc.invalidateQueries({ queryKey: [kind] });
   const who = kind === 'customers' ? 'ลูกค้า' : 'ผู้จำหน่าย';
   const total = list.data?.rows.reduce((s, r) => s.plus(d(r.balance)), d(0));
   return (
     <div className="page" data-tone={kind === 'customers' ? 'sales' : 'purchase'}>
       <PageHead eyebrow={eyebrow} title={title} lead={lead}
-        actions={<>{can('print') && <button onClick={() => setLabels(true)} title="พิมพ์จ่าหน้าซอง/สติ๊กเกอร์ ตามรายการที่ค้นหา">🖨 จ่าหน้าซอง/สติ๊กเกอร์</button>}{can('add') && <button className="primary" onClick={() => setEdit('new')}>+ เพิ่ม{who} <kbd>Ins</kbd></button>}</>} />
+        actions={<>{can('print') && <button onClick={() => setLabels(true)} title="พิมพ์จ่าหน้าซอง/สติ๊กเกอร์ ตามรายการที่ค้นหา">🖨 จ่าหน้าซอง/สติ๊กเกอร์</button>}</>} />
       {labels && <LabelPrint kind={kind} q={q} status={status} onClose={() => setLabels(false)} />}
       <div className="toolbar">
         <input type="search" autoFocus placeholder={`ค้นหารหัส ชื่อ เลขผู้เสียภาษี โทรศัพท์ ผู้ติดต่อ`} value={q} onChange={(e) => { setQ(e.target.value); setLimit(200); }} style={{ minWidth: 320 }} aria-label={`ค้นหา${who}`} />
@@ -47,6 +49,7 @@ function PartyList({ kind, eyebrow, title, lead, menu, Form: FormC }: { kind: 'c
         <span className="muted small">{list.data ? `${list.data.rows.length.toLocaleString()} จาก ${list.data.total.toLocaleString()} ราย` : ''}</span>
       </div>
       <ErrorBox error={list.error} />
+      <MasterBar rs={rs} word={who} label={(r) => `${r.code} ${r.name}`} onAdd={() => setEdit('new')} onEdit={(r) => setEdit(r.id)} canAdd={can('add')} onDelete={(r) => api.del(`/api/v1/${kind}/${r.id}`).then(reload)} canDelete={can('delete')} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr>
@@ -55,8 +58,8 @@ function PartyList({ kind, eyebrow, title, lead, menu, Form: FormC }: { kind: 'c
             <th className="r" style={{ width: 70 }}>เครดิต</th><th className="r" style={{ width: 120 }}>วงเงิน</th><th className="r" style={{ width: 130 }}>ยอดคงค้าง</th><th style={{ width: 80 }}>สถานะ</th>
           </tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
-              <tr key={r.id} className="row-open" tabIndex={0} onClick={() => setEdit(r.id)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r.id)}>
+            {list.data?.rows.map((r, i) => (
+              <tr key={r.id} className={cx('row-open', rs.cls(i))} onMouseEnter={rs.hover(i)} tabIndex={0} onClick={() => setEdit(r.id)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r.id)}>
                 <td className="mono">{r.code}</td><td>{r.title ? `${r.title} ` : ''}{r.name}</td>
                 <td className="mono small">{r.tax_id}{r.tax_branch_no && r.tax_id ? <span className="muted"> /{r.tax_branch_no}</span> : null}</td>
                 <td className="small">{r.phone}</td><td className="small">{r.contact}</td>
@@ -411,19 +414,20 @@ export function SalespersonsPage() {
   const can = useCan('SA.SLM');
   const [edit, setEdit] = useState<string | 'new' | null>(null);
   const list = useQuery({ queryKey: ['salespersons'], queryFn: () => api.get<SlmRow[]>('/api/v1/salespersons') });
-  useHotkeys({ Insert: can('add') ? () => setEdit('new') : undefined }, []);
+  const rs = useRowSelect(list.data);
+  const reload = () => qc.invalidateQueries({ queryKey: ['salespersons'] });
   return (
     <div className="page" data-tone="sales">
       <PageHead eyebrow="ขาย › รายละเอียดพนักงานขาย" title="รายละเอียดพนักงานขาย"
-        lead="พนักงานขาย อัตราค่าคอมมิชชั่น และเป้าการขาย 24 งวด — ใช้สรุปยอดขายรายพนักงานและเปรียบเทียบกับเป้า"
-        actions={can('add') && <button className="primary" onClick={() => setEdit('new')}>+ เพิ่มพนักงานขาย <kbd>Ins</kbd></button>} />
+        lead="พนักงานขาย อัตราค่าคอมมิชชั่น และเป้าการขาย 24 งวด — ใช้สรุปยอดขายรายพนักงานและเปรียบเทียบกับเป้า" />
       <ErrorBox error={list.error} />
+      <MasterBar rs={rs} word="พนักงานขาย" label={(r) => `${r.code} ${r.name}`} onAdd={() => setEdit('new')} onEdit={(r) => setEdit(r.id)} canAdd={can('add')} onDelete={(r) => api.del(`/api/v1/salespersons/${r.id}`).then(reload)} canDelete={can('delete')} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th style={{ width: 110 }}>รหัส</th><th>ชื่อพนักงานขาย</th><th>ตำแหน่ง</th><th style={{ width: 80 }}>ประเภท</th><th style={{ width: 90 }}>เขตการขาย</th><th className="r" style={{ width: 90 }}>ค่าคอมฯ %</th><th style={{ width: 140 }}>โทร.</th><th className="r" style={{ width: 80 }}>ลูกค้า</th><th style={{ width: 80 }}>สถานะ</th></tr></thead>
           <tbody>
-            {list.data?.map((r) => (
-              <tr key={r.id} className="row-open" tabIndex={0} onClick={() => setEdit(r.id)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r.id)}>
+            {list.data?.map((r, i) => (
+              <tr key={r.id} className={cx('row-open', rs.cls(i))} onMouseEnter={rs.hover(i)} tabIndex={0} onClick={() => setEdit(r.id)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r.id)}>
                 <td className="mono">{r.code}</td><td>{r.name}</td><td className="small">{r.position}</td><td className="mono">{r.salesperson_type}</td><td className="mono">{r.sales_area_code}</td>
                 <td className="r">{r.commission_rate && Number(r.commission_rate) ? fmt(r.commission_rate) : ''}</td><td className="small">{r.phone}</td><td className="r">{Number(r.customer_count) || ''}</td><td>{statusPill(r.status)}</td>
               </tr>

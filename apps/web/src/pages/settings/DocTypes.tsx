@@ -5,7 +5,8 @@ import { api, type Book, type Department } from '../../api';
 import { useCan } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
-import { Confirm, ErrorBox, Field, KeyHints, Modal, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
+import { Confirm, ErrorBox, Field, KeyHints, Modal, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, cx } from '../../ui';
+import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 /* ---------------------------------------------------------------- เลขที่เอกสาร S-DN-01 */
 interface DocTypeRow { id: string; code: string; doc_class: string; module: string; name_th: string; name_en: string | null; next_no: string; status: string; book_code: string | null; book_name: string | null; department_code: string | null; doc_count: number; account_count: number }
@@ -26,7 +27,8 @@ export function DocTypesPage() {
   const list = useQuery({ queryKey: ['doc-types'], queryFn: () => api.get<DocTypeRow[]>('/api/v1/doc-types') });
   const [q, setQ] = useState('');
   const [edit, setEdit] = useState<string | 'new' | null>(null);
-  useHotkeys({ Insert: can('add') ? () => setEdit('new') : undefined }, []);
+  const rs = useRowSelect(list.data);
+  const reload = () => qc.invalidateQueries({ queryKey: ['doc-types'] });
   const groups = useMemo(() => {
     const s = q.trim().toLowerCase();
     const rows = (list.data ?? []).filter((r) => !s || r.code.toLowerCase().includes(s) || r.name_th.toLowerCase().includes(s) || r.doc_class.toLowerCase().includes(s));
@@ -37,18 +39,18 @@ export function DocTypesPage() {
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › กำหนดเลขที่เอกสาร" title="กำหนดเลขที่เอกสาร"
-        lead="แต่ละประเภทเอกสารมีเลขที่รันของตัวเอง: ตัวนำหน้า + เลข 7 หลัก ไม่มีเครื่องหมายคั่น และไม่เริ่มใหม่เมื่อขึ้นปีบัญชี · หมวดเดียวกันแยกได้หลายประเภท (เช่น ขายเชื่อในประเทศ/ต่างประเทศ) · คลิกเพื่อตั้งสมุดรายวัน แผนก บัญชีเฉพาะเอกสาร และค่าควบคุม"
-        actions={can('add') && <button className="primary" onClick={() => setEdit('new')}>+ เพิ่มประเภทเอกสาร <kbd>Ins</kbd></button>} />
+        lead="แต่ละประเภทเอกสารมีเลขที่รันของตัวเอง: ตัวนำหน้า + เลข 7 หลัก ไม่มีเครื่องหมายคั่น และไม่เริ่มใหม่เมื่อขึ้นปีบัญชี · หมวดเดียวกันแยกได้หลายประเภท (เช่น ขายเชื่อในประเทศ/ต่างประเทศ) · คลิกเพื่อตั้งสมุดรายวัน แผนก บัญชีเฉพาะเอกสาร และค่าควบคุม" />
       <div className="toolbar"><input type="search" autoFocus placeholder="ค้นหาหมวด ตัวนำหน้า หรือชื่อเอกสาร" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาประเภทเอกสาร" /></div>
       <ErrorBox error={list.error} />
+      <MasterBar rs={rs} word="ประเภทเอกสาร" label={(r) => `${r.code} ${r.name_th}`} onAdd={() => setEdit('new')} onEdit={(r) => setEdit(r.id)} canAdd={can('add')} onDelete={(r) => api.del(`/api/v1/doc-types/${r.id}`).then(reload)} canDelete={can('delete')} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th style={{ width: 60 }}>หมวด</th><th>ชื่อเอกสาร</th><th>ชื่อภาษาอังกฤษ</th><th style={{ width: 150 }}>เลขที่ถัดไป</th><th style={{ width: 180 }}>สมุดรายวัน</th><th style={{ width: 70 }}>แผนก</th><th className="r" style={{ width: 90 }}>เอกสาร</th><th style={{ width: 80 }}>สถานะ</th></tr></thead>
           {groups.map(([mod, rows]) => (
             <tbody key={mod}>
               <tr className="group-row"><td colSpan={8}><b>{MODULE_TH[mod] ?? mod}</b></td></tr>
-              {rows.map((r) => (
-                <tr key={r.id} className="row-open" tabIndex={0} onClick={() => setEdit(r.id)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r.id)}>
+              {rows.map((r, i) => (
+                <tr key={r.id} className={cx('row-open', rs.cls(i))} onMouseEnter={rs.hover(i)} tabIndex={0} onClick={() => setEdit(r.id)} onKeyDown={(e) => e.key === 'Enter' && setEdit(r.id)}>
                   <td className="mono">{r.doc_class}</td><td>{r.name_th}{r.account_count > 0 && <span className="muted small"> · บัญชีเฉพาะ {r.account_count}</span>}</td><td className="muted">{r.name_en}</td>
                   <td className="mono"><b>{formatDocNo(r.code, r.next_no)}</b></td><td>{r.book_code ? `${r.book_code} ${r.book_name}` : <span className="muted">ไม่ลงบัญชี</span>}</td>
                   <td className="mono">{r.department_code}</td><td className="r">{Number(r.doc_count).toLocaleString()}</td><td>{r.status === 'A' ? <Pill tone="n">ใช้งาน</Pill> : <Pill tone="x">เลิกใช้</Pill>}</td>

@@ -5,6 +5,7 @@ import { api } from '../../api';
 import { useSession } from '../../session';
 import { PASSWORD_RULE } from '@buddy/core';
 import { Confirm, cx, ErrorBox, Field, Modal, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null }
 interface Group { id: string; code: string; name: string }
@@ -17,19 +18,20 @@ export function UsersPage() {
   const nav = useNavigate();
   const [edit, setEdit] = useState<User | 'new' | null>(null);
   const [addGroup, setAddGroup] = useState(false);
-  useHotkeys({ Insert: () => setEdit('new') }, []);
+  const rs = useRowSelect(q.data?.users);
   if (!me?.user.is_admin) return <div className="page"><div className="notebox">เฉพาะผู้ดูแลระบบ</div></div>;
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="ผู้ใช้งานระบบ" lead="ผู้ใช้ในกลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · ผู้ใช้อื่นเข้าได้เฉพาะบริษัทที่กำหนด ตามระดับอนุมัติ (0–4 พนักงาน · 5–8 หัวหน้าแผนก · 9 ผู้จัดการระบบ) และจำกัดเพิ่มด้วยสิทธิ์รายเมนูถ้าเปิดตรวจสอบสิทธิ์"
-        actions={<><button onClick={() => nav('/settings/permissions')}>สิทธิ์รายเมนู</button><button onClick={() => setAddGroup(true)}>+ เพิ่มกลุ่ม</button><button className="primary" onClick={() => setEdit('new')}>+ เพิ่มผู้ใช้ <kbd>Ins</kbd></button></>} />
+        actions={<><button onClick={() => nav('/settings/permissions')}>สิทธิ์รายเมนู</button><button onClick={() => setAddGroup(true)}>+ เพิ่มกลุ่ม</button></>} />
       <ErrorBox error={q.error} />
+      <MasterBar rs={rs} word="ผู้ใช้" label={(u) => `${u.username} ${u.display_name}`} onAdd={() => setEdit('new')} onEdit={(u) => setEdit(u)} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th>รหัสผู้ใช้</th><th>ชื่อ</th><th>กลุ่ม</th><th className="c">ระดับอนุมัติ</th><th>ตรวจสอบสิทธิ์</th><th>บริษัทที่เข้าได้</th><th>เข้าระบบล่าสุด</th><th>ยืนยันสองขั้น</th><th>สถานะ</th></tr></thead>
           <tbody>
-            {q.data?.users.map((u) => (
-              <tr key={u.id} className={cx('row-open', u.status === 'I' && 'void')} onClick={() => setEdit(u)}>
+            {q.data?.users.map((u, i) => (
+              <tr key={u.id} className={cx('row-open', u.status === 'I' && 'void', rs.cls(i))} onClick={() => { rs.setSel(i); setEdit(u); }} onMouseEnter={rs.hover(i)}>
                 <td className="mono">{u.username}</td><td>{u.display_name}</td><td>{u.group_code ? <Pill tone={u.group_code === 'ADMIN' ? 'n' : 'x'}>{u.group_name}</Pill> : ''}</td><td className="c">{u.approval_level}</td><td>{u.group_code === 'ADMIN' ? '' : u.check_rights ? <button className="linklike" onClick={(e) => { e.stopPropagation(); nav(`/settings/permissions?s=U:${u.id}`); }}>ตามตารางสิทธิ์</button> : <span className="muted">ตามระดับ</span>}</td>
                 <td className="small">{u.group_code === 'ADMIN' ? 'ทุกบริษัท' : u.companies.map((c) => me.companies.find((x) => x.id === c)?.code ?? '?').join(', ')}</td>
                 <td className="small">{u.last_login_at ? new Date(u.last_login_at).toLocaleString('th-TH') : '—'}</td>

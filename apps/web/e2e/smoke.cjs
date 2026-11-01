@@ -22,6 +22,11 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.fill('input[type=password]', process.env.PASS || 'buddy1234');
     await page.keyboard.press('Enter');
     await page.waitForSelector('.kpis', { timeout: 15000 });
+    // เข้าระบบใหม่ได้สาขาเดิมของรอบก่อน (เช่นเจ้าของเลือกสาขาบางนาค้างไว้) → รายการว่าง; ตรวจที่ "ทุกสาขา" เสมอ
+    if (await page.evaluate(async () => (await (await fetch('/api/v1/auth/me')).json()).branch)) {
+      await page.evaluate(() => fetch('/api/v1/auth/select', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ branch_id: null }) }));
+      await page.reload(); await page.waitForSelector('.kpis', { timeout: 15000 });
+    }
     await page.waitForFunction(() => !document.querySelector('.kpi b')?.textContent?.includes('…'), null, { timeout: 15000 });
     await shot('01-home');
   });

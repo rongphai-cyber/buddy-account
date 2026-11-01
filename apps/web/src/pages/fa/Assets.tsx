@@ -6,7 +6,8 @@ import { api, type Department } from '../../api';
 import { useCan } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, useLookups } from '../../components/LkSelect';
-import { NumInput, Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
+import { NumInput, Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem, cx } from '../../ui';
+import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { DocLink } from '../../components/DocLink';
 
 interface Group { id: string; code: string; name_th: string; name_en: string | null; asset_account_id: string | null; depr_expense_account_id: string | null; accum_depr_account_id: string | null; asset_count: number }
@@ -222,17 +223,18 @@ export function AssetAccountGroupsPage() {
   const qc = useQueryClient();
   const list = useGroups();
   const [edit, setEdit] = useState<Group | 'new' | null>(null);
-  useHotkeys({ Insert: can('add') ? () => setEdit('new') : undefined }, []);
+  const rs = useRowSelect(list.data);
+  const reload = () => qc.invalidateQueries({ queryKey: ['asset-groups'] });
   return (
     <div className="page" data-tone="setup">
-      <PageHead eyebrow="เริ่มระบบ › กลุ่มบัญชีทรัพย์สิน" title="กำหนดกลุ่มบัญชีทรัพย์สิน" lead="บัญชีทรัพย์สิน บัญชีค่าเสื่อมราคา (Dr.) และค่าเสื่อมราคาสะสม (Cr.) ที่ใช้ลงค่าเสื่อมอัตโนมัติ — ผูกกลุ่มกับทรัพย์สินแต่ละรายการ"
-        actions={can('add') && <button className="primary" onClick={() => setEdit('new')}>+ เพิ่มกลุ่มบัญชี <kbd>Ins</kbd></button>} />
+      <PageHead eyebrow="เริ่มระบบ › กลุ่มบัญชีทรัพย์สิน" title="กำหนดกลุ่มบัญชีทรัพย์สิน" lead="บัญชีทรัพย์สิน บัญชีค่าเสื่อมราคา (Dr.) และค่าเสื่อมราคาสะสม (Cr.) ที่ใช้ลงค่าเสื่อมอัตโนมัติ — ผูกกลุ่มกับทรัพย์สินแต่ละรายการ" />
       <ErrorBox error={list.error} />
+      <MasterBar rs={rs} word="กลุ่มบัญชีทรัพย์สิน" label={(g) => `${g.code} ${g.name_th}`} onAdd={() => setEdit('new')} onEdit={(g) => setEdit(g)} canAdd={can('add')} onDelete={(g) => api.del(`/api/v1/asset-account-groups/${g.id}`).then(reload)} canDelete={can('delete')} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th style={{ width: 90 }}>รหัส</th><th>คำอธิบาย</th><th>คำอธิบาย (อังกฤษ)</th><th className="r" style={{ width: 110 }}>ทรัพย์สิน</th></tr></thead>
           <tbody>
-            {list.data?.map((g) => <tr key={g.id} className="row-open" tabIndex={0} onClick={() => setEdit(g)} onKeyDown={(e) => e.key === 'Enter' && setEdit(g)}>
+            {list.data?.map((g, i) => <tr key={g.id} className={cx('row-open', rs.cls(i))} onMouseEnter={rs.hover(i)} tabIndex={0} onClick={() => setEdit(g)} onKeyDown={(e) => e.key === 'Enter' && setEdit(g)}>
               <td className="mono">{g.code}</td><td>{g.name_th}</td><td className="muted">{g.name_en}</td><td className="r">{Number(g.asset_count).toLocaleString()}</td></tr>)}
             {list.data && !list.data.length && <tr><td colSpan={4} className="empty">ยังไม่มีกลุ่มบัญชีทรัพย์สิน — กด Ins เพื่อเพิ่ม</td></tr>}
           </tbody>

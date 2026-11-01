@@ -4,6 +4,7 @@ import { d, fmt } from '@buddy/core';
 import { api, type Department, type Template, type TemplateDetail } from '../../api';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, ErrorBox, Field, KeyHints, Modal, MoneyInput, navKey, PageHead, toast, toastError, useHotkeys } from '../../ui';
+import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 interface TLine { key: number; account_id: string | null; department_id: string | null; description: string; side: 'D' | 'C'; amount: string }
 let seq = 0;
@@ -18,19 +19,20 @@ export function TemplatesPage() {
   const qc = useQueryClient();
   const q = useTemplates();
   const [edit, setEdit] = useState<string | 'new' | null>(null);
-  useHotkeys({ Insert: () => setEdit('new') }, []);
+  const rs = useRowSelect(q.data);
+  const reload = () => qc.invalidateQueries({ queryKey: ['templates'] });
   return (
     <div className="page" data-tone="gl">
       <PageHead eyebrow="บัญชี › ต้นแบบวิธีการบันทึก" title="ต้นแบบวิธีการบันทึก"
-        lead="รายการบัญชีที่บันทึกซ้ำบ่อย เช่น ค่าใช้จ่ายประจำเดือน ค่าเสื่อมราคา — เลือกใช้ในสมุดรายวันที่ช่องเลขที่ใบสำคัญ (🔍 / F4) หรือผูกกับสมุดให้ขึ้นอัตโนมัติ"
-        actions={<button className="primary" onClick={() => setEdit('new')}>+ เพิ่มต้นแบบ <kbd>Ins</kbd></button>} />
+        lead="รายการบัญชีที่บันทึกซ้ำบ่อย เช่น ค่าใช้จ่ายประจำเดือน ค่าเสื่อมราคา — เลือกใช้ในสมุดรายวันที่ช่องเลขที่ใบสำคัญ (🔍 / F4) หรือผูกกับสมุดให้ขึ้นอัตโนมัติ" />
       <ErrorBox error={q.error} />
+      <MasterBar rs={rs} word="ต้นแบบ" label={(t) => `${t.code} ${t.name}`} onAdd={() => setEdit('new')} onEdit={(t) => setEdit(t.id)} onDelete={(t) => api.del(`/api/v1/gl/templates/${t.id}`).then(reload)} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th style={{ width: 120 }}>รหัส</th><th>รายละเอียด</th><th>รายละเอียด (อังกฤษ)</th><th className="r" style={{ width: 90 }}>บรรทัด</th><th style={{ width: 140 }}>ขึ้นอัตโนมัติในสมุด</th></tr></thead>
           <tbody>
-            {q.data?.map((t) => (
-              <tr key={t.id} className="row-open" onClick={() => setEdit(t.id)}>
+            {q.data?.map((t, i) => (
+              <tr key={t.id} className={cx('row-open', rs.cls(i))} onMouseEnter={rs.hover(i)} onClick={() => setEdit(t.id)}>
                 <td className="mono">{t.code}</td><td>{t.name}</td><td className="muted">{t.name_en}</td><td className="r">{Number(t.line_count)}</td><td className="mono">{t.book_codes}</td>
               </tr>
             ))}

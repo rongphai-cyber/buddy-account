@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, useLookups } from '../../components/LkSelect';
-import { Confirm, DateInput, ErrorBox, Field, KeyHints, Modal, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
+import { Confirm, DateInput, ErrorBox, Field, KeyHints, Modal, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, cx } from '../../ui';
+import { GridBar, MasterBar, useRowSelect } from '../../components/MasterBar';
 
 /* ---------------------------------------------------------------- บัญชีเงินฝาก S-CQ-01 / S-BK-01 */
 interface BankAccount { id: string; code: string; name: string; branch: string | null; account_number: string | null; short_name: string | null; account_kind: string | null; bank_id: string | null; bank_code: string | null; bank_name: string | null; gl_account_id: string | null; account_no: string | null; account_name: string | null; currency: string; opening_balance: string | null; opening_date: string | null; status: string; cheque_count: number; method_count: number }
@@ -18,19 +19,20 @@ export function BankAccountsPage() {
   const { me } = useSession();
   const list = useQuery({ queryKey: ['bank-accounts'], queryFn: () => api.get<BankAccount[]>('/api/v1/bank-accounts') });
   const [edit, setEdit] = useState<BankAccount | 'new' | null>(null);
-  useHotkeys({ Insert: can('add') ? () => setEdit('new') : undefined }, []);
+  const rs = useRowSelect(list.data);
+  const reload = () => qc.invalidateQueries({ queryKey: ['bank-accounts'] });
   return (
     <div className="page" data-tone="finance">
       <PageHead eyebrow="ธนาคาร › รายละเอียดบัญชีเงินฝาก" title="รายละเอียดบัญชีเงินฝาก"
-        lead="บัญชีเงินฝากของกิจการ ใช้กับรายการฝาก-ถอน รับ-จ่ายเช็ค โอนเงินระหว่างบัญชี และโอนชำระหนี้ — เลขที่บัญชีในผังบัญชีคือบัญชีที่ลงสมุดรายวันเมื่อมีรายการผ่านบัญชีนี้ · รับเงินสดแทนเช็คคืนใช้บัญชีเงินฝากหลอกที่ผูกกับบัญชีเงินสด"
-        actions={can('add') && <button className="primary" onClick={() => setEdit('new')}>+ เพิ่มบัญชีเงินฝาก <kbd>Ins</kbd></button>} />
+        lead="บัญชีเงินฝากของกิจการ ใช้กับรายการฝาก-ถอน รับ-จ่ายเช็ค โอนเงินระหว่างบัญชี และโอนชำระหนี้ — เลขที่บัญชีในผังบัญชีคือบัญชีที่ลงสมุดรายวันเมื่อมีรายการผ่านบัญชีนี้ · รับเงินสดแทนเช็คคืนใช้บัญชีเงินฝากหลอกที่ผูกกับบัญชีเงินสด" />
       <ErrorBox error={list.error} />
+      <MasterBar rs={rs} word="บัญชีเงินฝาก" label={(b) => `${b.code} ${b.name}`} onAdd={() => setEdit('new')} onEdit={(b) => setEdit(b)} canAdd={can('add')} onDelete={(b) => api.del(`/api/v1/bank-accounts/${b.id}`).then(reload)} canDelete={can('delete')} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th style={{ width: 70 }}>รหัส</th><th>ชื่อบัญชีเงินฝาก</th><th style={{ width: 110 }}>ประเภท</th><th style={{ width: 90 }}>ธนาคาร</th><th>สาขา</th><th style={{ width: 150 }}>สมุดบัญชีเลขที่</th><th style={{ width: 130 }}>ชื่อย่อ</th><th style={{ width: 200 }}>เลขที่บัญชี (ผังบัญชี)</th><th style={{ width: 110 }}>เคลื่อนไหว</th><th style={{ width: 70 }}>สถานะ</th></tr></thead>
           <tbody>
-            {list.data?.map((b) => (
-              <tr key={b.id} className="row-open" tabIndex={0} onClick={() => setEdit(b)} onKeyDown={(e) => e.key === 'Enter' && setEdit(b)}>
+            {list.data?.map((b, i) => (
+              <tr key={b.id} className={cx('row-open', rs.cls(i))} onMouseEnter={rs.hover(i)} tabIndex={0} onClick={() => setEdit(b)} onKeyDown={(e) => e.key === 'Enter' && setEdit(b)}>
                 <td className="mono">{b.code}</td><td>{b.name}</td><td>{b.account_kind ? KIND[b.account_kind] : ''}</td><td className="mono">{b.bank_code}</td><td>{b.branch}</td>
                 <td className="mono">{b.account_number}</td><td>{b.short_name}</td><td><span className="mono">{b.account_no}</span> <span className="muted small">{b.account_name}</span></td>
                 <td>{b.gl_account_id && <button className="link" onClick={(e) => { e.stopPropagation(); nav(`/reports/ledger?account_id=${b.gl_account_id}${me?.work_date ? `&to=${me.work_date}` : ''}`); }}>ดูรายการ ›</button>}</td>
@@ -96,6 +98,8 @@ export function PaymentMethodsPage() {
   const list = useQuery({ queryKey: ['payment-methods', dir], queryFn: () => api.get<PM[]>(`/api/v1/payment-methods/${dir}`), staleTime: 0 });
   const banks = useQuery({ queryKey: ['bank-accounts'], queryFn: () => api.get<BankAccount[]>('/api/v1/bank-accounts') });
   const [rows, setRows] = useState<PM[] | null>(null);
+  const [cur, setCur] = useState<number | null>(null);
+  const saveRef = useRef<HTMLButtonElement>(null);
   const [loaded, setLoaded] = useState<string>('');
   if (list.data && loaded !== dir + list.dataUpdatedAt) { setLoaded(dir + list.dataUpdatedAt); setRows(list.data.map((r) => ({ ...r }))); }
   const [err, setErr] = useState<unknown>(null);
@@ -109,24 +113,28 @@ export function PaymentMethodsPage() {
       qc.invalidateQueries({ queryKey: ['payment-methods', dir] });
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
-  useHotkeys({ F9: save, 'Ctrl+S': save }, []);
   const set = (i: number, p: Partial<PM>) => setRows((rs) => rs!.map((r, k) => (k === i ? { ...r, ...p } : r)));
+  const add = () => { if (!rows) return; setRows([...rows, { seq: String(rows.length + 1).padStart(2, '0'), code: '', name_th: '', name_en: null, kind: 'OTHER', creates_cheque: false, gl_account_id: null, bank_account_id: null, status: 'A' }]); setCur(rows.length); setTimeout(() => document.querySelector<HTMLInputElement>('.pm-grid tbody tr:last-child input')?.focus(), 0); };
+  useHotkeys({ F9: save, 'Ctrl+S': save, Insert: add }, []);
   const bankRows = banks.data?.map((b) => ({ id: b.id, code: b.code, name: b.name }));
   const dirty = JSON.stringify(rows) !== JSON.stringify(list.data);
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › วิธีรับ/จ่ายชำระหนี้" title={dir === 'R' ? 'วิธีการรับชำระหนี้' : 'วิธีการจ่ายชำระหนี้'}
-        lead={<>3 ลักษณะ: <b>เช็ค/บัตร</b> ที่ต้องนำฝากและรอผ่าน (ติ๊ก เช็ค? + บัญชีเช็ครับ/จ่ายล่วงหน้า) · <b>เงินโอน</b> เลือกธนาคาร (บัญชีเงินฝาก) ไม่ต้องป้อนเลขที่บัญชี · <b>อื่น ๆ</b> ที่เสร็จในขั้นตอนเดียว เช่น เงินสด ส่วนลด ภาษีหัก ณ ที่จ่าย ป้อนเฉพาะเลขที่บัญชี</>}
-        actions={can('edit') && <button className="primary" disabled={busy || !dirty} onClick={save}>บันทึก <kbd>F9</kbd></button>} />
-      <Tabs active={dir} onChange={(k) => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ทิ้งการแก้ไข?')) { setDir(k as 'R'); setRows(null); setLoaded(''); } }}
+        lead={<>3 ลักษณะ: <b>เช็ค/บัตร</b> ที่ต้องนำฝากและรอผ่าน (ติ๊ก เช็ค? + บัญชีเช็ครับ/จ่ายล่วงหน้า) · <b>เงินโอน</b> เลือกธนาคาร (บัญชีเงินฝาก) ไม่ต้องป้อนเลขที่บัญชี · <b>อื่น ๆ</b> ที่เสร็จในขั้นตอนเดียว เช่น เงินสด ส่วนลด ภาษีหัก ณ ที่จ่าย ป้อนเฉพาะเลขที่บัญชี</>} />
+      <Tabs active={dir} onChange={(k) => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ทิ้งการแก้ไข?')) { setDir(k as 'R'); setRows(null); setCur(null); setLoaded(''); } }}
         tabs={[{ key: 'R', label: 'วิธีการรับชำระหนี้ (ขายและลูกหนี้)' }, { key: 'P', label: 'วิธีการจ่ายชำระหนี้ (ซื้อและเจ้าหนี้)' }]} />
       <ErrorBox error={err ?? list.error} />
-      {rows && <div className="table-wrap lines" onKeyDown={navKey}>
-        <table className="grid">
+      {rows && <GridBar word="วิธีชำระ" cur={cur !== null && cur < rows.length ? cur : null} label={cur !== null && rows[cur] ? `${rows[cur]!.code} ${rows[cur]!.name_th}` : undefined} canEdit={can('edit')}
+        onAdd={add} onDelete={(i) => { setRows(rows.filter((_, k) => k !== i)); setCur(null); }} canDelete={(i) => !Number(rows[i]?.used)}
+        isActive={(i) => rows[i]?.status === 'A'} onToggle={(i) => set(i, { status: rows[i]?.status === 'A' ? 'I' : 'A' })}
+        dirty={dirty} busy={busy} onSave={save} onRevert={() => { setLoaded(''); setCur(null); }} saveRef={saveRef} />}
+      {rows && <div className="table-wrap lines" onKeyDown={(e) => navKey(e, () => saveRef.current?.focus())}>
+        <table className="grid pm-grid">
           <thead><tr><th style={{ width: 60 }}>No.</th><th style={{ width: 60 }}>รหัส</th><th>คำอธิบายไทย</th><th>อังกฤษ</th><th style={{ width: 140 }}>ลักษณะ</th><th style={{ width: 60 }}>เช็ค?</th><th style={{ width: 170 }}>ธนาคาร (บัญชีเงินฝาก)</th><th style={{ width: 160 }}>เลขที่บัญชี</th><th style={{ width: 90 }}>สถานะ</th><th style={{ width: 36 }} /></tr></thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.id ?? `n${i}`}>
+              <tr key={r.id ?? `n${i}`} className={cx(cur === i && 'sel', r.status === 'I' && 'void')} onFocus={() => setCur(i)} onClick={() => setCur(i)}>
                 <td><input className="mono" value={r.seq ?? ''} maxLength={4} onChange={(e) => set(i, { seq: e.target.value })} aria-label="ลำดับ" /></td>
                 <td><input className="mono" value={r.code} maxLength={2} onChange={(e) => set(i, { code: e.target.value.toUpperCase() })} aria-label="รหัส" /></td>
                 <td><input value={r.name_th} maxLength={120} onChange={(e) => set(i, { name_th: e.target.value })} aria-label="คำอธิบายไทย" /></td>
@@ -136,15 +144,15 @@ export function PaymentMethodsPage() {
                 <td><LkSelect byId rows={bankRows} value={r.bank_account_id} onChange={(v) => set(i, { bank_account_id: v || null })} aria-label="ธนาคาร" /></td>
                 <td><AccountCell value={r.gl_account_id} onChange={(a) => set(i, { gl_account_id: a?.id ?? null })} /></td>
                 <td><select value={r.status} onChange={(e) => set(i, { status: e.target.value })} aria-label="สถานะ"><option value="A">ใช้งาน</option><option value="I">เลิกใช้</option></select></td>
-                <td>{!Number(r.used) && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => setRows(rows.filter((_, k) => k !== i))}>✕</button>}</td>
+                <td>{!Number(r.used) && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={(e) => { e.stopPropagation(); setRows(rows.filter((_, k) => k !== i)); setCur(null); }}>✕</button>}</td>
               </tr>
             ))}
             {!rows.length && <tr><td colSpan={10} className="empty">ยังไม่มีวิธีชำระ</td></tr>}
           </tbody>
-          <tfoot><tr><td colSpan={10}><button type="button" onClick={() => setRows([...rows, { seq: String(rows.length + 1).padStart(2, '0'), code: '', name_th: '', name_en: null, kind: 'OTHER', creates_cheque: false, gl_account_id: null, bank_account_id: null, status: 'A' }])}>+ เพิ่มวิธีชำระ</button> <span className="hint">รหัส 2 ตัวนำหน้าเลขที่ในรายการชำระ เช่น QR TR TS · วิธีที่ใช้ในเอกสารแล้วลบไม่ได้ (เปลี่ยนเป็นเลิกใช้)</span></td></tr></tfoot>
+          <tfoot><tr><td colSpan={10}><span className="hint">รหัส 2 ตัวนำหน้าเลขที่ในรายการชำระ เช่น QR TR TS · วิธีที่ใช้ในเอกสารแล้วลบไม่ได้ (เปลี่ยนเป็นเลิกใช้)</span></td></tr></tfoot>
         </table>
       </div>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี'], ['F9', 'บันทึก']]} />
+      <KeyHints keys={[['Ins', 'เพิ่มวิธีชำระ'], ['Enter', 'ช่องถัดไป'], ['F4', 'ค้นหาบัญชี'], ['F9', 'บันทึก']]} />
     </div>
   );
 }
