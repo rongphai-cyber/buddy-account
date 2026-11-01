@@ -166,6 +166,18 @@ export function JournalFormPage() {
       setTimeout(() => gridRef.current?.querySelector<HTMLInputElement>(`tr[data-k="${n.key}"] input`)?.focus(), 0);
     }, 0);
   };
+  /** รายการครบ: มีบัญชีทุกบรรทัดที่มียอด อย่างน้อย 2 บรรทัด และเดบิต = เครดิต */
+  const complete = () => { const used = lines.filter((l) => d(l.debit || 0).gt(0) || d(l.credit || 0).gt(0)); return used.length >= 2 && used.every((l) => l.account_id) && totals.balanced; };
+  /** จากหัวใบสำคัญไปช่องเลขที่บัญชีบรรทัดแรกที่ยังว่าง (หรือบรรทัดแรก) */
+  const toLines = () => {
+    if (tab !== 'lines') setTab('lines');
+    setTimeout(() => {
+      const rows = [...(gridRef.current?.querySelectorAll<HTMLTableRowElement>('tbody tr[data-k]') ?? [])];
+      const empty = rows.find((r) => !lines.find((l) => String(l.key) === r.dataset.k)?.account_id) ?? rows[0];
+      const el = empty?.querySelector<HTMLInputElement>('input:not([disabled])');
+      if (el) { el.focus(); el.select?.(); } else ed.end();
+    }, 0);
+  };
   const delLine = (k: number) => { setDirty(true); setLines((ls) => (ls.length > 1 ? ls.filter((l) => l.key !== k) : [blank()])); };
 
   const save = async (andNew = false, skipTaxCheck = false) => {
@@ -245,7 +257,8 @@ export function JournalFormPage() {
       {isNew && !h.journal_book_id && books.data && <p className="notebox">เลือกสมุดรายวันจากแถบด้านบนก่อน — เลขที่ใบสำคัญและต้นแบบรายการตามสมุดที่เลือก</p>}
       {ed.dialog}
       <ErrorBox error={err ?? doc.error} />
-      <fieldset disabled={!editable} onKeyDown={(e) => navKey(e, ed.end)}>
+      {/* Enter ช่องสุดท้ายของหัว (คำอธิบาย) → ไปคีย์รายการบัญชี — ถามบันทึกเมื่อคีย์รายการครบและดุลแล้ว (ข้อกำหนดเจ้าของ 01/11/2569) */}
+      <fieldset disabled={!editable} onKeyDown={(e) => navKey(e, toLines)}>
         <div className="head-grid">
           <div className="col">
             <Field label="วันที่" req><DateInput value={h.voucher_date} onChange={(v) => { setDirty(true); setH({ ...h, voucher_date: v }); }} autoFocus={isNew} /></Field>
@@ -286,7 +299,7 @@ export function JournalFormPage() {
         ...TAX_TABS.map(([key, label]) => ({ key, label, badge: sums[key].isZero() ? undefined : fmt(sums[key].abs().toFixed(2)) })), ...(!isNew ? [{ key: 'history', label: 'ประวัติการแก้ไข' }] : [])]} />
       <fieldset disabled={!editable} onKeyDown={(e) => navKey(e, ed.end)}>
         {tab === 'lines' && (
-          <div className="table-wrap lines" ref={gridRef} onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).dataset.last != null && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); addLine(); } }}>
+          <div className="table-wrap lines" ref={gridRef} onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).dataset.last != null && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); if (complete()) ed.end(); else addLine(); } }}>
             <table className="grid">
               <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 170 }}>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th style={{ width: 110 }}>แผนก</th><th>คำอธิบายรายการ</th><th className="r" style={{ width: 140 }}>เดบิต</th><th className="r" style={{ width: 140 }}>เครดิต</th><th style={{ width: 40 }} /></tr></thead>
               <tbody>

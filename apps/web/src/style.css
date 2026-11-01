@@ -895,3 +895,7 @@ button.danger-outline:not(:disabled) { color: var(--bad); border-color: color-mi
 /* สาขาที่บันทึกเอกสาร (มุมขวาบนของทุกหน้าจอเอกสาร) */
 .doc-branch { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
 .doc-branch select { width: auto; min-height: 30px; padding: 2px 8px; font-weight: 600; border-color: var(--tone, var(--line)); }
+/* หน้าต่างยืนยัน: ปุ่มที่เลือกด้วยลูกศร/Tab เห็นชัด — ปุ่มหลักที่ไม่ได้เลือกจางลง (ข้อกำหนดเจ้าของ 01/11/2569: เดิมดูเหมือนลูกศรไม่ทำงาน) */
+.modal-foot button:focus { outline: 3px solid var(--tone); outline-offset: 2px; background: color-mix(in srgb, var(--tone) 16%, var(--surface, #fff)); font-weight: 700; }
+.modal-foot button.primary:focus { background: var(--tone); color: #fff; }
+.modal-foot:focus-within button.primary:not(:focus) { background: var(--surface, #fff); color: var(--tone); border-color: var(--tone); }
