@@ -378,6 +378,29 @@
 ]
 },
 {
+"th": "รับ",
+"n": 37,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "ปิด",
 "n": 36,
 "files": [
@@ -412,29 +435,6 @@
 ]
 },
 {
-"th": "รับ",
-"n": 36,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/stock.ts"
-]
-},
-{
 "th": "รายการ",
 "n": 36,
 "files": [
@@ -461,6 +461,30 @@
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "จ่าย",
+"n": 35,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -520,30 +544,6 @@
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "จ่าย",
-"n": 34,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -4281,6 +4281,15 @@
 ]
 },
 {
+"th": "กลับไปแก้",
+"n": 3,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
 "th": "กลุ่มบัญชีทรัพย์สิน",
 "n": 3,
 "files": [
@@ -4881,6 +4890,14 @@
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ยอดที่ต้อง{0}",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -5784,14 +5801,6 @@
 "files": [
 "apps/web/src/pages/Login.tsx",
 "apps/web/src/pages/Signup.tsx"
-]
-},
-{
-"th": "กลับไปแก้",
-"n": 2,
-"files": [
-"apps/web/src/components/DocEdit.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -9819,6 +9828,13 @@
 ]
 },
 {
+"th": "(ป้อนเลขที่เช็คต่อ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
 "th": "(ผู้ดูแล — สิทธิ์ทั้งหมด)",
 "n": 1,
 "files": [
@@ -12738,6 +12754,13 @@
 ]
 },
 {
+"th": "{0}เงินโดยวิธีใด?",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
 "th": "{0}เช็ค {1} ใบแล้ว",
 "n": 1,
 "files": [
@@ -12843,6 +12866,13 @@
 ]
 },
 {
+"th": "· {0}โดยวิธีอื่นแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
 "th": "· กดบันทึกแล้วระบบลงบัญชีตามนี้ทันที (แก้รายการแล้วกดคำนวณใหม่)",
 "n": 1,
 "files": [
@@ -12945,6 +12975,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "· ยังขาด",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
 ]
 },
 {
@@ -22986,6 +23023,13 @@
 ]
 },
 {
+"th": "ป้อนวิธี{0}เงินและยอดในแท็บชำระโดยอื่น ๆ แล้วกด F9",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx"
+]
+},
+{
 "th": "ป้อนสินค้าประกอบอย่างน้อย 1 รายการ",
 "n": 1,
 "files": [
@@ -23046,6 +23090,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/routes.ts"
+]
+},
+{
+"th": "ป้อนเลขที่เช็ค/ลงวันที่/ธนาคาร แล้วกด F9",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx"
 ]
 },
 {
@@ -25240,6 +25291,13 @@
 ]
 },
 {
+"th": "ยอด{0}โดยวิธีอื่นยังไม่ครบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
 "th": "ยอด{0}ในใบสำคัญ {1} ·",
 "n": 1,
 "files": [
@@ -25524,13 +25582,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
-]
-},
-{
-"th": "ยอดที่ต้อง{0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -31981,6 +32032,13 @@
 ]
 },
 {
+"th": "ส่วนที่เหลือ {0} เป็นเงินสด",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
 "th": "ส่วนลด {0}",
 "n": 1,
 "files": [
@@ -33651,6 +33709,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/finance/Banking.tsx"
+]
+},
+{
+"th": "เงินสดทั้งจำนวน {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
 ]
 },
 {
@@ -35331,6 +35396,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "เพิ่มวิธีชำระอื่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
 ]
 },
 {
@@ -38281,6 +38353,13 @@
 ]
 },
 {
+"th": "แยกหลายวิธี (เงินสด + โอน/เช็ค)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
 "th": "แยกแผนก",
 "n": 1,
 "files": [
@@ -40973,6 +41052,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "— เลือกวิธี{0}เงิน แล้วระบบบันทึกให้ (Tab/ลูกศร เลือก · Enter กด)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx"
 ]
 },
 {

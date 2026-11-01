@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, toast, useHotkeys } from '../ui';
+import { focusStart, Modal, toast, useHotkeys } from '../ui';
 
 /**
  * โหมดดู/แก้ไขของหน้าเอกสาร (ข้อกำหนดเจ้าของ 30/10/2569)
@@ -15,7 +15,8 @@ export function useDocEdit({ id, allowed, dirty, onSave, onDiscard, word = 'เ�
   const [ask, setAsk] = useState(false);
   useEffect(() => setEditing(!id), [id]);
   const locked = !!id && !editing;
-  const start = () => { setEditing(true); toast(`แก้ไข${word} — แก้แล้วกด F9 เพื่อบันทึก`); };
+  // แก้ไข (Alt+E/ปุ่ม) → เคอร์เซอร์ไปช่องแรกที่แก้ได้ทันที ไม่ค้างที่ปุ่ม (ข้อกำหนดเจ้าของ 01/11/2569 — ใช้คีย์บอร์ดล้วนได้)
+  const start = () => { setEditing(true); toast(`แก้ไข${word} — แก้แล้วกด F9 เพื่อบันทึก`); focusStart(); };
   const stop = () => {
     if (dirty && !window.confirm('ทิ้งการแก้ไขที่ยังไม่บันทึก?')) return;
     setEditing(false); onDiscard?.();

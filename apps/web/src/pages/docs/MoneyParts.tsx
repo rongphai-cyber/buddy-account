@@ -4,12 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { d, fmt, WHT_INCOME_TYPES, wht50FormOf } from '@buddy/core';
 import { api } from '../../api';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
-import { DateInput, Field, Money, MoneyInput } from '../../ui';
+import { DateInput, Field, Modal, Money, MoneyInput } from '../../ui';
 
 /** cheque_amount: หน้าเช็คเมื่อมากกว่ายอดที่ใช้ (เหลือในเช็ค) · cheque_id: ใช้ยอดคงเหลือของเช็คเดิม */
 export interface Pay { key: number; payment_method_id: string; amount: string; reference_no: string; cheque_date: string; bank_id: string | null; bank_branch: string; cheque_amount?: string; cheque_id?: string | null; cheque_label?: string }
 export interface Wht { key: number; id?: string; form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string; taxEdited: boolean; certificate_no: string; certificate_date: string }
-interface Method { id: string; code: string; name_th: string; status: string; creates_cheque: boolean }
+interface Method { id: string; code: string; name_th: string; status: string; creates_cheque: boolean; kind?: string }
 let seq = 0;
 export const nextKey = () => ++seq;
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(v as string).toString());
@@ -26,6 +26,36 @@ export const paysBody = (pays: Pay[]) => pays.filter((p) => p.payment_method_id 
   cheque_amount: p.cheque_amount || null, cheque_id: p.cheque_id || null }));
 export const whtsBody = (whts: Wht[]) => whts.map((w) => ({ form_type: w.form_type, income_type: w.income_type, rate: w.rate || '0', paid_amount: w.paid_amount || '0', tax_amount: w.tax_amount || '0', certificate_no: w.certificate_no || null, certificate_date: w.certificate_date || null }));
 export const usePaymentMethods = (direction: 'R' | 'P') => useQuery({ queryKey: ['payment-methods', direction], queryFn: () => api.get<Method[]>(`/api/v1/payment-methods/${direction}`) });
+
+export type PayChoice = { kind: 'cash' } | { kind: 'method'; method: Method } | { kind: 'split' };
+/**
+ * ก่อนบันทึก: เลือกว่ารับ/จ่ายเงินโดยวิธีใด (ข้อกำหนดเจ้าของ 01/11/2569 — เดิมเป็นเงินสดเงียบ ๆ)
+ * ยังไม่ได้ป้อนวิธีอื่น → เงินสดทั้งหมด / วิธีชำระที่ตั้งไว้ (เต็มยอด) / แยกหลายวิธี
+ * ป้อนวิธีอื่นแล้วแต่ไม่ครบ → ส่วนที่เหลือเป็นเงินสด / เพิ่มวิธีชำระ — ให้ยอดรับ/จ่ายดุลกับเอกสารก่อนลงบัญชี
+ */
+export function PayChoiceDialog({ direction, due, other, onChoose, onClose }: { direction: 'R' | 'P'; due: string; other: string; onChoose: (c: PayChoice) => void; onClose: () => void }) {
+  const methods = usePaymentMethods(direction);
+  const word = direction === 'R' ? 'รับ' : 'จ่าย';
+  const rest = d(due).minus(d(other));
+  const partial = d(other).gt(0);
+  return (
+    <Modal title={partial ? `ยอด${word}โดยวิธีอื่นยังไม่ครบ` : `${word}เงินโดยวิธีใด?`} size="confirm" onClose={onClose}
+      footer={<button onClick={onClose}>กลับไปแก้ <kbd>Esc</kbd></button>}>
+      {partial
+        ? <p>ยอดที่ต้อง{word} <b className="num">{fmt(due)}</b> · {word}โดยวิธีอื่นแล้ว <b className="num">{fmt(other)}</b> · ยังขาด <b className="num bad">{fmt(rest.toFixed(2))}</b></p>
+        : <p>ยอดที่ต้อง{word} <b className="num">{fmt(due)}</b> — เลือกวิธี{word}เงิน แล้วระบบบันทึกให้ (Tab/ลูกศร เลือก · Enter กด)</p>}
+      <div className="pay-choice" onKeyDown={(e) => {
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        const bs = [...e.currentTarget.querySelectorAll('button')]; const i = bs.indexOf(document.activeElement as HTMLButtonElement);
+        bs[(i + (e.key === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length]?.focus(); e.preventDefault();
+      }}>
+        <button className="primary" autoFocus onClick={() => onChoose({ kind: 'cash' })}>💵 {partial ? `ส่วนที่เหลือ ${fmt(rest.toFixed(2))} เป็นเงินสด` : `เงินสดทั้งจำนวน ${fmt(due)}`}</button>
+        {!partial && methods.data?.filter((m) => m.status === 'A' && !['CASH', 'WHT', 'DISCOUNT', 'DEPOSIT', 'FX'].includes(m.kind ?? '')).map((m) => <button key={m.id} onClick={() => onChoose({ kind: 'method', method: m })}>{m.creates_cheque ? '🧾' : '🏦'} {m.name_th} {fmt(due)}{m.creates_cheque ? ' (ป้อนเลขที่เช็คต่อ)' : ''}</button>)}
+        <button onClick={() => onChoose({ kind: 'split' })}>➕ {partial ? 'เพิ่มวิธีชำระอื่น' : 'แยกหลายวิธี (เงินสด + โอน/เช็ค)'}</button>
+      </div>
+    </Modal>
+  );
+}
 
 /** แท็บ ชำระโดยอื่น ๆ (S-PM-01 / S-PU-C6): วิธีที่ออกเช็คต้องมีเลขที่เช็ค → เข้าทะเบียนเช็คอัตโนมัติ */
 export function PaymentsTable({ pays, setPays, direction, readOnly, payDate, rest, onDirty, partyId }: {

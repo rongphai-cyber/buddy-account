@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CASH_KINDS, computeDoc, d, dueDate, fmt, settlementTotals, todayIso, wht50FormOf, type CashKind } from '@buddy/core';
@@ -17,7 +17,7 @@ import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DocActions } from '../../components/DocPrint';
 import { CancelStamp } from '../../components/DocDelete';
 import { PostingTab } from './PostingTab';
-import { nextKey, PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type Wht } from './MoneyParts';
+import { nextKey, PayChoiceDialog, PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type Pay, type PayChoice, type Wht } from './MoneyParts';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { DocVatTab, VatCheckAfterSave, vatTabLabel } from '../../components/DocTaxTabs';
@@ -129,7 +129,8 @@ export function CashFormPage({ path }: { path: string }) {
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), party: pid ? { id: pid, code: c.party_code ?? '', name: c.party_name } : null, party_name: pid ? '' : c.party_name ?? '', party_tax_branch_no: c.party_tax_branch_no ?? '',
       your_ref: c.your_ref ?? '', ref_no: c.ref_no ?? '', ref_date: c.ref_date ? String(c.ref_date).slice(0, 10) : '', department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '',
       credit_days: c.credit_days === null || c.credit_days === undefined ? '' : String(c.credit_days), price_type: (c.price_type ?? '2') as Head['price_type'], vat_rate: num(c.vat_rate), remark: c.remark ?? '',
-      wht: K.whtEntries ? '' : num(c.wht_amount), cash: num(c.cash_amount), whtForm: 'S53', whtRate: '3' });
+      // เงินสด = ส่วนที่เหลือคำนวณเอง (เดิมโหลดยอดเดิมมาเป็นค่าคงที่ → เพิ่มเงินโอนแล้วยอดเกิน · ข้อกำหนดเจ้าของ 01/11/2569)
+      wht: K.whtEntries ? '' : num(c.wht_amount), cash: '', whtForm: 'S53', whtRate: '3' });
     setLines(cur.data.lines.map((l) => ({ key: nextKey(), item_id: l.item_id ?? '', item_code: l.item_code ?? '', description: l.description ?? '', line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, amount: num(l.amount) })));
     setPays(paysFrom(cur.data.payments));
     setWhts(whtsFrom(cur.data.wht));
@@ -186,9 +187,36 @@ export function CashFormPage({ path }: { path: string }) {
         lines: used.map((l) => ({ item_id: K.lines === 'code' ? l.item_id || null : null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
         payments: paysBody(pays), wht: K.whtEntries ? whtsBody(whts) : [] };
   };
-  const save = async (andNew = false) => {
+  // ก่อนบันทึก: เลือกวิธีรับ/จ่ายเงิน (ใบใหม่ที่ยังไม่ได้เลือก) หรือยอดวิธีอื่นยังไม่ครบ — ตกลงแล้วจำไว้จนกว่ายอดจะเปลี่ยน
+  const [payAsk, setPayAsk] = useState<{ next: 'save' | 'confirm'; andNew: boolean } | null>(null);
+  const [payOk, setPayOk] = useState('');
+  const [pendingSave, setPendingSave] = useState<{ andNew: boolean } | null>(null);
+  const needsPay = () => {
+    if (!h || ro || !used.length || h.cash !== '') return false;
+    const due = d(t.due), other = d(t.other);
+    if (!due.gt(0) || payOk === `${t.due}|${t.other}`) return false;
+    return other.isZero() ? !id : other.lt(due);
+  };
+  const choosePay = (c: PayChoice) => {
+    const ask = payAsk!;
+    setPayAsk(null);
+    if (c.kind === 'split' || (c.kind === 'method' && c.method.creates_cheque)) {
+      if (c.kind === 'method') setPays([{ key: nextKey(), payment_method_id: c.method.id, amount: t.due, reference_no: '', cheque_date: h!.doc_date, bank_id: null, bank_branch: '' }]);
+      else if (!pays.some((p) => !p.payment_method_id)) setPays((ps) => [...ps, { key: nextKey(), payment_method_id: '', amount: d(t.cash).gt(0) ? t.cash : '', reference_no: '', cheque_date: h!.doc_date, bank_id: null, bank_branch: '' }]);
+      setDirty(true); setTab('pay');
+      toast(c.kind === 'split' ? `ป้อนวิธี${rp(K)}เงินและยอดในแท็บชำระโดยอื่น ๆ แล้วกด F9` : 'ป้อนเลขที่เช็ค/ลงวันที่/ธนาคาร แล้วกด F9');
+      return;
+    }
+    if (c.kind === 'method') { setPays([{ key: nextKey(), payment_method_id: c.method.id, amount: t.due, reference_no: '', cheque_date: h!.doc_date, bank_id: null, bank_branch: '' }]); setDirty(true); setPayOk(`${t.due}|${t.due}`); }
+    else setPayOk(`${t.due}|${t.other}`);
+    if (ask.next === 'confirm') ed.end(); else setPendingSave({ andNew: ask.andNew });
+  };
+  // บันทึกหลังเลือกวิธีชำระ — รอ state วิธีชำระใหม่ก่อน
+  useEffect(() => { if (pendingSave) { const n = pendingSave.andNew; setPendingSave(null); void save(n, true); } });
+  const save = async (andNew = false, payChosen = false) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
+    if (!payChosen && needsPay()) { setPayAsk({ next: 'save', andNew }); return; }
     setErr(null); setBusy(true);
     const body = bodyOf()!;
     try {
@@ -198,6 +226,7 @@ export function CashFormPage({ path }: { path: string }) {
       setDirty(false); if (id) ed.lock();
       qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] }); qc.invalidateQueries({ queryKey: ['doc-vat'] });
       if (K.module === 'AP' && calc && !d(calc.vat_amount).isZero()) setVatCheck(r.id);   // มีภาษีซื้อ: ตรวจรายการในแฟ้มภาษีซื้อทันที
+      setPayOk('');
       if (andNew) { setH(null); setLines([]); setPays([]); setWhts([]); nav(`${K.route}/new`, { replace: true }); }
       else if (!id) { nav(`${K.route}/${r.id}`, { replace: true }); setH(null); }
       else { await qc.refetchQueries({ queryKey: [K.path, 'one', id] }); setH(null); }
@@ -238,7 +267,8 @@ export function CashFormPage({ path }: { path: string }) {
       <TypeNotice show={!id && !!h && !h.doc_type_id} />
       {ed.dialog}
       <ErrorBox error={err ?? cur.error} />
-      {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
+      {payAsk && h && <PayChoiceDialog direction={K.direction} due={t.due} other={t.other} onChoose={choosePay} onClose={() => setPayAsk(null)} />}
+      {h && <div onKeyDown={(e) => navKey(e, () => (needsPay() ? setPayAsk({ next: 'confirm', andNew: false }) : ed.end()))}>
         <div className="head-grid trade-head">
           <div className="col">
             <Field label={`รหัส${partyWord(K)}`} req hint={K.partyRequired ? undefined : `ไม่มีรหัส: คีย์ชื่อ${partyWord(K)}ในช่อง "ชื่อ (ไม่มีรหัส)" — ต้องมีอย่างใดอย่างหนึ่ง`}>
