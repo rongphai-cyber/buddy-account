@@ -5,6 +5,7 @@ import { computeDoc, d, dueDate, fmt, TRADE_KINDS, todayIso, wht50FormOf, type T
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
 import { WhtCert } from './WhtCert';
+import { PostingTab } from './PostingTab';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { useDocNo } from '../../components/DocNo';
@@ -83,18 +84,7 @@ export function TradeListPage({ path }: { path: string }) {
   );
 }
 
-/** แท็บ "ใบสำคัญที่ลงบัญชี" ของเอกสาร พร้อมที่มาของบัญชีแต่ละบรรทัด (3 ชั้นของบทที่ 10) */
-export function DocJournalTab({ id }: { id: string }) {
-  const journal = useQuery({ queryKey: ['doc-journal', id], queryFn: () => api.get<{ journals: Array<{ id: string; voucher_no: string; book_code: string; book_name: string; doc_status: string; lines: Array<{ line_no: number; account_no: string; account_name: string; debit: string; credit: string; posting_role: string; resolved_from: string }> }> }>(`/api/v1/docs/${id}/journal`) });
-  return (
-    <div><ErrorBox error={journal.error} />{journal.data?.journals.map((j) => <div key={j.id} className="box">
-      <p><b><DocLink id={j.id} no={j.voucher_no} cls="GL" /></b> สมุด {j.book_code} {j.book_name} {j.doc_status === 'C' && <Pill tone="x">ยกเลิก</Pill>}</p>
-      <table className="grid"><thead><tr><th style={{ width: 110 }}>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th className="r">เดบิต</th><th className="r">เครดิต</th><th style={{ width: 150 }}>ที่มาของบัญชี</th></tr></thead>
-        <tbody>{j.lines.map((l) => <tr key={l.line_no}><td className="mono">{l.account_no}</td><td>{l.account_name}</td><td className="r"><Money v={l.debit} blankZero /></td><td className="r"><Money v={l.credit} blankZero /></td>
-          <td className="small muted">{({ '1': 'ประเภทเอกสาร', '2': 'แฟ้มหลัก', '3': 'บัญชีเพื่อลงรายวัน', S: 'บัญชีพัก ⚠' } as Record<string, string>)[l.resolved_from] ?? ''}</td></tr>)}</tbody></table></div>)}
-      {journal.data && !journal.data.journals.length && <p className="muted">ยังไม่มีใบสำคัญ (ไม่เชื่อมต่อระบบบัญชี หรือเอกสารชนิดนี้ไม่ลงบัญชี)</p>}</div>
-  );
-}
+export { DocJournalTab } from './PostingTab';
 
 /** S-IV-02/03/04 · S-PU-03a: เลือกรายการค้างส่ง/ค้างรับจากใบสั่ง แล้วป้อนจำนวนที่ส่งครั้งนี้ */
 interface OpenLine { header_id: string; doc_no: string; doc_date: string; price_type: string; line_id: string; line_no: number; item_id: string | null; item_code: string | null; description: string | null;
@@ -318,20 +308,25 @@ export function TradeFormPage({ path }: { path: string }) {
   const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.price_type ? { price_type: t.price_type as Head['price_type'] } : {}), ...(t?.vat_rate != null ? { vat_rate: num(t.vat_rate) } : {}), ...(t?.vat_basis ? { vat_basis: (t.vat_basis === '2' ? '2' : '1') as Head['vat_basis'] } : {}) }); };
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
+  /** เนื้อหาที่ส่งบันทึก — ใช้ทั้งปุ่มบันทึกและตัวอย่างการลงบัญชี (แท็บใบสำคัญ) */
+  const bodyOf = () => {
+    if (!h) return null;
+    return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id, bill_to_customer_id: h.bill_to?.id ?? null, party_tax_branch_no: h.party_tax_branch_no || null, your_ref: h.your_ref || null,
+        ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, ref_date: supInv ? refDate || null : null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
+        credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type, vat_rate: h.vat_rate || '0', vat_basis: h.vat_basis, discount_text: h.discount_text || null, remark: h.remark || null,
+        lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1', unit_price: l.unit_price || '0', discount_text: l.discount_text || null, is_free: l.is_free, return_to_stock: l.return_to_stock, source_line_id: l.source_line_id ?? null, vat_code: l.vat, line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
+        delivery_date: K.order && K.cls !== 'QT' ? delivery || null : null,
+        payments: pays.filter((p) => p.payment_method_id && d(p.amount || 0).gt(0)).map((p) => ({ payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no || null })),
+        deposits: Object.entries(deps).filter(([, v]) => d(v || 0).gt(0)).map(([header_id, amount]) => ({ header_id, amount })),
+        wht: K.cls === 'HP' ? whtsBody(whts) : [], wht_amount: K.cls === 'HS' ? whtAmt || '0' : '0' };
+  };
   const save = async (andNew = false, ok: Set<number> = notFree) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
     const zero = lines.find((l) => l.item_id && !l.is_free && !ok.has(l.key) && d(l.unit_price || 0).isZero() && K.cls !== 'QT');
     if (zero) { setAskFree({ key: zero.key, andNew }); return; }
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id, bill_to_customer_id: h.bill_to?.id ?? null, party_tax_branch_no: h.party_tax_branch_no || null, your_ref: h.your_ref || null,
-      ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, ref_date: supInv ? refDate || null : null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
-      credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type, vat_rate: h.vat_rate || '0', vat_basis: h.vat_basis, discount_text: h.discount_text || null, remark: h.remark || null,
-      lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1', unit_price: l.unit_price || '0', discount_text: l.discount_text || null, is_free: l.is_free, return_to_stock: l.return_to_stock, source_line_id: l.source_line_id ?? null, vat_code: l.vat, line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
-      delivery_date: K.order && K.cls !== 'QT' ? delivery || null : null,
-      payments: pays.filter((p) => p.payment_method_id && d(p.amount || 0).gt(0)).map((p) => ({ payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no || null })),
-      deposits: Object.entries(deps).filter(([, v]) => d(v || 0).gt(0)).map(([header_id, amount]) => ({ header_id, amount })),
-      wht: K.cls === 'HP' ? whtsBody(whts) : [], wht_amount: K.cls === 'HS' ? whtAmt || '0' : '0' };
+    const body = bodyOf()!;
     try {
       const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null; warnings?: string[] }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null; warnings?: string[] }>(`/api/v1/${K.path}`, body);
       toast(r.journal_id ? `บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก${K.label} ${r.doc_no} แล้ว (ไม่ลงบัญชี)`);
@@ -417,7 +412,7 @@ export function TradeFormPage({ path }: { path: string }) {
           ...(K.order && K.cls !== 'QT' && id ? [{ key: 'delivered', label: K.module === 'AR' ? 'ส่งแล้ว / ยกเลิกยอด' : 'รับแล้ว / ยกเลิกยอด', badge: cur.data?.deliveries.length || undefined }] : []),
           ...(id && !K.payments && !K.order ? [{ key: 'settle', label: `รายการ${K.module === 'AR' ? 'รับ' : 'จ่าย'}ชำระ`, badge: cur.data?.settlements.length || undefined }] : []),
           ...(K.cls === 'HP' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(id && !K.order && VAT_KIND_OF[K.cls] ? [{ key: 'vat', label: vatTabLabel(K.cls) }] : []),
-          ...(id && (K.cls === 'RR' || K.cls === 'CP') ? [{ key: 'whtb', label: 'รายการภาษีหัก ณ ที่จ่าย' }] : []), ...(id && !K.order ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+          ...(id && (K.cls === 'RR' || K.cls === 'CP') ? [{ key: 'whtb', label: 'รายการภาษีหัก ณ ที่จ่าย' }] : []), ...(!K.order ? [{ key: 'gl', label: id && readOnly ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }] : [])]} />
         {tab === 'lines' && noLines && <div className="notebox">เอกสารนี้ย้ายมาจาก Express โดยไม่มีรายการสินค้า (Express เก็บเฉพาะยอดเงิน) — แสดงยอดตามเอกสาร · แก้ไขไม่ได้ ยกเลิกหรือดูการลงบัญชีได้ตามปกติ</div>}
         {tab === 'lines' && <div className="table-wrap lines">
           <table className="grid">
@@ -498,7 +493,7 @@ export function TradeFormPage({ path }: { path: string }) {
         {tab === 'wht' && K.cls === 'HP' && <WhtTable whts={whts} setWhts={setWhts} readOnly={readOnly} base={calc ? d(calc.net_amount).minus(calc.vat_amount).toFixed(2) : ''} defaults={whtDef} canAdd={!!h.party} dirty={dirty} onDirty={() => setDirty(true)} />}
         {tab === 'whtb' && id && <DocWhtList headerId={id} />}
         {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} vatBasis={h.vat_basis} />}
-        {tab === 'gl' && id && <DocJournalTab id={id} />}
+        {tab === 'gl' && <PostingTab id={id} path={K.path} editing={!readOnly} bodyOf={bodyOf} />}
         <div className="trade-foot">
           <Field label="หมายเหตุ"><textarea id="doc-remark" rows={2} value={h.remark} maxLength={2000} disabled={readOnly} onChange={(e) => set({ remark: e.target.value })} /></Field>
           {calc && <table className="totals-table"><tbody>

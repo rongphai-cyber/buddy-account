@@ -1832,6 +1832,40 @@ describe('Buddy Account API (PGlite)', () => {
     expect(docs(await run({}))).toEqual([]);
   });
 
+  it('posting preview before save (ข้อกำหนดเจ้าของ 01/11/2569): same journal as the real save, nothing persisted, edit preview, validation errors, other company', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const cus = (await call('POST', '/api/v1/customers', { code: 'C-PREV', name: 'ลูกค้าตัวอย่างลงบัญชี', tax_id: tid(47) })).body.id;
+    const ivB = { doc_type_id: await typeOf('IV'), doc_date: '2027-07-05', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 9000 }] };
+    const shape = (js: Array<{ lines: Array<{ posting_role: string; debit: string; credit: string }> }>) => js.flatMap((j) => j.lines.map((l) => `${l.posting_role}:${l.debit}:${l.credit}`)).sort();
+    const before = (await call('GET', '/api/v1/sales-invoices?q=')).body.total;
+    const logs0 = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log`.execute(database.db)).rows[0]!.n;
+    const pv = await call('POST', '/api/v1/sales-invoices/posting-preview', ivB);
+    expect(pv.status).toBe(200);
+    expect(shape(pv.body.journals)).toEqual(expect.arrayContaining(['AR:9630.00:0.00', 'OUTPUT_VAT:0.00:630.00']));
+    // ไม่มีอะไรถูกบันทึก: เอกสาร log เลขที่
+    expect((await call('GET', '/api/v1/sales-invoices?q=')).body.total).toBe(before);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log`.execute(database.db)).rows[0]!.n).toBe(logs0);
+    const iv = (await call('POST', '/api/v1/sales-invoices', ivB)).body;
+    const real = (await call('GET', `/api/v1/docs/${iv.id}/journal`)).body.journals;
+    expect(shape(real)).toEqual(shape(pv.body.journals));
+    expect(real[0].voucher_no).toBe(pv.body.journals[0].voucher_no);   // เลขที่ใบสำคัญไม่ถูกใช้ไปตอนดูตัวอย่าง
+    // แก้ไข: ดูตัวอย่างยอดใหม่ ใบจริงยังเท่าเดิม
+    const ed = await call('POST', `/api/v1/sales-invoices/posting-preview?id=${iv.id}`, { ...ivB, lines: [{ item_id: cpu, qty: 2, unit_price: 9000 }] });
+    expect(shape(ed.body.journals)).toEqual(expect.arrayContaining(['AR:19260.00:0.00']));
+    expect(shape((await call('GET', `/api/v1/docs/${iv.id}/journal`)).body.journals)).toEqual(shape(real));
+    // ข้อผิดพลาดเหมือนตอนบันทึก · รับชำระหนี้ก็ดูได้
+    expect((await call('POST', '/api/v1/sales-invoices/posting-preview', { ...ivB, lines: [] })).status).toBe(400);
+    const re = await call('POST', '/api/v1/ar-receipts/posting-preview', { doc_type_id: await typeOf('RE'), doc_date: '2027-07-20', party_id: cus, settlements: [{ invoice_header_id: iv.id, amount: 9630 }] });
+    expect(shape(re.body.journals)).toEqual(expect.arrayContaining(['AR:0.00:9630.00']));
+    expect((await call('GET', `/api/v1/sales-invoices/${iv.id}`)).body.editable).toBe(true);   // ยังไม่ถูกตัดชำระจริง
+    // บริษัทอื่นใช้ลูกค้า/เอกสารของบริษัทนี้ไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('POST', `/api/v1/sales-invoices/posting-preview?id=${iv.id}`, ivB)).status).toBe(400);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('line notes vs document notes (ข้อกำหนดเจ้าของ): keyed with the line, survive edits, print under the line only when ticked; document notes print in the notes box', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;

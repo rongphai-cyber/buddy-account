@@ -12,7 +12,7 @@ import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { CancelStamp } from '../../components/DocDelete';
-import { DocJournalTab } from './TradeDocs';
+import { PostingTab } from './PostingTab';
 import { DocLink } from '../../components/DocLink';
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { chargesBody, chargesFrom, ChargesTable, chargeTotal, emptyChargeHead, supplierChargeDefaults, PaymentsTable, paysBody, paysFrom, WhtTable, whtsBody, whtsFrom, type ChargeHead, type ChargeLine, type ChargeRow, type Pay, type Wht } from './MoneyParts';
@@ -201,15 +201,20 @@ export function SettleFormPage({ path }: { path: string }) {
   };
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
+  /** เนื้อหาที่ส่งบันทึก — ใช้ทั้งปุ่มบันทึกและตัวอย่างการลงบัญชี (แท็บใบสำคัญ) */
+  const bodyOf = () => {
+    if (!h) return null;
+    return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
+        your_ref: h.your_ref || null, remark: h.remark || null, interest_amount: h.interest || '0', cash_discount_amount: h.discount || '0', fx_amount: h.fx || '0', wht_amount: K.cls === 'PS' && whts.length ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
+        settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0', line_note: notes[o.header_id]?.line_note || null, line_note_print: !!notes[o.header_id]?.line_note_print })),
+        payments: paysBody(pays), wht: K.cls === 'PS' ? whtsBody(whts) : [], charges: isRe ? chargesBody(chHead, charges) : [] };
+  };
   const save = async (andNew = false) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
     if (lateChosen.length) { setErr(new Error(`บิล ${lateNos} ลงวันที่หลังวันที่${rp(K)}เงิน (${fmtDate(payDay)}) — ${rp(K)}ชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้) เปลี่ยนวันที่เอกสาร/วันที่${rp(K)}เงิน หรือเอาบิลออก`)); setTab('bills'); return; }
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, payment_date: h.payment_date || null, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
-      your_ref: h.your_ref || null, remark: h.remark || null, interest_amount: h.interest || '0', cash_discount_amount: h.discount || '0', fx_amount: h.fx || '0', wht_amount: K.cls === 'PS' && whts.length ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
-      settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0', line_note: notes[o.header_id]?.line_note || null, line_note_print: !!notes[o.header_id]?.line_note_print })),
-      payments: paysBody(pays), wht: K.cls === 'PS' ? whtsBody(whts) : [], charges: isRe ? chargesBody(chHead, charges) : [] };
+    const body = bodyOf()!;
     try {
       const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null; warnings?: string[] }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null; warnings?: string[] }>(`/api/v1/${K.path}`, body);
       toast(r.journal_id ? `บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก${K.label} ${r.doc_no} แล้ว (ไม่ลงบัญชี)`);
@@ -283,7 +288,7 @@ export function SettleFormPage({ path }: { path: string }) {
         </div>
         {!id && !readOnly && <HoldNote party={K.party} partyId={h.party?.id} cls={K.cls} />}
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'bills', label: `รายการบิลที่${rp(K)}ชำระ`, badge: chosen.length || undefined }, { key: 'pay', label: 'ชำระโดยอื่น ๆ (เช็ค/โอน)', badge: pays.length || undefined },
-          ...(K.cls === 'PS' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(isRe ? [{ key: 'fee', label: 'หักโดยแพลตฟอร์ม (GP/ค่าธรรมเนียม)', badge: charges.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+          ...(K.cls === 'PS' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(isRe ? [{ key: 'fee', label: 'หักโดยแพลตฟอร์ม (GP/ค่าธรรมเนียม)', badge: charges.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }] : []), { key: 'gl', label: id && ro ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }]} />
         {tab === 'bills' && <div className="table-wrap lines">
           {!h.party ? <p className="empty">เลือก{partyWord(K)}ก่อน แล้วเลือกบิลที่จะ{rp(K)}ชำระ (F5)</p> : <>
           {lateChosen.length > 0 && <p className="notebox bad" role="alert">⚠ บิล {lateNos} ลงวันที่หลังวันที่{rp(K)}เงิน ({fmtDate(payDay)}) — {rp(K)}ชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้) · เปลี่ยนวันที่เอกสาร/วันที่{rp(K)}เงิน หรือเอาบิลออก (✕)</p>}
@@ -315,7 +320,7 @@ export function SettleFormPage({ path }: { path: string }) {
         {tab === 'fee' && isRe && <ChargesTable head={chHead} setHead={setChHead} lines={charges} setLines={setCharges} readOnly={ro} onDirty={() => setDirty(true)} />}
         {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} vatBasis="2" />}
         {tab === 'vat' && id && isRe && charges.some((c) => c.vat_type === '1') && <><h3 className="section-title">ภาษีซื้อจากรายการที่แพลตฟอร์มหัก</h3><DocVatTab headerId={id} cls="OE" /></>}
-        {tab === 'gl' && id && <DocJournalTab id={id} />}
+        {tab === 'gl' && <PostingTab id={id} path={K.path} editing={!ro} bodyOf={bodyOf} />}
         <div className="trade-foot">
           <Field label="หมายเหตุ"><textarea rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
           <table className="totals-table"><tbody>

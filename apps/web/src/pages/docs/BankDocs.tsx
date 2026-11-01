@@ -11,7 +11,7 @@ import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { CancelStamp } from '../../components/DocDelete';
-import { DocJournalTab } from './TradeDocs';
+import { PostingTab } from './PostingTab';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
 
@@ -112,12 +112,17 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: ro, resetKey: h ? 'on' : 'off' });
+  /** เนื้อหาที่ส่งบันทึก — ใช้ทั้งปุ่มบันทึกและตัวอย่างการลงบัญชี (แท็บใบสำคัญ) */
+  const bodyOf = () => {
+    if (!h) return null;
+    return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, bank_account_id: h.bank_account_id || undefined,
+        to_bank_account_id: cls === 'BT' ? h.to_bank_account_id || null : null, amount: h.amount || '0', fee: cls === 'BT' ? h.fee || '0' : undefined, wht: cls === 'BU' ? h.wht || '0' : undefined };
+  };
   const save = async (andNew = false) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro) return;
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, bank_account_id: h.bank_account_id || undefined,
-      to_bank_account_id: cls === 'BT' ? h.to_bank_account_id || null : null, amount: h.amount || '0', fee: cls === 'BT' ? h.fee || '0' : undefined, wht: cls === 'BU' ? h.wht || '0' : undefined };
+    const body = bodyOf()!;
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
       toast(`บันทึก ${r.doc_no} แล้ว`); setDirty(false); if (id) ed.lock(); await qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal'] }); qc.invalidateQueries({ queryKey: ['bank-book'] });
@@ -150,8 +155,8 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
       {ed.dialog}
       <ErrorBox error={err ?? cur.error ?? defs.error} />
       {h && <>
-        {id && <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียด' }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }]} />}
-        {tab === 'gl' && id ? <DocJournalTab id={id} /> : <div onKeyDown={(e) => navKey(e, ed.end)}>
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียด' }, { key: 'gl', label: id && ro ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }]} />
+        {tab === 'gl' ? <PostingTab id={id} path={K.path} editing={!ro} bodyOf={bodyOf} /> : <div onKeyDown={(e) => navKey(e, ed.end)}>
           <div className="head-grid trade-head">
             <div className="col">
               <Field label={bankLabel} req><BankSelect value={h.bank_account_id} disabled={ro} label={bankLabel} onChange={(v) => set({ bank_account_id: v })} /></Field>

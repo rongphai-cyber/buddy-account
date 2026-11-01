@@ -13,7 +13,7 @@ import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { CancelStamp } from '../../components/DocDelete';
 import { DocWhtTab, JvVatTab } from '../gl/JvLinks';
-import { DocJournalTab } from './TradeDocs';
+import { PostingTab } from './PostingTab';
 import { nextKey, PaymentsTable, paysBody, paysFrom, type Pay } from './MoneyParts';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
@@ -127,13 +127,18 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: ro, resetKey: h ? 'on' : 'off' });
+  /** เนื้อหาที่ส่งบันทึก — ใช้ทั้งปุ่มบันทึกและตัวอย่างการลงบัญชี (แท็บใบสำคัญ) */
+  const bodyOf = () => {
+    if (!h) return null;
+    return kind === 'dp'
+        ? { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, lines: lines.filter((l) => l.account_id || l.amount).map((l) => ({ account_id: l.account_id, department_id: l.department_id || null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })) }
+        : { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, dp_ids: chosen.map((r) => r.id), cash_amount: h.cash === '' ? null : h.cash, payments: paysBody(pays) };
+  };
   const save = async () => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
-    const body = kind === 'dp'
-      ? { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, lines: lines.filter((l) => l.account_id || l.amount).map((l) => ({ account_id: l.account_id, department_id: l.department_id || null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })) }
-      : { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, dp_ids: chosen.map((r) => r.id), cash_amount: h.cash === '' ? null : h.cash, payments: paysBody(pays) };
+    const body = bodyOf()!;
     try {
       const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.api}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.api}`, body);
       toast(r.journal_id ? `บันทึก ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก ${r.doc_no} แล้ว (ไม่ลงบัญชี)`); setDirty(false); if (id) ed.lock();
@@ -179,8 +184,8 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
         </div>
         {kind === 'dp' ? <>
           <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการที่จ่าย', badge: lines.filter((l) => l.account_id).length || undefined },
-            ...(id ? [{ key: 'vat', label: 'รายการภาษีซื้อ' }, { key: 'wht', label: 'รายการภาษีหัก ณ ที่จ่าย' }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
-          {tab === 'gl' && id && <DocJournalTab id={id} />}
+            ...(id ? [{ key: 'vat', label: 'รายการภาษีซื้อ' }, { key: 'wht', label: 'รายการภาษีหัก ณ ที่จ่าย' }] : []), { key: 'gl', label: id && ro ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }]} />
+          {tab === 'gl' && <PostingTab id={id} path={K.api} editing={!ro} bodyOf={bodyOf} />}
           {tab === 'vat' && id && <JvVatTab doc kind="P" journal={{ id, voucher_no: cur.data?.doc_no ?? '', date: h.doc_date }} lineVat="0" editable={!ro && cur.data?.doc_status !== 'C'} />}
           {tab === 'wht' && id && <DocWhtTab doc={{ id, doc_no: cur.data?.doc_no ?? '', date: h.doc_date }} editable={!ro && cur.data?.doc_status !== 'C'} />}
           {tab === 'lines' && <div className="table-wrap lines">
@@ -203,7 +208,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
             </table>
           </div>}
         </> : <>
-          <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'ใบจ่ายที่เบิกชดเชย', badge: chosen.length || undefined }, { key: 'pay', label: 'เบิกชดเชยโดย (เช็ค/โอน)', badge: pays.length || undefined }, ...(id ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
+          <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'ใบจ่ายที่เบิกชดเชย', badge: chosen.length || undefined }, { key: 'pay', label: 'เบิกชดเชยโดย (เช็ค/โอน)', badge: pays.length || undefined }, { key: 'gl', label: id && ro ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }]} />
           {tab === 'lines' && <div className="table-wrap lines">
             <table className="grid">
               <thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={dpRows.length > 0 && chosen.length === dpRows.length} disabled={ro || !dpRows.length} onChange={(e) => { setPick(new Set(e.target.checked ? dpRows.map((r) => r.id) : [])); setDirty(true); }} aria-label="เลือกทั้งหมด" /></th>
@@ -226,7 +231,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
               <tbody>{cur.data.lines.map((l, i) => <tr key={i}><td className="mono">{l.account_no}</td><td>{l.account_name}</td><td>{l.description}</td><td className="r"><Money v={l.amount} /></td></tr>)}</tbody></table></>}
           </div>}
           {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction="P" readOnly={ro} payDate={h.doc_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
-          {tab === 'gl' && id && <DocJournalTab id={id} />}
+          {tab === 'gl' && <PostingTab id={id} path={K.api} editing={!ro} bodyOf={bodyOf} />}
           <div className="trade-foot"><span />
             <table className="totals-table"><tbody>
               <tr className="grand"><td>ยอดเงินที่เบิกชดเชย</td><td className="r"><Money v={vrTotal.toFixed(2)} /></td></tr>

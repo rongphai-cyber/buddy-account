@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { d, settlementTotals } from '@buddy/core';
+import { previewQuery, previewSave } from './preview.js';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
@@ -171,6 +172,7 @@ export function pettyCashRoutes(app: FastifyInstance, db: Db) {
       .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
     return { ...h, lines, editable: h.doc_status !== 'C' && !h.vr_no };
   });
+  app.post('/api/v1/petty-payments/posting-preview', async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveDp(tx, a, id ?? null, parse(dpBody, req.body))); });
   app.post('/api/v1/petty-payments', async (req) => saveDp(db, requireCompany(req), null, parse(dpBody, req.body)));
   app.put('/api/v1/petty-payments/:id', async (req) => saveDp(db, requireCompany(req), parse(z.object({ id: uuid }), req.params).id, parse(dpBody, req.body)));
   app.post('/api/v1/petty-payments/:id/cancel', async (req) => {
@@ -210,6 +212,7 @@ export function pettyCashRoutes(app: FastifyInstance, db: Db) {
     const { payments } = await readMoneyParts(db, a.companyId, id);
     return { ...h, lines, dps, payments, editable: h.doc_status !== 'C' };
   });
+  app.post('/api/v1/petty-reimbursements/posting-preview', async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveVr(tx, a, id ?? null, parse(vrBody, req.body))); });
   app.post('/api/v1/petty-reimbursements', async (req) => saveVr(db, requireCompany(req), null, parse(vrBody, req.body)));
   app.put('/api/v1/petty-reimbursements/:id', async (req) => saveVr(db, requireCompany(req), parse(z.object({ id: uuid }), req.params).id, parse(vrBody, req.body)));
   app.post('/api/v1/petty-reimbursements/:id/cancel', async (req) => {

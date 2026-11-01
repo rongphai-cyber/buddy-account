@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { BANK_KINDS, d, type BankKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { ledgerOf } from '../gl/reports.js';
@@ -108,6 +109,8 @@ export function bankDocRoutes(app: FastifyInstance, db: Db) {
       const fee = K.cls === 'BT' ? d(h.net_amount).minus(d(h.amount)).toFixed(2) : '0.00';
       return { ...h, fee, editable: h.doc_status !== 'C' };
     });
+    // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
+    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => save(tx, a, K, id ?? null, parse(body, req.body))); });
     app.post(base, async (req) => save(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => save(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));
     app.post(`${base}/:id/cancel`, async (req) => {

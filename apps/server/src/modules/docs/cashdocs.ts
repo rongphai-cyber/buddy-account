@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { CASH_KINDS, computeDoc, d, dueDate, settlementTotals, type CashKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
@@ -168,6 +169,8 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
       const rem = K.deposit ? (await sql<{ outstanding: string }>`SELECT outstanding FROM v_deposit_outstanding WHERE header_id = ${id}`.execute(db)).rows[0]?.outstanding ?? null : null;
       return { ...h, party_code: pc?.code ?? null, lines, payments, wht, used_by: usedBy, remaining: rem, editable: h.doc_status !== 'C' };
     });
+    // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
+    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveCash(tx, a, K, id ?? null, parse(body, req.body))); });
     app.post(base, async (req) => saveCash(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => saveCash(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));
     app.post(`${base}/:id/cancel`, async (req) => {

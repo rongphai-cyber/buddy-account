@@ -242,6 +242,11 @@ export const API_RULES: Record<string, Rule> = {
     [`PUT /api/v1/${p}/:id`, M(m!, 'edit')], [`POST /api/v1/${p}/:id/cancel`, M(m!, 'cancel')],
   ])),
   // เงินสดย่อย (บทที่ 15)
+  // ตัวอย่างการลงบัญชีก่อนบันทึก: ไม่บันทึกอะไร (ย้อนกลับทั้งหมด) → สิทธิ์อ่านของเมนูเอกสาร
+  ...Object.fromEntries([...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS].map((k) => [`POST /api/v1/${k.path}/posting-preview`, M(k.menu, 'read')])),
+  ...Object.fromEntries(STOCK_KINDS.map((k) => [`POST /api/v1/${k.path}/posting-preview`, M('IC.TRN', 'read')])),
+  ...Object.fromEntries(BANK_KINDS.map((k) => [`POST /api/v1/${k.path}/posting-preview`, M('FI.BK.TX', 'read')])),
+  'POST /api/v1/petty-payments/posting-preview': M('GL.PC', 'read'), 'POST /api/v1/petty-reimbursements/posting-preview': M('GL.PC', 'read'),
   ...Object.fromEntries(['petty-payments', 'petty-reimbursements'].flatMap((p) => [
     [`GET /api/v1/${p}`, M('GL.PC', 'read')], [`GET /api/v1/${p}/:id`, M('GL.PC', 'read')], [`POST /api/v1/${p}`, M('GL.PC', 'add')],
     [`PUT /api/v1/${p}/:id`, M('GL.PC', 'edit')], [`POST /api/v1/${p}/:id/cancel`, M('GL.PC', 'cancel')],

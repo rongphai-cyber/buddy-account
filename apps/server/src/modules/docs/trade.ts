@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { allocateKit, computeDoc, d, dueDate, TRADE_KINDS, type TradeKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
@@ -347,6 +348,8 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       return { ...h, converted, party_code: pc?.code ?? null, lines: lines.map((l) => ({ ...l, ...(orderLines.find((o) => o.line_no === l.line_no) ?? {}), source: sources.find((x) => x.line_id === (l as { id?: string }).id) ?? null })),
         deliveries, cancels, payments, deposits, wht: K.payments ? (await readMoneyParts(db, a.companyId, id)).wht : [], settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !h.is_opening && !settled.some((x) => x.doc_status !== 'C') && !(deliveries as unknown[]).length };
     });
+    // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
+    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveTrade(tx, a, K, id ?? null, parse(tradeBody, req.body))); });
     app.post(base, async (req) => saveTrade(db, requireCompany(req), K, null, parse(tradeBody, req.body)));
     app.put(`${base}/:id`, async (req) => saveTrade(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(tradeBody, req.body)));
     app.post(`${base}/:id/cancel`, async (req) => {

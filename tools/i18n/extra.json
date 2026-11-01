@@ -467,5 +467,12 @@
  "ได้รับแล้ว": "Received",
  "ไม่มียอดซื้อในช่วงนี้": "No purchases in this range",
  "ไม่ระบุรหัส": "No code",
- "✎ บันทึก": "✎ Record"
+ "✎ บันทึก": "✎ Record",
+ "ตัวอย่างการลงบัญชี": "Posting preview",
+ "· กดบันทึกแล้วระบบลงบัญชีตามนี้ทันที (แก้รายการแล้วกดคำนวณใหม่)": "· saving posts exactly this right away (after changing lines press Recalculate)",
+ "ตัวอย่างการลงบัญชี —": "Posting preview —",
+ "เอกสารนี้ไม่ลงบัญชี (ไม่เชื่อมต่อระบบบัญชี หรือเอกสารชนิดนี้ไม่ลงบัญชี)": "This document does not post (GL link off, or this document type does not post)",
+ "↻ คำนวณใหม่": "↻ Recalculate",
+ "กำลังคำนวณ…": "Calculating…",
+ "ยังไม่ได้บันทึก": "not saved yet"
 }

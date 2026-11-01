@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { d, STOCK_KINDS, type StockKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
@@ -173,6 +174,8 @@ export function stockDocRoutes(app: FastifyInstance, db: Db) {
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).$if(K.cls === 'RL', (qb) => qb.where('l.stock_effect', '=', -1)).orderBy('l.line_no').execute();
       return { ...h, lines, editable: h.doc_status !== 'C' && !isMigAdj(h.doc_no) && !(await countLinked(db, id)), from_count: await countLinked(db, id) };
     });
+    // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
+    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => save(tx, a, K, id ?? null, parse(body, req.body))); });
     app.post(base, async (req) => save(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => save(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));
     app.post(`${base}/:id/cancel`, async (req) => {

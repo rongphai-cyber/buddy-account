@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { chargeDeducted, d, formatDate, SETTLE_KINDS, settlementTotals, type SettleKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
@@ -289,6 +290,8 @@ export function settleRoutes(app: FastifyInstance, db: Db) {
       return { ...h, party_code: pc?.code ?? null, settlements: settlements.map((s) => ({ ...s, outstanding: open.get(s.invoice_header_id) ?? s.amount })), payments, wht: K.cls === 'RE' ? [] : wht,
         charges: K.cls === 'RE' ? await readCharges(db, a.companyId, id) : [], charge_wht: K.cls === 'RE' ? wht : [], editable: h.doc_status !== 'C' };
     });
+    // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
+    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveSettle(tx, a, K, id ?? null, parse(body, req.body))); });
     app.post(base, async (req) => saveSettle(db, requireCompany(req), K, null, parse(body, req.body)));
     app.put(`${base}/:id`, async (req) => saveSettle(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));
     app.post(`${base}/:id/cancel`, async (req) => {

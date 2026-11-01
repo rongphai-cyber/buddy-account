@@ -13,6 +13,7 @@
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
@@ -355,7 +356,7 @@
 "apps/web/src/components/AccountCell.tsx",
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/web/src/pages/gl/Accounts.tsx",
 "apps/web/src/pages/gl/Budget.tsx",
@@ -732,6 +733,7 @@
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/gl/Opening.tsx",
@@ -794,7 +796,7 @@
 "apps/web/src/components/AccountCell.tsx",
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
 "apps/web/src/pages/gl/Accounts.tsx",
 "apps/web/src/pages/gl/Budget.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
@@ -973,7 +975,7 @@
 "n": 20,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/gl/Opening.tsx",
 "apps/web/src/pages/gl/PriorYear.tsx",
@@ -1138,6 +1140,26 @@
 ]
 },
 {
+"th": "รวม",
+"n": 16,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts"
+]
+},
+{
 "th": "สาขา",
 "n": 16,
 "files": [
@@ -1196,31 +1218,13 @@
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/inventory/Counts.tsx",
 "apps/server/src/modules/doc-types.ts",
 "apps/server/src/modules/docs/engine.ts"
-]
-},
-{
-"th": "รวม",
-"n": 15,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts"
 ]
 },
 {
@@ -2427,6 +2431,18 @@
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/items.ts"
+]
+},
+{
+"th": "ตัวอย่างการลงบัญชี",
+"n": 7,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -5802,6 +5818,14 @@
 ]
 },
 {
+"th": "กำลังคำนวณ…",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
 "th": "กำลังนำเข้า…",
 "n": 2,
 "files": [
@@ -7659,6 +7683,14 @@
 ]
 },
 {
+"th": "ยังไม่ได้บันทึก",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
 "th": "ยืนยันตัวตนสองขั้น",
 "n": 2,
 "files": [
@@ -9178,7 +9210,7 @@
 "n": 2,
 "files": [
 "apps/web/src/App.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
+"apps/web/src/pages/docs/PostingTab.tsx"
 ]
 },
 {
@@ -12783,6 +12815,13 @@
 ]
 },
 {
+"th": "· กดบันทึกแล้วระบบลงบัญชีตามนี้ทันที (แก้รายการแล้วกดคำนวณใหม่)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/PostingTab.tsx"
+]
+},
+{
 "th": "· กำไร",
 "n": 1,
 "files": [
@@ -13403,13 +13442,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
-]
-},
-{
-"th": "กำลังคำนวณ…",
-"n": 1,
-"files": [
-"apps/web/src/pages/reports/TrialBalance.tsx"
 ]
 },
 {
@@ -17914,6 +17946,13 @@
 ]
 },
 {
+"th": "ตัวอย่างการลงบัญชี —",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/PostingTab.tsx"
+]
+},
+{
 "th": "ตัวอย่างก่อนพิมพ์",
 "n": 1,
 "files": [
@@ -19128,7 +19167,7 @@
 "th": "ที่มาของบัญชี",
 "n": 1,
 "files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
+"apps/web/src/pages/docs/PostingTab.tsx"
 ]
 },
 {
@@ -20605,7 +20644,7 @@
 "th": "บัญชีพัก ⚠",
 "n": 1,
 "files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
+"apps/web/src/pages/docs/PostingTab.tsx"
 ]
 },
 {
@@ -20696,7 +20735,7 @@
 "th": "บัญชีเพื่อลงรายวัน",
 "n": 1,
 "files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
+"apps/web/src/pages/docs/PostingTab.tsx"
 ]
 },
 {
@@ -26212,7 +26251,7 @@
 "th": "ยังไม่มีใบสำคัญ (ไม่เชื่อมต่อระบบบัญชี หรือเอกสารชนิดนี้ไม่ลงบัญชี)",
 "n": 1,
 "files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
+"apps/web/src/pages/docs/PostingTab.tsx"
 ]
 },
 {
@@ -26360,13 +26399,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/DocTypes.tsx"
-]
-},
-{
-"th": "ยังไม่ได้บันทึก",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -30916,7 +30948,7 @@
 "th": "สมุด {0} {1} {2}",
 "n": 1,
 "files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
+"apps/web/src/pages/docs/PostingTab.tsx"
 ]
 },
 {
@@ -37227,6 +37259,13 @@
 ]
 },
 {
+"th": "เอกสารนี้ไม่ลงบัญชี (ไม่เชื่อมต่อระบบบัญชี หรือเอกสารชนิดนี้ไม่ลงบัญชี)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/PostingTab.tsx"
+]
+},
+{
 "th": "เอกสารประเภทนี้ไม่ต้องรับรอง — กำหนดได้ที่ \"รับรองเอกสาร ต้องขออนุมัติระดับ\" ของประเภทเอกสาร/สมุดรายวัน",
 "n": 1,
 "files": [
@@ -41032,6 +41071,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "↻ คำนวณใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/PostingTab.tsx"
 ]
 },
 {

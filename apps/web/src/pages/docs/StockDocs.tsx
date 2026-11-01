@@ -11,7 +11,7 @@ import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
 import { CancelStamp } from '../../components/DocDelete';
-import { DocJournalTab } from './TradeDocs';
+import { PostingTab } from './PostingTab';
 import { DocLink } from '../../components/DocLink';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
@@ -136,13 +136,18 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: ro, resetKey: h ? 'on' : 'off' });
+  /** เนื้อหาที่ส่งบันทึก — ใช้ทั้งปุ่มบันทึกและตัวอย่างการลงบัญชี (แท็บใบสำคัญ) */
+  const bodyOf = () => {
+    if (!h) return null;
+    return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, your_ref: h.your_ref || null, warehouse_id: h.warehouse_id, to_warehouse_id: cls === 'RL' ? h.to_warehouse_id : null,
+        lines: used.map((l) => ({ item_id: l.item_id, description: l.description || null, line_note: l.line_note || null, line_note_print: !!l.line_note_print, warehouse_id: cls === 'RL' ? null : l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1',
+          unit_cost: cls === 'JU' && l.unit_cost !== '' ? l.unit_cost : null, amount: cls === 'CA' ? l.amount || '0' : null, source_line_id: cls === 'CA' ? l.source_line_id : null })) };
+  };
   const save = async (andNew = false) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro) return;
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, your_ref: h.your_ref || null, warehouse_id: h.warehouse_id, to_warehouse_id: cls === 'RL' ? h.to_warehouse_id : null,
-      lines: used.map((l) => ({ item_id: l.item_id, description: l.description || null, line_note: l.line_note || null, line_note_print: !!l.line_note_print, warehouse_id: cls === 'RL' ? null : l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1',
-        unit_cost: cls === 'JU' && l.unit_cost !== '' ? l.unit_cost : null, amount: cls === 'CA' ? l.amount || '0' : null, source_line_id: cls === 'CA' ? l.source_line_id : null })) };
+    const body = bodyOf()!;
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.path}`, body);
       toast(`บันทึก ${r.doc_no} แล้ว`); setDirty(false); if (id) ed.lock();
@@ -196,8 +201,8 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
             <Field label="เลขที่อ้างอิง"><input value={h.your_ref} maxLength={60} disabled={ro} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
           </div>
         </div>
-        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการสินค้า', badge: used.length || undefined }, ...(id && cls !== 'RL' ? [{ key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
-        {tab === 'gl' && id ? <DocJournalTab id={id} /> : <div className="table-wrap">
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการสินค้า', badge: used.length || undefined }, ...(cls !== 'RL' ? [{ key: 'gl', label: id && ro ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }] : [])]} />
+        {tab === 'gl' ? <PostingTab id={id} path={K.path} editing={!ro} bodyOf={bodyOf} /> : <div className="table-wrap">
           <table className="grid lines">
             <thead><tr><th style={{ width: 40 }}>#</th><th style={{ width: 200 }}>รหัสสินค้า</th><th>รายละเอียด</th>{cls !== 'RL' && <th style={{ width: 110 }}>คลัง</th>}
               {cls === 'CA' ? <><th style={{ width: 280 }}>ล็อตรับเข้า (FIFO)</th><th className="r" style={{ width: 150 }}>เพิ่ม(+)/ลด(−) ต้นทุน</th></>
