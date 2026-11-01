@@ -265,6 +265,7 @@ function Shell() {
           {/* ที่อยู่เดิมของเงินสดย่อย (เมนูบัญชี) — ลิงก์/บุ๊กมาร์กเก่ายังเปิดได้ */}
           <Route path="/gl/petty-cash/*" element={<MovedTo from="/gl/petty-cash" to="/fi/petty-cash" />} />
           <Route path="/fi/ar/bill-appointments" element={<BillListPage key="appoint" path="ar-bills" appointments />} />
+          <Route path="/fi/ap/bill-appointments" element={<BillListPage key="appoint-ap" path="ap-bills" appointments />} />
           <Route path="/companies/new" element={<NewCompanyPage />} />
           <Route path="/account/password" element={<PasswordPage />} />
           <Route path="/admin/import" element={<ImportPage />} />

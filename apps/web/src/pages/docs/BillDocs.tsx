@@ -28,7 +28,7 @@ export function BillListPage({ path, appointments }: { path: string; appointment
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan(K.menu);
-  const canAppoint = useCan(K.module === 'AR' ? 'FI.AR.BD' : K.menu)('edit');
+  const canAppoint = useCan(K.module === 'AR' ? 'FI.AR.BD' : 'FI.AP.BD')('edit');
   const { me } = useSession();
   const today = me?.work_date ?? todayIso();
   const [q, setQ] = useState('');

@@ -5,6 +5,7 @@ import { CASH_KINDS, computeDoc, d, dueDate, fmt, settlementTotals, todayIso, wh
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, SearchPick } from '../../components/LkSelect';
+import { BranchPick } from '../../components/BranchPick';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
@@ -82,7 +83,7 @@ export function CashListPage({ path }: { path: string }) {
 
 /* ---------------------------------------------------------------- หน้าเอกสาร */
 interface Line { key: number; item_id: string; item_code: string; description: string; amount: string; line_note?: string; line_note_print?: boolean }
-interface Head { doc_type_id: string; doc_date: string; party: { id: string; code: string; name?: string | null } | null; party_name: string; your_ref: string; ref_no: string; ref_date: string;
+interface Head { doc_type_id: string; doc_date: string; party: { id: string; code: string; name?: string | null } | null; party_name: string; party_tax_branch_no: string; your_ref: string; ref_no: string; ref_date: string;
   department_id: string; salesperson_id: string; credit_days: string; price_type: '0' | '1' | '2'; vat_rate: string; remark: string; wht: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
 interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; remaining: string | null;
   lines: Array<{ item_id: string | null; item_code: string | null; description: string | null; line_note?: string | null; line_note_print?: boolean; amount: string }>; used_by: Array<{ id: string; doc_no: string; doc_date: string; doc_class: string; amount: string }>;
@@ -116,14 +117,14 @@ export function CashFormPage({ path }: { path: string }) {
   const blankLine = (): Line => ({ key: nextKey(), item_id: '', item_code: '', description: '', amount: '' });
   if (!h && !id && defs.data) {
     const t = initialType(defs.data.types);
-    setH({ doc_type_id: t?.id ?? '', doc_date: date0, party: null, party_name: '', your_ref: '', ref_no: '', ref_date: '', department_id: '', salesperson_id: '', credit_days: '',
+    setH({ doc_type_id: t?.id ?? '', doc_date: date0, party: null, party_name: '', party_tax_branch_no: '', your_ref: '', ref_no: '', ref_date: '', department_id: '', salesperson_id: '', credit_days: '',
       price_type: (t?.price_type || defs.data.price_type || '2') as Head['price_type'], vat_rate: num(t?.vat_rate ?? defs.data.vat_rate), remark: '', wht: '', cash: '', whtForm: 'S53', whtRate: '3' });
     setLines([blankLine()]);
   }
   if (!h && id && cur.data) {
     const c = cur.data as Record<string, string | null>;
     const pid = c.customer_id ?? c.supplier_id;
-    setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), party: pid ? { id: pid, code: c.party_code ?? '', name: c.party_name } : null, party_name: pid ? '' : c.party_name ?? '',
+    setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), party: pid ? { id: pid, code: c.party_code ?? '', name: c.party_name } : null, party_name: pid ? '' : c.party_name ?? '', party_tax_branch_no: c.party_tax_branch_no ?? '',
       your_ref: c.your_ref ?? '', ref_no: c.ref_no ?? '', ref_date: c.ref_date ? String(c.ref_date).slice(0, 10) : '', department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '',
       credit_days: c.credit_days === null || c.credit_days === undefined ? '' : String(c.credit_days), price_type: (c.price_type ?? '2') as Head['price_type'], vat_rate: num(c.vat_rate), remark: c.remark ?? '',
       wht: K.whtEntries ? '' : num(c.wht_amount), cash: num(c.cash_amount), whtForm: 'S53', whtRate: '3' });
@@ -153,10 +154,11 @@ export function CashFormPage({ path }: { path: string }) {
   const t = settlementTotals({ settlements: [calc?.net_amount ?? '0'], wht: whtAmount, payments: pays.filter((p) => p.payment_method_id).map((p) => p.amount || 0), cash: h?.cash ? h.cash : null });
   const base = calc ? d(calc.net_amount).minus(d(calc.vat_amount)).toFixed(2) : '0';
 
+  const branches = useQuery({ enabled: !!h?.party?.id, queryKey: ['party-branches', K.party, h?.party?.id], queryFn: () => api.get<{ tax_branches: string[] }>(`${partyEndpoint(K)}/${h!.party!.id}`) });
   const pickParty = async (p: { id: string; code: string; name: string } | null) => {
     if (!p) return set({ party: null });
     const x = await api.get<Record<string, string | null>>(`${partyEndpoint(K)}/${p.id}`);
-    set({ party: p, party_name: '', ...(K.module === 'AR' ? { salesperson_id: x.salesperson_id ?? '' } : {}), ...(K.deposit && x.credit_days ? { credit_days: String(x.credit_days) } : {}),
+    set({ party: p, party_name: '', party_tax_branch_no: x.tax_branch_no || '00000', ...(K.module === 'AR' ? { salesperson_id: x.salesperson_id ?? '' } : {}), ...(K.deposit && x.credit_days ? { credit_days: String(x.credit_days) } : {}),
       whtForm: wht50FormOf(x.wht_form, x.tax_id) === '3' ? 'S03' : 'S53', whtRate: x.wht_rate && !d(x.wht_rate).isZero() ? d(x.wht_rate).toString() : '3' });
   };
   /** เติมร่างจากบิลที่ AI อ่าน (T7.7): ไม่พบผู้จำหน่าย = ใส่เป็นชื่อ · รายการไม่พบรหัสค่าใช้จ่าย = เลือกเอง */
@@ -177,7 +179,7 @@ export function CashFormPage({ path }: { path: string }) {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     setErr(null); setBusy(true);
-    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id ?? null, party_name: h.party ? null : h.party_name || null, your_ref: h.your_ref || null,
+    const body = { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id ?? null, party_name: h.party ? null : h.party_name || null, party_tax_branch_no: h.party ? h.party_tax_branch_no || null : null, your_ref: h.your_ref || null,
       ref_no: h.ref_no || null, ref_date: h.ref_date || null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, credit_days: h.credit_days === '' ? null : Number(h.credit_days),
       price_type: h.price_type, vat_rate: h.vat_rate || '0', remark: h.remark || null, wht_amount: K.whtEntries ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
       lines: used.map((l) => ({ item_id: K.lines === 'code' ? l.item_id || null : null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
@@ -237,6 +239,7 @@ export function CashFormPage({ path }: { path: string }) {
                 onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {!h.party && !K.partyRequired && <Field label="ชื่อ (ไม่มีรหัส)" req><input value={h.party_name} data-noparty-name maxLength={200} disabled={ro} onChange={(e) => set({ party_name: e.target.value })} /></Field>}
             {K.module === 'AP' && <Field label="เลขที่บิล / ลงวันที่" hint="ใบกำกับภาษีที่ได้รับจากผู้จำหน่าย"><div className="pair"><input value={h.ref_no} maxLength={30} disabled={ro} onChange={(e) => set({ ref_no: e.target.value })} aria-label="เลขที่บิล" /><DateInput value={h.ref_date} disabled={ro} onChange={(v) => set({ ref_date: v })} /></div></Field>}
+            {h.party && <Field label="สาขา#"><BranchPick value={h.party_tax_branch_no} options={branches.data?.tax_branches} disabled={ro} onChange={(v) => set({ party_tax_branch_no: v })} /></Field>}
             <Field label={K.deposit ? 'หมายเหตุสั้น' : 'คำอธิบาย/อ้างอิง'}><input value={h.your_ref} maxLength={60} disabled={ro} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
             {K.module === 'AR' && <Field label="พนักงานขาย"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></Field>}
           </div>

@@ -101,12 +101,12 @@ export const REPORT_TREE: ReportNode[] = [
   { code: '1', title: 'รายงานลูกหนี้', children: [
     ...['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9'].map(registerNode),
     { code: '1.A', title: 'ลูกหนี้คงค้าง ณ วันที่', children: [
-      leaf('1.A.1', 'แบบสรุป', 'RP.SA', [F.asOf, F.cus, F.slm, F.area, F.dept, F.zero]), leaf('1.A.2', 'แบบละเอียด', 'RP.SA', [F.asOf, F.cus, F.slm, F.area, F.dept], { landscape: true })] },
+      leaf('1.A.1', 'แบบสรุป', 'RP.SA', [F.asOf, F.cus, F.ctype, F.slm, F.area, F.dept, F.zero]), leaf('1.A.2', 'แบบละเอียด', 'RP.SA', [F.asOf, F.cus, F.ctype, F.slm, F.area, F.dept], { landscape: true })] },
     leaf('1.B', 'สถานะลูกหนี้', 'RP.SA', [F.period, F.cus, F.ctype, F.area, F.slm, F.zero], { landscape: true }),
     { code: '1.C', title: 'วิเคราะห์อายุหนี้ (บิลค้างรับ)', children: [
-      leaf('1.C.1', 'แบบสรุป', 'RP.SA', [F.asOf, F.cus, F.slm, F.area], { landscape: true }), leaf('1.C.2', 'แบบละเอียด', 'RP.SA', [F.asOf, F.cus, F.slm, F.area], { landscape: true })] },
-    leaf('1.D', 'รายการเคลื่อนไหวลูกหนี้', 'RP.SA', [F.date, F.cus, F.slm], { landscape: true }),
-    leaf('1.E', 'ลูกหนี้เกินวงเงิน', 'RP.SA', [F.asOf, F.cus, F.slm]),
+      leaf('1.C.1', 'แบบสรุป', 'RP.SA', [F.asOf, F.cus, F.ctype, F.slm, F.area], { landscape: true }), leaf('1.C.2', 'แบบละเอียด', 'RP.SA', [F.asOf, F.cus, F.ctype, F.slm, F.area], { landscape: true })] },
+    leaf('1.D', 'รายการเคลื่อนไหวลูกหนี้', 'RP.SA', [F.date, F.cus, F.ctype, F.slm], { landscape: true }),
+    leaf('1.E', 'ลูกหนี้เกินวงเงิน', 'RP.SA', [F.asOf, F.cus, F.ctype, F.slm]),
     leaf('1.F', 'รายละเอียดลูกค้า', 'RP.SA', [F.cus, F.ctype, F.area, F.slm], { landscape: true }),
     registerNode('1.G'),
     leaf('1.H', 'ตรวจสอบข้อมูลระบบขาย', 'RP.SA', [F.date]),
@@ -115,13 +115,13 @@ export const REPORT_TREE: ReportNode[] = [
   { code: '2', title: 'รายงานเจ้าหนี้', children: [
     ...['2.1', '2.2', '2.3', '2.4', '2.5', '2.6', '2.7', '2.8', '2.9'].map(registerNode),
     { code: '2.A', title: 'เจ้าหนี้คงค้าง ณ วันที่', children: [
-      leaf('2.A.1', 'แบบสรุป', 'RP.PU', [F.asOf, F.sup, F.dept, F.zero]), leaf('2.A.2', 'แบบละเอียด', 'RP.PU', [F.asOf, F.sup, F.dept], { landscape: true })] },
+      leaf('2.A.1', 'แบบสรุป', 'RP.PU', [F.asOf, F.sup, F.stype, F.dept, F.zero]), leaf('2.A.2', 'แบบละเอียด', 'RP.PU', [F.asOf, F.sup, F.stype, F.dept], { landscape: true })] },
     leaf('2.B', 'สถานะเจ้าหนี้', 'RP.PU', [F.period, F.sup, F.stype, F.zero], { landscape: true }),
     { code: '2.C', title: 'วิเคราะห์อายุหนี้ (บิลค้างจ่าย)', children: [
-      leaf('2.C.1', 'แบบสรุป', 'RP.PU', [F.asOf, F.sup], { landscape: true }), leaf('2.C.2', 'แบบละเอียด', 'RP.PU', [F.asOf, F.sup], { landscape: true })] },
-    leaf('2.D', 'รายการเคลื่อนไหวเจ้าหนี้', 'RP.PU', [F.date, F.sup], { landscape: true }),
-    leaf('2.E', 'ซื้อเกินวงเงิน', 'RP.PU', [F.asOf, F.sup]),
-    leaf('2.F', 'รายละเอียดผู้จำหน่าย/เจ้าหนี้', 'RP.PU', [F.sup, F.stype], { landscape: true }),
+      leaf('2.C.1', 'แบบสรุป', 'RP.PU', [F.asOf, F.sup, F.stype], { landscape: true }), leaf('2.C.2', 'แบบละเอียด', 'RP.PU', [F.asOf, F.sup, F.stype], { landscape: true })] },
+    leaf('2.D', 'รายการเคลื่อนไหวเจ้าหนี้', 'RP.PU', [F.date, F.sup, F.stype], { landscape: true }),
+    leaf('2.E', 'เจ้าหนี้เกินวงเงิน', 'RP.PU', [F.asOf, F.sup, F.stype]),
+    leaf('2.F', 'รายละเอียดผู้จำหน่าย', 'RP.PU', [F.sup, F.stype], { landscape: true }),
     leaf('2.G', 'ตรวจสอบข้อมูลระบบซื้อ', 'RP.PU', [F.date]),
     leaf('2.4.6', 'ใบยืนยันยอดเจ้าหนี้', 'RP.PU', [F.asOf, F.sup]),
   ] },
@@ -170,7 +170,8 @@ export const REPORT_TREE: ReportNode[] = [
     leaf('7.6', 'สรุปยอดขาย', 'RP.SA', [F.date, F.cus, F.item, F.slm, { key: 'by', kind: 'select', label: 'สรุปตาม', options: [['item', 'สินค้า'], ['customer', 'ลูกค้า'], ['salesperson', 'พนักงานขาย'], ['month', 'เดือน']], default: 'item' }], { landscape: true }),
   ] },
   { code: '8', title: 'รายงานวิเคราะห์การซื้อ', children: [
-    leaf('8.1', 'ประวัติการซื้อ', 'RP.PU', [F.date, F.sup, F.item], { landscape: true }),
+    { code: '8.1', title: 'ประวัติการซื้อ', children: [
+      leaf('8.1.1', 'แยกตามผู้จำหน่าย', 'RP.PU', [F.date, F.sup, F.item], { landscape: true }), leaf('8.1.2', 'แยกตามสินค้า', 'RP.PU', [F.date, F.item, F.sup], { landscape: true })] },
     leaf('8.2', 'สรุปยอดซื้อ', 'RP.PU', [F.date, F.sup, F.item, { key: 'by', kind: 'select', label: 'สรุปตาม', options: [['item', 'สินค้า'], ['supplier', 'ผู้จำหน่าย'], ['month', 'เดือน']], default: 'item' }], { landscape: true }),
   ] },
 ];

@@ -233,7 +233,7 @@ export const API_RULES: Record<string, Rule> = {
   ...Object.fromEntries(BILL_KINDS.flatMap((k) => [
     [`GET /api/v1/${k.path}`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/open-items`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/:id`, M(k.menu, 'read')],
     [`POST /api/v1/${k.path}`, M(k.menu, 'add')], [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M(k.menu, 'cancel')],
-    [`POST /api/v1/${k.path}/:id/appointment`, M(k.module === 'AR' ? 'FI.AR.BD' : k.menu, 'edit')],
+    [`POST /api/v1/${k.path}/:id/appointment`, M(k.module === 'AR' ? 'FI.AR.BD' : 'FI.AP.BD', 'edit')],
   ])),
   'POST /api/v1/quotations/:id/convert': M('SA.SO', 'add'),
   // ลูกหนี้/เจ้าหนี้คงค้างยกมา (S-OB-03/04)

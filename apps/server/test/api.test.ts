@@ -1702,6 +1702,31 @@ describe('Buddy Account API (PGlite)', () => {
     for (const x of [iv1, iv2]) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
+  it('AR/AP parity (ข้อกำหนดเจ้าของ 01/11/2569): supplier email, WHT rate check both sides, PO credit days from supplier, supplier credit-limit warning, search supplier bill no., purchase history by item, AP appointment, type filters', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    // อีเมลผู้จำหน่าย (คู่กับลูกค้า) · อัตราหัก ณ ที่จ่ายตรวจ 0–100 ทั้งสองฝั่ง
+    const sup = (await call('POST', '/api/v1/suppliers', { code: 'S-PAR', name: 'ผู้จำหน่ายเทียบลูกค้า', tax_id: tid(41), email: 'ap@example.com', credit_days: 45, credit_limit: 1000 })).body.id;
+    expect((await call('GET', `/api/v1/suppliers/${sup}`)).body).toMatchObject({ email: 'ap@example.com' });
+    expect((await call('POST', '/api/v1/customers', { code: 'C-PAR', name: 'ลูกค้าอัตราผิด', tax_id: tid(42), wht_rate: 150 })).status).toBe(400);
+    // ใบสั่งซื้อไม่ระบุเครดิต → ใช้เครดิตของผู้จำหน่าย (เหมือนใบสั่งขายใช้ของลูกค้า)
+    const po = (await call('POST', '/api/v1/purchase-orders', { doc_type_id: await typeOf('PO'), doc_date: '2027-05-02', party_id: sup, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 100 }] })).body;
+    expect((await call('GET', `/api/v1/purchase-orders/${po.id}`)).body.credit_days).toBe(45);
+    // ซื้อเชื่อเกินวงเงินผู้จำหน่าย → เตือน (ไม่บล็อก) · ค้นหาเลขที่บิลผู้จำหน่ายในรายการ
+    const rr = (await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2027-05-03', party_id: sup, price_type: '2', vat_rate: 7, ref_no: 'SUPBILL-777', lines: [{ item_id: cpu, qty: 1, unit_price: 2000 }] })).body;
+    expect(rr.warnings.join(' ')).toMatch(/ซื้อเกินวงเงิน/);
+    expect((await call('GET', '/api/v1/purchase-invoices?q=SUPBILL-777')).body.rows.map((r: { doc_no: string; ref_no: string }) => `${r.doc_no}:${r.ref_no}`)).toEqual([`${rr.doc_no}:SUPBILL-777`]);
+    // รายงาน: ประวัติการซื้อแยกตามสินค้า · เจ้าหนี้คงค้างกรองประเภทผู้จำหน่ายได้
+    const run = async (c: string, params: Record<string, unknown>) => (await call('POST', `/api/v1/rpt/${c}/run`, { params })).body;
+    expect((await run('8.1.2', { date_from: '2027-05-01', date_to: '2027-05-31', supplier_from: 'S-PAR', supplier_to: 'S-PAR' })).rows.some((r: { t?: string; c: { date?: string } }) => r.t === 'group' && /01-INTL/.test(r.c.date ?? ''))).toBe(true);
+    expect((await run('2.A.1', { as_of: '2027-05-31', supplier_from: 'S-PAR', supplier_to: 'S-PAR', stype_from: 'ZZ', stype_to: 'ZZ' })).rows.filter((r: { t?: string }) => !r.t).length).toBe(0);
+    // วันนัดจ่ายชำระ (เหมือนวันนัดรับชำระ)
+    const br = (await call('POST', '/api/v1/ap-bills', { doc_type_id: await typeOf('BR'), doc_date: '2027-05-04', party_id: sup, items: [{ invoice_header_id: rr.id }] })).body;
+    expect((await call('POST', `/api/v1/ap-bills/${br.id}/appointment`, { date: '2027-06-15' })).status).toBe(200);
+    expect(String((await call('GET', `/api/v1/ap-bills/${br.id}`)).body.appointment_date).slice(0, 10)).toBe('2027-06-15');
+    for (const [u, x] of [['ap-bills', br.id], ['purchase-invoices', rr.id], ['purchase-orders', po.id]]) expect((await call('POST', `/api/v1/${u}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('line notes vs document notes (ข้อกำหนดเจ้าของ): keyed with the line, survive edits, print under the line only when ticked; document notes print in the notes box', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;

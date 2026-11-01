@@ -1959,6 +1959,7 @@ CREATE TABLE md_supplier (
   address_3 varchar(100),
   zip_code varchar(10),
   phone varchar(60),
+  email varchar(120),
   contact varchar(60),
   tax_id varchar(13),
   tax_branch_no varchar(5),
@@ -2000,6 +2001,7 @@ COMMENT ON COLUMN md_supplier.address_2 IS 'ที่อยู่ 2 [Express: AP
 COMMENT ON COLUMN md_supplier.address_3 IS 'ที่อยู่ 3 [Express: APMAS.ADDR03]';
 COMMENT ON COLUMN md_supplier.zip_code IS 'รหัสไปรษณีย์ [Express: APMAS.ZIPCOD]';
 COMMENT ON COLUMN md_supplier.phone IS 'โทรศัพท์ [Express: APMAS.TELNUM]';
+COMMENT ON COLUMN md_supplier.email IS 'อีเมล (ใหม่ — คู่กับลูกค้า)';
 COMMENT ON COLUMN md_supplier.contact IS 'ผู้ติดต่อ [Express: APMAS.CONTACT]';
 COMMENT ON COLUMN md_supplier.tax_id IS 'เลขผู้เสียภาษี [Express: APMAS.TAXID]';
 COMMENT ON COLUMN md_supplier.tax_branch_no IS 'เลขที่สาขา';

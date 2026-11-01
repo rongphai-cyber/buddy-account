@@ -400,5 +400,16 @@
  "บิล {0} ลงวันที่หลังวันที่{1}เงิน — ไม่ได้เลือกให้ ({2}ชำระก่อนวันที่บิลไม่ได้)": "Bill {0} is dated after the {1} date — not selected (cannot settle ({2}) before the bill date)",
  "ลงวันที่หลังวันที่{0}เงิน — {1}ชำระก่อนวันที่บิลไม่ได้": "Dated after the {0} date — cannot settle ({1}) before the bill date",
  "⚠ บิล {0} ลงวันที่หลังวันที่{1}เงิน ({2}) — {3}ชำระก่อนวันที่บิลไม่ได้ (วันเดียวกันได้) · เปลี่ยนวันที่เอกสาร/วันที่{4}เงิน หรือเอาบิลออก (✕)": "⚠ Bill {0} is dated after the {1} date ({2}) — cannot settle ({3}) before the bill date (same day is OK) · change the document/{4} date or remove the bill (✕)",
- "⚠ หลังวันที่{0}เงิน": "⚠ after the {0} date"
+ "⚠ หลังวันที่{0}เงิน": "⚠ after the {0} date",
+ "+ จ่ายชำระหนี้": "+ Pay bills",
+ "ค้นหาเลขที่ {0} {1}หรืออ้างอิง": "Search no., {0}, {1}or reference",
+ "ตัดใบจ่ายมัดจำ#": "Less deposit paid #",
+ "ตัดใบรับมัดจำ#": "Less deposit received #",
+ "บันทึกวันนัดจ่ายชำระเงิน": "Payment appointments",
+ "ผู้จำหน่าย {0} ซื้อเกินวงเงิน — ยอดค้างจ่ายรวมบิลนี้ {1} วงเงิน {2} (เกิน {3})": "Supplier {0} over credit limit — outstanding incl. this bill {1}, limit {2} (over by {3})",
+ "วางบิล นัดรับชำระ รับวางบิล นัดจ่ายชำระ": "Billing, collection appointments, received billing, payment appointments",
+ "เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่เอกสาร": "Goes to the input VAT file — blank = use the document no.",
+ "เจ้าหนี้เกินวงเงิน": "Payables over credit limit",
+ "เลขที่ใบลด/เพิ่มหนี้ของผู้จำหน่าย": "Supplier's credit/debit note no.",
+ "เลขที่บิลผู้จำหน่าย ": "supplier bill no. "
 }

@@ -92,6 +92,8 @@ export function analysisReports() {
   defineReport('7.1.2', history(true, 'item'));
   defineReport('7.1.3', history(true, 'salesperson'));
   defineReport('7.6', summary(true));
-  defineReport('8.1', history(false, 'party'));
+  defineReport('8.1', history(false, 'party'));   // รหัสเดิม (ลิงก์/รายงานที่บันทึกไว้)
+  defineReport('8.1.1', history(false, 'party'));
+  defineReport('8.1.2', history(false, 'item'));
   defineReport('8.2', summary(false));
 }

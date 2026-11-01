@@ -205,6 +205,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     const warnings = await checkTaxDup(db, a.companyId, 'C', id, tax, prev);
     await checkAccount(db, a.companyId, b.ar_account_id, 'ar_account_id');
     if (b.salesperson_id && !(await db.selectFrom('md_salesperson').select('id').where('id', '=', b.salesperson_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบพนักงานขายนี้');
+    if (b.wht_rate !== null && (b.wht_rate < 0 || b.wht_rate > 100)) throw badRequest('อัตราภาษีที่หักต้องอยู่ระหว่าง 0–100%', [{ field: 'wht_rate', message: '0–100' }]);
     const codes = new Set<string>();
     for (const s of b.ship_tos) { if (codes.has(s.code)) throw badRequest(`รหัสสถานที่ส่ง ${s.code} ซ้ำ`); codes.add(s.code); }
     if (b.default_ship_to && !codes.has(b.default_ship_to)) throw badRequest(`สถานที่ส่งประจำ ${b.default_ship_to} ไม่อยู่ในรายการสถานที่ส่งสินค้า`);
@@ -244,7 +245,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
   /* ---------------------------------------------------------------- ผู้จำหน่าย */
   const supplierBody = z.object({
     code: z.string().trim().min(1, 'ป้อนรหัสผู้จำหน่าย').max(20), title: str(30), name: z.string().trim().min(1, 'ป้อนชื่อผู้จำหน่าย').max(120), name_en: str(120),
-    address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), phone: str(60), contact: str(60), remark: str(2000),
+    address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), phone: str(60), email: str(120), contact: str(60), remark: str(2000),
     status: z.enum(['A', 'I']).default('A'), on_hold: z.boolean().default(false), tax_id: str(20), tax_branch_no: str(5), supplier_type: str(4), ap_account_id: uuid.nullable().optional(),
     price_type: z.enum(['', '0', '1', '2']).nullable().optional().transform((v) => v || null), vat_rate: num, ship_via_code: str(10), credit_days: num, payment_terms: str(60), discount_text: str(20), credit_limit: num,
     wht_form: str(4), wht_income_desc: str(60), wht_rate: num, wht_condition: z.enum(['', '1', '2', '3']).nullable().optional().transform((v) => v || null),

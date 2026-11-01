@@ -73,7 +73,7 @@ export function registerReports() {
       if (detail) {
         for (const l of L.get(x.id) ?? []) out2.push({ t: 'detail', c: { no: '', date: String(l.line_no), party: `${l.item_code ?? ''} ${l.description ?? ''}`.trim(), slm: `${d(l.qty).toString()} ${l.unit_code ?? ''}`, ref: `${d(l.qty).toString()} ${l.unit_code ?? ''}`, v: '', disc: l.discount_text, amount: l.unit_price, net: l.net_amount } });
         for (const s of S.get(x.id) ?? []) out2.push({ t: 'detail', c: { party: `ตัดหนี้ ${s.doc_no}`, net: s.amount } });
-        for (const s of Dp.get(x.id) ?? []) out2.push({ t: 'detail', c: { party: `ตัดใบรับมัดจำ# ${s.doc_no}`, net: d(s.amount).neg().toFixed(2) } });
+        for (const s of Dp.get(x.id) ?? []) out2.push({ t: 'detail', c: { party: `${ar ? 'ตัดใบรับมัดจำ#' : 'ตัดใบจ่ายมัดจำ#'} ${s.doc_no}`, net: d(s.amount).neg().toFixed(2) } });
       }
     }
     flush();

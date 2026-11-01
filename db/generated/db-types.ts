@@ -1782,6 +1782,8 @@ export interface MdSupplierTable {
   zip_code: Gen<string | null>;
   /** โทรศัพท์ */
   phone: Gen<string | null>;
+  /** อีเมล (ใหม่ — คู่กับลูกค้า) */
+  email: Gen<string | null>;
   /** ผู้ติดต่อ */
   contact: Gen<string | null>;
   /** เลขผู้เสียภาษี */

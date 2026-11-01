@@ -31,6 +31,8 @@ const DEPOSIT_CLASSES = ['IV', 'HS', 'RR', 'HP'];
 interface ListRow { id: string; doc_no: string; doc_date: string; due_date: string | null; delivery_date: string | null; party_name: string; party_code: string | null; net_amount: string; vat_amount: string; doc_status: string; gl_posted: string; ref_no: string | null; outstanding: string | null }
 export function TradeListPage({ path }: { path: string }) {
   const K = kindOf(path);
+  /** ซื้อเชื่อ/ซื้อสด: แสดงเลขที่บิล/ใบกำกับของผู้จำหน่าย (ค้นหาได้) */
+  const supBillCol = K.module === 'AP' && !K.refInvoice && !K.order;
   const nav = useNavigate();
   const can = useCan(K.menu);
   const { me } = useSession();
@@ -51,7 +53,7 @@ export function TradeListPage({ path }: { path: string }) {
       {TRADE_KINDS.filter((k) => k.menu === K.menu).length > 1 && <div className="seg kind-switch">{TRADE_KINDS.filter((k) => k.menu === K.menu).map((k) => <button key={k.path} className={cx(k.path === K.path && 'on')} onClick={() => nav(k.route)}>{k.label}</button>)}</div>}
       {tt.tabs()}
       <div className="toolbar">
-        <input type="search" autoFocus placeholder={`ค้นหาเลขที่ ${partyWord(K)} หรืออ้างอิง`} value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาเอกสาร" />
+        <input type="search" autoFocus placeholder={`ค้นหาเลขที่ ${partyWord(K)} ${supBillCol ? 'เลขที่บิลผู้จำหน่าย ' : ''}หรืออ้างอิง`} value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาเอกสาร" />
         <label>ตั้งแต่ <DateInput value={from} onChange={setFrom} /></label>
         <label>ถึง <DateInput value={to} onChange={setTo} /></label>
         <select value={status} onChange={(e) => setStatus(e.target.value as 'N')} aria-label="สถานะ"><option value="all">ทุกสถานะ</option><option value="N">ปกติ</option><option value="C">ยกเลิก</option></select>
@@ -60,18 +62,18 @@ export function TradeListPage({ path }: { path: string }) {
       <ErrorBox error={list.error} />
       <div className="table-wrap">
         <table className="grid">
-          <thead><tr><th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 100 }}>รหัส</th><th>{partyWord(K)}</th>{K.refInvoice && <th style={{ width: 120 }}>อ้างใบกำกับ</th>}<th className="r" style={{ width: 120 }}>ภาษี</th><th className="r" style={{ width: 140 }}>ยอดรวมทั้งสิ้น</th>{K.order ? <th style={{ width: 120 }}>{K.cls === 'QT' ? 'ยืนราคาถึง' : 'กำหนดส่ง'}</th> : !K.payments && <th className="r" style={{ width: 130 }}>ค้างชำระ</th>}<th style={{ width: 90 }}>สถานะ</th></tr></thead>
+          <thead><tr><th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 100 }}>รหัส</th><th>{partyWord(K)}</th>{K.refInvoice && <th style={{ width: 120 }}>อ้างใบกำกับ</th>}{supBillCol && <th style={{ width: 130 }}>เลขที่บิลผู้จำหน่าย</th>}<th className="r" style={{ width: 120 }}>ภาษี</th><th className="r" style={{ width: 140 }}>ยอดรวมทั้งสิ้น</th>{K.order ? <th style={{ width: 120 }}>{K.cls === 'QT' ? 'ยืนราคาถึง' : 'กำหนดส่ง'}</th> : !K.payments && <th className="r" style={{ width: 130 }}>ค้างชำระ</th>}<th style={{ width: 90 }}>สถานะ</th></tr></thead>
           <tbody>
             {list.data?.rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
-                <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="mono">{r.party_code}</td><td>{r.party_name}</td>{K.refInvoice && <td className="mono">{r.ref_no}</td>}
+                <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="mono">{r.party_code}</td><td>{r.party_name}</td>{(K.refInvoice || supBillCol) && <td className="mono">{r.ref_no}</td>}
                 <td className="r"><Money v={r.vat_amount} blankZero /></td><td className="r"><Money v={r.net_amount} /></td>{K.order ? <td><DateText v={K.cls === 'QT' ? r.due_date : r.delivery_date} /></td> : !K.payments && <td className="r"><Money v={r.outstanding} blankZero /></td>}
                 <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ปกติ</Pill>}</td>
               </tr>
             ))}
             {list.data && !list.data.rows.length && <tr><td colSpan={9} className="empty">ไม่มีเอกสารในช่วงนี้ — กด Ins เพื่อเพิ่ม</td></tr>}
           </tbody>
-          {!!list.data?.rows.length && <tfoot><tr><td colSpan={K.refInvoice ? 6 : 5} className="r">รวม (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={total?.toFixed(2)} /></b></td><td colSpan={2} /></tr></tfoot>}
+          {!!list.data?.rows.length && <tfoot><tr><td colSpan={K.refInvoice || supBillCol ? 6 : 5} className="r">รวม (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={total?.toFixed(2)} /></b></td><td colSpan={2} /></tr></tfoot>}
         </table>
       </div>
       <KeyHints keys={[['Ins', `เพิ่ม${K.label}`], ['คลิก/Enter', 'เปิดเอกสาร']]} />
@@ -350,7 +352,7 @@ export function TradeFormPage({ path }: { path: string }) {
     try { await api.post(`/api/v1/${K.path}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.path] }); nav(K.route); }
     catch (e) { setAskCancel(false); setErr(e); }
   };
-  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Ctrl+F7': id && !K.order && VAT_KIND_OF[K.cls] ? () => setTab('vat') : undefined,
+  useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F7: K.payments ? () => setTab('pay') : undefined, 'Ctrl+F7': id && !K.order && VAT_KIND_OF[K.cls] ? () => setTab('vat') : undefined,
     'Ctrl+F10': K.cls === 'HP' ? () => setTab('wht') : id && (K.cls === 'RR' || K.cls === 'CP') ? () => setTab('whtb') : undefined, 'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); }, 'Ctrl+Insert': readOnly ? undefined : addLine, F6: K.orderRef && !readOnly ? () => setPickOrder(true) : K.refInvoice && !readOnly && h?.ref?.id ? () => setPickRef(true) : undefined }, []);
   const dtCode = defs.data?.types.find((t) => t.id === h?.doc_type_id);
@@ -387,7 +389,7 @@ export function TradeFormPage({ path }: { path: string }) {
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {K.party === 'customer' && <Field label="Bill to" hint="ชื่อบนใบกำกับ ถ้าเรียกเก็บในนามอื่น"><SearchPick endpoint="/api/v1/customers" value={h.bill_to} disabled={readOnly} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => set({ bill_to: r })} /></Field>}
             <Field label="สาขา#"><BranchPick value={h.party_tax_branch_no} options={branches.data?.tax_branches} disabled={readOnly} onChange={(v) => set({ party_tax_branch_no: v })} /></Field>
-            <Field label="อ้างอิง" hint={srcOrders.length ? <>{K.orderRef === 'SO' ? 'ใบสั่งขายที่อ้าง:' : 'ใบสั่งซื้อที่อ้าง:'} {srcOrders.map((o) => <span key={o.id}><DocLink id={o.id} no={o.no} cls={K.orderRef} keep={dirty} /> </span>)}</> : undefined}><input value={h.your_ref} maxLength={30} disabled={readOnly} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
+            <Field label={K.refInvoice && K.module === 'AP' ? 'เลขที่ใบลด/เพิ่มหนี้ของผู้จำหน่าย' : 'อ้างอิง'} hint={K.refInvoice && K.module === 'AP' ? 'เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่เอกสาร' : srcOrders.length ? <>{K.orderRef === 'SO' ? 'ใบสั่งขายที่อ้าง:' : 'ใบสั่งซื้อที่อ้าง:'} {srcOrders.map((o) => <span key={o.id}><DocLink id={o.id} no={o.no} cls={K.orderRef} keep={dirty} /> </span>)}</> : undefined}><input value={h.your_ref} maxLength={30} disabled={readOnly} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
             {supInv && <Field label="เลขที่ใบกำกับ/บิลผู้จำหน่าย / ลงวันที่" hint="เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่/วันที่เอกสาร"><div className="pair" style={{ gridTemplateColumns: 'minmax(0, 1fr) 150px' }}><input value={h.ref?.code ?? ''} maxLength={30} disabled={readOnly} onChange={(e) => set({ ref: e.target.value ? { id: '', code: e.target.value } : null })} aria-label="เลขที่ใบกำกับผู้จำหน่าย" /><DateInput value={refDate} disabled={readOnly} onChange={(v) => { setRefDate(v); setDirty(true); }} /></div></Field>}
             {K.refInvoice && <Field label="เลขที่ใบกำกับที่อ้างถึง" req hint={h.ref?.id ? <>เปิดใบกำกับ <DocLink id={h.ref.id} no={h.ref.code} keep={dirty} /></> : undefined}><SearchPick<{ id: string; doc_no: string; party_name: string; net_amount: string }> required endpoint={`/api/v1/${K.module === 'AR' ? 'sales-invoices' : 'purchase-invoices'}`} params={h.party ? { party_id: h.party.id, status: 'N' } : undefined} value={h.ref} disabled={readOnly || !h.party}
               codeOf={(r: { doc_no: string }) => r.doc_no} label={(r: { party_name: string; net_amount: string }) => `${r.party_name} ${fmt(r.net_amount)}`} onPick={(r: { id: string; doc_no: string } | null) => set({ ref: r ? { id: r.id, code: r.doc_no } : null })} placeholder={h.party ? 'พิมพ์เลขที่ใบกำกับ' : `เลือก${partyWord(K)}ก่อน`} /></Field>}
@@ -513,7 +515,7 @@ export function TradeFormPage({ path }: { path: string }) {
         </div>
       </div>}
       {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ...(K.payments ? [['F7', 'ชำระโดยอื่น'] as [string, string]] : []), ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       {depAsk && depOpen.data && <Confirm title="มีเงินมัดจำคงเหลือ" okText="หักเงินมัดจำ" onClose={() => setDepAsk(false)} onOk={() => { setDepAsk(false); setTab('deposit'); }}
         text={<>{partyWord(K)}รายนี้มีเงินมัดจำคงเหลือ {depOpen.data.rows.length} ใบ รวม <Money v={depOpen.data.rows.reduce((t, o) => t.plus(d(o.outstanding)), d(0)).toFixed(2)} /> — ต้องการหักในบิลนี้หรือไม่?
           <span className="small muted" style={{ display: 'block', marginTop: 6 }}>หักได้บางส่วนหรือเต็มจำนวน (ไม่เกินยอดคงเหลือ) · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้</span></>} />}

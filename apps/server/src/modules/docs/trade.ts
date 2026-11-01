@@ -125,7 +125,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
   const wht = K.cls === 'HP' ? checkWht(b.wht) : d(b.wht_amount);
   if (wht.lt(0)) throw badRequest('ภาษีหัก ณ ที่จ่ายต้องไม่ติดลบ');
   if (payTotal.plus(wht).gt(d(calc.net_amount))) throw badRequest('ยอดชำระด้วยวิธีอื่นรวมภาษีหัก ณ ที่จ่าย มากกว่ายอดเงินรวมทั้งสิ้น');
-  const credit = b.credit_days ?? (K.payments || K.cls === 'QT' || K.cls === 'PO' ? 0 : party.credit_days ?? 0);
+  const credit = b.credit_days ?? (K.payments || K.cls === 'QT' ? 0 : party.credit_days ?? 0);
   const header = {
     doc_type_id: dt.id, doc_class: K.cls, module: K.order ?? K.module, doc_date: b.doc_date, delivery_date: K.order && K.cls !== 'QT' ? b.delivery_date ?? b.doc_date : null,
     customer_id: K.party === 'customer' ? party.id : null, supplier_id: K.party === 'supplier' ? party.id : null, bill_to_customer_id: billTo ? b.bill_to_customer_id : null,
@@ -241,6 +241,14 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
         }
       }
     }
+    // วงเงินผู้จำหน่าย (รายงาน 2.E ซื้อเกินวงเงิน): ยอดค้างจ่ายรวมบิลนี้เกินวงเงินที่ตั้งไว้ → เตือน (ซื้อไม่บล็อก)
+    if ((K.cls === 'RR' || K.cls === 'CP') && d(calc.net_amount).gt(0)) {
+      const sl = await tx.selectFrom('md_supplier').select(['code', 'credit_limit', 'on_hold']).where('id', '=', party.id).executeTakeFirst();
+      if (sl?.credit_limit && d(sl.credit_limit).gt(0)) {
+        const exp = d((await sql<{ v: string }>`SELECT coalesce(sum(outstanding), 0) AS v FROM v_ap_outstanding WHERE company_id = ${a.companyId} AND supplier_id = ${party.id}`.execute(tx)).rows[0]!.v);
+        if (exp.gt(sl.credit_limit)) warnings.push(`ผู้จำหน่าย ${sl.code} ซื้อเกินวงเงิน — ยอดค้างจ่ายรวมบิลนี้ ${exp.toFixed(2)} วงเงิน ${d(sl.credit_limit).toFixed(2)} (เกิน ${exp.minus(sl.credit_limit).toFixed(2)})`);
+      }
+    }
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
     return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: calc.net_amount, warnings };
   });
@@ -297,7 +305,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
         sql`h.company_id = ${a.companyId}`, sql`h.doc_class = ${K.cls}`, sql`h.deleted_at IS NULL`,
         ...(q.from ? [sql`h.doc_date >= ${q.from}`] : []), ...(q.to ? [sql`h.doc_date <= ${q.to}`] : []),
         ...(q.party_id ? [sql`h.${sql.ref(partyCol)} = ${q.party_id}`] : []), ...(q.status !== 'all' ? [sql`h.doc_status = ${q.status}`] : []), ...(q.type_id ? [sql`h.doc_type_id = ${q.type_id}`] : []),
-        ...(like ? [sql`(h.doc_no ILIKE ${like} OR h.party_name ILIKE ${like} OR p.code ILIKE ${like} OR h.your_ref ILIKE ${like})`] : []),
+        ...(like ? [sql`(h.doc_no ILIKE ${like} OR h.party_name ILIKE ${like} OR p.code ILIKE ${like} OR h.your_ref ILIKE ${like} OR h.ref_no ILIKE ${like})`] : []),
       ], sql` AND `);
       const from = sql`FROM doc_header h LEFT JOIN ${sql.table(party)} p ON p.id = h.${sql.ref(partyCol)} WHERE ${where}`;
       const total = (await sql<{ n: number }>`SELECT count(*) AS n ${from}`.execute(db)).rows[0]!.n;

@@ -31,6 +31,7 @@ export function HomePage() {
           <button onClick={() => nav('/sa/invoices/new')}>+ ขายเงินเชื่อ</button>
           <button onClick={() => nav('/pu/invoices/new')}>+ ซื้อเงินเชื่อ</button>
           <button onClick={() => nav('/fi/ar/receipts/new')}>+ รับชำระหนี้</button>
+          <button onClick={() => nav('/fi/ap/payments/new')}>+ จ่ายชำระหนี้</button>
           <button onClick={() => nav('/gl/journals/new')}>+ บันทึกใบสำคัญ</button>
           <button onClick={() => nav('/reports/trial-balance')}>งบทดลอง</button>
           <button onClick={() => nav('/fs/statements')}>งบการเงิน</button>

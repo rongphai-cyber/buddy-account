@@ -45,6 +45,7 @@ export const MENU: MenuItem[] = [
     ]),
     g('FI.AP', 'เจ้าหนี้', 'P3', [
       m('FI.AP.BR', 'ใบรับวางบิล', 'P3', '/fi/ap/bills', ['ch11:S-PU-06']),
+      m('FI.AP.BD', 'บันทึกวันนัดจ่ายชำระเงิน', 'P3', '/fi/ap/bill-appointments'),
       m('FI.AP.CP', 'ใบเพิ่มหนี้', 'P3', '/fi/ap/debit-notes', ['ch11:S-PU-04']),
       m('FI.AP.GR', 'ลดหนี้ / ส่งคืนสินค้า', 'P3', '/fi/ap/credit-notes', ['ch11:S-PU-05']),
       m('FI.AP.PS', 'จ่ายชำระหนี้', 'P3', '/fi/ap/payments', ['ch11:S-PU-07', 'ch26:S-AP-13', 'ch11:S-PU-C4', 'ch11:S-PU-C5', 'ch11:S-PU-C6']),
@@ -199,7 +200,7 @@ export const MODULE_SWITCHES: ModuleSwitch[] = [
   { key: 'SA', label: 'ระบบขายและลูกหนี้', menus: ['SA', 'FI.AR', 'RP.SA'], hint: 'ขาย ใบเสนอราคา ใบสั่งขาย รับมัดจำ รายได้อื่น ลูกหนี้ รับชำระ รายงานขาย' },
   { key: 'ORDER', label: 'ใบเสนอราคา / ใบสั่งขาย / ใบสั่งซื้อ', menus: ['SA.QT', 'SA.SO', 'PU.PO'], hint: 'กิจการที่เปิดบิลทันทีโดยไม่มีใบสั่ง' },
   { key: 'DEPOSIT', label: 'เงินมัดจำ (รับ/จ่าย)', menus: ['SA.AI', 'PU.AE'], hint: 'รับเงินมัดจำ จ่ายเงินมัดจำ' },
-  { key: 'BILLING', label: 'ใบวางบิล / ใบรับวางบิล', menus: ['FI.AR.BI', 'FI.AR.BD', 'FI.AP.BR'], hint: 'วางบิล นัดรับชำระ รับวางบิล' },
+  { key: 'BILLING', label: 'ใบวางบิล / ใบรับวางบิล', menus: ['FI.AR.BI', 'FI.AR.BD', 'FI.AP.BR', 'FI.AP.BD'], hint: 'วางบิล นัดรับชำระ รับวางบิล นัดจ่ายชำระ' },
   { key: 'BANK', label: 'ระบบธนาคารและเช็ค', menus: ['FI.BK', 'RP.CHQ'], hint: 'เช็ครับ/จ่าย นำฝาก ผ่านเช็ค ฝาก/ถอน/โอน สมุดเงินฝาก กระทบยอด' },
   { key: 'STOCK', label: 'ระบบสินค้าคงคลัง (สต๊อก)', menus: ['IC.STOCK', 'IC.TRN', 'IC.OB', 'IC.COUNT', 'IC.SERIAL', 'IC.REORDER', 'GL.INV', 'RP.IC'], hint: 'ยอดคงเหลือ รายการประจำวันสินค้า ตรวจนับ ยอดยกมา — รายละเอียดสินค้า/บริการยังใช้ได้' },
   { key: 'FA', label: 'ทรัพย์สินถาวร', menus: ['FA.ASSET', 'FA.DEPR'], hint: 'ทะเบียนทรัพย์สิน คิดค่าเสื่อม' },

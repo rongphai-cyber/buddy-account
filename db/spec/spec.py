@@ -616,6 +616,7 @@ add(T('md_supplier', 'ผู้จำหน่าย / เจ้าหนี้'
   C('address_3', 'str100', th='ที่อยู่ 3', src='APMAS.ADDR03'),
   C('zip_code', 'code10', th='รหัสไปรษณีย์', src='APMAS.ZIPCOD'),
   C('phone', 'str60', th='โทรศัพท์', src='APMAS.TELNUM'),
+  C('email', 'str120', th='อีเมล (ใหม่ — คู่กับลูกค้า)'),
   C('contact', 'str60', th='ผู้ติดต่อ', src='APMAS.CONTACT'),
   C('tax_id', 'code13', th='เลขผู้เสียภาษี', src='APMAS.TAXID'),
   C('tax_branch_no', 'code5', th='เลขที่สาขา'),

@@ -2157,6 +2157,18 @@
 ]
 },
 {
+"th": "สาขา#",
+"n": 8,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
+]
+},
+{
 "th": "หมวดสินค้า",
 "n": 8,
 "files": [
@@ -2422,17 +2434,6 @@
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "สาขา#",
-"n": 7,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -2747,6 +2748,15 @@
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/inventory/Serials.tsx",
 "apps/server/src/modules/reports/fa.ts"
+]
+},
+{
+"th": "อีเมล",
+"n": 6,
+"files": [
+"apps/web/src/pages/Signup.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx"
 ]
 },
 {
@@ -3381,15 +3391,6 @@
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "apps/server/src/modules/reports/tax.ts"
-]
-},
-{
-"th": "อีเมล",
-"n": 5,
-"files": [
-"apps/web/src/pages/Signup.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx"
 ]
 },
 {
@@ -4061,6 +4062,14 @@
 ]
 },
 {
+"th": "เลขที่บิลผู้จำหน่าย",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "เลขที่ใบกำกับภาษี",
 "n": 4,
 "files": [
@@ -4392,15 +4401,6 @@
 ]
 },
 {
-"th": "ค้นหาเลขที่ {0} หรืออ้างอิง",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "ค้นหาเลขที่ หรือหมายเหตุ",
 "n": 3,
 "files": [
@@ -4431,6 +4431,15 @@
 "files": [
 "apps/web/src/pages/items/ItemTables.tsx",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "ชำระโดยอื่น",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -4921,6 +4930,15 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/items/ItemTables.tsx"
+]
+},
+{
+"th": "รายละเอียดผู้จำหน่าย",
+"n": 3,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"packages/core/src/menu.ts",
+"packages/core/src/reports.ts"
 ]
 },
 {
@@ -5973,6 +5991,14 @@
 ]
 },
 {
+"th": "ค้นหาเลขที่ {0} หรืออ้างอิง",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
 "th": "ค้นหาเลขที่ หรือ{0}",
 "n": 2,
 "files": [
@@ -6148,14 +6174,6 @@
 "files": [
 "apps/server/src/modules/docs/cashdocs.ts",
 "apps/server/src/modules/docs/settle.ts"
-]
-},
-{
-"th": "ชำระโดยอื่น",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -7899,14 +7917,6 @@
 ]
 },
 {
-"th": "รายละเอียดผู้จำหน่าย",
-"n": 2,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"packages/core/src/menu.ts"
-]
-},
-{
 "th": "รายละเอียดพนักงานขาย",
 "n": 2,
 "files": [
@@ -8449,6 +8459,13 @@
 ]
 },
 {
+"th": "อัตราภาษีที่หักต้องอยู่ระหว่าง 0–100%",
+"n": 2,
+"files": [
+"apps/server/src/modules/parties.ts"
+]
+},
+{
 "th": "อัตราภาษีมูลค่าเพิ่ม (%)",
 "n": 2,
 "files": [
@@ -8849,13 +8866,6 @@
 ]
 },
 {
-"th": "เลขที่บิลผู้จำหน่าย",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx"
-]
-},
-{
 "th": "เลขที่เช็ค {0} มีในทะเบียนแล้ว",
 "n": 2,
 "files": [
@@ -9065,6 +9075,13 @@
 ]
 },
 {
+"th": "แยกตามผู้จำหน่าย",
+"n": 2,
+"files": [
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "แยกตามพนักงานขาย",
 "n": 2,
 "files": [
@@ -9073,6 +9090,13 @@
 },
 {
 "th": "แยกตามลูกค้า",
+"n": 2,
+"files": [
+"packages/core/src/reports.ts"
+]
+},
+{
+"th": "แยกตามสินค้า",
 "n": 2,
 "files": [
 "packages/core/src/reports.ts"
@@ -9891,6 +9915,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/FsLayouts.tsx"
+]
+},
+{
+"th": "+ จ่ายชำระหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/Home.tsx"
 ]
 },
 {
@@ -15522,6 +15553,13 @@
 ]
 },
 {
+"th": "ค้นหาเลขที่ {0} {1}หรืออ้างอิง",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ค้นหาเลขที่ คำอธิบาย อ้างอิง",
 "n": 1,
 "files": [
@@ -17132,13 +17170,6 @@
 ]
 },
 {
-"th": "ซื้อเกินวงเงิน",
-"n": 1,
-"files": [
-"packages/core/src/reports.ts"
-]
-},
-{
 "th": "ซื้อเกินวงเงิน → เตือนขณะซื้อ",
 "n": 1,
 "files": [
@@ -17601,7 +17632,14 @@
 ]
 },
 {
-"th": "ตัดใบรับมัดจำ# {0}",
+"th": "ตัดใบจ่ายมัดจำ#",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/register.ts"
+]
+},
+{
+"th": "ตัดใบรับมัดจำ#",
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/register.ts"
@@ -20982,6 +21020,13 @@
 ]
 },
 {
+"th": "บันทึกวันนัดจ่ายชำระเงิน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "บันทึกวันนัดรับชำระเงิน",
 "n": 1,
 "files": [
@@ -22974,6 +23019,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
+"th": "ผู้จำหน่าย {0} ซื้อเกินวงเงิน — ยอดค้างจ่ายรวมบิลนี้ {1} วงเงิน {2} (เกิน {3})",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/trade.ts"
 ]
 },
 {
@@ -28486,13 +28538,6 @@
 ]
 },
 {
-"th": "รายละเอียดผู้จำหน่าย/เจ้าหนี้",
-"n": 1,
-"files": [
-"packages/core/src/reports.ts"
-]
-},
-{
 "th": "รายละเอียดรายการหัก",
 "n": 1,
 "files": [
@@ -30124,7 +30169,7 @@
 ]
 },
 {
-"th": "วางบิล นัดรับชำระ รับวางบิล",
+"th": "วางบิล นัดรับชำระ รับวางบิล นัดจ่ายชำระ",
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
@@ -32504,13 +32549,6 @@
 ]
 },
 {
-"th": "อัตราภาษีที่หักต้องอยู่ระหว่าง 0–100%",
-"n": 1,
-"files": [
-"apps/server/src/modules/parties.ts"
-]
-},
-{
 "th": "อัตราภาษีหัก ณ ที่จ่าย",
 "n": 1,
 "files": [
@@ -33050,6 +33088,13 @@
 ]
 },
 {
+"th": "เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่เอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "เคยลงรหัสนี้ {0} ครั้ง{1}",
 "n": 1,
 "files": [
@@ -33303,6 +33348,13 @@
 },
 {
 "th": "เจ้าหนี้คงค้าง ณ วันที่",
+"n": 1,
+"files": [
+"packages/core/src/reports.ts"
+]
+},
+{
+"th": "เจ้าหนี้เกินวงเงิน",
 "n": 1,
 "files": [
 "packages/core/src/reports.ts"
@@ -35710,6 +35762,13 @@
 ]
 },
 {
+"th": "เลขที่ใบลด/เพิ่มหนี้ของผู้จำหน่าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "เลขที่ใบสำคัญ (ผ่าน)",
 "n": 1,
 "files": [
@@ -37741,20 +37800,6 @@
 },
 {
 "th": "แยกตามประเภทบิล (ซื้อสด/เชื่อ/ลดหนี้/มัดจำ)",
-"n": 1,
-"files": [
-"packages/core/src/reports.ts"
-]
-},
-{
-"th": "แยกตามผู้จำหน่าย",
-"n": 1,
-"files": [
-"packages/core/src/reports.ts"
-]
-},
-{
-"th": "แยกตามสินค้า",
 "n": 1,
 "files": [
 "packages/core/src/reports.ts"

@@ -288,7 +288,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
 /* ---------------------------------------------------------------- ผู้จำหน่าย S-AP-01 */
 interface BankRow { bank_code: string; branch: string | null; account_no: string; account_name: string | null; is_default: boolean }
 interface SupplierDetail extends Record<string, unknown> { id: string; ap_account_id: string | null; on_hold: boolean; banks: BankRow[]; contacts: Contact[]; outstanding_bills: Bill[]; balance: string; last_bill_date: string | null }
-const SUP_KEYS = [...HEAD_KEYS, 'supplier_type', 'price_type', 'vat_rate', 'wht_income_desc'];
+const SUP_KEYS = [...HEAD_KEYS, 'email', 'supplier_type', 'price_type', 'vat_rate', 'wht_income_desc'];
 
 export function SuppliersPage() {
   return <PartyList kind="suppliers" menu="PU.SUP" eyebrow="ซื้อ › รายละเอียดผู้จำหน่าย" title="รายละเอียดผู้จำหน่าย" Form={SupplierForm}
@@ -343,6 +343,7 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
           <Field label="รหัสไปรษณีย์"><input {...t('zip_code', 10)} /></Field>
           <Field label="โทรศัพท์"><input {...t('phone', 60)} /></Field>
           <Field label="ชื่อผู้ติดต่อ" hint="ผู้ติดต่อในการซื้อ"><input {...t('contact', 60)} /></Field>
+          <Field label="อีเมล"><input type="email" {...t('email', 120)} /></Field>
           <Field label="ชื่อภาษาอังกฤษ"><input {...t('name_en', 120)} /></Field>
           <Field label="เลขประจำตัวผู้เสียภาษี" hint="ใช้ออกหนังสือรับรองหัก ณ ที่จ่าย"><input className="mono" {...t('tax_id', 20)} inputMode="numeric" /></Field>
           <Field label="สาขา#" hint="00000 = สำนักงานใหญ่"><input className="mono" {...t('tax_branch_no', 5)} inputMode="numeric" /></Field>
