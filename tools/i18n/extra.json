@@ -503,5 +503,7 @@
  "สาขาที่บันทึกเอกสาร/ลงบัญชี": "Branch the document/posting belongs to",
  "สาขาที่บันทึกเอกสาร/ลงบัญชี — รายงานบัญชี/ภาษีแยกตามสาขานี้": "Branch the document/posting belongs to — accounting/tax reports split by this branch",
  "ไม่พบสาขานี้ — เลือกสาขาที่บันทึกใหม่": "Branch not found — choose the branch again",
- "(สำนักงานใหญ่)": "(head office)"
+ "(สำนักงานใหญ่)": "(head office)",
+ "— ดูทุกสาขาให้เลือก \"ทุกสาขา\" ที่แถบด้านบน": "— to see all branches choose \"All branches\" in the top bar",
+ "🏢 แสดงเฉพาะสาขา": "🏢 Showing branch"
 }

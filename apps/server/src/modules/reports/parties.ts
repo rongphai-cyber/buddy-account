@@ -29,7 +29,7 @@ async function docsAsOf(db: Db, a: Ctx, p: P, s: Side, asOf: string) {
         m.credit_limit, ${s.type} AS type, ${s.ar ? sql`(SELECT sp.code FROM md_salesperson sp WHERE sp.id = m.salesperson_id)` : sql`NULL`} AS slm, ${s.ar ? sql`m.sales_area_code` : sql`NULL`} AS area
       FROM doc_header h JOIN ${sql.table(s.table)} m ON m.id = ${s.col} LEFT JOIN md_department dp ON dp.id = h.department_id
      WHERE h.company_id = ${a.companyId} AND h.module = ${s.module} AND h.doc_class IN (${sql.join(s.classes)}) AND h.doc_status <> 'C' AND h.deleted_at IS NULL AND h.doc_date <= ${asOf}
-       ${partyWhere(p, s)} ${p.dept(sql`dp.code`)}
+       ${partyWhere(p, s)} ${p.dept(sql`dp.code`)} ${p.branch(sql`h.branch_id`)}
      ORDER BY m.code, h.doc_date, h.doc_no`.execute(db)).rows;
 }
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86400000);
@@ -112,8 +112,8 @@ function status(s: Side) {
         coalesce(sum(h.net_amount) FILTER (WHERE h.doc_class = ${s.minus} AND h.doc_date BETWEEN ${start} AND ${end}), 0) AS minus,
         coalesce((SELECT sum(CASE WHEN i.doc_class = ${s.minus} THEN -x.amount ELSE x.amount END) FROM doc_settlement x JOIN doc_header i ON i.id = x.invoice_header_id LEFT JOIN doc_header pay ON pay.id = x.payment_header_id LEFT JOIN gl_journal j ON j.id = x.payment_journal_id
           WHERE ${s.ar ? sql`i.customer_id` : sql`i.supplier_id`} = m.id AND i.module = ${s.module} AND i.doc_status <> 'C' AND x.deleted_at IS NULL AND coalesce(pay.doc_status, 'N') <> 'C' AND coalesce(j.doc_status, 'N') <> 'C'
-            AND coalesce(pay.doc_date, j.voucher_date) BETWEEN ${start} AND ${end}), 0) AS paid
-      FROM ${sql.table(s.table)} m LEFT JOIN doc_header h ON ${s.col} = m.id AND h.module = ${s.module} AND h.doc_status <> 'C' AND h.deleted_at IS NULL AND h.doc_class IN (${sql.join(s.classes)})
+            AND coalesce(pay.doc_date, j.voucher_date) BETWEEN ${start} AND ${end} ${p.branch(sql`i.branch_id`)}), 0) AS paid
+      FROM ${sql.table(s.table)} m LEFT JOIN doc_header h ON ${s.col} = m.id AND h.module = ${s.module} AND h.doc_status <> 'C' AND h.deleted_at IS NULL AND h.doc_class IN (${sql.join(s.classes)}) ${p.branch(sql`h.branch_id`)}
      WHERE m.company_id = ${a.companyId} AND m.deleted_at IS NULL ${partyWhere(p, s)} GROUP BY m.id ORDER BY ${s.type} NULLS FIRST, m.code`.execute(db)).rows;
     const rows: ReportRow[] = [];
     const z = () => ({ n: 0, o: d(0), s: d(0), pl: d(0), mi: d(0), pa: d(0), c: d(0) });
@@ -146,14 +146,14 @@ function movement(s: Side) {
       SELECT * FROM (
         SELECT m.id AS party_id, m.code, m.name, h.id, h.doc_no, h.doc_date, h.doc_class, CASE WHEN h.doc_class = ${s.minus} THEN 0 ELSE h.net_amount END AS debit, CASE WHEN h.doc_class = ${s.minus} THEN h.net_amount ELSE 0 END AS credit
           FROM doc_header h JOIN ${sql.table(s.table)} m ON m.id = ${s.col}
-         WHERE h.company_id = ${a.companyId} AND h.module = ${s.module} AND h.doc_class IN (${sql.join(s.classes)}) AND h.doc_status <> 'C' AND h.deleted_at IS NULL AND h.doc_date BETWEEN ${start} AND ${end} ${partyWhere(p, s)}
+         WHERE h.company_id = ${a.companyId} AND h.module = ${s.module} AND h.doc_class IN (${sql.join(s.classes)}) AND h.doc_status <> 'C' AND h.deleted_at IS NULL AND h.doc_date BETWEEN ${start} AND ${end} ${partyWhere(p, s)} ${p.branch(sql`h.branch_id`)}
         UNION ALL
         SELECT m.id, m.code, m.name, coalesce(pay.id, i.id), coalesce(pay.doc_no, j.voucher_no), coalesce(pay.doc_date, j.voucher_date), coalesce(pay.doc_class, 'JV'),
                CASE WHEN i.doc_class = ${s.minus} THEN sum(x.amount) ELSE 0 END, CASE WHEN i.doc_class = ${s.minus} THEN 0 ELSE sum(x.amount) END
           FROM doc_settlement x JOIN doc_header i ON i.id = x.invoice_header_id JOIN ${sql.table(s.table)} m ON m.id = ${s.ar ? sql`i.customer_id` : sql`i.supplier_id`}
           LEFT JOIN doc_header pay ON pay.id = x.payment_header_id LEFT JOIN gl_journal j ON j.id = x.payment_journal_id
          WHERE i.company_id = ${a.companyId} AND i.module = ${s.module} AND i.doc_status <> 'C' AND x.deleted_at IS NULL AND coalesce(pay.doc_status, 'N') <> 'C' AND coalesce(j.doc_status, 'N') <> 'C'
-           AND coalesce(pay.doc_date, j.voucher_date) BETWEEN ${start} AND ${end} ${partyWhere(p, s)}
+           AND coalesce(pay.doc_date, j.voucher_date) BETWEEN ${start} AND ${end} ${partyWhere(p, s)} ${p.branch(sql`i.branch_id`)}
          GROUP BY m.id, m.code, m.name, pay.id, i.id, pay.doc_no, j.voucher_no, pay.doc_date, j.voucher_date, pay.doc_class, i.doc_class
       ) e ORDER BY code, doc_date, doc_no LIMIT 50000`.execute(db)).rows;
     const rows: ReportRow[] = [];

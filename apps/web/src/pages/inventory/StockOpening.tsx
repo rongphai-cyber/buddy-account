@@ -7,6 +7,7 @@ import { CancelStamp, CloseScreen, DocDelete } from '../../components/DocDelete'
 import { useCan } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { useDocEdit } from '../../components/DocEdit';
 
@@ -20,6 +21,7 @@ export function StockOpeningListPage() {
   const [q, setQ] = useState('');
   const list = useQuery({ queryKey: ['stock-opening', q], queryFn: () => api.get<{ rows: Row[]; total: string; start_date: string | null }>('/api/v1/stock-opening', { q }), placeholderData: (p) => p });
   useHotkeys({ Insert: can('add') ? () => nav(`${ROUTE}/new`) : undefined }, []);
+  const showBr = useShowBranchCol();
   return (
     <div className="page" data-tone="inventory">
       <PageHead eyebrow="สินค้า" title="ยอดยกมาสินค้า"
@@ -28,19 +30,19 @@ export function StockOpeningListPage() {
         actions={can('add') && <button className="primary" onClick={() => nav(`${ROUTE}/new`)}>+ เพิ่มล็อต <kbd>Ins</kbd></button>} />
       <div className="toolbar"><input type="search" autoFocus placeholder="ค้นหาเลขที่ล็อต หมายเหตุ หรือรหัส/ชื่อสินค้า" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" /></div>
       <ErrorBox error={list.error} />
-      <div className="table-wrap">
+      <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr><th style={{ width: 160 }}>เลขที่ล็อต</th><th style={{ width: 110 }}>วันที่</th><th>หมายเหตุ</th><th className="r" style={{ width: 90 }}>รายการ</th><th className="r" style={{ width: 130 }}>จำนวนรวม</th><th className="r" style={{ width: 150 }}>มูลค่ายกมา</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 160 }}>เลขที่ล็อต</th><th style={{ width: 110 }}>วันที่</th><th>หมายเหตุ</th><th className="r" style={{ width: 90 }}>รายการ</th><th className="r" style={{ width: 130 }}>จำนวนรวม</th><th className="r" style={{ width: 150 }}>มูลค่ายกมา</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
           <tbody>
             {list.data?.rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${ROUTE}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${ROUTE}/${r.id}`)}>
-                <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td>{r.remark}</td><td className="r">{r.lines.toLocaleString()}</td><td className="r">{fmt(r.qty, { places: 2 })}</td>
+                {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td>{r.remark}</td><td className="r">{r.lines.toLocaleString()}</td><td className="r">{fmt(r.qty, { places: 2 })}</td>
                 <td className="r"><Money v={r.net_amount} /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ยอดยกมา</Pill>}</td>
               </tr>
             ))}
-            {list.data && !list.data.rows.length && <tr><td colSpan={7} className="empty">ยังไม่มียอดยกมาสินค้า — กด Ins เพื่อเพิ่ม</td></tr>}
+            {list.data && !list.data.rows.length && <tr><td colSpan={(7) + (showBr ? 1 : 0)} className="empty">ยังไม่มียอดยกมาสินค้า — กด Ins เพื่อเพิ่ม</td></tr>}
           </tbody>
-          {!!list.data?.rows.length && <tfoot><tr><td colSpan={5} className="r">มูลค่ายกมารวม (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={list.data.total} /></b></td><td /></tr></tfoot>}
+          {!!list.data?.rows.length && <tfoot><tr><td colSpan={(5) + (showBr ? 1 : 0)} className="r">มูลค่ายกมารวม (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={list.data.total} /></b></td><td /></tr></tfoot>}
         </table>
       </div>
       <KeyHints keys={[['Ins', 'เพิ่มล็อต'], ['คลิก/Enter', 'เปิดรายการ']]} />

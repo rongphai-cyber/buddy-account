@@ -7,6 +7,7 @@ import { bookColor, bookStyle } from '../../bookColor';
 import { useSession } from '../../session';
 import { DocLink } from '../../components/DocLink';
 import { cx, DateInput, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, Tabs, useHotkeys } from '../../ui';
+import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 
 interface Row { id: string; voucher_no: string; voucher_date: string; description: string | null; reference: string | null; total_debit: string; doc_status: string; source_module: string | null; source_header_id: string | null; book_code: string; source_doc_no: string | null; source_doc_class: string | null }
 
@@ -28,6 +29,7 @@ export function JournalsPage() {
   const curBook = books.data?.find((b) => b.id === f.book_id);
   useHotkeys({ Insert: () => nav(newUrl), 'Alt+A': () => nav(newUrl), ArrowDown: () => setSel((s) => Math.min(s + 1, rows.length - 1)), ArrowUp: () => setSel((s) => Math.max(0, s - 1)), Enter: () => rows[sel] && nav(`/gl/journals/${rows[sel]!.id}`) }, [rows, sel, newUrl]);
   const total = useMemo(() => rows.filter((r) => r.doc_status === 'N').reduce((s, r) => s + Number(r.total_debit), 0), [rows]);
+  const showBr = useShowBranchCol();
   return (
     <div className="page" data-tone="gl">
       <PageHead eyebrow="บัญชี › ลงประจำวัน" title="สมุดรายวัน" lead="ใบสำคัญที่บันทึกเองและที่ลงบัญชีอัตโนมัติจากระบบอื่น — คลิกแถวเพื่อเปิด"
@@ -42,22 +44,22 @@ export function JournalsPage() {
         <select value={f.status} onChange={(e) => set({ status: e.target.value })}><option value="all">ทุกสถานะ</option><option value="N">ปกติ</option><option value="C">ยกเลิก</option></select>
       </div>
       <ErrorBox error={list.error} />
-      <div className="table-wrap tall">
+      <BranchScope /><div className="table-wrap tall">
         <table className="grid">
-          <thead><tr><th>วันที่</th><th>เลขที่ใบสำคัญ</th><th>สมุด</th><th>คำอธิบาย</th><th>อ้างอิง / เอกสารต้นทาง</th><th className="r">จำนวนเงิน</th><th>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th>วันที่</th><th>เลขที่ใบสำคัญ</th><th>สมุด</th><th>คำอธิบาย</th><th>อ้างอิง / เอกสารต้นทาง</th><th className="r">จำนวนเงิน</th><th>สถานะ</th></tr></thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.id} className={cx('row-open', i === sel && 'sel', r.doc_status === 'C' && 'void')} onClick={() => nav(`/gl/journals/${r.id}`)} onMouseEnter={() => setSel(i)}>
-                <td className="mono"><DateText v={r.voucher_date} /></td><td className="mono">{r.voucher_no}</td><td className="mono">{r.book_code}</td>
+                {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono"><DateText v={r.voucher_date} /></td><td className="mono">{r.voucher_no}</td><td className="mono">{r.book_code}</td>
                 <td>{r.description}</td>
                 <td className="small">{r.source_doc_no ? <span>{r.source_doc_class} <DocLink id={r.source_header_id} no={r.source_doc_no} cls={r.source_doc_class} /></span> : r.reference}</td>
                 <td className="r"><Money v={r.total_debit} /></td>
                 <td>{r.doc_status === 'C' ? <Pill tone="c">ยกเลิก</Pill> : r.source_header_id ? <Pill tone="x">จากระบบอื่น</Pill> : <Pill tone="n">ปกติ</Pill>}</td>
               </tr>
             ))}
-            {!rows.length && !list.isLoading && <tr><td colSpan={7} className="empty">ไม่มีใบสำคัญในช่วงนี้ — กด <kbd>Ins</kbd> เพื่อบันทึกใหม่</td></tr>}
+            {!rows.length && !list.isLoading && <tr><td colSpan={(7) + (showBr ? 1 : 0)} className="empty">ไม่มีใบสำคัญในช่วงนี้ — กด <kbd>Ins</kbd> เพื่อบันทึกใหม่</td></tr>}
           </tbody>
-          {rows.length > 0 && <tfoot><tr><td colSpan={5}>รวม {list.data?.total.toLocaleString()} ใบ (หน้านี้ {rows.length})</td><td className="r"><Money v={total} /></td><td /></tr></tfoot>}
+          {rows.length > 0 && <tfoot><tr><td colSpan={(5) + (showBr ? 1 : 0)}>รวม {list.data?.total.toLocaleString()} ใบ (หน้านี้ {rows.length})</td><td className="r"><Money v={total} /></td><td /></tr></tfoot>}
         </table>
       </div>
       {(list.data?.total ?? 0) > 200 && (

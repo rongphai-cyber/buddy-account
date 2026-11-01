@@ -100,11 +100,11 @@ export function stockReports() {
     const key = byWh ? sql`m.item_id, m.warehouse_id` : sql`m.item_id`;
     const opening = (await sql<{ item_id: string; warehouse_id: string | null; qty: string; value: string }>`SELECT m.item_id, ${byWh ? sql`m.warehouse_id` : sql`NULL`} AS warehouse_id, sum(m.qty) AS qty, sum(m.value) AS value
         FROM v_stock_move m JOIN md_item i ON i.id = m.item_id JOIN md_warehouse w ON w.id = m.warehouse_id
-       WHERE m.company_id = ${a.companyId} AND m.doc_date < ${start} ${p.range('item', sql`i.code`)} ${p.range('warehouse', sql`w.code`)} GROUP BY ${key}`.execute(db)).rows;
+       WHERE m.company_id = ${a.companyId} AND m.doc_date < ${start} ${p.range('item', sql`i.code`)} ${p.range('warehouse', sql`w.code`)} ${p.whBranch(sql`w.branch_id`)} GROUP BY ${key}`.execute(db)).rows;
     const mv = (await sql<{ item_id: string; warehouse_id: string; item_code: string; item_name: string; wh: string; doc_date: string; doc_no: string; doc_class: string; header_id: string; qty: string; value: string }>`
       SELECT m.item_id, m.warehouse_id, i.code AS item_code, i.name_th AS item_name, w.code AS wh, m.doc_date, m.doc_no, m.doc_class, m.header_id, m.qty, m.value
         FROM v_stock_move m JOIN md_item i ON i.id = m.item_id JOIN md_warehouse w ON w.id = m.warehouse_id
-       WHERE m.company_id = ${a.companyId} AND m.doc_date BETWEEN ${start} AND ${end} ${p.range('item', sql`i.code`)} ${p.range('warehouse', sql`w.code`)}
+       WHERE m.company_id = ${a.companyId} AND m.doc_date BETWEEN ${start} AND ${end} ${p.range('item', sql`i.code`)} ${p.range('warehouse', sql`w.code`)} ${p.whBranch(sql`w.branch_id`)}
        ORDER BY i.code, ${byWh ? sql`w.code,` : sql``} m.doc_date, CASE WHEN m.qty > 0 THEN 0 ELSE 1 END, m.doc_no, m.line_no LIMIT 60001`.execute(db)).rows;
     const truncated = mv.length > 60000; if (truncated) mv.pop();
     const k = (i: string, w: string | null) => (byWh ? `${i}|${w}` : i);
@@ -140,7 +140,7 @@ export function stockReports() {
     const rows = (await sql<{ item_code: string; item_name: string; unit: string | null; wh: string | null; qty: string; value: string }>`
       SELECT i.code AS item_code, i.name_th AS item_name, u.code AS unit, ${byWh ? sql`w.code` : sql`NULL`} AS wh, sum(m.qty) AS qty, sum(m.value) AS value
         FROM v_stock_move m JOIN md_item i ON i.id = m.item_id JOIN md_warehouse w ON w.id = m.warehouse_id LEFT JOIN md_unit u ON u.id = i.base_unit_id
-       WHERE m.company_id = ${a.companyId} AND m.doc_date <= ${asOf} ${p.range('item', sql`i.code`)} ${p.range('warehouse', sql`w.code`)}
+       WHERE m.company_id = ${a.companyId} AND m.doc_date <= ${asOf} ${p.range('item', sql`i.code`)} ${p.range('warehouse', sql`w.code`)} ${p.whBranch(sql`w.branch_id`)}
        GROUP BY i.code, i.name_th, u.code ${byWh ? sql`, w.code` : sql``} ${p.bool('zero') ? sql`` : sql`HAVING abs(sum(m.qty)) > 0.00001 OR abs(sum(m.value)) > 0.004`}
        ORDER BY i.code ${byWh ? sql`, w.code` : sql``} LIMIT 50000`.execute(db)).rows;
     let tq = d(0), tv = d(0);
@@ -157,7 +157,7 @@ export function stockReports() {
       SELECT i.code AS item_code, i.name_th AS item_name, w.code AS wh, r.min_qty, r.max_qty, r.order_qty,
              coalesce((SELECT sum(m.qty) FROM v_stock_move m WHERE m.company_id = r.company_id AND m.item_id = r.item_id AND m.warehouse_id = r.warehouse_id AND m.doc_date <= ${asOf}), 0) AS qty
         FROM md_item_reorder r JOIN md_item i ON i.id = r.item_id JOIN md_warehouse w ON w.id = r.warehouse_id
-       WHERE r.company_id = ${a.companyId} AND r.deleted_at IS NULL AND r.min_qty IS NOT NULL ${p.range('item', sql`i.code`)} ${p.range('warehouse', sql`w.code`)}
+       WHERE r.company_id = ${a.companyId} AND r.deleted_at IS NULL AND r.min_qty IS NOT NULL ${p.range('item', sql`i.code`)} ${p.range('warehouse', sql`w.code`)} ${p.whBranch(sql`w.branch_id`)}
          AND r.start_mmdd = coalesce((SELECT max(x.start_mmdd) FROM md_item_reorder x WHERE x.item_id = r.item_id AND x.warehouse_id = r.warehouse_id AND x.deleted_at IS NULL AND x.start_mmdd <= ${mmdd}),
                                      (SELECT max(x.start_mmdd) FROM md_item_reorder x WHERE x.item_id = r.item_id AND x.warehouse_id = r.warehouse_id AND x.deleted_at IS NULL))
        ORDER BY i.code, w.code`.execute(db)).rows.filter((r) => d(r.qty).lt(d(r.min_qty)));

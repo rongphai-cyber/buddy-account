@@ -7,6 +7,7 @@ import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { openDescribe, type OpenParty } from './SettleDocs';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
@@ -44,6 +45,7 @@ export function BillListPage({ path, appointments }: { path: string; appointment
     try { await api.post(`/api/v1/${K.path}/${r.id}/appointment`, { date: date || null }); toast(`บันทึกวันนัด${rp(K)}เงินของ ${r.doc_no} แล้ว`); qc.invalidateQueries({ queryKey: [K.path] }); } catch (e) { setErr(e); }
   };
   const total = list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r.net_amount)), d(0));
+  const showBr = useShowBranchCol();
   return (
     <div className="page" data-tone="finance">
       <PageHead eyebrow={`การเงิน › ${K.module === 'AR' ? 'ลูกหนี้' : 'เจ้าหนี้'}`} title={appointments ? `บันทึกวันนัด${rp(K)}ชำระเงิน` : K.label}
@@ -57,20 +59,20 @@ export function BillListPage({ path, appointments }: { path: string; appointment
         <span className="muted small">{list.data ? `${list.data.rows.length.toLocaleString()} จาก ${list.data.total.toLocaleString()} ใบ` : ''}</span>
       </div>
       <ErrorBox error={err ?? list.error} />
-      <div className="table-wrap">
+      <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr><th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 100 }}>รหัส</th><th>{partyWord(K)}</th><th className="r" style={{ width: 60 }}>บิล</th><th className="r" style={{ width: 140 }}>จำนวนเงินรวม</th><th style={{ width: appointments ? 170 : 120 }}>วันนัด{rp(K)}เงิน</th>{!appointments && <th style={{ width: 80 }}>สถานะ</th>}</tr></thead>
+          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 100 }}>รหัส</th><th>{partyWord(K)}</th><th className="r" style={{ width: 60 }}>บิล</th><th className="r" style={{ width: 140 }}>จำนวนเงินรวม</th><th style={{ width: appointments ? 170 : 120 }}>วันนัด{rp(K)}เงิน</th>{!appointments && <th style={{ width: 80 }}>สถานะ</th>}</tr></thead>
           <tbody>
             {list.data?.rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={(e) => { if (!(e.target as HTMLElement).closest('.date-in')) nav(`${K.route}/${r.id}`); }} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).tagName === 'TR' && nav(`${K.route}/${r.id}`)}>
-                <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="mono">{r.party_code}</td><td>{r.party_name}</td><td className="r">{r.bills}</td><td className="r"><Money v={r.net_amount} /></td>
+                {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="mono">{r.party_code}</td><td>{r.party_name}</td><td className="r">{r.bills}</td><td className="r"><Money v={r.net_amount} /></td>
                 <td>{appointments ? <DateInput value={r.appointment_date ? String(r.appointment_date).slice(0, 10) : ''} disabled={!canAppoint} onChange={(v) => { if (v !== (r.appointment_date ? String(r.appointment_date).slice(0, 10) : '')) appoint(r, v); }} /> : <DateText v={r.appointment_date} />}</td>
                 {!appointments && <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ปกติ</Pill>}</td>}
               </tr>
             ))}
-            {list.data && !list.data.rows.length && <tr><td colSpan={8} className="empty">ไม่มีใบวางบิลในช่วงนี้</td></tr>}
+            {list.data && !list.data.rows.length && <tr><td colSpan={(8) + (showBr ? 1 : 0)} className="empty">ไม่มีใบวางบิลในช่วงนี้</td></tr>}
           </tbody>
-          {!!list.data?.rows.length && <tfoot><tr><td colSpan={5} className="r">รวม (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={total?.toFixed(2)} /></b></td><td colSpan={2} /></tr></tfoot>}
+          {!!list.data?.rows.length && <tfoot><tr><td colSpan={(5) + (showBr ? 1 : 0)} className="r">รวม (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={total?.toFixed(2)} /></b></td><td colSpan={2} /></tr></tfoot>}
         </table>
       </div>
       <KeyHints keys={appointments ? [['คลิกวันที่', 'แก้วันนัด'], ['คลิกแถว', 'เปิดใบวางบิล']] : [['Ins', `เพิ่ม${K.label}`], ['คลิก/Enter', 'เปิดเอกสาร']]} />

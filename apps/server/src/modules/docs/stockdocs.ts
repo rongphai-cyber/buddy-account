@@ -156,10 +156,10 @@ export function stockDocRoutes(app: FastifyInstance, db: Db) {
       const a = requireCompany(req);
       const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), status: z.enum(['N', 'C', 'all']).default('all'), type_id: uuid.optional(), limit: z.coerce.number().int().min(1).max(1000).default(300) }), req.query);
       const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
-      const rows = (await sql`SELECT h.id, h.doc_no, h.doc_date, h.remark, h.net_amount, h.doc_status, w.code AS warehouse_code, tw.code AS to_warehouse_code, (SELECT t.code FROM md_doc_type t WHERE t.id = h.doc_type_id) AS type_code,
+      const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.remark, h.net_amount, h.doc_status, w.code AS warehouse_code, tw.code AS to_warehouse_code, (SELECT t.code FROM md_doc_type t WHERE t.id = h.doc_type_id) AS type_code,
           (SELECT count(*) FROM doc_line l WHERE l.header_id = h.id AND l.deleted_at IS NULL AND (h.doc_class <> 'RL' OR l.stock_effect = -1))::int AS lines
           FROM doc_header h LEFT JOIN md_warehouse w ON w.id = h.warehouse_id LEFT JOIN md_warehouse tw ON tw.id = h.to_warehouse_id
-         WHERE h.company_id = ${a.companyId} AND h.doc_class = ${K.cls} AND h.deleted_at IS NULL ${q.from ? sql`AND h.doc_date >= ${q.from}` : sql``} ${q.to ? sql`AND h.doc_date <= ${q.to}` : sql``}
+         WHERE h.company_id = ${a.companyId} AND h.doc_class = ${K.cls} AND h.deleted_at IS NULL ${a.branchId ? sql`AND h.branch_id = ${a.branchId}` : sql``} ${q.from ? sql`AND h.doc_date >= ${q.from}` : sql``} ${q.to ? sql`AND h.doc_date <= ${q.to}` : sql``}
            ${q.status !== 'all' ? sql`AND h.doc_status = ${q.status}` : sql``} ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})` : sql``} ${q.type_id ? sql`AND h.doc_type_id = ${q.type_id}` : sql``}
          ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT ${q.limit}`.execute(db)).rows;
       return { rows };

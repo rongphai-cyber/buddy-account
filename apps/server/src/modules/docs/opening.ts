@@ -101,10 +101,10 @@ export function openingRoutes(app: FastifyInstance, db: Db) {
       const a = requireCompany(req);
       const q = parse(z.object({ q: z.string().optional(), status: z.enum(['N', 'C', 'all']).default('all'), limit: z.coerce.number().int().min(1).max(2000).default(500) }), req.query);
       const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
-      const rows = (await sql`SELECT h.id, h.doc_no, h.doc_date, h.due_date, h.ref_no, h.party_name, p.code AS party_code, h.net_amount, h.vat_basis, h.doc_status,
+      const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.due_date, h.ref_no, h.party_name, p.code AS party_code, h.net_amount, h.vat_basis, h.doc_status,
           (SELECT o.outstanding FROM ${sql.table(view)} o WHERE o.header_id = h.id) AS outstanding
           FROM doc_header h LEFT JOIN ${sql.table(partyTbl)} p ON p.id = h.${sql.ref(partyCol)}
-         WHERE h.company_id = ${a.companyId} AND h.doc_class = ${K.cls} AND h.is_opening AND h.deleted_at IS NULL
+         WHERE h.company_id = ${a.companyId} AND h.doc_class = ${K.cls} AND h.is_opening AND h.deleted_at IS NULL ${a.branchId ? sql`AND h.branch_id = ${a.branchId}` : sql``}
            ${q.status !== 'all' ? sql`AND h.doc_status = ${q.status}` : sql``} ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.party_name ILIKE ${like} OR p.code ILIKE ${like})` : sql``}
          ORDER BY p.code, h.doc_date, h.doc_no LIMIT ${q.limit}`.execute(db)).rows as Array<{ outstanding: string | null; doc_status: string }>;
       const start = await startDate(db, a.companyId);

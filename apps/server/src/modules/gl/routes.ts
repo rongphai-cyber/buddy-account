@@ -221,10 +221,12 @@ export function glRoutes(app: FastifyInstance, db: Db) {
       source: z.enum(['all', 'gl', 'other']).default('all'), status: z.enum(['all', 'N', 'C']).default('all'),
       limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0),
     }), req.query);
-    let s = db.selectFrom('gl_journal as j').innerJoin('gl_journal_book as b', 'b.id', 'j.journal_book_id').leftJoin('doc_header as h', 'h.id', 'j.source_header_id')
+    let s = db.selectFrom('gl_journal as j').innerJoin('gl_journal_book as b', 'b.id', 'j.journal_book_id').leftJoin('doc_header as h', 'h.id', 'j.source_header_id').leftJoin('sys_branch as br', 'br.id', 'j.branch_id')
       .select(['j.id', 'j.voucher_no', 'j.voucher_date', 'j.description', 'j.reference', 'j.total_debit', 'j.doc_status', 'j.source_module', 'j.source_header_id',
-        'b.code as book_code', 'b.prefix as book_prefix', 'h.doc_no as source_doc_no', 'h.doc_class as source_doc_class'])
+        'b.code as book_code', 'b.prefix as book_prefix', 'h.doc_no as source_doc_no', 'h.doc_class as source_doc_class', 'br.code as branch_code'])
       .where('j.company_id', '=', a.companyId).where('j.deleted_at', 'is', null);
+    // สาขาที่เลือกที่แถบบน (ข้อกำหนดเจ้าของ 01/11/2569) — "ทุกสาขา" ไม่กรอง
+    if (a.branchId) s = s.where('j.branch_id', '=', a.branchId);
     if (q.book_id) s = s.where('j.journal_book_id', '=', q.book_id);
     if (q.from) s = s.where('j.voucher_date', '>=', q.from);
     if (q.to) s = s.where('j.voucher_date', '<=', q.to);

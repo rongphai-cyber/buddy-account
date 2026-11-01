@@ -148,9 +148,9 @@ async function saveVr(db: Db, a: Ctx, id: string | null, b: z.infer<typeof vrBod
 export function pettyCashRoutes(app: FastifyInstance, db: Db) {
   const listQ = z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), status: z.enum(['N', 'C', 'all']).default('all'), type_id: uuid.optional(), open: z.coerce.boolean().optional(), vr_id: uuid.optional(),
     limit: z.coerce.number().int().min(1).max(1000).default(300) });
-  const where = (companyId: string, cls: string, q: z.infer<typeof listQ>) => {
+  const where = (companyId: string, cls: string, q: z.infer<typeof listQ>, branchId: string | null = null) => {
     const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
-    return sql.join([sql`h.company_id = ${companyId}`, sql`h.doc_class = ${cls}`, sql`h.deleted_at IS NULL`,
+    return sql.join([sql`h.company_id = ${companyId}`, sql`h.doc_class = ${cls}`, sql`h.deleted_at IS NULL`, ...(branchId ? [sql`h.branch_id = ${branchId}`] : []),
       ...(q.from ? [sql`h.doc_date >= ${q.from}`] : []), ...(q.to ? [sql`h.doc_date <= ${q.to}`] : []), ...(q.status !== 'all' ? [sql`h.doc_status = ${q.status}`] : []), ...(q.type_id ? [sql`h.doc_type_id = ${q.type_id}`] : []),
       ...(like ? [sql`(h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})`] : [])], sql` AND `);
   };
@@ -159,9 +159,9 @@ export function pettyCashRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const q = parse(listQ, req.query);
     const own = q.vr_id ? sql`EXISTS (SELECT 1 FROM doc_link l WHERE l.from_header_id = h.id AND l.to_header_id = ${q.vr_id} AND l.link_type = 'REIMBURSE' AND l.deleted_at IS NULL)` : sql`false`;
-    const rows = (await sql`SELECT * FROM (SELECT h.id, h.doc_no, h.doc_date, h.remark, h.net_amount, h.doc_status, ${reimbursedBy('h')} AS vr_no, ${reimbursedId('h')} AS vr_id, ${own} AS own,
+    const rows = (await sql`SELECT * FROM (SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.remark, h.net_amount, h.doc_status, ${reimbursedBy('h')} AS vr_no, ${reimbursedId('h')} AS vr_id, ${own} AS own,
         (SELECT count(*) FROM doc_line l WHERE l.header_id = h.id AND l.deleted_at IS NULL)::int AS lines
-        FROM doc_header h WHERE ${where(a.companyId, 'DP', q)}) x ${q.open ? sql`WHERE x.doc_status <> 'C' AND (x.vr_no IS NULL OR x.own)` : sql``}
+        FROM doc_header h WHERE ${where(a.companyId, 'DP', q, a.branchId)}) x ${q.open ? sql`WHERE x.doc_status <> 'C' AND (x.vr_no IS NULL OR x.own)` : sql``}
         ORDER BY x.doc_date DESC, x.doc_no DESC LIMIT ${q.limit}`.execute(db)).rows;
     return { rows };
   });
@@ -194,9 +194,9 @@ export function pettyCashRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/petty-reimbursements', async (req) => {
     const a = requireCompany(req);
     const q = parse(listQ, req.query);
-    const rows = (await sql`SELECT h.id, h.doc_no, h.doc_date, h.remark, h.net_amount, h.cash_amount, h.cheque_amount, h.doc_status,
+    const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.remark, h.net_amount, h.cash_amount, h.cheque_amount, h.doc_status,
         (SELECT count(*) FROM doc_link l WHERE l.to_header_id = h.id AND l.link_type = 'REIMBURSE' AND l.deleted_at IS NULL)::int AS dps
-        FROM doc_header h WHERE ${where(a.companyId, 'VR', q)} ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT ${q.limit}`.execute(db)).rows;
+        FROM doc_header h WHERE ${where(a.companyId, 'VR', q, a.branchId)} ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT ${q.limit}`.execute(db)).rows;
     return { rows };
   });
   app.get('/api/v1/petty-reimbursements/:id', async (req) => {

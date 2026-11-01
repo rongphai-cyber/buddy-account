@@ -7,6 +7,7 @@ import { api } from '../../api';
 import { WhtCert } from './WhtCert';
 import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
@@ -44,6 +45,7 @@ export function BankDocListPage({ cls }: { cls: BankKind['cls'] }) {
   const tt = useTypeTabs(cls);
   const list = useQuery({ queryKey: [K.path, q, bank, tt.tab], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, ...(bank ? { bank_account_id: bank } : {}) }), placeholderData: (p) => p });
   useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, K.route]);
+  const showBr = useShowBranchCol();
   return (
     <div className="page" data-tone="finance">
       <PageHead eyebrow="ธนาคาร" title={K.label} lead={LEAD[cls]} actions={can('add') && <button className={cx('primary', tt.color && 'book-btn')} style={bookStyle(tt.color)} onClick={() => nav(tt.newUrl(`${K.route}/new`))}>+ เพิ่มรายการ {tt.cur ? `${tt.cur.code} ` : ''}<kbd>Ins</kbd></button>} />
@@ -55,17 +57,17 @@ export function BankDocListPage({ cls }: { cls: BankKind['cls'] }) {
         <button onClick={() => nav('/fi/bank/book')}>สมุดเงินฝาก</button>
       </div>
       <ErrorBox error={list.error} />
-      <div className="table-wrap">
+      <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr><th style={{ width: 140 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 220 }}>{cls === 'BT' ? 'โอนจาก → เข้า' : 'บัญชีเงินฝาก'}</th><th>หมายเหตุ</th><th className="r" style={{ width: 140 }}>จำนวนเงิน</th><th style={{ width: 130 }}>ใบสำคัญ</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 140 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 220 }}>{cls === 'BT' ? 'โอนจาก → เข้า' : 'บัญชีเงินฝาก'}</th><th>หมายเหตุ</th><th className="r" style={{ width: 140 }}>จำนวนเงิน</th><th style={{ width: 130 }}>ใบสำคัญ</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
           <tbody>
             {list.data?.rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
-                <td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td>{r.bank_code} {cls === 'BT' ? `→ ${r.to_bank_code}` : r.bank_name}</td><td>{r.remark}</td>
+                {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td>{r.bank_code} {cls === 'BT' ? `→ ${r.to_bank_code}` : r.bank_name}</td><td>{r.remark}</td>
                 <td className="r"><Money v={r.amount} /></td><td><DocLink id={r.journal_id} no={r.voucher_no} cls="GL" /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ลงบัญชีแล้ว</Pill>}</td>
               </tr>
             ))}
-            {list.data && !list.data.rows.length && <tr><td colSpan={7} className="empty">ยังไม่มีรายการ — กด Ins เพื่อเพิ่ม</td></tr>}
+            {list.data && !list.data.rows.length && <tr><td colSpan={(7) + (showBr ? 1 : 0)} className="empty">ยังไม่มีรายการ — กด Ins เพื่อเพิ่ม</td></tr>}
           </tbody>
         </table>
       </div>

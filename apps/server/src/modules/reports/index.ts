@@ -31,6 +31,8 @@ export class P {
   usedBranch = false;
   /** สาขาที่เลือกที่แถบบน (ข้อกำหนดเจ้าของ 01/11/2569 — รายงานแยกสำนักงานใหญ่/แต่ละสาขา) · "ทุกสาขา" = ไม่กรอง */
   branch(col: RawBuilder<unknown>) { this.usedBranch = true; return this.branchId ? sql`AND ${col} = ${this.branchId}::uuid` : sql``; }
+  /** คลังสินค้า: คลังที่ไม่ได้ผูกสาขานับเป็นของสำนักงานใหญ่ */
+  whBranch(col: RawBuilder<unknown>) { this.usedBranch = true; return !this.branchId ? sql`` : this.isHq ? sql`AND (${col} = ${this.branchId}::uuid OR ${col} IS NULL)` : sql`AND ${col} = ${this.branchId}::uuid`; }
   /** วันที่ตามระบบปีของบริษัท (พ.ศ.) สำหรับหัวรายงาน */
   fd(iso: string | null) { return iso ? formatDate(iso, this.ys) : ''; }
   str(k: string) { const x = this.v[k]; return typeof x === 'string' && x.trim() ? x.trim() : null; }

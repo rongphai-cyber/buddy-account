@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { DiscountInput } from '../../components/DiscountInput';
 import { useDocEdit } from '../../components/DocEdit';
@@ -28,6 +29,7 @@ export function OpeningListPage({ kind }: { kind: Kind }) {
   const [q, setQ] = useState('');
   const list = useQuery({ queryKey: [K.api, q], queryFn: () => api.get<{ rows: Row[]; total: string; start_date: string | null }>(`/api/v1/${K.api}`, { q }), placeholderData: (p) => p });
   useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, []);
+  const showBr = useShowBranchCol();
   return (
     <div className="page" data-tone="finance">
       <PageHead eyebrow={`การเงิน › ${kind === 'ar' ? 'ลูกหนี้' : 'เจ้าหนี้'}`} title={`บันทึกรายการ${K.label}`}
@@ -35,19 +37,19 @@ export function OpeningListPage({ kind }: { kind: Kind }) {
         actions={can('add') && <button className="primary" onClick={() => nav(`${K.route}/new`)}>+ เพิ่มรายการ <kbd>Ins</kbd></button>} />
       <div className="toolbar"><input type="search" autoFocus placeholder={`ค้นหาเลขที่ หรือ${K.party}`} value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" /></div>
       <ErrorBox error={list.error} />
-      <div className="table-wrap">
+      <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr><th style={{ width: 100 }}>รหัส</th><th>{K.party}</th><th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 110 }}>ครบกำหนด</th>{kind === 'ap' && <th style={{ width: 120 }}>เลขที่บิล</th>}<th className="r" style={{ width: 140 }}>จำนวนเงินรวม</th><th className="r" style={{ width: 140 }}>ค้างชำระ</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 100 }}>รหัส</th><th>{K.party}</th><th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 110 }}>ครบกำหนด</th>{kind === 'ap' && <th style={{ width: 120 }}>เลขที่บิล</th>}<th className="r" style={{ width: 140 }}>จำนวนเงินรวม</th><th className="r" style={{ width: 140 }}>ค้างชำระ</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
           <tbody>
             {list.data?.rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
-                <td className="mono">{r.party_code}</td><td>{r.party_name}</td><td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td><DateText v={r.due_date} /></td>{kind === 'ap' && <td className="mono">{r.ref_no}</td>}
+                {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.party_code}</td><td>{r.party_name}</td><td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td><DateText v={r.due_date} /></td>{kind === 'ap' && <td className="mono">{r.ref_no}</td>}
                 <td className="r"><Money v={r.net_amount} /></td><td className="r"><Money v={r.outstanding} blankZero /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : r.vat_basis === '2' ? <Pill tone="c">ภาษีเกณฑ์เงินสด</Pill> : <Pill tone="n">ปกติ</Pill>}</td>
               </tr>
             ))}
-            {list.data && !list.data.rows.length && <tr><td colSpan={9} className="empty">ยังไม่มีรายการยกมา — กด Ins เพื่อเพิ่ม</td></tr>}
+            {list.data && !list.data.rows.length && <tr><td colSpan={(9) + (showBr ? 1 : 0)} className="empty">ยังไม่มีรายการยกมา — กด Ins เพื่อเพิ่ม</td></tr>}
           </tbody>
-          {!!list.data?.rows.length && <tfoot><tr><td colSpan={kind === 'ap' ? 7 : 6} className="r">ค้างชำระรวม (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={list.data.total} /></b></td><td /></tr></tfoot>}
+          {!!list.data?.rows.length && <tfoot><tr><td colSpan={(kind === 'ap' ? 7 : 6) + (showBr ? 1 : 0)} className="r">ค้างชำระรวม (ไม่รวมที่ยกเลิก)</td><td className="r"><b><Money v={list.data.total} /></b></td><td /></tr></tfoot>}
         </table>
       </div>
       <KeyHints keys={[['Ins', 'เพิ่มรายการ'], ['คลิก/Enter', 'เปิดรายการ']]} />

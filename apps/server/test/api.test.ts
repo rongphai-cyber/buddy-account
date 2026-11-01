@@ -1929,7 +1929,18 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId, branch_id: hq });
     r = await docsIn('6.3', { period: '2027-07' });
     expect(r.docs).toContain(iv2.doc_no); expect(r.docs).not.toContain(iv.doc_no);
+    // รายการเอกสาร + ลูกหนี้คงค้าง + วิเคราะห์การขาย ตามสาขาที่เลือก (ข้อกำหนดเจ้าของ 01/11/2569 รอบ 2)
+    const listNos = async () => (await call('GET', '/api/v1/sales-invoices?q=&limit=500')).body.rows.map((x: { doc_no: string; branch_code?: string }) => `${x.doc_no}:${x.branch_code}`) as string[];
+    const rpt = async (code: string, params: Record<string, unknown>) => JSON.stringify((await call('POST', `/api/v1/rpt/${code}/run`, { params: { customer_from: 'C-BR', customer_to: 'C-BR', ...params } })).body);
+    expect(await listNos()).toContain(`${iv2.doc_no}:00000`); expect((await listNos()).some((x) => x.startsWith(iv.doc_no))).toBe(false);
+    expect(await rpt('1.A.2', { as_of: '2027-07-31' })).toContain(iv2.doc_no); expect(await rpt('1.A.2', { as_of: '2027-07-31' })).not.toContain(iv.doc_no);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId, branch_id: b2 });
+    expect(await listNos()).toEqual(expect.arrayContaining([`${iv.doc_no}:BR2`])); expect((await listNos()).some((x) => x.startsWith(iv2.doc_no))).toBe(false);
+    const ar = await rpt('1.A.2', { as_of: '2027-07-31' }); expect(ar).toContain(iv.doc_no); expect(ar).not.toContain(iv2.doc_no); expect(ar).toMatch(/สาขา BR2/);
+    const an = await rpt('7.1.1', { date_from: '2027-07-01', date_to: '2027-07-31' }); expect(an).toContain(iv.doc_no); expect(an).not.toContain(iv2.doc_no);
+    expect(await rpt('1.F', {})).toMatch(/ยังไม่แยกตามสาขา/);   // ทะเบียนลูกค้าไม่ใช่ยอดของสาขา — หัวรายงานบอกชัด
     await call('POST', '/api/v1/auth/select', { company_id: companyId, branch_id: null });
+    expect(await listNos()).toEqual(expect.arrayContaining([`${iv.doc_no}:BR2`, `${iv2.doc_no}:00000`]));
     r = await docsIn('6.3', { period: '2027-07' });
     expect(r.docs).toEqual(expect.arrayContaining([iv.doc_no, iv2.doc_no])); expect(r.subtitle).toMatch(/ทุกสาขา/);
     for (const x of [iv.id, iv2.id]) expect((await call('POST', `/api/v1/sales-invoices/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);

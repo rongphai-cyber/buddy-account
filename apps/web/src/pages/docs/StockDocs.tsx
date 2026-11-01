@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
@@ -36,6 +37,7 @@ export function StockDocListPage({ cls }: { cls: StockKind['cls'] }) {
   const tt = useTypeTabs(cls);
   const list = useQuery({ queryKey: [K.path, q, tt.tab], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { q, type_id: tt.tab || undefined }), placeholderData: (p) => p });
   useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, K.route]);
+  const showBr = useShowBranchCol();
   return (
     <div className="page" data-tone="inventory">
       <PageHead eyebrow="สินค้า › รายการประจำวันสินค้า" title={K.label} lead={LEAD[cls]}
@@ -44,17 +46,17 @@ export function StockDocListPage({ cls }: { cls: StockKind['cls'] }) {
       {tt.tabs()}
       <div className="toolbar"><input type="search" autoFocus placeholder="ค้นหาเลขที่ หรือหมายเหตุ" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" /></div>
       <ErrorBox error={list.error} />
-      <div className="table-wrap">
+      <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr><th style={{ width: 140 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th>{cls === 'RL' && <th style={{ width: 150 }}>จากคลัง → คลัง</th>}<th>หมายเหตุ</th><th className="r" style={{ width: 80 }}>รายการ</th><th className="r" style={{ width: 140 }}>มูลค่าต้นทุน</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 140 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th>{cls === 'RL' && <th style={{ width: 150 }}>จากคลัง → คลัง</th>}<th>หมายเหตุ</th><th className="r" style={{ width: 80 }}>รายการ</th><th className="r" style={{ width: 140 }}>มูลค่าต้นทุน</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
           <tbody>
             {list.data?.rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
-                <td className="mono" title={r.type_code ? `ประเภทเอกสาร ${r.type_code}` : undefined}>{r.doc_no}</td><td><DateText v={r.doc_date} /></td>{cls === 'RL' && <td className="mono">{r.warehouse_code} → {r.to_warehouse_code}</td>}<td>{r.remark}</td>
+                {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono" title={r.type_code ? `ประเภทเอกสาร ${r.type_code}` : undefined}>{r.doc_no}</td><td><DateText v={r.doc_date} /></td>{cls === 'RL' && <td className="mono">{r.warehouse_code} → {r.to_warehouse_code}</td>}<td>{r.remark}</td>
                 <td className="r">{r.lines}</td><td className="r"><Money v={r.net_amount} /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ปกติ</Pill>}</td>
               </tr>
             ))}
-            {list.data && !list.data.rows.length && <tr><td colSpan={7} className="empty">ยังไม่มีเอกสาร — กด Ins เพื่อเพิ่ม</td></tr>}
+            {list.data && !list.data.rows.length && <tr><td colSpan={(7) + (showBr ? 1 : 0)} className="empty">ยังไม่มีเอกสาร — กด Ins เพื่อเพิ่ม</td></tr>}
           </tbody>
         </table>
       </div>

@@ -708,6 +708,35 @@
 ]
 },
 {
+"th": "สาขา",
+"n": 26,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "ทั้งหมด",
 "n": 25,
 "files": [
@@ -1157,25 +1186,6 @@
 "apps/server/src/modules/gl/reports.ts",
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "สาขา",
-"n": 16,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -3804,6 +3814,16 @@
 ]
 },
 {
+"th": "ทุกสาขา",
+"n": 4,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/components/BranchCol.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/reports/index.ts"
+]
+},
+{
 "th": "บัญชีธนาคาร",
 "n": 4,
 "files": [
@@ -4622,15 +4642,6 @@
 "files": [
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/Company.tsx"
-]
-},
-{
-"th": "ทุกสาขา",
-"n": 3,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/server/src/modules/reports/index.ts"
 ]
 },
 {
@@ -40954,6 +40965,13 @@
 ]
 },
 {
+"th": "— ดูทุกสาขาให้เลือก \"ทุกสาขา\" ที่แถบด้านบน",
+"n": 1,
+"files": [
+"apps/web/src/components/BranchCol.tsx"
+]
+},
+{
 "th": "— ตรวจผังบัญชี (หมวดบัญชี) ที่ เริ่มระบบ › ผังบัญชี",
 "n": 1,
 "files": [
@@ -41553,6 +41571,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/LkSelect.tsx"
+]
+},
+{
+"th": "🏢 แสดงเฉพาะสาขา",
+"n": 1,
+"files": [
+"apps/web/src/components/BranchCol.tsx"
 ]
 },
 {

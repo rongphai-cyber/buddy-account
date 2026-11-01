@@ -23,7 +23,7 @@ async function lines(db: Db, a: Ctx, p: P, sales: boolean) {
       LEFT JOIN md_customer c ON c.id = h.customer_id LEFT JOIN md_supplier s ON s.id = h.supplier_id LEFT JOIN md_salesperson sp ON sp.id = h.salesperson_id
      WHERE h.company_id = ${a.companyId} AND h.deleted_at IS NULL AND h.doc_status <> 'C' AND h.module <> 'IC' AND NOT h.is_opening AND l.deleted_at IS NULL AND l.line_kind IN ('I', 'G')
        AND h.doc_class IN (${sql.join(sales ? ['IV', 'HS', 'CN'] : ['RR', 'HP', 'DN'])})
-       ${p.dateRange('date', sql`h.doc_date`)} ${p.range('item', sql`i.code`)} ${p.range(sales ? 'customer' : 'supplier', party)} ${sales ? p.range('salesperson', sql`sp.code`) : sql``}
+       ${p.dateRange('date', sql`h.doc_date`)} ${p.range('item', sql`i.code`)} ${p.range(sales ? 'customer' : 'supplier', party)} ${sales ? p.range('salesperson', sql`sp.code`) : sql``} ${p.branch(sql`h.branch_id`)}
      ORDER BY h.doc_date, h.doc_no, l.line_no LIMIT 100001`.execute(db)).rows;
 }
 

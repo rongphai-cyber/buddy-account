@@ -91,13 +91,13 @@ export function stockOpeningRoutes(app: FastifyInstance, db: Db) {
     const q = parse(z.object({ q: z.string().optional(), limit: z.coerce.number().int().min(1).max(2000).default(500) }), req.query);
     const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
     // ค้นด้วยรหัส/ชื่อสินค้าได้ด้วย (ใบยกมาจากการย้ายข้อมูลมีหลายพันบรรทัด)
-    const rows = (await sql`SELECT h.id, h.doc_no, h.doc_date, h.remark, h.net_amount, h.doc_status,
+    const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.remark, h.net_amount, h.doc_status,
           (SELECT count(*) FROM doc_line l WHERE l.header_id = h.id AND l.deleted_at IS NULL)::int AS lines,
           (SELECT coalesce(sum(l.base_qty), 0) FROM doc_line l WHERE l.header_id = h.id AND l.deleted_at IS NULL) AS qty
-        FROM doc_header h WHERE h.company_id = ${a.companyId} AND h.doc_class = 'OS' AND h.is_opening AND h.deleted_at IS NULL
+        FROM doc_header h WHERE h.company_id = ${a.companyId} AND h.doc_class = 'OS' AND h.is_opening AND h.deleted_at IS NULL ${a.branchId ? sql`AND h.branch_id = ${a.branchId}` : sql``}
           ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like} OR EXISTS (SELECT 1 FROM doc_line l JOIN md_item i ON i.id = l.item_id WHERE l.header_id = h.id AND l.deleted_at IS NULL AND (i.code ILIKE ${like} OR i.name_th ILIKE ${like})))` : sql``}
         ORDER BY h.doc_date, h.doc_no LIMIT ${q.limit}`.execute(db)).rows;
-    const tot = (await sql<{ v: string }>`SELECT coalesce(sum(h.net_amount), 0) AS v FROM doc_header h WHERE h.company_id = ${a.companyId} AND h.doc_class = 'OS' AND h.is_opening AND h.doc_status <> 'C' AND h.deleted_at IS NULL`.execute(db)).rows[0]!.v;
+    const tot = (await sql<{ v: string }>`SELECT coalesce(sum(h.net_amount), 0) AS v FROM doc_header h WHERE h.company_id = ${a.companyId} AND h.doc_class = 'OS' AND h.is_opening AND h.doc_status <> 'C' AND h.deleted_at IS NULL ${a.branchId ? sql`AND h.branch_id = ${a.branchId}` : sql``}`.execute(db)).rows[0]!.v;
     return { rows, total: tot, start_date: await startDate(db, a.companyId) };
   });
   app.get('/api/v1/stock-opening/:id', async (req) => {
