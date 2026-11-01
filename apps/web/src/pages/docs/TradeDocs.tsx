@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computeDoc, d, dueDate, fmt, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
+import { WhtCert } from './WhtCert';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { useDocNo } from '../../components/DocNo';
@@ -277,7 +278,7 @@ export function TradeFormPage({ path }: { path: string }) {
     const x = await api.get<Record<string, string | null>>(`${partyEndpoint(K)}/${p.id}`);
     if (K.cls === 'HP') setWhtDef({ form: wht50FormOf(x.wht_form, x.tax_id) === '3' ? 'S03' : 'S53', rate: x.wht_rate && !d(x.wht_rate).isZero() ? d(x.wht_rate).toString() : '3' });
     set({ party: p, credit_days: x.credit_days === null || x.credit_days === undefined ? '' : String(x.credit_days), discount_text: x.discount_text ?? '', party_tax_branch_no: x.tax_branch_no || '00000',
-      ...(K.party === 'customer' ? { salesperson_id: x.salesperson_id ?? '', sales_area_code: x.sales_area_code ?? '', ship_via_code: x.ship_via_code ?? '', price_level: x.price_level && x.price_level !== '0' ? x.price_level : '1' }
+      ...(K.party === 'customer' ? { salesperson_id: x.salesperson_id ?? '', sales_area_code: x.sales_area_code ?? '', ship_via_code: x.ship_via_code ?? '', price_level: x.price_level && x.price_level !== '0' ? x.price_level : '1', ...(x.price_type ? { price_type: x.price_type as Head['price_type'] } : {}) }
         : { ship_via_code: x.ship_via_code ?? '', ...(x.price_type ? { price_type: x.price_type as Head['price_type'] } : {}), ...(x.vat_rate ? { vat_rate: num(x.vat_rate) } : {}) }) });
   };
   const pickItem = (k: number, it: ItemHit | null) => {
@@ -511,6 +512,7 @@ export function TradeFormPage({ path }: { path: string }) {
             <tr className="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td className="r"><Money v={calc.net_amount} /></td></tr>
             {K.cls === 'HP' && <tr><td><a href="#wht" onClick={(e) => { e.preventDefault(); setTab('wht'); }}>หักภาษี ณ ที่จ่าย</a></td><td className="r"><Money v={whtTotal.toFixed(2)} blankZero /></td></tr>}
             {K.cls === 'HS' && <tr><td>ภาษีถูกหัก ณ ที่จ่าย</td><td className="r"><MoneyInput value={whtAmt} disabled={readOnly} onChange={(v) => { setWhtAmt(v); setDirty(true); }} aria-label="ภาษีถูกหัก ณ ที่จ่าย" style={{ width: 130 }} /></td></tr>}
+            {K.cls === 'HS' && id && <tr><td colSpan={2} className="r"><WhtCert docId={id} wht={String(cur.data?.wht_amount ?? '')} certNo={cur.data?.wht_cert_no as string | null} certDate={cur.data?.wht_cert_date as string | null} cancelled={cur.data?.doc_status === 'C'} onSaved={() => cur.refetch()} /></td></tr>}
             {K.payments && !whtTotal.isZero() && <tr><td>ยอด{K.module === 'AR' ? 'รับ' : 'จ่าย'}จริง</td><td className="r"><b><Money v={d(calc.net_amount).minus(whtTotal).toFixed(2)} /></b></td></tr>}
             {calc.errors.length > 0 && <tr><td colSpan={2} className="bad small">{calc.errors[0]}</td></tr>}
           </tbody></table>}

@@ -1837,6 +1837,7 @@ CREATE TABLE md_customer (
   payment_terms varchar(60),
   price_level char(1),
   discount_text varchar(20),
+  price_type char(1),
   credit_limit numeric(18,2),
   ar_account_id uuid,
   payer_id uuid,
@@ -1884,6 +1885,7 @@ COMMENT ON COLUMN md_customer.credit_days IS 'เครดิต (วัน) [Ex
 COMMENT ON COLUMN md_customer.payment_terms IS 'เงื่อนไขการชำระ [Express: ARMAS.PAYCOND]';
 COMMENT ON COLUMN md_customer.price_level IS 'ตารางราคาที่ใช้ 0–5 [Express: ARMAS.TABPR]';
 COMMENT ON COLUMN md_customer.discount_text IS 'ส่วนลด (เช่น 5%+2) [Express: ARMAS.DISC]';
+COMMENT ON COLUMN md_customer.price_type IS 'ประเภทราคาเริ่มต้นในเอกสารขาย 0=ไม่มี VAT 1=รวม VAT 2=แยก VAT (ใหม่ — คู่กับผู้จำหน่าย) ว่าง = ตามประเภทเอกสาร';
 COMMENT ON COLUMN md_customer.credit_limit IS 'วงเงินอนุมัติ [Express: ARMAS.CRLINE]';
 COMMENT ON COLUMN md_customer.ar_account_id IS 'บัญชีลูกหนี้ (ชั้นที่ 2) [Express: ARMAS.ACCNUM]';
 COMMENT ON COLUMN md_customer.payer_id IS 'ผู้ชำระเงินแทน [Express: ARMAS.PAYER]';
@@ -2538,6 +2540,8 @@ CREATE TABLE doc_header (
   vat_amount numeric(18,2) DEFAULT 0 NOT NULL,
   net_amount numeric(18,2) DEFAULT 0 NOT NULL,
   wht_amount numeric(18,2) DEFAULT 0 NOT NULL,
+  wht_cert_no varchar(30),
+  wht_cert_date date,
   cash_amount numeric(18,2) DEFAULT 0 NOT NULL,
   cheque_amount numeric(18,2) DEFAULT 0 NOT NULL,
   interest_amount numeric(18,2) DEFAULT 0 NOT NULL,
@@ -2629,6 +2633,8 @@ COMMENT ON COLUMN doc_header.vat_rate IS 'อัตรา VAT [Express: VATRAT]'
 COMMENT ON COLUMN doc_header.vat_amount IS 'ภาษีมูลค่าเพิ่ม [Express: VATAMT]';
 COMMENT ON COLUMN doc_header.net_amount IS 'ยอดสุทธิ (รวม VAT) [Express: NETAMT]';
 COMMENT ON COLUMN doc_header.wht_amount IS 'ภาษีหัก ณ ที่จ่าย [Express: TAX]';
+COMMENT ON COLUMN doc_header.wht_cert_no IS 'เลขที่หนังสือรับรอง 50 ทวิ ที่ผู้จ่ายเงินออกให้เรา (ภาษีถูกหัก — ทะเบียนรายงาน 6.8)';
+COMMENT ON COLUMN doc_header.wht_cert_date IS 'วันที่ในหนังสือรับรอง 50 ทวิ ที่ได้รับ';
 COMMENT ON COLUMN doc_header.cash_amount IS 'รับ/จ่ายเป็นเงินสด [Express: CSHRCV / CSHPAY]';
 COMMENT ON COLUMN doc_header.cheque_amount IS 'รับ/จ่ายเป็นเช็ค/อื่น [Express: CHQRCV / CHQPAY]';
 COMMENT ON COLUMN doc_header.interest_amount IS 'ดอกเบี้ยรับ/จ่าย [Express: INTRCV / INTPAY]';

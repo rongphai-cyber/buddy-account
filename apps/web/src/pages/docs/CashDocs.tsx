@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CASH_KINDS, computeDoc, d, dueDate, fmt, settlementTotals, todayIso, wht50FormOf, type CashKind } from '@buddy/core';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
+import { WhtCert } from './WhtCert';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, SearchPick } from '../../components/LkSelect';
 import { BranchPick } from '../../components/BranchPick';
@@ -293,6 +294,7 @@ export function CashFormPage({ path }: { path: string }) {
             <tr className="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td className="r"><Money v={calc.net_amount} /></td></tr>
             <tr><td>หัก {K.whtEntries ? <a href="#wht" onClick={(e) => { e.preventDefault(); setTab('wht'); }}>ภาษีหัก ณ ที่จ่าย</a> : 'ภาษีถูกหัก ณ ที่จ่าย'}</td>
               <td>{K.whtEntries ? <span className="r num" style={{ display: 'block' }}>{fmt(whtAmount)}</span> : <MoneyInput value={h.wht} disabled={ro} onChange={(v) => set({ wht: v })} aria-label="ภาษีถูกหัก ณ ที่จ่าย" />}</td></tr>
+            {K.direction === 'R' && id && <tr><td colSpan={2} className="r"><WhtCert docId={id} wht={String(cur.data?.wht_amount ?? '')} certNo={cur.data?.wht_cert_no as string | null} certDate={cur.data?.wht_cert_date as string | null} cancelled={cur.data?.doc_status === 'C'} onSaved={() => cur.refetch()} /></td></tr>}
             <tr><td>ชำระโดยอื่น ๆ (เช็ค/โอน)</td><td className="r"><Money v={t.other} /></td></tr>
             <tr><td>{rp(K)}เป็นเงินสด</td><td><MoneyInput value={h.cash} disabled={ro} placeholder={fmt(t.cash)} onChange={(v) => set({ cash: v })} aria-label="เงินสด" /></td></tr>
             {calc.errors.length > 0 && <tr><td colSpan={2} className="bad small">{calc.errors[0]}</td></tr>}

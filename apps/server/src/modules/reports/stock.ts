@@ -1,5 +1,5 @@
 import { sql } from 'kysely';
-import { d, type Decimal, type ReportColumn, type ReportRow, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
+import { d, docPath, type Decimal, type ReportColumn, type ReportRow, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
 import { defineReport, type P } from './index.js';
 
 /**
@@ -43,6 +43,35 @@ export function stockReports() {
   defineReport('3.6', chequeReport('P', (p) => sql`AND f.status IN ('00', '02', '05') AND f.cheque_date <= ${p.asOf()}`));
   defineReport('3.7', chequeReport('P', (p) => sql`AND f.status = '10' ${p.dateRange('date', sql`f.pass_date`)}`, { order: 'f.pass_date', dateLabel: 'วันที่ผ่าน' }));
   defineReport('3.A', chequeReport('P', (p) => p.dateRange('date', sql`f.cheque_date`), { order: 'f.cheque_date', dateLabel: 'วันที่ออกเช็ค' }));
+
+  // 3.8 เช็คจ่ายยกเลิก/ยกเลิกการผ่าน (คู่กับ 3.4 เช็ครับคืน — ข้อกำหนดเจ้าของ 01/11/2569)
+  // ยกเลิกเอกสารจ่ายเงิน = เช็คออกจากทะเบียน (ใช้ใบล่าสุดของเลขที่นั้น ไม่นับรุ่นก่อนแก้ไข) · ยกเลิกการผ่าน = ประวัติ 10 → 05
+  defineReport('3.8', async (db, a, p) => {
+    const xs = (await sql<{ kind: string; event_date: string; reason: string | null; cheque_no: string; cheque_date: string; amount: string; party: string | null; account: string | null; doc_no: string | null; doc_class: string | null; header_id: string | null; sup: string | null }>`
+      SELECT * FROM (
+        SELECT DISTINCT ON (f.source_header_id, f.cheque_no) 'C' AS kind, f.deleted_at::date AS event_date, h.cancel_reason AS reason, f.cheque_no, f.cheque_date, f.amount,
+               coalesce(f.payee_name, s.name) AS party, ba.code AS account, h.doc_no, h.doc_class, h.id AS header_id, s.code AS sup
+          FROM fin_cheque f JOIN doc_header h ON h.id = f.source_header_id AND h.doc_status = 'C' LEFT JOIN md_supplier s ON s.id = f.supplier_id LEFT JOIN md_bank_account ba ON ba.id = f.bank_account_id
+         WHERE f.company_id = ${a.companyId} AND f.direction = 'P' AND f.instrument = 'CHEQUE' AND f.deleted_at IS NOT NULL
+         ORDER BY f.source_header_id, f.cheque_no, f.deleted_at DESC) x
+      UNION ALL
+      SELECT 'U', e.event_date, e.reason, f.cheque_no, f.cheque_date, f.amount, coalesce(f.payee_name, s.name), ba.code, h.doc_no, h.doc_class, h.id, s.code
+        FROM fin_cheque f JOIN fin_cheque_event e ON e.cheque_id = f.id AND e.from_status = '10' AND e.to_status = '05' LEFT JOIN doc_header h ON h.id = f.source_header_id
+        LEFT JOIN md_supplier s ON s.id = f.supplier_id LEFT JOIN md_bank_account ba ON ba.id = f.bank_account_id
+       WHERE f.company_id = ${a.companyId} AND f.direction = 'P' AND f.instrument = 'CHEQUE' AND f.deleted_at IS NULL
+      ORDER BY 2, 4`.execute(db)).rows;
+    const inRange = (v: string | null, k: string) => { const f = p.str(`${k}_from`), t = p.str(`${k}_to`); return (!f || (v ?? '') >= f) && (!t || (v ?? '') <= t); };
+    const ys = xs.filter((x) => inRange(String(x.event_date).slice(0, 10), 'date') && inRange(x.account, 'bank') && inRange(x.sup, 'supplier'));
+    let tot = d(0);
+    const rows: ReportRow[] = ys.map((x) => { tot = tot.plus(d(x.amount)); return { c: { ev: x.event_date, kind: x.kind === 'C' ? 'ยกเลิกเอกสารจ่าย' : 'ยกเลิกการผ่าน', date: x.cheque_date, no: x.cheque_no, party: x.party, amount: x.amount, account: x.account, reason: x.reason, doc: x.doc_no },
+      link: x.header_id ? docPath(x.doc_class, x.header_id) : null }; });
+    if (!ys.length) rows.push({ t: 'note', c: { party: 'ไม่มีรายการ' } });
+    rows.push({ t: 'total', c: { party: `รวม ${ys.length} ใบ`, amount: money(tot) } });
+    return { subtitle: p.describe({ date: 'วันที่ยกเลิก' }) || 'ทั้งหมด', rows,
+      columns: [{ key: 'ev', label: 'วันที่ยกเลิก', kind: 'date', width: 90 }, { key: 'kind', label: 'รายการ', width: 120 }, { key: 'date', label: 'วันที่เช็ค', kind: 'date', width: 90 },
+        { key: 'no', label: 'เลขที่เช็ค', kind: 'mono', width: 110 }, { key: 'party', label: 'จ่ายให้' }, { key: 'amount', label: 'จำนวนเงิน', kind: 'money', width: 115 },
+        { key: 'account', label: 'ตัดจากบัญชี', width: 80 }, { key: 'reason', label: 'เหตุผล' }, { key: 'doc', label: 'เอกสาร', kind: 'mono', width: 120 }] as ReportColumn[] };
+  });
 
   // 3.B ใบนำฝากเช็ค + รายการเช็ค
   defineReport('3.B', async (db, a, p) => {

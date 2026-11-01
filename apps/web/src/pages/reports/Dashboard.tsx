@@ -13,12 +13,14 @@ import { cx, DateInput, ErrorBox, PageHead } from '../../ui';
  * กราฟวาดด้วย SVG ของหน้าเอง (ไม่ใช้ไลบรารีเพิ่ม) · สีตามธีมของบริษัท
  */
 type Money = string | null;
-interface Kpi { sales: Money; ar: Money; ap: Money; cash_in: Money; cash_out: Money; cash_net: Money; cash_vouchers: number; deposit_ar: Money; deposit_ap: Money; revenue: Money; expense: Money; profit: Money; margin: string | null }
+interface Kpi { sales: Money; purchases: Money; ar: Money; ap: Money; cash_in: Money; cash_out: Money; cash_net: Money; cash_vouchers: number; deposit_ar: Money; deposit_ap: Money; revenue: Money; expense: Money; profit: Money; margin: string | null }
 interface Dash {
   range: { from: string; to: string }; prev: { from: string; to: string }; ly: { from: string; to: string }; grain: Grain;
   kpis: { current: Kpi; prev: Kpi; ly: Kpi };
   trend: Array<{ key: string; from: string; to: string; sales: string; docs: number; sales_ly: Money }>;
   top_items: Array<{ id: string; code: string; name: string; qty: string; amount: string }>;
+  top_customers: Array<{ id: string | null; code: string | null; name: string; amount: string }>;
+  top_suppliers: Array<{ id: string | null; code: string | null; name: string; amount: string }>;
   categories: Array<{ code: string | null; name: string; amount: string }>;
   aging: { buckets: string[]; as_of: string; ar: string[]; ap: string[] };
   pl: Array<{ month: string; revenue: string; expense: string; profit: string }>;
@@ -86,6 +88,7 @@ export function DashboardPage({ home, children }: { home?: boolean; children?: R
   const [cmp, setCmp] = useState<'prev' | 'ly'>('prev');
   const [focus, setFocus] = useState<{ from: string; to: string; label: string } | null>(null);
   const [byCat, setByCat] = useState(false);
+  const [bySup, setBySup] = useState(false);
   const lk = useLookups('22,45');
   useEffect(() => { setFocus(null); }, [range.from, range.to, grain, cat, ctype, me?.branch?.id]);
   useEffect(() => { if (!home) setSp({ p: preset, grain, ...(cat ? { cat } : {}), ...(ctype ? { ctype } : {}) }, { replace: true }); }, [preset, grain, cat, ctype, setSp, home]);
@@ -135,6 +138,10 @@ export function DashboardPage({ home, children }: { home?: boolean; children?: R
             ? <HBars rows={F.categories.map((c) => ({ key: c.code ?? '', label: c.name, sub: c.code ?? '', amount: c.amount }))} onPick={(r) => r.key && setCat(r.key === cat ? '' : r.key)} pickHint="คลิกเพื่อกรองหมวดนี้" active={cat} />
             : <HBars rows={F.top_items.map((t) => ({ key: t.id, label: t.name, sub: `${t.code} · ${fmt(t.qty, { places: 0 })} หน่วย`, amount: t.amount }))} />)}
         </Panel>
+        <Panel title={bySup ? 'ผู้จำหน่าย 10 อันดับ (ยอดซื้อ)' : 'ลูกค้า 10 อันดับ (ยอดขาย)'} hint="ยอดก่อน VAT หลังหักส่วนลด (หักใบลดหนี้) ในช่วงที่ดู"
+          actions={<div className="seg sm"><button className={cx(!bySup && 'on')} onClick={() => setBySup(false)}>ลูกค้า</button><button className={cx(bySup && 'on')} onClick={() => setBySup(true)}>ผู้จำหน่าย</button></div>}>
+          {F && <HBars empty={bySup ? 'ไม่มียอดซื้อในช่วงนี้' : 'ไม่มียอดขายในช่วงนี้'} rows={(bySup ? F.top_suppliers : F.top_customers).map((t, i) => ({ key: t.id ?? `x${i}`, label: t.name, sub: t.code ?? '', amount: t.amount }))} />}
+        </Panel>
         <Panel title="อายุลูกหนี้และเจ้าหนี้" hint={F ? `ยอดคงค้าง ณ ${formatDate(F.aging.as_of, ys)} · คลิกเพื่อเปิดรายงานวิเคราะห์อายุหนี้` : ''}>
           {F && <Aging data={F} onGo={drill} />}
         </Panel>
@@ -174,6 +181,10 @@ function Kpis({ k, cmp, focus, onGo }: { k?: Dash['kpis']; cmp: 'prev' | 'ly'; f
       <button className="kpi" data-tone="sales" onClick={() => onGo('/reports/center?g=1')}>
         <span>ยอดขาย (ก่อน VAT)</span><b className="num">{show(c?.sales)}</b>
         {c && b && <small><Delta cur={c.sales} base={b.sales} good="up" /> {vs}</small>}
+      </button>
+      <button className="kpi" data-tone="purchase" onClick={() => onGo('/reports/center?g=8')}>
+        <span>ยอดซื้อ (ก่อน VAT)</span><b className="num">{show(c?.purchases)}</b>
+        {c && b && <small><Delta cur={c.purchases} base={b.purchases} good="none" /> {vs}</small>}
       </button>
       <button className="kpi" data-tone="finance" onClick={() => onGo('/reports/center?g=1.C')}>
         <span>ลูกหนี้การค้าคงเหลือ {focus ? '(ณ สิ้นช่วงที่เจาะดู)' : '(ณ สิ้นช่วง)'}</span><b className="num">{show(c?.ar)}</b>
@@ -231,8 +242,8 @@ function SalesTrend({ data, ys, focus, onPick }: { data: Dash; ys: YearSystem; f
 }
 
 /** กราฟแท่งแนวนอน (สินค้าขายดี / หมวดสินค้า) */
-function HBars({ rows, onPick, pickHint, active }: { rows: Array<{ key: string; label: string; sub: string; amount: string }>; onPick?: (r: { key: string }) => void; pickHint?: string; active?: string }) {
-  if (!rows.length) return <div className="dash-empty">ไม่มียอดขายในช่วงนี้</div>;
+function HBars({ rows, onPick, pickHint, active, empty = 'ไม่มียอดขายในช่วงนี้' }: { rows: Array<{ key: string; label: string; sub: string; amount: string }>; onPick?: (r: { key: string }) => void; pickHint?: string; active?: string; empty?: string }) {
+  if (!rows.length) return <div className="dash-empty">{empty}</div>;
   const max = Math.max(...rows.map((r) => num(r.amount)), 1);
   return (
     <ol className="hbars">

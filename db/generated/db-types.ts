@@ -1680,6 +1680,8 @@ export interface MdCustomerTable {
   price_level: Gen<string | null>;
   /** ส่วนลด (เช่น 5%+2) */
   discount_text: Gen<string | null>;
+  /** ประเภทราคาเริ่มต้นในเอกสารขาย 0=ไม่มี VAT 1=รวม VAT 2=แยก VAT (ใหม่ — คู่กับผู้จำหน่าย) ว่าง = ตามประเภทเอกสาร */
+  price_type: Gen<string | null>;
   /** วงเงินอนุมัติ */
   credit_limit: Gen<string | null>;
   /** บัญชีลูกหนี้ (ชั้นที่ 2) */
@@ -2353,6 +2355,10 @@ export interface DocHeaderTable {
   net_amount: Gen<string>;
   /** ภาษีหัก ณ ที่จ่าย */
   wht_amount: Gen<string>;
+  /** เลขที่หนังสือรับรอง 50 ทวิ ที่ผู้จ่ายเงินออกให้เรา (ภาษีถูกหัก — ทะเบียนรายงาน 6.8) */
+  wht_cert_no: Gen<string | null>;
+  /** วันที่ในหนังสือรับรอง 50 ทวิ ที่ได้รับ */
+  wht_cert_date: Gen<string | null>;
   /** รับ/จ่ายเป็นเงินสด */
   cash_amount: Gen<string>;
   /** รับ/จ่ายเป็นเช็ค/อื่น */

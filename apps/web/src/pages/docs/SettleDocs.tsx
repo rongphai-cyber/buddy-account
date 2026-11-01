@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt, formatDate, SETTLE_KINDS, settlementTotals, todayIso, wht50FormOf, type SettleKind } from '@buddy/core';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
+import { WhtCert } from './WhtCert';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys, useYearSystem } from '../../ui';
@@ -323,6 +324,7 @@ export function SettleFormPage({ path }: { path: string }) {
             <tr><td>{K.direction === 'R' ? 'หัก ส่วนลดเงินสด' : 'หัก ส่วนลดเงินสดรับ'}</td><td><MoneyInput value={h.discount} disabled={ro} onChange={(v) => set({ discount: v })} aria-label="ส่วนลดเงินสด" /></td></tr>
             <tr><td>หัก {K.direction === 'R' ? 'ภาษีถูกหัก ณ ที่จ่าย' : <a href="#wht" onClick={(e) => { e.preventDefault(); setTab('wht'); }}>ภาษีหัก ณ ที่จ่าย</a>}</td>
               <td>{K.cls === 'PS' && whts.length ? <span className="r num" style={{ display: 'block' }}>{fmt(whtTotal.toFixed(2))}</span> : <MoneyInput value={h.wht} disabled={ro} onChange={(v) => set({ wht: v })} aria-label="ภาษีหัก ณ ที่จ่าย" />}</td></tr>
+            {isRe && id && <tr><td colSpan={2} className="r"><WhtCert docId={id} wht={String(cur.data?.wht_amount ?? '')} certNo={cur.data?.wht_cert_no as string | null} certDate={cur.data?.wht_cert_date as string | null} cancelled={cur.data?.doc_status === 'C'} onSaved={() => cur.refetch()} /></td></tr>}
             {isRe && (charges.length > 0 || !ro) && <tr><td>หัก <a href="#fee" onClick={(e) => { e.preventDefault(); setTab('fee'); }}>รายการที่แพลตฟอร์มหัก (GP/ค่าธรรมเนียม)</a></td><td className="r num">{fmt(feeTotal)}</td></tr>}
             <tr><td title="กำไรป้อนยอดบวก ขาดทุนป้อนยอดติดลบ — ลงบัญชีกำไร(ขาดทุน)จากอัตราแลกเปลี่ยน (เริ่มระบบ › บัญชีเพื่อลงรายวัน)">กำไร(ขาดทุน)อัตราแลกเปลี่ยน</td><td><MoneyInput value={h.fx} disabled={ro} onChange={(v) => set({ fx: v })} aria-label="ผลต่างอัตราแลกเปลี่ยน" /></td></tr>
             <tr className="grand"><td>ยอดที่ต้อง{rp(K)}</td><td className="r"><Money v={t.due} /></td></tr>

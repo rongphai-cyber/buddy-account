@@ -130,6 +130,7 @@ export const REPORT_TREE: ReportNode[] = [
     leaf('3.3', 'เช็ครับผ่านแล้ว', 'RP.CHQ', [F.date, F.bank, F.cus]), leaf('3.4', 'เช็ครับคืน', 'RP.CHQ', [F.date, F.cus]),
     leaf('3.5', 'เช็ครับเรียงตามวันที่รับเช็ค', 'RP.CHQ', [F.date, F.cus], { landscape: true }),
     leaf('3.6', 'เช็คจ่ายยังไม่ผ่าน', 'RP.CHQ', [F.asOf, F.bank, F.sup]), leaf('3.7', 'เช็คจ่ายผ่านแล้ว', 'RP.CHQ', [F.date, F.bank, F.sup]),
+    leaf('3.8', 'เช็คจ่ายยกเลิก/ยกเลิกการผ่าน', 'RP.CHQ', [F.date, F.bank, F.sup], { landscape: true }),
     leaf('3.A', 'เช็คจ่ายเรียงตามวันที่ออกเช็ค', 'RP.CHQ', [F.date, F.bank, F.sup], { landscape: true }),
     leaf('3.B', 'ใบนำฝากเช็ค', 'RP.CHQ', [F.date, F.bank, F.detail]),
   ] },
@@ -162,6 +163,8 @@ export const REPORT_TREE: ReportNode[] = [
     leaf('6.5', 'ใบแนบ ภ.ง.ด.3 (บุคคลธรรมดา)', 'RP.TAX', [F.period, FILING], { landscape: true }),
     leaf('6.6', 'ใบแนบ ภ.ง.ด.53 (นิติบุคคล)', 'RP.TAX', [F.period, FILING], { landscape: true }),
     leaf('6.7', 'แบบ ภ.พ.36 (ภาษีมูลค่าเพิ่มนำส่งแทนผู้ให้บริการต่างประเทศ)', 'RP.TAX', [F.period], { landscape: true }),
+    leaf('6.8', 'ทะเบียนภาษีถูกหัก ณ ที่จ่าย (ลูกค้า/ธนาคารหักเรา — เครดิต ภ.ง.ด.50/51)', 'RP.TAX', [F.date, F.cus,
+      { key: 'cert', kind: 'select', label: 'หนังสือรับรอง 50 ทวิ', options: [['all', 'ทั้งหมด'], ['missing', 'ยังไม่ได้รับ'], ['received', 'ได้รับแล้ว']], default: 'all' }], { landscape: true }),
   ] },
   { code: '7', title: 'รายงานวิเคราะห์การขาย', children: [
     { code: '7.1', title: 'ประวัติการขาย', children: [

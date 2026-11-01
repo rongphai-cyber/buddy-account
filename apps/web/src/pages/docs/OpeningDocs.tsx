@@ -62,8 +62,11 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
   const qc = useQueryClient();
   const can = useCan(K.menu);
   const cur = useQuery({ enabled: !!id, queryKey: [K.api, 'one', id], queryFn: () => api.get<Record<string, string | null> & { editable: boolean; settlements: Array<{ id: string; doc_class: string; doc_no: string; doc_date: string; amount: string; doc_status: string }> }>(`/api/v1/${K.api}/${id}`), staleTime: 0 });
+  // พนักงานขาย (ลูกหนี้ยกมา — รายงานลูกหนี้แยกพนักงานขาย/ค่าคอมมิชชั่นเหมือนบิลขาย) · แผนก (ทั้งสองฝั่ง)
+  const slms = useQuery({ enabled: kind === 'ar', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
+  const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const meta = useQuery({ enabled: !id, queryKey: [K.api, 'meta'], queryFn: () => api.get<{ start_date: string | null }>(`/api/v1/${K.api}`, { limit: 1 }) });
-  type Head = { party: { id: string; code: string; name?: string | null } | null; doc_no: string; doc_date: string; ref_no: string; credit_days: string; price_type: '0' | '1' | '2'; amount: string; discount_text: string; vat_rate: string; vat_amount: string; vat_known: boolean; vat_date: string; remark: string };
+  type Head = { party: { id: string; code: string; name?: string | null } | null; doc_no: string; doc_date: string; ref_no: string; credit_days: string; price_type: '0' | '1' | '2'; amount: string; discount_text: string; vat_rate: string; vat_amount: string; vat_known: boolean; vat_date: string; remark: string; salesperson_id: string; department_id: string };
   const [h, setH] = useState<Head | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -72,13 +75,13 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
   const [reason, setReason] = useState('');
   if (!h && !id && meta.data) {
     const before = meta.data.start_date ? new Date(new Date(meta.data.start_date).getTime() - 86400000).toISOString().slice(0, 10) : '';
-    setH({ party: null, doc_no: '', doc_date: before, ref_no: '', credit_days: '', price_type: '2', amount: '', discount_text: '', vat_rate: '7', vat_amount: '', vat_known: true, vat_date: before, remark: '' });
+    setH({ party: null, doc_no: '', doc_date: before, ref_no: '', credit_days: '', price_type: '2', amount: '', discount_text: '', vat_rate: '7', vat_amount: '', vat_known: true, vat_date: before, remark: '', salesperson_id: '', department_id: '' });
   }
   if (!h && id && cur.data) {
     const c = cur.data;
     setH({ party: { id: (c.customer_id ?? c.supplier_id)!, code: c.party_code ?? '', name: c.party_name }, doc_no: c.doc_no ?? '', doc_date: String(c.doc_date).slice(0, 10), ref_no: c.ref_no ?? '', credit_days: c.credit_days === null ? '' : String(c.credit_days),
       price_type: (c.price_type ?? '2') as Head['price_type'], amount: d(c.amount ?? 0).toString(), discount_text: c.discount_text ?? '', vat_rate: d(c.vat_rate ?? 0).toString(), vat_amount: d(c.vat_rate ?? 0).isZero() ? d(c.vat_amount ?? 0).toString() : '',
-      vat_known: c.vat_basis !== '2', vat_date: c.vat_date ? String(c.vat_date).slice(0, 10) : '', remark: c.remark ?? '' });
+      vat_known: c.vat_basis !== '2', vat_date: c.vat_date ? String(c.vat_date).slice(0, 10) : '', remark: c.remark ?? '', salesperson_id: c.salesperson_id ?? '', department_id: c.department_id ?? '' });
   }
   const roBase = !!id && (!cur.data?.editable || !can('edit'));
   const ed = useDocEdit({ id: id ?? undefined, allowed: !!id && !roBase, dirty, onSave: (n) => void save(!!n), onDiscard: () => { setH(null); setDirty(false); } });
@@ -91,13 +94,14 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
   const pickParty = async (p: { id: string; code: string; name: string } | null) => {
     if (!p) return set({ party: null });
     const x = await api.get<Record<string, string | null>>(`${K.endpoint}/${p.id}`);
-    set({ party: p, credit_days: x.credit_days === null || x.credit_days === undefined ? '' : String(x.credit_days), discount_text: x.discount_text ?? '' });
+    set({ party: p, credit_days: x.credit_days === null || x.credit_days === undefined ? '' : String(x.credit_days), discount_text: x.discount_text ?? '', ...(kind === 'ar' ? { salesperson_id: x.salesperson_id ?? '' } : {}) });
   };
   const save = async (andNew = false) => {
     if (!h || busy || ro) return;
     setErr(null); setBusy(true);
     const body = { party_id: h.party?.id, doc_no: h.doc_no, doc_date: h.doc_date, ref_no: h.ref_no || null, credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type,
-      amount: h.amount || '0', discount_text: h.discount_text || null, vat_rate: h.vat_rate || '0', vat_amount: manualVat ? h.vat_amount : null, vat_date: h.vat_known ? h.vat_date || h.doc_date : null, remark: h.remark || null };
+      amount: h.amount || '0', discount_text: h.discount_text || null, vat_rate: h.vat_rate || '0', vat_amount: manualVat ? h.vat_amount : null, vat_date: h.vat_known ? h.vat_date || h.doc_date : null, remark: h.remark || null,
+      salesperson_id: kind === 'ar' ? h.salesperson_id || null : null, department_id: h.department_id || null };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/${K.api}/${id}`, body) : await api.post<{ id: string; doc_no: string }>(`/api/v1/${K.api}`, body);
       toast(`บันทึก ${r.doc_no} แล้ว`); setDirty(false); if (id) ed.lock(); qc.invalidateQueries({ queryKey: [K.api] });
@@ -132,6 +136,8 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
             <Field label={`รหัส${K.party}`} req><SearchPick<{ id: string; code: string; name: string }> endpoint={K.endpoint} value={h.party} required disabled={ro} autoFocus={!id} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {kind === 'ap' && <Field label="เลขที่บิล" hint="ใบกำกับภาษี/เอกสารที่ผู้จำหน่ายออกให้"><input value={h.ref_no} maxLength={30} disabled={ro} onChange={(e) => set({ ref_no: e.target.value })} /></Field>}
             <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
+            {kind === 'ar' && <Field label="พนักงานขาย" hint="ค่าเริ่มต้นจากรายละเอียดลูกค้า"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></Field>}
+            <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
           </div>
           <div className="col">
             <Field label="เลขที่เอกสาร" req hint={`ป้อนเอง ห้ามซ้ำเลขปีปัจจุบัน — แนะนำใส่ปีนำหน้า เช่น ${K.cls}67/0001`}><input className="mono" value={h.doc_no} maxLength={30} disabled={ro} onChange={(e) => set({ doc_no: e.target.value })} /></Field>

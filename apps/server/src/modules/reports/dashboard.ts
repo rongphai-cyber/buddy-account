@@ -46,6 +46,13 @@ export function dashboardRoutes(app: FastifyInstance, db: Db) {
     const signed = sql`CASE WHEN h.doc_class = 'CN' THEN -l.net_amount ELSE l.net_amount END`;
     const sales = async (r: { from: string; to: string }) =>
       d((await sql<{ v: string | null; n: string }>`SELECT sum(${signed}) AS v, count(DISTINCT h.id) AS n ${salesFrom} AND h.doc_date BETWEEN ${r.from} AND ${r.to}`.execute(db)).rows[0]?.v ?? 0);
+    // ยอดซื้อ (คู่กับยอดขาย — ข้อกำหนดเจ้าของ 01/11/2569): ซื้อเชื่อ ซื้อสด เพิ่มหนี้ หักลดหนี้/ส่งคืน ก่อน VAT หลังส่วนลด · ทั้งบริษัท (ไม่กรองหมวด/ประเภทลูกค้า)
+    const buyFrom = sql`FROM doc_line l JOIN doc_header h ON h.id = l.header_id LEFT JOIN md_supplier su ON su.id = h.supplier_id
+      WHERE h.company_id = ${c} AND h.doc_class IN ('RR', 'HP', 'CP', 'DN') AND h.doc_status <> 'C' AND h.deleted_at IS NULL AND l.deleted_at IS NULL AND NOT h.is_opening
+        AND l.line_kind IS DISTINCT FROM 'K' ${brH}`;
+    const buySigned = sql`CASE WHEN h.doc_class = 'DN' THEN -l.net_amount ELSE l.net_amount END`;
+    const purchases = async (r: { from: string; to: string }) =>
+      d((await sql<{ v: string | null }>`SELECT sum(${buySigned}) AS v ${buyFrom} AND h.doc_date BETWEEN ${r.from} AND ${r.to}`.execute(db)).rows[0]?.v ?? 0);
 
     // ยอดคงค้าง ณ วันที่ แยกตามอายุหนี้
     const owed = async (ar: boolean, asOf: string) => {
@@ -100,11 +107,11 @@ export function dashboardRoutes(app: FastifyInstance, db: Db) {
     const plTotal = (rows: Awaited<ReturnType<typeof plMonths>>) => rows.reduce((s, x) => ({ revenue: s.revenue.plus(x.revenue), expense: s.expense.plus(x.expense), n: s.n + 1 }), { revenue: ZERO, expense: ZERO, n: 0 });
 
     const kpis = async (r: { from: string; to: string }) => {
-      const [s, ar, ap, cf, pl] = await Promise.all([sales(r), owed(true, r.to), owed(false, r.to), cashFlow(r), plMonths(r)]);
+      const [s, pu, ar, ap, cf, pl] = await Promise.all([sales(r), purchases(r), owed(true, r.to), owed(false, r.to), cashFlow(r), plMonths(r)]);
       const t = plTotal(pl);
       const profit = t.revenue.minus(t.expense);
       return {
-        sales: money(s), ar: money(ar.total), ap: money(ap.total),
+        sales: money(s), purchases: money(pu), ar: money(ar.total), ap: money(ap.total),
         cash_in: money(cf.in), cash_out: money(cf.out), cash_net: money(cf.in.minus(cf.out)), cash_vouchers: cf.n,
         deposit_ar: money(cf.deposit_ar), deposit_ap: money(cf.deposit_ap),
         revenue: t.n ? money(t.revenue) : null, expense: t.n ? money(t.expense) : null, profit: t.n ? money(profit) : null,
@@ -136,8 +143,16 @@ export function dashboardRoutes(app: FastifyInstance, db: Db) {
     const cats = (await sql<{ code: string | null; name: string | null; v: string }>`SELECT i.category_code AS code, (SELECT k.name_th FROM md_lookup k WHERE k.company_id = ${c} AND k.type_code = '22' AND k.code = i.category_code AND k.deleted_at IS NULL LIMIT 1) AS name, sum(${signed}) AS v
         ${salesFrom} AND l.item_id IS NOT NULL AND h.doc_date BETWEEN ${q.from} AND ${q.to} GROUP BY i.category_code HAVING sum(${signed}) <> 0 ORDER BY 3 DESC LIMIT 12`.execute(db)).rows;
 
+    // ลูกค้า/ผู้จำหน่าย 10 อันดับ (ยอดขาย/ยอดซื้อก่อน VAT ในช่วงที่ดู)
+    const topCus = (await sql<{ id: string | null; code: string | null; name: string | null; v: string }>`SELECT cu.id, cu.code, coalesce(cu.name, max(h.party_name)) AS name, sum(${signed}) AS v
+        ${salesFrom} AND h.doc_date BETWEEN ${q.from} AND ${q.to} GROUP BY cu.id, cu.code, cu.name HAVING sum(${signed}) <> 0 ORDER BY 4 DESC LIMIT 10`.execute(db)).rows;
+    const topSup = (await sql<{ id: string | null; code: string | null; name: string | null; v: string }>`SELECT su.id, su.code, coalesce(su.name, max(h.party_name)) AS name, sum(${buySigned}) AS v
+        ${buyFrom} AND h.doc_date BETWEEN ${q.from} AND ${q.to} GROUP BY su.id, su.code, su.name HAVING sum(${buySigned}) <> 0 ORDER BY 4 DESC LIMIT 10`.execute(db)).rows;
+    const party = (x: { id: string | null; code: string | null; name: string | null; v: string }) => ({ id: x.id, code: x.code, name: x.name ?? 'ไม่ระบุรหัส', amount: money(d(x.v)) });
+
     return {
       range: { from: q.from, to: q.to }, prev, ly, grain: unit,
+      top_customers: topCus.map(party), top_suppliers: topSup.map(party),
       kpis: { current: kCur, prev: kPrev, ly: kLy },
       trend,
       top_items: top.map((x) => ({ id: x.id, code: x.code, name: x.name, qty: d(x.qty).toString(), amount: money(d(x.v)) })),

@@ -1,5 +1,5 @@
 import { sql } from 'kysely';
-import { d, type Decimal, type ReportColumn, type ReportRow } from '@buddy/core';
+import { d, docPath, type Decimal, type ReportColumn, type ReportRow } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest } from '../../http.js';
 import { defineReport, type Ctx, type P } from './index.js';
@@ -171,6 +171,33 @@ export function taxReports() {
       columns: [{ key: 'seq', label: 'ลำดับ', kind: 'int', width: 50 }, { key: 'date', label: 'วันที่จ่าย', kind: 'date', width: 90 }, { key: 'doc', label: 'เลขที่เอกสาร', kind: 'mono', width: 120 },
         { key: 'inv', label: 'เลขที่ใบแจ้งหนี้', kind: 'mono', width: 130 }, { key: 'name', label: 'ผู้ให้บริการ (ต่างประเทศ)' }, { key: 'desc', label: 'รายละเอียด' },
         { key: 'base', label: 'ค่าบริการที่จ่าย', kind: 'money', width: 130 }, { key: 'vat', label: 'ภาษีมูลค่าเพิ่ม', kind: 'money', width: 120 }] as ReportColumn[] };
+  });
+
+  // 6.8 ทะเบียนภาษีถูกหัก ณ ที่จ่าย: ลูกค้าหักตอนรับชำระ/ขายสด/มัดจำ/รายได้อื่น + ธนาคารหักดอกเบี้ย → เครดิตภาษีในแบบ ภ.ง.ด.50/51
+  defineReport('6.8', async (db, a, p) => {
+    const cert = p.str('cert') ?? 'all';
+    const xs = (await sql<{ id: string; doc_class: string; doc_no: string; doc_date: string; is_opening: boolean; name: string | null; tax_id: string | null; net_amount: string; wht_amount: string; wht_cert_no: string | null; wht_cert_date: string | null }>`
+      SELECT h.id, h.doc_class, h.doc_no, h.doc_date, h.is_opening, coalesce(h.party_name, c.name, b.name) AS name, coalesce(h.party_tax_id, c.tax_id) AS tax_id, h.net_amount, h.wht_amount, h.wht_cert_no, h.wht_cert_date
+        FROM doc_header h LEFT JOIN md_customer c ON c.id = h.customer_id LEFT JOIN md_bank_account b ON b.id = h.bank_account_id
+       WHERE h.company_id = ${a.companyId} AND h.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_class IN ('HS', 'RE', 'AI', 'OI', 'BU') AND h.wht_amount <> 0
+         ${p.dateRange('date', sql`h.doc_date`)} ${p.range('customer', sql`c.code`)}
+         ${cert === 'missing' ? sql`AND coalesce(h.wht_cert_no, '') = ''` : cert === 'received' ? sql`AND coalesce(h.wht_cert_no, '') <> ''` : sql``}
+       ORDER BY h.doc_date, h.doc_no LIMIT 20001`.execute(db)).rows;
+    const KIND: Record<string, string> = { HS: 'ขายเงินสด', RE: 'รับชำระหนี้', AI: 'รับเงินมัดจำ', OI: 'รายได้อื่น', BU: 'ดอกเบี้ยรับ' };
+    let tn = d(0), tw = d(0), miss = 0;
+    const rows: ReportRow[] = xs.map((x, i) => {
+      tn = tn.plus(d(x.net_amount)); tw = tw.plus(d(x.wht_amount)); if (!x.wht_cert_no) miss++;
+      return { c: { seq: i + 1, date: x.doc_date, doc: x.doc_no, kind: KIND[x.doc_class] ?? x.doc_class, name: x.name, tax: x.tax_id, net: x.net_amount, wht: x.wht_amount, cert: x.wht_cert_no ?? 'ยังไม่ได้รับ', cdate: x.wht_cert_date },
+        link: docPath(x.doc_class, x.id, x.is_opening), muted: !x.wht_cert_no };
+    });
+    if (!xs.length) rows.push({ t: 'note', c: { name: 'ไม่มีรายการ' } });
+    rows.push({ t: 'total', c: { name: `รวม ${xs.length} รายการ${miss ? ` · ยังไม่ได้รับ 50 ทวิ ${miss} รายการ` : ''}`, net: money(tn), wht: money(tw) } });
+    rows.push({ t: 'note', c: { name: 'ภาษีที่ถูกหักใช้เป็นเครดิตในแบบ ภ.ง.ด.50/51 ต้องมีหนังสือรับรอง 50 ทวิ จากผู้จ่ายเงิน — บันทึกเลขที่/วันที่ที่ได้รับได้ที่หน้าเอกสาร (ช่อง "50 ทวิ ที่ได้รับ") คลิกแถวเพื่อเปิดเอกสาร' } });
+    return { title: 'ทะเบียนภาษีถูกหัก ณ ที่จ่าย', subtitle: `${p.str('date_from') ? p.fd(p.str('date_from')!) : 'ทั้งหมด'}${p.str('date_to') ? ` – ${p.fd(p.str('date_to')!)}` : ''}${cert === 'missing' ? ' · ยังไม่ได้รับ 50 ทวิ' : cert === 'received' ? ' · ได้รับ 50 ทวิ แล้ว' : ''}`, rows, truncated: xs.length > 20000,
+      columns: [{ key: 'seq', label: 'ลำดับ', kind: 'int', width: 45 }, { key: 'date', label: 'วันที่', kind: 'date', width: 85 }, { key: 'doc', label: 'เลขที่เอกสาร', kind: 'mono', width: 120 },
+        { key: 'kind', label: 'ชนิด', width: 95 }, { key: 'name', label: 'ผู้หักภาษี (ลูกค้า/ธนาคาร)' }, { key: 'tax', label: 'เลขประจำตัวผู้เสียภาษี', kind: 'mono', width: 120 },
+        { key: 'net', label: 'ยอดเอกสาร', kind: 'money', width: 115 }, { key: 'wht', label: 'ภาษีถูกหัก', kind: 'money', width: 100 },
+        { key: 'cert', label: 'เลขที่ 50 ทวิ', kind: 'mono', width: 110 }, { key: 'cdate', label: 'ลงวันที่', kind: 'date', width: 85 }] as ReportColumn[] };
   });
 
   // 6.5 / 6.6 ใบแนบ ภ.ง.ด.3 / ภ.ง.ด.53

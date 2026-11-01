@@ -154,7 +154,7 @@ function MasterModal({ title, menu, isNew, busy, ready, err, onClose, onSave, on
 /* ---------------------------------------------------------------- ลูกค้า S-AR-01 */
 interface ShipTo { code: string; address_1: string | null; address_2: string | null; address_3: string | null; zip_code: string | null; phone: string | null; contact: string | null }
 interface CustomerDetail extends Record<string, unknown> { id: string; code: string; on_hold: boolean; ar_account_id: string | null; salesperson_id: string | null; ship_tos: ShipTo[]; contacts: Contact[]; outstanding_bills: Bill[]; balance: string; last_invoice_date: string | null }
-const CUS_KEYS = [...HEAD_KEYS, 'on_hold_reason', 'email', 'customer_type', 'sales_area_code', 'price_level', 'wht_category', 'default_ship_to'];
+const CUS_KEYS = [...HEAD_KEYS, 'on_hold_reason', 'email', 'customer_type', 'sales_area_code', 'price_level', 'price_type', 'wht_category', 'default_ship_to'];
 
 export function CustomersPage() {
   return <PartyList kind="customers" menu="SA.CUS" eyebrow="ขาย › รายละเอียดลูกค้า" title="รายละเอียดลูกค้า" Form={CustomerForm}
@@ -227,6 +227,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
           <Field label="ขนส่งโดย"><LkSelect rows={lk.data?.['41']} value={val(f, 'ship_via_code')} onChange={(v) => set({ ship_via_code: v })} /></Field>
           <Field label="เครดิต (วัน)" hint="ใช้คำนวณวันครบกำหนดในบิลขาย"><input type="number" min={0} max={999} {...t('credit_days', 3)} /></Field>
           <Field label="เงื่อนไขการชำระ" hint="เช่น 2/10, n/30 (แสดงในฟอร์ม ไม่คำนวณ)"><input {...t('payment_terms', 60)} /></Field>
+          <Field label="ประเภทราคา" hint="ค่าเริ่มต้นในเอกสารขาย — ว่าง = ตามประเภทเอกสาร"><select value={val(f, 'price_type')} onChange={(e) => set({ price_type: e.target.value })}><option value="">—</option><option value="0">0 ยกเว้นภาษี</option><option value="1">1 ราคารวมภาษีแล้ว</option><option value="2">2 ราคายังไม่รวมภาษี (แยก VAT)</option></select></Field>
           <Field label="ตารางราคา">
             <select value={val(f, 'price_level')} onChange={(e) => set({ price_level: e.target.value })}>
               <option value="">—</option>{['1', '2', '3', '4', '5'].map((n) => <option key={n} value={n}>ราคาขายที่ {n}</option>)}{val(f, 'price_level') === '0' && <option value="0">0 (จาก Express)</option>}

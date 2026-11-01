@@ -112,7 +112,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), phone: str(60), email: str(120), contact: str(60), remark: str(2000),
     status: z.enum(['A', 'I']).default('A'), on_hold: z.boolean().default(false), on_hold_reason: str(200), tax_id: str(20), tax_branch_no: str(5), customer_type: str(4), ar_account_id: uuid.nullable().optional(),
     salesperson_id: uuid.nullable().optional(), sales_area_code: str(10), ship_via_code: str(10), credit_days: num, payment_terms: str(60),
-    price_level: z.enum(['', '0', '1', '2', '3', '4', '5']).nullable().optional().transform((v) => v || null), discount_text: str(20), credit_limit: num,
+    price_level: z.enum(['', '0', '1', '2', '3', '4', '5']).nullable().optional().transform((v) => v || null), price_type: z.enum(['', '0', '1', '2']).nullable().optional().transform((v) => v || null), discount_text: str(20), credit_limit: num,
     wht_form: str(4), wht_rate: num, wht_category: str(4), wht_condition: z.enum(['', '1', '2', '3']).nullable().optional().transform((v) => v || null), default_ship_to: str(10),
     ship_tos: z.array(z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสถานที่ส่ง').max(10), address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), phone: str(60), contact: str(60) })).max(200).default([]),
     contacts: z.array(contactBody).max(50).default([]),

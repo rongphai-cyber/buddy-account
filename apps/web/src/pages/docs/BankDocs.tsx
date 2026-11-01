@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BANK_KINDS, d, docPath, todayIso, type BankKind } from '@buddy/core';
 import { DocLink } from '../../components/DocLink';
 import { api } from '../../api';
+import { WhtCert } from './WhtCert';
 import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { useDocEdit } from '../../components/DocEdit';
@@ -158,6 +159,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
               <Field label={cls === 'BT' ? 'จำนวนเงินที่โอน' : cls === 'BU' ? 'ดอกเบี้ย/รายได้ (ก่อนหักภาษี)' : 'จำนวนเงิน'} req><MoneyInput value={h.amount} disabled={ro} onChange={(v) => set({ amount: v })} aria-label="จำนวนเงิน" /></Field>
               {cls === 'BT' && <Field label="ค่าธรรมเนียม" hint="ถ้าธนาคารหักค่าธรรมเนียมจากบัญชีต้นทาง"><MoneyInput value={h.fee} disabled={ro} onChange={(v) => set({ fee: v })} aria-label="ค่าธรรมเนียม" /></Field>}
               {cls === 'BU' && <Field label="ภาษีที่ธนาคารหัก ณ ที่จ่าย"><MoneyInput value={h.wht} disabled={ro} onChange={(v) => set({ wht: v })} aria-label="ภาษีหัก ณ ที่จ่าย" /></Field>}
+              {cls === 'BU' && id && <div className="field wide"><WhtCert docId={id} wht={String(cur.data?.wht_amount ?? '')} certNo={cur.data?.wht_cert_no as string | null} certDate={cur.data?.wht_cert_date as string | null} cancelled={cur.data?.doc_status === 'C'} onSaved={() => cur.refetch()} /></div>}
               {(cls === 'BT' || cls === 'BU') && <Field label={cls === 'BT' ? 'รวมเงินที่โอนออกทั้งสิ้น' : 'เงินเข้าบัญชีสุทธิ'}><span className="num" style={{ display: 'block', textAlign: 'right' }}><b><Money v={total.toFixed(2)} /></b></span></Field>}
             </div>
             <div className="col">

@@ -1428,6 +1428,13 @@ describe('Buddy Account API (PGlite)', () => {
     // ปัดเศษไม่ตรงบิล: อัตรา 0% แล้วป้อนภาษีเอง
     const o2 = await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0002', vat_rate: 0, vat_amount: 69.99 });
     expect(o2.body).toMatchObject({ net_amount: '1069.99' });
+    // พนักงานขาย/แผนกในลูกหนี้ยกมา (คู่กับบิลขาย — ข้อกำหนดเจ้าของ 01/11/2569) · ต้องเป็นของบริษัทนี้
+    const s01 = (await call('GET', '/api/v1/salespersons')).body.find((x: { code: string }) => x.code === 'S01').id;
+    const o3 = (await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0003', amount: 100, salesperson_id: s01 })).body;
+    expect((await call('GET', `/api/v1/ar-opening/${o3.id}`)).body.salesperson_id).toBe(s01);
+    expect((await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0004', salesperson_id: '00000000-0000-4000-8000-000000000001' })).body.error.message).toBe('ไม่พบพนักงานขายนี้');
+    expect((await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0004', department_id: '00000000-0000-4000-8000-000000000001' })).body.error.message).toBe('ไม่พบแผนกนี้');
+    expect((await call('POST', `/api/v1/ar-opening/${o3.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect((await call('GET', `/api/v1/docs/${o1.body.id}/journal`)).body.journals).toEqual([]);
     expect((await call('GET', '/api/v1/ar-opening')).body).toMatchObject({ total: '2139.99', start_date: '2026-01-01' });
     // ปรากฏเป็นบิลค้าง · รับชำระในระบบ → ภาษีเกณฑ์เงินสดเกิดที่ใบเสร็จ
@@ -1785,6 +1792,46 @@ describe('Buddy Account API (PGlite)', () => {
     for (const [u, x] of [['ap-payments', p1.id], ['sales-invoices', iv2.id], ['sales-invoices', iv1.id], ['purchase-invoices', rr1.id], ['quotations', qt.id], ['sales-invoices', iv0.id], ['purchase-invoices', rr0.id]]) expect((await call('POST', `/api/v1/${u}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
+  it('WHT received register 6.8 (ข้อกำหนดเจ้าของ 01/11/2569): cash sale / receipt with WHT listed, 50 ทวิ no. saved later without reposting, filters, guards, other company isolated', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const cus = (await call('POST', '/api/v1/customers', { code: 'C-WHTR', name: 'ลูกค้าหักภาษีเรา', tax_id: tid(45), price_type: '1' })).body.id;
+    expect((await call('GET', `/api/v1/customers/${cus}`)).body.price_type).toBe('1');   // ประเภทราคาเริ่มต้นของลูกค้า (คู่กับผู้จำหน่าย)
+    expect((await call('POST', '/api/v1/customers', { code: 'C-WHTX', name: 'x', price_type: '9' })).status).toBe(400);
+    const lines = [{ item_id: cpu, qty: 1, unit_price: 10000 }];
+    const hs = (await call('POST', '/api/v1/cash-sales', { doc_type_id: await typeOf('HS'), doc_date: '2027-06-05', party_id: cus, price_type: '2', vat_rate: 7, lines, wht_amount: 300 })).body;
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: await typeOf('IV'), doc_date: '2027-06-06', party_id: cus, price_type: '2', vat_rate: 7, lines })).body;
+    const re = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2027-06-20', party_id: cus, settlements: [{ invoice_header_id: iv.id, amount: 10700 }], wht_amount: 300 })).body;
+    expect([hs.error, re.error]).toEqual([undefined, undefined]);
+    const run = async (params: Record<string, unknown>) => (await call('POST', '/api/v1/rpt/6.8/run', { params: { date_from: '2027-06-01', date_to: '2027-06-30', customer_from: 'C-WHTR', customer_to: 'C-WHTR', ...params } })).body;
+    let r = await run({});
+    const docs = (x: typeof r) => x.rows.filter((y: { t?: string }) => !y.t).map((y: { c: { doc: string; wht: string; cert: string } }) => `${y.c.doc}:${y.c.wht}:${y.c.cert}`);
+    expect(docs(r)).toEqual([`${hs.doc_no}:300.00:ยังไม่ได้รับ`, `${re.doc_no}:300.00:ยังไม่ได้รับ`]);
+    expect(r.rows.find((y: { t?: string }) => y.t === 'total').c).toMatchObject({ name: 'รวม 2 รายการ · ยังไม่ได้รับ 50 ทวิ 2 รายการ', wht: '600.00' });
+    expect(r.rows[0].link).toBe(`/sa/cash-sales/${hs.id}`);
+    // ได้รับ 50 ทวิ ภายหลัง: บันทึกเลขที่ได้โดยไม่แก้เอกสาร/ไม่ลงบัญชีใหม่
+    const jBefore = (await call('GET', `/api/v1/docs/${re.id}/journal`)).body.journals.map((j: { id: string }) => j.id);
+    expect((await call('PUT', `/api/v1/docs/doc/${re.id}/wht-cert`, { cert_no: 'BK1/0042', cert_date: '2027-06-25' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/ar-receipts/${re.id}`)).body).toMatchObject({ wht_cert_no: 'BK1/0042' });
+    expect((await call('GET', `/api/v1/docs/${re.id}/journal`)).body.journals.map((j: { id: string }) => j.id)).toEqual(jBefore);
+    expect(docs(await run({ cert: 'received' }))).toEqual([`${re.doc_no}:300.00:BK1/0042`]);
+    expect(docs(await run({ cert: 'missing' }))).toEqual([`${hs.doc_no}:300.00:ยังไม่ได้รับ`]);
+    const log = await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'WHT_CERT' AND doc_no = ${re.doc_no}`.execute(database.db);
+    expect(log.rows[0]!.n).toBe(1);
+    // เอกสารที่ไม่มีภาษีถูกหัก / วันที่ไม่มีเลขที่ → ไม่ได้
+    expect((await call('PUT', `/api/v1/docs/doc/${iv.id}/wht-cert`, { cert_no: 'X1' })).body.error.message).toMatch(/ไม่มีภาษีถูกหัก/);
+    expect((await call('PUT', `/api/v1/docs/doc/${hs.id}/wht-cert`, { cert_date: '2027-06-25' })).status).toBe(400);
+    // บริษัทอื่นมองไม่เห็น/แก้ไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('PUT', `/api/v1/docs/doc/${re.id}/wht-cert`, { cert_no: 'HACK' })).status).not.toBe(200);
+    expect((await call('POST', '/api/v1/rpt/6.8/run', { params: {} })).body.rows.some((y: { c: { doc?: string } }) => y.c.doc === re.doc_no)).toBe(false);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('GET', `/api/v1/ar-receipts/${re.id}`)).body.wht_cert_no).toBe('BK1/0042');
+    // ยกเลิกแล้วหายจากทะเบียน
+    for (const [u, x] of [['ar-receipts', re.id], ['sales-invoices', iv.id], ['cash-sales', hs.id]]) expect((await call('POST', `/api/v1/${u}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    expect(docs(await run({}))).toEqual([]);
+  });
+
   it('line notes vs document notes (ข้อกำหนดเจ้าของ): keyed with the line, survive edits, print under the line only when ticked; document notes print in the notes box', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
@@ -1826,6 +1873,17 @@ describe('Buddy Account API (PGlite)', () => {
     expect(Number(b1.trend[0].sales)).toBeCloseTo(Number(b1.kpis.current.sales), 2);
     expect(sum(b1.aging.ar)).toBeCloseTo(Number(b1.kpis.current.ar), 2);
     expect(b1.top_items.find((x: { id: string }) => x.id === cpu)).toBeTruthy();
+    expect(b1.top_customers.find((x: { id: string }) => x.id === cus)).toBeTruthy();
+    // ยอดซื้อ + ผู้จำหน่าย 10 อันดับ (คู่กับยอดขาย — ข้อกำหนดเจ้าของ 01/11/2569): ซื้อเชื่อ 300 หักส่งคืน 100
+    const sup = (await call('POST', '/api/v1/suppliers', { code: 'S-DASH', name: 'ผู้จำหน่ายแดชบอร์ด', tax_id: tid(46) })).body.id;
+    const rr = (await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2027-08-06', party_id: sup, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 3, unit_price: 100 }] })).body;
+    const dn = (await call('POST', '/api/v1/ap-credit-notes', { doc_type_id: await typeOf('DN'), doc_date: '2027-08-07', party_id: sup, ref_header_id: rr.id, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 100, return_to_stock: true }] })).body;
+    expect(dn.error).toBeUndefined();
+    const bp = await dash();
+    expect(Number(bp.kpis.current.purchases) - Number(b1.kpis.current.purchases)).toBeCloseTo(200, 2);
+    expect(bp.top_suppliers.find((x: { id: string }) => x.id === sup)).toMatchObject({ code: 'S-DASH', amount: '200.00' });
+    expect(bp.kpis.current.sales).toBe(b1.kpis.current.sales);
+    for (const [u, x] of [['ap-credit-notes', dn.id], ['purchase-invoices', rr.id]]) expect((await call('POST', `/api/v1/${u}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect(Number(b1.kpis.current.revenue) - Number(b0.kpis.current.revenue ?? 0)).toBeCloseTo(1000, 2);
     // รายวัน: 31 ช่อง ยอดรวมเท่ากัน · กรองหมวดสินค้า
     const daily = await dash('&grain=day');
@@ -1843,7 +1901,7 @@ describe('Buddy Account API (PGlite)', () => {
     // บริษัทอื่นไม่เห็นข้อมูลนี้
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
     const other = await dash();
-    expect([other.kpis.current.sales, other.top_items, sum(other.aging.ar)]).toEqual(['0.00', [], 0]);
+    expect([other.kpis.current.sales, other.kpis.current.purchases, other.top_items, other.top_customers, other.top_suppliers, sum(other.aging.ar)]).toEqual(['0.00', '0.00', [], [], [], 0]);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     expect((await call('POST', `/api/v1/ar-receipts/${re.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
@@ -2229,6 +2287,10 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     // ล้างข้อมูลทดสอบ
     for (const id of [c1, cp]) expect((await call('POST', `/api/v1/cheques/${id}/unpass`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    // รายงาน 3.8 เช็คจ่ายยกเลิก/ยกเลิกการผ่าน (คู่กับเช็ครับคืน): เช็คจ่ายที่ยกเลิกการผ่านแสดงพร้อมเหตุผล · เช็ครับไม่ปน
+    const r38 = (await call('POST', '/api/v1/rpt/3.8/run', { params: {} })).body.rows.filter((x: { t?: string }) => !x.t).map((x: { c: { no: string; kind: string; reason: string } }) => `${x.c.no}:${x.c.kind}:${x.c.reason}`);
+    expect(r38).toContain('CP-T47-1:ยกเลิกการผ่าน:ยกเลิกการผ่าน: ล้างข้อมูลทดสอบ');
+    expect(r38.some((x: string) => x.startsWith('QR-T47'))).toBe(false);
     expect((await call('POST', '/api/v1/cheques/undeposit', { cheque_ids: [c1] })).status).toBe(200);
     for (const id of [c1, c2, c3, cp]) expect((await call('DELETE', `/api/v1/cheques/${id}`)).status).toBe(200);
     expect(await book()).toBe('0.00');

@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '../../db.js';
-import { notFound, parse, requireCompany } from '../../http.js';
+import { badRequest, notFound, parse, requireCompany } from '../../http.js';
+import { logActivity } from '../../audit.js';
 import { deleteDocument, previewPosting, repostDocument } from './engine.js';
 import { deleteJournal } from '../gl/journals.js';
 
@@ -39,6 +40,23 @@ export function docRoutes(app: FastifyInstance, db: Db) {
     const p = parse(z.object({ kind: z.enum(['doc', 'journal']), id: z.string().uuid() }), req.params);
     const { reason } = parse(z.object({ reason: z.string().trim().min(1, 'ระบุเหตุผลที่ลบ').max(200) }), req.body);
     return p.kind === 'doc' ? deleteDocument(db, a, p.id, reason) : deleteJournal(db, a, p.id, reason);
+  });
+
+  /** เลขที่/วันที่หนังสือรับรอง 50 ทวิ ที่ผู้จ่ายเงินออกให้ (ทะเบียนภาษีถูกหัก 6.8) — บันทึกภายหลังได้ ไม่กระทบการลงบัญชี */
+  app.put('/api/v1/docs/:kind/:id/wht-cert', async (req) => {
+    const a = requireCompany(req);
+    const { kind, id } = parse(z.object({ kind: z.literal('doc'), id: z.string().uuid() }), req.params);
+    const b = parse(z.object({ cert_no: z.string().trim().max(30).nullable().optional().transform((v) => v || null), cert_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().transform((v) => v || null) }), req.body);
+    const h = await db.selectFrom('doc_header').select(['doc_no', 'doc_class', 'doc_status', 'wht_amount', 'module', 'wht_cert_no', 'wht_cert_date']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!h) throw notFound('เอกสาร');
+    if (!['HS', 'RE', 'AI', 'OI', 'BU'].includes(h.doc_class) || Number(h.wht_amount) === 0) throw badRequest('เอกสารนี้ไม่มีภาษีถูกหัก ณ ที่จ่าย');
+    if (h.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว');
+    if (b.cert_date && !b.cert_no) throw badRequest('ป้อนเลขที่หนังสือรับรอง 50 ทวิ', [{ field: 'cert_no', message: 'ป้อนเลขที่' }]);
+    return db.transaction().execute(async (tx) => {
+      await tx.updateTable('doc_header').set({ wht_cert_no: b.cert_no, wht_cert_date: b.cert_date, updated_by: a.userId }).where('id', '=', id).execute();
+      await logActivity(tx, a, { module: h.module ?? kind, action: 'WHT_CERT', docNo: h.doc_no, table: 'doc_header', rowId: id, detail: { before: { cert_no: h.wht_cert_no, cert_date: h.wht_cert_date }, after: b } });
+      return { ok: true };
+    });
   });
 
   app.post('/api/v1/docs/:id/repost', async (req) => {
