@@ -10,7 +10,7 @@ import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, activeSettlement, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
-import { checkWht, readMoneyParts, whtSchema, writeWht } from './payments.js';
+import { checkWht, readMoneyParts, saveBranch, whtSchema, writeWht } from './payments.js';
 import { checkHold, noteHold } from './hold.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -21,7 +21,7 @@ const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ?
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 
 export const tradeBody = z.object({
-  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'), bill_to_customer_id: optId,
+  branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'), bill_to_customer_id: optId,
   party_tax_branch_no: str(5), your_ref: str(30), ref_no: str(30), ref_date: isoDate.nullable().optional(), ref_header_id: optId,
   department_id: optId, salesperson_id: optId, sales_area_code: str(10), ship_via_code: str(10), ship_to_id: optId, warehouse_id: optId,
   credit_days: z.coerce.number().int().min(0).max(999).nullable().optional(), due_date: isoDate.nullable().optional(),
@@ -129,7 +129,9 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
   if (wht.lt(0)) throw badRequest('ภาษีหัก ณ ที่จ่ายต้องไม่ติดลบ');
   if (payTotal.plus(wht).gt(d(calc.net_amount))) throw badRequest('ยอดชำระด้วยวิธีอื่นรวมภาษีหัก ณ ที่จ่าย มากกว่ายอดเงินรวมทั้งสิ้น');
   const credit = b.credit_days ?? (K.payments || K.cls === 'QT' ? 0 : party.credit_days ?? 0);
+  const branchId = await saveBranch(db, a, id, b.branch_id);
   const header = {
+    ...(branchId ? { branch_id: branchId } : {}), 
     doc_type_id: dt.id, doc_class: K.cls, module: K.order ?? K.module, doc_date: b.doc_date, delivery_date: K.order && K.cls !== 'QT' ? b.delivery_date ?? b.doc_date : null,
     customer_id: K.party === 'customer' ? party.id : null, supplier_id: K.party === 'supplier' ? party.id : null, bill_to_customer_id: billTo ? b.bill_to_customer_id : null,
     party_name: [shown.title, shown.name].filter(Boolean).join(' ').slice(0, 200), party_address: [shown.address_1, shown.address_2, shown.address_3, shown.zip_code].filter(Boolean).join(' ').slice(0, 500) || null,
@@ -160,7 +162,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
       await tx.updateTable('doc_link').set({ deleted_at: sql`now()` as never }).where('to_header_id', '=', id).where('link_type', '=', 'DEPOSIT').where('deleted_at', 'is', null).execute();
     } else {
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
-      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: a.branchId ?? (await tx.selectFrom('sys_branch').select('id').where('company_id', '=', a.companyId).where('is_head_office', '=', true).executeTakeFirstOrThrow()).id,
+      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!,
         doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     // ตัด/รับสต๊อก + ต้นทุน (T4.2): เฉพาะสินค้าทั่วไป (ชนิด 0) · ลดหนี้/ส่งคืนเฉพาะบรรทัดที่ติ๊กคืนสินค้า

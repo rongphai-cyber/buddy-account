@@ -130,7 +130,7 @@ export async function updateJournal(db: Db, ctx: { companyId: string; userId: st
     await insertLines(tx, ctx.companyId, id, lines, ctx.userId);
     await tx.updateTable('gl_journal').set({
       journal_book_id: input.journal_book_id, voucher_date: input.voucher_date, period_id: p.id, description: input.description ?? null,
-      reference: input.reference ?? null, total_debit: totalD.toFixed(2), total_credit: totalD.toFixed(2), updated_by: ctx.userId,
+      reference: input.reference ?? null, total_debit: totalD.toFixed(2), total_credit: totalD.toFixed(2), updated_by: ctx.userId, ...(input.branch_id ? { branch_id: input.branch_id } : {}),
     }).where('id', '=', id).execute();
     await logActivity(tx, ctx, { module: 'GL', action: 'EDIT', docNo: j.voucher_no, table: 'gl_journal', rowId: id, detail: { before: { date: j.voucher_date, description: j.description, lines: before } } });
     return { id, voucher_no: j.voucher_no };

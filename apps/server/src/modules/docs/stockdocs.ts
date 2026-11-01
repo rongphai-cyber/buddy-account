@@ -8,7 +8,7 @@ import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
-import { branchOf } from './payments.js';
+import { saveBranch } from './payments.js';
 import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
 
 /**
@@ -25,7 +25,7 @@ const str = (max: number) => z.string().trim().max(max).nullable().optional().tr
 const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 const body = z.object({
-  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, department_id: optId, remark: str(2000), your_ref: str(60),
+  branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, department_id: optId, remark: str(2000), your_ref: str(60),
   warehouse_id: optId, to_warehouse_id: optId,
   lines: z.array(z.object({
     item_id: uuid, description: str(200), warehouse_id: optId, qty: num.default('0'), unit_id: optId, factor: num.optional(),
@@ -67,7 +67,8 @@ export async function writeStockDoc(db: Db, a: Ctx, K: StockKind, id: string | n
     else if (K.cls !== 'JU' && d(l.qty).lt(0)) throw badRequest(`บรรทัดที่ ${i + 1}: จำนวนต้องมากกว่า 0`);
     if (K.cls === 'CA' && it.cost_method === 'F' && !l.source_line_id) throw badRequest(`บรรทัดที่ ${i + 1}: ${it.code} คิดต้นทุน FIFO — เลือกล็อต (เอกสารรับเข้า) ที่จะปรับ`);
   });
-  const header = { doc_type_id: dt.id, doc_class: K.cls, module: 'IC', doc_date: b.doc_date, department_id: b.department_id ?? dt.department_id, remark: b.remark, your_ref: b.your_ref,
+  const branchId = await saveBranch(db, a, id, b.branch_id);
+  const header = { ...(branchId ? { branch_id: branchId } : {}), doc_type_id: dt.id, doc_class: K.cls, module: 'IC', doc_date: b.doc_date, department_id: b.department_id ?? dt.department_id, remark: b.remark, your_ref: b.your_ref,
     warehouse_id: b.warehouse_id ?? dt.warehouse_id, to_warehouse_id: K.cls === 'RL' ? b.to_warehouse_id : null, price_type: '0', updated_by: a.userId };
   {
     const tx = db;
@@ -85,7 +86,7 @@ export async function writeStockDoc(db: Db, a: Ctx, K: StockKind, id: string | n
       await tx.updateTable('doc_line').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
-      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
+      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!, doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     const st = await stockSettings(tx, a.companyId);
     const rows: Array<Record<string, unknown>> = [];

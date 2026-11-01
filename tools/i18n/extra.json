@@ -496,5 +496,12 @@
  "เงินสดทั้งจำนวน {0}": "All in cash {0}",
  "เพิ่มวิธีชำระอื่น": "Add another payment method",
  "แยกหลายวิธี (เงินสด + โอน/เช็ค)": "Split across methods (cash + transfer/cheque)",
- "— เลือกวิธี{0}เงิน แล้วระบบบันทึกให้ (Tab/ลูกศร เลือก · Enter กด)": "— choose how it was {0} and the system saves it (Tab/arrows to choose · Enter to press)"
+ "— เลือกวิธี{0}เงิน แล้วระบบบันทึกให้ (Tab/ลูกศร เลือก · Enter กด)": "— choose how it was {0} and the system saves it (Tab/arrows to choose · Enter to press)",
+ "ทุกสาขา (รายงานนี้ยังไม่แยกตามสาขา)": "All branches (this report is not split by branch yet)",
+ "สาขา {0} {1}": "Branch {0} {1}",
+ "สาขาที่บันทึก": "Branch",
+ "สาขาที่บันทึกเอกสาร/ลงบัญชี": "Branch the document/posting belongs to",
+ "สาขาที่บันทึกเอกสาร/ลงบัญชี — รายงานบัญชี/ภาษีแยกตามสาขานี้": "Branch the document/posting belongs to — accounting/tax reports split by this branch",
+ "ไม่พบสาขานี้ — เลือกสาขาที่บันทึกใหม่": "Branch not found — choose the branch again",
+ "(สำนักงานใหญ่)": "(head office)"
 }

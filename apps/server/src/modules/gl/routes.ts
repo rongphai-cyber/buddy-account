@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { d, ZERO, addMonths, addDays } from '@buddy/core';
+import { branchOf } from '../docs/payments.js';
 import type { Db } from '../../db.js';
 import { badRequest, conflict, notFound, parse, requireCompany } from '../../http.js';
 import { logActivity } from '../../audit.js';
@@ -260,7 +261,7 @@ export function glRoutes(app: FastifyInstance, db: Db) {
   });
 
   const journalBody = z.object({
-    journal_book_id: uuid, voucher_date: isoDate, voucher_no: z.string().trim().max(30).nullable().optional(),
+    journal_book_id: uuid, voucher_date: isoDate, voucher_no: z.string().trim().max(30).nullable().optional(), branch_id: uuid.nullable().optional(),
     description: z.string().trim().max(200).nullable().optional(), reference: z.string().trim().max(30).nullable().optional(),
     lines: z.array(z.object({ account_id: uuid.nullable(), department_id: uuid.nullable().optional(), description: z.string().max(200).nullable().optional(), debit: money, credit: money, line_note: z.string().trim().max(2000).nullable().optional(), line_note_print: z.boolean().default(false) })).min(1, 'ป้อนรายการบัญชี').max(999),
   });
@@ -281,7 +282,8 @@ export function glRoutes(app: FastifyInstance, db: Db) {
       if (pre && !own.toUpperCase().startsWith(pre.toUpperCase())) throw badRequest(`เลขที่ใบสำคัญต้องขึ้นต้นด้วย ${pre} ตามสมุดรายวัน — หรือเว้นว่างเพื่อใช้เลขอัตโนมัติ`, [{ field: 'voucher_no', message: `ต้องขึ้นต้นด้วย ${pre}` }]);
       if (pre && own.toUpperCase() === pre.toUpperCase()) b.voucher_no = null;
     }
-    const j = await createJournal(db, a, b, style);
+    // สาขาที่บันทึก: ที่เลือกในใบสำคัญ → แถบบน → สำนักงานใหญ่ (เดิมว่างเมื่อเลือก "ทุกสาขา" — ข้อกำหนดเจ้าของ 01/11/2569)
+    const j = await createJournal(db, a, { ...b, branch_id: await branchOf(db, a, b.branch_id) }, style);
     for (const v of b.vat) await addManualVat(db, a, v.kind, { ...v, journal_id: j.id, header_id: null });
     for (const w of b.wht) await saveWht(db, a, null, { ...w, journal_id: j.id, header_id: null });
     return j;
@@ -289,7 +291,8 @@ export function glRoutes(app: FastifyInstance, db: Db) {
   app.put('/api/v1/gl/journals/:id', async (req) => {
     const a = requireCompany(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
-    return updateJournal(db, a, id, parse(journalBody, req.body));
+    const b = parse(journalBody, req.body);
+    return updateJournal(db, a, id, { ...b, branch_id: b.branch_id ? await branchOf(db, a, b.branch_id) : undefined });
   });
   app.post('/api/v1/gl/journals/:id/cancel', async (req) => {
     const a = requireCompany(req);

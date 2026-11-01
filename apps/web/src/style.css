@@ -892,3 +892,6 @@ button.danger-outline:not(:disabled) { color: var(--bad); border-color: color-mi
 /* เลือกวิธีรับ/จ่ายเงินก่อนบันทึก (PayChoiceDialog) */
 .pay-choice { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .pay-choice button { text-align: left; justify-content: flex-start; padding: 10px 14px; }
+/* สาขาที่บันทึกเอกสาร (มุมขวาบนของทุกหน้าจอเอกสาร) */
+.doc-branch { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+.doc-branch select { width: auto; min-height: 30px; padding: 2px 8px; font-weight: 600; border-color: var(--tone, var(--line)); }

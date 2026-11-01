@@ -7,6 +7,7 @@ import { api } from '../../api';
 import { WhtCert } from './WhtCert';
 import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { useDocEdit } from '../../components/DocEdit';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
@@ -85,6 +86,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
   const defs = useQuery({ queryKey: ['trade-defaults', cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; department_id: string | null }> }>(`/api/v1/trade-defaults/${cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], staleTime: 0, queryFn: () => api.get<Record<string, string | null> & { editable: boolean }>(`/api/v1/${K.path}/${id}`) });
+  const br = useDocBranch(id, cur.data?.branch_id);
   const [h, setH] = useState<Head | null>(null);
   const [tab, setTab] = useState('main');
   const [err, setErr] = useState<unknown>(null);
@@ -113,11 +115,12 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: ro, resetKey: h ? 'on' : 'off' });
   /** เนื้อหาที่ส่งบันทึก — ใช้ทั้งปุ่มบันทึกและตัวอย่างการลงบัญชี (แท็บใบสำคัญ) */
-  const bodyOf = () => {
+  const bodyOf0 = () => {
     if (!h) return null;
     return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, bank_account_id: h.bank_account_id || undefined,
         to_bank_account_id: cls === 'BT' ? h.to_bank_account_id || null : null, amount: h.amount || '0', fee: cls === 'BT' ? h.fee || '0' : undefined, wht: cls === 'BU' ? h.wht || '0' : undefined };
   };
+  const bodyOf = () => { const x = bodyOf0(); return x && { ...x, branch_id: br.body }; };
   const save = async (andNew = false) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro) return;
@@ -141,7 +144,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
   return (
     <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="finance" style={bookStyle(tColor)}>
       <div className="doc-title"><p className="eyebrow">ธนาคาร › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
-        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
+        <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}

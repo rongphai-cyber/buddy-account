@@ -10,7 +10,7 @@ import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { docTypeCharges } from '../doc-types.js';
 import { checkHold, noteHold } from './hold.js';
-import { branchOf, checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, whtSchema, writePayments, writeWht } from './payments.js';
+import { branchOf, checkWht, clearMoneyParts, docBranch, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, saveBranch, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -29,7 +29,7 @@ const chargesSchema = z.array(z.object({
 type Charges = z.infer<typeof chargesSchema>;
 
 const body = z.object({
-  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, payment_date: isoDate.nullable().optional(),
+  branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, payment_date: isoDate.nullable().optional(),
   party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'),
   department_id: optId, salesperson_id: optId, your_ref: str(60), remark: str(2000),
   settlements: z.array(z.object({ invoice_header_id: uuid, amount: num, vat_amount: num.nullable().optional(), ...lineNoteFields }))
@@ -108,7 +108,7 @@ async function writeCharges(tx: Db, a: Ctx, x: { headerId: string; docNo: string
   }
   if (!groups.size) return;
   const per = await periodFor(tx, a.companyId, x.payDate);
-  const branchId = await branchOf(tx, a);
+  const branchId = await docBranch(tx, a, x.headerId);
   for (const { c, paid, tax } of groups.values()) {
     const s = x.suppliers.get(c.supplier_id)!;
     await tx.insertInto('tax_wht_entry').values({ company_id: a.companyId, form_type: c.wht_form!, header_id: x.headerId, branch_id: branchId, certificate_no: x.docNo, certificate_date: x.payDate, tax_period_id: per.id,
@@ -168,7 +168,9 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
   if (d(t.cash).lt(0)) throw badRequest(`ชำระโดยวิธีอื่นรวม ${t.other} มากกว่ายอดที่ต้อง${K.direction === 'R' ? 'รับ' : 'จ่าย'} ${t.due}`);
   if (!t.ok) throw badRequest(`ยอดชำระตามใบกำกับ ${t.due} ไม่เท่ากับยอดชำระจริง ${t.paid} (Message# ${K.cls === 'RE' ? '4025' : '4066'}) — ปรับเงินสด ส่วนลด ดอกเบี้ย ภาษีหัก ณ ที่จ่าย ${K.cls === 'RE' ? 'รายการที่แพลตฟอร์มหัก ' : ''}หรือผลต่างอัตราแลกเปลี่ยน`);
 
+  const branchId = await saveBranch(db, a, id, b.branch_id);
   const header = {
+    ...(branchId ? { branch_id: branchId } : {}), 
     doc_type_id: dt.id, doc_class: K.cls, module: K.module, doc_date: b.doc_date, payment_date: payDate,
     customer_id: K.party === 'customer' ? party.id : null, supplier_id: K.party === 'supplier' ? party.id : null,
     party_name: [party.title, party.name].filter(Boolean).join(' ').slice(0, 200), party_address: [party.address_1, party.address_2, party.address_3, party.zip_code].filter(Boolean).join(' ').slice(0, 500) || null,
@@ -194,7 +196,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
       await tx.updateTable('doc_charge').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
-      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
+      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!, doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     // express_rectype: รหัสรายการตัดแบบ Express (3 บิล 4 เพิ่มหนี้ 5 ลดหนี้) — เครื่องลงบัญชีใช้กลับเครื่องหมายใบลดหนี้
     await tx.insertInto('doc_settlement').values(setts.map((s, i) => ({ company_id: a.companyId, payment_header_id: hid!, invoice_header_id: s.o.header_id, express_rectype: s.rectype, amount: s.amount, vat_amount: s.vat, ...noteCols(b.settlements[i]!), created_by: a.userId }))).execute();

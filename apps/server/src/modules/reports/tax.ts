@@ -21,10 +21,11 @@ type V = { tax_invoice_date: string; tax_invoice_no: string; doc_no: string | nu
   base_amount: string; vat_amount: string; zero_rate_amount: string; exempt_amount: string; nonclaim_base: string; nonclaim_vat: string; header_id: string | null };
 /** ภาษีซื้อของเดือน = แฟ้มภาษีซื้อของงวด + ภ.พ.36 ที่นำส่งของเดือนก่อน (ยื่นปกติ — doc_class 'PP36' แยกกลุ่มในรายงาน) */
 async function vatRows(db: Db, a: Ctx, p: P, kind: 'P' | 'S', per: string) {
-  const pp36 = kind === 'P' && (p.str('filing') ?? 'normal') !== 'late';
+  // ภ.พ.36 นำส่งในนามบริษัท (สำนักงานใหญ่) — รายงานแยกสาขาอื่นไม่รวม
+  const pp36 = kind === 'P' && (p.str('filing') ?? 'normal') !== 'late' && (!p.branchId || p.isHq);
   return (await sql<V>`SELECT v.tax_invoice_date, v.tax_invoice_no, v.doc_no, CASE WHEN v.vat_kind = 'R' THEN 'PP36' ELSE h.doc_class END AS doc_class, v.party_name, v.party_tax_id, v.party_tax_branch_no, v.base_amount, v.vat_amount, v.zero_rate_amount, v.exempt_amount, v.nonclaim_base, v.nonclaim_vat, v.header_id
       FROM tax_vat_entry v JOIN gl_period gp ON gp.id = v.vat_period_id LEFT JOIN doc_header h ON h.id = v.header_id LEFT JOIN md_department dp ON dp.id = v.department_id
-     WHERE v.company_id = ${a.companyId} AND v.deleted_at IS NULL AND v.doc_status <> 'C' ${p.dept(sql`dp.code`)}
+     WHERE v.company_id = ${a.companyId} AND v.deleted_at IS NULL AND v.doc_status <> 'C' ${p.dept(sql`dp.code`)} ${p.branch(sql`v.branch_id`)}
        AND ((v.vat_kind = ${kind} AND to_char(gp.start_date, 'YYYY-MM') = ${per} ${filing(p)})
          ${pp36 ? sql`OR (v.vat_kind = 'R' AND to_char(gp.start_date, 'YYYY-MM') = to_char((${per + '-01'}::date - interval '1 month'), 'YYYY-MM'))` : sql``})
      ORDER BY v.tax_invoice_date, v.tax_invoice_no LIMIT 20000`.execute(db)).rows;
@@ -75,25 +76,25 @@ function vatReport(kind: 'P' | 'S') {
 }
 
 /** ยอดรวมภาษีของงวด (ใบลดหนี้ติดลบ) */
-async function vatTotals(db: Db, a: Ctx, fil: ReturnType<typeof filing>, per: string, late = false) {
+async function vatTotals(db: Db, a: Ctx, p: P, fil: ReturnType<typeof filing>, per: string, late = false) {
   const r = (await sql<{ kind: string; base: string; vat: string; zero: string; exempt: string; nbase: string; nvat: string; n: number }>`SELECT v.vat_kind AS kind,
         coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.base_amount ELSE v.base_amount END), 0) AS base, coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.vat_amount ELSE v.vat_amount END), 0) AS vat,
         coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.zero_rate_amount ELSE v.zero_rate_amount END), 0) AS zero,
         coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.exempt_amount ELSE v.exempt_amount END), 0) AS exempt, coalesce(sum(v.nonclaim_base), 0) AS nbase, coalesce(sum(v.nonclaim_vat), 0) AS nvat, count(*)::int AS n
       FROM tax_vat_entry v JOIN gl_period gp ON gp.id = v.vat_period_id LEFT JOIN doc_header h ON h.id = v.header_id
-     WHERE v.company_id = ${a.companyId} AND v.deleted_at IS NULL AND v.doc_status <> 'C' AND to_char(gp.start_date, 'YYYY-MM') = ${per} ${fil} GROUP BY v.vat_kind`.execute(db)).rows;
+     WHERE v.company_id = ${a.companyId} AND v.deleted_at IS NULL AND v.doc_status <> 'C' AND to_char(gp.start_date, 'YYYY-MM') = ${per} ${fil} ${p.branch(sql`v.branch_id`)} GROUP BY v.vat_kind`.execute(db)).rows;
   const z = { base: d(0), vat: d(0), zero: d(0), exempt: d(0), nbase: d(0), nvat: d(0), n: 0 };
   const get = (k: string) => { const x = r.find((y) => y.kind === k); return x ? { base: d(x.base), vat: d(x.vat), zero: d(x.zero), exempt: d(x.exempt), nbase: d(x.nbase), nvat: d(x.nvat), n: x.n } : z; };
   // ภ.พ.36 ที่นำส่งเดือนก่อนเป็นภาษีซื้อของเดือนนี้ (ยื่นปกติเท่านั้น)
-  const pp36 = late ? { base: d(0), vat: d(0), n: 0 } : await pp36Credit(db, a.companyId, per);
+  const pp36 = late || (p.branchId && !p.isHq) ? { base: d(0), vat: d(0), n: 0 } : await pp36Credit(db, a.companyId, per);
   const P = get('P');
   return { P: { ...P, base: P.base.plus(pp36.base), vat: P.vat.plus(pp36.vat), n: P.n + pp36.n }, S: get('S'), pp36 };
 }
 /** ยอดขายที่ได้รับยกเว้น: เอกสารขายในเดือนที่ไม่มีภาษี (ประเภทราคา 0) และไม่อยู่ในแฟ้มภาษีขาย */
-async function exemptSales(db: Db, a: Ctx, per: string) {
+async function exemptSales(db: Db, a: Ctx, p: P, per: string) {
   return d((await sql<{ v: string }>`SELECT coalesce(sum(CASE WHEN h.doc_class = 'CN' THEN -h.amount_after_discount ELSE h.amount_after_discount END), 0) AS v FROM doc_header h
       WHERE h.company_id = ${a.companyId} AND h.module = 'AR' AND h.doc_class IN ('IV', 'HS', 'CN', 'DR') AND h.doc_status <> 'C' AND h.deleted_at IS NULL AND NOT h.is_opening
-        AND to_char(h.doc_date, 'YYYY-MM') = ${per} AND h.vat_amount = 0 AND NOT EXISTS (SELECT 1 FROM tax_vat_entry v WHERE v.header_id = h.id AND v.deleted_at IS NULL AND v.doc_status <> 'C')`.execute(db)).rows[0]!.v);
+        AND to_char(h.doc_date, 'YYYY-MM') = ${per} ${p.branch(sql`h.branch_id`)} AND h.vat_amount = 0 AND NOT EXISTS (SELECT 1 FROM tax_vat_entry v WHERE v.header_id = h.id AND v.deleted_at IS NULL AND v.doc_status <> 'C')`.execute(db)).rows[0]!.v);
 }
 
 export function taxReports() {
@@ -103,12 +104,12 @@ export function taxReports() {
   // 6.1 สรุปภาษีซื้อ/ขายของงวด
   defineReport('6.1', async (db, a, p) => {
     const per = periodOf(p);
-    const t = await vatTotals(db, a, filing(p), per, p.str('filing') === 'late');
+    const t = await vatTotals(db, a, p, filing(p), per, p.str('filing') === 'late');
     const rows: ReportRow[] = [
       { t: 'group', c: { item: 'ภาษีขาย' } },
       { c: { item: 'มูลค่าขายที่ต้องเสียภาษี', base: money(t.S.base), vat: money(t.S.vat), n: t.S.n } },
       { c: { item: 'มูลค่าขายอัตราศูนย์', base: money(t.S.zero) } },
-      { c: { item: 'มูลค่าขายที่ได้รับยกเว้น', base: money(t.S.exempt.plus(await exemptSales(db, a, per))) } },
+      { c: { item: 'มูลค่าขายที่ได้รับยกเว้น', base: money(t.S.exempt.plus(await exemptSales(db, a, p, per))) } },
       { t: 'group', c: { item: 'ภาษีซื้อ' } },
       { c: { item: 'ขอคืนได้', base: money(t.P.base), vat: money(t.P.vat), n: t.P.n } },
       ...(t.pp36.n ? [{ c: { item: '  (รวม ภ.พ.36 ที่นำส่งเดือนก่อน)', base: money(t.pp36.base), vat: money(t.pp36.vat), n: t.pp36.n } }] : []),
@@ -121,15 +122,15 @@ export function taxReports() {
   // 6.4 แบบ ภ.พ.30 — ข้อ 1–12 (ภาษีชำระเกินยกมา = ผลลัพธ์งวดก่อนที่ชำระเกิน ถ้าเลือกคำนวณ)
   defineReport('6.4', async (db, a, p) => {
     const per = periodOf(p);
-    const t = await vatTotals(db, a, filing(p), per, p.str('filing') === 'late');
+    const t = await vatTotals(db, a, p, filing(p), per, p.str('filing') === 'late');
     // ยกเว้น = บิลที่ไม่มี VAT ทั้งใบ + รายการยกเว้นในบิลที่มี VAT (รหัส VAT 0)
-    const exempt = (await exemptSales(db, a, per)).plus(t.S.exempt);
+    const exempt = (await exemptSales(db, a, p, per)).plus(t.S.exempt);
     let carry = d(0);
     if ((p.str('carry') ?? 'auto') === 'auto') {
       // ไล่ย้อนจากงวดแรกที่มีข้อมูลถึงงวดก่อน: ชำระเกินยกไปเรื่อย ๆ จนกว่าจะมีภาษีต้องชำระ
       const months = (await sql<{ m: string }>`SELECT DISTINCT to_char(gp.start_date, 'YYYY-MM') AS m FROM tax_vat_entry v JOIN gl_period gp ON gp.id = v.vat_period_id
-          WHERE v.company_id = ${a.companyId} AND v.deleted_at IS NULL AND v.doc_status <> 'C' AND v.is_late = false AND to_char(gp.start_date, 'YYYY-MM') < ${per} ORDER BY 1`.execute(db)).rows.map((x) => x.m);
-      for (const m of months) { const x = await vatTotals(db, a, sql`AND v.is_late = false`, m); const net = x.S.vat.minus(x.P.vat).minus(carry); carry = net.lt(0) ? net.neg() : d(0); }
+          WHERE v.company_id = ${a.companyId} AND v.deleted_at IS NULL AND v.doc_status <> 'C' AND v.is_late = false AND to_char(gp.start_date, 'YYYY-MM') < ${per} ${p.branch(sql`v.branch_id`)} ORDER BY 1`.execute(db)).rows.map((x) => x.m);
+      for (const m of months) { const x = await vatTotals(db, a, p, sql`AND v.is_late = false`, m); const net = x.S.vat.minus(x.P.vat).minus(carry); carry = net.lt(0) ? net.neg() : d(0); }
     }
     const salesTaxable = t.S.base, zero = t.S.zero;
     const L = [salesTaxable.plus(zero).plus(exempt), zero, exempt, salesTaxable, t.S.vat, t.P.base, t.P.vat];
@@ -160,7 +161,7 @@ export function taxReports() {
     const xs = (await sql<{ tax_invoice_date: string; tax_invoice_no: string; doc_no: string | null; party_name: string | null; description: string | null; base_amount: string; vat_amount: string; header_id: string | null }>`
       SELECT v.tax_invoice_date, v.tax_invoice_no, v.doc_no, v.party_name, v.description, v.base_amount, v.vat_amount, v.header_id
         FROM tax_vat_entry v JOIN gl_period gp ON gp.id = v.vat_period_id
-       WHERE v.company_id = ${a.companyId} AND v.vat_kind = 'R' AND v.deleted_at IS NULL AND v.doc_status <> 'C' AND to_char(gp.start_date, 'YYYY-MM') = ${per}
+       WHERE v.company_id = ${a.companyId} AND v.vat_kind = 'R' AND v.deleted_at IS NULL AND v.doc_status <> 'C' AND to_char(gp.start_date, 'YYYY-MM') = ${per} ${p.branch(sql`v.branch_id`)}
        ORDER BY v.tax_invoice_date, v.doc_no`.execute(db)).rows;
     let tb = d(0), tv = d(0);
     const rows: ReportRow[] = xs.map((x, i) => { tb = tb.plus(d(x.base_amount)); tv = tv.plus(d(x.vat_amount)); return { c: { seq: i + 1, date: x.tax_invoice_date, doc: x.doc_no, inv: x.tax_invoice_no, name: x.party_name, desc: x.description, base: x.base_amount, vat: x.vat_amount } }; });
@@ -180,7 +181,7 @@ export function taxReports() {
       SELECT h.id, h.doc_class, h.doc_no, h.doc_date, h.is_opening, coalesce(h.party_name, c.name, b.name) AS name, coalesce(h.party_tax_id, c.tax_id) AS tax_id, h.net_amount, h.wht_amount, h.wht_cert_no, h.wht_cert_date
         FROM doc_header h LEFT JOIN md_customer c ON c.id = h.customer_id LEFT JOIN md_bank_account b ON b.id = h.bank_account_id
        WHERE h.company_id = ${a.companyId} AND h.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_class IN ('HS', 'RE', 'AI', 'OI', 'BU') AND h.wht_amount <> 0
-         ${p.dateRange('date', sql`h.doc_date`)} ${p.range('customer', sql`c.code`)}
+         ${p.dateRange('date', sql`h.doc_date`)} ${p.range('customer', sql`c.code`)} ${p.branch(sql`h.branch_id`)}
          ${cert === 'missing' ? sql`AND coalesce(h.wht_cert_no, '') = ''` : cert === 'received' ? sql`AND coalesce(h.wht_cert_no, '') <> ''` : sql``}
        ORDER BY h.doc_date, h.doc_no LIMIT 20001`.execute(db)).rows;
     const KIND: Record<string, string> = { HS: 'ขายเงินสด', RE: 'รับชำระหนี้', AI: 'รับเงินมัดจำ', OI: 'รายได้อื่น', BU: 'ดอกเบี้ยรับ' };
@@ -207,7 +208,7 @@ export function taxReports() {
     const rows = (await sql<{ payee_tax_id: string | null; payee_tax_branch_no: string | null; payee_name: string; payee_address: string | null; certificate_date: string; income_type: string; rate: string; paid_amount: string; tax_amount: string; condition: string; certificate_no: string }>`
       SELECT w.payee_tax_id, w.payee_tax_branch_no, w.payee_name, w.payee_address, w.certificate_date, w.income_type, w.rate, w.paid_amount, w.tax_amount, w.condition, w.certificate_no
         FROM tax_wht_entry w JOIN gl_period gp ON gp.id = w.tax_period_id
-       WHERE w.company_id = ${a.companyId} AND w.deleted_at IS NULL AND w.doc_status <> 'C' AND w.form_type = ${form} AND to_char(gp.start_date, 'YYYY-MM') = ${per}
+       WHERE w.company_id = ${a.companyId} AND w.deleted_at IS NULL AND w.doc_status <> 'C' AND w.form_type = ${form} AND to_char(gp.start_date, 'YYYY-MM') = ${per} ${p.branch(sql`w.branch_id`)}
          ${f === 'all' ? sql`` : sql`AND w.is_late = ${f === 'late'}`} ORDER BY w.certificate_date, w.certificate_no`.execute(db)).rows;
     let tp = d(0), tt = d(0);
     const out: ReportRow[] = rows.map((r, i) => { tp = tp.plus(d(r.paid_amount)); tt = tt.plus(d(r.tax_amount)); return { c: { seq: i + 1, tax: r.payee_tax_id, br: r.payee_tax_branch_no ?? '00000', name: r.payee_name, addr: r.payee_address,

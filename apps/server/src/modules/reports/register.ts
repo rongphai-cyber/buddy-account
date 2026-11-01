@@ -29,7 +29,7 @@ export function registerReports() {
         FROM doc_header h LEFT JOIN md_customer c ON c.id = h.customer_id LEFT JOIN md_supplier s ON s.id = h.supplier_id LEFT JOIN md_salesperson sp ON sp.id = h.salesperson_id LEFT JOIN md_department dp ON dp.id = h.department_id
        WHERE h.company_id = ${a.companyId} AND h.deleted_at IS NULL AND h.doc_class IN (${sql.join(spec.classes)}) AND h.module <> 'IC'
          ${p.bool('cancelled') && !due ? sql`` : sql`AND h.doc_status <> 'C'`} ${p.range('doc_no', sql`h.doc_no`)} ${p.dateRange('date', due ? sql`h.due_date` : sql`h.doc_date`)}
-         ${p.range(ar ? 'customer' : 'supplier', party)} ${ar ? p.range('salesperson', sql`sp.code`) : sql``} ${p.range('area', sql`h.sales_area_code`)} ${p.dept(sql`dp.code`)}
+         ${p.range(ar ? 'customer' : 'supplier', party)} ${ar ? p.range('salesperson', sql`sp.code`) : sql``} ${p.range('area', sql`h.sales_area_code`)} ${p.dept(sql`dp.code`)} ${p.branch(sql`h.branch_id`)}
        ORDER BY ${order} LIMIT 20001`.execute(db)).rows.filter((x) => !due || d(x.outstanding ?? 0).abs().gte('0.005'));
     const truncated = rows.length > 20000;
     if (truncated) rows.pop();

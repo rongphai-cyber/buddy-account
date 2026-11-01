@@ -1853,6 +1853,20 @@
 ]
 },
 {
+"th": "สำนักงานใหญ่",
+"n": 10,
+"files": [
+"apps/web/src/components/DocBranch.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/taxid.ts"
+]
+},
+{
 "th": "เงินสด",
 "n": 10,
 "files": [
@@ -1978,19 +1992,6 @@
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "สำนักงานใหญ่",
-"n": 9,
-"files": [
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/taxid.ts"
 ]
 },
 {
@@ -4624,6 +4625,15 @@
 ]
 },
 {
+"th": "ทุกสาขา",
+"n": 3,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/reports/index.ts"
+]
+},
+{
 "th": "บรรทัด 2",
 "n": 3,
 "files": [
@@ -5570,6 +5580,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "(สำนักงานใหญ่)",
+"n": 2,
+"files": [
+"apps/web/src/components/DocBranch.tsx",
+"packages/core/src/forms/wht50.ts"
 ]
 },
 {
@@ -6681,14 +6699,6 @@
 "n": 2,
 "files": [
 "apps/web/src/components/DocTypeTabs.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx"
-]
-},
-{
-"th": "ทุกสาขา",
-"n": 2,
-"files": [
-"apps/web/src/App.tsx",
 "apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
@@ -9079,6 +9089,14 @@
 ]
 },
 {
+"th": "เลือกสาขา",
+"n": 2,
+"files": [
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/sync/central.ts"
+]
+},
+{
 "th": "เลือกเช็ค",
 "n": 2,
 "files": [
@@ -9916,13 +9934,6 @@
 "n": 1,
 "files": [
 "apps/server/src/import/express/migrate.ts"
-]
-},
-{
-"th": "(สำนักงานใหญ่)",
-"n": 1,
-"files": [
-"packages/core/src/forms/wht50.ts"
 ]
 },
 {
@@ -19408,6 +19419,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Journals.tsx"
+]
+},
+{
+"th": "ทุกสาขา (รายงานนี้ยังไม่แยกตามสาขา)",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/index.ts"
 ]
 },
 {
@@ -31332,6 +31350,13 @@
 ]
 },
 {
+"th": "สาขา {0} {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/index.ts"
+]
+},
+{
 "th": "สาขา# เป็นตัวเลข (สำนักงานใหญ่ = 0)",
 "n": 1,
 "files": [
@@ -31357,6 +31382,27 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "สาขาที่บันทึก",
+"n": 1,
+"files": [
+"apps/web/src/components/DocBranch.tsx"
+]
+},
+{
+"th": "สาขาที่บันทึกเอกสาร/ลงบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/components/DocBranch.tsx"
+]
+},
+{
+"th": "สาขาที่บันทึกเอกสาร/ลงบัญชี — รายงานบัญชี/ภาษีแยกตามสาขานี้",
+"n": 1,
+"files": [
+"apps/web/src/components/DocBranch.tsx"
 ]
 },
 {
@@ -36855,13 +36901,6 @@
 ]
 },
 {
-"th": "เลือกสาขา",
-"n": 1,
-"files": [
-"apps/server/src/modules/sync/central.ts"
-]
-},
-{
 "th": "เลือกสินค้า (พิมพ์รหัสหรือชื่อ)",
 "n": 1,
 "files": [
@@ -40149,6 +40188,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/sync/central.ts"
+]
+},
+{
+"th": "ไม่พบสาขานี้ — เลือกสาขาที่บันทึกใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/payments.ts"
 ]
 },
 {

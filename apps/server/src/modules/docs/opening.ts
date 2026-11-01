@@ -6,7 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { cancelDocument } from './engine.js';
-import { branchOf } from './payments.js';
+import { saveBranch } from './payments.js';
 
 /**
  * ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04): บิลค้าง ณ วันเริ่มใช้ — เลขที่ป้อนเอง ลงวันที่ก่อนเริ่มใช้
@@ -25,7 +25,7 @@ const str = (max: number) => z.string().trim().max(max).nullable().optional().tr
 const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 const body = z.object({
-  party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'),
+  branch_id: z.string().uuid().nullable().optional(), party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'),
   doc_no: z.string().trim().min(1, 'ป้อนเลขที่เอกสาร (แนะนำใส่ปีนำหน้า เช่น IV67/0001)').max(30), doc_date: isoDate, ref_no: str(30),
   department_id: optId, salesperson_id: optId, credit_days: z.coerce.number().int().min(0).max(999).nullable().optional(), due_date: isoDate.nullable().optional(),
   price_type: z.enum(['0', '1', '2']), amount: num, discount_text: str(20), vat_rate: num,
@@ -60,7 +60,9 @@ async function save(db: Db, a: Ctx, K: Kind, id: string | null, b: z.infer<typeo
   const net = manualVat ? d(calc.amount_after_discount).plus(b.price_type === '1' ? 0 : vat) : d(calc.net_amount);
   if (net.lte(0)) throw badRequest('จำนวนเงินรวมทั้งสิ้นต้องมากกว่า 0');
   const credit = b.credit_days ?? party.credit_days ?? 0;
+  const branchId = await saveBranch(db, a, id, b.branch_id);
   const header = {
+    ...(branchId ? { branch_id: branchId } : {}), 
     doc_class: K.cls, module: K.module, doc_no: b.doc_no, doc_date: b.doc_date, is_opening: true, customer_id: K.party === 'customer' ? party.id : null, supplier_id: K.party === 'supplier' ? party.id : null,
     party_name: [party.title, party.name].filter(Boolean).join(' ').slice(0, 200), party_address: [party.address_1, party.address_2, party.address_3, party.zip_code].filter(Boolean).join(' ').slice(0, 500) || null,
     party_tax_id: party.tax_id, party_tax_branch_no: party.tax_branch_no, ref_no: b.ref_no, department_id: b.department_id, salesperson_id: slm,
@@ -82,7 +84,7 @@ async function save(db: Db, a: Ctx, K: Kind, id: string | null, b: z.infer<typeo
       if (paid) throw badRequest('บิลนี้มีการรับ/จ่ายชำระแล้ว แก้ไขไม่ได้');
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
     } else {
-      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_type_id: dt.id, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
+      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!, doc_type_id: dt.id, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo: b.doc_no, table: 'doc_header', rowId: hid, detail: { opening: true } });
     return { id: hid, doc_no: b.doc_no, net_amount: net.toFixed(2) };

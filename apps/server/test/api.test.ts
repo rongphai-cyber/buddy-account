@@ -1889,6 +1889,53 @@ describe('Buddy Account API (PGlite)', () => {
     for (const [u, x] of [['ar-receipts', re.id], ['sales-invoices', iv.id]]) expect((await call('POST', `/api/v1/${u}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
+  it('branch on every document (ข้อกำหนดเจ้าของ 01/11/2569): chosen branch flows to journal/VAT, edit keeps branch, manual JV never blank, foreign branch rejected, VAT/doc reports per selected branch', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const hq = (await call('GET', '/api/v1/branches')).body.find((b: { is_head_office: boolean }) => b.is_head_office).id as string;
+    const b2 = (await call('POST', '/api/v1/branches', { code: 'BR2', name: 'สาขาเชียงใหม่', tax_branch_no: '00002' })).body.id as string;
+    const cus = (await call('POST', '/api/v1/customers', { code: 'C-BR', name: 'ลูกค้าสาขา', tax_id: tid(49) })).body.id;
+    const ivB = { doc_type_id: await typeOf('IV'), doc_date: '2027-07-12', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 9000 }] };
+    const branchOfRows = async (id: string) => (await sql<{ h: string; j: string | null; v: string | null }>`SELECT h.branch_id AS h, (SELECT j.branch_id FROM gl_journal j WHERE j.source_header_id = h.id AND j.doc_status <> 'C' AND j.deleted_at IS NULL LIMIT 1) AS j,
+      (SELECT v.branch_id FROM tax_vat_entry v WHERE v.header_id = h.id AND v.deleted_at IS NULL LIMIT 1) AS v FROM doc_header h WHERE h.id = ${id}`.execute(database.db)).rows[0]!;
+    // "ทุกสาขา" + เลือกสาขาในเอกสาร → เอกสาร ใบสำคัญ และแฟ้มภาษีขาย อยู่สาขานั้น
+    const iv = (await call('POST', '/api/v1/sales-invoices', { ...ivB, branch_id: b2 })).body;
+    expect(await branchOfRows(iv.id)).toEqual({ h: b2, j: b2, v: b2 });
+    expect((await call('GET', `/api/v1/sales-invoices/${iv.id}`)).body.branch_id).toBe(b2);
+    // แก้ไขโดยไม่ส่งสาขา = คงสาขาเดิม · ย้ายไปสำนักงานใหญ่ได้
+    expect((await call('PUT', `/api/v1/sales-invoices/${iv.id}`, { ...ivB, remark: 'แก้' })).status).toBe(200);
+    expect((await branchOfRows(iv.id)).h).toBe(b2);
+    expect((await call('PUT', `/api/v1/sales-invoices/${iv.id}`, { ...ivB, branch_id: hq })).status).toBe(200);
+    expect(await branchOfRows(iv.id)).toEqual({ h: hq, j: hq, v: hq });
+    expect((await call('PUT', `/api/v1/sales-invoices/${iv.id}`, { ...ivB, branch_id: b2 })).status).toBe(200);
+    // ไม่ระบุสาขา (ทุกสาขา) = สำนักงานใหญ่ · สาขาที่ไม่มี/ของบริษัทอื่น บันทึกไม่ได้
+    const iv2 = (await call('POST', '/api/v1/sales-invoices', ivB)).body;
+    expect((await branchOfRows(iv2.id)).h).toBe(hq);
+    expect((await call('POST', '/api/v1/sales-invoices', { ...ivB, branch_id: '00000000-0000-4000-8000-000000000009' })).body.error.message).toMatch(/ไม่พบสาขานี้/);
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    const otherBr = (await call('GET', '/api/v1/branches')).body[0].id as string;
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('POST', '/api/v1/sales-invoices', { ...ivB, branch_id: otherBr })).status).toBe(400);
+    // ใบสำคัญที่ป้อนเอง: ไม่ว่างอีก (สำนักงานใหญ่) · เลือกสาขาได้
+    const jv = { journal_book_id: bookId, voucher_date: '2027-07-12', lines: [{ account_id: expense, debit: '10' }, { account_id: cash, credit: '10' }] };
+    const j1 = (await call('POST', '/api/v1/gl/journals', jv)).body, j2 = (await call('POST', '/api/v1/gl/journals', { ...jv, branch_id: b2 })).body;
+    const jb = async (id: string) => (await sql<{ b: string | null }>`SELECT branch_id AS b FROM gl_journal WHERE id = ${id}`.execute(database.db)).rows[0]!.b;
+    expect([await jb(j1.id), await jb(j2.id)]).toEqual([hq, b2]);
+    // รายงานแยกตามสาขาที่เลือกที่แถบบน: ภาษีขาย + ทะเบียนขายเชื่อ · หัวรายงานบอกสาขา
+    const docsIn = async (code: string, params: Record<string, unknown>) => { const r = (await call('POST', `/api/v1/rpt/${code}/run`, { params })).body; return { subtitle: r.subtitle as string, docs: r.rows.map((x: { c: { doc?: string; no?: string } }) => x.c.doc ?? x.c.no) as string[] }; };
+    await call('POST', '/api/v1/auth/select', { company_id: companyId, branch_id: b2 });
+    let r = await docsIn('6.3', { period: '2027-07' });
+    expect(r.docs).toContain(iv.doc_no); expect(r.docs).not.toContain(iv2.doc_no); expect(r.subtitle).toMatch(/สาขา BR2 สาขาเชียงใหม่/);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId, branch_id: hq });
+    r = await docsIn('6.3', { period: '2027-07' });
+    expect(r.docs).toContain(iv2.doc_no); expect(r.docs).not.toContain(iv.doc_no);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId, branch_id: null });
+    r = await docsIn('6.3', { period: '2027-07' });
+    expect(r.docs).toEqual(expect.arrayContaining([iv.doc_no, iv2.doc_no])); expect(r.subtitle).toMatch(/ทุกสาขา/);
+    for (const x of [iv.id, iv2.id]) expect((await call('POST', `/api/v1/sales-invoices/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    for (const x of [j1.id, j2.id]) expect((await call('POST', `/api/v1/gl/journals/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('line notes vs document notes (ข้อกำหนดเจ้าของ): keyed with the line, survive edits, print under the line only when ticked; document notes print in the notes box', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;

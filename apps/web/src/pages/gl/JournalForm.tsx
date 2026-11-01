@@ -10,6 +10,7 @@ import { CancelStamp } from '../../components/DocDelete';
 import { withPrefix } from '../../components/DocNo';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, focusStart, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
+import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
 import { DocActions } from '../../components/DocPrint';
@@ -42,6 +43,7 @@ export function JournalFormPage() {
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Department[]>('/api/v1/departments') });
   const accts = useAccounts();
   const doc = useQuery({ enabled: !isNew, queryKey: ['journal', id], queryFn: () => api.get<JournalDoc>(`/api/v1/gl/journals/${id}`) });
+  const br = useDocBranch(isNew ? null : id, (doc.data as { branch_id?: string | null } | undefined)?.branch_id);
   const [vatAsk, setVatAsk] = useState(false);
   const ys = useYearSystem();
   /** S-ME-01: เติมรายการปิดภาษีขาย/ภาษีซื้อของเดือน จากยอดคงเหลือในบัญชี ณ สิ้นเดือน */
@@ -178,7 +180,7 @@ export function JournalFormPage() {
       if (gaps.length) { setTaxAsk({ andNew, gaps }); return; }
     }
     setErr(null); setBusy(true);
-    const body = { ...h, voucher_no: ownNo || (manualNo ? null : undefined), description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
+    const body = { ...h, branch_id: br.body, voucher_no: ownNo || (manualNo ? null : undefined), description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
       ...(isNew ? { vat: drafts.vat.map(vatPayload), wht: drafts.wht.map(whtPayload) } : {}) };
     try {
       const r = isNew ? await api.post<{ id: string; voucher_no: string }>('/api/v1/gl/journals', body) : await api.put<{ id: string; voucher_no: string }>(`/api/v1/gl/journals/${id}`, body);
@@ -215,6 +217,7 @@ export function JournalFormPage() {
           <div className="title-row"><h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}</h1><CancelStamp show={j?.doc_status === 'C'} />{book && <span className="book-pill" title="สมุดรายวันของใบสำคัญนี้">{isNew ? 'กำลังบันทึก: ' : ''}{book.prefix} {book.name_th}</span>}</div>
         </div>
         <div className="doc-state">
+          <DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={!editable} />
           {isNew && <Pill tone="d">ใหม่ — ยังไม่บันทึก</Pill>}
           {j && j.doc_status === 'C' && <Pill tone="c">ยกเลิกแล้ว</Pill>}
           {j && j.doc_status === 'N' && <Pill tone="m">ลงบัญชีแล้ว</Pill>}

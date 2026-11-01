@@ -8,7 +8,7 @@ import { badRequest, notFound, parse, requireCompany, type AuthContext } from '.
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
-import { branchOf, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, writePayments } from './payments.js';
+import { clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, saveBranch, writePayments } from './payments.js';
 
 /**
  * เงินสดย่อย (คู่มือบทที่ 15 · ข้อกำหนดเจ้าของ 31/10/2569 ลงบัญชีตอนจ่าย):
@@ -24,11 +24,11 @@ const str = (max: number) => z.string().trim().max(max).nullable().optional().tr
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 
 const dpBody = z.object({
-  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
+  branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
   lines: z.array(z.object({ account_id: uuid, department_id: optId, description: str(200), amount: num, ...lineNoteFields })).min(1, 'ป้อนรายการที่จ่ายอย่างน้อย 1 บรรทัด').max(200),
 });
 const vrBody = z.object({
-  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
+  branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
   dp_ids: z.array(uuid).min(1, 'เลือกใบจ่ายเงินสดย่อยที่จะเบิกชดเชยอย่างน้อย 1 ใบ').max(500),
   cash_amount: num.nullable().optional(), payments: paymentsSchema,
 });
@@ -59,7 +59,8 @@ async function saveDp(db: Db, a: Ctx, id: string | null, b: z.infer<typeof dpBod
     if (d(l.amount).lte(0)) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวนเงิน`);
   });
   const total = b.lines.reduce((s, l) => s.plus(d(l.amount)), d(0)).toFixed(2);
-  const header = { doc_type_id: dt.id, doc_class: 'DP', module: 'PC', doc_date: b.doc_date, remark: b.remark, department_id: dt.department_id, amount: total, net_amount: total, price_type: '0', updated_by: a.userId };
+  const branchId = await saveBranch(db, a, id, b.branch_id);
+  const header = { ...(branchId ? { branch_id: branchId } : {}), doc_type_id: dt.id, doc_class: 'DP', module: 'PC', doc_date: b.doc_date, remark: b.remark, department_id: dt.department_id, amount: total, net_amount: total, price_type: '0', updated_by: a.userId };
   return db.transaction().execute(async (tx) => {
     await periodFor(tx, a.companyId, b.doc_date);
     let hid = id, docNo: string;
@@ -74,7 +75,7 @@ async function saveDp(db: Db, a: Ctx, id: string | null, b: z.infer<typeof dpBod
       await tx.updateTable('doc_line').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
-      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
+      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!, doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: l.account_id, department_id: l.department_id, description: l.description, ...noteCols(l),
       line_amount: d(l.amount).toFixed(2), net_amount: d(l.amount).toFixed(2), stock_effect: 0, created_by: a.userId }))).execute();
@@ -107,7 +108,8 @@ async function saveVr(db: Db, a: Ctx, id: string | null, b: z.infer<typeof vrBod
   const t = settlementTotals({ settlements: [net.toFixed(2)], payments: b.payments.map((p) => p.amount), cash: b.cash_amount });
   if (d(t.cash).lt(0)) throw badRequest(`จ่ายด้วยวิธีอื่นรวม ${t.other} มากกว่ายอดเบิกชดเชย ${t.due}`);
   if (!t.ok) throw badRequest(`ยอดเบิกชดเชย ${t.due} ไม่เท่ากับยอดจ่ายจริง ${t.paid} — ล้างช่องเงินสดให้คำนวณเอง`);
-  const header = { doc_type_id: dt.id, doc_class: 'VR', module: 'PC', doc_date: b.doc_date, payment_date: b.doc_date, remark: b.remark, department_id: dt.department_id, price_type: '0',
+  const branchId = await saveBranch(db, a, id, b.branch_id);
+  const header = { ...(branchId ? { branch_id: branchId } : {}), doc_type_id: dt.id, doc_class: 'VR', module: 'PC', doc_date: b.doc_date, payment_date: b.doc_date, remark: b.remark, department_id: dt.department_id, price_type: '0',
     amount: net.toFixed(2), net_amount: net.toFixed(2), cash_amount: t.cash, cheque_amount: t.other, updated_by: a.userId };
   return db.transaction().execute(async (tx) => {
     await periodFor(tx, a.companyId, b.doc_date);
@@ -125,7 +127,7 @@ async function saveVr(db: Db, a: Ctx, id: string | null, b: z.infer<typeof vrBod
       await tx.updateTable('doc_link').set({ deleted_at: sql`now()` as never }).where('to_header_id', '=', id).where('link_type', '=', 'REIMBURSE').where('deleted_at', 'is', null).execute();
     } else {
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
-      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
+      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!, doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_line').values(agg.map((x, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: x.account_id, department_id: x.department_id,
       description: `เบิกชดเชย ${x.n} รายการ`, line_amount: d(x.amount).toFixed(2), net_amount: d(x.amount).toFixed(2), stock_effect: 0, created_by: a.userId }))).execute();

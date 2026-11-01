@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { DiscountInput } from '../../components/DiscountInput';
 import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
@@ -62,6 +63,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
   const qc = useQueryClient();
   const can = useCan(K.menu);
   const cur = useQuery({ enabled: !!id, queryKey: [K.api, 'one', id], queryFn: () => api.get<Record<string, string | null> & { editable: boolean; settlements: Array<{ id: string; doc_class: string; doc_no: string; doc_date: string; amount: string; doc_status: string }> }>(`/api/v1/${K.api}/${id}`), staleTime: 0 });
+  const br = useDocBranch(id, cur.data?.branch_id);
   // พนักงานขาย (ลูกหนี้ยกมา — รายงานลูกหนี้แยกพนักงานขาย/ค่าคอมมิชชั่นเหมือนบิลขาย) · แผนก (ทั้งสองฝั่ง)
   const slms = useQuery({ enabled: kind === 'ar', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
@@ -99,7 +101,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
   const save = async (andNew = false) => {
     if (!h || busy || ro) return;
     setErr(null); setBusy(true);
-    const body = { party_id: h.party?.id, doc_no: h.doc_no, doc_date: h.doc_date, ref_no: h.ref_no || null, credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type,
+    const body = { branch_id: br.body, party_id: h.party?.id, doc_no: h.doc_no, doc_date: h.doc_date, ref_no: h.ref_no || null, credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type,
       amount: h.amount || '0', discount_text: h.discount_text || null, vat_rate: h.vat_rate || '0', vat_amount: manualVat ? h.vat_amount : null, vat_date: h.vat_known ? h.vat_date || h.doc_date : null, remark: h.remark || null,
       salesperson_id: kind === 'ar' ? h.salesperson_id || null : null, department_id: h.department_id || null };
     try {
@@ -119,7 +121,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
   return (
     <div className={cx('page', cancelled && 'doc-cancelled')} data-tone={K.tone}>
       <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />
-        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && !cancelled && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}{roBase && !cancelled && id && cur.data && <Pill tone="d">ชำระแล้ว — แก้ไขไม่ได้</Pill>}</span></div>
+        <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && !cancelled && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}{roBase && !cancelled && id && cur.data && <Pill tone="d">ชำระแล้ว — แก้ไขไม่ได้</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}

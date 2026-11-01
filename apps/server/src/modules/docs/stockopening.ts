@@ -6,7 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { cancelDocument } from './engine.js';
-import { branchOf } from './payments.js';
+import { saveBranch } from './payments.js';
 import { recostAfter } from './stockcost.js';
 
 /**
@@ -19,7 +19,7 @@ const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const body = z.object({
-  doc_no: z.string().trim().min(1, 'ป้อนเลขที่ล็อต (ไม่ทราบล็อตให้ใส่ "ยอดยกมา")').max(30), doc_date: isoDate, remark: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
+  branch_id: z.string().uuid().nullable().optional(), doc_no: z.string().trim().min(1, 'ป้อนเลขที่ล็อต (ไม่ทราบล็อตให้ใส่ "ยอดยกมา")').max(30), doc_date: isoDate, remark: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
   lines: z.array(z.object({ item_id: uuid, warehouse_id: uuid, qty: num, value: num, description: z.string().trim().max(200).nullable().optional() })).min(1, 'ป้อนรายการสินค้าอย่างน้อย 1 บรรทัด').max(5000),
 });
 export const OPEN_TYPE = 'OPEN-IC';
@@ -61,7 +61,8 @@ async function save(db: Db, a: Ctx, id: string | null, b: z.infer<typeof body>) 
     const dup = await tx.selectFrom('doc_header').select('id').where('company_id', '=', a.companyId).where('doc_type_id', '=', dt).where('doc_no', '=', b.doc_no).where('doc_date', '=', b.doc_date).where('doc_status', '<>', 'C').where('deleted_at', 'is', null).executeTakeFirst();
     if (dup && dup.id !== id) throw badRequest(`ล็อต ${b.doc_no} วันที่นี้มีอยู่แล้ว — เพิ่มรายการในใบเดิม`);
     const total = b.lines.reduce((s, l) => s.plus(d(l.value)), d(0)).toFixed(2);
-    const header = { doc_type_id: dt, doc_class: 'OS', module: 'IC', doc_no: b.doc_no, doc_date: b.doc_date, is_opening: true, remark: b.remark, amount: total, net_amount: total, gl_posted: 'N', updated_by: a.userId };
+    const branchId = await saveBranch(tx, a, id, b.branch_id);
+    const header = { ...(branchId ? { branch_id: branchId } : {}), doc_type_id: dt, doc_class: 'OS', module: 'IC', doc_no: b.doc_no, doc_date: b.doc_date, is_opening: true, remark: b.remark, amount: total, net_amount: total, gl_posted: 'N', updated_by: a.userId };
     let hid = id;
     if (id) {
       const cur = await tx.selectFrom('doc_header').select(['doc_status', 'doc_class', 'is_opening']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
@@ -70,7 +71,7 @@ async function save(db: Db, a: Ctx, id: string | null, b: z.infer<typeof body>) 
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
       await tx.updateTable('doc_line').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
-      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
+      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_line').values(b.lines.map((l, i) => {
       const it = byId.get(l.item_id)!;
@@ -102,7 +103,7 @@ export function stockOpeningRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/stock-opening/:id', async (req) => {
     const a = requireCompany(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
-    const h = await db.selectFrom('doc_header').select(['id', 'doc_no', 'doc_date', 'remark', 'net_amount', 'doc_status']).where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', 'OS').where('is_opening', '=', true).where('deleted_at', 'is', null).executeTakeFirst();
+    const h = await db.selectFrom('doc_header').select(['id', 'doc_no', 'doc_date', 'remark', 'net_amount', 'doc_status', 'branch_id']).where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', 'OS').where('is_opening', '=', true).where('deleted_at', 'is', null).executeTakeFirst();
     if (!h) throw notFound('ยอดยกมาสินค้า');
     const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id').leftJoin('md_unit as u', 'u.id', 'i.base_unit_id')
       .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'i.name_th as item_name', 'l.description', 'l.warehouse_id', 'l.base_qty as qty', 'l.cost_amount as value', 'l.cost_unit', 'u.code as unit_code'])

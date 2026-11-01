@@ -7,6 +7,7 @@ import { CancelStamp, CloseScreen, DocDelete } from '../../components/DocDelete'
 import { useCan } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { useDocEdit } from '../../components/DocEdit';
 
 /** ยอดยกมาสินค้า (คู่มือ S-OB-01 ล็อตยกมา FIFO / S-OB-02 ยอดยกมารายคลัง Average) — 1 ใบ = 1 ล็อต ไม่ลงบัญชี */
@@ -66,6 +67,7 @@ export function StockOpeningFormPage() {
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const br = useDocBranch(id, (cur.data as { branch_id?: string | null } | undefined)?.branch_id);
   const [askCancel, setAskCancel] = useState(false);
   const [reason, setReason] = useState('');
   if (!h && !id && meta.data) {
@@ -96,7 +98,7 @@ export function StockOpeningFormPage() {
   const save = async (andNew = false) => {
     if (!h || busy || ro) return;
     setErr(null); setBusy(true);
-    const body = { doc_no: h.doc_no, doc_date: h.doc_date, remark: h.remark || null, lines: used.map((l) => ({ item_id: l.item_id, warehouse_id: l.warehouse_id, qty: l.qty || '0', value: l.value || '0' })) };
+    const body = { branch_id: br.body, doc_no: h.doc_no, doc_date: h.doc_date, remark: h.remark || null, lines: used.map((l) => ({ item_id: l.item_id, warehouse_id: l.warehouse_id, qty: l.qty || '0', value: l.value || '0' })) };
     try {
       const r = id ? await api.put<{ id: string; doc_no: string }>(`/api/v1/stock-opening/${id}`, body) : await api.post<{ id: string; doc_no: string }>('/api/v1/stock-opening', body);
       toast(`บันทึกล็อต ${r.doc_no} แล้ว`); setDirty(false); if (id) ed.lock(); await qc.invalidateQueries({ queryKey: ['stock-opening'] }); qc.invalidateQueries({ queryKey: ['stock'] });
@@ -114,7 +116,7 @@ export function StockOpeningFormPage() {
   return (
     <div className={cx('page', cancelled && 'doc-cancelled')} data-tone="inventory">
       <div className="doc-title"><p className="eyebrow">สินค้า › ยอดยกมาสินค้า</p><h1>{id ? cur.data?.doc_no : 'ล็อตใหม่'}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />
-        <span className="doc-state">{cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
+        <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}

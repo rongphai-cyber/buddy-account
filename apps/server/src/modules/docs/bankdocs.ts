@@ -9,7 +9,7 @@ import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { ledgerOf } from '../gl/reports.js';
 import { cancelDocument, postDocument, docNoFor, docNoInput } from './engine.js';
-import { branchOf } from './payments.js';
+import { saveBranch } from './payments.js';
 
 /**
  * การเคลื่อนไหวบัญชีเงินฝาก (คู่มือบทที่ 13 S-BK-02/03 + รายได้/ค่าใช้จ่ายธนาคาร) — module BK
@@ -23,7 +23,7 @@ const optId = uuid.nullable().optional().transform((v) => v ?? null);
 const money = z.union([z.number(), z.string()]).transform((v) => String(v === '' || v === null ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 const body = z.object({
-  doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, department_id: optId, remark: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
+  branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, department_id: optId, remark: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
   bank_account_id: uuid, to_bank_account_id: optId, amount: money, fee: money.optional(), wht: money.optional(),
 });
 
@@ -59,7 +59,8 @@ async function save(db: Db, a: Ctx, K: BankKind, id: string | null, b: z.infer<t
     lines = [{ account_id: from.gl_account_id!, amount: (inflow ? v : v.neg()).toFixed(2), description: `${K.short} ${from.code} ${from.name}` }];
     net = v.toFixed(2);
   }
-  const header = { doc_type_id: dt.id, doc_class: K.cls, module: 'BK', doc_date: b.doc_date, department_id: b.department_id ?? dt.department_id, remark: b.remark,
+  const branchId = await saveBranch(db, a, id, b.branch_id);
+  const header = { ...(branchId ? { branch_id: branchId } : {}), doc_type_id: dt.id, doc_class: K.cls, module: 'BK', doc_date: b.doc_date, department_id: b.department_id ?? dt.department_id, remark: b.remark,
     bank_account_id: b.bank_account_id, to_bank_account_id: K.cls === 'BT' ? b.to_bank_account_id : null, amount: amount.toFixed(2), wht_amount: K.cls === 'BU' ? wht.toFixed(2) : '0', net_amount: net, updated_by: a.userId };
   return db.transaction().execute(async (tx) => {
     await periodFor(tx, a.companyId, b.doc_date);
@@ -74,7 +75,7 @@ async function save(db: Db, a: Ctx, K: BankKind, id: string | null, b: z.infer<t
       await tx.updateTable('doc_line').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
     } else {
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
-      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: await branchOf(tx, a), doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
+      hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!, doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
     await tx.insertInto('doc_line').values(lines.map((l, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: l.account_id, description: l.description,
       department_id: header.department_id, qty: '1', line_amount: l.amount, net_amount: l.amount, created_by: a.userId }))).execute();
@@ -103,7 +104,7 @@ export function bankDocRoutes(app: FastifyInstance, db: Db) {
     app.get(`${base}/:id`, async (req) => {
       const a = requireCompany(req);
       const { id } = parse(z.object({ id: uuid }), req.params);
-      const h = await db.selectFrom('doc_header').select(['id', 'doc_no', 'doc_date', 'doc_type_id', 'department_id', 'remark', 'bank_account_id', 'to_bank_account_id', 'amount', 'wht_amount', 'net_amount', 'doc_status', 'journal_id'])
+      const h = await db.selectFrom('doc_header').select(['id', 'doc_no', 'doc_date', 'doc_type_id', 'department_id', 'remark', 'bank_account_id', 'to_bank_account_id', 'amount', 'wht_amount', 'net_amount', 'doc_status', 'journal_id', 'branch_id'])
         .where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
       const fee = K.cls === 'BT' ? d(h.net_amount).minus(d(h.amount)).toFixed(2) : '0.00';

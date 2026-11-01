@@ -54,8 +54,25 @@ export function checkWht(wht: Wht) {
   return wht.reduce((s, w) => s.plus(d(w.tax_amount)), d(0));
 }
 
-export async function branchOf(db: Db, a: Ctx) {
-  return a.branchId ?? (await db.selectFrom('sys_branch').select('id').where('company_id', '=', a.companyId).where('is_head_office', '=', true).executeTakeFirstOrThrow()).id;
+/**
+ * สาขาที่บันทึก (ข้อกำหนดเจ้าของ 01/11/2569 — ทุกเอกสารต้องรู้ว่าเป็นของสาขาไหน): สาขาที่เลือกในเอกสาร (ตรวจว่าเป็นของบริษัทนี้)
+ * → สาขาที่เลือกที่แถบบน → สำนักงานใหญ่ (เลือก "ทุกสาขา" อยู่)
+ */
+export async function branchOf(db: Db, a: Ctx, requested?: string | null) {
+  if (requested) {
+    const b = await db.selectFrom('sys_branch').select('id').where('id', '=', requested).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!b) throw badRequest('ไม่พบสาขานี้ — เลือกสาขาที่บันทึกใหม่', [{ field: 'branch_id', message: 'เลือกสาขา' }]);
+    return b.id;
+  }
+  return a.branchId ?? (await db.selectFrom('sys_branch').select('id').where('company_id', '=', a.companyId).where('is_head_office', '=', true).where('deleted_at', 'is', null).orderBy('code').executeTakeFirstOrThrow()).id;
+}
+/** สาขาของเอกสาร (เช็ค/ภาษีหัก ณ ที่จ่ายของเอกสารใช้สาขาเดียวกับเอกสาร) */
+export async function docBranch(db: Db, a: Ctx, headerId: string) {
+  return (await db.selectFrom('doc_header').select('branch_id').where('id', '=', headerId).where('company_id', '=', a.companyId).executeTakeFirst())?.branch_id ?? await branchOf(db, a);
+}
+/** สาขาที่บันทึกของเอกสาร: ใบใหม่ = ที่เลือก/แถบบน/สำนักงานใหญ่ · แก้ไขโดยไม่ส่งสาขา = คงสาขาเดิม */
+export async function saveBranch(db: Db, a: Ctx, id: string | null, requested: string | null | undefined) {
+  return requested || !id ? await branchOf(db, a, requested) : undefined;
 }
 
 /** เช็คที่เอกสารนี้ออก: ยังไม่นำฝาก/ผ่าน จึงแก้หรือยกเลิกเอกสารได้ (นำออกจากทะเบียนเช็ค) */
@@ -84,7 +101,7 @@ export async function releaseCheques(db: Db, a: Ctx, headerId: string, docNo: st
 /** เขียนบรรทัดชำระโดยอื่น ๆ + เช็ค (สถานะ 00 รอนำฝาก/ผ่าน) */
 export async function writePayments(tx: Db, a: Ctx, x: { headerId: string; direction: 'R' | 'P'; payDate: string; methods: Map<string, Method>; payments: Payments;
   customerId: string | null; supplierId: string | null; partyName: string; departmentId: string | null }) {
-  const branchId = await branchOf(tx, a);
+  const branchId = await docBranch(tx, a, x.headerId);
   let autoPass: boolean | undefined;
   for (const [i, p] of x.payments.entries()) {
     const m = x.methods.get(p.payment_method_id)!;
@@ -122,7 +139,7 @@ export async function writePayments(tx: Db, a: Ctx, x: { headerId: string; direc
 /** รายละเอียดภาษีหัก ณ ที่จ่าย → แฟ้ม ภ.ง.ด.3/53 (เลขที่หนังสือรับรองเริ่มต้น = เลขที่เอกสาร วันที่ = วันที่จ่าย) */
 export async function writeWht(tx: Db, a: Ctx, x: { headerId: string; docNo: string; payDate: string; wht: Wht; supplierId: string | null; departmentId: string | null;
   payee: { name: string; address: string | null; tax_id: string | null; branch_no: string | null } }) {
-  const branchId = await branchOf(tx, a);
+  const branchId = await docBranch(tx, a, x.headerId);
   for (const w of x.wht) {
     const cdate = w.certificate_date ?? x.payDate;
     const per = await periodFor(tx, a.companyId, cdate);

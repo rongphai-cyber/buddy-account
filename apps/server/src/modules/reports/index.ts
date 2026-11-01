@@ -26,7 +26,11 @@ export const defineReport = (codes: string | string[], run: Runner) => { for (co
 const validIso = (x: string) => { const t = new Date(x + 'T00:00:00Z'); return !Number.isNaN(t.getTime()) && t.toISOString().slice(0, 10) === x; };
 /** ตัวช่วยอ่านขอบเขต */
 export class P {
-  constructor(private v: Params, private ys: YearSystem = 'B') {}
+  constructor(private v: Params, private ys: YearSystem = 'B', readonly branchId: string | null = null, readonly isHq = false) {}
+  /** รายงานนี้แยกตามสาขาที่เลือกที่แถบบนแล้ว (ใช้เขียนหัวรายงาน) */
+  usedBranch = false;
+  /** สาขาที่เลือกที่แถบบน (ข้อกำหนดเจ้าของ 01/11/2569 — รายงานแยกสำนักงานใหญ่/แต่ละสาขา) · "ทุกสาขา" = ไม่กรอง */
+  branch(col: RawBuilder<unknown>) { this.usedBranch = true; return this.branchId ? sql`AND ${col} = ${this.branchId}::uuid` : sql``; }
   /** วันที่ตามระบบปีของบริษัท (พ.ศ.) สำหรับหัวรายงาน */
   fd(iso: string | null) { return iso ? formatDate(iso, this.ys) : ''; }
   str(k: string) { const x = this.v[k]; return typeof x === 'string' && x.trim() ? x.trim() : null; }
@@ -81,7 +85,12 @@ export function rptRoutes(app: FastifyInstance, db: Db) {
     if (!def || !run) throw notFound('รายงาน');
     const params = parse(z.record(z.union([z.string().max(60), z.boolean(), z.null()])).default({}), (req.body as { params?: unknown } | undefined)?.params ?? {});
     const co = await db.selectFrom('sys_company').select('year_system').where('id', '=', a.companyId).executeTakeFirst();
-    const r = await run(db, a, new P(params, (co?.year_system ?? 'B') as YearSystem), code);
-    return { code, title: r.title ?? def.title, landscape: def.landscape, ...r } satisfies ReportResult;
+    const branches = await db.selectFrom('sys_branch').select(['id', 'code', 'name', 'is_head_office']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).execute();
+    const br = a.branchId ? branches.find((b) => b.id === a.branchId) ?? null : null;
+    const p = new P(params, (co?.year_system ?? 'B') as YearSystem, br?.id ?? null, !!br?.is_head_office);
+    const r = await run(db, a, p, code);
+    // หัวรายงานบอกสาขาเสมอเมื่อบริษัทมีหลายสาขา — รายงานที่ยังไม่แยกสาขาบอกให้รู้ว่าเป็นยอดรวมทุกสาขา
+    const scope = branches.length <= 1 ? '' : br ? (p.usedBranch ? `สาขา ${br.code} ${br.name}` : 'ทุกสาขา (รายงานนี้ยังไม่แยกตามสาขา)') : 'ทุกสาขา';
+    return { code, title: r.title ?? def.title, landscape: def.landscape, ...r, subtitle: [r.subtitle, scope].filter(Boolean).join(' · ') } satisfies ReportResult;
   });
 }
