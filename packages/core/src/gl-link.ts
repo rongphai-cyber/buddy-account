@@ -83,15 +83,18 @@ export const MODULE_TH: Record<string, string> = { SO: 'ขาย (ใบเส�
  * ความหมายของช่องบัญชีที่ประเภทเอกสาร (ISRUN.ACCNUM01–12) ต่างกันตามหมวด — ยืนยันจากใบสำคัญจริงของข้อมูลที่ย้ายมา
  * (tools/express-import/posting_engine.py SLOT_ROLE) · ช่องที่ไม่รู้ความหมายแสดงเป็น "ช่องที่ n"
  */
+// ขาย/ซื้อ (ข้อกำหนดเจ้าของ 01/11/2569 — หน้าจอ S-DN-02 ของ Express มีช่อง Dr. ลูกหนี้ / Cr. ขายสินค้า / Dr. ซื้อ):
+// IV ช่อง 5 ขาย ตามที่เทียบใบสำคัญจริง (เท่ากับ HS) · RR ช่อง 1 ซื้อ ตามข้อมูล TESTRice (ประเภท RC/RO/RS ผูก 5150-01) · ช่อง 1 ลูกหนี้ ตามลำดับในคู่มือ
 export const DOC_SLOT_ROLES: Record<string, Record<number, string>> = {
-  RR: { 3: 'AP' }, CP: { 3: 'AP' }, DN: { 3: 'AP' }, HP: { 3: 'ROUNDING', 4: 'CASH' },
+  IV: { 1: 'AR', 5: 'SALES' }, DR: { 1: 'AR', 5: 'SALES' }, CN: { 1: 'AR', 5: 'SALES_RETURN' },
+  RR: { 1: 'PURCHASE', 3: 'AP' }, CP: { 1: 'PURCHASE', 3: 'AP' }, DN: { 1: 'PURCHASE_RETURN', 3: 'AP' }, HP: { 1: 'PURCHASE', 3: 'ROUNDING', 4: 'CASH' },
   RE: { 3: 'ROUNDING', 6: 'ROUNDING' }, PS: { 2: 'ROUNDING', 5: 'ROUNDING' }, AE: { 1: 'DEPOSIT_PAID', 3: 'CASH' }, AI: { 3: 'DEPOSIT_RECEIVED' },
   HS: { 5: 'SALES' }, OU: { 1: 'ISSUE_DEBIT', 2: 'ISSUE_CREDIT' }, JU: { 1: 'ADJ_DEBIT', 2: 'ADJ_CREDIT' }, CA: { 2: 'COST_ADJ' },
   DP: { 1: 'PETTY_CASH' }, VR: { 1: 'PETTY_CASH' },
   BD: { 2: 'CASH' }, BW: { 1: 'CASH' }, QP: { 1: 'CASH' }, BU: { 2: 'BANK_INCOME' }, BV: { 1: 'BANK_EXPENSE' }, BQ: { 2: 'BANK_CHARGE' },
 };
 export const SLOT_ROLE_TH: Record<string, string> = {
-  PETTY_CASH: 'เงินสดย่อย', AP: 'Cr. เจ้าหนี้', ROUNDING: 'ส่วนขาด/เกินการชำระ', CASH: 'เงินสด', DEPOSIT_PAID: 'Dr. เงินมัดจำจ่ายล่วงหน้า', DEPOSIT_RECEIVED: 'Cr. เงินมัดจำรับล่วงหน้า',
+  PETTY_CASH: 'เงินสดย่อย', AR: 'Dr. ลูกหนี้', AP: 'Cr. เจ้าหนี้', PURCHASE: 'Dr. ซื้อสินค้า/ค่าใช้จ่าย', PURCHASE_RETURN: 'Cr. ส่งคืนสินค้า', SALES_RETURN: 'Dr. รับคืนสินค้า', ROUNDING: 'ส่วนขาด/เกินการชำระ', CASH: 'เงินสด', DEPOSIT_PAID: 'Dr. เงินมัดจำจ่ายล่วงหน้า', DEPOSIT_RECEIVED: 'Cr. เงินมัดจำรับล่วงหน้า',
   SALES: 'Cr. ขายสินค้า', ISSUE_DEBIT: 'Dr. บัญชีเบิกใช้', ISSUE_CREDIT: 'Cr. บัญชีเบิกใช้', ADJ_DEBIT: 'Dr. บัญชีปรับปรุง', ADJ_CREDIT: 'Cr. บัญชีปรับปรุง',
   COST_ADJ: 'บัญชีปรับปรุงต้นทุน', BANK_INCOME: 'Cr. รายได้ธนาคาร', BANK_EXPENSE: 'Dr. ค่าใช้จ่ายธนาคาร', BANK_CHARGE: 'Dr. ค่าธรรมเนียมธนาคาร',
 };

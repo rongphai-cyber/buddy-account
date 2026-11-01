@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { DOC_CLASSES, formatDocNo, GL_ROLES, JOURNAL_ROUTES, MODULE_TH, slotLabel, WHT_INCOME_TYPES } from '@buddy/core';
+import { DOC_CLASSES, DOC_SLOT_ROLES, formatDocNo, GL_ROLES, JOURNAL_ROUTES, MODULE_TH, slotLabel, WHT_INCOME_TYPES } from '@buddy/core';
 import { api, type Book, type Department } from '../../api';
 import { useCan } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
@@ -9,6 +9,16 @@ import { Confirm, ErrorBox, Field, KeyHints, Modal, navKey, PageHead, Pill, Tabs
 
 /* ---------------------------------------------------------------- เลขที่เอกสาร S-DN-01 */
 interface DocTypeRow { id: string; code: string; doc_class: string; module: string; name_th: string; name_en: string | null; next_no: string; status: string; book_code: string | null; book_name: string | null; department_code: string | null; doc_count: number; account_count: number }
+
+/** ว่างไว้แล้วใช้บัญชีจากไหน (ข้อกำหนดเจ้าของ 01/11/2569: ช่องบัญชีของเอกสารขาย/ซื้อแบบ Express) */
+const SLOT_HINT: Record<string, string> = {
+  AR: 'ว่าง = บัญชีลูกหนี้ของลูกค้า · ใบเสร็จรับชำระลดลูกหนี้ตามบัญชีของลูกค้า (แบบ Express) จึงควรใช้บัญชีเดียวกัน',
+  AP: 'ว่าง = บัญชีเจ้าหนี้ของผู้จำหน่าย · ใบจ่ายชำระลดเจ้าหนี้ตามบัญชีของผู้จำหน่าย (แบบ Express)',
+  SALES: 'ใช้ก่อนบัญชีขายของกลุ่มสินค้า · ว่าง = กลุ่มบัญชีสินค้า → บัญชีขายมาตรฐาน',
+  SALES_RETURN: 'ใช้ก่อนบัญชีรับคืนของกลุ่มสินค้า · ว่าง = กลุ่มบัญชีสินค้า → บัญชีรับคืนมาตรฐาน',
+  PURCHASE: 'ใช้เมื่อสินค้า/รหัสค่าใช้จ่ายไม่ได้กำหนดบัญชีในกลุ่ม (เช่น ค่าจ้างภายนอก) · Perpetual สินค้าคงคลังลงบัญชีสินค้าเสมอ',
+  PURCHASE_RETURN: 'ใช้เมื่อกลุ่มบัญชีสินค้าไม่ได้กำหนดบัญชีส่งคืน',
+};
 
 export function DocTypesPage() {
   const can = useCan('SET.DOCNO');
@@ -104,7 +114,8 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
   useHotkeys({ F9: save, 'Ctrl+S': save }, []);
   const t = (k: string, max: number) => ({ value: (f?.[k] as string) ?? '', maxLength: max, onChange: (e: { target: { value: string } }) => set({ [k]: e.target.value }) });
   const cls = String(f?.doc_class ?? '');
-  const slots = [...new Set([...Object.keys(accs).map(Number), ...extraSlots])].sort((a, b) => a - b);
+  // ช่องที่มีความหมายของหมวดนี้แสดงเสมอ (เช่น ขายเชื่อ: Dr. ลูกหนี้ / Cr. ขายสินค้า — แบบหน้าจอ Express) + ช่องที่ผูกบัญชีไว้/เพิ่มเอง
+  const slots = [...new Set([...Object.keys(DOC_SLOT_ROLES[cls] ?? {}).map(Number), ...Object.keys(accs).map(Number), ...extraSlots])].sort((a, b) => a - b);
   const setChg = (k: number, p: Partial<Chg>) => setChgs((cs) => cs.map((c) => (c.key === k ? { ...c, ...p } : c)));
   /** ใส่รายการหักที่พบบ่อย — หาบัญชีในผังจากชื่อให้ (แก้ได้) */
   const addSamples = () => {
@@ -138,7 +149,7 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
           <table className="grid">
             <thead><tr><th style={{ width: 70 }}>ช่อง</th><th style={{ width: 260 }}>ความหมาย</th><th>เลขที่บัญชี</th><th style={{ width: 36 }} /></tr></thead>
             <tbody>
-              {slots.map((s) => <tr key={s}><td className="mono">{s}</td><td>{slotLabel(cls, s)}</td><td><AccountCell value={accs[s] ?? null} onChange={(a) => setAccs((x) => ({ ...x, [s]: a?.id ?? null }))} /></td>
+              {slots.map((s) => <tr key={s}><td className="mono">{s}</td><td>{slotLabel(cls, s)}{SLOT_HINT[DOC_SLOT_ROLES[cls]?.[s] ?? ''] && <div className="small muted">{SLOT_HINT[DOC_SLOT_ROLES[cls]![s]!]}</div>}</td><td><AccountCell value={accs[s] ?? null} onChange={(a) => setAccs((x) => ({ ...x, [s]: a?.id ?? null }))} /></td>
                 <td><button type="button" className="icon-btn" tabIndex={-1} title="ลบ" onClick={() => { setAccs((x) => { const n = { ...x }; delete n[s]; return n; }); setExtraSlots((x) => x.filter((y) => y !== s)); }}>✕</button></td></tr>)}
               {!slots.length && <tr><td colSpan={4} className="empty">ไม่ได้กำหนดบัญชีเฉพาะ — ใช้บัญชีจากแฟ้มหลักและบัญชีเพื่อลงรายวัน</td></tr>}
             </tbody>

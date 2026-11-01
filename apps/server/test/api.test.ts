@@ -1866,6 +1866,29 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', `/api/v1/sales-invoices/${iv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
+  it('doc-type accounts for sales/purchase (ข้อกำหนดเจ้าของ 01/11/2569): IV Dr. ลูกหนี้ + Cr. ขาย from the doc type, receipt clears the customer account (Express), RR purchase slot when item group has none', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean; level: number }>;
+    const leaf = (no: string) => accs.find((x) => x.account_no === no)?.id ?? accs.find((x) => !x.is_control && x.account_no.startsWith(no.slice(0, 2)))!.id;
+    const ivT = (await call('GET', `/api/v1/doc-types/${await typeOf('IV')}`)).body;
+    const arDoc = leaf('1130-02'), salesDoc = leaf('4100-02');
+    const t = await call('POST', '/api/v1/doc-types', { code: 'IVS', doc_class: 'IV', name_th: 'ขายเชื่อ-ช่องบัญชีเอกสาร', next_no: 1, journal_book_id: ivT.journal_book_id, accounts: [{ slot: 1, account_id: arDoc }, { slot: 5, account_id: salesDoc }] });
+    expect(t.status).toBe(200);
+    expect((await call('GET', `/api/v1/doc-types/${t.body.id}`)).body.accounts.map((x: { slot: number; role: string }) => `${x.slot}:${x.role}`)).toEqual(['1:AR', '5:SALES']);
+    const cus = (await call('POST', '/api/v1/customers', { code: 'C-SLOT', name: 'ลูกค้าช่องบัญชีเอกสาร', tax_id: tid(48) })).body.id;
+    const iv = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: t.body.id, doc_date: '2027-07-08', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 9000 }] })).body;
+    const lines = async (id: string) => (await call('GET', `/api/v1/docs/${id}/journal`)).body.journals[0].lines as Array<{ account_no: string; posting_role: string; resolved_from: string; debit: string; credit: string }>;
+    const ivL = await lines(iv.id);
+    const accNo = (id: string) => accs.find((x) => x.id === id)!.account_no;
+    expect(ivL.find((l) => l.posting_role === 'AR')).toMatchObject({ account_no: accNo(arDoc), resolved_from: '1', debit: '9630.00' });
+    expect(ivL.find((l) => l.posting_role === 'SALES')).toMatchObject({ account_no: accNo(salesDoc), resolved_from: '1', credit: '9000.00' });
+    // ใบเสร็จลดลูกหนี้ตามบัญชีของลูกค้า/มาตรฐาน (แบบ Express — ใบจ่ายชำระใช้บัญชีของผู้จำหน่ายเช่นกัน)
+    const re = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2027-07-09', party_id: cus, settlements: [{ invoice_header_id: iv.id, amount: 9630 }] })).body;
+    expect((await lines(re.id)).find((l) => l.posting_role === 'AR')!.resolved_from).not.toBe('1');
+    for (const [u, x] of [['ar-receipts', re.id], ['sales-invoices', iv.id]]) expect((await call('POST', `/api/v1/${u}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('line notes vs document notes (ข้อกำหนดเจ้าของ): keyed with the line, survive edits, print under the line only when ticked; document notes print in the notes box', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;

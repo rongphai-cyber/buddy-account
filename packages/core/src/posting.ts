@@ -60,7 +60,8 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
   const cls = h.doc_class, dt = h.doc_type_id;
   const net = d(h.net_amount), vat = d(h.vat_amount);
   const vatRole = (base: string) => (h.vat_basis === '2' ? `${base}_PENDING` : base);
-  const partyAr = pick(['2', r.customer(h.customer_id)], ['3', r.def('AR')]);
+  // ลูกหนี้: ประเภทเอกสาร (Dr. ลูกหนี้ — คู่มือ S-DN-02 ว่าง = บัญชีของลูกค้า) → ลูกค้า → มาตรฐาน · ใบเสร็จตัดหนี้ใช้บัญชีของลูกค้า (แบบ Express — จ่ายชำระใช้บัญชีของผู้จำหน่ายเช่นกัน)
+  const partyAr = pick(['1', r.slot(dt, cls, 'AR')], ['2', r.customer(h.customer_id)], ['3', r.def('AR')]);
   const partyAp = pick(['1', r.slot(dt, cls, 'AP')], ['2', r.supplier(h.supplier_id)], ['3', r.def('AP')]);
   const receiving = ['RE', 'AI', 'OI', 'HS'].includes(cls);
   const payAcct = (p: PostPayment) => pick(['2', r.paymentMethod(p.method_id)], ['2', r.cheque(p.cheque_id)], ['3', r.def(receiving ? 'CHEQUE_RECEIVED' : 'CHEQUE_PAID')]);
@@ -75,17 +76,19 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
   const lineAccount = (kind: 'SALES' | 'SALES_RETURN' | 'PURCHASE' | 'PURCHASE_RETURN', itemId: string | null): Acct => {
     const { type, group: g } = r.item(itemId ?? '');
     if (kind === 'SALES') return pick(['1', r.slot(dt, cls, 'SALES')], ['2', g.sales], ['3', r.def(cls === 'HS' ? 'CASH_SALES' : 'CREDIT_SALES')]);
-    if (kind === 'SALES_RETURN') return pick(['2', g.sret], ['3', r.def('SALES_RETURN')]);
+    if (kind === 'SALES_RETURN') return pick(['1', r.slot(dt, cls, 'SALES_RETURN')], ['2', g.sret], ['3', r.def('SALES_RETURN')]);
     // รหัสค่าใช้จ่ายอื่น (5) และ '2' ตามข้อมูลที่ย้ายมา → บัญชีค่าใช้จ่ายในกลุ่ม (ช่อง 1) — ดู HANDOFF เรื่องความหมาย item_type
     const expense = type === '5' || type === '2';
+    // ช่องซื้อ/ส่งคืนของประเภทเอกสาร: ใช้เมื่อกลุ่มบัญชีสินค้าไม่ได้กำหนด (ข้อมูล Express: บัญชีของกลุ่มชนะช่องเอกสาร 64:12 ครั้ง) · Perpetual สินค้าคงคลังไม่ใช้ (ต้องลงบัญชีสินค้า)
+    const docSlot = r.slot(dt, cls, kind);
     if (kind === 'PURCHASE') {
-      if (expense) return pick(['2', g.inv], ['3', r.def('OTHER_EXPENSE')]);
+      if (expense) return pick(['2', g.inv], ['1', docSlot], ['3', r.def('OTHER_EXPENSE')]);
       if (r.perpetual) return pick(['2', g.inv], ['3', r.def('INVENTORY')]);
-      return pick(['2', g.pur], ['3', r.def('PURCHASES')]);
+      return pick(['2', g.pur], ['1', docSlot], ['3', r.def('PURCHASES')]);
     }
-    if (expense) return pick(['2', g.inv], ['3', r.def('OTHER_EXPENSE')]);
+    if (expense) return pick(['2', g.inv], ['1', docSlot], ['3', r.def('OTHER_EXPENSE')]);
     if (r.perpetual) return pick(['2', g.inv], ['3', r.def('INVENTORY')]);
-    return pick(['2', g.pret], ['3', r.def('PURCHASE_RETURN')]);
+    return pick(['2', g.pret], ['1', docSlot], ['3', r.def('PURCHASE_RETURN')]);
   };
 
   /** Perpetual (ค่าเริ่มต้นระบบสินค้า ข้อ 4): ขาย Dr ต้นทุนขาย / Cr สินค้า · รับคืน กลับด้าน — ตามต้นทุนของบรรทัดที่ตัด/รับสต๊อก */

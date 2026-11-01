@@ -474,5 +474,15 @@
  "เอกสารนี้ไม่ลงบัญชี (ไม่เชื่อมต่อระบบบัญชี หรือเอกสารชนิดนี้ไม่ลงบัญชี)": "This document does not post (GL link off, or this document type does not post)",
  "↻ คำนวณใหม่": "↻ Recalculate",
  "กำลังคำนวณ…": "Calculating…",
- "ยังไม่ได้บันทึก": "not saved yet"
+ "ยังไม่ได้บันทึก": "not saved yet",
+ "Cr. ส่งคืนสินค้า": "Cr. Purchase returns",
+ "Dr. ซื้อสินค้า/ค่าใช้จ่าย": "Dr. Purchases/expense",
+ "Dr. รับคืนสินค้า": "Dr. Sales returns",
+ "Dr. ลูกหนี้": "Dr. Accounts receivable",
+ "ว่าง = บัญชีลูกหนี้ของลูกค้า · ใบเสร็จรับชำระลดลูกหนี้ตามบัญชีของลูกค้า (แบบ Express) จึงควรใช้บัญชีเดียวกัน": "Blank = the customer's AR account · receipts reduce AR on the customer's account (as Express), so use the same account",
+ "ว่าง = บัญชีเจ้าหนี้ของผู้จำหน่าย · ใบจ่ายชำระลดเจ้าหนี้ตามบัญชีของผู้จำหน่าย (แบบ Express)": "Blank = the supplier's AP account · payments reduce AP on the supplier's account (as Express)",
+ "ใช้ก่อนบัญชีขายของกลุ่มสินค้า · ว่าง = กลุ่มบัญชีสินค้า → บัญชีขายมาตรฐาน": "Used before the item group's sales account · blank = item group → default sales account",
+ "ใช้ก่อนบัญชีรับคืนของกลุ่มสินค้า · ว่าง = กลุ่มบัญชีสินค้า → บัญชีรับคืนมาตรฐาน": "Used before the item group's returns account · blank = item group → default returns account",
+ "ใช้เมื่อกลุ่มบัญชีสินค้าไม่ได้กำหนดบัญชีส่งคืน": "Used when the item group has no purchase-returns account",
+ "ใช้เมื่อสินค้า/รหัสค่าใช้จ่ายไม่ได้กำหนดบัญชีในกลุ่ม (เช่น ค่าจ้างภายนอก) · Perpetual สินค้าคงคลังลงบัญชีสินค้าเสมอ": "Used when the item/expense code group has no account (e.g. subcontracting) · Perpetual stock always posts to inventory"
 }

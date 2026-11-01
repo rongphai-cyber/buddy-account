@@ -130,3 +130,24 @@ describe('posting engine (บทที่ 10)', () => {
     expect(s.every((l) => l.account_id === 'susp' && l.layer === 'S')).toBe(true);
   });
 });
+
+describe('ช่องบัญชีของประเภทเอกสารขาย/ซื้อ (ข้อกำหนดเจ้าของ 01/11/2569)', () => {
+  // ประเภทเอกสาร T: IV ช่อง 1 ลูกหนี้ ช่อง 5 ขาย · RR ช่อง 1 ซื้อ ช่อง 3 เจ้าหนี้ · CN ช่อง 5 รับคืน
+  const SLOTS: Record<string, Record<string, string>> = { IV: { AR: 'ar-doc', SALES: 'sales-doc' }, CN: { SALES_RETURN: 'sret-doc' }, RR: { PURCHASE: 'sub-con', AP: 'ap-doc' } };
+  const R: PostingResolver = { ...r, slot: (dt, cls, role) => (dt === 'T' ? SLOTS[cls]?.[role] ?? null : null),
+    item: (id) => (id === 'grp' ? { type: '0', group: { pur: 'pur-g', sales: 'sales-g' } } : id === 'exp' ? { type: '5', group: {} } : { type: '0', group: {} }) };
+  const H = (doc_class: string, extra = {}) => ({ id: 'h', doc_class, doc_type_id: 'T', customer_id: 'c1', supplier_id: 's1', net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1', ...extra });
+  it('ขายเชื่อ: Dr. ลูกหนี้ และ Cr. ขาย ตามประเภทเอกสาร (ก่อนบัญชีของลูกค้า/กลุ่มสินค้า)', () => {
+    const p = buildPosting(H('IV'), [{ item_id: 'grp', net_amount: '1000' }], [], [], R);
+    expect(net(p)).toEqual({ 'ar-doc': '1070.00', 'sales-doc': '-1000.00', ovat: '-70.00' });
+    const q = buildPosting(H('IV', { doc_type_id: null }), [{ item_id: 'grp', net_amount: '1000' }], [], [], R);
+    expect(net(q)).toEqual({ 'ar-c1': '1070.00', 'sales-g': '-1000.00', ovat: '-70.00' });   // ว่าง = ลูกค้า/กลุ่มสินค้า
+    expect(net(buildPosting(H('CN'), [{ item_id: 'x', net_amount: '1000' }], [], [], R))).toEqual({ 'ar-c1': '-1070.00', 'sret-doc': '1000.00', ovat: '70.00' });
+  });
+  it('ซื้อเชื่อ: ช่องซื้อใช้เมื่อกลุ่มบัญชีสินค้าไม่ได้กำหนด (แบบข้อมูล Express) · Perpetual ลงบัญชีสินค้า', () => {
+    const p = buildPosting(H('RR'), [{ item_id: 'x', net_amount: '400' }, { item_id: 'exp', net_amount: '300' }, { item_id: 'grp', net_amount: '300' }], [], [], { ...R, def: (k) => ({ ...DEF, INPUT_VAT: 'ivat' } as Record<string, string>)[k] ?? null });
+    expect(net(p)).toEqual({ 'sub-con': '700.00', 'pur-g': '300.00', ivat: '70.00', 'ap-doc': '-1070.00' });
+    const perp = buildPosting(H('RR'), [{ item_id: 'x', net_amount: '1000' }], [], [], { ...R, perpetual: true, def: (k) => ({ ...DEF, INVENTORY: 'inv' } as Record<string, string>)[k] ?? null });
+    expect(net(perp)).toEqual({ inv: '1000.00', ivat: '70.00', 'ap-doc': '-1070.00' });
+  });
+});
