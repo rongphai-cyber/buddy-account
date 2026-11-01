@@ -3330,6 +3330,8 @@ export interface GlBalanceTable {
   account_id: string;
   /** แผนก */
   department_id: Gen<string | null>;
+  /** สาขา (ว่าง = สำนักงานใหญ่ — ข้อกำหนดเจ้าของ 01/11/2569 งบรายสาขารวมยอดยกมา) */
+  branch_id: Gen<string | null>;
   /** งวด */
   period_id: string;
   /** ยอดยกมาต้นงวด (เฉพาะงวดแรกของปี) */

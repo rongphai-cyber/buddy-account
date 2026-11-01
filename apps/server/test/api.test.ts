@@ -12,7 +12,7 @@ import { loadConfig } from '../src/config.js';
 import { API_RULES, REGISTERED_ROUTES, syncMenus } from '../src/modules/permissions.js';
 import { setAiClientFactory } from '../src/modules/ai.js';
 import { base32Decode, stepOf, totpAt } from '../src/modules/security.js';
-import { taxIdCheckDigit } from '@buddy/core';
+import { d, taxIdCheckDigit } from '@buddy/core';
 import { createZip } from '../src/zip.js';
 import { readTable } from '../src/modules/trade-import.js';
 /** เลขผู้เสียภาษีที่ถูกต้องและไม่ซ้ำกัน สำหรับคู่ค้าทดสอบ (เลข + สาขาซ้ำในบริษัทเดียวกันบันทึกไม่ได้) */
@@ -1945,6 +1945,22 @@ describe('Buddy Account API (PGlite)', () => {
     expect(r.docs).toEqual(expect.arrayContaining([iv.doc_no, iv2.doc_no])); expect(r.subtitle).toMatch(/ทุกสาขา/);
     for (const x of [iv.id, iv2.id]) expect((await call('POST', `/api/v1/sales-invoices/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     for (const x of [j1.id, j2.id]) expect((await call('POST', `/api/v1/gl/journals/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    // ยอดยกมาบัญชีแยกสาขา: งบทดลองรายสาขารวมยอดยกมาของสาขานั้น · ว่าง = สำนักงานใหญ่ · สำนักงานใหญ่ + สาขา = ทั้งบริษัท · สาขาไม่ดุลในตัวได้คำเตือน
+    const before = (await call('GET', '/api/v1/gl/opening')).body;
+    const restore = before.rows.map((r: { account_id: string; department_id: string | null; branch_id: string | null; opening: string }) => ({ account_id: r.account_id, department_id: r.department_id, branch_id: r.branch_id, debit: Number(r.opening) > 0 ? r.opening : '0', credit: Number(r.opening) < 0 ? String(-Number(r.opening)) : '0' }));
+    const op = await call('PUT', '/api/v1/gl/opening', { period_start: '2026-01-01', rows: [...restore,
+      { account_id: cash, branch_id: null, debit: '1000', credit: '0' }, { account_id: capital, branch_id: hq, debit: '0', credit: '1200' },
+      { account_id: cash, branch_id: b2, debit: '700', credit: '0' }, { account_id: capital, branch_id: b2, debit: '0', credit: '500' }] });
+    expect(op.status).toBe(200);
+    expect(op.body.warnings).toHaveLength(2);
+    expect(op.body.warnings.join(' ')).toMatch(/BR2 สาขาเชียงใหม่ ไม่ดุล \(ต่าง 200\.00\)/);
+    expect((await call('GET', '/api/v1/gl/opening')).body.rows.some((r: { branch_id: string | null; opening: string }) => r.branch_id === b2 && r.opening === '700.00')).toBe(true);
+    const tbCash = async (branch?: string) => d((await call('GET', `/api/v1/reports/trial-balance?from=2026-01-01&to=2026-01-31${branch ? `&branch_id=${branch}` : ''}`)).body.rows.find((x: { id: string }) => x.id === cash)?.opening ?? 0);
+    const [all, atHq, atB2] = [await tbCash(), await tbCash(hq), await tbCash(b2)];
+    expect(atB2.toFixed(2)).toBe('700.00');
+    expect(atHq.plus(atB2).toFixed(2)).toBe(all.toFixed(2));
+    expect((await call('PUT', '/api/v1/gl/opening', { period_start: '2026-01-01', rows: [{ account_id: cash, branch_id: otherBr, debit: '1', credit: '0' }, { account_id: capital, debit: '0', credit: '1' }] })).status).toBe(400);
+    expect((await call('PUT', '/api/v1/gl/opening', { period_start: '2026-01-01', rows: restore })).status).toBe(200);
   });
 
   it('line notes vs document notes (ข้อกำหนดเจ้าของ): keyed with the line, survive edits, print under the line only when ticked; document notes print in the notes box', async () => {

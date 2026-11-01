@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { d, ZERO, addMonths, addDays, formatDate, runFsLayout, expandHeader, isFormulaColumn, type FsColumn, type FsLine, type FsRow, Decimal } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../../http.js';
-import { closingOf, fiscalYearOf, isPL, leafTotals, loadChart, rollUp, type BalanceFilter, type Chart, type Totals } from './balances.js';
+import { closingOf, fiscalYearOf, isPL, leafTotals, loadChart, rollUp, type BalanceFilter, type Chart, type Totals, hqBranch } from './balances.js';
 import { logActivity } from '../../audit.js';
 import { budgetTotals } from './budget.js';
 
@@ -470,7 +470,7 @@ export async function ledgerOf(db: Db, companyId: string, accountId: string, fro
     .select(['j.id as journal_id', 'j.voucher_no', 'j.voucher_date', 'j.description as journal_description', 'l.description', 'l.debit', 'l.credit', 'g.account_no', 'dp.code as department_code', 'h.doc_no as source_doc_no', 'h.id as source_header_id', 'h.doc_class as source_doc_class', 'j.reference'])
     .where('j.company_id', '=', a.companyId).where('j.doc_status', '=', 'N').where('j.deleted_at', 'is', null).where('l.deleted_at', 'is', null)
     .where('l.account_id', 'in', fam).where('j.voucher_date', '>=', q.from).where('j.voucher_date', '<=', q.to);
-  if (q.branch_id) s = s.where('j.branch_id', '=', q.branch_id);
+  if (q.branch_id) s = s.where(sql<string>`coalesce(j.branch_id, ${hqBranch(a.companyId)})`, '=', q.branch_id);
   if (q.department_id) s = s.where('l.department_id', '=', q.department_id);
   const lines = await s.orderBy('j.voucher_date').orderBy('j.voucher_no').orderBy('l.line_no').execute();
   let run = opening;

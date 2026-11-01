@@ -337,7 +337,7 @@ export function glRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/gl/opening', async (req) => {
     const a = requireCompany(req);
     const rows = await db.selectFrom('gl_balance as b').innerJoin('gl_period as p', 'p.id', 'b.period_id').innerJoin('gl_account as g', 'g.id', 'b.account_id').leftJoin('md_department as dp', 'dp.id', 'b.department_id')
-      .select(['b.id', 'b.account_id', 'g.account_no', 'g.name_th', 'b.department_id', 'dp.code as department_code', 'b.opening', 'p.start_date'])
+      .select(['b.id', 'b.account_id', 'g.account_no', 'g.name_th', 'b.department_id', 'dp.code as department_code', 'b.branch_id', 'b.opening', 'p.start_date'])
       .where('b.company_id', '=', a.companyId).where('b.deleted_at', 'is', null).where('b.opening', '<>', '0').orderBy('g.account_no').execute();
     const first = await db.selectFrom('gl_period').select(['id', 'start_date']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('start_date').limit(1).executeTakeFirst();
     const total = rows.reduce((s, r) => s.plus(d(r.opening)), ZERO);
@@ -347,7 +347,7 @@ export function glRoutes(app: FastifyInstance, db: Db) {
   /** บันทึกยอดยกมาทั้งชุด (แทนที่ของเดิม) — ยอดสุทธิต้องเป็นศูนย์ (เดบิต = เครดิต) */
   app.put('/api/v1/gl/opening', async (req) => {
     const a = requireCompany(req);
-    const b = parse(z.object({ period_start: isoDate, rows: z.array(z.object({ account_id: uuid, department_id: uuid.nullable().optional(), debit: money, credit: money })) }), req.body);
+    const b = parse(z.object({ period_start: isoDate, rows: z.array(z.object({ account_id: uuid, department_id: uuid.nullable().optional(), branch_id: uuid.nullable().optional(), debit: money, credit: money })) }), req.body);
     const net = b.rows.reduce((s, r) => s.plus(d(r.debit)).minus(d(r.credit)), ZERO);
     if (!net.isZero()) throw badRequest(`ยอดยกมาไม่ดุล: เดบิตต่างจากเครดิต ${net.abs().toFixed(2)}`);
     return db.transaction().execute(async (tx) => {
@@ -359,17 +359,27 @@ export function glRoutes(app: FastifyInstance, db: Db) {
         if (!acc) throw badRequest('มีบัญชีที่ไม่พบในผังบัญชี');
         if (acc.is_control) throw badRequest(`บัญชี ${acc.account_no} เป็นบัญชีคุม บันทึกยอดยกมาไม่ได้`);
       }
+      // สาขาของยอดยกมา (ว่าง = สำนักงานใหญ่) ต้องเป็นของบริษัทนี้ · แต่ละสาขาควรดุลในตัว ไม่งั้นงบทดลองรายสาขาไม่ดุล (เตือน ไม่บล็อก)
+      const branches = await tx.selectFrom('sys_branch').select(['id', 'code', 'name', 'is_head_office']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).execute();
+      const hq = branches.find((x) => x.is_head_office)?.id ?? null;
+      const byBranch = new Map<string, typeof ZERO>();
+      for (const r of b.rows) {
+        if (r.branch_id && !branches.some((x) => x.id === r.branch_id)) throw badRequest('ไม่พบสาขาของยอดยกมา — เลือกสาขาใหม่', [{ field: 'branch_id', message: 'เลือกสาขา' }]);
+        const k = r.branch_id && r.branch_id !== hq ? r.branch_id : '';
+        byBranch.set(k, (byBranch.get(k) ?? ZERO).plus(d(r.debit)).minus(d(r.credit)));
+      }
+      const warnings = [...byBranch].filter(([, v]) => !v.isZero()).map(([k, v]) => { const x = branches.find((y) => y.id === (k || hq)); return `ยอดยกมาของ${x ? ` ${x.code} ${x.name}` : 'สำนักงานใหญ่'} ไม่ดุล (ต่าง ${v.abs().toFixed(2)}) — งบทดลองรายสาขาจะไม่ดุล แนะนำใช้บัญชีระหว่างสำนักงานใหญ่/สาขาให้แต่ละสาขาดุล`; });
       await tx.updateTable('gl_balance').set({ opening: '0' }).where('company_id', '=', a.companyId).where('opening', '<>', '0').execute();
       for (const r of b.rows) {
         const amt = d(r.debit).minus(d(r.credit));
         if (amt.isZero()) continue;
         const ex = await tx.selectFrom('gl_balance').select('id').where('company_id', '=', a.companyId).where('account_id', '=', r.account_id).where('period_id', '=', p.id)
-          .where(sql<boolean>`department_id IS NOT DISTINCT FROM ${r.department_id ?? null}::uuid`).executeTakeFirst();
+          .where(sql<boolean>`department_id IS NOT DISTINCT FROM ${r.department_id ?? null}::uuid`).where(sql<boolean>`branch_id IS NOT DISTINCT FROM ${r.branch_id && r.branch_id !== hq ? r.branch_id : null}::uuid`).executeTakeFirst();
         if (ex) await tx.updateTable('gl_balance').set({ opening: amt.toFixed(2) }).where('id', '=', ex.id).execute();
-        else await tx.insertInto('gl_balance').values({ company_id: a.companyId, account_id: r.account_id, department_id: r.department_id ?? null, period_id: p.id, opening: amt.toFixed(2) }).execute();
+        else await tx.insertInto('gl_balance').values({ company_id: a.companyId, account_id: r.account_id, department_id: r.department_id ?? null, branch_id: r.branch_id && r.branch_id !== hq ? r.branch_id : null, period_id: p.id, opening: amt.toFixed(2) }).execute();
       }
       await logActivity(tx, a, { module: 'GL', action: 'OPENING', table: 'gl_balance', detail: { rows: b.rows.length, period_start: b.period_start } });
-      return { ok: true };
+      return { ok: true, warnings };
     });
   });
 }

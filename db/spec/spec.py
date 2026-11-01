@@ -1168,11 +1168,12 @@ add(T('gl_journal_line', 'รายการเดบิต/เครดิต�
 add(T('gl_balance', 'ยอดสะสมรายงวดต่อบัญชี×แผนก (สรุปจาก gl_journal_line)', 'gl', sync='server', express='GLBAL (DEBITn/CREDITn ×36 ช่อง)', cols=[
   lk('account_id', 'gl_account', 'บัญชี', 'GLBAL.ACCNUM', nn=True),
   lk('department_id', 'md_department', 'แผนก', 'GLBAL.DEPCOD'),
+  lk('branch_id', 'sys_branch', 'สาขา (ว่าง = สำนักงานใหญ่ — ข้อกำหนดเจ้าของ 01/11/2569 งบรายสาขารวมยอดยกมา)'),
   lk('period_id', 'gl_period', 'งวด', nn=True),
   C('opening', 'money', nn=True, d='0', th='ยอดยกมาต้นงวด (เฉพาะงวดแรกของปี)', src='GLBAL.BEGLY'),
   C('debit', 'money', nn=True, d='0', th='รวมเดบิตในงวด', src='GLBAL.DEBITn'),
   C('credit', 'money', nn=True, d='0', th='รวมเครดิตในงวด', src='GLBAL.CREDITn'),
-], uniq=[('company_id','account_id','department_id','period_id')]))
+], uniq=[('company_id','account_id','department_id','branch_id','period_id')]))
 
 add(T('gl_inventory_balance', 'บัญชีสินค้าคงเหลือ (Periodic) — ยอดคงเหลือปลายงวดที่ผู้ใช้ยืนยัน ใช้ในงบการเงินแทนยอดบัญชี', 'gl', express='GLINV', cols=[
   lk('fiscal_year_id', 'gl_fiscal_year', 'ปีบัญชี', nn=True),

@@ -3655,6 +3655,7 @@ CREATE TABLE gl_balance (
   company_id uuid NOT NULL,
   account_id uuid NOT NULL,
   department_id uuid,
+  branch_id uuid,
   period_id uuid NOT NULL,
   opening numeric(18,2) DEFAULT 0 NOT NULL,
   debit numeric(18,2) DEFAULT 0 NOT NULL,
@@ -3673,6 +3674,7 @@ COMMENT ON COLUMN gl_balance.id IS 'รหัสแถว UUIDv7 (สร้า�
 COMMENT ON COLUMN gl_balance.company_id IS 'บริษัท';
 COMMENT ON COLUMN gl_balance.account_id IS 'บัญชี [Express: GLBAL.ACCNUM]';
 COMMENT ON COLUMN gl_balance.department_id IS 'แผนก [Express: GLBAL.DEPCOD]';
+COMMENT ON COLUMN gl_balance.branch_id IS 'สาขา (ว่าง = สำนักงานใหญ่ — ข้อกำหนดเจ้าของ 01/11/2569 งบรายสาขารวมยอดยกมา)';
 COMMENT ON COLUMN gl_balance.period_id IS 'งวด';
 COMMENT ON COLUMN gl_balance.opening IS 'ยอดยกมาต้นงวด (เฉพาะงวดแรกของปี) [Express: GLBAL.BEGLY]';
 COMMENT ON COLUMN gl_balance.debit IS 'รวมเดบิตในงวด [Express: GLBAL.DEBITn]';
@@ -3684,7 +3686,7 @@ COMMENT ON COLUMN gl_balance.updated_by IS 'ผู้แก้ไขล่าส
 COMMENT ON COLUMN gl_balance.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
 COMMENT ON COLUMN gl_balance.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
 COMMENT ON COLUMN gl_balance.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
-CREATE UNIQUE INDEX uq_gl_balance_company_account_department_period ON gl_balance (company_id, account_id, COALESCE(department_id, '00000000-0000-0000-0000-000000000000'::uuid), period_id) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uq_gl_balance_company_account_department_branch_period ON gl_balance (company_id, account_id, COALESCE(department_id, '00000000-0000-0000-0000-000000000000'::uuid), COALESCE(branch_id, '00000000-0000-0000-0000-000000000000'::uuid), period_id) WHERE deleted_at IS NULL;
 
 -- gl_inventory_balance: บัญชีสินค้าคงเหลือ (Periodic) — ยอดคงเหลือปลายงวดที่ผู้ใช้ยืนยัน ใช้ในงบการเงินแทนยอดบัญชี  [Express: GLINV]
 CREATE TABLE gl_inventory_balance (
@@ -5140,6 +5142,8 @@ ALTER TABLE gl_balance ADD CONSTRAINT fk_gl_balance_account_id FOREIGN KEY (acco
 CREATE INDEX IF NOT EXISTS ix_fk_gl_balance_account_id ON gl_balance (account_id);
 ALTER TABLE gl_balance ADD CONSTRAINT fk_gl_balance_department_id FOREIGN KEY (department_id) REFERENCES md_department(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_gl_balance_department_id ON gl_balance (department_id);
+ALTER TABLE gl_balance ADD CONSTRAINT fk_gl_balance_branch_id FOREIGN KEY (branch_id) REFERENCES sys_branch(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_gl_balance_branch_id ON gl_balance (branch_id);
 ALTER TABLE gl_balance ADD CONSTRAINT fk_gl_balance_period_id FOREIGN KEY (period_id) REFERENCES gl_period(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_gl_balance_period_id ON gl_balance (period_id);
 ALTER TABLE gl_balance ADD CONSTRAINT fk_gl_balance_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;

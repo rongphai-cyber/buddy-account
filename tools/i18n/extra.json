@@ -505,5 +505,10 @@
  "ไม่พบสาขานี้ — เลือกสาขาที่บันทึกใหม่": "Branch not found — choose the branch again",
  "(สำนักงานใหญ่)": "(head office)",
  "— ดูทุกสาขาให้เลือก \"ทุกสาขา\" ที่แถบด้านบน": "— to see all branches choose \"All branches\" in the top bar",
- "🏢 แสดงเฉพาะสาขา": "🏢 Showing branch"
+ "🏢 แสดงเฉพาะสาขา": "🏢 Showing branch",
+ "ต่าง {0}": "Diff {0}",
+ "ยอดยกมาแยกสาขา:": "Opening balances by branch:",
+ "แต่ละสาขาควรดุลในตัว (ใช้บัญชีระหว่างสำนักงานใหญ่/สาขา) งบทดลองรายสาขาจึงจะดุล": "Each branch should balance on its own (use head office/branch accounts) so the branch trial balance balances",
+ "ยอดยกมาของ{0} ไม่ดุล (ต่าง {1}) — งบทดลองรายสาขาจะไม่ดุล แนะนำใช้บัญชีระหว่างสำนักงานใหญ่/สาขาให้แต่ละสาขาดุล": "Opening balances of{0} do not balance (diff {1}) — the branch trial balance will not balance; use head office/branch accounts so each branch balances",
+ "ไม่พบสาขาของยอดยกมา — เลือกสาขาใหม่": "Branch of the opening balance not found — choose the branch again"
 }

@@ -600,6 +600,36 @@
 ]
 },
 {
+"th": "สาขา",
+"n": 28,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "หมายเหตุ",
 "n": 28,
 "files": [
@@ -705,35 +735,6 @@
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
-"th": "สาขา",
-"n": 26,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -1697,6 +1698,21 @@
 ]
 },
 {
+"th": "สำนักงานใหญ่",
+"n": 11,
+"files": [
+"apps/web/src/components/DocBranch.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/taxid.ts"
+]
+},
+{
 "th": "หนี้สิน",
 "n": 11,
 "files": [
@@ -1860,20 +1876,6 @@
 "apps/server/src/modules/trade-import.ts",
 "packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "สำนักงานใหญ่",
-"n": 10,
-"files": [
-"apps/web/src/components/DocBranch.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/taxid.ts"
 ]
 },
 {
@@ -2684,6 +2686,17 @@
 ]
 },
 {
+"th": "ดุล ✓",
+"n": 6,
+"files": [
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
 "th": "บรรทัด",
 "n": 6,
 "files": [
@@ -3083,17 +3096,6 @@
 "apps/web/src/pages/gl/Opening.tsx",
 "apps/web/src/pages/settings/DataTables.tsx",
 "apps/web/src/pages/tax/Wht50.tsx"
-]
-},
-{
-"th": "ดุล ✓",
-"n": 5,
-"files": [
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx"
 ]
 },
 {
@@ -5432,6 +5434,15 @@
 "n": 3,
 "files": [
 "apps/server/src/modules/docs/settle.ts"
+]
+},
+{
+"th": "เลือกสาขา",
+"n": 3,
+"files": [
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/sync/central.ts"
 ]
 },
 {
@@ -9097,14 +9108,6 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/trade-import.ts"
-]
-},
-{
-"th": "เลือกสาขา",
-"n": 2,
-"files": [
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/sync/central.ts"
 ]
 },
 {
@@ -18593,6 +18596,13 @@
 ]
 },
 {
+"th": "ต่าง {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Opening.tsx"
+]
+},
+{
 "th": "ต่างกัน {0}",
 "n": 1,
 "files": [
@@ -25744,6 +25754,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "ยอดยกมาของ{0} ไม่ดุล (ต่าง {1}) — งบทดลองรายสาขาจะไม่ดุล แนะนำใช้บัญชีระหว่างสำนักงานใหญ่/สาขาให้แต่ละสาขาดุล",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/routes.ts"
 ]
 },
 {
@@ -37752,6 +37769,13 @@
 ]
 },
 {
+"th": "แต่ละสาขาควรดุลในตัว (ใช้บัญชีระหว่างสำนักงานใหญ่/สาขา) งบทดลองรายสาขาจึงจะดุล",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Opening.tsx"
+]
+},
+{
 "th": "แต่ละสาขามีเลขที่สาขาตามกรมสรรพากร ใช้พิมพ์บนใบกำกับภาษีและแยกรายงานภาษี",
 "n": 1,
 "files": [
@@ -40192,6 +40216,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/fa.ts"
+]
+},
+{
+"th": "ไม่พบสาขาของยอดยกมา — เลือกสาขาใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/routes.ts"
 ]
 },
 {

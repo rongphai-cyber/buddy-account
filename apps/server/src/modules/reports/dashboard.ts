@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { addDays, addMonths, d, ZERO, type Decimal } from '@buddy/core';
+import { hqBranch } from '../gl/balances.js';
 import type { Db } from '../../db.js';
 import { badRequest, parse, requireCompany } from '../../http.js';
 
@@ -32,7 +33,7 @@ export function dashboardRoutes(app: FastifyInstance, db: Db) {
     const c = a.companyId;
     const branch = q.branch_id ?? null;
     const brH = sql`AND (${branch}::uuid IS NULL OR h.branch_id = ${branch}::uuid)`;
-    const brJ = sql`AND (${branch}::uuid IS NULL OR j.branch_id = ${branch}::uuid)`;
+    const brJ = sql`AND (${branch}::uuid IS NULL OR coalesce(j.branch_id, ${hqBranch(a.companyId)}) = ${branch}::uuid)`;
     const catW = q.category ? sql`AND i.category_code = ${q.category}` : sql``;
     const ctypeW = q.customer_type ? sql`AND cu.customer_type = ${q.customer_type}` : sql``;
     // ช่วงเทียบ: ช่วงก่อนหน้ายาวเท่ากัน · ช่วงเดียวกันปีที่แล้ว
@@ -100,7 +101,7 @@ export function dashboardRoutes(app: FastifyInstance, db: Db) {
           SELECT date_trunc('month', pp.start_date), sum(CASE WHEN a.account_group = '4' THEN pb.credit - pb.debit ELSE 0 END), sum(CASE WHEN a.account_group >= '5' THEN pb.debit - pb.credit ELSE 0 END)
             FROM gl_prior_year_balance pb JOIN gl_period pp ON pp.fiscal_year_id = pb.fiscal_year_id AND pp.period_no = pb.period_no AND pp.deleted_at IS NULL
             JOIN gl_account a ON a.id = pb.account_id
-           WHERE pb.company_id = ${c} AND pb.deleted_at IS NULL AND pb.period_no > 0 AND a.account_group >= '4' AND ${branch}::uuid IS NULL
+           WHERE pb.company_id = ${c} AND pb.deleted_at IS NULL AND pb.period_no > 0 AND a.account_group >= '4' AND (${branch}::uuid IS NULL OR ${hqBranch(a.companyId)} = ${branch}::uuid)
              AND pp.start_date >= date_trunc('month', ${r.from}::date) AND pp.end_date <= ${r.to} GROUP BY 1) t GROUP BY 1 ORDER BY 1`.execute(db)).rows;
       return rows.map((x) => ({ month: x.m, revenue: d(x.rev ?? 0), expense: d(x.exp ?? 0) }));
     };
