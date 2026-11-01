@@ -32,6 +32,17 @@ const blank = (): Line => ({ key: ++seq, account_id: null, department_id: null, 
 /** สมุดรายวัน (JV และเล่มอื่น) — คู่มือบทที่ 15 S-GL-02 */
 const TAX_TABS = [['vatP', 'ภาษีซื้อ'], ['vatS', 'ภาษีขาย'], ['wht', 'ภาษีหัก ณ ที่จ่าย'], ['chqP', 'เช็คจ่าย'], ['chqR', 'เช็ครับ']] as const;
 
+/**
+ * หน้าจอใบสำคัญใหม่/เดิมใช้คอมโพเนนต์เดียวกัน — ผูก key ตามเลขที่ใบ (และ n ของปุ่ม + ใหม่) ให้เริ่มหน้าจอใหม่ทุกครั้ง
+ * (ข้อกำหนดเจ้าของ 01/11/2569: กด + ใหม่ จากใบที่ดูอยู่แล้วรายการเดิมค้าง)
+ */
+export function JournalFormRoute() {
+  const { id } = useParams();
+  const [sp] = useSearchParams();
+  return <JournalFormPage key={id ?? `new-${sp.get('n') ?? ''}`} />;
+}
+const newUrl = (book: string, extra = '') => `/gl/journals/new?${book ? `book=${book}&` : ''}n=${Date.now()}${extra}`;
+
 export function JournalFormPage() {
   const { id } = useParams();
   const [sp] = useSearchParams();
@@ -117,6 +128,12 @@ export function JournalFormPage() {
     } catch (e) { toastError(e); }
   };
   // คัดลอกรายการจากใบสำคัญอื่น (S-GL-06): เอาบรรทัดบัญชีมาทั้งหมด ผู้ใช้ป้อนวันที่ใหม่แล้วบันทึกเป็นใบใหม่
+  // ปุ่ม 📋 คัดลอก: ใบใหม่รับรายการ คำอธิบาย อ้างอิง ของใบเดิม (เลขที่ใหม่ วันที่ทำการ ภาษีต้องป้อนใหม่)
+  const copyFrom = sp.get('copy');
+  useEffect(() => {
+    if (!isNew || !copyFrom) return;
+    api.get<JournalDoc>(`/api/v1/gl/journals/${copyFrom}`).then((src) => { applyCopy(src); setH((x) => ({ ...x, journal_book_id: src.journal_book_id, description: src.description ?? '', reference: src.reference ?? '' })); toast(`คัดลอกรายการจาก ${src.voucher_no} แล้ว — ตรวจแล้วกด F9 เพื่อบันทึกเป็นใบใหม่`); }).catch(setErr);
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const applyCopy = (src: JournalDoc) => {
     setLines(src.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: l.department_id, description: l.description ?? '', debit: d(l.debit).isZero() ? '' : d(l.debit).toFixed(2), credit: d(l.credit).isZero() ? '' : d(l.credit).toFixed(2) })));
     if (!h.description && src.description) setH((x) => ({ ...x, description: src.description ?? '' }));
@@ -222,7 +239,7 @@ export function JournalFormPage() {
   const leave = (to: string) => (dirty && editable ? setLeaveAsk(to) : nav(to));
   useHotkeys({
     F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': () => !isNew && editBase && can('cancel') && setCancelAsk(true), 'Ctrl+F6': () => isNew && setCopyPick(true),
-    'Ctrl+Insert': addLine, 'Alt+N': () => leave('/gl/journals/new'), Escape: () => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`),
+    'Ctrl+Insert': addLine, 'Alt+N': () => leave(newUrl(h.journal_book_id)), Escape: () => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`),
   }, [h, lines, editable, editBase, dirty, busy, drafts]);
 
   const acctOf = (aid: string | null) => accts.data?.find((a) => a.id === aid);
@@ -256,7 +273,8 @@ export function JournalFormPage() {
       </div>
       <div className="toolbar" role="toolbar" aria-label="แถบเครื่องมือ">
         <div className="tb-group">
-          <button onClick={() => leave('/gl/journals/new' + (h.journal_book_id ? `?book=${h.journal_book_id}` : ''))} title="ใบใหม่ (Alt+N)">+ ใหม่</button>
+          <button onClick={() => leave(newUrl(h.journal_book_id))} title="ใบใหม่ (Alt+N) — หน้าจอว่าง เริ่มคีย์ใหม่">+ ใหม่</button>
+          {!isNew && <button onClick={() => leave(newUrl(h.journal_book_id, `&copy=${id}`))} title="คัดลอกรายการของใบสำคัญนี้ไปเป็นใบใหม่ (เลขที่ใหม่ วันที่ทำการ)">📋 คัดลอก</button>}
           <button className="primary" disabled={!editable || busy} onClick={() => save()} title="บันทึก (F9 / Ctrl+S)">บันทึก <kbd>F9</kbd></button>
           {ed.editButton}
           <button disabled={!editable || busy} onClick={() => save(true)} title="บันทึกแล้วขึ้นใบใหม่ (Ctrl+Enter)">บันทึก+ใหม่</button>

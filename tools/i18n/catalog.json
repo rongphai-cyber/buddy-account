@@ -1524,6 +1524,23 @@
 ]
 },
 {
+"th": "ทิ้งการแก้ไข?",
+"n": 12,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ที่อยู่",
 "n": 12,
 "files": [
@@ -1652,6 +1669,23 @@
 "apps/server/src/modules/neighbors.ts",
 "apps/server/src/modules/print.ts",
 "apps/server/src/modules/gl/journals.ts"
+]
+},
+{
+"th": "+ ใหม่",
+"n": 11,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
 ]
 },
 {
@@ -2103,19 +2137,6 @@
 ]
 },
 {
-"th": "ทิ้งการแก้ไข?",
-"n": 8,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
 "th": "ทุกสถานะ",
 "n": 8,
 "files": [
@@ -2386,19 +2407,6 @@
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/gl/Templates.tsx",
 "apps/web/src/pages/tax/Wht50.tsx"
-]
-},
-{
-"th": "+ ใหม่",
-"n": 7,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -14927,6 +14935,13 @@
 ]
 },
 {
+"th": "คัดลอกรายการของใบสำคัญนี้ไปเป็นใบใหม่ (เลขที่ใหม่ วันที่ทำการ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
 "th": "คัดลอกรายการจาก {0}",
 "n": 1,
 "files": [
@@ -14935,6 +14950,13 @@
 },
 {
 "th": "คัดลอกรายการจาก {0} แล้ว — ตรวจวันที่และจำนวนเงินก่อนบันทึก",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "คัดลอกรายการจาก {0} แล้ว — ตรวจแล้วกด F9 เพื่อบันทึกเป็นใบใหม่",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
@@ -39658,7 +39680,7 @@
 ]
 },
 {
-"th": "ใบใหม่ (Alt+N)",
+"th": "ใบใหม่ (Alt+N) — หน้าจอว่าง เริ่มคีย์ใหม่",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
@@ -41629,6 +41651,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "📋 คัดลอก",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {

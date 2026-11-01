@@ -12,7 +12,7 @@ import { LangSwitch } from './components/LangSwitch';
 import { HomePage } from './pages/Home';
 import { AccountsPage } from './pages/gl/Accounts';
 import { JournalsPage } from './pages/gl/Journals';
-import { JournalFormPage } from './pages/gl/JournalForm';
+import { JournalFormRoute } from './pages/gl/JournalForm';
 import { BooksPage } from './pages/gl/Books';
 import { TemplatesPage } from './pages/gl/Templates';
 import { PermissionsPage } from './pages/settings/Permissions';
@@ -184,8 +184,8 @@ function Shell() {
           <Route path="/" element={<HomePage />} />
           <Route path="/gl/accounts" element={<AccountsPage />} />
           <Route path="/gl/journals" element={<JournalsPage />} />
-          <Route path="/gl/journals/new" element={<JournalFormPage />} />
-          <Route path="/gl/journals/:id" element={<JournalFormPage />} />
+          <Route path="/gl/journals/new" element={<JournalFormRoute />} />
+          <Route path="/gl/journals/:id" element={<JournalFormRoute />} />
           <Route path="/gl/books" element={<BooksPage />} />
           <Route path="/gl/templates" element={<TemplatesPage />} />
           <Route path="/gl/prior-year" element={<PriorYearPage />} />

@@ -515,5 +515,9 @@
  "ต้อง{0} {1} ก่อน": "Please {0} {1} first",
  "ป้อนยอดเดบิตหรือเครดิตของบรรทัดนี้ก่อน": "Enter the debit or credit amount of this line first",
  "บันทึกโดยไม่เข้าแฟ้มภาษี": "Save without tax file",
- "บันทึกใบสำคัญโดยไม่ป้อนรายละเอียดเข้าแฟ้มภาษี (ป้อนภายหลังได้ที่แท็บนี้)": "Save the voucher without tax file details (enter them later in this tab)"
+ "บันทึกใบสำคัญโดยไม่ป้อนรายละเอียดเข้าแฟ้มภาษี (ป้อนภายหลังได้ที่แท็บนี้)": "Save the voucher without tax file details (enter them later in this tab)",
+ "คัดลอกรายการของใบสำคัญนี้ไปเป็นใบใหม่ (เลขที่ใหม่ วันที่ทำการ)": "Copy this voucher's lines to a new voucher (new number, work date)",
+ "คัดลอกรายการจาก {0} แล้ว — ตรวจแล้วกด F9 เพื่อบันทึกเป็นใบใหม่": "Copied lines from {0} — check them, then press F9 to save as a new voucher",
+ "ใบใหม่ (Alt+N) — หน้าจอว่าง เริ่มคีย์ใหม่": "New voucher (Alt+N) — blank screen to start keying",
+ "📋 คัดลอก": "📋 Copy"
 }
