@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { averageCost, computeDoc, discountAmount, dueDate, fifoCost, normalizeDiscount } from './doc-calc.js';
+import { averageCost, computeDoc, discountAmount, dueDate, fifoCost, holdDecision, normalizeDiscount } from './doc-calc.js';
 
 describe('document totals (บทที่ 11–12)', () => {
   it('parses Express discounts', () => {
@@ -60,5 +60,29 @@ describe('stock cost (T4.2)', () => {
     expect(fifoCost(rc, 0, 4)).toBe('400.00');
     expect(fifoCost(rc, 8, 4)).toBe('440.00');      // 2 @100 + 2 @120
     expect(fifoCost(rc, 18, 5)).toBe('600.00');     // 2 @120 + ขาด 3 @120
+  });
+});
+
+describe('ระงับการขาย/ระงับจ่าย (ข้อกำหนดเจ้าของ 01/11/2569)', () => {
+  const clerk = { isAdmin: false, level: 3 }, boss = { isAdmin: false, level: 9 };
+  const c = { code: 'C014', on_hold: true, reason: 'ค้างชำระเกิน 90 วัน' };
+  it('blocks credit sales / orders / debit notes unless approval level, warns on quotation & cash sale', () => {
+    expect(holdDecision('customer', 'IV', c, clerk, 9)).toEqual({ kind: 'block', message: 'ลูกค้า C014 ถูกระงับการขาย (เหตุผล: ค้างชำระเกิน 90 วัน) — ต้องให้ผู้มีระดับอนุมัติ 9 ขึ้นไปบันทึก หรือยกเลิกการระงับที่แฟ้มลูกค้า' });
+    expect(holdDecision('customer', 'SO', c, boss, 9)?.kind).toBe('override');
+    expect(holdDecision('customer', 'DR', c, { isAdmin: true, level: 0 }, 9)?.kind).toBe('override');
+    expect(holdDecision('customer', 'QT', c, clerk, 9)?.kind).toBe('warn');
+    expect(holdDecision('customer', 'HS', c, clerk, 9)?.kind).toBe('warn');
+    expect(holdDecision('customer', 'RE', c, clerk, 9)).toBeNull();
+    expect(holdDecision('customer', 'CN', c, clerk, 9)).toBeNull();
+    expect(holdDecision('customer', 'IV', { ...c, on_hold: false }, clerk, 9)).toBeNull();
+    expect(holdDecision('customer', 'IV', c, clerk, null)?.kind).toBe('override');   // ไม่ตั้งระดับ = เตือนอย่างเดียว
+  });
+  it('supplier hold blocks payments & deposits, warns on purchases, ignores returns', () => {
+    const s = { code: 'S001', on_hold: true, reason: null };
+    expect(holdDecision('supplier', 'PS', s, clerk, 9)?.message).toBe('ผู้จำหน่าย S001 ถูกระงับจ่าย — ต้องให้ผู้มีระดับอนุมัติ 9 ขึ้นไปบันทึก หรือยกเลิกการระงับที่แฟ้มผู้จำหน่าย');
+    expect(holdDecision('supplier', 'AE', s, clerk, 9)?.kind).toBe('block');
+    expect(holdDecision('supplier', 'RR', s, clerk, 9)?.kind).toBe('warn');
+    expect(holdDecision('supplier', 'PO', s, clerk, 9)?.kind).toBe('warn');
+    expect(holdDecision('supplier', 'DN', s, clerk, 9)).toBeNull();
   });
 });

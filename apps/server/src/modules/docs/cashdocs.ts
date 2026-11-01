@@ -7,6 +7,7 @@ import { badRequest, notFound, parse, requireCompany, type AuthContext } from '.
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
+import { checkHold, noteHold } from './hold.js';
 import { branchOf, checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -40,6 +41,7 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
   const party = b.party_id ? await db.selectFrom(partyTbl).select(['id', 'code', 'title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no', 'status', 'credit_days']).where('id', '=', b.party_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : null;
   if (b.party_id && !party) throw badRequest(`ไม่พบ${word}นี้`);
   if (!id && party?.status === 'I') throw badRequest(`${party.code} เลิกใช้แล้ว — เปลี่ยนสถานะที่รายละเอียด${word}ก่อน`);
+  const hold = await checkHold(db, a, K.party, K.cls, party?.id, id);
 
   // บรรทัด: มัดจำ = คำอธิบาย + จำนวนเงิน · รายได้/ค่าใช้จ่ายอื่น = รหัส (ตารางรหัสรายได้/ค่าใช้จ่าย) + จำนวนเงิน
   const itemIds = [...new Set(b.lines.map((l) => l.item_id).filter((x): x is string => !!x))];
@@ -115,8 +117,10 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
+    const warnings: string[] = [];
+    await noteHold(tx, a, hold, K.module, docNo, hid!, warnings);
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
-    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: calc.net_amount, cash_amount: t.cash };
+    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: calc.net_amount, cash_amount: t.cash, warnings };
   });
 }
 

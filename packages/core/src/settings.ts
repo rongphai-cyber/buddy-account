@@ -95,6 +95,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
     S('ar.lock_so_closed_period', '15.', 'ห้ามแก้ใบสั่งขายในงวดที่ปิดแล้ว', bool, false),
     S('ar.quote_price_always', '16.', 'ดึงราคาขายจากใบเสนอราคาเสมอ ถ้ายังอยู่ในกำหนดยืนราคา (ไม่ติ๊ก = ถามก่อน)', bool, false),
     S('ar.skip_bill_to', '17.', "ข้ามช่อง 'Bill to'", bool, false),
+    S('ar.hold_level', '18.', 'ลูกค้าถูกระงับการขาย — ขายเชื่อ/สั่งขาย/เพิ่มหนี้ ขออนุมัติระดับ', level, 9, undefined, { hint: 'ว่าง/0 = เตือนอย่างเดียว · ใบเสนอราคา/ขายเงินสด เตือนเสมอ' }),
   ] },
   { code: 'AP', screen: 'S-SET-07', title: 'ระบบซื้อและเจ้าหนี้', defs: [
     S('ap.search_by', '1.', 'ค้นหาผู้จำหน่าย', SEARCH, 'NAME', 'APPREFER:prefer', { assumed: true }),
@@ -106,6 +107,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
     S('ap.aging_due', '', 'ช่วงวิเคราะห์อายุเจ้าหนี้ — ยังไม่ครบกำหนด (วัน)', { t: 'days', n: 2 }, [30, 60], 'APDUE1,APDUE2:list'),
     S('ap.lock_po_closed_period', '6.', 'ห้ามแก้ใบสั่งซื้อในงวดที่ปิดแล้ว', bool, false),
     S('ap.skip_bill_to', '7.', "ข้ามช่อง 'Bill be'", bool, false),
+    S('ap.hold_level', '8.', 'ผู้จำหน่ายถูกระงับจ่าย — จ่ายชำระหนี้/จ่ายมัดจำ ขออนุมัติระดับ', level, 9, undefined, { hint: 'ว่าง/0 = เตือนอย่างเดียว · ซื้อ/สั่งซื้อ เตือนเสมอ' }),
   ] },
   { code: 'FN', screen: 'S-SET-09', title: 'ระบบการเงินและเงินฝากธนาคาร', defs: [
     S('fn.auto_pass_cheque_paid', '1.', 'ผ่านเช็คจ่ายทันที', bool, false, 'PASPCQAUTO:yn', { hint: 'ไม่ติ๊ก = ต้องทำรายการผ่านเช็คจ่ายอีกครั้งจึงตัดบัญชีเงินฝาก' }),

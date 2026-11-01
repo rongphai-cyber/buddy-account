@@ -110,7 +110,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
   const customerBody = z.object({
     code: z.string().trim().min(1, 'ป้อนรหัสลูกค้า').max(20), title: str(30), name: z.string().trim().min(1, 'ป้อนชื่อลูกค้า').max(120), name_en: str(120),
     address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), phone: str(60), email: str(120), contact: str(60), remark: str(2000),
-    status: z.enum(['A', 'I']).default('A'), tax_id: str(20), tax_branch_no: str(5), customer_type: str(4), ar_account_id: uuid.nullable().optional(),
+    status: z.enum(['A', 'I']).default('A'), on_hold: z.boolean().default(false), on_hold_reason: str(200), tax_id: str(20), tax_branch_no: str(5), customer_type: str(4), ar_account_id: uuid.nullable().optional(),
     salesperson_id: uuid.nullable().optional(), sales_area_code: str(10), ship_via_code: str(10), credit_days: num, payment_terms: str(60),
     price_level: z.enum(['', '0', '1', '2', '3', '4', '5']).nullable().optional().transform((v) => v || null), discount_text: str(20), credit_limit: num,
     wht_form: str(4), wht_rate: num, wht_category: str(4), wht_condition: z.enum(['', '1', '2', '3']).nullable().optional().transform((v) => v || null), default_ship_to: str(10),
@@ -123,7 +123,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     // open=1: เฉพาะรายที่มีบิลค้างชำระ (หน้าจอรับชำระหนี้/ใบวางบิล — ข้อกำหนดเจ้าของ 31/10/2569) + จำนวนบิลค้าง
     const q = parse(z.object({ q: z.string().optional(), open: z.enum(['1']).optional(), status: z.enum(['A', 'I', 'all']).default('A'), limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0) }), req.query);
     let s = db.selectFrom('md_customer as c').leftJoin('md_salesperson as sp', 'sp.id', 'c.salesperson_id')
-      .select(['c.id', 'c.code', 'c.title', 'c.name', 'c.tax_id', 'c.tax_branch_no', 'c.phone', 'c.contact', 'c.credit_days', 'c.credit_limit', 'c.status', 'sp.code as salesperson_code',
+      .select(['c.id', 'c.code', 'c.title', 'c.name', 'c.tax_id', 'c.tax_branch_no', 'c.phone', 'c.contact', 'c.credit_days', 'c.credit_limit', 'c.status', 'c.on_hold', 'c.on_hold_reason', 'sp.code as salesperson_code',
         sql<string>`(SELECT coalesce(sum(o.outstanding), 0) FROM v_ar_outstanding o WHERE o.customer_id = c.id)`.as('balance'),
         sql<number>`(SELECT count(*) FROM v_ar_outstanding o WHERE o.customer_id = c.id AND o.outstanding <> 0)::int`.as('open_count')])
       .where('c.company_id', '=', a.companyId).where('c.deleted_at', 'is', null);
@@ -246,7 +246,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
   const supplierBody = z.object({
     code: z.string().trim().min(1, 'ป้อนรหัสผู้จำหน่าย').max(20), title: str(30), name: z.string().trim().min(1, 'ป้อนชื่อผู้จำหน่าย').max(120), name_en: str(120),
     address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), phone: str(60), email: str(120), contact: str(60), remark: str(2000),
-    status: z.enum(['A', 'I']).default('A'), on_hold: z.boolean().default(false), tax_id: str(20), tax_branch_no: str(5), supplier_type: str(4), ap_account_id: uuid.nullable().optional(),
+    status: z.enum(['A', 'I']).default('A'), on_hold: z.boolean().default(false), on_hold_reason: str(200), tax_id: str(20), tax_branch_no: str(5), supplier_type: str(4), ap_account_id: uuid.nullable().optional(),
     price_type: z.enum(['', '0', '1', '2']).nullable().optional().transform((v) => v || null), vat_rate: num, ship_via_code: str(10), credit_days: num, payment_terms: str(60), discount_text: str(20), credit_limit: num,
     wht_form: str(4), wht_income_desc: str(60), wht_rate: num, wht_condition: z.enum(['', '1', '2', '3']).nullable().optional().transform((v) => v || null),
     banks: z.array(z.object({ bank_code: z.string().trim().min(1, 'เลือกธนาคาร').max(10), branch: str(60), account_no: z.string().trim().min(1, 'ป้อนเลขที่บัญชี').max(20), account_name: str(120), is_default: z.boolean().default(false) })).max(20).default([]),
@@ -257,7 +257,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const q = parse(z.object({ q: z.string().optional(), open: z.enum(['1']).optional(), status: z.enum(['A', 'I', 'all']).default('A'), limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0) }), req.query);
     let s = db.selectFrom('md_supplier as s')
-      .select(['s.id', 's.code', 's.title', 's.name', 's.tax_id', 's.tax_branch_no', 's.phone', 's.contact', 's.credit_days', 's.credit_limit', 's.status', 's.on_hold', 's.wht_form',
+      .select(['s.id', 's.code', 's.title', 's.name', 's.tax_id', 's.tax_branch_no', 's.phone', 's.contact', 's.credit_days', 's.credit_limit', 's.status', 's.on_hold', 's.on_hold_reason', 's.wht_form',
         sql<string>`(SELECT coalesce(sum(o.outstanding), 0) FROM v_ap_outstanding o WHERE o.supplier_id = s.id)`.as('balance'),
         sql<number>`(SELECT count(*) FROM v_ap_outstanding o WHERE o.supplier_id = s.id AND o.outstanding <> 0)::int`.as('open_count')])
       .where('s.company_id', '=', a.companyId).where('s.deleted_at', 'is', null);

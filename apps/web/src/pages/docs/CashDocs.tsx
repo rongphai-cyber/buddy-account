@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CASH_KINDS, computeDoc, d, dueDate, fmt, settlementTotals, todayIso, wht50FormOf, type CashKind } from '@buddy/core';
 import { api } from '../../api';
+import { HoldNote, holdTag } from './HoldNote';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, SearchPick } from '../../components/LkSelect';
 import { BranchPick } from '../../components/BranchPick';
@@ -185,8 +186,9 @@ export function CashFormPage({ path }: { path: string }) {
       lines: used.map((l) => ({ item_id: K.lines === 'code' ? l.item_id || null : null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
       payments: paysBody(pays), wht: K.whtEntries ? whtsBody(whts) : [] };
     try {
-      const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}`, body);
+      const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null; warnings?: string[] }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null; warnings?: string[] }>(`/api/v1/${K.path}`, body);
       toast(r.journal_id ? `บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก${K.label} ${r.doc_no} แล้ว (ไม่ลงบัญชี)`);
+      for (const w of r.warnings ?? []) toast(`คำเตือน ${r.doc_no}: ${w}`, 'warn');
       setDirty(false); if (id) ed.lock();
       qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] }); qc.invalidateQueries({ queryKey: ['doc-vat'] });
       if (K.module === 'AP' && calc && !d(calc.vat_amount).isZero()) setVatCheck(r.id);   // มีภาษีซื้อ: ตรวจรายการในแฟ้มภาษีซื้อทันที
@@ -235,7 +237,7 @@ export function CashFormPage({ path }: { path: string }) {
           <div className="col">
             <Field label={`รหัส${partyWord(K)}`} req hint={K.partyRequired ? undefined : `ไม่มีรหัส: คีย์ชื่อ${partyWord(K)}ในช่อง "ชื่อ (ไม่มีรหัส)" — ต้องมีอย่างใดอย่างหนึ่ง`}>
               <SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required={K.partyRequired} disabled={ro}
-                onEmptyEnter={K.partyRequired ? undefined : (el) => noPartyEnter(el)} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
+                onEmptyEnter={K.partyRequired ? undefined : (el) => noPartyEnter(el)} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null; on_hold?: boolean }) => holdTag(K.party, r) + (r.tax_id ?? '')}
                 onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {!h.party && !K.partyRequired && <Field label="ชื่อ (ไม่มีรหัส)" req><input value={h.party_name} data-noparty-name maxLength={200} disabled={ro} onChange={(e) => set({ party_name: e.target.value })} /></Field>}
             {K.module === 'AP' && <Field label="เลขที่บิล / ลงวันที่" hint="ใบกำกับภาษีที่ได้รับจากผู้จำหน่าย"><div className="pair"><input value={h.ref_no} maxLength={30} disabled={ro} onChange={(e) => set({ ref_no: e.target.value })} aria-label="เลขที่บิล" /><DateInput value={h.ref_date} disabled={ro} onChange={(v) => set({ ref_date: v })} /></div></Field>}
@@ -253,6 +255,7 @@ export function CashFormPage({ path }: { path: string }) {
             <Field label="ประเภทราคา" hint={K.deposit ? 'ต้องตรงกับบิลที่จะนำมัดจำไปหัก' : undefined}><select value={h.price_type} disabled={ro} onChange={(e) => set({ price_type: e.target.value as Head['price_type'] })}><option value="0">0 ยกเว้นภาษี</option><option value="1">1 รวมภาษีแล้ว</option><option value="2">2 แยก VAT</option></select></Field>
           </div>
         </div>
+        {!id && !readOnly && <HoldNote party={K.party} partyId={h.party?.id} cls={K.cls} />}
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: K.deposit ? 'รายการมัดจำ' : `รายการ${K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}`, badge: used.length || undefined },
           { key: 'pay', label: 'ชำระโดยอื่น ๆ (เช็ค/โอน)', badge: pays.length || undefined }, ...(K.whtEntries ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []),
           ...(K.deposit && id ? [{ key: 'used', label: 'หักในบิลแล้ว', badge: cur.data?.used_by.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />

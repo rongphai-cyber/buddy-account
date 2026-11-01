@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computeDoc, d, dueDate, fmt, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
 import { api } from '../../api';
+import { HoldNote, holdTag } from './HoldNote';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { useDocNo } from '../../components/DocNo';
@@ -385,7 +386,7 @@ export function TradeFormPage({ path }: { path: string }) {
       {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col">
-            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required disabled={readOnly} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null }) => r.tax_id ?? ''}
+            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required disabled={readOnly} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null; on_hold?: boolean }) => holdTag(K.party, r) + (r.tax_id ?? '')}
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {K.party === 'customer' && <Field label="Bill to" hint="ชื่อบนใบกำกับ ถ้าเรียกเก็บในนามอื่น"><SearchPick endpoint="/api/v1/customers" value={h.bill_to} disabled={readOnly} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => set({ bill_to: r })} /></Field>}
             <Field label="สาขา#"><BranchPick value={h.party_tax_branch_no} options={branches.data?.tax_branches} disabled={readOnly} onChange={(v) => set({ party_tax_branch_no: v })} /></Field>
@@ -409,6 +410,7 @@ export function TradeFormPage({ path }: { path: string }) {
             {K.module === 'AR' && !K.order && <Field label="ภาระภาษีขาย" hint="บริการ/ผ่อนชำระ เลือกเกณฑ์เงินสดได้"><select value={h.vat_basis} disabled={readOnly} onChange={(e) => set({ vat_basis: e.target.value as '1' | '2' })}><option value="1">เกณฑ์สิทธิ</option><option value="2">เกณฑ์เงินสด</option></select></Field>}
           </div>
         </div>
+        {!id && !readOnly && <HoldNote party={K.party} partyId={h.party?.id} cls={K.cls} />}
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการสินค้า', badge: lines.filter((l) => l.item_id).length || undefined }, ...(K.payments ? [{ key: 'pay', label: `${K.module === 'AR' ? 'รับ' : 'จ่าย'}ชำระด้วยวิธีอื่น`, badge: pays.length || undefined }] : []),
           ...(canDeposit ? [{ key: 'deposit', label: 'หักเงินมัดจำ', badge: Object.keys(deps).length || undefined }] : []),
           ...(K.order && K.cls !== 'QT' && id ? [{ key: 'delivered', label: K.module === 'AR' ? 'ส่งแล้ว / ยกเลิกยอด' : 'รับแล้ว / ยกเลิกยอด', badge: cur.data?.deliveries.length || undefined }] : []),

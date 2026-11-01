@@ -1846,6 +1846,8 @@ CREATE TABLE md_customer (
   wht_condition char(1),
   default_ship_to varchar(10),
   track_sales char(1),
+  on_hold boolean DEFAULT false NOT NULL,
+  on_hold_reason varchar(200),
   remark text,
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
   inactive_date date,
@@ -1891,6 +1893,8 @@ COMMENT ON COLUMN md_customer.wht_category IS 'หมวดภาษีหัก
 COMMENT ON COLUMN md_customer.wht_condition IS 'เงื่อนไขการหักภาษี 1=หัก ณ ที่จ่าย 2=ออกให้ตลอดไป 3=ออกให้ครั้งเดียว [Express: ARMAS.TAXCOND]';
 COMMENT ON COLUMN md_customer.default_ship_to IS 'รหัสสถานที่ส่งของประจำ [Express: ARMAS.SHIPTO]';
 COMMENT ON COLUMN md_customer.track_sales IS 'ติดตามการขาย [สันนิษฐาน] [Express: ARMAS.TRACKSAL]';
+COMMENT ON COLUMN md_customer.on_hold IS 'ระงับการขาย (ใหม่ — คู่กับระงับจ่ายของผู้จำหน่าย)';
+COMMENT ON COLUMN md_customer.on_hold_reason IS 'เหตุผลที่ระงับการขาย';
 COMMENT ON COLUMN md_customer.remark IS 'หมายเหตุ [Express: ARMAS.REMARK]';
 COMMENT ON COLUMN md_customer.status IS 'สถานะ [Express: ARMAS.STATUS]';
 COMMENT ON COLUMN md_customer.inactive_date IS 'วันที่เลิกใช้ [Express: ARMAS.INACTDAT]';
@@ -1976,6 +1980,7 @@ CREATE TABLE md_supplier (
   wht_rate numeric(9,4),
   wht_condition char(1),
   on_hold boolean DEFAULT false NOT NULL,
+  on_hold_reason varchar(200),
   remark text,
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
   inactive_date date,
@@ -2018,6 +2023,7 @@ COMMENT ON COLUMN md_supplier.wht_income_desc IS 'ประเภทเงิน
 COMMENT ON COLUMN md_supplier.wht_rate IS 'อัตราภาษีหัก ณ ที่จ่าย [Express: APMAS.TAXRAT]';
 COMMENT ON COLUMN md_supplier.wht_condition IS 'เงื่อนไข 1=หัก ณ ที่จ่าย 2=ออกให้ตลอดไป 3=ออกให้ครั้งเดียว [Express: APMAS.TAXCOND]';
 COMMENT ON COLUMN md_supplier.on_hold IS 'ระงับการจ่าย [Express: APMAS.ONHOLD]';
+COMMENT ON COLUMN md_supplier.on_hold_reason IS 'เหตุผลที่ระงับจ่าย';
 COMMENT ON COLUMN md_supplier.remark IS 'หมายเหตุ [Express: APMAS.REMARK]';
 COMMENT ON COLUMN md_supplier.status IS 'สถานะ [Express: APMAS.STATUS]';
 COMMENT ON COLUMN md_supplier.inactive_date IS 'วันที่เลิกใช้ [Express: APMAS.INACTDAT]';

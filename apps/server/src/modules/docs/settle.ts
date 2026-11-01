@@ -8,6 +8,7 @@ import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { docTypeCharges } from '../doc-types.js';
+import { checkHold, noteHold } from './hold.js';
 import { branchOf, checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -132,6 +133,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
   const party = await db.selectFrom(partyTbl).select(['id', 'code', 'title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no', 'status']).where('id', '=', b.party_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!party) throw badRequest(`ไม่พบ${K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย'}นี้`);
   const payDate = b.payment_date ?? b.doc_date;
+  const hold = await checkHold(db, a, K.party, K.cls, party.id, id);
 
   // บิลที่ตัด: ของคู่ค้ารายนี้ ยังไม่ยกเลิก ไม่เกินยอดคงค้าง
   const ids = b.settlements.map((s) => s.invoice_header_id);
@@ -202,8 +204,10 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
+    const warnings: string[] = [];
+    await noteHold(tx, a, hold, K.module, docNo, hid!, warnings);
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
-    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: t.billed, cash_amount: t.cash };
+    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: t.billed, cash_amount: t.cash, warnings };
   });
 }
 

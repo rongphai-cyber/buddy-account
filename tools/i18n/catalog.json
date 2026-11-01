@@ -245,6 +245,75 @@
 ]
 },
 {
+"th": "ลูกค้า",
+"n": 43,
+"files": [
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/HoldNote.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/parties.ts",
+"apps/server/src/modules/serials.ts",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/docs/bills.ts",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/pdpa.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ผู้จำหน่าย",
+"n": 41,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/HoldNote.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/parties.ts",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/docs/bills.ts",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ลบ",
 "n": 41,
 "files": [
@@ -272,71 +341,6 @@
 "apps/server/src/modules/permissions.ts",
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/baht.ts"
-]
-},
-{
-"th": "ลูกค้า",
-"n": 41,
-"files": [
-"apps/web/src/components/LkSelect.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/parties.ts",
-"apps/server/src/modules/serials.ts",
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/docs/bills.ts",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"packages/core/src/pdpa.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ผู้จำหน่าย",
-"n": 39,
-"files": [
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/components/LkSelect.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/parties.ts",
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/docs/bills.ts",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -4375,6 +4379,15 @@
 ]
 },
 {
+"th": "คำเตือน {0}: {1}",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "คิดค่าเสื่อม",
 "n": 3,
 "files": [
@@ -4880,6 +4893,14 @@
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "ระงับการขาย",
+"n": 3,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"packages/core/src/doc-calc.ts"
 ]
 },
 {
@@ -7707,6 +7728,14 @@
 ]
 },
 {
+"th": "ระงับจ่าย",
+"n": 2,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"packages/core/src/doc-calc.ts"
+]
+},
+{
 "th": "ระดับ",
 "n": 2,
 "files": [
@@ -8964,6 +8993,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
+]
+},
+{
+"th": "เหตุผลที่ระงับ",
+"n": 2,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -11836,6 +11872,20 @@
 ]
 },
 {
+"th": "{0} {1} ถูก{2}",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/HoldNote.tsx"
+]
+},
+{
+"th": "{0} {1} ถูก{2}{3}",
+"n": 1,
+"files": [
+"packages/core/src/doc-calc.ts"
+]
+},
+{
 "th": "{0} {1} มีรูปครบ {2} รูปแล้ว — ลบรูปเดิมก่อนเพิ่มรูปใหม่",
 "n": 1,
 "files": [
@@ -12165,10 +12215,24 @@
 ]
 },
 {
+"th": "{0} — ต้องให้ผู้มีระดับอนุมัติ {1} ขึ้นไปบันทึก หรือยกเลิกการระงับที่แฟ้ม{2}",
+"n": 1,
+"files": [
+"packages/core/src/doc-calc.ts"
+]
+},
+{
 "th": "{0} — บริษัท {1}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
+]
+},
+{
+"th": "{0} — บันทึกโดยผู้มีสิทธิ์อนุมัติ",
+"n": 1,
+"files": [
+"packages/core/src/doc-calc.ts"
 ]
 },
 {
@@ -12848,6 +12912,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "· เหตุผล:",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/HoldNote.tsx"
 ]
 },
 {
@@ -13964,6 +14035,13 @@
 ]
 },
 {
+"th": "ขายเชื่อ/สั่งขาย/เพิ่มหนี้ ต้องให้ผู้มีระดับอนุมัติบันทึก · ใบเสนอราคา/ขายเงินสด เตือน",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "ขายเชื่อให้",
 "n": 1,
 "files": [
@@ -14843,13 +14921,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/DocTypes.tsx"
-]
-},
-{
-"th": "คำเตือน {0}: {1}",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -16327,6 +16398,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "จ่ายชำระหนี้/จ่ายมัดจำ ต้องให้ผู้มีระดับอนุมัติบันทึก · ซื้อ/สั่งซื้อ เตือน",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -21279,6 +21357,20 @@
 ]
 },
 {
+"th": "บันทึกได้ (แจ้งเตือนเท่านั้น)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/HoldNote.tsx"
+]
+},
+{
+"th": "บันทึกได้เฉพาะผู้มีระดับอนุมัติตามค่าเริ่มต้นระบบ — หรือยกเลิกการระงับที่แฟ้ม{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/HoldNote.tsx"
+]
+},
+{
 "th": "บันทึกไม่สำเร็จ ({0})",
 "n": 1,
 "files": [
@@ -23054,6 +23146,13 @@
 "n": 1,
 "files": [
 "packages/core/src/ai-bill.ts"
+]
+},
+{
+"th": "ผู้จำหน่ายถูกระงับจ่าย — จ่ายชำระหนี้/จ่ายมัดจำ ขออนุมัติระดับ",
+"n": 1,
+"files": [
+"packages/core/src/settings.ts"
 ]
 },
 {
@@ -27383,6 +27482,13 @@
 ]
 },
 {
+"th": "ระงับการขายลูกค้ารายนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "ระงับการจ่าย",
 "n": 1,
 "files": [
@@ -27391,13 +27497,6 @@
 },
 {
 "th": "ระงับการจ่ายเงินผู้จำหน่ายรายนี้",
-"n": 1,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "ระงับจ่าย",
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
@@ -29546,6 +29645,13 @@
 ]
 },
 {
+"th": "ลูกค้าถูกระงับการขาย — ขายเชื่อ/สั่งขาย/เพิ่มหนี้ ขออนุมัติระดับ",
+"n": 1,
+"files": [
+"packages/core/src/settings.ts"
+]
+},
+{
 "th": "ลูกค้าที่ย้ายไปเซิร์ฟเวอร์แยกแล้วต้องมีสถานะ \"เลิกใช้\" ที่เครื่องนี้",
 "n": 1,
 "files": [
@@ -30432,6 +30538,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "ว่าง/0 = เตือนอย่างเดียว · ซื้อ/สั่งซื้อ เตือนเสมอ",
+"n": 1,
+"files": [
+"packages/core/src/settings.ts"
+]
+},
+{
+"th": "ว่าง/0 = เตือนอย่างเดียว · ใบเสนอราคา/ขายเงินสด เตือนเสมอ",
+"n": 1,
+"files": [
+"packages/core/src/settings.ts"
 ]
 },
 {
@@ -33991,6 +34111,13 @@
 ]
 },
 {
+"th": "เช่น ค้างชำระเกิน 90 วัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "เช่น จัดซื้อ บัญชี",
 "n": 1,
 "files": [
@@ -34023,6 +34150,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "เช่น รอใบกำกับภาษีที่ถูกต้อง",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -37915,6 +38049,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "แสดงตอนเลือกผู้จำหน่ายในเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "แสดงตอนเลือกลูกค้าในเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {

@@ -10,6 +10,7 @@ import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, activeSettlement, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
 import { checkWht, readMoneyParts, whtSchema, writeWht } from './payments.js';
+import { checkHold, noteHold } from './hold.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -59,6 +60,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
   const party = await db.selectFrom(partyTbl).select(['id', 'code', 'title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no', 'status', 'credit_days']).where('id', '=', b.party_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!party) throw badRequest(`ไม่พบ${K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย'}นี้`);
   if (!id && party.status === 'I') throw badRequest(`${party.code} เลิกใช้แล้ว — เปลี่ยนสถานะที่รายละเอียด${K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย'}ก่อน`);
+  const hold = await checkHold(db, a, K.party, K.cls, party.id, id);
   // ชื่อบนใบกำกับ: Bill to (คู่มือหน้า 197) — ผู้ถูกตั้งหนี้ยังเป็นรหัสลูกค้า
   const billTo = b.bill_to_customer_id && K.party === 'customer' ? await db.selectFrom('md_customer').select(['title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no']).where('id', '=', b.bill_to_customer_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
   if (b.bill_to_customer_id && K.party === 'customer' && !billTo) throw badRequest('ไม่พบลูกค้า Bill to');
@@ -243,12 +245,13 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     }
     // วงเงินผู้จำหน่าย (รายงาน 2.E ซื้อเกินวงเงิน): ยอดค้างจ่ายรวมบิลนี้เกินวงเงินที่ตั้งไว้ → เตือน (ซื้อไม่บล็อก)
     if ((K.cls === 'RR' || K.cls === 'CP') && d(calc.net_amount).gt(0)) {
-      const sl = await tx.selectFrom('md_supplier').select(['code', 'credit_limit', 'on_hold']).where('id', '=', party.id).executeTakeFirst();
+      const sl = await tx.selectFrom('md_supplier').select(['code', 'credit_limit']).where('id', '=', party.id).executeTakeFirst();
       if (sl?.credit_limit && d(sl.credit_limit).gt(0)) {
         const exp = d((await sql<{ v: string }>`SELECT coalesce(sum(outstanding), 0) AS v FROM v_ap_outstanding WHERE company_id = ${a.companyId} AND supplier_id = ${party.id}`.execute(tx)).rows[0]!.v);
         if (exp.gt(sl.credit_limit)) warnings.push(`ผู้จำหน่าย ${sl.code} ซื้อเกินวงเงิน — ยอดค้างจ่ายรวมบิลนี้ ${exp.toFixed(2)} วงเงิน ${d(sl.credit_limit).toFixed(2)} (เกิน ${exp.minus(sl.credit_limit).toFixed(2)})`);
       }
     }
+    await noteHold(tx, a, hold, K.module, docNo, hid!, warnings);
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
     return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: calc.net_amount, warnings };
   });

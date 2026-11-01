@@ -1698,6 +1698,10 @@ export interface MdCustomerTable {
   default_ship_to: Gen<string | null>;
   /** ติดตามการขาย [สันนิษฐาน] */
   track_sales: Gen<string | null>;
+  /** ระงับการขาย (ใหม่ — คู่กับระงับจ่ายของผู้จำหน่าย) */
+  on_hold: Gen<boolean>;
+  /** เหตุผลที่ระงับการขาย */
+  on_hold_reason: Gen<string | null>;
   /** หมายเหตุ */
   remark: Gen<string | null>;
   /** สถานะ */
@@ -1816,6 +1820,8 @@ export interface MdSupplierTable {
   wht_condition: Gen<string | null>;
   /** ระงับการจ่าย */
   on_hold: Gen<boolean>;
+  /** เหตุผลที่ระงับจ่าย */
+  on_hold_reason: Gen<string | null>;
   /** หมายเหตุ */
   remark: Gen<string | null>;
   /** สถานะ */

@@ -209,3 +209,27 @@ export const STOCK_KINDS: StockKind[] = [
   { path: 'stock-adjustments', cls: 'JU', label: 'ปรับปรุงเพิ่ม/ลดสินค้า', route: '/ic/adjustments' },
   { path: 'cost-adjustments', cls: 'CA', label: 'เพิ่ม/ลดต้นทุนสินค้า', route: '/ic/cost-adjustments' },
 ];
+
+/**
+ * ระงับการขาย (ลูกค้า) / ระงับจ่าย (ผู้จำหน่าย — Express APMAS.ONHOLD) แยกตามชนิดเอกสาร (ข้อกำหนดเจ้าของ 01/11/2569)
+ * block = บันทึกไม่ได้ เว้นแต่ผู้มีระดับอนุมัติตามค่าเริ่มต้นระบบ (ar.hold_level / ap.hold_level)
+ * warn = เตือนแต่บันทึกได้ · ไม่อยู่ในตาราง = ไม่เกี่ยว (รับชำระหนี้ ลดหนี้/รับคืน ลดหนี้/ส่งคืน)
+ */
+export const HOLD_RULES: Record<'customer' | 'supplier', Record<string, 'block' | 'warn'>> = {
+  customer: { IV: 'block', SO: 'block', DR: 'block', QT: 'warn', HS: 'warn' },
+  supplier: { PS: 'block', AE: 'block', RR: 'warn', PO: 'warn', HP: 'warn' },
+};
+export const holdLabel = (party: 'customer' | 'supplier') => party === 'customer' ? 'ระงับการขาย' : 'ระงับจ่าย';
+
+export type HoldDecision = { kind: 'block' | 'warn' | 'override'; message: string };
+/** ผลของการระงับต่อเอกสารนี้ — null = ไม่ถูกระงับหรือเอกสารชนิดนี้ไม่เกี่ยว · required ว่าง/0 = เตือนอย่างเดียว */
+export function holdDecision(party: 'customer' | 'supplier', cls: string, p: { code: string; on_hold: boolean; reason?: string | null },
+  user: { isAdmin: boolean; level: number }, required: number | null): HoldDecision | null {
+  const rule = HOLD_RULES[party][cls];
+  if (!p.on_hold || !rule) return null;
+  const who = party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย';
+  const msg = `${who} ${p.code} ถูก${holdLabel(party)}${p.reason?.trim() ? ` (เหตุผล: ${p.reason.trim()})` : ''}`;
+  if (rule === 'warn') return { kind: 'warn', message: msg };
+  if (!required || user.isAdmin || user.level >= required) return { kind: 'override', message: `${msg} — บันทึกโดยผู้มีสิทธิ์อนุมัติ` };
+  return { kind: 'block', message: `${msg} — ต้องให้ผู้มีระดับอนุมัติ ${required} ขึ้นไปบันทึก หรือยกเลิกการระงับที่แฟ้ม${who}` };
+}

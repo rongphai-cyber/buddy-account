@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt, formatDate, SETTLE_KINDS, settlementTotals, todayIso, wht50FormOf, type SettleKind } from '@buddy/core';
 import { api } from '../../api';
+import { HoldNote, holdTag } from './HoldNote';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys, useYearSystem } from '../../ui';
@@ -23,7 +24,7 @@ const partyEndpoint = (K: SettleKind) => (K.party === 'customer' ? '/api/v1/cust
 const partyWord = (K: SettleKind) => (K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย');
 const rp = (K: SettleKind) => (K.direction === 'R' ? 'รับ' : 'จ่าย');
 /** รายชื่อคู่ค้าในหน้าตัดชำระ: เฉพาะรายที่มีบิลค้าง พร้อมจำนวนบิลและยอดค้าง (ข้อกำหนดเจ้าของ 31/10/2569) */
-export type OpenParty = { id: string; code: string; name: string; tax_id?: string | null; open_count?: number; balance?: string };
+export type OpenParty = { id: string; code: string; name: string; tax_id?: string | null; open_count?: number; balance?: string; on_hold?: boolean };
 export const openDescribe = (r: OpenParty) => { const bal = fmt(r.balance ?? 0); return `ค้าง ${r.open_count ?? 0} ใบ · ${bal}`; };
 const CLASS_TH: Record<string, string> = { IV: 'บิลขาย', DR: 'เพิ่มหนี้', CN: 'ลดหนี้', RR: 'บิลซื้อ', CP: 'เพิ่มหนี้', DN: 'ลดหนี้' };
 
@@ -209,8 +210,9 @@ export function SettleFormPage({ path }: { path: string }) {
       settlements: chosen.map((o) => ({ invoice_header_id: o.header_id, amount: pick[o.header_id] || '0', line_note: notes[o.header_id]?.line_note || null, line_note_print: !!notes[o.header_id]?.line_note_print })),
       payments: paysBody(pays), wht: K.cls === 'PS' ? whtsBody(whts) : [], charges: isRe ? chargesBody(chHead, charges) : [] };
     try {
-      const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.path}`, body);
+      const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null; warnings?: string[] }>(`/api/v1/${K.path}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null; warnings?: string[] }>(`/api/v1/${K.path}`, body);
       toast(r.journal_id ? `บันทึก${K.label} ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก${K.label} ${r.doc_no} แล้ว (ไม่ลงบัญชี)`);
+      for (const w of r.warnings ?? []) toast(`คำเตือน ${r.doc_no}: ${w}`, 'warn');
       setDirty(false); if (id) ed.lock();
       qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] }); qc.invalidateQueries({ queryKey: ['doc-vat'] });
       if (K.cls === 'PS') setVatCheck(r.id);   // ภาษีซื้อเกณฑ์เงินสด (ค่าบริการ) เกิดตอนจ่าย: ตรวจรายการในแฟ้มภาษีซื้อ (ไม่มีรายการ = ปิดเอง)
@@ -253,7 +255,7 @@ export function SettleFormPage({ path }: { path: string }) {
       {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col">
-            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<OpenParty> endpoint={partyEndpoint(K)} params={{ open: '1' }} addNew={false} value={h.party} required disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={openDescribe}
+            <Field label={`รหัส${partyWord(K)}`} req><SearchPick<OpenParty> endpoint={partyEndpoint(K)} params={{ open: '1' }} addNew={false} value={h.party} required disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: OpenParty) => holdTag(K.party, r) + openDescribe(r)}
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {!ro && <Field label={K.module === 'AR' ? 'อ้างใบวางบิล' : 'อ้างใบรับวางบิล'} hint="เลือกแล้วติ๊กบิลทุกใบในใบวางบิลให้ (ยอดค้างเต็ม) — แก้ยอดได้"><select value={billRef} disabled={!h.party} onChange={(e) => {
               const b = bills.data?.rows.find((x) => x.id === e.target.value); setBillRef(e.target.value);
@@ -278,6 +280,7 @@ export function SettleFormPage({ path }: { path: string }) {
             <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
           </div>
         </div>
+        {!id && !readOnly && <HoldNote party={K.party} partyId={h.party?.id} cls={K.cls} />}
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'bills', label: `รายการบิลที่${rp(K)}ชำระ`, badge: chosen.length || undefined }, { key: 'pay', label: 'ชำระโดยอื่น ๆ (เช็ค/โอน)', badge: pays.length || undefined },
           ...(K.cls === 'PS' ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []), ...(isRe ? [{ key: 'fee', label: 'หักโดยแพลตฟอร์ม (GP/ค่าธรรมเนียม)', badge: charges.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }, { key: 'gl', label: 'ใบสำคัญที่ลงบัญชี' }] : [])]} />
         {tab === 'bills' && <div className="table-wrap lines">

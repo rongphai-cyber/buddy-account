@@ -1727,6 +1727,64 @@ describe('Buddy Account API (PGlite)', () => {
     for (const [u, x] of [['ap-bills', br.id], ['purchase-invoices', rr.id], ['purchase-orders', po.id]]) expect((await call('POST', `/api/v1/${u}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
 
+  it('on hold (ข้อกำหนดเจ้าของ 01/11/2569): ระงับการขาย blocks IV/SO for low levels and warns QT, ระงับจ่าย blocks PS/AE and warns RR, approver override logged, old docs still editable, setting blank = warn only, other tenant cannot see', async () => {
+    const admin = cookie;
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const login = async (u: string, pw: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: pw })).status).toBe(200); };
+    const cusHead = { code: 'C-HOLD', name: 'ลูกค้าถูกระงับ', tax_id: tid(43) }, supHead = { code: 'S-HOLD', name: 'ผู้จำหน่ายถูกระงับ', tax_id: tid(44) };
+    const cus = (await call('POST', '/api/v1/customers', cusHead)).body.id, sup = (await call('POST', '/api/v1/suppliers', supHead)).body.id;
+    const lines = [{ item_id: cpu, qty: 1, unit_price: 9000 }];
+    const ivB = { doc_type_id: await typeOf('IV'), doc_date: '2027-05-10', party_id: cus, price_type: '2', vat_rate: 7, lines };
+    const rrB = { doc_type_id: await typeOf('RR'), doc_date: '2027-05-10', party_id: sup, price_type: '2', vat_rate: 7, lines };
+    const iv0 = (await call('POST', '/api/v1/sales-invoices', ivB)).body, rr0 = (await call('POST', '/api/v1/purchase-invoices', rrB)).body;
+    expect(iv0.warnings).toEqual([]);
+    // ระงับ + เหตุผล → เห็นในรายการ (ป้ายแดงในหน้าจอ)
+    expect((await call('PUT', `/api/v1/customers/${cus}`, { ...cusHead, on_hold: true, on_hold_reason: 'ค้างชำระเกิน 90 วัน' })).status).toBe(200);
+    expect((await call('PUT', `/api/v1/suppliers/${sup}`, { ...supHead, on_hold: true, on_hold_reason: 'รอใบกำกับภาษีที่ถูกต้อง' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/customers?q=C-HOLD')).body.rows[0]).toMatchObject({ on_hold: true, on_hold_reason: 'ค้างชำระเกิน 90 วัน' });
+    expect((await call('GET', '/api/v1/suppliers?q=S-HOLD')).body.rows[0]).toMatchObject({ on_hold: true, on_hold_reason: 'รอใบกำกับภาษีที่ถูกต้อง' });
+    const psB = { doc_type_id: await typeOf('PS'), doc_date: '2027-05-11', party_id: sup, settlements: [{ invoice_header_id: rr0.id, amount: 9630 }] };
+    const aeB = { doc_type_id: await typeOf('AE'), doc_date: '2027-05-11', party_id: sup, price_type: '2', vat_rate: 7, lines: [{ description: 'มัดจำค่าสินค้า', amount: 100 }] };
+
+    // พนักงานระดับ 0: ขายเชื่อ/สั่งขาย จ่ายชำระ/จ่ายมัดจำ ไม่ได้ · ใบเสนอราคา/ซื้อเชื่อ เตือน · แก้บิลเดิมได้
+    await login('clerk0', 'clerk0pass');
+    const e1 = await call('POST', '/api/v1/sales-invoices', ivB);
+    expect([e1.status, e1.body.error.message]).toEqual([400, 'ลูกค้า C-HOLD ถูกระงับการขาย (เหตุผล: ค้างชำระเกิน 90 วัน) — ต้องให้ผู้มีระดับอนุมัติ 9 ขึ้นไปบันทึก หรือยกเลิกการระงับที่แฟ้มลูกค้า']);
+    expect((await call('POST', '/api/v1/sales-orders', { ...ivB, doc_type_id: await typeOf('SO') })).body.error.message).toMatch(/ถูกระงับการขาย/);
+    const qt = (await call('POST', '/api/v1/quotations', { ...ivB, doc_type_id: await typeOf('QT') })).body;
+    expect(qt.warnings).toEqual(['ลูกค้า C-HOLD ถูกระงับการขาย (เหตุผล: ค้างชำระเกิน 90 วัน)']);
+    expect((await call('PUT', `/api/v1/sales-invoices/${iv0.id}`, { ...ivB, remark: 'แก้หลังระงับ' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/ap-payments', psB)).body.error.message).toMatch(/^ผู้จำหน่าย S-HOLD ถูกระงับจ่าย \(เหตุผล: รอใบกำกับภาษีที่ถูกต้อง\)/);
+    expect((await call('POST', '/api/v1/ap-deposits', aeB)).body.error.message).toMatch(/ถูกระงับจ่าย/);
+    const rr1 = (await call('POST', '/api/v1/purchase-invoices', rrB)).body;
+    expect(rr1.warnings.join(' ')).toMatch(/S-HOLD ถูกระงับจ่าย/);
+
+    // ผู้มีระดับอนุมัติบันทึกได้ — เตือน + บันทึกประวัติ HOLD_OVERRIDE
+    cookie = admin;
+    const iv1 = (await call('POST', '/api/v1/sales-invoices', ivB)).body;
+    expect(iv1.warnings.join(' ')).toMatch(/ถูกระงับการขาย .*บันทึกโดยผู้มีสิทธิ์อนุมัติ/);
+    const p1 = (await call('POST', '/api/v1/ap-payments', psB)).body;
+    expect(p1.warnings.join(' ')).toMatch(/ถูกระงับจ่าย/);
+    const logs = await sql<{ doc_no: string }>`SELECT doc_no FROM sys_activity_log WHERE action = 'HOLD_OVERRIDE' AND doc_no IN (${iv1.doc_no}, ${p1.doc_no})`.execute(database.db);
+    expect(logs.rows.map((r) => r.doc_no).sort()).toEqual([iv1.doc_no, p1.doc_no].sort());
+
+    // ค่าเริ่มต้นระบบขาย: ระดับว่าง = เตือนอย่างเดียว
+    expect((await call('PUT', '/api/v1/settings', { values: { 'ar.hold_level': null } })).status).toBe(200);
+    await login('clerk0', 'clerk0pass');
+    const iv2 = (await call('POST', '/api/v1/sales-invoices', ivB)).body;
+    expect(iv2.warnings.join(' ')).toMatch(/ถูกระงับการขาย/);
+    cookie = admin;
+    expect((await call('PUT', '/api/v1/settings', { values: { 'ar.hold_level': 9 } })).status).toBe(200);
+
+    // บริษัทอื่น: มองไม่เห็นแฟ้ม/ใช้ลูกค้าที่ถูกระงับของบริษัทนี้ไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', `/api/v1/customers/${cus}`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/customers?q=C-HOLD')).body.total).toBe(0);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    for (const [u, x] of [['ap-payments', p1.id], ['sales-invoices', iv2.id], ['sales-invoices', iv1.id], ['purchase-invoices', rr1.id], ['quotations', qt.id], ['sales-invoices', iv0.id], ['purchase-invoices', rr0.id]]) expect((await call('POST', `/api/v1/${u}/${x}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
+
   it('line notes vs document notes (ข้อกำหนดเจ้าของ): keyed with the line, survive edits, print under the line only when ticked; document notes print in the notes box', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;

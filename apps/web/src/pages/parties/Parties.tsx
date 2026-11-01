@@ -19,7 +19,7 @@ function useText(f: Form | null, set: (p: Form) => void) {
 }
 const statusPill = (s: string) => (s === 'A' ? <Pill tone="n">ใช้งาน</Pill> : <Pill tone="x">เลิกใช้</Pill>);
 
-interface ListRow { id: string; code: string; title: string | null; name: string; tax_id: string | null; tax_branch_no: string | null; phone: string | null; contact: string | null; credit_days: number | null; credit_limit: string | null; status: string; balance: string; salesperson_code?: string | null; on_hold?: boolean; wht_form?: string | null }
+interface ListRow { id: string; code: string; title: string | null; name: string; tax_id: string | null; tax_branch_no: string | null; phone: string | null; contact: string | null; credit_days: number | null; credit_limit: string | null; status: string; balance: string; salesperson_code?: string | null; on_hold?: boolean; on_hold_reason?: string | null; wht_form?: string | null }
 
 /** หน้ารายการลูกค้า/ผู้จำหน่าย: ค้นหาตามรหัส ชื่อ เลขผู้เสียภาษี โทรศัพท์ ผู้ติดต่อ (S-MF-01) คลิกแถวเพื่อแก้ไข */
 function PartyList({ kind, eyebrow, title, lead, menu, Form: FormC }: { kind: 'customers' | 'suppliers'; eyebrow: string; title: string; lead: ReactNode; menu: string; Form: (p: { id: string | null; onClose: () => void; onSaved: () => void }) => ReactNode }) {
@@ -62,7 +62,7 @@ function PartyList({ kind, eyebrow, title, lead, menu, Form: FormC }: { kind: 'c
                 <td className="small">{r.phone}</td><td className="small">{r.contact}</td>
                 <td className="mono">{kind === 'customers' ? r.salesperson_code : r.wht_form}</td>
                 <td className="r">{r.credit_days || ''}</td><td className="r"><Money v={r.credit_limit} blankZero /></td><td className="r"><Money v={r.balance} blankZero /></td>
-                <td>{statusPill(r.status)}{r.on_hold && <> <Pill tone="c">ระงับจ่าย</Pill></>}</td>
+                <td>{statusPill(r.status)}{r.on_hold && <> <span title={r.on_hold_reason ?? undefined}><Pill tone="c">{kind === 'customers' ? 'ระงับการขาย' : 'ระงับจ่าย'}</Pill></span></>}</td>
               </tr>
             ))}
             {list.data && !list.data.rows.length && <tr><td colSpan={10} className="empty">{q ? `ไม่พบ${who}ที่ตรงกับ "${q}"` : `ยังไม่มี${who} — กด Ins เพื่อเพิ่ม`}</td></tr>}
@@ -153,8 +153,8 @@ function MasterModal({ title, menu, isNew, busy, ready, err, onClose, onSave, on
 
 /* ---------------------------------------------------------------- ลูกค้า S-AR-01 */
 interface ShipTo { code: string; address_1: string | null; address_2: string | null; address_3: string | null; zip_code: string | null; phone: string | null; contact: string | null }
-interface CustomerDetail extends Record<string, unknown> { id: string; code: string; ar_account_id: string | null; salesperson_id: string | null; ship_tos: ShipTo[]; contacts: Contact[]; outstanding_bills: Bill[]; balance: string; last_invoice_date: string | null }
-const CUS_KEYS = [...HEAD_KEYS, 'email', 'customer_type', 'sales_area_code', 'price_level', 'wht_category', 'default_ship_to'];
+interface CustomerDetail extends Record<string, unknown> { id: string; code: string; on_hold: boolean; ar_account_id: string | null; salesperson_id: string | null; ship_tos: ShipTo[]; contacts: Contact[]; outstanding_bills: Bill[]; balance: string; last_invoice_date: string | null }
+const CUS_KEYS = [...HEAD_KEYS, 'on_hold_reason', 'email', 'customer_type', 'sales_area_code', 'price_level', 'wht_category', 'default_ship_to'];
 
 export function CustomersPage() {
   return <PartyList kind="customers" menu="SA.CUS" eyebrow="ขาย › รายละเอียดลูกค้า" title="รายละเอียดลูกค้า" Form={CustomerForm}
@@ -166,7 +166,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
   const lk = useLookups('40,41,45,55');
   const slms = useQuery({ queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const cur = useQuery({ enabled: !!id, queryKey: ['customer', id], queryFn: () => api.get<CustomerDetail>(`/api/v1/customers/${id}`), staleTime: 0 });
-  const [f, setF] = useState<Form | null>(id ? null : { ...toForm({}, CUS_KEYS), status: 'A', tax_branch_no: '00000', price_level: '1', wht_condition: '1', ...initial });
+  const [f, setF] = useState<Form | null>(id ? null : { ...toForm({}, CUS_KEYS), status: 'A', tax_branch_no: '00000', price_level: '1', wht_condition: '1', on_hold: false, ...initial });
   const [acc, setAcc] = useState<{ ar: string | null; slm: string | null }>({ ar: null, slm: null });
   const [ships, setShips] = useState<ShipTo[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -174,7 +174,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   if (id && cur.data && !f) {
-    setF(toForm(cur.data, CUS_KEYS)); setAcc({ ar: cur.data.ar_account_id, slm: cur.data.salesperson_id });
+    setF({ ...toForm(cur.data, CUS_KEYS), on_hold: cur.data.on_hold }); setAcc({ ar: cur.data.ar_account_id, slm: cur.data.salesperson_id });
     setShips(cur.data.ship_tos); setContacts(cur.data.contacts);
   }
   const set = (p: Form) => setF((x) => ({ ...x!, ...p }));
@@ -238,6 +238,8 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
           <Field label="อัตราภาษีหัก ณ ที่จ่าย (%)"><input type="number" min={0} max={100} step="0.01" {...t('wht_rate', 6)} /></Field>
           <Field label="หมวดภาษีหัก ณ ที่จ่าย"><LkSelect rows={lk.data?.['55']} value={val(f, 'wht_category')} onChange={(v) => set({ wht_category: v })} /></Field>
           <Field label="เงื่อนไขการหักภาษี"><select value={val(f, 'wht_condition')} onChange={(e) => set({ wht_condition: e.target.value })}><option value="">—</option>{WHT_COND.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
+          <Field label="ระงับการขาย" hint="ขายเชื่อ/สั่งขาย/เพิ่มหนี้ ต้องให้ผู้มีระดับอนุมัติบันทึก · ใบเสนอราคา/ขายเงินสด เตือน"><label className="check"><input type="checkbox" checked={f.on_hold === true} onChange={(e) => set({ on_hold: e.target.checked, ...(e.target.checked ? {} : { on_hold_reason: '' }) })} /> ระงับการขายลูกค้ารายนี้</label></Field>
+          {f.on_hold === true && <Field label="เหตุผลที่ระงับ" hint="แสดงตอนเลือกลูกค้าในเอกสาร"><input {...t('on_hold_reason', 200)} placeholder="เช่น ค้างชำระเกิน 90 วัน" /></Field>}
           <Field label="หมายเหตุ" wide hint="เช่น วางบิลทุกวันที่ 15 และ 30 ของเดือน"><textarea rows={2} value={val(f, 'remark')} maxLength={2000} onChange={(e) => set({ remark: e.target.value })} /></Field>
           {id && cur.data && <div className="field wide party-stats">
             <span>วันที่บิลล่าสุด <b>{cur.data.last_invoice_date ? <DateText v={cur.data.last_invoice_date} /> : '—'}</b></span>
@@ -288,7 +290,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
 /* ---------------------------------------------------------------- ผู้จำหน่าย S-AP-01 */
 interface BankRow { bank_code: string; branch: string | null; account_no: string; account_name: string | null; is_default: boolean }
 interface SupplierDetail extends Record<string, unknown> { id: string; ap_account_id: string | null; on_hold: boolean; banks: BankRow[]; contacts: Contact[]; outstanding_bills: Bill[]; balance: string; last_bill_date: string | null }
-const SUP_KEYS = [...HEAD_KEYS, 'email', 'supplier_type', 'price_type', 'vat_rate', 'wht_income_desc'];
+const SUP_KEYS = [...HEAD_KEYS, 'on_hold_reason', 'email', 'supplier_type', 'price_type', 'vat_rate', 'wht_income_desc'];
 
 export function SuppliersPage() {
   return <PartyList kind="suppliers" menu="PU.SUP" eyebrow="ซื้อ › รายละเอียดผู้จำหน่าย" title="รายละเอียดผู้จำหน่าย" Form={SupplierForm}
@@ -360,7 +362,8 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
           <Field label="ประเภทเงินได้ที่จ่าย" hint="เช่น ค่าจ้างทำของ ค่าโฆษณา"><input {...t('wht_income_desc', 60)} list="wht-income" /></Field>
           <Field label="อัตราภาษีที่หัก (%)"><input type="number" min={0} max={100} step="0.01" {...t('wht_rate', 6)} /></Field>
           <Field label="เงื่อนไขการหักภาษี"><select value={val(f, 'wht_condition')} onChange={(e) => set({ wht_condition: e.target.value })}><option value="">—</option>{WHT_COND.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
-          <Field label="ระงับการจ่าย"><label className="check"><input type="checkbox" checked={f.on_hold === true} onChange={(e) => set({ on_hold: e.target.checked })} /> ระงับการจ่ายเงินผู้จำหน่ายรายนี้</label></Field>
+          <Field label="ระงับการจ่าย" hint="จ่ายชำระหนี้/จ่ายมัดจำ ต้องให้ผู้มีระดับอนุมัติบันทึก · ซื้อ/สั่งซื้อ เตือน"><label className="check"><input type="checkbox" checked={f.on_hold === true} onChange={(e) => set({ on_hold: e.target.checked, ...(e.target.checked ? {} : { on_hold_reason: '' }) })} /> ระงับการจ่ายเงินผู้จำหน่ายรายนี้</label></Field>
+          {f.on_hold === true && <Field label="เหตุผลที่ระงับ" hint="แสดงตอนเลือกผู้จำหน่ายในเอกสาร"><input {...t('on_hold_reason', 200)} placeholder="เช่น รอใบกำกับภาษีที่ถูกต้อง" /></Field>}
           <Field label="หมายเหตุ" wide><textarea rows={2} value={val(f, 'remark')} maxLength={2000} onChange={(e) => set({ remark: e.target.value })} /></Field>
           {id && cur.data && <div className="field wide party-stats">
             <span>วันที่ซื้อล่าสุด <b>{cur.data.last_bill_date ? <DateText v={cur.data.last_bill_date} /> : '—'}</b></span>
