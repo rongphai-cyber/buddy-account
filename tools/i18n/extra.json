@@ -513,5 +513,7 @@
  "ไม่พบสาขาของยอดยกมา — เลือกสาขาใหม่": "Branch of the opening balance not found — choose the branch again",
  "คลิกเพื่อเรียง": "Click to sort",
  "ต้อง{0} {1} ก่อน": "Please {0} {1} first",
- "ป้อนยอดเดบิตหรือเครดิตของบรรทัดนี้ก่อน": "Enter the debit or credit amount of this line first"
+ "ป้อนยอดเดบิตหรือเครดิตของบรรทัดนี้ก่อน": "Enter the debit or credit amount of this line first",
+ "บันทึกโดยไม่เข้าแฟ้มภาษี": "Save without tax file",
+ "บันทึกใบสำคัญโดยไม่ป้อนรายละเอียดเข้าแฟ้มภาษี (ป้อนภายหลังได้ที่แท็บนี้)": "Save the voucher without tax file details (enter them later in this tab)"
 }

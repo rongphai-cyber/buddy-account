@@ -4313,15 +4313,6 @@
 ]
 },
 {
-"th": "กลับไปแก้",
-"n": 3,
-"files": [
-"apps/web/src/components/DocEdit.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
 "th": "กลุ่มบัญชีทรัพย์สิน",
 "n": 3,
 "files": [
@@ -5851,6 +5842,14 @@
 ]
 },
 {
+"th": "กลับไปแก้",
+"n": 2,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
 "th": "กลับไปใช้ต้นแบบ",
 "n": 2,
 "files": [
@@ -6969,6 +6968,20 @@
 "files": [
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "บันทึกโดยไม่เข้าแฟ้มภาษี",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
+"th": "บันทึกใบสำคัญโดยไม่ป้อนรายละเอียดเข้าแฟ้มภาษี (ป้อนภายหลังได้ที่แท็บนี้)",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/JvLinks.tsx"
 ]
 },
 {
@@ -12405,13 +12418,6 @@
 "n": 1,
 "files": [
 "packages/core/src/doc-calc.ts"
-]
-},
-{
-"th": "{0} — ป้อนรายละเอียดแล้ว {1}",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -20248,13 +20254,6 @@
 ]
 },
 {
-"th": "บรรทัดบัญชี",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
 "th": "บรรทัดรายการสินค้า (STCRD)",
 "n": 1,
 "files": [
@@ -21568,13 +21567,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "บันทึกโดยไม่ป้อน",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -23024,13 +23016,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/cashdocs.ts"
-]
-},
-{
-"th": "ป้อนรายละเอียด",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -26555,13 +26540,6 @@
 ]
 },
 {
-"th": "ยังไม่ได้ป้อนรายละเอียดภาษี",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
 "th": "ยังไม่ได้ป้อนเลขประจำตัวผู้เสียภาษี",
 "n": 1,
 "files": [
@@ -28932,13 +28910,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
-]
-},
-{
-"th": "รายละเอียด (เลขที่ใบกำกับ/หนังสือรับรอง ชื่อและเลขผู้เสียภาษีของคู่ค้า) ใช้ทำรายงานภาษีซื้อ-ขาย และแบบ ภ.ง.ด. — ป้อนภายหลังได้ที่แท็บนี้หรือที่แฟ้มภาษี",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {

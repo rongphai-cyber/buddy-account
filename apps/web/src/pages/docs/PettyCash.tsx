@@ -139,6 +139,22 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
         : { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, dp_ids: chosen.map((r) => r.id), cash_amount: h.cash === '' ? null : h.cash, payments: paysBody(pays) };
   };
   const bodyOf = () => { const x = bodyOf0(); return x && { ...x, branch_id: br.body }; };
+  // บรรทัดที่ใช้บัญชีภาษีซื้อ/ภาษีหัก ณ ที่จ่าย (การเชื่อมต่อบัญชี) → บันทึกแล้วเปิดหน้าต่างป้อนรายละเอียดเข้าแฟ้มภาษีทันที (ข้อกำหนดเจ้าของ 01/11/2569)
+  const roles = useQuery({ enabled: kind === 'dp', queryKey: ['default-accounts'], queryFn: () => api.get<Array<{ role: string; account_id: string }>>('/api/v1/gl/default-accounts') });
+  const roleSum = (role: string) => { const acc = roles.data?.find((r) => r.role === role)?.account_id; return acc ? lines.filter((l) => l.account_id === acc).reduce((t, l) => t.plus(d(l.amount || 0)), d(0)).abs() : d(0); };
+  const [taxLine, setTaxLine] = useState<{ vat: string; wht: string; n: number }>({ vat: '0', wht: '0', n: 0 });
+  const askTax = async (docId: string, vat: ReturnType<typeof d>, wht: ReturnType<typeof d>) => {
+    if (!vat.gt(0) && !wht.gt(0)) return;
+    const [v, w] = await Promise.all([api.get<{ rows: Array<{ doc_status: string; vat_amount: string; nonclaim_vat: string }> }>('/api/v1/vat/P', { header_id: docId, status: 'all' }),
+      api.get<{ rows: Array<{ doc_status: string; tax_amount: string }> }>('/api/v1/wht', { header_id: docId, status: 'all' })]);
+    const gotV = v.rows.filter((x) => x.doc_status !== 'C').reduce((t, x) => t.plus(d(x.vat_amount)).plus(d(x.nonclaim_vat || 0)), d(0));
+    const gotW = w.rows.filter((x) => x.doc_status !== 'C').reduce((t, x) => t.plus(d(x.tax_amount)), d(0));
+    const tab = vat.gt(gotV) ? 'vat' : wht.gt(gotW) ? 'wht' : null;
+    if (!tab) return;
+    setTaxLine((x) => ({ vat: vat.toFixed(2), wht: wht.toFixed(2), n: x.n + 1 }));
+    setTab(tab);
+    setTimeout(() => setTaxLine((x) => ({ ...x, n: 0 })), 1500);   // เปิดครั้งเดียว — เปิดแท็บเองภายหลังไม่เด้งซ้ำ
+  };
   const save = async () => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
@@ -148,7 +164,9 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
       const r = id ? await api.put<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.api}/${id}`, body) : await api.post<{ id: string; doc_no: string; journal_id?: string | null }>(`/api/v1/${K.api}`, body);
       toast(r.journal_id ? `บันทึก ${r.doc_no} แล้ว — ลงบัญชีแล้ว` : `บันทึก ${r.doc_no} แล้ว (ไม่ลงบัญชี)`); setDirty(false); if (id) ed.lock();
       qc.invalidateQueries({ queryKey: [K.api] }); qc.invalidateQueries({ queryKey: ['petty-payments'] }); qc.invalidateQueries({ queryKey: ['doc-journal', r.id] });
+      const vatL = kind === 'dp' ? roleSum('INPUT_VAT') : d(0), whtL = kind === 'dp' ? roleSum('WHT_PAYABLE') : d(0);
       if (!id) { nav(`${BASE}/${kind}/${r.id}`, { replace: true }); setH(null); } else { await qc.refetchQueries({ queryKey: [K.api, 'one', id] }); setH(null); }
+      void askTax(r.id, vatL, whtL);
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const cancelDoc = async () => {
@@ -191,8 +209,8 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
           <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการที่จ่าย', badge: lines.filter((l) => l.account_id).length || undefined },
             ...(id ? [{ key: 'vat', label: 'รายการภาษีซื้อ' }, { key: 'wht', label: 'รายการภาษีหัก ณ ที่จ่าย' }] : []), { key: 'gl', label: id && ro ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }]} />
           {tab === 'gl' && <PostingTab id={id} path={K.api} editing={!ro} bodyOf={bodyOf} />}
-          {tab === 'vat' && id && <JvVatTab doc kind="P" journal={{ id, voucher_no: cur.data?.doc_no ?? '', date: h.doc_date }} lineVat="0" editable={!ro && cur.data?.doc_status !== 'C'} />}
-          {tab === 'wht' && id && <DocWhtTab doc={{ id, doc_no: cur.data?.doc_no ?? '', date: h.doc_date }} editable={!ro && cur.data?.doc_status !== 'C'} />}
+          {tab === 'vat' && id && <JvVatTab doc kind="P" journal={{ id, voucher_no: cur.data?.doc_no ?? '', date: h.doc_date }} lineVat={taxLine.vat} editable={cur.data?.doc_status !== 'C'} autoOpen={taxLine.n} />}
+          {tab === 'wht' && id && <DocWhtTab doc={{ id, doc_no: cur.data?.doc_no ?? '', date: h.doc_date }} editable={cur.data?.doc_status !== 'C'} lineTax={taxLine.wht} autoOpen={taxLine.n} />}
           {tab === 'lines' && <div className="table-wrap lines">
             <table className="grid">
               <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 170 }}>เลขที่บัญชี</th><th style={{ width: 220 }}>ชื่อบัญชี</th><th style={{ width: 150 }}>แผนก</th><th>รายละเอียด</th><th className="r" style={{ width: 150 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>

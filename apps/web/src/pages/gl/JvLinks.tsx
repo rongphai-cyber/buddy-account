@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt } from '@buddy/core';
 import { api } from '../../api';
@@ -28,13 +28,15 @@ export const whtPayload = (w: WhtDraft) => nulls(w, ['certificate_no', 'payee_ta
  * ใบสำคัญที่บันทึกแล้ว: บันทึกเข้าแฟ้มทันที · ใบสำคัญใหม่ (link.id = null): เก็บไว้กับหน้าจอ บันทึกพร้อมใบสำคัญ
  * ยอดเริ่มต้น = ยอดบรรทัดบัญชีภาษีที่ยังไม่ได้ป้อน · ยกเลิกใบสำคัญแล้วรายการภาษียกเลิกตาม
  */
-export function JvVatTab({ kind, journal, lineVat, editable, doc, drafts, onDrafts }: {
+export function JvVatTab({ kind, journal, lineVat, editable, doc, drafts, onDrafts, autoOpen, onSkip, onCancel }: {
   kind: 'P' | 'S'; journal: Link | { id: string; voucher_no: string; date: string }; lineVat: string; editable: boolean; doc?: boolean; drafts?: VatDraft[]; onDrafts?: (x: VatDraft[]) => void;
+  /** เปลี่ยนค่า = เปิดหน้าต่างป้อนรายละเอียดทันที (กดบันทึกใบสำคัญแล้วยังไม่ได้ป้อน — ข้อกำหนดเจ้าของ 01/11/2569) */ autoOpen?: number; onSkip?: () => void; onCancel?: () => void;
 }) {
   const link: Link = 'no' in journal ? journal : { id: journal.id, no: journal.voucher_no, date: journal.date };
   const key = doc ? 'header_id' : 'journal_id';
   const q = useQuery({ enabled: !!link.id, queryKey: ['jv-vat', kind, link.id], queryFn: () => api.get<{ rows: Vat[] }>(`/api/v1/vat/${kind}`, { [key]: link.id!, status: 'all' }) });
   const [add, setAdd] = useState(false);
+  useEffect(() => { if (autoOpen && editable) setAdd(true); }, [autoOpen]);   // eslint-disable-line react-hooks/exhaustive-deps
   const mine = (drafts ?? []).filter((x) => x.kind === kind);
   const rows: Array<Vat & { draft?: number }> = link.id ? (q.data?.rows ?? []) : mine.map((x, i) => ({ id: String(i), tax_invoice_no: x.tax_invoice_no, tax_invoice_date: x.tax_invoice_date, month: x.month, is_late: x.is_late,
     party_name: x.party_name, base_amount: x.base_amount || '0', vat_amount: x.vat_amount || '0', nonclaim_vat: x.nonclaim_vat || '0', doc_status: 'N', draft: (drafts ?? []).indexOf(x) }));
@@ -56,13 +58,13 @@ export function JvVatTab({ kind, journal, lineVat, editable, doc, drafts, onDraf
         </tbody>
       </table>
       {editable && <div className="toolbar"><button className="primary" onClick={() => setAdd(true)}>+ ป้อนรายละเอียด{word}</button></div>}
-      {add && <VatEntryModal kind={kind} link={link} doc={doc} vat={!doc && left.gt(0) ? left.toFixed(2) : ''} onClose={() => setAdd(false)}
+      {add && <VatEntryModal kind={kind} link={link} doc={doc} vat={left.gt(0) ? left.toFixed(2) : ''} onClose={() => { setAdd(false); onCancel?.(); }} onSkip={onSkip ? () => { setAdd(false); onSkip(); } : undefined}
         onDraft={link.id ? undefined : (v) => { onDrafts?.([...(drafts ?? []), { ...v, kind }]); setAdd(false); }} />}
     </div>
   );
 }
 
-function VatEntryModal({ kind, link, vat, onClose, doc, onDraft }: { kind: 'P' | 'S'; link: Link; vat: string; onClose: () => void; doc?: boolean; onDraft?: (v: ReturnType<typeof blankVat>) => void }) {
+function VatEntryModal({ kind, link, vat, onClose, doc, onDraft, onSkip }: { kind: 'P' | 'S'; link: Link; vat: string; onClose: () => void; doc?: boolean; onDraft?: (v: ReturnType<typeof blankVat>) => void; onSkip?: () => void }) {
   const qc = useQueryClient();
   const [f, setF] = useState(blankVat(link.date, vat));
   const [err, setErr] = useState<unknown>(null);
@@ -79,7 +81,7 @@ function VatEntryModal({ kind, link, vat, onClose, doc, onDraft }: { kind: 'P' |
   };
   const money = (k: keyof typeof f) => <input className="r" inputMode="decimal" value={String(f[k])} onChange={(e) => set({ [k]: e.target.value.replace(/[^\d.]/g, '') } as Partial<typeof f>)} />;
   return (
-    <Modal title={`ป้อนรายละเอียดรายการ${kind === 'P' ? 'ภาษีซื้อ' : 'ภาษีขาย'} — ${link.no || 'ใบสำคัญใหม่'}`} onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" onClick={ok}>ตกลง</button></>}>
+    <Modal title={`ป้อนรายละเอียดรายการ${kind === 'P' ? 'ภาษีซื้อ' : 'ภาษีขาย'} — ${link.no || 'ใบสำคัญใหม่'}`} onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button>{onSkip && <button onClick={onSkip} title="บันทึกใบสำคัญโดยไม่ป้อนรายละเอียดเข้าแฟ้มภาษี (ป้อนภายหลังได้ที่แท็บนี้)">บันทึกโดยไม่เข้าแฟ้มภาษี</button>}<button className="primary" onClick={ok}>ตกลง</button></>}>
       <ErrorBox error={err} />
       <div className="form-grid" onKeyDown={navKey}>
         <Field label="เลขที่ใบกำกับภาษี" req><input className="mono" autoFocus value={f.tax_invoice_no} maxLength={30} onChange={(e) => set({ tax_invoice_no: e.target.value })} /></Field>
@@ -133,7 +135,7 @@ type Wht = { id: string; form_type: string; certificate_no: string | null; certi
  * ภาษีหัก ณ ที่จ่าย — เข้าแฟ้ม ภ.ง.ด.3/53 · ยกเลิกเอกสาร/ใบสำคัญแล้วยกเลิกตาม
  * ใช้ทั้งใบจ่ายเงินสดย่อย (S-GL-11, field header_id) และสมุดรายวัน (field journal_id) · ใบสำคัญใหม่: เก็บไว้กับหน้าจอ บันทึกพร้อมใบสำคัญ
  */
-export function WhtTab({ field, link, editable, lineTax, drafts, onDrafts }: { field: 'header_id' | 'journal_id'; link: Link; editable: boolean; lineTax?: string; drafts?: WhtDraft[]; onDrafts?: (x: WhtDraft[]) => void }) {
+export function WhtTab({ field, link, editable, lineTax, drafts, onDrafts, autoOpen, onSkip, onCancel }: { field: 'header_id' | 'journal_id'; link: Link; editable: boolean; lineTax?: string; drafts?: WhtDraft[]; onDrafts?: (x: WhtDraft[]) => void; autoOpen?: number; onSkip?: () => void; onCancel?: () => void }) {
   const qc = useQueryClient();
   const q = useQuery({ enabled: !!link.id, queryKey: ['doc-wht', link.id], queryFn: () => api.get<{ rows: Wht[] }>('/api/v1/wht', { [field]: link.id!, status: 'all' }) });
   const rows: Array<Wht & { draft?: number }> = link.id ? (q.data?.rows ?? []) : (drafts ?? []).map((x, i) => ({ id: String(i), form_type: x.form_type, certificate_no: x.certificate_no, certificate_date: x.certificate_date,
@@ -142,6 +144,7 @@ export function WhtTab({ field, link, editable, lineTax, drafts, onDrafts }: { f
   const left = lineTax ? d(lineTax).minus(entered) : d(0);
   const [f, setF] = useState<WhtDraft | null>(null);
   const [err, setErr] = useState<unknown>(null);
+  useEffect(() => { if (autoOpen && editable) setF(blankWht(link.date, left.gt(0) ? left.toFixed(2) : '')); }, [autoOpen]);   // eslint-disable-line react-hooks/exhaustive-deps
   const set = (p: Partial<WhtDraft>) => setF((x) => { const n = { ...x!, ...p }; if ('paid_amount' in p || 'rate' in p) n.tax_amount = d(n.paid_amount || 0).times(n.rate || 0).div(100).toDecimalPlaces(2).toFixed(2); return n; });
   const ok = async () => {
     if (!f) return;
@@ -167,7 +170,7 @@ export function WhtTab({ field, link, editable, lineTax, drafts, onDrafts }: { f
         </tbody>
       </table>
       {editable && <div className="toolbar"><button className="primary" onClick={() => setF(blankWht(link.date, left.gt(0) ? left.toFixed(2) : ''))}>+ ป้อนภาษีหัก ณ ที่จ่าย</button></div>}
-      {f && <Modal title={`ภาษีหัก ณ ที่จ่าย — ${link.no || 'ใบสำคัญใหม่'}`} onClose={() => setF(null)} footer={<><button onClick={() => setF(null)}>ยกเลิก</button><button className="primary" onClick={ok}>ตกลง</button></>}>
+      {f && <Modal title={`ภาษีหัก ณ ที่จ่าย — ${link.no || 'ใบสำคัญใหม่'}`} onClose={() => { setF(null); onCancel?.(); }} footer={<><button onClick={() => { setF(null); onCancel?.(); }}>ยกเลิก <kbd>Esc</kbd></button>{onSkip && <button onClick={() => { setF(null); onSkip(); }} title="บันทึกใบสำคัญโดยไม่ป้อนรายละเอียดเข้าแฟ้มภาษี (ป้อนภายหลังได้ที่แท็บนี้)">บันทึกโดยไม่เข้าแฟ้มภาษี</button>}<button className="primary" onClick={ok}>ตกลง</button></>}>
         <ErrorBox error={err} />
         <div className="form-grid" onKeyDown={navKey}>
           <Field label="แบบ" req><select value={f.form_type} onChange={(e) => set({ form_type: e.target.value })}><option value="S53">ภ.ง.ด.53 (นิติบุคคล)</option><option value="S03">ภ.ง.ด.3 (บุคคลธรรมดา)</option></select></Field>
@@ -189,6 +192,6 @@ export function WhtTab({ field, link, editable, lineTax, drafts, onDrafts }: { f
 }
 
 /** ภาษีหัก ณ ที่จ่ายของใบจ่ายเงินสดย่อย (S-GL-11 แท็บภาษีหัก ณ ที่จ่าย) */
-export function DocWhtTab({ doc, editable }: { doc: { id: string; doc_no: string; date: string }; editable: boolean }) {
-  return <WhtTab field="header_id" link={{ id: doc.id, no: doc.doc_no, date: doc.date }} editable={editable} />;
+export function DocWhtTab({ doc, editable, lineTax, autoOpen }: { doc: { id: string; doc_no: string; date: string }; editable: boolean; lineTax?: string; autoOpen?: number }) {
+  return <WhtTab field="header_id" link={{ id: doc.id, no: doc.doc_no, date: doc.date }} editable={editable} lineTax={lineTax} autoOpen={autoOpen} />;
 }

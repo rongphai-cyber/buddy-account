@@ -73,7 +73,9 @@ export function JournalFormPage() {
   const [busy, setBusy] = useState(false);
   // รายละเอียดภาษีที่ป้อนในแท็บก่อนบันทึกใบสำคัญใหม่ — ส่งไปพร้อมใบสำคัญ (บันทึกในทรานแซกชันเดียวกัน)
   const [drafts, setDrafts] = useState<{ vat: VatDraft[]; wht: WhtDraft[] }>({ vat: [], wht: [] });
-  const [taxAsk, setTaxAsk] = useState<{ andNew: boolean; gaps: Array<{ key: string; label: string; line: string; entered: string }> } | null>(null);
+  const [taxFlow, setTaxFlow] = useState<{ andNew: boolean } | null>(null);
+  const [autoOpen, setAutoOpen] = useState(0);
+  const [resume, setResume] = useState<{ andNew: boolean; skip: boolean } | null>(null);
   const [nextNo, setNextNo] = useState('');
   // ช่องเลขที่ (ข้อกำหนดเจ้าของ): แสดงตัวนำหน้าของสมุดไว้ให้ คีย์เลขเองได้ · ไม่คีย์ = เลขอัตโนมัติ (ยกเว้นบริษัทตั้ง "ป้อนเลขเอง")
   const noPrefix = (nextNo.match(/^\D*/)?.[0] ?? '');
@@ -201,7 +203,8 @@ export function JournalFormPage() {
         vatS: drafts.vat.filter((v) => v.kind === 'S').reduce((t, v) => t.plus(d(v.vat_amount || 0)), d(0)), wht: drafts.wht.reduce((t, w) => t.plus(d(w.tax_amount || 0)), d(0)) };
       const gaps = (['vatP', 'vatS', 'wht'] as const).filter((k) => sums[k].gt(0) && got[k].lt(sums[k]))
         .map((k) => ({ key: k, label: TAX_TABS.find(([x]) => x === k)![1], line: sums[k].toFixed(2), entered: got[k].toFixed(2) }));
-      if (gaps.length) { setTaxAsk({ andNew, gaps }); return; }
+      // ข้อกำหนดเจ้าของ 01/11/2569: เปิดหน้าต่างป้อนรายละเอียดทันที (ไม่ต้องกด + ป้อนรายละเอียด) · ตกลงแล้วบันทึกต่อ · ข้ามได้ (บันทึกโดยไม่เข้าแฟ้มภาษี)
+      if (gaps.length) { setTaxFlow({ andNew }); setTab(gaps[0]!.key); setAutoOpen((n) => n + 1); return; }
     }
     setErr(null); setBusy(true);
     const body = { ...h, branch_id: br.body, voucher_no: ownNo || (manualNo ? null : undefined), description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
@@ -214,6 +217,8 @@ export function JournalFormPage() {
       if (andNew || isNew) { setLines(andNew ? freshLines(bookTpl.data) : [blank(), blank()]); setH((x) => ({ ...x, description: '', reference: '' })); if (andNew) focusStart(); if (!andNew) nav(`/gl/journals/${r.id}`, { replace: true }); else nav(`/gl/journals/new?book=${h.journal_book_id}`, { replace: true }); }
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
+  // ป้อนภาษีแล้ว/ข้าม → บันทึกต่อ (ตรวจยอดภาษีประเภทถัดไปอีกรอบ) — รอ state รายการภาษีใหม่ก่อน
+  useEffect(() => { if (!resume) return; const r = resume; setResume(null); setTaxFlow(null); void save(r.andNew, r.skip); });
   const leave = (to: string) => (dirty && editable ? setLeaveAsk(to) : nav(to));
   useHotkeys({
     F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': () => !isNew && editBase && can('cancel') && setCancelAsk(true), 'Ctrl+F6': () => isNew && setCopyPick(true),
@@ -348,15 +353,11 @@ export function JournalFormPage() {
       {fromDoc && tab === 'wht' && <DocWhtList headerId={j!.source_header_id!} by="header" />}
       {fromDoc && (tab === 'chqP' || tab === 'chqR') && <JvChequeTab key={tab} direction={tab === 'chqP' ? 'P' : 'R'} journal={{ id: linkInfo.id, voucher_no: linkInfo.no, date: linkInfo.date }} lineAmount={sums[tab].toFixed(2)} editable={false} sourceHeaderId={j!.source_header_id} />}
       {!fromDoc && (isNew || doc.data) && (tab === 'vatP' || tab === 'vatS') && <JvVatTab key={tab} kind={tab === 'vatP' ? 'P' : 'S'} journal={linkInfo} lineVat={sums[tab].toFixed(2)} editable={tabEditable}
-        drafts={drafts.vat} onDrafts={(v) => { setDrafts((x) => ({ ...x, vat: v })); setDirty(true); }} />}
-      {!fromDoc && (isNew || doc.data) && tab === 'wht' && <WhtTab field="journal_id" link={linkInfo} lineTax={sums.wht.toFixed(2)} editable={tabEditable} drafts={drafts.wht} onDrafts={(w) => { setDrafts((x) => ({ ...x, wht: w })); setDirty(true); }} />}
+        drafts={drafts.vat} onDrafts={(v) => { setDrafts((x) => ({ ...x, vat: v })); setDirty(true); if (taxFlow) setResume({ andNew: taxFlow.andNew, skip: false }); }}
+        autoOpen={taxFlow ? autoOpen : 0} onSkip={taxFlow ? () => setResume({ andNew: taxFlow.andNew, skip: true }) : undefined} onCancel={() => setTaxFlow(null)} />}
+      {!fromDoc && (isNew || doc.data) && tab === 'wht' && <WhtTab field="journal_id" link={linkInfo} lineTax={sums.wht.toFixed(2)} editable={tabEditable} drafts={drafts.wht} onDrafts={(w) => { setDrafts((x) => ({ ...x, wht: w })); setDirty(true); if (taxFlow) setResume({ andNew: taxFlow.andNew, skip: false }); }}
+        autoOpen={taxFlow ? autoOpen : 0} onSkip={taxFlow ? () => setResume({ andNew: taxFlow.andNew, skip: true }) : undefined} onCancel={() => setTaxFlow(null)} />}
       {!fromDoc && (isNew || doc.data) && (tab === 'chqP' || tab === 'chqR') && <JvChequeTab key={tab} direction={tab === 'chqP' ? 'P' : 'R'} journal={{ id: linkInfo.id, voucher_no: linkInfo.no, date: linkInfo.date }} lineAmount={sums[tab].toFixed(2)} editable={tabEditable} />}
-      {taxAsk && <Modal size="confirm" title="ยังไม่ได้ป้อนรายละเอียดภาษี" onClose={() => setTaxAsk(null)}
-        footer={<><button onClick={() => setTaxAsk(null)}>กลับไปแก้ <kbd>Esc</kbd></button><button onClick={() => { const a = taxAsk.andNew; setTaxAsk(null); void save(a, true); }}>บันทึกโดยไม่ป้อน</button>
-          <button className="primary" autoFocus onClick={() => { setTab(taxAsk.gaps[0]!.key); setTaxAsk(null); }}>ป้อนรายละเอียด</button></>}>
-        {taxAsk.gaps.map((g) => <p key={g.key}>บรรทัดบัญชี<b>{g.label}</b> {fmt(g.line)} — ป้อนรายละเอียดแล้ว {fmt(g.entered)}</p>)}
-        <p className="small muted">รายละเอียด (เลขที่ใบกำกับ/หนังสือรับรอง ชื่อและเลขผู้เสียภาษีของคู่ค้า) ใช้ทำรายงานภาษีซื้อ-ขาย และแบบ ภ.ง.ด. — ป้อนภายหลังได้ที่แท็บนี้หรือที่แฟ้มภาษี</p>
-      </Modal>}
       {j && <p className="hint">สร้างโดย {j.created_by_name ?? 'นำเข้าจาก Express'} · <DateText v={j.created_at.slice(0, 10)} /> · แก้ไขล่าสุด <DateText v={j.updated_at.slice(0, 10)} /></p>}
       {vatAsk && <VatClosingModal workDate={h.voucher_date} onClose={() => setVatAsk(false)} onOk={fillVatClosing} />}
       <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาบัญชี / ต้นแบบ (ที่ช่องเลขที่)'], ['Ctrl+F6', 'คัดลอกจากใบสำคัญอื่น'],['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Alt+P', 'พิมพ์'], ['Esc', 'กลับรายการ']]} />
