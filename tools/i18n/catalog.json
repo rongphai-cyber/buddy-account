@@ -464,6 +464,39 @@
 ]
 },
 {
+"th": "แผนก",
+"n": 36,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/reports/AccountDetail.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/doc-types.ts",
+"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "จ่าย",
 "n": 35,
 "files": [
@@ -511,39 +544,6 @@
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "แผนก",
-"n": 35,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/reports/AccountDetail.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/doc-types.ts",
-"apps/server/src/modules/gl/routes.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -4168,6 +4168,15 @@
 ]
 },
 {
+"th": "เลือก",
+"n": 4,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Journals.tsx"
+]
+},
+{
 "th": "เลือกทั้งหมด",
 "n": 4,
 "files": [
@@ -5414,15 +5423,6 @@
 ]
 },
 {
-"th": "เลือก",
-"n": 3,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/Journals.tsx"
-]
-},
-{
 "th": "เลือกบัญชีของรายการหัก",
 "n": 3,
 "files": [
@@ -5817,6 +5817,13 @@
 "files": [
 "packages/core/src/date.ts",
 "packages/core/src/i18n.ts"
+]
+},
+{
+"th": "กรอก",
+"n": 2,
+"files": [
+"apps/web/src/ui.tsx"
 ]
 },
 {
@@ -6463,6 +6470,13 @@
 "files": [
 "apps/server/src/modules/reports/stock.ts",
 "packages/core/src/items.ts"
+]
+},
+{
+"th": "ช่องนี้",
+"n": 2,
+"files": [
+"apps/web/src/ui.tsx"
 ]
 },
 {
@@ -13171,13 +13185,6 @@
 ]
 },
 {
-"th": "กรอก",
-"n": 1,
-"files": [
-"apps/web/src/ui.tsx"
-]
-},
-{
 "th": "กรอกแล้วเข้าระบบได้ทันที แล้วสร้างบริษัทแรกของคุณ",
 "n": 1,
 "files": [
@@ -14736,6 +14743,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
+"th": "คลิกเพื่อเรียง",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Journals.tsx"
 ]
 },
 {
@@ -17322,13 +17336,6 @@
 ]
 },
 {
-"th": "ช่องนี้",
-"n": 1,
-"files": [
-"apps/web/src/ui.tsx"
-]
-},
-{
 "th": "ช่องบัญชีที่ {0} ซ้ำ",
 "n": 1,
 "files": [
@@ -18705,6 +18712,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/templates.ts"
+]
+},
+{
+"th": "ต้อง{0} {1} ก่อน",
+"n": 1,
+"files": [
+"apps/web/src/ui.tsx"
 ]
 },
 {
@@ -22814,6 +22828,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/PriorYear.tsx"
+]
+},
+{
+"th": "ป้อนยอดเดบิตหรือเครดิตของบรรทัดนี้ก่อน",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {

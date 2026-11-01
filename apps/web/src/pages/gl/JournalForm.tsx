@@ -161,10 +161,22 @@ export function JournalFormPage() {
         const diff = journalTotals(ls).diff;
         if (!diff.isZero()) { if (diff.isPositive()) n.credit = diff.toFixed(2); else n.debit = diff.neg().toFixed(2); }
         n.description = ls.at(-1)?.description ?? '';
+        n.department_id = ls.at(-1)?.department_id ?? null;   // แผนกตามบรรทัดก่อน (ข้อกำหนดเจ้าของ 01/11/2569)
         return [...ls, n];
       });
       setTimeout(() => gridRef.current?.querySelector<HTMLInputElement>(`tr[data-k="${n.key}"] input`)?.focus(), 0);
     }, 0);
+  };
+  /** Enter ที่ช่องเครดิตของบรรทัดที่มีบัญชีแต่ยังไม่มียอด → ไม่ไปบรรทัดถัดไป (ข้อกำหนดเจ้าของ 01/11/2569) */
+  const amountMissing = (t: HTMLElement) => {
+    if (t.dataset.credit == null) return false;
+    const tr = t.closest<HTMLTableRowElement>('tr[data-k]');
+    const l = lines.find((x) => String(x.key) === tr?.dataset.k);
+    if (!l?.account_id || d(l.debit || 0).gt(0) || d(l.credit || 0).gt(0)) return false;
+    const dr = tr?.querySelectorAll<HTMLInputElement>('input[inputmode=decimal]')[0];
+    toast('ป้อนยอดเดบิตหรือเครดิตของบรรทัดนี้ก่อน', 'warn', dr ?? t);
+    dr?.focus();
+    return true;
   };
   /** รายการครบ: มีบัญชีทุกบรรทัดที่มียอด อย่างน้อย 2 บรรทัด และเดบิต = เครดิต */
   const complete = () => { const used = lines.filter((l) => d(l.debit || 0).gt(0) || d(l.credit || 0).gt(0)); return used.length >= 2 && used.every((l) => l.account_id) && totals.balanced; };
@@ -299,7 +311,7 @@ export function JournalFormPage() {
         ...TAX_TABS.map(([key, label]) => ({ key, label, badge: sums[key].isZero() ? undefined : fmt(sums[key].abs().toFixed(2)) })), ...(!isNew ? [{ key: 'history', label: 'ประวัติการแก้ไข' }] : [])]} />
       <fieldset disabled={!editable} onKeyDown={(e) => navKey(e, ed.end)}>
         {tab === 'lines' && (
-          <div className="table-wrap lines" ref={gridRef} onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).dataset.last != null && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); if (complete()) ed.end(); else addLine(); } }}>
+          <div className="table-wrap lines" ref={gridRef} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && amountMissing(e.target as HTMLElement)) { e.preventDefault(); e.stopPropagation(); return; } if (e.key === 'Enter' && (e.target as HTMLElement).dataset.last != null && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); if (complete()) ed.end(); else addLine(); } }}>
             <table className="grid">
               <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 170 }}>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th style={{ width: 110 }}>แผนก</th><th>คำอธิบายรายการ</th><th className="r" style={{ width: 140 }}>เดบิต</th><th className="r" style={{ width: 140 }}>เครดิต</th><th style={{ width: 40 }} /></tr></thead>
               <tbody>
@@ -311,14 +323,14 @@ export function JournalFormPage() {
                       <td><AccountCell required value={l.account_id} invalid={issueLines.has(i) && !l.account_id} onChange={(acc) => setLine(l.key, { account_id: acc?.id ?? null, department_id: acc?.use_department ? l.department_id : l.department_id })} /></td>
                       <td className="small">{a ? a.name_th : <span className="muted">—</span>}</td>
                       <td>
-                        <select value={l.department_id ?? ''} onChange={(e) => setLine(l.key, { department_id: e.target.value || null })} aria-invalid={(a?.use_department && !l.department_id) || undefined}>
+                        <select value={l.department_id ?? ''} onChange={(e) => setLine(l.key, { department_id: e.target.value || null })} aria-invalid={(a?.use_department && !l.department_id) || undefined} data-required={a?.use_department ? 'แผนก' : undefined}>
                           <option value="">{a?.use_department ? 'ต้องเลือก' : '—'}</option>
                           {depts.data?.filter((x) => x.status === 'A').map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
                         </select>
                       </td>
                       <td><div className="desc-cell"><input value={l.description} maxLength={200} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบายรายการ" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={!editable} label={l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                       <td><MoneyInput value={l.debit} onChange={(v) => setLine(l.key, { debit: v, credit: v ? '' : l.credit })} /></td>
-                      <td><MoneyInput value={l.credit} onChange={(v) => setLine(l.key, { credit: v, debit: v ? '' : l.debit })} {...(i === lines.length - 1 ? { 'data-last': '' } : {})} /></td>
+                      <td><MoneyInput value={l.credit} onChange={(v) => setLine(l.key, { credit: v, debit: v ? '' : l.debit })} data-credit="" {...(i === lines.length - 1 ? { 'data-last': '' } : {})} /></td>
                       <td><button type="button" className="icon-btn" tabIndex={-1} onClick={() => delLine(l.key)} title="ลบบรรทัด">✕</button></td>
                     </tr>
                   );

@@ -219,6 +219,8 @@ export function glRoutes(app: FastifyInstance, db: Db) {
     const q = parse(z.object({
       book_id: uuid.optional(), from: isoDate.optional(), to: isoDate.optional(), q: z.string().optional(),
       source: z.enum(['all', 'gl', 'other']).default('all'), status: z.enum(['all', 'N', 'C']).default('all'),
+      // คลิกหัวคอลัมน์เรียง (ข้อกำหนดเจ้าของ 01/11/2569) — ค่าเริ่มต้น วันที่ล่าสุดก่อน
+      sort: z.enum(['date', 'no', 'book', 'desc', 'ref', 'amount', 'branch', 'status']).default('date'), dir: z.enum(['asc', 'desc']).default('desc'),
       limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0),
     }), req.query);
     let s = db.selectFrom('gl_journal as j').innerJoin('gl_journal_book as b', 'b.id', 'j.journal_book_id').leftJoin('doc_header as h', 'h.id', 'j.source_header_id').leftJoin('sys_branch as br', 'br.id', 'j.branch_id')
@@ -238,7 +240,9 @@ export function glRoutes(app: FastifyInstance, db: Db) {
       s = s.where((eb) => eb.or([eb('j.voucher_no', 'ilike', like), eb('j.description', 'ilike', like), eb('j.reference', 'ilike', like), eb('h.doc_no', 'ilike', like)]));
     }
     const total = await s.clearSelect().select(sql<number>`count(*)`.as('n')).executeTakeFirstOrThrow();
-    const rows = await s.orderBy('j.voucher_date', 'desc').orderBy('j.voucher_no', 'desc').limit(q.limit).offset(q.offset).execute();
+    const col = { date: sql`j.voucher_date`, no: sql`j.voucher_no`, book: sql`b.code`, desc: sql`j.description`, ref: sql`coalesce(h.doc_no, j.reference)`, amount: sql`j.total_debit`, branch: sql`br.code`, status: sql`j.doc_status` }[q.sort];
+    const dir = sql.raw(q.dir === 'asc' ? 'ASC NULLS FIRST' : 'DESC NULLS LAST');
+    const rows = await s.orderBy(sql`${col} ${dir}`).orderBy('j.voucher_date', q.dir).orderBy('j.voucher_no', q.dir).limit(q.limit).offset(q.offset).execute();
     // total_debit ของรายการที่ย้ายมาอาจเป็น 0 — คำนวณจากบรรทัด
     const ids = rows.filter((r) => d(r.total_debit).isZero()).map((r) => r.id);
     if (ids.length) {

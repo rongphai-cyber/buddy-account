@@ -19,9 +19,12 @@ export function JournalsPage() {
   const wd = me?.work_date ?? todayIso();
   const [f, setF] = useState({ book_id: sp.get('book') ?? '', from: sp.get('from') ?? addMonths(wd.slice(0, 8) + '01', -2), to: sp.get('to') ?? wd, q: '', source: 'all', status: 'all' });
   const [page, setPage] = useState(0);
+  // เรียงตามคอลัมน์ที่คลิก (คลิกซ้ำ = กลับทิศ) · ค่าเริ่มต้น วันที่ล่าสุดก่อน
+  const [sort, setSort] = useState<{ k: string; dir: 'asc' | 'desc' }>({ k: 'date', dir: 'desc' });
+  const th = (k: string, label: string, cls?: string) => <th className={cx('sortable', cls, sort.k === k && 'on')} onClick={() => { setSort((x) => ({ k, dir: x.k === k && x.dir === 'desc' ? 'asc' : x.k === k ? 'desc' : k === 'date' || k === 'amount' ? 'desc' : 'asc' })); setPage(0); setSel(0); }} title="คลิกเพื่อเรียง">{label}{sort.k === k ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}</th>;
   const [sel, setSel] = useState(0);
   const books = useQuery({ queryKey: ['books'], queryFn: () => api.get<Book[]>('/api/v1/gl/books') });
-  const params = { ...f, limit: 200, offset: page * 200 };
+  const params = { ...f, sort: sort.k, dir: sort.dir, limit: 200, offset: page * 200 };
   const list = useQuery({ queryKey: ['journals', params], queryFn: () => api.get<{ total: number; rows: Row[] }>('/api/v1/gl/journals', params) });
   const rows = list.data?.rows ?? [];
   const set = (p: Partial<typeof f>) => { const n = { ...f, ...p }; setF(n); setPage(0); setSel(0); setSp({ book: n.book_id, from: n.from, to: n.to }, { replace: true }); };
@@ -46,7 +49,7 @@ export function JournalsPage() {
       <ErrorBox error={list.error} />
       <BranchScope /><div className="table-wrap tall">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th>วันที่</th><th>เลขที่ใบสำคัญ</th><th>สมุด</th><th>คำอธิบาย</th><th>อ้างอิง / เอกสารต้นทาง</th><th className="r">จำนวนเงิน</th><th>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && th('branch', 'สาขา')}{th('date', 'วันที่')}{th('no', 'เลขที่ใบสำคัญ')}{th('book', 'สมุด')}{th('desc', 'คำอธิบาย')}{th('ref', 'อ้างอิง / เอกสารต้นทาง')}{th('amount', 'จำนวนเงิน', 'r')}{th('status', 'สถานะ')}</tr></thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.id} className={cx('row-open', i === sel && 'sel', r.doc_status === 'C' && 'void')} onClick={() => nav(`/gl/journals/${r.id}`)} onMouseEnter={() => setSel(i)}>

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type Account } from '../api';
-import { Lookup } from '../ui';
+import { focusNext, Lookup } from '../ui';
 import { AccountForm } from '../pages/gl/Accounts';
 
 export function useAccounts() {
@@ -17,6 +17,9 @@ export function AccountCell({ value, onChange, postableOnly = true, autoFocus, i
   const qc = useQueryClient();
   const cur = accts.data?.find((a) => a.id === value);
   const [txt, setTxt] = useState(cur?.account_no ?? '');
+  const ref = useRef<HTMLInputElement>(null);
+  /** เลือกจากหน้าต่างแล้ว → ช่องถัดไป (เช่น แผนก/คำอธิบาย) ให้ Enter คีย์ต่อได้ทันที */
+  const afterPick = () => setTimeout(() => focusNext(ref.current), 40);
   const [lookup, setLookup] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
   const [emptyHit, setEmptyHit] = useState(false);
@@ -36,7 +39,7 @@ export function AccountCell({ value, onChange, postableOnly = true, autoFocus, i
   };
   return (
     <span className="lk-in">
-      <input {...rest} value={txt} autoFocus={autoFocus} aria-invalid={invalid || undefined} className="mono" placeholder="เลขที่บัญชี"
+      <input {...rest} ref={ref} value={txt} autoFocus={autoFocus} aria-invalid={invalid || undefined} className="mono" placeholder="เลขที่บัญชี"
         onChange={(e) => setTxt(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'F4' || (e.key === 'ArrowDown' && e.altKey)) { e.preventDefault(); setLookup(txt); }
@@ -49,8 +52,8 @@ export function AccountCell({ value, onChange, postableOnly = true, autoFocus, i
       {lookup !== null && (
         <Lookup<Account> title={emptyHit ? 'ต้องป้อนเลขที่บัญชี — เลือกบัญชี (Insert เพิ่มบัญชีใหม่)' : 'เลือกบัญชี'} rows={accts.data ?? []} initial={lookup} filter={(a) => a.status === 'A' && (!postableOnly || !a.is_control)}
           cols={[{ key: 'account_no', label: 'เลขที่บัญชี', w: 120 }, { key: 'name_th', label: 'ชื่อบัญชี' }, { key: 'parent_no', label: 'บัญชีคุม', w: 100 }]}
-          onPick={(a) => { onChange(a); setTxt(a.account_no); setLookup(null); setEmptyHit(false); }}
-          onClose={() => { setLookup(null); setEmptyHit(false); setTxt(cur?.account_no ?? ''); }}
+          onPick={(a) => { onChange(a); setTxt(a.account_no); setLookup(null); setEmptyHit(false); afterPick(); }}
+          onClose={() => { setLookup(null); setEmptyHit(false); setTxt(cur?.account_no ?? ''); setTimeout(() => ref.current?.focus(), 40); }}
           onAdd={(t) => { setAdding(t); setLookup(null); }} />
       )}
       {adding !== null && (
@@ -60,7 +63,7 @@ export function AccountCell({ value, onChange, postableOnly = true, autoFocus, i
             const fresh = await qc.fetchQuery({ queryKey: ['accounts', 'plain'], queryFn: () => api.get<Account[]>('/api/v1/gl/accounts'), staleTime: 0 });
             qc.invalidateQueries({ queryKey: ['accounts', 'bal'] });
             const a = fresh.find((x) => x.id === id);
-            if (a) { onChange(a); setTxt(a.account_no); }
+            if (a) { onChange(a); setTxt(a.account_no); afterPick(); }
           }} />
       )}
     </span>

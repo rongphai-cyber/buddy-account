@@ -899,3 +899,7 @@ button.danger-outline:not(:disabled) { color: var(--bad); border-color: color-mi
 .modal-foot button:focus { outline: 3px solid var(--tone); outline-offset: 2px; background: color-mix(in srgb, var(--tone) 16%, var(--surface, #fff)); font-weight: 700; }
 .modal-foot button.primary:focus { background: var(--tone); color: #fff; }
 .modal-foot:focus-within button.primary:not(:focus) { background: var(--surface, #fff); color: var(--tone); border-color: var(--tone); }
+/* หัวคอลัมน์คลิกเรียงได้ */
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--tone); }
+th.sortable.on { color: var(--tone); }

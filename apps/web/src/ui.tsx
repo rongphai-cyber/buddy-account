@@ -129,6 +129,14 @@ export function Confirm({ title, text, okText = 'ยืนยัน', danger, on
 }
 
 /** Enter = ช่องถัดไป, Shift+Enter = ช่องก่อนหน้า (แบบ Express) */
+/** ไปช่องถัดไปจากช่องนี้ (หลังเลือกจากหน้าต่างค้นหา — เคอร์เซอร์ไม่หายไป · ข้อกำหนดเจ้าของ 01/11/2569) */
+export function focusNext(el: HTMLElement | null) {
+  if (!el?.isConnected) return;
+  const box = el.closest('fieldset, .modal, .page') ?? document.body;
+  const els = [...box.querySelectorAll<HTMLElement>('input:not([disabled]):not([readonly]):not([type=checkbox]):not([type=radio]), select:not([disabled])')].filter((x) => x.offsetParent);
+  const n = els[els.indexOf(el) + 1];
+  if (n) { n.focus(); (n as HTMLInputElement).select?.(); } else el.focus();
+}
 export function navKey(e: RKE<HTMLElement>, onEnd?: () => void) {
   if (e.key !== 'Enter' || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
   const t = e.target as HTMLElement;
@@ -146,6 +154,14 @@ export function navKey(e: RKE<HTMLElement>, onEnd?: () => void) {
     t.addEventListener('input', () => t.removeAttribute('aria-invalid'), { once: true });
     t.addEventListener('change', () => t.removeAttribute('aria-invalid'), { once: true });
     toast(`ต้อง${t.matches('select') ? 'เลือก' : 'กรอก'} ${name ? `"${name}"` : 'ช่องนี้'} ก่อน — ช่องที่มี * ต้องมีข้อมูล`, 'warn', t);
+    return;
+  }
+  // ช่องในตารางที่ต้องมี (data-required="ชื่อช่อง") เช่น แผนกของบัญชีที่ต้องระบุแผนก
+  if (!e.shiftKey && t.dataset.required != null && !(t as HTMLInputElement).value.trim()) {
+    t.setAttribute('aria-invalid', 'true');
+    t.addEventListener('change', () => t.removeAttribute('aria-invalid'), { once: true });
+    toast(`ต้อง${t.matches('select') ? 'เลือก' : 'กรอก'} ${t.dataset.required ? `"${t.dataset.required}"` : 'ช่องนี้'} ก่อน`, 'warn', t);
+    try { (t as HTMLSelectElement).showPicker?.(); } catch { /* บางเบราว์เซอร์ไม่ให้เปิดเอง */ }
     return;
   }
   const n = els[i + (e.shiftKey ? -1 : 1)];
@@ -393,9 +409,16 @@ export function Lookup<T extends object>({ title, rows, cols, onPick, onClose, i
     const s = q.trim().toLowerCase();
     const base = filter ? rows.filter(filter) : rows;
     const r = !s ? base : base.filter((x) => cols.some((c) => String((x as Record<string, unknown>)[c.key] ?? '').toLowerCase().includes(s)));
-    // รหัสที่ขึ้นต้นตรงกันขึ้นก่อน
-    if (s) r.sort((a, b) => Number(!String((b as Record<string, unknown>)[cols[0]!.key] ?? '').toLowerCase().startsWith(s)) - Number(!String((a as Record<string, unknown>)[cols[0]!.key] ?? '').toLowerCase().startsWith(s)));
-    return r.slice(0, 300);
+    // อันดับ (ข้อกำหนดเจ้าของ 01/11/2569 — พิมพ์ 1 ได้เลขที่ขึ้นต้นด้วย 1 ก่อน, 12 ได้ 12xx ก่อน): เลขที่/รหัสขึ้นต้นด้วยคำค้น → ชื่อขึ้นต้น → รหัสมีคำค้น → ชื่อมีคำค้น · ในกลุ่มเดียวกันคงลำดับเดิม (เรียงตามรหัส)
+    if (!s) return r.slice(0, 300);
+    const s0 = s.replace(/-/g, '');
+    const rank = (x: T) => {
+      const code = String((x as Record<string, unknown>)[cols[0]!.key] ?? '').toLowerCase();
+      if (code.startsWith(s) || code.replace(/-/g, '').startsWith(s0)) return 0;
+      if (cols.slice(1).some((c) => String((x as Record<string, unknown>)[c.key] ?? '').toLowerCase().startsWith(s))) return 1;
+      return code.includes(s) ? 2 : 3;
+    };
+    return r.map((x, i) => ({ x, k: rank(x), i })).sort((a, b) => a.k - b.k || a.i - b.i).slice(0, 300).map((y) => y.x);
   }, [q, rows, cols, filter]);
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => setSel(0), [q]);
