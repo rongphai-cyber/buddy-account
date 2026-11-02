@@ -7,7 +7,7 @@
  *   PURGE   = ลบเมื่อลูกค้าผู้ใช้บริการเลิกใช้บริการ (ผู้ให้บริการลบทั้งลูกค้า)
  *   KEEP    = เก็บตามกฎหมาย ไม่ลบ (แฟ้มบันทึกเหตุการณ์ — เพิ่มได้อย่างเดียว)
  */
-export type PdpaSubject = 'CUSTOMER' | 'SUPPLIER' | 'SALESPERSON' | 'CONTACT' | 'PARTY' | 'USER' | 'TENANT';
+export type PdpaSubject = 'CUSTOMER' | 'SUPPLIER' | 'SALESPERSON' | 'CONTACT' | 'PARTY' | 'USER' | 'TENANT' | 'EMPLOYEE';
 export type PdpaBasis = 'CONTRACT' | 'LEGAL' | 'LEGIT';
 export type PdpaErase = 'CONTACT' | 'FULL' | 'PURGE' | 'KEEP';
 export type PdpaEntry = {
@@ -25,7 +25,7 @@ export type PdpaEntry = {
 
 export const PDPA_SUBJECT_TH: Record<PdpaSubject, string> = {
   CUSTOMER: 'ลูกค้า', SUPPLIER: 'ผู้จำหน่าย/เจ้าหนี้', SALESPERSON: 'พนักงานขาย', CONTACT: 'ผู้ติดต่อของลูกค้า/ผู้จำหน่าย',
-  PARTY: 'คู่ค้าในเอกสาร (ลูกค้า/ผู้จำหน่าย/ผู้ถูกหักภาษี)', USER: 'ผู้ใช้งานโปรแกรม', TENANT: 'ลูกค้าผู้ใช้บริการ/เจ้าของกิจการ',
+  PARTY: 'คู่ค้าในเอกสาร (ลูกค้า/ผู้จำหน่าย/ผู้ถูกหักภาษี)', USER: 'ผู้ใช้งานโปรแกรม', TENANT: 'ลูกค้าผู้ใช้บริการ/เจ้าของกิจการ', EMPLOYEE: 'พนักงาน (ระบบเงินเดือน)',
 };
 export const PDPA_BASIS_TH: Record<PdpaBasis, string> = {
   CONTRACT: 'จำเป็นเพื่อปฏิบัติตามสัญญา (ม.24(3))', LEGAL: 'ปฏิบัติตามกฎหมายบัญชี/ภาษี (ม.24(6))', LEGIT: 'ประโยชน์โดยชอบด้วยกฎหมาย — ความปลอดภัยของระบบ (ม.24(5))',
@@ -60,6 +60,12 @@ export const PDPA_REGISTER: PdpaEntry[] = [
   { table: 'sys_user_security', columns: ['totp_secret_enc', 'totp_recovery'], subject: 'USER', category: 'กุญแจยืนยันตัวตนสองขั้น (เข้ารหัส)', purpose: 'ความปลอดภัยการเข้าระบบ', basis: 'LEGIT', retention: SERVICE, erase: 'PURGE' },
   { table: 'sys_session', columns: ['ip_address', 'user_agent'], subject: 'USER', category: 'IP และเบราว์เซอร์ที่เข้าระบบ', purpose: 'ความปลอดภัยการเข้าระบบ', basis: 'LEGIT', retention: SERVICE, erase: 'PURGE' },
   { table: 'sys_activity_log', columns: ['user_id', 'detail'], subject: 'USER', category: 'ผู้ทำรายการ ค่าก่อน/หลังแก้ไข', purpose: 'ตรวจสอบย้อนหลัง (Audit trail)', basis: 'LEGAL', retention: 'อย่างน้อย 2 ปี (เพิ่มได้อย่างเดียว)', erase: 'KEEP' },
+  { table: 'pay_employee', columns: ['title', 'first_name', 'last_name', 'first_name_en', 'last_name_en', 'nickname', 'tax_id', 'gender', 'birth_date', 'nationality', 'reg_house_no', 'reg_moo', 'reg_village', 'reg_building', 'reg_soi', 'reg_road', 'reg_subdistrict', 'reg_district', 'reg_province', 'reg_postcode', 'current_address'], subject: 'EMPLOYEE', category: 'ชื่อ เลขประจำตัวประชาชน วันเกิด ที่อยู่ตามทะเบียนบ้าน', purpose: 'คำนวณเงินเดือน ภาษีเงินได้ ประกันสังคม ยื่นแบบ ภ.ง.ด.1/1ก สปส.1-10 และออกหนังสือรับรอง 50 ทวิ', basis: 'LEGAL', retention: R5, erase: 'FULL' },
+  { table: 'pay_employee', columns: ['phone', 'email', 'note'], subject: 'EMPLOYEE', category: 'ข้อมูลติดต่อ', purpose: 'ติดต่อพนักงาน ส่งสลิปเงินเดือน', basis: 'CONTRACT', retention: ACTIVE, erase: 'CONTACT' },
+  { table: 'pay_employee', columns: ['bank_account_no', 'bank_account_name'], subject: 'EMPLOYEE', category: 'บัญชีธนาคารรับเงินเดือน', purpose: 'โอนเงินเดือน', basis: 'CONTRACT', retention: ACTIVE, erase: 'CONTACT' },
+  { table: 'pay_salary', columns: ['rate', 'reason'], subject: 'EMPLOYEE', category: 'อัตราค่าจ้างและประวัติการปรับ', purpose: 'คำนวณเงินเดือน', basis: 'LEGAL', retention: R5, erase: 'KEEP' },
+  { table: 'pay_allowance', columns: ['allowance_values'], subject: 'EMPLOYEE', category: 'ค่าลดหย่อนภาษี (คู่สมรส บุตร บิดามารดา เบี้ยประกัน กองทุน)', purpose: 'คำนวณภาษีเงินได้หัก ณ ที่จ่าย', basis: 'LEGAL', retention: R5, erase: 'FULL' },
+  { table: 'pay_run_employee', columns: ['gross', 'net_pay', 'tax', 'tax_calc'], subject: 'EMPLOYEE', category: 'เงินได้ ภาษี เงินสมทบรายเดือน', purpose: 'จ่ายเงินเดือน ยื่นแบบภาษี/ประกันสังคม', basis: 'LEGAL', retention: R5, erase: 'KEEP' },
   { table: 'sys_tenant', columns: ['name', 'contact_email', 'contact_phone'], subject: 'TENANT', category: 'ชื่อ ข้อมูลติดต่อผู้ใช้บริการ', purpose: 'ให้บริการและเรียกเก็บค่าบริการ', basis: 'CONTRACT', retention: SERVICE, erase: 'PURGE' },
   { table: 'sys_signup', columns: ['business_name', 'contact_name', 'contact_email', 'contact_phone', 'client_ip'], subject: 'TENANT', category: 'ชื่อกิจการ ชื่อ ข้อมูลติดต่อ IP ของผู้สมัครใช้บริการ', purpose: 'พิจารณาเปิดบัญชีและติดต่อกลับ · กันสแปม', basis: 'CONTRACT', retention: 'อนุมัติ: ตามลูกค้าผู้ใช้บริการ · ไม่อนุมัติ: ล้างข้อมูลเมื่อครบ 90 วัน', erase: 'PURGE' },
   { table: 'sys_company_image', columns: ['name', 'data'], subject: 'TENANT', category: 'รูปลายเซ็นผู้มีอำนาจ/ผู้รับเงิน และโลโก้', purpose: 'พิมพ์ในเอกสาร', basis: 'CONTRACT', retention: SERVICE, erase: 'PURGE' },

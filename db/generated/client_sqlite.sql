@@ -1939,6 +1939,295 @@ CREATE TABLE IF NOT EXISTS fa_depreciation (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fa_depreciation_asset_period ON fa_depreciation (asset_id, period_id) WHERE deleted_at IS NULL;
 
+-- pay_item: รายการเงินได้/เงินหักของเงินเดือน — รายการของโปรแกรม (system_code) แก้รหัส/ลบ/เลิกใช้ไม่ได้
+CREATE TABLE IF NOT EXISTS pay_item (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  code TEXT NOT NULL,
+  name_th TEXT NOT NULL,
+  name_en TEXT,
+  kind TEXT NOT NULL CHECK (kind IN ('E','D')),
+  tax_bucket TEXT NOT NULL DEFAULT 'N' CHECK (tax_bucket IN ('R','S','N')),
+  sso_base INTEGER NOT NULL DEFAULT 0,
+  pvd_base INTEGER NOT NULL DEFAULT 0,
+  calc TEXT NOT NULL DEFAULT 'AMOUNT' CHECK (calc IN ('AMOUNT','WAGE','HOURS','DAYS','MINUTES','SYSTEM')),
+  multiplier TEXT,
+  multiplier_daily TEXT,
+  sign INTEGER NOT NULL DEFAULT 1 CHECK (sign IN (1,-1)),
+  gl_role TEXT NOT NULL,
+  account_id TEXT REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED,
+  system_code TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'A' CHECK (status IN ('A','I')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_item_company_code ON pay_item (company_id, code) WHERE deleted_at IS NULL;
+
+-- pay_employee: ทะเบียนพนักงาน (ระบบเงินเดือน)
+CREATE TABLE IF NOT EXISTS pay_employee (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  code TEXT NOT NULL,
+  title TEXT,
+  first_name TEXT NOT NULL,
+  last_name TEXT,
+  first_name_en TEXT,
+  last_name_en TEXT,
+  nickname TEXT,
+  tax_id TEXT,
+  gender TEXT CHECK (gender IN ('M','F')),
+  birth_date TEXT,
+  nationality TEXT,
+  reg_house_no TEXT,
+  reg_moo TEXT,
+  reg_village TEXT,
+  reg_building TEXT,
+  reg_soi TEXT,
+  reg_road TEXT,
+  reg_subdistrict TEXT,
+  reg_district TEXT,
+  reg_province TEXT,
+  reg_postcode TEXT,
+  current_address TEXT,
+  phone TEXT,
+  email TEXT,
+  department_id TEXT REFERENCES md_department(id) DEFERRABLE INITIALLY DEFERRED,
+  branch_id TEXT REFERENCES sys_branch(id) DEFERRABLE INITIALLY DEFERRED,
+  position TEXT,
+  employee_type TEXT,
+  hire_date TEXT NOT NULL,
+  end_date TEXT,
+  end_reason TEXT,
+  wage_type TEXT NOT NULL DEFAULT 'M' CHECK (wage_type IN ('M','D','H')),
+  pay_method TEXT NOT NULL DEFAULT 'B' CHECK (pay_method IN ('B','C')),
+  bank_id TEXT REFERENCES md_bank(id) DEFERRABLE INITIALLY DEFERRED,
+  bank_account_no TEXT,
+  bank_account_name TEXT,
+  tax_bearer TEXT NOT NULL DEFAULT 'W' CHECK (tax_bearer IN ('W','O','F','N')),
+  sso_insured INTEGER NOT NULL DEFAULT 1,
+  sso_hospital TEXT,
+  pvd_member INTEGER NOT NULL DEFAULT 0,
+  pvd_join_date TEXT,
+  pvd_employee_rate TEXT NOT NULL DEFAULT '0',
+  pvd_employer_rate TEXT NOT NULL DEFAULT '0',
+  note TEXT,
+  status TEXT NOT NULL DEFAULT 'A' CHECK (status IN ('A','I')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_employee_company_code ON pay_employee (company_id, code) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_pay_employee_company_tax ON pay_employee (company_id, tax_id);
+
+-- pay_salary: ประวัติค่าจ้างของพนักงาน (อัตราที่มีผลตั้งแต่วันที่)
+CREATE TABLE IF NOT EXISTS pay_salary (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  employee_id TEXT NOT NULL REFERENCES pay_employee(id) DEFERRABLE INITIALLY DEFERRED,
+  effective_from TEXT NOT NULL,
+  wage_type TEXT NOT NULL CHECK (wage_type IN ('M','D','H')),
+  rate TEXT NOT NULL,
+  reason TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_salary_employee_effective_from ON pay_salary (employee_id, effective_from) WHERE deleted_at IS NULL;
+
+-- pay_allowance: ค่าลดหย่อนภาษีของพนักงานรายปี
+CREATE TABLE IF NOT EXISTS pay_allowance (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  employee_id TEXT NOT NULL REFERENCES pay_employee(id) DEFERRABLE INITIALLY DEFERRED,
+  tax_year INTEGER NOT NULL,
+  allowance_values TEXT NOT NULL DEFAULT '{}'::jsonb,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_allowance_employee_tax_year ON pay_allowance (employee_id, tax_year) WHERE deleted_at IS NULL;
+
+-- pay_recurring: รายการประจำของพนักงาน (เงินได้/เงินหักทุกงวด)
+CREATE TABLE IF NOT EXISTS pay_recurring (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  employee_id TEXT NOT NULL REFERENCES pay_employee(id) DEFERRABLE INITIALLY DEFERRED,
+  item_id TEXT NOT NULL REFERENCES pay_item(id) DEFERRABLE INITIALLY DEFERRED,
+  amount TEXT NOT NULL,
+  from_month TEXT NOT NULL,
+  to_month TEXT,
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+
+-- pay_ytd_opening: ยอดสะสมยกมาต้นปีของพนักงาน (เริ่มใช้โปรแกรมกลางปี)
+CREATE TABLE IF NOT EXISTS pay_ytd_opening (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  employee_id TEXT NOT NULL REFERENCES pay_employee(id) DEFERRABLE INITIALLY DEFERRED,
+  tax_year INTEGER NOT NULL,
+  through_month INTEGER NOT NULL CHECK (through_month BETWEEN 1 AND 12),
+  regular TEXT NOT NULL DEFAULT '0',
+  special TEXT NOT NULL DEFAULT '0',
+  tax TEXT NOT NULL DEFAULT '0',
+  special_tax TEXT NOT NULL DEFAULT '0',
+  sso TEXT NOT NULL DEFAULT '0',
+  pvd TEXT NOT NULL DEFAULT '0',
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_ytd_opening_employee_tax_year ON pay_ytd_opening (employee_id, tax_year) WHERE deleted_at IS NULL;
+
+-- pay_law: อัตราภาษีเงินได้/ประกันสังคมที่บริษัทกำหนดแทนค่าตามกฎหมายในโปรแกรม
+CREATE TABLE IF NOT EXISTS pay_law (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  kind TEXT NOT NULL CHECK (kind IN ('TAX','SSO')),
+  effective_from TEXT NOT NULL,
+  rules TEXT NOT NULL,
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_law_company_kind_effective_from ON pay_law (company_id, kind, effective_from) WHERE deleted_at IS NULL;
+
+-- pay_run: รอบเงินเดือน — บันทึก = ออกเลขที่และลงบัญชีตั้งค้างจ่ายทันที · จ่าย = ใบสำคัญจ่าย
+CREATE TABLE IF NOT EXISTS pay_run (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  doc_no TEXT,
+  run_type TEXT NOT NULL DEFAULT 'R' CHECK (run_type IN ('R','B')),
+  branch_id TEXT REFERENCES sys_branch(id) DEFERRABLE INITIALLY DEFERRED,
+  period_from TEXT NOT NULL,
+  period_to TEXT NOT NULL,
+  pay_date TEXT NOT NULL,
+  tax_month TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'D' CHECK (status IN ('D','N','P','C')),
+  journal_id TEXT REFERENCES gl_journal(id) DEFERRABLE INITIALLY DEFERRED,
+  pay_journal_id TEXT REFERENCES gl_journal(id) DEFERRABLE INITIALLY DEFERRED,
+  pay_account_id TEXT REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED,
+  paid_date TEXT,
+  headcount INTEGER NOT NULL DEFAULT 0,
+  total_gross TEXT NOT NULL DEFAULT '0',
+  total_tax TEXT NOT NULL DEFAULT '0',
+  total_sso_ee TEXT NOT NULL DEFAULT '0',
+  total_sso_er TEXT NOT NULL DEFAULT '0',
+  total_pvd_ee TEXT NOT NULL DEFAULT '0',
+  total_pvd_er TEXT NOT NULL DEFAULT '0',
+  total_deductions TEXT NOT NULL DEFAULT '0',
+  total_net TEXT NOT NULL DEFAULT '0',
+  calculated_at TEXT,
+  note TEXT,
+  cancel_reason TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_pay_run_company_tax_month ON pay_run (company_id, tax_month);
+
+-- pay_run_employee: พนักงานในรอบเงินเดือน (ยอดที่คำนวณ)
+CREATE TABLE IF NOT EXISTS pay_run_employee (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  run_id TEXT NOT NULL REFERENCES pay_run(id) DEFERRABLE INITIALLY DEFERRED,
+  employee_id TEXT NOT NULL REFERENCES pay_employee(id) DEFERRABLE INITIALLY DEFERRED,
+  department_id TEXT REFERENCES md_department(id) DEFERRABLE INITIALLY DEFERRED,
+  wage_type TEXT NOT NULL DEFAULT 'M',
+  tax_bearer TEXT NOT NULL DEFAULT 'W',
+  work_days TEXT,
+  work_hours TEXT,
+  salary_manual TEXT,
+  salary_manual_reason TEXT,
+  tax_manual TEXT,
+  regular TEXT NOT NULL DEFAULT '0',
+  special TEXT NOT NULL DEFAULT '0',
+  non_taxable TEXT NOT NULL DEFAULT '0',
+  gross TEXT NOT NULL DEFAULT '0',
+  sso_wage TEXT NOT NULL DEFAULT '0',
+  sso_ee TEXT NOT NULL DEFAULT '0',
+  sso_er TEXT NOT NULL DEFAULT '0',
+  pvd_base TEXT NOT NULL DEFAULT '0',
+  pvd_ee TEXT NOT NULL DEFAULT '0',
+  pvd_er TEXT NOT NULL DEFAULT '0',
+  tax TEXT NOT NULL DEFAULT '0',
+  tax_special TEXT NOT NULL DEFAULT '0',
+  employer_paid_tax TEXT NOT NULL DEFAULT '0',
+  other_deductions TEXT NOT NULL DEFAULT '0',
+  net_pay TEXT NOT NULL DEFAULT '0',
+  tax_calc TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_run_employee_run_employee ON pay_run_employee (run_id, employee_id) WHERE deleted_at IS NULL;
+
+-- pay_run_line: บรรทัดเงินได้/เงินหักของพนักงานในรอบเงินเดือน
+CREATE TABLE IF NOT EXISTS pay_run_line (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  run_id TEXT NOT NULL REFERENCES pay_run(id) DEFERRABLE INITIALLY DEFERRED,
+  run_employee_id TEXT NOT NULL REFERENCES pay_run_employee(id) DEFERRABLE INITIALLY DEFERRED,
+  item_id TEXT NOT NULL REFERENCES pay_item(id) DEFERRABLE INITIALLY DEFERRED,
+  qty TEXT,
+  rate TEXT,
+  multiplier TEXT,
+  amount TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('WAGE','RECUR','MANUAL','IMPORT','SYSTEM')),
+  note TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_pay_run_line_run_employee ON pay_run_line (run_employee_id);
+
 -- sync_conflict: ความขัดแย้งที่ต้องให้คนตัดสิน
 CREATE TABLE IF NOT EXISTS sync_conflict (
   id TEXT PRIMARY KEY,
@@ -3758,6 +4047,236 @@ CREATE TRIGGER IF NOT EXISTS trg_fa_depreciation_ver AFTER UPDATE ON fa_deprecia
 WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
 BEGIN
   UPDATE fa_depreciation SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_item_insert_outbox AFTER INSERT ON pay_item
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_item', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'kind', NEW.kind, 'tax_bucket', NEW.tax_bucket, 'sso_base', NEW.sso_base, 'pvd_base', NEW.pvd_base, 'calc', NEW.calc, 'multiplier', NEW.multiplier, 'multiplier_daily', NEW.multiplier_daily, 'sign', NEW.sign, 'gl_role', NEW.gl_role, 'account_id', NEW.account_id, 'system_code', NEW.system_code, 'sort_order', NEW.sort_order, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_item_update_outbox AFTER UPDATE ON pay_item
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_item', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'kind', NEW.kind, 'tax_bucket', NEW.tax_bucket, 'sso_base', NEW.sso_base, 'pvd_base', NEW.pvd_base, 'calc', NEW.calc, 'multiplier', NEW.multiplier, 'multiplier_daily', NEW.multiplier_daily, 'sign', NEW.sign, 'gl_role', NEW.gl_role, 'account_id', NEW.account_id, 'system_code', NEW.system_code, 'sort_order', NEW.sort_order, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_item_ver AFTER UPDATE ON pay_item
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_item SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_employee_insert_outbox AFTER INSERT ON pay_employee
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_employee', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'title', NEW.title, 'first_name', NEW.first_name, 'last_name', NEW.last_name, 'first_name_en', NEW.first_name_en, 'last_name_en', NEW.last_name_en, 'nickname', NEW.nickname, 'tax_id', NEW.tax_id, 'gender', NEW.gender, 'birth_date', NEW.birth_date, 'nationality', NEW.nationality, 'reg_house_no', NEW.reg_house_no, 'reg_moo', NEW.reg_moo, 'reg_village', NEW.reg_village, 'reg_building', NEW.reg_building, 'reg_soi', NEW.reg_soi, 'reg_road', NEW.reg_road, 'reg_subdistrict', NEW.reg_subdistrict, 'reg_district', NEW.reg_district, 'reg_province', NEW.reg_province, 'reg_postcode', NEW.reg_postcode, 'current_address', NEW.current_address, 'phone', NEW.phone, 'email', NEW.email, 'department_id', NEW.department_id, 'branch_id', NEW.branch_id, 'position', NEW.position, 'employee_type', NEW.employee_type, 'hire_date', NEW.hire_date, 'end_date', NEW.end_date, 'end_reason', NEW.end_reason, 'wage_type', NEW.wage_type, 'pay_method', NEW.pay_method, 'bank_id', NEW.bank_id, 'bank_account_no', NEW.bank_account_no, 'bank_account_name', NEW.bank_account_name, 'tax_bearer', NEW.tax_bearer, 'sso_insured', NEW.sso_insured, 'sso_hospital', NEW.sso_hospital, 'pvd_member', NEW.pvd_member, 'pvd_join_date', NEW.pvd_join_date, 'pvd_employee_rate', NEW.pvd_employee_rate, 'pvd_employer_rate', NEW.pvd_employer_rate, 'note', NEW.note, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_employee_update_outbox AFTER UPDATE ON pay_employee
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_employee', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'title', NEW.title, 'first_name', NEW.first_name, 'last_name', NEW.last_name, 'first_name_en', NEW.first_name_en, 'last_name_en', NEW.last_name_en, 'nickname', NEW.nickname, 'tax_id', NEW.tax_id, 'gender', NEW.gender, 'birth_date', NEW.birth_date, 'nationality', NEW.nationality, 'reg_house_no', NEW.reg_house_no, 'reg_moo', NEW.reg_moo, 'reg_village', NEW.reg_village, 'reg_building', NEW.reg_building, 'reg_soi', NEW.reg_soi, 'reg_road', NEW.reg_road, 'reg_subdistrict', NEW.reg_subdistrict, 'reg_district', NEW.reg_district, 'reg_province', NEW.reg_province, 'reg_postcode', NEW.reg_postcode, 'current_address', NEW.current_address, 'phone', NEW.phone, 'email', NEW.email, 'department_id', NEW.department_id, 'branch_id', NEW.branch_id, 'position', NEW.position, 'employee_type', NEW.employee_type, 'hire_date', NEW.hire_date, 'end_date', NEW.end_date, 'end_reason', NEW.end_reason, 'wage_type', NEW.wage_type, 'pay_method', NEW.pay_method, 'bank_id', NEW.bank_id, 'bank_account_no', NEW.bank_account_no, 'bank_account_name', NEW.bank_account_name, 'tax_bearer', NEW.tax_bearer, 'sso_insured', NEW.sso_insured, 'sso_hospital', NEW.sso_hospital, 'pvd_member', NEW.pvd_member, 'pvd_join_date', NEW.pvd_join_date, 'pvd_employee_rate', NEW.pvd_employee_rate, 'pvd_employer_rate', NEW.pvd_employer_rate, 'note', NEW.note, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_employee_ver AFTER UPDATE ON pay_employee
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_employee SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_salary_insert_outbox AFTER INSERT ON pay_salary
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_salary', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'employee_id', NEW.employee_id, 'effective_from', NEW.effective_from, 'wage_type', NEW.wage_type, 'rate', NEW.rate, 'reason', NEW.reason, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_salary_update_outbox AFTER UPDATE ON pay_salary
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_salary', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'employee_id', NEW.employee_id, 'effective_from', NEW.effective_from, 'wage_type', NEW.wage_type, 'rate', NEW.rate, 'reason', NEW.reason, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_salary_ver AFTER UPDATE ON pay_salary
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_salary SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_allowance_insert_outbox AFTER INSERT ON pay_allowance
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_allowance', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'employee_id', NEW.employee_id, 'tax_year', NEW.tax_year, 'allowance_values', NEW.allowance_values, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_allowance_update_outbox AFTER UPDATE ON pay_allowance
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_allowance', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'employee_id', NEW.employee_id, 'tax_year', NEW.tax_year, 'allowance_values', NEW.allowance_values, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_allowance_ver AFTER UPDATE ON pay_allowance
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_allowance SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_recurring_insert_outbox AFTER INSERT ON pay_recurring
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_recurring', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'employee_id', NEW.employee_id, 'item_id', NEW.item_id, 'amount', NEW.amount, 'from_month', NEW.from_month, 'to_month', NEW.to_month, 'note', NEW.note, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_recurring_update_outbox AFTER UPDATE ON pay_recurring
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_recurring', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'employee_id', NEW.employee_id, 'item_id', NEW.item_id, 'amount', NEW.amount, 'from_month', NEW.from_month, 'to_month', NEW.to_month, 'note', NEW.note, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_recurring_ver AFTER UPDATE ON pay_recurring
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_recurring SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_ytd_opening_insert_outbox AFTER INSERT ON pay_ytd_opening
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_ytd_opening', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'employee_id', NEW.employee_id, 'tax_year', NEW.tax_year, 'through_month', NEW.through_month, 'regular', NEW.regular, 'special', NEW.special, 'tax', NEW.tax, 'special_tax', NEW.special_tax, 'sso', NEW.sso, 'pvd', NEW.pvd, 'note', NEW.note, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_ytd_opening_update_outbox AFTER UPDATE ON pay_ytd_opening
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_ytd_opening', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'employee_id', NEW.employee_id, 'tax_year', NEW.tax_year, 'through_month', NEW.through_month, 'regular', NEW.regular, 'special', NEW.special, 'tax', NEW.tax, 'special_tax', NEW.special_tax, 'sso', NEW.sso, 'pvd', NEW.pvd, 'note', NEW.note, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_ytd_opening_ver AFTER UPDATE ON pay_ytd_opening
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_ytd_opening SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_law_insert_outbox AFTER INSERT ON pay_law
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_law', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'kind', NEW.kind, 'effective_from', NEW.effective_from, 'rules', NEW.rules, 'note', NEW.note, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_law_update_outbox AFTER UPDATE ON pay_law
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_law', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'kind', NEW.kind, 'effective_from', NEW.effective_from, 'rules', NEW.rules, 'note', NEW.note, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_law_ver AFTER UPDATE ON pay_law
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_law SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_run_insert_outbox AFTER INSERT ON pay_run
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_run', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'doc_no', NEW.doc_no, 'run_type', NEW.run_type, 'branch_id', NEW.branch_id, 'period_from', NEW.period_from, 'period_to', NEW.period_to, 'pay_date', NEW.pay_date, 'tax_month', NEW.tax_month, 'status', NEW.status, 'journal_id', NEW.journal_id, 'pay_journal_id', NEW.pay_journal_id, 'pay_account_id', NEW.pay_account_id, 'paid_date', NEW.paid_date, 'headcount', NEW.headcount, 'total_gross', NEW.total_gross, 'total_tax', NEW.total_tax, 'total_sso_ee', NEW.total_sso_ee, 'total_sso_er', NEW.total_sso_er, 'total_pvd_ee', NEW.total_pvd_ee, 'total_pvd_er', NEW.total_pvd_er, 'total_deductions', NEW.total_deductions, 'total_net', NEW.total_net, 'calculated_at', NEW.calculated_at, 'note', NEW.note, 'cancel_reason', NEW.cancel_reason, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_run_update_outbox AFTER UPDATE ON pay_run
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_run', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'doc_no', NEW.doc_no, 'run_type', NEW.run_type, 'branch_id', NEW.branch_id, 'period_from', NEW.period_from, 'period_to', NEW.period_to, 'pay_date', NEW.pay_date, 'tax_month', NEW.tax_month, 'status', NEW.status, 'journal_id', NEW.journal_id, 'pay_journal_id', NEW.pay_journal_id, 'pay_account_id', NEW.pay_account_id, 'paid_date', NEW.paid_date, 'headcount', NEW.headcount, 'total_gross', NEW.total_gross, 'total_tax', NEW.total_tax, 'total_sso_ee', NEW.total_sso_ee, 'total_sso_er', NEW.total_sso_er, 'total_pvd_ee', NEW.total_pvd_ee, 'total_pvd_er', NEW.total_pvd_er, 'total_deductions', NEW.total_deductions, 'total_net', NEW.total_net, 'calculated_at', NEW.calculated_at, 'note', NEW.note, 'cancel_reason', NEW.cancel_reason, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_run_ver AFTER UPDATE ON pay_run
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_run SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_run_employee_insert_outbox AFTER INSERT ON pay_run_employee
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_run_employee', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'run_id', NEW.run_id, 'employee_id', NEW.employee_id, 'department_id', NEW.department_id, 'wage_type', NEW.wage_type, 'tax_bearer', NEW.tax_bearer, 'work_days', NEW.work_days, 'work_hours', NEW.work_hours, 'salary_manual', NEW.salary_manual, 'salary_manual_reason', NEW.salary_manual_reason, 'tax_manual', NEW.tax_manual, 'regular', NEW.regular, 'special', NEW.special, 'non_taxable', NEW.non_taxable, 'gross', NEW.gross, 'sso_wage', NEW.sso_wage, 'sso_ee', NEW.sso_ee, 'sso_er', NEW.sso_er, 'pvd_base', NEW.pvd_base, 'pvd_ee', NEW.pvd_ee, 'pvd_er', NEW.pvd_er, 'tax', NEW.tax, 'tax_special', NEW.tax_special, 'employer_paid_tax', NEW.employer_paid_tax, 'other_deductions', NEW.other_deductions, 'net_pay', NEW.net_pay, 'tax_calc', NEW.tax_calc, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_run_employee_update_outbox AFTER UPDATE ON pay_run_employee
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_run_employee', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'run_id', NEW.run_id, 'employee_id', NEW.employee_id, 'department_id', NEW.department_id, 'wage_type', NEW.wage_type, 'tax_bearer', NEW.tax_bearer, 'work_days', NEW.work_days, 'work_hours', NEW.work_hours, 'salary_manual', NEW.salary_manual, 'salary_manual_reason', NEW.salary_manual_reason, 'tax_manual', NEW.tax_manual, 'regular', NEW.regular, 'special', NEW.special, 'non_taxable', NEW.non_taxable, 'gross', NEW.gross, 'sso_wage', NEW.sso_wage, 'sso_ee', NEW.sso_ee, 'sso_er', NEW.sso_er, 'pvd_base', NEW.pvd_base, 'pvd_ee', NEW.pvd_ee, 'pvd_er', NEW.pvd_er, 'tax', NEW.tax, 'tax_special', NEW.tax_special, 'employer_paid_tax', NEW.employer_paid_tax, 'other_deductions', NEW.other_deductions, 'net_pay', NEW.net_pay, 'tax_calc', NEW.tax_calc, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_run_employee_ver AFTER UPDATE ON pay_run_employee
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_run_employee SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_run_line_insert_outbox AFTER INSERT ON pay_run_line
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_run_line', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'run_id', NEW.run_id, 'run_employee_id', NEW.run_employee_id, 'item_id', NEW.item_id, 'qty', NEW.qty, 'rate', NEW.rate, 'multiplier', NEW.multiplier, 'amount', NEW.amount, 'source', NEW.source, 'note', NEW.note, 'sort_order', NEW.sort_order, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_run_line_update_outbox AFTER UPDATE ON pay_run_line
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_run_line', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'run_id', NEW.run_id, 'run_employee_id', NEW.run_employee_id, 'item_id', NEW.item_id, 'qty', NEW.qty, 'rate', NEW.rate, 'multiplier', NEW.multiplier, 'amount', NEW.amount, 'source', NEW.source, 'note', NEW.note, 'sort_order', NEW.sort_order, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_run_line_ver AFTER UPDATE ON pay_run_line
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_run_line SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sync_conflict_insert_outbox AFTER INSERT ON sync_conflict
 WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'

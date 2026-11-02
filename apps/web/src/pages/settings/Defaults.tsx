@@ -48,7 +48,7 @@ export function DefaultsPage() {
   const own = new Set(q.data?.customized ?? []);
   return (
     <div className="page" data-tone="setup">
-      <PageHead eyebrow="เริ่มระบบ › กำหนดค่าเริ่มต้นต่าง ๆ" title={`ค่าเริ่มต้น — ${sec.title}`} lead={<>คู่มือ Express บทที่ 5 ({sec.screen}) · ค่าที่ยังไม่เคยแก้ใช้ค่าเริ่มต้นตามคู่มือ</>}
+      <PageHead eyebrow="เริ่มระบบ › กำหนดค่าเริ่มต้นต่าง ๆ" title={`ค่าเริ่มต้น — ${sec.title}`} lead={sec.screen.startsWith('S-') ? <>คู่มือ Express บทที่ 5 ({sec.screen}) · ค่าที่ยังไม่เคยแก้ใช้ค่าเริ่มต้นตามคู่มือ</> : <>ระบบใหม่ของ Buddy (ไม่มีใน Express) · ค่าที่ยังไม่เคยแก้ใช้ค่าเริ่มต้นของโปรแกรม</>}
         actions={editing
           ? <><button onClick={cancel}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" disabled={busy} onClick={save}>บันทึก <kbd>F9</kbd></button></>
           : <button className="primary" disabled={!can('edit')} title={can('edit') ? 'แก้ไข (Alt+E)' : 'ไม่มีสิทธิ์แก้ค่าเริ่มต้น (ต้องระดับอนุมัติ 5 ขึ้นไป)'} onClick={() => setEditing(true)}>แก้ไข <kbd>Alt+E</kbd></button>} />

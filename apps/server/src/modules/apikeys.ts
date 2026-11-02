@@ -18,7 +18,7 @@ import { API_RULES } from './permissions.js';
  */
 export const API_KEY_MENU = 'SET.API';
 /** เมนูที่กุญแจ API ใช้ไม่ได้แม้ผู้ใช้จะมีสิทธิ์ */
-export const API_KEY_BLOCKED = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG', 'OT.BACKUP', 'SET.NEWCO', 'SET.AI', 'SET.PDPA', 'SET.DEVICE', API_KEY_MENU]);
+export const API_KEY_BLOCKED = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG', 'OT.BACKUP', 'SET.NEWCO', 'SET.AI', 'SET.PDPA', 'SET.DEVICE', API_KEY_MENU, 'PAY.RUN', 'PAY.EMP', 'PAY.ITEM', 'PAY.LAW', 'PAY.CALC', 'PAY.SET']);
 /** API ชนิด "ของผู้ใช้เอง" ที่กุญแจเรียกได้ */
 export const API_KEY_SELF_OK = new Set(['GET /api/v1/auth/me', 'GET /api/v1/menu']);
 const PER_MINUTE = 600;
@@ -73,7 +73,7 @@ export function checkApiKeyRule(a: AuthContext, method: string, route: string, k
   if (!a.apiKeyId) return;
   if (a.apiKeyReadOnly && method !== 'GET') throw forbidden('กุญแจ API นี้อ่านอย่างเดียว — ขอกุญแจที่บันทึกได้จากผู้ดูแลระบบ');
   if (kind === 'self' && !API_KEY_SELF_OK.has(`${method} ${route}`)) throw forbidden('กุญแจ API ใช้จัดการผู้ใช้ บริษัท หรือการเข้าระบบไม่ได้ — ทำผ่านหน้าจอโปรแกรม');
-  if (menu && API_KEY_BLOCKED.has(menu)) throw forbidden('กุญแจ API ใช้กับระบบความปลอดภัย สำรองข้อมูล หรือการสร้างบริษัทไม่ได้ — ทำผ่านหน้าจอโปรแกรม');
+  if (menu && API_KEY_BLOCKED.has(menu)) throw forbidden('กุญแจ API ใช้กับระบบความปลอดภัย สำรองข้อมูล เงินเดือน หรือการสร้างบริษัทไม่ได้ — ทำผ่านหน้าจอโปรแกรม');
 }
 
 const LABEL = new Map(flattenMenu(MENU).map((m) => [m.code, m.label]));

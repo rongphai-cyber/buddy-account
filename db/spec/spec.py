@@ -41,6 +41,7 @@ MODULES = {
  'gl':  'บัญชีแยกประเภทและการลงบัญชีอัตโนมัติ',
  'tax': 'ภาษีมูลค่าเพิ่มและภาษีหัก ณ ที่จ่าย',
  'fa':  'ทรัพย์สินถาวร',
+ 'pay': 'ระบบเงินเดือน',
  'sync':'การซิงก์ออนไลน์/ออฟไลน์',
 }
 
@@ -1333,6 +1334,189 @@ add(T('fa_depreciation', 'ค่าเสื่อมราคารายงว
   C('amount', 'money', nn=True, th='ค่าเสื่อมราคางวดนี้', src='FAMAS.DEPRn'),
   lk('journal_id', 'gl_journal', 'ใบสำคัญที่ลงค่าเสื่อม'),
 ], uniq=[('asset_id','period_id')]))
+
+# =====================================================================
+# PAYROLL — ระบบเงินเดือน (ใหม่ ไม่มีใน Express · แบบเดียวกับระบบเงินเดือนของ WTS-ERP)
+# =====================================================================
+ST_PAY_RUN = "status IN ('D','N','P','C')"
+add(T('pay_item', 'รายการเงินได้/เงินหักของเงินเดือน — รายการของโปรแกรม (system_code) แก้รหัส/ลบ/เลิกใช้ไม่ได้', 'pay', express='(ใหม่)', cols=[
+  C('code', 'code20', nn=True, th='รหัสรายการ เช่น IN001 ES001'),
+  C('name_th', 'str120', nn=True, th='ชื่อไทย'),
+  C('name_en', 'str120', th='ชื่ออังกฤษ'),
+  C('kind', 'char1', nn=True, th='E=เงินได้ D=เงินหัก', chk="kind IN ('E','D')"),
+  C('tax_bucket', 'char1', nn=True, d="'N'", th='R=เงินได้ประจำ S=เงินได้ไม่ประจำ N=ไม่คิดภาษี', chk="tax_bucket IN ('R','S','N')"),
+  C('sso_base', 'bool', nn=True, d='false', th='นับเป็นค่าจ้างคิดเงินสมทบประกันสังคม'),
+  C('pvd_base', 'bool', nn=True, d='false', th='นับเป็นค่าจ้างคิดกองทุนสำรองเลี้ยงชีพ'),
+  C('calc', 'code10', nn=True, d="'AMOUNT'", th='AMOUNT WAGE HOURS DAYS MINUTES SYSTEM', chk="calc IN ('AMOUNT','WAGE','HOURS','DAYS','MINUTES','SYSTEM')"),
+  C('multiplier', 'rate', th='ตัวคูณ (OT) พนักงานรายเดือน'),
+  C('multiplier_daily', 'rate', th='ตัวคูณ (OT) พนักงานรายวัน/ชั่วโมง'),
+  C('sign', 'smallint', nn=True, d='1', th='1 หรือ -1 (หักขาดงาน/มาสาย ลดค่าจ้าง)', chk='sign IN (1,-1)'),
+  C('gl_role', 'code30', nn=True, th='บทบาทบัญชี (การเชื่อมต่อบัญชี) เมื่อไม่ได้กำหนดบัญชีเอง'),
+  lk('account_id', 'gl_account', 'บัญชีที่ลง (ว่าง = ตามบทบาท)'),
+  C('system_code', 'code20', th='WAGE OT HOLIDAY HOLIDAY_OT ABSENCE LATE TAX SSO PVD — รายการของโปรแกรม'),
+  C('sort_order', 'int', nn=True, d='0', th='ลำดับแสดง'),
+  C('status', 'char1', nn=True, d="'A'", th='A=ใช้งาน I=เลิกใช้', chk=ST_ACTIVE),
+], uniq=[('company_id','code')]))
+
+add(T('pay_employee', 'ทะเบียนพนักงาน (ระบบเงินเดือน)', 'pay', express='(ใหม่)', cols=[
+  C('code', 'code20', nn=True, th='รหัสพนักงาน'),
+  C('title', 'str30', th='คำนำหน้า'),
+  C('first_name', 'str100', nn=True, th='ชื่อ'),
+  C('last_name', 'str100', th='นามสกุล'),
+  C('first_name_en', 'str100', th='ชื่ออังกฤษ'),
+  C('last_name_en', 'str100', th='นามสกุลอังกฤษ'),
+  C('nickname', 'str60', th='ชื่อเล่น'),
+  C('tax_id', 'code20', th='เลขประจำตัวประชาชน 13 หลัก (= เลขผู้เสียภาษี/เลขประกันสังคม) หรือเลขหนังสือเดินทาง'),
+  C('gender', 'char1', th='M=ชาย F=หญิง', chk="gender IN ('M','F')"),
+  C('birth_date', 'date', th='วันเกิด'),
+  C('nationality', 'str60', th='สัญชาติ'),
+  C('reg_house_no', 'str30', th='ที่อยู่ตามทะเบียนบ้าน: เลขที่'),
+  C('reg_moo', 'str10', th='หมู่ที่'),
+  C('reg_village', 'str100', th='หมู่บ้าน'),
+  C('reg_building', 'str100', th='อาคาร'),
+  C('reg_soi', 'str100', th='ซอย'),
+  C('reg_road', 'str100', th='ถนน'),
+  C('reg_subdistrict', 'str100', th='ตำบล/แขวง'),
+  C('reg_district', 'str100', th='อำเภอ/เขต'),
+  C('reg_province', 'str100', th='จังหวัด'),
+  C('reg_postcode', 'code5', th='รหัสไปรษณีย์'),
+  C('current_address', 'text', th='ที่อยู่ปัจจุบัน (ว่าง = ตามทะเบียนบ้าน)'),
+  C('phone', 'str60', th='โทรศัพท์'),
+  C('email', 'str120', th='อีเมล'),
+  lk('department_id', 'md_department', 'แผนก (ลงบัญชีค่าใช้จ่ายตามแผนก)'),
+  lk('branch_id', 'sys_branch', 'สาขาที่สังกัด (ว่าง = สำนักงานใหญ่)'),
+  C('position', 'str100', th='ตำแหน่ง'),
+  C('employee_type', 'str60', th='ประเภทพนักงาน เช่น ประจำ รายวัน ทดลองงาน'),
+  C('hire_date', 'date', nn=True, th='วันเริ่มงาน'),
+  C('end_date', 'date', th='วันที่ออก (วันทำงานวันสุดท้าย)'),
+  C('end_reason', 'str120', th='สาเหตุที่ออก'),
+  C('wage_type', 'char1', nn=True, d="'M'", th='M=รายเดือน D=รายวัน H=รายชั่วโมง (ตามประวัติค่าจ้างล่าสุด)', chk="wage_type IN ('M','D','H')"),
+  C('pay_method', 'char1', nn=True, d="'B'", th='B=โอนเข้าบัญชี C=เงินสด', chk="pay_method IN ('B','C')"),
+  lk('bank_id', 'md_bank', 'ธนาคารที่รับเงินเดือน'),
+  C('bank_account_no', 'code20', th='เลขที่บัญชีธนาคาร'),
+  C('bank_account_name', 'str120', th='ชื่อบัญชี'),
+  C('tax_bearer', 'char1', nn=True, d="'W'", th='W=หัก ณ ที่จ่าย O=บริษัทออกให้ครั้งเดียว F=ออกให้ตลอดไป N=ไม่หักภาษี', chk="tax_bearer IN ('W','O','F','N')"),
+  C('sso_insured', 'bool', nn=True, d='true', th='เป็นผู้ประกันตน ม.33'),
+  C('sso_hospital', 'str120', th='สถานพยาบาลประกันสังคม'),
+  C('pvd_member', 'bool', nn=True, d='false', th='เป็นสมาชิกกองทุนสำรองเลี้ยงชีพ'),
+  C('pvd_join_date', 'date', th='วันที่เข้ากองทุน'),
+  C('pvd_employee_rate', 'rate', nn=True, d='0', th='อัตราเงินสะสม (ลูกจ้าง) %'),
+  C('pvd_employer_rate', 'rate', nn=True, d='0', th='อัตราเงินสมทบ (นายจ้าง) %'),
+  C('note', 'text', th='หมายเหตุ'),
+  C('status', 'char1', nn=True, d="'A'", th='A=ใช้งาน I=เลิกใช้', chk=ST_ACTIVE),
+], uniq=[('company_id','code')], idx=[('company_id','tax_id')]))
+
+add(T('pay_salary', 'ประวัติค่าจ้างของพนักงาน (อัตราที่มีผลตั้งแต่วันที่)', 'pay', express='(ใหม่)', cols=[
+  lk('employee_id', 'pay_employee', 'พนักงาน', nn=True),
+  C('effective_from', 'date', nn=True, th='มีผลตั้งแต่'),
+  C('wage_type', 'char1', nn=True, th='M=รายเดือน D=รายวัน H=รายชั่วโมง', chk="wage_type IN ('M','D','H')"),
+  C('rate', 'money', nn=True, th='อัตราค่าจ้าง (บาทต่อเดือน/วัน/ชั่วโมง)'),
+  C('reason', 'str200', th='เหตุผล เช่น เริ่มงาน ปรับประจำปี'),
+], uniq=[('employee_id','effective_from')]))
+
+add(T('pay_allowance', 'ค่าลดหย่อนภาษีของพนักงานรายปี', 'pay', express='(ใหม่)', cols=[
+  lk('employee_id', 'pay_employee', 'พนักงาน', nn=True),
+  C('tax_year', 'smallint', nn=True, th='ปีภาษี (ค.ศ.)'),
+  C('allowance_values', 'json', nn=True, d="'{}'::jsonb", th='รหัสค่าลดหย่อน → ติ๊ก/จำนวนคน/จำนวนเงิน (รหัสตาม PayrollTaxRules.allowances)'),
+], uniq=[('employee_id','tax_year')]))
+
+add(T('pay_recurring', 'รายการประจำของพนักงาน (เงินได้/เงินหักทุกงวด)', 'pay', express='(ใหม่)', cols=[
+  lk('employee_id', 'pay_employee', 'พนักงาน', nn=True),
+  lk('item_id', 'pay_item', 'รายการ (เฉพาะแบบจำนวนเงิน)', nn=True),
+  C('amount', 'money', nn=True, th='จำนวนเงินต่องวด'),
+  C('from_month', 'date', nn=True, th='ตั้งแต่เดือน (วันที่ 1)'),
+  C('to_month', 'date', th='ถึงเดือน (ว่าง = ไม่มีกำหนด)'),
+  C('note', 'str200', th='หมายเหตุ'),
+]))
+
+add(T('pay_ytd_opening', 'ยอดสะสมยกมาต้นปีของพนักงาน (เริ่มใช้โปรแกรมกลางปี)', 'pay', express='(ใหม่)', cols=[
+  lk('employee_id', 'pay_employee', 'พนักงาน', nn=True),
+  C('tax_year', 'smallint', nn=True, th='ปีภาษี (ค.ศ.)'),
+  C('through_month', 'smallint', nn=True, th='ยอดถึงสิ้นเดือนที่ (1–12)', chk='through_month BETWEEN 1 AND 12'),
+  C('regular', 'money', nn=True, d='0', th='เงินได้ประจำที่จ่ายแล้ว'),
+  C('special', 'money', nn=True, d='0', th='เงินได้ไม่ประจำที่จ่ายแล้ว'),
+  C('tax', 'money', nn=True, d='0', th='ภาษีที่หักแล้วทั้งหมด'),
+  C('special_tax', 'money', nn=True, d='0', th='ภาษีของเงินได้ไม่ประจำ (ส่วนหนึ่งของภาษีที่หักแล้ว)'),
+  C('sso', 'money', nn=True, d='0', th='เงินสมทบประกันสังคม (ลูกจ้าง)'),
+  C('pvd', 'money', nn=True, d='0', th='เงินสะสมกองทุนสำรองเลี้ยงชีพ (ลูกจ้าง)'),
+  C('note', 'str200', th='หมายเหตุ'),
+], uniq=[('employee_id','tax_year')]))
+
+add(T('pay_law', 'อัตราภาษีเงินได้/ประกันสังคมที่บริษัทกำหนดแทนค่าตามกฎหมายในโปรแกรม', 'pay', express='(ใหม่)', cols=[
+  C('kind', 'code10', nn=True, th='TAX=ภาษีรายปี SSO=อัตราประกันสังคม', chk="kind IN ('TAX','SSO')"),
+  C('effective_from', 'date', nn=True, th='TAX = 1 ม.ค. ของปีภาษี · SSO = วันที่มีผล'),
+  C('rules', 'json', nn=True, th='กฎ (PayrollTaxRules หรือ SsoRate)'),
+  C('note', 'str200', th='หมายเหตุ เช่น ประกาศที่อ้างอิง'),
+], uniq=[('company_id','kind','effective_from')]))
+
+add(T('pay_run', 'รอบเงินเดือน — บันทึก = ออกเลขที่และลงบัญชีตั้งค้างจ่ายทันที · จ่าย = ใบสำคัญจ่าย', 'pay', express='(ใหม่)', cols=[
+  C('doc_no', 'code30', th='เลขที่ (PYปปดดนนนน — ออกตอนบันทึกครั้งแรก)'),
+  C('run_type', 'char1', nn=True, d="'R'", th='R=รอบปกติ B=รอบเพิ่มเติม/โบนัส', chk="run_type IN ('R','B')"),
+  lk('branch_id', 'sys_branch', 'สาขา (ว่าง = สำนักงานใหญ่) — พนักงานของสาขานี้'),
+  C('period_from', 'date', nn=True, th='งวดตั้งแต่'),
+  C('period_to', 'date', nn=True, th='งวดถึง'),
+  C('pay_date', 'date', nn=True, th='วันที่จ่าย (= เดือนภาษี ภ.ง.ด.1 / ประกันสังคม)'),
+  C('tax_month', 'date', nn=True, th='เดือนภาษี (วันที่ 1 ของเดือนที่จ่าย)'),
+  C('status', 'char1', nn=True, d="'D'", th='D=ร่าง N=บันทึกแล้ว (ลงบัญชี) P=จ่ายแล้ว C=ยกเลิก', chk=ST_PAY_RUN),
+  lk('journal_id', 'gl_journal', 'ใบสำคัญตั้งค้างจ่าย'),
+  lk('pay_journal_id', 'gl_journal', 'ใบสำคัญจ่ายเงินเดือน'),
+  lk('pay_account_id', 'gl_account', 'บัญชีที่จ่ายเงิน (เงินสด/เงินฝาก)'),
+  C('paid_date', 'date', th='วันที่จ่ายจริง'),
+  C('headcount', 'int', nn=True, d='0', th='จำนวนพนักงาน'),
+  C('total_gross', 'money', nn=True, d='0', th='รวมเงินได้'),
+  C('total_tax', 'money', nn=True, d='0', th='รวมภาษี (รวมที่บริษัทออกให้)'),
+  C('total_sso_ee', 'money', nn=True, d='0', th='ประกันสังคมลูกจ้าง'),
+  C('total_sso_er', 'money', nn=True, d='0', th='ประกันสังคมนายจ้าง'),
+  C('total_pvd_ee', 'money', nn=True, d='0', th='กองทุนสำรองฯ ลูกจ้าง'),
+  C('total_pvd_er', 'money', nn=True, d='0', th='กองทุนสำรองฯ นายจ้าง'),
+  C('total_deductions', 'money', nn=True, d='0', th='รวมเงินหักอื่น'),
+  C('total_net', 'money', nn=True, d='0', th='รวมจ่ายสุทธิ'),
+  C('calculated_at', 'ts', th='เวลาคำนวณล่าสุด'),
+  C('note', 'str200', th='หมายเหตุ'),
+  C('cancel_reason', 'str200', th='เหตุผลที่ยกเลิก'),
+], idx=[('company_id','tax_month')]))
+
+add(T('pay_run_employee', 'พนักงานในรอบเงินเดือน (ยอดที่คำนวณ)', 'pay', express='(ใหม่)', cols=[
+  lk('run_id', 'pay_run', 'รอบเงินเดือน', nn=True),
+  lk('employee_id', 'pay_employee', 'พนักงาน', nn=True),
+  lk('department_id', 'md_department', 'แผนก ณ วันคำนวณ'),
+  C('wage_type', 'char1', nn=True, d="'M'", th='ประเภทค่าจ้าง ณ วันคำนวณ'),
+  C('tax_bearer', 'char1', nn=True, d="'W'", th='ผู้รับภาระภาษี ณ วันคำนวณ'),
+  C('work_days', 'qty', th='จำนวนวันทำงาน (รายวัน)'),
+  C('work_hours', 'qty', th='จำนวนชั่วโมงทำงาน (รายชั่วโมง)'),
+  C('salary_manual', 'money', th='เงินเดือนที่ป้อนเอง (ว่าง = ตามประวัติค่าจ้าง)'),
+  C('salary_manual_reason', 'str200', th='เหตุผลที่ป้อนเงินเดือนเอง'),
+  C('tax_manual', 'money', th='ภาษีที่ป้อนเอง (ว่าง = คำนวณ)'),
+  C('regular', 'money', nn=True, d='0', th='เงินได้ประจำ'),
+  C('special', 'money', nn=True, d='0', th='เงินได้ไม่ประจำ'),
+  C('non_taxable', 'money', nn=True, d='0', th='เงินที่ไม่ต้องเสียภาษี'),
+  C('gross', 'money', nn=True, d='0', th='รวมเงินได้'),
+  C('sso_wage', 'money', nn=True, d='0', th='ค่าจ้างที่คิดประกันสังคม'),
+  C('sso_ee', 'money', nn=True, d='0', th='ประกันสังคมลูกจ้าง'),
+  C('sso_er', 'money', nn=True, d='0', th='ประกันสังคมนายจ้าง'),
+  C('pvd_base', 'money', nn=True, d='0', th='ค่าจ้างที่คิดกองทุนสำรองฯ'),
+  C('pvd_ee', 'money', nn=True, d='0', th='กองทุนสำรองฯ ลูกจ้าง'),
+  C('pvd_er', 'money', nn=True, d='0', th='กองทุนสำรองฯ นายจ้าง'),
+  C('tax', 'money', nn=True, d='0', th='ภาษีของรอบนี้ (รวมที่บริษัทออกให้)'),
+  C('tax_special', 'money', nn=True, d='0', th='ภาษีส่วนของเงินได้ไม่ประจำ'),
+  C('employer_paid_tax', 'money', nn=True, d='0', th='ภาษีที่บริษัทออกให้'),
+  C('other_deductions', 'money', nn=True, d='0', th='เงินหักอื่น'),
+  C('net_pay', 'money', nn=True, d='0', th='จ่ายสุทธิ'),
+  C('tax_calc', 'json', th='ที่มาของภาษี (ภาษีคำนวณอย่างไร)'),
+], uniq=[('run_id','employee_id')]))
+
+add(T('pay_run_line', 'บรรทัดเงินได้/เงินหักของพนักงานในรอบเงินเดือน', 'pay', express='(ใหม่)', cols=[
+  lk('run_id', 'pay_run', 'รอบเงินเดือน', nn=True),
+  lk('run_employee_id', 'pay_run_employee', 'พนักงานในรอบ', nn=True),
+  lk('item_id', 'pay_item', 'รายการ', nn=True),
+  C('qty', 'qty', th='จำนวน (ชั่วโมง/วัน/นาที)'),
+  C('rate', 'qty', th='อัตราต่อหน่วย'),
+  C('multiplier', 'rate', th='ตัวคูณ'),
+  C('amount', 'money', nn=True, th='จำนวนเงิน (บวกเสมอ — ทิศตามรายการ)'),
+  C('source', 'code10', nn=True, th='WAGE RECUR MANUAL IMPORT SYSTEM', chk="source IN ('WAGE','RECUR','MANUAL','IMPORT','SYSTEM')"),
+  C('note', 'str200', th='ที่มา เช่น 16 วัน × 30000 ÷ 30'),
+  C('sort_order', 'int', nn=True, d='0', th='ลำดับ'),
+], idx=[('run_employee_id',)]))
 
 # =====================================================================
 # SYNC infrastructure

@@ -44,6 +44,9 @@ import { BankAccountsPage, PaymentMethodsPage } from './pages/finance/Banking';
 import { DocTypesPage, GlLinkPage } from './pages/settings/DocTypes';
 import { PrintFormsPage } from './pages/settings/PrintForms';
 import { AssetAccountGroupsPage, AssetFormPage, AssetsPage, DepreciationPage } from './pages/fa/Assets';
+import { EmployeeFormPage, EmployeesPage } from './pages/payroll/Employees';
+import { RunPage, RunsPage } from './pages/payroll/Runs';
+import { PayItemsPage, PayLawPage, TaxCalculatorPage } from './pages/payroll/PaySetup';
 import { YearEndPage } from './pages/gl/YearEnd';
 import { BackupPage } from './pages/settings/Backup';
 import { ApiKeysPage } from './pages/settings/ApiKeys';
@@ -236,6 +239,13 @@ function Shell() {
           <Route path="/settings/doc-types" element={<DocTypesPage />} />
           <Route path="/settings/print-forms" element={<PrintFormsPage />} />
           <Route path="/settings/asset-account-groups" element={<AssetAccountGroupsPage />} />
+          <Route path="/pay/employees" element={<EmployeesPage />} />
+          <Route path="/pay/employees/:id" element={<EmployeeFormPage />} />
+          <Route path="/pay/runs" element={<RunsPage />} />
+          <Route path="/pay/runs/:id" element={<RunPage />} />
+          <Route path="/pay/items" element={<PayItemsPage />} />
+          <Route path="/pay/law" element={<PayLawPage />} />
+          <Route path="/pay/tax-calculator" element={<TaxCalculatorPage />} />
           <Route path="/fa/assets" element={<AssetsPage />} />
           <Route path="/fa/assets/:id" element={<AssetFormPage />} />
           <Route path="/fa/depreciation" element={<DepreciationPage />} />

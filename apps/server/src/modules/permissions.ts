@@ -30,10 +30,13 @@ const LABEL = new Map(FLAT.map((m) => [m.code, m.label]));
 const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.FAG', 'SET.PAYM', 'SET.PRD', 'SET.TBL', 'SET.DEPT', 'SET.BRANCH', 'SET.DOCNO', 'SET.LINK', 'SET.NEWCO', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'GL.BOOK', 'GL.FS']);
 /** ระบบความปลอดภัยและแก้ไขแบบฟอร์ม: ระดับ 9 เท่านั้น */
 const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'SET.API', 'SET.AI', 'SET.PDPA', 'SET.DEVICE', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG']);
+/** ระบบเงินเดือน (ข้อมูลลับ): ระดับ 5 ขึ้นไปทุกการทำงานรวมการอ่าน · ตั้งค่ารายการ/อัตรา = เมนูกำหนดค่า */
+export const PAYROLL = new Set(['PAY', 'PAY.RUN', 'PAY.EMP', 'PAY.ITEM', 'PAY.LAW', 'PAY.CALC', 'PAY.SET']);
 
 export function baseAllowed(level: number, menu: string, action: Action) {
   if (level >= 9) return true;
   if (SECURITY.has(menu)) return false;
+  if (PAYROLL.has(menu)) return level >= 5;
   const write = action !== 'read' && action !== 'print';
   if (CONFIG.has(menu) && write) return level >= 5;
   if (action === 'cancel' || action === 'delete' || action === 'approve') return level >= 5;
@@ -284,6 +287,22 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/fa/assets': M('FA.ASSET', 'read'), 'GET /api/v1/fa/assets/:id': M('FA.ASSET', 'read'), 'POST /api/v1/fa/assets': M('FA.ASSET', 'add'), 'PUT /api/v1/fa/assets/:id': M('FA.ASSET', 'edit'),
   'POST /api/v1/fa/assets/:id/recode': M('FA.ASSET', 'edit'), 'DELETE /api/v1/fa/assets/:id': M('FA.ASSET', 'delete'),
   'POST /api/v1/fa/assets/:id/sell': M('FA.ASSET', 'edit'), 'POST /api/v1/fa/assets/:id/unsell': M('FA.ASSET', 'cancel'),
+  // ระบบเงินเดือน (ข้อมูลลับ — ระดับ 5 ขึ้นไป ดู PAYROLL)
+  'GET /api/v1/pay/law': M('PAY.LAW', 'read'), 'PUT /api/v1/pay/law/tax/:year': M('PAY.LAW', 'edit'), 'DELETE /api/v1/pay/law/tax/:year': M('PAY.LAW', 'delete'),
+  'PUT /api/v1/pay/law/sso': M('PAY.LAW', 'edit'), 'DELETE /api/v1/pay/law/sso/:date': M('PAY.LAW', 'delete'),
+  'GET /api/v1/pay/items': LOOKUP, 'POST /api/v1/pay/items': M('PAY.ITEM', 'add'), 'PUT /api/v1/pay/items/:id': M('PAY.ITEM', 'edit'), 'DELETE /api/v1/pay/items/:id': M('PAY.ITEM', 'delete'),
+  'GET /api/v1/pay/employees': M('PAY.EMP', 'read'), 'GET /api/v1/pay/employees/:id': M('PAY.EMP', 'read'), 'POST /api/v1/pay/employees': M('PAY.EMP', 'add'),
+  'PUT /api/v1/pay/employees/:id': M('PAY.EMP', 'edit'), 'DELETE /api/v1/pay/employees/:id': M('PAY.EMP', 'delete'), 'POST /api/v1/pay/employees/:id/reveal': M('PAY.EMP', 'edit'),
+  'POST /api/v1/pay/employees/:id/salary': M('PAY.EMP', 'edit'), 'DELETE /api/v1/pay/employees/:id/salary/:sid': M('PAY.EMP', 'edit'),
+  'GET /api/v1/pay/employees/:id/allowances/:year': M('PAY.EMP', 'read'), 'PUT /api/v1/pay/employees/:id/allowances/:year': M('PAY.EMP', 'edit'),
+  'PUT /api/v1/pay/employees/:id/ytd/:year': M('PAY.EMP', 'edit'), 'DELETE /api/v1/pay/employees/:id/ytd/:year': M('PAY.EMP', 'edit'),
+  'POST /api/v1/pay/employees/:id/recurring': M('PAY.EMP', 'edit'), 'PUT /api/v1/pay/employees/:id/recurring/:rid': M('PAY.EMP', 'edit'), 'DELETE /api/v1/pay/employees/:id/recurring/:rid': M('PAY.EMP', 'edit'),
+  'GET /api/v1/pay/runs': M('PAY.RUN', 'read'), 'GET /api/v1/pay/runs/:id': M('PAY.RUN', 'read'), 'POST /api/v1/pay/runs': M('PAY.RUN', 'add'), 'PUT /api/v1/pay/runs/:id': M('PAY.RUN', 'edit'),
+  'POST /api/v1/pay/runs/:id/calculate': M('PAY.RUN', 'edit'), 'POST /api/v1/pay/runs/:id/employees': M('PAY.RUN', 'edit'), 'DELETE /api/v1/pay/runs/:id/employees/:reId': M('PAY.RUN', 'edit'),
+  'PUT /api/v1/pay/runs/:id/employees/:reId': M('PAY.RUN', 'edit'), 'GET /api/v1/pay/runs/:id/posting-preview': M('PAY.RUN', 'read'), 'POST /api/v1/pay/runs/:id/post': M('PAY.RUN', 'edit'),
+  'POST /api/v1/pay/runs/:id/reopen': M('PAY.RUN', 'edit'), 'POST /api/v1/pay/runs/:id/pay': M('PAY.RUN', 'edit'), 'POST /api/v1/pay/runs/:id/unpay': M('PAY.RUN', 'cancel'),
+  'POST /api/v1/pay/runs/:id/cancel': M('PAY.RUN', 'cancel'), 'DELETE /api/v1/pay/runs/:id': M('PAY.RUN', 'delete'),
+  'POST /api/v1/pay/default-accounts': M('SET.LINK', 'edit'),
   'GET /api/v1/backup/company': M('OT.BACKUP', 'add'), 'POST /api/v1/backup/verify': M('OT.BACKUP', 'read'), 'POST /api/v1/backup/restore': M('OT.BACKUP', 'edit'),
   'GET /api/v1/backup/users': M('SET.SEC', 'read'), 'POST /api/v1/backup/users/restore': M('SET.SEC', 'edit'),
   'GET /api/v1/gl/year-end': M('OT.YE', 'read'), 'POST /api/v1/gl/year-end/inventory-jv': M('OT.YE', 'add'), 'POST /api/v1/gl/year-end/close': M('OT.YE', 'edit'), 'POST /api/v1/gl/year-end/reopen': M('OT.YE', 'cancel'),

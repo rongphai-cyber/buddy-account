@@ -131,6 +131,15 @@ export const SETTING_SECTIONS: SettingSection[] = [
     S('fa.depreciate_monthly', '3.', 'คิดค่าเสื่อม', sel(['true', 'รายเดือน'], ['false', 'รายปี']), 'true', 'FADPRMONLY:ynstr'),
     S('fa.depreciation_method', '', 'วิธีคิดค่าเสื่อมเริ่มต้น', { t: 'text', max: 2 }, '1', 'DPRMETHOD:str', { hint: 'ฟิลด์ใน ISINFO ที่ไม่อยู่บนหน้าจอบทที่ 5' }),
   ] },
+  { code: 'PAY', screen: 'ระบบเงินเดือน', title: 'ระบบเงินเดือน', defs: [
+    S('pay.sso_employer_no', '1.', 'เลขที่บัญชีนายจ้าง (ประกันสังคม)', { t: 'text', max: 10 }, '', undefined, { hint: '10 หลัก ใช้ในแบบ สปส.1-10 และแฟ้มยื่นประกันสังคม' }),
+    S('pay.sso_branch_no', '2.', 'ลำดับที่สาขา (ประกันสังคม)', { t: 'text', max: 6 }, '000000', undefined, { hint: '6 หลัก สำนักงานใหญ่ = 000000' }),
+    S('pay.use_pvd', '3.', 'มีกองทุนสำรองเลี้ยงชีพ', bool, false, undefined, { hint: 'ติ๊กแล้วกำหนดอัตราสะสม/สมทบรายคนที่ทะเบียนพนักงาน' }),
+    S('pay.pvd_name', '4.', 'ชื่อกองทุนสำรองเลี้ยงชีพ', { t: 'text', max: 120 }, ''),
+    S('pay.hourly_days', '5.', 'จำนวนวันต่อเดือน (หาค่าจ้างรายวัน/ชั่วโมงของพนักงานรายเดือน)', { t: 'int', min: 1, max: 31 }, 30, undefined, { hint: 'ค่าจ้างต่อชั่วโมง = เงินเดือน ÷ วัน ÷ ชั่วโมง — ใช้คิด OT ขาดงาน มาสาย' }),
+    S('pay.hourly_hours', '6.', 'จำนวนชั่วโมงทำงานต่อวัน', { t: 'int', min: 1, max: 24 }, 8),
+    S('pay.proration_days', '7.', 'หารเงินเดือนเมื่อทำงานไม่เต็มเดือน (วัน)', { t: 'int', min: 28, max: 31 }, 30, undefined, { hint: 'เข้า/ออก/ปรับเงินเดือนกลางเดือน: เงินเดือน × วันที่ทำงาน ÷ ค่านี้' }),
+  ] },
 ];
 
 export const SETTING_DEFS: SettingDef[] = SETTING_SECTIONS.flatMap((s) => s.defs);

@@ -46,6 +46,8 @@ PHASES = {
     'P6': 'ทรัพย์สิน สิ้นปี สำรองข้อมูล ตรวจสอบ สิทธิ์ขั้นสูง',
     'P7': 'ธุรกิจเฉพาะ การพิมพ์ ติดตั้งในเครื่อง ออฟไลน์ API AI',
 }
+# หน้าจอใหม่ที่ไม่มีในคู่มือ Express (key = "new:รหัส" ใน coverage_status.json ต้องมี name + phase)
+NEW_PHASES = {'P8': 'ระบบเงินเดือน (ใหม่ — แบบเดียวกับ WTS-ERP)'}
 STATUS_TH = {'todo': 'รอทำ', 'wip': 'กำลังทำ', 'done': 'เสร็จ', 'replaced': 'ทำแบบใหม่แทน', 'na': 'ไม่ต้องทำบนเว็บ'}
 
 def main():
@@ -87,6 +89,15 @@ def main():
             where = ' · '.join(x for x in [r['where'], r['note']] if x)
             menu = r['menu'].replace('|', '/')[:70]
             L.append(f"| `{r['key']}` | {r['name']} | {menu} | {r['page'] or ''} | {r['nf']} | {r['module']} | {STATUS_TH.get(r['status'], r['status'])} | {where} |")
+        L.append('')
+    extra = sorted(((k, v) for k, v in status.items() if k.startswith('new:')), key=lambda kv: kv[0])
+    for ph, th in NEW_PHASES.items():
+        rs = [(k, v) for k, v in extra if v.get('phase') == ph]
+        if not rs: continue
+        L += [f'## {ph} — {th}', '', '> หน้าจอที่ไม่มีในคู่มือ Express (ไม่นับในตารางสรุปด้านบน)', '', '| หน้าจอ | ชื่อ | สถานะ | อยู่ที่ / หมายเหตุ |', '|---|---|---|---|']
+        for k, v in rs:
+            where = ' · '.join(x for x in [v.get('where', ''), v.get('note', '')] if x)
+            L.append(f"| `{k}` | {v.get('name', '')} | {STATUS_TH.get(v.get('status', 'todo'), v.get('status'))} | {where} |")
         L.append('')
     open(os.path.join(DOCS, '04_ความครอบคลุมหน้าจอ.md'), 'w', encoding='utf-8', newline='').write('\n'.join(L) + '\n')
     print('screens', len(rows), dict(c))

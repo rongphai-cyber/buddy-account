@@ -4,7 +4,7 @@ import { SETTING_DEFS, SETTING_BY_KEY, SETTING_SECTIONS, normalizeSetting, valid
 
 describe('settings catalogue (คู่มือบทที่ 5)', () => {
   it('covers the seven single-record screens with unique keys', () => {
-    expect(SETTING_SECTIONS.map((s) => s.screen)).toEqual(['S-SET-02', 'S-SET-03', 'S-SET-05', 'S-SET-07', 'S-SET-09', 'S-SET-10', 'S-SET-11']);
+    expect(SETTING_SECTIONS.map((s) => s.screen)).toEqual(['S-SET-02', 'S-SET-03', 'S-SET-05', 'S-SET-07', 'S-SET-09', 'S-SET-10', 'S-SET-11', 'ระบบเงินเดือน']);
     expect(new Set(SETTING_DEFS.map((d) => d.key)).size).toBe(SETTING_DEFS.length);
     // ค่าเริ่มต้นของทุกข้อต้องผ่านการตรวจของตัวเอง
     for (const d of SETTING_DEFS) expect([d.key, validateSetting(d, normalizeSetting(d, undefined))]).toEqual([d.key, null]);

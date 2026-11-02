@@ -45,6 +45,22 @@ export const GL_ROLES: Array<{ role: string; section: string; label: string; hin
   { role: 'OTHER_EXPENSE', section: 'ค่าใช้จ่าย', label: 'ค่าใช้จ่ายอื่น ๆ' },
   { role: 'INPUT_VAT_NONCLAIM', section: 'ค่าใช้จ่าย', label: 'ภาษีซื้อไม่ขอคืน' },
   { role: 'INPUT_VAT_UNCLAIMABLE', section: 'ค่าใช้จ่าย', label: 'ภาษีซื้อขอคืนไม่ได้' },
+  // ระบบเงินเดือน (รายการเงินได้/เงินหักกำหนดบัญชีเองแทนได้ที่ เงินเดือน › รายการเงินได้/เงินหัก)
+  { role: 'PAY_SALARY', section: 'เงินเดือน', label: 'เงินเดือน/ค่าจ้าง' },
+  { role: 'PAY_OT', section: 'เงินเดือน', label: 'ค่าล่วงเวลา' },
+  { role: 'PAY_ALLOWANCE', section: 'เงินเดือน', label: 'ค่าตำแหน่ง/เบี้ยเลี้ยง' },
+  { role: 'PAY_BONUS', section: 'เงินเดือน', label: 'โบนัส' },
+  { role: 'PAY_COMMISSION', section: 'เงินเดือน', label: 'ค่านายหน้า/คอมมิชชั่น' },
+  { role: 'PAY_BENEFIT', section: 'เงินเดือน', label: 'สวัสดิการ/เงินได้อื่นของพนักงาน' },
+  { role: 'PAY_SSO_EXPENSE', section: 'เงินเดือน', label: 'เงินสมทบประกันสังคม (ส่วนนายจ้าง)' },
+  { role: 'PAY_PVD_EXPENSE', section: 'เงินเดือน', label: 'เงินสมทบกองทุนสำรองเลี้ยงชีพ (ส่วนนายจ้าง)' },
+  { role: 'PAY_TAX_BORNE', section: 'เงินเดือน', label: 'ภาษีเงินได้ที่บริษัทออกแทนพนักงาน' },
+  { role: 'PAY_ACCRUED', section: 'เงินเดือน', label: 'เงินเดือนค้างจ่าย' },
+  { role: 'PAY_WHT1_PAYABLE', section: 'เงินเดือน', label: 'ภาษีหัก ณ ที่จ่ายค้างจ่าย ภ.ง.ด.1' },
+  { role: 'PAY_SSO_PAYABLE', section: 'เงินเดือน', label: 'เงินประกันสังคมรอนำส่ง' },
+  { role: 'PAY_PVD_PAYABLE', section: 'เงินเดือน', label: 'กองทุนสำรองเลี้ยงชีพรอนำส่ง' },
+  { role: 'PAY_DEDUCTION_PAYABLE', section: 'เงินเดือน', label: 'เงินหักพนักงานรอนำส่ง (กยศ. สหกรณ์ ฯลฯ)' },
+  { role: 'PAY_EMPLOYEE_ADVANCE', section: 'เงินเดือน', label: 'เงินทดรองจ่าย/เงินเบิกล่วงหน้าพนักงาน' },
 ];
 
 /** ประเภทรายการ → สมุดรายวัน (เริ่มระบบ 5.1) · main = แสดงบนหน้าจอ Express, ที่เหลือใช้เมื่อประเภทเอกสารไม่ได้กำหนดสมุด */
@@ -56,6 +72,8 @@ export const JOURNAL_ROUTES: Array<{ kind: string; label: string; main?: boolean
   { kind: 'BAD_DEBT', label: 'ตัดยอดเช็ครับเป็นหนี้สูญ', main: true },
   { kind: 'PETTY_CASH_REIMBURSE', label: 'เบิกชดเชยเงินสดย่อย', main: true },
   { kind: 'DEPRECIATION', label: 'คิดค่าเสื่อมราคา', main: true },
+  { kind: 'PAYROLL', label: 'บันทึกเงินเดือน (ตั้งค้างจ่าย)', main: true },
+  { kind: 'PAYROLL_PAY', label: 'จ่ายเงินเดือน', main: true },
   { kind: 'CASH_SALE', label: 'ขายเงินสด' }, { kind: 'CREDIT_SALE', label: 'ขายเงินเชื่อ' }, { kind: 'SALES_RETURN', label: 'ลดหนี้/รับคืน' },
   { kind: 'AR_DEBIT_NOTE', label: 'เพิ่มหนี้ (ลูกหนี้)' }, { kind: 'AR_DEPOSIT', label: 'รับเงินมัดจำ' }, { kind: 'AR_RECEIPT', label: 'รับชำระหนี้' },
   { kind: 'OTHER_INCOME', label: 'บันทึกรายได้อื่น ๆ' }, { kind: 'CASH_PURCHASE', label: 'ซื้อเงินสด' }, { kind: 'CREDIT_PURCHASE', label: 'ซื้อเงินเชื่อ' },

@@ -3828,6 +3828,514 @@ export interface FaDepreciationTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** รายการเงินได้/เงินหักของเงินเดือน — รายการของโปรแกรม (system_code) แก้รหัส/ลบ/เลิกใช้ไม่ได้ */
+export interface PayItemTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** รหัสรายการ เช่น IN001 ES001 */
+  code: string;
+  /** ชื่อไทย */
+  name_th: string;
+  /** ชื่ออังกฤษ */
+  name_en: Gen<string | null>;
+  /** E=เงินได้ D=เงินหัก */
+  kind: string;
+  /** R=เงินได้ประจำ S=เงินได้ไม่ประจำ N=ไม่คิดภาษี */
+  tax_bucket: Gen<string>;
+  /** นับเป็นค่าจ้างคิดเงินสมทบประกันสังคม */
+  sso_base: Gen<boolean>;
+  /** นับเป็นค่าจ้างคิดกองทุนสำรองเลี้ยงชีพ */
+  pvd_base: Gen<boolean>;
+  /** AMOUNT WAGE HOURS DAYS MINUTES SYSTEM */
+  calc: Gen<string>;
+  /** ตัวคูณ (OT) พนักงานรายเดือน */
+  multiplier: Gen<string | null>;
+  /** ตัวคูณ (OT) พนักงานรายวัน/ชั่วโมง */
+  multiplier_daily: Gen<string | null>;
+  /** 1 หรือ -1 (หักขาดงาน/มาสาย ลดค่าจ้าง) */
+  sign: Gen<number>;
+  /** บทบาทบัญชี (การเชื่อมต่อบัญชี) เมื่อไม่ได้กำหนดบัญชีเอง */
+  gl_role: string;
+  /** บัญชีที่ลง (ว่าง = ตามบทบาท) */
+  account_id: Gen<string | null>;
+  /** WAGE OT HOLIDAY HOLIDAY_OT ABSENCE LATE TAX SSO PVD — รายการของโปรแกรม */
+  system_code: Gen<string | null>;
+  /** ลำดับแสดง */
+  sort_order: Gen<number>;
+  /** A=ใช้งาน I=เลิกใช้ */
+  status: Gen<string>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** ทะเบียนพนักงาน (ระบบเงินเดือน) */
+export interface PayEmployeeTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** รหัสพนักงาน */
+  code: string;
+  /** คำนำหน้า */
+  title: Gen<string | null>;
+  /** ชื่อ */
+  first_name: string;
+  /** นามสกุล */
+  last_name: Gen<string | null>;
+  /** ชื่ออังกฤษ */
+  first_name_en: Gen<string | null>;
+  /** นามสกุลอังกฤษ */
+  last_name_en: Gen<string | null>;
+  /** ชื่อเล่น */
+  nickname: Gen<string | null>;
+  /** เลขประจำตัวประชาชน 13 หลัก (= เลขผู้เสียภาษี/เลขประกันสังคม) หรือเลขหนังสือเดินทาง */
+  tax_id: Gen<string | null>;
+  /** M=ชาย F=หญิง */
+  gender: Gen<string | null>;
+  /** วันเกิด */
+  birth_date: Gen<string | null>;
+  /** สัญชาติ */
+  nationality: Gen<string | null>;
+  /** ที่อยู่ตามทะเบียนบ้าน: เลขที่ */
+  reg_house_no: Gen<string | null>;
+  /** หมู่ที่ */
+  reg_moo: Gen<string | null>;
+  /** หมู่บ้าน */
+  reg_village: Gen<string | null>;
+  /** อาคาร */
+  reg_building: Gen<string | null>;
+  /** ซอย */
+  reg_soi: Gen<string | null>;
+  /** ถนน */
+  reg_road: Gen<string | null>;
+  /** ตำบล/แขวง */
+  reg_subdistrict: Gen<string | null>;
+  /** อำเภอ/เขต */
+  reg_district: Gen<string | null>;
+  /** จังหวัด */
+  reg_province: Gen<string | null>;
+  /** รหัสไปรษณีย์ */
+  reg_postcode: Gen<string | null>;
+  /** ที่อยู่ปัจจุบัน (ว่าง = ตามทะเบียนบ้าน) */
+  current_address: Gen<string | null>;
+  /** โทรศัพท์ */
+  phone: Gen<string | null>;
+  /** อีเมล */
+  email: Gen<string | null>;
+  /** แผนก (ลงบัญชีค่าใช้จ่ายตามแผนก) */
+  department_id: Gen<string | null>;
+  /** สาขาที่สังกัด (ว่าง = สำนักงานใหญ่) */
+  branch_id: Gen<string | null>;
+  /** ตำแหน่ง */
+  position: Gen<string | null>;
+  /** ประเภทพนักงาน เช่น ประจำ รายวัน ทดลองงาน */
+  employee_type: Gen<string | null>;
+  /** วันเริ่มงาน */
+  hire_date: string;
+  /** วันที่ออก (วันทำงานวันสุดท้าย) */
+  end_date: Gen<string | null>;
+  /** สาเหตุที่ออก */
+  end_reason: Gen<string | null>;
+  /** M=รายเดือน D=รายวัน H=รายชั่วโมง (ตามประวัติค่าจ้างล่าสุด) */
+  wage_type: Gen<string>;
+  /** B=โอนเข้าบัญชี C=เงินสด */
+  pay_method: Gen<string>;
+  /** ธนาคารที่รับเงินเดือน */
+  bank_id: Gen<string | null>;
+  /** เลขที่บัญชีธนาคาร */
+  bank_account_no: Gen<string | null>;
+  /** ชื่อบัญชี */
+  bank_account_name: Gen<string | null>;
+  /** W=หัก ณ ที่จ่าย O=บริษัทออกให้ครั้งเดียว F=ออกให้ตลอดไป N=ไม่หักภาษี */
+  tax_bearer: Gen<string>;
+  /** เป็นผู้ประกันตน ม.33 */
+  sso_insured: Gen<boolean>;
+  /** สถานพยาบาลประกันสังคม */
+  sso_hospital: Gen<string | null>;
+  /** เป็นสมาชิกกองทุนสำรองเลี้ยงชีพ */
+  pvd_member: Gen<boolean>;
+  /** วันที่เข้ากองทุน */
+  pvd_join_date: Gen<string | null>;
+  /** อัตราเงินสะสม (ลูกจ้าง) % */
+  pvd_employee_rate: Gen<string>;
+  /** อัตราเงินสมทบ (นายจ้าง) % */
+  pvd_employer_rate: Gen<string>;
+  /** หมายเหตุ */
+  note: Gen<string | null>;
+  /** A=ใช้งาน I=เลิกใช้ */
+  status: Gen<string>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** ประวัติค่าจ้างของพนักงาน (อัตราที่มีผลตั้งแต่วันที่) */
+export interface PaySalaryTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** พนักงาน */
+  employee_id: string;
+  /** มีผลตั้งแต่ */
+  effective_from: string;
+  /** M=รายเดือน D=รายวัน H=รายชั่วโมง */
+  wage_type: string;
+  /** อัตราค่าจ้าง (บาทต่อเดือน/วัน/ชั่วโมง) */
+  rate: string;
+  /** เหตุผล เช่น เริ่มงาน ปรับประจำปี */
+  reason: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** ค่าลดหย่อนภาษีของพนักงานรายปี */
+export interface PayAllowanceTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** พนักงาน */
+  employee_id: string;
+  /** ปีภาษี (ค.ศ.) */
+  tax_year: number;
+  /** รหัสค่าลดหย่อน → ติ๊ก/จำนวนคน/จำนวนเงิน (รหัสตาม PayrollTaxRules.allowances) */
+  allowance_values: Gen<unknown>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** รายการประจำของพนักงาน (เงินได้/เงินหักทุกงวด) */
+export interface PayRecurringTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** พนักงาน */
+  employee_id: string;
+  /** รายการ (เฉพาะแบบจำนวนเงิน) */
+  item_id: string;
+  /** จำนวนเงินต่องวด */
+  amount: string;
+  /** ตั้งแต่เดือน (วันที่ 1) */
+  from_month: string;
+  /** ถึงเดือน (ว่าง = ไม่มีกำหนด) */
+  to_month: Gen<string | null>;
+  /** หมายเหตุ */
+  note: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** ยอดสะสมยกมาต้นปีของพนักงาน (เริ่มใช้โปรแกรมกลางปี) */
+export interface PayYtdOpeningTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** พนักงาน */
+  employee_id: string;
+  /** ปีภาษี (ค.ศ.) */
+  tax_year: number;
+  /** ยอดถึงสิ้นเดือนที่ (1–12) */
+  through_month: number;
+  /** เงินได้ประจำที่จ่ายแล้ว */
+  regular: Gen<string>;
+  /** เงินได้ไม่ประจำที่จ่ายแล้ว */
+  special: Gen<string>;
+  /** ภาษีที่หักแล้วทั้งหมด */
+  tax: Gen<string>;
+  /** ภาษีของเงินได้ไม่ประจำ (ส่วนหนึ่งของภาษีที่หักแล้ว) */
+  special_tax: Gen<string>;
+  /** เงินสมทบประกันสังคม (ลูกจ้าง) */
+  sso: Gen<string>;
+  /** เงินสะสมกองทุนสำรองเลี้ยงชีพ (ลูกจ้าง) */
+  pvd: Gen<string>;
+  /** หมายเหตุ */
+  note: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** อัตราภาษีเงินได้/ประกันสังคมที่บริษัทกำหนดแทนค่าตามกฎหมายในโปรแกรม */
+export interface PayLawTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** TAX=ภาษีรายปี SSO=อัตราประกันสังคม */
+  kind: string;
+  /** TAX = 1 ม.ค. ของปีภาษี · SSO = วันที่มีผล */
+  effective_from: string;
+  /** กฎ (PayrollTaxRules หรือ SsoRate) */
+  rules: unknown;
+  /** หมายเหตุ เช่น ประกาศที่อ้างอิง */
+  note: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** รอบเงินเดือน — บันทึก = ออกเลขที่และลงบัญชีตั้งค้างจ่ายทันที · จ่าย = ใบสำคัญจ่าย */
+export interface PayRunTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** เลขที่ (PYปปดดนนนน — ออกตอนบันทึกครั้งแรก) */
+  doc_no: Gen<string | null>;
+  /** R=รอบปกติ B=รอบเพิ่มเติม/โบนัส */
+  run_type: Gen<string>;
+  /** สาขา (ว่าง = สำนักงานใหญ่) — พนักงานของสาขานี้ */
+  branch_id: Gen<string | null>;
+  /** งวดตั้งแต่ */
+  period_from: string;
+  /** งวดถึง */
+  period_to: string;
+  /** วันที่จ่าย (= เดือนภาษี ภ.ง.ด.1 / ประกันสังคม) */
+  pay_date: string;
+  /** เดือนภาษี (วันที่ 1 ของเดือนที่จ่าย) */
+  tax_month: string;
+  /** D=ร่าง N=บันทึกแล้ว (ลงบัญชี) P=จ่ายแล้ว C=ยกเลิก */
+  status: Gen<string>;
+  /** ใบสำคัญตั้งค้างจ่าย */
+  journal_id: Gen<string | null>;
+  /** ใบสำคัญจ่ายเงินเดือน */
+  pay_journal_id: Gen<string | null>;
+  /** บัญชีที่จ่ายเงิน (เงินสด/เงินฝาก) */
+  pay_account_id: Gen<string | null>;
+  /** วันที่จ่ายจริง */
+  paid_date: Gen<string | null>;
+  /** จำนวนพนักงาน */
+  headcount: Gen<number>;
+  /** รวมเงินได้ */
+  total_gross: Gen<string>;
+  /** รวมภาษี (รวมที่บริษัทออกให้) */
+  total_tax: Gen<string>;
+  /** ประกันสังคมลูกจ้าง */
+  total_sso_ee: Gen<string>;
+  /** ประกันสังคมนายจ้าง */
+  total_sso_er: Gen<string>;
+  /** กองทุนสำรองฯ ลูกจ้าง */
+  total_pvd_ee: Gen<string>;
+  /** กองทุนสำรองฯ นายจ้าง */
+  total_pvd_er: Gen<string>;
+  /** รวมเงินหักอื่น */
+  total_deductions: Gen<string>;
+  /** รวมจ่ายสุทธิ */
+  total_net: Gen<string>;
+  /** เวลาคำนวณล่าสุด */
+  calculated_at: Gen<string | null>;
+  /** หมายเหตุ */
+  note: Gen<string | null>;
+  /** เหตุผลที่ยกเลิก */
+  cancel_reason: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** พนักงานในรอบเงินเดือน (ยอดที่คำนวณ) */
+export interface PayRunEmployeeTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** รอบเงินเดือน */
+  run_id: string;
+  /** พนักงาน */
+  employee_id: string;
+  /** แผนก ณ วันคำนวณ */
+  department_id: Gen<string | null>;
+  /** ประเภทค่าจ้าง ณ วันคำนวณ */
+  wage_type: Gen<string>;
+  /** ผู้รับภาระภาษี ณ วันคำนวณ */
+  tax_bearer: Gen<string>;
+  /** จำนวนวันทำงาน (รายวัน) */
+  work_days: Gen<string | null>;
+  /** จำนวนชั่วโมงทำงาน (รายชั่วโมง) */
+  work_hours: Gen<string | null>;
+  /** เงินเดือนที่ป้อนเอง (ว่าง = ตามประวัติค่าจ้าง) */
+  salary_manual: Gen<string | null>;
+  /** เหตุผลที่ป้อนเงินเดือนเอง */
+  salary_manual_reason: Gen<string | null>;
+  /** ภาษีที่ป้อนเอง (ว่าง = คำนวณ) */
+  tax_manual: Gen<string | null>;
+  /** เงินได้ประจำ */
+  regular: Gen<string>;
+  /** เงินได้ไม่ประจำ */
+  special: Gen<string>;
+  /** เงินที่ไม่ต้องเสียภาษี */
+  non_taxable: Gen<string>;
+  /** รวมเงินได้ */
+  gross: Gen<string>;
+  /** ค่าจ้างที่คิดประกันสังคม */
+  sso_wage: Gen<string>;
+  /** ประกันสังคมลูกจ้าง */
+  sso_ee: Gen<string>;
+  /** ประกันสังคมนายจ้าง */
+  sso_er: Gen<string>;
+  /** ค่าจ้างที่คิดกองทุนสำรองฯ */
+  pvd_base: Gen<string>;
+  /** กองทุนสำรองฯ ลูกจ้าง */
+  pvd_ee: Gen<string>;
+  /** กองทุนสำรองฯ นายจ้าง */
+  pvd_er: Gen<string>;
+  /** ภาษีของรอบนี้ (รวมที่บริษัทออกให้) */
+  tax: Gen<string>;
+  /** ภาษีส่วนของเงินได้ไม่ประจำ */
+  tax_special: Gen<string>;
+  /** ภาษีที่บริษัทออกให้ */
+  employer_paid_tax: Gen<string>;
+  /** เงินหักอื่น */
+  other_deductions: Gen<string>;
+  /** จ่ายสุทธิ */
+  net_pay: Gen<string>;
+  /** ที่มาของภาษี (ภาษีคำนวณอย่างไร) */
+  tax_calc: Gen<unknown | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** บรรทัดเงินได้/เงินหักของพนักงานในรอบเงินเดือน */
+export interface PayRunLineTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** รอบเงินเดือน */
+  run_id: string;
+  /** พนักงานในรอบ */
+  run_employee_id: string;
+  /** รายการ */
+  item_id: string;
+  /** จำนวน (ชั่วโมง/วัน/นาที) */
+  qty: Gen<string | null>;
+  /** อัตราต่อหน่วย */
+  rate: Gen<string | null>;
+  /** ตัวคูณ */
+  multiplier: Gen<string | null>;
+  /** จำนวนเงิน (บวกเสมอ — ทิศตามรายการ) */
+  amount: string;
+  /** WAGE RECUR MANUAL IMPORT SYSTEM */
+  source: string;
+  /** ที่มา เช่น 16 วัน × 30000 ÷ 30 */
+  note: Gen<string | null>;
+  /** ลำดับ */
+  sort_order: Gen<number>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** บันทึกการเปลี่ยนแปลงบนเซิร์ฟเวอร์ (ใช้ให้เครื่องลูกดึงเฉพาะส่วนที่เปลี่ยน) */
 export interface SyncChangeLogTable {
   /** ลำดับเพิ่มขึ้นเรื่อยๆ (PK) — เครื่องลูกจำค่าล่าสุดที่ดึงแล้ว */
@@ -4001,6 +4509,16 @@ export interface DB {
   md_asset_account_group: MdAssetAccountGroupTable;
   fa_asset: FaAssetTable;
   fa_depreciation: FaDepreciationTable;
+  pay_item: PayItemTable;
+  pay_employee: PayEmployeeTable;
+  pay_salary: PaySalaryTable;
+  pay_allowance: PayAllowanceTable;
+  pay_recurring: PayRecurringTable;
+  pay_ytd_opening: PayYtdOpeningTable;
+  pay_law: PayLawTable;
+  pay_run: PayRunTable;
+  pay_run_employee: PayRunEmployeeTable;
+  pay_run_line: PayRunLineTable;
   sync_change_log: SyncChangeLogTable;
   sync_inbox: SyncInboxTable;
   sync_conflict: SyncConflictTable;

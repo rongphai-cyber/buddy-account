@@ -45,7 +45,7 @@ export async function nextVoucherNo(db: Db, companyId: string, bookId: string, d
   return pat.base + String(n).padStart(pat.width, '0');
 }
 
-async function checkLines(db: Db, companyId: string, lines: JournalInput['lines']) {
+export async function checkLines(db: Db, companyId: string, lines: JournalInput['lines']) {
   const ids = [...new Set(lines.map((l) => l.account_id).filter((x): x is string => !!x))];
   const accts = ids.length ? await db.selectFrom('gl_account').select(['id', 'account_no', 'is_control', 'status', 'use_department'])
     .where('company_id', '=', companyId).where('id', 'in', ids).where('deleted_at', 'is', null).execute() : [];

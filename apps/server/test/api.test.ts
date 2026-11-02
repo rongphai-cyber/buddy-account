@@ -703,7 +703,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect(accs.length).toBeGreaterThan(250);
     expect(accs.find((x) => x.account_no === '1111-01')).toMatchObject({ name_en: 'Cash', is_control: false });
     const roles = (await sql<{ n: number }>`SELECT count(*) AS n FROM gl_default_account WHERE company_id = ${th}`.execute(database.db)).rows[0]!.n;
-    expect(Number(roles)).toBe(39);
+    expect(Number(roles)).toBe(54);   // 39 + ระบบเงินเดือน 15
     // บริษัทที่ไม่มีผัง: เพิ่มบัญชีจากผังตัวอย่าง (บัญชีคุมเพิ่มให้เอง)
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
     const before = (await call('GET', '/api/v1/gl/accounts')).body.length;

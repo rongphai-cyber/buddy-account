@@ -7,7 +7,7 @@ export interface MenuItem {
   code: string;
   label: string;
   route?: string;
-  phase: 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7';
+  phase: 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7' | 'P8';
   screens?: string[];
   children?: MenuItem[];
 }
@@ -103,6 +103,14 @@ export const MENU: MenuItem[] = [
     m('GL.FS', 'สร้างงบการเงิน', 'P1', '/fs/layouts', ['ch24:S-FS-01', 'ch24:S-FS-03']),
     m('FA.ASSET', 'รายการทรัพย์สิน', 'P6', '/fa/assets', ['ch19:S-FA-01', 'ch19:S-FA-02', 'ch19:S-FA-03']),
     m('FA.DEPR', 'คิดค่าเสื่อม-ลงบัญชี', 'P6', '/fa/depreciation', ['ch19:S-FA-04']),
+  ]),
+  g('PAY', 'เงินเดือน', 'P8', [
+    m('PAY.RUN', 'บันทึกเงินเดือน', 'P8', '/pay/runs'),
+    m('PAY.EMP', 'ทะเบียนพนักงาน', 'P8', '/pay/employees'),
+    m('PAY.ITEM', 'รายการเงินได้/เงินหัก', 'P8', '/pay/items'),
+    m('PAY.LAW', 'อัตราภาษีและประกันสังคม', 'P8', '/pay/law'),
+    m('PAY.CALC', 'ทดลองคำนวณภาษี', 'P8', '/pay/tax-calculator'),
+    m('PAY.SET', 'ตั้งค่าระบบเงินเดือน', 'P8', '/settings/defaults?s=PAY'),
   ]),
   g('RP', 'รายงาน', 'P1', [
     m('RP.DASH', 'แดชบอร์ดผู้บริหาร', 'P7', '/reports/dashboard'),
@@ -207,6 +215,7 @@ export const MODULE_SWITCHES: ModuleSwitch[] = [
   { key: 'PETTY', label: 'เงินสดย่อย', menus: ['GL.PC'], hint: '' },
   { key: 'BUDGET', label: 'งบประมาณ', menus: ['GL.BUD'], hint: '' },
   { key: 'ETAX', label: 'ส่งออก e-Tax Invoice', menus: ['FI.VAT.ETAX'], hint: '' },
+  { key: 'PAY', label: 'ระบบเงินเดือน', menus: ['PAY'], hint: 'ทะเบียนพนักงาน บันทึกเงินเดือน ภาษี ภ.ง.ด.1 ประกันสังคม' },
 ];
 const MENU_PARENT = new Map(flattenMenu().map((m) => [m.code, m.parent ?? null]));
 /** รหัสระบบที่ปิด → ชุดรหัสเมนู/กลุ่มที่ปิด (รหัสที่ไม่รู้จักข้าม) */

@@ -23,6 +23,7 @@ const TABLE_TH: Record<string, string> = {
   md_note: 'หมายเหตุแฟ้มหลัก', md_salesperson: 'พนักงานขาย', doc_header: 'หัวเอกสาร', tax_vat_entry: 'แฟ้มภาษีซื้อ/ขาย', tax_wht_entry: 'แฟ้มภาษีหัก ณ ที่จ่าย', fin_cheque: 'ทะเบียนเช็ค',
   md_serial: 'หมายเลขสินค้า/บัตรรับประกัน', sys_ai_usage: 'AI อ่านบิล', sys_user: 'ผู้ใช้งาน', sys_user_security: 'ยืนยันตัวตนสองขั้น', sys_session: 'การเข้าระบบ', sys_activity_log: 'แฟ้มบันทึกเหตุการณ์',
   sys_tenant: 'ลูกค้าผู้ใช้บริการ', sys_company: 'บริษัท',
+  pay_employee: 'ทะเบียนพนักงาน', pay_salary: 'ประวัติค่าจ้าง', pay_allowance: 'ค่าลดหย่อนภาษีพนักงาน', pay_run_employee: 'เงินเดือนรายคน',
 };
 const FIELD_TH: Record<string, string> = {
   code: 'รหัส', status: 'สถานะ', title: 'คำนำหน้า', name: 'ชื่อ', name_en: 'ชื่ออังกฤษ', address_1: 'ที่อยู่ 1', address_2: 'ที่อยู่ 2', address_3: 'ที่อยู่ 3', address: 'ที่อยู่', zip_code: 'รหัสไปรษณีย์',
