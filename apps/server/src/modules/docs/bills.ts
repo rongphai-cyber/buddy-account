@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { BILL_KINDS, d, type BillKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { checkOwned } from '../../owned.js';
 import { logActivity } from '../../audit.js';
 import { cancelDocument, docNoFor, docNoInput } from './engine.js';
 import { saveBranch } from './payments.js';
@@ -44,6 +45,7 @@ async function saveBill(db: Db, a: Ctx, K: BillKind, id: string | null, b: Body)
   const partyTbl = K.party === 'customer' ? 'md_customer' : 'md_supplier';
   const party = await db.selectFrom(partyTbl).select(['id', 'code', 'title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no', 'payment_terms']).where('id', '=', b.party_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!party) throw badRequest(`ไม่พบ${K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย'}นี้`);
+  await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }, { table: 'md_salesperson', id: b.salesperson_id, field: 'salesperson_id' }]);
   const ids = b.items.map((x) => x.invoice_header_id);
   if (new Set(ids).size !== ids.length) throw badRequest('เลือกบิลซ้ำ');
   const open = new Map((await billable(db, a.companyId, K, party.id, id, ids)).map((o) => [o.header_id, o]));

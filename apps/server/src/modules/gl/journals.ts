@@ -2,6 +2,7 @@ import { sql } from 'kysely';
 import { d, round2, validateJournal, voucherNoPattern, type JournalLineInput } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { AppError, badRequest, notFound } from '../../http.js';
+import { checkOwned } from '../../owned.js';
 import { logActivity } from '../../audit.js';
 
 export interface JournalInput {
@@ -124,6 +125,7 @@ export async function updateJournal(db: Db, ctx: { companyId: string; userId: st
     const j = await loadEditable(tx, ctx.companyId, id);
     const p = await periodFor(tx, ctx.companyId, input.voucher_date);
     await checkLines(tx, ctx.companyId, lines);
+    await checkOwned(tx, ctx.companyId, [{ table: 'gl_journal_book', id: input.journal_book_id, field: 'journal_book_id' }]);
     const before = await tx.selectFrom('gl_journal_line').select(['account_id', 'department_id', 'description', 'debit', 'credit']).where('journal_id', '=', id).orderBy('line_no').execute();
     const totalD = round2(lines.reduce((s, l) => s.plus(d(l.debit)), d(0)));
     await tx.deleteFrom('gl_journal_line').where('journal_id', '=', id).execute();

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { d } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../http.js';
+import { checkOwned } from '../owned.js';
 import { logActivity } from '../audit.js';
 import { periodFor } from './gl/journals.js';
 import { manualTaxDoc } from './vat.js';
@@ -121,6 +122,7 @@ export async function saveWht(db: Db, a: ReturnType<typeof requireCompany>, id: 
   if (b.payee_tax_id && ![10, 13].includes(b.payee_tax_id.replace(/\D/g, '').length)) throw badRequest('เลขผู้เสียภาษีของผู้ถูกหักต้องเป็น 13 หลัก');
   if (b.supplier_id && !(await db.selectFrom('md_supplier').select('id').where('id', '=', b.supplier_id).where('company_id', '=', a.companyId).executeTakeFirst())) throw badRequest('ไม่พบผู้จำหน่ายนี้');
   if (b.header_id && !id) await manualTaxDoc(db, a.companyId, b.header_id);
+  if (b.journal_id && !id) await checkOwned(db, a.companyId, [{ table: 'gl_journal', id: b.journal_id, field: 'journal_id', label: 'ใบสำคัญที่อ้างถึง' }]);
   return db.transaction().execute(async (tx) => {
     const per = await periodFor(tx, a.companyId, b.certificate_date);
     const { header_id: hdr, journal_id: jid, ...rest } = b;   // header_id ใช้ตอนเพิ่มเท่านั้น (แก้ไขไม่เปลี่ยนเอกสารต้นทาง)

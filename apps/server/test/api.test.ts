@@ -1432,8 +1432,8 @@ describe('Buddy Account API (PGlite)', () => {
     const s01 = (await call('GET', '/api/v1/salespersons')).body.find((x: { code: string }) => x.code === 'S01').id;
     const o3 = (await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0003', amount: 100, salesperson_id: s01 })).body;
     expect((await call('GET', `/api/v1/ar-opening/${o3.id}`)).body.salesperson_id).toBe(s01);
-    expect((await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0004', salesperson_id: '00000000-0000-4000-8000-000000000001' })).body.error.message).toBe('ไม่พบพนักงานขายนี้');
-    expect((await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0004', department_id: '00000000-0000-4000-8000-000000000001' })).body.error.message).toBe('ไม่พบแผนกนี้');
+    expect((await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0004', salesperson_id: '00000000-0000-4000-8000-000000000001' })).body.error.message).toMatch(/^ไม่พบพนักงานขายนี้/);
+    expect((await call('POST', '/api/v1/ar-opening', { ...ob, doc_no: 'IV68/0004', department_id: '00000000-0000-4000-8000-000000000001' })).body.error.message).toMatch(/^ไม่พบแผนกนี้/);
     expect((await call('POST', `/api/v1/ar-opening/${o3.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect((await call('GET', `/api/v1/docs/${o1.body.id}/journal`)).body.journals).toEqual([]);
     expect((await call('GET', '/api/v1/ar-opening')).body).toMatchObject({ total: '2139.99', start_date: '2026-01-01' });
@@ -3487,6 +3487,76 @@ describe('Buddy Account API (PGlite)', () => {
     // ซิงก์ซ้ำไม่คัดลอกอีก
     await syncMenus(database.db);
     expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE subject_id = ${grp} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(rows.length);
+  });
+  it('documents refuse department/salesperson/warehouse/unit/ship-to/bank/payment method/journal book ids of another company (กติกาข้อ 7)', async () => {
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ข้อมูลหลักของบริษัทอื่น — FK ผ่านแต่ต้องไม่ถูกบันทึกลงเอกสารของบริษัทนี้
+    const ins = async (q: { execute: (db: typeof database.db) => Promise<{ rows: Array<{ id: string }> }> }) => (await q.execute(database.db)).rows[0]!.id;
+    const o = otherCompanyId;
+    const fDep = await ins(sql<{ id: string }>`INSERT INTO md_department (company_id, code, name_th) VALUES (${o}, 'XDEP', 'แผนกบริษัทอื่น') RETURNING id`);
+    const fSlm = await ins(sql<{ id: string }>`INSERT INTO md_salesperson (company_id, code, name) VALUES (${o}, 'XSLM', 'พนักงานบริษัทอื่น') RETURNING id`);
+    const fWh = await ins(sql<{ id: string }>`INSERT INTO md_warehouse (company_id, code, name_th) VALUES (${o}, 'XWH', 'คลังบริษัทอื่น') RETURNING id`);
+    const fUnit = await ins(sql<{ id: string }>`INSERT INTO md_unit (company_id, code, name_th) VALUES (${o}, 'XU', 'หน่วยบริษัทอื่น') RETURNING id`);
+    const fShip = await ins(sql<{ id: string }>`INSERT INTO md_customer_ship_to (company_id, code) VALUES (${o}, 'XS') RETURNING id`);
+    const fBank = await ins(sql<{ id: string }>`INSERT INTO md_bank (company_id, code, name_th) VALUES (${o}, 'XBK', 'ธนาคารบริษัทอื่น') RETURNING id`);
+    const fPm = await ins(sql<{ id: string }>`INSERT INTO md_payment_method (company_id, direction, code, name_th) VALUES (${o}, 'R', 'XP', 'วิธีรับบริษัทอื่น') RETURNING id`);
+    const fBook = await ins(sql<{ id: string }>`INSERT INTO gl_journal_book (company_id, code, prefix, name_th) VALUES (${o}, 'XB', 'XB', 'สมุดบริษัทอื่น') RETURNING id`);
+    const fJv = await ins(sql<{ id: string }>`INSERT INTO gl_journal (company_id, journal_book_id, voucher_no, voucher_date, period_id)
+      SELECT ${o}, ${fBook}, 'XB-0001', p.start_date, p.id FROM gl_period p WHERE p.company_id = ${o} ORDER BY p.start_date LIMIT 1 RETURNING id`);
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cus = (await call('GET', '/api/v1/customers?q=C200')).body.rows[0].id;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const pmR = (await sql<{ id: string }>`SELECT id FROM md_payment_method WHERE company_id = ${companyId} AND direction = 'R' AND deleted_at IS NULL ORDER BY code LIMIT 1`.execute(database.db)).rows[0]!.id;
+    const bank = (await call('GET', '/api/v1/bank-accounts')).body.find((b: { gl_account_id: string | null }) => b.gl_account_id).id;
+    const fake = '00000000-0000-4000-8000-0000000000aa';
+    const refused = async (method: 'POST' | 'PUT', path: string, body: object, field: string) => {
+      const r = await call(method, path, body);
+      expect(r.status, `${path} ${field}`).toBe(400);
+      expect(r.body.error.message, `${path} ${field}`).toMatch(/ไม่พบ.+ในบริษัทนี้ — เลือก/);
+      expect(r.body.error.issues?.[0]?.field, `${path} ${field}`).toBe(field);
+    };
+    const before = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM doc_header WHERE company_id = ${companyId}`.execute(database.db)).rows[0]!.n;
+    // ขาย/ซื้อ: หัวเอกสาร + บรรทัด + วิธีชำระ
+    const iv = { doc_type_id: await typeOf('IV'), doc_date: '2027-08-20', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 100 }] };
+    for (const [k, v] of [['department_id', fDep], ['salesperson_id', fSlm], ['warehouse_id', fWh], ['ship_to_id', fShip]] as const) await refused('POST', '/api/v1/sales-invoices', { ...iv, [k]: v }, k);
+    for (const [k, v] of [['warehouse_id', fWh], ['unit_id', fUnit], ['department_id', fDep]] as const) await refused('POST', '/api/v1/sales-invoices', { ...iv, lines: [{ ...iv.lines[0], [k]: v }] }, k);
+    await refused('POST', '/api/v1/cash-sales', { ...iv, doc_type_id: await typeOf('HS'), payments: [{ payment_method_id: fPm, amount: 50 }] }, 'payment_method_id');
+    // มัดจำ/รายได้อื่น (หัว + บรรทัด + ธนาคารของเช็ค)
+    const ai = { doc_type_id: await typeOf('AI'), doc_date: '2027-08-20', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ description: 'มัดจำ', amount: 100 }] };
+    await refused('POST', '/api/v1/ar-deposits', { ...ai, department_id: fDep }, 'department_id');
+    await refused('POST', '/api/v1/ar-deposits', { ...ai, salesperson_id: fSlm }, 'salesperson_id');
+    await refused('POST', '/api/v1/ar-deposits', { ...ai, lines: [{ ...ai.lines[0], department_id: fDep }] }, 'department_id');
+    await refused('POST', '/api/v1/ar-deposits', { ...ai, payments: [{ payment_method_id: pmR, amount: 100, reference_no: 'X1', bank_id: fBank }] }, 'bank_id');
+    // รับชำระ · ใบวางบิล · ธนาคาร · คลัง · เงินสดย่อย
+    const re = { doc_type_id: await typeOf('RE'), doc_date: '2027-08-20', party_id: cus, settlements: [{ invoice_header_id: fake, amount: 1 }] };
+    await refused('POST', '/api/v1/ar-receipts', { ...re, department_id: fDep }, 'department_id');
+    await refused('POST', '/api/v1/ar-receipts', { ...re, salesperson_id: fSlm }, 'salesperson_id');
+    await refused('POST', '/api/v1/ar-bills', { doc_type_id: await typeOf('BS'), doc_date: '2027-08-20', party_id: cus, items: [{ invoice_header_id: fake }], salesperson_id: fSlm }, 'salesperson_id');
+    await refused('POST', '/api/v1/bank-deposits', { doc_type_id: await typeOf('BD'), doc_date: '2027-08-20', bank_account_id: bank, amount: 10, department_id: fDep }, 'department_id');
+    const ou = { doc_type_id: await typeOf('OU'), doc_date: '2027-08-20', lines: [{ item_id: cpu, qty: 1 }] };
+    await refused('POST', '/api/v1/stock-issues', { ...ou, department_id: fDep }, 'department_id');
+    await refused('POST', '/api/v1/stock-issues', { ...ou, lines: [{ ...ou.lines[0], unit_id: fUnit }] }, 'unit_id');
+    await refused('POST', '/api/v1/petty-payments', { doc_type_id: await typeOf('DP'), doc_date: '2027-08-20', lines: [{ account_id: expense, amount: 10, department_id: fDep }] }, 'department_id');
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM doc_header WHERE company_id = ${companyId}`.execute(database.db)).rows[0]!.n).toBe(before);
+    // ใบสำคัญ: แก้ไขเป็นสมุดของบริษัทอื่นไม่ได้ · ยอดยกมาแผนกบริษัทอื่นไม่ได้
+    const jv = (await call('POST', '/api/v1/gl/journals', { journal_book_id: bookId, voucher_date: '2027-08-20', lines: [{ account_id: expense, debit: '1' }, { account_id: cash, credit: '1' }] })).body;
+    await refused('PUT', `/api/v1/gl/journals/${jv.id}`, { journal_book_id: fBook, voucher_date: '2027-08-20', lines: [{ account_id: expense, debit: '1' }, { account_id: cash, credit: '1' }] }, 'journal_book_id');
+    expect((await call('GET', `/api/v1/gl/journals/${jv.id}`)).body.journal_book_id).toBe(bookId);
+    expect((await call('POST', `/api/v1/gl/journals/${jv.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    await refused('PUT', '/api/v1/gl/opening', { period_start: '2026-01-01', rows: [{ account_id: cash, debit: '1', credit: '0', department_id: fDep }, { account_id: capital, debit: '0', credit: '1' }] }, 'department_id');
+    // เช็ค · ใบนำฝากเช็ค · แฟ้มภาษีซื้อ/ขาย · ภาษีหัก ณ ที่จ่าย
+    await refused('POST', '/api/v1/cheques', { direction: 'R', cheque_no: 'X-CHQ-1', cheque_date: '2027-08-20', customer_id: cus, amount: 10, department_id: fDep }, 'department_id');
+    await refused('PUT', `/api/v1/cheques/${fake}`, { cheque_no: 'X-CHQ-1', bank_id: fBank }, 'bank_id');
+    await refused('POST', '/api/v1/cheque-deposits', { cheque_ids: [fake], bank_account_id: bank, doc_date: '2027-08-20', department_id: fDep }, 'department_id');
+    await refused('POST', '/api/v1/vat/S', { tax_invoice_no: 'X-VAT-1', tax_invoice_date: '2027-08-20', month: '2027-08', party_name: 'ลูกค้า', base_amount: 100, vat_amount: 7, department_id: fDep }, 'department_id');
+    await refused('POST', '/api/v1/wht', { form_type: 'S03', certificate_date: '2027-08-20', payee_name: 'นายช่าง', income_type: 'ค่าจ้าง', paid_amount: 100, rate: 3, tax_amount: 3, journal_id: fJv }, 'journal_id');
+    // รหัสของบริษัทนี้เองยังใช้ได้ตามปกติ
+    const dep = (await sql<{ id: string }>`SELECT id FROM md_department WHERE company_id = ${companyId} AND deleted_at IS NULL LIMIT 1`.execute(database.db)).rows[0]?.id;
+    if (dep) {
+      const ok = await call('POST', '/api/v1/sales-invoices', { ...iv, department_id: dep });
+      expect(ok.body.error?.message ?? 'ok').toBe('ok');
+      expect((await call('POST', `/api/v1/sales-invoices/${ok.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    }
   });
   it('row-level security confines company data even when a query forgets the company filter (T0.14)', async () => {
     expect(await rlsAvailable(database)).toBe(true);

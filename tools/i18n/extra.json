@@ -534,5 +534,14 @@
  "เลิกใช้ {0} แล้ว": "Deactivated {0}",
  "เลือก:": "Selected:",
  "แถว:": "Row:",
- "ใช้ในเอกสารแล้ว ลบไม่ได้ — เปลี่ยนเป็นเลิกใช้": "Already used in documents, cannot delete — set it to inactive instead"
+ "ใช้ในเอกสารแล้ว ลบไม่ได้ — เปลี่ยนเป็นเลิกใช้": "Already used in documents, cannot delete — set it to inactive instead",
+ "ไม่พบ{0}นี้ในบริษัทนี้ — เลือก{1}ใหม่": "{0} not found in this company — choose another {1}",
+ "บรรทัดที่ {0}: ไม่พบ{1}นี้ในบริษัทนี้ — เลือก{2}ใหม่": "Line {0}: {1} not found in this company — choose another {2}",
+ "ชำระโดยอื่นบรรทัดที่ {0}: ไม่พบ{1}นี้ในบริษัทนี้ — เลือก{2}ใหม่": "Other payment line {0}: {1} not found in this company — choose another {2}",
+ "เลือก{0}ใหม่": "Choose another {0}",
+ "บรรทัดเอกสาร": "Document Line",
+ "วิธีรับ/จ่ายชำระ": "Payment Method",
+ "แม่แบบใบสำคัญ": "Voucher Template",
+ "โครงการ/งาน": "Project/Job",
+ "ใบสำคัญที่อ้างถึง": "Referenced Voucher"
 }

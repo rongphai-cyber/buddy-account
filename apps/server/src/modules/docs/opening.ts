@@ -5,6 +5,7 @@ import { computeDoc, d, dueDate } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
+import { checkOwned } from '../../owned.js';
 import { cancelDocument } from './engine.js';
 import { saveBranch } from './payments.js';
 
@@ -49,8 +50,7 @@ async function save(db: Db, a: Ctx, K: Kind, id: string | null, b: z.infer<typeo
   if (!party) throw badRequest(`ไม่พบ${K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย'}นี้`);
   // พนักงานขาย (ลูกหนี้ยกมา — ว่าง = ตามรายละเอียดลูกค้า) / แผนก ต้องเป็นของบริษัทนี้
   const slm = K.party === 'customer' ? b.salesperson_id ?? (await db.selectFrom('md_customer').select('salesperson_id').where('id', '=', party.id).executeTakeFirst())?.salesperson_id ?? null : null;
-  if (slm && !(await db.selectFrom('md_salesperson').select('id').where('id', '=', slm).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบพนักงานขายนี้', [{ field: 'salesperson_id', message: 'เลือกพนักงานขายใหม่' }]);
-  if (b.department_id && !(await db.selectFrom('md_department').select('id').where('id', '=', b.department_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบแผนกนี้', [{ field: 'department_id', message: 'เลือกแผนกใหม่' }]);
+  await checkOwned(db, a.companyId, [{ table: 'md_salesperson', id: slm, field: 'salesperson_id' }, { table: 'md_department', id: b.department_id, field: 'department_id' }]);
   const dt = await db.selectFrom('md_doc_type').select(['id']).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).orderBy('code').executeTakeFirst();
   if (!dt) throw badRequest(`ยังไม่มีประเภทเอกสาร${K.cls === 'IV' ? 'ขายเงินเชื่อ' : 'ซื้อเงินเชื่อ'} — เพิ่มที่ เริ่มระบบ › เลขที่เอกสาร`);
   const manualVat = b.vat_amount != null && d(b.vat_rate).isZero();

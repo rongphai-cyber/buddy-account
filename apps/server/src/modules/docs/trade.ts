@@ -6,6 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
+import { checkOwned } from '../../owned.js';
 import { companySettings } from '../../company-template.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, activeSettlement, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
@@ -76,6 +77,14 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     if (K.module === 'AP' && it.item_type === '4') throw badRequest(`บรรทัดที่ ${i + 1}: ${it.code} เป็นรหัสรายได้ ใช้ในเอกสารซื้อไม่ได้`);
     if (!(Number(l.qty) !== 0) && !(Number(l.unit_price) !== 0)) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวนและราคา`);
   });
+  // รหัสที่อ้างถึง (แผนก พนักงานขาย สถานที่ส่ง คลัง หน่วยนับ วิธีชำระ) ต้องเป็นของบริษัทนี้ — FK ไม่ตรวจบริษัท
+  await checkOwned(db, a.companyId, [
+    { table: 'md_department', id: b.department_id, field: 'department_id' }, { table: 'md_salesperson', id: b.salesperson_id, field: 'salesperson_id' },
+    { table: 'md_customer_ship_to', id: b.ship_to_id, field: 'ship_to_id' }, { table: 'md_warehouse', id: b.warehouse_id, field: 'warehouse_id' },
+    ...b.lines.flatMap((l, i) => [{ table: 'md_warehouse', id: l.warehouse_id, field: 'warehouse_id', line: i + 1 }, { table: 'md_unit', id: l.unit_id, field: 'unit_id', line: i + 1 },
+      { table: 'md_department', id: l.department_id, field: 'department_id', line: i + 1 }] as const),
+    ...b.payments.map((p, i) => ({ table: 'md_payment_method', id: p.payment_method_id, field: 'payment_method_id', line: i + 1, pay: true }) as const),
+  ]);
   if (K.refInvoice && !b.ref_header_id && !b.ref_no) throw badRequest('ป้อนเลขที่ใบกำกับที่อ้างถึง', [{ field: 'ref_no', message: 'ต้องอ้างใบกำกับเดิม' }]);
   if (b.ref_header_id) {
     const ref = await db.selectFrom('doc_header').select(['doc_no', 'doc_date', K.party === 'customer' ? 'customer_id' : 'supplier_id']).where('id', '=', b.ref_header_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();

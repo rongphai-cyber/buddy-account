@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { d, STOCK_KINDS, type StockKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { checkOwned } from '../../owned.js';
 import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
@@ -54,6 +55,8 @@ export async function writeStockDoc(db: Db, a: Ctx, K: StockKind, id: string | n
   const whIds = [...new Set([b.warehouse_id, b.to_warehouse_id, ...b.lines.map((l) => l.warehouse_id)].filter((x): x is string => !!x))];
   const whs = whIds.length ? await db.selectFrom('md_warehouse').select(['id', 'code']).where('company_id', '=', a.companyId).where('id', 'in', whIds).where('deleted_at', 'is', null).execute() : [];
   if (whs.length !== whIds.length) throw badRequest('ไม่พบคลังสินค้าที่เลือก');
+  await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' },
+    ...b.lines.map((l, i) => ({ table: 'md_unit', id: l.unit_id, field: 'unit_id', line: i + 1 }) as const)]);
   if (K.cls === 'RL') {
     if (!b.warehouse_id || !b.to_warehouse_id) throw badRequest('เลือกคลังต้นทางและคลังปลายทาง');
     if (b.warehouse_id === b.to_warehouse_id) throw badRequest('คลังต้นทางและปลายทางต้องต่างกัน');

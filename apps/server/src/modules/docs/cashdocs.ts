@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { CASH_KINDS, computeDoc, d, dueDate, settlementTotals, type CashKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { checkOwned } from '../../owned.js';
 import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
@@ -43,6 +44,8 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
   if (b.party_id && !party) throw badRequest(`ไม่พบ${word}นี้`);
   if (!id && party?.status === 'I') throw badRequest(`${party.code} เลิกใช้แล้ว — เปลี่ยนสถานะที่รายละเอียด${word}ก่อน`);
   const hold = await checkHold(db, a, K.party, K.cls, party?.id, id);
+  await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }, { table: 'md_salesperson', id: b.salesperson_id, field: 'salesperson_id' },
+    ...b.lines.map((l, i) => ({ table: 'md_department', id: l.department_id, field: 'department_id', line: i + 1 }) as const)]);
 
   // บรรทัด: มัดจำ = คำอธิบาย + จำนวนเงิน · รายได้/ค่าใช้จ่ายอื่น = รหัส (ตารางรหัสรายได้/ค่าใช้จ่าย) + จำนวนเงิน
   const itemIds = [...new Set(b.lines.map((l) => l.item_id).filter((x): x is string => !!x))];

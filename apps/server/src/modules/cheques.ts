@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { d } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../http.js';
+import { checkOwned } from '../owned.js';
 import { logActivity } from '../audit.js';
 import { createJournal, periodFor } from './gl/journals.js';
 import { docNoFor, docNoInput } from './docs/engine.js';
@@ -174,6 +175,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
     }
     for (const [tbl, v] of [['md_customer', b.customer_id], ['md_supplier', b.supplier_id], ['md_bank', b.bank_id], ['md_bank_account', b.bank_account_id]] as const)
       if (v && !(await db.selectFrom(tbl).select('id').where('id', '=', v).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบข้อมูลที่เลือก (ลูกค้า/ผู้จำหน่าย/ธนาคาร/บัญชีเงินฝาก)');
+    await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }]);
     return db.transaction().execute(async (tx) => {
       const dup = await tx.selectFrom('fin_cheque').select('id').where('company_id', '=', a.companyId).where('direction', '=', b.direction).where('cheque_no', '=', b.cheque_no).where('deleted_at', 'is', null)
         .where(sql<boolean>`coalesce(bank_account_id::text, '') = ${b.bank_account_id ?? ''}`).executeTakeFirst();
@@ -192,6 +194,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(chequeBody.partial().extend({ cheque_no: z.string().trim().min(1, 'ป้อนเลขที่เช็ค').max(30) }), req.body);
+    await checkOwned(db, a.companyId, [{ table: 'md_bank', id: b.bank_id, field: 'bank_id' }]);
     return db.transaction().execute(async (tx) => {
       const [c] = await loadCheques(tx, a, [id]);
       if (!['00', '02', '05'].includes(c!.status) || c!.pass_journal_id || c!.deposit_header_id) throw badRequest('เช็คนำฝาก/ผ่านแล้ว แก้ไขไม่ได้ — ยกเลิกการนำฝาก/ผ่านก่อน');
@@ -363,6 +366,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
   };
   const saveSlip = async (a: Ctx, id: string | null, b: z.infer<typeof depBody>) => {
     await bankAcc(db, a.companyId, b.bank_account_id);
+    await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }]);
     return db.transaction().execute(async (tx) => {
       await periodFor(tx, a.companyId, b.doc_date);
       const dt = b.doc_type_id ? await tx.selectFrom('md_doc_type').select(['id', 'doc_class']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst()

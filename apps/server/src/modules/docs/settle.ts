@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { chargeDeducted, d, formatDate, SETTLE_KINDS, settlementTotals, type SettleKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { checkOwned } from '../../owned.js';
 import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
@@ -135,6 +136,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
   if (!party) throw badRequest(`ไม่พบ${K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย'}นี้`);
   const payDate = b.payment_date ?? b.doc_date;
   const hold = await checkHold(db, a, K.party, K.cls, party.id, id);
+  await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }, { table: 'md_salesperson', id: b.salesperson_id, field: 'salesperson_id' }]);
 
   // บิลที่ตัด: ของคู่ค้ารายนี้ ยังไม่ยกเลิก ไม่เกินยอดคงค้าง
   const ids = b.settlements.map((s) => s.invoice_header_id);

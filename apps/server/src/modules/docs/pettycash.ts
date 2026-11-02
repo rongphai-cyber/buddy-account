@@ -5,6 +5,7 @@ import { d, settlementTotals } from '@buddy/core';
 import { previewQuery, previewSave } from './preview.js';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { checkOwned } from '../../owned.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
@@ -58,6 +59,7 @@ async function saveDp(db: Db, a: Ctx, id: string | null, b: z.infer<typeof dpBod
     if (acc.is_control) throw badRequest(`บรรทัดที่ ${i + 1}: ${acc.account_no} เป็นบัญชีคุม ใช้บันทึกรายการไม่ได้`);
     if (d(l.amount).lte(0)) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวนเงิน`);
   });
+  await checkOwned(db, a.companyId, b.lines.map((l, i) => ({ table: 'md_department', id: l.department_id, field: 'department_id', line: i + 1 })));
   const total = b.lines.reduce((s, l) => s.plus(d(l.amount)), d(0)).toFixed(2);
   const branchId = await saveBranch(db, a, id, b.branch_id);
   const header = { ...(branchId ? { branch_id: branchId } : {}), doc_type_id: dt.id, doc_class: 'DP', module: 'PC', doc_date: b.doc_date, remark: b.remark, department_id: dt.department_id, amount: total, net_amount: total, price_type: '0', updated_by: a.userId };

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { d } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, type AuthContext } from '../../http.js';
+import { checkOwned } from '../../owned.js';
 import { periodFor } from '../gl/journals.js';
 import { companySettings } from '../../company-template.js';
 import { passOne, voidJournal } from '../cheques.js';
@@ -36,6 +37,7 @@ export async function loadMethods(db: Db, companyId: string, direction: 'R' | 'P
   const methods = payments.length ? await db.selectFrom('md_payment_method').select(['id', 'code', 'kind', 'creates_cheque', 'bank_account_id'])
     .where('company_id', '=', companyId).where('direction', '=', direction).where('id', 'in', [...new Set(payments.map((p) => p.payment_method_id))]).where('deleted_at', 'is', null).execute() : [];
   const byId = new Map<string, Method>(methods.map((m) => [m.id, m]));
+  await checkOwned(db, companyId, payments.map((p, i) => ({ table: 'md_bank', id: p.bank_id, field: 'bank_id', line: i + 1, pay: true })));
   payments.forEach((p, i) => {
     const m = byId.get(p.payment_method_id);
     if (!m) throw badRequest(`ชำระโดยอื่นบรรทัดที่ ${i + 1}: ไม่พบวิธี${direction === 'R' ? 'รับ' : 'จ่าย'}ชำระนี้ — ดูที่ เริ่มระบบ › วิธีรับ/จ่ายชำระหนี้`);

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { BANK_KINDS, d, type BankKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
+import { checkOwned } from '../../owned.js';
 import { previewQuery, previewSave } from './preview.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
@@ -40,6 +41,7 @@ async function save(db: Db, a: Ctx, K: BankKind, id: string | null, b: z.infer<t
     return x;
   };
   const from = bank(b.bank_account_id);
+  await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }]);
   const amount = d(b.amount), fee = d(b.fee ?? 0), wht = d(b.wht ?? 0);
   if (amount.lte(0)) throw badRequest('จำนวนเงินต้องมากกว่า 0');
   if (fee.lt(0) || wht.lt(0)) throw badRequest('ค่าธรรมเนียม/ภาษีต้องไม่ติดลบ');

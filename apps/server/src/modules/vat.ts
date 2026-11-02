@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { d } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../http.js';
+import { checkOwned } from '../owned.js';
 import { logActivity } from '../audit.js';
 import { closingOf, leafTotals, loadChart } from './gl/balances.js';
 
@@ -181,6 +182,7 @@ export function vatRoutes(app: FastifyInstance, db: Db) {
         if (!okBase || !okVat || !d(b.zero_rate_amount).eq(d(cur.zero_rate_amount)) || !d(b.exempt_amount).eq(d(cur.exempt_amount))) throw badRequest('รายการที่มาจากเอกสาร ย้ายยอดระหว่างขอคืนได้/ขอคืนไม่ได้ได้เท่านั้น — ยอดรวมแก้ที่เอกสารต้นทาง');
       }
       const per = await periodOfMonth(db, a.companyId, b.month);
+      await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }]);
       await db.transaction().execute(async (tx) => {
         await tx.updateTable('tax_vat_entry').set({ tax_invoice_no: b.tax_invoice_no, tax_invoice_date: b.tax_invoice_date, vat_period_id: per, is_late: b.is_late, department_id: b.department_id, description: b.description,
           party_name: b.party_name, party_tax_id: b.party_tax_id, party_tax_branch_no: b.party_tax_branch_no, base_amount: d(b.base_amount).toFixed(2), vat_amount: d(b.vat_amount).toFixed(2),
@@ -248,6 +250,7 @@ export function vatRoutes(app: FastifyInstance, db: Db) {
 export async function addManualVat(db: Db, a: ReturnType<typeof requireCompany>, kind: 'P' | 'S', b: z.infer<typeof vatEntryBody>) {
   if (kind === 'S' && (!d(b.nonclaim_base).isZero() || !d(b.nonclaim_vat).isZero())) throw badRequest('ภาษีขายไม่มีช่องขอคืนไม่ได้');
   const per = await periodOfMonth(db, a.companyId, b.month);
+  await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }]);
   const jv = b.journal_id ? await db.selectFrom('gl_journal').select(['voucher_no', 'voucher_date', 'doc_status']).where('id', '=', b.journal_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
   if (b.journal_id && (!jv || jv.doc_status === 'C')) throw badRequest('ไม่พบใบสำคัญที่อ้างถึง (หรือถูกยกเลิกแล้ว)');
   if (jv) { b.doc_no = b.doc_no ?? jv.voucher_no; b.doc_date = b.doc_date ?? String(jv.voucher_date).slice(0, 10); }

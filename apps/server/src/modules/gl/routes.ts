@@ -5,6 +5,7 @@ import { d, ZERO, addMonths, addDays } from '@buddy/core';
 import { branchOf } from '../docs/payments.js';
 import type { Db } from '../../db.js';
 import { badRequest, conflict, notFound, parse, requireCompany } from '../../http.js';
+import { checkOwned } from '../../owned.js';
 import { logActivity } from '../../audit.js';
 import { companySettings } from '../../company-template.js';
 import { createFiscalYear } from '../../company-template.js';
@@ -363,6 +364,7 @@ export function glRoutes(app: FastifyInstance, db: Db) {
         if (!acc) throw badRequest('มีบัญชีที่ไม่พบในผังบัญชี');
         if (acc.is_control) throw badRequest(`บัญชี ${acc.account_no} เป็นบัญชีคุม บันทึกยอดยกมาไม่ได้`);
       }
+      await checkOwned(tx, a.companyId, b.rows.map((r, i) => ({ table: 'md_department', id: r.department_id, field: 'department_id', line: i + 1 })));
       // สาขาของยอดยกมา (ว่าง = สำนักงานใหญ่) ต้องเป็นของบริษัทนี้ · แต่ละสาขาควรดุลในตัว ไม่งั้นงบทดลองรายสาขาไม่ดุล (เตือน ไม่บล็อก)
       const branches = await tx.selectFrom('sys_branch').select(['id', 'code', 'name', 'is_head_office']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).execute();
       const hq = branches.find((x) => x.is_head_office)?.id ?? null;
