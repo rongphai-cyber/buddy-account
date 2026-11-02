@@ -4371,6 +4371,59 @@ export interface PayWhtCertTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** การยื่นแบบ/นำส่งของระบบเงินเดือน (ภ.ง.ด.1 ภ.ง.ด.1ก ประกันสังคม กองทุนสำรองเลี้ยงชีพ) — นำส่งเงิน = ใบสำคัญจ่าย · ยื่น ภ.ง.ด.1/ประกันสังคมแล้วรอบเงินเดือนของเดือนนั้นแก้ไม่ได้ */
+export interface PayFilingTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** PND1 PND1A SSO PVD */
+  form: string;
+  /** เดือนภาษี (วันที่ 1) · ภ.ง.ด.1ก = 1 ม.ค. ของปี */
+  period: string;
+  /** 0 = ยื่นปกติ · 1–9 = ยื่นเพิ่มเติมครั้งที่ */
+  filing_no: Gen<number>;
+  /** สาขาที่ยื่น (ว่าง = รวมทุกสาขา) */
+  branch_id: Gen<string | null>;
+  /** จำนวนราย */
+  headcount: Gen<number>;
+  /** เงินได้/ค่าจ้างรวม */
+  base_amount: Gen<string>;
+  /** ภาษี/เงินสมทบที่นำส่ง */
+  amount: Gen<string>;
+  /** เงินเพิ่ม/ค่าปรับ */
+  surcharge: Gen<string>;
+  /** วันที่ยื่น/นำส่ง */
+  filed_date: string;
+  /** เลขที่ใบเสร็จ/เลขอ้างอิงการยื่น */
+  receipt_no: Gen<string | null>;
+  /** บัญชีที่จ่ายเงิน (เงินสด/เงินฝาก) */
+  pay_account_id: Gen<string | null>;
+  /** บัญชีค่าใช้จ่ายเงินเพิ่ม/ค่าปรับ */
+  surcharge_account_id: Gen<string | null>;
+  /** ใบสำคัญนำส่ง */
+  journal_id: Gen<string | null>;
+  /** A=ยื่นแล้ว C=ยกเลิก */
+  status: Gen<string>;
+  /** หมายเหตุ */
+  note: Gen<string | null>;
+  /** เหตุผลที่ยกเลิก */
+  cancel_reason: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** บันทึกการเปลี่ยนแปลงบนเซิร์ฟเวอร์ (ใช้ให้เครื่องลูกดึงเฉพาะส่วนที่เปลี่ยน) */
 export interface SyncChangeLogTable {
   /** ลำดับเพิ่มขึ้นเรื่อยๆ (PK) — เครื่องลูกจำค่าล่าสุดที่ดึงแล้ว */
@@ -4555,6 +4608,7 @@ export interface DB {
   pay_run_employee: PayRunEmployeeTable;
   pay_run_line: PayRunLineTable;
   pay_wht_cert: PayWhtCertTable;
+  pay_filing: PayFilingTable;
   sync_change_log: SyncChangeLogTable;
   sync_inbox: SyncInboxTable;
   sync_conflict: SyncConflictTable;

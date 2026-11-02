@@ -25,3 +25,5 @@ export * from './qr.js';
 export * from './sync.js';
 export * from './payroll.js';
 export * from './payroll-forms.js';
+export * from './payroll-files.js';
+export * from './payroll-import.js';

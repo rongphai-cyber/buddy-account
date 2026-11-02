@@ -17,7 +17,7 @@ const optUuid = uuid.optional().or(z.literal('').transform(() => undefined));
 type Totals = PayTotals & { employee_id: string; gross: string; non_taxable: string; sso_wage: string; sso_er: string; pvd_er: string; net_pay: string; other_deductions: string; pay_date: string };
 
 /** ยอดรวมรายพนักงานจากรอบที่บันทึกแล้วในช่วงเดือนภาษี [from, to] (วันที่ 1 ของเดือน) */
-async function totalsBy(db: Db, companyId: string, from: string, to: string, branchId?: string) {
+export async function totalsBy(db: Db, companyId: string, from: string, to: string, branchId?: string) {
   return (await sql<Totals>`SELECT re.employee_id, sum(re.regular) AS regular, sum(re.special) AS special, sum(re.employer_paid_tax) AS employer_paid_tax, sum(re.tax) AS tax,
       sum(re.sso_ee) AS sso_ee, sum(re.sso_er) AS sso_er, sum(re.sso_wage) AS sso_wage, sum(re.pvd_ee) AS pvd_ee, sum(re.pvd_er) AS pvd_er, sum(re.gross) AS gross, sum(re.non_taxable) AS non_taxable,
       sum(re.net_pay) AS net_pay, sum(re.other_deductions) AS other_deductions, max(r.pay_date)::text AS pay_date
@@ -26,24 +26,24 @@ async function totalsBy(db: Db, companyId: string, from: string, to: string, bra
        ${branchId ? sql`AND r.branch_id = ${branchId}` : sql``}
      GROUP BY re.employee_id`.execute(db)).rows;
 }
-async function draftCount(db: Db, companyId: string, from: string, to: string, branchId?: string) {
+export async function draftCount(db: Db, companyId: string, from: string, to: string, branchId?: string) {
   let q = db.selectFrom('pay_run').select(sql<number>`count(*)::int`.as('n')).where('company_id', '=', companyId).where('deleted_at', 'is', null).where('status', '=', 'D').where('tax_month', '>=', from).where('tax_month', '<=', to);
   if (branchId) q = q.where('branch_id', '=', branchId);
   return Number((await q.executeTakeFirst())?.n ?? 0);
 }
-async function employees(db: Db, companyId: string, ids: string[]) {
+export async function employees(db: Db, companyId: string, ids: string[]) {
   if (!ids.length) return [];
   return db.selectFrom('pay_employee as e').leftJoin('md_department as dp', 'dp.id', 'e.department_id')
     .select(['e.id', 'e.code', 'e.title', 'e.first_name', 'e.last_name', 'e.tax_id', 'e.tax_bearer', 'e.position', 'e.end_date', 'e.hire_date', 'e.department_id', 'dp.code as department_code', 'dp.name_th as department_name',
       'e.reg_house_no', 'e.reg_moo', 'e.reg_village', 'e.reg_building', 'e.reg_soi', 'e.reg_road', 'e.reg_subdistrict', 'e.reg_district', 'e.reg_province', 'e.reg_postcode', 'e.bank_account_no', 'e.pay_method'])
     .where('e.company_id', '=', companyId).where('e.id', 'in', ids).execute();
 }
-type Emp = Awaited<ReturnType<typeof employees>>[number];
-const addrOf = (e: Emp) => ({ house_no: e.reg_house_no, moo: e.reg_moo, village: e.reg_village, building: e.reg_building, soi: e.reg_soi, road: e.reg_road, subdistrict: e.reg_subdistrict, district: e.reg_district, province: e.reg_province, postcode: e.reg_postcode });
+export type Emp = Awaited<ReturnType<typeof employees>>[number];
+export const addrOf = (e: Emp) => ({ house_no: e.reg_house_no, moo: e.reg_moo, village: e.reg_village, building: e.reg_building, soi: e.reg_soi, road: e.reg_road, subdistrict: e.reg_subdistrict, district: e.reg_district, province: e.reg_province, postcode: e.reg_postcode });
 const mask = (v: string | null | undefined) => (v ? `•••${v.slice(-4)}` : null);
 
 /** ผู้จ่ายเงิน (บริษัท + สาขาที่ยื่น) */
-async function payer(db: Db, companyId: string, branchId?: string) {
+export async function payer(db: Db, companyId: string, branchId?: string) {
   const c = await db.selectFrom('sys_company').select(['name_th', 'address_th', 'tax_id', 'social_security_no', 'phone']).where('id', '=', companyId).executeTakeFirstOrThrow();
   const b = branchId ? await db.selectFrom('sys_branch').select(['code', 'name', 'tax_branch_no', 'is_head_office']).where('id', '=', branchId).where('company_id', '=', companyId).executeTakeFirst() : null;
   if (branchId && !b) throw notFound('สาขา');
@@ -56,7 +56,7 @@ async function openings(db: Db, companyId: string, year: number) {
   return db.selectFrom('pay_ytd_opening').select(['employee_id', 'regular', 'special', 'tax', 'sso', 'pvd']).where('company_id', '=', companyId).where('tax_year', '=', year).where('deleted_at', 'is', null).execute();
 }
 /** ยอดทั้งปี = รอบที่บันทึกแล้ว + ยอดยกมา */
-async function yearTotals(db: Db, companyId: string, year: number, branchId?: string) {
+export async function yearTotals(db: Db, companyId: string, year: number, branchId?: string) {
   const t = await totalsBy(db, companyId, `${year}-01-01`, `${year}-12-01`, branchId);
   const m = new Map(t.map((x) => [x.employee_id, { ...x }]));
   if (!branchId) for (const o of await openings(db, companyId, year)) {
@@ -65,7 +65,7 @@ async function yearTotals(db: Db, companyId: string, year: number, branchId?: st
   }
   return [...m.values()];
 }
-const endOfMonth = (ym: string) => { const [y, m] = ym.split('-').map(Number); return `${ym}-${String(new Date(Date.UTC(y!, m!, 0)).getUTCDate()).padStart(2, '0')}`; };
+export const endOfMonth = (ym: string) => { const [y, m] = ym.split('-').map(Number); return `${ym}-${String(new Date(Date.UTC(y!, m!, 0)).getUTCDate()).padStart(2, '0')}`; };
 
 export function payrollFormRoutes(app: FastifyInstance, db: Db) {
   // ---- สลิปเงินเดือน (ทั้งรอบ หรือรายคน ?re=)

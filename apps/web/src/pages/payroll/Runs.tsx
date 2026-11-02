@@ -10,6 +10,8 @@ import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Mon
 import { RecNav, usePayItems } from './common';
 import { useEmployees } from './Employees';
 import { SlipPrintButton } from './Forms';
+import { ImportModal } from './Filing';
+import { downloadFile } from './common';
 
 interface RunRow { id: string; doc_no: string | null; run_type: string; period_from: string; period_to: string; pay_date: string; status: string; status_th: string; headcount: number;
   total_gross: string; total_tax: string; total_sso_ee: string; total_sso_er: string; total_net: string; note: string | null; branch_code: string | null }
@@ -108,6 +110,7 @@ export function RunPage() {
   const [pay, setPay] = useState<{ paid_date: string; account_id: string | null } | null>(null);
   const [addEmp, setAddEmp] = useState(false);
   const [editHead, setEditHead] = useState<{ pay_date: string; note: string } | null>(null);
+  const [imp, setImp] = useState(false);
   const reload = () => { qc.invalidateQueries({ queryKey: ['pay-run', id] }); qc.invalidateQueries({ queryKey: ['pay-runs'] }); qc.invalidateQueries({ queryKey: ['pay-post', id] }); };
   const act = async (f: () => Promise<unknown>, msg: string) => {
     setBusy(true);
@@ -131,6 +134,8 @@ export function RunPage() {
         <button disabled={!r || r.status === 'C' || r.status === 'P' || (draft && !r.doc_no) || busy || !can('cancel')} onClick={() => setAsk('cancel')}>ยกเลิก <kbd>Alt+C</kbd></button>
         <button className="danger-outline" disabled={!r || !(r.status === 'C' || (draft && !r.doc_no)) || busy || !can('delete')} onClick={() => setAsk('delete')}>ลบ</button>
         {r && r.headcount > 0 && <SlipPrintButton runId={id} />}
+        {draft && <button disabled={!can('edit')} onClick={() => setImp(true)} title="ป้อน OT วันทำงาน โบนัส ฯลฯ ของทุกคนจาก Excel">⬆ นำเข้าจาก Excel</button>}
+        {(r?.status === 'N' || r?.status === 'P') && <button disabled={!can('print')} onClick={() => downloadFile(`/api/v1/pay/runs/${id}/bank-file`, 'bank.csv').then(() => toast('สร้างไฟล์โอนแล้ว')).catch(toastError)} title="CSV รายชื่อ เลขบัญชี ยอดโอน — นำเข้าระบบโอนเงินของธนาคาร">ไฟล์โอนธนาคาร</button>}
         <RecNav ids={(all.data ?? []).map((x) => x.id)} cur={id} go={(to) => nav(`/pay/runs/${to}`)} />
         <button onClick={() => nav('/pay/runs')}>รายการ <kbd>Esc</kbd></button>
       </div>
@@ -168,6 +173,10 @@ export function RunPage() {
       </>}
       <KeyHints keys={[['คลิก/Enter', 'แก้รายคน'], ['F9', 'บันทึก'], ['Alt+C', 'ยกเลิก'], ['Esc', 'รายการ']]} />
       {open && r && <EmpPayModal run={r} emp={r.employees.find((x) => x.id === open.id) ?? open} editable={draft && can('edit')} onClose={() => setOpen(null)} onSaved={reload} />}
+      {imp && r && <ImportModal<{ row: number; code: string; lines: number; work_days: string | null; work_hours: string | null }> title="นำเข้ายอดประจำงวดจาก Excel"
+        intro="แบบฟอร์มมีรายชื่อพนักงานในรอบนี้และคอลัมน์ตามรายการเงินได้/เงินหัก — กรอกเฉพาะช่องที่มี แถวที่กรอกจะแทนรายการที่ป้อนเองเดิมของคนนั้น แล้วโปรแกรมคำนวณใหม่"
+        templateUrl={`/api/v1/pay/runs/${id}/import/template`} templateName="ยอดงวด.xlsx" postUrl={`/api/v1/pay/runs/${id}/import`}
+        cols={[['รายการ', (x) => x.lines], ['วันทำงาน', (x) => x.work_days], ['ชั่วโมง', (x) => x.work_hours]]} onClose={() => setImp(false)} onDone={() => { setImp(false); reload(); }} />}
       {addEmp && r && <AddEmployees run={r} onClose={() => setAddEmp(false)} onDone={() => { setAddEmp(false); reload(); }} />}
       {ask === 'post' && <Confirm title="บันทึกรอบเงินเดือน" text={<>บันทึกและลงบัญชีตั้งค้างจ่าย {r?.headcount} คน จ่ายสุทธิ {fmt(r?.total_net)} บาท?<br /><span className="small muted">ตรวจรายการลงบัญชีได้ที่แท็บ "ลงบัญชี" ก่อนบันทึก</span></>} okText="บันทึก" onClose={() => setAsk(null)}
         onOk={() => act(() => api.post(`/api/v1/pay/runs/${id}/post`), 'บันทึกและลงบัญชีแล้ว')} />}

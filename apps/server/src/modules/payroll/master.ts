@@ -33,12 +33,12 @@ export async function payLaw(db: Db, companyId: string, year: number) {
   const { rules, lawYear } = taxRulesFor(year, tax ? (tax.rules as Partial<PayrollTaxRules>) : null, ssoOverrides);
   return { rules, lawYear, taxOverride: !!tax, taxNote: tax?.note ?? null, ssoOverrides, ssoOn: (date: string) => ssoRateOn(date, ssoOverrides) };
 }
-export async function paySettings(db: Db, companyId: string): Promise<PaySettings & { use_pvd: boolean; sso_employer_no: string; sso_branch_no: string }> {
+export async function paySettings(db: Db, companyId: string): Promise<PaySettings & { use_pvd: boolean; sso_employer_no: string; sso_branch_no: string; rd_efiling_user: string }> {
   const s = await companySettings(db, companyId);
   const n = (k: string, def: number) => (Number.isFinite(Number(s[k])) && Number(s[k]) > 0 ? Number(s[k]) : def);
   return {
     hourly_days: n('pay.hourly_days', PAY_SETTINGS_DEFAULT.hourly_days), hourly_hours: n('pay.hourly_hours', PAY_SETTINGS_DEFAULT.hourly_hours), proration_days: n('pay.proration_days', PAY_SETTINGS_DEFAULT.proration_days),
-    use_pvd: s['pay.use_pvd'] === true, sso_employer_no: String(s['pay.sso_employer_no'] ?? ''), sso_branch_no: String(s['pay.sso_branch_no'] ?? '000000'),
+    use_pvd: s['pay.use_pvd'] === true, sso_employer_no: String(s['pay.sso_employer_no'] ?? ''), sso_branch_no: String(s['pay.sso_branch_no'] ?? '000000'), rd_efiling_user: String(s['pay.rd_efiling_user'] ?? ''),
   };
 }
 
@@ -79,7 +79,7 @@ const itemBody = z.object({
 // ---------------------------------------------------------------- พนักงาน
 const mask = (v: string | null | undefined) => (v ? `•••${v.slice(-4)}` : null);
 export const empName = (e: { title?: string | null; first_name: string; last_name?: string | null }) => [e.title, e.first_name].filter(Boolean).join('') + (e.last_name ? ` ${e.last_name}` : '');
-const empBody = z.object({
+export const empBody = z.object({
   code: z.string().trim().min(1, 'ป้อนรหัสพนักงาน').max(20).regex(/^[A-Za-z0-9ก-๙][A-Za-z0-9ก-๙_.-]*$/, 'รหัสพนักงานใช้ได้เฉพาะตัวอักษร ตัวเลข _ . - (ไม่มีช่องว่าง)'),
   title: optStr(30), first_name: z.string().trim().min(1, 'ป้อนชื่อพนักงาน').max(100), last_name: optStr(100), first_name_en: optStr(100), last_name_en: optStr(100), nickname: optStr(60),
   /** undefined = คงค่าเดิม (หน้าจอแสดงแบบปิดบัง) */
@@ -98,7 +98,7 @@ const empBody = z.object({
   /** พนักงานใหม่: อัตราค่าจ้างเริ่มต้น (สร้างประวัติค่าจ้าง ณ วันเริ่มงาน) */
   wage_type: z.enum(['M', 'D', 'H']).optional(), rate: optMoney,
 });
-type EmpBody = z.infer<typeof empBody>;
+export type EmpBody = z.infer<typeof empBody>;
 
 function checkEmp(b: EmpBody) {
   if (b.tax_id) {
@@ -124,7 +124,7 @@ async function syncWageType(db: Db, a: Ctx, employeeId: string) {
   const last = (await salarySteps(db, a.companyId, [employeeId])).get(employeeId)?.at(-1);
   if (last) await db.updateTable('pay_employee').set({ wage_type: last.wage_type }).where('id', '=', employeeId).execute();
 }
-async function loadEmp(db: Db, a: Ctx, id: string) {
+export async function loadEmp(db: Db, a: Ctx, id: string) {
   const e = await db.selectFrom('pay_employee').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!e) throw notFound('พนักงาน');
   return e;
@@ -139,6 +139,38 @@ const ytdBody = z.object({ through_month: z.number().int().min(1).max(12), regul
 const recurBody = z.object({ item_id: uuid, amount: money, from_month: isoDate, to_month: optDate, note: optStr(200) });
 const salaryBody = z.object({ effective_from: isoDate, wage_type: z.enum(['M', 'D', 'H']), rate: money, reason: optStr(200) });
 const monthStart = (iso: string) => `${iso.slice(0, 7)}-01`;
+
+/** เพิ่ม/แก้พนักงาน (หน้าจอและการนำเข้าใช้กฎเดียวกัน) — เรียกในทรานแซกชันของผู้เรียกได้ */
+export async function saveEmployee(db: Db, a: Ctx, id: string | null, b: EmpBody) {
+  checkEmp(b);
+  await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }, { table: 'md_bank', id: b.bank_id, field: 'bank_id' }]);
+  if (b.branch_id && !(await db.selectFrom('sys_branch').select('id').where('id', '=', b.branch_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบสาขานี้', [{ field: 'branch_id', message: 'เลือกสาขาใหม่' }]);
+  const cur = id ? await loadEmp(db, a, id) : null;
+  const dup = await db.selectFrom('pay_employee').select('id').where('company_id', '=', a.companyId).where('code', '=', b.code).where('deleted_at', 'is', null).executeTakeFirst();
+  if (dup && dup.id !== id) throw conflict(`รหัสพนักงาน ${b.code} มีอยู่แล้ว — ใช้รหัสอื่น`);
+  const taxId = b.tax_id === undefined ? cur?.tax_id ?? null : (b.tax_id ? b.tax_id.replace(/[\s-]/g, '').toUpperCase() : null);
+  if (taxId) {
+    const same = await db.selectFrom('pay_employee').select(['id', 'code']).where('company_id', '=', a.companyId).where('tax_id', '=', taxId).where('deleted_at', 'is', null).where('status', '=', 'A').executeTakeFirst();
+    if (same && same.id !== id && b.status === 'A') throw conflict(`เลขประจำตัวประชาชนนี้เป็นของพนักงานรหัส ${same.code} อยู่แล้ว — ตรวจว่าไม่ได้เพิ่มซ้ำ (คนเดิมกลับมาทำงานใหม่ให้แก้ทะเบียนเดิม)`);
+  }
+  const bankNo = b.bank_account_no === undefined ? cur?.bank_account_no ?? null : (b.bank_account_no ? b.bank_account_no.replace(/[\s-]/g, '') : null);
+  if (!id && (b.rate == null || !b.wage_type)) throw badRequest('พนักงานใหม่: ป้อนประเภทค่าจ้างและอัตราค่าจ้าง', [{ field: 'rate', message: 'ป้อนอัตราค่าจ้าง' }]);
+  if (!id && d(b.rate).lte(0)) throw badRequest('อัตราค่าจ้างต้องมากกว่า 0', [{ field: 'rate', message: 'มากกว่า 0' }]);
+  const { rate, wage_type, tax_id: _t, bank_account_no: _b, ...v } = b;
+  const vals = { ...v, tax_id: taxId, bank_account_no: bankNo, updated_by: a.userId };
+  const inTx = <T>(f: (tx: Db) => Promise<T>) => (db.isTransaction ? f(db) : db.transaction().execute(f));
+  return inTx(async (tx) => {
+    let rid = id;
+    if (id) await tx.updateTable('pay_employee').set(vals).where('id', '=', id).execute();
+    else {
+      rid = (await tx.insertInto('pay_employee').values({ ...vals, wage_type: wage_type!, company_id: a.companyId, created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
+      await tx.insertInto('pay_salary').values({ company_id: a.companyId, employee_id: rid!, effective_from: b.hire_date, wage_type: wage_type!, rate: d(rate).toFixed(2), reason: 'เริ่มงาน', created_by: a.userId }).execute();
+    }
+    const before = cur ? Object.fromEntries(Object.entries(cur).filter(([k, x]) => k in vals && k !== 'updated_by' && String(x ?? '') !== String((vals as Record<string, unknown>)[k] ?? '')).map(([k, x]) => [k, k === 'tax_id' || k === 'bank_account_no' ? mask(x as string) : x])) : undefined;
+    await logActivity(tx, a, { module: 'PAY', action: id ? 'EDIT' : 'ADD', docNo: b.code, table: 'pay_employee', rowId: rid, detail: before && Object.keys(before).length ? { before } : undefined });
+    return { id: rid };
+  });
+}
 
 export function payrollMasterRoutes(app: FastifyInstance, db: Db) {
   // ---- อัตราตามกฎหมาย
@@ -273,35 +305,7 @@ export function payrollMasterRoutes(app: FastifyInstance, db: Db) {
     await logActivity(db, a, { module: 'PAY', action: 'REVEAL', docNo: e.code, table: 'pay_employee', rowId: e.id, detail: { fields: ['tax_id', 'bank_account_no'] } });
     return { tax_id: e.tax_id, bank_account_no: e.bank_account_no };
   });
-  const saveEmp = async (a: Ctx, id: string | null, b: EmpBody) => {
-    checkEmp(b);
-    await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }, { table: 'md_bank', id: b.bank_id, field: 'bank_id' }]);
-    if (b.branch_id && !(await db.selectFrom('sys_branch').select('id').where('id', '=', b.branch_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบสาขานี้', [{ field: 'branch_id', message: 'เลือกสาขาใหม่' }]);
-    const cur = id ? await loadEmp(db, a, id) : null;
-    const dup = await db.selectFrom('pay_employee').select('id').where('company_id', '=', a.companyId).where('code', '=', b.code).where('deleted_at', 'is', null).executeTakeFirst();
-    if (dup && dup.id !== id) throw conflict(`รหัสพนักงาน ${b.code} มีอยู่แล้ว — ใช้รหัสอื่น`);
-    const taxId = b.tax_id === undefined ? cur?.tax_id ?? null : (b.tax_id ? b.tax_id.replace(/[\s-]/g, '').toUpperCase() : null);
-    if (taxId) {
-      const same = await db.selectFrom('pay_employee').select(['id', 'code']).where('company_id', '=', a.companyId).where('tax_id', '=', taxId).where('deleted_at', 'is', null).where('status', '=', 'A').executeTakeFirst();
-      if (same && same.id !== id && b.status === 'A') throw conflict(`เลขประจำตัวประชาชนนี้เป็นของพนักงานรหัส ${same.code} อยู่แล้ว — ตรวจว่าไม่ได้เพิ่มซ้ำ (คนเดิมกลับมาทำงานใหม่ให้แก้ทะเบียนเดิม)`);
-    }
-    const bankNo = b.bank_account_no === undefined ? cur?.bank_account_no ?? null : (b.bank_account_no ? b.bank_account_no.replace(/[\s-]/g, '') : null);
-    if (!id && (b.rate == null || !b.wage_type)) throw badRequest('พนักงานใหม่: ป้อนประเภทค่าจ้างและอัตราค่าจ้าง', [{ field: 'rate', message: 'ป้อนอัตราค่าจ้าง' }]);
-    if (!id && d(b.rate).lte(0)) throw badRequest('อัตราค่าจ้างต้องมากกว่า 0', [{ field: 'rate', message: 'มากกว่า 0' }]);
-    const { rate, wage_type, tax_id: _t, bank_account_no: _b, ...v } = b;
-    const vals = { ...v, tax_id: taxId, bank_account_no: bankNo, updated_by: a.userId };
-    return db.transaction().execute(async (tx) => {
-      let rid = id;
-      if (id) await tx.updateTable('pay_employee').set(vals).where('id', '=', id).execute();
-      else {
-        rid = (await tx.insertInto('pay_employee').values({ ...vals, wage_type: wage_type!, company_id: a.companyId, created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
-        await tx.insertInto('pay_salary').values({ company_id: a.companyId, employee_id: rid!, effective_from: b.hire_date, wage_type: wage_type!, rate: d(rate).toFixed(2), reason: 'เริ่มงาน', created_by: a.userId }).execute();
-      }
-      const before = cur ? Object.fromEntries(Object.entries(cur).filter(([k, x]) => k in vals && k !== 'updated_by' && String(x ?? '') !== String((vals as Record<string, unknown>)[k] ?? '')).map(([k, x]) => [k, k === 'tax_id' || k === 'bank_account_no' ? mask(x as string) : x])) : undefined;
-      await logActivity(tx, a, { module: 'PAY', action: id ? 'EDIT' : 'ADD', docNo: b.code, table: 'pay_employee', rowId: rid, detail: before && Object.keys(before).length ? { before } : undefined });
-      return { id: rid };
-    });
-  };
+  const saveEmp = (a: Ctx, id: string | null, b: EmpBody) => saveEmployee(db, a, id, b);
   app.post('/api/v1/pay/employees', async (req) => saveEmp(requireCompany(req), null, parse(empBody, req.body)));
   app.put('/api/v1/pay/employees/:id', async (req) => saveEmp(requireCompany(req), parse(z.object({ id: uuid }), req.params).id, parse(empBody, req.body)));
   app.delete('/api/v1/pay/employees/:id', async (req) => {

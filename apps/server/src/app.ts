@@ -64,6 +64,7 @@ import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 import { payrollMasterRoutes } from './modules/payroll/master.js';
 import { payrollRunRoutes } from './modules/payroll/runs.js';
 import { payrollFormRoutes } from './modules/payroll/forms.js';
+import { payrollFileRoutes } from './modules/payroll/files.js';
 
 export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
@@ -144,6 +145,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   payrollMasterRoutes(app, db);
   payrollRunRoutes(app, db);
   payrollFormRoutes(app, db);
+  payrollFileRoutes(app, db);
   tradeImportRoutes(app, db);
   signupRoutes(app, db, cfg);
   i18nNameRoutes(app, db);

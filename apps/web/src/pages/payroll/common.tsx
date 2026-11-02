@@ -15,3 +15,18 @@ export function RecNav({ ids, cur, go }: { ids: string[]; cur?: string; go: (id:
   };
   return <span className="doc-nav">{b(0, '⏮', 'รายการแรก')}{b(i - 1, '◀', 'ก่อนหน้า')}{b(i + 1, '▶', 'ถัดไป')}{b(ids.length - 1, '⏭', 'รายการสุดท้าย')}</span>;
 }
+
+/** ดาวน์โหลดแฟ้มจาก API (แฟ้มยื่น/แบบฟอร์ม) — ผิดพลาดแสดงข้อความจาก server */
+export async function downloadFile(url: string, fallbackName: string) {
+  const r = await fetch(url, { credentials: 'same-origin' });
+  if (!r.ok) {
+    const j = await r.json().catch(() => null) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `ดาวน์โหลดไม่ได้ (${r.status})`);
+  }
+  const cd = r.headers.get('content-disposition') ?? '';
+  const name = /filename\*=UTF-8''([^;]+)/.exec(cd)?.[1];
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(await r.blob()); a.download = name ? decodeURIComponent(name) : fallbackName; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+export const fileToBase64 = (f: File) => new Promise<string>((ok, bad) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(',')[1] ?? ''); rd.onerror = () => bad(rd.error); rd.readAsDataURL(f); });

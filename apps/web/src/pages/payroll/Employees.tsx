@@ -8,6 +8,7 @@ import { LkSelect, useLookups } from '../../components/LkSelect';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { RecNav, usePayItems, type PayItem } from './common';
+import { ImportModal } from './Filing';
 
 interface Row { id: string; code: string; name: string; nickname: string | null; position: string | null; employee_type: string | null; hire_date: string; end_date: string | null; wage_type: string; status: string;
   tax_id_masked: string | null; department_code: string | null; branch_code: string | null; rate: string | null }
@@ -28,6 +29,7 @@ export function EmployeesPage() {
   const [status, setStatus] = useState<'A' | 'I' | 'all'>('A');
   const list = useEmployees(status, q);
   const rs = useRowSelect(list.data);
+  const [imp, setImp] = useState(false);
   const reload = () => qc.invalidateQueries({ queryKey: ['pay-employees'] });
   const rows = list.data ?? [];
   return (
@@ -40,6 +42,7 @@ export function EmployeesPage() {
         <span className="search-box"><input type="search" autoFocus placeholder="ค้นหารหัส ชื่อ นามสกุล ชื่อเล่น" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" /><button title="ค้นหา" onClick={() => list.refetch()}>🔍</button></span>
         <select value={status} onChange={(e) => setStatus(e.target.value as 'A')} aria-label="สถานะ"><option value="A">ใช้งานอยู่</option><option value="I">เลิกใช้</option><option value="all">ทั้งหมด</option></select>
         <span className="muted small">{rows.length.toLocaleString()} คน</span>
+        <button disabled={!can('add')} onClick={() => setImp(true)}>⬆ นำเข้าจาก Excel</button>
       </div>
       <ErrorBox error={list.error} />
       <div className="table-wrap tall">
@@ -56,6 +59,10 @@ export function EmployeesPage() {
         </table>
       </div>
       <KeyHints keys={[['Ins', 'เพิ่ม'], ['↑↓', 'เลือก'], ['คลิก/Enter', 'เปิด'], ['Del', 'ลบ']]} />
+      {imp && <ImportModal<{ row: number; code: string; action: string; name: string | null }> title="นำเข้าพนักงานจาก Excel"
+        intro="หนึ่งแถว = พนักงานหนึ่งคน · รหัสใหม่ = เพิ่มพนักงาน (ต้องมีชื่อ วันเริ่มงาน อัตราค่าจ้าง) · รหัสเดิม = แก้เฉพาะช่องที่กรอก · ตรวจทั้งแฟ้มก่อนบันทึก"
+        templateUrl="/api/v1/pay/employees/import/template" templateName="นำเข้าพนักงาน.xlsx" postUrl="/api/v1/pay/employees/import"
+        cols={[['ทำรายการ', (x) => x.action], ['ชื่อ', (x) => x.name]]} onClose={() => setImp(false)} onDone={() => { setImp(false); reload(); }} />}
     </div>
   );
 }

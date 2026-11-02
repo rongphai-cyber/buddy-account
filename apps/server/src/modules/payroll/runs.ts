@@ -18,9 +18,9 @@ export const RUN_STATUS_TH: Record<string, string> = { D: 'ร่าง', N: '�
 const firstOfMonth = (iso: string) => `${iso.slice(0, 7)}-01`;
 const endOfMonthIso = (iso: string) => `${iso.slice(0, 7)}-${String(daysInMonth(+iso.slice(0, 4), +iso.slice(5, 7))).padStart(2, '0')}`;
 
-type Run = { id: string; doc_no: string | null; run_type: string; branch_id: string | null; period_from: string; period_to: string; pay_date: string; tax_month: string; status: string;
+export type Run = { id: string; doc_no: string | null; run_type: string; branch_id: string | null; period_from: string; period_to: string; pay_date: string; tax_month: string; status: string;
   journal_id: string | null; pay_journal_id: string | null; pay_account_id: string | null; paid_date: string | null; note: string | null };
-async function loadRun(db: Db, a: Ctx, id: string, lock = false): Promise<Run> {
+export async function loadRun(db: Db, a: Ctx, id: string, lock = false): Promise<Run> {
   let q = db.selectFrom('pay_run').select(['id', 'doc_no', 'run_type', 'branch_id', 'period_from', 'period_to', 'pay_date', 'tax_month', 'status', 'journal_id', 'pay_journal_id', 'pay_account_id', 'paid_date', 'note'])
     .where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null);
   if (lock) q = q.forUpdate();
@@ -28,7 +28,13 @@ async function loadRun(db: Db, a: Ctx, id: string, lock = false): Promise<Run> {
   if (!r) throw notFound('รอบเงินเดือน');
   return { ...r, period_from: String(r.period_from).slice(0, 10), period_to: String(r.period_to).slice(0, 10), pay_date: String(r.pay_date).slice(0, 10), tax_month: String(r.tax_month).slice(0, 10), paid_date: r.paid_date ? String(r.paid_date).slice(0, 10) : null };
 }
-const mustDraft = (r: Run) => {
+/** เดือนภาษีที่ยื่น ภ.ง.ด.1 หรือประกันสังคมแล้ว (ยังไม่ยกเลิก) — แก้/ยกเลิก/ลบรอบเงินเดือนของเดือนนั้นไม่ได้ */
+export async function assertNotFiled(db: Db, companyId: string, taxMonth: string) {
+  const f = await db.selectFrom('pay_filing').select(['form', 'filed_date']).where('company_id', '=', companyId).where('period', '=', taxMonth).where('status', '=', 'A')
+    .where('form', 'in', ['PND1', 'SSO']).where('deleted_at', 'is', null).executeTakeFirst();
+  if (f) throw badRequest(`เดือนนี้ยื่น${f.form === 'PND1' ? ' ภ.ง.ด.1 ' : 'ประกันสังคม'}แล้ว — แก้/ยกเลิกรอบเงินเดือนไม่ได้ (ถ้าต้องแก้: ยกเลิกการยื่นที่ เงินเดือน › ภาษีและประกันสังคม › การยื่น/นำส่ง แล้วยื่นใหม่ หรือทำรอบเพิ่มเติมแล้วยื่นเพิ่มเติม)`);
+}
+export const mustDraft = (r: Run) => {
   if (r.status !== 'D') throw badRequest(`รอบเงินเดือน ${r.doc_no ?? ''} ${RUN_STATUS_TH[r.status]} — กด "แก้ไข" (เปิดกลับเป็นร่าง) ก่อนจึงแก้ได้`.replace('  ', ' '));
 };
 
@@ -69,7 +75,7 @@ async function sameMonth(db: Db, companyId: string, employeeId: string, runId: s
 }
 
 /** คิดเงินเดือนพนักงานหนึ่งคนในรอบ แล้วเขียนยอด/บรรทัดใหม่ (บรรทัดที่ป้อนเองคงไว้) */
-async function calcEmployee(tx: Db, a: Ctx, run: Run, reId: string, ctx: { items: PayItemRow[]; law: Awaited<ReturnType<typeof payLaw>>; settings: Awaited<ReturnType<typeof paySettings>> }) {
+export async function calcEmployee(tx: Db, a: Ctx, run: Run, reId: string, ctx: { items: PayItemRow[]; law: Awaited<ReturnType<typeof payLaw>>; settings: Awaited<ReturnType<typeof paySettings>> }) {
   const re = await tx.selectFrom('pay_run_employee').selectAll().where('id', '=', reId).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirstOrThrow();
   const e = await tx.selectFrom('pay_employee').selectAll().where('id', '=', re.employee_id).where('company_id', '=', a.companyId).executeTakeFirstOrThrow();
   const steps = (await salarySteps(tx, a.companyId, [e.id])).get(e.id) ?? [];
@@ -111,10 +117,10 @@ async function calcEmployee(tx: Db, a: Ctx, run: Run, reId: string, ctx: { items
     other_deductions: out.other_deductions.toFixed(2), net_pay: out.net_pay.toFixed(2), tax_calc: jsonb({ ...out.calc, missing_months: missing, law_year: ctx.law.lawYear }), updated_by: a.userId,
   }).where('id', '=', re.id).execute();
 }
-async function calcCtx(db: Db, a: Ctx, run: Run) {
+export async function calcCtx(db: Db, a: Ctx, run: Run) {
   return { items: await payItems(db, a.companyId), law: await payLaw(db, a.companyId, Number(run.pay_date.slice(0, 4))), settings: await paySettings(db, a.companyId) };
 }
-async function totals(tx: Db, a: Ctx, runId: string) {
+export async function totals(tx: Db, a: Ctx, runId: string) {
   const t = (await sql<Record<string, string>>`SELECT count(*)::int AS headcount, coalesce(sum(gross),0) AS gross, coalesce(sum(tax),0) AS tax, coalesce(sum(sso_ee),0) AS sso_ee, coalesce(sum(sso_er),0) AS sso_er,
       coalesce(sum(pvd_ee),0) AS pvd_ee, coalesce(sum(pvd_er),0) AS pvd_er, coalesce(sum(other_deductions),0) AS ded, coalesce(sum(net_pay),0) AS net
       FROM pay_run_employee WHERE run_id = ${runId} AND company_id = ${a.companyId} AND deleted_at IS NULL`.execute(tx)).rows[0]!;
@@ -130,15 +136,17 @@ async function recalcAll(tx: Db, a: Ctx, run: Run) {
 
 // ---------------------------------------------------------------- ใบสำคัญ
 /** เลขที่รอบเงินเดือน PY + ปี 2 หลัก (ตามระบบปีของบริษัท) + เดือนที่จ่าย + ลำดับ 4 หลัก เช่น PY69010001 */
-async function runDocNo(tx: Db, companyId: string, payDate: string) {
+async function runDocNo(tx: Db, companyId: string, payDate: string) { return nextPayNo(tx, companyId, 'PY', payDate); }
+/** เลขที่ระบบเงินเดือน: ตัวนำ + ปี 2 หลัก (ตามระบบปีของบริษัท) + เดือน + ลำดับ 4 หลัก — ไม่ซ้ำกับเลขที่ใบสำคัญที่มีอยู่ */
+export async function nextPayNo(tx: Db, companyId: string, lead: string, payDate: string) {
   const co = await tx.selectFrom('sys_company').select('year_system').where('id', '=', companyId).executeTakeFirstOrThrow();
   const y = Number(payDate.slice(0, 4)) + (co.year_system === 'B' ? 543 : 0);
-  const prefix = `PY${String(y).slice(-2)}${payDate.slice(5, 7)}`;
+  const prefix = `${lead}${String(y).slice(-2)}${payDate.slice(5, 7)}`;
   const max = (await sql<{ v: string | null }>`SELECT max(v) AS v FROM (SELECT doc_no AS v FROM pay_run WHERE company_id = ${companyId} AND doc_no LIKE ${prefix + '%'}
       UNION ALL SELECT voucher_no FROM gl_journal WHERE company_id = ${companyId} AND voucher_no LIKE ${prefix + '%'}) x WHERE length(v) = ${prefix.length + 4}`.execute(tx)).rows[0]?.v;
   return prefix + String((max ? Number(max.slice(-4)) || 0 : 0) + 1).padStart(4, '0');
 }
-async function bookFor(db: Db, companyId: string, kind: 'PAYROLL' | 'PAYROLL_PAY') {
+export async function bookFor(db: Db, companyId: string, kind: 'PAYROLL' | 'PAYROLL_PAY') {
   const r = await db.selectFrom('gl_journal_route').select('journal_book_id').where('company_id', '=', companyId).where('txn_kind', '=', kind).where('deleted_at', 'is', null).executeTakeFirst();
   const b = r?.journal_book_id ?? (await db.selectFrom('gl_journal_book').select('id').where('company_id', '=', companyId).where('code', '=', '00').where('deleted_at', 'is', null).executeTakeFirst())?.id
     ?? (await db.selectFrom('gl_journal_book').select('id').where('company_id', '=', companyId).where('deleted_at', 'is', null).orderBy('code').executeTakeFirst())?.id;
@@ -167,7 +175,7 @@ async function runPosting(db: Db, a: Ctx, run: Run) {
   };
 }
 /** เขียนใบสำคัญ: ใบใหม่ (createJournal) หรือใบเดิมเลขเดิม (บรรทัดเก่าเก็บเป็นประวัติ) */
-async function writeJournal(tx: Db, a: Ctx, existing: string | null, head: { book: string; no: string; date: string; desc: string; branch: string | null }, lines: Array<{ account_id: string; department_id: string | null; debit: string; credit: string; role?: string }>) {
+export async function writeJournal(tx: Db, a: Ctx, existing: string | null, head: { book: string; no: string; date: string; desc: string; branch: string | null }, lines: Array<{ account_id: string; department_id: string | null; debit: string; credit: string; role?: string }>) {
   const jl = lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, debit: l.debit, credit: l.credit, description: head.desc.slice(0, 200) }));
   if (!existing) return (await createJournal(tx, { companyId: a.companyId, userId: a.userId, branchId: head.branch }, { journal_book_id: head.book, voucher_no: head.no, voucher_date: head.date, description: head.desc, reference: head.no, branch_id: head.branch, lines: jl as never }, '4', { sourceModule: 'PAY' })).id;
   const p = await periodFor(tx, a.companyId, head.date);
@@ -403,6 +411,7 @@ export function payrollRunRoutes(app: FastifyInstance, db: Db) {
     const b = parse(reasonBody, req.body);
     return db.transaction().execute(async (tx) => {
       const run = await loadRun(tx, a, id, true);
+      await assertNotFiled(tx, a.companyId, run.tax_month);
       if (run.status === 'P') throw badRequest(`รอบ ${run.doc_no} จ่ายเงินแล้ว — ยกเลิกการจ่ายก่อนจึงแก้ไขได้`);
       if (run.status !== 'N') throw badRequest(`รอบนี้${RUN_STATUS_TH[run.status]} แก้ไขไม่ได้`);
       await voidJournal(tx, a, run.journal_id, `แก้ไขรอบเงินเดือน: ${b.reason}`);
@@ -456,6 +465,7 @@ export function payrollRunRoutes(app: FastifyInstance, db: Db) {
     const b = parse(reasonBody, req.body);
     return db.transaction().execute(async (tx) => {
       const run = await loadRun(tx, a, id, true);
+      await assertNotFiled(tx, a.companyId, run.tax_month);
       if (run.status === 'C') throw badRequest('รอบนี้ถูกยกเลิกแล้ว');
       if (run.status === 'P') throw badRequest(`รอบ ${run.doc_no} จ่ายเงินแล้ว — ยกเลิกการจ่ายก่อนจึงยกเลิกรอบได้`);
       if (run.status === 'D' && !run.doc_no) throw badRequest('รอบร่างที่ยังไม่เคยบันทึก ลบได้เลยโดยไม่ต้องยกเลิก');
@@ -471,6 +481,7 @@ export function payrollRunRoutes(app: FastifyInstance, db: Db) {
     const id = parse(z.object({ id: uuid }), req.params).id;
     return db.transaction().execute(async (tx) => {
       const run = await loadRun(tx, a, id, true);
+      if (run.status !== 'D') await assertNotFiled(tx, a.companyId, run.tax_month);
       if (!(run.status === 'C' || (run.status === 'D' && !run.doc_no))) throw badRequest(run.doc_no ? `ยกเลิกรอบ ${run.doc_no} ก่อนจึงลบได้` : 'ลบได้เฉพาะรอบร่างหรือรอบที่ยกเลิกแล้ว');
       for (const jid of [run.journal_id, run.pay_journal_id].filter((x): x is string => !!x)) {
         const j = await tx.selectFrom('gl_journal').select(['voucher_date', 'doc_status']).where('id', '=', jid).executeTakeFirst();

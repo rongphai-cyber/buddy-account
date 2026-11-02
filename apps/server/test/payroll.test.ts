@@ -252,6 +252,88 @@ describe('ระบบเงินเดือน', () => {
     await call('POST', '/api/v1/auth/select', { company_id: co });
   });
 
+  it('files (ระยะ 3): RD Prep / e-Filing / SSO .xls / bank CSV with checks, Excel imports, filings post a remittance voucher and lock the month', async () => {
+    const raw = async (url: string) => { const r = await app.inject({ method: 'GET', url, headers: { cookie } }); return { status: r.statusCode, type: String(r.headers['content-type']), name: decodeURIComponent(String(r.headers['content-disposition'] ?? '').split("''")[1] ?? ''), body: r.rawPayload, text: r.body }; };
+    await sql`UPDATE sys_company SET tax_id = '0105559041270' WHERE id = ${co}`.execute(database.db);
+    // RD Prep: คนที่ไม่มีนามสกุล/เลขบัตร → ไม่สร้างแฟ้ม บอกรายคน
+    let f = await raw('/api/v1/pay/pnd1/rdprep?month=2026-01');
+    expect(f.status).toBe(400);
+    expect(JSON.parse(f.text).error.message).toMatch(/นามสกุล/);
+    await sql`UPDATE pay_employee SET last_name = 'บีบี', tax_id = ${pid(2)}, title = 'นาย' WHERE company_id = ${co} AND code = 'E02'`.execute(database.db);
+    await sql`UPDATE pay_employee SET last_name = 'ซีซี', tax_id = ${pid(3)}, title = 'นาย' WHERE company_id = ${co} AND code = 'E03'`.execute(database.db);
+    f = await raw('/api/v1/pay/pnd1/rdprep?month=2026-01');
+    expect([f.status, f.name]).toEqual([200, 'PND1_0105559041270_000000_2569_01_00_RDPrep.txt']);
+    expect(f.text.split('\r\n')[0]).toBe(`1|${pid(1)}|นาย|เอ|ทดสอบ|31/01/2569|30000.00|164.58|401N|0.00|1`);
+    const tis = await raw('/api/v1/pay/pnd1/rdprep?month=2026-01&enc=tis620');
+    expect([tis.type.includes('windows-874'), tis.body.length < Buffer.byteLength(f.text)]).toEqual([true, true]);
+    // e-Filing: ต้องตั้งชื่อผู้ใช้ e-Filing ก่อน
+    expect(JSON.parse((await raw('/api/v1/pay/pnd1/efiling?month=2026-01')).text).error.message).toMatch(/e-Filing/);
+    expect((await call('PUT', '/api/v1/settings', { values: { 'pay.rd_efiling_user': 'buddy01', 'pay.sso_employer_no': '1234567890', 'pay.sso_branch_no': '000001' } })).status).toBe(200);
+    f = await raw('/api/v1/pay/pnd1/efiling?month=2026-01&filing_no=1');
+    expect(f.name).toBe('PND1_0105559041270_000000_2569_01_01_00.txt');
+    expect(f.text.split('\r\n')[0]).toBe('H|0000|0105559041270|000000|1|PND1|0105559041270|000000|สำนักงานใหญ่|0|01|2569||01|3|55500.00|164.58|0.00|164.58|164.58|buddy01|2');
+    expect(f.text.split('\r\n')).toHaveLength(4);
+    // ภ.ง.ด.1ก ต้องมีที่อยู่ครบ
+    expect(JSON.parse((await raw('/api/v1/pay/pnd1a/rdprep?year=2026')).text).error.message).toMatch(/ที่อยู่/);
+    // แฟ้มประกันสังคม .xls
+    f = await raw('/api/v1/pay/sso/file?month=2026-01');
+    expect([f.status, f.name, f.body.subarray(0, 8).toString('hex')]).toEqual([200, '1234567890_012569.xls', 'd0cf11e0a1b11ae1']);
+    // ไฟล์โอน: เฉพาะคนรับโอน · ไม่มีเลขบัญชี = ไม่สร้าง
+    expect(JSON.parse((await raw(`/api/v1/pay/runs/${jan}/bank-file`)).text).error.message).toMatch(/เลขที่บัญชี/);
+    await sql`UPDATE pay_employee SET bank_account_no = '1234567890' WHERE id = ${A}`.execute(database.db);
+    f = await raw(`/api/v1/pay/runs/${jan}/bank-file`);
+    expect(f.text).toContain('"E01","นายเอ ทดสอบ","","","1234567890","นายเอ ทดสอบ",28960.42');
+    // นำเข้าพนักงาน (CSV): ตรวจก่อน · ผิดแม้แถวเดียวไม่บันทึก · รหัสเดิม = แก้เฉพาะช่องที่กรอก
+    const up = (rows: string[][]) => ({ file_name: 'emp.csv', data: Buffer.from(rows.map((r) => r.join(',')).join('\r\n'), 'utf8').toString('base64') });
+    const head = ['รหัสพนักงาน', 'ชื่อ', 'นามสกุล', 'วันเริ่มงาน', 'อัตราค่าจ้าง', 'โทรศัพท์', 'แผนก'];
+    let im = (await call('POST', '/api/v1/pay/employees/import', up([head, ['E10', 'ใหม่', 'นำเข้า', '01/03/2569', '18000', '', 'NOPE'], ['E01', '', '', '', '', '0899999999', 'ACC']]))).body;
+    expect([im.ok, im.errors.map((e: { message: string }) => e.message)]).toEqual([false, ['ไม่พบแผนกรหัส "NOPE"']]);
+    im = (await call('POST', '/api/v1/pay/employees/import', { ...up([head, ['E10', 'ใหม่', 'นำเข้า', '01/03/2569', '18000', '', 'ACC'], ['E01', '', '', '', '', '0899999999', '']]), commit: false })).body;
+    expect([im.ok, im.committed, im.rows.map((r: { code: string; action: string }) => `${r.code}:${r.action}`)]).toEqual([true, false, ['E10:เพิ่มใหม่', 'E01:แก้ไข']]);
+    im = (await call('POST', '/api/v1/pay/employees/import', { ...up([head, ['E10', 'ใหม่', 'นำเข้า', '01/03/2569', '18000', '', 'ACC'], ['E01', '', '', '', '', '0899999999', '']]), commit: true })).body;
+    expect([im.committed, im.added, im.edited]).toEqual([true, 1, 1]);
+    const e1 = (await call('GET', `/api/v1/pay/employees/${A}`)).body;
+    expect([e1.phone, e1.first_name, e1.tax_id_masked, e1.salary[0].rate]).toEqual(['0899999999', 'เอ', `•••${pid(1).slice(-4)}`, '30000.00']);
+    const e10 = (await call('GET', '/api/v1/pay/employees?q=E10')).body[0];
+    expect([e10.name, e10.rate, e10.department_code]).toEqual(['ใหม่ นำเข้า', '18000.00', 'ACC']);
+    const tpl = await raw('/api/v1/pay/employees/import/template');
+    expect(tpl.body.subarray(0, 2).toString()).toBe('PK');
+    // นำเข้ายอดงวด: แบบฟอร์มจากรอบ · OT ชั่วโมง + โบนัส
+    const apr = (await call('POST', '/api/v1/pay/runs', { month: '2026-04' })).body.id;
+    expect((await raw(`/api/v1/pay/runs/${apr}/import/template`)).body.subarray(0, 2).toString()).toBe('PK');
+    const ri = (await call('POST', `/api/v1/pay/runs/${apr}/import`, { file_name: 'r.csv', data: Buffer.from('รหัสพนักงาน,IN002 ค่าล่วงเวลา (ชั่วโมง),IN008 โบนัส\r\nE01,10,5000\r\nZZZ,1,1', 'utf8').toString('base64'), commit: true })).body;
+    expect([ri.ok, ri.committed, ri.errors[0].message]).toEqual([false, false, expect.stringMatching(/ZZZ/)]);
+    expect((await call('POST', `/api/v1/pay/runs/${apr}/import`, { file_name: 'r.csv', data: Buffer.from('รหัสพนักงาน,IN002 ค่าล่วงเวลา (ชั่วโมง),IN008 โบนัส\r\nE01,10,5000', 'utf8').toString('base64'), commit: true })).body.employees).toBe(1);
+    const ar = (await call('GET', `/api/v1/pay/runs/${apr}`)).body.employees.find((e: { code: string }) => e.code === 'E01');
+    expect(ar.lines.filter((l: { source: string }) => l.source === 'IMPORT').map((l: { code: string; amount: string }) => `${l.code}:${l.amount}`)).toEqual(['IN002:1875.00', 'IN008:5000.00']);
+    expect((await call('DELETE', `/api/v1/pay/runs/${apr}`)).status).toBe(200);
+    // บันทึกการยื่น ภ.ง.ด.1 ม.ค.: ยอดตามรอบ · ใบสำคัญนำส่ง Dr ภาษีหัก ณ ที่จ่ายค้างจ่าย / Cr เงินสด · ล็อกเดือน
+    expect((await call('GET', '/api/v1/pay/filings/due?form=PND1&period=2026-01')).body).toMatchObject({ headcount: 3, amount: '164.58' });
+    expect((await call('POST', '/api/v1/pay/filings', { form: 'PND1', period: '2026-01', filed_date: '2026-02-07' })).body.error.message).toMatch(/บัญชีที่จ่าย/);
+    const fl = (await call('POST', '/api/v1/pay/filings', { form: 'PND1', period: '2026-01', filed_date: '2026-02-07', pay_account_id: cash, receipt_no: 'RD-123' })).body;
+    const fj = (await call('GET', `/api/v1/gl/journals/${fl.journal_id}`)).body;
+    expect([fj.voucher_no, fj.total_debit, fj.lines.map((l: { account_no: string; debit: string; credit: string }) => `${l.account_no}:${l.debit}:${l.credit}`)]).toEqual(['PF69020001', '164.58', ['2132-01:164.58:0.00', '1111-01:0.00:164.58']]);
+    expect((await call('POST', '/api/v1/pay/filings', { form: 'PND1', period: '2026-01', filed_date: '2026-02-07', pay_account_id: cash })).status).toBe(409);
+    expect((await call('POST', `/api/v1/pay/runs/${jan}/reopen`, { reason: 'แก้' })).body.error.message).toMatch(/ยื่น ภ.ง.ด.1 แล้ว/);
+    const sso = (await call('POST', '/api/v1/pay/filings', { form: 'SSO', period: '2026-01', filed_date: '2026-02-15', pay_account_id: cash, surcharge: '10', surcharge_account_id: (await call('GET', '/api/v1/gl/accounts')).body.find((x: { account_no: string }) => x.account_no === '5411-13').id })).body;
+    expect((await call('GET', `/api/v1/gl/journals/${sso.journal_id}`)).body.total_debit).toBe('4160.00');
+    expect((await call('GET', '/api/v1/pay/filings?year=2026')).body.map((x: { form: string; status: string }) => `${x.form}:${x.status}`).sort()).toEqual(['PND1:A', 'SSO:A']);
+    // ยกเลิกการยื่น → ใบสำคัญยกเลิก · ปลดล็อกเดือน
+    for (const id of [fl.id, sso.id]) expect((await call('POST', `/api/v1/pay/filings/${id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect((await call('GET', `/api/v1/gl/journals/${fl.journal_id}`)).body.doc_status).toBe('C');
+    // บริษัทอื่น
+    await call('POST', '/api/v1/auth/select', { company_id: other });
+    expect((await raw(`/api/v1/pay/runs/${jan}/bank-file`)).status).toBe(404);
+    expect((await raw(`/api/v1/pay/runs/${jan}/import/template`)).status).toBe(404);
+    expect((await call('POST', `/api/v1/pay/runs/${jan}/import`, { file_name: 'r.csv', data: Buffer.from('รหัสพนักงาน\r\nE01').toString('base64') })).status).toBe(404);
+    expect((await raw('/api/v1/pay/pnd1/rdprep?month=2026-01')).status).toBe(400);
+    expect((await call('GET', '/api/v1/pay/filings?year=2026')).body).toEqual([]);
+    expect((await call('POST', `/api/v1/pay/filings/${fl.id}/cancel`, { reason: 'x' })).status).toBe(404);
+    expect((await call('POST', '/api/v1/pay/filings', { form: 'PND1', period: '2026-01', filed_date: '2026-02-07', pay_account_id: cash, amount: '1' })).body.error.message).toMatch(/บัญชี/);
+    expect((await call('GET', '/api/v1/pay/employees?q=E10')).body).toEqual([]);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+  });
+
   it('missing account role stops posting with a clear message; company tax table override is used', async () => {
     const mar = (await call('POST', '/api/v1/pay/runs', { month: '2026-03' })).body.id;
     await sql`UPDATE gl_default_account SET deleted_at = now() WHERE company_id = ${co} AND role = 'PAY_SSO_EXPENSE'`.execute(database.db);
@@ -327,6 +409,8 @@ describe('ระบบเงินเดือน', () => {
     expect((await call('GET', `/api/v1/pay/runs/${jan}/slips`)).status).toBe(404);
     expect((await call('GET', '/api/v1/pay/sso?month=2026-01')).body.rows).toEqual([]);
     expect((await call('GET', '/api/v1/pay/reports/cost?from=2026-01&to=2026-12')).body.rows).toEqual([]);
+    expect((await call('GET', '/api/v1/pay/filings?year=2026')).body).toEqual([]);
+    expect((await app.inject({ method: 'GET', url: `/api/v1/pay/runs/${jan}/bank-file`, headers: { cookie } })).statusCode).toBe(404);
     expect((await call('POST', `/api/v1/pay/runs/${jan}/reopen`, { reason: 'x' })).status).toBe(404);
     // เติมบัญชีจากผังตัวอย่างแตะเฉพาะบริษัทของตัวเอง
     const before = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_default_account WHERE company_id = ${co} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n;

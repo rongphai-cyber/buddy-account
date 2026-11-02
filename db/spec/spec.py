@@ -1528,6 +1528,25 @@ add(T('pay_wht_cert', 'เลขที่หนังสือรับรอง
   C('last_printed_at', 'ts', th='พิมพ์ล่าสุด'),
 ], uniq=[('employee_id','tax_year'), ('company_id','book_no','run_no')]))
 
+add(T('pay_filing', 'การยื่นแบบ/นำส่งของระบบเงินเดือน (ภ.ง.ด.1 ภ.ง.ด.1ก ประกันสังคม กองทุนสำรองเลี้ยงชีพ) — นำส่งเงิน = ใบสำคัญจ่าย · ยื่น ภ.ง.ด.1/ประกันสังคมแล้วรอบเงินเดือนของเดือนนั้นแก้ไม่ได้', 'pay', express='(ใหม่)', cols=[
+  C('form', 'code10', nn=True, th='PND1 PND1A SSO PVD', chk="form IN ('PND1','PND1A','SSO','PVD')"),
+  C('period', 'date', nn=True, th='เดือนภาษี (วันที่ 1) · ภ.ง.ด.1ก = 1 ม.ค. ของปี'),
+  C('filing_no', 'smallint', nn=True, d='0', th='0 = ยื่นปกติ · 1–9 = ยื่นเพิ่มเติมครั้งที่', chk='filing_no BETWEEN 0 AND 9'),
+  lk('branch_id', 'sys_branch', 'สาขาที่ยื่น (ว่าง = รวมทุกสาขา)'),
+  C('headcount', 'int', nn=True, d='0', th='จำนวนราย'),
+  C('base_amount', 'money', nn=True, d='0', th='เงินได้/ค่าจ้างรวม'),
+  C('amount', 'money', nn=True, d='0', th='ภาษี/เงินสมทบที่นำส่ง'),
+  C('surcharge', 'money', nn=True, d='0', th='เงินเพิ่ม/ค่าปรับ'),
+  C('filed_date', 'date', nn=True, th='วันที่ยื่น/นำส่ง'),
+  C('receipt_no', 'str60', th='เลขที่ใบเสร็จ/เลขอ้างอิงการยื่น'),
+  lk('pay_account_id', 'gl_account', 'บัญชีที่จ่ายเงิน (เงินสด/เงินฝาก)'),
+  lk('surcharge_account_id', 'gl_account', 'บัญชีค่าใช้จ่ายเงินเพิ่ม/ค่าปรับ'),
+  lk('journal_id', 'gl_journal', 'ใบสำคัญนำส่ง'),
+  C('status', 'char1', nn=True, d="'A'", th='A=ยื่นแล้ว C=ยกเลิก', chk="status IN ('A','C')"),
+  C('note', 'str200', th='หมายเหตุ'),
+  C('cancel_reason', 'str200', th='เหตุผลที่ยกเลิก'),
+], idx=[('company_id','form','period')]))
+
 # =====================================================================
 # SYNC infrastructure
 # =====================================================================

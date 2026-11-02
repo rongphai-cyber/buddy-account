@@ -6,6 +6,8 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { cx, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { Wht50Sheet } from '../tax/Wht50';
+import { downloadFile } from './common';
+import { FilingsTab } from './Filing';
 
 const be = (y: number | string) => Number(y) + 543;
 const monthLabel = (ym: string) => `${MONTH_TH[Number(ym.slice(5, 7)) - 1]} ${be(ym.slice(0, 4))}`;
@@ -156,6 +158,8 @@ export function PayTaxPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [branch, setBranch] = useState('');
   const [taxedOnly, setTaxedOnly] = useState(false);
+  const [enc, setEnc] = useState<'utf8' | 'tis620'>('utf8');
+  const [filingNo, setFilingNo] = useState('0');
   const [sel, setSel] = useState<Set<string>>(new Set());
   const { portal, print } = usePrintJob();
   const pnd1 = useQuery({ enabled: tab === 'pnd1', queryKey: ['pay-pnd1', month, branch, taxedOnly], queryFn: () => api.get<Pnd>('/api/v1/pay/pnd1', { month, branch_id: branch, taxed_only: taxedOnly ? '1' : '0' }) });
@@ -163,6 +167,9 @@ export function PayTaxPage() {
   const w50 = useQuery({ enabled: tab === 'w50', queryKey: ['pay-w50', year], queryFn: () => api.get<W50>('/api/v1/pay/w50', { year }) });
   const sso = useQuery({ enabled: tab === 'sso', queryKey: ['pay-sso', month, branch], queryFn: () => api.get<Sso>('/api/v1/pay/sso', { month, branch_id: branch }) });
   const cur = tab === 'pnd1' ? pnd1 : tab === 'pnd1a' ? pnd1a : tab === 'w50' ? w50 : sso;
+  const qs = (o: Record<string, string>) => Object.entries(o).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  const fileOf = (kind: 'rdprep' | 'efiling') => (tab === 'pnd1' ? `/api/v1/pay/pnd1/${kind}?${qs({ month, branch_id: branch, enc, filing_no: filingNo })}` : `/api/v1/pay/pnd1a/${kind}?${qs({ year: String(year), branch_id: branch, enc, filing_no: filingNo })}`);
+  const dl = (url: string, name: string) => downloadFile(url, name).then(() => toast('สร้างแฟ้มแล้ว — ลองนำเข้าโปรแกรมของกรมสรรพากร/ประกันสังคมก่อนยื่นจริง')).catch(toastError);
   const drafts = (cur.data as { drafts?: number } | undefined)?.drafts ?? 0;
   const problems = ((cur.data as { rows?: Array<{ code: string; problem: string | null }> } | undefined)?.rows ?? []).filter((r) => r.problem);
   const issue = async () => {
@@ -195,19 +202,26 @@ export function PayTaxPage() {
   return (
     <div className="page" data-tone="gl">
       <PageHead eyebrow="เงินเดือน" title="ภาษีและประกันสังคม" lead="แบบ ภ.ง.ด.1 รายเดือน · ภ.ง.ด.1ก ประจำปี · หนังสือรับรอง 50 ทวิ ประจำปี · สปส.1-10 — ยอดจากรอบเงินเดือนที่บันทึกแล้ว (รอบร่างไม่นับ) · เดือนภาษี = เดือนที่จ่าย" />
-      <Tabs active={tab} onChange={(t) => { setTab(t); setSel(new Set()); }} tabs={[{ key: 'pnd1', label: 'ภ.ง.ด.1 รายเดือน' }, { key: 'sso', label: 'สปส.1-10' }, { key: 'pnd1a', label: 'ภ.ง.ด.1ก ประจำปี' }, { key: 'w50', label: '50 ทวิ ประจำปี' }]} />
+      <Tabs active={tab} onChange={(t) => { setTab(t); setSel(new Set()); }} tabs={[{ key: 'pnd1', label: 'ภ.ง.ด.1 รายเดือน' }, { key: 'sso', label: 'สปส.1-10' }, { key: 'pnd1a', label: 'ภ.ง.ด.1ก ประจำปี' }, { key: 'w50', label: '50 ทวิ ประจำปี' }, { key: 'filings', label: 'การยื่น/นำส่ง' }]} />
       <div className="toolbar">
         {tab === 'pnd1' || tab === 'sso' ? monthPick : yearPick}
-        {tab !== 'w50' && branchPick}
+        {tab !== 'w50' && tab !== 'filings' && branchPick}
         {tab === 'pnd1' && <label className="check"><input type="checkbox" checked={taxedOnly} onChange={(e) => setTaxedOnly(e.target.checked)} /> เฉพาะคนที่ถูกหักภาษี</label>}
         {tab === 'w50' && <button className="primary" disabled={!can('add')} onClick={issue} title="ออกเลขที่ให้พนักงานที่ยังไม่มี — เลขที่ออกแล้วไม่เปลี่ยน">ออกเลขที่หนังสือรับรอง</button>}
-        <button className={tab === 'w50' ? undefined : 'primary'} disabled={!can('print') || !cur.data} onClick={doPrint}>🖨 พิมพ์ <kbd>Ctrl+P</kbd></button>
+        {tab !== 'filings' && <button className={tab === 'w50' ? undefined : 'primary'} disabled={!can('print') || !cur.data} onClick={doPrint}>🖨 พิมพ์ <kbd>Ctrl+P</kbd></button>}
+        {(tab === 'pnd1' || tab === 'pnd1a') && <span className="split">
+          <button disabled={!can('print')} onClick={() => dl(fileOf('rdprep'), 'RDPrep.txt')} title="แฟ้มสำหรับโปรแกรม RD Prep ของกรมสรรพากร">แฟ้ม RD Prep</button>
+          <select value={enc} onChange={(e) => setEnc(e.target.value as 'utf8')} aria-label="รหัสอักษร"><option value="utf8">UTF-8</option><option value="tis620">TIS-620</option></select>
+          <button disabled={!can('print')} onClick={() => dl(fileOf('efiling'), 'efiling.txt')} title="แฟ้มยื่นทางอินเทอร์เน็ต FORMAT กลาง v2.0 (ตั้งชื่อผู้ใช้ e-Filing ที่ตั้งค่าระบบเงินเดือนก่อน)">แฟ้ม e-Filing</button>
+          <select value={filingNo} onChange={(e) => setFilingNo(e.target.value)} aria-label="การยื่น"><option value="0">ยื่นปกติ</option>{Array.from({ length: 9 }, (_, i) => <option key={i} value={i + 1}>เพิ่มเติม {i + 1}</option>)}</select></span>}
+        {tab === 'sso' && <button disabled={!can('print')} onClick={() => dl(`/api/v1/pay/sso/file?${qs({ month, branch_id: branch })}`, 'sso.xls')} title="แฟ้ม Excel สำหรับยื่น สปส.1-10 ทางระบบ e-Service">แฟ้มยื่นประกันสังคม (.xls)</button>}
         {tab === 'w50' && <><button disabled={!can('print')} onClick={() => printW50([1])}>พิมพ์ฉบับที่ 1</button><button disabled={!can('print')} onClick={() => printW50([2])}>ฉบับที่ 2</button></>}
-        {tab !== 'w50' && <button disabled={!cur.data} onClick={exportXls}>ส่งออก Excel</button>}
+        {tab !== 'w50' && tab !== 'filings' && <button disabled={!cur.data} onClick={exportXls}>ส่งออก Excel</button>}
       </div>
       <ErrorBox error={cur.error} />
-      {drafts > 0 && <div className="note-box warn">มีรอบเงินเดือนร่าง {drafts} รอบในช่วงนี้ที่ยังไม่บันทึก — ไม่นับในแบบนี้</div>}
-      {!!problems.length && <div className="note-box warn"><b>ต้องแก้ก่อนยื่น:</b><ul className="small">{problems.map((r) => <li key={r.code}>{r.code}: {r.problem}</li>)}</ul></div>}
+      {tab === 'filings' && <FilingsTab year={year} />}
+      {tab !== 'filings' && drafts > 0 && <div className="note-box warn">มีรอบเงินเดือนร่าง {drafts} รอบในช่วงนี้ที่ยังไม่บันทึก — ไม่นับในแบบนี้</div>}
+      {tab !== 'filings' && !!problems.length && <div className="note-box warn"><b>ต้องแก้ก่อนยื่น:</b><ul className="small">{problems.map((r) => <li key={r.code}>{r.code}: {r.problem}</li>)}</ul></div>}
       {(tab === 'pnd1' || tab === 'pnd1a') && cur.data && (() => { const p = cur.data as Pnd; return (
         <div className="table-wrap tall"><table className="grid">
           <thead><tr><th style={{ width: 50 }}>ลำดับ</th><th style={{ width: 150 }}>เลขประจำตัวผู้เสียภาษี</th><th>ชื่อผู้มีเงินได้</th><th>{tab === 'pnd1' ? 'วันที่จ่าย' : 'ที่อยู่'}</th><th className="r">เงินได้</th><th className="r">ภาษี</th><th>เงื่อนไข</th></tr></thead>
