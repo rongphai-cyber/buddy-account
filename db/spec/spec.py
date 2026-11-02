@@ -267,7 +267,7 @@ add(T('sys_api_key', 'กุญแจ API ให้ระบบอื่นเ�
 
 add(T('sys_pdpa_request', 'ทะเบียนคำขอของเจ้าของข้อมูลส่วนบุคคล (PDPA ม.30–36, บันทึกตาม ม.39) — ขอดู/ขอสำเนา ขอแก้ ขอลบ ขอคัดค้าน และผลการดำเนินการ (T0.17)', 'sys', sync='server', express='(ใหม่)', cols=[
   C('request_type', 'code10', nn=True, th='ACCESS=ขอดู/ขอรับสำเนา PORT=ขอโอนย้าย RECTIFY=ขอแก้ไข ERASE=ขอลบ/ทำให้ไม่ระบุตัวตน OBJECT=คัดค้าน/ระงับใช้', chk="request_type IN ('ACCESS','PORT','RECTIFY','ERASE','OBJECT')"),
-  C('subject_type', 'code10', nn=True, th='CUSTOMER SUPPLIER SALESPERSON CONTACT', chk="subject_type IN ('CUSTOMER','SUPPLIER','SALESPERSON','CONTACT')"),
+  C('subject_type', 'code10', nn=True, th='CUSTOMER SUPPLIER SALESPERSON CONTACT EMPLOYEE', chk="subject_type IN ('CUSTOMER','SUPPLIER','SALESPERSON','CONTACT','EMPLOYEE')"),
   C('subject_id', 'uuid', th='id ของเจ้าของข้อมูล (ลูกค้า/ผู้จำหน่าย/พนักงานขาย/ผู้ติดต่อ)'),
   C('subject_code', 'code20', th='รหัสของเจ้าของข้อมูล (ไม่เก็บชื่อ — ทะเบียนนี้ต้องไม่เป็นที่เก็บข้อมูลส่วนบุคคลเสียเอง)'),
   C('received_on', 'date', nn=True, th='วันที่ได้รับคำขอ'),
@@ -1517,6 +1517,16 @@ add(T('pay_run_line', 'บรรทัดเงินได้/เงินห�
   C('note', 'str200', th='ที่มา เช่น 16 วัน × 30000 ÷ 30'),
   C('sort_order', 'int', nn=True, d='0', th='ลำดับ'),
 ], idx=[('run_employee_id',)]))
+
+add(T('pay_wht_cert', 'เลขที่หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ) ประจำปีของพนักงาน — ออกครั้งเดียวเก็บถาวร (ยอดคำนวณสดจากรอบเงินเดือนที่บันทึกแล้ว)', 'pay', express='(ใหม่)', cols=[
+  lk('employee_id', 'pay_employee', 'พนักงาน', nn=True),
+  C('tax_year', 'smallint', nn=True, th='ปีภาษี (ค.ศ.)'),
+  C('book_no', 'code20', nn=True, th='เล่มที่ (ปี พ.ศ. ที่ออก)'),
+  C('run_no', 'int', nn=True, th='เลขที่ (ลำดับในเล่ม)'),
+  C('issue_date', 'date', nn=True, th='วันที่ออก (31 ธ.ค. หรือวันที่ออกจากงาน)'),
+  C('print_count', 'smallint', nn=True, d='0', th='จำนวนครั้งที่พิมพ์'),
+  C('last_printed_at', 'ts', th='พิมพ์ล่าสุด'),
+], uniq=[('employee_id','tax_year'), ('company_id','book_no','run_no')]))
 
 # =====================================================================
 # SYNC infrastructure

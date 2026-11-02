@@ -9,6 +9,7 @@ import { DocLink } from '../../components/DocLink';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { RecNav, usePayItems } from './common';
 import { useEmployees } from './Employees';
+import { SlipPrintButton } from './Forms';
 
 interface RunRow { id: string; doc_no: string | null; run_type: string; period_from: string; period_to: string; pay_date: string; status: string; status_th: string; headcount: number;
   total_gross: string; total_tax: string; total_sso_ee: string; total_sso_er: string; total_net: string; note: string | null; branch_code: string | null }
@@ -129,6 +130,7 @@ export function RunPage() {
         <button disabled={r?.status !== 'P' || busy || !can('cancel')} onClick={() => setAsk('unpay')}>ยกเลิกการจ่าย</button>
         <button disabled={!r || r.status === 'C' || r.status === 'P' || (draft && !r.doc_no) || busy || !can('cancel')} onClick={() => setAsk('cancel')}>ยกเลิก <kbd>Alt+C</kbd></button>
         <button className="danger-outline" disabled={!r || !(r.status === 'C' || (draft && !r.doc_no)) || busy || !can('delete')} onClick={() => setAsk('delete')}>ลบ</button>
+        {r && r.headcount > 0 && <SlipPrintButton runId={id} />}
         <RecNav ids={(all.data ?? []).map((x) => x.id)} cur={id} go={(to) => nav(`/pay/runs/${to}`)} />
         <button onClick={() => nav('/pay/runs')}>รายการ <kbd>Esc</kbd></button>
       </div>
@@ -270,7 +272,7 @@ function EmpPayModal({ run, emp, editable, onClose, onSaved }: { run: Run; emp: 
   const unit = (calc?: string) => (calc === 'HOURS' ? 'ชั่วโมง' : calc === 'DAYS' ? 'วัน' : calc === 'MINUTES' ? 'นาที' : '');
   return (
     <Modal size="wide" title={`${emp.code} ${emp.name} — ${WAGE_TYPE_TH[emp.wage_type as 'M']} · ${TAX_BEARER_TH[emp.tax_bearer as TaxBearer]}`} onClose={onClose}
-      footer={<><button onClick={onClose}>ปิด <kbd>Esc</kbd></button>{editable && <button className="primary" disabled={busy} onClick={save}>คำนวณใหม่และเก็บ <kbd>F9</kbd></button>}</>}>
+      footer={<><SlipPrintButton runId={run.id} reId={emp.id} label="🖨 สลิปคนนี้" /><button onClick={onClose}>ปิด <kbd>Esc</kbd></button>{editable && <button className="primary" disabled={busy} onClick={save}>คำนวณใหม่และเก็บ <kbd>F9</kbd></button>}</>}>
       <ErrorBox error={err} />
       <Tabs active={tab} onChange={setTab} tabs={[{ key: 'slip', label: 'รายการ' }, { key: 'input', label: 'ป้อน/แก้ไข' }, { key: 'tax', label: 'ภาษีคำนวณอย่างไร' }]} />
       {tab === 'slip' && <div className="fa-grid">

@@ -31,7 +31,7 @@ const CONFIG = new Set(['SET.CO', 'SET.DEF', 'SET.IAG', 'SET.FAG', 'SET.PAYM', '
 /** ระบบความปลอดภัยและแก้ไขแบบฟอร์ม: ระดับ 9 เท่านั้น */
 const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'SET.API', 'SET.AI', 'SET.PDPA', 'SET.DEVICE', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG']);
 /** ระบบเงินเดือน (ข้อมูลลับ): ระดับ 5 ขึ้นไปทุกการทำงานรวมการอ่าน · ตั้งค่ารายการ/อัตรา = เมนูกำหนดค่า */
-export const PAYROLL = new Set(['PAY', 'PAY.RUN', 'PAY.EMP', 'PAY.ITEM', 'PAY.LAW', 'PAY.CALC', 'PAY.SET']);
+export const PAYROLL = new Set(['PAY', 'PAY.RUN', 'PAY.EMP', 'PAY.ITEM', 'PAY.LAW', 'PAY.CALC', 'PAY.SET', 'PAY.TAX', 'PAY.RPT']);
 
 export function baseAllowed(level: number, menu: string, action: Action) {
   if (level >= 9) return true;
@@ -303,6 +303,10 @@ export const API_RULES: Record<string, Rule> = {
   'POST /api/v1/pay/runs/:id/reopen': M('PAY.RUN', 'edit'), 'POST /api/v1/pay/runs/:id/pay': M('PAY.RUN', 'edit'), 'POST /api/v1/pay/runs/:id/unpay': M('PAY.RUN', 'cancel'),
   'POST /api/v1/pay/runs/:id/cancel': M('PAY.RUN', 'cancel'), 'DELETE /api/v1/pay/runs/:id': M('PAY.RUN', 'delete'),
   'POST /api/v1/pay/default-accounts': M('SET.LINK', 'edit'),
+  'GET /api/v1/pay/runs/:id/slips': M('PAY.RUN', 'print'), 'POST /api/v1/pay/runs/:id/slips/printed': M('PAY.RUN', 'print'),
+  'GET /api/v1/pay/pnd1': M('PAY.TAX', 'read'), 'GET /api/v1/pay/pnd1a': M('PAY.TAX', 'read'), 'GET /api/v1/pay/sso': M('PAY.TAX', 'read'),
+  'GET /api/v1/pay/w50': M('PAY.TAX', 'read'), 'POST /api/v1/pay/w50/issue': M('PAY.TAX', 'add'), 'POST /api/v1/pay/w50/printed': M('PAY.TAX', 'print'),
+  'GET /api/v1/pay/reports/register': M('PAY.RPT', 'read'), 'GET /api/v1/pay/reports/yearly': M('PAY.RPT', 'read'), 'GET /api/v1/pay/reports/cost': M('PAY.RPT', 'read'),
   'GET /api/v1/backup/company': M('OT.BACKUP', 'add'), 'POST /api/v1/backup/verify': M('OT.BACKUP', 'read'), 'POST /api/v1/backup/restore': M('OT.BACKUP', 'edit'),
   'GET /api/v1/backup/users': M('SET.SEC', 'read'), 'POST /api/v1/backup/users/restore': M('SET.SEC', 'edit'),
   'GET /api/v1/gl/year-end': M('OT.YE', 'read'), 'POST /api/v1/gl/year-end/inventory-jv': M('OT.YE', 'add'), 'POST /api/v1/gl/year-end/close': M('OT.YE', 'edit'), 'POST /api/v1/gl/year-end/reopen': M('OT.YE', 'cancel'),

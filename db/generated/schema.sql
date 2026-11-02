@@ -750,7 +750,7 @@ CREATE TABLE sys_pdpa_request (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
   request_type varchar(10) NOT NULL CHECK (request_type IN ('ACCESS','PORT','RECTIFY','ERASE','OBJECT')),
-  subject_type varchar(10) NOT NULL CHECK (subject_type IN ('CUSTOMER','SUPPLIER','SALESPERSON','CONTACT')),
+  subject_type varchar(10) NOT NULL CHECK (subject_type IN ('CUSTOMER','SUPPLIER','SALESPERSON','CONTACT','EMPLOYEE')),
   subject_id uuid,
   subject_code varchar(20),
   received_on date NOT NULL,
@@ -772,7 +772,7 @@ COMMENT ON TABLE sys_pdpa_request IS 'ทะเบียนคำขอของ
 COMMENT ON COLUMN sys_pdpa_request.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
 COMMENT ON COLUMN sys_pdpa_request.company_id IS 'บริษัท';
 COMMENT ON COLUMN sys_pdpa_request.request_type IS 'ACCESS=ขอดู/ขอรับสำเนา PORT=ขอโอนย้าย RECTIFY=ขอแก้ไข ERASE=ขอลบ/ทำให้ไม่ระบุตัวตน OBJECT=คัดค้าน/ระงับใช้';
-COMMENT ON COLUMN sys_pdpa_request.subject_type IS 'CUSTOMER SUPPLIER SALESPERSON CONTACT';
+COMMENT ON COLUMN sys_pdpa_request.subject_type IS 'CUSTOMER SUPPLIER SALESPERSON CONTACT EMPLOYEE';
 COMMENT ON COLUMN sys_pdpa_request.subject_id IS 'id ของเจ้าของข้อมูล (ลูกค้า/ผู้จำหน่าย/พนักงานขาย/ผู้ติดต่อ)';
 COMMENT ON COLUMN sys_pdpa_request.subject_code IS 'รหัสของเจ้าของข้อมูล (ไม่เก็บชื่อ — ทะเบียนนี้ต้องไม่เป็นที่เก็บข้อมูลส่วนบุคคลเสียเอง)';
 COMMENT ON COLUMN sys_pdpa_request.received_on IS 'วันที่ได้รับคำขอ';
@@ -4752,6 +4752,46 @@ COMMENT ON COLUMN pay_run_line.deleted_at IS 'ลบแบบ soft delete (Expre
 COMMENT ON COLUMN pay_run_line.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE INDEX ix_pay_run_line_run_employee ON pay_run_line (run_employee_id);
 
+-- pay_wht_cert: เลขที่หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ) ประจำปีของพนักงาน — ออกครั้งเดียวเก็บถาวร (ยอดคำนวณสดจากรอบเงินเดือนที่บันทึกแล้ว)  [Express: (ใหม่)]
+CREATE TABLE pay_wht_cert (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  employee_id uuid NOT NULL,
+  tax_year smallint NOT NULL,
+  book_no varchar(20) NOT NULL,
+  run_no integer NOT NULL,
+  issue_date date NOT NULL,
+  print_count smallint DEFAULT 0 NOT NULL,
+  last_printed_at timestamptz,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE pay_wht_cert IS 'เลขที่หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ) ประจำปีของพนักงาน — ออกครั้งเดียวเก็บถาวร (ยอดคำนวณสดจากรอบเงินเดือนที่บันทึกแล้ว) | Express: (ใหม่)';
+COMMENT ON COLUMN pay_wht_cert.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN pay_wht_cert.company_id IS 'บริษัท';
+COMMENT ON COLUMN pay_wht_cert.employee_id IS 'พนักงาน';
+COMMENT ON COLUMN pay_wht_cert.tax_year IS 'ปีภาษี (ค.ศ.)';
+COMMENT ON COLUMN pay_wht_cert.book_no IS 'เล่มที่ (ปี พ.ศ. ที่ออก)';
+COMMENT ON COLUMN pay_wht_cert.run_no IS 'เลขที่ (ลำดับในเล่ม)';
+COMMENT ON COLUMN pay_wht_cert.issue_date IS 'วันที่ออก (31 ธ.ค. หรือวันที่ออกจากงาน)';
+COMMENT ON COLUMN pay_wht_cert.print_count IS 'จำนวนครั้งที่พิมพ์';
+COMMENT ON COLUMN pay_wht_cert.last_printed_at IS 'พิมพ์ล่าสุด';
+COMMENT ON COLUMN pay_wht_cert.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN pay_wht_cert.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN pay_wht_cert.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN pay_wht_cert.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN pay_wht_cert.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN pay_wht_cert.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN pay_wht_cert.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_pay_wht_cert_employee_tax_year ON pay_wht_cert (employee_id, tax_year) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uq_pay_wht_cert_company_book_no_run_no ON pay_wht_cert (company_id, book_no, run_no) WHERE deleted_at IS NULL;
+
 -- sync_change_log: บันทึกการเปลี่ยนแปลงบนเซิร์ฟเวอร์ (ใช้ให้เครื่องลูกดึงเฉพาะส่วนที่เปลี่ยน)  [Express: (ใหม่)]
 CREATE TABLE sync_change_log (
   seq bigserial NOT NULL,
@@ -5928,6 +5968,14 @@ ALTER TABLE pay_run_line ADD CONSTRAINT fk_pay_run_line_created_by FOREIGN KEY (
 CREATE INDEX IF NOT EXISTS ix_fk_pay_run_line_created_by ON pay_run_line (created_by);
 ALTER TABLE pay_run_line ADD CONSTRAINT fk_pay_run_line_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_pay_run_line_updated_by ON pay_run_line (updated_by);
+ALTER TABLE pay_wht_cert ADD CONSTRAINT fk_pay_wht_cert_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_pay_wht_cert_company_id ON pay_wht_cert (company_id);
+ALTER TABLE pay_wht_cert ADD CONSTRAINT fk_pay_wht_cert_employee_id FOREIGN KEY (employee_id) REFERENCES pay_employee(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_pay_wht_cert_employee_id ON pay_wht_cert (employee_id);
+ALTER TABLE pay_wht_cert ADD CONSTRAINT fk_pay_wht_cert_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_pay_wht_cert_created_by ON pay_wht_cert (created_by);
+ALTER TABLE pay_wht_cert ADD CONSTRAINT fk_pay_wht_cert_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_pay_wht_cert_updated_by ON pay_wht_cert (updated_by);
 ALTER TABLE sync_change_log ADD CONSTRAINT fk_sync_change_log_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sync_change_log_company_id ON sync_change_log (company_id);
 ALTER TABLE sync_inbox ADD CONSTRAINT fk_sync_inbox_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
@@ -6129,6 +6177,7 @@ CREATE TRIGGER trg_pay_law_ver BEFORE UPDATE ON pay_law FOR EACH ROW EXECUTE FUN
 CREATE TRIGGER trg_pay_run_ver BEFORE UPDATE ON pay_run FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_pay_run_employee_ver BEFORE UPDATE ON pay_run_employee FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_pay_run_line_ver BEFORE UPDATE ON pay_run_line FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_pay_wht_cert_ver BEFORE UPDATE ON pay_wht_cert FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sync_conflict_ver BEFORE UPDATE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_tenant_ver BEFORE UPDATE ON sys_tenant FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_signup_ver BEFORE UPDATE ON sys_signup FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
@@ -6230,6 +6279,7 @@ CREATE TRIGGER trg_pay_law_log AFTER INSERT OR UPDATE ON pay_law FOR EACH ROW EX
 CREATE TRIGGER trg_pay_run_log AFTER INSERT OR UPDATE ON pay_run FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_pay_run_employee_log AFTER INSERT OR UPDATE ON pay_run_employee FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_pay_run_line_log AFTER INSERT OR UPDATE ON pay_run_line FOR EACH ROW EXECUTE FUNCTION sync_log_change();
+CREATE TRIGGER trg_pay_wht_cert_log AFTER INSERT OR UPDATE ON pay_wht_cert FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sync_conflict_log AFTER INSERT OR UPDATE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_company_del AFTER DELETE ON sys_company FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sys_branch_del AFTER DELETE ON sys_branch FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
@@ -6318,6 +6368,7 @@ CREATE TRIGGER trg_pay_law_del AFTER DELETE ON pay_law FOR EACH ROW EXECUTE FUNC
 CREATE TRIGGER trg_pay_run_del AFTER DELETE ON pay_run FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_pay_run_employee_del AFTER DELETE ON pay_run_employee FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_pay_run_line_del AFTER DELETE ON pay_run_line FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_pay_wht_cert_del AFTER DELETE ON pay_wht_cert FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sync_conflict_del AFTER DELETE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sys_branch_rid BEFORE INSERT ON sys_branch FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_user_company_rid BEFORE INSERT ON sys_user_company FOR EACH ROW EXECUTE FUNCTION sync_row_id();
@@ -6409,6 +6460,7 @@ CREATE TRIGGER trg_pay_law_rid BEFORE INSERT ON pay_law FOR EACH ROW EXECUTE FUN
 CREATE TRIGGER trg_pay_run_rid BEFORE INSERT ON pay_run FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_pay_run_employee_rid BEFORE INSERT ON pay_run_employee FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_pay_run_line_rid BEFORE INSERT ON pay_run_line FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_pay_wht_cert_rid BEFORE INSERT ON pay_wht_cert FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sync_conflict_rid BEFORE INSERT ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE CONSTRAINT TRIGGER trg_gl_journal_balanced AFTER INSERT OR UPDATE ON gl_journal DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION gl_check_balanced();
 CREATE TRIGGER trg_gl_journal_period BEFORE INSERT OR UPDATE ON gl_journal FOR EACH ROW EXECUTE FUNCTION gl_check_period_open();

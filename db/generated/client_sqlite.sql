@@ -2228,6 +2228,28 @@ CREATE TABLE IF NOT EXISTS pay_run_line (
 );
 CREATE INDEX IF NOT EXISTS ix_pay_run_line_run_employee ON pay_run_line (run_employee_id);
 
+-- pay_wht_cert: เลขที่หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ) ประจำปีของพนักงาน — ออกครั้งเดียวเก็บถาวร (ยอดคำนวณสดจากรอบเงินเดือนที่บันทึกแล้ว)
+CREATE TABLE IF NOT EXISTS pay_wht_cert (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  employee_id TEXT NOT NULL REFERENCES pay_employee(id) DEFERRABLE INITIALLY DEFERRED,
+  tax_year INTEGER NOT NULL,
+  book_no TEXT NOT NULL,
+  run_no INTEGER NOT NULL,
+  issue_date TEXT NOT NULL,
+  print_count INTEGER NOT NULL DEFAULT 0,
+  last_printed_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_wht_cert_employee_tax_year ON pay_wht_cert (employee_id, tax_year) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_wht_cert_company_book_no_run_no ON pay_wht_cert (company_id, book_no, run_no) WHERE deleted_at IS NULL;
+
 -- sync_conflict: ความขัดแย้งที่ต้องให้คนตัดสิน
 CREATE TABLE IF NOT EXISTS sync_conflict (
   id TEXT PRIMARY KEY,
@@ -4277,6 +4299,29 @@ CREATE TRIGGER IF NOT EXISTS trg_pay_run_line_ver AFTER UPDATE ON pay_run_line
 WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
 BEGIN
   UPDATE pay_run_line SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_wht_cert_insert_outbox AFTER INSERT ON pay_wht_cert
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_wht_cert', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'employee_id', NEW.employee_id, 'tax_year', NEW.tax_year, 'book_no', NEW.book_no, 'run_no', NEW.run_no, 'issue_date', NEW.issue_date, 'print_count', NEW.print_count, 'last_printed_at', NEW.last_printed_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_wht_cert_update_outbox AFTER UPDATE ON pay_wht_cert
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'pay_wht_cert', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'employee_id', NEW.employee_id, 'tax_year', NEW.tax_year, 'book_no', NEW.book_no, 'run_no', NEW.run_no, 'issue_date', NEW.issue_date, 'print_count', NEW.print_count, 'last_printed_at', NEW.last_printed_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_pay_wht_cert_ver AFTER UPDATE ON pay_wht_cert
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE pay_wht_cert SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sync_conflict_insert_outbox AFTER INSERT ON sync_conflict
 WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'

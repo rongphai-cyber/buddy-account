@@ -47,6 +47,7 @@ import { AssetAccountGroupsPage, AssetFormPage, AssetsPage, DepreciationPage } f
 import { EmployeeFormPage, EmployeesPage } from './pages/payroll/Employees';
 import { RunPage, RunsPage } from './pages/payroll/Runs';
 import { PayItemsPage, PayLawPage, TaxCalculatorPage } from './pages/payroll/PaySetup';
+import { PayReportsPage, PayTaxPage } from './pages/payroll/Forms';
 import { YearEndPage } from './pages/gl/YearEnd';
 import { BackupPage } from './pages/settings/Backup';
 import { ApiKeysPage } from './pages/settings/ApiKeys';
@@ -244,6 +245,8 @@ function Shell() {
           <Route path="/pay/runs" element={<RunsPage />} />
           <Route path="/pay/runs/:id" element={<RunPage />} />
           <Route path="/pay/items" element={<PayItemsPage />} />
+          <Route path="/pay/tax" element={<PayTaxPage />} />
+          <Route path="/pay/reports" element={<PayReportsPage />} />
           <Route path="/pay/law" element={<PayLawPage />} />
           <Route path="/pay/tax-calculator" element={<TaxCalculatorPage />} />
           <Route path="/fa/assets" element={<AssetsPage />} />

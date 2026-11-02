@@ -180,6 +180,78 @@ describe('ระบบเงินเดือน', () => {
     expect((await call('DELETE', `/api/v1/pay/runs/${oct}`)).status).toBe(200);
   });
 
+  it('forms (ระยะ 2): payslip with YTD, PND1 month, PND1A year with brought-forward, 50 Tawi numbers kept, SSO 1-10 capped wage, reports', async () => {
+    // สลิป: รอบ ม.ค. (บันทึกแล้ว)
+    const sl = (await call('GET', `/api/v1/pay/runs/${jan}/slips`)).body;
+    const sa = sl.slips.find((x: { code: string }) => x.code === 'E01');
+    expect([sa.gross, sa.deductions_total, sa.net_pay, sa.ytd.income, sa.ytd.tax, sa.ytd.sso, sa.tax_id]).toEqual(['30000.00', '1039.58', '28960.42', '30000.00', '164.58', '875.00', `•••${pid(1).slice(-4)}`]);
+    expect(sa.earnings.map((x: { name: string; amount: string }) => `${x.name}:${x.amount}`)).toEqual(['เงินเดือน/ค่าจ้าง:30000.00']);
+    expect(sa.deductions.map((x: { name: string }) => x.name)).toEqual(['ภาษีหัก ณ ที่จ่าย', 'ประกันสังคม']);
+    expect((await call('GET', `/api/v1/pay/runs/${jan}/slips?re=${sa.run_employee_id}`)).body.slips).toHaveLength(1);
+    // ภ.ง.ด.1 ม.ค.: ทุกคนที่มีเงินได้ · taxed_only เฉพาะคนที่ถูกหัก
+    const p1 = (await call('GET', '/api/v1/pay/pnd1?month=2026-01')).body;
+    expect(p1.rows.map((r: { code: string; income: string; tax: string; condition: string }) => [r.code, r.income, r.tax, r.condition])).toEqual([['E01', '30000.00', '164.58', '1'], ['E02', '17500.00', '0.00', '1'], ['E03', '8000.00', '0.00', '1']]);
+    expect([p1.count, p1.income, p1.tax, p1.payer.name]).toEqual([3, '55500.00', '164.58', 'บริษัท เงินเดือน จำกัด']);
+    expect(p1.rows[0].tax_id).toBe(pid(1));
+    expect((await call('GET', '/api/v1/pay/pnd1?month=2026-01&taxed_only=1')).body.count).toBe(1);
+    // สปส.1-10: ค่าจ้างในแบบไม่เกิน 17,500
+    const so = (await call('GET', '/api/v1/pay/sso?month=2026-01')).body;
+    expect(so.rows.map((r: { code: string; wage_paid: string; wage: string; ee: string }) => [r.code, r.wage_paid, r.wage, r.ee])).toEqual([['E01', '30000.00', '17500.00', '875.00'], ['E02', '16000.00', '16000.00', '800.00'], ['E03', '8000.00', '8000.00', '400.00']]);
+    expect([so.ee, so.er, so.total]).toEqual(['2075.00', '2075.00', '4150.00']);
+    // ภ.ง.ด.1ก ปี 2569: รวมยอดยกมาของ E05 · ที่อยู่ไม่ครบแจ้งปัญหา
+    const pa = (await call('GET', '/api/v1/pay/pnd1a?year=2026')).body;
+    expect(pa.rows.map((r: { code: string; income: string; tax: string }) => [r.code, r.income, r.tax])).toEqual([['E01', '30000.00', '164.58'], ['E02', '17500.00', '0.00'], ['E03', '8000.00', '0.00'], ['E05', '270000.00', '1481.25']]);
+    expect(pa.rows[0].problem).toMatch(/ที่อยู่/);
+    // 50 ทวิ: ออกเลขที่ครั้งเดียว เล่ม 2569 เลขที่ 001… ตามรหัส · ออกซ้ำไม่ออกใหม่
+    let w = (await call('GET', '/api/v1/pay/w50?year=2026')).body;
+    expect(w.rows.every((r: { issued: boolean }) => !r.issued)).toBe(true);
+    expect((await call('POST', '/api/v1/pay/w50/printed', { year: 2026, employee_ids: [A] })).body.error.message).toMatch(/ออกเลขที่/);
+    expect((await call('POST', '/api/v1/pay/w50/issue', { year: 2026 })).body.issued).toBe(4);
+    expect((await call('POST', '/api/v1/pay/w50/issue', { year: 2026 })).body.issued).toBe(0);
+    w = (await call('GET', '/api/v1/pay/w50?year=2026')).body;
+    const wa = w.rows.find((r: { code: string }) => r.code === 'E01');
+    expect([wa.data.book_no, wa.data.run_no, wa.data.form, wa.data.lines[0].amount, wa.data.lines[0].tax, wa.data.funds.sso, wa.data.issue_date]).toEqual(['2569', '001', '1ก', '30000.00', '164.58', '875.00', '2026-12-31']);
+    expect(w.rows.map((r: { data: { run_no: string } }) => r.data.run_no)).toEqual(['001', '002', '003', '004']);
+    expect((await call('POST', '/api/v1/pay/w50/printed', { year: 2026, employee_ids: [A] })).status).toBe(200);
+    expect((await call('GET', '/api/v1/pay/w50?year=2026')).body.rows[0].print_count).toBe(1);
+    // รายงาน
+    const reg = (await call('GET', '/api/v1/pay/reports/register?month=2026-01')).body;
+    expect(reg.columns.map((c: { code: string }) => c.code)).toEqual(['IN001', 'IN006', 'ES001', 'ES002', 'ES005']);
+    expect(reg.rows.map((r: { code: string; net: string }) => `${r.code}:${r.net}`)).toEqual(['E01:28960.42', 'E02:14700.00', 'E03:7600.00']);
+    const yr = (await call('GET', '/api/v1/pay/reports/yearly?year=2026&measure=tax')).body;
+    expect(yr.months[0]).toBe('164.58');
+    const cost = (await call('GET', '/api/v1/pay/reports/cost?from=2026-01&to=2026-01')).body;
+    expect(cost.rows.map((r: { department: string; total: string }) => `${r.department}:${r.total}`)).toEqual(['(ไม่ระบุแผนก):26700.00', 'ACC บัญชี:30875.00']);
+    expect(cost.total.total).toBe('57575.00');
+    // บริษัทอื่นเห็นไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: other });
+    expect((await call('GET', `/api/v1/pay/runs/${jan}/slips`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/pay/pnd1?month=2026-01')).body.rows).toEqual([]);
+    expect((await call('GET', '/api/v1/pay/w50?year=2026')).body.rows).toEqual([]);
+    expect((await call('POST', '/api/v1/pay/w50/issue', { year: 2026 })).body.issued).toBe(0);
+    expect((await call('POST', '/api/v1/pay/w50/printed', { year: 2026, employee_ids: [A] })).status).toBe(400);
+    expect((await call('GET', '/api/v1/pay/reports/register?month=2026-01')).body.rows).toEqual([]);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+  });
+
+  it('PDPA: employee is a data subject — search, full report with payroll, contact erase now, full erase only after retention', async () => {
+    await call('PUT', `/api/v1/pay/employees/${A}`, { code: 'E01', title: 'นาย', first_name: 'เอ', last_name: 'ทดสอบ', department_id: dept, hire_date: '2025-01-01', pay_method: 'B', bank_account_no: '1234567890', phone: '0812345678' });
+    const found = (await call('GET', '/api/v1/pdpa/subjects?q=E01')).body.filter((x: { kind: string }) => x.kind === 'EMPLOYEE');
+    expect(found.map((x: { code: string }) => x.code)).toEqual(['E01']);
+    const rep = (await call('GET', `/api/v1/pdpa/subjects/EMPLOYEE/${A}`)).body;
+    expect([rep.master.tax_id, rep.master.phone, rep.payroll.length, rep.certificates.length, rep.retention.full_erase_allowed]).toEqual([pid(1), '0812345678', 1, 1, false]);
+    expect((await call('POST', `/api/v1/pdpa/subjects/EMPLOYEE/${A}/access`, { received_on: '2026-11-03' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/pdpa/subjects/EMPLOYEE/${A}/erase`, { mode: 'FULL', received_on: '2026-11-03', confirm: 'E01' })).body.error.message).toMatch(/ยังปิดบัง/);
+    expect((await call('POST', `/api/v1/pdpa/subjects/EMPLOYEE/${A}/erase`, { mode: 'CONTACT', received_on: '2026-11-03', confirm: 'E01' })).status).toBe(200);
+    const after = (await call('GET', `/api/v1/pdpa/subjects/EMPLOYEE/${A}`)).body.master;
+    expect([after.phone, after.bank_account_no, after.tax_id]).toEqual([null, null, pid(1)]);
+    // บริษัทอื่นเห็นพนักงานนี้ไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: other });
+    expect((await call('GET', '/api/v1/pdpa/subjects?q=E01')).body.filter((x: { kind: string }) => x.kind === 'EMPLOYEE')).toEqual([]);
+    expect((await call('GET', `/api/v1/pdpa/subjects/EMPLOYEE/${A}`)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+  });
+
   it('missing account role stops posting with a clear message; company tax table override is used', async () => {
     const mar = (await call('POST', '/api/v1/pay/runs', { month: '2026-03' })).body.id;
     await sql`UPDATE gl_default_account SET deleted_at = now() WHERE company_id = ${co} AND role = 'PAY_SSO_EXPENSE'`.execute(database.db);
@@ -252,6 +324,9 @@ describe('ระบบเงินเดือน', () => {
     expect((await call('GET', `/api/v1/pay/employees/${A}`)).status).toBe(404);
     expect((await call('GET', `/api/v1/pay/runs/${jan}`)).status).toBe(404);
     expect((await call('GET', `/api/v1/pay/runs/${jan}/posting-preview`)).status).toBe(404);
+    expect((await call('GET', `/api/v1/pay/runs/${jan}/slips`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/pay/sso?month=2026-01')).body.rows).toEqual([]);
+    expect((await call('GET', '/api/v1/pay/reports/cost?from=2026-01&to=2026-12')).body.rows).toEqual([]);
     expect((await call('POST', `/api/v1/pay/runs/${jan}/reopen`, { reason: 'x' })).status).toBe(404);
     // เติมบัญชีจากผังตัวอย่างแตะเฉพาะบริษัทของตัวเอง
     const before = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_default_account WHERE company_id = ${co} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n;

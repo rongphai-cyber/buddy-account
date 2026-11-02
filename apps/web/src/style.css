@@ -909,3 +909,34 @@ th.sortable.on { color: var(--tone); }
 button.danger-outline { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
 button.danger-outline:not(:disabled):hover { background: var(--bad-soft); }
 tr.sel > td { background: color-mix(in srgb, var(--tone) 10%, transparent); }
+/* ระบบเงินเดือน: สลิป (2 ใบต่อ A4) · ใบแนบ ภ.ง.ด.1/1ก (A4 แนวนอน) · สปส.1-10 · รายงาน — พิมพ์จาก portal .pay-print */
+.pay-print { display: none; }
+@page pay-a4 { size: A4 portrait; margin: 10mm; }
+@page pay-a4l { size: A4 landscape; margin: 10mm; }
+@media print {
+  body:has(> .pay-print) > #app { display: none !important; }
+  body:has(> .pay-print) { background: #fff; }
+  .pay-print { display: block; page: pay-a4; font-family: 'Sarabun', Tahoma, sans-serif; font-size: 10.5pt; color: #000; }
+  .pay-print.land { page: pay-a4l; }
+  .pay-print table { width: 100%; border-collapse: collapse; }
+  .pay-print th, .pay-print td { border: 1px solid #000; padding: 1.5mm 2mm; vertical-align: top; }
+  .pay-print th { background: #eee; }
+  .pay-print .r { text-align: right; } .pay-print .c { text-align: center; }
+  .pay-print .page { break-after: page; } .pay-print .page:last-child { break-after: auto; }
+  .pay-print .slip { height: 135mm; box-sizing: border-box; padding: 4mm 2mm; border-bottom: 1px dashed #777; break-inside: avoid; overflow: hidden; }
+  .pay-print .slip:nth-child(2n) { border-bottom: 0; break-after: page; }
+  .pay-print .slip:last-child { break-after: auto; }
+}
+.slip-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 4mm; margin-bottom: 2mm; }
+.slip-head img { max-height: 14mm; max-width: 40mm; }
+.slip-head h3 { margin: 0; font-size: 12pt; }
+.slip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; }
+.slip-grid table td, .slip-grid table th { border: 1px solid #999; padding: 1mm 2mm; }
+.slip-net { margin-top: 2mm; padding: 2mm 3mm; border: 1.5px solid #000; display: flex; justify-content: space-between; font-weight: 700; font-size: 12pt; }
+.slip-ytd { margin-top: 2mm; font-size: 9pt; }
+.slip-draft { color: #b00; font-weight: 700; }
+.form-box { border: 1.5px solid #000; padding: 3mm; margin-bottom: 3mm; }
+.form-box h2 { margin: 0 0 2mm; font-size: 14pt; text-align: center; }
+.form-row { display: flex; gap: 6mm; flex-wrap: wrap; margin: 1mm 0; }
+.form-row b { font-weight: 700; }
+.pay-preview { border: 1px solid var(--line); border-radius: var(--radius); background: #fff; color: #000; padding: 12px; overflow: auto; max-height: 70vh; }

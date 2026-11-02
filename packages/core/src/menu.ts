@@ -107,6 +107,8 @@ export const MENU: MenuItem[] = [
   g('PAY', 'เงินเดือน', 'P8', [
     m('PAY.RUN', 'บันทึกเงินเดือน', 'P8', '/pay/runs'),
     m('PAY.EMP', 'ทะเบียนพนักงาน', 'P8', '/pay/employees'),
+    m('PAY.TAX', 'ภาษีและประกันสังคม (ภ.ง.ด.1 50 ทวิ สปส.1-10)', 'P8', '/pay/tax'),
+    m('PAY.RPT', 'รายงานเงินเดือน', 'P8', '/pay/reports'),
     m('PAY.ITEM', 'รายการเงินได้/เงินหัก', 'P8', '/pay/items'),
     m('PAY.LAW', 'อัตราภาษีและประกันสังคม', 'P8', '/pay/law'),
     m('PAY.CALC', 'ทดลองคำนวณภาษี', 'P8', '/pay/tax-calculator'),

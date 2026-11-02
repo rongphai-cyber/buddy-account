@@ -5,7 +5,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { cx, DateInput, DateText, downloadCsv, ErrorBox, Field, KeyHints, Modal, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 
-type Kind = 'CUSTOMER' | 'SUPPLIER' | 'SALESPERSON' | 'CONTACT';
+type Kind = 'CUSTOMER' | 'SUPPLIER' | 'SALESPERSON' | 'CONTACT' | 'EMPLOYEE';
 type Hit = { kind: Kind; id: string; code: string; name: string; tax_id: string | null; phone: string | null; email: string | null; status: string };
 type Report = {
   kind: Kind; master: Record<string, unknown>; contacts?: Array<Record<string, unknown>>; ship_to?: Array<Record<string, unknown>>; bank_accounts?: Array<Record<string, unknown>>;
@@ -15,7 +15,7 @@ type Report = {
 };
 type Req = { id: string; request_type: string; subject_type: Kind; subject_code: string | null; received_on: string; status: string; erase_mode: string | null; reason: string | null; result: unknown; completed_on: string | null; username: string | null };
 
-const KIND_TH: Record<Kind, string> = { CUSTOMER: 'ลูกค้า', SUPPLIER: 'ผู้จำหน่าย', SALESPERSON: 'พนักงานขาย', CONTACT: 'ผู้ติดต่อ' };
+const KIND_TH: Record<Kind, string> = { CUSTOMER: 'ลูกค้า', SUPPLIER: 'ผู้จำหน่าย', SALESPERSON: 'พนักงานขาย', CONTACT: 'ผู้ติดต่อ', EMPLOYEE: 'พนักงาน (เงินเดือน)' };
 const REQ_TH: Record<string, string> = { ACCESS: 'ขอดู/ขอรับสำเนา', PORT: 'ขอโอนย้ายข้อมูล', RECTIFY: 'ขอแก้ไข', ERASE: 'ขอลบ', OBJECT: 'คัดค้าน/ระงับใช้' };
 const REQ_ST: Record<string, [string, 'n' | 'd' | 'x' | 'm']> = { O: ['รอดำเนินการ', 'd'], D: ['ดำเนินการแล้ว', 'n'], R: ['ปฏิเสธ', 'x'] };
 const TABLE_TH: Record<string, string> = {
@@ -161,7 +161,7 @@ function EraseDialog({ hit, mode, receivedOn, onClose, onDone }: { hit: Hit; mod
       <ErrorBox error={err} />
       {full
         ? <p>{hit.kind === 'CONTACT' ? 'ลบชื่อ ตำแหน่ง โทรศัพท์ อีเมลของผู้ติดต่อนี้' : 'ลบข้อมูลติดต่อ และเปลี่ยนชื่อเป็น "ลบตาม PDPA" ลบที่อยู่ เลขผู้เสียภาษี ทั้งในแฟ้มหลักและเอกสาร/แฟ้มภาษีทุกใบที่อ้างถึง · ยอดเงินไม่เปลี่ยน · สถานะเป็นเลิกใช้'}</p>
-        : <p>ลบโทรศัพท์ อีเมล ผู้ติดต่อ หมายเหตุ{hit.kind === 'SUPPLIER' ? ' บัญชีธนาคาร' : ''}{hit.kind === 'SALESPERSON' ? ' ที่อยู่ เลขผู้เสียภาษี เลขประกันสังคม' : ''} — คงชื่อ ที่อยู่ และเลขผู้เสียภาษีไว้เพราะกฎหมายบัญชี/ภาษีให้เก็บเอกสาร</p>}
+        : <p>ลบโทรศัพท์ อีเมล ผู้ติดต่อ หมายเหตุ{hit.kind === 'SUPPLIER' ? ' บัญชีธนาคาร' : ''}{hit.kind === 'SALESPERSON' ? ' ที่อยู่ เลขผู้เสียภาษี เลขประกันสังคม' : ''}{hit.kind === 'EMPLOYEE' ? ' ที่อยู่ปัจจุบัน บัญชีธนาคาร' : ''} — คงชื่อ ที่อยู่ และเลขผู้เสียภาษีไว้เพราะกฎหมายบัญชี/ภาษีให้เก็บเอกสาร</p>}
       <p className="small muted">ลบแล้วเรียกคืนไม่ได้ (ข้อมูลในแฟ้มสำรองเก่ายังมีอยู่ — นำกลับแล้วต้องลบซ้ำ)</p>
       <Field label={`พิมพ์รหัส ${hit.code} เพื่อยืนยัน`} req><input value={confirm} onChange={(e) => setConfirm(e.target.value)} autoFocus /></Field>
     </Modal>

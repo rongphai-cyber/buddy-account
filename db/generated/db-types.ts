@@ -676,7 +676,7 @@ export interface SysPdpaRequestTable {
   company_id: string;
   /** ACCESS=ขอดู/ขอรับสำเนา PORT=ขอโอนย้าย RECTIFY=ขอแก้ไข ERASE=ขอลบ/ทำให้ไม่ระบุตัวตน OBJECT=คัดค้าน/ระงับใช้ */
   request_type: string;
-  /** CUSTOMER SUPPLIER SALESPERSON CONTACT */
+  /** CUSTOMER SUPPLIER SALESPERSON CONTACT EMPLOYEE */
   subject_type: string;
   /** id ของเจ้าของข้อมูล (ลูกค้า/ผู้จำหน่าย/พนักงานขาย/ผู้ติดต่อ) */
   subject_id: Gen<string | null>;
@@ -4336,6 +4336,41 @@ export interface PayRunLineTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** เลขที่หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ) ประจำปีของพนักงาน — ออกครั้งเดียวเก็บถาวร (ยอดคำนวณสดจากรอบเงินเดือนที่บันทึกแล้ว) */
+export interface PayWhtCertTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** พนักงาน */
+  employee_id: string;
+  /** ปีภาษี (ค.ศ.) */
+  tax_year: number;
+  /** เล่มที่ (ปี พ.ศ. ที่ออก) */
+  book_no: string;
+  /** เลขที่ (ลำดับในเล่ม) */
+  run_no: number;
+  /** วันที่ออก (31 ธ.ค. หรือวันที่ออกจากงาน) */
+  issue_date: string;
+  /** จำนวนครั้งที่พิมพ์ */
+  print_count: Gen<number>;
+  /** พิมพ์ล่าสุด */
+  last_printed_at: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** บันทึกการเปลี่ยนแปลงบนเซิร์ฟเวอร์ (ใช้ให้เครื่องลูกดึงเฉพาะส่วนที่เปลี่ยน) */
 export interface SyncChangeLogTable {
   /** ลำดับเพิ่มขึ้นเรื่อยๆ (PK) — เครื่องลูกจำค่าล่าสุดที่ดึงแล้ว */
@@ -4519,6 +4554,7 @@ export interface DB {
   pay_run: PayRunTable;
   pay_run_employee: PayRunEmployeeTable;
   pay_run_line: PayRunLineTable;
+  pay_wht_cert: PayWhtCertTable;
   sync_change_log: SyncChangeLogTable;
   sync_inbox: SyncInboxTable;
   sync_conflict: SyncConflictTable;

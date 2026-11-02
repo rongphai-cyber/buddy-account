@@ -13,7 +13,7 @@ import { logActivity } from '../audit.js';
  * - ทุกคำขอบันทึกใน sys_pdpa_request + sys_activity_log โดยไม่เก็บค่าข้อมูลที่ลบ
  * การลบทั้งลูกค้าผู้ใช้บริการเมื่อเลิกใช้บริการอยู่ใน company.ts (/tenants/:id/purge)
  */
-const KINDS = ['CUSTOMER', 'SUPPLIER', 'SALESPERSON', 'CONTACT'] as const;
+const KINDS = ['CUSTOMER', 'SUPPLIER', 'SALESPERSON', 'CONTACT', 'EMPLOYEE'] as const;
 type Kind = (typeof KINDS)[number];
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 const subjectParams = z.object({ kind: z.enum(KINDS), id: z.string().uuid() });
@@ -26,7 +26,7 @@ const rows = async <T = Row>(db: Db, q: RawBuilder<unknown>) => (await q.execute
 /** ข้อมูลทั้งหมดของเจ้าของข้อมูลหนึ่งราย + ระยะที่ต้องเก็บ */
 async function subjectReport(db: Db, companyId: string, kind: Kind, id: string) {
   const one = async (t: string) => (await rows(db, sql`SELECT * FROM ${sql.id(t)} WHERE company_id = ${companyId} AND id = ${id}`))[0];
-  const master = kind === 'CUSTOMER' ? await one('md_customer') : kind === 'SUPPLIER' ? await one('md_supplier') : kind === 'SALESPERSON' ? await one('md_salesperson') : await one('md_party_contact');
+  const master = kind === 'CUSTOMER' ? await one('md_customer') : kind === 'SUPPLIER' ? await one('md_supplier') : kind === 'SALESPERSON' ? await one('md_salesperson') : kind === 'EMPLOYEE' ? await one('pay_employee') : await one('md_party_contact');
   if (!master) throw notFound('เจ้าของข้อมูล');
   const pick = (table: string, r: Row) => {
     const cols = ['id', 'code', 'status', ...PDPA_REGISTER.filter((e) => e.table === table).flatMap((e) => e.columns)];
@@ -37,7 +37,19 @@ async function subjectReport(db: Db, companyId: string, kind: Kind, id: string) 
   let docs: { n: number; first: string | null; last: string | null } = { n: 0, first: null, last: null };
   let docList: Row[] = [];
   const dates: (string | null)[] = [];
-  if (kind === 'CONTACT') {
+  if (kind === 'EMPLOYEE') {
+    // พนักงาน (ระบบเงินเดือน): ทะเบียน ประวัติค่าจ้าง ค่าลดหย่อน รอบเงินเดือน (ยอดรายเดือน) 50 ทวิ — ระยะเก็บนับจากวันที่จ่ายเงินเดือนล่าสุด
+    out.master = pick('pay_employee', master);
+    out.salary = await rows(db, sql`SELECT effective_from::text AS effective_from, wage_type, rate, reason FROM pay_salary WHERE company_id = ${companyId} AND employee_id = ${id} AND deleted_at IS NULL ORDER BY effective_from`);
+    out.allowances = await rows(db, sql`SELECT tax_year, allowance_values FROM pay_allowance WHERE company_id = ${companyId} AND employee_id = ${id} AND deleted_at IS NULL ORDER BY tax_year`);
+    out.payroll = await rows(db, sql`SELECT r.tax_month::text AS month, r.doc_no, r.status, re.gross, re.tax, re.sso_ee, re.pvd_ee, re.net_pay FROM pay_run_employee re JOIN pay_run r ON r.id = re.run_id
+        WHERE re.company_id = ${companyId} AND re.employee_id = ${id} AND re.deleted_at IS NULL AND r.deleted_at IS NULL ORDER BY r.tax_month, r.doc_no LIMIT 600`);
+    out.certificates = await rows(db, sql`SELECT tax_year, book_no, run_no, issue_date::text AS issue_date FROM pay_wht_cert WHERE company_id = ${companyId} AND employee_id = ${id} AND deleted_at IS NULL ORDER BY tax_year`);
+    const pr = (await rows<{ n: number; first: string | null; last: string | null }>(db, sql`SELECT count(*)::int AS n, min(r.pay_date)::text AS first, max(r.pay_date)::text AS last FROM pay_run_employee re JOIN pay_run r ON r.id = re.run_id
+        WHERE re.company_id = ${companyId} AND re.employee_id = ${id} AND re.deleted_at IS NULL AND r.deleted_at IS NULL AND r.status <> 'C'`))[0]!;
+    docs = pr;
+    dates.push(pr.last, master.end_date ? String(master.end_date).slice(0, 10) : null);
+  } else if (kind === 'CONTACT') {
     const party = master.party_type === 'C' ? 'md_customer' : 'md_supplier';
     const p = (await rows<{ code: string; name: string }>(db, sql`SELECT code, name FROM ${sql.id(party)} WHERE company_id = ${companyId} AND id = ${master.party_id}`))[0];
     code = p?.code ?? '';
@@ -96,6 +108,9 @@ async function eraseContact(db: Db, companyId: string, kind: Kind, id: string, u
         WHERE company_id = ${companyId} AND supplier_id = ${id}`);
     await run('md_party_contact', erasedContacts('S'));
     await run('md_note', erasedNotes);
+  } else if (kind === 'EMPLOYEE') {
+    await run('pay_employee', sql`UPDATE pay_employee SET phone = NULL, email = NULL, note = NULL, current_address = NULL, bank_id = NULL, bank_account_no = NULL, bank_account_name = NULL, updated_by = ${userId}
+        WHERE company_id = ${companyId} AND id = ${id}`);
   } else if (kind === 'SALESPERSON') {
     await run('md_salesperson', sql`UPDATE md_salesperson SET address = NULL, zip_code = NULL, phone = NULL, tax_id = NULL, social_security_no = NULL, updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
   } else {
@@ -110,6 +125,13 @@ async function eraseFull(db: Db, companyId: string, kind: Kind, id: string, user
   const n = await eraseContact(db, companyId, kind, id, userId);
   if (kind === 'CONTACT') return n;
   const run = async (t: string, q: RawBuilder<unknown>) => { const r = await q.execute(db); n[t] = (n[t] ?? 0) + Number(r.numAffectedRows ?? 0); };
+  if (kind === 'EMPLOYEE') {
+    await run('pay_employee', sql`UPDATE pay_employee SET title = NULL, first_name = ${PDPA_ERASED}, last_name = NULL, first_name_en = NULL, last_name_en = NULL, nickname = NULL, tax_id = NULL, gender = NULL, birth_date = NULL,
+        nationality = NULL, reg_house_no = NULL, reg_moo = NULL, reg_village = NULL, reg_building = NULL, reg_soi = NULL, reg_road = NULL, reg_subdistrict = NULL, reg_district = NULL, reg_province = NULL, reg_postcode = NULL,
+        sso_hospital = NULL, status = 'I', updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
+    await run('pay_allowance', sql`UPDATE pay_allowance SET allowance_values = '{}'::jsonb, updated_by = ${userId} WHERE company_id = ${companyId} AND employee_id = ${id}`);
+    return n;
+  }
   if (kind === 'SALESPERSON') {
     await run('md_salesperson', sql`UPDATE md_salesperson SET name = ${PDPA_ERASED}, position = NULL, status = 'I', updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
     return n;
@@ -171,6 +193,9 @@ export function pdpaRoutes(app: FastifyInstance, db: Db) {
       UNION ALL
       (SELECT 'SALESPERSON', id, code, name, tax_id, phone, NULL, status FROM md_salesperson WHERE company_id = ${c} AND deleted_at IS NULL
         AND (code ILIKE ${like} OR name ILIKE ${like} OR tax_id ILIKE ${like} OR phone ILIKE ${like}) ORDER BY code LIMIT 50)
+      UNION ALL
+      (SELECT 'EMPLOYEE', id, code, concat_ws(' ', first_name, last_name), tax_id, phone, email, status FROM pay_employee WHERE company_id = ${c} AND deleted_at IS NULL
+        AND (code ILIKE ${like} OR first_name ILIKE ${like} OR last_name ILIKE ${like} OR nickname ILIKE ${like} OR tax_id ILIKE ${like} OR phone ILIKE ${like} OR email ILIKE ${like}) ORDER BY code LIMIT 50)
       UNION ALL
       (SELECT 'CONTACT', pc.id, coalesce(cu.code, su.code), pc.name, NULL, pc.phone, pc.email, 'A' FROM md_party_contact pc
         LEFT JOIN md_customer cu ON pc.party_type = 'C' AND cu.id = pc.party_id LEFT JOIN md_supplier su ON pc.party_type = 'S' AND su.id = pc.party_id
