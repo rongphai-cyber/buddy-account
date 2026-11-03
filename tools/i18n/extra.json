@@ -558,5 +558,16 @@
  "เอกสาร {0} มาจาก {1} (อ้างอิง {2}) — แก้หรือยกเลิกที่โปรแกรม {3} · ผู้ใช้ระดับอนุมัติ 9 ยกเลิกได้โดยระบุเหตุผล": "Document {0} comes from {1} (ref {2}) — edit or cancel it in {3} · users with approval level 9 can cancel it with a reason",
  "เอกสารชนิดนี้แก้ผ่าน API ไม่ได้ — ยกเลิกเอกสาร {0} ที่ต้นทางแล้วส่งด้วยเลขอ้างอิงใหม่": "This document type cannot be edited through the API — cancel document {0} at the source and send with a new reference",
  "เอกสารอ้างอิง {0} อยู่ในงวดที่ปิดแล้ว แก้ย้อนหลังไม่ได้ — ส่งเป็นเอกสารปรับปรุงด้วยเลขอ้างอิงใหม่ในงวดที่เปิดอยู่": "The document with ref {0} is in a closed period and cannot be changed — send an adjustment document with a new reference in an open period",
- "แก้หรือยกเลิกที่โปรแกรม {0} · ผู้ใช้ระดับอนุมัติ 9 ยกเลิกได้โดยระบุเหตุผล": "Edit or cancel in {0} · users with approval level 9 can cancel with a reason"
+ "แก้หรือยกเลิกที่โปรแกรม {0} · ผู้ใช้ระดับอนุมัติ 9 ยกเลิกได้โดยระบุเหตุผล": "Edit or cancel in {0} · users with approval level 9 can cancel with a reason",
+ "source_totals ต้องเป็นออบเจ็กต์ เช่น { \"net_amount\": \"30000.00\", \"vat_amount\": \"1962.62\" }": "source_totals must be an object, e.g. { \"net_amount\": \"30000.00\", \"vat_amount\": \"1962.62\" }",
+ "source_totals ว่าง — ส่งอย่างน้อย 1 ยอด เช่น net_amount": "source_totals is empty — send at least one total, e.g. net_amount",
+ "source_totals.total ใช้กับใบสำคัญเท่านั้น — เอกสารให้ส่ง net_amount taxable_amount vat_amount wht_amount": "source_totals.total is for vouchers only — for documents send net_amount taxable_amount vat_amount wht_amount",
+ "source_totals.{0} ต้องเป็นข้อความทศนิยมไม่เกิน 2 ตำแหน่ง เช่น \"1962.62\"": "source_totals.{0} must be a decimal string with at most 2 places, e.g. \"1962.62\"",
+ "source_totals.{0} ไม่รู้จัก — ใช้ได้: {1}": "source_totals.{0} is unknown — allowed: {1}",
+ "ต้นทาง {0} · Buddy {1} · ต่าง {2}": "Source {0} · Buddy {1} · difference {2}",
+ "มูลค่าก่อน VAT (ยอดสุทธิ − VAT)": "Amount before VAT (net − VAT)",
+ "ยอดรวมเดบิต = เครดิต (ใบสำคัญ)": "Total debit = credit (voucher)",
+ "ยอดสุทธิ (รวม VAT)": "Net amount (incl. VAT)",
+ "ยอดไม่ตรงกับระบบต้นทาง ไม่บันทึก: {0} — ตรวจการปัดเศษ/อัตราภาษี/ราคารวมหรือแยก VAT ที่ต้นทาง": "Totals do not match the source system, nothing saved: {0} — check rounding, VAT rate and VAT-inclusive/exclusive pricing at the source",
+ "ใบสำคัญเทียบได้เฉพาะ source_totals.total (ยอดรวมเดบิต = เครดิต) — ไม่รับ {0}": "Vouchers can only be checked with source_totals.total (total debit = credit) — {0} not accepted"
 }

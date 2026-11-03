@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
+import { compareSourceTotals, d, parseSourceTotals, type SourceTotalField } from '@buddy/core';
 import type { Database } from '../db.js';
 import { AppError, requireCompany } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -72,6 +73,35 @@ async function stamp(database: Database, companyId: string, table: 'doc_header' 
   }
 }
 
+/**
+ * B0.2 ตรวจยอดต้นทาง (docs/17 ข้อ 3.2): `source_totals` ในเนื้อคำขอ = ยอดที่ระบบต้นทางคำนวณ
+ * เทียบกับเอกสารที่ Buddy เพิ่งบันทึก (ในทรานแซกชันเดียวกัน) — ต่างแม้ 0.01 → 422 AMOUNT_MISMATCH และไม่บันทึกอะไรเลย
+ */
+function totalsOf(req: FastifyRequest) {
+  const p = parseSourceTotals((req.body as { source_totals?: unknown } | null | undefined)?.source_totals);
+  if (p?.errors.length) throw new AppError(400, 'BAD_SOURCE', p.errors.join(' · '), p.errors.map((m) => ({ field: 'source_totals', message: m })));
+  return p?.totals ?? null;
+}
+async function checkTotals(database: Database, companyId: string, table: 'doc_header' | 'gl_journal', id: string, want: Partial<Record<SourceTotalField, string>> | null) {
+  if (!want) return;
+  let have: Partial<Record<SourceTotalField, string | null>>;
+  if (table === 'doc_header') {
+    // ใบสำคัญของเอกสารรวมต้นทุนขาย/ภาษี จึงไม่มี "ยอดรวม" เดียวให้เทียบ — เอกสารเทียบยอดหัวเอกสาร
+    if (want.total !== undefined) throw new AppError(400, 'BAD_SOURCE', 'source_totals.total ใช้กับใบสำคัญเท่านั้น — เอกสารให้ส่ง net_amount taxable_amount vat_amount wht_amount');
+    const h = await database.db.selectFrom('doc_header').select(['net_amount', 'vat_amount', 'wht_amount']).where('id', '=', id).where('company_id', '=', companyId).executeTakeFirstOrThrow();
+    // มูลค่าก่อน VAT = ยอดสุทธิ − VAT (taxable_amount ของราคารวม VAT เก็บยอดรวม VAT ตาม Express จึงใช้เทียบตรงไม่ได้)
+    have = { net_amount: h.net_amount, taxable_amount: d(h.net_amount).minus(d(h.vat_amount)).toFixed(2), vat_amount: h.vat_amount, wht_amount: h.wht_amount };
+  } else {
+    const bad = (Object.keys(want) as SourceTotalField[]).filter((k) => k !== 'total');
+    if (bad.length) throw new AppError(400, 'BAD_SOURCE', `ใบสำคัญเทียบได้เฉพาะ source_totals.total (ยอดรวมเดบิต = เครดิต) — ไม่รับ ${bad.join(' ')}`);
+    const j = await database.db.selectFrom('gl_journal').select('total_debit').where('id', '=', id).where('company_id', '=', companyId).executeTakeFirstOrThrow();
+    have = { total: j.total_debit };
+  }
+  const diff = compareSourceTotals(want, have);
+  if (diff.length) throw new AppError(422, 'AMOUNT_MISMATCH', `ยอดไม่ตรงกับระบบต้นทาง ไม่บันทึก: ${diff.map((x) => `${x.label} ต้นทาง ${x.source} · Buddy ${x.buddy} (ต่าง ${x.diff})`).join(' · ')} — ตรวจการปัดเศษ/อัตราภาษี/ราคารวมหรือแยก VAT ที่ต้นทาง`,
+    diff.map((x) => ({ field: `source_totals.${x.field}`, message: `ต้นทาง ${x.source} · Buddy ${x.buddy} · ต่าง ${x.diff}` })));
+}
+
 const periodClosed = (s: Source) => new AppError(409, 'PERIOD_CLOSED', `เอกสารอ้างอิง ${s.ref} อยู่ในงวดที่ปิดแล้ว แก้ย้อนหลังไม่ได้ — ส่งเป็นเอกสารปรับปรุงด้วยเลขอ้างอิงใหม่ในงวดที่เปิดอยู่`);
 
 /** API ที่แก้เนื้อหา/ยอดไม่ได้ แต่ทำกับเอกสารจากระบบอื่นได้ (พิมพ์ · หนังสือรับรองที่ได้รับ · ลงบัญชีใหม่ตามค่าตั้ง · คัดลอกเป็นใบใหม่) */
@@ -106,6 +136,7 @@ export async function withSource(database: Database, req: FastifyRequest, reply:
   if (!src || method !== 'POST' || url.includes(':')) return call();
 
   const a = requireCompany(req);
+  const want = totalsOf(req);
   const ex = await findBySource(database, a.companyId, src);
   if (ex) {
     const res = { id: ex.id, [ex.table === 'doc_header' ? 'doc_no' : 'voucher_no']: ex.no, source_system: src.system, source_ref: src.ref };
@@ -122,14 +153,15 @@ export async function withSource(database: Database, req: FastifyRequest, reply:
     let out: unknown;
     try { out = await put.handler.call(put.self, req, reply); } catch (e) { if ((e as AppError).code === 'PERIOD_LOCKED') throw periodClosed(src); throw e; }
     await stamp(database, a.companyId, ex.table, ex.id, src);
+    await checkTotals(database, a.companyId, ex.table, ex.id, want);
     reply.code(200);
     return { ...(out as object), ...res, source_version: src.version, updated: true };
   }
   const out = await call() as { id?: unknown } | null;
   const id = typeof out?.id === 'string' ? out.id : null;
-  if (!id || !((await stamp(database, a.companyId, 'doc_header', id, src)) || (await stamp(database, a.companyId, 'gl_journal', id, src)))) {
-    throw bad(`API ${url} ไม่ได้สร้างเอกสารหรือใบสำคัญ จึงรับ X-Source-* ไม่ได้ — ส่งเฉพาะ API สร้างเอกสาร/ใบสำคัญ`);
-  }
+  const table = !id ? null : (await stamp(database, a.companyId, 'doc_header', id, src)) ? 'doc_header' : (await stamp(database, a.companyId, 'gl_journal', id, src)) ? 'gl_journal' : null;
+  if (!id || !table) throw bad(`API ${url} ไม่ได้สร้างเอกสารหรือใบสำคัญ จึงรับ X-Source-* ไม่ได้ — ส่งเฉพาะ API สร้างเอกสาร/ใบสำคัญ`);
+  await checkTotals(database, a.companyId, table, id, want);
   reply.code(201);
   return { ...out, source_system: src.system, source_ref: src.ref, source_version: src.version };
 }

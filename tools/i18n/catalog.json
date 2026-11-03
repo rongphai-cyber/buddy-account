@@ -1247,6 +1247,25 @@
 ]
 },
 {
+"th": "ภาษีหัก ณ ที่จ่าย",
+"n": 19,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/settle.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/payroll.ts",
+"packages/core/src/source-totals.ts"
+]
+},
+{
 "th": "ตกลง",
 "n": 18,
 "files": [
@@ -1260,24 +1279,6 @@
 "apps/web/src/pages/gl/YearEnd.tsx",
 "apps/web/src/pages/inventory/Counts.tsx",
 "apps/web/src/pages/settings/Periods.tsx"
-]
-},
-{
-"th": "ภาษีหัก ณ ที่จ่าย",
-"n": 18,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/settle.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/payroll.ts"
 ]
 },
 {
@@ -2020,6 +2021,21 @@
 ]
 },
 {
+"th": "ภาษีมูลค่าเพิ่ม",
+"n": 11,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/source-totals.ts"
+]
+},
+{
 "th": "มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?",
 "n": 11,
 "files": [
@@ -2114,20 +2130,6 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
-"th": "ภาษีมูลค่าเพิ่ม",
-"n": 10,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -13733,6 +13735,41 @@
 ]
 },
 {
+"th": "source_totals ต้องเป็นออบเจ็กต์ เช่น { \"net_amount\": \"30000.00\", \"vat_amount\": \"1962.62\" }",
+"n": 1,
+"files": [
+"packages/core/src/source-totals.ts"
+]
+},
+{
+"th": "source_totals ว่าง — ส่งอย่างน้อย 1 ยอด เช่น net_amount",
+"n": 1,
+"files": [
+"packages/core/src/source-totals.ts"
+]
+},
+{
+"th": "source_totals.total ใช้กับใบสำคัญเท่านั้น — เอกสารให้ส่ง net_amount taxable_amount vat_amount wht_amount",
+"n": 1,
+"files": [
+"apps/server/src/modules/source.ts"
+]
+},
+{
+"th": "source_totals.{0} ต้องเป็นข้อความทศนิยมไม่เกิน 2 ตำแหน่ง เช่น \"1962.62\"",
+"n": 1,
+"files": [
+"packages/core/src/source-totals.ts"
+]
+},
+{
+"th": "source_totals.{0} ไม่รู้จัก — ใช้ได้: {1}",
+"n": 1,
+"files": [
+"packages/core/src/source-totals.ts"
+]
+},
+{
 "th": "toast('สร้างแฟ้มแล้ว — ลองนำเข้าโปรแกรมของกรมสรรพากร/ประกันสังคมก่อนยื่นจริง')).catch(toastError); const drafts = (cur.data as {0} | undefined)?.drafts ?? 0; const problems = ((cur.data as {1}",
 "n": 1,
 "files": [
@@ -21391,6 +21428,13 @@
 ]
 },
 {
+"th": "ต้นทาง {0} · Buddy {1} · ต่าง {2}",
+"n": 1,
+"files": [
+"apps/server/src/modules/source.ts"
+]
+},
+{
 "th": "ต้นทุนการผลิต — กระจายเป็นทุนต่อหน่วย",
 "n": 1,
 "files": [
@@ -28699,6 +28743,13 @@
 ]
 },
 {
+"th": "มูลค่าก่อน VAT (ยอดสุทธิ − VAT)",
+"n": 1,
+"files": [
+"packages/core/src/source-totals.ts"
+]
+},
+{
 "th": "มูลค่าก่อนภาษี",
 "n": 1,
 "files": [
@@ -29707,6 +29758,13 @@
 ]
 },
 {
+"th": "ยอดรวมเดบิต = เครดิต (ใบสำคัญ)",
+"n": 1,
+"files": [
+"packages/core/src/source-totals.ts"
+]
+},
+{
 "th": "ยอดรายการ {0} หักมัดจำ {1} ไม่เท่ากับฐานภาษี {2}",
 "n": 1,
 "files": [
@@ -29753,6 +29811,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "ยอดสุทธิ (รวม VAT)",
+"n": 1,
+"files": [
+"packages/core/src/source-totals.ts"
 ]
 },
 {
@@ -29844,6 +29909,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/AccountDetail.tsx"
+]
+},
+{
+"th": "ยอดไม่ตรงกับระบบต้นทาง ไม่บันทึก: {0} — ตรวจการปัดเศษ/อัตราภาษี/ราคารวมหรือแยก VAT ที่ต้นทาง",
+"n": 1,
+"files": [
+"apps/server/src/modules/source.ts"
 ]
 },
 {
@@ -45783,6 +45855,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/runs.ts"
+]
+},
+{
+"th": "ใบสำคัญเทียบได้เฉพาะ source_totals.total (ยอดรวมเดบิต = เครดิต) — ไม่รับ {0}",
+"n": 1,
+"files": [
+"apps/server/src/modules/source.ts"
 ]
 },
 {

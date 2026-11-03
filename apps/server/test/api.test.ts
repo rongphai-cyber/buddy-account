@@ -3407,6 +3407,25 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await send('POST', `/api/v1/cash-sales/${h1.body.id}/cancel`, { reason: 'x' }, pos, okey)).status).toBe(404);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     expect(await n(ref.ref)).toBe(1);
+    // B0.2 ยอดต้นทาง: ตรงทุกสตางค์จึงบันทึก · ต่าง 0.01 → 422 ไม่บันทึกอะไรเลย (รวมแก้รุ่นใหม่)
+    const vat = { system: 'wts-pos', ref: 'pos:BK01:2027-12-02:HS-VAT' };
+    const v1 = await send('POST', '/api/v1/cash-sales', { ...hsBody, source_totals: { net_amount: '1070.00', taxable_amount: '1000.00', vat_amount: '70.00', wht_amount: '0' } }, vat);
+    expect([v1.status, v1.body.net_amount, v1.body.error?.message]).toEqual([201, '1070.00', undefined]);
+    const mm = await send('POST', '/api/v1/cash-sales', { ...hsBody, lines: [{ item_id: cpu, qty: 3, unit_price: 1000 }], source_totals: { net_amount: '3000.00', vat_amount: '196.27' } }, { ...vat, ref: `${vat.ref}-2` });
+    expect([mm.status, mm.body.error.code]).toEqual([422, 'AMOUNT_MISMATCH']);
+    expect(mm.body.error.message).toMatch(/ภาษีมูลค่าเพิ่ม ต้นทาง 196\.27 · Buddy 196\.26 \(ต่าง -0\.01\)/);
+    expect(mm.body.error.issues[0].field).toBe('source_totals.vat_amount');
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM doc_header WHERE company_id = ${companyId} AND source_ref = ${`${vat.ref}-2`}`.execute(database.db)).rows[0]!.n).toBe(0);
+    const mv = await send('POST', '/api/v1/cash-sales', { ...hsBody, lines: [{ item_id: cpu, qty: 2, unit_price: 1070 }], source_totals: { net_amount: '2140.01' } }, { ...vat, version: '2' });
+    expect([mv.status, mv.body.error.code]).toEqual([422, 'AMOUNT_MISMATCH']);
+    expect((await call('GET', `/api/v1/cash-sales/${v1.body.id}`)).body).toMatchObject({ net_amount: '1070.00', source_version: 1 });   // รุ่นเดิมคงอยู่
+    expect((await send('POST', '/api/v1/cash-sales', { ...hsBody, source_totals: { vat: '70' } }, { ...vat, ref: `${vat.ref}-3` })).body.error.code).toBe('BAD_SOURCE');
+    expect((await send('POST', '/api/v1/cash-sales', { ...hsBody, source_totals: { total: '1070.00' } }, { ...vat, ref: `${vat.ref}-4` })).body.error.message).toMatch(/ใช้กับใบสำคัญเท่านั้น/);
+    expect((await send('POST', '/api/v1/gl/journals', { ...jv('10.00'), source_totals: { net_amount: '10.00' } }, { ...ref, ref: 'sop:x' })).body.error.code).toBe('BAD_SOURCE');
+    const jt = await send('POST', '/api/v1/gl/journals', { ...jv('10.00'), source_totals: { total: '10.00' } }, { ...ref, ref: 'sop:t' });
+    expect(jt.status).toBe(201);
+    expect((await send('POST', `/api/v1/cash-sales/${v1.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' }, vat)).status).toBe(200);
+    expect((await send('POST', `/api/v1/gl/journals/${jt.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' }, ref)).status).toBe(200);
     // ล้างข้อมูลทดสอบ (ระบบต้นทางยกเลิกเอง)
     expect((await send('POST', `/api/v1/cash-sales/${liv.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' }, { system: 'wts-living', ref: pos.ref })).status).toBe(200);
     expect((await send('POST', `/api/v1/gl/journals/${a4.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' }, ref)).status).toBe(200);

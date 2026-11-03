@@ -118,7 +118,7 @@
 
 ## B0 พร้อมให้ระบบอื่นต่อ — WTS Solutions (เจ้าของสั่ง 03/11/2569 · แผนใน docs/17_WTS Solutions เชื่อมระบบ.md)
 - [x] B0.1 อ้างอิงต้นทาง + ส่งซ้ำไม่ลงซ้ำ + กันแก้ที่หน้าจอ (X-Source-System/Ref/Version · migration 0049 · `modules/source.ts` · ป้าย "มาจาก …")
-- [ ] B0.2 ตรวจยอดต้นทาง AMOUNT_MISMATCH
+- [x] B0.2 ตรวจยอดต้นทาง AMOUNT_MISMATCH (`source_totals` · core `source-totals.ts`)
 - [ ] B0.3 ฟีดข้อมูลหลักที่เปลี่ยน
 - [ ] B0.4 ใบกำกับอย่างย่อในรายงานภาษีขาย
 - [ ] B0.5 payroll_source + ปุ่มตั้งค่าสำหรับ WTS-POS
