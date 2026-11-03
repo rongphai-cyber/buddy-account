@@ -13,8 +13,10 @@
 
 ## ทำครั้งเดียว (เจ้าของ — ระบบไม่ให้ผู้ช่วยแก้ DNS)
 ```
-cloudflared tunnel route dns buddy-account buddy.worktruesolution.net
+cloudflared tunnel --config E:\BuddyAccount\.data\cloudflared\config.yml route dns --overwrite-dns buddy-account buddy.worktruesolution.net
 ```
+ต้องมี `--config` ของ Buddy เสมอ — ถ้าไม่ใส่ cloudflared ใช้ tunnel ใน `~\.cloudflared\config.yml` (wts-erp-demo) แทนชื่อที่พิมพ์
+ตรวจ: ข้อความต้องลงท้าย `tunnelID=073fa9ca-…` ไม่ใช่ `b30887d3-…`
 
 ## ตรวจ
 ```
