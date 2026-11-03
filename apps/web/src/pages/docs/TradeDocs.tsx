@@ -324,7 +324,9 @@ export function TradeFormPage({ path }: { path: string }) {
         deposits: Object.entries(deps).filter(([, v]) => d(v || 0).gt(0)).map(([header_id, amount]) => ({ header_id, amount })),
         wht: K.cls === 'HP' ? whtsBody(whts) : [], wht_amount: K.cls === 'HS' ? whtAmt || '0' : '0' };
   };
-  const bodyOf = () => { const x = bodyOf0(); return x && { ...x, branch_id: br.body }; };
+  // ใบกำกับภาษีอย่างย่อจาก POS (docs/17 B0.4) ส่งเข้ามาทาง API เท่านั้น — แก้เอกสารที่หน้าจอคงไว้ตามเดิม
+  const abbr = (cur.data as { abbr_invoices?: AbbrInv[] } | undefined)?.abbr_invoices ?? [];
+  const bodyOf = () => { const x = bodyOf0(); return x && { ...x, branch_id: br.body, ...(abbr.length ? { abbr_invoices: abbr } : {}) }; };
   const save = async (andNew = false, ok: Set<number> = notFree) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
@@ -497,6 +499,7 @@ export function TradeFormPage({ path }: { path: string }) {
         </div>}
         {tab === 'wht' && K.cls === 'HP' && <WhtTable whts={whts} setWhts={setWhts} readOnly={readOnly} base={calc ? d(calc.net_amount).minus(calc.vat_amount).toFixed(2) : ''} defaults={whtDef} canAdd={!!h.party} dirty={dirty} onDirty={() => setDirty(true)} />}
         {tab === 'whtb' && id && <DocWhtList headerId={id} />}
+        {tab === 'vat' && id && abbr.length > 0 && <AbbrTable rows={abbr} />}
         {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} vatBasis={h.vat_basis} />}
         {tab === 'gl' && <PostingTab id={id} path={K.path} editing={!readOnly} bodyOf={bodyOf} />}
         <div className="trade-foot">
@@ -571,5 +574,23 @@ function CancelLineModal({ K, headerId, line, onClose, onDone }: { K: TradeKind;
         <Field label="เหตุผล" wide><LkSelect rows={lk.data?.[table]} value={reason} onChange={setReason} /></Field>
       </div>
     </Modal>
+  );
+}
+
+type AbbrInv = { line_no: number; pos_device_code: string; inv_from: string; inv_to: string; inv_count: number; base_amount: string; vat_amount: string; exempt_amount: string };
+/** ใบกำกับภาษีอย่างย่อรายเครื่อง POS ที่รวมอยู่ในขายสดรายวัน (docs/17 B0.4) — รายงานภาษีขาย 1 บรรทัดต่อเครื่อง */
+function AbbrTable({ rows }: { rows: AbbrInv[] }) {
+  const total = (k: 'base_amount' | 'vat_amount' | 'exempt_amount') => rows.reduce((s, x) => s.plus(d(x[k])), d(0));
+  const count = rows.reduce((s, x) => s + x.inv_count, 0);
+  return (
+    <div className="table-wrap lines">
+      <p className="hint">ใบกำกับภาษีอย่างย่อจากเครื่อง POS ที่รวมอยู่ในเอกสารนี้ — รายงานภาษีขายแสดง 1 บรรทัดต่อเครื่อง</p>
+      <table className="grid">
+        <thead><tr><th>เครื่อง POS</th><th>เลขที่</th><th className="r">จำนวนใบ</th><th className="r">มูลค่าก่อน VAT</th><th className="r">ภาษีมูลค่าเพิ่ม</th><th className="r">ยกเว้น VAT</th></tr></thead>
+        <tbody>{rows.map((x) => <tr key={x.line_no}><td className="mono">{x.pos_device_code}</td><td className="mono">{`${x.inv_from}–${x.inv_to}`}</td><td className="r">{x.inv_count.toLocaleString()}</td>
+          <td className="r">{fmt(x.base_amount)}</td><td className="r">{fmt(x.vat_amount)}</td><td className="r">{fmt(x.exempt_amount)}</td></tr>)}</tbody>
+        <tfoot><tr><td colSpan={2}>รวม</td><td className="r">{count.toLocaleString()}</td><td className="r">{fmt(total('base_amount'))}</td><td className="r">{fmt(total('vat_amount'))}</td><td className="r">{fmt(total('exempt_amount'))}</td></tr></tfoot>
+      </table>
+    </div>
   );
 }

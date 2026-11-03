@@ -962,6 +962,18 @@ add(T('doc_payment', 'วิธีรับ/จ่ายเงินของเ
   lk('cheque_id', 'fin_cheque', 'รายการในทะเบียนเช็ค/โอน', 'BKTRN.CHQNUM'),
 ], uniq=[('header_id','line_no')]))
 
+add(T('doc_abbr_invoice', 'ใบกำกับภาษีอย่างย่อจากเครื่อง POS ที่รวมอยู่ในขายสด (HS) รายวัน — รายงานภาษีขาย 1 บรรทัดต่อเครื่องต่อวัน (docs/17 B0.4)', 'doc', express='(ใหม่)', cols=[
+  lk('header_id', 'doc_header', 'ขายสด HS ที่รวมยอด', nn=True),
+  C('line_no', 'smallint', nn=True, th='ลำดับ'),
+  C('pos_device_code', 'code20', nn=True, th='รหัสเครื่อง POS (เลขทะเบียนเครื่องตาม ภ.พ.06)'),
+  C('inv_from', 'code20', nn=True, th='ใบกำกับภาษีอย่างย่อ เลขที่เริ่ม'),
+  C('inv_to', 'code20', nn=True, th='ใบกำกับภาษีอย่างย่อ เลขที่สุดท้าย'),
+  C('inv_count', 'int', nn=True, th='จำนวนใบ'),
+  C('base_amount', 'money', nn=True, d='0', th='มูลค่าก่อน VAT (ไม่รวม VAT)'),
+  C('vat_amount', 'money', nn=True, d='0', th='ภาษีมูลค่าเพิ่ม'),
+  C('exempt_amount', 'money', nn=True, d='0', th='มูลค่าที่ได้รับยกเว้น VAT'),
+], uniq=[('header_id','line_no')]))
+
 add(T('doc_charge', 'รายการหักจากยอดรับชำระ: ค่า GP/คอมมิชชั่น ค่าธรรมเนียม ค่าโฆษณาที่แพลตฟอร์มออนไลน์หักก่อนโอน (Grab LINE MAN Agoda Booking.com Airbnb — ข้อกำหนดเจ้าของ 31/10/2569)', 'doc', cols=[
   lk('header_id', 'doc_header', 'ใบเสร็จรับเงิน (RE) ที่ถูกหัก', nn=True),
   C('line_no', 'smallint', nn=True, th='ลำดับ'),

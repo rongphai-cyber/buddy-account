@@ -44,6 +44,13 @@ export const tradeBody = z.object({
   deposits: z.array(z.object({ header_id: uuid, amount: num })).max(20).default([]),
   /** ซื้อเงินสด: ภาษีหัก ณ ที่จ่าย (เข้าแฟ้ม ภ.ง.ด.3/53 + 50 ทวิ) · ขายเงินสด: ยอดที่ลูกค้าหักไว้ (ลูกค้าออก 50 ทวิ ให้) */
   wht: whtSchema, wht_amount: num.default('0'),
+  /** ขายสดรวมยอดรายวันจาก POS (docs/17 B0.4): ใบกำกับภาษีอย่างย่อรายเครื่อง — รายงานภาษีขาย 1 บรรทัดต่อเครื่อง · ยอดรวมต้องเท่าเอกสารทุกสตางค์ */
+  abbr_invoices: z.array(z.object({
+    pos_device_code: z.string().trim().min(1, 'ป้อนรหัสเครื่อง POS').max(20, 'รหัสเครื่อง POS ยาวไม่เกิน 20 ตัว'),
+    inv_from: z.string().trim().min(1, 'ป้อนเลขที่ใบกำกับภาษีอย่างย่อเริ่ม').max(20), inv_to: z.string().trim().min(1, 'ป้อนเลขที่ใบกำกับภาษีอย่างย่อสุดท้าย').max(20),
+    inv_count: z.coerce.number().int().min(1, 'จำนวนใบต้องอย่างน้อย 1').max(10_000_000),
+    base_amount: num, vat_amount: num, exempt_amount: num.default('0'),
+  })).max(50).default([]),
 });
 type Body = z.infer<typeof tradeBody>;
 /** บิลที่หักเงินมัดจำได้ (ขายเชื่อ/ขายสด/ซื้อเชื่อ/ซื้อสด) */
@@ -52,6 +59,22 @@ const DEPOSIT_CLASSES = ['IV', 'HS', 'RR', 'HP'];
 const STOCK_MOVE: Record<string, { code: string; eff: 1 | -1; purchase?: boolean; onlyReturn?: boolean; atLine?: boolean }> = {
   IV: { code: '9', eff: -1 }, HS: { code: '9', eff: -1 }, CN: { code: '2', eff: 1, onlyReturn: true }, RR: { code: '0', eff: 1, purchase: true }, HP: { code: '0', eff: 1, purchase: true }, DN: { code: '7', eff: -1, onlyReturn: true, atLine: true },
 };
+
+/**
+ * ใบกำกับภาษีอย่างย่อรายเครื่อง (docs/17 B0.4): ใช้ได้เฉพาะขายสด · เครื่องไม่ซ้ำ · ยอดรวมทุกเครื่อง = มูลค่าก่อน VAT / VAT / ยกเว้น ของเอกสารทุกสตางค์ (ห้ามปัดให้ตรง)
+ */
+function checkAbbr(K: TradeKind, b: Body, calc: ReturnType<typeof computeDoc>) {
+  if (K.cls !== 'HS') throw badRequest('ใบกำกับภาษีอย่างย่อ (abbr_invoices) ใช้ได้เฉพาะขายเงินสด (HS)');
+  const dup = b.abbr_invoices.map((x) => x.pos_device_code).find((c, i, xs) => xs.indexOf(c) !== i);
+  if (dup) throw badRequest(`เครื่อง POS ${dup} ซ้ำ — 1 เครื่องต่อ 1 บรรทัด (รวมยอดทั้งวันของเครื่อง)`);
+  if (!d(calc.zero_rate_amount).isZero()) throw badRequest('ขายสดที่รวมใบกำกับภาษีอย่างย่อมีรายการอัตรา 0% ไม่ได้ — แยกเป็นเอกสารอีกใบ');
+  const sum = (k: 'base_amount' | 'vat_amount' | 'exempt_amount') => b.abbr_invoices.reduce((s, x) => s.plus(d(x[k])), d(0));
+  const base = b.price_type === '1' ? d(calc.taxable_amount).minus(d(calc.vat_amount)) : d(calc.taxable_amount);
+  const diff = ([['มูลค่าก่อน VAT', sum('base_amount'), base], ['ภาษีมูลค่าเพิ่ม', sum('vat_amount'), d(calc.vat_amount)], ['มูลค่ายกเว้น VAT', sum('exempt_amount'), d(calc.exempt_amount)]] as const)
+    .filter(([, got, want]) => !got.eq(want));
+  if (diff.length) throw badRequest(`ยอดใบกำกับภาษีอย่างย่อรวมทุกเครื่องไม่เท่าเอกสาร: ${diff.map(([n, got, want]) => `${n} รวมเครื่อง ${got.toFixed(2)} · เอกสาร ${want.toFixed(2)}`).join(' · ')} — แก้ยอดรายเครื่องที่ต้นทาง`,
+    diff.map(([n]) => ({ field: 'abbr_invoices', message: n })));
+}
 
 /** หัว + บรรทัด + วิธีชำระของเอกสาร (บันทึกใหม่หรือแก้ไข) แล้วลงบัญชีในทรานแซกชันเดียวกัน */
 export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Body) {
@@ -134,6 +157,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
   if (!K.payments && b.payments.length) throw badRequest(`${K.label}ไม่มีการรับ/จ่ายเงินในเอกสาร — ใช้เมนูรับ/จ่ายชำระหนี้`);
   if (b.wht.length && K.cls !== 'HP') throw badRequest(K.cls === 'HS' ? 'ขายเงินสดป้อนเพียงยอดภาษีที่ถูกหัก — หนังสือรับรอง 50 ทวิ ลูกค้าเป็นผู้ออก' : `${K.label}ไม่มีภาษีหัก ณ ที่จ่ายในเอกสาร — ป้อนตอนรับ/จ่ายชำระ`);
   if (!d(b.wht_amount).isZero() && K.cls !== 'HS') throw badRequest(K.cls === 'HP' ? 'ซื้อเงินสด: ป้อนรายละเอียดภาษีหัก ณ ที่จ่าย (แบบ ประเภทเงินได้ อัตรา) ไม่ใช่ยอดอย่างเดียว' : `${K.label}ไม่มีภาษีหัก ณ ที่จ่ายในเอกสาร — ป้อนตอนรับ/จ่ายชำระ`);
+  if (b.abbr_invoices.length) checkAbbr(K, b, calc);
   const wht = K.cls === 'HP' ? checkWht(b.wht) : d(b.wht_amount);
   if (wht.lt(0)) throw badRequest('ภาษีหัก ณ ที่จ่ายต้องไม่ติดลบ');
   if (payTotal.plus(wht).gt(d(calc.net_amount))) throw badRequest('ยอดชำระด้วยวิธีอื่นรวมภาษีหัก ณ ที่จ่าย มากกว่ายอดเงินรวมทั้งสิ้น');
@@ -167,7 +191,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
         throw badRequest(`${cur.doc_no} มีการรับ/จ่ายชำระแล้ว แก้ไขไม่ได้ — ยกเลิกใบเสร็จ/ใบสำคัญจ่ายที่ตัดเอกสารนี้ก่อน`);
       docNo = cur.doc_no;
       await tx.updateTable('doc_header').set(header).where('id', '=', id).execute();
-      for (const t of ['doc_line', 'doc_payment', 'tax_wht_entry'] as const) await tx.updateTable(t).set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
+      for (const t of ['doc_line', 'doc_payment', 'tax_wht_entry', 'doc_abbr_invoice'] as const) await tx.updateTable(t).set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
       await tx.updateTable('doc_link').set({ deleted_at: sql`now()` as never }).where('to_header_id', '=', id).where('link_type', '=', 'DEPOSIT').where('deleted_at', 'is', null).execute();
     } else {
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
@@ -234,6 +258,8 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     }
     if (b.deposits.length) await tx.insertInto('doc_link').values(b.deposits.map((x) => ({ company_id: a.companyId, from_header_id: x.header_id, to_header_id: hid!, link_type: 'DEPOSIT', amount: d(x.amount).toFixed(2), created_by: a.userId }))).execute();
     if (b.payments.length) await tx.insertInto('doc_payment').values(b.payments.map((p, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, payment_method_id: p.payment_method_id, amount: p.amount, reference_no: p.reference_no, created_by: a.userId }))).execute();
+    if (b.abbr_invoices.length) await tx.insertInto('doc_abbr_invoice').values(b.abbr_invoices.map((x, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, pos_device_code: x.pos_device_code,
+      inv_from: x.inv_from, inv_to: x.inv_to, inv_count: x.inv_count, base_amount: d(x.base_amount).toFixed(2), vat_amount: d(x.vat_amount).toFixed(2), exempt_amount: d(x.exempt_amount).toFixed(2), created_by: a.userId }))).execute();
     if (b.wht.length) await writeWht(tx, a, { headerId: hid!, docNo, payDate: b.doc_date, wht: b.wht, supplierId: header.supplier_id, departmentId: header.department_id,
       payee: { name: header.party_name, address: header.party_address, tax_id: header.party_tax_id, branch_no: header.party_tax_branch_no } });
     // บันทึก = ลงบัญชีทันที (แก้ไข = ลงใบสำคัญเดิมใหม่)
@@ -356,7 +382,9 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
           WHERE x.header_id = ${id} AND x.deleted_at IS NULL`.execute(db)).rows : [];
       const converted = K.cls === 'QT' ? (await sql<{ id: string; doc_no: string; doc_date: string }>`SELECT t.id, t.doc_no, t.doc_date FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id
           WHERE l.from_header_id = ${id} AND l.link_type = 'CONVERT' AND l.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL ORDER BY t.doc_date`.execute(db)).rows : [];
-      return { ...h, converted, party_code: pc?.code ?? null, lines: lines.map((l) => ({ ...l, ...(orderLines.find((o) => o.line_no === l.line_no) ?? {}), source: sources.find((x) => x.line_id === (l as { id?: string }).id) ?? null })),
+      const abbr_invoices = K.cls === 'HS' ? await db.selectFrom('doc_abbr_invoice').select(['line_no', 'pos_device_code', 'inv_from', 'inv_to', 'inv_count', 'base_amount', 'vat_amount', 'exempt_amount'])
+        .where('header_id', '=', id).where('deleted_at', 'is', null).orderBy('line_no').execute() : [];
+      return { ...h, abbr_invoices, converted, party_code: pc?.code ?? null, lines: lines.map((l) => ({ ...l, ...(orderLines.find((o) => o.line_no === l.line_no) ?? {}), source: sources.find((x) => x.line_id === (l as { id?: string }).id) ?? null })),
         deliveries, cancels, payments, deposits, wht: K.payments ? (await readMoneyParts(db, a.companyId, id)).wht : [], settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !h.is_opening && !settled.some((x) => x.doc_status !== 'C') && !(deliveries as unknown[]).length };
     });
     // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)

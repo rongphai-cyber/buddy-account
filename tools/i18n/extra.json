@@ -572,5 +572,19 @@
  "ใบสำคัญเทียบได้เฉพาะ source_totals.total (ยอดรวมเดบิต = เครดิต) — ไม่รับ {0}": "Vouchers can only be checked with source_totals.total (total debit = credit) — {0} not accepted",
  "since ต้องเป็นค่า next_cursor ที่ได้ครั้งก่อน (ตัวเลข)": "since must be the next_cursor value from the previous call (a number)",
  "ระบุ types เช่น item,customer — ใช้ได้: {0}": "Specify types, e.g. item,customer — allowed: {0}",
- "ไม่รู้จักชนิด {0} — ใช้ได้: {1}": "Unknown type {0} — allowed: {1}"
+ "ไม่รู้จักชนิด {0} — ใช้ได้: {1}": "Unknown type {0} — allowed: {1}",
+ "มูลค่าก่อน VAT": "Amount before VAT",
+ "ขายสดที่รวมใบกำกับภาษีอย่างย่อมีรายการอัตรา 0% ไม่ได้ — แยกเป็นเอกสารอีกใบ": "A cash sale that includes abbreviated tax invoices cannot have 0% VAT lines — put them on a separate document",
+ "ขายเงินสด เครื่อง POS {0} ({1} ใบ)": "Cash sale, POS machine {0} ({1} invoices)",
+ "จำนวนใบต้องอย่างน้อย 1": "The invoice count must be at least 1",
+ "ป้อนรหัสเครื่อง POS": "Enter the POS machine code",
+ "ป้อนเลขที่ใบกำกับภาษีอย่างย่อสุดท้าย": "Enter the last abbreviated tax invoice number",
+ "ป้อนเลขที่ใบกำกับภาษีอย่างย่อเริ่ม": "Enter the first abbreviated tax invoice number",
+ "ยอดใบกำกับภาษีอย่างย่อรวมทุกเครื่องไม่เท่าเอกสาร: {0} — แก้ยอดรายเครื่องที่ต้นทาง": "Abbreviated tax invoice totals across machines do not equal the document: {0} — fix the per-machine totals at the source",
+ "รหัสเครื่อง POS ยาวไม่เกิน 20 ตัว": "The POS machine code must be at most 20 characters",
+ "เครื่อง POS": "POS machine",
+ "เครื่อง POS {0} ซ้ำ — 1 เครื่องต่อ 1 บรรทัด (รวมยอดทั้งวันของเครื่อง)": "POS machine {0} is duplicated — one line per machine (the machine's whole-day total)",
+ "ใบกำกับภาษีอย่างย่อ (abbr_invoices) ใช้ได้เฉพาะขายเงินสด (HS)": "Abbreviated tax invoices (abbr_invoices) are for cash sales (HS) only",
+ "ใบกำกับภาษีอย่างย่อ เลขที่ {0}–{1}": "Abbreviated tax invoices no. {0}–{1}",
+ "ใบกำกับภาษีอย่างย่อจากเครื่อง POS ที่รวมอยู่ในเอกสารนี้ — รายงานภาษีขายแสดง 1 บรรทัดต่อเครื่อง": "Abbreviated tax invoices from POS machines included in this document — the output VAT report shows one line per machine"
 }

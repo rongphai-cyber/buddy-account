@@ -607,7 +607,7 @@
 },
 {
 "th": "เลขที่",
-"n": 36,
+"n": 37,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/JournalPicker.tsx",
@@ -1022,6 +1022,30 @@
 ]
 },
 {
+"th": "รวม",
+"n": 24,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts"
+]
+},
+{
 "th": "จำนวน",
 "n": 23,
 "files": [
@@ -1060,29 +1084,6 @@
 "apps/web/src/pages/settings/Permissions.tsx",
 "apps/web/src/pages/tax/Wht50.tsx",
 "apps/server/src/modules/permissions.ts"
-]
-},
-{
-"th": "รวม",
-"n": 23,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts"
 ]
 },
 {
@@ -1735,6 +1736,22 @@
 ]
 },
 {
+"th": "ภาษีมูลค่าเพิ่ม",
+"n": 13,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/source-totals.ts"
+]
+},
+{
 "th": "มีการแก้ไขที่ยังไม่บันทึก",
 "n": 13,
 "files": [
@@ -2018,21 +2035,6 @@
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "ภาษีมูลค่าเพิ่ม",
-"n": 11,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/source-totals.ts"
 ]
 },
 {
@@ -4468,6 +4470,16 @@
 ]
 },
 {
+"th": "มูลค่ายกเว้น VAT",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/tax.ts"
+]
+},
+{
 "th": "มูลค่าสินค้า/บริการ",
 "n": 4,
 "files": [
@@ -5613,15 +5625,6 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
-"th": "มูลค่ายกเว้น VAT",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts"
 ]
 },
 {
@@ -7177,6 +7180,14 @@
 ]
 },
 {
+"th": "จำนวนใบ",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/reports/parties.ts"
+]
+},
+{
 "th": "จำเป็น",
 "n": 2,
 "files": [
@@ -8614,6 +8625,14 @@
 ]
 },
 {
+"th": "มูลค่าก่อน VAT",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/docs/trade.ts"
+]
+},
+{
 "th": "มูลค่าตามบัญชี",
 "n": 2,
 "files": [
@@ -8706,6 +8725,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "ยกเว้น VAT",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx"
 ]
 },
 {
@@ -16416,6 +16443,13 @@
 ]
 },
 {
+"th": "ขายสดที่รวมใบกำกับภาษีอย่างย่อมีรายการอัตรา 0% ไม่ได้ — แยกเป็นเอกสารอีกใบ",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/trade.ts"
+]
+},
+{
 "th": "ขายสดให้",
 "n": 1,
 "files": [
@@ -16441,6 +16475,13 @@
 "n": 1,
 "files": [
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "ขายเงินสด เครื่อง POS {0} ({1} ใบ)",
+"n": 1,
+"files": [
+"apps/server/src/modules/vat.ts"
 ]
 },
 {
@@ -19139,17 +19180,17 @@
 ]
 },
 {
-"th": "จำนวนใบ",
-"n": 1,
-"files": [
-"apps/server/src/modules/reports/parties.ts"
-]
-},
-{
 "th": "จำนวนใบกำกับ: ภาษีขาย {0} รายการ · ภาษีซื้อ {1} รายการ{2} · ยื่นภายในวันที่ 15 ของเดือนถัดไป (ยื่นทางอินเทอร์เน็ตได้ถึงวันที่ 23)",
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "จำนวนใบต้องอย่างน้อย 1",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/trade.ts"
 ]
 },
 {
@@ -26398,6 +26439,13 @@
 ]
 },
 {
+"th": "ป้อนรหัสเครื่อง POS",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/trade.ts"
+]
+},
+{
 "th": "ป้อนรหัสแผนก",
 "n": 1,
 "files": [
@@ -26623,6 +26671,20 @@
 },
 {
 "th": "ป้อนเลขที่ใบกำกับที่อ้างถึง",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/trade.ts"
+]
+},
+{
+"th": "ป้อนเลขที่ใบกำกับภาษีอย่างย่อสุดท้าย",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/trade.ts"
+]
+},
+{
+"th": "ป้อนเลขที่ใบกำกับภาษีอย่างย่อเริ่ม",
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/trade.ts"
@@ -29212,13 +29274,6 @@
 ]
 },
 {
-"th": "ยกเว้น VAT",
-"n": 1,
-"files": [
-"apps/web/src/pages/tax/VatRegister.tsx"
-]
-},
-{
 "th": "ยอด{0}จริง",
 "n": 1,
 "files": [
@@ -29916,6 +29971,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/AccountDetail.tsx"
+]
+},
+{
+"th": "ยอดใบกำกับภาษีอย่างย่อรวมทุกเครื่องไม่เท่าเอกสาร: {0} — แก้ยอดรายเครื่องที่ต้นทาง",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/trade.ts"
 ]
 },
 {
@@ -31890,6 +31952,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "รหัสเครื่อง POS ยาวไม่เกิน 20 ตัว",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/trade.ts"
 ]
 },
 {
@@ -38886,6 +38955,20 @@
 ]
 },
 {
+"th": "เครื่อง POS",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "เครื่อง POS {0} ซ้ำ — 1 เครื่องต่อ 1 บรรทัด (รวมยอดทั้งวันของเครื่อง)",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/trade.ts"
+]
+},
+{
 "th": "เครื่อง {0} ถูกระงับที่สำนักงานใหญ่ — ติดต่อผู้ดูแลระบบ",
 "n": 1,
 "files": [
@@ -45491,6 +45574,27 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
+"th": "ใบกำกับภาษีอย่างย่อ (abbr_invoices) ใช้ได้เฉพาะขายเงินสด (HS)",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/trade.ts"
+]
+},
+{
+"th": "ใบกำกับภาษีอย่างย่อ เลขที่ {0}–{1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/vat.ts"
+]
+},
+{
+"th": "ใบกำกับภาษีอย่างย่อจากเครื่อง POS ที่รวมอยู่ในเอกสารนี้ — รายงานภาษีขายแสดง 1 บรรทัดต่อเครื่อง",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {

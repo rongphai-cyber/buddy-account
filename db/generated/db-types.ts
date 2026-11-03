@@ -2737,6 +2737,45 @@ export interface DocPaymentTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** ใบกำกับภาษีอย่างย่อจากเครื่อง POS ที่รวมอยู่ในขายสด (HS) รายวัน — รายงานภาษีขาย 1 บรรทัดต่อเครื่องต่อวัน (docs/17 B0.4) */
+export interface DocAbbrInvoiceTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ขายสด HS ที่รวมยอด */
+  header_id: string;
+  /** ลำดับ */
+  line_no: number;
+  /** รหัสเครื่อง POS (เลขทะเบียนเครื่องตาม ภ.พ.06) */
+  pos_device_code: string;
+  /** ใบกำกับภาษีอย่างย่อ เลขที่เริ่ม */
+  inv_from: string;
+  /** ใบกำกับภาษีอย่างย่อ เลขที่สุดท้าย */
+  inv_to: string;
+  /** จำนวนใบ */
+  inv_count: number;
+  /** มูลค่าก่อน VAT (ไม่รวม VAT) */
+  base_amount: Gen<string>;
+  /** ภาษีมูลค่าเพิ่ม */
+  vat_amount: Gen<string>;
+  /** มูลค่าที่ได้รับยกเว้น VAT */
+  exempt_amount: Gen<string>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** รายการหักจากยอดรับชำระ: ค่า GP/คอมมิชชั่น ค่าธรรมเนียม ค่าโฆษณาที่แพลตฟอร์มออนไลน์หักก่อนโอน (Grab LINE MAN Agoda Booking.com Airbnb — ข้อกำหนดเจ้าของ 31/10/2569) */
 export interface DocChargeTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -4584,6 +4623,7 @@ export interface DB {
   doc_bill_item: DocBillItemTable;
   doc_settlement: DocSettlementTable;
   doc_payment: DocPaymentTable;
+  doc_abbr_invoice: DocAbbrInvoiceTable;
   doc_charge: DocChargeTable;
   fin_cheque: FinChequeTable;
   fin_cheque_event: FinChequeEventTable;

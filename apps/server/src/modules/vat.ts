@@ -44,7 +44,17 @@ export async function syncVatEntries(tx: Db, ctx: Ctx, headerId: string) {
     const s = (await sql<{ amount: string; vat: string }>`SELECT coalesce(sum(CASE WHEN express_rectype = '5' THEN -amount ELSE amount END), 0) AS amount,
         coalesce(sum(CASE WHEN express_rectype = '5' THEN -vat_amount ELSE vat_amount END), 0) AS vat FROM doc_settlement WHERE payment_header_id = ${headerId} AND deleted_at IS NULL AND vat_amount <> 0`.execute(tx)).rows[0]!;
     vat = d(s.vat); base = d(s.amount).minus(vat);
-  } else if (h.vat_basis !== '2') { base = d(h.taxable_amount); vat = d(h.vat_amount); zero = d(h.zero_rate_amount); exempt = d(h.exempt_amount); }
+  } else if (h.vat_basis !== '2') {
+    base = d(h.taxable_amount); vat = d(h.vat_amount); zero = d(h.zero_rate_amount); exempt = d(h.exempt_amount);
+    // ราคารวม VAT: taxable_amount ของเอกสาร = ยอดรวม VAT (แบบ Express TOTAL) — มูลค่าในแฟ้มภาษีต้องไม่รวม VAT (Express ISVAT.AMT01)
+    if (h.price_type === '1') base = base.minus(vat);
+    // ขายสดรวมใบกำกับภาษีอย่างย่อจาก POS (docs/17 B0.4) → 1 รายการต่อเครื่อง
+    if (h.doc_class === 'HS') {
+      const ab = await tx.selectFrom('doc_abbr_invoice').select(['pos_device_code', 'inv_from', 'inv_to', 'inv_count', 'base_amount', 'vat_amount', 'exempt_amount'])
+        .where('header_id', '=', headerId).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).orderBy('line_no').execute();
+      if (ab.length) return syncAbbrVat(tx, ctx, h, ab);
+    }
+  }
   const old = await tx.selectFrom('tax_vat_entry').selectAll().where('header_id', '=', headerId).where('company_id', '=', ctx.companyId).where('vat_kind', '=', kind).where('is_manual', '=', false).where('deleted_at', 'is', null).execute();
   // ภาษีขาย: บิลที่มีแต่รายการยกเว้นก็เข้าแฟ้ม (รายงานภาษีขายแยก 3 ประเภท 7% / 0% / ยกเว้น — ข้อกำหนดเจ้าของ)
   if (vat.isZero() && zero.isZero() && (kind !== 'S' || exempt.isZero())) {
@@ -71,6 +81,37 @@ export async function syncVatEntries(tx: Db, ctx: Ctx, headerId: string) {
     description: (prev?.description ?? [DESC[h.doc_class], h.party_name].filter(Boolean).join(' ')).slice(0, 200), party_name: h.party_name, party_tax_id: h.party_tax_id, party_tax_branch_no: h.party_tax_branch_no,
     base_amount: abs(base).toFixed(2), vat_amount: abs(vat).toFixed(2), zero_rate_amount: abs(zero).toFixed(2), exempt_amount: abs(exempt).toFixed(2), is_modified: !!prev, remark: prev?.remark ?? null, created_by: ctx.userId,
   }).execute();
+}
+
+/** ป้ายใบกำกับภาษีอย่างย่อในรายงานภาษีขาย (สำนักงานบัญชียืนยันรูปแบบกับประกาศสรรพากร/ภ.พ.06 — docs/17 ข้อ 9.1) */
+export const abbrInvoiceLabel = (from: string, to: string) => `ใบกำกับภาษีอย่างย่อ เลขที่ ${from}–${to}`;
+
+/**
+ * ขายสดรายวันจาก POS (docs/17 B0.4): รายงานภาษีขาย 1 บรรทัดต่อเครื่องต่อวัน "ใบกำกับภาษีอย่างย่อ เลขที่ x–y"
+ * รายการเดิมที่ยอด/เลขที่เท่าเดิมคงไว้ (รักษางวดที่ยื่น/หมายเหตุที่ผู้ใช้แก้)
+ */
+async function syncAbbrVat(tx: Db, ctx: Ctx, h: { id: string; doc_no: string; doc_date: unknown; vat_date: unknown; branch_id: string | null; department_id: string | null; doc_status: string },
+  ab: Array<{ pos_device_code: string; inv_from: string; inv_to: string; inv_count: number; base_amount: string; vat_amount: string; exempt_amount: string }>) {
+  const docDate = String(h.doc_date).slice(0, 10), vatDate = String(h.vat_date ?? h.doc_date).slice(0, 10);
+  const old = await tx.selectFrom('tax_vat_entry').selectAll().where('header_id', '=', h.id).where('company_id', '=', ctx.companyId).where('vat_kind', '=', 'S').where('is_manual', '=', false).where('deleted_at', 'is', null).orderBy('tax_invoice_no').execute();
+  const want = ab.map((x) => {
+    const range = `${x.inv_from}-${x.inv_to}`;
+    return { ...x, tax_invoice_no: range.length <= 30 ? range : x.inv_from, party_name: abbrInvoiceLabel(x.inv_from, x.inv_to), description: `ขายเงินสด เครื่อง POS ${x.pos_device_code} (${x.inv_count} ใบ)`.slice(0, 200) };
+  });
+  const status = h.doc_status === 'C' ? 'C' : 'N';
+  const keep = new Set<string>();
+  for (const w of want) {
+    const prev = old.find((o) => !keep.has(o.id) && o.tax_invoice_no === w.tax_invoice_no && o.party_name === w.party_name && d(o.base_amount).plus(d(o.nonclaim_base)).eq(d(w.base_amount)) && d(o.vat_amount).eq(d(w.vat_amount)) && d(o.exempt_amount).eq(d(w.exempt_amount)));
+    if (prev) { keep.add(prev.id); await tx.updateTable('tax_vat_entry').set({ doc_no: h.doc_no, doc_date: docDate, doc_status: status, updated_by: ctx.userId }).where('id', '=', prev.id).execute(); continue; }
+    const period = old[0]?.vat_period_id ?? (await periodIdOf(tx, ctx.companyId, vatDate));
+    await tx.insertInto('tax_vat_entry').values({
+      company_id: ctx.companyId, vat_kind: 'S', header_id: h.id, branch_id: h.branch_id, doc_no: h.doc_no, doc_date: docDate, tax_invoice_no: w.tax_invoice_no, tax_invoice_date: docDate,
+      vat_period_id: period, is_late: old[0]?.is_late ?? false, department_id: h.department_id, description: w.description, party_name: w.party_name, party_tax_id: null, party_tax_branch_no: null,
+      base_amount: d(w.base_amount).toFixed(2), vat_amount: d(w.vat_amount).toFixed(2), zero_rate_amount: '0.00', exempt_amount: d(w.exempt_amount).toFixed(2), is_modified: false, remark: null, doc_status: status, created_by: ctx.userId,
+    }).execute();
+  }
+  const drop = old.filter((o) => !keep.has(o.id)).map((o) => o.id);
+  if (drop.length) await tx.updateTable('tax_vat_entry').set({ deleted_at: sql`now()` as never }).where('id', 'in', drop).execute();
 }
 
 /**

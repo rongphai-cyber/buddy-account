@@ -3431,6 +3431,41 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await send('POST', `/api/v1/cash-sales/${liv.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' }, { system: 'wts-living', ref: pos.ref })).status).toBe(200);
     expect((await send('POST', `/api/v1/gl/journals/${a4.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' }, ref)).status).toBe(200);
   });
+  it('POS abbreviated tax invoices in daily cash sale (docs/17 B0.4) + VAT-inclusive base excludes VAT in the VAT file', async () => {
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const cus = (await call('POST', '/api/v1/customers', { code: 'C-POSDAY', name: 'ลูกค้าหน้าร้าน (รวมรายวัน)', tax_id: tid(956) })).body.id;
+    // ตัวอย่างข้อ 7.1: รวม VAT 30,000.00 → ก่อน VAT 28,037.38 · ภาษีขาย 1,962.62 · 2 เครื่อง
+    const hs = { doc_type_id: await typeOf('HS'), doc_date: '2027-12-15', party_id: cus, price_type: '1', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 30000 }] };
+    const abbr = [
+      { pos_device_code: 'BK01-1', inv_from: 'A0001', inv_to: 'A0120', inv_count: 120, base_amount: '18691.59', vat_amount: '1308.41' },
+      { pos_device_code: 'BK01-2', inv_from: 'B0001', inv_to: 'B0064', inv_count: 64, base_amount: '9345.79', vat_amount: '654.21' },
+    ];
+    const r = await call('POST', '/api/v1/cash-sales', { ...hs, abbr_invoices: abbr });
+    expect([r.status, r.body.net_amount, r.body.error?.message]).toEqual([200, '30000.00', undefined]);
+    expect((await call('GET', `/api/v1/cash-sales/${r.body.id}`)).body.abbr_invoices.map((x: { pos_device_code: string; inv_count: number }) => `${x.pos_device_code}:${x.inv_count}`)).toEqual(['BK01-1:120', 'BK01-2:64']);
+    // แฟ้มภาษีขาย: 1 รายการต่อเครื่อง มูลค่าไม่รวม VAT
+    const ent = async (id: string) => (await sql<{ tax_invoice_no: string; party_name: string; base_amount: string; vat_amount: string }>`SELECT tax_invoice_no, party_name, base_amount, vat_amount FROM tax_vat_entry
+        WHERE header_id = ${id} AND deleted_at IS NULL ORDER BY tax_invoice_no`.execute(database.db)).rows;
+    expect((await ent(r.body.id)).map((x) => `${x.tax_invoice_no}|${x.party_name}|${x.base_amount}|${x.vat_amount}`)).toEqual([
+      'A0001-A0120|ใบกำกับภาษีอย่างย่อ เลขที่ A0001–A0120|18691.59|1308.41', 'B0001-B0064|ใบกำกับภาษีอย่างย่อ เลขที่ B0001–B0064|9345.79|654.21']);
+    // รายงานภาษีขาย (6.3): 2 บรรทัด รวมตรงตัวอย่าง
+    const rep = (await call('POST', '/api/v1/rpt/6.3/run', { params: { period: '2027-12' } })).body.rows.filter((x: { c: { doc?: string } }) => x.c.doc === r.body.doc_no);
+    expect(rep.map((x: { c: { name: string; base: string; vat: string } }) => `${x.c.name}|${String(x.c.base).replace(/,/g, '')}|${String(x.c.vat).replace(/,/g, '')}`)).toEqual([
+      'ใบกำกับภาษีอย่างย่อ เลขที่ A0001–A0120|18691.59|1308.41', 'ใบกำกับภาษีอย่างย่อ เลขที่ B0001–B0064|9345.79|654.21']);
+    // ยอดรวมเครื่องไม่เท่าเอกสาร (ต่าง 0.01) → ไม่บันทึก · เครื่องซ้ำ · ใช้กับเอกสารอื่นไม่ได้
+    const off = await call('POST', '/api/v1/cash-sales', { ...hs, abbr_invoices: [abbr[0], { ...abbr[1], vat_amount: '654.22' }] });
+    expect([off.status, off.body.error.message]).toEqual([400, expect.stringMatching(/ภาษีมูลค่าเพิ่ม รวมเครื่อง 1962\.63 · เอกสาร 1962\.62/)]);
+    expect((await call('POST', '/api/v1/cash-sales', { ...hs, abbr_invoices: [abbr[0], { ...abbr[1], pos_device_code: 'BK01-1' }] })).body.error.message).toMatch(/BK01-1 ซ้ำ/);
+    expect((await call('POST', '/api/v1/sales-invoices', { ...hs, doc_type_id: await typeOf('IV'), abbr_invoices: abbr })).body.error.message).toMatch(/เฉพาะขายเงินสด/);
+    // แก้เอกสารเป็นไม่มีใบอย่างย่อ → แฟ้มภาษีกลับเป็น 1 รายการ (มูลค่าไม่รวม VAT)
+    expect((await call('PUT', `/api/v1/cash-sales/${r.body.id}`, hs)).status).toBe(200);
+    expect((await ent(r.body.id)).map((x) => `${x.base_amount}|${x.vat_amount}`)).toEqual(['28037.38|1962.62']);
+    // ราคาแยก VAT ไม่เปลี่ยน: มูลค่า = ก่อน VAT
+    const ex = await call('POST', '/api/v1/cash-sales', { ...hs, price_type: '2', lines: [{ item_id: cpu, qty: 1, unit_price: 1000 }] });
+    expect((await ent(ex.body.id)).map((x) => `${x.base_amount}|${x.vat_amount}`)).toEqual(['1000.00|70.00']);
+    for (const id of [r.body.id, ex.body.id]) expect((await call('POST', `/api/v1/cash-sales/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
   it('WTS Connect master-data feed (docs/17 B0.3): full load + cursor, upsert/inactive/delete, only requested types, read-only key, bad params, isolation', async () => {
     const adminId = (await call('GET', '/api/v1/auth/me')).body.user.id;
     const key = (await call('POST', '/api/v1/api-keys', { name: 'WTS-POS feed', user_id: adminId, read_only: true })).body.key as string;
