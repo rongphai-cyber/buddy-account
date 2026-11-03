@@ -55,6 +55,41 @@ COMMENT ON COLUMN sys_tenant.deleted_at IS 'ลบแบบ soft delete (Express
 COMMENT ON COLUMN sys_tenant.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_sys_tenant_code ON sys_tenant (code) WHERE deleted_at IS NULL;
 
+-- sys_tenant_module: โมดูล/โปรแกรมที่ลูกค้าผู้ใช้บริการใช้ได้ (WTS Solutions: Buddy POS Living HR Hotel Spa) — Hub อ่านเพื่อแสดงไทล์ (docs/17 B0.6)  [Express: (ใหม่)]
+CREATE TABLE sys_tenant_module (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  tenant_id uuid NOT NULL,
+  module_key varchar(20) NOT NULL,
+  enabled boolean DEFAULT true NOT NULL,
+  valid_to date,
+  seats integer,
+  remark varchar(200),
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_tenant_module IS 'โมดูล/โปรแกรมที่ลูกค้าผู้ใช้บริการใช้ได้ (WTS Solutions: Buddy POS Living HR Hotel Spa) — Hub อ่านเพื่อแสดงไทล์ (docs/17 B0.6) | Express: (ใหม่)';
+COMMENT ON COLUMN sys_tenant_module.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_tenant_module.tenant_id IS 'ลูกค้าผู้ใช้บริการ';
+COMMENT ON COLUMN sys_tenant_module.module_key IS 'โมดูล: buddy pos living hr hotel spa';
+COMMENT ON COLUMN sys_tenant_module.enabled IS 'เปิดใช้';
+COMMENT ON COLUMN sys_tenant_module.valid_to IS 'ใช้ได้ถึงวันที่ (ว่าง = ไม่หมดอายุ)';
+COMMENT ON COLUMN sys_tenant_module.seats IS 'จำนวนผู้ใช้/เครื่องที่ซื้อ (ว่าง = ไม่จำกัด)';
+COMMENT ON COLUMN sys_tenant_module.remark IS 'หมายเหตุ (เลขที่สัญญา/ใบเสนอราคา)';
+COMMENT ON COLUMN sys_tenant_module.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN sys_tenant_module.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN sys_tenant_module.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN sys_tenant_module.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN sys_tenant_module.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN sys_tenant_module.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN sys_tenant_module.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_sys_tenant_module_tenant_module_key ON sys_tenant_module (COALESCE(tenant_id, '00000000-0000-0000-0000-000000000000'::uuid), module_key) WHERE deleted_at IS NULL;
+
 -- sys_signup: ใบสมัครใช้งานจากหน้าสมัครเอง (ข้อกำหนดเจ้าของ 30/10/2569) — ผู้ให้บริการอนุมัติแล้วสร้างลูกค้าผู้ใช้บริการ + ผู้ดูแลคนแรก  [Express: (ใหม่)]
 CREATE TABLE sys_signup (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -5044,6 +5079,12 @@ ALTER TABLE sys_tenant ADD CONSTRAINT fk_sys_tenant_created_by FOREIGN KEY (crea
 CREATE INDEX IF NOT EXISTS ix_fk_sys_tenant_created_by ON sys_tenant (created_by);
 ALTER TABLE sys_tenant ADD CONSTRAINT fk_sys_tenant_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_tenant_updated_by ON sys_tenant (updated_by);
+ALTER TABLE sys_tenant_module ADD CONSTRAINT fk_sys_tenant_module_tenant_id FOREIGN KEY (tenant_id) REFERENCES sys_tenant(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_tenant_module_tenant_id ON sys_tenant_module (tenant_id);
+ALTER TABLE sys_tenant_module ADD CONSTRAINT fk_sys_tenant_module_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_tenant_module_created_by ON sys_tenant_module (created_by);
+ALTER TABLE sys_tenant_module ADD CONSTRAINT fk_sys_tenant_module_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_tenant_module_updated_by ON sys_tenant_module (updated_by);
 ALTER TABLE sys_signup ADD CONSTRAINT fk_sys_signup_tenant_id FOREIGN KEY (tenant_id) REFERENCES sys_tenant(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_signup_tenant_id ON sys_signup (tenant_id);
 ALTER TABLE sys_signup ADD CONSTRAINT fk_sys_signup_decided_by FOREIGN KEY (decided_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -6318,6 +6359,7 @@ CREATE TRIGGER trg_pay_wht_cert_ver BEFORE UPDATE ON pay_wht_cert FOR EACH ROW E
 CREATE TRIGGER trg_pay_filing_ver BEFORE UPDATE ON pay_filing FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sync_conflict_ver BEFORE UPDATE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_tenant_ver BEFORE UPDATE ON sys_tenant FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_sys_tenant_module_ver BEFORE UPDATE ON sys_tenant_module FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_signup_ver BEFORE UPDATE ON sys_signup FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_user_security_ver BEFORE UPDATE ON sys_user_security FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_session_ver BEFORE UPDATE ON sys_session FOR EACH ROW EXECUTE FUNCTION sys_bump_version();

@@ -947,3 +947,7 @@ tr.sel > td { background: color-mix(in srgb, var(--tone) 10%, transparent); }
 .pay-source { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 10px; }
 .pay-source select { margin-left: 8px; }
 .wts-result { margin-top: 10px; }
+/* โปรแกรมที่ลูกค้าใช้ได้ (docs/17 B0.6) */
+.tenant-mods td:nth-child(1) { min-width: 150px; }
+.tenant-mods td:nth-child(3) { min-width: 175px; }
+.tenant-mods td:nth-child(4) { width: 110px; }

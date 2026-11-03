@@ -48,6 +48,37 @@ export interface SysTenantTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** โมดูล/โปรแกรมที่ลูกค้าผู้ใช้บริการใช้ได้ (WTS Solutions: Buddy POS Living HR Hotel Spa) — Hub อ่านเพื่อแสดงไทล์ (docs/17 B0.6) */
+export interface SysTenantModuleTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** ลูกค้าผู้ใช้บริการ */
+  tenant_id: string;
+  /** โมดูล: buddy pos living hr hotel spa */
+  module_key: string;
+  /** เปิดใช้ */
+  enabled: Gen<boolean>;
+  /** ใช้ได้ถึงวันที่ (ว่าง = ไม่หมดอายุ) */
+  valid_to: Gen<string | null>;
+  /** จำนวนผู้ใช้/เครื่องที่ซื้อ (ว่าง = ไม่จำกัด) */
+  seats: Gen<number | null>;
+  /** หมายเหตุ (เลขที่สัญญา/ใบเสนอราคา) */
+  remark: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ใบสมัครใช้งานจากหน้าสมัครเอง (ข้อกำหนดเจ้าของ 30/10/2569) — ผู้ให้บริการอนุมัติแล้วสร้างลูกค้าผู้ใช้บริการ + ผู้ดูแลคนแรก */
 export interface SysSignupTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -4558,6 +4589,7 @@ export interface SyncConflictTable {
 }
 export interface DB {
   sys_tenant: SysTenantTable;
+  sys_tenant_module: SysTenantModuleTable;
   sys_signup: SysSignupTable;
   sys_company: SysCompanyTable;
   sys_branch: SysBranchTable;

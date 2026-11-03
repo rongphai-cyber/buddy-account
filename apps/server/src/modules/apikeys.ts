@@ -20,7 +20,7 @@ export const API_KEY_MENU = 'SET.API';
 /** เมนูที่กุญแจ API ใช้ไม่ได้แม้ผู้ใช้จะมีสิทธิ์ */
 export const API_KEY_BLOCKED = new Set(['SET.SEC', 'SET.TENANT', 'RP.CUSTOM', 'RP.FORM', 'OT.LOG', 'OT.BACKUP', 'SET.NEWCO', 'SET.AI', 'SET.PDPA', 'SET.DEVICE', API_KEY_MENU, 'PAY.RUN', 'PAY.EMP', 'PAY.ITEM', 'PAY.LAW', 'PAY.CALC', 'PAY.SET', 'PAY.TAX', 'PAY.RPT']);
 /** API ชนิด "ของผู้ใช้เอง" ที่กุญแจเรียกได้ */
-export const API_KEY_SELF_OK = new Set(['GET /api/v1/auth/me', 'GET /api/v1/menu']);
+export const API_KEY_SELF_OK = new Set(['GET /api/v1/auth/me', 'GET /api/v1/menu', 'GET /api/v1/tenant/modules']);
 const PER_MINUTE = 600;
 
 const sha = (t: string) => createHash('sha256').update(t).digest('hex');

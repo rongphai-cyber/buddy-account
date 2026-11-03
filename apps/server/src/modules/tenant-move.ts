@@ -72,6 +72,7 @@ export async function exportTenant(db: Db, tenantId: string, pass: string, opt: 
     const all = async (q: RawBuilder<unknown>) => (await rows<{ j: Obj }>(tx, q)).map((r) => r.j);
     put('sys_tenant', [tenant]);
     put('sys_user_group', await all(sql`SELECT to_jsonb(x) AS j FROM sys_user_group x WHERE tenant_id = ${tenantId}`));
+    put('sys_tenant_module', await all(sql`SELECT to_jsonb(x) AS j FROM sys_tenant_module x WHERE tenant_id = ${tenantId}`));
     const users = await all(sql`SELECT to_jsonb(x) AS j FROM sys_user x WHERE tenant_id = ${tenantId}`);
     put('sys_user', users);
     const userIds = users.map((u) => String(u.id));
@@ -111,9 +112,10 @@ export async function importTenant(db: Db, buf: Buffer, pass: string, userId: st
   const parsed = new Map([...data].map(([t, rs]) => [t, rs.map((r) => JSON.parse(r) as Obj)]));
   const get = (t: string) => parsed.get(t) ?? [];
   const tables = new Set(await companyTables(db));
-  const unknown = [...parsed.keys()].filter((t) => !tables.has(t) && !['sys_tenant', 'sys_user_group', 'sys_user', 'sys_user_security', 'sys_company', 'sys_activity_log'].includes(t));
+  const unknown = [...parsed.keys()].filter((t) => !tables.has(t) && !['sys_tenant', 'sys_tenant_module', 'sys_user_group', 'sys_user', 'sys_user_security', 'sys_company', 'sys_activity_log'].includes(t));
   if (unknown.length) throw badRequest(`แฟ้มมีตารางที่เครื่องนี้ไม่รู้จัก: ${unknown.join(', ')}`);
   for (const t of get('sys_user')) if (t.tenant_id !== h.tenant.id) throw badRequest('แฟ้มมีผู้ใช้ของลูกค้ารายอื่น');
+  for (const t of get('sys_tenant_module')) if (t.tenant_id !== h.tenant.id) throw badRequest('แฟ้มมีสิทธิ์โมดูลของลูกค้ารายอื่น');
   for (const c of get('sys_company')) if (c.tenant_id !== h.tenant.id) throw badRequest('แฟ้มมีบริษัทของลูกค้ารายอื่น');
   const cids = get('sys_company').map((c) => String(c.id));
   for (const [t, rs] of parsed) if (tables.has(t)) for (const r of rs) if (!cids.includes(String(r.company_id))) throw badRequest(`แฟ้มมีข้อมูลของบริษัทที่ไม่อยู่ในลูกค้ารายนี้ (${t})`);
@@ -144,7 +146,7 @@ export async function importTenant(db: Db, buf: Buffer, pass: string, userId: st
   await db.transaction().execute(async (tx) => {
     await sql`SET CONSTRAINTS ALL DEFERRED`.execute(tx);
     await sql`SELECT set_config('app.allow_locked_period', 'on', true)`.execute(tx);
-    const order = ['sys_tenant', 'sys_user_group', 'sys_user', 'sys_user_security', 'sys_company', ...[...parsed.keys()].filter((t) => tables.has(t)).sort()];
+    const order = ['sys_tenant', 'sys_tenant_module', 'sys_user_group', 'sys_user', 'sys_user_security', 'sys_company', ...[...parsed.keys()].filter((t) => tables.has(t)).sort()];
     for (const t of order) {
       const rs = get(t);
       if (!rs.length) continue;

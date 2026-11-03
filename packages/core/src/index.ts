@@ -28,3 +28,4 @@ export * from './payroll-forms.js';
 export * from './payroll-files.js';
 export * from './payroll-import.js';
 export * from './source-totals.js';
+export * from './tenant-modules.js';

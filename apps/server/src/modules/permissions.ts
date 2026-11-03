@@ -349,6 +349,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/changes': LOOKUP,
   // WTS Solutions (docs/17 B0.5): คิดเงินเดือนที่ไหน · ตั้งค่าสำหรับ WTS-POS
   'PUT /api/v1/company/payroll-source': M('SET.CO', 'edit'), 'POST /api/v1/company/wts-pos-setup': M('SET.CO', 'edit'),
+  // สิทธิ์โมดูลระดับลูกค้า (docs/17 B0.6): ลูกค้าดูของตัวเอง · เจ้าหน้าที่ผู้ให้บริการตั้งค่า (ตรวจในตัวจัดการ)
+  'GET /api/v1/tenant/modules': SELF, 'GET /api/v1/tenants/:id/modules': SELF, 'PUT /api/v1/tenants/:id/modules': SELF,
   'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),
   'PUT /api/v1/salespersons/:id': M('SA.SLM', 'edit'), 'DELETE /api/v1/salespersons/:id': M('SA.SLM', 'delete'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)

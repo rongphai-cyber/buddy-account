@@ -122,7 +122,7 @@
 - [x] B0.3 ฟีดข้อมูลหลักที่เปลี่ยน (`GET /api/v1/changes` · `modules/changes.ts`)
 - [x] B0.4 ใบกำกับอย่างย่อในรายงานภาษีขาย (`doc_abbr_invoice` · migration 0050 · แก้มูลค่าแฟ้มภาษีของราคารวม VAT ให้ไม่รวม VAT)
 - [x] B0.5 payroll_source + ปุ่มตั้งค่าสำหรับ WTS-POS (`modules/wts.ts` · `components/WtsConnect.tsx`)
-- [ ] B0.6 สิทธิ์โมดูลระดับลูกค้า
+- [x] B0.6 สิทธิ์โมดูลระดับลูกค้า (`sys_tenant_module` · migration 0051 · `GET /api/v1/tenant/modules`)
 - [ ] B0.7 ทดสอบรับมอบด้วยตัวเลขข้อ 7
 
 ## ปัญหาที่ทราบ

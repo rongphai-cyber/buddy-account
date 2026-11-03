@@ -73,6 +73,15 @@ add(T('sys_tenant', 'ลูกค้าผู้ใช้บริการ (ten
   C('moved_to', 'str200', th='ย้ายไปใช้เซิร์ฟเวอร์/ฐานข้อมูลแยกแล้ว: ที่อยู่ใหม่ (T0.18) — ผู้ใช้เข้าระบบที่นี่ไม่ได้ ระบบบอกที่อยู่ใหม่'),
 ], uniq=[('code',)]))
 
+add(T('sys_tenant_module', 'โมดูล/โปรแกรมที่ลูกค้าผู้ใช้บริการใช้ได้ (WTS Solutions: Buddy POS Living HR Hotel Spa) — Hub อ่านเพื่อแสดงไทล์ (docs/17 B0.6)', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
+  lk('tenant_id', 'sys_tenant', 'ลูกค้าผู้ใช้บริการ', nn=True),
+  C('module_key', 'code20', nn=True, th='โมดูล: buddy pos living hr hotel spa'),
+  C('enabled', 'bool', nn=True, d='true', th='เปิดใช้'),
+  C('valid_to', 'date', th='ใช้ได้ถึงวันที่ (ว่าง = ไม่หมดอายุ)'),
+  C('seats', 'int', th='จำนวนผู้ใช้/เครื่องที่ซื้อ (ว่าง = ไม่จำกัด)'),
+  C('remark', 'str200', th='หมายเหตุ (เลขที่สัญญา/ใบเสนอราคา)'),
+], uniq=[('tenant_id','module_key')]))
+
 add(T('sys_signup', 'ใบสมัครใช้งานจากหน้าสมัครเอง (ข้อกำหนดเจ้าของ 30/10/2569) — ผู้ให้บริการอนุมัติแล้วสร้างลูกค้าผู้ใช้บริการ + ผู้ดูแลคนแรก', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
   C('business_name', 'str120', nn=True, th='ชื่อกิจการ/ร้านที่สมัคร'),
   C('contact_name', 'str120', nn=True, th='ชื่อผู้สมัคร (ผู้ติดต่อ)'),

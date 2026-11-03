@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { useSession } from '../../session';
@@ -73,6 +73,7 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
         <Field label="จำนวนบริษัทสูงสุด" hint="ว่าง = ไม่จำกัด"><input className="num" value={f.max_companies} onChange={(e) => setF({ ...f, max_companies: e.target.value.replace(/\D/g, '') })} /></Field>
         <Field label="จำนวนผู้ใช้สูงสุด" hint="ว่าง = ไม่จำกัด"><input className="num" value={f.max_users} onChange={(e) => setF({ ...f, max_users: e.target.value.replace(/\D/g, '') })} /></Field>
         <Field label="ลงนามข้อตกลงประมวลผลข้อมูล (DPA)" hint="ดูแบบข้อตกลงใน docs/10_PDPA.md"><DateInput value={f.dpa_signed_on} onChange={(v) => setF({ ...f, dpa_signed_on: v })} /></Field>
+        {t && <TenantModules tenantId={t.id} />}
         {t && <>
           <h3 className="wide">ย้ายไปเซิร์ฟเวอร์/ฐานข้อมูลแยก (ลูกค้ารายใหญ่)</h3>
           <p className="wide small muted">1) ส่งออกแฟ้มย้ายลูกค้า 2) ที่เครื่องใหม่กด "รับลูกค้าที่ย้ายมา" 3) ตรวจผลแล้วกลับมาใส่ที่อยู่ใหม่ และเปลี่ยนสถานะเป็น "เลิกใช้" — ผู้ใช้จะถูกบอกให้ไปเข้าที่อยู่ใหม่ และลบสำเนาที่เครื่องนี้ได้ทันที</p>
@@ -187,5 +188,42 @@ function ImportTenant({ onClose, onDone }: { onClose: () => void; onDone: () => 
         <p className="small">ผู้ใช้ของลูกค้าเข้าเครื่องนี้ได้ด้วยรหัสผู้ใช้ รหัสผ่าน และ 2FA เดิม — กลับไปที่เครื่องเดิมแล้วใส่ "ย้ายไปที่" และเปลี่ยนสถานะเป็นเลิกใช้</p>
       </>}
     </Modal>
+  );
+}
+
+type TMod = { key: string; label: string; enabled: boolean; valid_to: string | null; seats: number | null; remark: string | null; active: boolean; expired: boolean };
+/** โปรแกรมที่ลูกค้าใช้ได้ (docs/17 B0.6) — Hub แสดงไทล์ตามนี้ · โปรแกรมอื่นตรวจสิทธิ์ที่ GET /api/v1/tenant/modules */
+function TenantModules({ tenantId }: { tenantId: string }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['tenant-modules', tenantId], queryFn: () => api.get<TMod[]>(`/api/v1/tenants/${tenantId}/modules`) });
+  const [rows, setRows] = useState<TMod[]>([]);
+  const [err, setErr] = useState<unknown>(null);
+  useEffect(() => { if (q.data) setRows(q.data); }, [q.data]);
+  const set = (k: string, p: Partial<TMod>) => setRows((xs) => xs.map((x) => (x.key === k ? { ...x, ...p } : x)));
+  const save = async () => {
+    setErr(null);
+    try {
+      await api.put(`/api/v1/tenants/${tenantId}/modules`, { modules: rows.map((x) => ({ key: x.key, enabled: x.enabled, valid_to: x.valid_to || null, seats: x.seats || null, remark: x.remark || null })) });
+      toast('บันทึกโปรแกรมที่ลูกค้าใช้ได้แล้ว');
+      await qc.invalidateQueries({ queryKey: ['tenant-modules', tenantId] });
+    } catch (e) { setErr(e); }
+  };
+  return (
+    <div className="wide">
+      <h3>โปรแกรมที่ลูกค้าใช้ได้ (WTS Solutions)</h3>
+      <ErrorBox error={err ?? q.error} />
+      <table className="grid tenant-mods">
+        <thead><tr><th>โปรแกรม</th><th className="c">เปิดใช้</th><th>ใช้ได้ถึง</th><th className="r">จำนวนผู้ใช้/เครื่อง</th><th>หมายเหตุ</th><th>สถานะ</th></tr></thead>
+        <tbody>{rows.map((x) => <tr key={x.key}>
+          <td>{x.label}</td>
+          <td className="c"><input type="checkbox" checked={x.enabled} onChange={(e) => set(x.key, { enabled: e.target.checked })} aria-label={`เปิดใช้ ${x.label}`} /></td>
+          <td><DateInput value={x.valid_to ?? ''} onChange={(v) => set(x.key, { valid_to: v || null })} /></td>
+          <td><input className="num" value={x.seats ?? ''} placeholder="ไม่จำกัด" onChange={(e) => set(x.key, { seats: e.target.value.replace(/\D/g, '') ? Number(e.target.value.replace(/\D/g, '')) : null })} aria-label="จำนวนผู้ใช้/เครื่อง" /></td>
+          <td><input value={x.remark ?? ''} maxLength={200} onChange={(e) => set(x.key, { remark: e.target.value })} aria-label="หมายเหตุ" /></td>
+          <td>{x.active ? <Pill tone="n">ใช้ได้</Pill> : x.expired ? <Pill tone="d">หมดอายุ</Pill> : <Pill tone="x">ปิด</Pill>}</td>
+        </tr>)}</tbody>
+      </table>
+      <div className="theme-acts"><button type="button" onClick={save} disabled={!q.data}>บันทึกโปรแกรมที่ใช้ได้</button></div>
+    </div>
   );
 }

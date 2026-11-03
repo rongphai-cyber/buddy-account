@@ -161,7 +161,7 @@
 },
 {
 "th": "สถานะ",
-"n": 70,
+"n": 71,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -484,7 +484,7 @@
 },
 {
 "th": "ปิด",
-"n": 38,
+"n": 39,
 "files": [
 "apps/web/src/ui.tsx",
 "apps/web/src/components/AiBill.tsx",
@@ -516,6 +516,35 @@
 "apps/web/src/pages/settings/Tenants.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
+]
+},
+{
+"th": "หมายเหตุ",
+"n": 39,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -575,34 +604,6 @@
 "apps/server/src/modules/docs/settle.ts",
 "apps/server/src/modules/docs/trade.ts",
 "apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "หมายเหตุ",
-"n": 37,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2519,6 +2520,18 @@
 ]
 },
 {
+"th": "ลูกค้าผู้ใช้บริการ",
+"n": 8,
+"files": [
+"apps/web/src/pages/settings/Import.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/tenant-modules.ts",
+"apps/server/src/modules/tenant-move.ts"
+]
+},
+{
 "th": "สาขา#",
 "n": 8,
 "files": [
@@ -3184,17 +3197,6 @@
 ]
 },
 {
-"th": "ลูกค้าผู้ใช้บริการ",
-"n": 6,
-"files": [
-"apps/web/src/pages/settings/Import.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/tenant-move.ts"
-]
-},
-{
 "th": "วันที่ขาย",
 "n": 6,
 "files": [
@@ -3233,6 +3235,15 @@
 "apps/web/src/pages/reports/AccountDetail.tsx",
 "apps/web/src/pages/reports/Ledger.tsx",
 "apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
+"th": "หมดอายุ",
+"n": 6,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -3932,15 +3943,6 @@
 ]
 },
 {
-"th": "หมดอายุ",
-"n": 5,
-"files": [
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
-"apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
 "th": "หักเงินมัดจำ",
 "n": 5,
 "files": [
@@ -3995,6 +3997,17 @@
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/payroll/Forms.tsx",
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
+"n": 5,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/signup.ts",
+"apps/server/src/modules/tenant-modules.ts",
+"apps/server/src/modules/tenant-move.ts"
 ]
 },
 {
@@ -4695,16 +4708,6 @@
 "apps/web/src/pages/settings/Users.tsx",
 "apps/server/src/modules/company.ts",
 "apps/server/src/modules/security.ts"
-]
-},
-{
-"th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
-"n": 4,
-"files": [
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/signup.ts",
-"apps/server/src/modules/tenant-move.ts"
 ]
 },
 {
@@ -7157,6 +7160,13 @@
 "n": 2,
 "files": [
 "apps/web/src/components/DocTaxTabs.tsx"
+]
+},
+{
+"th": "จำนวนผู้ใช้/เครื่อง",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -13205,6 +13215,13 @@
 ]
 },
 {
+"th": "Buddy Account (ระบบบัญชี)",
+"n": 1,
+"files": [
+"packages/core/src/tenant-modules.ts"
+]
+},
+{
 "th": "Buddy Account (เมนูเงินเดือน)",
 "n": 1,
 "files": [
@@ -13415,6 +13432,13 @@
 ]
 },
 {
+"th": "Hotel (โรงแรม)",
+"n": 1,
+"files": [
+"packages/core/src/tenant-modules.ts"
+]
+},
+{
 "th": "IBM Plex Sans Thai (ค่าเริ่มต้น)",
 "n": 1,
 "files": [
@@ -13555,6 +13579,13 @@
 ]
 },
 {
+"th": "Spa (สปา)",
+"n": 1,
+"files": [
+"packages/core/src/tenant-modules.ts"
+]
+},
+{
 "th": "VAT {0} ไม่เท่ากับ {1}% ของฐาน — ตรวจ",
 "n": 1,
 "files": [
@@ -13573,6 +13604,27 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "WTS-Living (หอพัก อพาร์ตเมนต์ นิติบุคคล)",
+"n": 1,
+"files": [
+"packages/core/src/tenant-modules.ts"
+]
+},
+{
+"th": "WTS-POS (หน้าร้าน ครัวกลาง แฟรนไชส์)",
+"n": 1,
+"files": [
+"packages/core/src/tenant-modules.ts"
+]
+},
+{
+"th": "WTS-SOP (HR และเงินเดือน)",
+"n": 1,
+"files": [
+"packages/core/src/tenant-modules.ts"
 ]
 },
 {
@@ -19040,6 +19092,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "จำนวนผู้ใช้/เครื่องต้องอย่างน้อย 1",
+"n": 1,
+"files": [
+"apps/server/src/modules/tenant-modules.ts"
 ]
 },
 {
@@ -24997,6 +25056,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "บันทึกโปรแกรมที่ลูกค้าใช้ได้แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "บันทึกโปรแกรมที่ใช้ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -35507,6 +35580,13 @@
 ]
 },
 {
+"th": "วันที่ใช้ได้ถึงต้องเป็น YYYY-MM-DD",
+"n": 1,
+"files": [
+"apps/server/src/modules/tenant-modules.ts"
+]
+},
+{
 "th": "วันที่ในขอบเขตไม่ถูกต้อง — ตรวจวัน/เดือน",
 "n": 1,
 "files": [
@@ -41212,6 +41292,20 @@
 ]
 },
 {
+"th": "เปิดใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เปิดใช้ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "เปิดใช้ {0} แล้ว",
 "n": 1,
 "files": [
@@ -44726,6 +44820,13 @@
 ]
 },
 {
+"th": "แฟ้มมีสิทธิ์โมดูลของลูกค้ารายอื่น",
+"n": 1,
+"files": [
+"apps/server/src/modules/tenant-move.ts"
+]
+},
+{
 "th": "แฟ้มยื่นทางอินเทอร์เน็ต FORMAT กลาง v2.0 (ตั้งชื่อผู้ใช้ e-Filing ที่ตั้งค่าระบบเงินเดือนก่อน)",
 "n": 1,
 "files": [
@@ -45174,6 +45275,13 @@
 ]
 },
 {
+"th": "โปรแกรม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "โปรแกรมคิดให้",
 "n": 1,
 "files": [
@@ -45185,6 +45293,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/files.ts"
+]
+},
+{
+"th": "โปรแกรมที่ลูกค้าใช้ได้ (WTS Solutions)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -45710,6 +45825,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "ใช้ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ใช้ได้ถึง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -46571,6 +46700,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "ไม่จำกัด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -47712,6 +47848,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "ไม่รู้จักโมดูล — ใช้ได้: {0}",
+"n": 1,
+"files": [
+"apps/server/src/modules/tenant-modules.ts"
 ]
 },
 {

@@ -3512,6 +3512,40 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/customers?q=PF-GRAB')).body.rows).toHaveLength(0);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
+  it('tenant module rights (docs/17 B0.6): defaults, platform sets, customer sees own only, API key, other customers isolated, expiry', async () => {
+    type Mod = { key: string; active: boolean; enabled: boolean; seats: number | null; expired: boolean };
+    const by = (ms: Mod[]) => Object.fromEntries(ms.map((m) => [m.key, m]));
+    const plat = (await call('GET', '/api/v1/tenant/modules')).body;
+    expect([plat.tenant, (plat.modules as Mod[]).every((m) => m.active)]).toEqual([null, true]);   // เจ้าหน้าที่ผู้ให้บริการเห็นทุกโมดูล
+    const tid0 = (await call('GET', '/api/v1/tenants')).body.find((t: { code: string }) => t.code === 'DEFAULT').id as string;
+    expect(Object.values(by((await call('GET', `/api/v1/tenants/${tid0}/modules`)).body)).filter((m) => m.active).map((m) => m.key)).toEqual(['buddy']);
+    expect((await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'erp', enabled: true }] })).status).toBe(400);
+    const set = await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: true, valid_to: '2099-12-31', seats: 3, remark: 'สัญญา POS-001' }, { key: 'hr', enabled: true, valid_to: '2020-01-01' }] });
+    expect(set.status).toBe(200);
+    expect([by(set.body).pos!.active, by(set.body).pos!.seats, by(set.body).hr!.active, by(set.body).hr!.expired, by(set.body).buddy!.active]).toEqual([true, 3, false, true, true]);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'TENANT_MODULES' AND row_id = ${tid0}`.execute(database.db)).rows[0]!.n).toBe(1);
+    // ผู้ใช้ของลูกค้าเห็นของตัวเอง (และกุญแจ API ของผู้ใช้นั้น)
+    const admin = cookie;
+    cookie = ''; await call('POST', '/api/v1/auth/login', { username: 'boss5', password: 'boss5pass' });
+    const mine = (await call('GET', '/api/v1/tenant/modules')).body;
+    expect([mine.tenant.code, by(mine.modules).pos!.active, by(mine.modules).hr!.active]).toEqual(['DEFAULT', true, false]);
+    expect((await call('GET', `/api/v1/tenants/${tid0}/modules`)).status).toBe(403);
+    cookie = admin;
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    const boss5 = ((await call('GET', '/api/v1/users')).body.users as Array<{ id: string; username: string }>).find((u) => u.username === 'boss5')!.id;
+    const k5 = (await call('POST', '/api/v1/api-keys', { name: 'WTS-POS license', user_id: boss5, read_only: true })).body.key as string;
+    const viaKey = await keyCall(k5, 'GET', '/api/v1/tenant/modules');
+    expect([viaKey.status, by(viaKey.body.modules).pos!.active]).toEqual([200, true]);
+    // ลูกค้ารายอื่นไม่เห็น/แก้ไม่ได้
+    cookie = ''; await call('POST', '/api/v1/auth/login', { username: 'bx.admin', password: 'passX1234' });
+    const other = (await call('GET', '/api/v1/tenant/modules')).body;
+    expect([other.tenant.code, by(other.modules).pos!.active]).toEqual(['BKUPX', false]);
+    expect((await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: false }] })).status).toBe(403);
+    cookie = admin;
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ปิดกลับ (ค่าเริ่มต้น)
+    expect(by((await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: false }, { key: 'hr', enabled: false }] })).body).pos!.active).toBe(false);
+  });
   it('WTS Connect master-data feed (docs/17 B0.3): full load + cursor, upsert/inactive/delete, only requested types, read-only key, bad params, isolation', async () => {
     const adminId = (await call('GET', '/api/v1/auth/me')).body.user.id;
     const key = (await call('POST', '/api/v1/api-keys', { name: 'WTS-POS feed', user_id: adminId, read_only: true })).body.key as string;

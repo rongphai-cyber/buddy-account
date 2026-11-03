@@ -62,6 +62,7 @@ import { signupRoutes } from './modules/signup.js';
 import { i18nNameRoutes } from './modules/i18n-names.js';
 import { changeRoutes } from './modules/changes.js';
 import { wtsRoutes } from './modules/wts.js';
+import { tenantModuleRoutes } from './modules/tenant-modules.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 import { payrollMasterRoutes } from './modules/payroll/master.js';
 import { payrollRunRoutes } from './modules/payroll/runs.js';
@@ -153,6 +154,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   i18nNameRoutes(app, db);
   changeRoutes(app, db);
   wtsRoutes(app, db);
+  tenantModuleRoutes(app, db);
   inventoryAccountRoutes(app, db);
   reportRoutes(app, db);
 

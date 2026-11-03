@@ -66,6 +66,16 @@ GET /api/v1/changes?types=item,customer,supplier,branch,warehouse,payment_method
 - ช่องที่ส่ง: เฉพาะที่โปรแกรมอื่นใช้ (รหัส ชื่อ หน่วย ราคา 1–5 รหัสภาษี เลขผู้เสียภาษี สาขา สถานะ ฯลฯ — ดู `CHANGE_TYPES` ใน `apps/server/src/modules/changes.ts`) · อ้างถึงกันด้วย `id` (เช่น `sales_unit_id` → ชนิด `unit`)
 - รายการที่เพิ่งเปลี่ยนไม่ถึง 3 วินาทียังไม่ส่ง (รอให้บันทึกที่ทำพร้อมกันเสร็จ จะได้ไม่ข้าม) — แนะนำดึงทุก 1–5 นาที
 
+## โปรแกรมที่ลูกค้าใช้ได้ (docs/17 ข้อ 5.6 · B0.6)
+
+```
+GET /api/v1/tenant/modules   → { tenant: { code, name, expires_on }, modules: [{ key, label, enabled, valid_to, seats, active, expired }] }
+```
+
+- `key`: `buddy` `pos` `living` `hr` `hotel` `spa` · `active` = เปิดและยังไม่เลยวัน `valid_to` (ใช้ได้ถึงสิ้นวันนั้น) — Hub แสดงไทล์ / โปรแกรมอื่นตรวจสิทธิ์ก่อนทำงาน
+- ใช้ session ผู้ใช้หรือกุญแจ API ก็ได้ · เห็นเฉพาะลูกค้าของตัวเอง
+- เจ้าหน้าที่ผู้ให้บริการตั้งค่าที่ ลูกค้าผู้ใช้บริการ › แก้ไขลูกค้า › โปรแกรมที่ลูกค้าใช้ได้ (`PUT /api/v1/tenants/:id/modules`)
+
 ## ข้อห้ามของกุญแจ (แม้ผู้ใช้เป็นผู้ดูแล)
 
 ระบบความปลอดภัย (`SET.SEC`, `SET.TENANT`, `OT.LOG`, แก้แบบฟอร์ม/รายงาน `RP.FORM` `RP.CUSTOM`) · สำรอง/นำกลับข้อมูล (`OT.BACKUP`) · สร้างบริษัท (`SET.NEWCO`) · จัดการกุญแจ (`SET.API`) · API ผู้ใช้/บริษัท/การเข้าระบบ (ยกเว้น `GET /api/v1/auth/me`, `GET /api/v1/menu`)
