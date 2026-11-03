@@ -6,6 +6,7 @@ import { useSession } from '../../session';
 import { ErrorBox, Field, navKey, PageHead, toast, useHotkeys } from '../../ui';
 import { ThemePicker } from '../../components/ThemePicker';
 import { ModuleSwitches } from '../../components/ModuleSwitches';
+import { WtsPosSetup } from '../../components/WtsConnect';
 
 type Co = {
   name_th: string; name_en: string | null; address_th_1: string; address_th_2: string; address_en_1: string; address_en_2: string; phone: string | null; business_type: 'J' | 'P';
@@ -67,6 +68,7 @@ export function CompanyPage() {
         </div>
       </fieldset>
       <ModuleSwitches />
+      <WtsPosSetup />
       <ThemePicker />
       <p className="hint">ค่าเริ่มต้นของระบบซื้อ ขาย สินค้า การเงิน และทรัพย์สิน (คู่มือบทที่ 5 ข้อ 1.2–1.12) อยู่ในแผนเฟส P2</p>
     </div>

@@ -1283,6 +1283,27 @@
 ]
 },
 {
+"th": "ประเภทเอกสาร",
+"n": 18,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/doc-types.ts",
+"apps/server/src/modules/docs/engine.ts"
+]
+},
+{
 "th": "รหัสสินค้า",
 "n": 18,
 "files": [
@@ -1348,26 +1369,6 @@
 "apps/web/src/pages/reports/Dashboard.tsx",
 "apps/web/src/pages/tax/Etax.tsx",
 "packages/core/src/payroll.ts"
-]
-},
-{
-"th": "ประเภทเอกสาร",
-"n": 17,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/doc-types.ts",
-"apps/server/src/modules/docs/engine.ts"
 ]
 },
 {
@@ -4922,6 +4923,15 @@
 ]
 },
 {
+"th": "กลุ่ม",
+"n": 3,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "กลุ่มผู้ใช้",
 "n": 3,
 "files": [
@@ -5066,6 +5076,13 @@
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/settings/ActivityLog.tsx",
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "คิดเงินเดือนที่",
+"n": 3,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -5996,6 +6013,15 @@
 ]
 },
 {
+"th": "สร้าง",
+"n": 3,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
 "th": "สร้างกุญแจ",
 "n": 3,
 "files": [
@@ -6696,14 +6722,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
-"th": "กลุ่ม",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -7518,6 +7536,13 @@
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/server/src/modules/payroll/master.ts"
+]
+},
+{
+"th": "ตั้งค่าสำหรับ WTS-POS",
+"n": 2,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -9719,14 +9744,6 @@
 "files": [
 "apps/server/src/modules/reports/analysis.ts",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "สร้าง",
-"n": 2,
-"files": [
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx"
 ]
 },
 {
@@ -12229,6 +12246,13 @@
 ]
 },
 {
+"th": "1 บริษัทคิดเงินเดือนที่เดียว — เลือก WTS-SOP แล้วเมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิด (ข้อมูลเดิมไม่หาย)",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "1 ราคารวมภาษี",
 "n": 1,
 "files": [
@@ -13048,6 +13072,20 @@
 ]
 },
 {
+"th": "? เมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิดทันที — ใบสำคัญเงินเดือนให้ WTS-SOP ส่งเข้ามาด้วยกุญแจ API",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "? เมนูเงินเดือนจะเปิด — ตรวจว่า WTS-SOP เลิกส่งใบสำคัญของบริษัทนี้แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ)",
 "n": 1,
 "files": [
@@ -13164,6 +13202,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "Buddy Account (เมนูเงินเดือน)",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -13528,6 +13573,13 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "WTS-SOP (ส่งใบสำคัญเงินเดือนเข้ามา)",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -15379,6 +15431,13 @@
 ]
 },
 {
+"th": "กลับมาคิดเงินเดือนใน",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "กลับหน้าผู้ใช้",
 "n": 1,
 "files": [
@@ -15925,10 +15984,24 @@
 ]
 },
 {
+"th": "กำหนดบัญชีของประเภทเอกสาร OUR OUW OUS OUQ ที่ เริ่มระบบ › เลขที่เอกสาร (ว่าง = บัญชีตามการเชื่อมต่อบัญชี)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
+]
+},
+{
 "th": "กำหนดบัญชีค่าเสื่อม/ค่าเสื่อมสะสม",
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
+]
+},
+{
+"th": "กำหนดบัญชีรายได้ของรหัส POS-FOOD POS-BEV POS-SVC ที่ รายละเอียดสินค้าบริการ (ว่าง = บัญชีขายตามการเชื่อมต่อบัญชี)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
 ]
 },
 {
@@ -16268,6 +16341,13 @@
 ]
 },
 {
+"th": "ของเสีย (WTS-POS)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
+]
+},
+{
 "th": "ของโปรแกรม",
 "n": 1,
 "files": [
@@ -16457,6 +16537,13 @@
 ]
 },
 {
+"th": "ขายอาหาร",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
+]
+},
+{
 "th": "ขายเกินวงเงิน ขออนุมัติระดับ",
 "n": 1,
 "files": [
@@ -16468,6 +16555,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ขายเครื่องดื่ม",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
 ]
 },
 {
@@ -16965,6 +17059,13 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "คลังระหว่างทาง",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -17924,6 +18025,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "ค่าบริการ (Service charge)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
 ]
 },
 {
@@ -19492,6 +19600,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/payments.ts"
+]
+},
+{
+"th": "ชิมคุณภาพ OC (WTS-POS)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
 ]
 },
 {
@@ -23450,6 +23565,13 @@
 ]
 },
 {
+"th": "บริษัทนี้คิดเงินเดือนที่ WTS-SOP — ใบสำคัญเงินเดือนส่งเข้ามาจาก WTS-SOP · เปลี่ยนได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "บริษัทนี้บันทึกบัญชีสินค้าแบบ Perpetual — ไม่ต้องลงใบสำคัญปิดสินค้าคงเหลือ",
 "n": 1,
 "files": [
@@ -23559,6 +23681,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/journals.ts"
+]
+},
+{
+"th": "บัญชี {0} เป็นบัญชีคุม ลงรายการไม่ได้ — เลือกบัญชีย่อย",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
 ]
 },
 {
@@ -24826,6 +24955,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
+]
+},
+{
+"th": "บันทึกแล้ว — คิดเงินเดือนที่ WTS-SOP เมนูคิดเงินเดือนใน Buddy ถูกปิด",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "บันทึกแล้ว — คิดเงินเดือนใน Buddy",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -28644,6 +28787,13 @@
 ]
 },
 {
+"th": "มีครบแล้ว ไม่ต้องสร้างเพิ่ม",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "มีคำเตือน {0} ฉบับ (บันทึกได้)",
 "n": 1,
 "files": [
@@ -28739,6 +28889,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/company-images.ts"
+]
+},
+{
+"th": "มีอยู่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -31836,6 +31993,13 @@
 ]
 },
 {
+"th": "รหัสรายได้",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "รหัสรายได้อื่น ใช้ที่ ขาย › บันทึกรายได้อื่น ๆ — เครดิตบัญชีรายได้ที่กำหนด",
 "n": 1,
 "files": [
@@ -32449,6 +32613,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
+"th": "ระหว่างทาง {0}",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
 ]
 },
 {
@@ -34762,6 +34933,13 @@
 ]
 },
 {
+"th": "ลูกค้าแพลตฟอร์ม",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "ลูกจ้าง",
 "n": 1,
 "files": [
@@ -36169,6 +36347,13 @@
 ]
 },
 {
+"th": "สร้างประเภทเอกสาร รหัสรายได้ คลังระหว่างทาง และลูกค้าแพลตฟอร์มที่ยังไม่มีในบริษัทนี้? รายการที่มีอยู่แล้วไม่ถูกแก้",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "สร้างประเภทเอกสารให้คำนำหน้าที่ไม่มีในระบบ",
 "n": 1,
 "files": [
@@ -36309,6 +36494,13 @@
 ]
 },
 {
+"th": "สร้างแล้ว {0} รายการ",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "สร้างโดย",
 "n": 1,
 "files": [
@@ -36355,6 +36547,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "สร้างใหม่",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -38451,6 +38650,13 @@
 ]
 },
 {
+"th": "อาหารพนักงาน (WTS-POS)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
+]
+},
+{
 "th": "อีเมลนี้ส่งใบสมัครไว้แล้ว — รอผู้ให้บริการติดต่อกลับ",
 "n": 1,
 "files": [
@@ -39641,6 +39847,13 @@
 ]
 },
 {
+"th": "เชื่อมระบบ WTS Solutions",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "เช็ค {0} ของ {1} นำฝาก/ผ่านแล้ว — ยกเลิกรายการเช็คก่อน (บทที่ 13)",
 "n": 1,
 "files": [
@@ -40719,6 +40932,13 @@
 ]
 },
 {
+"th": "เปลี่ยน",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "เปลี่ยนกุญแจ (ว่าง = ใช้กุญแจเดิม)",
 "n": 1,
 "files": [
@@ -40744,6 +40964,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "เปลี่ยนที่คิดเงินเดือน",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -42564,6 +42791,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เลือก buddy (คิดเงินเดือนใน Buddy) หรือ wts-sop (คิดที่ WTS-SOP)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
 ]
 },
 {
@@ -45185,6 +45419,13 @@
 ]
 },
 {
+"th": "ใช้กับ WTS-POS (หน้าร้าน ครัวกลาง แฟรนไชส์) — สร้างชุดเริ่มต้นที่ยังไม่มี: ประเภทเอกสารเบิกใช้ OUR ตามสูตร · OUW ของเสีย · OUS อาหารพนักงาน · OUQ ชิมคุณภาพ · รหัสรายได้ POS-FOOD POS-BEV POS-SVC · คลังระหว่างทางของทุกสาขา (TR…) · ลูกค้าแพลตฟอร์ม Grab LINE MAN foodpanda ShopeeFood Robinhood · กดซ้ำได้ (ข้ามที่มีแล้ว) · ระบบอื่นส่งเอกสารเข้ามาด้วยกุญแจ API (เริ่มระบบ › กุญแจ API)",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "ใช้กับบรรทัดที่ไม่ได้เลือกคลัง (ว่าง = คลังหลักที่ค่าเริ่มต้นระบบสินค้า)",
 "n": 1,
 "files": [
@@ -45301,6 +45542,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "ใช้วัตถุดิบตามสูตร (WTS-POS)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
 ]
 },
 {
@@ -46162,6 +46410,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "ใส่เลขผู้เสียภาษี/สาขาของลูกค้าแพลตฟอร์ม (PF-…) ที่ รายละเอียดลูกค้า — ใช้ในใบกำกับภาษีขาย",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts.ts"
 ]
 },
 {

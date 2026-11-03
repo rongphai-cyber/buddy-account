@@ -3466,6 +3466,52 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await ent(ex.body.id)).map((x) => `${x.base_amount}|${x.vat_amount}`)).toEqual(['1000.00|70.00']);
     for (const id of [r.body.id, ex.body.id]) expect((await call('POST', `/api/v1/cash-sales/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
   });
+  it('payroll_source + WTS-POS setup (docs/17 B0.5): wts-sop closes payroll menus, setup idempotent, account checks, other company untouched', async () => {
+    expect((await call('GET', '/api/v1/company/modules')).body.payroll_source).toBe('buddy');
+    expect((await call('GET', '/api/v1/pay/runs')).status).toBe(200);
+    expect((await call('PUT', '/api/v1/company/payroll-source', { source: 'excel' })).status).toBe(400);
+    expect((await call('PUT', '/api/v1/company/payroll-source', { source: 'wts-sop' })).body.source).toBe('wts-sop');
+    const blocked = await call('GET', '/api/v1/pay/runs');
+    expect([blocked.status, blocked.body.error.message]).toEqual([403, expect.stringMatching(/คิดเงินเดือนที่ WTS-SOP/)]);
+    const mods = (await call('GET', '/api/v1/company/modules')).body;
+    expect([mods.payroll_source, mods.off.includes('PAY')]).toEqual(['wts-sop', false]);   // สวิตช์ระบบที่ใช้งานไม่ถูกแตะ
+    // ใบสำคัญเงินเดือนจาก SOP ยังส่งเข้าได้ (สมุดรายวัน ไม่ใช่เมนูเงินเดือน)
+    const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const jv = await call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: '2027-12-03', description: 'เงินเดือนจาก SOP', lines: [{ account_id: expense, debit: '10.00' }, { account_id: cash, credit: '10.00' }] });
+    expect(jv.status).toBe(200);
+    expect((await call('POST', `/api/v1/gl/journals/${jv.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    // บริษัทอื่นไม่ถูกปิด
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/company/modules')).body.payroll_source).toBe('buddy');
+    expect((await call('GET', '/api/v1/pay/runs')).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('PUT', '/api/v1/company/payroll-source', { source: 'buddy' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/pay/runs')).status).toBe(200);
+    // ตั้งค่าสำหรับ WTS-POS: ครั้งแรกสร้าง · กดซ้ำข้ามที่มีแล้ว
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean; has_children: boolean }>;
+    const ctl = accs.find((x) => x.is_control)!;
+    expect((await call('POST', '/api/v1/company/wts-pos-setup', { accounts: { waste: ctl.id } })).body.error.message).toMatch(/บัญชีคุม/);
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    const otherAcc = ((await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string }>)[0]!.id;
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await call('POST', '/api/v1/company/wts-pos-setup', { accounts: { waste: otherAcc } })).status).toBe(400);
+    const s1 = await call('POST', '/api/v1/company/wts-pos-setup', { accounts: { waste: expense } });
+    expect(s1.status).toBe(200);
+    expect(s1.body.created.doc_types).toEqual(['OUR', 'OUW', 'OUS', 'OUQ']);
+    expect(s1.body.created.items).toEqual(['POS-FOOD', 'POS-BEV', 'POS-SVC']);
+    expect(s1.body.created.customers).toHaveLength(5);
+    expect(s1.body.created.warehouses.every((c: string) => c.startsWith('TR'))).toBe(true);
+    const ouw = (await sql<{ doc_class: string; account_id: string | null }>`SELECT t.doc_class, a.account_id FROM md_doc_type t LEFT JOIN md_doc_type_account a ON a.doc_type_id = t.id AND a.slot = 1 AND a.deleted_at IS NULL
+        WHERE t.company_id = ${companyId} AND t.code = 'OUW' AND t.deleted_at IS NULL`.execute(database.db)).rows[0]!;
+    expect(ouw).toEqual({ doc_class: 'OU', account_id: expense });
+    const s2 = (await call('POST', '/api/v1/company/wts-pos-setup', {})).body;
+    expect([s2.created.doc_types, s2.created.items, s2.created.customers, s2.created.warehouses]).toEqual([[], [], [], []]);
+    expect(s2.existing.doc_types).toEqual(['OUR', 'OUW', 'OUS', 'OUQ']);
+    expect((await call('GET', '/api/v1/customers?q=PF-GRAB')).body.rows).toHaveLength(1);
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('GET', '/api/v1/customers?q=PF-GRAB')).body.rows).toHaveLength(0);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
   it('WTS Connect master-data feed (docs/17 B0.3): full load + cursor, upsert/inactive/delete, only requested types, read-only key, bad params, isolation', async () => {
     const adminId = (await call('GET', '/api/v1/auth/me')).body.user.id;
     const key = (await call('POST', '/api/v1/api-keys', { name: 'WTS-POS feed', user_id: adminId, read_only: true })).body.key as string;

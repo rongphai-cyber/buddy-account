@@ -943,3 +943,7 @@ tr.sel > td { background: color-mix(in srgb, var(--tone) 10%, transparent); }
 /* เอกสารจากระบบอื่น (docs/17 B0.1) */
 .source-stamp { display: inline-flex; align-items: baseline; gap: 6px; margin-left: 12px; padding: 3px 12px; border: 1.5px solid var(--tone, var(--line)); border-radius: 8px; background: color-mix(in srgb, var(--tone, #7aa) 10%, var(--surface)); font-size: 14px; font-weight: 700; vertical-align: middle; }
 .source-stamp small { font-size: 12px; font-weight: 500; color: var(--muted); }
+/* เชื่อมระบบ WTS (docs/17 B0.5) */
+.pay-source { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 10px; }
+.pay-source select { margin-left: 8px; }
+.wts-result { margin-top: 10px; }

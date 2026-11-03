@@ -10,6 +10,7 @@ import { checkMfaGate } from './security.js';
 import { replays, syncCtx } from '../sync-context.js';
 import { branchCapture, branchStateOf, checkBranchWrite } from './sync/branch.js';
 import { withSource } from './source.js';
+import { payrollSource } from './wts.js';
 
 /**
  * สิทธิ์ 7 ชนิดรายเมนู — คู่มือบทที่ 23 (S-SEC-01/02/03)
@@ -71,10 +72,17 @@ function tableValue(rows: PermRow[], menu: string, action: Action): string | nul
 }
 
 /** ระบบที่บริษัทปิดไว้ (ข้อกำหนดเจ้าของ: ปิดบางระบบทั้งบริษัท) — รหัสใน MODULE_SWITCHES */
-export async function modulesOff(db: Db, companyId: string | null): Promise<string[]> {
+/** ระบบที่ผู้ใช้ปิดไว้ (หน้า ระบบที่ใช้งาน) */
+export async function modulesOffRaw(db: Db, companyId: string | null): Promise<string[]> {
   if (!companyId) return [];
   const r = await db.selectFrom('sys_setting').select('value').where('company_id', '=', companyId).where('branch_id', 'is', null).where('key', '=', 'sys.modules_off').where('deleted_at', 'is', null).executeTakeFirst();
   return Array.isArray(r?.value) ? (r!.value as unknown[]).map(String) : [];
+}
+/** ระบบที่ปิดจริง = ที่ผู้ใช้ปิด + ระบบเงินเดือนเมื่อบริษัทคิดเงินเดือนที่ WTS-SOP (docs/17 D7 · B0.5) */
+export async function modulesOff(db: Db, companyId: string | null): Promise<string[]> {
+  const off = await modulesOffRaw(db, companyId);
+  if (!off.includes('PAY') && (await payrollSource(db, companyId)) === 'wts-sop') off.push('PAY');
+  return off;
 }
 
 function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action, off: string[] = []): { allowed: boolean; log: boolean; screenOnly: boolean } {
@@ -339,6 +347,8 @@ export const API_RULES: Record<string, Rule> = {
   'PUT /api/v1/wht/:id': M('FI.WHT', 'edit'), 'POST /api/v1/wht/:id/cancel': M('FI.WHT', 'cancel'), 'POST /api/v1/wht/:id/printed': M('FI.WHT.CERT', 'read'),
   // WTS Connect ฟีดข้อมูลหลักที่เปลี่ยน (docs/17 B0.3) — ข้อมูลเดียวกับหน้าต่างค้นหา
   'GET /api/v1/changes': LOOKUP,
+  // WTS Solutions (docs/17 B0.5): คิดเงินเดือนที่ไหน · ตั้งค่าสำหรับ WTS-POS
+  'PUT /api/v1/company/payroll-source': M('SET.CO', 'edit'), 'POST /api/v1/company/wts-pos-setup': M('SET.CO', 'edit'),
   'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),
   'PUT /api/v1/salespersons/:id': M('SA.SLM', 'edit'), 'DELETE /api/v1/salespersons/:id': M('SA.SLM', 'delete'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)
@@ -403,6 +413,7 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     checkApiKeyRule(a, method, url, 'menu', menu);
     const off = await modulesOff(db, a.companyId);
     const offBy = menuOffBy(menu, off);
+    if (offBy?.key === 'PAY' && (await payrollSource(db, a.companyId)) === 'wts-sop') throw forbidden('บริษัทนี้คิดเงินเดือนที่ WTS-SOP — ใบสำคัญเงินเดือนส่งเข้ามาจาก WTS-SOP · เปลี่ยนได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน');
     if (offBy) throw forbidden(`${offBy.label}ปิดอยู่ในบริษัทนี้ — ผู้มีสิทธิ์เปิดได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน`);
     const r = decide(a, await loadRows(db, a), menu, rule.action, off);
     if (!r.allowed) {

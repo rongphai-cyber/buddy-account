@@ -11,7 +11,8 @@ import { copyCompanyData } from '../company-copy.js';
 import { logActivity } from '../audit.js';
 import { markPasswordChanged, setSec } from './security.js';
 import { purgeTenant } from './pdpa.js';
-import { modulesOff } from './permissions.js';
+import { modulesOffRaw } from './permissions.js';
+import { payrollSource } from './wts.js';
 import { createTenantWithAdmin } from './signup.js';
 import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, setSetting } from '../company-template.js';
 
@@ -84,7 +85,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   /** ระบบที่ใช้งาน (ข้อกำหนดเจ้าของ 30/10/2569: ปิดบางระบบทั้งบริษัท) — ปิด = ซ่อนเมนูและ API ปฏิเสธ ข้อมูลเดิมไม่หาย */
   app.get('/api/v1/company/modules', async (req) => {
     const a = requireCompany(req);
-    return { off: await modulesOff(db, a.companyId), modules: MODULE_SWITCHES };
+    return { off: await modulesOffRaw(db, a.companyId), modules: MODULE_SWITCHES, payroll_source: await payrollSource(db, a.companyId) };
   });
   app.put('/api/v1/company/modules', async (req) => {
     const a = requireCompany(req);
@@ -92,7 +93,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const bad = b.off.filter((k) => !MODULE_SWITCHES.some((m) => m.key === k));
     if (bad.length) throw badRequest(`ไม่รู้จักระบบ ${bad.join(', ')}`);
     const off = MODULE_SWITCHES.map((m) => m.key).filter((k) => b.off.includes(k));
-    const before = await modulesOff(db, a.companyId);
+    const before = await modulesOffRaw(db, a.companyId);
     await setSetting(db, a.companyId, 'sys.modules_off', off, a.userId);
     await logActivity(db, a, { module: 'SYS', action: 'SET_MODULES', table: 'sys_company', rowId: a.companyId, detail: { before, after: off } });
     return { off };
