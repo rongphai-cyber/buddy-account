@@ -9,5 +9,7 @@ if not exist "apps\web\dist\index.html" (
   popd
 )
 start "" cmd /c "timeout /t 8 >nul & start http://localhost:4100"
+REM https address for WTS-SOP (tools\tunnel\README.md): only when .data\cloudflared\config.yml exists; close its window = stop
+if exist ".data\cloudflared\config.yml" start "Buddy https" /min cloudflared tunnel --no-autoupdate --config ".data\cloudflared\config.yml" run
 node tools\local-pg\pg.mjs run -- "apps\server\node_modules\.bin\tsx.CMD" apps\server\src\main.ts
 pause

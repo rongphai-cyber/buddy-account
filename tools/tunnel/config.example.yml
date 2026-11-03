@@ -1,0 +1,12 @@
+# ตัวอย่าง config ของ Cloudflare Tunnel ของ Buddy — ของจริงอยู่ที่ .data\cloudflared\config.yml (ไม่เข้า git)
+tunnel: <Tunnel ID จาก cloudflared tunnel create>
+credentials-file: E:\BuddyAccount\.data\cloudflared\buddy-account.json
+
+ingress:
+  # เปิดเฉพาะ API ที่ WTS-SOP (buddy-post) เรียก — ทุกคำขอต้องมีกุญแจ bk_ อยู่แล้ว
+  # ระบบอื่นต้องใช้ path เพิ่ม (เช่น WTS-POS) → เพิ่มใน (…) แล้วปิด/เปิด Buddy ใหม่
+  - hostname: buddy.worktruesolution.net
+    path: ^/api/v1/(gl/journals|gl/books|changes)$
+    service: http://127.0.0.1:4100
+  # หน้าเว็บ หน้าเข้าระบบ และ API อื่น: ไม่เปิดสู่อินเทอร์เน็ต
+  - service: http_status:404
