@@ -160,14 +160,14 @@ export async function getJournal(db: Db, companyId: string, id: string) {
     .leftJoin('doc_header as h', 'h.id', 'j.source_header_id')
     .leftJoin('sys_user as u', 'u.id', 'j.created_by')
     .select(['j.id', 'j.voucher_no', 'j.voucher_date', 'j.description', 'j.reference', 'j.journal_book_id', 'j.branch_id', 'j.source_module', 'j.source_header_id',
-      'j.status', 'j.doc_status', 'j.total_debit', 'j.total_credit', 'j.created_at', 'j.updated_at', 'j.print_count', 'b.code as book_code', 'b.name_th as book_name',
+      'j.status', 'j.doc_status', 'j.total_debit', 'j.total_credit', 'j.source_system', 'j.source_ref', 'j.source_version', 'j.created_at', 'j.updated_at', 'j.print_count', 'b.code as book_code', 'b.name_th as book_name',
       'h.doc_no as source_doc_no', 'h.doc_class as source_doc_class', 'u.display_name as created_by_name'])
     .where('j.id', '=', id).where('j.company_id', '=', companyId).where('j.deleted_at', 'is', null).executeTakeFirst();
   if (!j) throw notFound('ใบสำคัญ');
   const lines = await db.selectFrom('gl_journal_line as l').innerJoin('gl_account as a', 'a.id', 'l.account_id').leftJoin('md_department as dp', 'dp.id', 'l.department_id')
     .select(['l.id', 'l.line_no', 'l.account_id', 'a.account_no', 'a.name_th as account_name', 'l.department_id', 'dp.code as department_code', 'l.description', 'l.debit', 'l.credit', 'l.posting_role', 'l.resolved_from', 'l.line_note', 'l.line_note_print'])
     .where('l.journal_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
-  const editable = j.doc_status === 'N' && !j.source_header_id && (!j.source_module || j.source_module === 'GL');
+  const editable = j.doc_status === 'N' && !j.source_header_id && !j.source_system && (!j.source_module || j.source_module === 'GL');
   return { ...j, lines, editable };
 }
 

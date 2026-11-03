@@ -2421,6 +2421,12 @@ export interface DocHeaderTable {
   cancel_reason: Gen<string | null>;
   /** เครื่องที่สร้างเอกสาร (ออฟไลน์) */
   device_id: Gen<string | null>;
+  /** ระบบต้นทางที่ส่งเอกสารผ่าน API (WTS Connect v1) เช่น wts-pos wts-living wts-sop — ว่าง = คีย์ใน Buddy */
+  source_system: Gen<string | null>;
+  /** เลขอ้างอิงของเอกสารที่ระบบต้นทาง (ส่งซ้ำด้วยเลขเดิม = ไม่สร้างซ้ำ) */
+  source_ref: Gen<string | null>;
+  /** รุ่นของเอกสารต้นทาง: สูงกว่า = แก้เอกสารเดิม · ต่ำกว่า = ปฏิเสธ */
+  source_version: Gen<number | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -3252,6 +3258,12 @@ export interface GlJournalTable {
   last_printed_by: Gen<string | null>;
   /** วันเวลาพิมพ์ล่าสุด */
   last_printed_at: Gen<string | null>;
+  /** ระบบต้นทางที่ส่งเอกสารผ่าน API (WTS Connect v1) เช่น wts-pos wts-living wts-sop — ว่าง = คีย์ใน Buddy */
+  source_system: Gen<string | null>;
+  /** เลขอ้างอิงของเอกสารที่ระบบต้นทาง (ส่งซ้ำด้วยเลขเดิม = ไม่สร้างซ้ำ) */
+  source_ref: Gen<string | null>;
+  /** รุ่นของเอกสารต้นทาง: สูงกว่า = แก้เอกสารเดิม · ต่ำกว่า = ปฏิเสธ */
+  source_version: Gen<number | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

@@ -6,7 +6,7 @@ import { api, type Book, type Department, type Template, type TemplateDetail } f
 import { bookColor, bookStyle } from '../../bookColor';
 import { useCan, useSession } from '../../session';
 import { DocLink } from '../../components/DocLink';
-import { CancelStamp } from '../../components/DocDelete';
+import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 import { withPrefix } from '../../components/DocNo';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, focusStart, DateText, ErrorBox, Field, KeyHints, Lookup, Modal, Money, MoneyInput, navKey, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem } from '../../ui';
@@ -24,6 +24,7 @@ interface Line { key: number; account_id: string | null; department_id: string |
 interface JournalDoc {
   id: string; voucher_no: string; voucher_date: string; description: string | null; reference: string | null; journal_book_id: string; doc_status: string; editable: boolean;
   source_module: string | null; source_header_id: string | null; source_doc_no: string | null; source_doc_class: string | null; created_at: string; updated_at: string; created_by_name: string | null;
+  source_system?: string | null; source_ref?: string | null; source_version?: number | null;
   lines: Array<{ account_id: string; department_id: string | null; description: string | null; debit: string; credit: string; line_note?: string | null; line_note_print?: boolean; account_no: string; account_name: string; posting_role: string | null; resolved_from: string | null }>;
 }
 let seq = 0;
@@ -260,7 +261,7 @@ export function JournalFormPage() {
       <div className="doc-title">
         <div>
           <p className="eyebrow">บัญชี › ลงประจำวัน › {book ? `${book.code} ${book.name_th}` : 'สมุดรายวัน'}</p>
-          <div className="title-row"><h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}</h1><CancelStamp show={j?.doc_status === 'C'} />{book && <span className="book-pill" title="สมุดรายวันของใบสำคัญนี้">{isNew ? 'กำลังบันทึก: ' : ''}{book.prefix} {book.name_th}</span>}</div>
+          <div className="title-row"><h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}</h1><CancelStamp show={j?.doc_status === 'C'} /><SourceStamp doc={j} />{book && <span className="book-pill" title="สมุดรายวันของใบสำคัญนี้">{isNew ? 'กำลังบันทึก: ' : ''}{book.prefix} {book.name_th}</span>}</div>
         </div>
         <div className="doc-state">
           <DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={!editable} />

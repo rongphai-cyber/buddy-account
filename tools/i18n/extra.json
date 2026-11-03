@@ -543,5 +543,20 @@
  "วิธีรับ/จ่ายชำระ": "Payment Method",
  "แม่แบบใบสำคัญ": "Voucher Template",
  "โครงการ/งาน": "Project/Job",
- "ใบสำคัญที่อ้างถึง": "Referenced Voucher"
+ "ใบสำคัญที่อ้างถึง": "Referenced Voucher",
+ "API {0} ไม่ได้สร้างเอกสารหรือใบสำคัญ จึงรับ X-Source-* ไม่ได้ — ส่งเฉพาะ API สร้างเอกสาร/ใบสำคัญ": "API {0} does not create a document or voucher, so X-Source-* is not accepted — send it only with document/voucher create APIs",
+ "X-Source-Ref ต้องมีค่าและยาวไม่เกิน 100 ตัวอักษร เช่น pos:BK01:2026-10-15:HS": "X-Source-Ref is required and must be at most 100 characters, e.g. pos:BK01:2026-10-15:HS",
+ "X-Source-System ต้องเป็นตัวพิมพ์เล็ก a-z ตัวเลข และ - ยาว 2–30 ตัว เช่น wts-pos": "X-Source-System must be lowercase a-z, digits and -, 2–30 characters, e.g. wts-pos",
+ "X-Source-Version ต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป": "X-Source-Version must be a whole number of 1 or more",
+ "มาจาก {0}": "From {0}",
+ "ส่ง X-Source-* ได้เฉพาะคำขอที่ใช้กุญแจ API (docs/07) — หน้าจอ Buddy ไม่ต้องส่ง": "X-Source-* can only be sent with requests using an API key (docs/07) — Buddy screens do not send it",
+ "อ้างอิง {0}{1}": "Ref {0}{1}",
+ "เครื่องสาขาไม่รับเอกสารจากระบบอื่น — ส่งเข้าเครื่องสำนักงานใหญ่": "Branch machines do not accept documents from other systems — send them to the head-office machine",
+ "เลขอ้างอิง {0} ถูกส่งเข้ามาพร้อมกันสองครั้ง — ส่งใหม่อีกครั้ง (ระบบจะตอบเอกสารเดิม)": "Reference {0} was sent twice at the same time — send again (the existing document will be returned)",
+ "เอกสาร {0} (อ้างอิง {1}) ถูกยกเลิกใน Buddy แล้ว{2} · ให้ผู้ดูแลลบเอกสารที่ยกเลิกใน Buddy ก่อน หรือส่งด้วยเลขอ้างอิงใหม่": "Document {0} (ref {1}) has been cancelled in Buddy{2} · ask an administrator to delete the cancelled document in Buddy first, or send with a new reference",
+ "เอกสาร {0} (อ้างอิง {1}) เป็นรุ่น {2} แล้ว — รุ่น {3} ที่ส่งมาเก่ากว่า ไม่บันทึก": "Document {0} (ref {1}) is already version {2} — the version {3} sent is older and was not saved",
+ "เอกสาร {0} มาจาก {1} (อ้างอิง {2}) — แก้หรือยกเลิกที่โปรแกรม {3} · ผู้ใช้ระดับอนุมัติ 9 ยกเลิกได้โดยระบุเหตุผล": "Document {0} comes from {1} (ref {2}) — edit or cancel it in {3} · users with approval level 9 can cancel it with a reason",
+ "เอกสารชนิดนี้แก้ผ่าน API ไม่ได้ — ยกเลิกเอกสาร {0} ที่ต้นทางแล้วส่งด้วยเลขอ้างอิงใหม่": "This document type cannot be edited through the API — cancel document {0} at the source and send with a new reference",
+ "เอกสารอ้างอิง {0} อยู่ในงวดที่ปิดแล้ว แก้ย้อนหลังไม่ได้ — ส่งเป็นเอกสารปรับปรุงด้วยเลขอ้างอิงใหม่ในงวดที่เปิดอยู่": "The document with ref {0} is in a closed period and cannot be changed — send an adjustment document with a new reference in an open period",
+ "แก้หรือยกเลิกที่โปรแกรม {0} · ผู้ใช้ระดับอนุมัติ 9 ยกเลิกได้โดยระบุเหตุผล": "Edit or cancel in {0} · users with approval level 9 can cancel with a reason"
 }

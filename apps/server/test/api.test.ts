@@ -3325,6 +3325,92 @@ describe('Buddy Account API (PGlite)', () => {
     expect(docs).toEqual(expect.arrayContaining(['GET /api/v1/customers', 'POST /api/v1/gl/journals', 'GET /api/v1/auth/me']));
     expect(docs.some((d: string) => /\/users|\/api-keys|\/backup|auth\/select/.test(d))).toBe(false);
   });
+  it('WTS Connect source ref (docs/17 B0.1): idempotent create, version edit/stale, period closed, screen lock + level-9 cancel, delete frees ref, isolation', async () => {
+    const adminId = (await call('GET', '/api/v1/auth/me')).body.user.id;
+    const key = (await call('POST', '/api/v1/api-keys', { name: 'WTS-SOP', user_id: adminId })).body.key as string;
+    const boss5 = ((await call('GET', '/api/v1/users')).body.users as Array<{ id: string; username: string }>).find((u) => u.username === 'boss5')!.id;
+    const key5 = (await call('POST', '/api/v1/api-keys', { name: 'ระบบอื่น ระดับ 5', user_id: boss5 })).body.key as string;
+    const send = async (method: 'POST' | 'PUT', url: string, body: unknown, src: Record<string, string>, k = key) => {
+      const r = await app.inject({ method, url, payload: body as object, headers: { authorization: `Bearer ${k}`, ...Object.fromEntries(Object.entries(src).map(([n, v]) => [`x-source-${n}`, v])) } });
+      return { status: r.statusCode, body: r.body ? JSON.parse(r.body) : null };
+    };
+    const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const jv = (amt: string) => ({ journal_book_id: book, voucher_date: '2027-12-02', description: 'เงินเดือน ธ.ค.', lines: [{ account_id: expense, debit: amt }, { account_id: cash, credit: amt }] });
+    const ref = { system: 'wts-sop', ref: 'sop:DEMO:2027-12' };
+    // ครั้งแรกสร้าง 201 · ส่งซ้ำรุ่นเดิมได้เอกสารเดิม 200
+    const a1 = await send('POST', '/api/v1/gl/journals', jv('1000.00'), { ...ref, version: '1' });
+    expect([a1.status, a1.body.source_ref, a1.body.source_version]).toEqual([201, ref.ref, 1]);
+    const a2 = await send('POST', '/api/v1/gl/journals', jv('1000.00'), { ...ref, version: '1' });
+    expect([a2.status, a2.body.id, a2.body.duplicate, a2.body.voucher_no]).toEqual([200, a1.body.id, true, a1.body.voucher_no]);
+    const n = async (r: string) => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_journal WHERE company_id = ${companyId} AND source_ref = ${r} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n;
+    expect(await n(ref.ref)).toBe(1);
+    // รุ่นสูงกว่า = แก้ใบเดิม (ยอดใหม่) · รุ่นต่ำกว่า = ปฏิเสธ
+    const a3 = await send('POST', '/api/v1/gl/journals', jv('1500.00'), { ...ref, version: '2' });
+    expect([a3.status, a3.body.id, a3.body.updated, a3.body.source_version]).toEqual([200, a1.body.id, true, 2]);
+    const got = (await call('GET', `/api/v1/gl/journals/${a1.body.id}`)).body;
+    expect([got.total_debit, got.source_system, got.source_ref, got.source_version]).toEqual(['1500.00', 'wts-sop', ref.ref, 2]);
+    expect((await send('POST', '/api/v1/gl/journals', jv('900.00'), { ...ref, version: '1' })).body.error.code).toBe('STALE_VERSION');
+    expect(await n(ref.ref)).toBe(1);
+    // งวดปิดแล้ว → 409 PERIOD_CLOSED (ให้ส่งใบปรับปรุง)
+    await sql`UPDATE gl_period SET is_locked = true WHERE company_id = ${companyId} AND start_date <= '2027-12-02' AND end_date >= '2027-12-02'`.execute(database.db);
+    const pc = await send('POST', '/api/v1/gl/journals', jv('1600.00'), { ...ref, version: '3' });
+    expect([pc.status, pc.body.error.code]).toEqual([409, 'PERIOD_CLOSED']);
+    await sql`UPDATE gl_period SET is_locked = false WHERE company_id = ${companyId} AND start_date <= '2027-12-02' AND end_date >= '2027-12-02'`.execute(database.db);
+    // ส่งหัว X-Source ผิดรูปแบบ / ไม่ใช้กุญแจ → 400
+    expect((await send('POST', '/api/v1/gl/journals', jv('1.00'), { system: 'WTS POS', ref: 'x' })).body.error.code).toBe('BAD_SOURCE');
+    expect((await send('POST', '/api/v1/gl/journals', jv('1.00'), { system: 'wts-pos', ref: 'r'.repeat(101) })).body.error.code).toBe('BAD_SOURCE');
+    expect((await app.inject({ method: 'POST', url: '/api/v1/gl/journals', payload: jv('1.00'), headers: { cookie, 'x-source-system': 'wts-pos', 'x-source-ref': 'x' } })).statusCode).toBe(400);
+    // เอกสาร (ขายสด HS) ก็ใช้ได้ · เลขอ้างอิงเดียวกันแต่ระบบต่างกัน = คนละเอกสาร
+    const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
+    const cpu = (await call('GET', '/api/v1/items?q=01-INTL')).body.rows[0].id;
+    const cus = (await call('POST', '/api/v1/customers', { code: 'C-SRC', name: 'ลูกค้าหน้าร้าน', tax_id: tid(951) })).body.id;
+    const hsBody = { doc_type_id: await typeOf('HS'), doc_date: '2027-12-02', party_id: cus, price_type: '1', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 1070 }] };
+    const pos = { system: 'wts-pos', ref: 'pos:BK01:2027-12-02:HS' };
+    const h1 = await send('POST', '/api/v1/cash-sales', hsBody, pos);
+    expect([h1.status, h1.body.net_amount, h1.body.source_version]).toEqual([201, '1070.00', 1]);
+    expect((await send('POST', '/api/v1/cash-sales', hsBody, pos)).body).toMatchObject({ id: h1.body.id, doc_no: h1.body.doc_no, duplicate: true });
+    const liv = await send('POST', '/api/v1/cash-sales', hsBody, { system: 'wts-living', ref: pos.ref });
+    expect([liv.status, liv.body.id === h1.body.id]).toEqual([201, false]);
+    const h2 = await send('POST', '/api/v1/cash-sales', { ...hsBody, lines: [{ item_id: cpu, qty: 2, unit_price: 1070 }] }, { ...pos, version: '2' });
+    expect([h2.status, h2.body.id, h2.body.net_amount]).toEqual([200, h1.body.id, '2140.00']);
+    expect((await call('GET', `/api/v1/cash-sales/${h1.body.id}`)).body).toMatchObject({ net_amount: '2140.00', source_system: 'wts-pos', source_version: 2 });
+    // หน้าจอ Buddy แก้/ยกเลิกเอกสารจากระบบอื่นไม่ได้ (ระดับอนุมัติต่ำกว่า 9) · ระบบต้นทางยกเลิกได้
+    expect((await call('PUT', `/api/v1/cash-sales/${h1.body.id}`, hsBody)).body.error.code).toBe('SOURCE_LOCKED');
+    const saved = cookie; cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'boss5', password: 'boss5pass' });
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    const lk = await call('POST', `/api/v1/gl/journals/${a1.body.id}/cancel`, { reason: 'หน้าจอ' });
+    expect([lk.status, lk.body.error.code]).toEqual([403, 'SOURCE_LOCKED']);
+    expect(lk.body.error.message).toMatch(/WTS-SOP/);
+    cookie = saved;
+    expect((await send('POST', `/api/v1/cash-sales/${h1.body.id}/cancel`, { reason: 'ยกเลิกที่หน้าร้าน' }, { system: 'wts-living', ref: 'x' }, key5)).body.error.code).toBe('SOURCE_LOCKED');
+    expect((await send('POST', `/api/v1/cash-sales/${h1.body.id}/cancel`, { reason: 'ยกเลิกที่หน้าร้าน' }, pos)).status).toBe(200);
+    expect((await send('POST', '/api/v1/cash-sales', hsBody, { ...pos, version: '3' })).body.error.code).toBe('SOURCE_CANCELLED');
+    // ผู้ดูแลระดับ 9 ยกเลิก/ลบได้ (บันทึก log) · ลบแล้วเลขอ้างอิงว่าง ส่งใหม่ได้
+    expect((await call('POST', `/api/v1/gl/journals/${a1.body.id}/cancel`, { reason: 'ผู้ดูแลยกเลิก' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/docs/journal/${a1.body.id}/delete`, { reason: 'ส่งใหม่' })).status).toBe(200);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${companyId} AND action = 'SOURCE_OVERRIDE' AND row_id = ${a1.body.id}`.execute(database.db)).rows[0]!.n).toBe(2);
+    const a4 = await send('POST', '/api/v1/gl/journals', jv('1500.00'), { ...ref, version: '3' });
+    expect([a4.status, a4.body.id === a1.body.id]).toEqual([201, false]);
+    // API ที่ไม่ได้สร้างเอกสาร → ไม่รับ X-Source
+    expect((await send('POST', '/api/v1/customers', { code: 'C-SRC2', name: 'x', tax_id: tid(952) }, { system: 'wts-pos', ref: 'cus:1' })).body.error.code).toBe('BAD_SOURCE');
+    expect((await call('GET', '/api/v1/customers?q=C-SRC2')).body.total).toBe(0);
+    // ข้ามบริษัท: เลขอ้างอิงเดียวกันในบริษัทอื่นเป็นคนละเอกสาร · บริษัทอื่นไม่เห็น/แตะเอกสารนี้ไม่ได้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    const okey = (await call('POST', '/api/v1/api-keys', { name: 'WTS-SOP B', user_id: adminId })).body.key as string;
+    const obook = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const oacc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean; has_children: boolean; use_department: boolean; use_project: boolean; status: string }) => !x.is_control && !x.has_children && !x.use_department && !x.use_project && x.status === 'A').slice(0, 2).map((x: { id: string }) => x.id);
+    const b1 = await send('POST', '/api/v1/gl/journals', { journal_book_id: obook, voucher_date: '2026-12-02', description: 'บริษัทอื่น', lines: [{ account_id: oacc[0], debit: '5.00' }, { account_id: oacc[1], credit: '5.00' }] }, { ...ref, version: '3' }, okey);
+    expect([b1.status, b1.body.error?.message]).toEqual([201, undefined]);
+    expect(b1.body.id).not.toBe(a4.body.id);
+    expect((await call('PUT', `/api/v1/gl/journals/${a4.body.id}`, jv('1.00'))).status).toBe(404);
+    expect((await send('POST', `/api/v1/cash-sales/${h1.body.id}/cancel`, { reason: 'x' }, pos, okey)).status).toBe(404);
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect(await n(ref.ref)).toBe(1);
+    // ล้างข้อมูลทดสอบ (ระบบต้นทางยกเลิกเอง)
+    expect((await send('POST', `/api/v1/cash-sales/${liv.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' }, { system: 'wts-living', ref: pos.ref })).status).toBe(200);
+    expect((await send('POST', `/api/v1/gl/journals/${a4.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' }, ref)).status).toBe(200);
+  });
   it('e-Tax Invoice XML (T7.6 ETDA ขมธอ. 3-2560): check list, single XML, zip, credit note vs original excl. VAT, cancelled skipped, isolation', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;

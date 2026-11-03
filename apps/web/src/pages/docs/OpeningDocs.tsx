@@ -12,7 +12,7 @@ import { DiscountInput } from '../../components/DiscountInput';
 import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
 import { DocActions } from '../../components/DocPrint';
-import { CancelStamp } from '../../components/DocDelete';
+import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 
 /** ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04) — บิลค้าง ณ วันเริ่มใช้ ไม่ลงบัญชี (ยอดบัญชีป้อนที่ บันทึกยอดยกมา) */
 const KINDS = {
@@ -122,7 +122,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
   const cancelled = cur.data?.doc_status === 'C';
   return (
     <div className={cx('page', cancelled && 'doc-cancelled')} data-tone={K.tone}>
-      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />
+      <div className="doc-title"><p className="eyebrow">การเงิน › {K.label}</p><h1>{id ? cur.data?.doc_no : 'รายการใหม่'}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} /><SourceStamp doc={cur.data as Parameters<typeof SourceStamp>[0]['doc']} />
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && !cancelled && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}{roBase && !cancelled && id && cur.data && <Pill tone="d">ชำระแล้ว — แก้ไขไม่ได้</Pill>}</span></div>
       <div className="toolbar">
         {/* + ใหม่: หน้าจอว่างเริ่มคีย์ใหม่ทุกครั้ง (ข้อกำหนดเจ้าของ 01/11/2569 — แถบเครื่องมือมาตรฐาน) */}

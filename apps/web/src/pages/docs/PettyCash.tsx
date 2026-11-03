@@ -13,7 +13,7 @@ import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
 import { useDocNo } from '../../components/DocNo';
 import { DocActions } from '../../components/DocPrint';
-import { CancelStamp } from '../../components/DocDelete';
+import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 import { DocWhtTab, JvVatTab } from '../gl/JvLinks';
 import { PostingTab } from './PostingTab';
 import { nextKey, PaymentsTable, paysBody, paysFrom, type Pay } from './MoneyParts';
@@ -181,7 +181,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const acctName = (aid: string | null) => accts.data?.find((a) => a.id === aid)?.name_th ?? '';
   return (
     <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="gl" style={bookStyle(tColor)}>
-      <div className="doc-title"><p className="eyebrow">การเงิน › เงินสดย่อย › {K.label}</p><h1>{id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '')}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
+      <div className="doc-title"><p className="eyebrow">การเงิน › เงินสดย่อย › {K.label}</p><h1>{id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '')}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} /><SourceStamp doc={cur.data as Parameters<typeof SourceStamp>[0]['doc']} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{kind === 'vr' ? 'ลงบัญชีแล้ว' : cur.data?.vr_no ? <>เบิกชดเชยแล้วใน <DocLink id={cur.data.vr_id} no={cur.data.vr_no} cls="VR" /></> : WAIT_VR}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setPick(new Set()); setPays([]); nav(`${BASE}/${kind}/new`); } }}>+ ใหม่</button>

@@ -2573,6 +2573,9 @@ CREATE TABLE doc_header (
   last_printed_at timestamptz,
   cancel_reason varchar(200),
   device_id uuid,
+  source_system varchar(30),
+  source_ref varchar(100),
+  source_version integer,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -2666,6 +2669,9 @@ COMMENT ON COLUMN doc_header.last_printed_by IS 'ผู้พิมพ์ล่�
 COMMENT ON COLUMN doc_header.last_printed_at IS 'วันเวลาพิมพ์ล่าสุด [Express: PRNDAT+PRNTIM]';
 COMMENT ON COLUMN doc_header.cancel_reason IS 'เหตุผลยกเลิก';
 COMMENT ON COLUMN doc_header.device_id IS 'เครื่องที่สร้างเอกสาร (ออฟไลน์)';
+COMMENT ON COLUMN doc_header.source_system IS 'ระบบต้นทางที่ส่งเอกสารผ่าน API (WTS Connect v1) เช่น wts-pos wts-living wts-sop — ว่าง = คีย์ใน Buddy';
+COMMENT ON COLUMN doc_header.source_ref IS 'เลขอ้างอิงของเอกสารที่ระบบต้นทาง (ส่งซ้ำด้วยเลขเดิม = ไม่สร้างซ้ำ)';
+COMMENT ON COLUMN doc_header.source_version IS 'รุ่นของเอกสารต้นทาง: สูงกว่า = แก้เอกสารเดิม · ต่ำกว่า = ปฏิเสธ';
 COMMENT ON COLUMN doc_header.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN doc_header.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN doc_header.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -2674,6 +2680,7 @@ COMMENT ON COLUMN doc_header.row_version IS 'เวอร์ชันของ�
 COMMENT ON COLUMN doc_header.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
 COMMENT ON COLUMN doc_header.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_doc_header_company_doc_type_doc_no ON doc_header (company_id, doc_type_id, doc_no) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uq_doc_header_company_source_system_source_ref ON doc_header (company_id, source_system, source_ref) WHERE deleted_at IS NULL;
 CREATE INDEX ix_doc_header_company_doc_class_doc_date ON doc_header (company_id, doc_class, doc_date);
 CREATE INDEX ix_doc_header_company_customer_doc_date ON doc_header (company_id, customer_id, doc_date);
 CREATE INDEX ix_doc_header_company_supplier_doc_date ON doc_header (company_id, supplier_id, doc_date);
@@ -3546,6 +3553,9 @@ CREATE TABLE gl_journal (
   approved_at timestamptz,
   last_printed_by uuid,
   last_printed_at timestamptz,
+  source_system varchar(30),
+  source_ref varchar(100),
+  source_version integer,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -3579,6 +3589,9 @@ COMMENT ON COLUMN gl_journal.approved_by IS 'ผู้อนุมัติ [Exp
 COMMENT ON COLUMN gl_journal.approved_at IS 'เวลารับรอง';
 COMMENT ON COLUMN gl_journal.last_printed_by IS 'ผู้พิมพ์ล่าสุด [Express: GLJNL.USERPRN]';
 COMMENT ON COLUMN gl_journal.last_printed_at IS 'วันเวลาพิมพ์ล่าสุด [Express: GLJNL.PRNDAT]';
+COMMENT ON COLUMN gl_journal.source_system IS 'ระบบต้นทางที่ส่งเอกสารผ่าน API (WTS Connect v1) เช่น wts-pos wts-living wts-sop — ว่าง = คีย์ใน Buddy';
+COMMENT ON COLUMN gl_journal.source_ref IS 'เลขอ้างอิงของเอกสารที่ระบบต้นทาง (ส่งซ้ำด้วยเลขเดิม = ไม่สร้างซ้ำ)';
+COMMENT ON COLUMN gl_journal.source_version IS 'รุ่นของเอกสารต้นทาง: สูงกว่า = แก้เอกสารเดิม · ต่ำกว่า = ปฏิเสธ';
 COMMENT ON COLUMN gl_journal.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN gl_journal.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN gl_journal.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -3587,6 +3600,7 @@ COMMENT ON COLUMN gl_journal.row_version IS 'เวอร์ชันของ�
 COMMENT ON COLUMN gl_journal.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
 COMMENT ON COLUMN gl_journal.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_gl_journal_company_journal_book_voucher_no ON gl_journal (company_id, journal_book_id, voucher_no) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uq_gl_journal_company_source_system_source_ref ON gl_journal (company_id, source_system, source_ref) WHERE deleted_at IS NULL;
 CREATE INDEX ix_gl_journal_company_voucher_date ON gl_journal (company_id, voucher_date);
 CREATE INDEX ix_gl_journal_source_header ON gl_journal (source_header_id);
 

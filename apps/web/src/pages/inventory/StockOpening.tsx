@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt } from '@buddy/core';
 import { api } from '../../api';
-import { CancelStamp, CloseScreen, DocDelete } from '../../components/DocDelete';
+import { CancelStamp, CloseScreen, DocDelete, SourceStamp } from '../../components/DocDelete';
 import { useCan } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
@@ -117,7 +117,7 @@ export function StockOpeningFormPage() {
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(ROUTE); } }, []);
   return (
     <div className={cx('page', cancelled && 'doc-cancelled')} data-tone="inventory">
-      <div className="doc-title"><p className="eyebrow">สินค้า › ยอดยกมาสินค้า</p><h1>{id ? cur.data?.doc_no : 'ล็อตใหม่'}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} />
+      <div className="doc-title"><p className="eyebrow">สินค้า › ยอดยกมาสินค้า</p><h1>{id ? cur.data?.doc_no : 'ล็อตใหม่'}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} /><SourceStamp doc={cur.data as Parameters<typeof SourceStamp>[0]['doc']} />
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
         {/* + ใหม่: หน้าจอว่างเริ่มคีย์ใหม่ทุกครั้ง (ข้อกำหนดเจ้าของ 01/11/2569 — แถบเครื่องมือมาตรฐาน) */}

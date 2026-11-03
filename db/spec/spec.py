@@ -858,7 +858,10 @@ add(T('doc_header', 'หัวเอกสารทุกชนิด (ขาย
   C('last_printed_at', 'ts', th='วันเวลาพิมพ์ล่าสุด', src='PRNDAT+PRNTIM'),
   C('cancel_reason', 'str200', th='เหตุผลยกเลิก'),
   lk('device_id', 'sys_device', 'เครื่องที่สร้างเอกสาร (ออฟไลน์)'),
-], uniq=[('company_id','doc_type_id','doc_no')],
+  C('source_system', 'code30', th='ระบบต้นทางที่ส่งเอกสารผ่าน API (WTS Connect v1) เช่น wts-pos wts-living wts-sop — ว่าง = คีย์ใน Buddy'),
+  C('source_ref', 'str100', th='เลขอ้างอิงของเอกสารที่ระบบต้นทาง (ส่งซ้ำด้วยเลขเดิม = ไม่สร้างซ้ำ)'),
+  C('source_version', 'int', th='รุ่นของเอกสารต้นทาง: สูงกว่า = แก้เอกสารเดิม · ต่ำกว่า = ปฏิเสธ'),
+], uniq=[('company_id','doc_type_id','doc_no'),('company_id','source_system','source_ref')],
  idx=[('company_id','doc_class','doc_date'),('company_id','customer_id','doc_date'),('company_id','supplier_id','doc_date'),('company_id','doc_no')],
  note='รวมเอกสารทุกระบบไว้ตารางเดียวตามแนว ARTRN/APTRN ของ Express — ทำให้การออกเลข การซิงก์ การลงบัญชี และ audit ใช้กลไกเดียวกัน'))
 
@@ -1144,7 +1147,10 @@ add(T('gl_journal', 'ใบสำคัญ / รายการสมุดร�
   C('approved_at', 'ts', th='เวลารับรอง'),
   lk('last_printed_by', 'sys_user', 'ผู้พิมพ์ล่าสุด', 'GLJNL.USERPRN'),
   C('last_printed_at', 'ts', th='วันเวลาพิมพ์ล่าสุด', src='GLJNL.PRNDAT'),
-], uniq=[('company_id','journal_book_id','voucher_no')], idx=[('company_id','voucher_date'),('source_header_id',)]))
+  C('source_system', 'code30', th='ระบบต้นทางที่ส่งเอกสารผ่าน API (WTS Connect v1) เช่น wts-pos wts-living wts-sop — ว่าง = คีย์ใน Buddy'),
+  C('source_ref', 'str100', th='เลขอ้างอิงของเอกสารที่ระบบต้นทาง (ส่งซ้ำด้วยเลขเดิม = ไม่สร้างซ้ำ)'),
+  C('source_version', 'int', th='รุ่นของเอกสารต้นทาง: สูงกว่า = แก้เอกสารเดิม · ต่ำกว่า = ปฏิเสธ'),
+], uniq=[('company_id','journal_book_id','voucher_no'),('company_id','source_system','source_ref')], idx=[('company_id','voucher_date'),('source_header_id',)]))
 
 add(T('gl_journal_line', 'รายการเดบิต/เครดิตของใบสำคัญ', 'gl', express='GLJNLIT', cols=[
   lk('journal_id', 'gl_journal', 'ใบสำคัญ', 'GLJNLIT.VOUCHER', nn=True),

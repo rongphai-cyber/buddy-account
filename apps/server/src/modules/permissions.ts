@@ -9,6 +9,7 @@ import { checkApiKeyRule } from './apikeys.js';
 import { checkMfaGate } from './security.js';
 import { replays, syncCtx } from '../sync-context.js';
 import { branchCapture, branchStateOf, checkBranchWrite } from './sync/branch.js';
+import { withSource } from './source.js';
 
 /**
  * สิทธิ์ 7 ชนิดรายเมนู — คู่มือบทที่ 23 (S-SEC-01/02/03)
@@ -352,6 +353,8 @@ export const REGISTERED_ROUTES = new Set<string>();
  */
 export function attachPermissions(app: FastifyInstance, database: Database, rls: boolean) {
   const db = database.db;
+  /** ตัวจัดการเดิมของ API ข้อมูลบริษัท — ส่งซ้ำรุ่นสูงกว่า (source.ts) เรียก PUT …/:id ในทรานแซกชันเดียวกัน */
+  const handlers = new Map<string, { handler: (req: FastifyRequest, reply: import('fastify').FastifyReply) => unknown; self: unknown }>();
   app.addHook('onRoute', (r) => {
     if (!r.url.startsWith('/api/')) return;
     const methods = [r.method].flat().filter((m) => m !== 'HEAD');
@@ -360,16 +363,20 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     if (!rule || (rule.kind !== 'menu' && rule.kind !== 'lookup')) return;
     // ไม่มี RLS: คำขอข้อมูลบริษัทยังทำในทรานแซกชันเดียว (ออฟไลน์สาขาต้องจดรหัสแถว/คิวรอส่งพร้อมเอกสาร) แต่ไม่สลับ role
     const handler = r.handler;
+    const routeKey = `${methods[0]} ${r.url}`;
+    handlers.set(routeKey, { handler: handler as never, self: app });
     r.handler = function (this: FastifyInstance, req, reply) {
       const a = req.auth;
       if (!a?.companyId) return handler.call(this, req, reply);
-      const run = () => runInCompanyScope(database, { companyId: a.companyId!, tenantId: a.tenantId, isPlatform: a.isPlatform, rls }, async () => handler.call(this, req, reply));
+      // WTS Connect (docs/17 B0.1): เอกสารจากระบบอื่น ส่งซ้ำไม่ลงซ้ำ + แก้ที่หน้าจอไม่ได้
+      const run = () => runInCompanyScope(database, { companyId: a.companyId!, tenantId: a.tenantId, isPlatform: a.isPlatform, rls },
+        async () => withSource(database, req, reply, routeKey, () => handler.call(this, req, reply), handlers, authorize));
       // ออฟไลน์สาขา (T7.8): สำนักงานใหญ่รับเอกสารจากสาขา (replay) / เครื่องสาขาจดเอกสารลงคิว (capture)
       const rk = req.headers['x-buddy-replay'];
       const replay = typeof rk === 'string' ? replays.get(rk) : undefined;
       const branch = branchStateOf(database);
       if (!branch && !replay) return run();
-      const capture = branch ? branchCapture(database, req, `${methods[0]} ${r.url}`) ?? undefined : undefined;
+      const capture = branch ? branchCapture(database, req, routeKey) ?? undefined : undefined;
       return syncCtx.run({ ...syncCtx.getStore(), ...(replay ? { replay } : {}), ...(branch ? { branch } : {}), capture }, run);
     };
   });
@@ -378,6 +385,10 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     const url = req.routeOptions?.url;
     if (!url) return;   // ไม่พบ API — ตัวจัดการ 404 ตอบเอง
     const method = req.method === 'HEAD' ? 'GET' : req.method;
+    await authorize(req, method, url);
+  });
+  /** ตรวจสิทธิ์ของ API หนึ่งเส้น (preHandler · และ PUT ที่ส่งซ้ำรุ่นสูงกว่าเรียกแทน POST) */
+  async function authorize(req: FastifyRequest, method: string, url: string) {
     const rule = API_RULES[`${method} ${url}`];
     if (!rule) throw forbidden('API นี้ยังไม่ได้กำหนดสิทธิ์ — แจ้งผู้พัฒนาโปรแกรม');
     checkMfaGate(req, method, url);
@@ -396,7 +407,7 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
       throw forbidden(`ไม่มีสิทธิ์${ACTION_TH[rule.action]}ในเมนู "${LABEL.get(menu) ?? menu}" — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ (เมนู อื่น ๆ › ผู้ใช้งานและสิทธิ์)`);
     }
     if (r.log) await logActivity(db, a, { module: menu, action: `USE_${rule.action.toUpperCase()}`, detail: { method, url: req.url.split('?')[0] } });
-  });
+  }
 }
 
 /** รายการเมนูในตาราง sys_menu ให้ตรงกับเมนูของโปรแกรม (รวม "ทุกระบบ") — เรียกตอนเปิด server */

@@ -14,6 +14,18 @@ export function CancelStamp({ show, reason }: { show: boolean; reason?: string |
 }
 
 /**
+ * ป้าย "มาจาก WTS-POS · อ้างอิง …" (docs/17 B0.1): เอกสารที่ระบบอื่นส่งเข้าผ่าน API — แก้/ยกเลิกที่โปรแกรมต้นทาง
+ * (ระดับอนุมัติ 9 ยกเลิก/ลบได้พร้อมเหตุผล) · เซิร์ฟเวอร์ปฏิเสธเองถ้ากดแก้
+ */
+export function SourceStamp({ doc }: { doc?: { source_system?: string | null; source_ref?: string | null; source_version?: number | null } | null }) {
+  if (!doc?.source_system) return null;
+  const sys = doc.source_system.toUpperCase();
+  const ver = (doc.source_version ?? 1) >= 2 ? ` · v${doc.source_version}` : '';
+  return <span className="source-stamp" role="note" title={`แก้หรือยกเลิกที่โปรแกรม ${sys} · ผู้ใช้ระดับอนุมัติ 9 ยกเลิกได้โดยระบุเหตุผล`}>
+    <span>{`มาจาก ${sys}`}</span><small>{`อ้างอิง ${doc.source_ref ?? ''}${ver}`}</small></span>;
+}
+
+/**
  * ปุ่ม "ลบ" (Alt+D): ลบเอกสารออกจากระบบ — ไม่แสดงที่ใดอีก เลขที่ว่างให้ใช้ใหม่ได้ (ประวัติยังอยู่ในบันทึกการทำงาน)
  * เอกสารที่ยังไม่ยกเลิก: ยกเลิกให้ก่อนแล้วลบในขั้นเดียว · cancelUrl = API ยกเลิกของหน้าจอนั้น
  */
