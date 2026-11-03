@@ -123,7 +123,7 @@
 - [x] B0.4 ใบกำกับอย่างย่อในรายงานภาษีขาย (`doc_abbr_invoice` · migration 0050 · แก้มูลค่าแฟ้มภาษีของราคารวม VAT ให้ไม่รวม VAT)
 - [x] B0.5 payroll_source + ปุ่มตั้งค่าสำหรับ WTS-POS (`modules/wts.ts` · `components/WtsConnect.tsx`)
 - [x] B0.6 สิทธิ์โมดูลระดับลูกค้า (`sys_tenant_module` · migration 0051 · `GET /api/v1/tenant/modules`)
-- [ ] B0.7 ทดสอบรับมอบด้วยตัวเลขข้อ 7
+- [x] B0.7 ทดสอบรับมอบด้วยตัวเลขข้อ 7 (`apps/server/test/wts-acceptance.test.ts` — ผ่าน 6/6)
 
 ## ปัญหาที่ทราบ
 - ~~เจ้าหนี้คงค้างต่าง Express 7,454.69~~ แก้แล้วใน T3.10: RR0000064 มีเฉพาะในบัตรสต๊อก (ไม่อยู่ใน APTRN) แต่ถูกตัดชำระ — เอกสารที่สร้างจากบัตรสต๊อกเป็นระบบสินค้า (IC) ไม่เข้าเจ้าหนี้
