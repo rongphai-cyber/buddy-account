@@ -43,6 +43,7 @@ async function keyCall(key: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE', u
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
   process.env.BUDDY_REQUIRE_ADMIN_2FA = '0';   // ทดสอบบังคับ 2FA แยกในชุด T0.16
+  process.env.BUDDY_CHANGES_HOLDBACK_MS = '0';   // ฟีดข้อมูลหลัก (B0.3) ไม่ต้องรอ
   process.env.BUDDY_SECRET_KEY ??= Buffer.alloc(32, 7).toString('base64');   // ไม่แตะแฟ้มกุญแจจริงใน .data
   const cfg = { ...loadConfig({}), databaseUrl: undefined, dataDir: 'memory://' };
   appCfg = cfg;
@@ -3429,6 +3430,55 @@ describe('Buddy Account API (PGlite)', () => {
     // ล้างข้อมูลทดสอบ (ระบบต้นทางยกเลิกเอง)
     expect((await send('POST', `/api/v1/cash-sales/${liv.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' }, { system: 'wts-living', ref: pos.ref })).status).toBe(200);
     expect((await send('POST', `/api/v1/gl/journals/${a4.body.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' }, ref)).status).toBe(200);
+  });
+  it('WTS Connect master-data feed (docs/17 B0.3): full load + cursor, upsert/inactive/delete, only requested types, read-only key, bad params, isolation', async () => {
+    const adminId = (await call('GET', '/api/v1/auth/me')).body.user.id;
+    const key = (await call('POST', '/api/v1/api-keys', { name: 'WTS-POS feed', user_id: adminId, read_only: true })).body.key as string;
+    const feed = async (qs: string, k = key) => keyCall(k, 'GET', `/api/v1/changes?${qs}`);
+    type Ch = { type: string; id: string; op: string; data: Record<string, unknown> | null };
+    // ครั้งแรก: ข้อมูลทั้งหมด (เฉพาะช่องที่ใช้)
+    const full = await feed('types=customer,unit,account');
+    expect([full.status, full.body.full, full.body.more]).toEqual([200, true, false]);
+    const fc = full.body.changes as Ch[];
+    expect(fc.some((c) => c.type === 'customer' && c.data!.code === 'C-SRC')).toBe(true);
+    expect(fc.some((c) => c.type === 'unit') && fc.some((c) => c.type === 'account' && typeof c.data!.account_no === 'string')).toBe(true);
+    expect(Object.keys(fc.find((c) => c.type === 'customer')!.data!)).not.toContain('company_id');
+    expect(Object.keys(fc.find((c) => c.type === 'customer')!.data!)).not.toContain('remark');
+    const cur0 = full.body.next_cursor as string;
+    expect(cur0).toMatch(/^\d+$/);
+    // ไม่มีอะไรเปลี่ยน → ว่าง cursor ไม่ถอย
+    const none = await feed(`types=customer&since=${cur0}`);
+    expect([none.body.changes, BigInt(none.body.next_cursor) >= BigInt(cur0)]).toEqual([[], true]);
+    // เพิ่ม → แก้ (เลิกใช้) → ลบ: ได้ค่าล่าสุดครั้งเดียวต่อแถว
+    const c = (await call('POST', '/api/v1/customers', { code: 'C-FEED', name: 'ลูกค้าฟีด', tax_id: tid(953) })).body.id as string;
+    const f1 = await feed(`types=customer,item&since=${cur0}`);
+    expect((f1.body.changes as Ch[]).map((x) => [x.type, x.id, x.op, x.data?.code, x.data?.status])).toEqual([['customer', c, 'upsert', 'C-FEED', 'A']]);
+    expect((await call('PUT', `/api/v1/customers/${c}`, { code: 'C-FEED', name: 'ลูกค้าฟีด (เลิก)', tax_id: tid(953), status: 'I' })).status).toBe(200);
+    const f2 = await feed(`types=customer&since=${f1.body.next_cursor}`);
+    expect((f2.body.changes as Ch[]).map((x) => [x.op, x.data?.name, x.data?.status])).toEqual([['upsert', 'ลูกค้าฟีด (เลิก)', 'I']]);
+    expect((await call('DELETE', `/api/v1/customers/${c}`)).status).toBe(200);
+    const f3 = await feed(`types=customer&since=${f2.body.next_cursor}`);
+    expect((f3.body.changes as Ch[]).map((x) => [x.id, x.op, x.data])).toEqual([[c, 'delete', null]]);
+    // ทั้ง 3 ครั้งรวมกันจาก cursor แรก = แถวเดียว (ลบ)
+    expect((await feed(`types=customer&since=${cur0}`)).body.changes).toHaveLength(1);
+    // ชนิดอื่นที่ไม่ได้ขอไม่มา · หน้าละ limit
+    expect((await feed(`types=unit&since=${cur0}`)).body.changes).toEqual([]);
+    for (const [i, n] of ['C-FEED2', 'C-FEED3'].entries()) expect((await call('POST', '/api/v1/customers', { code: n, name: n, tax_id: tid(954 + i) })).status).toBe(200);
+    const p1 = await feed(`types=customer&since=${f3.body.next_cursor}&limit=1`);
+    expect([p1.body.changes.length, p1.body.more]).toEqual([1, true]);
+    const p2 = await feed(`types=customer&since=${p1.body.next_cursor}&limit=1`);
+    expect(p2.body.changes[0].data.code).toBe('C-FEED3');
+    // พารามิเตอร์ผิด
+    expect((await feed('types=customer,dog')).body.error.message).toMatch(/ไม่รู้จักชนิด dog/);
+    expect((await feed('since=1')).status).toBe(400);
+    expect((await feed('types=item&since=abc')).status).toBe(400);
+    // บริษัทอื่นไม่เห็นข้อมูลบริษัทนี้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    const okey = (await call('POST', '/api/v1/api-keys', { name: 'feed B', user_id: adminId, read_only: true })).body.key as string;
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    const of = (await feed('types=customer', okey)).body.changes as Ch[];
+    expect(of.some((x) => x.data!.code === 'C-FEED2' || x.data!.code === 'C-SRC')).toBe(false);
+    expect((await feed(`types=customer&since=${cur0}`, okey)).body.changes.some((x: Ch) => x.id === c)).toBe(false);
   });
   it('e-Tax Invoice XML (T7.6 ETDA ขมธอ. 3-2560): check list, single XML, zip, credit note vs original excl. VAT, cancelled skipped, isolation', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;

@@ -13735,6 +13735,13 @@
 ]
 },
 {
+"th": "since ต้องเป็นค่า next_cursor ที่ได้ครั้งก่อน (ตัวเลข)",
+"n": 1,
+"files": [
+"apps/server/src/modules/changes.ts"
+]
+},
+{
 "th": "source_totals ต้องเป็นออบเจ็กต์ เช่น { \"net_amount\": \"30000.00\", \"vat_amount\": \"1962.62\" }",
 "n": 1,
 "files": [
@@ -32320,6 +32327,13 @@
 ]
 },
 {
+"th": "ระบุ types เช่น item,customer — ใช้ได้: {0}",
+"n": 1,
+"files": [
+"apps/server/src/modules/changes.ts"
+]
+},
+{
 "th": "ระบุชนิดตาราง เช่น 40,41",
 "n": 1,
 "files": [
@@ -47318,6 +47332,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/settings.ts"
+]
+},
+{
+"th": "ไม่รู้จักชนิด {0} — ใช้ได้: {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/changes.ts"
 ]
 },
 {

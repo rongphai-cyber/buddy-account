@@ -569,5 +569,8 @@
  "ยอดรวมเดบิต = เครดิต (ใบสำคัญ)": "Total debit = credit (voucher)",
  "ยอดสุทธิ (รวม VAT)": "Net amount (incl. VAT)",
  "ยอดไม่ตรงกับระบบต้นทาง ไม่บันทึก: {0} — ตรวจการปัดเศษ/อัตราภาษี/ราคารวมหรือแยก VAT ที่ต้นทาง": "Totals do not match the source system, nothing saved: {0} — check rounding, VAT rate and VAT-inclusive/exclusive pricing at the source",
- "ใบสำคัญเทียบได้เฉพาะ source_totals.total (ยอดรวมเดบิต = เครดิต) — ไม่รับ {0}": "Vouchers can only be checked with source_totals.total (total debit = credit) — {0} not accepted"
+ "ใบสำคัญเทียบได้เฉพาะ source_totals.total (ยอดรวมเดบิต = เครดิต) — ไม่รับ {0}": "Vouchers can only be checked with source_totals.total (total debit = credit) — {0} not accepted",
+ "since ต้องเป็นค่า next_cursor ที่ได้ครั้งก่อน (ตัวเลข)": "since must be the next_cursor value from the previous call (a number)",
+ "ระบุ types เช่น item,customer — ใช้ได้: {0}": "Specify types, e.g. item,customer — allowed: {0}",
+ "ไม่รู้จักชนิด {0} — ใช้ได้: {1}": "Unknown type {0} — allowed: {1}"
 }

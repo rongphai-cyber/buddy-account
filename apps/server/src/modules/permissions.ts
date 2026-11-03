@@ -337,6 +337,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/wht/efile': M('FI.WHT', 'print'),
   'GET /api/v1/wht': M('FI.WHT', 'read'), 'GET /api/v1/wht/:id': M('FI.WHT', 'read'), 'POST /api/v1/wht': M('FI.WHT', 'add'),
   'PUT /api/v1/wht/:id': M('FI.WHT', 'edit'), 'POST /api/v1/wht/:id/cancel': M('FI.WHT', 'cancel'), 'POST /api/v1/wht/:id/printed': M('FI.WHT.CERT', 'read'),
+  // WTS Connect ฟีดข้อมูลหลักที่เปลี่ยน (docs/17 B0.3) — ข้อมูลเดียวกับหน้าต่างค้นหา
+  'GET /api/v1/changes': LOOKUP,
   'GET /api/v1/salespersons': LOOKUP, 'GET /api/v1/salespersons/:id': LOOKUP, 'POST /api/v1/salespersons': M('SA.SLM', 'add'),
   'PUT /api/v1/salespersons/:id': M('SA.SLM', 'edit'), 'DELETE /api/v1/salespersons/:id': M('SA.SLM', 'delete'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)
