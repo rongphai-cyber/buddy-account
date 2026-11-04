@@ -66,7 +66,8 @@ export async function syncVatEntries(tx: Db, ctx: Ctx, headerId: string) {
   const prev = old.find((o) => o.is_modified);
   const ap = kind === 'P';
   const taxNo = ap ? ((h.doc_class === 'CP' || h.doc_class === 'DN' ? h.your_ref : h.ref_no) || h.doc_no) : h.doc_no;
-  const taxDate = String((ap ? h.ref_date : null) ?? (h.doc_class === 'RE' || h.doc_class === 'PS' ? h.payment_date : null) ?? h.doc_date).slice(0, 10);
+  // ภาษีซื้อ: บิลซื้อใช้วันที่ใบกำกับของผู้จำหน่าย (ref_date) · ใบลด/เพิ่มหนี้ DN/CP ref_date = วันที่ใบกำกับเดิมที่อ้าง → ใช้วันที่ใบลด/เพิ่มหนี้ (Express GR "ลวท." · พบใน WTS-POS B4.5)
+  const taxDate = String((ap && h.doc_class !== 'CP' && h.doc_class !== 'DN' ? h.ref_date : null) ?? (h.doc_class === 'RE' || h.doc_class === 'PS' ? h.payment_date : null) ?? h.doc_date).slice(0, 10);
   const vatDate = String(h.vat_date ?? taxDate).slice(0, 10);
   const same = prev && d(prev.base_amount).plus(d(prev.nonclaim_base)).eq(abs(base)) && d(prev.vat_amount).plus(d(prev.nonclaim_vat)).eq(abs(vat)) && d(prev.zero_rate_amount).eq(abs(zero)) && d(prev.exempt_amount).eq(abs(exempt));
   if (same && old.length === 1) {

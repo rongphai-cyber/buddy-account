@@ -2011,6 +2011,8 @@ describe('Buddy Account API (PGlite)', () => {
     const rr = (await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2027-08-06', party_id: sup, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 3, unit_price: 100 }] })).body;
     const dn = (await call('POST', '/api/v1/ap-credit-notes', { doc_type_id: await typeOf('DN'), doc_date: '2027-08-07', party_id: sup, ref_header_id: rr.id, price_type: '2', vat_rate: 7, lines: [{ item_id: cpu, qty: 1, unit_price: 100, return_to_stock: true }] })).body;
     expect(dn.error).toBeUndefined();
+    // ภาษีซื้อของใบลดหนี้: วันที่ = วันที่ใบลดหนี้ (07/08) ไม่ใช่วันที่บิลซื้อที่อ้าง (06/08) — WTS-POS B4.5
+    expect((await call('GET', `/api/v1/vat/P?header_id=${dn.id}`)).body.rows[0]).toMatchObject({ doc_no: dn.doc_no, tax_invoice_no: dn.doc_no, tax_invoice_date: '2027-08-07', month: '2027-08' });
     const bp = await dash();
     expect(Number(bp.kpis.current.purchases) - Number(b1.kpis.current.purchases)).toBeCloseTo(200, 2);
     expect(bp.top_suppliers.find((x: { id: string }) => x.id === sup)).toMatchObject({ code: 'S-DASH', amount: '200.00' });
