@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import { d } from '@buddy/core';
 import type { Db } from '../db.js';
-import { badRequest, conflict, notFound, parse, requireCompany, type AuthContext } from '../http.js';
+import { AppError, badRequest, conflict, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
 import { checkAccount } from './parties.js';
 
@@ -85,6 +85,24 @@ export function bankingRoutes(app: FastifyInstance, db: Db) {
     name_th: z.string().trim().min(1, 'ป้อนคำอธิบายไทย').max(120), name_en: str(120),
     kind: z.enum(['CASH', 'CHEQUE', 'TRANSFER', 'CARD', 'WHT', 'DISCOUNT', 'DEPOSIT', 'FX', 'OTHER']).default('OTHER'),
     creates_cheque: z.boolean().default(false), gl_account_id: optId, bank_account_id: optId, status: z.enum(['A', 'I']).default('A'),
+  });
+  /** เพิ่มวิธีชำระทีละรายการ (ระบบอื่นผ่านกุญแจ API เช่น WTS-POS ช่องทางรับเงิน) — ไม่แตะรายการเดิม ต่างจาก PUT ที่บันทึกทั้งชุด */
+  app.post('/api/v1/payment-methods/:direction', async (req, reply) => {
+    const a = requireCompany(req);
+    const { direction } = parse(dirParam, req.params);
+    const { id: _ignored, ...r } = parse(pmRow, req.body);
+    await checkAccount(db, a.companyId, r.gl_account_id, 'gl_account_id');
+    if (r.bank_account_id && !(await db.selectFrom('md_bank_account').select('id').where('id', '=', r.bank_account_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบบัญชีเงินฝากนี้ — เลือกจากบัญชีเงินฝากของบริษัท');
+    if (!r.gl_account_id && !r.bank_account_id) throw badRequest(`${r.code}: ป้อนเลขที่บัญชี หรือเลือกธนาคาร (บัญชีเงินฝาก) สำหรับเงินโอน`);
+    if (r.kind === 'TRANSFER' && !r.bank_account_id) throw badRequest(`${r.code}: เงินโอนต้องเลือกธนาคาร (บัญชีเงินฝาก) เพื่อให้ปรากฏใน statement`);
+    const dup = await db.selectFrom('md_payment_method').select('id').where('company_id', '=', a.companyId).where('direction', '=', direction).where('code', '=', r.code).where('deleted_at', 'is', null).executeTakeFirst();
+    if (dup) throw new AppError(409, 'DUPLICATE_CODE', `รหัสวิธีชำระ ${r.code} มีอยู่แล้ว — ใช้รหัสอื่น หรือเลือกวิธีชำระเดิม`);
+    const row = await db.transaction().execute(async (tx) => {
+      const x = await tx.insertInto('md_payment_method').values({ ...r, direction, company_id: a.companyId, created_by: a.userId }).returning(['id', 'code']).executeTakeFirstOrThrow();
+      await logActivity(tx, a, { module: 'SET', action: 'ADD', docNo: r.code, table: 'md_payment_method', rowId: x.id, detail: { direction, name_th: r.name_th, kind: r.kind } });
+      return x;
+    });
+    return reply.code(201).send(row);
   });
   app.put('/api/v1/payment-methods/:direction', async (req) => {
     const a = requireCompany(req);

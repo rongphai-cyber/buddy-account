@@ -219,7 +219,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/items/:id/prices': M('IC.PRICE', 'read'), 'PUT /api/v1/items/:id/prices': M('IC.PRICE', 'edit'),
   'GET /api/v1/items/:id/reorder': M('IC.REORDER', 'read'), 'PUT /api/v1/items/:id/reorder': M('IC.REORDER', 'edit'),
   'GET /api/v1/bank-accounts': LOOKUP, 'POST /api/v1/bank-accounts': M('FI.BK.ACC', 'add'), 'PUT /api/v1/bank-accounts/:id': M('FI.BK.ACC', 'edit'), 'DELETE /api/v1/bank-accounts/:id': M('FI.BK.ACC', 'delete'),
-  'GET /api/v1/payment-methods/:direction': LOOKUP, 'PUT /api/v1/payment-methods/:direction': M('SET.PAYM', 'edit'),
+  'GET /api/v1/payment-methods/:direction': LOOKUP, 'PUT /api/v1/payment-methods/:direction': M('SET.PAYM', 'edit'), 'POST /api/v1/payment-methods/:direction': M('SET.PAYM', 'add'),
   'GET /api/v1/doc-types': LOOKUP, 'GET /api/v1/doc-types/:id': LOOKUP, 'POST /api/v1/doc-types': M('SET.DOCNO', 'add'),
   'PUT /api/v1/doc-types/:id': M('SET.DOCNO', 'edit'), 'DELETE /api/v1/doc-types/:id': M('SET.DOCNO', 'delete'),
   'GET /api/v1/gl/link': M('SET.LINK', 'read'), 'PUT /api/v1/gl/link': M('SET.LINK', 'edit'),

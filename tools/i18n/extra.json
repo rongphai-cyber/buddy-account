@@ -642,5 +642,9 @@
  "ใช้ได้": "Available",
  "ใช้ได้ถึง": "Valid until",
  "ไม่จำกัด": "Unlimited",
- "ไม่รู้จักโมดูล — ใช้ได้: {0}": "Unknown module — allowed: {0}"
+ "ไม่รู้จักโมดูล — ใช้ได้: {0}": "Unknown module — allowed: {0}",
+ "{0}: ป้อนเลขที่บัญชี หรือเลือกธนาคาร (บัญชีเงินฝาก) สำหรับเงินโอน": "{0}: Enter an account number, or choose a bank (bank account) for transfers",
+ "{0}: เงินโอนต้องเลือกธนาคาร (บัญชีเงินฝาก) เพื่อให้ปรากฏใน statement": "{0}: A transfer needs a bank (bank account) so it appears in the statement",
+ "รหัสวิธีชำระ {0} มีอยู่แล้ว — ใช้รหัสอื่น หรือเลือกวิธีชำระเดิม": "Payment method code {0} already exists — use another code or choose the existing method",
+ "ไม่พบบัญชีเงินฝากนี้ — เลือกจากบัญชีเงินฝากของบริษัท": "Bank account not found — choose one of the company's bank accounts"
 }

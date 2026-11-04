@@ -56,7 +56,7 @@ X-Source-Version: 1                  (จำนวนเต็ม ไม่ส�
 ## ฟีดข้อมูลหลักที่เปลี่ยน (WTS Connect v1 · docs/17 ข้อ 3.3 · B0.3)
 
 ```
-GET /api/v1/changes?types=item,customer,supplier,branch,warehouse,payment_method,doc_type,unit,account,department&since=<next_cursor>&limit=1000
+GET /api/v1/changes?types=item,customer,supplier,branch,warehouse,payment_method,bank_account,doc_type,unit,account,department&since=<next_cursor>&limit=1000
 ```
 
 - ใช้กุญแจอ่านอย่างเดียวได้ · สิทธิ์เท่าหน้าต่างค้นหา · เห็นเฉพาะบริษัทของกุญแจ
@@ -65,6 +65,19 @@ GET /api/v1/changes?types=item,customer,supplier,branch,warehouse,payment_method
 - `changes[]` = `{ type, id, op, data }` · `op: "upsert"` ค่าปัจจุบัน (`status: "I"` = เลิกใช้) · `op: "delete"` + `data: null` = ถูกลบ ให้ลบสำเนา · แถวเดียวกันเปลี่ยนหลายครั้งได้ครั้งเดียว (ค่าล่าสุด)
 - ช่องที่ส่ง: เฉพาะที่โปรแกรมอื่นใช้ (รหัส ชื่อ หน่วย ราคา 1–5 รหัสภาษี เลขผู้เสียภาษี สาขา สถานะ ฯลฯ — ดู `CHANGE_TYPES` ใน `apps/server/src/modules/changes.ts`) · อ้างถึงกันด้วย `id` (เช่น `sales_unit_id` → ชนิด `unit`)
 - รายการที่เพิ่งเปลี่ยนไม่ถึง 3 วินาทียังไม่ส่ง (รอให้บันทึกที่ทำพร้อมกันเสร็จ จะได้ไม่ข้าม) — แนะนำดึงทุก 1–5 นาที
+- `payment_method` มี `gl_account_id` / `bank_account_id` (บัญชีที่วิธีชำระผูกไว้) · `bank_account` = บัญชีเงินฝาก (รหัส ชื่อ เลขที่บัญชี ชนิด `gl_account_id` สกุลเงิน) ใช้เลือกบัญชีนำฝาก/ช่องทางรับเงิน (04/11/2569)
+
+## เพิ่มวิธีรับ/จ่ายชำระทีละรายการ (WTS-POS ช่องทางรับเงิน · 04/11/2569)
+
+```
+POST /api/v1/payment-methods/R   { code: "LP", name_th: "LINE Pay", name_en?, kind: "OTHER", gl_account_id?: uuid, bank_account_id?: uuid, seq?: "05" }
+→ 201 { id, code }
+```
+
+- เพิ่ม 1 รายการ ไม่แตะรายการเดิม (ต่างจาก `PUT` ที่บันทึกทั้งชุดของหน้าจอ) · `R` = วิธีรับชำระ · `P` = วิธีจ่ายชำระ · สิทธิ์ = เมนูวิธีรับ-จ่ายชำระ (SET.PAYM) "เพิ่ม" — กุญแจอ่านอย่างเดียวใช้ไม่ได้
+- `code` 2 ตัว (นำหน้าเลขที่รายการ) · ต้องมี `gl_account_id` (บัญชีพัก เช่น เงินรอเคลียร์ LINE Pay) หรือ `bank_account_id` · `kind: TRANSFER` ต้องมี `bank_account_id`
+- รหัสซ้ำ → 409 `DUPLICATE_CODE` · บัญชี/บัญชีเงินฝากไม่ใช่ของบริษัท หรือเป็นบัญชีคุม → 400
+- แนะนำ: QR พร้อมเพย์/โอน → `TRANSFER` + บัญชีเงินฝาก · บัตร → `CARD` + บัญชีพักบัตร · e-Wallet (Stripe PayPal LINE Pay TrueMoney ฯลฯ) → `OTHER` + บัญชีพักของผู้ให้บริการนั้น
 
 ## โปรแกรมที่ลูกค้าใช้ได้ (docs/17 ข้อ 5.6 · B0.6)
 

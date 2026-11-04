@@ -3595,6 +3595,42 @@ describe('Buddy Account API (PGlite)', () => {
     expect(of.some((x) => x.data!.code === 'C-FEED2' || x.data!.code === 'C-SRC')).toBe(false);
     expect((await feed(`types=customer&since=${cur0}`, okey)).body.changes.some((x: Ch) => x.id === c)).toBe(false);
   });
+  it('WTS-POS payment channels (B2.24): feed bank_account + payment_method account, add one receipt method by key, rights, duplicate, isolation', async () => {
+    const adminId = (await call('GET', '/api/v1/auth/me')).body.user.id;
+    const leaf = ((await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; is_control: boolean }>).filter((x) => !x.is_control);
+    const bank = (await call('POST', '/api/v1/bank-accounts', { code: 'POSQR', name: 'ออมทรัพย์รับ QR', account_number: '999-1-23456', account_kind: 'S', gl_account_id: leaf[1]!.id })).body.id as string;
+    const key = (await call('POST', '/api/v1/api-keys', { name: 'WTS-POS channels', user_id: adminId })).body.key as string;
+    type Ch = { type: string; id: string; data: Record<string, unknown> };
+    const full = (await keyCall(key, 'GET', '/api/v1/changes?types=bank_account,payment_method')).body.changes as Ch[];
+    expect(full.find((x) => x.id === bank)?.data).toMatchObject({ code: 'POSQR', account_number: '999-1-23456', gl_account_id: leaf[1]!.id });
+    expect(full.filter((x) => x.type === 'payment_method').every((x) => 'gl_account_id' in x.data)).toBe(true);
+    // เพิ่มทีละรายการ: e-Wallet = OTHER + บัญชีพัก · QR = TRANSFER + บัญชีเงินฝาก · รายการเดิมไม่หาย
+    const before = (await call('GET', '/api/v1/payment-methods/R')).body.length as number;
+    const w = await keyCall(key, 'POST', '/api/v1/payment-methods/R', { code: 'lp', name_th: 'LINE Pay', kind: 'OTHER', gl_account_id: leaf[2]!.id });
+    expect([w.status, w.body.code]).toEqual([201, 'LP']);
+    const q = await keyCall(key, 'POST', '/api/v1/payment-methods/R', { code: 'Q2', name_th: 'QR พร้อมเพย์ สาขา 2', kind: 'TRANSFER', bank_account_id: bank });
+    expect(q.status).toBe(201);
+    expect((await call('GET', '/api/v1/payment-methods/R')).body).toHaveLength(before + 2);
+    // ซ้ำ / ไม่มีบัญชี / โอนไม่มีธนาคาร / บัญชีคุม
+    expect([(await keyCall(key, 'POST', '/api/v1/payment-methods/R', { code: 'LP', name_th: 'ซ้ำ', kind: 'OTHER', gl_account_id: leaf[2]!.id })).status]).toEqual([409]);
+    expect((await keyCall(key, 'POST', '/api/v1/payment-methods/R', { code: 'X1', name_th: 'ไม่มีบัญชี', kind: 'OTHER' })).body.error.message).toMatch(/ป้อนเลขที่บัญชี/);
+    expect((await keyCall(key, 'POST', '/api/v1/payment-methods/R', { code: 'X2', name_th: 'โอน', kind: 'TRANSFER', gl_account_id: leaf[2]!.id })).body.error.message).toMatch(/ต้องเลือกธนาคาร/);
+    // ฟีดเห็นวิธีใหม่พร้อมบัญชี · log บันทึก
+    const f2 = (await keyCall(key, 'GET', '/api/v1/changes?types=payment_method')).body.changes as Ch[];
+    expect(f2.find((x) => x.id === w.body.id)?.data).toMatchObject({ direction: 'R', code: 'LP', kind: 'OTHER', gl_account_id: leaf[2]!.id });
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE table_name = 'md_payment_method' AND row_id = ${w.body.id}`.execute(database.db)).rows[0]!.n).toBe(1);
+    // กุญแจอ่านอย่างเดียวเพิ่มไม่ได้ · ผู้ใช้ไม่มีสิทธิ์ SET.PAYM ไม่ได้
+    const ro = (await call('POST', '/api/v1/api-keys', { name: 'ro', user_id: adminId, read_only: true })).body.key as string;
+    expect((await keyCall(ro, 'POST', '/api/v1/payment-methods/R', { code: 'X3', name_th: 'x', kind: 'OTHER', gl_account_id: leaf[2]!.id })).status).toBe(403);
+    // บริษัทอื่น: บัญชีของบริษัทนี้ใช้ไม่ได้ และไม่เห็นวิธีชำระของบริษัทนี้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    const okey = (await call('POST', '/api/v1/api-keys', { name: 'ch B', user_id: adminId })).body.key as string;
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    expect((await keyCall(okey, 'POST', '/api/v1/payment-methods/R', { code: 'X4', name_th: 'ข้ามบริษัท', kind: 'TRANSFER', bank_account_id: bank })).status).toBe(400);
+    expect((await keyCall(okey, 'POST', '/api/v1/payment-methods/R', { code: 'X5', name_th: 'ข้ามบริษัท', kind: 'OTHER', gl_account_id: leaf[2]!.id })).status).toBe(400);
+    const of = (await keyCall(okey, 'GET', '/api/v1/changes?types=payment_method,bank_account')).body.changes as Ch[];
+    expect(of.some((x) => x.id === w.body.id || x.id === bank)).toBe(false);
+  });
   it('e-Tax Invoice XML (T7.6 ETDA ขมธอ. 3-2560): check list, single XML, zip, credit note vs original excl. VAT, cancelled skipped, isolation', async () => {
     const typeOf = async (cls: string) => (await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types[0].id as string;
     const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types.find((t: { code: string }) => t.code === 'IV').id;
