@@ -60,7 +60,7 @@ export function WtsPosSetup() {
     <>
       <h2 className="section-title">เชื่อมระบบ WTS Solutions</h2>
       <div className="card">
-        <p className="hint">ใช้กับ WTS-POS (หน้าร้าน ครัวกลาง แฟรนไชส์) — สร้างชุดเริ่มต้นที่ยังไม่มี: ประเภทเอกสารเบิกใช้ OUR ตามสูตร · OUW ของเสีย · OUS อาหารพนักงาน · OUQ ชิมคุณภาพ ·
+        <p className="hint">ใช้กับ WTS-POS (หน้าร้าน ครัวกลาง แฟรนไชส์) — สร้างชุดเริ่มต้นที่ยังไม่มี: ประเภทเอกสารเบิกใช้ OUR ตามสูตร · OUW ของเสีย · OUS อาหารพนักงาน · OUQ ชิมคุณภาพ · ครัวกลาง OUP เบิกวัตถุดิบผลิต · JUP รับสินค้าผลิตเสร็จ ·
           รหัสรายได้ POS-FOOD POS-BEV POS-SVC · คลังระหว่างทางของทุกสาขา (TR…) · ลูกค้าแพลตฟอร์ม Grab LINE MAN foodpanda ShopeeFood Robinhood · กดซ้ำได้ (ข้ามที่มีแล้ว) · ระบบอื่นส่งเอกสารเข้ามาด้วยกุญแจ API (เริ่มระบบ › กุญแจ API)</p>
         <ErrorBox error={err} />
         <PayrollSource />

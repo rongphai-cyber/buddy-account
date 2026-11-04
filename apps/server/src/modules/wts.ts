@@ -26,6 +26,9 @@ export const WTS_POS_SETUP = {
     { code: 'OUW', key: 'waste', name_th: 'ของเสีย (WTS-POS)', name_en: 'Waste (WTS-POS)' },
     { code: 'OUS', key: 'staff_meal', name_th: 'อาหารพนักงาน (WTS-POS)', name_en: 'Staff meals (WTS-POS)' },
     { code: 'OUQ', key: 'qc', name_th: 'ชิมคุณภาพ OC (WTS-POS)', name_en: 'Quality check (WTS-POS)' },
+    // ครัวกลาง (B3.3): PD = เบิกวัตถุดิบ Dr งานระหว่างทำ · PI = ปรับปรุงเพิ่ม Cr งานระหว่างทำ (ทุน/หน่วย = มูลค่า PD ÷ จำนวนผลิต)
+    { code: 'OUP', key: 'production_issue', cls: 'OU', name_th: 'เบิกวัตถุดิบผลิต (ครัวกลาง)', name_en: 'Production issue (central kitchen)' },
+    { code: 'JUP', key: 'production_receipt', cls: 'JU', name_th: 'รับสินค้าผลิตเสร็จ (ครัวกลาง)', name_en: 'Production receipt (central kitchen)' },
   ],
   items: [
     { code: 'POS-FOOD', name_th: 'ขายอาหาร', name_en: 'Food sales' },
@@ -41,7 +44,11 @@ type AccKey = (typeof WTS_POS_SETUP.doc_types)[number]['key'];
 
 const setupBody = z.object({
   /** บัญชีเดบิตของประเภทเอกสารเบิกใช้ (ช่อง 1) — ว่าง = ใช้บัญชีตามการเชื่อมต่อบัญชี */
-  accounts: z.object({ recipe: z.string().uuid().nullable().optional(), waste: z.string().uuid().nullable().optional(), staff_meal: z.string().uuid().nullable().optional(), qc: z.string().uuid().nullable().optional() }).partial().default({}),
+  accounts: z.object({
+    recipe: z.string().uuid().nullable().optional(), waste: z.string().uuid().nullable().optional(), staff_meal: z.string().uuid().nullable().optional(), qc: z.string().uuid().nullable().optional(),
+    /** ครัวกลาง: บัญชีงานระหว่างทำ — OUP เดบิต (ช่อง 1) · JUP เครดิต (ช่อง 2 ปรับปรุงเพิ่ม) */
+    production_issue: z.string().uuid().nullable().optional(), production_receipt: z.string().uuid().nullable().optional(),
+  }).partial().default({}),
 });
 
 export function wtsRoutes(app: FastifyInstance, db: Db) {
@@ -69,9 +76,12 @@ export function wtsRoutes(app: FastifyInstance, db: Db) {
       !!(await db.selectFrom(t).select('id').where('company_id', '=', a.companyId).where('code', '=', code).where('deleted_at', 'is', null).executeTakeFirst());
     for (const t of WTS_POS_SETUP.doc_types) {
       if (await has('md_doc_type', t.code)) { existing.doc_types.push(t.code); continue; }
-      const id = (await db.insertInto('md_doc_type').values({ company_id: a.companyId, code: t.code, doc_class: 'OU', module: 'IC', name_th: t.name_th, name_en: t.name_en, created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
+      const cls = 'cls' in t ? t.cls : 'OU';
+      const id = (await db.insertInto('md_doc_type').values({ company_id: a.companyId, code: t.code, doc_class: cls, module: 'IC', name_th: t.name_th, name_en: t.name_en, created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
       const acc = b.accounts[t.key as AccKey];
-      if (acc) await db.insertInto('md_doc_type_account').values({ company_id: a.companyId, doc_type_id: id, slot: 1, role: 'ISSUE_DEBIT', account_id: acc, created_by: a.userId }).execute();
+      // OU: ช่อง 1 Dr บัญชีเบิกใช้ · JU (รับเพิ่ม): ช่อง 2 Cr บัญชีปรับปรุง (packages/core posting.ts)
+      const slot = cls === 'JU' ? { slot: 2, role: 'ADJ_CREDIT' } : { slot: 1, role: 'ISSUE_DEBIT' };
+      if (acc) await db.insertInto('md_doc_type_account').values({ company_id: a.companyId, doc_type_id: id, ...slot, account_id: acc, created_by: a.userId }).execute();
       created.doc_types.push(t.code);
     }
     for (const it of WTS_POS_SETUP.items) {
@@ -99,6 +109,7 @@ export function wtsRoutes(app: FastifyInstance, db: Db) {
         'ใส่เลขผู้เสียภาษี/สาขาของลูกค้าแพลตฟอร์ม (PF-…) ที่ รายละเอียดลูกค้า — ใช้ในใบกำกับภาษีขาย',
         'กำหนดบัญชีรายได้ของรหัส POS-FOOD POS-BEV POS-SVC ที่ รายละเอียดสินค้าบริการ (ว่าง = บัญชีขายตามการเชื่อมต่อบัญชี)',
         'กำหนดบัญชีของประเภทเอกสาร OUR OUW OUS OUQ ที่ เริ่มระบบ › เลขที่เอกสาร (ว่าง = บัญชีตามการเชื่อมต่อบัญชี)',
+        'ครัวกลาง: กำหนดบัญชีงานระหว่างทำที่ประเภทเอกสาร OUP (ช่อง Dr. บัญชีเบิกใช้) และ JUP (ช่อง Cr. บัญชีปรับปรุง)',
       ],
     };
   });

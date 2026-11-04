@@ -3495,18 +3495,22 @@ describe('Buddy Account API (PGlite)', () => {
     const otherAcc = ((await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string }>)[0]!.id;
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     expect((await call('POST', '/api/v1/company/wts-pos-setup', { accounts: { waste: otherAcc } })).status).toBe(400);
-    const s1 = await call('POST', '/api/v1/company/wts-pos-setup', { accounts: { waste: expense } });
+    const s1 = await call('POST', '/api/v1/company/wts-pos-setup', { accounts: { waste: expense, production_issue: expense, production_receipt: expense } });
     expect(s1.status).toBe(200);
-    expect(s1.body.created.doc_types).toEqual(['OUR', 'OUW', 'OUS', 'OUQ']);
+    expect(s1.body.created.doc_types).toEqual(['OUR', 'OUW', 'OUS', 'OUQ', 'OUP', 'JUP']);
     expect(s1.body.created.items).toEqual(['POS-FOOD', 'POS-BEV', 'POS-SVC']);
     expect(s1.body.created.customers).toHaveLength(5);
     expect(s1.body.created.warehouses.every((c: string) => c.startsWith('TR'))).toBe(true);
     const ouw = (await sql<{ doc_class: string; account_id: string | null }>`SELECT t.doc_class, a.account_id FROM md_doc_type t LEFT JOIN md_doc_type_account a ON a.doc_type_id = t.id AND a.slot = 1 AND a.deleted_at IS NULL
         WHERE t.company_id = ${companyId} AND t.code = 'OUW' AND t.deleted_at IS NULL`.execute(database.db)).rows[0]!;
     expect(ouw).toEqual({ doc_class: 'OU', account_id: expense });
+    // ครัวกลาง (B3.3): OUP หมวด OU · JUP หมวด JU — บัญชีงานระหว่างทำ OUP ช่อง 1 Dr · JUP ช่อง 2 Cr (ปรับปรุงเพิ่ม)
+    const ck = (await sql<{ code: string; doc_class: string; slot: number | null; role: string | null }>`SELECT t.code, t.doc_class, a.slot, a.role FROM md_doc_type t LEFT JOIN md_doc_type_account a ON a.doc_type_id = t.id AND a.deleted_at IS NULL
+        WHERE t.company_id = ${companyId} AND t.code IN ('OUP', 'JUP') AND t.deleted_at IS NULL ORDER BY t.code`.execute(database.db)).rows;
+    expect(ck).toEqual([{ code: 'JUP', doc_class: 'JU', slot: 2, role: 'ADJ_CREDIT' }, { code: 'OUP', doc_class: 'OU', slot: 1, role: 'ISSUE_DEBIT' }]);
     const s2 = (await call('POST', '/api/v1/company/wts-pos-setup', {})).body;
     expect([s2.created.doc_types, s2.created.items, s2.created.customers, s2.created.warehouses]).toEqual([[], [], [], []]);
-    expect(s2.existing.doc_types).toEqual(['OUR', 'OUW', 'OUS', 'OUQ']);
+    expect(s2.existing.doc_types).toEqual(['OUR', 'OUW', 'OUS', 'OUQ', 'OUP', 'JUP']);
     expect((await call('GET', '/api/v1/customers?q=PF-GRAB')).body.rows).toHaveLength(1);
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
     expect((await call('GET', '/api/v1/customers?q=PF-GRAB')).body.rows).toHaveLength(0);
@@ -3583,6 +3587,12 @@ describe('Buddy Account API (PGlite)', () => {
     expect([p1.body.changes.length, p1.body.more]).toEqual([1, true]);
     const p2 = await feed(`types=customer&since=${p1.body.next_cursor}&limit=1`);
     expect(p2.body.changes[0].data.code).toBe('C-FEED3');
+    // สินค้า: ผู้จำหน่ายหลัก + ราคาทุนมาตรฐาน (WTS-POS แผนซื้อครัวกลาง B3.3)
+    const sup = (await call('POST', '/api/v1/suppliers', { code: 'S-FEED', name: 'ผู้จำหน่ายฟีด', tax_id: tid(956) })).body.id as string;
+    const it = await call('POST', '/api/v1/items', { code: '02-FEED-000001', name_th: 'สินค้าฟีด', base_unit_id: (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id, std_cost: '12.3456', default_supplier_id: sup });
+    expect([it.status, it.body?.error?.message]).toEqual([200, undefined]);
+    const fi = ((await feed(`types=item&since=${p2.body.next_cursor}`)).body.changes as Ch[]).find((x) => x.id === it.body.id)!;
+    expect([fi.data!.default_supplier_id, Number(fi.data!.std_cost)]).toEqual([sup, 12.3456]);
     // พารามิเตอร์ผิด
     expect((await feed('types=customer,dog')).body.error.message).toMatch(/ไม่รู้จักชนิด dog/);
     expect((await feed('since=1')).status).toBe(400);
