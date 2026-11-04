@@ -654,6 +654,54 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .doc-sheet .ds-sign > div { flex: 1; max-width: 55mm; }
 .doc-sheet .ds-line { border-bottom: 1px dotted #000; height: 8mm; margin-bottom: 1mm; }
 .doc-sheet .ds-footer { text-align: center; font-size: .9em; border-top: 1px solid #000; padding-top: 1mm; }
+.doc-sheet .ds-label { display: none; }
+/* แบบฟอร์มมืออาชีพ (เจ้าของ 04/11/2569) — สีตามธีมบริษัท (--accent) · พิมพ์ขาวดำยังอ่านชัด · พิมพ์สีพื้นหลังเสมอ */
+.doc-sheet.b-pro { --pa: var(--accent, #2f6fae); --ps: var(--accent-soft, #e2eefa); font-family: var(--sans, 'Sarabun'), 'Sarabun', Tahoma, sans-serif; padding: 0 12mm 9mm; gap: 3.5mm; line-height: 1.4; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #1d1d24; }
+.doc-sheet.b-pro::before { content: ''; display: block; height: 4mm; margin: 0 -12mm 2mm; background: var(--pa); }
+.doc-sheet.b-pro .ds-head { border-bottom: 0; padding-bottom: 0; align-items: center; }
+.doc-sheet.b-pro .ds-co { color: #33333d; font-size: .95em; }
+.doc-sheet.b-pro .ds-co b { font-size: 1.35em; color: #111; display: block; margin-bottom: .5mm; }
+.doc-sheet.b-pro .ds-title h1 { font-size: 1.75em; color: var(--pa); letter-spacing: .2px; line-height: 1.15; white-space: nowrap; }
+.doc-sheet.b-pro .ds-title { flex-shrink: 0; }
+.doc-sheet.b-pro .ds-en { font-size: .82em; letter-spacing: 1.6px; text-transform: uppercase; color: #555; font-weight: 600; }
+.doc-sheet.b-pro .ds-copy { border: 1px solid var(--pa); color: var(--pa); border-radius: 10mm; padding: 0 3.5mm; font-size: .85em; font-weight: 600; }
+.doc-sheet.b-pro .ds-void { border-radius: 2mm; }
+.doc-sheet.b-pro .ds-info { grid-template-columns: 1fr 70mm; gap: 4mm; border-top: 1.5px solid var(--pa); padding-top: 3mm; }
+.doc-sheet.b-pro .ds-info:has(> div:empty:first-child) { grid-template-columns: 1fr 95mm; }
+.doc-sheet.b-pro .ds-party { border: 1px solid #d5d5de; border-left: 1.2mm solid var(--pa); border-radius: 1.5mm; padding: 2mm 3.5mm; }
+.doc-sheet.b-pro .ds-label { display: block; font-size: .78em; font-weight: 700; color: var(--pa); letter-spacing: .4px; margin-bottom: .5mm; }
+.doc-sheet.b-pro .ds-party b { font-size: 1.08em; }
+.doc-sheet.b-pro .ds-meta { background: var(--ps); border-radius: 1.5mm; align-self: start; width: 100%; }
+.doc-sheet.b-pro .ds-meta th, .doc-sheet.b-pro .ds-meta td { padding: .9mm 3mm; border-bottom: 1px solid rgba(255,255,255,.85); }
+.doc-sheet.b-pro .ds-meta th { color: #444; font-weight: 500; }
+.doc-sheet.b-pro .ds-meta td { text-align: right; font-weight: 600; }
+.doc-sheet.b-pro .ds-meta tr:first-child td { color: var(--pa); font-size: 1.1em; font-weight: 700; }
+.doc-sheet.b-pro table.ds-lines thead th { background: var(--pa); color: #fff; border: 0; padding: 1.6mm 2mm; font-weight: 600; font-size: .92em; }
+.doc-sheet.b-pro table.ds-lines thead th:first-child { border-top-left-radius: 1.5mm; } .doc-sheet.b-pro table.ds-lines thead th:last-child { border-top-right-radius: 1.5mm; }
+.doc-sheet.b-pro table.ds-lines td { padding: 1.3mm 2mm; border-bottom: 1px solid #e6e6ee; }
+.doc-sheet.b-pro table.ds-lines tbody tr:nth-child(even) td { background: #f8f8fb; }
+.doc-sheet.b-pro table.ds-lines tbody tr.ds-line-note td { background: transparent; color: #555; font-size: .92em; padding-top: 0; }
+.doc-sheet.b-pro table.ds-lines tbody tr:last-child td { border-bottom: 1.5px solid var(--pa); }
+.doc-sheet.b-pro table.ds-lines td.l:nth-child(2) { white-space: nowrap; font-size: .93em; }
+.doc-sheet.b-pro table.ds-lines td.c { white-space: normal; }
+.doc-sheet.b-pro table.ds-lines tfoot td { border-top: 1.5px solid var(--pa); border-bottom: 0; background: var(--ps); }
+.doc-sheet.b-pro .ds-sum { gap: 5mm; }
+.doc-sheet.b-pro .ds-baht { border: 0; background: var(--ps); border-radius: 1.5mm; padding: 1.6mm 3.5mm; font-weight: 600; }
+.doc-sheet.b-pro .ds-totals { min-width: 78mm; }
+.doc-sheet.b-pro .ds-totals th, .doc-sheet.b-pro .ds-totals td { padding: .7mm 3mm; }
+.doc-sheet.b-pro .ds-totals th { color: #444; }
+.doc-sheet.b-pro .ds-totals tr.ds-net th, .doc-sheet.b-pro .ds-totals tr.ds-net td { background: var(--pa); color: #fff; border: 0; padding: 1.8mm 3mm; font-size: 1.08em; }
+.doc-sheet.b-pro .ds-totals tr.ds-net th { border-radius: 1.5mm 0 0 1.5mm; } .doc-sheet.b-pro .ds-totals tr.ds-net td { border-radius: 0 1.5mm 1.5mm 0; }
+.doc-sheet.b-pro .ds-pay { background: #f8f8fb; border-radius: 1.5mm; }
+.doc-sheet.b-pro .ds-pay td { padding: .8mm 3mm; }
+.doc-sheet.b-pro .ds-jnl th { background: var(--ps); }
+.doc-sheet.b-pro .ds-jnl th, .doc-sheet.b-pro .ds-jnl td { border-color: #cfcfd8; }
+.doc-sheet.b-pro .ds-notes { border-left: 1mm solid var(--ps); padding-left: 2.5mm; color: #333; }
+.doc-sheet.b-pro .ds-sign { gap: 5mm; padding-top: 6mm; }
+.doc-sheet.b-pro .ds-sign > div { border: 1px solid #dcdce4; border-radius: 1.5mm; padding: 2mm 3mm 2.5mm; max-width: 58mm; }
+.doc-sheet.b-pro .ds-sign > div > div:not(.ds-line):not(.ds-muted) { font-weight: 600; color: #333; }
+.doc-sheet.b-pro .ds-line { border-bottom: 1px solid #888; height: 11mm; }
+.doc-sheet.b-pro .ds-footer { border-top: 1px solid #dcdce4; color: #555; }
 .doc-print { display: none; }
 @page doc-a4 { size: A4 portrait; margin: 0; }
 @page doc-a5 { size: A5 landscape; margin: 0; }

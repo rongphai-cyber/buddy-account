@@ -2807,12 +2807,17 @@ describe('Buddy Account API (PGlite)', () => {
     expect(p.data.lines[0]).toMatchObject({ code, qty: '2', price: '150.00', amount: '300.00' });
     expect(p.data.totals.at(-1)).toEqual({ label: 'จำนวนเงินรวมทั้งสิ้น', value: '321.00' });
     expect(p.data.amount_text).toBe('สามร้อยยี่สิบเอ็ดบาทถ้วน');
-    expect(p.forms.map((f: { slot: number }) => f.slot)).toEqual([1, 2, 3, 4]);
+    expect(p.forms.map((f: { slot: number; base: string }) => `${f.slot}:${f.base}`)).toEqual(['1:pro', '2:plain', '3:half', '4:cont', '6:grid']);
+    // ชื่อเอกสารมาตรฐาน (04/11/2569): ขายเชื่อมี VAT = ใบแจ้งหนี้/ใบกำกับภาษี (เว้นแต่ประเภทเอกสารตั้งชื่อเอง)
+    const dts = (await call('GET', '/api/v1/doc-types')).body;
+    const ivName = ((Array.isArray(dts) ? dts : dts.rows) as Array<{ id: string; name_th: string }>).find((t) => t.id === ivType)!.name_th;
+    if (['ขายเงินเชื่อ', ''].includes(ivName)) expect([p.data.title, p.data.title_en]).toEqual(['ใบแจ้งหนี้/ใบกำกับภาษี', 'INVOICE / TAX INVOICE']);
+    else expect(p.data.title).toBe(ivName);
     // แบบฟอร์มของบริษัท: ทับหมายเลข 1 + เพิ่มหมายเลข 7 (คอลัมน์ที่ไม่รู้จักถูกตัด)
     expect((await call('PUT', '/api/v1/print-forms/IV/1', { name: 'ใบกำกับภาษี/ใบส่งของ', base: 'plain', layout: { title: 'ใบกำกับภาษี', columns: [{ key: 'name' }, { key: 'amount', label: 'Amount' }, { key: 'bogus' }] } })).status).toBe(200);
     expect((await call('PUT', '/api/v1/print-forms/IV/7', { name: 'ใบส่งของครึ่งหน้า', base: 'half', layout: {} })).status).toBe(200);
     const p2 = (await call('GET', `/api/v1/print/doc/${iv.id}`)).body;
-    expect(p2.forms.map((f: { slot: number; custom: boolean }) => `${f.slot}${f.custom ? '*' : ''}`)).toEqual(['1*', '2', '3', '4', '7*']);
+    expect(p2.forms.map((f: { slot: number; custom: boolean }) => `${f.slot}${f.custom ? '*' : ''}`)).toEqual(['1*', '2', '3', '4', '6', '7*']);
     expect(p2.forms[0].layout.title).toBe('ใบกำกับภาษี');
     expect(p2.forms[0].layout.columns.filter((c: { show: boolean }) => c.show).map((c: { key: string; label: string }) => `${c.key}:${c.label}`)).toEqual(['name:รายละเอียด', 'amount:Amount']);
     // พิมพ์ออกเครื่องพิมพ์นับครั้ง

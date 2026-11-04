@@ -378,7 +378,7 @@
 },
 {
 "th": "ลูกค้า",
-"n": 45,
+"n": 46,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
@@ -409,13 +409,14 @@
 "apps/server/src/modules/reports/register.ts",
 "packages/core/src/doc-calc.ts",
 "packages/core/src/pdpa.ts",
+"packages/core/src/printforms.ts",
 "packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
 ]
 },
 {
 "th": "ผู้จำหน่าย",
-"n": 43,
+"n": 44,
 "files": [
 "apps/web/src/components/AiBill.tsx",
 "apps/web/src/components/LkSelect.tsx",
@@ -445,6 +446,7 @@
 "apps/server/src/modules/reports/parties.ts",
 "apps/server/src/modules/reports/register.ts",
 "packages/core/src/doc-calc.ts",
+"packages/core/src/printforms.ts",
 "packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
 ]
@@ -2193,6 +2195,31 @@
 ]
 },
 {
+"th": "ใบสั่งขาย",
+"n": 10,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/sync.ts"
+]
+},
+{
+"th": "ใบสั่งซื้อ",
+"n": 10,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "ครบกำหนด",
 "n": 9,
 "files": [
@@ -2202,6 +2229,19 @@
 "apps/server/src/modules/reports/parties.ts",
 "apps/server/src/modules/reports/register.ts",
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "จ่ายเงินมัดจำ",
+"n": 9,
+"files": [
+"apps/server/src/modules/vat.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
 ]
 },
 {
@@ -2252,6 +2292,18 @@
 "apps/web/src/pages/reports/TrialBalance.tsx",
 "apps/server/src/modules/reports/parties.ts",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "รับเงินมัดจำ",
+"n": 9,
+"files": [
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
 ]
 },
 {
@@ -2331,6 +2383,19 @@
 ]
 },
 {
+"th": "ใบเสนอราคา",
+"n": 9,
+"files": [
+"apps/server/src/modules/docs/trade.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/sync.ts"
+]
+},
+{
 "th": "(ไม่ระบุ)",
 "n": 8,
 "files": [
@@ -2354,23 +2419,34 @@
 ]
 },
 {
+"th": "ขายเงินสด",
+"n": 8,
+"files": [
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/sync.ts"
+]
+},
+{
+"th": "ขายเงินเชื่อ",
+"n": 8,
+"files": [
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/sync.ts"
+]
+},
+{
 "th": "จ่ายชำระหนี้",
 "n": 8,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/server/src/modules/vat.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts"
-]
-},
-{
-"th": "จ่ายเงินมัดจำ",
-"n": 8,
-"files": [
-"apps/server/src/modules/vat.ts",
-"apps/server/src/modules/reports/tax.ts",
 "packages/core/src/doc-calc.ts",
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts",
@@ -2495,17 +2571,6 @@
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/sync.ts"
-]
-},
-{
-"th": "รับเงินมัดจำ",
-"n": 8,
-"files": [
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -2659,25 +2724,25 @@
 ]
 },
 {
-"th": "ใบสั่งขาย",
+"th": "ใบวางบิล",
 "n": 8,
 "files": [
-"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/docs/engine.ts",
 "packages/core/src/doc-calc.ts",
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/sync.ts"
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
 ]
 },
 {
-"th": "ใบสั่งซื้อ",
+"th": "ใบเพิ่มหนี้",
 "n": 8,
 "files": [
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/etax.ts",
 "packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
 "packages/core/src/reports.ts"
 ]
 },
@@ -2707,27 +2772,6 @@
 ]
 },
 {
-"th": "ขายเงินสด",
-"n": 7,
-"files": [
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/sync.ts"
-]
-},
-{
-"th": "ขายเงินเชื่อ",
-"n": 7,
-"files": [
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/sync.ts"
-]
-},
-{
 "th": "ค่าใช้จ่ายอื่น",
 "n": 7,
 "files": [
@@ -2750,6 +2794,28 @@
 "apps/web/src/pages/payroll/PaySetup.tsx",
 "apps/web/src/pages/settings/DataTables.tsx",
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "ซื้อเงินสด",
+"n": 7,
+"files": [
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
+"th": "ซื้อเงินเชื่อ",
+"n": 7,
+"files": [
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -2873,6 +2939,17 @@
 ]
 },
 {
+"th": "ใบรับวางบิล",
+"n": 7,
+"files": [
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "ใบสำคัญที่ลงบัญชี",
 "n": 7,
 "files": [
@@ -2882,28 +2959,6 @@
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "ใบเพิ่มหนี้",
-"n": 7,
-"files": [
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/etax.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts"
-]
-},
-{
-"th": "ใบเสนอราคา",
-"n": 7,
-"files": [
-"apps/server/src/modules/docs/trade.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/sync.ts"
 ]
 },
 {
@@ -3005,26 +3060,6 @@
 "files": [
 "apps/web/src/pages/Signup.tsx",
 "apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "ซื้อเงินสด",
-"n": 6,
-"files": [
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/reports.ts"
-]
-},
-{
-"th": "ซื้อเงินเชื่อ",
-"n": 6,
-"files": [
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -3359,17 +3394,6 @@
 "apps/web/src/pages/reports/FsLayouts.tsx",
 "apps/server/src/import/express/migrate.ts",
 "apps/server/src/modules/gl/reports.ts"
-]
-},
-{
-"th": "ใบวางบิล",
-"n": 6,
-"files": [
-"apps/server/src/modules/docs/engine.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -3896,6 +3920,26 @@
 ]
 },
 {
+"th": "ลดหนี้/รับคืน",
+"n": 5,
+"files": [
+"apps/server/src/modules/vat.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ลดหนี้/ส่งคืน",
+"n": 5,
+"files": [
+"apps/server/src/modules/vat.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "วันทำงาน",
 "n": 5,
 "files": [
@@ -4090,22 +4134,22 @@
 ]
 },
 {
+"th": "โอนย้ายระหว่างคลัง",
+"n": 5,
+"files": [
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/sync.ts"
+]
+},
+{
 "th": "ใบนำฝากเช็ค",
 "n": 5,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/server/src/modules/cheques.ts",
 "packages/core/src/gl-link.ts",
-"packages/core/src/reports.ts"
-]
-},
-{
-"th": "ใบรับวางบิล",
-"n": 5,
-"files": [
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
 "packages/core/src/reports.ts"
 ]
 },
@@ -4599,24 +4643,6 @@
 ]
 },
 {
-"th": "ลดหนี้/รับคืน",
-"n": 4,
-"files": [
-"apps/server/src/modules/vat.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/gl-link.ts"
-]
-},
-{
-"th": "ลดหนี้/ส่งคืน",
-"n": 4,
-"files": [
-"apps/server/src/modules/vat.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/gl-link.ts"
-]
-},
-{
 "th": "วันที่ยกเลิก",
 "n": 4,
 "files": [
@@ -4773,15 +4799,6 @@
 "apps/server/src/import/express/migrate.ts",
 "packages/core/src/doc-calc.ts",
 "packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "โอนย้ายระหว่างคลัง",
-"n": 4,
-"files": [
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/sync.ts"
 ]
 },
 {
@@ -5483,6 +5500,15 @@
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "ปรับปรุงเพิ่ม/ลดสินค้า",
+"n": 3,
+"files": [
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -6197,6 +6223,14 @@
 ]
 },
 {
+"th": "เบิกใช้ภายใน",
+"n": 3,
+"files": [
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "เปลี่ยนรหัสผ่าน",
 "n": 3,
 "files": [
@@ -6227,6 +6261,22 @@
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "เพิ่มหนี้ (ลูกหนี้)",
+"n": 3,
+"files": [
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "เพิ่มหนี้ (เจ้าหนี้)",
+"n": 3,
+"files": [
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -6375,11 +6425,47 @@
 ]
 },
 {
+"th": "ใบลดหนี้/รับคืน",
+"n": 3,
+"files": [
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ใบลดหนี้/ส่งคืน",
+"n": 3,
+"files": [
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ใบสำคัญใหม่",
 "n": 3,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
+"th": "ใบเพิ่มหนี้ (ลูกหนี้)",
+"n": 3,
+"files": [
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ใบเสร็จรับเงิน/ใบกำกับภาษี",
+"n": 3,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/etax.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -8171,14 +8257,6 @@
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/server/src/modules/vat.ts"
-]
-},
-{
-"th": "ปรับปรุงเพิ่ม/ลดสินค้า",
-"n": 2,
-"files": [
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -10298,13 +10376,6 @@
 ]
 },
 {
-"th": "เบิกใช้ภายใน",
-"n": 2,
-"files": [
-"packages/core/src/gl-link.ts"
-]
-},
-{
 "th": "เปลี่ยนรหัส",
 "n": 2,
 "files": [
@@ -10402,20 +10473,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
-]
-},
-{
-"th": "เพิ่มหนี้ (ลูกหนี้)",
-"n": 2,
-"files": [
-"packages/core/src/gl-link.ts"
-]
-},
-{
-"th": "เพิ่มหนี้ (เจ้าหนี้)",
-"n": 2,
-"files": [
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -10975,11 +11032,11 @@
 ]
 },
 {
-"th": "ใบลดหนี้/รับคืน",
+"th": "ใบลดหนี้",
 "n": 2,
 "files": [
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/gl-link.ts"
+"packages/core/src/etax.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -10988,14 +11045,6 @@
 "files": [
 "packages/core/src/doc-calc.ts",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "ใบลดหนี้/ส่งคืน",
-"n": 2,
-"files": [
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -11014,19 +11063,35 @@
 ]
 },
 {
-"th": "ใบเพิ่มหนี้ (ลูกหนี้)",
+"th": "ใบเพิ่มหนี้ (ของเจ้าหนี้)",
 "n": 2,
 "files": [
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts"
+"packages/core/src/gl-link.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
-"th": "ใบเสร็จรับเงิน/ใบกำกับภาษี",
+"th": "ใบเพิ่มหนี้ (เจ้าหนี้)",
+"n": 2,
+"files": [
+"packages/core/src/doc-calc.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ใบเสร็จรับเงิน",
 "n": 2,
 "files": [
 "apps/server/src/modules/print.ts",
-"packages/core/src/etax.ts"
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ใบแจ้งหนี้/ใบกำกับภาษี",
+"n": 2,
+"files": [
+"packages/core/src/etax.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -13915,7 +13980,7 @@
 ]
 },
 {
-"th": "x.slot === slot); setName(m?.name ?? c?.name ?? `แบบฟอร์ม ${0}`); setBase((m?.base ?? 'grid') as PrintBase); setStatus(c?.status === 'I' ? 'I' : 'A'); setL(m?.layout ?? normalizeLayout(scope, 'grid', {1})); setDirty(false); setErr(null); }, [forms.data, slot, scope]); const set = (p: Partial",
+"th": "x.slot === slot); setName(m?.name ?? c?.name ?? `แบบฟอร์ม ${0}`); setBase((m?.base ?? 'pro') as PrintBase); setStatus(c?.status === 'I' ? 'I' : 'A'); setL(m?.layout ?? normalizeLayout(scope, 'grid', {1})); setDirty(false); setErr(null); }, [forms.data, slot, scope]); const set = (p: Partial",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
@@ -15407,6 +15472,13 @@
 },
 {
 "th": "กระดาษ A4 แนวตั้ง มีเส้นตาราง",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "กระดาษ A4 แนวตั้ง หัวเอกสารและยอดรวมใช้สีธีมของบริษัท (เจ้าของ 04/11/2569: แบบฟอร์มสวยงามแบบมืออาชีพ) — พิมพ์ขาวดำก็อ่านชัด",
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
@@ -28818,13 +28890,6 @@
 ]
 },
 {
-"th": "มาตรฐาน แสดงรายการสินค้า/บริการของบิล (A4)",
-"n": 1,
-"files": [
-"packages/core/src/printforms.ts"
-]
-},
-{
 "th": "มี",
 "n": 1,
 "files": [
@@ -29018,6 +29083,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
+]
+},
+{
+"th": "มืออาชีพ สีตามธีมบริษัท (A4)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "มืออาชีพ แสดงรายการสินค้า/บริการของบิล (A4)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -46073,6 +46152,13 @@
 ]
 },
 {
+"th": "ใบจ่ายเงินมัดจำ",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ใบนำฝากนี้ผ่านเช็คแล้ว",
 "n": 1,
 "files": [
@@ -46136,6 +46222,13 @@
 ]
 },
 {
+"th": "ใบปรับปรุงสินค้า",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ใบมัดจำ",
 "n": 1,
 "files": [
@@ -46157,6 +46250,20 @@
 ]
 },
 {
+"th": "ใบรับสินค้า",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ใบรับสินค้า (ซื้อเงินสด)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ใบรับสินค้า#",
 "n": 1,
 "files": [
@@ -46164,17 +46271,24 @@
 ]
 },
 {
+"th": "ใบรับเงินมัดจำ",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ใบรับเงินมัดจำ/ใบกำกับภาษี",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ใบลด/เพิ่มหนี้ที่อ้างใบกำกับนี้",
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/engine.ts"
-]
-},
-{
-"th": "ใบลดหนี้",
-"n": 1,
-"files": [
-"packages/core/src/etax.ts"
 ]
 },
 {
@@ -46423,6 +46537,13 @@
 ]
 },
 {
+"th": "ใบส่งคืนสินค้า",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ใบเบิก/โอน/ปรับปรุงสินค้า",
 "n": 1,
 "files": [
@@ -46430,24 +46551,17 @@
 ]
 },
 {
+"th": "ใบเบิกสินค้า",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ใบเพิ่ม/ลดหนี้ต้องอ้างเลขที่และวันที่ใบกำกับภาษีเดิม — แก้ที่เอกสาร (ช่อง \"อ้างถึงใบกำกับ\")",
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
-]
-},
-{
-"th": "ใบเพิ่มหนี้ (ของเจ้าหนี้)",
-"n": 1,
-"files": [
-"packages/core/src/gl-link.ts"
-]
-},
-{
-"th": "ใบเพิ่มหนี้ (เจ้าหนี้)",
-"n": 1,
-"files": [
-"packages/core/src/doc-calc.ts"
 ]
 },
 {
@@ -46465,13 +46579,6 @@
 ]
 },
 {
-"th": "ใบเสร็จรับเงิน",
-"n": 1,
-"files": [
-"apps/server/src/modules/print.ts"
-]
-},
-{
 "th": "ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด) ควรแสดงรายการสินค้า/บริการ",
 "n": 1,
 "files": [
@@ -46486,10 +46593,10 @@
 ]
 },
 {
-"th": "ใบแจ้งหนี้/ใบกำกับภาษี",
+"th": "ใบแจ้งหนี้",
 "n": 1,
 "files": [
-"packages/core/src/etax.ts"
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -46532,6 +46639,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "ใบโอนย้ายสินค้า",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
 ]
 },
 {

@@ -5,7 +5,7 @@ import { BANK_KINDS, BILL_KINDS, CASH_KINDS, SETTLE_KINDS, STOCK_KINDS, TRADE_KI
  * Express ใช้ภาษารายงาน (ไฟล์ .RPT) — Buddy ใช้แบบฟอร์มที่ปรับได้จากหน้าจอ (หัวเรื่อง คอลัมน์ ช่องลงชื่อ สำเนา ขนาดอักษร)
  * เมนูพิมพ์มีฟอร์ม 1–9 ต่อชนิดเอกสาร: ต้นแบบในโปรแกรม (มีเส้น/ไม่มีเส้น/ครึ่งหน้า/ต่อเนื่อง) + ฟอร์มที่บริษัทกำหนดเองทับหมายเลขเดิมได้
  */
-export type PrintBase = 'grid' | 'plain' | 'half' | 'cont';
+export type PrintBase = 'pro' | 'grid' | 'plain' | 'half' | 'cont';
 export type PrintFamily = 'trade' | 'settle' | 'bill' | 'cash' | 'stock' | 'bank' | 'petty' | 'journal';
 export interface PrintColumn { key: string; label: string; width: number; align: 'l' | 'r' | 'c'; show: boolean }
 export interface PrintLayout {
@@ -44,13 +44,52 @@ export const PRINT_LOGO_POS: Array<{ key: PrintLogoPos; label: string }> = [
 export interface PrintFormEntry { slot: number; name: string; base: PrintBase; layout: PrintLayout; custom: boolean }
 
 export const PRINT_BASES: Array<{ key: PrintBase; label: string; hint: string }> = [
+  { key: 'pro', label: 'มืออาชีพ สีตามธีมบริษัท (A4)', hint: 'กระดาษ A4 แนวตั้ง หัวเอกสารและยอดรวมใช้สีธีมของบริษัท (เจ้าของ 04/11/2569: แบบฟอร์มสวยงามแบบมืออาชีพ) — พิมพ์ขาวดำก็อ่านชัด' },
   { key: 'grid', label: 'มาตรฐาน มีเส้นตาราง (A4)', hint: 'กระดาษ A4 แนวตั้ง มีเส้นตาราง' },
   { key: 'plain', label: 'ไม่มีเส้นตาราง (A4)', hint: 'สำหรับพิมพ์ลงแบบฟอร์มที่พิมพ์เส้นไว้แล้ว' },
   { key: 'half', label: 'ครึ่งหน้า (A5 แนวนอน)', hint: 'ครึ่งหนึ่งของ A4 — เอกสารรายการน้อย' },
   { key: 'cont', label: 'กระดาษต่อเนื่อง 9×11 นิ้ว', hint: 'เครื่องพิมพ์ดอตแมทริกซ์ (Express 12/15 cpi)' },
 ];
-/** ฟอร์มต้นแบบที่ทุกชนิดเอกสารมีเสมอ (หมายเลข 1–4) — บริษัทบันทึกฟอร์มของตัวเองทับหมายเลขนี้หรือเพิ่มหมายเลข 5–9 */
-export const BUILTIN_SLOTS: Array<{ slot: number; base: PrintBase }> = [{ slot: 1, base: 'grid' }, { slot: 2, base: 'plain' }, { slot: 3, base: 'half' }, { slot: 4, base: 'cont' }];
+/**
+ * ฟอร์มต้นแบบที่ทุกชนิดเอกสารมีเสมอ (หมายเลข 1–4, 6) — บริษัทบันทึกฟอร์มของตัวเองทับหมายเลขนี้หรือเพิ่มหมายเลข 5–9
+ * ฟอร์ม 1 = มืออาชีพ (04/11/2569) · แบบมีเส้นตารางเดิมย้ายไปหมายเลข 6
+ */
+export const BUILTIN_SLOTS: Array<{ slot: number; base: PrintBase }> = [{ slot: 1, base: 'pro' }, { slot: 2, base: 'plain' }, { slot: 3, base: 'half' }, { slot: 4, base: 'cont' }, { slot: 6, base: 'grid' }];
+
+/** ชื่อประเภทเอกสารแบบทั่วไปของ Express/Buddy (ชื่อใช้ภายใน เช่น "ขายเงินเชื่อ") — พิมพ์แทนด้วยชื่อเอกสารมาตรฐาน */
+const GENERIC_TYPE_NAMES: Record<string, string[]> = {
+  IV: ['ขายเงินเชื่อ'], HS: ['ขายเงินสด'], CN: ['ใบลดหนี้/รับคืน', 'ลดหนี้/รับคืน'], DR: ['ใบเพิ่มหนี้ (ลูกหนี้)', 'เพิ่มหนี้ (ลูกหนี้)'], AI: ['รับเงินมัดจำ'],
+  RR: ['ซื้อเงินเชื่อ'], HP: ['ซื้อเงินสด'], DN: ['ใบลดหนี้/ส่งคืน', 'ลดหนี้/ส่งคืน'], CP: ['ใบเพิ่มหนี้ (ของเจ้าหนี้)', 'เพิ่มหนี้ (เจ้าหนี้)'], AE: ['จ่ายเงินมัดจำ'],
+  RL: ['โอนย้ายระหว่างคลัง'], OU: ['เบิกใช้ภายใน'], JU: ['ปรับปรุงเพิ่ม/ลดสินค้า'],
+  QT: ['ใบเสนอราคา'], SO: ['ใบสั่งขาย'], PO: ['ใบสั่งซื้อ'], BS: ['ใบวางบิล'], BR: ['ใบรับวางบิล'],
+};
+/** ชื่อเอกสารมาตรฐานที่พิมพ์ (ไทย/อังกฤษ) — vat = เอกสารมีภาษีมูลค่าเพิ่ม (ต้องมีคำว่า "ใบกำกับภาษี" ตามประมวลรัษฎากร ม.86/4) */
+const STD_TITLES: Record<string, (vat: boolean) => [string, string]> = {
+  IV: (v) => (v ? ['ใบแจ้งหนี้/ใบกำกับภาษี', 'INVOICE / TAX INVOICE'] : ['ใบแจ้งหนี้', 'INVOICE']),
+  HS: (v) => (v ? ['ใบเสร็จรับเงิน/ใบกำกับภาษี', 'RECEIPT / TAX INVOICE'] : ['ใบเสร็จรับเงิน', 'RECEIPT']),
+  CN: () => ['ใบลดหนี้', 'CREDIT NOTE'], DR: () => ['ใบเพิ่มหนี้', 'DEBIT NOTE'],
+  AI: (v) => (v ? ['ใบรับเงินมัดจำ/ใบกำกับภาษี', 'DEPOSIT RECEIPT / TAX INVOICE'] : ['ใบรับเงินมัดจำ', 'DEPOSIT RECEIPT']),
+  RR: () => ['ใบรับสินค้า', 'GOODS RECEIPT'], HP: () => ['ใบรับสินค้า (ซื้อเงินสด)', 'GOODS RECEIPT'], DN: () => ['ใบส่งคืนสินค้า', 'GOODS RETURN'],
+  CP: () => ['ใบเพิ่มหนี้ (เจ้าหนี้)', 'SUPPLIER DEBIT NOTE'], AE: () => ['ใบจ่ายเงินมัดจำ', 'DEPOSIT PAYMENT'],
+  RL: () => ['ใบโอนย้ายสินค้า', 'STOCK TRANSFER'], OU: () => ['ใบเบิกสินค้า', 'STOCK ISSUE'], JU: () => ['ใบปรับปรุงสินค้า', 'STOCK ADJUSTMENT'],
+  QT: () => ['ใบเสนอราคา', 'QUOTATION'], SO: () => ['ใบสั่งขาย', 'SALES ORDER'], PO: () => ['ใบสั่งซื้อ', 'PURCHASE ORDER'],
+  BS: () => ['ใบวางบิล', 'BILLING NOTE'], BR: () => ['ใบรับวางบิล', 'BILL ACCEPTANCE'],
+};
+/**
+ * ชื่อที่พิมพ์บนเอกสาร: ประเภทเอกสารที่ยังใช้ชื่อทั่วไป (ขายเงินเชื่อ ฯลฯ) → ชื่อเอกสารมาตรฐาน · บริษัทตั้งชื่อเองแล้ว → ใช้ชื่อนั้น
+ * (แบบฟอร์มพิมพ์ตั้ง "หัวเรื่อง" ทับได้อีกชั้น)
+ */
+export function printTitle(scope: string, typeName: string, typeNameEn: string, hasVat: boolean): { th: string; en: string } {
+  const std = STD_TITLES[scope];
+  const name = typeName.trim();
+  if (std && (!name || (GENERIC_TYPE_NAMES[scope] ?? []).includes(name))) { const [th, en] = std(hasVat); return { th, en }; }
+  return { th: name, en: typeNameEn.trim() || (std ? std(hasVat)[1] : '') };
+}
+/** หัวกล่องคู่ค้าในแบบฟอร์ม */
+export function printPartyLabel(scope: string): string {
+  const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, ...BILL_KINDS].find((x) => x.cls === scope);
+  return k?.party === 'supplier' ? 'ผู้จำหน่าย' : k ? 'ลูกค้า' : '';
+}
 
 const STOCK_CLASSES = new Set<string>(STOCK_KINDS.map((k) => k.cls));
 const BANK_CLASSES = new Set<string>([...BANK_KINDS.map((k) => k.cls), 'BQ', 'QP']);
@@ -141,13 +180,16 @@ const HEAD: Record<PrintFamily, string[]> = {
 export function defaultLayout(scope: string, base: PrintBase, title = ''): PrintLayout {
   const fam = printFamily(scope);
   const small = base === 'half';
+  // มืออาชีพ: รหัสสินค้ากว้างพอไม่ตัดบรรทัด · ไม่เติมบรรทัดว่าง (ไม่มีเส้นแนวตั้ง)
+  const proW: Record<string, number> = base === 'pro' ? { code: 17, name: 29, unit: 10 } : {};
   return {
     title, title_en: '', copies: fam === 'trade' && !['QT', 'SO', 'PO'].includes(scope) ? ['ต้นฉบับ', 'สำเนา'] : [],
     font_pt: small ? 9 : base === 'cont' ? 11 : 10,
-    columns: PRINT_COLUMNS[fam].map((c) => ({ ...c, show: c.show !== false && !(small && (c.key === 'disc' || c.key === 'wh')) })),
-    head_fields: HEAD[fam], show_company: base !== 'plain', show_party: fam !== 'journal' && fam !== 'stock' && fam !== 'bank',
+    columns: PRINT_COLUMNS[fam].map((c) => ({ ...c, width: proW[c.key] ?? c.width, show: c.show !== false && !(small && (c.key === 'disc' || c.key === 'wh')) })),
+    // ขายสด/ซื้อสด ไม่มีวันครบกำหนด
+    head_fields: scope === 'HS' || scope === 'HP' ? HEAD[fam].filter((k) => k !== 'due_date') : HEAD[fam], show_company: base !== 'plain', show_party: fam !== 'journal' && fam !== 'stock' && fam !== 'bank',
     show_amount_text: fam !== 'stock' && fam !== 'journal', show_totals: fam !== 'journal', show_payments: fam === 'settle' || fam === 'cash' || scope === 'HS' || scope === 'HP',
-    show_notes: true, show_journal: fam === 'journal', signatures: SIGN[fam], footer: '', min_rows: small ? 0 : base === 'cont' ? 12 : 8,
+    show_notes: true, show_journal: fam === 'journal', signatures: SIGN[fam], footer: '', min_rows: small || base === 'pro' ? 0 : base === 'cont' ? 12 : 8,
     // แบบไม่มีเส้น (พิมพ์ลงกระดาษที่มีหัวแล้ว) และกระดาษต่อเนื่อง ไม่พิมพ์โลโก้
     logo: base === 'plain' || base === 'cont' ? 'none' : 'left', logo_mm: base === 'half' ? 12 : 18, signature_images: [], settle_detail: 'auto',
   };
@@ -188,10 +230,10 @@ export function printMenu(scope: string, userForms: Array<{ slot: number; name: 
   const out = new Map<number, PrintFormEntry>();
   for (const b of BUILTIN_SLOTS) out.set(b.slot, { slot: b.slot, base: b.base, name: PRINT_BASES.find((x) => x.key === b.base)!.label, layout: defaultLayout(scope, b.base, title), custom: false });
   // ใบเสร็จ/ใบสำคัญจ่าย: ต้นแบบที่ 5 แสดงรายการสินค้า/บริการของทุกบิลที่ชำระ (ข้อกำหนดเจ้าของ 31/10/2569)
-  if (printFamily(scope) === 'settle') out.set(5, { slot: 5, base: 'grid', name: 'มาตรฐาน แสดงรายการสินค้า/บริการของบิล (A4)', layout: { ...defaultLayout(scope, 'grid', title), settle_detail: 'items' }, custom: false });
+  if (printFamily(scope) === 'settle') out.set(5, { slot: 5, base: 'pro', name: 'มืออาชีพ แสดงรายการสินค้า/บริการของบิล (A4)', layout: { ...defaultLayout(scope, 'pro', title), settle_detail: 'items' }, custom: false });
   for (const f of userForms) {
     if (f.status === 'I') { out.delete(f.slot); continue; }
-    const base = (PRINT_BASES.some((b) => b.key === f.base) ? f.base : 'grid') as PrintBase;
+    const base = (PRINT_BASES.some((b) => b.key === f.base) ? f.base : 'pro') as PrintBase;
     const layout = normalizeLayout(scope, base, f.layout);
     out.set(f.slot, { slot: f.slot, base, name: f.name, layout: { ...layout, title: layout.title || title }, custom: true });
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkApprove, checkPrint, checkUnapprove, defaultLayout, docMenuOf, docPath, normalizeLayout, printFamily, printMenu } from './printforms.js';
+import { checkApprove, checkPrint, checkUnapprove, defaultLayout, docMenuOf, docPath, normalizeLayout, printFamily, printMenu, printPartyLabel, printTitle } from './printforms.js';
 
 describe('แบบฟอร์มพิมพ์เอกสาร (S-RD-01/02)', () => {
   it('จัดกลุ่มเอกสารและเมนูสิทธิ์', () => {
@@ -11,9 +11,9 @@ describe('แบบฟอร์มพิมพ์เอกสาร (S-RD-01/02)
   });
   it('ต้นแบบ 1–4 + ฟอร์มของบริษัททับหมายเลขเดิม / ปิดหมายเลขได้', () => {
     const m = printMenu('IV', [{ slot: 1, name: 'ใบกำกับภาษี บริษัท', base: 'plain', layout: { title: 'ใบกำกับภาษี', copies: ['ต้นฉบับ'] } }, { slot: 4, name: 'x', base: 'grid', layout: {}, status: 'I' }, { slot: 7, name: 'ใบส่งของ', base: 'half', layout: {} }], 'ขายเงินเชื่อ');
-    expect(m.map((x) => `${x.slot}${x.custom ? '*' : ''}:${x.base}`)).toEqual(['1*:plain', '2:plain', '3:half', '7*:half']);
+    expect(m.map((x) => `${x.slot}${x.custom ? '*' : ''}:${x.base}`)).toEqual(['1*:plain', '2:plain', '3:half', '6:grid', '7*:half']);
     expect(m[0]!.layout.title).toBe('ใบกำกับภาษี');
-    expect(m[3]!.layout.title).toBe('ขายเงินเชื่อ');
+    expect(m[4]!.layout.title).toBe('ขายเงินเชื่อ');
   });
   it('ทำความสะอาดแบบฟอร์ม: คอลัมน์ที่ไม่รู้จักถูกตัด คอลัมน์ใหม่ต่อท้ายแบบซ่อน ค่าที่เกินช่วงใช้ค่าเริ่มต้น', () => {
     const l = normalizeLayout('IV', 'grid', { columns: [{ key: 'amount', label: 'Amount', width: 500 }, { key: 'hack', label: 'x' }, { key: 'name', show: false }], font_pt: 99, min_rows: -5, head_fields: ['due_date', 'bogus'], signatures: ['ก', '', 'ข'] });
@@ -24,8 +24,32 @@ describe('แบบฟอร์มพิมพ์เอกสาร (S-RD-01/02)
     // ใบเสร็จ (ข้อกำหนดเจ้าของ 31/10/2569): เลือกแสดงเลขที่บิล/รายการสินค้า · ต้นแบบที่ 5 = รายการสินค้าของบิล
     expect(normalizeLayout('RE', 'grid', { settle_detail: 'items' }).settle_detail).toBe('items');
     expect(normalizeLayout('RE', 'grid', { settle_detail: 'bogus' }).settle_detail).toBe('auto');
-    expect(printMenu('RE', []).map((f) => `${f.slot}:${f.layout.settle_detail}`)).toEqual(['1:auto', '2:auto', '3:auto', '4:auto', '5:items']);
-    expect(printMenu('IV', []).length).toBe(4);
+    expect(printMenu('RE', []).map((f) => `${f.slot}:${f.layout.settle_detail}`)).toEqual(['1:auto', '2:auto', '3:auto', '4:auto', '5:items', '6:auto']);
+    expect(printMenu('IV', []).length).toBe(5);
+  });
+  it('แบบฟอร์มมืออาชีพ (เจ้าของ 04/11/2569): ฟอร์ม 1 · ชื่อเอกสารมาตรฐาน · หัวกล่องคู่ค้า', () => {
+    const m = printMenu('IV', []);
+    expect(m.map((f) => `${f.slot}:${f.base}`)).toEqual(['1:pro', '2:plain', '3:half', '4:cont', '6:grid']);
+    expect(printMenu('RE', []).find((f) => f.slot === 5)?.base).toBe('pro');
+    // ฟอร์มเก่าที่บันทึกด้วยต้นแบบที่ไม่รู้จัก → มืออาชีพ
+    expect(printMenu('IV', [{ slot: 8, name: 'x', base: 'bogus', layout: {} }]).find((f) => f.slot === 8)?.base).toBe('pro');
+    const pro = defaultLayout('IV', 'pro');
+    expect([pro.min_rows, pro.logo, pro.columns.find((c) => c.key === 'code')?.width, pro.columns.find((c) => c.key === 'unit')?.width]).toEqual([0, 'left', 17, 10]);
+    expect(defaultLayout('IV', 'grid').columns.find((c) => c.key === 'code')?.width).toBe(14);
+    expect(defaultLayout('HS', 'pro').head_fields).not.toContain('due_date');
+    expect(defaultLayout('IV', 'pro').head_fields).toContain('due_date');
+    // ชื่อทั่วไปของประเภทเอกสาร → ชื่อเอกสารมาตรฐาน (มี VAT = มีคำว่า ใบกำกับภาษี)
+    expect(printTitle('IV', 'ขายเงินเชื่อ', 'Credit Sales', true)).toEqual({ th: 'ใบแจ้งหนี้/ใบกำกับภาษี', en: 'INVOICE / TAX INVOICE' });
+    expect(printTitle('IV', 'ขายเงินเชื่อ', '', false)).toEqual({ th: 'ใบแจ้งหนี้', en: 'INVOICE' });
+    expect(printTitle('HS', 'ขายเงินสด', '', true).th).toBe('ใบเสร็จรับเงิน/ใบกำกับภาษี');
+    expect(printTitle('CN', 'ใบลดหนี้/รับคืน', '', true)).toEqual({ th: 'ใบลดหนี้', en: 'CREDIT NOTE' });
+    expect(printTitle('RL', 'โอนย้ายระหว่างคลัง', 'Stock Transfer', false)).toEqual({ th: 'ใบโอนย้ายสินค้า', en: 'STOCK TRANSFER' });
+    expect(printTitle('IV', '', '', true).th).toBe('ใบแจ้งหนี้/ใบกำกับภาษี');
+    // บริษัทตั้งชื่อเอง → คงชื่อนั้น (อังกฤษว่าง = ใช้ชื่ออังกฤษมาตรฐาน)
+    expect(printTitle('IV', 'ใบกำกับภาษี/ใบส่งของ', '', true)).toEqual({ th: 'ใบกำกับภาษี/ใบส่งของ', en: 'INVOICE / TAX INVOICE' });
+    expect(printTitle('IV', 'ใบส่งของ', 'Delivery Order', true)).toEqual({ th: 'ใบส่งของ', en: 'Delivery Order' });
+    expect(printTitle('BT', 'โอนเงินระหว่างธนาคาร', 'Bank Transfer', false)).toEqual({ th: 'โอนเงินระหว่างธนาคาร', en: 'Bank Transfer' });
+    expect([printPartyLabel('IV'), printPartyLabel('RE'), printPartyLabel('RR'), printPartyLabel('PS'), printPartyLabel('RL'), printPartyLabel('GL')]).toEqual(['ลูกค้า', 'ลูกค้า', 'ผู้จำหน่าย', 'ผู้จำหน่าย', '', '']);
   });
   it('กฎรับรอง/พิมพ์ซ้ำ', () => {
     const r = { approveLevel: 5, method: '2', reprintLevel: 7 };

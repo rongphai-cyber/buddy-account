@@ -28,7 +28,7 @@ export function PrintFormsPage() {
   const cur = forms.data?.menu.find((f) => f.slot === slot);
   const isCustom = !!forms.data?.custom.find((c) => c.slot === slot);
   const [name, setName] = useState('');
-  const [base, setBase] = useState<PrintBase>('grid');
+  const [base, setBase] = useState<PrintBase>('pro');
   const [L, setL] = useState<PrintLayout | null>(null);
   const [status, setStatus] = useState<'A' | 'I'>('A');
   const [dirty, setDirty] = useState(false);
@@ -39,7 +39,7 @@ export function PrintFormsPage() {
     if (!forms.data) return;
     const c = forms.data.custom.find((x) => x.slot === slot);
     const m = forms.data.menu.find((x) => x.slot === slot);
-    setName(m?.name ?? c?.name ?? `แบบฟอร์ม ${slot}`); setBase((m?.base ?? 'grid') as PrintBase); setStatus(c?.status === 'I' ? 'I' : 'A');
+    setName(m?.name ?? c?.name ?? `แบบฟอร์ม ${slot}`); setBase((m?.base ?? 'pro') as PrintBase); setStatus(c?.status === 'I' ? 'I' : 'A');
     setL(m?.layout ?? normalizeLayout(scope, 'grid', {})); setDirty(false); setErr(null);
   }, [forms.data, slot, scope]);
   const set = (p: Partial<PrintLayout>) => { setL((x) => ({ ...x!, ...p })); setDirty(true); };

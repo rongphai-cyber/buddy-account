@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { bahtText, checkApprove, checkPrint, checkUnapprove, d, DOC_CLASSES, docMenuOf, findReport, normalizeLayout, PRINT_BASES, printFamily, printMenu, type ApprovalRule, type ApprovalState } from '@buddy/core';
+import { bahtText, checkApprove, checkPrint, checkUnapprove, d, DOC_CLASSES, docMenuOf, findReport, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, type ApprovalRule, type ApprovalState } from '@buddy/core';
 import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { companyImages } from './company-images.js';
@@ -169,8 +169,10 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
   const net = totals.at(-1)?.value ?? '0';
   // ใบเสร็จ 2 แบบ (ข้อกำหนดเจ้าของ 31/10/2569): ใบเสร็จรับเงิน (ใบกำกับภาษีออกตอนขายแล้ว) · ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด ถึงกำหนดเมื่อรับเงิน)
   const receiptTax = H.scope === 'RE' && !vatDue.isZero();
-  const title = H.scope === 'RE' ? (receiptTax ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : H.scope === 'PS' ? 'ใบสำคัญจ่าย' : txt(h.type_name) || DOC_CLASSES[H.scope]?.label || 'เอกสาร';
-  const titleEn = H.scope === 'RE' ? (receiptTax ? 'RECEIPT / TAX INVOICE' : 'RECEIPT') : H.scope === 'PS' ? 'PAYMENT VOUCHER' : txt(h.type_name_en);
+  // ชื่อเอกสารที่พิมพ์ (04/11/2569 แบบฟอร์มมืออาชีพ): ประเภทเอกสารชื่อทั่วไป "ขายเงินเชื่อ" → "ใบแจ้งหนี้/ใบกำกับภาษี" ฯลฯ · ชื่อที่บริษัทตั้งเองคงเดิม
+  const std = printTitle(H.scope, txt(h.type_name), txt(h.type_name_en), nz(h.vat_amount));
+  const title = H.scope === 'RE' ? (receiptTax ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : H.scope === 'PS' ? 'ใบสำคัญจ่าย' : std.th || DOC_CLASSES[H.scope]?.label || 'เอกสาร';
+  const titleEn = H.scope === 'RE' ? (receiptTax ? 'RECEIPT / TAX INVOICE' : 'RECEIPT') : H.scope === 'PS' ? 'PAYMENT VOUCHER' : std.en;
   return { kind, scope: H.scope, family: fam, title, title_en: titleEn, doc_no: txt(h.doc_no), doc_date: txt(h.doc_date), receipt_tax: receiptTax, ...(detail ? { detail } : {}),
     cancelled: h.doc_status === 'C', company, party: partyOut, fields, lines, totals, amount_text: fam === 'stock' ? '' : bahtText(net), payments, notes, journal: jl,
     print_count: H.state.printCount, approved: H.state.approved };

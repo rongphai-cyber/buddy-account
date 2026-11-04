@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { fmt, formatDate, PRINT_HEAD_FIELDS, type PrintFamily, type PrintFormEntry, type YearSystem } from '@buddy/core';
+import { fmt, formatDate, PRINT_HEAD_FIELDS, printPartyLabel, type PrintFamily, type PrintFormEntry, type YearSystem } from '@buddy/core';
 import { CloseScreen, DocDelete } from './DocDelete';
 import { api } from '../api';
 import type { CompanyImages } from './CompanyImages';
@@ -41,8 +41,9 @@ export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: 
   const noteAt = Math.max(0, cols.findIndex((c) => c.key === 'name')) || Math.min(1, cols.length - 1);
   const heads = L.head_fields.map((k) => ({ k, label: PRINT_HEAD_FIELDS.find((f) => f.key === k)?.label ?? k, v: data.fields[k] ?? '' })).filter((x) => x.v);
   const isJ = data.family === 'journal';
-  // ใบเสร็จ/ใบสำคัญจ่าย: ชื่ออังกฤษตามชนิด (RECEIPT · RECEIPT / TAX INVOICE · PAYMENT VOUCHER) เมื่อแบบฟอร์มไม่ได้ตั้งเอง
-  const titleEn = data.family === 'settle' && (!L.title || L.title === data.title) ? data.title_en : '';
+  // ชื่ออังกฤษตามชนิดเอกสาร (INVOICE / TAX INVOICE · RECEIPT · PAYMENT VOUCHER …) เมื่อแบบฟอร์มไม่ได้ตั้งหัวเรื่องเอง
+  const titleEn = !L.title || L.title === data.title ? data.title_en : '';
+  const partyLabel = printPartyLabel(data.scope);
   // โลโก้/ลายเซ็นของบริษัท (ข้อกำหนดเจ้าของ) — แบบฟอร์มเลือกตำแหน่งโลโก้ และรูปลายเซ็นของแต่ละช่องลงชื่อ
   const logo = L.logo !== 'none' ? images?.logo ?? null : null;
   const signOf = (i: number) => { const id = L.signature_images[i]; return id ? images?.signs[id]?.data ?? null : null; };
@@ -62,6 +63,7 @@ export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: 
           </header>
           <div className="ds-info">
             {L.show_party && data.party ? <div className="ds-party">
+              {partyLabel && <div className="ds-label">{partyLabel}</div>}
               <div><b>{data.party.name}</b>{data.party.code && <span className="ds-muted"> ({data.party.code})</span>}</div>
               {data.party.address && <div>{data.party.address}</div>}
               {(data.party.tax_id || data.party.branch) && <div>{data.party.tax_id && `เลขประจำตัวผู้เสียภาษี ${data.party.tax_id}`} {data.party.branch}</div>}
@@ -70,7 +72,7 @@ export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: 
             <table className="ds-meta"><tbody>
               <tr><th>เลขที่</th><td>{data.doc_no}</td></tr>
               <tr><th>วันที่</th><td>{formatDate(data.doc_date, ys)}</td></tr>
-              {heads.map((h) => <tr key={h.k}><th>{h.label}</th><td>{DATE_FIELDS.has(h.k) ? formatDate(h.v, ys) : h.v}</td></tr>)}
+              {heads.map((h) => <tr key={h.k}><th>{h.label}</th><td>{DATE_FIELDS.has(h.k) ? formatDate(h.v, ys) : h.v.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, (x) => formatDate(x, ys))}</td></tr>)}
             </tbody></table>
           </div>
           <table className="ds-lines">
