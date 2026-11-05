@@ -140,6 +140,26 @@ export interface SysCompanyTable {
   address_th: Gen<string | null>;
   /** ที่อยู่ภาษาอังกฤษ */
   address_en: Gen<string | null>;
+  /** รหัสไปรษณีย์ (ใหม่ — แยกจากข้อความที่อยู่) */
+  zip_code: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: เลขที่ */
+  addr_no: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่ที่ */
+  addr_moo: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่บ้าน */
+  addr_village: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: อาคาร */
+  addr_building: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ห้องเลขที่ */
+  addr_room: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ชั้นที่ */
+  addr_floor: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ซอย */
+  addr_soi: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ถนน */
+  addr_road: Gen<string | null>;
+  /** ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th) */
+  addr_geo_code: Gen<string | null>;
   /** โทรศัพท์ */
   phone: Gen<string | null>;
   /** เลขประจำตัวผู้เสียภาษี 13 หลัก */
@@ -183,6 +203,26 @@ export interface SysBranchTable {
   tax_branch_no: Gen<string>;
   /** ที่อยู่สาขา (พิมพ์บนใบกำกับภาษี) */
   address: Gen<string | null>;
+  /** รหัสไปรษณีย์ของสาขา */
+  zip_code: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: เลขที่ */
+  addr_no: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่ที่ */
+  addr_moo: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่บ้าน */
+  addr_village: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: อาคาร */
+  addr_building: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ห้องเลขที่ */
+  addr_room: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ชั้นที่ */
+  addr_floor: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ซอย */
+  addr_soi: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ถนน */
+  addr_road: Gen<string | null>;
+  /** ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th) */
+  addr_geo_code: Gen<string | null>;
   /** เป็นสำนักงานใหญ่ */
   is_head_office: Gen<boolean>;
   /** คลังหลักของสาขา */
@@ -1687,6 +1727,24 @@ export interface MdCustomerTable {
   address_3: Gen<string | null>;
   /** รหัสไปรษณีย์ */
   zip_code: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: เลขที่ */
+  addr_no: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่ที่ */
+  addr_moo: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่บ้าน */
+  addr_village: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: อาคาร */
+  addr_building: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ห้องเลขที่ */
+  addr_room: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ชั้นที่ */
+  addr_floor: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ซอย */
+  addr_soi: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ถนน */
+  addr_road: Gen<string | null>;
+  /** ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th) */
+  addr_geo_code: Gen<string | null>;
   /** โทรศัพท์ */
   phone: Gen<string | null>;
   /** อีเมล (ใหม่) */
@@ -1774,6 +1832,24 @@ export interface MdCustomerShipToTable {
   address_3: Gen<string | null>;
   /** รหัสไปรษณีย์ */
   zip_code: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: เลขที่ */
+  addr_no: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่ที่ */
+  addr_moo: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่บ้าน */
+  addr_village: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: อาคาร */
+  addr_building: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ห้องเลขที่ */
+  addr_room: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ชั้นที่ */
+  addr_floor: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ซอย */
+  addr_soi: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ถนน */
+  addr_road: Gen<string | null>;
+  /** ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th) */
+  addr_geo_code: Gen<string | null>;
   /** โทรศัพท์ */
   phone: Gen<string | null>;
   /** ผู้ติดต่อ */
@@ -1817,6 +1893,24 @@ export interface MdSupplierTable {
   address_3: Gen<string | null>;
   /** รหัสไปรษณีย์ */
   zip_code: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: เลขที่ */
+  addr_no: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่ที่ */
+  addr_moo: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่บ้าน */
+  addr_village: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: อาคาร */
+  addr_building: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ห้องเลขที่ */
+  addr_room: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ชั้นที่ */
+  addr_floor: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ซอย */
+  addr_soi: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ถนน */
+  addr_road: Gen<string | null>;
+  /** ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th) */
+  addr_geo_code: Gen<string | null>;
   /** โทรศัพท์ */
   phone: Gen<string | null>;
   /** อีเมล (ใหม่ — คู่กับลูกค้า) */
@@ -1970,6 +2064,24 @@ export interface MdSalespersonTable {
   address: Gen<string | null>;
   /** รหัสไปรษณีย์ */
   zip_code: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: เลขที่ */
+  addr_no: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่ที่ */
+  addr_moo: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่บ้าน */
+  addr_village: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: อาคาร */
+  addr_building: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ห้องเลขที่ */
+  addr_room: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ชั้นที่ */
+  addr_floor: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ซอย */
+  addr_soi: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ถนน */
+  addr_road: Gen<string | null>;
+  /** ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th) */
+  addr_geo_code: Gen<string | null>;
   /** โทรศัพท์ */
   phone: Gen<string | null>;
   /** เลขผู้เสียภาษี */
@@ -4011,6 +4123,8 @@ export interface PayEmployeeTable {
   reg_province: Gen<string | null>;
   /** รหัสไปรษณีย์ */
   reg_postcode: Gen<string | null>;
+  /** ตำบล/แขวง ตามทะเบียนบ้าน รหัส 6 หลักกรมการปกครอง (เลือกจากรายการ/รหัสไปรษณีย์ — ชื่อตำบล อำเภอ จังหวัดเติมให้) */
+  reg_geo_code: Gen<string | null>;
   /** ที่อยู่ปัจจุบัน (ว่าง = ตามทะเบียนบ้าน) */
   current_address: Gen<string | null>;
   /** โทรศัพท์ */

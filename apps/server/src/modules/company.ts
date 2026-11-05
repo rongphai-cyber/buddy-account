@@ -10,6 +10,7 @@ import { canAccessCompany, companiesForUser } from './auth.js';
 import { copyCompanyData } from '../company-copy.js';
 import { logActivity } from '../audit.js';
 import { markPasswordChanged, setSec } from './security.js';
+import { addrShape, ADDR_COLS } from '../address.js';
 import { purgeTenant } from './pdpa.js';
 import { modulesOffRaw } from './permissions.js';
 import { payrollSource } from './wts.js';
@@ -33,6 +34,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const [addrEn1, ...addrEn2] = (c.address_en ?? '').split('\n');
     return {
       id: c.id, code: c.code, name_th: c.name_th, name_en: c.name_en, address_th_1: addr1 ?? '', address_th_2: addr2.join(' '), address_en_1: addrEn1 ?? '', address_en_2: addrEn2.join(' '),
+      zip_code: c.zip_code, ...Object.fromEntries(ADDR_COLS.map((k) => [k, c[k]])),
       phone: c.phone, tax_id: c.tax_id, trade_reg_no: c.trade_reg_no, social_security_no: c.social_security_no, year_system: c.year_system,
       tax_branch_no: hq?.tax_branch_no ?? '00000', business_type: s['gen.business_type'] ?? 'J', branch_short_name: s['gen.branch_short_name'] ?? '',
       allow_blank_party_tax_id: s['gen.allow_blank_party_tax_id'] ?? true, vat_rate: s['gen.vat_rate'] ?? 7, account_mask: s['gl.account_mask'] ?? '9999-99',
@@ -43,6 +45,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   const companyBody = z.object({
     name_th: z.string().trim().min(1, 'ป้อนชื่อบริษัท').max(120), name_en: opt(120),
     address_th_1: opt(120), address_th_2: opt(120), address_en_1: opt(120), address_en_2: opt(120), phone: opt(60),
+    zip_code: z.string().trim().regex(/^(\d{5})?$/, 'รหัสไปรษณีย์ 5 หลัก').nullable().optional().transform((v) => v || null), ...addrShape,
     business_type: z.enum(['J', 'P']), tax_id: z.string().trim().min(1, 'ป้อนเลขประจำตัวผู้เสียภาษี'),
     tax_branch_no: z.string().trim().regex(/^\d{1,5}$/, 'สาขา# เป็นตัวเลข (สำนักงานใหญ่ = 0)'),
     branch_short_name: opt(30), allow_blank_party_tax_id: z.boolean(), trade_reg_no: opt(20), social_security_no: opt(20),
@@ -58,6 +61,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     await db.transaction().execute(async (tx) => {
       await tx.updateTable('sys_company').set({
         name_th: b.name_th, name_en: b.name_en ?? null, address_th: join(b.address_th_1, b.address_th_2), address_en: join(b.address_en_1, b.address_en_2),
+        zip_code: b.zip_code ?? null, ...Object.fromEntries(ADDR_COLS.map((k) => [k, b[k] ?? null])),
         phone: b.phone ?? null, tax_id: tax.normalized, trade_reg_no: b.trade_reg_no ?? null, social_security_no: b.social_security_no ?? null, year_system: b.year_system, updated_by: a.userId,
       }).where('id', '=', a.companyId).execute();
       await tx.updateTable('sys_branch').set({ tax_branch_no: b.tax_branch_no.padStart(5, '0') }).where('company_id', '=', a.companyId).where('is_head_office', '=', true).execute();
@@ -148,9 +152,10 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   /* ---------------------------------------------------------------- สาขา */
   app.get('/api/v1/branches', async (req) => {
     const a = requireCompany(req);
-    return db.selectFrom('sys_branch').select(['id', 'code', 'name', 'tax_branch_no', 'address', 'is_head_office', 'status']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute();
+    return db.selectFrom('sys_branch').select(['id', 'code', 'name', 'tax_branch_no', 'address', 'zip_code', ...ADDR_COLS, 'is_head_office', 'status']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute();
   });
-  const branchBody = z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสาขา').max(10), name: z.string().trim().min(1, 'ป้อนชื่อสาขา').max(120), tax_branch_no: z.string().trim().regex(/^\d{5}$/, 'เลขที่สาขา 5 หลัก เช่น 00001'), address: z.string().max(500).nullable().optional(), status: z.enum(['A', 'I']).default('A') });
+  const branchBody = z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสาขา').max(10), name: z.string().trim().min(1, 'ป้อนชื่อสาขา').max(120), tax_branch_no: z.string().trim().regex(/^\d{5}$/, 'เลขที่สาขา 5 หลัก เช่น 00001'), address: z.string().max(500).nullable().optional(),
+    zip_code: z.string().trim().regex(/^(\d{5})?$/, 'รหัสไปรษณีย์ 5 หลัก').nullable().optional().transform((v) => v || null), ...addrShape, status: z.enum(['A', 'I']).default('A') });
   app.post('/api/v1/branches', async (req) => {
     const a = requireCompany(req);
     const b = parse(branchBody, req.body);

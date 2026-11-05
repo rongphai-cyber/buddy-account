@@ -8,6 +8,7 @@ import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, useLookups } from '../../components/LkSelect';
 import { MasterNotesDialog } from '../../components/Notes';
 import { DocLink } from '../../components/DocLink';
+import { AddressFields } from '../../components/AddressFields';
 import { Confirm, cx, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
@@ -126,7 +127,8 @@ function BillsGrid({ rows }: { rows: Bill[] }) {
 }
 
 const WHT_COND: Array<[string, string]> = [['1', '1 หักภาษี ณ ที่จ่าย'], ['2', '2 ออกภาษีให้ตลอดไป'], ['3', '3 ออกภาษีให้ครั้งเดียว']];
-const HEAD_KEYS = ['code', 'title', 'name', 'name_en', 'address_1', 'address_2', 'address_3', 'zip_code', 'phone', 'contact', 'remark', 'status', 'tax_id', 'tax_branch_no', 'ship_via_code', 'credit_days', 'payment_terms', 'discount_text', 'credit_limit', 'wht_form', 'wht_rate', 'wht_condition'];
+const ADDR_KEYS = ['addr_no', 'addr_moo', 'addr_village', 'addr_building', 'addr_room', 'addr_floor', 'addr_soi', 'addr_road', 'addr_geo_code'];
+const HEAD_KEYS = ['code', 'title', 'name', 'name_en', 'address_1', 'address_2', 'address_3', 'zip_code', ...ADDR_KEYS, 'phone', 'contact', 'remark', 'status', 'tax_id', 'tax_branch_no', 'ship_via_code', 'credit_days', 'payment_terms', 'discount_text', 'credit_limit', 'wht_form', 'wht_rate', 'wht_condition'];
 const RATE_KEYS = new Set(['vat_rate', 'wht_rate', 'commission_rate']);
 const toForm = (r: Record<string, unknown>, keys: string[]): Form => Object.fromEntries(keys.map((k) => {
   const v = r[k];
@@ -135,11 +137,23 @@ const toForm = (r: Record<string, unknown>, keys: string[]): Form => Object.from
   return [k, RATE_KEYS.has(k) ? d(v as string).toString() : String(v)];   // อัตรา 7.0000 → 7
 }));
 
+/** แท็บย่อยที่คีย์ข้อมูล: Enter ที่ช่องสุดท้ายของแท็บ → ไปแท็บถัดไป (แท็บสุดท้าย → ถามบันทึก) · docs/18 ข้อ 6 */
+function useTabFlow(order: string[], tab: string, setTab: (t: string) => void) {
+  return () => {
+    const i = order.indexOf(tab);
+    if (i < 0 || i >= order.length - 1) return false;
+    setTab(order[i + 1]!);
+    setTimeout(() => document.querySelector<HTMLElement>('.modal .tab-flow input:not([disabled]):not([type=checkbox]), .modal .tab-flow select:not([disabled])')?.focus(), 30);
+    return true;
+  };
+}
+
 /** โครงหน้าต่างแก้ไขลูกค้า/ผู้จำหน่าย/พนักงานขาย: บันทึก F9, ลบเมื่อยังไม่มีเอกสาร */
-function MasterModal({ title, menu, isNew, busy, ready, err, onClose, onSave, onDelete, children, delText, notes }: { title: string; menu: string; isNew: boolean; busy: boolean; ready: boolean; err: unknown; onClose: () => void; onSave: () => void; onDelete: () => Promise<void>; children: ReactNode; delText: string; notes?: { entity: 'customer' | 'supplier'; id: string | null; code: string } }) {
+function MasterModal({ title, menu, isNew, busy, ready, err, onClose, onSave, onDelete, children, delText, notes, onNavEnd }: { title: string; menu: string; isNew: boolean; busy: boolean; ready: boolean; err: unknown; onClose: () => void; onSave: () => void; onDelete: () => Promise<void>; children: ReactNode; delText: string; notes?: { entity: 'customer' | 'supplier'; id: string | null; code: string }; onNavEnd?: () => boolean }) {
   const can = useCan(menu);
   const [ask, setAsk] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [askSave, setAskSave] = useState(false);
   const allowed = can(isNew ? 'add' : 'edit');
   useHotkeys({ F9: allowed ? onSave : undefined, 'Ctrl+S': allowed ? onSave : undefined, 'Alt+R': notes?.id ? () => setShowNotes(true) : undefined }, []);
   return (
@@ -147,7 +161,8 @@ function MasterModal({ title, menu, isNew, busy, ready, err, onClose, onSave, on
       footer={<>{notes?.id && <button onClick={() => setShowNotes(true)} title="หมายเหตุเพิ่มเติม (Alt+R)">📝 หมายเหตุ</button>}{!isNew && can('delete') && <button className="danger" onClick={() => setAsk(true)}>ลบ</button>}<button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button>
         <button className="primary" disabled={!ready || busy || !allowed} title={allowed ? undefined : 'ไม่มีสิทธิ์'} onClick={onSave}>บันทึก <kbd>F9</kbd></button></>}>
       <ErrorBox error={err} />
-      {ready && <div onKeyDown={navKey}>{children}</div>}
+      {ready && <div onKeyDown={(e) => navKey(e, () => { if (!onNavEnd?.() && allowed) setAskSave(true); })}>{children}</div>}
+      {askSave && <Confirm title="คีย์ครบแล้ว — บันทึก?" text="กด Enter = บันทึก · Esc = กลับไปแก้" okText="บันทึก" onClose={() => setAskSave(false)} onOk={() => { setAskSave(false); onSave(); }} />}
       {showNotes && notes?.id && <MasterNotesDialog entity={notes.entity} id={notes.id} title={notes.code} canEdit={can('edit')} onClose={() => setShowNotes(false)} />}
       {ask && <Confirm danger title="ลบข้อมูล" text={delText} okText="ลบ" onClose={() => setAsk(false)} onOk={() => onDelete().then(() => setAsk(false)).catch((e) => { setAsk(false); toastError(e); })} />}
     </Modal>
@@ -155,7 +170,19 @@ function MasterModal({ title, menu, isNew, busy, ready, err, onClose, onSave, on
 }
 
 /* ---------------------------------------------------------------- ลูกค้า S-AR-01 */
-interface ShipTo { code: string; address_1: string | null; address_2: string | null; address_3: string | null; zip_code: string | null; phone: string | null; contact: string | null }
+interface ShipTo { code: string; address_1: string | null; address_2: string | null; address_3: string | null; zip_code: string | null; phone: string | null; contact: string | null; [k: string]: string | null }
+/** ที่อยู่แยกช่องของสถานที่ส่ง 1 บรรทัด (กรอกรหัสไปรษณีย์ → จังหวัด/อำเภอ/ตำบล) */
+function ShipAddrDialog({ row, onClose, onOk }: { row: ShipTo; onClose: () => void; onOk: (r: ShipTo) => void }) {
+  const [v, setV] = useState<ShipTo>(row);
+  useHotkeys({ F9: () => onOk(v) }, [v]);
+  return (
+    <Modal title={`ที่อยู่สถานที่ส่ง ${row.code}`} size="wide" onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" onClick={() => onOk(v)}>ตกลง <kbd>F9</kbd></button></>}>
+      <div className="form-grid" onKeyDown={(e) => navKey(e, () => onOk(v))}>
+        <AddressFields value={v} onChange={(p) => setV((x) => ({ ...x, ...p }))} target={{ kind: 'lines3' }} title="ที่อยู่ส่งสินค้า" />
+      </div>
+    </Modal>
+  );
+}
 interface CustomerDetail extends Record<string, unknown> { id: string; code: string; on_hold: boolean; ar_account_id: string | null; salesperson_id: string | null; ship_tos: ShipTo[]; contacts: Contact[]; outstanding_bills: Bill[]; balance: string; last_invoice_date: string | null }
 const CUS_KEYS = [...HEAD_KEYS, 'on_hold_reason', 'email', 'customer_type', 'sales_area_code', 'price_level', 'price_type', 'wht_category', 'default_ship_to'];
 
@@ -174,6 +201,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
   const [ships, setShips] = useState<ShipTo[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tab, setTab] = useState('main');
+  const nextTab = useTabFlow(['main', 'sale', 'tax'], tab, setTab);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   if (id && cur.data && !f) {
@@ -195,9 +223,10 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const remove = () => api.del(`/api/v1/customers/${id}`).then(() => { toast('ลบลูกค้าแล้ว'); onSaved(); });
-  const setShip = (i: number, p: Partial<ShipTo>) => setShips((s) => s.map((x, k) => (k === i ? { ...x, ...p } : x)));
+  const setShip = (i: number, p: Partial<ShipTo>) => setShips((s) => s.map((x, k) => (k === i ? { ...x, ...p } as ShipTo : x)));
+  const [shipAddr, setShipAddr] = useState<number | null>(null);
   return (
-    <MasterModal notes={{ entity: 'customer', id, code: val(f ?? {}, 'code') }} title={id ? `แก้ไขลูกค้า ${val(f ?? {}, 'code')}` : 'เพิ่มลูกค้า'} menu="SA.CUS" isNew={!id} busy={busy} ready={!!f} err={err ?? cur.error} onClose={onClose} onSave={save} onDelete={remove}
+    <MasterModal notes={{ entity: 'customer', id, code: val(f ?? {}, 'code') }} title={id ? `แก้ไขลูกค้า ${val(f ?? {}, 'code')}` : 'เพิ่มลูกค้า'} menu="SA.CUS" isNew={!id} busy={busy} ready={!!f} err={err ?? cur.error} onClose={onClose} onSave={save} onDelete={remove} onNavEnd={nextTab}
       delText={`ลบลูกค้า ${val(f ?? {}, 'code')}? ลบได้เฉพาะลูกค้าที่ยังไม่มีเอกสาร — ถ้ามีเอกสารแล้วให้เปลี่ยนสถานะเป็นเลิกใช้`}>
       {f && <>
         <div className="form-grid party-head">
@@ -206,20 +235,23 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
           <Field label="ชื่อลูกค้า" req><input {...t('name', 120)} /></Field>
           <Field label="สถานะ"><select value={val(f, 'status')} onChange={(e) => set({ status: e.target.value })}><option value="A">ใช้งาน (Active)</option><option value="I">เลิกใช้ (Inactive)</option></select></Field>
         </div>
-        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียด' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, ...(id ? [{ key: 'periods', label: 'ยอดรายงวด' }, { key: 'cheques', label: 'เช็คที่ยังไม่ผ่านบัญชี' }] : []), { key: 'ship', label: 'สถานที่ส่งสินค้า', badge: ships.length || undefined }]} />
-        {tab === 'main' && <div className="form-grid party-grid">
-          <Field label="ที่อยู่" wide><input {...t('address_1', 100)} placeholder="บรรทัด 1" /></Field>
-          <Field label="" wide><input {...t('address_2', 100)} placeholder="บรรทัด 2" aria-label="ที่อยู่ บรรทัด 2" /></Field>
-          <Field label="" wide><input {...t('address_3', 100)} placeholder="บรรทัด 3" aria-label="ที่อยู่ บรรทัด 3" /></Field>
-          <Field label="รหัสไปรษณีย์"><input {...t('zip_code', 10)} /></Field>
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'ที่อยู่/ติดต่อ' }, { key: 'sale', label: 'การขายและเครดิต' }, { key: 'tax', label: 'ภาษีและบัญชี' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'ship', label: 'สถานที่ส่งสินค้า', badge: ships.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, ...(id ? [{ key: 'periods', label: 'ยอดรายงวด' }, { key: 'cheques', label: 'เช็คที่ยังไม่ผ่านบัญชี' }] : [])]} />
+        {tab === 'main' && <div className="form-grid party-grid tab-flow">
+          <AddressFields value={f} onChange={set} target={{ kind: 'lines3' }} />
           <Field label="โทรศัพท์"><input {...t('phone', 60)} placeholder="รวมแฟกซ์ได้" /></Field>
           <Field label="ชื่อผู้ติดต่อ"><input {...t('contact', 60)} /></Field>
           <Field label="อีเมล"><input type="email" {...t('email', 120)} /></Field>
           <Field label="ชื่อภาษาอังกฤษ"><input {...t('name_en', 120)} /></Field>
-          <Field label="เลขประจำตัวผู้เสียภาษี" hint="13 หลัก — ตรวจหลักสุดท้ายให้"><input className="mono" {...t('tax_id', 20)} inputMode="numeric" /></Field>
-          <Field label="สาขา#" hint="00000 = สำนักงานใหญ่"><input className="mono" {...t('tax_branch_no', 5)} inputMode="numeric" /></Field>
+          <Field label="หมายเหตุ" wide hint="เช่น วางบิลทุกวันที่ 15 และ 30 ของเดือน"><textarea rows={2} value={val(f, 'remark')} maxLength={2000} onChange={(e) => set({ remark: e.target.value })} /></Field>
+          {id && cur.data && <div className="field wide party-stats">
+            <span>วันที่บิลล่าสุด <b>{cur.data.last_invoice_date ? <DateText v={cur.data.last_invoice_date} /> : '—'}</b></span>
+            <span>ยอดคงค้าง <b><Money v={cur.data.balance} /></b></span>
+            {d(f.credit_limit as string).gt(0) && d(cur.data.balance).gt(d(f.credit_limit as string)) && <Pill tone="c">เกินวงเงิน</Pill>}
+            <span className="muted small">ตารางสะสมยอดรายงวด/เช็คที่ยังไม่ผ่านบัญชี/เช็คคืน แสดงเมื่อมีระบบขายและการเงิน</span>
+          </div>}
+        </div>}
+        {tab === 'sale' && <div className="form-grid party-grid tab-flow">
           <Field label="ประเภทลูกค้า"><LkSelect rows={lk.data?.['45']} value={val(f, 'customer_type')} onChange={(v) => set({ customer_type: v })} /></Field>
-          <Field label="เลขที่บัญชีลูกหนี้" hint="เช่น 1130-01 ลูกหนี้การค้า · F4 ค้นหา"><AccountCell value={acc.ar} onChange={(a) => setAcc((x) => ({ ...x, ar: a?.id ?? null }))} /></Field>
           <Field label="พนักงานขาย">
             <select value={acc.slm ?? ''} onChange={(e) => setAcc((x) => ({ ...x, slm: e.target.value || null }))}>
               <option value="">—</option>
@@ -238,21 +270,20 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
           </Field>
           <Field label="ส่วนลด" hint="เช่น 10%, 5+2%, 1500"><input {...t('discount_text', 20)} /></Field>
           <Field label="วงเงินอนุมัติ" hint="ขายเกินวงเงิน → เตือนตอนเปิดบิล"><MoneyInput value={val(f, 'credit_limit')} onChange={(v) => set({ credit_limit: v })} /></Field>
-          <Field label="แบบภาษีที่ลูกค้าหักเรา"><input className="mono" {...t('wht_form', 4)} /></Field>
+          <Field label="ระงับการขาย" hint="ขายเชื่อ/สั่งขาย/เพิ่มหนี้ ต้องให้ผู้มีระดับอนุมัติบันทึก · ใบเสนอราคา/ขายเงินสด เตือน"><label className="check"><input type="checkbox" checked={f.on_hold === true} onChange={(e) => set({ on_hold: e.target.checked, ...(e.target.checked ? {} : { on_hold_reason: '' }) })} /> ระงับการขายลูกค้ารายนี้</label></Field>
+          {f.on_hold === true && <Field label="เหตุผลที่ระงับ" hint="แสดงตอนเลือกลูกค้าในเอกสาร"><input {...t('on_hold_reason', 200)} placeholder="เช่น ค้างชำระเกิน 90 วัน" /></Field>}
+        </div>}
+        {tab === 'tax' && <div className="form-grid party-grid tab-flow">
+          <Field label="เลขประจำตัวผู้เสียภาษี" hint="13 หลัก — ตรวจหลักสุดท้ายให้"><input className="mono" {...t('tax_id', 20)} inputMode="numeric" /></Field>
+          <Field label="สาขา#" hint="00000 = สำนักงานใหญ่"><input className="mono" {...t('tax_branch_no', 5)} inputMode="numeric" /></Field>
+          <Field label="เลขที่บัญชีลูกหนี้" hint="เช่น 1130-01 ลูกหนี้การค้า · F4 ค้นหา"><AccountCell value={acc.ar} onChange={(a) => setAcc((x) => ({ ...x, ar: a?.id ?? null }))} /></Field>
+          <Field label="แบบภาษีที่ลูกค้าหักเรา" hint="แบบ ภ.ง.ด. ที่ลูกค้ายื่น"><LkSelect rows={lk.data?.['55']} value={val(f, 'wht_form')} onChange={(v) => set({ wht_form: v })} /></Field>
           <Field label="อัตราภาษีหัก ณ ที่จ่าย (%)"><input type="number" min={0} max={100} step="0.01" {...t('wht_rate', 6)} /></Field>
           <Field label="หมวดภาษีหัก ณ ที่จ่าย"><LkSelect rows={lk.data?.['55']} value={val(f, 'wht_category')} onChange={(v) => set({ wht_category: v })} /></Field>
           <Field label="เงื่อนไขการหักภาษี"><select value={val(f, 'wht_condition')} onChange={(e) => set({ wht_condition: e.target.value })}><option value="">—</option>{WHT_COND.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
-          <Field label="ระงับการขาย" hint="ขายเชื่อ/สั่งขาย/เพิ่มหนี้ ต้องให้ผู้มีระดับอนุมัติบันทึก · ใบเสนอราคา/ขายเงินสด เตือน"><label className="check"><input type="checkbox" checked={f.on_hold === true} onChange={(e) => set({ on_hold: e.target.checked, ...(e.target.checked ? {} : { on_hold_reason: '' }) })} /> ระงับการขายลูกค้ารายนี้</label></Field>
-          {f.on_hold === true && <Field label="เหตุผลที่ระงับ" hint="แสดงตอนเลือกลูกค้าในเอกสาร"><input {...t('on_hold_reason', 200)} placeholder="เช่น ค้างชำระเกิน 90 วัน" /></Field>}
-          <Field label="หมายเหตุ" wide hint="เช่น วางบิลทุกวันที่ 15 และ 30 ของเดือน"><textarea rows={2} value={val(f, 'remark')} maxLength={2000} onChange={(e) => set({ remark: e.target.value })} /></Field>
-          {id && cur.data && <div className="field wide party-stats">
-            <span>วันที่บิลล่าสุด <b>{cur.data.last_invoice_date ? <DateText v={cur.data.last_invoice_date} /> : '—'}</b></span>
-            <span>ยอดคงค้าง <b><Money v={cur.data.balance} /></b></span>
-            {d(f.credit_limit as string).gt(0) && d(cur.data.balance).gt(d(f.credit_limit as string)) && <Pill tone="c">เกินวงเงิน</Pill>}
-            <span className="muted small">ตารางสะสมยอดรายงวด/เช็คที่ยังไม่ผ่านบัญชี/เช็คคืน แสดงเมื่อมีระบบขายและการเงิน</span>
-          </div>}
         </div>}
         {tab === 'contacts' && <ContactsGrid rows={contacts} onChange={setContacts} />}
+        {shipAddr !== null && ships[shipAddr] && <ShipAddrDialog row={ships[shipAddr]!} onClose={() => setShipAddr(null)} onOk={(r) => { setShip(shipAddr, r); setShipAddr(null); }} />}
         {tab === 'bills' && (id ? <BillsGrid rows={cur.data?.outstanding_bills ?? []} /> : <p className="muted">บันทึกลูกค้าก่อน</p>)}
         {(tab === 'periods' || tab === 'cheques') && id && <PartyActivity mod="AR" id={id} view={tab} />}
         {tab === 'ship' && <>
@@ -265,7 +296,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
           </div>
           <div className="table-wrap lines">
             <table className="grid">
-              <thead><tr><th style={{ width: 90 }}>รหัส</th><th>ที่อยู่ บรรทัด 1</th><th>บรรทัด 2</th><th>บรรทัด 3</th><th style={{ width: 90 }}>ไปรษณีย์</th><th style={{ width: 130 }}>โทร.</th><th style={{ width: 130 }}>ผู้ติดต่อ</th><th style={{ width: 40 }} /></tr></thead>
+              <thead><tr><th style={{ width: 90 }}>รหัส</th><th>ที่อยู่ บรรทัด 1</th><th>บรรทัด 2</th><th>บรรทัด 3</th><th style={{ width: 90 }}>ไปรษณีย์</th><th style={{ width: 130 }}>โทร.</th><th style={{ width: 130 }}>ผู้ติดต่อ</th><th style={{ width: 70 }} /></tr></thead>
               <tbody>
                 {ships.map((s, i) => (
                   <tr key={i}>
@@ -276,7 +307,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
                     <td><input value={s.zip_code ?? ''} maxLength={10} onChange={(e) => setShip(i, { zip_code: e.target.value })} /></td>
                     <td><input value={s.phone ?? ''} maxLength={60} onChange={(e) => setShip(i, { phone: e.target.value })} /></td>
                     <td><input value={s.contact ?? ''} maxLength={60} onChange={(e) => setShip(i, { contact: e.target.value })} /></td>
-                    <td><button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => setShips((x) => x.filter((_, k) => k !== i))}>✕</button></td>
+                    <td className="nowrap"><button type="button" className="icon-btn" tabIndex={-1} title="ที่อยู่แยกช่อง — กรอกรหัสไปรษณีย์แล้วเติมจังหวัด อำเภอ ตำบลให้" onClick={() => setShipAddr(i)}>📍</button><button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => setShips((x) => x.filter((_, k) => k !== i))}>✕</button></td>
                   </tr>
                 ))}
                 {!ships.length && <tr><td colSpan={8} className="empty">ยังไม่มีสถานที่ส่งสินค้า</td></tr>}
@@ -310,6 +341,7 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
   const [banks, setBanks] = useState<BankRow[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tab, setTab] = useState('main');
+  const nextTab = useTabFlow(['main', 'buy', 'tax'], tab, setTab);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   if (id && cur.data && !f) {
@@ -332,7 +364,7 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
   const remove = () => api.del(`/api/v1/suppliers/${id}`).then(() => { toast('ลบผู้จำหน่ายแล้ว'); onSaved(); });
   const setBank = (i: number, p: Partial<BankRow>) => setBanks((s) => s.map((x, k) => (k === i ? { ...x, ...p } : p.is_default ? { ...x, is_default: false } : x)));
   return (
-    <MasterModal notes={{ entity: 'supplier', id, code: val(f ?? {}, 'code') }} title={id ? `แก้ไขผู้จำหน่าย ${val(f ?? {}, 'code')}` : 'เพิ่มผู้จำหน่าย'} menu="PU.SUP" isNew={!id} busy={busy} ready={!!f} err={err ?? cur.error} onClose={onClose} onSave={save} onDelete={remove}
+    <MasterModal notes={{ entity: 'supplier', id, code: val(f ?? {}, 'code') }} title={id ? `แก้ไขผู้จำหน่าย ${val(f ?? {}, 'code')}` : 'เพิ่มผู้จำหน่าย'} menu="PU.SUP" isNew={!id} busy={busy} ready={!!f} err={err ?? cur.error} onClose={onClose} onSave={save} onDelete={remove} onNavEnd={nextTab}
       delText={`ลบผู้จำหน่าย ${val(f ?? {}, 'code')}? ลบได้เฉพาะผู้จำหน่ายที่ยังไม่มีเอกสาร — ถ้ามีเอกสารแล้วให้เปลี่ยนสถานะเป็นเลิกใช้`}>
       {f && <>
         <div className="form-grid party-head">
@@ -341,20 +373,22 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
           <Field label="ชื่อผู้จำหน่าย" req><input {...t('name', 120)} /></Field>
           <Field label="สถานะ"><select value={val(f, 'status')} onChange={(e) => set({ status: e.target.value })}><option value="A">ใช้งาน (Active)</option><option value="I">เลิกใช้ (Inactive)</option></select></Field>
         </div>
-        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียด' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'banks', label: 'บัญชีธนาคาร', badge: banks.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, ...(id ? [{ key: 'periods', label: 'ยอดรายงวด' }, { key: 'cheques', label: 'เช็คจ่ายที่ยังไม่ผ่านบัญชี' }] : [])]} />
-        {tab === 'main' && <div className="form-grid party-grid">
-          <Field label="ที่อยู่" wide><input {...t('address_1', 100)} placeholder="บรรทัด 1" /></Field>
-          <Field label="" wide><input {...t('address_2', 100)} placeholder="บรรทัด 2" aria-label="ที่อยู่ บรรทัด 2" /></Field>
-          <Field label="" wide><input {...t('address_3', 100)} placeholder="บรรทัด 3" aria-label="ที่อยู่ บรรทัด 3" /></Field>
-          <Field label="รหัสไปรษณีย์"><input {...t('zip_code', 10)} /></Field>
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'ที่อยู่/ติดต่อ' }, { key: 'buy', label: 'การซื้อและเครดิต' }, { key: 'tax', label: 'ภาษีและบัญชี' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'banks', label: 'บัญชีธนาคาร', badge: banks.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, ...(id ? [{ key: 'periods', label: 'ยอดรายงวด' }, { key: 'cheques', label: 'เช็คจ่ายที่ยังไม่ผ่านบัญชี' }] : [])]} />
+        {tab === 'main' && <div className="form-grid party-grid tab-flow">
+          <AddressFields value={f} onChange={set} target={{ kind: 'lines3' }} />
           <Field label="โทรศัพท์"><input {...t('phone', 60)} /></Field>
           <Field label="ชื่อผู้ติดต่อ" hint="ผู้ติดต่อในการซื้อ"><input {...t('contact', 60)} /></Field>
           <Field label="อีเมล"><input type="email" {...t('email', 120)} /></Field>
           <Field label="ชื่อภาษาอังกฤษ"><input {...t('name_en', 120)} /></Field>
-          <Field label="เลขประจำตัวผู้เสียภาษี" hint="ใช้ออกหนังสือรับรองหัก ณ ที่จ่าย"><input className="mono" {...t('tax_id', 20)} inputMode="numeric" /></Field>
-          <Field label="สาขา#" hint="00000 = สำนักงานใหญ่"><input className="mono" {...t('tax_branch_no', 5)} inputMode="numeric" /></Field>
+          <Field label="หมายเหตุ" wide><textarea rows={2} value={val(f, 'remark')} maxLength={2000} onChange={(e) => set({ remark: e.target.value })} /></Field>
+          {id && cur.data && <div className="field wide party-stats">
+            <span>วันที่ซื้อล่าสุด <b>{cur.data.last_bill_date ? <DateText v={cur.data.last_bill_date} /> : '—'}</b></span>
+            <span>ยอดคงค้าง <b><Money v={cur.data.balance} /></b></span>
+            <span className="muted small">ตารางสะสมยอดรายงวด/เช็คจ่ายที่ยังไม่ผ่านบัญชี แสดงเมื่อมีระบบซื้อและการเงิน</span>
+          </div>}
+        </div>}
+        {tab === 'buy' && <div className="form-grid party-grid tab-flow">
           <Field label="ประเภทผู้จำหน่าย"><LkSelect rows={lk.data?.['46']} value={val(f, 'supplier_type')} onChange={(v) => set({ supplier_type: v })} /></Field>
-          <Field label="เลขที่บัญชีเจ้าหนี้" hint="เช่น 2120-01 เจ้าหนี้การค้า · F4 ค้นหา"><AccountCell value={ap} onChange={(a) => setAp(a?.id ?? null)} /></Field>
           <Field label="ประเภทราคา"><select value={val(f, 'price_type')} onChange={(e) => set({ price_type: e.target.value })}><option value="">—</option><option value="0">0 ยกเว้นภาษี</option><option value="1">1 ราคารวมภาษีแล้ว</option><option value="2">2 ราคายังไม่รวมภาษี (แยก VAT)</option></select></Field>
           <Field label="ภาษีมูลค่าเพิ่ม (%)"><input type="number" min={0} max={30} step="0.01" {...t('vat_rate', 6)} /></Field>
           <Field label="ขนส่งโดย"><LkSelect rows={lk.data?.['41']} value={val(f, 'ship_via_code')} onChange={(v) => set({ ship_via_code: v })} /></Field>
@@ -362,18 +396,17 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
           <Field label="เงื่อนไขการชำระเงิน" hint="เช่น 2/10, n/30"><input {...t('payment_terms', 60)} /></Field>
           <Field label="ส่วนลด" hint="ส่วนลดการค้าที่ได้รับ"><input {...t('discount_text', 20)} /></Field>
           <Field label="วงเงินอนุมัติ" hint="ซื้อเกินวงเงิน → เตือนขณะซื้อ"><MoneyInput value={val(f, 'credit_limit')} onChange={(v) => set({ credit_limit: v })} /></Field>
+          <Field label="ระงับการจ่าย" hint="จ่ายชำระหนี้/จ่ายมัดจำ ต้องให้ผู้มีระดับอนุมัติบันทึก · ซื้อ/สั่งซื้อ เตือน"><label className="check"><input type="checkbox" checked={f.on_hold === true} onChange={(e) => set({ on_hold: e.target.checked, ...(e.target.checked ? {} : { on_hold_reason: '' }) })} /> ระงับการจ่ายเงินผู้จำหน่ายรายนี้</label></Field>
+          {f.on_hold === true && <Field label="เหตุผลที่ระงับ" hint="แสดงตอนเลือกผู้จำหน่ายในเอกสาร"><input {...t('on_hold_reason', 200)} placeholder="เช่น รอใบกำกับภาษีที่ถูกต้อง" /></Field>}
+        </div>}
+        {tab === 'tax' && <div className="form-grid party-grid tab-flow">
+          <Field label="เลขประจำตัวผู้เสียภาษี" hint="ใช้ออกหนังสือรับรองหัก ณ ที่จ่าย"><input className="mono" {...t('tax_id', 20)} inputMode="numeric" /></Field>
+          <Field label="สาขา#" hint="00000 = สำนักงานใหญ่"><input className="mono" {...t('tax_branch_no', 5)} inputMode="numeric" /></Field>
+          <Field label="เลขที่บัญชีเจ้าหนี้" hint="เช่น 2120-01 เจ้าหนี้การค้า · F4 ค้นหา"><AccountCell value={ap} onChange={(a) => setAp(a?.id ?? null)} /></Field>
           <Field label="หมวดภาษีหัก ณ ที่จ่าย (แบบ ภ.ง.ด.)"><LkSelect rows={lk.data?.['55']} value={val(f, 'wht_form')} onChange={(v) => set({ wht_form: v })} /></Field>
           <Field label="ประเภทเงินได้ที่จ่าย" hint="เช่น ค่าจ้างทำของ ค่าโฆษณา"><input {...t('wht_income_desc', 60)} list="wht-income" /></Field>
           <Field label="อัตราภาษีที่หัก (%)"><input type="number" min={0} max={100} step="0.01" {...t('wht_rate', 6)} /></Field>
           <Field label="เงื่อนไขการหักภาษี"><select value={val(f, 'wht_condition')} onChange={(e) => set({ wht_condition: e.target.value })}><option value="">—</option>{WHT_COND.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
-          <Field label="ระงับการจ่าย" hint="จ่ายชำระหนี้/จ่ายมัดจำ ต้องให้ผู้มีระดับอนุมัติบันทึก · ซื้อ/สั่งซื้อ เตือน"><label className="check"><input type="checkbox" checked={f.on_hold === true} onChange={(e) => set({ on_hold: e.target.checked, ...(e.target.checked ? {} : { on_hold_reason: '' }) })} /> ระงับการจ่ายเงินผู้จำหน่ายรายนี้</label></Field>
-          {f.on_hold === true && <Field label="เหตุผลที่ระงับ" hint="แสดงตอนเลือกผู้จำหน่ายในเอกสาร"><input {...t('on_hold_reason', 200)} placeholder="เช่น รอใบกำกับภาษีที่ถูกต้อง" /></Field>}
-          <Field label="หมายเหตุ" wide><textarea rows={2} value={val(f, 'remark')} maxLength={2000} onChange={(e) => set({ remark: e.target.value })} /></Field>
-          {id && cur.data && <div className="field wide party-stats">
-            <span>วันที่ซื้อล่าสุด <b>{cur.data.last_bill_date ? <DateText v={cur.data.last_bill_date} /> : '—'}</b></span>
-            <span>ยอดคงค้าง <b><Money v={cur.data.balance} /></b></span>
-            <span className="muted small">ตารางสะสมยอดรายงวด/เช็คจ่ายที่ยังไม่ผ่านบัญชี แสดงเมื่อมีระบบซื้อและการเงิน</span>
-          </div>}
         </div>}
         {tab === 'contacts' && <ContactsGrid rows={contacts} onChange={setContacts} />}
         {tab === 'banks' && <div className="table-wrap lines">
@@ -407,7 +440,7 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
 /* ---------------------------------------------------------------- พนักงานขาย S-SO-01 */
 interface SlmRow { id: string; code: string; name: string; position: string | null; salesperson_type: string | null; sales_area_code: string | null; commission_rate: string | null; phone: string | null; status: string; customer_count: number }
 interface SlmDetail extends Record<string, unknown> { id: string; fiscal_year: { id: string; code: string } | null; targets: Array<{ seq: number; period_id: string; start_date: string; end_date: string; amount: string }> }
-const SLM_KEYS = ['code', 'name', 'position', 'salesperson_type', 'sales_area_code', 'commission_rate', 'address', 'zip_code', 'phone', 'tax_id', 'social_security_no', 'status'];
+const SLM_KEYS = ['code', 'name', 'position', 'salesperson_type', 'sales_area_code', 'commission_rate', 'address', 'zip_code', ...ADDR_KEYS, 'phone', 'tax_id', 'social_security_no', 'status'];
 
 export function SalespersonsPage() {
   const qc = useQueryClient();
@@ -500,8 +533,7 @@ export function SalespersonForm({ id, onClose, onSaved }: { id: string | null; o
           <Field label="ประเภท"><LkSelect rows={lk.data?.['47']} value={val(f, 'salesperson_type')} onChange={(v) => set({ salesperson_type: v })} /></Field>
           <Field label="เขตการขาย" hint="ว่างได้ถ้าดูแลหลายเขต"><LkSelect rows={lk.data?.['40']} value={val(f, 'sales_area_code')} onChange={(v) => set({ sales_area_code: v })} /></Field>
           <Field label="อัตราค่าคอมฯ (%)"><input type="number" min={0} max={100} step="0.01" {...t('commission_rate', 6)} /></Field>
-          <Field label="ที่อยู่" wide><textarea rows={3} value={val(f, 'address')} maxLength={500} onChange={(e) => set({ address: e.target.value })} /></Field>
-          <Field label="รหัสไปรษณีย์"><input {...t('zip_code', 10)} /></Field>
+          <AddressFields value={f} onChange={set} target={{ kind: 'text', key: 'address' }} />
           <Field label="โทร."><input {...t('phone', 60)} /></Field>
           <Field label="เลขประจำตัวผู้เสียภาษี"><input className="mono" {...t('tax_id', 20)} inputMode="numeric" /></Field>
           <Field label="เลขที่บัตรประกันสังคม"><input className="mono" {...t('social_security_no', 20)} /></Field>

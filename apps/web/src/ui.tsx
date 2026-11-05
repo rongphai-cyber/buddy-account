@@ -151,7 +151,9 @@ export function navKey(e: RKE<HTMLElement>, onEnd?: () => void) {
   const t = e.target as HTMLElement;
   if (!t.matches('input, select') || t.dataset.noenter != null) return;
   const box = e.currentTarget as HTMLElement;
-  const els = [...box.querySelectorAll<HTMLElement>('input:not([disabled]):not([readonly]):not([type=checkbox]):not([type=radio]), select:not([disabled])')].filter((x) => x.offsetParent);
+  const els = [...box.querySelectorAll<HTMLElement>('input:not([disabled]):not([readonly]):not([type=checkbox]):not([type=radio]), select:not([disabled])')]
+    // data-navskip = ข้ามเมื่อมีค่าแล้ว (เช่น จังหวัด/อำเภอที่เติมจากรหัสไปรษณีย์ · ข้อความที่อยู่ที่ประกอบให้เอง)
+    .filter((x) => x.offsetParent && (x === t || x.dataset.navskip == null || !(x as HTMLInputElement).value));
   const i = els.indexOf(t);
   if (i < 0) return;
   e.preventDefault();

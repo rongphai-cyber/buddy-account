@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 130,
+"n": 131,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -66,7 +66,7 @@
 },
 {
 "th": "บันทึก",
-"n": 96,
+"n": 97,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
 "apps/web/src/components/MasterBar.tsx",
@@ -586,6 +586,40 @@
 ]
 },
 {
+"th": "เลขที่",
+"n": 38,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/JournalPicker.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tax/Etax.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/geo-th.ts",
+"packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "รับ",
 "n": 37,
 "files": [
@@ -606,39 +640,6 @@
 "apps/server/src/modules/docs/settle.ts",
 "apps/server/src/modules/docs/trade.ts",
 "apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "เลขที่",
-"n": 37,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/JournalPicker.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tax/Etax.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"apps/server/src/modules/reports/stock.ts",
-"packages/core/src/payroll-forms.ts",
-"packages/core/src/payroll-import.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -666,32 +667,6 @@
 ]
 },
 {
-"th": "รายละเอียด",
-"n": 35,
-"files": [
-"apps/web/src/components/JournalPicker.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/stock.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "เอกสาร",
 "n": 34,
 "files": [
@@ -714,6 +689,31 @@
 "apps/server/src/modules/docs/routes.ts",
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "รายละเอียด",
+"n": 33,
+"files": [
+"apps/web/src/components/JournalPicker.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/stock.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1232,6 +1232,23 @@
 ]
 },
 {
+"th": "ตกลง",
+"n": 19,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/components/Notes.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/gl/YearEnd.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
 "th": "พนักงานขาย",
 "n": 19,
 "files": [
@@ -1267,22 +1284,6 @@
 "packages/core/src/menu.ts",
 "packages/core/src/payroll.ts",
 "packages/core/src/source-totals.ts"
-]
-},
-{
-"th": "ตกลง",
-"n": 18,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/components/Notes.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/gl/YearEnd.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/settings/Periods.tsx"
 ]
 },
 {
@@ -1606,22 +1607,6 @@
 ]
 },
 {
-"th": "ที่อยู่",
-"n": 14,
-"files": [
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/tax.ts"
-]
-},
-{
 "th": "เลขประจำตัวผู้เสียภาษี",
 "n": 14,
 "files": [
@@ -1899,6 +1884,22 @@
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "ที่อยู่",
+"n": 12,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/tax.ts"
 ]
 },
 {
@@ -3174,16 +3175,6 @@
 ]
 },
 {
-"th": "รหัสไปรษณีย์",
-"n": 6,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "ระงับ",
 "n": 6,
 "files": [
@@ -3567,6 +3558,16 @@
 ]
 },
 {
+"th": "ซอย",
+"n": 5,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"packages/core/src/geo-th.ts",
+"packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "ตรวจวันที่",
 "n": 5,
 "files": [
@@ -3607,6 +3608,16 @@
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/server/src/modules/items.ts"
+]
+},
+{
+"th": "ถนน",
+"n": 5,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"packages/core/src/geo-th.ts",
+"packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -3987,6 +3998,16 @@
 ]
 },
 {
+"th": "หมู่บ้าน",
+"n": 5,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"packages/core/src/geo-th.ts",
+"packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "หักเงินมัดจำ",
 "n": 5,
 "files": [
@@ -4322,6 +4343,16 @@
 "apps/web/src/pages/Home.tsx",
 "apps/web/src/pages/reports/Statements.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "จังหวัด",
+"n": 4,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"packages/core/src/geo-th.ts",
+"packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -4718,12 +4749,31 @@
 ]
 },
 {
+"th": "อาคาร",
+"n": 4,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"packages/core/src/geo-th.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "อื่น ๆ",
 "n": 4,
 "files": [
 "apps/web/src/pages/finance/Banking.tsx",
 "packages/core/src/ai-bill.ts",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "เขต",
+"n": 4,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -4775,6 +4825,16 @@
 "n": 4,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "แขวง",
+"n": 4,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"packages/core/src/geo-th.ts",
+"packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -4940,6 +5000,13 @@
 "apps/web/src/pages/payroll/Employees.tsx",
 "packages/core/src/date.ts",
 "packages/core/src/i18n.ts"
+]
+},
+{
+"th": "กรุงเทพมหานคร",
+"n": 3,
+"files": [
+"packages/core/src/geo-th.ts"
 ]
 },
 {
@@ -5156,15 +5223,6 @@
 ]
 },
 {
-"th": "จังหวัด",
-"n": 3,
-"files": [
-"apps/web/src/pages/payroll/Employees.tsx",
-"packages/core/src/payroll-forms.ts",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "จาก",
 "n": 3,
 "files": [
@@ -5239,15 +5297,6 @@
 ]
 },
 {
-"th": "ซอย",
-"n": 3,
-"files": [
-"apps/web/src/pages/payroll/Employees.tsx",
-"packages/core/src/payroll-forms.ts",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "ซื้อครั้งละ",
 "n": 3,
 "files": [
@@ -5305,6 +5354,15 @@
 ]
 },
 {
+"th": "ตำบล",
+"n": 3,
+"files": [
+"packages/core/src/geo-th.ts",
+"packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "ต้นทุน",
 "n": 3,
 "files": [
@@ -5330,29 +5388,12 @@
 ]
 },
 {
-"th": "ถนน",
-"n": 3,
-"files": [
-"apps/web/src/pages/payroll/Employees.tsx",
-"packages/core/src/payroll-forms.ts",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "ทะเบียนพนักงาน",
 "n": 3,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
 "packages/core/src/menu.ts"
-]
-},
-{
-"th": "ที่อยู่ บรรทัด 2",
-"n": 3,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Company.tsx"
 ]
 },
 {
@@ -5371,20 +5412,6 @@
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/payroll/Forms.tsx",
 "packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "บรรทัด 2",
-"n": 3,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "บรรทัด 3",
-"n": 3,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -5791,6 +5818,23 @@
 ]
 },
 {
+"th": "รหัสไปรษณีย์",
+"n": 3,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "รหัสไปรษณีย์ 5 หลัก",
+"n": 3,
+"files": [
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/payroll/master.ts"
+]
+},
+{
 "th": "รอบเงินเดือน",
 "n": 3,
 "files": [
@@ -6107,11 +6151,20 @@
 ]
 },
 {
-"th": "หมู่บ้าน",
+"th": "หมู่",
 "n": 3,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx",
+"packages/core/src/geo-th.ts",
 "packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "หมู่ที่",
+"n": 3,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"packages/core/src/geo-th.ts",
 "packages/core/src/payroll-import.ts"
 ]
 },
@@ -6140,6 +6193,15 @@
 ]
 },
 {
+"th": "อำเภอ",
+"n": 3,
+"files": [
+"packages/core/src/geo-th.ts",
+"packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "อ่าน",
 "n": 3,
 "files": [
@@ -6164,15 +6226,6 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/server/src/modules/trade-import.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เขต",
-"n": 3,
-"files": [
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/payroll-forms.ts",
-"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -7357,6 +7410,14 @@
 ]
 },
 {
+"th": "ชั้นที่",
+"n": 2,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"packages/core/src/geo-th.ts"
+]
+},
+{
 "th": "ชาย",
 "n": 2,
 "files": [
@@ -7673,18 +7734,10 @@
 ]
 },
 {
-"th": "ตำบล",
-"n": 2,
-"files": [
-"packages/core/src/payroll-forms.ts",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "ตำบล/แขวง",
 "n": 2,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/components/AddressFields.tsx",
 "packages/core/src/payroll-import.ts"
 ]
 },
@@ -7835,18 +7888,18 @@
 ]
 },
 {
-"th": "ที่อยู่ บรรทัด 1",
-"n": 2,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Company.tsx"
-]
-},
-{
-"th": "ที่อยู่ บรรทัด 3",
+"th": "ที่อยู่/ติดต่อ",
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ที่อยู่ตามทะเบียนบ้าน",
+"n": 2,
+"files": [
+"apps/web/src/pages/payroll/Employees.tsx",
+"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -7974,13 +8027,6 @@
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/server/src/modules/payroll/files.ts"
-]
-},
-{
-"th": "บรรทัด 1",
-"n": 2,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -8715,6 +8761,13 @@
 ]
 },
 {
+"th": "ภาษีและบัญชี",
+"n": 2,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "มีการแก้ไขที่ยังไม่บันทึก — ทิ้งการแก้ไข?",
 "n": 2,
 "files": [
@@ -9193,6 +9246,14 @@
 "files": [
 "packages/core/src/menu.ts",
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "ระบบที่ใช้งาน",
+"n": 2,
+"files": [
+"apps/web/src/components/ModuleSwitches.tsx",
+"apps/web/src/pages/settings/Company.tsx"
 ]
 },
 {
@@ -9973,22 +10034,6 @@
 ]
 },
 {
-"th": "หมู่",
-"n": 2,
-"files": [
-"packages/core/src/payroll-forms.ts",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "หมู่ที่",
-"n": 2,
-"files": [
-"apps/web/src/pages/payroll/Employees.tsx",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "หลัก",
 "n": 2,
 "files": [
@@ -10025,6 +10070,14 @@
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/server/src/import/express/migrate.ts"
+]
+},
+{
+"th": "ห้องเลขที่",
+"n": 2,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"packages/core/src/geo-th.ts"
 ]
 },
 {
@@ -10119,26 +10172,10 @@
 ]
 },
 {
-"th": "อาคาร",
-"n": 2,
-"files": [
-"apps/web/src/pages/payroll/Employees.tsx",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "อำเภอ",
-"n": 2,
-"files": [
-"packages/core/src/payroll-forms.ts",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "อำเภอ/เขต",
 "n": 2,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/components/AddressFields.tsx",
 "packages/core/src/payroll-import.ts"
 ]
 },
@@ -10515,6 +10552,13 @@
 ]
 },
 {
+"th": "เมือง",
+"n": 2,
+"files": [
+"packages/core/src/geo-th.ts"
+]
+},
+{
 "th": "เริ่มงาน",
 "n": 2,
 "files": [
@@ -10759,14 +10803,6 @@
 "files": [
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
-"th": "แขวง",
-"n": 2,
-"files": [
-"packages/core/src/payroll-forms.ts",
-"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -13070,13 +13106,6 @@
 ]
 },
 {
-"th": "= [['1', '1 หักภาษี ณ ที่จ่าย'], ['2', '2 ออกภาษีให้ตลอดไป'], ['3', '3 ออกภาษีให้ครั้งเดียว']]; const HEAD_KEYS = ['code', 'title', 'name', 'name_en', 'address_1', 'address_2', 'address_3', 'zip_code', 'phone', 'contact', 'remark', 'status', 'tax_id', 'tax_branch_no', 'ship_via_code', 'credit_days', 'payment_terms', 'discount_text', 'credit_limit', 'wht_form', 'wht_rate', 'wht_condition']; const RATE_KEYS = new Set(['vat_rate', 'wht_rate', 'commission_rate']); const toForm = (r: Record",
-"n": 1,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
 "th": "= [['CASH', 'เงินสด'], ['CHEQUE', 'เช็ค'], ['TRANSFER', 'เงินโอน'], ['CARD', 'บัตรเครดิต'], ['WHT', 'ภาษีหัก ณ ที่จ่าย'], ['DISCOUNT', 'ส่วนลด'], ['DEPOSIT', 'เงินมัดจำ'], ['FX', 'อัตราแลกเปลี่ยน'], ['OTHER', 'อื่น ๆ']]; export function PaymentMethodsPage() {0}",
 "n": 1,
 "files": [
@@ -13088,13 +13117,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ActivityLog.tsx"
-]
-},
-{
-"th": "= [['title', 'คำนำหน้า', 30], ['first_name', 'ชื่อ', 100, true], ['last_name', 'นามสกุล', 100], ['nickname', 'ชื่อเล่น', 60], ['first_name_en', 'ชื่ออังกฤษ', 100], ['last_name_en', 'นามสกุลอังกฤษ', 100]]; const ADDR: Array",
-"n": 1,
-"files": [
-"apps/web/src/pages/payroll/Employees.tsx"
 ]
 },
 {
@@ -14330,6 +14352,13 @@
 ]
 },
 {
+"th": "{0} บรรทัด {1}",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
 "th": "{0} ป้อนในแฟ้มภาษีแล้ว {1}{2}",
 "n": 1,
 "files": [
@@ -15387,6 +15416,13 @@
 ]
 },
 {
+"th": "กด Enter = บันทึก · Esc = กลับไปแก้",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "กด F8 เพื่อเลือกเช็คที่นำฝาก",
 "n": 1,
 "files": [
@@ -15440,6 +15476,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx"
+]
+},
+{
+"th": "กรอกรหัสไปรษณีย์ แล้วระบบเติมจังหวัด อำเภอ ตำบลให้ · ตามรายการกรมการปกครอง",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
 ]
 },
 {
@@ -15772,6 +15815,13 @@
 ]
 },
 {
+"th": "การขายและเครดิต",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "การคิดค่าเสื่อม",
 "n": 1,
 "files": [
@@ -15797,6 +15847,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx"
+]
+},
+{
+"th": "การซื้อและเครดิต",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -16070,6 +16127,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "กำลังโหลดรายการจังหวัด อำเภอ ตำบล…",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
 ]
 },
 {
@@ -16815,6 +16879,13 @@
 ]
 },
 {
+"th": "ข้อความที่พิมพ์ในเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
 "th": "ข้อความท้ายเอกสาร",
 "n": 1,
 "files": [
@@ -16854,6 +16925,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ข้อมูลกิจการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
 ]
 },
 {
@@ -17015,6 +17093,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "ข้อมูลเดิม: ตำบล/แขวง {0} · อำเภอ/เขต {1} · จังหวัด {2} — เลือกตำบลจากรายการ (หรือกรอกรหัสไปรษณีย์) ให้ตรงชื่อทางการ",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
 ]
 },
 {
@@ -17862,6 +17947,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
+]
+},
+{
+"th": "คีย์ครบแล้ว — บันทึก?",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -19055,6 +19147,13 @@
 ]
 },
 {
+"th": "จับคู่ตำบล/อำเภอ/จังหวัดกับรายการทางการได้ไม่ครบ — เลือกต่อเองในช่องที่เหลือ",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
 "th": "จาก Express",
 "n": 1,
 "files": [
@@ -19671,6 +19770,13 @@
 ]
 },
 {
+"th": "ชั้น",
+"n": 1,
+"files": [
+"packages/core/src/geo-th.ts"
+]
+},
+{
 "th": "ชาย/หญิง",
 "n": 1,
 "files": [
@@ -20081,6 +20187,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Forms.tsx"
+]
+},
+{
+"th": "ชื่อหมู่บ้าน อาคาร ซอย ถนน ภาษาอังกฤษ ระบบไม่แปลให้ — เติมในบรรทัดอังกฤษเอง",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
 ]
 },
 {
@@ -21561,6 +21674,13 @@
 ]
 },
 {
+"th": "ตำบล/แขวงไม่ถูกต้อง — เลือกจังหวัด อำเภอ ตำบลจากรายการ หรือกรอกรหัสไปรษณีย์ใหม่",
+"n": 1,
+"files": [
+"apps/server/src/address.ts"
+]
+},
+{
 "th": "ตำแหน่ง .................................... ยื่นวันที่ ......../......../........",
 "n": 1,
 "files": [
@@ -22464,13 +22584,6 @@
 ]
 },
 {
-"th": "ที่อยู่ (พิมพ์บนใบกำกับภาษี)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Branches.tsx"
-]
-},
-{
 "th": "ที่อยู่ 1",
 "n": 1,
 "files": [
@@ -22492,6 +22605,13 @@
 ]
 },
 {
+"th": "ที่อยู่ บรรทัด 1",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "ที่อยู่ เบอร์โทร เลขประจำตัว เลขประกันสังคม",
 "n": 1,
 "files": [
@@ -22506,6 +22626,13 @@
 ]
 },
 {
+"th": "ที่อยู่กิจการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
 "th": "ที่อยู่กิจการต้องมีรหัสไปรษณีย์ 5 หลักท้ายที่อยู่ — แก้ที่ เริ่มระบบ › รายละเอียดกิจการ",
 "n": 1,
 "files": [
@@ -22517,13 +22644,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Forms.tsx"
-]
-},
-{
-"th": "ที่อยู่ตามทะเบียนบ้าน",
-"n": 1,
-"files": [
-"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -22555,17 +22675,17 @@
 ]
 },
 {
-"th": "ที่อยู่ภาษาอังกฤษ บรรทัด 1",
+"th": "ที่อยู่สถานที่ส่ง {0}",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/Company.tsx"
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
-"th": "ที่อยู่ภาษาอังกฤษ บรรทัด 2",
+"th": "ที่อยู่สาขา (พิมพ์บนใบกำกับภาษี)",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/Company.tsx"
+"apps/web/src/pages/settings/Branches.tsx"
 ]
 },
 {
@@ -22604,10 +22724,24 @@
 ]
 },
 {
+"th": "ที่อยู่ส่งสินค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "ที่อยู่เว็บที่ใช้เปิด Buddy Account ของสำนักงานใหญ่",
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
+]
+},
+{
+"th": "ที่อยู่แยกช่อง — กรอกรหัสไปรษณีย์แล้วเติมจังหวัด อำเภอ ตำบลให้",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -22783,6 +22917,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "ธีมและแบบอักษร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
 ]
 },
 {
@@ -23217,6 +23358,27 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/FsLayouts.tsx"
+]
+},
+{
+"th": "บรรทัด 2",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "บรรทัด 3",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "บรรทัด {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
 ]
 },
 {
@@ -28379,6 +28541,13 @@
 ]
 },
 {
+"th": "ภาษาไทย บรรทัด {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
 "th": "ภาษี (ขอคืนได้)",
 "n": 1,
 "files": [
@@ -28810,6 +28979,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx"
+]
+},
+{
+"th": "ภาษีและทะเบียน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
 ]
 },
 {
@@ -31865,6 +32041,13 @@
 ]
 },
 {
+"th": "รหัสนี้มี {0} ตำบล — เลือกในช่องตำบล/แขวง",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
 "th": "รหัสบรรทัด {0}",
 "n": 1,
 "files": [
@@ -32376,10 +32559,10 @@
 ]
 },
 {
-"th": "รหัสไปรษณีย์ 5 หลัก",
+"th": "รหัสไปรษณีย์สาขาของกิจการ",
 "n": 1,
 "files": [
-"apps/server/src/modules/payroll/master.ts"
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -32667,13 +32850,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
-]
-},
-{
-"th": "ระบบที่ใช้งาน",
-"n": 1,
-"files": [
-"apps/web/src/components/ModuleSwitches.tsx"
 ]
 },
 {
@@ -38375,6 +38551,13 @@
 ]
 },
 {
+"th": "ห้อง",
+"n": 1,
+"files": [
+"packages/core/src/geo-th.ts"
+]
+},
+{
 "th": "ห้า",
 "n": 1,
 "files": [
@@ -40013,6 +40196,13 @@
 ]
 },
 {
+"th": "เชื่อมต่อ WTS POS",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
 "th": "เชื่อมต่อระบบบัญชี",
 "n": 1,
 "files": [
@@ -40486,6 +40676,13 @@
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "เช่น 50230",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
 ]
 },
 {
@@ -44115,6 +44312,13 @@
 ]
 },
 {
+"th": "แก้ข้อความเองแล้ว — ระบบไม่ทับ",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
 "th": "แก้ภาษี",
 "n": 1,
 "files": [
@@ -44567,6 +44771,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "แบบ ภ.ง.ด. ที่ลูกค้ายื่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -45116,6 +45327,13 @@
 ]
 },
 {
+"th": "แยกช่องจากที่อยู่เดิมแล้ว — ตรวจให้ถูกต้อง แล้วกด \"ประกอบข้อความใหม่\" ถ้าต้องการ",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
 "th": "แยกตามประเภทบิล (ขายสด/เชื่อ/ลดหนี้/มัดจำ)",
 "n": 1,
 "files": [
@@ -45477,6 +45695,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/CompanyImages.tsx"
+]
+},
+{
+"th": "โหลดรายการจังหวัด/อำเภอ/ตำบลไม่สำเร็จ — รีเฟรชหน้าจอแล้วลองใหม่",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
 ]
 },
 {
@@ -47237,6 +47462,13 @@
 ]
 },
 {
+"th": "ไม่พบรหัสไปรษณีย์นี้ — ตรวจตัวเลข หรือเลือกจังหวัด อำเภอ ตำบลเอง",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
 "th": "ไม่พบรายการที่เลขบัญชีไม่ถูกต้อง",
 "n": 1,
 "files": [
@@ -48378,6 +48610,27 @@
 ]
 },
 {
+"th": "— เลือกจังหวัด —",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
+"th": "— เลือกตำบล ({0}) —",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
+"th": "— เลือกตำบล —",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
 "th": "— เลือกธนาคาร —",
 "n": 1,
 "files": [
@@ -48403,6 +48656,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/JournalBook.tsx"
+]
+},
+{
+"th": "— เลือกอำเภอ —",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
 ]
 },
 {
@@ -48588,6 +48848,20 @@
 ]
 },
 {
+"th": "↻ ประกอบข้อความใหม่จากช่อง",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
+"th": "↻ เติมช่องจากที่อยู่เดิม",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
+]
+},
+{
 "th": "−1 ทุกงวด (รวมยอดยกมา)",
 "n": 1,
 "files": [
@@ -48599,6 +48873,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
+]
+},
+{
+"th": "⚠ ตำบลนี้บางหมู่/ซอยใช้รหัสไปรษณีย์อื่น — ตรวจกับที่อยู่จริง",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressFields.tsx"
 ]
 },
 {

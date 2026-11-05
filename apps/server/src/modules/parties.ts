@@ -7,6 +7,7 @@ import { badRequest, conflict, notFound, parse, requireCompany, type AuthContext
 import { logActivity } from '../audit.js';
 import { companySettings } from '../company-template.js';
 import { fiscalYearOf } from './gl/balances.js';
+import { addrShape, ADDR_COLS } from '../address.js';
 
 const uuid = z.string().uuid();
 const str = (max: number) => z.string().trim().max(max).nullable().optional().transform((v) => (v ? v : null));
@@ -109,12 +110,12 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
   /* ---------------------------------------------------------------- ลูกค้า */
   const customerBody = z.object({
     code: z.string().trim().min(1, 'ป้อนรหัสลูกค้า').max(20), title: str(30), name: z.string().trim().min(1, 'ป้อนชื่อลูกค้า').max(120), name_en: str(120),
-    address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), phone: str(60), email: str(120), contact: str(60), remark: str(2000),
+    address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), ...addrShape, phone: str(60), email: str(120), contact: str(60), remark: str(2000),
     status: z.enum(['A', 'I']).default('A'), on_hold: z.boolean().default(false), on_hold_reason: str(200), tax_id: str(20), tax_branch_no: str(5), customer_type: str(4), ar_account_id: uuid.nullable().optional(),
     salesperson_id: uuid.nullable().optional(), sales_area_code: str(10), ship_via_code: str(10), credit_days: num, payment_terms: str(60),
     price_level: z.enum(['', '0', '1', '2', '3', '4', '5']).nullable().optional().transform((v) => v || null), price_type: z.enum(['', '0', '1', '2']).nullable().optional().transform((v) => v || null), discount_text: str(20), credit_limit: num,
     wht_form: str(4), wht_rate: num, wht_category: str(4), wht_condition: z.enum(['', '1', '2', '3']).nullable().optional().transform((v) => v || null), default_ship_to: str(10),
-    ship_tos: z.array(z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสถานที่ส่ง').max(10), address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), phone: str(60), contact: str(60) })).max(200).default([]),
+    ship_tos: z.array(z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสถานที่ส่ง').max(10), address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), ...addrShape, phone: str(60), contact: str(60) })).max(200).default([]),
     contacts: z.array(contactBody).max(50).default([]),
   });
 
@@ -191,7 +192,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     const { id } = parse(z.object({ id: uuid }), req.params);
     const c = await db.selectFrom('md_customer').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!c) throw notFound('ลูกค้า');
-    const ship_tos = await db.selectFrom('md_customer_ship_to').select(['code', 'address_1', 'address_2', 'address_3', 'zip_code', 'phone', 'contact']).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('deleted_at', 'is', null).orderBy('code').execute();
+    const ship_tos = await db.selectFrom('md_customer_ship_to').select(['code', 'address_1', 'address_2', 'address_3', 'zip_code', ...ADDR_COLS, 'phone', 'contact']).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('deleted_at', 'is', null).orderBy('code').execute();
     const bills = await outstandingBills(db, 'AR', a.companyId, id);
     const last = await db.selectFrom('doc_header').select(sql<string | null>`max(doc_date)`.as('d')).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('doc_class', '=', 'IV').where('doc_status', '<>', 'C').where('deleted_at', 'is', null).executeTakeFirst();
     return { ...c, tax_branches: await taxBranchesOf(db, a.companyId, 'customer_id', id, c.tax_branch_no), ship_tos, contacts: await contactsOf(db, a.companyId, 'C', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_invoice_date: last?.d ?? null };
@@ -245,7 +246,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
   /* ---------------------------------------------------------------- ผู้จำหน่าย */
   const supplierBody = z.object({
     code: z.string().trim().min(1, 'ป้อนรหัสผู้จำหน่าย').max(20), title: str(30), name: z.string().trim().min(1, 'ป้อนชื่อผู้จำหน่าย').max(120), name_en: str(120),
-    address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), phone: str(60), email: str(120), contact: str(60), remark: str(2000),
+    address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), ...addrShape, phone: str(60), email: str(120), contact: str(60), remark: str(2000),
     status: z.enum(['A', 'I']).default('A'), on_hold: z.boolean().default(false), on_hold_reason: str(200), tax_id: str(20), tax_branch_no: str(5), supplier_type: str(4), ap_account_id: uuid.nullable().optional(),
     price_type: z.enum(['', '0', '1', '2']).nullable().optional().transform((v) => v || null), vat_rate: num, ship_via_code: str(10), credit_days: num, payment_terms: str(60), discount_text: str(20), credit_limit: num,
     wht_form: str(4), wht_income_desc: str(60), wht_rate: num, wht_condition: z.enum(['', '1', '2', '3']).nullable().optional().transform((v) => v || null),
@@ -324,7 +325,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
   /* ---------------------------------------------------------------- พนักงานขาย (S-SO-01) */
   const slmBody = z.object({
     code: z.string().trim().min(1, 'ป้อนรหัสพนักงานขาย').max(20), name: z.string().trim().min(1, 'ป้อนชื่อพนักงานขาย').max(120), position: str(60), salesperson_type: str(4),
-    sales_area_code: str(10), commission_rate: num, address: str(500), zip_code: str(10), phone: str(60), tax_id: str(20), social_security_no: str(20), status: z.enum(['A', 'I']).default('A'),
+    sales_area_code: str(10), commission_rate: num, address: str(500), zip_code: str(10), ...addrShape, phone: str(60), tax_id: str(20), social_security_no: str(20), status: z.enum(['A', 'I']).default('A'),
     fiscal_year_id: uuid.optional(), targets: z.array(z.object({ period_id: uuid, amount: num })).max(24).default([]),
   });
   /** เป้าการขาย 24 งวด นับจากต้นปีบัญชี (ปีที่เลือกหรือตามวันทำการ) */

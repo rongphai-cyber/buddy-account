@@ -50,6 +50,21 @@ def lk(name, table, th, src='', nn=False):
 
 ST_ACTIVE = "status IN ('A','I')"
 
+def ADDR(note=''):
+    """ที่อยู่แยกช่อง (docs/18 ข้อ 12 · เจ้าของ 05/11/2569) — ประกอบเป็นข้อความที่อยู่เดิมให้อัตโนมัติ (เอกสารพิมพ์ยังใช้ข้อความ)"""
+    n = f' {note}' if note else ''
+    return [
+      C('addr_no', 'str20', th='ที่อยู่แยกช่อง: เลขที่' + n),
+      C('addr_moo', 'str20', th='ที่อยู่แยกช่อง: หมู่ที่'),
+      C('addr_village', 'str100', th='ที่อยู่แยกช่อง: หมู่บ้าน'),
+      C('addr_building', 'str40', th='ที่อยู่แยกช่อง: อาคาร'),
+      C('addr_room', 'str20', th='ที่อยู่แยกช่อง: ห้องเลขที่'),
+      C('addr_floor', 'str20', th='ที่อยู่แยกช่อง: ชั้นที่'),
+      C('addr_soi', 'str100', th='ที่อยู่แยกช่อง: ซอย'),
+      C('addr_road', 'str100', th='ที่อยู่แยกช่อง: ถนน'),
+      C('addr_geo_code', 'code6', th='ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th)'),
+    ]
+
 TABLES: List[T] = []
 def add(t): TABLES.append(t); return t
 
@@ -105,6 +120,8 @@ add(T('sys_company', 'บริษัท (หนึ่งฐานข้อม�
   C('name_en', 'str120', th='ชื่อกิจการภาษาอังกฤษ', src='ISINFO.ENGNAM'),
   C('address_th', 'text', th='ที่อยู่ภาษาไทย', src='ISINFO.ADDR01+ADDR02'),
   C('address_en', 'text', th='ที่อยู่ภาษาอังกฤษ', src='ISINFO.ADDR01ENG+ADDR02ENG'),
+  C('zip_code', 'code5', th='รหัสไปรษณีย์ (ใหม่ — แยกจากข้อความที่อยู่)'),
+  *ADDR(),
   C('phone', 'str60', th='โทรศัพท์', src='ISINFO.TELNUM'),
   C('tax_id', 'code13', th='เลขประจำตัวผู้เสียภาษี 13 หลัก', src='ISINFO.TAXID'),
   C('trade_reg_no', 'code20', th='เลขทะเบียนการค้า/นิติบุคคล', src='ISINFO.TRDREG'),
@@ -119,6 +136,8 @@ add(T('sys_branch', 'สาขา / จุดทำงาน (สำนักง
   C('name', 'str120', nn=True, th='ชื่อสาขา'),
   C('tax_branch_no', 'code5', nn=True, d="'00000'", th='เลขที่สาขาตามกรมสรรพากร (00000 = สำนักงานใหญ่)'),
   C('address', 'text', th='ที่อยู่สาขา (พิมพ์บนใบกำกับภาษี)'),
+  C('zip_code', 'code5', th='รหัสไปรษณีย์ของสาขา'),
+  *ADDR(),
   C('is_head_office', 'bool', nn=True, d='false', th='เป็นสำนักงานใหญ่'),
   lk('default_warehouse_id', 'md_warehouse', 'คลังหลักของสาขา', 'ISINFO.MAINLOC'),
   C('status', 'char1', nn=True, d="'A'", th='สถานะ', chk=ST_ACTIVE),
@@ -577,6 +596,7 @@ add(T('md_customer', 'ลูกค้า', 'md', express='ARMAS', cols=[
   C('address_2', 'str100', th='ที่อยู่ 2', src='ARMAS.ADDR02'),
   C('address_3', 'str100', th='ที่อยู่ 3', src='ARMAS.ADDR03'),
   C('zip_code', 'code10', th='รหัสไปรษณีย์', src='ARMAS.ZIPCOD'),
+  *ADDR(),
   C('phone', 'str60', th='โทรศัพท์', src='ARMAS.TELNUM'),
   C('email', 'str120', th='อีเมล (ใหม่)'),
   C('contact', 'str60', th='ผู้ติดต่อ', src='ARMAS.CONTACT'),
@@ -614,6 +634,7 @@ add(T('md_customer_ship_to', 'สถานที่ส่งของของ�
   C('address_2', 'str100', th='ที่อยู่ 2', src='ARSHIP.ADDR02'),
   C('address_3', 'str100', th='ที่อยู่ 3', src='ARSHIP.ADDR03'),
   C('zip_code', 'code10', th='รหัสไปรษณีย์', src='ARSHIP.ZIPCOD'),
+  *ADDR(),
   C('phone', 'str60', th='โทรศัพท์', src='ARSHIP.TELNUM'),
   C('contact', 'str60', th='ผู้ติดต่อ', src='ARSHIP.CONTACT'),
 ], uniq=[('company_id','customer_id','code')], note="CUSCOD='@@@@@@@@@@' ใน Express = สถานที่ส่งใช้ร่วมทุกลูกค้า → customer_id ว่าง"))
@@ -628,6 +649,7 @@ add(T('md_supplier', 'ผู้จำหน่าย / เจ้าหนี้'
   C('address_2', 'str100', th='ที่อยู่ 2', src='APMAS.ADDR02'),
   C('address_3', 'str100', th='ที่อยู่ 3', src='APMAS.ADDR03'),
   C('zip_code', 'code10', th='รหัสไปรษณีย์', src='APMAS.ZIPCOD'),
+  *ADDR(),
   C('phone', 'str60', th='โทรศัพท์', src='APMAS.TELNUM'),
   C('email', 'str120', th='อีเมล (ใหม่ — คู่กับลูกค้า)'),
   C('contact', 'str60', th='ผู้ติดต่อ', src='APMAS.CONTACT'),
@@ -682,6 +704,7 @@ add(T('md_salesperson', 'พนักงานขาย', 'md', express='OESLM',
   C('commission_rate', 'rate', th='อัตราค่าคอมมิชชั่น %', src='OESLM.COMRATE'),
   C('address', 'text', th='ที่อยู่', src='OESLM.ADDR01-03'),
   C('zip_code', 'code10', th='รหัสไปรษณีย์', src='OESLM.ZIPCOD'),
+  *ADDR(),
   C('phone', 'str60', th='โทรศัพท์', src='OESLM.TELNUM'),
   C('tax_id', 'code13', th='เลขผู้เสียภาษี', src='OESLM.TAXID'),
   C('social_security_no', 'code20', th='เลขประกันสังคม', src='OESLM.SOCIALID'),
@@ -1407,6 +1430,7 @@ add(T('pay_employee', 'ทะเบียนพนักงาน (ระบบ�
   C('reg_district', 'str100', th='อำเภอ/เขต'),
   C('reg_province', 'str100', th='จังหวัด'),
   C('reg_postcode', 'code5', th='รหัสไปรษณีย์'),
+  C('reg_geo_code', 'code6', th='ตำบล/แขวง ตามทะเบียนบ้าน รหัส 6 หลักกรมการปกครอง (เลือกจากรายการ/รหัสไปรษณีย์ — ชื่อตำบล อำเภอ จังหวัดเติมให้)'),
   C('current_address', 'text', th='ที่อยู่ปัจจุบัน (ว่าง = ตามทะเบียนบ้าน)'),
   C('phone', 'str60', th='โทรศัพท์'),
   C('email', 'str120', th='อีเมล'),

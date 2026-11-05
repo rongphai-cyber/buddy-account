@@ -5,6 +5,7 @@ import { formatDate, PDPA_ERASED, PDPA_REGISTER, pdpaCanFullErase, pdpaRetainUnt
 import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../http.js';
 import { logActivity } from '../audit.js';
+import { addrNullSql } from '../address.js';
 
 /**
  * T0.17 PDPA — ทะเบียนข้อมูลส่วนบุคคล (ม.39) และคำขอของเจ้าของข้อมูลในบริษัทปัจจุบัน
@@ -112,7 +113,7 @@ async function eraseContact(db: Db, companyId: string, kind: Kind, id: string, u
     await run('pay_employee', sql`UPDATE pay_employee SET phone = NULL, email = NULL, note = NULL, current_address = NULL, bank_id = NULL, bank_account_no = NULL, bank_account_name = NULL, updated_by = ${userId}
         WHERE company_id = ${companyId} AND id = ${id}`);
   } else if (kind === 'SALESPERSON') {
-    await run('md_salesperson', sql`UPDATE md_salesperson SET address = NULL, zip_code = NULL, phone = NULL, tax_id = NULL, social_security_no = NULL, updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
+    await run('md_salesperson', sql`UPDATE md_salesperson SET address = NULL, zip_code = NULL, ${addrNullSql()}, phone = NULL, tax_id = NULL, social_security_no = NULL, updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
   } else {
     await run('md_party_contact', sql`UPDATE md_party_contact SET name = ${PDPA_ERASED}, position = NULL, phone = NULL, email = NULL, is_primary = false,
         deleted_at = coalesce(deleted_at, now()), updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
@@ -127,7 +128,7 @@ async function eraseFull(db: Db, companyId: string, kind: Kind, id: string, user
   const run = async (t: string, q: RawBuilder<unknown>) => { const r = await q.execute(db); n[t] = (n[t] ?? 0) + Number(r.numAffectedRows ?? 0); };
   if (kind === 'EMPLOYEE') {
     await run('pay_employee', sql`UPDATE pay_employee SET title = NULL, first_name = ${PDPA_ERASED}, last_name = NULL, first_name_en = NULL, last_name_en = NULL, nickname = NULL, tax_id = NULL, gender = NULL, birth_date = NULL,
-        nationality = NULL, reg_house_no = NULL, reg_moo = NULL, reg_village = NULL, reg_building = NULL, reg_soi = NULL, reg_road = NULL, reg_subdistrict = NULL, reg_district = NULL, reg_province = NULL, reg_postcode = NULL,
+        nationality = NULL, reg_house_no = NULL, reg_moo = NULL, reg_village = NULL, reg_building = NULL, reg_soi = NULL, reg_road = NULL, reg_subdistrict = NULL, reg_district = NULL, reg_province = NULL, reg_postcode = NULL, reg_geo_code = NULL,
         sso_hospital = NULL, status = 'I', updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
     await run('pay_allowance', sql`UPDATE pay_allowance SET allowance_values = '{}'::jsonb, updated_by = ${userId} WHERE company_id = ${companyId} AND employee_id = ${id}`);
     return n;
@@ -139,10 +140,10 @@ async function eraseFull(db: Db, companyId: string, kind: Kind, id: string, user
   const master = kind === 'CUSTOMER' ? 'md_customer' : 'md_supplier';
   const col = kind === 'CUSTOMER' ? sql`customer_id` : sql`supplier_id`;
   const docWhere = kind === 'CUSTOMER' ? sql`(customer_id = ${id} OR bill_to_customer_id = ${id})` : sql`supplier_id = ${id}`;
-  await run(master, sql`UPDATE ${sql.id(master)} SET title = NULL, name = ${PDPA_ERASED}, name_en = NULL, address_1 = NULL, address_2 = NULL, address_3 = NULL, zip_code = NULL,
+  await run(master, sql`UPDATE ${sql.id(master)} SET title = NULL, name = ${PDPA_ERASED}, name_en = NULL, address_1 = NULL, address_2 = NULL, address_3 = NULL, zip_code = NULL, ${addrNullSql()},
       tax_id = NULL, tax_branch_no = NULL, status = 'I', inactive_date = coalesce(inactive_date, ${today}::date), updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
   if (kind === 'CUSTOMER') {
-    await run('md_customer_ship_to', sql`UPDATE md_customer_ship_to SET address_1 = NULL, address_2 = NULL, address_3 = NULL, zip_code = NULL WHERE company_id = ${companyId} AND customer_id = ${id}`);
+    await run('md_customer_ship_to', sql`UPDATE md_customer_ship_to SET address_1 = NULL, address_2 = NULL, address_3 = NULL, zip_code = NULL, ${addrNullSql()} WHERE company_id = ${companyId} AND customer_id = ${id}`);
     await run('md_serial', sql`UPDATE md_serial SET customer_name = NULL WHERE company_id = ${companyId} AND customer_id = ${id}`);
   } else {
     await run('fin_cheque', sql`UPDATE fin_cheque SET payee_name = ${PDPA_ERASED} WHERE company_id = ${companyId} AND supplier_id = ${id} AND payee_name IS NOT NULL`);
@@ -310,14 +311,14 @@ export async function purgeTenant(db: Db, tenantId: string) {
     await sql`UPDATE sys_device SET name = ${PDPA_ERASED}, public_key = NULL, status = 'I' WHERE company_id IN (${cs})`.execute(tx);
     await sql`UPDATE sys_session SET current_company_id = NULL, current_branch_id = NULL WHERE current_company_id IN (${cs})`.execute(tx);
     count('sys_branch', await sql`DELETE FROM sys_branch WHERE company_id IN (${cs}) AND id NOT IN (SELECT branch_id FROM sys_device WHERE company_id IN (${cs}))`.execute(tx));
-    await sql`UPDATE sys_branch SET name = ${PDPA_ERASED}, address = NULL, default_warehouse_id = NULL, status = 'I' WHERE company_id IN (${cs})`.execute(tx);
+    await sql`UPDATE sys_branch SET name = ${PDPA_ERASED}, address = NULL, zip_code = NULL, ${addrNullSql()}, default_warehouse_id = NULL, status = 'I' WHERE company_id IN (${cs})`.execute(tx);
     // ผู้ใช้: ลบการเข้าระบบ/2FA/การผูกบริษัท แล้วปิดบังชื่อ (คงแถวไว้เพราะเอกสารเดิม/แฟ้มบันทึกเหตุการณ์อ้างถึง)
     count('sys_session', await sql`DELETE FROM sys_session WHERE user_id IN (${us})`.execute(tx));
     count('sys_user_security', await sql`DELETE FROM sys_user_security WHERE user_id IN (${us})`.execute(tx));
     count('sys_user_company', await sql`DELETE FROM sys_user_company WHERE user_id IN (${us})`.execute(tx));
     count('sys_user', await sql`UPDATE sys_user SET username = 'purged_' || substr(replace(id::text, '-', ''), 1, 16), display_name = ${PDPA_ERASED}, password_hash = NULL, default_printer = NULL,
         status = 'I', deleted_at = coalesce(deleted_at, now()) WHERE id IN (${us})`.execute(tx));
-    count('sys_company', await sql`UPDATE sys_company SET name_th = ${PDPA_ERASED} || ' (' || code || ')', name_en = NULL, address_th = NULL, address_en = NULL, phone = NULL, tax_id = NULL,
+    count('sys_company', await sql`UPDATE sys_company SET name_th = ${PDPA_ERASED} || ' (' || code || ')', name_en = NULL, address_th = NULL, address_en = NULL, zip_code = NULL, ${addrNullSql()}, phone = NULL, tax_id = NULL,
         trade_reg_no = NULL, social_security_no = NULL, status = 'I', deleted_at = coalesce(deleted_at, now()) WHERE id IN (${cs})`.execute(tx));
     await sql`UPDATE sys_tenant SET name = code, contact_email = NULL, contact_phone = NULL, status = 'I', purged_at = now() WHERE id = ${tenantId}`.execute(tx);
     return { companies: companies.length, users: users.length, rows: n };

@@ -147,6 +147,16 @@ CREATE TABLE sys_company (
   name_en varchar(120),
   address_th text,
   address_en text,
+  zip_code varchar(5),
+  addr_no varchar(20),
+  addr_moo varchar(20),
+  addr_village varchar(100),
+  addr_building varchar(40),
+  addr_room varchar(20),
+  addr_floor varchar(20),
+  addr_soi varchar(100),
+  addr_road varchar(100),
+  addr_geo_code varchar(6),
   phone varchar(60),
   tax_id varchar(13),
   trade_reg_no varchar(20),
@@ -171,6 +181,16 @@ COMMENT ON COLUMN sys_company.name_th IS 'ชื่อกิจการภา�
 COMMENT ON COLUMN sys_company.name_en IS 'ชื่อกิจการภาษาอังกฤษ [Express: ISINFO.ENGNAM]';
 COMMENT ON COLUMN sys_company.address_th IS 'ที่อยู่ภาษาไทย [Express: ISINFO.ADDR01+ADDR02]';
 COMMENT ON COLUMN sys_company.address_en IS 'ที่อยู่ภาษาอังกฤษ [Express: ISINFO.ADDR01ENG+ADDR02ENG]';
+COMMENT ON COLUMN sys_company.zip_code IS 'รหัสไปรษณีย์ (ใหม่ — แยกจากข้อความที่อยู่)';
+COMMENT ON COLUMN sys_company.addr_no IS 'ที่อยู่แยกช่อง: เลขที่';
+COMMENT ON COLUMN sys_company.addr_moo IS 'ที่อยู่แยกช่อง: หมู่ที่';
+COMMENT ON COLUMN sys_company.addr_village IS 'ที่อยู่แยกช่อง: หมู่บ้าน';
+COMMENT ON COLUMN sys_company.addr_building IS 'ที่อยู่แยกช่อง: อาคาร';
+COMMENT ON COLUMN sys_company.addr_room IS 'ที่อยู่แยกช่อง: ห้องเลขที่';
+COMMENT ON COLUMN sys_company.addr_floor IS 'ที่อยู่แยกช่อง: ชั้นที่';
+COMMENT ON COLUMN sys_company.addr_soi IS 'ที่อยู่แยกช่อง: ซอย';
+COMMENT ON COLUMN sys_company.addr_road IS 'ที่อยู่แยกช่อง: ถนน';
+COMMENT ON COLUMN sys_company.addr_geo_code IS 'ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th)';
 COMMENT ON COLUMN sys_company.phone IS 'โทรศัพท์ [Express: ISINFO.TELNUM]';
 COMMENT ON COLUMN sys_company.tax_id IS 'เลขประจำตัวผู้เสียภาษี 13 หลัก [Express: ISINFO.TAXID]';
 COMMENT ON COLUMN sys_company.trade_reg_no IS 'เลขทะเบียนการค้า/นิติบุคคล [Express: ISINFO.TRDREG]';
@@ -195,6 +215,16 @@ CREATE TABLE sys_branch (
   name varchar(120) NOT NULL,
   tax_branch_no varchar(5) DEFAULT '00000' NOT NULL,
   address text,
+  zip_code varchar(5),
+  addr_no varchar(20),
+  addr_moo varchar(20),
+  addr_village varchar(100),
+  addr_building varchar(40),
+  addr_room varchar(20),
+  addr_floor varchar(20),
+  addr_soi varchar(100),
+  addr_road varchar(100),
+  addr_geo_code varchar(6),
   is_head_office boolean DEFAULT false NOT NULL,
   default_warehouse_id uuid,
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
@@ -214,6 +244,16 @@ COMMENT ON COLUMN sys_branch.code IS 'รหัสสาขา';
 COMMENT ON COLUMN sys_branch.name IS 'ชื่อสาขา';
 COMMENT ON COLUMN sys_branch.tax_branch_no IS 'เลขที่สาขาตามกรมสรรพากร (00000 = สำนักงานใหญ่)';
 COMMENT ON COLUMN sys_branch.address IS 'ที่อยู่สาขา (พิมพ์บนใบกำกับภาษี)';
+COMMENT ON COLUMN sys_branch.zip_code IS 'รหัสไปรษณีย์ของสาขา';
+COMMENT ON COLUMN sys_branch.addr_no IS 'ที่อยู่แยกช่อง: เลขที่';
+COMMENT ON COLUMN sys_branch.addr_moo IS 'ที่อยู่แยกช่อง: หมู่ที่';
+COMMENT ON COLUMN sys_branch.addr_village IS 'ที่อยู่แยกช่อง: หมู่บ้าน';
+COMMENT ON COLUMN sys_branch.addr_building IS 'ที่อยู่แยกช่อง: อาคาร';
+COMMENT ON COLUMN sys_branch.addr_room IS 'ที่อยู่แยกช่อง: ห้องเลขที่';
+COMMENT ON COLUMN sys_branch.addr_floor IS 'ที่อยู่แยกช่อง: ชั้นที่';
+COMMENT ON COLUMN sys_branch.addr_soi IS 'ที่อยู่แยกช่อง: ซอย';
+COMMENT ON COLUMN sys_branch.addr_road IS 'ที่อยู่แยกช่อง: ถนน';
+COMMENT ON COLUMN sys_branch.addr_geo_code IS 'ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th)';
 COMMENT ON COLUMN sys_branch.is_head_office IS 'เป็นสำนักงานใหญ่';
 COMMENT ON COLUMN sys_branch.default_warehouse_id IS 'คลังหลักของสาขา [Express: ISINFO.MAINLOC]';
 COMMENT ON COLUMN sys_branch.status IS 'สถานะ';
@@ -1860,6 +1900,15 @@ CREATE TABLE md_customer (
   address_2 varchar(100),
   address_3 varchar(100),
   zip_code varchar(10),
+  addr_no varchar(20),
+  addr_moo varchar(20),
+  addr_village varchar(100),
+  addr_building varchar(40),
+  addr_room varchar(20),
+  addr_floor varchar(20),
+  addr_soi varchar(100),
+  addr_road varchar(100),
+  addr_geo_code varchar(6),
   phone varchar(60),
   email varchar(120),
   contact varchar(60),
@@ -1908,6 +1957,15 @@ COMMENT ON COLUMN md_customer.address_1 IS 'ที่อยู่ 1 [Express: AR
 COMMENT ON COLUMN md_customer.address_2 IS 'ที่อยู่ 2 [Express: ARMAS.ADDR02]';
 COMMENT ON COLUMN md_customer.address_3 IS 'ที่อยู่ 3 [Express: ARMAS.ADDR03]';
 COMMENT ON COLUMN md_customer.zip_code IS 'รหัสไปรษณีย์ [Express: ARMAS.ZIPCOD]';
+COMMENT ON COLUMN md_customer.addr_no IS 'ที่อยู่แยกช่อง: เลขที่';
+COMMENT ON COLUMN md_customer.addr_moo IS 'ที่อยู่แยกช่อง: หมู่ที่';
+COMMENT ON COLUMN md_customer.addr_village IS 'ที่อยู่แยกช่อง: หมู่บ้าน';
+COMMENT ON COLUMN md_customer.addr_building IS 'ที่อยู่แยกช่อง: อาคาร';
+COMMENT ON COLUMN md_customer.addr_room IS 'ที่อยู่แยกช่อง: ห้องเลขที่';
+COMMENT ON COLUMN md_customer.addr_floor IS 'ที่อยู่แยกช่อง: ชั้นที่';
+COMMENT ON COLUMN md_customer.addr_soi IS 'ที่อยู่แยกช่อง: ซอย';
+COMMENT ON COLUMN md_customer.addr_road IS 'ที่อยู่แยกช่อง: ถนน';
+COMMENT ON COLUMN md_customer.addr_geo_code IS 'ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th)';
 COMMENT ON COLUMN md_customer.phone IS 'โทรศัพท์ [Express: ARMAS.TELNUM]';
 COMMENT ON COLUMN md_customer.email IS 'อีเมล (ใหม่)';
 COMMENT ON COLUMN md_customer.contact IS 'ผู้ติดต่อ [Express: ARMAS.CONTACT]';
@@ -1955,6 +2013,15 @@ CREATE TABLE md_customer_ship_to (
   address_2 varchar(100),
   address_3 varchar(100),
   zip_code varchar(10),
+  addr_no varchar(20),
+  addr_moo varchar(20),
+  addr_village varchar(100),
+  addr_building varchar(40),
+  addr_room varchar(20),
+  addr_floor varchar(20),
+  addr_soi varchar(100),
+  addr_road varchar(100),
+  addr_geo_code varchar(6),
   phone varchar(60),
   contact varchar(60),
   created_at timestamptz DEFAULT now() NOT NULL,
@@ -1975,6 +2042,15 @@ COMMENT ON COLUMN md_customer_ship_to.address_1 IS 'ที่อยู่ 1 [Exp
 COMMENT ON COLUMN md_customer_ship_to.address_2 IS 'ที่อยู่ 2 [Express: ARSHIP.ADDR02]';
 COMMENT ON COLUMN md_customer_ship_to.address_3 IS 'ที่อยู่ 3 [Express: ARSHIP.ADDR03]';
 COMMENT ON COLUMN md_customer_ship_to.zip_code IS 'รหัสไปรษณีย์ [Express: ARSHIP.ZIPCOD]';
+COMMENT ON COLUMN md_customer_ship_to.addr_no IS 'ที่อยู่แยกช่อง: เลขที่';
+COMMENT ON COLUMN md_customer_ship_to.addr_moo IS 'ที่อยู่แยกช่อง: หมู่ที่';
+COMMENT ON COLUMN md_customer_ship_to.addr_village IS 'ที่อยู่แยกช่อง: หมู่บ้าน';
+COMMENT ON COLUMN md_customer_ship_to.addr_building IS 'ที่อยู่แยกช่อง: อาคาร';
+COMMENT ON COLUMN md_customer_ship_to.addr_room IS 'ที่อยู่แยกช่อง: ห้องเลขที่';
+COMMENT ON COLUMN md_customer_ship_to.addr_floor IS 'ที่อยู่แยกช่อง: ชั้นที่';
+COMMENT ON COLUMN md_customer_ship_to.addr_soi IS 'ที่อยู่แยกช่อง: ซอย';
+COMMENT ON COLUMN md_customer_ship_to.addr_road IS 'ที่อยู่แยกช่อง: ถนน';
+COMMENT ON COLUMN md_customer_ship_to.addr_geo_code IS 'ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th)';
 COMMENT ON COLUMN md_customer_ship_to.phone IS 'โทรศัพท์ [Express: ARSHIP.TELNUM]';
 COMMENT ON COLUMN md_customer_ship_to.contact IS 'ผู้ติดต่อ [Express: ARSHIP.CONTACT]';
 COMMENT ON COLUMN md_customer_ship_to.created_at IS 'เวลาสร้าง';
@@ -1999,6 +2075,15 @@ CREATE TABLE md_supplier (
   address_2 varchar(100),
   address_3 varchar(100),
   zip_code varchar(10),
+  addr_no varchar(20),
+  addr_moo varchar(20),
+  addr_village varchar(100),
+  addr_building varchar(40),
+  addr_room varchar(20),
+  addr_floor varchar(20),
+  addr_soi varchar(100),
+  addr_road varchar(100),
+  addr_geo_code varchar(6),
   phone varchar(60),
   email varchar(120),
   contact varchar(60),
@@ -2042,6 +2127,15 @@ COMMENT ON COLUMN md_supplier.address_1 IS 'ที่อยู่ 1 [Express: AP
 COMMENT ON COLUMN md_supplier.address_2 IS 'ที่อยู่ 2 [Express: APMAS.ADDR02]';
 COMMENT ON COLUMN md_supplier.address_3 IS 'ที่อยู่ 3 [Express: APMAS.ADDR03]';
 COMMENT ON COLUMN md_supplier.zip_code IS 'รหัสไปรษณีย์ [Express: APMAS.ZIPCOD]';
+COMMENT ON COLUMN md_supplier.addr_no IS 'ที่อยู่แยกช่อง: เลขที่';
+COMMENT ON COLUMN md_supplier.addr_moo IS 'ที่อยู่แยกช่อง: หมู่ที่';
+COMMENT ON COLUMN md_supplier.addr_village IS 'ที่อยู่แยกช่อง: หมู่บ้าน';
+COMMENT ON COLUMN md_supplier.addr_building IS 'ที่อยู่แยกช่อง: อาคาร';
+COMMENT ON COLUMN md_supplier.addr_room IS 'ที่อยู่แยกช่อง: ห้องเลขที่';
+COMMENT ON COLUMN md_supplier.addr_floor IS 'ที่อยู่แยกช่อง: ชั้นที่';
+COMMENT ON COLUMN md_supplier.addr_soi IS 'ที่อยู่แยกช่อง: ซอย';
+COMMENT ON COLUMN md_supplier.addr_road IS 'ที่อยู่แยกช่อง: ถนน';
+COMMENT ON COLUMN md_supplier.addr_geo_code IS 'ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th)';
 COMMENT ON COLUMN md_supplier.phone IS 'โทรศัพท์ [Express: APMAS.TELNUM]';
 COMMENT ON COLUMN md_supplier.email IS 'อีเมล (ใหม่ — คู่กับลูกค้า)';
 COMMENT ON COLUMN md_supplier.contact IS 'ผู้ติดต่อ [Express: APMAS.CONTACT]';
@@ -2166,6 +2260,15 @@ CREATE TABLE md_salesperson (
   commission_rate numeric(9,4),
   address text,
   zip_code varchar(10),
+  addr_no varchar(20),
+  addr_moo varchar(20),
+  addr_village varchar(100),
+  addr_building varchar(40),
+  addr_room varchar(20),
+  addr_floor varchar(20),
+  addr_soi varchar(100),
+  addr_road varchar(100),
+  addr_geo_code varchar(6),
   phone varchar(60),
   tax_id varchar(13),
   social_security_no varchar(20),
@@ -2190,6 +2293,15 @@ COMMENT ON COLUMN md_salesperson.sales_area_code IS 'เขตการขาย
 COMMENT ON COLUMN md_salesperson.commission_rate IS 'อัตราค่าคอมมิชชั่น % [Express: OESLM.COMRATE]';
 COMMENT ON COLUMN md_salesperson.address IS 'ที่อยู่ [Express: OESLM.ADDR01-03]';
 COMMENT ON COLUMN md_salesperson.zip_code IS 'รหัสไปรษณีย์ [Express: OESLM.ZIPCOD]';
+COMMENT ON COLUMN md_salesperson.addr_no IS 'ที่อยู่แยกช่อง: เลขที่';
+COMMENT ON COLUMN md_salesperson.addr_moo IS 'ที่อยู่แยกช่อง: หมู่ที่';
+COMMENT ON COLUMN md_salesperson.addr_village IS 'ที่อยู่แยกช่อง: หมู่บ้าน';
+COMMENT ON COLUMN md_salesperson.addr_building IS 'ที่อยู่แยกช่อง: อาคาร';
+COMMENT ON COLUMN md_salesperson.addr_room IS 'ที่อยู่แยกช่อง: ห้องเลขที่';
+COMMENT ON COLUMN md_salesperson.addr_floor IS 'ที่อยู่แยกช่อง: ชั้นที่';
+COMMENT ON COLUMN md_salesperson.addr_soi IS 'ที่อยู่แยกช่อง: ซอย';
+COMMENT ON COLUMN md_salesperson.addr_road IS 'ที่อยู่แยกช่อง: ถนน';
+COMMENT ON COLUMN md_salesperson.addr_geo_code IS 'ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th)';
 COMMENT ON COLUMN md_salesperson.phone IS 'โทรศัพท์ [Express: OESLM.TELNUM]';
 COMMENT ON COLUMN md_salesperson.tax_id IS 'เลขผู้เสียภาษี [Express: OESLM.TAXID]';
 COMMENT ON COLUMN md_salesperson.social_security_no IS 'เลขประกันสังคม [Express: OESLM.SOCIALID]';
@@ -4378,6 +4490,7 @@ CREATE TABLE pay_employee (
   reg_district varchar(100),
   reg_province varchar(100),
   reg_postcode varchar(5),
+  reg_geo_code varchar(6),
   current_address text,
   phone varchar(60),
   email varchar(120),
@@ -4435,6 +4548,7 @@ COMMENT ON COLUMN pay_employee.reg_subdistrict IS 'ตำบล/แขวง';
 COMMENT ON COLUMN pay_employee.reg_district IS 'อำเภอ/เขต';
 COMMENT ON COLUMN pay_employee.reg_province IS 'จังหวัด';
 COMMENT ON COLUMN pay_employee.reg_postcode IS 'รหัสไปรษณีย์';
+COMMENT ON COLUMN pay_employee.reg_geo_code IS 'ตำบล/แขวง ตามทะเบียนบ้าน รหัส 6 หลักกรมการปกครอง (เลือกจากรายการ/รหัสไปรษณีย์ — ชื่อตำบล อำเภอ จังหวัดเติมให้)';
 COMMENT ON COLUMN pay_employee.current_address IS 'ที่อยู่ปัจจุบัน (ว่าง = ตามทะเบียนบ้าน)';
 COMMENT ON COLUMN pay_employee.phone IS 'โทรศัพท์';
 COMMENT ON COLUMN pay_employee.email IS 'อีเมล';

@@ -3,11 +3,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatTaxBranch } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
-import { cx, ErrorBox, Field, Modal, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { cx, ErrorBox, Field, Modal, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { AddressFields } from '../../components/AddressFields';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 
-interface Branch { id: string; code: string; name: string; tax_branch_no: string; address: string | null; is_head_office: boolean; status: string }
+interface Branch { id: string; code: string; name: string; tax_branch_no: string; address: string | null; is_head_office: boolean; status: string; [k: string]: unknown }
 
 /** สาขา — เพิ่มเหนือ Express (Express มีแค่ "สาขา#" ของกิจการ) */
 export function BranchesPage() {
@@ -20,7 +21,7 @@ export function BranchesPage() {
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › สาขา" title="สาขา" lead="แต่ละสาขามีเลขที่สาขาตามกรมสรรพากร ใช้พิมพ์บนใบกำกับภาษีและแยกรายงานภาษี" />
       <MasterBar rs={rs} word="สาขา" label={(b) => `${b.code} ${b.name}`} onAdd={() => setEdit('new')} onEdit={(b) => setEdit(b)}
-        isActive={(b) => b.status === 'A'} onToggle={(b) => (b.is_head_office ? Promise.reject(new Error('สำนักงานใหญ่เลิกใช้ไม่ได้')) : api.put(`/api/v1/branches/${b.id}`, { code: b.code, name: b.name, tax_branch_no: b.tax_branch_no, address: b.address, status: b.status === 'A' ? 'I' : 'A' }).then(() => { qc.invalidateQueries({ queryKey: ['branches'] }); refresh(); }))} />
+        isActive={(b) => b.status === 'A'} onToggle={(b) => (b.is_head_office ? Promise.reject(new Error('สำนักงานใหญ่เลิกใช้ไม่ได้')) : api.put(`/api/v1/branches/${b.id}`, { ...b, status: b.status === 'A' ? 'I' : 'A' }).then(() => { qc.invalidateQueries({ queryKey: ['branches'] }); refresh(); }))} />
       <ErrorBox error={q.error} />
       <div className="table-wrap">
         <table className="grid">
@@ -34,19 +35,20 @@ export function BranchesPage() {
 }
 
 function BranchForm({ b, onClose, onSaved }: { b: Branch | null; onClose: () => void; onSaved: () => void }) {
-  const [f, setF] = useState({ code: b?.code ?? '', name: b?.name ?? '', tax_branch_no: b?.tax_branch_no ?? '', address: b?.address ?? '', status: b?.status ?? 'A' });
+  const [f, setF] = useState<Record<string, unknown>>({ ...Object.fromEntries(Object.entries(b ?? {}).map(([k, v]) => [k, v ?? ''])), code: b?.code ?? '', name: b?.name ?? '', tax_branch_no: b?.tax_branch_no ?? '', address: b?.address ?? '', status: b?.status ?? 'A' });
+  const v = (k: string) => String(f[k] ?? '');
   const [err, setErr] = useState<unknown>(null);
   const save = () => (b ? api.put(`/api/v1/branches/${b.id}`, f) : api.post('/api/v1/branches', f)).then(() => { toast('บันทึกแล้ว'); onSaved(); }).catch(setErr);
   useHotkeys({ F9: save, 'Ctrl+S': save }, [f]);
   return (
     <Modal title={b ? `แก้ไขสาขา ${b.code}` : 'เพิ่มสาขา'} onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button></>}>
       <ErrorBox error={err} />
-      <div className="form-grid">
-        <Field label="รหัสสาขา" req><input value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /></Field>
-        <Field label="เลขที่สาขา 5 หลัก" req hint="00000 = สำนักงานใหญ่"><input className="mono" maxLength={5} value={f.tax_branch_no} onChange={(e) => setF({ ...f, tax_branch_no: e.target.value.replace(/\D/g, '') })} /></Field>
-        <Field label="ชื่อสาขา" req wide><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label="ที่อยู่ (พิมพ์บนใบกำกับภาษี)" wide><textarea rows={2} value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></Field>
-        <Field label="สถานะ"><select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="A">ใช้งาน</option><option value="I">เลิกใช้</option></select></Field>
+      <div className="form-grid" onKeyDown={(e) => navKey(e, save)}>
+        <Field label="รหัสสาขา" req><input value={v('code')} onChange={(e) => setF({ ...f, code: e.target.value })} /></Field>
+        <Field label="เลขที่สาขา 5 หลัก" req hint="00000 = สำนักงานใหญ่"><input className="mono" maxLength={5} value={v('tax_branch_no')} onChange={(e) => setF({ ...f, tax_branch_no: e.target.value.replace(/\D/g, '') })} /></Field>
+        <Field label="ชื่อสาขา" req wide><input value={v('name')} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+        <AddressFields value={f} onChange={(p) => setF((x) => ({ ...x, ...p }))} target={{ kind: 'text', key: 'address' }} title="ที่อยู่สาขา (พิมพ์บนใบกำกับภาษี)" />
+        <Field label="สถานะ"><select value={v('status')} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="A">ใช้งาน</option><option value="I">เลิกใช้</option></select></Field>
       </div>
     </Modal>
   );

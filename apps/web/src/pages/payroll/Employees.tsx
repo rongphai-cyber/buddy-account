@@ -5,6 +5,7 @@ import { checkTaxId, fmt, TAX_BEARER_TH, WAGE_TYPE_TH, type AllowanceRule, type 
 import { api, type Department } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, useLookups } from '../../components/LkSelect';
+import { AddressFields } from '../../components/AddressFields';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { RecNav, usePayItems, type PayItem } from './common';
@@ -69,12 +70,10 @@ export function EmployeesPage() {
 
 type Form = Record<string, string | boolean>;
 const EMPTY: Form = { code: '', title: '', first_name: '', last_name: '', first_name_en: '', last_name_en: '', nickname: '', tax_id: '', gender: '', birth_date: '', nationality: 'ไทย',
-  reg_house_no: '', reg_moo: '', reg_village: '', reg_building: '', reg_soi: '', reg_road: '', reg_subdistrict: '', reg_district: '', reg_province: '', reg_postcode: '', current_address: '', phone: '', email: '',
+  reg_house_no: '', reg_moo: '', reg_village: '', reg_building: '', reg_soi: '', reg_road: '', reg_subdistrict: '', reg_district: '', reg_province: '', reg_postcode: '', reg_geo_code: '', current_address: '', phone: '', email: '',
   department_id: '', branch_id: '', position: '', employee_type: 'ประจำ', hire_date: '', end_date: '', end_reason: '', pay_method: 'B', bank_id: '', bank_account_no: '', bank_account_name: '',
   tax_bearer: 'W', sso_insured: true, sso_hospital: '', pvd_member: false, pvd_join_date: '', pvd_employee_rate: '0', pvd_employer_rate: '0', note: '', status: 'A', wage_type: 'M', rate: '' };
 const TEXT: Array<[string, string, number, boolean?]> = [['title', 'คำนำหน้า', 30], ['first_name', 'ชื่อ', 100, true], ['last_name', 'นามสกุล', 100], ['nickname', 'ชื่อเล่น', 60], ['first_name_en', 'ชื่ออังกฤษ', 100], ['last_name_en', 'นามสกุลอังกฤษ', 100]];
-const ADDR: Array<[string, string, number]> = [['reg_house_no', 'เลขที่', 30], ['reg_moo', 'หมู่ที่', 10], ['reg_village', 'หมู่บ้าน', 100], ['reg_building', 'อาคาร', 100], ['reg_soi', 'ซอย', 100], ['reg_road', 'ถนน', 100],
-  ['reg_subdistrict', 'ตำบล/แขวง', 100], ['reg_district', 'อำเภอ/เขต', 100], ['reg_province', 'จังหวัด', 100], ['reg_postcode', 'รหัสไปรษณีย์', 5]];
 
 /** รายละเอียดพนักงาน: ข้อมูลส่วนตัว · การจ้างและค่าจ้าง · ภาษีและกองทุน · ค่าลดหย่อน · ยอดยกมาต้นปี · รายการประจำ */
 export function EmployeeFormPage() {
@@ -159,7 +158,7 @@ export function EmployeeFormPage() {
             <Field label="อีเมล" hint="ใช้ส่งสลิปเงินเดือน"><input type="email" value={s('email')} maxLength={120} disabled={readOnly} onChange={(e) => set({ email: e.target.value })} /></Field>
           </fieldset>
           <fieldset className="box"><legend>ที่อยู่ตามทะเบียนบ้าน (ใช้ใน ภ.ง.ด.1ก และ 50 ทวิ)</legend>
-            {ADDR.map(([k, l, m]) => <Field key={k} label={l}><input className={k === 'reg_postcode' ? 'mono' : undefined} value={s(k)} maxLength={m} disabled={readOnly} onChange={(e) => set({ [k]: e.target.value })} /></Field>)}
+            <AddressFields value={f ?? {}} onChange={(p) => set(p)} target={{ kind: 'employee' }} title="ที่อยู่ตามทะเบียนบ้าน" disabled={readOnly} />
             <Field label="ที่อยู่ปัจจุบัน" hint="ว่าง = ตามทะเบียนบ้าน" wide><textarea rows={2} value={s('current_address')} maxLength={2000} disabled={readOnly} onChange={(e) => set({ current_address: e.target.value })} /></Field>
           </fieldset>
         </div>}

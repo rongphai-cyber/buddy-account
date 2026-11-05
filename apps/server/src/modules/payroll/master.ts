@@ -10,6 +10,8 @@ import type { Db } from '../../db.js';
 import { badRequest, conflict, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { checkOwned } from '../../owned.js';
+import { geoCode } from '../../address.js';
+import { geoLookup } from '@buddy/core/geo-th';
 import { checkAccount } from '../parties.js';
 import { companySettings } from '../../company-template.js';
 
@@ -87,6 +89,7 @@ export const empBody = z.object({
   gender: z.enum(['M', 'F']).nullable().optional().transform((v) => v ?? null), birth_date: optDate, nationality: optStr(60),
   reg_house_no: optStr(30), reg_moo: optStr(10), reg_village: optStr(100), reg_building: optStr(100), reg_soi: optStr(100), reg_road: optStr(100),
   reg_subdistrict: optStr(100), reg_district: optStr(100), reg_province: optStr(100), reg_postcode: z.string().trim().regex(/^(\d{5})?$/, 'รหัสไปรษณีย์ 5 หลัก').nullable().optional().transform((v) => v || null),
+  reg_geo_code: geoCode,
   current_address: optStr(2000), phone: optStr(60), email: optStr(120),
   department_id: optId, branch_id: optId, position: optStr(100), employee_type: optStr(60),
   hire_date: isoDate, end_date: optDate, end_reason: optStr(120),
@@ -143,6 +146,9 @@ const monthStart = (iso: string) => `${iso.slice(0, 7)}-01`;
 /** เพิ่ม/แก้พนักงาน (หน้าจอและการนำเข้าใช้กฎเดียวกัน) — เรียกในทรานแซกชันของผู้เรียกได้ */
 export async function saveEmployee(db: Db, a: Ctx, id: string | null, b: EmpBody) {
   checkEmp(b);
+  // เลือกตำบลจากรายการทางการ → ชื่อตำบล อำเภอ จังหวัดตามรหัส (ไฟล์ยื่นราชการใช้ชื่อเปล่า · กรุงเทพตัด "เขต")
+  const geo = geoLookup(b.reg_geo_code);
+  if (geo) b = { ...b, reg_subdistrict: geo.tamb.th, reg_district: geo.amph.th.replace(/^เขต/, ''), reg_province: geo.prov.th, reg_postcode: b.reg_postcode ?? geo.zip };
   await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }, { table: 'md_bank', id: b.bank_id, field: 'bank_id' }]);
   if (b.branch_id && !(await db.selectFrom('sys_branch').select('id').where('id', '=', b.branch_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบสาขานี้', [{ field: 'branch_id', message: 'เลือกสาขาใหม่' }]);
   const cur = id ? await loadEmp(db, a, id) : null;

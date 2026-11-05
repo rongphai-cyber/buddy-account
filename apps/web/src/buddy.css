@@ -164,3 +164,14 @@ tr.row-late td { color: var(--muted); cursor: not-allowed; }
 /* ช่องค้นหา: เพิ่มข้อมูลหลักใหม่ (ข้อกำหนดเจ้าของ) */
 .pick-list li.pick-add { color: var(--tone); font-weight: 600; border-top: 1px dashed var(--line); cursor: pointer; }
 .pick-list li.pick-add:hover { background: var(--tone-soft); }
+/* ที่อยู่แยกช่อง (components/AddressFields — docs/18 ข้อ 12) */
+.addr-box { grid-column: 1 / -1; border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.addr-title { font-weight: 600; font-size: 13.5px; }
+.addr-title small { font-weight: 400; margin-left: 6px; }
+.addr-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.addr-out { display: flex; flex-direction: column; gap: 4px; }
+.addr-out-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.addr-out-head .lbl { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; font-size: 12.5px; text-decoration: underline; min-height: 0; }
+@media (max-width: 1024px) { .addr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .addr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

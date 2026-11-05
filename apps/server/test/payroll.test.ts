@@ -52,6 +52,12 @@ describe('ระบบเงินเดือน', () => {
     expect((await call('POST', '/api/v1/pay/employees', { ...base, code: 'E01', first_name: 'เอ', tax_id: '1101700230709' })).body.error.message).toMatch(/หลักสุดท้าย/);
     A = (await call('POST', '/api/v1/pay/employees', { ...base, code: 'E01', title: 'นาย', first_name: 'เอ', last_name: 'ทดสอบ', tax_id: pid(1), department_id: dept })).body.id;
     expect((await call('POST', '/api/v1/pay/employees', { ...base, code: 'E01', first_name: 'ซ้ำ' })).status).toBe(409);
+    // ที่อยู่ตามทะเบียนบ้าน (docs/18 ข้อ 12): เลือกตำบลรหัสกรมการปกครอง → ชื่อตำบล อำเภอ จังหวัด + รหัสไปรษณีย์ตามรหัส (ชื่อที่พิมพ์มาเองถูกแทน) · รหัสอำเภอ/ไม่มีจริง = ไม่รับ
+    const ge = await call('POST', '/api/v1/pay/employees', { ...base, code: 'EGEO', first_name: 'ที่อยู่', reg_house_no: '9', reg_geo_code: '501508', reg_district: 'พิมพ์ผิด' });
+    expect(ge.status, JSON.stringify(ge.body)).toBe(200);
+    expect((await call('GET', `/api/v1/pay/employees/${ge.body.id}`)).body).toMatchObject({ reg_geo_code: '501508', reg_subdistrict: 'สันผักหวาน', reg_district: 'หางดง', reg_province: 'เชียงใหม่', reg_postcode: '50230' });
+    expect((await call('POST', '/api/v1/pay/employees', { ...base, code: 'EGE2', first_name: 'ผิด', reg_geo_code: '501500' })).body.error.message).toMatch(/ตำบล\/แขวงไม่ถูกต้อง/);
+    expect((await call('DELETE', `/api/v1/pay/employees/${ge.body.id}`)).status).toBe(200);
     expect((await call('POST', '/api/v1/pay/employees', { ...base, code: 'E09', first_name: 'เลขซ้ำ', tax_id: pid(1) })).body.error.message).toMatch(/E01/);
     B = (await call('POST', '/api/v1/pay/employees', { ...base, code: 'E02', first_name: 'บี', hire_date: '2026-01-16' })).body.id;
     C = (await call('POST', '/api/v1/pay/employees', { ...base, code: 'E03', first_name: 'ซี', wage_type: 'D', rate: '400' })).body.id;

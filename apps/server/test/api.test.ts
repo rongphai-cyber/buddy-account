@@ -601,6 +601,55 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/suppliers/${s1.body.id}`)).status).toBe(404);
   });
 
+  it('address parts: postcode/subdistrict codes on customers, ship-to, suppliers, salespersons, company and branches (docs/18 ข้อ 12)', async () => {
+    const parts = { addr_no: '99/1', addr_moo: '5', addr_village: 'สวนทอง', addr_soi: '3', addr_road: 'เชียงใหม่-ฮอด', addr_geo_code: '501508', zip_code: '50230' };
+    const lines = { address_1: '99/1 หมู่ 5 หมู่บ้านสวนทอง ซอย 3 ถนนเชียงใหม่-ฮอด', address_2: 'ตำบลสันผักหวาน อำเภอหางดง', address_3: 'จังหวัดเชียงใหม่' };
+    const cus = { code: 'CADDR', name: 'ร้าน ที่อยู่ ทดสอบ', tax_id: '0105537095903', tax_branch_no: '1', ...parts, ...lines, ship_tos: [{ code: 'S1', ...parts, addr_no: '7', address_1: '7 หมู่ 5', address_2: lines.address_2, address_3: lines.address_3 }] };
+    // รหัสตำบลต้องเป็นตำบลจริง (รหัสอำเภอ/ไม่มีจริง = ไม่รับ พร้อมบอกวิธีแก้)
+    for (const bad of ['501500', '999999', 'ABC']) {
+      const r = await call('POST', '/api/v1/customers', { ...cus, addr_geo_code: bad });
+      expect(r.status).toBe(400); expect(r.body.error.message).toMatch(/ตำบล\/แขวงไม่ถูกต้อง/);
+    }
+    expect((await call('POST', '/api/v1/customers', { ...cus, ship_tos: [{ ...cus.ship_tos[0], addr_geo_code: '501500' }] })).status).toBe(400);
+    const c = await call('POST', '/api/v1/customers', cus);
+    expect(c.status, JSON.stringify(c.body)).toBe(200);
+    const cd = (await call('GET', `/api/v1/customers/${c.body.id}`)).body;
+    expect(cd).toMatchObject({ ...parts, ...lines, addr_building: null, addr_room: null });
+    expect(cd.ship_tos[0]).toMatchObject({ code: 'S1', addr_no: '7', addr_geo_code: '501508', zip_code: '50230' });
+    // ล้างช่องแยกได้ (ข้อความที่อยู่เดิมยังอยู่)
+    expect((await call('PUT', `/api/v1/customers/${c.body.id}`, { ...cus, addr_geo_code: '', addr_no: '', ship_tos: [] })).status).toBe(200);
+    expect((await call('GET', `/api/v1/customers/${c.body.id}`)).body).toMatchObject({ addr_geo_code: null, addr_no: null, address_1: lines.address_1 });
+    // ผู้จำหน่าย / พนักงานขาย
+    const s = await call('POST', '/api/v1/suppliers', { code: 'SADDR', name: 'ผู้จำหน่าย ที่อยู่', tax_id: '0105537095903', tax_branch_no: '2', ...parts, ...lines });
+    expect(s.status, JSON.stringify(s.body)).toBe(200);
+    expect((await call('GET', `/api/v1/suppliers/${s.body.id}`)).body).toMatchObject(parts);
+    const sp = await call('POST', '/api/v1/salespersons', { code: 'SADDR', name: 'พนักงาน ที่อยู่', address: '99/1 หมู่ 5 ตำบลสันผักหวาน อำเภอหางดง จังหวัดเชียงใหม่ 50230', ...parts });
+    expect(sp.status, JSON.stringify(sp.body)).toBe(200);
+    expect((await call('GET', `/api/v1/salespersons/${sp.body.id}`)).body).toMatchObject({ addr_geo_code: '501508', zip_code: '50230' });
+    expect((await call('POST', '/api/v1/salespersons', { code: 'SBAD', name: 'x', addr_geo_code: '999999' })).status).toBe(400);
+    // ข้ามบริษัทไม่ได้: บริษัทอื่นไม่เห็น/แก้ลูกค้ารายนี้
+    const mine = (await call('GET', '/api/v1/auth/me')).body.company?.id as string;
+    const otherCo = (await call('POST', '/api/v1/companies', { code: 'ADDRX', name_th: 'บริษัทอื่น ที่อยู่', fiscal_start: '2026-01-01', chart: 'th_en' })).body.id as string;
+    await call('POST', '/api/v1/auth/select', { company_id: otherCo });
+    expect((await call('GET', `/api/v1/customers/${c.body.id}`)).status).toBe(404);
+    expect((await call('PUT', `/api/v1/customers/${c.body.id}`, cus)).status).toBe(404);
+    // กิจการ (ทดสอบในบริษัทอื่น — ไม่แตะเลขผู้เสียภาษีของบริษัทหลักที่ชุดทดสอบถัดไปใช้) · รหัสไปรษณีย์ 5 หลัก
+    const co = (await call('GET', '/api/v1/company')).body;
+    const coBody = { ...co, tax_id: '0105537095903', vat_rate: Number(co.vat_rate), tax_branch_no: '0', ...parts, address_th_1: lines.address_1, address_th_2: 'ตำบลสันผักหวาน อำเภอหางดง จังหวัดเชียงใหม่ 50230' };
+    expect((await call('PUT', '/api/v1/company', { ...coBody, zip_code: '5023' })).status).toBe(400);
+    expect((await call('PUT', '/api/v1/company', { ...coBody, addr_geo_code: '501500' })).status).toBe(400);
+    { const r = await call('PUT', '/api/v1/company', coBody); expect(r.status, JSON.stringify(r.body)).toBe(200); }
+    expect((await call('GET', '/api/v1/company')).body).toMatchObject({ ...parts, address_th_1: lines.address_1 });
+    const br = await call('POST', '/api/v1/branches', { code: 'BADDR', name: 'สาขาหางดง', tax_branch_no: '00077', address: 'x', ...parts });
+    expect(br.status, JSON.stringify(br.body)).toBe(200);
+    expect((await call('GET', '/api/v1/branches')).body.find((b: { id: string }) => b.id === br.body.id)).toMatchObject(parts);
+    expect((await call('PUT', `/api/v1/branches/${br.body.id}`, { code: 'BADDR', name: 'สาขาหางดง', tax_branch_no: '00077', addr_geo_code: '501500' })).status).toBe(400);
+    await call('POST', '/api/v1/auth/select', { company_id: mine });
+    // ลบเพื่อไม่กระทบชุดทดสอบถัดไป
+    expect((await call('DELETE', `/api/v1/customers/${c.body.id}`)).status).toBe(200);
+    expect((await call('DELETE', `/api/v1/suppliers/${s.body.id}`)).status).toBe(200);
+  });
+
   it('item master: account groups, items, kits, services, other income/expense, prices, reorder (บทที่ 7 / S-SET-04)', async () => {
     const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
     const leaf = accs.filter((x) => !x.is_control);
