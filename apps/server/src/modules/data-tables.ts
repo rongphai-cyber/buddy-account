@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import { d, DATA_TABLES } from '@buddy/core';
 import type { Db } from '../db.js';
-import { badRequest, notFound, parse, requireCompany } from '../http.js';
+import { AppError, badRequest, notFound, parse, requireCompany } from '../http.js';
 import { logActivity } from '../audit.js';
 
 type Def = (typeof DATA_TABLES)[number];
@@ -75,30 +75,33 @@ export function dataTableRoutes(app: FastifyInstance, db: Db) {
    * เพิ่ม 1 รายการจากช่องที่ใช้ (กด Insert / ➕ ในช่องเลือก — docs/18 ข้อ 12) · ไม่ใส่รหัส = รหัสถัดไปอัตโนมัติ (01, 02 … / ต่อจากเลขท้ายสุด)
    * คืน id + code + name เพื่อให้ช่องเลือกเลือกรายการใหม่ทันที
    */
-  app.post('/api/v1/data-tables/:code/rows', async (req) => {
+  app.post('/api/v1/data-tables/:code/rows', async (req, reply) => {
     const a = requireCompany(req);
     const t = defOf(parse(z.object({ code: z.string() }), req.params).code);
-    const b = parse(rowBody.omit({ id: true, code: true }).extend({ code: z.string().trim().max(10, 'รหัสไม่เกิน 10 ตัว').optional() }), req.body);
+    const b = parse(rowBody.omit({ id: true, code: true }).extend({ code: z.string().trim().max(10, 'รหัสไม่เกิน 10 ตัว').optional(), branch_id: z.string().uuid().nullable().optional() }), req.body);
+    if (b.branch_id && t.table !== 'md_warehouse') throw badRequest('ระบุสาขาได้เฉพาะคลังสินค้า');
+    if (b.branch_id && !(await db.selectFrom('sys_branch').select('id').where('id', '=', b.branch_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบสาขานี้', [{ field: 'branch_id', message: 'เลือกสาขาใหม่' }]);
     const cur = await rowsOf(db, a.companyId, t);
     const name = b.name_th.trim();
     const same = cur.find((r) => r.name_th.trim() === name);
-    if (same) throw badRequest(`มี "${name}" อยู่แล้ว (รหัส ${same.code}${same.status === 'I' ? ' — เลิกใช้อยู่ เปิดใช้ที่ เริ่มระบบ › ตารางข้อมูล' : ''})`);
+    if (same) throw new AppError(409, 'DUPLICATE_CODE', `มี "${name}" อยู่แล้ว (รหัส ${same.code}${same.status === 'I' ? ' — เลิกใช้อยู่ เปิดใช้ที่ เริ่มระบบ › ตารางข้อมูล' : ''})`);
     let code = b.code?.trim() || '';
     if (!code) {
       const nums = cur.map((r) => r.code).filter((c) => /^\d+$/.test(c));
       const width = Math.max(2, ...nums.map((c) => c.length));
       code = String(nums.reduce((m, c) => Math.max(m, Number(c)), 0) + 1).padStart(width, '0').slice(-10);
     }
-    if (cur.some((r) => r.code === code)) throw badRequest(`รหัส ${code} มีอยู่แล้ว — ใช้รหัสอื่น`, [{ field: 'code', message: 'รหัสซ้ำ' }]);
+    if (cur.some((r) => r.code === code)) throw new AppError(409, 'DUPLICATE_CODE', `รหัส ${code} มีอยู่แล้ว — ใช้รหัสอื่น`);
     if (t.table === 'md_unit' && (b.rate === null || Number.isNaN(Number(b.rate)) || d(b.rate).lte(0))) throw badRequest('หน่วยนับต้องมีอัตรา (ตัวคูณเป็นหน่วยย่อย) มากกว่า 0 เช่น ชิ้น = 1 โหล = 12', [{ field: 'rate', message: 'มากกว่า 0' }]);
     const cols = { code, short_th: b.short_th, short_en: b.short_en, name_th: t.table === 'md_unit' ? name.slice(0, 60) : name, name_en: t.table === 'md_unit' ? b.name_en?.slice(0, 60) ?? null : b.name_en, status: b.status,
-      ...(t.table === 'md_lookup' ? { type_code: t.code, rate: b.rate } : t.table === 'md_unit' ? { rate: b.rate } : {}) };
+      ...(t.table === 'md_lookup' ? { type_code: t.code, rate: b.rate } : t.table === 'md_unit' ? { rate: b.rate } : { branch_id: b.branch_id ?? null }) };
     const ins = { ...cols, company_id: a.companyId, created_by: a.userId };
     const id = await db.transaction().execute(async (tx) => {
       const r = await sql<{ id: string }>`INSERT INTO ${sql.table(t.table)} (${sql.join(Object.keys(ins).map((k) => sql.ref(k)))}) VALUES (${sql.join(Object.values(ins))}) RETURNING id`.execute(tx);
       await logActivity(tx, a, { module: 'SET', action: 'ADD', docNo: `ตาราง ${t.code} ${code}`, table: t.table, rowId: r.rows[0]!.id });
       return r.rows[0]!.id;
     });
+    reply.code(201);
     return { id, code, name: cols.name_th };
   });
 

@@ -80,6 +80,20 @@ POST /api/v1/payment-methods/R   { code: "LP", name_th: "LINE Pay", name_en?, ki
 - รหัสซ้ำ → 409 `DUPLICATE_CODE` · บัญชี/บัญชีเงินฝากไม่ใช่ของบริษัท หรือเป็นบัญชีคุม → 400
 - แนะนำ: QR พร้อมเพย์/โอน → `TRANSFER` + บัญชีเงินฝาก · บัตร → `CARD` + บัญชีพักบัตร · e-Wallet (Stripe PayPal LINE Pay TrueMoney ฯลฯ) → `OTHER` + บัญชีพักของผู้ให้บริการนั้น
 
+## เพิ่มข้อมูลในตารางข้อมูลทีละรายการ (หน่วยนับ คลัง ธนาคาร ตาราง 22–76 · 05/11/2569)
+
+```
+POST /api/v1/data-tables/20/rows   { code?: "PK6", name_th: "แพ็ก 6", name_en?, rate: "6" }          ← หน่วยนับ (ต้องมีอัตรา > 0)
+POST /api/v1/data-tables/21/rows   { code?: "WPOS", name_th: "คลังหน้าร้าน", name_en?, branch_id?: uuid } ← คลังสินค้า
+POST /api/v1/data-tables/70/rows   { name_th: "ว่าที่ร้อยตรี", name_en? }                              ← ตารางอ้างอิงอื่น (รหัสตาราง ดู เริ่มระบบ › ตารางข้อมูล)
+→ 201 { id, code, name }
+```
+
+- เพิ่ม 1 รายการ ไม่แตะรายการเดิม (ต่างจาก `PUT /api/v1/data-tables/:code` ที่บันทึกทั้งตาราง — โปรแกรมอื่นห้ามใช้ `PUT` เพราะทับการแก้ที่ทำพร้อมกัน)
+- ไม่ส่ง `code` = รหัสถัดไปอัตโนมัติ (ตัวเลข 01, 02 … ต่อจากเลขสูงสุด) · รหัสซ้ำหรือชื่อซ้ำ → 409 `DUPLICATE_CODE` · `branch_id` ใช้ได้เฉพาะคลัง และต้องเป็นสาขาของบริษัท
+- สิทธิ์: เมนูตารางข้อมูล (SET.TBL) "เพิ่ม" ของผู้ใช้ที่กุญแจทำงานในนาม · รายการใหม่ออกในฟีด `GET /api/v1/changes` (`unit` / `warehouse`) ตามปกติ
+- ฟีดชนิด `customer` `supplier` `branch` มีที่อยู่แยกช่อง (`addr_no` `addr_moo` `addr_village` `addr_building` `addr_room` `addr_floor` `addr_soi` `addr_road` `addr_geo_code` = รหัสตำบล 6 หลักกรมการปกครอง) · `branch` มี `address` `zip_code` (05/11/2569)
+
 ## โปรแกรมที่ลูกค้าใช้ได้ (docs/17 ข้อ 5.6 · B0.6)
 
 ```

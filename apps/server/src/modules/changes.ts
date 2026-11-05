@@ -14,9 +14,9 @@ import { parse, requireCompany } from '../http.js';
  */
 export const CHANGE_TYPES = {
   item: { table: 'md_item', cols: ['code', 'item_type', 'barcode', 'name_th', 'name_en', 'category_code', 'base_unit_id', 'sales_unit_id', 'sales_factor', 'purchase_unit_id', 'purchase_factor', 'price_1', 'price_2', 'price_3', 'price_4', 'price_5', 'vat_code', 'default_supplier_id', 'std_cost', 'status'] },
-  customer: { table: 'md_customer', cols: ['code', 'customer_type', 'title', 'name', 'name_en', 'address_1', 'address_2', 'address_3', 'zip_code', 'phone', 'email', 'tax_id', 'tax_branch_no', 'credit_days', 'credit_limit', 'price_level', 'price_type', 'on_hold', 'status'] },
-  supplier: { table: 'md_supplier', cols: ['code', 'supplier_type', 'title', 'name', 'name_en', 'address_1', 'address_2', 'address_3', 'zip_code', 'phone', 'email', 'tax_id', 'tax_branch_no', 'credit_days', 'price_type', 'vat_rate', 'on_hold', 'status'] },
-  branch: { table: 'sys_branch', cols: ['code', 'name', 'tax_branch_no', 'is_head_office', 'default_warehouse_id', 'status'] },
+  customer: { table: 'md_customer', cols: ['code', 'customer_type', 'title', 'name', 'name_en', 'address_1', 'address_2', 'address_3', 'zip_code', 'addr_no', 'addr_moo', 'addr_village', 'addr_building', 'addr_room', 'addr_floor', 'addr_soi', 'addr_road', 'addr_geo_code', 'phone', 'email', 'tax_id', 'tax_branch_no', 'credit_days', 'credit_limit', 'price_level', 'price_type', 'on_hold', 'status'] },
+  supplier: { table: 'md_supplier', cols: ['code', 'supplier_type', 'title', 'name', 'name_en', 'address_1', 'address_2', 'address_3', 'zip_code', 'addr_no', 'addr_moo', 'addr_village', 'addr_building', 'addr_room', 'addr_floor', 'addr_soi', 'addr_road', 'addr_geo_code', 'phone', 'email', 'tax_id', 'tax_branch_no', 'credit_days', 'price_type', 'vat_rate', 'on_hold', 'status'] },
+  branch: { table: 'sys_branch', cols: ['code', 'name', 'tax_branch_no', 'address', 'zip_code', 'addr_no', 'addr_moo', 'addr_village', 'addr_building', 'addr_room', 'addr_floor', 'addr_soi', 'addr_road', 'addr_geo_code', 'is_head_office', 'default_warehouse_id', 'status'] },
   warehouse: { table: 'md_warehouse', cols: ['code', 'name_th', 'name_en', 'branch_id', 'status'] },
   payment_method: { table: 'md_payment_method', cols: ['direction', 'code', 'seq', 'name_th', 'name_en', 'kind', 'gl_account_id', 'bank_account_id', 'creates_cheque', 'status'] },
   bank_account: { table: 'md_bank_account', cols: ['code', 'name', 'branch', 'short_name', 'account_number', 'account_kind', 'gl_account_id', 'currency', 'status'] },
