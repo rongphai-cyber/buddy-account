@@ -37,7 +37,7 @@ export function DepositPickTable({ partyId, ownId, picks, setPicks, readOnly, ve
   return (
     <div className="table-wrap lines">
       <table className="grid">
-        <thead><tr><th style={{ width: 36 }} /><th style={{ width: 140 }}>ใบมัดจำ</th><th style={{ width: 110 }}>วันที่</th><th className="r" style={{ width: 130 }}>ยอดมัดจำ</th><th className="r" style={{ width: 130 }}>คงเหลือ</th><th className="r" style={{ width: 150 }}>{verb}ในใบนี้</th></tr></thead>
+        <thead><tr><th style={{ width: 36 }} /><th style={{ width: 140 }}>ใบมัดจำ</th><th style={{ width: 110 }}>วันที่</th><th className="r" style={{ width: 130 }}>ยอดมัดจำ</th><th className="r" style={{ width: 130 }} title={ownId ? 'ยอดที่ใช้ได้ในใบนี้ = คงเหลือรวมยอดที่ใบนี้ใช้ไว้' : undefined}>{ownId ? 'คงเหลือก่อนใบนี้' : 'คงเหลือ'}</th><th className="r" style={{ width: 150 }}>{verb}ในใบนี้</th></tr></thead>
         <tbody>
           {rows.map((o) => {
             const on = picks[o.header_id] !== undefined;

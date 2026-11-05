@@ -891,5 +891,7 @@
  "ไม่พบลูกค้านี้": "Customer not found",
  "ไม่พบใบมัดจำ": "Deposit not found",
  "ไม่มีเงินมัดจำคงเหลือของลูกค้ารายนี้": "This customer has no remaining deposit",
- "ป้อนวิธีจ่ายเงินและยอดในแท็บจ่ายโดยอื่น ๆ แล้วกด F9": "Enter the payment method and amount in the Other payments tab, then press F9"
+ "ป้อนวิธีจ่ายเงินและยอดในแท็บจ่ายโดยอื่น ๆ แล้วกด F9": "Enter the payment method and amount in the Other payments tab, then press F9",
+ "คงเหลือก่อนใบนี้": "Balance before this document",
+ "ยอดที่ใช้ได้ในใบนี้ = คงเหลือรวมยอดที่ใบนี้ใช้ไว้": "Usable in this document = balance plus what this document already uses"
 }

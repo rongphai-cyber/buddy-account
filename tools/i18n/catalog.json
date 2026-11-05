@@ -17689,6 +17689,13 @@
 ]
 },
 {
+"th": "คงเหลือก่อนใบนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx"
+]
+},
+{
 "th": "คงเหลือปลายงวด (ใช้ในงบ)",
 "n": 1,
 "files": [
@@ -31028,6 +31035,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "ยอดที่ใช้ได้ในใบนี้ = คงเหลือรวมยอดที่ใบนี้ใช้ไว้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx"
 ]
 },
 {
