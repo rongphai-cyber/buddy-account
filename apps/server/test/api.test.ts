@@ -3656,11 +3656,11 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     const me = (await call('GET', '/api/v1/auth/me')).body;
     const tid0 = (await call('GET', '/api/v1/tenants')).body.find((t: { code: string }) => t.code === 'DEFAULT').id as string;
-    // ค่าเริ่มต้น: Buddy เปิด · POS ยังไม่เปิด · Hotel/Spa/Living กำลังพัฒนา
+    // ค่าเริ่มต้น: Buddy เปิด · POS/Living ยังไม่เปิด · Hotel/Spa กำลังพัฒนา
     let hub = (await call('GET', '/api/v1/hub')).body;
     expect(hub.apps.map((x: App) => x.key)).toEqual(['buddy', 'pos', 'hotel', 'hr', 'spa', 'living']);
     let t = tiles(hub);
-    expect([t.buddy!.status, t.pos!.status, t.hotel!.status, t.living!.status, hub.sync]).toEqual(['active', 'locked', 'soon', 'soon', null]);
+    expect([t.buddy!.status, t.pos!.status, t.hotel!.status, t.living!.status, hub.sync]).toEqual(['active', 'locked', 'soon', 'locked', null]);
     expect(t.buddy!.metric!.label).toMatch(/ยอดขายเดือนนี้/);
     expect(t.buddy!.metric!.value).toMatch(/^-?\d+\.\d{2}$/);
     const locked = await call('POST', '/api/v1/hub/launch', { module: 'pos' });
@@ -3692,7 +3692,15 @@ describe('Buddy Account API (PGlite)', () => {
     expect(verifySsoToken((await call('POST', '/api/v1/hub/launch', { module: 'pos' })).body.url.split('#buddy_sso=')[1], set, 'wts-pos').jti).not.toBe(c.jti);
     expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'HUB_LAUNCH' AND company_id = ${companyId}`.execute(database.db)).rows[0]!.n).toBe(2);
     expect((await call('POST', '/api/v1/hub/launch', { module: 'hr' })).body.error.message).toMatch(/ยังไม่รับบัตรผ่าน/);
-    expect((await call('POST', '/api/v1/hub/launch', { module: 'living' })).status).toBe(400);
+    expect((await call('POST', '/api/v1/hub/launch', { module: 'living' })).status).toBe(403);   // Living รับบัตรผ่านแล้ว (B5) แต่ลูกค้านี้ยังไม่เปิดใช้
+    expect((await call('POST', '/api/v1/hub/launch', { module: 'hotel' })).status).toBe(400);
+    // WTS-Living (B5): เปิดใช้ + ที่อยู่ → บัตรผ่าน audience wts-living ใช้กับ POS ไม่ได้
+    await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'living', enabled: true, app_url: 'https://living.example.test/office/' }] });
+    const lv = await call('POST', '/api/v1/hub/launch', { module: 'living' });
+    expect(lv.body.url).toMatch(/^https:\/\/living\.example\.test\/office\/#buddy_sso=/);
+    const lvc = verifySsoToken((lv.body.url as string).split('#buddy_sso=')[1]!, set, 'wts-living');
+    expect([lvc.aud, lvc.sub]).toEqual(['wts-living', me.user.id]);
+    expect(() => verifySsoToken((lv.body.url as string).split('#buddy_sso=')[1]!, set, 'wts-pos')).toThrow(/โปรแกรมอื่น/);
     expect((await call('POST', '/api/v1/hub/launch', { module: 'erp' })).status).toBe(400);
     // โปรแกรมรายงานคิวส่งเอกสารด้วยกุญแจ API ของบริษัท (หน้าจอส่งไม่ได้ · กุญแจอ่านอย่างเดียวส่งไม่ได้)
     const report = { system: 'wts-pos', pending: 3, failed: 0, last_sent_at: '2026-11-05T14:02:00+07:00', metric: { label: 'ยอดขายวันนี้', value: '12345.00' } };
@@ -3735,7 +3743,7 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     // คืนค่าเดิม
     await sql`DELETE FROM sys_source_status WHERE company_id = ${companyId}`.execute(database.db);
-    await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: false, app_url: null }, { key: 'hr', enabled: false, app_url: null }] });
+    await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: false, app_url: null }, { key: 'hr', enabled: false, app_url: null }, { key: 'living', enabled: false, app_url: null }] });
   });
   it('WTS Connect master-data feed (docs/17 B0.3): full load + cursor, upsert/inactive/delete, only requested types, read-only key, bad params, isolation', async () => {
     const adminId = (await call('GET', '/api/v1/auth/me')).body.user.id;

@@ -25,7 +25,8 @@ describe('Hub (docs/17 B6.2)', () => {
   });
   it('ไทล์: กำลังพัฒนา / ยังไม่เปิด / หมดอายุ / ยังไม่ตั้งที่อยู่', () => {
     const on = { active: true, expired: false, valid_to: null };
-    expect(hubTileState('living', on, 'https://x').status).toBe('soon');
+    expect(hubTileState('hotel', on, 'https://x').status).toBe('soon');
+    expect(hubTileState('living', on, 'https://liv.example.com/office/')).toEqual({ status: 'active', reason: null });
     expect(hubTileState('pos', { active: false, expired: false, valid_to: null }, 'https://x')).toMatchObject({ status: 'locked' });
     expect(hubTileState('pos', { active: false, expired: true, valid_to: '2026-01-01' }, null).reason).toContain('หมดอายุ');
     expect(hubTileState('pos', on, null).reason).toContain('ยังไม่ได้ตั้งที่อยู่');

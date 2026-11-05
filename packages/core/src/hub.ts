@@ -15,7 +15,7 @@ export const HUB_APPS: Record<TenantModuleKey, { name: string; description: stri
   hotel: { name: 'Hotel', description: 'โรงแรม ห้องพัก เช็คอิน', mark: 'PMS', tone: 'hotel', launch: 'soon', source: 'wts-hotel', audience: 'wts-hotel' },
   hr: { name: 'WTS-SOP', description: 'HR และเงินเดือน', mark: 'HR', tone: 'hr', launch: 'link', source: 'wts-sop', audience: 'wts-sop' },
   spa: { name: 'Spa', description: 'สปา นัดหมาย คอร์ส', mark: 'SPA', tone: 'spa', launch: 'soon', source: 'wts-spa', audience: 'wts-spa' },
-  living: { name: 'WTS-Living', description: 'หอพัก อพาร์ตเมนต์ นิติบุคคล', mark: 'LIV', tone: 'living', launch: 'soon', source: 'wts-living', audience: 'wts-living' },
+  living: { name: 'WTS-Living', description: 'หอพัก อพาร์ตเมนต์ นิติบุคคล', mark: 'LIV', tone: 'living', launch: 'sso', source: 'wts-living', audience: 'wts-living' },
 };
 /** ลำดับไทล์: Buddy ใหญ่ซ้าย แล้ว POS Hotel HR Spa Living (ผังใน Design System) */
 export const HUB_ORDER: TenantModuleKey[] = ['buddy', 'pos', 'hotel', 'hr', 'spa', 'living'];
