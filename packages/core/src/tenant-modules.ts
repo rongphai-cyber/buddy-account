@@ -13,7 +13,7 @@ export const TENANT_MODULES = [
 export type TenantModuleKey = (typeof TENANT_MODULES)[number]['key'];
 export const isTenantModuleKey = (k: string): k is TenantModuleKey => TENANT_MODULES.some((m) => m.key === k);
 
-export type TenantModuleRow = { module_key: string; enabled: boolean; valid_to: string | null; seats: number | null; remark?: string | null };
+export type TenantModuleRow = { module_key: string; enabled: boolean; valid_to: string | null; seats: number | null; remark?: string | null; app_url?: string | null };
 
 /** สถานะโมดูลทุกตัวของลูกค้า: แถวที่ตั้งไว้ หรือค่าเริ่มต้น · active = เปิดและยังไม่หมดอายุ (วันที่ YYYY-MM-DD ค.ศ. · ใช้ได้ถึงสิ้นวัน valid_to) */
 export function tenantModuleStatus(rows: TenantModuleRow[], today: string) {
@@ -22,6 +22,6 @@ export function tenantModuleStatus(rows: TenantModuleRow[], today: string) {
     const enabled = r ? r.enabled : m.default_on;
     const valid_to = r?.valid_to ? String(r.valid_to).slice(0, 10) : null;
     const expired = !!valid_to && valid_to < today;
-    return { key: m.key, label: m.label, enabled, valid_to, seats: r?.seats ?? null, remark: r?.remark ?? null, active: enabled && !expired, expired };
+    return { key: m.key, label: m.label, enabled, valid_to, seats: r?.seats ?? null, remark: r?.remark ?? null, app_url: r?.app_url ?? null, active: enabled && !expired, expired };
   });
 }

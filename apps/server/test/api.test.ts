@@ -15,6 +15,7 @@ import { base32Decode, stepOf, totpAt } from '../src/modules/security.js';
 import { d, taxIdCheckDigit } from '@buddy/core';
 import { createZip } from '../src/zip.js';
 import { readTable } from '../src/modules/trade-import.js';
+import { verifySsoToken } from '../src/sso.js';
 /** เลขผู้เสียภาษีที่ถูกต้องและไม่ซ้ำกัน สำหรับคู่ค้าทดสอบ (เลข + สาขาซ้ำในบริษัทเดียวกันบันทึกไม่ได้) */
 const tid = (n: number) => { const b = `0105560${String(n).padStart(5, '0')}`; return b + taxIdCheckDigit(b); };
 
@@ -3642,6 +3643,99 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     // ปิดกลับ (ค่าเริ่มต้น)
     expect(by((await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: false }, { key: 'hr', enabled: false }] })).body).pos!.active).toBe(false);
+  });
+  it('Hub + single sign-on (docs/17 B6.1/B6.2): JWKS open, tiles follow tenant modules, token signed/short/audience-bound, status reports per company, other customers isolated', async () => {
+    type App = { key: string; status: string; reason: string | null; url: string | null; launch: string; metric: { label: string; value: string } | null; sync: { state: string; pending: number; failed: number; text: string } | null };
+    const tiles = (b: { apps: App[] }) => Object.fromEntries(b.apps.map((x) => [x.key, x]));
+    // กุญแจสาธารณะ: ไม่ต้องเข้าระบบ
+    const anon = await app.inject({ method: 'GET', url: '/.well-known/jwks.json' });
+    const set = JSON.parse(anon.body);
+    expect([anon.statusCode, set.keys[0].kty, set.keys[0].crv, set.keys[0].alg]).toEqual([200, 'OKP', 'Ed25519', 'EdDSA']);
+    expect(JSON.parse((await app.inject({ method: 'GET', url: '/api/v1/sso/jwks' })).body)).toEqual(set);
+    expect(JSON.stringify(set)).not.toMatch(/"d"/);   // ไม่มีส่วนลับ
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    const me = (await call('GET', '/api/v1/auth/me')).body;
+    const tid0 = (await call('GET', '/api/v1/tenants')).body.find((t: { code: string }) => t.code === 'DEFAULT').id as string;
+    // ค่าเริ่มต้น: Buddy เปิด · POS ยังไม่เปิด · Hotel/Spa/Living กำลังพัฒนา
+    let hub = (await call('GET', '/api/v1/hub')).body;
+    expect(hub.apps.map((x: App) => x.key)).toEqual(['buddy', 'pos', 'hotel', 'hr', 'spa', 'living']);
+    let t = tiles(hub);
+    expect([t.buddy!.status, t.pos!.status, t.hotel!.status, t.living!.status, hub.sync]).toEqual(['active', 'locked', 'soon', 'soon', null]);
+    expect(t.buddy!.metric!.label).toMatch(/ยอดขายเดือนนี้/);
+    expect(t.buddy!.metric!.value).toMatch(/^-?\d+\.\d{2}$/);
+    const locked = await call('POST', '/api/v1/hub/launch', { module: 'pos' });
+    expect([locked.status, locked.body.error.message]).toEqual([403, expect.stringMatching(/ยังไม่ได้เปิดใช้ WTS-POS/)]);
+    // เปิด POS แต่ยังไม่ตั้งที่อยู่ → บอกวิธีแก้ · ที่อยู่ผิดรูปแบบไม่รับ
+    expect((await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: true, app_url: 'javascript:alert(1)' }] })).status).toBe(400);
+    expect((await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: true }, { key: 'hr', enabled: true, app_url: 'https://sop.example.test/' }] })).status).toBe(200);
+    const noUrl = await call('POST', '/api/v1/hub/launch', { module: 'pos' });
+    expect([noUrl.status, noUrl.body.error.code, noUrl.body.error.message]).toEqual([409, 'APP_URL_MISSING', expect.stringMatching(/ยังไม่ได้ตั้งที่อยู่/)]);
+    const put = await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: true, app_url: 'https://pos.example.test/office/' }] });
+    expect(put.body.find((m: { key: string }) => m.key === 'pos').app_url).toBe('https://pos.example.test/office/');
+    // ไม่ส่ง app_url = คงค่าเดิม
+    await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: true, remark: 'สัญญา POS-002' }] });
+    hub = (await call('GET', '/api/v1/hub')).body; t = tiles(hub);
+    expect([t.pos!.status, t.pos!.reason, t.pos!.url, t.hr!.url, t.hr!.launch]).toEqual(['active', null, null, 'https://sop.example.test/', 'link']);
+    // ออกบัตรผ่าน: ที่อยู่ + #buddy_sso= · ลงนามถูก · audience ของ POS · อายุ 2 นาที · log
+    const go = await call('POST', '/api/v1/hub/launch', { module: 'pos' });
+    expect([go.status, go.body.expires_in]).toEqual([200, 120]);
+    expect(go.body.url).toMatch(/^https:\/\/pos\.example\.test\/office\/#buddy_sso=[\w-]+\.[\w-]+\.[\w-]+$/);
+    const token = (go.body.url as string).split('#buddy_sso=')[1]!;
+    const c = verifySsoToken(token, set, 'wts-pos');
+    expect([c.sub, c.preferred_username, c.buddy.company.id, c.buddy.company.code, c.buddy.tenant?.code, c.buddy.admin, c.exp - c.iat]).toEqual([me.user.id, me.user.username, companyId, me.company.code, 'DEFAULT', true, 120]);
+    expect(() => verifySsoToken(token, set, 'wts-living')).toThrow(/โปรแกรมอื่น/);
+    expect(() => verifySsoToken(token, set, 'wts-pos', Date.now() + 5 * 60_000)).toThrow(/หมดอายุ/);
+    const [h, pl, sig] = token.split('.') as [string, string, string];
+    const forged = Buffer.from(JSON.stringify({ ...c, buddy: { ...c.buddy, company: { ...c.buddy.company, id: otherCompanyId } } })).toString('base64url');
+    expect(() => verifySsoToken(`${h}.${forged}.${sig}`, set, 'wts-pos')).toThrow(/ลายเซ็น/);
+    expect(() => verifySsoToken(`${h}.${pl}.${sig}`, { keys: [{ ...set.keys[0], x: Buffer.alloc(32, 1).toString('base64url') }] }, 'wts-pos')).toThrow(/ลายเซ็น/);
+    expect(verifySsoToken((await call('POST', '/api/v1/hub/launch', { module: 'pos' })).body.url.split('#buddy_sso=')[1], set, 'wts-pos').jti).not.toBe(c.jti);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'HUB_LAUNCH' AND company_id = ${companyId}`.execute(database.db)).rows[0]!.n).toBe(2);
+    expect((await call('POST', '/api/v1/hub/launch', { module: 'hr' })).body.error.message).toMatch(/ยังไม่รับบัตรผ่าน/);
+    expect((await call('POST', '/api/v1/hub/launch', { module: 'living' })).status).toBe(400);
+    expect((await call('POST', '/api/v1/hub/launch', { module: 'erp' })).status).toBe(400);
+    // โปรแกรมรายงานคิวส่งเอกสารด้วยกุญแจ API ของบริษัท (หน้าจอส่งไม่ได้ · กุญแจอ่านอย่างเดียวส่งไม่ได้)
+    const report = { system: 'wts-pos', pending: 3, failed: 0, last_sent_at: '2026-11-05T14:02:00+07:00', metric: { label: 'ยอดขายวันนี้', value: '12345.00' } };
+    expect((await call('PUT', '/api/v1/source-status', report)).status).toBe(403);
+    const rk = (await call('POST', '/api/v1/api-keys', { name: 'WTS-POS status ro', user_id: me.user.id, read_only: true })).body.key as string;
+    expect((await keyCall(rk, 'PUT', '/api/v1/source-status', report)).status).toBe(403);
+    const wk = (await call('POST', '/api/v1/api-keys', { name: 'WTS-POS status', user_id: me.user.id })).body.key as string;
+    expect((await keyCall(wk, 'PUT', '/api/v1/source-status', { ...report, system: 'WTS POS' })).status).toBe(400);
+    expect((await keyCall(wk, 'PUT', '/api/v1/source-status', { ...report, pending: -1 })).status).toBe(400);
+    expect((await keyCall(wk, 'PUT', '/api/v1/source-status', report)).body).toEqual({ ok: true, state: 'syncing' });
+    expect((await keyCall(wk, 'GET', '/api/v1/hub')).status).toBe(403);
+    expect((await keyCall(wk, 'POST', '/api/v1/hub/launch', { module: 'pos' })).status).toBe(403);
+    t = tiles((hub = (await call('GET', '/api/v1/hub')).body));
+    expect([t.pos!.sync!.state, t.pos!.sync!.pending, t.pos!.metric, hub.sync.state, hub.sync.pending]).toEqual(['syncing', 3, { label: 'ยอดขายวันนี้', value: '12345.00', at: expect.anything() }, 'syncing', 3]);
+    expect(t.pos!.sync!.text).toMatch(/รอส่งเข้าบัญชี 3 รายการ/);
+    // รายงานซ้ำ = เขียนทับแถวเดิม · ส่งไม่ผ่าน = error
+    await keyCall(wk, 'PUT', '/api/v1/source-status', { system: 'wts-pos', pending: 0, failed: 2, message: 'Buddy ไม่รับ HS 05/11 — AMOUNT_MISMATCH' });
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_source_status WHERE company_id = ${companyId}`.execute(database.db)).rows[0]!.n).toBe(1);
+    t = tiles((hub = (await call('GET', '/api/v1/hub')).body));
+    expect([t.pos!.sync!.state, t.pos!.metric, hub.sync.state, hub.sync.failed]).toEqual(['error', null, 'error', 2]);
+    // ไม่ได้รับรายงานเกิน 15 นาที = offline
+    await sql`UPDATE sys_source_status SET failed = 0, reported_at = now() - interval '20 minutes' WHERE company_id = ${companyId}`.execute(database.db);
+    expect(tiles((await call('GET', '/api/v1/hub')).body).pos!.sync!.state).toBe('offline');
+    // บริษัทอื่นในลูกค้าเดียวกัน: ไม่เห็นสถานะของบริษัทนี้
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect(tiles((await call('GET', '/api/v1/hub')).body).pos!.sync).toBeNull();
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // ผู้ใช้ของลูกค้า (ไม่ใช่ผู้ให้บริการ): ได้บัตรผ่านของตัวเอง
+    const admin = cookie;
+    cookie = ''; await call('POST', '/api/v1/auth/login', { username: 'boss5', password: 'boss5pass' });
+    const me5 = (await call('GET', '/api/v1/auth/me')).body;
+    const c5 = verifySsoToken((await call('POST', '/api/v1/hub/launch', { module: 'pos' })).body.url.split('#buddy_sso=')[1], set, 'wts-pos');
+    expect([c5.sub, c5.buddy.platform, c5.buddy.company.id, c5.buddy.tenant?.code]).toEqual([me5.user.id, false, me5.company.id, 'DEFAULT']);
+    // ลูกค้ารายอื่น: POS ไม่ได้เปิด · ไม่เห็นสถานะ/ที่อยู่ของลูกค้านี้
+    cookie = ''; await call('POST', '/api/v1/auth/login', { username: 'bx.admin', password: 'passX1234' });
+    const hx = (await call('GET', '/api/v1/hub')).body;
+    expect([hx.tenant.code, tiles(hx).pos!.status, tiles(hx).pos!.sync, tiles(hx).hr!.url, hx.sync]).toEqual(['BKUPX', 'locked', null, null, null]);
+    expect((await call('POST', '/api/v1/hub/launch', { module: 'pos' })).status).toBe(403);
+    cookie = admin;
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    // คืนค่าเดิม
+    await sql`DELETE FROM sys_source_status WHERE company_id = ${companyId}`.execute(database.db);
+    await call('PUT', `/api/v1/tenants/${tid0}/modules`, { modules: [{ key: 'pos', enabled: false, app_url: null }, { key: 'hr', enabled: false, app_url: null }] });
   });
   it('WTS Connect master-data feed (docs/17 B0.3): full load + cursor, upsert/inactive/delete, only requested types, read-only key, bad params, isolation', async () => {
     const adminId = (await call('GET', '/api/v1/auth/me')).body.user.id;

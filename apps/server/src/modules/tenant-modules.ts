@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { isTenantModuleKey, tenantModuleStatus, TENANT_MODULES } from '@buddy/core';
+import { checkAppUrl, isTenantModuleKey, tenantModuleStatus, TENANT_MODULES } from '@buddy/core';
 import type { Db } from '../db.js';
 import { forbidden, notFound, parse, requireAuth } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -14,8 +14,8 @@ import { logActivity } from '../audit.js';
 const today = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);   // วันที่ไทย
 
 async function rowsOf(db: Db, tenantId: string) {
-  return (await sql<{ module_key: string; enabled: boolean; valid_to: string | null; seats: number | null; remark: string | null }>`
-    SELECT module_key, enabled, valid_to::text AS valid_to, seats, remark FROM sys_tenant_module WHERE tenant_id = ${tenantId} AND deleted_at IS NULL`.execute(db)).rows;
+  return (await sql<{ module_key: string; enabled: boolean; valid_to: string | null; seats: number | null; remark: string | null; app_url: string | null }>`
+    SELECT module_key, enabled, valid_to::text AS valid_to, seats, remark, app_url FROM sys_tenant_module WHERE tenant_id = ${tenantId} AND deleted_at IS NULL`.execute(db)).rows;
 }
 
 const putBody = z.object({
@@ -25,6 +25,8 @@ const putBody = z.object({
     valid_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ใช้ได้ถึงต้องเป็น YYYY-MM-DD').nullable().optional().transform((v) => v || null),
     seats: z.coerce.number().int().min(1, 'จำนวนผู้ใช้/เครื่องต้องอย่างน้อย 1').max(100000).nullable().optional().transform((v) => v ?? null),
     remark: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
+    // ที่อยู่โปรแกรมของลูกค้านี้ (Hub เปิดพร้อมบัตรผ่าน · docs/17 B6) — ไม่ส่งช่องนี้ = คงค่าเดิม
+    app_url: z.string().trim().max(200).nullable().optional().superRefine((v, ctx) => { const m = v ? checkAppUrl(v) : null; if (m) ctx.addIssue({ code: 'custom', message: m }); }),
   })).max(TENANT_MODULES.length),
 });
 
@@ -58,7 +60,7 @@ export function tenantModuleRoutes(app: FastifyInstance, db: Db) {
     const before = await rowsOf(db, id);
     for (const m of b.modules) {
       const cur = await db.selectFrom('sys_tenant_module').select('id').where('tenant_id', '=', id).where('module_key', '=', m.key).where('deleted_at', 'is', null).executeTakeFirst();
-      const v = { enabled: m.enabled, valid_to: m.valid_to, seats: m.seats, remark: m.remark, updated_by: a.userId };
+      const v = { enabled: m.enabled, valid_to: m.valid_to, seats: m.seats, remark: m.remark, ...(m.app_url !== undefined ? { app_url: m.app_url || null } : {}), updated_by: a.userId };
       if (cur) await db.updateTable('sys_tenant_module').set(v).where('id', '=', cur.id).execute();
       else await db.insertInto('sys_tenant_module').values({ tenant_id: id, module_key: m.key, ...v, created_by: a.userId }).execute();
     }

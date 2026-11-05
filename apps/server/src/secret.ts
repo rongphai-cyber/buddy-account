@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { REPO_ROOT } from './config.js';
@@ -37,4 +37,9 @@ export function decryptSecret(enc: string): string | null {
     dc.setAuthTag(tag!);
     return Buffer.concat([dc.update(ct!), dc.final()]).toString('utf8');
   } catch { return null; }
+}
+
+/** กุญแจย่อยที่ได้จากกุญแจหลัก (HKDF-SHA256) ตามชื่องาน — เช่น กุญแจลงนามบัตรผ่าน Hub (docs/17 B6.1) · กุญแจหลักเดิม = กุญแจย่อยเดิมเสมอ */
+export function deriveSubkey(label: string, bytes = 32): Buffer {
+  return Buffer.from(hkdfSync('sha256', masterKey(), 'buddy-subkey', label, bytes));
 }

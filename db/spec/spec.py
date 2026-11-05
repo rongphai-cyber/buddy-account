@@ -95,6 +95,7 @@ add(T('sys_tenant_module', 'โมดูล/โปรแกรมที่ลู
   C('valid_to', 'date', th='ใช้ได้ถึงวันที่ (ว่าง = ไม่หมดอายุ)'),
   C('seats', 'int', th='จำนวนผู้ใช้/เครื่องที่ซื้อ (ว่าง = ไม่จำกัด)'),
   C('remark', 'str200', th='หมายเหตุ (เลขที่สัญญา/ใบเสนอราคา)'),
+  C('app_url', 'str200', th='ที่อยู่หน้าเว็บของโปรแกรมสำหรับลูกค้านี้ — Hub เปิดพร้อมบัตรผ่าน (docs/17 B6) เช่น https://wtspos.example.com/office/'),
 ], uniq=[('tenant_id','module_key')]))
 
 add(T('sys_signup', 'ใบสมัครใช้งานจากหน้าสมัครเอง (ข้อกำหนดเจ้าของ 30/10/2569) — ผู้ให้บริการอนุมัติแล้วสร้างลูกค้าผู้ใช้บริการ + ผู้ดูแลคนแรก', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
@@ -311,6 +312,18 @@ add(T('sys_secret', 'ค่าลับของบริษัท (เข้า
   C('value_enc', 'text', nn=True, th='ค่าที่เข้ารหัสแล้ว (iv.tag.ciphertext แบบ base64)'),
   C('hint', 'str60', th='ส่วนท้ายสำหรับแสดง เช่น …abcd'),
 ], uniq=[('company_id','code')]))
+
+add(T('sys_source_status', 'สถานะคิวส่งเอกสารของโปรแกรมอื่น (WTS-POS WTS-SOP …) ที่รายงานเข้ามาด้วยกุญแจ API — Hub แสดง SyncStatus รวม + ตัวเลขสำคัญต่อไทล์ (docs/17 B6.2) · แถวเดียวต่อบริษัทต่อระบบ เขียนทับทุกครั้ง', 'sys', sync='server', express='(ใหม่)', cols=[
+  C('source_system', 'code30', nn=True, th='ระบบต้นทาง เช่น wts-pos wts-sop'),
+  C('pending', 'int', nn=True, d='0', th='จำนวนรายการรอส่งเข้า Buddy'),
+  C('failed', 'int', nn=True, d='0', th='จำนวนรายการส่งไม่ผ่าน (ต้องแก้ที่ต้นทาง)'),
+  C('oldest_pending_at', 'ts', th='รายการรอส่งที่เก่าที่สุดเกิดเมื่อ'),
+  C('last_sent_at', 'ts', th='ส่งเข้า Buddy สำเร็จล่าสุดเมื่อ'),
+  C('message', 'str200', th='ข้อความจากต้นทาง เช่น เหตุที่ส่งไม่ผ่าน'),
+  C('metric_label', 'str60', th='ชื่อตัวเลขสำคัญที่แสดงบนไทล์ เช่น ยอดขายวันนี้'),
+  C('metric_value', 'str40', th='ตัวเลขสำคัญ (ข้อความทศนิยม/ข้อความ) เช่น 12345.00'),
+  C('reported_at', 'ts', nn=True, d='now()', th='รายงานล่าสุดเมื่อ (เวลาเซิร์ฟเวอร์ Buddy)'),
+], uniq=[('company_id','source_system')]))
 
 add(T('sys_ai_usage', 'การเรียกใช้ AI อ่านบิล (T7.7) — จำนวนโทเคนและค่าใช้จ่าย ใช้คุมเพดานรายเดือน', 'sys', sync='server', express='(ใหม่)', cols=[
   lk('user_id', 'sys_user', 'ผู้เรียกใช้'),

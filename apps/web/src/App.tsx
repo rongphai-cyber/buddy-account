@@ -53,6 +53,7 @@ import { BackupPage } from './pages/settings/Backup';
 import { ApiKeysPage } from './pages/settings/ApiKeys';
 import { PdpaPage } from './pages/settings/Pdpa';
 import { DevicesPage, SyncPage, SyncBadge } from './pages/settings/Sync';
+import { HubPage } from './pages/Hub';
 import { EtaxPage } from './pages/tax/Etax';
 import { AiSettingsPage } from './pages/settings/AiSettings';
 import { ActivityLogPage } from './pages/settings/ActivityLog';
@@ -163,6 +164,7 @@ function Shell() {
             </select>
           )}
           <SyncBadge />
+          <button className="hub-btn" onClick={() => nav('/hub')} title="WTS Solutions — เปิดโปรแกรมอื่น (POS HR …) ด้วยล็อกอินเดียว">▦<span className="lbl"> WTS</span></button>
           <button className="period" onClick={() => setWorkDateOpen(true)} title="เปลี่ยนวันทำการ">วันทำการ {formatDate(me.work_date ?? new Date().toISOString().slice(0, 10), ys)}</button>
           <button className="user link" title={`${me.user.username} — รหัสผ่านและยืนยันตัวตนสองขั้น`} onClick={() => nav('/account/password')}>{me.user.display_name}</button>
           <LangSwitch />
@@ -186,6 +188,7 @@ function Shell() {
       <main className="main" id="main">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/hub" element={<HubPage />} />
           <Route path="/gl/accounts" element={<AccountsPage />} />
           <Route path="/gl/journals" element={<JournalsPage />} />
           <Route path="/gl/journals/new" element={<JournalFormRoute />} />

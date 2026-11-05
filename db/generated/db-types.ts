@@ -64,6 +64,8 @@ export interface SysTenantModuleTable {
   seats: Gen<number | null>;
   /** หมายเหตุ (เลขที่สัญญา/ใบเสนอราคา) */
   remark: Gen<string | null>;
+  /** ที่อยู่หน้าเว็บของโปรแกรมสำหรับลูกค้านี้ — Hub เปิดพร้อมบัตรผ่าน (docs/17 B6) เช่น https://wtspos.example.com/office/ */
+  app_url: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -792,6 +794,45 @@ export interface SysSecretTable {
   value_enc: string;
   /** ส่วนท้ายสำหรับแสดง เช่น …abcd */
   hint: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** สถานะคิวส่งเอกสารของโปรแกรมอื่น (WTS-POS WTS-SOP …) ที่รายงานเข้ามาด้วยกุญแจ API — Hub แสดง SyncStatus รวม + ตัวเลขสำคัญต่อไทล์ (docs/17 B6.2) · แถวเดียวต่อบริษัทต่อระบบ เขียนทับทุกครั้ง */
+export interface SysSourceStatusTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ระบบต้นทาง เช่น wts-pos wts-sop */
+  source_system: string;
+  /** จำนวนรายการรอส่งเข้า Buddy */
+  pending: Gen<number>;
+  /** จำนวนรายการส่งไม่ผ่าน (ต้องแก้ที่ต้นทาง) */
+  failed: Gen<number>;
+  /** รายการรอส่งที่เก่าที่สุดเกิดเมื่อ */
+  oldest_pending_at: Gen<string | null>;
+  /** ส่งเข้า Buddy สำเร็จล่าสุดเมื่อ */
+  last_sent_at: Gen<string | null>;
+  /** ข้อความจากต้นทาง เช่น เหตุที่ส่งไม่ผ่าน */
+  message: Gen<string | null>;
+  /** ชื่อตัวเลขสำคัญที่แสดงบนไทล์ เช่น ยอดขายวันนี้ */
+  metric_label: Gen<string | null>;
+  /** ตัวเลขสำคัญ (ข้อความทศนิยม/ข้อความ) เช่น 12345.00 */
+  metric_value: Gen<string | null>;
+  /** รายงานล่าสุดเมื่อ (เวลาเซิร์ฟเวอร์ Buddy) */
+  reported_at: Gen<string>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -4724,6 +4765,7 @@ export interface DB {
   sys_api_key: SysApiKeyTable;
   sys_pdpa_request: SysPdpaRequestTable;
   sys_secret: SysSecretTable;
+  sys_source_status: SysSourceStatusTable;
   sys_ai_usage: SysAiUsageTable;
   gl_fiscal_year: GlFiscalYearTable;
   gl_period: GlPeriodTable;

@@ -64,6 +64,7 @@ CREATE TABLE sys_tenant_module (
   valid_to date,
   seats integer,
   remark varchar(200),
+  app_url varchar(200),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -81,6 +82,7 @@ COMMENT ON COLUMN sys_tenant_module.enabled IS 'เปิดใช้';
 COMMENT ON COLUMN sys_tenant_module.valid_to IS 'ใช้ได้ถึงวันที่ (ว่าง = ไม่หมดอายุ)';
 COMMENT ON COLUMN sys_tenant_module.seats IS 'จำนวนผู้ใช้/เครื่องที่ซื้อ (ว่าง = ไม่จำกัด)';
 COMMENT ON COLUMN sys_tenant_module.remark IS 'หมายเหตุ (เลขที่สัญญา/ใบเสนอราคา)';
+COMMENT ON COLUMN sys_tenant_module.app_url IS 'ที่อยู่หน้าเว็บของโปรแกรมสำหรับลูกค้านี้ — Hub เปิดพร้อมบัตรผ่าน (docs/17 B6) เช่น https://wtspos.example.com/office/';
 COMMENT ON COLUMN sys_tenant_module.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN sys_tenant_module.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN sys_tenant_module.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -895,6 +897,49 @@ COMMENT ON COLUMN sys_secret.row_version IS 'เวอร์ชันของ�
 COMMENT ON COLUMN sys_secret.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
 COMMENT ON COLUMN sys_secret.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_sys_secret_company_code ON sys_secret (company_id, code) WHERE deleted_at IS NULL;
+
+-- sys_source_status: สถานะคิวส่งเอกสารของโปรแกรมอื่น (WTS-POS WTS-SOP …) ที่รายงานเข้ามาด้วยกุญแจ API — Hub แสดง SyncStatus รวม + ตัวเลขสำคัญต่อไทล์ (docs/17 B6.2) · แถวเดียวต่อบริษัทต่อระบบ เขียนทับทุกครั้ง  [Express: (ใหม่)]
+CREATE TABLE sys_source_status (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  source_system varchar(30) NOT NULL,
+  pending integer DEFAULT 0 NOT NULL,
+  failed integer DEFAULT 0 NOT NULL,
+  oldest_pending_at timestamptz,
+  last_sent_at timestamptz,
+  message varchar(200),
+  metric_label varchar(60),
+  metric_value varchar(40),
+  reported_at timestamptz DEFAULT now() NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_source_status IS 'สถานะคิวส่งเอกสารของโปรแกรมอื่น (WTS-POS WTS-SOP …) ที่รายงานเข้ามาด้วยกุญแจ API — Hub แสดง SyncStatus รวม + ตัวเลขสำคัญต่อไทล์ (docs/17 B6.2) · แถวเดียวต่อบริษัทต่อระบบ เขียนทับทุกครั้ง | Express: (ใหม่)';
+COMMENT ON COLUMN sys_source_status.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_source_status.company_id IS 'บริษัท';
+COMMENT ON COLUMN sys_source_status.source_system IS 'ระบบต้นทาง เช่น wts-pos wts-sop';
+COMMENT ON COLUMN sys_source_status.pending IS 'จำนวนรายการรอส่งเข้า Buddy';
+COMMENT ON COLUMN sys_source_status.failed IS 'จำนวนรายการส่งไม่ผ่าน (ต้องแก้ที่ต้นทาง)';
+COMMENT ON COLUMN sys_source_status.oldest_pending_at IS 'รายการรอส่งที่เก่าที่สุดเกิดเมื่อ';
+COMMENT ON COLUMN sys_source_status.last_sent_at IS 'ส่งเข้า Buddy สำเร็จล่าสุดเมื่อ';
+COMMENT ON COLUMN sys_source_status.message IS 'ข้อความจากต้นทาง เช่น เหตุที่ส่งไม่ผ่าน';
+COMMENT ON COLUMN sys_source_status.metric_label IS 'ชื่อตัวเลขสำคัญที่แสดงบนไทล์ เช่น ยอดขายวันนี้';
+COMMENT ON COLUMN sys_source_status.metric_value IS 'ตัวเลขสำคัญ (ข้อความทศนิยม/ข้อความ) เช่น 12345.00';
+COMMENT ON COLUMN sys_source_status.reported_at IS 'รายงานล่าสุดเมื่อ (เวลาเซิร์ฟเวอร์ Buddy)';
+COMMENT ON COLUMN sys_source_status.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN sys_source_status.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN sys_source_status.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN sys_source_status.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN sys_source_status.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN sys_source_status.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN sys_source_status.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_sys_source_status_company_source_system ON sys_source_status (company_id, source_system) WHERE deleted_at IS NULL;
 
 -- sys_ai_usage: การเรียกใช้ AI อ่านบิล (T7.7) — จำนวนโทเคนและค่าใช้จ่าย ใช้คุมเพดานรายเดือน  [Express: (ใหม่)]
 CREATE TABLE sys_ai_usage (
@@ -5341,6 +5386,12 @@ ALTER TABLE sys_secret ADD CONSTRAINT fk_sys_secret_created_by FOREIGN KEY (crea
 CREATE INDEX IF NOT EXISTS ix_fk_sys_secret_created_by ON sys_secret (created_by);
 ALTER TABLE sys_secret ADD CONSTRAINT fk_sys_secret_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_secret_updated_by ON sys_secret (updated_by);
+ALTER TABLE sys_source_status ADD CONSTRAINT fk_sys_source_status_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_source_status_company_id ON sys_source_status (company_id);
+ALTER TABLE sys_source_status ADD CONSTRAINT fk_sys_source_status_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_source_status_created_by ON sys_source_status (created_by);
+ALTER TABLE sys_source_status ADD CONSTRAINT fk_sys_source_status_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_source_status_updated_by ON sys_source_status (updated_by);
 ALTER TABLE sys_ai_usage ADD CONSTRAINT fk_sys_ai_usage_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_ai_usage_company_id ON sys_ai_usage (company_id);
 ALTER TABLE sys_ai_usage ADD CONSTRAINT fk_sys_ai_usage_user_id FOREIGN KEY (user_id) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -6480,6 +6531,7 @@ CREATE TRIGGER trg_sys_session_ver BEFORE UPDATE ON sys_session FOR EACH ROW EXE
 CREATE TRIGGER trg_sys_api_key_ver BEFORE UPDATE ON sys_api_key FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_pdpa_request_ver BEFORE UPDATE ON sys_pdpa_request FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_secret_ver BEFORE UPDATE ON sys_secret FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_sys_source_status_ver BEFORE UPDATE ON sys_source_status FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_ai_usage_ver BEFORE UPDATE ON sys_ai_usage FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_fin_bank_ledger_ver BEFORE UPDATE ON fin_bank_ledger FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_inv_stock_ledger_ver BEFORE UPDATE ON inv_stock_ledger FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
@@ -6679,6 +6731,7 @@ CREATE TRIGGER trg_sys_report_custom_rid BEFORE INSERT ON sys_report_custom FOR 
 CREATE TRIGGER trg_sys_api_key_rid BEFORE INSERT ON sys_api_key FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_pdpa_request_rid BEFORE INSERT ON sys_pdpa_request FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_secret_rid BEFORE INSERT ON sys_secret FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_source_status_rid BEFORE INSERT ON sys_source_status FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_ai_usage_rid BEFORE INSERT ON sys_ai_usage FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_gl_fiscal_year_rid BEFORE INSERT ON gl_fiscal_year FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_gl_period_rid BEFORE INSERT ON gl_period FOR EACH ROW EXECUTE FUNCTION sync_row_id();

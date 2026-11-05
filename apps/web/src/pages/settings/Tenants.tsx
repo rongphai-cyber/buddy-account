@@ -191,7 +191,7 @@ function ImportTenant({ onClose, onDone }: { onClose: () => void; onDone: () => 
   );
 }
 
-type TMod = { key: string; label: string; enabled: boolean; valid_to: string | null; seats: number | null; remark: string | null; active: boolean; expired: boolean };
+type TMod = { key: string; label: string; enabled: boolean; valid_to: string | null; seats: number | null; remark: string | null; app_url: string | null; active: boolean; expired: boolean };
 /** โปรแกรมที่ลูกค้าใช้ได้ (docs/17 B0.6) — Hub แสดงไทล์ตามนี้ · โปรแกรมอื่นตรวจสิทธิ์ที่ GET /api/v1/tenant/modules */
 function TenantModules({ tenantId }: { tenantId: string }) {
   const qc = useQueryClient();
@@ -203,7 +203,7 @@ function TenantModules({ tenantId }: { tenantId: string }) {
   const save = async () => {
     setErr(null);
     try {
-      await api.put(`/api/v1/tenants/${tenantId}/modules`, { modules: rows.map((x) => ({ key: x.key, enabled: x.enabled, valid_to: x.valid_to || null, seats: x.seats || null, remark: x.remark || null })) });
+      await api.put(`/api/v1/tenants/${tenantId}/modules`, { modules: rows.map((x) => ({ key: x.key, enabled: x.enabled, valid_to: x.valid_to || null, seats: x.seats || null, remark: x.remark || null, ...(x.key === 'buddy' ? {} : { app_url: x.app_url?.trim() || null }) })) });
       toast('บันทึกโปรแกรมที่ลูกค้าใช้ได้แล้ว');
       await qc.invalidateQueries({ queryKey: ['tenant-modules', tenantId] });
     } catch (e) { setErr(e); }
@@ -213,13 +213,14 @@ function TenantModules({ tenantId }: { tenantId: string }) {
       <h3>โปรแกรมที่ลูกค้าใช้ได้ (WTS Solutions)</h3>
       <ErrorBox error={err ?? q.error} />
       <table className="grid tenant-mods">
-        <thead><tr><th>โปรแกรม</th><th className="c">เปิดใช้</th><th>ใช้ได้ถึง</th><th className="r">จำนวนผู้ใช้/เครื่อง</th><th>หมายเหตุ</th><th>สถานะ</th></tr></thead>
+        <thead><tr><th>โปรแกรม</th><th className="c">เปิดใช้</th><th>ใช้ได้ถึง</th><th className="r">จำนวนผู้ใช้/เครื่อง</th><th>หมายเหตุ</th><th>ที่อยู่โปรแกรม (Hub เปิดที่นี่)</th><th>สถานะ</th></tr></thead>
         <tbody>{rows.map((x) => <tr key={x.key}>
           <td>{x.label}</td>
           <td className="c"><input type="checkbox" checked={x.enabled} onChange={(e) => set(x.key, { enabled: e.target.checked })} aria-label={`เปิดใช้ ${x.label}`} /></td>
           <td><DateInput value={x.valid_to ?? ''} onChange={(v) => set(x.key, { valid_to: v || null })} /></td>
           <td><input className="num" value={x.seats ?? ''} placeholder="ไม่จำกัด" onChange={(e) => set(x.key, { seats: e.target.value.replace(/\D/g, '') ? Number(e.target.value.replace(/\D/g, '')) : null })} aria-label="จำนวนผู้ใช้/เครื่อง" /></td>
           <td><input value={x.remark ?? ''} maxLength={200} onChange={(e) => set(x.key, { remark: e.target.value })} aria-label="หมายเหตุ" /></td>
+          <td>{x.key === 'buddy' ? <span className="muted small">โปรแกรมนี้</span> : <input value={x.app_url ?? ''} maxLength={200} placeholder="https://wtspos.example.com/office/" onChange={(e) => set(x.key, { app_url: e.target.value })} aria-label={`ที่อยู่โปรแกรม ${x.label}`} />}</td>
           <td>{x.active ? <Pill tone="n">ใช้ได้</Pill> : x.expired ? <Pill tone="d">หมดอายุ</Pill> : <Pill tone="x">ปิด</Pill>}</td>
         </tr>)}</tbody>
       </table>

@@ -225,7 +225,9 @@ WTS-POS/
 
 ### B6 — Hub + ล็อกอินกลาง
 - [ ] **B6.1** Buddy ออก token (ข้อ 5.8) · WTS-POS office / WTS-Living รับ token แทนล็อกอินเอง (เก็บล็อกอินเดิมไว้สำหรับใช้แบบแยก)
+  - ✅ ฝั่ง Buddy 05/11/2569: บัตรผ่าน JWT EdDSA อายุ 120 วิ aud ต่อโปรแกรม + `/.well-known/jwks.json` + `POST /api/v1/hub/launch` (สัญญาใน docs/07) · ⬜ WTS-POS office รับบัตร (ส่งงานให้ B2 แล้ว) · WTS-Living ทำตอนเริ่ม B5 (พักอยู่)
 - [ ] **B6.2** `apps/hub` ใน Buddy: Launcher ตามผัง (`AppTile` ERP ใหญ่ซ้าย + POS Hotel HR Spa Living) อ่านสิทธิ์โมดูล B0.6 · ตัวเลขสำคัญต่อไทล์ · `SyncStatus` รวม
+  - ✅ ฝั่ง Buddy 05/11/2569: ทำเป็นหน้า `/hub` ในเว็บ Buddy แทน `apps/hub` แยก (ล็อกอิน ธีม ภาษาเดียวกัน ไม่ต้องติดตั้งเพิ่ม) · ปุ่ม ▦ WTS แถบบน · ไทล์ตาม B0.6 + ที่อยู่โปรแกรมต่อลูกค้า · ตัวเลขสำคัญ: Buddy = ยอดขายเดือนนี้ · โปรแกรมอื่นส่งมาเองกับรายงานสถานะ `PUT /api/v1/source-status` · SyncStatus รวม (ไม่ผ่าน > ไม่ได้รับสถานะเกิน 15 นาที > รอส่ง > ปกติ) · ⬜ WTS-POS ส่งรายงานสถานะ (ส่งงานให้ B2 แล้ว)
 - [ ] **B6.3** WTS-SOP: ศึกษาการรับ token จาก Buddy กับ Supabase Auth (custom JWT) — เสนอแบบให้เจ้าของก่อนทำ
 
 ### B7 — Hotel / Spa (ภายหลัง — ถามเจ้าของก่อนเริ่ม)

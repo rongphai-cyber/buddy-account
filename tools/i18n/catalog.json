@@ -2657,6 +2657,16 @@
 ]
 },
 {
+"th": "หมดอายุ",
+"n": 8,
+"files": [
+"apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "หมวดสินค้า",
 "n": 8,
 "files": [
@@ -3294,15 +3304,6 @@
 "apps/web/src/pages/reports/AccountDetail.tsx",
 "apps/web/src/pages/reports/Ledger.tsx",
 "apps/web/src/pages/reports/TrialBalance.tsx"
-]
-},
-{
-"th": "หมดอายุ",
-"n": 6,
-"files": [
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
-"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -4942,6 +4943,16 @@
 ]
 },
 {
+"th": "ไม่พบสาขานี้",
+"n": 4,
+"files": [
+"apps/server/src/modules/data-tables.ts",
+"apps/server/src/modules/payroll/files.ts",
+"apps/server/src/modules/payroll/master.ts",
+"apps/server/src/modules/sync/central.ts"
+]
+},
+{
 "th": "ไม่มีเอกสารในช่วงนี้ — กด Ins เพื่อเพิ่ม",
 "n": 4,
 "files": [
@@ -6574,15 +6585,6 @@
 "apps/web/src/pages/gl/ChartTemplate.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/server/src/modules/items.ts"
-]
-},
-{
-"th": "ไม่พบสาขานี้",
-"n": 3,
-"files": [
-"apps/server/src/modules/payroll/files.ts",
-"apps/server/src/modules/payroll/master.ts",
-"apps/server/src/modules/sync/central.ts"
 ]
 },
 {
@@ -9107,6 +9109,13 @@
 ]
 },
 {
+"th": "ยังไม่เปิดใช้",
+"n": 2,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "ยังไม่ได้บันทึก",
 "n": 2,
 "files": [
@@ -10532,6 +10541,14 @@
 ]
 },
 {
+"th": "เปิด {0} ไม่ได้",
+"n": 2,
+"files": [
+"apps/web/src/pages/Hub.tsx",
+"apps/server/src/modules/hub.ts"
+]
+},
+{
 "th": "เปิดงวด",
 "n": 2,
 "files": [
@@ -10833,6 +10850,14 @@
 "files": [
 "apps/server/src/modules/payroll/master.ts",
 "apps/server/src/modules/payroll/runs.ts"
+]
+},
+{
+"th": "เลือกสาขาใหม่",
+"n": 2,
+"files": [
+"apps/server/src/modules/data-tables.ts",
+"apps/server/src/modules/payroll/master.ts"
 ]
 },
 {
@@ -13632,10 +13657,24 @@
 ]
 },
 {
+"th": "HR และเงินเดือน",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
 "th": "Hotel (โรงแรม)",
 "n": 1,
 "files": [
 "packages/core/src/tenant-modules.ts"
+]
+},
+{
+"th": "Hub ใช้ผ่านหน้าจอเท่านั้น — กุญแจ API ใช้ GET /api/v1/tenant/modules",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
 ]
 },
 {
@@ -13804,6 +13843,20 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "WTS Solutions (เปิดโปรแกรมอื่น)",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "WTS Solutions — เปิดโปรแกรมอื่น (POS HR …) ด้วยล็อกอินเดียว",
+"n": 1,
+"files": [
+"apps/web/src/App.tsx"
 ]
 },
 {
@@ -14108,6 +14161,13 @@
 ]
 },
 {
+"th": "system ต้องเป็นตัวพิมพ์เล็ก a-z ตัวเลข และ - ยาว 2–30 ตัว เช่น wts-pos",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
+]
+},
+{
 "th": "toast('สร้างแฟ้มแล้ว — ลองนำเข้าโปรแกรมของกรมสรรพากร/ประกันสังคมก่อนยื่นจริง')).catch(toastError); const drafts = (cur.data as {0} | undefined)?.drafts ?? 0; const problems = ((cur.data as {1}",
 "n": 1,
 "files": [
@@ -14395,6 +14455,13 @@
 ]
 },
 {
+"th": "{0} กำลังพัฒนา",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
 "th": "{0} ครั้ง",
 "n": 1,
 "files": [
@@ -14511,6 +14578,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/items.ts"
+]
+},
+{
+"th": "{0} ยังเปิดจาก Hub ไม่ได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
+]
+},
+{
+"th": "{0} ยังไม่รับบัตรผ่าน — เปิดจากลิงก์แล้วเข้าระบบที่ {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
 ]
 },
 {
@@ -15102,10 +15183,31 @@
 ]
 },
 {
+"th": "{0}รอส่งเข้าบัญชี {1} รายการ",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
 "th": "{0}รายนี้มีเงินมัดจำคงเหลือ {1} ใบ รวม",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "{0}ส่งเข้าบัญชีครบแล้ว",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
+"th": "{0}ส่งเข้าบัญชีไม่ผ่าน {1} รายการ — แก้ที่{2}แล้วส่งใหม่",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
 ]
 },
 {
@@ -15176,6 +15278,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/trade.ts"
+]
+},
+{
+"th": "{0}ไม่ได้รับสถานะเกิน {1} นาที — หน้าร้านยังขายได้ ตรวจเน็ตหรือเครื่องแม่ข่ายของโปรแกรม",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
 ]
 },
 {
@@ -16282,6 +16391,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AddressFields.tsx"
+]
+},
+{
+"th": "กำลังโหลด…",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
 ]
 },
 {
@@ -20996,6 +21112,13 @@
 ]
 },
 {
+"th": "ดึงสถานะใหม่ (F5)",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "ดูข้อมูลที่เก็บไว้ / ส่งออก / ลบ",
 "n": 1,
 "files": [
@@ -22963,6 +23086,34 @@
 ]
 },
 {
+"th": "ที่อยู่โปรแกรม (Hub เปิดที่นี่)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ที่อยู่โปรแกรม {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ที่อยู่โปรแกรมต้องขึ้นต้นด้วย https:// หรือ http:// และไม่มีช่องว่างหรือ # เช่น https://wtspos.example.com/office/",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
+"th": "ที่อยู่โปรแกรมไม่ถูกต้อง เช่น https://wtspos.example.com/office/",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
 "th": "ที่เก็บข้อมูล",
 "n": 1,
 "files": [
@@ -24251,6 +24402,13 @@
 ]
 },
 {
+"th": "บัญชี ภาษี สต๊อก ต้นทุน งบการเงิน",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
 "th": "บัญชี › งบประมาณ",
 "n": 1,
 "files": [
@@ -24647,6 +24805,41 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/gl.ts"
+]
+},
+{
+"th": "บัตรผ่านนี้ออกให้โปรแกรมอื่น",
+"n": 1,
+"files": [
+"apps/server/src/sso.ts"
+]
+},
+{
+"th": "บัตรผ่านหมดอายุ — กดเปิดจาก Hub ใหม่",
+"n": 1,
+"files": [
+"apps/server/src/sso.ts"
+]
+},
+{
+"th": "บัตรผ่านออกให้ผู้ใช้ที่เข้าระบบผ่านหน้าจอเท่านั้น",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
+]
+},
+{
+"th": "บัตรผ่านใช้วิธีลงนามที่ไม่รองรับ",
+"n": 1,
+"files": [
+"apps/server/src/sso.ts"
+]
+},
+{
+"th": "บัตรผ่านไม่ถูกรูปแบบ",
+"n": 1,
+"files": [
+"apps/server/src/sso.ts"
 ]
 },
 {
@@ -30124,6 +30317,13 @@
 ]
 },
 {
+"th": "ยอดขายเดือนนี้ (ก่อน VAT)",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
+]
+},
+{
 "th": "ยอดขายในเดือนนี้",
 "n": 1,
 "files": [
@@ -30817,6 +31017,13 @@
 ]
 },
 {
+"th": "ยังไม่ตั้งที่อยู่",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "ยังไม่ปิดปี {0} — ปิดตามลำดับปี",
 "n": 1,
 "files": [
@@ -31433,6 +31640,13 @@
 ]
 },
 {
+"th": "ยังไม่ได้ตั้งที่อยู่ของ {0} — ผู้ให้บริการตั้งได้ที่ ลูกค้าผู้ใช้บริการ › โปรแกรมที่ลูกค้าใช้ได้",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
 "th": "ยังไม่ได้ตั้งรายการหัก — ใบเสร็จจะใช้รหัสค่าใช้จ่ายหรือรายการแบบครั้งก่อนของลูกค้า",
 "n": 1,
 "files": [
@@ -31500,6 +31714,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/security.ts"
+]
+},
+{
+"th": "ยังไม่ได้เปิดใช้ {0} — ติดต่อผู้ให้บริการเพื่อเปิดใช้",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
 ]
 },
 {
@@ -32221,13 +32442,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
-]
-},
-{
-"th": "รหัสซ้ำ",
-"n": 1,
-"files": [
-"apps/server/src/modules/data-tables.ts"
 ]
 },
 {
@@ -33204,6 +33418,13 @@
 ]
 },
 {
+"th": "ระบุสาขาได้เฉพาะคลังสินค้า",
+"n": 1,
+"files": [
+"apps/server/src/modules/data-tables.ts"
+]
+},
+{
 "th": "ระบุเหตุผลที่ลบ",
 "n": 1,
 "files": [
@@ -34170,6 +34391,13 @@
 ]
 },
 {
+"th": "รายงานล่าสุด {0} น.",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "รายงานวิเคราะห์การขาย",
 "n": 1,
 "files": [
@@ -34181,6 +34409,13 @@
 "n": 1,
 "files": [
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "รายงานสถานะได้เฉพาะโปรแกรมที่ใช้กุญแจ API ของบริษัท",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
 ]
 },
 {
@@ -35413,6 +35648,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/CompanyImages.tsx"
+]
+},
+{
+"th": "ลายเซ็นบัตรผ่านไม่ถูกต้อง",
+"n": 1,
+"files": [
+"apps/server/src/sso.ts"
 ]
 },
 {
@@ -36844,6 +37086,13 @@
 ]
 },
 {
+"th": "สปา นัดหมาย คอร์ส",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
 "th": "สมชาย",
 "n": 1,
 "files": [
@@ -37579,6 +37828,13 @@
 ]
 },
 {
+"th": "สิทธิ์ใช้ {0} หมดอายุแล้ว — ติดต่อผู้ให้บริการเพื่อต่ออายุ",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
 "th": "สินค้า {0} คงเหลือ {1} ไม่พอจ่าย {2} — ค่าเริ่มต้นระบบสินค้าไม่ยอมให้ยอดติดลบ (ข้อ 9)",
 "n": 1,
 "files": [
@@ -38307,6 +38563,13 @@
 ]
 },
 {
+"th": "หน้าร้าน ครัวกลาง แฟรนไชส์",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
 "th": "หน้าสมัคร:",
 "n": 1,
 "files": [
@@ -38570,6 +38833,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "หอพัก อพาร์ตเมนต์ นิติบุคคล",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
 ]
 },
 {
@@ -39637,6 +39907,13 @@
 ]
 },
 {
+"th": "฿",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "เกณฑ์",
 "n": 1,
 "files": [
@@ -39812,6 +40089,13 @@
 ]
 },
 {
+"th": "เข้าระบบที่ {0} (ยังไม่รับบัตรผ่าน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "เข้าระบบล่าสุด",
 "n": 1,
 "files": [
@@ -39844,6 +40128,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "เข้าได้ทันที",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
 ]
 },
 {
@@ -41807,6 +42098,13 @@
 ]
 },
 {
+"th": "เปิด {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "เปิด {0} และงวดหลังจากนั้นที่ปิดอยู่?",
 "n": 1,
 "files": [
@@ -41912,6 +42210,13 @@
 ]
 },
 {
+"th": "เปิดหน้าเว็บ ↗",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "เปิดอยู่ · งวดที่ยังไม่ล็อค {0}",
 "n": 1,
 "files": [
@@ -41944,6 +42249,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/trade-import.ts"
+]
+},
+{
+"th": "เปิดโปรแกรม",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
 ]
 },
 {
@@ -42805,6 +43117,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "เร็ว ๆ นี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
 ]
 },
 {
@@ -43998,13 +44317,6 @@
 ]
 },
 {
-"th": "เลือกสาขาใหม่",
-"n": 1,
-"files": [
-"apps/server/src/modules/payroll/master.ts"
-]
-},
-{
 "th": "เลือกสินค้า (พิมพ์รหัสหรือชื่อ)",
 "n": 1,
 "files": [
@@ -44201,6 +44513,13 @@
 ]
 },
 {
+"th": "เวลาต้องเป็น ISO 8601 เช่น 2026-11-05T14:02:00+07:00",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
+]
+},
+{
 "th": "เวลาสิ้นสุด",
 "n": 1,
 "files": [
@@ -44212,6 +44531,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ActivityLog.tsx"
+]
+},
+{
+"th": "เวลาในบัตรผ่านไม่ถูกต้อง — ตรวจนาฬิกาเครื่อง",
+"n": 1,
+"files": [
+"apps/server/src/sso.ts"
 ]
 },
 {
@@ -46021,6 +46347,13 @@
 ]
 },
 {
+"th": "โปรแกรมต้นทาง",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
+]
+},
+{
 "th": "โปรแกรมที่ลูกค้าใช้ได้ (WTS Solutions)",
 "n": 1,
 "files": [
@@ -46032,6 +46365,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/sync/central.ts"
+]
+},
+{
+"th": "โปรแกรมนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -46074,6 +46414,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
+]
+},
+{
+"th": "โรงแรม ห้องพัก เช็คอิน",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
 ]
 },
 {
@@ -47421,6 +47768,13 @@
 ]
 },
 {
+"th": "ไทล์ที่ \"ยังไม่เปิดใช้\" ติดต่อผู้ให้บริการเพื่อเปิด · สถานะคิวมาจากโปรแกรมนั้นรายงานเข้ามาทุก 1–5 นาที — หน้าร้านยังขายได้แม้เน็ตหลุดหรือ Buddy ปิดอยู่ แล้วส่งเข้าบัญชีย้อนหลังเอง",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "ไปรษณีย์",
 "n": 1,
 "files": [
@@ -48597,6 +48951,13 @@
 ]
 },
 {
+"th": "ไม่รู้จักกุญแจที่ลงนามบัตรผ่าน",
+"n": 1,
+"files": [
+"apps/server/src/sso.ts"
+]
+},
+{
 "th": "ไม่รู้จักค่าลดหย่อนรหัส {0}",
 "n": 1,
 "files": [
@@ -48629,6 +48990,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "ไม่รู้จักโปรแกรม — ใช้ได้: {0}",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
 ]
 },
 {
@@ -48961,6 +49329,13 @@
 ]
 },
 {
+"th": "— ล็อกอิน Buddy ครั้งเดียว กดไทล์เพื่อเปิดโปรแกรม",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "— สำนักงานใหญ่",
 "n": 1,
 "files": [
@@ -49231,6 +49606,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "↻ ดึงสถานะใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
 ]
 },
 {
