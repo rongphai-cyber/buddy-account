@@ -10,6 +10,7 @@ import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { RecNav, usePayItems, type PayItem } from './common';
 import { ImportModal } from './Filing';
+import { AddWrap } from '../../components/AddWrap';
 
 interface Row { id: string; code: string; name: string; nickname: string | null; position: string | null; employee_type: string | null; hire_date: string; end_date: string | null; wage_type: string; status: string;
   tax_id_masked: string | null; department_code: string | null; branch_code: string | null; rate: string | null }
@@ -84,7 +85,7 @@ export function EmployeeFormPage() {
   const can = useCan('PAY.EMP');
   const { me } = useSession();
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Department[]>('/api/v1/departments') });
-  const lk = useLookups('BANK');
+  const lk = useLookups('BANK,70,71,73,74,76');
   const all = useEmployees('all');
   const cur = useQuery({ enabled: !!id, queryKey: ['pay-employee', id], queryFn: () => api.get<Detail>(`/api/v1/pay/employees/${id}`), staleTime: 0 });
   const [f, setF] = useState<Form | null>(id ? null : { ...EMPTY });
@@ -142,7 +143,8 @@ export function EmployeeFormPage() {
       {f && <div onKeyDown={(e) => navKey(e)}>
         <div className="form-grid">
           <Field label="รหัสพนักงาน" req><input className="mono" autoFocus={!id} value={s('code')} maxLength={20} disabled={readOnly} onChange={(e) => set({ code: e.target.value.toUpperCase() })} /></Field>
-          {TEXT.slice(0, 3).map(([k, l, m, req]) => <Field key={k} label={l} req={req}><input value={s(k)} maxLength={m} disabled={readOnly} onChange={(e) => set({ [k]: e.target.value })} /></Field>)}
+          <Field label="คำนำหน้า"><LkSelect byName table="70" rows={lk.data?.['70']} value={s('title')} disabled={readOnly} onChange={(v) => set({ title: v })} aria-label="คำนำหน้า" /></Field>
+          {TEXT.slice(1, 3).map(([k, l, m, req]) => <Field key={k} label={l} req={req}><input value={s(k)} maxLength={m} disabled={readOnly} onChange={(e) => set({ [k]: e.target.value })} /></Field>)}
         </div>
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'person', label: 'ข้อมูลส่วนตัว' }, { key: 'job', label: 'การจ้างและค่าจ้าง' }, { key: 'tax', label: 'ภาษีและกองทุน' },
           ...(id ? [{ key: 'allow', label: 'ค่าลดหย่อน' }, { key: 'ytd', label: 'ยอดยกมาต้นปี' }, { key: 'recur', label: 'รายการประจำ', badge: x?.recurring.length || undefined }] : [])]} />
@@ -153,7 +155,7 @@ export function EmployeeFormPage() {
               <input className="mono" value={s('tax_id')} maxLength={20} disabled={readOnly} placeholder={id && x?.has_tax_id && !revealed ? x.tax_id_masked ?? '' : '0-0000-00000-00-0'} onChange={(e) => set({ tax_id: e.target.value })} /></Field>
             <Field label="เพศ"><select value={s('gender')} disabled={readOnly} onChange={(e) => set({ gender: e.target.value })}><option value="">—</option><option value="M">ชาย</option><option value="F">หญิง</option></select></Field>
             <Field label="วันเกิด" hint="เช่น 15/03/2530"><DateInput value={s('birth_date')} disabled={readOnly} onChange={(v) => set({ birth_date: v })} /></Field>
-            <Field label="สัญชาติ"><input value={s('nationality')} maxLength={60} disabled={readOnly} onChange={(e) => set({ nationality: e.target.value })} /></Field>
+            <Field label="สัญชาติ"><LkSelect byName table="76" rows={lk.data?.['76']} value={s('nationality')} disabled={readOnly} onChange={(v) => set({ nationality: v })} /></Field>
             <Field label="โทรศัพท์"><input value={s('phone')} maxLength={60} disabled={readOnly} onChange={(e) => set({ phone: e.target.value })} /></Field>
             <Field label="อีเมล" hint="ใช้ส่งสลิปเงินเดือน"><input type="email" value={s('email')} maxLength={120} disabled={readOnly} onChange={(e) => set({ email: e.target.value })} /></Field>
           </fieldset>
@@ -164,15 +166,13 @@ export function EmployeeFormPage() {
         </div>}
         {tab === 'job' && <div className="fa-grid">
           <fieldset className="box"><legend>การจ้าง</legend>
-            <Field label="แผนก" hint="ค่าใช้จ่ายเงินเดือนลงบัญชีตามแผนก"><select value={s('department_id')} disabled={readOnly} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.map((x2) => <option key={x2.id} value={x2.id}>{x2.code} {x2.name_th}</option>)}</select></Field>
+            <Field label="แผนก" hint="ค่าใช้จ่ายเงินเดือนลงบัญชีตามแผนก"><AddWrap kind="dept"><select value={s('department_id')} disabled={readOnly} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.map((x2) => <option key={x2.id} value={x2.id}>{x2.code} {x2.name_th}</option>)}</select></AddWrap></Field>
             <Field label="สาขา" hint="ว่าง = สำนักงานใหญ่ · รอบเงินเดือนทำแยกตามสาขา"><select value={s('branch_id')} disabled={readOnly} onChange={(e) => set({ branch_id: e.target.value })}><option value="">— สำนักงานใหญ่</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.code} {b.name}</option>)}</select></Field>
-            <Field label="ตำแหน่ง"><input value={s('position')} maxLength={100} disabled={readOnly} onChange={(e) => set({ position: e.target.value })} /></Field>
-            <Field label="ประเภทพนักงาน"><input value={s('employee_type')} maxLength={60} disabled={readOnly} list="emp-types" onChange={(e) => set({ employee_type: e.target.value })} />
-              <datalist id="emp-types"><option value="ประจำ" /><option value="รายวัน" /><option value="ทดลองงาน" /><option value="ชั่วคราว" /><option value="กรรมการ" /></datalist></Field>
+            <Field label="ตำแหน่ง"><LkSelect byName table="71" rows={lk.data?.['71']} value={s('position')} disabled={readOnly} onChange={(v) => set({ position: v })} /></Field>
+            <Field label="ประเภทพนักงาน"><LkSelect byName table="73" rows={lk.data?.['73']} value={s('employee_type')} disabled={readOnly} onChange={(v) => set({ employee_type: v })} /></Field>
             <Field label="วันเริ่มงาน" req hint="เช่น 01/01/2569"><DateInput value={s('hire_date')} disabled={readOnly} onChange={(v) => set({ hire_date: v })} /></Field>
             <Field label="วันที่ออก" hint="วันทำงานวันสุดท้าย — เดือนที่ออกภาษีทั้งปีคิดจบ"><DateInput value={s('end_date')} disabled={readOnly} onChange={(v) => set({ end_date: v })} /></Field>
-            {s('end_date') && <Field label="สาเหตุที่ออก" req><input value={s('end_reason')} maxLength={120} disabled={readOnly} list="end-reasons" onChange={(e) => set({ end_reason: e.target.value })} />
-              <datalist id="end-reasons"><option value="ลาออก" /><option value="เลิกจ้าง" /><option value="สิ้นสุดสัญญา" /><option value="เกษียณ" /><option value="เสียชีวิต" /></datalist></Field>}
+            {s('end_date') && <Field label="สาเหตุที่ออก" req><LkSelect byName table="74" rows={lk.data?.['74']} value={s('end_reason')} disabled={readOnly} onChange={(v) => set({ end_reason: v })} /></Field>}
             <Field label="สถานะ"><select value={s('status')} disabled={readOnly} onChange={(e) => set({ status: e.target.value })}><option value="A">ใช้งาน</option><option value="I">เลิกใช้</option></select></Field>
           </fieldset>
           <fieldset className="box"><legend>ค่าจ้างและการรับเงิน</legend>
@@ -182,7 +182,7 @@ export function EmployeeFormPage() {
             </>}
             <Field label="รับเงินเดือน"><select value={s('pay_method')} disabled={readOnly} onChange={(e) => set({ pay_method: e.target.value })}><option value="B">โอนเข้าบัญชี</option><option value="C">เงินสด</option></select></Field>
             {s('pay_method') === 'B' && <>
-              <Field label="ธนาคาร"><LkSelect rows={lk.data?.BANK} byId value={s('bank_id')} disabled={readOnly} onChange={(v) => set({ bank_id: v })} /></Field>
+              <Field label="ธนาคาร"><LkSelect table="01" rows={lk.data?.BANK} byId value={s('bank_id')} disabled={readOnly} onChange={(v) => set({ bank_id: v })} /></Field>
               <Field label="เลขที่บัญชี" hint={id && x?.has_bank_account && !revealed ? <>ปัจจุบัน {x.bank_account_masked} · <button type="button" className="link" onClick={reveal}>แสดงเลขเต็ม</button></> : 'ตัวเลข 10–15 หลัก'}>
                 <input className="mono" value={s('bank_account_no')} maxLength={20} disabled={readOnly} placeholder={id && x?.has_bank_account && !revealed ? x.bank_account_masked ?? '' : ''} onChange={(e) => set({ bank_account_no: e.target.value })} /></Field>
               <Field label="ชื่อบัญชี"><input value={s('bank_account_name')} maxLength={120} disabled={readOnly} onChange={(e) => set({ bank_account_name: e.target.value })} /></Field>

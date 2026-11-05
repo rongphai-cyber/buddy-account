@@ -57,7 +57,7 @@ export function PricesPage() {
       {f && <div onKeyDown={navKey}>
         <fieldset className="box"><legend>ตารางราคาหลัก</legend>
           <div className="form-grid price-main">
-            <Field label="หน่วยขายเป็น"><LkSelect byId rows={lk.data?.UNIT} value={f.sales_unit_id} onChange={(v) => setF({ ...f, sales_unit_id: v })} /></Field>
+            <Field label="หน่วยขายเป็น"><LkSelect byId table="20" rows={lk.data?.UNIT} value={f.sales_unit_id} onChange={(v) => setF({ ...f, sales_unit_id: v })} /></Field>
             <Field label="ตัวคูณให้เป็นหน่วยย่อย"><Dec value={f.sales_factor} onChange={(v) => setF({ ...f, sales_factor: v })} /></Field>
             {f.p.map((v, i) => <Field key={i} label={`ราคาที่ ${i + 1}`}><Dec value={v} onChange={(x) => setF({ ...f, p: f.p.map((y, k) => (k === i ? x : y)) })} /></Field>)}
           </div>
@@ -70,7 +70,7 @@ export function PricesPage() {
                 {f.breaks.map((b, i) => (
                   <tr key={i}>
                     <td><Dec value={b.min_qty} onChange={(v) => setB(i, { min_qty: v })} aria-label="ปริมาณขั้นต่ำ" /></td>
-                    <td><LkSelect byId rows={lk.data?.UNIT} value={b.unit_id} onChange={(v) => setB(i, { unit_id: v || null })} aria-label="หน่วยขาย" /></td>
+                    <td><LkSelect byId table="20" rows={lk.data?.UNIT} value={b.unit_id} onChange={(v) => setB(i, { unit_id: v || null })} aria-label="หน่วยขาย" /></td>
                     <td><Dec value={b.factor} onChange={(v) => setB(i, { factor: v })} aria-label="ตัวคูณ" /></td>
                     <td className="c"><input type="checkbox" checked={b.is_percent} onChange={(e) => setB(i, { is_percent: e.target.checked })} aria-label="ราคาเป็น % ส่วนลด" /></td>
                     {[1, 2, 3, 4, 5].map((n) => <td key={n}><Dec value={b[`price_${n}` as 'price_1']} onChange={(v) => setB(i, { [`price_${n}`]: v })} aria-label={`ราคาที่ ${n}`} /></td>)}
@@ -137,7 +137,7 @@ export function ReorderPage() {
             <tbody>
               {rows.map((r, i) => (
                 <tr key={i}>
-                  <td><LkSelect byId rows={lk.data?.WH} value={r.warehouse_id} onChange={(v) => set(i, { warehouse_id: v })} blank="— เลือกคลัง —" aria-label="คลัง" /></td>
+                  <td><LkSelect byId table="21" rows={lk.data?.WH} value={r.warehouse_id} onChange={(v) => set(i, { warehouse_id: v })} blank="— เลือกคลัง —" aria-label="คลัง" /></td>
                   <td><input className="mono" value={r.start_mmdd} maxLength={5} placeholder="MM/DD" onChange={(e) => { const v = e.target.value.replace(/[^\d]/g, '').slice(0, 4); set(i, { start_mmdd: v.length > 2 ? `${v.slice(0, 2)}/${v.slice(2)}` : v }); }} aria-label="เดือน/วันที่เริ่ม" /></td>
                   <td><Dec value={r.min_qty} onChange={(v) => set(i, { min_qty: v })} aria-label="จุดสั่งซื้อ" /></td>
                   <td><Dec value={r.max_qty} onChange={(v) => set(i, { max_qty: v })} aria-label="จำนวนสูงสุด" /></td>

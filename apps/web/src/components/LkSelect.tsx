@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
-import { ITEM_KINDS, itemKindOf } from '@buddy/core';
+import { DATA_TABLES, ITEM_KINDS, itemKindOf } from '@buddy/core';
 import { useCan } from '../session';
-import { toast } from '../ui';
+import { ErrorBox, Field, Modal, navKey, toast, useHotkeys } from '../ui';
 import type { AddKind } from './AddMaster';
 
 const AddMaster = lazy(() => import('./AddMaster'));
@@ -61,16 +61,75 @@ export type Lk = Record<string, LkRow[]>;
 export function useLookups(types: string) {
   return useQuery({ queryKey: ['lookups', types], queryFn: () => api.get<Lk>('/api/v1/lookups', { types }), staleTime: 60_000 });
 }
-/** ช่องเลือกจากตารางข้อมูล (คู่มือบทที่ 6) — byId = ค่าเป็น id (หน่วยนับ คลัง กลุ่มบัญชี) · ค่าเดิมที่ไม่อยู่ในตารางยังแสดงอยู่ */
-export function LkSelect({ rows, value, onChange, blank = '—', byId, missing = '(ไม่พบในตาราง)', ...rest }: { rows?: LkRow[]; value: string | null | undefined; onChange: (v: string) => void; blank?: string; byId?: boolean; missing?: string; [k: string]: unknown }) {
+/** ชนิดตารางของ useLookups → รหัสตารางข้อมูล (DATA_TABLES) สำหรับเพิ่มรายการใหม่จากช่อง */
+const TABLE_OF: Record<string, string> = { BANK: '01', UNIT: '20', WH: '21' };
+/** ชื่อตารางข้อมูลสำหรับข้อความ "เพิ่ม…ใหม่" */
+function tableLabel(code: string | null | undefined): string {
+  for (const t of DATA_TABLES) if (t.code === code) return t.label;
+  return 'รายการ';
+}
+export const lkTable = (type: string) => TABLE_OF[type] ?? (/^\d{2}$/.test(type) ? type : null);
+
+/**
+ * หน้าต่างเพิ่มข้อมูลหลักเร็ว (รหัส + ชื่อไทย + ชื่ออังกฤษ) จากช่องที่ใช้ — docs/18 ข้อ 12
+ * ไม่ใส่รหัส = รหัสถัดไปอัตโนมัติ · F9/Enter บันทึก · บันทึกแล้วเลือกให้ทันที
+ */
+export function QuickAdd({ title, onClose, onSave, rate, initialName = '', codeHint = 'ว่าง = รหัสถัดไปอัตโนมัติ' }: { title: string; onClose: () => void; onSave: (b: { code: string; name_th: string; name_en: string; rate?: string }) => Promise<void>; rate?: boolean; initialName?: string; codeHint?: string }) {
+  const [f, setF] = useState({ code: '', name_th: initialName, name_en: '', rate: '1' });
+  const [err, setErr] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    if (busy) return;
+    if (!f.name_th.trim()) { toast('ป้อนชื่อก่อน', 'warn'); return; }
+    setBusy(true); setErr(null);
+    try { await onSave({ code: f.code.trim(), name_th: f.name_th.trim(), name_en: f.name_en.trim(), ...(rate ? { rate: f.rate } : {}) }); } catch (e) { setErr(e); } finally { setBusy(false); }
+  };
+  useHotkeys({ F9: save, 'Ctrl+S': save }, [f]);
+  return createPortal(
+    <Modal title={title} onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" disabled={busy} onClick={save}>บันทึก <kbd>F9</kbd></button></>}>
+      <ErrorBox error={err} />
+      <div className="form-grid" onKeyDown={(e) => navKey(e, save)}>
+        <Field label="ชื่อ (ไทย)" req><input autoFocus value={f.name_th} maxLength={120} onChange={(e) => setF({ ...f, name_th: e.target.value })} /></Field>
+        <Field label="ชื่อภาษาอังกฤษ"><input value={f.name_en} maxLength={120} onChange={(e) => setF({ ...f, name_en: e.target.value })} /></Field>
+        <Field label="รหัส" hint={codeHint}><input className="mono" value={f.code} maxLength={10} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} /></Field>
+        {rate && <Field label="อัตรา (ตัวคูณเป็นหน่วยย่อย)" req hint="เช่น ชิ้น = 1 · โหล = 12"><input className="num" inputMode="decimal" value={f.rate} onChange={(e) => setF({ ...f, rate: e.target.value })} /></Field>}
+      </div>
+    </Modal>, document.body);
+}
+
+/**
+ * ช่องเลือกจากตารางข้อมูล (คู่มือบทที่ 6) — byId = ค่าเป็น id (หน่วยนับ คลัง กลุ่มบัญชี) · byName = ค่าเป็นชื่อ (คำนำหน้า ตำแหน่ง …) · ค่าเดิมที่ไม่อยู่ในตารางยังแสดงอยู่
+ * table = รหัสตารางข้อมูล → ปุ่ม ➕ / กด Insert ในช่อง เพิ่มรายการใหม่ได้ทันที (สิทธิ์ "เพิ่ม" ของตารางข้อมูล · docs/18 ข้อ 12)
+ */
+export function LkSelect({ rows, value, onChange, blank = '—', byId, byName, missing = '(ไม่พบในตาราง)', table, ...rest }: { rows?: LkRow[]; value: string | null | undefined; onChange: (v: string) => void; blank?: string; byId?: boolean; byName?: boolean; missing?: string; table?: string | null; [k: string]: unknown }) {
   const v = value ?? '';
-  const key = (r: LkRow) => (byId ? r.id! : r.code);
-  return (
-    <select value={v} onChange={(e) => onChange(e.target.value)} {...rest}>
+  const key = (r: LkRow) => (byId ? r.id! : byName ? r.name : r.code);
+  const qc = useQueryClient();
+  const canAdd = useCan('SET.TBL')('add') && !!table && !rest.disabled;
+  const [adding, setAdding] = useState(false);
+  const label = tableLabel(table);
+  const sel = (
+    <select value={v} onChange={(e) => onChange(e.target.value)} {...rest}
+      onKeyDown={(e) => { if (canAdd && e.key === 'Insert') { e.preventDefault(); setAdding(true); } (rest.onKeyDown as ((e: React.KeyboardEvent<HTMLSelectElement>) => void) | undefined)?.(e); }}
+      title={canAdd ? `กด Insert = เพิ่ม${label}ใหม่` : (rest.title as string | undefined)}>
       <option value="">{blank}</option>
       {v && rows && !rows.some((r) => key(r) === v) && <option value={v}>{byId ? missing : v}</option>}
-      {rows?.map((r) => <option key={key(r)} value={key(r)}>{r.code} {r.name}</option>)}
+      {rows?.map((r) => <option key={key(r)} value={key(r)}>{byName ? r.name : `${r.code} ${r.name}`}</option>)}
     </select>
+  );
+  if (!canAdd) return sel;
+  return (
+    <span className="lk-add">
+      {sel}
+      <button type="button" className="icon-btn" tabIndex={-1} title={`เพิ่ม${label}ใหม่ (Insert)`} aria-label={`เพิ่ม${label}ใหม่`} onClick={() => setAdding(true)}>➕</button>
+      {adding && <QuickAdd title={`เพิ่ม${label}`} rate={table === '20'} onClose={() => setAdding(false)} onSave={async (b) => {
+        const r = await api.post<{ id: string; code: string; name: string }>(`/api/v1/data-tables/${table}/rows`, b);
+        await qc.invalidateQueries({ queryKey: ['lookups'] });
+        toast(`เพิ่ม${label} ${r.code} ${r.name} แล้ว`);
+        onChange(byId ? r.id : byName ? r.name : r.code);
+        setAdding(false);
+      }} />}
+    </span>
   );
 }
 

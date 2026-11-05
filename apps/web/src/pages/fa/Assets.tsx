@@ -9,6 +9,7 @@ import { LkSelect, useLookups } from '../../components/LkSelect';
 import { NumInput, Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, useYearSystem, cx } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { DocLink } from '../../components/DocLink';
+import { AddWrap } from '../../components/AddWrap';
 
 interface Group { id: string; code: string; name_th: string; name_en: string | null; asset_account_id: string | null; depr_expense_account_id: string | null; accum_depr_account_id: string | null; asset_count: number }
 interface Row { id: string; code: string; name_th: string; category_code: string | null; group_code: string; purchase_date: string; cost: string; method: string; rate: string | null; status: string; sold_date: string | null; is_depreciable: boolean; accumulated: string; book_value: string }
@@ -159,11 +160,11 @@ export function AssetFormPage() {
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'detail', label: 'รายละเอียด' }, ...(id ? [{ key: 'depr', label: 'ค่าเสื่อมรายเดือน' }] : [])]} />
         {tab === 'detail' && <div className="fa-grid">
           <fieldset className="box"><legend>ทรัพย์สิน</legend>
-            <Field label="หมวด"><LkSelect rows={lk.data?.['52']} value={s('category_code')} disabled={readOnly} onChange={(v) => set({ category_code: v })} /></Field>
+            <Field label="หมวด"><LkSelect table="52" rows={lk.data?.['52']} value={s('category_code')} disabled={readOnly} onChange={(v) => set({ category_code: v })} /></Field>
             <Field label="กลุ่มบัญชี" req hint="กำหนดบัญชีค่าเสื่อม/ค่าเสื่อมสะสม"><select value={s('account_group_id')} disabled={readOnly} onChange={(e) => set({ account_group_id: e.target.value })}><option value="">—</option>
               {groups.data?.map((g) => <option key={g.id} value={g.id}>{g.code} {g.name_th}</option>)}</select></Field>
             <Field label="เลขทะเบียน"><input value={s('serial_no')} maxLength={40} disabled={readOnly} onChange={(e) => set({ serial_no: e.target.value })} /></Field>
-            <Field label="แผนก"><select value={s('department_id')} disabled={readOnly} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.map((x2) => <option key={x2.id} value={x2.id}>{x2.code} {x2.name_th}</option>)}</select></Field>
+            <Field label="แผนก"><AddWrap kind="dept"><select value={s('department_id')} disabled={readOnly} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.map((x2) => <option key={x2.id} value={x2.id}>{x2.code} {x2.name_th}</option>)}</select></AddWrap></Field>
           </fieldset>
           <fieldset className="box"><legend>ราคาและวิธีคิดค่าเสื่อม</legend>
             <label className="check"><input type="checkbox" checked={!!f.is_depreciable} disabled={readOnly} onChange={(e) => set({ is_depreciable: e.target.checked })} /> คิดค่าเสื่อม (ไม่ติ๊ก = ที่ดิน หรือยังไม่ต้องการคิด)</label>

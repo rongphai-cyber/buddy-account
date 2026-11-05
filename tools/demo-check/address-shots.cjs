@@ -58,6 +58,15 @@ require('fs').mkdirSync(OUT, { recursive: true });
     // แท็บย่อย
     await page.locator('.modal .tabs button, .modal [role=tab]').filter({ hasText: 'การขายและเครดิต' }).first().click();
     await shot('4-tab-sale');
+    // ข้อมูลหลักเพิ่มจากช่อง: ช่องประเภทลูกค้า กด Insert → หน้าต่างเพิ่มเร็ว (ไม่บันทึก)
+    const typeSel = page.locator('.modal label.field').filter({ hasText: 'ประเภทลูกค้า' }).locator('select');
+    await typeSel.focus();
+    await page.keyboard.press('Insert');
+    await page.waitForSelector('.modal >> text=เพิ่มประเภทลูกค้า', { timeout: 5000 }).catch(() => errors.push(`${tag}: Insert did not open quick add`));
+    await shot('4b-quick-add');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    if (!(await page.locator('.modal .party-head').count())) errors.push(`${tag}: Esc on quick add closed the customer form too`);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
     if (await page.locator('.modal').count()) { await page.keyboard.press('Escape'); }

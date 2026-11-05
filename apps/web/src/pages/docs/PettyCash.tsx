@@ -19,6 +19,8 @@ import { PostingTab } from './PostingTab';
 import { nextKey, PaymentsTable, paysBody, paysFrom, type Pay } from './MoneyParts';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
+import { ReasonInput } from '../../components/ReasonInput';
+import { AddWrap } from '../../components/AddWrap';
 
 /**
  * เงินสดย่อย (คู่มือบทที่ 15 S-GL-11/12/13): DP บันทึกการจ่าย (ยังไม่ลงบัญชี) → VR เบิกชดเชย (รวม DP แล้วลงบัญชี)
@@ -220,7 +222,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
                     <td className="muted">{i + 1}</td>
                     <td><AccountCell value={l.account_id} disabled={ro} required={!!l.amount || !lines.some((x) => x.account_id && x.key !== l.key)} onChange={(a) => setLine(l.key, { account_id: a?.id ?? null })} aria-label={`เลขที่บัญชี ${i + 1}`} /></td>
                     <td className="small">{acctName(l.account_id)}</td>
-                    <td><select value={l.department_id} disabled={ro} onChange={(e) => setLine(l.key, { department_id: e.target.value })} aria-label="แผนก"><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === l.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></td>
+                    <td><AddWrap kind="dept"><select value={l.department_id} disabled={ro} onChange={(e) => setLine(l.key, { department_id: e.target.value })} aria-label="แผนก"><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === l.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></td>
                     <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                     <td><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
                     <td>{!ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setLines((ls) => ls.filter((x) => x.key !== l.key)); setDirty(true); }}>✕</button>}</td>
@@ -267,7 +269,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
       </div>}
       <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาบัญชี'], ['F9', 'บันทึก'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? (เปลี่ยนสถานะ ไม่ลบ){kind === 'vr' ? ' ใบจ่ายที่เบิกจะกลับมาเบิกใหม่ได้ · เช็คออกจากทะเบียน' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
-        <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
+        <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
       </Confirm>}
     </div>
   );

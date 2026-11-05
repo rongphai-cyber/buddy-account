@@ -15,7 +15,7 @@ import { purgeTenant } from './pdpa.js';
 import { modulesOffRaw } from './permissions.js';
 import { payrollSource } from './wts.js';
 import { createTenantWithAdmin } from './signup.js';
-import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, setSetting } from '../company-template.js';
+import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, seedLookups, setSetting } from '../company-template.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
 const uuid = z.string().uuid();
@@ -140,6 +140,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       } else {
         await seedChart(tx, c.id, { chart: b.chart === 'express' || b.chart === 'th_en' ? b.chart : null });
         await seedDocTypes(tx, c.id);
+        await seedLookups(tx, c.id);
         if (b.chart === 'copy') await copyChart(tx, b.copy_from_company_id!, c.id);
       }
       await logActivity(tx, { companyId: c.id, userId: a.userId }, { module: 'SYS', action: 'NEW_COMPANY', table: 'sys_company', rowId: c.id, detail: { code: b.code, tenant_id: tenantId, copied_from: b.copy_from_company_id ?? null, copied } });

@@ -5,6 +5,7 @@ import { api, type Department, type FiscalYear } from '../../api';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { cx, DateText, ErrorBox, KeyHints, MoneyInput, navKey, PageHead, toast, useHotkeys } from '../../ui';
 import { useSession } from '../../session';
+import { AddWrap } from '../../components/AddWrap';
 
 interface Row { key: number; account_id: string | null; department_id: string | null; branch_id: string | null; debit: string; credit: string }
 let k = 0;
@@ -51,7 +52,7 @@ export function OpeningPage() {
               <tr key={r.key}>
                 <td><AccountCell value={r.account_id} onChange={(a) => set(r.key, { account_id: a?.id ?? null })} /></td>
                 <td className="small">{name(r.account_id)}</td>
-                <td><select value={r.department_id ?? ''} onChange={(e) => set(r.key, { department_id: e.target.value || null })}><option value="">—</option>{depts.data?.map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}</select></td>
+                <td><AddWrap kind="dept"><select value={r.department_id ?? ''} onChange={(e) => set(r.key, { department_id: e.target.value || null })}><option value="">—</option>{depts.data?.map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}</select></AddWrap></td>
                 {multi && <td><select value={r.branch_id ?? ''} aria-label="สาขา" onChange={(e) => set(r.key, { branch_id: e.target.value || null })}>{branches.map((x) => <option key={x.id} value={x.is_head_office ? '' : x.id}>{x.code} {x.name}</option>)}</select></td>}
                 <td><MoneyInput value={r.debit} onChange={(v) => set(r.key, { debit: v, credit: v ? '' : r.credit })} /></td>
                 <td><MoneyInput value={r.credit} onChange={(v) => set(r.key, { credit: v, debit: v ? '' : r.debit })} /></td>

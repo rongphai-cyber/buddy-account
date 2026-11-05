@@ -650,6 +650,35 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('DELETE', `/api/v1/suppliers/${s.body.id}`)).status).toBe(200);
   });
 
+  it('master data added from the field (docs/18 ข้อ 12): new lookup tables seeded, quick add with next code, duplicates refused, other company isolated', async () => {
+    // บริษัทใหม่ได้รายการตั้งต้นของตาราง 70–76
+    const otherCo = (await call('POST', '/api/v1/companies', { code: 'LKNEW', name_th: 'บริษัท ตารางข้อมูลใหม่', fiscal_start: '2026-01-01', chart: 'th_en' })).body.id as string;
+    const mine = (await call('GET', '/api/v1/auth/me')).body.company?.id as string;
+    await call('POST', '/api/v1/auth/select', { company_id: otherCo });
+    const seeded = (await call('GET', '/api/v1/lookups?types=70,71,72,73,74,75,76')).body;
+    expect(seeded['70'].map((r: { name: string }) => r.name)).toEqual(expect.arrayContaining(['บริษัท', 'ห้างหุ้นส่วนจำกัด', 'นาย']));
+    expect(seeded['75'].map((r: { name: string }) => r.name)).toContain('คีย์ข้อมูลผิด');
+    for (const t of ['71', '72', '73', '74', '76']) expect(seeded[t].length).toBeGreaterThan(0);
+    // เพิ่มเร็วจากช่อง: ไม่ใส่รหัส = รหัสถัดไป · ชื่อซ้ำ/รหัสซ้ำ = ไม่รับ · ตารางไม่มีจริง = 404 · หน่วยนับต้องมีอัตรา
+    const n70 = seeded['70'].length as number;
+    const add = await call('POST', '/api/v1/data-tables/70/rows', { name_th: 'ว่าที่ร้อยตรี', name_en: 'Acting Sub Lt.' });
+    expect(add.status, JSON.stringify(add.body)).toBe(200);
+    expect(add.body).toMatchObject({ code: String(n70 + 1).padStart(2, '0'), name: 'ว่าที่ร้อยตรี' });
+    expect((await call('POST', '/api/v1/data-tables/70/rows', { name_th: 'ว่าที่ร้อยตรี' })).body.error.message).toMatch(/มี "ว่าที่ร้อยตรี" อยู่แล้ว/);
+    expect((await call('POST', '/api/v1/data-tables/70/rows', { code: '01', name_th: 'อื่น ๆ' })).body.error.message).toMatch(/รหัส 01 มีอยู่แล้ว/);
+    expect((await call('POST', '/api/v1/data-tables/99/rows', { name_th: 'x' })).status).toBe(404);
+    expect((await call('POST', '/api/v1/data-tables/20/rows', { code: 'PK', name_th: 'แพ็ก', rate: 0 })).status).toBe(400);
+    const unit = await call('POST', '/api/v1/data-tables/20/rows', { code: 'PK6', name_th: 'แพ็ก 6', rate: '6' });
+    expect(unit.status, JSON.stringify(unit.body)).toBe(200);
+    expect((await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT.find((u: { id: string }) => u.id === unit.body.id)).toMatchObject({ code: 'PK6' });
+    expect((await call('GET', '/api/v1/data-tables/70')).body.find((r: { code: string }) => r.code === add.body.code)).toMatchObject({ name_th: 'ว่าที่ร้อยตรี', name_en: 'Acting Sub Lt.', status: 'A' });
+    // บริษัทอื่นไม่เห็นรายการที่เพิ่ม
+    await call('POST', '/api/v1/auth/select', { company_id: mine });
+    expect((await call('GET', '/api/v1/lookups?types=70')).body['70'].map((r: { name: string }) => r.name)).not.toContain('ว่าที่ร้อยตรี');
+    // บริษัทหลักของชุดทดสอบก็มีรายการตั้งต้น (บริษัทที่มีอยู่ก่อนได้จาก migration 0053)
+    expect((await call('GET', '/api/v1/lookups?types=75')).body['75'].length).toBeGreaterThan(0);
+  });
+
   it('item master: account groups, items, kits, services, other income/expense, prices, reorder (บทที่ 7 / S-SET-04)', async () => {
     const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
     const leaf = accs.filter((x) => !x.is_control);

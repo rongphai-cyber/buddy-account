@@ -223,7 +223,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/doc-types': LOOKUP, 'GET /api/v1/doc-types/:id': LOOKUP, 'POST /api/v1/doc-types': M('SET.DOCNO', 'add'),
   'PUT /api/v1/doc-types/:id': M('SET.DOCNO', 'edit'), 'DELETE /api/v1/doc-types/:id': M('SET.DOCNO', 'delete'),
   'GET /api/v1/gl/link': M('SET.LINK', 'read'), 'PUT /api/v1/gl/link': M('SET.LINK', 'edit'),
-  'GET /api/v1/data-tables': LOOKUP, 'GET /api/v1/data-tables/:code': LOOKUP, 'PUT /api/v1/data-tables/:code': M('SET.TBL', 'edit'),
+  'GET /api/v1/data-tables': LOOKUP, 'GET /api/v1/data-tables/:code': LOOKUP, 'PUT /api/v1/data-tables/:code': M('SET.TBL', 'edit'), 'POST /api/v1/data-tables/:code/rows': M('SET.TBL', 'add'),
   'GET /api/v1/docs/:id/journal': LOOKUP, 'GET /api/v1/docs/:id/posting-preview': LOOKUP, 'POST /api/v1/docs/:id/repost': M('SET.LINK', 'edit'),
   ...Object.fromEntries(TRADE_KINDS.flatMap((k) => [
     [`GET /api/v1/${k.path}`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/:id`, M(k.menu, 'read')], [`POST /api/v1/${k.path}`, M(k.menu, 'add')],

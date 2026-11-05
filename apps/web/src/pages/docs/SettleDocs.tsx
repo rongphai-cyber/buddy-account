@@ -21,6 +21,8 @@ import { chargesBody, chargesFrom, ChargesTable, chargeTotal, emptyChargeHead, s
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { DocVatTab, VatCheckAfterSave, vatTabLabel } from '../../components/DocTaxTabs';
+import { ReasonInput } from '../../components/ReasonInput';
+import { AddWrap } from '../../components/AddWrap';
 
 const kindOf = (path: string) => SETTLE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: SettleKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -280,7 +282,7 @@ export function SettleFormPage({ path }: { path: string }) {
               toast(sel.length ? `เลือกบิลตาม ${b.doc_no} ${sel.length} ใบ` : `บิลใน ${b.doc_no} ชำระครบแล้ว`, sel.length ? 'ok' : 'warn');
             }}><option value="">—</option>{bills.data?.rows.map((b) => <option key={b.id} value={b.id}>{b.doc_no} · {b.invoice_ids.length} ใบ · {fmt(b.total)}</option>)}</select></Field>}
             <Field label="อ้างอิง/หมายเหตุสั้น"><input value={h.your_ref} maxLength={60} disabled={ro} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
-            {K.module === 'AR' && <Field label="พนักงานเก็บเงิน"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></Field>}
+            {K.module === 'AR' && <Field label="พนักงานเก็บเงิน"><AddWrap kind="slm"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></AddWrap></Field>}
           </div>
           <div className="col">
             
@@ -288,7 +290,7 @@ export function SettleFormPage({ path }: { path: string }) {
             
             <Field label={K.cls === 'RE' ? 'วันที่ใบเสร็จ' : 'วันที่ทำเอกสาร'} req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v, ...(h.payment_date === h.doc_date ? { payment_date: v } : {}) })} /></Field>
             <Field label={`วันที่${rp(K)}เงิน`} hint="วันรับ/จ่ายเงินจริง ไม่ต้องตรงวันที่เอกสาร"><DateInput value={h.payment_date} disabled={ro} onChange={(v) => set({ payment_date: v })} /></Field>
-            <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
+            <Field label="แผนก"><AddWrap kind="dept"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></Field>
           </div>
         </div>
         {!id && !readOnly && <HoldNote party={K.party} partyId={h.party?.id} cls={K.cls} />}
@@ -348,7 +350,7 @@ export function SettleFormPage({ path }: { path: string }) {
       {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
       <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['F5', 'บิลค้าง'], ['F7', 'ชำระโดยอื่น'], ...(isRe ? [['F8', 'หักโดยแพลตฟอร์ม'] as [string, string]] : []), ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ) · บิลที่ตัดกลับเป็นค้างชำระ · เช็คออกจากทะเบียน{K.cls === 'PS' ? ' · ภาษีหัก ณ ที่จ่ายยกเลิก' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
-        <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
+        <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
       </Confirm>}
     </div>
   );

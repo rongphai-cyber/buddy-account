@@ -10,6 +10,7 @@ import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { useDocNo } from '../../components/DocNo';
 import { DocLink } from '../../components/DocLink';
+import { ReasonInput } from '../../components/ReasonInput';
 
 /** เช็ครับ/เช็คจ่าย (คู่มือบทที่ 13 S-BK-04..13) — ยอดเงินฝากเพิ่มเมื่อผ่านเช็คเท่านั้น */
 type Dir = 'R' | 'P';
@@ -117,7 +118,7 @@ export function AddCheque({ direction, onClose, journal }: { direction: Dir; onC
         <Field label="เลขที่เช็ค" req><input className="mono" value={f.cheque_no} maxLength={30} autoFocus onChange={(e) => setF({ ...f, cheque_no: e.target.value })} /></Field>
         <Field label="วันที่เช็ค" req><DateInput value={f.cheque_date} onChange={(v) => setF({ ...f, cheque_date: v })} /></Field>
         {direction === 'R' ? <>
-          <Field label="เช็คธนาคาร"><LkSelect byId rows={lk.data?.BANK} value={f.bank_id} onChange={(v) => setF({ ...f, bank_id: v })} aria-label="เช็คธนาคาร" /></Field>
+          <Field label="เช็คธนาคาร"><LkSelect byId table="01" rows={lk.data?.BANK} value={f.bank_id} onChange={(v) => setF({ ...f, bank_id: v })} aria-label="เช็คธนาคาร" /></Field>
           <Field label="เช็คสาขา"><input value={f.bank_branch} maxLength={60} onChange={(e) => setF({ ...f, bank_branch: e.target.value })} /></Field>
           <Field label="รหัสลูกค้า"><SearchPick<{ id: string; code: string; name: string }> endpoint="/api/v1/customers" value={f.party} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => setF({ ...f, party: r ? { id: r.id, code: r.code, name: r.name } : null })} /></Field>
           <Field label="วันที่รับเช็ค"><DateInput value={f.received_date} onChange={(v) => setF({ ...f, received_date: v })} /></Field>
@@ -380,7 +381,7 @@ export function ChequeSlipFormPage() {
         <Field label="เหตุผล" req><input autoFocus value={f.reason} maxLength={200} onChange={(e) => setF({ ...f, reason: e.target.value })} /></Field>
       </Confirm>}
       {act === 'cancel' && <Confirm danger title="ยกเลิกใบนำฝาก" text="เช็คทุกใบกลับเป็นเช็คในมือ (เปลี่ยนสถานะ ไม่ลบ)" okText="ยกเลิกใบนำฝาก" onClose={() => setAct(null)} onOk={() => run(() => api.post(`/api/v1/cheque-deposits/${id}/cancel`, { reason: f.reason }), 'ยกเลิกใบนำฝากแล้ว', true)}>
-        <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={f.reason} maxLength={200} onChange={(e) => setF({ ...f, reason: e.target.value })} /></Field>
+        <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={f.reason} onChange={(v) => setF({ ...f, reason: v })} /></Field>
       </Confirm>}
       {print && c && createPortal(<div className="vat-print"><h2>ใบนำฝากเช็ค {c.doc_no}</h2><p style={{ textAlign: 'center' }}>{me?.company?.name_th} · วันที่นำฝาก {formatDate(String(c.doc_date).slice(0, 10), ys)}</p>
         <table><thead><tr><th>#</th><th>เลขที่เช็ค</th><th>ลงวันที่</th><th>ธนาคาร</th><th>สาขา</th><th>จำนวนเงิน</th></tr></thead>

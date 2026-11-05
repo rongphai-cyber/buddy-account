@@ -11,6 +11,7 @@ import { DocLink } from '../../components/DocLink';
 import { AddressFields } from '../../components/AddressFields';
 import { Confirm, cx, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
+import { AddWrap } from '../../components/AddWrap';
 
 /* ---------------------------------------------------------------- ส่วนร่วม */
 type Form = Record<string, string | boolean | null>;
@@ -84,6 +85,7 @@ function PartyList({ kind, eyebrow, title, lead, menu, Form: FormC }: { kind: 'c
 /** ผู้ติดต่อหลายคน (ข้อเสนอเพิ่มจาก Express ที่มีช่องเดียว) */
 interface Contact { name: string; position: string | null; phone: string | null; email: string | null; is_primary: boolean }
 function ContactsGrid({ rows, onChange }: { rows: Contact[]; onChange: (r: Contact[]) => void }) {
+  const pos = useLookups('71');
   const set = (i: number, p: Partial<Contact>) => onChange(rows.map((r, k) => (k === i ? { ...r, ...p } : p.is_primary ? { ...r, is_primary: false } : r)));
   return (
     <div className="table-wrap lines">
@@ -94,7 +96,7 @@ function ContactsGrid({ rows, onChange }: { rows: Contact[]; onChange: (r: Conta
             <tr key={i}>
               <td className="muted">{i + 1}</td>
               <td><input value={r.name} maxLength={120} onChange={(e) => set(i, { name: e.target.value })} aria-label="ชื่อผู้ติดต่อ" /></td>
-              <td><input value={r.position ?? ''} maxLength={60} onChange={(e) => set(i, { position: e.target.value })} placeholder="เช่น จัดซื้อ บัญชี" /></td>
+              <td><LkSelect byName table="71" rows={pos.data?.['71']} value={r.position} onChange={(v) => set(i, { position: v || null })} aria-label="ตำแหน่ง" /></td>
               <td><input value={r.phone ?? ''} maxLength={60} onChange={(e) => set(i, { phone: e.target.value })} /></td>
               <td><input type="email" value={r.email ?? ''} maxLength={120} onChange={(e) => set(i, { email: e.target.value })} /></td>
               <td className="c"><input type="checkbox" checked={r.is_primary} onChange={(e) => set(i, { is_primary: e.target.checked })} aria-label="ผู้ติดต่อหลัก" /></td>
@@ -193,7 +195,7 @@ export function CustomersPage() {
 
 export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | null; onClose: () => void; onSaved: (saved?: { id: string; code: string }) => void; initial?: Form }) {
   const qc = useQueryClient();
-  const lk = useLookups('40,41,45,55');
+  const lk = useLookups('40,41,45,55,70,72');
   const slms = useQuery({ queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const cur = useQuery({ enabled: !!id, queryKey: ['customer', id], queryFn: () => api.get<CustomerDetail>(`/api/v1/customers/${id}`), staleTime: 0 });
   const [f, setF] = useState<Form | null>(id ? null : { ...toForm({}, CUS_KEYS), status: 'A', tax_branch_no: '00000', price_level: '1', wht_condition: '1', on_hold: false, ...initial });
@@ -231,7 +233,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
       {f && <>
         <div className="form-grid party-head">
           <Field label="รหัสลูกค้า" req hint="สื่อประเภทหรือเขต เช่น ก-001, BKK-01"><input autoFocus className="mono" {...t('code', 20)} onChange={(e) => set({ code: e.target.value.toUpperCase() })} /></Field>
-          <Field label="คำนำหน้าชื่อ"><input {...t('title', 30)} placeholder="บริษัท / หจก. / ร้าน" list="party-titles" /></Field>
+          <Field label="คำนำหน้าชื่อ"><LkSelect byName table="70" rows={lk.data?.['70']} value={val(f, 'title')} onChange={(v) => set({ title: v })} aria-label="คำนำหน้าชื่อ" /></Field>
           <Field label="ชื่อลูกค้า" req><input {...t('name', 120)} /></Field>
           <Field label="สถานะ"><select value={val(f, 'status')} onChange={(e) => set({ status: e.target.value })}><option value="A">ใช้งาน (Active)</option><option value="I">เลิกใช้ (Inactive)</option></select></Field>
         </div>
@@ -251,17 +253,17 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
           </div>}
         </div>}
         {tab === 'sale' && <div className="form-grid party-grid tab-flow">
-          <Field label="ประเภทลูกค้า"><LkSelect rows={lk.data?.['45']} value={val(f, 'customer_type')} onChange={(v) => set({ customer_type: v })} /></Field>
+          <Field label="ประเภทลูกค้า"><LkSelect table="45" rows={lk.data?.['45']} value={val(f, 'customer_type')} onChange={(v) => set({ customer_type: v })} /></Field>
           <Field label="พนักงานขาย">
-            <select value={acc.slm ?? ''} onChange={(e) => setAcc((x) => ({ ...x, slm: e.target.value || null }))}>
+            <AddWrap kind="slm"><select value={acc.slm ?? ''} onChange={(e) => setAcc((x) => ({ ...x, slm: e.target.value || null }))}>
               <option value="">—</option>
               {slms.data?.filter((s) => s.status === 'A' || s.id === acc.slm).map((s) => <option key={s.id} value={s.id}>{s.code} {s.name}</option>)}
-            </select>
+            </select></AddWrap>
           </Field>
-          <Field label="เขตการขาย"><LkSelect rows={lk.data?.['40']} value={val(f, 'sales_area_code')} onChange={(v) => set({ sales_area_code: v })} /></Field>
-          <Field label="ขนส่งโดย"><LkSelect rows={lk.data?.['41']} value={val(f, 'ship_via_code')} onChange={(v) => set({ ship_via_code: v })} /></Field>
+          <Field label="เขตการขาย"><LkSelect table="40" rows={lk.data?.['40']} value={val(f, 'sales_area_code')} onChange={(v) => set({ sales_area_code: v })} /></Field>
+          <Field label="ขนส่งโดย"><LkSelect table="41" rows={lk.data?.['41']} value={val(f, 'ship_via_code')} onChange={(v) => set({ ship_via_code: v })} /></Field>
           <Field label="เครดิต (วัน)" hint="ใช้คำนวณวันครบกำหนดในบิลขาย"><input type="number" min={0} max={999} {...t('credit_days', 3)} /></Field>
-          <Field label="เงื่อนไขการชำระ" hint="เช่น 2/10, n/30 (แสดงในฟอร์ม ไม่คำนวณ)"><input {...t('payment_terms', 60)} /></Field>
+          <Field label="เงื่อนไขการชำระ" hint="แสดงในฟอร์ม ไม่คำนวณ · Insert = เพิ่มเงื่อนไขใหม่"><LkSelect byName table="72" rows={lk.data?.['72']} value={val(f, 'payment_terms')} onChange={(v) => set({ payment_terms: v })} /></Field>
           <Field label="ประเภทราคา" hint="ค่าเริ่มต้นในเอกสารขาย — ว่าง = ตามประเภทเอกสาร"><select value={val(f, 'price_type')} onChange={(e) => set({ price_type: e.target.value })}><option value="">—</option><option value="0">0 ยกเว้นภาษี</option><option value="1">1 ราคารวมภาษีแล้ว</option><option value="2">2 ราคายังไม่รวมภาษี (แยก VAT)</option></select></Field>
           <Field label="ตารางราคา">
             <select value={val(f, 'price_level')} onChange={(e) => set({ price_level: e.target.value })}>
@@ -277,9 +279,9 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
           <Field label="เลขประจำตัวผู้เสียภาษี" hint="13 หลัก — ตรวจหลักสุดท้ายให้"><input className="mono" {...t('tax_id', 20)} inputMode="numeric" /></Field>
           <Field label="สาขา#" hint="00000 = สำนักงานใหญ่"><input className="mono" {...t('tax_branch_no', 5)} inputMode="numeric" /></Field>
           <Field label="เลขที่บัญชีลูกหนี้" hint="เช่น 1130-01 ลูกหนี้การค้า · F4 ค้นหา"><AccountCell value={acc.ar} onChange={(a) => setAcc((x) => ({ ...x, ar: a?.id ?? null }))} /></Field>
-          <Field label="แบบภาษีที่ลูกค้าหักเรา" hint="แบบ ภ.ง.ด. ที่ลูกค้ายื่น"><LkSelect rows={lk.data?.['55']} value={val(f, 'wht_form')} onChange={(v) => set({ wht_form: v })} /></Field>
+          <Field label="แบบภาษีที่ลูกค้าหักเรา" hint="แบบ ภ.ง.ด. ที่ลูกค้ายื่น"><LkSelect table="55" rows={lk.data?.['55']} value={val(f, 'wht_form')} onChange={(v) => set({ wht_form: v })} /></Field>
           <Field label="อัตราภาษีหัก ณ ที่จ่าย (%)"><input type="number" min={0} max={100} step="0.01" {...t('wht_rate', 6)} /></Field>
-          <Field label="หมวดภาษีหัก ณ ที่จ่าย"><LkSelect rows={lk.data?.['55']} value={val(f, 'wht_category')} onChange={(v) => set({ wht_category: v })} /></Field>
+          <Field label="หมวดภาษีหัก ณ ที่จ่าย"><LkSelect table="55" rows={lk.data?.['55']} value={val(f, 'wht_category')} onChange={(v) => set({ wht_category: v })} /></Field>
           <Field label="เงื่อนไขการหักภาษี"><select value={val(f, 'wht_condition')} onChange={(e) => set({ wht_condition: e.target.value })}><option value="">—</option>{WHT_COND.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
         </div>}
         {tab === 'contacts' && <ContactsGrid rows={contacts} onChange={setContacts} />}
@@ -316,7 +318,6 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
             </table>
           </div>
         </>}
-        <datalist id="party-titles"><option value="บริษัท" /><option value="บริษัท ... จำกัด (มหาชน)" /><option value="ห้างหุ้นส่วนจำกัด" /><option value="ร้าน" /><option value="คุณ" /></datalist>
       </>}
     </MasterModal>
   );
@@ -334,7 +335,7 @@ export function SuppliersPage() {
 
 export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | null; onClose: () => void; onSaved: (saved?: { id: string; code: string }) => void; initial?: Form }) {
   const qc = useQueryClient();
-  const lk = useLookups('41,46,55,BANK');
+  const lk = useLookups('41,46,55,70,72,BANK');
   const cur = useQuery({ enabled: !!id, queryKey: ['supplier', id], queryFn: () => api.get<SupplierDetail>(`/api/v1/suppliers/${id}`), staleTime: 0 });
   const [f, setF] = useState<Form | null>(id ? null : { ...toForm({}, SUP_KEYS), status: 'A', tax_branch_no: '00000', price_type: '2', vat_rate: '7', wht_condition: '1', on_hold: false, ...initial });
   const [ap, setAp] = useState<string | null>(null);
@@ -369,7 +370,7 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
       {f && <>
         <div className="form-grid party-head">
           <Field label="รหัสผู้จำหน่าย" req hint="สื่อประเภท เช่น ประจำ/ชั่วคราว/ต่างประเทศ"><input autoFocus className="mono" {...t('code', 20)} onChange={(e) => set({ code: e.target.value.toUpperCase() })} /></Field>
-          <Field label="คำนำหน้าชื่อ"><input {...t('title', 30)} placeholder="บริษัท / หจก. / ร้าน" list="sup-titles" /></Field>
+          <Field label="คำนำหน้าชื่อ"><LkSelect byName table="70" rows={lk.data?.['70']} value={val(f, 'title')} onChange={(v) => set({ title: v })} aria-label="คำนำหน้าชื่อ" /></Field>
           <Field label="ชื่อผู้จำหน่าย" req><input {...t('name', 120)} /></Field>
           <Field label="สถานะ"><select value={val(f, 'status')} onChange={(e) => set({ status: e.target.value })}><option value="A">ใช้งาน (Active)</option><option value="I">เลิกใช้ (Inactive)</option></select></Field>
         </div>
@@ -388,12 +389,12 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
           </div>}
         </div>}
         {tab === 'buy' && <div className="form-grid party-grid tab-flow">
-          <Field label="ประเภทผู้จำหน่าย"><LkSelect rows={lk.data?.['46']} value={val(f, 'supplier_type')} onChange={(v) => set({ supplier_type: v })} /></Field>
+          <Field label="ประเภทผู้จำหน่าย"><LkSelect table="46" rows={lk.data?.['46']} value={val(f, 'supplier_type')} onChange={(v) => set({ supplier_type: v })} /></Field>
           <Field label="ประเภทราคา"><select value={val(f, 'price_type')} onChange={(e) => set({ price_type: e.target.value })}><option value="">—</option><option value="0">0 ยกเว้นภาษี</option><option value="1">1 ราคารวมภาษีแล้ว</option><option value="2">2 ราคายังไม่รวมภาษี (แยก VAT)</option></select></Field>
           <Field label="ภาษีมูลค่าเพิ่ม (%)"><input type="number" min={0} max={30} step="0.01" {...t('vat_rate', 6)} /></Field>
-          <Field label="ขนส่งโดย"><LkSelect rows={lk.data?.['41']} value={val(f, 'ship_via_code')} onChange={(v) => set({ ship_via_code: v })} /></Field>
+          <Field label="ขนส่งโดย"><LkSelect table="41" rows={lk.data?.['41']} value={val(f, 'ship_via_code')} onChange={(v) => set({ ship_via_code: v })} /></Field>
           <Field label="เครดิต (วัน)"><input type="number" min={0} max={999} {...t('credit_days', 3)} /></Field>
-          <Field label="เงื่อนไขการชำระเงิน" hint="เช่น 2/10, n/30"><input {...t('payment_terms', 60)} /></Field>
+          <Field label="เงื่อนไขการชำระเงิน" hint="แสดงในฟอร์ม ไม่คำนวณ · Insert = เพิ่มเงื่อนไขใหม่"><LkSelect byName table="72" rows={lk.data?.['72']} value={val(f, 'payment_terms')} onChange={(v) => set({ payment_terms: v })} /></Field>
           <Field label="ส่วนลด" hint="ส่วนลดการค้าที่ได้รับ"><input {...t('discount_text', 20)} /></Field>
           <Field label="วงเงินอนุมัติ" hint="ซื้อเกินวงเงิน → เตือนขณะซื้อ"><MoneyInput value={val(f, 'credit_limit')} onChange={(v) => set({ credit_limit: v })} /></Field>
           <Field label="ระงับการจ่าย" hint="จ่ายชำระหนี้/จ่ายมัดจำ ต้องให้ผู้มีระดับอนุมัติบันทึก · ซื้อ/สั่งซื้อ เตือน"><label className="check"><input type="checkbox" checked={f.on_hold === true} onChange={(e) => set({ on_hold: e.target.checked, ...(e.target.checked ? {} : { on_hold_reason: '' }) })} /> ระงับการจ่ายเงินผู้จำหน่ายรายนี้</label></Field>
@@ -403,7 +404,7 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
           <Field label="เลขประจำตัวผู้เสียภาษี" hint="ใช้ออกหนังสือรับรองหัก ณ ที่จ่าย"><input className="mono" {...t('tax_id', 20)} inputMode="numeric" /></Field>
           <Field label="สาขา#" hint="00000 = สำนักงานใหญ่"><input className="mono" {...t('tax_branch_no', 5)} inputMode="numeric" /></Field>
           <Field label="เลขที่บัญชีเจ้าหนี้" hint="เช่น 2120-01 เจ้าหนี้การค้า · F4 ค้นหา"><AccountCell value={ap} onChange={(a) => setAp(a?.id ?? null)} /></Field>
-          <Field label="หมวดภาษีหัก ณ ที่จ่าย (แบบ ภ.ง.ด.)"><LkSelect rows={lk.data?.['55']} value={val(f, 'wht_form')} onChange={(v) => set({ wht_form: v })} /></Field>
+          <Field label="หมวดภาษีหัก ณ ที่จ่าย (แบบ ภ.ง.ด.)"><LkSelect table="55" rows={lk.data?.['55']} value={val(f, 'wht_form')} onChange={(v) => set({ wht_form: v })} /></Field>
           <Field label="ประเภทเงินได้ที่จ่าย" hint="เช่น ค่าจ้างทำของ ค่าโฆษณา"><input {...t('wht_income_desc', 60)} list="wht-income" /></Field>
           <Field label="อัตราภาษีที่หัก (%)"><input type="number" min={0} max={100} step="0.01" {...t('wht_rate', 6)} /></Field>
           <Field label="เงื่อนไขการหักภาษี"><select value={val(f, 'wht_condition')} onChange={(e) => set({ wht_condition: e.target.value })}><option value="">—</option>{WHT_COND.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
@@ -415,7 +416,7 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
             <tbody>
               {banks.map((b, i) => (
                 <tr key={i}>
-                  <td><LkSelect rows={lk.data?.BANK} value={b.bank_code} onChange={(v) => setBank(i, { bank_code: v })} blank="— เลือกธนาคาร —" /></td>
+                  <td><LkSelect table="01" rows={lk.data?.BANK} value={b.bank_code} onChange={(v) => setBank(i, { bank_code: v })} blank="— เลือกธนาคาร —" /></td>
                   <td><input value={b.branch ?? ''} maxLength={60} onChange={(e) => setBank(i, { branch: e.target.value })} /></td>
                   <td><input className="mono" value={b.account_no} maxLength={20} onChange={(e) => setBank(i, { account_no: e.target.value })} aria-label="เลขที่บัญชี" /></td>
                   <td><input value={b.account_name ?? ''} maxLength={120} onChange={(e) => setBank(i, { account_name: e.target.value })} /></td>
@@ -430,7 +431,6 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
         </div>}
         {tab === 'bills' && (id ? <BillsGrid rows={cur.data?.outstanding_bills ?? []} /> : <p className="muted">บันทึกผู้จำหน่ายก่อน</p>)}
         {(tab === 'periods' || tab === 'cheques') && id && <PartyActivity mod="AP" id={id} view={tab} />}
-        <datalist id="sup-titles"><option value="บริษัท" /><option value="ห้างหุ้นส่วนจำกัด" /><option value="ร้าน" /><option value="คุณ" /></datalist>
         <datalist id="wht-income"><option value="ค่าจ้างทำของ" /><option value="ค่าบริการ" /><option value="ค่าโฆษณา" /><option value="ค่าขนส่ง" /><option value="ค่าเช่า" /><option value="ค่านายหน้า" /><option value="ค่าวิชาชีพอิสระ" /></datalist>
       </>}
     </MasterModal>
@@ -477,7 +477,7 @@ export function SalespersonsPage() {
 
 export function SalespersonForm({ id, onClose, onSaved }: { id: string | null; onClose: () => void; onSaved: () => void }) {
   const qc = useQueryClient();
-  const lk = useLookups('40,47');
+  const lk = useLookups('40,47,71');
   const years = useQuery({ queryKey: ['periods'], queryFn: () => api.get<FiscalYear[]>('/api/v1/gl/periods') });
   const [fy, setFy] = useState<string | null>(null);
   const cur = useQuery({ enabled: !!id, queryKey: ['salesperson', id, fy], queryFn: () => api.get<SlmDetail>(`/api/v1/salespersons/${id}`, { fiscal_year_id: fy }), staleTime: 0 });
@@ -529,9 +529,9 @@ export function SalespersonForm({ id, onClose, onSaved }: { id: string | null; o
         </div>
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'รายละเอียดทั่วไป' }, { key: 'target', label: 'กำหนดเป้าการขาย' }]} />
         {tab === 'main' && <div className="form-grid party-grid">
-          <Field label="ตำแหน่ง"><input {...t('position', 60)} /></Field>
-          <Field label="ประเภท"><LkSelect rows={lk.data?.['47']} value={val(f, 'salesperson_type')} onChange={(v) => set({ salesperson_type: v })} /></Field>
-          <Field label="เขตการขาย" hint="ว่างได้ถ้าดูแลหลายเขต"><LkSelect rows={lk.data?.['40']} value={val(f, 'sales_area_code')} onChange={(v) => set({ sales_area_code: v })} /></Field>
+          <Field label="ตำแหน่ง"><LkSelect byName table="71" rows={lk.data?.['71']} value={val(f, 'position')} onChange={(v) => set({ position: v })} /></Field>
+          <Field label="ประเภท"><LkSelect table="47" rows={lk.data?.['47']} value={val(f, 'salesperson_type')} onChange={(v) => set({ salesperson_type: v })} /></Field>
+          <Field label="เขตการขาย" hint="ว่างได้ถ้าดูแลหลายเขต"><LkSelect table="40" rows={lk.data?.['40']} value={val(f, 'sales_area_code')} onChange={(v) => set({ sales_area_code: v })} /></Field>
           <Field label="อัตราค่าคอมฯ (%)"><input type="number" min={0} max={100} step="0.01" {...t('commission_rate', 6)} /></Field>
           <AddressFields value={f} onChange={set} target={{ kind: 'text', key: 'address' }} />
           <Field label="โทร."><input {...t('phone', 60)} /></Field>

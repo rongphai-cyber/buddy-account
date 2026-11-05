@@ -16,6 +16,7 @@ import { DocActions } from '../../components/DocPrint';
 import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
+import { ReasonInput } from '../../components/ReasonInput';
 
 const kindOf = (path: string) => BILL_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: BillKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -212,7 +213,7 @@ export function BillFormPage({ path }: { path: string }) {
       </div>}
       <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['F9', 'บันทึก'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? (เปลี่ยนสถานะ ไม่ลบ) บิลในใบนี้จะกลับมาวางบิลใหม่ได้</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
-        <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
+        <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
       </Confirm>}
     </div>
   );

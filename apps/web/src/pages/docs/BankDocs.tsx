@@ -16,6 +16,8 @@ import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 import { PostingTab } from './PostingTab';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
+import { ReasonInput } from '../../components/ReasonInput';
+import { AddWrap } from '../../components/AddWrap';
 
 /** การเคลื่อนไหวบัญชีเงินฝาก (คู่มือบทที่ 13 S-BK-02/03 + รายได้/ค่าใช้จ่ายธนาคาร) — ลงบัญชีทันทีเมื่อบันทึก */
 const MENU = 'FI.BK.TX';
@@ -179,7 +181,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
               {dn.field}
               
               <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
-              <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
+              <Field label="แผนก"><AddWrap kind="dept"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></Field>
               <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
             </div>
           </div>
@@ -188,7 +190,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
       </>}
       <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกรายการ" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? ใบสำคัญจะถูกยกเลิกด้วย (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกรายการ" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
-        <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
+        <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
       </Confirm>}
     </div>
   );

@@ -109,7 +109,7 @@ function SerialForm({ id, onClose }: { id: string | null; onClose: () => void })
           <Field label="รหัสอ้างอิง" hint="รหัสสื่อความหมาย เช่น CDROM ASUS 48X"><input value={f.ref_code} maxLength={30} disabled={ro} onChange={(e) => set({ ref_code: e.target.value })} /></Field>
           <Field label="รหัสสินค้า"><SearchPick<{ id: string; code: string; name_th: string }> endpoint="/api/v1/item-search" params={{ module: 'AR' }} value={f.item} disabled={ro} label={(r: { name_th: string }) => r.name_th}
             onPick={(r: { id: string; code: string; name_th: string } | null) => set({ item: r ? { id: r.id, code: r.code, name: r.name_th } : null, description: f.description || r?.name_th || '' })} /></Field>
-          <Field label="หมวดสินค้า"><LkSelect rows={lk.data?.['22']} value={f.category_code} disabled={ro} onChange={(v) => set({ category_code: v })} aria-label="หมวดสินค้า" /></Field>
+          <Field label="หมวดสินค้า"><LkSelect table="22" rows={lk.data?.['22']} value={f.category_code} disabled={ro} onChange={(v) => set({ category_code: v })} aria-label="หมวดสินค้า" /></Field>
           <Field label="รายละเอียด"><input value={f.description} maxLength={200} disabled={ro} onChange={(e) => set({ description: e.target.value })} /></Field>
           <Field label="วันที่ขาย"><DateInput value={f.sale_date} disabled={ro} onChange={(v) => set({ sale_date: v })} /></Field>
           <Field label="วันที่หมดประกัน"><DateInput value={f.warranty_end} disabled={ro} onChange={(v) => set({ warranty_end: v })} /></Field>

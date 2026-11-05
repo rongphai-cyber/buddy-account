@@ -65,7 +65,7 @@ function ItemsPage({ kind }: { kind: ItemKind }) {
       <PageHead eyebrow={`${EYEBROW[kind]} › ${title}`} title={title} lead={LEADS[kind]} />
       <div className="toolbar">
         <input type="search" autoFocus placeholder="ค้นหารหัส ชื่อ หรือบาร์โค้ด" value={q} onChange={(e) => { setQ(e.target.value); setLimit(200); }} style={{ minWidth: 300 }} aria-label={`ค้นหา${K.label}`} />
-        <LkSelect rows={lk.data?.['22']} value={cat} onChange={(v) => { setCat(v); setLimit(200); }} blank="ทุกหมวด" aria-label="หมวดสินค้า" />
+        <LkSelect table="22" rows={lk.data?.['22']} value={cat} onChange={(v) => { setCat(v); setLimit(200); }} blank="ทุกหมวด" aria-label="หมวดสินค้า" />
         <select value={status} onChange={(e) => setStatus(e.target.value as 'A')} aria-label="สถานะ"><option value="A">เฉพาะที่ใช้งาน</option><option value="I">เฉพาะที่เลิกใช้</option><option value="all">ทั้งหมด</option></select>
         <span className="muted small">{list.data ? `${list.data.rows.length.toLocaleString()} จาก ${list.data.total.toLocaleString()} รายการ` : ''}</span>
       </div>
@@ -154,6 +154,7 @@ export function ItemForm({ kind, id, onClose, onSaved, initial }: { kind: ItemKi
   const udfOn = Object.entries(UDF_LABELS).filter(([k]) => udf[k]?.use);
   const nonStock = kind === 'service' || kind === 'income' || kind === 'expense';
   const tabs = [{ key: 'main', label: 'รายละเอียด' },
+    ...(kind === 'income' || kind === 'expense' ? [] : [{ key: 'price', label: 'ราคาและภาษี' }]),
     ...(kind === 'kit' ? [{ key: 'bom', label: 'รายการสินค้าประกอบ', badge: bom.length || undefined }] : []),
     ...(kind === 'service' || kind === 'income' ? [{ key: 'acc', label: 'บัญชี' }] : []),
     ...(kind === 'stock' && id ? [{ key: 'wh', label: 'คลังสินค้า', badge: cur.data?.warehouses.length || undefined }] : []),
@@ -183,24 +184,25 @@ export function ItemForm({ kind, id, onClose, onSaved, initial }: { kind: ItemKi
         <Tabs active={tab} onChange={setTab} tabs={tabs} />
         {tab === 'main' && <div className="form-grid party-grid">
           {kind === 'kit' && <Field label="ประเภทชุด" hint="ชุดพิเศษ = เลือกขายบางรายการได้ตอนเปิดบิล"><select value={f.item_type ?? '1'} onChange={(e) => set({ item_type: e.target.value })}><option value="1">1 ชุดธรรมดา</option><option value="2">2 ชุดพิเศษ</option></select></Field>}
-          <Field label="หมวด"><LkSelect rows={lk.data?.['22']} value={f.category_code} onChange={(v) => set({ category_code: v })} /></Field>
+          <Field label="หมวด"><LkSelect table="22" rows={lk.data?.['22']} value={f.category_code} onChange={(v) => set({ category_code: v })} /></Field>
           {kind === 'stock' && <Field label="กลุ่มบัญชีสินค้า" hint="กำหนดบัญชีและวิธีคิดต้นทุน (เริ่มระบบ › กลุ่มบัญชีสินค้า)"><LkSelect byId rows={lk.data?.IAG} value={f.account_group_id} onChange={(v) => set({ account_group_id: v })} missing="กลุ่มเฉพาะของสินค้านี้ (จาก Express)" /></Field>}
-          {kind === 'kit' && <Field label="ระดับสินค้า" hint="ชุดซ้อนชุดต้องใช้ระดับต่างกัน"><LkSelect rows={lk.data?.['23']} value={f.item_level} onChange={(v) => set({ item_level: v })} /></Field>}
-          <Field label={kind === 'stock' ? 'หน่วยนับย่อย' : 'หน่วยนับ'} req={kind === 'stock' || kind === 'kit'} hint={kind === 'stock' ? 'หน่วยเล็กที่สุด สต๊อกเก็บเป็นหน่วยนี้' : undefined}><LkSelect byId rows={lk.data?.UNIT} value={f.base_unit_id} onChange={(v) => set({ base_unit_id: v })} /></Field>
+          {kind === 'kit' && <Field label="ระดับสินค้า" hint="ชุดซ้อนชุดต้องใช้ระดับต่างกัน"><LkSelect table="23" rows={lk.data?.['23']} value={f.item_level} onChange={(v) => set({ item_level: v })} /></Field>}
+          <Field label={kind === 'stock' ? 'หน่วยนับย่อย' : 'หน่วยนับ'} req={kind === 'stock' || kind === 'kit'} hint={kind === 'stock' ? 'หน่วยเล็กที่สุด สต๊อกเก็บเป็นหน่วยนี้' : undefined}><LkSelect byId table="20" rows={lk.data?.UNIT} value={f.base_unit_id} onChange={(v) => set({ base_unit_id: v })} /></Field>
           {kind === 'stock' && <>
-            <Field label="หน่วยใหญ่ / ตัวคูณ" hint="เช่น หีบ = 10 กล่อง (ใช้ในรายงาน)"><div className="pair"><LkSelect byId rows={lk.data?.UNIT} value={f.count_unit_id} onChange={(v) => set({ count_unit_id: v })} aria-label="หน่วยใหญ่" /><Dec value={f.count_factor} onChange={(v) => set({ count_factor: v })} aria-label="ตัวคูณหน่วยใหญ่" /></div></Field>
-            <Field label="หน่วยซื้อ / ตัวคูณ"><div className="pair"><LkSelect byId rows={lk.data?.UNIT} value={f.purchase_unit_id} onChange={(v) => set({ purchase_unit_id: v })} aria-label="หน่วยซื้อ" /><Dec value={f.purchase_factor} onChange={(v) => set({ purchase_factor: v })} aria-label="ตัวคูณหน่วยซื้อ" /></div></Field>
-            <Field label="หน่วยขาย / ตัวคูณ"><div className="pair"><LkSelect byId rows={lk.data?.UNIT} value={f.sales_unit_id} onChange={(v) => set({ sales_unit_id: v })} aria-label="หน่วยขาย" /><Dec value={f.sales_factor} onChange={(v) => set({ sales_factor: v })} aria-label="ตัวคูณหน่วยขาย" /></div></Field>
+            <Field label="หน่วยใหญ่ / ตัวคูณ" hint="เช่น หีบ = 10 กล่อง (ใช้ในรายงาน)"><div className="pair"><LkSelect byId table="20" rows={lk.data?.UNIT} value={f.count_unit_id} onChange={(v) => set({ count_unit_id: v })} aria-label="หน่วยใหญ่" /><Dec value={f.count_factor} onChange={(v) => set({ count_factor: v })} aria-label="ตัวคูณหน่วยใหญ่" /></div></Field>
+            <Field label="หน่วยซื้อ / ตัวคูณ"><div className="pair"><LkSelect byId table="20" rows={lk.data?.UNIT} value={f.purchase_unit_id} onChange={(v) => set({ purchase_unit_id: v })} aria-label="หน่วยซื้อ" /><Dec value={f.purchase_factor} onChange={(v) => set({ purchase_factor: v })} aria-label="ตัวคูณหน่วยซื้อ" /></div></Field>
+            <Field label="หน่วยขาย / ตัวคูณ"><div className="pair"><LkSelect byId table="20" rows={lk.data?.UNIT} value={f.sales_unit_id} onChange={(v) => set({ sales_unit_id: v })} aria-label="หน่วยขาย" /><Dec value={f.sales_factor} onChange={(v) => set({ sales_factor: v })} aria-label="ตัวคูณหน่วยขาย" /></div></Field>
             <Field label="สินค้าทดแทน" hint="เสนอขายแทนเมื่อสินค้าหมด"><SearchPick endpoint="/api/v1/items" value={subst} label={(r: { name_th: string }) => r.name_th} exclude={id ? [id] : []} onPick={(r: { id: string; code: string; name_th: string } | null) => setSubst(r ? { id: r.id, code: r.code, name: r.name_th } : null)} /></Field>
             <Field label="ยอดคงเหลือติดลบได้?"><select value={f.allow_negative ?? ''} onChange={(e) => set({ allow_negative: e.target.value })}><option value="">ตามค่าเริ่มต้นบริษัท</option><option value="Y">Y ยอมให้ติดลบ</option><option value="N">N ไม่ยอมทุกกรณี</option><option value="A">A ยอมเมื่อผู้มีอำนาจอนุมัติ</option></select></Field>
             <Field label="ผู้จำหน่าย" hint="อ้างอิงเท่านั้น เช่น ผู้ให้ราคาดีที่สุด"><SearchPick endpoint="/api/v1/suppliers" value={sup} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => setSup(r)} /></Field>
             <Field label="บรรจุ/หีบห่อ"><input {...t('packing', 30)} /></Field>
           </>}
+          {priceLabel && <>
           <Field label="ประเภท VAT"><select value={f.vat_code ?? ''} onChange={(e) => set({ vat_code: e.target.value })}><option value="">ไม่ระบุ (ตามเอกสาร)</option><option value="1">1 อัตราปกติ (มี VAT)</option><option value="0">0 ได้รับยกเว้น VAT</option><option value="2">2 อัตรา 0% (เช่น ส่งออก)</option></select></Field>
-          {(kind === 'stock' || kind === 'kit') && <Field label="ราคาทุนมาตรฐาน" hint={kind === 'stock' ? 'ใช้เป็นต้นทุนเมื่อจ่ายขณะสต๊อกไม่พอ (ติดลบ)' : undefined}><Dec value={f.std_cost} onChange={(v) => set({ std_cost: v })} /></Field>}
           {priceLabel
             ? <Field label="จำนวนเงิน" hint={`ป้อนถ้า${kind === 'income' ? 'รับ' : 'จ่าย'}เท่ากันทุกครั้ง ว่าง = ป้อนตอนบันทึก`}><Dec value={f.price_1} onChange={(v) => set({ price_1: v })} /></Field>
             : <div className="field wide"><span className="lbl">ราคาขาย 1–5</span><div className="prices5">{[1, 2, 3, 4, 5].map((n) => <Dec key={n} value={f[`price_${n}`]} onChange={(v) => set({ [`price_${n}`]: v })} aria-label={`ราคาขาย ${n}`} placeholder={`ราคา ${n}`} />)}</div></div>}
+          </>}
           {kind === 'expense' && <Field label="บัญชีค่าใช้จ่าย" req hint="เดบิตเมื่อบันทึกค่าใช้จ่ายอื่น เช่น 5200-02 ค่าโฆษณา"><AccountCell value={acc.expense ?? null} onChange={(a) => setAcc((x) => ({ ...x, expense: a?.id ?? null }))} /></Field>}
           <Field label="หมายเหตุ" wide><textarea rows={2} value={f.remark ?? ''} maxLength={2000} onChange={(e) => set({ remark: e.target.value })} /></Field>
           {kind === 'stock' && id && cur.data && <div className="field wide party-stats">
@@ -209,6 +211,13 @@ export function ItemForm({ kind, id, onClose, onSaved, initial }: { kind: ItemKi
             <span>มูลค่าคงเหลือ <b><Money v={cur.data.totals.value} /></b></span>
             <span className="muted small">ล็อตสินค้ายกมา (FIFO) ป้อนได้เมื่อมีระบบสินค้า (P4)</span>
           </div>}
+        </div>}
+        {tab === 'price' && !priceLabel && <div className="form-grid party-grid">
+          <Field label="ประเภท VAT"><select value={f.vat_code ?? ''} onChange={(e) => set({ vat_code: e.target.value })}><option value="">ไม่ระบุ (ตามเอกสาร)</option><option value="1">1 อัตราปกติ (มี VAT)</option><option value="0">0 ได้รับยกเว้น VAT</option><option value="2">2 อัตรา 0% (เช่น ส่งออก)</option></select></Field>
+          {(kind === 'stock' || kind === 'kit') && <Field label="ราคาทุนมาตรฐาน" hint={kind === 'stock' ? 'ใช้เป็นต้นทุนเมื่อจ่ายขณะสต๊อกไม่พอ (ติดลบ)' : undefined}><Dec value={f.std_cost} onChange={(v) => set({ std_cost: v })} /></Field>}
+          {priceLabel
+            ? <Field label="จำนวนเงิน" hint={`ป้อนถ้า${kind === 'income' ? 'รับ' : 'จ่าย'}เท่ากันทุกครั้ง ว่าง = ป้อนตอนบันทึก`}><Dec value={f.price_1} onChange={(v) => set({ price_1: v })} /></Field>
+            : <div className="field wide"><span className="lbl">ราคาขาย 1–5</span><div className="prices5">{[1, 2, 3, 4, 5].map((n) => <Dec key={n} value={f[`price_${n}`]} onChange={(v) => set({ [`price_${n}`]: v })} aria-label={`ราคาขาย ${n}`} placeholder={`ราคา ${n}`} />)}</div></div>}
         </div>}
         {tab === 'acc' && <div className="form-grid party-grid">
           <Field label="บัญชีรายได้" req hint="เครดิตเมื่อเปิดบิลขาย/บันทึกรายได้ เช่น 4100-01"><AccountCell value={acc.revenue ?? null} onChange={(a) => setAcc((x) => ({ ...x, revenue: a?.id ?? null }))} /></Field>
@@ -272,7 +281,7 @@ function BomGrid({ rows, onChange, selfId, units, warehouses, kitType, kitPrice 
               <td>{r.unit_code}</td>
               <td><Dec value={r.std_cost} onChange={(v) => set(i, { std_cost: v })} aria-label="ราคาทุน" /></td>
               <td><Dec value={r.sell_price} onChange={(v) => set(i, { sell_price: v })} aria-label="ราคาขาย" /></td>
-              <td><LkSelect byId rows={warehouses} value={r.warehouse_id} onChange={(v) => set(i, { warehouse_id: v || null })} blank="ตามเอกสาร" aria-label="คลังที่ตัด" /></td>
+              <td><LkSelect byId table="21" rows={warehouses} value={r.warehouse_id} onChange={(v) => set(i, { warehouse_id: v || null })} blank="ตามเอกสาร" aria-label="คลังที่ตัด" /></td>
               <td><button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => onChange(rows.filter((_, k) => k !== i))}>✕</button></td>
             </tr>
           ))}

@@ -7,6 +7,7 @@ import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, ErrorBox, Field, KeyHints, Modal, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, cx } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
+import { AddWrap } from '../../components/AddWrap';
 
 /* ---------------------------------------------------------------- เลขที่เอกสาร S-DN-01 */
 interface DocTypeRow { id: string; code: string; doc_class: string; module: string; name_th: string; name_en: string | null; next_no: string; status: string; book_code: string | null; book_name: string | null; department_code: string | null; doc_count: number; account_count: number }
@@ -27,6 +28,7 @@ export function DocTypesPage() {
   const list = useQuery({ queryKey: ['doc-types'], queryFn: () => api.get<DocTypeRow[]>('/api/v1/doc-types') });
   const [q, setQ] = useState('');
   const [edit, setEdit] = useState<string | 'new' | null>(null);
+  const [mod, setMod] = useState('');
   const rs = useRowSelect(list.data);
   const reload = () => qc.invalidateQueries({ queryKey: ['doc-types'] });
   const groups = useMemo(() => {
@@ -36,6 +38,7 @@ export function DocTypesPage() {
     for (const r of rows) { if (!m.has(r.module)) m.set(r.module, []); m.get(r.module)!.push(r); }
     return [...m.entries()].sort(([a], [b]) => Object.keys(MODULE_TH).indexOf(a) - Object.keys(MODULE_TH).indexOf(b));
   }, [list.data, q]);
+  const shown = mod ? groups.filter(([m]) => m === mod) : groups;
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › กำหนดเลขที่เอกสาร" title="กำหนดเลขที่เอกสาร"
@@ -43,10 +46,11 @@ export function DocTypesPage() {
       <div className="toolbar"><input type="search" autoFocus placeholder="ค้นหาหมวด ตัวนำหน้า หรือชื่อเอกสาร" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหาประเภทเอกสาร" /></div>
       <ErrorBox error={list.error} />
       <MasterBar rs={rs} word="ประเภทเอกสาร" label={(r) => `${r.code} ${r.name_th}`} onAdd={() => setEdit('new')} onEdit={(r) => setEdit(r.id)} canAdd={can('add')} onDelete={(r) => api.del(`/api/v1/doc-types/${r.id}`).then(reload)} canDelete={can('delete')} />
+      <Tabs active={mod} onChange={setMod} tabs={[{ key: '', label: 'ทั้งหมด', badge: groups.reduce((n, [, r]) => n + r.length, 0) || undefined }, ...groups.map(([m, r]) => ({ key: m, label: MODULE_TH[m] ?? m, badge: r.length }))]} />
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th style={{ width: 60 }}>หมวด</th><th>ชื่อเอกสาร</th><th>ชื่อภาษาอังกฤษ</th><th style={{ width: 150 }}>เลขที่ถัดไป</th><th style={{ width: 180 }}>สมุดรายวัน</th><th style={{ width: 70 }}>แผนก</th><th className="r" style={{ width: 90 }}>เอกสาร</th><th style={{ width: 80 }}>สถานะ</th></tr></thead>
-          {groups.map(([mod, rows]) => (
+          {shown.map(([mod, rows]) => (
             <tbody key={mod}>
               <tr className="group-row"><td colSpan={8}><b>{MODULE_TH[mod] ?? mod}</b></td></tr>
               {rows.map((r, i) => (
@@ -97,6 +101,7 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
   const accounts = useAccounts();
   const [err, setErr] = useState<unknown>(null);
   const [ask, setAsk] = useState(false);
+  const [tab, setTab] = useState('doc');
   if (id && cur.data && !f) {
     setF({ ...Object.fromEntries(KEYS.map((k) => [k, cur.data[k] === null || cur.data[k] === undefined ? '' : String(cur.data[k])])), ...Object.fromEntries(BOOLS.map((k) => [k, !!cur.data[k]])), next_no: String(cur.data.next_no).padStart(7, '0') });
     setAccs(Object.fromEntries(cur.data.accounts.map((x) => [x.slot, x.account_id])));
@@ -131,8 +136,9 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
     <Modal title={id ? `รายละเอียดเอกสาร ${cur.data?.code ?? ''}` : 'เพิ่มประเภทเอกสาร'} size="wide" onClose={onClose}
       footer={<>{id && can('delete') && <button className="danger" onClick={() => setAsk(true)}>ลบ</button>}<button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" disabled={!f || !allowed} onClick={save}>บันทึก <kbd>F9</kbd></button></>}>
       <ErrorBox error={err ?? cur.error} />
-      {f && <div onKeyDown={navKey}>
-        <fieldset className="box"><legend>เอกสาร</legend>
+      {f && <div onKeyDown={(e) => navKey(e, () => { const order = ['doc', 'gl', ...(cls === 'RE' ? ['chg'] : []), 'ctl']; const i = order.indexOf(tab); if (i >= 0 && i < order.length - 1) { setTab(order[i + 1]!); setTimeout(() => document.querySelector<HTMLElement>('.modal fieldset.box input:not([disabled]), .modal fieldset.box select:not([disabled])')?.focus(), 30); } else void save(); })}>
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'doc', label: 'เอกสารและเลขที่' }, { key: 'gl', label: 'การบันทึกบัญชี' }, ...(cls === 'RE' ? [{ key: 'chg', label: 'รายการหักแพลตฟอร์ม', badge: chgs.length || undefined }] : []), { key: 'ctl', label: 'ค่าควบคุมและการอนุมัติ' }]} />
+        {tab === 'doc' && <fieldset className="box"><legend>เอกสาร</legend>
           <div className="form-grid party-grid">
             <Field label="หมวดเอกสาร" req hint="กำหนดตรรกะของเอกสาร — เปลี่ยนไม่ได้เมื่อมีเอกสารแล้ว"><select value={cls} disabled={!!cur.data?.doc_count} onChange={(e) => set({ doc_class: e.target.value })}>{Object.entries(DOC_CLASSES).map(([k, v]) => <option key={k} value={k}>{k} {v.label}</option>)}</select></Field>
             <Field label="ชื่อเอกสาร" req><input autoFocus {...t('name_th', 120)} /></Field>
@@ -141,12 +147,12 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
             <Field label="เลขที่ถัดไป: เลข" req hint={cur.data?.last_doc_no ? `เลขล่าสุดที่ใช้ ${cur.data.last_doc_no}` : 'ต่อจากระบบเดิมได้ เช่น 101'}><input className="mono" inputMode="numeric" {...t('next_no', 7)} onChange={(e) => set({ next_no: e.target.value.replace(/\D/g, '') })} /></Field>
             <Field label="ตัวอย่างเลขที่"><input readOnly className="mono" value={f.code && f.next_no ? formatDocNo(String(f.code), String(f.next_no).replace(/^0+/, '') || '1') : ''} /></Field>
             <Field label="บันทึกบัญชี ลงสมุดรายวัน" hint="ว่าง = ไม่ลงบัญชี (เช่น ใบเสนอราคา ใบสั่งขาย ใบวางบิล)"><select value={(f.journal_book_id as string) ?? ''} onChange={(e) => set({ journal_book_id: e.target.value })}><option value="">—</option>{books.data?.map((b) => <option key={b.id} value={b.id}>{b.code} {b.name_th}</option>)}</select></Field>
-            <Field label="แผนก" hint="เติมรหัสแผนกอัตโนมัติเมื่อป้อนเอกสารนี้"><select value={(f.department_id as string) ?? ''} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((d) => d.status === 'A' || d.id === f.department_id).map((d) => <option key={d.id} value={d.id}>{d.code} {d.name_th}</option>)}</select></Field>
+            <Field label="แผนก" hint="เติมรหัสแผนกอัตโนมัติเมื่อป้อนเอกสารนี้"><AddWrap kind="dept"><select value={(f.department_id as string) ?? ''} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((d) => d.status === 'A' || d.id === f.department_id).map((d) => <option key={d.id} value={d.id}>{d.code} {d.name_th}</option>)}</select></AddWrap></Field>
             <Field label="ชื่อย่อ"><input {...t('short_name', 10)} /></Field>
             <Field label="คำอธิบายในสมุดรายวัน" wide hint="ข้อความ + ช่องข้อมูลของเอกสาร เช่น ขายเชื่อให้ {party.name} · ว่าง = ใช้ชื่อเอกสาร + ชื่อคู่ค้า"><input {...t('journal_desc_template', 200)} placeholder="ขายเชื่อให้ {party.name}" /></Field>
           </div>
-        </fieldset>
-        <fieldset className="box"><legend>วิธีการบันทึกบัญชี (เฉพาะเอกสารนี้)</legend>
+        </fieldset>}
+        {tab === 'gl' && <fieldset className="box"><legend>วิธีการบันทึกบัญชี (เฉพาะเอกสารนี้)</legend>
           <p className="hint">ว่างไว้ = ใช้บัญชีจากแฟ้มหลัก (ลูกค้า สินค้า→กลุ่มบัญชี บัญชีเงินฝาก) แล้วจึงใช้ เริ่มระบบ › การเชื่อมต่อบัญชี › บัญชีเพื่อลงรายวัน — กำหนดเฉพาะเมื่อต้องการบัญชีเจาะจง</p>
           <table className="grid">
             <thead><tr><th style={{ width: 70 }}>ช่อง</th><th style={{ width: 260 }}>ความหมาย</th><th>เลขที่บัญชี</th><th style={{ width: 36 }} /></tr></thead>
@@ -162,8 +168,8 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
               </select>
             </td></tr></tfoot>
           </table>
-        </fieldset>
-        {cls === 'RE' && <fieldset className="box"><legend>รายการหักโดยแพลตฟอร์ม (Grab LINE MAN Lazada Shopee Agoda Booking.com …)</legend>
+        </fieldset>}
+        {tab === 'chg' && cls === 'RE' && <fieldset className="box"><legend>รายการหักโดยแพลตฟอร์ม (Grab LINE MAN Lazada Shopee Agoda Booking.com …)</legend>
           <p className="hint">สำหรับใบเสร็จที่รับเงินจากแพลตฟอร์มออนไลน์ซึ่งหักค่าบริการก่อนโอน — แนะนำให้แยกประเภทเอกสารต่อแพลตฟอร์ม (เช่น RG รับชำระ Grab · RS รับชำระ Shopee) · ใบเสร็จใหม่ของประเภทนี้จะดึงรายการเหล่านี้ให้ป้อนเฉพาะยอด รายการไหนเดือนนี้ไม่ถูกหักเว้นว่างได้ · ลงบัญชีค่าใช้จ่ายตามบัญชีที่ตั้งที่นี่</p>
           <div className="form-grid party-grid">
             <Field label="ผู้ให้บริการ (แพลตฟอร์ม)" hint="ผู้จำหน่ายที่ออกใบกำกับ/ถูกหัก ณ ที่จ่าย — ต่างประเทศไม่มีเลขผู้เสียภาษีไทย (ภ.พ.36)">
@@ -190,7 +196,7 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
           </table>
           <datalist id="dt-wht-income-types">{WHT_INCOME_TYPES.map((x) => <option key={x.text} value={x.text}>{`${x.rate}%`}</option>)}</datalist>
         </fieldset>}
-        <fieldset className="box"><legend>ค่าควบคุม (ว่าง = ตามค่าเริ่มต้นแต่ละระบบ)</legend>
+        {tab === 'ctl' && <fieldset className="box"><legend>ค่าควบคุม (ว่าง = ตามค่าเริ่มต้นแต่ละระบบ)</legend>
           <div className="form-grid party-grid">
             <Field label="ประเภทราคา"><select value={(f.price_type as string) ?? ''} onChange={(e) => set({ price_type: e.target.value })}><option value="">ตามค่าเริ่มต้น</option><option value="0">0 ยกเว้นภาษี</option><option value="1">1 ราคารวมภาษี</option><option value="2">2 ราคาไม่รวมภาษี</option></select></Field>
             <Field label="อัตราภาษี (%)"><input type="number" min={0} max={30} step="0.01" {...t('vat_rate', 6)} /></Field>
@@ -200,7 +206,7 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
             {levelSel('reprint_level', 'พิมพ์เอกสารซ้ำ ต้องขออนุมัติระดับ')}
             {levelSel('cancel_level', 'ยกเลิกเอกสาร ต้องขออนุมัติระดับ')}
             {levelSel('over_limit_level', 'เกินวงเงิน ต้องขออนุมัติระดับ')}
-            <Field label="รหัสคลังสินค้าที่จะตัด"><LkSelect byId rows={lk.data?.WH} value={f.warehouse_id as string} onChange={(v) => set({ warehouse_id: v })} blank="ตามค่าเริ่มต้น" /></Field>
+            <Field label="รหัสคลังสินค้าที่จะตัด"><LkSelect byId table="21" rows={lk.data?.WH} value={f.warehouse_id as string} onChange={(v) => set({ warehouse_id: v })} blank="ตามค่าเริ่มต้น" /></Field>
             <Field label="ฟอร์มที่ใช้พิมพ์"><select value={(f.form_no as string) ?? ''} onChange={(e) => set({ form_no: e.target.value })}><option value="">ฟอร์มมาตรฐาน</option>{[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => <option key={n} value={n}>ฟอร์มที่ {n}</option>)}</select></Field>
             <Field label="ตัวเลือก"><div className="checks">
               <label className="check"><input type="checkbox" checked={!!f.vat_per_line} onChange={(e) => set({ vat_per_line: e.target.checked })} /> แยกประเภท VAT ที่รายการสินค้า</label>
@@ -209,7 +215,7 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
             </div></Field>
             <Field label="สถานะ"><select value={(f.status as string) ?? 'A'} onChange={(e) => set({ status: e.target.value })}><option value="A">ใช้งาน</option><option value="I">เลิกใช้</option></select></Field>
           </div>
-        </fieldset>
+        </fieldset>}
       </div>}
       {ask && id && <Confirm danger title="ลบประเภทเอกสาร" text={`ลบ ${cur.data?.code}? ลบได้เฉพาะประเภทที่ยังไม่มีเอกสาร`} okText="ลบ" onClose={() => setAsk(false)}
         onOk={() => api.del(`/api/v1/doc-types/${id}`).then(() => { toast('ลบประเภทเอกสารแล้ว'); onSaved(); }).catch((e) => { setAsk(false); toastError(e); })} />}
@@ -240,6 +246,8 @@ export function GlLinkPage() {
   useHotkeys({ F9: save, 'Ctrl+S': save }, []);
   const bookSel = (kind: string) => <select value={st?.routes[kind] ?? ''} onChange={(e) => setSt((x) => x && ({ ...x, routes: { ...x.routes, [kind]: e.target.value || null } }))} aria-label={kind}><option value="">—</option>{books.data?.map((b) => <option key={b.id} value={b.id}>{b.code} {b.name_th}</option>)}</select>;
   const sections = [...new Set(GL_ROLES.map((r) => r.section))];
+  const [sec, setSec] = useState(sections[0] ?? '');
+  const missing = (x: string) => GL_ROLES.filter((r) => r.section === x && (r.role === 'SUSPENSE' || r.role === 'RETAINED_EARNINGS') && !st?.defaults[r.role]).length;
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › การเชื่อมต่อบัญชี" title="กำหนดการเชื่อมต่อบัญชี"
@@ -262,7 +270,8 @@ export function GlLinkPage() {
       </div>}
       {st && tab === 'defaults' && <div onKeyDown={navKey}>
         <p className="hint">ใช้เมื่อเอกสารและแฟ้มหลักไม่ได้กำหนดบัญชี · ถ้าเปลี่ยนเลขที่บัญชีในผังบัญชีที่เกี่ยวข้อง ต้องกลับมาแก้ที่นี่ให้ตรงด้วย · บัญชีพักต้องมีในผังบัญชีและไม่ใช้บันทึกรายการใด ๆ</p>
-        {sections.map((sec) => <fieldset key={sec} className="box"><legend>{sec}</legend>
+        <Tabs active={sec} onChange={setSec} tabs={sections.map((x) => ({ key: x, label: missing(x) ? `${x} ●` : x, badge: GL_ROLES.filter((r) => r.section === x).length }))} />
+        {sections.filter((x) => x === sec).map((sec) => <fieldset key={sec} className="box"><legend>{sec}</legend>
           <div className="form-grid party-grid">{GL_ROLES.filter((r) => r.section === sec).map((r) => <Field key={r.role} label={r.label} req={r.role === 'SUSPENSE' || r.role === 'RETAINED_EARNINGS'} hint={r.hint}>
             <AccountCell value={st.defaults[r.role] ?? null} onChange={(a) => setSt((x) => x && ({ ...x, defaults: { ...x.defaults, [r.role]: a?.id ?? null } }))} />
           </Field>)}</div>

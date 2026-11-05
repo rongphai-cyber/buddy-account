@@ -21,6 +21,13 @@ INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(
 INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(), '53', 'สถานะเงินสดย่อย', false) ON CONFLICT DO NOTHING;
 INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(), '55', 'แบบภาษีหัก ณ ที่จ่าย', false) ON CONFLICT DO NOTHING;
 INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(), '60', 'Collection/ฤดูกาล', false) ON CONFLICT DO NOTHING;
+INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(), '70', 'คำนำหน้าชื่อ', false) ON CONFLICT DO NOTHING;
+INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(), '71', 'ตำแหน่ง', false) ON CONFLICT DO NOTHING;
+INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(), '72', 'เงื่อนไขการชำระเงิน', false) ON CONFLICT DO NOTHING;
+INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(), '73', 'ประเภทพนักงาน', false) ON CONFLICT DO NOTHING;
+INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(), '74', 'สาเหตุที่พ้นสภาพพนักงาน', false) ON CONFLICT DO NOTHING;
+INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(), '75', 'เหตุผลการยกเลิก/ลบเอกสาร', false) ON CONFLICT DO NOTHING;
+INSERT INTO md_lookup_type(id, code, name_th, has_rate) VALUES (gen_random_uuid(), '76', 'สัญชาติ', false) ON CONFLICT DO NOTHING;
 INSERT INTO sys_setting_def(id, key, module, data_type, default_value, label_th, express_field) VALUES (gen_random_uuid(), 'gen.link_gl', 'GEN', 'bool', 'true'::jsonb, 'เชื่อมต่อระบบบัญชี (ส่งรายการไป GL อัตโนมัติ)', 'LINKGL') ON CONFLICT DO NOTHING;
 INSERT INTO sys_setting_def(id, key, module, data_type, default_value, label_th, express_field) VALUES (gen_random_uuid(), 'gen.vat_rate', 'GEN', 'decimal', '7'::jsonb, 'อัตราภาษีมูลค่าเพิ่ม', 'VATRAT') ON CONFLICT DO NOTHING;
 INSERT INTO sys_setting_def(id, key, module, data_type, default_value, label_th, express_field) VALUES (gen_random_uuid(), 'gen.price_type', 'GEN', 'code', '"2"'::jsonb, 'ประเภทราคา default 0=ไม่มี VAT 1=รวม 2=แยก', 'FLGVAT') ON CONFLICT DO NOTHING;

@@ -17,6 +17,8 @@ import { PostingTab } from './PostingTab';
 import { DocLink } from '../../components/DocLink';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
+import { ReasonInput } from '../../components/ReasonInput';
+import { AddWrap } from '../../components/AddWrap';
 
 /** รายการประจำวันสินค้า (คู่มือบทที่ 14 S-IC-06/08/10 + เพิ่ม/ลดต้นทุน) — สต๊อกคำนวณสดจากเอกสาร */
 const MENU = 'IC.TRN';
@@ -194,9 +196,9 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
         <div className="head-grid trade-head">
           <div className="col">
             {cls === 'RL' ? <>
-              <Field label="จากคลัง" req><LkSelect byId rows={whRows} value={h.warehouse_id} disabled={ro} autoFocus={!id} onChange={(v) => set({ warehouse_id: v || null })} aria-label="จากคลัง" /></Field>
-              <Field label="ไปคลัง" req><LkSelect byId rows={whRows} value={h.to_warehouse_id} disabled={ro} onChange={(v) => set({ to_warehouse_id: v || null })} aria-label="ไปคลัง" /></Field>
-            </> : <Field label="คลังเริ่มต้น" hint="ใช้กับบรรทัดที่ไม่ได้เลือกคลัง (ว่าง = คลังหลักที่ค่าเริ่มต้นระบบสินค้า)"><LkSelect byId rows={whRows} value={h.warehouse_id} disabled={ro} onChange={(v) => set({ warehouse_id: v || null })} aria-label="คลังเริ่มต้น" /></Field>}
+              <Field label="จากคลัง" req><LkSelect byId table="21" rows={whRows} value={h.warehouse_id} disabled={ro} autoFocus={!id} onChange={(v) => set({ warehouse_id: v || null })} aria-label="จากคลัง" /></Field>
+              <Field label="ไปคลัง" req><LkSelect byId table="21" rows={whRows} value={h.to_warehouse_id} disabled={ro} onChange={(v) => set({ to_warehouse_id: v || null })} aria-label="ไปคลัง" /></Field>
+            </> : <Field label="คลังเริ่มต้น" hint="ใช้กับบรรทัดที่ไม่ได้เลือกคลัง (ว่าง = คลังหลักที่ค่าเริ่มต้นระบบสินค้า)"><LkSelect byId table="21" rows={whRows} value={h.warehouse_id} disabled={ro} onChange={(v) => set({ warehouse_id: v || null })} aria-label="คลังเริ่มต้น" /></Field>}
             <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
           </div>
           <div className="col">
@@ -204,7 +206,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
             {dn.field}
             
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
-            <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
+            <Field label="แผนก"><AddWrap kind="dept"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></Field>
             <Field label="เลขที่อ้างอิง"><input value={h.your_ref} maxLength={60} disabled={ro} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
           </div>
         </div>
@@ -221,13 +223,13 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
                   <td className="muted">{i + 1}</td>
                   <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} disabled={ro} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.item_code} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
-                  {cls !== 'RL' && <td><LkSelect byId rows={whRows} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>}
+                  {cls !== 'RL' && <td><LkSelect byId table="21" rows={whRows} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>}
                   {cls === 'CA' ? <>
                     <td>{l.item_id && <LotSelect itemId={l.item_id} warehouseId={l.warehouse_id ?? h.warehouse_id} value={l.source_line_id} disabled={ro} onChange={(v) => setLine(l.key, { source_line_id: v })} />}</td>
                     <td><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
                   </> : <>
                     <td><NumInput neg={cls === 'JU'} value={l.qty} disabled={ro} onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวน" /></td>
-                    <td><LkSelect byId rows={lk.data?.UNIT} value={l.unit_id} disabled={ro} onChange={(v) => setLine(l.key, { unit_id: v || null })} aria-label="หน่วย" /></td>
+                    <td><LkSelect byId table="20" rows={lk.data?.UNIT} value={l.unit_id} disabled={ro} onChange={(v) => setLine(l.key, { unit_id: v || null })} aria-label="หน่วย" /></td>
                     <td><input className="r" inputMode="decimal" value={l.factor} disabled={ro} onChange={(e) => setLine(l.key, { factor: e.target.value.replace(/[^\d.]/g, '') })} aria-label="ตัวคูณ" /></td>
                     {cls === 'JU' && d(l.qty || 0).gt(0) ? <td><NumInput places={2} value={l.unit_cost} disabled={ro} placeholder="เฉลี่ย" onChange={(v) => setLine(l.key, { unit_cost: v })} aria-label="ทุนต่อหน่วย" /></td>
                       : <td className="r muted">{l.cost_unit !== null ? fmt(l.cost_unit, { places: 4 }) : ''}</td>}
@@ -245,7 +247,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
       {prodCost && h && <ProductionCost date={h.doc_date} departmentId={h.department_id} lines={used} onClose={() => setProdCost(false)}
         onApply={(costs, note) => { setLines((ls) => ls.map((l) => (costs[l.key] !== undefined ? { ...l, unit_cost: costs[l.key]!, cost_amount: null, cost_unit: null } : l))); if (!h.remark) set({ remark: note.slice(0, 200) }); setDirty(true); setProdCost(false); }} />}
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? สต๊อกและใบสำคัญจะกลับคืน (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
-        <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
+        <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
       </Confirm>}
     </div>
   );

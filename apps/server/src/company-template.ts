@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { sql, type Kysely } from 'kysely';
 import type { DB } from './db.js';
 import { REPO_ROOT } from './config.js';
-import { addMonths, DOC_CLASSES, isoDate, parseIso, STANDARD_DOC_TYPES } from '@buddy/core';
+import { addMonths, DOC_CLASSES, isoDate, LOOKUP_SEEDS, parseIso, STANDARD_DOC_TYPES } from '@buddy/core';
 
 interface ChartTemplate {
   accounts: Array<{ no: string; th: string; en: string | null; parent: string | null; level: number; group: string; control: boolean; side: string; dept: boolean }>;
@@ -84,6 +84,15 @@ export async function setSetting(db: Kysely<DB>, companyId: string, key: string,
   const cur = await db.selectFrom('sys_setting').select('id').where('company_id', '=', companyId).where('branch_id', 'is', null).where('key', '=', key).where('deleted_at', 'is', null).executeTakeFirst();
   if (cur) await db.updateTable('sys_setting').set({ value: sql`${json}::jsonb`, updated_by: userId ?? null }).where('id', '=', cur.id).execute();
   else await db.insertInto('sys_setting').values({ company_id: companyId, branch_id: null, module, key, value: sql`${json}::jsonb`, created_by: userId ?? null }).execute();
+}
+
+/** รายการตั้งต้นของตารางข้อมูลที่เพิ่มเองได้ (คำนำหน้าชื่อ ตำแหน่ง เงื่อนไขการชำระ … — docs/18 ข้อ 12) */
+export async function seedLookups(db: Kysely<DB>, companyId: string) {
+  for (const [type, rows] of Object.entries(LOOKUP_SEEDS)) {
+    if (!rows.length) continue;
+    await db.insertInto('md_lookup').values(rows.map((r, i) => ({ company_id: companyId, type_code: type, code: String(i + 1).padStart(2, '0'), name_th: r.th, name_en: r.en, status: 'A' })))
+      .onConflict((oc) => oc.doNothing()).execute();
+  }
 }
 
 /** ประเภทเอกสารมาตรฐาน (คู่มือบทที่ 9) สำหรับบริษัทใหม่ — สมุดรายวันตามรหัส 00–04 ที่สร้างพร้อมบริษัท */

@@ -7,6 +7,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { ReasonInput } from '../../components/ReasonInput';
 
 /** ตรวจนับสินค้า (คู่มือบทที่ 14 S-IC-15..22) — ยอดตามระบบ ณ วันนับคำนวณสดทุกครั้ง */
 interface Row { id: string; warehouse_id: string; warehouse_code: string; warehouse_name: string; item_id: string; item_code: string; item_name: string; shelf: string | null; flag: '1' | '3' | '6';
@@ -228,7 +229,7 @@ function AddModal({ date, onClose, onDone }: { date: string; onClose: () => void
       <ErrorBox error={err} />
       <p className="hint">สำหรับสินค้าที่พบในคลังแต่ไม่อยู่ในรายการ (เช่น ไม่เคยมีความเคลื่อนไหวในคลังนี้)</p>
       <div className="form-grid">
-        <Field label="คลัง" req><LkSelect byId rows={lk.data?.WH} value={wh} onChange={(v) => setWh(v || null)} aria-label="คลัง" /></Field>
+        <Field label="คลัง" req><LkSelect byId table="21" rows={lk.data?.WH} value={wh} onChange={(v) => setWh(v || null)} aria-label="คลัง" /></Field>
         <Field label="รหัสสินค้า" req><SearchPick<{ id: string; code: string; name_th: string }> endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} required value={item} autoFocus label={(r: { name_th: string }) => r.name_th}
           onPick={(r: { id: string; code: string; name_th: string } | null) => setItem(r ? { id: r.id, code: r.code, name: r.name_th } : null)} /></Field>
       </div>
@@ -247,7 +248,7 @@ function ReopenConfirm({ doc, onClose, onDone }: { doc: { id: string; doc_no: st
   return (
     <Confirm danger title="ยกเลิกการปรับปรุงจากการตรวจนับ" text={<>ยกเลิกใบปรับปรุง <b>{doc.doc_no}</b>? ยอดสต๊อกกลับเป็นก่อนปรับปรุง และผลนับทุกรายการในใบนี้กลับเป็น “นับแล้ว” ให้แก้ไขได้</>} okText="ยกเลิกใบปรับปรุง" onClose={onClose} onOk={ok}>
       <ErrorBox error={err} />
-      <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
+      <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
     </Confirm>
   );
 }

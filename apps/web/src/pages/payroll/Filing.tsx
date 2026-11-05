@@ -6,6 +6,7 @@ import { useCan, useSession } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, Modal, Money, MoneyInput, navKey, Pill, toast, toastError } from '../../ui';
 import { downloadFile, fileToBase64 } from './common';
+import { ReasonInput } from '../../components/ReasonInput';
 
 const be = (y: number | string) => Number(y) + 543;
 type Issue = { row: number; message: string };
@@ -89,7 +90,7 @@ export function FilingsTab({ year }: { year: number }) {
       </table></div>
       {add && <FilingForm year={year} onClose={() => setAdd(false)} onDone={() => { setAdd(false); reload(); }} />}
       {cancel && <Confirm danger title="ยกเลิกการยื่น/นำส่ง" text={<>ยกเลิก {FORM_TH[cancel.form]} {periodTh(cancel)}? ใบสำคัญนำส่งจะเป็นสถานะยกเลิก และแก้รอบเงินเดือนของเดือนนั้นได้อีก
-        <Field label="เหตุผล" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field></>}
+        <Field label="เหตุผล" req><ReasonInput value={reason} onChange={setReason} /></Field></>}
         onClose={() => { setCancel(null); setReason(''); }} onOk={() => api.post(`/api/v1/pay/filings/${cancel.id}/cancel`, { reason }).then(() => { toast('ยกเลิกการยื่นแล้ว'); setCancel(null); setReason(''); reload(); }).catch(toastError)} />}
     </div>
   );

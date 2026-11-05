@@ -10,6 +10,7 @@ import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, 
 import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { useDocEdit } from '../../components/DocEdit';
+import { ReasonInput } from '../../components/ReasonInput';
 
 /** ยอดยกมาสินค้า (คู่มือ S-OB-01 ล็อตยกมา FIFO / S-OB-02 ยอดยกมารายคลัง Average) — 1 ใบ = 1 ล็อต ไม่ลงบัญชี */
 const ROUTE = '/ic/opening';
@@ -152,7 +153,7 @@ export function StockOpeningFormPage() {
                   <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} disabled={ro} label={(r: { name_th: string }) => r.name_th}
                     onPick={(r: { id: string; code: string; name_th: string; base_unit_code?: string | null } | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td>{l.item_name}</td>
-                  <td><LkSelect byId rows={lk.data?.WH} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>
+                  <td><LkSelect byId table="21" rows={lk.data?.WH} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>
                   <td><NumInput value={l.qty} disabled={ro} title="คิดเป็นหน่วยนับย่อย" onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวนยกมา" /></td>
                   <td>{l.unit_code}</td>
                   <td><MoneyInput value={l.value} disabled={ro} onChange={(v) => setLine(l.key, { value: v })} aria-label="มูลค่ายกมา" /></td>
@@ -167,7 +168,7 @@ export function StockOpeningFormPage() {
       </div>}
       <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาสินค้า'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกล็อตยกมา" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? ยอดสต๊อกยกมาของล็อตนี้จะหายไป (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกล็อต" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
-        <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
+        <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
       </Confirm>}
     </div>
   );

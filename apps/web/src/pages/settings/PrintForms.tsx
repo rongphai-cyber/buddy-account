@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DOC_CLASSES, normalizeLayout, PRINT_BASES, PRINT_LOGO_POS, PRINT_HEAD_FIELDS, printFamily, SETTLE_DETAILS, type PrintBase, type PrintFormEntry, type PrintLayout } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
-import { Confirm, ErrorBox, Field, PageHead, toast, useHotkeys, useYearSystem } from '../../ui';
+import { Confirm, ErrorBox, Field, PageHead, Tabs, toast, useHotkeys, useYearSystem } from '../../ui';
 import { PrintSheet, type PrintData } from '../../components/DocPrint';
 import { CompanyImagesPanel, useCompanyImages } from '../../components/CompanyImages';
 
@@ -35,6 +35,7 @@ export function PrintFormsPage() {
   const [err, setErr] = useState<unknown>(null);
   const [askDel, setAskDel] = useState(false);
   const [copyFrom, setCopyFrom] = useState('');
+  const [pt, setPt] = useState('gen');
   useEffect(() => {
     if (!forms.data) return;
     const c = forms.data.custom.find((x) => x.slot === slot);
@@ -86,7 +87,8 @@ export function PrintFormsPage() {
       <CompanyImagesPanel />
       {L && <div className="pf-layout">
         <div className="pf-side">
-          <div className="form-grid">
+          <Tabs active={pt} onChange={setPt} tabs={[{ key: 'gen', label: 'ทั่วไป/กระดาษ' }, { key: 'parts', label: 'ส่วนที่พิมพ์' }, { key: 'cols', label: 'คอลัมน์ตาราง', badge: L.columns.filter((c) => c.show).length }, { key: 'sign', label: 'ลายเซ็นและท้ายเอกสาร' }]} />
+          {pt === 'gen' && <div className="form-grid">
             <Field label="ชื่อแบบฟอร์ม (ในเมนูพิมพ์)" req wide><input value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setDirty(true); }} /></Field>
             <Field label="ต้นแบบ / ขนาดกระดาษ" wide hint={PRINT_BASES.find((b) => b.key === base)?.hint}><select value={base} onChange={(e) => { setBase(e.target.value as PrintBase); setDirty(true); }}>{PRINT_BASES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}</select></Field>
             <Field label="หัวเรื่อง" wide hint={`ว่าง = ชื่อประเภทเอกสาร${sampleData ? ` (${sampleData.title})` : ''}`}><input value={L.title} maxLength={120} placeholder="เช่น ใบส่งของ/ใบกำกับภาษี" onChange={(e) => set({ title: e.target.value })} /></Field>
@@ -99,7 +101,8 @@ export function PrintFormsPage() {
             {fam === 'settle' && <Field label="รายการในใบเสร็จ" hint="ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด) ควรแสดงรายการสินค้า/บริการ"><select value={L.settle_detail} onChange={(e) => set({ settle_detail: e.target.value as PrintLayout['settle_detail'] })} aria-label="รายการในใบเสร็จ">
               {SETTLE_DETAILS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}</select></Field>}
             <Field label="แสดงในเมนูพิมพ์"><select value={status} onChange={(e) => { setStatus(e.target.value as 'A' | 'I'); setDirty(true); }}><option value="A">แสดง</option><option value="I">ซ่อนหมายเลขนี้</option></select></Field>
-          </div>
+          </div>}
+          {pt === 'parts' && <>
           <h3 className="small">ส่วนที่พิมพ์</h3>
           <div className="pf-checks">
             {([['show_company', 'ชื่อ/ที่อยู่กิจการ'], ['show_party', 'ลูกค้า/ผู้จำหน่าย'], ['show_totals', 'ยอดรวมท้ายเอกสาร'], ['show_amount_text', 'จำนวนเงินตัวอักษร'],
@@ -108,6 +111,8 @@ export function PrintFormsPage() {
           </div>
           <h3 className="small">ช่องหัวเอกสาร (นอกจากเลขที่/วันที่)</h3>
           <div className="pf-checks">{heads.map((f) => <label key={f.key}><input type="checkbox" checked={L.head_fields.includes(f.key)} onChange={(e) => set({ head_fields: e.target.checked ? [...L.head_fields, f.key] : L.head_fields.filter((x) => x !== f.key) })} /> {f.label}</label>)}</div>
+          </>}
+          {pt === 'cols' && <>
           <h3 className="small">คอลัมน์ตาราง</h3>
           <table className="grid pf-cols"><thead><tr><th>แสดง</th><th>หัวคอลัมน์</th><th className="r">กว้าง</th><th>จัด</th><th /></tr></thead>
             <tbody>{L.columns.map((c, i) => <tr key={c.key}>
@@ -117,13 +122,14 @@ export function PrintFormsPage() {
               <td><select value={c.align} onChange={(e) => set({ columns: L.columns.map((x) => (x.key === c.key ? { ...x, align: e.target.value as 'l' } : x)) })} aria-label="การจัดวาง"><option value="l">ซ้าย</option><option value="c">กลาง</option><option value="r">ขวา</option></select></td>
               <td className="nowrap"><button type="button" className="icon-btn" title="เลื่อนขึ้น" onClick={() => moveCol(i, -1)}>▲</button><button type="button" className="icon-btn" title="เลื่อนลง" onClick={() => moveCol(i, 1)}>▼</button></td>
             </tr>)}</tbody></table>
-          <div className="form-grid" style={{ marginTop: 10 }}>
+          </>}
+          {pt === 'sign' && <div className="form-grid" style={{ marginTop: 10 }}>
             <Field label="ช่องลงชื่อ (คั่นด้วย ,)" wide hint="สูงสุด 4 ช่อง"><input defaultValue={L.signatures.join(', ')} key={`s${slot}${scope}${L.signatures.join()}`} onBlur={(e) => set({ signatures: list(e.target.value) })} /></Field>
             {L.signatures.map((s, i) => <Field key={`sg${i}${s}`} label={`รูปลายเซ็นช่อง "${s}"`} hint={signList.length ? undefined : 'เพิ่มรูปลายเซ็นด้านบนก่อน'}>
               <select value={L.signature_images[i] ?? ''} onChange={(e) => { const arr = L.signatures.map((_, k) => L.signature_images[k] ?? null); arr[i] = e.target.value || null; set({ signature_images: arr }); }}>
                 <option value="">— เว้นว่างให้เซ็นมือ —</option>{signList.map(([id, x]) => <option key={id} value={id}>{x.name}</option>)}</select></Field>)}
             <Field label="ข้อความท้ายเอกสาร" wide><input value={L.footer} maxLength={300} placeholder="เช่น สินค้าซื้อแล้วไม่รับคืน" onChange={(e) => set({ footer: e.target.value })} /></Field>
-          </div>
+          </div>}
         </div>
         <div className="pf-preview">
           <p className="muted small">{sampleData ? `ตัวอย่างจากเอกสารล่าสุด ${sampleData.doc_no}` : sample.isLoading ? 'กำลังโหลดตัวอย่าง…' : 'ยังไม่มีเอกสารชนิดนี้ — ตัวอย่างจะแสดงเมื่อมีเอกสาร'}</p>

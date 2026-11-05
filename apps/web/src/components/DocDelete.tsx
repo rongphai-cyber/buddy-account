@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { Confirm, Field, toast, toastError, useHotkeys } from '../ui';
+import { ReasonInput } from './ReasonInput';
 
 /**
  * ป้าย "เอกสารยกเลิก" สีแดงข้างเลขที่ (ข้อกำหนดเจ้าของ 30/10/2569): เอกสารยังแสดงอยู่ แต่ยอดไม่นำไปใช้ที่ใด และไม่ลงบัญชี
@@ -57,7 +58,7 @@ export function DocDelete({ kind, id, docNo, cancelled, cancelUrl, listPath, can
     {ask && <Confirm danger title="ลบเอกสาร" okText={cancelled ? 'ลบเอกสาร' : 'ยกเลิกและลบเอกสาร'} onClose={() => setAsk(false)} onOk={run}
       text={<><b>{`ลบ ${docNo ?? ''} ออกจากระบบ?`}</b><br /><span>{DEL_NOTE}</span>
         {!cancelled && <><br /><span className="bad">{NOT_CANCELLED}</span></>}</>}>
-      <Field label="เหตุผลที่ลบ" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); void run(); } }} /></Field>
+      <Field label="เหตุผลที่ลบ" req><ReasonInput value={reason} onChange={setReason} onEnter={() => void run()} /></Field>
     </Confirm>}
   </>;
 }

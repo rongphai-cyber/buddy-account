@@ -1,11 +1,12 @@
 [
 {
 "th": "ยกเลิก",
-"n": 131,
+"n": 132,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/components/LkSelect.tsx",
 "apps/web/src/components/Notes.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
@@ -66,9 +67,10 @@
 },
 {
 "th": "บันทึก",
-"n": 97,
+"n": 98,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
+"apps/web/src/components/LkSelect.tsx",
 "apps/web/src/components/MasterBar.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
@@ -205,7 +207,7 @@
 },
 {
 "th": "จำนวนเงิน",
-"n": 59,
+"n": 60,
 "files": [
 "apps/web/src/components/DiscountInput.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -237,8 +239,9 @@
 },
 {
 "th": "รหัส",
-"n": 53,
+"n": 54,
 "files": [
+"apps/web/src/components/LkSelect.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
@@ -306,7 +309,7 @@
 },
 {
 "th": "รายการ",
-"n": 49,
+"n": 50,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -339,8 +342,9 @@
 },
 {
 "th": "แผนก",
-"n": 47,
+"n": 48,
 "files": [
+"apps/web/src/components/AddWrap.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
@@ -550,6 +554,29 @@
 ]
 },
 {
+"th": "รับ",
+"n": 38,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "สาขา",
 "n": 38,
 "files": [
@@ -620,31 +647,8 @@
 ]
 },
 {
-"th": "รับ",
-"n": 37,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/stock.ts"
-]
-},
-{
 "th": "จ่าย",
-"n": 35,
+"n": 36,
 "files": [
 "apps/web/src/components/DocTaxTabs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
@@ -875,6 +879,28 @@
 ]
 },
 {
+"th": "ทั้งหมด",
+"n": 27,
+"files": [
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"apps/server/src/modules/reports/stock.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "แก้ไข",
 "n": 27,
 "files": [
@@ -903,27 +929,6 @@
 "apps/server/src/modules/payroll/files.ts",
 "apps/server/src/modules/payroll/runs.ts",
 "apps/server/src/modules/reports/gl.ts"
-]
-},
-{
-"th": "ทั้งหมด",
-"n": 26,
-"files": [
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"apps/server/src/modules/reports/stock.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -1156,6 +1161,27 @@
 ]
 },
 {
+"th": "พนักงานขาย",
+"n": 21,
+"files": [
+"apps/web/src/components/AddWrap.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/parties.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/pdpa.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "รายได้",
 "n": 21,
 "files": [
@@ -1246,25 +1272,6 @@
 "apps/web/src/pages/inventory/Counts.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/Periods.tsx"
-]
-},
-{
-"th": "พนักงานขาย",
-"n": 19,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/parties.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"packages/core/src/pdpa.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -1942,6 +1949,20 @@
 ]
 },
 {
+"th": "เงินสด",
+"n": 12,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/server/src/import/express/migrate.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "เจ้าหนี้",
 "n": 12,
 "files": [
@@ -2018,20 +2039,6 @@
 ]
 },
 {
-"th": "บริษัท",
-"n": 11,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/wht.ts"
-]
-},
-{
 "th": "ผู้ติดต่อ",
 "n": 11,
 "files": [
@@ -2098,16 +2105,16 @@
 ]
 },
 {
-"th": "เงินสด",
+"th": "เช็ค",
 "n": 11,
 "files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/server/src/owned.ts",
 "apps/server/src/import/express/migrate.ts",
-"packages/core/src/gl-link.ts"
+"apps/server/src/modules/cheques.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -2140,6 +2147,20 @@
 ]
 },
 {
+"th": "บริษัท",
+"n": 10,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/wht.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "รวม {0} รายการ",
 "n": 10,
 "files": [
@@ -2168,15 +2189,18 @@
 ]
 },
 {
-"th": "เช็ค",
+"th": "เพิ่ม{0}",
 "n": 10,
 "files": [
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/cheques.ts"
+"apps/web/src/components/AddWrap.tsx",
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -2270,6 +2294,18 @@
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "ตำแหน่ง",
+"n": 9,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"packages/core/src/menu.ts",
+"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -2440,6 +2476,17 @@
 "packages/core/src/gl-link.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/sync.ts"
+]
+},
+{
+"th": "คำนำหน้า",
+"n": 8,
+"files": [
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/server/src/modules/payroll/files.ts",
+"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -2674,19 +2721,6 @@
 ]
 },
 {
-"th": "เพิ่ม{0}",
-"n": 8,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
 "th": "เพิ่มหนี้",
 "n": 8,
 "files": [
@@ -2829,17 +2863,6 @@
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "ตำแหน่ง",
-"n": 7,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -3006,14 +3029,12 @@
 ]
 },
 {
-"th": "คำนำหน้า",
+"th": "คำนำหน้าชื่อ",
 "n": 6,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/server/src/modules/payroll/files.ts",
-"packages/core/src/payroll-import.ts"
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/server/src/import/express/migrate.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -3155,6 +3176,18 @@
 "apps/server/src/import/express/migrate.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "พนักงาน",
+"n": 6,
+"files": [
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/payroll/files.ts",
+"apps/server/src/modules/payroll/master.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -3538,6 +3571,16 @@
 ]
 },
 {
+"th": "ชื่อภาษาอังกฤษ",
+"n": 5,
+"files": [
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Defaults.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "ชื่อลูกค้า",
 "n": 5,
 "files": [
@@ -3709,17 +3752,6 @@
 ]
 },
 {
-"th": "พนักงาน",
-"n": 5,
-"files": [
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/server/src/modules/payroll/files.ts",
-"apps/server/src/modules/payroll/master.ts"
-]
-},
-{
 "th": "พฤศจิกายน",
 "n": 5,
 "files": [
@@ -3769,6 +3801,15 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/date.ts"
+]
+},
+{
+"th": "มากกว่า 0",
+"n": 5,
+"files": [
+"apps/server/src/modules/data-tables.ts",
+"apps/server/src/modules/items.ts",
+"apps/server/src/modules/payroll/master.ts"
 ]
 },
 {
@@ -4175,6 +4216,17 @@
 ]
 },
 {
+"th": "ไทย",
+"n": 5,
+"files": [
+"apps/web/src/components/LangSwitch.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/reports/Statements.tsx",
+"packages/core/src/menu.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "ไม่พบ{0}นี้",
 "n": 5,
 "files": [
@@ -4391,15 +4443,6 @@
 ]
 },
 {
-"th": "ชื่อภาษาอังกฤษ",
-"n": 4,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Defaults.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx"
-]
-},
-{
 "th": "ชื่อย่อไทย",
 "n": 4,
 "files": [
@@ -4469,6 +4512,15 @@
 ]
 },
 {
+"th": "ประเภท VAT",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/items/Items.tsx"
+]
+},
+{
 "th": "ประเภทผู้จำหน่าย",
 "n": 4,
 "files": [
@@ -4531,14 +4583,6 @@
 "apps/web/src/pages/docs/MoneyParts.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "มากกว่า 0",
-"n": 4,
-"files": [
-"apps/server/src/modules/items.ts",
-"apps/server/src/modules/payroll/master.ts"
 ]
 },
 {
@@ -4888,16 +4932,6 @@
 ]
 },
 {
-"th": "ไทย",
-"n": 4,
-"files": [
-"apps/web/src/components/LangSwitch.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/reports/Statements.tsx",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "ไม่พบบัญชีนี้ในผังบัญชี",
 "n": 4,
 "files": [
@@ -5137,14 +5171,6 @@
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/server/src/modules/pdpa.ts"
-]
-},
-{
-"th": "คำนำหน้าชื่อ",
-"n": 3,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/server/src/import/express/migrate.ts"
 ]
 },
 {
@@ -5415,6 +5441,15 @@
 ]
 },
 {
+"th": "นาย",
+"n": 3,
+"files": [
+"apps/server/src/modules/wht.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "บรรทัดที่ {0}: ไม่พบรหัสสินค้า",
 "n": 3,
 "files": [
@@ -5491,6 +5526,7 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
+"packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts"
 ]
 },
@@ -5513,19 +5549,19 @@
 ]
 },
 {
-"th": "ประเภท VAT",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/items/Items.tsx"
-]
-},
-{
 "th": "ประเภทค่าจ้าง",
 "n": 3,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "ประเภทพนักงาน",
+"n": 3,
+"files": [
+"apps/web/src/pages/payroll/Employees.tsx",
+"packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts"
 ]
 },
@@ -5938,8 +5974,8 @@
 "th": "รายวัน",
 "n": 3,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/reports/Dashboard.tsx",
+"packages/core/src/menu.ts",
 "packages/core/src/payroll.ts"
 ]
 },
@@ -6103,6 +6139,15 @@
 ]
 },
 {
+"th": "สัญชาติ",
+"n": 3,
+"files": [
+"apps/web/src/pages/payroll/Employees.tsx",
+"packages/core/src/menu.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "สาขา {0}",
 "n": 3,
 "files": [
@@ -6176,14 +6221,6 @@
 ]
 },
 {
-"th": "ห้างหุ้นส่วนจำกัด",
-"n": 3,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/server/src/modules/wht.ts"
-]
-},
-{
 "th": "อัตราภาษี",
 "n": 3,
 "files": [
@@ -6241,6 +6278,15 @@
 "files": [
 "apps/web/src/pages/settings/Sync.tsx",
 "apps/server/src/modules/sync/central.ts"
+]
+},
+{
+"th": "เงื่อนไขการชำระเงิน",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -6684,6 +6730,13 @@
 ]
 },
 {
+"th": "0 ได้รับยกเว้น VAT",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
+]
+},
+{
 "th": "1 · ภาษีซื้อ 7%",
 "n": 2,
 "files": [
@@ -6696,6 +6749,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "1 อัตราปกติ (มี VAT)",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -6719,6 +6779,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "2 อัตรา 0% (เช่น ส่งออก)",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -7079,6 +7146,13 @@
 ]
 },
 {
+"th": "คอลัมน์ตาราง",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "คัดลอกกุญแจแล้ว",
 "n": 2,
 "files": [
@@ -7113,13 +7187,6 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/fa.ts"
-]
-},
-{
-"th": "คุณ",
-"n": 2,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -7966,18 +8033,26 @@
 ]
 },
 {
+"th": "นาง",
+"n": 2,
+"files": [
+"apps/server/src/modules/wht.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "นางสาว",
+"n": 2,
+"files": [
+"apps/server/src/modules/wht.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "นามสกุลอังกฤษ",
 "n": 2,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "นาย",
-"n": 2,
-"files": [
-"apps/server/src/modules/wht.ts",
 "packages/core/src/payroll-import.ts"
 ]
 },
@@ -8059,13 +8134,6 @@
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/server/src/modules/docs/trade.ts"
-]
-},
-{
-"th": "บริษัท / หจก. / ร้าน",
-"n": 2,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -8260,14 +8328,6 @@
 ]
 },
 {
-"th": "ประเภทพนักงาน",
-"n": 2,
-"files": [
-"apps/web/src/pages/payroll/Employees.tsx",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "ประเภทพนักงานขาย",
 "n": 2,
 "files": [
@@ -8409,6 +8469,13 @@
 "files": [
 "apps/server/src/modules/data-tables.ts",
 "apps/server/src/modules/gl/routes.ts"
+]
+},
+{
+"th": "ป้อนถ้า{0}เท่ากันทุกครั้ง ว่าง = ป้อนตอนบันทึก",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -9188,6 +9255,13 @@
 ]
 },
 {
+"th": "รหัสไม่เกิน 10 ตัว",
+"n": 2,
+"files": [
+"apps/server/src/modules/data-tables.ts"
+]
+},
+{
 "th": "รองรับรูป JPG PNG WEBP GIF หรือ PDF เท่านั้น",
 "n": 2,
 "files": [
@@ -9273,11 +9347,32 @@
 ]
 },
 {
+"th": "ราคา {0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
+]
+},
+{
 "th": "ราคาขาย 1",
 "n": 2,
 "files": [
 "apps/web/src/pages/items/Items.tsx",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "ราคาขาย 1–5",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "ราคาขาย {0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -9503,13 +9598,6 @@
 "n": 2,
 "files": [
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "ร้าน",
-"n": 2,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -9903,14 +9991,6 @@
 ]
 },
 {
-"th": "สัญชาติ",
-"n": 2,
-"files": [
-"apps/web/src/pages/payroll/Employees.tsx",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "สั่งจ่ายจากบัญชี",
 "n": 2,
 "files": [
@@ -9978,6 +10058,13 @@
 "files": [
 "apps/web/src/pages/tax/Etax.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ส่วนที่พิมพ์",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -10078,6 +10165,22 @@
 "files": [
 "apps/web/src/components/AddressFields.tsx",
 "packages/core/src/geo-th.ts"
+]
+},
+{
+"th": "ห้างหุ้นส่วนจำกัด",
+"n": 2,
+"files": [
+"apps/server/src/modules/wht.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "ห้างหุ้นส่วนสามัญ",
+"n": 2,
+"files": [
+"apps/server/src/modules/wht.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -10191,7 +10294,8 @@
 "th": "เกษียณ",
 "n": 2,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx"
+"apps/web/src/pages/payroll/Employees.tsx",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -10279,14 +10383,6 @@
 "files": [
 "apps/web/src/pages/parties/Parties.tsx",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "เงื่อนไขการชำระเงิน",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -10488,6 +10584,30 @@
 "files": [
 "packages/core/src/doc-calc.ts",
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "เพิ่ม{0} {1} {2} แล้ว",
+"n": 2,
+"files": [
+"apps/web/src/components/AddWrap.tsx",
+"apps/web/src/components/LkSelect.tsx"
+]
+},
+{
+"th": "เพิ่ม{0}ใหม่",
+"n": 2,
+"files": [
+"apps/web/src/components/AddWrap.tsx",
+"apps/web/src/components/LkSelect.tsx"
+]
+},
+{
+"th": "เพิ่ม{0}ใหม่ (Insert)",
+"n": 2,
+"files": [
+"apps/web/src/components/AddWrap.tsx",
+"apps/web/src/components/LkSelect.tsx"
 ]
 },
 {
@@ -10973,6 +11093,13 @@
 ]
 },
 {
+"th": "แสดงในฟอร์ม ไม่คำนวณ · Insert = เพิ่มเงื่อนไขใหม่",
+"n": 2,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "โทร {0}",
 "n": 2,
 "files": [
@@ -11307,6 +11434,13 @@
 "files": [
 "apps/web/src/pages/tax/Etax.tsx",
 "apps/server/src/modules/etax.ts"
+]
+},
+{
+"th": "ไม่ระบุ (ตามเอกสาร)",
+"n": 2,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -12266,13 +12400,6 @@
 ]
 },
 {
-"th": "0 ได้รับยกเว้น VAT",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
-]
-},
-{
 "th": "0 ไม่ตรวจ",
 "n": 1,
 "files": [
@@ -12417,13 +12544,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "1 อัตราปกติ (มี VAT)",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -12592,13 +12712,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx"
-]
-},
-{
-"th": "2 อัตรา 0% (เช่น ส่งออก)",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -15430,6 +15543,20 @@
 ]
 },
 {
+"th": "กด Insert = เพิ่ม{0}ใหม่",
+"n": 1,
+"files": [
+"apps/web/src/components/LkSelect.tsx"
+]
+},
+{
+"th": "กด Insert = เพิ่มเหตุผลใหม่ลงรายการ",
+"n": 1,
+"files": [
+"apps/web/src/components/ReasonInput.tsx"
+]
+},
+{
 "th": "กด บันทึก ด้านล่างเพื่อบันทึกทั้งกุญแจ เพดาน และข้อมูลสำหรับแนะนำการลงบัญชี",
 "n": 1,
 "files": [
@@ -15475,7 +15602,14 @@
 "th": "กรรมการ",
 "n": 1,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx"
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "กรรมการผู้จัดการ",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -15815,6 +15949,13 @@
 ]
 },
 {
+"th": "กัมพูชา",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "การขายและเครดิต",
 "n": 1,
 "files": [
@@ -15868,6 +16009,13 @@
 "n": 1,
 "files": [
 "apps/server/src/import/express/migrate.ts"
+]
+},
+{
+"th": "การบันทึกบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -17474,13 +17622,6 @@
 ]
 },
 {
-"th": "คอลัมน์ตาราง",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
 "th": "คอลัมน์ที่แสดง ({0}/{1})",
 "n": 1,
 "files": [
@@ -17810,6 +17951,13 @@
 ]
 },
 {
+"th": "คำนำหน้าชื่อลูกค้า ผู้จำหน่าย พนักงาน — เลือกในช่องคำนำหน้าชื่อ",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "คำนำหน้านาม - ชื่อ - ชื่อสกุล",
 "n": 1,
 "files": [
@@ -17950,6 +18098,13 @@
 ]
 },
 {
+"th": "คีย์ข้อมูลผิด",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "คีย์ครบแล้ว — บันทึก?",
 "n": 1,
 "files": [
@@ -18027,6 +18182,13 @@
 ]
 },
 {
+"th": "คุณ",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "คู่ค้า",
 "n": 1,
 "files": [
@@ -18091,6 +18253,13 @@
 },
 {
 "th": "ค่าควบคุม (ว่าง = ตามค่าเริ่มต้นแต่ละระบบ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "ค่าควบคุมและการอนุมัติ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/DocTypes.tsx"
@@ -19560,6 +19729,13 @@
 ]
 },
 {
+"th": "จีน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "จ่าย (DP)",
 "n": 1,
 "files": [
@@ -19759,7 +19935,7 @@
 "th": "ชั่วคราว",
 "n": 1,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx"
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -19872,6 +20048,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ชื่อ (ไทย)",
+"n": 1,
+"files": [
+"apps/web/src/components/LkSelect.tsx"
 ]
 },
 {
@@ -20649,6 +20832,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/doc-types.ts"
+]
+},
+{
+"th": "ญี่ปุ่น",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -21618,6 +21808,13 @@
 ]
 },
 {
+"th": "ตาราง {0} {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/data-tables.ts"
+]
+},
+{
 "th": "ตารางข้อมูล {0}",
 "n": 1,
 "files": [
@@ -21699,6 +21896,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ตำแหน่งผู้ติดต่อ พนักงานขาย พนักงาน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -22017,6 +22221,13 @@
 ]
 },
 {
+"th": "ต้องป้อนรหัส (ไม่ซ้ำ)",
+"n": 1,
+"files": [
+"apps/web/src/components/AddWrap.tsx"
+]
+},
+{
 "th": "ต้องป้อนเลขที่บัญชี — เลือกบัญชี (Insert เพิ่มบัญชีใหม่)",
 "n": 1,
 "files": [
@@ -22321,7 +22532,7 @@
 "th": "ทดลองงาน",
 "n": 1,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx"
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -22469,6 +22680,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Forms.tsx"
+]
+},
+{
+"th": "ทั่วไป/กระดาษ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -22973,20 +23191,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
-]
-},
-{
-"th": "นาง",
-"n": 1,
-"files": [
-"apps/server/src/modules/wht.ts"
-]
-},
-{
-"th": "นางสาว",
-"n": 1,
-"files": [
-"apps/server/src/modules/wht.ts"
 ]
 },
 {
@@ -23809,13 +24013,6 @@
 ]
 },
 {
-"th": "บริษัท ... จำกัด (มหาชน)",
-"n": 1,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
 "th": "บริษัท {0}",
 "n": 1,
 "files": [
@@ -23897,6 +24094,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/sync/central.ts"
+]
+},
+{
+"th": "บริษัทมหาชน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -26427,6 +26631,13 @@
 ]
 },
 {
+"th": "ปุ่มเลือกเร็วในหน้าต่างยกเลิก/ลบเอกสาร (พิมพ์รายละเอียดต่อได้)",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "ป้อน",
 "n": 1,
 "files": [
@@ -26543,6 +26754,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/apikeys.ts"
+]
+},
+{
+"th": "ป้อนชื่อก่อน",
+"n": 1,
+"files": [
+"apps/web/src/components/LkSelect.tsx"
 ]
 },
 {
@@ -26700,13 +26918,6 @@
 ]
 },
 {
-"th": "ป้อนถ้า{0}เท่ากันทุกครั้ง ว่าง = ป้อนตอนบันทึก",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
-]
-},
-{
 "th": "ป้อนบัญชีค่าเสื่อมราคา (Dr.) และบัญชีค่าเสื่อมราคาสะสม (Cr.)",
 "n": 1,
 "files": [
@@ -26788,6 +26999,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/pdpa.ts"
+]
+},
+{
+"th": "ป้อนรหัส{0}ก่อน",
+"n": 1,
+"files": [
+"apps/web/src/components/AddWrap.tsx"
 ]
 },
 {
@@ -27379,6 +27597,13 @@
 ]
 },
 {
+"th": "ผู้จัดการ",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "ผู้จัดการระบบ",
 "n": 1,
 "files": [
@@ -27894,6 +28119,34 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ฝ่ายการเงิน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "ฝ่ายขาย",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "ฝ่ายจัดซื้อ",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "ฝ่ายบัญชี",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -29073,6 +29326,13 @@
 ]
 },
 {
+"th": "มี \"{0}\" อยู่แล้ว (รหัส {1}{2})",
+"n": 1,
+"files": [
+"apps/server/src/modules/data-tables.ts"
+]
+},
+{
 "th": "มีกองทุนสำรองเลี้ยงชีพ",
 "n": 1,
 "files": [
@@ -29420,6 +29680,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
+"th": "มูลนิธิ",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -31838,6 +32105,13 @@
 ]
 },
 {
+"th": "รหัส {0} มีอยู่แล้ว — ใช้รหัสอื่น",
+"n": 1,
+"files": [
+"apps/server/src/modules/data-tables.ts"
+]
+},
+{
 "th": "รหัส {0} มีอยู่แล้วในแฟ้มสินค้า ({1})",
 "n": 1,
 "files": [
@@ -31947,6 +32221,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
+]
+},
+{
+"th": "รหัสซ้ำ",
+"n": 1,
+"files": [
+"apps/server/src/modules/data-tables.ts"
 ]
 },
 {
@@ -32580,13 +32861,6 @@
 ]
 },
 {
-"th": "รหัสไม่เกิน 10 ตัว",
-"n": 1,
-"files": [
-"apps/server/src/modules/data-tables.ts"
-]
-},
-{
 "th": "รอบ {0} จ่ายเงินแล้ว — ยกเลิกการจ่ายก่อนจึงยกเลิกรอบได้",
 "n": 1,
 "files": [
@@ -33203,27 +33477,6 @@
 ]
 },
 {
-"th": "ราคา {0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
-]
-},
-{
-"th": "ราคาขาย 1–5",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
-]
-},
-{
-"th": "ราคาขาย {0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
-]
-},
-{
 "th": "ราคาขายที่ {0}",
 "n": 1,
 "files": [
@@ -33319,6 +33572,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/items.ts"
+]
+},
+{
+"th": "ราคาและภาษี",
+"n": 1,
+"files": [
+"apps/web/src/pages/items/Items.tsx"
 ]
 },
 {
@@ -33683,6 +33943,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "รายการหักแพลตฟอร์ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -34208,6 +34475,13 @@
 "n": 1,
 "files": [
 "packages/core/src/baht.ts"
+]
+},
+{
+"th": "ร้าน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -35142,10 +35416,24 @@
 ]
 },
 {
+"th": "ลายเซ็นและท้ายเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ลาว",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "ลาออก",
 "n": 1,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx"
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -35230,6 +35518,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ลูกค้า/ผู้จำหน่ายยกเลิก",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -36262,6 +36557,13 @@
 ]
 },
 {
+"th": "ว่าง = รหัสถัดไปอัตโนมัติ",
+"n": 1,
+"files": [
+"apps/web/src/components/LkSelect.tsx"
+]
+},
+{
 "th": "ว่าง = ลูกค้าเริ่มต้น",
 "n": 1,
 "files": [
@@ -36567,6 +36869,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Signup.tsx"
+]
+},
+{
+"th": "สมาคม",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -37067,6 +37376,13 @@
 ]
 },
 {
+"th": "สาเหตุที่พ้นสภาพพนักงาน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "สาเหตุที่ออก",
 "n": 1,
 "files": [
@@ -37483,7 +37799,7 @@
 "th": "สิ้นสุดสัญญา",
 "n": 1,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx"
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -37746,13 +38062,6 @@
 ]
 },
 {
-"th": "ส่วนที่พิมพ์",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
 "th": "ส่วนที่เหลือ {0} เป็นเงินสด",
 "n": 1,
 "files": [
@@ -37932,6 +38241,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/ItemTables.tsx"
+]
+},
+{
+"th": "หน่วยนับต้องมีอัตรา (ตัวคูณเป็นหน่วยย่อย) มากกว่า 0 เช่น ชิ้น = 1 โหล = 12",
+"n": 1,
+"files": [
+"apps/server/src/modules/data-tables.ts"
 ]
 },
 {
@@ -38565,13 +38881,6 @@
 ]
 },
 {
-"th": "ห้างหุ้นส่วนสามัญ",
-"n": 1,
-"files": [
-"apps/server/src/modules/wht.ts"
-]
-},
-{
 "th": "ห้ามเว้นวรรค",
 "n": 1,
 "files": [
@@ -38719,6 +39028,20 @@
 ]
 },
 {
+"th": "ออกเอกสารซ้ำ",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "ออกเอกสารใหม่แทน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "ออกแล้ว",
 "n": 1,
 "files": [
@@ -38765,6 +39088,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/finance/Banking.tsx"
+]
+},
+{
+"th": "อัตรา (ตัวคูณเป็นหน่วยย่อย)",
+"n": 1,
+"files": [
+"apps/web/src/components/LkSelect.tsx"
 ]
 },
 {
@@ -39528,6 +39858,20 @@
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "เครดิต 30 วัน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "เครดิต 60 วัน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -40644,20 +40988,6 @@
 ]
 },
 {
-"th": "เช่น 2/10, n/30",
-"n": 1,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "เช่น 2/10, n/30 (แสดงในฟอร์ม ไม่คำนวณ)",
-"n": 1,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
 "th": "เช่น 200 (บาท) · 5% หรือ 5+ (เปอร์เซ็นต์) · 5+2+ (5% แล้วอีก 2%) · 5+,200 (5% แล้วลดอีก 200 บาท)",
 "n": 1,
 "files": [
@@ -40791,10 +41121,10 @@
 ]
 },
 {
-"th": "เช่น จัดซื้อ บัญชี",
+"th": "เช่น ชิ้น = 1 · โหล = 12",
 "n": 1,
 "files": [
-"apps/web/src/pages/parties/Parties.tsx"
+"apps/web/src/components/LkSelect.tsx"
 ]
 },
 {
@@ -41463,6 +41793,13 @@
 ]
 },
 {
+"th": "เปลี่ยนแปลงราคาหรือจำนวน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "เปลี่ยนโลโก้…",
 "n": 1,
 "files": [
@@ -42100,6 +42437,20 @@
 ]
 },
 {
+"th": "เพิ่มเหตุผล \"{0}\" แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/ReasonInput.tsx"
+]
+},
+{
+"th": "เพิ่มเหตุผลการยกเลิก/ลบเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/components/ReasonInput.tsx"
+]
+},
+{
 "th": "เพิ่มเอกสาร",
 "n": 1,
 "files": [
@@ -42195,6 +42546,13 @@
 "n": 1,
 "files": [
 "apps/web/src/App.tsx"
+]
+},
+{
+"th": "เมียนมา",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -43174,7 +43532,7 @@
 "th": "เลิกจ้าง",
 "n": 1,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx"
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -43857,6 +44215,13 @@
 ]
 },
 {
+"th": "เวียดนาม",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "เว้นไว้ = เลขอัตโนมัติ {0}",
 "n": 1,
 "files": [
@@ -43881,7 +44246,7 @@
 "th": "เสียชีวิต",
 "n": 1,
 "files": [
-"apps/web/src/pages/payroll/Employees.tsx"
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -43896,6 +44261,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ActivityLog.tsx"
+]
+},
+{
+"th": "เหตุผลการยกเลิก/ลบเอกสาร",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -44260,6 +44632,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "เอกสารและเลขที่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -45572,6 +45951,13 @@
 ]
 },
 {
+"th": "แสดงในเอกสาร ไม่คำนวณ — วันครบกำหนดคิดจากเครดิต (วัน)",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "แสน",
 "n": 1,
 "files": [
@@ -45751,6 +46137,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Forms.tsx"
+]
+},
+{
+"th": "โอนเงิน",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -48183,13 +48576,6 @@
 ]
 },
 {
-"th": "ไม่ระบุ (ตามเอกสาร)",
-"n": 1,
-"files": [
-"apps/web/src/pages/items/Items.tsx"
-]
-},
-{
 "th": "ไม่ระบุรหัส",
 "n": 1,
 "files": [
@@ -48593,6 +48979,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Opening.tsx"
+]
+},
+{
+"th": "— เลิกใช้อยู่ เปิดใช้ที่ เริ่มระบบ › ตารางข้อมูล",
+"n": 1,
+"files": [
+"apps/server/src/modules/data-tables.ts"
 ]
 },
 {

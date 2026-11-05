@@ -18,6 +18,7 @@ import { DocVatTab, DocWhtList } from '../../components/DocTaxTabs';
 import { JvChequeTab, JvVatTab, vatPayload, WhtTab, whtPayload, type VatDraft, type WhtDraft } from './JvLinks';
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
 import { JournalPicker } from '../../components/JournalPicker';
+import { ReasonInput } from '../../components/ReasonInput';
 
 const FIX_AT_SOURCE = ' — แก้ที่เอกสารต้นทาง';
 interface Line { key: number; account_id: string | null; department_id: string | null; description: string; debit: string; credit: string; line_note?: string; line_note_print?: boolean }
@@ -399,7 +400,7 @@ function CancelDialog({ onClose, onOk }: { onClose: () => void; onOk: (reason: s
   return (
     <Modal title="ยืนยันการยกเลิกเอกสาร" size="confirm" onClose={onClose} footer={<><button onClick={onClose}>ไม่ใช่</button><button className="danger" disabled={!r.trim()} onClick={() => onOk(r)}>ยกเลิกเอกสาร</button></>}>
       <p>ใบสำคัญที่ยกเลิกจะไม่ถูกนับในยอดบัญชี แต่ยังเก็บไว้ดูย้อนหลังได้ (ไม่ลบทิ้ง)</p>
-      <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={r} onChange={(e) => setR(e.target.value)} /></Field>
+      <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={r} onChange={setR} /></Field>
     </Modal>
   );
 }

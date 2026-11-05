@@ -13,6 +13,8 @@ import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
 import { DocActions } from '../../components/DocPrint';
 import { CancelStamp, SourceStamp } from '../../components/DocDelete';
+import { ReasonInput } from '../../components/ReasonInput';
+import { AddWrap } from '../../components/AddWrap';
 
 /** ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04) — บิลค้าง ณ วันเริ่มใช้ ไม่ลงบัญชี (ยอดบัญชีป้อนที่ บันทึกยอดยกมา) */
 const KINDS = {
@@ -142,8 +144,8 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
             <Field label={`รหัส${K.party}`} req><SearchPick<{ id: string; code: string; name: string }> endpoint={K.endpoint} value={h.party} required disabled={ro} autoFocus={!id} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
             {kind === 'ap' && <Field label="เลขที่บิล" hint="ใบกำกับภาษี/เอกสารที่ผู้จำหน่ายออกให้"><input value={h.ref_no} maxLength={30} disabled={ro} onChange={(e) => set({ ref_no: e.target.value })} /></Field>}
             <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
-            {kind === 'ar' && <Field label="พนักงานขาย" hint="ค่าเริ่มต้นจากรายละเอียดลูกค้า"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></Field>}
-            <Field label="แผนก"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></Field>
+            {kind === 'ar' && <Field label="พนักงานขาย" hint="ค่าเริ่มต้นจากรายละเอียดลูกค้า"><AddWrap kind="slm"><select value={h.salesperson_id} disabled={ro} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></AddWrap></Field>}
+            <Field label="แผนก"><AddWrap kind="dept"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></Field>
           </div>
           <div className="col">
             <Field label="เลขที่เอกสาร" req hint={`ป้อนเอง ห้ามซ้ำเลขปีปัจจุบัน — แนะนำใส่ปีนำหน้า เช่น ${K.cls}67/0001`}><input className="mono" value={h.doc_no} maxLength={30} disabled={ro} onChange={(e) => set({ doc_no: e.target.value })} /></Field>
@@ -172,7 +174,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
       </div>}
       <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกรายการ" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกรายการ" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
-        <Field label="เหตุผลที่ยกเลิก" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field>
+        <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
       </Confirm>}
     </div>
   );

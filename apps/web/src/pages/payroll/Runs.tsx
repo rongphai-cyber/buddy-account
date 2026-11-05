@@ -12,6 +12,7 @@ import { useEmployees } from './Employees';
 import { SlipPrintButton } from './Forms';
 import { ImportModal } from './Filing';
 import { downloadFile } from './common';
+import { ReasonInput } from '../../components/ReasonInput';
 
 interface RunRow { id: string; doc_no: string | null; run_type: string; period_from: string; period_to: string; pay_date: string; status: string; status_th: string; headcount: number;
   total_gross: string; total_tax: string; total_sso_ee: string; total_sso_er: string; total_net: string; note: string | null; branch_code: string | null }
@@ -182,7 +183,7 @@ export function RunPage() {
         onOk={() => act(() => api.post(`/api/v1/pay/runs/${id}/post`), 'บันทึกและลงบัญชีแล้ว')} />}
       {(ask === 'reopen' || ask === 'unpay' || ask === 'cancel') && <Confirm danger={ask === 'cancel'} title={ask === 'reopen' ? 'แก้ไขรอบเงินเดือน' : ask === 'unpay' ? 'ยกเลิกการจ่าย' : 'ยกเลิกรอบเงินเดือน'}
         text={<>{ask === 'reopen' ? 'เปิดกลับเป็นร่าง — ใบสำคัญเดิมเป็นสถานะยกเลิกจนกว่าจะบันทึกใหม่ (เลขที่เดิม)' : ask === 'unpay' ? 'ใบสำคัญจ่ายเงินเดือนจะถูกยกเลิก' : 'รอบนี้และใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ)'}
-          <Field label="เหตุผล" req><input autoFocus value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></Field></>}
+          <Field label="เหตุผล" req><ReasonInput value={reason} onChange={setReason} /></Field></>}
         onClose={() => { setAsk(null); setReason(''); }} onOk={() => act(() => api.post(`/api/v1/pay/runs/${id}/${ask}`, { reason }), ask === 'reopen' ? 'เปิดกลับเป็นร่างแล้ว' : ask === 'unpay' ? 'ยกเลิกการจ่ายแล้ว' : 'ยกเลิกรอบแล้ว')} />}
       {ask === 'delete' && <Confirm danger title="ลบรอบเงินเดือน" text={r?.doc_no ? `ลบรอบ ${r.doc_no} ที่ยกเลิกแล้ว? เลขที่จะว่างให้ใช้ใหม่` : 'ลบรอบร่างนี้?'} okText="ลบ" onClose={() => setAsk(null)}
         onOk={() => api.del(`/api/v1/pay/runs/${id}`).then(() => { toast('ลบรอบเงินเดือนแล้ว'); qc.invalidateQueries({ queryKey: ['pay-runs'] }); nav('/pay/runs'); }).catch((e) => { setAsk(null); toastError(e); })} />}

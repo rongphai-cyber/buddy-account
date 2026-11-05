@@ -72,7 +72,7 @@ function BankAccountForm({ b, onClose, onSaved }: { b: BankAccount | null; onClo
         <Field label="รหัสบัญชี" req hint="อักษรย่อ เช่น C1 = กระแสรายวันบัญชีที่ 1, S1, CC"><input autoFocus className="mono" {...t('code', 10)} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} /></Field>
         <Field label="ประเภทบัญชี"><select value={f.account_kind} onChange={(e) => setF({ ...f, account_kind: e.target.value })}><option value="">—</option>{Object.entries(KIND).map(([k, v]) => <option key={k} value={k}>{k} {v}</option>)}</select></Field>
         <Field label="ชื่อบัญชีเงินฝาก" req wide hint="ตามสมุดบัญชี ควรสื่อความหมาย เช่น กระแสรายวัน ธ.กรุงเทพ 111222"><input {...t('name', 120)} /></Field>
-        <Field label="ธนาคาร"><LkSelect byId rows={lk.data?.BANK} value={f.bank_id} onChange={(v) => setF({ ...f, bank_id: v })} /></Field>
+        <Field label="ธนาคาร"><LkSelect byId table="01" rows={lk.data?.BANK} value={f.bank_id} onChange={(v) => setF({ ...f, bank_id: v })} /></Field>
         <Field label="สาขา"><input {...t('branch', 60)} /></Field>
         <Field label="สมุดบัญชีเลขที่" hint="เลขบัญชีธนาคาร (บัญชีเงินสดหลอกปล่อยว่าง)"><input className="mono" {...t('account_number', 30)} /></Field>
         <Field label="ชื่อย่อ" hint="ใช้ในรายงาน/ฟอร์ม เช่น BBL-CA"><input {...t('short_name', 20)} /></Field>

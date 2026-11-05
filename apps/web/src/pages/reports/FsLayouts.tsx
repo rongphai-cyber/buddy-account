@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, type Department } from '../../api';
 import { cx, ErrorBox, Field, KeyHints, Modal, PageHead, toast, useHotkeys } from '../../ui';
+import { AddWrap } from '../../components/AddWrap';
 
 interface Col { expr: string; head1?: string; head2?: string; department_code?: string | null; percent?: boolean; percent_base?: number | null; hidden?: boolean }
 interface Layout { id: string; code: string; name: string; line_set_code: string; line_count: number; columns: Col[]; header_lines: string[] }
@@ -123,7 +124,7 @@ function LayoutEditor({ id, onClose, onSaved }: { id: string | null; onClose: ()
                 <td><select value={l.sign_filter ?? ''} onChange={(e) => setL(i, { sign_filter: e.target.value })}><option value="">—</option><option value="+">+</option><option value="-">−</option></select></td>
                 <td><select value={l.print_condition ?? ''} onChange={(e) => setL(i, { print_condition: e.target.value })} title="Z = ไม่พิมพ์ถ้าศูนย์ · N = ไม่พิมพ์ · C = กึ่งกลาง"><option value="">พิมพ์</option><option value="Z">Z</option><option value="N">N</option><option value="C">C</option></select></td>
                 {VARS.map((v) => <td key={v}><select className="var" value={l.accumulate?.[v] ?? ''} onChange={(e) => setL(i, { accumulate: { ...l.accumulate, [v]: e.target.value } })}><option value="" /> <option value="+">+</option><option value="-">−</option><option value="0">0</option><option value="/">/</option></select></td>)}
-                <td><select value={l.department_id ?? ''} onChange={(e) => setL(i, { department_id: e.target.value || null })}><option value="">—</option>{depts.data?.map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}</select></td>
+                <td><AddWrap kind="dept"><select value={l.department_id ?? ''} onChange={(e) => setL(i, { department_id: e.target.value || null })}><option value="">—</option>{depts.data?.map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}</select></AddWrap></td>
                 <td><input value={l.description_th ?? ''} onChange={(e) => setL(i, { description_th: e.target.value })} /></td>
                 <td><input value={l.description_en ?? ''} onChange={(e) => setL(i, { description_en: e.target.value })} /></td>
                 <td className="nowrap"><button className="icon-btn" title="แทรกบรรทัดถัดไป" onClick={() => addAfter(i)}>＋</button><button className="icon-btn" title="ลบ" onClick={() => setLines((ls) => ls.filter((_, k) => k !== i))}>✕</button></td>
