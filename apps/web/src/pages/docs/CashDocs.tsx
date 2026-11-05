@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CASH_KINDS, computeDoc, d, dueDate, fmt, settlementTotals, todayIso, wht50FormOf, type CashKind } from '@buddy/core';
+import { CASH_KINDS, computeDoc, d, DEPOSIT_REFUND, DOC_CLASSES, dueDate, fmt, settlementTotals, todayIso, wht50FormOf, type CashKind } from '@buddy/core';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
 import { WhtCert } from './WhtCert';
@@ -103,6 +103,7 @@ export function CashFormPage({ path }: { path: string }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan(K.menu);
+  const canRefund = useCan(DEPOSIT_REFUND.menu);
   const { me } = useSession();
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; price_type: string | null; vat_rate: string | null }>; vat_rate: number; price_type: string }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
@@ -268,6 +269,8 @@ export function CashFormPage({ path }: { path: string }) {
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         {K.cls === 'OE' && !ro && h && <AiBillButton target={K.path} onApply={applyBill} />}
+        {K.cls === 'AI' && id && !cancelled && cur.data?.remaining != null && d(cur.data.remaining).gt(0) && d(String(cur.data.vat_amount ?? 0)).isZero() && canRefund('add') &&
+          <button title="คืนยอดมัดจำคงเหลือให้ลูกค้า (เงินสด/โอน/เช็ค)" onClick={() => nav(`${DEPOSIT_REFUND.route}/new?ai=${id}`)}>คืนเงินมัดจำ</button>}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
@@ -301,7 +304,7 @@ export function CashFormPage({ path }: { path: string }) {
         {!id && !readOnly && <HoldNote party={K.party} partyId={h.party?.id} cls={K.cls} />}
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: K.deposit ? 'รายการมัดจำ' : `รายการ${K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}`, badge: used.length || undefined },
           { key: 'pay', label: 'ชำระโดยอื่น ๆ (เช็ค/โอน)', badge: pays.length || undefined }, ...(K.whtEntries ? [{ key: 'wht', label: 'ภาษีหัก ณ ที่จ่าย', badge: whts.length || undefined }] : []),
-          ...(K.deposit && id ? [{ key: 'used', label: 'หักในบิลแล้ว', badge: cur.data?.used_by.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }] : []), { key: 'gl', label: id && ro ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }]} />
+          ...(K.deposit && id ? [{ key: 'used', label: K.cls === 'AI' ? 'หักในบิล/ใบเสร็จ/คืนเงินแล้ว' : 'หักในบิลแล้ว', badge: cur.data?.used_by.length || undefined }] : []), ...(id ? [{ key: 'vat', label: vatTabLabel(K.cls) }] : []), { key: 'gl', label: id && ro ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }]} />
         {tab === 'lines' && noLines && <div className="notebox">เอกสารนี้ย้ายมาจาก Express โดยไม่มีรายการ (Express เก็บเฉพาะยอดเงิน) — แสดงยอดตามเอกสาร · แก้ไขไม่ได้ ยกเลิกหรือดูการลงบัญชีได้ตามปกติ</div>}
         {tab === 'lines' && <div className="table-wrap lines">
           <table className="grid">
@@ -323,9 +326,10 @@ export function CashFormPage({ path }: { path: string }) {
         </div>}
         {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction={K.direction} partyId={h.party?.id ?? null} readOnly={ro} payDate={h.doc_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
         {tab === 'wht' && K.whtEntries && <WhtTable whts={whts} setWhts={setWhts} readOnly={ro} base={base} defaults={{ form: h.party ? h.whtForm : 'S03', rate: h.whtRate }} canAdd={used.length > 0} dirty={dirty} onDirty={() => setDirty(true)} />}
-        {tab === 'used' && cur.data && <table className="grid"><thead><tr><th>บิล</th><th>วันที่</th><th className="r">ยอดที่หัก</th></tr></thead>
-          <tbody>{cur.data.used_by.map((u) => <tr key={u.id}><td><DocLink id={u.id} no={u.doc_no} cls={u.doc_class} /></td><td><DateText v={u.doc_date} /></td><td className="r"><Money v={u.amount} /></td></tr>)}
-            {!cur.data.used_by.length && <tr><td colSpan={3} className="empty">ยังไม่ได้หักในบิล — คงเหลือ <Money v={cur.data.remaining} /></td></tr>}</tbody></table>}
+        {tab === 'used' && cur.data && <div className="table-wrap"><table className="grid"><thead><tr><th>เอกสาร</th><th>ชนิด</th><th>วันที่</th><th className="r">ยอดที่หัก/คืน</th></tr></thead>
+          <tbody>{cur.data.used_by.map((u) => <tr key={u.id} className="row-open" onClick={() => nav(`/doc/${u.id}`)}><td><DocLink id={u.id} no={u.doc_no} cls={u.doc_class} /></td><td>{u.doc_class === 'RE' ? 'ใบเสร็จ (หักมัดจำ)' : DOC_CLASSES[u.doc_class]?.label ?? u.doc_class}</td><td><DateText v={u.doc_date} /></td><td className="r"><Money v={u.amount} /></td></tr>)}
+            {!cur.data.used_by.length && <tr><td colSpan={4} className="empty">ยังไม่ได้ใช้มัดจำนี้ — คงเหลือ <Money v={cur.data.remaining} /></td></tr>}</tbody>
+            {cur.data.used_by.length > 0 && <tfoot><tr><td colSpan={3} className="r">คงเหลือ</td><td className="r"><b><Money v={cur.data.remaining} /></b></td></tr></tfoot>}</table></div>}
         {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} />}
         {tab === 'gl' && <PostingTab id={id} path={K.path} editing={!ro} bodyOf={bodyOf} />}
         <div className="trade-foot">

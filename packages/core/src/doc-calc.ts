@@ -156,6 +156,13 @@ export const CASH_KINDS: CashKind[] = [
   { path: 'other-expense-docs', cls: 'OE', module: 'AP', menu: 'PU.OE', party: 'supplier', partyRequired: false, label: 'บันทึกค่าใช้จ่ายอื่น ๆ', route: '/pu/other-expense', lines: 'code', itemType: '5', direction: 'P', whtEntries: true, deposit: false },
 ];
 
+/**
+ * คืนเงินมัดจำ RD — Express ไม่มีเอกสารนี้ (คืนมัดจำต้องใช้ใบสำคัญทั่วไป) · Buddy เพิ่ม 05/11/2569 สำหรับ WTS-Living (หอพัก/นิติบุคคล — คืนเงินประกันตอนย้ายออก)
+ * คืนยอดคงเหลือของมัดจำรับ (AI) ให้ลูกค้า: Dr เงินมัดจำรับล่วงหน้า / Cr เงินสด-โอน-เช็ค · ยอดคงเหลือของมัดจำลดลงด้วย doc_link DEPOSIT (AI → RD)
+ * คืนได้เฉพาะมัดจำที่ไม่มีภาษีมูลค่าเพิ่ม (มัดจำที่ออกใบกำกับภาษีแล้วต้องลดภาษีขายด้วยใบลดหนี้ — ยังไม่รองรับ)
+ */
+export const DEPOSIT_REFUND = { path: 'ar-deposit-refunds', cls: 'RD', module: 'AR', menu: 'SA.RD', party: 'customer', label: 'คืนเงินมัดจำ', route: '/sa/deposit-refunds', direction: 'P' } as const;
+
 /** ใบวางบิล BS (คู่มือ S-BI-01) / ใบรับวางบิล BR (S-PU-06): รวมบิลค้างของคู่ค้าเพื่อนัดรับ/จ่ายเงิน — ไม่ลงบัญชี */
 export interface BillKind { path: string; cls: 'BS' | 'BR'; module: 'AR' | 'AP'; menu: string; party: 'customer' | 'supplier'; label: string; route: string; open: string[] }
 export const BILL_KINDS: BillKind[] = [

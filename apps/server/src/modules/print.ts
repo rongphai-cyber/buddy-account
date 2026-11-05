@@ -119,10 +119,15 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     }));
     if (!lines.length && fam === 'bank') lines = [{ no: '1', code: '', name: txt(h.remark) || txt(h.type_name), amount: money(h.net_amount ?? h.amount) }];
   }
+  // มัดจำรับที่ใช้ (05/11/2569): ใบคืนเงินมัดจำพิมพ์ใบมัดจำที่คืนเป็นรายการ · ใบเสร็จพิมพ์เป็นวิธีชำระ "หักเงินมัดจำ"
+  const depUsed = H.scope === 'RD' || H.scope === 'RE' ? (await sql<Row>`SELECT f.doc_no, f.doc_date, l.amount FROM doc_link l JOIN doc_header f ON f.id = l.from_header_id
+      WHERE l.company_id = ${a.companyId} AND l.to_header_id = ${id} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL ORDER BY f.doc_date, f.doc_no`.execute(db)).rows : [];
+  if (H.scope === 'RD') lines = depUsed.map((r, i) => ({ no: String(i + 1), code: txt(r.doc_no), name: `คืนเงินมัดจำ ${txt(r.doc_no)} ลงวันที่ ${txt(r.doc_date)}`, qty: '', amount: money(r.amount) }));
   const payments = (await sql<Row>`SELECT m.name_th AS method, p.reference_no, p.amount, c.cheque_no, c.cheque_date, c.bank_branch FROM doc_payment p
       LEFT JOIN md_payment_method m ON m.id = p.payment_method_id LEFT JOIN fin_cheque c ON c.id = p.cheque_id
      WHERE p.header_id = ${id} AND p.deleted_at IS NULL ORDER BY p.line_no`.execute(db)).rows
     .map((p) => ({ method: txt(p.method), ref: txt(p.cheque_no || p.reference_no), date: txt(p.cheque_date), amount: money(p.amount) }));
+  if (H.scope === 'RE') payments.unshift(...depUsed.map((r) => ({ method: 'หักเงินมัดจำ', ref: txt(r.doc_no), date: txt(r.doc_date), amount: money(r.amount) })));
   const notes = (await sql<{ text: string }>`SELECT text FROM doc_note WHERE header_id = ${id} AND line_id IS NULL AND deleted_at IS NULL ORDER BY seq`.execute(db)).rows.map((n) => n.text);
   const jl = h.journal_id ? await journalLines(db, [h.journal_id]) : [];
 

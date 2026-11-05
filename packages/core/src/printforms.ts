@@ -1,4 +1,4 @@
-import { BANK_KINDS, BILL_KINDS, CASH_KINDS, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from './doc-calc.js';
+import { BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from './doc-calc.js';
 
 /**
  * แบบฟอร์มพิมพ์เอกสาร (คู่มือบทที่ 25 S-RD-01/02 · บทที่ 3 S-UI-08/10)
@@ -59,7 +59,7 @@ export const BUILTIN_SLOTS: Array<{ slot: number; base: PrintBase }> = [{ slot: 
 /** ชื่อประเภทเอกสารแบบทั่วไปของ Express/Buddy (ชื่อใช้ภายใน เช่น "ขายเงินเชื่อ") — พิมพ์แทนด้วยชื่อเอกสารมาตรฐาน */
 const GENERIC_TYPE_NAMES: Record<string, string[]> = {
   IV: ['ขายเงินเชื่อ'], HS: ['ขายเงินสด'], CN: ['ใบลดหนี้/รับคืน', 'ลดหนี้/รับคืน'], DR: ['ใบเพิ่มหนี้ (ลูกหนี้)', 'เพิ่มหนี้ (ลูกหนี้)'], AI: ['รับเงินมัดจำ'],
-  RR: ['ซื้อเงินเชื่อ'], HP: ['ซื้อเงินสด'], DN: ['ใบลดหนี้/ส่งคืน', 'ลดหนี้/ส่งคืน'], CP: ['ใบเพิ่มหนี้ (ของเจ้าหนี้)', 'เพิ่มหนี้ (เจ้าหนี้)'], AE: ['จ่ายเงินมัดจำ'],
+  RD: ['คืนเงินมัดจำ'], RR: ['ซื้อเงินเชื่อ'], HP: ['ซื้อเงินสด'], DN: ['ใบลดหนี้/ส่งคืน', 'ลดหนี้/ส่งคืน'], CP: ['ใบเพิ่มหนี้ (ของเจ้าหนี้)', 'เพิ่มหนี้ (เจ้าหนี้)'], AE: ['จ่ายเงินมัดจำ'],
   RL: ['โอนย้ายระหว่างคลัง'], OU: ['เบิกใช้ภายใน'], JU: ['ปรับปรุงเพิ่ม/ลดสินค้า'],
   QT: ['ใบเสนอราคา'], SO: ['ใบสั่งขาย'], PO: ['ใบสั่งซื้อ'], BS: ['ใบวางบิล'], BR: ['ใบรับวางบิล'],
 };
@@ -70,7 +70,7 @@ const STD_TITLES: Record<string, (vat: boolean) => [string, string]> = {
   CN: () => ['ใบลดหนี้', 'CREDIT NOTE'], DR: () => ['ใบเพิ่มหนี้', 'DEBIT NOTE'],
   AI: (v) => (v ? ['ใบรับเงินมัดจำ/ใบกำกับภาษี', 'DEPOSIT RECEIPT / TAX INVOICE'] : ['ใบรับเงินมัดจำ', 'DEPOSIT RECEIPT']),
   RR: () => ['ใบรับสินค้า', 'GOODS RECEIPT'], HP: () => ['ใบรับสินค้า (ซื้อเงินสด)', 'GOODS RECEIPT'], DN: () => ['ใบส่งคืนสินค้า', 'GOODS RETURN'],
-  CP: () => ['ใบเพิ่มหนี้ (เจ้าหนี้)', 'SUPPLIER DEBIT NOTE'], AE: () => ['ใบจ่ายเงินมัดจำ', 'DEPOSIT PAYMENT'],
+  CP: () => ['ใบเพิ่มหนี้ (เจ้าหนี้)', 'SUPPLIER DEBIT NOTE'], AE: () => ['ใบจ่ายเงินมัดจำ', 'DEPOSIT PAYMENT'], RD: () => ['ใบคืนเงินมัดจำ', 'DEPOSIT REFUND'],
   RL: () => ['ใบโอนย้ายสินค้า', 'STOCK TRANSFER'], OU: () => ['ใบเบิกสินค้า', 'STOCK ISSUE'], JU: () => ['ใบปรับปรุงสินค้า', 'STOCK ADJUSTMENT'],
   QT: () => ['ใบเสนอราคา', 'QUOTATION'], SO: () => ['ใบสั่งขาย', 'SALES ORDER'], PO: () => ['ใบสั่งซื้อ', 'PURCHASE ORDER'],
   BS: () => ['ใบวางบิล', 'BILLING NOTE'], BR: () => ['ใบรับวางบิล', 'BILL ACCEPTANCE'],
@@ -87,7 +87,7 @@ export function printTitle(scope: string, typeName: string, typeNameEn: string, 
 }
 /** หัวกล่องคู่ค้าในแบบฟอร์ม */
 export function printPartyLabel(scope: string): string {
-  const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, ...BILL_KINDS].find((x) => x.cls === scope);
+  const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, ...BILL_KINDS, DEPOSIT_REFUND].find((x) => x.cls === scope);
   return k?.party === 'supplier' ? 'ผู้จำหน่าย' : k ? 'ลูกค้า' : '';
 }
 
@@ -98,7 +98,7 @@ export function printFamily(scope: string): PrintFamily {
   if (TRADE_KINDS.some((k) => k.cls === scope)) return 'trade';
   if (SETTLE_KINDS.some((k) => k.cls === scope)) return 'settle';
   if (BILL_KINDS.some((k) => k.cls === scope)) return 'bill';
-  if (CASH_KINDS.some((k) => k.cls === scope)) return 'cash';
+  if (CASH_KINDS.some((k) => k.cls === scope) || scope === DEPOSIT_REFUND.cls) return 'cash';
   if (STOCK_CLASSES.has(scope)) return 'stock';
   if (BANK_CLASSES.has(scope)) return 'bank';
   if (scope === 'DP' || scope === 'VR') return 'petty';
@@ -109,7 +109,7 @@ export function printFamily(scope: string): PrintFamily {
 export function docMenuOf(docClass: string, isOpening = false): string {
   if (docClass === 'GL') return 'GL.JNL';
   if (isOpening) return ['IV', 'DR', 'CN', 'AI'].includes(docClass) ? 'FI.AR.OB' : ['RR', 'CP', 'DN', 'AE'].includes(docClass) ? 'FI.AP.OB' : 'IC.OB';
-  const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, ...BILL_KINDS].find((x) => x.cls === docClass);
+  const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, ...BILL_KINDS, DEPOSIT_REFUND].find((x) => x.cls === docClass);
   if (k) return k.menu;
   if (STOCK_CLASSES.has(docClass)) return 'IC.TRN';
   if (docClass === 'BQ' || docClass === 'SQ') return 'FI.BK.DQ';
@@ -129,7 +129,7 @@ export function docPath(docClass: string | null | undefined, id: string, isOpeni
   if (isOpening) return docClass === 'IV' ? `/fi/ar/opening/${id}` : docClass === 'RR' ? `/fi/ap/opening/${id}` : null;
   if (docClass === 'DP' || docClass === 'VR') return `/fi/petty-cash/${docClass.toLowerCase()}/${id}`;
   if (docClass === 'BQ' || docClass === 'SQ') return `/fi/cheques/slips/${id}`;
-  const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, ...BILL_KINDS, ...BANK_KINDS, ...STOCK_KINDS].find((x) => x.cls === docClass);
+  const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, DEPOSIT_REFUND, ...BILL_KINDS, ...BANK_KINDS, ...STOCK_KINDS].find((x) => x.cls === docClass);
   return k ? `${k.route}/${id}` : null;
 }
 

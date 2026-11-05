@@ -2782,7 +2782,7 @@ COMMENT ON COLUMN doc_header.id IS 'รหัสแถว UUIDv7 (สร้า�
 COMMENT ON COLUMN doc_header.company_id IS 'บริษัท';
 COMMENT ON COLUMN doc_header.branch_id IS 'สาขาที่ออกเอกสาร';
 COMMENT ON COLUMN doc_header.doc_type_id IS 'ประเภทเอกสาร (prefix) [Express: ISRUN]';
-COMMENT ON COLUMN doc_header.doc_class IS 'ชนิดเอกสาร = หมวดเอกสารของ Express (ISRUN.DOCTYP): ขาย QT SO AI IV HS DR CN(ลดหนี้) OI BS(วางบิล) RE | ซื้อ PO AE RR HP CP DN(ลดหนี้) OE BR PS | สินค้า OU RL JU CA | ธนาคาร BD BW BT BU BV BQ QP | เงินสดย่อย DP VR [Express: ARTRN/APTRN.RECTYP, OESO.SORECTYP, STTRN.POSOPR]';
+COMMENT ON COLUMN doc_header.doc_class IS 'ชนิดเอกสาร = หมวดเอกสารของ Express (ISRUN.DOCTYP): ขาย QT SO AI IV HS DR CN(ลดหนี้) OI BS(วางบิล) RE RD(คืนเงินมัดจำ — Buddy เพิ่ม) | ซื้อ PO AE RR HP CP DN(ลดหนี้) OE BR PS | สินค้า OU RL JU CA | ธนาคาร BD BW BT BU BV BQ QP | เงินสดย่อย DP VR [Express: ARTRN/APTRN.RECTYP, OESO.SORECTYP, STTRN.POSOPR]';
 COMMENT ON COLUMN doc_header.module IS 'AR AP SO PO IC BK PC';
 COMMENT ON COLUMN doc_header.express_rectype IS 'RECTYP เดิมของ Express (เก็บไว้ตรวจย้อน) [Express: RECTYP]';
 COMMENT ON COLUMN doc_header.doc_no IS 'เลขที่เอกสาร [Express: DOCNUM / SONUM / PONUM / BILNUM]';
@@ -2820,7 +2820,7 @@ COMMENT ON COLUMN doc_header.amount IS 'รวมเงินก่อนหั�
 COMMENT ON COLUMN doc_header.discount_text IS 'สูตรส่วนลดท้ายบิล เช่น 5%+100 [Express: DISC]';
 COMMENT ON COLUMN doc_header.discount_amount IS 'ส่วนลดท้ายบิล [Express: DISCAMT]';
 COMMENT ON COLUMN doc_header.amount_after_discount IS 'หลังหักส่วนลด [Express: AFTDISC]';
-COMMENT ON COLUMN doc_header.deposit_amount IS 'หักเงินมัดจำ [Express: ADVAMT]';
+COMMENT ON COLUMN doc_header.deposit_amount IS 'หักเงินมัดจำ (บิล IV/HS/RR/HP · ใบเสร็จ RE = มัดจำที่หักแทนเงินรับ · RD = ยอดคืนเงินมัดจำ) [Express: ADVAMT]';
 COMMENT ON COLUMN doc_header.zero_rate_amount IS 'มูลค่าอัตรา 0% [Express: AMTRAT0]';
 COMMENT ON COLUMN doc_header.exempt_amount IS 'มูลค่าที่ได้รับยกเว้น VAT (รายการรหัส VAT 0 — ภ.พ.30 ข้อ 3)';
 COMMENT ON COLUMN doc_header.taxable_amount IS 'มูลค่าก่อน VAT [Express: TOTAL / NETVAL]';
@@ -3081,7 +3081,7 @@ COMMENT ON COLUMN doc_link.id IS 'รหัสแถว UUIDv7 (สร้าง�
 COMMENT ON COLUMN doc_link.company_id IS 'บริษัท';
 COMMENT ON COLUMN doc_link.from_header_id IS 'เอกสารต้นทาง (เช่น SO, PO, AI, AE, IV เดิม)';
 COMMENT ON COLUMN doc_link.to_header_id IS 'เอกสารปลายทาง (IV, RR, SR …)';
-COMMENT ON COLUMN doc_link.link_type IS 'FULFIL (SO→IV, PO→RR) CONVERT (QT→SO) DEPOSIT (AI→IV, AE→RR) ADJUST (IV→DR/SR, RR→CP/GR)';
+COMMENT ON COLUMN doc_link.link_type IS 'FULFIL (SO→IV, PO→RR) CONVERT (QT→SO) DEPOSIT (AI→IV/HS/RE/RD, AE→RR) ADJUST (IV→DR/SR, RR→CP/GR)';
 COMMENT ON COLUMN doc_link.amount IS 'จำนวนเงินที่หัก/อ้างถึง (เช่น ยอดหักมัดจำ)';
 COMMENT ON COLUMN doc_link.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN doc_link.created_by IS 'ผู้สร้าง [Express: CREBY]';

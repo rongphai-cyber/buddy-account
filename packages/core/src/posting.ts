@@ -24,6 +24,11 @@ export interface PostSettlement { amount: MoneyInput; vat: MoneyInput; party_id:
 export interface PostCharge { item_id: string | null; /** บัญชีจากรายการหักที่ตั้งที่ประเภทเอกสาร (ชั้น 1 มาก่อนรหัสค่าใช้จ่าย) */ account_id?: string | null; amount: MoneyInput; vat_type: string; vat_amount: MoneyInput; wht_amount: MoneyInput; wht_condition: string }
 /** ยอดที่แพลตฟอร์มหักจากเงินโอนจริง = ค่าบริการ + VAT ที่เรียกเก็บ (ภ.พ.36 และภาษีหัก ณ ที่จ่ายไม่กระทบเงินโอน) */
 export const chargeDeducted = (c: Pick<PostCharge, 'amount' | 'vat_type' | 'vat_amount'>) => d(c.amount).plus(c.vat_type === '1' ? d(c.vat_amount) : d(0));
+/**
+ * มัดจำที่ใบเสร็จ (RE) นำมาหักแทนเงินรับ หรือที่ใบคืนเงินมัดจำ (RD) คืนให้ลูกค้า (doc_link DEPOSIT AI → RE/RD)
+ * doc_type_id = ประเภทเอกสารของใบมัดจำ — Dr บัญชีเงินมัดจำรับที่ใบมัดจำลงไว้ (ช่องของประเภทเอกสาร AI) → บัญชีเพื่อลงรายวัน
+ */
+export interface PostDeposit { amount: MoneyInput; doc_type_id: string | null }
 export interface ItemGroup { inv: string | null; cogs: string | null; sales: string | null; sret: string | null; pur: string | null; pret: string | null }
 
 export interface PostingResolver {
@@ -43,9 +48,9 @@ export type Layer = '1' | '2' | '3' | 'S';
 export interface PostingLine { account_id: string | null; debit: Decimal; credit: Decimal; role: string; layer: Layer }
 
 /** หมวดเอกสารที่ลงบัญชีด้วยเครื่องนี้ */
-export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'DP', 'VR', 'OU', 'JU', 'CA', 'BD', 'BW', 'BT', 'BU', 'BV'] as const;
+export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'RD', 'DP', 'VR', 'OU', 'JU', 'CA', 'BD', 'BW', 'BT', 'BU', 'BV'] as const;
 
-export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment[], setts: PostSettlement[], r: PostingResolver, charges: PostCharge[] = []): PostingLine[] {
+export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment[], setts: PostSettlement[], r: PostingResolver, charges: PostCharge[] = [], deps: PostDeposit[] = []): PostingLine[] {
   const out: PostingLine[] = [];
   type Acct = [string | null, Layer];
   const pick = (...c: Array<[Layer, string | null | undefined]>): Acct => {
@@ -72,6 +77,9 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
   const paysTotal = pays.reduce((s, p) => s.plus(d(p.amount)), d(0));
   // ส่วนที่เหลือหลังวิธีชำระ = เงินสด (Express เก็บที่หัวเอกสาร)
   const cashRest = (total: Decimal) => (total.minus(paysTotal).gte('0.01') ? total.minus(paysTotal) : d(0));
+  // มัดจำรับที่ใบเสร็จหัก/ใบคืนเงินคืน: Dr บัญชีเงินมัดจำรับของใบมัดจำแต่ละใบ (ช่องของประเภทเอกสาร AI → บัญชีเพื่อลงรายวัน)
+  const depTotal = deps.reduce((s, x) => s.plus(d(x.amount)), d(0));
+  const debitDeposits = () => { for (const x of deps) D(pick(['1', r.slot(x.doc_type_id, 'AI', 'DEPOSIT_RECEIVED')], ['3', r.def('DEPOSIT_RECEIVED')]), d(x.amount), 'DEPOSIT_RECEIVED'); };
 
   const lineAccount = (kind: 'SALES' | 'SALES_RETURN' | 'PURCHASE' | 'PURCHASE_RETURN', itemId: string | null): Acct => {
     const { type, group: g } = r.item(itemId ?? '');
@@ -167,8 +175,15 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
       if (!w.isZero()) { C(pick(['3', r.def('WHT_PAYABLE')]), w, 'WHT_PAYABLE'); D(c.wht_condition === '3' ? exp : pick(['3', r.def('WHT_RECOVERABLE')]), w, c.wht_condition === '3' ? 'WHT_BORNE' : 'WHT_RECOVERABLE'); }
       deducted = deducted.plus(chargeDeducted(c));
     }
-    (isRe ? D : C)(cash, cashRest(partyTotal.minus(wht).minus(disc).plus(intr).plus(isRe ? fx : fx.neg()).minus(deducted)), 'CASH');
+    // ใบเสร็จหักเงินมัดจำ (05/11/2569): มัดจำที่หักแทนเงินรับ — Dr เงินมัดจำรับ แทนเงินสดส่วนนั้น
+    if (isRe) debitDeposits();
+    (isRe ? D : C)(cash, cashRest(partyTotal.minus(wht).minus(disc).plus(intr).plus(isRe ? fx : fx.neg()).minus(deducted).minus(isRe ? depTotal : d(0))), 'CASH');
     for (const p of pays) (isRe ? D : C)(payAcct(p), d(p.amount), 'PAYMENT');
+  } else if (cls === 'RD') {
+    // คืนเงินมัดจำ: Dr เงินมัดจำรับล่วงหน้า (ตามใบมัดจำ) / Cr เงินสด (ช่องของประเภทเอกสาร → บัญชีเพื่อลงรายวัน) + วิธีจ่าย (โอน เช็ค)
+    debitDeposits();
+    C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(depTotal), 'CASH');
+    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
   } else if (cls === 'AI' || cls === 'OI') {
     // ภาษีถูกหัก ณ ที่จ่าย: Dr ภาษีจ่ายล่วงหน้า แทนเงินสดส่วนนั้น
     const wht = d(h.wht_amount ?? 0);
@@ -245,14 +260,16 @@ export function netByAccount(lines: PostingLine[]): Map<string | null, Decimal> 
  * ต้องเท่ากับยอดชำระจริง (เงินสด + ชำระโดยอื่น) — ไม่ระบุเงินสด = ส่วนที่เหลือเป็นเงินสด
  */
 /** fx = กำไร(+)/ขาดทุน(−) จากอัตราแลกเปลี่ยน · direction R (รับ) กำไรเพิ่มยอดที่ได้รับ · P (จ่าย) กำไรลดยอดที่ต้องจ่าย · charges = ยอดที่แพลตฟอร์มหักก่อนโอน (chargeDeducted) */
-export function settlementTotals(x: { settlements: MoneyInput[]; interest?: MoneyInput; discount?: MoneyInput; wht?: MoneyInput; fx?: MoneyInput; charges?: MoneyInput; direction?: 'R' | 'P'; payments: MoneyInput[]; cash?: MoneyInput | null }) {
+/** deposits = มัดจำที่ใบเสร็จนำมาหัก (นับเป็นเงินที่ได้รับแล้ว เหมือนวิธีชำระ — เงินสดเริ่มต้น = ส่วนที่เหลือหลังหักมัดจำ) */
+export function settlementTotals(x: { settlements: MoneyInput[]; interest?: MoneyInput; discount?: MoneyInput; wht?: MoneyInput; fx?: MoneyInput; charges?: MoneyInput; direction?: 'R' | 'P'; payments: MoneyInput[]; cash?: MoneyInput | null; deposits?: MoneyInput }) {
   const billed = x.settlements.reduce<Decimal>((s, a) => s.plus(d(a)), d(0));
   const fx = d(x.fx || 0).times(x.direction === 'R' ? 1 : -1);
   const due = billed.plus(d(x.interest ?? 0)).minus(d(x.discount ?? 0)).minus(d(x.wht ?? 0)).minus(d(x.charges || 0)).plus(fx);
   const other = x.payments.reduce<Decimal>((s, a) => s.plus(d(a)), d(0));
-  const cash = x.cash === null || x.cash === undefined || x.cash === '' ? due.minus(other) : d(x.cash);
-  const paid = cash.plus(other);
-  return { billed: billed.toFixed(2), due: due.toFixed(2), other: other.toFixed(2), cash: cash.toFixed(2), paid: paid.toFixed(2), diff: due.minus(paid).toFixed(2), ok: due.minus(paid).abs().lt('0.005') && cash.gte(0) };
+  const dep = d(x.deposits || 0);
+  const cash = x.cash === null || x.cash === undefined || x.cash === '' ? due.minus(other).minus(dep) : d(x.cash);
+  const paid = cash.plus(other).plus(dep);
+  return { billed: billed.toFixed(2), due: due.toFixed(2), other: other.toFixed(2), deposit: dep.toFixed(2), cash: cash.toFixed(2), paid: paid.toFixed(2), diff: due.minus(paid).toFixed(2), ok: due.minus(paid).abs().lt('0.005') && cash.gte(0) };
 }
 
 export function postingBalanced(lines: PostingLine[]): boolean {

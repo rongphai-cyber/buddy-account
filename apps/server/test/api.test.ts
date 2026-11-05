@@ -860,7 +860,7 @@ describe('Buddy Account API (PGlite)', () => {
 
   it('document types & numbering (S-DN-01/02) and GL link (S-GL-01/02)', async () => {
     const list = (await call('GET', '/api/v1/doc-types')).body as Array<{ id: string; code: string; doc_class: string; book_code: string | null; next_no: string }>;
-    expect(list.length).toBe(34);                                           // ประเภทเอกสารมาตรฐานของบริษัทใหม่
+    expect(list.length).toBe(35);                                           // ประเภทเอกสารมาตรฐานของบริษัทใหม่ (รวม RD คืนเงินมัดจำ 05/11/2569)
     expect(list.find((t) => t.code === 'IV')).toMatchObject({ doc_class: 'IV', book_code: '03' });
     expect(list.find((t) => t.code === 'SR')!.doc_class).toBe('CN');        // หมวดกับ prefix ต่างกันได้
     const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;

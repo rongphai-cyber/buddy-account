@@ -185,18 +185,22 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
       const h = await db.selectFrom('doc_header').select(['id', 'doc_no']).where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
       return cancelDocument(db, a, id, reason, async (tx) => {
-        if (K.deposit && (await depositUsed(tx, id)).gt(0)) throw badRequest(`${h.doc_no} หักในบิลแล้ว — ยกเลิกบิลที่หักมัดจำนี้ก่อน`);
+        if (K.deposit && (await depositUsed(tx, id)).gt(0)) {
+          const by = (await sql<{ doc_no: string }>`SELECT t.doc_no FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id WHERE l.from_header_id = ${id} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL
+              AND t.doc_status <> 'C' AND t.deleted_at IS NULL ORDER BY t.doc_date, t.doc_no`.execute(tx)).rows.map((r) => r.doc_no);
+          throw badRequest(`${h.doc_no} หักในบิลแล้วหรือคืนเงินแล้ว (${by.join(', ')}) — ยกเลิกบิล/ใบเสร็จ/ใบคืนเงินมัดจำที่ใช้มัดจำนี้ก่อน`);
+        }
         await releaseCheques(tx, a, id, h.doc_no);
         await tx.updateTable('tax_wht_entry').set({ doc_status: 'C', updated_by: a.userId }).where('company_id', '=', a.companyId).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
       });
     });
   }
-  /** มัดจำคงเหลือของคู่ค้า — ใช้หักในบิลขาย/ซื้อ (ประเภทราคาต้องตรงกับบิล คู่มือหน้า 210) */
+  /** มัดจำคงเหลือของคู่ค้า — ใช้หักในบิลขาย/ซื้อ (ประเภทราคาต้องตรงกับบิล คู่มือหน้า 210) · ใบเสร็จ/ใบคืนเงินมัดจำ (invoice_id = เอกสารที่กำลังแก้ · vat_amount ≠ 0 ใช้ไม่ได้) */
   app.get('/api/v1/deposits/open', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ module: z.enum(['AR', 'AP']), party_id: uuid, invoice_id: uuid.optional() }), req.query);
     const own = q.invoice_id ? sql`(SELECT coalesce(sum(l.amount), 0) FROM doc_link l WHERE l.from_header_id = o.header_id AND l.to_header_id = ${q.invoice_id} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL)` : sql`0`;
-    const rows = (await sql`SELECT o.header_id, o.doc_class, o.doc_no, o.doc_date, o.due_date, o.price_type, o.amount, o.outstanding + ${own} AS outstanding, ${own} AS own
+    const rows = (await sql`SELECT o.header_id, o.doc_class, o.doc_no, o.doc_date, o.due_date, o.price_type, o.amount, (SELECT h.vat_amount FROM doc_header h WHERE h.id = o.header_id) AS vat_amount, o.outstanding + ${own} AS outstanding, ${own} AS own
       FROM v_deposit_outstanding o WHERE o.company_id = ${a.companyId} AND o.module = ${q.module} AND o.${sql.ref(q.module === 'AR' ? 'customer_id' : 'supplier_id')} = ${q.party_id}
         AND (o.outstanding > 0 OR ${own} <> 0) ORDER BY o.doc_date, o.doc_no`.execute(db)).rows;
     return { rows };

@@ -63,6 +63,7 @@ import { DataTablesPage } from './pages/settings/DataTables';
 import { TradeFormPage, TradeListPage } from './pages/docs/TradeDocs';
 import { SettleFormPage, SettleListPage } from './pages/docs/SettleDocs';
 import { CashFormPage, CashListPage } from './pages/docs/CashDocs';
+import { DepositRefundFormPage, DepositRefundListPage } from './pages/docs/DepositRefunds';
 import { BillFormPage, BillListPage } from './pages/docs/BillDocs';
 import { PettyFormPage, PettyListPage } from './pages/docs/PettyCash';
 import { OpeningFormPage, OpeningListPage } from './pages/docs/OpeningDocs';
@@ -80,7 +81,7 @@ import { DashboardPage } from './pages/reports/Dashboard';
 import { DocLocatePage } from './components/DocLink';
 import { InventoryAccountPage } from './pages/gl/InventoryAccount';
 import { StockDocFormPage, StockDocListPage } from './pages/docs/StockDocs';
-import { BANK_KINDS, BILL_KINDS, CASH_KINDS, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
+import { BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
 
 export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', 'FI.BK': 'bank', TX: 'tax', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
 /** ไอคอนเมนูหลัก (แทนตัวเลขปุ่มลัดเดิม — เห็นได้แม้ย่อแถบเมนู) */
@@ -269,6 +270,7 @@ function Shell() {
           {TRADE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<TradeListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<TradeFormPage key={k.path} path={k.path} />} />])}
           {SETTLE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<SettleListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<SettleFormPage key={k.path} path={k.path} />} />])}
           {CASH_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<CashListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<CashFormPage key={k.path} path={k.path} />} />])}
+          <Route path={DEPOSIT_REFUND.route} element={<DepositRefundListPage />} /><Route path={`${DEPOSIT_REFUND.route}/:id`} element={<DepositRefundFormPage />} />
           {BILL_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<BillListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<BillFormPage key={k.path} path={k.path} />} />])}
           <Route path="/fi/ar/opening" element={<OpeningListPage key="ar" kind="ar" />} />
           <Route path="/fi/ar/opening/:id" element={<OpeningFormPage key="ar-f" kind="ar" />} />

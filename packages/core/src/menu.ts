@@ -27,6 +27,7 @@ export const MENU: MenuItem[] = [
   g('SA', 'ขาย', 'P3', [
     m('SA.QT', 'ใบเสนอราคา', 'P3', '/sa/quotations', ['ch12:S-QT-01']),
     m('SA.AI', 'รับเงินมัดจำ', 'P3', '/sa/deposits', ['ch12:S-AI-01']),
+    m('SA.RD', 'คืนเงินมัดจำ', 'P3', '/sa/deposit-refunds'),
     m('SA.SO', 'ใบสั่งขาย', 'P3', '/sa/orders', ['ch12:S-SO-01']),
     m('SA.IV', 'ขายเงินเชื่อ / ขายเงินสด', 'P3', '/sa/invoices', ['ch12:S-IV-01', 'ch12:S-CS-01']),
     m('SA.OI', 'บันทึกรายได้อื่น ๆ', 'P3', '/sa/other-income', ['ch12:S-OI-01']),
@@ -220,7 +221,7 @@ export const MODULE_SWITCHES: ModuleSwitch[] = [
   { key: 'PU', label: 'ระบบซื้อและเจ้าหนี้', menus: ['PU', 'FI.AP', 'RP.PU'], hint: 'ซื้อ ใบสั่งซื้อ จ่ายมัดจำ ค่าใช้จ่ายอื่น เจ้าหนี้ จ่ายชำระ รายงานซื้อ' },
   { key: 'SA', label: 'ระบบขายและลูกหนี้', menus: ['SA', 'FI.AR', 'RP.SA'], hint: 'ขาย ใบเสนอราคา ใบสั่งขาย รับมัดจำ รายได้อื่น ลูกหนี้ รับชำระ รายงานขาย' },
   { key: 'ORDER', label: 'ใบเสนอราคา / ใบสั่งขาย / ใบสั่งซื้อ', menus: ['SA.QT', 'SA.SO', 'PU.PO'], hint: 'กิจการที่เปิดบิลทันทีโดยไม่มีใบสั่ง' },
-  { key: 'DEPOSIT', label: 'เงินมัดจำ (รับ/จ่าย)', menus: ['SA.AI', 'PU.AE'], hint: 'รับเงินมัดจำ จ่ายเงินมัดจำ' },
+  { key: 'DEPOSIT', label: 'เงินมัดจำ (รับ/จ่าย)', menus: ['SA.AI', 'SA.RD', 'PU.AE'], hint: 'รับเงินมัดจำ คืนเงินมัดจำ จ่ายเงินมัดจำ' },
   { key: 'BILLING', label: 'ใบวางบิล / ใบรับวางบิล', menus: ['FI.AR.BI', 'FI.AR.BD', 'FI.AP.BR', 'FI.AP.BD'], hint: 'วางบิล นัดรับชำระ รับวางบิล นัดจ่ายชำระ' },
   { key: 'BANK', label: 'ระบบธนาคารและเช็ค', menus: ['FI.BK', 'RP.CHQ'], hint: 'เช็ครับ/จ่าย นำฝาก ผ่านเช็ค ฝาก/ถอน/โอน สมุดเงินฝาก กระทบยอด' },
   { key: 'STOCK', label: 'ระบบสินค้าคงคลัง (สต๊อก)', menus: ['IC.STOCK', 'IC.TRN', 'IC.OB', 'IC.COUNT', 'IC.SERIAL', 'IC.REORDER', 'GL.INV', 'RP.IC'], hint: 'ยอดคงเหลือ รายการประจำวันสินค้า ตรวจนับ ยอดยกมา — รายละเอียดสินค้า/บริการยังใช้ได้' },

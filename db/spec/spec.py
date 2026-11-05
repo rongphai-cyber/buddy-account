@@ -824,7 +824,7 @@ add(T('doc_header', 'หัวเอกสารทุกชนิด (ขาย
       express='ARTRN + APTRN + OESO + POPR + STTRN + ARBIL/APBIL + GLPTT + BKTRN(ส่วนเอกสาร)', cols=[
   lk('branch_id', 'sys_branch', 'สาขาที่ออกเอกสาร', nn=True),
   lk('doc_type_id', 'md_doc_type', 'ประเภทเอกสาร (prefix)', 'ISRUN', nn=True),
-  C('doc_class', 'code4', nn=True, th='ชนิดเอกสาร = หมวดเอกสารของ Express (ISRUN.DOCTYP): ขาย QT SO AI IV HS DR CN(ลดหนี้) OI BS(วางบิล) RE | ซื้อ PO AE RR HP CP DN(ลดหนี้) OE BR PS | สินค้า OU RL JU CA | ธนาคาร BD BW BT BU BV BQ QP | เงินสดย่อย DP VR', src='ARTRN/APTRN.RECTYP, OESO.SORECTYP, STTRN.POSOPR'),
+  C('doc_class', 'code4', nn=True, th='ชนิดเอกสาร = หมวดเอกสารของ Express (ISRUN.DOCTYP): ขาย QT SO AI IV HS DR CN(ลดหนี้) OI BS(วางบิล) RE RD(คืนเงินมัดจำ — Buddy เพิ่ม) | ซื้อ PO AE RR HP CP DN(ลดหนี้) OE BR PS | สินค้า OU RL JU CA | ธนาคาร BD BW BT BU BV BQ QP | เงินสดย่อย DP VR', src='ARTRN/APTRN.RECTYP, OESO.SORECTYP, STTRN.POSOPR'),
   C('module', 'code4', nn=True, th='AR AP SO PO IC BK PC'),
   C('express_rectype', 'char1', th='RECTYP เดิมของ Express (เก็บไว้ตรวจย้อน)', src='RECTYP'),
   C('doc_no', 'code30', nn=True, th='เลขที่เอกสาร', src='DOCNUM / SONUM / PONUM / BILNUM'),
@@ -862,7 +862,7 @@ add(T('doc_header', 'หัวเอกสารทุกชนิด (ขาย
   C('discount_text', 'str20', th='สูตรส่วนลดท้ายบิล เช่น 5%+100', src='DISC'),
   C('discount_amount', 'money', nn=True, d='0', th='ส่วนลดท้ายบิล', src='DISCAMT'),
   C('amount_after_discount', 'money', nn=True, d='0', th='หลังหักส่วนลด', src='AFTDISC'),
-  C('deposit_amount', 'money', nn=True, d='0', th='หักเงินมัดจำ', src='ADVAMT'),
+  C('deposit_amount', 'money', nn=True, d='0', th='หักเงินมัดจำ (บิล IV/HS/RR/HP · ใบเสร็จ RE = มัดจำที่หักแทนเงินรับ · RD = ยอดคืนเงินมัดจำ)', src='ADVAMT'),
   C('zero_rate_amount', 'money', nn=True, d='0', th='มูลค่าอัตรา 0%', src='AMTRAT0'),
   C('exempt_amount', 'money', nn=True, d='0', th='มูลค่าที่ได้รับยกเว้น VAT (รายการรหัส VAT 0 — ภ.พ.30 ข้อ 3)'),
   C('taxable_amount', 'money', nn=True, d='0', th='มูลค่าก่อน VAT', src='TOTAL / NETVAL'),
@@ -975,7 +975,7 @@ add(T('md_note', 'หมายเหตุเพิ่มเติมของ�
 add(T('doc_link', 'ความสัมพันธ์ระหว่างเอกสาร (อ้างถึง/แปลง/หักมัดจำ/ลดหนี้)', 'doc', express='ARTRN.SONUM/ADVNUM, APTRN.PONUM/ADVNUM', cols=[
   lk('from_header_id', 'doc_header', 'เอกสารต้นทาง (เช่น SO, PO, AI, AE, IV เดิม)', nn=True),
   lk('to_header_id', 'doc_header', 'เอกสารปลายทาง (IV, RR, SR …)', nn=True),
-  C('link_type', 'code10', nn=True, th='FULFIL (SO→IV, PO→RR) CONVERT (QT→SO) DEPOSIT (AI→IV, AE→RR) ADJUST (IV→DR/SR, RR→CP/GR)'),
+  C('link_type', 'code10', nn=True, th='FULFIL (SO→IV, PO→RR) CONVERT (QT→SO) DEPOSIT (AI→IV/HS/RE/RD, AE→RR) ADJUST (IV→DR/SR, RR→CP/GR)'),
   C('amount', 'money', th='จำนวนเงินที่หัก/อ้างถึง (เช่น ยอดหักมัดจำ)'),
 ], uniq=[('from_header_id','to_header_id','link_type')]))
 

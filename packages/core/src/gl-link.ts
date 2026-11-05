@@ -86,7 +86,7 @@ export const JOURNAL_ROUTES: Array<{ kind: string; label: string; main?: boolean
 export const DOC_CLASSES: Record<string, { module: string; label: string }> = {
   QT: { module: 'SO', label: 'ใบเสนอราคา' }, SO: { module: 'SO', label: 'ใบสั่งขาย' }, AI: { module: 'AR', label: 'รับเงินมัดจำ' },
   IV: { module: 'AR', label: 'ขายเงินเชื่อ' }, HS: { module: 'AR', label: 'ขายเงินสด' }, DR: { module: 'AR', label: 'เพิ่มหนี้ (ลูกหนี้)' },
-  CN: { module: 'AR', label: 'ลดหนี้/รับคืน' }, OI: { module: 'AR', label: 'บันทึกรายได้อื่น ๆ' }, BS: { module: 'AR', label: 'ใบวางบิล' }, RE: { module: 'AR', label: 'รับชำระหนี้' },
+  CN: { module: 'AR', label: 'ลดหนี้/รับคืน' }, OI: { module: 'AR', label: 'บันทึกรายได้อื่น ๆ' }, BS: { module: 'AR', label: 'ใบวางบิล' }, RE: { module: 'AR', label: 'รับชำระหนี้' }, RD: { module: 'AR', label: 'คืนเงินมัดจำ' },
   PO: { module: 'PO', label: 'ใบสั่งซื้อ' }, AE: { module: 'AP', label: 'จ่ายเงินมัดจำ' }, RR: { module: 'AP', label: 'ซื้อเงินเชื่อ' }, HP: { module: 'AP', label: 'ซื้อเงินสด' },
   CP: { module: 'AP', label: 'เพิ่มหนี้ (เจ้าหนี้)' }, DN: { module: 'AP', label: 'ลดหนี้/ส่งคืน' }, OE: { module: 'AP', label: 'บันทึกค่าใช้จ่ายอื่น ๆ' },
   BR: { module: 'AP', label: 'ใบรับวางบิล' }, PS: { module: 'AP', label: 'จ่ายชำระหนี้' },
@@ -106,7 +106,7 @@ export const MODULE_TH: Record<string, string> = { SO: 'ขาย (ใบเส�
 export const DOC_SLOT_ROLES: Record<string, Record<number, string>> = {
   IV: { 1: 'AR', 5: 'SALES' }, DR: { 1: 'AR', 5: 'SALES' }, CN: { 1: 'AR', 5: 'SALES_RETURN' },
   RR: { 1: 'PURCHASE', 3: 'AP' }, CP: { 1: 'PURCHASE', 3: 'AP' }, DN: { 1: 'PURCHASE_RETURN', 3: 'AP' }, HP: { 1: 'PURCHASE', 3: 'ROUNDING', 4: 'CASH' },
-  RE: { 3: 'ROUNDING', 6: 'ROUNDING' }, PS: { 2: 'ROUNDING', 5: 'ROUNDING' }, AE: { 1: 'DEPOSIT_PAID', 3: 'CASH' }, AI: { 3: 'DEPOSIT_RECEIVED' },
+  RE: { 3: 'ROUNDING', 6: 'ROUNDING' }, PS: { 2: 'ROUNDING', 5: 'ROUNDING' }, AE: { 1: 'DEPOSIT_PAID', 3: 'CASH' }, AI: { 3: 'DEPOSIT_RECEIVED' }, RD: { 3: 'CASH' },
   HS: { 5: 'SALES' }, OU: { 1: 'ISSUE_DEBIT', 2: 'ISSUE_CREDIT' }, JU: { 1: 'ADJ_DEBIT', 2: 'ADJ_CREDIT' }, CA: { 2: 'COST_ADJ' },
   DP: { 1: 'PETTY_CASH' }, VR: { 1: 'PETTY_CASH' },
   BD: { 2: 'CASH' }, BW: { 1: 'CASH' }, QP: { 1: 'CASH' }, BU: { 2: 'BANK_INCOME' }, BV: { 1: 'BANK_EXPENSE' }, BQ: { 2: 'BANK_CHARGE' },
@@ -138,6 +138,8 @@ export const STANDARD_DOC_TYPES: Array<{ code: string; cls: string; th: string; 
   { code: 'HS', cls: 'HS', th: 'ขายเงินสด', en: 'Cash Sales', book: '03' }, { code: 'DR', cls: 'DR', th: 'ใบเพิ่มหนี้ (ลูกหนี้)', en: 'A/R Debit Note', book: '03' },
   { code: 'SR', cls: 'CN', th: 'ใบลดหนี้/รับคืน', en: 'Sales Returns and Allowances', book: '03' }, { code: 'OI', cls: 'OI', th: 'บันทึกรายได้อื่น ๆ', en: 'Other Income', book: '02' },
   { code: 'BI', cls: 'BS', th: 'ใบวางบิล', en: 'A/R Bill Collection List', book: null }, { code: 'RE', cls: 'RE', th: 'รับชำระหนี้', en: 'A/R Receipt', book: '02' },
+  // คืนเงินมัดจำ (Buddy เพิ่ม 05/11/2569 — Express ไม่มี): สมุดรายวันจ่าย
+  { code: 'RD', cls: 'RD', th: 'คืนเงินมัดจำ', en: 'Deposit Refund', book: '01' },
   { code: 'PO', cls: 'PO', th: 'ใบสั่งซื้อ', en: 'Purchase Order', book: null }, { code: 'AE', cls: 'AE', th: 'จ่ายเงินมัดจำ', en: 'Deposit Payment', book: '01' },
   { code: 'RR', cls: 'RR', th: 'ซื้อเงินเชื่อ', en: 'Credit Purchase', book: '04' }, { code: 'HP', cls: 'HP', th: 'ซื้อเงินสด', en: 'Cash Purchase', book: '04' },
   { code: 'CP', cls: 'CP', th: 'ใบเพิ่มหนี้ (ของเจ้าหนี้)', en: 'A/P Credit Note', book: '04' }, { code: 'GR', cls: 'DN', th: 'ใบลดหนี้/ส่งคืน', en: 'Purchase Returns and Allowance', book: '04' },

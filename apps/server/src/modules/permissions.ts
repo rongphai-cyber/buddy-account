@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, docMenuOf, findReport, menuOffBy, BANK_KINDS, BILL_KINDS, CASH_KINDS, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { AI_BILL_TARGETS, docMenuOf, findReport, menuOffBy, BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -242,6 +242,10 @@ export const API_RULES: Record<string, Rule> = {
     [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M(k.menu, 'cancel')],
   ])),
   'GET /api/v1/deposits/open': LOOKUP,
+  // คืนเงินมัดจำ (05/11/2569)
+  [`GET /api/v1/${DEPOSIT_REFUND.path}`]: M(DEPOSIT_REFUND.menu, 'read'), [`GET /api/v1/${DEPOSIT_REFUND.path}/:id`]: M(DEPOSIT_REFUND.menu, 'read'), [`POST /api/v1/${DEPOSIT_REFUND.path}`]: M(DEPOSIT_REFUND.menu, 'add'),
+  [`PUT /api/v1/${DEPOSIT_REFUND.path}/:id`]: M(DEPOSIT_REFUND.menu, 'edit'), [`POST /api/v1/${DEPOSIT_REFUND.path}/:id/cancel`]: M(DEPOSIT_REFUND.menu, 'cancel'),
+  [`POST /api/v1/${DEPOSIT_REFUND.path}/posting-preview`]: M(DEPOSIT_REFUND.menu, 'read'),
   ...Object.fromEntries(BILL_KINDS.flatMap((k) => [
     [`GET /api/v1/${k.path}`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/open-items`, M(k.menu, 'read')], [`GET /api/v1/${k.path}/:id`, M(k.menu, 'read')],
     [`POST /api/v1/${k.path}`, M(k.menu, 'add')], [`PUT /api/v1/${k.path}/:id`, M(k.menu, 'edit')], [`POST /api/v1/${k.path}/:id/cancel`, M(k.menu, 'cancel')],

@@ -26,6 +26,7 @@ import { docRoutes } from './modules/docs/routes.js';
 import { tradeRoutes } from './modules/docs/trade.js';
 import { settleRoutes } from './modules/docs/settle.js';
 import { cashDocRoutes } from './modules/docs/cashdocs.js';
+import { depositRefundRoutes } from './modules/docs/depositrefund.js';
 import { billRoutes } from './modules/docs/bills.js';
 import { pettyCashRoutes } from './modules/docs/pettycash.js';
 import { openingRoutes } from './modules/docs/opening.js';
@@ -114,6 +115,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   tradeRoutes(app, db);
   settleRoutes(app, db);
   cashDocRoutes(app, db);
+  depositRefundRoutes(app, db);
   billRoutes(app, db);
   pettyCashRoutes(app, db);
   openingRoutes(app, db);

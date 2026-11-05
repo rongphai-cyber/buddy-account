@@ -2447,7 +2447,7 @@ export interface DocHeaderTable {
   branch_id: string;
   /** ประเภทเอกสาร (prefix) */
   doc_type_id: string;
-  /** ชนิดเอกสาร = หมวดเอกสารของ Express (ISRUN.DOCTYP): ขาย QT SO AI IV HS DR CN(ลดหนี้) OI BS(วางบิล) RE | ซื้อ PO AE RR HP CP DN(ลดหนี้) OE BR PS | สินค้า OU RL JU CA | ธนาคาร BD BW BT BU BV BQ QP | เงินสดย่อย DP VR */
+  /** ชนิดเอกสาร = หมวดเอกสารของ Express (ISRUN.DOCTYP): ขาย QT SO AI IV HS DR CN(ลดหนี้) OI BS(วางบิล) RE RD(คืนเงินมัดจำ — Buddy เพิ่ม) | ซื้อ PO AE RR HP CP DN(ลดหนี้) OE BR PS | สินค้า OU RL JU CA | ธนาคาร BD BW BT BU BV BQ QP | เงินสดย่อย DP VR */
   doc_class: string;
   /** AR AP SO PO IC BK PC */
   module: string;
@@ -2523,7 +2523,7 @@ export interface DocHeaderTable {
   discount_amount: Gen<string>;
   /** หลังหักส่วนลด */
   amount_after_discount: Gen<string>;
-  /** หักเงินมัดจำ */
+  /** หักเงินมัดจำ (บิล IV/HS/RR/HP · ใบเสร็จ RE = มัดจำที่หักแทนเงินรับ · RD = ยอดคืนเงินมัดจำ) */
   deposit_amount: Gen<string>;
   /** มูลค่าอัตรา 0% */
   zero_rate_amount: Gen<string>;
@@ -2803,7 +2803,7 @@ export interface DocLinkTable {
   from_header_id: string;
   /** เอกสารปลายทาง (IV, RR, SR …) */
   to_header_id: string;
-  /** FULFIL (SO→IV, PO→RR) CONVERT (QT→SO) DEPOSIT (AI→IV, AE→RR) ADJUST (IV→DR/SR, RR→CP/GR) */
+  /** FULFIL (SO→IV, PO→RR) CONVERT (QT→SO) DEPOSIT (AI→IV/HS/RE/RD, AE→RR) ADJUST (IV→DR/SR, RR→CP/GR) */
   link_type: string;
   /** จำนวนเงินที่หัก/อ้างถึง (เช่น ยอดหักมัดจำ) */
   amount: Gen<string | null>;

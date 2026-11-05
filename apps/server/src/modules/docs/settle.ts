@@ -11,6 +11,7 @@ import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { docTypeCharges } from '../doc-types.js';
 import { checkHold, noteHold } from './hold.js';
+import { checkReceivedDeposits, clearDepositLinks, depositsSchema, readDepositLinks, writeDepositLinks } from './deposits.js';
 import { branchOf, checkWht, clearMoneyParts, docBranch, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, saveBranch, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -42,6 +43,8 @@ const body = z.object({
   /** รายละเอียดภาษีหัก ณ ที่จ่าย (S-PU-C4) สำหรับทะเบียน ภ.ง.ด.3/53 และพิมพ์ 50 ทวิ — ได้ 2 ประเภทเงินได้ */
   wht: whtSchema,
   charges: chargesSchema,
+  /** ใบเสร็จหักเงินมัดจำรับ (AI ไม่มี VAT) แทนเงินรับ — นับเป็นยอดชำระจริง (05/11/2569 WTS-Living) */
+  deposits: depositsSchema,
 });
 type Body = z.infer<typeof body>;
 
@@ -163,12 +166,15 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
 
   const mById = await loadMethods(db, a.companyId, K.direction, b.payments);
   const charge = await checkCharges(db, a.companyId, K, b.charges);
+  // หักเงินมัดจำ: ใบเสร็จรับเงินเท่านั้น (ใบสำคัญจ่ายหักมัดจำจ่ายในบิลซื้อ)
+  if (b.deposits.length && K.cls !== 'RE') throw badRequest('หักเงินมัดจำได้เฉพาะใบเสร็จรับเงิน (รับชำระหนี้) — มัดจำจ่ายให้หักในบิลซื้อ (ซื้อเงินเชื่อ/ซื้อเงินสด แท็บหักเงินมัดจำ)');
+  const dep = await checkReceivedDeposits(db, a.companyId, { use: 'RE', customerId: party.id, partyCode: party.code, ownId: id, date: [b.doc_date, payDate].sort()[0]!, deposits: b.deposits });
 
   const t = settlementTotals({ settlements: setts.map((s) => d(s.amount).times(s.sign).toFixed(2)), interest: b.interest_amount, discount: b.cash_discount_amount, wht: wht.toFixed(2),
-    fx: b.fx_amount, charges: charge.deducted, direction: K.direction, payments: b.payments.map((p) => p.amount), cash: b.cash_amount });
+    fx: b.fx_amount, charges: charge.deducted, direction: K.direction, payments: b.payments.map((p) => p.amount), cash: b.cash_amount, deposits: dep.total.toFixed(2) });
   if (d(t.due).lt(0)) throw badRequest(`ยอดชำระตามใบกำกับติดลบ (${t.due}) — ใบลดหนี้มากกว่าบิลที่เลือก`);
-  if (d(t.cash).lt(0)) throw badRequest(`ชำระโดยวิธีอื่นรวม ${t.other} มากกว่ายอดที่ต้อง${K.direction === 'R' ? 'รับ' : 'จ่าย'} ${t.due}`);
-  if (!t.ok) throw badRequest(`ยอดชำระตามใบกำกับ ${t.due} ไม่เท่ากับยอดชำระจริง ${t.paid} (Message# ${K.cls === 'RE' ? '4025' : '4066'}) — ปรับเงินสด ส่วนลด ดอกเบี้ย ภาษีหัก ณ ที่จ่าย ${K.cls === 'RE' ? 'รายการที่แพลตฟอร์มหัก ' : ''}หรือผลต่างอัตราแลกเปลี่ยน`);
+  if (d(t.cash).lt(0)) throw badRequest(`ชำระโดยวิธีอื่นรวม ${t.other}${dep.total.isZero() ? '' : ` + หักเงินมัดจำ ${t.deposit}`} มากกว่ายอดที่ต้อง${K.direction === 'R' ? 'รับ' : 'จ่าย'} ${t.due} — ลดยอดชำระโดยวิธีอื่น${dep.total.isZero() ? '' : '/ยอดหักมัดจำ'}`);
+  if (!t.ok) throw badRequest(`ยอดชำระตามใบกำกับ ${t.due} ไม่เท่ากับยอดชำระจริง ${t.paid} (Message# ${K.cls === 'RE' ? '4025' : '4066'}) — ปรับเงินสด ส่วนลด ดอกเบี้ย ภาษีหัก ณ ที่จ่าย ${K.cls === 'RE' ? 'รายการที่แพลตฟอร์มหัก ยอดหักเงินมัดจำ ' : ''}หรือผลต่างอัตราแลกเปลี่ยน`);
 
   const branchId = await saveBranch(db, a, id, b.branch_id);
   const header = {
@@ -180,7 +186,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
     your_ref: b.your_ref, remark: b.remark, price_type: '0', amount: t.billed, net_amount: t.billed,
     vat_amount: money(setts.reduce((s, x) => s.plus(d(x.vat).times(x.sign)), d(0))), vat_date: payDate,
     wht_amount: money(wht), interest_amount: money(d(b.interest_amount)), cash_discount_amount: money(d(b.cash_discount_amount)), fx_amount: money(d(b.fx_amount)),
-    cash_amount: t.cash, cheque_amount: t.other, updated_by: a.userId,
+    cash_amount: t.cash, cheque_amount: t.other, deposit_amount: t.deposit, updated_by: a.userId,
   };
   return db.transaction().execute(async (tx) => {
     await periodFor(tx, a.companyId, b.doc_date);
@@ -196,6 +202,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
       await clearMoneyParts(tx, id);
       await tx.updateTable('doc_settlement').set({ deleted_at: sql`now()` as never }).where('payment_header_id', '=', id).where('deleted_at', 'is', null).execute();
       await tx.updateTable('doc_charge').set({ deleted_at: sql`now()` as never }).where('header_id', '=', id).where('deleted_at', 'is', null).execute();
+      await clearDepositLinks(tx, id);
     } else {
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!, doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
@@ -206,13 +213,14 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
     await writeWht(tx, a, { headerId: hid!, docNo, payDate, wht: b.wht, supplierId: header.supplier_id, departmentId: header.department_id,
       payee: { name: header.party_name || party.code, address: header.party_address, tax_id: party.tax_id, branch_no: party.tax_branch_no } });
     await writeCharges(tx, a, { headerId: hid!, docNo, payDate, departmentId: header.department_id, charges: b.charges, suppliers: charge.suppliers });
+    await writeDepositLinks(tx, a, hid!, dep.rows);
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
     const warnings: string[] = [];
     await noteHold(tx, a, hold, K.module, docNo, hid!, warnings);
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid });
-    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: t.billed, cash_amount: t.cash, warnings };
+    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: t.billed, cash_amount: t.cash, deposit_amount: t.deposit, warnings };
   });
 }
 
@@ -292,7 +300,7 @@ export function settleRoutes(app: FastifyInstance, db: Db) {
       const pc = await db.selectFrom(partyTbl).select('code').where('id', '=', partyId).executeTakeFirst();
       // ใบเสร็จ: ภาษีหัก ณ ที่จ่ายในแฟ้มเป็นของรายการที่แพลตฟอร์มหัก (ส่วนที่ลูกค้าหักเราป้อนเป็นยอดที่หัว)
       return { ...h, party_code: pc?.code ?? null, settlements: settlements.map((s) => ({ ...s, outstanding: open.get(s.invoice_header_id) ?? s.amount })), payments, wht: K.cls === 'RE' ? [] : wht,
-        charges: K.cls === 'RE' ? await readCharges(db, a.companyId, id) : [], charge_wht: K.cls === 'RE' ? wht : [], editable: h.doc_status !== 'C' };
+        charges: K.cls === 'RE' ? await readCharges(db, a.companyId, id) : [], charge_wht: K.cls === 'RE' ? wht : [], deposits: K.cls === 'RE' ? await readDepositLinks(db, a.companyId, id) : [], editable: h.doc_status !== 'C' };
     });
     // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
     app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveSettle(tx, a, K, id ?? null, parse(body, req.body))); });

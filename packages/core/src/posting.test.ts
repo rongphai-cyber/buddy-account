@@ -151,3 +151,36 @@ describe('ช่องบัญชีของประเภทเอกสา�
     expect(net(perp)).toEqual({ inv: '1000.00', ivat: '70.00', 'ap-doc': '-1070.00' });
   });
 });
+
+describe('มัดจำรับในใบเสร็จและใบคืนเงินมัดจำ (WTS-Living ย้ายออก — 05/11/2569)', () => {
+  // มัดจำ AI 9,600 (ไม่มี VAT) · บิลค่าเช่า 3,500 (ยกเว้น) + น้ำ/ไฟ 978.65 + VAT 68.51 = 4,547.16 (ภาษีเกณฑ์เงินสด)
+  // ประเภทเอกสารมัดจำ DEP ผูกบัญชีมัดจำรับช่อง 3 = 'depr-doc' · ใบมัดจำไม่ผูก = บัญชีเพื่อลงรายวัน DEPOSIT_RECEIVED ('depr')
+  const R: PostingResolver = { ...r, slot: (dt, cls, role) => (dt === 'DEP' && cls === 'AI' && role === 'DEPOSIT_RECEIVED' ? 'depr-doc' : null), paymentMethod: (id) => (id === 'TB' ? 'bank' : null) };
+  it('ใบเสร็จหักมัดจำเต็มยอด: Dr มัดจำรับ / Cr ลูกหนี้ · ภาษีรอเรียกเก็บ → ภาษีขาย · ไม่มีเงินสด', () => {
+    const p = buildPosting({ id: 'h', doc_class: 'RE', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '4547.16', vat_amount: '68.51', deposit_amount: '4547.16', vat_basis: null },
+      [], [], [{ amount: '4547.16', vat: '68.51', party_id: 'c1', rectype: '3' }], R, [], [{ amount: '4547.16', doc_type_id: null }]);
+    expect(postingBalanced(p)).toBe(true);
+    expect(net(p)).toEqual({ 'ar-c1': '-4547.16', depr: '4547.16', ovatp: '68.51', ovat: '-68.51' });
+  });
+  it('ใบเสร็จหักมัดจำบางส่วน + โอน: มัดจำ 2 ใบลงบัญชีของแต่ละใบ ส่วนที่เหลือเป็นเงินโอน/เงินสด', () => {
+    // บิล 1,000: หักมัดจำ DEP 300 + มัดจำไม่ผูกบัญชี 200 · โอน 400 · เงินสด 100
+    const p = buildPosting({ id: 'h', doc_class: 'RE', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '1000', vat_amount: '0', deposit_amount: '500', vat_basis: null },
+      [], [{ method_id: 'TB', amount: '400', cheque_id: null }], [{ amount: '1000', vat: '0', party_id: 'c1', rectype: '3' }], R, [], [{ amount: '300', doc_type_id: 'DEP' }, { amount: '200', doc_type_id: null }]);
+    expect(postingBalanced(p)).toBe(true);
+    expect(net(p)).toEqual({ 'ar-c1': '-1000.00', 'depr-doc': '300.00', depr: '200.00', bank: '400.00', cash: '100.00' });
+  });
+  it('คืนเงินมัดจำ 4,752.84 โดยโอน: Dr มัดจำรับ / Cr ธนาคาร · คืนเป็นเงินสดเมื่อไม่ระบุวิธีจ่าย', () => {
+    // 9,600 − 4,547.16 (ค่าเช่า/น้ำไฟ) − 300 (ค่าเสียหาย) = 4,752.84
+    const p = buildPosting({ id: 'h', doc_class: 'RD', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '4752.84', vat_amount: '0', deposit_amount: '4752.84', vat_basis: null },
+      [], [{ method_id: 'TB', amount: '4752.84', cheque_id: null }], [], R, [], [{ amount: '4752.84', doc_type_id: 'DEP' }]);
+    expect(postingBalanced(p)).toBe(true);
+    expect(net(p)).toEqual({ 'depr-doc': '4752.84', bank: '-4752.84' });
+    const c = buildPosting({ id: 'h', doc_class: 'RD', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '500', vat_amount: '0', deposit_amount: '500', vat_basis: null }, [], [], [], R, [], [{ amount: '500', doc_type_id: null }]);
+    expect(net(c)).toEqual({ depr: '500.00', cash: '-500.00' });
+  });
+  it('ยอดใบเสร็จนับมัดจำที่หักเป็นเงินที่รับแล้ว', () => {
+    expect(settlementTotals({ settlements: ['4547.16'], direction: 'R', payments: [], deposits: '4547.16' })).toMatchObject({ due: '4547.16', deposit: '4547.16', cash: '0.00', paid: '4547.16', ok: true });
+    expect(settlementTotals({ settlements: ['1000'], direction: 'R', payments: ['400'], deposits: '500' })).toMatchObject({ cash: '100.00', ok: true });
+    expect(settlementTotals({ settlements: ['1000'], direction: 'R', payments: ['600'], deposits: '500' }).ok).toBe(false);   // มัดจำ + โอนเกินยอด → เงินสดติดลบ
+  });
+});

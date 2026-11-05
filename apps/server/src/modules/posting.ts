@@ -67,12 +67,16 @@ export async function loadPostingInput(db: Db, companyId: string, headerIds: str
   // รายการที่แพลตฟอร์มหักก่อนโอน (ใบเสร็จ)
   const charges = group((await sql<{ header_id: string; item_id: string | null; account_id: string | null; amount: string; vat_type: string; vat_amount: string; wht_amount: string; wht_condition: string }>`SELECT header_id, item_id, account_id, amount, vat_type, vat_amount, wht_amount, wht_condition FROM doc_charge
     WHERE company_id = ${companyId} AND deleted_at IS NULL AND header_id = ANY(${hid}::uuid[]) ORDER BY header_id, line_no`.execute(db)).rows);
-  return { H, lines, pays, setts, charges };
+  // มัดจำรับที่ใบเสร็จหัก/ใบคืนเงินมัดจำคืน (AI → RE/RD) — บัญชีตามประเภทเอกสารของใบมัดจำ (บิลขายใช้ deposit_amount ที่หัวเอกสาร)
+  const deps = group((await sql<{ header_id: string; amount: string; doc_type_id: string | null }>`SELECT l.to_header_id AS header_id, l.amount, f.doc_type_id FROM doc_link l JOIN doc_header f ON f.id = l.from_header_id
+    JOIN doc_header t ON t.id = l.to_header_id WHERE l.company_id = ${companyId} AND l.deleted_at IS NULL AND l.link_type = 'DEPOSIT' AND t.doc_class IN ('RE', 'RD') AND l.to_header_id = ANY(${hid}::uuid[])
+     ORDER BY l.to_header_id, f.doc_date, f.doc_no`.execute(db)).rows);
+  return { H, lines, pays, setts, charges, deps };
 }
 
 /** เทียบผลของเครื่องลงบัญชีกับใบสำคัญที่ Express ลงไว้ (เกณฑ์ P3 ≥ 97%) */
 export async function comparePosting(db: Db, companyId: string) {
-  const { H, lines, pays, setts, charges } = await loadPostingInput(db, companyId, null);
+  const { H, lines, pays, setts, charges, deps } = await loadPostingInput(db, companyId, null);
   const r = await loadResolver(db, companyId);
   const exp = new Map<string, Map<string, ReturnType<typeof d>>>();
   for (const x of (await sql<{ hid: string; acc: string; net: string }>`SELECT j.source_header_id AS hid, l.account_id AS acc, sum(l.debit - l.credit) AS net FROM gl_journal j JOIN gl_journal_line l ON l.journal_id = j.id
@@ -85,7 +89,7 @@ export async function comparePosting(db: Db, companyId: string) {
   for (const h of H) {
     const e = exp.get(h.id);
     if (!e) continue;
-    const p = buildPosting(h, lines.get(h.id) ?? [], (pays.get(h.id) ?? []), (setts.get(h.id) ?? []), r, charges.get(h.id) ?? []);
+    const p = buildPosting(h, lines.get(h.id) ?? [], (pays.get(h.id) ?? []), (setts.get(h.id) ?? []), r, charges.get(h.id) ?? [], deps.get(h.id) ?? []);
     for (const l of p) layers[l.layer] = (layers[l.layer] ?? 0) + 1;
     const mine = netByAccount(p);
     const keys = new Set([...e.keys(), ...[...mine.keys()].filter((k): k is string => !!k)]);

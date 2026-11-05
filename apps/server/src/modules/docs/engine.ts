@@ -70,16 +70,16 @@ export async function docNoFor(tx: Db, companyId: string, docTypeId: string, man
 
 /** สร้างรายการบัญชีของเอกสาร (ยังไม่บันทึก) — ใช้ทั้งดูตัวอย่างและลงบัญชีจริง */
 export async function previewPosting(db: Db, companyId: string, headerId: string) {
-  const { H, lines, pays, setts, charges } = await loadPostingInput(db, companyId, [headerId]);
+  const { H, lines, pays, setts, charges, deps } = await loadPostingInput(db, companyId, [headerId]);
   const h = H[0];
   if (!h) return null;
-  const ls = lines.get(h.id) ?? [], ps = pays.get(h.id) ?? [], ss = setts.get(h.id) ?? [], cs = charges.get(h.id) ?? [];
+  const ls = lines.get(h.id) ?? [], ps = pays.get(h.id) ?? [], ss = setts.get(h.id) ?? [], cs = charges.get(h.id) ?? [], ds = deps.get(h.id) ?? [];
   const r = await loadResolver(db, companyId, {
     customers: [h.customer_id, ...ss.map((s) => s.party_id)].filter((x): x is string => !!x),
     suppliers: [h.supplier_id, ...ss.map((s) => s.party_id)].filter((x): x is string => !!x),
     items: [...ls, ...cs].map((l) => l.item_id).filter((x): x is string => !!x), cheques: ps.map((p) => p.cheque_id).filter((x): x is string => !!x),
   });
-  return { header: h, lines: buildPosting(h, ls, ps, ss, r, cs) };
+  return { header: h, lines: buildPosting(h, ls, ps, ss, r, cs, ds) };
 }
 
 /** รวมบรรทัดบัญชีเดียวกันบทบาทเดียวกัน (Express ลงยอดรวมต่อบัญชี) */
@@ -249,11 +249,11 @@ export async function deleteDocument(db: Db, ctx: Ctx, headerId: string, reason:
 /**
  * กฎเหล็กการยกเลิก/ลบ (ข้อกำหนดเจ้าของ 30/10/2569): เอกสารที่เอกสารอื่น (ที่ยังใช้งาน) อ้างถึงอยู่ ยกเลิกหรือลบไม่ได้
  * ต้องแก้/ยกเลิก/ลบเอกสารที่อ้างถึงก่อน — คืนเอกสารแรกที่อ้างถึง หรือ null
- * ตรวจ: มัดจำ/แปลงใบเสนอราคา/เบิกชดเชย (doc_link) · บิลที่อ้างใบสั่ง · ใบวางบิล · รับ/จ่ายชำระ · ใบลด/เพิ่มหนี้ที่อ้างใบกำกับ · ขายทรัพย์สิน
+ * ตรวจ: มัดจำ (บิล/ใบเสร็จที่หัก · ใบคืนเงินมัดจำ)/แปลงใบเสนอราคา/เบิกชดเชย (doc_link) · บิลที่อ้างใบสั่ง · ใบวางบิล · รับ/จ่ายชำระ · ใบลด/เพิ่มหนี้ที่อ้างใบกำกับ · ขายทรัพย์สิน
  */
 export async function usedBy(tx: Db, companyId: string, headerId: string): Promise<{ doc_no: string; what: string } | null> {
   const r = (await sql<{ doc_no: string; what: string }>`
-    SELECT o.doc_no, CASE l.link_type WHEN 'DEPOSIT' THEN 'บิลที่หักมัดจำ' WHEN 'CONVERT' THEN 'ใบสั่งขายที่แปลงจากใบนี้' WHEN 'REIMBURSE' THEN 'ใบเบิกชดเชย' ELSE 'เอกสาร' END AS what
+    SELECT o.doc_no, CASE l.link_type WHEN 'DEPOSIT' THEN (CASE o.doc_class WHEN 'RE' THEN 'ใบเสร็จที่หักมัดจำ' WHEN 'RD' THEN 'ใบคืนเงินมัดจำ' ELSE 'บิลที่หักมัดจำ' END) WHEN 'CONVERT' THEN 'ใบสั่งขายที่แปลงจากใบนี้' WHEN 'REIMBURSE' THEN 'ใบเบิกชดเชย' ELSE 'เอกสาร' END AS what
       FROM doc_link l JOIN doc_header o ON o.id = l.to_header_id
      WHERE l.from_header_id = ${headerId} AND l.deleted_at IS NULL AND o.doc_status <> 'C' AND o.deleted_at IS NULL
     UNION ALL SELECT t.doc_no, 'บิลที่อ้างใบสั่งนี้' FROM doc_line x JOIN doc_line s ON s.id = x.source_line_id JOIN doc_header t ON t.id = x.header_id
