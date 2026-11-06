@@ -23,7 +23,9 @@ import { sql } from 'kysely';
 import { openDatabase, type Database } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { buildApp } from '../src/app.js';
-import { loadConfig } from '../src/config.js';
+import { loadConfig, REPO_ROOT } from '../src/config.js';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 let database: Database;
 let app: FastifyInstance;
@@ -221,5 +223,63 @@ describe('กันลูกหนี้ยกมาลงบัญชีซ้�
     expect([r.status, r.body.error?.message]).toEqual([200, undefined]);
     expect(await lines(r.body.id)).toEqual(['1130-02:1180.00:0.00', '3500-00:0.00:1180.00']);
     await select('A');
+  });
+});
+
+describe('สิทธิ์เดิม FI.AR.OB ใช้กับเงินมัดจำยกมาได้เหมือนเดิมหลังแยกเมนู (migration 0060)', () => {
+  const migration = () => readFile(resolve(REPO_ROOT, 'db/migrations/0060_menu_deposit_opening_rights.sql'), 'utf8').then((t) => database.execScript(t));
+  const dobRows = async (c: string) => Number((await sql<{ n: string }>`SELECT count(*)::text AS n FROM sys_permission p JOIN sys_menu m ON m.id = p.menu_id
+    WHERE p.company_id = ${co[c]!} AND m.code = 'FI.AR.DOB' AND p.deleted_at IS NULL`.execute(database.db)).rows[0]!.n);
+  const Y = { can_read: 'Y', can_add: 'Y', can_edit: 'Y', can_cancel: 'Y', can_delete: 'N', can_print: 'Y', can_approve: '' };
+  let clerkKey = '';
+  const asClerk = async (method: 'POST', url: string, body: unknown, ref: string) => {
+    const r = await app.inject({ method, url, payload: body as object, headers: { authorization: `Bearer ${clerkKey}`, 'x-source-system': 'wts-living', 'x-source-ref': ref } });
+    return { status: r.statusCode, body: r.body ? JSON.parse(r.body) : null };
+  };
+  const dep = (no: string) => ({ party_id: ids.cusA, doc_no: no, doc_date: '2025-12-31', price_type: '0', amount: '700', vat_rate: '0', doc_type_id: ids.ail, post_gl: true });
+
+  it('a group holding only FI.AR.OB (as before the split) can post an opening deposit through its API key after the migration', async () => {
+    await select('A');
+    const tenant_id = (await call('GET', '/api/v1/tenants')).body.find((t: { code: string }) => t.code === 'DEFAULT').id;
+    const g = (await call('POST', '/api/v1/user-groups', { code: 'OBONLY', name: 'ยอดยกมาเท่านั้น' })).body.id as string;
+    ids.group = g;
+    const u = await call('POST', '/api/v1/users', { tenant_id, username: 'obclerk', display_name: 'พนักงานยอดยกมา', password: 'obclerk99', approval_level: 5, check_rights: true, user_group_id: g, companies: [co.A, co.B] });
+    expect([u.status, u.body.error?.message]).toEqual([200, undefined]);
+    // บริษัท A: กลุ่มมีสิทธิ์เฉพาะเมนูลูกหนี้คงค้าง-ยกมา (แบบก่อนแยกเมนู) · บริษัท B: กลุ่มเดียวกันมีเฉพาะขายเงินเชื่อ
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'G', subject_id: g, rows: [{ menu_code: 'FI.AR.OB', ...Y }] })).status).toBe(200);
+    await select('B');
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'G', subject_id: g, rows: [{ menu_code: 'SA.IV', ...Y }] })).status).toBe(200);
+    await select('A');
+    clerkKey = (await call('POST', '/api/v1/api-keys', { name: 'WTS-Living (พนักงาน)', user_id: u.body.id })).body.key;
+    // ก่อน migration (แถวสิทธิ์ของเมนูใหม่ยังไม่มี) = เสียสิทธิ์ — สิ่งที่ migration 0060 แก้
+    expect((await asClerk('POST', '/api/v1/ar-deposit-opening', dep('DOB-1'), 'liv:TST:AI-OB:DOB-1')).status).toBe(403);
+    expect(await dobRows('A')).toBe(0);
+    await migration();
+    expect(await dobRows('A')).toBe(1);
+    const r = await asClerk('POST', '/api/v1/ar-deposit-opening', dep('DOB-1'), 'liv:TST:AI-OB:DOB-1');
+    expect([r.status, r.body.error?.message]).toEqual([201, undefined]);
+    expect(await lines(r.body.id)).toEqual(['2135-04:0.00:700.00', '3500-00:700.00:0.00']);
+    // ค่าทุกช่องเท่าแถวเดิม · รันซ้ำไม่สร้างซ้ำ
+    const same = await sql<{ a: string; b: string }>`SELECT concat(o.can_read, o.can_add, o.can_edit, o.can_cancel, o.can_delete, o.can_print, o.can_approve) AS a,
+        concat(n.can_read, n.can_add, n.can_edit, n.can_cancel, n.can_delete, n.can_print, n.can_approve) AS b
+        FROM sys_permission o JOIN sys_menu om ON om.id = o.menu_id AND om.code = 'FI.AR.OB'
+        JOIN sys_permission n ON n.company_id = o.company_id AND n.subject_id = o.subject_id AND n.deleted_at IS NULL JOIN sys_menu nm ON nm.id = n.menu_id AND nm.code = 'FI.AR.DOB'
+       WHERE o.company_id = ${co.A!} AND o.subject_id = ${g} AND o.deleted_at IS NULL`.execute(database.db);
+    expect(same.rows).toEqual([{ a: 'YYYYNYN', b: 'YYYYNYN' }]);
+    await migration();
+    expect(await dobRows('A')).toBe(1);
+  });
+
+  it('the same group in another company is unaffected: no rows created there, still no access', async () => {
+    expect(await dobRows('B')).toBe(0);
+    const admin = cookie;
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'obclerk', password: 'obclerk99' });
+    await select('B');
+    const r = await call('POST', '/api/v1/ar-deposit-opening', { ...dep('DOB-B'), party_id: ids.cusB });
+    expect(r.status).toBe(403);
+    await select('A');
+    expect((await call('GET', '/api/v1/ar-deposit-opening')).status).toBe(200);
+    cookie = admin;
   });
 });

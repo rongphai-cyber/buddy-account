@@ -246,3 +246,18 @@ export function menuOffBy(menu: string, keys: unknown): ModuleSwitch | null {
   for (let c: string | null | undefined = menu; c; c = MENU_PARENT.get(c)) chain.push(c);
   return MODULE_SWITCHES.find((m) => ks.includes(m.key) && m.menus.some((x) => chain.includes(x))) ?? null;
 }
+
+/**
+ * เมนูที่แยกออกมาจากเมนูเดิม (HANDOFF ข้อ 91): สิทธิ์ของเมนูใหม่ = สิทธิ์ของเมนูเดิม เพื่อไม่ให้ใครเสียสิทธิ์ตอนอัปเกรด
+ * ฐานข้อมูลเดิมคัดลอกด้วย migration 0060 · ข้อมูลสิทธิ์ที่มาจากเครื่อง/แฟ้มรุ่นก่อน (ย้ายลูกค้า · เครื่องสาขา) ใช้ inheritMenuRows
+ */
+export const MENU_INHERITS: Readonly<Record<string, string>> = { 'FI.AR.DOB': 'FI.AR.OB' };
+/** แถวสิทธิ์ (มี _menu_code) ที่ยังไม่มีแถวของเมนูใหม่เลย → เพิ่มแถวเมนูใหม่ค่าเดียวกับแถวเมนูเดิม (ชุดที่มีแถวเมนูใหม่แล้วไม่แตะ) */
+export function inheritMenuRows<T extends { _menu_code?: unknown; id?: unknown }>(rows: T[], newId: () => string): T[] {
+  const out = [...rows];
+  for (const [to, from] of Object.entries(MENU_INHERITS)) {
+    if (rows.some((r) => String(r._menu_code) === to)) continue;
+    for (const r of rows) if (String(r._menu_code) === from) out.push({ ...r, id: newId(), _menu_code: to });
+  }
+  return out;
+}

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
+import { createCipheriv, createDecipheriv, randomBytes, randomUUID, scryptSync } from 'node:crypto';
+import { inheritMenuRows } from '@buddy/core';
 import { sql, type RawBuilder } from 'kysely';
 import { z } from 'zod';
 import type { Db } from '../db.js';
@@ -137,7 +138,8 @@ export async function importTenant(db: Db, buf: Buffer, pass: string, userId: st
   let cleared = 0;
   for (const { t, c } of fkUser) for (const r of get(t)) if (r[c] && !keep.has(String(r[c]))) { r[c] = null; cleared++; }
   const menus = new Map((await rows<{ id: string; code: string }>(db, sql`SELECT id, code FROM sys_menu WHERE deleted_at IS NULL`)).map((m) => [m.code, m.id]));
-  if (parsed.has('sys_permission')) parsed.set('sys_permission', get('sys_permission').filter((r) => menus.has(String(r._menu_code))).map((r) => ({ ...r, menu_id: menus.get(String(r._menu_code)) })));
+  // แฟ้มจากรุ่นก่อนแยกเมนู (เช่น ยังไม่มี FI.AR.DOB): สิทธิ์ของเมนูใหม่ = สิทธิ์ของเมนูเดิม (MENU_INHERITS · HANDOFF ข้อ 91)
+  if (parsed.has('sys_permission')) parsed.set('sys_permission', inheritMenuRows(get('sys_permission'), randomUUID).filter((r) => menus.has(String(r._menu_code))).map((r) => ({ ...r, menu_id: menus.get(String(r._menu_code)) })));
   if (parsed.has('sys_user_security')) parsed.set('sys_user_security', get('sys_user_security').map((r) => ({ ...r, totp_secret_enc: r._totp_plain ? encryptSecret(String(r._totp_plain)) : null })));
   if (parsed.has('sys_secret')) parsed.set('sys_secret', get('sys_secret').filter((r) => r._plain).map((r) => ({ ...r, value_enc: encryptSecret(String(r._plain)) })));
 

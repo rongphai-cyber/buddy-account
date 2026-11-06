@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { flattenMenu, menuOffBy, MODULE_SWITCHES, offMenus } from './menu.js';
+import { flattenMenu, inheritMenuRows, MENU_INHERITS, menuOffBy, MODULE_SWITCHES, offMenus } from './menu.js';
 
 describe('ปิดบางระบบทั้งบริษัท', () => {
   it('switches refer to real menus and never to accounting/setup or item masters', () => {
@@ -22,5 +22,17 @@ describe('ปิดบางระบบทั้งบริษัท', () => {
     expect(menuOffBy('PU.RR', ['NOPE', 7])).toBeNull();
     expect(menuOffBy('PU.RR', null)).toBeNull();
     expect([...offMenus(['FA', 'X'])]).toEqual(['FA.ASSET', 'FA.DEPR']);
+  });
+});
+
+describe('menu split keeps rights (HANDOFF ข้อ 91)', () => {
+  it('copies FI.AR.OB rows to FI.AR.DOB only when the set has no FI.AR.DOB row', () => {
+    expect(MENU_INHERITS['FI.AR.DOB']).toBe('FI.AR.OB');
+    let n = 0;
+    const id = () => `new${++n}`;
+    const old = [{ id: 'a', _menu_code: 'FI.AR.OB', subject_id: 'g1', can_add: 'Y' }, { id: 'b', _menu_code: 'FI.AR.OB', subject_id: 'g2', can_add: 'N' }, { id: 'c', _menu_code: 'SA.IV', subject_id: 'g1', can_add: 'Y' }];
+    expect(inheritMenuRows(old, id).slice(3)).toEqual([{ id: 'new1', _menu_code: 'FI.AR.DOB', subject_id: 'g1', can_add: 'Y' }, { id: 'new2', _menu_code: 'FI.AR.DOB', subject_id: 'g2', can_add: 'N' }]);
+    const already = [...old, { id: 'd', _menu_code: 'FI.AR.DOB', subject_id: 'g1', can_add: 'N' }];
+    expect(inheritMenuRows(already, id)).toEqual(already);
   });
 });
