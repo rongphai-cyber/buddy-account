@@ -15,7 +15,8 @@
 
 1. สร้างโปรเจกต์ Supabase **ใหม่ 1 โปรเจกต์** ชื่อเช่น `wts-cloud-test` — Region **Southeast Asia (Singapore)** · ตั้ง Database Password เป็นตัวอักษร+ตัวเลขยาว ≥ 24 ตัว (ไม่มี @ : / ? # %) จดไว้ในตัวจัดการรหัสผ่าน **ห้ามใช้โปรเจกต์ของ WTS-SOP** (เครื่องมือปฏิเสธโปรเจกต์ที่มีตารางอยู่แล้ว)
 2. ปุ่ม **Connect** › **Session pooler** › คัดลอก URI (ลงท้าย `/postgres`)
-3. (แนะนำ) Project Settings › Database › SSL Configuration › **Download certificate** → บันทึกเป็น `E:\BuddyAccount\.data\supabase-ca.crt`
+3. (แนะนำ) แถบไอคอนซ้าย **Database** (รูปถังข้อมูล) › **Settings** › **SSL Configuration** › **Download certificate** → บันทึกเป็น `E:\BuddyAccount\.data\supabase-ca.crt` (หน้า Project Settings ของ Supabase รุ่นใหม่ไม่มีหัวข้อ Database แล้ว)
+   - หาไม่เจอ/ข้าม: ต่อท้าย URL ด้วย `?sslmode=no-verify` แทน (ยังเข้ารหัส แต่ไม่ตรวจตัวตนเซิร์ฟเวอร์ — ใช้ทดสอบเท่านั้น) · **อย่าใช้ `sslmode=require`**: ไดรเวอร์ pg ของเราถือเป็น verify-full แล้วล้มด้วย "self-signed certificate" เพราะใบรับรองของ Supabase ไม่ได้ออกโดย CA สาธารณะ
 4. คัดลอก `tools\cloud\cloud-s0.env.example` เป็น `E:\BuddyAccount\.data\cloud-s0.env` (Notepad) แล้ววาง URI ที่บรรทัด `SUPABASE_PROJECT_URL=` ใส่รหัสผ่านแทน `[YOUR-PASSWORD]` และต่อท้ายด้วย `?sslmode=verify-full&sslrootcert=E:/BuddyAccount/.data/supabase-ca.crt` — **ห้ามวางรหัสผ่านในแชท**
 5. (ไม่บังคับ) ใส่ **Transaction pooler** (พอร์ต 6543) ที่ `SUPABASE_POOLER_URL`
    - เครื่องมือเปลี่ยนเฉพาะชื่อฐานท้าย URL (`/postgres` → `/s0_buddy` …) แล้วตรวจว่าได้ฐานนั้นจริง · ถ้าแจ้งว่า pooler เลือกฐานไม่ได้ ให้ใช้ **Direct connection** แทน (ต้องมี IPv6 หรือซื้อ IPv4 add-on ของ Supabase)
