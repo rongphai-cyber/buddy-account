@@ -896,6 +896,7 @@ add(T('doc_header', 'หัวเอกสารทุกชนิด (ขาย
   lk('opening_offset_account_id', 'gl_account', 'ยอดยกมาที่ลงบัญชี (ระบบอื่นส่งมา เช่น WTS-Living): บัญชีคู่ของลูกหนี้/มัดจำรับยกมา — ว่าง = ไม่ลงบัญชี (ยอดบัญชีอยู่ที่บันทึกยอดยกมา)'),
   C('payment_terms', 'str60', th='เงื่อนไขการชำระ', src='PAYCOND'),
   C('remark', 'text', th='หมายเหตุสั้น', src='REMARK'),
+  C('etax_purpose_code', 'code10', th='รหัสเหตุผลใบลดหนี้ e-Tax (ETDA CDNG01-05/99 CDNS01-04/99) ของใบคืนเงินมัดจำ (RD) ที่มี VAT — ผู้ใช้เลือก (docs/19 ข้อ 8 · HANDOFF ข้อ 90) · ว่าง = ค่าเริ่มต้น CDNS04 บอกเลิกสัญญาบริการ'),
   C('gl_posted', 'char1', nn=True, d="'N'", th='N=ยังไม่ลงบัญชี Y=ลงแล้ว P=รอเซิร์ฟเวอร์ลง', src='POSTGL'),
   lk('journal_id', 'gl_journal', 'ใบสำคัญที่เกิดจากเอกสารนี้'),
   lk('approved_by', 'sys_user', 'ผู้อนุมัติ', 'APPROVE'),

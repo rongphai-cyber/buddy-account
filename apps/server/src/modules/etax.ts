@@ -123,7 +123,7 @@ async function loadDocs(db: Db, companyId: string, where: ReturnType<typeof sql>
       const before = (x: { rd_date: string; rd_no: string }) => x.rd_date < h.doc_date || (x.rd_date === h.doc_date && x.rd_no < h.doc_no);
       const prior = priors.filter((x) => x.rd_id !== h.id && mine.some((m) => m.from_header_id === x.from_header_id) && before(x));
       const p = etaxDepositRefundParts({ deposits: mine.map((x) => ({ doc_no: x.doc_no, doc_date: x.doc_date, dep_net: x.dep_net, dep_vat: x.dep_vat, amount: x.amount, vat: x.vat_amount, price_type: x.price_type })),
-        prior: prior.map((x) => ({ amount: x.amount, vat: x.vat_amount, price_type: x.price_type })), vatRate: rate, yearSystem: ys });
+        prior: prior.map((x) => ({ amount: x.amount, vat: x.vat_amount, price_type: x.price_type })), vatRate: rate, yearSystem: ys, purposeCode: h.etax_purpose_code });
       Object.assign(doc, { lines: p.lines, refs: p.refs, ref: null, vat: p.vat, exemptBasis: p.exemptBasis, deposit: p.deposit, grandTotal: p.grandTotal, originalAmount: p.originalAmount, correctAmount: p.correctAmount,
         purposeCode: p.purposeCode, purpose: s(h.remark) || null, dueDate: null, buyerOrderRef: null });
       if (vatAmt.isZero() || p.errors.length) own = [ETAX_NOT_TAX_INVOICE.RD];

@@ -173,7 +173,7 @@ describe('ใบคืนเงินมัดจำที่มี VAT = ใบ
     expect(pr.lines.map((l: { name: string; amount: string }) => [l.name.replace(/AI\d+/, 'AI'), l.amount])).toEqual([['ใบกำกับภาษีเดิม AI ลงวันที่ 15/06/2569 มูลค่า 10000.00 ภาษี 700.00 — ลดมูลค่า 6000.00 ภาษี 420.00', '6420.00']]);
     expect(pr.totals).toEqual([{ label: 'มูลค่าตามใบกำกับภาษีเดิม', value: '10000.00' }, { label: 'ลดหนี้ครั้งก่อน', value: '4000.00' }, { label: 'มูลค่าที่ถูกต้อง', value: '0.00' },
       { label: 'ผลต่าง', value: '6000.00' }, { label: 'ภาษีมูลค่าเพิ่มของผลต่าง 7%', value: '420.00' }, { label: 'รวมเงินคืนทั้งสิ้น', value: '6420.00' }]);
-    expect(pr.fields.remark).toBe('เหตุผลที่ลดหนี้: ยกเลิกสัญญาตกแต่งร้าน คืนเงินมัดจำ');
+    expect(pr.fields.remark).toBe('เหตุผลที่ลดหนี้: CDNS04 บอกเลิกสัญญาบริการ — ยกเลิกสัญญาตกแต่งร้าน คืนเงินมัดจำ');
     expect(pr.fields.ref_invoice).toMatch(/^AI\d+ ลงวันที่ 15\/06\/2569$/);
     // ใบแรกไม่มีลดหนี้ครั้งก่อน
     const p1 = (await call('GET', `/api/v1/print/doc/${ids.rd1}`)).body.data;

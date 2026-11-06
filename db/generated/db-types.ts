@@ -2591,6 +2591,8 @@ export interface DocHeaderTable {
   payment_terms: Gen<string | null>;
   /** หมายเหตุสั้น */
   remark: Gen<string | null>;
+  /** รหัสเหตุผลใบลดหนี้ e-Tax (ETDA CDNG01-05/99 CDNS01-04/99) ของใบคืนเงินมัดจำ (RD) ที่มี VAT — ผู้ใช้เลือก (docs/19 ข้อ 8 · HANDOFF ข้อ 90) · ว่าง = ค่าเริ่มต้น CDNS04 บอกเลิกสัญญาบริการ */
+  etax_purpose_code: Gen<string | null>;
   /** N=ยังไม่ลงบัญชี Y=ลงแล้ว P=รอเซิร์ฟเวอร์ลง */
   gl_posted: Gen<string>;
   /** ใบสำคัญที่เกิดจากเอกสารนี้ */

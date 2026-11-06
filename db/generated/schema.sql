@@ -2760,6 +2760,7 @@ CREATE TABLE doc_header (
   opening_offset_account_id uuid,
   payment_terms varchar(60),
   remark text,
+  etax_purpose_code varchar(10),
   gl_posted char(1) DEFAULT 'N' NOT NULL,
   journal_id uuid,
   approved_by uuid,
@@ -2857,6 +2858,7 @@ COMMENT ON COLUMN doc_header.is_opening IS 'ลูกหนี้/เจ้า�
 COMMENT ON COLUMN doc_header.opening_offset_account_id IS 'ยอดยกมาที่ลงบัญชี (ระบบอื่นส่งมา เช่น WTS-Living): บัญชีคู่ของลูกหนี้/มัดจำรับยกมา — ว่าง = ไม่ลงบัญชี (ยอดบัญชีอยู่ที่บันทึกยอดยกมา)';
 COMMENT ON COLUMN doc_header.payment_terms IS 'เงื่อนไขการชำระ [Express: PAYCOND]';
 COMMENT ON COLUMN doc_header.remark IS 'หมายเหตุสั้น [Express: REMARK]';
+COMMENT ON COLUMN doc_header.etax_purpose_code IS 'รหัสเหตุผลใบลดหนี้ e-Tax (ETDA CDNG01-05/99 CDNS01-04/99) ของใบคืนเงินมัดจำ (RD) ที่มี VAT — ผู้ใช้เลือก (docs/19 ข้อ 8 · HANDOFF ข้อ 90) · ว่าง = ค่าเริ่มต้น CDNS04 บอกเลิกสัญญาบริการ';
 COMMENT ON COLUMN doc_header.gl_posted IS 'N=ยังไม่ลงบัญชี Y=ลงแล้ว P=รอเซิร์ฟเวอร์ลง [Express: POSTGL]';
 COMMENT ON COLUMN doc_header.journal_id IS 'ใบสำคัญที่เกิดจากเอกสารนี้';
 COMMENT ON COLUMN doc_header.approved_by IS 'ผู้อนุมัติ [Express: APPROVE]';

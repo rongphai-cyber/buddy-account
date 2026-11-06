@@ -824,6 +824,31 @@
 ]
 },
 {
+"th": "สินค้า",
+"n": 29,
+"files": [
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/items.ts",
+"apps/server/src/modules/serials.ts",
+"apps/server/src/modules/stock.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/etax.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/items.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ชื่อ",
 "n": 28,
 "files": [
@@ -869,30 +894,6 @@
 "apps/web/src/pages/settings/ActivityLog.tsx",
 "apps/web/src/pages/tax/Etax.tsx",
 "packages/core/src/payroll.ts"
-]
-},
-{
-"th": "สินค้า",
-"n": 28,
-"files": [
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/items.ts",
-"apps/server/src/modules/serials.ts",
-"apps/server/src/modules/stock.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/stock.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/items.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -4644,6 +4645,16 @@
 ]
 },
 {
+"th": "บริการ",
+"n": 4,
+"files": [
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/etax.ts",
+"packages/core/src/items.ts"
+]
+},
+{
 "th": "บัญชีเงินฝาก {0} ยังไม่ได้ผูกเลขที่บัญชี — กำหนดที่ รายละเอียดบัญชีเงินฝาก",
 "n": 4,
 "files": [
@@ -5628,15 +5639,6 @@
 "apps/server/src/modules/docs/stockdocs.ts",
 "apps/server/src/modules/docs/stockopening.ts",
 "apps/server/src/modules/docs/trade.ts"
-]
-},
-{
-"th": "บริการ",
-"n": 3,
-"files": [
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/server/src/modules/reports/stock.ts",
-"packages/core/src/items.ts"
 ]
 },
 {
@@ -15267,6 +15269,13 @@
 ]
 },
 {
+"th": "{0} — ต้องระบุสาเหตุในช่องเหตุผลที่ลดหนี้",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
+]
+},
+{
 "th": "{0} — ต้องให้ผู้มีระดับอนุมัติ {1} ขึ้นไปบันทึก หรือขอเพิ่มวงเงินที่รายละเอียดลูกค้า",
 "n": 1,
 "files": [
@@ -19380,6 +19389,13 @@
 "n": 1,
 "files": [
 "packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "ค่าเช่า/บริการ = CDNS04 บอกเลิกสัญญาบริการ (ค่าเริ่มต้น) · มัดจำค่าสินค้า = CDNG99 เหตุอื่น (ระบุสาเหตุ) · พิมพ์รหัสหรือชื่อ / F4 เปิดรายการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
 ]
 },
 {
@@ -33341,6 +33357,13 @@
 ]
 },
 {
+"th": "รหัส 99 เหตุอื่น — ต้องระบุสาเหตุ · พิมพ์ในใบลดหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
 "th": "รหัส {0}",
 "n": 1,
 "files": [
@@ -34073,6 +34096,34 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "รหัสเหตุผล 99 เหตุอื่น ต้องระบุสาเหตุ — ป้อนในช่อง \"เหตุผลที่ลดหนี้\"",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
+"th": "รหัสเหตุผลใบลดหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
+"th": "รหัสเหตุผลใบลดหนี้ \"{0}\" ไม่อยู่ในรายการมาตรฐาน ETDA — เลือกจากรายการ CDNG01-05/CDNG99 (สินค้า) หรือ CDNS01-04/CDNS99 (บริการ)",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
+]
+},
+{
+"th": "รหัสเหตุผลใบลดหนี้ (e-Tax)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
 ]
 },
 {
@@ -45647,6 +45698,13 @@
 ]
 },
 {
+"th": "เลือกรหัสเหตุผลจากรายการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/depositrefund.ts"
+]
+},
+{
 "th": "เลือกรายการจากใบกำกับเดิม",
 "n": 1,
 "files": [
@@ -46067,7 +46125,7 @@
 ]
 },
 {
-"th": "เหตุผลที่ลดหนี้: {0}",
+"th": "เหตุผลที่ลดหนี้: {0} — {1}",
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
@@ -47166,7 +47224,7 @@
 ]
 },
 {
-"th": "แฟ้ม zip มีแฟ้ม XML ฉบับละ 1 แฟ้ม + สรุป.csv (รายการที่ข้ามพร้อมเหตุผล) · เหตุผลใบลดหนี้: มีรับคืนสินค้า = CDNG05 · คืนเงินมัดจำ = CDNS04 บอกเลิกสัญญา · อื่น ๆ = 99 ตามหมายเหตุของเอกสาร · ใบเสร็จ/ใบมัดจำ/ใบคืนเงินมัดจำที่ไม่มี VAT และบิลภาษีเกณฑ์เงินสด (ใบกำกับภาษีคือใบเสร็จ) ไม่อยู่ในรายการ · ยอดเงินในแฟ้มไม่รวม VAT ตามมาตรฐาน · เมื่อมีใบรับรองอิเล็กทรอนิกส์แล้วจะเพิ่มการลงนาม (XAdES) และนำส่ง",
+"th": "แฟ้ม zip มีแฟ้ม XML ฉบับละ 1 แฟ้ม + สรุป.csv (รายการที่ข้ามพร้อมเหตุผล) · เหตุผลใบลดหนี้: มีรับคืนสินค้า = CDNG05 · คืนเงินมัดจำ = รหัสที่เลือกในใบคืนเงินมัดจำ (ค่าเริ่มต้น CDNS04 บอกเลิกสัญญา) · อื่น ๆ = 99 ตามหมายเหตุของเอกสาร · ใบเสร็จ/ใบมัดจำ/ใบคืนเงินมัดจำที่ไม่มี VAT และบิลภาษีเกณฑ์เงินสด (ใบกำกับภาษีคือใบเสร็จ) ไม่อยู่ในรายการ · ยอดเงินในแฟ้มไม่รวม VAT ตามมาตรฐาน · เมื่อมีใบรับรองอิเล็กทรอนิกส์แล้วจะเพิ่มการลงนาม (XAdES) และนำส่ง",
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Etax.tsx"

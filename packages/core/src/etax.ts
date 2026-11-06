@@ -280,6 +280,27 @@ export const ETAX_NOT_TAX_INVOICE = {
  * ข้อความเหตุผล (Purpose) = หมายเหตุของ RD (ช่อง "เหตุผลที่ลดหนี้" บังคับเมื่อมี VAT)
  */
 export const ETAX_DEPOSIT_REFUND_PURPOSE = 'CDNS04';
+/** มัดจำค่าสินค้า: รหัสที่แนะนำ = CDNG99 เหตุอื่น (ระบุสาเหตุ) — docs/19 ข้อ 8 */
+export const ETAX_DEPOSIT_REFUND_PURPOSE_GOODS = 'CDNG99';
+
+/**
+ * รหัสเหตุผลใบลดหนี้ที่ผู้ใช้เลือกได้ในใบคืนเงินมัดจำที่มี VAT (HANDOFF ข้อ 90 · docs/19 ข้อ 8 สำนักงานบัญชีไม่กำหนดรหัส ผู้ใช้ระบุเหตุผลเพิ่มได้)
+ * = รายการ CDN* ของ ETAX_PURPOSES (CDNG = สินค้า · CDNS = บริการ) · รหัสลงท้าย 99 ต้องมีข้อความเหตุผล (หมายเหตุของ RD)
+ */
+export const ETAX_CREDIT_PURPOSES = Object.keys(ETAX_PURPOSES).filter((k) => k.startsWith('CDN')).map((code) => ({
+  code, name: ETAX_PURPOSES[code]!, group: code.startsWith('CDNG') ? 'สินค้า' : 'บริการ',
+}));
+/** รหัส + ชื่อ เช่น CDNS04 บอกเลิกสัญญาบริการ (ใบพิมพ์/หน้าจอ) */
+export const etaxPurposeText = (code: string | null | undefined) => (code && ETAX_PURPOSES[code] ? `${code} ${ETAX_PURPOSES[code]}` : '');
+/** รหัสเหตุผลของ RD ที่ใช้จริง: ที่เลือกไว้ · ใบเดิม (ว่าง) = CDNS04 */
+export const depositRefundPurpose = (code: string | null | undefined) => (code && ETAX_PURPOSES[code] && code.startsWith('CDN') ? code : ETAX_DEPOSIT_REFUND_PURPOSE);
+/** ตรวจรหัสเหตุผลใบลดหนี้ที่ผู้ใช้เลือก → ข้อความผิดพลาด (บอกวิธีแก้) หรือ null */
+export function checkCreditPurpose(code: string | null | undefined, reason: string | null | undefined): string | null {
+  if (!code) return null;
+  if (!ETAX_CREDIT_PURPOSES.some((p) => p.code === code)) return `รหัสเหตุผลใบลดหนี้ "${code}" ไม่อยู่ในรายการมาตรฐาน ETDA — เลือกจากรายการ CDNG01-05/CDNG99 (สินค้า) หรือ CDNS01-04/CDNS99 (บริการ)`;
+  if (code.endsWith('99') && !reason?.trim()) return `${etaxPurposeText(code)} — ต้องระบุสาเหตุในช่องเหตุผลที่ลดหนี้`;
+  return null;
+}
 
 /** บิลที่ใบเสร็จตัด + รายการของบิล (ยอดบรรทัดไม่รวม VAT = doc_line.net_amount) */
 export interface EtaxReceiptBill extends ReceiptVatRow {
@@ -329,10 +350,10 @@ export interface EtaxRefundDeposit extends DepositRefundLink { doc_no: string; d
 /**
  * ใบคืนเงินมัดจำที่มี VAT (RD = ใบลดหนี้ · HANDOFF ข้อ 85) → e-Tax 81
  *  อ้างใบกำกับภาษีเดิม = ใบรับเงินมัดจำทุกใบที่คืน (T03) · มูลค่าเดิม / ที่ถูกต้อง / ผลต่าง จาก depositCreditNoteAmounts ชุดเดียวกับใบพิมพ์ RD
- *  VAT ของผลต่าง = VAT ที่บันทึกต่อใบมัดจำ (กฎปิดยอดตรงสตางค์) · เหตุผล CDNS04 + ข้อความจากหมายเหตุ
+ *  VAT ของผลต่าง = VAT ที่บันทึกต่อใบมัดจำ (กฎปิดยอดตรงสตางค์) · เหตุผล = รหัสที่ผู้ใช้เลือก (ใบเดิม = CDNS04 · HANDOFF ข้อ 90) + ข้อความจากหมายเหตุ
  *  รายการ = 1 บรรทัดต่อใบมัดจำ มูลค่าก่อน VAT ที่คืน
  */
-export function etaxDepositRefundParts(x: { deposits: EtaxRefundDeposit[]; prior: DepositRefundLink[]; vatRate: MoneyInput; yearSystem?: YearSystem }) {
+export function etaxDepositRefundParts(x: { deposits: EtaxRefundDeposit[]; prior: DepositRefundLink[]; vatRate: MoneyInput; yearSystem?: YearSystem; purposeCode?: string | null }) {
   const c = depositCreditNoteAmounts(x);
   const errors: string[] = [];
   if (c.vat.isZero()) errors.push(ETAX_NOT_TAX_INVOICE.RD);
@@ -343,6 +364,6 @@ export function etaxDepositRefundParts(x: { deposits: EtaxRefundDeposit[]; prior
   return {
     lines, refs: x.deposits.map((r) => ({ id: r.doc_no, date: r.doc_date, typeCode: 'T03' })),
     vat: { rate: d(x.vatRate ?? 0).toString(), basis: c.diff.toFixed(2), amount: c.vat.toFixed(2) }, exemptBasis: '0', deposit: '0', grandTotal: c.paid.toFixed(2),
-    originalAmount: c.orig.toFixed(2), correctAmount: c.correct.toFixed(2), purposeCode: ETAX_DEPOSIT_REFUND_PURPOSE, errors,
+    originalAmount: c.orig.toFixed(2), correctAmount: c.correct.toFixed(2), purposeCode: depositRefundPurpose(x.purposeCode), errors,
   };
 }

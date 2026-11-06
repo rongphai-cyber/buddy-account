@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildEtaxXml, ETAX_NOT_TAX_INVOICE, etaxDepositRefundParts, etaxFileName, etaxPostcode, etaxReceiptParts, etaxTaxRegistration, validateEtax, type EtaxDoc, type EtaxReceiptBill } from './etax.js';
+import { buildEtaxXml, checkCreditPurpose, depositRefundPurpose, ETAX_CREDIT_PURPOSES, ETAX_NOT_TAX_INVOICE, etaxDepositRefundParts, etaxPurposeText, etaxFileName, etaxPostcode, etaxReceiptParts, etaxTaxRegistration, validateEtax, type EtaxDoc, type EtaxReceiptBill } from './etax.js';
 import { depositRefundVat, receiptVatSummary } from './posting.js';
 import { d } from './money.js';
 
@@ -161,5 +161,22 @@ describe('e-Tax RE / AI / RD (HANDOFF ข้อ 89)', () => {
     expect(x.match(/<ram:AdditionalReferencedDocument>/g)?.length).toBe(2);
     inOrder(x, ['<ram:IssuerAssignedID>AI6906001', '<ram:ReferenceTypeCode>T03', '<ram:IssuerAssignedID>AI6906002', '<ram:IssueDateTime>2026-06-20T00:00:00', '<ram:ReferenceTypeCode>T03']);
     expect(validateEtax({ ...rdDoc(p, 'RD6907009', 'x'), refs: [{ id: '', date: '', typeCode: 'T03' }] })).toEqual(expect.arrayContaining([expect.stringMatching(/อ้างเลขที่และวันที่ใบกำกับภาษีเดิม/)]));
+  });
+
+  it('RD purpose code chosen by the user (HANDOFF 90): ETDA CDN list, stored code in XML, old RD (empty) → CDNS04, 99 needs reason, invalid refused', () => {
+    expect(ETAX_CREDIT_PURPOSES.map((x) => x.code)).toEqual(['CDNG01', 'CDNG02', 'CDNG03', 'CDNG04', 'CDNG05', 'CDNG99', 'CDNS01', 'CDNS02', 'CDNS03', 'CDNS04', 'CDNS99']);
+    expect(ETAX_CREDIT_PURPOSES.find((x) => x.code === 'CDNG99')).toEqual({ code: 'CDNG99', name: 'เหตุอื่น (ระบุสาเหตุ)', group: 'สินค้า' });
+    expect(etaxPurposeText('CDNS04')).toBe('CDNS04 บอกเลิกสัญญาบริการ');
+    expect([depositRefundPurpose(null), depositRefundPurpose(''), depositRefundPurpose('CDNG02'), depositRefundPurpose('DBNG01'), depositRefundPurpose('XX')]).toEqual(['CDNS04', 'CDNS04', 'CDNG02', 'CDNS04', 'CDNS04']);
+    const p = etaxDepositRefundParts({ deposits: [{ ...aiA, amount: '4000.00', vat: '280.00' }], prior: [], vatRate: 7, purposeCode: 'CDNG99' });
+    expect(p.purposeCode).toBe('CDNG99');
+    inOrder(buildEtaxXml(rdDoc(p, 'RD6907010', 'ยกเลิกสั่งซื้อสินค้า คืนมัดจำ')), ['<ram:Purpose>ยกเลิกสั่งซื้อสินค้า คืนมัดจำ', '<ram:PurposeCode>CDNG99']);
+    expect(validateEtax(rdDoc(p, 'RD6907010', ''))).toEqual(expect.arrayContaining([expect.stringMatching(/เหตุอื่นต้องระบุสาเหตุ/)]));
+    expect(checkCreditPurpose(null, null)).toBeNull();
+    expect(checkCreditPurpose('CDNS04', '')).toBeNull();
+    expect(checkCreditPurpose('CDNG99', 'ยกเลิกสั่งซื้อ')).toBeNull();
+    expect(checkCreditPurpose('CDNS99', ' ')).toMatch(/ต้องระบุสาเหตุ/);
+    expect(checkCreditPurpose('DBNG01', 'x')).toMatch(/ไม่อยู่ในรายการมาตรฐาน ETDA/);
+    expect(checkCreditPurpose('CDNX01', 'x')).toMatch(/ไม่อยู่ในรายการมาตรฐาน ETDA/);
   });
 });

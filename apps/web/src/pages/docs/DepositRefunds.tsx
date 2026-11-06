@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { d, DEPOSIT_REFUND as K, fmt, settlementTotals, todayIso } from '@buddy/core';
+import { d, DEPOSIT_REFUND as K, ETAX_CREDIT_PURPOSES, ETAX_DEPOSIT_REFUND_PURPOSE, fmt, settlementTotals, todayIso } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
@@ -24,7 +24,10 @@ import { DepositPickTable, depositsBody, depositsFrom, refundTotals, savedRefund
  * คืนเงินมัดจำ (RD — Buddy เพิ่ม 05/11/2569 · Express ไม่มีเอกสารนี้): คืนยอดคงเหลือของใบรับเงินมัดจำให้ลูกค้า
  * เช่น เงินประกันห้องพักตอนย้ายออก หลังหักค่าเช่า/ค่าเสียหายด้วยใบเสร็จแล้ว · ลงบัญชี Dr เงินมัดจำรับ / Cr เงินสด-ธนาคาร
  * มัดจำที่มี VAT (06/11/2569): ใบคืนเงินมัดจำ = ใบลดหนี้ — Dr มัดจำรับ (ก่อน VAT) + Dr ภาษีขาย / Cr เงินที่จ่าย · ต้องป้อนเหตุผล (ช่องหมายเหตุ)
+ *  + รหัสเหตุผลใบลดหนี้ e-Tax (HANDOFF ข้อ 90 · docs/19 ข้อ 8): ช่องค้นหาจากรายการ ETDA CDNG/CDNS · ค่าเริ่มต้น CDNS04 · รหัส 99 ต้องมีเหตุผล
  */
+type PurposeRow = { id: string; code: string; name: string; group: string };
+const PURPOSE_ROWS: PurposeRow[] = ETAX_CREDIT_PURPOSES.map((p) => ({ ...p, id: p.code }));
 
 /* ---------------------------------------------------------------- รายการ */
 interface ListRow { id: string; doc_no: string; doc_date: string; party_name: string | null; party_code: string | null; your_ref: string | null; net_amount: string; cash_amount: string; cheque_amount: string; doc_status: string; deposit_nos: string | null; branch_code?: string | null }
@@ -78,7 +81,7 @@ export function DepositRefundListPage() {
 }
 
 /* ---------------------------------------------------------------- หน้าเอกสาร */
-interface Head { doc_type_id: string; doc_date: string; party: { id: string; code: string; name?: string | null } | null; department_id: string; salesperson_id: string; your_ref: string; remark: string; cash: string }
+interface Head { doc_type_id: string; doc_date: string; party: { id: string; code: string; name?: string | null } | null; department_id: string; salesperson_id: string; your_ref: string; remark: string; purpose: string; cash: string }
 interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; branch_id: string; deposits: Array<{ header_id: string; doc_no: string; amount: string; vat_amount?: string | null }>; payments: Parameters<typeof paysFrom>[0] }
 
 export function DepositRefundFormPage() {
@@ -105,11 +108,11 @@ export function DepositRefundFormPage() {
   const [reason, setReason] = useState('');
   const [dirty, setDirty] = useState(false);
   const date0 = me?.work_date ?? todayIso();
-  if (!h && !id && defs.data) setH({ doc_type_id: initialType(defs.data.types)?.id ?? '', doc_date: date0, party: null, department_id: '', salesperson_id: '', your_ref: '', remark: '', cash: '' });
+  if (!h && !id && defs.data) setH({ doc_type_id: initialType(defs.data.types)?.id ?? '', doc_date: date0, party: null, department_id: '', salesperson_id: '', your_ref: '', remark: '', purpose: '', cash: '' });
   if (!h && id && cur.data) {
     const c = cur.data as Record<string, string | null>;
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), party: c.customer_id ? { id: c.customer_id, code: c.party_code ?? '', name: c.party_name } : null, department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '',
-      your_ref: c.your_ref ?? '', remark: c.remark ?? '', cash: '' });
+      your_ref: c.your_ref ?? '', remark: c.remark ?? '', purpose: c.etax_purpose_code ?? '', cash: '' });
     setDeps(depositsFrom(cur.data.deposits));
     setPays(paysFrom(cur.data.payments));
   }
@@ -135,11 +138,14 @@ export function DepositRefundFormPage() {
   const total = rt.paid.toFixed(2);
   const t = settlementTotals({ settlements: [total], payments: pays.filter((p) => p.payment_method_id).map((p) => p.amount || 0), cash: h?.cash ? h.cash : null });
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
+  // รหัสเหตุผลใบลดหนี้ที่ใช้ (ว่าง = ค่าเริ่มต้น CDNS04)
+  const purposeRow = PURPOSE_ROWS.find((p) => p.code === (h?.purpose || ETAX_DEPOSIT_REFUND_PURPOSE)) ?? null;
+  const purpose99 = !!purposeRow?.code.endsWith('99');
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: ro, resetKey: h ? 'on' : 'off' });
   const pickParty = (p: { id: string; code: string; name: string } | null) => { setDeps({}); set({ party: p }); if (p) setTab('deposits'); };
   const bodyOf = () => h && ({ branch_id: br.body, doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null,
-    your_ref: h.your_ref || null, remark: h.remark || null, deposits: depositsBody(deps), cash_amount: h.cash === '' ? null : h.cash, payments: paysBody(pays) });
+    your_ref: h.your_ref || null, remark: h.remark || null, etax_purpose_code: rt.hasVat ? h.purpose || ETAX_DEPOSIT_REFUND_PURPOSE : null, deposits: depositsBody(deps), cash_amount: h.cash === '' ? null : h.cash, payments: paysBody(pays) });
   const reset = () => { setH(null); setDeps({}); setPays([]); setPayOk(''); };
   // ก่อนบันทึก: ถามวิธีจ่ายเงิน (ใบใหม่ที่ยังไม่ได้เลือก หรือยอดวิธีอื่นยังไม่ครบ — docs/18 ข้อ 2) · ตกลงแล้วจำไว้จนกว่ายอดจะเปลี่ยน
   const [payAsk, setPayAsk] = useState<{ next: 'save' | 'confirm'; andNew: boolean } | null>(null);
@@ -172,7 +178,7 @@ export function DepositRefundFormPage() {
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     if (!h.party) { setErr(new Error('เลือกลูกค้า (ช่องรหัสลูกค้า กด F4 ค้นหา)')); return; }
     if (!Object.keys(deps).length) { setErr(new Error('เลือกใบมัดจำที่จะคืนอย่างน้อย 1 ใบ (แท็บมัดจำที่คืน)')); setTab('deposits'); return; }
-    if (rt.hasVat && !h.remark.trim()) { setErr(new Error('คืนมัดจำที่มีภาษีมูลค่าเพิ่ม = ใบลดหนี้ ต้องระบุเหตุผล — ป้อนเหตุผลในช่อง "เหตุผลที่ลดหนี้" เช่น ยกเลิกสัญญา คืนเงินมัดจำ')); return; }
+    if (rt.hasVat && !h.remark.trim()) { setErr(new Error(purpose99 ? 'รหัสเหตุผล 99 เหตุอื่น ต้องระบุสาเหตุ — ป้อนในช่อง "เหตุผลที่ลดหนี้"' : 'คืนมัดจำที่มีภาษีมูลค่าเพิ่ม = ใบลดหนี้ ต้องระบุเหตุผล — ป้อนเหตุผลในช่อง "เหตุผลที่ลดหนี้" เช่น ยกเลิกสัญญา คืนเงินมัดจำ')); return; }
     if (!payChosen && needsPay()) { setPayAsk({ next: 'save', andNew }); return; }
     setErr(null); setBusy(true);
     try {
@@ -237,7 +243,10 @@ export function DepositRefundFormPage() {
         {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction="P" partyId={null} readOnly={ro} payDate={h.doc_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
         {tab === 'gl' && <PostingTab id={id} path={K.path} editing={!ro} bodyOf={bodyOf} />}
         <div className="trade-foot">
-          <Field label={rt.hasVat ? 'เหตุผลที่ลดหนี้' : 'หมายเหตุ'} req={rt.hasVat} hint={rt.hasVat ? 'พิมพ์ในใบลดหนี้ เช่น ยกเลิกสัญญา คืนเงินมัดจำ' : undefined}>
+          {rt.hasVat && <Field label="รหัสเหตุผลใบลดหนี้ (e-Tax)" req hint="ค่าเช่า/บริการ = CDNS04 บอกเลิกสัญญาบริการ (ค่าเริ่มต้น) · มัดจำค่าสินค้า = CDNG99 เหตุอื่น (ระบุสาเหตุ) · พิมพ์รหัสหรือชื่อ / F4 เปิดรายการ">
+            <SearchPick<PurposeRow> options={PURPOSE_ROWS} value={purposeRow} label={(r: PurposeRow) => r.name} describe={(r: PurposeRow) => r.group} disabled={ro} required aria-label="รหัสเหตุผลใบลดหนี้"
+              onPick={(r: PurposeRow | null) => { if (r) set({ purpose: r.code }); }} /></Field>}
+          <Field label={rt.hasVat ? 'เหตุผลที่ลดหนี้' : 'หมายเหตุ'} req={rt.hasVat} hint={rt.hasVat ? (purpose99 ? 'รหัส 99 เหตุอื่น — ต้องระบุสาเหตุ · พิมพ์ในใบลดหนี้' : 'พิมพ์ในใบลดหนี้ เช่น ยกเลิกสัญญา คืนเงินมัดจำ') : undefined}>
             <textarea rows={2} value={h.remark} maxLength={2000} disabled={ro} required={rt.hasVat} aria-invalid={rt.hasVat && !h.remark.trim() ? true : undefined} onChange={(e) => set({ remark: e.target.value })} /></Field>
           <table className="totals-table"><tbody>
             {rt.hasVat && <><tr><td>มูลค่าก่อน VAT ที่ลด</td><td className="r"><Money v={rt.base.toFixed(2)} /></td></tr><tr><td>ภาษีขายที่ลด</td><td className="r"><Money v={rt.vat.toFixed(2)} /></td></tr></>}

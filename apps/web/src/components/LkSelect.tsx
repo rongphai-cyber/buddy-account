@@ -133,9 +133,13 @@ export function LkSelect({ rows, value, onChange, blank = '—', byId, byName, m
   );
 }
 
-/** ช่องค้นหาแล้วเลือก (สินค้า ผู้จำหน่าย) — พิมพ์รหัส/ชื่อ เลือกจากรายการ · F4 / ลูกศรลง เปิดรายการ */
-export function SearchPick<T extends { id: string }>({ endpoint, params, value, label, onPick, placeholder = 'พิมพ์รหัสหรือชื่อเพื่อค้นหา', describe, exclude, codeOf, addNew = true, required, onEmptyEnter, ...rest }: {
-  endpoint: string; params?: Record<string, string>; value: { id: string; code: string; name?: string | null } | null; label?: (r: T) => string; codeOf?: (r: T) => string;
+/** ค้นในรายการคงที่: ไม่สนตัวพิมพ์/เว้นวรรค/ขีด · หลายคำไม่สนลำดับ (docs/18 ข้อ 3) */
+const squash = (v: string) => v.toLowerCase().replace(/[\s\-_.]/g, '');
+const localMatch = (q: string, hay: string) => { const h = squash(hay); return q.trim().split(/\s+/).filter(Boolean).every((w) => h.includes(squash(w))); };
+
+/** ช่องค้นหาแล้วเลือก (สินค้า ผู้จำหน่าย) — พิมพ์รหัส/ชื่อ เลือกจากรายการ · F4 / ลูกศรลง เปิดรายการ · options = รายการคงที่ (ค้นในเครื่อง ไม่เรียก API) */
+export function SearchPick<T extends { id: string }>({ endpoint = '', options, params, value, label, onPick, placeholder = 'พิมพ์รหัสหรือชื่อเพื่อค้นหา', describe, exclude, codeOf, addNew = true, required, onEmptyEnter, ...rest }: {
+  endpoint?: string; options?: T[]; params?: Record<string, string>; value: { id: string; code: string; name?: string | null } | null; label?: (r: T) => string; codeOf?: (r: T) => string;
   onPick: (r: T | null) => void; placeholder?: string; describe?: (r: T) => string; exclude?: string[];
   /** ค้นหาไม่พบ → เพิ่มใหม่จากช่องนี้ (ข้อกำหนดเจ้าของ) — false = ปิด */
   addNew?: boolean;
@@ -150,12 +154,15 @@ export function SearchPick<T extends { id: string }>({ endpoint, params, value, 
   /** เปิดรายการจากปุ่ม 🔍 / F4 โดยยังไม่พิมพ์ — แสดงรายการแรก ๆ ให้เลือก */
   const [browse, setBrowse] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  const res = useQuery({ enabled: !!q?.trim() || (browse && q !== null), queryKey: ['pick', endpoint, params, q], queryFn: () => api.get<{ rows: T[] }>(endpoint, { ...params, q: q ?? '', limit: 15 }), placeholderData: (p) => p });
-  const rows = (res.data?.rows ?? []).filter((r) => !exclude?.includes(r.id));
+  const res = useQuery({ enabled: !options && (!!q?.trim() || (browse && q !== null)), queryKey: ['pick', endpoint, params, q], queryFn: () => api.get<{ rows: T[] }>(endpoint, { ...params, q: q ?? '', limit: 15 }), placeholderData: (p) => p });
+  const codeText = (r: T) => (codeOf ? codeOf(r) : (r as unknown as { code: string }).code);
+  const local = options && q !== null ? options.filter((r) => localMatch(q, `${codeText(r)} ${label ? label(r) : ''} ${describe ? describe(r) : ''}`)) : null;
+  const loaded = options ? true : !!res.data;
+  const rows = (local ?? res.data?.rows ?? []).filter((r) => !exclude?.includes(r.id));
   useEffect(() => setSel(0), [q]);
   const pick = (r: T | null) => { onPick(r); setQ(null); setBrowse(false); };
   // เพิ่มใหม่จากช่องค้นหา: Insert หรือ Enter ตอนค้นหาไม่พบ → ฟอร์มข้อมูลหลัก (สิทธิ์เพิ่มของเมนูนั้น) → บันทึกแล้วเลือกให้
-  const addKind = addKindOf(endpoint, params);
+  const addKind = options ? null : addKindOf(endpoint, params);
   const canAdd = useCan(addKind ? ADD_MENU(addKind) : 'ALL')('add') && !!addKind && addNew && !rest.disabled;
   const [adding, setAdding] = useState<string | null>(null);
   const startAdd = (text: string) => { setQ(null); setBrowse(false); setAdding(text); };
@@ -184,7 +191,7 @@ export function SearchPick<T extends { id: string }>({ endpoint, params, value, 
           }
           if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, rows.length - 1)); }
           else if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
-          else if (e.key === 'Enter') { e.preventDefault(); if (rows[sel]) pick(rows[sel]!); else if (canAdd && q.trim() && res.data && !res.isFetching) startAdd(q); }
+          else if (e.key === 'Enter') { e.preventDefault(); if (rows[sel]) pick(rows[sel]!); else if (canAdd && q.trim() && loaded && !res.isFetching) startAdd(q); }
           else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setQ(null); setBrowse(false); }
         }} />
       {!rest.disabled && <button type="button" className="pick-btn" tabIndex={-1} title="ค้นหา (F4)" aria-label="ค้นหา" onMouseDown={(e) => e.preventDefault()} onClick={() => (q === null ? openList() : (setQ(null), setBrowse(false)))}>🔍</button>}
@@ -192,9 +199,9 @@ export function SearchPick<T extends { id: string }>({ endpoint, params, value, 
         <PickPopup anchor={box}>
           {rows.map((r, i) => <li key={r.id} role="option" aria-selected={i === sel} tabIndex={-1} className={i === sel ? 'on' : undefined} onMouseDown={(e) => { e.preventDefault(); pick(r); }}>
             {(r as { image_id?: string | null }).image_id && <img className="pick-thumb" src={`/api/v1/item-images/${(r as { image_id?: string }).image_id}?size=thumb`} alt="" loading="lazy" />}
-            <b className="mono">{codeOf ? codeOf(r) : (r as unknown as { code: string }).code}</b> {label ? label(r) : ''} {describe && <span className="muted small">{describe(r)}</span>}
+            <b className="mono">{codeText(r)}</b> {label ? label(r) : ''} {describe && <span className="muted small">{describe(r)}</span>}
           </li>)}
-          {res.data && !rows.length && <li className="muted">ไม่พบ{canAdd ? ' — กด Enter เพื่อเพิ่มใหม่' : ''}</li>}
+          {loaded && !rows.length && <li className="muted">ไม่พบ{canAdd ? ' — กด Enter เพื่อเพิ่มใหม่' : ''}</li>}
           {canAdd && <li className="pick-add" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); startAdd(q ?? ''); }}>＋ เพิ่ม{ADD_WORD(addKind!)}ใหม่{q?.trim() ? ` “${q.trim()}”` : ''} <kbd>Ins</kbd></li>}
         </PickPopup>
       )}

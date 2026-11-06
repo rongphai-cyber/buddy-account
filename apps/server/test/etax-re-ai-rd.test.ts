@@ -7,6 +7,7 @@
  *  RD  คืน 4,000 ของ AI ข้างบน → 81: เดิม 10,000 · ที่ถูกต้อง 6,000 · ผลต่าง 4,000 · VAT 280.00 · รวม 4,280.00 · CDNS04 + เหตุผลจากหมายเหตุ
  *  (c) AI รวม VAT 1,000 (VAT 65.42) · RD 333 (VAT 21.79) แล้ว RD 667 (ปิดยอด VAT 65.42 − 21.79 = 43.63) → เดิม 934.58 · ลดครั้งก่อน 311.21 · ที่ถูกต้อง 0.00 · ผลต่าง 623.37
  *  RD คืน 2 ใบมัดจำ (AI 1,000 + 70 และ AI 2,000 + 140 คืนเต็ม) → อ้างใบกำกับเดิม 2 ใบ · ผลต่าง 3,000.00 VAT 210.00
+ *  รหัสเหตุผล (HANDOFF ข้อ 90): RD เลือก CDNG99/CDNG02 → XML/ใบพิมพ์ใช้รหัสนั้น · ใบเดิมรหัสว่าง → CDNS04 · รหัสนอกรายการ ETDA / 99 ไม่มีเหตุผล = 400
  */
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
@@ -181,6 +182,44 @@ describe('e-Tax XML: RE T03 · AI T03 · RD 81 (HANDOFF ข้อ 89)', () => {
     expect([r.status, r.body.error.message]).toEqual([400, `สร้างแฟ้ม e-Tax ของ ${no.rdPlain} ไม่ได้: ${ETAX_NOT_TAX_INVOICE.RD}`]);
   });
 
+  it('RD purpose code chosen by the user (HANDOFF ข้อ 90): stored, used in XML and print; 99 needs a reason; invalid refused; old RD falls back to CDNS04', async () => {
+    const aug = (deps: Array<[string, string]>, remark: string, code?: string | null) => ({ ...rd(deps, remark), doc_date: '2026-08-10', ...(code !== undefined ? { etax_purpose_code: code } : {}) });
+    await save('g', 'ar-deposits', { ...ai('2', 5000, 'มัดจำค่าสินค้า'), doc_date: '2026-08-01' });
+    // ไม่ส่งรหัส = เก็บค่าเริ่มต้น CDNS04
+    const stored = async (k: string) => (await database.db.selectFrom('doc_header').select('etax_purpose_code').where('id', '=', ids[k]!).executeTakeFirstOrThrow()).etax_purpose_code;
+    expect(await stored('rd1')).toBe('CDNS04');
+    // รหัสนอกรายการ / ใบเพิ่มหนี้ / 99 ไม่มีเหตุผล → 400
+    for (const code of ['XX01', 'DBNG01', 'CDNS05']) {
+      const r = await call('POST', '/api/v1/ar-deposit-refunds', aug([['g', '1000']], 'ยกเลิกสั่งซื้อ', code));
+      expect([code, r.status, r.body.error.message]).toEqual([code, 400, expect.stringContaining('ไม่อยู่ในรายการมาตรฐาน ETDA')]);
+    }
+    const no99 = await call('POST', '/api/v1/ar-deposit-refunds', aug([['g', '1000']], '', 'CDNG99'));
+    expect([no99.status, no99.body.error.message]).toEqual([400, expect.stringContaining('ต้องระบุเหตุผล')]);
+    // CDNG99 + เหตุผล: เก็บ แสดงใน GET · XML · รายการ e-Tax · ใบพิมพ์
+    await save('rdG', 'ar-deposit-refunds', aug([['g', '1000']], 'ยกเลิกสั่งซื้อสินค้า คืนเงินมัดจำ', 'cdng99'));
+    expect((await call('GET', `/api/v1/ar-deposit-refunds/${ids.rdG}`)).body.etax_purpose_code).toBe('CDNG99');
+    inOrder(await xml('rdG'), ['<ram:Purpose>ยกเลิกสั่งซื้อสินค้า คืนเงินมัดจำ', '<ram:PurposeCode>CDNG99', amt('ram:TaxTotalAmount', '70.00'), amt('ram:GrandTotalAmount', '1070.00')]);
+    const purposeOf = async (k: string) => (await list('2026-08-01', '2026-08-31')).find((r) => r.id === ids[k])?.purpose_code;
+    expect(await purposeOf('rdG')).toBe('CDNG99');
+    const remarkOf = async (k: string) => (await call('GET', `/api/v1/print/doc/${ids[k]}`)).body.data.fields.remark;
+    expect(await remarkOf('rdG')).toBe('เหตุผลที่ลดหนี้: CDNG99 เหตุอื่น (ระบุสาเหตุ) — ยกเลิกสั่งซื้อสินค้า คืนเงินมัดจำ');
+    // แก้ใบเดิมเปลี่ยนรหัส
+    const put = await call('PUT', `/api/v1/ar-deposit-refunds/${ids.rdG}`, aug([['g', '1000']], 'สินค้าชำรุด คืนเงินมัดจำ', 'CDNG02'));
+    expect([put.status, put.body?.error?.message]).toEqual([200, undefined]);
+    inOrder(await xml('rdG'), ['<ram:Purpose>สินค้าชำรุด คืนเงินมัดจำ', '<ram:PurposeCode>CDNG02']);
+    expect(await remarkOf('rdG')).toBe('เหตุผลที่ลดหนี้: CDNG02 สินค้าชำรุดเสียหาย — สินค้าชำรุด คืนเงินมัดจำ');
+    // ใบเดิมก่อน migration 0059 (รหัสว่าง) → CDNS04 ทั้ง XML รายการ และใบพิมพ์
+    await save('rdOld', 'ar-deposit-refunds', aug([['g', '500']], 'ยกเลิกสัญญา', 'CDNS01'));
+    await sql`UPDATE doc_header SET etax_purpose_code = NULL WHERE id = ${ids.rdOld!}`.execute(database.db);
+    inOrder(await xml('rdOld'), ['<ram:Purpose>ยกเลิกสัญญา', '<ram:PurposeCode>CDNS04']);
+    expect(await purposeOf('rdOld')).toBe('CDNS04');
+    expect(await remarkOf('rdOld')).toBe('เหตุผลที่ลดหนี้: CDNS04 บอกเลิกสัญญาบริการ — ยกเลิกสัญญา');
+    // มัดจำไม่มี VAT ไม่ใช่ใบลดหนี้: ไม่เก็บรหัส
+    await save('novat2', 'ar-deposits', { ...ai('0', 300, 'มัดจำไม่มีภาษี'), doc_date: '2026-08-01' });
+    await save('rdPlain2', 'ar-deposit-refunds', aug([['novat2', '300']], '', 'CDNS04'));
+    expect(await stored('rdPlain2')).toBeNull();
+  });
+
   it('zip export: period = VAT documents only; selected non-VAT docs are skipped with the reason; logged', async () => {
     const z = await app.inject({ method: 'GET', url: '/api/v1/etax/export?from=2026-05-01&to=2026-07-31', headers: { cookie } });
     expect([z.statusCode, z.headers['content-type']]).toEqual([200, 'application/zip']);
@@ -210,6 +249,11 @@ describe('e-Tax XML: RE T03 · AI T03 · RD 81 (HANDOFF ข้อ 89)', () => {
     for (const k of ['re', 'a', 'rd1', 'rdBoth']) expect([k, (await call('GET', `/api/v1/etax/doc/${ids[k]}`)).status]).toEqual([k, 404]);
     const x = await call('GET', `/api/v1/etax/export?from=2026-05-01&to=2026-07-31&ids=${ids.re},${ids.a},${ids.rd1}`);
     expect([x.status, x.body.error.message]).toEqual([400, expect.stringMatching(/ไม่มีเอกสารขาย/)]);
+    // รหัสเหตุผลของ RD บริษัท A: บริษัท B อ่าน/แก้ไม่ได้ (HANDOFF ข้อ 90)
+    expect((await call('GET', `/api/v1/ar-deposit-refunds/${ids.rdG}`)).status).toBe(404);
+    const put = await call('PUT', `/api/v1/ar-deposit-refunds/${ids.rdG}`, { ...rd([['g', '1000']], 'เปลี่ยนจากบริษัทอื่น'), doc_date: '2026-08-10', etax_purpose_code: 'CDNS01' });
+    expect([400, 404]).toContain(put.status);
+    expect((await database.db.selectFrom('doc_header').select(['etax_purpose_code', 'remark']).where('id', '=', ids.rdG!).executeTakeFirstOrThrow())).toEqual({ etax_purpose_code: 'CDNG02', remark: 'สินค้าชำรุด คืนเงินมัดจำ' });
     await select('A');
   });
 });

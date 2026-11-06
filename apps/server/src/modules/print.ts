@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { bahtText, fmt, receiptVatSummary, depositCreditNoteAmounts, checkApprove, checkPrint, checkUnapprove, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
+import { bahtText, depositRefundPurpose, etaxPurposeText, fmt, receiptVatSummary, depositCreditNoteAmounts, checkApprove, checkPrint, checkUnapprove, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
 import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { companyImages } from './company-images.js';
@@ -151,7 +151,8 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
         name: `ใบกำกับภาษีเดิม ${txt(r.doc_no)} ลงวันที่ ${fdate(r.doc_date)} มูลค่า ${d(r.dep_net ?? 0).minus(d(r.dep_vat ?? 0)).toFixed(2)} ภาษี ${money(r.dep_vat)} — ลดมูลค่า ${p.base.toFixed(2)} ภาษี ${p.vat.toFixed(2)}` };
     });
     fields.ref_invoice = depUsed.map((r) => `${txt(r.doc_no)} ลงวันที่ ${fdate(r.doc_date)}`).join(', ');
-    fields.remark = `เหตุผลที่ลดหนี้: ${txt(h.remark)}`;
+    // รหัสเหตุผล e-Tax ที่เลือก (ใบเดิม = CDNS04 · HANDOFF ข้อ 90) ต่อด้วยข้อความเหตุผล
+    fields.remark = `เหตุผลที่ลดหนี้: ${etaxPurposeText(depositRefundPurpose(txt(h.etax_purpose_code)))} — ${txt(h.remark)}`;
   } else if (H.scope === 'RD') lines = depUsed.map((r, i) => ({ no: String(i + 1), code: txt(r.doc_no), name: `คืนเงินมัดจำ ${txt(r.doc_no)} ลงวันที่ ${txt(r.doc_date)}`, qty: '', amount: money(r.amount) }));
   const payments = (await sql<Row>`SELECT m.name_th AS method, p.reference_no, p.amount, c.cheque_no, c.cheque_date, c.bank_branch FROM doc_payment p
       LEFT JOIN md_payment_method m ON m.id = p.payment_method_id LEFT JOIN fin_cheque c ON c.id = p.cheque_id

@@ -8,11 +8,12 @@
  *  ยอดคืนอยู่ในหน่วยของใบมัดจำ (แยก VAT: ก่อน VAT · รวม VAT: รวม VAT) → แยกก่อน VAT / VAT / เงินที่จ่าย ต่อใบมัดจำ (depositRefundVat)
  *  ลงบัญชี Dr มัดจำรับ (ก่อน VAT) + Dr ภาษีขาย / Cr เงินสด-ธนาคาร (เงินที่จ่าย) · แฟ้มภาษีขายเป็นรายการติดลบแบบใบลดหนี้ งวด = วันที่ใบคืนเงิน
  *  เหตุผลที่ลดหนี้ (บังคับ) = ช่องหมายเหตุ (remark) · อ้างใบกำกับเดิม = ref_no/ref_date (ใบมัดจำใบแรก) + คำอธิบายในแฟ้มภาษี (ทุกใบ)
+ *  รหัสเหตุผล e-Tax (HANDOFF ข้อ 90) = etax_purpose_code จากรายการ ETDA CDN* (ว่าง = CDNS04) · รหัส 99 ต้องมีเหตุผล · มัดจำไม่มี VAT = ว่าง
  */
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { d, DEPOSIT_REFUND as K, settlementTotals } from '@buddy/core';
+import { checkCreditPurpose, d, DEPOSIT_REFUND as K, ETAX_DEPOSIT_REFUND_PURPOSE, settlementTotals } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { checkOwned } from '../../owned.js';
@@ -33,6 +34,8 @@ const body = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate,
   party_id: z.string({ required_error: 'เลือกลูกค้า', invalid_type_error: 'เลือกลูกค้า' }).uuid('เลือกลูกค้า'),
   department_id: optId, salesperson_id: optId, your_ref: str(60), remark: str(2000),
+  /** รหัสเหตุผลใบลดหนี้ e-Tax (มัดจำมี VAT · ETDA CDNG01-05/99 CDNS01-04/99) — ว่าง = CDNS04 บอกเลิกสัญญาบริการ (HANDOFF ข้อ 90) */
+  etax_purpose_code: z.string().trim().toUpperCase().max(10).nullable().optional().transform((v) => (v ? v : null)),
   /** ใบรับเงินมัดจำที่คืน + ยอดคืน (ไม่เกินคงเหลือ) */
   deposits: depositsSchema.refine((x) => x.length > 0, 'เลือกใบมัดจำที่จะคืนอย่างน้อย 1 ใบ'),
   /** ว่าง = ส่วนที่เหลือหลังจ่ายโดยวิธีอื่นเป็นเงินสด */
@@ -52,6 +55,10 @@ async function saveRefund(db: Db, a: Ctx, id: string | null, b: Body) {
   const dep = await checkReceivedDeposits(db, a.companyId, { use: 'RD', customerId: party.id, partyCode: party.code, ownId: id, date: b.doc_date, deposits: b.deposits });
   // ใบลดหนี้ต้องระบุเหตุผล (ม.86/10)
   if (dep.hasVat && !b.remark) throw badRequest('คืนมัดจำที่มีภาษีมูลค่าเพิ่ม = ใบลดหนี้ ต้องระบุเหตุผล — ป้อนเหตุผลในช่องหมายเหตุ เช่น ยกเลิกสัญญา คืนเงินมัดจำ', [{ field: 'remark', message: 'ป้อนเหตุผลที่ลดหนี้' }]);
+  // รหัสเหตุผลใบลดหนี้ (e-Tax) จากรายการ ETDA — มัดจำไม่มี VAT ไม่ใช่ใบลดหนี้ ไม่เก็บรหัส
+  const purposeErr = checkCreditPurpose(b.etax_purpose_code, b.remark);
+  if (purposeErr) throw badRequest(purposeErr, [{ field: 'etax_purpose_code', message: 'เลือกรหัสเหตุผลจากรายการ' }]);
+  const purposeCode = dep.hasVat ? (b.etax_purpose_code ?? ETAX_DEPOSIT_REFUND_PURPOSE) : null;
   const methods = await loadMethods(db, a.companyId, 'P', b.payments);
   const refund = dep.total.toFixed(2);
   // เงินที่จ่ายจริง: แยก VAT = ยอดคืน + VAT · รวม VAT/ไม่มี VAT = ยอดคืน
@@ -69,7 +76,7 @@ async function saveRefund(db: Db, a: Ctx, id: string | null, b: Body) {
     party_tax_id: party.tax_id, party_tax_branch_no: party.tax_branch_no, your_ref: b.your_ref, remark: b.remark, department_id: b.department_id ?? dt.department_id, salesperson_id: b.salesperson_id,
     // มี VAT: ประเภทราคา/อัตราตามใบมัดจำ · taxable_amount = ยอดคืน (รวม VAT: แฟ้มภาษีหัก VAT ออกเอง → มูลค่า = ก่อน VAT รวม) · ref = ใบกำกับภาษีเดิม (ใบมัดจำใบแรก)
     price_type: dep.price_type, vat_rate: dep.vat_rate, vat_amount: dep.vat.toFixed(2), taxable_amount: dep.hasVat ? refund : '0', vat_basis: dep.hasVat ? '1' : null, vat_date: dep.hasVat ? b.doc_date : null,
-    ref_no: dep.hasVat ? dep.rows[0]!.doc_no : null, ref_date: dep.hasVat ? dep.rows[0]!.doc_date : null,
+    ref_no: dep.hasVat ? dep.rows[0]!.doc_no : null, ref_date: dep.hasVat ? dep.rows[0]!.doc_date : null, etax_purpose_code: purposeCode,
     amount: refund, amount_after_discount: refund, deposit_amount: refund, net_amount: total,
     wht_amount: '0', cash_amount: t.cash, cheque_amount: t.other, updated_by: a.userId,
   };
