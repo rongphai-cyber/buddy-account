@@ -254,9 +254,10 @@ export const API_RULES: Record<string, Rule> = {
   ])),
   'POST /api/v1/quotations/:id/convert': M('SA.SO', 'add'),
   // ลูกหนี้/เจ้าหนี้คงค้างยกมา (S-OB-03/04)
-  ...Object.fromEntries([['ar-opening', 'FI.AR.OB'], ['ap-opening', 'FI.AP.OB'], ['ar-deposit-opening', 'FI.AR.OB']].flatMap(([p, m]) => [
+  // เงินมัดจำยกมา: เมนูของตัวเอง FI.AR.DOB (HANDOFF ข้อ 91 — เดิมใช้ FI.AR.OB)
+  ...Object.fromEntries([['ar-opening', 'FI.AR.OB'], ['ap-opening', 'FI.AP.OB'], ['ar-deposit-opening', 'FI.AR.DOB']].flatMap(([p, m]) => [
     [`GET /api/v1/${p}`, M(m!, 'read')], [`GET /api/v1/${p}/:id`, M(m!, 'read')], [`POST /api/v1/${p}`, M(m!, 'add')],
-    [`PUT /api/v1/${p}/:id`, M(m!, 'edit')], [`POST /api/v1/${p}/:id/cancel`, M(m!, 'cancel')],
+    [`PUT /api/v1/${p}/:id`, M(m!, 'edit')], [`POST /api/v1/${p}/:id/cancel`, M(m!, 'cancel')], [`POST /api/v1/${p}/posting-preview`, M(m!, 'read')],
   ])),
   // เงินสดย่อย (บทที่ 15)
   // ตัวอย่างการลงบัญชีก่อนบันทึก: ไม่บันทึกอะไร (ย้อนกลับทั้งหมด) → สิทธิ์อ่านของเมนูเอกสาร

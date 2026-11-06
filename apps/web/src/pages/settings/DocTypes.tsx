@@ -20,6 +20,8 @@ const SLOT_HINT: Record<string, string> = {
   SALES_RETURN: 'ใช้ก่อนบัญชีรับคืนของกลุ่มสินค้า · ว่าง = กลุ่มบัญชีสินค้า → บัญชีรับคืนมาตรฐาน',
   PURCHASE: 'ใช้เมื่อสินค้า/รหัสค่าใช้จ่ายไม่ได้กำหนดบัญชีในกลุ่ม (เช่น ค่าจ้างภายนอก) · Perpetual สินค้าคงคลังลงบัญชีสินค้าเสมอ',
   PURCHASE_RETURN: 'ใช้เมื่อกลุ่มบัญชีสินค้าไม่ได้กำหนดบัญชีส่งคืน',
+  INTEREST_INCOME: 'ยอดดอกเบี้ยรับ/ค่าปรับที่ป้อนในใบเสร็จ (รับเกินหนี้) ลงบัญชีนี้ · ว่าง = บัญชีดอกเบี้ยรับที่ บัญชีเพื่อลงรายวัน',
+  INTEREST_EXPENSE: 'ยอดดอกเบี้ยจ่าย/ค่าปรับที่ป้อนในใบจ่ายชำระ (จ่ายเกินหนี้) ลงบัญชีนี้ · ว่าง = บัญชีดอกเบี้ยจ่ายที่ บัญชีเพื่อลงรายวัน',
 };
 
 export function DocTypesPage() {
@@ -157,7 +159,7 @@ function DocTypeForm({ id, onClose, onSaved }: { id: string | null; onClose: () 
           <table className="grid">
             <thead><tr><th style={{ width: 70 }}>ช่อง</th><th style={{ width: 260 }}>ความหมาย</th><th>เลขที่บัญชี</th><th style={{ width: 36 }} /></tr></thead>
             <tbody>
-              {slots.map((s) => <tr key={s}><td className="mono">{s}</td><td>{slotLabel(cls, s)}{SLOT_HINT[DOC_SLOT_ROLES[cls]?.[s] ?? ''] && <div className="small muted">{SLOT_HINT[DOC_SLOT_ROLES[cls]![s]!]}</div>}</td><td><AccountCell value={accs[s] ?? null} onChange={(a) => setAccs((x) => ({ ...x, [s]: a?.id ?? null }))} /></td>
+              {slots.map((s) => <tr key={s}><td className="mono">{s}</td><td>{slotLabel(cls, s)}{SLOT_HINT[DOC_SLOT_ROLES[cls]?.[s] ?? ''] && <div className="small muted">{SLOT_HINT[DOC_SLOT_ROLES[cls]![s]!]}</div>}</td><td style={{ minWidth: 150 }}><AccountCell value={accs[s] ?? null} onChange={(a) => setAccs((x) => ({ ...x, [s]: a?.id ?? null }))} /></td>
                 <td><button type="button" className="icon-btn" tabIndex={-1} title="ลบ" onClick={() => { setAccs((x) => { const n = { ...x }; delete n[s]; return n; }); setExtraSlots((x) => x.filter((y) => y !== s)); }}>✕</button></td></tr>)}
               {!slots.length && <tr><td colSpan={4} className="empty">ไม่ได้กำหนดบัญชีเฉพาะ — ใช้บัญชีจากแฟ้มหลักและบัญชีเพื่อลงรายวัน</td></tr>}
             </tbody>

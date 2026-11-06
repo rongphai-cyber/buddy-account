@@ -67,6 +67,7 @@ import { DepositRefundFormPage, DepositRefundListPage } from './pages/docs/Depos
 import { BillFormPage, BillListPage } from './pages/docs/BillDocs';
 import { PettyFormPage, PettyListPage } from './pages/docs/PettyCash';
 import { OpeningFormPage, OpeningListPage } from './pages/docs/OpeningDocs';
+import { DepositOpeningFormPage, DepositOpeningListPage } from './pages/docs/DepositOpening';
 import { WhtRegisterPage } from './pages/tax/WhtRegister';
 import { VatRegisterPage } from './pages/tax/VatRegister';
 import { StockPage } from './pages/inventory/Stock';
@@ -274,6 +275,8 @@ function Shell() {
           {BILL_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<BillListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<BillFormPage key={k.path} path={k.path} />} />])}
           <Route path="/fi/ar/opening" element={<OpeningListPage key="ar" kind="ar" />} />
           <Route path="/fi/ar/opening/:id" element={<OpeningFormPage key="ar-f" kind="ar" />} />
+          <Route path="/fi/ar/deposit-opening" element={<DepositOpeningListPage />} />
+          <Route path="/fi/ar/deposit-opening/:id" element={<DepositOpeningFormPage />} />
           <Route path="/fi/ap/opening" element={<OpeningListPage key="ap" kind="ap" />} />
           <Route path="/fi/ap/opening/:id" element={<OpeningFormPage key="ap-f" kind="ap" />} />
           <Route path="/fi/petty-cash" element={<PettyListPage key="dp" kind="dp" />} />

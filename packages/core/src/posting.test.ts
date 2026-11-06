@@ -39,6 +39,24 @@ describe('posting engine (บทที่ 10)', () => {
       [], [], [{ amount: '1605', vat: '0', party_id: 's1', rectype: '3' }], r);
     expect(net(q)).toEqual({ ap: '1605.00', 'wht-p': '-45.00', cash: '-1560.00' });
   });
+  it('late fee / interest account per document type (HANDOFF ข้อ 91): RE ช่อง 7 · PS ช่อง 7 · ว่าง = บัญชีเพื่อลงรายวัน', () => {
+    // บิล 1,000 + ค่าปรับชำระล่าช้า 107.55 → รับเงินสด 1,107.55 · Cr บัญชีของช่อง 7 = 107.55
+    const H = { id: 'h', doc_class: 'RE', doc_type_id: 'RE-L', customer_id: 'c1', supplier_id: null, net_amount: '1107.55', vat_amount: '0', deposit_amount: '0', vat_basis: null, interest_amount: '107.55' };
+    const S = [{ amount: '1000', vat: '0', party_id: 'c1', rectype: '3' }];
+    const slotted: PostingResolver = { ...r, slot: (dt, cls, role) => (dt === 'RE-L' && cls === 'RE' && role === 'INTEREST_INCOME' ? 'late-fee' : dt === 'PS-L' && cls === 'PS' && role === 'INTEREST_EXPENSE' ? 'late-exp' : null) };
+    const a = buildPosting(H, [], [], S, slotted);
+    expect(postingBalanced(a)).toBe(true);
+    expect(net(a)).toEqual({ 'ar-c1': '-1000.00', 'late-fee': '-107.55', cash: '1107.55' });
+    expect(a.find((l) => l.role === 'INTEREST')).toMatchObject({ account_id: 'late-fee', layer: '1' });
+    // ช่องว่าง (ประเภทเอกสารอื่น) = บัญชีดอกเบี้ยรับมาตรฐานเหมือนเดิม
+    const b = buildPosting({ ...H, doc_type_id: 'RE-X' }, [], [], S, slotted);
+    expect(net(b)).toEqual({ 'ar-c1': '-1000.00', 'int-i': '-107.55', cash: '1107.55' });
+    expect(b.find((l) => l.role === 'INTEREST')).toMatchObject({ account_id: 'int-i', layer: '3' });
+    // จ่ายชำระ: เจ้าหนี้ 2,000 + ค่าปรับจ่ายล่าช้า 45.25 → จ่าย 2,045.25 · Dr บัญชีของช่อง 7
+    const P = { id: 'h', doc_class: 'PS', doc_type_id: 'PS-L', customer_id: null, supplier_id: 's1', net_amount: '2045.25', vat_amount: '0', deposit_amount: '0', vat_basis: null, interest_amount: '45.25' };
+    expect(net(buildPosting(P, [], [], [{ amount: '2000', vat: '0', party_id: 's1', rectype: '3' }], slotted))).toEqual({ ap: '2000.00', 'late-exp': '45.25', cash: '-2045.25' });
+    expect(net(buildPosting({ ...P, doc_type_id: null }, [], [], [{ amount: '2000', vat: '0', party_id: 's1', rectype: '3' }], slotted))).toEqual({ ap: '2000.00', 'int-e': '45.25', cash: '-2045.25' });
+  });
   it('platform receipt (ข้อกำหนดเจ้าของ 31/10/2569): GP + VAT ในประเทศ หัก ณ ที่จ่าย 3% · ค่าคอมมิชชั่นต่างประเทศ ภ.พ.36', () => {
     // ขาย 1,000 ผ่าน Grab: GP 300 + VAT 21 = 321 → โอน 679 · เราหัก 3% ของ 300 = 9 (Grab หักเต็มแล้ว → รอเรียกคืน)
     const R = { ...r, paymentMethod: (id: string | null) => (id === 'TR' ? 'bank' : null), def: (k: string) => ({ ...DEF, INPUT_VAT_PP36: 'ivat36', PP36_PAYABLE: 'pp36', WHT_RECOVERABLE: 'wht-rc' } as Record<string, string>)[k] ?? null };

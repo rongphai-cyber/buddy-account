@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 137,
+"n": 143,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -12,6 +12,7 @@
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
@@ -68,7 +69,7 @@
 },
 {
 "th": "บันทึก",
-"n": 101,
+"n": 103,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
 "apps/web/src/components/LkSelect.tsx",
@@ -77,6 +78,7 @@
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
@@ -125,7 +127,7 @@
 },
 {
 "th": "วันที่",
-"n": 79,
+"n": 83,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/DocTaxTabs.tsx",
@@ -135,6 +137,7 @@
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositPick.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
@@ -168,7 +171,7 @@
 },
 {
 "th": "สถานะ",
-"n": 75,
+"n": 79,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/WtsConnect.tsx",
@@ -176,6 +179,7 @@
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
@@ -214,13 +218,14 @@
 },
 {
 "th": "จำนวนเงิน",
-"n": 60,
+"n": 65,
 "files": [
 "apps/web/src/components/DiscountInput.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/MoneyParts.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
@@ -246,12 +251,13 @@
 },
 {
 "th": "รหัส",
-"n": 57,
+"n": 59,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
 "apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx",
@@ -284,7 +290,7 @@
 },
 {
 "th": "รายการ",
-"n": 54,
+"n": 55,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
 "apps/web/src/components/WtsConnect.tsx",
@@ -293,6 +299,7 @@
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
@@ -352,12 +359,54 @@
 ]
 },
 {
+"th": "ลูกค้า",
+"n": 50,
+"files": [
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/HoldNote.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/parties.ts",
+"apps/server/src/modules/serials.ts",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/docs/bills.ts",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/pdpa.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "แผนก",
-"n": 49,
+"n": 50,
 "files": [
 "apps/web/src/components/AddWrap.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
@@ -390,46 +439,6 @@
 "packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "ลูกค้า",
-"n": 48,
-"files": [
-"apps/web/src/components/LkSelect.tsx",
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/HoldNote.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/parties.ts",
-"apps/server/src/modules/serials.ts",
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/docs/bills.ts",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/pdpa.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -470,6 +479,38 @@
 ]
 },
 {
+"th": "หมายเหตุ",
+"n": 43,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เลขที่บัญชี",
 "n": 43,
 "files": [
@@ -503,34 +544,77 @@
 ]
 },
 {
-"th": "หมายเหตุ",
+"th": "เลขที่",
 "n": 42,
 "files": [
-"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/components/AddressFields.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/JournalPicker.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tax/Etax.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/geo-th.ts",
+"packages/core/src/payroll-forms.ts",
+"packages/core/src/payroll-import.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "สาขา",
+"n": 41,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/payroll/Filing.tsx",
 "apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/payroll/files.ts",
+"apps/server/src/modules/payroll/forms.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -570,78 +654,6 @@
 ]
 },
 {
-"th": "สาขา",
-"n": 39,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/payroll/files.ts",
-"apps/server/src/modules/payroll/forms.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "เลขที่",
-"n": 39,
-"files": [
-"apps/web/src/components/AddressFields.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/JournalPicker.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tax/Etax.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"apps/server/src/modules/reports/stock.ts",
-"packages/core/src/geo-th.ts",
-"packages/core/src/payroll-forms.ts",
-"packages/core/src/payroll-import.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "รับ",
 "n": 38,
 "files": [
@@ -661,6 +673,33 @@
 "apps/server/src/modules/docs/payments.ts",
 "apps/server/src/modules/docs/settle.ts",
 "apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "เอกสาร",
+"n": 37,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/neighbors.ts",
+"apps/server/src/modules/notes.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/engine.ts",
+"apps/server/src/modules/docs/routes.ts",
+"apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts"
 ]
 },
@@ -689,29 +728,37 @@
 ]
 },
 {
-"th": "เอกสาร",
-"n": 36,
+"th": "คลิก/Enter",
+"n": 33,
 "files": [
-"apps/web/src/components/DocEdit.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
 "apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/neighbors.ts",
-"apps/server/src/modules/notes.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/engine.ts",
-"apps/server/src/modules/docs/routes.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/stock.ts"
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -737,39 +784,6 @@
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "คลิก/Enter",
-"n": 32,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -897,6 +911,38 @@
 ]
 },
 {
+"th": "แก้ไข",
+"n": 28,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/InventoryAccount.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Company.tsx",
+"apps/web/src/pages/settings/Defaults.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/payroll/files.ts",
+"apps/server/src/modules/payroll/runs.ts",
+"apps/server/src/modules/reports/gl.ts"
+]
+},
+{
 "th": "คลัง",
 "n": 27,
 "files": [
@@ -937,34 +983,26 @@
 ]
 },
 {
-"th": "แก้ไข",
-"n": 27,
+"th": "เครดิต",
+"n": 26,
 "files": [
-"apps/web/src/components/DocEdit.tsx",
 "apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/MasterBar.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/InventoryAccount.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
 "apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
 "apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Company.tsx",
-"apps/web/src/pages/settings/Defaults.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/payroll/files.ts",
-"apps/server/src/modules/payroll/runs.ts",
-"apps/server/src/modules/reports/gl.ts"
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1007,28 +1045,6 @@
 "apps/server/src/modules/payroll/files.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "เครดิต",
-"n": 25,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1096,6 +1112,28 @@
 ]
 },
 {
+"th": "ปกติ",
+"n": 23,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/payroll/files.ts"
+]
+},
+{
 "th": "พิมพ์",
 "n": 23,
 "files": [
@@ -1147,27 +1185,6 @@
 ]
 },
 {
-"th": "ปกติ",
-"n": 22,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/payroll/files.ts"
-]
-},
-{
 "th": "ลบบรรทัด",
 "n": 22,
 "files": [
@@ -1188,6 +1205,42 @@
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/DataTables.tsx",
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "เดบิต",
+"n": 22,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "คงเหลือ",
+"n": 21,
+"files": [
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositPick.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -1225,6 +1278,29 @@
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ประเภทเอกสาร",
+"n": 21,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/doc-types.ts",
+"apps/server/src/modules/docs/engine.ts"
 ]
 },
 {
@@ -1266,43 +1342,39 @@
 ]
 },
 {
-"th": "เดบิต",
-"n": 21,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/printforms.ts"
-]
-},
-{
-"th": "ประเภทเอกสาร",
+"th": "บันทึก+ใหม่",
 "n": 20,
 "files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "ค้นหา",
+"n": 19,
+"files": [
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/doc-types.ts",
-"apps/server/src/modules/docs/engine.ts"
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -1365,21 +1437,6 @@
 ]
 },
 {
-"th": "บันทึก+ใหม่",
-"n": 18,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
 "th": "รหัสสินค้า",
 "n": 18,
 "files": [
@@ -1426,22 +1483,6 @@
 ]
 },
 {
-"th": "คงเหลือ",
-"n": 16,
-"files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositPick.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/stock.ts"
-]
-},
-{
 "th": "คำอธิบาย",
 "n": 16,
 "files": [
@@ -1460,22 +1501,23 @@
 ]
 },
 {
-"th": "ค้นหา",
+"th": "ทิ้งการแก้ไข?",
 "n": 16,
 "files": [
-"apps/web/src/components/LkSelect.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx",
 "apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -1510,12 +1552,14 @@
 ]
 },
 {
-"th": "ทิ้งการแก้ไข?",
+"th": "กลับรายการ",
 "n": 15,
 "files": [
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
@@ -1523,9 +1567,9 @@
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx"
+"apps/web/src/pages/payroll/Employees.tsx"
 ]
 },
 {
@@ -1560,6 +1604,38 @@
 "apps/server/src/modules/permissions.ts",
 "apps/server/src/modules/security.ts",
 "apps/server/src/modules/reports/gl.ts"
+]
+},
+{
+"th": "มีการแก้ไขที่ยังไม่บันทึก",
+"n": 15,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ยกเลิกรายการ",
+"n": 15,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -1610,13 +1686,13 @@
 ]
 },
 {
-"th": "กลับรายการ",
+"th": "+ ใหม่",
 "n": 14,
 "files": [
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
@@ -1701,26 +1777,6 @@
 ]
 },
 {
-"th": "มีการแก้ไขที่ยังไม่บันทึก",
-"n": 14,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
 "th": "สมุดรายวัน",
 "n": 14,
 "files": [
@@ -1757,6 +1813,22 @@
 ]
 },
 {
+"th": "เลขที่เอกสาร",
+"n": 14,
+"files": [
+"apps/web/src/components/DocNo.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เลขประจำตัวผู้เสียภาษี",
 "n": 14,
 "files": [
@@ -1771,12 +1843,33 @@
 ]
 },
 {
-"th": "+ ใหม่",
-"n": 13,
+"th": "เหตุผลที่ยกเลิก",
+"n": 14,
 "files": [
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "ใหม่ — ยังไม่บันทึก",
+"n": 14,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/PettyCash.tsx",
@@ -1842,6 +1935,25 @@
 ]
 },
 {
+"th": "มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?",
+"n": 13,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/payroll/Employees.tsx"
+]
+},
+{
 "th": "มูลค่า",
 "n": 13,
 "files": [
@@ -1897,59 +2009,6 @@
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "เลขที่เอกสาร",
-"n": 13,
-"files": [
-"apps/web/src/components/DocNo.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เหตุผลที่ยกเลิก",
-"n": 13,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
-"th": "ใหม่ — ยังไม่บันทึก",
-"n": 13,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/payroll/Employees.tsx"
 ]
 },
 {
@@ -2013,31 +2072,19 @@
 ]
 },
 {
-"th": "มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?",
+"th": "รหัสลูกค้า",
 "n": 12,
 "files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/payroll/Employees.tsx"
-]
-},
-{
-"th": "ยกเลิกรายการ",
-"n": 12,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/trade-import.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2098,6 +2145,40 @@
 ]
 },
 {
+"th": "ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)",
+"n": 11,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "ดูอย่างเดียว — กด แก้ไข (Alt+E)",
+"n": 11,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
 "th": "ผู้ติดต่อ",
 "n": 11,
 "files": [
@@ -2106,21 +2187,6 @@
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "รหัสลูกค้า",
-"n": 11,
-"files": [
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/trade-import.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2235,35 +2301,19 @@
 ]
 },
 {
-"th": "ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)",
+"th": "ทุกสถานะ",
 "n": 10,
 "files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
-"th": "ดูอย่างเดียว — กด แก้ไข (Alt+E)",
-"n": 10,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx"
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -2416,6 +2466,20 @@
 ]
 },
 {
+"th": "ตัวอย่างการลงบัญชี",
+"n": 9,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ตำแหน่ง",
 "n": 9,
 "files": [
@@ -2434,21 +2498,6 @@
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/server/src/import/express/migrate.ts",
 "apps/server/src/modules/fa.ts"
-]
-},
-{
-"th": "ทุกสถานะ",
-"n": 9,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -2508,6 +2557,20 @@
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/Periods.tsx",
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ใบสำคัญที่ลงบัญชี",
+"n": 9,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -2590,19 +2653,6 @@
 "apps/web/src/pages/payroll/PaySetup.tsx",
 "apps/web/src/pages/settings/DataTables.tsx",
 "apps/web/src/pages/tax/Wht50.tsx"
-]
-},
-{
-"th": "ตัวอย่างการลงบัญชี",
-"n": 8,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -2899,19 +2949,6 @@
 ]
 },
 {
-"th": "ใบสำคัญที่ลงบัญชี",
-"n": 8,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "ใบเพิ่มหนี้",
 "n": 8,
 "files": [
@@ -2945,6 +2982,18 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
+"th": "คืนเงินมัดจำ",
+"n": 7,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -3027,6 +3076,19 @@
 "apps/server/src/import/express/migrate.ts",
 "apps/server/src/modules/docs/stockopening.ts",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "รวม (ไม่รวมที่ยกเลิก)",
+"n": 7,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -3139,23 +3201,24 @@
 ]
 },
 {
-"th": "คืนเงินมัดจำ",
-"n": 6,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts"
-]
-},
-{
 "th": "ค่าธรรมเนียม",
 "n": 6,
 "files": [
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "ค้นหารหัส",
+"n": 6,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -3310,18 +3373,6 @@
 ]
 },
 {
-"th": "รวม (ไม่รวมที่ยกเลิก)",
-"n": 6,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "ระงับ",
 "n": 6,
 "files": [
@@ -3411,6 +3462,18 @@
 ]
 },
 {
+"th": "อ้างอิง",
+"n": 6,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เกณฑ์สิทธิ",
 "n": 6,
 "files": [
@@ -3437,6 +3500,18 @@
 "apps/server/src/modules/docs/pettycash.ts",
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "เพิ่มรายการ",
+"n": 6,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/settings/DataTables.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -3636,17 +3711,6 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx",
 "packages/core/src/forms/wht50.ts"
-]
-},
-{
-"th": "ค้นหารหัส",
-"n": 5,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -4171,17 +4235,6 @@
 ]
 },
 {
-"th": "อ้างอิง",
-"n": 5,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "เกณฑ์เงินสด",
 "n": 5,
 "files": [
@@ -4236,17 +4289,6 @@
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx"
-]
-},
-{
-"th": "เพิ่มรายการ",
-"n": 5,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/settings/DataTables.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -5019,6 +5061,16 @@
 ]
 },
 {
+"th": "เปิดรายการ",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
 "th": "เลขที่บิลผู้จำหน่าย",
 "n": 4,
 "files": [
@@ -5111,6 +5163,14 @@
 ]
 },
 {
+"th": "ใช้แล้ว",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/settings/DataTables.tsx"
+]
+},
+{
 "th": "ใบเบิกชดเชย",
 "n": 4,
 "files": [
@@ -5136,6 +5196,14 @@
 "apps/server/src/modules/payroll/files.ts",
 "apps/server/src/modules/payroll/master.ts",
 "apps/server/src/modules/sync/central.ts"
+]
+},
+{
+"th": "+ เพิ่ม{0}",
+"n": 3,
+"files": [
+"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -5606,6 +5674,14 @@
 ]
 },
 {
+"th": "ที่มา",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/gl/InventoryAccount.tsx"
+]
+},
+{
 "th": "ธ.ค.",
 "n": 3,
 "files": [
@@ -5950,6 +6026,15 @@
 ]
 },
 {
+"th": "ยอดยกมา (ไม่ลงบัญชี)",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
 "th": "ยอดเคลื่อนไหว",
 "n": 3,
 "files": [
@@ -6125,6 +6210,15 @@
 ]
 },
 {
+"th": "รายการใหม่",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx"
+]
+},
+{
 "th": "รายละเอียดผู้จำหน่าย",
 "n": 3,
 "files": [
@@ -6182,6 +6276,14 @@
 "files": [
 "apps/server/src/modules/payroll/files.ts",
 "apps/server/src/modules/payroll/runs.ts"
+]
+},
+{
+"th": "ลงบัญชี",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/payroll/Runs.tsx"
 ]
 },
 {
@@ -6505,15 +6607,6 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/gl/Accounts.tsx"
-]
-},
-{
-"th": "เปิดรายการ",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx"
 ]
 },
 {
@@ -6859,13 +6952,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx"
-]
-},
-{
-"th": "+ เพิ่ม{0}",
-"n": 2,
-"files": [
-"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {
@@ -8425,6 +8511,30 @@
 ]
 },
 {
+"th": "บันทึก {0} แล้ว (ไม่ลงบัญชี)",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx"
+]
+},
+{
+"th": "บันทึก {0} แล้ว — ลงบัญชีแล้ว",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx"
+]
+},
+{
+"th": "บันทึก{0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
 "th": "บันทึก{0} {1} แล้ว",
 "n": 2,
 "files": [
@@ -9324,14 +9434,6 @@
 ]
 },
 {
-"th": "ยอดยกมา (ไม่ลงบัญชี)",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
 "th": "ยอดยกมาบัญชีแยกประเภท",
 "n": 2,
 "files": [
@@ -9784,14 +9886,6 @@
 ]
 },
 {
-"th": "รายการใหม่",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx"
-]
-},
-{
 "th": "รายงานของผู้ใช้",
 "n": 2,
 "files": [
@@ -9985,13 +10079,6 @@
 "n": 2,
 "files": [
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "ลงบัญชี",
-"n": 2,
-"files": [
-"apps/web/src/pages/payroll/Runs.tsx"
 ]
 },
 {
@@ -11588,6 +11675,14 @@
 ]
 },
 {
+"th": "ใช้อยู่",
+"n": 2,
+"files": [
+"apps/web/src/components/ThemePicker.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ใช้แผนก",
 "n": 2,
 "files": [
@@ -11901,6 +11996,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "ไม่ลงบัญชี",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -12319,6 +12422,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "(ระบบต้นทางของเงินประกัน/มัดจำ) จึงดูได้อย่างเดียว — แก้ไขหรือยกเลิกที่ {0} แล้วระบบส่งรุ่นใหม่มาเอง เพื่อให้ทะเบียนเงินประกันของสองระบบตรงกัน · ผู้ใช้ระดับอนุมัติ 9 ยกเลิก/ลบที่นี่ได้โดยระบุเหตุผล (บันทึกในบันทึกการทำงาน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -13736,6 +13846,13 @@
 ]
 },
 {
+"th": "? (เปลี่ยนสถานะ ไม่ลบ · ใบสำคัญยอดยกมาถูกยกเลิก)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "? (เปลี่ยนสถานะ ไม่ลบ)",
 "n": 1,
 "files": [
@@ -13974,6 +14091,13 @@
 ]
 },
 {
+"th": "Cr. ดอกเบี้ยรับ/ค่าปรับชำระล่าช้า",
+"n": 1,
+"files": [
+"packages/core/src/gl-link.ts"
+]
+},
+{
 "th": "Cr. บัญชีปรับปรุง",
 "n": 1,
 "files": [
@@ -14045,6 +14169,13 @@
 },
 {
 "th": "Dr. ซื้อสินค้า/ค่าใช้จ่าย",
+"n": 1,
+"files": [
+"packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "Dr. ดอกเบี้ยจ่าย/ค่าปรับจ่ายล่าช้า",
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
@@ -15234,6 +15365,13 @@
 ]
 },
 {
+"th": "{0} ใบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "{0} ใบ รวม",
 "n": 1,
 "files": [
@@ -15665,6 +15803,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "{0}ก่อนวันเริ่มใช้ = ยอดยกมาของงบทดลอง · ตั้งแต่วันเริ่มใช้ = ลงในงวดที่ยังไม่ปิด (เริ่มใช้ระบบเดิมทีหลัง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -16792,6 +16937,20 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "การเงิน › ลูกหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
+"th": "การเงิน › ลูกหนี้ › {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -18860,6 +19019,13 @@
 ]
 },
 {
+"th": "คีย์ที่ Buddy",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "คีย์เลขสาขา 5 หลัก — ไม่ครบเติม 0 ข้างหน้าให้ · ว่าง = สำนักงานใหญ่",
 "n": 1,
 "files": [
@@ -19798,6 +19964,13 @@
 ]
 },
 {
+"th": "ค้นหาเลขที่ ลูกค้า หรือเลขอ้างอิง",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ค้นหาเลขที่ ลูกค้า อ้างอิง หรือเลขที่ใบมัดจำ",
 "n": 1,
 "files": [
@@ -20502,6 +20675,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx"
+]
+},
+{
+"th": "จำนวนเงินมัดจำคงเหลือยกมา",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -22906,6 +23086,13 @@
 ]
 },
 {
+"th": "ติ๊ก = Dr บัญชีคู่ / Cr เงินมัดจำรับ ทันที · ไม่ติ๊ก = เข้าทะเบียนอย่างเดียว เมื่อยอดเงินมัดจำรับคีย์ไว้แล้วที่ บันทึกยอดยกมา (กันยอดซ้ำ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ติ๊ก = ออกบิลได้แต่พิมพ์ไม่ได้จนกว่าอนุมัติ",
 "n": 1,
 "files": [
@@ -23743,13 +23930,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "ที่มา",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/InventoryAccount.tsx"
 ]
 },
 {
@@ -25174,6 +25354,13 @@
 ]
 },
 {
+"th": "บัญชี {0} มียอดยกมา {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
+]
+},
+{
 "th": "บัญชี {0} เป็นบัญชีคุม บันทึกยอดยกมาไม่ได้",
 "n": 1,
 "files": [
@@ -25409,6 +25596,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Accounts.tsx"
+]
+},
+{
+"th": "บัญชีคู่",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
+"th": "บัญชีคู่ (Dr)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -25650,6 +25851,13 @@
 ]
 },
 {
+"th": "บัญชีเงินมัดจำรับ = ช่อง 3 ของประเภทเอกสาร (ว่าง = บัญชีเพื่อลงรายวัน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "บัญชีเพื่อลงรายวัน",
 "n": 1,
 "files": [
@@ -25731,27 +25939,6 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocEdit.tsx"
-]
-},
-{
-"th": "บันทึก {0} แล้ว (ไม่ลงบัญชี)",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/PettyCash.tsx"
-]
-},
-{
-"th": "บันทึก {0} แล้ว — ลงบัญชีแล้ว",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/PettyCash.tsx"
-]
-},
-{
-"th": "บันทึก{0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -26392,6 +26579,13 @@
 ]
 },
 {
+"th": "บันทึกเงินมัดจำยกมา",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "บันทึกเงินเดือน (ตั้งค้างจ่าย)",
 "n": 1,
 "files": [
@@ -26564,6 +26758,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "บันทึกแล้วจะเห็นใบเสร็จที่หักมัดจำ / ใบคืนเงินมัดจำที่ใช้ใบนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -27806,6 +28007,13 @@
 ]
 },
 {
+"th": "ป้อนจำนวนเงินมัดจำคงเหลือยกมา (มากกว่า 0)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ป้อนจุดสั่งซื้อ",
 "n": 1,
 "files": [
@@ -28422,6 +28630,13 @@
 ]
 },
 {
+"th": "ป้อนเลขที่เอกสาร (แนะนำใส่ปีนำหน้า เช่น AI68/0001)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ป้อนเลขที่เอกสาร (แนะนำใส่ปีนำหน้า เช่น IV67/0001)",
 "n": 1,
 "files": [
@@ -28503,6 +28718,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "ป้อนเอง ห้ามซ้ำเลขปีปัจจุบัน — แนะนำใส่ปีนำหน้า เช่น AI68/0001",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -30508,6 +30730,13 @@
 ]
 },
 {
+"th": "มี {0} ใช้มัดจำนี้อยู่ — ยกเลิก {1} ก่อน",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "มีกองทุนสำรองเลี้ยงชีพ",
 "n": 1,
 "files": [
@@ -30680,6 +30909,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "มีเอกสารใช้มัดจำนี้แล้ว — แก้ไข/ยกเลิกไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -31138,6 +31374,13 @@
 ]
 },
 {
+"th": "ยกเลิกรายการแล้ว — ใบสำคัญถูกยกเลิก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ยกเลิกล็อตยกมา",
 "n": 1,
 "files": [
@@ -31572,6 +31815,20 @@
 ]
 },
 {
+"th": "ยอดดอกเบี้ยจ่าย/ค่าปรับที่ป้อนในใบจ่ายชำระ (จ่ายเกินหนี้) ลงบัญชีนี้ · ว่าง = บัญชีดอกเบี้ยจ่ายที่ บัญชีเพื่อลงรายวัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "ยอดดอกเบี้ยรับ/ค่าปรับที่ป้อนในใบเสร็จ (รับเกินหนี้) ลงบัญชีนี้ · ว่าง = บัญชีดอกเบี้ยรับที่ บัญชีเพื่อลงรายวัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "ยอดตามบัญชี",
 "n": 1,
 "files": [
@@ -31684,6 +31941,13 @@
 ]
 },
 {
+"th": "ยอดที่ใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ยอดที่ใช้ได้ในใบนี้ = คงเหลือรวมยอดที่ใบนี้ใช้ไว้",
 "n": 1,
 "files": [
@@ -31779,6 +32043,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Opening.tsx"
+]
+},
+{
+"th": "ยอดยกมา — ลงบัญชีแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -32447,6 +32718,13 @@
 ]
 },
 {
+"th": "ยังไม่มีเงินมัดจำยกมา — กด Ins เพื่อเพิ่ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ยังไม่มีเงินเดือนเดือนที่ {0} — ภาษีจะต่ำไป ป้อนยอดยกมาต้นปีที่ทะเบียนพนักงาน",
 "n": 1,
 "files": [
@@ -32479,6 +32757,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
+]
+},
+{
+"th": "ยังไม่มีเอกสารใช้มัดจำนี้ — หักได้ที่ รับชำระหนี้ (แท็บหักเงินมัดจำ) หรือคืนที่ ขาย › คืนเงินมัดจำ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -32640,6 +32925,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/opening.ts"
+]
+},
+{
+"th": "ยังไม่ได้กำหนดบัญชีพักยอดยกมา — เลือกบัญชีงบดุล หรือกำหนดบทบาท \"บัญชีพักยอดยกมา\" ที่ เริ่มระบบ › การเชื่อมต่อบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -35975,6 +36267,13 @@
 ]
 },
 {
+"th": "ลงบัญชียอดยกมา",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ลงบัญชียอดยกมาได้เฉพาะลูกหนี้/มัดจำรับยกมา — เจ้าหนี้ยกมาบันทึกยอดบัญชีที่ บันทึกยอดยกมา",
 "n": 1,
 "files": [
@@ -36161,6 +36460,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/PaySetup.tsx"
+]
+},
+{
+"th": "ลบ (ที่ยกเลิกแล้ว)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -37109,6 +37415,13 @@
 ]
 },
 {
+"th": "ลูกหนี้ยกมานี้ลงบัญชีไม่ได้ — บันทึกยอดยกมามียอดของบัญชีลูกหนี้ {0} อยู่แล้ว ถ้าลงบัญชีอีกยอดลูกหนี้จะซ้ำ · วิธีแก้ (เลือกอย่างใดอย่างหนึ่ง): (1) ที่ Buddy เมนู บัญชี › บันทึกยอดยกมา ลบยอดของบัญชี {1} (ย้ายยอดนั้นไปบัญชีพักยอดยกมา) แล้วส่งลูกหนี้ยกมาใหม่ หรือ (2) ส่งลูกหนี้ยกมาแบบไม่ลงบัญชี (post_gl: false — เข้าทะเบียนลูกหนี้อย่างเดียว ยอดบัญชีใช้ยอดที่คีย์ไว้)",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
+]
+},
+{
 "th": "ลูกหนี้เกินวงเงิน",
 "n": 1,
 "files": [
@@ -37774,6 +38087,13 @@
 ]
 },
 {
+"th": "วันเริ่มใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "วันใดก็ได้ในเดือนนั้น",
 "n": 1,
 "files": [
@@ -38009,6 +38329,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "ว่าง = บัญชีพักยอดยกมา {0} {1} · ต้องเป็นบัญชีงบดุล (หมวด 1–3)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -41687,10 +42014,24 @@
 ]
 },
 {
+"th": "เงินมัดจำ/เงินประกันของลูกค้าที่ค้างอยู่ ณ วันเริ่มใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "เงินมัดจำจ่ายล่วงหน้า",
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "เงินมัดจำยกมา",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -42930,6 +43271,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/PettyCash.tsx"
+]
+},
+{
+"th": "เช่น เลขที่สัญญา/ใบมัดจำในระบบเดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -45754,6 +46102,13 @@
 ]
 },
 {
+"th": "เลือกลูกค้า (ช่องรหัสลูกค้า กด F4 หรือ 🔍 ค้นหา)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "เลือกลูกค้าก่อน แล้วเลือกใบมัดจำที่จะ{0}",
 "n": 1,
 "files": [
@@ -46325,6 +46680,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
+]
+},
+{
+"th": "เอกสารที่ใช้มัดจำนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -48295,10 +48657,10 @@
 ]
 },
 {
-"th": "ใช้อยู่",
+"th": "ใช้หมดแล้ว",
 "n": 1,
 "files": [
-"apps/web/src/components/ThemePicker.tsx"
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -48407,10 +48769,10 @@
 ]
 },
 {
-"th": "ใช้แล้ว",
+"th": "ใช้แล้ว (ใบเสร็จหัก/ใบคืนเงิน)",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/DataTables.tsx"
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -48726,6 +49088,13 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ใบนี้มาจาก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -49139,6 +49508,13 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "ใบเสร็จรับเงิน (หักมัดจำ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {
@@ -50094,6 +50470,13 @@
 ]
 },
 {
+"th": "ไม่มี VAT (ภาษีของมัดจำยื่นไปแล้วในระบบเดิม)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ไม่มี{0}ค้าง{1}ของรายนี้",
 "n": 1,
 "files": [
@@ -50647,13 +51030,6 @@
 ]
 },
 {
-"th": "ไม่ลงบัญชี",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/DocTypes.tsx"
-]
-},
-{
 "th": "ไม่สำเร็จ",
 "n": 1,
 "files": [
@@ -50875,6 +51251,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "— ที่ WTS-Living ส่งมา หรือคีย์ที่นี่สำหรับลูกค้าอื่น · ลงบัญชี Dr บัญชีพักยอดยกมา / Cr เงินมัดจำรับ ไม่มี VAT · ใบเสร็จหักมัดจำ / ใบคืนเงินมัดจำ ใช้ได้ตามปกติ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {

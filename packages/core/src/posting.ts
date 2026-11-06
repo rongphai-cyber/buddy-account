@@ -238,7 +238,9 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     const wht = d(h.wht_amount ?? 0), disc = d(h.cash_discount_amount ?? 0), intr = d(h.interest_amount ?? 0), fx = d(h.fx_amount ?? 0);
     (isRe ? D : C)(pick(['3', r.def(isRe ? 'PREPAID_TAX' : 'WHT_PAYABLE')]), wht, 'WHT');
     (isRe ? D : C)(pick(['3', r.def(isRe ? 'SALES_DISCOUNT' : 'PURCHASE_DISCOUNT')]), disc, 'CASH_DISCOUNT');
-    (isRe ? C : D)(pick(['3', r.def(isRe ? 'INTEREST_INCOME' : 'INTEREST_EXPENSE')]), intr, 'INTEREST');
+    // ดอกเบี้ย/ค่าปรับ: ช่อง 7 ของประเภทเอกสาร (HANDOFF ข้อ 91) → บัญชีเพื่อลงรายวัน
+    const intrRole = isRe ? 'INTEREST_INCOME' : 'INTEREST_EXPENSE';
+    (isRe ? C : D)(pick(['1', r.slot(dt, cls, intrRole)], ['3', r.def(intrRole)]), intr, 'INTEREST');
     // ผลต่างอัตราแลกเปลี่ยน (บทที่ 26): กำไร Cr / ขาดทุน Dr บัญชีกำไร(ขาดทุน)จากอัตราแลกเปลี่ยน — รับ: กำไรได้เงินมากขึ้น · จ่าย: กำไรจ่ายน้อยลง
     if (!fx.isZero()) { const fxAcct = pick(['3', r.def('FX_GAIN_LOSS')]); if (fx.gt(0)) C(fxAcct, fx, 'FX'); else D(fxAcct, fx.neg(), 'FX'); }
     // หักโดยแพลตฟอร์ม: Dr ค่าใช้จ่าย + Dr ภาษีซื้อ (ใบกำกับในประเทศ) · ภ.พ.36 Dr ภาษีซื้อรอเครดิต / Cr ภาษีมูลค่าเพิ่มค้างจ่าย ภ.พ.36

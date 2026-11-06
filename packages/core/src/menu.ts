@@ -43,6 +43,8 @@ export const MENU: MenuItem[] = [
       m('FI.AR.SR', 'ลดหนี้ / รับคืนสินค้า', 'P3', '/fi/ar/credit-notes', ['ch12:S-SR-01']),
       m('FI.AR.RE', 'รับชำระหนี้', 'P3', '/fi/ar/receipts', ['ch12:S-RE-01', 'ch12:S-PM-01']),
       m('FI.AR.OB', 'บันทึกรายการลูกหนี้คงค้าง-ยกมา', 'P3', '/fi/ar/opening', ['ch08:S-OB-04']),
+      // เงินมัดจำยกมา (HANDOFF ข้อ 86 91 — Express ไม่มี): ใบมัดจำรับ AI ยกมาที่ WTS-Living ส่ง หรือคีย์ที่ Buddy
+      m('FI.AR.DOB', 'บันทึกเงินมัดจำยกมา', 'P3', '/fi/ar/deposit-opening'),
     ]),
     g('FI.AP', 'เจ้าหนี้', 'P3', [
       m('FI.AP.BR', 'ใบรับวางบิล', 'P3', '/fi/ap/bills', ['ch11:S-PU-06']),

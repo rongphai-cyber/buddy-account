@@ -110,7 +110,8 @@ export function printFamily(scope: string): PrintFamily {
 /** เมนูสิทธิ์ของเอกสารแต่ละหมวด (ใช้ตรวจสิทธิ์พิมพ์/รับรอง/ดูรายละเอียด) */
 export function docMenuOf(docClass: string, isOpening = false): string {
   if (docClass === 'GL') return 'GL.JNL';
-  if (isOpening) return ['IV', 'DR', 'CN', 'AI'].includes(docClass) ? 'FI.AR.OB' : ['RR', 'CP', 'DN', 'AE'].includes(docClass) ? 'FI.AP.OB' : 'IC.OB';
+  if (isOpening && docClass === 'AI') return 'FI.AR.DOB';
+  if (isOpening) return ['IV', 'DR', 'CN'].includes(docClass) ? 'FI.AR.OB' : ['RR', 'CP', 'DN', 'AE'].includes(docClass) ? 'FI.AP.OB' : 'IC.OB';
   const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, ...BILL_KINDS, DEPOSIT_REFUND].find((x) => x.cls === docClass);
   if (k) return k.menu;
   if (STOCK_CLASSES.has(docClass)) return 'IC.TRN';
@@ -128,7 +129,7 @@ export function docPath(docClass: string | null | undefined, id: string, isOpeni
   if (!docClass || !id) return null;
   if (docClass === 'GL') return `/gl/journals/${id}`;
   if (docClass === 'OS') return `/ic/opening/${id}`;
-  if (isOpening) return docClass === 'IV' ? `/fi/ar/opening/${id}` : docClass === 'RR' ? `/fi/ap/opening/${id}` : null;
+  if (isOpening) return docClass === 'IV' ? `/fi/ar/opening/${id}` : docClass === 'RR' ? `/fi/ap/opening/${id}` : docClass === 'AI' ? `/fi/ar/deposit-opening/${id}` : null;
   if (docClass === 'DP' || docClass === 'VR') return `/fi/petty-cash/${docClass.toLowerCase()}/${id}`;
   if (docClass === 'BQ' || docClass === 'SQ') return `/fi/cheques/slips/${id}`;
   const k = [...TRADE_KINDS, ...SETTLE_KINDS, ...CASH_KINDS, DEPOSIT_REFUND, ...BILL_KINDS, ...BANK_KINDS, ...STOCK_KINDS].find((x) => x.cls === docClass);

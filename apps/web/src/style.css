@@ -1010,3 +1010,13 @@ tr.sel > td { background: color-mix(in srgb, var(--tone) 10%, transparent); }
   .living-setup td:empty { display: none; }
   .living-setup td::before { content: attr(data-label) ' · '; color: var(--muted); font-size: 12px; }
 }
+/* เงินมัดจำยกมา (HANDOFF ข้อ 91): มือถือ = การ์ดต่อแถว */
+@media (max-width: 640px) {
+  .dob-list { border: 0; background: transparent; }
+  .dob-list table.grid, .dob-list tbody, .dob-list tfoot, .dob-list tr, .dob-list td { display: block; width: 100%; }
+  .dob-list thead { display: none; }
+  .dob-list tr { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); margin-bottom: 8px; padding: 6px 0; }
+  .dob-list table.grid td, .dob-list table.grid td.r { border: 0; padding: 3px 12px; text-align: left; }
+  .dob-list td:empty { display: none; }
+  .dob-list td[data-label]::before { content: attr(data-label) ' · '; color: var(--muted); font-size: 12px; }
+}
