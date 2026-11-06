@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { d, formatDate } from '@buddy/core';
+import { d, formatDate, settlementVatParts } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { checkOwned } from '../owned.js';
@@ -43,9 +43,15 @@ export async function syncVatEntries(tx: Db, ctx: Ctx, headerId: string) {
   let base = d(0), vat = d(0), zero = d(0), exempt = d(0);
   if (h.doc_class === 'RE' || h.doc_class === 'PS') {
     // ภาษีเกณฑ์เงินสด: เกิด ณ วันรับ/จ่ายชำระ ตามยอดภาษีของบิลที่ตัด
-    const s = (await sql<{ amount: string; vat: string }>`SELECT coalesce(sum(CASE WHEN express_rectype = '5' THEN -amount ELSE amount END), 0) AS amount,
-        coalesce(sum(CASE WHEN express_rectype = '5' THEN -vat_amount ELSE vat_amount END), 0) AS vat FROM doc_settlement WHERE payment_header_id = ${headerId} AND deleted_at IS NULL AND vat_amount <> 0`.execute(tx)).rows[0]!;
-    vat = d(s.vat); base = d(s.amount).minus(vat);
+    // บิลที่มีทั้งรายการมี VAT และยกเว้น (ค่าน้ำไฟ + ค่าเช่า): ส่วนยกเว้น/0% ตามสัดส่วนของบิล ไม่ใช่ฐานภาษี (settlementVatParts · ข้อ 87)
+    const rows = (await sql<{ amount: string; vat: string; rectype: string | null; net: string; exempt: string; zero: string }>`SELECT s.amount, s.vat_amount AS vat, s.express_rectype AS rectype,
+        i.net_amount AS net, i.exempt_amount AS exempt, i.zero_rate_amount AS zero FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id
+       WHERE s.payment_header_id = ${headerId} AND s.deleted_at IS NULL AND s.vat_amount <> 0`.execute(tx)).rows;
+    for (const r of rows) {
+      const p = settlementVatParts({ amount: r.amount, vat: r.vat, inv_net: r.net, inv_exempt: r.exempt, inv_zero: r.zero });
+      const sg = r.rectype === '5' ? -1 : 1;
+      base = base.plus(p.base.times(sg)); vat = vat.plus(p.vat.times(sg)); zero = zero.plus(p.zero.times(sg)); exempt = exempt.plus(p.exempt.times(sg));
+    }
   } else if (h.vat_basis !== '2') {
     base = d(h.taxable_amount); vat = d(h.vat_amount); zero = d(h.zero_rate_amount); exempt = d(h.exempt_amount);
     // ราคารวม VAT: taxable_amount ของเอกสาร = ยอดรวม VAT (แบบ Express TOTAL) — มูลค่าในแฟ้มภาษีต้องไม่รวม VAT (Express ISVAT.AMT01)

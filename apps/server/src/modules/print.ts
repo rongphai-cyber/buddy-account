@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { bahtText, checkApprove, checkPrint, checkUnapprove, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
+import { bahtText, fmt, settlementVatParts, checkApprove, checkPrint, checkUnapprove, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
 import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { companyImages } from './company-images.js';
@@ -55,8 +55,10 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
   const h = H.row;
   const co = (await sql<Row>`SELECT c.name_th, c.name_en, c.address_th, c.phone, c.tax_id, c.year_system, b.name AS branch_name, b.tax_branch_no, b.address AS branch_address, b.is_head_office
       FROM sys_company c LEFT JOIN sys_branch b ON b.id = ${h.branch_id ?? null} AND b.company_id = c.id WHERE c.id = ${a.companyId}`.execute(db)).rows[0]!;
+  // ผู้ออกใบกำกับภาษีต้องระบุสำนักงานใหญ่/สาขาที่ (ประกาศอธิบดีฯ VAT ฉบับที่ 199) — เอกสารที่ไม่ระบุสาขา = ออกที่สำนักงานใหญ่
+  const branchText = (no: string | null | undefined, head: unknown) => (no ? (head || no === '00000' ? 'สำนักงานใหญ่' : `สาขาที่ ${no}`) : '');
   const company = { name: txt(co.name_th), name_en: txt(co.name_en), address: txt(co.branch_address || co.address_th), phone: txt(co.phone), tax_id: txt(co.tax_id),
-    branch: co.tax_branch_no ? (co.is_head_office || co.tax_branch_no === '00000' ? 'สำนักงานใหญ่' : `สาขาที่ ${co.tax_branch_no}`) : '' };
+    branch: branchText(co.tax_branch_no, co.is_head_office) || (co.tax_id ? 'สำนักงานใหญ่' : '') };
   if (kind === 'journal') {
     const lines = await journalLines(db, [id]);
     return { kind, scope: 'GL', family: 'journal' as const, title: txt(h.book_name) || 'ใบสำคัญ', title_en: txt(h.book_name_en), doc_no: txt(h.voucher_no), doc_date: txt(h.voucher_date),
@@ -81,17 +83,27 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     due_date: txt(h.due_date), credit_days: txt(h.credit_days), your_ref: txt(h.your_ref), ref_no: txt(h.ref_no), salesperson: nm(slm), department: nm(dept),
     delivery_date: txt(h.delivery_date), ship_via: txt(h.ship_via_code), payment_terms: txt(h.payment_terms), appointment_date: txt(h.appointment_date),
     warehouse: nm(wh), to_warehouse: nm(toWh), bank_account: nm(bank), to_bank_account: nm(toBank), voucher_no: txt(jnl?.voucher_no), remark: txt(h.remark),
+    // ใบเสร็จ/ใบสำคัญจ่าย: วันที่รับ/จ่ายเงินจริง เมื่อไม่ตรงวันที่เอกสาร (วันที่ภาษีถึงกำหนดของภาษีเกณฑ์เงินสด)
+    payment_date: h.payment_date && txt(h.payment_date).slice(0, 10) !== txt(h.doc_date).slice(0, 10) ? txt(h.payment_date).slice(0, 10) : '',
   };
 
   let lines: Array<Record<string, string>> = [];
   /** ใบเสร็จ: รายการสินค้า/บริการของทุกบิลที่ชำระ (แบบฟอร์มเลือกแสดงแทนเลขที่บิล) */
   let detail: Array<Record<string, string>> | undefined;
   /** ใบเสร็จรับเงิน/ใบกำกับภาษี: ตัดบิลภาษีเกณฑ์เงินสด (ค่าบริการ — ภาษีถึงกำหนดเมื่อรับเงิน) */
-  let vatDue = d(0), paidTotal = d(0);
+  // ฐานภาษี = ยอดชำระของบิลที่มีภาษีถึงกำหนด − ภาษี (ตรงกับรายการภาษีขายของใบเสร็จ vat.ts syncVatEntries) · บิลที่ไม่มีภาษีแสดงแยก
+  let vatDue = d(0), paidTotal = d(0), vatBase = d(0);
+  const vatRates = new Set<string>();
   if (fam === 'settle') {
-    const sr = (await sql<Row>`SELECT i.id, i.doc_no, i.doc_date, i.due_date, i.doc_class, i.net_amount, s.amount, s.vat_amount, s.express_rectype, CASE WHEN s.line_note_print THEN s.line_note END AS note FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id
+    const sr = (await sql<Row>`SELECT i.id, i.doc_no, i.doc_date, i.due_date, i.doc_class, i.net_amount, i.vat_rate, i.exempt_amount, i.zero_rate_amount, s.amount, s.vat_amount, s.express_rectype, CASE WHEN s.line_note_print THEN s.line_note END AS note FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id
         WHERE s.payment_header_id = ${id} AND s.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows;
-    for (const r of sr) { const sg = r.express_rectype === '5' ? -1 : 1; vatDue = vatDue.plus(d(r.vat_amount ?? 0).times(sg)); paidTotal = paidTotal.plus(d(r.amount ?? 0).times(sg)); }
+    for (const r of sr) {
+      const sg = r.express_rectype === '5' ? -1 : 1;
+      vatDue = vatDue.plus(d(r.vat_amount ?? 0).times(sg)); paidTotal = paidTotal.plus(d(r.amount ?? 0).times(sg));
+      const p = settlementVatParts({ amount: r.amount ?? 0, vat: r.vat_amount, inv_net: r.net_amount, inv_exempt: r.exempt_amount, inv_zero: r.zero_rate_amount });
+      vatBase = vatBase.plus(p.base.times(sg));
+      if (!p.vat.isZero()) vatRates.add(d(r.vat_rate ?? 0).toString());
+    }
     const billRow = (r: Row, i: number) => ({ no: String(i + 1), code: txt(r.doc_no), ref_date: txt(r.doc_date), due_date: txt(r.due_date), name: DOC_CLASSES[r.doc_class ?? '']?.label ?? '', ref_amount: money(r.net_amount), amount: money(r.amount) });
     lines = sr.map((r, i) => ({ ...billRow(r, i), ...(r.note ? { note: txt(r.note) } : {}) }));
     const items = sr.length ? (await sql<Row>`SELECT l.header_id, it.code AS item_code, l.description, l.qty, u.name_th AS unit, l.unit_price, l.line_amount, CASE WHEN l.line_note_print THEN l.line_note END AS note
@@ -99,7 +111,7 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
        WHERE l.header_id IN (${sql.join(sr.map((r) => r.id))}) AND l.deleted_at IS NULL AND l.line_kind <> 'K' ORDER BY l.line_no`.execute(db)).rows : [];
     detail = sr.flatMap((r, i) => [{ ...billRow(r, i), kind: 'bill', name: `${DOC_CLASSES[r.doc_class ?? '']?.label ?? ''}${d(r.amount ?? 0).lt(d(r.net_amount ?? 0)) ? ' (ชำระบางส่วน)' : ''}` },
       ...items.filter((l) => l.header_id === r.id).map((l) => ({ kind: 'item', no: '', code: txt(l.item_code), ref_date: '', due_date: '', amount: '', ref_amount: money(l.line_amount),
-        name: [txt(l.description), l.qty !== null && !d(l.qty).isZero() ? `${d(l.qty).toString()} ${txt(l.unit)} × ${l.unit_price !== null ? d(l.unit_price).toFixed(2) : ''}`.trim() : ''].filter(Boolean).join('  '), ...(l.note ? { note: txt(l.note) } : {}) }))]);
+        name: [txt(l.description), l.qty !== null && !d(l.qty).isZero() ? `${d(l.qty).toString()} ${txt(l.unit)} × ${l.unit_price !== null ? fmt(l.unit_price) : ''}`.trim() : ''].filter(Boolean).join('  '), ...(l.note ? { note: txt(l.note) } : {}) }))]);
   } else if (fam === 'bill') {
     lines = (await sql<Row>`SELECT i.doc_no, i.doc_date, i.due_date, i.doc_class, b.amount FROM doc_bill_item b JOIN doc_header i ON i.id = b.invoice_header_id
         WHERE b.bill_header_id = ${id} AND b.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows
@@ -178,7 +190,13 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     if (nz(h.cash_discount_amount)) totals.push({ label: 'ส่วนลดเงินสด', value: money(h.cash_discount_amount) });
     if (nz(h.interest_amount)) totals.push({ label: 'ดอกเบี้ย', value: money(h.interest_amount) });
     if (nz(h.fx_amount)) totals.push({ label: d(h.fx_amount).gt(0) ? 'กำไรจากอัตราแลกเปลี่ยน' : 'ขาดทุนจากอัตราแลกเปลี่ยน', value: money(d(h.fx_amount).abs()) });
-    if (!vatDue.isZero()) totals.push({ label: 'มูลค่าสินค้า/บริการ', value: paidTotal.minus(vatDue).toFixed(2) }, { label: 'ภาษีมูลค่าเพิ่ม', value: vatDue.toFixed(2) });
+    // ใบเสร็จรับเงิน/ใบกำกับภาษี (ม.86/4 (6)): ภาษีแยกจากมูลค่า + อัตรา · มูลค่าที่ไม่มีภาษี (ค่าเช่าที่อยู่อาศัย ค่าปรับ) แยกบรรทัด
+    if (!vatDue.isZero()) {
+      const nonVat = paidTotal.minus(vatBase).minus(vatDue);
+      const rate = vatRates.size === 1 ? ` ${[...vatRates][0]}%` : '';
+      totals.push({ label: nonVat.isZero() ? 'มูลค่าสินค้า/บริการ' : 'มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม', value: vatBase.toFixed(2) }, { label: `ภาษีมูลค่าเพิ่ม${rate}`, value: vatDue.toFixed(2) });
+      if (!nonVat.isZero()) totals.push({ label: 'มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม', value: nonVat.toFixed(2) });
+    }
     if (nz(h.wht_amount)) totals.push({ label: 'ภาษีหัก ณ ที่จ่าย', value: money(h.wht_amount) });
     // รายการที่แพลตฟอร์มหักก่อนโอน (ค่าบริการ + VAT ในประเทศ)
     const fee = d((await sql<{ v: string }>`SELECT coalesce(sum(amount + CASE WHEN vat_type = '1' THEN vat_amount ELSE 0 END), 0) AS v FROM doc_charge WHERE header_id = ${id} AND company_id = ${a.companyId} AND deleted_at IS NULL`.execute(db)).rows[0]!.v);
@@ -199,13 +217,15 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
   // ใบเสร็จ 2 แบบ (ข้อกำหนดเจ้าของ 31/10/2569): ใบเสร็จรับเงิน (ใบกำกับภาษีออกตอนขายแล้ว) · ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด ถึงกำหนดเมื่อรับเงิน)
   const receiptTax = H.scope === 'RE' && !vatDue.isZero();
   // ชื่อเอกสารที่พิมพ์ (04/11/2569 แบบฟอร์มมืออาชีพ): ประเภทเอกสารชื่อทั่วไป "ขายเงินเชื่อ" → "ใบแจ้งหนี้/ใบกำกับภาษี" ฯลฯ · ชื่อที่บริษัทตั้งเองคงเดิม
-  const std = printTitle(H.scope, txt(h.type_name), txt(h.type_name_en), nz(h.vat_amount));
+  // บิลภาษีเกณฑ์เงินสด (vat_basis 2 · ค่าบริการ): ใบกำกับภาษีคือใบเสร็จตอนรับเงิน (docs/19 ข้อ 3 4) — บิลพิมพ์ "ใบแจ้งหนี้" ไม่มีคำว่าใบกำกับภาษี
+  // (ออกใบกำกับภาษีก่อนรับเงิน = ภาษีถึงกำหนดทันที ม.78/1)
+  const std = printTitle(H.scope, txt(h.type_name), txt(h.type_name_en), nz(h.vat_amount) && h.vat_basis !== '2');
   // ใบคืนเงินมัดจำที่มี VAT ต้องมีคำว่า "ใบลดหนี้" เสมอ (แม้บริษัทตั้งชื่อประเภทเอกสารเอง)
   const title = H.scope === 'RE' ? (receiptTax ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : H.scope === 'PS' ? 'ใบสำคัญจ่าย' : rdVat ? RD_CREDIT_NOTE_TITLE : std.th || DOC_CLASSES[H.scope]?.label || 'เอกสาร';
   const titleEn = H.scope === 'RE' ? (receiptTax ? 'RECEIPT / TAX INVOICE' : 'RECEIPT') : H.scope === 'PS' ? 'PAYMENT VOUCHER' : rdVat ? 'CREDIT NOTE / DEPOSIT REFUND' : std.en;
   return { kind, scope: H.scope, family: fam, title, title_en: titleEn, doc_no: txt(h.doc_no), doc_date: txt(h.doc_date), receipt_tax: receiptTax, ...(detail ? { detail } : {}),
     cancelled: h.doc_status === 'C', company, party: partyOut, fields, lines, totals, amount_text: fam === 'stock' ? '' : bahtText(net), payments, notes, journal: jl,
-    print_count: H.state.printCount, approved: H.state.approved };
+    print_count: H.state.printCount, approved: H.state.approved, source_system: txt(h.source_system) || null };
 }
 
 /** พิมพ์เอกสาร (S-RD-01 · S-UI-08/09/10) · รับรองเอกสาร (S-UI-11/12 · S-GL-10) · รายละเอียดแฟ้มข้อมูล (S-RD-06) · แบบฟอร์ม (S-RD-02) · รายงานของผู้ใช้ (S-RD-03/04) */
@@ -222,6 +242,40 @@ export function printRoutes(app: FastifyInstance, db: Db) {
     const data = await printData(db, a, kind, id);
     const H = await loadHead(db, a, kind, id);
     return { data, forms: printMenu(data.scope, await formsOf(a, data.scope), data.title), rule: H.rule, block: checkPrint(H.rule, H.state, a.approvalLevel, a.isAdmin), images: await companyImages(db, a.companyId) };
+  });
+
+  /**
+   * เอกสารสำหรับพิมพ์ให้ระบบอื่น (HANDOFF ข้อ 87 · docs/19 ข้อ 3): WTS-Living ดึงใบเสร็จรับเงิน/ใบกำกับภาษี (RE) ของ Buddy ไปพิมพ์ PDF ให้ผู้เช่า
+   * - กุญแจ API เท่านั้น · บริษัทของกุญแจ · X-Source-System ต้องตรงระบบที่ผูกกับกุญแจ (ถ้าผูก)
+   * - doc_scope S (ค่าเริ่มต้น) = เฉพาะเอกสารที่ระบบเดียวกันส่งเข้ามา (อื่น ๆ ตอบ 404 เหมือนไม่มีเอกสาร) · A = ทุกเอกสารของบริษัท
+   * - ไม่แก้เอกสาร/บัญชี · ทำตามกฎพิมพ์ของประเภทเอกสาร (รับรองก่อนพิมพ์) · นับครั้งที่พิมพ์ + log PRINT/REPRINT (ครั้งแรก = ต้นฉบับ ต่อไป = สำเนา)
+   */
+  app.get('/api/v1/docs/:id/print', async (req) => {
+    const a = requireCompany(req);
+    const { id } = parse(z.object({ id: uuid }), req.params);
+    if (!a.apiKeyId) throw badRequest('API นี้ใช้กับกุญแจ API ของระบบอื่น — หน้าจอ Buddy ใช้ปุ่ม 🖨 พิมพ์ของเอกสาร');
+    const key = await db.selectFrom('sys_api_key').select(['source_system', 'doc_scope']).where('id', '=', a.apiKeyId).where('company_id', '=', a.companyId).executeTakeFirstOrThrow();
+    const raw = req.headers['x-source-system'];
+    const sys = (Array.isArray(raw) ? raw[0] : raw)?.trim() || null;
+    if (sys !== null && !/^[a-z][a-z0-9-]{1,29}$/.test(sys)) throw new AppError(400, 'BAD_SOURCE', 'X-Source-System ต้องเป็นตัวพิมพ์เล็ก a-z ตัวเลข และ - ยาว 2–30 ตัว เช่น wts-living');
+    if (!sys && key.doc_scope !== 'A') throw new AppError(400, 'BAD_SOURCE', 'ส่ง X-Source-System ของระบบที่ส่งเอกสารนี้เข้ามา เช่น wts-living (docs/07)');
+    if (sys && key.source_system && sys !== key.source_system) throw new AppError(403, 'SOURCE_MISMATCH', `กุญแจ API นี้ผูกกับระบบ ${key.source_system} — ใช้กุญแจของระบบ ${sys} หรือแก้ "ระบบที่ใช้กุญแจ" ที่หน้ากุญแจ API`);
+    const doc = await db.selectFrom('doc_header').select(['source_system']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    // เอกสารของระบบอื่น/ที่คีย์ใน Buddy = ไม่มีให้กุญแจนี้ (ไม่บอกว่ามีอยู่)
+    if (!doc || (key.doc_scope !== 'A' && doc.source_system !== sys)) throw notFound('เอกสาร');
+    const H = await loadHead(db, a, 'doc', id);
+    const r = await allowedFor(db, a, docMenuOf(H.scope, !!H.row.is_opening), 'print');
+    if (r.screenOnly) throw forbidden('ผู้ใช้ของกุญแจนี้พิมพ์ได้เฉพาะแสดงทางจอภาพ — ให้สิทธิ์พิมพ์ออกเครื่องพิมพ์ที่ ตั้งค่า › ผู้ใช้งานและสิทธิ์');
+    const why = checkPrint(H.rule, H.state, a.approvalLevel, a.isAdmin);
+    if (why) throw new AppError(409, 'PRINT_BLOCKED', why);
+    const data = await printData(db, a, 'doc', id);
+    const copy = H.state.printCount > 0 ? 'สำเนา' : 'ต้นฉบับ';
+    await db.transaction().execute(async (tx) => {
+      await tx.updateTable('doc_header').set({ print_count: sql`print_count + 1` as never, last_printed_by: a.userId, last_printed_at: sql`now()` as never }).where('id', '=', id).where('company_id', '=', a.companyId).execute();
+      await logActivity(tx, a, { module: String(H.row.module), action: H.state.printCount > 0 ? 'REPRINT' : 'PRINT', docNo: H.no, table: 'doc_header', rowId: id,
+        detail: { via: 'api', system: sys, copy, count: H.state.printCount + 1, tax_invoice: 'receipt_tax' in data && !!data.receipt_tax } });
+    });
+    return { data: { ...data, print_count: H.state.printCount + 1 }, copy, doc_status: H.state.cancelled ? 'C' : 'N', logo: (await companyImages(db, a.companyId)).logo };
   });
 
   /** ก่อนสั่งพิมพ์ออกเครื่องพิมพ์: ตรวจกฎรับรอง/พิมพ์ซ้ำ แล้วนับจำนวนครั้งที่พิมพ์ (ดูทางจอภาพไม่นับ) */

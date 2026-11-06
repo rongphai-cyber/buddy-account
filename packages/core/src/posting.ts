@@ -40,6 +40,21 @@ export function depositRefundParts(amount: MoneyInput, priceType: string | null 
 }
 
 /**
+ * ใบเสร็จ/ใบสำคัญจ่ายที่ตัดบิลภาษีเกณฑ์เงินสด (ภาษีถึงกำหนดเมื่อรับ/จ่ายเงิน · docs/19 ข้อ 4 · HANDOFF ข้อ 87):
+ * แยกยอดชำระของบิลหนึ่งใบเป็น มูลค่าที่มี VAT + VAT + มูลค่าอัตรา 0% + มูลค่ายกเว้น ตามสัดส่วนของบิล
+ *  - ชำระเต็มบิล = ยอดของบิลตรงสตางค์ · ชำระบางส่วน = ยกเว้น/0% × ยอดชำระ ÷ ยอดบิล (ปัด 2 ตำแหน่ง) · มูลค่าที่มี VAT = ส่วนที่เหลือ
+ *  - ไม่มี VAT ถึงกำหนด = ทั้งหมดเป็น other (บิลไม่มี VAT เช่น ค่าปรับ) — ไม่เข้ารายงานภาษีของใบเสร็จ
+ * (เดิมรายงานภาษีขายใช้ ยอดชำระ − VAT เป็นฐาน → ค่าเช่าที่ยกเว้น VAT ในบิลเดียวกันถูกนับเป็นฐานภาษี)
+ */
+export function settlementVatParts(x: { amount: MoneyInput; vat: MoneyInput | null | undefined; inv_net: MoneyInput | null | undefined; inv_exempt?: MoneyInput | null; inv_zero?: MoneyInput | null }) {
+  const amt = d(x.amount), vat = d(x.vat ?? 0), net = d(x.inv_net ?? 0), z = d(0);
+  if (vat.isZero() || net.isZero()) return { base: z, vat: z, zero: z, exempt: z, other: amt };
+  const share = (y: MoneyInput | null | undefined) => (amt.eq(net) ? d(y ?? 0) : d(y ?? 0).times(amt).div(net).toDecimalPlaces(2));
+  const exempt = share(x.inv_exempt), zero = share(x.inv_zero);
+  return { base: amt.minus(vat).minus(exempt).minus(zero), vat, zero, exempt, other: z };
+}
+
+/**
  * ภาษีขายที่ลดเมื่อคืนมัดจำที่มี VAT (ใบคืนเงินมัดจำ RD = ใบลดหนี้ — เจ้าของ 06/11/2569)
  *  แยก VAT: VAT = ปัดสองตำแหน่ง(ยอดคืน × อัตรา / 100) · รวม VAT: ก่อน VAT = ปัด(ยอดคืน × 100 / (100 + อัตรา)) · VAT = ยอดคืน − ก่อน VAT
  *  ปิดยอดตรงสตางค์: คืนแล้วคงเหลือ 0 และใบมัดจำไม่ถูกใช้ในเอกสารอื่นนอกจากใบคืนเงิน → VAT = VAT ของใบมัดจำ − VAT ของใบคืนเงินอื่นที่ยังใช้

@@ -4,7 +4,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 
-type Key = { id: string; name: string; key_prefix: string; read_only: boolean; expires_on: string | null; status: string; last_used_at: string | null; last_used_ip: string | null; created_at: string; username: string; display_name: string; created_by_name: string | null };
+type Key = { id: string; name: string; key_prefix: string; read_only: boolean; source_system: string | null; doc_scope: 'S' | 'A'; expires_on: string | null; status: string; last_used_at: string | null; last_used_ip: string | null; created_at: string; username: string; display_name: string; created_by_name: string | null };
 type User = { id: string; username: string; display_name: string; status: string; group_code: string | null; companies: string[] };
 type Doc = { method: string; path: string; kind: string; menu: string | null; menu_label: string | null; action: string | null };
 const ACT: Record<string, string> = { read: 'อ่าน', add: 'เพิ่ม', edit: 'แก้ไข', cancel: 'ยกเลิก', delete: 'ลบ', print: 'พิมพ์', approve: 'รับรอง' };
@@ -22,6 +22,7 @@ export function ApiKeysPage() {
   const [adding, setAdding] = useState(false);
   const [shown, setShown] = useState<{ name: string; key: string } | null>(null);
   const [revoke, setRevoke] = useState<Key | null>(null);
+  const [scope, setScope] = useState<Key | null>(null);
   const [err, setErr] = useState<unknown>(null);
   useHotkeys({ Insert: can('add') && tab === 'keys' ? () => setAdding(true) : undefined }, [tab]);
   const doRevoke = async () => {
@@ -39,7 +40,7 @@ export function ApiKeysPage() {
       {tab === 'keys' ? <>
         <div className="table-wrap">
           <table className="grid">
-            <thead><tr><th>ชื่อ</th><th style={{ width: 170 }}>กุญแจ</th><th>ทำงานในนาม</th><th style={{ width: 110 }}>สิทธิ์</th><th style={{ width: 110 }}>หมดอายุ</th><th style={{ width: 170 }}>ใช้ล่าสุด</th><th style={{ width: 90 }}>สถานะ</th><th style={{ width: 90 }} /></tr></thead>
+            <thead><tr><th>ชื่อ</th><th style={{ width: 170 }}>กุญแจ</th><th>ทำงานในนาม</th><th style={{ width: 110 }}>สิทธิ์</th><th style={{ width: 150 }}>ระบบ · พิมพ์เอกสาร</th><th style={{ width: 110 }}>หมดอายุ</th><th style={{ width: 170 }}>ใช้ล่าสุด</th><th style={{ width: 90 }}>สถานะ</th><th style={{ width: 90 }} /></tr></thead>
             <tbody>
               {keys.data?.map((k) => (
                 <tr key={k.id} className={cx(k.status !== 'A' && 'cancelled')}>
@@ -47,13 +48,14 @@ export function ApiKeysPage() {
                   <td className="mono">bk_{k.key_prefix}_…</td>
                   <td>{k.username} <span className="muted">{k.display_name}</span></td>
                   <td>{k.read_only ? 'อ่านอย่างเดียว' : 'ตามสิทธิ์ผู้ใช้'}</td>
+                  <td><span className="mono">{k.source_system ?? '—'}</span><div className="muted small">{k.doc_scope === 'A' ? 'ทุกเอกสารของบริษัท' : 'เฉพาะที่ระบบนี้ส่งเข้ามา'}</div></td>
                   <td>{k.expires_on ? <DateText v={k.expires_on} /> : <span className="muted">ไม่หมดอายุ</span>}</td>
                   <td>{k.last_used_at ? <><DateText v={k.last_used_at} /> <span className="muted small">{new Date(k.last_used_at).toLocaleTimeString('th-TH')} {k.last_used_ip}</span></> : <span className="muted">ยังไม่เคยใช้</span>}</td>
                   <td>{k.status === 'A' ? <Pill tone="n">ใช้งาน</Pill> : <Pill tone="x">ยกเลิก</Pill>}</td>
-                  <td>{k.status === 'A' && can('cancel') && <button onClick={() => setRevoke(k)}>ยกเลิก</button>}</td>
+                  <td>{k.status === 'A' && can('edit') && <button onClick={() => setScope(k)} title="ระบบที่ใช้กุญแจ + เอกสารที่อ่าน/พิมพ์ได้">ระบบ</button>}{k.status === 'A' && can('cancel') && <button onClick={() => setRevoke(k)}>ยกเลิก</button>}</td>
                 </tr>
               ))}
-              {keys.data && !keys.data.length && <tr><td colSpan={8} className="empty">ยังไม่มีกุญแจ — กด Ins เพื่อสร้าง</td></tr>}
+              {keys.data && !keys.data.length && <tr><td colSpan={9} className="empty">ยังไม่มีกุญแจ — กด Ins เพื่อสร้าง</td></tr>}
             </tbody>
           </table>
         </div>
@@ -66,6 +68,7 @@ export function ApiKeysPage() {
         <input className="mono" readOnly value={shown.key} onFocus={(e) => e.target.select()} autoFocus style={{ width: '100%' }} aria-label="กุญแจ API" />
         <p className="hint">ระบบปลายทางส่งใน header: <code>Authorization: Bearer {shown.key.slice(0, 18)}…</code></p>
       </Modal>}
+      {scope && <ScopeKey k={scope} onClose={() => setScope(null)} onDone={() => { setScope(null); toast('บันทึกระบบของกุญแจแล้ว'); qc.invalidateQueries({ queryKey: ['api-keys'] }); }} />}
       {revoke && <Confirm danger title="ยกเลิกกุญแจ API" text={<>ยกเลิก <b>{revoke.name}</b> (bk_{revoke.key_prefix}_…)? ระบบที่ใช้กุญแจนี้จะเชื่อมต่อไม่ได้ทันที (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกกุญแจ" onOk={doRevoke} onClose={() => setRevoke(null)} />}
     </div>
   );
@@ -76,12 +79,13 @@ function AddKey({ onClose, onDone }: { onClose: () => void; onDone: (name: strin
   const users = useQuery({ queryKey: ['users'], queryFn: () => api.get<{ users: User[] }>('/api/v1/users') });
   const cid = me?.company?.id;
   const pick = (users.data?.users ?? []).filter((u) => u.status === 'A' && (u.group_code === 'ADMIN' || (cid && u.companies.includes(cid))));
-  const [f, setF] = useState({ name: '', user_id: '', read_only: true, expires_on: '' });
+  const [f, setF] = useState({ name: '', user_id: '', read_only: true, expires_on: '', source_system: '', doc_all: false });
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const save = async () => {
     setBusy(true); setErr(null);
-    try { const r = await api.post<{ key: string }>('/api/v1/api-keys', { name: f.name, user_id: f.user_id || undefined, read_only: f.read_only, expires_on: f.expires_on || null }); onDone(f.name, r.key); }
+    try { const r = await api.post<{ key: string }>('/api/v1/api-keys', { name: f.name, user_id: f.user_id || undefined, read_only: f.read_only, expires_on: f.expires_on || null,
+      source_system: f.source_system.trim() || null, doc_scope: f.doc_all ? 'A' : 'S' }); onDone(f.name, r.key); }
     catch (e) { setErr(e); } finally { setBusy(false); }
   };
   useHotkeys({ F9: save, 'Ctrl+S': save }, [f]);
@@ -94,6 +98,32 @@ function AddKey({ onClose, onDone }: { onClose: () => void; onDone: (name: strin
       </Field>
       <label className="check"><input type="checkbox" checked={f.read_only} onChange={(e) => setF({ ...f, read_only: e.target.checked })} /> อ่านอย่างเดียว (ดึงข้อมูล/รายงาน ไม่บันทึกเอกสาร)</label>
       <Field label="หมดอายุ" hint="ว่าง = ไม่หมดอายุ"><DateInput value={f.expires_on} onChange={(v) => setF({ ...f, expires_on: v })} /></Field>
+      <ScopeFields v={f} set={(x) => setF({ ...f, ...x })} />
+    </Modal>
+  );
+}
+
+/** ระบบที่ใช้กุญแจ (X-Source-System ต้องตรง) + เอกสารที่อ่าน/พิมพ์ได้ผ่าน GET /api/v1/docs/:id/print (HANDOFF ข้อ 87) */
+function ScopeFields({ v, set }: { v: { source_system: string; doc_all: boolean }; set: (x: Partial<{ source_system: string; doc_all: boolean }>) => void }) {
+  return <>
+    <Field label="ระบบที่ใช้กุญแจนี้" hint="เช่น wts-living wts-pos — ตั้งแล้วกุญแจนี้ส่งเอกสาร/พิมพ์เอกสารในนามระบบอื่นไม่ได้ · ว่าง = ไม่ผูก">
+      <input className="mono" value={v.source_system} maxLength={30} placeholder="wts-living" onChange={(e) => set({ source_system: e.target.value.toLowerCase().trim() })} /></Field>
+    <label className="check"><input type="checkbox" checked={v.doc_all} onChange={(e) => set({ doc_all: e.target.checked })} /> พิมพ์เอกสารได้ทุกใบของบริษัท (ไม่ติ๊ก = เฉพาะเอกสารที่ระบบนี้ส่งเข้ามา เช่น ใบกำกับภาษีที่ WTS-Living ดึงไปพิมพ์ให้ผู้เช่า)</label>
+  </>;
+}
+
+function ScopeKey({ k, onClose, onDone }: { k: Key; onClose: () => void; onDone: () => void }) {
+  const [f, setF] = useState({ source_system: k.source_system ?? '', doc_all: k.doc_scope === 'A' });
+  const [err, setErr] = useState<unknown>(null);
+  const save = async () => {
+    setErr(null);
+    try { await api.put(`/api/v1/api-keys/${k.id}/scope`, { source_system: f.source_system.trim() || null, doc_scope: f.doc_all ? 'A' : 'S' }); onDone(); } catch (e) { setErr(e); }
+  };
+  useHotkeys({ F9: save, 'Ctrl+S': save }, [f]);
+  return (
+    <Modal title={`ระบบของกุญแจ: ${k.name}`} onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button></>}>
+      <ErrorBox error={err} />
+      <ScopeFields v={f} set={(x) => setF({ ...f, ...x })} />
     </Modal>
   );
 }

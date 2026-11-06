@@ -726,6 +726,10 @@ export interface SysApiKeyTable {
   last_used_at: Gen<string | null>;
   /** IP ที่ใช้ครั้งล่าสุด */
   last_used_ip: Gen<string | null>;
+  /** ระบบที่ใช้กุญแจนี้ เช่น wts-living (HANDOFF ข้อ 87) — ตั้งแล้ว X-Source-System ต้องตรง · ว่าง = ตามที่คำขอส่งมา */
+  source_system: Gen<string | null>;
+  /** อ่าน/พิมพ์เอกสารผ่าน GET /api/v1/docs/:id/print: S=เฉพาะเอกสารที่ระบบเดียวกันส่งเข้ามา A=ทุกเอกสารของบริษัท (ตามสิทธิ์ผู้ใช้) */
+  doc_scope: Gen<string>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

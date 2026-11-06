@@ -292,6 +292,8 @@ add(T('sys_api_key', 'กุญแจ API ให้ระบบอื่นเ�
   C('status', 'char1', nn=True, d="'A'", th='A=ใช้งาน I=ยกเลิกแล้ว', chk=ST_ACTIVE),
   C('last_used_at', 'ts', th='ใช้ครั้งล่าสุด'),
   C('last_used_ip', 'str60', th='IP ที่ใช้ครั้งล่าสุด'),
+  C('source_system', 'code30', th='ระบบที่ใช้กุญแจนี้ เช่น wts-living (HANDOFF ข้อ 87) — ตั้งแล้ว X-Source-System ต้องตรง · ว่าง = ตามที่คำขอส่งมา'),
+  C('doc_scope', 'char1', nn=True, d="'S'", th='อ่าน/พิมพ์เอกสารผ่าน GET /api/v1/docs/:id/print: S=เฉพาะเอกสารที่ระบบเดียวกันส่งเข้ามา A=ทุกเอกสารของบริษัท (ตามสิทธิ์ผู้ใช้)', chk="doc_scope IN ('S','A')"),
 ], uniq=[('key_prefix',)]))
 
 add(T('sys_pdpa_request', 'ทะเบียนคำขอของเจ้าของข้อมูลส่วนบุคคล (PDPA ม.30–36, บันทึกตาม ม.39) — ขอดู/ขอสำเนา ขอแก้ ขอลบ ขอคัดค้าน และผลการดำเนินการ (T0.17)', 'sys', sync='server', express='(ใหม่)', cols=[

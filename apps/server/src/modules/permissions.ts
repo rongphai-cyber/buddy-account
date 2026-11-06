@@ -130,7 +130,8 @@ const CHQ = (rMenu: string, pMenu: string, action: Action): Rule => ({ kind: 'me
 /** เอกสารใด ๆ (doc_header/gl_journal ตาม :kind) → เมนูของหมวดเอกสารนั้น */
 const DOC = (action: Action): Rule => ({ kind: 'menu', menu: 'GL.JNL', action, pick: async (req, db, companyId) => {
   const p = (req.params ?? {}) as Record<string, string>, b = (req.body ?? {}) as Record<string, string>;
-  const kind = p.kind ?? b.kind, id = p.id;
+  // GET /api/v1/docs/:id/print (กุญแจ API ของระบบอื่น · ข้อ 87) ไม่มี :kind = เอกสาร doc_header
+  const kind = p.kind ?? b.kind ?? (req.routeOptions?.url === '/api/v1/docs/:id/print' ? 'doc' : undefined), id = p.id;
   if (kind !== 'doc') return 'GL.JNL';
   if (id && /^[0-9a-f-]{36}$/i.test(id)) {
     const h = await db.selectFrom('doc_header').select(['doc_class', 'is_opening']).where('id', '=', id).where('company_id', '=', companyId).executeTakeFirst();
@@ -154,7 +155,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/ai/status': LOOKUP, 'GET /api/v1/ai/config': M('SET.AI', 'read'), 'PUT /api/v1/ai/config': M('SET.AI', 'edit'), 'GET /api/v1/ai/usage': M('SET.AI', 'read'),
   'POST /api/v1/ai/read-bill': { kind: 'menu', menu: 'PU.RR', action: 'add', pick: async (req) => AI_BILL_TARGETS.find((k) => k.path === (req.body as { target?: string } | undefined)?.target)?.menu ?? 'PU.RR' },
   'GET /api/v1/etax/docs': M('FI.VAT.ETAX', 'read'), 'GET /api/v1/etax/doc/:id': M('FI.VAT.ETAX', 'print'), 'GET /api/v1/etax/export': M('FI.VAT.ETAX', 'print'),
-  'GET /api/v1/api-keys': M('SET.API', 'read'), 'POST /api/v1/api-keys': M('SET.API', 'add'), 'POST /api/v1/api-keys/:id/revoke': M('SET.API', 'cancel'), 'GET /api/v1/api-docs': M('SET.API', 'read'),
+  'GET /api/v1/api-keys': M('SET.API', 'read'), 'POST /api/v1/api-keys': M('SET.API', 'add'), 'POST /api/v1/api-keys/:id/revoke': M('SET.API', 'cancel'), 'PUT /api/v1/api-keys/:id/scope': M('SET.API', 'edit'), 'GET /api/v1/api-docs': M('SET.API', 'read'),
   'GET /api/v1/users': SELF, 'POST /api/v1/users': SELF, 'PUT /api/v1/users/:id': SELF, 'POST /api/v1/user-groups': SELF,
   // สมัครใช้งานเอง: หน้าสมัครไม่ต้องเข้าระบบ · พิจารณาใบสมัคร = เจ้าหน้าที่ผู้ให้บริการ (ตรวจในตัว API)
   // ชื่อภาษาอังกฤษของข้อมูลบริษัทนี้ (โหมด EN)
@@ -290,7 +291,7 @@ export const API_RULES: Record<string, Rule> = {
   // พิมพ์/รับรองเอกสาร รายละเอียดแฟ้มข้อมูล แบบฟอร์ม รายงานของผู้ใช้ (บทที่ 25 · S-UI-08..12)
   'GET /api/v1/notes/:kind/:id': DOC('read'), 'PUT /api/v1/notes/:kind/:id': DOC('edit'), 'GET /api/v1/doc-status/:kind/:id': DOC('read'), 'PUT /api/v1/doc-status/:kind/:id': DOC('edit'),
   'GET /api/v1/master-notes/:entity/:id': MNOTE('read'), 'PUT /api/v1/master-notes/:entity/:id': MNOTE('edit'),
-  'GET /api/v1/print/:kind/:id': DOC('read'), 'GET /api/v1/neighbors/:kind/:id': DOC('read'), 'GET /api/v1/locate/:kind/:id': DOC('read'), 'POST /api/v1/docs/:kind/:id/delete': DOC('delete'), 'PUT /api/v1/docs/:kind/:id/wht-cert': DOC('edit'), 'POST /api/v1/print/:kind/:id/printed': DOC('print'),
+  'GET /api/v1/docs/:id/print': DOC('print'), 'GET /api/v1/print/:kind/:id': DOC('read'), 'GET /api/v1/neighbors/:kind/:id': DOC('read'), 'GET /api/v1/locate/:kind/:id': DOC('read'), 'POST /api/v1/docs/:kind/:id/delete': DOC('delete'), 'PUT /api/v1/docs/:kind/:id/wht-cert': DOC('edit'), 'POST /api/v1/print/:kind/:id/printed': DOC('print'),
   'POST /api/v1/approve/:kind/:id': DOC('approve'), 'POST /api/v1/approve-range': DOC('approve'), 'GET /api/v1/record-info/:kind/:id': DOC('read'),
   'GET /api/v1/company-images': LOOKUP, 'PUT /api/v1/company-images/logo': M('RP.FORM', 'edit'), 'POST /api/v1/company-images/signs': M('RP.FORM', 'add'), 'DELETE /api/v1/company-images/:id': M('RP.FORM', 'delete'),
   'GET /api/v1/print-forms': LOOKUP, 'PUT /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'edit'), 'DELETE /api/v1/print-forms/:scope/:slot': M('RP.FORM', 'delete'),

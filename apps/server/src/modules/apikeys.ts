@@ -76,12 +76,18 @@ export function checkApiKeyRule(a: AuthContext, method: string, route: string, k
   if (menu && API_KEY_BLOCKED.has(menu)) throw forbidden('กุญแจ API ใช้กับระบบความปลอดภัย สำรองข้อมูล เงินเดือน หรือการสร้างบริษัทไม่ได้ — ทำผ่านหน้าจอโปรแกรม');
 }
 
+/** ระบบที่ใช้กุญแจ (ว่าง = ไม่ผูก) · ขอบเขตอ่าน/พิมพ์เอกสาร S = เฉพาะที่ระบบนี้ส่งเข้ามา A = ทุกเอกสารของบริษัท */
+const scopeFields = {
+  source_system: z.string().trim().regex(/^[a-z][a-z0-9-]{1,29}$/, 'ระบบที่ใช้กุญแจ: ตัวพิมพ์เล็ก a-z ตัวเลข และ - ยาว 2–30 ตัว เช่น wts-living').nullable().optional().or(z.literal('').transform(() => null)),
+  doc_scope: z.enum(['S', 'A']).default('S'),
+};
+
 const LABEL = new Map(flattenMenu(MENU).map((m) => [m.code, m.label]));
 
 export function apiKeyRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/api-keys', async (req) => {
     const a = requireCompany(req);
-    return (await sql<Record<string, unknown>>`SELECT k.id, k.name, k.key_prefix, k.read_only, k.expires_on, k.status, k.last_used_at, k.last_used_ip, k.created_at,
+    return (await sql<Record<string, unknown>>`SELECT k.id, k.name, k.key_prefix, k.read_only, k.source_system, k.doc_scope, k.expires_on, k.status, k.last_used_at, k.last_used_ip, k.created_at,
         u.username, u.display_name, cu.display_name AS created_by_name
         FROM sys_api_key k JOIN sys_user u ON u.id = k.user_id LEFT JOIN sys_user cu ON cu.id = k.created_by
        WHERE k.company_id = ${a.companyId} AND k.deleted_at IS NULL ORDER BY k.status, k.created_at DESC`.execute(db)).rows;
@@ -94,6 +100,7 @@ export function apiKeyRoutes(app: FastifyInstance, db: Db) {
       user_id: z.string().uuid('เลือกผู้ใช้ที่กุญแจจะทำงานในนาม'),
       read_only: z.boolean().default(false),
       expires_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันหมดอายุไม่ถูกต้อง').nullable().optional(),
+      ...scopeFields,
     }), req.body);
     if (b.expires_on && b.expires_on < new Date().toISOString().slice(0, 10)) throw badRequest('วันหมดอายุต้องไม่ก่อนวันนี้');
     // ผู้ใช้ต้องอยู่ลูกค้า (tenant) เดียวกับบริษัทและเข้าบริษัทนี้ได้
@@ -109,8 +116,8 @@ export function apiKeyRoutes(app: FastifyInstance, db: Db) {
     const prefix = randomBytes(6).toString('hex'), secret = randomBytes(24).toString('base64url');
     const r = await db.transaction().execute(async (tx) => {
       const row = await tx.insertInto('sys_api_key').values({ company_id: a.companyId, user_id: u.id, name: b.name, key_prefix: prefix, key_hash: sha(secret),
-        read_only: b.read_only, expires_on: b.expires_on ?? null, created_by: a.userId, updated_by: a.userId }).returning('id').executeTakeFirstOrThrow();
-      await logActivity(tx, a, { module: API_KEY_MENU, action: 'API_KEY_CREATE', docNo: `bk_${prefix}`, table: 'sys_api_key', rowId: row.id, detail: { name: b.name, user: u.username, read_only: b.read_only, expires_on: b.expires_on ?? null } });
+        read_only: b.read_only, expires_on: b.expires_on ?? null, source_system: b.source_system ?? null, doc_scope: b.doc_scope, created_by: a.userId, updated_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+      await logActivity(tx, a, { module: API_KEY_MENU, action: 'API_KEY_CREATE', docNo: `bk_${prefix}`, table: 'sys_api_key', rowId: row.id, detail: { name: b.name, user: u.username, read_only: b.read_only, expires_on: b.expires_on ?? null, source_system: b.source_system ?? null, doc_scope: b.doc_scope } });
       return row;
     });
     return { id: r.id, key: `bk_${prefix}_${secret}`, key_prefix: prefix };
@@ -125,6 +132,22 @@ export function apiKeyRoutes(app: FastifyInstance, db: Db) {
     await db.transaction().execute(async (tx) => {
       await tx.updateTable('sys_api_key').set({ status: 'I', updated_by: a.userId }).where('id', '=', id).execute();
       await logActivity(tx, a, { module: API_KEY_MENU, action: 'API_KEY_REVOKE', docNo: `bk_${k.key_prefix}`, table: 'sys_api_key', rowId: id, detail: { name: k.name } });
+    });
+    return { ok: true };
+  });
+
+  /** ระบบที่ใช้กุญแจ + ขอบเขตการอ่าน/พิมพ์เอกสาร (HANDOFF ข้อ 87 · GET /api/v1/docs/:id/print) */
+  app.put('/api/v1/api-keys/:id/scope', async (req) => {
+    const a = requireCompany(req);
+    const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
+    const b = parse(z.object(scopeFields), req.body);
+    const k = await db.selectFrom('sys_api_key').select(['key_prefix', 'status', 'source_system', 'doc_scope']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!k) throw notFound('กุญแจ API');
+    if (k.status !== 'A') throw badRequest('กุญแจนี้ถูกยกเลิกไปแล้ว');
+    await db.transaction().execute(async (tx) => {
+      await tx.updateTable('sys_api_key').set({ source_system: b.source_system ?? null, doc_scope: b.doc_scope, updated_by: a.userId, row_version: sql`row_version + 1` as never }).where('id', '=', id).execute();
+      await logActivity(tx, a, { module: API_KEY_MENU, action: 'API_KEY_SCOPE', docNo: `bk_${k.key_prefix}`, table: 'sys_api_key', rowId: id,
+        detail: { from: { source_system: k.source_system, doc_scope: k.doc_scope }, to: { source_system: b.source_system ?? null, doc_scope: b.doc_scope } } });
     });
     return { ok: true };
   });

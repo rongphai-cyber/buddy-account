@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 136,
+"n": 137,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -68,7 +68,7 @@
 },
 {
 "th": "บันทึก",
-"n": 100,
+"n": 101,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
 "apps/web/src/components/LkSelect.tsx",
@@ -106,6 +106,7 @@
 "apps/web/src/pages/reports/FsLayouts.tsx",
 "apps/web/src/pages/reports/ReportCenter.tsx",
 "apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
 "apps/web/src/pages/settings/Branches.tsx",
 "apps/web/src/pages/settings/Company.tsx",
 "apps/web/src/pages/settings/DataTables.tsx",
@@ -689,7 +690,7 @@
 },
 {
 "th": "เอกสาร",
-"n": 35,
+"n": 36,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -1738,6 +1739,23 @@
 ]
 },
 {
+"th": "สำนักงานใหญ่",
+"n": 14,
+"files": [
+"apps/web/src/components/DocBranch.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/payroll/forms.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/payroll-files.ts",
+"packages/core/src/taxid.ts"
+]
+},
+{
 "th": "เลขประจำตัวผู้เสียภาษี",
 "n": 14,
 "files": [
@@ -1823,22 +1841,6 @@
 ]
 },
 {
-"th": "ภาษีมูลค่าเพิ่ม",
-"n": 13,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/source-totals.ts"
-]
-},
-{
 "th": "มูลค่า",
 "n": 13,
 "files": [
@@ -1853,23 +1855,6 @@
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "สำนักงานใหญ่",
-"n": 13,
-"files": [
-"apps/web/src/components/DocBranch.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/routes.ts",
-"apps/server/src/modules/payroll/forms.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/payroll-files.ts",
-"packages/core/src/taxid.ts"
 ]
 },
 {
@@ -2008,6 +1993,22 @@
 "apps/web/src/pages/tax/Wht50.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "ภาษีมูลค่าเพิ่ม",
+"n": 12,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/source-totals.ts"
 ]
 },
 {
@@ -4024,6 +4025,15 @@
 ]
 },
 {
+"th": "ระบบ",
+"n": 5,
+"files": [
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/server/src/modules/reports/gl.ts"
+]
+},
+{
 "th": "ราคา/หน่วย",
 "n": 5,
 "files": [
@@ -4406,6 +4416,15 @@
 "apps/web/src/pages/payroll/Filing.tsx",
 "apps/web/src/pages/tax/Wht50.tsx",
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "กุญแจ API",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/server/src/modules/apikeys.ts"
 ]
 },
 {
@@ -4793,14 +4812,6 @@
 "n": 4,
 "files": [
 "apps/web/src/pages/inventory/Serials.tsx"
-]
-},
-{
-"th": "ระบบ",
-"n": 4,
-"files": [
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/server/src/modules/reports/gl.ts"
 ]
 },
 {
@@ -5257,15 +5268,6 @@
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx",
 "apps/web/src/pages/settings/TwoFactor.tsx"
-]
-},
-{
-"th": "กุญแจ API",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/server/src/modules/apikeys.ts"
 ]
 },
 {
@@ -7160,6 +7162,13 @@
 ]
 },
 {
+"th": "กุญแจนี้ถูกยกเลิกไปแล้ว",
+"n": 2,
+"files": [
+"apps/server/src/modules/apikeys.ts"
+]
+},
+{
 "th": "ก่อนหน้า",
 "n": 2,
 "files": [
@@ -8014,6 +8023,14 @@
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "ต้นฉบับ",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -10388,6 +10405,14 @@
 ]
 },
 {
+"th": "สำเนา",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "สิทธิ์รายเมนู",
 "n": 2,
 "files": [
@@ -11563,6 +11588,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/payroll/Forms.tsx"
+]
+},
+{
+"th": "ใบกำกับภาษี",
+"n": 2,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"packages/core/src/etax.ts"
 ]
 },
 {
@@ -13816,6 +13849,13 @@
 ]
 },
 {
+"th": "API นี้ใช้กับกุญแจ API ของระบบอื่น — หน้าจอ Buddy ใช้ปุ่ม 🖨 พิมพ์ของเอกสาร",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "ARRCPIT/APRCPIT (ตัดด้วยใบสำคัญ GL)",
 "n": 1,
 "files": [
@@ -14303,6 +14343,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/source.ts"
+]
+},
+{
+"th": "X-Source-System ต้องเป็นตัวพิมพ์เล็ก a-z ตัวเลข และ - ยาว 2–30 ตัว เช่น wts-living",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -17197,6 +17244,13 @@
 ]
 },
 {
+"th": "กุญแจ API นี้ผูกกับระบบ {0} — ใช้กุญแจของระบบ {1} หรือแก้ \"ระบบที่ใช้กุญแจ\" ที่หน้ากุญแจ API",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "กุญแจ API นี้อ่านอย่างเดียว — ขอกุญแจที่บันทึกได้จากผู้ดูแลระบบ",
 "n": 1,
 "files": [
@@ -17250,13 +17304,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
-]
-},
-{
-"th": "กุญแจนี้ถูกยกเลิกไปแล้ว",
-"n": 1,
-"files": [
-"apps/server/src/modules/apikeys.ts"
 ]
 },
 {
@@ -22895,13 +22942,6 @@
 ]
 },
 {
-"th": "ต้นฉบับ",
-"n": 1,
-"files": [
-"packages/core/src/printforms.ts"
-]
-},
-{
 "th": "ต้นทาง {0} · Buddy {1} · ต่าง {2}",
 "n": 1,
 "files": [
@@ -23921,6 +23961,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "ทุกเอกสารของบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx"
 ]
 },
 {
@@ -26070,6 +26117,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/files.ts"
+]
+},
+{
+"th": "บันทึกระบบของกุญแจแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx"
 ]
 },
 {
@@ -28866,6 +28920,13 @@
 ]
 },
 {
+"th": "ผู้ใช้ของกุญแจนี้พิมพ์ได้เฉพาะแสดงทางจอภาพ — ให้สิทธิ์พิมพ์ออกเครื่องพิมพ์ที่ ตั้งค่า › ผู้ใช้งานและสิทธิ์",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "ผู้ใช้ของกุญแจนี้ไม่มีสิทธิ์เข้าบริษัทนี้แล้ว",
 "n": 1,
 "files": [
@@ -29475,6 +29536,13 @@
 ]
 },
 {
+"th": "พิมพ์เอกสารได้ทุกใบของบริษัท (ไม่ติ๊ก = เฉพาะเอกสารที่ระบบนี้ส่งเข้ามา เช่น ใบกำกับภาษีที่ WTS-Living ดึงไปพิมพ์ให้ผู้เช่า)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
 "th": "พิมพ์แนว",
 "n": 1,
 "files": [
@@ -30036,6 +30104,13 @@
 },
 {
 "th": "ภาษีมูลค่าเพิ่ม {0}%",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "ภาษีมูลค่าเพิ่ม{0}",
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
@@ -30686,6 +30761,13 @@
 ]
 },
 {
+"th": "มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "มูลค่ายกมารวม (ไม่รวมที่ยกเลิก)",
 "n": 1,
 "files": [
@@ -30697,6 +30779,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/register.ts"
+]
+},
+{
+"th": "มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -34214,10 +34303,24 @@
 ]
 },
 {
+"th": "ระบบ · พิมพ์เอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
 "th": "ระบบการเงินและเงินฝากธนาคาร",
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "ระบบของกุญแจ: {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx"
 ]
 },
 {
@@ -34243,6 +34346,34 @@
 },
 {
 "th": "ระบบที่จะใช้ เช่น เว็บขายของ ระบบหน้าร้านสาขา 1",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "ระบบที่ใช้กุญแจ",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "ระบบที่ใช้กุญแจ + เอกสารที่อ่าน/พิมพ์ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "ระบบที่ใช้กุญแจ: ตัวพิมพ์เล็ก a-z ตัวเลข และ - ยาว 2–30 ตัว เช่น wts-living",
+"n": 1,
+"files": [
+"apps/server/src/modules/apikeys.ts"
+]
+},
+{
+"th": "ระบบที่ใช้กุญแจนี้",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
@@ -37287,6 +37418,13 @@
 ]
 },
 {
+"th": "วันที่รับ/จ่ายเงิน",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "วันที่ล็อตต้องก่อนวันเริ่มใช้โปรแกรม ({0}) — ยอดยกมาคือสินค้าที่มี ณ วันเริ่มใช้",
 "n": 1,
 "files": [
@@ -38806,13 +38944,6 @@
 ]
 },
 {
-"th": "สำเนา",
-"n": 1,
-"files": [
-"packages/core/src/printforms.ts"
-]
-},
-{
 "th": "สำเนาที่พิมพ์ (คั่นด้วย ,)",
 "n": 1,
 "files": [
@@ -39153,6 +39284,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/source.ts"
+]
+},
+{
+"th": "ส่ง X-Source-System ของระบบที่ส่งเอกสารนี้เข้ามา เช่น wts-living (docs/07)",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -41879,6 +42017,13 @@
 ]
 },
 {
+"th": "เฉพาะที่ระบบนี้ส่งเข้ามา",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
 "th": "เฉพาะที่เคลื่อนไหวหลังวันที่",
 "n": 1,
 "files": [
@@ -42513,6 +42658,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เช่น wts-living wts-pos — ตั้งแล้วกุญแจนี้ส่งเอกสาร/พิมพ์เอกสารในนามระบบอื่นไม่ได้ · ว่าง = ไม่ผูก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx"
 ]
 },
 {
@@ -48281,13 +48433,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "ใบกำกับภาษี",
-"n": 1,
-"files": [
-"packages/core/src/etax.ts"
 ]
 },
 {

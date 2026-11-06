@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { d } from './money.js';
-import { buildPosting, depositRefundVat, netByAccount, openingPosting, postingBalanced, settlementTotals, type PostingResolver } from './posting.js';
+import { buildPosting, depositRefundVat, netByAccount, openingPosting, postingBalanced, settlementTotals, settlementVatParts, type PostingResolver } from './posting.js';
 
 const DEF: Record<string, string> = { AR: 'ar', AP: 'ap', CASH: 'cash', CREDIT_SALES: 'sales', CASH_SALES: 'cashsales', OUTPUT_VAT: 'ovat', OUTPUT_VAT_PENDING: 'ovatp', INPUT_VAT: 'ivat',
   DEPOSIT_RECEIVED: 'depr', PURCHASES: 'pur', CHEQUE_PAID: 'chqp', CHEQUE_RECEIVED: 'chqr', SUSPENSE: 'susp', SALES_RETURN: 'sret', OTHER_EXPENSE: 'oexp',
@@ -241,5 +241,19 @@ describe('ยอดยกมาที่ลงบัญชี (WTS-Living ลู
   it('deposit brought forward 8,400.00: Dr the opening account / Cr the deposit account of the AI type', () => {
     expect(net(openingPosting({ doc_class: 'AI', doc_type_id: 'ail', customer_id: 'c1', net_amount: '8400', vat_amount: '0', vat_basis: null }, 'ob', slotR))).toEqual({ ob: '8400.00', 'dep-tenant': '-8400.00' });
     expect(net(openingPosting({ doc_class: 'AI', doc_type_id: null, customer_id: 'c1', net_amount: '8400', vat_amount: '0', vat_basis: null }, 'ob', r))).toEqual({ ob: '8400.00', depr: '-8400.00' });
+  });
+});
+
+describe('ใบเสร็จตัดบิลภาษีเกณฑ์เงินสด: มูลค่าที่มี VAT / ยกเว้น (HANDOFF ข้อ 87)', () => {
+  const str = (p: ReturnType<typeof settlementVatParts>) => [p.base, p.vat, p.zero, p.exempt, p.other].map((x) => x.toFixed(2));
+  it('full payment: ค่าเช่า 3,500 ยกเว้น + น้ำไฟ 978.65 + VAT 68.51 = 4,547.16 → ฐาน 978.65 ยกเว้น 3,500', () => {
+    expect(str(settlementVatParts({ amount: '4547.16', vat: '68.51', inv_net: '4547.16', inv_exempt: '3500', inv_zero: '0' }))).toEqual(['978.65', '68.51', '0.00', '3500.00', '0.00']);
+  });
+  it('partial payment shares the exempt part pro rata; the rest is the VAT base', () => {
+    // ชำระ 2,000 ของ 4,547.16 · VAT ถึงกำหนด 30.13 · ยกเว้น 3,500 × 2,000 / 4,547.16 = 1,539.42 · ฐาน 2,000 − 30.13 − 1,539.42 = 430.45
+    expect(str(settlementVatParts({ amount: '2000', vat: '30.13', inv_net: '4547.16', inv_exempt: '3500' }))).toEqual(['430.45', '30.13', '0.00', '1539.42', '0.00']);
+  });
+  it('a bill with no VAT due (late fee) is all "other"', () => {
+    expect(str(settlementVatParts({ amount: '107.55', vat: '0', inv_net: '107.55', inv_exempt: '107.55' }))).toEqual(['0.00', '0.00', '0.00', '0.00', '107.55']);
   });
 });

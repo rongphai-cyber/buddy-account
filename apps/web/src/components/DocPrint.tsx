@@ -24,7 +24,7 @@ type PrintResp = { data: PrintData; forms: PrintFormEntry[]; rule: { approveLeve
 
 const MONEY_KEYS = new Set(['price', 'amount', 'ref_amount', 'debit', 'credit']);
 const DATE_KEYS = new Set(['ref_date', 'due_date', 'date']);
-const DATE_FIELDS = new Set(['due_date', 'delivery_date', 'appointment_date']);
+const DATE_FIELDS = new Set(['due_date', 'delivery_date', 'appointment_date', 'payment_date']);
 const cellText = (key: string, v: string | undefined, ys: YearSystem) => (!v ? '' : MONEY_KEYS.has(key) ? fmt(v) : DATE_KEYS.has(key) ? formatDate(v, ys) : v);
 
 /** แผ่นเอกสารตามแบบฟอร์ม — ใช้ทั้งดูทางจอภาพและพิมพ์ (หนึ่งแผ่นต่อสำเนา) */
@@ -42,7 +42,9 @@ export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: 
   const heads = L.head_fields.map((k) => ({ k, label: PRINT_HEAD_FIELDS.find((f) => f.key === k)?.label ?? k, v: data.fields[k] ?? '' })).filter((x) => x.v);
   const isJ = data.family === 'journal';
   // ชื่ออังกฤษตามชนิดเอกสาร (INVOICE / TAX INVOICE · RECEIPT · PAYMENT VOUCHER …) เมื่อแบบฟอร์มไม่ได้ตั้งหัวเรื่องเอง
-  const titleEn = !L.title || L.title === data.title ? data.title_en : '';
+  // ใบเสร็จรับเงิน/ใบกำกับภาษี: หัวเรื่องที่แบบฟอร์มตั้งเองต้องมีคำว่า "ใบกำกับภาษี" (ม.86/4 (1)) ไม่งั้นใช้ชื่อมาตรฐาน
+  const formTitle = data.receipt_tax && L.title && !L.title.includes('ใบกำกับภาษี') ? '' : L.title;
+  const titleEn = !formTitle || formTitle === data.title ? data.title_en : '';
   const partyLabel = printPartyLabel(data.scope);
   // โลโก้/ลายเซ็นของบริษัท (ข้อกำหนดเจ้าของ) — แบบฟอร์มเลือกตำแหน่งโลโก้ และรูปลายเซ็นของแต่ละช่องลงชื่อ
   const logo = L.logo !== 'none' ? images?.logo ?? null : null;
@@ -57,7 +59,7 @@ export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: 
             {L.show_company && <div className="ds-co"><b>{data.company.name}</b>{data.company.name_en && <div>{data.company.name_en}</div>}
               <div>{data.company.address}</div>
               <div>{[data.company.phone && `โทร ${data.company.phone}`, data.company.tax_id && `เลขประจำตัวผู้เสียภาษี ${data.company.tax_id}`, data.company.branch].filter(Boolean).join('  ')}</div></div>}
-            <div className="ds-title"><h1>{L.title || data.title}</h1>{(L.title_en || titleEn) && <div className="ds-en">{L.title_en || titleEn}</div>}
+            <div className="ds-title"><h1>{formTitle || data.title}</h1>{((formTitle && L.title_en) || titleEn) && <div className="ds-en">{(formTitle && L.title_en) || titleEn}</div>}
               {cp && <div className="ds-copy">{cp}</div>}{data.cancelled && <div className="ds-void">ยกเลิก</div>}</div>
             {logo && L.logo === 'right' && <img className="ds-logo" src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} />}
           </header>

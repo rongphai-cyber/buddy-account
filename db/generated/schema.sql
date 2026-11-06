@@ -792,6 +792,8 @@ CREATE TABLE sys_api_key (
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
   last_used_at timestamptz,
   last_used_ip varchar(60),
+  source_system varchar(30),
+  doc_scope char(1) DEFAULT 'S' NOT NULL CHECK (doc_scope IN ('S','A')),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -813,6 +815,8 @@ COMMENT ON COLUMN sys_api_key.expires_on IS 'หมดอายุ (ว่าง
 COMMENT ON COLUMN sys_api_key.status IS 'A=ใช้งาน I=ยกเลิกแล้ว';
 COMMENT ON COLUMN sys_api_key.last_used_at IS 'ใช้ครั้งล่าสุด';
 COMMENT ON COLUMN sys_api_key.last_used_ip IS 'IP ที่ใช้ครั้งล่าสุด';
+COMMENT ON COLUMN sys_api_key.source_system IS 'ระบบที่ใช้กุญแจนี้ เช่น wts-living (HANDOFF ข้อ 87) — ตั้งแล้ว X-Source-System ต้องตรง · ว่าง = ตามที่คำขอส่งมา';
+COMMENT ON COLUMN sys_api_key.doc_scope IS 'อ่าน/พิมพ์เอกสารผ่าน GET /api/v1/docs/:id/print: S=เฉพาะเอกสารที่ระบบเดียวกันส่งเข้ามา A=ทุกเอกสารของบริษัท (ตามสิทธิ์ผู้ใช้)';
 COMMENT ON COLUMN sys_api_key.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN sys_api_key.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN sys_api_key.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';

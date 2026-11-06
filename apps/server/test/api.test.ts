@@ -1785,7 +1785,7 @@ describe('Buddy Account API (PGlite)', () => {
     const rS = (await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2027-03-20', party_id: cus, settlements: [{ invoice_header_id: ivS.id, amount: 1070 }] })).body;
     const pS = (await call('GET', `/api/v1/print/doc/${rS.id}`)).body.data;
     expect([pS.title, pS.title_en, pS.receipt_tax]).toEqual(['ใบเสร็จรับเงิน/ใบกำกับภาษี', 'RECEIPT / TAX INVOICE', true]);
-    expect(pS.totals.filter((t: { label: string }) => /มูลค่าสินค้า|ภาษีมูลค่าเพิ่ม/.test(t.label)).map((t: { label: string; value: string }) => `${t.label}:${t.value}`)).toEqual(['มูลค่าสินค้า/บริการ:1000.00', 'ภาษีมูลค่าเพิ่ม:70.00']);
+    expect(pS.totals.filter((t: { label: string }) => /มูลค่าสินค้า|ภาษีมูลค่าเพิ่ม/.test(t.label)).map((t: { label: string; value: string }) => `${t.label}:${t.value}`)).toEqual(['มูลค่าสินค้า/บริการ:1000.00', 'ภาษีมูลค่าเพิ่ม 7%:70.00']);
     expect((await call('GET', `/api/v1/print/doc/${(await call('GET', '/api/v1/ap-payments?limit=1')).body.rows[0].id}`)).body.data.title).toBe('ใบสำคัญจ่าย');
     expect((await call('POST', `/api/v1/ar-receipts/${rS.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
     expect((await call('POST', `/api/v1/sales-invoices/${ivS.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
