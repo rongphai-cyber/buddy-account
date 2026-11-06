@@ -5,6 +5,9 @@
 //   node tools/cloud/pg-check.mjs --local-pg         ซ้อมกับ PostgreSQL 16 ของ Buddy (พอร์ต 5544) ในฐานชั่วคราวที่สร้างแล้วลบทิ้ง
 //   node tools/cloud/pg-check.mjs --sim-supabase     ซ้อมกับ PostgreSQL ชั่วคราวแยก (พอร์ต 5549) ที่ผู้เชื่อมต่อไม่ใช่ superuser แบบ Supabase
 //   ตัวเลือก: --apps buddy,pos,living  --env <ไฟล์>  --report <ไฟล์>  --skip-tests  --r2-only (ตรวจเฉพาะ R2)
+//   1 โปรเจกต์ 3 ฐาน (เจ้าของเลือก 07/11/2569): ไฟล์ค่าตั้งมี SUPABASE_PROJECT_URL (ฐาน postgres ของโปรเจกต์) แทน *_DATABASE_URL
+//     → เครื่องมือสร้างฐาน s0_buddy · s0_wtspos · s0_wtsliving ในโปรเจกต์นั้น (ครั้งแรกต้อง --i-created-this-test-project)
+//     ซ้อมแบบเดียวกันในเครื่อง: --local-pg --one-project  หรือ  --sim-supabase --one-project
 //   ที่เก็บไฟล์ R2 (docs/20 ข้อ 9): มี R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY ในไฟล์ค่าตั้ง = ทดสอบ put/get/ที่อยู่แบบเซ็น/delete
 //   (โหมดซ้อม = R2 จำลองในเครื่องที่ตรวจลายเซ็นจริง)
 //
@@ -32,6 +35,7 @@ const SKIP_TESTS = flag('--skip-tests');
 const R2_ONLY = flag('--r2-only');
 const ENV_FILE = resolve(opt('--env', join(ROOT, '.data/cloud-s0.env')));
 const REPORT = resolve(opt('--report', join(ROOT, MODE === 'env' ? '.data/cloud-s0-report.md' : `.data/cloud-s0-report-${MODE}.md`)));
+const ONE_PROJECT_FLAG = flag('--one-project');
 const PHASES = opt('--apps', 'buddy,pos,living').split(',').map((s) => s.trim()).filter(Boolean);
 
 /** แอปที่ตรวจ: ที่อยู่ repo · ชื่อตัวแปร · role ใต้ RLS · ตารางที่บันทึก migration · ตารางที่ใช้พิสูจน์ RLS */
@@ -87,6 +91,10 @@ function readEnvFile(file) {
   }
   return env;
 }
+
+/** ชื่อฐานของแต่ละโปรแกรมในโหมด 1 โปรเจกต์ (ฐานทดสอบ S0 — ฐานใช้งานจริงตอน S1 ตั้งชื่อใหม่ buddy / wtspos / wtsliving) */
+const S0_DB = { buddy: 's0_buddy', pos: 's0_wtspos', living: 's0_wtsliving' };
+let ONE_PROJECT = false;
 
 /* ------------------------------------------------------------------ PostgreSQL */
 async function connect(url, extra = {}) {
@@ -354,7 +362,9 @@ async function localTargets() {
   const tag = `s0chk_${randomBytes(3).toString('hex')}`;
   const rolesBefore = new Set((await admin.query(`SELECT rolname FROM pg_roles`)).rows.map((r) => r.rolname));
   const dbs = {};
-  for (const app of NEEDED) { dbs[app] = `${tag}_${app}`; await admin.query(`CREATE DATABASE ${dbs[app]} ENCODING 'UTF8'`); }
+  for (const app of NEEDED) dbs[app] = `${tag}_${app}`;
+  if (ONE_PROJECT_FLAG) { ONE_PROJECT = true; await ensureProjectDatabases(base('postgres'), dbs, { checkProject: false }); }
+  else for (const app of NEEDED) await admin.query(`CREATE DATABASE ${dbs[app]} ENCODING 'UTF8'`);
   const foreign = `${tag}_foreign`;
   await admin.query(`CREATE DATABASE ${foreign}`);
   const fc = await connect(base(foreign));
@@ -362,7 +372,7 @@ async function localTargets() {
   await fc.end();
   await admin.end();
   return {
-    label: `PostgreSQL 16 ของ Buddy บนเครื่องนี้ (พอร์ต ${settings.port}) · ฐานชั่วคราว ${tag}_* (ลบทิ้งเมื่อจบ — ไม่แตะ DEMO / buddy_backup_*)`,
+    label: `PostgreSQL 16 ของ Buddy บนเครื่องนี้ (พอร์ต ${settings.port})${ONE_PROJECT ? ' · แบบ 1 โปรเจกต์ 3 ฐาน (สร้างผ่าน URL เดียว)' : ''} · ฐานชั่วคราว ${tag}_* (ลบทิ้งเมื่อจบ — ไม่แตะ DEMO / buddy_backup_*)`,
     direct: Object.fromEntries(NEEDED.map((a) => [a, base(dbs[a])])),
     pooler: {},
     foreignUrl: base(foreign),
@@ -401,7 +411,7 @@ async function simTargets() {
   // role ของ Data API ของ Supabase + สิทธิ์อัตโนมัติบนตารางที่ postgres สร้างใน public
   await admin.query(`CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN`);
   const dbs = {};
-  for (const a of [...NEEDED, 'foreign']) {
+  for (const a of [...(ONE_PROJECT_FLAG ? [] : NEEDED), 'foreign']) {
     dbs[a] = `sim_${a}`;
     await admin.query(`CREATE DATABASE ${dbs[a]} OWNER postgres ENCODING 'UTF8'`);
     const c = await connect(su(dbs[a]));
@@ -412,18 +422,24 @@ async function simTargets() {
     await c.end();
   }
   await admin.end();
+  if (ONE_PROJECT_FLAG) {
+    // แบบ Supabase จริง: role postgres (ไม่ใช่ superuser) สร้างฐานเองผ่าน URL ของฐาน postgres
+    ONE_PROJECT = true;
+    for (const a of NEEDED) dbs[a] = `sim_${a}`;
+    await ensureProjectDatabases(app('postgres'), dbs);
+  }
   const fc = await connect(app(dbs.foreign));
   await fc.query(`CREATE TABLE public.employees (id int PRIMARY KEY, name text)`);
   await fc.end();
   return {
-    label: `PostgreSQL 16 ชั่วคราวแยก (พอร์ต ${port}) จำลองสิทธิ์ Supabase: ผู้เชื่อมต่อ "postgres" ไม่ใช่ superuser (CREATEROLE CREATEDB BYPASSRLS) + schema auth/storage`,
+    label: `PostgreSQL 16 ชั่วคราวแยก (พอร์ต ${port}) จำลองสิทธิ์ Supabase: ผู้เชื่อมต่อ "postgres" ไม่ใช่ superuser (CREATEROLE CREATEDB BYPASSRLS)${ONE_PROJECT ? ' · แบบ 1 โปรเจกต์ 3 ฐาน (postgres สร้างฐานเอง)' : ' + schema auth/storage'}`,
     direct: Object.fromEntries(NEEDED.map((a) => [a, app(dbs[a])])),
     pooler: {},
     foreignUrl: app(dbs.foreign),
     async cleanup() {
       const c = await connect(su('postgres'));
       const kept = [];
-      for (const a of NEEDED) {
+      for (const a of ONE_PROJECT ? [] : NEEDED) {
         const d = await connect(su(dbs[a]));
         const n = (await q1(d, `SELECT (SELECT count(*)::int FROM auth.users) + (SELECT count(*)::int FROM pg_class WHERE relnamespace = 'storage'::regnamespace) AS n`)).n;
         kept.push(`${a}:${n >= 1 ? 'auth/storage ยังอยู่' : 'หาย!'}`);
@@ -432,20 +448,72 @@ async function simTargets() {
       await c.end();
       await pgs.stop();
       rmSync(dir, { recursive: true, force: true });
-      out(`  schema ของแพลตฟอร์มหลังล้างข้อมูล: ${kept.join(' · ')} · ปิดและลบ PostgreSQL ชั่วคราวแล้ว`);
+      out(`  ${kept.length ? `schema ของแพลตฟอร์มหลังล้างข้อมูล: ${kept.join(' · ')} · ` : ''}ปิดและลบ PostgreSQL ชั่วคราวแล้ว`);
     },
   };
 }
 
+/** ที่อยู่เดียวกันแต่ชี้ฐานอื่น (เปลี่ยนเฉพาะชื่อฐานท้าย URL) */
+function withDb(url, db) {
+  const u = new URL(url);
+  u.pathname = `/${db}`;
+  return u.toString();
+}
+
+/**
+ * โหมด 1 โปรเจกต์: ตรวจว่าโปรเจกต์ว่าง (ฐาน postgres ไม่มีตารางของระบบอื่น — กันวาง URL ของ WTS-SOP หรือโปรเจกต์ที่ใช้งานอยู่)
+ * สร้างฐานของแต่ละโปรแกรมที่ยังไม่มี แล้วยืนยันว่าเชื่อมต่อแล้วได้ฐานที่ขอจริง (pooler บางแบบเลือกฐานไม่ได้)
+ */
+async function ensureProjectDatabases(projectUrl, names, { checkProject = true } = {}) {
+  const c = await connect(projectUrl);
+  const made = [];
+  try {
+    if (checkProject) {
+      const foreign = (await inventory(c)).filter((x) => x.s !== MARK && (x.s !== 'public' || x.rels > 0));
+      if (foreign.length) fail(`ฐาน postgres ของโปรเจกต์นี้มีข้อมูลของระบบอื่นอยู่แล้ว (${foreign.map((x) => `${x.s}: ${x.rels} ตาราง/วิว`).join(', ')}) — ใช้โปรเจกต์ Supabase ใหม่ที่ว่างเท่านั้น (ไม่ใช่โปรเจกต์ WTS-SOP) จึงไม่สร้างอะไร`);
+    }
+    for (const app of NEEDED) {
+      const db = names[app];
+      if (await q1(c, 'SELECT 1 AS x FROM pg_database WHERE datname = $1', [db])) continue;
+      if (!CONFIRMED) fail(`ยังไม่มีฐาน ${db} ในโปรเจกต์ — รันใหม่พร้อม --i-created-this-test-project ถ้าเป็นโปรเจกต์ทดสอบที่ท่านเพิ่งสร้างเอง (เครื่องมือจะสร้างฐาน ${NEEDED.map((a) => names[a]).join(', ')})`);
+      try { await c.query(`CREATE DATABASE ${ident(db)}`); } catch (e) { fail(`สร้างฐาน ${db} ไม่ได้: ${e.message} — ผู้เชื่อมต่อต้องมีสิทธิ์ CREATEDB (role postgres ของ Supabase มี)`); }
+      made.push(db);
+    }
+  } finally { await c.end().catch(() => {}); }
+  for (const app of NEEDED) {
+    let d;
+    try { d = await connect(withDb(projectUrl, names[app])); } catch (e) {
+      fail(`ต่อฐาน ${names[app]} ไม่ได้: ${e.message} — ถ้าใช้ "Session pooler" แล้วเลือกฐานอื่นไม่ได้ ให้ใช้ "Direct connection" ของโปรเจกต์แทน (ดู tools/cloud/README.md)`);
+    }
+    try {
+      const r = await q1(d, `SELECT current_database() AS db, pg_encoding_to_char(encoding) AS enc FROM pg_database WHERE datname = current_database()`);
+      if (r.db !== names[app]) fail(`ขอฐาน ${names[app]} แต่ได้ "${r.db}" — ที่อยู่นี้เลือกฐานไม่ได้ ใช้ "Direct connection" ของโปรเจกต์แทน (ดู tools/cloud/README.md)`);
+      if (r.enc !== 'UTF8') fail(`ฐาน ${names[app]} เข้ารหัส ${r.enc} ต้องเป็น UTF8 — ลบฐานแล้วสร้างใหม่ด้วย ENCODING 'UTF8'`);
+    } finally { await d.end().catch(() => {}); }
+  }
+  return made;
+}
+
 let ENV = {};
-function envTargets() {
+async function envTargets() {
   const env = (ENV = readEnvFile(ENV_FILE));
   for (const v of Object.values(env)) if (/^postgres/i.test(v)) addSecretsFromUrl(v);
   const direct = {};
   const pooler = {};
+  if (env.SUPABASE_PROJECT_URL) {
+    const own = NEEDED.filter((a) => env[`${APPS[a].key}_DATABASE_URL`]);
+    if (own.length) fail(`ใส่ทั้ง SUPABASE_PROJECT_URL และ ${own.map((a) => `${APPS[a].key}_DATABASE_URL`).join(', ')} — เลือกแบบเดียว (1 โปรเจกต์ 3 ฐาน = SUPABASE_PROJECT_URL อย่างเดียว)`);
+    ONE_PROJECT = true;
+    const made = await ensureProjectDatabases(env.SUPABASE_PROJECT_URL, S0_DB);
+    for (const app of NEEDED) {
+      direct[app] = withDb(env.SUPABASE_PROJECT_URL, S0_DB[app]);
+      if (env.SUPABASE_POOLER_URL) pooler[app] = withDb(env.SUPABASE_POOLER_URL, S0_DB[app]);
+    }
+    return { label: `1 โปรเจกต์ 3 ฐาน จาก ${ENV_FILE.replace(ROOT, '.')} · ฐาน ${NEEDED.map((a) => S0_DB[a]).join(', ')}${made.length ? ` (สร้างใหม่ ${made.join(', ')})` : ''}`, direct, pooler, cleanup: async () => {} };
+  }
   for (const app of NEEDED) {
     const d = env[`${APPS[app].key}_DATABASE_URL`];
-    if (!d) fail(`ไม่พบ ${APPS[app].key}_DATABASE_URL ใน ${ENV_FILE} (${APPS[app].name} ต้องมีฐานของตัวเอง)`);
+    if (!d) fail(`ไม่พบ ${APPS[app].key}_DATABASE_URL ใน ${ENV_FILE} (${APPS[app].name} ต้องมีฐานของตัวเอง) — หรือใช้ SUPABASE_PROJECT_URL แบบ 1 โปรเจกต์ 3 ฐาน`);
     direct[app] = d;
     if (env[`${APPS[app].key}_POOLER_URL`]) pooler[app] = env[`${APPS[app].key}_POOLER_URL`];
   }
@@ -486,7 +554,7 @@ async function main() {
     out(`\n${ok ? '✓ ผ่านทั้งหมด' : '✗ มีรายการไม่ผ่าน'} — สรุปที่ ${REPORT.replace(ROOT, '.')}`);
     process.exit(ok ? 0 : 2);
   }
-  const T = MODE === 'local-pg' ? await localTargets() : MODE === 'sim-supabase' ? await simTargets() : envTargets();
+  const T = MODE === 'local-pg' ? await localTargets() : MODE === 'sim-supabase' ? await simTargets() : await envTargets();
   results.label = T.label;
   out(`เป้าหมาย: ${T.label}`);
   let allOk = true;
@@ -597,7 +665,7 @@ function writeReport(allOk) {
   const yes = (b) => (b ? '✓' : '✗');
   L.push(`# ผลตรวจฐานข้อมูลบนคลาวด์ S0 / Cloud database check S0`, '');
   L.push(`- วันที่ / Date: ${new Date().toISOString()}`);
-  L.push(`- โหมด / Mode: ${MODE} — ${results.label ?? ''}`);
+  L.push(`- โหมด / Mode: ${MODE}${ONE_PROJECT ? ' · 1 โปรเจกต์ 3 ฐาน / one project, 3 databases' : ''} — ${results.label ?? ''}`);
   L.push(`- ผลรวม / Overall: **${allOk ? 'ผ่าน / PASS' : 'ไม่ผ่าน / FAIL'}**`);
   L.push(`- ไม่มี URL รหัสผ่าน หรือชื่อเครื่องในรายงานนี้ / No URLs, passwords or hosts in this report.`, '');
   if (results.negative !== null) L.push(`ประตูความปลอดภัย (ฐานที่มีตารางของระบบอื่นต้องถูกปฏิเสธ) / Safety gate refuses a database with foreign tables: ${yes(results.negative)}`, '');

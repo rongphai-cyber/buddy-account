@@ -11,11 +11,15 @@
 
 ## 1. ตรวจ Supabase (เจ้าของทำ ครั้งเดียว)
 
-1. สร้างโปรเจกต์ Supabase **ใหม่ 3 โปรเจกต์** (Buddy, WTS-POS, WTS-Living) — Region **Southeast Asia (Singapore)** · ตั้ง Database Password เป็นตัวอักษร+ตัวเลขยาว ≥ 24 ตัว (ไม่มี @ : / ? # %) จดไว้ในตัวจัดการรหัสผ่าน **ห้ามใช้โปรเจกต์ของ WTS-SOP**
-2. แต่ละโปรเจกต์: ปุ่ม **Connect** › **Session pooler** › คัดลอก URI
+**แบบที่เจ้าของเลือก (07/11/2569): 1 โปรเจกต์ 3 ฐาน** — เครื่องมือสร้างฐาน `s0_buddy` `s0_wtspos` `s0_wtsliving` ในโปรเจกต์เดียวให้เอง (แบบ 1 โปรเจกต์ต่อโปรแกรมยังใช้ได้: ใส่ `BUDDY_/WTSPOS_/WTSLIVING_DATABASE_URL` แทน)
+
+1. สร้างโปรเจกต์ Supabase **ใหม่ 1 โปรเจกต์** ชื่อเช่น `wts-cloud-test` — Region **Southeast Asia (Singapore)** · ตั้ง Database Password เป็นตัวอักษร+ตัวเลขยาว ≥ 24 ตัว (ไม่มี @ : / ? # %) จดไว้ในตัวจัดการรหัสผ่าน **ห้ามใช้โปรเจกต์ของ WTS-SOP** (เครื่องมือปฏิเสธโปรเจกต์ที่มีตารางอยู่แล้ว)
+2. ปุ่ม **Connect** › **Session pooler** › คัดลอก URI (ลงท้าย `/postgres`)
 3. (แนะนำ) Project Settings › Database › SSL Configuration › **Download certificate** → บันทึกเป็น `E:\BuddyAccount\.data\supabase-ca.crt`
-4. คัดลอก `tools\cloud\cloud-s0.env.example` เป็น `E:\BuddyAccount\.data\cloud-s0.env` (Notepad) แล้ววาง URI แทน `<...>` ของแต่ละโปรแกรม ใส่รหัสผ่านแทน `[YOUR-PASSWORD]` และต่อท้ายด้วย `?sslmode=verify-full&sslrootcert=E:/BuddyAccount/.data/supabase-ca.crt` — **ห้ามวางรหัสผ่านในแชท**
-5. (ไม่บังคับ) ใส่ **Transaction pooler** (พอร์ต 6543) ใน `*_POOLER_URL`
+4. คัดลอก `tools\cloud\cloud-s0.env.example` เป็น `E:\BuddyAccount\.data\cloud-s0.env` (Notepad) แล้ววาง URI ที่บรรทัด `SUPABASE_PROJECT_URL=` ใส่รหัสผ่านแทน `[YOUR-PASSWORD]` และต่อท้ายด้วย `?sslmode=verify-full&sslrootcert=E:/BuddyAccount/.data/supabase-ca.crt` — **ห้ามวางรหัสผ่านในแชท**
+5. (ไม่บังคับ) ใส่ **Transaction pooler** (พอร์ต 6543) ที่ `SUPABASE_POOLER_URL`
+   - เครื่องมือเปลี่ยนเฉพาะชื่อฐานท้าย URL (`/postgres` → `/s0_buddy` …) แล้วตรวจว่าได้ฐานนั้นจริง · ถ้าแจ้งว่า pooler เลือกฐานไม่ได้ ให้ใช้ **Direct connection** แทน (ต้องมี IPv6 หรือซื้อ IPv4 add-on ของ Supabase)
+   - ข้อดีเพิ่ม: Data API ของ Supabase ให้บริการเฉพาะฐาน `postgres` — ฐาน `s0_*` จึงไม่ถูกเปิดผ่านกุญแจ anon (ยังควรปิด Data API ไว้)
 6. รันใน PowerShell:
    ```powershell
    cd E:\BuddyAccount
@@ -35,6 +39,7 @@
 ```powershell
 node tools\cloud\pg-check.mjs --local-pg       # PostgreSQL 16 ของ Buddy (พอร์ต 5544) ฐานชั่วคราว s0chk_* ลบเมื่อจบ — ไม่แตะ DEMO
 node tools\cloud\pg-check.mjs --sim-supabase   # PostgreSQL ชั่วคราวพอร์ต 5549 ผู้เชื่อมต่อไม่ใช่ superuser แบบ Supabase
+node tools\cloud\pg-check.mjs --sim-supabase --one-project   # แบบเดียวกัน แต่ 1 โปรเจกต์ 3 ฐาน (postgres สร้างฐานเองผ่าน URL เดียว)
 node tools\cloud\pg-check.mjs --r2-only        # ตรวจเฉพาะ R2 จากค่าใน .data\cloud-s0.env
 ```
 WTS-POS / WTS-Living มี `tools/cloud/pg-check.mjs` ที่ส่งต่อมาที่นี่ (`--apps pos` / `--apps living`)
