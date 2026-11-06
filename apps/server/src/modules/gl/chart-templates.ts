@@ -7,7 +7,7 @@ import { CHART_TEMPLATES, companySettings, loadChartTemplate, type ChartTemplate
 
 const keyParam = z.object({ key: z.enum(Object.keys(CHART_TEMPLATES) as [ChartTemplateKey, ...ChartTemplateKey[]]) });
 const norm = (s: string | null | undefined) => (s ?? '').replace(/\s+/g, ' ').trim();
-const maskRe = (mask: string) => new RegExp('^' + mask.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/9/g, '\\d').replace(/!/g, '.').replace(/X/gi, '[A-Za-z0-9]') + '$');
+export const maskRe = (mask: string) => new RegExp('^' + mask.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/9/g, '\\d').replace(/!/g, '.').replace(/X/gi, '[A-Za-z0-9]') + '$');
 
 /**
  * ผังบัญชีตัวอย่าง (อ้างอิง): เทียบกับผังของบริษัท · เพิ่มบัญชีที่ยังไม่มี · เติมชื่อภาษาอังกฤษจากชื่อไทยที่ตรงกัน

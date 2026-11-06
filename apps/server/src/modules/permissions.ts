@@ -253,7 +253,7 @@ export const API_RULES: Record<string, Rule> = {
   ])),
   'POST /api/v1/quotations/:id/convert': M('SA.SO', 'add'),
   // ลูกหนี้/เจ้าหนี้คงค้างยกมา (S-OB-03/04)
-  ...Object.fromEntries([['ar-opening', 'FI.AR.OB'], ['ap-opening', 'FI.AP.OB']].flatMap(([p, m]) => [
+  ...Object.fromEntries([['ar-opening', 'FI.AR.OB'], ['ap-opening', 'FI.AP.OB'], ['ar-deposit-opening', 'FI.AR.OB']].flatMap(([p, m]) => [
     [`GET /api/v1/${p}`, M(m!, 'read')], [`GET /api/v1/${p}/:id`, M(m!, 'read')], [`POST /api/v1/${p}`, M(m!, 'add')],
     [`PUT /api/v1/${p}/:id`, M(m!, 'edit')], [`POST /api/v1/${p}/:id/cancel`, M(m!, 'cancel')],
   ])),
@@ -353,6 +353,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/changes': LOOKUP,
   // WTS Solutions (docs/17 B0.5): คิดเงินเดือนที่ไหน · ตั้งค่าสำหรับ WTS-POS
   'PUT /api/v1/company/payroll-source': M('SET.CO', 'edit'), 'POST /api/v1/company/wts-pos-setup': M('SET.CO', 'edit'),
+  // ตั้งค่าสำหรับ WTS-Living (HANDOFF ข้อ 86): ผู้ดูแลระบบเท่านั้น (ตรวจเพิ่มใน wts-living.ts)
+  'GET /api/v1/company/wts-living-setup': M('SET.CO', 'read'), 'POST /api/v1/company/wts-living-setup': M('SET.CO', 'edit'),
   // สิทธิ์โมดูลระดับลูกค้า (docs/17 B0.6): ลูกค้าดูของตัวเอง · เจ้าหน้าที่ผู้ให้บริการตั้งค่า (ตรวจในตัวจัดการ)
   'GET /api/v1/tenant/modules': SELF, 'GET /api/v1/tenants/:id/modules': SELF, 'PUT /api/v1/tenants/:id/modules': SELF,
   // Hub + ล็อกอินกลาง (docs/17 B6): ไทล์/ออกบัตรผ่านของผู้ใช้เอง (ตรวจสิทธิ์โมดูลในตัวจัดการ) · กุญแจสาธารณะเปิดให้ทุกคน · โปรแกรมอื่นรายงานคิวด้วยกุญแจ API ของบริษัท

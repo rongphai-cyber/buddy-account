@@ -86,7 +86,7 @@ async function warehouseOk(db: Db, companyId: string, id: string | null) {
   if (id && !(await db.selectFrom('md_warehouse').select('id').where('id', '=', id).where('company_id', '=', companyId).where('deleted_at', 'is', null).executeTakeFirst())) throw badRequest('ไม่พบคลังสินค้านี้');
 }
 /** รหัสกลุ่มบัญชีเฉพาะสินค้าที่ยังไม่ซ้ำ (Express ใช้รหัสอัตโนมัติแบบ 000>) */
-async function newSpecificCode(db: Db, companyId: string) {
+export async function newSpecificCode(db: Db, companyId: string) {
   for (let i = 0; i < 20; i++) {
     const code = '#' + Math.random().toString(36).slice(2, 8).toUpperCase();
     if (!(await db.selectFrom('md_item_account_group').select('id').where('company_id', '=', companyId).where('code', '=', code).executeTakeFirst())) return code;

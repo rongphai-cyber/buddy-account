@@ -7,6 +7,7 @@
 export const GL_ROLES: Array<{ role: string; section: string; label: string; hint?: string }> = [
   { role: 'RETAINED_EARNINGS', section: 'ทั่วไป', label: 'บัญชีกำไรสะสม' },
   { role: 'SUSPENSE', section: 'ทั่วไป', label: 'บัญชีพัก', hint: 'ห้ามใช้บันทึกรายการ — ถ้ามียอดแปลว่าการลงบัญชีมีปัญหา' },
+  { role: 'OPENING_BALANCE', section: 'ทั่วไป', label: 'บัญชีพักยอดยกมา', hint: 'บัญชีคู่ของลูกหนี้/เงินมัดจำยกมาที่ระบบอื่นส่งเข้า (เช่น WTS-Living) — ตอนบันทึกยอดยกมาทั้งชุดใส่ยอดลูกหนี้/มัดจำส่วนนั้นที่บัญชีนี้แทน แล้วบัญชีนี้ต้องเป็นศูนย์' },
   { role: 'CASH', section: 'สินทรัพย์', label: 'เงินสด' },
   { role: 'PETTY_CASH', section: 'สินทรัพย์', label: 'เงินสดย่อย' },
   { role: 'AR', section: 'สินทรัพย์', label: 'ลูกหนี้', hint: 'ใช้เมื่อรายละเอียดลูกค้าไม่ได้กำหนดบัญชี' },

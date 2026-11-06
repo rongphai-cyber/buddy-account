@@ -30,3 +30,4 @@ export * from './payroll-import.js';
 export * from './source-totals.js';
 export * from './tenant-modules.js';
 export * from './hub.js';
+export * from './living-setup.js';

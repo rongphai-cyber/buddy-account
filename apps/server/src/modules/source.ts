@@ -148,7 +148,8 @@ export async function withSource(database: Database, req: FastifyRequest, reply:
     const put = handlers.get(putKey);
     if (!put) throw new AppError(409, 'SOURCE_NO_EDIT', `เอกสารชนิดนี้แก้ผ่าน API ไม่ได้ — ยกเลิกเอกสาร ${ex.no} ที่ต้นทางแล้วส่งด้วยเลขอ้างอิงใหม่`);
     await authorize(req, 'PUT', `${url}/:id`);
-    try { await periodFor(database.db, a.companyId, ex.date); } catch (e) { if ((e as AppError).code === 'PERIOD_LOCKED') throw periodClosed(src); throw e; }
+    // ยอดยกมาที่ลงวันที่ก่อนเริ่มใช้ไม่มีงวด (NO_PERIOD) — API แก้ไขของเอกสารชนิดนั้นตรวจวันที่เอง
+    try { await periodFor(database.db, a.companyId, ex.date); } catch (e) { if ((e as AppError).code === 'PERIOD_LOCKED') throw periodClosed(src); if ((e as AppError).code !== 'NO_PERIOD') throw e; }
     (req as { params: unknown }).params = { id: ex.id };
     let out: unknown;
     try { out = await put.handler.call(put.self, req, reply); } catch (e) { if ((e as AppError).code === 'PERIOD_LOCKED') throw periodClosed(src); throw e; }

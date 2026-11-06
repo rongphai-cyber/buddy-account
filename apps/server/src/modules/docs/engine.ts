@@ -1,6 +1,6 @@
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { buildPosting, d, formatDocNo, postingBalanced, renderJournalDesc, round2, type PostingLine } from '@buddy/core';
+import { buildPosting, d, formatDocNo, openingPosting, postingBalanced, renderJournalDesc, round2, type PostingLine } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound } from '../../http.js';
 import { logActivity } from '../../audit.js';
@@ -82,6 +82,23 @@ export async function previewPosting(db: Db, companyId: string, headerId: string
   return { header: h, lines: buildPosting(h, ls, ps, ss, r, cs, ds) };
 }
 
+/** งวดแรกของบริษัท (ใบสำคัญยอดยกมาที่ลงวันที่ก่อนเริ่มใช้อยู่ในงวดนี้ — ยอดนับเป็นยอดยกมาเพราะวันที่ก่อนวันเริ่มงวด) */
+async function firstPeriod(tx: Db, companyId: string) {
+  return tx.selectFrom('gl_period').select(['id', 'start_date']).where('company_id', '=', companyId).where('deleted_at', 'is', null).orderBy('start_date').limit(1).executeTakeFirst();
+}
+/** งวดของใบสำคัญยอดยกมา: ก่อนวันเริ่มใช้ = งวดแรก (ไม่มีงวดของวันนั้น) · ตั้งแต่วันเริ่มใช้ = งวดของวันที่ (ต้องยังไม่ปิด) */
+export async function openingPeriod(tx: Db, companyId: string, date: string) {
+  const first = await firstPeriod(tx, companyId);
+  if (first && date < String(first.start_date).slice(0, 10)) return { id: first.id };
+  return periodFor(tx, companyId, date);
+}
+/** ตรวจงวดของใบสำคัญที่จะยกเลิก/ลงใหม่: ก่อนวันเริ่มใช้ (ยอดยกมาที่ลงบัญชี) ไม่มีงวดให้ปิด */
+async function journalPeriodCheck(tx: Db, companyId: string, date: string) {
+  const first = await firstPeriod(tx, companyId);
+  if (first && date < String(first.start_date).slice(0, 10)) return;
+  await periodFor(tx, companyId, date);
+}
+
 /** รวมบรรทัดบัญชีเดียวกันบทบาทเดียวกัน (Express ลงยอดรวมต่อบัญชี) */
 function mergeLines(lines: PostingLine[]) {
   const m = new Map<string, PostingLine>();
@@ -100,20 +117,24 @@ function mergeLines(lines: PostingLine[]) {
  */
 export async function postDocument(tx: Db, ctx: Ctx, headerId: string, existingJournalId?: string | null): Promise<{ journal_id: string | null }> {
   const h = await tx.selectFrom('doc_header as h').innerJoin('md_doc_type as t', 't.id', 'h.doc_type_id')
-    .select(['h.id', 'h.doc_no', 'h.doc_date', 'h.doc_class', 'h.branch_id', 'h.doc_status', 'h.journal_id', 'h.is_opening', 'h.party_name', 'h.remark', 'h.department_id', 't.journal_book_id', 't.journal_desc_template', 't.name_th as type_name', 'h.customer_id', 'h.supplier_id'])
+    .select(['h.id', 'h.doc_no', 'h.doc_date', 'h.doc_class', 'h.branch_id', 'h.doc_status', 'h.journal_id', 'h.is_opening', 'h.party_name', 'h.remark', 'h.department_id', 't.journal_book_id', 't.journal_desc_template', 't.name_th as type_name', 'h.customer_id', 'h.supplier_id',
+      'h.opening_offset_account_id', 'h.doc_type_id', 'h.net_amount', 'h.vat_amount', 'h.vat_basis'])
     .where('h.id', '=', headerId).where('h.company_id', '=', ctx.companyId).where('h.deleted_at', 'is', null).executeTakeFirst();
   if (!h) throw notFound('เอกสาร');
   if (h.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว');
   // ลูกหนี้/เจ้าหนี้ยกมา: ยอดบัญชีอยู่ในยอดยกมาแล้ว ภาษีเกิดก่อนเริ่มใช้ (หรือเกิดตอนชำระถ้าเกณฑ์เงินสด)
-  if (h.is_opening) return { journal_id: null };
+  // ยกเว้นยอดยกมาที่ระบบอื่นส่งมาพร้อมบัญชีคู่ (WTS-Living): ลงบัญชี Dr ลูกหนี้ / Cr บัญชีคู่ — ไม่เข้าแฟ้มภาษี (openingPosting)
+  if (h.is_opening && !h.opening_offset_account_id) return { journal_id: null };
   // แฟ้มภาษีซื้อ/ขาย (บทที่ 16) เกิดพร้อมเอกสารเสมอ แม้ไม่เชื่อมต่อระบบบัญชี
-  await syncVatEntries(tx, ctx, headerId);
+  if (!h.is_opening) await syncVatEntries(tx, ctx, headerId);
   if ((await companySettings(tx, ctx.companyId))['gen.link_gl'] === false) return { journal_id: null };
-  const pv = await previewPosting(tx, ctx.companyId, headerId);
+  const pv = h.is_opening
+    ? { lines: openingPosting(h, h.opening_offset_account_id!, await loadResolver(tx, ctx.companyId, { customers: h.customer_id ? [h.customer_id] : [] })) }
+    : await previewPosting(tx, ctx.companyId, headerId);
   if (!pv || !pv.lines.length) return { journal_id: null };   // หมวดที่ไม่ลงบัญชี (ใบเสนอราคา ใบสั่งขาย ฯลฯ)
   if (!postingBalanced(pv.lines)) throw badRequest(`ลงบัญชีเอกสาร ${h.doc_no} ไม่ได้: รายการ Dr/Cr ไม่ดุล — ตรวจยอดเงินในเอกสาร`);
   if (pv.lines.some((l) => !l.account_id)) throw badRequest('ลงบัญชีไม่ได้: ไม่พบเลขที่บัญชีและยังไม่ได้กำหนดบัญชีพัก — กำหนดที่ เริ่มระบบ › การเชื่อมต่อบัญชี › บัญชีเพื่อลงรายวัน');
-  const p = await periodFor(tx, ctx.companyId, String(h.doc_date).slice(0, 10));
+  const p = h.is_opening ? await openingPeriod(tx, ctx.companyId, String(h.doc_date).slice(0, 10)) : await periodFor(tx, ctx.companyId, String(h.doc_date).slice(0, 10));
   let book = h.journal_book_id;
   if (!book) {
     const route = ROUTE_OF[h.doc_class];
@@ -124,7 +145,8 @@ export async function postDocument(tx: Db, ctx: Ctx, headerId: string, existingJ
   const party = h.customer_id
     ? await tx.selectFrom('md_customer').select(['title', 'name']).where('id', '=', h.customer_id).executeTakeFirst()
     : h.supplier_id ? await tx.selectFrom('md_supplier').select(['title', 'name']).where('id', '=', h.supplier_id).executeTakeFirst() : undefined;
-  const desc = renderJournalDesc(h.journal_desc_template, { party: { title: party?.title, name: party?.name ?? h.party_name }, doc: { remark: h.remark, no: h.doc_no } })
+  const desc = (h.is_opening ? ['ยอดยกมา', h.type_name, party?.name ?? h.party_name].filter(Boolean).join(' ') : '')
+    || renderJournalDesc(h.journal_desc_template, { party: { title: party?.title, name: party?.name ?? h.party_name }, doc: { remark: h.remark, no: h.doc_no } })
     || [h.type_name, party?.name ?? h.party_name].filter(Boolean).join(' ');
   const lines = mergeLines(pv.lines);
   const total = round2(lines.reduce((s, l) => s.plus(l.debit), d(0)));
@@ -137,7 +159,7 @@ export async function postDocument(tx: Db, ctx: Ctx, headerId: string, existingJ
     await tx.updateTable('gl_journal').set(head).where('id', '=', existingJournalId).execute();
     j = { id: existingJournalId };
   } else {
-    j = await tx.insertInto('gl_journal').values({ ...head, company_id: ctx.companyId, voucher_no: h.doc_no, source_module: pv.header.doc_class, source_header_id: h.id, status: 'P', created_by: ctx.userId })
+    j = await tx.insertInto('gl_journal').values({ ...head, company_id: ctx.companyId, voucher_no: h.doc_no, source_module: h.doc_class, source_header_id: h.id, status: 'P', created_by: ctx.userId })
       .returning('id').executeTakeFirstOrThrow();
   }
   let n = 0;
@@ -155,7 +177,7 @@ export async function postDocument(tx: Db, ctx: Ctx, headerId: string, existingJ
 export async function unpostDocument(tx: Db, ctx: Ctx, headerId: string) {
   const js = await tx.selectFrom('gl_journal').select(['id', 'voucher_date']).where('company_id', '=', ctx.companyId).where('source_header_id', '=', headerId).where('doc_status', '<>', 'C').where('deleted_at', 'is', null).execute();
   for (const j of js) {
-    await periodFor(tx, ctx.companyId, String(j.voucher_date).slice(0, 10));   // งวดที่ปิดแล้วแก้ไม่ได้
+    await journalPeriodCheck(tx, ctx.companyId, String(j.voucher_date).slice(0, 10));   // งวดที่ปิดแล้วแก้ไม่ได้
     await tx.updateTable('gl_journal').set({ doc_status: 'C', updated_by: ctx.userId }).where('id', '=', j.id).execute();
   }
   await tx.updateTable('doc_header').set({ gl_posted: 'N', journal_id: null }).where('id', '=', headerId).execute();
@@ -169,7 +191,7 @@ export async function repostDocument(db: Db, ctx: Ctx, headerId: string) {
     if (!h) throw notFound('เอกสาร');
     if (h.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว');
     const cur = await tx.selectFrom('gl_journal').select(['id', 'voucher_date']).where('company_id', '=', ctx.companyId).where('source_header_id', '=', headerId).where('deleted_at', 'is', null).orderBy('created_at', 'desc').executeTakeFirst();
-    if (cur) await periodFor(tx, ctx.companyId, String(cur.voucher_date).slice(0, 10));   // งวดที่ปิดแล้วลงใหม่ไม่ได้
+    if (cur) await journalPeriodCheck(tx, ctx.companyId, String(cur.voucher_date).slice(0, 10));   // งวดที่ปิดแล้วลงใหม่ไม่ได้
     const r = await postDocument(tx, ctx, headerId, cur?.id);
     if (!r.journal_id && cur) await unpostDocument(tx, ctx, headerId);   // ปิดการเชื่อมต่อบัญชี/ไม่มีรายการ → ยกเลิกใบเดิม
     await logActivity(tx, ctx, { module: 'GL', action: 'REPOST', docNo: h.doc_no, table: 'doc_header', rowId: headerId, detail: { journal_id: r.journal_id, previous: cur?.id ?? null } });

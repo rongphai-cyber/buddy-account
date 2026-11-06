@@ -12,6 +12,7 @@ erDiagram
     sys_device |o--o{ md_doc_number_block : "device_id"
     sys_branch ||--o{ doc_header : "branch_id"
     md_doc_type ||--o{ doc_header : "doc_type_id"
+    gl_account |o--o{ doc_header : "opening_offset_account_id"
     gl_journal |o--o{ doc_header : "journal_id"
     sys_device |o--o{ doc_header : "device_id"
     doc_header ||--o{ doc_line : "header_id"
@@ -165,6 +166,7 @@ erDiagram
     md_doc_type ||--o{ doc_header : "doc_type_id"
     gl_period |o--o{ doc_header : "period_id"
     gl_period |o--o{ doc_header : "vat_period_id"
+    gl_account |o--o{ doc_header : "opening_offset_account_id"
     gl_journal |o--o{ doc_header : "journal_id"
 ```
 

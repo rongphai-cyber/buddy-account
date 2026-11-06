@@ -2753,6 +2753,7 @@ CREATE TABLE doc_header (
   appointment_date date,
   payment_date date,
   is_opening boolean DEFAULT false NOT NULL,
+  opening_offset_account_id uuid,
   payment_terms varchar(60),
   remark text,
   gl_posted char(1) DEFAULT 'N' NOT NULL,
@@ -2849,6 +2850,7 @@ COMMENT ON COLUMN doc_header.settled_date IS 'วันที่ครบ [Expre
 COMMENT ON COLUMN doc_header.appointment_date IS 'วันนัดชำระ (ใบวางบิล) [Express: ARBIL/APBIL.APPDAT]';
 COMMENT ON COLUMN doc_header.payment_date IS 'วันที่รับ/จ่ายเงินจริง (ใบเสร็จ RE / ใบสำคัญจ่าย PS) — ไม่จำเป็นต้องตรงวันที่เอกสาร';
 COMMENT ON COLUMN doc_header.is_opening IS 'ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04): ลงวันที่ก่อนเริ่มใช้ ไม่ลงบัญชี ไม่ตัดสต๊อก ไม่เข้าแฟ้มภาษี';
+COMMENT ON COLUMN doc_header.opening_offset_account_id IS 'ยอดยกมาที่ลงบัญชี (ระบบอื่นส่งมา เช่น WTS-Living): บัญชีคู่ของลูกหนี้/มัดจำรับยกมา — ว่าง = ไม่ลงบัญชี (ยอดบัญชีอยู่ที่บันทึกยอดยกมา)';
 COMMENT ON COLUMN doc_header.payment_terms IS 'เงื่อนไขการชำระ [Express: PAYCOND]';
 COMMENT ON COLUMN doc_header.remark IS 'หมายเหตุสั้น [Express: REMARK]';
 COMMENT ON COLUMN doc_header.gl_posted IS 'N=ยังไม่ลงบัญชี Y=ลงแล้ว P=รอเซิร์ฟเวอร์ลง [Express: POSTGL]';
@@ -5760,6 +5762,8 @@ ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_to_bank_account_id FOREIGN K
 CREATE INDEX IF NOT EXISTS ix_fk_doc_header_to_bank_account_id ON doc_header (to_bank_account_id);
 ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_vat_period_id FOREIGN KEY (vat_period_id) REFERENCES gl_period(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_doc_header_vat_period_id ON doc_header (vat_period_id);
+ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_opening_offset_account_id FOREIGN KEY (opening_offset_account_id) REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_doc_header_opening_offset_account_id ON doc_header (opening_offset_account_id);
 ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_journal_id FOREIGN KEY (journal_id) REFERENCES gl_journal(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_doc_header_journal_id ON doc_header (journal_id);
 ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_approved_by FOREIGN KEY (approved_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;

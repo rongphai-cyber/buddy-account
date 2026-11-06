@@ -7,7 +7,7 @@ import { ErrorBox, Field, navKey, PageHead, Tabs, toast, useHotkeys } from '../.
 import { ThemePicker } from '../../components/ThemePicker';
 import { AddressFields } from '../../components/AddressFields';
 import { ModuleSwitches } from '../../components/ModuleSwitches';
-import { WtsPosSetup } from '../../components/WtsConnect';
+import { WtsLivingSetup, WtsPosSetup } from '../../components/WtsConnect';
 
 type Co = {
   name_th: string; name_en: string | null; address_th_1: string; address_th_2: string; address_en_1: string; address_en_2: string; phone: string | null; business_type: 'J' | 'P';
@@ -24,7 +24,10 @@ export function CompanyPage() {
   const [f, setF] = useState<Co | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [edit, setEdit] = useState(false);
-  const [tab, setTab] = useState('info');
+  const [tab, setTab] = useState(() => (location.hash === '#living' ? 'living' : 'info'));
+  // แท็บ WTS-Living เมื่อลูกค้าใช้โมดูล living ได้ (ไทล์ Hub · เจ้าหน้าที่ผู้ให้บริการเห็นทุกโมดูล)
+  const mods = useQuery({ queryKey: ['tenant-modules'], queryFn: () => api.get<{ modules: Array<{ key: string; active: boolean }> }>('/api/v1/tenant/modules') });
+  const living = !!mods.data?.modules.some((m) => m.key === 'living' && m.active);
   useEffect(() => { if (q.data) setF({ ...q.data, tax_branch_no: String(Number(q.data.tax_branch_no)) }); }, [q.data]);
   const save = async () => {
     if (!f) return;
@@ -45,7 +48,7 @@ export function CompanyPage() {
       <PageHead eyebrow="เริ่มระบบ › รายละเอียดกิจการ" title="รายละเอียดกิจการ" lead={`รหัสบริษัท ${f.code} — ชื่อและที่อยู่ใช้พิมพ์บนหัวรายงานและแบบฟอร์ม`}
         actions={edit ? <><button onClick={() => { setEdit(false); setF(q.data ? { ...q.data, tax_branch_no: String(Number(q.data.tax_branch_no)) } : null); }}>ยกเลิก</button><button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button></> : <button className="primary" onClick={() => setEdit(true)}>แก้ไข <kbd>Alt+E</kbd></button>} />
       <ErrorBox error={err} />
-      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'info', label: 'ข้อมูลกิจการ' }, { key: 'tax', label: 'ภาษีและทะเบียน' }, { key: 'gen', label: 'เรื่องทั่วไป' }, { key: 'modules', label: 'ระบบที่ใช้งาน' }, { key: 'pos', label: 'เชื่อมต่อ WTS POS' }, { key: 'theme', label: 'ธีมและแบบอักษร' }]} />
+      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'info', label: 'ข้อมูลกิจการ' }, { key: 'tax', label: 'ภาษีและทะเบียน' }, { key: 'gen', label: 'เรื่องทั่วไป' }, { key: 'modules', label: 'ระบบที่ใช้งาน' }, { key: 'pos', label: 'เชื่อมต่อ WTS POS' }, ...(living ? [{ key: 'living', label: 'เชื่อมต่อ WTS-Living' }] : []), { key: 'theme', label: 'ธีมและแบบอักษร' }]} />
       {['info', 'tax', 'gen'].includes(tab) && <fieldset disabled={!edit} onKeyDown={(e) => navKey(e, nextTab)}>
         {tab === 'info' && <div className="card form-grid three tab-flow">
           <Field label="1. ชื่อบริษัท" req wide><input value={f.name_th} onChange={(e) => set('name_th', e.target.value)} /></Field>
@@ -72,6 +75,7 @@ export function CompanyPage() {
       </fieldset>}
       {tab === 'modules' && <ModuleSwitches />}
       {tab === 'pos' && <WtsPosSetup />}
+      {tab === 'living' && living && <WtsLivingSetup />}
       {tab === 'theme' && <ThemePicker />}
       <p className="hint">ค่าเริ่มต้นของระบบซื้อ ขาย สินค้า การเงิน และทรัพย์สิน (คู่มือบทที่ 5 ข้อ 1.2–1.12) อยู่ในแผนเฟส P2</p>
     </div>

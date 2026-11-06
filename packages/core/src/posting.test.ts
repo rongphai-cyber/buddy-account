@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { d } from './money.js';
-import { buildPosting, depositRefundVat, netByAccount, postingBalanced, settlementTotals, type PostingResolver } from './posting.js';
+import { buildPosting, depositRefundVat, netByAccount, openingPosting, postingBalanced, settlementTotals, type PostingResolver } from './posting.js';
 
 const DEF: Record<string, string> = { AR: 'ar', AP: 'ap', CASH: 'cash', CREDIT_SALES: 'sales', CASH_SALES: 'cashsales', OUTPUT_VAT: 'ovat', OUTPUT_VAT_PENDING: 'ovatp', INPUT_VAT: 'ivat',
   DEPOSIT_RECEIVED: 'depr', PURCHASES: 'pur', CHEQUE_PAID: 'chqp', CHEQUE_RECEIVED: 'chqr', SUSPENSE: 'susp', SALES_RETURN: 'sret', OTHER_EXPENSE: 'oexp',
@@ -223,5 +223,23 @@ describe('มัดจำรับในใบเสร็จและใบค�
     expect(settlementTotals({ settlements: ['4547.16'], direction: 'R', payments: [], deposits: '4547.16' })).toMatchObject({ due: '4547.16', deposit: '4547.16', cash: '0.00', paid: '4547.16', ok: true });
     expect(settlementTotals({ settlements: ['1000'], direction: 'R', payments: ['400'], deposits: '500' })).toMatchObject({ cash: '100.00', ok: true });
     expect(settlementTotals({ settlements: ['1000'], direction: 'R', payments: ['600'], deposits: '500' }).ok).toBe(false);   // มัดจำ + โอนเกินยอด → เงินสดติดลบ
+  });
+});
+
+describe('ยอดยกมาที่ลงบัญชี (WTS-Living ลูกหนี้/เงินประกันยกมา)', () => {
+  const slotR: PostingResolver = { ...r, slot: (dt, cls, role) => (dt === 'ivl' && role === 'AR' ? 'ar-living' : dt === 'ail' && role === 'DEPOSIT_RECEIVED' ? 'dep-tenant' : null) };
+  it('receivable brought forward 1,180.00 (no VAT): Dr AR of the doc type / Cr the opening account — no income, no VAT', () => {
+    const p = openingPosting({ doc_class: 'IV', doc_type_id: 'ivl', customer_id: 'c1', net_amount: '1180', vat_amount: '0', vat_basis: '2' }, 'ob', slotR);
+    expect(postingBalanced(p)).toBe(true);
+    expect(net(p)).toEqual({ 'ar-living': '1180.00', ob: '-1180.00' });
+  });
+  it('VAT not yet due is not posted again (it is in the opening balances already) — due at the receipt as usual', () => {
+    const p = openingPosting({ doc_class: 'IV', doc_type_id: null, customer_id: 'c1', net_amount: '1070', vat_amount: '70', vat_basis: '2' }, 'ob', r);
+    expect(net(p)).toEqual({ 'ar-c1': '1070.00', ob: '-1070.00' });
+    expect(net(openingPosting({ doc_class: 'IV', doc_type_id: null, customer_id: null, net_amount: '1070', vat_amount: '70', vat_basis: '1' }, 'ob', r))).toEqual({ ar: '1070.00', ob: '-1070.00' });
+  });
+  it('deposit brought forward 8,400.00: Dr the opening account / Cr the deposit account of the AI type', () => {
+    expect(net(openingPosting({ doc_class: 'AI', doc_type_id: 'ail', customer_id: 'c1', net_amount: '8400', vat_amount: '0', vat_basis: null }, 'ob', slotR))).toEqual({ ob: '8400.00', 'dep-tenant': '-8400.00' });
+    expect(net(openingPosting({ doc_class: 'AI', doc_type_id: null, customer_id: 'c1', net_amount: '8400', vat_amount: '0', vat_basis: null }, 'ob', r))).toEqual({ ob: '8400.00', depr: '-8400.00' });
   });
 });

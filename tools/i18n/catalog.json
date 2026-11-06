@@ -167,9 +167,10 @@
 },
 {
 "th": "สถานะ",
-"n": 73,
+"n": 75,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
@@ -244,9 +245,10 @@
 },
 {
 "th": "รหัส",
-"n": 55,
+"n": 57,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
+"apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/DepositRefunds.tsx",
@@ -281,9 +283,10 @@
 },
 {
 "th": "รายการ",
-"n": 51,
+"n": 54,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
+"apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BankRecon.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
@@ -390,9 +393,10 @@
 },
 {
 "th": "ลูกค้า",
-"n": 47,
+"n": 48,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
+"apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
@@ -499,8 +503,9 @@
 },
 {
 "th": "หมายเหตุ",
-"n": 40,
+"n": 42,
 "files": [
+"apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
@@ -1199,6 +1204,28 @@
 ]
 },
 {
+"th": "บัญชี",
+"n": 21,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/InventoryAccount.tsx",
+"apps/web/src/pages/gl/YearEnd.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/reports/AccountDetail.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/server/src/modules/gl/budget.ts",
+"apps/server/src/modules/gl/inventory.ts",
+"apps/server/src/modules/gl/prior-year.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "พนักงานขาย",
 "n": 21,
 "files": [
@@ -1255,46 +1282,8 @@
 ]
 },
 {
-"th": "บัญชี",
-"n": 20,
-"files": [
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/InventoryAccount.tsx",
-"apps/web/src/pages/gl/YearEnd.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/reports/AccountDetail.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/server/src/modules/gl/budget.ts",
-"apps/server/src/modules/gl/inventory.ts",
-"apps/server/src/modules/gl/prior-year.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/gl/routes.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts"
-]
-},
-{
-"th": "ตกลง",
-"n": 19,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/components/Notes.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/gl/YearEnd.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Periods.tsx"
-]
-},
-{
 "th": "ประเภทเอกสาร",
-"n": 19,
+"n": 20,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/WtsConnect.tsx",
@@ -1312,6 +1301,23 @@
 "apps/server/src/owned.ts",
 "apps/server/src/modules/doc-types.ts",
 "apps/server/src/modules/docs/engine.ts"
+]
+},
+{
+"th": "ตกลง",
+"n": 19,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/components/Notes.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/gl/YearEnd.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Periods.tsx"
 ]
 },
 {
@@ -1713,6 +1719,25 @@
 ]
 },
 {
+"th": "สมุดรายวัน",
+"n": 14,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/gl/Books.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/doc-types.ts",
+"apps/server/src/modules/gl/journals.ts",
+"apps/server/src/modules/gl/routes.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "เลขประจำตัวผู้เสียภาษี",
 "n": 14,
 "files": [
@@ -1828,24 +1853,6 @@
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "สมุดรายวัน",
-"n": 13,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/gl/Books.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/doc-types.ts",
-"apps/server/src/modules/gl/journals.ts",
-"apps/server/src/modules/gl/routes.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -2258,6 +2265,21 @@
 ]
 },
 {
+"th": "ยอดยกมา",
+"n": 10,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/docs/engine.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "รวม {0} รายการ",
 "n": 10,
 "files": [
@@ -2269,6 +2291,19 @@
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "รับเงินมัดจำ",
+"n": 10,
+"files": [
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
 ]
 },
 {
@@ -2411,32 +2446,6 @@
 "apps/web/src/pages/inventory/Counts.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "ยอดยกมา",
-"n": 9,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "รับเงินมัดจำ",
-"n": 9,
-"files": [
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -3564,6 +3573,15 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/date.ts"
+]
+},
+{
+"th": "กลุ่ม",
+"n": 5,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -4823,6 +4841,13 @@
 ]
 },
 {
+"th": "รายได้จากการให้บริการ",
+"n": 4,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "ร่าง",
 "n": 4,
 "files": [
@@ -4859,6 +4884,15 @@
 "files": [
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "สร้าง",
+"n": 4,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx"
 ]
 },
 {
@@ -5170,15 +5204,6 @@
 "n": 3,
 "files": [
 "packages/core/src/geo-th.ts"
-]
-},
-{
-"th": "กลุ่ม",
-"n": 3,
-"files": [
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -5500,6 +5525,13 @@
 ]
 },
 {
+"th": "ตั้งค่าสำหรับ WTS-Living",
+"n": 3,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "ตารางข้อมูล",
 "n": 3,
 "files": [
@@ -5549,6 +5581,13 @@
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ทั่วไป",
+"n": 3,
+"files": [
+"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -5832,6 +5871,14 @@
 ]
 },
 {
+"th": "มีแล้ว",
+"n": 3,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/gl/ChartTemplate.tsx"
+]
+},
+{
 "th": "มูลค่าต้นทุน",
 "n": 3,
 "files": [
@@ -5869,6 +5916,15 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "ยกเว้น VAT",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/wts-living.ts"
 ]
 },
 {
@@ -6232,15 +6288,6 @@
 ]
 },
 {
-"th": "สร้าง",
-"n": 3,
-"files": [
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx"
-]
-},
-{
 "th": "สร้างกุญแจ",
 "n": 3,
 "files": [
@@ -6536,6 +6583,14 @@
 "n": 3,
 "files": [
 "apps/server/src/modules/doc-types.ts"
+]
+},
+{
+"th": "เลือกประเภทเอกสาร",
+"n": 3,
+"files": [
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -7803,6 +7858,13 @@
 ]
 },
 {
+"th": "ดึงค่าจาก Buddy",
+"n": 2,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "ดูยอดบัญชี",
 "n": 2,
 "files": [
@@ -7970,6 +8032,13 @@
 ]
 },
 {
+"th": "ต้องทำเอง",
+"n": 2,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "ต้องมี",
 "n": 2,
 "files": [
@@ -8061,13 +8130,6 @@
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx",
 "packages/core/src/menu.ts"
-]
-},
-{
-"th": "ทั่วไป",
-"n": 2,
-"files": [
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -8236,6 +8298,13 @@
 ]
 },
 {
+"th": "บทบาท \"บัญชีพักยอดยกมา\" (การเชื่อมต่อบัญชี)",
+"n": 2,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "บรรทัด {0}: ไม่พบแผนกนี้",
 "n": 2,
 "files": [
@@ -8282,10 +8351,33 @@
 ]
 },
 {
+"th": "บัญชี {0} เป็นบัญชีคุม ลงรายการไม่ได้ — เลือกบัญชีย่อย",
+"n": 2,
+"files": [
+"apps/server/src/modules/wts.ts",
+"apps/server/src/modules/docs/opening.ts"
+]
+},
+{
 "th": "บัญชี › ทรัพย์สินถาวร",
 "n": 2,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
+]
+},
+{
+"th": "บัญชีที่ใช้",
+"n": 2,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "บัญชีพักยอดยกมา",
+"n": 2,
+"files": [
+"packages/core/src/gl-link.ts",
+"packages/core/src/living-setup.ts"
 ]
 },
 {
@@ -8997,6 +9089,13 @@
 ]
 },
 {
+"th": "มีครบแล้ว ไม่ต้องสร้างเพิ่ม",
+"n": 2,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "มีงานนำเข้ากำลังทำอยู่ — รอให้เสร็จก่อน",
 "n": 2,
 "files": [
@@ -9122,14 +9221,6 @@
 ]
 },
 {
-"th": "ยกเว้น VAT",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx"
-]
-},
-{
 "th": "ยอด",
 "n": 2,
 "files": [
@@ -9249,6 +9340,13 @@
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "ยอมให้เลขผู้เสียภาษีว่างได้ (ผู้เช่าบุคคลธรรมดา)",
+"n": 2,
+"files": [
+"apps/server/src/modules/wts-living.ts"
 ]
 },
 {
@@ -9414,6 +9512,13 @@
 "files": [
 "apps/web/src/pages/parties/Parties.tsx",
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "รหัสรายได้",
+"n": 2,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -9785,6 +9890,54 @@
 ]
 },
 {
+"th": "รายได้ค่าน้ำค่าไฟ",
+"n": 2,
+"files": [
+"apps/server/src/modules/wts-living.ts",
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "รายได้ค่าบริการอื่น",
+"n": 2,
+"files": [
+"apps/server/src/modules/wts-living.ts",
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "รายได้ค่าปรับ",
+"n": 2,
+"files": [
+"apps/server/src/modules/wts-living.ts",
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "รายได้ค่าส่วนกลาง",
+"n": 2,
+"files": [
+"apps/server/src/modules/wts-living.ts",
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "รายได้ค่าเช่า",
+"n": 2,
+"files": [
+"apps/server/src/modules/wts-living.ts",
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "รายได้ค่าเสียหาย",
+"n": 2,
+"files": [
+"apps/server/src/modules/wts-living.ts",
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "รูปย่อใหญ่เกินไป",
 "n": 2,
 "files": [
@@ -10095,6 +10248,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/payroll/PaySetup.tsx"
+]
+},
+{
+"th": "วิธีรับชำระ",
+"n": 2,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/server/src/modules/banking.ts"
 ]
 },
 {
@@ -11043,13 +11204,6 @@
 ]
 },
 {
-"th": "เลือกประเภทเอกสาร",
-"n": 2,
-"files": [
-"apps/server/src/modules/trade-import.ts"
-]
-},
-{
 "th": "เลือกรายการ",
 "n": 2,
 "files": [
@@ -11954,6 +12108,13 @@
 ]
 },
 {
+"th": "(ดูหมายเหตุ)",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "(ตั้งด้วย BUDDY_SIGNUP = review / auto / off) · ลิงก์สมัคร:",
 "n": 1,
 "files": [
@@ -12175,6 +12336,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "(ไม่ต้องคีย์รหัสเอง)",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -14481,6 +14649,13 @@
 ]
 },
 {
+"th": "{0} (ใบสำคัญรับรู้ค่าส่วนกลางรายปี · คืนเงินประกันยกมา)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "{0} / {1} (เรียงตามเลขที่) · {2} บรรทัด",
 "n": 1,
 "files": [
@@ -15661,6 +15836,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "· {0} รายการต้องทำเอง (ข้ามไป)",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -18674,6 +18856,13 @@
 ]
 },
 {
+"th": "คืนเงินประกันผู้เช่า (WTS-Living)",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "คืนเงินมัดจำ {0} ลงวันที่ {1}",
 "n": 1,
 "files": [
@@ -18814,6 +19003,13 @@
 ]
 },
 {
+"th": "ค่าตั้ง",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "ค่าตั้งระบบ + แฟ้มหลัก (ลูกค้า ผู้จำหน่าย สินค้า พนักงานขาย)",
 "n": 1,
 "files": [
@@ -18926,6 +19122,13 @@
 ]
 },
 {
+"th": "ค่าน้ำค่าไฟ",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "ค่าน้ำมัน",
 "n": 1,
 "files": [
@@ -18968,6 +19171,13 @@
 ]
 },
 {
+"th": "ค่าบริการอื่น",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "ค่าบริการอื่นของแพลตฟอร์ม",
 "n": 1,
 "files": [
@@ -18979,6 +19189,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/vat.ts"
+]
+},
+{
+"th": "ค่าปรับชำระล่าช้า",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
 ]
 },
 {
@@ -19059,6 +19276,27 @@
 ]
 },
 {
+"th": "ค่าส่วนกลาง",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "ค่าส่วนกลางรับล่วงหน้า",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "ค่าเช่าห้อง",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "ค่าเริ่มต้น — {0}",
 "n": 1,
 "files": [
@@ -19098,6 +19336,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ค่าเสียหาย",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
 ]
 },
 {
@@ -19784,6 +20029,27 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "จะตั้งค่า",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "จะสร้าง",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "จะสร้าง/ตั้งค่า",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -21691,6 +21957,13 @@
 ]
 },
 {
+"th": "ตรวจอีกครั้ง",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "ตรวจแฟ้ม",
 "n": 1,
 "files": [
@@ -22055,6 +22328,20 @@
 ]
 },
 {
+"th": "ตั้งค่าสำหรับ WTS-Living ทำที่หน้าจอ Buddy โดยผู้ดูแลระบบเท่านั้น (ไม่รับกุญแจ API)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
+"th": "ตั้งค่าแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "ตั้งชื่อรหัสให้ชัด",
 "n": 1,
 "files": [
@@ -22192,6 +22479,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "ตามการเชื่อมต่อบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -22752,6 +23046,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/items.ts"
+]
+},
+{
+"th": "ต้องทำเอง {0} รายการ",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -24120,6 +24421,13 @@
 ]
 },
 {
+"th": "บทบาทบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "บทบาทบัญชีไม่ถูกต้อง",
 "n": 1,
 "files": [
@@ -24778,13 +25086,6 @@
 ]
 },
 {
-"th": "บัญชี {0} เป็นบัญชีคุม ลงรายการไม่ได้ — เลือกบัญชีย่อย",
-"n": 1,
-"files": [
-"apps/server/src/modules/wts.ts"
-]
-},
-{
 "th": "บัญชี {0} เป็นบัญชีคุม ให้ใช้บัญชีย่อย",
 "n": 1,
 "files": [
@@ -24810,6 +25111,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/prior-year.ts"
+]
+},
+{
+"th": "บัญชี {0} เป็นบัญชีรายได้/ค่าใช้จ่าย — ยอดยกมาไม่ใช่รายได้ปีนี้ เลือกบัญชีงบดุล (หมวด 1–3) เช่น บัญชีพักยอดยกมา",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -24995,6 +25303,13 @@
 ]
 },
 {
+"th": "บัญชีคู่ของลูกหนี้/เงินมัดจำยกมาที่ระบบอื่นส่งเข้า (เช่น WTS-Living) — ตอนบันทึกยอดยกมาทั้งชุดใส่ยอดลูกหนี้/มัดจำส่วนนั้นที่บัญชีนี้แทน แล้วบัญชีนี้ต้องเป็นศูนย์",
+"n": 1,
+"files": [
+"packages/core/src/gl-link.ts"
+]
+},
+{
 "th": "บัญชีค่าใช้จ่าย",
 "n": 1,
 "files": [
@@ -25132,6 +25447,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/PostingTab.tsx"
+]
+},
+{
+"th": "บัญชีพักยอดยกมา (คู่ของลูกหนี้/เงินประกันยกมา)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
 ]
 },
 {
@@ -29846,6 +30168,13 @@
 ]
 },
 {
+"th": "ภาษีเกณฑ์เงินสด (ถึงกำหนดเมื่อรับชำระ) · ราคาแยก VAT",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "ภาษีเงินได้",
 "n": 1,
 "files": [
@@ -30014,6 +30343,13 @@
 ]
 },
 {
+"th": "มี VAT 7%",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "มี VAT {0} — ใบลดหนี้",
 "n": 1,
 "files": [
@@ -30077,7 +30413,7 @@
 ]
 },
 {
-"th": "มีครบแล้ว ไม่ต้องสร้างเพิ่ม",
+"th": "มีครบแล้ว",
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
@@ -30182,6 +30518,13 @@
 ]
 },
 {
+"th": "มีลูกค้ารหัส {0}… แล้ว {1} ราย",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "มีอยู่แล้ว",
 "n": 1,
 "files": [
@@ -30200,13 +30543,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/journals.ts"
-]
-},
-{
-"th": "มีแล้ว",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/ChartTemplate.tsx"
 ]
 },
 {
@@ -31589,6 +31925,13 @@
 ]
 },
 {
+"th": "ยังไม่มี",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "ยังไม่มีกลุ่มบัญชีทรัพย์สิน — กด Ins เพื่อเพิ่ม",
 "n": 1,
 "files": [
@@ -32135,10 +32478,24 @@
 ]
 },
 {
+"th": "ยังไม่ได้กำหนดบัญชีพักยอดยกมา — กด \"ตั้งค่าสำหรับ WTS-Living\" ที่ รายละเอียดกิจการ หรือกำหนดบทบาท \"บัญชีพักยอดยกมา\" ที่ เริ่มระบบ › การเชื่อมต่อบัญชี",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
+]
+},
+{
 "th": "ยังไม่ได้กำหนดบัญชีภาษีขาย/ภาษีซื้อ — กำหนดที่ เริ่มระบบ › การเชื่อมต่อบัญชี › บัญชีเพื่อลงรายวัน",
 "n": 1,
 "files": [
 "apps/server/src/modules/vat.ts"
+]
+},
+{
+"th": "ยังไม่ได้กำหนดบัญชีเงินมัดจำรับ (ช่อง 3) — ใช้บัญชีตามการเชื่อมต่อบัญชี · แก้ที่ เริ่มระบบ › เลขที่เอกสาร",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
 ]
 },
 {
@@ -32891,6 +33248,13 @@
 ]
 },
 {
+"th": "รหัส {0} ใช้กับเอกสารหมวด {1} อยู่แล้ว — WTS-Living ต้องการหมวด {2} (เลือกประเภทเอกสารเองใน WTS-Living)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "รหัส ชื่อ เลขผู้เสียภาษี โทรศัพท์ หรืออีเมล แล้วกด Enter",
 "n": 1,
 "files": [
@@ -33392,13 +33756,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
-]
-},
-{
-"th": "รหัสรายได้",
-"n": 1,
-"files": [
-"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -34200,6 +34557,13 @@
 ]
 },
 {
+"th": "รับเงินประกันผู้เช่า (WTS-Living)",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "รับเงินมัดจำ คืนเงินมัดจำ จ่ายเงินมัดจำ",
 "n": 1,
 "files": [
@@ -34403,6 +34767,13 @@
 ]
 },
 {
+"th": "รายการ · มีอยู่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "รายการก่อนวันนี้ถือว่ากระทบแล้ว (ค่าเริ่มต้น = ต้นปีบัญชี)",
 "n": 1,
 "files": [
@@ -34442,6 +34813,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "รายการตามตารางในบริษัทนี้? รายการที่มีอยู่แล้ว {0} รายการไม่ถูกแก้{1}",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -35117,6 +35495,20 @@
 ]
 },
 {
+"th": "รายได้ค่าส่วนกลางรับล่วงหน้า",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "รายได้ค่าส่วนกลางรับล่วงหน้า (ค่าส่วนกลางรายปี)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "รายได้ธนาคาร",
 "n": 1,
 "files": [
@@ -35128,6 +35520,13 @@
 "n": 1,
 "files": [
 "packages/core/src/doc-calc.ts"
+]
+},
+{
+"th": "รายได้รับล่วงหน้า",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
 ]
 },
 {
@@ -35338,6 +35737,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
+]
+},
+{
+"th": "ลงบัญชียอดยกมาได้เฉพาะลูกหนี้/มัดจำรับยกมา — เจ้าหนี้ยกมาบันทึกยอดบัญชีที่ บันทึกยอดยกมา",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -36342,6 +36748,13 @@
 ]
 },
 {
+"th": "ลูกค้าของผู้เช่า/เจ้าของแปลง — WTS-Living สร้างเองตอนส่งเอกสารแรก (LV<รหัสผู้ติดต่อ>)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "ลูกค้าจ่ายด้วยเงินมัดจำที่รับไว้ (เช่น เงินประกันตอนย้ายออก) — ติ๊กใบมัดจำแล้วป้อนยอดที่หัก (ไม่เกินคงเหลือ) · ยอดชำระจริง = เงินสด + ชำระโดยอื่น + มัดจำที่หัก · ภาษีเกณฑ์เงินสดของบิลถึงกำหนดเหมือนรับเงิน · มัดจำที่มี VAT หักในบิลขายเท่านั้น",
 "n": 1,
 "files": [
@@ -37280,13 +37693,6 @@
 ]
 },
 {
-"th": "วิธีรับชำระ",
-"n": 1,
-"files": [
-"apps/server/src/modules/banking.ts"
-]
-},
-{
 "th": "วิธีเรียกใช้",
 "n": 1,
 "files": [
@@ -37728,6 +38134,13 @@
 ]
 },
 {
+"th": "สมุดรายวัน WTS-Living",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "สมุดรายวันของใบสำคัญนี้",
 "n": 1,
 "files": [
@@ -37781,6 +38194,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/YearEnd.tsx"
+]
+},
+{
+"th": "สร้าง/ตั้งค่า",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "สร้าง/ตั้งค่า {0} รายการ · มีอยู่แล้ว {1} รายการ",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -38001,7 +38428,21 @@
 ]
 },
 {
+"th": "สร้างแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "สร้างแล้ว {0} รายการ",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "สร้างแล้ว {0} รายการ — ไปที่ WTS-Living › ตั้งค่าสำหรับ Buddy แล้วกด \"ดึงค่าจาก Buddy\"",
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
@@ -39590,6 +40031,13 @@
 ]
 },
 {
+"th": "หักเงินประกัน (WTS-Living)",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "หักเงินมัดจำ (มี {0} ใบ)",
 "n": 1,
 "files": [
@@ -39706,6 +40154,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "หาที่สร้างบัญชี \"{0}\" ในผังของบริษัทไม่ได้ — เพิ่มบัญชีชื่อนี้เองที่ ผังบัญชี (หมวด {1}) แล้วกดใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
 ]
 },
 {
@@ -40885,6 +41340,27 @@
 ]
 },
 {
+"th": "เงินกองทุนจากสมาชิก",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "เงินกองทุนจากสมาชิก (หมวด 3)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
+"th": "เงินกองทุนแรกเข้า",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "เงินทดรองจ่าย/เงินเบิกล่วงหน้าพนักงาน",
 "n": 1,
 "files": [
@@ -40917,6 +41393,20 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "เงินประกันผู้เช่า",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "เงินประกันผู้เช่า (ช่องบัญชีเงินมัดจำรับของ AIL · วิธีรับชำระหักเงินประกัน)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
 ]
 },
 {
@@ -40959,6 +41449,27 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "เงินมัดจำยกมาที่มี VAT ยังรับไม่ได้ — ภาษีของมัดจำยื่นไปแล้วในระบบเดิม ใส่ยอดมัดจำไม่รวมการคิดภาษีใหม่ (อัตรา 0)",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
+]
+},
+{
+"th": "เงินมัดจำรับ",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "เงินมัดจำรับ-ยกมา",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -41382,6 +41893,20 @@
 ]
 },
 {
+"th": "เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ของบริษัทนี้ — ให้ผู้ดูแลระบบเป็นผู้กด \"ตั้งค่าสำหรับ WTS-Living\"",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
+"th": "เฉพาะผู้ดูแลระบบของบริษัทนี้กดตั้งค่าได้ — ให้ผู้ดูแลระบบเข้าหน้านี้",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "เฉพาะผู้ดูแลระบบนำข้อมูลจาก Express ได้",
 "n": 1,
 "files": [
@@ -41439,6 +41964,13 @@
 },
 {
 "th": "เชื่อมต่อ WTS POS",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
+"th": "เชื่อมต่อ WTS-Living",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Company.tsx"
@@ -44686,6 +45218,20 @@
 ]
 },
 {
+"th": "เลือกบัญชีคู่",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
+]
+},
+{
+"th": "เลือกบัญชีคู่ของยอดยกมา",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
+]
+},
+{
 "th": "เลือกบัญชีค่าใช้จ่าย",
 "n": 1,
 "files": [
@@ -44697,6 +45243,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/files.ts"
+]
+},
+{
+"th": "เลือกบัญชีงบดุล",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -44718,6 +45271,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/bankdocs.ts"
+]
+},
+{
+"th": "เลือกบัญชีย่อย",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -44746,6 +45306,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/runs.ts"
+]
+},
+{
+"th": "เลือกบัญชีใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -45152,6 +45719,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/deposits.ts"
+]
+},
+{
+"th": "เลือกใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -45971,6 +46545,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx"
+]
+},
+{
+"th": "แก้ไขไม่ได้ — มี{0} {1} อ้างถึงอยู่ ต้องแก้ไขหรือยกเลิก {2} ก่อน",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -47304,6 +47885,13 @@
 ]
 },
 {
+"th": "ใช้กับ WTS-Living (หอพัก อพาร์ตเมนต์ นิติบุคคล) — สร้างสิ่งที่ WTS-Living ต้องใช้ที่ยังไม่มี จากผังบัญชีของบริษัทนี้: บัญชีเงินประกันผู้เช่า รายได้รับล่วงหน้า เงินกองทุน บัญชีพักยอดยกมา และบัญชีรายได้ · ประเภทเอกสาร IVL REL AIL RDL · สมุดรายวัน LV · วิธีรับชำระหักเงินประกัน · รหัสรายได้ 50-LIVR-… · รายการที่มีอยู่แล้วไม่ถูกแก้ · กดซ้ำได้ · เสร็จแล้วไปที่ WTS-Living › ตั้งค่าสำหรับ Buddy กด",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "ใช้กับ WTS-POS (หน้าร้าน ครัวกลาง แฟรนไชส์) — สร้างชุดเริ่มต้นที่ยังไม่มี: ประเภทเอกสารเบิกใช้ OUR ตามสูตร · OUW ของเสีย · OUS อาหารพนักงาน · OUQ ชิมคุณภาพ · ครัวกลาง OUP เบิกวัตถุดิบผลิต · JUP รับสินค้าผลิตเสร็จ · รหัสรายได้ POS-FOOD POS-BEV POS-SVC · คลังระหว่างทางของทุกสาขา (TR…) · ลูกค้าแพลตฟอร์ม Grab LINE MAN foodpanda ShopeeFood Robinhood · กดซ้ำได้ (ข้ามที่มีแล้ว) · ระบบอื่นส่งเอกสารเข้ามาด้วยกุญแจ API (เริ่มระบบ › กุญแจ API)",
 "n": 1,
 "files": [
@@ -47619,6 +48207,13 @@
 ]
 },
 {
+"th": "ใต้บัญชีคุม {0} {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "ในช่องด้านบน สำหรับรายการที่ชื่อรหัสอย่างเดียวบอกไม่ได้ เช่น เกณฑ์ราคาสินทรัพย์ ผู้จำหน่ายประจำที่ลงรหัสเฉพาะ",
 "n": 1,
 "files": [
@@ -47707,6 +48302,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "ใบกำกับภาษีตัวจริงของค่าเช่า/ค่าบริการ (docs/19 ข้อ 3)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
 ]
 },
 {
@@ -48263,6 +48865,13 @@
 ]
 },
 {
+"th": "ใบเสร็จรับเงิน/ใบกำกับภาษี (WTS-Living)",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด) ควรแสดงรายการสินค้า/บริการ",
 "n": 1,
 "files": [
@@ -48281,6 +48890,13 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ใบแจ้งหนี้ค่าเช่า/ค่าบริการ (WTS-Living)",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
 ]
 },
 {
@@ -48851,6 +49467,13 @@
 ]
 },
 {
+"th": "ไม่พบบัญชีคู่ของยอดยกมาในผังบัญชีของบริษัทนี้ — เลือกบัญชีใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
+]
+},
+{
 "th": "ไม่พบบัญชีที่ตรงกับผังตัวอย่าง — กำหนดเองที่ การเชื่อมต่อบัญชี",
 "n": 1,
 "files": [
@@ -48869,6 +49492,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "ไม่พบประเภทเอกสาร{0}นี้ในบริษัทนี้ — เลือกประเภทเอกสารใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -49859,6 +50489,13 @@
 ]
 },
 {
+"th": "ไม่ได้กำหนดบัญชีรายได้ — ใช้บัญชีขายเชื่อตามการเชื่อมต่อบัญชี",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
+]
+},
+{
 "th": "ไม่ได้กำหนดบัญชีเฉพาะ — ใช้บัญชีจากแฟ้มหลักและบัญชีเพื่อลงรายวัน",
 "n": 1,
 "files": [
@@ -50465,6 +51102,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "✓ ตั้งค่าแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {

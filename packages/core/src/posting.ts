@@ -309,3 +309,34 @@ export function settlementTotals(x: { settlements: MoneyInput[]; interest?: Mone
 export function postingBalanced(lines: PostingLine[]): boolean {
   return lines.reduce((s, l) => s.plus(l.debit).minus(l.credit), d(0)).abs().lt('0.005');
 }
+
+/**
+ * ยอดยกมาที่ลงบัญชี (HANDOFF ข้อ 86 · WTS-Living ลูกหนี้/เงินประกันยกมา) — ลูกหนี้คงค้างยกมา/มัดจำรับยกมาที่ส่งมาพร้อม "บัญชีคู่ของยอดยกมา"
+ *  ลูกหนี้ยกมา (IV is_opening): Dr ลูกหนี้ ยอดค้าง (รวม VAT) / Cr บัญชีคู่ ยอดเดียวกัน — ไม่ใช่รายได้ปีนี้ ไม่มีบรรทัดภาษี
+ *    ภาษีขายรอเรียกเก็บของบิลยกมาอยู่ในยอดยกมาของระบบเดิมแล้ว (บันทึกยอดยกมา/บัญชีเดิม) — ลงอีก = นับซ้ำ
+ *    VAT ถึงกำหนดตอนรับชำระด้วย RE ตามปกติ (Dr ภาษีขายรอเรียกเก็บ / Cr ภาษีขาย) · ไม่เข้าแฟ้มภาษีตอนยกมา
+ *  มัดจำรับยกมา (AI is_opening): Dr บัญชีคู่ / Cr เงินมัดจำรับ (ช่องของประเภทเอกสาร AI → บัญชีเพื่อลงรายวัน) — ใช้หัก/คืนด้วย RE/RD ได้เหมือนใบมัดจำปกติ
+ *  บัญชีลูกหนี้: ประเภทเอกสาร → ลูกค้า → บัญชีเพื่อลงรายวัน (ลำดับเดียวกับบิลขาย)
+ */
+export interface OpeningHeader { doc_class: string; doc_type_id: string | null; customer_id: string | null; net_amount: MoneyInput; vat_amount: MoneyInput; vat_basis: string | null }
+export const OPENING_POST_CLASSES = ['IV', 'AI'] as const;
+export function openingPosting(h: OpeningHeader, offsetAccountId: string, r: PostingResolver): PostingLine[] {
+  const out: PostingLine[] = [];
+  const pick = (...c: Array<[Layer, string | null | undefined]>): [string | null, Layer] => {
+    for (const [layer, a] of c) if (a) return [a, layer];
+    return [r.def('SUSPENSE'), 'S'];
+  };
+  const put = (acct: [string | null, Layer], amt: Decimal, role: string) => {
+    if (amt.isZero()) return;
+    out.push({ account_id: acct[0], debit: amt.gt(0) ? amt : d(0), credit: amt.gt(0) ? d(0) : amt.neg(), role, layer: acct[1] });
+  };
+  const net = d(h.net_amount), offset: [string, Layer] = [offsetAccountId, '1'];
+  if (h.doc_class === 'IV') {
+    put(pick(['1', r.slot(h.doc_type_id, 'IV', 'AR')], ['2', r.customer(h.customer_id)], ['3', r.def('AR')]), net, 'AR');
+    put(offset, net.neg(), 'OPENING_BALANCE');
+  } else if (h.doc_class === 'AI') {
+    put(offset, net, 'OPENING_BALANCE');
+    put(pick(['1', r.slot(h.doc_type_id, 'AI', 'DEPOSIT_RECEIVED')], ['3', r.def('DEPOSIT_RECEIVED')]), net.neg(), 'DEPOSIT_RECEIVED');
+  }
+  return out;
+}

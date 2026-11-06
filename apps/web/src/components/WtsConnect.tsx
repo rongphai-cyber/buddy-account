@@ -76,3 +76,75 @@ export function WtsPosSetup() {
     </>
   );
 }
+
+type LivingRow = { group: string; key: string; code: string; name: string; status: 'exists' | 'create' | 'set' | 'blocked'; account?: { no: string; name: string } | null; note?: string | null };
+type LivingPlan = { rows: LivingRow[]; create: number; exists: number; blocked: number; created?: string[] };
+const LIVING_GROUP: Record<string, string> = { account: 'บัญชี', role: 'บทบาทบัญชี', book: 'สมุดรายวัน', doc_type: 'ประเภทเอกสาร', payment_method: 'วิธีรับชำระ', item: 'รหัสรายได้', setting: 'ค่าตั้ง', customer: 'ลูกค้า' };
+const LIVING_STATUS: Record<LivingRow['status'], { label: string; done: string; cls: string }> = {
+  exists: { label: 'มีแล้ว', done: 'มีแล้ว', cls: 'st-x' }, create: { label: 'จะสร้าง', done: 'สร้างแล้ว', cls: 'st-n' },
+  set: { label: 'จะตั้งค่า', done: 'ตั้งค่าแล้ว', cls: 'st-n' }, blocked: { label: 'ต้องทำเอง', done: 'ต้องทำเอง', cls: 'st-c' },
+};
+
+/**
+ * ปุ่ม "ตั้งค่าสำหรับ WTS-Living" (HANDOFF ข้อ 86): รายการตรวจ มีแล้ว / จะสร้าง + บัญชีที่แต่ละรายการใช้ → ยืนยัน → สร้างที่ยังไม่มี
+ * เฉพาะผู้ดูแลระบบ · กดซ้ำได้ (ไม่สร้างซ้ำ ไม่ทับของเดิม) · WTS-Living กด "ดึงค่าจาก Buddy" แล้วได้รหัสครบโดยไม่ต้องคีย์
+ */
+export function WtsLivingSetup() {
+  const { me } = useSession();
+  const admin = !!me?.user?.is_admin;
+  const q = useQuery({ queryKey: ['wts-living-setup'], queryFn: () => api.get<LivingPlan>('/api/v1/company/wts-living-setup'), enabled: admin });
+  const qc = useQueryClient();
+  const [ask, setAsk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<LivingPlan | null>(null);
+  const [err, setErr] = useState<unknown>(null);
+  const run = async () => {
+    setAsk(false); setErr(null); setBusy(true);
+    try {
+      const r = await api.post<LivingPlan>('/api/v1/company/wts-living-setup', {});
+      setDone(r);
+      toast(r.created?.length ? `สร้างแล้ว ${r.created.length} รายการ — ไปที่ WTS-Living › ตั้งค่าสำหรับ Buddy แล้วกด "ดึงค่าจาก Buddy"` : 'มีครบแล้ว ไม่ต้องสร้างเพิ่ม');
+      await qc.invalidateQueries({ queryKey: ['wts-living-setup'] });
+    } catch (e) { setErr(e); } finally { setBusy(false); }
+  };
+  const plan = done ?? q.data;
+  return (
+    <>
+      <h2 className="section-title">ตั้งค่าสำหรับ WTS-Living</h2>
+      <div className="card">
+        <p className="hint">ใช้กับ WTS-Living (หอพัก อพาร์ตเมนต์ นิติบุคคล) — สร้างสิ่งที่ WTS-Living ต้องใช้ที่ยังไม่มี จากผังบัญชีของบริษัทนี้:
+          บัญชีเงินประกันผู้เช่า รายได้รับล่วงหน้า เงินกองทุน บัญชีพักยอดยกมา และบัญชีรายได้ · ประเภทเอกสาร IVL REL AIL RDL · สมุดรายวัน LV · วิธีรับชำระหักเงินประกัน · รหัสรายได้ 50-LIVR-… ·
+          รายการที่มีอยู่แล้วไม่ถูกแก้ · กดซ้ำได้ · เสร็จแล้วไปที่ WTS-Living › ตั้งค่าสำหรับ Buddy กด <b>ดึงค่าจาก Buddy</b> (ไม่ต้องคีย์รหัสเอง)</p>
+        {!admin && <p className="warn-text">เฉพาะผู้ดูแลระบบของบริษัทนี้กดตั้งค่าได้ — ให้ผู้ดูแลระบบเข้าหน้านี้</p>}
+        <ErrorBox error={err ?? q.error} />
+        {admin && plan && <>
+          <p className="living-sum">
+            {done ? <><b className="ok">✓ ตั้งค่าแล้ว</b> สร้าง/ตั้งค่า {done.created?.length ?? 0} รายการ · มีอยู่แล้ว {done.exists} รายการ</>
+              : <>จะสร้าง/ตั้งค่า <b>{plan.create}</b> รายการ · มีอยู่แล้ว <b>{plan.exists}</b> รายการ</>}
+            {plan.blocked > 0 && <> · <b className="bad">ต้องทำเอง {plan.blocked} รายการ</b> (ดูหมายเหตุ)</>}
+          </p>
+          <div className="table-wrap living-setup">
+            <table className="grid">
+              <thead><tr><th>กลุ่ม</th><th>รหัส</th><th>รายการ</th><th>สถานะ</th><th>บัญชีที่ใช้</th><th>หมายเหตุ</th></tr></thead>
+              <tbody>{plan.rows.map((r) => (
+                <tr key={`${r.group}:${r.key}`}>
+                  <td data-label="กลุ่ม">{LIVING_GROUP[r.group] ?? r.group}</td>
+                  <td data-label="รหัส" className="mono">{r.code || '—'}</td>
+                  <td data-label="รายการ">{r.name}</td>
+                  <td data-label="สถานะ"><span className={`pill ${LIVING_STATUS[r.status].cls}`}>{done ? LIVING_STATUS[r.status].done : LIVING_STATUS[r.status].label}</span></td>
+                  <td data-label="บัญชีที่ใช้">{r.account ? <><span className="mono">{r.account.no}</span> {r.account.name}</> : r.account === null ? <span className="muted">ตามการเชื่อมต่อบัญชี</span> : '—'}</td>
+                  <td data-label="หมายเหตุ" className="muted small">{r.note ?? ''}</td>
+                </tr>))}</tbody>
+            </table>
+          </div>
+          <div className="theme-acts">
+            <button type="button" className="primary" disabled={busy || (!done && plan.create === 0)} onClick={() => setAsk(true)}>{plan.create === 0 && !done ? 'มีครบแล้ว' : 'ตั้งค่าสำหรับ WTS-Living'}</button>
+            {done && <button type="button" onClick={() => { setDone(null); void q.refetch(); }}>ตรวจอีกครั้ง</button>}
+          </div>
+        </>}
+      </div>
+      {ask && plan && <Confirm title="ตั้งค่าสำหรับ WTS-Living" okText="สร้าง" onOk={run} onClose={() => setAsk(false)}
+        text={<>สร้าง/ตั้งค่า <b>{plan.create}</b> รายการตามตารางในบริษัทนี้? รายการที่มีอยู่แล้ว {plan.exists} รายการไม่ถูกแก้{plan.blocked ? ` · ${plan.blocked} รายการต้องทำเอง (ข้ามไป)` : ''}</>} />}
+    </>
+  );
+}

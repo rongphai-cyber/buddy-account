@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { sql } from 'kysely';
+import { sql, type RawBuilder } from 'kysely';
 import { z } from 'zod';
 import type { Db } from '../db.js';
 import { parse, requireCompany } from '../http.js';
@@ -11,6 +11,9 @@ import { parse, requireCompany } from '../http.js';
  *   - ไม่ส่ง since (หรือ 0) = ข้อมูลทั้งหมดของชนิดที่ขอ (ครั้งแรก) + next_cursor ล่าสุด
  *   - since = ค่า next_cursor ครั้งก่อน → เฉพาะแถวที่เปลี่ยนหลังจากนั้น (ครั้งละไม่เกิน limit รายการใน log · more = ยังมีต่อ)
  *   - op: upsert (data = ค่าปัจจุบัน · status I = เลิกใช้) / delete (ถูกลบ — ให้ลบสำเนา)
+ * ช่องที่เพิ่มภายหลังเป็นแบบเพิ่มอย่างเดียว (โปรแกรมเดิมไม่ใช้ก็ไม่กระทบ) — HANDOFF ข้อ 86 (WTS-Living "ดึงค่าจาก Buddy"):
+ *   doc_type.accounts [{slot, role, account_id}] + vat_basis journal_book_id · item.revenue_account_id (บัญชีรายได้ของกลุ่มบัญชี/รหัสบริการ)
+ *   ชนิดใหม่ default_account (บัญชีตามบทบาท เช่น CASH OPENING_BALANCE) · journal_book (สมุดรายวัน)
  */
 export const CHANGE_TYPES = {
   item: { table: 'md_item', cols: ['code', 'item_type', 'barcode', 'name_th', 'name_en', 'category_code', 'base_unit_id', 'sales_unit_id', 'sales_factor', 'purchase_unit_id', 'purchase_factor', 'price_1', 'price_2', 'price_3', 'price_4', 'price_5', 'vat_code', 'default_supplier_id', 'std_cost', 'status'] },
@@ -20,13 +23,26 @@ export const CHANGE_TYPES = {
   warehouse: { table: 'md_warehouse', cols: ['code', 'name_th', 'name_en', 'branch_id', 'status'] },
   payment_method: { table: 'md_payment_method', cols: ['direction', 'code', 'seq', 'name_th', 'name_en', 'kind', 'gl_account_id', 'bank_account_id', 'creates_cheque', 'status'] },
   bank_account: { table: 'md_bank_account', cols: ['code', 'name', 'branch', 'short_name', 'account_number', 'account_kind', 'gl_account_id', 'currency', 'status'] },
-  doc_type: { table: 'md_doc_type', cols: ['code', 'doc_class', 'module', 'name_th', 'name_en', 'price_type', 'vat_rate', 'is_tax_invoice', 'department_id', 'warehouse_id', 'status'] },
+  doc_type: { table: 'md_doc_type', cols: ['code', 'doc_class', 'module', 'name_th', 'name_en', 'price_type', 'vat_rate', 'is_tax_invoice', 'department_id', 'warehouse_id', 'status', 'vat_basis', 'journal_book_id'] },
   unit: { table: 'md_unit', cols: ['code', 'name_th', 'name_en', 'status'] },
   account: { table: 'gl_account', cols: ['account_no', 'name_th', 'name_en', 'parent_id', 'level', 'account_group', 'is_control', 'normal_side', 'use_department', 'use_project', 'status'] },
   department: { table: 'md_department', cols: ['code', 'name_th', 'name_en', 'status'] },
+  default_account: { table: 'gl_default_account', cols: ['role', 'account_id'] },
+  journal_book: { table: 'gl_journal_book', cols: ['code', 'prefix', 'name_th', 'name_en'] },
 } as const;
+/** ช่องคำนวณ (SQL คงที่ อ้างแถว x) — ไม่มีค่าจากผู้ใช้ */
+const COMPUTED: Partial<Record<keyof typeof CHANGE_TYPES, Record<string, string>>> = {
+  doc_type: { accounts: `(SELECT coalesce(json_agg(json_build_object('slot', a.slot, 'role', a.role, 'account_id', a.account_id) ORDER BY a.slot), '[]'::json) FROM md_doc_type_account a WHERE a.doc_type_id = x.id AND a.deleted_at IS NULL)` },
+  item: { revenue_account_id: `(SELECT g.sales_account_id FROM md_item_account_group g WHERE g.id = x.account_group_id AND g.deleted_at IS NULL)` },
+};
+/** ตารางลูกที่เปลี่ยนแล้วต้องส่งแถวแม่ใหม่ (ช่องคำนวณ) — SQL คงที่: รหัสแถวลูก → รหัสแถวแม่ */
+const RELATED: Partial<Record<keyof typeof CHANGE_TYPES, { table: string; parents: (companyId: string, ids: string[]) => RawBuilder<{ id: string }> }>> = {
+  doc_type: { table: 'md_doc_type_account', parents: (c, ids) => sql`SELECT doc_type_id AS id FROM md_doc_type_account WHERE company_id = ${c} AND id = ANY(${ids}::uuid[])` },
+  item: { table: 'md_item_account_group', parents: (c, ids) => sql`SELECT id FROM md_item WHERE company_id = ${c} AND account_group_id = ANY(${ids}::uuid[])` },
+};
 type ChangeType = keyof typeof CHANGE_TYPES;
 const TYPE_OF = new Map(Object.entries(CHANGE_TYPES).map(([k, v]) => [v.table as string, k as ChangeType]));
+const RELATED_OF = new Map(Object.entries(RELATED).map(([k, v]) => [v!.table, k as ChangeType]));
 
 type Change = { type: ChangeType; id: string; op: 'upsert' | 'delete'; data: Record<string, unknown> | null };
 
@@ -46,7 +62,8 @@ const query = z.object({
 async function current(db: Db, companyId: string, type: ChangeType, ids: string[] | null) {
   const t = CHANGE_TYPES[type];
   if (ids && !ids.length) return [];
-  const cols = sql.join(['id', ...t.cols].map((c) => sql.ref(`x.${c}`)));
+  const extra = Object.entries(COMPUTED[type] ?? {}).map(([name, expr]) => sql`${sql.raw(expr)} AS ${sql.ref(name)}`);
+  const cols = sql.join([...['id', ...t.cols].map((c) => sql.ref(`x.${c}`)), ...extra]);
   const filter = ids ? sql`AND x.id IN (${sql.join(ids.map((x) => sql`${x}::uuid`))})` : sql``;
   const r = await sql<Record<string, unknown>>`SELECT ${cols} FROM ${sql.table(t.table)} x WHERE x.company_id = ${companyId} AND x.deleted_at IS NULL ${filter} ORDER BY x.id`.execute(db);
   return r.rows;
@@ -72,16 +89,25 @@ export function changeRoutes(app: FastifyInstance, db: Db) {
       for (const type of q.types) for (const row of await current(db, a.companyId, type, null)) changes.push({ type, id: String(row.id), op: 'upsert', data: row });
       return { changes, next_cursor: cursor, more: false, full: true };
     }
-    const tables = q.types.map((t) => CHANGE_TYPES[t].table);
+    const tables = [...q.types.map((t) => CHANGE_TYPES[t].table), ...q.types.flatMap((t) => (RELATED[t] ? [RELATED[t]!.table] : []))];
     const upto = await max();
     const log = (await sql<{ seq: string; table_name: string; row_id: string }>`SELECT seq::text AS seq, table_name, row_id FROM sync_change_log
         WHERE company_id = ${a.companyId} AND seq > ${since}::bigint AND seq <= ${upto}::bigint AND table_name IN (${sql.join(tables)}) ORDER BY seq LIMIT ${q.limit}`.execute(db)).rows;
     // แถวเดียวกันเปลี่ยนหลายครั้ง → ส่งครั้งเดียวด้วยค่าล่าสุด
     const byType = new Map<ChangeType, Set<string>>();
+    const children = new Map<ChangeType, string[]>();
     for (const l of log) {
+      const rel = RELATED_OF.get(l.table_name);
+      if (rel) { children.set(rel, [...(children.get(rel) ?? []), l.row_id]); continue; }
       const type = TYPE_OF.get(l.table_name)!;
       if (!byType.has(type)) byType.set(type, new Set());
       byType.get(type)!.add(l.row_id);
+    }
+    // บัญชีของประเภทเอกสาร/กลุ่มบัญชีสินค้าเปลี่ยน → ส่งประเภทเอกสาร/สินค้านั้นใหม่ (ช่องคำนวณ)
+    for (const [type, ids] of children) {
+      const parents = (await RELATED[type]!.parents(a.companyId, ids).execute(db)).rows;
+      if (!byType.has(type)) byType.set(type, new Set());
+      for (const p of parents) if (p.id) byType.get(type)!.add(String(p.id));
     }
     for (const [type, idSet] of byType) {
       const ids = [...idSet];

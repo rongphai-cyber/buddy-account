@@ -2581,6 +2581,8 @@ export interface DocHeaderTable {
   payment_date: Gen<string | null>;
   /** ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04): ลงวันที่ก่อนเริ่มใช้ ไม่ลงบัญชี ไม่ตัดสต๊อก ไม่เข้าแฟ้มภาษี */
   is_opening: Gen<boolean>;
+  /** ยอดยกมาที่ลงบัญชี (ระบบอื่นส่งมา เช่น WTS-Living): บัญชีคู่ของลูกหนี้/มัดจำรับยกมา — ว่าง = ไม่ลงบัญชี (ยอดบัญชีอยู่ที่บันทึกยอดยกมา) */
+  opening_offset_account_id: Gen<string | null>;
   /** เงื่อนไขการชำระ */
   payment_terms: Gen<string | null>;
   /** หมายเหตุสั้น */
