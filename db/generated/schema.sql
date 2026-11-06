@@ -716,6 +716,7 @@ CREATE TABLE sys_company_image (
   mime varchar(30) NOT NULL,
   data text NOT NULL,
   bytes integer NOT NULL,
+  storage_key varchar(200),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -731,8 +732,9 @@ COMMENT ON COLUMN sys_company_image.company_id IS 'บริษัท';
 COMMENT ON COLUMN sys_company_image.kind IS 'LOGO=โลโก้บริษัท SIGN=ลายเซ็น';
 COMMENT ON COLUMN sys_company_image.name IS 'ชื่อ เช่น ลายเซ็นกรรมการผู้จัดการ (โลโก้ = LOGO)';
 COMMENT ON COLUMN sys_company_image.mime IS 'image/png หรือ image/jpeg';
-COMMENT ON COLUMN sys_company_image.data IS 'รูป (base64)';
+COMMENT ON COLUMN sys_company_image.data IS 'รูป (base64) — ว่างเมื่อเก็บในที่เก็บไฟล์ (storage_key)';
 COMMENT ON COLUMN sys_company_image.bytes IS 'ขนาดแฟ้ม (ไบต์)';
+COMMENT ON COLUMN sys_company_image.storage_key IS 'ที่อยู่ไฟล์ในที่เก็บไฟล์ R2 <company_id>/<kind>/<uuid>.<ext> (docs/20) — ว่าง = รูปอยู่ในช่อง data';
 COMMENT ON COLUMN sys_company_image.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN sys_company_image.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN sys_company_image.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -1908,6 +1910,7 @@ CREATE TABLE md_item_image (
   data text NOT NULL,
   thumb text NOT NULL,
   bytes integer NOT NULL,
+  storage_key varchar(200),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -1925,9 +1928,10 @@ COMMENT ON COLUMN md_item_image.line_no IS 'ลำดับรูป';
 COMMENT ON COLUMN md_item_image.is_main IS 'รูปหลัก (แสดงในรายการสินค้าและหน้าค้นหา)';
 COMMENT ON COLUMN md_item_image.name IS 'ชื่อแฟ้มรูปเดิม';
 COMMENT ON COLUMN md_item_image.mime IS 'image/png หรือ image/jpeg';
-COMMENT ON COLUMN md_item_image.data IS 'รูป (base64)';
-COMMENT ON COLUMN md_item_image.thumb IS 'รูปย่อสำหรับรายการ (JPEG ด้านยาวไม่เกิน 160 px, base64)';
+COMMENT ON COLUMN md_item_image.data IS 'รูป (base64) — ว่างเมื่อเก็บในที่เก็บไฟล์ (storage_key)';
+COMMENT ON COLUMN md_item_image.thumb IS 'รูปย่อสำหรับรายการ (JPEG ด้านยาวไม่เกิน 160 px, base64) — อยู่ในฐานข้อมูลเสมอ';
 COMMENT ON COLUMN md_item_image.bytes IS 'ขนาดแฟ้มรูป (ไบต์)';
+COMMENT ON COLUMN md_item_image.storage_key IS 'ที่อยู่รูปเต็มในที่เก็บไฟล์ R2 <company_id>/item-image/<uuid>.<ext> (docs/20) — ว่าง = รูปอยู่ในช่อง data';
 COMMENT ON COLUMN md_item_image.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN md_item_image.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN md_item_image.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';

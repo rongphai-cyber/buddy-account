@@ -1109,5 +1109,14 @@
  "เช่น เลขที่สัญญา/ใบมัดจำในระบบเดิม": "e.g. contract / deposit number in the old system",
  "เอกสารที่ใช้มัดจำนี้": "Documents using this deposit",
  "ใบเสร็จรับเงิน (หักมัดจำ)": "Receipt (deposit deducted)",
- "ไม่มี VAT (ภาษีของมัดจำยื่นไปแล้วในระบบเดิม)": "No VAT (the deposit's VAT was filed in the old system)"
+ "ไม่มี VAT (ภาษีของมัดจำยื่นไปแล้วในระบบเดิม)": "No VAT (the deposit's VAT was filed in the old system)",
+ "ไม่พบไฟล์ของบริษัทนี้": "File not found for this company",
+ "ที่เก็บไฟล์ตอบ {0}{1} ตอน{2} — ตรวจค่า R2 (bucket, สิทธิ์ของ API token) แล้วลองใหม่": "File storage answered {0}{1} while trying to {2} — check the R2 settings (bucket, API token permissions) and try again",
+ "อัปโหลด": "upload",
+ "อ่านไฟล์": "read the file",
+ "ลบไฟล์": "delete the file",
+ "key ของไฟล์ไม่ถูกต้อง": "Invalid file key",
+ "รหัสบริษัทของไฟล์ไม่ถูกต้อง": "Invalid company id for the file",
+ "ชนิดไฟล์ \"{0}\" ใช้ตั้งชื่อไม่ได้ (a-z 0-9 -)": "File kind \"{0}\" cannot be used in a name (a-z 0-9 -)",
+ "อายุที่อยู่แบบเซ็นต้องอยู่ระหว่าง 1 วินาทีถึง 7 วัน": "A signed URL must last between 1 second and 7 days"
 }

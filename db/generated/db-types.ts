@@ -650,10 +650,12 @@ export interface SysCompanyImageTable {
   name: string;
   /** image/png หรือ image/jpeg */
   mime: string;
-  /** รูป (base64) */
+  /** รูป (base64) — ว่างเมื่อเก็บในที่เก็บไฟล์ (storage_key) */
   data: string;
   /** ขนาดแฟ้ม (ไบต์) */
   bytes: number;
+  /** ที่อยู่ไฟล์ในที่เก็บไฟล์ R2 <company_id>/<kind>/<uuid>.<ext> (docs/20) — ว่าง = รูปอยู่ในช่อง data */
+  storage_key: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -1727,12 +1729,14 @@ export interface MdItemImageTable {
   name: Gen<string | null>;
   /** image/png หรือ image/jpeg */
   mime: string;
-  /** รูป (base64) */
+  /** รูป (base64) — ว่างเมื่อเก็บในที่เก็บไฟล์ (storage_key) */
   data: string;
-  /** รูปย่อสำหรับรายการ (JPEG ด้านยาวไม่เกิน 160 px, base64) */
+  /** รูปย่อสำหรับรายการ (JPEG ด้านยาวไม่เกิน 160 px, base64) — อยู่ในฐานข้อมูลเสมอ */
   thumb: string;
   /** ขนาดแฟ้มรูป (ไบต์) */
   bytes: number;
+  /** ที่อยู่รูปเต็มในที่เก็บไฟล์ R2 <company_id>/item-image/<uuid>.<ext> (docs/20) — ว่าง = รูปอยู่ในช่อง data */
+  storage_key: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

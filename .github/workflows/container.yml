@@ -1,0 +1,40 @@
+# สร้าง image ของ Buddy Account บนเครื่องของ GitHub ทุกครั้งที่ push เข้า main (Buddy docs/20 · S0)
+# ไม่ push ขึ้น registry ไม่ deploy ไม่ใช้ความลับ · เปิด image กับ PostgreSQL 16 ชั่วคราวของงานนี้ แล้วรอ /api/v1/health ตอบ
+name: container
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-only-throwaway
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image (no push)
+        run: docker build -t buddy-account:ci .
+      - name: Boot it against PostgreSQL 16 and wait for the health check
+        run: |
+          docker run -d --name app --network host \
+            -e DATABASE_URL=postgres://postgres:ci-only-throwaway@127.0.0.1:5432/postgres \
+            -e BUDDY_SECRET_KEY="$(openssl rand -base64 32)" \
+            buddy-account:ci
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:4100/api/v1/health; then echo; docker logs app 2>&1 | tail -n 5; exit 0; fi
+            sleep 3
+          done
+          docker logs app 2>&1 | tail -n 80
+          exit 1
+      - name: Clean up
+        if: always()
+        run: docker rm -f app || true

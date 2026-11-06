@@ -1,0 +1,23 @@
+# ไม่ส่งเข้า image: ข้อมูล/ความลับในเครื่อง ไฟล์ที่ build ได้ใหม่ และ git
+.git
+.github
+**/node_modules
+.data
+**/.data
+.env
+.env.*
+!.env.example
+.secrets
+**/dist
+**/*.log
+**/coverage
+**/*.tsbuildinfo
+.vscode
+.idea
+.claude
+docs
+dist-installer
+tools/installer/out
+*.cmd
+เริ่มที่นี่_ClaudeCode.md
+TASKS.md

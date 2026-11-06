@@ -5,12 +5,15 @@ import { ITEM_KINDS } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../http.js';
 import { logActivity } from '../audit.js';
-import { decodeImage, imageDataUrl } from './company-images.js';
+import { decodeImage, dropStored, imageDataUrl, storeImage } from './company-images.js';
+import { fileStore, scopedStore } from '../storage/index.js';
 
 /**
  * รูปภาพสินค้า (ข้อกำหนดเจ้าของ 30/10/2569: "สินค้ามีบาร์โค้ด หมายเลขเครื่อง รูปภาพ")
  * สูงสุด 8 รูปต่อรหัส รูปละ ≤ 300 KB (หน้าจอย่อให้เอง) + รูปย่อสำหรับรายการ · รูปแรกเป็นรูปหลักอัตโนมัติ
  * บันทึกทันที (ไม่ต้องกด F9) · ใช้ได้ทุกชนิดรหัส สิทธิ์ตามเมนูของชนิดนั้น (แก้ไข)
+ * FILES_DRIVER=r2 (docs/20 ข้อ 9): รูปเต็มของรูปใหม่อยู่ใน R2 (storage_key) — อ่านรูปตรวจบริษัทของ session ก่อน แล้วส่งต่อไปที่อยู่แบบเซ็นอายุ 5 นาที
+ *   (รูปย่ออยู่ในฐานข้อมูลเสมอ) · รูปเดิมในช่อง data ส่งจากฐานข้อมูลเหมือนเดิม
  */
 export const MAX_ITEM_IMAGES = 8;
 const MAX_THUMB_BYTES = 40 * 1024;
@@ -26,8 +29,17 @@ export function itemImageRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const { imageId } = parse(z.object({ imageId: uuid }), req.params);
     const q = parse(z.object({ size: z.enum(['thumb', 'full']).default('full') }), req.query);
-    const r = (await sql<{ mime: string; data: string; thumb: string }>`SELECT mime, data, thumb FROM md_item_image WHERE id = ${imageId} AND company_id = ${a.companyId} AND deleted_at IS NULL`.execute(db)).rows[0];
+    const r = (await sql<{ mime: string; data: string; thumb: string; storage_key: string | null }>`SELECT mime, data, thumb, storage_key FROM md_item_image WHERE id = ${imageId} AND company_id = ${a.companyId} AND deleted_at IS NULL`.execute(db)).rows[0];
     if (!r) throw notFound('รูป');
+    if (q.size === 'full' && r.storage_key) {
+      const store = scopedStore(fileStore(), a.companyId);
+      const signed = await store.signedUrl(r.storage_key, 300);
+      if (signed) return reply.header('cache-control', 'private, max-age=240').redirect(signed, 302);
+      const f = await store.get(r.storage_key);
+      if (!f) throw notFound('รูป');
+      reply.header('content-type', f.contentType).header('cache-control', 'private, max-age=86400');
+      return f.body;
+    }
     const [mime, b64] = q.size === 'thumb' ? [r.thumb.slice(5, r.thumb.indexOf(';')), r.thumb.slice(r.thumb.indexOf(',') + 1)] : [r.mime, r.data];
     reply.header('content-type', mime).header('cache-control', 'private, max-age=86400');
     return Buffer.from(b64, 'base64');
@@ -57,11 +69,12 @@ export function itemImageRoutes(app: FastifyInstance, db: Db) {
       const it = await itemOf(a.companyId, id);
       const img = decodeImage(b.data);
       if (Buffer.from(b.thumb.slice(b.thumb.indexOf(',') + 1), 'base64').length > MAX_THUMB_BYTES) throw badRequest('รูปย่อใหญ่เกินไป');
+      const st = await storeImage(a.companyId, 'item-image', img);
       return db.transaction().execute(async (tx) => {
         const cur = (await sql<{ n: number; last: number | null }>`SELECT count(*)::int AS n, max(line_no) AS last FROM md_item_image WHERE company_id = ${a.companyId} AND item_id = ${id} AND deleted_at IS NULL`.execute(tx)).rows[0]!;
         if (cur.n >= MAX_ITEM_IMAGES) throw badRequest(`${K.label} ${it.code} มีรูปครบ ${MAX_ITEM_IMAGES} รูปแล้ว — ลบรูปเดิมก่อนเพิ่มรูปใหม่`);
-        const r = (await sql<{ id: string }>`INSERT INTO md_item_image (company_id, item_id, line_no, is_main, name, mime, data, thumb, bytes, created_by)
-            VALUES (${a.companyId}, ${id}, ${(cur.last ?? 0) + 1}, ${cur.n === 0}, ${b.name ?? null}, ${img.mime}, ${img.b64}, ${b.thumb}, ${img.bytes}, ${a.userId}) RETURNING id`.execute(tx)).rows[0]!;
+        const r = (await sql<{ id: string }>`INSERT INTO md_item_image (company_id, item_id, line_no, is_main, name, mime, data, storage_key, thumb, bytes, created_by)
+            VALUES (${a.companyId}, ${id}, ${(cur.last ?? 0) + 1}, ${cur.n === 0}, ${b.name ?? null}, ${img.mime}, ${st.data}, ${st.key}, ${b.thumb}, ${img.bytes}, ${a.userId}) RETURNING id`.execute(tx)).rows[0]!;
         await logActivity(tx, a, { module: 'IC', action: 'ADD_IMAGE', docNo: it.code, table: 'md_item_image', rowId: r.id, detail: { bytes: img.bytes } });
         return { id: r.id };
       });
@@ -85,13 +98,15 @@ export function itemImageRoutes(app: FastifyInstance, db: Db) {
       const a = requireCompany(req);
       const { id, imageId } = parse(z.object({ id: uuid, imageId: uuid }), req.params);
       const it = await itemOf(a.companyId, id);
-      await db.transaction().execute(async (tx) => {
-        const r = (await sql<{ is_main: boolean }>`SELECT is_main FROM md_item_image WHERE id = ${imageId} AND company_id = ${a.companyId} AND item_id = ${id} AND deleted_at IS NULL FOR UPDATE`.execute(tx)).rows[0];
+      const key = await db.transaction().execute(async (tx) => {
+        const r = (await sql<{ is_main: boolean; storage_key: string | null }>`SELECT is_main, storage_key FROM md_item_image WHERE id = ${imageId} AND company_id = ${a.companyId} AND item_id = ${id} AND deleted_at IS NULL FOR UPDATE`.execute(tx)).rows[0];
         if (!r) throw notFound('รูป');
-        await sql`UPDATE md_item_image SET data = '', thumb = '', bytes = 0, is_main = false, deleted_at = now(), updated_by = ${a.userId} WHERE id = ${imageId}`.execute(tx);
+        await sql`UPDATE md_item_image SET data = '', storage_key = NULL, thumb = '', bytes = 0, is_main = false, deleted_at = now(), updated_by = ${a.userId} WHERE id = ${imageId}`.execute(tx);
         if (r.is_main) await sql`UPDATE md_item_image SET is_main = true, updated_by = ${a.userId} WHERE id = (SELECT id FROM md_item_image WHERE company_id = ${a.companyId} AND item_id = ${id} AND deleted_at IS NULL ORDER BY line_no LIMIT 1)`.execute(tx);
         await logActivity(tx, a, { module: 'IC', action: 'DELETE_IMAGE', docNo: it.code, table: 'md_item_image', rowId: imageId });
+        return r.storage_key;
       });
+      await dropStored(a.companyId, key);
       return { ok: true };
     });
   }

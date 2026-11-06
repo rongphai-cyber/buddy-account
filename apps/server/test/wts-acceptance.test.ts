@@ -4,10 +4,10 @@
  */
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { openDatabase, type Database } from '../src/db.js';
+import type { Database } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { buildApp } from '../src/app.js';
-import { loadConfig } from '../src/config.js';
+import { openTestDatabase } from './test-db.js';
 import { taxIdCheckDigit } from '@buddy/core';
 
 const tid = (n: number) => { const b = `0105561${String(n).padStart(5, '0')}`; return b + taxIdCheckDigit(b); };
@@ -32,8 +32,9 @@ beforeAll(async () => {
   process.env.NODE_ENV = 'test';
   process.env.BUDDY_REQUIRE_ADMIN_2FA = '0';
   process.env.BUDDY_SECRET_KEY ??= Buffer.alloc(32, 7).toString('base64');
-  const cfg = { ...loadConfig({}), databaseUrl: undefined, dataDir: 'memory://' };
-  database = await openDatabase(cfg);
+  // PGlite ในหน่วยความจำ หรือ PostgreSQL จริงเมื่อรันจาก tools/cloud/pg-check.mjs (BUDDY_TEST_DATABASE_URL — docs/20)
+  const { cfg, database: d } = await openTestDatabase();
+  database = d;
   await migrate(database, cfg.migrationsDir, () => {});
   app = await buildApp(database, cfg);
 }, 120_000);

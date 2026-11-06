@@ -269,8 +269,9 @@ add(T('sys_company_image', 'รูปของบริษัทสำหรั�
   C('kind', 'code10', nn=True, th='LOGO=โลโก้บริษัท SIGN=ลายเซ็น', chk="kind IN ('LOGO','SIGN')"),
   C('name', 'str120', nn=True, th='ชื่อ เช่น ลายเซ็นกรรมการผู้จัดการ (โลโก้ = LOGO)'),
   C('mime', 'code30', nn=True, th='image/png หรือ image/jpeg'),
-  C('data', 'text', nn=True, th='รูป (base64)'),
+  C('data', 'text', nn=True, th='รูป (base64) — ว่างเมื่อเก็บในที่เก็บไฟล์ (storage_key)'),
   C('bytes', 'int', nn=True, th='ขนาดแฟ้ม (ไบต์)'),
+  C('storage_key', 'str200', th='ที่อยู่ไฟล์ในที่เก็บไฟล์ R2 <company_id>/<kind>/<uuid>.<ext> (docs/20) — ว่าง = รูปอยู่ในช่อง data'),
 ], uniq=[('company_id','kind','name')]))
 
 add(T('sys_report_custom', 'รายงานที่ผู้ใช้สร้างจากรายงานต้นฉบับ (เงื่อนไข + คอลัมน์ที่แสดง)', 'sys', express='สร้างรายงานใหม่ (บทที่ 25 S-RD-03/04)', cols=[
@@ -596,9 +597,10 @@ add(T('md_item_image', 'รูปภาพสินค้า (ข้อกำห
   C('is_main', 'bool', nn=True, d='false', th='รูปหลัก (แสดงในรายการสินค้าและหน้าค้นหา)'),
   C('name', 'str120', th='ชื่อแฟ้มรูปเดิม'),
   C('mime', 'code30', nn=True, th='image/png หรือ image/jpeg'),
-  C('data', 'text', nn=True, th='รูป (base64)'),
-  C('thumb', 'text', nn=True, th='รูปย่อสำหรับรายการ (JPEG ด้านยาวไม่เกิน 160 px, base64)'),
+  C('data', 'text', nn=True, th='รูป (base64) — ว่างเมื่อเก็บในที่เก็บไฟล์ (storage_key)'),
+  C('thumb', 'text', nn=True, th='รูปย่อสำหรับรายการ (JPEG ด้านยาวไม่เกิน 160 px, base64) — อยู่ในฐานข้อมูลเสมอ'),
   C('bytes', 'int', nn=True, th='ขนาดแฟ้มรูป (ไบต์)'),
+  C('storage_key', 'str200', th='ที่อยู่รูปเต็มในที่เก็บไฟล์ R2 <company_id>/item-image/<uuid>.<ext> (docs/20) — ว่าง = รูปอยู่ในช่อง data'),
 ]))
 
 add(T('md_customer', 'ลูกค้า', 'md', express='ARMAS', cols=[

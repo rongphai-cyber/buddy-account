@@ -57,6 +57,7 @@ import { tenantMoveRoutes } from './modules/tenant-move.js';
 import { syncRoutes } from './modules/sync/index.js';
 import { neighborRoutes } from './modules/neighbors.js';
 import { companyImageRoutes } from './modules/company-images.js';
+import { initFileStore, type FileStore } from './storage/index.js';
 import { itemImageRoutes } from './modules/item-images.js';
 import { tradeImportRoutes } from './modules/trade-import.js';
 import { signupRoutes } from './modules/signup.js';
@@ -72,7 +73,9 @@ import { payrollRunRoutes } from './modules/payroll/runs.js';
 import { payrollFormRoutes } from './modules/payroll/forms.js';
 import { payrollFileRoutes } from './modules/payroll/files.js';
 
-export async function buildApp(database: Database, cfg: Config): Promise<FastifyInstance> {
+export async function buildApp(database: Database, cfg: Config, opts: { files?: FileStore } = {}): Promise<FastifyInstance> {
+  // ที่เก็บไฟล์ (docs/20 ข้อ 9): FILES_DRIVER=r2 → Cloudflare R2 · ไม่ตั้ง = local (รูปอยู่ในฐานข้อมูลเหมือนเดิม)
+  initFileStore(cfg, opts.files);
   const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
   await app.register(cookie);
   const { db } = database;
@@ -92,7 +95,7 @@ export async function buildApp(database: Database, cfg: Config): Promise<Fastify
   await syncMenus(db);
   await syncSettingDefs(db);
   const rls = await rlsAvailable(database);
-  if (!rls) app.log.warn('ไม่พบ role buddy_app — ปิด Row-Level Security (ใช้การกรองในโค้ดอย่างเดียว)');
+  if (!rls) app.log.warn('ไม่พบ role buddy_app หรือสลับเป็น buddy_app ไม่ได้ — ปิด Row-Level Security (ใช้การกรองในโค้ดอย่างเดียว · ดู docs/20 ข้อ 4)');
   attachPermissions(app, database, rls);
   app.get('/api/v1/health', async () => ({ ok: true, mode: database.mode, version: process.env.BUDDY_VERSION ?? '0.1.0' }));
   app.get('/api/v1/menu', async () => MENU);

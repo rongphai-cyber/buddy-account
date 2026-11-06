@@ -8,6 +8,7 @@
  *   reset-2fa <user>                      ล้างยืนยันตัวตนสองขั้น (ผู้ดูแลทำมือถือหายและไม่มีรหัสสำรอง) — เข้าระบบแล้วตั้งใหม่
  *   posting-compare <รหัสบริษัท>          เทียบเครื่องลงบัญชีกับใบสำคัญที่ Express ลงไว้ (เกณฑ์ P3 ≥ 97%)
  *   tenant-export <รหัสลูกค้า> <แฟ้ม>     ส่งออกลูกค้าทั้งรายเป็นแฟ้ม .buddy-tenant (T0.18 ย้ายไปเซิร์ฟเวอร์แยก) — รหัสผ่านของแฟ้มจาก BUDDY_TENANT_PASSPHRASE
+ *   files-migrate [--apply]              ย้ายรูปเดิมในฐานข้อมูลขึ้นที่เก็บไฟล์ R2 (docs/20 ข้อ 9) — ไม่ใส่ --apply = ทดลอง ไม่เปลี่ยนอะไร
  *   tenant-import <แฟ้ม>                  นำเข้าแฟ้ม .buddy-tenant ที่เครื่องปลายทาง แล้วตรวจยอดใบสำคัญรายบริษัท
  */
 import { mkdirSync } from 'node:fs';
@@ -28,6 +29,13 @@ const { db } = database;
 try {
   await migrate(database, cfg.migrationsDir);
   if (cmd === 'migrate') { /* done */ }
+  else if (cmd === 'files-migrate') {
+    const { migrateFiles } = await import('./storage/migrate-files.js');
+    const { fileStoreFromEnv, localFilesDir } = await import('./storage/files.js');
+    const { resolve } = await import('node:path');
+    const { REPO_ROOT } = await import('./config.js');
+    await migrateFiles(database, fileStoreFromEnv(process.env, localFilesDir(resolve(REPO_ROOT, '.data'))), { apply: args.includes('--apply') });
+  }
   else if (cmd === 'create-admin') {
     const [username, name, password] = args;
     if (!username || !name || !password) throw new Error('ใช้: create-admin <user> <ชื่อ> <รหัสผ่าน>');

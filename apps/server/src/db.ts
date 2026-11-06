@@ -133,10 +133,23 @@ function scoped(base: Db): Db {
   });
 }
 
-/** RLS ใช้ได้เมื่อมี role buddy_app และผู้ใช้ที่เชื่อมต่อสลับเป็น role นี้ได้ (โฮสต์บางแห่งสร้าง role ไม่ได้ → ทำงานแบบเดิม) */
+/**
+ * RLS ใช้ได้เมื่อมี role buddy_app และผู้ใช้ที่เชื่อมต่อ "สลับเป็น role นี้ได้จริง" (โฮสต์บางแห่งสร้าง role ไม่ได้ → ทำงานแบบเดิม)
+ * ลอง SET LOCAL ROLE ในทรานแซกชันที่ยกเลิกทิ้ง — PostgreSQL 16+ เป็นสมาชิก (MEMBER) ได้แต่ SET ROLE ไม่ได้ (docs/20 ข้อ 4)
+ */
 export async function rlsAvailable(database: Database): Promise<boolean> {
-  const r = await sql<{ ok: boolean }>`SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${APP_ROLE}) AND pg_has_role(current_user, ${APP_ROLE}, 'MEMBER') AS ok`.execute(database.raw);
-  return !!r.rows[0]?.ok;
+  const r = await sql<{ ok: boolean }>`SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${APP_ROLE}) AS ok`.execute(database.raw);
+  if (!r.rows[0]?.ok) return false;
+  const probe = new Error('rls-probe');
+  try {
+    await database.raw.transaction().execute(async (tx) => {
+      await sql.raw(`SET LOCAL ROLE ${APP_ROLE}`).execute(tx);
+      throw probe;
+    });
+  } catch (e) {
+    return e === probe;
+  }
+  return false;
 }
 
 /** ทำงานในขอบเขตของบริษัท (ใต้ RLS) — ทุก query ผ่าน database.db ภายใน fn ใช้ทรานแซกชันนี้ */

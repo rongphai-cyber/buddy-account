@@ -3421,6 +3421,15 @@
 ]
 },
 {
+"th": "รูป",
+"n": 6,
+"files": [
+"apps/web/src/pages/items/Items.tsx",
+"apps/server/src/modules/company-images.ts",
+"apps/server/src/modules/item-images.ts"
+]
+},
+{
 "th": "วันที่ขาย",
 "n": 6,
 "files": [
@@ -4127,15 +4136,6 @@
 "packages/core/src/payroll-import.ts",
 "packages/core/src/payroll.ts",
 "packages/core/src/settings.ts"
-]
-},
-{
-"th": "รูป",
-"n": 5,
-"files": [
-"apps/web/src/pages/items/Items.tsx",
-"apps/server/src/modules/company-images.ts",
-"apps/server/src/modules/item-images.ts"
 ]
 },
 {
@@ -5240,6 +5240,13 @@
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "key ของไฟล์ไม่ถูกต้อง",
+"n": 3,
+"files": [
+"apps/server/src/storage/files.ts"
 ]
 },
 {
@@ -10151,6 +10158,13 @@
 ]
 },
 {
+"th": "ลบไฟล์",
+"n": 2,
+"files": [
+"apps/server/src/storage/files.ts"
+]
+},
+{
 "th": "ลักษณะ",
 "n": 2,
 "files": [
@@ -10765,6 +10779,13 @@
 ]
 },
 {
+"th": "อัปโหลด",
+"n": 2,
+"files": [
+"apps/server/src/storage/files.ts"
+]
+},
+{
 "th": "อำเภอ/เขต",
 "n": 2,
 "files": [
@@ -10778,6 +10799,13 @@
 "files": [
 "apps/server/src/modules/company.ts",
 "apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "อ่านไฟล์",
+"n": 2,
+"files": [
+"apps/server/src/storage/files.ts"
 ]
 },
 {
@@ -12296,6 +12324,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Etax.tsx"
+]
+},
+{
+"th": "(ทดลอง — ใส่ --apply เพื่อย้ายจริง)",
+"n": 1,
+"files": [
+"apps/server/src/storage/migrate-files.ts"
 ]
 },
 {
@@ -14259,6 +14294,13 @@
 ]
 },
 {
+"th": "FILES_DRIVER=\"{0}\" ไม่รู้จัก — ใช้ local หรือ r2",
+"n": 1,
+"files": [
+"apps/server/src/storage/files.ts"
+]
+},
+{
 "th": "GL ใบสำคัญ (สมุดรายวัน)",
 "n": 1,
 "files": [
@@ -14396,6 +14438,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "R2_ACCOUNT_ID ต้องเป็นรหัสบัญชี Cloudflare 32 ตัว",
+"n": 1,
+"files": [
+"apps/server/src/storage/files.ts"
 ]
 },
 {
@@ -15502,6 +15551,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "{0}: {1} รูป {2} MB {3}",
+"n": 1,
+"files": [
+"apps/server/src/storage/migrate-files.ts"
 ]
 },
 {
@@ -20993,6 +21049,13 @@
 ]
 },
 {
+"th": "ชนิดไฟล์ \"{0}\" ใช้ตั้งชื่อไม่ได้ (a-z 0-9 -)",
+"n": 1,
+"files": [
+"apps/server/src/storage/files.ts"
+]
+},
+{
 "th": "ชมพูกุหลาบ",
 "n": 1,
 "files": [
@@ -22596,6 +22659,13 @@
 ]
 },
 {
+"th": "ตั้งค่า R2 ไม่ครบ (R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)",
+"n": 1,
+"files": [
+"apps/server/src/storage/files.ts"
+]
+},
+{
 "th": "ตั้งค่าครั้งแรก",
 "n": 1,
 "files": [
@@ -24133,6 +24203,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AuxTools.tsx"
+]
+},
+{
+"th": "ที่เก็บไฟล์ตอบ {0}{1} ตอน{2} — ตรวจค่า R2 (bucket, สิทธิ์ของ API token) แล้วลองใหม่",
+"n": 1,
+"files": [
+"apps/server/src/storage/files.ts"
 ]
 },
 {
@@ -33005,6 +33082,13 @@
 ]
 },
 {
+"th": "ยังไม่ได้ตั้งที่เก็บไฟล์ (initFileStore)",
+"n": 1,
+"files": [
+"apps/server/src/storage/index.ts"
+]
+},
+{
 "th": "ยังไม่ได้ตั้งรายการหัก — ใบเสร็จจะใช้รหัสค่าใช้จ่ายหรือรายการแบบครั้งก่อนของลูกค้า",
 "n": 1,
 "files": [
@@ -33278,6 +33362,13 @@
 ]
 },
 {
+"th": "ย้ายจริงได้เมื่อตั้ง FILES_DRIVER=r2 และค่า R2_* ครบแล้ว",
+"n": 1,
+"files": [
+"apps/server/src/storage/migrate-files.ts"
+]
+},
+{
 "th": "ย้ายทั้งหมดเป็นขอคืนไม่ได้",
 "n": 1,
 "files": [
@@ -33303,6 +33394,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ย้ายแล้ว {0}/{1}",
+"n": 1,
+"files": [
+"apps/server/src/storage/migrate-files.ts"
 ]
 },
 {
@@ -33940,6 +34038,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
+"th": "รหัสบริษัทของไฟล์ไม่ถูกต้อง",
+"n": 1,
+"files": [
+"apps/server/src/storage/files.ts"
 ]
 },
 {
@@ -41234,6 +41339,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
+]
+},
+{
+"th": "อายุที่อยู่แบบเซ็นต้องอยู่ระหว่าง 1 วินาทีถึง 7 วัน",
+"n": 1,
+"files": [
+"apps/server/src/storage/sigv4.ts"
 ]
 },
 {
@@ -49952,7 +50064,7 @@
 ]
 },
 {
-"th": "ไม่พบ role buddy_app — ปิด Row-Level Security (ใช้การกรองในโค้ดอย่างเดียว)",
+"th": "ไม่พบ role buddy_app หรือสลับเป็น buddy_app ไม่ได้ — ปิด Row-Level Security (ใช้การกรองในโค้ดอย่างเดียว · ดู docs/20 ข้อ 4)",
 "n": 1,
 "files": [
 "apps/server/src/app.ts"
@@ -50446,6 +50558,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/JournalPicker.tsx"
+]
+},
+{
+"th": "ไม่พบไฟล์ของบริษัทนี้",
+"n": 1,
+"files": [
+"apps/server/src/storage/files.ts"
 ]
 },
 {
@@ -51615,6 +51734,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/MasterBar.tsx"
+]
+},
+{
+"th": "→ ย้ายขึ้นที่เก็บไฟล์",
+"n": 1,
+"files": [
+"apps/server/src/storage/migrate-files.ts"
 ]
 },
 {
