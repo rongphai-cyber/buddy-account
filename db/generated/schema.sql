@@ -3067,6 +3067,7 @@ CREATE TABLE doc_link (
   to_header_id uuid NOT NULL,
   link_type varchar(10) NOT NULL,
   amount numeric(18,2),
+  vat_amount numeric(18,2),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -3083,6 +3084,7 @@ COMMENT ON COLUMN doc_link.from_header_id IS 'เอกสารต้นทา�
 COMMENT ON COLUMN doc_link.to_header_id IS 'เอกสารปลายทาง (IV, RR, SR …)';
 COMMENT ON COLUMN doc_link.link_type IS 'FULFIL (SO→IV, PO→RR) CONVERT (QT→SO) DEPOSIT (AI→IV/HS/RE/RD, AE→RR) ADJUST (IV→DR/SR, RR→CP/GR)';
 COMMENT ON COLUMN doc_link.amount IS 'จำนวนเงินที่หัก/อ้างถึง (เช่น ยอดหักมัดจำ)';
+COMMENT ON COLUMN doc_link.vat_amount IS 'ภาษีขายที่ลดของยอดนี้ (ใบคืนเงินมัดจำ RD ที่คืนมัดจำมี VAT = ใบลดหนี้ · 0 = มัดจำไม่มี VAT · ว่าง = ลิงก์ชนิดอื่น)';
 COMMENT ON COLUMN doc_link.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN doc_link.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN doc_link.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';

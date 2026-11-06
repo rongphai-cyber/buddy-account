@@ -2807,6 +2807,8 @@ export interface DocLinkTable {
   link_type: string;
   /** จำนวนเงินที่หัก/อ้างถึง (เช่น ยอดหักมัดจำ) */
   amount: Gen<string | null>;
+  /** ภาษีขายที่ลดของยอดนี้ (ใบคืนเงินมัดจำ RD ที่คืนมัดจำมี VAT = ใบลดหนี้ · 0 = มัดจำไม่มี VAT · ว่าง = ลิงก์ชนิดอื่น) */
+  vat_amount: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

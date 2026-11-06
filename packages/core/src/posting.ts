@@ -28,7 +28,34 @@ export const chargeDeducted = (c: Pick<PostCharge, 'amount' | 'vat_type' | 'vat_
  * มัดจำที่ใบเสร็จ (RE) นำมาหักแทนเงินรับ หรือที่ใบคืนเงินมัดจำ (RD) คืนให้ลูกค้า (doc_link DEPOSIT AI → RE/RD)
  * doc_type_id = ประเภทเอกสารของใบมัดจำ — Dr บัญชีเงินมัดจำรับที่ใบมัดจำลงไว้ (ช่องของประเภทเอกสาร AI) → บัญชีเพื่อลงรายวัน
  */
-export interface PostDeposit { amount: MoneyInput; doc_type_id: string | null }
+export interface PostDeposit { amount: MoneyInput; doc_type_id: string | null; /** RD คืนมัดจำมี VAT: ภาษีขายที่ลดของใบมัดจำนี้ (doc_link.vat_amount) */ vat?: MoneyInput | null; /** ประเภทราคาของใบมัดจำ (ยอดคืนอยู่ในหน่วยเดียวกับใบมัดจำ) */ price_type?: string | null }
+
+/**
+ * แยกยอดคืนมัดจำ (ในหน่วยของใบมัดจำ) เป็นมูลค่าก่อน VAT + VAT + เงินที่จ่ายจริง
+ *  แยก VAT ('2'): ก่อน VAT = ยอดคืน · จ่าย = ยอดคืน + VAT · รวม VAT ('1'): ก่อน VAT = ยอดคืน − VAT · จ่าย = ยอดคืน · ไม่มี VAT: ทั้งหมด = ยอดคืน
+ */
+export function depositRefundParts(amount: MoneyInput, priceType: string | null | undefined, vat: MoneyInput | null | undefined) {
+  const x = d(amount), v = d(vat ?? 0);
+  return { base: priceType === '1' ? x.minus(v) : x, vat: v, paid: priceType === '2' ? x.plus(v) : x };
+}
+
+/**
+ * ภาษีขายที่ลดเมื่อคืนมัดจำที่มี VAT (ใบคืนเงินมัดจำ RD = ใบลดหนี้ — เจ้าของ 06/11/2569)
+ *  แยก VAT: VAT = ปัดสองตำแหน่ง(ยอดคืน × อัตรา / 100) · รวม VAT: ก่อน VAT = ปัด(ยอดคืน × 100 / (100 + อัตรา)) · VAT = ยอดคืน − ก่อน VAT
+ *  ปิดยอดตรงสตางค์: คืนแล้วคงเหลือ 0 และใบมัดจำไม่ถูกใช้ในเอกสารอื่นนอกจากใบคืนเงิน → VAT = VAT ของใบมัดจำ − VAT ของใบคืนเงินอื่นที่ยังใช้
+ *  (บัญชีเงินมัดจำรับและภาษีขายของใบมัดจำจึงเหลือ 0.00 พอดี)
+ * deposit_vat = VAT ของใบมัดจำ (0 = ไม่มี VAT) · outstanding = คงเหลือก่อนใบนี้ (รวมยอดที่ใบนี้ใช้ไว้เดิม)
+ */
+export function depositRefundVat(x: { amount: MoneyInput; price_type: string | null | undefined; vat_rate: MoneyInput | null | undefined; deposit_vat: MoneyInput | null | undefined;
+  outstanding?: MoneyInput | null; other_rd_vat?: MoneyInput | null; other_use?: boolean }) {
+  const amt = d(x.amount), rate = d(x.vat_rate ?? 0), pt = x.price_type ?? '0';
+  const r2 = (v: Decimal) => v.toDecimalPlaces(2);
+  if (d(x.deposit_vat ?? 0).isZero() || pt === '0' || rate.isZero()) return { ...depositRefundParts(amt, '0', 0), exact: false };
+  const exact = x.outstanding !== null && x.outstanding !== undefined && !x.other_use && d(x.outstanding).minus(amt).isZero();
+  const vat = exact ? d(x.deposit_vat ?? 0).minus(d(x.other_rd_vat ?? 0))
+    : pt === '2' ? r2(amt.times(rate).div(100)) : amt.minus(r2(amt.times(100).div(rate.plus(100))));
+  return { ...depositRefundParts(amt, pt, vat), exact };
+}
 export interface ItemGroup { inv: string | null; cogs: string | null; sales: string | null; sret: string | null; pur: string | null; pret: string | null }
 
 export interface PostingResolver {
@@ -181,8 +208,15 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     for (const p of pays) (isRe ? D : C)(payAcct(p), d(p.amount), 'PAYMENT');
   } else if (cls === 'RD') {
     // คืนเงินมัดจำ: Dr เงินมัดจำรับล่วงหน้า (ตามใบมัดจำ) / Cr เงินสด (ช่องของประเภทเอกสาร → บัญชีเพื่อลงรายวัน) + วิธีจ่าย (โอน เช็ค)
-    debitDeposits();
-    C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(depTotal), 'CASH');
+    // มัดจำมี VAT (= ใบลดหนี้ 06/11/2569): Dr มัดจำรับ = มูลค่าก่อน VAT + Dr ภาษีขาย = VAT รวม · เงินที่จ่าย = ก่อน VAT + VAT
+    let rdVat = d(0), rdPaid = d(0);
+    for (const x of deps) {
+      const p = depositRefundParts(x.amount, x.price_type, x.vat);
+      D(pick(['1', r.slot(x.doc_type_id, 'AI', 'DEPOSIT_RECEIVED')], ['3', r.def('DEPOSIT_RECEIVED')]), p.base, 'DEPOSIT_RECEIVED');
+      rdVat = rdVat.plus(p.vat); rdPaid = rdPaid.plus(p.paid);
+    }
+    D(pick(['3', r.def('OUTPUT_VAT')]), rdVat, 'OUTPUT_VAT');
+    C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(rdPaid), 'CASH');
     for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
   } else if (cls === 'AI' || cls === 'OI') {
     // ภาษีถูกหัก ณ ที่จ่าย: Dr ภาษีจ่ายล่วงหน้า แทนเงินสดส่วนนั้น

@@ -4,6 +4,10 @@
  *  ลูกค้า + ใบรับเงินมัดจำ (AI ไม่มี VAT) ที่จะคืนพร้อมยอด (≤ คงเหลือ) + จ่ายเงินสด/โอน/เช็ค (วิธีจ่ายชำระ ใช้ส่วนชำระเดียวกับใบสำคัญจ่าย)
  *  ลงบัญชี Dr เงินมัดจำรับล่วงหน้า (ตามใบมัดจำ) / Cr เงินสด-ธนาคาร-เช็คจ่าย · doc_link DEPOSIT AI → RD ยอดคงเหลือของมัดจำลดลง
  *  ยกเลิก = สถานะ C → ยอดมัดจำกลับคืน (view ไม่นับเอกสารที่ยกเลิก) · ใบมัดจำที่มีใบคืนเงินอ้างอยู่ยกเลิก/ลบไม่ได้ (usedBy)
+ * มัดจำที่มี VAT (06/11/2569 เจ้าของ "คืนเงินมัดจำที่มี VAT ด้วยใบลดหนี้"): ใบคืนเงินมัดจำ = ใบลดหนี้ (ม.86/10)
+ *  ยอดคืนอยู่ในหน่วยของใบมัดจำ (แยก VAT: ก่อน VAT · รวม VAT: รวม VAT) → แยกก่อน VAT / VAT / เงินที่จ่าย ต่อใบมัดจำ (depositRefundVat)
+ *  ลงบัญชี Dr มัดจำรับ (ก่อน VAT) + Dr ภาษีขาย / Cr เงินสด-ธนาคาร (เงินที่จ่าย) · แฟ้มภาษีขายเป็นรายการติดลบแบบใบลดหนี้ งวด = วันที่ใบคืนเงิน
+ *  เหตุผลที่ลดหนี้ (บังคับ) = ช่องหมายเหตุ (remark) · อ้างใบกำกับเดิม = ref_no/ref_date (ใบมัดจำใบแรก) + คำอธิบายในแฟ้มภาษี (ทุกใบ)
  */
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
@@ -46,8 +50,12 @@ async function saveRefund(db: Db, a: Ctx, id: string | null, b: Body) {
   if (!party) throw badRequest('ไม่พบลูกค้านี้', [{ field: 'party_id', message: 'เลือกลูกค้า' }]);
   await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }, { table: 'md_salesperson', id: b.salesperson_id, field: 'salesperson_id' }]);
   const dep = await checkReceivedDeposits(db, a.companyId, { use: 'RD', customerId: party.id, partyCode: party.code, ownId: id, date: b.doc_date, deposits: b.deposits });
+  // ใบลดหนี้ต้องระบุเหตุผล (ม.86/10)
+  if (dep.hasVat && !b.remark) throw badRequest('คืนมัดจำที่มีภาษีมูลค่าเพิ่ม = ใบลดหนี้ ต้องระบุเหตุผล — ป้อนเหตุผลในช่องหมายเหตุ เช่น ยกเลิกสัญญา คืนเงินมัดจำ', [{ field: 'remark', message: 'ป้อนเหตุผลที่ลดหนี้' }]);
   const methods = await loadMethods(db, a.companyId, 'P', b.payments);
-  const total = dep.total.toFixed(2);
+  const refund = dep.total.toFixed(2);
+  // เงินที่จ่ายจริง: แยก VAT = ยอดคืน + VAT · รวม VAT/ไม่มี VAT = ยอดคืน
+  const total = dep.paid.toFixed(2);
   const t = settlementTotals({ settlements: [total], payments: b.payments.map((p) => p.amount), cash: b.cash_amount });
   if (d(t.cash).lt(0)) throw badRequest(`จ่ายโดยวิธีอื่นรวม ${t.other} มากกว่ายอดคืนเงินมัดจำ ${total} — ลดยอดจ่ายโดยวิธีอื่น`);
   if (!t.ok) throw badRequest(`ยอดคืนเงินมัดจำ ${total} ไม่เท่ากับยอดจ่ายจริง ${t.paid} — ล้างช่องเงินสดให้คำนวณเอง หรือแก้ยอดจ่ายโดยวิธีอื่น`);
@@ -59,7 +67,10 @@ async function saveRefund(db: Db, a: Ctx, id: string | null, b: Body) {
     doc_type_id: dt.id, doc_class: K.cls, module: K.module, doc_date: b.doc_date, payment_date: b.doc_date, customer_id: party.id, supplier_id: null,
     party_name: name || null, party_address: [party.address_1, party.address_2, party.address_3, party.zip_code].filter(Boolean).join(' ').slice(0, 500) || null,
     party_tax_id: party.tax_id, party_tax_branch_no: party.tax_branch_no, your_ref: b.your_ref, remark: b.remark, department_id: b.department_id ?? dt.department_id, salesperson_id: b.salesperson_id,
-    price_type: '0', vat_rate: '0', vat_amount: '0', amount: total, amount_after_discount: total, deposit_amount: total, net_amount: total,
+    // มี VAT: ประเภทราคา/อัตราตามใบมัดจำ · taxable_amount = ยอดคืน (รวม VAT: แฟ้มภาษีหัก VAT ออกเอง → มูลค่า = ก่อน VAT รวม) · ref = ใบกำกับภาษีเดิม (ใบมัดจำใบแรก)
+    price_type: dep.price_type, vat_rate: dep.vat_rate, vat_amount: dep.vat.toFixed(2), taxable_amount: dep.hasVat ? refund : '0', vat_basis: dep.hasVat ? '1' : null, vat_date: dep.hasVat ? b.doc_date : null,
+    ref_no: dep.hasVat ? dep.rows[0]!.doc_no : null, ref_date: dep.hasVat ? dep.rows[0]!.doc_date : null,
+    amount: refund, amount_after_discount: refund, deposit_amount: refund, net_amount: total,
     wht_amount: '0', cash_amount: t.cash, cheque_amount: t.other, updated_by: a.userId,
   };
   return db.transaction().execute(async (tx) => {
@@ -85,7 +96,7 @@ async function saveRefund(db: Db, a: Ctx, id: string | null, b: Body) {
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
     await logActivity(tx, a, { module: K.module, action: id ? 'EDIT' : 'ADD', docNo, table: 'doc_header', rowId: hid, detail: { deposits: dep.rows } });
-    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: total, cash_amount: t.cash, warnings: [] as string[] };
+    return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: total, vat_amount: dep.vat.toFixed(2), cash_amount: t.cash, warnings: [] as string[] };
   });
 }
 

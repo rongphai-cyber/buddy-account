@@ -200,7 +200,13 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const q = parse(z.object({ module: z.enum(['AR', 'AP']), party_id: uuid, invoice_id: uuid.optional() }), req.query);
     const own = q.invoice_id ? sql`(SELECT coalesce(sum(l.amount), 0) FROM doc_link l WHERE l.from_header_id = o.header_id AND l.to_header_id = ${q.invoice_id} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL)` : sql`0`;
-    const rows = (await sql`SELECT o.header_id, o.doc_class, o.doc_no, o.doc_date, o.due_date, o.price_type, o.amount, (SELECT h.vat_amount FROM doc_header h WHERE h.id = o.header_id) AS vat_amount, o.outstanding + ${own} AS outstanding, ${own} AS own
+    // ใบคืนเงินมัดจำที่มี VAT (06/11/2569): อัตรา VAT + VAT ของใบคืนเงินอื่นที่ยังใช้ + มีเอกสารชนิดอื่นใช้มัดจำนี้ไหม (หน้าจอคำนวณ VAT ปิดยอดแบบเดียวกับเซิร์ฟเวอร์)
+    const notOwn = q.invoice_id ? sql`AND t.id <> ${q.invoice_id}` : sql``;
+    const links = (rd: boolean, expr: ReturnType<typeof sql>) => sql`(SELECT ${expr} FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id
+        WHERE l.from_header_id = o.header_id AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL ${notOwn} AND ${rd ? sql`t.doc_class = 'RD'` : sql`t.doc_class <> 'RD'`})`;
+    const rows = (await sql`SELECT o.header_id, o.doc_class, o.doc_no, o.doc_date, o.due_date, o.price_type, o.amount, (SELECT h.vat_amount FROM doc_header h WHERE h.id = o.header_id) AS vat_amount,
+        (SELECT h.vat_rate FROM doc_header h WHERE h.id = o.header_id) AS vat_rate, o.outstanding + ${own} AS outstanding, ${own} AS own,
+        ${links(true, sql`coalesce(sum(l.vat_amount), 0)`)} AS rd_vat, ${links(false, sql`count(*) > 0`)} AS other_use
       FROM v_deposit_outstanding o WHERE o.company_id = ${a.companyId} AND o.module = ${q.module} AND o.${sql.ref(q.module === 'AR' ? 'customer_id' : 'supplier_id')} = ${q.party_id}
         AND (o.outstanding > 0 OR ${own} <> 0) ORDER BY o.doc_date, o.doc_no`.execute(db)).rows;
     return { rows };

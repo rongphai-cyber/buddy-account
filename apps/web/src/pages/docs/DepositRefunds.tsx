@@ -18,11 +18,12 @@ import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
-import { DepositPickTable, depositsBody, depositsFrom, depositTotal, type DepositPicks } from './DepositPick';
+import { DepositPickTable, depositsBody, depositsFrom, refundTotals, savedRefundVat, useOpenDeposits, type DepositPicks } from './DepositPick';
 
 /**
  * คืนเงินมัดจำ (RD — Buddy เพิ่ม 05/11/2569 · Express ไม่มีเอกสารนี้): คืนยอดคงเหลือของใบรับเงินมัดจำให้ลูกค้า
  * เช่น เงินประกันห้องพักตอนย้ายออก หลังหักค่าเช่า/ค่าเสียหายด้วยใบเสร็จแล้ว · ลงบัญชี Dr เงินมัดจำรับ / Cr เงินสด-ธนาคาร
+ * มัดจำที่มี VAT (06/11/2569): ใบคืนเงินมัดจำ = ใบลดหนี้ — Dr มัดจำรับ (ก่อน VAT) + Dr ภาษีขาย / Cr เงินที่จ่าย · ต้องป้อนเหตุผล (ช่องหมายเหตุ)
  */
 
 /* ---------------------------------------------------------------- รายการ */
@@ -44,7 +45,7 @@ export function DepositRefundListPage() {
   return (
     <div className="page" data-tone="sales">
       <PageHead eyebrow={`ขาย › ${K.label}`} title={K.label}
-        lead="คืนยอดคงเหลือของใบรับเงินมัดจำให้ลูกค้า (เช่น เงินประกันตอนย้ายออก) จ่ายเงินสด/โอน/เช็ค · ยอดมัดจำคงเหลือลดลงทันที · ยกเลิกแล้วยอดมัดจำกลับคืน · บันทึกแล้วลงบัญชีทันที"
+        lead="คืนยอดคงเหลือของใบรับเงินมัดจำให้ลูกค้า (เช่น เงินประกันตอนย้ายออก) จ่ายเงินสด/โอน/เช็ค · มัดจำที่มี VAT ออกเป็นใบลดหนี้ · ยอดมัดจำคงเหลือลดลงทันที · ยกเลิกแล้วยอดมัดจำกลับคืน · บันทึกแล้วลงบัญชีทันที"
         actions={can('add') && <button className={cx('primary', tt.color && 'book-btn')} style={bookStyle(tt.color)} onClick={() => nav(tt.newUrl(`${K.route}/new`))}>+ {K.label} {tt.cur ? `${tt.cur.code} ` : ''}<kbd>Ins</kbd></button>} />
       {tt.tabs()}
       <div className="toolbar">
@@ -78,7 +79,7 @@ export function DepositRefundListPage() {
 
 /* ---------------------------------------------------------------- หน้าเอกสาร */
 interface Head { doc_type_id: string; doc_date: string; party: { id: string; code: string; name?: string | null } | null; department_id: string; salesperson_id: string; your_ref: string; remark: string; cash: string }
-interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; branch_id: string; deposits: Array<{ header_id: string; doc_no: string; amount: string }>; payments: Parameters<typeof paysFrom>[0] }
+interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; branch_id: string; deposits: Array<{ header_id: string; doc_no: string; amount: string; vat_amount?: string | null }>; payments: Parameters<typeof paysFrom>[0] }
 
 export function DepositRefundFormPage() {
   const { id: routeId } = useParams();
@@ -128,7 +129,10 @@ export function DepositRefundFormPage() {
   const ed = useDocEdit({ id: id ?? undefined, allowed: !!id && !roBase, dirty, onSave: (n) => void save(!!n), onDiscard: () => { setH(null); setDirty(false); } });
   const ro = roBase || ed.locked;
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
-  const total = depositTotal(deps).toFixed(2);
+  // ยอดที่จ่ายจริง = ยอดคืน (+ VAT เมื่อมัดจำแยก VAT) · มี VAT = ใบลดหนี้
+  const open = useOpenDeposits(h?.party?.id, id);
+  const rt = refundTotals(open.data?.rows, deps, dirty ? {} : savedRefundVat(cur.data?.deposits));
+  const total = rt.paid.toFixed(2);
   const t = settlementTotals({ settlements: [total], payments: pays.filter((p) => p.payment_method_id).map((p) => p.amount || 0), cash: h?.cash ? h.cash : null });
   const tColor = typeColorIn(defs.data?.types, h?.doc_type_id);
   const tCur = defs.data?.types.find((x) => x.id === h?.doc_type_id);
@@ -168,6 +172,7 @@ export function DepositRefundFormPage() {
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
     if (!h.party) { setErr(new Error('เลือกลูกค้า (ช่องรหัสลูกค้า กด F4 ค้นหา)')); return; }
     if (!Object.keys(deps).length) { setErr(new Error('เลือกใบมัดจำที่จะคืนอย่างน้อย 1 ใบ (แท็บมัดจำที่คืน)')); setTab('deposits'); return; }
+    if (rt.hasVat && !h.remark.trim()) { setErr(new Error('คืนมัดจำที่มีภาษีมูลค่าเพิ่ม = ใบลดหนี้ ต้องระบุเหตุผล — ป้อนเหตุผลในช่อง "เหตุผลที่ลดหนี้" เช่น ยกเลิกสัญญา คืนเงินมัดจำ')); return; }
     if (!payChosen && needsPay()) { setPayAsk({ next: 'save', andNew }); return; }
     setErr(null); setBusy(true);
     try {
@@ -194,7 +199,7 @@ export function DepositRefundFormPage() {
     <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="sales" style={bookStyle(tColor)}>
       <div className="doc-title"><p className="eyebrow">ขาย › {K.label}</p><h1>{docNo}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} /><SourceStamp doc={cur.data as Parameters<typeof SourceStamp>[0]['doc']} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}
-          {h?.party && Object.keys(deps).length > 0 && !t.ok && !ro && <Pill tone="d">ยอดเงินไม่เรียบร้อย</Pill>}</span></div>
+          {rt.hasVat && <Pill tone="m">ใบลดหนี้ (มัดจำมี VAT)</Pill>}{h?.party && Object.keys(deps).length > 0 && !t.ok && !ro && <Pill tone="d">ยอดเงินไม่เรียบร้อย</Pill>}</span></div>
       <div className="toolbar">
         <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { reset(); nav(`${K.route}/new`); } }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
@@ -226,15 +231,17 @@ export function DepositRefundFormPage() {
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'deposits', label: 'มัดจำที่คืน', badge: Object.keys(deps).length || undefined }, { key: 'pay', label: 'จ่ายโดยอื่น ๆ (โอน/เช็ค)', badge: pays.length || undefined },
           { key: 'gl', label: id && ro ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }]} />
         {tab === 'deposits' && <>
-          <p className="hint">ติ๊กใบรับเงินมัดจำที่จะคืน (ค่าเริ่มต้น = ยอดคงเหลือ แก้ยอดได้ไม่เกินคงเหลือ) · ค่าเช่า/ค่าเสียหายที่หักจากมัดจำ ให้ทำที่ใบเสร็จรับเงิน แท็บหักเงินมัดจำ ก่อนคืนส่วนที่เหลือ · มัดจำที่มี VAT คืนที่นี่ไม่ได้</p>
-          <DepositPickTable partyId={h.party?.id} ownId={id} picks={deps} setPicks={setDeps} readOnly={ro} verb="คืน" keep={dirty} onDirty={() => setDirty(true)} />
+          <p className="hint">ติ๊กใบรับเงินมัดจำที่จะคืน (ค่าเริ่มต้น = ยอดคงเหลือ แก้ยอดได้ไม่เกินคงเหลือ) · ค่าเช่า/ค่าเสียหายที่หักจากมัดจำ ให้ทำที่ใบเสร็จรับเงิน แท็บหักเงินมัดจำ ก่อนคืนส่วนที่เหลือ · มัดจำที่มี VAT คืนได้ = ใบลดหนี้ ลดภาษีขาย (ต้องป้อนเหตุผล) · มัดจำมี/ไม่มี VAT หรือประเภทราคาต่างกัน แยกเป็นใบคืนเงินมัดจำคนละใบ</p>
+          <DepositPickTable partyId={h.party?.id} ownId={id} picks={deps} setPicks={setDeps} readOnly={ro} verb="คืน" keep={dirty} onDirty={() => setDirty(true)} saved={dirty ? undefined : savedRefundVat(cur.data?.deposits)} />
         </>}
         {tab === 'pay' && <PaymentsTable pays={pays} setPays={setPays} direction="P" partyId={null} readOnly={ro} payDate={h.doc_date} rest={!h.cash ? t.cash : ''} onDirty={() => setDirty(true)} />}
         {tab === 'gl' && <PostingTab id={id} path={K.path} editing={!ro} bodyOf={bodyOf} />}
         <div className="trade-foot">
-          <Field label="หมายเหตุ"><textarea rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
+          <Field label={rt.hasVat ? 'เหตุผลที่ลดหนี้' : 'หมายเหตุ'} req={rt.hasVat} hint={rt.hasVat ? 'พิมพ์ในใบลดหนี้ เช่น ยกเลิกสัญญา คืนเงินมัดจำ' : undefined}>
+            <textarea rows={2} value={h.remark} maxLength={2000} disabled={ro} required={rt.hasVat} aria-invalid={rt.hasVat && !h.remark.trim() ? true : undefined} onChange={(e) => set({ remark: e.target.value })} /></Field>
           <table className="totals-table"><tbody>
-            <tr className="grand"><td>ยอดคืนเงินมัดจำ</td><td className="r"><Money v={total} /></td></tr>
+            {rt.hasVat && <><tr><td>มูลค่าก่อน VAT ที่ลด</td><td className="r"><Money v={rt.base.toFixed(2)} /></td></tr><tr><td>ภาษีขายที่ลด</td><td className="r"><Money v={rt.vat.toFixed(2)} /></td></tr></>}
+            <tr className="grand"><td>{rt.hasVat ? 'ยอดคืนเงิน (รวม VAT)' : 'ยอดคืนเงินมัดจำ'}</td><td className="r"><Money v={total} /></td></tr>
             <tr><td><a href="#pay" onClick={(e) => { e.preventDefault(); setTab('pay'); }}>จ่ายโดยอื่น ๆ (โอน/เช็ค)</a></td><td className="r"><Money v={t.other} /></td></tr>
             <tr><td>จ่ายเป็นเงินสด</td><td><MoneyInput value={h.cash} disabled={ro} placeholder={fmt(t.cash)} onChange={(v) => set({ cash: v })} aria-label="เงินสด" /></td></tr>
             {!t.ok && d(total).gt(0) && <tr><td colSpan={2} className="bad small">{d(t.cash).lt(0) ? 'จ่ายโดยวิธีอื่นมากกว่ายอดคืน — ลดยอดในแท็บจ่ายโดยอื่น ๆ' : `ยอดคืนต้องเท่ากับยอดจ่ายจริง ต่าง ${fmt(t.diff)} — ล้างช่องเงินสดให้คำนวณเอง`}</td></tr>}

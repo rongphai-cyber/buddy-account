@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildPosting, netByAccount, postingBalanced, settlementTotals, type PostingResolver } from './posting.js';
+import { d } from './money.js';
+import { buildPosting, depositRefundVat, netByAccount, postingBalanced, settlementTotals, type PostingResolver } from './posting.js';
 
 const DEF: Record<string, string> = { AR: 'ar', AP: 'ap', CASH: 'cash', CREDIT_SALES: 'sales', CASH_SALES: 'cashsales', OUTPUT_VAT: 'ovat', OUTPUT_VAT_PENDING: 'ovatp', INPUT_VAT: 'ivat',
   DEPOSIT_RECEIVED: 'depr', PURCHASES: 'pur', CHEQUE_PAID: 'chqp', CHEQUE_RECEIVED: 'chqr', SUSPENSE: 'susp', SALES_RETURN: 'sret', OTHER_EXPENSE: 'oexp',
@@ -10,6 +11,9 @@ const r: PostingResolver = {
   paymentMethod: (id) => (id === 'QP' ? 'chq-paid' : null), cheque: () => null, def: (k) => DEF[k] ?? null, perpetual: false,
 };
 const net = (l: ReturnType<typeof buildPosting>) => Object.fromEntries([...netByAccount(l)].map(([k, v]) => [k, v.toFixed(2)]));
+/** ยอดบัญชีหลังเอกสารสองใบ + ยอดตั้งต้น (เช่น ใบมัดจำ Cr) */
+const d0 = (a: ReturnType<typeof buildPosting>, b: ReturnType<typeof buildPosting>, acct: string, start: string) =>
+  [a, b].reduce((s, l) => s.plus(netByAccount(l).get(acct) ?? d(0)), d(start)).toFixed(2);
 
 describe('posting engine (บทที่ 10)', () => {
   it('credit sale: Dr customer AR, Cr item group sales + VAT, deposit deducted', () => {
@@ -177,6 +181,43 @@ describe('มัดจำรับในใบเสร็จและใบค�
     expect(net(p)).toEqual({ 'depr-doc': '4752.84', bank: '-4752.84' });
     const c = buildPosting({ id: 'h', doc_class: 'RD', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '500', vat_amount: '0', deposit_amount: '500', vat_basis: null }, [], [], [], R, [], [{ amount: '500', doc_type_id: null }]);
     expect(net(c)).toEqual({ depr: '500.00', cash: '-500.00' });
+  });
+  describe('คืนเงินมัดจำที่มี VAT = ใบลดหนี้ (06/11/2569)', () => {
+    const f = (v: ReturnType<typeof depositRefundVat>) => [v.base.toFixed(2), v.vat.toFixed(2), v.paid.toFixed(2), v.exact];
+    const rd = (deps: Array<{ amount: string; vat: string; price_type: string }>, pays: Array<{ method_id: string; amount: string; cheque_id: null }> = []) =>
+      buildPosting({ id: 'h', doc_class: 'RD', doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '0', vat_amount: '0', deposit_amount: '0', vat_basis: '1' },
+        [], pays, [], { ...r, paymentMethod: (id) => (id === 'TB' ? 'bank' : null) }, [], deps.map((x) => ({ ...x, doc_type_id: null })));
+    it('(a) แยก VAT 10,000 + 7% = 10,700: คืน 4,000 → VAT 280 จ่าย 4,280 · คืน 6,000 ปิดยอด → VAT 420 จ่าย 6,420', () => {
+      const one = depositRefundVat({ amount: '4000', price_type: '2', vat_rate: 7, deposit_vat: '700', outstanding: '10000', other_rd_vat: '0' });
+      expect(f(one)).toEqual(['4000.00', '280.00', '4280.00', false]);
+      const two = depositRefundVat({ amount: '6000', price_type: '2', vat_rate: 7, deposit_vat: '700', outstanding: '6000', other_rd_vat: '280' });
+      expect(f(two)).toEqual(['6000.00', '420.00', '6420.00', true]);
+      const p1 = rd([{ amount: '4000', vat: '280', price_type: '2' }], [{ method_id: 'TB', amount: '4280', cheque_id: null }]), p2 = rd([{ amount: '6000', vat: '420', price_type: '2' }]);
+      expect([postingBalanced(p1), net(p1)]).toEqual([true, { depr: '4000.00', ovat: '280.00', bank: '-4280.00' }]);
+      expect([postingBalanced(p2), net(p2)]).toEqual([true, { depr: '6000.00', ovat: '420.00', cash: '-6420.00' }]);
+      // AI: Cr มัดจำรับ 10,000 + Cr ภาษีขาย 700 → หลังคืนสองใบเหลือ 0 ทั้งคู่
+      expect([d0(p1, p2, 'depr', '-10000'), d0(p1, p2, 'ovat', '-700')]).toEqual(['0.00', '0.00']);
+    });
+    it('(b) รวม VAT 10,700 (VAT 700): คืน 5,000 → 4,672.90 + 327.10 · คืน 5,700 → 5,327.10 + 372.90', () => {
+      expect(f(depositRefundVat({ amount: '5000', price_type: '1', vat_rate: 7, deposit_vat: '700', outstanding: '10700' }))).toEqual(['4672.90', '327.10', '5000.00', false]);
+      expect(f(depositRefundVat({ amount: '5700', price_type: '1', vat_rate: 7, deposit_vat: '700', outstanding: '5700', other_rd_vat: '327.10' }))).toEqual(['5327.10', '372.90', '5700.00', true]);
+      const p1 = rd([{ amount: '5000', vat: '327.10', price_type: '1' }]), p2 = rd([{ amount: '5700', vat: '372.90', price_type: '1' }]);
+      expect(net(p1)).toEqual({ depr: '4672.90', ovat: '327.10', cash: '-5000.00' });
+      expect([d0(p1, p2, 'depr', '-10000'), d0(p1, p2, 'ovat', '-700')]).toEqual(['0.00', '0.00']);
+    });
+    it('(c) รวม VAT 1,000 (VAT 65.42): คืน 333 → 311.21 + 21.79 · คืน 667 ปิดยอด → VAT 43.63 (ไม่ใช่ 43.64) บัญชีเหลือ 0.00', () => {
+      expect(f(depositRefundVat({ amount: '333', price_type: '1', vat_rate: 7, deposit_vat: '65.42', outstanding: '1000' }))).toEqual(['311.21', '21.79', '333.00', false]);
+      const last = depositRefundVat({ amount: '667', price_type: '1', vat_rate: 7, deposit_vat: '65.42', outstanding: '667', other_rd_vat: '21.79' });
+      expect(f(last)).toEqual(['623.37', '43.63', '667.00', true]);
+      // ไม่มีกฎปิดยอด (ยังมีเอกสารอื่นใช้มัดจำ) → ปัดตามสูตร 623.36 + 43.64 จะเหลือ 0.01
+      expect(f(depositRefundVat({ amount: '667', price_type: '1', vat_rate: 7, deposit_vat: '65.42', outstanding: '667', other_rd_vat: '21.79', other_use: true }))).toEqual(['623.36', '43.64', '667.00', false]);
+      const p1 = rd([{ amount: '333', vat: '21.79', price_type: '1' }]), p2 = rd([{ amount: '667', vat: '43.63', price_type: '1' }]);
+      expect([d0(p1, p2, 'depr', '-934.58'), d0(p1, p2, 'ovat', '-65.42')]).toEqual(['0.00', '0.00']);
+    });
+    it('มัดจำไม่มี VAT: ไม่แยกภาษี ลงบัญชีเหมือนเดิม', () => {
+      expect(f(depositRefundVat({ amount: '500', price_type: '0', vat_rate: 0, deposit_vat: '0', outstanding: '500' }))).toEqual(['500.00', '0.00', '500.00', false]);
+      expect(net(rd([{ amount: '500', vat: '0', price_type: '0' }]))).toEqual({ depr: '500.00', cash: '-500.00' });
+    });
   });
   it('ยอดใบเสร็จนับมัดจำที่หักเป็นเงินที่รับแล้ว', () => {
     expect(settlementTotals({ settlements: ['4547.16'], direction: 'R', payments: [], deposits: '4547.16' })).toMatchObject({ due: '4547.16', deposit: '4547.16', cash: '0.00', paid: '4547.16', ok: true });

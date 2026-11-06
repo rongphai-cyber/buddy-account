@@ -63,6 +63,8 @@ const GENERIC_TYPE_NAMES: Record<string, string[]> = {
   RL: ['โอนย้ายระหว่างคลัง'], OU: ['เบิกใช้ภายใน'], JU: ['ปรับปรุงเพิ่ม/ลดสินค้า'],
   QT: ['ใบเสนอราคา'], SO: ['ใบสั่งขาย'], PO: ['ใบสั่งซื้อ'], BS: ['ใบวางบิล'], BR: ['ใบรับวางบิล'],
 };
+/** ใบคืนเงินมัดจำที่คืนมัดจำมี VAT = ใบลดหนี้ (ประมวลรัษฎากร ม.86/10 — 06/11/2569) */
+export const RD_CREDIT_NOTE_TITLE = 'ใบลดหนี้ / ใบคืนเงินมัดจำ';
 /** ชื่อเอกสารมาตรฐานที่พิมพ์ (ไทย/อังกฤษ) — vat = เอกสารมีภาษีมูลค่าเพิ่ม (ต้องมีคำว่า "ใบกำกับภาษี" ตามประมวลรัษฎากร ม.86/4) */
 const STD_TITLES: Record<string, (vat: boolean) => [string, string]> = {
   IV: (v) => (v ? ['ใบแจ้งหนี้/ใบกำกับภาษี', 'INVOICE / TAX INVOICE'] : ['ใบแจ้งหนี้', 'INVOICE']),
@@ -70,7 +72,7 @@ const STD_TITLES: Record<string, (vat: boolean) => [string, string]> = {
   CN: () => ['ใบลดหนี้', 'CREDIT NOTE'], DR: () => ['ใบเพิ่มหนี้', 'DEBIT NOTE'],
   AI: (v) => (v ? ['ใบรับเงินมัดจำ/ใบกำกับภาษี', 'DEPOSIT RECEIPT / TAX INVOICE'] : ['ใบรับเงินมัดจำ', 'DEPOSIT RECEIPT']),
   RR: () => ['ใบรับสินค้า', 'GOODS RECEIPT'], HP: () => ['ใบรับสินค้า (ซื้อเงินสด)', 'GOODS RECEIPT'], DN: () => ['ใบส่งคืนสินค้า', 'GOODS RETURN'],
-  CP: () => ['ใบเพิ่มหนี้ (เจ้าหนี้)', 'SUPPLIER DEBIT NOTE'], AE: () => ['ใบจ่ายเงินมัดจำ', 'DEPOSIT PAYMENT'], RD: () => ['ใบคืนเงินมัดจำ', 'DEPOSIT REFUND'],
+  CP: () => ['ใบเพิ่มหนี้ (เจ้าหนี้)', 'SUPPLIER DEBIT NOTE'], AE: () => ['ใบจ่ายเงินมัดจำ', 'DEPOSIT PAYMENT'], RD: (v) => (v ? [RD_CREDIT_NOTE_TITLE, 'CREDIT NOTE / DEPOSIT REFUND'] : ['ใบคืนเงินมัดจำ', 'DEPOSIT REFUND']),
   RL: () => ['ใบโอนย้ายสินค้า', 'STOCK TRANSFER'], OU: () => ['ใบเบิกสินค้า', 'STOCK ISSUE'], JU: () => ['ใบปรับปรุงสินค้า', 'STOCK ADJUSTMENT'],
   QT: () => ['ใบเสนอราคา', 'QUOTATION'], SO: () => ['ใบสั่งขาย', 'SALES ORDER'], PO: () => ['ใบสั่งซื้อ', 'PURCHASE ORDER'],
   BS: () => ['ใบวางบิล', 'BILLING NOTE'], BR: () => ['ใบรับวางบิล', 'BILL ACCEPTANCE'],

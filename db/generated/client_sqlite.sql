@@ -1397,6 +1397,7 @@ CREATE TABLE IF NOT EXISTS doc_link (
   to_header_id TEXT NOT NULL REFERENCES doc_header(id) DEFERRABLE INITIALLY DEFERRED,
   link_type TEXT NOT NULL,
   amount TEXT,
+  vat_amount TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -3642,7 +3643,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'doc_link', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'from_header_id', NEW.from_header_id, 'to_header_id', NEW.to_header_id, 'link_type', NEW.link_type, 'amount', NEW.amount, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'from_header_id', NEW.from_header_id, 'to_header_id', NEW.to_header_id, 'link_type', NEW.link_type, 'amount', NEW.amount, 'vat_amount', NEW.vat_amount, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_doc_link_update_outbox AFTER UPDATE ON doc_link
@@ -3651,7 +3652,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'doc_link', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'from_header_id', NEW.from_header_id, 'to_header_id', NEW.to_header_id, 'link_type', NEW.link_type, 'amount', NEW.amount, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'from_header_id', NEW.from_header_id, 'to_header_id', NEW.to_header_id, 'link_type', NEW.link_type, 'amount', NEW.amount, 'vat_amount', NEW.vat_amount, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_doc_link_ver AFTER UPDATE ON doc_link

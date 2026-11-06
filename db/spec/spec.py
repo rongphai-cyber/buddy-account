@@ -977,6 +977,7 @@ add(T('doc_link', 'ความสัมพันธ์ระหว่างเ�
   lk('to_header_id', 'doc_header', 'เอกสารปลายทาง (IV, RR, SR …)', nn=True),
   C('link_type', 'code10', nn=True, th='FULFIL (SO→IV, PO→RR) CONVERT (QT→SO) DEPOSIT (AI→IV/HS/RE/RD, AE→RR) ADJUST (IV→DR/SR, RR→CP/GR)'),
   C('amount', 'money', th='จำนวนเงินที่หัก/อ้างถึง (เช่น ยอดหักมัดจำ)'),
+  C('vat_amount', 'money', th='ภาษีขายที่ลดของยอดนี้ (ใบคืนเงินมัดจำ RD ที่คืนมัดจำมี VAT = ใบลดหนี้ · 0 = มัดจำไม่มี VAT · ว่าง = ลิงก์ชนิดอื่น)'),
 ], uniq=[('from_header_id','to_header_id','link_type')]))
 
 add(T('doc_bill_item', 'รายการใบกำกับในใบวางบิล / ใบรับวางบิล', 'doc', express='ARTRN.BILNUM / APTRN.BILNUM (+ARBILIT/APBILIT)', cols=[

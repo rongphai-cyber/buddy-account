@@ -162,7 +162,9 @@ describe('มัดจำรับ: ใบเสร็จหักมัดจ�
     expect([vatAi.status, vatAi.body.error?.message]).toEqual([200, undefined]);
     ids.vatAi = vatAi.body.id;
     expect((await call('POST', '/api/v1/ar-receipts', re(ids.iv2, '300', [{ header_id: ids.vatAi, amount: '300' }]))).body.error.message).toMatch(/มีภาษีมูลค่าเพิ่ม.*หักในบิลขาย/);
-    expect((await call('POST', '/api/v1/ar-deposit-refunds', { ...rd('100'), deposits: [{ header_id: ids.vatAi, amount: '100' }] })).body.error.message).toMatch(/มีภาษีมูลค่าเพิ่ม.*ใบลดหนี้/);
+    // คืนมัดจำที่มี VAT ได้ (ใบลดหนี้ — 06/11/2569) แต่ต้องมีเหตุผล และไม่ปนกับมัดจำไม่มี VAT (รายละเอียดใน deposit-refund-vat.test.ts)
+    expect((await call('POST', '/api/v1/ar-deposit-refunds', { ...rd('100'), deposits: [{ header_id: ids.vatAi, amount: '100' }] })).body.error.message).toMatch(/ใบลดหนี้ ต้องระบุเหตุผล/);
+    expect((await call('POST', '/api/v1/ar-deposit-refunds', { ...rd('200'), remark: 'ยกเลิกสัญญา', deposits: [{ header_id: ids.ai, amount: '100' }, { header_id: ids.vatAi, amount: '100' }] })).body.error.message).toMatch(/แยกเป็นใบคืนเงินมัดจำคนละใบ/);
     // ไม่เลือกมัดจำในใบคืนเงิน
     expect((await call('POST', '/api/v1/ar-deposit-refunds', { ...rd('100'), deposits: [] })).body.error.message).toMatch(/เลือกใบมัดจำที่จะคืน/);
     expect(await remaining()).toBe('5052.84');

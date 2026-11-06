@@ -2970,6 +2970,16 @@
 ]
 },
 {
+"th": "ผลต่าง",
+"n": 7,
+"files": [
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/reports/gl.ts"
+]
+},
+{
 "th": "ผู้อนุมัติ",
 "n": 7,
 "files": [
@@ -3260,16 +3270,6 @@
 ]
 },
 {
-"th": "ผลต่าง",
-"n": 6,
-"files": [
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/reports/gl.ts"
-]
-},
-{
 "th": "ผังบัญชี",
 "n": 6,
 "files": [
@@ -3396,15 +3396,6 @@
 "apps/web/src/pages/reports/AccountDetail.tsx",
 "apps/web/src/pages/reports/Ledger.tsx",
 "apps/web/src/pages/reports/TrialBalance.tsx"
-]
-},
-{
-"th": "หัก",
-"n": 6,
-"files": [
-"apps/web/src/pages/docs/DepositPick.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/server/src/modules/docs/deposits.ts"
 ]
 },
 {
@@ -4320,6 +4311,16 @@
 ]
 },
 {
+"th": "ไม่มี",
+"n": 5,
+"files": [
+"apps/server/src/modules/ai.ts",
+"apps/server/src/modules/docs/deposits.ts",
+"packages/core/src/payroll-import.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "ไม่มีรายการ",
 "n": 5,
 "files": [
@@ -4440,6 +4441,15 @@
 "files": [
 "apps/web/src/pages/fa/Assets.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "คืน",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/server/src/modules/docs/deposits.ts"
 ]
 },
 {
@@ -4864,6 +4874,15 @@
 "n": 4,
 "files": [
 "apps/web/src/pages/inventory/Serials.tsx"
+]
+},
+{
+"th": "หัก",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/server/src/modules/docs/deposits.ts"
 ]
 },
 {
@@ -5306,15 +5325,6 @@
 "n": 3,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
-]
-},
-{
-"th": "คืน",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/DepositPick.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/server/src/modules/docs/deposits.ts"
 ]
 },
 {
@@ -5802,6 +5812,14 @@
 "apps/web/src/pages/payroll/Employees.tsx",
 "packages/core/src/date.ts",
 "packages/core/src/i18n.ts"
+]
+},
+{
+"th": "มี",
+"n": 3,
+"files": [
+"apps/server/src/modules/docs/deposits.ts",
+"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -6587,6 +6605,14 @@
 ]
 },
 {
+"th": "แยกเป็นใบคืนเงินมัดจำคนละใบ",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx",
+"apps/server/src/modules/docs/deposits.ts"
+]
+},
+{
 "th": "โทร.",
 "n": 3,
 "files": [
@@ -6675,15 +6701,6 @@
 "apps/web/src/pages/gl/ChartTemplate.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/server/src/modules/items.ts"
-]
-},
-{
-"th": "ไม่มี",
-"n": 3,
-"files": [
-"apps/server/src/modules/ai.ts",
-"packages/core/src/payroll-import.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -9011,6 +9028,13 @@
 ]
 },
 {
+"th": "มูลค่าที่ถูกต้อง",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "มูลค่าผลต่าง",
 "n": 2,
 "files": [
@@ -9283,6 +9307,14 @@
 ]
 },
 {
+"th": "รวม VAT",
+"n": 2,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/pages/docs/DepositPick.tsx"
+]
+},
+{
 "th": "รวม {0} ({1} ใบ)",
 "n": 2,
 "files": [
@@ -9541,6 +9573,20 @@
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "ราคารวม VAT",
+"n": 2,
+"files": [
+"apps/server/src/modules/docs/deposits.ts"
+]
+},
+{
+"th": "ราคาแยก VAT",
+"n": 2,
+"files": [
+"apps/server/src/modules/docs/deposits.ts"
 ]
 },
 {
@@ -11224,6 +11270,14 @@
 "files": [
 "apps/web/src/pages/payroll/Filing.tsx",
 "apps/server/src/modules/trade-import.ts"
+]
+},
+{
+"th": "แยก VAT",
+"n": 2,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/pages/docs/DepositPick.tsx"
 ]
 },
 {
@@ -14588,6 +14642,13 @@
 ]
 },
 {
+"th": "{0} {1}ภาษีมูลค่าเพิ่ม แต่ {2} {3} — คืนมัดจำที่มี VAT (ใบลดหนี้) กับไม่มี VAT ในใบเดียวกันไม่ได้ ให้แยกเป็นใบคืนเงินมัดจำคนละใบ",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/deposits.ts"
+]
+},
+{
 "th": "{0} · {1} · ครั้งที่ {2}",
 "n": 1,
 "files": [
@@ -14805,6 +14866,13 @@
 ]
 },
 {
+"th": "{0} ลงวันที่ {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "{0} ลงวันที่ {1} หลังวันที่{2}เงิน/วันที่เอกสาร ({3}) — {4}ชำระก่อนวันที่บิลไม่ได้ เปลี่ยนวันที่ หรือเอาบิลออก",
 "n": 1,
 "files": [
@@ -14854,14 +14922,14 @@
 ]
 },
 {
-"th": "{0} เป็นมัดจำที่มีภาษีมูลค่าเพิ่ม (ออกใบกำกับภาษีตอนรับมัดจำแล้ว) — หักในใบเสร็จไม่ได้ เพราะภาษีจะถึงกำหนดซ้ำ ให้หักในบิลขาย (ขายเงินเชื่อ/ขายเงินสด แท็บหักเงินมัดจำ) แทน",
+"th": "{0} เป็นมัดจำ{1} {2}% ต่างจาก {3} ({4} {5}%) — ให้แยกเป็นใบคืนเงินมัดจำคนละใบ",
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/deposits.ts"
 ]
 },
 {
-"th": "{0} เป็นมัดจำที่มีภาษีมูลค่าเพิ่ม — คืนมัดจำที่ออกใบกำกับภาษีแล้วต้องลดภาษีขายด้วยใบลดหนี้ ซึ่งหน้านี้ยังทำไม่ได้ · ให้หักในบิลขายแทน หรือบันทึกคืนด้วยใบสำคัญทั่วไปพร้อมปรับภาษีขาย",
+"th": "{0} เป็นมัดจำที่มีภาษีมูลค่าเพิ่ม (ออกใบกำกับภาษีตอนรับมัดจำแล้ว) — หักในใบเสร็จไม่ได้ เพราะภาษีจะถึงกำหนดซ้ำ ให้หักในบิลขาย (ขายเงินเชื่อ/ขายเงินสด แท็บหักเงินมัดจำ) แทน",
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/deposits.ts"
@@ -14914,6 +14982,13 @@
 "n": 1,
 "files": [
 "apps/server/src/cli.ts"
+]
+},
+{
+"th": "{0} ไม่เข้ากับ {1} ที่เลือกไว้ — แยกเป็นใบคืนเงินมัดจำคนละใบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx"
 ]
 },
 {
@@ -17010,6 +17085,13 @@
 ]
 },
 {
+"th": "ก่อน VAT",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx"
+]
+},
+{
 "th": "ก่อน VAT {0} · VAT {1} · รวม",
 "n": 1,
 "files": [
@@ -18529,6 +18611,13 @@
 ]
 },
 {
+"th": "คืนครบ: VAT = ภาษีของใบมัดจำ − ภาษีที่คืนไปแล้ว (ปิดยอดตรงสตางค์)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx"
+]
+},
+{
 "th": "คืนค่าที่บันทึกไว้",
 "n": 1,
 "files": [
@@ -18543,14 +18632,21 @@
 ]
 },
 {
-"th": "คืนที่นี่ไม่ได้",
+"th": "คืนมัดจำที่มีภาษีมูลค่าเพิ่ม = ใบลดหนี้ ต้องระบุเหตุผล — ป้อนเหตุผลในช่อง \"เหตุผลที่ลดหนี้\" เช่น ยกเลิกสัญญา คืนเงินมัดจำ",
 "n": 1,
 "files": [
-"apps/web/src/pages/docs/DepositPick.tsx"
+"apps/web/src/pages/docs/DepositRefunds.tsx"
 ]
 },
 {
-"th": "คืนยอดคงเหลือของใบรับเงินมัดจำให้ลูกค้า (เช่น เงินประกันตอนย้ายออก) จ่ายเงินสด/โอน/เช็ค · ยอดมัดจำคงเหลือลดลงทันที · ยกเลิกแล้วยอดมัดจำกลับคืน · บันทึกแล้วลงบัญชีทันที",
+"th": "คืนมัดจำที่มีภาษีมูลค่าเพิ่ม = ใบลดหนี้ ต้องระบุเหตุผล — ป้อนเหตุผลในช่องหมายเหตุ เช่น ยกเลิกสัญญา คืนเงินมัดจำ",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/depositrefund.ts"
+]
+},
+{
+"th": "คืนยอดคงเหลือของใบรับเงินมัดจำให้ลูกค้า (เช่น เงินประกันตอนย้ายออก) จ่ายเงินสด/โอน/เช็ค · มัดจำที่มี VAT ออกเป็นใบลดหนี้ · ยอดมัดจำคงเหลือลดลงทันที · ยกเลิกแล้วยอดมัดจำกลับคืน · บันทึกแล้วลงบัญชีทันที",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositRefunds.tsx"
@@ -18582,13 +18678,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
-]
-},
-{
-"th": "คืนในหน้านี้ไม่ได้ (ต้องลดภาษีขายด้วยใบลดหนี้)",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/DepositPick.tsx"
 ]
 },
 {
@@ -22449,7 +22538,7 @@
 ]
 },
 {
-"th": "ติ๊กใบรับเงินมัดจำที่จะคืน (ค่าเริ่มต้น = ยอดคงเหลือ แก้ยอดได้ไม่เกินคงเหลือ) · ค่าเช่า/ค่าเสียหายที่หักจากมัดจำ ให้ทำที่ใบเสร็จรับเงิน แท็บหักเงินมัดจำ ก่อนคืนส่วนที่เหลือ · มัดจำที่มี VAT คืนที่นี่ไม่ได้",
+"th": "ติ๊กใบรับเงินมัดจำที่จะคืน (ค่าเริ่มต้น = ยอดคงเหลือ แก้ยอดได้ไม่เกินคงเหลือ) · ค่าเช่า/ค่าเสียหายที่หักจากมัดจำ ให้ทำที่ใบเสร็จรับเงิน แท็บหักเงินมัดจำ ก่อนคืนส่วนที่เหลือ · มัดจำที่มี VAT คืนได้ = ใบลดหนี้ ลดภาษีขาย (ต้องป้อนเหตุผล) · มัดจำมี/ไม่มี VAT หรือประเภทราคาต่างกัน แยกเป็นใบคืนเงินมัดจำคนละใบ",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositRefunds.tsx"
@@ -26957,6 +27046,13 @@
 ]
 },
 {
+"th": "ปิดยอดภาษี",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx"
+]
+},
+{
 "th": "ปิดยืนยันตัวตนสองขั้น",
 "n": 1,
 "files": [
@@ -27934,6 +28030,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "ป้อนเหตุผลที่ลดหนี้",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/depositrefund.ts"
 ]
 },
 {
@@ -29120,6 +29223,13 @@
 ]
 },
 {
+"th": "พิมพ์ในใบลดหนี้ เช่น ยกเลิกสัญญา คืนเงินมัดจำ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
 "th": "พิมพ์ได้หลังบันทึกข้อมูลครบแล้ว",
 "n": 1,
 "files": [
@@ -29379,6 +29489,13 @@
 ]
 },
 {
+"th": "ภาษีขายที่ลด",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
 "th": "ภาษีขายเดือนนี้",
 "n": 1,
 "files": [
@@ -29603,6 +29720,13 @@
 ]
 },
 {
+"th": "ภาษีมูลค่าเพิ่มของผลต่าง {0}%",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "ภาษีมูลค่าเพิ่มค้างจ่าย",
 "n": 1,
 "files": [
@@ -29806,7 +29930,7 @@
 ]
 },
 {
-"th": "มัดจำที่มีภาษีมูลค่าเพิ่ม — {0}",
+"th": "มัดจำที่มีภาษีมูลค่าเพิ่ม — หักในบิลขาย (ขายเงินเชื่อ/ขายเงินสด) เท่านั้น",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositPick.tsx"
@@ -29827,10 +29951,24 @@
 ]
 },
 {
+"th": "มัดจำมี VAT ({0}) — คืนแล้วออกเป็นใบลดหนี้ ลดภาษีขาย",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx"
+]
+},
+{
 "th": "มัดจำมีภาษีมูลค่าเพิ่ม",
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/deposits.ts"
+]
+},
+{
+"th": "มัดจำไม่มี VAT",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx"
 ]
 },
 {
@@ -29869,13 +30007,6 @@
 ]
 },
 {
-"th": "มี",
-"n": 1,
-"files": [
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "มี \"{0}\" อยู่แล้ว (รหัส {1}{2})",
 "n": 1,
 "files": [
@@ -29883,7 +30014,14 @@
 ]
 },
 {
-"th": "มี VAT — {0}",
+"th": "มี VAT {0} — ใบลดหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx"
+]
+},
+{
+"th": "มี VAT — หักในบิลขาย",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositPick.tsx"
@@ -30142,6 +30280,13 @@
 ]
 },
 {
+"th": "มูลค่าก่อน VAT ที่ลด",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
 "th": "มูลค่าก่อนภาษี",
 "n": 1,
 "files": [
@@ -30170,6 +30315,13 @@
 ]
 },
 {
+"th": "มูลค่าตามใบกำกับภาษีเดิม",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "มูลค่าติดลบ",
 "n": 1,
 "files": [
@@ -30188,13 +30340,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "มูลค่าที่ถูกต้อง",
-"n": 1,
-"files": [
-"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -30780,6 +30925,13 @@
 },
 {
 "th": "ยอดคืนต้องเท่ากับยอดจ่ายจริง ต่าง {0} — ล้างช่องเงินสดให้คำนวณเอง",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
+"th": "ยอดคืนเงิน (รวม VAT)",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositRefunds.tsx"
@@ -32382,13 +32534,6 @@
 ]
 },
 {
-"th": "รวม VAT",
-"n": 1,
-"files": [
-"apps/web/src/components/AiBill.tsx"
-]
-},
-{
 "th": "รวม {0}",
 "n": 1,
 "files": [
@@ -32628,6 +32773,13 @@
 },
 {
 "th": "รวมเงิน",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "รวมเงินคืนทั้งสิ้น",
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
@@ -35336,6 +35488,13 @@
 ]
 },
 {
+"th": "ลดหนี้ — คืนเงินมัดจำ",
+"n": 1,
+"files": [
+"apps/server/src/modules/vat.ts"
+]
+},
+{
 "th": "ลดหนี้/คืน",
 "n": 1,
 "files": [
@@ -35347,6 +35506,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "ลดหนี้ครั้งก่อน",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -39459,20 +39625,6 @@
 ]
 },
 {
-"th": "หักในบิลขาย",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/DepositPick.tsx"
-]
-},
-{
-"th": "หักในบิลขาย (ขายเงินเชื่อ/ขายเงินสด) เท่านั้น",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/DepositPick.tsx"
-]
-},
-{
 "th": "หักในบิลนี้",
 "n": 1,
 "files": [
@@ -40278,6 +40430,13 @@
 ]
 },
 {
+"th": "อ้างถึงใบกำกับภาษี {0}",
+"n": 1,
+"files": [
+"apps/server/src/modules/vat.ts"
+]
+},
+{
 "th": "อ้างบรรทัดใบสั่งเดียวกันซ้ำ",
 "n": 1,
 "files": [
@@ -40730,6 +40889,13 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "เงินที่จ่าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx"
 ]
 },
 {
@@ -45122,6 +45288,20 @@
 ]
 },
 {
+"th": "เหตุผลที่ลดหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
+"th": "เหตุผลที่ลดหนี้: {0}",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "เหตุผลที่ลบ",
 "n": 1,
 "files": [
@@ -46529,13 +46709,6 @@
 ]
 },
 {
-"th": "แยก VAT",
-"n": 1,
-"files": [
-"apps/web/src/components/AiBill.tsx"
-]
-},
-{
 "th": "แยกขอคืนได้ / ขอคืนไม่ได้",
 "n": 1,
 "files": [
@@ -47579,6 +47752,13 @@
 ]
 },
 {
+"th": "ใบกำกับภาษีเดิม {0} ลงวันที่ {1} มูลค่า {2} ภาษี {3} — ลดมูลค่า {4} ภาษี {5}",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "ใบกำกับเดิม",
 "n": 1,
 "files": [
@@ -47758,6 +47938,27 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/engine.ts"
+]
+},
+{
+"th": "ใบลดหนี้ (มัดจำมี VAT)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
+"th": "ใบลดหนี้ / ใบคืนเงินมัดจำ",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ใบลดหนี้ — คืนเงินมัดจำ",
+"n": 1,
+"files": [
+"apps/server/src/modules/reports/tax.ts"
 ]
 },
 {

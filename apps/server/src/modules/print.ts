@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { bahtText, checkApprove, checkPrint, checkUnapprove, d, DOC_CLASSES, docMenuOf, findReport, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, type ApprovalRule, type ApprovalState } from '@buddy/core';
+import { bahtText, checkApprove, checkPrint, checkUnapprove, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
 import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { companyImages } from './company-images.js';
@@ -119,10 +119,30 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     }));
     if (!lines.length && fam === 'bank') lines = [{ no: '1', code: '', name: txt(h.remark) || txt(h.type_name), amount: money(h.net_amount ?? h.amount) }];
   }
+  const nzv = (v: unknown) => !d(String(v ?? 0)).isZero();
   // มัดจำรับที่ใช้ (05/11/2569): ใบคืนเงินมัดจำพิมพ์ใบมัดจำที่คืนเป็นรายการ · ใบเสร็จพิมพ์เป็นวิธีชำระ "หักเงินมัดจำ"
-  const depUsed = H.scope === 'RD' || H.scope === 'RE' ? (await sql<Row>`SELECT f.doc_no, f.doc_date, l.amount FROM doc_link l JOIN doc_header f ON f.id = l.from_header_id
+  const depUsed = H.scope === 'RD' || H.scope === 'RE' ? (await sql<Row>`SELECT f.id, f.doc_no, f.doc_date, l.amount, l.vat_amount, f.price_type, f.net_amount AS dep_net, f.vat_amount AS dep_vat FROM doc_link l JOIN doc_header f ON f.id = l.from_header_id
       WHERE l.company_id = ${a.companyId} AND l.to_header_id = ${id} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL ORDER BY f.doc_date, f.doc_no`.execute(db)).rows : [];
-  if (H.scope === 'RD') lines = depUsed.map((r, i) => ({ no: String(i + 1), code: txt(r.doc_no), name: `คืนเงินมัดจำ ${txt(r.doc_no)} ลงวันที่ ${txt(r.doc_date)}`, qty: '', amount: money(r.amount) }));
+  // ใบคืนเงินมัดจำที่มี VAT = ใบลดหนี้ (ม.86/10 · 06/11/2569): ใบกำกับภาษีเดิม (ใบมัดจำ) เลขที่ วันที่ มูลค่า · มูลค่าเดิม ที่ถูกต้อง ผลต่าง ภาษีของผลต่าง · เหตุผล
+  const rdVat = H.scope === 'RD' && nzv(h.vat_amount);
+  const ys = co.year_system === 'C' ? 'C' : 'B';
+  const fdate = (v: unknown) => formatDate(txt(v).slice(0, 10), ys);
+  let cn: { orig: Decimal; before: Decimal; diff: Decimal } | null = null;
+  if (H.scope === 'RD' && rdVat) {
+    // ลดหนี้ครั้งก่อนของใบมัดจำเดียวกัน (ใบคืนเงินที่ยังใช้ ลงก่อนใบนี้) → มูลค่าที่ถูกต้อง = เดิม − ลดครั้งก่อน − ผลต่างของใบนี้
+    const prior = (await sql<Row>`SELECT l.amount, l.vat_amount, f.price_type FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id JOIN doc_header f ON f.id = l.from_header_id
+        WHERE l.company_id = ${a.companyId} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL AND t.doc_class = 'RD' AND t.doc_status <> 'C' AND t.deleted_at IS NULL AND t.id <> ${id}
+          AND l.from_header_id IN (${sql.join(depUsed.map((r) => r.id))}) AND (t.doc_date, t.doc_no) < (${h.doc_date}::date, ${h.doc_no})`.execute(db)).rows;
+    const base = (r: Row) => depositRefundParts(r.amount ?? 0, r.price_type, r.vat_amount ?? 0).base;
+    cn = { orig: depUsed.reduce((s, r) => s.plus(d(r.dep_net ?? 0)).minus(d(r.dep_vat ?? 0)), d(0)), before: prior.reduce((s, r) => s.plus(base(r)), d(0)), diff: depUsed.reduce((s, r) => s.plus(base(r)), d(0)) };
+    lines = depUsed.map((r, i) => {
+      const p = depositRefundParts(r.amount ?? 0, r.price_type, r.vat_amount ?? 0);
+      return { no: String(i + 1), code: txt(r.doc_no), qty: '', amount: p.paid.toFixed(2),
+        name: `ใบกำกับภาษีเดิม ${txt(r.doc_no)} ลงวันที่ ${fdate(r.doc_date)} มูลค่า ${d(r.dep_net ?? 0).minus(d(r.dep_vat ?? 0)).toFixed(2)} ภาษี ${money(r.dep_vat)} — ลดมูลค่า ${p.base.toFixed(2)} ภาษี ${p.vat.toFixed(2)}` };
+    });
+    fields.ref_invoice = depUsed.map((r) => `${txt(r.doc_no)} ลงวันที่ ${fdate(r.doc_date)}`).join(', ');
+    fields.remark = `เหตุผลที่ลดหนี้: ${txt(h.remark)}`;
+  } else if (H.scope === 'RD') lines = depUsed.map((r, i) => ({ no: String(i + 1), code: txt(r.doc_no), name: `คืนเงินมัดจำ ${txt(r.doc_no)} ลงวันที่ ${txt(r.doc_date)}`, qty: '', amount: money(r.amount) }));
   const payments = (await sql<Row>`SELECT m.name_th AS method, p.reference_no, p.amount, c.cheque_no, c.cheque_date, c.bank_branch FROM doc_payment p
       LEFT JOIN md_payment_method m ON m.id = p.payment_method_id LEFT JOIN fin_cheque c ON c.id = p.cheque_id
      WHERE p.header_id = ${id} AND p.deleted_at IS NULL ORDER BY p.line_no`.execute(db)).rows
@@ -166,6 +186,10 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     totals.push({ label: 'ยอดสุทธิ', value: money(h.net_amount) });
   } else if (fam === 'stock') {
     if (lines.some((l) => l.amount)) totals.push({ label: 'รวมมูลค่า', value: lines.reduce((s, l) => s.plus(d(l.amount || 0)), d(0)).toFixed(2) });
+  } else if (cn) {
+    totals.push({ label: 'มูลค่าตามใบกำกับภาษีเดิม', value: cn.orig.toFixed(2) }, ...(cn.before.isZero() ? [] : [{ label: 'ลดหนี้ครั้งก่อน', value: cn.before.toFixed(2) }]),
+      { label: 'มูลค่าที่ถูกต้อง', value: cn.orig.minus(cn.before).minus(cn.diff).toFixed(2) }, { label: 'ผลต่าง', value: cn.diff.toFixed(2) },
+      { label: `ภาษีมูลค่าเพิ่มของผลต่าง ${d(h.vat_rate ?? 0).toString()}%`, value: money(h.vat_amount) }, { label: 'รวมเงินคืนทั้งสิ้น', value: money(h.net_amount) });
   } else {
     if (nz(h.vat_amount)) totals.push({ label: 'มูลค่าก่อนภาษี', value: money(h.taxable_amount) }, { label: 'ภาษีมูลค่าเพิ่ม', value: money(h.vat_amount) });
     if (nz(h.wht_amount)) totals.push({ label: 'ภาษีหัก ณ ที่จ่าย', value: money(h.wht_amount) });
@@ -176,8 +200,9 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
   const receiptTax = H.scope === 'RE' && !vatDue.isZero();
   // ชื่อเอกสารที่พิมพ์ (04/11/2569 แบบฟอร์มมืออาชีพ): ประเภทเอกสารชื่อทั่วไป "ขายเงินเชื่อ" → "ใบแจ้งหนี้/ใบกำกับภาษี" ฯลฯ · ชื่อที่บริษัทตั้งเองคงเดิม
   const std = printTitle(H.scope, txt(h.type_name), txt(h.type_name_en), nz(h.vat_amount));
-  const title = H.scope === 'RE' ? (receiptTax ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : H.scope === 'PS' ? 'ใบสำคัญจ่าย' : std.th || DOC_CLASSES[H.scope]?.label || 'เอกสาร';
-  const titleEn = H.scope === 'RE' ? (receiptTax ? 'RECEIPT / TAX INVOICE' : 'RECEIPT') : H.scope === 'PS' ? 'PAYMENT VOUCHER' : std.en;
+  // ใบคืนเงินมัดจำที่มี VAT ต้องมีคำว่า "ใบลดหนี้" เสมอ (แม้บริษัทตั้งชื่อประเภทเอกสารเอง)
+  const title = H.scope === 'RE' ? (receiptTax ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : H.scope === 'PS' ? 'ใบสำคัญจ่าย' : rdVat ? RD_CREDIT_NOTE_TITLE : std.th || DOC_CLASSES[H.scope]?.label || 'เอกสาร';
+  const titleEn = H.scope === 'RE' ? (receiptTax ? 'RECEIPT / TAX INVOICE' : 'RECEIPT') : H.scope === 'PS' ? 'PAYMENT VOUCHER' : rdVat ? 'CREDIT NOTE / DEPOSIT REFUND' : std.en;
   return { kind, scope: H.scope, family: fam, title, title_en: titleEn, doc_no: txt(h.doc_no), doc_date: txt(h.doc_date), receipt_tax: receiptTax, ...(detail ? { detail } : {}),
     cancelled: h.doc_status === 'C', company, party: partyOut, fields, lines, totals, amount_text: fam === 'stock' ? '' : bahtText(net), payments, notes, journal: jl,
     print_count: H.state.printCount, approved: H.state.approved };

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { d } from '@buddy/core';
+import { d, formatDate } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { checkOwned } from '../owned.js';
@@ -11,16 +11,18 @@ import { closingOf, leafTotals, loadChart } from './gl/balances.js';
 /**
  * แฟ้มภาษีซื้อ/ภาษีขาย (คู่มือบทที่ 16 S-TX-01..08)
  * รายการเกิดจากเอกสารอัตโนมัติเมื่อบันทึก (syncVatEntries) — ภาษีเกณฑ์เงินสดเกิดที่ใบเสร็จ/ใบสำคัญจ่าย
- * ยอดเก็บเป็นบวกแบบ Express — ใบลดหนี้ (CN/DN) แสดง/รวมเป็นลบ
+ * ยอดเก็บเป็นบวกแบบ Express — ใบลดหนี้ (CN/DN) และใบคืนเงินมัดจำที่มี VAT (RD = ใบลดหนี้ 06/11/2569) แสดง/รวมเป็นลบ
  */
 type Ctx = Pick<AuthContext, 'userId'> & { companyId: string; branchId?: string | null };
-export const VAT_CLASSES: Record<'S' | 'P', string[]> = { S: ['IV', 'HS', 'DR', 'CN', 'AI', 'OI', 'RE'], P: ['RR', 'HP', 'CP', 'DN', 'AE', 'OE', 'PS'] };
-const NEG = ['CN', 'DN'];
+export const VAT_CLASSES: Record<'S' | 'P', string[]> = { S: ['IV', 'HS', 'DR', 'CN', 'AI', 'OI', 'RE', 'RD'], P: ['RR', 'HP', 'CP', 'DN', 'AE', 'OE', 'PS'] };
+/** หมวดที่เป็นใบลดหนี้ (ยอดในแฟ้มภาษีเก็บเป็นบวก รายงาน/ยอดรวมติดลบ) — ใช้ร่วมกับ reports/tax.ts */
+export const VAT_NEG_CLASSES = ['CN', 'DN', 'RD'];
+const NEG = VAT_NEG_CLASSES;
 const DESC: Record<string, string> = {
-  IV: 'ขายเชื่อให้', HS: 'ขายสดให้', DR: 'เพิ่มหนี้', CN: 'ลดหนี้/รับคืน', AI: 'รับเงินมัดจำจาก', OI: 'รายได้อื่น ๆ', RE: 'รับชำระหนี้จาก',
+  IV: 'ขายเชื่อให้', HS: 'ขายสดให้', DR: 'เพิ่มหนี้', CN: 'ลดหนี้/รับคืน', AI: 'รับเงินมัดจำจาก', OI: 'รายได้อื่น ๆ', RE: 'รับชำระหนี้จาก', RD: 'ลดหนี้ — คืนเงินมัดจำ',
   RR: 'ซื้อเชื่อจาก', HP: 'ซื้อสดจาก', CP: 'เพิ่มหนี้จาก', DN: 'ลดหนี้/ส่งคืน', AE: 'จ่ายเงินมัดจำ', OE: 'ค่าใช้จ่ายอื่น', PS: 'จ่ายชำระหนี้',
 };
-const signSql = sql`CASE WHEN h.doc_class IN ('CN','DN') THEN -1 ELSE 1 END`;
+const signSql = sql`CASE WHEN h.doc_class IN ('CN','DN','RD') THEN -1 ELSE 1 END`;
 
 /** งวดภาษี = งวดบัญชีที่มีวันที่นี้ (ไม่ตรวจงวดปิด — แฟ้มภาษียื่นเพิ่มเติมได้) */
 async function periodIdOf(db: Db, companyId: string, date: string) {
@@ -79,9 +81,16 @@ export async function syncVatEntries(tx: Db, ctx: Ctx, headerId: string) {
     company_id: ctx.companyId, vat_kind: kind, header_id: headerId, branch_id: h.branch_id, doc_no: h.doc_no, doc_date: String(h.doc_date).slice(0, 10),
     tax_invoice_no: prev?.tax_invoice_no ?? taxNo, tax_invoice_date: prev ? String(prev.tax_invoice_date).slice(0, 10) : taxDate,
     vat_period_id: prev?.vat_period_id ?? (await periodIdOf(tx, ctx.companyId, vatDate)), is_late: prev?.is_late ?? false, department_id: h.department_id,
-    description: (prev?.description ?? [DESC[h.doc_class], h.party_name].filter(Boolean).join(' ')).slice(0, 200), party_name: h.party_name, party_tax_id: h.party_tax_id, party_tax_branch_no: h.party_tax_branch_no,
+    description: (prev?.description ?? [DESC[h.doc_class], h.party_name, h.doc_class === 'RD' ? await depositRefundRefs(tx, ctx.companyId, headerId) : null].filter(Boolean).join(' ')).slice(0, 200), party_name: h.party_name, party_tax_id: h.party_tax_id, party_tax_branch_no: h.party_tax_branch_no,
     base_amount: abs(base).toFixed(2), vat_amount: abs(vat).toFixed(2), zero_rate_amount: abs(zero).toFixed(2), exempt_amount: abs(exempt).toFixed(2), is_modified: !!prev, remark: prev?.remark ?? null, created_by: ctx.userId,
   }).execute();
+}
+
+/** ใบคืนเงินมัดจำ (ใบลดหนี้): อ้างใบกำกับภาษีเดิม = ใบรับเงินมัดจำทุกใบที่คืน (เลขที่ + วันที่) */
+async function depositRefundRefs(tx: Db, companyId: string, headerId: string) {
+  const rs = (await sql<{ doc_no: string; doc_date: string }>`SELECT f.doc_no, f.doc_date::text AS doc_date FROM doc_link l JOIN doc_header f ON f.id = l.from_header_id
+      WHERE l.company_id = ${companyId} AND l.to_header_id = ${headerId} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL ORDER BY f.doc_date, f.doc_no`.execute(tx)).rows;
+  return rs.length ? `อ้างถึงใบกำกับภาษี ${rs.map((r) => `${r.doc_no} ลว. ${formatDate(String(r.doc_date).slice(0, 10), 'B')}`).join(', ')}` : null;
 }
 
 /** ป้ายใบกำกับภาษีอย่างย่อในรายงานภาษีขาย (สำนักงานบัญชียืนยันรูปแบบกับประกาศสรรพากร/ภ.พ.06 — docs/17 ข้อ 9.1) */

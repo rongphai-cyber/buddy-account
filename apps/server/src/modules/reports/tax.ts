@@ -3,7 +3,7 @@ import { d, docPath, type Decimal, type ReportColumn, type ReportRow } from '@bu
 import type { Db } from '../../db.js';
 import { badRequest } from '../../http.js';
 import { defineReport, type Ctx, type P } from './index.js';
-import { pp36Credit } from '../vat.js';
+import { pp36Credit, VAT_NEG_CLASSES } from '../vat.js';
 
 /**
  * รายงานภาษี (กลุ่ม 6 + คู่มือบทที่ 16 S-TX-05/08) — จากแฟ้มภาษีซื้อ/ขาย (tax_vat_entry) และแฟ้มภาษีหัก ณ ที่จ่าย (tax_wht_entry) ตามงวดภาษีที่ยื่น
@@ -32,7 +32,7 @@ async function vatRows(db: Db, a: Ctx, p: P, kind: 'P' | 'S', per: string) {
 }
 const BILL_P: Record<string, string> = { HP: 'ซื้อเงินสด', RR: 'ซื้อเงินเชื่อ', CP: 'ใบเพิ่มหนี้', DN: 'ใบลดหนี้/ส่งคืน', AE: 'จ่ายเงินมัดจำ', OE: 'ค่าใช้จ่ายอื่น', PS: 'จ่ายชำระหนี้ (ภาษีเกณฑ์เงินสด)',
   RE: 'ค่าบริการที่แพลตฟอร์มหัก (ใบเสร็จรับเงิน)', PP36: 'ภ.พ.36 ที่นำส่งเดือนก่อน' };
-const BILL_S: Record<string, string> = { HS: 'ขายเงินสด', IV: 'ขายเงินเชื่อ', DR: 'ใบเพิ่มหนี้', CN: 'ใบลดหนี้/รับคืน', AI: 'รับเงินมัดจำ', OI: 'รายได้อื่น', RE: 'รับชำระหนี้ (ภาษีเกณฑ์เงินสด)' };
+const BILL_S: Record<string, string> = { HS: 'ขายเงินสด', IV: 'ขายเงินเชื่อ', DR: 'ใบเพิ่มหนี้', CN: 'ใบลดหนี้/รับคืน', AI: 'รับเงินมัดจำ', OI: 'รายได้อื่น', RE: 'รับชำระหนี้ (ภาษีเกณฑ์เงินสด)', RD: 'ใบลดหนี้ — คืนเงินมัดจำ' };
 
 function vatReport(kind: 'P' | 'S') {
   return async (db: Db, a: Ctx, p: P) => {
@@ -40,7 +40,8 @@ function vatReport(kind: 'P' | 'S') {
     const variant = p.str('variant') ?? 'std';
     const all = variant === 'nil' ? [] : await vatRows(db, a, p, kind, per);
     const list = variant === 'zero' ? all.filter((x) => !d(x.zero_rate_amount).isZero()) : all;
-    const sign = (x: V) => (x.doc_class === 'CN' || x.doc_class === 'DN' ? -1 : 1);
+    // ใบลดหนี้ (CN/DN) และใบคืนเงินมัดจำที่มี VAT (RD) ติดลบ
+    const sign = (x: V) => (VAT_NEG_CLASSES.includes(x.doc_class ?? '') ? -1 : 1);
     const rows: ReportRow[] = [];
     const tot = { b: d(0), v: d(0), z: d(0), e: d(0), nb: d(0), nv: d(0) };
     const sec = (title: string | null, xs: V[]) => {
@@ -76,11 +77,12 @@ function vatReport(kind: 'P' | 'S') {
 }
 
 /** ยอดรวมภาษีของงวด (ใบลดหนี้ติดลบ) */
+const neg = sql.join(VAT_NEG_CLASSES);
 async function vatTotals(db: Db, a: Ctx, p: P, fil: ReturnType<typeof filing>, per: string, late = false) {
   const r = (await sql<{ kind: string; base: string; vat: string; zero: string; exempt: string; nbase: string; nvat: string; n: number }>`SELECT v.vat_kind AS kind,
-        coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.base_amount ELSE v.base_amount END), 0) AS base, coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.vat_amount ELSE v.vat_amount END), 0) AS vat,
-        coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.zero_rate_amount ELSE v.zero_rate_amount END), 0) AS zero,
-        coalesce(sum(CASE WHEN h.doc_class IN ('CN', 'DN') THEN -v.exempt_amount ELSE v.exempt_amount END), 0) AS exempt, coalesce(sum(v.nonclaim_base), 0) AS nbase, coalesce(sum(v.nonclaim_vat), 0) AS nvat, count(*)::int AS n
+        coalesce(sum(CASE WHEN h.doc_class IN (${neg}) THEN -v.base_amount ELSE v.base_amount END), 0) AS base, coalesce(sum(CASE WHEN h.doc_class IN (${neg}) THEN -v.vat_amount ELSE v.vat_amount END), 0) AS vat,
+        coalesce(sum(CASE WHEN h.doc_class IN (${neg}) THEN -v.zero_rate_amount ELSE v.zero_rate_amount END), 0) AS zero,
+        coalesce(sum(CASE WHEN h.doc_class IN (${neg}) THEN -v.exempt_amount ELSE v.exempt_amount END), 0) AS exempt, coalesce(sum(v.nonclaim_base), 0) AS nbase, coalesce(sum(v.nonclaim_vat), 0) AS nvat, count(*)::int AS n
       FROM tax_vat_entry v JOIN gl_period gp ON gp.id = v.vat_period_id LEFT JOIN doc_header h ON h.id = v.header_id
      WHERE v.company_id = ${a.companyId} AND v.deleted_at IS NULL AND v.doc_status <> 'C' AND to_char(gp.start_date, 'YYYY-MM') = ${per} ${fil} ${p.branch(sql`v.branch_id`)} GROUP BY v.vat_kind`.execute(db)).rows;
   const z = { base: d(0), vat: d(0), zero: d(0), exempt: d(0), nbase: d(0), nvat: d(0), n: 0 };
