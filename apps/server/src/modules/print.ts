@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { bahtText, fmt, settlementVatParts, checkApprove, checkPrint, checkUnapprove, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
+import { bahtText, fmt, receiptVatSummary, depositCreditNoteAmounts, checkApprove, checkPrint, checkUnapprove, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
 import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { companyImages } from './company-images.js';
@@ -97,13 +97,10 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
   if (fam === 'settle') {
     const sr = (await sql<Row>`SELECT i.id, i.doc_no, i.doc_date, i.due_date, i.doc_class, i.net_amount, i.vat_rate, i.exempt_amount, i.zero_rate_amount, s.amount, s.vat_amount, s.express_rectype, CASE WHEN s.line_note_print THEN s.line_note END AS note FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id
         WHERE s.payment_header_id = ${id} AND s.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows;
-    for (const r of sr) {
-      const sg = r.express_rectype === '5' ? -1 : 1;
-      vatDue = vatDue.plus(d(r.vat_amount ?? 0).times(sg)); paidTotal = paidTotal.plus(d(r.amount ?? 0).times(sg));
-      const p = settlementVatParts({ amount: r.amount ?? 0, vat: r.vat_amount, inv_net: r.net_amount, inv_exempt: r.exempt_amount, inv_zero: r.zero_rate_amount });
-      vatBase = vatBase.plus(p.base.times(sg));
-      if (!p.vat.isZero()) vatRates.add(d(r.vat_rate ?? 0).toString());
-    }
+    // ยอดภาษีชุดเดียวกับ e-Tax T03 (receiptVatSummary · core)
+    const sum = receiptVatSummary(sr.map((r) => ({ amount: r.amount ?? 0, vat: r.vat_amount, inv_net: r.net_amount, inv_exempt: r.exempt_amount, inv_zero: r.zero_rate_amount, vat_rate: r.vat_rate, rectype: r.express_rectype })));
+    vatDue = sum.vat; paidTotal = sum.paid; vatBase = sum.base;
+    for (const x of sum.rates) vatRates.add(x);
     const billRow = (r: Row, i: number) => ({ no: String(i + 1), code: txt(r.doc_no), ref_date: txt(r.doc_date), due_date: txt(r.due_date), name: DOC_CLASSES[r.doc_class ?? '']?.label ?? '', ref_amount: money(r.net_amount), amount: money(r.amount) });
     lines = sr.map((r, i) => ({ ...billRow(r, i), ...(r.note ? { note: txt(r.note) } : {}) }));
     const items = sr.length ? (await sql<Row>`SELECT l.header_id, it.code AS item_code, l.description, l.qty, u.name_th AS unit, l.unit_price, l.line_amount, CASE WHEN l.line_note_print THEN l.line_note END AS note
@@ -145,8 +142,9 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     const prior = (await sql<Row>`SELECT l.amount, l.vat_amount, f.price_type FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id JOIN doc_header f ON f.id = l.from_header_id
         WHERE l.company_id = ${a.companyId} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL AND t.doc_class = 'RD' AND t.doc_status <> 'C' AND t.deleted_at IS NULL AND t.id <> ${id}
           AND l.from_header_id IN (${sql.join(depUsed.map((r) => r.id))}) AND (t.doc_date, t.doc_no) < (${h.doc_date}::date, ${h.doc_no})`.execute(db)).rows;
-    const base = (r: Row) => depositRefundParts(r.amount ?? 0, r.price_type, r.vat_amount ?? 0).base;
-    cn = { orig: depUsed.reduce((s, r) => s.plus(d(r.dep_net ?? 0)).minus(d(r.dep_vat ?? 0)), d(0)), before: prior.reduce((s, r) => s.plus(base(r)), d(0)), diff: depUsed.reduce((s, r) => s.plus(base(r)), d(0)) };
+    // มูลค่าเดิม/ลดครั้งก่อน/ผลต่าง ชุดเดียวกับ e-Tax 81 (depositCreditNoteAmounts · core)
+    const link = (r: Row) => ({ amount: r.amount ?? 0, vat: r.vat_amount ?? 0, price_type: r.price_type });
+    cn = depositCreditNoteAmounts({ deposits: depUsed.map((r) => ({ ...link(r), dep_net: r.dep_net ?? 0, dep_vat: r.dep_vat ?? 0 })), prior: prior.map(link) });
     lines = depUsed.map((r, i) => {
       const p = depositRefundParts(r.amount ?? 0, r.price_type, r.vat_amount ?? 0);
       return { no: String(i + 1), code: txt(r.doc_no), qty: '', amount: p.paid.toFixed(2),

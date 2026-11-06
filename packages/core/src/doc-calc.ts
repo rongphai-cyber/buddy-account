@@ -54,8 +54,8 @@ export interface CalcResult {
   errors: string[];
 }
 
-/** แบ่งยอดตามสัดส่วนน้ำหนัก ปัดเศษให้ผลรวมตรง (ส่วนต่างไปบรรทัดที่มียอดมากสุด) */
-function allocate(total: Decimal, weights: Decimal[]): Decimal[] {
+/** แบ่งยอดตามสัดส่วนน้ำหนัก ปัดเศษให้ผลรวมตรง (ส่วนต่างไปบรรทัดที่มียอดมากสุด) — ใช้ร่วมกับ e-Tax ของใบเสร็จ */
+export function allocate(total: Decimal, weights: Decimal[]): Decimal[] {
   const sum = weights.reduce((s, w) => s.plus(w), d(0));
   if (sum.isZero()) return weights.map((_, i) => (i === 0 ? total : d(0)));
   const out = weights.map((w) => r2(total.times(w).div(sum)));

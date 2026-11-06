@@ -2123,6 +2123,20 @@
 ]
 },
 {
+"th": "รับเงินมัดจำ",
+"n": 11,
+"files": [
+"apps/server/src/modules/etax.ts",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "หนี้สิน",
 "n": 11,
 "files": [
@@ -2292,19 +2306,6 @@
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts"
-]
-},
-{
-"th": "รับเงินมัดจำ",
-"n": 10,
-"files": [
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -4159,6 +4160,16 @@
 ]
 },
 {
+"th": "หัก",
+"n": 5,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/server/src/modules/docs/deposits.ts",
+"packages/core/src/etax.ts"
+]
+},
+{
 "th": "อ้างอิง",
 "n": 5,
 "files": [
@@ -4919,15 +4930,6 @@
 "n": 4,
 "files": [
 "apps/web/src/pages/inventory/Serials.tsx"
-]
-},
-{
-"th": "หัก",
-"n": 4,
-"files": [
-"apps/web/src/pages/docs/DepositPick.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/server/src/modules/docs/deposits.ts"
 ]
 },
 {
@@ -8368,6 +8370,13 @@
 ]
 },
 {
+"th": "บอกเลิกสัญญาบริการ",
+"n": 2,
+"files": [
+"packages/core/src/etax.ts"
+]
+},
+{
 "th": "บัญชี {0} เป็นบัญชีคุม ลงรายการไม่ได้ — เลือกบัญชีย่อย",
 "n": 2,
 "files": [
@@ -11305,6 +11314,14 @@
 ]
 },
 {
+"th": "เหตุผลที่ลดหนี้",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"packages/core/src/etax.ts"
+]
+},
+{
 "th": "เอกสารล่าสุด",
 "n": 2,
 "files": [
@@ -11679,6 +11696,14 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ใบแจ้งหนี้",
+"n": 2,
+"files": [
+"packages/core/src/etax.ts",
 "packages/core/src/printforms.ts"
 ]
 },
@@ -12131,6 +12156,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "(ชำระบางส่วนของ …)",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
 ]
 },
 {
@@ -14672,6 +14704,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "{0} (ชำระบางส่วนของ {1})",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
 ]
 },
 {
@@ -18917,6 +18956,13 @@
 ]
 },
 {
+"th": "คืนเงินมัดจำตามใบกำกับภาษี {0} ลงวันที่ {1}",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
+]
+},
+{
 "th": "คุณ",
 "n": 1,
 "files": [
@@ -20783,6 +20829,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "ชำระ",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
 ]
 },
 {
@@ -25077,13 +25130,6 @@
 ]
 },
 {
-"th": "บอกเลิกสัญญาบริการ",
-"n": 1,
-"files": [
-"packages/core/src/etax.ts"
-]
-},
-{
 "th": "บังคับถ้าระดับมากกว่า 1 — ระดับและหมวดจะตั้งตามบัญชีคุม",
 "n": 1,
 "files": [
@@ -26684,6 +26730,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/opening.ts"
+]
+},
+{
+"th": "บิลนี้ใช้ภาษีเกณฑ์เงินสด (พิมพ์เป็นใบแจ้งหนี้ ไม่ใช่ใบกำกับภาษี) — ใบกำกับภาษีคือใบเสร็จรับเงิน (RE) ที่รับชำระบิลนี้ ให้ส่ง e-Tax ของใบเสร็จแทน",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
 ]
 },
 {
@@ -29305,7 +29358,7 @@
 ]
 },
 {
-"th": "พร้อม {0} · ต้องแก้ {1} · ขายสด = T03 ใบเสร็จรับเงิน/ใบกำกับภาษี · ลดหนี้ 81 · เพิ่มหนี้ 80",
+"th": "พร้อม {0} · ต้องแก้ {1} · ขายสด ใบเสร็จรับเงิน (มี VAT) รับเงินมัดจำ (มี VAT) = T03 ใบเสร็จรับเงิน/ใบกำกับภาษี · ลดหนี้ คืนเงินมัดจำ (มี VAT) = 81 · เพิ่มหนี้ 80",
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Etax.tsx"
@@ -38524,7 +38577,7 @@
 ]
 },
 {
-"th": "สร้างแฟ้ม XML ตามมาตรฐาน ETDA ขมธอ. 3-2560 จากใบกำกับภาษีขาย ใบลดหนี้ และใบเพิ่มหนี้ที่บันทึกแล้ว —",
+"th": "สร้างแฟ้ม XML ตามมาตรฐาน ETDA ขมธอ. 3-2560 จากใบกำกับภาษีขาย ใบเสร็จรับเงิน/ใบกำกับภาษี ใบรับเงินมัดจำที่มี VAT ใบลดหนี้ (รวมใบคืนเงินมัดจำที่มี VAT) และใบเพิ่มหนี้ที่บันทึกแล้ว —",
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Etax.tsx"
@@ -46014,13 +46067,6 @@
 ]
 },
 {
-"th": "เหตุผลที่ลดหนี้",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/DepositRefunds.tsx"
-]
-},
-{
 "th": "เหตุผลที่ลดหนี้: {0}",
 "n": 1,
 "files": [
@@ -46119,7 +46165,7 @@
 ]
 },
 {
-"th": "เอกสารขาย (ขายเชื่อ ขายสด ลดหนี้ เพิ่มหนี้ ที่ไม่ยกเลิก)",
+"th": "เอกสารขาย (ขายเชื่อ ขายสด ลดหนี้ เพิ่มหนี้ ใบเสร็จรับเงิน รับเงินมัดจำ คืนเงินมัดจำ ที่ไม่ยกเลิก)",
 "n": 1,
 "files": [
 "apps/server/src/modules/etax.ts"
@@ -47120,7 +47166,7 @@
 ]
 },
 {
-"th": "แฟ้ม zip มีแฟ้ม XML ฉบับละ 1 แฟ้ม + สรุป.csv (รายการที่ข้ามพร้อมเหตุผล) · เหตุผลใบลดหนี้: มีรับคืนสินค้า = CDNG05 อื่น ๆ = 99 ตามหมายเหตุของเอกสาร · ยอดเงินในแฟ้มไม่รวม VAT ตามมาตรฐาน · เมื่อมีใบรับรองอิเล็กทรอนิกส์แล้วจะเพิ่มการลงนาม (XAdES) และนำส่ง",
+"th": "แฟ้ม zip มีแฟ้ม XML ฉบับละ 1 แฟ้ม + สรุป.csv (รายการที่ข้ามพร้อมเหตุผล) · เหตุผลใบลดหนี้: มีรับคืนสินค้า = CDNG05 · คืนเงินมัดจำ = CDNS04 บอกเลิกสัญญา · อื่น ๆ = 99 ตามหมายเหตุของเอกสาร · ใบเสร็จ/ใบมัดจำ/ใบคืนเงินมัดจำที่ไม่มี VAT และบิลภาษีเกณฑ์เงินสด (ใบกำกับภาษีคือใบเสร็จ) ไม่อยู่ในรายการ · ยอดเงินในแฟ้มไม่รวม VAT ตามมาตรฐาน · เมื่อมีใบรับรองอิเล็กทรอนิกส์แล้วจะเพิ่มการลงนาม (XAdES) และนำส่ง",
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Etax.tsx"
@@ -48534,6 +48580,13 @@
 ]
 },
 {
+"th": "ใบคืนเงินมัดจำนี้ไม่มีภาษีมูลค่าเพิ่ม (คืนมัดจำที่ไม่มี VAT) จึงไม่ใช่ใบลดหนี้ — ไม่ต้องส่ง e-Tax",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
+]
+},
+{
 "th": "ใบจ่ายที่เบิกจะกลับมาเบิกใหม่ได้ · เช็คออกจากทะเบียน",
 "n": 1,
 "files": [
@@ -48678,6 +48731,13 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ใบรับเงินมัดจำนี้ไม่มีภาษีมูลค่าเพิ่ม จึงไม่ใช่ใบกำกับภาษี — ไม่ต้องส่ง e-Tax (ถ้ามัดจำนี้ต้องเสีย VAT ให้ยกเลิกแล้วบันทึกใหม่แบบมี VAT)",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
 ]
 },
 {
@@ -49010,6 +49070,20 @@
 ]
 },
 {
+"th": "ใบเสร็จนี้ตัดบิลที่มีอัตราภาษีต่างกัน ({0}) — แยกรับชำระเป็นใบเสร็จละอัตรา",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
+]
+},
+{
+"th": "ใบเสร็จนี้ไม่มีภาษีมูลค่าเพิ่มถึงกำหนด (ไม่ได้ตัดบิลภาษีเกณฑ์เงินสดที่มี VAT) จึงไม่ใช่ใบกำกับภาษี — ไม่ต้องส่ง e-Tax ของใบเสร็จนี้ (ใบกำกับภาษีคือบิลขายที่ชำระ)",
+"n": 1,
+"files": [
+"packages/core/src/etax.ts"
+]
+},
+{
 "th": "ใบเสร็จรับเงิน/ใบกำกับภาษี (WTS-Living)",
 "n": 1,
 "files": [
@@ -49028,13 +49102,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/settle.ts"
-]
-},
-{
-"th": "ใบแจ้งหนี้",
-"n": 1,
-"files": [
-"packages/core/src/printforms.ts"
 ]
 },
 {

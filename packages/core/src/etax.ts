@@ -1,6 +1,9 @@
 import type { Decimal } from 'decimal.js';
 import { d, type MoneyInput } from './money.js';
 import { checkTaxId } from './taxid.js';
+import { formatDate, type YearSystem } from './date.js';
+import { allocate } from './doc-calc.js';
+import { depositCreditNoteAmounts, receiptVatSummary, type DepositRefundLink, type ReceiptVatRow } from './posting.js';
 
 /**
  * ใบกำกับภาษีอิเล็กทรอนิกส์ (e-Tax Invoice) ตามมาตรฐาน ETDA ขมธอ. 3-2560 รุ่น 2.0 (T7.6)
@@ -75,6 +78,8 @@ export interface EtaxDoc {
   purpose?: string | null;
   /** ใบกำกับภาษีเดิม (ใบเพิ่ม/ลดหนี้) */
   ref?: { id: string; date: string; typeCode: string } | null;
+  /** ใบกำกับภาษีเดิมหลายใบ (ใบคืนเงินมัดจำคืนหลายใบมัดจำ) — มีแล้วใช้แทน ref · AdditionalReferencedDocument 0..n ตาม XSD */
+  refs?: Array<{ id: string; date: string; typeCode: string }> | null;
   /** ใบเพิ่ม/ลดหนี้: มูลค่าตามใบกำกับเดิม และมูลค่าที่ถูกต้อง (ไม่รวม VAT) */
   originalAmount?: MoneyInput;
   correctAmount?: MoneyInput;
@@ -133,7 +138,8 @@ export function validateEtax(doc: EtaxDoc): string[] {
   doc.lines.forEach((l, i) => { if (!cut(l.name, 256)) e.push(`บรรทัดที่ ${i + 1}: ไม่มีชื่อสินค้า/บริการ`); });
   const t = etaxTotals(doc);
   if (isNote) {
-    if (!doc.ref?.id || !doc.ref.date) e.push('ใบเพิ่ม/ลดหนี้ต้องอ้างเลขที่และวันที่ใบกำกับภาษีเดิม — แก้ที่เอกสาร (ช่อง "อ้างถึงใบกำกับ")');
+    const refs = doc.refs?.length ? doc.refs : doc.ref ? [doc.ref] : [];
+    if (!refs.length || refs.some((r) => !r.id || !r.date)) e.push('ใบเพิ่ม/ลดหนี้ต้องอ้างเลขที่และวันที่ใบกำกับภาษีเดิม — แก้ที่เอกสาร (ช่อง "อ้างถึงใบกำกับ")');
     if (!doc.purposeCode || !ETAX_PURPOSES[doc.purposeCode]) e.push('ไม่ได้ระบุเหตุผลการออกใบเพิ่ม/ลดหนี้');
     else if (doc.purposeCode.endsWith('99') && !cut(doc.purpose, 256)) e.push('เหตุอื่นต้องระบุสาเหตุ — ใส่ในหมายเหตุของเอกสาร');
     if (doc.originalAmount === undefined || doc.correctAmount === undefined) e.push('ไม่พบมูลค่าตามใบกำกับภาษีเดิม — ตรวจเลขที่ใบกำกับเดิมว่ามีในโปรแกรม');
@@ -201,9 +207,9 @@ export function buildEtaxXml(doc: EtaxDoc): string {
   party('ram:SellerTradeParty', doc.seller);
   party('ram:BuyerTradeParty', doc.buyer);
   if (doc.buyerOrderRef) { open('ram:BuyerOrderReferencedDocument'); leaf('ram:IssuerAssignedID', cut(doc.buyerOrderRef, 35)); leaf('ram:ReferenceTypeCode', 'ON'); close('ram:BuyerOrderReferencedDocument'); }
-  if (doc.ref) {
+  for (const ref of doc.refs?.length ? doc.refs : doc.ref ? [doc.ref] : []) {
     open('ram:AdditionalReferencedDocument');
-    leaf('ram:IssuerAssignedID', cut(doc.ref.id, 35)); leaf('ram:IssueDateTime', dt(doc.ref.date)); leaf('ram:ReferenceTypeCode', doc.ref.typeCode);
+    leaf('ram:IssuerAssignedID', cut(ref.id, 35)); leaf('ram:IssueDateTime', dt(ref.date)); leaf('ram:ReferenceTypeCode', ref.typeCode);
     close('ram:AdditionalReferencedDocument');
   }
   close('ram:ApplicableHeaderTradeAgreement');
@@ -258,3 +264,85 @@ export function buildEtaxXml(doc: EtaxDoc): string {
 
 /** ชื่อแฟ้มตามเลขที่เอกสาร (ตัวอักษรที่ใช้ในชื่อแฟ้มไม่ได้ → _) */
 export const etaxFileName = (doc: Pick<EtaxDoc, 'id' | 'typeCode'>) => `${doc.typeCode}_${doc.id.replace(/[^A-Za-z0-9ก-๙._-]/g, '_')}.xml`;
+
+/** เอกสารที่ไม่ใช่ใบกำกับภาษี (ไม่มี VAT) — ส่งออก e-Tax ไม่ได้ (HANDOFF ข้อ 89) */
+export const ETAX_NOT_TAX_INVOICE = {
+  RE: 'ใบเสร็จนี้ไม่มีภาษีมูลค่าเพิ่มถึงกำหนด (ไม่ได้ตัดบิลภาษีเกณฑ์เงินสดที่มี VAT) จึงไม่ใช่ใบกำกับภาษี — ไม่ต้องส่ง e-Tax ของใบเสร็จนี้ (ใบกำกับภาษีคือบิลขายที่ชำระ)',
+  AI: 'ใบรับเงินมัดจำนี้ไม่มีภาษีมูลค่าเพิ่ม จึงไม่ใช่ใบกำกับภาษี — ไม่ต้องส่ง e-Tax (ถ้ามัดจำนี้ต้องเสีย VAT ให้ยกเลิกแล้วบันทึกใหม่แบบมี VAT)',
+  RD: 'ใบคืนเงินมัดจำนี้ไม่มีภาษีมูลค่าเพิ่ม (คืนมัดจำที่ไม่มี VAT) จึงไม่ใช่ใบลดหนี้ — ไม่ต้องส่ง e-Tax',
+  /** บิลขายเชื่อภาษีเกณฑ์เงินสด (vat_basis 2) พิมพ์ "ใบแจ้งหนี้" ตั้งแต่ HANDOFF ข้อ 87 — ใบกำกับภาษีคือ RE */
+  IV: 'บิลนี้ใช้ภาษีเกณฑ์เงินสด (พิมพ์เป็นใบแจ้งหนี้ ไม่ใช่ใบกำกับภาษี) — ใบกำกับภาษีคือใบเสร็จรับเงิน (RE) ที่รับชำระบิลนี้ ให้ส่ง e-Tax ของใบเสร็จแทน',
+} as const;
+
+/**
+ * เหตุผลของใบลดหนี้จากการคืนเงินมัดจำ (RD) = CDNS04 "บอกเลิกสัญญาบริการ"
+ * ใบคืนเงินมัดจำที่มี VAT ออกเมื่อเลิกสัญญาที่รับมัดจำไว้ (ประกาศอธิบดีฯ VAT ฉบับที่ 39 · docs/19 ข้อ 6) — รายการมัดจำเป็นข้อความ ไม่มีรหัสสินค้า
+ * ข้อความเหตุผล (Purpose) = หมายเหตุของ RD (ช่อง "เหตุผลที่ลดหนี้" บังคับเมื่อมี VAT)
+ */
+export const ETAX_DEPOSIT_REFUND_PURPOSE = 'CDNS04';
+
+/** บิลที่ใบเสร็จตัด + รายการของบิล (ยอดบรรทัดไม่รวม VAT = doc_line.net_amount) */
+export interface EtaxReceiptBill extends ReceiptVatRow {
+  doc_no: string;
+  /** ชื่อชนิดบิล เช่น ขายเงินเชื่อ (ใช้เมื่อบิลไม่มีรายการ) */
+  label?: string | null;
+  price_type?: string | null;
+  lines: Array<EtaxLine & { vat_code?: string | null }>;
+}
+
+/**
+ * ใบเสร็จรับเงิน/ใบกำกับภาษี (RE ตัดบิลภาษีเกณฑ์เงินสด) → e-Tax T03
+ * ยอดรวมจาก receiptVatSummary ชุดเดียวกับใบพิมพ์ RE และรายการภาษีขาย (settlementVatParts · HANDOFF ข้อ 87):
+ *  ฐาน VAT = มูลค่าที่มี VAT · VAT = ภาษีถึงกำหนด · FRE = มูลค่าที่ไม่มี VAT (ยกเว้น 0% บิลไม่มี VAT) · ยอดรวม = รวมยอดชำระ
+ * รายการ = รายการของบิลที่ชำระ ยอดไม่รวม VAT (ยอดชำระ − VAT ของบิล แบ่งตามยอดบรรทัด — ชำระเต็มบิล = ยอดบรรทัดเดิม)
+ *  ชำระบางส่วน: จำนวน 1 × ยอดที่ชำระ "(ชำระบางส่วนของ …)" · บิลไม่มีรายการ/ใบลดหนี้ที่หัก: 1 บรรทัดต่อบิล
+ */
+export function etaxReceiptParts(bills: EtaxReceiptBill[]) {
+  const s = receiptVatSummary(bills);
+  const errors: string[] = [];
+  if (s.vat.isZero()) errors.push(ETAX_NOT_TAX_INVOICE.RE);
+  if (s.rates.length > 1) errors.push(`ใบเสร็จนี้ตัดบิลที่มีอัตราภาษีต่างกัน (${s.rates.map((r) => `${r}%`).join(', ')}) — แยกรับชำระเป็นใบเสร็จละอัตรา`);
+  const lines: EtaxLine[] = bills.flatMap((b, i) => {
+    const sign = s.parts[i]!.sign;
+    const exVat = d(b.amount ?? 0).minus(d(b.vat ?? 0)).times(sign);
+    const src = b.lines.filter((l) => !d(l.net ?? 0).isZero());
+    if (sign < 0 || !src.length) return [{ code: b.doc_no, name: `${sign < 0 ? 'หัก' : 'ชำระ'}${b.label ?? ''} ${b.doc_no}`, qty: '1', unitPrice: exVat.toFixed(2), net: exVat.toFixed(2) }];
+    const shares = allocate(exVat, src.map((l) => d(l.net)));
+    const full = d(b.amount ?? 0).eq(d(b.inv_net ?? 0));
+    const rate = d(b.vat_rate ?? 0);
+    const incl = b.price_type === '1' && !rate.isZero();
+    return src.map((l, k): EtaxLine => {
+      const net = shares[k]!.toFixed(2);
+      if (!full) return { code: l.code, name: `${l.name} (ชำระบางส่วนของ ${b.doc_no})`, qty: '1', unitCode: l.unitCode, unitPrice: net, net };
+      const vatLine = l.vat_code !== '0' && l.vat_code !== '2';
+      return { code: l.code, name: l.name, qty: l.qty, unitCode: l.unitCode, unitPrice: incl && vatLine ? d(l.unitPrice ?? 0).times(100).div(rate.plus(100)).toDecimalPlaces(4) : l.unitPrice, net };
+    });
+  });
+  return {
+    lines, vat: { rate: s.rates[0] ?? '0', basis: s.base.toFixed(2), amount: s.vat.toFixed(2) }, exemptBasis: s.nonVat.toFixed(2), deposit: '0', grandTotal: s.paid.toFixed(2), errors,
+  };
+}
+
+/** ใบมัดจำที่ใบคืนเงินคืน (เลขที่/วันที่/มูลค่าของใบมัดจำ + ยอดคืนและ VAT ของใบนี้) */
+export interface EtaxRefundDeposit extends DepositRefundLink { doc_no: string; doc_date: string; dep_net: MoneyInput; dep_vat: MoneyInput }
+
+/**
+ * ใบคืนเงินมัดจำที่มี VAT (RD = ใบลดหนี้ · HANDOFF ข้อ 85) → e-Tax 81
+ *  อ้างใบกำกับภาษีเดิม = ใบรับเงินมัดจำทุกใบที่คืน (T03) · มูลค่าเดิม / ที่ถูกต้อง / ผลต่าง จาก depositCreditNoteAmounts ชุดเดียวกับใบพิมพ์ RD
+ *  VAT ของผลต่าง = VAT ที่บันทึกต่อใบมัดจำ (กฎปิดยอดตรงสตางค์) · เหตุผล CDNS04 + ข้อความจากหมายเหตุ
+ *  รายการ = 1 บรรทัดต่อใบมัดจำ มูลค่าก่อน VAT ที่คืน
+ */
+export function etaxDepositRefundParts(x: { deposits: EtaxRefundDeposit[]; prior: DepositRefundLink[]; vatRate: MoneyInput; yearSystem?: YearSystem }) {
+  const c = depositCreditNoteAmounts(x);
+  const errors: string[] = [];
+  if (c.vat.isZero()) errors.push(ETAX_NOT_TAX_INVOICE.RD);
+  const lines: EtaxLine[] = x.deposits.map((r, i) => {
+    const base = c.parts[i]!.base.toFixed(2);
+    return { code: r.doc_no, name: `คืนเงินมัดจำตามใบกำกับภาษี ${r.doc_no} ลงวันที่ ${formatDate(r.doc_date, x.yearSystem ?? 'B')}`, qty: '1', unitPrice: base, net: base };
+  });
+  return {
+    lines, refs: x.deposits.map((r) => ({ id: r.doc_no, date: r.doc_date, typeCode: 'T03' })),
+    vat: { rate: d(x.vatRate ?? 0).toString(), basis: c.diff.toFixed(2), amount: c.vat.toFixed(2) }, exemptBasis: '0', deposit: '0', grandTotal: c.paid.toFixed(2),
+    originalAmount: c.orig.toFixed(2), correctAmount: c.correct.toFixed(2), purposeCode: ETAX_DEPOSIT_REFUND_PURPOSE, errors,
+  };
+}

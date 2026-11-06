@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { buildEtaxXml, etaxFileName, etaxPostcode, etaxTaxRegistration, validateEtax, type EtaxDoc } from './etax.js';
+import { buildEtaxXml, ETAX_NOT_TAX_INVOICE, etaxDepositRefundParts, etaxFileName, etaxPostcode, etaxReceiptParts, etaxTaxRegistration, validateEtax, type EtaxDoc, type EtaxReceiptBill } from './etax.js';
+import { depositRefundVat, receiptVatSummary } from './posting.js';
+import { d } from './money.js';
 
 const seller = { name: 'บริษัท ทดสอบ จำกัด', taxId: '0105537095903', branchNo: '00000', address: '99 ถนนพระราม 4 แขวงสีลม เขตบางรัก กรุงเทพมหานคร 10500', postcode: '10500' };
 const buyer = { name: 'บริษัท ลูกค้า & คู่ค้า จำกัด', code: 'C001', taxId: '0105537095903', branchNo: '00001', address: '1 ถนนสุขุมวิท กรุงเทพฯ 10110', postcode: '10110' };
@@ -67,5 +69,97 @@ describe('e-Tax Invoice ETDA ขมธอ. 3-2560 (T7.6)', () => {
     expect(errs.some((e) => /ที่อยู่กิจการต้องมีรหัสไปรษณีย์/.test(e))).toBe(true);
     expect(errs.some((e) => /ที่อยู่ผู้ซื้อ/.test(e))).toBe(true);
     expect(errs.some((e) => /ไม่เท่ากับยอดรวม 1500.00/.test(e))).toBe(true);
+  });
+});
+
+const inOrder = (x: string, parts: string[]) => { let at = 0; for (const s of parts) { const i = x.indexOf(s, at); expect(i, s).toBeGreaterThanOrEqual(0); at = i; } };
+
+describe('e-Tax RE / AI / RD (HANDOFF ข้อ 89)', () => {
+  // RE ภาพ B87 (HANDOFF ข้อ 87): บิลภาษีเกณฑ์เงินสด ค่าเช่า 4,500 (ยกเว้น) + ค่าน้ำ 180 + ค่าไฟ 640 (VAT 7% = 57.40) = 5,377.40 · บิลค่าปรับ 107.55 (ไม่มี VAT)
+  //  → มูลค่าที่มี VAT 820.00 · VAT 57.40 · ไม่มี VAT 4,500 + 107.55 = 4,607.55 · รวม 5,484.95
+  const util: EtaxReceiptBill = { doc_no: 'IV6905001', label: 'ขายเงินเชื่อ', price_type: '2', vat_rate: '7', amount: '5377.40', vat: '57.40', inv_net: '5377.40', inv_exempt: '4500.00', inv_zero: '0',
+    lines: [{ code: 'RENT', name: 'ค่าเช่าห้อง', qty: '1', unitPrice: '4500', net: '4500.00', vat_code: '0' }, { code: 'WATER', name: 'ค่าน้ำ', qty: '18', unitCode: 'UNIT', unitPrice: '10', net: '180.00', vat_code: '1' },
+      { code: 'ELEC', name: 'ค่าไฟ', qty: '80', unitPrice: '8', net: '640.00', vat_code: '1' }] };
+  const late: EtaxReceiptBill = { doc_no: 'IV6905002', label: 'ขายเงินเชื่อ', price_type: '0', vat_rate: '0', amount: '107.55', vat: '0', inv_net: '107.55', inv_exempt: '107.55', inv_zero: '0',
+    lines: [{ code: 'LATE', name: 'ค่าปรับชำระล่าช้า', qty: '1', unitPrice: '107.55', net: '107.55', vat_code: '0' }] };
+  const reDoc = (p: ReturnType<typeof etaxReceiptParts>): EtaxDoc => ({ typeCode: 'T03', id: 'RE6905001', issueDate: '2026-05-20', seller, buyer, lines: p.lines, vat: p.vat, exemptBasis: p.exemptBasis, deposit: p.deposit, grandTotal: p.grandTotal });
+
+  it('RE (cash-basis VAT): T03 lines = settled invoice lines excl. VAT; totals = RE print / VAT row 820.00 · 57.40 · 4,607.55 · 5,484.95', () => {
+    const p = etaxReceiptParts([util, late]);
+    expect([p.vat, p.exemptBasis, p.grandTotal, p.errors]).toEqual([{ rate: '7', basis: '820.00', amount: '57.40' }, '4607.55', '5484.95', []]);
+    // ใบพิมพ์ RE ใช้ receiptVatSummary ตัวเดียวกัน
+    const sum = receiptVatSummary([util, late]);
+    expect([sum.base.toFixed(2), sum.vat.toFixed(2), sum.nonVat.toFixed(2), sum.paid.toFixed(2)]).toEqual(['820.00', '57.40', '4607.55', '5484.95']);
+    expect(p.lines.map((l) => `${l.name}:${String(l.qty)}:${String(l.unitPrice)}:${String(l.net)}`)).toEqual(['ค่าเช่าห้อง:1:4500:4500.00', 'ค่าน้ำ:18:10:180.00', 'ค่าไฟ:80:8:640.00', 'ค่าปรับชำระล่าช้า:1:107.55:107.55']);
+    const doc = reDoc(p);
+    expect(validateEtax(doc)).toEqual([]);
+    const x = buildEtaxXml(doc);
+    inOrder(x, ['<ram:Name>ใบเสร็จรับเงิน/ใบกำกับภาษี', '<ram:TypeCode>T03', '<ram:TypeCode>VAT', 'BasisAmount currencyID="THB">820.00', 'CalculatedAmount currencyID="THB">57.40',
+      '<ram:TypeCode>FRE', 'BasisAmount currencyID="THB">4607.55', 'LineTotalAmount currencyID="THB">5427.55', 'TaxBasisTotalAmount currencyID="THB">5427.55', 'TaxTotalAmount currencyID="THB">57.40',
+      'GrandTotalAmount currencyID="THB">5484.95', 'ค่าเช่าห้อง', 'NetLineTotalAmount currencyID="THB">4500.00', 'ค่าน้ำ', 'unitCode="UNIT">18<', 'ค่าปรับชำระล่าช้า', 'NetLineTotalAmount currencyID="THB">107.55']);
+    expect(x).not.toContain('AllowanceTotalAmount');
+  });
+
+  it('RE partial payment: exempt share by invoice proportion, lines = amount paid; price incl. VAT converts unit price of VAT lines only', () => {
+    // ชำระครึ่งบิล 2,688.70 (VAT 28.70): ยกเว้น 4,500 × 2,688.70 / 5,377.40 = 2,250.00 · มูลค่าที่มี VAT 2,688.70 − 28.70 − 2,250 = 410.00
+    const p = etaxReceiptParts([{ ...util, amount: '2688.70', vat: '28.70' }]);
+    expect([p.vat.basis, p.vat.amount, p.exemptBasis, p.grandTotal]).toEqual(['410.00', '28.70', '2250.00', '2688.70']);
+    expect(p.lines.map((l) => `${l.name}:${String(l.qty)}:${String(l.net)}`)).toEqual(['ค่าเช่าห้อง (ชำระบางส่วนของ IV6905001):1:2250.00', 'ค่าน้ำ (ชำระบางส่วนของ IV6905001):1:90.00', 'ค่าไฟ (ชำระบางส่วนของ IV6905001):1:320.00']);
+    expect(validateEtax(reDoc(p))).toEqual([]);
+    // ราคารวม VAT: บรรทัดมี VAT 107 → ราคาต่อหน่วย 100 · บรรทัดยกเว้นคงเดิม
+    const incl = etaxReceiptParts([{ doc_no: 'IV2', price_type: '1', vat_rate: '7', amount: '157', vat: '7', inv_net: '157', inv_exempt: '50', lines: [{ name: 'บริการ', qty: '1', unitPrice: '107', net: '100.00', vat_code: '1' }, { name: 'ค่าเช่า', qty: '1', unitPrice: '50', net: '50.00', vat_code: '0' }] }]);
+    expect(incl.lines.map((l) => [d(l.unitPrice).toFixed(2), String(l.net)])).toEqual([['100.00', '100.00'], ['50.00', '50.00']]);
+    expect([incl.vat.basis, incl.exemptBasis, incl.grandTotal]).toEqual(['100.00', '50.00', '157.00']);
+  });
+
+  it('RE without VAT due is not a tax invoice; several VAT rates must be split', () => {
+    expect(etaxReceiptParts([late]).errors).toEqual([ETAX_NOT_TAX_INVOICE.RE]);
+    expect(etaxReceiptParts([util, { ...util, doc_no: 'IV9', vat_rate: '10', amount: '5402.00', vat: '82.00' }]).errors[0]).toMatch(/อัตราภาษีต่างกัน \(7%, 10%\).*แยกรับชำระ/);
+  });
+
+  it('AI deposit with VAT: T03 with the deposit description, 10,000 + 700 = 10,700', () => {
+    const ai: EtaxDoc = { typeCode: 'T03', id: 'AI6906001', issueDate: '2026-06-15', seller, buyer, lines: [{ name: 'มัดจำค่าตกแต่งร้าน', qty: '1', unitPrice: '10000', net: '10000.00' }],
+      vat: { rate: '7', basis: '10000.00', amount: '700.00' }, exemptBasis: '0.00', deposit: '0.00', grandTotal: '10700.00' };
+    expect(validateEtax(ai)).toEqual([]);
+    const x = buildEtaxXml(ai);
+    inOrder(x, ['<ram:ID>AI6906001', '<ram:TypeCode>T03', 'BasisAmount currencyID="THB">10000.00', 'CalculatedAmount currencyID="THB">700.00', 'GrandTotalAmount currencyID="THB">10700.00', 'มัดจำค่าตกแต่งร้าน', 'NetLineTotalAmount currencyID="THB">10000.00']);
+    expect(x).not.toContain('FRE');
+    expect(etaxFileName(ai)).toBe('T03_AI6906001.xml');
+  });
+
+  const rdDoc = (p: ReturnType<typeof etaxDepositRefundParts>, id: string, remark: string): EtaxDoc => ({ typeCode: '81', id, issueDate: '2026-07-20', seller, buyer, lines: p.lines, refs: p.refs, vat: p.vat,
+    exemptBasis: p.exemptBasis, deposit: p.deposit, grandTotal: p.grandTotal, originalAmount: p.originalAmount, correctAmount: p.correctAmount, purposeCode: p.purposeCode, purpose: remark });
+  const aiA = { doc_no: 'AI6906001', doc_date: '2026-06-15', dep_net: '10700.00', dep_vat: '700.00', price_type: '2' };
+
+  it('RD refund 4,000 of AI 10,000 + 700 → credit note 81: ref AI (T03), original 10,000 / correct 6,000 / difference 4,000, VAT 280, CDNS04 + RD remark', () => {
+    const p = etaxDepositRefundParts({ deposits: [{ ...aiA, amount: '4000.00', vat: '280.00' }], prior: [], vatRate: '7.0000' });
+    expect([p.originalAmount, p.correctAmount, p.vat, p.grandTotal, p.purposeCode, p.refs, p.errors]).toEqual(['10000.00', '6000.00', { rate: '7', basis: '4000.00', amount: '280.00' }, '4280.00', 'CDNS04',
+      [{ id: 'AI6906001', date: '2026-06-15', typeCode: 'T03' }], []]);
+    expect(p.lines.map((l) => `${l.name}:${String(l.net)}`)).toEqual(['คืนเงินมัดจำตามใบกำกับภาษี AI6906001 ลงวันที่ 15/06/2569:4000.00']);
+    const doc = rdDoc(p, 'RD6907001', 'ยกเลิกสัญญาตกแต่งร้าน คืนเงินมัดจำ');
+    expect(validateEtax(doc)).toEqual([]);
+    inOrder(buildEtaxXml(doc), ['<rsm:DebitCreditNote_CrossIndustryInvoice', '<ram:Name>ใบลดหนี้', '<ram:TypeCode>81', '<ram:Purpose>ยกเลิกสัญญาตกแต่งร้าน คืนเงินมัดจำ', '<ram:PurposeCode>CDNS04',
+      'AdditionalReferencedDocument', '<ram:IssuerAssignedID>AI6906001', '<ram:IssueDateTime>2026-06-15T00:00:00', '<ram:ReferenceTypeCode>T03', 'BasisAmount currencyID="THB">4000.00', 'CalculatedAmount currencyID="THB">280.00',
+      'OriginalInformationAmount currencyID="THB">10000.00', 'LineTotalAmount currencyID="THB">6000.00', 'DifferenceInformationAmount currencyID="THB">4000.00', 'TaxBasisTotalAmount currencyID="THB">4000.00',
+      'TaxTotalAmount currencyID="THB">280.00', 'GrandTotalAmount currencyID="THB">4280.00']);
+    expect(etaxDepositRefundParts({ deposits: [{ ...aiA, price_type: '0', dep_vat: '0', amount: '500', vat: '0' }], prior: [], vatRate: 0 }).errors).toEqual([ETAX_NOT_TAX_INVOICE.RD]);
+  });
+
+  it('(c) exact remainder: AI incl. VAT 1,000 (VAT 65.42) · RD 333 before · RD 667 → VAT 43.63, difference 623.37, correct 0.00', () => {
+    const v = depositRefundVat({ amount: '667', price_type: '1', vat_rate: 7, deposit_vat: '65.42', outstanding: '667', other_rd_vat: '21.79' });
+    expect([v.vat.toFixed(2), v.exact]).toEqual(['43.63', true]);
+    const p = etaxDepositRefundParts({ deposits: [{ doc_no: 'AI6906003', doc_date: '2026-06-15', dep_net: '1000.00', dep_vat: '65.42', price_type: '1', amount: '667.00', vat: v.vat.toFixed(2) }],
+      prior: [{ amount: '333.00', vat: '21.79', price_type: '1' }], vatRate: 7 });
+    expect([p.originalAmount, p.correctAmount, p.vat.basis, p.vat.amount, p.grandTotal]).toEqual(['934.58', '0.00', '623.37', '43.63', '667.00']);
+    expect(validateEtax(rdDoc(p, 'RD6907006', 'ยกเลิกสัญญา'))).toEqual([]);
+  });
+
+  it('RD refunding several AIs references every original tax invoice', () => {
+    const p = etaxDepositRefundParts({ deposits: [{ ...aiA, amount: '1000', vat: '70' }, { ...aiA, doc_no: 'AI6906002', doc_date: '2026-06-20', amount: '500', vat: '35' }], prior: [], vatRate: 7 });
+    expect([p.originalAmount, p.correctAmount, p.vat.basis, p.vat.amount, p.grandTotal]).toEqual(['20000.00', '18500.00', '1500.00', '105.00', '1605.00']);
+    const x = buildEtaxXml(rdDoc(p, 'RD6907009', 'ยกเลิกสัญญา'));
+    expect(x.match(/<ram:AdditionalReferencedDocument>/g)?.length).toBe(2);
+    inOrder(x, ['<ram:IssuerAssignedID>AI6906001', '<ram:ReferenceTypeCode>T03', '<ram:IssuerAssignedID>AI6906002', '<ram:IssueDateTime>2026-06-20T00:00:00', '<ram:ReferenceTypeCode>T03']);
+    expect(validateEtax({ ...rdDoc(p, 'RD6907009', 'x'), refs: [{ id: '', date: '', typeCode: 'T03' }] })).toEqual(expect.arrayContaining([expect.stringMatching(/อ้างเลขที่และวันที่ใบกำกับภาษีเดิม/)]));
   });
 });

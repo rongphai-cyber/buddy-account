@@ -54,6 +54,41 @@ export function settlementVatParts(x: { amount: MoneyInput; vat: MoneyInput | nu
   return { base: amt.minus(vat).minus(exempt).minus(zero), vat, zero, exempt, other: z };
 }
 
+/** บิลหนึ่งใบที่ใบเสร็จตัด (doc_settlement + หัวบิล) · rectype '5' = ใบลดหนี้ที่นำมาหัก (ยอดลบ) */
+export interface ReceiptVatRow { amount: MoneyInput; vat: MoneyInput | null | undefined; inv_net: MoneyInput | null | undefined; inv_exempt?: MoneyInput | null; inv_zero?: MoneyInput | null; vat_rate?: MoneyInput | null; rectype?: string | null }
+/**
+ * ยอดภาษีของใบเสร็จรับเงิน/ใบกำกับภาษี (RE) — ใช้ร่วมกันระหว่างใบพิมพ์ RE และ e-Tax T03 (HANDOFF ข้อ 87 · 89) ให้ตรงกันถึงสตางค์
+ *  base = มูลค่าที่มี VAT (settlementVatParts) · vat = ภาษีถึงกำหนด · paid = รวมยอดชำระ · nonVat = มูลค่าที่ไม่มี VAT (ยกเว้น 0% บิลไม่มี VAT) · rates = อัตราของบิลที่มี VAT
+ */
+export function receiptVatSummary(rows: ReceiptVatRow[]) {
+  let base = d(0), vat = d(0), paid = d(0);
+  const rates = new Set<string>();
+  const parts = rows.map((r) => {
+    const sign = r.rectype === '5' ? -1 : 1;
+    vat = vat.plus(d(r.vat ?? 0).times(sign)); paid = paid.plus(d(r.amount ?? 0).times(sign));
+    const p = settlementVatParts({ amount: r.amount ?? 0, vat: r.vat, inv_net: r.inv_net, inv_exempt: r.inv_exempt, inv_zero: r.inv_zero });
+    base = base.plus(p.base.times(sign));
+    if (!p.vat.isZero()) rates.add(d(r.vat_rate ?? 0).toString());
+    return { ...p, sign };
+  });
+  return { base, vat, paid, nonVat: paid.minus(base).minus(vat), rates: [...rates], parts };
+}
+
+/** ใบมัดจำหนึ่งใบที่ใบคืนเงินมัดจำคืน (doc_link DEPOSIT) — ยอดคืนในหน่วยของใบมัดจำ + VAT ของยอดนั้น */
+export interface DepositRefundLink { amount: MoneyInput; vat?: MoneyInput | null; price_type?: string | null }
+/**
+ * ใบคืนเงินมัดจำที่มี VAT = ใบลดหนี้ (ม.86/10 · HANDOFF ข้อ 85) — ใบพิมพ์ RD และ e-Tax 81 ใช้ร่วมกัน
+ *  orig = มูลค่าตามใบกำกับภาษีเดิม (ใบมัดจำ ไม่รวม VAT) · before = ลดหนี้ครั้งก่อน (ใบคืนเงินที่ยังใช้ ลงก่อนใบนี้) · diff = ผลต่าง (ก่อน VAT ของใบนี้)
+ *  correct = orig − before − diff · vat = ภาษีของผลต่าง (VAT ต่อใบมัดจำที่บันทึกไว้ — กฎปิดยอดตรงสตางค์อยู่ใน depositRefundVat) · paid = เงินที่จ่ายคืน
+ */
+export function depositCreditNoteAmounts(x: { deposits: Array<DepositRefundLink & { dep_net: MoneyInput; dep_vat: MoneyInput }>; prior: DepositRefundLink[] }) {
+  const parts = x.deposits.map((r) => depositRefundParts(r.amount ?? 0, r.price_type, r.vat ?? 0));
+  const orig = x.deposits.reduce((s, r) => s.plus(d(r.dep_net ?? 0)).minus(d(r.dep_vat ?? 0)), d(0));
+  const before = x.prior.reduce((s, r) => s.plus(depositRefundParts(r.amount ?? 0, r.price_type, r.vat ?? 0).base), d(0));
+  const diff = parts.reduce((s, p) => s.plus(p.base), d(0));
+  return { orig, before, diff, correct: orig.minus(before).minus(diff), vat: parts.reduce((s, p) => s.plus(p.vat), d(0)), paid: parts.reduce((s, p) => s.plus(p.paid), d(0)), parts };
+}
+
 /**
  * ภาษีขายที่ลดเมื่อคืนมัดจำที่มี VAT (ใบคืนเงินมัดจำ RD = ใบลดหนี้ — เจ้าของ 06/11/2569)
  *  แยก VAT: VAT = ปัดสองตำแหน่ง(ยอดคืน × อัตรา / 100) · รวม VAT: ก่อน VAT = ปัด(ยอดคืน × 100 / (100 + อัตรา)) · VAT = ยอดคืน − ก่อน VAT
