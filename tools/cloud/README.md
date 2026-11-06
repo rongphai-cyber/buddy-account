@@ -5,6 +5,7 @@
 |---|---|
 | `pg-check.mjs` | ตรวจ PostgreSQL บนคลาวด์ (Supabase) ของ Buddy · WTS-POS · WTS-Living + ที่เก็บไฟล์ R2 แล้วเขียนสรุป `.data/cloud-s0-report.md` |
 | `r2-check.ts` | ส่วนตรวจ R2 (pg-check เรียกเอง) |
+| `set-supabase-url.ps1` | ใส่ที่อยู่ Supabase ลง `.data/cloud-s0.env` ให้ (เจ้าของไม่ต้องแก้ไฟล์เอง) |
 | `cloud-s0.env.example` | แบบไฟล์ค่าตั้ง — คัดลอกเป็น `.data/cloud-s0.env` แล้วกรอกเอง (ไม่เข้า git) |
 
 แผนทั้งหมด ข้อควรระวัง และสิ่งที่ยังต้องทำ: `docs/20_WTS Cloud SaaS.md`
@@ -17,7 +18,7 @@
 2. ปุ่ม **Connect** › **Session pooler** › คัดลอก URI (ลงท้าย `/postgres`)
 3. (แนะนำ) แถบไอคอนซ้าย **Database** (รูปถังข้อมูล) › **Settings** › **SSL Configuration** › **Download certificate** → บันทึกเป็น `E:\BuddyAccount\.data\supabase-ca.crt` (หน้า Project Settings ของ Supabase รุ่นใหม่ไม่มีหัวข้อ Database แล้ว)
    - หาไม่เจอ/ข้าม: ต่อท้าย URL ด้วย `?sslmode=no-verify` แทน (ยังเข้ารหัส แต่ไม่ตรวจตัวตนเซิร์ฟเวอร์ — ใช้ทดสอบเท่านั้น) · **อย่าใช้ `sslmode=require`**: ไดรเวอร์ pg ของเราถือเป็น verify-full แล้วล้มด้วย "self-signed certificate" เพราะใบรับรองของ Supabase ไม่ได้ออกโดย CA สาธารณะ
-4. คัดลอก `tools\cloud\cloud-s0.env.example` เป็น `E:\BuddyAccount\.data\cloud-s0.env` (Notepad) แล้ววาง URI ที่บรรทัด `SUPABASE_PROJECT_URL=` ใส่รหัสผ่านแทน `[YOUR-PASSWORD]` และต่อท้ายด้วย `?sslmode=verify-full&sslrootcert=E:/BuddyAccount/.data/supabase-ca.crt` — **ห้ามวางรหัสผ่านในแชท**
+4. **ง่ายสุด:** `powershell -ExecutionPolicy Bypass -File tools\cloud\set-supabase-url.ps1` — วาง URI, พิมพ์รหัสผ่าน (ไม่ขึ้นจอ) ตัวช่วยเขียนบรรทัด `SUPABASE_PROJECT_URL=` ให้เอง (ใส่รหัสแทน `[YOUR-PASSWORD]` · ต่อท้าย SSL ตามว่ามี `.data\supabase-ca.crt` หรือไม่) · หรือทำเอง: คัดลอก `tools\cloud\cloud-s0.env.example` เป็น `E:\BuddyAccount\.data\cloud-s0.env` (Notepad) แล้ววาง URI ที่บรรทัด `SUPABASE_PROJECT_URL=` ใส่รหัสผ่านแทน `[YOUR-PASSWORD]` และต่อท้ายด้วย `?sslmode=verify-full&sslrootcert=E:/BuddyAccount/.data/supabase-ca.crt` — **ห้ามวางรหัสผ่านในแชท**
 5. (ไม่บังคับ) ใส่ **Transaction pooler** (พอร์ต 6543) ที่ `SUPABASE_POOLER_URL`
    - เครื่องมือเปลี่ยนเฉพาะชื่อฐานท้าย URL (`/postgres` → `/s0_buddy` …) แล้วตรวจว่าได้ฐานนั้นจริง · ถ้าแจ้งว่า pooler เลือกฐานไม่ได้ ให้ใช้ **Direct connection** แทน (ต้องมี IPv6 หรือซื้อ IPv4 add-on ของ Supabase)
    - ข้อดีเพิ่ม: Data API ของ Supabase ให้บริการเฉพาะฐาน `postgres` — ฐาน `s0_*` จึงไม่ถูกเปิดผ่านกุญแจ anon (ยังควรปิด Data API ไว้)
