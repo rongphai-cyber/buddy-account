@@ -94,7 +94,11 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.keyboard.press('Alt+C');
     await page.waitForSelector('.modal');
     await page.locator('.modal input').fill('ทดสอบระบบ');
-    await page.locator('.modal button.danger').click();
+    // ใช้แป้นพิมพ์อย่างเดียว: Enter ที่ช่องเหตุผล → ไปปุ่มยืนยัน (สีแดง) · Enter อีกครั้ง = ยกเลิก (แก้ 06/11/2569)
+    await page.locator('.modal input').press('Enter');
+    const onDanger = await page.evaluate(() => document.activeElement?.matches('.modal-foot button.danger') ?? false);
+    if (!onDanger) throw new Error('Enter in the reason box did not move to the confirm button');
+    await page.keyboard.press('Enter');
     await page.waitForSelector('.pill.st-c', { timeout: 8000 });
     await shot('08b-journal-cancelled');
   });

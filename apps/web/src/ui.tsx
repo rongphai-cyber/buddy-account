@@ -95,7 +95,8 @@ function modalKey(e: RKE<HTMLElement>) {
 }
 /** Enter ที่ช่องสุดท้ายของหน้าต่าง → ไปที่ปุ่มบันทึก/ตกลง (Enter อีกครั้ง = บันทึก) — ข้อกำหนดเจ้าของ 01/11/2569 */
 function focusSave(box: HTMLElement) {
-  const b = box.querySelector<HTMLButtonElement>('.modal-foot button.primary:not([disabled])');
+  // ปุ่มยืนยันของหน้าต่างยกเลิก/ลบเป็นสีแดง (.danger) — เดิมหาแค่ .primary จึงกด Enter ยืนยันยกเลิกไม่ได้ (แก้ 06/11/2569)
+  const b = box.querySelector<HTMLButtonElement>('.modal-foot button.primary:not([disabled]), .modal-foot button.danger:not([disabled])');
   if (b) b.focus();
 }
 export function Modal({ title, onClose, children, size = 'form', footer }: { title: string; onClose: () => void; children: ReactNode; size?: 'form' | 'wide' | 'confirm'; footer?: ReactNode }) {
