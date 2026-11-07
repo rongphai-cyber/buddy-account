@@ -12,6 +12,8 @@ export interface PrintLayout {
   title: string; title_en: string;
   /** สำเนาที่พิมพ์ต่อครั้ง เช่น ["ต้นฉบับ", "สำเนา"] — ว่าง = หนึ่งชุดไม่มีคำกำกับ */
   copies: string[];
+  /** พิมพ์ซ้ำ (เอกสารเคยพิมพ์แล้ว) = แผ่น "ต้นฉบับ" พิมพ์เป็น "สำเนา" · แบบฟอร์มไม่มีคำกำกับ = กำกับ "สำเนา" (ดู sheetCopies) */
+  reprint_copy: boolean;
   font_pt: number;
   columns: PrintColumn[];
   head_fields: string[];
@@ -186,7 +188,7 @@ export function defaultLayout(scope: string, base: PrintBase, title = ''): Print
   // มืออาชีพ: รหัสสินค้ากว้างพอไม่ตัดบรรทัด · ไม่เติมบรรทัดว่าง (ไม่มีเส้นแนวตั้ง)
   const proW: Record<string, number> = base === 'pro' ? { code: 17, name: 29, unit: 10 } : {};
   return {
-    title, title_en: '', copies: fam === 'trade' && !['QT', 'SO', 'PO'].includes(scope) ? ['ต้นฉบับ', 'สำเนา'] : [],
+    title, title_en: '', copies: fam === 'trade' && !['QT', 'SO', 'PO'].includes(scope) ? ['ต้นฉบับ', 'สำเนา'] : [], reprint_copy: true,
     font_pt: small ? 9 : base === 'cont' ? 11 : 10,
     columns: PRINT_COLUMNS[fam].map((c) => ({ ...c, width: proW[c.key] ?? c.width, show: c.show !== false && !(small && (c.key === 'disc' || c.key === 'wh')) })),
     // ขายสด/ซื้อสด ไม่มีวันครบกำหนด
@@ -214,7 +216,7 @@ export function normalizeLayout(scope: string, base: PrintBase, raw: unknown): P
   }), ...known.filter((k) => !cols.some((c) => c.key === k.key)).map((k) => ({ ...k, show: cols.length ? false : k.show !== false }))];
   const fonts = Number(x.font_pt);
   return {
-    title: str(x.title, 120, def.title), title_en: str(x.title_en, 120, ''), copies: list(x.copies, 6, def.copies),
+    title: str(x.title, 120, def.title), title_en: str(x.title_en, 120, ''), copies: list(x.copies, 6, def.copies), reprint_copy: bool(x.reprint_copy, def.reprint_copy),
     font_pt: Number.isFinite(fonts) && fonts >= 7 && fonts <= 16 ? fonts : def.font_pt, columns,
     head_fields: list(x.head_fields, 12, def.head_fields).filter((k) => PRINT_HEAD_FIELDS.some((f) => f.key === k)),
     show_company: bool(x.show_company, def.show_company), show_party: bool(x.show_party, def.show_party), show_amount_text: bool(x.show_amount_text, def.show_amount_text),
@@ -226,6 +228,23 @@ export function normalizeLayout(scope: string, base: PrintBase, raw: unknown): P
     signature_images: (Array.isArray(x.signature_images) ? x.signature_images : []).slice(0, 4).map((v) => (typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v) ? v : null)),
     settle_detail: SETTLE_DETAILS.some((o) => o.key === x.settle_detail) ? (x.settle_detail as SettleDetail) : def.settle_detail,
   };
+}
+
+/** คำกำกับของเอกสารที่พิมพ์ครั้งแรก / พิมพ์ซ้ำ (ใช้ทั้งหน้าพิมพ์ของ Buddy และ API พิมพ์ให้ระบบอื่น) */
+export const COPY_ORIGINAL = 'ต้นฉบับ';
+export const COPY_DUPLICATE = 'สำเนา';
+/** คำกำกับของการพิมพ์ครั้งนี้ — priorPrints = จำนวนครั้งที่พิมพ์ออกเครื่องพิมพ์ไปแล้วก่อนครั้งนี้ */
+export function copyMark(priorPrints: number): string { return priorPrints > 0 ? COPY_DUPLICATE : COPY_ORIGINAL; }
+/**
+ * แผ่นที่พิมพ์ (หนึ่งแผ่นต่อคำกำกับ · '' = ไม่มีคำกำกับ) — เจ้าของ: ต้นฉบับออกได้ครั้งเดียว (ใบกำกับภาษี ม.86/4 · ฉบับจริงหายต้องออก "ใบแทน" ไม่ใช่พิมพ์ต้นฉบับซ้ำ)
+ * - ครั้งแรก = ตามแบบฟอร์ม
+ * - พิมพ์ซ้ำ + reprint_copy: คำว่า "ต้นฉบับ" ในคำกำกับ → "สำเนา" (จำนวนแผ่นเท่าเดิม เช่น ต้นฉบับ (ลูกค้า) → สำเนา (ลูกค้า)) · แบบฟอร์มไม่มีคำกำกับ → "สำเนา"
+ * - reprint_copy ปิด = ตามแบบฟอร์มทุกครั้ง (เช่น ใบสำคัญภายในที่ไม่ต้องแยก)
+ */
+export function sheetCopies(layout: Pick<PrintLayout, 'copies' | 'reprint_copy'>, priorPrints: number): string[] {
+  const base = layout.copies.length ? layout.copies : [''];
+  if (priorPrints <= 0 || !layout.reprint_copy) return base;
+  return base.map((c) => (!c ? COPY_DUPLICATE : c.split(COPY_ORIGINAL).join(COPY_DUPLICATE)));
 }
 
 /** เมนูพิมพ์ของชนิดเอกสาร: ต้นแบบ 1–4 + ฟอร์มของบริษัท (ทับหมายเลขเดียวกัน) เรียงตามหมายเลข */

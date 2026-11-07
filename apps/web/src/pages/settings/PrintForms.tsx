@@ -94,6 +94,8 @@ export function PrintFormsPage() {
             <Field label="หัวเรื่อง" wide hint={`ว่าง = ชื่อประเภทเอกสาร${sampleData ? ` (${sampleData.title})` : ''}`}><input value={L.title} maxLength={120} placeholder="เช่น ใบส่งของ/ใบกำกับภาษี" onChange={(e) => set({ title: e.target.value })} /></Field>
             <Field label="หัวเรื่องภาษาอังกฤษ" wide><input value={L.title_en} maxLength={120} placeholder="INVOICE / TAX INVOICE" onChange={(e) => set({ title_en: e.target.value })} /></Field>
             <Field label="สำเนาที่พิมพ์ (คั่นด้วย ,)" wide hint="เช่น ต้นฉบับ, สำเนา — หนึ่งแผ่นต่อคำ ว่าง = แผ่นเดียว"><input defaultValue={L.copies.join(', ')} key={`c${slot}${scope}${L.copies.join()}`} onBlur={(e) => set({ copies: list(e.target.value) })} /></Field>
+            <Field label="พิมพ์ซ้ำ" wide hint="ติ๊ก = เอกสารที่พิมพ์ไปแล้ว พิมพ์อีกครั้งได้แผ่นเท่าเดิมแต่คำว่า ต้นฉบับ เปลี่ยนเป็น สำเนา (แบบฟอร์มที่ไม่มีคำกำกับจะขึ้นคำว่า สำเนา) — ใบกำกับภาษีต้นฉบับออกได้ครั้งเดียว">
+              <label className="check"><input type="checkbox" checked={L.reprint_copy} onChange={(e) => set({ reprint_copy: e.target.checked })} /> พิมพ์ซ้ำเป็น "สำเนา"</label></Field>
             <Field label="ขนาดอักษร (pt)"><input type="number" min={7} max={16} value={L.font_pt} onChange={(e) => set({ font_pt: Number(e.target.value) || 10 })} /></Field>
             <Field label="บรรทัดขั้นต่ำในตาราง" hint="เติมบรรทัดว่างให้สูงเท่ากันทุกใบ"><input type="number" min={0} max={40} value={L.min_rows} onChange={(e) => set({ min_rows: Number(e.target.value) || 0 })} /></Field>
             <Field label="โลโก้บริษัท" hint={images.logo ? undefined : 'ยังไม่มีโลโก้ — อัปโหลดด้านบน'}><select value={L.logo} onChange={(e) => set({ logo: e.target.value as PrintLayout['logo'] })}>{PRINT_LOGO_POS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></Field>
@@ -133,7 +135,7 @@ export function PrintFormsPage() {
         </div>
         <div className="pf-preview">
           <p className="muted small">{sampleData ? `ตัวอย่างจากเอกสารล่าสุด ${sampleData.doc_no}` : sample.isLoading ? 'กำลังโหลดตัวอย่าง…' : 'ยังไม่มีเอกสารชนิดนี้ — ตัวอย่างจะแสดงเมื่อมีเอกสาร'}</p>
-          {sampleData && preview && <div className="ds-preview"><PrintSheet data={sampleData} form={preview} ys={ys} images={images} /></div>}
+          {sampleData && preview && <div className="ds-preview"><PrintSheet data={sampleData} form={preview} prior={0} ys={ys} images={images} /></div>}
         </div>
       </div>}
       {askDel && <Confirm title="กลับไปใช้ต้นแบบ" danger text={`ลบแบบฟอร์มของบริษัท ${scope} หมายเลข ${slot} (${cur?.name ?? ''})?`} okText="ลบ" onOk={remove} onClose={() => setAskDel(false)} />}

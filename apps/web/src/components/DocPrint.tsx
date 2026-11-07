@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { fmt, formatDate, PRINT_HEAD_FIELDS, printPartyLabel, type PrintFamily, type PrintFormEntry, type YearSystem } from '@buddy/core';
+import { fmt, formatDate, PRINT_HEAD_FIELDS, printPartyLabel, sheetCopies, type PrintFamily, type PrintFormEntry, type YearSystem } from '@buddy/core';
 import { CloseScreen, DocDelete } from './DocDelete';
 import { api } from '../api';
 import type { CompanyImages } from './CompanyImages';
@@ -27,15 +27,18 @@ const DATE_KEYS = new Set(['ref_date', 'due_date', 'date']);
 const DATE_FIELDS = new Set(['due_date', 'delivery_date', 'appointment_date', 'payment_date']);
 const cellText = (key: string, v: string | undefined, ys: YearSystem) => (!v ? '' : MONEY_KEYS.has(key) ? fmt(v) : DATE_KEYS.has(key) ? formatDate(v, ys) : v);
 
-/** แผ่นเอกสารตามแบบฟอร์ม — ใช้ทั้งดูทางจอภาพและพิมพ์ (หนึ่งแผ่นต่อสำเนา) */
-export function PrintSheet({ data, form, ys, images }: { data: PrintData; form: PrintFormEntry; ys: YearSystem; images?: CompanyImages | null }) {
+/**
+ * แผ่นเอกสารตามแบบฟอร์ม — ใช้ทั้งดูทางจอภาพและพิมพ์ (หนึ่งแผ่นต่อสำเนา)
+ * prior = ครั้งที่พิมพ์ไปแล้วก่อนครั้งนี้ (พิมพ์ซ้ำ = "ต้นฉบับ" เป็น "สำเนา" · sheetCopies) — ไม่ส่ง = ตามข้อมูลเอกสาร (ดูทางจอภาพ = หน้าตาของการพิมพ์ครั้งถัดไป)
+ */
+export function PrintSheet({ data, form, ys, images, prior }: { data: PrintData; form: PrintFormEntry; ys: YearSystem; images?: CompanyImages | null; prior?: number }) {
   const L = form.layout;
   // ใบเสร็จ: แสดงรายการสินค้า/บริการของบิล (ฟอร์มเลือก หรืออัตโนมัติเมื่อเป็นใบกำกับภาษี) — คอลัมน์รายการต้องแสดง
   const items = data.family === 'settle' && !!data.detail && (L.settle_detail === 'items' || (L.settle_detail !== 'bills' && !!data.receipt_tax));
   const lines = items ? data.detail! : data.lines;
   const cols = L.columns.filter((c) => c.show || (items && c.key === 'name'));
   const totalW = cols.reduce((s, c) => s + c.width, 0) || 1;
-  const copies = L.copies.length ? L.copies : [''];
+  const copies = sheetCopies(L, prior ?? data.print_count);
   const fill = Math.max(0, L.min_rows - lines.length - lines.filter((l) => l.note).length);
   // หมายเหตุรายการเริ่มใต้คอลัมน์รายละเอียด (ไม่มี = ใต้คอลัมน์ที่ 2)
   const noteAt = Math.max(0, cols.findIndex((c) => c.key === 'name')) || Math.min(1, cols.length - 1);
@@ -122,7 +125,8 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
   const q = useQuery({ enabled: !!id, queryKey: ['print', kind, id], queryFn: () => api.get<PrintResp>(`/api/v1/print/${kind}/${id}`), staleTime: 0 });
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<PrintFormEntry | null>(null);
-  const [printing, setPrinting] = useState<PrintFormEntry | null>(null);
+  // แบบฟอร์ม + ครั้งที่พิมพ์ก่อนครั้งนี้ (จากเซิร์ฟเวอร์ตอนนับ — ข้อมูลเอกสารที่โหลดใหม่ระหว่างพิมพ์จะไม่เปลี่ยนต้นฉบับเป็นสำเนา)
+  const [printing, setPrinting] = useState<{ form: PrintFormEntry; prior: number } | null>(null);
   const [info, setInfo] = useState(false);
   const [range, setRange] = useState(false);
   const [notes, setNotes] = useState(false);
@@ -147,8 +151,8 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
     if (!f) return toast(`ไม่มีแบบฟอร์มหมายเลข ${slot} — เลือกจากเมนูพิมพ์ ▾`, 'warn');
     if (screenOnly) { setPreview(f); return toast('สิทธิ์ของคุณพิมพ์ได้เฉพาะแสดงทางจอภาพ', 'warn'); }
     try {
-      await api.post(`/api/v1/print/${kind}/${id}/printed`, { slot });
-      setPreview(null); setPrinting(f);
+      const res = await api.post<{ print_count: number }>(`/api/v1/print/${kind}/${id}/printed`, { slot });
+      setPreview(null); setPrinting({ form: f, prior: Math.max(0, Number(res?.print_count ?? r.data.print_count + 1) - 1) });
       qc.invalidateQueries({ queryKey: ['print', kind, id] });
     } catch (e) { toastError(e); }
   };
@@ -206,9 +210,10 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
         footer={<><button onClick={() => setPreview(null)}>ปิด</button>{!screenOnly && <button disabled={!can('print') || !id} title="เปิดเอกสารในแท็บใหม่ แล้วพิมพ์/บันทึกเป็น PDF จากหน้านั้น (ใช้เมื่อกดพิมพ์แล้วไม่ออก)" onClick={() => id && window.open(`/print/${kind}/${id}?slot=${preview.slot}`, '_blank')}>↗ เปิดหน้าพิมพ์ในแท็บใหม่</button>}
           {!screenOnly && <button className="primary" disabled={!can('print')} onClick={() => doPrint(preview.slot)}>🖨 พิมพ์</button>}</>}>
         {r.block && <p className="err-msg">{r.block}</p>}
+        {r.data.print_count > 0 && preview.layout.reprint_copy && <p className="muted small" data-testid="reprint-note">เอกสารนี้พิมพ์แล้ว {r.data.print_count} ครั้ง — พิมพ์ซ้ำออกเป็น "สำเนา" (ต้นฉบับออกได้ครั้งเดียว · ตั้งที่ แบบฟอร์มพิมพ์เอกสาร › ทั่วไป/กระดาษ)</p>}
         <div className="ds-preview"><PrintSheet data={r.data} form={preview} ys={ys} images={r.images} /></div>
       </Modal>}
-      {printing && r && createPortal(<div className="doc-print"><PrintSheet data={r.data} form={printing} ys={ys} images={r.images} /></div>, document.body)}
+      {printing && r && createPortal(<div className="doc-print"><PrintSheet data={r.data} form={printing.form} prior={printing.prior} ys={ys} images={r.images} /></div>, document.body)}
       {info && id && <RecordInfo kind={kind} id={id} onClose={() => setInfo(false)} />}
       {notes && id && <DocNotesDialog id={id} canEdit={can('edit')} onClose={() => setNotes(false)} />}
       {range && <ApproveRange kind={kind} scope={r?.data.scope} typeId={typeId ?? null} onClose={() => setRange(false)} onDone={() => qc.invalidateQueries({ queryKey: ['print'] })} />}
@@ -225,10 +230,15 @@ export function PrintPage({ kind, id, slot }: { kind: 'doc' | 'journal'; id: str
   const q = useQuery({ queryKey: ['print', kind, id], queryFn: () => api.get<PrintResp>(`/api/v1/print/${kind}/${id}`), staleTime: 0 });
   const f = q.data?.forms.find((x) => x.slot === slot) ?? q.data?.forms[0];
   const [sent, setSent] = useState(false);
+  // ครั้งที่พิมพ์ก่อนครั้งนี้ — ตั้งจากผลการนับของเซิร์ฟเวอร์ (Ctrl+P ซ้ำในแท็บนี้ไม่ได้นับ จึงคงคำกำกับเดิม)
+  const [prior, setPrior] = useState<number | undefined>(undefined);
   useEffect(() => {
     if (!q.data || !f || sent || q.data.block) return;
     setSent(true);
-    void api.post(`/api/v1/print/${kind}/${id}/printed`, { slot: f.slot }).catch(() => undefined).finally(() => setTimeout(() => window.print(), 300));
+    const before = q.data.data.print_count;
+    void api.post<{ print_count: number }>(`/api/v1/print/${kind}/${id}/printed`, { slot: f.slot })
+      .then((res) => setPrior(Math.max(0, Number(res?.print_count ?? before + 1) - 1)), () => setPrior(before))
+      .finally(() => setTimeout(() => window.print(), 300));
   }, [q.data, f, sent, kind, id]);
   if (q.error) return <div className="page"><ErrorBox error={q.error} /></div>;
   if (!q.data || !f) return <div className="page"><p className="muted">กำลังเตรียมเอกสาร…</p></div>;
@@ -236,7 +246,7 @@ export function PrintPage({ kind, id, slot }: { kind: 'doc' | 'journal'; id: str
     <div className="print-page">
       <div className="print-page-bar no-print"><b>{q.data.data.doc_no}</b> · {f.slot}. {f.name}{q.data.block && <span className="err-msg"> {q.data.block}</span>}
         <button className="primary" disabled={!!q.data.block} onClick={() => window.print()}>🖨 พิมพ์ (Ctrl+P)</button><button onClick={() => window.close()}>ปิดแท็บ</button></div>
-      <div className="print-page-body"><PrintSheet data={q.data.data} form={f} ys={ys} images={q.data.images} /></div>
+      <div className="print-page-body"><PrintSheet data={q.data.data} form={f} prior={prior} ys={ys} images={q.data.images} /></div>
     </div>
   );
 }

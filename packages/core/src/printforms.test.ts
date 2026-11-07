@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkApprove, checkPrint, checkUnapprove, defaultLayout, docMenuOf, docPath, normalizeLayout, printFamily, printMenu, printPartyLabel, printTitle } from './printforms.js';
+import { checkApprove, checkPrint, checkUnapprove, copyMark, defaultLayout, sheetCopies, docMenuOf, docPath, normalizeLayout, printFamily, printMenu, printPartyLabel, printTitle } from './printforms.js';
 
 describe('แบบฟอร์มพิมพ์เอกสาร (S-RD-01/02)', () => {
   it('จัดกลุ่มเอกสารและเมนูสิทธิ์', () => {
@@ -8,6 +8,22 @@ describe('แบบฟอร์มพิมพ์เอกสาร (S-RD-01/02)
     expect([docMenuOf('IV'), docMenuOf('PS'), docMenuOf('RL'), docMenuOf('BT'), docMenuOf('VR'), docMenuOf('IV', true), docMenuOf('GL'), docMenuOf('AI', true)]).toEqual(['SA.IV', 'FI.AP.PS', 'IC.TRN', 'FI.BK.TX', 'GL.PC', 'FI.AR.OB', 'GL.JNL', 'FI.AR.DOB']);
     expect([docPath('IV', 'x'), docPath('IV', 'x', true), docPath('RR', 'x', true), docPath('PS', 'x'), docPath('BT', 'x'), docPath('RL', 'x'), docPath('DP', 'x'), docPath('VR', 'x'), docPath('BQ', 'x'), docPath('OS', 'x', true), docPath('GL', 'x'), docPath('ZZ', 'x'), docPath(null, 'x'), docPath('AI', 'x', true)])
       .toEqual(['/sa/invoices/x', '/fi/ar/opening/x', '/fi/ap/opening/x', '/fi/ap/payments/x', '/fi/bank/transfers/x', '/ic/transfers/x', '/fi/petty-cash/dp/x', '/fi/petty-cash/vr/x', '/fi/cheques/slips/x', '/ic/opening/x', '/gl/journals/x', null, null, '/fi/ar/deposit-opening/x']);
+  });
+  it('ต้นฉบับ/สำเนา: พิมพ์ซ้ำ "ต้นฉบับ" เป็น "สำเนา" · ไม่มีคำกำกับ = สำเนา · ปิดได้ต่อแบบฟอร์ม', () => {
+    const iv = defaultLayout('IV', 'pro');
+    expect(iv.reprint_copy).toBe(true);
+    expect(sheetCopies(iv, 0)).toEqual(['ต้นฉบับ', 'สำเนา']);
+    expect(sheetCopies(iv, 1)).toEqual(['สำเนา', 'สำเนา']);
+    expect(sheetCopies({ copies: ['ต้นฉบับ (ลูกค้า)', 'สำเนา (บัญชี)', 'ใบส่งของ'], reprint_copy: true }, 3)).toEqual(['สำเนา (ลูกค้า)', 'สำเนา (บัญชี)', 'ใบส่งของ']);
+    expect(sheetCopies(defaultLayout('RE', 'pro'), 0)).toEqual(['']);
+    expect(sheetCopies(defaultLayout('RE', 'pro'), 2)).toEqual(['สำเนา']);
+    expect(sheetCopies({ copies: ['ต้นฉบับ', 'สำเนา'], reprint_copy: false }, 5)).toEqual(['ต้นฉบับ', 'สำเนา']);
+    expect(sheetCopies({ copies: [], reprint_copy: false }, 5)).toEqual(['']);
+    // ฟอร์มเก่าที่บันทึกก่อนมีตัวเลือก = เปิด · ค่าที่ไม่ใช่ true/false = ค่าเริ่มต้น
+    expect(normalizeLayout('IV', 'grid', { copies: ['ต้นฉบับ'] }).reprint_copy).toBe(true);
+    expect(normalizeLayout('IV', 'grid', { reprint_copy: false }).reprint_copy).toBe(false);
+    expect(normalizeLayout('IV', 'grid', { reprint_copy: 'no' }).reprint_copy).toBe(true);
+    expect([copyMark(0), copyMark(1), copyMark(7)]).toEqual(['ต้นฉบับ', 'สำเนา', 'สำเนา']);
   });
   it('ต้นแบบ 1–4 + ฟอร์มของบริษัททับหมายเลขเดิม / ปิดหมายเลขได้', () => {
     const m = printMenu('IV', [{ slot: 1, name: 'ใบกำกับภาษี บริษัท', base: 'plain', layout: { title: 'ใบกำกับภาษี', copies: ['ต้นฉบับ'] } }, { slot: 4, name: 'x', base: 'grid', layout: {}, status: 'I' }, { slot: 7, name: 'ใบส่งของ', base: 'half', layout: {} }], 'ขายเงินเชื่อ');

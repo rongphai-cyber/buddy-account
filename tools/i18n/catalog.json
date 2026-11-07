@@ -4971,6 +4971,15 @@
 ]
 },
 {
+"th": "สำเนา",
+"n": 4,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "หน่วยใหญ่",
 "n": 4,
 "files": [
@@ -5913,6 +5922,15 @@
 "apps/web/src/ui.tsx",
 "apps/web/src/components/AuxTools.tsx",
 "apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
+"th": "พิมพ์ซ้ำ",
+"n": 3,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -8126,7 +8144,6 @@
 "th": "ต้นฉบับ",
 "n": 2,
 "files": [
-"apps/server/src/modules/print.ts",
 "packages/core/src/printforms.ts"
 ]
 },
@@ -9054,14 +9071,6 @@
 "files": [
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "พิมพ์ซ้ำ",
-"n": 2,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx"
 ]
 },
 {
@@ -10514,14 +10523,6 @@
 "files": [
 "apps/web/src/pages/settings/Backup.tsx",
 "packages/core/src/menu.ts"
-]
-},
-{
-"th": "สำเนา",
-"n": 2,
-"files": [
-"apps/server/src/modules/print.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -23170,6 +23171,13 @@
 ]
 },
 {
+"th": "ติ๊ก = เอกสารที่พิมพ์ไปแล้ว พิมพ์อีกครั้งได้แผ่นเท่าเดิมแต่คำว่า ต้นฉบับ เปลี่ยนเป็น สำเนา (แบบฟอร์มที่ไม่มีคำกำกับจะขึ้นคำว่า สำเนา) — ใบกำกับภาษีต้นฉบับออกได้ครั้งเดียว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ติ๊ก/ยกเลิกติ๊ก",
 "n": 1,
 "files": [
@@ -29789,6 +29797,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/MenuSearch.tsx"
+]
+},
+{
+"th": "พิมพ์ซ้ำเป็น \"สำเนา\"",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -46806,6 +46821,13 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "เอกสารนี้พิมพ์แล้ว {0} ครั้ง — พิมพ์ซ้ำออกเป็น \"สำเนา\" (ต้นฉบับออกได้ครั้งเดียว · ตั้งที่ แบบฟอร์มพิมพ์เอกสาร › ทั่วไป/กระดาษ)",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {

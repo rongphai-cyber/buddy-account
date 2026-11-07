@@ -2910,7 +2910,9 @@ describe('Buddy Account API (PGlite)', () => {
     expect(p2.forms[0].layout.title).toBe('ใบกำกับภาษี');
     expect(p2.forms[0].layout.columns.filter((c: { show: boolean }) => c.show).map((c: { key: string; label: string }) => `${c.key}:${c.label}`)).toEqual(['name:รายละเอียด', 'amount:Amount']);
     // พิมพ์ออกเครื่องพิมพ์นับครั้ง
-    expect((await call('POST', `/api/v1/print/doc/${iv.id}/printed`, { slot: 1 })).body.print_count).toBe(1);
+    const first = (await call('POST', `/api/v1/print/doc/${iv.id}/printed`, { slot: 1 })).body;
+    expect([first.print_count, first.copy]).toEqual([1, 'ต้นฉบับ']);
+    expect((await call('GET', `/api/v1/print/doc/${iv.id}`)).body.forms[0].layout.reprint_copy).toBe(true);
     // กำหนดที่ประเภทเอกสาร: รับรองระดับ 6 · รับรองก่อนพิมพ์ · พิมพ์ซ้ำระดับ 7
     await sql`UPDATE md_doc_type SET approve_level = 6, approve_method = '2', reprint_level = 7 WHERE id = ${ivType}`.execute(database.db);
     const blocked = await call('POST', `/api/v1/print/doc/${iv.id}/printed`, {});
@@ -2929,7 +2931,10 @@ describe('Buddy Account API (PGlite)', () => {
     await as('clerk0', 'clerk0pass');
     expect((await call('POST', `/api/v1/approve/doc/${iv.id}`, { undo: true })).status).toBe(403);
     cookie = admin;
-    expect((await call('POST', `/api/v1/print/doc/${iv.id}/printed`, { slot: 7 })).body.print_count).toBe(2);
+    const again = (await call('POST', `/api/v1/print/doc/${iv.id}/printed`, { slot: 7 })).body;
+    expect([again.print_count, again.copy]).toEqual([2, 'สำเนา']);
+    const plog = (await sql<{ action: string; detail: { copy: string; count: number } }>`SELECT action, detail FROM sys_activity_log WHERE row_id = ${iv.id} AND action IN ('PRINT', 'REPRINT') ORDER BY seq`.execute(database.db)).rows;
+    expect(plog.map((l) => `${l.action}:${l.detail.count}:${l.detail.copy}`)).toEqual(['PRINT:1:ต้นฉบับ', 'REPRINT:2:สำเนา']);
     expect((await call('POST', `/api/v1/approve/doc/${iv.id}`, { undo: true })).body.approved).toBe(false);
     // รับรองเป็นช่วงเลขที่/วันที่
     const iv2 = await sell('2027-06-06');

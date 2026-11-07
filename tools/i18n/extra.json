@@ -1118,5 +1118,18 @@
  "key ของไฟล์ไม่ถูกต้อง": "Invalid file key",
  "รหัสบริษัทของไฟล์ไม่ถูกต้อง": "Invalid company id for the file",
  "ชนิดไฟล์ \"{0}\" ใช้ตั้งชื่อไม่ได้ (a-z 0-9 -)": "File kind \"{0}\" cannot be used in a name (a-z 0-9 -)",
- "อายุที่อยู่แบบเซ็นต้องอยู่ระหว่าง 1 วินาทีถึง 7 วัน": "A signed URL must last between 1 second and 7 days"
+ "อายุที่อยู่แบบเซ็นต้องอยู่ระหว่าง 1 วินาทีถึง 7 วัน": "A signed URL must last between 1 second and 7 days",
+ "ติ๊ก = เอกสารที่พิมพ์ไปแล้ว พิมพ์อีกครั้งได้แผ่นเท่าเดิมแต่คำว่า ต้นฉบับ เปลี่ยนเป็น สำเนา (แบบฟอร์มที่ไม่มีคำกำกับจะขึ้นคำว่า สำเนา) — ใบกำกับภาษีต้นฉบับออกได้ครั้งเดียว": "Checked = reprinting a document that was already printed gives the same number of sheets, but the word Original becomes Copy (forms without a copy label show Copy) — an original tax invoice can be issued only once",
+ "พิมพ์ซ้ำเป็น \"สำเนา\"": "Reprint as \"Copy\"",
+ "เอกสารนี้พิมพ์แล้ว {0} ครั้ง — พิมพ์ซ้ำออกเป็น \"สำเนา\" (ต้นฉบับออกได้ครั้งเดียว · ตั้งที่ แบบฟอร์มพิมพ์เอกสาร › ทั่วไป/กระดาษ)": "This document has been printed {0} time(s) — a reprint comes out as \"Copy\" (the original can be issued only once · set in Document Print Forms › General/Paper)",
+ "(ทดลอง — ใส่ --apply เพื่อย้ายจริง)": "(dry run — add --apply to move for real)",
+ "FILES_DRIVER=\"{0}\" ไม่รู้จัก — ใช้ local หรือ r2": "Unknown FILES_DRIVER=\"{0}\" — use local or r2",
+ "R2_ACCOUNT_ID ต้องเป็นรหัสบัญชี Cloudflare 32 ตัว": "R2_ACCOUNT_ID must be a 32-character Cloudflare account ID",
+ "{0}: {1} รูป {2} MB {3}": "{0}: {1} images {2} MB {3}",
+ "ตั้งค่า R2 ไม่ครบ (R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)": "R2 settings are incomplete (R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)",
+ "ยังไม่ได้ตั้งที่เก็บไฟล์ (initFileStore)": "File storage has not been set up (initFileStore)",
+ "ย้ายจริงได้เมื่อตั้ง FILES_DRIVER=r2 และค่า R2_* ครบแล้ว": "You can move files for real after setting FILES_DRIVER=r2 and all R2_* values",
+ "ย้ายแล้ว {0}/{1}": "Moved {0}/{1}",
+ "ไม่พบ role buddy_app หรือสลับเป็น buddy_app ไม่ได้ — ปิด Row-Level Security (ใช้การกรองในโค้ดอย่างเดียว · ดู docs/20 ข้อ 4)": "Role buddy_app was not found or cannot be switched to — Row-Level Security is off (filtering in code only · see docs/20 item 4)",
+ "→ ย้ายขึ้นที่เก็บไฟล์": "→ Move to file storage"
 }

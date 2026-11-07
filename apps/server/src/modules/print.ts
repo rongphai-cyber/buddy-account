@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { bahtText, depositRefundPurpose, etaxPurposeText, fmt, receiptVatSummary, depositCreditNoteAmounts, checkApprove, checkPrint, checkUnapprove, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
+import { bahtText, depositRefundPurpose, etaxPurposeText, fmt, receiptVatSummary, depositCreditNoteAmounts, checkApprove, checkPrint, checkUnapprove, copyMark, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
 import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { companyImages } from './company-images.js';
@@ -268,13 +268,16 @@ export function printRoutes(app: FastifyInstance, db: Db) {
     const why = checkPrint(H.rule, H.state, a.approvalLevel, a.isAdmin);
     if (why) throw new AppError(409, 'PRINT_BLOCKED', why);
     const data = await printData(db, a, 'doc', id);
-    const copy = H.state.printCount > 0 ? 'สำเนา' : 'ต้นฉบับ';
-    await db.transaction().execute(async (tx) => {
-      await tx.updateTable('doc_header').set({ print_count: sql`print_count + 1` as never, last_printed_by: a.userId, last_printed_at: sql`now()` as never }).where('id', '=', id).where('company_id', '=', a.companyId).execute();
-      await logActivity(tx, a, { module: String(H.row.module), action: H.state.printCount > 0 ? 'REPRINT' : 'PRINT', docNo: H.no, table: 'doc_header', rowId: id,
-        detail: { via: 'api', system: sys, copy, count: H.state.printCount + 1, tax_invoice: 'receipt_tax' in data && !!data.receipt_tax } });
+    const count = await db.transaction().execute(async (tx) => {
+      const upd = await tx.updateTable('doc_header').set({ print_count: sql`print_count + 1` as never, last_printed_by: a.userId, last_printed_at: sql`now()` as never })
+        .where('id', '=', id).where('company_id', '=', a.companyId).returning('print_count').executeTakeFirstOrThrow();
+      const n = Number(upd.print_count);
+      await logActivity(tx, a, { module: String(H.row.module), action: n > 1 ? 'REPRINT' : 'PRINT', docNo: H.no, table: 'doc_header', rowId: id,
+        detail: { via: 'api', system: sys, copy: copyMark(n - 1), count: n, tax_invoice: 'receipt_tax' in data && !!data.receipt_tax } });
+      return n;
     });
-    return { data: { ...data, print_count: H.state.printCount + 1 }, copy, doc_status: H.state.cancelled ? 'C' : 'N', logo: (await companyImages(db, a.companyId)).logo };
+    const copy = copyMark(count - 1);
+    return { data: { ...data, print_count: count }, copy, doc_status: H.state.cancelled ? 'C' : 'N', logo: (await companyImages(db, a.companyId)).logo };
   });
 
   /** ก่อนสั่งพิมพ์ออกเครื่องพิมพ์: ตรวจกฎรับรอง/พิมพ์ซ้ำ แล้วนับจำนวนครั้งที่พิมพ์ (ดูทางจอภาพไม่นับ) */
@@ -287,10 +290,13 @@ export function printRoutes(app: FastifyInstance, db: Db) {
     if (r.screenOnly) throw forbidden('สิทธิ์ของคุณพิมพ์ได้เฉพาะแสดงทางจอภาพ — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์พิมพ์ออกเครื่องพิมพ์');
     const why = checkPrint(H.rule, H.state, a.approvalLevel, a.isAdmin);
     if (why) throw new AppError(409, 'PRINT_BLOCKED', why);
-    await db.updateTable(H.table as 'doc_header').set({ print_count: sql`print_count + 1` as never, last_printed_by: a.userId, last_printed_at: sql`now()` as never })
-      .where('id', '=', id).where('company_id', '=', a.companyId).execute();
-    await logActivity(db, a, { module: kind === 'doc' ? String(H.row.module) : 'GL', action: H.state.printCount > 0 ? 'REPRINT' : 'PRINT', docNo: H.no, table: H.table, rowId: id, detail: { slot: b.slot, count: H.state.printCount + 1 } });
-    return { print_count: H.state.printCount + 1 };
+    // ครั้งที่พิมพ์จากฐานข้อมูลหลังเพิ่ม (กดพิมพ์พร้อมกันสองเครื่อง = เครื่องที่สองได้ "สำเนา")
+    const upd = await db.updateTable(H.table as 'doc_header').set({ print_count: sql`print_count + 1` as never, last_printed_by: a.userId, last_printed_at: sql`now()` as never })
+      .where('id', '=', id).where('company_id', '=', a.companyId).returning('print_count').executeTakeFirstOrThrow();
+    const count = Number(upd.print_count);
+    const copy = copyMark(count - 1);
+    await logActivity(db, a, { module: kind === 'doc' ? String(H.row.module) : 'GL', action: count > 1 ? 'REPRINT' : 'PRINT', docNo: H.no, table: H.table, rowId: id, detail: { slot: b.slot, count, copy } });
+    return { print_count: count, copy };
   });
 
   /** รับรองเอกสารใบนี้ (Alt+O) / ยกเลิกการรับรอง (Ctrl+O) */
