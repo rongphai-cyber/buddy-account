@@ -8,5 +8,9 @@ ingress:
   - hostname: buddy.worktruesolution.net
     path: ^/api/v1/(gl/journals|gl/books|changes)$
     service: http://127.0.0.1:4100
+  # หน้าจอ Buddy ทั้งโปรแกรมผ่านอินเทอร์เน็ต (เจ้าของ 07/11/2569 ทาง ก) — ล็อกด้วย Cloudflare Access (ยืนยันอีเมลก่อนถึงหน้าเข้าระบบ)
+  # เซิร์ฟเวอร์เชื่อ X-Forwarded-* จาก cloudflared บนเครื่องนี้ → คุกกี้ Secure · ประวัติเก็บ IP จริง
+  - hostname: buddyapp.worktruesolution.net
+    service: http://127.0.0.1:4100
   # หน้าเว็บ หน้าเข้าระบบ และ API อื่น: ไม่เปิดสู่อินเทอร์เน็ต
   - service: http_status:404

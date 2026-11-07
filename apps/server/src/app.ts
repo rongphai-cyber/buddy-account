@@ -76,7 +76,9 @@ import { payrollFileRoutes } from './modules/payroll/files.js';
 export async function buildApp(database: Database, cfg: Config, opts: { files?: FileStore } = {}): Promise<FastifyInstance> {
   // ที่เก็บไฟล์ (docs/20 ข้อ 9): FILES_DRIVER=r2 → Cloudflare R2 · ไม่ตั้ง = local (รูปอยู่ในฐานข้อมูลเหมือนเดิม)
   initFileStore(cfg, opts.files);
-  const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024 });
+  // เชื่อ X-Forwarded-For/-Proto เฉพาะคำขอจากเครื่องนี้ (cloudflared ของ buddy.worktruesolution.net / buddyapp) → req.ip = IP จริงของผู้ใช้ในประวัติ · req.protocol = https
+  // คำขอจากเครื่องอื่นในวงแลนส่ง header นี้มาก็ไม่เชื่อ (tools/tunnel/README.md)
+  const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024, trustProxy: ['127.0.0.1', '::1'] });
   await app.register(cookie);
   const { db } = database;
 

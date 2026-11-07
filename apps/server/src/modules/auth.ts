@@ -86,7 +86,8 @@ async function newSession(db: Db, cfg: Config, userId: string, req: FastifyReque
 }
 
 export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
-  const cookieOpts = { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: cfg.cookieSecure, maxAge: cfg.sessionHours * 3600 };
+  // คุกกี้ Secure เมื่อตั้ง BUDDY_COOKIE_SECURE หรือคำขอมาทาง https (Cloudflare Tunnel buddyapp — req.protocol จาก X-Forwarded-Proto ของ cloudflared บนเครื่องนี้ · app.ts trustProxy)
+  const cookieOpts = (req: FastifyRequest) => ({ path: '/', httpOnly: true, sameSite: 'lax' as const, secure: cfg.cookieSecure || req.protocol === 'https', maxAge: cfg.sessionHours * 3600 });
 
   app.get('/api/v1/setup/status', async () => {
     const n = await db.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).where('deleted_at', 'is', null).executeTakeFirstOrThrow();
@@ -113,7 +114,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
       await logActivity(tx, { companyId: null, userId: u.id }, { module: 'SYS', action: 'SETUP', table: 'sys_user', rowId: u.id });
       return newSession(tx, cfg, u.id, req);
     });
-    reply.setCookie(SESSION_COOKIE, token, cookieOpts);
+    reply.setCookie(SESSION_COOKIE, token, cookieOpts(req));
     return { ok: true };
   });
 
@@ -143,7 +144,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const token = await newSession(db, cfg, u.id, req, body.work_date);
     await db.updateTable('sys_user').set({ last_login_at: sql`now()` }).where('id', '=', u.id).execute();
     await logActivity(db, { companyId: null, userId: u.id }, { module: 'SYS', action: 'LOGIN', detail: { ip: req.ip } });
-    reply.setCookie(SESSION_COOKIE, token, cookieOpts);
+    reply.setCookie(SESSION_COOKIE, token, cookieOpts(req));
     return { ok: true };
   });
 
@@ -154,7 +155,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const token = await newSession(db, cfg, r.userId, req, r.workDate);
     await db.updateTable('sys_user').set({ last_login_at: sql`now()` }).where('id', '=', r.userId).execute();
     await logActivity(db, { companyId: null, userId: r.userId }, { module: 'SYS', action: 'LOGIN', detail: { ip: req.ip, mfa: r.via } });
-    reply.setCookie(SESSION_COOKIE, token, cookieOpts);
+    reply.setCookie(SESSION_COOKIE, token, cookieOpts(req));
     return { ok: true };
   });
 
