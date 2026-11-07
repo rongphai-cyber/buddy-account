@@ -14,6 +14,8 @@
 | Container: `Dockerfile` + `.dockerignore` + GitHub Actions `container` (สร้าง image + เปิดกับ PostgreSQL 16 ไม่ push ไม่ deploy) ทั้ง 3 repo | ✅ (เครื่องนี้ไม่มี Docker — ผลจริงดูที่ GitHub › Actions) · บูตแบบเดียวกับใน container บนเครื่องนี้แล้ว (ข้อ 11) |
 | ที่เก็บไฟล์ Cloudflare R2 (ข้อ 9) | ✅ ตัวเก็บ `local`/`r2` ทั้ง 3 repo · SigV4 ผ่านชุดตัวอย่างของ AWS · ไฟล์ใหม่ขึ้น R2 เมื่อ `FILES_DRIVER=r2` · pg-check ตรวจ R2 ได้ — รอเจ้าของสร้าง bucket |
 
+**ผลบน Supabase จริง (07/11/2569 · โปรเจกต์ทดสอบ wts-cloud-test ของเจ้าของ แผน Free · Singapore · PostgreSQL 17.11 · Session pooler + ใบรับรอง verify-full):** สร้าง s0_buddy/s0_wtspos/s0_wtsliving ผ่าน URL เดียว · migration 62/43/18 ครบ · Buddy 6+3 · POS B2.9 6 · Living B5.2 2 + B5.3 6 ผ่าน ยอดตรงทุกสตางค์ · RLS: buddy_app/wtspos_app/wtsliving_app ไม่ BYPASSRLS · บริษัทอื่น 0 แถว · กับดัก PG16+ SET ROLE เจอจริงบน Supabase และ 0061 แก้ได้ · role anon อ่านตารางไม่ได้ (ฐานแยกจาก postgres) · ความช้า: ทดสอบจากเครื่องนี้ (ไทย→สิงคโปร์ ผ่าน pooler) ช้ากว่าในเครื่อง ~3–20 เท่า (Living B5.3 849 วิ เทียบ 43 วิ) เพราะคำสั่ง SQL ทีละรอบ — S1 ต้องวาง container ใกล้สิงคโปร์ และวัดเวลาหน้าจอจริงก่อนเปิดให้ลูกค้า · ยังไม่ได้ตรวจ: Transaction pooler 6543 · R2 จริง · รายงาน `.data/cloud-s0-report.md`
+
 ## 1. สถาปัตยกรรม
 
 ```
@@ -175,7 +177,7 @@ R2: ฟรี 10 GB-เดือน แล้วราว $0.015/GB-เดือ
 
 | ขั้น | งาน | เสร็จเมื่อ |
 |---|---|---|
-| **S0** | pg-check + ชุดทดสอบบนฐานจริง + Dockerfile/Actions + R2 + เอกสารนี้ | ✅ ซ้อมในเครื่องผ่าน · ⏳ เจ้าของสร้าง Supabase 1 โปรเจกต์ (3 ฐาน — pg-check สร้างเอง) + R2 bucket แล้วรัน `pg-check` → รายงานผ่าน · Actions เขียวทั้ง 3 repo |
+| **S0** | pg-check + ชุดทดสอบบนฐานจริง + Dockerfile/Actions + R2 + เอกสารนี้ | ✅ ซ้อมในเครื่องผ่าน · ✅ **Supabase จริงผ่าน (07/11/2569)** · ⏳ R2 bucket จริง · Transaction pooler · Actions เขียวทั้ง 3 repo |
 | S1 | worker + wrangler ต่อ repo · ความลับ · โดเมน · cron ปลุก · `ALTER DATABASE … timezone` · ปิด Data API · ย้าย DEMO + WTS Prep (`.buddy-tenant` / pg_dump) · pg_dump→R2 + ทดสอบกู้ · ตรวจระบบ (health + แจ้งเตือน) | เปิด 24 ชม. ไม่ต้องเปิดเครื่องนี้ · ยอด DEMO เท่าเดิม (งบทดลอง 23,313,035.92) |
 | S2 | Turnstile + ยืนยันอีเมล (Resend) + บริษัทแรก/ผังบัญชีอัตโนมัติ + ทดลองใช้ 30 วัน · `/internal/tick` + advisory lock | ลูกค้าสมัครเองได้ |
 | S3 | แพ็กเกจ ราคา ตัดบัตร Opn รายเดือน (CardGateway ของ POS) · ค้างชำระ = อ่านอย่างเดียว | เก็บเงินอัตโนมัติ |

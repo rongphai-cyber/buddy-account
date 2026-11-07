@@ -193,7 +193,12 @@ async function probe(c) {
   const avail = (await q1(c, `SELECT count(*)::int AS n FROM pg_available_extensions`)).n;
   const selfGrant = v.num >= 160000 ? (await q1(c, `SELECT current_setting('createrole_self_grant', true) AS s`)).s : null;
   const uuid = !!(await q1(c, `SELECT gen_random_uuid() AS u`)).u;
-  return { version: v.version, num: v.num, platform: /supabase/i.test(v.full) ? 'Supabase' : '', me, dbCreate, ssl: ssl?.ssl ? `SSL ${ssl.version}` : 'ไม่เข้ารหัส', exts, avail, selfGrant, uuid };
+  // TLS ฝั่งเครื่องนี้ดูจาก socket จริง · pg_stat_ssl = ช่วงที่ฐานเห็น (ผ่าน pooler ของ Supabase = ช่วง pooler→ฐานภายในเครือข่าย Supabase ไม่ใช่ช่วงของเรา)
+  const tls = !!c.connection?.stream?.encrypted;
+  const sslText = tls
+    ? `เข้ารหัส TLS จากเครื่องนี้ ✓${ssl?.ssl ? ` · ถึงฐาน ${ssl.version}` : ' (ผ่าน pooler — ช่วง pooler→ฐานอยู่ภายใน Supabase)'}`
+    : (ssl?.ssl ? `SSL ${ssl.version}` : 'ไม่เข้ารหัส ✗');
+  return { version: v.version, num: v.num, platform: /supabase/i.test(v.full) ? 'Supabase' : '', me, dbCreate, ssl: sslText, tls, exts, avail, selfGrant, uuid };
 }
 
 /** ลองสร้าง/ลบ role และฐานข้อมูลจริง (หลังผ่านประตูความปลอดภัยแล้ว) + ตรวจกับดัก PostgreSQL 16 (สมาชิกแต่ SET ROLE ไม่ได้) */
