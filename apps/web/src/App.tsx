@@ -332,6 +332,7 @@ function MovedTo({ from, to }: { from: string; to: string }) {
 }
 
 function canSee(it: MenuItem, perms: Me['perms'] | undefined): boolean {
+  if (it.nav === false) return false;
   if (it.children) return it.children.some((c) => canSee(c, perms));
   return !it.route || perms?.[it.code]?.read !== false;
 }

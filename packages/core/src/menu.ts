@@ -10,6 +10,8 @@ export interface MenuItem {
   phase: 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7' | 'P8';
   screens?: string[];
   children?: MenuItem[];
+  /** false = มีรหัสไว้กำหนดสิทธิ์ แต่ไม่แสดงในแถบเมนู/ค้นหาเมนู (เช่น หน้าเลือกโปรแกรม — เปิดจากปุ่ม ▦ WTS บนแถบบน) */
+  nav?: false;
 }
 
 const m = (code: string, label: string, phase: MenuItem['phase'], route?: string, screens?: string[]): MenuItem => ({ code, label, phase, route, screens });
@@ -155,7 +157,8 @@ export const MENU: MenuItem[] = [
     m('SET.TENANT', 'ลูกค้าผู้ใช้บริการ (ผู้ให้บริการ)', 'P0', '/admin/tenants'),
   ]),
   g('OT', 'อื่น ๆ', 'P1', [
-    m('OT.HUB', 'เลือกโปรแกรม (WTS Solutions)', 'P0', '/hub'),
+    // ไม่อยู่ในแถบเมนู (เจ้าของ 10/11/2569) — กลับหน้าเลือกโปรแกรมด้วยปุ่ม ▦ WTS บนแถบบน · รหัสยังใช้กำหนดสิทธิ์
+    { ...m('OT.HUB', 'เลือกโปรแกรม (WTS Solutions)', 'P0', '/hub'), nav: false },
     m('OT.LOCK', 'ปิดงวด / ล็อคงวด', 'P1', '/settings/periods', ['ch18:S-ME-02']),
     m('OT.YE', 'ประมวลผลสิ้นปี', 'P6', '/gl/year-end', ['ch22:S-YE-01', 'ch22:S-YE-02', 'ch22:S-YE-03']),
     m('OT.BACKUP', 'สำรองข้อมูล / นำข้อมูลสำรองมาใช้', 'P6', '/tools/backup', ['ch20:S-DM-02', 'ch20:S-DM-03', 'ch20:S-DM-04', 'ch23:S-SEC-07', 'ch23:S-SEC-08']),

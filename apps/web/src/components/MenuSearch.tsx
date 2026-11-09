@@ -18,6 +18,7 @@ export function MenuSearch({ perms, onClose }: { perms: Me['perms'] | undefined;
   const all = useMemo(() => {
     const out: Row[] = [{ code: 'HOME', label: 'หน้าแรก', path: [], route: '/' }];
     const walk = (items: MenuItem[], path: string[]) => items.forEach((it) => {
+      if (it.nav === false) return;
       if (it.children) walk(it.children, [...path, it.label]);
       else if (it.route && perms?.[it.code]?.read !== false) out.push({ code: it.code, label: it.label, path, route: it.route });
     });
