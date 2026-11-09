@@ -21,6 +21,14 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.fill('input[autocomplete=username]', process.env.USER_NAME || 'admin');
     await page.fill('input[type=password]', process.env.PASS || 'buddy1234');
     await page.keyboard.press('Enter');
+    await page.waitForSelector('.kpis, .landing', { timeout: 15000 });
+    // เปิดได้ ≥ 2 โปรแกรม → หลังเข้าระบบไปหน้าเปิดโปรแกรม (HANDOFF 99) → กดการ์ด Buddy Account กลับหน้าแรก
+    await page.waitForURL(/\/hub$/, { timeout: 4000 }).catch(() => undefined);   // ใช้ Buddy อย่างเดียว = อยู่หน้าแรก
+    if (page.url().endsWith('/hub')) {
+      await page.waitForSelector('.landing-card[data-app=buddy]', { timeout: 15000 });
+      await shot('00-landing');
+      await page.click('.landing-card[data-app=buddy]');
+    }
     await page.waitForSelector('.kpis', { timeout: 15000 });
     // เข้าระบบใหม่ได้สาขาเดิมของรอบก่อน (เช่นเจ้าของเลือกสาขาบางนาค้างไว้) → รายการว่าง; ตรวจที่ "ทุกสาขา" เสมอ
     if (await page.evaluate(async () => (await (await fetch('/api/v1/auth/me')).json()).branch)) {

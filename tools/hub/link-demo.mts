@@ -98,16 +98,22 @@ if (APP === 'pos') {
   console.log(`✓ WTS-POS บริษัท ${progCompany}: ที่อยู่ Buddy ${BUDDY_LOCAL} · กุญแจ …${put.body.buddyKeyHint} · ปลายทางบัญชี "${put.body.destination}" (คงเดิม)`);
 } else {
   const handoff = 'E:/WTS-Living/.data/buddy-link.key';
+  let r: ReturnType<typeof spawnSync<string>>;
   try {
     writeFileSync(handoff, key, { encoding: 'utf8', mode: 0o600 });
     const env = { ...process.env };
     delete env.DATABASE_URL;   // ให้ตัวช่วยฐานข้อมูลของ Living ตั้งของ Living เอง
-    const r = spawnSync(process.execPath, ['tools/local-pg/pg.mjs', 'run', '--', process.execPath, 'apps/server/node_modules/tsx/dist/cli.mjs', 'tools/hub/link-buddy.mts'],
+    // ตัวช่วย pg.mjs ของ Living รันคำสั่งผ่าน shell บน Windows — ใช้ "node" (ไม่ใช่ process.execPath ที่มีช่องว่าง "Program Files")
+    r = spawnSync(process.execPath, ['tools/local-pg/pg.mjs', 'run', '--', 'node', 'apps/server/node_modules/tsx/dist/cli.mjs', 'tools/hub/link-buddy.mts'],
       { cwd: 'E:/WTS-Living', env, encoding: 'utf8' });
-    const out = `${r.stdout ?? ''}${r.stderr ?? ''}`.split(/\r?\n/).filter((l) => l.startsWith('✓') || l.startsWith('✗'));
-    for (const l of out) console.log(l);
-    if (r.status !== 0) fail('ใส่กุญแจใน WTS-Living ไม่สำเร็จ (ดูบรรทัด ✗ ด้านบน)');
-  } finally { rmSync(handoff, { force: true }); }
+  } finally { rmSync(handoff, { force: true }); }   // ลบไฟล์ส่งต่อเสมอ (ก่อน fail ซึ่งออกจากโปรแกรมทันที)
+  const lines = `${r.stdout ?? ''}${r.stderr ?? ''}`.split(/\r?\n/).filter(Boolean);
+  for (const l of lines.filter((x) => x.startsWith('✓') || x.startsWith('✗'))) console.log(l);
+  if (r.status !== 0) {
+    // แสดงท้ายข้อความผิดพลาด โดยปิดที่อยู่ฐานข้อมูลและกุญแจ
+    for (const l of lines.slice(-8)) console.error('  ' + l.replace(/postgres(ql)?:\/\/\S+/g, '<db>').replace(/bk_\S+/g, '<key>'));
+    fail('ใส่กุญแจใน WTS-Living ไม่สำเร็จ (ดูข้อความด้านบน)');
+  }
 }
 
 // ---- 5) ทดสอบบัตรผ่านจริง (แบบเดียวกับกดการ์ดใน Hub)
