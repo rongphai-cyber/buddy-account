@@ -8,7 +8,8 @@ if not exist "apps\web\dist\index.html" (
   call "node_modules\.bin\vite.CMD" build
   popd
 )
-start "" cmd /c "timeout /t 8 >nul & start http://localhost:4100"
+REM open the browser only when Buddy answers (the database may take longer than a fixed wait on the first start of the day)
+start "" /min powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 90;$i++){try{Invoke-WebRequest -UseBasicParsing http://127.0.0.1:4100/api/v1/health -TimeoutSec 2 | Out-Null; break}catch{Start-Sleep -Seconds 1}}; Start-Process http://localhost:4100"
 REM https addresses (tools\tunnel\README.md): buddy.worktruesolution.net = API for WTS-SOP, buddyapp.worktruesolution.net = whole program (Cloudflare Access)
 REM only when .data\cloudflared\config.yml exists; close its window = stop
 if exist ".data\cloudflared\config.yml" start "Buddy https" /min cloudflared tunnel --no-autoupdate --config ".data\cloudflared\config.yml" run
