@@ -264,6 +264,8 @@ export interface SysUserTable {
   approval_level: Gen<number>;
   /** ตรวจสอบสิทธิ์ก่อนใช้งาน: true = จำกัดเพิ่มตามตารางสิทธิ์รายเมนู (sys_permission), false = ใช้สิทธิ์พื้นฐานตามระดับอนุมัติ (คู่มือบทที่ 23) */
   check_rights: Gen<boolean>;
+  /** โปรแกรมที่ผู้ใช้เปิดได้จาก Hub (เจ้าของ 09/11/2569) — ว่าง = ทุกโปรแกรมที่ลูกค้าเปิดใช้ · ["buddy","pos",…] = เฉพาะที่ระบุ · ไม่มี buddy = เห็นเฉพาะหน้าเปิดโปรแกรม (ผู้ดูแลระบบใช้ได้ทุกโปรแกรมเสมอ) */
+  app_access: Gen<unknown | null>;
   /** ภาษาเมนู th/en */
   menu_language: Gen<string>;
   /** เครื่องพิมพ์ประจำ */

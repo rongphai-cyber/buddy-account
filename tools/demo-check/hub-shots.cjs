@@ -27,9 +27,10 @@ require('fs').mkdirSync(OUT, { recursive: true });
 
   // 1) ค่าเริ่มต้น: POS ยังไม่เปิด
   await page.click('button.hub-btn');
-  await page.waitForSelector('.hub-tile[data-app=buddy]', { timeout: 20000 });
-  const keys = await page.locator('.hub-tile').evaluateAll((xs) => xs.map((x) => x.getAttribute('data-app')));
-  if (keys.join() !== 'buddy,pos,hotel,hr,spa,living') errors.push(`tile order ${keys.join()}`);
+  await page.waitForSelector('.landing-card[data-app=buddy]', { timeout: 20000 });
+  const keys = await page.locator('.landing-card').evaluateAll((xs) => xs.map((x) => x.getAttribute('data-app')));
+  // การ์ด: Buddy ก่อน · ที่ลูกค้ายังไม่เปิดใช้ ผู้ดูแลเห็นแบบจาง · Hotel/Spa (เร็ว ๆ นี้) อยู่บรรทัดท้าย ไม่ใช่การ์ด (09/11/2569)
+  if (keys.join() !== 'buddy,pos,hr,living') errors.push(`tile order ${keys.join()}`);
   await page.screenshot({ path: `${OUT}/desktop-1-default.png` });
 
   // 2) เปิด POS + HR ให้ลูกค้าของบริษัทนี้ · ตั้งที่อยู่ · รายงานสถานะด้วยกุญแจ API
@@ -44,13 +45,13 @@ require('fs').mkdirSync(OUT, { recursive: true });
     body: JSON.stringify({ system: 'wts-pos', pending: 2, failed: 0, last_sent_at: new Date().toISOString(), metric: { label: 'ยอดขายวันนี้', value: '12345.00' } }) })).status, [key]);
   if (rep !== 200) errors.push(`status report ${rep}`);
   await page.reload();
-  await page.waitForSelector('.hub-tile[data-app=pos] .hub-metric', { timeout: 20000 });
-  const posText = await page.locator('.hub-tile[data-app=pos]').innerText();
+  await page.waitForSelector('.landing-card[data-app=pos] .hub-metric', { timeout: 20000 });
+  const posText = await page.locator('.landing-card[data-app=pos]').innerText();
   if (!posText.includes('฿12,345.00') || !posText.includes('รอส่งเข้าบัญชี 2 รายการ')) errors.push(`pos tile: ${posText}`);
   await page.screenshot({ path: `${OUT}/desktop-2-pos-on.png` });
 
   // 3) กดไทล์ POS → แท็บใหม่ที่ #buddy_sso=… · ตรวจลายเซ็นด้วย JWKS
-  const [tab] = await Promise.all([ctx.waitForEvent('page'), page.click('.hub-tile[data-app=pos]')]);
+  const [tab] = await Promise.all([ctx.waitForEvent('page'), page.click('.landing-card[data-app=pos]')]);
   await tab.waitForLoadState();
   await tab.waitForFunction(() => location.hash.includes('buddy_sso='), null, { timeout: 10000 }).catch(() => {});
   const url = tab.url();
@@ -72,7 +73,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
   for (const [w, h, tag] of [[768, 1024, 'tablet'], [390, 844, 'phone']]) {
     await page.setViewportSize({ width: w, height: h });
     await page.reload();
-    await page.waitForSelector('.hub-tile[data-app=pos] .hub-metric', { timeout: 20000 });
+    await page.waitForSelector('.landing-card[data-app=pos] .hub-metric', { timeout: 20000 });
     const sw = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     if (sw > 1) errors.push(`${tag}: hub scrolls sideways ${sw}px`);
     await page.screenshot({ path: `${OUT}/${tag}-hub.png`, fullPage: true });

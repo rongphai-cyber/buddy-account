@@ -6,6 +6,7 @@ import { ErrorBox, Field, navKey } from '../ui';
 import { useNavigate } from 'react-router-dom';
 import { useSignupMode } from './Signup';
 import { LangSwitch } from '../components/LangSwitch';
+import { markLanding } from './Hub';
 
 export function LoginPage() {
   const { refresh } = useSession();
@@ -21,13 +22,14 @@ export function LoginPage() {
     try {
       const r = await api.post<{ need_totp?: boolean; ticket?: string }>('/api/v1/auth/login', { ...f, work_date: new Date().toISOString().slice(0, 10) });
       if (r.need_totp && r.ticket) { setTicket(r.ticket); setCode(''); return; }
+      markLanding();
       await refresh();
     }
     catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const go2 = async () => {
     setBusy(true); setErr(null);
-    try { await api.post('/api/v1/auth/login/totp', { ticket, code }); await refresh(); }
+    try { await api.post('/api/v1/auth/login/totp', { ticket, code }); markLanding(); await refresh(); }
     catch (e) { setErr(e); if (e instanceof ApiError && (e.code === 'MFA_EXPIRED' || e.status === 423)) setTicket(null); }
     finally { setBusy(false); }
   };

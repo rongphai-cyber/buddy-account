@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isTenantModuleKey, tenantModuleStatus } from './tenant-modules.js';
+import { hubOnly, isTenantModuleKey, normalizeAppAccess, tenantModuleStatus, userCanOpen } from './tenant-modules.js';
 
 describe('สิทธิ์โมดูลระดับลูกค้า (docs/17 B0.6)', () => {
   it('defaults: buddy on, others off', () => {
@@ -14,5 +14,16 @@ describe('สิทธิ์โมดูลระดับลูกค้า (do
   });
   it('knows the module keys', () => {
     expect([isTenantModuleKey('pos'), isTenantModuleKey('erp')]).toEqual([true, false]);
+  });
+  it('user app access (09/11/2569): null = all of the tenant; list = only those; admin always; no buddy = hub only', () => {
+    expect(normalizeAppAccess(null)).toBeNull();
+    expect(normalizeAppAccess(undefined)).toBeNull();
+    expect(normalizeAppAccess({})).toBeNull();
+    expect(normalizeAppAccess(['living', 'pos', 'bogus', 'pos'])).toEqual(['pos', 'living']);
+    expect(normalizeAppAccess('["hr","buddy"]')).toEqual(['buddy', 'hr']);
+    expect(normalizeAppAccess('not json')).toBeNull();
+    expect(normalizeAppAccess([])).toEqual([]);
+    expect([userCanOpen(null, 'pos'), userCanOpen(['buddy'], 'pos'), userCanOpen(['buddy'], 'pos', true), userCanOpen([], 'buddy')]).toEqual([true, false, true, false]);
+    expect([hubOnly(null), hubOnly(['pos']), hubOnly(['pos'], true), hubOnly(['buddy', 'pos'])]).toEqual([false, true, false, false]);
   });
 });

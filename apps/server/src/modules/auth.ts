@@ -9,7 +9,7 @@ import { AppError, badRequest, parse, requireAuth, unauthorized, type AuthContex
 import { logActivity } from '../audit.js';
 import type { Config } from '../config.js';
 import { loadApiKey } from './apikeys.js';
-import { passwordProblem, normalizeUiTheme } from '@buddy/core';
+import { hubOnly, normalizeAppAccess, passwordProblem, normalizeUiTheme } from '@buddy/core';
 import { adminMfaRequired, clearFails, finishSecondStep, lockedError, lockedUntil, markPasswordChanged, registerFail, secOf, startSecondStep } from './security.js';
 
 export const SESSION_COOKIE = 'buddy_session';
@@ -24,7 +24,7 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     .leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id')
     .leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
     .leftJoin('sys_user_security as sec', (j) => j.onRef('sec.user_id', '=', 'u.id').on('sec.deleted_at', 'is', null))
-    .select(['sec.totp_enabled', 's.id', 's.user_id', 's.current_company_id', 's.current_branch_id', 's.work_date', 'u.username', 'u.display_name', 'u.status', 'u.tenant_id', 'u.approval_level', 'u.check_rights', 'u.user_group_id',
+    .select(['sec.totp_enabled', 's.id', 's.user_id', 's.current_company_id', 's.current_branch_id', 's.work_date', 'u.username', 'u.display_name', 'u.status', 'u.tenant_id', 'u.approval_level', 'u.check_rights', 'u.user_group_id', 'u.app_access',
       'g.code as group_code', 'g.tenant_id as group_tenant_id', 't.status as tenant_status', 't.expires_on as tenant_expires'])
     .where('s.token_hash', '=', sha(token))
     .where('s.ended_at', 'is', null)
@@ -39,7 +39,7 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     sessionId: row.id, userId: row.user_id, username: row.username, displayName: row.display_name,
     tenantId: row.tenant_id, isAdmin, isPlatform: isAdmin && !row.tenant_id,
     companyId: row.current_company_id, branchId: row.current_branch_id, workDate: row.work_date,
-    approvalLevel: row.approval_level, checkRights: row.check_rights, groupId: row.user_group_id,
+    approvalLevel: row.approval_level, checkRights: row.check_rights, groupId: row.user_group_id, apps: normalizeAppAccess(row.app_access),
     mfaSetupRequired: isAdmin && !row.totp_enabled && adminMfaRequired(),
   };
   // บริษัทที่ค้างใน session ต้องยังเข้าได้ (เช่น ถูกถอนสิทธิ์ หรือเป็นของ tenant อื่น)
@@ -182,7 +182,9 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const branches = company ? await db.selectFrom('sys_branch').select(['id', 'code', 'name', 'tax_branch_no', 'is_head_office']).where('company_id', '=', company.id).where('deleted_at', 'is', null).orderBy('code').execute() : [];
     const branch = branches.find((b) => b.id === branchId) ?? null;
     return {
-      user: { id: a.userId, username: a.username, display_name: a.displayName, is_admin: a.isAdmin, is_platform: a.isPlatform, tenant_id: a.tenantId, approval_level: a.approvalLevel, check_rights: a.checkRights, mfa_setup_required: !!a.mfaSetupRequired },
+      user: { id: a.userId, username: a.username, display_name: a.displayName, is_admin: a.isAdmin, is_platform: a.isPlatform, tenant_id: a.tenantId, approval_level: a.approvalLevel, check_rights: a.checkRights, mfa_setup_required: !!a.mfaSetupRequired,
+        // โปรแกรมที่เปิดได้ (null = ทุกโปรแกรมของลูกค้า) · hub_only = ไม่มีสิทธิ์ Buddy → หน้าจอพาไปหน้าเปิดโปรแกรม
+        apps: a.apps ?? null, hub_only: hubOnly(a.apps, a.isAdmin) },
       company, branch, branches, companies, work_date: a.workDate,
       // ธีมของบริษัทนี้ (ข้อกำหนดเจ้าของ) — หน้าจอใส่สีและแบบอักษรทันทีที่เลือกบริษัท
       ui_theme: normalizeUiTheme(company ? (await db.selectFrom('sys_setting').select('value').where('company_id', '=', company.id).where('branch_id', 'is', null).where('key', '=', 'ui.theme').where('deleted_at', 'is', null).executeTakeFirst())?.value : null),

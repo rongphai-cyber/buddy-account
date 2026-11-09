@@ -2044,6 +2044,21 @@
 ]
 },
 {
+"th": "บริษัท",
+"n": 12,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/wht.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "ประเภทเงินได้",
 "n": 12,
 "files": [
@@ -2314,20 +2329,6 @@
 "apps/web/src/pages/inventory/Counts.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "บริษัท",
-"n": 10,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/wht.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -4235,6 +4236,16 @@
 ]
 },
 {
+"th": "ออกจากระบบ",
+"n": 5,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
 "th": "เกณฑ์เงินสด",
 "n": 5,
 "files": [
@@ -5015,15 +5026,6 @@
 ]
 },
 {
-"th": "ออกจากระบบ",
-"n": 4,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/TwoFactor.tsx"
-]
-},
-{
 "th": "อาคาร",
 "n": 4,
 "files": [
@@ -5731,6 +5733,14 @@
 "apps/server/src/modules/docs/stockdocs.ts",
 "apps/server/src/modules/docs/stockopening.ts",
 "apps/server/src/modules/docs/trade.ts"
+]
+},
+{
+"th": "บริษัทที่เข้าได้",
+"n": 3,
+"files": [
+"apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -6796,6 +6806,14 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "โปรแกรมที่เปิดได้",
+"n": 3,
+"files": [
+"apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -8475,13 +8493,6 @@
 ]
 },
 {
-"th": "บริษัทที่เข้าได้",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
 "th": "บอกเลิกสัญญาบริการ",
 "n": 2,
 "files": [
@@ -9528,13 +9539,6 @@
 ]
 },
 {
-"th": "ยังไม่เปิดใช้",
-"n": 2,
-"files": [
-"apps/web/src/pages/Hub.tsx"
-]
-},
-{
 "th": "ยังไม่ได้บันทึก",
 "n": 2,
 "files": [
@@ -9650,6 +9654,14 @@
 "files": [
 "apps/server/src/modules/auth.ts",
 "packages/core/src/password.ts"
+]
+},
+{
+"th": "รหัสผ่านและยืนยันตัวตน",
+"n": 2,
+"files": [
+"apps/web/src/pages/Hub.tsx",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -12346,6 +12358,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/files.ts"
+]
+},
+{
+"th": "(บริษัทยังไม่เปิดใช้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -17214,13 +17233,6 @@
 ]
 },
 {
-"th": "กำลังโหลด…",
-"n": 1,
-"files": [
-"apps/web/src/pages/Hub.tsx"
-]
-},
-{
 "th": "กำหนดกลุ่มบัญชีทรัพย์สิน",
 "n": 1,
 "files": [
@@ -19199,6 +19211,13 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "คุณได้รับสิทธิ์เปิดเฉพาะโปรแกรมอื่นจากหน้าเปิดโปรแกรม (ไม่รวม Buddy Account) — ขอสิทธิ์จากผู้ดูแลระบบของบริษัท (อื่น ๆ › ผู้ใช้งานและสิทธิ์)",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -24319,6 +24338,20 @@
 ]
 },
 {
+"th": "ทุกโปรแกรม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ทุกโปรแกรมที่บริษัทเปิดใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ทุกใบสำคัญดุล",
 "n": 1,
 "files": [
@@ -29093,6 +29126,20 @@
 ]
 },
 {
+"th": "ผู้ดูแลระบบ (กลุ่ม ADMIN) เปิดได้ทุกโปรแกรมเสมอ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ผู้ดูแลระบบกำหนดว่าแต่ละคนเปิดโปรแกรมไหนได้ที่",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "ผู้ดูแลระบบของลูกค้า",
 "n": 1,
 "files": [
@@ -29118,6 +29165,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "ผู้ดูแลระบบยังไม่ให้สิทธิ์คุณเปิด {0} — ขอสิทธิ์จากผู้ดูแลระบบของบริษัท (อื่น ๆ › ผู้ใช้งานและสิทธิ์ › โปรแกรมที่เปิดได้)",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
 ]
 },
 {
@@ -32964,6 +33018,13 @@
 ]
 },
 {
+"th": "ยังไม่เปิดใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "ยังไม่เปิดใช้ (อยู่ระหว่างพัฒนา P5)",
 "n": 1,
 "files": [
@@ -32975,6 +33036,13 @@
 "n": 1,
 "files": [
 "apps/web/src/App.tsx"
+]
+},
+{
+"th": "ยังไม่ให้เปิด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -33143,6 +33211,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/yearend.ts"
+]
+},
+{
+"th": "ยังไม่ได้รับสิทธิ์เข้าบริษัทใด — ให้ผู้ดูแลระบบกำหนด \"บริษัทที่เข้าได้\" ที่ อื่น ๆ › ผู้ใช้งานและสิทธิ์",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
+"th": "ยังไม่ได้รับสิทธิ์เปิดโปรแกรมใด",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
 ]
 },
 {
@@ -34221,13 +34303,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
-"th": "รหัสผ่านและยืนยันตัวตน",
-"n": 1,
-"files": [
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -41434,6 +41509,13 @@
 ]
 },
 {
+"th": "อื่น ๆ › ผู้ใช้งานและสิทธิ์ › โปรแกรมที่เปิดได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "อื่น ๆ › รหัสผ่านและยืนยันตัวตน",
 "n": 1,
 "files": [
@@ -41840,6 +41922,13 @@
 ]
 },
 {
+"th": "เข้าระบบครั้งเดียวใช้ได้ทุกโปรแกรม",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "เข้าระบบที่ {0} (ยังไม่รับบัตรผ่าน)",
 "n": 1,
 "files": [
@@ -41851,6 +41940,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "เข้าระบบในนาม",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
 ]
 },
 {
@@ -42600,6 +42696,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "เฉพาะที่เลือก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -44129,13 +44232,6 @@
 ]
 },
 {
-"th": "เปิดโปรแกรม",
-"n": 1,
-"files": [
-"apps/web/src/pages/Hub.tsx"
-]
-},
-{
 "th": "เปิดใช้",
 "n": 1,
 "files": [
@@ -44994,13 +45090,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "เร็ว ๆ นี้",
-"n": 1,
-"files": [
-"apps/web/src/pages/Hub.tsx"
 ]
 },
 {
@@ -46408,6 +46497,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "เลือกโปรแกรมที่ต้องการใช้งาน{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
 ]
 },
 {
@@ -48385,6 +48481,20 @@
 ]
 },
 {
+"th": "โปรแกรมที่เปิดได้ (หน้าเปิดโปรแกรม ▦ WTS)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "โปรแกรมที่เห็นกำหนดโดยผู้ดูแลระบบของบริษัท — ต้องการเพิ่ม ติดต่อผู้ดูแลระบบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "โปรแกรมนี้",
 "n": 1,
 "files": [
@@ -49883,13 +49993,6 @@
 ]
 },
 {
-"th": "ไทล์ที่ \"ยังไม่เปิดใช้\" ติดต่อผู้ให้บริการเพื่อเปิด · สถานะคิวมาจากโปรแกรมนั้นรายงานเข้ามาทุก 1–5 นาที — หน้าร้านยังขายได้แม้เน็ตหลุดหรือ Buddy ปิดอยู่ แล้วส่งเข้าบัญชีย้อนหลังเอง",
-"n": 1,
-"files": [
-"apps/web/src/pages/Hub.tsx"
-]
-},
-{
 "th": "ไปรษณีย์",
 "n": 1,
 "files": [
@@ -50027,6 +50130,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/FsLayouts.tsx"
+]
+},
+{
+"th": "ไม่ติ๊ก Buddy Account = ผู้ใช้เห็นเฉพาะหน้าเปิดโปรแกรม ไม่เห็นเมนูบัญชี (เช่น พนักงานหน้าร้าน) · ไม่ติ๊กเลย = เข้าระบบได้แต่ยังเปิดโปรแกรมใดไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -51157,6 +51267,13 @@
 ]
 },
 {
+"th": "ไม่รู้จักโปรแกรม \"{0}\" — ใช้ได้: {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "ไม่รู้จักโปรแกรม — ใช้ได้: {0}",
 "n": 1,
 "files": [
@@ -51339,6 +51456,13 @@
 ]
 },
 {
+"th": "— กดการ์ดแล้วโปรแกรมเปิดในแท็บใหม่ ไม่ต้องใส่รหัสผ่านซ้ำ",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "— กลุ่มบัญชีสินค้า และบัญชีค่าใช้จ่ายของแต่ละรหัส (หน้าต่างอ่านบิลจะแสดงบัญชีที่จะลงให้ตรวจ)",
 "n": 1,
 "files": [
@@ -51493,13 +51617,6 @@
 ]
 },
 {
-"th": "— ล็อกอิน Buddy ครั้งเดียว กดไทล์เพื่อเปิดโปรแกรม",
-"n": 1,
-"files": [
-"apps/web/src/pages/Hub.tsx"
-]
-},
-{
 "th": "— สำนักงานใหญ่",
 "n": 1,
 "files": [
@@ -51633,6 +51750,13 @@
 ]
 },
 {
+"th": "— ให้ผู้ดูแลระบบของบริษัทติ๊ก \"โปรแกรมที่เปิดได้\" ให้คุณที่ อื่น ๆ › ผู้ใช้งานและสิทธิ์",
+"n": 1,
+"files": [
+"apps/web/src/pages/Hub.tsx"
+]
+},
+{
 "th": "— ไม่ต้องขออนุมัติ —",
 "n": 1,
 "files": [
@@ -51724,6 +51848,13 @@
 ]
 },
 {
+"th": "← กลับหน้าเปิดโปรแกรม",
+"n": 1,
+"files": [
+"apps/web/src/App.tsx"
+]
+},
+{
 "th": "← กลับไปตั้งเป็นเครื่องหลัก",
 "n": 1,
 "files": [
@@ -51777,13 +51908,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
-]
-},
-{
-"th": "↻ ดึงสถานะใหม่",
-"n": 1,
-"files": [
-"apps/web/src/pages/Hub.tsx"
 ]
 },
 {

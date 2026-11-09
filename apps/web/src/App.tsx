@@ -53,7 +53,7 @@ import { BackupPage } from './pages/settings/Backup';
 import { ApiKeysPage } from './pages/settings/ApiKeys';
 import { PdpaPage } from './pages/settings/Pdpa';
 import { DevicesPage, SyncPage, SyncBadge } from './pages/settings/Sync';
-import { HubPage } from './pages/Hub';
+import { HubPage, useLandingRedirect } from './pages/Hub';
 import { EtaxPage } from './pages/tax/Etax';
 import { AiSettingsPage } from './pages/settings/AiSettings';
 import { ActivityLogPage } from './pages/settings/ActivityLog';
@@ -98,16 +98,28 @@ export function App() {
   // สมัครใช้งานเอง (ข้อกำหนดเจ้าของ): ลิงก์ /signup เปิดได้โดยไม่ต้องเข้าระบบ
   if (!me) return <>{loc.pathname === '/signup' ? <SignupPage onBack={() => nav('/')} /> : <LoginPage />}<Toasts /></>;
   if (me.user.mfa_setup_required) return <><MfaRequiredPage /><Toasts /></>;
+  // ผู้ใช้ที่ผู้ดูแลให้เปิดได้เฉพาะโปรแกรมอื่น (ไม่มีสิทธิ์ Buddy · 09/11/2569): หน้าเปิดโปรแกรมเต็มจอ ไม่มีเมนูบัญชี
+  if (me.user.hub_only) return <><HubOnly /><Toasts /></>;
   // หน้าพิมพ์แยก (เปิดจากปุ่ม "เปิดหน้าพิมพ์ในแท็บใหม่"): เอกสารอย่างเดียว ไม่มีเมนู
   const pm = /^\/print\/(doc|journal)\/([0-9a-f-]{36})$/.exec(loc.pathname);
   if (pm) return <><PrintPage kind={pm[1] as 'doc' | 'journal'} id={pm[2]!} slot={Number(new URLSearchParams(loc.search).get('slot')) || 1} /><Toasts /></>;
   return <><Shell /><AuxTools /><Toasts /></>;
 }
 
+/** ผู้ใช้เฉพาะหน้าเปิดโปรแกรม: การ์ดโปรแกรมที่ได้รับสิทธิ์ + รหัสผ่าน/ยืนยันตัวตน (ที่อยู่อื่นทั้งหมด = หน้าเปิดโปรแกรม) */
+function HubOnly() {
+  const loc = useLocation();
+  const nav = useNavigate();
+  if (loc.pathname === '/account/password') return <div className="page narrow"><p><button type="button" onClick={() => nav('/')}>← กลับหน้าเปิดโปรแกรม</button></p><PasswordPage /></div>;
+  return <HubPage standalone />;
+}
+
 function Shell() {
   const { me, select, logout } = useSession();
   const nav = useNavigate();
   const loc = useLocation();
+  // หลังเข้าระบบ: เปิดได้ตั้งแต่ 2 โปรแกรม → มาหน้าเปิดโปรแกรมก่อน (Landing Page)
+  useLandingRedirect(loc.pathname);
   const [open, setOpen] = useState<string | null>(() => MENU.find((g) => flattenMenu(g.children).some((i) => i.route && loc.pathname.startsWith(i.route)))?.code ?? 'GL');
   const [mini, setMini] = useState(false);
   const [workDateOpen, setWorkDateOpen] = useState(false);

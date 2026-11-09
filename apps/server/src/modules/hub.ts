@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { aggregateSync, d, HUB_APPS, HUB_ORDER, hubTileState, isTenantModuleKey, syncStateOf, syncText, tenantModuleStatus, TENANT_MODULES, type TenantModuleKey } from '@buddy/core';
+import { aggregateSync, d, HUB_APPS, HUB_ORDER, hubTileState, isTenantModuleKey, syncStateOf, syncText, tenantModuleStatus, TENANT_MODULES, userCanOpen, type TenantModuleKey } from '@buddy/core';
 import type { Db } from '../db.js';
 import type { Config } from '../config.js';
 import { AppError, badRequest, forbidden, parse, requireCompany } from '../http.js';
@@ -66,7 +66,8 @@ export function hubRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const mods = tenantModuleStatus(rows, today());
     const status = (await db.selectFrom('sys_source_status').selectAll().where('company_id', '=', a.companyId).where('deleted_at', 'is', null).execute());
     const now = new Date();
-    const apps = HUB_ORDER.map((key) => {
+    // ไทล์เฉพาะโปรแกรมที่ผู้ดูแลให้ผู้ใช้คนนี้เปิดได้ (sys_user.app_access · 09/11/2569) — ไม่ให้ = ไม่แสดง
+    const apps = HUB_ORDER.filter((key) => userCanOpen(a.apps, key, a.isAdmin)).map((key) => {
       const hub = HUB_APPS[key], m = mods.find((x) => x.key === key)!, url = rows.find((r) => r.module_key === key)?.app_url ?? null;
       const tile = hubTileState(key, m, url);
       const st = hub.source ? status.find((s) => s.source_system === hub.source) : undefined;
@@ -81,14 +82,15 @@ export function hubRoutes(app: FastifyInstance, db: Db, cfg: Config) {
       };
     });
     // Buddy เอง: ยอดขายเดือนนี้
-    const erp = apps.find((x) => x.key === 'buddy')!;
-    erp.metric = { label: 'ยอดขายเดือนนี้ (ก่อน VAT)', value: await salesThisMonth(db, a.companyId), at: now.toISOString() };
+    const erp = apps.find((x) => x.key === 'buddy');
+    if (erp && erp.status === 'active') erp.metric = { label: 'ยอดขายเดือนนี้ (ก่อน VAT)', value: await salesThisMonth(db, a.companyId), at: now.toISOString() };
     // สถานะรวม: เฉพาะโปรแกรมที่เปิดใช้อยู่
     const live = status.filter((s) => apps.some((x) => x.status === 'active' && HUB_APPS[x.key].source === s.source_system));
     const agg = aggregateSync(live, now);
     return {
       tenant: c.tenant_id ? { code: c.tenant_code, name: c.tenant_name } : null,
       company: { id: c.id, code: c.code, name_th: c.name_th },
+      user: { name: a.displayName, username: a.username, restricted: !a.isAdmin && a.apps != null },
       apps,
       sync: agg ? { ...agg, text: syncText(agg.state, agg.pending, agg.failed) } : null,
     };
@@ -106,6 +108,7 @@ export function hubRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const m = tenantModuleStatus(rows, today()).find((x) => x.key === key)!;
     const url = rows.find((r) => r.module_key === key)?.app_url ?? null;
     const tile = hubTileState(key, m, url);
+    if (!userCanOpen(a.apps, key, a.isAdmin)) throw forbidden(`ผู้ดูแลระบบยังไม่ให้สิทธิ์คุณเปิด ${hub.name} — ขอสิทธิ์จากผู้ดูแลระบบของบริษัท (อื่น ๆ › ผู้ใช้งานและสิทธิ์ › โปรแกรมที่เปิดได้)`);
     if (tile.status !== 'active') throw forbidden(tile.reason ?? `เปิด ${hub.name} ไม่ได้`);
     if (!url) throw new AppError(409, 'APP_URL_MISSING', tile.reason!);
     const branch = a.branchId ? await db.selectFrom('sys_branch').select(['id', 'code', 'name']).where('id', '=', a.branchId).where('company_id', '=', a.companyId).executeTakeFirst() : undefined;

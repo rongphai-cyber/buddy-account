@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
   user_group_id TEXT REFERENCES sys_user_group(id) DEFERRABLE INITIALLY DEFERRED,
   approval_level INTEGER NOT NULL DEFAULT 0 CHECK (approval_level BETWEEN 0 AND 9),
   check_rights INTEGER NOT NULL DEFAULT 0,
+  app_access TEXT,
   menu_language TEXT NOT NULL DEFAULT 'th',
   default_printer TEXT,
   status TEXT NOT NULL DEFAULT 'A' CHECK (status IN ('A','I')),
@@ -2474,7 +2475,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_user', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'tenant_id', NEW.tenant_id, 'username', NEW.username, 'display_name', NEW.display_name, 'password_hash', NEW.password_hash, 'user_group_id', NEW.user_group_id, 'approval_level', NEW.approval_level, 'check_rights', NEW.check_rights, 'menu_language', NEW.menu_language, 'default_printer', NEW.default_printer, 'status', NEW.status, 'last_login_at', NEW.last_login_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'tenant_id', NEW.tenant_id, 'username', NEW.username, 'display_name', NEW.display_name, 'password_hash', NEW.password_hash, 'user_group_id', NEW.user_group_id, 'approval_level', NEW.approval_level, 'check_rights', NEW.check_rights, 'app_access', NEW.app_access, 'menu_language', NEW.menu_language, 'default_printer', NEW.default_printer, 'status', NEW.status, 'last_login_at', NEW.last_login_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sys_user_update_outbox AFTER UPDATE ON sys_user
@@ -2483,7 +2484,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_user', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'tenant_id', NEW.tenant_id, 'username', NEW.username, 'display_name', NEW.display_name, 'password_hash', NEW.password_hash, 'user_group_id', NEW.user_group_id, 'approval_level', NEW.approval_level, 'check_rights', NEW.check_rights, 'menu_language', NEW.menu_language, 'default_printer', NEW.default_printer, 'status', NEW.status, 'last_login_at', NEW.last_login_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'tenant_id', NEW.tenant_id, 'username', NEW.username, 'display_name', NEW.display_name, 'password_hash', NEW.password_hash, 'user_group_id', NEW.user_group_id, 'approval_level', NEW.approval_level, 'check_rights', NEW.check_rights, 'app_access', NEW.app_access, 'menu_language', NEW.menu_language, 'default_printer', NEW.default_printer, 'status', NEW.status, 'last_login_at', NEW.last_login_at, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sys_user_ver AFTER UPDATE ON sys_user

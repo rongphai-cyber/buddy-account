@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, docMenuOf, findReport, menuOffBy, BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { AI_BILL_TARGETS, docMenuOf, findReport, HUB_ONLY_MENUS, hubOnly, menuOffBy, normalizeAppAccess, BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -89,6 +89,8 @@ function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action, o
   // ระบบที่ปิดทั้งบริษัท: ไม่มีใครใช้ได้ (รวมผู้ดูแลระบบ) จนกว่าจะเปิดกลับ
   if (off.length && menuOffBy(menu, off)) return { allowed: false, log: false, screenOnly: false };
   if (a.isAdmin) return { allowed: true, log: false, screenOnly: false };
+  // ผู้ใช้ที่ผู้ดูแลไม่ให้เปิด Buddy (เปิดได้เฉพาะโปรแกรมอื่นจาก Hub · sys_user.app_access): เหลือหน้าเปิดโปรแกรม + รหัสผ่าน
+  if (hubOnly(a.apps) && !HUB_ONLY_MENUS.includes(menu)) return { allowed: false, log: false, screenOnly: false };
   if (!baseAllowed(a.approvalLevel, menu, action)) return { allowed: false, log: false, screenOnly: false };
   if (!a.checkRights) return { allowed: true, log: false, screenOnly: false };
   const v = tableValue(rows, menu, action);
@@ -420,7 +422,10 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     if (rule.kind === 'open') return;
     if (rule.kind === 'self') { if (req.auth) checkApiKeyRule(req.auth, method, url, 'self', null); return; }
     const a = requireCompany(req);
-    if (rule.kind === 'lookup') { checkApiKeyRule(a, method, url, 'lookup', null); return; }
+    if (rule.kind === 'lookup') {
+      if (hubOnly(a.apps, a.isAdmin)) throw forbidden('คุณได้รับสิทธิ์เปิดเฉพาะโปรแกรมอื่นจากหน้าเปิดโปรแกรม (ไม่รวม Buddy Account) — ขอสิทธิ์จากผู้ดูแลระบบของบริษัท (อื่น ๆ › ผู้ใช้งานและสิทธิ์)');
+      checkApiKeyRule(a, method, url, 'lookup', null); return;
+    }
     const menu = rule.pick ? await rule.pick(req, db, a.companyId) : rule.menu;
     checkApiKeyRule(a, method, url, 'menu', menu);
     const off = await modulesOff(db, a.companyId);
@@ -466,8 +471,8 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
   /** ผู้ใช้/กลุ่มต้องเป็นของลูกค้า (tenant) เดียวกับผู้ดูแล — ผู้ให้บริการเห็นทุกราย */
   async function subjectOf(a: AuthContext, type: 'U' | 'G', id: string) {
     const q = type === 'U'
-      ? db.selectFrom('sys_user').select(['id', 'username as code', 'display_name as name', 'tenant_id', 'approval_level', 'check_rights', 'user_group_id']).where('id', '=', id).where('deleted_at', 'is', null)
-      : db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id', sql<number>`9`.as('approval_level'), sql<boolean>`true`.as('check_rights'), sql<string | null>`NULL::uuid`.as('user_group_id')]).where('id', '=', id).where('deleted_at', 'is', null);
+      ? db.selectFrom('sys_user').select(['id', 'username as code', 'display_name as name', 'tenant_id', 'approval_level', 'check_rights', 'user_group_id', 'app_access']).where('id', '=', id).where('deleted_at', 'is', null)
+      : db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id', sql<number>`9`.as('approval_level'), sql<boolean>`true`.as('check_rights'), sql<string | null>`NULL::uuid`.as('user_group_id'), sql<unknown>`NULL::jsonb`.as('app_access')]).where('id', '=', id).where('deleted_at', 'is', null);
     const s = await q.executeTakeFirst();
     if (!s || (!a.isPlatform && (s.tenant_id ?? null) !== (a.tenantId ?? null))) throw notFound(type === 'U' ? 'ผู้ใช้' : 'กลุ่มผู้ใช้');
     return s;
@@ -490,7 +495,7 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
     let effective: Awaited<ReturnType<typeof permissionMatrix>> | null = null;
     if (q.subject_type === 'U') {
       const g = s.user_group_id ? await db.selectFrom('sys_user_group').select('code').where('id', '=', s.user_group_id).executeTakeFirst() : null;
-      const as: AuthContext = { ...a, userId: s.id, approvalLevel: s.approval_level, checkRights: s.check_rights, groupId: s.user_group_id, isAdmin: g?.code === 'ADMIN', isPlatform: false };
+      const as: AuthContext = { ...a, userId: s.id, approvalLevel: s.approval_level, checkRights: s.check_rights, groupId: s.user_group_id, isAdmin: g?.code === 'ADMIN', isPlatform: false, apps: normalizeAppAccess(s.app_access) };
       effective = await permissionMatrix(db, as);
     }
     return { subject: { type: q.subject_type, id: s.id, code: s.code, name: s.name, approval_level: q.subject_type === 'U' ? s.approval_level : null, check_rights: q.subject_type === 'U' ? s.check_rights : null },

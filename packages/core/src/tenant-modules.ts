@@ -15,6 +15,26 @@ export const isTenantModuleKey = (k: string): k is TenantModuleKey => TENANT_MOD
 
 export type TenantModuleRow = { module_key: string; enabled: boolean; valid_to: string | null; seats: number | null; remark?: string | null; app_url?: string | null };
 
+/**
+ * สิทธิ์เปิดโปรแกรมรายผู้ใช้ (sys_user.app_access · เจ้าของ 09/11/2569) — ผู้ดูแลระบบของลูกค้ากำหนดที่ ผู้ใช้งานและสิทธิ์
+ * null = ทุกโปรแกรมที่ลูกค้าเปิดใช้ (ค่าเดิมของผู้ใช้ทุกคน) · [] = ยังไม่ให้เปิดโปรแกรมใด · ค่าที่ไม่รู้จักถูกตัด · เรียงตาม TENANT_MODULES
+ */
+export function normalizeAppAccess(v: unknown): TenantModuleKey[] | null {
+  let x = v;
+  if (typeof x === 'string') { try { x = JSON.parse(x); } catch { return null; } }   // เครื่องสาขา (SQLite) เก็บเป็นข้อความ JSON
+  if (!Array.isArray(x)) return null;
+  const keys = new Set(x.map(String));
+  return TENANT_MODULES.map((m) => m.key).filter((k) => keys.has(k));
+}
+/** ผู้ใช้เปิดโปรแกรมนี้ได้ไหม (ยังต้องผ่านสิทธิ์ระดับลูกค้า tenantModuleStatus อีกชั้น) — ผู้ดูแลระบบได้เสมอ */
+export function userCanOpen(apps: readonly string[] | null | undefined, key: TenantModuleKey, isAdmin = false): boolean {
+  return isAdmin || apps == null || apps.includes(key);
+}
+/** ผู้ใช้ที่ไม่มีสิทธิ์ Buddy (เปิดได้เฉพาะโปรแกรมอื่น) ยังใช้เมนูเหล่านี้ของ Buddy ได้: หน้าเปิดโปรแกรม + เปลี่ยนรหัสผ่าน/ยืนยันตัวตน */
+export const HUB_ONLY_MENUS: readonly string[] = ['OT.HUB', 'OT.PASS'];
+/** ใช้ได้เฉพาะหน้าเปิดโปรแกรม (ไม่เห็นเมนูบัญชี) */
+export const hubOnly = (apps: readonly string[] | null | undefined, isAdmin = false) => !userCanOpen(apps, 'buddy', isAdmin);
+
 /** สถานะโมดูลทุกตัวของลูกค้า: แถวที่ตั้งไว้ หรือค่าเริ่มต้น · active = เปิดและยังไม่หมดอายุ (วันที่ YYYY-MM-DD ค.ศ. · ใช้ได้ถึงสิ้นวัน valid_to) */
 export function tenantModuleStatus(rows: TenantModuleRow[], today: string) {
   return TENANT_MODULES.map((m) => {

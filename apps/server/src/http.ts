@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError, type ZodTypeAny, type z } from 'zod';
+import type { TenantModuleKey } from '@buddy/core';
 
 /** ข้อผิดพลาดที่แสดงให้ผู้ใช้ได้ (ข้อความภาษาไทย) */
 export class AppError extends Error {
@@ -67,6 +68,8 @@ export interface AuthContext {
   approvalLevel: number;
   checkRights: boolean;
   groupId: string | null;
+  /** โปรแกรมที่ผู้ใช้เปิดได้ (sys_user.app_access) — null = ทุกโปรแกรมของลูกค้า · ไม่มี (กุญแจ API) = ไม่จำกัดตามนี้ */
+  apps?: TenantModuleKey[] | null;
 }
 
 declare module 'fastify' {
