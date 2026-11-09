@@ -34,7 +34,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (companyChanged || p.branch_id !== undefined) qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' && q.queryKey[0] !== 'setup' });
       await qc.refetchQueries({ queryKey: ['me'] });
     },
-    async logout() { await api.post('/api/v1/auth/logout'); qc.clear(); qc.setQueryData(['me'], null); },
+    // ตั้ง me = null บนคิวรีเดิม (ไม่ clear() ทั้งหมดก่อน — clear() ถอดคิวรี me ที่หน้าจอเฝ้าอยู่ ทำให้หน้าเลือกโปรแกรมกดออกแล้วไม่ไปหน้าเข้าระบบ)
+    async logout() { await api.post('/api/v1/auth/logout'); qc.setQueryData(['me'], null); qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' && q.queryKey[0] !== 'setup' }); },
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

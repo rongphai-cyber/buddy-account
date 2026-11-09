@@ -53,7 +53,7 @@ import { BackupPage } from './pages/settings/Backup';
 import { ApiKeysPage } from './pages/settings/ApiKeys';
 import { PdpaPage } from './pages/settings/Pdpa';
 import { DevicesPage, SyncPage, SyncBadge } from './pages/settings/Sync';
-import { HubPage, useLandingRedirect } from './pages/Hub';
+import { HubPage, enteredBuddy, markEntered } from './pages/Hub';
 import { EtaxPage } from './pages/tax/Etax';
 import { AiSettingsPage } from './pages/settings/AiSettings';
 import { ActivityLogPage } from './pages/settings/ActivityLog';
@@ -100,7 +100,9 @@ export function App() {
   if (me.user.mfa_setup_required) return <><MfaRequiredPage /><Toasts /></>;
   // ผู้ใช้ที่ผู้ดูแลให้เปิดได้เฉพาะโปรแกรมอื่น (ไม่มีสิทธิ์ Buddy · 09/11/2569): หน้าเปิดโปรแกรมเต็มจอ ไม่มีเมนูบัญชี
   if (me.user.hub_only) return <><HubOnly /><Toasts /></>;
-  // หน้าเปิดโปรแกรมเต็มจอ ไม่มีเมนู/แถบบนของ Buddy (เจ้าของ 10/11/2569 — แบบหน้ารวมระบบ WTS-App) · กดการ์ด Buddy Account = เข้าโปรแกรมบัญชี
+  // หน้าเลือกโปรแกรมเต็มจอ ไม่มีเมนู/แถบบนของ Buddy (เจ้าของ 10/11/2569 — แบบหน้ารวมระบบ WTS-App) · กดการ์ด Buddy Account = เข้าโปรแกรมบัญชี
+  // เข้าระบบ/เปิดครั้งแรกของแท็บที่หน้าแรก "/" → หน้าเลือกโปรแกรมก่อนเสมอ (ลิงก์ตรงไปหน้าอื่นของ Buddy เปิดหน้านั้นเลย)
+  if (me.company && loc.pathname === '/' && !enteredBuddy()) return <Navigate to="/hub" replace />;
   if (loc.pathname === '/hub' && me.company) return <><HubPage /><Toasts /></>;
   // หน้าพิมพ์แยก (เปิดจากปุ่ม "เปิดหน้าพิมพ์ในแท็บใหม่"): เอกสารอย่างเดียว ไม่มีเมนู
   const pm = /^\/print\/(doc|journal)\/([0-9a-f-]{36})$/.exec(loc.pathname);
@@ -120,8 +122,8 @@ function Shell() {
   const { me, select, logout } = useSession();
   const nav = useNavigate();
   const loc = useLocation();
-  // หลังเข้าระบบ: เปิดได้ตั้งแต่ 2 โปรแกรม → มาหน้าเปิดโปรแกรมก่อน (Landing Page)
-  useLandingRedirect(loc.pathname);
+  // อยู่ใน Buddy แล้ว (กดการ์ด Buddy หรือเปิดลิงก์หน้าใดของ Buddy) — กลับหน้าแรก "/" ในแท็บนี้ = หน้าแรกของ Buddy ไม่ใช่หน้าเลือกโปรแกรม
+  useEffect(() => markEntered(), []);
   const [open, setOpen] = useState<string | null>(() => MENU.find((g) => flattenMenu(g.children).some((i) => i.route && loc.pathname.startsWith(i.route)))?.code ?? 'GL');
   const [mini, setMini] = useState(false);
   const [workDateOpen, setWorkDateOpen] = useState(false);
@@ -180,7 +182,7 @@ function Shell() {
             </select>
           )}
           <SyncBadge />
-          <button className="hub-btn" onClick={() => nav('/hub')} title="WTS Solutions — เปิดโปรแกรมอื่น (POS HR …) ด้วยล็อกอินเดียว">▦<span className="lbl"> WTS</span></button>
+          <button className="hub-btn" onClick={() => nav('/hub')} title="กลับหน้าเลือกโปรแกรม (WTS Solutions) — เปิดโปรแกรมอื่นด้วยล็อกอินเดียว">▦<span className="lbl"> WTS</span></button>
           <button className="period" onClick={() => setWorkDateOpen(true)} title="เปลี่ยนวันทำการ">วันทำการ {formatDate(me.work_date ?? new Date().toISOString().slice(0, 10), ys)}</button>
           <button className="user link" title={`${me.user.username} — รหัสผ่านและยืนยันตัวตนสองขั้น`} onClick={() => nav('/account/password')}>{me.user.display_name}</button>
           <LangSwitch />

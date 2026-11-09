@@ -14531,20 +14531,6 @@
 ]
 },
 {
-"th": "WTS Solutions (เปิดโปรแกรมอื่น)",
-"n": 1,
-"files": [
-"packages/core/src/menu.ts"
-]
-},
-{
-"th": "WTS Solutions — เปิดโปรแกรมอื่น (POS HR …) ด้วยล็อกอินเดียว",
-"n": 1,
-"files": [
-"apps/web/src/App.tsx"
-]
-},
-{
 "th": "WTS-Living (หอพัก อพาร์ตเมนต์ นิติบุคคล)",
 "n": 1,
 "files": [
@@ -16691,6 +16677,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "กลับหน้าเลือกโปรแกรม (WTS Solutions) — เปิดโปรแกรมอื่นด้วยล็อกอินเดียว",
+"n": 1,
+"files": [
+"apps/web/src/App.tsx"
 ]
 },
 {
@@ -46490,6 +46483,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "เลือกโปรแกรม (WTS Solutions)",
+"n": 1,
+"files": [
+"packages/core/src/menu.ts"
 ]
 },
 {

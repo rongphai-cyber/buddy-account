@@ -28,21 +28,15 @@ const timeTh = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString('th-TH'
 const BAHT = '฿';
 const showMetric = (v: string) => (/^-?\d+(\.\d+)?$/.test(v) ? BAHT + fmt(v) : v);
 
-/** การ์ดที่เปิดได้จริง (ไม่นับ "เร็ว ๆ นี้"/ยังไม่เปิดใช้) — ใช้ตัดสินว่าหลังเข้าระบบควรมาหน้านี้ก่อนไหม */
-export const openable = (apps: App[]) => apps.filter((x) => x.status === 'active' && x.launch !== 'soon');
-
-/** หลังเข้าระบบ: ผู้ใช้ที่เปิดได้ตั้งแต่ 2 โปรแกรมขึ้นไป มาที่หน้าเปิดโปรแกรมก่อน (ครั้งเดียวต่อการเข้าระบบ) */
-const LANDING_KEY = 'buddy.landing';
-export function markLanding() { try { sessionStorage.setItem(LANDING_KEY, '1'); } catch { /* หน้าต่างส่วนตัว */ } }
-export function useLandingRedirect(path: string) {
-  const nav = useNavigate();
-  useEffect(() => {
-    let want = false;
-    try { want = sessionStorage.getItem(LANDING_KEY) === '1'; sessionStorage.removeItem(LANDING_KEY); } catch { /* */ }
-    if (!want || path !== '/') return;
-    api.get<Hub>('/api/v1/hub').then((h) => { if (openable(h.apps).length >= 2) nav('/hub', { replace: true }); }).catch(() => undefined);
-  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
-}
+/**
+ * เข้าระบบ/เปิดโปรแกรมครั้งแรกของแท็บ → หน้าเลือกโปรแกรมก่อนเสมอ (เจ้าของ 10/11/2569 แบบ wts.worktruesolution.net)
+ * "เข้า Buddy แล้ว" = กดการ์ด Buddy Account หรือเปิดหน้าใดของ Buddy โดยตรง (ลิงก์เอกสาร) — จำต่อแท็บ (sessionStorage)
+ * ยังไม่เข้า + ที่อยู่ "/" → App.tsx ส่งไป /hub · เข้าระบบใหม่ = ล้างค่า (markLanding)
+ */
+const ENTERED_KEY = 'buddy.entered';
+export function enteredBuddy() { try { return sessionStorage.getItem(ENTERED_KEY) === '1'; } catch { return true; } }
+export function markEntered() { try { sessionStorage.setItem(ENTERED_KEY, '1'); } catch { /* หน้าต่างส่วนตัว */ } }
+export function markLanding() { try { sessionStorage.removeItem(ENTERED_KEY); } catch { /* หน้าต่างส่วนตัว */ } }
 
 export function SyncPill({ s, title }: { s: Sync; title?: string }) {
   return <span className={`hub-sync hub-sync-${s.state}`} role="status" title={title ?? s.message ?? undefined}><b aria-hidden="true">{SYNC_ICON[s.state]}</b> {s.text}</span>;
@@ -56,7 +50,7 @@ export function HubPage() {
   useEffect(() => { if (me && !me.company && me.companies[0]) void select({ company_id: me.companies[0].id }).catch(toastError); }, [me?.company?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   const open = async (x: App) => {
     if (x.status !== 'active') { toast(x.reason ?? `เปิด ${x.name} ไม่ได้`, 'warn'); return; }
-    if (x.launch === 'self') { nav('/'); return; }
+    if (x.launch === 'self') { markEntered(); nav('/'); return; }
     if (x.reason) { toast(x.reason, 'warn'); return; }
     if (x.launch === 'link') { if (x.url) window.open(x.url, '_blank', 'noopener'); return; }
     // เปิดแท็บก่อน (กันเบราว์เซอร์บล็อกหน้าต่างที่เปิดหลังรอคำตอบ) แล้วค่อยใส่ที่อยู่พร้อมบัตรผ่าน
