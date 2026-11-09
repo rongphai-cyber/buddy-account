@@ -11,7 +11,8 @@ import { ErrorBox, toast, toastError, useHotkeys } from '../ui';
  * - หน้าตาแบบหน้ารวมระบบของสำนักงานบัญชี WTS (WTS-App): โลโก้ WTS · การ์ดขาว ขอบส้มตอนชี้ · กล่องคำอธิบาย · "เข้าระบบในนาม …"
  * - ล็อกอิน Buddy ครั้งเดียว: กดการ์ด POS/Living → ขอบัตรผ่าน (อายุ 2 นาที ใช้ครั้งเดียว) แล้วเปิดโปรแกรมในแท็บใหม่ไม่ต้องใส่รหัสซ้ำ
  * - การ์ดเฉพาะโปรแกรมที่ผู้ดูแลให้ผู้ใช้คนนี้เปิดได้ (sys_user.app_access — เซิร์ฟเวอร์กรองให้) · ที่ลูกค้ายังไม่เปิดใช้ = ผู้ดูแลเห็นเป็นการ์ดจาง · "เร็ว ๆ นี้" = บรรทัดท้าย
- * - standalone = ผู้ใช้ที่เปิดได้เฉพาะโปรแกรมอื่น (ไม่มีสิทธิ์ Buddy): หน้านี้เต็มจอ ไม่มีเมนูบัญชี + เปลี่ยนบริษัท/รหัสผ่าน/ออกจากระบบ
+ * - เต็มจอเสมอ ไม่มีเมนู/แถบบนของ Buddy (เจ้าของ 10/11/2569: "ยังไม่ได้เข้าไปใน Buddy Account") — App.tsx แสดงนอก Shell
+ *   มีเปลี่ยนบริษัท · รหัสผ่าน · ออกจากระบบ ในหน้านี้เอง · การ์ด Buddy Account = เข้าโปรแกรมบัญชี
  */
 type Sync = { state: 'online' | 'syncing' | 'error' | 'offline'; pending: number; failed: number; text: string; reported_at?: string; message?: string | null };
 type App = {
@@ -47,12 +48,12 @@ export function SyncPill({ s, title }: { s: Sync; title?: string }) {
   return <span className={`hub-sync hub-sync-${s.state}`} role="status" title={title ?? s.message ?? undefined}><b aria-hidden="true">{SYNC_ICON[s.state]}</b> {s.text}</span>;
 }
 
-export function HubPage({ standalone = false }: { standalone?: boolean }) {
+export function HubPage() {
   const nav = useNavigate();
   const { me, select, logout } = useSession();
   const q = useQuery({ queryKey: ['hub', me?.company?.id], enabled: !!me?.company, queryFn: () => api.get<Hub>('/api/v1/hub'), refetchInterval: 60_000 });
   // ผู้ใช้เฉพาะ Hub ที่ยังไม่ได้เลือกบริษัท: เลือกบริษัทแรกที่เข้าได้ให้
-  useEffect(() => { if (standalone && me && !me.company && me.companies[0]) void select({ company_id: me.companies[0].id }).catch(toastError); }, [standalone, me?.company?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (me && !me.company && me.companies[0]) void select({ company_id: me.companies[0].id }).catch(toastError); }, [me?.company?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   const open = async (x: App) => {
     if (x.status !== 'active') { toast(x.reason ?? `เปิด ${x.name} ไม่ได้`, 'warn'); return; }
     if (x.launch === 'self') { nav('/'); return; }
@@ -73,7 +74,7 @@ export function HubPage({ standalone = false }: { standalone?: boolean }) {
   const soon = d ? d.apps.filter((x) => x.status === 'soon') : [];
   const company = d ? `${d.company.code} ${d.company.name_th}` : me?.company ? `${me.company.code} ${me.company.name_th}` : '';
   return (
-    <div className={`landing${standalone ? ' landing-full' : ''}`}>
+    <div className="landing landing-full">
       <div className="landing-wrap">
         <div className="landing-head">
           <img className="landing-logo" src="/wts-logo.png" alt="WTS" width={210} height={70} />
@@ -83,7 +84,7 @@ export function HubPage({ standalone = false }: { standalone?: boolean }) {
             <button type="button" onClick={() => void q.refetch()} title="ดึงสถานะใหม่ (F5)">↻ <kbd>F5</kbd></button>
           </div>
         </div>
-        {standalone && me && me.companies.length > 1 && (
+        {me && me.companies.length > 1 && (
           <label className="landing-co">บริษัท{' '}
             <select value={me.company?.id ?? ''} onChange={(e) => select({ company_id: e.target.value }).catch(toastError)} aria-label="บริษัท">
               {me.companies.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name_th}</option>)}
@@ -96,7 +97,7 @@ export function HubPage({ standalone = false }: { standalone?: boolean }) {
           {cards.map((x) => {
             const off = x.status !== 'active';
             const badge = off ? (x.reason?.includes('หมดอายุ') ? 'หมดอายุ' : 'ยังไม่เปิดใช้')
-              : x.reason ? 'ยังไม่ตั้งที่อยู่' : x.launch === 'sso' ? 'เข้าได้ทันที' : x.launch === 'link' ? 'เปิดหน้าเว็บ ↗' : null;
+              : x.reason ? 'ยังไม่ตั้งที่อยู่' : x.launch === 'link' ? 'เปิดหน้าเว็บ ↗' : null;   // ใช้ได้ปกติ = ไม่มีป้าย (แบบ WTS-App)
             return (
               <button key={x.key} type="button" className={`landing-card${off ? ' off' : ''}`} aria-disabled={off || undefined}
                 data-app={x.key} onClick={() => void open(x)} title={x.reason ?? `เปิด ${x.name}`}>
@@ -122,7 +123,7 @@ export function HubPage({ standalone = false }: { standalone?: boolean }) {
         </div>
         <div className="landing-foot">
           {me && <>เข้าระบบในนาม <b data-no-i18n>{me.user.display_name}</b> ({me.user.username})</>}
-          {standalone && <> · <button type="button" className="linklike" onClick={() => nav('/account/password')}>รหัสผ่านและยืนยันตัวตน</button> · <button type="button" className="linklike" onClick={() => void logout()}>ออกจากระบบ</button></>}
+          {me && <> · <button type="button" className="linklike" onClick={() => nav('/account/password')}>รหัสผ่านและยืนยันตัวตน</button> · <button type="button" className="linklike" onClick={() => void logout()}>ออกจากระบบ</button></>}
         </div>
       </div>
     </div>

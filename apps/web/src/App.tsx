@@ -100,6 +100,8 @@ export function App() {
   if (me.user.mfa_setup_required) return <><MfaRequiredPage /><Toasts /></>;
   // ผู้ใช้ที่ผู้ดูแลให้เปิดได้เฉพาะโปรแกรมอื่น (ไม่มีสิทธิ์ Buddy · 09/11/2569): หน้าเปิดโปรแกรมเต็มจอ ไม่มีเมนูบัญชี
   if (me.user.hub_only) return <><HubOnly /><Toasts /></>;
+  // หน้าเปิดโปรแกรมเต็มจอ ไม่มีเมนู/แถบบนของ Buddy (เจ้าของ 10/11/2569 — แบบหน้ารวมระบบ WTS-App) · กดการ์ด Buddy Account = เข้าโปรแกรมบัญชี
+  if (loc.pathname === '/hub' && me.company) return <><HubPage /><Toasts /></>;
   // หน้าพิมพ์แยก (เปิดจากปุ่ม "เปิดหน้าพิมพ์ในแท็บใหม่"): เอกสารอย่างเดียว ไม่มีเมนู
   const pm = /^\/print\/(doc|journal)\/([0-9a-f-]{36})$/.exec(loc.pathname);
   if (pm) return <><PrintPage kind={pm[1] as 'doc' | 'journal'} id={pm[2]!} slot={Number(new URLSearchParams(loc.search).get('slot')) || 1} /><Toasts /></>;
@@ -111,7 +113,7 @@ function HubOnly() {
   const loc = useLocation();
   const nav = useNavigate();
   if (loc.pathname === '/account/password') return <div className="page narrow"><p><button type="button" onClick={() => nav('/')}>← กลับหน้าเปิดโปรแกรม</button></p><PasswordPage /></div>;
-  return <HubPage standalone />;
+  return <HubPage />;
 }
 
 function Shell() {
@@ -202,7 +204,6 @@ function Shell() {
       <main className="main" id="main">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/hub" element={<HubPage />} />
           <Route path="/gl/accounts" element={<AccountsPage />} />
           <Route path="/gl/journals" element={<JournalsPage />} />
           <Route path="/gl/journals/new" element={<JournalFormRoute />} />
