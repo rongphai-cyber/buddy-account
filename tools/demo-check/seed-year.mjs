@@ -14,8 +14,9 @@ import Decimal from 'file:///E:/BuddyAccount/packages/core/node_modules/decimal.
 const BASE = process.env.BASE ?? 'http://127.0.0.1:4103';
 if (/:4100\b/.test(BASE)) { console.error('ห้ามใช้กับ server จริง (พอร์ต 4100)'); process.exit(2); }
 if (process.env.SEED_LIVE !== '1' && !process.env.DATABASE_URL?.includes('buddy_smoke')) { console.error('ใช้กับสำเนา buddy_smoke (รันผ่าน smoke-copy.mjs run --) หรือใส่ SEED_LIVE=1 สำหรับฐานหลัก'); process.exit(2); }
-const SEED_FILE = 'E:/BuddyAccount/.data/ข้อมูลเข้าระบบ-ผู้ใส่ข้อมูลทดลอง.txt';
-const USERS_FILE = 'E:/BuddyAccount/.data/ข้อมูลเข้าระบบ-ผู้ใช้ทดลอง.txt';
+// ที่อยู่แฟ้มเปลี่ยนได้ (tools/cloud/demo-seed.mjs ใส่บริษัทตัวอย่างบนคลาวด์ — ไม่ทับแฟ้มของ DEMO ในเครื่อง)
+const SEED_FILE = process.env.DEMO_SEED_FILE ?? 'E:/BuddyAccount/.data/ข้อมูลเข้าระบบ-ผู้ใส่ข้อมูลทดลอง.txt';
+const USERS_FILE = process.env.DEMO_USERS_FILE ?? 'E:/BuddyAccount/.data/ข้อมูลเข้าระบบ-ผู้ใช้ทดลอง.txt';
 const CO_CODE = 'DEMO';
 const T0 = Date.now();
 

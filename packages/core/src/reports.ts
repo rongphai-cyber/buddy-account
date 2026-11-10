@@ -179,10 +179,14 @@ export const REPORT_TREE: ReportNode[] = [
   ] },
 ];
 
+/** รหัสรายงานเดิมที่กลายเป็นกลุ่ม — ลิงก์/รายงานของผู้ใช้ที่บันทึกไว้ด้วยรหัสเดิมยังเปิดได้ (เซิร์ฟเวอร์มีตัวรันของรหัสเดิมอยู่) */
+export const REPORT_ALIASES: Readonly<Record<string, string>> = { '8.1': '8.1.1' };
+
 export function findReport(code: string, nodes: ReportNode[] = REPORT_TREE): ReportDef | null {
   for (const n of nodes) {
     if (n.def && n.code === code) return n.def;
     if (n.children) { const f = findReport(code, n.children); if (f) return f; }
   }
-  return null;
+  const alias = nodes === REPORT_TREE ? REPORT_ALIASES[code] : undefined;
+  return alias ? findReport(alias) : null;
 }
