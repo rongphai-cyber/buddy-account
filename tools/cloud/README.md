@@ -138,3 +138,15 @@ npx wrangler deploy
 - กุญแจหลัก BUDDY_/WTSPOS_/WTSLIVING_SECRET_KEY สร้างครั้งแรกแล้วเก็บใน `.data/cloud-prod.env` — **สำรองไฟล์นี้** (หายแล้วถอดรหัสข้อมูลลับในฐานไม่ได้)
 
 ตรวจในเครื่องได้เฉพาะตัว Worker: `npx wrangler@4 deploy --dry-run --containers-rollout=none --outdir %TEMP%\wr-dry`
+
+## 7. เชื่อม POS + Living บนคลาวด์เข้ากับ Buddy (10/11/2569 · HANDOFF 107 — เจ้าของรัน)
+
+ก่อนรัน: ตั้งค่าครั้งแรกของ WTS-POS และ WTS-Living บนคลาวด์แล้ว (มีบริษัทละ 1) · Access app `buddy-api` เป็น Bypass แล้ว
+
+```
+node tools\cloud\link-apps.mjs                  (บริษัท DEMO · --company <รหัส> = บริษัทอื่น)
+node tools/local-pg/pg.mjs run -- node tools/cloud/link-apps.mjs --rehearse   (ซ้อมในเครื่อง ฐานชั่วคราว)
+```
+- Buddy: เปิดการ์ด POS/Living ให้ลูกค้าของบริษัท (ที่อยู่ *.rongphai.workers.dev/office/) + กุญแจ API บันทึกได้ ผูกระบบ wts-pos / wts-living ในนามผู้ดูแลของลูกค้า (รันซ้ำ = ยกเลิกกุญแจรุ่นก่อน)
+- POS/Living: ที่อยู่ Buddy = https://buddy-api.worktruesolution.net · กุญแจเข้ารหัสด้วยกุญแจหลักของโปรแกรม (tools/hub/link-buddy.mts ของแต่ละ repo) · ปลายทางบัญชี = Buddy
+- ทดสอบ: JWKS + /api/v1/auth/me ด้วยกุญแจแต่ละดอกผ่าน buddy-api · ทดสอบสุดท้าย = กดการ์ดในหน้าเลือกโปรแกรม
