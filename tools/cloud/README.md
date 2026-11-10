@@ -113,3 +113,11 @@ npx wrangler deploy
 4. ซ้อมในเครื่องก่อนแก้เครื่องมือนี้: `node tools\local-pg\pg.mjs run -- node tools\cloud\prod-setup.mjs --rehearse` (ฐาน `rehearse_*` + role anon จำลอง ลบเมื่อจบ — ไม่แตะ DEMO)
 
 **ห้ามใช้ `pg-check.mjs` กับ wts-prod** — pg-check เป็นเครื่องมือทดสอบ (สร้างฐาน s0_* และล้างข้อมูลระหว่างทดสอบ) และปฏิเสธโปรเจกต์ที่มีฐาน buddy/wtspos/wtsliving/wtshr หรือเครื่องหมาย `wts_prod` อยู่แล้ว
+
+## 5. ที่เก็บไฟล์ R2 ใช้งานจริง (ขั้น S1 — เจ้าของทำ)
+
+1 bucket + 1 กุญแจ ต่อโปรแกรม (โปรแกรมหนึ่งเปิดไฟล์ของอีกโปรแกรมไม่ได้): `wts-buddy-files` · `wts-pos-files` · `wts-living-files` — Location hint **Asia-Pacific (APAC)** · ห้ามเปิด Public access / r2.dev
+1. Cloudflare › R2 Object Storage › Create bucket ×3 (ชื่อตามข้างบน)
+2. เปิดตัวช่วยไว้ก่อน: `powershell -ExecutionPolicy Bypass -File tools\cloud\set-r2-keys.ps1` (ค่าเริ่มต้น .data\cloud-prod.env)
+3. R2 › Manage API tokens › Create Account API token: Permissions **Object Read & Write** · **Apply to specific buckets only** › bucket ของโปรแกรมนั้น · TTL Forever → วาง Access Key ID / Secret Access Key ในตัวช่วย (Secret ไม่ขึ้นจอ · แสดงครั้งเดียวที่ Cloudflare) · ทำทีละโปรแกรม
+4. ตรวจ: `node tools\cloud\prod-setup.mjs --r2` (put → get → ที่อยู่แบบเซ็น → ไม่เซ็นต้องถูกปฏิเสธ → delete · ไฟล์ทดสอบชนิด s0-check ลบเองเมื่อจบ) · รายงาน `.data\cloud-prod-r2-report.md`

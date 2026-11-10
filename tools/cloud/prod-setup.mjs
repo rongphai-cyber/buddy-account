@@ -5,6 +5,7 @@
 //                                                  → migration ของ Buddy / WTS-POS / WTS-Living → ถอนสิทธิ์ anon/authenticated → ตรวจ role/RLS
 //   node tools/local-pg/pg.mjs run -- node tools/cloud/prod-setup.mjs --rehearse
 //                                                  ซ้อมกับ PostgreSQL ในเครื่อง (พอร์ต 5544) ด้วยฐานชื่อ rehearse_* แล้วลบทิ้ง — ไม่แตะ DEMO
+//   node tools/cloud/prod-setup.mjs --r2           ตรวจที่เก็บไฟล์ R2 ของแต่ละโปรแกรม (กุญแจจาก set-r2-keys.ps1): put → get → ที่อยู่แบบเซ็น → ไม่เซ็นต้องถูกปฏิเสธ → delete
 //   ตัวเลือก: --env <ไฟล์>
 //
 // ความปลอดภัย
@@ -26,8 +27,9 @@ const flag = (n) => argv.includes(n);
 const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
 const REHEARSE = flag('--rehearse');
 const CHECK_ONLY = flag('--check');
+const R2_ONLY = flag('--r2');
 const ENV_FILE = resolve(opt('--env', join(ROOT, '.data/cloud-prod.env')));
-const REPORT = join(ROOT, REHEARSE ? '.data/cloud-prod-report-rehearse.md' : '.data/cloud-prod-report.md');
+const REPORT = join(ROOT, REHEARSE ? '.data/cloud-prod-report-rehearse.md' : R2_ONLY ? '.data/cloud-prod-r2-report.md' : '.data/cloud-prod-report.md');
 const PREFIX = REHEARSE ? 'rehearse_' : '';
 const MARK = 'wts_prod';
 const TZ = 'Asia/Bangkok';
@@ -167,8 +169,41 @@ function migrationFiles(app) {
   return readdirSync(join(app.root, 'db/migrations')).filter((f) => /^\d{4}_.+\.sql$/.test(f)).length;
 }
 
+/* ---------------------------------------------------------------- R2 */
+const R2_APPS = [['BUDDY', 'Buddy Account'], ['WTSPOS', 'WTS-POS'], ['WTSLIVING', 'WTS-Living']];
+async function r2Main() {
+  const env = readEnvFile(ENV_FILE);
+  out(`# ตรวจที่เก็บไฟล์ R2 (S1 · docs/20 ข้อ 9) — ${new Date().toISOString()}`);
+  if (!env.R2_ACCOUNT_ID) fail('ไม่พบ R2_ACCOUNT_ID — รัน powershell -ExecutionPolicy Bypass -File tools\\cloud\\set-r2-keys.ps1');
+  secrets.add(env.R2_ACCOUNT_ID);
+  const tsx = join(ROOT, 'apps/server/node_modules/tsx/dist/cli.mjs');
+  let ok = true;
+  let any = false;
+  for (const [k, name] of R2_APPS) {
+    const cfg = { R2_ACCOUNT_ID: env.R2_ACCOUNT_ID, R2_BUCKET: env[`${k}_R2_BUCKET`], R2_ACCESS_KEY_ID: env[`${k}_R2_ACCESS_KEY_ID`], R2_SECRET_ACCESS_KEY: env[`${k}_R2_SECRET_ACCESS_KEY`] };
+    out(`\n## ${name}`);
+    if (!cfg.R2_BUCKET || !cfg.R2_ACCESS_KEY_ID || !cfg.R2_SECRET_ACCESS_KEY) { out('  ยังไม่มีกุญแจ — ข้าม'); ok = false; continue; }
+    any = true;
+    for (const v of [cfg.R2_ACCESS_KEY_ID, cfg.R2_SECRET_ACCESS_KEY]) secrets.add(v);
+    const childEnv = { ...process.env, NO_COLOR: '1', ...cfg };
+    delete childEnv.DATABASE_URL;
+    const r = await runChild(process.execPath, [tsx, join(ROOT, 'tools/cloud/r2-check.ts')], { cwd: join(ROOT, 'apps/server'), env: childEnv });
+    const lines = r.text.split(/\r?\n/);
+    const line = lines.find((l) => l.startsWith('R2CHECK '));
+    const res = line ? JSON.parse(line.slice(8)) : { steps: [{ step: 'start', ok: false, ms: 0, detail: mask(lines.filter(Boolean).slice(-3).join(' / ')) }] };
+    out(`  bucket ${cfg.R2_BUCKET}`);
+    for (const st of res.steps) out(`  ${st.ok ? '✓' : '✗'} ${st.step} · ${st.ms} ms${st.detail ? ` · ${st.detail}` : ''}`);
+    if (r.code !== 0 || !res.steps.length || !res.steps.every((x) => x.ok)) ok = false;
+  }
+  if (!any) ok = false;
+  writeReport(ok);
+  out(`\n${ok ? '✓ ผ่านทั้งหมด' : '✗ มีรายการไม่ผ่าน'} — รายงาน ${REPORT.replace(ROOT, '.')}`);
+  process.exit(ok ? 0 : 2);
+}
+
 /* ---------------------------------------------------------------- main */
 async function main() {
+  if (R2_ONLY) return r2Main();
   let projectUrl;
   if (REHEARSE) {
     const local = process.env.DATABASE_URL;
