@@ -73,5 +73,10 @@ Write-Host ''
 Write-Host ('บันทึกแล้วที่ ' + $EnvFile + ' (ไม่แสดงค่า)') -ForegroundColor Green
 Write-Host ('SSL: ' + $sslNote)
 Write-Host ''
-Write-Host 'ขั้นต่อไป รันคำสั่งนี้:'
-Write-Host '  node tools\cloud\pg-check.mjs --i-created-this-test-project'
+if ((Split-Path -Leaf $EnvFile) -ieq 'cloud-s0.env') {
+  Write-Host 'ขั้นต่อไป รันคำสั่งนี้ (ฐานทดสอบเท่านั้น):'
+  Write-Host '  node tools\cloud\pg-check.mjs --i-created-this-test-project'
+} else {
+  # ฐานใช้งานจริง (เช่น .data\cloud-prod.env) — pg-check เป็นเครื่องมือทดสอบ สร้างฐาน s0_* และรันชุดทดสอบ ห้ามใช้กับฐานนี้
+  Write-Host 'ขั้นต่อไป: แจ้ง Claude ว่า "บันทึกที่อยู่แล้ว" — ห้ามรัน pg-check กับฐานใช้งานจริง' -ForegroundColor Yellow
+}

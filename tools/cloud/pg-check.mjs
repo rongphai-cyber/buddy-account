@@ -473,6 +473,9 @@ async function ensureProjectDatabases(projectUrl, names, { checkProject = true }
   const c = await connect(projectUrl);
   const made = [];
   try {
+    // โปรเจกต์ใช้งานจริง (tools/cloud/prod-setup.mjs สร้างเครื่องหมาย wts_prod) — เครื่องมือทดสอบนี้ไม่แตะเด็ดขาด
+    const prod = await q1(c, `SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'wts_prod') OR EXISTS (SELECT 1 FROM pg_database WHERE datname IN ('buddy', 'wtspos', 'wtsliving', 'wtshr')) AS yes`);
+    if (prod?.yes && MODE === 'env') fail('นี่คือโปรเจกต์ใช้งานจริง (มีฐาน buddy/wtspos/wtsliving/wtshr หรือเครื่องหมาย wts_prod) — pg-check เป็นเครื่องมือทดสอบ ห้ามใช้ ใช้ tools/cloud/prod-setup.mjs --check แทน');
     if (checkProject) {
       const foreign = (await inventory(c)).filter((x) => x.s !== MARK && (x.s !== 'public' || x.rels > 0));
       if (foreign.length) fail(`ฐาน postgres ของโปรเจกต์นี้มีข้อมูลของระบบอื่นอยู่แล้ว (${foreign.map((x) => `${x.s}: ${x.rels} ตาราง/วิว`).join(', ')}) — ใช้โปรเจกต์ Supabase ใหม่ที่ว่างเท่านั้น (ไม่ใช่โปรเจกต์ WTS-SOP) จึงไม่สร้างอะไร`);

@@ -100,3 +100,16 @@ npx wrangler secret put R2_ACCESS_KEY_ID ; npx wrangler secret put R2_SECRET_ACC
 npx wrangler deploy
 ```
 โดเมน `app.worktruesolution.net` → Workers › buddy-account › Settings › Domains & Routes · WAF/Rate limiting/Turnstile ตั้งที่โซนของโดเมน (docs/20 ข้อ 2)
+
+## 4. ตั้งฐานใช้งานจริง wts-prod (ขั้น S1 — เจ้าของรันเอง)
+
+โปรเจกต์ Supabase **wts-prod** (องค์กร WTS Production แผน Pro · Singapore · Data API ปิด) — 1 โปรเจกต์ 4 ฐาน: `buddy` `wtspos` `wtsliving` `wtshr` (WTS-HR ย้ายมาใช้ตอน S4)
+
+1. บันทึกที่อยู่ (ครั้งเดียว): `powershell -ExecutionPolicy Bypass -File tools\cloud\set-supabase-url.ps1 -EnvFile .data\cloud-prod.env`
+2. ตรวจอย่างเดียว (ไม่เปลี่ยนอะไร): `node tools\cloud\prod-setup.mjs --check`
+3. ตั้งค่า (เจ้าของรันเองในหน้าต่าง PowerShell — ระบบอนุญาตของผู้ช่วยไม่ให้เขียนฐานใช้งานจริง): `node tools\cloud\prod-setup.mjs`
+   - สร้างฐานที่ยังไม่มี (UTF8) · เขตเวลาฐาน Asia/Bangkok · migration ของ Buddy / WTS-POS / WTS-Living · ถอนสิทธิ์ anon/authenticated ทุก schema (ชั้นที่สองหลังปิด Data API) · ตรวจ role ใต้ RLS
+   - รันซ้ำได้ (ทำเฉพาะที่ยังไม่ได้ทำ · ไม่ลบข้อมูล) · ผลอยู่ที่ `.data\cloud-prod-report.md` (ไม่มีรหัสผ่าน/ที่อยู่)
+4. ซ้อมในเครื่องก่อนแก้เครื่องมือนี้: `node tools\local-pg\pg.mjs run -- node tools\cloud\prod-setup.mjs --rehearse` (ฐาน `rehearse_*` + role anon จำลอง ลบเมื่อจบ — ไม่แตะ DEMO)
+
+**ห้ามใช้ `pg-check.mjs` กับ wts-prod** — pg-check เป็นเครื่องมือทดสอบ (สร้างฐาน s0_* และล้างข้อมูลระหว่างทดสอบ) และปฏิเสธโปรเจกต์ที่มีฐาน buddy/wtspos/wtsliving/wtshr หรือเครื่องหมาย `wts_prod` อยู่แล้ว
