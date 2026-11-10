@@ -7257,6 +7257,14 @@
 ]
 },
 {
+"th": "กำลังสร้าง…",
+"n": 2,
+"files": [
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/settings/NewCompany.tsx"
+]
+},
+{
 "th": "กำหนดจุดสั่งซื้อ",
 "n": 2,
 "files": [
@@ -8095,6 +8103,13 @@
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/server/src/modules/payroll/master.ts"
+]
+},
+{
+"th": "ตั้งค่าผู้ดูแลระบบไปแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้",
+"n": 2,
+"files": [
+"apps/server/src/modules/auth.ts"
 ]
 },
 {
@@ -17128,13 +17143,6 @@
 ]
 },
 {
-"th": "กำลังสร้าง…",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/NewCompany.tsx"
-]
-},
-{
 "th": "กำลังสำรองข้อมูล…",
 "n": 1,
 "files": [
@@ -22676,13 +22684,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
-]
-},
-{
-"th": "ตั้งค่าผู้ดูแลระบบไปแล้ว",
-"n": 1,
-"files": [
-"apps/server/src/modules/auth.ts"
 ]
 },
 {
@@ -34894,6 +34895,13 @@
 ]
 },
 {
+"th": "ระบบกำลังเริ่มทำงานหรืออัปเดต — รอสักครู่แล้วกด F5 ({0})",
+"n": 1,
+"files": [
+"apps/web/src/api.ts"
+]
+},
+{
 "th": "ระบบของกุญแจ: {0}",
 "n": 1,
 "files": [
@@ -42794,6 +42802,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — ตรวจอินเทอร์เน็ต แล้วกด F5 (ถ้าเปิดหน้านี้ค้างไว้นาน ระบบอาจให้ยืนยันอีเมลใหม่)",
+"n": 1,
+"files": [
+"apps/web/src/api.ts"
 ]
 },
 {

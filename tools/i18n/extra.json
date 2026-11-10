@@ -1165,5 +1165,8 @@
  "บันทึกแล้ว — คิดเงินเดือนที่ WTS-HR เมนูคิดเงินเดือนใน Buddy ถูกปิด": "Saved — payroll is calculated in WTS-HR; Buddy's payroll menus are closed",
  "เลือก buddy (คิดเงินเดือนใน Buddy) หรือ wts-sop (คิดที่ WTS-HR)": "Choose buddy (payroll in Buddy) or wts-sop (payroll in WTS-HR)",
  "WTS-HR (ระบบบุคคลและเงินเดือน)": "WTS-HR (HR and payroll)",
- "ระบบบุคคล (HR) ทั้งระบบ และเงินเดือน": "Complete HR system and payroll"
+ "ระบบบุคคล (HR) ทั้งระบบ และเงินเดือน": "Complete HR system and payroll",
+ "ระบบกำลังเริ่มทำงานหรืออัปเดต — รอสักครู่แล้วกด F5 ({0})": "The system is starting or updating — wait a moment, then press F5 ({0})",
+ "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — ตรวจอินเทอร์เน็ต แล้วกด F5 (ถ้าเปิดหน้านี้ค้างไว้นาน ระบบอาจให้ยืนยันอีเมลใหม่)": "Cannot reach the server — check the internet, then press F5 (if this page was open for a long time, you may need to confirm your email again)",
+ "ตั้งค่าผู้ดูแลระบบไปแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้": "The administrator is already set up — sign in with the username and password you set"
 }

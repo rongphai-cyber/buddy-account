@@ -63,6 +63,12 @@ const page = (status, title, body) => new Response(
   + `<body style="font-family:system-ui,sans-serif;max-width:560px;margin:15vh auto;padding:0 16px;color:#1f2440"><h1 style="font-size:1.3rem">${title}</h1><p>${body}</p></body>`,
   { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'retry-after': '30' } });
 
+/** ข้อผิดพลาดของตัวรับคำขอ: /api/ ตอบ JSON (หน้าจอแสดงข้อความไทย ไม่ใช่ "Unexpected token '<'") · อื่น ๆ ตอบหน้าเว็บ */
+const fail = (request, status, title, body) => (new URL(request.url).pathname.startsWith('/api/')
+  ? new Response(JSON.stringify({ error: { code: status === 503 ? 'NOT_READY' : 'UPSTREAM', message: `${title} — ${body.replace(/<[^>]+>/g, '')}` } }),
+    { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'retry-after': '30' } })
+  : page(status, title, body));
+
 export class AppContainer extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -119,13 +125,13 @@ export class AppContainer extends DurableObject {
   async fetch(request) {
     const missing = APP.required.filter((k) => !this.env[k]);
     if (missing.length) {
-      return page(503, `${APP.name} ยังไม่ได้ตั้งค่าบนคลาวด์`, `ยังไม่มีค่า ${missing.join(', ')} — ผู้ดูแลระบบรัน <code>node tools\\cloud\\put-secrets.mjs</code> ที่เครื่องสำนักงาน แล้วลองใหม่`);
+      return fail(request, 503, `${APP.name} ยังไม่ได้ตั้งค่าบนคลาวด์`, `ยังไม่มีค่า ${missing.join(', ')} — ผู้ดูแลระบบรัน <code>node tools\\cloud\\put-secrets.mjs</code> ที่เครื่องสำนักงาน แล้วลองใหม่`);
     }
     if (!this.ready || !this.ctx.container.running) {
       this.starting ??= this.boot().finally(() => { this.starting = undefined; });
       try { await this.starting; } catch (e) {
         console.error(`${APP.name}: เปิดไม่สำเร็จ — ${e?.message ?? e}`);
-        return page(503, `${APP.name} กำลังเปิดหรือมีปัญหา`, 'ระบบกำลังเริ่มทำงาน กรุณารอสักครู่แล้วลองใหม่ (ถ้าเป็นนานเกิน 5 นาที แจ้งผู้ดูแลระบบ)');
+        return fail(request, 503, `${APP.name} กำลังเปิดหรือมีปัญหา`, 'ระบบกำลังเริ่มทำงาน กรุณารอสักครู่แล้วลองใหม่ (ถ้าเป็นนานเกิน 5 นาที แจ้งผู้ดูแลระบบ)');
       }
     }
     const src = new URL(request.url);
@@ -144,7 +150,7 @@ export class AppContainer extends DurableObject {
     } catch (e) {
       this.ready = false;
       console.error(`${APP.name}: ส่งคำขอไม่สำเร็จ — ${e?.message ?? e}`);
-      return page(502, `${APP.name} ตอบไม่ได้ชั่วคราว`, 'กรุณาลองใหม่อีกครั้งในไม่กี่วินาที');
+      return fail(request, 502, `${APP.name} ตอบไม่ได้ชั่วคราว`, 'กรุณาลองใหม่อีกครั้งในไม่กี่วินาที');
     }
   }
 }

@@ -5,13 +5,23 @@ export class ApiError extends Error {
 }
 
 async function call<T>(method: string, url: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, {
-    method, credentials: 'same-origin',
-    headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method, credentials: 'same-origin',
+      headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    // เน็ตหลุด / ด่านยืนยันตัวตนบนคลาวด์หมดอายุ (ถูกส่งไปหน้าอื่น) — ไม่โชว์ "Failed to fetch"
+    throw new ApiError(0, 'NETWORK', 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — ตรวจอินเทอร์เน็ต แล้วกด F5 (ถ้าเปิดหน้านี้ค้างไว้นาน ระบบอาจให้ยืนยันอีเมลใหม่)');
+  }
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: any = null;
+  try { data = text ? JSON.parse(text) : null; } catch {
+    // ได้หน้าเว็บแทนข้อมูล = ระบบบนคลาวด์กำลังเริ่มทำงาน/อัปเดต — ไม่โชว์ "Unexpected token '<'"
+    throw new ApiError(res.status, 'NOT_READY', `ระบบกำลังเริ่มทำงานหรืออัปเดต — รอสักครู่แล้วกด F5 (${res.status})`);
+  }
   if (!res.ok) {
     const e = data?.error ?? {};
     if (res.status === 401 && !url.includes('/auth/login')) window.dispatchEvent(new CustomEvent('buddy:unauthorized'));
