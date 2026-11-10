@@ -7142,6 +7142,14 @@
 ]
 },
 {
+"th": "Buddy Account รุ่น",
+"n": 2,
+"files": [
+"apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/Login.tsx"
+]
+},
+{
 "th": "[สร้างจากบรรทัดรายการ — Express ไม่มีหัวเอกสาร]",
 "n": 2,
 "files": [
@@ -36264,6 +36272,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "รุ่น",
+"n": 1,
+"files": [
+"apps/web/src/App.tsx"
+]
+},
+{
+"th": "รุ่นของโปรแกรม — ใช้เทียบว่าเป็นรุ่นล่าสุด",
+"n": 1,
+"files": [
+"apps/web/src/App.tsx"
 ]
 },
 {

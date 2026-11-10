@@ -6,6 +6,7 @@ import { ErrorBox, Field, navKey } from '../ui';
 import { useNavigate } from 'react-router-dom';
 import { useSignupMode } from './Signup';
 import { LangSwitch } from '../components/LangSwitch';
+import { APP_VERSION } from '../version';
 import { markLanding } from './Hub';
 
 export function LoginPage() {
@@ -56,6 +57,7 @@ export function LoginPage() {
         <p className="hint">Enter ไปช่องถัดไป · ลืมรหัสผ่านให้ผู้ดูแลระบบตั้งรหัสใหม่ให้</p>
         {signup && signup !== 'off' && <button type="button" className="link" onClick={() => nav('/signup')}>ยังไม่มีบัญชี? สมัครใช้งาน</button>}
         <LangSwitch className="login-lang" />
+        <p className="app-version">Buddy Account รุ่น <span data-no-i18n>{APP_VERSION}</span></p>
       </form>
     </div>
   );

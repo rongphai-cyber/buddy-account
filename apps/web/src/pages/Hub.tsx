@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fmt } from '@buddy/core';
 import { api } from '../api';
 import { useSession } from '../session';
+import { APP_VERSION } from '../version';
 import { ErrorBox, toast, toastError, useHotkeys } from '../ui';
 
 /**
@@ -118,6 +119,7 @@ export function HubPage() {
         <div className="landing-foot">
           {me && <>เข้าระบบในนาม <b data-no-i18n>{me.user.display_name}</b> ({me.user.username})</>}
           {me && <> · <button type="button" className="linklike" onClick={() => nav('/account/password')}>รหัสผ่านและยืนยันตัวตน</button> · <button type="button" className="linklike" onClick={() => void logout()}>ออกจากระบบ</button></>}
+          <div className="app-version">Buddy Account รุ่น <span data-no-i18n>{APP_VERSION}</span></div>
         </div>
       </div>
     </div>

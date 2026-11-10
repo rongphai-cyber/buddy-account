@@ -83,6 +83,7 @@ import { DocLocatePage } from './components/DocLink';
 import { InventoryAccountPage } from './pages/gl/InventoryAccount';
 import { StockDocFormPage, StockDocListPage } from './pages/docs/StockDocs';
 import { BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
+import { APP_VERSION } from './version';
 
 export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', 'FI.BK': 'bank', TX: 'tax', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
 /** ไอคอนเมนูหลัก (แทนตัวเลขปุ่มลัดเดิม — เห็นได้แม้ย่อแถบเมนู) */
@@ -201,6 +202,7 @@ function Shell() {
             {open === g.code && !mini && <div className="sub">{g.children!.filter((it) => canSee(it, me.perms)).map((it) => <MenuEntry key={it.code} it={it} perms={me.perms} />)}</div>}
           </div>
         ))}
+        <div className="app-version side-version lbl" title="รุ่นของโปรแกรม — ใช้เทียบว่าเป็นรุ่นล่าสุด">รุ่น <span data-no-i18n>{APP_VERSION}</span></div>
       </nav>
       {search && <MenuSearch perms={me.perms} onClose={() => setSearch(false)} />}
       <main className="main" id="main">

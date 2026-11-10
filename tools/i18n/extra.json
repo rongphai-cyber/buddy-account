@@ -1168,5 +1168,8 @@
  "ระบบบุคคล (HR) ทั้งระบบ และเงินเดือน": "Complete HR system and payroll",
  "ระบบกำลังเริ่มทำงานหรืออัปเดต — รอสักครู่แล้วกด F5 ({0})": "The system is starting or updating — wait a moment, then press F5 ({0})",
  "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — ตรวจอินเทอร์เน็ต แล้วกด F5 (ถ้าเปิดหน้านี้ค้างไว้นาน ระบบอาจให้ยืนยันอีเมลใหม่)": "Cannot reach the server — check the internet, then press F5 (if this page was open for a long time, you may need to confirm your email again)",
- "ตั้งค่าผู้ดูแลระบบไปแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้": "The administrator is already set up — sign in with the username and password you set"
+ "ตั้งค่าผู้ดูแลระบบไปแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้": "The administrator is already set up — sign in with the username and password you set",
+ "Buddy Account รุ่น": "Buddy Account version",
+ "รุ่น": "Version",
+ "รุ่นของโปรแกรม — ใช้เทียบว่าเป็นรุ่นล่าสุด": "Program version — compare to check it is the latest"
 }

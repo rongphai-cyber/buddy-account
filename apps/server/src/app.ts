@@ -1,7 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { MENU } from '@buddy/core';
 import { rlsAvailable, type Database } from './db.js';
 import type { Config } from './config.js';
@@ -101,7 +101,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   const rls = await rlsAvailable(database);
   if (!rls) app.log.warn('ไม่พบ role buddy_app หรือสลับเป็น buddy_app ไม่ได้ — ปิด Row-Level Security (ใช้การกรองในโค้ดอย่างเดียว · ดู docs/20 ข้อ 4)');
   attachPermissions(app, database, rls);
-  app.get('/api/v1/health', async () => ({ ok: true, mode: database.mode, version: process.env.BUDDY_VERSION ?? '0.1.0' }));
+  app.get('/api/v1/health', async () => ({ ok: true, mode: database.mode, version: appVersion() }));
   app.get('/api/v1/menu', async () => MENU);
   authRoutes(app, db, cfg);
   companyRoutes(app, database);
@@ -179,4 +179,13 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
     });
   }
   return app;
+}
+
+/** รุ่นของโปรแกรม = version.json ที่ราก repo (node tools/version/stamp.mjs) · BUDDY_VERSION ทับได้ · อ่านไม่ได้ = "dev" */
+let cachedVersion: string | undefined;
+export function appVersion(): string {
+  if (cachedVersion) return cachedVersion;
+  if (process.env.BUDDY_VERSION) return (cachedVersion = process.env.BUDDY_VERSION);
+  try { cachedVersion = String(JSON.parse(readFileSync(new URL('../../../version.json', import.meta.url), 'utf8')).version ?? 'dev'); } catch { cachedVersion = 'dev'; }
+  return cachedVersion;
 }

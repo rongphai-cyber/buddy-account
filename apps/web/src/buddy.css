@@ -221,3 +221,6 @@ td .lk-add:not(:focus-within):not(:hover) > .icon-btn { display: none; }
 .hub-sync-error { background: var(--bad-soft); color: var(--bad); }
 .hub-btn { white-space: nowrap; }
 @media (max-width: 599px) { .hub-btn .lbl { display: none; } }
+/* รุ่นของโปรแกรม (version.json · tools/version/stamp.mjs) — หน้าเลือกโปรแกรม เข้าระบบ ท้ายเมนู */
+.app-version { margin: 6px 0 0; font-size: 11px; color: #8a90a2; text-align: center; }
+.side-version { margin-top: auto; padding-top: 12px; }
