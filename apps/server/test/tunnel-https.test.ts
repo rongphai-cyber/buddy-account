@@ -56,4 +56,18 @@ describe('หน้าจอ Buddy ผ่าน Cloudflare Tunnel (https)', () =
     expect(cookieOf(r)).not.toMatch(/Secure/i);
     expect(await lastIp()).toBe('192.168.1.50');
   });
+
+  it('บนคลาวด์ (BUDDY_TRUST_PROXY=1 · cloud/worker.js เขียน X-Forwarded-* ใหม่): คำขอจาก IP ภายในของ Cloudflare ได้ IP จริงของผู้ใช้ + คุกกี้ Secure', async () => {
+    process.env.BUDDY_TRUST_PROXY = '1';
+    const cfg = { ...loadConfig({}), databaseUrl: undefined, dataDir: 'memory://' };
+    const cloud = await buildApp(database, cfg);
+    delete process.env.BUDDY_TRUST_PROXY;
+    try {
+      const r = await cloud.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { username: 'admin', password: 'secret123' },
+        headers: { 'x-forwarded-proto': 'https', 'x-forwarded-for': '203.0.113.42', host: 'app.worktruesolution.net' }, remoteAddress: '10.0.0.5' });
+      expect(r.statusCode).toBe(200);
+      expect(cookieOf(r)).toMatch(/;\s*Secure/i);
+      expect(await lastIp()).toBe('203.0.113.42');
+    } finally { await cloud.close(); }
+  });
 });

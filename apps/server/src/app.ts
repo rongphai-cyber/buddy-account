@@ -78,7 +78,9 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   initFileStore(cfg, opts.files);
   // เชื่อ X-Forwarded-For/-Proto เฉพาะคำขอจากเครื่องนี้ (cloudflared ของ buddy.worktruesolution.net / buddyapp) → req.ip = IP จริงของผู้ใช้ในประวัติ · req.protocol = https
   // คำขอจากเครื่องอื่นในวงแลนส่ง header นี้มาก็ไม่เชื่อ (tools/tunnel/README.md)
-  const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024, trustProxy: ['127.0.0.1', '::1'] });
+  // บนคลาวด์ (cloud/worker.js): container รับคำขอจาก Worker เท่านั้น และ Worker เขียน X-Forwarded-* ใหม่ทุกครั้ง → BUDDY_TRUST_PROXY=1 เชื่อทุกต้นทาง
+  const trustProxy = process.env.BUDDY_TRUST_PROXY === '1' ? true : ['127.0.0.1', '::1'];
+  const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: process.env.LOG_LEVEL ?? 'info' }, bodyLimit: 20 * 1024 * 1024, trustProxy });
   await app.register(cookie);
   const { db } = database;
 

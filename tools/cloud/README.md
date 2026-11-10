@@ -56,7 +56,7 @@ WTS-POS / WTS-Living มี `tools/cloud/pg-check.mjs` ที่ส่งต่�
 
 โปรแกรมเปิดใช้ R2 ด้วยตัวแปร: `FILES_DRIVER=r2` `R2_ACCOUNT_ID` `R2_BUCKET` `R2_ACCESS_KEY_ID` `R2_SECRET_ACCESS_KEY` (ไม่ตั้ง = `local` เก็บในฐานข้อมูลเหมือนเดิม) · ย้ายรูปเดิมขึ้น R2 (ไม่บังคับ): `pnpm --filter @buddy/server cli files-migrate` (ทดลอง) แล้วใส่ `--apply`
 
-## 3. ขึ้น Cloudflare Containers (ขั้น S1 — ทำหลัง S0 ผ่าน)
+## 3. ขึ้น Cloudflare Containers (แบบร่างเดิม — ใช้ข้อ 6 แทน: Container class เดิมเปลี่ยนเป็น Durable Object Container API)
 
 ต้องมี: Workers Paid ($5/เดือน) · Docker บนเครื่องที่ deploy (หรือให้ GitHub Actions ทำ) · `npx wrangler login`
 image สร้างจาก `Dockerfile` ที่ราก repo (GitHub Actions `container` สร้างทุกครั้งที่ push — ดูผลที่ github.com › repo › **Actions**)
@@ -121,3 +121,20 @@ npx wrangler deploy
 2. เปิดตัวช่วยไว้ก่อน: `powershell -ExecutionPolicy Bypass -File tools\cloud\set-r2-keys.ps1` (ค่าเริ่มต้น .data\cloud-prod.env)
 3. R2 › Manage API tokens › Create Account API token: Permissions **Object Read & Write** · **Apply to specific buckets only** › bucket ของโปรแกรมนั้น · TTL Forever → วาง Access Key ID / Secret Access Key ในตัวช่วย (Secret ไม่ขึ้นจอ · แสดงครั้งเดียวที่ Cloudflare) · ทำทีละโปรแกรม
 4. ตรวจ: `node tools\cloud\prod-setup.mjs --r2` (put → get → ที่อยู่แบบเซ็น → ไม่เซ็นต้องถูกปฏิเสธ → delete · ไฟล์ทดสอบชนิด s0-check ลบเองเมื่อจบ) · รายงาน `.data\cloud-prod-r2-report.md`
+
+## 6. ขึ้น Cloudflare จริง (ขั้น S1 · 10/11/2569)
+
+แต่ละ repo มี `wrangler.jsonc` ที่ราก + `cloud/worker.js` (เหมือนกันทั้ง 3 repo ต่างแค่ APP) — Worker ชื่อ `wts-buddy` · `wts-pos` · `wts-living`
+- container จาก `Dockerfile` ที่ราก · instance `basic` (1/4 vCPU · 1 GiB) · `max_instances` 1 · Durable Object Container API (`this.ctx.container`) ไม่ต้องติดตั้งแพ็กเกจ
+- Worker เขียน X-Forwarded-For/-Proto/-Host ใหม่ทุกคำขอ (ทิ้งค่าที่ผู้ใช้ส่งมา) → โปรแกรมเชื่อด้วย `BUDDY_TRUST_PROXY=1` / `WTSPOS_TRUST_PROXY=1` (Living เชื่ออยู่แล้ว)
+- cron ทุก 5 นาทีปลุก container (งานเบื้องหลัง) · ไม่มีความลับ = ตอบ 503 บอกวิธีแก้ (ไม่เปิดด้วยฐานชั่วคราว)
+- ใบรับรอง CA ของ Supabase (สาธารณะ) อยู่ที่ `tools/cloud/supabase-ca.crt` ของทุก repo → ใน image คือ `/app/tools/cloud/supabase-ca.crt`
+
+**deploy = Workers Builds** (เครื่องนี้ไม่มี Docker — `wrangler deploy` ในเครื่องสร้าง image ไม่ได้): Cloudflare › Workers & Pages › Create › Import a repository › GitHub
+› เลือก repo › ชื่อ Worker ต้องตรงกับ `name` ใน wrangler.jsonc › Build command ว่าง › Deploy command `npx wrangler deploy` › Root directory `/` — push เข้า main = deploy เอง
+
+**ความลับ** (หลัง Worker ถูกสร้างครั้งแรก — เจ้าของรัน): `node tools\cloud\put-secrets.mjs` (ทั้ง 3) หรือ `--app buddy|pos|living` · ทดลอง `--dry-run`
+- DATABASE_URL = ที่อยู่โปรเจกต์ wts-prod + ชื่อฐาน + `sslmode=verify-full&sslrootcert=/app/tools/cloud/supabase-ca.crt`
+- กุญแจหลัก BUDDY_/WTSPOS_/WTSLIVING_SECRET_KEY สร้างครั้งแรกแล้วเก็บใน `.data/cloud-prod.env` — **สำรองไฟล์นี้** (หายแล้วถอดรหัสข้อมูลลับในฐานไม่ได้)
+
+ตรวจในเครื่องได้เฉพาะตัว Worker: `npx wrangler@4 deploy --dry-run --containers-rollout=none --outdir %TEMP%\wr-dry`
