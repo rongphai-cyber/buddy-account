@@ -1156,5 +1156,14 @@
  "— ให้ผู้ดูแลระบบของบริษัทติ๊ก \"โปรแกรมที่เปิดได้\" ให้คุณที่ อื่น ๆ › ผู้ใช้งานและสิทธิ์": "— ask your company administrator to tick \"Programs allowed\" for you at Other › Users and Rights",
  "← กลับหน้าเปิดโปรแกรม": "← Back to the program launcher",
  "เลือกโปรแกรม (WTS Solutions)": "Choose a program (WTS Solutions)",
- "กลับหน้าเลือกโปรแกรม (WTS Solutions) — เปิดโปรแกรมอื่นด้วยล็อกอินเดียว": "Back to choosing a program (WTS Solutions) — open other programs with one sign-in"
+ "กลับหน้าเลือกโปรแกรม (WTS Solutions) — เปิดโปรแกรมอื่นด้วยล็อกอินเดียว": "Back to choosing a program (WTS Solutions) — open other programs with one sign-in",
+ "1 บริษัทคิดเงินเดือนที่เดียว — เลือก WTS-HR แล้วเมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิด (ข้อมูลเดิมไม่หาย)": "One company calculates payroll in one place — choosing WTS-HR closes this company's payroll menus in Buddy (existing data is kept)",
+ "? เมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิดทันที — ใบสำคัญเงินเดือนให้ WTS-HR ส่งเข้ามาด้วยกุญแจ API": "? This company's payroll menus in Buddy close immediately — WTS-HR sends the payroll vouchers with an API key",
+ "? เมนูเงินเดือนจะเปิด — ตรวจว่า WTS-HR เลิกส่งใบสำคัญของบริษัทนี้แล้ว": "? The payroll menus will open — make sure WTS-HR has stopped sending vouchers for this company",
+ "WTS-HR (ส่งใบสำคัญเงินเดือนเข้ามา)": "WTS-HR (sends payroll vouchers)",
+ "บริษัทนี้คิดเงินเดือนที่ WTS-HR — ใบสำคัญเงินเดือนส่งเข้ามาจาก WTS-HR · เปลี่ยนได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน": "This company calculates payroll in WTS-HR — payroll vouchers come from WTS-HR · change it at Setup › Company details › Systems in use",
+ "บันทึกแล้ว — คิดเงินเดือนที่ WTS-HR เมนูคิดเงินเดือนใน Buddy ถูกปิด": "Saved — payroll is calculated in WTS-HR; Buddy's payroll menus are closed",
+ "เลือก buddy (คิดเงินเดือนใน Buddy) หรือ wts-sop (คิดที่ WTS-HR)": "Choose buddy (payroll in Buddy) or wts-sop (payroll in WTS-HR)",
+ "WTS-HR (ระบบบุคคลและเงินเดือน)": "WTS-HR (HR and payroll)",
+ "ระบบบุคคล (HR) ทั้งระบบ และเงินเดือน": "Complete HR system and payroll"
 }

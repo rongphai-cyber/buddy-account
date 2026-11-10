@@ -54,7 +54,7 @@ const setupBody = z.object({
 export function wtsRoutes(app: FastifyInstance, db: Db) {
   app.put('/api/v1/company/payroll-source', async (req) => {
     const a = requireCompany(req);
-    const { source } = parse(z.object({ source: z.enum(PAYROLL_SOURCES, { errorMap: () => ({ message: 'เลือก buddy (คิดเงินเดือนใน Buddy) หรือ wts-sop (คิดที่ WTS-SOP)' }) }) }), req.body);
+    const { source } = parse(z.object({ source: z.enum(PAYROLL_SOURCES, { errorMap: () => ({ message: 'เลือก buddy (คิดเงินเดือนใน Buddy) หรือ wts-sop (คิดที่ WTS-HR)' }) }) }), req.body);
     const before = await payrollSource(db, a.companyId);
     await setSetting(db, a.companyId, 'pay.source', source, a.userId);
     await logActivity(db, a, { module: 'SYS', action: 'SET_PAY_SOURCE', table: 'sys_company', rowId: a.companyId, detail: { before, after: source } });

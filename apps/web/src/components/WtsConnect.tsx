@@ -7,7 +7,7 @@ import { Confirm, ErrorBox, toast } from '../ui';
 type Setup = { created: Record<'doc_types' | 'items' | 'warehouses' | 'customers', string[]>; existing: Record<'doc_types' | 'items' | 'warehouses' | 'customers', string[]>; hints: string[] };
 const GROUP: Record<keyof Setup['created'], string> = { doc_types: 'ประเภทเอกสาร', items: 'รหัสรายได้', warehouses: 'คลังระหว่างทาง', customers: 'ลูกค้าแพลตฟอร์ม' };
 
-/** คิดเงินเดือนที่ไหน (docs/17 D7 · B0.5): Buddy หรือ WTS-SOP — WTS-SOP = ปิดเมนูคิดเงินเดือนใน Buddy (SOP ส่งใบสำคัญเข้ามา) */
+/** คิดเงินเดือนที่ไหน (docs/17 D7 · B0.5): Buddy หรือ WTS-HR — WTS-HR = ปิดเมนูคิดเงินเดือนใน Buddy (SOP ส่งใบสำคัญเข้ามา) */
 export function PayrollSource() {
   const qc = useQueryClient();
   const { refresh } = useSession();
@@ -20,7 +20,7 @@ export function PayrollSource() {
     setAsk(null); setErr(null);
     try {
       await api.put('/api/v1/company/payroll-source', { source });
-      toast(source === 'wts-sop' ? 'บันทึกแล้ว — คิดเงินเดือนที่ WTS-SOP เมนูคิดเงินเดือนใน Buddy ถูกปิด' : 'บันทึกแล้ว — คิดเงินเดือนใน Buddy');
+      toast(source === 'wts-sop' ? 'บันทึกแล้ว — คิดเงินเดือนที่ WTS-HR เมนูคิดเงินเดือนใน Buddy ถูกปิด' : 'บันทึกแล้ว — คิดเงินเดือนใน Buddy');
       await qc.invalidateQueries({ queryKey: ['company-modules'] }); await refresh();
     } catch (e) { setErr(e); }
   };
@@ -30,12 +30,12 @@ export function PayrollSource() {
       <label className="inline"><b>คิดเงินเดือนที่</b>
         <select value={cur} disabled={!edit || !q.data} onChange={(e) => setAsk(e.target.value as 'buddy' | 'wts-sop')} aria-label="คิดเงินเดือนที่">
           <option value="buddy">Buddy Account (เมนูเงินเดือน)</option>
-          <option value="wts-sop">WTS-SOP (ส่งใบสำคัญเงินเดือนเข้ามา)</option>
+          <option value="wts-sop">WTS-HR (ส่งใบสำคัญเงินเดือนเข้ามา)</option>
         </select>
       </label>
-      <span className="muted small"> 1 บริษัทคิดเงินเดือนที่เดียว — เลือก WTS-SOP แล้วเมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิด (ข้อมูลเดิมไม่หาย)</span>
+      <span className="muted small"> 1 บริษัทคิดเงินเดือนที่เดียว — เลือก WTS-HR แล้วเมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิด (ข้อมูลเดิมไม่หาย)</span>
       {ask && ask !== cur && <Confirm title="เปลี่ยนที่คิดเงินเดือน" okText="เปลี่ยน" danger={ask === 'wts-sop'} onOk={() => save(ask)} onClose={() => setAsk(null)}
-        text={ask === 'wts-sop' ? <>คิดเงินเดือนที่ <b>WTS-SOP</b>? เมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิดทันที — ใบสำคัญเงินเดือนให้ WTS-SOP ส่งเข้ามาด้วยกุญแจ API</> : <>กลับมาคิดเงินเดือนใน <b>Buddy Account</b>? เมนูเงินเดือนจะเปิด — ตรวจว่า WTS-SOP เลิกส่งใบสำคัญของบริษัทนี้แล้ว</>} />}
+        text={ask === 'wts-sop' ? <>คิดเงินเดือนที่ <b>WTS-HR</b>? เมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิดทันที — ใบสำคัญเงินเดือนให้ WTS-HR ส่งเข้ามาด้วยกุญแจ API</> : <>กลับมาคิดเงินเดือนใน <b>Buddy Account</b>? เมนูเงินเดือนจะเปิด — ตรวจว่า WTS-HR เลิกส่งใบสำคัญของบริษัทนี้แล้ว</>} />}
     </div>
   );
 }

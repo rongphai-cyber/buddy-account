@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
-import { compareSourceTotals, d, parseSourceTotals, type SourceTotalField } from '@buddy/core';
+import { compareSourceTotals, d, parseSourceTotals, sourceSystemLabel, type SourceTotalField } from '@buddy/core';
 import type { Database } from '../db.js';
 import { AppError, requireCompany } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -8,7 +8,7 @@ import { periodFor } from './gl/journals.js';
 import { branchStateOf } from './sync/branch.js';
 
 /**
- * WTS Connect v1 (docs/17 ข้อ 3.1 · B0.1): เอกสารที่ระบบอื่น (WTS-POS WTS-Living WTS-SOP) ส่งเข้าผ่านกุญแจ API
+ * WTS Connect v1 (docs/17 ข้อ 3.1 · B0.1): เอกสารที่ระบบอื่น (WTS-POS WTS-Living WTS-HR) ส่งเข้าผ่านกุญแจ API
  * header  X-Source-System (เช่น wts-pos) · X-Source-Ref (≤ 100 ตัว) · X-Source-Version (จำนวนเต็ม ค่าเริ่มต้น 1)
  *  - ยังไม่มีเอกสารเลขอ้างอิงนี้ → สร้าง ตอบ 201
  *  - มีแล้วรุ่นเท่ากัน → ตอบ 200 เอกสารเดิม (ไม่สร้างซ้ำ) · รุ่นสูงกว่า → แก้เอกสารเดิม (ใบสำคัญถูกแทน) · รุ่นต่ำกว่า → 409 STALE_VERSION
@@ -20,7 +20,7 @@ type Handler = (req: FastifyRequest, reply: FastifyReply) => unknown;
 const H = { system: 'x-source-system', ref: 'x-source-ref', version: 'x-source-version' } as const;
 
 /** ชื่อระบบที่แสดง: wts-pos → WTS-POS */
-export const sourceLabel = (s: string) => s.toUpperCase();
+export const sourceLabel = (s: string) => sourceSystemLabel(s);
 
 const bad = (m: string) => new AppError(400, 'BAD_SOURCE', m);
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim();

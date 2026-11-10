@@ -78,7 +78,7 @@ export async function modulesOffRaw(db: Db, companyId: string | null): Promise<s
   const r = await db.selectFrom('sys_setting').select('value').where('company_id', '=', companyId).where('branch_id', 'is', null).where('key', '=', 'sys.modules_off').where('deleted_at', 'is', null).executeTakeFirst();
   return Array.isArray(r?.value) ? (r!.value as unknown[]).map(String) : [];
 }
-/** ระบบที่ปิดจริง = ที่ผู้ใช้ปิด + ระบบเงินเดือนเมื่อบริษัทคิดเงินเดือนที่ WTS-SOP (docs/17 D7 · B0.5) */
+/** ระบบที่ปิดจริง = ที่ผู้ใช้ปิด + ระบบเงินเดือนเมื่อบริษัทคิดเงินเดือนที่ WTS-HR (docs/17 D7 · B0.5) */
 export async function modulesOff(db: Db, companyId: string | null): Promise<string[]> {
   const off = await modulesOffRaw(db, companyId);
   if (!off.includes('PAY') && (await payrollSource(db, companyId)) === 'wts-sop') off.push('PAY');
@@ -430,7 +430,7 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     checkApiKeyRule(a, method, url, 'menu', menu);
     const off = await modulesOff(db, a.companyId);
     const offBy = menuOffBy(menu, off);
-    if (offBy?.key === 'PAY' && (await payrollSource(db, a.companyId)) === 'wts-sop') throw forbidden('บริษัทนี้คิดเงินเดือนที่ WTS-SOP — ใบสำคัญเงินเดือนส่งเข้ามาจาก WTS-SOP · เปลี่ยนได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน');
+    if (offBy?.key === 'PAY' && (await payrollSource(db, a.companyId)) === 'wts-sop') throw forbidden('บริษัทนี้คิดเงินเดือนที่ WTS-HR — ใบสำคัญเงินเดือนส่งเข้ามาจาก WTS-HR · เปลี่ยนได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน');
     if (offBy) throw forbidden(`${offBy.label}ปิดอยู่ในบริษัทนี้ — ผู้มีสิทธิ์เปิดได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน`);
     const r = decide(a, await loadRows(db, a), menu, rule.action, off);
     if (!r.allowed) {

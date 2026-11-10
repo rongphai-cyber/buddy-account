@@ -5,7 +5,7 @@ import type { Db } from '../db.js';
 import { parse, requireCompany } from '../http.js';
 
 /**
- * WTS Connect v1 (docs/17 ข้อ 3.3 · B0.3): ฟีดข้อมูลหลักที่เปลี่ยน ให้ WTS-POS / WTS-Living / WTS-SOP เก็บสำเนาอ่านอย่างเดียว (`ref_*`)
+ * WTS Connect v1 (docs/17 ข้อ 3.3 · B0.3): ฟีดข้อมูลหลักที่เปลี่ยน ให้ WTS-POS / WTS-Living / WTS-HR เก็บสำเนาอ่านอย่างเดียว (`ref_*`)
  * ต่อยอดจาก sync_change_log (trigger บันทึกทุกการเพิ่ม/แก้/ลบ) · ตอบเฉพาะช่องที่โปรแกรมอื่นต้องใช้
  *   GET /api/v1/changes?types=item,customer&since=<cursor>
  *   - ไม่ส่ง since (หรือ 0) = ข้อมูลทั้งหมดของชนิดที่ขอ (ครั้งแรก) + next_cursor ล่าสุด

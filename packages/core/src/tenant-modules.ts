@@ -6,7 +6,7 @@ export const TENANT_MODULES = [
   { key: 'buddy', label: 'Buddy Account (ระบบบัญชี)', default_on: true },
   { key: 'pos', label: 'WTS-POS (หน้าร้าน ครัวกลาง แฟรนไชส์)', default_on: false },
   { key: 'living', label: 'WTS-Living (หอพัก อพาร์ตเมนต์ นิติบุคคล)', default_on: false },
-  { key: 'hr', label: 'WTS-SOP (HR และเงินเดือน)', default_on: false },
+  { key: 'hr', label: 'WTS-HR (ระบบบุคคลและเงินเดือน)', default_on: false },
   { key: 'hotel', label: 'Hotel (โรงแรม)', default_on: false },
   { key: 'spa', label: 'Spa (สปา)', default_on: false },
 ] as const;
@@ -45,3 +45,7 @@ export function tenantModuleStatus(rows: TenantModuleRow[], today: string) {
     return { key: m.key, label: m.label, enabled, valid_to, seats: r?.seats ?? null, remark: r?.remark ?? null, app_url: r?.app_url ?? null, active: enabled && !expired, expired };
   });
 }
+
+/** ชื่อระบบต้นทางที่แสดงบนหน้าจอ/ข้อความ (รหัสในฐานข้อมูล/กุญแจ API คงเดิม) — wts-sop แสดงเป็น WTS-HR (เจ้าของ 10/11/2569: "เป็นระบบ HR ทั้งระบบ") */
+const SOURCE_NAMES: Record<string, string> = { 'wts-sop': 'WTS-HR' };
+export const sourceSystemLabel = (code: string) => SOURCE_NAMES[code.toLowerCase()] ?? code.toUpperCase();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hubOnly, isTenantModuleKey, normalizeAppAccess, tenantModuleStatus, userCanOpen } from './tenant-modules.js';
+import { hubOnly, isTenantModuleKey, normalizeAppAccess, sourceSystemLabel, tenantModuleStatus, userCanOpen } from './tenant-modules.js';
 
 describe('สิทธิ์โมดูลระดับลูกค้า (docs/17 B0.6)', () => {
   it('defaults: buddy on, others off', () => {
@@ -25,5 +25,6 @@ describe('สิทธิ์โมดูลระดับลูกค้า (do
     expect(normalizeAppAccess([])).toEqual([]);
     expect([userCanOpen(null, 'pos'), userCanOpen(['buddy'], 'pos'), userCanOpen(['buddy'], 'pos', true), userCanOpen([], 'buddy')]).toEqual([true, false, true, false]);
     expect([hubOnly(null), hubOnly(['pos']), hubOnly(['pos'], true), hubOnly(['buddy', 'pos'])]).toEqual([false, true, false, false]);
+    expect([sourceSystemLabel('wts-sop'), sourceSystemLabel('WTS-SOP'), sourceSystemLabel('wts-pos'), sourceSystemLabel('wts-living')]).toEqual(['WTS-HR', 'WTS-HR', 'WTS-POS', 'WTS-LIVING']);
   });
 });

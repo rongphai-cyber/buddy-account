@@ -13,7 +13,7 @@ export const HUB_APPS: Record<TenantModuleKey, { name: string; description: stri
   buddy: { name: 'Buddy Account', description: 'บัญชี ภาษี สต๊อก ต้นทุน งบการเงิน', mark: 'ERP', tone: 'erp', launch: 'self', source: null, audience: null },
   pos: { name: 'WTS-POS', description: 'หน้าร้าน ครัวกลาง แฟรนไชส์', mark: 'POS', tone: 'pos', launch: 'sso', source: 'wts-pos', audience: 'wts-pos' },
   hotel: { name: 'Hotel', description: 'โรงแรม ห้องพัก เช็คอิน', mark: 'PMS', tone: 'hotel', launch: 'soon', source: 'wts-hotel', audience: 'wts-hotel' },
-  hr: { name: 'WTS-SOP', description: 'HR และเงินเดือน', mark: 'HR', tone: 'hr', launch: 'link', source: 'wts-sop', audience: 'wts-sop' },
+  hr: { name: 'WTS-HR', description: 'ระบบบุคคล (HR) ทั้งระบบ และเงินเดือน', mark: 'HR', tone: 'hr', launch: 'link', source: 'wts-sop', audience: 'wts-sop' },
   spa: { name: 'Spa', description: 'สปา นัดหมาย คอร์ส', mark: 'SPA', tone: 'spa', launch: 'soon', source: 'wts-spa', audience: 'wts-spa' },
   living: { name: 'WTS-Living', description: 'หอพัก อพาร์ตเมนต์ นิติบุคคล', mark: 'LIV', tone: 'living', launch: 'sso', source: 'wts-living', audience: 'wts-living' },
 };

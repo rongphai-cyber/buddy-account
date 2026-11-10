@@ -13145,7 +13145,7 @@
 ]
 },
 {
-"th": "1 บริษัทคิดเงินเดือนที่เดียว — เลือก WTS-SOP แล้วเมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิด (ข้อมูลเดิมไม่หาย)",
+"th": "1 บริษัทคิดเงินเดือนที่เดียว — เลือก WTS-HR แล้วเมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิด (ข้อมูลเดิมไม่หาย)",
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
@@ -13950,14 +13950,14 @@
 ]
 },
 {
-"th": "? เมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิดทันที — ใบสำคัญเงินเดือนให้ WTS-SOP ส่งเข้ามาด้วยกุญแจ API",
+"th": "? เมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิดทันที — ใบสำคัญเงินเดือนให้ WTS-HR ส่งเข้ามาด้วยกุญแจ API",
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
-"th": "? เมนูเงินเดือนจะเปิด — ตรวจว่า WTS-SOP เลิกส่งใบสำคัญของบริษัทนี้แล้ว",
+"th": "? เมนูเงินเดือนจะเปิด — ตรวจว่า WTS-HR เลิกส่งใบสำคัญของบริษัทนี้แล้ว",
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
@@ -14335,13 +14335,6 @@
 ]
 },
 {
-"th": "HR และเงินเดือน",
-"n": 1,
-"files": [
-"packages/core/src/hub.ts"
-]
-},
-{
 "th": "Hotel (โรงแรม)",
 "n": 1,
 "files": [
@@ -14531,6 +14524,20 @@
 ]
 },
 {
+"th": "WTS-HR (ระบบบุคคลและเงินเดือน)",
+"n": 1,
+"files": [
+"packages/core/src/tenant-modules.ts"
+]
+},
+{
+"th": "WTS-HR (ส่งใบสำคัญเงินเดือนเข้ามา)",
+"n": 1,
+"files": [
+"apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
 "th": "WTS-Living (หอพัก อพาร์ตเมนต์ นิติบุคคล)",
 "n": 1,
 "files": [
@@ -14542,20 +14549,6 @@
 "n": 1,
 "files": [
 "packages/core/src/tenant-modules.ts"
-]
-},
-{
-"th": "WTS-SOP (HR และเงินเดือน)",
-"n": 1,
-"files": [
-"packages/core/src/tenant-modules.ts"
-]
-},
-{
-"th": "WTS-SOP (ส่งใบสำคัญเงินเดือนเข้ามา)",
-"n": 1,
-"files": [
-"apps/web/src/components/WtsConnect.tsx"
 ]
 },
 {
@@ -25367,7 +25360,7 @@
 ]
 },
 {
-"th": "บริษัทนี้คิดเงินเดือนที่ WTS-SOP — ใบสำคัญเงินเดือนส่งเข้ามาจาก WTS-SOP · เปลี่ยนได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน",
+"th": "บริษัทนี้คิดเงินเดือนที่ WTS-HR — ใบสำคัญเงินเดือนส่งเข้ามาจาก WTS-HR · เปลี่ยนได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน",
 "n": 1,
 "files": [
 "apps/server/src/modules/permissions.ts"
@@ -26837,7 +26830,7 @@
 ]
 },
 {
-"th": "บันทึกแล้ว — คิดเงินเดือนที่ WTS-SOP เมนูคิดเงินเดือนใน Buddy ถูกปิด",
+"th": "บันทึกแล้ว — คิดเงินเดือนที่ WTS-HR เมนูคิดเงินเดือนใน Buddy ถูกปิด",
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
@@ -34975,6 +34968,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "ระบบบุคคล (HR) ทั้งระบบ และเงินเดือน",
+"n": 1,
+"files": [
+"packages/core/src/hub.ts"
 ]
 },
 {
@@ -45835,7 +45835,7 @@
 ]
 },
 {
-"th": "เลือก buddy (คิดเงินเดือนใน Buddy) หรือ wts-sop (คิดที่ WTS-SOP)",
+"th": "เลือก buddy (คิดเงินเดือนใน Buddy) หรือ wts-sop (คิดที่ WTS-HR)",
 "n": 1,
 "files": [
 "apps/server/src/modules/wts.ts"

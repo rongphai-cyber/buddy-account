@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { d } from '@buddy/core';
+import { d, sourceSystemLabel } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
@@ -29,7 +29,7 @@ interface Row { id: string; branch_code?: string | null; doc_no: string; doc_dat
   outstanding: string | null; used: string | null; source_system: string | null; source_ref: string | null; posted: boolean }
 
 /** ป้ายที่มา: ระบบต้นทาง หรือคีย์ที่ Buddy */
-const SourcePill = ({ sys }: { sys: string | null }) => (sys ? <Pill tone="c">{sys.toUpperCase()}</Pill> : <Pill tone="n">คีย์ที่ Buddy</Pill>);
+const SourcePill = ({ sys }: { sys: string | null }) => (sys ? <Pill tone="c">{sourceSystemLabel(sys)}</Pill> : <Pill tone="n">คีย์ที่ Buddy</Pill>);
 
 export function DepositOpeningListPage() {
   const nav = useNavigate();
@@ -158,7 +158,7 @@ export function DepositOpeningFormPage() {
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.api}/${id}/cancel`, listPath: K.route }} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
-      {fromSource && <p className="notebox">ใบนี้มาจาก <b>{cur.data!.source_system!.toUpperCase()}</b> (ระบบต้นทางของเงินประกัน/มัดจำ) จึงดูได้อย่างเดียว — แก้ไขหรือยกเลิกที่ {cur.data!.source_system!.toUpperCase()} แล้วระบบส่งรุ่นใหม่มาเอง เพื่อให้ทะเบียนเงินประกันของสองระบบตรงกัน · ผู้ใช้ระดับอนุมัติ 9 ยกเลิก/ลบที่นี่ได้โดยระบุเหตุผล (บันทึกในบันทึกการทำงาน)</p>}
+      {fromSource && <p className="notebox">ใบนี้มาจาก <b>{sourceSystemLabel(cur.data!.source_system!)}</b> (ระบบต้นทางของเงินประกัน/มัดจำ) จึงดูได้อย่างเดียว — แก้ไขหรือยกเลิกที่ {sourceSystemLabel(cur.data!.source_system!)} แล้วระบบส่งรุ่นใหม่มาเอง เพื่อให้ทะเบียนเงินประกันของสองระบบตรงกัน · ผู้ใช้ระดับอนุมัติ 9 ยกเลิก/ลบที่นี่ได้โดยระบุเหตุผล (บันทึกในบันทึกการทำงาน)</p>}
       {ed.dialog}
       <ErrorBox error={err ?? cur.error} />
       {h && <div onKeyDown={(e) => navKey(e, ed.end)}>

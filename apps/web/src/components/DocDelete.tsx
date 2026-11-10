@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { sourceSystemLabel } from '@buddy/core';
 import { api } from '../api';
 import { Confirm, Field, toast, toastError, useHotkeys } from '../ui';
 import { ReasonInput } from './ReasonInput';
@@ -20,7 +21,7 @@ export function CancelStamp({ show, reason }: { show: boolean; reason?: string |
  */
 export function SourceStamp({ doc }: { doc?: { source_system?: string | null; source_ref?: string | null; source_version?: number | null } | null }) {
   if (!doc?.source_system) return null;
-  const sys = doc.source_system.toUpperCase();
+  const sys = sourceSystemLabel(doc.source_system);
   const ver = (doc.source_version ?? 1) >= 2 ? ` · v${doc.source_version}` : '';
   return <span className="source-stamp" role="note" title={`แก้หรือยกเลิกที่โปรแกรม ${sys} · ผู้ใช้ระดับอนุมัติ 9 ยกเลิกได้โดยระบุเหตุผล`}>
     <span>{`มาจาก ${sys}`}</span><small>{`อ้างอิง ${doc.source_ref ?? ''}${ver}`}</small></span>;

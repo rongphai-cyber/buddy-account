@@ -3427,7 +3427,7 @@ describe('Buddy Account API (PGlite)', () => {
   });
   it('WTS Connect source ref (docs/17 B0.1): idempotent create, version edit/stale, period closed, screen lock + level-9 cancel, delete frees ref, isolation', async () => {
     const adminId = (await call('GET', '/api/v1/auth/me')).body.user.id;
-    const key = (await call('POST', '/api/v1/api-keys', { name: 'WTS-SOP', user_id: adminId })).body.key as string;
+    const key = (await call('POST', '/api/v1/api-keys', { name: 'WTS-HR', user_id: adminId })).body.key as string;
     const boss5 = ((await call('GET', '/api/v1/users')).body.users as Array<{ id: string; username: string }>).find((u) => u.username === 'boss5')!.id;
     const key5 = (await call('POST', '/api/v1/api-keys', { name: 'ระบบอื่น ระดับ 5', user_id: boss5 })).body.key as string;
     const send = async (method: 'POST' | 'PUT', url: string, body: unknown, src: Record<string, string>, k = key) => {
@@ -3481,7 +3481,7 @@ describe('Buddy Account API (PGlite)', () => {
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     const lk = await call('POST', `/api/v1/gl/journals/${a1.body.id}/cancel`, { reason: 'หน้าจอ' });
     expect([lk.status, lk.body.error.code]).toEqual([403, 'SOURCE_LOCKED']);
-    expect(lk.body.error.message).toMatch(/WTS-SOP/);
+    expect(lk.body.error.message).toMatch(/WTS-HR/);
     cookie = saved;
     expect((await send('POST', `/api/v1/cash-sales/${h1.body.id}/cancel`, { reason: 'ยกเลิกที่หน้าร้าน' }, { system: 'wts-living', ref: 'x' }, key5)).body.error.code).toBe('SOURCE_LOCKED');
     expect((await send('POST', `/api/v1/cash-sales/${h1.body.id}/cancel`, { reason: 'ยกเลิกที่หน้าร้าน' }, pos)).status).toBe(200);
@@ -3497,7 +3497,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/customers?q=C-SRC2')).body.total).toBe(0);
     // ข้ามบริษัท: เลขอ้างอิงเดียวกันในบริษัทอื่นเป็นคนละเอกสาร · บริษัทอื่นไม่เห็น/แตะเอกสารนี้ไม่ได้
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
-    const okey = (await call('POST', '/api/v1/api-keys', { name: 'WTS-SOP B', user_id: adminId })).body.key as string;
+    const okey = (await call('POST', '/api/v1/api-keys', { name: 'WTS-HR B', user_id: adminId })).body.key as string;
     const obook = (await call('GET', '/api/v1/gl/books')).body[0].id;
     const oacc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean; has_children: boolean; use_department: boolean; use_project: boolean; status: string }) => !x.is_control && !x.has_children && !x.use_department && !x.use_project && x.status === 'A').slice(0, 2).map((x: { id: string }) => x.id);
     const b1 = await send('POST', '/api/v1/gl/journals', { journal_book_id: obook, voucher_date: '2026-12-02', description: 'บริษัทอื่น', lines: [{ account_id: oacc[0], debit: '5.00' }, { account_id: oacc[1], credit: '5.00' }] }, { ...ref, version: '3' }, okey);
@@ -3571,7 +3571,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('PUT', '/api/v1/company/payroll-source', { source: 'excel' })).status).toBe(400);
     expect((await call('PUT', '/api/v1/company/payroll-source', { source: 'wts-sop' })).body.source).toBe('wts-sop');
     const blocked = await call('GET', '/api/v1/pay/runs');
-    expect([blocked.status, blocked.body.error.message]).toEqual([403, expect.stringMatching(/คิดเงินเดือนที่ WTS-SOP/)]);
+    expect([blocked.status, blocked.body.error.message]).toEqual([403, expect.stringMatching(/คิดเงินเดือนที่ WTS-HR/)]);
     const mods = (await call('GET', '/api/v1/company/modules')).body;
     expect([mods.payroll_source, mods.off.includes('PAY')]).toEqual(['wts-sop', false]);   // สวิตช์ระบบที่ใช้งานไม่ถูกแตะ
     // ใบสำคัญเงินเดือนจาก SOP ยังส่งเข้าได้ (สมุดรายวัน ไม่ใช่เมนูเงินเดือน)
