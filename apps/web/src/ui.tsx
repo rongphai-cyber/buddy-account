@@ -25,7 +25,8 @@ export function Toasts() {
     pushToast = (t) => {
       const id = ++n;
       // กล่องติดช่อง: ทีละกล่อง (อันใหม่แทนอันเดิม)
-      setList((l) => [...l.filter((x) => !(t.at && x.at)), { ...t, id }].slice(-3));
+      // ข้อความเดียวกันซ้ำ (เช่น กดการ์ดสองครั้ง) = แทนอันเดิม ไม่ซ้อนกัน
+      setList((l) => [...l.filter((x) => !(t.at && x.at) && !(x.text === t.text && !x.at === !t.at)), { ...t, id }].slice(-3));
       setTimeout(() => setList((l) => l.filter((x) => x.id !== id)), t.tone === 'bad' ? 7000 : t.at ? 5000 : 4000);
     };
     // คลิกที่อื่น = ปิดกล่องที่ติดช่อง
