@@ -94,7 +94,7 @@ try {
     // ซ้อม: ฐานใหม่ต้องมีผู้ดูแลคนแรกเหมือนเจ้าของตั้งค่าครั้งแรกบนคลาวด์ — สร้างผ่านหน้า setup หลังเปิด server (ด้านล่าง)
   } else {
     const n = (await q(`SELECT count(*)::int AS n FROM sys_user WHERE tenant_id IS NULL AND status = 'A' AND deleted_at IS NULL AND username <> 'demo.seed'`))[0]?.n ?? 0;
-    if (!n) fail('ยังไม่ได้ตั้งค่าครั้งแรกบนคลาวด์ — เปิด https://wts-buddy.rongphai.workers.dev สร้างผู้ดูแลระบบก่อน แล้วรันใหม่');
+    if (!n) fail('ยังไม่ได้ตั้งค่าครั้งแรกบนคลาวด์ — เปิด https://app.worktruesolution.net สร้างผู้ดูแลระบบก่อน แล้วรันใหม่');
     const t = await q(`SELECT t.id FROM sys_tenant t JOIN sys_company c ON c.tenant_id = t.id AND c.deleted_at IS NULL WHERE t.code = $1 AND c.code = $1`, [TENANT.code]);
     if (t.length) fail('มีบริษัทตัวอย่าง DEMO บนคลาวด์แล้ว — ไม่สร้างซ้ำ');
   }

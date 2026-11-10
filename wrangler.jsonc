@@ -18,7 +18,11 @@
   "exports": { "AppContainer": { "type": "durable-object", "storage": "sqlite" } },
   "triggers": { "crons": ["*/5 * * * *"] },
   // ชื่อเว็บสำหรับโปรแกรมคุยกัน (POS/Living/HR → Buddy) — Worker รับเฉพาะ /api/v1 ที่มีกุญแจ API (cloud/worker.js apiGate) · ด่าน Access ต้องตั้ง Bypass เฉพาะชื่อนี้
-  "routes": [{ "pattern": "buddy-api.worktruesolution.net", "custom_domain": true }],
+  // ชื่อเว็บของผู้ใช้ (หน้าเลือกโปรแกรม + Buddy · HANDOFF ข้อ 111) — ด่าน Cloudflare Access ของ Worker ("All traffic") ครอบชื่อนี้ด้วย
+  "routes": [
+    { "pattern": "buddy-api.worktruesolution.net", "custom_domain": true },
+    { "pattern": "app.worktruesolution.net", "custom_domain": true }
+  ],
   "vars": {
     "BUDDY_TRUST_PROXY": "1",
     "BUDDY_COOKIE_SECURE": "1"
