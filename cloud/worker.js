@@ -46,6 +46,18 @@ const STARTUP_MS = 120_000;   // migration + เปิดโปรแกรม�
 const IDLE_MS = 30 * 60_000;  // ไม่มีคำขอ 30 นาที = container หยุดได้ (cron ปลุกทุก 5 นาทีอยู่แล้ว)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * ที่ตั้งของโปรแกรมบนคลาวด์ = ใกล้ฐานข้อมูล Supabase (สิงคโปร์) — HANDOFF ข้อ 108
+ * เดิมชื่อ 'main' ไม่ระบุที่ตั้ง → cron สร้างครั้งแรกที่สหรัฐฯ (container sea08/lax10/sjc11) ทุก query ข้ามมหาสมุทร ~200 ms
+ * Durable Object ย้ายที่ไม่ได้หลังสร้าง → ใช้ชื่อใหม่ + locationHint (มีผลตอนสร้างครั้งแรกเท่านั้น)
+ * container จำกัดที่ wrangler.jsonc containers[].constraints.regions = APAC
+ * ชื่อเก่าใน RETIRED: ปิด container ของมันก่อนเปิดตัวใหม่ (max_instances 1 · งานเบื้องหลังต้องมีเครื่องเดียว)
+ */
+const INSTANCE = 'main-apac-se';
+const LOCATION_HINT = 'apac-se';
+const RETIRED = ['main'];
+const instance = (env) => env.APP.get(env.APP.idFromName(INSTANCE), { locationHint: LOCATION_HINT });
+
 const page = (status, title, body) => new Response(
   `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>`
   + `<body style="font-family:system-ui,sans-serif;max-width:560px;margin:15vh auto;padding:0 16px;color:#1f2440"><h1 style="font-size:1.3rem">${title}</h1><p>${body}</p></body>`,
@@ -71,9 +83,23 @@ export class AppContainer extends DurableObject {
     } catch { return false; }
   }
 
+  /** เรียกจากตัวใหม่ (RPC): ปิด container ของชื่อเก่า — คืน true ถ้ามีที่ต้องปิด */
+  async retire() {
+    this.ready = false;
+    const c = this.ctx.container;
+    if (!c.running) return false;
+    await c.destroy();
+    return true;
+  }
+
   async boot() {
     const c = this.ctx.container;
     if (!c.running) {
+      for (const name of RETIRED) {
+        try {
+          if (await this.env.APP.getByName(name).retire()) console.log(`${APP.name}: ปิด container ชื่อเก่า ${name} แล้ว`);
+        } catch (e) { console.error(`${APP.name}: ปิด container ชื่อเก่า ${name} ไม่สำเร็จ — ${e?.message ?? e}`); }
+      }
       c.start({ enableInternet: true, env: this.envForContainer() });   // ต้องออกอินเทอร์เน็ตได้: ฐานข้อมูล Supabase (TCP 5432)
       this.ctx.waitUntil(c.monitor()
         .then(() => console.log(`${APP.name}: container หยุด (exit 0)`))
@@ -126,10 +152,10 @@ export class AppContainer extends DurableObject {
 export default {
   fetch: (request, env) => {
     const gated = apiGate(request);
-    return gated instanceof Response ? gated : env.APP.getByName('main').fetch(gated);
+    return gated instanceof Response ? gated : instance(env).fetch(gated);
   },
   // ปลุกทุก 5 นาที (wrangler.jsonc triggers.crons) — ให้งานเบื้องหลังของโปรแกรมได้ทำงาน
   scheduled: async (_event, env, ctx) => {
-    ctx.waitUntil(env.APP.getByName('main').fetch(new Request(`https://cron.internal${APP.health}`)).then((r) => r.body?.cancel()).catch(() => {}));
+    ctx.waitUntil(instance(env).fetch(new Request(`https://cron.internal${APP.health}`)).then((r) => r.body?.cancel()).catch(() => {}));
   },
 };

@@ -10,7 +10,9 @@
   "preview_urls": false,
   "observability": { "enabled": true },
   "containers": [
-    { "class_name": "AppContainer", "image": "./Dockerfile", "instance_type": "basic", "max_instances": 1 }
+    { "class_name": "AppContainer", "image": "./Dockerfile", "instance_type": "basic", "max_instances": 1,
+      // ใกล้ฐานข้อมูลสิงคโปร์ (cloud/worker.js INSTANCE/LOCATION_HINT · HANDOFF ข้อ 108)
+      "constraints": { "regions": ["APAC"] } }
   ],
   "durable_objects": { "bindings": [{ "name": "APP", "class_name": "AppContainer" }] },
   "exports": { "AppContainer": { "type": "durable-object", "storage": "sqlite" } },
