@@ -16,7 +16,31 @@ const APP = {
   env: ['DATABASE_URL', 'BUDDY_SECRET_KEY', 'BUDDY_PUBLIC_URL', 'BUDDY_TRUST_PROXY', 'BUDDY_COOKIE_SECURE', 'BUDDY_REQUIRE_ADMIN_2FA', 'BUDDY_SIGNUP', 'LOG_LEVEL'],
   /** ต้องมีก่อนเปิด — ไม่มี = 503 (ไม่ปล่อยให้โปรแกรมเปิดด้วยฐานชั่วคราวในเครื่อง) */
   required: ['DATABASE_URL', 'BUDDY_SECRET_KEY'],
+  /**
+   * ชื่อเว็บสำหรับโปรแกรมคุยกัน (ไม่มีด่าน Cloudflare Access — ใช้กุญแจ API ของ Buddy แทน): WTS-POS / WTS-Living / WTS-HR เรียก Buddy
+   * รับเฉพาะ /api/v1/* ที่มี Authorization: Bearer bk_… (Buddy ตรวจกุญแจเอง) + path สาธารณะด้านล่าง · ทิ้งคุกกี้ (ใช้ session ของหน้าจอไม่ได้)
+   * หน้าจอ/ตั้งค่าครั้งแรก/เข้าระบบ เปิดผ่านชื่อนี้ไม่ได้
+   */
+  apiHosts: ['buddy-api.worktruesolution.net'],
+  apiOpen: ['/api/v1/sso/jwks', '/api/v1/health'],
 };
+
+const json = (status, code, message) => new Response(JSON.stringify({ error: { code, message } }),
+  { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+
+/** ชื่อเว็บสำหรับโปรแกรมคุยกัน: คืน Response ถ้าปฏิเสธ · คืน Request (ทิ้งคุกกี้แล้ว) ถ้าผ่าน */
+function apiGate(request) {
+  const url = new URL(request.url);
+  if (!APP.apiHosts.includes(url.hostname)) return request;
+  if (!url.pathname.startsWith('/api/v1/')) return json(404, 'NOT_FOUND', `ชื่อเว็บนี้สำหรับโปรแกรมเชื่อมต่อ ${APP.name} เท่านั้น — เปิดหน้าจอที่ชื่อเว็บสำหรับผู้ใช้`);
+  const open = APP.apiOpen.includes(url.pathname);
+  if (!open && !/^Bearer\s+bk_/i.test(request.headers.get('authorization') ?? '')) {
+    return json(401, 'API_KEY_REQUIRED', 'ต้องส่งกุญแจ API (Authorization: Bearer bk_…) — สร้างที่ อื่น ๆ › กุญแจ API ของ Buddy');
+  }
+  const r = new Request(request);
+  r.headers.delete('cookie');
+  return r;
+}
 
 const STARTUP_MS = 120_000;   // migration + เปิดโปรแกรมครั้งแรก
 const IDLE_MS = 30 * 60_000;  // ไม่มีคำขอ 30 นาที = container หยุดได้ (cron ปลุกทุก 5 นาทีอยู่แล้ว)
@@ -100,7 +124,10 @@ export class AppContainer extends DurableObject {
 }
 
 export default {
-  fetch: (request, env) => env.APP.getByName('main').fetch(request),
+  fetch: (request, env) => {
+    const gated = apiGate(request);
+    return gated instanceof Response ? gated : env.APP.getByName('main').fetch(gated);
+  },
   // ปลุกทุก 5 นาที (wrangler.jsonc triggers.crons) — ให้งานเบื้องหลังของโปรแกรมได้ทำงาน
   scheduled: async (_event, env, ctx) => {
     ctx.waitUntil(env.APP.getByName('main').fetch(new Request(`https://cron.internal${APP.health}`)).then((r) => r.body?.cancel()).catch(() => {}));
