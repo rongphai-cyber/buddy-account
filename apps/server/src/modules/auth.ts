@@ -103,7 +103,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     }), req.body);
     const token = await db.transaction().execute(async (tx) => {
       const n = await tx.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).executeTakeFirstOrThrow();
-      if (Number(n.n) > 0) throw new AppError(409, 'ALREADY_SETUP', 'ตั้งค่าผู้ดูแลระบบไปแล้ว');
+      if (Number(n.n) > 0) throw new AppError(409, 'ALREADY_SETUP', 'ตั้งค่าผู้ดูแลระบบไปแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้');
       // ผู้ใช้คนแรก = ผู้ดูแลระบบของผู้ให้บริการ (ไม่สังกัด tenant)
       let grp = await tx.selectFrom('sys_user_group').select('id').where('code', '=', ADMIN_GROUP).where('tenant_id', 'is', null).executeTakeFirst();
       if (!grp) grp = await tx.insertInto('sys_user_group').values({ code: ADMIN_GROUP, name: 'ผู้ดูแลระบบ' }).returning('id').executeTakeFirstOrThrow();
@@ -113,6 +113,10 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
       }).returning('id').executeTakeFirstOrThrow();
       await logActivity(tx, { companyId: null, userId: u.id }, { module: 'SYS', action: 'SETUP', table: 'sys_user', rowId: u.id });
       return newSession(tx, cfg, u.id, req);
+    }).catch((e: unknown) => {
+      // ส่งพร้อมกัน 2 คำขอ (กดซ้ำ) — คำขอแรกสร้างแล้ว คำขอที่สองชนข้อมูลซ้ำ = ตั้งค่าไปแล้ว ไม่ใช่ความผิดพลาด
+      if ((e as { code?: string })?.code === '23505') throw new AppError(409, 'ALREADY_SETUP', 'ตั้งค่าผู้ดูแลระบบไปแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้');
+      throw e;
     });
     reply.setCookie(SESSION_COOKIE, token, cookieOpts(req));
     return { ok: true };

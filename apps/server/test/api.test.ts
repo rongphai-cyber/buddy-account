@@ -62,7 +62,8 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/auth/me')).status).toBe(401);
     const r = await call('POST', '/api/v1/setup', { username: 'admin', display_name: 'ผู้ดูแล', password: 'secret123' });
     expect(r.status).toBe(200);
-    expect((await call('POST', '/api/v1/setup', { username: 'x', display_name: 'x', password: 'secret123' })).status).toBe(409);
+    const again = await call('POST', '/api/v1/setup', { username: 'x', display_name: 'x', password: 'secret123' });
+    expect([again.status, again.body.error.code]).toEqual([409, 'ALREADY_SETUP']);   // หน้าจอพาไปหน้าเข้าระบบ (กดซ้ำ/สองแท็บ)
   });
 
   it('rejects wrong password with Thai message', async () => {

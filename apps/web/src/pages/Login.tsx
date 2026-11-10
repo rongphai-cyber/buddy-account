@@ -66,11 +66,18 @@ export function SetupPage() {
   const [f, setF] = useState({ username: 'admin', display_name: '', password: '', confirm: '' });
   const [err, setErr] = useState<unknown>(null);
   const [mode, setMode] = useState<'admin' | 'branch'>('admin');
+  const [busy, setBusy] = useState(false);
   const go = async () => {
+    if (busy) return;   // กดซ้ำ/Enter ซ้ำระหว่างรอ = ไม่ส่งซ้ำ (เคยสร้างสำเร็จแล้วคำขอที่สองขึ้น "ข้อมูลซ้ำ" ทำให้เข้าใจผิด)
     setErr(null);
     if (f.password !== f.confirm) { setErr(new Error('ยืนยันรหัสผ่านไม่ตรงกัน')); return; }
+    setBusy(true);
     try { await api.post('/api/v1/setup', { username: f.username, display_name: f.display_name, password: f.password }); await refresh(); }
-    catch (e) { setErr(e); }
+    catch (e) {
+      // ตั้งค่าไปแล้ว (เช่น เปิดสองแท็บ) → ไปหน้าเข้าระบบ
+      if (e instanceof ApiError && e.code === 'ALREADY_SETUP') { await refresh(); return; }
+      setErr(e);
+    } finally { setBusy(false); }
   };
   if (mode === 'branch') return <BranchSetup onBack={() => setMode('admin')} />;
   return (
@@ -82,7 +89,7 @@ export function SetupPage() {
         <Field label="ชื่อผู้ใช้" req><input value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} /></Field>
         <Field label="รหัสผ่าน" hint={PASSWORD_RULE} req><input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
         <Field label="ยืนยันรหัสผ่าน" req><input type="password" value={f.confirm} onChange={(e) => setF({ ...f, confirm: e.target.value })} /></Field>
-        <button className="primary" type="submit">สร้างผู้ดูแลระบบ</button>
+        <button className="primary" type="submit" disabled={busy}>{busy ? 'กำลังสร้าง…' : 'สร้างผู้ดูแลระบบ'}</button>
         <button type="button" className="link" onClick={() => setMode('branch')}>เครื่องนี้เป็นเครื่องสาขา (เชื่อมกับสำนักงานใหญ่) →</button>
       </form>
     </div>

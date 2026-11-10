@@ -37,7 +37,9 @@ try {
     await migrateFiles(database, fileStoreFromEnv(process.env, localFilesDir(resolve(REPO_ROOT, '.data'))), { apply: args.includes('--apply') });
   }
   else if (cmd === 'create-admin') {
-    const [username, name, password] = args;
+    // รหัสผ่าน "-" = อ่านจาก BUDDY_NEW_PASSWORD (tools/cloud/reset-admin.ps1 — ไม่ให้รหัสโผล่ในประวัติคำสั่ง)
+    const [username, name, pwArg] = args;
+    const password = pwArg === '-' ? process.env.BUDDY_NEW_PASSWORD : pwArg;
     if (!username || !name || !password) throw new Error('ใช้: create-admin <user> <ชื่อ> <รหัสผ่าน>');
     let g = await db.selectFrom('sys_user_group').select('id').where('code', '=', 'ADMIN').where('tenant_id', 'is', null).executeTakeFirst(); // ผู้ดูแลของผู้ให้บริการ (ไม่สังกัด tenant)
     if (!g) g = await db.insertInto('sys_user_group').values({ code: 'ADMIN', name: 'ผู้ดูแลระบบ' }).returning('id').executeTakeFirstOrThrow();
