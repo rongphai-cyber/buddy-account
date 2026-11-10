@@ -9,7 +9,7 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Host 'ไม�
 $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$cmd`""
 $trigger = New-ScheduledTaskTrigger -Daily -At '12:30'
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 2) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
-Register-ScheduledTask -TaskName $task -Action $action -Trigger $trigger -Settings $settings -Description 'Buddy tools\cloudackup.mjs: backup 4 cloud databases + restore check' -Force | Out-Null
+Register-ScheduledTask -TaskName $task -Action $action -Trigger $trigger -Settings $settings -Description 'Buddy tools/cloud/backup.mjs: backup 4 cloud databases + restore check' -Force | Out-Null
 $t = Get-ScheduledTask -TaskName $task
 $i = Get-ScheduledTaskInfo -TaskName $task
 Write-Host ''
