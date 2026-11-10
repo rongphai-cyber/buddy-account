@@ -147,6 +147,6 @@ npx wrangler deploy
 node tools\cloud\link-apps.mjs                  (บริษัท DEMO · --company <รหัส> = บริษัทอื่น)
 node tools/local-pg/pg.mjs run -- node tools/cloud/link-apps.mjs --rehearse   (ซ้อมในเครื่อง ฐานชั่วคราว)
 ```
-- Buddy: เปิดการ์ด POS/Living ให้ลูกค้าของบริษัท (ที่อยู่ *.rongphai.workers.dev/office/) + กุญแจ API บันทึกได้ ผูกระบบ wts-pos / wts-living ในนามผู้ดูแลของลูกค้า (รันซ้ำ = ยกเลิกกุญแจรุ่นก่อน)
+- Buddy: เปิดการ์ด POS/Living ให้ลูกค้าของบริษัท (ที่อยู่ pos.worktruesolution.net/office/ · living.worktruesolution.net/office/ — เดิม *.rongphai.workers.dev ยังเปิดได้) + กุญแจ API บันทึกได้ ผูกระบบ wts-pos / wts-living ในนามผู้ดูแลของลูกค้า (รันซ้ำ = ยกเลิกกุญแจรุ่นก่อน)
 - POS/Living: ที่อยู่ Buddy = https://buddy-api.worktruesolution.net · กุญแจเข้ารหัสด้วยกุญแจหลักของโปรแกรม (tools/hub/link-buddy.mts ของแต่ละ repo) · ปลายทางบัญชี = Buddy
 - ทดสอบ: JWKS + /api/v1/auth/me ด้วยกุญแจแต่ละดอกผ่าน buddy-api · ทดสอบสุดท้าย = กดการ์ดในหน้าเลือกโปรแกรม

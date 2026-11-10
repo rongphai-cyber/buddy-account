@@ -30,9 +30,9 @@ const REHEARSE_PORT = 4103;
 const VIA = 'tools/cloud/link-apps.mjs';
 const APPS = [
   { key: 'pos', name: 'WTS-POS', source: 'wts-pos', db: 'wtspos', root: resolve(process.env.WTSPOS_ROOT ?? 'E:/WTS-POS'), secretEnv: 'WTSPOS_SECRET_KEY',
-    appUrl: 'https://wts-pos.rongphai.workers.dev/office/' },
+    appUrl: 'https://pos.worktruesolution.net/office/' },
   { key: 'living', name: 'WTS-Living', source: 'wts-living', db: 'wtsliving', root: resolve(process.env.WTSLIVING_ROOT ?? 'E:/WTS-Living'), secretEnv: 'WTSLIVING_SECRET_KEY',
-    appUrl: 'https://wts-living.rongphai.workers.dev/office/' },
+    appUrl: 'https://living.worktruesolution.net/office/' },
 ];
 
 /* ---------------------------------------------------------------- ปิดบังความลับ */
