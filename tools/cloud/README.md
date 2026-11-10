@@ -150,3 +150,17 @@ node tools/local-pg/pg.mjs run -- node tools/cloud/link-apps.mjs --rehearse   (�
 - Buddy: เปิดการ์ด POS/Living ให้ลูกค้าของบริษัท (ที่อยู่ pos.worktruesolution.net/office/ · living.worktruesolution.net/office/ — เดิม *.rongphai.workers.dev ยังเปิดได้) + กุญแจ API บันทึกได้ ผูกระบบ wts-pos / wts-living ในนามผู้ดูแลของลูกค้า (รันซ้ำ = ยกเลิกกุญแจรุ่นก่อน)
 - POS/Living: ที่อยู่ Buddy = https://buddy-api.worktruesolution.net · กุญแจเข้ารหัสด้วยกุญแจหลักของโปรแกรม (tools/hub/link-buddy.mts ของแต่ละ repo) · ปลายทางบัญชี = Buddy
 - ทดสอบ: JWKS + /api/v1/auth/me ด้วยกุญแจแต่ละดอกผ่าน buddy-api · ทดสอบสุดท้าย = กดการ์ดในหน้าเลือกโปรแกรม
+
+## 8. สำรองข้อมูลคลาวด์ + ทดสอบกู้คืน (11/11/2569 · HANDOFF 112 — เจ้าของรัน)
+```
+สำรองข้อมูลคลาวด์.cmd          (ดับเบิลคลิก = สำรองเดี๋ยวนี้ · หรือ node tools\cloud\backup.mjs)
+ตั้งสำรองอัตโนมัติ.cmd          (ดับเบิลคลิกครั้งเดียว = งานตามเวลา "WTS cloud backup" ทุกวัน 12:30 · เครื่องปิด = ทำเมื่อเปิดเครื่อง)
+node tools\cloud\backup.mjs --verify [โฟลเดอร์]          (ทดสอบกู้คืนอย่างเดียว — ไม่ระบุ = ชุดล่าสุด)
+node tools/local-pg/pg.mjs run -- node tools/cloud/backup.mjs --rehearse [--keep]   (ซ้อมกับ DEMO ในเครื่อง)
+```
+- ต้องมี PostgreSQL 17 (pg_dump/pg_restore/initdb/pg_ctl) ใน `.data\pg17\pgsql\bin` — แตกจาก `postgresql-17.11-1-windows-x64-binaries.zip` (get.enterprisedb.com · เฉพาะ bin lib share) · ฐานคลาวด์เป็นรุ่น 17 จึงใช้ PostgreSQL 16 ในเครื่องไม่ได้
+- สำรอง 4 ฐาน buddy · wtspos · wtsliving · wtshr → `E:\WTS-Backup\cloud\<พ.ศ.-เดือน-วัน_เวลา>\<ฐาน>.dump` (pg_dump custom) + `manifest.json` (จำนวนแถวทุกตาราง + ยอดเดบิต/เครดิตของ Buddy นับใน snapshot เดียวกับไฟล์สำรอง · sha256)
+- ทดสอบกู้คืนทุกครั้ง: PostgreSQL 17 ชั่วคราวในเครื่อง (พอร์ตว่าง · ไม่แตะฐานใช้งาน) → pg_restore → จำนวนแถวตรงทุกตาราง + เดบิต/เครดิตตรง → ปิดและลบ · ผลเก็บ `restore-check.json`
+- เก็บ 30 วัน (ลบชุดเก่าเมื่อชุดใหม่ทดสอบผ่านเท่านั้น) · ประวัติ `E:\WTS-Backup\cloud\ประวัติการสำรอง.txt` · ผลรอบอัตโนมัติล่าสุด `last-run.log`
+- Supabase Pro สำรองให้เองทุกวัน (7 วัน) อยู่แล้ว — ชุดนี้คือสำเนาที่สองนอก Supabase และพิสูจน์ว่ากู้ได้จริง · ไฟล์สำรองมีข้อมูลลูกค้าทั้งหมด: เก็บในเครื่องสำนักงาน ห้ามแชร์
+- กู้คืนจริง (ฉุกเฉิน): ผู้ช่วยเตรียมขั้นตอนตามเหตุการณ์ — `pg_restore --clean --no-owner` เข้าฐานใหม่บน Supabase แล้วสลับ DATABASE_URL (อย่ากู้ทับฐานที่ใช้งานอยู่โดยไม่สำรองก่อน)
