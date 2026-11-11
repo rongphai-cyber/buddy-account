@@ -101,7 +101,10 @@ if (REHEARSE) {
   let r = await run(process.execPath, [tsxOf(POS_ROOT), 'src/cli.ts', 'migrate'], join(POS_ROOT, 'apps/server'), childEnv({ DATABASE_URL: posDb }));
   if (r.code !== 0) await fail(`ซ้อม: migration WTS-POS ไม่ผ่าน — ${r.lines.slice(-3).join(' / ')}`);
   const p = new pg.Client({ connectionString: posDb }); await p.connect();
-  await p.query(`INSERT INTO core.companies (code, name_th) VALUES ('S1', 'TEST CoffeeShop ซ้อม')`);
+  const s1 = (await p.query(`INSERT INTO core.companies (code, name_th) VALUES ('S1', 'TEST CoffeeShop ซ้อม') RETURNING id`)).rows[0];
+  // บนคลาวด์มีผู้ใช้เจ้าของแล้ว (เปิดหลังร้าน POS จากการ์ดใน Buddy) — เครื่องขายทำงานในนามคนนี้
+  const own = (await p.query(`INSERT INTO core.users (username, password_hash, full_name, active) VALUES ('rehearse.owner', '!', 'เจ้าของซ้อม', true) RETURNING id`)).rows[0];
+  await p.query(`INSERT INTO core.company_users (company_id, user_id, role, is_active) VALUES ($1, $2, 'owner', true)`, [s1.id, own.id]);
   await p.end();
   // Buddy ชั่วคราวบนสำเนา DEMO
   const env = childEnv({ DATABASE_URL: buddyUrl, BUDDY_SECRET_KEY: randomBytes(32).toString('base64'), PORT: String(PORT), HOST: '127.0.0.1', LOG_LEVEL: 'warn' });
@@ -165,15 +168,24 @@ if (REHEARSE) try {
     (SELECT count(*) FROM pos.devices WHERE active) AS tills, (SELECT count(*) FROM core.users WHERE username = 'pos.demo.seed' AND active) AS seed_active`)).rows[0];
   await p.end();
   const fileOk = existsSync(OUT) && /CF01-1[\s\S]*#pair=wtspos_/.test(readFileSync(OUT, 'utf8')) && /PIN \d{4}/.test(readFileSync(OUT, 'utf8'));
-  const ok = Number(n.items) === 14 && Number(n.stores) === 1 && Number(n.tills) === 2 && Number(n.seed_active) === 0 && fileOk;
+  const keysOk = r.lines.some((l) => l.includes('ใช้ได้ทั้ง 2 เครื่อง'));
+  const ok = Number(n.items) === 14 && Number(n.stores) === 1 && Number(n.tills) === 2 && Number(n.seed_active) === 0 && fileOk && keysOk;
   out(`${ok ? '✓' : '✗'} ตรวจ: เมนู ${n.items} · ร้าน CF01 ${n.stores} · เครื่องขาย ${n.tills} · ผู้ใช้ชั่วคราวปิดแล้ว ${Number(n.seed_active) === 0 ? 'ใช่' : 'ไม่'} · ไฟล์ข้อมูลเข้า ${fileOk ? 'ครบ' : 'ไม่ครบ'}`);
   // รันซ้ำ = ไม่สร้างซ้ำ
   const again = await run(process.execPath, [tsxOf(POS_ROOT), 'tools/hub/pos-demo.mts'], POS_ROOT, childEnv({ DATABASE_URL: posDb, WTSPOS_SECRET_KEY: posKey, POS_DEMO_OUT: OUT + '.again' }));
   const noDup = again.code === 0 && again.lines.some((l) => l.includes('มีอยู่แล้ว — ไม่สร้างซ้ำ'));
   out(`${noDup ? '✓' : '✗'} รันซ้ำ: ${noDup ? 'ไม่สร้างซ้ำ' : again.lines.slice(-2).join(' / ')}`);
   rmSync(OUT + '.again', { force: true });
+  // ซ่อมของรุ่นแรก: เครื่องในนามผู้ใช้ชั่วคราว (ที่ปิดแล้ว) → รันอีกครั้งต้องออกกุญแจ/PIN ใหม่ และกุญแจใหม่ใช้ได้
+  const p2 = new pg.Client({ connectionString: posDb }); await p2.connect();
+  await p2.query(`UPDATE pos.devices SET acting_user_id = (SELECT id FROM core.users WHERE username = 'pos.demo.seed')`);
+  await p2.end();
+  const fix = await run(process.execPath, [tsxOf(POS_ROOT), 'tools/hub/pos-demo.mts'], POS_ROOT, childEnv({ DATABASE_URL: posDb, WTSPOS_SECRET_KEY: posKey, POS_DEMO_OUT: OUT }));
+  const fixed = fix.code === 0 && fix.lines.some((l) => l.includes('ซ่อมเครื่องขาย 2')) && fix.lines.some((l) => l.includes('ใช้ได้ทั้ง 2 เครื่อง'))
+    && /PIN \d{4}/.test(readFileSync(OUT, 'utf8')) && /บัตรกำนัลแจกฟรี 50 บาท \(/.test(readFileSync(OUT, 'utf8'));
+  out(`${fixed ? '✓' : '✗'} ซ่อมเครื่องขายรุ่นแรก: ${fixed ? 'กุญแจ/PIN ใหม่ใช้ได้ · บัตรกำนัลเดิมยังอยู่ในไฟล์' : fix.lines.filter((l) => /^[✓✗]|ซ่อม/.test(l)).slice(-3).join(' / ')}`);
   await cleanup();
-  process.exit(ok && noDup ? 0 : 1);
+  process.exit(ok && noDup && fixed ? 0 : 1);
 } catch (e) { await fail(`ซ้อม: ตรวจผลไม่ได้ — ${e.message}`); }
 out(`\n✓ เสร็จ — กุญแจเครื่อง/PIN อยู่ในไฟล์ ${OUT}`);
 out('  เปิดไฟล์: notepad "' + OUT + '"');
