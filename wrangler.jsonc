@@ -5,6 +5,8 @@
   "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
   "name": "wts-buddy",
   "main": "cloud/worker.js",
+  // สร้างหน้าจอ + ตรวจไฟล์ก่อน docker build (Dockerfile ไม่มี RUN · HANDOFF 115) — deploy ด้วย image เดิม: WTS_SKIP_PREBUILD=1
+  "build": { "command": "node cloud/prebuild.mjs" },
   "compatibility_date": "2026-11-09",
   "workers_dev": true,
   "preview_urls": false,

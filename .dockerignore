@@ -1,14 +1,13 @@
 # ไม่ส่งเข้า image: ข้อมูล/ความลับในเครื่อง ไฟล์ที่ build ได้ใหม่ และ git
+# node_modules และ **/dist ต้องเข้า image (Dockerfile ไม่มี RUN · HANDOFF 115) — ห้ามใส่กลับ
 .git
 .github
-**/node_modules
 .data
 **/.data
 .env
 .env.*
 !.env.example
 .secrets
-**/dist
 **/*.log
 **/coverage
 **/*.tsbuildinfo

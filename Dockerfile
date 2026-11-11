@@ -1,19 +1,14 @@
-# Buddy Account — production image (Buddy docs/20 · S0) · ไม่มีความลับในไฟล์นี้: DATABASE_URL / BUDDY_SECRET_KEY / R2_* ใส่ตอนรัน (wrangler secret)
-# สร้าง: docker build -t buddy-account .     รัน: docker run -p 4100:4100 -e DATABASE_URL=… -e BUDDY_SECRET_KEY=… buddy-account
-# ไม่ใส่ DATABASE_URL = PGlite ใน /app/.data (หายเมื่อ container หยุด — ใช้ทดลองเท่านั้น)
-FROM node:22-bookworm-slim AS build
-ENV CI=1
-RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
-WORKDIR /app
-COPY . .
-RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @buddy/web build
-
+# Buddy Account — production image (Buddy docs/20 · HANDOFF 114–115) · ไม่มีความลับในไฟล์นี้: DATABASE_URL / กุญแจหลัก ใส่ตอนรัน (wrangler secret)
+# ไม่มี RUN เลย: เครื่อง build ของ Cloudflare รัน RUN ไม่ได้ (runc … mounting "proc" … operation not permitted)
+#   ก่อนไฟล์นี้: Workers Builds รัน pnpm install --frozen-lockfile (Linux) → wrangler build.command = node cloud/prebuild.mjs (สร้างหน้าจอ + ตรวจไฟล์ครบ)
+#   ไฟล์นี้: คัดลอกทั้งโฟลเดอร์ (รวม node_modules และหน้าจอที่สร้างแล้ว — .dockerignore ไม่ตัดออก) แล้วรัน
+# สร้างเองบนเครื่อง Linux ที่มี Docker: pnpm install --frozen-lockfile && node cloud/prebuild.mjs && docker build -t buddy .
 FROM node:22-bookworm-slim
 ENV NODE_ENV=production PORT=4100 HOST=0.0.0.0
 WORKDIR /app
-COPY --from=build --chown=node:node /app /app
-RUN mkdir -p /app/.data && chown node:node /app/.data
+COPY --chown=node:node . /app
+# โฟลเดอร์ข้อมูลในเครื่อง (ใช้เมื่อไม่มี DATABASE_URL เท่านั้น) — .data ของเครื่องที่ build ไม่ถูกคัดลอก (.dockerignore)
+COPY --chown=node:node cloud/data-dir/ /app/.data/
 USER node
 WORKDIR /app/apps/server
 EXPOSE 4100
