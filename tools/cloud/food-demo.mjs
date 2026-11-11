@@ -205,7 +205,9 @@ if (r.code !== 0) await fail(`WTS-POS: ผูกบริษัท ${POS_CODE} �
 
 /* ---------------------------------------------------------------- 4) WTS-POS: ข้อมูลทั้งระบบ */
 const demoEnv = { DATABASE_URL: posDb, WTSPOS_SECRET_KEY: posKey, POS_DEMO_OUT: OUT, POS_DEMO_COMPANY: POS_CODE, WTSPOS_FEED_EVERY: '0', WTSPOS_OUTBOX_EVERY: '0' };
-r = await run(process.execPath, [tsxOf(POS_ROOT), 'tools/hub/food-demo.mts'], POS_ROOT, childEnv(demoEnv), true);
+// ซ้อมอัปเกรด: FD_FIRST_SCRIPT = สคริปต์รุ่นก่อน (ในโฟลเดอร์ WTS-POS) สร้างข้อมูลแบบเดิมก่อน แล้วรอบ "รันซ้ำ" ใช้รุ่นปัจจุบัน — เหมือนบนคลาวด์ที่รันไปแล้ว
+const FIRST = REHEARSE && process.env.FD_FIRST_SCRIPT ? process.env.FD_FIRST_SCRIPT : 'tools/hub/food-demo.mts';
+r = await run(process.execPath, [tsxOf(POS_ROOT), FIRST], POS_ROOT, childEnv(demoEnv), true);
 if (r.code !== 0) { for (const l of r.lines.slice(-6)) if (!/^(✓|✗|  …)/.test(l)) out(`  ${l}`); await fail('สร้างตัวอย่างทั้งระบบไม่สำเร็จ (รันซ้ำได้ — ส่วนที่ทำแล้วจะข้าม)'); }
 
 if (REHEARSE) try {
@@ -230,8 +232,28 @@ if (REHEARSE) try {
   const noDup = again.code === 0 && again.lines.some((l) => l.includes('ไม่ส่งซ้ำ')) && stuck > 0 && left === 0;
   out(`${noDup ? '✓' : '✗'} รันซ้ำ: ${noDup ? 'ไม่สร้างซ้ำ · ยอดขายไม่ส่งซ้ำ · กุญแจ/PIN ใหม่ใช้ได้' : again.lines.filter((l) => /^✗/.test(l)).slice(-2).join(' / ') || again.lines.slice(-2).join(' / ')}`);
   rmSync(OUT + '.again', { force: true });
+  // สินค้าตัดสต๊อกที่ตัวสินค้า: เมนูสินค้าทุกตัว stockCut=item · สินค้าขายปลีกอยู่กลุ่มบัญชี RTL (รายได้ 4100-13)
+  // · รอบแรกแบบใหม่ (ไม่ใช่ซ้อมอัปเกรด): ขายสดของน้ำดื่มทุกบรรทัดเป็นจำนวนเต็มขวด (ไม่แบ่งเป็นเศษ — ใบกำกับเต็มรูปใช้รายการของบิลจริง) และคลังของสาขา (S01/S03)
+  const c4 = new pg.Client({ connectionString: posDb }); await c4.connect();
+  const notItem = Number((await c4.query(`SELECT count(*) AS n FROM pos.menu_items i JOIN core.companies co ON co.id = i.company_id
+      WHERE co.code = $1 AND i.kind = 'goods' AND i.sold AND i.stock_cut <> 'item'`, [POS_CODE])).rows[0].n);
+  await c4.end();
+  const b4 = new pg.Client({ connectionString: buddyUrl }); await b4.connect();
+  const g = (await b4.query(`SELECT count(*) FILTER (WHERE g.code = 'RTL' AND sa.account_no = '4100-13') AS ok, count(*) AS n
+      FROM md_item i LEFT JOIN md_item_account_group g ON g.id = i.account_group_id LEFT JOIN gl_account sa ON sa.id = g.sales_account_id
+      WHERE i.company_id = $1 AND i.deleted_at IS NULL AND (i.code LIKE '30-%' OR i.code = '20-BAKE-CROIS')`, [made.id])).rows[0];
+  const hs = (await b4.query(`SELECT count(*) AS n, count(*) FILTER (WHERE l.qty > 0 AND l.qty = trunc(l.qty)) AS real, count(*) FILTER (WHERE w.code IN ('S01', 'S03')) AS store,
+        coalesce(sum(l.qty), 0)::text AS qty
+      FROM doc_line l JOIN doc_header h ON h.id = l.header_id JOIN md_item i ON i.id = l.item_id LEFT JOIN md_warehouse w ON w.id = l.warehouse_id
+      WHERE h.company_id = $1 AND h.doc_class = 'HS' AND h.deleted_at IS NULL AND l.deleted_at IS NULL AND i.code = '30-DRNK-WATER'`, [made.id])).rows[0];
+  await b4.end();
+  const upgrade = FIRST !== 'tools/hub/food-demo.mts';
+  const goodsOk = notItem === 0 && Number(g.ok) === Number(g.n) && Number(g.n) > 0
+    && (upgrade || (Number(hs.n) > 0 && Number(hs.real) === Number(hs.n) && Number(hs.store) === Number(hs.n)));
+  out(`${goodsOk ? '✓' : '✗'} สินค้าตัดสต๊อกที่ตัวสินค้า: เมนูที่ยังไม่ใช่ ${notItem} · กลุ่มบัญชี RTL ${g.ok}/${g.n}`
+    + (upgrade ? ' (ซ้อมอัปเกรด — วันที่ส่งไปแล้วคงแบบเดิม)' : ` · ขายสดน้ำดื่ม ${hs.n} บรรทัด จำนวนรวม ${hs.qty} (จำนวนจริง ${hs.real} · คลังสาขา ${hs.store})`));
   await cleanup();
-  process.exit(ok && noDup ? 0 : 1);
+  process.exit(ok && noDup && goodsOk ? 0 : 1);
 } catch (e) { await fail(`ซ้อม: ตรวจผลไม่ได้ — ${e.message}`); }
 out(`\n✓ เสร็จ — ลิงก์จับคู่เครื่องขาย/PIN อยู่ในไฟล์ ${OUT}`);
 out('  เปิดไฟล์: notepad "' + OUT + '"');
