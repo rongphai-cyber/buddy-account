@@ -109,8 +109,21 @@ export class AppContainer extends DurableObject {
     return true;
   }
 
+  /** ลายนิ้วมือของค่าที่ส่งเข้า container (ไม่เก็บค่าจริง) — ค่าตั้ง/ความลับเปลี่ยน = รีสตาร์ต container ให้ใช้ค่าใหม่ */
+  async envHash() {
+    const data = new TextEncoder().encode(JSON.stringify(Object.entries(this.envForContainer()).sort()));
+    return [...new Uint8Array(await crypto.subtle.digest('SHA-256', data))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
   async boot() {
     const c = this.ctx.container;
+    const want = await this.envHash();
+    // container ที่รันอยู่เปิดด้วยค่าชุดเก่า (เช่น deploy เปลี่ยน vars โดยใช้ image เดิม) → ปิดแล้วเปิดใหม่ด้วยค่าปัจจุบัน
+    if (c.running && (await this.ctx.storage.get('envHash')) !== want) {
+      console.log(`${APP.name}: ค่าตั้งเปลี่ยน — รีสตาร์ต container`);
+      try { await c.destroy(); } catch (e) { console.error(`${APP.name}: ปิด container เดิมไม่สำเร็จ — ${e?.message ?? e}`); }
+      for (let i = 0; i < 60 && c.running; i++) await sleep(500);
+    }
     if (!c.running) {
       for (const name of RETIRED) {
         try {
@@ -118,6 +131,7 @@ export class AppContainer extends DurableObject {
         } catch (e) { console.error(`${APP.name}: ปิด container ชื่อเก่า ${name} ไม่สำเร็จ — ${e?.message ?? e}`); }
       }
       c.start({ enableInternet: true, env: this.envForContainer() });   // ต้องออกอินเทอร์เน็ตได้: ฐานข้อมูล Supabase (TCP 5432)
+      await this.ctx.storage.put('envHash', want);
       this.ctx.waitUntil(c.monitor()
         .then(() => console.log(`${APP.name}: container หยุด (exit 0)`))
         .catch((e) => console.error(`${APP.name}: container หยุดผิดปกติ exit ${e?.exitCode ?? '?'}`))
