@@ -17,26 +17,37 @@ const APP = {
   /** ต้องมีก่อนเปิด — ไม่มี = 503 (ไม่ปล่อยให้โปรแกรมเปิดด้วยฐานชั่วคราวในเครื่อง) */
   required: ['DATABASE_URL', 'BUDDY_SECRET_KEY'],
   /**
-   * ชื่อเว็บสำหรับโปรแกรมคุยกัน (ไม่มีด่าน Cloudflare Access — ใช้กุญแจ API ของ Buddy แทน): WTS-POS / WTS-Living / WTS-HR เรียก Buddy
-   * รับเฉพาะ /api/v1/* ที่มี Authorization: Bearer bk_… (Buddy ตรวจกุญแจเอง) + path สาธารณะด้านล่าง · ทิ้งคุกกี้ (ใช้ session ของหน้าจอไม่ได้)
+   * ชื่อเว็บที่ไม่มีด่าน Cloudflare Access — ดู gate() · buddy-api = โปรแกรมคุยกัน (WTS-POS / WTS-Living / WTS-HR เรียก Buddy) ใช้กุญแจ API ของ Buddy แทน
    * หน้าจอ/ตั้งค่าครั้งแรก/เข้าระบบ เปิดผ่านชื่อนี้ไม่ได้
    */
-  apiHosts: ['buddy-api.worktruesolution.net'],
-  apiOpen: ['/api/v1/sso/jwks', '/api/v1/health'],
+  gates: {
+    'buddy-api.worktruesolution.net': {
+      prefixes: ['/api/v1/'],
+      open: ['/api/v1/sso/jwks', '/api/v1/health'],
+      bearer: /^Bearer\s+bk_/i,
+      keyHelp: 'ต้องส่งกุญแจ API (Authorization: Bearer bk_…) — สร้างที่ อื่น ๆ › กุญแจ API ของ Buddy',
+      notFound: 'ชื่อเว็บนี้สำหรับโปรแกรมเชื่อมต่อ Buddy Account เท่านั้น — เปิดหน้าจอที่ app.worktruesolution.net',
+    },
+  },
 };
 
 const json = (status, code, message) => new Response(JSON.stringify({ error: { code, message } }),
   { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 
-/** ชื่อเว็บสำหรับโปรแกรมคุยกัน: คืน Response ถ้าปฏิเสธ · คืน Request (ทิ้งคุกกี้แล้ว) ถ้าผ่าน */
-function apiGate(request) {
+/**
+ * ชื่อเว็บที่ไม่มีด่าน Cloudflare Access (เจ้าของตั้ง Access app แบบ Bypass เฉพาะชื่อนั้น) — APP.gates[ชื่อเว็บ]:
+ *   prefixes = path ที่เปิด (ขึ้นต้นด้วย) · open = path ที่เปิดเต็ม ๆ โดยไม่ต้องมีกุญแจ · bearer = รูปแบบ Authorization ที่ต้องมี (ไม่ระบุ = โปรแกรมตรวจกุญแจเอง)
+ *   home = เปิด "/" แล้วพาไปที่นี่ · อื่นนอกจากนี้ = 404 · ทิ้งคุกกี้เสมอ (session ของหน้าจอหลังร้านใช้ผ่านชื่อนี้ไม่ได้)
+ * คืน Response ถ้าปฏิเสธ/พาไปที่อื่น · คืน Request (ทิ้งคุกกี้แล้ว) ถ้าผ่าน · ชื่อเว็บอื่น = คืนคำขอเดิม (ด่าน Access ของ Worker คุมอยู่)
+ */
+function gate(request) {
   const url = new URL(request.url);
-  if (!APP.apiHosts.includes(url.hostname)) return request;
-  if (!url.pathname.startsWith('/api/v1/')) return json(404, 'NOT_FOUND', `ชื่อเว็บนี้สำหรับโปรแกรมเชื่อมต่อ ${APP.name} เท่านั้น — เปิดหน้าจอที่ชื่อเว็บสำหรับผู้ใช้`);
-  const open = APP.apiOpen.includes(url.pathname);
-  if (!open && !/^Bearer\s+bk_/i.test(request.headers.get('authorization') ?? '')) {
-    return json(401, 'API_KEY_REQUIRED', 'ต้องส่งกุญแจ API (Authorization: Bearer bk_…) — สร้างที่ อื่น ๆ › กุญแจ API ของ Buddy');
-  }
+  const g = APP.gates[url.hostname];
+  if (!g) return request;
+  if (g.home && (url.pathname === '/' || url.pathname === g.home.replace(/\/$/, ''))) return Response.redirect(`${url.origin}${g.home}`, 302);
+  const open = (g.open ?? []).includes(url.pathname);
+  if (!open && !g.prefixes.some((p) => url.pathname.startsWith(p))) return json(404, 'NOT_FOUND', g.notFound);
+  if (g.bearer && !open && !g.bearer.test(request.headers.get('authorization') ?? '')) return json(401, 'API_KEY_REQUIRED', g.keyHelp);
   const r = new Request(request);
   r.headers.delete('cookie');
   return r;
@@ -157,7 +168,7 @@ export class AppContainer extends DurableObject {
 
 export default {
   fetch: (request, env) => {
-    const gated = apiGate(request);
+    const gated = gate(request);
     return gated instanceof Response ? gated : instance(env).fetch(gated);
   },
   // ปลุกทุก 5 นาที (wrangler.jsonc triggers.crons) — ให้งานเบื้องหลังของโปรแกรมได้ทำงาน
