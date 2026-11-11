@@ -217,8 +217,17 @@ if (REHEARSE) try {
   await c.end();
   const ok = Number(n.days) > 0 && Number(n.sent) > 0 && Number(n.open) === 0 && Number(n.stores) === 3 && existsSync(OUT) && /#pair=wtspos_/.test(readFileSync(OUT, 'utf8'));
   out(`${ok ? '✓' : '✗'} ตรวจ: ร้าน ${n.stores} · ยอดวัน ${n.days} · ส่งเข้า Buddy แล้ว ${n.sent} เอกสาร · ค้าง ${n.open}`);
+  // คลาวด์ 11/11/2569: งานส่งของเซิร์ฟเวอร์ชนกับเครื่องมือ → รับเงิน Grab ค้าง "DUPLICATE_SOURCE" (failed) — รันซ้ำต้องส่งใหม่ให้จนผ่าน
+  const c2 = new pg.Client({ connectionString: posDb }); await c2.connect();
+  const stuck = (await c2.query(`UPDATE pos.outbox SET status = 'failed', error_code = 'DUPLICATE_SOURCE', error_message = 'ซ้อม: ชนกับงานส่งบนคลาวด์'
+    WHERE source_ref LIKE 'pos:payout:%' AND status = 'sent'`)).rowCount;
+  await c2.end();
   const again = await run(process.execPath, [tsxOf(POS_ROOT), 'tools/hub/food-demo.mts'], POS_ROOT, childEnv({ ...demoEnv, POS_DEMO_OUT: OUT + '.again' }));
-  const noDup = again.code === 0 && again.lines.some((l) => l.includes('ไม่ส่งซ้ำ'));
+  const c3 = new pg.Client({ connectionString: posDb }); await c3.connect();
+  const left = Number((await c3.query(`SELECT count(*) AS n FROM pos.outbox WHERE status NOT IN ('sent', 'skipped')`)).rows[0].n);
+  await c3.end();
+  out(`${stuck && !left ? '✓' : '✗'} รันซ้ำหลังส่งค้าง (DUPLICATE_SOURCE ${stuck} รายการ): ${left ? `ยังค้าง ${left}` : 'ส่งใหม่ผ่าน Buddy ตอบเอกสารเดิม'}`);
+  const noDup = again.code === 0 && again.lines.some((l) => l.includes('ไม่ส่งซ้ำ')) && stuck > 0 && left === 0;
   out(`${noDup ? '✓' : '✗'} รันซ้ำ: ${noDup ? 'ไม่สร้างซ้ำ · ยอดขายไม่ส่งซ้ำ · กุญแจ/PIN ใหม่ใช้ได้' : again.lines.filter((l) => /^✗/.test(l)).slice(-2).join(' / ') || again.lines.slice(-2).join(' / ')}`);
   rmSync(OUT + '.again', { force: true });
   await cleanup();
