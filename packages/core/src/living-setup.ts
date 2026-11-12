@@ -13,9 +13,14 @@ export const LIVING_DOC_TYPES = [
    * → ส่วนเกิน/ค่าเช่าล่วงหน้าออกเป็น AI ไม่มี VAT (บัญชีเงินรับล่วงหน้า แยกจากเงินประกัน) แล้วหักในใบเสร็จของบิลถัดไป · เหลือตอนย้ายออกคืนด้วย RD
    */
   { key: 'adv', code: 'ADL', cls: 'AI', module: 'AR', book: '02', name_th: 'รับเงินล่วงหน้า (WTS-Living)', name_en: 'Advance received (WTS-Living)', vat_basis: null, price_type: '0', tax_invoice: false },
+  /**
+   * รับเงินล่วงหน้าค่าบริการที่มี VAT (12/11/2569 เจ้าของ "แยกเงินล่วงหน้าเป็น 2 แบบ"): VAT ถึงกำหนดตอนรับเงิน = ใบกำกับภาษี
+   * แยก VAT (price_type 2 เหมือนบิล IVL — หักในบิลได้) · หักในบิลค่าบริการ → VAT คิดจากยอดที่มี VAT ที่เหลือ · เหลือคืน = RD ใบลดหนี้
+   */
+  { key: 'advv', code: 'AVL', cls: 'AI', module: 'AR', book: '02', name_th: 'รับเงินล่วงหน้าค่าบริการ มี VAT (WTS-Living)', name_en: 'Service advance with VAT (WTS-Living)', vat_basis: '1', price_type: '2', tax_invoice: true },
 ] as const;
 /** บัญชีช่อง 3 (เงินมัดจำรับ) ของประเภทเอกสารรับเงิน (AI) แต่ละตัว */
-export const LIVING_DOC_TYPE_ACCOUNT: Readonly<Partial<Record<(typeof LIVING_DOC_TYPES)[number]['key'], LivingAccountKey>>> = { ai: 'deposit', adv: 'prepaid' };
+export const LIVING_DOC_TYPE_ACCOUNT: Readonly<Partial<Record<(typeof LIVING_DOC_TYPES)[number]['key'], LivingAccountKey>>> = { ai: 'deposit', adv: 'prepaid', advv: 'prepaid' };
 
 /** สมุดรายวันของใบสำคัญที่ Living ส่ง (รับรู้ค่าส่วนกลางรายปี · คืนเงินประกันยกมาแบบเดิม) */
 export const LIVING_BOOK = { code: 'LV', prefix: 'LV', name_th: 'สมุดรายวัน WTS-Living', name_en: 'WTS-Living journal' } as const;

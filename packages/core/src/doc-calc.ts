@@ -45,7 +45,12 @@ export const DISCOUNT_HINT = 'เช่น 200 (บาท) · 5% หรือ 5+
 
 /** vat_code รายบรรทัด: 0 = ยกเว้น VAT · 1 = มี VAT · 2 = อัตรา 0% (vat_exempt = แบบเดิม เท่ากับ 0) */
 export interface CalcLine { qty: MoneyInput; unit_price: MoneyInput; discount_text?: string | null; vat_exempt?: boolean; vat_code?: string | null }
-export interface CalcInput { price_type: '0' | '1' | '2'; vat_rate: MoneyInput; lines: CalcLine[]; discount_text?: string | null; deposit_amount?: MoneyInput }
+/**
+ * deposit_taxable = ส่วนของ deposit_amount ที่มาจากใบมัดจำที่มี VAT (ภาษีถึงกำหนดแล้วตอนรับมัดจำ) — หักจากมูลค่าที่มี VAT เท่านั้น
+ * ไม่เฉลี่ยไปรายการยกเว้น/อัตรา 0% (เจ้าของ 12/11/2569: "หักเงินรับล่วงหน้าที่มี VAT คงเหลือให้คำนวณ VAT จากยอดที่เหลือ")
+ * ส่วนที่เหลือของมัดจำ (ไม่มี VAT) เฉลี่ยตามยอดบรรทัดแบบเดิม
+ */
+export interface CalcInput { price_type: '0' | '1' | '2'; vat_rate: MoneyInput; lines: CalcLine[]; discount_text?: string | null; deposit_amount?: MoneyInput; deposit_taxable?: MoneyInput }
 export interface CalcResult {
   lines: Array<{ gross: string; discount_amount: string; line_amount: string; net_amount: string }>;
   amount: string; discount_amount: string; amount_after_discount: string; deposit_amount: string;
@@ -85,10 +90,14 @@ export function computeDoc(input: CalcInput): CalcResult {
   const deposit = d(input.deposit_amount ?? 0);
   if (deposit.gt(after)) errors.push('ยอดหักเงินมัดจำมากกว่ายอดหลังหักส่วนลด');
   const base = after.minus(deposit);
-  // แยกฐานรายการยกเว้น (0) และอัตรา 0% (2) ตามสัดส่วนยอดบรรทัด — ส่วนลดท้ายบิล/มัดจำเฉลี่ยตามยอด
+  const depTaxable = d(input.deposit_taxable ?? 0);
+  if (depTaxable.lt(0) || depTaxable.gt(deposit)) errors.push('ยอดหักเงินมัดจำที่มี VAT ต้องไม่เกินยอดหักเงินมัดจำทั้งหมด');
+  // แยกฐานรายการยกเว้น (0) และอัตรา 0% (2) ตามสัดส่วนยอดบรรทัด — ส่วนลดท้ายบิล/มัดจำที่ไม่มี VAT เฉลี่ยตามยอด · มัดจำที่มี VAT หักจากมูลค่าที่มี VAT
+  const spread = after.minus(deposit.minus(depTaxable));
   const sumOf = (c: string) => lines.filter((l) => l.code === c).reduce((s, l) => s.plus(l.amount), d(0));
-  const [exemptBase, zeroBase] = pt === '0' ? [base, d(0)] : amount.isZero() ? [d(0), d(0)] : [r2(base.times(sumOf('0')).div(amount)), r2(base.times(sumOf('2')).div(amount))];
+  const [exemptBase, zeroBase] = pt === '0' ? [base, d(0)] : amount.isZero() ? [d(0), d(0)] : [r2(spread.times(sumOf('0')).div(amount)), r2(spread.times(sumOf('2')).div(amount))];
   const vatBase = base.minus(exemptBase).minus(zeroBase);
+  if (pt !== '0' && !depTaxable.isZero() && vatBase.lt(0)) errors.push('ยอดหักเงินมัดจำที่มี VAT มากกว่ามูลค่าสินค้า/บริการที่มี VAT ในบิลนี้ — หักได้ไม่เกินยอดที่มี VAT');
   const vat = pt === '0' || rate.isZero() ? d(0) : pt === '1' ? r2(vatBase.times(rate).div(rate.plus(100))) : r2(vatBase.times(rate).div(100));
   const net = pt === '2' ? base.plus(vat) : base;
   // ยอดบรรทัดไม่รวม VAT: (ยอดสุทธิ − VAT) + มัดจำส่วนที่ไม่รวม VAT → เฉลี่ยตามยอดบรรทัด

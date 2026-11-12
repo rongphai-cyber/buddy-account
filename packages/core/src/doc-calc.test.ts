@@ -36,6 +36,21 @@ describe('document totals (บทที่ 11–12)', () => {
     const sumLines = r.lines.reduce((s, l) => s + Number(l.net_amount), 0);
     expect((sumLines + 245 - 3745).toFixed(2)).toBe('1000.00');
   });
+  it('VAT deposit (เงินรับล่วงหน้าที่มี VAT) comes off the taxable part only — VAT on what is left (owner 12/11/2569)', () => {
+    // ค่าเช่า 4,500 ยกเว้น + ค่าบริการ 2,000 มี VAT · หักเงินล่วงหน้ามี VAT 1,000 (ก่อน VAT) → VAT จาก 1,000 ที่เหลือ = 70
+    const lines = [{ qty: 1, unit_price: 4500, vat_code: '0' }, { qty: 1, unit_price: 2000, vat_code: '1' }];
+    const r = computeDoc({ price_type: '2', vat_rate: 7, deposit_amount: 1000, deposit_taxable: 1000, lines });
+    expect(r).toMatchObject({ exempt_amount: '4500.00', taxable_amount: '1000.00', vat_amount: '70.00', net_amount: '5570.00', errors: [] });
+    // แบบเดิม (มัดจำไม่มี VAT) เฉลี่ยทั้งสองส่วน — ไม่เปลี่ยน
+    expect(computeDoc({ price_type: '2', vat_rate: 7, deposit_amount: 1000, lines })).toMatchObject({ exempt_amount: '3807.69', taxable_amount: '1692.31', vat_amount: '118.46' });
+    // หักเต็มยอดที่มี VAT = VAT 0 · เกินยอดที่มี VAT = แจ้งข้อผิดพลาด
+    expect(computeDoc({ price_type: '2', vat_rate: 7, deposit_amount: 2000, deposit_taxable: 2000, lines })).toMatchObject({ taxable_amount: '0.00', vat_amount: '0.00', net_amount: '4500.00', errors: [] });
+    expect(computeDoc({ price_type: '2', vat_rate: 7, deposit_amount: 2500, deposit_taxable: 2500, lines }).errors[0]).toMatch(/มากกว่ามูลค่าสินค้า\/บริการที่มี VAT/);
+    expect(computeDoc({ price_type: '2', vat_rate: 7, deposit_amount: 500, deposit_taxable: 600, lines }).errors[0]).toMatch(/ไม่เกินยอดหักเงินมัดจำทั้งหมด/);
+    // มัดจำปน: มี VAT 1,000 + ไม่มี VAT 650 (เฉลี่ยตามยอด) · ส่วนลดท้ายบิลเฉลี่ยตามยอดเหมือนเดิม
+    const m = computeDoc({ price_type: '2', vat_rate: 7, deposit_amount: 1650, deposit_taxable: 1000, lines });
+    expect(m).toMatchObject({ exempt_amount: '4050.00', taxable_amount: '800.00', vat_amount: '56.00', net_amount: '4906.00' });
+  });
   it('exempt items and exempt price type; errors in Thai', () => {
     const r = computeDoc({ price_type: '2', vat_rate: 7, lines: [{ qty: 1, unit_price: 1000 }, { qty: 1, unit_price: 500, vat_exempt: true }] });
     expect(r).toMatchObject({ exempt_amount: '500.00', zero_rate_amount: '0.00', taxable_amount: '1000.00', vat_amount: '70.00', net_amount: '1570.00' });

@@ -1175,5 +1175,9 @@
  "ค่าเช่าล่วงหน้า/รับเงินเกินยอดบิล ไม่มี VAT · หักในใบเสร็จของบิลถัดไป เหลือคืนด้วยใบคืนเงิน": "Rent paid in advance / amount received over the bill, no VAT · deducted in the receipt of the next bill, any balance returned with a refund",
  "รับเงินล่วงหน้า (WTS-Living)": "Advance received (WTS-Living)",
  "เงินรับล่วงหน้าจากผู้เช่าและสมาชิก": "Advances from tenants and members",
- "เงินรับล่วงหน้าจากผู้เช่าและสมาชิก (ช่องบัญชีเงินมัดจำรับของ ADL · ค่าเช่าล่วงหน้า/รับเกินยอดบิล)": "Advances from tenants and members (deposit received account of ADL · rent in advance / amount over the bill)"
+ "เงินรับล่วงหน้าจากผู้เช่าและสมาชิก (ช่องบัญชีเงินมัดจำรับของ ADL · ค่าเช่าล่วงหน้า/รับเกินยอดบิล)": "Advances from tenants and members (deposit received account of ADL · rent in advance / amount over the bill)",
+ "ยอดหักเงินมัดจำที่มี VAT ต้องไม่เกินยอดหักเงินมัดจำทั้งหมด": "The VAT deposit deducted must not exceed the total deposit deducted",
+ "ยอดหักเงินมัดจำที่มี VAT มากกว่ามูลค่าสินค้า/บริการที่มี VAT ในบิลนี้ — หักได้ไม่เกินยอดที่มี VAT": "The VAT deposit deducted is more than the VAT-able goods/services in this bill — deduct no more than the VAT-able amount",
+ "รับเงินล่วงหน้าค่าบริการ มี VAT (WTS-Living)": "Service advance with VAT (WTS-Living)",
+ "ล่วงหน้าค่าบริการที่มี VAT · ออกใบกำกับภาษีตอนรับเงิน · หักในบิลค่าบริการ แล้วคิด VAT จากยอดที่เหลือ · เหลือคืนด้วยใบลดหนี้": "Advance for services with VAT · tax invoice when received · deducted in the service bill, VAT on what is left · any balance refunded with a credit note"
 }

@@ -253,7 +253,9 @@ export function TradeFormPage({ path }: { path: string }) {
   const setLine = (k: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === k ? { ...l, ...p } : l))); setDirty(true); };
   const canDeposit = DEPOSIT_CLASSES.includes(K.cls);
   const depTotal = Object.values(deps).reduce((s, v) => s.plus(d(v || 0)), d(0));
-  const depOpen = useQuery({ enabled: canDeposit && !!h?.party, queryKey: ['deposits-open', K.module, h?.party?.id, id], queryFn: () => api.get<{ rows: Array<{ header_id: string; doc_no: string; doc_date: string; price_type: string; amount: string; outstanding: string }> }>('/api/v1/deposits/open', { module: K.module, party_id: h!.party!.id, ...(id ? { invoice_id: id } : {}) }), staleTime: 0 });
+  const depOpen = useQuery({ enabled: canDeposit && !!h?.party, queryKey: ['deposits-open', K.module, h?.party?.id, id], queryFn: () => api.get<{ rows: Array<{ header_id: string; doc_no: string; doc_date: string; price_type: string; amount: string; outstanding: string; vat_amount: string | null }> }>('/api/v1/deposits/open', { module: K.module, party_id: h!.party!.id, ...(id ? { invoice_id: id } : {}) }), staleTime: 0 });
+  // มัดจำที่มี VAT หักจากมูลค่าที่มี VAT เท่านั้น (เหมือนเซิร์ฟเวอร์ · เจ้าของ 12/11/2569)
+  const depTaxable = Object.entries(deps).reduce((s, [hid, v]) => (d(depOpen.data?.rows.find((o) => o.header_id === hid)?.vat_amount ?? 0).isZero() ? s : s.plus(d(v || 0))), d(0));
   // ข้อกำหนดเจ้าของ (30/10/2569): คู่ค้ามีเงินมัดจำคงเหลือ → ถามว่าจะหักในบิลนี้หรือไม่ (ถามครั้งเดียวต่อคู่ค้า ในเอกสารใหม่)
   const [depAsk, setDepAsk] = useState(false);
   const [depAsked, setDepAsked] = useState<string | null>(null);
@@ -262,7 +264,7 @@ export function TradeFormPage({ path }: { path: string }) {
     if (!pid || id || readOnly || depAsked === pid || !depOpen.data?.rows.length || Object.keys(deps).length) return;
     setDepAsked(pid); setDepAsk(true);
   }, [depOpen.data, h?.party?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const calc0 = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, deposit_amount: depTotal.toFixed(2), lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_code: l.vat })) }), [h, lines, depTotal]);
+  const calc0 = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, deposit_amount: depTotal.toFixed(2), deposit_taxable: depTaxable.toFixed(2), lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_code: l.vat })) }), [h, lines, depTotal, depTaxable]);
   const calc = calc0 && noLines ? storedCalc(calc0) : calc0;
   const payTotal = pays.reduce((s, p) => s.plus(d(p.amount || 0)), d(0));
   const whtTotal = K.cls === 'HP' ? whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0)) : K.cls === 'HS' ? d(whtAmt || 0) : d(0);

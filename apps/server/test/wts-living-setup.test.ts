@@ -92,7 +92,7 @@ describe('ตั้งค่าสำหรับ WTS-Living', () => {
     });
     const by = (code: string) => rows.find((x) => x.code === code)!;
     expect([by('AIL').status, by('AIL').account?.no, by('IVL').status, by('REL').status, by('RDL').status]).toEqual(['create', '2135-04', 'create', 'create', 'create']);
-    expect([by('ADL').status, by('ADL').account?.no]).toEqual(['create', '2133-03']);
+    expect([by('ADL').status, by('ADL').account?.no, by('AVL').status, by('AVL').account?.no]).toEqual(['create', '2133-03', 'create', '2133-03']);
     expect([by('LVDP').account?.no, by('50-LIVR-ADVC').account?.no, by('50-LIVR-FUND').account?.no, by('50-LIVR-UTIL').account?.no]).toEqual(['2135-04', '2133-02', '3400-00', '4200-70']);
     expect([by('OPENING_BALANCE').status, by('LV').status, by('gen.allow_blank_party_tax_id').status]).toEqual(['set', 'create', 'set']);
     expect([r.body.blocked, await count('gl_account', 'A')]).toEqual([0, before]);
@@ -115,14 +115,15 @@ describe('ตั้งค่าสำหรับ WTS-Living', () => {
     const r = await call('POST', '/api/v1/company/wts-living-setup', {});
     expect([r.status, r.body.error?.message, r.body.blocked]).toEqual([200, undefined, 0]);
     expect(r.body.created).toEqual(expect.arrayContaining(['account:2135-04', 'account:3500-00', 'role:OPENING_BALANCE', 'book:LV', 'doc_type:IVL', 'doc_type:AIL', 'payment_method:LVDP', 'item:50-LIVR-RENT', 'setting:gen.allow_blank_party_tax_id']));
-    expect(r.body.created).toHaveLength(11 + 1 + 1 + 5 + 1 + 8 + 1);
+    expect(r.body.created).toHaveLength(11 + 1 + 1 + 6 + 1 + 8 + 1);
     const q = await sql<{ code: string; doc_class: string; vat_basis: string | null; is_tax_invoice: boolean; slot3: string | null; book: string | null }>`
       SELECT t.code, t.doc_class, t.vat_basis, t.is_tax_invoice, (SELECT g.account_no FROM md_doc_type_account x JOIN gl_account g ON g.id = x.account_id WHERE x.doc_type_id = t.id AND x.slot = 3 AND x.deleted_at IS NULL) AS slot3,
              (SELECT b.code FROM gl_journal_book b WHERE b.id = t.journal_book_id) AS book
-        FROM md_doc_type t WHERE t.company_id = ${co.A} AND t.code IN ('IVL', 'REL', 'AIL', 'RDL', 'ADL') ORDER BY t.code`.execute(database.db);
+        FROM md_doc_type t WHERE t.company_id = ${co.A} AND t.code IN ('IVL', 'REL', 'AIL', 'RDL', 'ADL', 'AVL') ORDER BY t.code`.execute(database.db);
     expect(q.rows).toEqual([
       { code: 'ADL', doc_class: 'AI', vat_basis: null, is_tax_invoice: false, slot3: '2133-03', book: '02' },
       { code: 'AIL', doc_class: 'AI', vat_basis: null, is_tax_invoice: false, slot3: '2135-04', book: '02' },
+      { code: 'AVL', doc_class: 'AI', vat_basis: '1', is_tax_invoice: true, slot3: '2133-03', book: '02' },
       { code: 'IVL', doc_class: 'IV', vat_basis: '2', is_tax_invoice: false, slot3: null, book: '03' },
       { code: 'RDL', doc_class: 'RD', vat_basis: null, is_tax_invoice: false, slot3: null, book: '01' },
       { code: 'REL', doc_class: 'RE', vat_basis: null, is_tax_invoice: true, slot3: null, book: '02' },

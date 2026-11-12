@@ -237,4 +237,24 @@ describe('ใบคืนเงินมัดจำที่มี VAT = ใบ
     const r = rows.find((x) => x.header_id === ids.rate10)!;
     expect([r.price_type, r.vat_rate, r.outstanding, r.rd_vat, r.other_use]).toEqual(['2', '10.0000', '900.00', '10.00', false]);
   });
+
+  it('VAT advance deducted in a mixed bill comes off the VAT part only — VAT on what is left (owner 12/11/2569)', async () => {
+    // ค่าเช่า 4,500 (ยกเว้น) + ค่าบริการ 2,000 (มี VAT) หักเงินล่วงหน้ามี VAT 1,000 (+VAT 70 จ่ายตอนรับแล้ว) → VAT 70 จาก 1,000 ที่เหลือ · ยอด 5,570
+    const chart = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string }>;
+    const s2 = await call('POST', '/api/v1/services', { code: '90-SVCS-000002', name_th: 'ค่าบริการทำความสะอาด', vat_code: '1', accounts: { revenue: chart.find((x) => x.account_no === '4100-11')!.id } });
+    expect([s2.status, s2.body?.error?.message]).toEqual([200, undefined]);
+    const adv = await call('POST', '/api/v1/ar-deposits', { ...ai('2', 1000), doc_date: '2026-08-01' });
+    expect([adv.status, adv.body.net_amount]).toEqual([200, '1070.00']);
+    expect((await call('GET', `/api/v1/ar-deposits/${adv.body.id}`)).body.vat_amount).toBe('70.00');
+    const bill = { doc_type_id: ids['type:IV'], doc_date: '2026-08-31', party_id: ids.cus, price_type: '2', vat_rate: 7,
+      lines: [{ item_id: ids.svc, qty: 1, unit_price: 4500 }, { item_id: s2.body.id, qty: 1, unit_price: 2000 }], deposits: [{ header_id: adv.body.id, amount: '1000' }] };
+    const iv = await call('POST', '/api/v1/sales-invoices', bill);
+    expect([iv.status, iv.body.error?.message, iv.body.net_amount]).toEqual([200, undefined, '5570.00']);
+    expect((await call('GET', `/api/v1/sales-invoices/${iv.body.id}`)).body).toMatchObject({ deposit_amount: '1000.00', exempt_amount: '4500.00', taxable_amount: '1000.00', vat_amount: '70.00' });
+    expect(await remaining(adv.body.id)).toBe('0.00');
+    // หักเกินยอดที่มี VAT ไม่ได้
+    const adv2 = await call('POST', '/api/v1/ar-deposits', { ...ai('2', 3000), doc_date: '2026-08-01' });
+    const over = await call('POST', '/api/v1/sales-invoices', { ...bill, deposits: [{ header_id: adv2.body.id, amount: '2500' }] });
+    expect([over.status, over.body.error?.message]).toEqual([400, expect.stringMatching(/มากกว่ามูลค่าสินค้า\/บริการที่มี VAT/)]);
+  });
 });

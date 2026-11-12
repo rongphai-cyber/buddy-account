@@ -136,10 +136,11 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
   if (b.deposits.length && !DEPOSIT_CLASSES.includes(K.cls)) throw badRequest(`${K.label}หักเงินมัดจำไม่ได้`);
   const depIds = b.deposits.map((x) => x.header_id);
   if (new Set(depIds).size !== depIds.length) throw badRequest('เลือกใบมัดจำซ้ำ');
-  const depRows = depIds.length ? (await sql<{ header_id: string; doc_no: string; price_type: string; outstanding: string; party: string | null }>`
+  const depRows = depIds.length ? (await sql<{ header_id: string; doc_no: string; price_type: string; outstanding: string; party: string | null; has_vat: boolean }>`
       SELECT o.header_id, o.doc_no, o.price_type, o.outstanding + coalesce((SELECT sum(l.amount) FROM doc_link l WHERE l.from_header_id = o.header_id AND l.to_header_id = ${id} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL), 0) AS outstanding,
-             coalesce(o.customer_id, o.supplier_id) AS party
-        FROM v_deposit_outstanding o WHERE o.company_id = ${a.companyId} AND o.module = ${K.module} AND o.header_id = ANY(${depIds}::uuid[])`.execute(db)).rows : [];
+             coalesce(o.customer_id, o.supplier_id) AS party, coalesce(h.vat_amount, 0) <> 0 AS has_vat
+        FROM v_deposit_outstanding o JOIN doc_header h ON h.id = o.header_id
+       WHERE o.company_id = ${a.companyId} AND o.module = ${K.module} AND o.header_id = ANY(${depIds}::uuid[])`.execute(db)).rows : [];
   const depById = new Map(depRows.map((x) => [x.header_id, x]));
   const depositTotal = b.deposits.reduce((sum, x, i) => {
     const o = depById.get(x.header_id);
@@ -150,7 +151,9 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
   }, d(0));
   // ประเภท VAT รายบรรทัด: ที่เลือกบนเอกสาร > แฟ้มสินค้า (ว่าง = มี VAT)
   const lineVat = (l: { item_id: string; vat_code?: '0' | '1' | '2' | null }) => { const c = l.vat_code ?? byId.get(l.item_id)?.vat_code; return c === '0' || c === '2' ? c : '1'; };
-  const calc = computeDoc({ price_type: b.price_type, vat_rate: b.vat_rate, discount_text: b.discount_text, deposit_amount: depositTotal.toFixed(2),
+  // มัดจำที่มี VAT (ภาษีถึงกำหนดแล้วตอนรับมัดจำ) หักจากมูลค่าที่มี VAT เท่านั้น — เจ้าของ 12/11/2569
+  const depositTaxable = b.deposits.reduce((sum, x) => (depById.get(x.header_id)?.has_vat ? sum.plus(d(x.amount)) : sum), d(0));
+  const calc = computeDoc({ price_type: b.price_type, vat_rate: b.vat_rate, discount_text: b.discount_text, deposit_amount: depositTotal.toFixed(2), deposit_taxable: depositTaxable.toFixed(2),
     lines: b.lines.map((l) => ({ qty: l.qty, unit_price: l.is_free ? 0 : l.unit_price, discount_text: l.discount_text, vat_code: lineVat(l) })) });
   if (calc.errors.length) throw badRequest(calc.errors[0]!, calc.errors.map((m) => ({ message: m })));
   const payTotal = b.payments.reduce((s, p) => s.plus(d(p.amount)), d(0));
