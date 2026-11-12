@@ -70,7 +70,7 @@ export async function loadPostingInput(db: Db, companyId: string, headerIds: str
   // มัดจำรับที่ใบเสร็จหัก/ใบคืนเงินมัดจำคืน (AI → RE/RD) — บัญชีตามประเภทเอกสารของใบมัดจำ (บิลขายใช้ deposit_amount ที่หัวเอกสาร)
   // RD คืนมัดจำมี VAT: VAT ต่อใบมัดจำ (doc_link.vat_amount) + ประเภทราคาของใบมัดจำ → ก่อน VAT / เงินที่จ่าย (depositRefundParts)
   const deps = group((await sql<{ header_id: string; amount: string; doc_type_id: string | null; vat: string | null; price_type: string }>`SELECT l.to_header_id AS header_id, l.amount, f.doc_type_id, l.vat_amount AS vat, f.price_type FROM doc_link l JOIN doc_header f ON f.id = l.from_header_id
-    JOIN doc_header t ON t.id = l.to_header_id WHERE l.company_id = ${companyId} AND l.deleted_at IS NULL AND l.link_type = 'DEPOSIT' AND t.doc_class IN ('RE', 'RD') AND l.to_header_id = ANY(${hid}::uuid[])
+    JOIN doc_header t ON t.id = l.to_header_id WHERE l.company_id = ${companyId} AND l.deleted_at IS NULL AND l.link_type = 'DEPOSIT' AND t.doc_class IN ('RE', 'RD', 'IV', 'HS') AND l.to_header_id = ANY(${hid}::uuid[])
      ORDER BY l.to_header_id, f.doc_date, f.doc_no`.execute(db)).rows);
   return { H, lines, pays, setts, charges, deps };
 }

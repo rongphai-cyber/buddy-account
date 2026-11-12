@@ -256,6 +256,15 @@ describe('ยอดยกมาที่ลงบัญชี (WTS-Living ลู
     expect(net(p)).toEqual({ 'ar-c1': '1070.00', ob: '-1070.00' });
     expect(net(openingPosting({ doc_class: 'IV', doc_type_id: null, customer_id: null, net_amount: '1070', vat_amount: '70', vat_basis: '1' }, 'ob', r))).toEqual({ ar: '1070.00', ob: '-1070.00' });
   });
+  it('a bill deducting advances: Dr the deposit account of each advance\'s AI type (AVL), split by amount — none given = journal default as before', () => {
+    // บิล 5,570 = ยกเว้น 4,500 + มี VAT 1,000 + VAT 70 · หักเงินล่วงหน้า 1,000 (ใบ AVL 'ail' 600 + ใบไม่มีประเภท 400)
+    const h = { id: 'h', doc_class: 'IV' as const, doc_type_id: null, customer_id: 'c1', supplier_id: null, net_amount: '5570', vat_amount: '70', deposit_amount: '1000', vat_basis: '2' };
+    const ls = [{ item_id: 'x', net_amount: '4500' }, { item_id: 'x', net_amount: '2000' }];
+    const p = buildPosting(h, ls, [], [], slotR, [], [{ amount: '600', doc_type_id: 'ail' }, { amount: '400', doc_type_id: null }]);
+    expect(postingBalanced(p)).toBe(true);
+    expect(net(p)).toEqual({ 'ar-c1': '5570.00', 'sales-g': '-6500.00', ovatp: '-70.00', 'dep-tenant': '600.00', depr: '400.00' });
+    expect(net(buildPosting(h, ls, [], [], slotR))).toMatchObject({ depr: '1000.00' });
+  });
   it('deposit brought forward 8,400.00: Dr the opening account / Cr the deposit account of the AI type', () => {
     expect(net(openingPosting({ doc_class: 'AI', doc_type_id: 'ail', customer_id: 'c1', net_amount: '8400', vat_amount: '0', vat_basis: null }, 'ob', slotR))).toEqual({ ob: '8400.00', 'dep-tenant': '-8400.00' });
     expect(net(openingPosting({ doc_class: 'AI', doc_type_id: null, customer_id: 'c1', net_amount: '8400', vat_amount: '0', vat_basis: null }, 'ob', r))).toEqual({ ob: '8400.00', depr: '-8400.00' });

@@ -5,6 +5,7 @@
  * ฟังก์ชันบริสุทธิ์: ไม่แตะฐานข้อมูล ตัวหาบัญชี (PostingResolver) มาจาก server
  */
 import { d, type Decimal, type MoneyInput } from './money.js';
+import { allocate } from './doc-calc.js';
 
 export interface PostHeader {
   id: string; doc_class: string; doc_type_id: string | null; customer_id: string | null; supplier_id: string | null;
@@ -197,7 +198,12 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     }
     for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'SALES');
     C(pick(['3', r.def(vatRole('OUTPUT_VAT'))]), vat, 'OUTPUT_VAT');
-    if (!depositUsed.isZero()) D(pick(['3', r.def('DEPOSIT_RECEIVED')]), depositUsed, 'DEPOSIT_RECEIVED');
+    // มัดจำที่บิลหัก: Dr บัญชีเงินมัดจำรับของใบมัดจำแต่ละใบ (ช่อง 3 ของประเภทเอกสาร AI เช่น AVL ของ WTS-Living) แบ่งยอดที่หักจริงตามยอดแต่ละใบ
+    // (ราคารวม VAT: ยอดในใบมัดจำรวม VAT แต่ยอดที่หักจริงไม่รวม VAT) · ไม่มีข้อมูลใบมัดจำ = บัญชีเพื่อลงรายวันแบบเดิม
+    if (!depositUsed.isZero() && deps.length && !depTotal.isZero()) {
+      const parts = allocate(depositUsed, deps.map((x) => d(x.amount)));
+      deps.forEach((x, i) => D(pick(['1', r.slot(x.doc_type_id, 'AI', 'DEPOSIT_RECEIVED')], ['3', r.def('DEPOSIT_RECEIVED')]), parts[i]!, 'DEPOSIT_RECEIVED'));
+    } else if (!depositUsed.isZero()) D(pick(['3', r.def('DEPOSIT_RECEIVED')]), depositUsed, 'DEPOSIT_RECEIVED');
     perpetualCost(-1);
   } else if (cls === 'CN') {
     C(partyAr, net, 'AR');
