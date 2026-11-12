@@ -20,7 +20,17 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      # Dockerfile ไม่มี RUN (HANDOFF 115) → ติดตั้ง + สร้างหน้าจอก่อน docker build แบบเดียวกับ Workers Builds
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install (same as Workers Builds)
+        run: pnpm install --frozen-lockfile
+      - name: Prebuild screens (wrangler build.command)
+        run: node cloud/prebuild.mjs
       - name: Build the image (no push)
         run: docker build -t buddy-account:ci .
       - name: Boot it against PostgreSQL 16 and wait for the health check
