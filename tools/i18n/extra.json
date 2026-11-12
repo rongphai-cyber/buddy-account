@@ -1171,5 +1171,9 @@
  "ตั้งค่าผู้ดูแลระบบไปแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้": "The administrator is already set up — sign in with the username and password you set",
  "Buddy Account รุ่น": "Buddy Account version",
  "รุ่น": "Version",
- "รุ่นของโปรแกรม — ใช้เทียบว่าเป็นรุ่นล่าสุด": "Program version — compare to check it is the latest"
+ "รุ่นของโปรแกรม — ใช้เทียบว่าเป็นรุ่นล่าสุด": "Program version — compare to check it is the latest",
+ "ค่าเช่าล่วงหน้า/รับเงินเกินยอดบิล ไม่มี VAT · หักในใบเสร็จของบิลถัดไป เหลือคืนด้วยใบคืนเงิน": "Rent paid in advance / amount received over the bill, no VAT · deducted in the receipt of the next bill, any balance returned with a refund",
+ "รับเงินล่วงหน้า (WTS-Living)": "Advance received (WTS-Living)",
+ "เงินรับล่วงหน้าจากผู้เช่าและสมาชิก": "Advances from tenants and members",
+ "เงินรับล่วงหน้าจากผู้เช่าและสมาชิก (ช่องบัญชีเงินมัดจำรับของ ADL · ค่าเช่าล่วงหน้า/รับเกินยอดบิล)": "Advances from tenants and members (deposit received account of ADL · rent in advance / amount over the bill)"
 }

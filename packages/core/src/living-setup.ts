@@ -8,7 +8,14 @@ export const LIVING_DOC_TYPES = [
   { key: 're', code: 'REL', cls: 'RE', module: 'AR', book: '02', name_th: 'ใบเสร็จรับเงิน/ใบกำกับภาษี (WTS-Living)', name_en: 'Receipt / tax invoice (WTS-Living)', vat_basis: null, price_type: null, tax_invoice: true },
   { key: 'ai', code: 'AIL', cls: 'AI', module: 'AR', book: '02', name_th: 'รับเงินประกันผู้เช่า (WTS-Living)', name_en: 'Tenant deposit received (WTS-Living)', vat_basis: null, price_type: '0', tax_invoice: false },
   { key: 'rd', code: 'RDL', cls: 'RD', module: 'AR', book: '01', name_th: 'คืนเงินประกันผู้เช่า (WTS-Living)', name_en: 'Tenant deposit refund (WTS-Living)', vat_basis: null, price_type: null, tax_invoice: false },
+  /**
+   * รับเงินล่วงหน้า/รับเงินเกินยอดบิล (12/11/2569 เจ้าของ "ทำข้อ 7+6 แบบใบรับเงินล่วงหน้า"): ใบเสร็จของ Buddy รับเกินยอดบิลไม่ได้
+   * → ส่วนเกิน/ค่าเช่าล่วงหน้าออกเป็น AI ไม่มี VAT (บัญชีเงินรับล่วงหน้า แยกจากเงินประกัน) แล้วหักในใบเสร็จของบิลถัดไป · เหลือตอนย้ายออกคืนด้วย RD
+   */
+  { key: 'adv', code: 'ADL', cls: 'AI', module: 'AR', book: '02', name_th: 'รับเงินล่วงหน้า (WTS-Living)', name_en: 'Advance received (WTS-Living)', vat_basis: null, price_type: '0', tax_invoice: false },
 ] as const;
+/** บัญชีช่อง 3 (เงินมัดจำรับ) ของประเภทเอกสารรับเงิน (AI) แต่ละตัว */
+export const LIVING_DOC_TYPE_ACCOUNT: Readonly<Partial<Record<(typeof LIVING_DOC_TYPES)[number]['key'], LivingAccountKey>>> = { ai: 'deposit', adv: 'prepaid' };
 
 /** สมุดรายวันของใบสำคัญที่ Living ส่ง (รับรู้ค่าส่วนกลางรายปี · คืนเงินประกันยกมาแบบเดิม) */
 export const LIVING_BOOK = { code: 'LV', prefix: 'LV', name_th: 'สมุดรายวัน WTS-Living', name_en: 'WTS-Living journal' } as const;
@@ -21,10 +28,11 @@ export const LIVING_CUSTOMER_PREFIX = 'LV';
  * บัญชีที่ Living ใช้: หาบัญชีเดิมตามชื่อ (บัญชีย่อยในหมวดเดียวกัน) ก่อน ไม่มี = สร้างเป็นบัญชีย่อยข้างบัญชีหลัก (anchor) ในผังของบริษัท
  * anchor: role = บัญชีตามบทบาท (บัญชีใหม่อยู่ใต้บัญชีคุมเดียวกัน) · control = บัญชีคุมที่ชื่อขึ้นต้นด้วยข้อความนี้ (หาก่อน role)
  */
-export type LivingAccountKey = 'deposit' | 'advance' | 'fund' | 'opening' | 'rent' | 'utility' | 'common' | 'service' | 'penalty' | 'damage';
+export type LivingAccountKey = 'deposit' | 'prepaid' | 'advance' | 'fund' | 'opening' | 'rent' | 'utility' | 'common' | 'service' | 'penalty' | 'damage';
 export const LIVING_ACCOUNTS: ReadonlyArray<{ key: LivingAccountKey; name_th: string; name_en: string; group: string; control?: string; role: string }> = [
   { key: 'deposit', name_th: 'เงินประกันผู้เช่า', name_en: 'Tenant deposits', group: '2', control: 'เงินมัดจำรับ', role: 'DEPOSIT_RECEIVED' },
   { key: 'advance', name_th: 'รายได้ค่าส่วนกลางรับล่วงหน้า', name_en: 'Common fees received in advance', group: '2', control: 'รายได้รับล่วงหน้า', role: 'DEPOSIT_RECEIVED' },
+  { key: 'prepaid', name_th: 'เงินรับล่วงหน้าจากผู้เช่าและสมาชิก', name_en: 'Advances from tenants and members', group: '2', control: 'รายได้รับล่วงหน้า', role: 'DEPOSIT_RECEIVED' },
   { key: 'fund', name_th: 'เงินกองทุนจากสมาชิก', name_en: 'Members fund', group: '3', role: 'RETAINED_EARNINGS' },
   { key: 'opening', name_th: 'บัญชีพักยอดยกมา', name_en: 'Opening balance clearing', group: '3', role: 'RETAINED_EARNINGS' },
   { key: 'rent', name_th: 'รายได้ค่าเช่า', name_en: 'Rental income', group: '4', control: 'รายได้จากการให้บริการ', role: 'CREDIT_SALES' },
@@ -35,12 +43,14 @@ export const LIVING_ACCOUNTS: ReadonlyArray<{ key: LivingAccountKey; name_th: st
   { key: 'damage', name_th: 'รายได้ค่าเสียหาย', name_en: 'Damage charges', group: '4', role: 'OTHER_INCOME' },
 ];
 
-/** รหัสรายได้ (สินค้าบริการ) ต่อชนิดรายการเรียกเก็บของ Living — รหัสตามรูปแบบรหัสสินค้ามาตรฐาน 99-!!!!-!!!!!! */
+/**
+ * รหัสรายได้ (สินค้าบริการ) ต่อชนิดรายการเรียกเก็บของ Living — รหัสตามรูปแบบรหัสสินค้ามาตรฐาน 99-!!!!-!!!!!!
+ * vat_code = ค่าเริ่มต้นของรหัส (Living ส่ง VAT ทีละบรรทัดเอง) · เจ้าของ 12/11/2569: ค่าเช่า/ส่วนกลาง/น้ำ/ไฟ/ขยะ ไม่มี VAT · บริการอื่นมี VAT */
 export const LIVING_ITEMS: ReadonlyArray<{ code: string; name_th: string; name_en: string; vat_code: '0' | '1'; account: LivingAccountKey; charges: readonly string[] }> = [
   { code: '50-LIVR-RENT', name_th: 'ค่าเช่าห้อง', name_en: 'Room rent', vat_code: '0', account: 'rent', charges: ['rent', 'furniture'] },
-  { code: '50-LIVR-UTIL', name_th: 'ค่าน้ำค่าไฟ', name_en: 'Water and electricity', vat_code: '1', account: 'utility', charges: ['water', 'elec'] },
+  { code: '50-LIVR-UTIL', name_th: 'ค่าน้ำค่าไฟ', name_en: 'Water and electricity', vat_code: '0', account: 'utility', charges: ['water', 'elec'] },
   { code: '50-LIVR-COMM', name_th: 'ค่าส่วนกลาง', name_en: 'Common fee', vat_code: '0', account: 'common', charges: ['common'] },
-  { code: '50-LIVR-SERV', name_th: 'ค่าบริการอื่น', name_en: 'Other services', vat_code: '0', account: 'service', charges: ['fixed', 'onetime'] },
+  { code: '50-LIVR-SERV', name_th: 'ค่าบริการอื่น', name_en: 'Other services', vat_code: '1', account: 'service', charges: ['fixed', 'onetime'] },
   { code: '50-LIVR-LATE', name_th: 'ค่าปรับชำระล่าช้า', name_en: 'Late payment fee', vat_code: '0', account: 'penalty', charges: ['penalty'] },
   { code: '50-LIVR-FUND', name_th: 'เงินกองทุนแรกเข้า', name_en: 'Members fund (entry)', vat_code: '0', account: 'fund', charges: ['fund'] },
   { code: '50-LIVR-ADVC', name_th: 'ค่าส่วนกลางรับล่วงหน้า', name_en: 'Common fee in advance', vat_code: '0', account: 'advance', charges: ['advance'] },

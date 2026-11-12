@@ -24,7 +24,7 @@ describe('ตั้งค่าสำหรับ WTS-Living: เลขบัญ
     for (const it of LIVING_ITEMS) expect(fitsMask('99-!!!!-!!!!!!', it.code).ok, it.code).toBe(true);
     const kinds = LIVING_ITEMS.flatMap((x) => x.charges).sort();
     expect(kinds).toEqual(['advance', 'common', 'damage', 'elec', 'fixed', 'fund', 'furniture', 'onetime', 'penalty', 'rent', 'water']);
-    expect(LIVING_DOC_TYPES.map((t) => `${t.code}:${t.cls}`)).toEqual(['IVL:IV', 'REL:RE', 'AIL:AI', 'RDL:RD']);
+    expect(LIVING_DOC_TYPES.map((t) => `${t.code}:${t.cls}`)).toEqual(['IVL:IV', 'REL:RE', 'AIL:AI', 'RDL:RD', 'ADL:AI']);
     expect(new Set(LIVING_ITEMS.map((x) => x.account)).size).toBeLessThanOrEqual(LIVING_ACCOUNTS.length);
   });
 });

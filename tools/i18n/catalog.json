@@ -10111,6 +10111,13 @@
 ]
 },
 {
+"th": "รายได้รับล่วงหน้า",
+"n": 2,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "รูปย่อใหญ่เกินไป",
 "n": 2,
 "files": [
@@ -19640,6 +19647,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
+"th": "ค่าเช่าล่วงหน้า/รับเงินเกินยอดบิล ไม่มี VAT · หักในใบเสร็จของบิลถัดไป เหลือคืนด้วยใบคืนเงิน",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
 ]
 },
 {
@@ -35309,6 +35323,13 @@
 ]
 },
 {
+"th": "รับเงินล่วงหน้า (WTS-Living)",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
 "th": "รับเงินเดือน",
 "n": 1,
 "files": [
@@ -36251,13 +36272,6 @@
 "n": 1,
 "files": [
 "packages/core/src/doc-calc.ts"
-]
-},
-{
-"th": "รายได้รับล่วงหน้า",
-"n": 1,
-"files": [
-"packages/core/src/living-setup.ts"
 ]
 },
 {
@@ -42299,6 +42313,20 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "เงินรับล่วงหน้าจากผู้เช่าและสมาชิก",
+"n": 1,
+"files": [
+"packages/core/src/living-setup.ts"
+]
+},
+{
+"th": "เงินรับล่วงหน้าจากผู้เช่าและสมาชิก (ช่องบัญชีเงินมัดจำรับของ ADL · ค่าเช่าล่วงหน้า/รับเกินยอดบิล)",
+"n": 1,
+"files": [
+"apps/server/src/modules/wts-living.ts"
 ]
 },
 {

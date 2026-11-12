@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
-import { DOC_SLOT_ROLES, LIVING_ACCOUNTS, LIVING_BOOK, LIVING_CUSTOMER_PREFIX, LIVING_DOC_TYPES, LIVING_ITEMS, LIVING_PAYMENT_METHOD, nextChildAccountNo, type LivingAccountKey } from '@buddy/core';
+import { DOC_SLOT_ROLES, LIVING_ACCOUNTS, LIVING_BOOK, LIVING_CUSTOMER_PREFIX, LIVING_DOC_TYPE_ACCOUNT, LIVING_DOC_TYPES, LIVING_ITEMS, LIVING_PAYMENT_METHOD, nextChildAccountNo, type LivingAccountKey } from '@buddy/core';
 import type { Db } from '../db.js';
 import { forbidden, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -26,7 +26,8 @@ export interface SetupRow {
 type Acc = { id: string; account_no: string; name_th: string; parent_id: string | null; level: number; account_group: string; is_control: boolean };
 
 const LABEL: Record<LivingAccountKey, string> = {
-  deposit: 'เงินประกันผู้เช่า (ช่องบัญชีเงินมัดจำรับของ AIL · วิธีรับชำระหักเงินประกัน)', advance: 'รายได้ค่าส่วนกลางรับล่วงหน้า (ค่าส่วนกลางรายปี)',
+  deposit: 'เงินประกันผู้เช่า (ช่องบัญชีเงินมัดจำรับของ AIL · วิธีรับชำระหักเงินประกัน)',
+  prepaid: 'เงินรับล่วงหน้าจากผู้เช่าและสมาชิก (ช่องบัญชีเงินมัดจำรับของ ADL · ค่าเช่าล่วงหน้า/รับเกินยอดบิล)', advance: 'รายได้ค่าส่วนกลางรับล่วงหน้า (ค่าส่วนกลางรายปี)',
   fund: 'เงินกองทุนจากสมาชิก (หมวด 3)', opening: 'บัญชีพักยอดยกมา (คู่ของลูกหนี้/เงินประกันยกมา)', rent: 'รายได้ค่าเช่า', utility: 'รายได้ค่าน้ำค่าไฟ',
   common: 'รายได้ค่าส่วนกลาง', service: 'รายได้ค่าบริการอื่น', penalty: 'รายได้ค่าปรับ', damage: 'รายได้ค่าเสียหาย',
 };
@@ -51,6 +52,7 @@ async function run(db: Db, a: Ctx, apply: boolean) {
     .select(['i.id', 'i.item_type', 'g.sales_account_id']).where('i.company_id', '=', co).where('i.code', '=', code).where('i.deleted_at', 'is', null).executeTakeFirst();
   const pm = await db.selectFrom('md_payment_method').select(['id', 'gl_account_id']).where('company_id', '=', co).where('direction', '=', 'R').where('code', '=', LIVING_PAYMENT_METHOD.code).where('deleted_at', 'is', null).executeTakeFirst();
   const ail = await docType('AIL');
+  const adl = await docType('ADL');
 
   /* ---- 1 บัญชี ---- */
   const accOf = new Map<LivingAccountKey, { id: string | null; no: string; name: string }>();
@@ -58,6 +60,7 @@ async function run(db: Db, a: Ctx, apply: boolean) {
     // ของที่ผูกอยู่แล้ว: บัญชีเงินมัดจำรับของ AIL / บัญชีของวิธีหักเงินประกัน · บทบาทบัญชีพักยอดยกมา · บัญชีรายได้ของรหัสรายได้ Living
     let linked: string | null = null;
     if (spec.key === 'deposit') linked = (ail ? await slotOf(ail.id, 3) : null) ?? pm?.gl_account_id ?? null;
+    else if (spec.key === 'prepaid') linked = adl ? await slotOf(adl.id, 3) : null;
     else if (spec.key === 'opening') linked = roles.get('OPENING_BALANCE') ?? null;
     else {
       const it = LIVING_ITEMS.find((x) => x.account === spec.key);
@@ -110,7 +113,8 @@ async function run(db: Db, a: Ctx, apply: boolean) {
   /* ---- 4 ประเภทเอกสาร ---- */
   for (const t of LIVING_DOC_TYPES) {
     const ex = await docType(t.code);
-    const depositSlot = t.cls === 'AI' ? 3 : null;
+    const slotAcc = LIVING_DOC_TYPE_ACCOUNT[t.key] ?? null;
+    const depositSlot = t.cls === 'AI' && slotAcc ? 3 : null;
     if (ex) {
       const slot = depositSlot ? await slotOf(ex.id, depositSlot) : null;
       rows.push({ group: 'doc_type', key: t.key, code: t.code, name: t.name_th, status: ex.doc_class === t.cls ? 'exists' : 'blocked', account: slot ? show(byId.get(slot)) : depositSlot ? null : undefined,
@@ -121,12 +125,13 @@ async function run(db: Db, a: Ctx, apply: boolean) {
     if (apply) {
       const id = (await db.insertInto('md_doc_type').values({ company_id: co, code: t.code, doc_class: t.cls, module: t.module, name_th: t.name_th, name_en: t.name_en,
         journal_book_id: books.get(t.book) ?? null, vat_basis: t.vat_basis, price_type: t.price_type, is_tax_invoice: t.tax_invoice, created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
-      if (depositSlot && accId('deposit'))
-        await db.insertInto('md_doc_type_account').values({ company_id: co, doc_type_id: id, slot: depositSlot, role: DOC_SLOT_ROLES[t.cls]?.[depositSlot] ?? null, account_id: accId('deposit')!, created_by: a.userId }).execute();
+      if (depositSlot && slotAcc && accId(slotAcc))
+        await db.insertInto('md_doc_type_account').values({ company_id: co, doc_type_id: id, slot: depositSlot, role: DOC_SLOT_ROLES[t.cls]?.[depositSlot] ?? null, account_id: accId(slotAcc)!, created_by: a.userId }).execute();
       created.push(`doc_type:${t.code}`);
     }
-    rows.push({ group: 'doc_type', key: t.key, code: t.code, name: t.name_th, status: 'create', account: depositSlot ? accShow('deposit') : undefined,
-      note: t.cls === 'IV' ? 'ภาษีเกณฑ์เงินสด (ถึงกำหนดเมื่อรับชำระ) · ราคาแยก VAT' : t.cls === 'RE' ? 'ใบกำกับภาษีตัวจริงของค่าเช่า/ค่าบริการ (docs/19 ข้อ 3)' : null });
+    rows.push({ group: 'doc_type', key: t.key, code: t.code, name: t.name_th, status: 'create', account: depositSlot && slotAcc ? accShow(slotAcc) : undefined,
+      note: t.cls === 'IV' ? 'ภาษีเกณฑ์เงินสด (ถึงกำหนดเมื่อรับชำระ) · ราคาแยก VAT' : t.cls === 'RE' ? 'ใบกำกับภาษีตัวจริงของค่าเช่า/ค่าบริการ (docs/19 ข้อ 3)'
+        : t.key === 'adv' ? 'ค่าเช่าล่วงหน้า/รับเงินเกินยอดบิล ไม่มี VAT · หักในใบเสร็จของบิลถัดไป เหลือคืนด้วยใบคืนเงิน' : null });
   }
 
   /* ---- 5 วิธีรับชำระ "หักเงินประกัน" ---- */
