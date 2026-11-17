@@ -219,7 +219,14 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
       C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(net.minus(wht)), 'CASH');
       for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
     } else C(partyAp, net, 'AP');
-    if (!depositUsed.isZero() && cls !== 'CP') C(pick(['3', r.def('DEPOSIT_PAID')]), depositUsed, 'DEPOSIT_PAID');
+    // มัดจำจ่ายที่บิลซื้อหัก: Cr บัญชีของใบจ่ายมัดจำแต่ละใบ (ช่อง 1 ของประเภทเอกสาร AE — ช่องเดียวกับที่ใบ AE ลง Dr) แบ่งตามยอดแต่ละใบ
+    // เหมือนฝั่งขาย (IV หัก AI) · ไม่มีข้อมูลใบมัดจำ = บัญชีเพื่อลงรายวันแบบเดิม (เจ้าของ 17/11/2569: VAT ของเงินจ่ายล่วงหน้าเกิดตอนจ่าย)
+    if (!depositUsed.isZero() && cls !== 'CP') {
+      if (deps.length && !depTotal.isZero()) {
+        const parts = allocate(depositUsed, deps.map((x) => d(x.amount)));
+        deps.forEach((x, i) => C(pick(['1', r.slot(x.doc_type_id, 'AE', 'DEPOSIT_PAID')], ['3', r.def('DEPOSIT_PAID')]), parts[i]!, 'DEPOSIT_PAID'));
+      } else C(pick(['3', r.def('DEPOSIT_PAID')]), depositUsed, 'DEPOSIT_PAID');
+    }
   } else if (cls === 'DN') {
     D(partyAp, net, 'AP');
     for (const l of lines) C(lineAccount('PURCHASE_RETURN', l.item_id), d(l.net_amount), 'PURCHASE_RETURN');

@@ -265,6 +265,20 @@ describe('ยอดยกมาที่ลงบัญชี (WTS-Living ลู
     expect(net(p)).toEqual({ 'ar-c1': '5570.00', 'sales-g': '-6500.00', ovatp: '-70.00', 'dep-tenant': '600.00', depr: '400.00' });
     expect(net(buildPosting(h, ls, [], [], slotR))).toMatchObject({ depr: '1000.00' });
   });
+  it('a purchase bill deducting paid deposits: Cr the deposit account of each deposit\'s AE type, split by amount — none given = journal default as before', () => {
+    // เจ้าของ 17/11/2569: จ่ายล่วงหน้าค่าบริการที่มี VAT = ภาษีซื้อเกิดตอนจ่าย (ใบ AE) · บิลซื้อ 2,140 = 2,000 + VAT 140 หักมัดจำ 1,000 (ก่อน VAT) → VAT เฉพาะส่วนที่เหลือ
+    const pr: PostingResolver = { ...r, def: (k) => (k === 'DEPOSIT_PAID' ? 'depp' : DEF[k] ?? null), supplier: (id) => (id === 's1' ? 'ap-s1' : null),
+      slot: (dt, cls, role) => (dt === 'aes' && cls === 'AE' && role === 'DEPOSIT_PAID' ? 'dep-svc' : null) };
+    const h = { id: 'h', doc_class: 'RR' as const, doc_type_id: null, customer_id: null, supplier_id: 's1', net_amount: '1070', vat_amount: '70', deposit_amount: '1000', vat_basis: '1' };
+    const ls = [{ item_id: 'svc', net_amount: '2000' }];
+    const p = buildPosting(h, ls, [], [], pr, [], [{ amount: '700', doc_type_id: 'aes' }, { amount: '300', doc_type_id: null }]);
+    expect(postingBalanced(p)).toBe(true);
+    expect(net(p)).toEqual({ 'exp-svc': '2000.00', ivat: '70.00', 'ap-s1': '-1070.00', 'dep-svc': '-700.00', depp: '-300.00' });
+    expect(net(buildPosting(h, ls, [], [], pr))).toMatchObject({ depp: '-1000.00' });
+    // ใบจ่ายมัดจำ AE ประเภท 'aes': Dr บัญชีเดียวกัน (dep-svc) + ภาษีซื้อตอนจ่าย
+    const ae = buildPosting({ id: 'a', doc_class: 'AE', doc_type_id: 'aes', customer_id: null, supplier_id: 's1', net_amount: '1070', vat_amount: '70', deposit_amount: '0', vat_basis: '1' }, [], [], [], pr);
+    expect(net(ae)).toEqual({ 'dep-svc': '1000.00', ivat: '70.00', cash: '-1070.00' });
+  });
   it('deposit brought forward 8,400.00: Dr the opening account / Cr the deposit account of the AI type', () => {
     expect(net(openingPosting({ doc_class: 'AI', doc_type_id: 'ail', customer_id: 'c1', net_amount: '8400', vat_amount: '0', vat_basis: null }, 'ob', slotR))).toEqual({ ob: '8400.00', 'dep-tenant': '-8400.00' });
     expect(net(openingPosting({ doc_class: 'AI', doc_type_id: null, customer_id: 'c1', net_amount: '8400', vat_amount: '0', vat_basis: null }, 'ob', r))).toEqual({ ob: '8400.00', depr: '-8400.00' });
