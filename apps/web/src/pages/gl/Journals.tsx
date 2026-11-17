@@ -17,7 +17,7 @@ export function JournalsPage() {
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
   const wd = me?.work_date ?? todayIso();
-  const [f, setF] = useState({ book_id: sp.get('book') ?? '', from: sp.get('from') ?? addMonths(wd.slice(0, 8) + '01', -2), to: sp.get('to') ?? wd, q: '', source: 'all', status: 'all' });
+  const [f, setF] = useState({ book_id: sp.get('book') ?? '', from: sp.get('from') ?? addMonths(wd.slice(0, 8) + '01', -2), to: sp.get('to') ?? wd, q: sp.get('q') ?? '', source: 'all', status: 'all' });
   const [page, setPage] = useState(0);
   // เรียงตามคอลัมน์ที่คลิก (คลิกซ้ำ = กลับทิศ) · ค่าเริ่มต้น วันที่ล่าสุดก่อน
   const [sort, setSort] = useState<{ k: string; dir: 'asc' | 'desc' }>({ k: 'date', dir: 'desc' });
@@ -36,7 +36,7 @@ export function JournalsPage() {
   return (
     <div className="page" data-tone="gl">
       <PageHead eyebrow="บัญชี › ลงประจำวัน" title="สมุดรายวัน" lead="ใบสำคัญที่บันทึกเองและที่ลงบัญชีอัตโนมัติจากระบบอื่น — คลิกแถวเพื่อเปิด"
-        actions={<button className={cx('primary', curBook && 'book-btn')} style={bookStyle(bookColor(curBook))} onClick={() => nav(newUrl)} title={curBook ? `บันทึกใบสำคัญใน${curBook.name_th}` : 'บันทึกใบสำคัญ — เลือกสมุดรายวันในหน้าถัดไป'}>+ บันทึกใบสำคัญ{curBook ? ` ${curBook.prefix}` : ''} <kbd>Ins</kbd></button>} />
+        actions={<><button onClick={() => nav('/gl/journals/import')} title="นำเข้าใบสำคัญจากแฟ้ม Excel (สมุดรายวันทุกเล่ม)">⬆ นำเข้า Excel</button><button className={cx('primary', curBook && 'book-btn')} style={bookStyle(bookColor(curBook))} onClick={() => nav(newUrl)} title={curBook ? `บันทึกใบสำคัญใน${curBook.name_th}` : 'บันทึกใบสำคัญ — เลือกสมุดรายวันในหน้าถัดไป'}>+ บันทึกใบสำคัญ{curBook ? ` ${curBook.prefix}` : ''} <kbd>Ins</kbd></button></>} />
       {/* สมุดรายวันเป็นแถบ: เลือกสมุดก่อน แล้ว "บันทึกใบสำคัญ" ลงสมุดนั้น */}
       <Tabs active={f.book_id} onChange={(k) => set({ book_id: k })} tabs={[{ key: '', label: 'ทุกสมุดรายวัน' }, ...(books.data ?? []).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}`, color: bookColor(b) }))]} />
       <div className="filters">

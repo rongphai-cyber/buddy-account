@@ -4916,6 +4916,72 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
     expect((await call('POST', url, { ...base, data: bad })).body.error.message).toMatch(/เลือกประเภทเอกสาร/);
   });
+
+  it('journal import (เจ้าของ 17/11/2569): template, check without saving, all-or-nothing commit via createJournal, line description default, duplicate ref, rights, other tenants', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
+    const exp = accs.find((a) => a.account_no === '5380-06')!.account_no, cashNo = accs.find((a) => a.account_no === '1111-00')!.account_no;
+    const bk = (await call('GET', '/api/v1/gl/books')).body.find((b: { code: string }) => b.code === '00') as { id: string; code: string; prefix: string };
+    const B = bk.prefix?.trim() || bk.code;
+    const url = '/api/v1/gl/journal-import';
+    const H = ['สมุด', 'เลขที่กลุ่ม', 'วันที่', 'อ้างอิง', 'คำอธิบาย', 'เลขที่บัญชี', 'คำอธิบายรายการ', 'แผนก', 'Job', 'เดบิต', 'เครดิต'];
+    const ours = async () => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_journal WHERE company_id = ${co} AND reference LIKE 'IMPJ-%' AND doc_status <> 'C'`.execute(database.db)).rows[0]!.n;
+    // แฟ้มตัวอย่าง .xlsx อ่านกลับได้ หัวตรงตามที่นำเข้า
+    const t = await app.inject({ method: 'GET', url: '/api/v1/gl/journal-import/template', headers: { cookie } });
+    expect(t.statusCode).toBe(200); expect(t.headers['content-type']).toMatch(/spreadsheetml/);
+    expect(readTable('import-journal.xlsx', t.rawPayload)[0]).toEqual(H);
+    const good = csv([H,
+      [B, '1', '20/07/2569', 'IMPJ-1', 'นำเข้าทดสอบ', exp, 'ค่าใช้จ่ายนำเข้า', '', '', '"1,150.50"', ''],
+      [B, '1', '20/07/2569', '', '', cashNo, '', '', '', '', '1150.50'],
+      [B, '2', '21/07/2569', 'IMPJ-2', 'ใบที่สอง', exp, '', '', '', '20', ''],
+      [B, '2', '21/07/2569', '', '', cashNo, '', '', '', '', '20']]);
+    // ตรวจ: ไม่บันทึก
+    const chk = (await call('POST', url, { file_name: 'สมุด.csv', data: good })).body;
+    expect(chk).toMatchObject({ ok: true, committed: false, total_debit: '1170.50' });
+    expect(chk.vouchers.map((v: { voucher_no: string | null }) => v.voucher_no)).toEqual([null, null]);
+    expect(await ours()).toBe(0);
+    // ผิด: ไม่ดุล + ไม่พบบัญชี → บันทึกไม่ได้ทั้งแฟ้ม
+    const bad = csv([H, [B, '1', '20/07/2569', 'IMPJ-9', 'x', exp, '', '', '', '10', ''], [B, '1', '20/07/2569', '', '', '9999-99', '', '', '', '', '9'], ['ZZ', '2', '20/07/2569', '', '', exp, '', '', '', '1', ''], ['ZZ', '2', '20/07/2569', '', '', cashNo, '', '', '', '', '1']]);
+    const be = (await call('POST', url, { file_name: 'x.csv', data: bad })).body.errors.map((e: { message: string }) => e.message).join(' | ');
+    expect(be).toMatch(/ยอดไม่ดุล/); expect(be).toMatch(/ไม่พบสมุดรายวัน "ZZ"/);
+    expect((await call('POST', url, { file_name: 'x.csv', data: bad, commit: true })).status).toBe(400);
+    expect(await ours()).toBe(0);
+    // บันทึก: ออกเลขที่ใบสำคัญให้ · คำอธิบายรายการว่าง = คำอธิบายของใบ · บันทึกประวัติ
+    const done = (await call('POST', url, { file_name: 'สมุด.csv', data: good, commit: true })).body;
+    expect(done.ok).toBe(true);
+    expect(done.vouchers.every((v: { voucher_no: string }) => !!v.voucher_no)).toBe(true);
+    expect(await ours()).toBe(2);
+    const j1 = (await call('GET', `/api/v1/gl/journals?q=IMPJ-1&from=2026-07-01&to=2026-07-31`)).body.rows[0];
+    const jv = (await call('GET', `/api/v1/gl/journals/${j1.id}`)).body as { description: string; reference: string; journal_book_id: string; lines: Array<{ description: string; debit: string; credit: string }> };
+    expect([jv.reference, jv.journal_book_id, jv.description]).toEqual(['IMPJ-1', bk.id, 'นำเข้าทดสอบ']);
+    expect(jv.lines.map((l) => [l.description, l.debit, l.credit])).toEqual([['ค่าใช้จ่ายนำเข้า', '1150.50', '0.00'], ['นำเข้าทดสอบ', '0.00', '1150.50']]);
+    const log = (await call('GET', '/api/v1/activity-log')).body as Array<{ action: string; module: string }>;
+    expect(log.some((x) => x.action === 'IMPORT' && x.module === 'GL')).toBe(true);
+    // นำเข้าซ้ำ = อ้างอิงเดิมในสมุดเดิม ไม่รับ
+    expect((await call('POST', url, { file_name: 'สมุด.csv', data: good })).body.errors[0].message).toMatch(/เคยนำเข้าแล้วเป็น/);
+    // ผู้ใช้ที่ไม่มีสิทธิ์เพิ่มใบสำคัญ นำเข้าไม่ได้
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'imp.clerk', password: 'clerkImp123' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('POST', url, { file_name: 'x.csv', data: good })).status).toBe(403);
+    // ลูกค้าอื่น: แฟ้มเดียวกันตรวจกับผังบัญชี/สมุดของบริษัทตัวเอง — อ้างอิง IMPJ-1 ของบริษัทนี้ไม่นับเป็นนำเข้าซ้ำ (ค้นเฉพาะบริษัทที่เลือก) · ไม่เห็นใบสำคัญของบริษัทนี้ · ไม่บันทึกอะไรในบริษัทนี้
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    const other = (await call('POST', url, { file_name: 'x.csv', data: good })).body as { errors: Array<{ message: string }> };
+    expect(other.errors.some((e) => /เคยนำเข้าแล้ว/.test(e.message))).toBe(false);
+    expect((await call('GET', `/api/v1/gl/journals/${j1.id}`)).status).toBe(404);
+    expect(await ours()).toBe(2);
+    // ไม่ให้กระทบยอดของทดสอบข้ออื่น
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    for (const r of (await call('GET', `/api/v1/gl/journals?q=IMPJ-&from=2026-07-01&to=2026-07-31`)).body.rows as Array<{ id: string }>) await call('POST', `/api/v1/gl/journals/${r.id}/cancel`, { reason: 'ทดสอบนำเข้า' });
+    expect(await ours()).toBe(0);
+  });
 });
 
 describe('ธีมของแต่ละบริษัท (ข้อกำหนดเจ้าของ 30/10/2569)', () => {

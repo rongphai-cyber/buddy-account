@@ -19,6 +19,7 @@ export * from './fixedasset.js';
 export * from './etax.js';
 export * from './ai-bill.js';
 export * from './trade-import.js';
+export * from './journal-import.js';
 export * from './theme.js';
 export * from './i18n.js';
 export * from './password.js';

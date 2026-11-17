@@ -169,6 +169,7 @@ export const MENU: MenuItem[] = [
     m('OT.PASS', 'รหัสผ่านและยืนยันตัวตน', 'P0', '/account/password', ['ch23:S-SEC-05']),
     m('OT.IMPORT', 'นำข้อมูลจาก Express', 'P0', '/admin/import'),
     m('OT.IMPTRADE', 'นำเข้ารายการขาย/ซื้อจาก Excel', 'P7', '/tools/trade-import'),
+    m('OT.IMPJNL', 'นำเข้าใบสำคัญ (สมุดรายวัน) จาก Excel', 'P7', '/gl/journals/import'),
   ]),
 ];
 

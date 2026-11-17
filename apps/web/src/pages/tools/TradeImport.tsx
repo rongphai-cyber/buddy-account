@@ -11,14 +11,14 @@ type Result = { ok: boolean; committed: boolean; price_type: string; vat_rate: s
 type Defaults = { types: Array<{ id: string; code: string; name_th: string; price_type: string | null; vat_rate: string | null }>; vat_rate: number | string; price_type: string };
 
 /** ดาวน์โหลดแบบฟอร์มตัวอย่าง (คุกกี้ session) */
-async function download(url: string, fallback: string) {
+export async function download(url: string, fallback: string) {
   const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) { const j = await res.json().catch(() => null); throw new Error(j?.error?.message ?? 'ดาวน์โหลดไม่สำเร็จ'); }
   const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? fallback;
   const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   return name;
 }
-const readBase64 = (f: File) => new Promise<string>((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => bad(new Error('อ่านแฟ้มไม่ได้')); r.readAsDataURL(f); });
+export const readBase64 = (f: File) => new Promise<string>((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => bad(new Error('อ่านแฟ้มไม่ได้')); r.readAsDataURL(f); });
 
 /**
  * นำเข้ารายการขาย/ซื้อจากแฟ้ม Excel (ข้อกำหนดเจ้าของข้อ 7, 30/10/2569)

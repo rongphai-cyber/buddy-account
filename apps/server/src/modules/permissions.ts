@@ -219,6 +219,7 @@ export const API_RULES: Record<string, Rule> = {
   ])),
   'GET /api/v1/item-images/:imageId': LOOKUP,
   // นำเข้ารายการขาย/ซื้อจาก Excel: สิทธิ์เมนูนำเข้า + (ตรวจในคำขอ) สิทธิ์เพิ่มเอกสารชนิดนั้น
+  'GET /api/v1/gl/journal-import/template': M('GL.JNL', 'read'), 'POST /api/v1/gl/journal-import': M('GL.JNL', 'add'),
   'GET /api/v1/trade-import/:path/template': M('OT.IMPTRADE', 'read'), 'POST /api/v1/trade-import/:path': M('OT.IMPTRADE', 'add'),
   'POST /api/v1/kits/:id/copy': M('IC.KIT', 'add'),
   'GET /api/v1/items/:id/prices': M('IC.PRICE', 'read'), 'PUT /api/v1/items/:id/prices': M('IC.PRICE', 'edit'),
