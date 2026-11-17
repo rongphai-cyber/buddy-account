@@ -13,7 +13,7 @@ export function BranchSelect({ value, onChange }: { value: string; onChange: (v:
 }
 export function DeptSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const d = useDepartments();
-  return <label className="inline">แผนก <select value={value} onChange={(e) => onChange(e.target.value)}><option value="">ทุกแผนก</option>{d.data?.filter((x) => x.status === 'A' || x.id === value).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></label>;
+  return <label className="inline">แผนก <select value={value} onChange={(e) => onChange(e.target.value)}><option value="">ทุกแผนก</option><option value="none">ไม่ระบุแผนก</option>{d.data?.filter((x) => x.status === 'A' || x.id === value).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></label>;
 }
 
 /** เลือกบัญชี: ทุกบัญชี / ช่วงเลขที่บัญชี (จาก–ถึง ค้นหา F4/🔍) / บัญชีเดียว */

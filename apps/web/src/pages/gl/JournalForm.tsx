@@ -353,7 +353,7 @@ export function JournalFormPage() {
                       <td className="small">{a ? a.name_th : <span className="muted">—</span>}</td>
                       <td>
                         <select value={l.department_id ?? ''} onChange={(e) => setLine(l.key, { department_id: e.target.value || null })} aria-invalid={(a?.use_department && !l.department_id) || undefined} data-required={a?.use_department ? 'แผนก' : undefined}>
-                          <option value="">{a?.use_department ? 'ต้องเลือก' : '—'}</option>
+                          <option value="">{a?.use_department ? 'ต้องเลือก' : 'ไม่ระบุ'}</option>
                           {depts.data?.filter((x) => x.status === 'A').map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
                         </select>
                       </td>

@@ -127,7 +127,7 @@
 },
 {
 "th": "วันที่",
-"n": 82,
+"n": 83,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/DocTaxTabs.tsx",
@@ -157,6 +157,7 @@
 "apps/web/src/pages/reports/ReportCenter.tsx",
 "apps/web/src/pages/settings/ActivityLog.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/RepostPanel.tsx",
 "apps/web/src/pages/tax/Etax.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "apps/web/src/pages/tools/TradeImport.tsx",
@@ -1029,6 +1030,30 @@
 ]
 },
 {
+"th": "เครดิต",
+"n": 25,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/web/src/pages/settings/RepostPanel.tsx",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ใช้งาน",
 "n": 25,
 "files": [
@@ -1047,29 +1072,6 @@
 "apps/web/src/pages/settings/Sync.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
 "apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
-"th": "เครดิต",
-"n": 24,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1574,6 +1576,23 @@
 ]
 },
 {
+"th": "ชนิด",
+"n": 15,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/RepostPanel.tsx",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/stock.ts",
+"apps/server/src/modules/reports/tax.ts"
+]
+},
+{
 "th": "ประเภท",
 "n": 15,
 "files": [
@@ -1670,6 +1689,23 @@
 ]
 },
 {
+"th": "เลขที่เอกสาร",
+"n": 15,
+"files": [
+"apps/web/src/components/DocNo.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/RepostPanel.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ใบสำคัญ",
 "n": 15,
 "files": [
@@ -1721,22 +1757,6 @@
 "apps/web/src/pages/reports/ReportCenter.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "ชนิด",
-"n": 14,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/stock.ts",
-"apps/server/src/modules/reports/tax.ts"
 ]
 },
 {
@@ -1811,22 +1831,6 @@
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/payroll-files.ts",
 "packages/core/src/taxid.ts"
-]
-},
-{
-"th": "เลขที่เอกสาร",
-"n": 14,
-"files": [
-"apps/web/src/components/DocNo.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -5272,6 +5276,16 @@
 ]
 },
 {
+"th": "ไม่ระบุแผนก",
+"n": 4,
+"files": [
+"apps/web/src/components/ReportFilters.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/reports/gl.ts"
+]
+},
+{
 "th": "+ เพิ่ม{0}",
 "n": 3,
 "files": [
@@ -6417,6 +6431,14 @@
 "files": [
 "apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/payroll/Runs.tsx"
+]
+},
+{
+"th": "ลงบัญชีใหม่",
+"n": 3,
+"files": [
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/settings/RepostPanel.tsx"
 ]
 },
 {
@@ -12212,6 +12234,14 @@
 ]
 },
 {
+"th": "ไม่ระบุ",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx",
+"packages/core/src/ai-bill.ts"
+]
+},
+{
 "th": "ไม่ระบุ (ตามเอกสาร)",
 "n": 2,
 "files": [
@@ -12671,6 +12701,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
+"th": "(ลงใหม่ได้ครั้งละ {0} ใบ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
 ]
 },
 {
@@ -13714,6 +13751,13 @@
 "n": 1,
 "files": [
 "packages/core/src/forms/wht50.ts"
+]
+},
+{
+"th": "3. ลงบัญชีใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -16384,6 +16428,13 @@
 ]
 },
 {
+"th": "· ข้าม {0} ใบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
 "th": "· ค่าใช้จ่าย",
 "n": 1,
 "files": [
@@ -17312,6 +17363,13 @@
 "n": 1,
 "files": [
 "apps/server/src/migrate.ts"
+]
+},
+{
+"th": "กำลังลงบัญชีใหม่…",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
 ]
 },
 {
@@ -23647,6 +23705,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "ต้องมีสิทธิ์แก้ไขการเชื่อมต่อบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
 ]
 },
 {
@@ -32449,6 +32514,13 @@
 ]
 },
 {
+"th": "ยอดรายบัญชีของการลงใหม่ไม่เท่าใบสำคัญเดิม (บัญชีที่ตั้งไว้เปลี่ยนไปแล้ว) — ไม่ลงใหม่ ตรวจที่ ลงบัญชีใหม่รายเอกสาร",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/repost-batch.ts"
+]
+},
+{
 "th": "ยอดสะสม",
 "n": 1,
 "files": [
@@ -36726,17 +36798,31 @@
 ]
 },
 {
-"th": "ลงบัญชีใหม่",
+"th": "ลงบัญชีใหม่ (ไม่คำนวณ)",
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
 ]
 },
 {
-"th": "ลงบัญชีใหม่ (ไม่คำนวณ)",
+"th": "ลงบัญชีใหม่ {0} ใบ",
 "n": 1,
 "files": [
-"apps/web/src/pages/fa/Assets.tsx"
+"apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
+"th": "ลงบัญชีใหม่ {0} ใบ — ยอดเงินรายบัญชีเท่าเดิม เปลี่ยนแผนกและคำอธิบายของบรรทัด (ใบที่ยอดไม่ตรงจะข้าม) ทำต่อหรือไม่?",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
+"th": "ลงบัญชีใหม่แล้ว {0} ใบ{1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
 ]
 },
 {
@@ -41276,6 +41362,13 @@
 ]
 },
 {
+"th": "อยู่ในงวดที่ปิดแล้ว {0} ใบ — ลงใหม่ไม่ได้จนกว่าจะเปิดงวด (ไม่จำเป็น ถ้าไม่ต้องการรายงานรายแผนกของงวดนั้น): {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
 "th": "อยู่ในสินค้าชุด",
 "n": 1,
 "files": [
@@ -42200,6 +42293,13 @@
 ]
 },
 {
+"th": "เข้าเงื่อนไข",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
 "th": "เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่/วันที่เอกสาร",
 "n": 1,
 "files": [
@@ -43002,6 +43102,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
+"th": "เฉพาะใบที่ยอดเงินรายบัญชีเท่าเดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
 ]
 },
 {
@@ -44069,6 +44176,13 @@
 ]
 },
 {
+"th": "เท่ากัน ✓",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
 "th": "เท่ายอดชำระ",
 "n": 1,
 "files": [
@@ -44325,6 +44439,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/routes.ts"
+]
+},
+{
+"th": "เปลี่ยนแค่แผนกและคำอธิบาย · ใบที่ยอดไม่ตรงหรืองวดปิดแล้วจะข้ามและแจ้ง · ทุกใบบันทึกประวัติการทำงาน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
 ]
 },
 {
@@ -47191,6 +47312,13 @@
 ]
 },
 {
+"th": "เอกสารที่ลงบัญชีไว้ก่อน 17/11/2569: แผนกที่เลือกรายบรรทัด (เช่น เงินสดย่อย ฝ่าย 03/01/04) และรายละเอียดของบรรทัด ยังไม่อยู่ในใบสำคัญ — รายงานรายแผนกจึงไม่นับ · กดลงบัญชีใหม่ ระบบจะลงใบสำคัญเดิม (เลขที่เดิม) ใหม่ทีละใบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
 "th": "เอกสารที่สำนักงานใหญ่ไม่รับ: เอกสารถัดไปจะรอจนกว่าจะแก้ — แก้สาเหตุที่สำนักงานใหญ่ (เช่น เปิดงวด) แล้วกด \"ส่งใหม่\" หรือผู้ดูแลกด \"ยกเลิกเอกสารนี้\" (ลบที่เครื่องสาขา เลขที่นั้นไม่ถูกใช้)",
 "n": 1,
 "files": [
@@ -49459,6 +49587,13 @@
 ]
 },
 {
+"th": "ใบ{0} · ยอดรวมใบสำคัญทั้งบริษัท เดบิต",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
 "th": "ใบกำกับ#",
 "n": 1,
 "files": [
@@ -51461,6 +51596,13 @@
 ]
 },
 {
+"th": "ไม่มีเอกสารที่ต้องลงบัญชีใหม่ ✓",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
 "th": "ไม่มีเอกสารที่อ้างถึง (เช็คยกมา/ย้ายข้อมูล)",
 "n": 1,
 "files": [
@@ -51538,13 +51680,6 @@
 ]
 },
 {
-"th": "ไม่ระบุ",
-"n": 1,
-"files": [
-"packages/core/src/ai-bill.ts"
-]
-},
-{
 "th": "ไม่ระบุรหัส",
 "n": 1,
 "files": [
@@ -51556,13 +51691,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/dashboard.ts"
-]
-},
-{
-"th": "ไม่ระบุแผนก",
-"n": 1,
-"files": [
-"apps/server/src/modules/reports/gl.ts"
 ]
 },
 {
@@ -51682,6 +51810,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ไม่เท่ากัน — แจ้งผู้ดูแลระบบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/RepostPanel.tsx"
 ]
 },
 {

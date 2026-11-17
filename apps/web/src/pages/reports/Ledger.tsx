@@ -55,7 +55,7 @@ export function LedgerPage() {
     `ตั้งแต่ ${formatDate(A.from, ys)} ถึง ${formatDate(A.to, ys)}`,
     scopeText(A.scope, (id) => { const a = accts.data?.find((x) => x.id === id); return a ? `${a.account_no} ${a.name_th}` : ''; }),
     A.branch ? `สาขา ${branches.data?.find((b) => b.id === A.branch)?.name ?? ''}` : 'ทุกสาขา',
-    A.dept ? `แผนก ${depts.data?.find((x) => x.id === A.dept)?.name_th ?? ''}` : 'ทุกแผนก',
+    A.dept === 'none' ? 'ไม่ระบุแผนก' : A.dept ? `แผนก ${depts.data?.find((x) => x.id === A.dept)?.name_th ?? ''}` : 'ทุกแผนก',
   ].join(' · '), [A, accts.data, branches.data, depts.data, ys]);
   const changed = !!A && JSON.stringify(A) !== JSON.stringify(f);
   return (

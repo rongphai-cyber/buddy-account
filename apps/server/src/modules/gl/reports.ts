@@ -31,7 +31,7 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
   /* ---------------------------------------------------------------- งบทดลอง (รายงาน 5.6.1 งบทดลองแบบเต็ม) */
   app.get('/api/v1/reports/trial-balance', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ from: isoDate, to: isoDate, level: z.coerce.number().int().min(0).max(9).default(0), branch_id: uuid.optional(), department_id: uuid.optional(), zero: z.enum(['0', '1']).default('0'),
+    const q = parse(z.object({ from: isoDate, to: isoDate, level: z.coerce.number().int().min(0).max(9).default(0), branch_id: uuid.optional(), department_id: deptParam, zero: z.enum(['0', '1']).default('0'),
       account_from: z.string().max(30).optional(), account_to: z.string().max(30).optional() }), req.query);
     if (q.from > q.to) throw badRequest('วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด');
     // ช่วงเลขที่บัญชี (เจ้าของ 17/11/2569): "ถึง" รวมบัญชีย่อยที่ขึ้นต้นด้วยเลขนั้น
@@ -39,7 +39,7 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
     const fy = await fiscalYearOf(db, a.companyId, q.from);
     if (fy && q.to > fy.end_date) throw badRequest(`ช่วงวันที่ต้องอยู่ในปีบัญชีเดียวกัน (ปี ${fy.code} สิ้นสุด ${fy.end_date})`);
     const chart = await loadChart(db, a.companyId);
-    const leaf = await leafTotals(db, a.companyId, chart, q.from, q.to, { branchId: q.branch_id, departmentId: q.department_id });
+    const leaf = await leafTotals(db, a.companyId, chart, q.from, q.to, deptFilter(q.branch_id, q.department_id));
     const all = rollUp(chart, leaf);
     // level 0 = เฉพาะบัญชีย่อย (บัญชีที่ลงรายการได้); 1..9 = แสดงบัญชีคุมถึงระดับนั้น + บัญชีย่อยที่อยู่สูงกว่า
     const rows = [...chart.byId.values()].filter((x) => {
@@ -97,7 +97,7 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/reports/ledgers', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ from: isoDate, to: isoDate, account_id: uuid.optional(), account_from: z.string().max(30).optional(), account_to: z.string().max(30).optional(),
-      branch_id: uuid.optional(), department_id: uuid.optional(), zero: z.enum(['0', '1']).default('0') }), req.query);
+      branch_id: uuid.optional(), department_id: deptParam, zero: z.enum(['0', '1']).default('0') }), req.query);
     if (q.from > q.to) throw badRequest('วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด');
     return ledgerReport(db, a.companyId, q);
   });
@@ -497,6 +497,9 @@ export async function ledgerOf(db: Db, companyId: string, accountId: string, fro
 }
 
 const LEDGER_MAX_LINES = 50_000;
+/** แผนก: รหัสแผนก หรือ 'none' = เฉพาะรายการที่ไม่ระบุแผนก (เจ้าของ 17/11/2569 ข้อ ข) */
+const deptParam = z.union([z.string().uuid(), z.literal('none')]).optional();
+const deptFilter = (branchId?: string, dept?: string): BalanceFilter => ({ branchId, ...(dept === 'none' ? { noDepartment: true } : { departmentId: dept }) });
 /** บัญชีแยกประเภทหลายบัญชีในครั้งเดียว — 1 query ยอดยกมา (leafTotals) + 1 query รายการ · บัญชีคุมที่เลือกเป็น "บัญชีเดียว" = รวมรายการของบัญชีย่อย (แบบเดิม) */
 export async function ledgerReport(db: Db, companyId: string, q: { from: string; to: string; account_id?: string; account_from?: string; account_to?: string; branch_id?: string; department_id?: string; zero?: '0' | '1' }) {
   const chart = await loadChart(db, companyId);
@@ -510,7 +513,7 @@ export async function ledgerReport(db: Db, companyId: string, q: { from: string;
     groups = [...chart.byId.values()].filter((x) => !x.is_control && inRange(x.account_no)).sort((x, y) => x.account_no.localeCompare(y.account_no)).map((acc) => ({ acc, ids: [acc.id] }));
   }
   const ids = [...new Set(groups.flatMap((g) => g.ids))];
-  const leaf = await leafTotals(db, companyId, chart, q.from, q.to, { branchId: q.branch_id, departmentId: q.department_id });
+  const leaf = await leafTotals(db, companyId, chart, q.from, q.to, deptFilter(q.branch_id, q.department_id));
   let s = db.selectFrom('gl_journal_line as l').innerJoin('gl_journal as j', 'j.id', 'l.journal_id').innerJoin('gl_account as g', 'g.id', 'l.account_id')
     .leftJoin('md_department as dp', 'dp.id', 'l.department_id').leftJoin('doc_header as h', 'h.id', 'j.source_header_id')
     .select(['l.account_id', 'j.id as journal_id', 'j.voucher_no', 'j.voucher_date', 'j.description as journal_description', 'l.description', 'l.debit', 'l.credit', 'g.account_no', 'dp.code as department_code',
@@ -519,7 +522,8 @@ export async function ledgerReport(db: Db, companyId: string, q: { from: string;
     .where('j.voucher_date', '>=', q.from).where('j.voucher_date', '<=', q.to);
   s = ids.length ? s.where('l.account_id', 'in', ids) : s.where(sql<boolean>`false`);
   if (q.branch_id) s = s.where(sql<string>`coalesce(j.branch_id, ${hqBranch(companyId)})`, '=', q.branch_id);
-  if (q.department_id) s = s.where('l.department_id', '=', q.department_id);
+  if (q.department_id === 'none') s = s.where('l.department_id', 'is', null);
+  else if (q.department_id) s = s.where('l.department_id', '=', q.department_id);
   const lines = await fillPostedDesc(db, companyId, await s.orderBy('g.account_no').orderBy('j.voucher_date').orderBy('j.voucher_no').orderBy('l.line_no').limit(LEDGER_MAX_LINES + 1).execute(),
     (l) => l.journal_description, (l) => l.source_header_id);
   const truncated = lines.length > LEDGER_MAX_LINES;

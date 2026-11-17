@@ -8,6 +8,7 @@ import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, ErrorBox, Field, KeyHints, Modal, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, cx } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { AddWrap } from '../../components/AddWrap';
+import { RepostPanel } from './RepostPanel';
 
 /* ---------------------------------------------------------------- เลขที่เอกสาร S-DN-01 */
 interface DocTypeRow { id: string; code: string; doc_class: string; module: string; name_th: string; name_en: string | null; next_no: string; status: string; book_code: string | null; book_name: string | null; department_code: string | null; doc_count: number; account_count: number }
@@ -256,7 +257,8 @@ export function GlLinkPage() {
         lead="ลำดับการหาเลขที่บัญชีเมื่อลงรายวันอัตโนมัติ: 1 บัญชีที่ประเภทเอกสาร (เลขที่เอกสาร) → 2 แฟ้มหลัก (ลูกค้า ผู้จำหน่าย สินค้า→กลุ่มบัญชี บัญชีเงินฝาก) → 3 บัญชีเพื่อลงรายวันในหน้านี้"
         actions={can('edit') && <button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button>} />
       <ErrorBox error={err ?? cur.error} />
-      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'routes', label: '1. การผ่านรายการไปสมุดบัญชี' }, { key: 'defaults', label: '2. บัญชีเพื่อลงรายวัน' }]} />
+      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'routes', label: '1. การผ่านรายการไปสมุดบัญชี' }, { key: 'defaults', label: '2. บัญชีเพื่อลงรายวัน' }, { key: 'repost', label: '3. ลงบัญชีใหม่' }]} />
+      {tab === 'repost' && <RepostPanel />}
       {st && tab === 'routes' && <div onKeyDown={navKey}>
         <fieldset className="box">
           <label className="check"><input type="checkbox" checked={st.link} onChange={(e) => setSt({ ...st, link: e.target.checked })} /> <b>เชื่อมต่อระบบบัญชี</b> — ส่งรายการจากระบบซื้อ ขาย การเงิน สินค้า ไปลงสมุดรายวันอัตโนมัติ</label>

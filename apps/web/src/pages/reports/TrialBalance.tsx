@@ -38,7 +38,7 @@ export function TrialBalancePage() {
   const t = q.data?.totals;
   const branches = useBranches(), depts = useDepartments();
   const cond = useMemo(() => A && [`ตั้งแต่ ${formatDate(A.from, ys)} ถึง ${formatDate(A.to, ys)}`, scopeText(A.scope, () => ''),
-    A.branch ? `สาขา ${branches.data?.find((b) => b.id === A.branch)?.name ?? ''}` : 'ทุกสาขา', A.dept ? `แผนก ${depts.data?.find((x) => x.id === A.dept)?.name_th ?? ''}` : 'ทุกแผนก'].join(' · '), [A, branches.data, depts.data, ys]);
+    A.branch ? `สาขา ${branches.data?.find((b) => b.id === A.branch)?.name ?? ''}` : 'ทุกสาขา', A.dept === 'none' ? 'ไม่ระบุแผนก' : A.dept ? `แผนก ${depts.data?.find((x) => x.id === A.dept)?.name_th ?? ''}` : 'ทุกแผนก'].join(' · '), [A, branches.data, depts.data, ys]);
   const changed = !!A && JSON.stringify(A) !== JSON.stringify(f);
   return (
     <div className="page" data-tone="reports">

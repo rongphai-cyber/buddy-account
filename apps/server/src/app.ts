@@ -24,6 +24,7 @@ import { bankingRoutes } from './modules/banking.js';
 import { docTypeRoutes } from './modules/doc-types.js';
 import { dataTableRoutes } from './modules/data-tables.js';
 import { docRoutes } from './modules/docs/routes.js';
+import { repostBatchRoutes } from './modules/docs/repost-batch.js';
 import { tradeRoutes } from './modules/docs/trade.js';
 import { settleRoutes } from './modules/docs/settle.js';
 import { cashDocRoutes } from './modules/docs/cashdocs.js';
@@ -135,6 +136,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   docTypeRoutes(app, db);
   dataTableRoutes(app, db);
   docRoutes(app, db);
+  repostBatchRoutes(app, db);
   tradeRoutes(app, db);
   settleRoutes(app, db);
   cashDocRoutes(app, db);

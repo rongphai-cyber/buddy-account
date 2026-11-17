@@ -996,6 +996,14 @@ describe('Buddy Account API (PGlite)', () => {
     expect(ranged.sections[0]!.rows.find((r) => r.voucher_no === 'IV0000002')?.description).toBe(`${jv.description} · ภาษีขาย`);
     const tbr = (await call('GET', `/api/v1/reports/trial-balance?from=2026-05-01&to=2026-05-31&account_from=${encodeURIComponent(vatNo)}&account_to=${encodeURIComponent(vatNo)}`)).body as { rows: Array<{ account_no: string }> };
     expect(tbr.rows.map((r) => r.account_no)).toEqual([vatNo]);
+    // แผนก "ไม่ระบุ" (เจ้าของ 17/11/2569 ข้อ ข): ยอดแต่ละแผนก + ไม่ระบุแผนก = ทุกแผนก (งบทดลองและแยกประเภท)
+    const dps = (await call('GET', '/api/v1/departments')).body as Array<{ id: string }>;
+    const tbDebit = async (dept?: string) => ((await call('GET', `/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31${dept ? `&department_id=${dept}` : ''}`)).body as { totals: { debit: string } }).totals.debit;
+    const parts = await Promise.all([...dps.map((x) => tbDebit(x.id)), tbDebit('none')]);
+    expect(parts.reduce((t, v) => t + Number(v), 0).toFixed(2)).toBe(Number(await tbDebit()).toFixed(2));
+    const ledNone = (await call('GET', '/api/v1/reports/ledgers?from=2026-01-01&to=2026-12-31&department_id=none')).body as { debit: string };
+    expect(ledNone.debit).toBe(parts.at(-1));
+    expect((await call('GET', '/api/v1/reports/ledgers?from=2026-01-01&to=2026-12-31&department_id=abc')).status).toBe(400);
     const tb =(await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body;
     expect(tb.balanced).toBe(true);
     // ลงบัญชีใหม่ หลังกำหนดบัญชีลูกหนี้ที่ตัวลูกค้า: ใบสำคัญเดิมใช้บัญชีจากแฟ้มหลัก (ชั้น 2)
@@ -1434,6 +1442,21 @@ describe('Buddy Account API (PGlite)', () => {
     expect(await jl(dp2.id)).toEqual(['EXPENSE:200.00:0.00', 'EXPENSE:300.00:0.00', 'PETTY_CASH:0.00:500.00']);
     const dp2j = (await call('GET', `/api/v1/gl/journals/${(await call('GET', `/api/v1/docs/${dp2.id}/journal`)).body.journals[0].id}`)).body as { description: string; lines: Array<{ posting_role: string; description: string }> };
     expect(dp2j.lines.map((l) => `${l.posting_role}:${l.description}`)).toEqual(['EXPENSE:ค่าแท็กซี่', 'EXPENSE:ค่าทางด่วน', `PETTY_CASH:${dp2j.description}`]);
+    // ลงบัญชีใหม่ทั้งชุด (HANDOFF 126 เจ้าของ "ลงบัญชีใหม่"): ใบที่ลงก่อนแก้ (ไม่มีคำอธิบายบรรทัด) → อยู่ในรายการ → ลงใหม่ ยอดรวมเท่าเดิม คำอธิบายกลับมา
+    const jid2 = (await call('GET', `/api/v1/docs/${dp2.id}/journal`)).body.journals[0].id as string;
+    await sql`UPDATE gl_journal_line SET description = NULL WHERE journal_id = ${jid2}`.execute(database.db);
+    const cand = (await call('GET', '/api/v1/docs/repost-candidates')).body as { count: number; rows: Array<{ id: string; doc_no: string }> };
+    expect(cand.rows.map((r) => r.doc_no)).toContain(dp2.doc_no);
+    // บริษัทอื่นลงใหม่เอกสารของบริษัทนี้ไม่ได้ (ไม่อยู่ในรายการของบริษัทที่เลือก)
+    await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await call('POST', '/api/v1/docs/repost-batch', { ids: [dp2.id] })).body).toMatchObject({ reposted: 0 });
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    const rb = (await call('POST', '/api/v1/docs/repost-batch', { ids: cand.rows.map((r) => r.id) })).body as { reposted: number; done: string[]; same_totals: boolean; before: unknown; after: unknown };
+    expect(rb.done).toContain(dp2.doc_no);
+    expect(rb.same_totals).toBe(true);
+    expect(rb.before).toEqual(rb.after);
+    expect((await call('GET', `/api/v1/gl/journals/${jid2}`)).body.lines.map((l: { description: string }) => l.description).slice(0, 2)).toEqual(['ค่าแท็กซี่', 'ค่าทางด่วน']);
+    expect(((await call('GET', '/api/v1/docs/repost-candidates')).body as { rows: Array<{ doc_no: string }> }).rows.map((r) => r.doc_no)).not.toContain(dp2.doc_no);
     // ใบจ่ายเดิมที่ยังไม่ลงบัญชี (ก่อนเปลี่ยนวิธี/ย้ายจาก Express) — ลงบัญชีให้ตอนบันทึกใบเบิก
     await sql`UPDATE gl_journal SET deleted_at = now() WHERE source_header_id = ${dp1.id}`.execute(database.db);
     await sql`UPDATE doc_header SET journal_id = NULL, gl_posted = 'N' WHERE id = ${dp1.id}`.execute(database.db);

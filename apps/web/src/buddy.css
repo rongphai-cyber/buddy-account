@@ -258,3 +258,4 @@ td .lk-add:not(:focus-within):not(:hover) > .icon-btn { display: none; }
 .ledger-report tr.total td { font-weight: 700; border-top: 1px solid var(--line); }
 @media print { .ledger-report tr.acc-head { break-after: avoid; } }
 .ledger-report tr.opening td { background: var(--surface-2); font-weight: 600; }
+.notebox.ok-box { background: var(--ok-soft); color: var(--ok); }
