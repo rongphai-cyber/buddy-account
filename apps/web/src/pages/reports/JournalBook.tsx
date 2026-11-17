@@ -6,6 +6,7 @@ import { api, type Book } from '../../api';
 import { useSession } from '../../session';
 import { PeriodRange } from '../../components/PeriodPicker';
 import { ErrorBox, PageHead } from '../../ui';
+import { ExcelButton } from '../../components/ExcelExport';
 
 interface R { rows: Array<{ id: string; voucher_no: string; voucher_date: string; description: string | null; book_code: string; lines: Array<{ account_no: string; name_th: string; description: string | null; debit: string; credit: string }> }>; truncated: boolean }
 
@@ -21,7 +22,7 @@ export function JournalBookPage() {
   const q = useQuery({ enabled: !!range.from && !!book, queryKey: ['jbook', range, book], queryFn: () => api.get<R>('/api/v1/reports/journal-book', { ...range, book_id: book }) });
   return (
     <div className="page" data-tone="reports">
-      <PageHead eyebrow="รายงาน › สมุดรายวัน" title="รายงานสมุดรายวัน" lead={range.from ? `${formatDate(range.from, ys)} – ${formatDate(range.to, ys)}` : undefined} actions={<button onClick={() => window.print()}>พิมพ์</button>} />
+      <PageHead eyebrow="รายงาน › สมุดรายวัน" title="รายงานสมุดรายวัน" lead={range.from ? `${formatDate(range.from, ys)} – ${formatDate(range.to, ys)}` : undefined} actions={<><button onClick={() => window.print()}>🖨 พิมพ์</button><ExcelButton disabled={!q.data} /></>} />
       <div className="filters no-print">
         <select value={book} onChange={(e) => setBook(e.target.value)}><option value="">— เลือกสมุดรายวัน —</option>{books.data?.map((b) => <option key={b.id} value={b.id}>{b.code} {b.name_th}</option>)}</select>
         <PeriodRange value={range} onChange={onRange} single />

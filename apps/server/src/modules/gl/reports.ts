@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { d, ZERO, addMonths, addDays, formatDate, runFsLayout, expandHeader, isFormulaColumn, type FsColumn, type FsLine, type FsRow, Decimal } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../../http.js';
-import { closingOf, fiscalYearOf, isPL, leafTotals, loadChart, rollUp, type BalanceFilter, type Chart, type Totals, hqBranch } from './balances.js';
+import { closingOf, fiscalYearOf, isPL, leafTotals, loadChart, rollUp, type AccountRow, type BalanceFilter, type Chart, type Totals, hqBranch } from './balances.js';
 import { logActivity } from '../../audit.js';
 import { budgetTotals } from './budget.js';
 import { fillPostedDesc } from './posted-desc.js';
@@ -31,8 +31,11 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
   /* ---------------------------------------------------------------- งบทดลอง (รายงาน 5.6.1 งบทดลองแบบเต็ม) */
   app.get('/api/v1/reports/trial-balance', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ from: isoDate, to: isoDate, level: z.coerce.number().int().min(0).max(9).default(0), branch_id: uuid.optional(), department_id: uuid.optional(), zero: z.enum(['0', '1']).default('0') }), req.query);
+    const q = parse(z.object({ from: isoDate, to: isoDate, level: z.coerce.number().int().min(0).max(9).default(0), branch_id: uuid.optional(), department_id: uuid.optional(), zero: z.enum(['0', '1']).default('0'),
+      account_from: z.string().max(30).optional(), account_to: z.string().max(30).optional() }), req.query);
     if (q.from > q.to) throw badRequest('วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด');
+    // ช่วงเลขที่บัญชี (เจ้าของ 17/11/2569): "ถึง" รวมบัญชีย่อยที่ขึ้นต้นด้วยเลขนั้น
+    const inRange = (no: string) => (!q.account_from || no >= q.account_from) && (!q.account_to || no <= q.account_to || no.startsWith(q.account_to));
     const fy = await fiscalYearOf(db, a.companyId, q.from);
     if (fy && q.to > fy.end_date) throw badRequest(`ช่วงวันที่ต้องอยู่ในปีบัญชีเดียวกัน (ปี ${fy.code} สิ้นสุด ${fy.end_date})`);
     const chart = await loadChart(db, a.companyId);
@@ -46,6 +49,7 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
       const t = (q.level === 0 ? leaf.get(x.id) : all.get(x.id)) ?? { opening: ZERO, debit: ZERO, credit: ZERO };
       return { id: x.id, account_no: x.account_no, name_th: x.name_th, name_en: x.name_en, level: x.level, account_group: x.account_group, is_control: x.is_control, ...t2(t) };
     }).filter((r) => q.zero === '1' || !(d(r.opening).isZero() && d(r.debit).isZero() && d(r.credit).isZero()))
+      .filter((r) => inRange(r.account_no))
       .sort((x, y) => x.account_no.localeCompare(y.account_no));
     const sum = (f: (r: (typeof rows)[number]) => Decimal) => rows.reduce((s, r) => s.plus(f(r)), ZERO).toFixed(2);
     const totals = {
@@ -86,6 +90,16 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const q = parse(z.object({ account_id: uuid, from: isoDate, to: isoDate, branch_id: uuid.optional(), department_id: uuid.optional() }), req.query);
     return ledgerOf(db, a.companyId, q.account_id, q.from, q.to, { branchId: q.branch_id, departmentId: q.department_id });
+  });
+
+  /* ---------------------------------------------------------------- บัญชีแยกประเภท หลายบัญชี (เจ้าของ 17/11/2569) */
+  // ทุกบัญชี / ช่วงเลขที่บัญชี / บัญชีเดียว · สาขา · แผนก · แสดงบัญชีที่ไม่มียอด — ยอดคำนวณสดจากใบสำคัญ (ตรงกับ /reports/ledger)
+  app.get('/api/v1/reports/ledgers', async (req) => {
+    const a = requireCompany(req);
+    const q = parse(z.object({ from: isoDate, to: isoDate, account_id: uuid.optional(), account_from: z.string().max(30).optional(), account_to: z.string().max(30).optional(),
+      branch_id: uuid.optional(), department_id: uuid.optional(), zero: z.enum(['0', '1']).default('0') }), req.query);
+    if (q.from > q.to) throw badRequest('วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด');
+    return ledgerReport(db, a.companyId, q);
   });
 
   /* ---------------------------------------------------------------- รายงานสมุดรายวัน */
@@ -480,4 +494,46 @@ export async function ledgerOf(db: Db, companyId: string, accountId: string, fro
   const rows = lines.map((l) => { run = run.plus(d(l.debit)).minus(d(l.credit)); return { ...l, balance: run.toFixed(2) }; });
   const debit = lines.reduce((x, l) => x.plus(d(l.debit)), ZERO), credit = lines.reduce((x, l) => x.plus(d(l.credit)), ZERO);
   return { account: acc, opening: opening.toFixed(2), rows, debit: debit.toFixed(2), credit: credit.toFixed(2), closing: run.toFixed(2) };
+}
+
+const LEDGER_MAX_LINES = 50_000;
+/** บัญชีแยกประเภทหลายบัญชีในครั้งเดียว — 1 query ยอดยกมา (leafTotals) + 1 query รายการ · บัญชีคุมที่เลือกเป็น "บัญชีเดียว" = รวมรายการของบัญชีย่อย (แบบเดิม) */
+export async function ledgerReport(db: Db, companyId: string, q: { from: string; to: string; account_id?: string; account_from?: string; account_to?: string; branch_id?: string; department_id?: string; zero?: '0' | '1' }) {
+  const chart = await loadChart(db, companyId);
+  const inRange = (no: string) => (!q.account_from || no >= q.account_from) && (!q.account_to || no <= q.account_to || no.startsWith(q.account_to));
+  let groups: Array<{ acc: AccountRow; ids: string[] }>;
+  if (q.account_id) {
+    const acc = chart.byId.get(q.account_id);
+    if (!acc) throw notFound('บัญชี');
+    groups = [{ acc, ids: chart.family(acc.id) }];
+  } else {
+    groups = [...chart.byId.values()].filter((x) => !x.is_control && inRange(x.account_no)).sort((x, y) => x.account_no.localeCompare(y.account_no)).map((acc) => ({ acc, ids: [acc.id] }));
+  }
+  const ids = [...new Set(groups.flatMap((g) => g.ids))];
+  const leaf = await leafTotals(db, companyId, chart, q.from, q.to, { branchId: q.branch_id, departmentId: q.department_id });
+  let s = db.selectFrom('gl_journal_line as l').innerJoin('gl_journal as j', 'j.id', 'l.journal_id').innerJoin('gl_account as g', 'g.id', 'l.account_id')
+    .leftJoin('md_department as dp', 'dp.id', 'l.department_id').leftJoin('doc_header as h', 'h.id', 'j.source_header_id')
+    .select(['l.account_id', 'j.id as journal_id', 'j.voucher_no', 'j.voucher_date', 'j.description as journal_description', 'l.description', 'l.debit', 'l.credit', 'g.account_no', 'dp.code as department_code',
+      'h.doc_no as source_doc_no', 'h.id as source_header_id', 'h.doc_class as source_doc_class', 'j.reference', 'l.posting_role'])
+    .where('j.company_id', '=', companyId).where('j.doc_status', '=', 'N').where('j.deleted_at', 'is', null).where('l.deleted_at', 'is', null)
+    .where('j.voucher_date', '>=', q.from).where('j.voucher_date', '<=', q.to);
+  s = ids.length ? s.where('l.account_id', 'in', ids) : s.where(sql<boolean>`false`);
+  if (q.branch_id) s = s.where(sql<string>`coalesce(j.branch_id, ${hqBranch(companyId)})`, '=', q.branch_id);
+  if (q.department_id) s = s.where('l.department_id', '=', q.department_id);
+  const lines = await fillPostedDesc(db, companyId, await s.orderBy('g.account_no').orderBy('j.voucher_date').orderBy('j.voucher_no').orderBy('l.line_no').limit(LEDGER_MAX_LINES + 1).execute(),
+    (l) => l.journal_description, (l) => l.source_header_id);
+  const truncated = lines.length > LEDGER_MAX_LINES;
+  if (truncated) lines.length = LEDGER_MAX_LINES;
+  const byAcc = new Map<string, typeof lines>();
+  for (const l of lines) { const x = byAcc.get(l.account_id) ?? []; x.push(l); byAcc.set(l.account_id, x); }
+  let tDr = ZERO, tCr = ZERO;
+  const sections = groups.map(({ acc, ids: fam }) => {
+    const opening = fam.reduce((x, id) => x.plus(leaf.get(id)?.opening ?? ZERO), ZERO);
+    const mine = fam.length === 1 ? byAcc.get(acc.id) ?? [] : fam.flatMap((id) => byAcc.get(id) ?? []).sort((x, y) => String(x.voucher_date).localeCompare(String(y.voucher_date)) || x.voucher_no.localeCompare(y.voucher_no));
+    let run = opening, dr = ZERO, cr = ZERO;
+    const rows = mine.map((l) => { run = run.plus(d(l.debit)).minus(d(l.credit)); dr = dr.plus(d(l.debit)); cr = cr.plus(d(l.credit)); return { ...l, balance: run.toFixed(2) }; });
+    tDr = tDr.plus(dr); tCr = tCr.plus(cr);
+    return { account: { id: acc.id, account_no: acc.account_no, name_th: acc.name_th, name_en: acc.name_en, is_control: acc.is_control }, opening: opening.toFixed(2), debit: dr.toFixed(2), credit: cr.toFixed(2), closing: run.toFixed(2), rows };
+  }).filter((x) => q.account_id || q.zero === '1' || x.rows.length || !d(x.opening).isZero());
+  return { from: q.from, to: q.to, sections, debit: tDr.toFixed(2), credit: tCr.toFixed(2), truncated, account_count: sections.length };
 }

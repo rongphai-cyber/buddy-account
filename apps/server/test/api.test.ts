@@ -448,6 +448,9 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('PUT', '/api/v1/gl/prior-year/entry', { fiscal_year_id: ofy, account_id: cash, opening: { debit: '1' }, periods: [] })).body.error.message).toMatch(/ไม่พบบัญชี/);
     // รายละเอียดประกอบของบริษัทอื่น (R-GL-01)
     expect((await call('GET', `/api/v1/reports/account-detail?account_id=${cash}&as_of=2026-12-31`)).status).toBe(404);
+    // บัญชีแยกประเภทหลายบัญชี (เจ้าของ 17/11/2569): บัญชีของบริษัทอื่น = ไม่พบ · ทุกบัญชี = เฉพาะของบริษัทที่เลือก
+    expect((await call('GET', `/api/v1/reports/ledgers?account_id=${cash}&from=2026-01-01&to=2026-12-31`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/reports/ledgers?from=2026-01-01&to=2026-12-31&zero=1')).body.sections).toEqual([]);
     // งบประมาณของบริษัทอื่น (S-GL-17)
     expect((await call('GET', `/api/v1/gl/budget?fiscal_year_id=${fyMine}`)).status).toBe(404);
     expect((await call('GET', `/api/v1/gl/budget/entry?fiscal_year_id=${ofy}&account_id=${expense}`)).status).toBe(404);
@@ -976,6 +979,23 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', `/api/v1/gl/journals/${j.journals[0].id}`)).body.lines.map((l: { description: string | null }) => l.description)).toEqual([jv.description, jv.description, `${jv.description} · ภาษีขาย`]);
     const led = (await call('GET', `/api/v1/reports/ledger?account_id=${jv.lines[2]!.account_id}&from=2026-05-01&to=2026-05-31`)).body as { rows: Array<{ voucher_no: string; description: string | null }> };
     expect(led.rows.find((r) => r.voucher_no === 'IV0000002')?.description).toBe(`${jv.description} · ภาษีขาย`);
+    // หลายบัญชี (ทุกบัญชี / ช่วงเลขที่บัญชี) ยอดเท่ากับแยกประเภทรายบัญชีและงบทดลอง
+    type Sec = { account: { id: string; account_no: string }; opening: string; debit: string; credit: string; closing: string; rows: Array<{ voucher_no: string; description: string | null }> };
+    const all = (await call('GET', '/api/v1/reports/ledgers?from=2026-05-01&to=2026-05-31')).body as { sections: Sec[]; debit: string; credit: string };
+    const tbm = (await call('GET', '/api/v1/reports/trial-balance?from=2026-05-01&to=2026-05-31')).body as { rows: Array<{ id: string; closing: string; debit: string; credit: string }>; totals: { debit: string; credit: string } };
+    expect([all.debit, all.credit]).toEqual([tbm.totals.debit, tbm.totals.credit]);
+    for (const sct of all.sections) {
+      const tr = tbm.rows.find((r) => r.id === sct.account.id)!;
+      expect([sct.closing, sct.debit, sct.credit]).toEqual([tr.closing, tr.debit, tr.credit]);
+      const one = (await call('GET', `/api/v1/reports/ledger?account_id=${sct.account.id}&from=2026-05-01&to=2026-05-31`)).body as { closing: string; rows: unknown[] };
+      expect([one.closing, one.rows.length]).toEqual([sct.closing, sct.rows.length]);
+    }
+    const vatNo = all.sections.find((x) => x.account.id === jv.lines[2]!.account_id)!.account.account_no;
+    const ranged = (await call('GET', `/api/v1/reports/ledgers?from=2026-05-01&to=2026-05-31&account_from=${encodeURIComponent(vatNo)}&account_to=${encodeURIComponent(vatNo)}`)).body as { sections: Sec[] };
+    expect(ranged.sections.map((x) => x.account.account_no)).toEqual([vatNo]);
+    expect(ranged.sections[0]!.rows.find((r) => r.voucher_no === 'IV0000002')?.description).toBe(`${jv.description} · ภาษีขาย`);
+    const tbr = (await call('GET', `/api/v1/reports/trial-balance?from=2026-05-01&to=2026-05-31&account_from=${encodeURIComponent(vatNo)}&account_to=${encodeURIComponent(vatNo)}`)).body as { rows: Array<{ account_no: string }> };
+    expect(tbr.rows.map((r) => r.account_no)).toEqual([vatNo]);
     const tb =(await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body;
     expect(tb.balanced).toBe(true);
     // ลงบัญชีใหม่ หลังกำหนดบัญชีลูกหนี้ที่ตัวลูกค้า: ใบสำคัญเดิมใช้บัญชีจากแฟ้มหลัก (ชั้น 2)

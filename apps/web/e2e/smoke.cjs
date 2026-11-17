@@ -129,7 +129,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
     if (!(await page.locator('.pill.st-m', { hasText: 'ดุล' }).count())) throw new Error('TB not balanced: ' + foot);
     await shot('10-tb');
     await page.locator('table.report tbody tr.row-open').nth(5).click();
-    await page.waitForSelector('table.report tbody tr.sub', { timeout: 15000 });
+    await page.waitForSelector('table.report tbody tr.opening', { timeout: 15000 });   // แถวยอดยกมาของบัญชีแยกประเภท (เปิดจากงบทดลอง = แสดงทันที)
     await shot('11-ledger');
   });
   await step('statements chart BS', async () => {

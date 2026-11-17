@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useSession } from '../../session';
 import { PeriodRange } from '../../components/PeriodPicker';
 import { cx, ErrorBox, PageHead } from '../../ui';
+import { ExcelButton } from '../../components/ExcelExport';
 
 interface Layout { id: string; code: string; name: string; line_count: number }
 type Row = { kind: 'text'; text: string; textEn: string; center: boolean } | { kind: 'rule'; double: boolean } | { kind: 'value'; text: string; textEn: string; values: (string | null)[]; account?: string; isTotal: boolean };
@@ -28,7 +29,7 @@ export function StatementsPage() {
   const open = (no?: string) => { const a = no && accounts.data?.find((x) => x.account_no === no); if (a) nav(`/reports/ledger?account_id=${a.id}&to=${range.to}&from=${range.to.slice(0, 4)}-01-01`); };
   return (
     <div className="page" data-tone="reports">
-      <PageHead eyebrow="รายงาน › งบการเงิน" title={R?.title ?? 'งบการเงิน'} actions={<button onClick={() => window.print()}>พิมพ์</button>} />
+      <PageHead eyebrow="รายงาน › งบการเงิน" title={R?.title ?? 'งบการเงิน'} actions={<><button onClick={() => window.print()}>🖨 พิมพ์</button><ExcelButton /></>} />
       <div className="filters no-print">
         <select value={sel} onChange={(e) => { setSel(e.target.value); setSp({ [e.target.value.startsWith('chart:') ? 'kind' : 'layout']: e.target.value.replace('chart:', '') }, { replace: true }); }}>
           <optgroup label="งบตามผังบัญชี (ดุลกับงบทดลองเสมอ)"><option value="chart:BS">งบแสดงฐานะการเงิน</option><option value="chart:PL">งบกำไรขาดทุน</option></optgroup>

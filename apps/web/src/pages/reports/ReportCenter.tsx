@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { findReport, fmt, formatDate, REPORT_TREE, todayIso, type ReportDef, type ReportFilter, type ReportNode, type ReportResult, type YearSystem } from '@buddy/core';
+import { findReport, fmt, formatDate, REPORT_TREE, todayIso, type ReportDef, type ReportFilter, type ReportNode, type ReportResult, type XlsxCell, type YearSystem } from '@buddy/core';
 import { api } from '../../api';
+import { downloadXlsx } from '../../components/ExcelExport';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
 import { Confirm, cx, DateInput, ErrorBox, Field, KeyHints, Modal, PageHead, toast, useHotkeys } from '../../ui';
@@ -69,8 +70,7 @@ const cell = (kind: string | undefined, v: string | number | null | undefined, y
   if (kind === 'date') return /^\d{4}-\d{2}-\d{2}/.test(String(v)) ? formatDate(String(v).slice(0, 10), ys) : String(v);
   return String(v);
 };
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-/** ส่งออกแฟ้ม (S-RD-07): Excel (SpreadsheetML) · CSV (UTF-8) · ข้อความคั่นด้วย Tab */
+/** ส่งออกแฟ้ม (S-RD-07): Excel (.xlsx) · CSV (UTF-8) · ข้อความคั่นด้วย Tab */
 function download(r: ReportResult, kind: 'xls' | 'csv' | 'txt', company: string, ys: YearSystem) {
   const head = r.columns.map((c) => c.label);
   const body = r.rows.map((row) => r.columns.map((c) => {
@@ -80,15 +80,17 @@ function download(r: ReportResult, kind: 'xls' | 'csv' | 'txt', company: string,
   }));
   let blob: Blob, ext: string;
   if (kind === 'xls') {
+    // Excel .xlsx จริง (เจ้าของ 17/11/2569) — ตัวเลขเป็นตัวเลข · หัวคอลัมน์/ยอดรวมตัวหนา
     const num = (c: { kind?: string }) => c.kind === 'money' || c.kind === 'qty' || c.kind === 'int';
-    const rowXml = (cells: string[], bold = false) => `<Row>${cells.map((x, i) => (x !== '' && num(r.columns[i]!) && !Number.isNaN(Number(x)) ? `<Cell${bold ? ' ss:StyleID="b"' : ''}><Data ss:Type="Number">${x}</Data></Cell>` : `<Cell${bold ? ' ss:StyleID="b"' : ''}><Data ss:Type="String">${esc(x)}</Data></Cell>`)).join('')}</Row>`;
-    const xml = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="b"><Font ss:Bold="1"/></Style></Styles><Worksheet ss:Name="${esc(r.code)}"><Table>`
-      + rowXml([company]) + rowXml([`${r.code} ${r.title}`]) + rowXml([r.subtitle ?? '']) + rowXml(head, true)
-      + body.map((b, i) => rowXml(b, ['group', 'sub', 'total'].includes(r.rows[i]!.t ?? ''))).join('') + '</Table></Worksheet></Workbook>';
-    blob = new Blob([xml], { type: 'application/vnd.ms-excel' }); ext = 'xls';
+    const rowCells = (cells: string[], bold = false): XlsxCell[] => cells.map((x, i) => ({ v: x !== '' && num(r.columns[i]!) && !Number.isNaN(Number(x)) ? Number(x) : x, bold }));
+    const rows: XlsxCell[][] = [[{ v: company, bold: true }], [{ v: `${r.code} ${r.title}`, bold: true }], [r.subtitle ?? ''], [], rowCells(head, true),
+      ...body.map((x, i) => rowCells(x, ['group', 'sub', 'total'].includes(r.rows[i]!.t ?? '')))];
+    downloadXlsx(`รายงาน_${r.code}`, [{ name: `${r.code} ${r.title}`, rows, freeze: 5, widths: r.columns.map((c) => (num(c) ? 16 : Math.min(48, Math.max(10, c.label.length + 4)))) }]);
+    return;
   } else {
     const sep = kind === 'csv' ? ',' : '\t';
-    const q = (x: string) => (kind === 'csv' && /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x.replace(/\t/g, ' '));
+    // \x22 = เครื่องหมายคำพูด (ไม่ใส่ตรง ๆ ใน regex — ตัวดึงข้อความแปล tools/i18n/extract.py อ่าน regex ไม่เป็น)
+    const q = (x: string) => (kind === 'csv' && /[\x22,\n]/.test(x) ? `"${x.replace(/\x22/g, '""')}"` : x.replace(/\t/g, ' '));
     const txt = [head, ...body].map((l) => l.map(q).join(sep)).join('\r\n');
     blob = new Blob(['﻿' + txt], { type: kind === 'csv' ? 'text/csv;charset=utf-8' : 'text/plain;charset=utf-8' }); ext = kind;
   }
@@ -188,7 +190,7 @@ export function ReportCenterPage() {
               {canCustom('add') && <button onClick={() => setSaveAs({ code: '', name: custom?.name ?? def.title, landscape: '' })} title="บันทึกขอบเขตและคอลัมน์ที่เลือกเป็นรายงานใหม่ (S-RD-03/04)">💾 บันทึกเป็นรายงานของฉัน</button>}
               {custom && canCustom('edit') && <button onClick={() => saveCustom(false)} title="บันทึกขอบเขต/คอลัมน์ปัจจุบันทับรายงานนี้">บันทึกทับ {custom.code}</button>}
               {custom && canCustom('delete') && <button onClick={() => setAskDel(true)}>ลบรายงาน {custom.code}</button>}
-              {res && <><button onClick={print}>🖨 พิมพ์ / PDF <kbd>Ctrl+P</kbd></button><button onClick={() => download(view!, 'xls', me?.company?.name_th ?? '', ys)}>Excel</button><button onClick={() => download(view!, 'csv', me?.company?.name_th ?? '', ys)}>CSV</button><button onClick={() => download(view!, 'txt', me?.company?.name_th ?? '', ys)}>ข้อความ</button></>}</div>
+              {res && <><button onClick={print}>🖨 พิมพ์ / PDF <kbd>Ctrl+P</kbd></button><button onClick={() => download(view!, 'xls', me?.company?.name_th ?? '', ys)} title="ส่งออกรายงานนี้เป็นแฟ้ม Excel (.xlsx)">📊 ส่งออก Excel</button><button onClick={() => download(view!, 'csv', me?.company?.name_th ?? '', ys)}>CSV</button><button onClick={() => download(view!, 'txt', me?.company?.name_th ?? '', ys)}>ข้อความ</button></>}</div>
           </div>}
           <ErrorBox error={err} />
           {view && <div className="rpt-out">

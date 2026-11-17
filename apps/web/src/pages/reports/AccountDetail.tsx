@@ -5,7 +5,8 @@ import { fmt, formatDate, todayIso } from '@buddy/core';
 import { api, type Department } from '../../api';
 import { useSession } from '../../session';
 import { AccountCell } from '../../components/AccountCell';
-import { cx, DateInput, downloadCsv, ErrorBox, Field, Money, PageHead } from '../../ui';
+import { cx, DateInput, ErrorBox, Field, Money, PageHead } from '../../ui';
+import { ExcelButton } from '../../components/ExcelExport';
 
 interface Row { id: string; account_no: string; name_th: string; depth: number; is_control: boolean; status: string; closing: string; movement: string }
 interface Detail { account: { id: string; account_no: string; name_th: string }; as_of: string; from: string; rows: Row[]; leaf_count: number; total_closing: string; total_movement: string }
@@ -30,8 +31,8 @@ export function AccountDetailPage() {
       <PageHead eyebrow="รายงาน › รายละเอียดประกอบ" title={r ? `รายละเอียดประกอบบัญชี ${r.account.account_no} ${r.account.name_th}` : 'รายละเอียดประกอบ'}
         lead={r ? `ณ วันที่ ${formatDate(r.as_of, ys)} · แผนก ${deptName ? `${deptName.code} ${deptName.name_th}` : '* (ทุกแผนก)'} · ยอดเคลื่อนไหว${movement === 'ytd' ? 'ตั้งแต่ต้นปี' : 'เฉพาะงวดนี้'} (${formatDate(r.from, ys)} – ${formatDate(r.as_of, ys)})` : 'เลือกบัญชี (บัญชีคุมจะแสดงบัญชีย่อยทั้งหมด) — ใช้ตรวจก่อนลบบัญชีคุม หรือทำรายละเอียดประกอบงบ'}
         actions={<>
-          <button disabled={!r} onClick={() => window.print()}>พิมพ์</button>
-          <button disabled={!r} onClick={() => downloadCsv(`รายละเอียดประกอบ_${r!.account.account_no}_${r!.as_of}`, ['เลขที่บัญชี', 'ชื่อบัญชี', 'ยอดคงเหลือ', 'ยอดเคลื่อนไหว'], r!.rows.map((x) => [x.account_no, x.name_th, x.closing, x.movement]))}>ส่งออก Excel</button>
+          <button disabled={!r} onClick={() => window.print()}>🖨 พิมพ์</button>
+          <ExcelButton disabled={!r} />
         </>} />
       <div className="filters no-print">
         <Field label="บัญชี"><AccountCell value={acc} postableOnly={false} autoFocus={!acc} onChange={(a) => { setAcc(a?.id ?? null); if (a) setSp({ account_id: a.id, as_of: asOf }, { replace: true }); }} /></Field>
