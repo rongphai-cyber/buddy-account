@@ -373,6 +373,12 @@ export function JournalFormPage() {
             </table>
           </div>
         )}
+        {/* จอแคบ: ตารางเลื่อนซ้าย-ขวา → สรุปยอดอยู่ใต้ตารางให้เห็นโดยไม่ต้องเลื่อน (เจ้าของ 17/11/2569) */}
+        {tab === 'lines' && <div className="jv-sum" aria-label="สรุปยอด">
+          <span>เดบิต <b className="num">{fmt(totals.debit)}</b></span><span>เครดิต <b className="num">{fmt(totals.credit)}</b></span>
+          <span className={cx(!totals.diff.isZero() && 'bad')}>ต่าง <b className="num">{fmt(totals.diff.abs())}</b></span>
+          {totals.balanced ? <span className="ok">ดุล ✓</span> : <span className="bad">ยังไม่ดุล</span>}
+        </div>}
       </fieldset>
       {tab === 'history' && id && <History table="gl_journal" rowId={id} />}
       {/* ใบสำคัญจากเอกสาร (ซื้อ ขาย รับ/จ่ายชำระ …): รายการภาษี/เช็คอยู่ที่เอกสารต้นทาง — ดู และแก้เลขที่/วันที่ใบกำกับ งวดที่ยื่นได้ที่นี่ */}

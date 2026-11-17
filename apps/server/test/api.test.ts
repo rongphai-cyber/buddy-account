@@ -968,7 +968,15 @@ describe('Buddy Account API (PGlite)', () => {
     expect(j.journals).toHaveLength(1);
     expect(j.journals[0]).toMatchObject({ voucher_no: 'IV0000002', book_code: '03', doc_status: 'N', total_debit: '1070.00' });
     expect(j.journals[0].lines.map((l: { posting_role: string; resolved_from: string }) => `${l.posting_role}:${l.resolved_from}`)).toEqual(['AR:3', 'SALES:3', 'OUTPUT_VAT:3']);
-    const tb = (await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body;
+    // คำอธิบายบรรทัด (เจ้าของ 17/11/2569): คำอธิบายหัวทุกบรรทัด + ป้ายบรรทัดประกอบ · ใบที่ลงไว้ก่อน (บรรทัดว่าง) แสดงรูปแบบเดียวกันตอนอ่าน
+    const jv = (await call('GET', `/api/v1/gl/journals/${j.journals[0].id}`)).body as { description: string; lines: Array<{ posting_role: string; account_id: string; description: string | null }> };
+    expect(jv.description).toBeTruthy();
+    expect(jv.lines.map((l) => l.description)).toEqual([jv.description, jv.description, `${jv.description} · ภาษีขาย`]);
+    await sql`UPDATE gl_journal_line SET description = NULL WHERE journal_id = ${j.journals[0].id}`.execute(database.db);
+    expect((await call('GET', `/api/v1/gl/journals/${j.journals[0].id}`)).body.lines.map((l: { description: string | null }) => l.description)).toEqual([jv.description, jv.description, `${jv.description} · ภาษีขาย`]);
+    const led = (await call('GET', `/api/v1/reports/ledger?account_id=${jv.lines[2]!.account_id}&from=2026-05-01&to=2026-05-31`)).body as { rows: Array<{ voucher_no: string; description: string | null }> };
+    expect(led.rows.find((r) => r.voucher_no === 'IV0000002')?.description).toBe(`${jv.description} · ภาษีขาย`);
+    const tb =(await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body;
     expect(tb.balanced).toBe(true);
     // ลงบัญชีใหม่ หลังกำหนดบัญชีลูกหนี้ที่ตัวลูกค้า: ใบสำคัญเดิมใช้บัญชีจากแฟ้มหลัก (ชั้น 2)
     const ar = (await call('GET', '/api/v1/gl/accounts')).body.find((x: { is_control: boolean; account_no: string }) => !x.is_control && x.account_no.startsWith('113')).id;

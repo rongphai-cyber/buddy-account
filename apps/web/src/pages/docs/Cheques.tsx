@@ -134,7 +134,7 @@ export function AddCheque({ direction, onClose, journal }: { direction: Dir; onC
   );
 }
 
-function ChequeDetail({ id, onClose }: { id: string; onClose: () => void }) {
+export function ChequeDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const qc = useQueryClient();
   const nav = useNavigate();
   const { me } = useSession();

@@ -5,6 +5,7 @@ import { d, docPath, fmt } from '@buddy/core';
 import { DocLink } from './DocLink';
 import { api } from '../api';
 import { VatEditor, type VatRow } from '../pages/tax/VatRegister';
+import { WhtEntryModal } from '../pages/tax/WhtRegister';
 import { DateText, ErrorBox, Pill } from '../ui';
 
 /**
@@ -91,6 +92,7 @@ export function DocWhtList({ headerId, by = 'invoice' }: { headerId: string; by?
   const nav = useNavigate();
   const q = useQuery({ queryKey: ['doc-wht-bill', headerId, by], queryFn: () => api.get<{ rows: WhtRow[] }>('/api/v1/wht', { [by === 'header' ? 'header_id' : 'invoice_id']: headerId, status: 'all' }) });
   const rows = q.data?.rows ?? [];
+  const [open, setOpen] = useState<string | null>(null);   // คลิกแถว = รายการในแฟ้มภาษีหัก ณ ที่จ่าย (เจ้าของ 17/11/2569)
   return (
     <div>
       <p className="hint">{by === 'header' ? 'ภาษีหัก ณ ที่จ่ายของเอกสารต้นทาง — เข้าแฟ้ม ภ.ง.ด.3/53 · แก้เลขที่/วันที่หนังสือรับรองได้ที่แฟ้มภาษีหัก ณ ที่จ่าย · พิมพ์ 50 ทวิ ได้จากที่นี่' : 'ภาษีหัก ณ ที่จ่ายของบิลนี้ หักตอนจ่ายชำระ (ใบสำคัญจ่าย) — เข้าแฟ้ม ภ.ง.ด.3/53 · พิมพ์หนังสือรับรอง 50 ทวิ ได้จากที่นี่'}</p>
@@ -100,17 +102,18 @@ export function DocWhtList({ headerId, by = 'invoice' }: { headerId: string; by?
           <thead><tr><th>จากเอกสาร</th><th>แบบ</th><th>เลขที่หนังสือรับรอง</th><th>วันที่</th><th>ผู้ถูกหัก</th><th>ประเภทเงินได้</th><th className="r">จ่าย</th><th className="r">อัตรา</th><th className="r">ภาษี</th><th /></tr></thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className={r.doc_status === 'C' ? 'cancelled' : undefined}>
-                <td>{r.header_id !== headerId ? <DocLink id={r.header_id} no={r.doc_no} cls={r.doc_class} /> : <span className="mono">{r.doc_no}</span>}</td>
+              <tr key={r.id} className={r.doc_status === 'C' ? 'cancelled' : 'row-open'} tabIndex={0} title="เปิดรายการในแฟ้มภาษีหัก ณ ที่จ่าย" onClick={() => setOpen(r.id)} onKeyDown={(e) => e.key === 'Enter' && e.target === e.currentTarget && setOpen(r.id)}>
+                <td onClick={(e) => e.stopPropagation()}>{r.header_id !== headerId ? <DocLink id={r.header_id} no={r.doc_no} cls={r.doc_class} /> : <span className="mono">{r.doc_no}</span>}</td>
                 <td>{r.form_type === 'S03' ? 'ภ.ง.ด.3' : 'ภ.ง.ด.53'}</td><td className="mono">{r.certificate_no}</td><td><DateText v={r.certificate_date} /></td><td>{r.payee_name}</td><td>{r.income_type}</td>
                 <td className="r num">{fmt(r.paid_amount)}</td><td className="r">{d(r.rate).toString()}%</td><td className="r num">{fmt(r.tax_amount)}</td>
-                <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <button type="button" onClick={() => nav(`/tax/wht50?entry=${r.id}`)}>🖨 50 ทวิ{r.print_count ? ` (${r.print_count})` : ''}</button>}</td>
+                <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <button type="button" onClick={(e) => { e.stopPropagation(); nav(`/tax/wht50?entry=${r.id}`); }}>🖨 50 ทวิ{r.print_count ? ` (${r.print_count})` : ''}</button>}</td>
               </tr>
             ))}
             {q.data && !rows.length && <tr><td colSpan={10} className="empty">{by === 'header' ? 'เอกสารต้นทางไม่มีภาษีหัก ณ ที่จ่าย' : 'ยังไม่มีภาษีหัก ณ ที่จ่าย — ป้อนตอนจ่ายชำระบิลนี้ (เมนู จ่ายชำระหนี้)'}</td></tr>}
           </tbody>
         </table>
       </div>
+      {open && <WhtEntryModal id={open} onClose={() => setOpen(null)} />}
     </div>
   );
 }

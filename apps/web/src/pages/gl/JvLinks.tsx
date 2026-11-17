@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt } from '@buddy/core';
 import { api } from '../../api';
-import { AddCheque } from '../docs/Cheques';
+import { AddCheque, ChequeDetail } from '../docs/Cheques';
+import { VatEditor, type VatRow } from '../tax/VatRegister';
+import { WhtEntryModal } from '../tax/WhtRegister';
 import { SearchPick } from '../../components/LkSelect';
 import { DateInput, DateText, ErrorBox, Field, Modal, navKey, Pill, toast } from '../../ui';
 
@@ -33,9 +35,11 @@ export function JvVatTab({ kind, journal, lineVat, editable, doc, drafts, onDraf
   /** เปลี่ยนค่า = เปิดหน้าต่างป้อนรายละเอียดทันที (กดบันทึกใบสำคัญแล้วยังไม่ได้ป้อน — ข้อกำหนดเจ้าของ 01/11/2569) */ autoOpen?: number; onSkip?: () => void; onCancel?: () => void;
 }) {
   const link: Link = 'no' in journal ? journal : { id: journal.id, no: journal.voucher_no, date: journal.date };
+  const qc = useQueryClient();
   const key = doc ? 'header_id' : 'journal_id';
   const q = useQuery({ enabled: !!link.id, queryKey: ['jv-vat', kind, link.id], queryFn: () => api.get<{ rows: Vat[] }>(`/api/v1/vat/${kind}`, { [key]: link.id!, status: 'all' }) });
   const [add, setAdd] = useState(false);
+  const [open, setOpen] = useState<VatRow | null>(null);   // คลิกแถว = เปิดรายการในแฟ้มภาษี (เจ้าของ 17/11/2569)
   useEffect(() => { if (autoOpen && editable) setAdd(true); }, [autoOpen]);   // eslint-disable-line react-hooks/exhaustive-deps
   const mine = (drafts ?? []).filter((x) => x.kind === kind);
   const rows: Array<Vat & { draft?: number }> = link.id ? (q.data?.rows ?? []) : mine.map((x, i) => ({ id: String(i), tax_invoice_no: x.tax_invoice_no, tax_invoice_date: x.tax_invoice_date, month: x.month, is_late: x.is_late,
@@ -51,7 +55,7 @@ export function JvVatTab({ kind, journal, lineVat, editable, doc, drafts, onDraf
       <table className="grid" style={{ maxWidth: 900 }}>
         <thead><tr><th>เลขที่ใบกำกับ</th><th>วันที่</th><th>งวดภาษี</th><th>{kind === 'P' ? 'ผู้ขาย' : 'ผู้ซื้อ'}</th><th className="r">มูลค่า</th><th className="r">ภาษี</th><th /></tr></thead>
         <tbody>
-          {rows.map((r) => <tr key={r.id} className={r.doc_status === 'C' ? 'cancelled' : ''}><td className="mono">{r.tax_invoice_no}</td><td><DateText v={r.tax_invoice_date} /></td><td>{r.month}{r.is_late ? ' (เพิ่มเติม)' : ''}</td>
+          {rows.map((r) => <tr key={r.id} className={r.doc_status === 'C' ? 'cancelled' : r.draft === undefined ? 'row-open' : ''} {...(r.draft === undefined ? { tabIndex: 0, title: `เปิดรายการในแฟ้ม${word}`, onClick: () => setOpen(r as unknown as VatRow), onKeyDown: (e: React.KeyboardEvent) => e.key === 'Enter' && setOpen(r as unknown as VatRow) } : {})}><td className="mono">{r.tax_invoice_no}</td><td><DateText v={r.tax_invoice_date} /></td><td>{r.month}{r.is_late ? ' (เพิ่มเติม)' : ''}</td>
             <td>{r.party_name}</td><td className="r num">{fmt(r.base_amount)}</td><td className="r num">{fmt(d(r.vat_amount).plus(r.nonclaim_vat).toFixed(2))}</td>
             <td>{r.doc_status === 'C' && <Pill tone="x">ยกเลิก</Pill>}{r.draft !== undefined && editable && <button type="button" className="icon-btn" title="ลบรายการนี้" onClick={() => onDrafts?.((drafts ?? []).filter((_, i) => i !== r.draft))}>✕</button>}</td></tr>)}
           {(link.id ? q.data : true) && !rows.length && <tr><td colSpan={7} className="empty">ยังไม่มีรายการ{word}ของใบสำคัญนี้</td></tr>}
@@ -60,6 +64,7 @@ export function JvVatTab({ kind, journal, lineVat, editable, doc, drafts, onDraf
       {editable && <div className="toolbar"><button className="primary" onClick={() => setAdd(true)}>+ ป้อนรายละเอียด{word}</button></div>}
       {add && <VatEntryModal kind={kind} link={link} doc={doc} vat={left.gt(0) ? left.toFixed(2) : ''} onClose={() => { setAdd(false); onCancel?.(); }} onSkip={onSkip ? () => { setAdd(false); onSkip(); } : undefined}
         onDraft={link.id ? undefined : (v) => { onDrafts?.([...(drafts ?? []), { ...v, kind }]); setAdd(false); }} />}
+      {open && <VatEditor kind={kind} row={open} defaultMonth={open.month} onClose={() => setOpen(null)} onSaved={() => { setOpen(null); qc.invalidateQueries({ queryKey: ['jv-vat', kind] }); qc.invalidateQueries({ queryKey: ['vat', kind] }); }} />}
     </div>
   );
 }
@@ -109,6 +114,7 @@ type Chq = { id: string; cheque_no: string; cheque_date: string; amount: string;
 export function JvChequeTab({ direction, journal, lineAmount, editable, sourceHeaderId }: { direction: 'P' | 'R'; journal: { id: string | null; voucher_no: string; date: string }; lineAmount: string; editable: boolean; sourceHeaderId?: string | null }) {
   const q = useQuery({ enabled: !!journal.id || !!sourceHeaderId, queryKey: ['jv-cheques', direction, journal.id, sourceHeaderId], queryFn: () => api.get<{ rows: Chq[] }>('/api/v1/cheques', { direction, ...(sourceHeaderId ? { header_id: sourceHeaderId } : { journal_id: journal.id! }), instrument: 'all' }) });
   const [add, setAdd] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);   // คลิกแถว = รายละเอียดในทะเบียนเช็ค (เจ้าของ 17/11/2569)
   const entered = (q.data?.rows ?? []).reduce((s, r) => s.plus(r.amount), d(0));
   const left = d(lineAmount).minus(entered);
   const word = direction === 'P' ? 'เช็คจ่าย' : 'เช็ครับ';
@@ -120,11 +126,12 @@ export function JvChequeTab({ direction, journal, lineAmount, editable, sourceHe
       <table className="grid" style={{ maxWidth: 900 }}>
         <thead><tr><th>เลขที่เช็ค</th><th>ลงวันที่</th><th>{direction === 'P' ? 'บัญชีสั่งจ่าย' : 'ธนาคาร'}</th><th>{direction === 'P' ? 'จ่ายให้' : 'ผู้สั่งจ่าย'}</th><th className="r">จำนวนเงิน</th><th>สถานะ</th></tr></thead>
         <tbody>
-          {q.data?.rows.map((r) => <tr key={r.id}><td className="mono">{r.cheque_no}</td><td><DateText v={r.cheque_date} /></td><td>{direction === 'P' ? r.account_code : r.bank_code}</td><td>{r.party_name}</td><td className="r num">{fmt(r.amount)}</td><td>{r.status}</td></tr>)}
+          {q.data?.rows.map((r) => <tr key={r.id} className="row-open" tabIndex={0} title={`เปิดรายละเอียดในทะเบียน${word}`} onClick={() => setOpen(r.id)} onKeyDown={(e) => e.key === 'Enter' && setOpen(r.id)}><td className="mono">{r.cheque_no}</td><td><DateText v={r.cheque_date} /></td><td>{direction === 'P' ? r.account_code : r.bank_code}</td><td>{r.party_name}</td><td className="r num">{fmt(r.amount)}</td><td>{r.status}</td></tr>)}
           {q.data && !q.data.rows.length && <tr><td colSpan={6} className="empty">ยังไม่มีเช็คของใบสำคัญนี้</td></tr>}
         </tbody>
       </table>
       {editable && <div className="toolbar"><button className="primary" onClick={() => setAdd(true)}>+ ป้อนรายละเอียด{word}</button></div>}
+      {open && <ChequeDetail id={open} onClose={() => setOpen(null)} />}
       {add && <AddCheque direction={direction} journal={{ id: journal.id, voucher_no: journal.voucher_no, date: journal.date, amount: left.gt(0) ? left.toFixed(2) : '' }} onClose={() => setAdd(false)} />}
     </div>
   );
@@ -143,6 +150,7 @@ export function WhtTab({ field, link, editable, lineTax, drafts, onDrafts, autoO
   const entered = rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(r.tax_amount), d(0));
   const left = lineTax ? d(lineTax).minus(entered) : d(0);
   const [f, setF] = useState<WhtDraft | null>(null);
+  const [open, setOpen] = useState<string | null>(null);   // คลิกแถว = รายการในแฟ้มภาษีหัก ณ ที่จ่าย (พิมพ์ 50 ทวิ ได้)
   const [err, setErr] = useState<unknown>(null);
   useEffect(() => { if (autoOpen && editable) setF(blankWht(link.date, left.gt(0) ? left.toFixed(2) : '')); }, [autoOpen]);   // eslint-disable-line react-hooks/exhaustive-deps
   const set = (p: Partial<WhtDraft>) => setF((x) => { const n = { ...x!, ...p }; if ('paid_amount' in p || 'rate' in p) n.tax_amount = d(n.paid_amount || 0).times(n.rate || 0).div(100).toDecimalPlaces(2).toFixed(2); return n; });
@@ -163,13 +171,14 @@ export function WhtTab({ field, link, editable, lineTax, drafts, onDrafts, autoO
       <table className="grid" style={{ maxWidth: 900 }}>
         <thead><tr><th>แบบ</th><th>เลขที่หนังสือรับรอง</th><th>วันที่</th><th>ผู้ถูกหัก</th><th>ประเภทเงินได้</th><th className="r">จ่าย</th><th className="r">อัตรา</th><th className="r">ภาษี</th><th /></tr></thead>
         <tbody>
-          {rows.map((r) => <tr key={r.id} className={r.doc_status === 'C' ? 'cancelled' : ''}><td>{r.form_type === 'S03' ? 'ภ.ง.ด.3' : 'ภ.ง.ด.53'}</td><td className="mono">{r.certificate_no}</td><td><DateText v={r.certificate_date} /></td><td>{r.payee_name}</td><td>{r.income_type}</td>
+          {rows.map((r) => <tr key={r.id} className={r.doc_status === 'C' ? 'cancelled' : r.draft === undefined ? 'row-open' : ''} {...(r.draft === undefined ? { tabIndex: 0, title: 'เปิดรายการในแฟ้มภาษีหัก ณ ที่จ่าย', onClick: () => setOpen(r.id), onKeyDown: (e: React.KeyboardEvent) => e.key === 'Enter' && setOpen(r.id) } : {})}><td>{r.form_type === 'S03' ? 'ภ.ง.ด.3' : 'ภ.ง.ด.53'}</td><td className="mono">{r.certificate_no}</td><td><DateText v={r.certificate_date} /></td><td>{r.payee_name}</td><td>{r.income_type}</td>
             <td className="r num">{fmt(r.paid_amount)}</td><td className="r">{d(r.rate).toString()}%</td><td className="r num">{fmt(r.tax_amount)}</td>
             <td>{r.doc_status === 'C' && <Pill tone="x">ยกเลิก</Pill>}{r.draft !== undefined && editable && <button type="button" className="icon-btn" title="ลบรายการนี้" onClick={() => onDrafts?.((drafts ?? []).filter((_, i) => i !== r.draft))}>✕</button>}</td></tr>)}
           {(link.id ? q.data : true) && !rows.length && <tr><td colSpan={9} className="empty">ยังไม่มีรายการภาษีหัก ณ ที่จ่าย</td></tr>}
         </tbody>
       </table>
       {editable && <div className="toolbar"><button className="primary" onClick={() => setF(blankWht(link.date, left.gt(0) ? left.toFixed(2) : ''))}>+ ป้อนภาษีหัก ณ ที่จ่าย</button></div>}
+      {open && <WhtEntryModal id={open} onClose={() => setOpen(null)} />}
       {f && <Modal title={`ภาษีหัก ณ ที่จ่าย — ${link.no || 'ใบสำคัญใหม่'}`} onClose={() => { setF(null); onCancel?.(); }} footer={<><button onClick={() => { setF(null); onCancel?.(); }}>ยกเลิก <kbd>Esc</kbd></button>{onSkip && <button onClick={() => { setF(null); onSkip(); }} title="บันทึกใบสำคัญโดยไม่ป้อนรายละเอียดเข้าแฟ้มภาษี (ป้อนภายหลังได้ที่แท็บนี้)">บันทึกโดยไม่เข้าแฟ้มภาษี</button>}<button className="primary" onClick={ok}>ตกลง</button></>}>
         <ErrorBox error={err} />
         <div className="form-grid" onKeyDown={navKey}>

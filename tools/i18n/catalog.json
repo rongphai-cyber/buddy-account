@@ -619,7 +619,7 @@
 },
 {
 "th": "ปิด",
-"n": 39,
+"n": 40,
 "files": [
 "apps/web/src/ui.tsx",
 "apps/web/src/components/AiBill.tsx",
@@ -983,6 +983,29 @@
 ]
 },
 {
+"th": "เครดิต",
+"n": 26,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ชื่อบัญชี",
 "n": 25,
 "files": [
@@ -1047,29 +1070,6 @@
 "apps/server/src/modules/gl/reports.ts",
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "เครดิต",
-"n": 25,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1186,6 +1186,27 @@
 ]
 },
 {
+"th": "ภาษีหัก ณ ที่จ่าย",
+"n": 22,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/settle.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/payroll.ts",
+"packages/core/src/posting-desc.ts",
+"packages/core/src/source-totals.ts"
+]
+},
+{
 "th": "ลบบรรทัด",
 "n": 22,
 "files": [
@@ -1206,6 +1227,25 @@
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/DataTables.tsx",
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "เดบิต",
+"n": 22,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -1324,25 +1364,6 @@
 ]
 },
 {
-"th": "เดบิต",
-"n": 21,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/printforms.ts"
-]
-},
-{
 "th": "บันทึก+ใหม่",
 "n": 20,
 "files": [
@@ -1393,25 +1414,6 @@
 "apps/web/src/pages/inventory/Counts.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/Periods.tsx"
-]
-},
-{
-"th": "ภาษีหัก ณ ที่จ่าย",
-"n": 19,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/settle.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/payroll.ts",
-"packages/core/src/source-totals.ts"
 ]
 },
 {
@@ -2488,6 +2490,32 @@
 ]
 },
 {
+"th": "ภาษีขาย",
+"n": 9,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/posting-desc.ts"
+]
+},
+{
+"th": "ภาษีซื้อ",
+"n": 9,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/posting-desc.ts"
+]
+},
+{
 "th": "ลงวันที่",
 "n": 9,
 "files": [
@@ -2530,6 +2558,18 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/server/src/modules/print.ts",
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "เช็คจ่าย",
+"n": 9,
+"files": [
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/server/src/modules/cheques.ts",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/posting-desc.ts"
 ]
 },
 {
@@ -2707,30 +2747,6 @@
 ]
 },
 {
-"th": "ภาษีขาย",
-"n": 8,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/gl-link.ts"
-]
-},
-{
-"th": "ภาษีซื้อ",
-"n": 8,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/gl-link.ts"
-]
-},
-{
 "th": "ยอดคงเหลือ",
 "n": 8,
 "files": [
@@ -2872,17 +2888,6 @@
 "apps/web/src/pages/payroll/Forms.tsx",
 "apps/web/src/pages/payroll/PaySetup.tsx",
 "apps/web/src/pages/payroll/Runs.tsx"
-]
-},
-{
-"th": "เช็คจ่าย",
-"n": 8,
-"files": [
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/server/src/modules/cheques.ts",
-"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -3029,6 +3034,17 @@
 "packages/core/src/doc-calc.ts",
 "packages/core/src/gl-link.ts",
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ดุล ✓",
+"n": 7,
+"files": [
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
 ]
 },
 {
@@ -3273,17 +3289,6 @@
 ]
 },
 {
-"th": "ดุล ✓",
-"n": 6,
-"files": [
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx"
-]
-},
-{
 "th": "บรรทัด",
 "n": 6,
 "files": [
@@ -3354,6 +3359,16 @@
 "apps/server/src/import/express/migrate.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "ภาษีถูกหัก ณ ที่จ่าย",
+"n": 6,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"packages/core/src/posting-desc.ts"
 ]
 },
 {
@@ -3500,6 +3515,16 @@
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "เช็ครับ",
+"n": 6,
+"files": [
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"packages/core/src/posting-desc.ts"
 ]
 },
 {
@@ -3799,6 +3824,17 @@
 ]
 },
 {
+"th": "ดอกเบี้ย",
+"n": 5,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/settle.ts",
+"packages/core/src/posting-desc.ts",
+"packages/core/src/forms/wht50.ts"
+]
+},
+{
 "th": "ตรวจวันที่",
 "n": 5,
 "files": [
@@ -3959,15 +3995,6 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/date.ts"
-]
-},
-{
-"th": "ภาษีถูกหัก ณ ที่จ่าย",
-"n": 5,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -4291,15 +4318,6 @@
 "apps/server/src/modules/signup.ts",
 "apps/server/src/modules/tenant-modules.ts",
 "apps/server/src/modules/tenant-move.ts"
-]
-},
-{
-"th": "เช็ครับ",
-"n": 5,
-"files": [
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx"
 ]
 },
 {
@@ -4664,16 +4682,6 @@
 ]
 },
 {
-"th": "ดอกเบี้ย",
-"n": 4,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/settle.ts",
-"packages/core/src/forms/wht50.ts"
-]
-},
-{
 "th": "ตัวคูณ",
 "n": 4,
 "files": [
@@ -4988,6 +4996,16 @@
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/pages/settings/PrintForms.tsx",
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ส่วนลดเงินสด",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/settle.ts",
+"packages/core/src/posting-desc.ts"
 ]
 },
 {
@@ -5359,6 +5377,14 @@
 "apps/web/src/App.tsx",
 "apps/web/src/pages/settings/NewCompany.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "กำไร(ขาดทุน)จากอัตราแลกเปลี่ยน",
+"n": 3,
+"files": [
+"packages/core/src/gl-link.ts",
+"packages/core/src/posting-desc.ts"
 ]
 },
 {
@@ -5744,6 +5770,15 @@
 ]
 },
 {
+"th": "บัญชีพักยอดยกมา",
+"n": 3,
+"files": [
+"packages/core/src/gl-link.ts",
+"packages/core/src/living-setup.ts",
+"packages/core/src/posting-desc.ts"
+]
+},
+{
 "th": "บัญชีแยกประเภท",
 "n": 3,
 "files": [
@@ -6074,6 +6109,14 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/reports/AccountDetail.tsx"
+]
+},
+{
+"th": "ยังไม่ดุล",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Templates.tsx"
 ]
 },
 {
@@ -6476,15 +6519,6 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
-]
-},
-{
-"th": "ส่วนลดเงินสด",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/settle.ts"
 ]
 },
 {
@@ -7534,6 +7568,14 @@
 ]
 },
 {
+"th": "ค่าธรรมเนียมธนาคาร",
+"n": 2,
+"files": [
+"apps/server/src/modules/cheques.ts",
+"packages/core/src/posting-desc.ts"
+]
+},
+{
 "th": "ค่านายหน้า",
 "n": 2,
 "files": [
@@ -8167,6 +8209,13 @@
 ]
 },
 {
+"th": "ต่าง",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
 "th": "ต่างจากงบ",
 "n": 2,
 "files": [
@@ -8193,6 +8242,14 @@
 "n": 2,
 "files": [
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "ต้นทุนขาย",
+"n": 2,
+"files": [
+"packages/core/src/gl-link.ts",
+"packages/core/src/posting-desc.ts"
 ]
 },
 {
@@ -8542,14 +8599,6 @@
 "n": 2,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
-]
-},
-{
-"th": "บัญชีพักยอดยกมา",
-"n": 2,
-"files": [
-"packages/core/src/gl-link.ts",
-"packages/core/src/living-setup.ts"
 ]
 },
 {
@@ -9216,6 +9265,14 @@
 ]
 },
 {
+"th": "ภาษีซื้อยังไม่ถึงกำหนด",
+"n": 2,
+"files": [
+"packages/core/src/gl-link.ts",
+"packages/core/src/posting-desc.ts"
+]
+},
+{
 "th": "ภาษีที่หักไว้",
 "n": 2,
 "files": [
@@ -9527,14 +9584,6 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/wts-living.ts"
-]
-},
-{
-"th": "ยังไม่ดุล",
-"n": 2,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Templates.tsx"
 ]
 },
 {
@@ -10892,6 +10941,14 @@
 ]
 },
 {
+"th": "เงินมัดจำรับ",
+"n": 2,
+"files": [
+"packages/core/src/living-setup.ts",
+"packages/core/src/posting-desc.ts"
+]
+},
+{
 "th": "เงินสมทบ",
 "n": 2,
 "files": [
@@ -11129,6 +11186,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "เปิดรายการในแฟ้มภาษีหัก ณ ที่จ่าย",
+"n": 2,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx"
 ]
 },
 {
@@ -17417,13 +17482,6 @@
 ]
 },
 {
-"th": "กำไร(ขาดทุน)จากอัตราแลกเปลี่ยน",
-"n": 1,
-"files": [
-"packages/core/src/gl-link.ts"
-]
-},
-{
 "th": "กำไร(ขาดทุน)อัตราแลกเปลี่ยน",
 "n": 1,
 "files": [
@@ -19468,13 +19526,6 @@
 ]
 },
 {
-"th": "ค่าธรรมเนียมธนาคาร",
-"n": 1,
-"files": [
-"apps/server/src/modules/cheques.ts"
-]
-},
-{
 "th": "ค่าธรรมเนียมอื่น",
 "n": 1,
 "files": [
@@ -19521,6 +19572,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "ค่าบริการที่ถูกหัก",
+"n": 1,
+"files": [
+"packages/core/src/posting-desc.ts"
 ]
 },
 {
@@ -23276,13 +23334,6 @@
 ]
 },
 {
-"th": "ต่าง",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
 "th": "ต่าง {0}",
 "n": 1,
 "files": [
@@ -23322,13 +23373,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
-]
-},
-{
-"th": "ต้นทุนขาย",
-"n": 1,
-"files": [
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -30339,6 +30383,13 @@
 ]
 },
 {
+"th": "ภาษีขายยังไม่ถึงกำหนด",
+"n": 1,
+"files": [
+"packages/core/src/posting-desc.ts"
+]
+},
+{
 "th": "ภาษีขายเดือนนี้",
 "n": 1,
 "files": [
@@ -30385,13 +30436,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
-]
-},
-{
-"th": "ภาษีซื้อยังไม่ถึงกำหนด",
-"n": 1,
-"files": [
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -30689,10 +30733,24 @@
 ]
 },
 {
+"th": "ภาษีหัก ณ ที่จ่ายออกแทน",
+"n": 1,
+"files": [
+"packages/core/src/posting-desc.ts"
+]
+},
+{
 "th": "ภาษีหัก ณ ที่จ่ายเดือนนี้",
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/PaySetup.tsx"
+]
+},
+{
+"th": "ภาษีหัก ณ ที่จ่ายเรียกคืน",
+"n": 1,
+"files": [
+"packages/core/src/posting-desc.ts"
 ]
 },
 {
@@ -39019,6 +39077,13 @@
 ]
 },
 {
+"th": "สรุปยอด",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
 "th": "สรุปยอดเคลื่อนไหว",
 "n": 1,
 "files": [
@@ -42309,6 +42374,13 @@
 ]
 },
 {
+"th": "เงินมัดจำจ่าย",
+"n": 1,
+"files": [
+"packages/core/src/posting-desc.ts"
+]
+},
+{
 "th": "เงินมัดจำจ่ายล่วงหน้า",
 "n": 1,
 "files": [
@@ -42327,13 +42399,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/opening.ts"
-]
-},
-{
-"th": "เงินมัดจำรับ",
-"n": 1,
-"files": [
-"packages/core/src/living-setup.ts"
 ]
 },
 {
@@ -44276,10 +44341,24 @@
 ]
 },
 {
+"th": "เปิดรายการในแฟ้ม{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
 "th": "เปิดรายละเอียด",
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Serials.tsx"
+]
+},
+{
+"th": "เปิดรายละเอียดในทะเบียน{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JvLinks.tsx"
 ]
 },
 {

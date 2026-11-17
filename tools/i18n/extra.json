@@ -1183,5 +1183,14 @@
  "กำลังบันทึกลง{0}": "Recording in {0}",
  "เปลี่ยนเป็น{0}": "Switch to {0}",
  "เปิดใบสำคัญใหม่ของ{0}": "Open a new voucher in {0}",
- "ใช้เป็นคำอธิบายรายการของทุกบรรทัด (แก้รายบรรทัดได้) — แสดงในบัญชีแยกประเภท": "Used as the entry description of every line (editable per line) — shown in the General Ledger"
+ "ใช้เป็นคำอธิบายรายการของทุกบรรทัด (แก้รายบรรทัดได้) — แสดงในบัญชีแยกประเภท": "Used as the entry description of every line (editable per line) — shown in the General Ledger",
+ "เปิดรายการในแฟ้มภาษีหัก ณ ที่จ่าย": "Open this entry in the withholding tax file",
+ "เปิดรายการในแฟ้ม{0}": "Open this entry in the {0} file",
+ "เปิดรายละเอียดในทะเบียน{0}": "Open details in the {0} register",
+ "ค่าบริการที่ถูกหัก": "Service fee deducted",
+ "ภาษีขายยังไม่ถึงกำหนด": "Output VAT not yet due",
+ "ภาษีหัก ณ ที่จ่ายออกแทน": "Withholding tax borne",
+ "ภาษีหัก ณ ที่จ่ายเรียกคืน": "Withholding tax recoverable",
+ "เงินมัดจำจ่าย": "Deposit paid",
+ "สรุปยอด": "Summary"
 }

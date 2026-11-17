@@ -4,6 +4,7 @@ import type { Db } from '../../db.js';
 import { AppError, badRequest, notFound } from '../../http.js';
 import { checkOwned } from '../../owned.js';
 import { logActivity } from '../../audit.js';
+import { fillPostedDesc } from './posted-desc.js';
 
 export interface JournalInput {
   journal_book_id: string;
@@ -167,6 +168,7 @@ export async function getJournal(db: Db, companyId: string, id: string) {
   const lines = await db.selectFrom('gl_journal_line as l').innerJoin('gl_account as a', 'a.id', 'l.account_id').leftJoin('md_department as dp', 'dp.id', 'l.department_id')
     .select(['l.id', 'l.line_no', 'l.account_id', 'a.account_no', 'a.name_th as account_name', 'l.department_id', 'dp.code as department_code', 'l.description', 'l.debit', 'l.credit', 'l.posting_role', 'l.resolved_from', 'l.line_note', 'l.line_note_print'])
     .where('l.journal_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
+  await fillPostedDesc(db, companyId, lines, () => j.description, () => j.source_header_id);
   const editable = j.doc_status === 'N' && !j.source_header_id && !j.source_system && (!j.source_module || j.source_module === 'GL');
   return { ...j, lines, editable };
 }

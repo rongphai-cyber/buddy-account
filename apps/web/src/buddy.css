@@ -239,7 +239,11 @@ td .lk-add:not(:focus-within):not(:hover) > .icon-btn { display: none; }
 .jv-lines tfoot td { position: sticky; bottom: 0; z-index: 1; background: var(--surface-2); }
 .jv-foot { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
 .jv-foot .totals { width: auto; border: 0; background: transparent; padding: 0; margin-left: auto; align-self: center; }
+.jv-sum { display: none; }
 @media (max-width: 900px) {
+  .jv-sum { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 8px 10px; margin-top: 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); font-size: 13.5px; }
+  .jv-sum b { font-size: 15px; }
+  .jv-foot .totals { display: none; }
   .jv-title .title-row { flex-wrap: wrap; }
   .tabs.book-tabs { flex-basis: 100%; }
   .head-grid.jv-head { grid-template-columns: repeat(2, minmax(0, 1fr)); }

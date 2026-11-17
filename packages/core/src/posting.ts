@@ -123,7 +123,7 @@ export interface PostingResolver {
   perpetual: boolean;
 }
 export type Layer = '1' | '2' | '3' | 'S';
-export interface PostingLine { account_id: string | null; debit: Decimal; credit: Decimal; role: string; layer: Layer }
+export interface PostingLine { account_id: string | null; debit: Decimal; credit: Decimal; role: string; layer: Layer; /** บรรทัดรับ/จ่ายด้วยเช็ค — ใช้ทำคำอธิบายบรรทัด (เลขที่เช็ค) */ cheque_id?: string | null }
 
 /** หมวดเอกสารที่ลงบัญชีด้วยเครื่องนี้ */
 export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'RD', 'DP', 'VR', 'OU', 'JU', 'CA', 'BD', 'BW', 'BT', 'BU', 'BV'] as const;
@@ -135,11 +135,11 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     for (const [layer, a] of c) if (a) return [a, layer];
     return [r.def('SUSPENSE'), 'S'];
   };
-  const D = (acct: Acct, amt: Decimal, role: string) => {
+  const D = (acct: Acct, amt: Decimal, role: string, cheque_id?: string | null) => {
     if (amt.isZero()) return;
-    out.push({ account_id: acct[0], debit: amt.gt(0) ? amt : d(0), credit: amt.gt(0) ? d(0) : amt.neg(), role, layer: acct[1] });
+    out.push({ account_id: acct[0], debit: amt.gt(0) ? amt : d(0), credit: amt.gt(0) ? d(0) : amt.neg(), role, layer: acct[1], ...(cheque_id ? { cheque_id } : {}) });
   };
-  const C = (acct: Acct, amt: Decimal, role: string) => D(acct, amt.neg(), role);
+  const C = (acct: Acct, amt: Decimal, role: string, cheque_id?: string | null) => D(acct, amt.neg(), role, cheque_id);
   const cls = h.doc_class, dt = h.doc_type_id;
   const net = d(h.net_amount), vat = d(h.vat_amount);
   const vatRole = (base: string) => (h.vat_basis === '2' ? `${base}_PENDING` : base);
@@ -194,7 +194,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
       const wht = d(h.wht_amount ?? 0);
       D(pick(['3', r.def('PREPAID_TAX')]), wht, 'WHT');
       D(pick(['3', r.def('CASH')]), cashRest(net.minus(wht)), 'CASH');
-      for (const p of pays) D(payAcct(p), d(p.amount), 'PAYMENT');
+      for (const p of pays) D(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
     }
     for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'SALES');
     C(pick(['3', r.def(vatRole('OUTPUT_VAT'))]), vat, 'OUTPUT_VAT');
@@ -217,7 +217,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
       const wht = d(h.wht_amount ?? 0);
       C(pick(['3', r.def('WHT_PAYABLE')]), wht, 'WHT');
       C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(net.minus(wht)), 'CASH');
-      for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
+      for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
     } else C(partyAp, net, 'AP');
     // มัดจำจ่ายที่บิลซื้อหัก: Cr บัญชีของใบจ่ายมัดจำแต่ละใบ (ช่อง 1 ของประเภทเอกสาร AE — ช่องเดียวกับที่ใบ AE ลง Dr) แบ่งตามยอดแต่ละใบ
     // เหมือนฝั่งขาย (IV หัก AI) · ไม่มีข้อมูลใบมัดจำ = บัญชีเพื่อลงรายวันแบบเดิม (เจ้าของ 17/11/2569: VAT ของเงินจ่ายล่วงหน้าเกิดตอนจ่าย)
@@ -270,7 +270,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     // ใบเสร็จหักเงินมัดจำ (05/11/2569): มัดจำที่หักแทนเงินรับ — Dr เงินมัดจำรับ แทนเงินสดส่วนนั้น
     if (isRe) debitDeposits();
     (isRe ? D : C)(cash, cashRest(partyTotal.minus(wht).minus(disc).plus(intr).plus(isRe ? fx : fx.neg()).minus(deducted).minus(isRe ? depTotal : d(0))), 'CASH');
-    for (const p of pays) (isRe ? D : C)(payAcct(p), d(p.amount), 'PAYMENT');
+    for (const p of pays) (isRe ? D : C)(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
   } else if (cls === 'RD') {
     // คืนเงินมัดจำ: Dr เงินมัดจำรับล่วงหน้า (ตามใบมัดจำ) / Cr เงินสด (ช่องของประเภทเอกสาร → บัญชีเพื่อลงรายวัน) + วิธีจ่าย (โอน เช็ค)
     // มัดจำมี VAT (= ใบลดหนี้ 06/11/2569): Dr มัดจำรับ = มูลค่าก่อน VAT + Dr ภาษีขาย = VAT รวม · เงินที่จ่าย = ก่อน VAT + VAT
@@ -282,13 +282,13 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     }
     D(pick(['3', r.def('OUTPUT_VAT')]), rdVat, 'OUTPUT_VAT');
     C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(rdPaid), 'CASH');
-    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
+    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
   } else if (cls === 'AI' || cls === 'OI') {
     // ภาษีถูกหัก ณ ที่จ่าย: Dr ภาษีจ่ายล่วงหน้า แทนเงินสดส่วนนั้น
     const wht = d(h.wht_amount ?? 0);
     D(pick(['3', r.def('PREPAID_TAX')]), wht, 'WHT');
     D(cash, cashRest(net.minus(wht)), 'CASH');
-    for (const p of pays) D(payAcct(p), d(p.amount), 'PAYMENT');
+    for (const p of pays) D(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
     if (cls === 'AI') C(pick(['1', r.slot(dt, cls, 'DEPOSIT_RECEIVED')], ['3', r.def('DEPOSIT_RECEIVED')]), net.minus(vat), 'DEPOSIT_RECEIVED');
     else for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'OTHER_INCOME');
     C(pick(['3', r.def('OUTPUT_VAT')]), vat, 'OUTPUT_VAT');
@@ -304,7 +304,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     }
     D(petty, net, 'PETTY_CASH');
     C(pick(['3', r.def('CASH')]), cashRest(net), 'CASH');
-    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
+    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
   } else if ((cls === 'OU' || cls === 'JU' || cls === 'CA') && (r.perpetual || (cls === 'OU' && !!r.slot(dt, cls, 'ISSUE_DEBIT') && !!r.slot(dt, cls, 'ISSUE_CREDIT')))) {
     // เอกสารสินค้า (บทที่ 14): ลงบัญชีเมื่อ Perpetual — จ่ายใช้ภายในลงด้วยแม้ Periodic เมื่อประเภทเอกสารกำหนดบัญชีครบ 2 ช่อง (ยืนยันจากใบสำคัญ Express เช่น XS: Dr ค่าสินค้าตัวอย่าง / Cr ต้นทุนขาย)
     for (const l of lines) {
@@ -343,7 +343,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     const wht = d(h.wht_amount ?? 0);
     C(pick(['3', r.def('WHT_PAYABLE')]), wht, 'WHT');
     C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(net.minus(wht)), 'CASH');
-    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT');
+    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
   }
   return out;
 }

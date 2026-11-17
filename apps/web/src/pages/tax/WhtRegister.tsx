@@ -17,6 +17,15 @@ interface Row { id: string; form_type: string; certificate_no: string | null; ce
 interface Entry { id?: string; form_type: 'S03' | 'S53'; certificate_no: string; certificate_date: string; is_late: boolean; supplier: { id: string; code: string; name?: string | null } | null; payee_name: string; payee_address: string; payee_tax_id: string; payee_tax_branch_no: string;
   income_type: string; condition: '1' | '2' | '3'; paid_amount: string; rate: string; tax_amount: string; header_id: string | null; doc_no: string | null; doc_class: string | null; doc_status: string }
 
+/** รายการในแฟ้มภาษีหัก ณ ที่จ่าย → ข้อมูลหน้าต่างแก้ไข (ใช้ทั้งแฟ้มและแท็บภาษีหัก ณ ที่จ่ายของใบสำคัญ/เอกสาร) */
+async function loadWhtEntry(id: string): Promise<Entry> {
+  const w = await api.get<Record<string, string | null> & { is_late: boolean }>(`/api/v1/wht/${id}`);
+  return { id, form_type: (w.form_type === 'S03' ? 'S03' : 'S53'), certificate_no: w.certificate_no ?? '', certificate_date: String(w.certificate_date).slice(0, 10), is_late: !!w.is_late,
+    supplier: w.supplier_id ? { id: w.supplier_id, code: '' } : null, payee_name: w.payee_name ?? '', payee_address: w.payee_address ?? '', payee_tax_id: w.payee_tax_id ?? '', payee_tax_branch_no: w.payee_tax_branch_no ?? '',
+    income_type: w.income_type ?? '', condition: (['1', '2', '3'].includes(w.condition ?? '') ? w.condition : '1') as Entry['condition'], paid_amount: d(w.paid_amount ?? 0).toString(), rate: d(w.rate ?? 0).toString(), tax_amount: d(w.tax_amount ?? 0).toString(),
+    header_id: w.header_id ?? null, doc_no: w.doc_no ?? null, doc_class: w.doc_class ?? null, doc_status: w.doc_status ?? 'N' };
+}
+
 /** แฟ้มภาษีหัก ณ ที่จ่าย (คู่มือบทที่ 16 S-TX-09/10) — รายการจากใบสำคัญจ่าย + เพิ่มเอง · พิมพ์ 50 ทวิ จากรายการ */
 export function WhtRegisterPage() {
   const nav = useNavigate();
@@ -35,13 +44,7 @@ export function WhtRegisterPage() {
   const list = useQuery({ queryKey: ['wht', form, ym, status, q], queryFn: () => api.get<{ rows: Row[]; total_paid: string; total_tax: string }>('/api/v1/wht', { form, month: ym, status, q }), placeholderData: (p) => p });
   const blank = (): Entry => ({ form_type: form === 'S03' ? 'S03' : 'S53', certificate_no: '', certificate_date: today.slice(0, 7) === ym ? today : `${ym}-01`, is_late: false, supplier: null, payee_name: '', payee_address: '', payee_tax_id: '', payee_tax_branch_no: '',
     income_type: 'ค่าบริการ', condition: '1', paid_amount: '', rate: '3', tax_amount: '', header_id: null, doc_no: null, doc_class: null, doc_status: 'N' });
-  const openRow = async (r: Row) => {
-    const w = await api.get<Record<string, string | null> & { is_late: boolean }>(`/api/v1/wht/${r.id}`);
-    setEdit({ id: r.id, form_type: (w.form_type === 'S03' ? 'S03' : 'S53'), certificate_no: w.certificate_no ?? '', certificate_date: String(w.certificate_date).slice(0, 10), is_late: !!w.is_late,
-      supplier: w.supplier_id ? { id: w.supplier_id, code: '' } : null, payee_name: w.payee_name ?? '', payee_address: w.payee_address ?? '', payee_tax_id: w.payee_tax_id ?? '', payee_tax_branch_no: w.payee_tax_branch_no ?? '',
-      income_type: w.income_type ?? '', condition: (['1', '2', '3'].includes(w.condition ?? '') ? w.condition : '1') as Entry['condition'], paid_amount: d(w.paid_amount ?? 0).toString(), rate: d(w.rate ?? 0).toString(), tax_amount: d(w.tax_amount ?? 0).toString(),
-      header_id: w.header_id ?? null, doc_no: w.doc_no ?? null, doc_class: w.doc_class ?? null, doc_status: w.doc_status ?? 'N' });
-  };
+  const openRow = async (r: Row) => setEdit(await loadWhtEntry(r.id));
   useHotkeys({ Insert: can('add') && !edit ? () => setEdit(blank()) : undefined }, []);
   const years = Array.from({ length: 7 }, (_, i) => Number(today.slice(0, 4)) - 5 + i);
   return (
@@ -153,4 +156,13 @@ function WhtEditor({ entry, onClose, onSaved }: { entry: Entry; onClose: () => v
       {askCancel && <Confirm danger title="ยกเลิกรายการ" text="ยกเลิกรายการภาษีหัก ณ ที่จ่ายนี้? (เปลี่ยนสถานะ ไม่ลบ)" okText="ยกเลิกรายการ" onClose={() => setAskCancel(false)} onOk={cancel} />}
     </Modal>
   );
+}
+
+/** เปิดรายการในแฟ้มภาษีหัก ณ ที่จ่ายจากหน้าจออื่น (แท็บภาษีหัก ณ ที่จ่ายของใบสำคัญ/เอกสาร — เจ้าของ 17/11/2569 คลิกดูรายละเอียดได้ทุกรายการ) */
+export function WhtEntryModal({ id, onClose }: { id: string; onClose: () => void }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['wht-entry', id], staleTime: 0, queryFn: () => loadWhtEntry(id) });
+  if (q.error) return <Modal title="ภาษีหัก ณ ที่จ่าย" size="confirm" onClose={onClose} footer={<button onClick={onClose}>ปิด</button>}><ErrorBox error={q.error} /></Modal>;
+  if (!q.data) return null;
+  return <WhtEditor entry={q.data} onClose={onClose} onSaved={() => { onClose(); for (const k of ['wht', 'doc-wht', 'doc-wht-bill', 'wht-entry']) qc.invalidateQueries({ queryKey: [k] }); }} />;
 }

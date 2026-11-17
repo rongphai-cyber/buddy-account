@@ -7,6 +7,7 @@ import { badRequest, notFound, parse, requireCompany } from '../../http.js';
 import { closingOf, fiscalYearOf, isPL, leafTotals, loadChart, rollUp, type BalanceFilter, type Chart, type Totals, hqBranch } from './balances.js';
 import { logActivity } from '../../audit.js';
 import { budgetTotals } from './budget.js';
+import { fillPostedDesc } from './posted-desc.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
 
@@ -92,13 +93,15 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
     const a = requireCompany(req);
     const q = parse(z.object({ book_id: uuid.optional(), from: isoDate, to: isoDate }), req.query);
     let s = db.selectFrom('gl_journal as j').innerJoin('gl_journal_book as b', 'b.id', 'j.journal_book_id')
-      .select(['j.id', 'j.voucher_no', 'j.voucher_date', 'j.description', 'b.code as book_code', 'b.name_th as book_name'])
+      .select(['j.id', 'j.voucher_no', 'j.voucher_date', 'j.description', 'j.source_header_id', 'b.code as book_code', 'b.name_th as book_name'])
       .where('j.company_id', '=', a.companyId).where('j.doc_status', '=', 'N').where('j.deleted_at', 'is', null).where('j.voucher_date', '>=', q.from).where('j.voucher_date', '<=', q.to);
     if (q.book_id) s = s.where('j.journal_book_id', '=', q.book_id);
     const js = await s.orderBy('j.voucher_date').orderBy('j.voucher_no').limit(5000).execute();
     const ids = js.map((j) => j.id);
     const lines = ids.length ? await db.selectFrom('gl_journal_line as l').innerJoin('gl_account as g', 'g.id', 'l.account_id')
-      .select(['l.journal_id', 'l.line_no', 'g.account_no', 'g.name_th', 'l.description', 'l.debit', 'l.credit']).where('l.journal_id', 'in', ids).where('l.deleted_at', 'is', null).orderBy('l.journal_id').orderBy('l.line_no').execute() : [];
+      .select(['l.journal_id', 'l.line_no', 'g.account_no', 'g.name_th', 'l.description', 'l.debit', 'l.credit', 'l.posting_role']).where('l.journal_id', 'in', ids).where('l.deleted_at', 'is', null).orderBy('l.journal_id').orderBy('l.line_no').execute() : [];
+    const jById = new Map(js.map((j) => [j.id, j]));
+    await fillPostedDesc(db, a.companyId, lines, (l) => jById.get(l.journal_id)?.description, (l) => jById.get(l.journal_id)?.source_header_id);
     const by = new Map<string, typeof lines>();
     for (const l of lines) { const x = by.get(l.journal_id) ?? []; x.push(l); by.set(l.journal_id, x); }
     return { rows: js.map((j) => ({ ...j, lines: by.get(j.id) ?? [] })), truncated: js.length >= 5000 };
@@ -467,12 +470,12 @@ export async function ledgerOf(db: Db, companyId: string, accountId: string, fro
   const opening = fam.reduce((s, id) => s.plus(leaf.get(id)?.opening ?? ZERO), ZERO);
   let s = db.selectFrom('gl_journal_line as l').innerJoin('gl_journal as j', 'j.id', 'l.journal_id').innerJoin('gl_account as g', 'g.id', 'l.account_id')
     .leftJoin('md_department as dp', 'dp.id', 'l.department_id').leftJoin('doc_header as h', 'h.id', 'j.source_header_id')
-    .select(['j.id as journal_id', 'j.voucher_no', 'j.voucher_date', 'j.description as journal_description', 'l.description', 'l.debit', 'l.credit', 'g.account_no', 'dp.code as department_code', 'h.doc_no as source_doc_no', 'h.id as source_header_id', 'h.doc_class as source_doc_class', 'j.reference'])
+    .select(['j.id as journal_id', 'j.voucher_no', 'j.voucher_date', 'j.description as journal_description', 'l.description', 'l.debit', 'l.credit', 'g.account_no', 'dp.code as department_code', 'h.doc_no as source_doc_no', 'h.id as source_header_id', 'h.doc_class as source_doc_class', 'j.reference', 'l.posting_role'])
     .where('j.company_id', '=', a.companyId).where('j.doc_status', '=', 'N').where('j.deleted_at', 'is', null).where('l.deleted_at', 'is', null)
     .where('l.account_id', 'in', fam).where('j.voucher_date', '>=', q.from).where('j.voucher_date', '<=', q.to);
   if (q.branch_id) s = s.where(sql<string>`coalesce(j.branch_id, ${hqBranch(a.companyId)})`, '=', q.branch_id);
   if (q.department_id) s = s.where('l.department_id', '=', q.department_id);
-  const lines = await s.orderBy('j.voucher_date').orderBy('j.voucher_no').orderBy('l.line_no').execute();
+  const lines = await fillPostedDesc(db, a.companyId, await s.orderBy('j.voucher_date').orderBy('j.voucher_no').orderBy('l.line_no').execute(), (l) => l.journal_description, (l) => l.source_header_id);
   let run = opening;
   const rows = lines.map((l) => { run = run.plus(d(l.debit)).minus(d(l.credit)); return { ...l, balance: run.toFixed(2) }; });
   const debit = lines.reduce((x, l) => x.plus(d(l.debit)), ZERO), credit = lines.reduce((x, l) => x.plus(d(l.credit)), ZERO);

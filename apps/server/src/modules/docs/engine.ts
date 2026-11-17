@@ -1,6 +1,6 @@
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { buildPosting, d, formatDocNo, openingPosting, postingBalanced, renderJournalDesc, round2, type PostingLine } from '@buddy/core';
+import { buildPosting, d, formatDocNo, openingPosting, postedLineDesc, postingBalanced, renderJournalDesc, round2, type PostingLine } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound } from '../../http.js';
 import { logActivity } from '../../audit.js';
@@ -103,7 +103,7 @@ async function journalPeriodCheck(tx: Db, companyId: string, date: string) {
 function mergeLines(lines: PostingLine[]) {
   const m = new Map<string, PostingLine>();
   for (const l of lines) {
-    const k = `${l.account_id}|${l.role}|${l.debit.gt(0) ? 'D' : 'C'}`;
+    const k = `${l.account_id}|${l.role}|${l.debit.gt(0) ? 'D' : 'C'}|${l.cheque_id ?? ''}`;   // เช็คแต่ละใบแยกบรรทัด (คำอธิบายบอกเลขที่เช็ค)
     const cur = m.get(k);
     if (cur) { cur.debit = cur.debit.plus(l.debit); cur.credit = cur.credit.plus(l.credit); } else m.set(k, { ...l });
   }
@@ -162,10 +162,13 @@ export async function postDocument(tx: Db, ctx: Ctx, headerId: string, existingJ
     j = await tx.insertInto('gl_journal').values({ ...head, company_id: ctx.companyId, voucher_no: h.doc_no, source_module: h.doc_class, source_header_id: h.id, status: 'P', created_by: ctx.userId })
       .returning('id').executeTakeFirstOrThrow();
   }
+  // คำอธิบายบรรทัด = คำอธิบายหัว + ป้ายบรรทัดประกอบ/เลขที่เช็ค (เจ้าของ 17/11/2569 — แสดงในบัญชีแยกประเภท)
+  const chqIds = [...new Set(lines.map((l) => l.cheque_id).filter((x): x is string => !!x))];
+  const chqNo = new Map(chqIds.length ? (await tx.selectFrom('fin_cheque').select(['id', 'cheque_no']).where('company_id', '=', ctx.companyId).where('instrument', '=', 'CHEQUE').where('id', 'in', chqIds).execute()).map((c) => [c.id, c.cheque_no]) : []);
   let n = 0;
   for (const l of lines) {
     await tx.insertInto('gl_journal_line').values({
-      company_id: ctx.companyId, journal_id: j.id, line_no: ++n, account_id: l.account_id!, department_id: h.department_id, description: null,
+      company_id: ctx.companyId, journal_id: j.id, line_no: ++n, account_id: l.account_id!, department_id: h.department_id, description: postedLineDesc(head.description, l, l.cheque_id ? chqNo.get(l.cheque_id) : null),
       debit: round2(l.debit).toFixed(2), credit: round2(l.credit).toFixed(2), posting_role: l.role, resolved_from: l.layer, created_by: ctx.userId,
     }).execute();
   }
