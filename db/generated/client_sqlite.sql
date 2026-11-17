@@ -604,6 +604,10 @@ CREATE TABLE IF NOT EXISTS md_project (
   start_date TEXT,
   end_date TEXT,
   status TEXT NOT NULL DEFAULT 'A' CHECK (status IN ('A','I')),
+  ref_no TEXT,
+  manager TEXT,
+  contract_amount TEXT,
+  note TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -614,11 +618,12 @@ CREATE TABLE IF NOT EXISTS md_project (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_md_project_company_code ON md_project (company_id, code) WHERE deleted_at IS NULL;
 
--- md_project_budget: งบประมาณโครงการแยกขั้นตอน/รหัสต้นทุน
+-- md_project_budget: งบประมาณโครงการ — รายบัญชี (เจ้าของ 17/11/2569) หรือแยกขั้นตอน/รหัสต้นทุนแบบ Express
 CREATE TABLE IF NOT EXISTS md_project_budget (
   id TEXT PRIMARY KEY,
   company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
   project_id TEXT NOT NULL REFERENCES md_project(id) DEFERRABLE INITIALLY DEFERRED,
+  account_id TEXT REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED,
   phase TEXT,
   cost_code TEXT,
   est_expense TEXT,
@@ -632,6 +637,7 @@ CREATE TABLE IF NOT EXISTS md_project_budget (
   origin_device_id TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_md_project_budget_project_phase_cost_code ON md_project_budget (project_id, phase, cost_code) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_md_project_budget_project_account ON md_project_budget (project_id, account_id) WHERE deleted_at IS NULL;
 
 -- md_item_account_group: กลุ่มบัญชีสินค้า — ชั้นที่ 2 ของการหาบัญชีสำหรับสินค้า
 CREATE TABLE IF NOT EXISTS md_item_account_group (
@@ -3073,7 +3079,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_project', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'customer_id', NEW.customer_id, 'start_date', NEW.start_date, 'end_date', NEW.end_date, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'customer_id', NEW.customer_id, 'start_date', NEW.start_date, 'end_date', NEW.end_date, 'status', NEW.status, 'ref_no', NEW.ref_no, 'manager', NEW.manager, 'contract_amount', NEW.contract_amount, 'note', NEW.note, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_project_update_outbox AFTER UPDATE ON md_project
@@ -3082,7 +3088,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_project', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'customer_id', NEW.customer_id, 'start_date', NEW.start_date, 'end_date', NEW.end_date, 'status', NEW.status, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'code', NEW.code, 'name_th', NEW.name_th, 'name_en', NEW.name_en, 'customer_id', NEW.customer_id, 'start_date', NEW.start_date, 'end_date', NEW.end_date, 'status', NEW.status, 'ref_no', NEW.ref_no, 'manager', NEW.manager, 'contract_amount', NEW.contract_amount, 'note', NEW.note, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_project_ver AFTER UPDATE ON md_project
@@ -3096,7 +3102,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_project_budget', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'project_id', NEW.project_id, 'phase', NEW.phase, 'cost_code', NEW.cost_code, 'est_expense', NEW.est_expense, 'est_revenue', NEW.est_revenue, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'project_id', NEW.project_id, 'account_id', NEW.account_id, 'phase', NEW.phase, 'cost_code', NEW.cost_code, 'est_expense', NEW.est_expense, 'est_revenue', NEW.est_revenue, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_project_budget_update_outbox AFTER UPDATE ON md_project_budget
@@ -3105,7 +3111,7 @@ BEGIN
   INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
   VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_project_budget', NEW.id,
           CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
-          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'project_id', NEW.project_id, 'phase', NEW.phase, 'cost_code', NEW.cost_code, 'est_expense', NEW.est_expense, 'est_revenue', NEW.est_revenue, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'project_id', NEW.project_id, 'account_id', NEW.account_id, 'phase', NEW.phase, 'cost_code', NEW.cost_code, 'est_expense', NEW.est_expense, 'est_revenue', NEW.est_revenue, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
           IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_project_budget_ver AFTER UPDATE ON md_project_budget

@@ -25,6 +25,7 @@ import { docTypeRoutes } from './modules/doc-types.js';
 import { dataTableRoutes } from './modules/data-tables.js';
 import { docRoutes } from './modules/docs/routes.js';
 import { repostBatchRoutes } from './modules/docs/repost-batch.js';
+import { projectRoutes } from './modules/projects.js';
 import { tradeRoutes } from './modules/docs/trade.js';
 import { settleRoutes } from './modules/docs/settle.js';
 import { cashDocRoutes } from './modules/docs/cashdocs.js';
@@ -137,6 +138,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   dataTableRoutes(app, db);
   docRoutes(app, db);
   repostBatchRoutes(app, db);
+  projectRoutes(app, db);
   tradeRoutes(app, db);
   settleRoutes(app, db);
   cashDocRoutes(app, db);

@@ -4,6 +4,8 @@ import { d, round2, sum, ZERO, type MoneyInput, Decimal } from './money.js';
 export interface JournalLineInput {
   account_id: string | null;
   department_id?: string | null;
+  /** Job/โครงการ (เจ้าของ 17/11/2569) — ไม่บังคับ */
+  project_id?: string | null;
   description?: string | null;
   debit?: MoneyInput;
   credit?: MoneyInput;

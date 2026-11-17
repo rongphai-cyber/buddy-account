@@ -10,6 +10,7 @@ import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { saveBranch } from './payments.js';
+import { checkJobs, jobsOfDoc } from '../projects.js';
 import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
 
 /**
@@ -26,12 +27,13 @@ const str = (max: number) => z.string().trim().max(max).nullable().optional().tr
 const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 const body = z.object({
-  branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, department_id: optId, remark: str(2000), your_ref: str(60),
+  branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, department_id: optId, project_id: optId, remark: str(2000), your_ref: str(60),
   warehouse_id: optId, to_warehouse_id: optId,
   lines: z.array(z.object({
     item_id: uuid, description: str(200), warehouse_id: optId, qty: num.default('0'), unit_id: optId, factor: num.optional(),
     /** JU เพิ่ม: ทุนต่อหน่วย (ว่าง = ต้นทุนเฉลี่ย/ราคาทุนมาตรฐาน) */ unit_cost: num.nullable().optional(),
     /** CA: มูลค่าที่เพิ่ม(+)/ลด(−) */ amount: num.nullable().optional(), source_line_id: optId,
+    /** เบิกใช้ (OU): Job/โครงการของบรรทัด — ต้นทุน Job เกิดตอนเบิก (เจ้าของ 17/11/2569 ข้อ 5ก) */ project_id: optId,
     ...lineNoteFields,
   })).min(1, 'ป้อนรายการสินค้าอย่างน้อย 1 บรรทัด').max(500),
 });
@@ -55,6 +57,7 @@ export async function writeStockDoc(db: Db, a: Ctx, K: StockKind, id: string | n
   const whIds = [...new Set([b.warehouse_id, b.to_warehouse_id, ...b.lines.map((l) => l.warehouse_id)].filter((x): x is string => !!x))];
   const whs = whIds.length ? await db.selectFrom('md_warehouse').select(['id', 'code']).where('company_id', '=', a.companyId).where('id', 'in', whIds).where('deleted_at', 'is', null).execute() : [];
   if (whs.length !== whIds.length) throw badRequest('ไม่พบคลังสินค้าที่เลือก');
+  await checkJobs(db, a.companyId, [{ id: b.project_id }, ...b.lines.map((l, i) => ({ id: l.project_id, line: i + 1 }))], await jobsOfDoc(db, a.companyId, id));
   await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' },
     ...b.lines.map((l, i) => ({ table: 'md_unit', id: l.unit_id, field: 'unit_id', line: i + 1 }) as const)]);
   if (K.cls === 'RL') {
@@ -71,7 +74,7 @@ export async function writeStockDoc(db: Db, a: Ctx, K: StockKind, id: string | n
     if (K.cls === 'CA' && it.cost_method === 'F' && !l.source_line_id) throw badRequest(`บรรทัดที่ ${i + 1}: ${it.code} คิดต้นทุน FIFO — เลือกล็อต (เอกสารรับเข้า) ที่จะปรับ`);
   });
   const branchId = await saveBranch(db, a, id, b.branch_id);
-  const header = { ...(branchId ? { branch_id: branchId } : {}), doc_type_id: dt.id, doc_class: K.cls, module: 'IC', doc_date: b.doc_date, department_id: b.department_id ?? dt.department_id, remark: b.remark, your_ref: b.your_ref,
+  const header = { ...(branchId ? { branch_id: branchId } : {}), doc_type_id: dt.id, doc_class: K.cls, module: 'IC', doc_date: b.doc_date, department_id: b.department_id ?? dt.department_id, project_id: b.project_id ?? null, remark: b.remark, your_ref: b.your_ref,
     warehouse_id: b.warehouse_id ?? dt.warehouse_id, to_warehouse_id: K.cls === 'RL' ? b.to_warehouse_id : null, price_type: '0', updated_by: a.userId };
   {
     const tx = db;
@@ -102,7 +105,7 @@ export async function writeStockDoc(db: Db, a: Ctx, K: StockKind, id: string | n
       if (!wh) throw badRequest(`บรรทัดที่ ${i + 1}: เลือกคลังสินค้า`);
       const factor = d(l.factor ?? 1);
       const bq = d(l.qty).times(factor);
-      const baseLine = { company_id: a.companyId, header_id: hid!, line_kind: 'I', item_id: it.id, description: l.description ?? it.name_th, ...noteCols(l), department_id: header.department_id,
+      const baseLine = { company_id: a.companyId, header_id: hid!, line_kind: 'I', item_id: it.id, description: l.description ?? it.name_th, ...noteCols(l), department_id: header.department_id, project_id: l.project_id ?? null,
         unit_id: l.unit_id ?? it.base_unit_id, factor: factor.toString(), created_by: a.userId };
       const cost = async (q: ReturnType<typeof d>) => issueCost(tx, a.companyId, { itemId: it.id, warehouseId: wh, byWarehouse: st.byWarehouse, date: b.doc_date, qty: q.abs().toString(), method: it.cost_method, fallbackUnit: it.std_cost });
       if (K.cls === 'OU') {
@@ -174,7 +177,7 @@ export function stockDocRoutes(app: FastifyInstance, db: Db) {
       if (!h) throw notFound(K.label);
       // โอนย้าย: แสดงเฉพาะบรรทัดออก (คู่บรรทัดเข้าเป็นรายการเดียวกัน)
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id').leftJoin('md_unit as u', 'u.id', 'l.unit_id')
-        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.cost_unit', 'l.cost_amount', 'l.stock_effect', 'l.source_line_id', 'l.line_note', 'l.line_note_print'])
+        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.cost_unit', 'l.cost_amount', 'l.stock_effect', 'l.source_line_id', 'l.project_id', 'l.line_note', 'l.line_note_print'])
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).$if(K.cls === 'RL', (qb) => qb.where('l.stock_effect', '=', -1)).orderBy('l.line_no').execute();
       return { ...h, lines, editable: h.doc_status !== 'C' && !isMigAdj(h.doc_no) && !(await countLinked(db, id)), from_count: await countLinked(db, id) };
     });

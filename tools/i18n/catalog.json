@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 143,
+"n": 144,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -26,6 +26,7 @@
 "apps/web/src/pages/gl/Accounts.tsx",
 "apps/web/src/pages/gl/Books.tsx",
 "apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/gl/Journals.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx",
@@ -69,7 +70,7 @@
 },
 {
 "th": "บันทึก",
-"n": 103,
+"n": 104,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
 "apps/web/src/components/LkSelect.tsx",
@@ -92,6 +93,7 @@
 "apps/web/src/pages/gl/Books.tsx",
 "apps/web/src/pages/gl/Budget.tsx",
 "apps/web/src/pages/gl/InventoryAccount.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/gl/Opening.tsx",
 "apps/web/src/pages/gl/PriorYear.tsx",
@@ -172,7 +174,7 @@
 },
 {
 "th": "สถานะ",
-"n": 79,
+"n": 83,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/WtsConnect.tsx",
@@ -190,6 +192,7 @@
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
 "apps/web/src/pages/gl/Journals.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/inventory/Counts.tsx",
@@ -198,6 +201,7 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
 "apps/web/src/pages/settings/AiSettings.tsx",
 "apps/web/src/pages/settings/ApiKeys.tsx",
 "apps/web/src/pages/settings/Branches.tsx",
@@ -252,7 +256,7 @@
 },
 {
 "th": "รหัส",
-"n": 59,
+"n": 60,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
 "apps/web/src/components/WtsConnect.tsx",
@@ -266,6 +270,7 @@
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/web/src/pages/gl/Books.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/gl/Templates.tsx",
 "apps/web/src/pages/items/Items.tsx",
@@ -326,6 +331,48 @@
 ]
 },
 {
+"th": "ลูกค้า",
+"n": 52,
+"files": [
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/HoldNote.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/parties.ts",
+"apps/server/src/modules/serials.ts",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/docs/bills.ts",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/pdpa.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ลบ",
 "n": 51,
 "files": [
@@ -357,47 +404,6 @@
 "apps/server/src/modules/permissions.ts",
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/baht.ts"
-]
-},
-{
-"th": "ลูกค้า",
-"n": 50,
-"files": [
-"apps/web/src/components/LkSelect.tsx",
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/HoldNote.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/parties.ts",
-"apps/server/src/modules/serials.ts",
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/docs/bills.ts",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/pdpa.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -481,7 +487,7 @@
 },
 {
 "th": "หมายเหตุ",
-"n": 43,
+"n": 44,
 "files": [
 "apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -494,6 +500,7 @@
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/inventory/Counts.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx",
@@ -509,6 +516,42 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "เลขที่บัญชี",
+"n": 44,
+"files": [
+"apps/web/src/components/AccountCell.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/ReportFilters.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/ChartTemplate.tsx",
+"apps/web/src/pages/gl/InventoryAccount.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/AccountDetail.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/web/src/pages/settings/Defaults.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/payroll-import.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts"
 ]
 },
 {
@@ -548,40 +591,6 @@
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "เลขที่บัญชี",
-"n": 42,
-"files": [
-"apps/web/src/components/AccountCell.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/ReportFilters.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/ChartTemplate.tsx",
-"apps/web/src/pages/gl/InventoryAccount.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/AccountDetail.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/web/src/pages/settings/Defaults.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/payroll-import.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -790,11 +799,12 @@
 },
 {
 "th": "เลิกใช้",
-"n": 31,
+"n": 32,
 "files": [
 "apps/web/src/components/MasterBar.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
 "apps/web/src/pages/items/Items.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/payroll/Employees.tsx",
@@ -808,6 +818,35 @@
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/parties.ts",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "ถึง",
+"n": 30,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/PeriodPicker.tsx",
+"apps/web/src/components/ReportFilters.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/tax/Etax.tsx",
+"packages/core/src/payroll.ts"
 ]
 },
 {
@@ -837,34 +876,6 @@
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "ถึง",
-"n": 29,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/PeriodPicker.tsx",
-"apps/web/src/components/ReportFilters.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/tax/Etax.tsx",
-"packages/core/src/payroll.ts"
 ]
 },
 {
@@ -986,6 +997,31 @@
 ]
 },
 {
+"th": "ชื่อบัญชี",
+"n": 25,
+"files": [
+"apps/web/src/components/AccountCell.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/AccountDetail.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "ธนาคาร",
 "n": 25,
 "files": [
@@ -1094,29 +1130,6 @@
 ]
 },
 {
-"th": "ชื่อบัญชี",
-"n": 23,
-"files": [
-"apps/web/src/components/AccountCell.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/AccountDetail.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "ปกติ",
 "n": 23,
 "files": [
@@ -1136,6 +1149,48 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "apps/server/src/modules/payroll/files.ts"
+]
+},
+{
+"th": "รายได้",
+"n": 23,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ลบบรรทัด",
+"n": 23,
+"files": [
+"apps/web/src/components/Notes.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/DataTables.tsx",
+"apps/web/src/pages/tax/Wht50.tsx"
 ]
 },
 {
@@ -1186,29 +1241,6 @@
 "packages/core/src/payroll.ts",
 "packages/core/src/posting-desc.ts",
 "packages/core/src/source-totals.ts"
-]
-},
-{
-"th": "ลบบรรทัด",
-"n": 22,
-"files": [
-"apps/web/src/components/Notes.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/DataTables.tsx",
-"apps/web/src/pages/tax/Wht50.tsx"
 ]
 },
 {
@@ -1291,23 +1323,6 @@
 "packages/core/src/pdpa.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "รายได้",
-"n": 21,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -1401,7 +1416,7 @@
 },
 {
 "th": "ตั้งแต่",
-"n": 18,
+"n": 19,
 "files": [
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BankRecon.tsx",
@@ -1418,6 +1433,7 @@
 "apps/web/src/pages/payroll/Forms.tsx",
 "apps/web/src/pages/payroll/PaySetup.tsx",
 "apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
 "apps/web/src/pages/tax/Etax.tsx",
 "packages/core/src/payroll.ts"
 ]
@@ -2049,6 +2065,23 @@
 ]
 },
 {
+"th": "ทุกสถานะ",
+"n": 12,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
+]
+},
+{
 "th": "บริษัท",
 "n": 12,
 "files": [
@@ -2162,6 +2195,22 @@
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "🖨 พิมพ์",
+"n": 12,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/reports/AccountDetail.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/Statements.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/tax/Wht50.tsx"
 ]
 },
 {
@@ -2321,34 +2370,15 @@
 ]
 },
 {
-"th": "🖨 พิมพ์",
-"n": 11,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/reports/AccountDetail.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/Statements.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/tax/Wht50.tsx"
-]
-},
-{
-"th": "ทุกสถานะ",
+"th": "Job/โครงการ",
 "n": 10,
 "files": [
+"apps/web/src/components/AddWrap.tsx",
+"apps/web/src/components/JobSelect.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
+"apps/server/src/modules/projects.ts"
 ]
 },
 {
@@ -2489,6 +2519,21 @@
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/server/src/import/express/migrate.ts",
 "apps/server/src/modules/fa.ts"
+]
+},
+{
+"th": "ทุกสาขา",
+"n": 9,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/components/BranchCol.tsx",
+"apps/web/src/components/ReportFilters.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/payroll/forms.ts",
+"apps/server/src/modules/reports/index.ts"
 ]
 },
 {
@@ -2687,6 +2732,17 @@
 ]
 },
 {
+"th": "งบประมาณ",
+"n": 8,
+"files": [
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/server/src/modules/gl/reports.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "จ่ายชำระหนี้",
 "n": 8,
 "files": [
@@ -2710,20 +2766,6 @@
 "apps/web/src/pages/payroll/PaySetup.tsx",
 "apps/web/src/pages/settings/DataTables.tsx",
 "apps/web/src/pages/tax/Wht50.tsx"
-]
-},
-{
-"th": "ทุกสาขา",
-"n": 8,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/components/BranchCol.tsx",
-"apps/web/src/components/ReportFilters.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/payroll/forms.ts",
-"apps/server/src/modules/reports/index.ts"
 ]
 },
 {
@@ -2962,6 +3004,16 @@
 ]
 },
 {
+"th": "แสดงรายงาน",
+"n": 8,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
 "th": "ใบวางบิล",
 "n": 8,
 "files": [
@@ -3064,6 +3116,16 @@
 "apps/web/src/pages/gl/Opening.tsx",
 "apps/web/src/pages/gl/PriorYear.tsx",
 "apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
+"th": "ปิดแล้ว",
+"n": 7,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/gl/YearEnd.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/server/src/modules/projects.ts"
 ]
 },
 {
@@ -3319,6 +3381,17 @@
 ]
 },
 {
+"th": "ชื่อภาษาอังกฤษ",
+"n": 6,
+"files": [
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Defaults.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "บรรทัด",
 "n": 6,
 "files": [
@@ -3485,6 +3558,16 @@
 ]
 },
 {
+"th": "วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด",
+"n": 6,
+"files": [
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/projects.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/dashboard.ts"
+]
+},
+{
 "th": "วิธีชำระ",
 "n": 6,
 "files": [
@@ -3492,6 +3575,18 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/server/src/modules/banking.ts"
+]
+},
+{
+"th": "สาขา {0}",
+"n": 6,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
 ]
 },
 {
@@ -3655,12 +3750,13 @@
 ]
 },
 {
-"th": "แสดงรายงาน",
+"th": "ไม่มีรายการ",
 "n": 6,
 "files": [
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx"
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/server/src/modules/reports/stock.ts",
+"apps/server/src/modules/reports/tax.ts"
 ]
 },
 {
@@ -3682,6 +3778,17 @@
 "apps/web/src/pages/settings/Branches.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "Job บรรทัด {0}",
+"n": 5,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -3737,6 +3844,24 @@
 ]
 },
 {
+"th": "กำลังคำนวณ…",
+"n": 5,
+"files": [
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
+"th": "กำลังทำ",
+"n": 5,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "กุมภาพันธ์",
 "n": 5,
 "files": [
@@ -3776,15 +3901,6 @@
 ]
 },
 {
-"th": "งบประมาณ",
-"n": 5,
-"files": [
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/server/src/modules/gl/reports.ts",
-"packages/core/src/menu.ts"
-]
-},
-{
 "th": "จ่ายสุทธิ",
 "n": 5,
 "files": [
@@ -3799,16 +3915,6 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "ชื่อภาษาอังกฤษ",
-"n": 5,
-"files": [
-"apps/web/src/components/LkSelect.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Defaults.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -3829,6 +3935,17 @@
 "apps/web/src/pages/items/Items.tsx",
 "apps/web/src/pages/payroll/PaySetup.tsx",
 "apps/web/src/pages/settings/Defaults.tsx"
+]
+},
+{
+"th": "ช่วงวันที่",
+"n": 5,
+"files": [
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -4231,17 +4348,6 @@
 ]
 },
 {
-"th": "สาขา {0}",
-"n": 5,
-"files": [
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx"
-]
-},
-{
 "th": "สิงหาคม",
 "n": 5,
 "files": [
@@ -4458,15 +4564,6 @@
 "apps/server/src/modules/docs/deposits.ts",
 "packages/core/src/payroll-import.ts",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "ไม่มีรายการ",
-"n": 5,
-"files": [
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/server/src/modules/reports/stock.ts",
-"apps/server/src/modules/reports/tax.ts"
 ]
 },
 {
@@ -4701,21 +4798,30 @@
 ]
 },
 {
-"th": "ช่วงวันที่",
-"n": 4,
-"files": [
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
 "th": "ตัวคูณ",
 "n": 4,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/items/ItemTables.tsx"
+]
+},
+{
+"th": "ตั้งแต่ {0} ถึง {1}",
+"n": 4,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/reports/gl.ts"
+]
+},
+{
+"th": "ต้นทุน",
+"n": 4,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -4971,6 +5077,16 @@
 ]
 },
 {
+"th": "รูปแบบวันที่ไม่ถูกต้อง",
+"n": 4,
+"files": [
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/projects.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/gl/routes.ts"
+]
+},
+{
 "th": "ร่าง",
 "n": 4,
 "files": [
@@ -4984,15 +5100,6 @@
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด",
-"n": 4,
-"files": [
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/dashboard.ts"
 ]
 },
 {
@@ -5420,15 +5527,6 @@
 ]
 },
 {
-"th": "กำลังคำนวณ…",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx"
-]
-},
-{
 "th": "กำลังตรวจ…",
 "n": 3,
 "files": [
@@ -5444,6 +5542,15 @@
 "apps/web/src/App.tsx",
 "apps/web/src/pages/settings/NewCompany.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "กำไร (ขาดทุน)",
+"n": 3,
+"files": [
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -5726,15 +5833,6 @@
 ]
 },
 {
-"th": "ตั้งแต่ {0} ถึง {1}",
-"n": 3,
-"files": [
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/reports/gl.ts"
-]
-},
-{
 "th": "ตารางข้อมูล",
 "n": 3,
 "files": [
@@ -5753,11 +5851,11 @@
 ]
 },
 {
-"th": "ต้นทุน",
+"th": "ต้นทุน/กำไรตาม Job",
 "n": 3,
 "files": [
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/stock.ts"
+"apps/web/src/pages/reports/JobCost.tsx",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -6122,6 +6220,14 @@
 ]
 },
 {
+"th": "มูลค่าสัญญา",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "มูลค่าอัตรา 0%",
 "n": 3,
 "files": [
@@ -6406,15 +6512,6 @@
 "n": 3,
 "files": [
 "apps/web/src/components/ItemImages.tsx"
-]
-},
-{
-"th": "รูปแบบวันที่ไม่ถูกต้อง",
-"n": 3,
-"files": [
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/gl/routes.ts"
 ]
 },
 {
@@ -6739,6 +6836,15 @@
 ]
 },
 {
+"th": "เปลี่ยนเงื่อนไขแล้ว — กด แสดงรายงาน (F5) เพื่อแสดงตามเงื่อนไขใหม่",
+"n": 3,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
 "th": "เปลี่ยนเลขที่บัญชี",
 "n": 3,
 "files": [
@@ -6903,6 +7009,15 @@
 ]
 },
 {
+"th": "แสดงรายงานตามเงื่อนไข (F5)",
+"n": 3,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
 "th": "โทร.",
 "n": 3,
 "files": [
@@ -7018,10 +7133,26 @@
 ]
 },
 {
+"th": "ไม่ระบุ",
+"n": 3,
+"files": [
+"apps/web/src/components/JobSelect.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"packages/core/src/ai-bill.ts"
+]
+},
+{
 "th": "ไม่อนุมัติ",
 "n": 3,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "%ใช้งบ",
+"n": 2,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -7044,6 +7175,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "(ปิดแล้ว)",
+"n": 2,
+"files": [
+"apps/web/src/components/JobSelect.tsx",
+"apps/web/src/components/ReportFilters.tsx"
 ]
 },
 {
@@ -7251,6 +7390,30 @@
 ]
 },
 {
+"th": "Job / โครงการ",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx",
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "Job/โครงการ (ไม่บังคับ) — ค่าเริ่มต้นจากหัวเอกสาร",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "Job/โครงการ (ไม่บังคับ) — บรรทัดใหม่ใช้ Job ของบรรทัดก่อน",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
 "th": "[สร้างจากบรรทัดรายการ — Express ไม่มีหัวเอกสาร]",
 "n": 2,
 "files": [
@@ -7378,14 +7541,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "กำไร (ขาดทุน)",
-"n": 2,
-"files": [
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx"
 ]
 },
 {
@@ -7568,6 +7723,14 @@
 ]
 },
 {
+"th": "คลิกบัญชี",
+"n": 2,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
 "th": "คอลัมน์ตาราง",
 "n": 2,
 "files": [
@@ -7667,6 +7830,14 @@
 ]
 },
 {
+"th": "ค่าเริ่มต้นของทุกบรรทัด — แก้รายบรรทัดได้",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ค่าใช้จ่ายอื่น ๆ",
 "n": 2,
 "files": [
@@ -7735,6 +7906,21 @@
 "files": [
 "apps/web/src/pages/reports/Statements.tsx",
 "apps/server/src/modules/gl/reports.ts"
+]
+},
+{
+"th": "งบคงเหลือ",
+"n": 2,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "งบต้นทุน",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -7966,6 +8152,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/docs/CashDocs.tsx"
+]
+},
+{
+"th": "ชื่อ Job / โครงการ",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -9638,6 +9831,13 @@
 ]
 },
 {
+"th": "ยอดสะสมทั้งโครงการ",
+"n": 2,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "ยอดเคลื่อนไหว",
 "n": 2,
 "files": [
@@ -9721,6 +9921,14 @@
 "files": [
 "apps/server/src/modules/reports/parties.ts",
 "apps/server/src/modules/reports/register.ts"
+]
+},
+{
+"th": "รวม{0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -10523,11 +10731,32 @@
 ]
 },
 {
+"th": "วันสิ้นสุด",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
+"th": "วันสิ้นสุดต้องไม่ก่อนวันเริ่ม",
+"n": 2,
+"files": [
+"apps/server/src/modules/projects.ts"
+]
+},
+{
 "th": "วันเกิด",
 "n": 2,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "วันเริ่ม",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -11247,14 +11476,6 @@
 ]
 },
 {
-"th": "เปลี่ยนเงื่อนไขแล้ว — กด แสดงรายงาน (F5) เพื่อแสดงตามเงื่อนไขใหม่",
-"n": 2,
-"files": [
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx"
-]
-},
-{
 "th": "เปลี่ยนเป็น",
 "n": 2,
 "files": [
@@ -11568,6 +11789,14 @@
 ]
 },
 {
+"th": "เลือกบัญชีย่อย",
+"n": 2,
+"files": [
+"apps/server/src/modules/projects.ts",
+"apps/server/src/modules/docs/opening.ts"
+]
+},
+{
 "th": "เลือกรายการ",
 "n": 2,
 "files": [
@@ -11836,14 +12065,6 @@
 },
 {
 "th": "แสดงบัญชีที่ไม่มียอด",
-"n": 2,
-"files": [
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx"
-]
-},
-{
-"th": "แสดงรายงานตามเงื่อนไข (F5)",
 "n": 2,
 "files": [
 "apps/web/src/pages/reports/Ledger.tsx",
@@ -12234,14 +12455,6 @@
 ]
 },
 {
-"th": "ไม่ระบุ",
-"n": 2,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx",
-"packages/core/src/ai-bill.ts"
-]
-},
-{
 "th": "ไม่ระบุ (ตามเอกสาร)",
 "n": 2,
 "files": [
@@ -12344,6 +12557,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Budget.tsx"
+]
+},
+{
+"th": "%กำไร",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -12606,6 +12826,13 @@
 ]
 },
 {
+"th": "(ปิด)",
+"n": 1,
+"files": [
+"apps/web/src/components/JobSelect.tsx"
+]
+},
+{
 "th": "(ปิดได้ แต่ควรตรวจ)",
 "n": 1,
 "files": [
@@ -12799,6 +13026,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "(ไม่นับในงบต้นทุน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -14608,6 +14842,20 @@
 ]
 },
 {
+"th": "Job {0} มีเอกสาร/รายการบัญชีแล้ว ลบไม่ได้ — เปลี่ยนสถานะเป็น \"ปิดแล้ว\" แทน",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
+]
+},
+{
+"th": "Job/โครงการ (ไม่บังคับ) — ต้นทุนของ Job เกิดตอนเบิก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
 "th": "L ทั้งแถว",
 "n": 1,
 "files": [
@@ -16092,6 +16340,13 @@
 ]
 },
 {
+"th": "{0}Job {1} ปิดแล้ว ใช้ในเอกสารใหม่ไม่ได้ — เลือก Job ที่กำลังทำ หรือเปิด Job ใหม่ที่ บัญชี › Job/โครงการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
+]
+},
+{
 "th": "{0}ก่อนวันเริ่มใช้ = ยอดยกมาของงบทดลอง · ตั้งแต่วันเริ่มใช้ = ลงในงวดที่ยังไม่ปิด (เริ่มใช้ระบบเดิมทีหลัง)",
 "n": 1,
 "files": [
@@ -16362,6 +16617,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "· {0} ของรายได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -16715,6 +16977,13 @@
 ]
 },
 {
+"th": "กด แสดงรายงาน",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "กดปุ่มด้านล่างเพื่อสร้างกุญแจ แล้วสแกน QR code ด้วยแอป (หรือพิมพ์กุญแจเอง)",
 "n": 1,
 "files": [
@@ -16894,6 +17163,13 @@
 "n": 1,
 "files": [
 "apps/server/src/http.ts"
+]
+},
+{
+"th": "กลับทุก Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -17611,6 +17887,13 @@
 ]
 },
 {
+"th": "กำไร (ขาดทุน) ของ Job = รายได้ − ต้นทุน {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "กำไร (ขาดทุน) ปีปัจจุบัน",
 "n": 1,
 "files": [
@@ -18255,6 +18538,13 @@
 ]
 },
 {
+"th": "ข้อมูล Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
 "th": "ข้อมูลกิจการ",
 "n": 1,
 "files": [
@@ -18647,6 +18937,13 @@
 ]
 },
 {
+"th": "คลิก Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "คลิก/Space เพื่อเลือก · เช็คในใบนำฝากผ่านที่ใบนำฝาก",
 "n": 1,
 "files": [
@@ -18675,10 +18972,17 @@
 ]
 },
 {
-"th": "คลิกบัญชี",
+"th": "คลิกดูรายละเอียดรายบัญชี",
 "n": 1,
 "files": [
-"apps/web/src/pages/reports/TrialBalance.tsx"
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "คลิกดูแยกประเภทเฉพาะ Job นี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -19886,6 +20190,13 @@
 ]
 },
 {
+"th": "ค่าเริ่มต้นของทุกบรรทัด — ต้นทุน Job เกิดตอนเบิก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
 "th": "ค่าเริ่มต้นของระบบซื้อ ขาย สินค้า การเงิน และทรัพย์สิน (คู่มือบทที่ 5 ข้อ 1.2–1.12) อยู่ในแผนเฟส P2",
 "n": 1,
 "files": [
@@ -20418,6 +20729,13 @@
 ]
 },
 {
+"th": "งบต้นทุนรายบัญชี (บัญชีหมวด 5 ค่าใช้จ่าย/ต้นทุน) — รายงานเทียบยอดจริงของ Job กับงบนี้ · ตั้งงบบัญชีหมวดอื่นได้ แต่ไม่นับในงบต้นทุนรวม",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
 "th": "งบทดลอง (ใบสำคัญทั้งหมด) เดบิต / เครดิต",
 "n": 1,
 "files": [
@@ -20446,6 +20764,13 @@
 ]
 },
 {
+"th": "งบประมาณ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
 "th": "งบประมาณ — ปี {0}",
 "n": 1,
 "files": [
@@ -20457,6 +20782,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Budget.tsx"
+]
+},
+{
+"th": "งบประมาณมีเลขที่บัญชีซ้ำ — รวมเป็นบรรทัดเดียว",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
 ]
 },
 {
@@ -21027,6 +21359,13 @@
 ]
 },
 {
+"th": "จำนวนเงินไม่ถูกต้อง",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
+]
+},
+{
 "th": "จำนวนเงินไม่เกิน",
 "n": 1,
 "files": [
@@ -21461,6 +21800,13 @@
 ]
 },
 {
+"th": "ชื่อ / ลูกค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "ชื่อ ข้อมูลติดต่อผู้ใช้บริการ",
 "n": 1,
 "files": [
@@ -21867,6 +22213,13 @@
 ]
 },
 {
+"th": "ช่วง",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "ช่วงก่อนหน้า",
 "n": 1,
 "files": [
@@ -22161,10 +22514,31 @@
 ]
 },
 {
+"th": "ซื้อสินค้าเข้าคลังสำหรับ Job (ยังไม่เป็นต้นทุนจนกว่าจะเบิกใช้) และรายการงบดุลอื่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "ซื้อสินค้าเข้าคลังโดยระบุ Job — เป็นต้นทุนเมื่อเบิกใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "ซื้อเกินวงเงิน → เตือนขณะซื้อ",
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ซื้อเข้าคลังสำหรับ Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -22455,6 +22829,13 @@
 ]
 },
 {
+"th": "ดูรายบัญชีเทียบงบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "ดูรายวันได้ไม่เกิน 92 วัน — เลือกรายเดือนหรือช่วงที่สั้นลง",
 "n": 1,
 "files": [
@@ -22473,6 +22854,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ดูแยกประเภทเฉพาะ Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -23519,10 +23907,38 @@
 ]
 },
 {
+"th": "ต้นทุน / ค่าใช้จ่าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "ต้นทุน Job {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "ต้นทุน/กำไร Job {0} {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "ต้นทุนการผลิต — กระจายเป็นทุนต่อหน่วย",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
+"th": "ต้นทุนกำไรตาม Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -24503,6 +24919,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ทุกรายการ",
+"n": 1,
+"files": [
+"apps/web/src/components/ReportFilters.tsx"
 ]
 },
 {
@@ -25731,6 +26154,13 @@
 ]
 },
 {
+"th": "บัญชี {0} เป็นบัญชีคุม — ตั้งงบที่บัญชีย่อย",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
+]
+},
+{
 "th": "บัญชี {0} เป็นบัญชีคุม — ป้อนงบประมาณที่บัญชีย่อย (บัญชีคุมรวมยอดให้เอง)",
 "n": 1,
 "files": [
@@ -25777,6 +26207,13 @@
 "n": 1,
 "files": [
 "packages/core/src/hub.ts"
+]
+},
+{
+"th": "บัญชี › Job / โครงการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -25966,6 +26403,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Filing.tsx"
+]
+},
+{
+"th": "บัญชีซ้ำ",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
 ]
 },
 {
@@ -26295,6 +26739,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocEdit.tsx"
+]
+},
+{
+"th": "บันทึก Job {0} แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -27901,6 +28352,13 @@
 ]
 },
 {
+"th": "ปัจจุบัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "ปัญหา",
 "n": 1,
 "files": [
@@ -28097,10 +28555,10 @@
 ]
 },
 {
-"th": "ปิดแล้ว",
+"th": "ปิดแล้ว = ใช้ในเอกสารใหม่ไม่ได้ (เอกสารเดิมคงไว้)",
 "n": 1,
 "files": [
-"apps/web/src/pages/gl/YearEnd.tsx"
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -28377,6 +28835,13 @@
 ]
 },
 {
+"th": "ป้อนชื่อ Job/โครงการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
+]
+},
+{
 "th": "ป้อนชื่อกิจการ/ร้าน",
 "n": 1,
 "files": [
@@ -28626,6 +29091,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "ป้อนรหัส Job",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
 ]
 },
 {
@@ -29494,6 +29966,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "ผู้รับผิดชอบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
+"th": "ผู้รับผิดชอบ:",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -31471,6 +31957,20 @@
 ]
 },
 {
+"th": "มูลค่าสัญญา (รายได้ที่คาด)",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
+"th": "มูลค่าสัญญา:",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "มูลค่าสินค้า",
 "n": 1,
 "files": [
@@ -32024,6 +32524,13 @@
 ]
 },
 {
+"th": "ยอดคำนวณสดจากใบสำคัญที่ระบุ Job · รายได้ = บัญชีหมวด 4 · ต้นทุน = บัญชีหมวด 5 (ค่าใช้จ่าย เบิกใช้ ต้นทุนขาย สมุดรายวัน) · ซื้อสินค้าเข้าคลังโดยใส่ Job จะเป็นต้นทุนตอนเบิกใช้ (ไม่นับซ้ำ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "ยอดคำนวณสดจากใบสำคัญทุกใบ · กำไร (ขาดทุน) ของปีก่อนปิดเข้าบัญชีกำไรสะสมให้อัตโนมัติ — ไม่ต้อง \"คำนวณยอดใหม่\" แบบ Express",
 "n": 1,
 "files": [
@@ -32084,6 +32591,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/files.ts"
+]
+},
+{
+"th": "ยอดจริง",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -32756,6 +33270,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/wts-living.ts"
+]
+},
+{
+"th": "ยังไม่มี Job — กด + เพิ่ม Job (Insert) · เพิ่ม Job แรกแล้วช่อง Job จะขึ้นในเอกสารให้อัตโนมัติ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
+"th": "ยังไม่มี Job — เพิ่มที่ บัญชี › Job / โครงการ แล้วใส่ Job ในบรรทัดเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -33802,6 +34330,13 @@
 ]
 },
 {
+"th": "รวม {0} Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "รวม {0} คน",
 "n": 1,
 "files": [
@@ -33879,13 +34414,6 @@
 ]
 },
 {
-"th": "รวม{0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
 "th": "รวม{0} ({1} รายการ)",
 "n": 1,
 "files": [
@@ -33897,6 +34425,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "รวมงบประมาณ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -34117,6 +34652,27 @@
 ]
 },
 {
+"th": "รหัส Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
+"th": "รหัส Job {0} ซ้ำกับ \"{1}\" — ใช้รหัสอื่น",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
+]
+},
+{
+"th": "รหัส Job ไม่เกิน 10 ตัวอักษร",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
+]
+},
+{
 "th": "รหัส {0}",
 "n": 1,
 "files": [
@@ -34275,6 +34831,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
+]
+},
+{
+"th": "รหัสซ้ำ",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
 ]
 },
 {
@@ -35370,6 +35933,13 @@
 ]
 },
 {
+"th": "ระยะเวลา:",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "ระหว่างงวด",
 "n": 1,
 "files": [
@@ -36224,6 +36794,20 @@
 ]
 },
 {
+"th": "รายงาน › ต้นทุน/กำไรตาม Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "รายงาน › ต้นทุน/กำไรตาม Job › รายละเอียด",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "รายงาน › บัญชีแยกประเภท",
 "n": 1,
 "files": [
@@ -36984,6 +37568,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
+"th": "ลบ Job {0}? ลบได้เฉพาะ Job ที่ยังไม่มีเอกสาร — ถ้ามีแล้วให้กด \"เลิกใช้\" (ปิด Job)",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -37796,6 +38387,13 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ลูกค้า:",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -39637,6 +40235,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AuxTools.tsx"
+]
+},
+{
+"th": "สัญญา:",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -42979,6 +43584,27 @@
 ]
 },
 {
+"th": "เฉพาะ Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
+"th": "เฉพาะ Job ที่กำลังทำ",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "เฉพาะ Job ที่ปิดแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "เฉพาะคนที่ถูกหักภาษี",
 "n": 1,
 "files": [
@@ -44785,6 +45411,13 @@
 ]
 },
 {
+"th": "เพิ่ม Job / โครงการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
 "th": "เพิ่ม {0} คน",
 "n": 1,
 "files": [
@@ -45296,6 +45929,13 @@
 ]
 },
 {
+"th": "เริ่มต้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "เริ่มย้ายข้อมูล",
 "n": 1,
 "files": [
@@ -45653,6 +46293,13 @@
 ]
 },
 {
+"th": "เลขที่บัญชีงบ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
 "th": "เลขที่บัญชีต้องเป็นรูปแบบ {0}",
 "n": 1,
 "files": [
@@ -45727,6 +46374,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "เลขที่สัญญา/PO ของลูกค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -46255,6 +46909,13 @@
 ]
 },
 {
+"th": "เลือก Job ที่กำลังทำ",
+"n": 1,
+"files": [
+"apps/server/src/modules/projects.ts"
+]
+},
+{
 "th": "เลือก buddy (คิดเงินเดือนใน Buddy) หรือ wts-sop (คิดที่ WTS-HR)",
 "n": 1,
 "files": [
@@ -46504,13 +47165,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/bankdocs.ts"
-]
-},
-{
-"th": "เลือกบัญชีย่อย",
-"n": 1,
-"files": [
-"apps/server/src/modules/docs/opening.ts"
 ]
 },
 {
@@ -47669,6 +48323,13 @@
 ]
 },
 {
+"th": "แก้ไข Job {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
 "th": "แก้ไข{0} {1}",
 "n": 1,
 "files": [
@@ -48229,6 +48890,13 @@
 ]
 },
 {
+"th": "แฟ้ม Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "แฟ้ม RD Prep",
 "n": 1,
 "files": [
@@ -48719,6 +49387,13 @@
 ]
 },
 {
+"th": "แสดงช่อง Job ในเอกสารซื้อ ขาย ค่าใช้จ่าย เบิกใช้ และสมุดรายวัน — เปิดให้อัตโนมัติเมื่อเพิ่ม Job แรก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
 "th": "แสดงตอนเลือกผู้จำหน่ายในเอกสาร",
 "n": 1,
 "files": [
@@ -48790,6 +49465,13 @@
 },
 {
 "th": "แสดงเฉพาะช่วงบัญชี — ยอดรวมไม่ต้องดุล",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
+"th": "แสดงเฉพาะรายการที่ระบุ Job นี้ — ยอดรวมไม่ต้องดุล",
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/TrialBalance.tsx"
@@ -49129,6 +49811,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "ใช้ Job/โครงการ (คิดต้นทุนรายงาน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
 ]
 },
 {
@@ -50305,6 +50994,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "ใส่ Job ในบรรทัดเอกสารซื้อ ขาย ค่าใช้จ่าย เบิกใช้ และสมุดรายวัน เพื่อดูต้นทุน/กำไรของแต่ละงาน (รายงาน › ต้นทุน/กำไรตาม Job) · ไม่บังคับใส่",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -51680,6 +52376,13 @@
 ]
 },
 {
+"th": "ไม่ระบุ Job",
+"n": 1,
+"files": [
+"apps/web/src/components/JobSelect.tsx"
+]
+},
+{
 "th": "ไม่ระบุรหัส",
 "n": 1,
 "files": [
@@ -51810,6 +52513,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ไม่เกิน 10 ตัวอักษร เช่น J6901",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {
@@ -52338,6 +53048,13 @@
 ]
 },
 {
+"th": "← ทุก Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
 "th": "← → หรือ Tab เลือกปุ่ม · Enter กดปุ่มที่เลือก · Esc กลับไปแก้",
 "n": 1,
 "files": [
@@ -52734,6 +53451,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "📊 รายงานต้นทุน/กำไรตาม Job",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Jobs.tsx"
 ]
 },
 {

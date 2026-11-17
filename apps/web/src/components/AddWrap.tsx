@@ -12,6 +12,7 @@ import { QuickAdd } from './LkSelect';
 const KINDS = {
   dept: { label: 'แผนก', menu: 'SET.DEPT', query: 'departments', post: (b: { code: string; name_th: string; name_en: string }) => api.post<{ id: string }>('/api/v1/departments', { ...b, name_en: b.name_en || null }), needCode: true },
   slm: { label: 'พนักงานขาย', menu: 'SA.SLM', query: 'salespersons', post: (b: { code: string; name_th: string }) => api.post<{ id: string }>('/api/v1/salespersons', { code: b.code, name: b.name_th }), needCode: true },
+  job: { label: 'Job/โครงการ', menu: 'GL.JOB', query: 'project-options', post: (b: { code: string; name_th: string; name_en: string }) => api.post<{ id: string }>('/api/v1/projects', { code: b.code, name_th: b.name_th, name_en: b.name_en || null }), needCode: true },
 } as const;
 
 export function AddWrap({ kind, children }: { kind: keyof typeof KINDS; children: ReactNode }) {

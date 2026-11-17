@@ -19,6 +19,7 @@ import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
+import { JobSelect, followHeadJob, showJob, useJobs } from '../../components/JobSelect';
 
 /** รายการประจำวันสินค้า (คู่มือบทที่ 14 S-IC-06/08/10 + เพิ่ม/ลดต้นทุน) — สต๊อกคำนวณสดจากเอกสาร */
 const MENU = 'IC.TRN';
@@ -68,10 +69,10 @@ export function StockDocListPage({ cls }: { cls: StockKind['cls'] }) {
 }
 
 interface ItemHit { id: string; code: string; name_th: string; base_unit_id: string | null; std_cost: string | null; cost_method?: string | null }
-interface Line { key: number; item_id: string | null; item_code: string; description: string; line_note?: string; line_note_print?: boolean; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_cost: string; amount: string; source_line_id: string | null; cost_amount: string | null; cost_unit: string | null }
-interface Head { doc_type_id: string; doc_date: string; department_id: string; remark: string; your_ref: string; warehouse_id: string | null; to_warehouse_id: string | null }
+interface Line { key: number; /** เบิกใช้: Job/โครงการของบรรทัด */ project_id?: string | null; item_id: string | null; item_code: string; description: string; line_note?: string; line_note_print?: boolean; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_cost: string; amount: string; source_line_id: string | null; cost_amount: string | null; cost_unit: string | null }
+interface Head { doc_type_id: string; doc_date: string; department_id: string; project_id?: string; remark: string; your_ref: string; warehouse_id: string | null; to_warehouse_id: string | null }
 let seq = 0;
-const blank = (): Line => ({ key: ++seq, item_id: null, item_code: '', description: '', warehouse_id: null, qty: '', unit_id: null, factor: '1', unit_cost: '', amount: '', source_line_id: null, cost_amount: null, cost_unit: null });
+const blank = (job?: string | null): Line => ({ key: ++seq, project_id: job || null, item_id: null, item_code: '', description: '', warehouse_id: null, qty: '', unit_id: null, factor: '1', unit_cost: '', amount: '', source_line_id: null, cost_amount: null, cost_unit: null });
 
 /** ล็อตรับเข้าของสินค้า (FIFO) สำหรับปรับต้นทุน */
 function LotSelect({ itemId, warehouseId, value, disabled, onChange }: { itemId: string; warehouseId: string | null; value: string | null; disabled?: boolean; onChange: (v: string | null) => void }) {
@@ -114,24 +115,27 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   }
   if (!h && id && cur.data) {
     const c = cur.data;
-    setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), department_id: c.department_id ?? '', remark: c.remark ?? '', your_ref: c.your_ref ?? '', warehouse_id: c.warehouse_id ?? null, to_warehouse_id: c.to_warehouse_id ?? null });
+    setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), department_id: c.department_id ?? '', project_id: c.project_id ?? '', remark: c.remark ?? '', your_ref: c.your_ref ?? '', warehouse_id: c.warehouse_id ?? null, to_warehouse_id: c.to_warehouse_id ?? null });
     setLines(c.lines.map((l): Line => {
       const eff = Number(l.stock_effect), qty = d(String(l.qty ?? 0)).times(cls === 'JU' ? eff : 1);
-      return { key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, warehouse_id: (l.warehouse_id as string) ?? null, qty: qty.toString(), unit_id: (l.unit_id as string) ?? null, factor: d(String(l.factor ?? 1)).toString(),
+      return { key: ++seq, project_id: (l.project_id as string | null) ?? null, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, warehouse_id: (l.warehouse_id as string) ?? null, qty: qty.toString(), unit_id: (l.unit_id as string) ?? null, factor: d(String(l.factor ?? 1)).toString(),
         unit_cost: cls === 'JU' && eff > 0 ? d(String(l.cost_unit ?? 0)).toString() : '', amount: cls === 'CA' ? d(String(l.cost_amount ?? 0)).toString() : '', source_line_id: (l.source_line_id as string) ?? null, cost_amount: (l.cost_amount as string) ?? null, cost_unit: (l.cost_unit as string) ?? null };
-    }).concat(c.editable && can('edit') ? [blank()] : []));
+    }).concat(c.editable && can('edit') ? [blank(c.project_id)] : []));
   }
   const roBase = !!id && (!cur.data?.editable || !can('edit'));
   const ed = useDocEdit({ id: id ?? undefined, allowed: !!id && !roBase, dirty, onSave: (n) => void save(!!n), onDiscard: () => { setH(null); setDirty(false); } });
   const ro = roBase || ed.locked;
   const cancelled = cur.data?.doc_status === 'C';
+  const jobs = useJobs();
+  /** Job เฉพาะเบิกใช้ภายใน (OU) — เจ้าของ 17/11/2569 */
+  const jobOn = cls === 'OU' && showJob(jobs.enabled, h?.project_id, ...lines.map((l) => l.project_id));
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const setLine = (key: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...p, cost_amount: null, cost_unit: null } : l))); setDirty(true); };
   const pickItem = (key: number, r: ItemHit | null) => {
     if (!r) return setLine(key, { item_id: null, item_code: '', description: '' });
     setLines((ls) => {
       const next = ls.map((l) => (l.key === key ? { ...l, item_id: r.id, item_code: r.code, description: r.name_th, unit_id: r.base_unit_id, factor: '1', cost_amount: null, cost_unit: null } : l));
-      return next[next.length - 1]!.item_id ? [...next, blank()] : next;
+      return next[next.length - 1]!.item_id ? [...next, blank(h?.project_id)] : next;
     });
     setDirty(true);
   };
@@ -145,9 +149,9 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   /** เนื้อหาที่ส่งบันทึก — ใช้ทั้งปุ่มบันทึกและตัวอย่างการลงบัญชี (แท็บใบสำคัญ) */
   const bodyOf0 = () => {
     if (!h) return null;
-    return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, department_id: h.department_id || null, remark: h.remark || null, your_ref: h.your_ref || null, warehouse_id: h.warehouse_id, to_warehouse_id: cls === 'RL' ? h.to_warehouse_id : null,
+    return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, department_id: h.department_id || null, project_id: jobOn ? h.project_id || null : null, remark: h.remark || null, your_ref: h.your_ref || null, warehouse_id: h.warehouse_id, to_warehouse_id: cls === 'RL' ? h.to_warehouse_id : null,
         lines: used.map((l) => ({ item_id: l.item_id, description: l.description || null, line_note: l.line_note || null, line_note_print: !!l.line_note_print, warehouse_id: cls === 'RL' ? null : l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1',
-          unit_cost: cls === 'JU' && l.unit_cost !== '' ? l.unit_cost : null, amount: cls === 'CA' ? l.amount || '0' : null, source_line_id: cls === 'CA' ? l.source_line_id : null })) };
+          unit_cost: cls === 'JU' && l.unit_cost !== '' ? l.unit_cost : null, amount: cls === 'CA' ? l.amount || '0' : null, source_line_id: cls === 'CA' ? l.source_line_id : null, project_id: jobOn ? l.project_id ?? null : null })) };
   };
   const bodyOf = () => { const x = bodyOf0(); return x && { ...x, branch_id: br.body }; };
   const save = async (andNew = false) => {
@@ -207,15 +211,16 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
             
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
             <Field label="แผนก"><AddWrap kind="dept"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></Field>
+            {jobOn && <Field label="Job/โครงการ" hint="ค่าเริ่มต้นของทุกบรรทัด — ต้นทุน Job เกิดตอนเบิก"><AddWrap kind="job"><JobSelect value={h.project_id} disabled={ro} onChange={(v) => { setLines((ls) => followHeadJob(ls, h.project_id, v)); set({ project_id: v ?? '' }); }} /></AddWrap></Field>}
             <Field label="เลขที่อ้างอิง"><input value={h.your_ref} maxLength={60} disabled={ro} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
           </div>
         </div>
         <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการสินค้า', badge: used.length || undefined }, ...(cls !== 'RL' ? [{ key: 'gl', label: id && ro ? 'ใบสำคัญที่ลงบัญชี' : 'ตัวอย่างการลงบัญชี' }] : [])]} />
         {tab === 'gl' ? <PostingTab id={id} path={K.path} editing={!ro} bodyOf={bodyOf} /> : <div className="table-wrap">
           <table className="grid lines">
-            <thead><tr><th style={{ width: 40 }}>#</th><th style={{ width: 200 }}>รหัสสินค้า</th><th>รายละเอียด</th>{cls !== 'RL' && <th style={{ width: 110 }}>คลัง</th>}
+            <thead><tr><th style={{ width: 40 }}>#</th><th style={{ width: 200 }}>รหัสสินค้า</th><th style={{ minWidth: jobOn ? 160 : undefined }}>รายละเอียด</th>{cls !== 'RL' && <th style={{ width: 110 }}>คลัง</th>}
               {cls === 'CA' ? <><th style={{ width: 280 }}>ล็อตรับเข้า (FIFO)</th><th className="r" style={{ width: 150 }}>เพิ่ม(+)/ลด(−) ต้นทุน</th></>
-                : <><th className="r" style={{ width: 120 }}>{cls === 'JU' ? 'จำนวน (+/−)' : 'จำนวน'}</th><th style={{ width: 100 }}>หน่วย</th><th className="r" style={{ width: 80 }} title="ตัวคูณเป็นหน่วยย่อย (S-IC-05)">ตัวคูณ</th><th className="r" style={{ width: 120 }}>{cls === 'JU' ? 'ทุน/หน่วย (เพิ่ม)' : 'ทุน/หน่วย'}</th><th className="r" style={{ width: 130 }}>มูลค่าต้นทุน</th></>}
+                : <><th className="r" style={{ width: 120 }}>{cls === 'JU' ? 'จำนวน (+/−)' : 'จำนวน'}</th><th style={{ width: 100 }}>หน่วย</th><th className="r" style={{ width: 80 }} title="ตัวคูณเป็นหน่วยย่อย (S-IC-05)">ตัวคูณ</th>{jobOn && <th style={{ width: 84 }} title="Job/โครงการ (ไม่บังคับ) — ต้นทุนของ Job เกิดตอนเบิก">Job</th>}<th className="r" style={{ width: 120 }}>{cls === 'JU' ? 'ทุน/หน่วย (เพิ่ม)' : 'ทุน/หน่วย'}</th><th className="r" style={{ width: 130 }}>มูลค่าต้นทุน</th></>}
               <th style={{ width: 40 }} /></tr></thead>
             <tbody>
               {lines.map((l, i) => (
@@ -231,6 +236,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
                     <td><NumInput neg={cls === 'JU'} value={l.qty} disabled={ro} onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวน" /></td>
                     <td><LkSelect byId table="20" rows={lk.data?.UNIT} value={l.unit_id} disabled={ro} onChange={(v) => setLine(l.key, { unit_id: v || null })} aria-label="หน่วย" /></td>
                     <td><input className="r" inputMode="decimal" value={l.factor} disabled={ro} onChange={(e) => setLine(l.key, { factor: e.target.value.replace(/[^\d.]/g, '') })} aria-label="ตัวคูณ" /></td>
+                    {jobOn && <td><JobSelect value={l.project_id} disabled={ro} label={`Job บรรทัด ${i + 1}`} onChange={(v) => setLine(l.key, { project_id: v })} /></td>}
                     {cls === 'JU' && d(l.qty || 0).gt(0) ? <td><NumInput places={2} value={l.unit_cost} disabled={ro} placeholder="เฉลี่ย" onChange={(v) => setLine(l.key, { unit_cost: v })} aria-label="ทุนต่อหน่วย" /></td>
                       : <td className="r muted">{l.cost_unit !== null ? fmt(l.cost_unit, { places: 4 }) : ''}</td>}
                     <td className="r muted">{l.cost_amount !== null ? <Money v={l.cost_amount} /> : l.item_id ? <span className="small">คำนวณเมื่อบันทึก</span> : ''}</td>
@@ -239,7 +245,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
                 </tr>
               ))}
             </tbody>
-            {cls !== 'CA' && id && <tfoot><tr><td colSpan={cls === 'RL' ? 7 : 8} className="r">รวมมูลค่าต้นทุน</td><td className="r"><b><Money v={total.toFixed(2)} /></b></td><td /></tr></tfoot>}
+            {cls !== 'CA' && id && <tfoot><tr><td colSpan={(cls === 'RL' ? 7 : 8) + (jobOn ? 1 : 0)} className="r">รวมมูลค่าต้นทุน</td><td className="r"><b><Money v={total.toFixed(2)} /></b></td><td /></tr></tfoot>}
           </table>
         </div>}
       </div>}

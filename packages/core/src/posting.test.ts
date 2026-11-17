@@ -298,3 +298,24 @@ describe('ใบเสร็จตัดบิลภาษีเกณฑ์เ�
     expect(str(settlementVatParts({ amount: '107.55', vat: '0', inv_net: '107.55', inv_exempt: '107.55' }))).toEqual(['0.00', '0.00', '0.00', '0.00', '107.55']);
   });
 });
+
+describe('Job/โครงการของบรรทัดเอกสาร → บรรทัดบัญชี (เจ้าของ 17/11/2569)', () => {
+  const rp: PostingResolver = { ...r, perpetual: true, item: () => ({ type: '0', group: { sales: 'sales-g', cogs: 'cogs-g', inv: 'inv-g' } }) };
+  const H = (doc_class: string, net_amount: string, vat_amount = '0') => ({ id: 'h', doc_class, doc_type_id: null, customer_id: 'c1', supplier_id: 's1', net_amount, vat_amount, deposit_amount: '0', vat_basis: '1' });
+  const jobs = (p: ReturnType<typeof buildPosting>) => p.filter((l) => l.project_id).map((l) => `${l.account_id}:${l.debit.toFixed(2)}:${l.credit.toFixed(2)}:${l.project_id}`).sort();
+  it('sale: revenue and cost of goods sold carry the line Job; AR/VAT/inventory do not', () => {
+    const p = buildPosting(H('IV', '3210', '210'), [{ item_id: 'x', net_amount: '3000', project_id: 'J1', cost_amount: '200', stock_effect: -1 }], [], [], rp);
+    expect(postingBalanced(p)).toBe(true);
+    expect(jobs(p)).toEqual(['cogs-g:200.00:0.00:J1', 'sales-g:0.00:3000.00:J1']);
+  });
+  it('purchase: stock bought for a Job carries the Job on the inventory line (cost comes later at the issue)', () => {
+    const p = buildPosting(H('RR', '1070', '70'), [{ item_id: 'x', net_amount: '1000', project_id: 'J1' }, { item_id: 'x', net_amount: '0' }], [], [], rp);
+    expect(jobs(p)).toEqual(['inv-g:1000.00:0.00:J1']);
+  });
+  it('internal issue (OU): expense side carries the Job, inventory side does not · line without a Job stays without', () => {
+    const p = buildPosting(H('OU', '0'), [{ item_id: 'x', net_amount: '0', cost_amount: '400', stock_effect: -1, project_id: 'J1' }, { item_id: 'x', net_amount: '0', cost_amount: '50', stock_effect: -1 }], [], [], rp);
+    expect(postingBalanced(p)).toBe(true);
+    expect(jobs(p)).toEqual(['oexp:400.00:0.00:J1']);
+    expect(p.filter((l) => !l.project_id).map((l) => `${l.account_id}:${l.debit.toFixed(2)}:${l.credit.toFixed(2)}`).sort()).toEqual(['inv-g:0.00:400.00', 'inv-g:0.00:50.00', 'oexp:50.00:0.00']);
+  });
+});

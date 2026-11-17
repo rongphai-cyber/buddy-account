@@ -13,6 +13,7 @@ import { lineNoteFields, noteCols, activeSettlement, cancelDocument, postDocumen
 import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcost.js';
 import { checkWht, readMoneyParts, saveBranch, whtSchema, writeWht } from './payments.js';
 import { checkHold, noteHold } from './hold.js';
+import { checkJobs, jobsOfDoc } from '../projects.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -24,7 +25,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไ�
 export const tradeBody = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'), bill_to_customer_id: optId,
   party_tax_branch_no: str(5), your_ref: str(30), ref_no: str(30), ref_date: isoDate.nullable().optional(), ref_header_id: optId,
-  department_id: optId, salesperson_id: optId, sales_area_code: str(10), ship_via_code: str(10), ship_to_id: optId, warehouse_id: optId,
+  department_id: optId, project_id: optId, salesperson_id: optId, sales_area_code: str(10), ship_via_code: str(10), ship_to_id: optId, warehouse_id: optId,
   credit_days: z.coerce.number().int().min(0).max(999).nullable().optional(), due_date: isoDate.nullable().optional(),
   price_type: z.enum(['0', '1', '2']), vat_rate: num, vat_basis: z.enum(['1', '2']).nullable().optional(), discount_text: str(20),
   remark: str(2000), payment_terms: str(60),
@@ -32,7 +33,7 @@ export const tradeBody = z.object({
   delivery_date: isoDate.nullable().optional(),
   lines: z.array(z.object({
     item_id: uuid, description: str(200), warehouse_id: optId, qty: num, unit_id: optId, factor: num.optional(), unit_price: num,
-    discount_text: str(20), is_free: z.boolean().default(false), return_to_stock: z.boolean().default(false), department_id: optId,
+    discount_text: str(20), is_free: z.boolean().default(false), return_to_stock: z.boolean().default(false), department_id: optId, project_id: optId,
     /** บิลที่อ้างใบสั่งขาย/ใบสั่งซื้อ: บรรทัดต้นทาง */
     source_line_id: optId, delivery_date: isoDate.nullable().optional(),
     /** ประเภท VAT รายบรรทัด (ข้อกำหนดเจ้าของ): 0 = ยกเว้น VAT · 1 = มี VAT · 2 = อัตรา 0% — ไม่ส่ง = ตามแฟ้มสินค้า · หน้าเอกสารมาก่อนแฟ้มสินค้า */
@@ -101,6 +102,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     if (!(Number(l.qty) !== 0) && !(Number(l.unit_price) !== 0)) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวนและราคา`);
   });
   // รหัสที่อ้างถึง (แผนก พนักงานขาย สถานที่ส่ง คลัง หน่วยนับ วิธีชำระ) ต้องเป็นของบริษัทนี้ — FK ไม่ตรวจบริษัท
+  await checkJobs(db, a.companyId, [{ id: b.project_id }, ...b.lines.map((l, i) => ({ id: l.project_id, line: i + 1 }))], await jobsOfDoc(db, a.companyId, id));
   await checkOwned(db, a.companyId, [
     { table: 'md_department', id: b.department_id, field: 'department_id' }, { table: 'md_salesperson', id: b.salesperson_id, field: 'salesperson_id' },
     { table: 'md_customer_ship_to', id: b.ship_to_id, field: 'ship_to_id' }, { table: 'md_warehouse', id: b.warehouse_id, field: 'warehouse_id' },
@@ -172,7 +174,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     customer_id: K.party === 'customer' ? party.id : null, supplier_id: K.party === 'supplier' ? party.id : null, bill_to_customer_id: billTo ? b.bill_to_customer_id : null,
     party_name: [shown.title, shown.name].filter(Boolean).join(' ').slice(0, 200), party_address: [shown.address_1, shown.address_2, shown.address_3, shown.zip_code].filter(Boolean).join(' ').slice(0, 500) || null,
     party_tax_id: shown.tax_id, party_tax_branch_no: b.party_tax_branch_no || shown.tax_branch_no || '00000',
-    your_ref: b.your_ref, ref_no: b.ref_no, ref_date: b.ref_date ?? null, department_id: b.department_id ?? dt.department_id, salesperson_id: b.salesperson_id,
+    your_ref: b.your_ref, ref_no: b.ref_no, ref_date: b.ref_date ?? null, department_id: b.department_id ?? dt.department_id, project_id: b.project_id ?? null, salesperson_id: b.salesperson_id,
     sales_area_code: b.sales_area_code, ship_via_code: b.ship_via_code, ship_to_id: b.ship_to_id, warehouse_id: b.warehouse_id ?? dt.warehouse_id,
     credit_days: credit, due_date: b.due_date ?? dueDate(b.doc_date, credit), price_type: b.price_type, vat_rate: b.vat_rate, vat_basis: b.vat_basis ?? '1',
     amount: calc.amount, discount_text: b.discount_text, discount_amount: calc.discount_amount, amount_after_discount: calc.amount_after_discount,
@@ -247,7 +249,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     const inserted = await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({
       company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'I', item_id: l.item_id, description: l.description ?? byId.get(l.item_id)!.name_th,
       warehouse_id: stock[i]!.warehouse_id, stock_effect: stock[i]!.stock_effect, movement_code: stock[i]!.movement_code, cost_amount: stock[i]!.cost_amount, cost_unit: stock[i]!.cost_unit,
-      department_id: l.department_id ?? header.department_id, qty: l.qty, unit_id: l.unit_id ?? byId.get(l.item_id)!.base_unit_id,
+      department_id: l.department_id ?? header.department_id, project_id: l.project_id ?? null, qty: l.qty, unit_id: l.unit_id ?? byId.get(l.item_id)!.base_unit_id,
       factor: l.factor ?? '1', base_qty: d(l.qty).times(d(l.factor ?? 1)).abs().toString(), unit_price: l.is_free ? '0' : l.unit_price, discount_text: l.discount_text,
       discount_amount: calc.lines[i]!.discount_amount, line_amount: calc.lines[i]!.line_amount, net_amount: calc.lines[i]!.net_amount,
       ...noteCols(l), vat_code: lineVat(l), is_free: l.is_free, return_to_stock: l.return_to_stock, salesperson_id: b.salesperson_id, created_by: a.userId,
@@ -256,7 +258,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     if (kitRows.length) {
       const idOf = new Map(inserted.map((x) => [x.line_no, x.id]));
       await tx.insertInto('doc_line').values(kitRows.map((k, n) => ({ company_id: a.companyId, header_id: hid!, line_no: b.lines.length + n + 1, line_kind: 'K', item_id: k.item_id, description: k.description,
-        warehouse_id: k.warehouse_id, department_id: b.lines[k.parent]!.department_id ?? header.department_id, qty: k.base_qty, base_qty: k.base_qty, unit_id: k.unit_id, factor: '1',
+        warehouse_id: k.warehouse_id, department_id: b.lines[k.parent]!.department_id ?? header.department_id, project_id: b.lines[k.parent]!.project_id ?? null, qty: k.base_qty, base_qty: k.base_qty, unit_id: k.unit_id, factor: '1',
         stock_effect: k.stock_effect, movement_code: k.movement_code, cost_amount: k.cost_amount, cost_unit: k.cost_unit, line_amount: '0', net_amount: '0', source_line_id: idOf.get(k.parent + 1)!, created_by: a.userId }))).execute();
     }
     if (b.deposits.length) await tx.insertInto('doc_link').values(b.deposits.map((x) => ({ company_id: a.companyId, from_header_id: x.header_id, to_header_id: hid!, link_type: 'DEPOSIT', amount: d(x.amount).toFixed(2), created_by: a.userId }))).execute();
@@ -327,9 +329,9 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
     const q = parse(z.object({ cls: z.enum(['SO', 'PO']), party_id: uuid, invoice_id: uuid.optional() }), req.query);
     const own = q.invoice_id ? sql`coalesce((SELECT sum(x.qty) FROM doc_line x WHERE x.source_line_id = o.line_id AND x.header_id = ${q.invoice_id} AND x.deleted_at IS NULL), 0)` : sql`0`;
     const rows = (await sql<{ header_id: string; doc_no: string; doc_date: string; price_type: string; line_id: string; line_no: number; item_id: string | null; item_code: string | null; description: string | null;
-        warehouse_id: string | null; unit_id: string | null; factor: string; unit_price: string; discount_text: string | null; is_free: boolean; delivery_date: string | null; ordered_qty: string; remaining_qty: string }>`
+        warehouse_id: string | null; unit_id: string | null; factor: string; unit_price: string; discount_text: string | null; is_free: boolean; delivery_date: string | null; ordered_qty: string; remaining_qty: string; project_id: string | null }>`
       SELECT o.header_id, o.doc_no, o.doc_date, o.price_type, o.line_id, o.line_no, o.item_id, i.code AS item_code, o.description, o.warehouse_id, o.unit_id, o.factor, o.unit_price, o.discount_text, o.is_free,
-             o.delivery_date, o.ordered_qty, o.remaining_qty + ${own} AS remaining_qty
+             o.delivery_date, o.ordered_qty, o.remaining_qty + ${own} AS remaining_qty, (SELECT x.project_id FROM doc_line x WHERE x.id = o.line_id) AS project_id
         FROM v_order_line o LEFT JOIN md_item i ON i.id = o.item_id
        WHERE o.company_id = ${a.companyId} AND o.doc_class = ${q.cls} AND ${sql.ref(q.cls === 'SO' ? 'o.customer_id' : 'o.supplier_id')} = ${q.party_id} AND o.remaining_qty + ${own} > 0
        ORDER BY o.doc_date, o.doc_no, o.line_no`.execute(db)).rows;
@@ -363,7 +365,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       const h = await db.selectFrom('doc_header').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id').leftJoin('md_unit as u', 'u.id', 'l.unit_id')
-        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.source_line_id', 'l.delivery_date', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.unit_price', 'l.discount_text', 'l.discount_amount', 'l.line_amount', 'l.net_amount', 'l.vat_code', 'l.is_free', 'l.return_to_stock', 'l.department_id', 'l.line_note', 'l.line_note_print'])
+        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.source_line_id', 'l.delivery_date', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.unit_price', 'l.discount_text', 'l.discount_amount', 'l.line_amount', 'l.net_amount', 'l.vat_code', 'l.is_free', 'l.return_to_stock', 'l.department_id', 'l.project_id', 'l.line_note', 'l.line_note_print'])
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).where('l.line_kind', '<>', 'K').orderBy('l.line_no').execute();
       const payments = await db.selectFrom('doc_payment as p').leftJoin('md_payment_method as m', 'm.id', 'p.payment_method_id').select(['p.line_no', 'p.payment_method_id', 'm.code as method_code', 'm.name_th as method_name', 'p.amount', 'p.reference_no'])
         .where('p.header_id', '=', id).where('p.deleted_at', 'is', null).orderBy('p.line_no').execute();
@@ -438,12 +440,12 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
     if (qt.doc_status === 'C') throw badRequest('ใบเสนอราคานี้ถูกยกเลิกแล้ว');
     const soType = b.doc_type_id ?? (await db.selectFrom('md_doc_type').select('id').where('company_id', '=', a.companyId).where('doc_class', '=', 'SO').where('status', '=', 'A').where('deleted_at', 'is', null).orderBy('code').executeTakeFirst())?.id;
     if (!soType) throw badRequest('ยังไม่มีประเภทเอกสารใบสั่งขาย — เพิ่มที่ เริ่มระบบ › เลขที่เอกสาร');
-    const lines = await db.selectFrom('doc_line').select(['item_id', 'description', 'warehouse_id', 'qty', 'unit_id', 'factor', 'unit_price', 'discount_text', 'is_free', 'department_id', 'vat_code', 'line_note', 'line_note_print'])
+    const lines = await db.selectFrom('doc_line').select(['item_id', 'description', 'warehouse_id', 'qty', 'unit_id', 'factor', 'unit_price', 'discount_text', 'is_free', 'department_id', 'project_id', 'vat_code', 'line_note', 'line_note_print'])
       .where('header_id', '=', id).where('deleted_at', 'is', null).where('item_id', 'is not', null).where('line_kind', '<>', 'K').orderBy('line_no').execute();
     const K = TRADE_KINDS.find((k) => k.cls === 'SO')!;
     const so = await saveTrade(db, a, K, null, parse(tradeBody, {
       doc_type_id: soType, doc_date: b.doc_date, delivery_date: b.delivery_date ?? b.doc_date, party_id: qt.customer_id, bill_to_customer_id: qt.bill_to_customer_id, party_tax_branch_no: qt.party_tax_branch_no,
-      your_ref: qt.your_ref, department_id: qt.department_id, salesperson_id: qt.salesperson_id, sales_area_code: qt.sales_area_code, ship_via_code: qt.ship_via_code,
+      your_ref: qt.your_ref, department_id: qt.department_id, project_id: qt.project_id, salesperson_id: qt.salesperson_id, sales_area_code: qt.sales_area_code, ship_via_code: qt.ship_via_code,
       price_type: qt.price_type, vat_rate: qt.vat_rate ?? 0, discount_text: qt.discount_text, remark: qt.remark,
       lines: lines.map((l) => ({ ...l, qty: l.qty, factor: l.factor, unit_price: l.unit_price, vat_code: l.vat_code === '0' || l.vat_code === '1' || l.vat_code === '2' ? l.vat_code : null })),
     }));

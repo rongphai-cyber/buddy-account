@@ -19,14 +19,15 @@ import { JvChequeTab, JvVatTab, vatPayload, WhtTab, whtPayload, type VatDraft, t
 import { TemplateForm, templateToLines, useTemplates } from './Templates';
 import { JournalPicker } from '../../components/JournalPicker';
 import { ReasonInput } from '../../components/ReasonInput';
+import { JobSelect, showJob, useJobs } from '../../components/JobSelect';
 
 const FIX_AT_SOURCE = ' — แก้ที่เอกสารต้นทาง';
-interface Line { key: number; account_id: string | null; department_id: string | null; description: string; debit: string; credit: string; line_note?: string; line_note_print?: boolean }
+interface Line { key: number; account_id: string | null; department_id: string | null; project_id?: string | null; description: string; debit: string; credit: string; line_note?: string; line_note_print?: boolean }
 interface JournalDoc {
   id: string; voucher_no: string; voucher_date: string; description: string | null; reference: string | null; journal_book_id: string; doc_status: string; editable: boolean;
   source_module: string | null; source_header_id: string | null; source_doc_no: string | null; source_doc_class: string | null; created_at: string; updated_at: string; created_by_name: string | null;
   source_system?: string | null; source_ref?: string | null; source_version?: number | null;
-  lines: Array<{ account_id: string; department_id: string | null; description: string | null; debit: string; credit: string; line_note?: string | null; line_note_print?: boolean; account_no: string; account_name: string; posting_role: string | null; resolved_from: string | null }>;
+  lines: Array<{ account_id: string; department_id: string | null; project_id?: string | null; description: string | null; debit: string; credit: string; line_note?: string | null; line_note_print?: boolean; account_no: string; account_name: string; posting_role: string | null; resolved_from: string | null }>;
 }
 let seq = 0;
 const blank = (): Line => ({ key: ++seq, account_id: null, department_id: null, description: '', debit: '', credit: '' });
@@ -145,7 +146,7 @@ export function JournalFormPage() {
     api.get<JournalDoc>(`/api/v1/gl/journals/${copyFrom}`).then((src) => { applyCopy(src); setH((x) => ({ ...x, journal_book_id: src.journal_book_id, description: src.description ?? '', reference: src.reference ?? '' })); toast(`คัดลอกรายการจาก ${src.voucher_no} แล้ว — ตรวจแล้วกด F9 เพื่อบันทึกเป็นใบใหม่`); }).catch(setErr);
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const applyCopy = (src: JournalDoc) => {
-    setLines(src.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: l.department_id, description: l.description || h.description || src.description || '', debit: d(l.debit).isZero() ? '' : d(l.debit).toFixed(2), credit: d(l.credit).isZero() ? '' : d(l.credit).toFixed(2) })));
+    setLines(src.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: l.department_id, project_id: l.project_id ?? null, description: l.description || h.description || src.description || '', debit: d(l.debit).isZero() ? '' : d(l.debit).toFixed(2), credit: d(l.credit).isZero() ? '' : d(l.credit).toFixed(2) })));
     if (!h.description && src.description) setH((x) => ({ ...x, description: src.description ?? '' }));
     setDirty(true); setReplaceAsk(null);
     toast(`คัดลอกรายการจาก ${src.voucher_no} แล้ว — ตรวจวันที่และจำนวนเงินก่อนบันทึก`);
@@ -171,7 +172,7 @@ export function JournalFormPage() {
   useEffect(() => {
     if (!doc.data) return;
     setH({ journal_book_id: doc.data.journal_book_id, voucher_date: doc.data.voucher_date, description: doc.data.description ?? '', reference: doc.data.reference ?? '' });
-    setLines(doc.data.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: l.department_id, description: l.description ?? '', line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, debit: d(l.debit).isZero() ? '' : l.debit, credit: d(l.credit).isZero() ? '' : l.credit })));
+    setLines(doc.data.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: l.department_id, project_id: l.project_id ?? null, description: l.description ?? '', line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, debit: d(l.debit).isZero() ? '' : l.debit, credit: d(l.credit).isZero() ? '' : l.credit })));
     setDirty(false);
   }, [doc.data]);
   useEffect(() => {
@@ -181,6 +182,8 @@ export function JournalFormPage() {
 
   const totals = useMemo(() => journalTotals(lines), [lines]);
   const setLine = (k: number, p: Partial<Line>) => { setDirty(true); setLines((ls) => ls.map((l) => (l.key === k ? { ...l, ...p } : l))); };
+  const jobs = useJobs();
+  const jobOn = showJob(jobs.enabled, ...lines.map((l) => l.project_id));
   const addLine = () => {
     // บรรทัดใหม่: ใส่ยอดต่างให้อัตโนมัติด้านตรงข้าม และคำอธิบายเดิม (เหมือนเขียนใบสำคัญด้วยมือ)
     (document.activeElement as HTMLElement | null)?.blur?.();
@@ -191,6 +194,7 @@ export function JournalFormPage() {
         if (!diff.isZero()) { if (diff.isPositive()) n.credit = diff.toFixed(2); else n.debit = diff.neg().toFixed(2); }
         n.description = h.description || (ls.at(-1)?.description ?? '');   // คำอธิบายหัวก่อน (เจ้าของ 17/11/2569) · ไม่มีคำอธิบายหัว = ตามบรรทัดก่อน
         n.department_id = ls.at(-1)?.department_id ?? null;   // แผนกตามบรรทัดก่อน (ข้อกำหนดเจ้าของ 01/11/2569)
+        n.project_id = ls.at(-1)?.project_id ?? null;   // Job ตามบรรทัดก่อน (เจ้าของ 17/11/2569)
         return [...ls, n];
       });
       setTimeout(() => gridRef.current?.querySelector<HTMLInputElement>(`tr[data-k="${n.key}"] input`)?.focus(), 0);
@@ -234,7 +238,7 @@ export function JournalFormPage() {
       if (gaps.length) { setTaxFlow({ andNew }); setTab(gaps[0]!.key); setAutoOpen((n) => n + 1); return; }
     }
     setErr(null); setBusy(true);
-    const body = { ...h, branch_id: br.body, voucher_no: ownNo || (manualNo ? null : undefined), description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
+    const body = { ...h, branch_id: br.body, voucher_no: ownNo || (manualNo ? null : undefined), description: h.description || null, reference: h.reference || null, lines: lines.map((l) => ({ account_id: l.account_id, department_id: l.department_id, project_id: l.project_id ?? null, description: l.description || null, debit: l.debit || '0', credit: l.credit || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
       ...(isNew ? { vat: drafts.vat.map(vatPayload), wht: drafts.wht.map(whtPayload) } : {}) };
     try {
       const r = isNew ? await api.post<{ id: string; voucher_no: string }>('/api/v1/gl/journals', body) : await api.put<{ id: string; voucher_no: string }>(`/api/v1/gl/journals/${id}`, body);
@@ -342,7 +346,7 @@ export function JournalFormPage() {
         {tab === 'lines' && (
           <div className="table-wrap lines" ref={gridRef} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && amountMissing(e.target as HTMLElement)) { e.preventDefault(); e.stopPropagation(); return; } if (e.key === 'Enter' && (e.target as HTMLElement).dataset.last != null && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); if (complete()) ed.end(); else addLine(); } }}>
             <table className="grid">
-              <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 170 }}>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th style={{ width: 110 }}>แผนก</th><th>คำอธิบายรายการ</th><th className="r" style={{ width: 140 }}>เดบิต</th><th className="r" style={{ width: 140 }}>เครดิต</th><th style={{ width: 40 }} /></tr></thead>
+              <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 170 }}>เลขที่บัญชี</th><th>ชื่อบัญชี</th>{jobOn && <th style={{ width: 84 }} title="Job/โครงการ (ไม่บังคับ) — บรรทัดใหม่ใช้ Job ของบรรทัดก่อน">Job</th>}<th style={{ width: 110 }}>แผนก</th><th>คำอธิบายรายการ</th><th className="r" style={{ width: 140 }}>เดบิต</th><th className="r" style={{ width: 140 }}>เครดิต</th><th style={{ width: 40 }} /></tr></thead>
               <tbody>
                 {lines.map((l, i) => {
                   const a = acctOf(l.account_id);
@@ -351,6 +355,7 @@ export function JournalFormPage() {
                       <td className="muted">{i + 1}</td>
                       <td><AccountCell required value={l.account_id} invalid={issueLines.has(i) && !l.account_id} onChange={(acc) => setLine(l.key, { account_id: acc?.id ?? null, department_id: acc?.use_department ? l.department_id : l.department_id })} /></td>
                       <td className="small">{a ? a.name_th : <span className="muted">—</span>}</td>
+                      {jobOn && <td><JobSelect value={l.project_id} label={`Job บรรทัด ${i + 1}`} onChange={(v) => setLine(l.key, { project_id: v })} /></td>}
                       <td>
                         <select value={l.department_id ?? ''} onChange={(e) => setLine(l.key, { department_id: e.target.value || null })} aria-invalid={(a?.use_department && !l.department_id) || undefined} data-required={a?.use_department ? 'แผนก' : undefined}>
                           <option value="">{a?.use_department ? 'ต้องเลือก' : 'ไม่ระบุ'}</option>
@@ -365,7 +370,7 @@ export function JournalFormPage() {
                   );
                 })}
               </tbody>
-              <tfoot><tr><td colSpan={5}><div className="jv-foot"><button type="button" onClick={addLine} title="Enter ที่ช่องเครดิตบรรทัดสุดท้ายเพิ่มบรรทัดใหม่พร้อมยอดต่าง">+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button>
+              <tfoot><tr><td colSpan={5 + (jobOn ? 1 : 0)}><div className="jv-foot"><button type="button" onClick={addLine} title="Enter ที่ช่องเครดิตบรรทัดสุดท้ายเพิ่มบรรทัดใหม่พร้อมยอดต่าง">+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button>
                 <span className="totals">
                   <span className={cx(!totals.diff.isZero() && 'bad')}>ต่าง <b className="num">{fmt(totals.diff.abs())}</b></span>
                   {totals.balanced ? <span className="ok">ดุล ✓</span> : <span className="bad">ยังไม่ดุล</span>}

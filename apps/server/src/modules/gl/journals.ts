@@ -5,6 +5,7 @@ import { AppError, badRequest, notFound } from '../../http.js';
 import { checkOwned } from '../../owned.js';
 import { logActivity } from '../../audit.js';
 import { fillPostedDesc } from './posted-desc.js';
+import { checkJobs, jobsOfJournal } from '../projects.js';
 
 export interface JournalInput {
   journal_book_id: string;
@@ -46,7 +47,8 @@ export async function nextVoucherNo(db: Db, companyId: string, bookId: string, d
   return pat.base + String(n).padStart(pat.width, '0');
 }
 
-export async function checkLines(db: Db, companyId: string, lines: JournalInput['lines']) {
+/** journalId: ใบสำคัญที่กำลังแก้ — Job ที่ปิดภายหลังแต่ใบนี้ใช้อยู่เดิม คงไว้ได้ */
+export async function checkLines(db: Db, companyId: string, lines: JournalInput['lines'], journalId?: string) {
   const ids = [...new Set(lines.map((l) => l.account_id).filter((x): x is string => !!x))];
   const accts = ids.length ? await db.selectFrom('gl_account').select(['id', 'account_no', 'is_control', 'status', 'use_department'])
     .where('company_id', '=', companyId).where('id', 'in', ids).where('deleted_at', 'is', null).execute() : [];
@@ -70,6 +72,7 @@ export async function checkLines(db: Db, companyId: string, lines: JournalInput[
     if (ok.length !== depts.length) issues.push({ message: 'มีแผนกที่ไม่พบในระบบ' });
   }
   if (issues.length) throw badRequest(issues[0]!.message, issues);
+  await checkJobs(db, companyId, lines.map((l, i) => ({ id: l.project_id, line: i + 1 })), await jobsOfJournal(db, companyId, journalId));
 }
 
 const usedLines = (lines: JournalInput['lines']) => lines.filter((l) => l.account_id || !d(l.debit).isZero() || !d(l.credit).isZero());
@@ -105,7 +108,7 @@ async function insertLines(tx: Db, companyId: string, journalId: string, lines: 
   for (const l of lines) {
     n++;
     await tx.insertInto('gl_journal_line').values({
-      company_id: companyId, journal_id: journalId, line_no: n, account_id: l.account_id!, department_id: l.department_id ?? null,
+      company_id: companyId, journal_id: journalId, line_no: n, account_id: l.account_id!, department_id: l.department_id ?? null, project_id: l.project_id ?? null,
       description: l.description ?? null, debit: round2(l.debit).toFixed(2), credit: round2(l.credit).toFixed(2), line_note: l.line_note || null, line_note_print: !!l.line_note && !!l.line_note_print, created_by: userId,
     }).execute();
   }
@@ -125,9 +128,9 @@ export async function updateJournal(db: Db, ctx: { companyId: string; userId: st
   return db.transaction().execute(async (tx) => {
     const j = await loadEditable(tx, ctx.companyId, id);
     const p = await periodFor(tx, ctx.companyId, input.voucher_date);
-    await checkLines(tx, ctx.companyId, lines);
+    await checkLines(tx, ctx.companyId, lines, id);
     await checkOwned(tx, ctx.companyId, [{ table: 'gl_journal_book', id: input.journal_book_id, field: 'journal_book_id' }]);
-    const before = await tx.selectFrom('gl_journal_line').select(['account_id', 'department_id', 'description', 'debit', 'credit']).where('journal_id', '=', id).orderBy('line_no').execute();
+    const before = await tx.selectFrom('gl_journal_line').select(['account_id', 'department_id', 'project_id', 'description', 'debit', 'credit']).where('journal_id', '=', id).orderBy('line_no').execute();
     const totalD = round2(lines.reduce((s, l) => s.plus(d(l.debit)), d(0)));
     await tx.deleteFrom('gl_journal_line').where('journal_id', '=', id).execute();
     await insertLines(tx, ctx.companyId, id, lines, ctx.userId);
@@ -165,8 +168,8 @@ export async function getJournal(db: Db, companyId: string, id: string) {
       'h.doc_no as source_doc_no', 'h.doc_class as source_doc_class', 'u.display_name as created_by_name'])
     .where('j.id', '=', id).where('j.company_id', '=', companyId).where('j.deleted_at', 'is', null).executeTakeFirst();
   if (!j) throw notFound('ใบสำคัญ');
-  const lines = await db.selectFrom('gl_journal_line as l').innerJoin('gl_account as a', 'a.id', 'l.account_id').leftJoin('md_department as dp', 'dp.id', 'l.department_id')
-    .select(['l.id', 'l.line_no', 'l.account_id', 'a.account_no', 'a.name_th as account_name', 'l.department_id', 'dp.code as department_code', 'l.description', 'l.debit', 'l.credit', 'l.posting_role', 'l.resolved_from', 'l.line_note', 'l.line_note_print'])
+  const lines = await db.selectFrom('gl_journal_line as l').innerJoin('gl_account as a', 'a.id', 'l.account_id').leftJoin('md_department as dp', 'dp.id', 'l.department_id').leftJoin('md_project as pj', 'pj.id', 'l.project_id')
+    .select(['l.id', 'l.line_no', 'l.account_id', 'a.account_no', 'a.name_th as account_name', 'l.department_id', 'dp.code as department_code', 'l.project_id', 'pj.code as project_code', 'l.description', 'l.debit', 'l.credit', 'l.posting_role', 'l.resolved_from', 'l.line_note', 'l.line_note_print'])
     .where('l.journal_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
   await fillPostedDesc(db, companyId, lines, () => j.description, () => j.source_header_id);
   const editable = j.doc_status === 'N' && !j.source_header_id && !j.source_system && (!j.source_module || j.source_module === 'GL');

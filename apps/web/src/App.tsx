@@ -19,6 +19,8 @@ import { PermissionsPage } from './pages/settings/Permissions';
 import { DefaultsPage } from './pages/settings/Defaults';
 import { PriorYearPage } from './pages/gl/PriorYear';
 import { BudgetPage } from './pages/gl/Budget';
+import { JobsPage } from './pages/gl/Jobs';
+import { JobCostPage } from './pages/reports/JobCost';
 import { AccountDetailPage } from './pages/reports/AccountDetail';
 import { OpeningPage } from './pages/gl/Opening';
 import { CompanyPage } from './pages/settings/Company';
@@ -216,6 +218,7 @@ function Shell() {
           <Route path="/gl/templates" element={<TemplatesPage />} />
           <Route path="/gl/prior-year" element={<PriorYearPage />} />
           <Route path="/gl/budget" element={<BudgetPage />} />
+          <Route path="/gl/jobs" element={<JobsPage />} />
           <Route path="/gl/opening" element={<OpeningPage />} />
           <Route path="/settings/company" element={<CompanyPage />} />
           <Route path="/settings/periods" element={<PeriodsPage />} />
@@ -310,6 +313,7 @@ function Shell() {
           <Route path="/admin/tenants" element={<TenantsPage />} />
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
           <Route path="/reports/ledger" element={<LedgerPage />} />
+          <Route path="/reports/jobs" element={<JobCostPage />} />
           <Route path="/reports/account-detail" element={<AccountDetailPage />} />
           <Route path="/reports/journal-book" element={<JournalBookPage />} />
           <Route path="/reports/center" element={<ReportCenterPage />} />

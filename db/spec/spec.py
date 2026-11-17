@@ -493,15 +493,20 @@ add(T('md_project', 'โครงการ / Job', 'md', express='JBMAS', cols=[
   lk('customer_id', 'md_customer', 'ลูกค้า', 'JBMAS.CUSCOD'),
   C('start_date', 'date', th='วันเริ่ม', src='JBMAS.BEGIN'),
   C('end_date', 'date', th='วันสิ้นสุด', src='JBMAS.END'),
-  C('status', 'char1', nn=True, d="'A'", th='สถานะ', src='JBMAS.STATUS', chk=ST_ACTIVE),
+  C('status', 'char1', nn=True, d="'A'", th='สถานะ A=กำลังทำ I=ปิดแล้ว (ปิดแล้วใช้ในเอกสารใหม่ไม่ได้ — เจ้าของ 17/11/2569)', src='JBMAS.STATUS', chk=ST_ACTIVE),
+  C('ref_no', 'code30', th='เลขที่สัญญา/PO ของลูกค้า', src='JBMAS.PONUM'),
+  C('manager', 'str60', th='ผู้รับผิดชอบ', src='JBMAS.MANAGER'),
+  C('contract_amount', 'money', th='มูลค่าสัญญา (รายได้ที่คาด)'),
+  C('note', 'text', th='หมายเหตุ'),
 ], uniq=[('company_id','code')]))
-add(T('md_project_budget', 'งบประมาณโครงการแยกขั้นตอน/รหัสต้นทุน', 'md', express='JBLIST', cols=[
+add(T('md_project_budget', 'งบประมาณโครงการ — รายบัญชี (เจ้าของ 17/11/2569) หรือแยกขั้นตอน/รหัสต้นทุนแบบ Express', 'md', express='JBLIST', cols=[
   lk('project_id', 'md_project', 'โครงการ', nn=True),
+  lk('account_id', 'gl_account', 'บัญชีที่ตั้งงบ (งบรายบัญชี)'),
   C('phase', 'code10', th='ขั้นตอน', src='JBLIST.PHASE'),
   C('cost_code', 'code10', th='รหัสต้นทุน', src='JBLIST.COSCOD'),
   C('est_expense', 'money', th='ประมาณการค่าใช้จ่าย', src='JBLIST.ESTEXP'),
   C('est_revenue', 'money', th='ประมาณการรายได้', src='JBLIST.ESTREV'),
-], uniq=[('project_id','phase','cost_code')]))
+], uniq=[('project_id','phase','cost_code'),('project_id','account_id')]))
 
 add(T('md_item_account_group', 'กลุ่มบัญชีสินค้า — ชั้นที่ 2 ของการหาบัญชีสำหรับสินค้า', 'md', express="ISACC (ACCTYP='S')", cols=[
   C('code', 'code10', nn=True, th='รหัสกลุ่ม', src='ISACC.ACCCOD'),

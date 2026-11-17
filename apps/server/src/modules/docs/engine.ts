@@ -103,7 +103,7 @@ async function journalPeriodCheck(tx: Db, companyId: string, date: string) {
 function mergeLines(lines: PostingLine[]) {
   const m = new Map<string, PostingLine>();
   for (const l of lines) {
-    const k = `${l.account_id}|${l.role}|${l.debit.gt(0) ? 'D' : 'C'}|${l.cheque_id ?? ''}|${l.department_id ?? ''}|${l.detail?.text ?? ''}`;   // เช็คแต่ละใบ / แผนก / รายละเอียดบรรทัดเอกสาร แยกบรรทัด
+    const k = `${l.account_id}|${l.role}|${l.debit.gt(0) ? 'D' : 'C'}|${l.cheque_id ?? ''}|${l.department_id ?? ''}|${l.project_id ?? ''}|${l.detail?.text ?? ''}`;   // เช็คแต่ละใบ / แผนก / Job / รายละเอียดบรรทัดเอกสาร แยกบรรทัด
     const cur = m.get(k);
     if (cur) { cur.debit = cur.debit.plus(l.debit); cur.credit = cur.credit.plus(l.credit); } else m.set(k, { ...l });
   }
@@ -168,7 +168,7 @@ export async function postDocument(tx: Db, ctx: Ctx, headerId: string, existingJ
   let n = 0;
   for (const l of lines) {
     await tx.insertInto('gl_journal_line').values({
-      company_id: ctx.companyId, journal_id: j.id, line_no: ++n, account_id: l.account_id!, department_id: l.department_id ?? h.department_id, description: postedLineDesc(head.description, l, l.cheque_id ? chqNo.get(l.cheque_id) : null),   // แผนกของบรรทัดเอกสาร (เดิมใช้แผนกหัวเอกสารทุกบรรทัด)
+      company_id: ctx.companyId, journal_id: j.id, line_no: ++n, account_id: l.account_id!, department_id: l.department_id ?? h.department_id, project_id: l.project_id ?? null, description: postedLineDesc(head.description, l, l.cheque_id ? chqNo.get(l.cheque_id) : null),   // แผนกของบรรทัดเอกสาร (เดิมใช้แผนกหัวเอกสารทุกบรรทัด)
       debit: round2(l.debit).toFixed(2), credit: round2(l.credit).toFixed(2), posting_role: l.role, resolved_from: l.layer, created_by: ctx.userId,
     }).execute();
   }

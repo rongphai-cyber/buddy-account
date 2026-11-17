@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, type Department } from '../api';
 import { AccountCell, useAccounts } from './AccountCell';
+import { useJobs } from './JobSelect';
 
 /** เงื่อนไขรายงานที่ใช้ร่วมกัน (บัญชีแยกประเภท งบทดลอง — เจ้าของ 17/11/2569) */
 type BranchRow = { id: string; code: string; name: string; status: string };
@@ -14,6 +15,13 @@ export function BranchSelect({ value, onChange }: { value: string; onChange: (v:
 export function DeptSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const d = useDepartments();
   return <label className="inline">แผนก <select value={value} onChange={(e) => onChange(e.target.value)}><option value="">ทุกแผนก</option><option value="none">ไม่ระบุแผนก</option>{d.data?.filter((x) => x.status === 'A' || x.id === value).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></label>;
+}
+
+/** Job/โครงการ (เจ้าของ 17/11/2569): แสดงเมื่อบริษัทมี Job · ว่าง = ทุกรายการ */
+export function JobFilter({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const j = useJobs();
+  if (!j.rows.length && !value) return null;
+  return <label className="inline">Job <select value={value} onChange={(e) => onChange(e.target.value)}><option value="">ทุกรายการ</option>{j.rows.map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}{x.status === 'I' ? ' (ปิดแล้ว)' : ''}</option>)}</select></label>;
 }
 
 /** เลือกบัญชี: ทุกบัญชี / ช่วงเลขที่บัญชี (จาก–ถึง ค้นหา F4/🔍) / บัญชีเดียว */

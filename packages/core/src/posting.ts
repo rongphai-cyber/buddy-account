@@ -14,7 +14,7 @@ export interface PostHeader {
   wht_amount?: MoneyInput; cash_discount_amount?: MoneyInput; interest_amount?: MoneyInput; fx_amount?: MoneyInput;
 }
 /** บรรทัดสินค้า (item_id) หรือบรรทัดบัญชี (account_id — เงินสดย่อย) */
-export interface PostLine { item_id: string | null; net_amount: MoneyInput; account_id?: string | null; /** รายละเอียด/แผนกของบรรทัดเอกสาร → คำอธิบาย/แผนกของบรรทัดบัญชี (เจ้าของ 17/11/2569) */ description?: string | null; department_id?: string | null; /** Perpetual: ต้นทุนของบรรทัดที่ตัด/รับสต๊อก */ cost_amount?: MoneyInput; stock_effect?: number | null; movement_code?: string | null }
+export interface PostLine { item_id: string | null; net_amount: MoneyInput; account_id?: string | null; /** รายละเอียด/แผนกของบรรทัดเอกสาร → คำอธิบาย/แผนกของบรรทัดบัญชี (เจ้าของ 17/11/2569) */ description?: string | null; department_id?: string | null; /** Job/โครงการของบรรทัดเอกสาร → บรรทัดบัญชี (เจ้าของ 17/11/2569) */ project_id?: string | null; /** Perpetual: ต้นทุนของบรรทัดที่ตัด/รับสต๊อก */ cost_amount?: MoneyInput; stock_effect?: number | null; movement_code?: string | null }
 export interface PostPayment { method_id: string | null; amount: MoneyInput; cheque_id: string | null }
 /** รายการตัดหนี้ในใบเสร็จ/ใบจ่าย · rectype '0' = ตัดเงินมัดจำ (ลงผ่านวิธีชำระ) · '5' = ใบลดหนี้ที่นำมาหัก (ยอดลบ) */
 export interface PostSettlement { amount: MoneyInput; vat: MoneyInput; party_id: string | null; rectype: string | null }
@@ -125,8 +125,9 @@ export interface PostingResolver {
 export type Layer = '1' | '2' | '3' | 'S';
 export interface PostingLine { account_id: string | null; debit: Decimal; credit: Decimal; role: string; layer: Layer; /** บรรทัดรับ/จ่ายด้วยเช็ค — ใช้ทำคำอธิบายบรรทัด (เลขที่เช็ค) */ cheque_id?: string | null;
   /** แผนกของบรรทัดเอกสาร (ว่าง = แผนกที่หัวเอกสาร) */ department_id?: string | null;
+  /** Job/โครงการของบรรทัดเอกสาร (ว่าง = ไม่ระบุ — ไม่ใช้ Job ที่หัวเอกสาร: หัวเป็นแค่ค่าเริ่มต้นของบรรทัด) */ project_id?: string | null;
   /** รายละเอียดของบรรทัดเอกสาร: alone = ใช้รายละเอียดอย่างเดียว (บรรทัดบัญชี เช่น เงินสดย่อย) · ไม่ใช่ = ต่อท้ายคำอธิบายหัว */ detail?: { text: string; alone: boolean } | null }
-type LineExtra = Pick<PostingLine, 'cheque_id' | 'department_id' | 'detail'>;
+type LineExtra = Pick<PostingLine, 'cheque_id' | 'department_id' | 'project_id' | 'detail'>;
 
 /** หมวดเอกสารที่ลงบัญชีด้วยเครื่องนี้ */
 export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'RD', 'DP', 'VR', 'OU', 'JU', 'CA', 'BD', 'BW', 'BT', 'BU', 'BV'] as const;
@@ -148,7 +149,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
    *  บรรทัดสินค้า/รหัสค่าใช้จ่าย: ต่อท้ายคำอธิบายหัวเฉพาะรายได้/ค่าใช้จ่ายอื่น (trade = แผนกอย่างเดียว คำอธิบายหัวบอกคู่ค้าอยู่แล้ว) */
   const src = (l: PostLine, withDetail = false): LineExtra => {
     const t = (l.description ?? '').trim(), alone = !!l.account_id && !l.item_id;
-    return { department_id: l.department_id ?? null, detail: t && (alone || withDetail) ? { text: t, alone } : null };
+    return { department_id: l.department_id ?? null, project_id: l.project_id ?? null, detail: t && (alone || withDetail) ? { text: t, alone } : null };
   };
   const cls = h.doc_class, dt = h.doc_type_id;
   const net = d(h.net_amount), vat = d(h.vat_amount);
@@ -194,7 +195,8 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
       if (l.stock_effect !== eff || !l.item_id || d(l.cost_amount).isZero()) continue;
       const { group: g } = r.item(l.item_id);
       const cogs = pick(['2', g.cogs], ['3', r.def('COGS')]), inv = pick(['2', g.inv], ['3', r.def('INVENTORY')]);
-      if (eff < 0) { D(cogs, d(l.cost_amount), 'COGS'); C(inv, d(l.cost_amount), 'INVENTORY'); } else { D(inv, d(l.cost_amount), 'INVENTORY'); C(cogs, d(l.cost_amount), 'COGS'); }
+      const job = { project_id: l.project_id ?? null };   // ต้นทุนขายของบรรทัดที่ระบุ Job = ต้นทุนของ Job นั้น (เจ้าของ 17/11/2569)
+      if (eff < 0) { D(cogs, d(l.cost_amount), 'COGS', job); C(inv, d(l.cost_amount), 'INVENTORY'); } else { D(inv, d(l.cost_amount), 'INVENTORY'); C(cogs, d(l.cost_amount), 'COGS', job); }
     }
   };
 
@@ -326,7 +328,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
       const other = cls === 'OU' ? pick(['1', r.slot(dt, cls, 'ISSUE_DEBIT')], ['3', r.def('OTHER_EXPENSE')])
         : cls === 'JU' ? pick(['1', r.slot(dt, cls, v.lt(0) ? 'ADJ_DEBIT' : 'ADJ_CREDIT')], ['3', r.def(v.lt(0) ? 'OTHER_EXPENSE' : 'OTHER_INCOME')])
           : pick(['1', r.slot(dt, cls, 'COST_ADJ')], ['3', r.def('SUSPENSE')]);
-      if (v.gt(0)) { D(inv, v, 'INVENTORY'); C(other, v, cls === 'CA' ? 'COST_ADJ' : 'STOCK_ADJ'); } else { D(other, v.neg(), cls === 'OU' ? 'ISSUE' : 'STOCK_ADJ'); C(inv, v.neg(), 'INVENTORY'); }
+      if (v.gt(0)) { D(inv, v, 'INVENTORY'); C(other, v, cls === 'CA' ? 'COST_ADJ' : 'STOCK_ADJ', cls === 'OU' ? src(l) : undefined); } else { D(other, v.neg(), cls === 'OU' ? 'ISSUE' : 'STOCK_ADJ', cls === 'OU' ? src(l) : undefined); C(inv, v.neg(), 'INVENTORY'); }   // เบิกใช้: แผนก/Job ของบรรทัด → ฝั่งค่าใช้จ่าย (ต้นทุน Job เกิดตอนเบิก — เจ้าของ 17/11/2569 ข้อ 5ก)
     }
   } else if (cls === 'BD' || cls === 'BW' || cls === 'BT' || cls === 'BU' || cls === 'BV') {
     // เอกสารธนาคาร (บทที่ 13): บรรทัดบัญชี (line_kind G) = บัญชีเงินฝาก ยอดมีเครื่องหมาย (+ เข้า / − ออก) · อีกฝั่งตามประเภทเอกสาร → บัญชีเพื่อลงรายวัน

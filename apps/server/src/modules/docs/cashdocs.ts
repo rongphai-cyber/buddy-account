@@ -10,6 +10,7 @@ import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { checkHold, noteHold } from './hold.js';
+import { checkJobs, jobsOfDoc } from '../projects.js';
 import { checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, saveBranch, whtSchema, writePayments, writeWht } from './payments.js';
 
 type Ctx = AuthContext & { companyId: string };
@@ -22,9 +23,9 @@ const CODE_TYPES: Record<string, string[]> = { OI: ['4'], OE: ['5', '2'] };
 
 const body = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, party_id: optId, party_name: str(200), party_tax_branch_no: str(5), your_ref: str(60),
-  ref_no: str(30), ref_date: isoDate.nullable().optional(), department_id: optId, salesperson_id: optId,
+  ref_no: str(30), ref_date: isoDate.nullable().optional(), department_id: optId, project_id: optId, salesperson_id: optId,
   credit_days: z.coerce.number().int().min(0).max(999).nullable().optional(), price_type: z.enum(['0', '1', '2']), vat_rate: num, remark: str(2000),
-  lines: z.array(z.object({ item_id: optId, description: str(200), amount: num, department_id: optId, ...lineNoteFields })).min(1, 'ป้อนรายการอย่างน้อย 1 บรรทัด').max(200),
+  lines: z.array(z.object({ item_id: optId, description: str(200), amount: num, department_id: optId, project_id: optId, ...lineNoteFields })).min(1, 'ป้อนรายการอย่างน้อย 1 บรรทัด').max(200),
   /** มัดจำรับ/รายได้อื่น: ยอดที่ลูกค้าหักภาษี ณ ที่จ่ายไว้ */
   wht_amount: num.default('0'),
   cash_amount: num.nullable().optional(),
@@ -44,6 +45,7 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
   if (b.party_id && !party) throw badRequest(`ไม่พบ${word}นี้`);
   if (!id && party?.status === 'I') throw badRequest(`${party.code} เลิกใช้แล้ว — เปลี่ยนสถานะที่รายละเอียด${word}ก่อน`);
   const hold = await checkHold(db, a, K.party, K.cls, party?.id, id);
+  await checkJobs(db, a.companyId, [{ id: b.project_id }, ...b.lines.map((l, i) => ({ id: l.project_id, line: i + 1 }))], await jobsOfDoc(db, a.companyId, id));
   await checkOwned(db, a.companyId, [{ table: 'md_department', id: b.department_id, field: 'department_id' }, { table: 'md_salesperson', id: b.salesperson_id, field: 'salesperson_id' },
     ...b.lines.map((l, i) => ({ table: 'md_department', id: l.department_id, field: 'department_id', line: i + 1 }) as const)]);
 
@@ -82,7 +84,7 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
     customer_id: K.party === 'customer' ? party?.id ?? null : null, supplier_id: K.party === 'supplier' ? party?.id ?? null : null,
     party_name: name.slice(0, 200) || null, party_address: party ? [party.address_1, party.address_2, party.address_3, party.zip_code].filter(Boolean).join(' ').slice(0, 500) || null : null,
     party_tax_id: party?.tax_id ?? null, party_tax_branch_no: b.party_tax_branch_no ?? party?.tax_branch_no ?? null,
-    your_ref: b.your_ref, ref_no: b.ref_no, ref_date: b.ref_date ?? null, department_id: b.department_id ?? dt.department_id, salesperson_id: b.salesperson_id,
+    your_ref: b.your_ref, ref_no: b.ref_no, ref_date: b.ref_date ?? null, department_id: b.department_id ?? dt.department_id, project_id: b.project_id ?? null, salesperson_id: b.salesperson_id,
     credit_days: K.deposit ? credit : null, due_date: K.deposit ? dueDate(b.doc_date, credit) : null,
     price_type: b.price_type, vat_rate: b.vat_rate, vat_basis: '1', vat_date: b.ref_date ?? b.doc_date,
     amount: calc.amount, amount_after_discount: calc.amount_after_discount, zero_rate_amount: calc.zero_rate_amount, exempt_amount: calc.exempt_amount, taxable_amount: calc.taxable_amount, vat_amount: calc.vat_amount, net_amount: calc.net_amount,
@@ -111,7 +113,7 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
     }
     await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({
       company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'I', item_id: l.item_id, description: l.description ?? (l.item_id ? byId.get(l.item_id)!.name_th : null),
-      department_id: l.department_id ?? header.department_id, qty: '1', factor: '1', base_qty: '1', unit_price: l.amount, line_amount: calc.lines[i]!.line_amount, net_amount: calc.lines[i]!.net_amount,
+      department_id: l.department_id ?? header.department_id, project_id: l.project_id ?? null, qty: '1', factor: '1', base_qty: '1', unit_price: l.amount, line_amount: calc.lines[i]!.line_amount, net_amount: calc.lines[i]!.net_amount,
       vat_code: l.item_id ? byId.get(l.item_id)!.vat_code : null, stock_effect: 0, ...noteCols(l), created_by: a.userId,
     }))).execute();
     await writePayments(tx, a, { headerId: hid!, direction: K.direction, payDate: b.doc_date, methods, payments: b.payments, customerId: header.customer_id, supplierId: header.supplier_id, partyName: name, departmentId: header.department_id });
@@ -164,7 +166,7 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
       const h = await db.selectFrom('doc_header').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id')
-        .select(['l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.line_amount as amount', 'l.net_amount', 'l.department_id', 'l.line_note', 'l.line_note_print'])
+        .select(['l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.line_amount as amount', 'l.net_amount', 'l.department_id', 'l.project_id', 'l.line_note', 'l.line_note_print'])
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
       const { payments, wht } = await readMoneyParts(db, a.companyId, id);
       const partyId = h.customer_id ?? h.supplier_id;

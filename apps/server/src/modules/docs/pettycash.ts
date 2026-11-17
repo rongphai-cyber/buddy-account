@@ -9,6 +9,7 @@ import { checkOwned } from '../../owned.js';
 import { logActivity } from '../../audit.js';
 import { periodFor } from '../gl/journals.js';
 import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
+import { checkJobs, jobsOfDoc } from '../projects.js';
 import { clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, saveBranch, writePayments } from './payments.js';
 
 /**
@@ -26,7 +27,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไ�
 
 const dpBody = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
-  lines: z.array(z.object({ account_id: uuid, department_id: optId, description: str(200), amount: num, ...lineNoteFields })).min(1, 'ป้อนรายการที่จ่ายอย่างน้อย 1 บรรทัด').max(200),
+  lines: z.array(z.object({ account_id: uuid, department_id: optId, project_id: optId, description: str(200), amount: num, ...lineNoteFields })).min(1, 'ป้อนรายการที่จ่ายอย่างน้อย 1 บรรทัด').max(200),
 });
 const vrBody = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
@@ -60,6 +61,7 @@ async function saveDp(db: Db, a: Ctx, id: string | null, b: z.infer<typeof dpBod
     if (d(l.amount).lte(0)) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวนเงิน`);
   });
   await checkOwned(db, a.companyId, b.lines.map((l, i) => ({ table: 'md_department', id: l.department_id, field: 'department_id', line: i + 1 })));
+  await checkJobs(db, a.companyId, b.lines.map((l, i) => ({ id: l.project_id, line: i + 1 })), await jobsOfDoc(db, a.companyId, id));
   const total = b.lines.reduce((s, l) => s.plus(d(l.amount)), d(0)).toFixed(2);
   const branchId = await saveBranch(db, a, id, b.branch_id);
   const header = { ...(branchId ? { branch_id: branchId } : {}), doc_type_id: dt.id, doc_class: 'DP', module: 'PC', doc_date: b.doc_date, remark: b.remark, department_id: dt.department_id, amount: total, net_amount: total, price_type: '0', updated_by: a.userId };
@@ -79,7 +81,7 @@ async function saveDp(db: Db, a: Ctx, id: string | null, b: z.infer<typeof dpBod
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!, doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
-    await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: l.account_id, department_id: l.department_id, description: l.description, ...noteCols(l),
+    await tx.insertInto('doc_line').values(b.lines.map((l, i) => ({ company_id: a.companyId, header_id: hid!, line_no: i + 1, line_kind: 'G', account_id: l.account_id, department_id: l.department_id, project_id: l.project_id ?? null, description: l.description, ...noteCols(l),
       line_amount: d(l.amount).toFixed(2), net_amount: d(l.amount).toFixed(2), stock_effect: 0, created_by: a.userId }))).execute();
     // ลงบัญชีตอนจ่าย: Dr ค่าใช้จ่าย / Cr เงินสดย่อย
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
@@ -172,7 +174,7 @@ export function pettyCashRoutes(app: FastifyInstance, db: Db) {
     const { id } = parse(z.object({ id: uuid }), req.params);
     const h = (await sql<Record<string, unknown> & { doc_status: string; vr_no: string | null }>`SELECT h.*, ${reimbursedBy('h')} AS vr_no, ${reimbursedId('h')} AS vr_id FROM doc_header h WHERE h.id = ${id} AND h.company_id = ${a.companyId} AND h.doc_class = 'DP' AND h.deleted_at IS NULL`.execute(db)).rows[0];
     if (!h) throw notFound('ใบจ่ายเงินสดย่อย');
-    const lines = await db.selectFrom('doc_line as l').leftJoin('gl_account as g', 'g.id', 'l.account_id').select(['l.line_no', 'l.account_id', 'g.account_no', 'g.name_th as account_name', 'l.department_id', 'l.description', 'l.line_note', 'l.line_note_print', 'l.net_amount as amount'])
+    const lines = await db.selectFrom('doc_line as l').leftJoin('gl_account as g', 'g.id', 'l.account_id').select(['l.line_no', 'l.account_id', 'g.account_no', 'g.name_th as account_name', 'l.department_id', 'l.project_id', 'l.description', 'l.line_note', 'l.line_note_print', 'l.net_amount as amount'])
       .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
     return { ...h, lines, editable: h.doc_status !== 'C' && !h.vr_no };
   });
@@ -206,7 +208,7 @@ export function pettyCashRoutes(app: FastifyInstance, db: Db) {
     const { id } = parse(z.object({ id: uuid }), req.params);
     const h = await db.selectFrom('doc_header').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', 'VR').where('deleted_at', 'is', null).executeTakeFirst();
     if (!h) throw notFound('ใบเบิกชดเชย');
-    const lines = await db.selectFrom('doc_line as l').leftJoin('gl_account as g', 'g.id', 'l.account_id').select(['l.line_no', 'l.account_id', 'g.account_no', 'g.name_th as account_name', 'l.department_id', 'l.description', 'l.line_note', 'l.line_note_print', 'l.net_amount as amount'])
+    const lines = await db.selectFrom('doc_line as l').leftJoin('gl_account as g', 'g.id', 'l.account_id').select(['l.line_no', 'l.account_id', 'g.account_no', 'g.name_th as account_name', 'l.department_id', 'l.project_id', 'l.description', 'l.line_note', 'l.line_note_print', 'l.net_amount as amount'])
       .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
     // DP ที่เบิก: ลิงก์ (ใหม่) หรือ ref_no = เลขที่ใบนี้ (ข้อมูลที่ย้ายมา)
     const dps = (await sql`SELECT p.id, p.doc_no, p.doc_date, p.remark, p.net_amount FROM doc_header p

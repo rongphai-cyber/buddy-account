@@ -21,6 +21,7 @@ import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
+import { JobSelect, showJob, useJobs } from '../../components/JobSelect';
 
 /**
  * เงินสดย่อย (คู่มือบทที่ 15 S-GL-11/12/13): DP บันทึกการจ่าย (ยังไม่ลงบัญชี) → VR เบิกชดเชย (รวม DP แล้วลงบัญชี)
@@ -82,7 +83,7 @@ export function PettyListPage({ kind }: { kind: Kind }) {
   );
 }
 
-interface Line { key: number; account_id: string | null; department_id: string; description: string; amount: string; line_note?: string; line_note_print?: boolean }
+interface Line { key: number; account_id: string | null; department_id: string; project_id?: string | null; description: string; amount: string; line_note?: string; line_note_print?: boolean }
 export function PettyFormPage({ kind }: { kind: Kind }) {
   const K = KINDS[kind];
   const { id: routeId } = useParams();
@@ -95,7 +96,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string }> }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const cur = useQuery({ enabled: !!id, queryKey: [K.api, 'one', id], queryFn: () => api.get<Record<string, string | null> & { doc_no: string; doc_status: string; editable: boolean; vr_no?: string | null; vr_id?: string | null;
-    lines: Array<{ account_id: string; account_no: string; account_name: string; department_id: string | null; description: string | null; amount: string; line_note?: string | null; line_note_print?: boolean }>; dps?: Array<{ id: string }>; payments?: Parameters<typeof paysFrom>[0] }>(`/api/v1/${K.api}/${id}`), staleTime: 0 });
+    lines: Array<{ account_id: string; account_no: string; account_name: string; department_id: string | null; project_id?: string | null; description: string | null; amount: string; line_note?: string | null; line_note_print?: boolean }>; dps?: Array<{ id: string }>; payments?: Parameters<typeof paysFrom>[0] }>(`/api/v1/${K.api}/${id}`), staleTime: 0 });
   const [h, setH] = useState<{ doc_type_id: string; doc_date: string; remark: string; cash: string } | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [pick, setPick] = useState<Set<string>>(new Set());
@@ -110,12 +111,12 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const [reason, setReason] = useState('');
   const date0 = me?.work_date ?? todayIso();
   const openDps = useQuery({ enabled: kind === 'vr', queryKey: ['petty-payments', 'open', id], queryFn: () => api.get<{ rows: Row[] }>('/api/v1/petty-payments', { open: 'true', limit: 1000, ...(id ? { vr_id: id } : {}) }), staleTime: 0 });
-  const blank = (): Line => ({ key: nextKey(), account_id: null, department_id: '', description: '', amount: '' });
+  const blank = (prev?: Line): Line => ({ key: nextKey(), account_id: null, department_id: '', project_id: prev?.project_id ?? null, description: '', amount: '' });   // บรรทัดใหม่ใช้ Job ของบรรทัดก่อน
   if (!h && !id && defs.data) { setH({ doc_type_id: initialType(defs.data.types)?.id ?? '', doc_date: date0, remark: '', cash: '' }); if (kind === 'dp') setLines([blank()]); }
   if (!h && id && cur.data) {
     const c = cur.data;
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), remark: c.remark ?? '', cash: kind === 'vr' ? d(c.cash_amount ?? 0).toString() : '' });
-    setLines(c.lines.map((l) => ({ key: nextKey(), account_id: l.account_id, department_id: l.department_id ?? '', description: l.description ?? '', line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, amount: d(l.amount).toString() })));
+    setLines(c.lines.map((l) => ({ key: nextKey(), account_id: l.account_id, department_id: l.department_id ?? '', project_id: l.project_id ?? null, description: l.description ?? '', line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, amount: d(l.amount).toString() })));
     if (kind === 'vr') { setPick(new Set((c.dps ?? []).map((x) => x.id))); setPays(paysFrom(c.payments ?? [])); }
   }
   const roBase = !!id && (!cur.data?.editable || !can('edit'));
@@ -123,6 +124,8 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const ro = roBase || ed.locked;
   const set = (p: Partial<NonNullable<typeof h>>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const setLine = (k: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === k ? { ...l, ...p } : l))); setDirty(true); };
+  const jobs = useJobs();
+  const jobOn = kind === 'dp' && showJob(jobs.enabled, ...lines.map((l) => l.project_id));
   const dpRows = openDps.data?.rows ?? [];
   const chosen = dpRows.filter((r) => pick.has(r.id));
   const vrTotal = chosen.reduce((s, r) => s.plus(d(r.net_amount)), d(0));
@@ -137,7 +140,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const bodyOf0 = () => {
     if (!h) return null;
     return kind === 'dp'
-        ? { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, lines: lines.filter((l) => l.account_id || l.amount).map((l) => ({ account_id: l.account_id, department_id: l.department_id || null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })) }
+        ? { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, lines: lines.filter((l) => l.account_id || l.amount).map((l) => ({ account_id: l.account_id, department_id: l.department_id || null, project_id: l.project_id ?? null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })) }
         : { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, remark: h.remark || null, dp_ids: chosen.map((r) => r.id), cash_amount: h.cash === '' ? null : h.cash, payments: paysBody(pays) };
   };
   const bodyOf = () => { const x = bodyOf0(); return x && { ...x, branch_id: br.body }; };
@@ -175,7 +178,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
     try { await api.post(`/api/v1/${K.api}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.api] }); nav(kind === 'dp' ? BASE : `${BASE}/vr`); }
     catch (e) { setAskCancel(false); setErr(e); }
   };
-  useHotkeys({ F9: save, 'Ctrl+S': save, 'Ctrl+Insert': ro || kind === 'vr' ? undefined : () => setLines((ls) => [...ls, blank()]),
+  useHotkeys({ F9: save, 'Ctrl+S': save, 'Ctrl+Insert': ro || kind === 'vr' ? undefined : () => setLines((ls) => [...ls, blank(ls.at(-1))]),
     'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(kind === 'dp' ? BASE : `${BASE}/vr`); } }, []);
   const cancelled = cur.data?.doc_status === 'C';
@@ -215,7 +218,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
           {tab === 'wht' && id && <DocWhtTab doc={{ id, doc_no: cur.data?.doc_no ?? '', date: h.doc_date }} editable={cur.data?.doc_status !== 'C'} lineTax={taxLine.wht} autoOpen={taxLine.n} />}
           {tab === 'lines' && <div className="table-wrap lines">
             <table className="grid">
-              <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 170 }}>เลขที่บัญชี</th><th style={{ width: 220 }}>ชื่อบัญชี</th><th style={{ width: 150 }}>แผนก</th><th>รายละเอียด</th><th className="r" style={{ width: 150 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>
+              <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 170 }}>เลขที่บัญชี</th><th style={{ width: 220 }}>ชื่อบัญชี</th><th style={{ width: 150 }}>แผนก</th>{jobOn && <th style={{ width: 84 }} title="Job/โครงการ (ไม่บังคับ) — บรรทัดใหม่ใช้ Job ของบรรทัดก่อน">Job</th>}<th>รายละเอียด</th><th className="r" style={{ width: 150 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>
               <tbody>
                 {lines.map((l, i) => (
                   <tr key={l.key}>
@@ -223,13 +226,14 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
                     <td><AccountCell value={l.account_id} disabled={ro} required={!!l.amount || !lines.some((x) => x.account_id && x.key !== l.key)} onChange={(a) => setLine(l.key, { account_id: a?.id ?? null })} aria-label={`เลขที่บัญชี ${i + 1}`} /></td>
                     <td className="small">{acctName(l.account_id)}</td>
                     <td><AddWrap kind="dept"><select value={l.department_id} disabled={ro} onChange={(e) => setLine(l.key, { department_id: e.target.value })} aria-label="แผนก"><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === l.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></td>
+                    {jobOn && <td><JobSelect value={l.project_id} disabled={ro} label={`Job บรรทัด ${i + 1}`} onChange={(v) => setLine(l.key, { project_id: v })} /></td>}
                     <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                     <td><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
                     <td>{!ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setLines((ls) => ls.filter((x) => x.key !== l.key)); setDirty(true); }}>✕</button>}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot><tr><td colSpan={5}>{!ro && <button type="button" onClick={() => setLines((ls) => [...ls, blank()])}>+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button>} <span className="hint">ตั้งวงเงิน: ใช้บัญชีเงินสดย่อย · จ่ายค่าใช้จ่าย: ใช้บัญชีค่าใช้จ่าย · บันทึกแล้วลงบัญชีทันที Dr บัญชีตามรายการ / Cr เงินสดย่อย</span></td><td className="r"><b><Money v={dpTotal.toFixed(2)} /></b></td><td /></tr></tfoot>
+              <tfoot><tr><td colSpan={5}>{!ro && <button type="button" onClick={() => setLines((ls) => [...ls, blank(ls.at(-1))])}>+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button>} <span className="hint">ตั้งวงเงิน: ใช้บัญชีเงินสดย่อย · จ่ายค่าใช้จ่าย: ใช้บัญชีค่าใช้จ่าย · บันทึกแล้วลงบัญชีทันที Dr บัญชีตามรายการ / Cr เงินสดย่อย</span></td><td className="r"><b><Money v={dpTotal.toFixed(2)} /></b></td><td /></tr></tfoot>
             </table>
           </div>}
         </> : <>

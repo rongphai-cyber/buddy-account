@@ -1416,8 +1416,16 @@ export interface MdProjectTable {
   start_date: Gen<string | null>;
   /** วันสิ้นสุด */
   end_date: Gen<string | null>;
-  /** สถานะ */
+  /** สถานะ A=กำลังทำ I=ปิดแล้ว (ปิดแล้วใช้ในเอกสารใหม่ไม่ได้ — เจ้าของ 17/11/2569) */
   status: Gen<string>;
+  /** เลขที่สัญญา/PO ของลูกค้า */
+  ref_no: Gen<string | null>;
+  /** ผู้รับผิดชอบ */
+  manager: Gen<string | null>;
+  /** มูลค่าสัญญา (รายได้ที่คาด) */
+  contract_amount: Gen<string | null>;
+  /** หมายเหตุ */
+  note: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -1433,7 +1441,7 @@ export interface MdProjectTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
-/** งบประมาณโครงการแยกขั้นตอน/รหัสต้นทุน */
+/** งบประมาณโครงการ — รายบัญชี (เจ้าของ 17/11/2569) หรือแยกขั้นตอน/รหัสต้นทุนแบบ Express */
 export interface MdProjectBudgetTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
   id: Gen<string>;
@@ -1441,6 +1449,8 @@ export interface MdProjectBudgetTable {
   company_id: string;
   /** โครงการ */
   project_id: string;
+  /** บัญชีที่ตั้งงบ (งบรายบัญชี) */
+  account_id: Gen<string | null>;
   /** ขั้นตอน */
   phase: Gen<string | null>;
   /** รหัสต้นทุน */

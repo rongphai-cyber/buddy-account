@@ -9,12 +9,13 @@ import { PeriodRange } from '../../components/PeriodPicker';
 import { DateText, Empty, ErrorBox, KeyHints, Money, PageHead, useHotkeys } from '../../ui';
 import { DocLink } from '../../components/DocLink';
 import { ExcelButton } from '../../components/ExcelExport';
-import { AccountScope, BranchSelect, DeptSelect, scopeText, useBranches, useDepartments, type AccountScopeValue } from '../../components/ReportFilters';
+import { AccountScope, BranchSelect, DeptSelect, JobFilter, scopeText, useBranches, useDepartments, type AccountScopeValue } from '../../components/ReportFilters';
+import { useJobs } from '../../components/JobSelect';
 
-type Row = { journal_id: string; voucher_no: string; voucher_date: string; description: string | null; journal_description: string | null; debit: string; credit: string; balance: string; account_no: string; department_code: string | null; source_doc_no: string | null; source_header_id: string | null; source_doc_class: string | null };
+type Row = { journal_id: string; voucher_no: string; voucher_date: string; description: string | null; journal_description: string | null; debit: string; credit: string; balance: string; account_no: string; department_code: string | null; project_code?: string | null; source_doc_no: string | null; source_header_id: string | null; source_doc_class: string | null };
 interface Section { account: { id: string; account_no: string; name_th: string; is_control: boolean }; opening: string; debit: string; credit: string; closing: string; rows: Row[] }
 interface Report { sections: Section[]; debit: string; credit: string; truncated: boolean; account_count: number }
-type Cond = { scope: AccountScopeValue; from: string; to: string; branch: string; dept: string; zero: boolean };
+type Cond = { scope: AccountScopeValue; from: string; to: string; branch: string; dept: string; job: string; zero: boolean };
 
 /**
  * บัญชีแยกประเภท (เจ้าของ 17/11/2569): ทุกบัญชี / ช่วงเลขที่บัญชี / บัญชีเดียว · สาขา · แผนก · แสดงบัญชีที่ไม่มียอด
@@ -26,7 +27,7 @@ export function LedgerPage() {
   const [sp, setSp] = useSearchParams();
   const acc0 = sp.get('account_id');
   const [f, setF] = useState<Cond>({ scope: { mode: acc0 ? 'one' : (sp.get('acc_from') ? 'range' : 'all'), from: sp.get('acc_from') ?? '', to: sp.get('acc_to') ?? '', one: acc0 },
-    from: sp.get('from') ?? '', to: sp.get('to') ?? '', branch: sp.get('branch') ?? me?.branch?.id ?? '', dept: sp.get('dept') ?? '', zero: false });
+    from: sp.get('from') ?? '', to: sp.get('to') ?? '', branch: sp.get('branch') ?? me?.branch?.id ?? '', dept: sp.get('dept') ?? '', job: sp.get('job') ?? '', zero: false });
   const [applied, setApplied] = useState<Cond | null>(() => (acc0 && f.from && f.to ? f : null));   // เปิดจากงบทดลอง/ผังบัญชี = แสดงทันที
   const set = (p: Partial<Cond>) => setF((x) => ({ ...x, ...p }));
   // ช่วงงวดตั้งค่าเริ่มต้นเอง (ปีบัญชีปัจจุบัน) · เปิดจากงบทดลอง (มีบัญชี) = แสดงรายงานทันที
@@ -35,7 +36,7 @@ export function LedgerPage() {
   const run = () => {
     if (!ready) return;
     setApplied(f);
-    setSp(Object.fromEntries(Object.entries({ from: f.from, to: f.to, account_id: f.scope.mode === 'one' ? f.scope.one : '', acc_from: f.scope.mode === 'range' ? f.scope.from : '', acc_to: f.scope.mode === 'range' ? f.scope.to : '', branch: f.branch, dept: f.dept }).filter(([, v]) => v)) as Record<string, string>, { replace: true });
+    setSp(Object.fromEntries(Object.entries({ from: f.from, to: f.to, account_id: f.scope.mode === 'one' ? f.scope.one : '', acc_from: f.scope.mode === 'range' ? f.scope.from : '', acc_to: f.scope.mode === 'range' ? f.scope.to : '', branch: f.branch, dept: f.dept, job: f.job }).filter(([, v]) => v)) as Record<string, string>, { replace: true });
   };
   useHotkeys({ F5: run }, [f]);
   const A = applied;
@@ -43,20 +44,22 @@ export function LedgerPage() {
     enabled: !!A, queryKey: ['ledgers', A],
     queryFn: () => api.get<Report>('/api/v1/reports/ledgers', { from: A!.from, to: A!.to, account_id: A!.scope.mode === 'one' ? A!.scope.one : undefined,
       account_from: A!.scope.mode === 'range' ? A!.scope.from || undefined : undefined, account_to: A!.scope.mode === 'range' ? A!.scope.to || undefined : undefined,
-      branch_id: A!.branch || undefined, department_id: A!.dept || undefined, zero: A!.zero ? '1' : '0' }),
+      branch_id: A!.branch || undefined, department_id: A!.dept || undefined, project_id: A!.job || undefined, zero: A!.zero ? '1' : '0' }),
   });
   const ys = me?.company?.year_system ?? 'B';
-  const accts = useAccounts(), branches = useBranches(), depts = useDepartments();
+  const accts = useAccounts(), branches = useBranches(), depts = useDepartments(), jobs = useJobs();
+  const jobCol = jobs.rows.length > 0;
   const R = q.data;
   const single = A?.scope.mode === 'one' && R?.sections.length === 1 ? R.sections[0]! : null;
   const ctlCol = !!R?.sections.some((s) => s.account.is_control);
-  const ncol = ctlCol ? 8 : 7;
+  const ncol = (ctlCol ? 8 : 7) + (jobCol ? 1 : 0);
   const cond = useMemo(() => A && [
     `ตั้งแต่ ${formatDate(A.from, ys)} ถึง ${formatDate(A.to, ys)}`,
     scopeText(A.scope, (id) => { const a = accts.data?.find((x) => x.id === id); return a ? `${a.account_no} ${a.name_th}` : ''; }),
     A.branch ? `สาขา ${branches.data?.find((b) => b.id === A.branch)?.name ?? ''}` : 'ทุกสาขา',
     A.dept === 'none' ? 'ไม่ระบุแผนก' : A.dept ? `แผนก ${depts.data?.find((x) => x.id === A.dept)?.name_th ?? ''}` : 'ทุกแผนก',
-  ].join(' · '), [A, accts.data, branches.data, depts.data, ys]);
+    ...(A.job ? [`Job ${jobs.byId.get(A.job)?.code ?? ''} ${jobs.byId.get(A.job)?.name_th ?? ''}`] : []),
+  ].join(' · '), [A, accts.data, branches.data, depts.data, jobs.byId, ys]);
   const changed = !!A && JSON.stringify(A) !== JSON.stringify(f);
   return (
     <div className="page" data-tone="reports">
@@ -71,6 +74,7 @@ export function LedgerPage() {
         <PeriodRange value={{ from: f.from, to: f.to }} onChange={onRange} />
         <BranchSelect value={f.branch} onChange={(branch) => set({ branch })} />
         <DeptSelect value={f.dept} onChange={(dept) => set({ dept })} />
+        <JobFilter value={f.job} onChange={(job) => set({ job })} />
         <label className="check"><input type="checkbox" checked={f.zero} onChange={(e) => set({ zero: e.target.checked })} /> แสดงบัญชีที่ไม่มียอด</label>
       </div>
       {changed && <p className="notebox no-print">เปลี่ยนเงื่อนไขแล้ว — กด แสดงรายงาน (F5) เพื่อแสดงตามเงื่อนไขใหม่</p>}
@@ -82,7 +86,7 @@ export function LedgerPage() {
       {R && (
         <div className="table-wrap tall">
           <table className="grid report ledger-report">
-            <thead><tr><th>วันที่</th><th>เลขที่ใบสำคัญ</th>{ctlCol && <th>บัญชี</th>}<th>คำอธิบาย</th><th>แผนก</th><th className="r">เดบิต</th><th className="r">เครดิต</th><th className="r">คงเหลือ</th></tr></thead>
+            <thead><tr><th>วันที่</th><th>เลขที่ใบสำคัญ</th>{ctlCol && <th>บัญชี</th>}<th>คำอธิบาย</th><th>แผนก</th>{jobCol && <th>Job</th>}<th className="r">เดบิต</th><th className="r">เครดิต</th><th className="r">คงเหลือ</th></tr></thead>
             <tbody>
               {R.sections.map((s) => (
                 <Fragment key={s.account.id}>
@@ -91,7 +95,7 @@ export function LedgerPage() {
                   {s.rows.map((r, i) => (
                     <tr key={i} className="row-open" onClick={() => nav(`/gl/journals/${r.journal_id}`)}>
                       <td className="mono"><DateText v={r.voucher_date} /></td><td className="mono">{r.voucher_no}</td>{ctlCol && <td className="mono">{r.account_no}</td>}
-                      <td>{r.description || r.journal_description}{r.source_doc_no && <span className="muted small"> · <DocLink id={r.source_header_id} no={r.source_doc_no} cls={r.source_doc_class} /></span>}</td><td className="mono small">{r.department_code}</td>
+                      <td>{r.description || r.journal_description}{r.source_doc_no && <span className="muted small"> · <DocLink id={r.source_header_id} no={r.source_doc_no} cls={r.source_doc_class} /></span>}</td><td className="mono small">{r.department_code}</td>{jobCol && <td className="mono small">{r.project_code}</td>}
                       <td className="r"><Money v={r.debit} blankZero /></td><td className="r"><Money v={r.credit} blankZero /></td><td className="r"><Money v={r.balance} paren /></td>
                     </tr>
                   ))}

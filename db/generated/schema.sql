@@ -1565,6 +1565,10 @@ CREATE TABLE md_project (
   start_date date,
   end_date date,
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
+  ref_no varchar(30),
+  manager varchar(60),
+  contract_amount numeric(18,2),
+  note text,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -1583,7 +1587,11 @@ COMMENT ON COLUMN md_project.name_en IS 'ชื่อภาษาอังกฤ
 COMMENT ON COLUMN md_project.customer_id IS 'ลูกค้า [Express: JBMAS.CUSCOD]';
 COMMENT ON COLUMN md_project.start_date IS 'วันเริ่ม [Express: JBMAS.BEGIN]';
 COMMENT ON COLUMN md_project.end_date IS 'วันสิ้นสุด [Express: JBMAS.END]';
-COMMENT ON COLUMN md_project.status IS 'สถานะ [Express: JBMAS.STATUS]';
+COMMENT ON COLUMN md_project.status IS 'สถานะ A=กำลังทำ I=ปิดแล้ว (ปิดแล้วใช้ในเอกสารใหม่ไม่ได้ — เจ้าของ 17/11/2569) [Express: JBMAS.STATUS]';
+COMMENT ON COLUMN md_project.ref_no IS 'เลขที่สัญญา/PO ของลูกค้า [Express: JBMAS.PONUM]';
+COMMENT ON COLUMN md_project.manager IS 'ผู้รับผิดชอบ [Express: JBMAS.MANAGER]';
+COMMENT ON COLUMN md_project.contract_amount IS 'มูลค่าสัญญา (รายได้ที่คาด)';
+COMMENT ON COLUMN md_project.note IS 'หมายเหตุ';
 COMMENT ON COLUMN md_project.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN md_project.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN md_project.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -1593,11 +1601,12 @@ COMMENT ON COLUMN md_project.deleted_at IS 'ลบแบบ soft delete (Express
 COMMENT ON COLUMN md_project.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_md_project_company_code ON md_project (company_id, code) WHERE deleted_at IS NULL;
 
--- md_project_budget: งบประมาณโครงการแยกขั้นตอน/รหัสต้นทุน  [Express: JBLIST]
+-- md_project_budget: งบประมาณโครงการ — รายบัญชี (เจ้าของ 17/11/2569) หรือแยกขั้นตอน/รหัสต้นทุนแบบ Express  [Express: JBLIST]
 CREATE TABLE md_project_budget (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
   project_id uuid NOT NULL,
+  account_id uuid,
   phase varchar(10),
   cost_code varchar(10),
   est_expense numeric(18,2),
@@ -1611,10 +1620,11 @@ CREATE TABLE md_project_budget (
   origin_device_id uuid,
   PRIMARY KEY (id)
 );
-COMMENT ON TABLE md_project_budget IS 'งบประมาณโครงการแยกขั้นตอน/รหัสต้นทุน | Express: JBLIST';
+COMMENT ON TABLE md_project_budget IS 'งบประมาณโครงการ — รายบัญชี (เจ้าของ 17/11/2569) หรือแยกขั้นตอน/รหัสต้นทุนแบบ Express | Express: JBLIST';
 COMMENT ON COLUMN md_project_budget.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
 COMMENT ON COLUMN md_project_budget.company_id IS 'บริษัท';
 COMMENT ON COLUMN md_project_budget.project_id IS 'โครงการ';
+COMMENT ON COLUMN md_project_budget.account_id IS 'บัญชีที่ตั้งงบ (งบรายบัญชี)';
 COMMENT ON COLUMN md_project_budget.phase IS 'ขั้นตอน [Express: JBLIST.PHASE]';
 COMMENT ON COLUMN md_project_budget.cost_code IS 'รหัสต้นทุน [Express: JBLIST.COSCOD]';
 COMMENT ON COLUMN md_project_budget.est_expense IS 'ประมาณการค่าใช้จ่าย [Express: JBLIST.ESTEXP]';
@@ -1627,6 +1637,7 @@ COMMENT ON COLUMN md_project_budget.row_version IS 'เวอร์ชันข�
 COMMENT ON COLUMN md_project_budget.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
 COMMENT ON COLUMN md_project_budget.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_md_project_budget_project_phase_cost_code ON md_project_budget (project_id, phase, cost_code) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uq_md_project_budget_project_account ON md_project_budget (project_id, account_id) WHERE deleted_at IS NULL;
 
 -- md_item_account_group: กลุ่มบัญชีสินค้า — ชั้นที่ 2 ของการหาบัญชีสำหรับสินค้า  [Express: ISACC (ACCTYP='S')]
 CREATE TABLE md_item_account_group (
@@ -5536,6 +5547,8 @@ ALTER TABLE md_project_budget ADD CONSTRAINT fk_md_project_budget_company_id FOR
 CREATE INDEX IF NOT EXISTS ix_fk_md_project_budget_company_id ON md_project_budget (company_id);
 ALTER TABLE md_project_budget ADD CONSTRAINT fk_md_project_budget_project_id FOREIGN KEY (project_id) REFERENCES md_project(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_md_project_budget_project_id ON md_project_budget (project_id);
+ALTER TABLE md_project_budget ADD CONSTRAINT fk_md_project_budget_account_id FOREIGN KEY (account_id) REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_md_project_budget_account_id ON md_project_budget (account_id);
 ALTER TABLE md_project_budget ADD CONSTRAINT fk_md_project_budget_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_md_project_budget_created_by ON md_project_budget (created_by);
 ALTER TABLE md_project_budget ADD CONSTRAINT fk_md_project_budget_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;

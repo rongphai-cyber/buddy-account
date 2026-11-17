@@ -482,6 +482,10 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await shot('15n-pdpa');
     await page.keyboard.press('Escape');
   });
+  await step('jobs file + job cost report (HANDOFF 129, view only)', async () => {
+    await page.goto(BASE + '/gl/jobs'); await page.waitForSelector('.master-bar'); await shot('15j-jobs');
+    await page.goto(BASE + '/reports/jobs'); await page.waitForSelector('table.report, .empty', { timeout: 15000 }); await shot('15k-job-report');
+  });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });

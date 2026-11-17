@@ -25,6 +25,7 @@ import { bookStyle, typeColorIn } from '../../bookColor';
 import { DocVatTab, VatCheckAfterSave, vatTabLabel } from '../../components/DocTaxTabs';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
+import { JobSelect, followHeadJob, showJob, useJobs } from '../../components/JobSelect';
 
 const kindOf = (path: string) => CASH_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: CashKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -89,11 +90,11 @@ export function CashListPage({ path }: { path: string }) {
 }
 
 /* ---------------------------------------------------------------- หน้าเอกสาร */
-interface Line { key: number; item_id: string; item_code: string; description: string; amount: string; line_note?: string; line_note_print?: boolean }
+interface Line { key: number; item_id: string; item_code: string; description: string; amount: string; line_note?: string; line_note_print?: boolean; project_id?: string | null }
 interface Head { doc_type_id: string; doc_date: string; party: { id: string; code: string; name?: string | null } | null; party_name: string; party_tax_branch_no: string; your_ref: string; ref_no: string; ref_date: string;
-  department_id: string; salesperson_id: string; credit_days: string; price_type: '0' | '1' | '2'; vat_rate: string; remark: string; wht: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
+  department_id: string; project_id: string; salesperson_id: string; credit_days: string; price_type: '0' | '1' | '2'; vat_rate: string; remark: string; wht: string; cash: string; whtForm: 'S03' | 'S53'; whtRate: string }
 interface Detail extends Record<string, unknown> { doc_no: string; doc_status: string; editable: boolean; remaining: string | null;
-  lines: Array<{ item_id: string | null; item_code: string | null; description: string | null; line_note?: string | null; line_note_print?: boolean; amount: string }>; used_by: Array<{ id: string; doc_no: string; doc_date: string; doc_class: string; amount: string }>;
+  lines: Array<{ item_id: string | null; item_code: string | null; description: string | null; line_note?: string | null; line_note_print?: boolean; amount: string; project_id?: string | null }>; used_by: Array<{ id: string; doc_no: string; doc_date: string; doc_class: string; amount: string }>;
   payments: Parameters<typeof paysFrom>[0]; wht: Parameters<typeof whtsFrom>[0] }
 
 export function CashFormPage({ path }: { path: string }) {
@@ -123,10 +124,10 @@ export function CashFormPage({ path }: { path: string }) {
   const [reason, setReason] = useState('');
   const [dirty, setDirty] = useState(false);
   const date0 = me?.work_date ?? todayIso();
-  const blankLine = (): Line => ({ key: nextKey(), item_id: '', item_code: '', description: '', amount: '' });
+  const blankLine = (): Line => ({ key: nextKey(), item_id: '', item_code: '', description: '', amount: '', project_id: h?.project_id || null });
   if (!h && !id && defs.data) {
     const t = initialType(defs.data.types);
-    setH({ doc_type_id: t?.id ?? '', doc_date: date0, party: null, party_name: '', party_tax_branch_no: '', your_ref: '', ref_no: '', ref_date: '', department_id: '', salesperson_id: '', credit_days: '',
+    setH({ doc_type_id: t?.id ?? '', doc_date: date0, party: null, party_name: '', party_tax_branch_no: '', your_ref: '', ref_no: '', ref_date: '', department_id: '', project_id: '', salesperson_id: '', credit_days: '',
       price_type: (t?.price_type || defs.data.price_type || '2') as Head['price_type'], vat_rate: num(t?.vat_rate ?? defs.data.vat_rate), remark: '', wht: '', cash: '', whtForm: 'S53', whtRate: '3' });
     setLines([blankLine()]);
   }
@@ -134,11 +135,11 @@ export function CashFormPage({ path }: { path: string }) {
     const c = cur.data as Record<string, string | null>;
     const pid = c.customer_id ?? c.supplier_id;
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), party: pid ? { id: pid, code: c.party_code ?? '', name: c.party_name } : null, party_name: pid ? '' : c.party_name ?? '', party_tax_branch_no: c.party_tax_branch_no ?? '',
-      your_ref: c.your_ref ?? '', ref_no: c.ref_no ?? '', ref_date: c.ref_date ? String(c.ref_date).slice(0, 10) : '', department_id: c.department_id ?? '', salesperson_id: c.salesperson_id ?? '',
+      your_ref: c.your_ref ?? '', ref_no: c.ref_no ?? '', ref_date: c.ref_date ? String(c.ref_date).slice(0, 10) : '', department_id: c.department_id ?? '', project_id: c.project_id ?? '', salesperson_id: c.salesperson_id ?? '',
       credit_days: c.credit_days === null || c.credit_days === undefined ? '' : String(c.credit_days), price_type: (c.price_type ?? '2') as Head['price_type'], vat_rate: num(c.vat_rate), remark: c.remark ?? '',
       // เงินสด = ส่วนที่เหลือคำนวณเอง (เดิมโหลดยอดเดิมมาเป็นค่าคงที่ → เพิ่มเงินโอนแล้วยอดเกิน · ข้อกำหนดเจ้าของ 01/11/2569)
       wht: K.whtEntries ? '' : num(c.wht_amount), cash: '', whtForm: 'S53', whtRate: '3' });
-    setLines(cur.data.lines.map((l) => ({ key: nextKey(), item_id: l.item_id ?? '', item_code: l.item_code ?? '', description: l.description ?? '', line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, amount: num(l.amount) })));
+    setLines(cur.data.lines.map((l) => ({ key: nextKey(), item_id: l.item_id ?? '', item_code: l.item_code ?? '', description: l.description ?? '', line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, amount: num(l.amount), project_id: l.project_id ?? null })));
     setPays(paysFrom(cur.data.payments));
     setWhts(whtsFrom(cur.data.wht));
   }
@@ -157,6 +158,9 @@ export function CashFormPage({ path }: { path: string }) {
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const setLine = (k: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === k ? { ...l, ...p } : l))); setDirty(true); };
   const used = lines.filter((l) => (K.lines === 'code' ? l.item_id : l.description || l.amount));
+  const jobs = useJobs();
+  /** Job เฉพาะรายได้/ค่าใช้จ่ายอื่น (OI/OE) — มัดจำไม่ใช่ต้นทุน/รายได้ของงาน */
+  const jobCol = K.lines === 'code' && showJob(jobs.enabled, h?.project_id, ...lines.map((l) => l.project_id));
 
   const calc0 = h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, lines: used.map((l) => ({ qty: 1, unit_price: l.amount || 0 })) });
   const calc = calc0 && noLines ? storedCalc(calc0) : calc0;
@@ -189,9 +193,9 @@ export function CashFormPage({ path }: { path: string }) {
   const bodyOf0 = () => {
     if (!h) return null;
     return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id ?? null, party_name: h.party ? null : h.party_name || null, party_tax_branch_no: h.party ? h.party_tax_branch_no || null : null, your_ref: h.your_ref || null,
-        ref_no: h.ref_no || null, ref_date: h.ref_date || null, department_id: h.department_id || null, salesperson_id: h.salesperson_id || null, credit_days: h.credit_days === '' ? null : Number(h.credit_days),
+        ref_no: h.ref_no || null, ref_date: h.ref_date || null, department_id: h.department_id || null, project_id: jobCol ? h.project_id || null : null, salesperson_id: h.salesperson_id || null, credit_days: h.credit_days === '' ? null : Number(h.credit_days),
         price_type: h.price_type, vat_rate: h.vat_rate || '0', remark: h.remark || null, wht_amount: K.whtEntries ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
-        lines: used.map((l) => ({ item_id: K.lines === 'code' ? l.item_id || null : null, description: l.description || null, amount: l.amount || '0', line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
+        lines: used.map((l) => ({ item_id: K.lines === 'code' ? l.item_id || null : null, description: l.description || null, amount: l.amount || '0', project_id: jobCol ? l.project_id ?? null : null, line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
         payments: paysBody(pays), wht: K.whtEntries ? whtsBody(whts) : [] };
   };
   // ก่อนบันทึก: เลือกวิธีรับ/จ่ายเงิน (ใบใหม่ที่ยังไม่ได้เลือก) หรือยอดวิธีอื่นยังไม่ครบ — ตกลงแล้วจำไว้จนกว่ายอดจะเปลี่ยน
@@ -298,6 +302,7 @@ export function CashFormPage({ path }: { path: string }) {
             <Field label="วันที่" req><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
             {K.deposit && <Field label="ครบกำหนด (วัน)" hint="ใช้ติดตามว่าตัดสินใจซื้อ/ส่งของเกินกำหนดหรือไม่"><div className="pair"><input type="number" min={0} value={h.credit_days} disabled={ro} onChange={(e) => set({ credit_days: e.target.value })} aria-label="ครบกำหนด (วัน)" /><span className="muted small" style={{ alignSelf: 'center' }}><DateText v={dueDate(h.doc_date, Number(h.credit_days || 0))} /></span></div></Field>}
             <Field label="แผนก"><AddWrap kind="dept"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></Field>
+            {jobCol && <Field label="Job/โครงการ" hint="ค่าเริ่มต้นของทุกบรรทัด — แก้รายบรรทัดได้"><AddWrap kind="job"><JobSelect value={h.project_id} disabled={ro} onChange={(v) => { setLines((ls) => followHeadJob(ls, h.project_id, v)); set({ project_id: v ?? '' }); }} /></AddWrap></Field>}
             <Field label="ประเภทราคา" hint={K.deposit ? 'ต้องตรงกับบิลที่จะนำมัดจำไปหัก' : undefined}><select value={h.price_type} disabled={ro} onChange={(e) => set({ price_type: e.target.value as Head['price_type'] })}><option value="0">0 ยกเว้นภาษี</option><option value="1">1 รวมภาษีแล้ว</option><option value="2">2 แยก VAT</option></select></Field>
           </div>
         </div>
@@ -308,7 +313,7 @@ export function CashFormPage({ path }: { path: string }) {
         {tab === 'lines' && noLines && <div className="notebox">เอกสารนี้ย้ายมาจาก Express โดยไม่มีรายการ (Express เก็บเฉพาะยอดเงิน) — แสดงยอดตามเอกสาร · แก้ไขไม่ได้ ยกเลิกหรือดูการลงบัญชีได้ตามปกติ</div>}
         {tab === 'lines' && <div className="table-wrap lines">
           <table className="grid">
-            <thead><tr><th style={{ width: 36 }}>#</th>{K.lines === 'code' && <th style={{ width: 220 }}>รหัส{K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}</th>}<th>{K.lines === 'code' ? 'รายละเอียด' : 'คำอธิบาย'}</th><th className="r" style={{ width: 160 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>
+            <thead><tr><th style={{ width: 36 }}>#</th>{K.lines === 'code' && <th style={{ width: 220 }}>รหัส{K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย'}</th>}<th>{K.lines === 'code' ? 'รายละเอียด' : 'คำอธิบาย'}</th>{jobCol && <th style={{ width: 84 }} title="Job/โครงการ (ไม่บังคับ) — ค่าเริ่มต้นจากหัวเอกสาร">Job</th>}<th className="r" style={{ width: 160 }}>จำนวนเงิน</th><th style={{ width: 36 }} /></tr></thead>
             <tbody>
               {lines.map((l, i) => (
                 <tr key={l.key}>
@@ -316,6 +321,7 @@ export function CashFormPage({ path }: { path: string }) {
                   {K.lines === 'code' && <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module, types: K.cls === 'OI' ? '4' : '5,2' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} disabled={ro}
                     label={(r: { name_th: string }) => r.name_th} onPick={(r: { id: string; code: string; name_th: string; price_1: string | null; std_cost: string | null } | null) => setLine(l.key, r ? { item_id: r.id, item_code: r.code, description: r.name_th, amount: l.amount || num(K.module === 'AR' ? r.price_1 : r.std_cost) } : { item_id: '', item_code: '' })} aria-label={`รหัส ${i + 1}`} /></td>}
                   <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} placeholder={K.deposit ? 'เช่น รับเงินมัดจำล่วงหน้า 10% สำหรับคอมพิวเตอร์ 1 ชุด' : ''} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบาย" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.item_code || l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
+                  {jobCol && <td><JobSelect value={l.project_id} disabled={ro} label={`Job บรรทัด ${i + 1}`} onChange={(v) => setLine(l.key, { project_id: v })} /></td>}
                   <td><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
                   <td>{!ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setLines((ls) => ls.filter((x) => x.key !== l.key)); setDirty(true); }}>✕</button>}</td>
                 </tr>

@@ -38,7 +38,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       phone: c.phone, tax_id: c.tax_id, trade_reg_no: c.trade_reg_no, social_security_no: c.social_security_no, year_system: c.year_system,
       tax_branch_no: hq?.tax_branch_no ?? '00000', business_type: s['gen.business_type'] ?? 'J', branch_short_name: s['gen.branch_short_name'] ?? '',
       allow_blank_party_tax_id: s['gen.allow_blank_party_tax_id'] ?? true, vat_rate: s['gen.vat_rate'] ?? 7, account_mask: s['gl.account_mask'] ?? '9999-99',
-      voucher_numbering: s['gl.voucher_numbering'] ?? '4', use_department: s['gen.use_department'] ?? true, posting_method: s['ic.posting_method'] ?? 'PERIODIC',
+      voucher_numbering: s['gl.voucher_numbering'] ?? '4', use_department: s['gen.use_department'] ?? true, use_project: s['gen.use_project'] === true, posting_method: s['ic.posting_method'] ?? 'PERIODIC',
     };
   });
 
@@ -50,7 +50,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     tax_branch_no: z.string().trim().regex(/^\d{1,5}$/, 'สาขา# เป็นตัวเลข (สำนักงานใหญ่ = 0)'),
     branch_short_name: opt(30), allow_blank_party_tax_id: z.boolean(), trade_reg_no: opt(20), social_security_no: opt(20),
     year_system: z.enum(['B', 'C']), vat_rate: z.coerce.number().min(0).max(100), account_mask: z.string().trim().min(1).max(20),
-    voucher_numbering: z.enum(['4', 'M']), use_department: z.boolean(),
+    voucher_numbering: z.enum(['4', 'M']), use_department: z.boolean(), use_project: z.boolean().optional(),
   });
   app.put('/api/v1/company', async (req) => {
     const a = requireCompany(req);
@@ -70,6 +70,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       await set('gen.allow_blank_party_tax_id', b.allow_blank_party_tax_id); await set('gen.year_system', b.year_system);
       await set('gen.vat_rate', b.vat_rate); await set('gl.account_mask', b.account_mask); await set('gl.voucher_numbering', b.voucher_numbering);
       await set('gen.use_department', b.use_department);
+      if (b.use_project !== undefined) await set('gen.use_project', b.use_project);
       await logActivity(tx, a, { module: 'SYS', action: 'EDIT', table: 'sys_company', rowId: a.companyId });
     });
     return { ok: true, warning: tax.kind === 'LEGACY10' ? tax.warning : undefined };

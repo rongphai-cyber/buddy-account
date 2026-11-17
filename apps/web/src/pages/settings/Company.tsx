@@ -12,7 +12,7 @@ import { WtsLivingSetup, WtsPosSetup } from '../../components/WtsConnect';
 type Co = {
   name_th: string; name_en: string | null; address_th_1: string; address_th_2: string; address_en_1: string; address_en_2: string; phone: string | null; business_type: 'J' | 'P';
   tax_id: string | null; tax_branch_no: string; branch_short_name: string; allow_blank_party_tax_id: boolean; trade_reg_no: string | null; social_security_no: string | null;
-  year_system: 'B' | 'C'; vat_rate: number; account_mask: string; voucher_numbering: '4' | 'M'; use_department: boolean; code: string;
+  year_system: 'B' | 'C'; vat_rate: number; account_mask: string; voucher_numbering: '4' | 'M'; use_department: boolean; use_project?: boolean; code: string;
   zip_code: string | null; [k: string]: unknown;
 };
 
@@ -35,7 +35,7 @@ export function CompanyPage() {
     try {
       const r = await api.put<{ warning?: string }>('/api/v1/company', { ...f, vat_rate: Number(f.vat_rate) });
       toast(r.warning ? `บันทึกแล้ว — ${r.warning}` : 'บันทึกรายละเอียดกิจการแล้ว', r.warning ? 'warn' : 'ok');
-      setEdit(false); qc.invalidateQueries({ queryKey: ['company'] }); refresh();
+      setEdit(false); qc.invalidateQueries({ queryKey: ['company'] }); qc.invalidateQueries({ queryKey: ['project-options'] }); refresh();
     } catch (e) { setErr(e); }
   };
   useHotkeys({ F9: save, 'Ctrl+S': save, 'Alt+E': () => setEdit(true) }, [f]);
@@ -71,6 +71,7 @@ export function CompanyPage() {
           <Field label="รูปแบบเลขที่บัญชี" hint="9 = ตัวเลข เช่น 9999-99"><input className="mono" value={f.account_mask} onChange={(e) => set('account_mask', e.target.value)} /></Field>
           <Field label="รูปแบบเลขที่ใบสำคัญ"><select value={f.voucher_numbering} onChange={(e) => set('voucher_numbering', e.target.value as '4' | 'M')}><option value="4">ตัวนำ+ปีเดือนวัน+ลำดับ (JV520101001)</option><option value="M">ตัวนำ+ปีเดือน+ลำดับ (JV52010001)</option></select></Field>
           <label className="inline chk"><input type="checkbox" checked={f.use_department} onChange={(e) => set('use_department', e.target.checked)} /> ใช้แผนก</label>
+          <label className="inline chk" title="แสดงช่อง Job ในเอกสารซื้อ ขาย ค่าใช้จ่าย เบิกใช้ และสมุดรายวัน — เปิดให้อัตโนมัติเมื่อเพิ่ม Job แรก"><input type="checkbox" checked={!!f.use_project} onChange={(e) => set('use_project', e.target.checked)} /> ใช้ Job/โครงการ (คิดต้นทุนรายงาน)</label>
         </div>}
       </fieldset>}
       {tab === 'modules' && <ModuleSwitches />}
