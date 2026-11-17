@@ -1192,5 +1192,6 @@
  "ภาษีหัก ณ ที่จ่ายออกแทน": "Withholding tax borne",
  "ภาษีหัก ณ ที่จ่ายเรียกคืน": "Withholding tax recoverable",
  "เงินมัดจำจ่าย": "Deposit paid",
- "สรุปยอด": "Summary"
+ "สรุปยอด": "Summary",
+ "ไปรายการใบสำคัญของ{0}": "Go to the voucher list of {0}"
 }

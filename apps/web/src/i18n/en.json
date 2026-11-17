@@ -6808,6 +6808,7 @@
 "ไทล์ที่ \"ยังไม่เปิดใช้\" ติดต่อผู้ให้บริการเพื่อเปิด · สถานะคิวมาจากโปรแกรมนั้นรายงานเข้ามาทุก 1–5 นาที — หน้าร้านยังขายได้แม้เน็ตหลุดหรือ Buddy ปิดอยู่ แล้วส่งเข้าบัญชีย้อนหลังเอง": "For tiles marked \"Not enabled\", contact the Service Provider · Queue status is reported by each program every 1–5 minutes — the shop keeps selling when the internet or Buddy is down and posts to accounting later by itself",
 "ไปคลัง": "To Warehouse",
 "ไปรษณีย์": "Postal Code",
+"ไปรายการใบสำคัญของ{0}": "Go to the voucher list of {0}",
 "ไปหน้าเข้าระบบ": "Go to Sign In",
 "ไฟล์โอนธนาคาร": "Bank Transfer File",
 "ไม่": "No",

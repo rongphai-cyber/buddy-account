@@ -271,11 +271,12 @@ export function JournalFormPage() {
         <div className="jv-title">
           <p className="eyebrow">บัญชี › ลงประจำวัน › {book ? `${book.code} ${book.name_th}` : 'สมุดรายวัน'}</p>
           <div className="title-row"><h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}</h1><CancelStamp show={j?.doc_status === 'C'} /><SourceStamp doc={j} />
-            {/* สมุดรายวันทุกเล่มเป็นแถบตลอด (เจ้าของ 17/11/2569): ใบใหม่ = เปลี่ยนสมุดของใบนี้ · ใบที่บันทึกแล้ว = เปิดใบใหม่ของสมุดที่กด (สมุดของใบเดิมเปลี่ยนไม่ได้) */}
+            {/* สมุดรายวันทุกเล่มเป็นแถบตลอด (เจ้าของ 17/11/2569): ใบใหม่ = เปลี่ยนสมุดของใบนี้ · ใบที่บันทึกแล้ว = ไปรายการของสมุดที่กด
+                (เลือกดูใบเดิมหรือกด + บันทึกใบสำคัญ ต่อ · มีการแก้ค้างถามก่อนออก) */}
             <Tabs className="book-tabs" active={h.journal_book_id}
-              onChange={(k) => { if (k === h.journal_book_id) return; if (isNew) { setDirty(true); setH({ ...h, journal_book_id: k }); } else leave(newUrl(k)); }}
+              onChange={(k) => { if (!isNew) { leave(`/gl/journals?book=${k}`); return; } if (k !== h.journal_book_id) { setDirty(true); setH({ ...h, journal_book_id: k }); } }}
               tabs={(books.data ?? []).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}`, color: bookColor(b),
-                title: b.id === h.journal_book_id ? (isNew ? `กำลังบันทึกลง${b.name_th}` : `สมุดรายวันของใบสำคัญนี้`) : isNew ? `เปลี่ยนเป็น${b.name_th}` : `เปิดใบสำคัญใหม่ของ${b.name_th}` }))} />
+                title: isNew ? (b.id === h.journal_book_id ? `กำลังบันทึกลง${b.name_th}` : `เปลี่ยนเป็น${b.name_th}`) : `ไปรายการใบสำคัญของ${b.name_th}` }))} />
           </div>
         </div>
         <div className="doc-state">

@@ -39035,13 +39035,6 @@
 ]
 },
 {
-"th": "สมุดรายวันของใบสำคัญนี้",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
 "th": "สมุดรายวันสำรองตามประเภทรายการ (ใช้เมื่อประเภทเอกสารไม่ได้กำหนดสมุด)",
 "n": 1,
 "files": [
@@ -44457,13 +44450,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/BillDocs.tsx"
-]
-},
-{
-"th": "เปิดใบสำคัญใหม่ของ{0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -50197,6 +50183,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ไปรายการใบสำคัญของ{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
