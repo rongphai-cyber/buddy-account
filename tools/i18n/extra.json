@@ -1179,5 +1179,9 @@
  "ยอดหักเงินมัดจำที่มี VAT ต้องไม่เกินยอดหักเงินมัดจำทั้งหมด": "The VAT deposit deducted must not exceed the total deposit deducted",
  "ยอดหักเงินมัดจำที่มี VAT มากกว่ามูลค่าสินค้า/บริการที่มี VAT ในบิลนี้ — หักได้ไม่เกินยอดที่มี VAT": "The VAT deposit deducted is more than the VAT-able goods/services in this bill — deduct no more than the VAT-able amount",
  "รับเงินล่วงหน้าค่าบริการ มี VAT (WTS-Living)": "Service advance with VAT (WTS-Living)",
- "ล่วงหน้าค่าบริการที่มี VAT · ออกใบกำกับภาษีตอนรับเงิน · หักในบิลค่าบริการ แล้วคิด VAT จากยอดที่เหลือ · เหลือคืนด้วยใบลดหนี้": "Advance for services with VAT · tax invoice when received · deducted in the service bill, VAT on what is left · any balance refunded with a credit note"
+ "ล่วงหน้าค่าบริการที่มี VAT · ออกใบกำกับภาษีตอนรับเงิน · หักในบิลค่าบริการ แล้วคิด VAT จากยอดที่เหลือ · เหลือคืนด้วยใบลดหนี้": "Advance for services with VAT · tax invoice when received · deducted in the service bill, VAT on what is left · any balance refunded with a credit note",
+ "กำลังบันทึกลง{0}": "Recording in {0}",
+ "เปลี่ยนเป็น{0}": "Switch to {0}",
+ "เปิดใบสำคัญใหม่ของ{0}": "Open a new voucher in {0}",
+ "ใช้เป็นคำอธิบายรายการของทุกบรรทัด (แก้รายบรรทัดได้) — แสดงในบัญชีแยกประเภท": "Used as the entry description of every line (editable per line) — shown in the General Ledger"
 }

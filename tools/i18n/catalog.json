@@ -983,29 +983,6 @@
 ]
 },
 {
-"th": "เครดิต",
-"n": 26,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "ชื่อบัญชี",
 "n": 25,
 "files": [
@@ -1048,6 +1025,54 @@
 ]
 },
 {
+"th": "รวม",
+"n": 25,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "เครดิต",
+"n": 25,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ใช้งาน",
 "n": 25,
 "files": [
@@ -1066,30 +1091,6 @@
 "apps/web/src/pages/settings/Sync.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
 "apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
-"th": "รวม",
-"n": 24,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts"
 ]
 },
 {
@@ -1208,25 +1209,6 @@
 ]
 },
 {
-"th": "เดบิต",
-"n": 22,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/printforms.ts"
-]
-},
-{
 "th": "คงเหลือ",
 "n": 21,
 "files": [
@@ -1339,6 +1321,25 @@
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/doc-calc.ts",
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "เดบิต",
+"n": 21,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -2415,21 +2416,6 @@
 ]
 },
 {
-"th": "กำลังบันทึก:",
-"n": 9,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
 "th": "ครบกำหนด",
 "n": 9,
 "files": [
@@ -2594,6 +2580,20 @@
 "apps/server/src/modules/reports/analysis.ts",
 "apps/server/src/modules/reports/parties.ts",
 "apps/server/src/modules/reports/register.ts"
+]
+},
+{
+"th": "กำลังบันทึก:",
+"n": 8,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -17127,6 +17127,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/express-import.ts"
+]
+},
+{
+"th": "กำลังบันทึกลง{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -44122,6 +44129,13 @@
 ]
 },
 {
+"th": "เปลี่ยนเป็น{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
 "th": "เปลี่ยนเป็นภาษาไทย",
 "n": 1,
 "files": [
@@ -44364,6 +44378,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/BillDocs.tsx"
+]
+},
+{
+"th": "เปิดใบสำคัญใหม่ของ{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -48546,6 +48567,13 @@
 ]
 },
 {
+"th": "โปรแกรมต่อฐานข้อมูลไม่ได้ — ตรวจสถานะ Supabase (โปรเจกต์ wts-prod) แล้วลองใหม่",
+"n": 1,
+"files": [
+"apps/server/src/app.ts"
+]
+},
+{
 "th": "โปรแกรมต้นทาง",
 "n": 1,
 "files": [
@@ -49005,6 +49033,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ใช้เป็นคำอธิบายรายการของทุกบรรทัด (แก้รายบรรทัดได้) — แสดงในบัญชีแยกประเภท",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {

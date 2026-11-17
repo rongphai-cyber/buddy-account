@@ -367,11 +367,11 @@ export function NumInput({ value, onChange, places = 0, neg, className, ...rest 
   );
 }
 
-export function Tabs({ tabs, active, onChange }: { tabs: Array<{ key: string; label: string; badge?: number | string; color?: string }>; active: string; onChange: (k: string) => void }) {
+export function Tabs({ tabs, active, onChange, className }: { tabs: Array<{ key: string; label: string; badge?: number | string; color?: string; title?: string }>; active: string; onChange: (k: string) => void; className?: string }) {
   return (
-    <div className="tabs" role="tablist">
+    <div className={cx('tabs', className)} role="tablist">
       {tabs.map((t) => (
-        <button key={t.key} role="tab" aria-selected={active === t.key} className={cx('tab', active === t.key && 'on', t.color && 'colored')} onClick={() => onChange(t.key)}
+        <button key={t.key} role="tab" aria-selected={active === t.key} className={cx('tab', active === t.key && 'on', t.color && 'colored')} onClick={() => onChange(t.key)} title={t.title}
           style={t.color ? ({ ['--tab-c' as string]: t.color } as React.CSSProperties) : undefined}>
           {t.label}{t.badge ? <span className="badge">{t.badge}</span> : null}
         </button>

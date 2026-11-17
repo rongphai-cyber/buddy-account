@@ -75,7 +75,7 @@ export function JournalFormPage() {
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<{ values: Record<string, unknown> }>('/api/v1/settings'), staleTime: 60_000 });
   const manualNo = isNew && settings.data?.values['gl.voucher_numbering'] === '0';
   const [typedNo, setTypedNo] = useState('');
-  const [noShown, setNoShown] = useState(false);
+  const [noShown, setNoShown] = useState(true);   // ยังไม่แตะช่อง = แสดงเลขอัตโนมัติถัดไป (สีจาง)
   const [lines, setLines] = useState<Line[]>([blank(), blank()]);
   const [err, setErr] = useState<unknown>(null);
   const [tab, setTab] = useState('lines');
@@ -109,8 +109,16 @@ export function JournalFormPage() {
   const [copyPick, setCopyPick] = useState(false);
   const bookTplId = isNew ? books.data?.find((b) => b.id === h.journal_book_id)?.template_id ?? null : null;
   const bookTpl = useQuery({ enabled: !!bookTplId, queryKey: ['template', bookTplId], queryFn: () => api.get<TemplateDetail>(`/api/v1/gl/templates/${bookTplId}`) });
-  const freshLines = (t?: TemplateDetail | null): Line[] => (t?.lines.length ? templateToLines(t).map((l) => ({ ...l, key: ++seq })) : [blank(), blank()]);
-  const linesBlank = lines.every((l) => !l.account_id && !l.debit && !l.credit && !l.description);
+  // คำอธิบายหัวใบสำคัญ = ค่าเริ่มต้นของคำอธิบายทุกบรรทัด (เจ้าของ 17/11/2569 — ไปแสดงในบัญชีแยกประเภท) · บรรทัดที่แก้เองแล้วไม่ทับ
+  const headDesc = (ls: Line[], desc = h.description): Line[] => ls.map((l) => (l.description ? l : { ...l, description: desc }));
+  const freshLines = (t?: TemplateDetail | null, desc = h.description): Line[] => headDesc(t?.lines.length ? templateToLines(t).map((l) => ({ ...l, key: ++seq })) : [blank(), blank()], desc);
+  const setHeadDescription = (v: string) => {
+    const prev = h.description;
+    setDirty(true); setH((x) => ({ ...x, description: v }));
+    // บรรทัดที่ยังว่าง หรือยังเป็นคำอธิบายหัวเดิม ให้ตามคำอธิบายหัวใหม่
+    setLines((ls) => ls.map((l) => (!l.description || l.description === prev ? { ...l, description: v } : l)));
+  };
+  const linesBlank = lines.every((l) => !l.account_id && !l.debit && !l.credit && (!l.description || l.description === h.description));
   const applyTemplate = (t: TemplateDetail) => {
     setLines(freshLines(t)); setDirty(true); setReplaceAsk(null);
     const missing = t.lines.some((l) => !l.amount || d(l.amount).isZero());
@@ -119,7 +127,7 @@ export function JournalFormPage() {
     setTimeout(() => {
       const g = gridRef.current;
       const firstEmpty = missing ? [...(g?.querySelectorAll<HTMLInputElement>('tbody tr') ?? [])].map((tr) => [...tr.querySelectorAll<HTMLInputElement>('input.num')]).find((xs) => xs.every((x) => !x.value))?.[0] : undefined;
-      (firstEmpty ?? document.querySelector<HTMLInputElement>('.head-grid .col:nth-child(2) input'))?.focus();
+      (firstEmpty ?? document.querySelector<HTMLInputElement>('#jv-desc'))?.focus();
     }, 0);
   };
   const pickTemplate = async (tid: string) => {
@@ -137,7 +145,7 @@ export function JournalFormPage() {
     api.get<JournalDoc>(`/api/v1/gl/journals/${copyFrom}`).then((src) => { applyCopy(src); setH((x) => ({ ...x, journal_book_id: src.journal_book_id, description: src.description ?? '', reference: src.reference ?? '' })); toast(`คัดลอกรายการจาก ${src.voucher_no} แล้ว — ตรวจแล้วกด F9 เพื่อบันทึกเป็นใบใหม่`); }).catch(setErr);
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const applyCopy = (src: JournalDoc) => {
-    setLines(src.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: l.department_id, description: l.description ?? '', debit: d(l.debit).isZero() ? '' : d(l.debit).toFixed(2), credit: d(l.credit).isZero() ? '' : d(l.credit).toFixed(2) })));
+    setLines(src.lines.map((l) => ({ key: ++seq, account_id: l.account_id, department_id: l.department_id, description: l.description || h.description || src.description || '', debit: d(l.debit).isZero() ? '' : d(l.debit).toFixed(2), credit: d(l.credit).isZero() ? '' : d(l.credit).toFixed(2) })));
     if (!h.description && src.description) setH((x) => ({ ...x, description: src.description ?? '' }));
     setDirty(true); setReplaceAsk(null);
     toast(`คัดลอกรายการจาก ${src.voucher_no} แล้ว — ตรวจวันที่และจำนวนเงินก่อนบันทึก`);
@@ -181,7 +189,7 @@ export function JournalFormPage() {
       setLines((ls) => {
         const diff = journalTotals(ls).diff;
         if (!diff.isZero()) { if (diff.isPositive()) n.credit = diff.toFixed(2); else n.debit = diff.neg().toFixed(2); }
-        n.description = ls.at(-1)?.description ?? '';
+        n.description = h.description || (ls.at(-1)?.description ?? '');   // คำอธิบายหัวก่อน (เจ้าของ 17/11/2569) · ไม่มีคำอธิบายหัว = ตามบรรทัดก่อน
         n.department_id = ls.at(-1)?.department_id ?? null;   // แผนกตามบรรทัดก่อน (ข้อกำหนดเจ้าของ 01/11/2569)
         return [...ls, n];
       });
@@ -233,7 +241,7 @@ export function JournalFormPage() {
       toast(`บันทึกใบสำคัญ ${r.voucher_no} แล้ว${isNew && (drafts.vat.length || drafts.wht.length) ? ' พร้อมรายการภาษี' : ''}`); setSaves((n) => n + 1);
       setDirty(false); if (!isNew) ed.lock(); setDrafts({ vat: [], wht: [] }); setTab('lines');
       qc.invalidateQueries({ queryKey: ['journals'] }); qc.invalidateQueries({ queryKey: ['journal', r.id] }); qc.invalidateQueries({ queryKey: ['accounts', 'bal'] });
-      if (andNew || isNew) { setLines(andNew ? freshLines(bookTpl.data) : [blank(), blank()]); setH((x) => ({ ...x, description: '', reference: '' })); if (andNew) focusStart(); if (!andNew) nav(`/gl/journals/${r.id}`, { replace: true }); else nav(`/gl/journals/new?book=${h.journal_book_id}`, { replace: true }); }
+      if (andNew || isNew) { setLines(andNew ? freshLines(bookTpl.data, '') : [blank(), blank()]); setH((x) => ({ ...x, description: '', reference: '' })); if (andNew) focusStart(); if (!andNew) nav(`/gl/journals/${r.id}`, { replace: true }); else nav(`/gl/journals/new?book=${h.journal_book_id}`, { replace: true }); }
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   // ป้อนภาษีแล้ว/ข้าม → บันทึกต่อ (ตรวจยอดภาษีประเภทถัดไปอีกรอบ) — รอ state รายการภาษีใหม่ก่อน
@@ -258,11 +266,17 @@ export function JournalFormPage() {
   /** ใบสำคัญที่ระบบลงจากเอกสาร (แก้ที่เอกสารต้นทาง) */
   const fromDoc = !!j?.source_header_id && !j.editable;
   return (
-    <div className={cx('page', book && 'book-colored', j?.doc_status === 'C' && 'doc-cancelled')} data-tone="gl" style={bookStyle(bookColor(book))}>
+    <div className={cx('page jv-page', book && 'book-colored', j?.doc_status === 'C' && 'doc-cancelled', tab === 'lines' && 'jv-fill')} data-tone="gl" style={bookStyle(bookColor(book))}>
       <div className="doc-title">
-        <div>
+        <div className="jv-title">
           <p className="eyebrow">บัญชี › ลงประจำวัน › {book ? `${book.code} ${book.name_th}` : 'สมุดรายวัน'}</p>
-          <div className="title-row"><h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}</h1><CancelStamp show={j?.doc_status === 'C'} /><SourceStamp doc={j} />{book && <span className="book-pill" title="สมุดรายวันของใบสำคัญนี้">{isNew ? 'กำลังบันทึก: ' : ''}{book.prefix} {book.name_th}</span>}</div>
+          <div className="title-row"><h1 className="mono">{isNew ? (nextNo || 'ใบสำคัญใหม่') : j?.voucher_no}</h1><CancelStamp show={j?.doc_status === 'C'} /><SourceStamp doc={j} />
+            {/* สมุดรายวันทุกเล่มเป็นแถบตลอด (เจ้าของ 17/11/2569): ใบใหม่ = เปลี่ยนสมุดของใบนี้ · ใบที่บันทึกแล้ว = เปิดใบใหม่ของสมุดที่กด (สมุดของใบเดิมเปลี่ยนไม่ได้) */}
+            <Tabs className="book-tabs" active={h.journal_book_id}
+              onChange={(k) => { if (k === h.journal_book_id) return; if (isNew) { setDirty(true); setH({ ...h, journal_book_id: k }); } else leave(newUrl(k)); }}
+              tabs={(books.data ?? []).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}`, color: bookColor(b),
+                title: b.id === h.journal_book_id ? (isNew ? `กำลังบันทึกลง${b.name_th}` : `สมุดรายวันของใบสำคัญนี้`) : isNew ? `เปลี่ยนเป็น${b.name_th}` : `เปิดใบสำคัญใหม่ของ${b.name_th}` }))} />
+          </div>
         </div>
         <div className="doc-state">
           <DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={!editable} />
@@ -288,21 +302,19 @@ export function JournalFormPage() {
         </div>
         <div className="tb-group"><button onClick={() => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`)} title="กลับไปรายการ (Esc)">รายการ <kbd>Esc</kbd></button></div>
       </div>
-      {/* สมุดรายวันเป็นแถบ: ใบใหม่เลือกได้ · ใบที่บันทึกแล้วแสดงเฉพาะสมุดของใบนั้น (เปลี่ยนสมุดไม่ได้) */}
-      <Tabs active={h.journal_book_id} onChange={(k) => { if (isNew && k !== h.journal_book_id) { setDirty(true); setH({ ...h, journal_book_id: k }); } }}
-        tabs={(books.data ?? []).filter((b) => isNew || b.id === h.journal_book_id).map((b) => ({ key: b.id, label: `${b.prefix} ${b.name_th}`, color: bookColor(b) }))} />
       {isNew && !h.journal_book_id && books.data && <p className="notebox">เลือกสมุดรายวันจากแถบด้านบนก่อน — เลขที่ใบสำคัญและต้นแบบรายการตามสมุดที่เลือก</p>}
       {ed.dialog}
       <ErrorBox error={err ?? doc.error} />
       {/* Enter ช่องสุดท้ายของหัว (คำอธิบาย) → ไปคีย์รายการบัญชี — ถามบันทึกเมื่อคีย์รายการครบและดุลแล้ว (ข้อกำหนดเจ้าของ 01/11/2569) */}
+      {/* หัวใบสำคัญแถวเดียว (เจ้าของ 17/11/2569: ให้ตารางรายการเห็นได้หลายบรรทัด) · ยอดเดบิต/เครดิต/ต่าง อยู่ท้ายตารางรายการ */}
       <fieldset disabled={!editable} onKeyDown={(e) => navKey(e, toLines)}>
-        <div className="head-grid">
-          <div className="col">
+        <div className="head-grid jv-head">
             <Field label="วันที่" req><DateInput value={h.voucher_date} onChange={(v) => { setDirty(true); setH({ ...h, voucher_date: v }); }} autoFocus={isNew} /></Field>
-            <Field label="เลขที่ใบสำคัญ" hint={isNew ? `${manualNo ? 'ป้อนเลขเอง (ตามค่าเริ่มต้นระบบบัญชี)' : ownNo ? 'คีย์เลขเอง — ห้ามซ้ำ' : `เว้นไว้ = เลขอัตโนมัติ ${nextNo}`} · 🔍/F4 เลือกต้นแบบ · 📋/Ctrl+F6 คัดลอกจากใบสำคัญอื่น` : undefined}>
+            <Field label="เลขที่ใบสำคัญ">
               <span className="lk-in">
                 {isNew
                   ? <input value={noShown && !ownNo && !manualNo && nextNo ? nextNo : typedNo || noPrefix} maxLength={30} className={'mono' + (noShown && !ownNo && !manualNo ? ' auto-no' : '')} placeholder={manualNo ? 'ป้อนเลขที่ใบสำคัญ' : nextNo} aria-required={manualNo} aria-label="เลขที่ใบสำคัญ"
+                      title={`${manualNo ? 'ป้อนเลขเอง (ตามค่าเริ่มต้นระบบบัญชี)' : ownNo ? 'คีย์เลขเอง — ห้ามซ้ำ' : `เว้นไว้ = เลขอัตโนมัติ ${nextNo}`} · 🔍/F4 เลือกต้นแบบ · 📋/Ctrl+F6 คัดลอกจากใบสำคัญอื่น`}
                       onChange={(e) => { setDirty(true); setNoShown(false); setTypedNo(manualNo ? e.target.value.replace(/\s/g, '') : withPrefix(noPrefix, e.target.value)); }}
                       onFocus={() => setNoShown(false)}
                       onBlur={(e) => { if (!ownNo && !manualNo) { setNoShown(true); toast(`ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ ${nextNo} (ออกเลขจริงตอนบันทึก · ต้องการเลขเองให้คลิกช่องแล้วพิมพ์)`, 'warn', e.currentTarget); } }}
@@ -319,22 +331,13 @@ export function JournalFormPage() {
               </span>
             </Field>
             <Field label="อ้างอิง"><input value={h.reference} maxLength={30} onChange={(e) => { setDirty(true); setH({ ...h, reference: e.target.value }); }} /></Field>
-          </div>
-          <div className="col">
-            <Field label="คำอธิบาย" wide><input value={h.description} maxLength={200} onChange={(e) => { setDirty(true); setH({ ...h, description: e.target.value }); }} /></Field>
-            <div className="totals wide">
-              <span>เดบิต <b className="num">{fmt(totals.debit)}</b></span>
-              <span>เครดิต <b className="num">{fmt(totals.credit)}</b></span>
-              <span className={cx(!totals.diff.isZero() && 'bad')}>ต่าง <b className="num">{fmt(totals.diff.abs())}</b></span>
-              {totals.balanced ? <span className="ok">ดุล ✓</span> : <span className="bad">ยังไม่ดุล</span>}
-            </div>
-          </div>
+            <Field label="คำอธิบาย"><input id="jv-desc" value={h.description} maxLength={200} onChange={(e) => setHeadDescription(e.target.value)} title="ใช้เป็นคำอธิบายรายการของทุกบรรทัด (แก้รายบรรทัดได้) — แสดงในบัญชีแยกประเภท" /></Field>
         </div>
       </fieldset>
       {/* แท็บคลิกดูได้เสมอ (ข้อกำหนดเจ้าของ 31/10/2569) — ภาษีและเช็คเป็นระบบแยกจากรายการบัญชี */}
       <Tabs active={tab} onChange={setTab} tabs={[{ key: 'lines', label: 'รายการบัญชี', badge: lines.filter((l) => l.account_id).length },
         ...TAX_TABS.map(([key, label]) => ({ key, label, badge: sums[key].isZero() ? undefined : fmt(sums[key].abs().toFixed(2)) })), ...(!isNew ? [{ key: 'history', label: 'ประวัติการแก้ไข' }] : [])]} />
-      <fieldset disabled={!editable} onKeyDown={(e) => navKey(e, ed.end)}>
+      <fieldset disabled={!editable} onKeyDown={(e) => navKey(e, ed.end)} className={cx(tab === 'lines' && 'jv-lines')}>
         {tab === 'lines' && (
           <div className="table-wrap lines" ref={gridRef} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && amountMissing(e.target as HTMLElement)) { e.preventDefault(); e.stopPropagation(); return; } if (e.key === 'Enter' && (e.target as HTMLElement).dataset.last != null && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); if (complete()) ed.end(); else addLine(); } }}>
             <table className="grid">
@@ -353,7 +356,7 @@ export function JournalFormPage() {
                           {depts.data?.filter((x) => x.status === 'A').map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
                         </select>
                       </td>
-                      <td><div className="desc-cell"><input value={l.description} maxLength={200} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบายรายการ" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={!editable} label={l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
+                      <td><div className="desc-cell"><input value={l.description} maxLength={200} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบายรายการ" placeholder={h.description || undefined} /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={!editable} label={l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                       <td><MoneyInput value={l.debit} onChange={(v) => setLine(l.key, { debit: v, credit: v ? '' : l.credit })} /></td>
                       <td><MoneyInput value={l.credit} onChange={(v) => setLine(l.key, { credit: v, debit: v ? '' : l.debit })} data-credit="" {...(i === lines.length - 1 ? { 'data-last': '' } : {})} /></td>
                       <td><button type="button" className="icon-btn" tabIndex={-1} onClick={() => delLine(l.key)} title="ลบบรรทัด">✕</button></td>
@@ -361,7 +364,12 @@ export function JournalFormPage() {
                   );
                 })}
               </tbody>
-              <tfoot><tr><td colSpan={5}><button type="button" onClick={addLine}>+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button> <span className="hint">Enter ที่ช่องเครดิตบรรทัดสุดท้ายเพิ่มบรรทัดใหม่พร้อมยอดต่าง</span></td><td className="r num">{fmt(totals.debit)}</td><td className="r num">{fmt(totals.credit)}</td><td /></tr></tfoot>
+              <tfoot><tr><td colSpan={5}><div className="jv-foot"><button type="button" onClick={addLine} title="Enter ที่ช่องเครดิตบรรทัดสุดท้ายเพิ่มบรรทัดใหม่พร้อมยอดต่าง">+ เพิ่มบรรทัด <kbd>Ctrl+Ins</kbd></button>
+                <span className="totals">
+                  <span className={cx(!totals.diff.isZero() && 'bad')}>ต่าง <b className="num">{fmt(totals.diff.abs())}</b></span>
+                  {totals.balanced ? <span className="ok">ดุล ✓</span> : <span className="bad">ยังไม่ดุล</span>}
+                  <span className="muted">รวม</span>
+                </span></div></td><td className="r num">{fmt(totals.debit)}</td><td className="r num">{fmt(totals.credit)}</td><td /></tr></tfoot>
             </table>
           </div>
         )}
