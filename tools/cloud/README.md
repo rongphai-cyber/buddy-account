@@ -190,3 +190,19 @@ node tools/local-pg/pg.mjs run -- node tools/cloud/food-demo.mjs --rehearse (ซ
 - รุ่นก่อน 11/11/2569 ตั้งเป็น "สูตร 1 หน่วย" — รันซ้ำ = เปลี่ยนเมนูเป็นตัดที่ตัวสินค้า + ใส่กลุ่ม RTL ให้สินค้าเดิม (ยอดวันที่ส่งไปแล้วคงเดิม) · ซ้อมแบบนี้: `FD_FIRST_SCRIPT=tools/hub/<สคริปต์รุ่นเก่า>.mts` (ในโฟลเดอร์ WTS-POS) กับ `--rehearse`
 - ใบกำกับเต็มรูป: เครื่องขายส่งรายการของบิลนั้นไปกับยอดวัน (summarizeDay `bills[].lines`) → HS ของลูกค้าตรงบิลจริง ไม่แบ่งยอดทั้งวันเป็นเศษ
 - รันซ้ำได้: ของเดิมข้ามตามรหัส · ยอดขาย/ครัวกลาง/รับเงิน Grab ครั้งเดียว · กุญแจเครื่อง/PIN ออกใหม่ทุกครั้ง → `.data\ข้อมูลเข้า-ตัวอย่างทั้งระบบ.txt`
+
+## 11. ตัวเฝ้าระบบ — แจ้งเตือนทางอีเมลเมื่อโปรแกรมบนคลาวด์ใช้ไม่ได้ (17/11/2569 · HANDOFF 121)
+
+Worker แยก `wts-watch` (`cloud/watch/` · ไม่มี container · Workers Builds ของ repo ไม่ deploy ตัวนี้ — deploy จากเครื่องสำนักงาน)
+
+- ตรวจทุก 1 นาที ผ่านชื่อเว็บสาธารณะที่ไม่มีด่าน Access: Buddy `buddy-api…/api/v1/health?db=1` (ตรวจฐานข้อมูลจริงด้วย — รุ่นที่มี `?db=1` ต้อง deploy Buddy ก่อน ถ้ายังไม่ deploy ตอบ ok เหมือนเดิม) · POS `cashier…/api/health` · Living `resident…/api/health`
+- ใช้ไม่ได้ = ไม่ตอบใน 25 วินาที / ไม่ใช่ 200 / ไม่ใช่ JSON `ok: true` · ล้มติดกัน 5 ครั้ง (≈ 5 นาที) จึงแจ้ง (ไม่แจ้งตอน deploy/รีสตาร์ต) · เตือนซ้ำทุก 1 ชั่วโมง · กลับมา = แจ้งพร้อมเวลาที่ล่ม
+- อีเมลแรกหลัง deploy = "เริ่มเฝ้าระบบแล้ว (อีเมลทดสอบ)" · ทุกจันทร์ 08:00 = สรุปรายสัปดาห์ (ไม่ได้รับ = ตัวเฝ้าอาจหยุด)
+- ส่งด้วย Cloudflare Email Routing (`send_email`) จาก `alert@worktruesolution.net` ถึงอีเมลที่ยืนยันแล้วเท่านั้น · ส่งไม่ได้ = เก็บส่งใหม่รอบถัดไป (สูงสุด 20 ฉบับ)
+
+ตั้งครั้งแรก:
+1. เจ้าของ: Cloudflare › worktruesolution.net › Email › Email Routing › เปิดใช้ (โดเมนนี้ยังไม่มีอีเมล — เพิ่ม MX ได้ ไม่กระทบอะไร) › Destination addresses › เพิ่มอีเมลของเจ้าของ › กดลิงก์ยืนยันในอีเมล
+2. ผู้ช่วย (ขออนุญาตก่อน): `npx wrangler deploy -c cloud/watch/wrangler.jsonc` แล้ว `npx wrangler secret put ALERT_TO -c cloud/watch/wrangler.jsonc` (อีเมลเจ้าของ — ไม่เก็บใน repo)
+3. ภายใน 1–2 นาที เจ้าของได้อีเมล "เริ่มเฝ้าระบบแล้ว" · ดูบันทึก: `npx wrangler tail wts-watch`
+
+ทดสอบในเครื่อง: `npx wrangler dev -c cloud/watch/wrangler.jsonc --test-scheduled --port 8799 --var ALERT_TO:owner@example.com` แล้วเปิด `http://127.0.0.1:8799/__scheduled?cron=*+*+*+*+*` (อีเมลบันทึกเป็นไฟล์ .eml ใน `cloud/watch/.wrangler/`) · ตรรกะทดสอบที่ `apps/server/test/watch.test.ts`

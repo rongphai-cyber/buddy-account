@@ -7,6 +7,7 @@ import { rlsAvailable, type Database } from './db.js';
 import type { Config } from './config.js';
 import { AppError, pgToAppError, sendError, zodToAppError } from './http.js';
 import { ZodError } from 'zod';
+import { sql } from 'kysely';
 import { attachAuth, authRoutes } from './modules/auth.js';
 import { companyRoutes } from './modules/company.js';
 import { glRoutes } from './modules/gl/routes.js';
@@ -101,7 +102,21 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   const rls = await rlsAvailable(database);
   if (!rls) app.log.warn('ไม่พบ role buddy_app หรือสลับเป็น buddy_app ไม่ได้ — ปิด Row-Level Security (ใช้การกรองในโค้ดอย่างเดียว · ดู docs/20 ข้อ 4)');
   attachPermissions(app, database, rls);
-  app.get('/api/v1/health', async () => ({ ok: true, mode: database.mode, version: appVersion() }));
+  // ?db=1 = ตรวจว่าต่อฐานข้อมูลได้จริง (ตัวเฝ้าระบบ cloud/watch เรียกทุกนาที) — ต่อไม่ได้/ช้าเกิน 5 วินาที = 503
+  app.get('/api/v1/health', async (req, reply) => {
+    const base = { ok: true, mode: database.mode, version: appVersion() };
+    if ((req.query as { db?: string } | undefined)?.db !== '1') return base;
+    try {
+      await Promise.race([
+        sql`SELECT 1`.execute(database.raw),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000).unref()),
+      ]);
+      return { ...base, db: 'ok' };
+    } catch {
+      reply.code(503);
+      return { ...base, ok: false, db: 'down', error: { code: 'DB_DOWN', message: 'โปรแกรมต่อฐานข้อมูลไม่ได้ — ตรวจสถานะ Supabase (โปรเจกต์ wts-prod) แล้วลองใหม่' } };
+    }
+  });
   app.get('/api/v1/menu', async () => MENU);
   authRoutes(app, db, cfg);
   companyRoutes(app, database);

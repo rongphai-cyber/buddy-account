@@ -1,0 +1,19 @@
+// ตัวเฝ้าระบบ wts-watch (HANDOFF ข้อ 121) — Worker แยก ไม่มี container · deploy จากเครื่องสำนักงาน:
+//   npx wrangler deploy -c cloud/watch/wrangler.jsonc
+// Workers Builds ของ repo นี้ใช้ wrangler.jsonc ที่ราก (wts-buddy) เท่านั้น — push ไม่ deploy ตัวนี้
+// ความลับ ALERT_TO (อีเมลเจ้าของ ต้องยืนยันใน Email Routing ก่อน): npx wrangler secret put ALERT_TO -c cloud/watch/wrangler.jsonc
+{
+  "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
+  "name": "wts-watch",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-09",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  "durable_objects": { "bindings": [{ "name": "STATE", "class_name": "WatchState" }] },
+  "exports": { "WatchState": { "type": "durable-object", "storage": "sqlite" } },
+  // ทุกนาที = ตรวจ · จันทร์ 01:00 UTC (08:00 ไทย) = สรุปรายสัปดาห์ (worker.js WEEKLY ต้องตรงกัน)
+  "triggers": { "crons": ["* * * * *", "0 1 * * 1"] },
+  "send_email": [{ "name": "MAIL" }],
+  "vars": { "ALERT_FROM": "alert@worktruesolution.net" }
+}
