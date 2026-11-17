@@ -14,7 +14,7 @@ export interface PostHeader {
   wht_amount?: MoneyInput; cash_discount_amount?: MoneyInput; interest_amount?: MoneyInput; fx_amount?: MoneyInput;
 }
 /** บรรทัดสินค้า (item_id) หรือบรรทัดบัญชี (account_id — เงินสดย่อย) */
-export interface PostLine { item_id: string | null; net_amount: MoneyInput; account_id?: string | null; /** Perpetual: ต้นทุนของบรรทัดที่ตัด/รับสต๊อก */ cost_amount?: MoneyInput; stock_effect?: number | null; movement_code?: string | null }
+export interface PostLine { item_id: string | null; net_amount: MoneyInput; account_id?: string | null; /** รายละเอียด/แผนกของบรรทัดเอกสาร → คำอธิบาย/แผนกของบรรทัดบัญชี (เจ้าของ 17/11/2569) */ description?: string | null; department_id?: string | null; /** Perpetual: ต้นทุนของบรรทัดที่ตัด/รับสต๊อก */ cost_amount?: MoneyInput; stock_effect?: number | null; movement_code?: string | null }
 export interface PostPayment { method_id: string | null; amount: MoneyInput; cheque_id: string | null }
 /** รายการตัดหนี้ในใบเสร็จ/ใบจ่าย · rectype '0' = ตัดเงินมัดจำ (ลงผ่านวิธีชำระ) · '5' = ใบลดหนี้ที่นำมาหัก (ยอดลบ) */
 export interface PostSettlement { amount: MoneyInput; vat: MoneyInput; party_id: string | null; rectype: string | null }
@@ -123,7 +123,10 @@ export interface PostingResolver {
   perpetual: boolean;
 }
 export type Layer = '1' | '2' | '3' | 'S';
-export interface PostingLine { account_id: string | null; debit: Decimal; credit: Decimal; role: string; layer: Layer; /** บรรทัดรับ/จ่ายด้วยเช็ค — ใช้ทำคำอธิบายบรรทัด (เลขที่เช็ค) */ cheque_id?: string | null }
+export interface PostingLine { account_id: string | null; debit: Decimal; credit: Decimal; role: string; layer: Layer; /** บรรทัดรับ/จ่ายด้วยเช็ค — ใช้ทำคำอธิบายบรรทัด (เลขที่เช็ค) */ cheque_id?: string | null;
+  /** แผนกของบรรทัดเอกสาร (ว่าง = แผนกที่หัวเอกสาร) */ department_id?: string | null;
+  /** รายละเอียดของบรรทัดเอกสาร: alone = ใช้รายละเอียดอย่างเดียว (บรรทัดบัญชี เช่น เงินสดย่อย) · ไม่ใช่ = ต่อท้ายคำอธิบายหัว */ detail?: { text: string; alone: boolean } | null }
+type LineExtra = Pick<PostingLine, 'cheque_id' | 'department_id' | 'detail'>;
 
 /** หมวดเอกสารที่ลงบัญชีด้วยเครื่องนี้ */
 export const POSTING_CLASSES = ['IV', 'DR', 'HS', 'CN', 'RR', 'CP', 'HP', 'DN', 'RE', 'PS', 'AI', 'AE', 'OE', 'OI', 'RD', 'DP', 'VR', 'OU', 'JU', 'CA', 'BD', 'BW', 'BT', 'BU', 'BV'] as const;
@@ -135,11 +138,18 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     for (const [layer, a] of c) if (a) return [a, layer];
     return [r.def('SUSPENSE'), 'S'];
   };
-  const D = (acct: Acct, amt: Decimal, role: string, cheque_id?: string | null) => {
+  const D = (acct: Acct, amt: Decimal, role: string, x?: LineExtra) => {
     if (amt.isZero()) return;
-    out.push({ account_id: acct[0], debit: amt.gt(0) ? amt : d(0), credit: amt.gt(0) ? d(0) : amt.neg(), role, layer: acct[1], ...(cheque_id ? { cheque_id } : {}) });
+    const extra = Object.fromEntries(Object.entries(x ?? {}).filter(([, v]) => v)) as LineExtra;
+    out.push({ account_id: acct[0], debit: amt.gt(0) ? amt : d(0), credit: amt.gt(0) ? d(0) : amt.neg(), role, layer: acct[1], ...extra });
   };
-  const C = (acct: Acct, amt: Decimal, role: string, cheque_id?: string | null) => D(acct, amt.neg(), role, cheque_id);
+  const C = (acct: Acct, amt: Decimal, role: string, x?: LineExtra) => D(acct, amt.neg(), role, x);
+  /** แผนก + รายละเอียดของบรรทัดเอกสาร · บรรทัดบัญชี (ไม่มีรหัสสินค้า — เงินสดย่อย เอกสารธนาคาร) = รายละเอียดอย่างเดียว
+   *  บรรทัดสินค้า/รหัสค่าใช้จ่าย: ต่อท้ายคำอธิบายหัวเฉพาะรายได้/ค่าใช้จ่ายอื่น (trade = แผนกอย่างเดียว คำอธิบายหัวบอกคู่ค้าอยู่แล้ว) */
+  const src = (l: PostLine, withDetail = false): LineExtra => {
+    const t = (l.description ?? '').trim(), alone = !!l.account_id && !l.item_id;
+    return { department_id: l.department_id ?? null, detail: t && (alone || withDetail) ? { text: t, alone } : null };
+  };
   const cls = h.doc_class, dt = h.doc_type_id;
   const net = d(h.net_amount), vat = d(h.vat_amount);
   const vatRole = (base: string) => (h.vat_basis === '2' ? `${base}_PENDING` : base);
@@ -194,9 +204,9 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
       const wht = d(h.wht_amount ?? 0);
       D(pick(['3', r.def('PREPAID_TAX')]), wht, 'WHT');
       D(pick(['3', r.def('CASH')]), cashRest(net.minus(wht)), 'CASH');
-      for (const p of pays) D(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
+      for (const p of pays) D(payAcct(p), d(p.amount), 'PAYMENT', { cheque_id: p.cheque_id });
     }
-    for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'SALES');
+    for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'SALES', src(l));
     C(pick(['3', r.def(vatRole('OUTPUT_VAT'))]), vat, 'OUTPUT_VAT');
     // มัดจำที่บิลหัก: Dr บัญชีเงินมัดจำรับของใบมัดจำแต่ละใบ (ช่อง 3 ของประเภทเอกสาร AI เช่น AVL ของ WTS-Living) แบ่งยอดที่หักจริงตามยอดแต่ละใบ
     // (ราคารวม VAT: ยอดในใบมัดจำรวม VAT แต่ยอดที่หักจริงไม่รวม VAT) · ไม่มีข้อมูลใบมัดจำ = บัญชีเพื่อลงรายวันแบบเดิม
@@ -207,17 +217,17 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     perpetualCost(-1);
   } else if (cls === 'CN') {
     C(partyAr, net, 'AR');
-    for (const l of lines) D(lineAccount('SALES_RETURN', l.item_id), d(l.net_amount), 'SALES_RETURN');
+    for (const l of lines) D(lineAccount('SALES_RETURN', l.item_id), d(l.net_amount), 'SALES_RETURN', src(l));
     D(pick(['3', r.def(vatRole('OUTPUT_VAT'))]), vat, 'OUTPUT_VAT');
     perpetualCost(1);
   } else if (cls === 'RR' || cls === 'CP' || cls === 'HP') {
-    for (const l of lines) D(lineAccount('PURCHASE', l.item_id), d(l.net_amount), 'PURCHASE');
+    for (const l of lines) D(lineAccount('PURCHASE', l.item_id), d(l.net_amount), 'PURCHASE', src(l));
     D(pick(['3', r.def(vatRole('INPUT_VAT'))]), vat, 'INPUT_VAT');
     if (cls === 'HP') {
       const wht = d(h.wht_amount ?? 0);
       C(pick(['3', r.def('WHT_PAYABLE')]), wht, 'WHT');
       C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(net.minus(wht)), 'CASH');
-      for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
+      for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', { cheque_id: p.cheque_id });
     } else C(partyAp, net, 'AP');
     // มัดจำจ่ายที่บิลซื้อหัก: Cr บัญชีของใบจ่ายมัดจำแต่ละใบ (ช่อง 1 ของประเภทเอกสาร AE — ช่องเดียวกับที่ใบ AE ลง Dr) แบ่งตามยอดแต่ละใบ
     // เหมือนฝั่งขาย (IV หัก AI) · ไม่มีข้อมูลใบมัดจำ = บัญชีเพื่อลงรายวันแบบเดิม (เจ้าของ 17/11/2569: VAT ของเงินจ่ายล่วงหน้าเกิดตอนจ่าย)
@@ -229,7 +239,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     }
   } else if (cls === 'DN') {
     D(partyAp, net, 'AP');
-    for (const l of lines) C(lineAccount('PURCHASE_RETURN', l.item_id), d(l.net_amount), 'PURCHASE_RETURN');
+    for (const l of lines) C(lineAccount('PURCHASE_RETURN', l.item_id), d(l.net_amount), 'PURCHASE_RETURN', src(l));
     C(pick(['3', r.def(vatRole('INPUT_VAT'))]), vat, 'INPUT_VAT');
   } else if (cls === 'RE' || cls === 'PS') {
     const isRe = cls === 'RE';
@@ -270,7 +280,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     // ใบเสร็จหักเงินมัดจำ (05/11/2569): มัดจำที่หักแทนเงินรับ — Dr เงินมัดจำรับ แทนเงินสดส่วนนั้น
     if (isRe) debitDeposits();
     (isRe ? D : C)(cash, cashRest(partyTotal.minus(wht).minus(disc).plus(intr).plus(isRe ? fx : fx.neg()).minus(deducted).minus(isRe ? depTotal : d(0))), 'CASH');
-    for (const p of pays) (isRe ? D : C)(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
+    for (const p of pays) (isRe ? D : C)(payAcct(p), d(p.amount), 'PAYMENT', { cheque_id: p.cheque_id });
   } else if (cls === 'RD') {
     // คืนเงินมัดจำ: Dr เงินมัดจำรับล่วงหน้า (ตามใบมัดจำ) / Cr เงินสด (ช่องของประเภทเอกสาร → บัญชีเพื่อลงรายวัน) + วิธีจ่าย (โอน เช็ค)
     // มัดจำมี VAT (= ใบลดหนี้ 06/11/2569): Dr มัดจำรับ = มูลค่าก่อน VAT + Dr ภาษีขาย = VAT รวม · เงินที่จ่าย = ก่อน VAT + VAT
@@ -282,15 +292,15 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     }
     D(pick(['3', r.def('OUTPUT_VAT')]), rdVat, 'OUTPUT_VAT');
     C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(rdPaid), 'CASH');
-    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
+    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', { cheque_id: p.cheque_id });
   } else if (cls === 'AI' || cls === 'OI') {
     // ภาษีถูกหัก ณ ที่จ่าย: Dr ภาษีจ่ายล่วงหน้า แทนเงินสดส่วนนั้น
     const wht = d(h.wht_amount ?? 0);
     D(pick(['3', r.def('PREPAID_TAX')]), wht, 'WHT');
     D(cash, cashRest(net.minus(wht)), 'CASH');
-    for (const p of pays) D(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
+    for (const p of pays) D(payAcct(p), d(p.amount), 'PAYMENT', { cheque_id: p.cheque_id });
     if (cls === 'AI') C(pick(['1', r.slot(dt, cls, 'DEPOSIT_RECEIVED')], ['3', r.def('DEPOSIT_RECEIVED')]), net.minus(vat), 'DEPOSIT_RECEIVED');
-    else for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'OTHER_INCOME');
+    else for (const l of lines) C(lineAccount('SALES', l.item_id), d(l.net_amount), 'OTHER_INCOME', src(l, true));
     C(pick(['3', r.def('OUTPUT_VAT')]), vat, 'OUTPUT_VAT');
   } else if (cls === 'DP' || cls === 'VR') {
     // เงินสดย่อย (ข้อกำหนดเจ้าของ 31/10/2569 — ลงบัญชีตอนจ่าย):
@@ -298,13 +308,13 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     // VR เบิกชดเชย: Dr เงินสดย่อย / Cr เงินสดหรือวิธีจ่าย (เช็ค โอน) — รายการของใบเบิกเป็นสรุปค่าใช้จ่ายของใบจ่าย (ลงบัญชีแล้วที่ใบจ่าย)
     const petty = pick(['1', r.slot(dt, cls, 'PETTY_CASH')], ['3', r.def('PETTY_CASH')]);
     if (cls === 'DP') {
-      for (const l of lines) D(pick(['2', l.account_id]), d(l.net_amount), 'EXPENSE');
+      for (const l of lines) D(pick(['2', l.account_id]), d(l.net_amount), 'EXPENSE', src(l));
       C(petty, net, 'PETTY_CASH');
       return out;
     }
     D(petty, net, 'PETTY_CASH');
     C(pick(['3', r.def('CASH')]), cashRest(net), 'CASH');
-    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
+    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', { cheque_id: p.cheque_id });
   } else if ((cls === 'OU' || cls === 'JU' || cls === 'CA') && (r.perpetual || (cls === 'OU' && !!r.slot(dt, cls, 'ISSUE_DEBIT') && !!r.slot(dt, cls, 'ISSUE_CREDIT')))) {
     // เอกสารสินค้า (บทที่ 14): ลงบัญชีเมื่อ Perpetual — จ่ายใช้ภายในลงด้วยแม้ Periodic เมื่อประเภทเอกสารกำหนดบัญชีครบ 2 ช่อง (ยืนยันจากใบสำคัญ Express เช่น XS: Dr ค่าสินค้าตัวอย่าง / Cr ต้นทุนขาย)
     for (const l of lines) {
@@ -323,7 +333,7 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     let inn = d(0), outt = d(0);
     for (const l of lines) {
       const v = d(l.net_amount);
-      D(pick(['2', l.account_id]), v, 'BANK');
+      D(pick(['2', l.account_id]), v, 'BANK', src(l));
       if (v.gt(0)) inn = inn.plus(v); else outt = outt.minus(v);
     }
     const side = (role: string, fallback = role) => pick(['1', r.slot(dt, cls, role)], ['3', r.def(fallback)]);
@@ -338,12 +348,12 @@ export function buildPosting(h: PostHeader, lines: PostLine[], pays: PostPayment
     } else D(side('BANK_EXPENSE', 'BANK_CHARGE'), outt, 'BANK_EXPENSE');
   } else if (cls === 'AE' || cls === 'OE') {
     if (cls === 'AE') D(pick(['1', r.slot(dt, cls, 'DEPOSIT_PAID')], ['3', r.def('DEPOSIT_PAID')]), net.minus(vat), 'DEPOSIT_PAID');
-    else for (const l of lines) D(lineAccount('PURCHASE', l.item_id), d(l.net_amount), 'EXPENSE');
+    else for (const l of lines) D(lineAccount('PURCHASE', l.item_id), d(l.net_amount), 'EXPENSE', src(l, true));
     D(pick(['3', r.def('INPUT_VAT')]), vat, 'INPUT_VAT');
     const wht = d(h.wht_amount ?? 0);
     C(pick(['3', r.def('WHT_PAYABLE')]), wht, 'WHT');
     C(pick(['1', r.slot(dt, cls, 'CASH')], ['3', r.def('CASH')]), cashRest(net.minus(wht)), 'CASH');
-    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', p.cheque_id);
+    for (const p of pays) C(payAcct(p), d(p.amount), 'PAYMENT', { cheque_id: p.cheque_id });
   }
   return out;
 }

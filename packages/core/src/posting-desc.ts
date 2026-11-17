@@ -31,7 +31,11 @@ export const POSTED_ROLE_LABEL: Record<string, string> = {
   OPENING_BALANCE: 'บัญชีพักยอดยกมา',
 };
 
-export function postedLineDesc(head: string | null | undefined, l: { role: string | null | undefined; debit: MoneyInput }, chequeNo?: string | null): string | null {
+export function postedLineDesc(head: string | null | undefined, l: { role: string | null | undefined; debit: MoneyInput; detail?: { text: string; alone: boolean } | null }, chequeNo?: string | null): string | null {
+  // รายละเอียดของบรรทัดเอกสาร (เจ้าของ 17/11/2569 "คำอธิบายค่าใช้จ่ายเงินสดย่อย … แสดงในสมุดรายวันและแยกประเภท อันเดียวกัน")
+  const det = (l.detail?.text ?? '').trim();
+  if (det && l.detail!.alone) return det.slice(0, 200);
+  if (det && det !== (head ?? '').trim()) head = `${(head ?? '').trim()}${head ? ' · ' : ''}${det}`;
   const dr = d(l.debit || 0).gt(0);
   const label = l.role === 'WHT' ? (dr ? 'ภาษีถูกหัก ณ ที่จ่าย' : 'ภาษีหัก ณ ที่จ่าย')
     : chequeNo ? `${dr ? 'เช็ครับ' : 'เช็คจ่าย'} ${chequeNo}`

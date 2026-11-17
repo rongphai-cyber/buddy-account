@@ -1410,7 +1410,10 @@ describe('Buddy Account API (PGlite)', () => {
     const dp2 = (await call('POST', '/api/v1/petty-payments', { doc_type_id: dpType, doc_date: '2026-11-03', remark: 'ค่าเดินทาง', lines: [{ account_id: exp, description: 'ค่าแท็กซี่', amount: 300 }, { account_id: exp, description: 'ค่าทางด่วน', amount: 200 }] })).body;
     expect(dp2).toMatchObject({ doc_no: expect.stringMatching(/^DP\d{7}$/), net_amount: '500.00' });
     const jl = async (id: string) => ((await call('GET', `/api/v1/docs/${id}/journal`)).body.journals[0]?.lines ?? []).map((l: { posting_role: string; debit: string; credit: string }) => `${l.posting_role}:${l.debit}:${l.credit}`).sort();
-    expect(await jl(dp2.id)).toEqual(['EXPENSE:500.00:0.00', 'PETTY_CASH:0.00:500.00']);
+    // บรรทัดที่รายละเอียดต่างกันแยกบรรทัดบัญชี คำอธิบาย = รายละเอียดของบรรทัดเอกสาร (เจ้าของ 17/11/2569 — สมุดรายวัน/แยกประเภทข้อความเดียวกัน)
+    expect(await jl(dp2.id)).toEqual(['EXPENSE:200.00:0.00', 'EXPENSE:300.00:0.00', 'PETTY_CASH:0.00:500.00']);
+    const dp2j = (await call('GET', `/api/v1/gl/journals/${(await call('GET', `/api/v1/docs/${dp2.id}/journal`)).body.journals[0].id}`)).body as { description: string; lines: Array<{ posting_role: string; description: string }> };
+    expect(dp2j.lines.map((l) => `${l.posting_role}:${l.description}`)).toEqual(['EXPENSE:ค่าแท็กซี่', 'EXPENSE:ค่าทางด่วน', `PETTY_CASH:${dp2j.description}`]);
     // ใบจ่ายเดิมที่ยังไม่ลงบัญชี (ก่อนเปลี่ยนวิธี/ย้ายจาก Express) — ลงบัญชีให้ตอนบันทึกใบเบิก
     await sql`UPDATE gl_journal SET deleted_at = now() WHERE source_header_id = ${dp1.id}`.execute(database.db);
     await sql`UPDATE doc_header SET journal_id = NULL, gl_posted = 'N' WHERE id = ${dp1.id}`.execute(database.db);
