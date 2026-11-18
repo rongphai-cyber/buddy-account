@@ -1211,6 +1211,22 @@
 ]
 },
 {
+"th": "ค่าใช้จ่าย",
+"n": 23,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts"
+]
+},
+{
 "th": "บัญชี",
 "n": 23,
 "files": [
@@ -1323,21 +1339,6 @@
 "apps/server/src/modules/payroll/files.ts",
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/journal-import.ts"
-]
-},
-{
-"th": "ค่าใช้จ่าย",
-"n": 22,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -23233,6 +23234,13 @@
 ]
 },
 {
+"th": "ช่องถัดไป · ช่องบัญชีว่าง = เลือกบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/PettyCash.tsx"
+]
+},
+{
 "th": "ช่องถัดไป: หัว → ท้าย (VAT หมายเหตุ) → รายการ · ช่องรหัสว่าง = เลือกรหัส",
 "n": 1,
 "files": [
@@ -25638,6 +25646,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "ที่ช่องบัญชีว่าง = บันทึก/ยกเลิก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/PettyCash.tsx"
 ]
 },
 {

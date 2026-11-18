@@ -187,7 +187,9 @@ export function SearchPick<T extends { id: string }>({ endpoint = '', options, p
             else if (e.key === 'Escape' && !value && onEmptyEscape && !rest.disabled) { e.preventDefault(); e.stopPropagation(); onEmptyEscape(e.currentTarget); }
             else if (e.key === 'Enter' && !value && !rest.disabled && (required || onEmptyEnter)) {
               e.preventDefault(); e.stopPropagation();
-              if (required) { setBrowse(true); setQ(''); toast(`ต้องเลือก${placeholderWord(endpoint)}ก่อน — พิมพ์รหัส/ชื่อเพื่อค้นหา แล้ว Enter เลือก${canAdd ? ' (ไม่พบ กด Insert เพิ่มใหม่)' : ''}`, 'warn'); }
+              // บรรทัดรายการ (onEmptyEnter): เปิดรายการให้เลือกแบบเดียวกันทุกบรรทัด (บรรทัดแรกด้วย) · ช่องหัวเอกสารที่ต้องมี: เปิดรายการ + เตือน
+              if (onEmptyEnter) onEmptyEnter(e.currentTarget);
+              else if (required) { setBrowse(true); setQ(''); toast(`ต้องเลือก${placeholderWord(endpoint)}ก่อน — พิมพ์รหัส/ชื่อเพื่อค้นหา แล้ว Enter เลือก${canAdd ? ' (ไม่พบ กด Insert เพิ่มใหม่)' : ''}`, 'warn'); }
               else onEmptyEnter!(e.currentTarget);
             }
             return;

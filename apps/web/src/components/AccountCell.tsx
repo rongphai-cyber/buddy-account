@@ -12,7 +12,9 @@ export function useAccounts() {
  * ช่องเลขที่บัญชี: พิมพ์เลขที่แล้ว Enter/Tab, หรือกด F4 / 🔍 เพื่อเปิดหน้าต่างค้นหา (คู่มือบทที่ 3 S-UI-04)
  * ในหน้าต่างค้นหา กด Insert เพื่อเพิ่มบัญชีใหม่ได้ทันทีโดยไม่ต้องออกจากใบสำคัญ
  */
-export function AccountCell({ value, onChange, postableOnly = true, autoFocus, invalid, required, ...rest }: { value: string | null; onChange: (a: Account | null) => void; postableOnly?: boolean; autoFocus?: boolean; invalid?: boolean; required?: boolean; [k: string]: unknown }) {
+export function AccountCell({ value, onChange, postableOnly = true, autoFocus, invalid, required, emptyOpensList, onEmptyEscape, ...rest }: { value: string | null; onChange: (a: Account | null) => void; postableOnly?: boolean; autoFocus?: boolean; invalid?: boolean; required?: boolean;
+  /** บรรทัดรายการ: Enter ที่ช่องว่าง = เปิดรายการบัญชีให้เลือกเสมอ · Esc ที่ช่องว่าง/ปิดรายการโดยไม่เลือก = onEmptyEscape (ถามบันทึก/ยกเลิก — เจ้าของ 18/11/2569) */
+  emptyOpensList?: boolean; onEmptyEscape?: (input: HTMLInputElement) => void; [k: string]: unknown }) {
   const accts = useAccounts();
   const qc = useQueryClient();
   const cur = accts.data?.find((a) => a.id === value);
@@ -44,7 +46,8 @@ export function AccountCell({ value, onChange, postableOnly = true, autoFocus, i
         onKeyDown={(e) => {
           if (e.key === 'F4' || (e.key === 'ArrowDown' && e.altKey)) { e.preventDefault(); setLookup(txt); }
           // ช่องที่ต้องมี (required): Enter ตอนว่าง = เปิดหน้าต่างเลือกบัญชี ไม่ข้ามไปช่องถัดไป (ข้อกำหนดเจ้าของ: รายการที่ต้องมีให้แจ้งเตือนและให้เลือก)
-          if (e.key === 'Enter' && required && !txt.trim()) { e.preventDefault(); e.stopPropagation(); setEmptyHit(true); setLookup(''); return; }
+          if (e.key === 'Enter' && (required || emptyOpensList) && !txt.trim()) { e.preventDefault(); e.stopPropagation(); setEmptyHit(!!required); setLookup(''); return; }
+          if (e.key === 'Escape' && onEmptyEscape && !txt.trim() && !rest.disabled) { e.preventDefault(); e.stopPropagation(); onEmptyEscape(e.currentTarget); return; }
           if (e.key === 'Enter' && !resolve()) { e.preventDefault(); e.stopPropagation(); }
         }}
         onBlur={() => { if (!lookup) resolve(); }} />
@@ -53,7 +56,7 @@ export function AccountCell({ value, onChange, postableOnly = true, autoFocus, i
         <Lookup<Account> title={emptyHit ? 'ต้องป้อนเลขที่บัญชี — เลือกบัญชี (Insert เพิ่มบัญชีใหม่)' : 'เลือกบัญชี'} rows={accts.data ?? []} initial={lookup} filter={(a) => a.status === 'A' && (!postableOnly || !a.is_control)}
           cols={[{ key: 'account_no', label: 'เลขที่บัญชี', w: 120 }, { key: 'name_th', label: 'ชื่อบัญชี' }, { key: 'parent_no', label: 'บัญชีคุม', w: 100 }]}
           onPick={(a) => { onChange(a); setTxt(a.account_no); setLookup(null); setEmptyHit(false); afterPick(); }}
-          onClose={() => { setLookup(null); setEmptyHit(false); setTxt(cur?.account_no ?? ''); setTimeout(() => ref.current?.focus(), 40); }}
+          onClose={() => { setLookup(null); setEmptyHit(false); setTxt(cur?.account_no ?? ''); setTimeout(() => { ref.current?.focus(); if (!cur && onEmptyEscape && ref.current) onEmptyEscape(ref.current); }, 40); }}
           onAdd={(t) => { setAdding(t); setLookup(null); }} />
       )}
       {adding !== null && (

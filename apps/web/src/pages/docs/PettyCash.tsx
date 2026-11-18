@@ -5,6 +5,7 @@ import { d, fmt, settlementTotals, todayIso } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
+import { useLineEnd } from '../../components/LineEndPrompt';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 import { DocBranch, useDocBranch } from '../../components/DocBranch';
@@ -174,6 +175,8 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
       void askTax(r.id, vatL, whtL);
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
+  // จ่ายค่าใช้จ่ายจากเงินสดย่อย: Enter ที่ช่องบัญชีว่าง = เลือกบัญชี · Esc = ถามบันทึก/ยกเลิก (เจ้าของ 18/11/2569 "ทุกหน้าจอของ ชื้อขาย ค่าใช้จ่าย")
+  const le = useLineEnd({ onSave: () => void save(), hasLines: lines.some((l) => l.account_id), word: 'ค่าใช้จ่าย', onDiscard: id ? undefined : () => { setH(null); setLines([]); setPick(new Set()); setPays([]); setDirty(false); nav(`${BASE}/${kind}/new`); } });
   const cancelDoc = async () => {
     try { await api.post(`/api/v1/${K.api}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.api] }); nav(kind === 'dp' ? BASE : `${BASE}/vr`); }
     catch (e) { setAskCancel(false); setErr(e); }
@@ -199,6 +202,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
       <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
       <TypeNotice show={!id && !!h && !h.doc_type_id} />
       {ed.dialog}
+      {le.dialog}
       <ErrorBox error={err ?? cur.error ?? openDps.error} />
       {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
@@ -223,7 +227,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
                 {lines.map((l, i) => (
                   <tr key={l.key}>
                     <td className="muted">{i + 1}</td>
-                    <td><AccountCell value={l.account_id} disabled={ro} required={!!l.amount || !lines.some((x) => x.account_id && x.key !== l.key)} onChange={(a) => setLine(l.key, { account_id: a?.id ?? null })} aria-label={`เลขที่บัญชี ${i + 1}`} /></td>
+                    <td><AccountCell value={l.account_id} disabled={ro} emptyOpensList onEmptyEscape={le.onEmptyEscape} required={!!l.amount || !lines.some((x) => x.account_id && x.key !== l.key)} onChange={(a) => setLine(l.key, { account_id: a?.id ?? null })} aria-label={`เลขที่บัญชี ${i + 1}`} /></td>
                     <td className="small">{acctName(l.account_id)}</td>
                     <td><AddWrap kind="dept"><select value={l.department_id} disabled={ro} onChange={(e) => setLine(l.key, { department_id: e.target.value })} aria-label="แผนก"><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === l.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></td>
                     {jobOn && <td><JobSelect value={l.project_id} disabled={ro} label={`Job บรรทัด ${i + 1}`} onChange={(v) => setLine(l.key, { project_id: v })} /></td>}
@@ -271,7 +275,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
           </div>
         </>}
       </div>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาบัญชี'], ['F9', 'บันทึก'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', kind === 'dp' ? 'ช่องถัดไป · ช่องบัญชีว่าง = เลือกบัญชี' : 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ...(kind === 'dp' ? [['Esc', 'ที่ช่องบัญชีว่าง = บันทึก/ยกเลิก'] as [string, string]] : []), ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาบัญชี'], ['F9', 'บันทึก'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? (เปลี่ยนสถานะ ไม่ลบ){kind === 'vr' ? ' ใบจ่ายที่เบิกจะกลับมาเบิกใหม่ได้ · เช็คออกจากทะเบียน' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
       </Confirm>}

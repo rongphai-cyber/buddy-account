@@ -1602,5 +1602,7 @@
  "ยกเลิกเอกสารนี้ — ทิ้งทุกอย่างที่คีย์ไว้ ไม่บันทึก?": "Cancel this document — discard everything keyed, without saving?",
  "ยังไม่มีรายการ{0} — กลับไปคีย์ต่อ (Enter ที่ช่องรหัสเปิดรายการให้เลือก)": "No {0} lines yet — go back to keying (Enter on the code cell opens the list)",
  "ไปส่วนหัว": "Go to the header",
- "ไม่คีย์รายการ{0}ต่อแล้ว — จะทำอะไรต่อ?": "Done keying {0} lines — what next?"
+ "ไม่คีย์รายการ{0}ต่อแล้ว — จะทำอะไรต่อ?": "Done keying {0} lines — what next?",
+ "ช่องถัดไป · ช่องบัญชีว่าง = เลือกบัญชี": "next field · empty account cell = choose an account",
+ "ที่ช่องบัญชีว่าง = บันทึก/ยกเลิก": "on an empty account cell = save/cancel"
 }
