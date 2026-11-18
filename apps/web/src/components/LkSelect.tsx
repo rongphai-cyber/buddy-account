@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { DATA_TABLES, ITEM_KINDS, itemKindOf } from '@buddy/core';
 import { useCan } from '../session';
-import { ErrorBox, Field, Modal, navKey, toast, useHotkeys } from '../ui';
+import { clearFieldTips, ErrorBox, Field, Modal, navKey, toast, useHotkeys } from '../ui';
 import type { AddKind } from './AddMaster';
 
 const AddMaster = lazy(() => import('./AddMaster'));
@@ -162,7 +162,7 @@ export function SearchPick<T extends { id: string }>({ endpoint = '', options, p
   const loaded = options ? true : !!res.data;
   const rows = (local ?? res.data?.rows ?? []).filter((r) => !exclude?.includes(r.id));
   useEffect(() => setSel(0), [q]);
-  const pick = (r: T | null) => { onPick(r); setQ(null); setBrowse(false); };
+  const pick = (r: T | null) => { if (r) clearFieldTips(); onPick(r); setQ(null); setBrowse(false); };
   // เพิ่มใหม่จากช่องค้นหา: Insert หรือ Enter ตอนค้นหาไม่พบ → ฟอร์มข้อมูลหลัก (สิทธิ์เพิ่มของเมนูนั้น) → บันทึกแล้วเลือกให้
   const addKind = options ? null : addKindOf(endpoint, params);
   const canAdd = useCan(addKind ? ADD_MENU(addKind) : 'ALL')('add') && !!addKind && addNew && !rest.disabled;

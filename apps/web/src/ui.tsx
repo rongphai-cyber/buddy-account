@@ -17,6 +17,9 @@ export function toast(text: string, tone: Toast['tone'] = 'ok', anchor?: Element
   const el = fieldOf(anchor) ?? (tone !== 'ok' ? fieldOf(document.activeElement) : null);
   pushToast?.({ text, tone, at: el?.getBoundingClientRect() });
 }
+/** ปิดกล่องเตือนที่ติดช่อง (เช่น เลือกผู้จำหน่ายแล้ว คำเตือน "ต้องเลือก…ก่อน" ไม่ค้างอยู่ — เจ้าของ 18/11/2569) */
+let dropFieldTips: (() => void) | null = null;
+export function clearFieldTips() { dropFieldTips?.(); }
 export function toastError(e: unknown) { toast(e instanceof Error ? e.message : String(e), 'bad'); }
 export function Toasts() {
   const [list, setList] = useState<Toast[]>([]);
@@ -32,7 +35,8 @@ export function Toasts() {
     // คลิกที่อื่น = ปิดกล่องที่ติดช่อง
     const close = () => setList((l) => (l.some((x) => x.at) ? l.filter((x) => !x.at) : l));
     window.addEventListener('mousedown', close);
-    return () => { pushToast = null; window.removeEventListener('mousedown', close); };
+    dropFieldTips = close;
+    return () => { pushToast = null; dropFieldTips = null; window.removeEventListener('mousedown', close); };
   }, []);
   const tip = list.find((t) => t.at);
   return <>
@@ -181,7 +185,8 @@ export function navKey(e: RKE<HTMLElement>, onEnd?: () => void) {
   if (!e.shiftKey && t.dataset.required != null && (!(t as HTMLInputElement).value.trim() || notPositive)) {
     t.setAttribute('aria-invalid', 'true');
     t.addEventListener('change', () => t.removeAttribute('aria-invalid'), { once: true });
-    if (notPositive && (t as HTMLInputElement).value.trim()) toast(`"${t.dataset.required || 'ช่องนี้'}" ต้องมากกว่า 0 — ใส่จำนวนที่มากกว่า 0 ก่อน`, 'warn', t);
+    const fieldName = t.dataset.required || 'ช่องนี้';
+    if (notPositive && (t as HTMLInputElement).value.trim()) toast(`"${fieldName}" ต้องมากกว่า 0 — ใส่จำนวนที่มากกว่า 0 ก่อน`, 'warn', t);
     else toast(`ต้อง${t.matches('select') ? 'เลือก' : 'กรอก'} ${t.dataset.required ? `"${t.dataset.required}"` : 'ช่องนี้'} ก่อน`, 'warn', t);
     try { (t as HTMLSelectElement).showPicker?.(); } catch { /* บางเบราว์เซอร์ไม่ให้เปิดเอง */ }
     return;

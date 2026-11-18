@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computeDoc, d, dueDate, fillRowCount, fmt, isStockItemType, requiredLineIssues, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
@@ -124,6 +124,71 @@ function RefInvoicePicker({ K, refId, onPick, onClose }: { K: TradeKind; refId: 
           {q.data && !rows.length && <tr><td colSpan={7} className="empty">ใบกำกับนี้ไม่มีรายการสินค้า</td></tr>}
         </tbody>
       </table>
+    </Modal>
+  );
+}
+
+/**
+ * มีเงินมัดจำคงเหลือ: เลือกใบมัดจำและยอดที่หักในหน้าต่างเดียว (เจ้าของ 18/11/2569 — เดิมถามแล้วต้องไปคีย์ที่แท็บ "หักเงินมัดจำ" แล้วไม่มีอะไรเกิดขึ้น)
+ * ↑↓ เลื่อน · Space ติ๊ก (ยอดเริ่มต้น = คงเหลือทั้งหมด แก้ได้) · Enter ที่ยอด = ใบถัดไป · F9/ตกลง = หักแล้วไปคีย์รายการสินค้า · Esc/ไม่หัก = ไม่หักมัดจำ
+ * กติกาเดิม: ประเภทราคาต้องตรงกับบิล · หักไม่เกินยอดคงเหลือ · แท็บ "หักเงินมัดจำ" ยังใช้ตรวจ/แก้ภายหลัง
+ */
+type OpenDep = { header_id: string; doc_no: string; doc_date: string; price_type: string; amount: string; outstanding: string; vat_amount: string | null };
+function DepositAsk({ K, rows, priceType, initial, onOk, onClose }: { K: TradeKind; rows: OpenDep[]; priceType: string; initial: Record<string, string>; onOk: (picks: Record<string, string>) => void; onClose: () => void }) {
+  const [amt, setAmt] = useState<Record<string, string>>(initial);
+  const [err, setErr] = useState<string | null>(null);
+  const body = useRef<HTMLTableSectionElement>(null);
+  const total = Object.values(amt).reduce((s, v) => s.plus(d(v || 0)), d(0));
+  const at = (i: number, sel: string) => body.current?.querySelectorAll('tr')[i]?.querySelector<HTMLInputElement>(sel) ?? null;
+  const focusAt = (i: number, sel: string) => setTimeout(() => { const x = at(i, sel); x?.focus(); x?.select?.(); }, 0);
+  const firstOk = rows.findIndex((o) => o.price_type === priceType);
+  const badOf = (o: OpenDep, v: string | undefined) => (v === undefined ? null : !d(v || 0).gt(0) ? `${o.doc_no}: ใส่ยอดที่หักมากกว่า 0 — หรือเอาเครื่องหมายถูกออก` : d(v).gt(d(o.outstanding)) ? `${o.doc_no}: หักได้ไม่เกินยอดคงเหลือ ${fmt(o.outstanding)}` : null);
+  const ok = () => {
+    for (const [i, o] of rows.entries()) { const m = badOf(o, amt[o.header_id]); if (m) { setErr(m); focusAt(i, 'input[data-amt]'); return; } }
+    onOk(amt);
+  };
+  useHotkeys({ F9: ok, 'Ctrl+S': ok });
+  const toggle = (i: number, o: OpenDep, on: boolean) => {
+    setErr(null);
+    setAmt((m) => { const n = { ...m }; if (on) n[o.header_id] = num(o.outstanding); else delete n[o.header_id]; return n; });
+    if (on) focusAt(i, 'input[data-amt]');
+  };
+  const move = (e: React.KeyboardEvent, i: number, step: number) => {
+    let j = i + step;
+    while (j >= 0 && j < rows.length && rows[j]!.price_type !== priceType) j += step;
+    e.preventDefault();
+    if (j >= 0 && j < rows.length) focusAt(j, 'input[type=checkbox]');
+    else if (step > 0) (document.querySelector('.modal .modal-foot button.primary') as HTMLElement | null)?.focus();
+  };
+  const word = partyWord(K);
+  return (
+    <Modal title="มีเงินมัดจำคงเหลือ — เลือกใบที่จะหักในบิลนี้" size="wide" onClose={onClose}
+      footer={<><button onClick={onClose}>ไม่หักมัดจำ <kbd>Esc</kbd></button><button className="primary" onClick={ok}>{total.gt(0) ? <>หักเงินมัดจำ <Money v={total.toFixed(2)} /></> : <>ตกลง</>} <span>แล้วคีย์รายการสินค้า</span> <kbd>F9</kbd></button></>}>
+      <p>{word}รายนี้มีเงินมัดจำคงเหลือ {rows.length} ใบ รวม <Money v={rows.reduce((t, o) => t.plus(d(o.outstanding)), d(0)).toFixed(2)} /> — ติ๊กใบที่จะหัก แล้วใส่ยอดที่หัก (ไม่เกินยอดคงเหลือ)</p>
+      {err && <p className="bad" role="alert">{err}</p>}
+      <div className="table-wrap"><table className="grid">
+        <thead><tr><th style={{ width: 36 }} /><th style={{ width: 130 }}>ใบมัดจำ</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 120 }}>ประเภทราคา</th><th className="r" style={{ width: 130 }}>ยอดมัดจำ</th><th className="r" style={{ width: 130 }}>คงเหลือ</th><th className="r" style={{ width: 150 }}>หักในบิลนี้</th></tr></thead>
+        <tbody ref={body}>
+          {rows.map((o, i) => {
+            const on = amt[o.header_id] !== undefined;
+            const bad = o.price_type !== priceType;
+            const cellBad = on && !!badOf(o, amt[o.header_id]);
+            return (
+              <tr key={o.header_id} className={cx(on && 'picked')}>
+                <td className="c"><input type="checkbox" checked={on} disabled={bad} autoFocus={i === firstOk} title={bad ? 'ประเภทราคาของใบมัดจำไม่ตรงกับบิล' : 'Space = ติ๊ก/เอาออก'} aria-label={`หักมัดจำ ${o.doc_no}`}
+                  onChange={(e) => toggle(i, o, e.target.checked)}
+                  onKeyDown={(e) => { if (e.key === 'ArrowDown') move(e, i, 1); else if (e.key === 'ArrowUp') move(e, i, -1); else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (on) focusAt(i, 'input[data-amt]'); else move(e, i, 1); } }} /></td>
+                <td className="mono">{o.doc_no}</td><td><DateText v={o.doc_date} /></td><td>{o.price_type}{bad && <span className="bad small"> ไม่ตรงกับบิล</span>}</td>
+                <td className="r"><Money v={o.amount} /></td><td className="r"><Money v={o.outstanding} /></td>
+                <td className={cx(cellBad && 'cell-err')}>{on && <MoneyInput data-amt="" value={amt[o.header_id]} onChange={(v) => { setErr(null); setAmt((m) => ({ ...m, [o.header_id]: v })); }} aria-label={`ยอดหักมัดจำ ${o.doc_no}`}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); const m = badOf(o, amt[o.header_id]); if (m) { setErr(m); return; } move(e, i, 1); } else if (e.key === 'ArrowDown') move(e, i, 1); else if (e.key === 'ArrowUp') move(e, i, -1); }} />}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot><tr><td colSpan={6} className="r">หักเงินมัดจำรวม</td><td className="r"><b><Money v={total.toFixed(2)} /></b></td></tr></tfoot>
+      </table></div>
+      <p className="hint">↑↓ เลื่อน · Space ติ๊ก (ยอดเริ่มต้น = คงเหลือทั้งหมด แก้ได้) · Enter ที่ยอด = ใบถัดไป · F9 ตกลง แล้วไปคีย์รายการสินค้า · Esc ไม่หักมัดจำ · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้</p>
     </Modal>
   );
 }
@@ -267,12 +332,20 @@ export function TradeFormPage({ path }: { path: string }) {
     if (!pid || id || readOnly || depAsked === pid || !depOpen.data?.rows.length || Object.keys(deps).length) return;
     setDepAsked(pid); setDepAsk(true);
   }, [depOpen.data, h?.party?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const calc0 = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, deposit_amount: depTotal.toFixed(2), deposit_taxable: depTaxable.toFixed(2), lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_code: l.vat })) }), [h, lines, depTotal, depTaxable]);
+  // ยังไม่มีรายการ: ยังไม่หักมัดจำในยอด (แสดง "หักเมื่อมีรายการ") ไม่ให้ยอดติดลบ/เตือนแดงก่อนคีย์สินค้า — ตอนบันทึกยังตรวจว่าหักไม่เกินยอดหลังหักส่วนลด (เจ้าของ 18/11/2569)
+  const hasItems = lines.some((l) => l.item_id);
+  const calc0 = useMemo(() => h && computeDoc({ price_type: h.price_type, vat_rate: h.vat_rate || 0, discount_text: h.discount_text, deposit_amount: (hasItems ? depTotal : d(0)).toFixed(2), deposit_taxable: (hasItems ? depTaxable : d(0)).toFixed(2), lines: lines.filter((l) => l.item_id).map((l) => ({ qty: l.qty || 0, unit_price: l.is_free ? 0 : l.unit_price || 0, discount_text: l.discount_text, vat_code: l.vat })) }), [h, lines, depTotal, depTaxable, hasItems]);
   const calc = calc0 && noLines ? storedCalc(calc0) : calc0;
   const payTotal = pays.reduce((s, p) => s.plus(d(p.amount || 0)), d(0));
   const whtTotal = K.cls === 'HP' ? whts.reduce((s, w) => s.plus(d(w.tax_amount || 0)), d(0)) : K.cls === 'HS' ? d(whtAmt || 0) : d(0);
   const cashLeft = calc ? d(calc.net_amount).minus(payTotal).minus(whtTotal) : d(0);
 
+  // หลังหักมัดจำ: ไปช่องรหัสสินค้าบรรทัดว่างแรก แล้วเปิดรายการสินค้า (ลำดับ หัว → ท้าย → รายการ)
+  const focusFirstItem = () => {
+    const el = [...document.querySelectorAll('.table-wrap.lines tbody tr')].map((tr) => tr.querySelector<HTMLInputElement>('.pick input')).find((x) => x && !x.value && !x.disabled);
+    if (!el) return;
+    el.focus(); (el.parentElement?.querySelector('.pick-btn') as HTMLButtonElement | null)?.click();
+  };
   const pickParty = async (p: { id: string; code: string; name: string } | null) => {
     setDeps({});
     if (!p) return set({ party: null });
@@ -552,6 +625,7 @@ export function TradeFormPage({ path }: { path: string }) {
             <tr><td>จำนวนเงิน</td><td className="r"><Money v={calc.amount} /></td></tr>
             <tr><td>หักส่วนลด <DiscountInput value={h.discount_text} disabled={readOnly} onChange={(v) => set({ discount_text: v })} label="ส่วนลดท้ายบิล" base={calc?.amount} style={{ width: 110 }} /></td><td className="r"><Money v={calc.discount_amount} /></td></tr>
             {d(calc.deposit_amount).gt(0) && <tr><td><a href="#deposit" onClick={(e) => { e.preventDefault(); setTab('deposit'); }}>หักเงินมัดจำ</a></td><td className="r"><Money v={calc.deposit_amount} /></td></tr>}
+            {!hasItems && !noLines && depTotal.gt(0) && <tr className="muted" title="ยังไม่มีรายการสินค้า — ยอดหักเงินมัดจำจะหักจากยอดบิลเมื่อคีย์รายการ"><td><a href="#deposit" onClick={(e) => { e.preventDefault(); setTab('deposit'); }}>หักเงินมัดจำ</a> <span className="small">(หักเมื่อมีรายการ)</span></td><td className="r"><Money v={depTotal.toFixed(2)} /></td></tr>}
             {h.price_type !== '0' && d(calc.exempt_amount).gt(0) && <tr title="รายการที่เลือก VAT = 0 ยกเว้น — ไม่นำไปคิดภาษี"><td>มูลค่ายกเว้น VAT</td><td className="r"><Money v={calc.exempt_amount} /></td></tr>}
             {h.price_type !== '0' && d(calc.zero_rate_amount).gt(0) && <tr title="รายการที่เลือก VAT = 2 อัตรา 0% — ภาษี 0 บาท แสดงในรายงานภาษีขายช่องอัตราศูนย์"><td>มูลค่าอัตรา 0%</td><td className="r"><Money v={calc.zero_rate_amount} /></td></tr>}
             {h.price_type !== '0' && <tr title="ยอดที่นำไปคำนวณภาษีมูลค่าเพิ่ม (ไม่รวมรายการยกเว้น VAT)"><td>มูลค่าที่คิด VAT</td><td className="r"><Money v={calc.taxable_amount} /></td></tr>}
@@ -571,9 +645,8 @@ export function TradeFormPage({ path }: { path: string }) {
         {calc && h && <div className="sum-strip" aria-label="สรุปยอด"><span>รายการ <b>{lines.filter((l) => l.item_id).length}</b></span><span>จำนวนเงิน <b><Money v={calc.amount} /></b></span>{!d(calc.discount_amount).isZero() && <span>ส่วนลด <b><Money v={calc.discount_amount} /></b></span>}{h.price_type !== '0' && <span>VAT <b><Money v={calc.vat_amount} /></b></span>}<span className="grand">รวมทั้งสิ้น <b><Money v={calc.net_amount} /></b></span>{!whtTotal.isZero() && <span>หัก ณ ที่จ่าย <b><Money v={whtTotal.toFixed(2)} /></b></span>}</div>}
         <KeyHints keys={[['Enter', 'ช่องถัดไป: หัว → ท้าย (ส่วนลด VAT หมายเหตุ) → รายการ · ช่องรหัสว่าง = เลือกสินค้า'], ['Esc', 'ที่ช่องรหัสว่าง = บันทึก/ยกเลิก'], ['Shift+Enter', 'ขึ้นบรรทัดใหม่ในหมายเหตุ'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ...(K.payments ? [['F7', 'ชำระโดยอื่น'] as [string, string]] : []), ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       </div>
-      {depAsk && depOpen.data && <Confirm title="มีเงินมัดจำคงเหลือ" okText="หักเงินมัดจำ" onClose={() => setDepAsk(false)} onOk={() => { setDepAsk(false); setTab('deposit'); }}
-        text={<>{partyWord(K)}รายนี้มีเงินมัดจำคงเหลือ {depOpen.data.rows.length} ใบ รวม <Money v={depOpen.data.rows.reduce((t, o) => t.plus(d(o.outstanding)), d(0)).toFixed(2)} /> — ต้องการหักในบิลนี้หรือไม่?
-          <span className="small muted" style={{ display: 'block', marginTop: 6 }}>หักได้บางส่วนหรือเต็มจำนวน (ไม่เกินยอดคงเหลือ) · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้</span></>} />}
+      {depAsk && depOpen.data && h && <DepositAsk K={K} rows={depOpen.data.rows} priceType={h.price_type} initial={deps} onClose={() => setDepAsk(false)}
+        onOk={(picks) => { setDeps(picks); if (Object.keys(picks).length) setDirty(true); setDepAsk(false); setTab('lines'); if (Object.keys(picks).length) setTimeout(focusFirstItem, 80); }} />}
       {pickOrder && h?.party && <OrderPicker K={K} partyId={h.party.id} invoiceId={id} priceType={h.price_type} taken={lines.map((l) => l.source_line_id).filter((x): x is string => !!x)} onClose={() => setPickOrder(false)}
         onPick={(rows) => { setLines((ls) => [...ls.filter((l) => l.item_id), ...rows.map((r) => ({ key: ++seq, item_id: r.item_id ?? '', item_code: r.item_code ?? '', description: r.description ?? '', warehouse_id: r.warehouse_id, qty: r.qty, unit_id: r.unit_id, factor: num(r.factor) || '1',
           unit_price: num(r.unit_price), discount_text: r.discount_text ?? '', is_free: r.is_free, return_to_stock: false, vat: '1' as VatCode, project_id: r.project_id ?? (h.project_id || null), source_line_id: r.line_id, source_no: r.doc_no }))]); setDirty(true); setPickOrder(false); setTab('lines'); }} />}

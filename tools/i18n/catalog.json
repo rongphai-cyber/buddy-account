@@ -130,7 +130,7 @@
 },
 {
 "th": "วันที่",
-"n": 89,
+"n": 90,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/DocTaxTabs.tsx",
@@ -1366,6 +1366,23 @@
 ]
 },
 {
+"th": "คงเหลือ",
+"n": 21,
+"files": [
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositPick.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "ประเภทเอกสาร",
 "n": 21,
 "files": [
@@ -1410,20 +1427,21 @@
 ]
 },
 {
-"th": "คงเหลือ",
+"th": "ตกลง",
 "n": 20,
 "files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/DepositPick.tsx",
+"apps/web/src/App.tsx",
+"apps/web/src/components/Notes.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/stock.ts"
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/gl/YearEnd.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Periods.tsx"
 ]
 },
 {
@@ -1478,23 +1496,6 @@
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "ตกลง",
-"n": 19,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/components/Notes.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/gl/YearEnd.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Periods.tsx"
 ]
 },
 {
@@ -2509,6 +2510,16 @@
 ]
 },
 {
+"th": "หักเงินมัดจำ",
+"n": 10,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts",
+"packages/core/src/etax.ts"
+]
+},
+{
 "th": "อ้างอิง",
 "n": 10,
 "files": [
@@ -2635,6 +2646,18 @@
 ]
 },
 {
+"th": "ประเภทราคา",
+"n": 9,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
 "th": "ผลต่าง",
 "n": 9,
 "files": [
@@ -2679,16 +2702,6 @@
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/tax/Wht50.tsx",
 "apps/server/src/modules/reports/tax.ts"
-]
-},
-{
-"th": "หักเงินมัดจำ",
-"n": 9,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts",
-"packages/core/src/etax.ts"
 ]
 },
 {
@@ -2849,18 +2862,6 @@
 "apps/server/src/modules/payroll/runs.ts",
 "packages/core/src/payroll-import.ts",
 "packages/core/src/payroll.ts"
-]
-},
-{
-"th": "ประเภทราคา",
-"n": 8,
-"files": [
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -5532,6 +5533,15 @@
 ]
 },
 {
+"th": "ใบมัดจำ",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ใบเบิกชดเชย",
 "n": 4,
 "files": [
@@ -5960,6 +5970,13 @@
 "files": [
 "apps/web/src/pages/settings/DataTables.tsx",
 "apps/web/src/pages/settings/Departments.tsx"
+]
+},
+{
+"th": "ช่องนี้",
+"n": 3,
+"files": [
+"apps/web/src/ui.tsx"
 ]
 },
 {
@@ -6493,6 +6510,14 @@
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "ยอดมัดจำ",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/DepositPick.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -7298,15 +7323,6 @@
 "n": 3,
 "files": [
 "apps/server/src/modules/cheques.ts"
-]
-},
-{
-"th": "ใบมัดจำ",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/DepositPick.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -8617,13 +8633,6 @@
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
-"th": "ช่องนี้",
-"n": 2,
-"files": [
-"apps/web/src/ui.tsx"
 ]
 },
 {
@@ -10033,6 +10042,14 @@
 ]
 },
 {
+"th": "มัดจำ",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/server/src/import/express/migrate.ts"
+]
+},
+{
 "th": "มัดจำที่คืน",
 "n": 2,
 "files": [
@@ -10255,14 +10272,6 @@
 ]
 },
 {
-"th": "ยอดมัดจำ",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/DepositPick.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "ยอดยกมาบัญชีแยกประเภท",
 "n": 2,
 "files": [
@@ -10290,6 +10299,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "ยอดหักมัดจำ {0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -11540,6 +11556,13 @@
 ]
 },
 {
+"th": "หักมัดจำ {0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "หักส่วนลด",
 "n": 2,
 "files": [
@@ -11553,6 +11576,13 @@
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx",
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "หักในบิลนี้",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -12825,6 +12855,13 @@
 ]
 },
 {
+"th": "ไม่ตรงกับบิล",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ไม่ผ่าน",
 "n": 2,
 "files": [
@@ -13079,13 +13116,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/etax.ts"
-]
-},
-{
-"th": "${t.dataset.required || 'ช่องนี้'}",
-"n": 1,
-"files": [
-"apps/web/src/ui.tsx"
 ]
 },
 {
@@ -13541,6 +13571,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Serials.tsx"
+]
+},
+{
+"th": "(หักเมื่อมีรายการ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -15581,6 +15618,13 @@
 ]
 },
 {
+"th": "Space = ติ๊ก/เอาออก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "VAT {0} ไม่เท่ากับ {1}% ของฐาน — ตรวจ",
 "n": 1,
 "files": [
@@ -16911,6 +16955,13 @@
 ]
 },
 {
+"th": "{0}: หักได้ไม่เกินยอดคงเหลือ {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "{0}: อ้างอิง {1} ซ้ำกับกลุ่มอื่นในแฟ้มเดียวกัน (แถว {2})",
 "n": 1,
 "files": [
@@ -17006,6 +17057,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "{0}: ใส่ยอดที่หักมากกว่า 0 — หรือเอาเครื่องหมายถูกออก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -29203,6 +29261,13 @@
 ]
 },
 {
+"th": "ประเภทราคาของใบมัดจำไม่ตรงกับบิล",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ประเภทราคาของใบสั่งไม่ตรงกับบิล",
 "n": 1,
 "files": [
@@ -32703,13 +32768,6 @@
 ]
 },
 {
-"th": "มัดจำ",
-"n": 1,
-"files": [
-"apps/server/src/import/express/migrate.ts"
-]
-},
-{
 "th": "มัดจำคงเหลือ",
 "n": 1,
 "files": [
@@ -33011,7 +33069,7 @@
 ]
 },
 {
-"th": "มีเงินมัดจำคงเหลือ",
+"th": "มีเงินมัดจำคงเหลือ — เลือกใบที่จะหักในบิลนี้",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
@@ -34320,13 +34378,6 @@
 ]
 },
 {
-"th": "ยอดหักมัดจำ {0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "ยอดหักเงินมัดจำที่มี VAT ต้องไม่เกินยอดหักเงินมัดจำทั้งหมด",
 "n": 1,
 "files": [
@@ -34835,6 +34886,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/OpeningDocs.tsx"
+]
+},
+{
+"th": "ยังไม่มีรายการสินค้า — ยอดหักเงินมัดจำจะหักจากยอดบิลเมื่อคีย์รายการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -43091,13 +43149,6 @@
 ]
 },
 {
-"th": "หักมัดจำ {0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "หักมัดจำบรรทัดที่ {0}: ไม่พบใบมัดจำของ{1}",
 "n": 1,
 "files": [
@@ -43133,6 +43184,13 @@
 ]
 },
 {
+"th": "หักเงินมัดจำรวม",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "หักเงินมัดจำรวม (ตามประเภทราคาของบิล)",
 "n": 1,
 "files": [
@@ -43161,13 +43219,6 @@
 ]
 },
 {
-"th": "หักในบิลนี้",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "หักในบิลแล้ว",
 "n": 1,
 "files": [
@@ -43179,13 +43230,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx"
-]
-},
-{
-"th": "หักได้บางส่วนหรือเต็มจำนวน (ไม่เกินยอดคงเหลือ) · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -50945,6 +50989,13 @@
 ]
 },
 {
+"th": "แล้วคีย์รายการสินค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "แล้วใส่ที่อยู่นี้ ({0}) กับรหัสตั้งเครื่อง",
 "n": 1,
 "files": [
@@ -53010,13 +53061,6 @@
 ]
 },
 {
-"th": "ไม่ตรงกับบิล",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "ไม่ตรงรูปแบบ",
 "n": 1,
 "files": [
@@ -54389,6 +54433,13 @@
 ]
 },
 {
+"th": "ไม่หักมัดจำ",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ไม่อนุญาต = ข้ามช่องราคา ยกเว้นสินค้าที่ยังไม่ตั้งราคา",
 "n": 1,
 "files": [
@@ -54592,17 +54643,17 @@
 ]
 },
 {
+"th": "— ติ๊กใบที่จะหัก แล้วใส่ยอดที่หัก (ไม่เกินยอดคงเหลือ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "— ต้นแบบ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
-"th": "— ต้องการหักในบิลนี้หรือไม่?",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -54995,6 +55046,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/MasterBar.tsx"
+]
+},
+{
+"th": "↑↓ เลื่อน · Space ติ๊ก (ยอดเริ่มต้น = คงเหลือทั้งหมด แก้ได้) · Enter ที่ยอด = ใบถัดไป · F9 ตกลง แล้วไปคีย์รายการสินค้า · Esc ไม่หักมัดจำ · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
