@@ -227,7 +227,7 @@
 },
 {
 "th": "จำนวนเงิน",
-"n": 69,
+"n": 71,
 "files": [
 "apps/web/src/components/DiscountInput.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -254,6 +254,7 @@
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/parties.ts",
 "apps/server/src/modules/reports/stock.ts",
+"packages/core/src/doc-line-rules.ts",
 "packages/core/src/payroll.ts",
 "packages/core/src/printforms.ts"
 ]
@@ -1149,6 +1150,28 @@
 ]
 },
 {
+"th": "คำอธิบาย",
+"n": 24,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/gl/journal-import.ts",
+"apps/server/src/modules/payroll/files.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/doc-line-rules.ts",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "รายได้",
 "n": 24,
 "files": [
@@ -1319,27 +1342,6 @@
 "apps/server/src/modules/docs/stockopening.ts",
 "apps/server/src/modules/docs/trade.ts",
 "apps/server/src/modules/payroll/master.ts"
-]
-},
-{
-"th": "คำอธิบาย",
-"n": 22,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/gl/journal-import.ts",
-"apps/server/src/modules/payroll/files.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -13066,10 +13068,24 @@
 ]
 },
 {
+"th": "\"{0}\" ต้องมากกว่า 0 — ใส่จำนวนที่มากกว่า 0 ก่อน",
+"n": 1,
+"files": [
+"apps/web/src/ui.tsx"
+]
+},
+{
 "th": "\"ข้าม: {0}\"",
 "n": 1,
 "files": [
 "apps/server/src/modules/etax.ts"
+]
+},
+{
+"th": "${t.dataset.required || 'ช่องนี้'}",
+"n": 1,
+"files": [
+"apps/web/src/ui.tsx"
 ]
 },
 {
@@ -23244,6 +23260,13 @@
 ]
 },
 {
+"th": "ช่องถัดไป: หัว → ท้าย (VAT หมายเหตุ) → รายการ · คำอธิบายและจำนวนเงินต้องมี · คำอธิบายบรรทัดว่าง = บันทึก/ยกเลิก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx"
+]
+},
+{
 "th": "ช่องถัดไป: หัว → ท้าย (VAT หมายเหตุ) → รายการ · ช่องรหัสว่าง = เลือกรหัส",
 "n": 1,
 "files": [
@@ -25652,6 +25675,13 @@
 ]
 },
 {
+"th": "ที่คำอธิบายบรรทัดว่าง = บันทึก/ยกเลิก",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx"
+]
+},
+{
 "th": "ที่ช่องบัญชีว่าง = บันทึก/ยกเลิก",
 "n": 1,
 "files": [
@@ -26744,6 +26774,13 @@
 ]
 },
 {
+"th": "บรรทัดที่ {0}: จำนวนเงินต้องมากกว่า 0 — ใส่ในช่อง \"จำนวนเงิน\"",
+"n": 1,
+"files": [
+"packages/core/src/doc-line-rules.ts"
+]
+},
+{
 "th": "บรรทัดที่ {0}: บัญชี {1} ต้องระบุแผนก",
 "n": 1,
 "files": [
@@ -26818,6 +26855,13 @@
 "n": 1,
 "files": [
 "packages/core/src/journal.ts"
+]
+},
+{
+"th": "บรรทัดที่ {0}: ยังไม่ได้ใส่คำอธิบาย — ใส่ในช่อง \"คำอธิบาย\"",
+"n": 1,
+"files": [
+"packages/core/src/doc-line-rules.ts"
 ]
 },
 {
@@ -34742,6 +34786,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocTaxTabs.tsx"
+]
+},
+{
+"th": "ยังไม่มีรายการ — ใส่คำอธิบายและจำนวนเงินอย่างน้อย 1 บรรทัด",
+"n": 1,
+"files": [
+"packages/core/src/doc-line-rules.ts"
 ]
 },
 {

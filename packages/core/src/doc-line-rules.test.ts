@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fillRowCount, isStockItemType, missingUnitIssues, requiredLineIssues } from './doc-line-rules.js';
+import { fillRowCount, isStockItemType, missingUnitIssues, isBlankTextLine, isCompleteTextLine, requiredLineIssues, textLineIssues } from './doc-line-rules.js';
 
 describe('document line rules (เจ้าของ 18/11/2569)', () => {
   it('every purchase/sale line needs a unit — the message names the line and the fix', () => {
@@ -24,5 +24,16 @@ describe('document line rules (เจ้าของ 18/11/2569)', () => {
     expect(fillRowCount(768)).toBe(4);
     expect(fillRowCount(700)).toBe(2);
     expect(fillRowCount(2000)).toBe(5);
+  });
+  it('deposit lines (description + amount): both required on any keyed line, at least one line, amount above 0', () => {
+    expect(textLineIssues([{ description: 'มัดจำ 10%', amount: '1,000.00' }, { description: '', amount: '' }])).toEqual([]);   // บรรทัดว่างข้าม
+    const r = textLineIssues([{ description: 'มัดจำ', amount: '' }, { description: '', amount: '500' }, { description: 'x', amount: '-5' }, { description: '  ', amount: '0' }]);
+    expect(r.map((x) => [x.line, x.field])).toEqual([[1, 'amount'], [2, 'description'], [3, 'amount']]);
+    expect(r[0]!.message).toBe('บรรทัดที่ 1: จำนวนเงินต้องมากกว่า 0 — ใส่ในช่อง "จำนวนเงิน"');
+    expect(r[1]!.message).toBe('บรรทัดที่ 2: ยังไม่ได้ใส่คำอธิบาย — ใส่ในช่อง "คำอธิบาย"');
+    expect(textLineIssues([{ description: '', amount: '' }]).map((x) => [x.line, x.field])).toEqual([[1, 'description']]);   // ต้องมีอย่างน้อย 1 บรรทัด
+    expect(textLineIssues([])[0]!.message).toMatch(/^ยังไม่มีรายการ/);
+    expect([{ description: '', amount: '0.00' }, { description: ' ', amount: '' }, { description: 'a', amount: '' }].map(isBlankTextLine)).toEqual([true, true, false]);
+    expect([{ description: 'a', amount: '1,000.00' }, { description: 'a', amount: '0' }, { description: '', amount: '5' }].map(isCompleteTextLine)).toEqual([true, false, false]);
   });
 });

@@ -176,11 +176,13 @@ export function navKey(e: RKE<HTMLElement>, onEnd?: () => void) {
     toast(`ต้อง${t.matches('select') ? 'เลือก' : 'กรอก'} ${name ? `"${name}"` : 'ช่องนี้'} ก่อน — ช่องที่มี * ต้องมีข้อมูล`, 'warn', t);
     return;
   }
-  // ช่องในตารางที่ต้องมี (data-required="ชื่อช่อง") เช่น แผนกของบัญชีที่ต้องระบุแผนก
-  if (!e.shiftKey && t.dataset.required != null && !(t as HTMLInputElement).value.trim()) {
+  // ช่องในตารางที่ต้องมี (data-required="ชื่อช่อง") เช่น แผนกของบัญชีที่ต้องระบุแผนก · data-positive = ต้องมากกว่า 0 (จำนวนเงินมัดจำ — เจ้าของ 18/11/2569)
+  const notPositive = t.dataset.positive != null && !(Number((t as HTMLInputElement).value.replace(/,/g, '')) > 0);
+  if (!e.shiftKey && t.dataset.required != null && (!(t as HTMLInputElement).value.trim() || notPositive)) {
     t.setAttribute('aria-invalid', 'true');
     t.addEventListener('change', () => t.removeAttribute('aria-invalid'), { once: true });
-    toast(`ต้อง${t.matches('select') ? 'เลือก' : 'กรอก'} ${t.dataset.required ? `"${t.dataset.required}"` : 'ช่องนี้'} ก่อน`, 'warn', t);
+    if (notPositive && (t as HTMLInputElement).value.trim()) toast(`"${t.dataset.required || 'ช่องนี้'}" ต้องมากกว่า 0 — ใส่จำนวนที่มากกว่า 0 ก่อน`, 'warn', t);
+    else toast(`ต้อง${t.matches('select') ? 'เลือก' : 'กรอก'} ${t.dataset.required ? `"${t.dataset.required}"` : 'ช่องนี้'} ก่อน`, 'warn', t);
     try { (t as HTMLSelectElement).showPicker?.(); } catch { /* บางเบราว์เซอร์ไม่ให้เปิดเอง */ }
     return;
   }

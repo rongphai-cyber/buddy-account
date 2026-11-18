@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { CASH_KINDS, computeDoc, d, dueDate, settlementTotals, type CashKind } from '@buddy/core';
+import { CASH_KINDS, computeDoc, d, dueDate, settlementTotals, textLineIssues, type CashKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { checkOwned } from '../../owned.js';
@@ -33,7 +33,8 @@ const body = z.object({
 });
 type Body = z.infer<typeof body>;
 
-async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body) {
+/** opt.keyed: บันทึกจากหน้าจอ (session) — บรรทัดคำอธิบาย+จำนวนเงิน ต้องมีทั้งสองช่องและจำนวนเงินมากกว่า 0 (เจ้าของ 18/11/2569) · กุญแจ API (WTS-Living ฯลฯ) ตามเดิม */
+async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body, opt: { keyed?: boolean } = {}) {
   const dt = await db.selectFrom('md_doc_type').select(['id', 'doc_class', 'department_id', 'status']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!dt || dt.doc_class !== K.cls) throw badRequest(`เลือกประเภทเอกสารของ${K.label}`);
   if (!id && dt.status !== 'A') throw badRequest('ประเภทเอกสารนี้เลิกใช้แล้ว');
@@ -62,6 +63,8 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body)
     else if (!l.description) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนคำอธิบาย`);
     if (d(l.amount).isZero()) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวนเงิน`);
   });
+  // หน้าจอ: คำอธิบายต้องไม่ใช่ช่องว่าง จำนวนเงินต้องมากกว่า 0 (ติดลบไม่ได้) — ข้อความระบุบรรทัดและช่อง
+  if (opt.keyed && K.lines === 'text') { const miss = textLineIssues(b.lines); if (miss.length) throw badRequest(miss[0]!.message, miss.map((x) => ({ field: x.field, line: x.line, message: x.message }))); }
   const calc = computeDoc({ price_type: b.price_type, vat_rate: b.vat_rate, lines: b.lines.map((l) => ({ qty: 1, unit_price: l.amount, vat_code: l.item_id ? byId.get(l.item_id)?.vat_code : null })) });
   if (calc.errors.length) throw badRequest(calc.errors[0]!, calc.errors.map((m) => ({ message: m })));
   if (d(calc.net_amount).lte(0)) throw badRequest('จำนวนเงินรวมทั้งสิ้นต้องมากกว่า 0');
@@ -177,9 +180,9 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
       return { ...h, party_code: pc?.code ?? null, lines, payments, wht, used_by: usedBy, remaining: rem, editable: h.doc_status !== 'C' };
     });
     // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
-    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveCash(tx, a, K, id ?? null, parse(body, req.body))); });
-    app.post(base, async (req) => saveCash(db, requireCompany(req), K, null, parse(body, req.body)));
-    app.put(`${base}/:id`, async (req) => saveCash(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body)));
+    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveCash(tx, a, K, id ?? null, parse(body, req.body), { keyed: !a.apiKeyId })); });
+    app.post(base, async (req) => { const a = requireCompany(req); return saveCash(db, a, K, null, parse(body, req.body), { keyed: !a.apiKeyId }); });
+    app.put(`${base}/:id`, async (req) => { const a = requireCompany(req); return saveCash(db, a, K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body), { keyed: !a.apiKeyId }); });
     app.post(`${base}/:id/cancel`, async (req) => {
       const a = requireCompany(req);
       const { id } = parse(z.object({ id: uuid }), req.params);

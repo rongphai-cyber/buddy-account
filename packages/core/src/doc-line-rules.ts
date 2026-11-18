@@ -5,7 +5,7 @@
  * ตรวจเฉพาะการคีย์จากหน้าจอ (WTS-POS/Living/นำเข้า ใช้ค่าเริ่มต้นตามเดิม) · เอกสารเดิมยังเปิดดู/ยกเลิกได้ — ตรวจตอนบันทึก (เพิ่ม/แก้)
  */
 export interface UnitLine { unit_id: string | null | undefined; code?: string | null }
-export type LineField = 'warehouse' | 'qty' | 'unit';
+export type LineField = 'warehouse' | 'qty' | 'unit' | 'description' | 'amount';
 export interface LineIssue { line: number; field: LineField; message: string }
 
 /** สินค้าที่มีสต๊อก (ต้องระบุคลัง): 0 สินค้า · 1 สินค้าชุดธรรมดา · 2 สินค้าชุดพิเศษ — บริการ/รายได้/ค่าใช้จ่ายไม่ต้องมีคลัง */
@@ -35,4 +35,28 @@ export function missingUnitIssues(lines: UnitLine[]): LineIssue[] {
 /** จำนวนบรรทัดว่างของตารางรายการ: ราว 5 บรรทัด จอเตี้ยน้อยกว่านั้น (2–5) ให้ส่วนท้ายเอกสารอยู่ในจอเดียวกัน — เพิ่มต่อได้ (เจ้าของ 18/11/2569 รอบ 2 "ควรประมาณ 1-5 รายการ") */
 export function fillRowCount(viewportHeight: number): number {
   return Math.max(2, Math.min(5, Math.floor((viewportHeight - 600) / 40)));
+}
+
+/**
+ * บรรทัดแบบคำอธิบาย + จำนวนเงิน (รับ/จ่ายเงินมัดจำ — เจ้าของ 18/11/2569 "ตอนคีย์รายการคำอธิบาย ไม่ควรให้ปล่อยว่างได้ต้องคีย์ และจำนวนเงินก็ต้องคีย์")
+ * บรรทัดที่มีอะไรอย่างหนึ่ง ต้องมีทั้งคำอธิบายและจำนวนเงินมากกว่า 0 · บรรทัดว่างทั้งบรรทัดข้าม · ต้องมีอย่างน้อย 1 บรรทัด
+ */
+export interface TextAmountLine { description?: string | null; amount?: string | number | null }
+const amountOf = (v: string | number | null | undefined) => { const n = Number(String(v ?? '').replace(/,/g, '')); return Number.isFinite(n) ? n : NaN; };
+/** บรรทัดว่างทั้งบรรทัด (ไม่มีคำอธิบาย และจำนวนเงินว่าง/0) — ไม่บันทึก */
+export const isBlankTextLine = (l: TextAmountLine) => !(l.description ?? '').trim() && (!String(l.amount ?? '').trim() || amountOf(l.amount) === 0);
+/** บรรทัดครบ: มีคำอธิบาย และจำนวนเงินมากกว่า 0 */
+export const isCompleteTextLine = (l: TextAmountLine) => !!(l.description ?? '').trim() && amountOf(l.amount) > 0;
+export function textLineIssues(lines: TextAmountLine[]): LineIssue[] {
+  const out: LineIssue[] = [];
+  let any = false;
+  lines.forEach((l, i) => {
+    const text = (l.description ?? '').trim(), raw = String(l.amount ?? '').trim();
+    if (isBlankTextLine(l)) return;   // บรรทัดว่าง
+    any = true;
+    if (!text) out.push({ line: i + 1, field: 'description', message: `บรรทัดที่ ${i + 1}: ยังไม่ได้ใส่คำอธิบาย — ใส่ในช่อง "คำอธิบาย"` });
+    if (!(amountOf(raw) > 0)) out.push({ line: i + 1, field: 'amount', message: `บรรทัดที่ ${i + 1}: จำนวนเงินต้องมากกว่า 0 — ใส่ในช่อง "จำนวนเงิน"` });
+  });
+  if (!any) out.push({ line: 1, field: 'description', message: 'ยังไม่มีรายการ — ใส่คำอธิบายและจำนวนเงินอย่างน้อย 1 บรรทัด' });
+  return out;
 }

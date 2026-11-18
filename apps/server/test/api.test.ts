@@ -1265,6 +1265,9 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', '/api/v1/ar-deposits', { ...ai, party_id: null })).body.error.message).toMatch(/เลือกลูกค้า/);
     expect((await call('POST', '/api/v1/ar-deposits', { ...ai, lines: [{ item_id: cpu, amount: 1000 }] })).body.error.message).toMatch(/คำอธิบายและจำนวนเงินเท่านั้น/);
     expect((await call('POST', '/api/v1/ar-deposits', { ...ai, cash_amount: 10 })).body.error.message).toMatch(/ไม่เท่ากับยอดชำระจริง/);
+    // หน้าจอ (เจ้าของ 18/11/2569): คำอธิบายว่าง/ช่องว่าง หรือจำนวนเงินติดลบ ไม่ผ่าน — ข้อความบอกบรรทัดและช่อง · บรรทัดว่างทั้งบรรทัดข้าม
+    expect((await call('POST', '/api/v1/ar-deposits', { ...ai, lines: [{ description: '   ', amount: 1000 }] })).body.error.message).toMatch(/^บรรทัดที่ 1: .*คำอธิบาย/);
+    expect((await call('POST', '/api/v1/ar-deposits/posting-preview', { ...ai, lines: [{ description: 'มัดจำ', amount: 1500 }, { description: 'คืน', amount: -500 }] })).body.error.message).toBe('บรรทัดที่ 2: จำนวนเงินต้องมากกว่า 0 — ใส่ในช่อง "จำนวนเงิน"');
     const a1 = await call('POST', '/api/v1/ar-deposits', ai);
     expect(a1.body).toMatchObject({ doc_no: expect.stringMatching(/^AI\d{7}$/), net_amount: '1070.00', cash_amount: '1070.00' });
     expect(await roles(a1.body.id)).toEqual(['CASH:1070.00:0.00', 'DEPOSIT_RECEIVED:0.00:1000.00', 'OUTPUT_VAT:0.00:70.00']);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CASH_KINDS, type CashKind, computeDoc, d, DEPOSIT_REFUND, DOC_CLASSES, dueDate, fillRowCount, fmt, settlementTotals, todayIso, wht50FormOf } from '@buddy/core';
+import { CASH_KINDS, type CashKind, computeDoc, d, DEPOSIT_REFUND, DOC_CLASSES, dueDate, fillRowCount, fmt, isBlankTextLine, isCompleteTextLine, settlementTotals, textLineIssues, todayIso, wht50FormOf } from '@buddy/core';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
 import { WhtCert } from './WhtCert';
@@ -230,6 +230,11 @@ export function CashFormPage({ path }: { path: string }) {
   const save = async (andNew = false, payChosen = false) => {
     if (h && !h.doc_type_id) { setErr(new Error(NO_TYPE_MSG)); return; }
     if (!h || busy || ro || !can(id ? 'edit' : 'add')) return;
+    // มัดจำ: บรรทัดที่คีย์ต้องมีคำอธิบายและจำนวนเงินมากกว่า 0 อย่างน้อย 1 บรรทัด (เจ้าของ 18/11/2569) — แจ้งบรรทัดแล้วพาไปช่องนั้น
+    if (K.lines === 'text') {
+      const miss = textLineIssues(lines);
+      if (miss.length) { setErr(new Error(miss[0]!.message)); const k = lines[miss[0]!.line - 1]?.key, f = miss[0]!.field; if (k) setTimeout(() => (document.querySelector(`td[data-cell="${f}-${k}"] input`) as HTMLElement | null)?.focus(), 50); return; }
+    }
     if (!payChosen && needsPay()) { setPayAsk({ next: 'save', andNew }); return; }
     setErr(null); setBusy(true);
     const body = bodyOf()!;
@@ -247,7 +252,15 @@ export function CashFormPage({ path }: { path: string }) {
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   // Enter ที่บรรทัดว่าง (มีรายการแล้ว) = ถามว่าจะทำอะไรต่อ ไม่ข้ามออกจากตารางเงียบ ๆ (เจ้าของ 18/11/2569)
-  const le = useLineEnd({ onSave: () => void save(), hasLines: lines.some((l) => l.item_id), word: K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย', onDiscard: id ? undefined : () => { setH(null); setLines([]); setPays([]); setWhts([]); setDirty(false); nav(`${K.route}/new`); } });
+  // มัดจำ (คำอธิบาย + จำนวนเงิน): ช่องที่ต้องมีด้วยการทำงาน ไม่ใช้ * (เจ้าของ 18/11/2569) — บรรทัดแรก หรือบรรทัดที่เริ่มคีย์แล้ว ต้องมีคำอธิบายและจำนวนเงินมากกว่า 0
+  //   บรรทัดว่างถัดจากบรรทัดที่ครบแล้ว: Enter/Esc ที่คำอธิบาย = ถามว่าจะทำอะไรต่อ (บันทึก / กลับไปคีย์ต่อ / ไปส่วนหัว / ยกเลิกเอกสาร)
+  const othersDone = (l: Line) => lines.some((x) => x.key !== l.key && isCompleteTextLine(x));
+  const textReq = (l: Line) => K.lines === 'text' && !(isBlankTextLine(l) && othersDone(l));
+  const textEndKey = (e: React.KeyboardEvent<HTMLInputElement>, l: Line) => {
+    if (K.lines !== 'text' || ro || e.ctrlKey || e.altKey || e.shiftKey || !isBlankTextLine(l)) return;
+    if ((e.key === 'Enter' && othersDone(l)) || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); le.onEmptyEscape(e.currentTarget); }
+  };
+  const le = useLineEnd({ onSave: () => void save(), hasLines: K.lines === 'text' ? lines.some(isCompleteTextLine) : lines.some((l) => l.item_id), word: K.deposit ? 'มัดจำ' : K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย', onDiscard: id ? undefined : () => { setH(null); setLines([]); setPays([]); setWhts([]); setDirty(false); nav(`${K.route}/new`); } });
   const cancelDoc = async () => {
     try { await api.post(`/api/v1/${K.path}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.path] }); nav(K.route); }
     catch (e) { setAskCancel(false); setErr(e); }
@@ -334,9 +347,9 @@ export function CashFormPage({ path }: { path: string }) {
                   <td className="muted">{i + 1}</td>
                   {K.lines === 'code' && <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module, types: K.cls === 'OI' ? '4' : '5,2' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={le.onEmptyEnter} onEmptyEscape={le.onEmptyEscape} disabled={ro}
                     label={(r: { name_th: string }) => r.name_th} onPick={(r: { id: string; code: string; name_th: string; price_1: string | null; std_cost: string | null } | null) => setLine(l.key, r ? { item_id: r.id, item_code: r.code, description: r.name_th, amount: l.amount || num(K.module === 'AR' ? r.price_1 : r.std_cost) } : { item_id: '', item_code: '' })} aria-label={`รหัส ${i + 1}`} /></td>}
-                  <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} placeholder={K.deposit ? 'เช่น รับเงินมัดจำล่วงหน้า 10% สำหรับคอมพิวเตอร์ 1 ชุด' : ''} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบาย" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.item_code || l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
+                  <td data-cell={`description-${l.key}`} className={cx(textReq(l) && !ro && !isBlankTextLine(l) && !l.description.trim() && 'cell-err')}><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} data-required={textReq(l) ? 'คำอธิบาย' : undefined} onKeyDown={(e) => textEndKey(e, l)} placeholder={K.deposit ? 'เช่น รับเงินมัดจำล่วงหน้า 10% สำหรับคอมพิวเตอร์ 1 ชุด' : ''} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบาย" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.item_code || l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                   {jobCol && <td><JobSelect value={l.project_id} disabled={ro} label={`Job บรรทัด ${i + 1}`} onChange={(v) => setLine(l.key, { project_id: v })} /></td>}
-                  <td><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
+                  <td data-cell={`amount-${l.key}`} className={cx(textReq(l) && !ro && !!l.description.trim() && !isCompleteTextLine(l) && 'cell-err')}><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" data-required={textReq(l) ? 'จำนวนเงิน' : undefined} data-positive={textReq(l) ? '' : undefined} /></td>
                   <td>{!ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setLines((ls) => ls.filter((x) => x.key !== l.key)); setDirty(true); }}>✕</button>}</td>
                 </tr>
               ))}
@@ -371,7 +384,7 @@ export function CashFormPage({ path }: { path: string }) {
       {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
       <div className="page-foot">
         {calc && h && <div className="sum-strip" aria-label="สรุปยอด"><span>รายการ <b>{used.length}</b></span><span>จำนวนเงิน <b><Money v={calc.amount} /></b></span>{!d(calc.vat_amount).isZero() && <span>VAT <b><Money v={calc.vat_amount} /></b></span>}<span className="grand">รวมทั้งสิ้น <b><Money v={calc.net_amount} /></b></span></div>}
-        <KeyHints keys={[['Enter', 'ช่องถัดไป: หัว → ท้าย (VAT หมายเหตุ) → รายการ · ช่องรหัสว่าง = เลือกรหัส'], ['Esc', 'ที่ช่องรหัสว่าง = บันทึก/ยกเลิก'], ['Shift+Enter', 'ขึ้นบรรทัดใหม่ในหมายเหตุ'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['F7', 'ชำระโดยอื่น'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+        <KeyHints keys={[['Enter', K.lines === 'text' ? 'ช่องถัดไป: หัว → ท้าย (VAT หมายเหตุ) → รายการ · คำอธิบายและจำนวนเงินต้องมี · คำอธิบายบรรทัดว่าง = บันทึก/ยกเลิก' : 'ช่องถัดไป: หัว → ท้าย (VAT หมายเหตุ) → รายการ · ช่องรหัสว่าง = เลือกรหัส'], ['Esc', K.lines === 'text' ? 'ที่คำอธิบายบรรทัดว่าง = บันทึก/ยกเลิก' : 'ที่ช่องรหัสว่าง = บันทึก/ยกเลิก'], ['Shift+Enter', 'ขึ้นบรรทัดใหม่ในหมายเหตุ'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['F7', 'ชำระโดยอื่น'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       </div>
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ) · เช็คออกจากทะเบียน{K.whtEntries ? ' · ภาษีหัก ณ ที่จ่ายยกเลิก' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
