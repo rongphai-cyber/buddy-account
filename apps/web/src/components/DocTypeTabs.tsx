@@ -18,9 +18,10 @@ export function initialType<T extends DocType>(types: T[]): T | undefined {
 
 export function DocTypeTabs({ types, value, onChange, locked, all }: { types: DocType[] | undefined; value: string; onChange: (id: string) => void; locked?: boolean; all?: boolean }) {
   if (!types?.length || (all && types.length < 2)) return null;
-  const shown = locked ? types.filter((t) => t.id === value) : types;
-  return <Tabs active={value} onChange={(k) => { if (!locked) onChange(k); }}
-    tabs={[...(all ? [{ key: '', label: 'ทุกประเภท' }] : []), ...shown.map((t) => ({ key: t.id, label: `${t.code} ${t.name_th}`, color: typeColorIn(types, t.id) }))]} />;
+  // เอกสารที่บันทึกแล้วเปลี่ยนประเภทไม่ได้ — ป้ายประเภทในแถวหัวเรื่องบอกอยู่แล้ว ไม่ต้องมีแถบซ้ำอีกแถว (เจ้าของ 18/11/2569)
+  if (locked) return null;
+  return <Tabs active={value} onChange={onChange}
+    tabs={[...(all ? [{ key: '', label: 'ทุกประเภท' }] : []), ...types.map((t) => ({ key: t.id, label: `${t.code} ${t.name_th}`, color: typeColorIn(types, t.id) }))]} />;
 }
 
 /** แจ้งให้เลือกประเภทก่อน (ใบใหม่ที่ยังไม่เลือก) — ป้ายเล็กข้างแถบประเภท ไม่กินแถว (เจ้าของ 18/11/2569 รอบ 3) · เลือกแล้วหายไป */

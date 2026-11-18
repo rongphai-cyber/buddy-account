@@ -9516,6 +9516,13 @@
 ]
 },
 {
+"th": "ปิดหน้าจอ",
+"n": 2,
+"files": [
+"apps/web/src/components/DocDelete.tsx"
+]
+},
+{
 "th": "ปีก่อน",
 "n": 2,
 "files": [
@@ -11460,6 +11467,14 @@
 "files": [
 "apps/web/src/pages/items/Items.tsx",
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "หมายเหตุเอกสาร",
+"n": 2,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/server/src/import/express/migrate.ts"
 ]
 },
 {
@@ -19576,6 +19591,13 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "คลัง (แสดงรหัส)",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -31696,7 +31718,7 @@
 ]
 },
 {
-"th": "พิมพ์แบบฟอร์ม 1 (Alt+P)",
+"th": "พิมพ์แบบฟอร์ม 1 (Alt+P){0}",
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
@@ -42704,13 +42726,6 @@
 "n": 1,
 "files": [
 "apps/web/src/components/Notes.tsx"
-]
-},
-{
-"th": "หมายเหตุเอกสาร",
-"n": 1,
-"files": [
-"apps/server/src/import/express/migrate.ts"
 ]
 },
 {
@@ -55013,13 +55028,6 @@
 ]
 },
 {
-"th": "✕ ปิดหน้าจอ",
-"n": 1,
-"files": [
-"apps/web/src/components/DocDelete.tsx"
-]
-},
-{
 "th": "❌ นำเข้าไม่สำเร็จ",
 "n": 1,
 "files": [
@@ -55199,13 +55207,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
-]
-},
-{
-"th": "📄 หมายเหตุเอกสาร",
-"n": 1,
-"files": [
-"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {

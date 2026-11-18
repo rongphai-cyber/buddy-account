@@ -362,4 +362,11 @@ td .lk-add:not(:focus-within):not(:hover) > .icon-btn { display: none; }
   .doc-fit > .doc-body > .table-wrap.lines tfoot button { min-height: 26px; padding: 1px 8px; }
 }
 /* notebook / iPad widths: drop the shortcut badges in the toolbar so it stays one row */
-@media (min-width: 901px) and (max-width: 1180px) { .toolbar kbd { display: none; } }
+/* notebook widths (sidebar open): one toolbar row on saved documents — shortcut badges and long captions hide, the keys still work (owner 18/11/2569) */
+@media (min-width: 901px) and (max-width: 1440px) {
+  .toolbar kbd { display: none; }
+  .toolbar .tb-txt { display: none; }
+  .toolbar .doc-nav .icon-btn { padding: 0 5px; min-width: 0; }
+  .toolbar button { padding: 3px 7px; }
+}
+.toolbar button .badge { margin-left: 2px; }

@@ -69,5 +69,5 @@ export function CloseScreen({ dirty }: { dirty?: boolean }) {
   const nav = useNavigate();
   const close = () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ปิดหน้าจอโดยไม่บันทึก?')) nav('/'); };
   useHotkeys({ 'Alt+X': close });
-  return <button onClick={close} title="ปิดหน้าจอนี้ กลับหน้าแรก (Alt+X)">✕ ปิดหน้าจอ</button>;
+  return <button onClick={close} title="ปิดหน้าจอนี้ กลับหน้าแรก (Alt+X)" aria-label="ปิดหน้าจอ">✕<span className="tb-txt"> ปิดหน้าจอ</span></button>;
 }

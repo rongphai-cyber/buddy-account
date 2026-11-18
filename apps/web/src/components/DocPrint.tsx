@@ -191,7 +191,7 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
       {del && <DocDelete kind={kind} id={id} docNo={del.docNo ?? r?.data.doc_no} cancelled={del.cancelled} cancelUrl={del.cancelUrl} listPath={del.listPath} canDelete={can('delete')} canCancel={can('cancel')} />}
       {id && <span className="doc-nav">{navBtn('first', '⏮', 'เอกสารแรก')}{navBtn('prev', '◀', 'ก่อนหน้า')}{navBtn('next', '▶', 'ถัดไป')}{navBtn('last', '⏭', 'เอกสารสุดท้าย')}</span>}
       <span className="split-btn" onClick={(e) => e.stopPropagation()}>
-        <button disabled={!id || !r || !can('print')} onClick={() => doPrint(1)} title={r?.block ?? 'พิมพ์แบบฟอร์ม 1 (Alt+P)'}>🖨 พิมพ์ <kbd>Alt+P</kbd></button>
+        <button disabled={!id || !r || !can('print')} onClick={() => doPrint(1)} title={r?.block ?? `พิมพ์แบบฟอร์ม 1 (Alt+P)${r && r.data.print_count > 0 ? ` · พิมพ์แล้ว ${r.data.print_count} ครั้ง` : ''}`}>🖨 พิมพ์ <kbd>Alt+P</kbd>{r && r.data.print_count > 0 && <span className="badge" aria-label={`พิมพ์แล้ว ${r.data.print_count} ครั้ง`}>{r.data.print_count}</span>}</button>
         <button className="caret" disabled={!id || !r || !can('print')} onClick={() => setOpen((x) => !x)} title="เลือกแบบฟอร์ม (Shift+Alt+P)" aria-haspopup="menu" aria-expanded={open}>▾</button>
         {open && r && <ul className="pop-menu" role="menu">
           {r.forms.map((f) => <li key={f.slot} role="none"><button role="menuitem" onClick={() => doPrint(f.slot)}><b>{f.slot}</b> {f.name}{f.custom && <span className="muted small"> (ของบริษัท)</span>}</button>
@@ -202,10 +202,9 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
       {id && r && (approved ? <button disabled={!can('approve')} onClick={() => approve(true)} title="ยกเลิกการรับรอง (Ctrl+O)">✔ รับรองแล้ว · ยกเลิก</button>
         : r.rule.approveLevel > 0 && <button disabled={!can('approve')} onClick={() => approve(false)} title={`รับรองเอกสาร — ต้องระดับ ${r.rule.approveLevel} ขึ้นไป (Alt+O)`}>✔ รับรอง <kbd>Alt+O</kbd></button>)}
       {kind === 'doc' && id && r && ['QT', 'DP', 'VR'].includes(r.data.scope) && <StatusCodeSelect id={id} canEdit={can('edit')} />}
-      {kind === 'doc' && <button disabled={!id} onClick={() => setNotes(true)} title={id ? 'หมายเหตุของทั้งเอกสาร — พิมพ์ในกล่องหมายเหตุด้านล่างของเอกสาร (Alt+R) · หมายเหตุรายการ คีย์ที่ปุ่ม 📝 ในบรรทัด (Alt+M)' : 'บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุเอกสารได้'}>📄 หมายเหตุเอกสาร <kbd>Alt+R</kbd></button>}
+      {kind === 'doc' && <button disabled={!id} onClick={() => setNotes(true)} title={id ? 'หมายเหตุของทั้งเอกสาร — พิมพ์ในกล่องหมายเหตุด้านล่างของเอกสาร (Alt+R) · หมายเหตุรายการ คีย์ที่ปุ่ม 📝 ในบรรทัด (Alt+M)' : 'บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุเอกสารได้'}>📄<span className="tb-txt"> หมายเหตุเอกสาร</span> <kbd>Alt+R</kbd></button>}
       <button disabled={!id} onClick={() => setInfo(true)} title="รายละเอียดแฟ้มข้อมูล (Ctrl+I)">ℹ</button>
       <CloseScreen dirty={dirty} />
-      {r && r.data.print_count > 0 && <Pill tone="n">พิมพ์แล้ว {r.data.print_count} ครั้ง</Pill>}
       {preview && r && <Modal title={`ดูทางจอภาพ — ${preview.slot}. ${preview.name}`} size="wide" onClose={() => setPreview(null)}
         footer={<><button onClick={() => setPreview(null)}>ปิด</button>{!screenOnly && <button disabled={!can('print') || !id} title="เปิดเอกสารในแท็บใหม่ แล้วพิมพ์/บันทึกเป็น PDF จากหน้านั้น (ใช้เมื่อกดพิมพ์แล้วไม่ออก)" onClick={() => id && window.open(`/print/${kind}/${id}?slot=${preview.slot}`, '_blank')}>↗ เปิดหน้าพิมพ์ในแท็บใหม่</button>}
           {!screenOnly && <button className="primary" disabled={!can('print')} onClick={() => doPrint(preview.slot)}>🖨 พิมพ์</button>}</>}>

@@ -1585,5 +1585,8 @@
  "ไม่มีสาขานี้": "No such branch",
  "— ที่อยู่ตาม Bill to —": "— Bill to address —",
  "เลขที่เอกสาร การลงบัญชี และค่าเริ่มต้นเป็นไปตามประเภทที่เลือก": "The document number, posting and defaults follow the chosen type",
- "ⓘ เลือกประเภทเอกสารก่อน": "ⓘ Choose the document type first"
+ "ⓘ เลือกประเภทเอกสารก่อน": "ⓘ Choose the document type first",
+ "ปิดหน้าจอ": "Close screen",
+ "คลัง (แสดงรหัส)": "Warehouse (shown by code)",
+ "พิมพ์แบบฟอร์ม 1 (Alt+P){0}": "Print form 1 (Alt+P){0}"
 }
