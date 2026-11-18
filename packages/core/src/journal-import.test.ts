@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mapJournalImport } from './journal-import.js';
+import { cleanImportCell, compareJournalSides, importTaxId, JOURNAL_IMPORT_COLUMNS, journalImportKey, journalImportSide, mapJournalImport, type JournalCompareSide } from './journal-import.js';
 
 const H = ['สมุด', 'เลขที่กลุ่ม', 'วันที่', 'อ้างอิง', 'คำอธิบาย', 'เลขที่บัญชี', 'คำอธิบายรายการ', 'แผนก', 'Job', 'เดบิต', 'เครดิต'];
 
@@ -109,6 +109,36 @@ describe('journal import (เจ้าของ 17/11/2569)', () => {
     expect(msg).toMatch(/9:เลขที่ใบสำคัญ "PV1+" ยาวเกิน 30 ตัว/);
     expect(msg).not.toMatch(/ยอดไม่ดุล/);
     expect(bad.vouchers.find((v) => v.group === '3')!.invalid).toBeFalsy();   // ใบแรกที่ใช้เลขนั้นยังนำเข้าได้
+  });
+  it('Excel/OCR variants (เจ้าของ 18/11/2569): header *, Thai digits, dash zero, baht, hidden spaces, tax id that lost leading zero', () => {
+    const T = ['สมุด *', 'เลขที่กลุ่ม *', 'วันที่ *', 'เลขที่บัญชี *', 'เดบิต *', 'เครดิต *', 'ภาษี', 'เลขที่ใบกำกับ', 'เลขผู้เสียภาษี', 'สาขาคู่ค้า'];
+    const r = mapJournalImport([T,
+      ['PV', '๑', '๑๕/๑๑/๒๕๖๙', '5430-01', '๑,๐๐๐.๐๐', '-', '', '', '', ''],
+      ['PV', '1', '15/11/2569', '1154-00', '70 บาท', '–', 'ภาษีซื้อ', 'IV​-1', '105550123451', '0'],
+      ['PV', '1 ', '15/11/2569', '1111-01', '', '1,070', '', '', '', ''],
+    ], 'B');
+    expect(r.errors).toEqual([]);
+    expect(r.hasTax).toBe(true);
+    expect(r.vouchers.map((v) => [v.group, v.date, v.debit, v.credit])).toEqual([['1', '2026-11-15', '1070.00', '1070.00']]);
+    expect(r.vouchers[0]!.lines[1]!.tax).toMatchObject({ no: 'IV-1', party_tax_id: '0105550123451', party_branch: '00000' });
+    expect(importTaxId('1.05550123451E+11')).toBe('0105550123451');
+    expect(importTaxId('105550123450')).toBe('105550123450');   // เติม 0 แล้วหลักตรวจสอบไม่ตรง → คืนค่าเดิมให้ตัวตรวจแจ้ง
+    expect(cleanImportCell(' ﻿๐๙ ')).toBe('09');
+    expect(JOURNAL_IMPORT_COLUMNS.filter((c) => c.need === 'required').map((c) => c.key)).toEqual(['book', 'date', 'account']);
+    expect(JOURNAL_IMPORT_COLUMNS.find((c) => c.key === 'debit')!.format).toBe('number');
+  });
+  it('compares a file voucher with the existing one (เจ้าของ 18/11/2569 เปรียบเทียบใบซ้ำ)', () => {
+    const v = mapJournalImport([['สมุด', 'เลขที่กลุ่ม', 'วันที่', 'อ้างอิง', 'คำอธิบาย', 'เลขที่บัญชี', 'เดบิต', 'เครดิต'],
+      ['PV', '1', '15/11/2569', 'R1', 'ค่าไฟ', '5430-01', '100', ''], ['PV', '1', '15/11/2569', '', '', '1111-01', '', '100']], 'B').vouchers[0]!;
+    const file = journalImportSide(v);
+    expect(file.lines[1]!.description).toBe('ค่าไฟ');   // คำอธิบายรายการว่าง = คำอธิบายของใบ (เหมือนตอนบันทึก)
+    const cur: JournalCompareSide = { ...file, voucher_no: 'PV691115001', lines: file.lines.map((l) => ({ ...l })), taxes: [] };
+    expect(compareJournalSides(file, cur, true)).toEqual([]);
+    cur.date = '2026-11-16'; cur.ref = 'r1'; cur.lines[1]!.credit = '90.00'; cur.lines.push({ account: '2131-01', description: '', department: '', job: '', debit: '0.00', credit: '10.00' });
+    cur.taxes = [{ kind: 'P', no: 'IV1', date: '2026-11-15', base: '100.00', amount: '7.00' }];
+    expect(compareJournalSides(file, cur, true)).toEqual(['วันที่', 'จำนวนบรรทัด 2/3', 'บรรทัด 2', 'ภาษี']);   // อ้างอิงไม่สนตัวพิมพ์เล็ก/ใหญ่
+    expect(compareJournalSides(file, cur, false)).not.toContain('ภาษี');   // แฟ้มไม่มีคอลัมน์ภาษี = ไม่เทียบภาษี
+    expect(journalImportKey(v)).toBe('PV|1');
   });
   it('missing header / columns', () => {
     expect(mapJournalImport([['a', 'b'], ['1', '2']], 'B').errors[0]!.message).toMatch(/ไม่พบหัวตาราง/);

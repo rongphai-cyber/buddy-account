@@ -818,6 +818,24 @@ td.img-cell { padding-top: 2px; padding-bottom: 2px; }
 .ti-errors { margin-bottom: 12px; border-color: var(--bad); }
 .ti-errors th { background: var(--bad-soft); }
 .warn-text { color: var(--warn); }
+/* นำเข้าใบสำคัญ: ช่องต้องใส่/ว่างได้ · เปรียบเทียบใบซ้ำ (เจ้าของ 18/11/2569) */
+.ji-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-top: 8px; font-size: 13px; }
+.ji-legend .chip { display: inline-block; padding: 1px 8px; margin: 1px 2px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+.ji-legend .chip.req { background: var(--bad-soft); border-color: transparent; }
+.ji-legend .chip.cond { background: var(--warn-soft); border-color: transparent; }
+.ji-dups { margin: 14px 0; }
+.ji-dups-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.ji-dup { padding: 12px 14px; margin-bottom: 12px; border-left: 4px solid var(--warn); }
+.ji-dup-title { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ji-acts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0; }
+.ji-acts label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.ji-acts label.off { color: var(--muted); cursor: not-allowed; }
+.ji-cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.ji-cmp h4 { margin: 4px 0 6px; font-size: 14px; }
+.ji-cmp .grid td, .ji-cmp .grid th { font-size: 13px; padding: 4px 6px; }
+.ji-cmp .kv td:first-child { color: var(--muted); width: 110px; }
+.ji-cmp td.diff { background: var(--warn-soft); color: var(--warn); font-weight: 600; }
+.ji-dup .why { color: var(--muted); font-size: 13px; }
 
 /* ธีมของแต่ละบริษัท (ข้อกำหนดเจ้าของ 30/10/2569) — ค่าสีจริงอยู่ใน packages/core/src/theme.ts */
 .theme-card { padding: 12px 14px; }

@@ -129,7 +129,7 @@
 },
 {
 "th": "วันที่",
-"n": 85,
+"n": 89,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/DocTaxTabs.tsx",
@@ -176,7 +176,7 @@
 },
 {
 "th": "สถานะ",
-"n": 83,
+"n": 84,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/WtsConnect.tsx",
@@ -195,6 +195,7 @@
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/web/src/pages/gl/Accounts.tsx",
 "apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
 "apps/web/src/pages/gl/Journals.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/inventory/Counts.tsx",
@@ -298,7 +299,7 @@
 },
 {
 "th": "รายการ",
-"n": 56,
+"n": 57,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
 "apps/web/src/components/WtsConnect.tsx",
@@ -376,6 +377,50 @@
 ]
 },
 {
+"th": "แผนก",
+"n": 52,
+"files": [
+"apps/web/src/components/AddWrap.tsx",
+"apps/web/src/components/ReportFilters.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/AccountDetail.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/doc-types.ts",
+"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/payroll/files.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/payroll-import.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ลบ",
 "n": 51,
 "files": [
@@ -407,49 +452,6 @@
 "apps/server/src/modules/permissions.ts",
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/baht.ts"
-]
-},
-{
-"th": "แผนก",
-"n": 51,
-"files": [
-"apps/web/src/components/AddWrap.tsx",
-"apps/web/src/components/ReportFilters.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/AccountDetail.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/doc-types.ts",
-"apps/server/src/modules/gl/routes.ts",
-"apps/server/src/modules/payroll/files.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/payroll-import.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -600,7 +602,7 @@
 },
 {
 "th": "เลขที่",
-"n": 41,
+"n": 42,
 "files": [
 "apps/web/src/components/AddressFields.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -616,6 +618,7 @@
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/reports/JournalBook.tsx",
@@ -910,6 +913,32 @@
 ]
 },
 {
+"th": "เครดิต",
+"n": 29,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/web/src/pages/settings/RepostPanel.tsx",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ชื่อ",
 "n": 28,
 "files": [
@@ -1003,31 +1032,6 @@
 ]
 },
 {
-"th": "เครดิต",
-"n": 27,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/web/src/pages/settings/RepostPanel.tsx",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "ชื่อบัญชี",
 "n": 25,
 "files": [
@@ -1118,6 +1122,27 @@
 ]
 },
 {
+"th": "เดบิต",
+"n": 24,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "จำนวน",
 "n": 23,
 "files": [
@@ -1134,6 +1159,31 @@
 "apps/server/src/modules/reports/stock.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "บัญชี",
+"n": 23,
+"files": [
+"apps/web/src/components/ReportFilters.tsx",
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/InventoryAccount.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/YearEnd.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/reports/AccountDetail.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/server/src/modules/gl/budget.ts",
+"apps/server/src/modules/gl/inventory.ts",
+"apps/server/src/modules/gl/prior-year.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -1156,6 +1206,24 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "apps/server/src/modules/payroll/files.ts"
+]
+},
+{
+"th": "ภาษี",
+"n": 23,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -1230,27 +1298,24 @@
 ]
 },
 {
-"th": "บัญชี",
+"th": "คำอธิบาย",
 "n": 22,
 "files": [
-"apps/web/src/components/ReportFilters.tsx",
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/InventoryAccount.tsx",
-"apps/web/src/pages/gl/YearEnd.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/reports/AccountDetail.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
 "apps/web/src/pages/reports/Ledger.tsx",
-"apps/server/src/modules/gl/budget.ts",
-"apps/server/src/modules/gl/inventory.ts",
-"apps/server/src/modules/gl/prior-year.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/gl/journal-import.ts",
+"apps/server/src/modules/payroll/files.ts",
 "apps/server/src/modules/reports/gl.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/menu.ts"
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -1272,26 +1337,6 @@
 "packages/core/src/payroll.ts",
 "packages/core/src/posting-desc.ts",
 "packages/core/src/source-totals.ts"
-]
-},
-{
-"th": "เดบิต",
-"n": 22,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -1371,27 +1416,6 @@
 ]
 },
 {
-"th": "คำอธิบาย",
-"n": 20,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/gl/journal-import.ts",
-"apps/server/src/modules/payroll/files.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/journal-import.ts"
-]
-},
-{
 "th": "บันทึก+ใหม่",
 "n": 20,
 "files": [
@@ -1405,24 +1429,6 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
-"th": "ภาษี",
-"n": 20,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -2130,6 +2136,22 @@
 ]
 },
 {
+"th": "ภาษีซื้อ",
+"n": 12,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/gl/journal-import.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/posting-desc.ts"
+]
+},
+{
 "th": "ภาษีมูลค่าเพิ่ม",
 "n": 12,
 "files": [
@@ -2295,14 +2317,14 @@
 ]
 },
 {
-"th": "ภาษีซื้อ",
+"th": "ภาษีขาย",
 "n": 11,
 "files": [
 "apps/web/src/components/DocTaxTabs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/gl/journal-import.ts",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/gl-link.ts",
 "packages/core/src/journal-import.ts",
@@ -2377,6 +2399,19 @@
 ]
 },
 {
+"th": "เลขที่ใบสำคัญ",
+"n": 11,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "แก้ไขเอกสารที่บันทึกแล้ว",
 "n": 11,
 "files": [
@@ -2419,20 +2454,6 @@
 ]
 },
 {
-"th": "ภาษีขาย",
-"n": 10,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/posting-desc.ts"
-]
-},
-{
 "th": "รวม {0} รายการ",
 "n": 10,
 "files": [
@@ -2458,6 +2479,20 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "อ้างอิง",
+"n": 10,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"packages/core/src/journal-import.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2588,6 +2623,17 @@
 ]
 },
 {
+"th": "ผลต่าง",
+"n": 9,
+"files": [
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/reports/gl.ts"
+]
+},
+{
 "th": "ยอดยกมา",
 "n": 9,
 "files": [
@@ -2670,19 +2716,6 @@
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/Periods.tsx",
 "apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
-"th": "เลขที่ใบสำคัญ",
-"n": 9,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -2968,20 +3001,6 @@
 ]
 },
 {
-"th": "อ้างอิง",
-"n": 8,
-"files": [
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"packages/core/src/journal-import.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "เขตการขาย",
 "n": 8,
 "files": [
@@ -3212,16 +3231,6 @@
 "apps/web/src/pages/gl/YearEnd.tsx",
 "apps/web/src/pages/reports/JobCost.tsx",
 "apps/server/src/modules/projects.ts"
-]
-},
-{
-"th": "ผลต่าง",
-"n": 7,
-"files": [
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/reports/gl.ts"
 ]
 },
 {
@@ -3565,6 +3574,30 @@
 ]
 },
 {
+"th": "ภ.ง.ด.3",
+"n": 6,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ภ.ง.ด.53",
+"n": 6,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ภาษีถูกหัก ณ ที่จ่าย",
 "n": 6,
 "files": [
@@ -3675,6 +3708,15 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/server/src/modules/banking.ts"
+]
+},
+{
+"th": "สมุด",
+"n": 6,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -3929,6 +3971,15 @@
 ]
 },
 {
+"th": "คำอธิบายรายการ",
+"n": 5,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ค่าขนส่ง",
 "n": 5,
 "files": [
@@ -4165,28 +4216,6 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/date.ts"
-]
-},
-{
-"th": "ภ.ง.ด.3",
-"n": 5,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"packages/core/src/journal-import.ts"
-]
-},
-{
-"th": "ภ.ง.ด.53",
-"n": 5,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -4725,6 +4754,16 @@
 ]
 },
 {
+"th": "ข้อความ",
+"n": 4,
+"files": [
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/Defaults.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ข้อมูล",
 "n": 4,
 "files": [
@@ -4739,14 +4778,6 @@
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx",
 "packages/core/src/pdpa.ts"
-]
-},
-{
-"th": "คำอธิบายรายการ",
-"n": 4,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx",
-"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -5203,21 +5234,20 @@
 ]
 },
 {
-"th": "สมุด",
-"n": 4,
-"files": [
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"packages/core/src/journal-import.ts"
-]
-},
-{
 "th": "สร้าง",
 "n": 4,
 "files": [
 "apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "สร้างเป็นเอกสารใหม่",
+"n": 4,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/server/src/modules/gl/journal-import.ts"
 ]
 },
 {
@@ -5541,6 +5571,14 @@
 ]
 },
 {
+"th": "{0} กลุ่ม {1}",
+"n": 3,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "{0} คน",
 "n": 3,
 "files": [
@@ -5674,15 +5712,6 @@
 ]
 },
 {
-"th": "ข้อความ",
-"n": 3,
-"files": [
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/Defaults.tsx",
-"apps/web/src/pages/settings/Sync.tsx"
-]
-},
-{
 "th": "ค.ศ.",
 "n": 3,
 "files": [
@@ -5806,15 +5835,6 @@
 "apps/server/src/modules/cheques.ts",
 "apps/server/src/modules/docs/bankdocs.ts",
 "apps/server/src/modules/payroll/master.ts"
-]
-},
-{
-"th": "จำเป็น",
-"n": 3,
-"files": [
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/gl/journal-import.ts",
-"apps/server/src/modules/payroll/files.ts"
 ]
 },
 {
@@ -5991,12 +6011,11 @@
 ]
 },
 {
-"th": "ต้องมี",
+"th": "ต้องแก้",
 "n": 3,
 "files": [
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/gl/journal-import.ts",
-"apps/server/src/modules/payroll/files.ts"
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -6092,15 +6111,6 @@
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/StockDocs.tsx"
-]
-},
-{
-"th": "บาท",
-"n": 3,
-"files": [
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"packages/core/src/baht.ts"
 ]
 },
 {
@@ -6426,6 +6436,15 @@
 "apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "ยอดเงิน",
+"n": 3,
+"files": [
+"apps/web/src/components/JournalPicker.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -7275,6 +7294,13 @@
 ]
 },
 {
+"th": "ไม่นำเข้า",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ไม่พบ",
 "n": 3,
 "files": [
@@ -7357,6 +7383,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
+]
+},
+{
+"th": "(ระบบออกให้)",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -7585,14 +7618,6 @@
 "n": 2,
 "files": [
 "apps/server/src/import/express/migrate.ts"
-]
-},
-{
-"th": "{0} กลุ่ม {1}",
-"n": 2,
-"files": [
-"apps/server/src/modules/gl/journal-import.ts",
-"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -8246,6 +8271,14 @@
 ]
 },
 {
+"th": "จำเป็น",
+"n": 2,
+"files": [
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/payroll/files.ts"
+]
+},
+{
 "th": "จ่ายค่าใช้จ่ายจากเงินสดย่อย",
 "n": 2,
 "files": [
@@ -8736,11 +8769,11 @@
 ]
 },
 {
-"th": "ต้องแก้",
+"th": "ต้องมี",
 "n": 2,
 "files": [
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx"
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/payroll/files.ts"
 ]
 },
 {
@@ -8749,6 +8782,14 @@
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx",
 "apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
+"th": "ต้องใส่",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -9018,6 +9059,13 @@
 ]
 },
 {
+"th": "นำเข้าทับใบสำคัญ",
+"n": 2,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
 "th": "นำเข้าพนักงาน.xlsx",
 "n": 2,
 "files": [
@@ -9038,6 +9086,14 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/wts-living.ts"
+]
+},
+{
+"th": "บรรทัด {0}",
+"n": 2,
+"files": [
+"apps/web/src/components/AddressFields.tsx",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -9263,6 +9319,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
+"th": "บาท",
+"n": 2,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx",
+"packages/core/src/baht.ts"
 ]
 },
 {
@@ -10090,14 +10154,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/reports/AccountDetail.tsx"
-]
-},
-{
-"th": "ยอดเงิน",
-"n": 2,
-"files": [
-"apps/web/src/components/JournalPicker.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -11091,6 +11147,14 @@
 "files": [
 "apps/web/src/pages/gl/Budget.tsx",
 "apps/web/src/pages/gl/PriorYear.tsx"
+]
+},
+{
+"th": "ว่างได้",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -12458,6 +12522,13 @@
 ]
 },
 {
+"th": "ในแฟ้ม",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ใบกำกับภาษี",
 "n": 2,
 "files": [
@@ -13090,6 +13161,13 @@
 ]
 },
 {
+"th": "(ทับเอกสารเดิม {0} ใบ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "(ทุกแผนก)",
 "n": 1,
 "files": [
@@ -13209,7 +13287,7 @@
 ]
 },
 {
-"th": "(ยังไม่บันทึก): ดุลทุกใบ บัญชี แผนก Job มีจริง งวดยังเปิด อ้างอิงไม่ซ้ำ · กดนำเข้าแล้วลงบัญชีทุกใบพร้อมกัน — ผิดใบเดียวไม่บันทึกเลย ·",
+"th": "(ยังไม่บันทึก): เดบิต = เครดิตทุกใบ บัญชี แผนก Job มีจริง งวดยังเปิด ·",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx"
@@ -13346,6 +13424,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Jobs.tsx"
+]
+},
+{
+"th": "(ไม่นำเข้า {0})",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -16450,10 +16535,24 @@
 ]
 },
 {
+"th": "{0}: ทับเอกสารเดิมไม่ได้ — {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
 "th": "{0}: ที่อยู่ตามทะเบียนบ้านไม่ครบ (ตำบล อำเภอ จังหวัด รหัสไปรษณีย์)",
 "n": 1,
 "files": [
 "packages/core/src/payroll-files.ts"
+]
+},
+{
+"th": "{0}: บริษัทนี้ตั้งให้ป้อนเลขที่เอง — ใส่เลขที่ใบสำคัญใหม่ในแฟ้มแทน \"สร้างเป็นเอกสารใหม่\"",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
 ]
 },
 {
@@ -16597,13 +16696,6 @@
 ]
 },
 {
-"th": "{0}: อ้างอิง {1} เคยนำเข้าแล้วเป็น {2} — ลบกลุ่มนี้ออก หรือยกเลิก {3} ก่อน",
-"n": 1,
-"files": [
-"apps/server/src/modules/gl/journal-import.ts"
-]
-},
-{
 "th": "{0}: อ้างอิงไม่ตรงกับแถว {1}",
 "n": 1,
 "files": [
@@ -16619,20 +16711,6 @@
 },
 {
 "th": "{0}: เลขที่ใบสำคัญ {1} ต้องขึ้นต้นด้วย {2} (ตัวนำหน้าของสมุด {3}) แล้วตามด้วยเลขที่ เช่น {4}0000001 — หรือเว้นว่างให้ระบบออกเลข",
-"n": 1,
-"files": [
-"apps/server/src/modules/gl/journal-import.ts"
-]
-},
-{
-"th": "{0}: เลขที่ใบสำคัญ {1} มีอยู่แล้ว — ใช้เลขอื่น หรือเว้นว่างให้ระบบออกเลข",
-"n": 1,
-"files": [
-"apps/server/src/modules/gl/journal-import.ts"
-]
-},
-{
-"th": "{0}: เลขที่ใบสำคัญ {1} เป็นของใบสำคัญที่ยกเลิกแล้ว — ลบใบนั้นที่หน้าสมุดรายวันก่อนจึงใช้เลขนี้ได้ หรือใช้เลขอื่น",
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/journal-import.ts"
@@ -16692,6 +16770,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "{0}: ใบ {1} ถูกเลือกให้ทับจากหลายกลุ่มในแฟ้ม (แถว {2}) — เลือกทับได้กลุ่มเดียว",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
 ]
 },
 {
@@ -17332,6 +17417,13 @@
 ]
 },
 {
+"th": "· ใบนั้นยกเลิกแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "· ได้รับ 50 ทวิ แล้ว",
 "n": 1,
 "files": [
@@ -17798,6 +17890,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "กับใบที่มีอยู่ไม่นำเข้าเอง — ดูเปรียบเทียบแล้วเลือก ทับเอกสารเดิม / สร้างเป็นเอกสารใหม่ / ไม่นำเข้า · กดนำเข้าแล้วลงบัญชีทุกใบพร้อมกัน — ผิดใบเดียวไม่บันทึกเลย ·",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -18886,10 +18985,31 @@
 ]
 },
 {
+"th": "ข้อความ (@) — กันเลข 0 นำหน้าหาย",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ข้อความ + ช่องข้อมูลของเอกสาร เช่น ขายเชื่อให้ {party.name} · ว่าง = ใช้ชื่อเอกสาร + ชื่อคู่ค้า",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "ข้อความ ดด/ปปปป",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ข้อความ วว/ดด/ปปปป (พ.ศ. หรือ ค.ศ.) หรือช่องวันที่ของ Excel",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -19527,13 +19647,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/FsLayouts.tsx"
-]
-},
-{
-"th": "คอลัมน์: สมุด · เลขที่กลุ่ม · เลขที่ใบสำคัญ (ว่างได้) · วันที่ · อ้างอิง · คำอธิบาย · เลขที่บัญชี · คำอธิบายรายการ · แผนก · Job · เดบิต · เครดิต (คำอธิบายแต่ละคอลัมน์อยู่ในแผ่น \"คำอธิบาย\" ของแบบฟอร์ม)",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -21609,6 +21722,13 @@
 ]
 },
 {
+"th": "จำนวนบรรทัด {0}/{1}",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "จำนวนบริษัทสูงสุด",
 "n": 1,
 "files": [
@@ -23114,6 +23234,20 @@
 ]
 },
 {
+"th": "ซ้ำ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
+"th": "ซ้ำกับ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ซ้ำกับเอกสารที่มีอยู่",
 "n": 1,
 "files": [
@@ -23121,10 +23255,24 @@
 ]
 },
 {
+"th": "ซ้ำกับใบที่มีอยู่",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ญี่ปุ่น",
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ฐาน",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -23492,7 +23640,7 @@
 ]
 },
 {
-"th": "ตรวจแฟ้ม: แสดงเฉพาะเลขที่กำหนดเอง · นำเข้าแล้ว: เลขที่บันทึกจริง",
+"th": "ตรวจแฟ้ม: เลขที่กำหนดเอง / เลขที่ใบที่จะทับ · นำเข้าแล้ว: เลขที่บันทึกจริง",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx"
@@ -23811,6 +23959,13 @@
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ตัวเลข #,##0.00 — ตัวเลขแบบข้อความ จุลภาค ช่องว่าง เลขไทย รับได้",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -24423,6 +24578,13 @@
 ]
 },
 {
+"th": "ต่างกัน {0} จุด: {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ต่างจากยอดที่ย้ายมาจาก Express",
 "n": 1,
 "files": [
@@ -24794,6 +24956,20 @@
 ]
 },
 {
+"th": "ต้องใส่ (ว่างได้ถ้าใส่เลขที่ใบสำคัญทุกแถว)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ต้องใส่ / ว่างได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
 "th": "ถอน",
 "n": 1,
 "files": [
@@ -25085,6 +25261,34 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Forms.tsx"
+]
+},
+{
+"th": "ทับเอกสารเดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
+"th": "ทับแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
+"th": "ทับไม่ได้: {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
+"th": "ทับไม่ได้: ไม่มีสิทธิ์แก้ไขใบสำคัญ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -25900,6 +26104,13 @@
 ]
 },
 {
+"th": "นำเข้าแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "นำเข้าแล้ว: เพิ่มใหม่ {0} · แก้ไข {1}",
 "n": 1,
 "files": [
@@ -26065,13 +26276,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "บรรทัด {0}",
-"n": 1,
-"files": [
-"apps/web/src/components/AddressFields.tsx"
 ]
 },
 {
@@ -31633,13 +31837,6 @@
 ]
 },
 {
-"th": "ภาษี (ใส่เฉพาะแถวบัญชีภาษี ยอดเงินของแถว = ยอดภาษี): ภาษี (ภาษีซื้อ ภาษีขาย ภงด3 ภงด53) · เลขที่ใบกำกับ · วันที่ใบกำกับ · งวดภาษี · ชื่อคู่ค้า · เลขผู้เสียภาษี · สาขาคู่ค้า · ฐานภาษี · อัตราภาษี · ประเภทเงินได้",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalImport.tsx"
-]
-},
-{
 "th": "ภาษี: {0}{1} · ส่วนของเงินได้ไม่ประจำ {2}",
 "n": 1,
 "files": [
@@ -33849,13 +34046,6 @@
 "n": 1,
 "files": [
 "packages/core/src/journal.ts"
-]
-},
-{
-"th": "ยอดเดบิตรวม",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -37037,13 +37227,6 @@
 ]
 },
 {
-"th": "รายการ (เติมแฟ้มภาษีซื้อ/ขาย/หัก ณ ที่จ่าย)",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalImport.tsx"
-]
-},
-{
 "th": "รายการ API และตัวอย่าง",
 "n": 1,
 "files": [
@@ -37951,6 +38134,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "รูปแบบช่องใน Excel",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
 ]
 },
 {
@@ -42609,6 +42799,13 @@
 ]
 },
 {
+"th": "หัวคอลัมน์สีชมพูมี * = ต้องใส่ · สีเหลือง = ใส่เมื่อมีภาษี (ใบที่ไม่มีภาษีเว้นว่างได้ทั้งหมด) · สีม่วงอ่อน = ว่างได้ · ช่องรหัส/เลขที่/วันที่ตั้งเป็นข้อความไว้แล้ว (เลข 0 ข้างหน้าไม่หาย) · ช่องเงินเป็นตัวเลข #,##0.00",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
 "th": "หัวรายงานบรรทัด {0}",
 "n": 1,
 "files": [
@@ -43449,6 +43646,13 @@
 ]
 },
 {
+"th": "อ้างอิงเดียวกันในสมุดเดียวกัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "อ้างอิงเท่านั้น เช่น ผู้ให้ราคาดีที่สุด",
 "n": 1,
 "files": [
@@ -43761,6 +43965,13 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "เครดิตรวม",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -45364,6 +45575,13 @@
 "n": 1,
 "files": [
 "packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "เดบิตรวม",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -47250,6 +47468,13 @@
 ]
 },
 {
+"th": "เลขที่หรืออ้างอิงซ้ำกับใบที่มีอยู่ {0} ใบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "เลขที่อ้างอิง \"{0}\" ยาวเกิน 30 ตัว",
 "n": 1,
 "files": [
@@ -47520,6 +47745,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/routes.ts"
+]
+},
+{
+"th": "เลขที่ใบสำคัญเดียวกัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -48622,13 +48854,6 @@
 ]
 },
 {
-"th": "เว้นว่าง = ระบบออกเลขตามสมุด หรือใส่เองโดยขึ้นต้นด้วยตัวนำหน้าของสมุด (สมุด PV → PV…) · คำอธิบายรายการว่าง = คำอธิบายของใบ ·",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JournalImport.tsx"
-]
-},
-{
 "th": "เว้นไว้ = เลขอัตโนมัติ {0}",
 "n": 1,
 "files": [
@@ -48731,6 +48956,13 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "เหมือนกันทุกช่อง",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -49476,6 +49708,13 @@
 ]
 },
 {
+"th": "แถว {0} · {1} กลุ่ม {2}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "แถว:",
 "n": 1,
 "files": [
@@ -49861,6 +50100,13 @@
 ]
 },
 {
+"th": "แฟ้มจากที่อื่นหรือจาก OCR: ตัวเลขแบบข้อความ จุลภาค ช่องว่าง เลขไทย ขีด (-) แทนศูนย์ วันที่แบบข้อความหรือช่องวันที่ของ Excel เลขผู้เสียภาษีที่เลข 0 ข้างหน้าหาย รับได้ — ค่าที่ไม่แน่ใจระบบแจ้งแถวให้แก้",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
 "th": "แฟ้มที่จะส่ง ({0})",
 "n": 1,
 "files": [
@@ -50138,6 +50384,13 @@
 "n": 1,
 "files": [
 "apps/server/src/zip.ts"
+]
+},
+{
+"th": "แฟ้มไม่มีคอลัมน์ภาษี — ทับเอกสารเดิมแล้วรายการภาษีเดิมคงไว้",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -50820,6 +51073,13 @@
 ]
 },
 {
+"th": "ใช้กับทุกใบ:",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ใช้กับบรรทัดที่ไม่ได้เลือกคลัง (ว่าง = คลังหลักที่ค่าเริ่มต้นระบบสินค้า)",
 "n": 1,
 "files": [
@@ -51170,6 +51430,13 @@
 ]
 },
 {
+"th": "ในระบบ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ในแบบ",
 "n": 1,
 "files": [
@@ -51191,6 +51458,48 @@
 ]
 },
 {
+"th": "ใบ {0} มาจากเอกสาร/ระบบอื่น — แก้ที่เอกสารต้นทาง",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
+"th": "ใบ {0} มีเช็คที่ป้อนจากใบนี้ — แก้ที่หน้าสมุดรายวัน",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
+"th": "ใบ {0} ยกเลิกแล้ว — ลบใบนั้นที่หน้าสมุดรายวันก่อน หรือเลือก \"สร้างเป็นเอกสารใหม่\"",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
+"th": "ใบ {0} อยู่ในสมุด {1} ไม่ใช่สมุด {2} — แก้สมุดในแฟ้ม หรือเลือก \"สร้างเป็นเอกสารใหม่\"",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
+"th": "ใบ {0} ใช้รับ/จ่ายชำระเอกสารอยู่ — ยกเลิกการรับ/จ่ายชำระก่อน",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
+"th": "ใบ {0}: {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
 "th": "ใบ · ไม่รับรอง",
 "n": 1,
 "files": [
@@ -51198,7 +51507,7 @@
 ]
 },
 {
-"th": "ใบ ยอดเดบิตรวม",
+"th": "ใบ{0}",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx"
@@ -51209,6 +51518,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
+"th": "ใบ{0} ยอดเดบิตรวม",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -51370,6 +51686,27 @@
 "n": 1,
 "files": [
 "packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ใบที่เดบิตไม่เท่าเครดิตนำเข้าไม่ได้ — ดูคอลัมน์ผลต่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
+"th": "ใบที่เลขที่หรืออ้างอิงซ้ำ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
+"th": "ใบที่ไม่มีภาษีเว้นช่องสีเหลืองว่างได้ทั้งหมด · ช่องเงินรับตัวเลขแบบข้อความ จุลภาค เลขไทย และขีด (-) แทนศูนย์ · วันที่แบบข้อความ วว/ดด/ปปปป (พ.ศ. หรือ ค.ศ.) หรือช่องวันที่ของ Excel · รายละเอียดและรูปแบบช่องอยู่ในแผ่น \"คำอธิบาย\" ของแบบฟอร์ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -51933,6 +52270,13 @@
 ]
 },
 {
+"th": "ใบใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ใบใหม่ (Alt+N) — หน้าจอว่าง เริ่มคีย์ใหม่",
 "n": 1,
 "files": [
@@ -51996,10 +52340,31 @@
 ]
 },
 {
+"th": "ใส่เดบิตหรือเครดิตช่องใดช่องหนึ่ง",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ใส่เดบิตหรือเครดิตอย่างใดอย่างหนึ่งต่อแถว",
 "n": 1,
 "files": [
 "packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ใส่เมื่อมีภาษี (เฉพาะแถวบัญชีภาษี)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ใส่เมื่อมีภาษี (แถวบัญชีภาษี)",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -52773,7 +53138,7 @@
 ]
 },
 {
-"th": "ไม่พบเลขที่บัญชี {0} ในผังบัญชี",
+"th": "ไม่พบเลขที่บัญชี {0} ในผังบัญชี — ตรวจเลขที่บัญชี (ถ้า Excel เปลี่ยนเป็นตัวเลข ให้ตั้งรูปแบบช่องเป็นข้อความแล้วพิมพ์ใหม่)",
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/journal-import.ts"
@@ -53102,6 +53467,13 @@
 ]
 },
 {
+"th": "ไม่มีรายการภาษี",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ไม่มีรายการภาษีหัก ณ ที่จ่ายของงวดนี้",
 "n": 1,
 "files": [
@@ -53183,6 +53555,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Defaults.tsx"
+]
+},
+{
+"th": "ไม่มีสิทธิ์แก้ไขใบสำคัญ — เลือก \"สร้างเป็นเอกสารใหม่\" หรือ \"ไม่นำเข้า\" แทน \"ทับเอกสารเดิม\"",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
 ]
 },
 {
@@ -53722,6 +54101,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/BranchCol.tsx"
+]
+},
+{
+"th": "— ดูเปรียบเทียบแล้วเลือกทีละใบ (ค่าเริ่มต้น \"ไม่นำเข้า\")",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {

@@ -15,6 +15,7 @@ import { base32Decode, stepOf, totpAt } from '../src/modules/security.js';
 import { d, taxIdCheckDigit } from '@buddy/core';
 import { createZip } from '../src/zip.js';
 import { readTable } from '../src/modules/trade-import.js';
+import { readZip } from '../src/zip.js';
 import { verifySsoToken } from '../src/sso.js';
 /** เลขผู้เสียภาษีที่ถูกต้องและไม่ซ้ำกัน สำหรับคู่ค้าทดสอบ (เลข + สาขาซ้ำในบริษัทเดียวกันบันทึกไม่ได้) */
 const tid = (n: number) => { const b = `0105560${String(n).padStart(5, '0')}`; return b + taxIdCheckDigit(b); };
@@ -4933,7 +4934,12 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const t = await app.inject({ method: 'GET', url: '/api/v1/gl/journal-import/template', headers: { cookie } });
     expect(t.statusCode).toBe(200); expect(t.headers['content-type']).toMatch(/spreadsheetml/);
     const tplRows = readTable('import-journal.xlsx', t.rawPayload);
-    expect(tplRows[0]!.slice(0, 12)).toEqual([...H.slice(0, 2), 'เลขที่ใบสำคัญ', ...H.slice(2)]);
+    // ช่องต้องใส่มี * (เจ้าของ 18/11/2569) — ตัวอ่านไม่สนใจ *
+    expect(tplRows[0]!.slice(0, 12)).toEqual(['สมุด *', 'เลขที่กลุ่ม *', 'เลขที่ใบสำคัญ', 'วันที่ *', 'อ้างอิง', 'คำอธิบาย', 'เลขที่บัญชี *', 'คำอธิบายรายการ', 'แผนก', 'Job', 'เดบิต *', 'เครดิต *']);
+    const tplXml = (readZip(t.rawPayload).get('xl/styles.xml') ?? Buffer.from('')).toString('utf8');
+    expect(tplXml).toMatch(/formatCode="#,##0.00"/);   // ช่องเงินเป็นตัวเลข #,##0.00
+    const helpXml = (readZip(t.rawPayload).get('xl/worksheets/sheet2.xml') ?? Buffer.from('')).toString('utf8');
+    expect(helpXml).toMatch(/ต้องใส่ \/ ว่างได้/); expect(helpXml).toMatch(/รูปแบบช่องใน Excel/); expect(helpXml).toMatch(/ใส่เมื่อมีภาษี/);
     expect(tplRows[0]!.slice(12)).toEqual(['ภาษี', 'เลขที่ใบกำกับ', 'วันที่ใบกำกับ', 'งวดภาษี', 'ชื่อคู่ค้า', 'เลขผู้เสียภาษี', 'สาขาคู่ค้า', 'ฐานภาษี', 'อัตราภาษี', 'ประเภทเงินได้']);
     expect(tplRows.some((r) => r[12] === 'ภาษีซื้อ' && r[18] === '00000')).toBe(true);   // สาขาเก็บเป็นข้อความ (ไม่หายเลข 0)
     expect(tplRows.filter((r) => /0000001$/.test(r[2] ?? '')).length).toBeGreaterThan(0);   // ตัวอย่างกำหนดเลขที่ใบสำคัญเอง 1 กลุ่ม
@@ -4948,13 +4954,17 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
       [B, '2', '21/07/2569', '', '', cashNo, '', '', '', '', '20']]);
     // ตรวจ: ไม่บันทึก
     const chk = (await call('POST', url, { file_name: 'สมุด.csv', data: good })).body;
-    expect(chk).toMatchObject({ ok: true, committed: false, total_debit: '1170.50' });
+    expect(chk).toMatchObject({ ok: true, committed: false, total_debit: '1170.50', total_credit: '1170.50', total_diff: '0.00', import_count: 2, dup_count: 0 });
+    expect(chk.vouchers.map((v: { status: string; debit: string; credit: string; diff: string }) => [v.status, v.debit, v.credit, v.diff])).toEqual([['ok', '1150.50', '1150.50', '0.00'], ['ok', '20.00', '20.00', '0.00']]);
     expect(chk.vouchers.map((v: { voucher_no: string | null }) => v.voucher_no)).toEqual([null, null]);
     expect(await ours()).toBe(0);
     // ผิด: ไม่ดุล + ไม่พบบัญชี → บันทึกไม่ได้ทั้งแฟ้ม
     const bad = csv([H, [B, '1', '20/07/2569', 'IMPJ-9', 'x', exp, '', '', '', '10', ''], [B, '1', '20/07/2569', '', '', '9999-99', '', '', '', '', '9'], ['ZZ', '2', '20/07/2569', '', '', exp, '', '', '', '1', ''], ['ZZ', '2', '20/07/2569', '', '', cashNo, '', '', '', '', '1']]);
     const be = (await call('POST', url, { file_name: 'x.csv', data: bad })).body.errors.map((e: { message: string }) => e.message).join(' | ');
     expect(be).toMatch(/ยอดไม่ดุล/); expect(be).toMatch(/ไม่พบสมุดรายวัน "ZZ"/);
+    const bchk = (await call('POST', url, { file_name: 'x.csv', data: bad })).body;
+    expect([bchk.total_debit, bchk.total_credit, bchk.total_diff, bchk.import_count]).toEqual(['11.00', '10.00', '1.00', 0]);   // เดบิต/เครดิต/ผลต่างทั้งแฟ้ม
+    expect(bchk.vouchers.map((v: { status: string; diff: string }) => [v.status, v.diff])).toEqual([['error', '1.00'], ['error', '0.00']]);
     expect((await call('POST', url, { file_name: 'x.csv', data: bad, commit: true })).status).toBe(400);
     expect(await ours()).toBe(0);
     // บันทึก: ออกเลขที่ใบสำคัญให้ · คำอธิบายรายการว่าง = คำอธิบายของใบ · บันทึกประวัติ
@@ -4968,8 +4978,33 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect(jv.lines.map((l) => [l.description, l.debit, l.credit])).toEqual([['ค่าใช้จ่ายนำเข้า', '1150.50', '0.00'], ['นำเข้าทดสอบ', '0.00', '1150.50']]);
     const log = (await call('GET', '/api/v1/activity-log')).body as Array<{ action: string; module: string }>;
     expect(log.some((x) => x.action === 'IMPORT' && x.module === 'GL')).toBe(true);
-    // นำเข้าซ้ำ = อ้างอิงเดิมในสมุดเดิม ไม่รับ
-    expect((await call('POST', url, { file_name: 'สมุด.csv', data: good })).body.errors[0].message).toMatch(/เคยนำเข้าแล้วเป็น/);
+    // นำเข้าซ้ำ (เจ้าของ 18/11/2569): อ้างอิงเดิมในสมุดเดิม = ใบซ้ำ ไม่นำเข้าเอง — เปรียบเทียบ + เลือก ทับ/สร้างใหม่/ไม่นำเข้า (ค่าเริ่มต้น ไม่นำเข้า)
+    type Dup = { key: string; status: string; action: string; voucher_no: string | null; match: { by: string; voucher_no: string; can_overwrite: boolean; why_not: string | null; diffs: string[]; current: { lines: unknown[] } } };
+    const again = (await call('POST', url, { file_name: 'สมุด.csv', data: good })).body as { ok: boolean; import_count: number; dup_count: number; vouchers: Dup[] };
+    expect([again.ok, again.import_count, again.dup_count]).toEqual([true, 0, 2]);
+    expect(again.vouchers.map((v) => [v.status, v.action, v.match.by, v.match.can_overwrite, v.match.diffs])).toEqual([['dup', 'skip', 'ref', true, []], ['dup', 'skip', 'ref', true, []]]);   // เหมือนกันทุกช่อง
+    expect(again.vouchers[0]!.match.current.lines).toHaveLength(2);
+    const skipAll = (await call('POST', url, { file_name: 'สมุด.csv', data: good, commit: true })).body as { import_count: number; vouchers: Dup[] };
+    expect([skipAll.import_count, ...skipAll.vouchers.map((v) => v.status)]).toEqual([0, 'skipped', 'skipped']);
+    expect(await ours()).toBe(2);
+    // แก้ยอดในแฟ้ม → ต่างกัน · ทับเอกสารเดิม = แก้ใบเดิม (เลขที่เดิม · log EDIT) · สร้างเป็นเอกสารใหม่ = ใบใหม่เลขใหม่
+    const changed = csv([H,
+      [B, '1', '20/07/2569', 'IMPJ-1', 'นำเข้าทดสอบ (แก้)', exp, 'ค่าใช้จ่ายนำเข้า', '', '', '1200', ''],
+      [B, '1', '20/07/2569', '', '', cashNo, '', '', '', '', '1200'],
+      [B, '2', '21/07/2569', 'IMPJ-2', 'ใบที่สอง', exp, '', '', '', '20', ''],
+      [B, '2', '21/07/2569', '', '', cashNo, '', '', '', '', '20']]);
+    const k1 = again.vouchers[0]!.key, k2 = again.vouchers[1]!.key;
+    const cmp = (await call('POST', url, { file_name: 'สมุด.csv', data: changed, actions: { [k1]: 'overwrite', [k2]: 'new' } })).body as { ok: boolean; import_count: number; vouchers: Dup[] };
+    expect(cmp.vouchers[0]!.match.diffs).toEqual(['คำอธิบาย', 'ยอดเงิน', 'บรรทัด 1', 'บรรทัด 2']);
+    expect([cmp.ok, cmp.import_count, cmp.vouchers[0]!.voucher_no, cmp.vouchers[1]!.voucher_no]).toEqual([true, 2, j1.voucher_no, null]);
+    expect((await call('POST', url, { file_name: 'สมุด.csv', data: changed, actions: { [k1]: 'bogus' } })).status).toBe(400);   // เลือกได้ 3 แบบเท่านั้น
+    const over = (await call('POST', url, { file_name: 'สมุด.csv', data: changed, commit: true, actions: { [k1]: 'overwrite', [k2]: 'new' } })).body as { vouchers: Dup[] };
+    expect(over.vouchers.map((v) => v.status)).toEqual(['overwritten', 'created']);
+    expect(over.vouchers[0]!.voucher_no).toBe(j1.voucher_no);
+    const jv2 = (await call('GET', `/api/v1/gl/journals/${j1.id}`)).body as { description: string; total_debit: string };
+    expect([jv2.description, jv2.total_debit]).toEqual(['นำเข้าทดสอบ (แก้)', '1200.00']);
+    expect(((await call('GET', '/api/v1/activity-log')).body as Array<{ action: string; doc_no: string }>).some((x) => x.action === 'EDIT' && x.doc_no === j1.voucher_no)).toBe(true);
+    expect(await ours()).toBe(3);   // IMPJ-1 (ทับ) · IMPJ-2 สองใบ (เดิม + สร้างใหม่)
     // ภาษี (เจ้าของเลือก ก 18/11/2569): แถวบัญชีภาษี → แฟ้มภาษีซื้อ / ภ.ง.ด.53 ผูกใบสำคัญ
     const roleNo = async (r: string) => (await sql<{ n: string }>`SELECT g.account_no AS n FROM gl_default_account x JOIN gl_account g ON g.id = x.account_id WHERE x.company_id = ${co} AND x.role = ${r} AND x.deleted_at IS NULL`.execute(database.db)).rows[0]?.n ?? exp;
     const [ivat, whtp] = [await roleNo('INPUT_VAT'), await roleNo('WHT_PAYABLE')];
@@ -4993,6 +5028,18 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
       .toEqual([['IMPJ-IV1', '2026-07-21', '2026-07', 'บริษัท ผู้ขาย จำกัด', '0105550123451', '00000', '1000.00', '70.00']]);
     const wht = (await call('GET', `/api/v1/wht?journal_id=${tj.id}`)).body.rows as Array<Record<string, unknown>>;
     expect(wht.map((w) => [w.form_type, w.payee_name, w.income_type, w.paid_amount, w.rate, w.tax_amount])).toEqual([['S53', 'บริษัท ผู้ขาย จำกัด', 'ค่าบริการ', '1000.00', '3.0000', '30.00']]);
+    // ทับใบที่มีภาษี: แฟ้มมีคอลัมน์ภาษี → รายการภาษีเดิมยกเลิก (C) แล้วเพิ่มตามแฟ้ม
+    const taxFile2 = csv([HT,
+      [B, 'T', '22/07/2569', 'IMPJ-3', 'ซื้อวัสดุ หักภาษี', exp, '', '', '', '1000', '', '', '', '', '', '', '', '', ''],
+      [B, 'T', '22/07/2569', '', '', ivat, '', '', '', '70', '', 'ภาษีซื้อ', 'IMPJ-IV2', '21/07/2569', 'บริษัท ผู้ขาย จำกัด', '0105550123451', 'สำนักงานใหญ่', '', ''],
+      [B, 'T', '22/07/2569', '', '', whtp, '', '', '', '', '30', 'ภงด53', '', '', 'บริษัท ผู้ขาย จำกัด', '0105550123451', '', '1000', '3'],
+      [B, 'T', '22/07/2569', '', '', cashNo, '', '', '', '', '1040', '', '', '', '', '', '', '', '']]);
+    const tk = ((await call('POST', url, { file_name: 't.csv', data: taxFile2 })).body.vouchers as Dup[])[0]!;
+    expect([tk.status, tk.match.diffs]).toEqual(['dup', ['ภาษี']]);
+    expect((await call('POST', url, { file_name: 't.csv', data: taxFile2, commit: true, actions: { [tk.key]: 'overwrite' } })).body.vouchers[0].status).toBe('overwritten');
+    expect((await sql<{ no: string; s: string }>`SELECT tax_invoice_no AS no, doc_status AS s FROM tax_vat_entry WHERE company_id = ${co} AND journal_id = ${tj.id} ORDER BY tax_invoice_no`.execute(database.db)).rows.map((r) => [r.no, r.s]))
+      .toEqual([['IMPJ-IV1', 'C'], ['IMPJ-IV2', 'N']]);
+    expect((await sql<{ s: string }>`SELECT string_agg(doc_status, '' ORDER BY doc_status) AS s FROM tax_wht_entry WHERE journal_id = ${tj.id}`.execute(database.db)).rows[0]!.s).toBe('CN');
     // เลขที่ใบสำคัญกำหนดเอง (เจ้าของ 18/11/2569): ขึ้นต้นตามสมุด · ห้ามซ้ำ · ใบยกเลิกจองเลข ลบแล้วคืนเลข · เลขอัตโนมัติไม่ชนเลขที่นำเข้า
     const HV = [...H.slice(0, 2), 'เลขที่ใบสำคัญ', ...H.slice(2)];
     const V = (g: string, no: string, ref: string, acc: string, dr: string, cr: string) => [B, g, no, '23/07/2569', ref, ref ? 'เลขที่กำหนดเอง' : '', acc, '', '', '', dr, cr];
@@ -5003,7 +5050,10 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const vmsg = async (rows: string[][]) => ((await call('POST', url, { file_name: 'v.csv', data: csv([HV, ...rows]) })).body.errors as Array<{ message: string }>).map((e) => e.message).join(' | ');
     expect(await vmsg(pair('W', 'ZZ0001', 'IMPJ-6'))).toMatch(new RegExp(`ZZ0001 ต้องขึ้นต้นด้วย ${B.toUpperCase()}`));
     expect(await vmsg(pair('W', B.toUpperCase(), 'IMPJ-6'))).toMatch(/ต้องขึ้นต้นด้วย/);   // ตัวนำหน้าอย่างเดียว ไม่มีเลข
-    expect(await vmsg(pair('W', n1, 'IMPJ-6'))).toMatch(new RegExp(`${n1} มีอยู่แล้ว`));
+    const vchk = async (rows: string[][], actions?: Record<string, string>) => (await call('POST', url, { file_name: 'v.csv', data: csv([HV, ...rows]), actions })).body as { ok: boolean; errors: Array<{ message: string }>; vouchers: Dup[] };
+    const taken = (await vchk(pair('W', n1, 'IMPJ-6'))).vouchers[0]!;   // เลขที่มีอยู่แล้ว = ใบซ้ำ (ตามเลขที่) ไม่ใช่ข้อผิดพลาด
+    expect([taken.status, taken.match.by, taken.match.voucher_no, taken.match.can_overwrite]).toEqual(['dup', 'voucher_no', n1, true]);
+    expect((await vchk(pair('W', n1, 'IMPJ-6'), { [taken.key]: 'new' })).vouchers[0]!.voucher_no).toBe(null);   // สร้างใหม่ = ระบบออกเลขใหม่
     expect(await vmsg([...pair('W', `${B}X1`, 'IMPJ-6'), ...pair('Y', `${B}X1`, 'IMPJ-7')])).toMatch(/ซ้ำกับ .* ในแฟ้มเดียวกัน/);
     expect(await vmsg([V('W', `${B}X1`, 'IMPJ-6', exp, '10', ''), V('W', `${B}X2`, '', cashNo, '', '10')])).toMatch(/ไม่ตรงกับแถว 2/);
     // เลขที่ใส่เองตรงกับเลขที่ระบบจะออกถัดไป + กลุ่มที่ให้ระบบออกเลข (อยู่ก่อนในแฟ้ม) → ใบที่กำหนดเลขบันทึกก่อน เลขอัตโนมัติต่อจากนั้น ไม่ชน
@@ -5017,7 +5067,10 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     // ใบที่ยกเลิกแล้วยังจองเลข — ลบแล้วใช้เลขเดิมได้
     const a1 = (await call('GET', `/api/v1/gl/journals?q=IMPJ-5&from=2026-07-01&to=2026-07-31`)).body.rows[0] as { id: string };
     await call('POST', `/api/v1/gl/journals/${a1.id}/cancel`, { reason: 'ทดสอบเลขที่' });
-    expect(await vmsg(pair('R', n1, 'IMPJ-8'))).toMatch(new RegExp(`${n1} เป็นของใบสำคัญที่ยกเลิกแล้ว — ลบใบนั้น`));
+    const cx = (await vchk(pair('R', n1, 'IMPJ-8'))).vouchers[0]!;
+    expect([cx.status, cx.match.can_overwrite]).toEqual(['dup', false]);
+    expect(cx.match.why_not).toMatch(/ยกเลิกแล้ว — ลบใบนั้น/);
+    expect((await vchk(pair('R', n1, 'IMPJ-8'), { [cx.key]: 'overwrite' })).errors[0]!.message).toMatch(/ทับเอกสารเดิมไม่ได้ — .*ยกเลิกแล้ว/);   // ระบบตรวจซ้ำ ไม่เชื่อหน้าจอ
     expect((await call('POST', `/api/v1/docs/journal/${a1.id}/delete`, { reason: 'ทดสอบเลขที่' })).status).toBe(200);
     const reuse = (await call('POST', url, { file_name: 'v.csv', data: csv([HV, ...pair('R', n1, 'IMPJ-8')]), commit: true })).body;
     expect(reuse.vouchers[0].voucher_no).toBe(n1);
@@ -5030,10 +5083,12 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
     await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
-    const other = (await call('POST', url, { file_name: 'x.csv', data: good })).body as { errors: Array<{ message: string }> };
-    expect(other.errors.some((e) => /เคยนำเข้าแล้ว/.test(e.message))).toBe(false);
+    const other = (await call('POST', url, { file_name: 'x.csv', data: changed, actions: { [k1]: 'overwrite' } })).body as { vouchers: Array<{ match: unknown; status: string }> };
+    expect(other.vouchers.every((v) => v.match === null && v.status !== 'dup')).toBe(true);   // ไม่เห็นใบของบริษัทอื่นเป็นใบซ้ำ · การเลือก "ทับ" ไม่มีผล
+    await call('POST', url, { file_name: 'x.csv', data: changed, commit: true, actions: { [k1]: 'overwrite', [k2]: 'overwrite' } });
+    expect((await sql<{ d: string }>`SELECT description AS d FROM gl_journal WHERE id = ${j1.id}`.execute(database.db)).rows[0]!.d).toBe('นำเข้าทดสอบ (แก้)');   // ใบของบริษัทนี้ไม่ถูกแก้
     expect((await call('GET', `/api/v1/gl/journals/${j1.id}`)).status).toBe(404);
-    expect(await ours()).toBe(6);   // IMPJ-1, IMPJ-2, IMPJ-3 (มีภาษี), IMPJ-6/7 (เลขกำหนดเอง), IMPJ-8 (ใช้เลขที่ลบแล้ว) — ลูกค้าอื่นไม่ได้เพิ่ม
+    expect(await ours()).toBe(7);   // IMPJ-1 (ทับ), IMPJ-2 ×2, IMPJ-3 (มีภาษี), IMPJ-6/7 (เลขกำหนดเอง), IMPJ-8 (ใช้เลขที่ลบแล้ว) — ลูกค้าอื่นไม่ได้เพิ่ม
     // ไม่ให้กระทบยอดของทดสอบข้ออื่น
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
@@ -5042,7 +5097,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect(await ours()).toBe(0);
     // ยกเลิกใบสำคัญ = ยกเลิกรายการภาษีที่นำเข้าด้วย
     expect((await sql<{ s: string }>`SELECT string_agg(doc_status, '') AS s FROM tax_vat_entry WHERE company_id = ${co} AND tax_invoice_no = 'IMPJ-IV1'`.execute(database.db)).rows[0]!.s).toBe('C');
-    expect((await sql<{ s: string }>`SELECT string_agg(doc_status, '') AS s FROM tax_wht_entry WHERE journal_id = ${tj.id}`.execute(database.db)).rows[0]!.s).toBe('C');
+    expect((await sql<{ s: string }>`SELECT string_agg(doc_status, '') AS s FROM tax_wht_entry WHERE journal_id = ${tj.id}`.execute(database.db)).rows[0]!.s).toBe('CC');
   });
 });
 

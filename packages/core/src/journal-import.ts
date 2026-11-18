@@ -10,9 +10,28 @@ import { checkTaxId } from './taxid.js';
  */
 export type JournalImportKey = 'book' | 'group' | 'voucher_no' | 'date' | 'ref' | 'description' | 'account' | 'line_description' | 'department' | 'job' | 'debit' | 'credit'
   | 'tax' | 'tax_no' | 'tax_date' | 'tax_month' | 'party' | 'party_tax_id' | 'party_branch' | 'tax_base' | 'tax_rate' | 'income_type';
-export interface JournalImportColumn { key: JournalImportKey; th: string; aliases: string[]; required?: boolean; hint: string; example: [string, string, string] }
+/**
+ * ช่องไหนต้องใส่/ว่างได้ และรูปแบบช่องใน Excel (เจ้าของ 18/11/2569 "มาร์คหรือแจ้งว่ารายการไหนต้องใส่ข้อมูล หรือรายการไหนว่างไว้ได้ … format ใน excel ต้องเป็นอะไร")
+ * แบบฟอร์มตัวอย่าง: หัวช่องต้องใส่มี * และสีชมพู · ใส่เมื่อมีภาษีสีเหลือง · ว่างได้สีปกติ — หน้าจอแสดงคำอธิบายชุดเดียวกัน
+ */
+export type JournalImportNeed = 'required' | 'grouping' | 'either' | 'tax' | 'optional';
+export const JOURNAL_IMPORT_NEED_LABEL: Record<JournalImportNeed, string> = {
+  required: 'ต้องใส่', grouping: 'ต้องใส่ (ว่างได้ถ้าใส่เลขที่ใบสำคัญทุกแถว)', either: 'ใส่เดบิตหรือเครดิตช่องใดช่องหนึ่ง', tax: 'ใส่เมื่อมีภาษี (เฉพาะแถวบัญชีภาษี)', optional: 'ว่างได้',
+};
+export type JournalImportFormat = 'code' | 'text' | 'date' | 'month' | 'number';
+export const JOURNAL_IMPORT_FORMAT_LABEL: Record<JournalImportFormat, string> = {
+  code: 'ข้อความ (@) — กันเลข 0 นำหน้าหาย', text: 'ข้อความ', date: 'ข้อความ วว/ดด/ปปปป (พ.ศ. หรือ ค.ศ.) หรือช่องวันที่ของ Excel', month: 'ข้อความ ดด/ปปปป',
+  number: 'ตัวเลข #,##0.00 — ตัวเลขแบบข้อความ จุลภาค ช่องว่าง เลขไทย รับได้',
+};
+const COLUMN_META: Record<JournalImportKey, [JournalImportNeed, JournalImportFormat]> = {
+  book: ['required', 'code'], group: ['grouping', 'code'], voucher_no: ['optional', 'code'], date: ['required', 'date'], ref: ['optional', 'code'], description: ['optional', 'text'],
+  account: ['required', 'code'], line_description: ['optional', 'text'], department: ['optional', 'code'], job: ['optional', 'code'], debit: ['either', 'number'], credit: ['either', 'number'],
+  tax: ['tax', 'text'], tax_no: ['tax', 'code'], tax_date: ['tax', 'date'], tax_month: ['tax', 'month'], party: ['tax', 'text'], party_tax_id: ['tax', 'code'], party_branch: ['tax', 'code'],
+  tax_base: ['tax', 'number'], tax_rate: ['tax', 'number'], income_type: ['tax', 'text'],
+};
+export interface JournalImportColumn { key: JournalImportKey; th: string; aliases: string[]; required?: boolean; hint: string; example: [string, string, string]; need: JournalImportNeed; format: JournalImportFormat }
 
-export const JOURNAL_IMPORT_COLUMNS: JournalImportColumn[] = [
+export const JOURNAL_IMPORT_COLUMNS: JournalImportColumn[] = ([
   { key: 'book', th: 'สมุด', aliases: ['สมุดรายวัน', 'รหัสสมุด', 'book', 'journal'], required: true, hint: 'ตัวนำหน้าหรือรหัสของสมุดรายวัน เช่น JV PV RV SV UV (ดูที่ บัญชี › สร้างสมุดรายวัน)', example: ['PV', 'PV', 'JV'] },
   { key: 'group', th: 'เลขที่กลุ่ม', aliases: ['กลุ่ม', 'ใบที่', 'เลขที่ใบ', 'group', 'voucher'], required: true, hint: 'แถวที่สมุดและเลขที่กลุ่มเดียวกัน = ใบสำคัญใบเดียวกัน · ว่างได้ถ้าใส่ "เลขที่ใบสำคัญ" ทุกแถว (ใช้เลขที่ใบสำคัญจัดกลุ่ม)', example: ['1', '1', '2'] },
   // เลขที่ใบสำคัญที่ผู้ใช้กำหนดเอง (เจ้าของ 18/11/2569 "เพิ่มเลขที่เอกสารที่สามารถสร้างเองได้ แต่รหัสจะถูกบังคับตามสมุดรายวัน เช่น PV ต้องขึ้นต้นด้วย PVxxxxxxx")
@@ -37,7 +56,26 @@ export const JOURNAL_IMPORT_COLUMNS: JournalImportColumn[] = [
   { key: 'tax_base', th: 'ฐานภาษี', aliases: ['มูลค่าก่อนภาษี', 'ยอดก่อนภาษี', 'จำนวนเงินที่จ่าย', 'base'], hint: 'ภาษีซื้อ/ขาย: มูลค่าก่อนภาษี (ว่าง = ภาษี ÷ 7%) · ภงด3/53: จำนวนเงินที่จ่าย (ต้องมี)', example: ['', '', ''] },
   { key: 'tax_rate', th: 'อัตราภาษี', aliases: ['อัตรา', 'rate'], hint: 'ภงด3/53: อัตราที่หัก % — ว่าง = ภาษี ÷ จำนวนเงินที่จ่าย', example: ['', '', ''] },
   { key: 'income_type', th: 'ประเภทเงินได้', aliases: ['incometype'], hint: 'ภงด3/53: เช่น ค่าบริการ ค่าเช่า ค่าขนส่ง ค่าโฆษณา — ว่าง = ค่าบริการ', example: ['', '', ''] },
-];
+] as Array<Omit<JournalImportColumn, 'need' | 'format'>>).map((c) => ({ ...c, need: COLUMN_META[c.key][0], format: COLUMN_META[c.key][1] }));
+/** หัวคอลัมน์ในแบบฟอร์ม: ช่องต้องใส่มี * ต่อท้าย (ตัวอ่านไม่สนใจ *) */
+export const journalImportHeader = (c: JournalImportColumn) => (c.need === 'required' || c.need === 'grouping' || c.need === 'either' ? `${c.th} *` : c.th);
+
+/** ค่าในช่องจาก Excel/CSV/OCR: เลขไทย → อารบิก · ตัดอักขระมองไม่เห็น · ช่องว่างไม่ตัดบรรทัด → ช่องว่าง · ตัดหัวท้าย */
+export function cleanImportCell(v: unknown): string {
+  return String(v ?? '').replace(/[๐-๙]/g, (c) => String(c.charCodeAt(0) - 0x0e50)).replace(/[​-‍⁠﻿]/g, '').replace(/ /g, ' ').trim();
+}
+
+/**
+ * เลขผู้เสียภาษีจาก Excel: ตัดช่องว่าง/ขีด · 1.0555E+12 → ตัวเลขเต็ม · Excel ตัดเลข 0 ข้างหน้า (12 หลัก) → เติม 0 เมื่อหลักตรวจสอบถูกต้องเท่านั้น
+ * คืนค่าเดิมเมื่อแก้ไม่ได้ (ให้ตัวตรวจแจ้งข้อผิดพลาด)
+ */
+export function importTaxId(v: string): string {
+  let t = v.replace(/[\s-]/g, '');
+  if (/^\d+(\.\d+)?e\+?\d+$/i.test(t)) { const n = importNumber(t); if (n && /^\d+$/.test(n)) t = n; }
+  t = t.replace(/\.0+$/, '');
+  if (/^\d{10,12}$/.test(t)) { const p = t.padStart(13, '0'); if (checkTaxId(p).ok) return p; }
+  return t;
+}
 const TAX_DETAIL_KEYS: JournalImportKey[] = ['tax_no', 'tax_date', 'tax_month', 'party', 'party_tax_id', 'party_branch', 'tax_base', 'tax_rate', 'income_type'];
 export type JournalImportTaxKind = 'P' | 'S' | 'S03' | 'S53';
 export const JOURNAL_IMPORT_TAX_LABEL: Record<JournalImportTaxKind, string> = { P: 'ภาษีซื้อ', S: 'ภาษีขาย', S03: 'ภ.ง.ด.3', S53: 'ภ.ง.ด.53' };
@@ -62,9 +100,11 @@ export interface JournalImportVoucher { book: string; group: string;
   /** มีแถวผิด/ไม่ดุล — แจ้งใน errors แล้ว ไม่ต้องลองบันทึก */
   invalid?: boolean }
 
-const norm = (s: string) => s.replace(/[\s_\-().]/g, '').toLowerCase();
+const norm = (s: string) => cleanImportCell(s).replace(/[\s_\-().*]/g, '').toLowerCase();
+/** ยอดเงิน: "-" (รูปแบบบัญชีของ Excel แสดงศูนย์เป็นขีด) = ว่าง · ตัดคำว่า บาท */
+const amountText = (v: string) => (/^[-–—]$/.test(v) ? '' : v.replace(/\s*บาท$/, ''));
 
-export function mapJournalImport(rows: string[][], ys: YearSystem): { vouchers: JournalImportVoucher[]; errors: ImportIssue[] } {
+export function mapJournalImport(rows: string[][], ys: YearSystem): { vouchers: JournalImportVoucher[]; errors: ImportIssue[]; hasTax: boolean } {
   const errors: ImportIssue[] = [];
   const lookup = new Map<string, JournalImportKey>();
   for (const c of JOURNAL_IMPORT_COLUMNS) for (const n of [c.th, ...c.aliases]) lookup.set(norm(n), c.key);
@@ -75,10 +115,10 @@ export function mapJournalImport(rows: string[][], ys: YearSystem): { vouchers: 
     if (hits.length >= 3) { headAt = r; for (const [k, i] of hits) if (!cols.has(k)) cols.set(k, i); }
   }
   const req = JOURNAL_IMPORT_COLUMNS.filter((c) => c.required);
-  if (headAt < 0) return { vouchers: [], errors: [{ row: 1, message: `ไม่พบหัวตาราง — แถวแรกต้องมีชื่อคอลัมน์ ${req.map((c) => `"${c.th}"`).join(' ')} "เดบิต" "เครดิต" (ดาวน์โหลดแฟ้มตัวอย่าง)` }] };
+  if (headAt < 0) return { vouchers: [], hasTax: false, errors: [{ row: 1, message: `ไม่พบหัวตาราง — แถวแรกต้องมีชื่อคอลัมน์ ${req.map((c) => `"${c.th}"`).join(' ')} "เดบิต" "เครดิต" (ดาวน์โหลดแฟ้มตัวอย่าง)` }] };
   const missing = [...req, ...JOURNAL_IMPORT_COLUMNS.filter((c) => c.key === 'debit' || c.key === 'credit')].filter((c) => !cols.has(c.key));
-  if (missing.length) return { vouchers: [], errors: [{ row: headAt + 1, message: `ไม่มีคอลัมน์ ${missing.map((c) => `"${c.th}"`).join(', ')} — ใช้ชื่อหัวคอลัมน์ตามแฟ้มตัวอย่าง` }] };
-  const cell = (r: string[], k: JournalImportKey) => { const i = cols.get(k); return i === undefined ? '' : String(r[i] ?? '').trim(); };
+  if (missing.length) return { vouchers: [], hasTax: false, errors: [{ row: headAt + 1, message: `ไม่มีคอลัมน์ ${missing.map((c) => `"${c.th}"`).join(', ')} — ใช้ชื่อหัวคอลัมน์ตามแฟ้มตัวอย่าง` }] };
+  const cell = (r: string[], k: JournalImportKey) => { const i = cols.get(k); return i === undefined ? '' : cleanImportCell(r[i]); };
   const out = new Map<string, JournalImportVoucher>();
   const badGroups = new Set<string>();
   let count = 0;
@@ -99,7 +139,7 @@ export function mapJournalImport(rows: string[][], ys: YearSystem): { vouchers: 
     const date = importDate(cell(row, 'date'), ys);
     if (!date) bad(`วันที่ "${cell(row, 'date')}" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป`);
     if (!account) bad('ไม่มีเลขที่บัญชี');
-    const dr = importNumber(cell(row, 'debit') || '0'), cr = importNumber(cell(row, 'credit') || '0');
+    const dr = importNumber(amountText(cell(row, 'debit')) || '0'), cr = importNumber(amountText(cell(row, 'credit')) || '0');
     if (dr === null) bad(`เดบิต "${cell(row, 'debit')}" ไม่ใช่ตัวเลข`);
     if (cr === null) bad(`เครดิต "${cell(row, 'credit')}" ไม่ใช่ตัวเลข`);
     if (dr !== null && cr !== null) {
@@ -157,7 +197,7 @@ export function mapJournalImport(rows: string[][], ys: YearSystem): { vouchers: 
   }
   if (!vouchers.length && !errors.length) errors.push({ row: headAt + 2, message: 'ไม่มีรายการใต้หัวตาราง' });
   errors.sort((p, q) => p.row - q.row);
-  return { vouchers, errors };
+  return { vouchers, errors, hasTax: cols.has('tax') };
 }
 
 /** เดือนภาษี: ดด/ปปปป · ปปปป-ดด · หรือวันที่เต็ม (เอาเดือน) → YYYY-MM */
@@ -195,13 +235,13 @@ function taxOfRow(cell: (k: JournalImportKey) => string, D: ReturnType<typeof d>
   const party = cell('party') || null;
   if (!vat && !party) bad('ไม่มีชื่อผู้ถูกหักภาษี (คอลัมน์ "ชื่อคู่ค้า")');
   if (party && party.length > 200) bad('ชื่อคู่ค้ายาวเกิน 200 ตัว');
-  const tid = cell('party_tax_id').replace(/[\s-]/g, '') || null;
+  const tid = importTaxId(cell('party_tax_id')) || null;
   if (tid) { const c = checkTaxId(tid); if (!c.ok) bad(`เลขผู้เสียภาษี ${tid}: ${c.error}`); }
   let br = cell('party_branch') || null;
   if (br && /สำนักงานใหญ่|^ho$/i.test(br)) br = '00000';
   if (br && !/^\d{1,5}$/.test(br)) bad(`สาขาคู่ค้า "${br}" ต้องเป็นตัวเลข 5 หลัก (00000 = สำนักงานใหญ่)`);
   else if (br) br = br.padStart(5, '0');
-  const baseTxt = cell('tax_base'), baseN = baseTxt ? importNumber(baseTxt) : null;
+  const baseTxt = amountText(cell('tax_base')), baseN = baseTxt ? importNumber(baseTxt) : null;
   if (baseTxt && baseN === null) bad(`ฐานภาษี "${baseTxt}" ไม่ใช่ตัวเลข`);
   if (!vat && !baseTxt) bad('ไม่มีจำนวนเงินที่จ่าย (คอลัมน์ "ฐานภาษี")');
   const base = baseN !== null ? d(baseN) : vat ? amount.div('0.07').toDecimalPlaces(2) : d(0);
@@ -212,4 +252,48 @@ function taxOfRow(cell: (k: JournalImportKey) => string, D: ReturnType<typeof d>
   const income = vat ? null : cell('income_type') || 'ค่าบริการ';
   if (income && income.length > 60) bad('ประเภทเงินได้ยาวเกิน 60 ตัว');
   return { kind, no, date, month, party, party_tax_id: tid, party_branch: br, base: base.toFixed(2), rate, income_type: income, amount: amount.toFixed(2) };
+}
+
+/** กุญแจของใบสำคัญในแฟ้ม (สมุด + เลขที่กลุ่ม) — ใช้ส่งการเลือก ทับ/สร้างใหม่/ไม่นำเข้า กลับมา */
+export const journalImportKey = (v: { book: string; group: string }) => `${v.book.toUpperCase()}|${v.group}`;
+
+/**
+ * เปรียบเทียบใบสำคัญในแฟ้มกับใบที่มีอยู่ (เจ้าของ 18/11/2569 "แสดงเปรียบเทียบให้ดูว่าคืออันเดียวกันหรือไม่")
+ * ทั้งสองฝั่งอยู่ในรูปเดียวกัน (รหัสบัญชี/แผนก/Job เป็นรหัส · เงินทศนิยม 2 ตำแหน่ง · คำอธิบายรายการว่าง = คำอธิบายของใบ)
+ * คืนรายการจุดที่ต่างกัน — ว่าง = เหมือนกันทุกช่อง
+ */
+export interface JournalCompareLine { account: string; description: string; department: string; job: string; debit: string; credit: string }
+export interface JournalCompareTax { kind: string; no: string; date: string; base: string; amount: string }
+export interface JournalCompareSide { voucher_no: string | null; book: string; date: string; ref: string; description: string; debit: string; lines: JournalCompareLine[]; taxes: JournalCompareTax[] }
+export function compareJournalSides(file: JournalCompareSide, cur: JournalCompareSide, withTax: boolean): string[] {
+  const out: string[] = [];
+  const same = (a: string | null | undefined, b: string | null | undefined) => (a ?? '').trim().toUpperCase() === (b ?? '').trim().toUpperCase();
+  const money = (a: string, b: string) => d(a || '0').eq(d(b || '0'));
+  if (file.voucher_no && !same(file.voucher_no, cur.voucher_no)) out.push('เลขที่ใบสำคัญ');
+  if (!same(file.book, cur.book)) out.push('สมุด');
+  if (file.date !== cur.date) out.push('วันที่');
+  if (!same(file.ref, cur.ref)) out.push('อ้างอิง');
+  if (!same(file.description, cur.description)) out.push('คำอธิบาย');
+  if (!money(file.debit, cur.debit)) out.push('ยอดเงิน');
+  if (file.lines.length !== cur.lines.length) out.push(`จำนวนบรรทัด ${file.lines.length}/${cur.lines.length}`);
+  const n = Math.min(file.lines.length, cur.lines.length);
+  for (let i = 0; i < n; i++) {
+    const a = file.lines[i]!, b = cur.lines[i]!;
+    if (!same(a.account, b.account) || !same(a.description, b.description) || !same(a.department, b.department) || !same(a.job, b.job) || !money(a.debit, b.debit) || !money(a.credit, b.credit)) out.push(`บรรทัด ${i + 1}`);
+  }
+  if (withTax) {
+    const key = (t: JournalCompareTax) => `${t.kind}|${t.no.trim().toUpperCase()}|${t.date}|${d(t.base || '0').toFixed(2)}|${d(t.amount || '0').toFixed(2)}`;
+    const fa = file.taxes.map(key).sort().join(';'), ca = cur.taxes.map(key).sort().join(';');
+    if (fa !== ca) out.push('ภาษี');
+  }
+  return out;
+}
+
+/** บรรทัดของแฟ้ม → รูปเปรียบเทียบ (คำอธิบายรายการว่าง = คำอธิบายของใบ เหมือนตอนบันทึก) */
+export function journalImportSide(v: JournalImportVoucher): JournalCompareSide {
+  return {
+    voucher_no: v.voucher_no, book: v.book, date: v.date, ref: v.ref ?? '', description: v.description ?? '', debit: v.debit,
+    lines: v.lines.map((l) => ({ account: l.account, description: l.description ?? v.description ?? '', department: l.department ?? '', job: l.job ?? '', debit: l.debit, credit: l.credit })),
+    taxes: v.lines.flatMap((l) => (l.tax ? [{ kind: l.tax.kind, no: l.tax.no ?? '', date: l.tax.date ?? v.date, base: l.tax.base, amount: l.tax.amount }] : [])),
+  };
 }
