@@ -4932,7 +4932,10 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     // แฟ้มตัวอย่าง .xlsx อ่านกลับได้ หัวตรงตามที่นำเข้า
     const t = await app.inject({ method: 'GET', url: '/api/v1/gl/journal-import/template', headers: { cookie } });
     expect(t.statusCode).toBe(200); expect(t.headers['content-type']).toMatch(/spreadsheetml/);
-    expect(readTable('import-journal.xlsx', t.rawPayload)[0]).toEqual(H);
+    const tplRows = readTable('import-journal.xlsx', t.rawPayload);
+    expect(tplRows[0]!.slice(0, 11)).toEqual(H);
+    expect(tplRows[0]!.slice(11)).toEqual(['ภาษี', 'เลขที่ใบกำกับ', 'วันที่ใบกำกับ', 'งวดภาษี', 'ชื่อคู่ค้า', 'เลขผู้เสียภาษี', 'สาขาคู่ค้า', 'ฐานภาษี', 'อัตราภาษี', 'ประเภทเงินได้']);
+    expect(tplRows.some((r) => r[11] === 'ภาษีซื้อ' && r[17] === '00000')).toBe(true);   // สาขาเก็บเป็นข้อความ (ไม่หายเลข 0)
     const good = csv([H,
       [B, '1', '20/07/2569', 'IMPJ-1', 'นำเข้าทดสอบ', exp, 'ค่าใช้จ่ายนำเข้า', '', '', '"1,150.50"', ''],
       [B, '1', '20/07/2569', '', '', cashNo, '', '', '', '', '1150.50'],
@@ -4962,6 +4965,29 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect(log.some((x) => x.action === 'IMPORT' && x.module === 'GL')).toBe(true);
     // นำเข้าซ้ำ = อ้างอิงเดิมในสมุดเดิม ไม่รับ
     expect((await call('POST', url, { file_name: 'สมุด.csv', data: good })).body.errors[0].message).toMatch(/เคยนำเข้าแล้วเป็น/);
+    // ภาษี (เจ้าของเลือก ก 18/11/2569): แถวบัญชีภาษี → แฟ้มภาษีซื้อ / ภ.ง.ด.53 ผูกใบสำคัญ
+    const roleNo = async (r: string) => (await sql<{ n: string }>`SELECT g.account_no AS n FROM gl_default_account x JOIN gl_account g ON g.id = x.account_id WHERE x.company_id = ${co} AND x.role = ${r} AND x.deleted_at IS NULL`.execute(database.db)).rows[0]?.n ?? exp;
+    const [ivat, whtp] = [await roleNo('INPUT_VAT'), await roleNo('WHT_PAYABLE')];
+    const HT = [...H, 'ภาษี', 'เลขที่ใบกำกับ', 'วันที่ใบกำกับ', 'ชื่อคู่ค้า', 'เลขผู้เสียภาษี', 'สาขาคู่ค้า', 'ฐานภาษี', 'อัตราภาษี'];
+    const taxFile = csv([HT,
+      [B, 'T', '22/07/2569', 'IMPJ-3', 'ซื้อวัสดุ หักภาษี', exp, '', '', '', '1000', '', '', '', '', '', '', '', '', ''],
+      [B, 'T', '22/07/2569', '', '', ivat, '', '', '', '70', '', 'ภาษีซื้อ', 'IMPJ-IV1', '21/07/2569', 'บริษัท ผู้ขาย จำกัด', '0105550123451', 'สำนักงานใหญ่', '', ''],
+      [B, 'T', '22/07/2569', '', '', whtp, '', '', '', '', '30', 'ภงด53', '', '', 'บริษัท ผู้ขาย จำกัด', '0105550123451', '', '1000', '3'],
+      [B, 'T', '22/07/2569', '', '', cashNo, '', '', '', '', '1040', '', '', '', '', '', '', '', '']]);
+    const badTax = csv([HT, [B, 'X', '22/07/2569', 'IMPJ-4', 'x', ivat, '', '', '', '', '7', 'ภาษีซื้อ', 'IV', '', '', '', '', '', ''], [B, 'X', '22/07/2569', '', '', cashNo, '', '', '', '7', '', '', '', '', '', '', '', '', '']]);
+    expect((await call('POST', url, { file_name: 't.csv', data: badTax })).body.errors[0].message).toMatch(/ภาษีซื้อต้องอยู่ด้านเดบิต/);
+    const tchk = (await call('POST', url, { file_name: 't.csv', data: taxFile })).body;
+    expect(tchk).toMatchObject({ ok: true, committed: false });
+    expect(tchk.vouchers[0].taxes).toBe(2);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM tax_vat_entry WHERE company_id = ${co} AND tax_invoice_no = 'IMPJ-IV1'`.execute(database.db)).rows[0]!.n).toBe(0);   // ตรวจ = ไม่บันทึกภาษี
+    const tdone = (await call('POST', url, { file_name: 't.csv', data: taxFile, commit: true })).body;
+    expect(tdone.ok).toBe(true);
+    const tj = (await call('GET', `/api/v1/gl/journals?q=IMPJ-3&from=2026-07-01&to=2026-07-31`)).body.rows[0] as { id: string };
+    const vat = (await call('GET', `/api/v1/vat/P?journal_id=${tj.id}`)).body.rows as Array<Record<string, unknown>>;
+    expect(vat.map((v) => [v.tax_invoice_no, String(v.tax_invoice_date).slice(0, 10), v.month, v.party_name, v.party_tax_id, v.party_tax_branch_no, v.base_amount, v.vat_amount]))
+      .toEqual([['IMPJ-IV1', '2026-07-21', '2026-07', 'บริษัท ผู้ขาย จำกัด', '0105550123451', '00000', '1000.00', '70.00']]);
+    const wht = (await call('GET', `/api/v1/wht?journal_id=${tj.id}`)).body.rows as Array<Record<string, unknown>>;
+    expect(wht.map((w) => [w.form_type, w.payee_name, w.income_type, w.paid_amount, w.rate, w.tax_amount])).toEqual([['S53', 'บริษัท ผู้ขาย จำกัด', 'ค่าบริการ', '1000.00', '3.0000', '30.00']]);
     // ผู้ใช้ที่ไม่มีสิทธิ์เพิ่มใบสำคัญ นำเข้าไม่ได้
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'imp.clerk', password: 'clerkImp123' })).status).toBe(200);
@@ -4974,13 +5000,16 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const other = (await call('POST', url, { file_name: 'x.csv', data: good })).body as { errors: Array<{ message: string }> };
     expect(other.errors.some((e) => /เคยนำเข้าแล้ว/.test(e.message))).toBe(false);
     expect((await call('GET', `/api/v1/gl/journals/${j1.id}`)).status).toBe(404);
-    expect(await ours()).toBe(2);
+    expect(await ours()).toBe(3);   // IMPJ-1, IMPJ-2, IMPJ-3 (มีภาษี) — ลูกค้าอื่นไม่ได้เพิ่ม
     // ไม่ให้กระทบยอดของทดสอบข้ออื่น
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
     await call('POST', '/api/v1/auth/select', { company_id: co });
     for (const r of (await call('GET', `/api/v1/gl/journals?q=IMPJ-&from=2026-07-01&to=2026-07-31`)).body.rows as Array<{ id: string }>) await call('POST', `/api/v1/gl/journals/${r.id}/cancel`, { reason: 'ทดสอบนำเข้า' });
     expect(await ours()).toBe(0);
+    // ยกเลิกใบสำคัญ = ยกเลิกรายการภาษีที่นำเข้าด้วย
+    expect((await sql<{ s: string }>`SELECT string_agg(doc_status, '') AS s FROM tax_vat_entry WHERE company_id = ${co} AND tax_invoice_no = 'IMPJ-IV1'`.execute(database.db)).rows[0]!.s).toBe('C');
+    expect((await sql<{ s: string }>`SELECT string_agg(doc_status, '') AS s FROM tax_wht_entry WHERE journal_id = ${tj.id}`.execute(database.db)).rows[0]!.s).toBe('C');
   });
 });
 

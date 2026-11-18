@@ -1408,6 +1408,24 @@
 ]
 },
 {
+"th": "ภาษี",
+"n": 20,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "ค้นหา",
 "n": 19,
 "files": [
@@ -1554,6 +1572,20 @@
 ]
 },
 {
+"th": "ค่าบริการ",
+"n": 16,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/gl/journal-import.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/forms/wht50.ts"
+]
+},
+{
 "th": "ทิ้งการแก้ไข?",
 "n": 16,
 "files": [
@@ -1586,22 +1618,6 @@
 "apps/server/src/modules/docs/bankdocs.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "ภาษี",
-"n": 16,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -1755,6 +1771,21 @@
 ]
 },
 {
+"th": "เลขประจำตัวผู้เสียภาษี",
+"n": 15,
+"files": [
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/settings/NewCompany.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "ใบสำคัญ",
 "n": 15,
 "files": [
@@ -1864,20 +1895,6 @@
 ]
 },
 {
-"th": "เลขประจำตัวผู้เสียภาษี",
-"n": 14,
-"files": [
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/settings/NewCompany.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/payroll-import.ts"
-]
-},
-{
 "th": "เหตุผลที่ยกเลิก",
 "n": 14,
 "files": [
@@ -1931,18 +1948,6 @@
 ]
 },
 {
-"th": "ค่าบริการ",
-"n": 13,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"packages/core/src/forms/wht50.ts"
-]
-},
-{
 "th": "ซื้อ",
 "n": 13,
 "files": [
@@ -1953,6 +1958,19 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tools/TradeImport.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ประเภทเงินได้",
+"n": 13,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -2111,18 +2129,6 @@
 ]
 },
 {
-"th": "ประเภทเงินได้",
-"n": 12,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/reports/tax.ts"
-]
-},
-{
 "th": "ภาษีมูลค่าเพิ่ม",
 "n": 12,
 "files": [
@@ -2169,6 +2175,21 @@
 "apps/server/src/modules/reports/parties.ts",
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "อัตรา",
+"n": 12,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/settings/DataTables.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -2273,6 +2294,21 @@
 ]
 },
 {
+"th": "ภาษีซื้อ",
+"n": 11,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/gl/journal-import.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/posting-desc.ts"
+]
+},
+{
 "th": "รับเงินมัดจำ",
 "n": 11,
 "files": [
@@ -2308,20 +2344,6 @@
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "อัตรา",
-"n": 11,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/settings/DataTables.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -2393,6 +2415,20 @@
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/server/src/modules/projects.ts"
+]
+},
+{
+"th": "ภาษีขาย",
+"n": 10,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/posting-desc.ts"
 ]
 },
 {
@@ -2548,32 +2584,6 @@
 "apps/web/src/pages/reports/TrialBalance.tsx",
 "apps/server/src/modules/payroll/forms.ts",
 "apps/server/src/modules/reports/index.ts"
-]
-},
-{
-"th": "ภาษีขาย",
-"n": 9,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/posting-desc.ts"
-]
-},
-{
-"th": "ภาษีซื้อ",
-"n": 9,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/posting-desc.ts"
 ]
 },
 {
@@ -3125,6 +3135,17 @@
 ]
 },
 {
+"th": "จำนวนเงินที่จ่าย",
+"n": 7,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ซื้อเงินสด",
 "n": 7,
 "files": [
@@ -3298,6 +3319,17 @@
 ]
 },
 {
+"th": "เลขที่หนังสือรับรอง",
+"n": 7,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "เลขที่อ้างอิง",
 "n": 7,
 "files": [
@@ -3319,6 +3351,18 @@
 "apps/web/src/pages/reports/Ledger.tsx",
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "เลขผู้เสียภาษี",
+"n": 7,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -3426,16 +3470,6 @@
 "apps/web/src/pages/docs/PettyCash.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "จำนวนเงินที่จ่าย",
-"n": 6,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/reports/tax.ts"
 ]
 },
 {
@@ -3723,27 +3757,6 @@
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/server/src/modules/reports/register.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เลขที่หนังสือรับรอง",
-"n": 6,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "เลขผู้เสียภาษี",
-"n": 6,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/reports/parties.ts"
 ]
 },
 {
@@ -4153,6 +4166,28 @@
 ]
 },
 {
+"th": "ภ.ง.ด.3",
+"n": 5,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ภ.ง.ด.53",
+"n": 5,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ภาษีที่หัก",
 "n": 5,
 "files": [
@@ -4495,6 +4530,16 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/date.ts"
+]
+},
+{
+"th": "เลขที่ใบกำกับภาษี",
+"n": 5,
+"files": [
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -4984,26 +5029,6 @@
 ]
 },
 {
-"th": "ภ.ง.ด.3",
-"n": 4,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "ภ.ง.ด.53",
-"n": 4,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
 "th": "มีผลตั้งแต่",
 "n": 4,
 "files": [
@@ -5143,6 +5168,16 @@
 ]
 },
 {
+"th": "วันที่ใบกำกับภาษี",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ว่าง = ทั้งหมด",
 "n": 4,
 "files": [
@@ -5238,6 +5273,16 @@
 ]
 },
 {
+"th": "อัตราภาษี",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "อาคาร",
 "n": 4,
 "files": [
@@ -5302,12 +5347,13 @@
 ]
 },
 {
-"th": "เลขที่ใบกำกับภาษี",
+"th": "เลขที่ใบกำกับ",
 "n": 4,
 "files": [
+"apps/web/src/components/DocTaxTabs.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts"
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -5795,6 +5841,15 @@
 ]
 },
 {
+"th": "ชื่อผู้ถูกหักภาษี",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ชื่อผู้มีเงินได้",
 "n": 3,
 "files": [
@@ -6177,6 +6232,15 @@
 ]
 },
 {
+"th": "ผู้ถูกหัก",
+"n": 3,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ผู้รับภาระภาษี",
 "n": 3,
 "files": [
@@ -6547,6 +6611,14 @@
 ]
 },
 {
+"th": "รายการภาษี",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/server/src/modules/vat.ts"
+]
+},
+{
 "th": "รายการใหม่",
 "n": 3,
 "files": [
@@ -6671,12 +6743,12 @@
 ]
 },
 {
-"th": "วันที่ใบกำกับภาษี",
+"th": "วันที่ใบกำกับ",
 "n": 3,
 "files": [
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx"
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -6800,15 +6872,6 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
-]
-},
-{
-"th": "อัตราภาษี",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -6984,15 +7047,6 @@
 "apps/web/src/pages/settings/ApiKeys.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/settings/Sync.tsx"
-]
-},
-{
-"th": "เลขที่ใบกำกับ",
-"n": 3,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx"
 ]
 },
 {
@@ -8100,6 +8154,14 @@
 ]
 },
 {
+"th": "งวดภาษี",
+"n": 2,
+"files": [
+"apps/web/src/pages/gl/JvLinks.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "งวดไม่ถูกต้อง — เลือกเดือน",
 "n": 2,
 "files": [
@@ -8297,6 +8359,14 @@
 ]
 },
 {
+"th": "ชื่อคู่ค้า",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Pdpa.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ชื่องบ",
 "n": 2,
 "files": [
@@ -8335,11 +8405,11 @@
 ]
 },
 {
-"th": "ชื่อผู้ถูกหักภาษี",
+"th": "ชื่อผู้ซื้อ",
 "n": 2,
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -9499,14 +9569,6 @@
 ]
 },
 {
-"th": "ผู้ถูกหัก",
-"n": 2,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx"
-]
-},
-{
 "th": "ผู้บริการ",
 "n": 2,
 "files": [
@@ -9807,6 +9869,14 @@
 ]
 },
 {
+"th": "มูลค่าก่อนภาษี",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "มูลค่าตามบัญชี",
 "n": 2,
 "files": [
@@ -10089,6 +10159,14 @@
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "ยื่นรวมในงวด",
+"n": 2,
+"files": [
+"apps/web/src/pages/tax/VatRegister.tsx",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -10435,13 +10513,6 @@
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx",
 "packages/core/src/menu.ts"
-]
-},
-{
-"th": "รายการภาษี",
-"n": 2,
-"files": [
-"apps/server/src/modules/vat.ts"
 ]
 },
 {
@@ -10924,14 +10995,6 @@
 ]
 },
 {
-"th": "วันที่ใบกำกับ",
-"n": 2,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx"
-]
-},
-{
 "th": "วันสิ้นสุด",
 "n": 2,
 "files": [
@@ -11109,6 +11172,14 @@
 "n": 2,
 "files": [
 "apps/web/src/components/BranchPick.tsx"
+]
+},
+{
+"th": "สาขาที่",
+"n": 2,
+"files": [
+"apps/web/src/pages/payroll/Forms.tsx",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -11636,6 +11707,14 @@
 "files": [
 "apps/web/src/pages/items/Items.tsx",
 "apps/web/src/pages/items/ItemTables.tsx"
+]
+},
+{
+"th": "เดือนภาษี",
+"n": 2,
+"files": [
+"apps/web/src/pages/payroll/Filing.tsx",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -13128,7 +13207,7 @@
 ]
 },
 {
-"th": "(ยังไม่บันทึก): ดุลทุกใบ บัญชี แผนก Job มีจริง งวดยังเปิด อ้างอิงไม่ซ้ำ · กดนำเข้าแล้วลงบัญชีทุกใบพร้อมกัน — ผิดใบเดียวไม่บันทึกเลย · เลขที่ใบสำคัญออกตามสมุด คำอธิบายรายการว่าง = คำอธิบายของใบ",
+"th": "(ยังไม่บันทึก): ดุลทุกใบ บัญชี แผนก Job มีจริง งวดยังเปิด อ้างอิงไม่ซ้ำ · กดนำเข้าแล้วลงบัญชีทุกใบพร้อมกัน — ผิดใบเดียวไม่บันทึกเลย · เลขที่ใบสำคัญออกตามสมุด คำอธิบายรายการว่าง = คำอธิบายของใบ ·",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx"
@@ -14532,6 +14611,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
+]
+},
+{
+"th": ": ใส่ในแถวของบัญชีภาษี ระบบเติมแฟ้มภาษีซื้อ/ขาย/ภ.ง.ด.3/53 ให้",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -21213,10 +21299,17 @@
 ]
 },
 {
-"th": "งวดภาษี",
+"th": "งวดภาษี \"{0}\" ไม่ถูกต้อง — ใช้ ดด/ปปปป เช่น 11/2569",
 "n": 1,
 "files": [
-"apps/web/src/pages/gl/JvLinks.tsx"
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "งวดภาษีใช้กับภาษีซื้อ/ขายเท่านั้น — ภงด3/53 ยื่นตามเดือนของวันที่จ่าย",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -21521,6 +21614,13 @@
 ]
 },
 {
+"th": "จำนวนรายการภาษีซื้อ/ขาย/หัก ณ ที่จ่ายที่จะเติมในแฟ้มภาษี",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "จำนวนวันต่อเดือน (หาค่าจ้างรายวัน/ชั่วโมงของพนักงานรายเดือน)",
 "n": 1,
 "files": [
@@ -21812,6 +21912,13 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "จ่ายค่าบริการทำความสะอาด",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
 ]
 },
 {
@@ -22284,10 +22391,10 @@
 ]
 },
 {
-"th": "ชื่อคู่ค้า",
+"th": "ชื่อคู่ค้ายาวเกิน 200 ตัว",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/Pdpa.tsx"
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -22347,6 +22454,20 @@
 ]
 },
 {
+"th": "ชื่อผู้ขาย",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ชื่อผู้ขาย/ผู้ซื้อตามใบกำกับ · ภงด3/53: ชื่อผู้ถูกหักภาษี (ต้องมี)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ชื่อผู้ขายสินค้า/ผู้ให้บริการ",
 "n": 1,
 "files": [
@@ -22358,13 +22479,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "ชื่อผู้ซื้อ",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/JvLinks.tsx"
 ]
 },
 {
@@ -22991,10 +23105,31 @@
 ]
 },
 {
+"th": "ฐานภาษี",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ฐานภาษี \"{0}\" ไม่ใช่ตัวเลข",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ฐานภาษี {0} + VAT {1} ไม่เท่ากับยอดรวม {2}",
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "ฐานภาษีต้องมากกว่า 0 ทศนิยมไม่เกิน 2 ตำแหน่ง",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -26337,10 +26472,24 @@
 ]
 },
 {
+"th": "บริษัท ตัวอย่าง จำกัด",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
 "th": "บริษัท ตัวอย่าง จำกัด · ยอดรวม ๑๒๓ 1,234,567.89 บาท",
 "n": 1,
 "files": [
 "apps/web/src/components/ThemePicker.tsx"
+]
+},
+{
+"th": "บริษัท ผู้ขาย จำกัด",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
 ]
 },
 {
@@ -28059,7 +28208,7 @@
 ]
 },
 {
-"th": "บาท และลงบัญชีทันที — ถ้าต้องการแก้ภายหลังให้แก้หรือยกเลิกทีละใบที่หน้าสมุดรายวัน",
+"th": "บาท และลงบัญชีทันที{0} — ถ้าต้องการแก้ภายหลังให้แก้หรือยกเลิกทีละใบที่หน้าสมุดรายวัน",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx"
@@ -28451,6 +28600,13 @@
 ]
 },
 {
+"th": "ประเภทภาษี",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ประเภทรอบ",
 "n": 1,
 "files": [
@@ -28525,6 +28681,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "ประเภทเงินได้ยาวเกิน 60 ตัว",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -30880,6 +31043,13 @@
 ]
 },
 {
+"th": "พร้อมรายการภาษี {0} รายการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "พร้อมใช้ · กุญแจ {0}",
 "n": 1,
 "files": [
@@ -31335,6 +31505,27 @@
 ]
 },
 {
+"th": "ภงด3/53: อัตราที่หัก % — ว่าง = ภาษี ÷ จำนวนเงินที่จ่าย",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ภงด3/53: เช่น ค่าบริการ ค่าเช่า ค่าขนส่ง ค่าโฆษณา — ว่าง = ค่าบริการ",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ภงด53",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
 "th": "ภาพบิลที่ผู้ใช้ส่งให้ AI อ่าน (ชื่อ ที่อยู่ เลขผู้เสียภาษีของผู้ขาย) — ระบบเก็บแค่ชื่อแฟ้ม ไม่เก็บภาพ",
 "n": 1,
 "files": [
@@ -31384,6 +31575,13 @@
 ]
 },
 {
+"th": "ภาษี \"{0}\" ไม่รู้จัก — ใช้ ภาษีซื้อ ภาษีขาย ภงด3 หรือ ภงด53",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ภาษี (ขอคืนได้)",
 "n": 1,
 "files": [
@@ -31391,10 +31589,24 @@
 ]
 },
 {
+"th": "ภาษี (ใส่เฉพาะแถวบัญชีภาษี ยอดเงินของแถว = ยอดภาษี): ภาษี (ภาษีซื้อ ภาษีขาย ภงด3 ภงด53) · เลขที่ใบกำกับ · วันที่ใบกำกับ · งวดภาษี · ชื่อคู่ค้า · เลขผู้เสียภาษี · สาขาคู่ค้า · ฐานภาษี · อัตราภาษี · ประเภทเงินได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ภาษี: {0}{1} · ส่วนของเงินได้ไม่ประจำ {2}",
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
+]
+},
+{
+"th": "ภาษี: ใส่คอลัมน์ \"ภาษี\" และรายละเอียดเฉพาะแถวของบัญชีภาษี (ภาษีซื้อ ภาษีขาย ภาษีหัก ณ ที่จ่ายค้างจ่าย) — ยอดเดบิต/เครดิตของแถวนั้น = ยอดภาษี ระบบเติมแฟ้มภาษีซื้อ/ภาษีขาย/ภ.ง.ด.3/53 ให้ ดูได้ที่แท็บภาษีของใบสำคัญ",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
 ]
 },
 {
@@ -31430,6 +31642,13 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ภาษีขายต้องอยู่ด้านเครดิต (แถวบัญชีภาษีขาย)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -31475,6 +31694,27 @@
 ]
 },
 {
+"th": "ภาษีซื้อ/ขาย: มูลค่าก่อนภาษี (ว่าง = ภาษี ÷ 7%) · ภงด3/53: จำนวนเงินที่จ่าย (ต้องมี)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ภาษีซื้อ/ขาย: เดือนที่ยื่น ดด/ปปปป — ว่าง = เดือนของวันที่ใบกำกับ (ได้ใบกำกับล่าช้า ใส่เดือนถัดไปได้)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ภาษีซื้อ/ขาย: เลขที่ใบกำกับภาษี (ต้องมี) · ภงด3/53: เลขที่หนังสือรับรอง (ว่างได้)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ภาษีซื้อขอคืนไม่ได้",
 "n": 1,
 "files": [
@@ -31493,6 +31733,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "ภาษีซื้อต้องอยู่ด้านเดบิต (แถวบัญชีภาษีซื้อ) — ลดหนี้/คืนสินค้า ป้อนที่แฟ้มภาษีซื้อ",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -31776,6 +32023,13 @@
 ]
 },
 {
+"th": "ภาษีหัก ณ ที่จ่ายต้องอยู่ด้านเครดิต (แถวบัญชีภาษีหัก ณ ที่จ่ายค้างจ่าย)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ภาษีหัก ณ ที่จ่ายที่เราหัก",
 "n": 1,
 "files": [
@@ -32011,6 +32265,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
+"th": "มี{0} แต่ไม่ได้ระบุคอลัมน์ \"ภาษี\" — ใส่ ภาษีซื้อ ภาษีขาย ภงด3 หรือ ภงด53 ในแถวของบัญชีภาษี",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -32277,13 +32538,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositRefunds.tsx"
-]
-},
-{
-"th": "มูลค่าก่อนภาษี",
-"n": 1,
-"files": [
-"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -32823,6 +33077,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ยอดก่อนภาษี",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -34598,13 +34859,6 @@
 },
 {
 "th": "ยื่นภาษีรวมในงวดที่",
-"n": 1,
-"files": [
-"apps/web/src/pages/tax/VatRegister.tsx"
-]
-},
-{
-"th": "ยื่นรวมในงวด",
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx"
@@ -36729,6 +36983,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Filing.tsx"
+]
+},
+{
+"th": "รายการ (เติมแฟ้มภาษีซื้อ/ขาย/หัก ณ ที่จ่าย)",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -39385,6 +39646,13 @@
 ]
 },
 {
+"th": "วันที่หนังสือรับรอง",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "วันที่หมดประกันต้องไม่ก่อนวันที่ขาย",
 "n": 1,
 "files": [
@@ -39494,6 +39762,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/index.ts"
+]
+},
+{
+"th": "วันที่ใบกำกับ \"{0}\" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "วันที่ใบกำกับภาษี / วันที่จ่าย (หนังสือรับรอง) — ว่าง = วันที่ใบสำคัญ",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -40708,10 +40990,24 @@
 ]
 },
 {
-"th": "สาขาที่",
+"th": "สาขาคู่ค้า",
 "n": 1,
 "files": [
-"apps/web/src/pages/payroll/Forms.tsx"
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "สาขาคู่ค้า \"{0}\" ต้องเป็นตัวเลข 5 หลัก (00000 = สำนักงานใหญ่)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "สาขาตามใบกำกับ 5 หลัก — 00000 หรือ \"สำนักงานใหญ่\" · ว่าง = ไม่ระบุ",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -40740,6 +41036,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "สาขาผู้ขาย",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -42644,6 +42947,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/PaySetup.tsx"
+]
+},
+{
+"th": "อัตราภาษี \"{0}\" ต้องเป็นตัวเลข 0–100",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -45139,13 +45449,6 @@
 ]
 },
 {
-"th": "เดือนภาษี",
-"n": 1,
-"files": [
-"apps/web/src/pages/payroll/Filing.tsx"
-]
-},
-{
 "th": "เดือนภาษี {0}",
 "n": 1,
 "files": [
@@ -47064,6 +47367,13 @@
 ]
 },
 {
+"th": "เลขที่ใบกำกับ \"{0}\" ยาวเกิน 30 ตัว",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "เลขที่ใบกำกับ/บิลผู้จำหน่าย / ลงวันที่",
 "n": 1,
 "files": [
@@ -47239,6 +47549,13 @@
 ]
 },
 {
+"th": "เลขประจำตัวผู้เสียภาษี 13 หลักของคู่ค้า (ระบบตรวจหลักสุดท้าย)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "เลขประจำตัวผู้เสียภาษีของกิจการ: {0} — แก้ที่ เริ่มระบบ › รายละเอียดกิจการ",
 "n": 1,
 "files": [
@@ -47299,6 +47616,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/parties.ts"
+]
+},
+{
+"th": "เลขผู้เสียภาษี {0}: {1}",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -49056,6 +49380,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "แถว {0} {1}: {2}",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
 ]
 },
 {
@@ -50879,6 +51210,13 @@
 ]
 },
 {
+"th": "ใบกำกับหลายใบในใบสำคัญเดียว = แยกแถวบัญชีภาษีหนึ่งแถวต่อหนึ่งใบกำกับ · ยกเลิกใบสำคัญ = ยกเลิกรายการภาษีที่นำเข้าด้วย",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
 "th": "ใบกำกับเดิม",
 "n": 1,
 "files": [
@@ -51562,6 +51900,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "ใส่เฉพาะแถวของบัญชีภาษี: ภาษีซื้อ (เดบิต) · ภาษีขาย (เครดิต) · ภงด3 / ภงด53 (ภาษีหัก ณ ที่จ่ายค้างจ่าย เครดิต) — ยอดเงินของแถว = ยอดภาษี ระบบเติมแฟ้มภาษีให้ · แถวอื่นเว้นว่าง",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -52517,6 +52862,13 @@
 ]
 },
 {
+"th": "ไม่มีจำนวนเงินที่จ่าย (คอลัมน์ \"ฐานภาษี\")",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ไม่มีชื่อกิจการ — แก้ที่ เริ่มระบบ › รายละเอียดกิจการ",
 "n": 1,
 "files": [
@@ -52528,6 +52880,13 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "ไม่มีชื่อผู้ถูกหักภาษี (คอลัมน์ \"ชื่อคู่ค้า\")",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -52857,6 +53216,13 @@
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ไม่มีเลขที่ใบกำกับภาษี",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {

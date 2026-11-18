@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { d, formatDate, JOURNAL_IMPORT_COLUMNS, mapJournalImport, ZERO, type ImportIssue, type JournalImportVoucher, type YearSystem } from '@buddy/core';
+import { d, formatDate, JOURNAL_IMPORT_COLUMNS, JOURNAL_IMPORT_TAX_LABEL, mapJournalImport, ZERO, type ImportIssue, type JournalImportVoucher, type YearSystem } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { AppError, badRequest, forbidden, parse, requireCompany } from '../../http.js';
 import { logActivity } from '../../audit.js';
@@ -11,6 +11,8 @@ import { allowedFor } from '../permissions.js';
 import { readTable } from '../trade-import.js';
 import { branchOf } from '../docs/payments.js';
 import { createJournal } from './journals.js';
+import { addManualVat } from '../vat.js';
+import { saveWht } from '../wht.js';
 
 /**
  * นำเข้าใบสำคัญจาก Excel (เจ้าของ 17/11/2569 ขั้นที่ 1) — ลงบัญชีด้วย createJournal เดียวกับหน้าจอสมุดรายวัน
@@ -20,7 +22,7 @@ import { createJournal } from './journals.js';
  */
 /** บริบทผู้ใช้จาก session (บริษัท ผู้ใช้ สาขา) — แบบเดียวกับที่ branchOf/createJournal ใช้ */
 type Ctx = Parameters<typeof branchOf>[1];
-export type JournalImportResult = { group: string; book: string; row: number; date: string; ref: string | null; description: string | null; lines: number; debit: string; voucher_no: string | null };
+export type JournalImportResult = { group: string; book: string; row: number; date: string; ref: string | null; description: string | null; lines: number; debit: string; voucher_no: string | null; taxes: number };
 
 export async function importJournals(db: Db, a: Ctx, vouchers: JournalImportVoucher[], parseErrors: ImportIssue[], commit: boolean) {
   const issues: ImportIssue[] = [...parseErrors];
@@ -46,7 +48,7 @@ export async function importJournals(db: Db, a: Ctx, vouchers: JournalImportVouc
   // แถวที่ผิดรูปแบบแล้ว (เช่น ไม่ดุล) ไม่ต้องลองบันทึกซ้ำ — แจ้งข้อผิดพลาดครั้งเดียว
   const badRows = new Set(parseErrors.map((e) => e.row));
   for (const v of vouchers) {
-    if (badRows.has(v.row) || v.lines.some((l) => badRows.has(l.row))) continue;
+    if (v.invalid || badRows.has(v.row) || v.lines.some((l) => badRows.has(l.row))) continue;
     const n0 = issues.length;
     const tag = `${v.book} กลุ่ม ${v.group}`;
     const book = bookBy.get(v.book.toUpperCase());
@@ -79,7 +81,28 @@ export async function importJournals(db: Db, a: Ctx, vouchers: JournalImportVouc
     await sql`SAVEPOINT journal_import`.execute(db);
     try {
       const j = await createJournal(db, a, x.input, style);
-      results.push({ group: x.v.group, book: x.v.book, row: x.v.row, date: x.v.date, ref: x.v.ref, description: x.v.description, lines: x.v.lines.length, debit: x.v.debit, voucher_no: commit ? j.voucher_no : null });
+      // ภาษีของแถว (เจ้าของเลือก ก 18/11/2569) — ฟังก์ชันเดียวกับแท็บภาษีของใบสำคัญ ผูก journal_id (ยกเลิกใบสำคัญ = ยกเลิกรายการภาษี)
+      let taxes = 0;
+      for (const [i, l] of x.v.lines.entries()) {
+        const t = l.tax;
+        if (!t) continue;
+        const date = t.date ?? x.v.date, dept = x.input.lines[i]!.department_id ?? null, desc = x.input.lines[i]!.description ?? null;
+        try {
+          if (t.kind === 'P' || t.kind === 'S') {
+            await addManualVat(db, a, t.kind, { tax_invoice_no: t.no!, tax_invoice_date: date, month: t.month ?? date.slice(0, 7), is_late: false, department_id: dept, description: desc,
+              party_name: t.party, party_tax_id: t.party_tax_id, party_tax_branch_no: t.party_branch, base_amount: t.base, vat_amount: t.amount, zero_rate_amount: '0', exempt_amount: '0',
+              nonclaim_base: '0', nonclaim_vat: '0', remark: null, doc_no: null, doc_date: null, journal_id: j.id, header_id: null });
+          } else {
+            await saveWht(db, a, null, { form_type: t.kind, certificate_no: t.no, certificate_date: date, is_late: false, supplier_id: null, payee_name: t.party!, payee_address: null,
+              payee_tax_id: t.party_tax_id, payee_tax_branch_no: t.party_branch, income_type: t.income_type ?? 'ค่าบริการ', condition: '1', paid_amount: t.base, rate: t.rate ?? '0', tax_amount: t.amount, header_id: null, journal_id: j.id });
+          }
+        } catch (e) {
+          if (e instanceof AppError) e.message = `แถว ${l.row} ${JOURNAL_IMPORT_TAX_LABEL[t.kind]}: ${e.message}`;
+          throw e;
+        }
+        taxes++;
+      }
+      results.push({ group: x.v.group, book: x.v.book, row: x.v.row, date: x.v.date, ref: x.v.ref, description: x.v.description, lines: x.v.lines.length, debit: x.v.debit, voucher_no: commit ? j.voucher_no : null, taxes });
       await sql.raw(commit ? 'RELEASE SAVEPOINT journal_import' : 'ROLLBACK TO SAVEPOINT journal_import').execute(db);
     } catch (e) {
       await sql`ROLLBACK TO SAVEPOINT journal_import`.execute(db);
@@ -107,22 +130,32 @@ export function journalImportRoutes(app: FastifyInstance, db: Db) {
     const acc = async (grp: string) => (await db.selectFrom('gl_account').select('account_no').where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('is_control', '=', false).where('status', '=', 'A')
       .where('account_no', 'like', `${grp}%`).orderBy('account_no').executeTakeFirst())?.account_no ?? '';
     const [exp, cash, accr] = [await acc('5'), await acc('111'), await acc('21')];
+    const role = async (r: string) => (await db.selectFrom('gl_default_account as x').innerJoin('gl_account as g', 'g.id', 'x.account_id').select('g.account_no')
+      .where('x.company_id', '=', a.companyId).where('x.deleted_at', 'is', null).where('x.role', '=', r).executeTakeFirst())?.account_no ?? '';
+    const [ivat, whtp] = [await role('INPUT_VAT'), await role('WHT_PAYABLE')];
     const date = formatDate(new Date().toISOString().slice(0, 10), co.year_system as YearSystem);
     const cols = JOURNAL_IMPORT_COLUMNS;
+    const pv = bk('PV', 1);
     const sample: Array<Record<string, string>> = [
-      { book: bk('PV', 1), group: '1', date, ref: 'INV-6901', description: 'จ่ายค่าไฟฟ้าเดือนตุลาคม', account: exp, line_description: 'ค่าไฟฟ้าสำนักงาน', debit: '1500', credit: '' },
-      { book: bk('PV', 1), group: '1', date, ref: '', description: '', account: cash, line_description: '', debit: '', credit: '1500' },
-      { book: bk('JV', 0), group: '2', date, ref: 'ADJ-01', description: 'ปรับปรุงค่าใช้จ่ายค้างจ่าย', account: exp, line_description: '', debit: '800', credit: '' },
-      { book: bk('JV', 0), group: '2', date, ref: '', description: '', account: accr || cash, line_description: '', debit: '', credit: '800' },
+      { book: pv, group: '1', date, ref: 'INV-6901', description: 'จ่ายค่าไฟฟ้าเดือนตุลาคม', account: exp, line_description: 'ค่าไฟฟ้าสำนักงาน', debit: '1500', credit: '' },
+      { book: pv, group: '1', date, ref: '', description: '', account: ivat || cash, line_description: '', debit: '105', credit: '', tax: 'ภาษีซื้อ', tax_no: 'INV-6901', tax_date: date, party: 'บริษัท ผู้ขาย จำกัด', party_tax_id: '0105550123451', party_branch: '00000', tax_base: '1500' },
+      { book: pv, group: '1', date, ref: '', description: '', account: cash, line_description: '', debit: '', credit: '1605' },
+      { book: pv, group: '2', date, ref: 'SV-0001', description: 'จ่ายค่าบริการทำความสะอาด', account: exp, line_description: '', debit: '2000', credit: '' },
+      { book: pv, group: '2', date, ref: '', description: '', account: whtp || accr || cash, line_description: '', debit: '', credit: '60', tax: 'ภงด53', party: 'บริษัท ตัวอย่าง จำกัด', party_tax_id: '', tax_base: '2000', tax_rate: '3', income_type: 'ค่าบริการ' },
+      { book: pv, group: '2', date, ref: '', description: '', account: cash, line_description: '', debit: '', credit: '1940' },
+      { book: bk('JV', 0), group: '3', date, ref: 'ADJ-01', description: 'ปรับปรุงค่าใช้จ่ายค้างจ่าย', account: exp, line_description: '', debit: '800', credit: '' },
+      { book: bk('JV', 0), group: '3', date, ref: '', description: '', account: accr || cash, line_description: '', debit: '', credit: '800' },
     ];
-    const textCols = cols.map((c, i) => (['book', 'group', 'date', 'ref', 'account', 'department', 'job'].includes(c.key) ? i : -1)).filter((i) => i >= 0);
+    const textCols = cols.map((c, i) => (['book', 'group', 'date', 'ref', 'account', 'department', 'job', 'tax_no', 'tax_date', 'tax_month', 'party_tax_id', 'party_branch'].includes(c.key) ? i : -1)).filter((i) => i >= 0);
     const help = [['คอลัมน์', 'จำเป็น', 'คำอธิบาย'], ...cols.map((c) => [c.th, c.required ? 'ต้องมี' : '', c.hint]), ['', '', ''],
       ['', '', 'หนึ่งแถว = หนึ่งบรรทัดบัญชี · แถวที่สมุดและเลขที่กลุ่มเดียวกันรวมเป็นใบสำคัญใบเดียว (วันที่ อ้างอิง คำอธิบาย ใส่แถวแรกของกลุ่ม) · ทุกใบยอดเดบิต = เครดิต'],
+      ['', '', 'ภาษี: ใส่คอลัมน์ "ภาษี" และรายละเอียดเฉพาะแถวของบัญชีภาษี (ภาษีซื้อ ภาษีขาย ภาษีหัก ณ ที่จ่ายค้างจ่าย) — ยอดเดบิต/เครดิตของแถวนั้น = ยอดภาษี ระบบเติมแฟ้มภาษีซื้อ/ภาษีขาย/ภ.ง.ด.3/53 ให้ ดูได้ที่แท็บภาษีของใบสำคัญ'],
+      ['', '', 'ใบกำกับหลายใบในใบสำคัญเดียว = แยกแถวบัญชีภาษีหนึ่งแถวต่อหนึ่งใบกำกับ · ยกเลิกใบสำคัญ = ยกเลิกรายการภาษีที่นำเข้าด้วย'],
       ['', '', 'กด "ตรวจแฟ้ม" ก่อน (ไม่บันทึก) แล้วจึง "นำเข้า" — ผิดใบเดียวไม่บันทึกเลย · ลบแถวตัวอย่างก่อนใช้ · ชื่อหัวคอลัมน์ห้ามแก้ (สลับลำดับได้) · บันทึกเป็น .xlsx หรือ .csv'],
       ['', '', `สมุดรายวันของบริษัทนี้: ${books.map((b) => b.prefix?.trim() || b.code).join(' ')}`]];
     reply.header('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').header('content-disposition', 'attachment; filename="import-journal.xlsx"');
     return buildXlsx([
-      { name: 'นำเข้า', rows: [cols.map((c) => c.th), ...sample.map((s) => cols.map((c) => s[c.key] ?? ''))], textCols, widths: cols.map((c) => (c.key.includes('description') ? 30 : 13)) },
+      { name: 'นำเข้า', rows: [cols.map((c) => c.th), ...sample.map((s) => cols.map((c) => s[c.key] ?? ''))], textCols, widths: cols.map((c) => (c.key.includes('description') || c.key === 'party' ? 30 : 13)) },
       { name: 'คำอธิบาย', rows: help, widths: [16, 9, 110] },
     ]);
   });
