@@ -16,6 +16,12 @@ import { taxIdCheckDigit } from '@buddy/core';
 
 const tid = (n: number) => { const b = `0105562${String(n).padStart(5, '0')}`; return b + taxIdCheckDigit(b); };
 let database: Database;
+
+// หน่วยนับของบริการ (เจ้าของ 18/11/2569: ทุกบรรทัดซื้อ/ขายที่คีย์ต้องมีหน่วยนับ) — หน่วยแรกของบริษัท
+const svcUnit = async () => {
+  const have = ((await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT as Array<{ id: string }> | undefined)?.[0]?.id;
+  return have ?? (await call('POST', '/api/v1/data-tables/20/rows', { name_th: 'ครั้ง', rate: 1 })).body.id as string;
+};
 let app: FastifyInstance;
 let cookie = '';
 
@@ -67,7 +73,7 @@ describe('RE = ใบเสร็จรับเงิน/ใบกำกับ�
     const acc = (n: string) => chart.find((x) => x.account_no === n)!.id;
     ids.tenant = (await call('POST', '/api/v1/customers', { code: 'LV0001', name: 'บริษัท ผู้เช่า จำกัด', tax_id: tid(1), tax_branch_no: '00000', address_1: '12 ซอยผู้เช่า', address_2: 'กรุงเทพฯ 10110' })).body.id;
     for (const [k, code, name, vat] of [['RENT', '90-RENT-000001', 'ค่าเช่าห้อง', '0'], ['UTIL', '90-UTIL-000001', 'ค่าน้ำ/ค่าไฟ', '1'], ['LATE', '90-LATE-000001', 'ค่าปรับชำระล่าช้า', '0']] as const) {
-      const r = await call('POST', '/api/v1/services', { code, name_th: name, vat_code: vat, accounts: { revenue: acc('4100-11') } });
+      const r = await call('POST', '/api/v1/services', { base_unit_id: await svcUnit(), code, name_th: name, vat_code: vat, accounts: { revenue: acc('4100-11') } });
       expect([code, r.status, r.body?.error?.message]).toEqual([code, 200, undefined]);
       ids[k] = r.body.id;
     }
@@ -113,7 +119,7 @@ describe('RE = ใบเสร็จรับเงิน/ใบกำกับ�
     expect([p.doc_no, p.doc_date.slice(0, 10)]).toEqual([re.body.doc_no, '2026-05-20']);
     // (5) รายการบริการ จำนวน มูลค่า (บรรทัดของบิลที่ชำระ)
     expect(p.detail.map((x: { kind: string; name: string; ref_amount: string }) => `${x.kind}:${x.name}:${x.ref_amount}`)).toEqual([
-      `bill:ขายเงินเชื่อ:4547.16`, 'item:ค่าเช่าห้อง  1  × 3,500.00:3500.00', 'item:ค่าน้ำ/ค่าไฟ  1  × 978.65:978.65', `bill:ขายเงินเชื่อ:107.55`, 'item:ค่าปรับชำระล่าช้า  1  × 107.55:107.55']);
+      `bill:ขายเงินเชื่อ:4547.16`, 'item:ค่าเช่าห้อง  1 ครั้ง × 3,500.00:3500.00', 'item:ค่าน้ำ/ค่าไฟ  1 ครั้ง × 978.65:978.65', `bill:ขายเงินเชื่อ:107.55`, 'item:ค่าปรับชำระล่าช้า  1 ครั้ง × 107.55:107.55']);
     // (6) ภาษีแยกจากมูลค่า + อัตรา · มูลค่าที่ไม่มี VAT แยกบรรทัด
     const tot = Object.fromEntries(p.totals.map((t: { label: string; value: string }) => [t.label, t.value]));
     expect(tot).toMatchObject({ 'รวมยอดชำระ': '4654.71', 'มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม': '978.65', 'ภาษีมูลค่าเพิ่ม 7%': '68.51', 'มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม': '3607.55', 'ยอดสุทธิ': '4654.71' });

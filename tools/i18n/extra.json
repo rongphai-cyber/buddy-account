@@ -1544,5 +1544,14 @@
  "ไม่พบเลขที่บัญชี {0} ในผังบัญชี — ตรวจเลขที่บัญชี (ถ้า Excel เปลี่ยนเป็นตัวเลข ให้ตั้งรูปแบบช่องเป็นข้อความแล้วพิมพ์ใหม่)": "Account {0} is not in the chart of accounts — check the account no. (if Excel turned it into a number, format the column as text and type it again)",
  "ไม่มีรายการภาษี": "No tax entries",
  "ไม่มีสิทธิ์แก้ไขใบสำคัญ — เลือก \"สร้างเป็นเอกสารใหม่\" หรือ \"ไม่นำเข้า\" แทน \"ทับเอกสารเดิม\"": "No right to edit vouchers — choose \"Create as a new voucher\" or \"Do not import\" instead of \"Overwrite existing\"",
- "— ดูเปรียบเทียบแล้วเลือกทีละใบ (ค่าเริ่มต้น \"ไม่นำเข้า\")": "— compare, then choose for each voucher (default \"Do not import\")"
+ "— ดูเปรียบเทียบแล้วเลือกทีละใบ (ค่าเริ่มต้น \"ไม่นำเข้า\")": "— compare, then choose for each voucher (default \"Do not import\")",
+ "· เลขผู้เสียภาษี": "· Tax ID",
+ "กำลังอ่านที่อยู่…": "Reading the address…",
+ "ต้องมีหน่วยนับ — เลือกหน่วย": "A unit is required — choose a unit",
+ "ที่อยู่คู่ค้า": "Party address",
+ "บรรทัดที่ {0}{1}: ยังไม่มีหน่วยนับ — เลือกหน่วยในช่อง \"หน่วย\" หรือกำหนดหน่วยนับหลักที่แฟ้มสินค้า": "Line {0}{1}: no unit yet — choose a unit in the Unit column, or set the base unit on the item",
+ "อ่านที่อยู่ไม่ได้": "Could not read the address",
+ "เลขผู้เสียภาษี {0}": "Tax ID {0}",
+ "ไม่มีที่อยู่ในแฟ้ม": "No address on file",
+ "ไม่มีที่อยู่ในแฟ้ม — ตรวจที่แฟ้ม{0}": "No address on file — check the {0} record"
 }

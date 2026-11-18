@@ -243,9 +243,10 @@ export function useHotkeys(map: HotkeyMap, _deps: unknown[] = [], opts?: { base?
 export function Field({ label, hint, error, children, wide, req }: { label: string; hint?: ReactNode; error?: string; children: ReactNode; wide?: boolean; req?: boolean }) {
   return (
     <label className={cx('field', wide && 'wide', error && 'has-err')}>
-      <span className="lbl">{label}{req && <b className="req" aria-hidden="true">*</b>}</span>
+      <span className="lbl">{label}{req && <b className="req" aria-hidden="true">*</b>}{typeof hint === 'string' && !error && <span className="tip" title={hint} aria-hidden="true">ⓘ</span>}</span>
       {children}
-      {error ? <span className="err-msg">{error}</span> : hint ? <span className="hint">{hint}</span> : null}
+      {/* คำอธิบายแบบข้อความ: หัวเอกสาร (head-grid) แสดงเป็น ⓘ ชี้เมาส์ดู ให้หัวเอกสารเตี้ย (เจ้าของ 18/11/2569) · มือถือ/ฟอร์มอื่นแสดงใต้ช่องตามเดิม */}
+      {error ? <span className="err-msg">{error}</span> : hint ? <span className={cx('hint', typeof hint === 'string' && 'txt')}>{hint}</span> : null}
     </label>
   );
 }

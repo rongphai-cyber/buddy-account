@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { allocateKit, computeDoc, d, dueDate, TRADE_KINDS, type TradeKind } from '@buddy/core';
+import { allocateKit, computeDoc, d, dueDate, missingUnitIssues, TRADE_KINDS, type TradeKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { previewQuery, previewSave } from './preview.js';
@@ -78,7 +78,8 @@ function checkAbbr(K: TradeKind, b: Body, calc: ReturnType<typeof computeDoc>) {
 }
 
 /** หัว + บรรทัด + วิธีชำระของเอกสาร (บันทึกใหม่หรือแก้ไข) แล้วลงบัญชีในทรานแซกชันเดียวกัน */
-export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Body) {
+/** opt.requireUnit: บันทึกจากหน้าจอ (คีย์เอง) — ทุกบรรทัดต้องมีหน่วยนับ (เจ้าของ 18/11/2569) · API/นำเข้า ใช้หน่วยนับหลักของสินค้าเมื่อไม่ส่งมา ตามเดิม */
+export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Body, opt: { requireUnit?: boolean } = {}) {
   const dt = await db.selectFrom('md_doc_type').select(['id', 'doc_class', 'warehouse_id', 'department_id', 'vat_rate', 'price_type', 'status']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!dt || dt.doc_class !== K.cls) throw badRequest(`เลือกประเภทเอกสารของ${K.label}`);
   if (!id && dt.status !== 'A') throw badRequest('ประเภทเอกสารนี้เลิกใช้แล้ว');
@@ -101,6 +102,9 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     if (K.module === 'AP' && it.item_type === '4') throw badRequest(`บรรทัดที่ ${i + 1}: ${it.code} เป็นรหัสรายได้ ใช้ในเอกสารซื้อไม่ได้`);
     if (!(Number(l.qty) !== 0) && !(Number(l.unit_price) !== 0)) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวนและราคา`);
   });
+  // ทุกบรรทัดซื้อ/ขายต้องมีหน่วยนับ (เจ้าของ 18/11/2569) — ไม่ส่งมา = หน่วยนับหลักของสินค้า · ยังไม่มี = ไม่รับ
+  const noUnit = !opt.requireUnit ? [] : missingUnitIssues(b.lines.map((l) => ({ unit_id: l.unit_id ?? byId.get(l.item_id)!.base_unit_id, code: byId.get(l.item_id)!.code })));
+  if (noUnit.length) throw badRequest(noUnit[0]!.message, noUnit.map((x) => ({ field: 'unit_id', line: x.line, message: x.message })));
   // รหัสที่อ้างถึง (แผนก พนักงานขาย สถานที่ส่ง คลัง หน่วยนับ วิธีชำระ) ต้องเป็นของบริษัทนี้ — FK ไม่ตรวจบริษัท
   await checkJobs(db, a.companyId, [{ id: b.project_id }, ...b.lines.map((l, i) => ({ id: l.project_id, line: i + 1 }))], await jobsOfDoc(db, a.companyId, id));
   await checkOwned(db, a.companyId, [
@@ -393,9 +397,10 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
         deliveries, cancels, payments, deposits, wht: K.payments ? (await readMoneyParts(db, a.companyId, id)).wht : [], settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !h.is_opening && !settled.some((x) => x.doc_status !== 'C') && !(deliveries as unknown[]).length };
     });
     // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
-    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveTrade(tx, a, K, id ?? null, parse(tradeBody, req.body))); });
-    app.post(base, async (req) => saveTrade(db, requireCompany(req), K, null, parse(tradeBody, req.body)));
-    app.put(`${base}/:id`, async (req) => saveTrade(db, requireCompany(req), K, parse(z.object({ id: uuid }), req.params).id, parse(tradeBody, req.body)));
+    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveTrade(tx, a, K, id ?? null, parse(tradeBody, req.body), { requireUnit: !a.apiKeyId })); });
+    // คีย์จากหน้าจอ (session) ต้องมีหน่วยทุกบรรทัด · กุญแจ API (WTS-POS/Living ส่งเอกสาร) ใช้หน่วยนับหลักของสินค้าตามเดิม
+    app.post(base, async (req) => { const a = requireCompany(req); return saveTrade(db, a, K, null, parse(tradeBody, req.body), { requireUnit: !a.apiKeyId }); });
+    app.put(`${base}/:id`, async (req) => { const a = requireCompany(req); return saveTrade(db, a, K, parse(z.object({ id: uuid }), req.params).id, parse(tradeBody, req.body), { requireUnit: !a.apiKeyId }); });
     app.post(`${base}/:id/cancel`, async (req) => {
       const a = requireCompany(req);
       const { id } = parse(z.object({ id: uuid }), req.params);

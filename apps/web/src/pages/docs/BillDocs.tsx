@@ -5,6 +5,7 @@ import { BILL_KINDS, d, todayIso, type BillKind } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
+import { PartyAddress, savedPartyOf } from '../../components/PartyAddress';
 import { openDescribe, type OpenParty } from './SettleDocs';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
@@ -176,6 +177,7 @@ export function BillFormPage({ path }: { path: string }) {
         <div className="head-grid trade-head">
           <div className="col">
             <Field label={`รหัส${partyWord(K)}`} req><SearchPick<OpenParty> endpoint={partyEndpoint(K)} params={{ open: '1' }} addNew={false} value={h.party} required disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={openDescribe} onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
+            <PartyAddress kind={K.party} party={h.party} saved={savedPartyOf(cur.data)} />
             <Field label="เงื่อนไขการชำระเงิน"><input value={h.payment_terms} maxLength={60} disabled={ro} onChange={(e) => set({ payment_terms: e.target.value })} /></Field>
             <Field label="หมายเหตุ"><input value={h.remark} maxLength={200} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
           </div>

@@ -20,6 +20,12 @@ import { taxIdCheckDigit } from '@buddy/core';
 
 const tid = (n: number) => { const b = `0105562${String(n).padStart(5, '0')}`; return b + taxIdCheckDigit(b); };
 let database: Database;
+
+// หน่วยนับของบริการ (เจ้าของ 18/11/2569: ทุกบรรทัดซื้อ/ขายที่คีย์ต้องมีหน่วยนับ) — หน่วยแรกของบริษัท
+const svcUnit = async () => {
+  const have = ((await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT as Array<{ id: string }> | undefined)?.[0]?.id;
+  return have ?? (await call('POST', '/api/v1/data-tables/20/rows', { name_th: 'ครั้ง', rate: 1 })).body.id as string;
+};
 let app: FastifyInstance;
 let cookie = '';
 let key = '';
@@ -85,7 +91,7 @@ describe('มัดจำรับ: ใบเสร็จหักมัดจ�
     ids.tenant = (await call('POST', '/api/v1/customers', { code: 'R101', name: 'ผู้เช่าห้อง 101', tax_id: tid(1) })).body.id;
     ids.tenant2 = (await call('POST', '/api/v1/customers', { code: 'R102', name: 'ผู้เช่าห้อง 102', tax_id: tid(2) })).body.id;
     for (const [k, code, name, vat] of [['RENT', '90-RENT-000001', 'ค่าเช่าห้อง', '0'], ['UTIL', '90-UTIL-000001', 'ค่าน้ำ/ค่าไฟ', '1'], ['DAMAGE', '90-DAMG-000001', 'ค่าเสียหายห้องพัก', '0']] as const) {
-      const r = await call('POST', '/api/v1/services', { code, name_th: name, vat_code: vat, accounts: { revenue: acc('4100-11') } });
+      const r = await call('POST', '/api/v1/services', { base_unit_id: await svcUnit(), code, name_th: name, vat_code: vat, accounts: { revenue: acc('4100-11') } });
       expect([code, r.status, r.body?.error?.message]).toEqual([code, 200, undefined]);
       ids[k] = r.body.id;
     }

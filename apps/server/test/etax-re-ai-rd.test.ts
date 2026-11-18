@@ -21,6 +21,12 @@ import { ETAX_NOT_TAX_INVOICE, taxIdCheckDigit } from '@buddy/core';
 
 const tid = (n: number) => { const b = `0105564${String(n).padStart(5, '0')}`; return b + taxIdCheckDigit(b); };
 let database: Database;
+
+// หน่วยนับของบริการ (เจ้าของ 18/11/2569: ทุกบรรทัดซื้อ/ขายที่คีย์ต้องมีหน่วยนับ) — หน่วยแรกของบริษัท
+const svcUnit = async () => {
+  const have = ((await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT as Array<{ id: string }> | undefined)?.[0]?.id;
+  return have ?? (await call('POST', '/api/v1/data-tables/20/rows', { code: 'EA', name_th: 'ครั้ง', rate: 1 })).body.id as string;
+};
 let app: FastifyInstance;
 let cookie = '';
 
@@ -78,7 +84,7 @@ describe('e-Tax XML: RE T03 · AI T03 · RD 81 (HANDOFF ข้อ 89)', () => {
     const acc = (n: string) => chart.find((x) => x.account_no === n)!.id;
     ids.cus = (await call('POST', '/api/v1/customers', { code: 'C001', name: 'บริษัท ผู้เช่า จำกัด', tax_id: tid(1), tax_branch_no: '00000', address_1: '12 ซอยผู้เช่า กรุงเทพฯ', zip_code: '10110' })).body.id;
     for (const [k, code, name, vat] of [['RENT', '90-RENT-000001', 'ค่าเช่าห้อง', '0'], ['WATER', '90-WATR-000001', 'ค่าน้ำ', '1'], ['ELEC', '90-ELEC-000001', 'ค่าไฟ', '1'], ['LATE', '90-LATE-000001', 'ค่าปรับชำระล่าช้า', '0']] as const) {
-      const r = await call('POST', '/api/v1/services', { code, name_th: name, vat_code: vat, accounts: { revenue: acc('4100-11') } });
+      const r = await call('POST', '/api/v1/services', { base_unit_id: await svcUnit(), code, name_th: name, vat_code: vat, accounts: { revenue: acc('4100-11') } });
       expect([code, r.status, r.body?.error?.message]).toEqual([code, 200, undefined]);
       ids[k] = r.body.id;
     }

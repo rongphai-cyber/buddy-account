@@ -1038,6 +1038,12 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', '/api/v1/sales-invoices', { ...iv, lines: [] })).body.error.message).toMatch(/อย่างน้อย 1 บรรทัด/);
     expect((await call('POST', '/api/v1/sales-invoices', { ...iv, discount_text: 'xx' })).body.error.message).toMatch(/ส่วนลด/);
     if (svc) expect((await call('POST', '/api/v1/sales-invoices', { ...iv, lines: [{ item_id: svc, qty: 1, unit_price: 1 }] })).body.error.message).toMatch(/ค่าใช้จ่าย/);
+    // ทุกบรรทัดซื้อ/ขายต้องมีหน่วยนับ (เจ้าของ 18/11/2569): ไม่ส่งหน่วย + สินค้าไม่มีหน่วยนับหลัก = ไม่รับ บอกบรรทัดและวิธีแก้
+    const bu = (await sql<{ u: string | null }>`SELECT base_unit_id AS u FROM md_item WHERE id = ${cpu}`.execute(database.db)).rows[0]!.u;
+    await sql`UPDATE md_item SET base_unit_id = NULL WHERE id = ${cpu}`.execute(database.db);
+    expect((await call('POST', '/api/v1/sales-invoices', iv)).body.error.message).toMatch(/^บรรทัดที่ 1 \(.+\): ยังไม่มีหน่วยนับ — เลือกหน่วยในช่อง "หน่วย"/);
+    expect((await call('POST', '/api/v1/sales-invoices/posting-preview', iv)).body.error.message).toMatch(/ยังไม่มีหน่วยนับ/);
+    await sql`UPDATE md_item SET base_unit_id = ${bu} WHERE id = ${cpu}`.execute(database.db);
     const r = await call('POST', '/api/v1/sales-invoices', iv);
     expect(r.body.error?.message ?? 'ok').toBe('ok');
     expect(r.body).toMatchObject({ doc_no: 'IV0000003', net_amount: '14445.00' });   // 15,000 − 10% = 13,500 + VAT 945

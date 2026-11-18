@@ -259,3 +259,42 @@ td .lk-add:not(:focus-within):not(:hover) > .icon-btn { display: none; }
 @media print { .ledger-report tr.acc-head { break-after: avoid; } }
 .ledger-report tr.opening td { background: var(--surface-2); font-weight: 600; }
 .notebox.ok-box { background: var(--ok-soft); color: var(--ok); }
+/* Document screens, compact (owner 18/11/2569): toolbar stuck under the app header in one row,
+   short header block (hints become (i) tooltips), lines fill the screen, key-hint bar pinned to the bottom,
+   party address under the code */
+.toolbar { gap: 4px; padding: 4px 6px; align-items: center; }
+.toolbar button, .toolbar .btn, .toolbar select { min-height: 30px; padding: 3px 8px; font-size: 13px; gap: 4px; }
+.toolbar kbd { font-size: 10px; padding: 0 3px; }
+.toolbar .tb-group + .tb-group { padding-left: 6px; }
+.field .lbl .tip { display: none; margin-left: 4px; color: var(--tone); font-weight: 700; cursor: help; }
+.head-grid .field .lbl .tip { display: inline; }
+.head-grid .field > .hint.txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }   /* still read by screen readers */
+.head-grid { padding: 8px 12px; gap: 8px 16px; }
+.head-grid .col { gap: 6px 10px; }
+.head-grid .field { gap: 1px; }
+.head-grid .field .lbl { font-size: 12px; }
+.head-grid input, .head-grid select { min-height: 30px; padding: 3px 7px; }
+@media (min-width: 1280px) {
+  .head-grid.trade-head { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .trade-head .col + .col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* the party code takes the whole left column so the name is readable; its address sits right under it */
+.trade-head .col:first-child > .field:first-child { grid-column: 1 / -1; }
+.party-addr { grid-column: 1 / -1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12.5px; line-height: 1.35; color: var(--muted);
+  background: var(--surface); border: 1px dashed var(--line); border-radius: 6px; padding: 3px 8px; overflow-wrap: anywhere; max-height: calc(2.7em + 8px); }
+.party-addr b { color: var(--ink); font-weight: 600; }
+.party-addr .warn-text { color: var(--warn); }
+.page > .keyhints { position: sticky; bottom: 0; z-index: 5; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none;
+  margin: 0 -8px -24px; padding: 5px 12px; background: var(--surface-2); border-top: 1px solid var(--line); font-size: 12px; }
+.page > .keyhints::-webkit-scrollbar { display: none; }
+.page > .keyhints > span { flex: none; }
+@media (max-width: 900px) {
+  .page > .keyhints { position: static; flex-wrap: wrap; white-space: normal; margin: 0; padding: 8px 0; background: transparent; }
+}
+@media (max-width: 640px) {
+  .toolbar { position: static; }   /* phone: the wrapped toolbar would cover half the screen if it stuck */
+  .toolbar kbd { display: none; }
+  .head-grid .field .lbl .tip { display: none; }
+  .head-grid .field > .hint.txt { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+}
+.lines td.cell-err select, .lines td.cell-err input { border-color: var(--bad); background: var(--bad-soft); }

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CASH_KINDS, computeDoc, d, DEPOSIT_REFUND, DOC_CLASSES, dueDate, fmt, settlementTotals, todayIso, wht50FormOf, type CashKind } from '@buddy/core';
+import { CASH_KINDS, type CashKind, computeDoc, d, DEPOSIT_REFUND, DOC_CLASSES, dueDate, fillRowCount, fmt, settlementTotals, todayIso, wht50FormOf } from '@buddy/core';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
 import { WhtCert } from './WhtCert';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, SearchPick } from '../../components/LkSelect';
+import { PartyAddress, savedPartyOf } from '../../components/PartyAddress';
 import { BranchPick } from '../../components/BranchPick';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
@@ -249,6 +250,13 @@ export function CashFormPage({ path }: { path: string }) {
     catch (e) { setAskCancel(false); setErr(e); }
   };
   const addLine = () => { setLines((ls) => [...ls, blankLine()]); };
+  // บรรทัดว่างให้พอดีจอ (เจ้าของ 18/11/2569) — บรรทัดว่างไม่บันทึก ไม่นับ
+  const hOn = !!h;
+  useEffect(() => {
+    if (!hOn || ro) return;
+    const want = fillRowCount(window.innerHeight);
+    if (lines.length < want) setLines((ls) => [...ls, ...Array.from({ length: want - ls.length }, blankLine)]);
+  }, [hOn, ro, lines.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F7: () => setTab('pay'), 'Ctrl+F7': id ? () => setTab('vat') : undefined, 'Ctrl+F10': K.whtEntries ? () => setTab('wht') : undefined, 'Ctrl+Insert': ro ? undefined : addLine,
     'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
@@ -289,6 +297,7 @@ export function CashFormPage({ path }: { path: string }) {
               <SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required={K.partyRequired} disabled={ro}
                 onEmptyEnter={K.partyRequired ? undefined : (el) => noPartyEnter(el)} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null; on_hold?: boolean }) => holdTag(K.party, r) + (r.tax_id ?? '')}
                 onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
+            <PartyAddress kind={K.party} party={h.party} saved={savedPartyOf(cur.data)} />
             {!h.party && !K.partyRequired && <Field label="ชื่อ (ไม่มีรหัส)" req><input value={h.party_name} data-noparty-name maxLength={200} disabled={ro} onChange={(e) => set({ party_name: e.target.value })} /></Field>}
             {K.module === 'AP' && <Field label="เลขที่บิล / ลงวันที่" hint="ใบกำกับภาษีที่ได้รับจากผู้จำหน่าย"><div className="pair"><input value={h.ref_no} maxLength={30} disabled={ro} onChange={(e) => set({ ref_no: e.target.value })} aria-label="เลขที่บิล" /><DateInput value={h.ref_date} disabled={ro} onChange={(v) => set({ ref_date: v })} /></div></Field>}
             {h.party && <Field label="สาขา#"><BranchPick value={h.party_tax_branch_no} options={branches.data?.tax_branches} disabled={ro} onChange={(v) => set({ party_tax_branch_no: v })} /></Field>}

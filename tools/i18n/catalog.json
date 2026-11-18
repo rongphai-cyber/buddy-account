@@ -336,9 +336,10 @@
 },
 {
 "th": "ลูกค้า",
-"n": 52,
+"n": 53,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
+"apps/web/src/components/PartyAddress.tsx",
 "apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
@@ -455,6 +456,44 @@
 ]
 },
 {
+"th": "ผู้จำหน่าย",
+"n": 45,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/components/PartyAddress.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/HoldNote.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/parties.ts",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/docs/bills.ts",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เลขที่บัญชี",
 "n": 45,
 "files": [
@@ -489,43 +528,6 @@
 "packages/core/src/payroll-import.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "ผู้จำหน่าย",
-"n": 44,
-"files": [
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/components/LkSelect.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/HoldNote.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/parties.ts",
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/docs/bills.ts",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1493,6 +1495,24 @@
 ]
 },
 {
+"th": "หน่วย",
+"n": 19,
+"files": [
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/doc-line-rules.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "พิมพ์",
 "n": 18,
 "files": [
@@ -1536,23 +1556,6 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "หน่วย",
-"n": 18,
-"files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/stock.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1748,6 +1751,24 @@
 ]
 },
 {
+"th": "สำนักงานใหญ่",
+"n": 15,
+"files": [
+"apps/web/src/components/DocBranch.tsx",
+"apps/web/src/components/PartyAddress.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/payroll/forms.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/payroll-files.ts",
+"packages/core/src/taxid.ts"
+]
+},
+{
 "th": "สินทรัพย์",
 "n": 15,
 "files": [
@@ -1882,23 +1903,6 @@
 "apps/server/src/modules/docs/stockopening.ts",
 "apps/server/src/modules/docs/trade.ts",
 "apps/server/src/modules/gl/routes.ts"
-]
-},
-{
-"th": "สำนักงานใหญ่",
-"n": 14,
-"files": [
-"apps/web/src/components/DocBranch.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/routes.ts",
-"apps/server/src/modules/payroll/forms.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/payroll-files.ts",
-"packages/core/src/taxid.ts"
 ]
 },
 {
@@ -3323,6 +3327,19 @@
 ]
 },
 {
+"th": "สาขา {0}",
+"n": 7,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/PartyAddress.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
 "th": "อัตรา %",
 "n": 7,
 "files": [
@@ -3717,18 +3734,6 @@
 "apps/web/src/pages/gl/JournalImport.tsx",
 "apps/web/src/pages/gl/Journals.tsx",
 "packages/core/src/journal-import.ts"
-]
-},
-{
-"th": "สาขา {0}",
-"n": 6,
-"files": [
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/reports/JobCost.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx"
 ]
 },
 {
@@ -17396,6 +17401,13 @@
 ]
 },
 {
+"th": "· เลขผู้เสียภาษี",
+"n": 1,
+"files": [
+"apps/web/src/components/PartyAddress.tsx"
+]
+},
+{
 "th": "· เลขผู้เสียภาษีในบิล {0} {1} (อ่านผิดหรือบิลพิมพ์ผิด)",
 "n": 1,
 "files": [
@@ -18198,6 +18210,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Signup.tsx"
+]
+},
+{
+"th": "กำลังอ่านที่อยู่…",
+"n": 1,
+"files": [
+"apps/web/src/components/PartyAddress.tsx"
 ]
 },
 {
@@ -24830,6 +24849,13 @@
 ]
 },
 {
+"th": "ต้องมีหน่วยนับ — เลือกหน่วย",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ต้องมีอย่างน้อย 1 คอลัมน์",
 "n": 1,
 "files": [
@@ -25464,6 +25490,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Forms.tsx"
+]
+},
+{
+"th": "ที่อยู่คู่ค้า",
+"n": 1,
+"files": [
+"apps/web/src/components/PartyAddress.tsx"
 ]
 },
 {
@@ -26647,6 +26680,13 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "บรรทัดที่ {0}{1}: ยังไม่มีหน่วยนับ — เลือกหน่วยในช่อง \"หน่วย\" หรือกำหนดหน่วยนับหลักที่แฟ้มสินค้า",
+"n": 1,
+"files": [
+"packages/core/src/doc-line-rules.ts"
 ]
 },
 {
@@ -43478,6 +43518,13 @@
 ]
 },
 {
+"th": "อ่านที่อยู่ไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/components/PartyAddress.tsx"
+]
+},
+{
 "th": "อ่านบิล",
 "n": 1,
 "files": [
@@ -47920,6 +47967,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocTaxTabs.tsx"
+]
+},
+{
+"th": "เลขผู้เสียภาษี {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/PartyAddress.tsx"
 ]
 },
 {
@@ -53345,6 +53399,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
+]
+},
+{
+"th": "ไม่มีที่อยู่ในแฟ้ม",
+"n": 1,
+"files": [
+"apps/web/src/components/PartyAddress.tsx"
+]
+},
+{
+"th": "ไม่มีที่อยู่ในแฟ้ม — ตรวจที่แฟ้ม{0}",
+"n": 1,
+"files": [
+"apps/web/src/components/PartyAddress.tsx"
 ]
 },
 {

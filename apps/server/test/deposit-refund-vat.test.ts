@@ -20,6 +20,12 @@ import { taxIdCheckDigit } from '@buddy/core';
 
 const tid = (n: number) => { const b = `0105563${String(n).padStart(5, '0')}`; return b + taxIdCheckDigit(b); };
 let database: Database;
+
+// หน่วยนับของบริการ (เจ้าของ 18/11/2569: ทุกบรรทัดซื้อ/ขายที่คีย์ต้องมีหน่วยนับ) — หน่วยแรกของบริษัท
+const svcUnit = async () => {
+  const have = ((await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT as Array<{ id: string }> | undefined)?.[0]?.id;
+  return have ?? (await call('POST', '/api/v1/data-tables/20/rows', { name_th: 'ครั้ง', rate: 1 })).body.id as string;
+};
 let app: FastifyInstance;
 let cookie = '';
 
@@ -76,7 +82,7 @@ describe('ใบคืนเงินมัดจำที่มี VAT = ใบ
       { seq: String(pms.length + 1).padStart(2, '0'), code: 'TO', name_th: 'โอนออกจากธนาคาร', name_en: null, kind: 'OTHER', creates_cheque: false, gl_account_id: acc('1114-02'), bank_account_id: null, status: 'A' }] });
     expect([put.status, put.body?.error?.message]).toEqual([200, undefined]);
     for (const m of (await call('GET', '/api/v1/payment-methods/P')).body as Array<{ id: string; code: string }>) ids[`pm:${m.code}`] = m.id;
-    const svc = await call('POST', '/api/v1/services', { code: '90-SVCS-000001', name_th: 'ค่าบริการ', vat_code: '0', accounts: { revenue: acc('4100-11') } });
+    const svc = await call('POST', '/api/v1/services', { base_unit_id: await svcUnit(), code: '90-SVCS-000001', name_th: 'ค่าบริการ', vat_code: '0', accounts: { revenue: acc('4100-11') } });
     expect([svc.status, svc.body?.error?.message]).toEqual([200, undefined]);
     ids.svc = svc.body.id;
     for (const c of ['AI', 'IV', 'RE', 'RD']) ids[`type:${c}`] = (await call('GET', `/api/v1/trade-defaults/${c}`)).body.types[0]?.id;
@@ -241,7 +247,7 @@ describe('ใบคืนเงินมัดจำที่มี VAT = ใบ
   it('VAT advance deducted in a mixed bill comes off the VAT part only — VAT on what is left (owner 12/11/2569)', async () => {
     // ค่าเช่า 4,500 (ยกเว้น) + ค่าบริการ 2,000 (มี VAT) หักเงินล่วงหน้ามี VAT 1,000 (+VAT 70 จ่ายตอนรับแล้ว) → VAT 70 จาก 1,000 ที่เหลือ · ยอด 5,570
     const chart = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string }>;
-    const s2 = await call('POST', '/api/v1/services', { code: '90-SVCS-000002', name_th: 'ค่าบริการทำความสะอาด', vat_code: '1', accounts: { revenue: chart.find((x) => x.account_no === '4100-11')!.id } });
+    const s2 = await call('POST', '/api/v1/services', { base_unit_id: await svcUnit(), code: '90-SVCS-000002', name_th: 'ค่าบริการทำความสะอาด', vat_code: '1', accounts: { revenue: chart.find((x) => x.account_no === '4100-11')!.id } });
     expect([s2.status, s2.body?.error?.message]).toEqual([200, undefined]);
     const adv = await call('POST', '/api/v1/ar-deposits', { ...ai('2', 1000), doc_date: '2026-08-01' });
     expect([adv.status, adv.body.net_amount]).toEqual([200, '1070.00']);

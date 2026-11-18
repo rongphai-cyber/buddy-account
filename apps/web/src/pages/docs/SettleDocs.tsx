@@ -7,6 +7,7 @@ import { HoldNote, holdTag } from './HoldNote';
 import { WhtCert } from './WhtCert';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
+import { PartyAddress, savedPartyOf } from '../../components/PartyAddress';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys, useYearSystem } from '../../ui';
 import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 import { DocBranch, useDocBranch } from '../../components/DocBranch';
@@ -280,6 +281,7 @@ export function SettleFormPage({ path }: { path: string }) {
           <div className="col">
             <Field label={`รหัส${partyWord(K)}`} req><SearchPick<OpenParty> endpoint={partyEndpoint(K)} params={{ open: '1' }} addNew={false} value={h.party} required disabled={ro || !!id} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: OpenParty) => holdTag(K.party, r) + openDescribe(r)}
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
+            <PartyAddress kind={K.party} party={h.party} saved={savedPartyOf(cur.data)} />
             {!ro && <Field label={K.module === 'AR' ? 'อ้างใบวางบิล' : 'อ้างใบรับวางบิล'} hint="เลือกแล้วติ๊กบิลทุกใบในใบวางบิลให้ (ยอดค้างเต็ม) — แก้ยอดได้"><select value={billRef} disabled={!h.party} onChange={(e) => {
               const b = bills.data?.rows.find((x) => x.id === e.target.value); setBillRef(e.target.value);
               if (!b) return;
