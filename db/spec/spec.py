@@ -660,7 +660,21 @@ add(T('md_customer_ship_to', 'สถานที่ส่งของของ�
   *ADDR(),
   C('phone', 'str60', th='โทรศัพท์', src='ARSHIP.TELNUM'),
   C('contact', 'str60', th='ผู้ติดต่อ', src='ARSHIP.CONTACT'),
+  C('branch_no', 'code5', th='สาขาของลูกค้าที่สถานที่นี้สังกัด (ใหม่ — เจ้าของ 18/11/2569 · ว่าง = ใช้ได้ทุกสาขา)'),
 ], uniq=[('company_id','customer_id','code')], note="CUSCOD='@@@@@@@@@@' ใน Express = สถานที่ส่งใช้ร่วมทุกลูกค้า → customer_id ว่าง"))
+
+add(T('md_customer_branch', 'สาขาของลูกค้า — Bill to ออกใบกำกับในนามสาขา (ใหม่ — เจ้าของ 18/11/2569: สำนักงานสั่งสินค้าให้สาขา ออกบิลถึงสาขานั้นโดยตรง)', 'md', cols=[
+  lk('customer_id', 'md_customer', 'ลูกค้า (บริษัทเดียวกัน — ลูกหนี้ยังอยู่ที่รหัสลูกค้านี้)', nn=True),
+  C('branch_no', 'code5', nn=True, th='เลขที่สาขาตามกรมสรรพากร 5 หลัก (สำนักงานใหญ่ 00000 = ที่อยู่ในแฟ้มลูกค้า)'),
+  C('name', 'str120', nn=True, th='ชื่อสาขา เช่น สาขาเชียงใหม่'),
+  C('address_1', 'str100', th='ที่อยู่ 1'),
+  C('address_2', 'str100', th='ที่อยู่ 2'),
+  C('address_3', 'str100', th='ที่อยู่ 3'),
+  C('zip_code', 'code10', th='รหัสไปรษณีย์'),
+  *ADDR(),
+  C('phone', 'str60', th='โทรศัพท์'),
+  C('contact', 'str60', th='ผู้ติดต่อ'),
+], uniq=[('company_id','customer_id','branch_no')], note='ใบกำกับภาษี/รายงานภาษีขายใช้ชื่อลูกค้า + ที่อยู่และเลขที่สาขานี้ (snapshot ใน doc_header) · Express ไม่มีแฟ้มนี้ (Bill to ของ Express = รหัสลูกค้าอื่น)'))
 
 add(T('md_supplier', 'ผู้จำหน่าย / เจ้าหนี้', 'md', express='APMAS', cols=[
   C('code', 'code20', nn=True, th='รหัสผู้จำหน่าย', src='APMAS.SUPCOD'),

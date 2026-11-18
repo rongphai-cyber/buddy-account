@@ -270,6 +270,7 @@ export function CashFormPage({ path }: { path: string }) {
   const docNo = id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '');
   return (
     <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone={TONE(K)} style={bookStyle(tColor)}>
+      <div className="doc-sticky">
       <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} /><SourceStamp doc={cur.data as Parameters<typeof SourceStamp>[0]['doc']} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}
           {K.deposit && id && cur.data?.remaining != null && <Pill tone={d(cur.data.remaining).isZero() ? 'd' : 'm'}>มัดจำคงเหลือ {fmt(cur.data.remaining)}</Pill>}</span></div>
@@ -287,6 +288,7 @@ export function CashFormPage({ path }: { path: string }) {
       </div>
       <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
       <TypeNotice show={!id && !!h && !h.doc_type_id} />
+      </div>
       {ed.dialog}
       <ErrorBox error={err ?? cur.error} />
       {payAsk && h && <PayChoiceDialog direction={K.direction} due={t.due} other={t.other} onChoose={choosePay} onClose={() => setPayAsk(null)} />}
@@ -364,7 +366,10 @@ export function CashFormPage({ path }: { path: string }) {
         </div>
       </div>}
       {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['F7', 'ชำระโดยอื่น'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+      <div className="page-foot">
+        {calc && h && <div className="sum-strip" aria-label="สรุปยอด"><span>รายการ <b>{used.length}</b></span><span>จำนวนเงิน <b><Money v={calc.amount} /></b></span>{!d(calc.vat_amount).isZero() && <span>VAT <b><Money v={calc.vat_amount} /></b></span>}<span className="grand">รวมทั้งสิ้น <b><Money v={calc.net_amount} /></b></span></div>}
+        <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['F7', 'ชำระโดยอื่น'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+      </div>
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ) · เช็คออกจากทะเบียน{K.whtEntries ? ' · ภาษีหัก ณ ที่จ่ายยกเลิก' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
       </Confirm>}

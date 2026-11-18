@@ -1915,6 +1915,65 @@ export interface MdCustomerShipToTable {
   phone: Gen<string | null>;
   /** ผู้ติดต่อ */
   contact: Gen<string | null>;
+  /** สาขาของลูกค้าที่สถานที่นี้สังกัด (ใหม่ — เจ้าของ 18/11/2569 · ว่าง = ใช้ได้ทุกสาขา) */
+  branch_no: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** สาขาของลูกค้า — Bill to ออกใบกำกับในนามสาขา (ใหม่ — เจ้าของ 18/11/2569: สำนักงานสั่งสินค้าให้สาขา ออกบิลถึงสาขานั้นโดยตรง) */
+export interface MdCustomerBranchTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ลูกค้า (บริษัทเดียวกัน — ลูกหนี้ยังอยู่ที่รหัสลูกค้านี้) */
+  customer_id: string;
+  /** เลขที่สาขาตามกรมสรรพากร 5 หลัก (สำนักงานใหญ่ 00000 = ที่อยู่ในแฟ้มลูกค้า) */
+  branch_no: string;
+  /** ชื่อสาขา เช่น สาขาเชียงใหม่ */
+  name: string;
+  /** ที่อยู่ 1 */
+  address_1: Gen<string | null>;
+  /** ที่อยู่ 2 */
+  address_2: Gen<string | null>;
+  /** ที่อยู่ 3 */
+  address_3: Gen<string | null>;
+  /** รหัสไปรษณีย์ */
+  zip_code: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: เลขที่ */
+  addr_no: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่ที่ */
+  addr_moo: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่บ้าน */
+  addr_village: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: อาคาร */
+  addr_building: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ห้องเลขที่ */
+  addr_room: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ชั้นที่ */
+  addr_floor: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ซอย */
+  addr_soi: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ถนน */
+  addr_road: Gen<string | null>;
+  /** ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th) */
+  addr_geo_code: Gen<string | null>;
+  /** โทรศัพท์ */
+  phone: Gen<string | null>;
+  /** ผู้ติดต่อ */
+  contact: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -4818,6 +4877,7 @@ export interface DB {
   md_item_image: MdItemImageTable;
   md_customer: MdCustomerTable;
   md_customer_ship_to: MdCustomerShipToTable;
+  md_customer_branch: MdCustomerBranchTable;
   md_supplier: MdSupplierTable;
   md_party_contact: MdPartyContactTable;
   md_supplier_bank: MdSupplierBankTable;

@@ -115,7 +115,9 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     salesperson_id: uuid.nullable().optional(), sales_area_code: str(10), ship_via_code: str(10), credit_days: num, payment_terms: str(60),
     price_level: z.enum(['', '0', '1', '2', '3', '4', '5']).nullable().optional().transform((v) => v || null), price_type: z.enum(['', '0', '1', '2']).nullable().optional().transform((v) => v || null), discount_text: str(20), credit_limit: num,
     wht_form: str(4), wht_rate: num, wht_category: str(4), wht_condition: z.enum(['', '1', '2', '3']).nullable().optional().transform((v) => v || null), default_ship_to: str(10),
-    ship_tos: z.array(z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสถานที่ส่ง').max(10), address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), ...addrShape, phone: str(60), contact: str(60) })).max(200).default([]),
+    ship_tos: z.array(z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสถานที่ส่ง').max(10), address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), ...addrShape, phone: str(60), contact: str(60), branch_no: str(5) })).max(200).default([]),
+    // สาขาของลูกค้า (เจ้าของ 18/11/2569) — Bill to ออกใบกำกับในนามสาขา · สำนักงานใหญ่/สาขาตามแฟ้มลูกค้า = ที่อยู่ในแฟ้มลูกค้า
+    branches: z.array(z.object({ branch_no: z.string().trim().regex(/^\d{5}$/, 'เลขที่สาขา 5 หลัก เช่น 00001'), name: z.string().trim().min(1, 'ป้อนชื่อสาขา').max(120), address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), ...addrShape, phone: str(60), contact: str(60) })).max(500).default([]),
     contacts: z.array(contactBody).max(50).default([]),
   });
 
@@ -192,10 +194,11 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     const { id } = parse(z.object({ id: uuid }), req.params);
     const c = await db.selectFrom('md_customer').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!c) throw notFound('ลูกค้า');
-    const ship_tos = await db.selectFrom('md_customer_ship_to').select(['code', 'address_1', 'address_2', 'address_3', 'zip_code', ...ADDR_COLS, 'phone', 'contact']).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('deleted_at', 'is', null).orderBy('code').execute();
+    const ship_tos = await db.selectFrom('md_customer_ship_to').select(['id', 'code', 'address_1', 'address_2', 'address_3', 'zip_code', ...ADDR_COLS, 'phone', 'contact', 'branch_no']).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('deleted_at', 'is', null).orderBy('code').execute();
     const bills = await outstandingBills(db, 'AR', a.companyId, id);
     const last = await db.selectFrom('doc_header').select(sql<string | null>`max(doc_date)`.as('d')).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('doc_class', '=', 'IV').where('doc_status', '<>', 'C').where('deleted_at', 'is', null).executeTakeFirst();
-    return { ...c, tax_branches: await taxBranchesOf(db, a.companyId, 'customer_id', id, c.tax_branch_no), ship_tos, contacts: await contactsOf(db, a.companyId, 'C', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_invoice_date: last?.d ?? null };
+    const branches = await db.selectFrom('md_customer_branch').select(['branch_no', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', ...ADDR_COLS, 'phone', 'contact']).where('company_id', '=', a.companyId).where('customer_id', '=', id).where('deleted_at', 'is', null).orderBy('branch_no').execute();
+    return { ...c, tax_branches: await taxBranchesOf(db, a.companyId, 'customer_id', id, c.tax_branch_no), ship_tos, branches, contacts: await contactsOf(db, a.companyId, 'C', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_invoice_date: last?.d ?? null };
   });
 
   async function saveCustomer(a: AuthContext & { companyId: string }, id: string | null, b: z.infer<typeof customerBody>) {
@@ -210,7 +213,14 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     const codes = new Set<string>();
     for (const s of b.ship_tos) { if (codes.has(s.code)) throw badRequest(`รหัสสถานที่ส่ง ${s.code} ซ้ำ`); codes.add(s.code); }
     if (b.default_ship_to && !codes.has(b.default_ship_to)) throw badRequest(`สถานที่ส่งประจำ ${b.default_ship_to} ไม่อยู่ในรายการสถานที่ส่งสินค้า`);
-    const { ship_tos, contacts, ...h } = b;
+    const master = b.tax_branch_no || '00000', brs = new Set<string>([master]);
+    for (const r of b.branches) {
+      if (r.branch_no === master) throw badRequest(`สาขา ${r.branch_no} คือที่อยู่ในแฟ้มลูกค้านี้อยู่แล้ว (สาขาตามแฟ้มลูกค้า) — ลบแถวนี้ หรือเปลี่ยนเลขที่สาขา`, [{ field: 'branches', message: 'สาขาซ้ำกับแฟ้มลูกค้า' }]);
+      if (brs.has(r.branch_no)) throw badRequest(`เลขที่สาขา ${r.branch_no} ซ้ำ`, [{ field: 'branches', message: 'ซ้ำ' }]);
+      brs.add(r.branch_no);
+    }
+    for (const s of b.ship_tos) if (s.branch_no && !brs.has(s.branch_no)) throw badRequest(`สถานที่ส่ง ${s.code}: ไม่มีสาขา ${s.branch_no} ในแท็บสาขา — เพิ่มสาขาก่อน หรือเว้นว่าง (ใช้ได้ทุกสาขา)`, [{ field: 'ship_tos', message: 'ไม่มีสาขานี้' }]);
+    const { ship_tos, contacts, branches, ...h } = b;
     const row = { ...h, ...tax, ar_account_id: b.ar_account_id ?? null, salesperson_id: b.salesperson_id ?? null, credit_limit: b.credit_limit === null ? null : d(b.credit_limit).toFixed(2), wht_rate: b.wht_rate === null ? null : String(b.wht_rate), inactive_date: b.status === 'I' ? sql`COALESCE(inactive_date, CURRENT_DATE)` as never : null };
     return db.transaction().execute(async (tx) => {
       let cid = id;
@@ -224,6 +234,8 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
       }
       await tx.updateTable('md_customer_ship_to').set({ deleted_at: sql`now()` as never }).where('company_id', '=', a.companyId).where('customer_id', '=', cid!).where('deleted_at', 'is', null).execute();
       if (ship_tos.length) await tx.insertInto('md_customer_ship_to').values(ship_tos.map((s) => ({ ...s, company_id: a.companyId, customer_id: cid!, created_by: a.userId }))).execute();
+      await tx.updateTable('md_customer_branch').set({ deleted_at: sql`now()` as never }).where('company_id', '=', a.companyId).where('customer_id', '=', cid!).where('deleted_at', 'is', null).execute();
+      if (branches.length) await tx.insertInto('md_customer_branch').values(branches.map((r) => ({ ...r, company_id: a.companyId, customer_id: cid!, created_by: a.userId }))).execute();
       await saveContacts(tx, a, 'C', cid!, contacts);
       await logActivity(tx, a, { module: 'AR', action: id ? 'EDIT' : 'ADD', docNo: b.code, table: 'md_customer', rowId: cid, detail: id ? { before } : undefined });
       return { id: cid, warnings };

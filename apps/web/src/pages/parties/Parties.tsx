@@ -174,18 +174,20 @@ function MasterModal({ title, menu, isNew, busy, ready, err, onClose, onSave, on
 /* ---------------------------------------------------------------- ลูกค้า S-AR-01 */
 interface ShipTo { code: string; address_1: string | null; address_2: string | null; address_3: string | null; zip_code: string | null; phone: string | null; contact: string | null; [k: string]: string | null }
 /** ที่อยู่แยกช่องของสถานที่ส่ง 1 บรรทัด (กรอกรหัสไปรษณีย์ → จังหวัด/อำเภอ/ตำบล) */
-function ShipAddrDialog({ row, onClose, onOk }: { row: ShipTo; onClose: () => void; onOk: (r: ShipTo) => void }) {
+function ShipAddrDialog({ row, onClose, onOk, title }: { row: ShipTo; onClose: () => void; onOk: (r: ShipTo) => void; title?: string }) {
   const [v, setV] = useState<ShipTo>(row);
   useHotkeys({ F9: () => onOk(v) }, [v]);
   return (
-    <Modal title={`ที่อยู่สถานที่ส่ง ${row.code}`} size="wide" onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" onClick={() => onOk(v)}>ตกลง <kbd>F9</kbd></button></>}>
+    <Modal title={title ?? `ที่อยู่สถานที่ส่ง ${row.code}`} size="wide" onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก <kbd>Esc</kbd></button><button className="primary" onClick={() => onOk(v)}>ตกลง <kbd>F9</kbd></button></>}>
       <div className="form-grid" onKeyDown={(e) => navKey(e, () => onOk(v))}>
         <AddressFields value={v} onChange={(p) => setV((x) => ({ ...x, ...p }))} target={{ kind: 'lines3' }} title="ที่อยู่ส่งสินค้า" />
       </div>
     </Modal>
   );
 }
-interface CustomerDetail extends Record<string, unknown> { id: string; code: string; on_hold: boolean; ar_account_id: string | null; salesperson_id: string | null; ship_tos: ShipTo[]; contacts: Contact[]; outstanding_bills: Bill[]; balance: string; last_invoice_date: string | null }
+/** สาขาของลูกค้า (เจ้าของ 18/11/2569) — Bill to ออกใบกำกับในนามสาขา */
+interface CusBranch { branch_no: string; name: string; address_1: string | null; address_2: string | null; address_3: string | null; zip_code: string | null; phone: string | null; contact: string | null; [k: string]: string | null }
+interface CustomerDetail extends Record<string, unknown> { id: string; code: string; on_hold: boolean; ar_account_id: string | null; salesperson_id: string | null; ship_tos: ShipTo[]; branches: CusBranch[]; contacts: Contact[]; outstanding_bills: Bill[]; balance: string; last_invoice_date: string | null }
 const CUS_KEYS = [...HEAD_KEYS, 'on_hold_reason', 'email', 'customer_type', 'sales_area_code', 'price_level', 'price_type', 'wht_category', 'default_ship_to'];
 
 export function CustomersPage() {
@@ -201,6 +203,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
   const [f, setF] = useState<Form | null>(id ? null : { ...toForm({}, CUS_KEYS), status: 'A', tax_branch_no: '00000', price_level: '1', wht_condition: '1', on_hold: false, ...initial });
   const [acc, setAcc] = useState<{ ar: string | null; slm: string | null }>({ ar: null, slm: null });
   const [ships, setShips] = useState<ShipTo[]>([]);
+  const [branches, setBranches] = useState<CusBranch[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tab, setTab] = useState('main');
   const nextTab = useTabFlow(['main', 'sale', 'tax'], tab, setTab);
@@ -208,14 +211,14 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
   const [busy, setBusy] = useState(false);
   if (id && cur.data && !f) {
     setF({ ...toForm(cur.data, CUS_KEYS), on_hold: cur.data.on_hold }); setAcc({ ar: cur.data.ar_account_id, slm: cur.data.salesperson_id });
-    setShips(cur.data.ship_tos); setContacts(cur.data.contacts);
+    setShips(cur.data.ship_tos); setBranches(cur.data.branches ?? []); setContacts(cur.data.contacts);
   }
   const set = (p: Form) => setF((x) => ({ ...x!, ...p }));
   const t = useText(f, set);
   const save = async () => {
     if (!f || busy) return;
     setErr(null); setBusy(true);
-    const body = { ...f, ar_account_id: acc.ar, salesperson_id: acc.slm, ship_tos: ships.filter((s) => s.code.trim()), contacts: contacts.filter((c) => c.name.trim()) };
+    const body = { ...f, ar_account_id: acc.ar, salesperson_id: acc.slm, ship_tos: ships.filter((s) => s.code.trim()), branches: branches.filter((b) => b.branch_no.trim() || b.name.trim()), contacts: contacts.filter((c) => c.name.trim()) };
     try {
       const r = id ? await api.put<{ id: string; warnings?: string[] }>(`/api/v1/customers/${id}`, body) : await api.post<{ id: string; warnings?: string[] }>('/api/v1/customers', body);
       toast(`บันทึกลูกค้า ${f.code} แล้ว`);
@@ -227,6 +230,9 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
   const remove = () => api.del(`/api/v1/customers/${id}`).then(() => { toast('ลบลูกค้าแล้ว'); onSaved(); });
   const setShip = (i: number, p: Partial<ShipTo>) => setShips((s) => s.map((x, k) => (k === i ? { ...x, ...p } as ShipTo : x)));
   const [shipAddr, setShipAddr] = useState<number | null>(null);
+  const setBranch = (i: number, p: Partial<CusBranch>) => setBranches((s) => s.map((x, k) => (k === i ? { ...x, ...p } as CusBranch : x)));
+  const [brAddr, setBrAddr] = useState<number | null>(null);
+  const masterBr = val(f ?? {}, 'tax_branch_no') || '00000';
   return (
     <MasterModal notes={{ entity: 'customer', id, code: val(f ?? {}, 'code') }} title={id ? `แก้ไขลูกค้า ${val(f ?? {}, 'code')}` : 'เพิ่มลูกค้า'} menu="SA.CUS" isNew={!id} busy={busy} ready={!!f} err={err ?? cur.error} onClose={onClose} onSave={save} onDelete={remove} onNavEnd={nextTab}
       delText={`ลบลูกค้า ${val(f ?? {}, 'code')}? ลบได้เฉพาะลูกค้าที่ยังไม่มีเอกสาร — ถ้ามีเอกสารแล้วให้เปลี่ยนสถานะเป็นเลิกใช้`}>
@@ -237,7 +243,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
           <Field label="ชื่อลูกค้า" req><input {...t('name', 120)} /></Field>
           <Field label="สถานะ"><select value={val(f, 'status')} onChange={(e) => set({ status: e.target.value })}><option value="A">ใช้งาน (Active)</option><option value="I">เลิกใช้ (Inactive)</option></select></Field>
         </div>
-        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'ที่อยู่/ติดต่อ' }, { key: 'sale', label: 'การขายและเครดิต' }, { key: 'tax', label: 'ภาษีและบัญชี' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'ship', label: 'สถานที่ส่งสินค้า', badge: ships.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, ...(id ? [{ key: 'periods', label: 'ยอดรายงวด' }, { key: 'cheques', label: 'เช็คที่ยังไม่ผ่านบัญชี' }] : [])]} />
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'ที่อยู่/ติดต่อ' }, { key: 'sale', label: 'การขายและเครดิต' }, { key: 'tax', label: 'ภาษีและบัญชี' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'branches', label: 'สาขา (Bill to)', badge: branches.length || undefined }, { key: 'ship', label: 'สถานที่ส่งสินค้า', badge: ships.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, ...(id ? [{ key: 'periods', label: 'ยอดรายงวด' }, { key: 'cheques', label: 'เช็คที่ยังไม่ผ่านบัญชี' }] : [])]} />
         {tab === 'main' && <div className="form-grid party-grid tab-flow">
           <AddressFields value={f} onChange={set} target={{ kind: 'lines3' }} />
           <Field label="โทรศัพท์"><input {...t('phone', 60)} placeholder="รวมแฟกซ์ได้" /></Field>
@@ -288,6 +294,30 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
         {shipAddr !== null && ships[shipAddr] && <ShipAddrDialog row={ships[shipAddr]!} onClose={() => setShipAddr(null)} onOk={(r) => { setShip(shipAddr, r); setShipAddr(null); }} />}
         {tab === 'bills' && (id ? <BillsGrid rows={cur.data?.outstanding_bills ?? []} /> : <p className="muted">บันทึกลูกค้าก่อน</p>)}
         {(tab === 'periods' || tab === 'cheques') && id && <PartyActivity mod="AR" id={id} view={tab} />}
+        {brAddr !== null && branches[brAddr] && <ShipAddrDialog title={`ที่อยู่สาขา ${branches[brAddr]!.branch_no}`} row={branches[brAddr]! as unknown as ShipTo} onClose={() => setBrAddr(null)} onOk={(r) => { setBranch(brAddr, r as unknown as CusBranch); setBrAddr(null); }} />}
+        {tab === 'branches' && <div className="table-wrap lines">
+          <p className="hint">สาขาของลูกค้ารายนี้ (บริษัทเดียวกัน) — เอกสารขายเลือก "Bill to" เป็นสาขาได้ ใบกำกับภาษีและรายงานภาษีขายใช้ชื่อลูกค้า + ที่อยู่และเลขที่สาขานั้น · ลูกหนี้ยังอยู่ที่รหัสลูกค้านี้ · สาขา {masterBr} = ที่อยู่ในแท็บที่อยู่/ติดต่อ</p>
+          <table className="grid">
+            <thead><tr><th style={{ width: 90 }}>เลขที่สาขา</th><th style={{ width: 180 }}>ชื่อสาขา</th><th>ที่อยู่ บรรทัด 1</th><th>บรรทัด 2</th><th>บรรทัด 3</th><th style={{ width: 90 }}>ไปรษณีย์</th><th style={{ width: 120 }}>โทร.</th><th style={{ width: 120 }}>ผู้ติดต่อ</th><th style={{ width: 70 }} /></tr></thead>
+            <tbody>
+              {branches.map((b, i) => (
+                <tr key={i}>
+                  <td><input className="mono" value={b.branch_no} maxLength={5} inputMode="numeric" placeholder="00001" onChange={(e) => setBranch(i, { branch_no: e.target.value.replace(/\D/g, '') })} aria-label="เลขที่สาขา" /></td>
+                  <td><input value={b.name} maxLength={120} placeholder="สาขาเชียงใหม่" onChange={(e) => setBranch(i, { name: e.target.value })} aria-label="ชื่อสาขา" /></td>
+                  <td><input value={b.address_1 ?? ''} maxLength={100} onChange={(e) => setBranch(i, { address_1: e.target.value })} aria-label="ที่อยู่ บรรทัด 1" /></td>
+                  <td><input value={b.address_2 ?? ''} maxLength={100} onChange={(e) => setBranch(i, { address_2: e.target.value })} aria-label="ที่อยู่ บรรทัด 2" /></td>
+                  <td><input value={b.address_3 ?? ''} maxLength={100} onChange={(e) => setBranch(i, { address_3: e.target.value })} aria-label="ที่อยู่ บรรทัด 3" /></td>
+                  <td><input value={b.zip_code ?? ''} maxLength={10} onChange={(e) => setBranch(i, { zip_code: e.target.value })} aria-label="ไปรษณีย์" /></td>
+                  <td><input value={b.phone ?? ''} maxLength={60} onChange={(e) => setBranch(i, { phone: e.target.value })} aria-label="โทร." /></td>
+                  <td><input value={b.contact ?? ''} maxLength={60} onChange={(e) => setBranch(i, { contact: e.target.value })} aria-label="ผู้ติดต่อ" /></td>
+                  <td className="nowrap"><button type="button" className="icon-btn" tabIndex={-1} title="ที่อยู่แยกช่อง — กรอกรหัสไปรษณีย์แล้วเติมจังหวัด อำเภอ ตำบลให้" onClick={() => setBrAddr(i)}>📍</button><button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => setBranches((x) => x.filter((_, k) => k !== i))}>✕</button></td>
+                </tr>
+              ))}
+              {!branches.length && <tr><td colSpan={9} className="empty">ยังไม่มีสาขาอื่น — ออกบิลถึงสาขา {masterBr} ตามที่อยู่ในแฟ้มลูกค้า</td></tr>}
+            </tbody>
+            <tfoot><tr><td colSpan={9}><button type="button" onClick={() => setBranches((x) => [...x, { branch_no: '', name: '', address_1: null, address_2: null, address_3: null, zip_code: null, phone: null, contact: null }])}>+ เพิ่มสาขา</button></td></tr></tfoot>
+          </table>
+        </div>}
         {tab === 'ship' && <>
           <div className="form-grid">
             <Field label="สถานที่ส่งของประจำ" hint="ขึ้นอัตโนมัติในใบกำกับภาษี/ใบส่งของ">
@@ -298,7 +328,7 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
           </div>
           <div className="table-wrap lines">
             <table className="grid">
-              <thead><tr><th style={{ width: 90 }}>รหัส</th><th>ที่อยู่ บรรทัด 1</th><th>บรรทัด 2</th><th>บรรทัด 3</th><th style={{ width: 90 }}>ไปรษณีย์</th><th style={{ width: 130 }}>โทร.</th><th style={{ width: 130 }}>ผู้ติดต่อ</th><th style={{ width: 70 }} /></tr></thead>
+              <thead><tr><th style={{ width: 90 }}>รหัส</th><th>ที่อยู่ บรรทัด 1</th><th>บรรทัด 2</th><th>บรรทัด 3</th><th style={{ width: 90 }}>ไปรษณีย์</th><th style={{ width: 130 }}>โทร.</th><th style={{ width: 130 }}>ผู้ติดต่อ</th><th style={{ width: 130 }} title="สถานที่ส่งของของสาขาไหน — เอกสารขายที่ออกบิลถึงสาขานั้นเลือกได้ · ว่าง = ทุกสาขา">สาขา</th><th style={{ width: 70 }} /></tr></thead>
               <tbody>
                 {ships.map((s, i) => (
                   <tr key={i}>
@@ -309,12 +339,13 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
                     <td><input value={s.zip_code ?? ''} maxLength={10} onChange={(e) => setShip(i, { zip_code: e.target.value })} /></td>
                     <td><input value={s.phone ?? ''} maxLength={60} onChange={(e) => setShip(i, { phone: e.target.value })} /></td>
                     <td><input value={s.contact ?? ''} maxLength={60} onChange={(e) => setShip(i, { contact: e.target.value })} /></td>
+                    <td><select value={s.branch_no ?? ''} onChange={(e) => setShip(i, { branch_no: e.target.value || null })} aria-label="สาขา"><option value="">ทุกสาขา</option><option value={masterBr}>{masterBr} {masterBr === '00000' ? 'สำนักงานใหญ่' : ''}</option>{branches.filter((b) => b.branch_no).map((b) => <option key={b.branch_no} value={b.branch_no}>{b.branch_no} {b.name}</option>)}</select></td>
                     <td className="nowrap"><button type="button" className="icon-btn" tabIndex={-1} title="ที่อยู่แยกช่อง — กรอกรหัสไปรษณีย์แล้วเติมจังหวัด อำเภอ ตำบลให้" onClick={() => setShipAddr(i)}>📍</button><button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => setShips((x) => x.filter((_, k) => k !== i))}>✕</button></td>
                   </tr>
                 ))}
-                {!ships.length && <tr><td colSpan={8} className="empty">ยังไม่มีสถานที่ส่งสินค้า</td></tr>}
+                {!ships.length && <tr><td colSpan={9} className="empty">ยังไม่มีสถานที่ส่งสินค้า</td></tr>}
               </tbody>
-              <tfoot><tr><td colSpan={8}><button type="button" onClick={() => setShips((x) => [...x, { code: '', address_1: null, address_2: null, address_3: null, zip_code: null, phone: null, contact: null }])}>+ เพิ่มสถานที่ส่ง</button> <span className="hint">รหัสเช่น สบ01 · เลือกนำไปแสดงในใบกำกับภาษีได้</span></td></tr></tfoot>
+              <tfoot><tr><td colSpan={9}><button type="button" onClick={() => setShips((x) => [...x, { code: '', address_1: null, address_2: null, address_3: null, zip_code: null, phone: null, contact: null, branch_no: null }])}>+ เพิ่มสถานที่ส่ง</button> <span className="hint">รหัสเช่น สบ01 · เลือกนำไปแสดงในใบกำกับภาษีได้</span></td></tr></tfoot>
             </table>
           </div>
         </>}

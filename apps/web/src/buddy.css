@@ -278,21 +278,36 @@ td .lk-add:not(:focus-within):not(:hover) > .icon-btn { display: none; }
   .head-grid.trade-head { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
   .trade-head .col + .col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-/* the party code takes the whole left column so the name is readable; its address sits right under it */
-.trade-head .col:first-child > .field:first-child { grid-column: 1 / -1; }
+@media (min-width: 1400px) { .trade-head .col + .col { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .party-addr { grid-column: 1 / -1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12.5px; line-height: 1.35; color: var(--muted);
   background: var(--surface); border: 1px dashed var(--line); border-radius: 6px; padding: 3px 8px; overflow-wrap: anywhere; max-height: calc(2.7em + 8px); }
 .party-addr b { color: var(--ink); font-weight: 600; }
 .party-addr .warn-text { color: var(--warn); }
-.page > .keyhints { position: sticky; bottom: 0; z-index: 5; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none;
-  margin: 0 -8px -24px; padding: 5px 12px; background: var(--surface-2); border-top: 1px solid var(--line); font-size: 12px; }
-.page > .keyhints::-webkit-scrollbar { display: none; }
-.page > .keyhints > span { flex: none; }
+.page > .keyhints, .page-foot > .keyhints { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none; padding: 5px 12px; background: var(--surface-2); border-top: 1px solid var(--line); font-size: 12px; }
+.page > .keyhints { position: sticky; bottom: 0; z-index: 5; margin: 0 -8px -24px; }
+.page > .keyhints::-webkit-scrollbar, .page-foot > .keyhints::-webkit-scrollbar { display: none; }
+.page > .keyhints > span, .page-foot > .keyhints > span { flex: none; }
+/* round 2 (owner 18/11/2569): title/branch/status + toolbar + type tabs stick together; totals strip + key hints stick to the bottom */
+.doc-sticky { position: sticky; top: 0; z-index: 6; display: flex; flex-direction: column; gap: 4px; margin: -18px -8px 0; padding: 8px 8px 6px; background: var(--bg); border-bottom: 1px solid var(--line); box-shadow: 0 2px 6px rgba(43, 40, 64, 0.06); }
+.doc-sticky .toolbar { position: static; box-shadow: none; }
+.doc-sticky .doc-title { align-items: center; gap: 4px 12px; }
+.doc-sticky .doc-title h1 { font-size: 19px; }
+.doc-sticky .doc-title .eyebrow { margin: 0; }
+.doc-sticky .tabs { border-bottom-width: 1px; }
+.doc-sticky .tab { padding: 3px 12px; min-height: 28px; }
+.doc-sticky .notebox { padding: 3px 10px; font-size: 12.5px; }
+.page > .page-foot { position: sticky; bottom: 0; z-index: 5; margin: 0 -8px -24px; }
+.sum-strip { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 18px; padding: 5px 14px; background: color-mix(in srgb, var(--tone) 8%, var(--surface)); border-top: 2px solid var(--tone); font-size: 13.5px; }
+.sum-strip b { font-variant-numeric: tabular-nums; }
+.sum-strip .grand b { font-size: 15.5px; color: var(--tone); }
 @media (max-width: 900px) {
-  .page > .keyhints { position: static; flex-wrap: wrap; white-space: normal; margin: 0; padding: 8px 0; background: transparent; }
+  .page > .keyhints, .page-foot > .keyhints { position: static; flex-wrap: wrap; white-space: normal; margin: 0; padding: 8px 0; background: transparent; }
+  .page > .page-foot { position: static; margin: 0; }
+  .sum-strip { display: none; }   /* phone: the totals table is right below the lines */
 }
 @media (max-width: 640px) {
-  .toolbar { position: static; }   /* phone: the wrapped toolbar would cover half the screen if it stuck */
+  .toolbar, .doc-sticky { position: static; }   /* phone: a wrapped toolbar would cover half the screen if it stuck */
+  .doc-sticky { margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none; }
   .toolbar kbd { display: none; }
   .head-grid .field .lbl .tip { display: none; }
   .head-grid .field > .hint.txt { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }

@@ -5105,6 +5105,51 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect((await sql<{ s: string }>`SELECT string_agg(doc_status, '') AS s FROM tax_vat_entry WHERE company_id = ${co} AND tax_invoice_no = 'IMPJ-IV1'`.execute(database.db)).rows[0]!.s).toBe('C');
     expect((await sql<{ s: string }>`SELECT string_agg(doc_status, '') AS s FROM tax_wht_entry WHERE journal_id = ${tj.id}`.execute(database.db)).rows[0]!.s).toBe('CC');
   });
+  it('Bill to = a branch of the same customer (เจ้าของ 18/11/2569 รอบ 2): customer branches + ship-to per branch, tax invoice uses the branch, quantity required on keyed lines, other companies', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const item = (await sql<{ id: string }>`SELECT id FROM md_item WHERE company_id = ${co} AND item_type = '0' AND base_unit_id IS NOT NULL AND deleted_at IS NULL AND status = 'A' ORDER BY code LIMIT 1`.execute(database.db)).rows[0]!.id;
+    const cus = { code: 'CBR1', name: 'ลูกค้ามีสาขา จำกัด', tax_id: tid(77), address_1: '9 ถนนสีลม', zip_code: '10500',
+      branches: [{ branch_no: '00001', name: 'สาขาเชียงใหม่', address_1: '1 ถนนช้างคลาน', zip_code: '50100' }],
+      ship_tos: [{ code: 'S1', address_1: 'คลังเชียงใหม่', branch_no: '00001' }, { code: 'S0', address_1: 'คลังกรุงเทพ', branch_no: '00000' }, { code: 'SA', address_1: 'ใช้ได้ทุกสาขา' }] };
+    expect((await call('POST', '/api/v1/customers', { ...cus, branches: [{ branch_no: '00000', name: 'ซ้ำ' }] })).body.error.message).toMatch(/คือที่อยู่ในแฟ้มลูกค้านี้อยู่แล้ว/);
+    expect((await call('POST', '/api/v1/customers', { ...cus, ship_tos: [{ code: 'S9', branch_no: '00009' }] })).body.error.message).toMatch(/ไม่มีสาขา 00009/);
+    const cid = (await call('POST', '/api/v1/customers', cus)).body.id as string;
+    const det = (await call('GET', `/api/v1/customers/${cid}`)).body as { branches: Array<{ branch_no: string; name: string }>; ship_tos: Array<{ id: string; code: string; branch_no: string | null }> };
+    expect(det.branches.map((b) => [b.branch_no, b.name])).toEqual([['00001', 'สาขาเชียงใหม่']]);
+    const st = Object.fromEntries(det.ship_tos.map((s) => [s.code, s]));
+    expect([st.S1!.branch_no, st.S0!.branch_no, st.SA!.branch_no]).toEqual(['00001', '00000', null]);
+    const ivType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types[0].id as string;
+    const iv = { doc_type_id: ivType, doc_date: '2026-07-24', party_id: cid, party_tax_branch_no: '00001', ship_to_id: st.S1!.id, price_type: '2', vat_rate: 7, lines: [{ item_id: item, qty: 1, unit_price: 100 }] };
+    // ทุกบรรทัดที่คีย์ต้องมีจำนวน
+    expect((await call('POST', '/api/v1/sales-invoices', { ...iv, lines: [{ item_id: item, qty: 0, unit_price: 100 }] })).body.error.message).toMatch(/^บรรทัดที่ 1 \(.+\): ยังไม่ได้ใส่จำนวน/);
+    // สถานที่ส่งของของสาขาอื่น ไม่รับ · ของทุกสาขา รับ
+    expect((await call('POST', '/api/v1/sales-invoices/posting-preview', { ...iv, ship_to_id: st.S0!.id })).body.error.message).toMatch(/เป็นของสาขา 00000 ไม่ใช่สาขาที่ออกบิล \(00001\)/);
+    expect((await call('POST', '/api/v1/sales-invoices/posting-preview', { ...iv, ship_to_id: st.SA!.id })).status).toBe(200);
+    const r = await call('POST', '/api/v1/sales-invoices', iv);
+    expect(r.body.error?.message ?? 'ok').toBe('ok');
+    const doc = (await call('GET', `/api/v1/sales-invoices/${r.body.id}`)).body as Record<string, string | null>;
+    // ใบกำกับ: ชื่อลูกค้า + ที่อยู่/เลขที่สาขาที่ออกบิล · ลูกหนี้ยังเป็นรหัสลูกค้าเดิม
+    expect([doc.customer_id, doc.party_name, doc.party_address, doc.party_tax_branch_no, doc.ship_to_id, doc.bill_to_customer_id]).toEqual([cid, 'ลูกค้ามีสาขา จำกัด', '1 ถนนช้างคลาน 50100', '00001', st.S1!.id, null]);
+    const vat = (await call('GET', `/api/v1/vat/S?header_id=${r.body.id}`)).body.rows as Array<{ party_name: string; party_tax_branch_no: string }>;
+    expect(vat.map((v) => [v.party_name, v.party_tax_branch_no])).toEqual([['ลูกค้ามีสาขา จำกัด', '00001']]);
+    // สำนักงานใหญ่ = ที่อยู่ในแฟ้มลูกค้า
+    const hq = await call('POST', '/api/v1/sales-invoices/posting-preview', { ...iv, party_tax_branch_no: '00000', ship_to_id: st.S0!.id });
+    expect(hq.status).toBe(200);
+    // บริษัทอื่น: ไม่เห็นลูกค้า/สาขา/สถานที่ส่งของบริษัทนี้ และออกบิลถึงลูกค้ารายนี้ไม่ได้
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    expect((await call('GET', `/api/v1/customers/${cid}`)).status).toBe(404);
+    const bType = (await call('GET', '/api/v1/trade-defaults/IV')).body.types[0]?.id;
+    expect((await call('POST', '/api/v1/sales-invoices/posting-preview', { ...iv, doc_type_id: bType })).status).toBe(400);
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('POST', `/api/v1/sales-invoices/${r.body.id}/cancel`, { reason: 'ทดสอบ Bill to สาขา' })).status).toBe(200);
+  });
 });
 
 describe('ธีมของแต่ละบริษัท (ข้อกำหนดเจ้าของ 30/10/2569)', () => {

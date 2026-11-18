@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { computeDoc, d, dueDate, fillRowCount, fmt, missingUnitIssues, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
-import { PartyAddress, savedPartyOf } from '../../components/PartyAddress';
+import { computeDoc, d, dueDate, fillRowCount, fmt, isStockItemType, requiredLineIssues, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
+import { PartyAddress, savedPartyOf, usePartyDetail } from '../../components/PartyAddress';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
 import { WhtCert } from './WhtCert';
@@ -164,12 +164,12 @@ type VatCode = '0' | '1' | '2';
 const vatOf = (c: string | null | undefined): VatCode => (c === '0' || c === '2' ? c : '1');
 /* ---------------------------------------------------------------- หน้าเอกสาร */
 interface ItemHit { id: string; code: string; name_th: string; item_type: string; vat_code: string | null; base_unit_id: string | null; sales_unit_id: string | null; sales_factor: string | null; purchase_unit_id: string | null; purchase_factor: string | null; price_1: string | null; price_2: string | null; price_3: string | null; price_4: string | null; price_5: string | null; std_cost: string | null }
-interface Line { key: number; item_id: string; item_code: string; description: string; line_note?: string; line_note_print?: boolean; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_price: string; discount_text: string; is_free: boolean; return_to_stock: boolean; vat: VatCode; /** Job/โครงการของบรรทัด */ project_id?: string | null;
+interface Line { key: number; item_id: string; item_code: string; /** ชนิดสินค้า (0/1/2 = มีสต๊อก ต้องมีคลัง) */ item_type?: string | null; description: string; line_note?: string; line_note_print?: boolean; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_price: string; discount_text: string; is_free: boolean; return_to_stock: boolean; vat: VatCode; /** Job/โครงการของบรรทัด */ project_id?: string | null;
   /** บรรทัดใบสั่งที่อ้าง (บิล) */ source_line_id?: string | null; source_no?: string | null; source_header_id?: string | null;
   /** ใบสั่ง: รหัสบรรทัด + ยอดค้าง (ดูอย่างเดียว) */ line_id?: string; remaining?: string | null; delivered?: string | null; cancelled?: string | null }
 interface Pay { key: number; payment_method_id: string; amount: string; reference_no: string }
 interface Head { doc_type_id: string; doc_date: string; party: { id: string; code: string; name?: string | null } | null; bill_to: { id: string; code: string; name?: string | null } | null; party_tax_branch_no: string; your_ref: string; ref: { id: string; code: string } | null;
-  department_id: string; project_id: string; salesperson_id: string; sales_area_code: string; ship_via_code: string; credit_days: string; price_type: '0' | '1' | '2'; vat_rate: string; vat_basis: '1' | '2'; discount_text: string; remark: string; price_level: string }
+  department_id: string; project_id: string; salesperson_id: string; sales_area_code: string; ship_via_code: string; credit_days: string; price_type: '0' | '1' | '2'; vat_rate: string; vat_basis: '1' | '2'; discount_text: string; remark: string; price_level: string; /** สถานที่ส่งของ (ลูกค้า) */ ship_to_id: string }
 let seq = 0;
 const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(v as string).toString());
 
@@ -223,15 +223,15 @@ export function TradeFormPage({ path }: { path: string }) {
   if (!h && !id && defs.data) {
     const t = initialType(defs.data.types);
     setH({ doc_type_id: t?.id ?? '', doc_date: date0, party: null, bill_to: null, party_tax_branch_no: '', your_ref: '', ref: null, department_id: '', project_id: '', salesperson_id: '', sales_area_code: '', ship_via_code: '', credit_days: '',
-      price_type: ((t?.price_type || defs.data.price_type || '2') as Head['price_type']), vat_rate: num(t?.vat_rate ?? defs.data.vat_rate), vat_basis: (t?.vat_basis === '2' ? '2' : '1'), discount_text: '', remark: '', price_level: '1' });
+      price_type: ((t?.price_type || defs.data.price_type || '2') as Head['price_type']), vat_rate: num(t?.vat_rate ?? defs.data.vat_rate), vat_basis: (t?.vat_basis === '2' ? '2' : '1'), discount_text: '', remark: '', price_level: '1', ship_to_id: '' });
   }
   if (!h && id && cur.data) {
     const c = cur.data as Record<string, string | null>;
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), party: { id: (c.customer_id ?? c.supplier_id)!, code: c.party_code ?? '', name: c.party_name }, bill_to: c.bill_to_customer_id ? { id: c.bill_to_customer_id, code: '' } : null,
       party_tax_branch_no: c.party_tax_branch_no ?? '', your_ref: c.your_ref ?? '', ref: c.ref_no ? { id: c.ref_header_id ?? '', code: c.ref_no } : null, department_id: c.department_id ?? '', project_id: c.project_id ?? '', salesperson_id: c.salesperson_id ?? '', sales_area_code: c.sales_area_code ?? '', ship_via_code: c.ship_via_code ?? '',
-      credit_days: c.credit_days === null ? '' : String(c.credit_days), price_type: (c.price_type ?? '2') as Head['price_type'], vat_rate: num(c.vat_rate), vat_basis: (c.vat_basis === '2' ? '2' : '1'), discount_text: c.discount_text ?? '', remark: c.remark ?? '', price_level: '1' });
+      credit_days: c.credit_days === null ? '' : String(c.credit_days), price_type: (c.price_type ?? '2') as Head['price_type'], vat_rate: num(c.vat_rate), vat_basis: (c.vat_basis === '2' ? '2' : '1'), discount_text: c.discount_text ?? '', remark: c.remark ?? '', price_level: '1', ship_to_id: c.ship_to_id ?? '' });
     setWhts(whtsFrom((cur.data as { wht?: Parameters<typeof whtsFrom>[0] }).wht ?? [])); setWhtAmt(d(c.wht_amount ?? 0).isZero() ? '' : num(c.wht_amount));
-    setLines(cur.data.lines.map((l) => ({ key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, warehouse_id: (l.warehouse_id as string) ?? null, qty: num(l.qty), unit_id: (l.unit_id as string) ?? null, factor: num(l.factor) || '1',
+    setLines(cur.data.lines.map((l) => ({ key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), item_type: (l.item_type as string) ?? null, description: String(l.description ?? ''), line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, warehouse_id: (l.warehouse_id as string) ?? null, qty: num(l.qty), unit_id: (l.unit_id as string) ?? null, factor: num(l.factor) || '1',
       unit_price: num(l.unit_price), discount_text: String(l.discount_text ?? ''), is_free: !!l.is_free, return_to_stock: !!l.return_to_stock, vat: vatOf(l.vat_code as string | null), project_id: (l.project_id as string) ?? null,
       source_line_id: (l.source_line_id as string) ?? null, source_no: (l.source as { doc_no?: string } | null)?.doc_no ?? null, source_header_id: (l.source as { header_id?: string } | null)?.header_id ?? null, line_id: l.id as string,
       remaining: (l.remaining_qty as string) ?? null, delivered: (l.delivered_qty as string) ?? null, cancelled: (l.cancelled_qty as string) ?? null })));
@@ -277,7 +277,8 @@ export function TradeFormPage({ path }: { path: string }) {
     if (!p) return set({ party: null });
     const x = await api.get<Record<string, string | null>>(`${partyEndpoint(K)}/${p.id}`);
     if (K.cls === 'HP') setWhtDef({ form: wht50FormOf(x.wht_form, x.tax_id) === '3' ? 'S03' : 'S53', rate: x.wht_rate && !d(x.wht_rate).isZero() ? d(x.wht_rate).toString() : '3' });
-    set({ party: p, credit_days: x.credit_days === null || x.credit_days === undefined ? '' : String(x.credit_days), discount_text: x.discount_text ?? '', party_tax_branch_no: x.tax_branch_no || '00000',
+    const ships = (x as unknown as { ship_tos?: Array<{ id: string; code: string }> }).ship_tos ?? [];
+    set({ party: p, bill_to: null, ship_to_id: K.party === 'customer' ? ships.find((s) => s.code === x.default_ship_to)?.id ?? '' : '', credit_days: x.credit_days === null || x.credit_days === undefined ? '' : String(x.credit_days), discount_text: x.discount_text ?? '', party_tax_branch_no: x.tax_branch_no || '00000',
       ...(K.party === 'customer' ? { salesperson_id: x.salesperson_id ?? '', sales_area_code: x.sales_area_code ?? '', ship_via_code: x.ship_via_code ?? '', price_level: x.price_level && x.price_level !== '0' ? x.price_level : '1', ...(x.price_type ? { price_type: x.price_type as Head['price_type'] } : {}) }
         : { ship_via_code: x.ship_via_code ?? '', ...(x.price_type ? { price_type: x.price_type as Head['price_type'] } : {}), ...(x.vat_rate ? { vat_rate: num(x.vat_rate) } : {}) }) });
   };
@@ -296,7 +297,7 @@ export function TradeFormPage({ path }: { path: string }) {
     const fromBill = !!was && !was.item_id && !!was.unit_price;   // บรรทัดที่ AI เติมจากบิล — คงราคาตามบิล
     const stockItem = it.item_type === '0' || it.item_type === '1' || it.item_type === '2';
     const wh = was?.warehouse_id ?? (stockItem ? (defs.data?.types.find((t) => t.id === h?.doc_type_id)?.warehouse_id ?? defs.data?.main_warehouse_id ?? null) : null);
-    setLine(k, { item_id: it.id, item_code: it.code, description: it.name_th, warehouse_id: wh, unit_id: unit, factor: num(factor) || '1', unit_price: fromBill ? was.unit_price : num(price), vat: vatOf(it.vat_code), qty: was?.qty || '1' });
+    setLine(k, { item_id: it.id, item_code: it.code, item_type: it.item_type, description: it.name_th, warehouse_id: wh, unit_id: unit, factor: num(factor) || '1', unit_price: fromBill ? was.unit_price : num(price), vat: vatOf(it.vat_code), qty: was?.qty || '1' });
   };
   /** เติมร่างจากบิลที่ AI อ่าน (T7.7) — ยังไม่บันทึก ผู้ใช้ตรวจ/เลือกรหัสที่ยังไม่พบ แล้วบันทึกเอง */
   const applyBill = async (r: AiBillResult) => {
@@ -328,7 +329,7 @@ export function TradeFormPage({ path }: { path: string }) {
   const bodyOf0 = () => {
     if (!h) return null;
     return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id, bill_to_customer_id: h.bill_to?.id ?? null, party_tax_branch_no: h.party_tax_branch_no || null, your_ref: h.your_ref || null,
-        ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, ref_date: supInv ? refDate || null : null, department_id: h.department_id || null, project_id: h.project_id || null, salesperson_id: h.salesperson_id || null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
+        ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, ref_date: supInv ? refDate || null : null, department_id: h.department_id || null, project_id: h.project_id || null, salesperson_id: h.salesperson_id || null, ship_to_id: K.party === 'customer' ? h.ship_to_id || null : null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
         credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type, vat_rate: h.vat_rate || '0', vat_basis: h.vat_basis, discount_text: h.discount_text || null, remark: h.remark || null,
         lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1', unit_price: l.unit_price || '0', discount_text: l.discount_text || null, is_free: l.is_free, return_to_stock: l.return_to_stock, source_line_id: l.source_line_id ?? null, vat_code: l.vat, project_id: l.project_id ?? null, line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
         delivery_date: K.order && K.cls !== 'QT' ? delivery || null : null,
@@ -344,11 +345,11 @@ export function TradeFormPage({ path }: { path: string }) {
     if (!h || busy || readOnly || !can(id ? 'edit' : 'add')) return;
     // ทุกรายการต้องมีหน่วยนับ (เจ้าของ 18/11/2569) — แจ้งบรรทัดแล้วพาไปช่องหน่วย
     const used = lines.filter((l) => l.item_id);
-    const noUnit = missingUnitIssues(used.map((l) => ({ unit_id: l.unit_id, code: l.item_code })));
-    if (noUnit.length) {
-      setErr(new Error(noUnit[0]!.message)); setTab('lines');
-      const k = used[noUnit[0]!.line - 1]!.key;
-      setTimeout(() => (document.querySelector(`td[data-unit="${k}"] select, td[data-unit="${k}"] input`) as HTMLElement | null)?.focus(), 50);
+    const miss = requiredLineIssues(used.map((l) => ({ code: l.item_code, item_type: l.item_type, unit_id: l.unit_id, qty: l.qty, warehouse_id: l.warehouse_id })));
+    if (miss.length) {
+      setErr(new Error(miss[0]!.message)); setTab('lines');
+      const k = used[miss[0]!.line - 1]!.key, f = miss[0]!.field;
+      setTimeout(() => (document.querySelector(`td[data-cell="${f}-${k}"] select, td[data-cell="${f}-${k}"] input`) as HTMLElement | null)?.focus(), 50);
       return;
     }
     const zero = lines.find((l) => l.item_id && !l.is_free && !ok.has(l.key) && d(l.unit_price || 0).isZero() && K.cls !== 'QT');
@@ -382,7 +383,15 @@ export function TradeFormPage({ path }: { path: string }) {
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); }, 'Ctrl+Insert': readOnly ? undefined : addLine, F6: K.orderRef && !readOnly ? () => setPickOrder(true) : K.refInvoice && !readOnly && h?.ref?.id ? () => setPickRef(true) : undefined }, []);
   const dtCode = defs.data?.types.find((t) => t.id === h?.doc_type_id);
   // สาขาของคู่ค้าให้เลือก (สำนักงานใหญ่ + แฟ้มคู่ค้า + ที่เคยใช้)
-  const branches = useQuery({ enabled: !!h?.party?.id, queryKey: ['party-branches', K.party, h?.party?.id], queryFn: () => api.get<{ tax_branches: string[] }>(`${partyEndpoint(K)}/${h!.party!.id}`) });
+  const pd = usePartyDetail(K.party, h?.party?.id);
+  const branches = { data: pd.data };
+  // Bill to = สาขาของลูกค้ารายเดียวกัน (เจ้าของ 18/11/2569 รอบ 2): สาขาตามแฟ้มลูกค้า + แท็บสาขา (+ เลขที่ที่เอกสารนี้ใช้อยู่)
+  const masterBr = pd.data?.tax_branch_no || '00000';
+  const billBr = h?.party_tax_branch_no || masterBr;
+  const billOpts = [{ no: masterBr, label: `${masterBr} ${masterBr === '00000' ? 'สำนักงานใหญ่' : 'สาขา'} (ตามแฟ้มลูกค้า)`, addr: '' }, ...(pd.data?.branches ?? []).map((b) => ({ no: b.branch_no, label: `${b.branch_no} ${b.name}`, addr: [b.address_1, b.address_2, b.address_3, b.zip_code].filter(Boolean).join(' ') }))];
+  if (h?.party_tax_branch_no && !billOpts.some((o) => o.no === h.party_tax_branch_no)) billOpts.push({ no: h.party_tax_branch_no, label: h.party_tax_branch_no, addr: '' });
+  const shipOpts = (pd.data?.ship_tos ?? []).filter((x) => !x.branch_no || x.branch_no === billBr || x.id === h?.ship_to_id);
+  const needWh = (l: Line) => !!l.item_id && isStockItemType(l.item_type);
   const srcOrders = useMemo(() => [...new Map(lines.filter((l) => l.source_header_id && l.source_no).map((l) => [l.source_header_id!, { id: l.source_header_id!, no: l.source_no! }])).values()], [lines]);
   const dn = useDocNo(dtCode, id ? cur.data?.doc_no : undefined, { disabled: readOnly, resetKey: h ? 'on' : 'off' });
   const cancelled = cur.data?.doc_status === 'C';
@@ -391,6 +400,7 @@ export function TradeFormPage({ path }: { path: string }) {
   const docNo = id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '');
   return (
     <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone={TONE(K)} style={bookStyle(tColor)}>
+      <div className="doc-sticky">
       <div className="doc-title"><p className="eyebrow">{K.module === 'AR' ? 'ขาย' : 'ซื้อ'} › {K.label}</p><h1>{docNo}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} /><SourceStamp doc={cur.data as Parameters<typeof SourceStamp>[0]['doc']} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={readOnly} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{K.order ? 'บันทึกแล้ว (ไม่ลงบัญชี)' : 'ลงบัญชีแล้ว'}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && !cancelled && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}{roBase && !cancelled && id && <Pill tone="d">{cur.data?.is_opening ? 'ยอดยกมา — แก้ที่เมนูคงค้าง-ยกมา' : K.order ? `${K.module === 'AR' ? 'ส่งของ' : 'รับของ'}แล้ว — แก้ไขไม่ได้` : 'ชำระแล้ว — แก้ไขไม่ได้'}</Pill>}</span></div>
       <div className="toolbar">
@@ -406,6 +416,7 @@ export function TradeFormPage({ path }: { path: string }) {
       </div>
       <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
       <TypeNotice show={!id && !!h && !h.doc_type_id} />
+      </div>
       {ed.dialog}
       <ErrorBox error={err ?? cur.error} />
       {K.cls === 'QT' && !!cur.data?.converted.length && <p className="hint">แปลงเป็นใบสั่งขายแล้ว: {cur.data.converted.map((x) => <span key={x.id}><DocLink id={x.id} no={x.doc_no} cls="SO" /> </span>)}</p>}
@@ -414,10 +425,13 @@ export function TradeFormPage({ path }: { path: string }) {
           <div className="col">
             <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required disabled={readOnly} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null; on_hold?: boolean }) => holdTag(K.party, r) + (r.tax_id ?? '')}
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
-            <PartyAddress kind={K.party} party={h.party} saved={savedPartyOf(cur.data)} />
-            {K.party === 'customer' && <Field label="Bill to" hint="ชื่อบนใบกำกับ ถ้าเรียกเก็บในนามอื่น"><SearchPick endpoint="/api/v1/customers" value={h.bill_to} disabled={readOnly} label={(r: { name: string }) => r.name} onPick={(r: { id: string; code: string; name: string } | null) => set({ bill_to: r })} /></Field>}
-            <Field label="สาขา#"><BranchPick value={h.party_tax_branch_no} options={branches.data?.tax_branches} disabled={readOnly} onChange={(v) => set({ party_tax_branch_no: v })} /></Field>
-            <Field label={K.refInvoice && K.module === 'AP' ? 'เลขที่ใบลด/เพิ่มหนี้ของผู้จำหน่าย' : 'อ้างอิง'} hint={K.refInvoice && K.module === 'AP' ? 'เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่เอกสาร' : srcOrders.length ? <>{K.orderRef === 'SO' ? 'ใบสั่งขายที่อ้าง:' : 'ใบสั่งซื้อที่อ้าง:'} {srcOrders.map((o) => <span key={o.id}><DocLink id={o.id} no={o.no} cls={K.orderRef} keep={dirty} /> </span>)}</> : undefined}><input value={h.your_ref} maxLength={30} disabled={readOnly} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
+            {K.party === 'customer'
+              ? <Field label="Bill to (สาขา)" hint="ออกใบกำกับถึงสาขาไหนของลูกค้ารายนี้ — ลูกหนี้ยังเป็นรหัสลูกค้า · เพิ่มสาขาที่แท็บสาขาในรายละเอียดลูกค้า"><select value={billBr} disabled={readOnly || !h.party} title={billOpts.find((o) => o.no === billBr)?.addr || undefined}
+                  onChange={(e) => { const no = e.target.value; const keep = (pd.data?.ship_tos ?? []).find((x) => x.id === h.ship_to_id); set({ party_tax_branch_no: no, ...(keep?.branch_no && keep.branch_no !== no ? { ship_to_id: '' } : {}) }); }} aria-label="Bill to (สาขา)">
+                  {billOpts.map((o) => <option key={o.no} value={o.no}>{o.label}</option>)}</select></Field>
+              : <Field label="สาขา#"><BranchPick value={h.party_tax_branch_no} options={branches.data?.tax_branches} disabled={readOnly} onChange={(v) => set({ party_tax_branch_no: v })} /></Field>}
+            <PartyAddress kind={K.party} party={h.party} saved={savedPartyOf(cur.data)} branchNo={billBr} />
+            {h.bill_to && <p className="hint party-addr-note">Bill to เดิมแบบ Express (ลูกค้าอีกราย) — คงไว้ตามเอกสาร · เอกสารใหม่ใช้ Bill to เป็นสาขาของลูกค้ารายเดียวกัน</p>}
             {supInv && <Field label="เลขที่ใบกำกับ/บิลผู้จำหน่าย / ลงวันที่" hint="เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่/วันที่เอกสาร"><div className="pair" style={{ gridTemplateColumns: 'minmax(0, 1fr) 150px' }}><input value={h.ref?.code ?? ''} maxLength={30} disabled={readOnly} onChange={(e) => set({ ref: e.target.value ? { id: '', code: e.target.value } : null })} aria-label="เลขที่ใบกำกับผู้จำหน่าย" /><DateInput value={refDate} disabled={readOnly} onChange={(v) => { setRefDate(v); setDirty(true); }} /></div></Field>}
             {K.refInvoice && <Field label="เลขที่ใบกำกับที่อ้างถึง" req hint={h.ref?.id ? <>เปิดใบกำกับ <DocLink id={h.ref.id} no={h.ref.code} keep={dirty} /></> : undefined}><SearchPick<{ id: string; doc_no: string; party_name: string; net_amount: string }> required endpoint={`/api/v1/${K.module === 'AR' ? 'sales-invoices' : 'purchase-invoices'}`} params={h.party ? { party_id: h.party.id, status: 'N' } : undefined} value={h.ref} disabled={readOnly || !h.party}
               codeOf={(r: { doc_no: string }) => r.doc_no} label={(r: { party_name: string; net_amount: string }) => `${r.party_name} ${fmt(r.net_amount)}`} onPick={(r: { id: string; doc_no: string } | null) => set({ ref: r ? { id: r.id, code: r.doc_no } : null })} placeholder={h.party ? 'พิมพ์เลขที่ใบกำกับ' : `เลือก${partyWord(K)}ก่อน`} /></Field>}
@@ -432,6 +446,8 @@ export function TradeFormPage({ path }: { path: string }) {
             {jobOn && <Field label="Job/โครงการ" hint="ค่าเริ่มต้นของทุกบรรทัด — แก้รายบรรทัดได้"><AddWrap kind="job"><JobSelect value={h.project_id} disabled={readOnly} onChange={(v) => { setLines((ls) => followHeadJob(ls, h.project_id, v)); set({ project_id: v ?? '' }); }} /></AddWrap></Field>}
             {K.module === 'AR' && <Field label="พนักงานขาย"><AddWrap kind="slm"><select value={h.salesperson_id} disabled={readOnly} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></AddWrap></Field>}
             {K.module === 'AR' && <Field label="เขตการขาย"><LkSelect table="40" rows={lk.data?.['40']} value={h.sales_area_code} disabled={readOnly} onChange={(v) => set({ sales_area_code: v })} /></Field>}
+            <Field label={K.refInvoice && K.module === 'AP' ? 'เลขที่ใบลด/เพิ่มหนี้ของผู้จำหน่าย' : 'อ้างอิง'} hint={K.refInvoice && K.module === 'AP' ? 'เข้าแฟ้มภาษีซื้อ — ว่าง = ใช้เลขที่เอกสาร' : srcOrders.length ? <>{K.orderRef === 'SO' ? 'ใบสั่งขายที่อ้าง:' : 'ใบสั่งซื้อที่อ้าง:'} {srcOrders.map((o) => <span key={o.id}><DocLink id={o.id} no={o.no} cls={K.orderRef} keep={dirty} /> </span>)}</> : undefined}><input value={h.your_ref} maxLength={30} disabled={readOnly} onChange={(e) => set({ your_ref: e.target.value })} /></Field>
+            {K.party === 'customer' && <Field label="สถานที่ส่งของ" hint="ของสาขาที่ออกบิล — เพิ่มที่แท็บสถานที่ส่งสินค้าในรายละเอียดลูกค้า"><select value={h.ship_to_id} disabled={readOnly || !h.party} onChange={(e) => set({ ship_to_id: e.target.value })} aria-label="สถานที่ส่งของ"><option value="">— ที่อยู่ตาม Bill to —</option>{shipOpts.map((x) => <option key={x.id} value={x.id}>{x.code} {[x.address_1, x.address_2].filter(Boolean).join(' ')}</option>)}</select></Field>}
             <Field label="ขนส่งโดย"><LkSelect table="41" rows={lk.data?.['41']} value={h.ship_via_code} disabled={readOnly} onChange={(v) => set({ ship_via_code: v })} /></Field>
             <Field label="ประเภทราคา"><select value={h.price_type} disabled={readOnly} onChange={(e) => set({ price_type: e.target.value as Head['price_type'] })}><option value="0">0 ยกเว้นภาษี</option><option value="1">1 รวมภาษีแล้ว</option><option value="2">2 แยก VAT</option></select></Field>
             {K.module === 'AP' && !K.order && <Field label="ภาระภาษีซื้อ" hint="บริการ: เกณฑ์เงินสด = ภาษีซื้อเกิดเมื่อจ่ายเงิน"><select value={h.vat_basis} disabled={readOnly} onChange={(e) => set({ vat_basis: e.target.value as '1' | '2' })}><option value="1">เกณฑ์สิทธิ</option><option value="2">เกณฑ์เงินสด</option></select></Field>}
@@ -448,7 +464,7 @@ export function TradeFormPage({ path }: { path: string }) {
         {tab === 'lines' && noLines && <div className="notebox">เอกสารนี้ย้ายมาจาก Express โดยไม่มีรายการสินค้า (Express เก็บเฉพาะยอดเงิน) — แสดงยอดตามเอกสาร · แก้ไขไม่ได้ ยกเลิกหรือดูการลงบัญชีได้ตามปกติ</div>}
         {tab === 'lines' && <div className="table-wrap lines">
           <table className="grid">
-            <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 210 }}>รหัส</th><th style={{ minWidth: jobOn ? 160 : undefined }}>รายละเอียด</th><th style={{ width: 90 }}>คลัง</th><th className="r" style={{ width: 90 }}>จำนวน</th><th style={{ width: 80 }}>หน่วย<b className="req" aria-hidden="true">*</b></th><th className="r" style={{ width: 110 }}>ราคา/หน่วย</th><th style={{ width: 90 }}>ส่วนลด</th>{jobOn && <th style={{ width: 84 }} title="Job/โครงการ (ไม่บังคับ) — ค่าเริ่มต้นจากหัวเอกสาร">Job</th>}<th style={{ width: 36 }} title="ของแถม">F</th><th style={{ width: 104 }} title="ประเภท VAT รายบรรทัด: 1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0% (ค่าเริ่มต้นตามแฟ้มสินค้า แก้ที่เอกสารได้)">VAT</th>{(K.cls === 'CN' || K.cls === 'DN') && <th style={{ width: 36 }} title={K.cls === 'CN' ? 'รับคืนสินค้า' : 'ส่งคืนสินค้า'}>R</th>}<th className="r" style={{ width: 120 }}>จำนวนเงิน</th>{K.order && K.cls !== 'QT' && id && <th className="r" style={{ width: 90 }}>ค้าง{K.module === 'AR' ? 'ส่ง' : 'รับ'}</th>}<th style={{ width: 36 }} /></tr></thead>
+            <thead><tr><th style={{ width: 36 }}>#</th><th style={{ width: 210 }}>รหัส</th><th style={{ minWidth: jobOn ? 160 : undefined }}>รายละเอียด</th><th style={{ width: 90 }}>คลัง</th><th className="r" style={{ width: 90 }}>จำนวน</th><th style={{ width: 80 }}>หน่วย</th><th className="r" style={{ width: 110 }}>ราคา/หน่วย</th><th style={{ width: 90 }}>ส่วนลด</th>{jobOn && <th style={{ width: 84 }} title="Job/โครงการ (ไม่บังคับ) — ค่าเริ่มต้นจากหัวเอกสาร">Job</th>}<th style={{ width: 36 }} title="ของแถม">F</th><th style={{ width: 104 }} title="ประเภท VAT รายบรรทัด: 1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0% (ค่าเริ่มต้นตามแฟ้มสินค้า แก้ที่เอกสารได้)">VAT</th>{(K.cls === 'CN' || K.cls === 'DN') && <th style={{ width: 36 }} title={K.cls === 'CN' ? 'รับคืนสินค้า' : 'ส่งคืนสินค้า'}>R</th>}<th className="r" style={{ width: 120 }}>จำนวนเงิน</th>{K.order && K.cls !== 'QT' && id && <th className="r" style={{ width: 90 }}>ค้าง{K.module === 'AR' ? 'ส่ง' : 'รับ'}</th>}<th style={{ width: 36 }} /></tr></thead>
             <tbody>
               {lines.map((l, i) => (
                 <tr key={l.key}>
@@ -456,9 +472,9 @@ export function TradeFormPage({ path }: { path: string }) {
                   <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} disabled={readOnly} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)}
                     required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={readOnly} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={readOnly} label={l.item_code} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} />{l.source_no && <span className="small muted">อ้าง <DocLink id={l.source_header_id} no={l.source_no} cls={K.orderRef} keep={dirty} /></span>}</td>
-                  <td><LkSelect byId table="21" rows={lk.data?.WH} value={l.warehouse_id} disabled={readOnly} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>
-                  <td><NumInput neg value={l.qty} disabled={readOnly} onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวน" /></td>
-                  <td data-unit={l.key} className={cx(!!l.item_id && !l.unit_id && !readOnly && 'cell-err')} title={l.item_id && !l.unit_id ? 'ต้องมีหน่วยนับ — เลือกหน่วย' : undefined}><LkSelect byId table="20" rows={lk.data?.UNIT} value={l.unit_id} disabled={readOnly} onChange={(v) => setLine(l.key, { unit_id: v || null })} aria-label="หน่วย" /></td>
+                  <td data-cell={`warehouse-${l.key}`} className={cx(needWh(l) && !l.warehouse_id && !readOnly && 'cell-err')}><LkSelect byId table="21" rows={lk.data?.WH} value={l.warehouse_id} disabled={readOnly} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" data-required={needWh(l) ? 'คลัง' : undefined} /></td>
+                  <td data-cell={`qty-${l.key}`} className={cx(!!l.item_id && !Number(l.qty || 0) && !readOnly && 'cell-err')}><NumInput neg value={l.qty} disabled={readOnly} onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวน" data-required={l.item_id ? 'จำนวน' : undefined} /></td>
+                  <td data-cell={`unit-${l.key}`} className={cx(!!l.item_id && !l.unit_id && !readOnly && 'cell-err')} title={l.item_id && !l.unit_id ? 'ต้องมีหน่วยนับ — เลือกหน่วย' : undefined}><LkSelect byId table="20" rows={lk.data?.UNIT} value={l.unit_id} disabled={readOnly} onChange={(v) => setLine(l.key, { unit_id: v || null })} aria-label="หน่วย" data-required={l.item_id ? 'หน่วย' : undefined} /></td>
                   <td><NumInput places={2} value={l.unit_price} disabled={readOnly || l.is_free} onChange={(v) => setLine(l.key, { unit_price: v })} aria-label="ราคาต่อหน่วย" /></td>
                   <td><DiscountInput value={l.discount_text} disabled={readOnly} label="ส่วนลด" base={d(l.qty || 0).times(d(l.unit_price || 0)).toFixed(2)} onChange={(v) => setLine(l.key, { discount_text: v })} /></td>
                   {jobOn && <td><JobSelect value={l.project_id} disabled={readOnly} label={`Job บรรทัด ${i + 1}`} onChange={(v) => setLine(l.key, { project_id: v })} /></td>}
@@ -548,7 +564,10 @@ export function TradeFormPage({ path }: { path: string }) {
         </div>
       </div>}
       {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ...(K.payments ? [['F7', 'ชำระโดยอื่น'] as [string, string]] : []), ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+      <div className="page-foot">
+        {calc && h && <div className="sum-strip" aria-label="สรุปยอด"><span>รายการ <b>{lines.filter((l) => l.item_id).length}</b></span><span>จำนวนเงิน <b><Money v={calc.amount} /></b></span>{!d(calc.discount_amount).isZero() && <span>ส่วนลด <b><Money v={calc.discount_amount} /></b></span>}{h.price_type !== '0' && <span>VAT <b><Money v={calc.vat_amount} /></b></span>}<span className="grand">รวมทั้งสิ้น <b><Money v={calc.net_amount} /></b></span>{!whtTotal.isZero() && <span>หัก ณ ที่จ่าย <b><Money v={whtTotal.toFixed(2)} /></b></span>}</div>}
+        <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ...(K.payments ? [['F7', 'ชำระโดยอื่น'] as [string, string]] : []), ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+      </div>
       {depAsk && depOpen.data && <Confirm title="มีเงินมัดจำคงเหลือ" okText="หักเงินมัดจำ" onClose={() => setDepAsk(false)} onOk={() => { setDepAsk(false); setTab('deposit'); }}
         text={<>{partyWord(K)}รายนี้มีเงินมัดจำคงเหลือ {depOpen.data.rows.length} ใบ รวม <Money v={depOpen.data.rows.reduce((t, o) => t.plus(d(o.outstanding)), d(0)).toFixed(2)} /> — ต้องการหักในบิลนี้หรือไม่?
           <span className="small muted" style={{ display: 'block', marginTop: 6 }}>หักได้บางส่วนหรือเต็มจำนวน (ไม่เกินยอดคงเหลือ) · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้</span></>} />}

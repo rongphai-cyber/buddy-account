@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { allocateKit, computeDoc, d, dueDate, missingUnitIssues, TRADE_KINDS, type TradeKind } from '@buddy/core';
+import { allocateKit, computeDoc, d, dueDate, requiredLineIssues, TRADE_KINDS, type TradeKind } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { previewQuery, previewSave } from './preview.js';
@@ -78,7 +78,7 @@ function checkAbbr(K: TradeKind, b: Body, calc: ReturnType<typeof computeDoc>) {
 }
 
 /** หัว + บรรทัด + วิธีชำระของเอกสาร (บันทึกใหม่หรือแก้ไข) แล้วลงบัญชีในทรานแซกชันเดียวกัน */
-/** opt.requireUnit: บันทึกจากหน้าจอ (คีย์เอง) — ทุกบรรทัดต้องมีหน่วยนับ (เจ้าของ 18/11/2569) · API/นำเข้า ใช้หน่วยนับหลักของสินค้าเมื่อไม่ส่งมา ตามเดิม */
+/** opt.requireUnit: บันทึกจากหน้าจอ (คีย์เอง) — ทุกบรรทัดต้องมีหน่วยนับ จำนวน และคลัง (สินค้าสต๊อก) (เจ้าของ 18/11/2569) · API/นำเข้า ใช้ค่าเริ่มต้นตามเดิม */
 export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Body, opt: { requireUnit?: boolean } = {}) {
   const dt = await db.selectFrom('md_doc_type').select(['id', 'doc_class', 'warehouse_id', 'department_id', 'vat_rate', 'price_type', 'status']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!dt || dt.doc_class !== K.cls) throw badRequest(`เลือกประเภทเอกสารของ${K.label}`);
@@ -91,7 +91,18 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
   // ชื่อบนใบกำกับ: Bill to (คู่มือหน้า 197) — ผู้ถูกตั้งหนี้ยังเป็นรหัสลูกค้า
   const billTo = b.bill_to_customer_id && K.party === 'customer' ? await db.selectFrom('md_customer').select(['title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no']).where('id', '=', b.bill_to_customer_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
   if (b.bill_to_customer_id && K.party === 'customer' && !billTo) throw badRequest('ไม่พบลูกค้า Bill to');
-  const shown = billTo ?? party;
+  // Bill to = สาขาของลูกค้ารายเดียวกัน (เจ้าของ 18/11/2569): สาขาที่มีในแฟ้มสาขาลูกค้า → ใบกำกับ/ภาษีขายใช้ชื่อลูกค้า + ที่อยู่/เลขที่สาขานั้น · ลูกหนี้ยังเป็นรหัสลูกค้า
+  // (bill_to_customer_id = Bill to แบบเดิมของ Express — คงไว้ให้เอกสารเดิม/API)
+  const wantBranch = K.party === 'customer' && !billTo && b.party_tax_branch_no && b.party_tax_branch_no !== (party.tax_branch_no || '00000') ? b.party_tax_branch_no : null;
+  const cb = wantBranch ? await db.selectFrom('md_customer_branch').select(['branch_no', 'address_1', 'address_2', 'address_3', 'zip_code']).where('company_id', '=', a.companyId).where('customer_id', '=', party.id).where('branch_no', '=', wantBranch).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
+  const shown = billTo ?? (cb ? { ...party, address_1: cb.address_1, address_2: cb.address_2, address_3: cb.address_3, zip_code: cb.zip_code, tax_branch_no: cb.branch_no } : party);
+  // สถานที่ส่งของต้องเป็นของลูกค้ารายนี้ (หรือใช้ร่วมทุกลูกค้า) และของสาขาที่ออกบิล ถ้าสถานที่นั้นระบุสาขา
+  if (b.ship_to_id && K.party === 'customer') {
+    const st = await db.selectFrom('md_customer_ship_to').select(['code', 'customer_id', 'branch_no']).where('id', '=', b.ship_to_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (st && st.customer_id && st.customer_id !== party.id) throw badRequest('สถานที่ส่งของนี้ไม่ใช่ของลูกค้ารายนี้ — เลือกใหม่', [{ field: 'ship_to_id', message: 'เลือกสถานที่ส่งของของลูกค้ารายนี้' }]);
+    const billBranch = b.party_tax_branch_no || party.tax_branch_no || '00000';
+    if (st?.branch_no && st.branch_no !== billBranch) throw badRequest(`สถานที่ส่งของ ${st.code} เป็นของสาขา ${st.branch_no} ไม่ใช่สาขาที่ออกบิล (${billBranch}) — เลือกสถานที่ส่งของของสาขานั้น หรือเปลี่ยน Bill to`, [{ field: 'ship_to_id', message: 'สาขาไม่ตรง' }]);
+  }
   const items = await db.selectFrom('md_item as i').leftJoin('md_item_account_group as g', 'g.id', 'i.account_group_id')
     .select(['i.id', 'i.code', 'i.name_th', 'i.item_type', 'i.vat_code', 'i.base_unit_id', 'i.status', 'i.std_cost', 'g.cost_method']).where('i.company_id', '=', a.companyId).where('i.id', 'in', [...new Set(b.lines.map((l) => l.item_id))]).where('i.deleted_at', 'is', null).execute();
   const byId = new Map(items.map((i) => [i.id, i]));
@@ -102,8 +113,9 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     if (K.module === 'AP' && it.item_type === '4') throw badRequest(`บรรทัดที่ ${i + 1}: ${it.code} เป็นรหัสรายได้ ใช้ในเอกสารซื้อไม่ได้`);
     if (!(Number(l.qty) !== 0) && !(Number(l.unit_price) !== 0)) throw badRequest(`บรรทัดที่ ${i + 1}: ป้อนจำนวนและราคา`);
   });
-  // ทุกบรรทัดซื้อ/ขายต้องมีหน่วยนับ (เจ้าของ 18/11/2569) — ไม่ส่งมา = หน่วยนับหลักของสินค้า · ยังไม่มี = ไม่รับ
-  const noUnit = !opt.requireUnit ? [] : missingUnitIssues(b.lines.map((l) => ({ unit_id: l.unit_id ?? byId.get(l.item_id)!.base_unit_id, code: byId.get(l.item_id)!.code })));
+  // ทุกบรรทัดซื้อ/ขายที่คีย์ต้องมีหน่วยนับ จำนวน และคลัง (สินค้าสต๊อก) (เจ้าของ 18/11/2569) — ไม่ส่งมา = ค่าเริ่มต้นเดียวกับตอนบันทึก (หน่วยนับหลัก · คลังของหัวเอกสาร/ประเภท/คลังหลัก) · ยังไม่มี = ไม่รับ
+  const whDefault = opt.requireUnit ? b.warehouse_id ?? dt.warehouse_id ?? (await stockSettings(db, a.companyId)).mainWarehouseId ?? null : null;
+  const noUnit = !opt.requireUnit ? [] : requiredLineIssues(b.lines.map((l) => { const it = byId.get(l.item_id)!; return { code: it.code, item_type: it.item_type, unit_id: l.unit_id ?? it.base_unit_id, qty: l.qty, warehouse_id: l.warehouse_id ?? whDefault }; }));
   if (noUnit.length) throw badRequest(noUnit[0]!.message, noUnit.map((x) => ({ field: 'unit_id', line: x.line, message: x.message })));
   // รหัสที่อ้างถึง (แผนก พนักงานขาย สถานที่ส่ง คลัง หน่วยนับ วิธีชำระ) ต้องเป็นของบริษัทนี้ — FK ไม่ตรวจบริษัท
   await checkJobs(db, a.companyId, [{ id: b.project_id }, ...b.lines.map((l, i) => ({ id: l.project_id, line: i + 1 }))], await jobsOfDoc(db, a.companyId, id));
@@ -369,7 +381,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
       const h = await db.selectFrom('doc_header').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id').leftJoin('md_unit as u', 'u.id', 'l.unit_id')
-        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.source_line_id', 'l.delivery_date', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.unit_price', 'l.discount_text', 'l.discount_amount', 'l.line_amount', 'l.net_amount', 'l.vat_code', 'l.is_free', 'l.return_to_stock', 'l.department_id', 'l.project_id', 'l.line_note', 'l.line_note_print'])
+        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'i.item_type', 'l.description', 'l.source_line_id', 'l.delivery_date', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.unit_price', 'l.discount_text', 'l.discount_amount', 'l.line_amount', 'l.net_amount', 'l.vat_code', 'l.is_free', 'l.return_to_stock', 'l.department_id', 'l.project_id', 'l.line_note', 'l.line_note_print'])
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).where('l.line_kind', '<>', 'K').orderBy('l.line_no').execute();
       const payments = await db.selectFrom('doc_payment as p').leftJoin('md_payment_method as m', 'm.id', 'p.payment_method_id').select(['p.line_no', 'p.payment_method_id', 'm.code as method_code', 'm.name_th as method_name', 'p.amount', 'p.reference_no'])
         .where('p.header_id', '=', id).where('p.deleted_at', 'is', null).orderBy('p.line_no').execute();

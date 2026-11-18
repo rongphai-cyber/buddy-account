@@ -75,6 +75,7 @@ async function subjectReport(db: Db, companyId: string, kind: Kind, id: string) 
       dates.push(wht.last, chq.last);
       if (kind === 'CUSTOMER') {
         out.ship_to = await rows(db, sql`SELECT code, address_1, address_2, address_3, zip_code, phone, contact FROM md_customer_ship_to WHERE company_id = ${companyId} AND customer_id = ${id} AND deleted_at IS NULL ORDER BY code`);
+        out.branches = await rows(db, sql`SELECT branch_no, name, address_1, address_2, address_3, zip_code, phone, contact FROM md_customer_branch WHERE company_id = ${companyId} AND customer_id = ${id} AND deleted_at IS NULL ORDER BY branch_no`);
         const ser = (await rows<{ n: number; last: string | null }>(db, sql`SELECT count(*)::int AS n, max(sale_date)::text AS last FROM md_serial WHERE company_id = ${companyId} AND deleted_at IS NULL AND customer_id = ${id}`))[0]!;
         out.serials = ser.n;
         dates.push(ser.last);
@@ -101,6 +102,7 @@ async function eraseContact(db: Db, companyId: string, kind: Kind, id: string, u
   if (kind === 'CUSTOMER') {
     await run('md_customer', sql`UPDATE md_customer SET phone = NULL, email = NULL, contact = NULL, remark = NULL, updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
     await run('md_customer_ship_to', sql`UPDATE md_customer_ship_to SET phone = NULL, contact = NULL, updated_by = ${userId} WHERE company_id = ${companyId} AND customer_id = ${id}`);
+    await run('md_customer_branch', sql`UPDATE md_customer_branch SET phone = NULL, contact = NULL, updated_by = ${userId} WHERE company_id = ${companyId} AND customer_id = ${id}`);
     await run('md_party_contact', erasedContacts('C'));
     await run('md_note', erasedNotes);
   } else if (kind === 'SUPPLIER') {
@@ -144,6 +146,7 @@ async function eraseFull(db: Db, companyId: string, kind: Kind, id: string, user
       tax_id = NULL, tax_branch_no = NULL, status = 'I', inactive_date = coalesce(inactive_date, ${today}::date), updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
   if (kind === 'CUSTOMER') {
     await run('md_customer_ship_to', sql`UPDATE md_customer_ship_to SET address_1 = NULL, address_2 = NULL, address_3 = NULL, zip_code = NULL, ${addrNullSql()} WHERE company_id = ${companyId} AND customer_id = ${id}`);
+    await run('md_customer_branch', sql`UPDATE md_customer_branch SET address_1 = NULL, address_2 = NULL, address_3 = NULL, zip_code = NULL, ${addrNullSql()} WHERE company_id = ${companyId} AND customer_id = ${id}`);
     await run('md_serial', sql`UPDATE md_serial SET customer_name = NULL WHERE company_id = ${companyId} AND customer_id = ${id}`);
   } else {
     await run('fin_cheque', sql`UPDATE fin_cheque SET payee_name = ${PDPA_ERASED} WHERE company_id = ${companyId} AND supplier_id = ${id} AND payee_name IS NOT NULL`);
