@@ -138,7 +138,7 @@ const squash = (v: string) => v.toLowerCase().replace(/[\s\-_.]/g, '');
 const localMatch = (q: string, hay: string) => { const h = squash(hay); return q.trim().split(/\s+/).filter(Boolean).every((w) => h.includes(squash(w))); };
 
 /** ช่องค้นหาแล้วเลือก (สินค้า ผู้จำหน่าย) — พิมพ์รหัส/ชื่อ เลือกจากรายการ · F4 / ลูกศรลง เปิดรายการ · options = รายการคงที่ (ค้นในเครื่อง ไม่เรียก API) */
-export function SearchPick<T extends { id: string }>({ endpoint = '', options, params, value, label, onPick, placeholder = 'พิมพ์รหัสหรือชื่อเพื่อค้นหา', describe, exclude, codeOf, addNew = true, required, onEmptyEnter, ...rest }: {
+export function SearchPick<T extends { id: string }>({ endpoint = '', options, params, value, label, onPick, placeholder = 'พิมพ์รหัสหรือชื่อเพื่อค้นหา', describe, exclude, codeOf, addNew = true, required, onEmptyEnter, onEmptyEscape, ...rest }: {
   endpoint?: string; options?: T[]; params?: Record<string, string>; value: { id: string; code: string; name?: string | null } | null; label?: (r: T) => string; codeOf?: (r: T) => string;
   onPick: (r: T | null) => void; placeholder?: string; describe?: (r: T) => string; exclude?: string[];
   /** ค้นหาไม่พบ → เพิ่มใหม่จากช่องนี้ (ข้อกำหนดเจ้าของ) — false = ปิด */
@@ -147,6 +147,8 @@ export function SearchPick<T extends { id: string }>({ endpoint = '', options, p
   required?: boolean;
   /** Enter ตอนว่าง (ไม่บังคับ) — เช่น บรรทัดว่างท้ายตาราง = จบรายการ ไปช่องถัดจากตาราง */
   onEmptyEnter?: (input: HTMLInputElement) => void;
+  /** Esc ที่ช่องว่าง (ปิดรายการแล้วยังไม่ได้เลือก) — บรรทัดรายการ: ถามบันทึก/ยกเลิก */
+  onEmptyEscape?: (input: HTMLInputElement) => void;
   [k: string]: unknown;
 }) {
   const [q, setQ] = useState<string | null>(null);
@@ -182,6 +184,7 @@ export function SearchPick<T extends { id: string }>({ endpoint = '', options, p
           if (e.key === 'Insert' && canAdd) { e.preventDefault(); e.stopPropagation(); startAdd(q ?? ''); return; }
           if (q === null) {
             if (e.key === 'F4' || e.key === 'ArrowDown') { e.preventDefault(); setBrowse(true); setQ(value?.code ?? ''); }
+            else if (e.key === 'Escape' && !value && onEmptyEscape && !rest.disabled) { e.preventDefault(); e.stopPropagation(); onEmptyEscape(e.currentTarget); }
             else if (e.key === 'Enter' && !value && !rest.disabled && (required || onEmptyEnter)) {
               e.preventDefault(); e.stopPropagation();
               if (required) { setBrowse(true); setQ(''); toast(`ต้องเลือก${placeholderWord(endpoint)}ก่อน — พิมพ์รหัส/ชื่อเพื่อค้นหา แล้ว Enter เลือก${canAdd ? ' (ไม่พบ กด Insert เพิ่มใหม่)' : ''}`, 'warn'); }
@@ -192,7 +195,7 @@ export function SearchPick<T extends { id: string }>({ endpoint = '', options, p
           if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, rows.length - 1)); }
           else if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
           else if (e.key === 'Enter') { e.preventDefault(); if (rows[sel]) pick(rows[sel]!); else if (canAdd && q.trim() && loaded && !res.isFetching) startAdd(q); }
-          else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setQ(null); setBrowse(false); }
+          else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setQ(null); setBrowse(false); if (!value && onEmptyEscape) onEmptyEscape(e.currentTarget); }
         }} />
       {!rest.disabled && <button type="button" className="pick-btn" tabIndex={-1} title="ค้นหา (F4)" aria-label="ค้นหา" onMouseDown={(e) => e.preventDefault()} onClick={() => (q === null ? openList() : (setQ(null), setBrowse(false)))}>🔍</button>}
       {q !== null && (q.trim() || browse) && (

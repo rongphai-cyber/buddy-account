@@ -171,7 +171,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   // Enter ที่บรรทัดว่าง (มีรายการแล้ว) = ถามว่าจะทำอะไรต่อ ไม่ข้ามออกจากตารางเงียบ ๆ (เจ้าของ 18/11/2569)
-  const le = useLineEnd({ onSave: () => void save() });
+  const le = useLineEnd({ onSave: () => void save(), hasLines: lines.some((l) => l.item_id) });
   const cancelDoc = async () => {
     try { await api.post(`/api/v1/${K.path}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.path] }); qc.invalidateQueries({ queryKey: ['stock'] }); nav(K.route); }
     catch (e) { setAskCancel(false); setErr(e); }
@@ -230,7 +230,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
               {lines.map((l, i) => (
                 <tr key={l.key}>
                   <td className="muted">{i + 1}</td>
-                  <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={le.onEmptyEnter} disabled={ro} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
+                  <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={le.onEmptyEnter} onEmptyEscape={le.onEmptyEscape} disabled={ro} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.item_code} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                   {cls !== 'RL' && <td><LkSelect byId table="21" rows={whRows} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>}
                   {cls === 'CA' ? <>
@@ -253,7 +253,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
           </table>
         </div>}
       </div>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป · บรรทัดว่าง = ถามทำต่อ · หมายเหตุ = ถามบันทึก'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาสินค้า'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป · ช่องรหัสว่าง = เลือกสินค้า'], ['Esc', 'ที่ช่องรหัสว่าง = บันทึก/ยกเลิก'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาสินค้า'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
       {prodCost && h && <ProductionCost date={h.doc_date} departmentId={h.department_id} lines={used} onClose={() => setProdCost(false)}
         onApply={(costs, note) => { setLines((ls) => ls.map((l) => (costs[l.key] !== undefined ? { ...l, unit_cost: costs[l.key]!, cost_amount: null, cost_unit: null } : l))); if (!h.remark) set({ remark: note.slice(0, 200) }); setDirty(true); setProdCost(false); }} />}
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? สต๊อกและใบสำคัญจะกลับคืน (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>

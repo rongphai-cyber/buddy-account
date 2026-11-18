@@ -347,7 +347,7 @@ export function SettleFormPage({ path }: { path: string }) {
         {tab === 'vat' && id && isRe && charges.some((c) => c.vat_type === '1') && <><h3 className="section-title">ภาษีซื้อจากรายการที่แพลตฟอร์มหัก</h3><DocVatTab headerId={id} cls="OE" /></>}
         {tab === 'gl' && <PostingTab id={id} path={K.path} editing={!ro} bodyOf={bodyOf} />}
         <div className="trade-foot">
-          <Field label="หมายเหตุ"><textarea data-enterend="" title="Enter = บันทึก? · Shift+Enter = ขึ้นบรรทัดใหม่" rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
+          <Field label="หมายเหตุ"><textarea data-enterend="" title="Enter = ช่องถัดไป · Shift+Enter = ขึ้นบรรทัดใหม่" rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
           <table className="totals-table"><tbody>
             <tr><td>ยอดชำระตามใบกำกับ</td><td className="r"><Money v={t.billed} /></td></tr>
             <tr><td>{K.direction === 'R' ? 'ดอกเบี้ยรับ (รับเกิน)' : 'ดอกเบี้ยจ่าย (จ่ายล่าช้า)'}</td><td><MoneyInput value={h.interest} disabled={ro} onChange={(v) => set({ interest: v })} aria-label="ดอกเบี้ย" /></td></tr>

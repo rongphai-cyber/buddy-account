@@ -247,7 +247,7 @@ export function CashFormPage({ path }: { path: string }) {
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   // Enter ที่บรรทัดว่าง (มีรายการแล้ว) = ถามว่าจะทำอะไรต่อ ไม่ข้ามออกจากตารางเงียบ ๆ (เจ้าของ 18/11/2569)
-  const le = useLineEnd({ onSave: () => void save() });
+  const le = useLineEnd({ onSave: () => void save(), hasLines: lines.some((l) => l.item_id), word: K.module === 'AR' ? 'รายได้' : 'ค่าใช้จ่าย', onDiscard: id ? undefined : () => { setH(null); setLines([]); setPays([]); setWhts([]); setDirty(false); nav(`${K.route}/new`); } });
   const cancelDoc = async () => {
     try { await api.post(`/api/v1/${K.path}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.path] }); nav(K.route); }
     catch (e) { setAskCancel(false); setErr(e); }
@@ -295,7 +295,7 @@ export function CashFormPage({ path }: { path: string }) {
       {le.dialog}
       <ErrorBox error={err ?? cur.error} />
       {payAsk && h && <PayChoiceDialog direction={K.direction} due={t.due} other={t.other} onChoose={choosePay} onClose={() => setPayAsk(null)} />}
-      {h && <div className="doc-body" onKeyDown={(e) => navKey(e, () => (needsPay() ? setPayAsk({ next: 'confirm', andNew: false }) : ed.end()))}>
+      {h && <div className="doc-body" data-navorder=".head-grid|.trade-foot|.table-wrap.lines" onKeyDown={(e) => navKey(e, () => (needsPay() ? setPayAsk({ next: 'confirm', andNew: false }) : ed.end()))}>
         <div className="head-grid trade-head">
           <div className="col">
             <Field label={`รหัส${partyWord(K)}`} req hint={K.partyRequired ? undefined : `ไม่มีรหัส: คีย์ชื่อ${partyWord(K)}ในช่อง "ชื่อ (ไม่มีรหัส)" — ต้องมีอย่างใดอย่างหนึ่ง`}>
@@ -332,7 +332,7 @@ export function CashFormPage({ path }: { path: string }) {
               {lines.map((l, i) => (
                 <tr key={l.key}>
                   <td className="muted">{i + 1}</td>
-                  {K.lines === 'code' && <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module, types: K.cls === 'OI' ? '4' : '5,2' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={le.onEmptyEnter} disabled={ro}
+                  {K.lines === 'code' && <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module, types: K.cls === 'OI' ? '4' : '5,2' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={le.onEmptyEnter} onEmptyEscape={le.onEmptyEscape} disabled={ro}
                     label={(r: { name_th: string }) => r.name_th} onPick={(r: { id: string; code: string; name_th: string; price_1: string | null; std_cost: string | null } | null) => setLine(l.key, r ? { item_id: r.id, item_code: r.code, description: r.name_th, amount: l.amount || num(K.module === 'AR' ? r.price_1 : r.std_cost) } : { item_id: '', item_code: '' })} aria-label={`รหัส ${i + 1}`} /></td>}
                   <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} placeholder={K.deposit ? 'เช่น รับเงินมัดจำล่วงหน้า 10% สำหรับคอมพิวเตอร์ 1 ชุด' : ''} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="คำอธิบาย" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.item_code || l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
                   {jobCol && <td><JobSelect value={l.project_id} disabled={ro} label={`Job บรรทัด ${i + 1}`} onChange={(v) => setLine(l.key, { project_id: v })} /></td>}
@@ -353,7 +353,6 @@ export function CashFormPage({ path }: { path: string }) {
         {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} />}
         {tab === 'gl' && <PostingTab id={id} path={K.path} editing={!ro} bodyOf={bodyOf} />}
         <div className="trade-foot">
-          <Field label="หมายเหตุ"><textarea data-enterend="" title="Enter = บันทึก? · Shift+Enter = ขึ้นบรรทัดใหม่" rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
           {calc && <table className="totals-table"><tbody>
             <tr><td>จำนวนเงิน</td><td className="r"><Money v={calc.amount} /></td></tr>
             <tr><td>ภาษีมูลค่าเพิ่ม <input className="r" inputMode="decimal" value={h.vat_rate} disabled={ro || h.price_type === '0'} onChange={(e) => set({ vat_rate: e.target.value.replace(/[^\d.]/g, '') })} aria-label="อัตราภาษี" style={{ width: 60 }} /> %</td><td className="r"><Money v={calc.vat_amount} /></td></tr>
@@ -366,12 +365,13 @@ export function CashFormPage({ path }: { path: string }) {
             {calc.errors.length > 0 && <tr><td colSpan={2} className="bad small">{calc.errors[0]}</td></tr>}
             {!t.ok && used.length > 0 && <tr><td colSpan={2} className="bad small">{d(t.cash).lt(0) ? `ชำระโดยวิธีอื่นมากกว่ายอดที่ต้อง${rp(K)}` : `จำนวนเงินรวมทั้งสิ้นต้องเท่ากับยอด${rp(K)}จริง ต่าง ${fmt(t.diff)} — ล้างช่องเงินสดให้คำนวณเอง`}</td></tr>}
           </tbody></table>}
+          <Field label="หมายเหตุ"><textarea data-enterend="" title="Enter = ไปคีย์รายการ · Shift+Enter = ขึ้นบรรทัดใหม่" rows={2} value={h.remark} maxLength={2000} disabled={ro} onChange={(e) => set({ remark: e.target.value })} /></Field>
         </div>
       </div>}
       {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
       <div className="page-foot">
         {calc && h && <div className="sum-strip" aria-label="สรุปยอด"><span>รายการ <b>{used.length}</b></span><span>จำนวนเงิน <b><Money v={calc.amount} /></b></span>{!d(calc.vat_amount).isZero() && <span>VAT <b><Money v={calc.vat_amount} /></b></span>}<span className="grand">รวมทั้งสิ้น <b><Money v={calc.net_amount} /></b></span></div>}
-        <KeyHints keys={[['Enter', 'ช่องถัดไป · บรรทัดว่าง = ถามทำต่อ · หมายเหตุ = ถามบันทึก'], ['Shift+Enter', 'ขึ้นบรรทัดใหม่ในหมายเหตุ'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['F7', 'ชำระโดยอื่น'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+        <KeyHints keys={[['Enter', 'ช่องถัดไป: หัว → ท้าย (VAT หมายเหตุ) → รายการ · ช่องรหัสว่าง = เลือกรหัส'], ['Esc', 'ที่ช่องรหัสว่าง = บันทึก/ยกเลิก'], ['Shift+Enter', 'ขึ้นบรรทัดใหม่ในหมายเหตุ'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ['F7', 'ชำระโดยอื่น'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       </div>
       {askCancel && <Confirm danger title="ยกเลิกเอกสาร" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? เอกสารและใบสำคัญจะเป็นสถานะยกเลิก (ไม่ลบ) · เช็คออกจากทะเบียน{K.whtEntries ? ' · ภาษีหัก ณ ที่จ่ายยกเลิก' : ''}</>} okText="ยกเลิกเอกสาร" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>

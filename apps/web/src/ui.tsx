@@ -151,18 +151,18 @@ export function focusNext(el: HTMLElement | null) {
 export function navKey(e: RKE<HTMLElement>, onEnd?: () => void) {
   if (e.key !== 'Enter' || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
   const t = e.target as HTMLElement;
-  // หมายเหตุท้ายเอกสาร (data-enterend): Enter = ช่องสุดท้าย → ถามบันทึก · Shift+Enter = ขึ้นบรรทัดใหม่ (เจ้าของ 18/11/2569)
-  if (t.matches('textarea') && t.dataset.enterend != null) {
-    if (e.shiftKey) return;
-    e.preventDefault();
-    if (onEnd) onEnd(); else (e.currentTarget as HTMLElement).dispatchEvent(new CustomEvent('navend', { bubbles: true }));
-    return;
-  }
-  if (!t.matches('input, select') || t.dataset.noenter != null) return;
+  // หมายเหตุท้ายเอกสาร (data-enterend): Enter = ไปช่องถัดไปตามลำดับ · Shift+Enter = ขึ้นบรรทัดใหม่ (เจ้าของ 18/11/2569)
+  const memo = t.matches('textarea') && t.dataset.enterend != null;
+  if (memo && e.shiftKey) return;
+  if (!(t.matches('input, select') || memo) || t.dataset.noenter != null) return;
   const box = e.currentTarget as HTMLElement;
-  const els = [...box.querySelectorAll<HTMLElement>('input:not([disabled]):not([readonly]):not([type=checkbox]):not([type=radio]), select:not([disabled])')]
+  let els = [...box.querySelectorAll<HTMLElement>('input:not([disabled]):not([readonly]):not([type=checkbox]):not([type=radio]), select:not([disabled]), textarea[data-enterend]:not([disabled])')]
     // data-navskip = ข้ามเมื่อมีค่าแล้ว (เช่น จังหวัด/อำเภอที่เติมจากรหัสไปรษณีย์ · ข้อความที่อยู่ที่ประกอบให้เอง)
     .filter((x) => x.offsetParent && (x === t || x.dataset.navskip == null || !(x as HTMLInputElement).value));
+  // ลำดับการคีย์ของหน้า (data-navorder="ส่วนหัว|ส่วนท้าย|รายการ") — เอกสาร: หัว → ท้าย (ส่วนลด VAT หมายเหตุ) → รายการ (เจ้าของ 18/11/2569)
+  const order = box.dataset.navorder?.split('|');
+  const group = (x: HTMLElement) => { const g = order ? order.findIndex((sel) => x.closest(sel)) : 0; return g < 0 ? order!.length : g; };
+  if (order) els = els.map((x, k) => [x, k] as const).sort((p, q) => group(p[0]) - group(q[0]) || p[1] - q[1]).map((p) => p[0]);
   const i = els.indexOf(t);
   if (i < 0) return;
   e.preventDefault();
@@ -185,7 +185,11 @@ export function navKey(e: RKE<HTMLElement>, onEnd?: () => void) {
     return;
   }
   const n = els[i + (e.shiftKey ? -1 : 1)];
-  if (n) { n.focus(); (n as HTMLInputElement).select?.(); }
+  if (n) {
+    n.focus(); (n as HTMLInputElement).select?.();
+    // เข้าส่วนรายการจากส่วนอื่น ที่ช่องรหัสว่าง = เปิดรายการให้เลือกเลย
+    if (order && !e.shiftKey && group(n) !== group(t) && n.closest('.table-wrap.lines') && n.closest('.pick') && !(n as HTMLInputElement).value) (n.parentElement?.querySelector('.pick-btn') as HTMLElement | null)?.click();
+  }
   else if (onEnd) onEnd();   // ช่องสุดท้ายของหน้า — เช่น ถามบันทึก (useDocEdit)
   else box.dispatchEvent(new CustomEvent('navend', { bubbles: true }));
 }

@@ -112,7 +112,7 @@ export function StockOpeningFormPage() {
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   // Enter ที่บรรทัดว่าง (มีรายการแล้ว) = ถามว่าจะทำอะไรต่อ ไม่ข้ามออกจากตารางเงียบ ๆ (เจ้าของ 18/11/2569)
-  const le = useLineEnd({ onSave: () => void save() });
+  const le = useLineEnd({ onSave: () => void save(), hasLines: lines.some((l) => l.item_id) });
   const cancelDoc = async () => {
     try { await api.post(`/api/v1/stock-opening/${id}/cancel`, { reason }); toast('ยกเลิกล็อตยกมาแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: ['stock-opening'] }); qc.invalidateQueries({ queryKey: ['stock'] }); nav(ROUTE); }
     catch (e) { setAskCancel(false); setErr(e); }
@@ -154,7 +154,7 @@ export function StockOpeningFormPage() {
               {lines.map((l, i) => (
                 <tr key={l.key}>
                   <td className="muted">{i + 1}</td>
-                  <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={le.onEmptyEnter} disabled={ro} label={(r: { name_th: string }) => r.name_th}
+                  <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={le.onEmptyEnter} onEmptyEscape={le.onEmptyEscape} disabled={ro} label={(r: { name_th: string }) => r.name_th}
                     onPick={(r: { id: string; code: string; name_th: string; base_unit_code?: string | null } | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td>{l.item_name}</td>
                   <td><LkSelect byId table="21" rows={lk.data?.WH} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>
@@ -170,7 +170,7 @@ export function StockOpeningFormPage() {
           </table>
         </div>
       </div>}
-      <KeyHints keys={[['Enter', 'ช่องถัดไป · บรรทัดว่าง = ถามทำต่อ · หมายเหตุ = ถามบันทึก'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาสินค้า'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
+      <KeyHints keys={[['Enter', 'ช่องถัดไป · ช่องรหัสว่าง = เลือกสินค้า'], ['Esc', 'ที่ช่องรหัสว่าง = บันทึก/ยกเลิก'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหาสินค้า'], ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิก'], ['Esc', 'กลับรายการ']]} />
       {askCancel && <Confirm danger title="ยกเลิกล็อตยกมา" text={<>ยกเลิก <b>{cur.data?.doc_no}</b>? ยอดสต๊อกยกมาของล็อตนี้จะหายไป (เปลี่ยนสถานะ ไม่ลบ)</>} okText="ยกเลิกล็อต" onClose={() => setAskCancel(false)} onOk={cancelDoc}>
         <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={reason} onChange={setReason} /></Field>
       </Confirm>}

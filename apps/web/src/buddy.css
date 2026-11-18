@@ -370,3 +370,6 @@ td .lk-add:not(:focus-within):not(:hover) > .icon-btn { display: none; }
   .toolbar button { padding: 3px 7px; }
 }
 .toolbar button .badge { margin-left: 2px; }
+/* footer: totals come first in the keying order (discount, VAT … → remarks → lines) but remarks stay on the left (owner 18/11/2569) */
+.trade-foot > .field { order: 1; }
+.trade-foot > .totals-table { order: 2; }
