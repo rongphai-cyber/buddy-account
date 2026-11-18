@@ -202,7 +202,8 @@ export function DepositRefundFormPage() {
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
   const docNo = id ? cur.data?.doc_no : dn.value ?? (tCur ? `${tCur.code}**NEW**` : '');
   return (
-    <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="sales" style={bookStyle(tColor)}>
+    <div className={cx('page', 'doc-fit', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="sales" style={bookStyle(tColor)}>
+      <div className="doc-sticky">
       <div className="doc-title"><p className="eyebrow">ขาย › {K.label}</p><h1>{docNo}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} /><SourceStamp doc={cur.data as Parameters<typeof SourceStamp>[0]['doc']} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}
           {rt.hasVat && <Pill tone="m">ใบลดหนี้ (มัดจำมี VAT)</Pill>}{h?.party && Object.keys(deps).length > 0 && !t.ok && !ro && <Pill tone="d">ยอดเงินไม่เรียบร้อย</Pill>}</span></div>
@@ -215,12 +216,12 @@ export function DepositRefundFormPage() {
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
-      <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={(v) => set({ doc_type_id: v })} />
-      <TypeNotice show={!id && !!h && !h.doc_type_id} />
+      <div className="type-row"><DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={(v) => set({ doc_type_id: v })} /><TypeNotice show={!id && !!h && !h.doc_type_id} /></div>
+      </div>
       {ed.dialog}
       <ErrorBox error={err ?? cur.error} />
       {payAsk && h && <PayChoiceDialog direction="P" due={t.due} other={t.other} onChoose={choosePay} onClose={() => setPayAsk(null)} />}
-      {h && <div onKeyDown={(e) => navKey(e, () => (needsPay() ? setPayAsk({ next: 'confirm', andNew: false }) : ed.end()))}>
+      {h && <div className="doc-body" onKeyDown={(e) => navKey(e, () => (needsPay() ? setPayAsk({ next: 'confirm', andNew: false }) : ed.end()))}>
         <div className="head-grid trade-head">
           <div className="col">
             <Field label="รหัสลูกค้า" req hint="เลือกลูกค้าที่มีเงินมัดจำคงเหลือ"><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint="/api/v1/customers" value={h.party} required disabled={ro || !!id} autoFocus={!id}

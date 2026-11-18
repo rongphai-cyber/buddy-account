@@ -125,7 +125,8 @@ a.doc-link:hover, a.doc-link:focus-visible, .shell a.doc-link:hover, .shell a.do
 .sub button:hover { background: var(--tone-soft); }
 .sub button.on { background: var(--tone-soft); font-weight: 600; }
 .menu-guide { margin-top: 8px; border-style: dashed; justify-content: center; }
-.shell.mini .lbl, .shell.mini .menu-guide { display: none; }
+/* only the side menu's labels (form fields also use .lbl — they must stay visible when the menu is narrowed) */
+.shell.mini .sidebar .lbl, .shell.mini .menu-guide { display: none; }
 .shell.mini .menu-head, .shell.mini .menu-home { justify-content: center; padding: 6px; }
 .main { grid-row: 3; overflow: auto; min-width: 0; }
 .wintabs { display: flex; gap: 4px; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 0 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); overflow-x: auto; position: sticky; top: 0; z-index: 5; }
@@ -419,7 +420,7 @@ pre { background: var(--surface-2); border: 1px solid var(--line); border-radius
   .burger { display: inline-flex; }
   .sidebar { position: fixed; top: var(--top-h, 52px); bottom: 0; left: 0; width: min(290px, 86vw); z-index: 30; transform: translateX(-100%); transition: transform 0.2s; box-shadow: 0 0 30px rgba(0, 0, 0, 0.2); overflow-y: auto; }
   .shell.menu-open .sidebar { transform: none; }
-  .shell.mini .lbl { display: inline; }
+  .shell.mini .sidebar .lbl { display: inline; }
   .main { grid-row: 3; }
   .head-grid { grid-template-columns: 1fr; }
   .company { display: none; }

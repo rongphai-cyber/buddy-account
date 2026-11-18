@@ -313,3 +313,53 @@ td .lk-add:not(:focus-within):not(:hover) > .icon-btn { display: none; }
   .head-grid .field > .hint.txt { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
 }
 .lines td.cell-err select, .lines td.cell-err input { border-color: var(--bad); background: var(--bad-soft); }
+/* Round 3 (owner 18/11/2569 "1.ส่วนหัว 2. ส่วนกลาง 3.ส่วนท้าย" like Express IV): the whole document fits one screen.
+   Header = two boxed panels with labels left of the fields; lines fill the remaining height and scroll inside;
+   remarks + totals footer always on screen; key hints at the bottom. Phones / short screens keep the normal flow. */
+.type-row { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
+.type-row > .tabs { flex: 1 1 auto; min-width: 0; }
+.type-notice { flex: none; align-self: center; font-size: 12.5px; padding: 1px 10px; border-radius: 12px; background: var(--warn-soft); color: var(--warn); white-space: nowrap; cursor: help; }
+@media (min-width: 1024px) {
+  .head-grid.trade-head { grid-template-columns: minmax(330px, 5fr) minmax(0, 7fr); gap: 8px; padding: 0; background: transparent; border: 0; }
+  .book-colored .head-grid.trade-head { border-top: 0; background: transparent; }
+  .trade-head .col { background: color-mix(in srgb, var(--tone) 5%, var(--surface)); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; gap: 3px 12px; }
+  .book-colored .trade-head .col { border-top: 3px solid var(--book-c); background: color-mix(in srgb, var(--book-c) 5%, var(--surface)); }
+  .trade-head .col:first-child { grid-template-columns: minmax(0, 1fr); }
+  .trade-head .col + .col { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .trade-head .field { display: grid; grid-template-columns: 100px minmax(0, 1fr); align-items: center; column-gap: 6px; row-gap: 0; }
+  .trade-head .field > .lbl { font-size: 12px; line-height: 1.15; text-align: right; }
+  .trade-head .field > :not(.lbl) { grid-column: 2; }
+  .trade-head input, .trade-head select { min-height: 28px; padding: 2px 6px; }
+  .trade-head .party-addr { margin-left: 106px; }
+  .trade-head .party-addr-note { margin: 0 0 0 106px; }
+}
+@media (min-width: 1024px) and (min-height: 600px) {
+  .page.doc-fit { min-height: 100%; padding-bottom: 0; gap: 6px; }   /* grows past the screen only when the header + footer alone are taller (then the page scrolls, dropdowns never clipped) */
+  .doc-fit > .doc-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  .doc-fit > .doc-body > * { flex: none; }
+  .doc-fit > .doc-body > .table-wrap.lines { flex: 1 1 0; min-height: 110px; overflow: auto; }
+  .doc-fit > .doc-body > .trade-foot { margin-top: auto; gap: 10px; grid-template-columns: minmax(0, 1fr) 340px; }
+  .doc-fit .trade-foot textarea { min-height: 0; }
+  .doc-fit .totals-table td { padding: 1px 6px; font-size: 13.5px; }
+  .doc-fit .totals-table tr.grand td { font-size: 15px; }
+  .doc-fit .totals-table input { min-height: 26px; padding: 1px 6px; }
+  .doc-fit .sum-strip { display: none; }   /* the full totals panel is on screen */
+  .doc-fit .lines td { padding: 1px 4px; line-height: 1.15; }
+  .doc-fit .lines td > input, .doc-fit .lines td > select, .doc-fit .lines td > .lk-add, .doc-fit .lines td > .pick, .doc-fit .lines td > .desc-cell { vertical-align: middle; }
+  .doc-fit .lines input, .doc-fit .lines select { min-height: 28px; padding: 1px 6px; }
+  .doc-fit .lines .icon-btn { min-height: 26px; }
+  .doc-fit .lines input[type=checkbox] { min-height: 0; margin: 0; vertical-align: middle; }
+  .doc-fit .lines .lk-add, .doc-fit .lines select { min-height: 28px; height: 28px; }
+  .page.doc-fit > .page-foot, .page.doc-fit > .keyhints { margin-bottom: 0; }
+  .doc-sticky { padding: 6px 8px 4px; gap: 3px; }
+  .doc-sticky .tab { min-height: 26px; padding: 2px 12px; }
+}
+/* address block: exactly two lines (the Thai font's line box is taller than 1.35em) */
+.party-addr { line-height: 18px; max-height: 42px; padding-top: 2px; padding-bottom: 2px; }
+/* the lines grid scrolls inside: its footer row (+ เพิ่มบรรทัด, อ้างใบสั่ง) stays at the bottom of the grid */
+@media (min-width: 1024px) and (min-height: 600px) {
+  .doc-fit > .doc-body > .table-wrap.lines tfoot td { position: sticky; bottom: 0; z-index: 1; background: var(--surface-2); padding: 2px 6px; }
+  .doc-fit > .doc-body > .table-wrap.lines tfoot button { min-height: 26px; padding: 1px 8px; }
+}
+/* notebook / iPad widths: drop the shortcut badges in the toolbar so it stays one row */
+@media (min-width: 901px) and (max-width: 1180px) { .toolbar kbd { display: none; } }

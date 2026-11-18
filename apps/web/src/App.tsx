@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PrintPage } from './components/DocPrint';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MENU, flattenMenu, formatDate, type MenuItem } from '@buddy/core';
@@ -130,6 +130,15 @@ function Shell() {
   useEffect(() => markEntered(), []);
   const [open, setOpen] = useState<string | null>(() => MENU.find((g) => flattenMenu(g.children).some((i) => i.route && loc.pathname.startsWith(i.route)))?.code ?? 'GL');
   const [mini, setMini] = useState(false);
+  // หน้าเอกสาร (ใบใหม่/เปิดใบเดิม) บนจอ notebook/iPad กว้าง 901–1365px: ย่อเมนูข้างให้เอกสารพอดีจอ (เจ้าของ 18/11/2569 รอบ 3)
+  // ผู้ใช้กด » ขยายเอง = ไม่ย่อให้อีกจนปิดโปรแกรม · ออกจากหน้าเอกสาร = ขยายคืนถ้าเป็นการย่อให้อัตโนมัติ
+  const userWide = useRef(false), autoMini = useRef(false);
+  useEffect(() => {
+    const doc = /\/(new|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.test(loc.pathname);
+    const w = window.innerWidth;
+    if (doc && w > 900 && w < 1366 && !userWide.current) { autoMini.current = true; setMini(true); }
+    else if (!doc && autoMini.current) { autoMini.current = false; setMini(false); }
+  }, [loc.pathname]);
   const [workDateOpen, setWorkDateOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   useEffect(() => setMobileMenu(false), [loc.pathname]);
@@ -194,12 +203,12 @@ function Shell() {
         </div>
       </header>
       <nav className="sidebar" aria-label="เมนูหลัก">
-        <button className="mini-btn" onClick={() => setMini((x) => !x)} title={mini ? 'ขยายเมนู' : 'ย่อเมนู'}>{mini ? '»' : '«'}</button>
+        <button className="mini-btn" onClick={() => { if (mini) { userWide.current = true; autoMini.current = false; } setMini((x) => !x); }} title={mini ? 'ขยายเมนู' : 'ย่อเมนู'}>{mini ? '»' : '«'}</button>
         <button className="menu-search-btn" onClick={() => setSearch(true)} title="ค้นหาเมนู (Ctrl+K)"><span className="hot">🔍</span><span className="lbl">ค้นหาเมนู</span><kbd className="lbl">Ctrl+K</kbd></button>
         <NavLink to="/" end className={({ isActive }) => cx('menu-home', isActive && 'on')} data-tone="home" title="หน้าแรก (Alt+H)"><span className="hot">🏠</span><span className="lbl">หน้าแรก</span></NavLink>
         {MENU.filter((g) => canSee(g, me.perms)).map((g) => (
           <div key={g.code} id={`menu-${g.code}`} className={cx('menu', open === g.code && 'open')} data-tone={TONE[g.code]}>
-            <button className="menu-head" onClick={() => { setOpen(open === g.code ? null : g.code); setMini(false); }} aria-expanded={open === g.code} title={g.label}>
+            <button className="menu-head" onClick={() => { setOpen(open === g.code ? null : g.code); if (mini) { userWide.current = true; autoMini.current = false; } setMini(false); }} aria-expanded={open === g.code} title={g.label}>
               <span className="hot">{ICON[g.code] ?? '•'}</span><span className="lbl">{g.label}</span>
             </button>
             {open === g.code && !mini && <div className="sub">{g.children!.filter((it) => canSee(it, me.perms)).map((it) => <MenuEntry key={it.code} it={it} perms={me.perms} />)}</div>}

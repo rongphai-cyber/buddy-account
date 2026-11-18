@@ -1583,5 +1583,7 @@
  "เลขที่สาขา {0} ซ้ำ": "Branch no. {0} is repeated",
  "เลือกสถานที่ส่งของของลูกค้ารายนี้": "Choose a delivery place of this customer",
  "ไม่มีสาขานี้": "No such branch",
- "— ที่อยู่ตาม Bill to —": "— Bill to address —"
+ "— ที่อยู่ตาม Bill to —": "— Bill to address —",
+ "เลขที่เอกสาร การลงบัญชี และค่าเริ่มต้นเป็นไปตามประเภทที่เลือก": "The document number, posting and defaults follow the chosen type",
+ "ⓘ เลือกประเภทเอกสารก่อน": "ⓘ Choose the document type first"
 }

@@ -23,9 +23,9 @@ export function DocTypeTabs({ types, value, onChange, locked, all }: { types: Do
     tabs={[...(all ? [{ key: '', label: 'ทุกประเภท' }] : []), ...shown.map((t) => ({ key: t.id, label: `${t.code} ${t.name_th}`, color: typeColorIn(types, t.id) }))]} />;
 }
 
-/** แจ้งให้เลือกประเภทก่อน (ใบใหม่ที่ยังไม่เลือก) */
+/** แจ้งให้เลือกประเภทก่อน (ใบใหม่ที่ยังไม่เลือก) — ป้ายเล็กข้างแถบประเภท ไม่กินแถว (เจ้าของ 18/11/2569 รอบ 3) · เลือกแล้วหายไป */
 export function TypeNotice({ show }: { show: boolean }) {
-  return show ? <p className="notebox">เลือกประเภทเอกสารจากแถบด้านบนก่อน — เลขที่เอกสาร การลงบัญชี และค่าเริ่มต้นเป็นไปตามประเภทที่เลือก</p> : null;
+  return show ? <span className="type-notice" role="note" title="เลขที่เอกสาร การลงบัญชี และค่าเริ่มต้นเป็นไปตามประเภทที่เลือก">ⓘ เลือกประเภทเอกสารก่อน</span> : null;
 }
 export const NO_TYPE_MSG = 'เลือกประเภทเอกสาร (แถบด้านบน) ก่อนบันทึก';
 

@@ -47845,6 +47845,13 @@
 ]
 },
 {
+"th": "เลขที่เอกสาร การลงบัญชี และค่าเริ่มต้นเป็นไปตามประเภทที่เลือก",
+"n": 1,
+"files": [
+"apps/web/src/components/DocTypeTabs.tsx"
+]
+},
+{
 "th": "เลขที่เอกสารจาก",
 "n": 1,
 "files": [
@@ -48689,13 +48696,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/pettycash.ts"
-]
-},
-{
-"th": "เลือกประเภทเอกสารจากแถบด้านบนก่อน — เลขที่เอกสาร การลงบัญชี และค่าเริ่มต้นเป็นไปตามประเภทที่เลือก",
-"n": 1,
-"files": [
-"apps/web/src/components/DocTypeTabs.tsx"
 ]
 },
 {
@@ -54856,6 +54856,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
+]
+},
+{
+"th": "ⓘ เลือกประเภทเอกสารก่อน",
+"n": 1,
+"files": [
+"apps/web/src/components/DocTypeTabs.tsx"
 ]
 },
 {
