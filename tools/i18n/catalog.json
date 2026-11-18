@@ -1621,6 +1621,24 @@
 ]
 },
 {
+"th": "เลขที่เอกสาร",
+"n": 16,
+"files": [
+"apps/web/src/components/DocNo.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/RepostPanel.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ชนิด",
 "n": 15,
 "files": [
@@ -1751,23 +1769,6 @@
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/web/src/pages/settings/Permissions.tsx",
 "apps/server/src/modules/permissions.ts"
-]
-},
-{
-"th": "เลขที่เอกสาร",
-"n": 15,
-"files": [
-"apps/web/src/components/DocNo.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/RepostPanel.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2672,6 +2673,19 @@
 ]
 },
 {
+"th": "เลขที่ใบสำคัญ",
+"n": 9,
+"files": [
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ใบสำคัญที่ลงบัญชี",
 "n": 9,
 "files": [
@@ -3339,18 +3353,6 @@
 "apps/web/src/pages/tools/TradeImport.tsx",
 "packages/core/src/journal-import.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เลขที่ใบสำคัญ",
-"n": 7,
-"files": [
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -13207,7 +13209,7 @@
 ]
 },
 {
-"th": "(ยังไม่บันทึก): ดุลทุกใบ บัญชี แผนก Job มีจริง งวดยังเปิด อ้างอิงไม่ซ้ำ · กดนำเข้าแล้วลงบัญชีทุกใบพร้อมกัน — ผิดใบเดียวไม่บันทึกเลย · เลขที่ใบสำคัญออกตามสมุด คำอธิบายรายการว่าง = คำอธิบายของใบ ·",
+"th": "(ยังไม่บันทึก): ดุลทุกใบ บัญชี แผนก Job มีจริง งวดยังเปิด อ้างอิงไม่ซ้ำ · กดนำเข้าแล้วลงบัญชีทุกใบพร้อมกัน — ผิดใบเดียวไม่บันทึกเลย ·",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx"
@@ -15958,6 +15960,13 @@
 ]
 },
 {
+"th": "{0} กลุ่ม {1}: เลขที่ใบสำคัญ {2} ซ้ำกับ {3} กลุ่ม {4} (แถว {5}) ในแฟ้มเดียวกัน",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "{0} กลุ่ม {1}: ใบสำคัญต้องมีอย่างน้อย 2 บรรทัด",
 "n": 1,
 "files": [
@@ -16606,6 +16615,34 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/banking.ts"
+]
+},
+{
+"th": "{0}: เลขที่ใบสำคัญ {1} ต้องขึ้นต้นด้วย {2} (ตัวนำหน้าของสมุด {3}) แล้วตามด้วยเลขที่ เช่น {4}0000001 — หรือเว้นว่างให้ระบบออกเลข",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
+"th": "{0}: เลขที่ใบสำคัญ {1} มีอยู่แล้ว — ใช้เลขอื่น หรือเว้นว่างให้ระบบออกเลข",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
+"th": "{0}: เลขที่ใบสำคัญ {1} เป็นของใบสำคัญที่ยกเลิกแล้ว — ลบใบนั้นที่หน้าสมุดรายวันก่อนจึงใช้เลขนี้ได้ หรือใช้เลขอื่น",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
+]
+},
+{
+"th": "{0}: เลขที่ใบสำคัญ {1} ไม่ตรงกับแถว {2} ({3}) — ใบสำคัญใบเดียวใช้เลขเดียว",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -19493,7 +19530,7 @@
 ]
 },
 {
-"th": "คอลัมน์: สมุด · เลขที่กลุ่ม · วันที่ · อ้างอิง · คำอธิบาย · เลขที่บัญชี · คำอธิบายรายการ · แผนก · Job · เดบิต · เครดิต (คำอธิบายแต่ละคอลัมน์อยู่ในแผ่น \"คำอธิบาย\" ของแบบฟอร์ม)",
+"th": "คอลัมน์: สมุด · เลขที่กลุ่ม · เลขที่ใบสำคัญ (ว่างได้) · วันที่ · อ้างอิง · คำอธิบาย · เลขที่บัญชี · คำอธิบายรายการ · แผนก · Job · เดบิต · เครดิต (คำอธิบายแต่ละคอลัมน์อยู่ในแผ่น \"คำอธิบาย\" ของแบบฟอร์ม)",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx"
@@ -23452,6 +23489,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "ตรวจแฟ้ม: แสดงเฉพาะเลขที่กำหนดเอง · นำเข้าแล้ว: เลขที่บันทึกจริง",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
 ]
 },
 {
@@ -36524,6 +36568,13 @@
 ]
 },
 {
+"th": "ระบบออกให้",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "ระบบอื่น",
 "n": 1,
 "files": [
@@ -40175,6 +40226,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/LkSelect.tsx"
+]
+},
+{
+"th": "ว่าง = ระบบออกเลขให้ตามสมุด · ใส่เอง = ต้องขึ้นต้นด้วยตัวนำหน้าของสมุด (สมุด PV → PV…) ไม่เกิน 30 ตัว ไม่มีช่องว่าง ห้ามซ้ำกับใบสำคัญที่มีอยู่ (ใบที่ยกเลิกแล้วยังจองเลขไว้จนกว่าจะลบ) · ใส่แถวแรกของกลุ่มก็พอ (ถ้าไม่ใส่เลขที่กลุ่ม ต้องใส่ทุกแถว)",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -47416,6 +47474,20 @@
 ]
 },
 {
+"th": "เลขที่ใบสำคัญ \"{0}\" มีช่องว่าง — ลบช่องว่างออก",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "เลขที่ใบสำคัญ \"{0}\" ยาวเกิน 30 ตัว",
+"n": 1,
+"files": [
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "เลขที่ใบสำคัญ (ผ่าน)",
 "n": 1,
 "files": [
@@ -47427,6 +47499,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/journals.ts"
+]
+},
+{
+"th": "เลขที่ใบสำคัญ: เว้นว่าง = ระบบออกเลขให้ตามสมุด · ใส่เอง = ต้องขึ้นต้นด้วยตัวนำหน้าของสมุดนั้น (เช่น สมุด {0} → {1}0000001) ห้ามซ้ำกับใบสำคัญที่มีอยู่ ใบที่ยกเลิกแล้วต้องลบก่อนจึงใช้เลขเดิมได้ · ถ้าเลขที่ใส่เองตรงรูปแบบที่ระบบออกให้ เลขอัตโนมัติถัดไปจะต่อจากเลขนั้น",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/journal-import.ts"
 ]
 },
 {
@@ -48543,6 +48622,13 @@
 ]
 },
 {
+"th": "เว้นว่าง = ระบบออกเลขตามสมุด หรือใส่เองโดยขึ้นต้นด้วยตัวนำหน้าของสมุด (สมุด PV → PV…) · คำอธิบายรายการว่าง = คำอธิบายของใบ ·",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
 "th": "เว้นไว้ = เลขอัตโนมัติ {0}",
 "n": 1,
 "files": [
@@ -49411,7 +49497,7 @@
 ]
 },
 {
-"th": "แถวที่สมุดและเลขที่กลุ่มเดียวกัน = ใบสำคัญใบเดียวกัน (เลขที่ใบสำคัญจริงระบบออกให้) · บริษัทที่ตั้งให้ป้อนเลขที่เอง = ใช้เลขนี้เป็นเลขที่ใบสำคัญ",
+"th": "แถวที่สมุดและเลขที่กลุ่มเดียวกัน = ใบสำคัญใบเดียวกัน · ว่างได้ถ้าใส่ \"เลขที่ใบสำคัญ\" ทุกแถว (ใช้เลขที่ใบสำคัญจัดกลุ่ม)",
 "n": 1,
 "files": [
 "packages/core/src/journal-import.ts"
@@ -53198,7 +53284,7 @@
 ]
 },
 {
-"th": "ไม่มีเลขที่กลุ่ม — แถวของใบสำคัญใบเดียวกันใช้เลขเดียวกัน",
+"th": "ไม่มีเลขที่กลุ่ม — แถวของใบสำคัญใบเดียวกันใช้เลขเดียวกัน (หรือใส่ \"เลขที่ใบสำคัญ\" ทุกแถวของใบนั้น)",
 "n": 1,
 "files": [
 "packages/core/src/journal-import.ts"

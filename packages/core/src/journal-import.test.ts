@@ -86,6 +86,30 @@ describe('journal import (เจ้าของ 17/11/2569)', () => {
     expect(msg).toMatch(/8:มี"เลขที่ใบกำกับ" แต่ไม่ได้ระบุคอลัมน์ "ภาษี"/);
     expect(msg).toMatch(/9:งวดภาษี "13\/2569" ไม่ถูกต้อง/);
   });
+  it('voucher number column (เจ้าของ 18/11/2569): optional, upper case, groups without group no, same on every row, unique in the file', () => {
+    const V = ['สมุด', 'เลขที่กลุ่ม', 'เลขที่ใบสำคัญ', 'วันที่', 'เลขที่บัญชี', 'เดบิต', 'เครดิต'];
+    const ok = mapJournalImport([V,
+      ['PV', '1', 'pv6911001', '15/11/2569', '5430-01', '100', ''], ['PV', '1', '', '15/11/2569', '1111-01', '', '100'],
+      ['PV', '', 'PV6911002', '15/11/2569', '5430-01', '50', ''], ['PV', '', 'PV6911002', '15/11/2569', '1111-01', '', '50'],
+      ['JV', '2', '', '15/11/2569', '5430-01', '5', ''], ['JV', '2', '', '15/11/2569', '1111-01', '', '5'],
+    ], 'B');
+    expect(ok.errors).toEqual([]);
+    expect(ok.vouchers.map((v) => [v.book, v.group, v.voucher_no, v.lines.length])).toEqual([['PV', '1', 'PV6911001', 2], ['PV', 'PV6911002', 'PV6911002', 2], ['JV', '2', null, 2]]);
+    const bad = mapJournalImport([V,
+      ['PV', '1', 'PV1', '15/11/2569', '5430-01', '100', ''], ['PV', '1', 'PV2', '15/11/2569', '1111-01', '', '100'],
+      ['PV', '3', 'PV9', '15/11/2569', '5430-01', '5', ''], ['PV', '3', '', '15/11/2569', '1111-01', '', '5'],
+      ['JV', '4', 'PV9', '15/11/2569', '5430-01', '5', ''], ['JV', '4', '', '15/11/2569', '1111-01', '', '5'],
+      ['PV', '5', 'PV 5', '15/11/2569', '5430-01', '5', ''],
+      ['PV', '6', 'PV'.padEnd(31, '1'), '15/11/2569', '5430-01', '5', ''],
+    ], 'B');
+    const msg = bad.errors.map((e) => `${e.row}:${e.message}`).join('\n');
+    expect(msg).toMatch(/3:PV กลุ่ม 1: เลขที่ใบสำคัญ PV2 ไม่ตรงกับแถว 2 \(PV1\)/);
+    expect(msg).toMatch(/6:JV กลุ่ม 4: เลขที่ใบสำคัญ PV9 ซ้ำกับ PV กลุ่ม 3 \(แถว 4\) ในแฟ้มเดียวกัน/);
+    expect(msg).toMatch(/8:เลขที่ใบสำคัญ "PV 5" มีช่องว่าง/);
+    expect(msg).toMatch(/9:เลขที่ใบสำคัญ "PV1+" ยาวเกิน 30 ตัว/);
+    expect(msg).not.toMatch(/ยอดไม่ดุล/);
+    expect(bad.vouchers.find((v) => v.group === '3')!.invalid).toBeFalsy();   // ใบแรกที่ใช้เลขนั้นยังนำเข้าได้
+  });
   it('missing header / columns', () => {
     expect(mapJournalImport([['a', 'b'], ['1', '2']], 'B').errors[0]!.message).toMatch(/ไม่พบหัวตาราง/);
     expect(mapJournalImport([['สมุด', 'เลขที่กลุ่ม', 'วันที่', 'เลขที่บัญชี', 'เดบิต']], 'B').errors[0]!.message).toMatch(/ไม่มีคอลัมน์ "เครดิต"/);

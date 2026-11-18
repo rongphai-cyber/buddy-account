@@ -4933,9 +4933,14 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const t = await app.inject({ method: 'GET', url: '/api/v1/gl/journal-import/template', headers: { cookie } });
     expect(t.statusCode).toBe(200); expect(t.headers['content-type']).toMatch(/spreadsheetml/);
     const tplRows = readTable('import-journal.xlsx', t.rawPayload);
-    expect(tplRows[0]!.slice(0, 11)).toEqual(H);
-    expect(tplRows[0]!.slice(11)).toEqual(['ภาษี', 'เลขที่ใบกำกับ', 'วันที่ใบกำกับ', 'งวดภาษี', 'ชื่อคู่ค้า', 'เลขผู้เสียภาษี', 'สาขาคู่ค้า', 'ฐานภาษี', 'อัตราภาษี', 'ประเภทเงินได้']);
-    expect(tplRows.some((r) => r[11] === 'ภาษีซื้อ' && r[17] === '00000')).toBe(true);   // สาขาเก็บเป็นข้อความ (ไม่หายเลข 0)
+    expect(tplRows[0]!.slice(0, 12)).toEqual([...H.slice(0, 2), 'เลขที่ใบสำคัญ', ...H.slice(2)]);
+    expect(tplRows[0]!.slice(12)).toEqual(['ภาษี', 'เลขที่ใบกำกับ', 'วันที่ใบกำกับ', 'งวดภาษี', 'ชื่อคู่ค้า', 'เลขผู้เสียภาษี', 'สาขาคู่ค้า', 'ฐานภาษี', 'อัตราภาษี', 'ประเภทเงินได้']);
+    expect(tplRows.some((r) => r[12] === 'ภาษีซื้อ' && r[18] === '00000')).toBe(true);   // สาขาเก็บเป็นข้อความ (ไม่หายเลข 0)
+    expect(tplRows.filter((r) => /0000001$/.test(r[2] ?? '')).length).toBeGreaterThan(0);   // ตัวอย่างกำหนดเลขที่ใบสำคัญเอง 1 กลุ่ม
+    // แบบฟอร์มตัวอย่างตรวจผ่านทั้งแฟ้ม (ลบแถวหัวคอลัมน์ไม่ได้ ใช้ทั้งแผ่น)
+    const tplChk = (await call('POST', url, { file_name: 'import-journal.xlsx', data: t.rawPayload.toString('base64') })).body;
+    expect(tplChk.errors).toEqual([]);
+    expect(tplChk.vouchers.filter((v: { voucher_no: string | null }) => v.voucher_no).length).toBe(1);
     const good = csv([H,
       [B, '1', '20/07/2569', 'IMPJ-1', 'นำเข้าทดสอบ', exp, 'ค่าใช้จ่ายนำเข้า', '', '', '"1,150.50"', ''],
       [B, '1', '20/07/2569', '', '', cashNo, '', '', '', '', '1150.50'],
@@ -4988,6 +4993,34 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
       .toEqual([['IMPJ-IV1', '2026-07-21', '2026-07', 'บริษัท ผู้ขาย จำกัด', '0105550123451', '00000', '1000.00', '70.00']]);
     const wht = (await call('GET', `/api/v1/wht?journal_id=${tj.id}`)).body.rows as Array<Record<string, unknown>>;
     expect(wht.map((w) => [w.form_type, w.payee_name, w.income_type, w.paid_amount, w.rate, w.tax_amount])).toEqual([['S53', 'บริษัท ผู้ขาย จำกัด', 'ค่าบริการ', '1000.00', '3.0000', '30.00']]);
+    // เลขที่ใบสำคัญกำหนดเอง (เจ้าของ 18/11/2569): ขึ้นต้นตามสมุด · ห้ามซ้ำ · ใบยกเลิกจองเลข ลบแล้วคืนเลข · เลขอัตโนมัติไม่ชนเลขที่นำเข้า
+    const HV = [...H.slice(0, 2), 'เลขที่ใบสำคัญ', ...H.slice(2)];
+    const V = (g: string, no: string, ref: string, acc: string, dr: string, cr: string) => [B, g, no, '23/07/2569', ref, ref ? 'เลขที่กำหนดเอง' : '', acc, '', '', '', dr, cr];
+    const pair = (g: string, no: string, ref: string) => [V(g, no, ref, exp, '10', ''), V(g, '', '', cashNo, '', '10')];
+    const auto1 = (await call('POST', url, { file_name: 'v.csv', data: csv([HV, ...pair('A', '', 'IMPJ-5')]), commit: true })).body;
+    const n1 = auto1.vouchers[0].voucher_no as string;   // เลขอัตโนมัติของวันที่ 23/07/2569
+    const bump = (s: string) => s.replace(/(\d+)$/, (m) => String(Number(m) + 1).padStart(m.length, '0'));
+    const vmsg = async (rows: string[][]) => ((await call('POST', url, { file_name: 'v.csv', data: csv([HV, ...rows]) })).body.errors as Array<{ message: string }>).map((e) => e.message).join(' | ');
+    expect(await vmsg(pair('W', 'ZZ0001', 'IMPJ-6'))).toMatch(new RegExp(`ZZ0001 ต้องขึ้นต้นด้วย ${B.toUpperCase()}`));
+    expect(await vmsg(pair('W', B.toUpperCase(), 'IMPJ-6'))).toMatch(/ต้องขึ้นต้นด้วย/);   // ตัวนำหน้าอย่างเดียว ไม่มีเลข
+    expect(await vmsg(pair('W', n1, 'IMPJ-6'))).toMatch(new RegExp(`${n1} มีอยู่แล้ว`));
+    expect(await vmsg([...pair('W', `${B}X1`, 'IMPJ-6'), ...pair('Y', `${B}X1`, 'IMPJ-7')])).toMatch(/ซ้ำกับ .* ในแฟ้มเดียวกัน/);
+    expect(await vmsg([V('W', `${B}X1`, 'IMPJ-6', exp, '10', ''), V('W', `${B}X2`, '', cashNo, '', '10')])).toMatch(/ไม่ตรงกับแถว 2/);
+    // เลขที่ใส่เองตรงกับเลขที่ระบบจะออกถัดไป + กลุ่มที่ให้ระบบออกเลข (อยู่ก่อนในแฟ้ม) → ใบที่กำหนดเลขบันทึกก่อน เลขอัตโนมัติต่อจากนั้น ไม่ชน
+    const n2 = bump(n1);
+    const mix = csv([HV, ...pair('B', '', 'IMPJ-6'), ...pair('M', n2.toLowerCase(), 'IMPJ-7')]);
+    const mchk = (await call('POST', url, { file_name: 'v.csv', data: mix })).body;
+    expect(mchk.errors).toEqual([]);
+    expect(mchk.vouchers.map((v: { group: string; voucher_no: string | null }) => [v.group, v.voucher_no])).toEqual([['B', null], ['M', n2]]);   // ตรวจ: แสดงเลขที่กำหนดเอง เรียงตามแถว
+    const mdone = (await call('POST', url, { file_name: 'v.csv', data: mix, commit: true })).body;
+    expect(mdone.vouchers.map((v: { group: string; voucher_no: string }) => [v.group, v.voucher_no])).toEqual([['B', bump(n2)], ['M', n2]]);
+    // ใบที่ยกเลิกแล้วยังจองเลข — ลบแล้วใช้เลขเดิมได้
+    const a1 = (await call('GET', `/api/v1/gl/journals?q=IMPJ-5&from=2026-07-01&to=2026-07-31`)).body.rows[0] as { id: string };
+    await call('POST', `/api/v1/gl/journals/${a1.id}/cancel`, { reason: 'ทดสอบเลขที่' });
+    expect(await vmsg(pair('R', n1, 'IMPJ-8'))).toMatch(new RegExp(`${n1} เป็นของใบสำคัญที่ยกเลิกแล้ว — ลบใบนั้น`));
+    expect((await call('POST', `/api/v1/docs/journal/${a1.id}/delete`, { reason: 'ทดสอบเลขที่' })).status).toBe(200);
+    const reuse = (await call('POST', url, { file_name: 'v.csv', data: csv([HV, ...pair('R', n1, 'IMPJ-8')]), commit: true })).body;
+    expect(reuse.vouchers[0].voucher_no).toBe(n1);
     // ผู้ใช้ที่ไม่มีสิทธิ์เพิ่มใบสำคัญ นำเข้าไม่ได้
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'imp.clerk', password: 'clerkImp123' })).status).toBe(200);
@@ -5000,7 +5033,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const other = (await call('POST', url, { file_name: 'x.csv', data: good })).body as { errors: Array<{ message: string }> };
     expect(other.errors.some((e) => /เคยนำเข้าแล้ว/.test(e.message))).toBe(false);
     expect((await call('GET', `/api/v1/gl/journals/${j1.id}`)).status).toBe(404);
-    expect(await ours()).toBe(3);   // IMPJ-1, IMPJ-2, IMPJ-3 (มีภาษี) — ลูกค้าอื่นไม่ได้เพิ่ม
+    expect(await ours()).toBe(6);   // IMPJ-1, IMPJ-2, IMPJ-3 (มีภาษี), IMPJ-6/7 (เลขกำหนดเอง), IMPJ-8 (ใช้เลขที่ลบแล้ว) — ลูกค้าอื่นไม่ได้เพิ่ม
     // ไม่ให้กระทบยอดของทดสอบข้ออื่น
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);

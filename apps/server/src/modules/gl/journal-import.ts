@@ -40,6 +40,10 @@ export async function importJournals(db: Db, a: Ctx, vouchers: JournalImportVouc
   const refs = [...new Set(vouchers.map((v) => v.ref).filter((x): x is string => !!x))];
   const prior = refs.length ? (await sql<{ reference: string; journal_book_id: string; voucher_no: string }>`SELECT reference, journal_book_id, voucher_no FROM gl_journal
       WHERE company_id = ${a.companyId} AND doc_status <> 'C' AND deleted_at IS NULL AND reference = ANY(${refs}::text[])`.execute(db)).rows : [];
+  // เลขที่ใบสำคัญที่กำหนดเอง (เจ้าของ 18/11/2569): ห้ามซ้ำใบสำคัญที่มีอยู่ทั้งบริษัท — ใบที่ยกเลิกแล้วยังจองเลขไว้ · ลบแล้ว (deleted_at) คืนเลข (กติกาข้อ 6)
+  const manualNos = [...new Set(vouchers.map((v) => v.voucher_no).filter((x): x is string => !!x))];
+  const taken = manualNos.length ? new Map((await sql<{ voucher_no: string; doc_status: string }>`SELECT voucher_no, doc_status FROM gl_journal
+      WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND voucher_no = ANY(${manualNos}::text[])`.execute(db)).rows.map((x) => [x.voucher_no, x.doc_status])) : new Map<string, string>();
   const style = String((await companySettings(db, a.companyId))['gl.voucher_numbering'] ?? '4');
   const branchId = await branchOf(db, a, null);
 
@@ -53,6 +57,16 @@ export async function importJournals(db: Db, a: Ctx, vouchers: JournalImportVouc
     const tag = `${v.book} กลุ่ม ${v.group}`;
     const book = bookBy.get(v.book.toUpperCase());
     if (!book) issues.push({ row: v.row, message: `${tag}: ไม่พบสมุดรายวัน "${v.book}" — ใช้ตัวนำหน้าหรือรหัสสมุด (${books.map((b) => b.prefix || b.code).join(' ')})` });
+    if (book && v.voucher_no) {
+      // ตัวนำหน้าของสมุด = ตัวเดียวกับที่ nextVoucherNo ใช้ออกเลขอัตโนมัติ (สมุด PV → PV…)
+      const pre = book.prefix?.trim().toUpperCase() ?? '';
+      if (pre && (!v.voucher_no.startsWith(pre) || v.voucher_no.length <= pre.length))
+        issues.push({ row: v.row, message: `${tag}: เลขที่ใบสำคัญ ${v.voucher_no} ต้องขึ้นต้นด้วย ${pre} (ตัวนำหน้าของสมุด ${v.book}) แล้วตามด้วยเลขที่ เช่น ${pre}0000001 — หรือเว้นว่างให้ระบบออกเลข` });
+      const st = taken.get(v.voucher_no);
+      if (st) issues.push({ row: v.row, message: st === 'C'
+        ? `${tag}: เลขที่ใบสำคัญ ${v.voucher_no} เป็นของใบสำคัญที่ยกเลิกแล้ว — ลบใบนั้นที่หน้าสมุดรายวันก่อนจึงใช้เลขนี้ได้ หรือใช้เลขอื่น`
+        : `${tag}: เลขที่ใบสำคัญ ${v.voucher_no} มีอยู่แล้ว — ใช้เลขอื่น หรือเว้นว่างให้ระบบออกเลข` });
+    }
     if (book && v.ref) {
       const dup = prior.find((x) => x.reference === v.ref && x.journal_book_id === book.id);
       if (dup) issues.push({ row: v.row, message: `${tag}: อ้างอิง ${v.ref} เคยนำเข้าแล้วเป็น ${dup.voucher_no} — ลบกลุ่มนี้ออก หรือยกเลิก ${dup.voucher_no} ก่อน` });
@@ -71,12 +85,15 @@ export async function importJournals(db: Db, a: Ctx, vouchers: JournalImportVouc
       return { account_id: acc ?? null, department_id: dep ?? null, project_id: job ?? null, description: l.description ?? v.description, debit: l.debit, credit: l.credit };
     });
     if (issues.length > n0 || !book) continue;
-    ready.push({ v, input: { journal_book_id: book.id, voucher_date: v.date, voucher_no: style === '0' ? v.group : null, branch_id: branchId, description: v.description, reference: v.ref, lines } });
+    ready.push({ v, input: { journal_book_id: book.id, voucher_date: v.date, voucher_no: v.voucher_no ?? (style === '0' ? v.group : null), branch_id: branchId, description: v.description, reference: v.ref, lines } });
   }
   if (commit && issues.length) throw badRequest(`นำเข้าไม่ได้ — มีข้อผิดพลาด ${issues.length} รายการ กด "ตรวจแฟ้ม" ดูรายละเอียดแล้วแก้แฟ้ม`, issues.slice(0, 200).map((x) => ({ field: `row:${x.row}`, message: x.message })));
 
-  // ลองบันทึกทีละใบใน SAVEPOINT — ตรวจ: ถอยทุกใบ · บันทึก: เก็บไว้ (ผิดใบใดโยนข้อผิดพลาด ทั้งแฟ้มไม่บันทึก)
+  // ลองบันทึกทีละใบใน SAVEPOINT — ตรวจ: ทำเหมือนบันทึกจริงทั้งแฟ้มแล้วถอยทั้งหมดตอนท้าย (ผลตรวจ = ผลบันทึก) · บันทึก: เก็บไว้ (ผิดใบใดโยนข้อผิดพลาด ทั้งแฟ้มไม่บันทึก)
+  // ใบที่กำหนดเลขเองบันทึกก่อน — เลขอัตโนมัติ (nextVoucherNo = เลขมากสุดของรูปแบบ + 1) จึงไม่ชนเลขที่นำเข้า
+  ready.sort((p, q) => Number(!p.input.voucher_no) - Number(!q.input.voucher_no));
   const results: JournalImportResult[] = [];
+  if (!commit) await sql`SAVEPOINT journal_import_check`.execute(db);
   for (const x of ready) {
     await sql`SAVEPOINT journal_import`.execute(db);
     try {
@@ -102,14 +119,16 @@ export async function importJournals(db: Db, a: Ctx, vouchers: JournalImportVouc
         }
         taxes++;
       }
-      results.push({ group: x.v.group, book: x.v.book, row: x.v.row, date: x.v.date, ref: x.v.ref, description: x.v.description, lines: x.v.lines.length, debit: x.v.debit, voucher_no: commit ? j.voucher_no : null, taxes });
-      await sql.raw(commit ? 'RELEASE SAVEPOINT journal_import' : 'ROLLBACK TO SAVEPOINT journal_import').execute(db);
+      results.push({ group: x.v.group, book: x.v.book, row: x.v.row, date: x.v.date, ref: x.v.ref, description: x.v.description, lines: x.v.lines.length, debit: x.v.debit, voucher_no: commit ? j.voucher_no : x.input.voucher_no ?? null, taxes });
+      await sql`RELEASE SAVEPOINT journal_import`.execute(db);
     } catch (e) {
       await sql`ROLLBACK TO SAVEPOINT journal_import`.execute(db);
       if (!(e instanceof AppError)) throw e;
       issues.push({ row: x.v.row, message: `${x.v.book} กลุ่ม ${x.v.group}: ${e.message}` });
     }
   }
+  if (!commit) { await sql`ROLLBACK TO SAVEPOINT journal_import_check`.execute(db); await sql`RELEASE SAVEPOINT journal_import_check`.execute(db); }
+  results.sort((p, q) => p.row - q.row);
   if (commit && issues.length) throw badRequest(`นำเข้าไม่ได้ — ${issues[0]!.message} (แถว ${issues[0]!.row})`, issues.slice(0, 200).map((x) => ({ field: `row:${x.row}`, message: x.message })));
   issues.sort((p, q) => p.row - q.row);
   return { ok: !issues.length, committed: commit, vouchers: results, errors: issues, total_debit: results.reduce((t, r) => t.plus(d(r.debit)), ZERO).toFixed(2) };
@@ -137,7 +156,8 @@ export function journalImportRoutes(app: FastifyInstance, db: Db) {
     const cols = JOURNAL_IMPORT_COLUMNS;
     const pv = bk('PV', 1);
     const sample: Array<Record<string, string>> = [
-      { book: pv, group: '1', date, ref: 'INV-6901', description: 'จ่ายค่าไฟฟ้าเดือนตุลาคม', account: exp, line_description: 'ค่าไฟฟ้าสำนักงาน', debit: '1500', credit: '' },
+      // กลุ่ม 1 กำหนดเลขที่ใบสำคัญเอง (ขึ้นต้นตามสมุด) · กลุ่ม 2–3 เว้นว่าง = ระบบออกเลข
+      { book: pv, group: '1', voucher_no: `${pv.toUpperCase()}0000001`, date, ref: 'INV-6901', description: 'จ่ายค่าไฟฟ้าเดือนตุลาคม', account: exp, line_description: 'ค่าไฟฟ้าสำนักงาน', debit: '1500', credit: '' },
       { book: pv, group: '1', date, ref: '', description: '', account: ivat || cash, line_description: '', debit: '105', credit: '', tax: 'ภาษีซื้อ', tax_no: 'INV-6901', tax_date: date, party: 'บริษัท ผู้ขาย จำกัด', party_tax_id: '0105550123451', party_branch: '00000', tax_base: '1500' },
       { book: pv, group: '1', date, ref: '', description: '', account: cash, line_description: '', debit: '', credit: '1605' },
       { book: pv, group: '2', date, ref: 'SV-0001', description: 'จ่ายค่าบริการทำความสะอาด', account: exp, line_description: '', debit: '2000', credit: '' },
@@ -146,9 +166,10 @@ export function journalImportRoutes(app: FastifyInstance, db: Db) {
       { book: bk('JV', 0), group: '3', date, ref: 'ADJ-01', description: 'ปรับปรุงค่าใช้จ่ายค้างจ่าย', account: exp, line_description: '', debit: '800', credit: '' },
       { book: bk('JV', 0), group: '3', date, ref: '', description: '', account: accr || cash, line_description: '', debit: '', credit: '800' },
     ];
-    const textCols = cols.map((c, i) => (['book', 'group', 'date', 'ref', 'account', 'department', 'job', 'tax_no', 'tax_date', 'tax_month', 'party_tax_id', 'party_branch'].includes(c.key) ? i : -1)).filter((i) => i >= 0);
+    const textCols = cols.map((c, i) => (['book', 'group', 'voucher_no', 'date', 'ref', 'account', 'department', 'job', 'tax_no', 'tax_date', 'tax_month', 'party_tax_id', 'party_branch'].includes(c.key) ? i : -1)).filter((i) => i >= 0);
     const help = [['คอลัมน์', 'จำเป็น', 'คำอธิบาย'], ...cols.map((c) => [c.th, c.required ? 'ต้องมี' : '', c.hint]), ['', '', ''],
       ['', '', 'หนึ่งแถว = หนึ่งบรรทัดบัญชี · แถวที่สมุดและเลขที่กลุ่มเดียวกันรวมเป็นใบสำคัญใบเดียว (วันที่ อ้างอิง คำอธิบาย ใส่แถวแรกของกลุ่ม) · ทุกใบยอดเดบิต = เครดิต'],
+      ['', '', `เลขที่ใบสำคัญ: เว้นว่าง = ระบบออกเลขให้ตามสมุด · ใส่เอง = ต้องขึ้นต้นด้วยตัวนำหน้าของสมุดนั้น (เช่น สมุด ${pv} → ${pv.toUpperCase()}0000001) ห้ามซ้ำกับใบสำคัญที่มีอยู่ ใบที่ยกเลิกแล้วต้องลบก่อนจึงใช้เลขเดิมได้ · ถ้าเลขที่ใส่เองตรงรูปแบบที่ระบบออกให้ เลขอัตโนมัติถัดไปจะต่อจากเลขนั้น`],
       ['', '', 'ภาษี: ใส่คอลัมน์ "ภาษี" และรายละเอียดเฉพาะแถวของบัญชีภาษี (ภาษีซื้อ ภาษีขาย ภาษีหัก ณ ที่จ่ายค้างจ่าย) — ยอดเดบิต/เครดิตของแถวนั้น = ยอดภาษี ระบบเติมแฟ้มภาษีซื้อ/ภาษีขาย/ภ.ง.ด.3/53 ให้ ดูได้ที่แท็บภาษีของใบสำคัญ'],
       ['', '', 'ใบกำกับหลายใบในใบสำคัญเดียว = แยกแถวบัญชีภาษีหนึ่งแถวต่อหนึ่งใบกำกับ · ยกเลิกใบสำคัญ = ยกเลิกรายการภาษีที่นำเข้าด้วย'],
       ['', '', 'กด "ตรวจแฟ้ม" ก่อน (ไม่บันทึก) แล้วจึง "นำเข้า" — ผิดใบเดียวไม่บันทึกเลย · ลบแถวตัวอย่างก่อนใช้ · ชื่อหัวคอลัมน์ห้ามแก้ (สลับลำดับได้) · บันทึกเป็น .xlsx หรือ .csv'],

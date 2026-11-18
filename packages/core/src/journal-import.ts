@@ -5,16 +5,18 @@ import { checkTaxId } from './taxid.js';
 
 /**
  * นำเข้าใบสำคัญ (สมุดรายวันทุกเล่ม) จากแฟ้ม Excel/CSV (เจ้าของ 17/11/2569 "นำเข้าการบันทึกบัญชีจาก Excel ตาม Format ที่คุณกำหนดเพื่อลงบัญชีในแต่ละสมุดรายวัน")
- * 1 แถว = 1 บรรทัดบัญชี · แถวที่ "สมุด + เลขที่กลุ่ม" เดียวกัน = ใบสำคัญใบเดียวกัน (เลขที่ใบสำคัญจริงระบบออกให้)
+ * 1 แถว = 1 บรรทัดบัญชี · แถวที่ "สมุด + เลขที่กลุ่ม" เดียวกัน = ใบสำคัญใบเดียวกัน (เลขที่ใบสำคัญ: ว่าง = ระบบออกให้ · ใส่เอง = ต้องขึ้นต้นตามสมุด 18/11/2569)
  * ส่วนนี้: ตาราง → ใบสำคัญร่าง + ข้อผิดพลาดรายแถว (ไม่แตะฐานข้อมูล) · หารหัส/บันทึกอยู่ที่ server (ใช้ร่วมกับ MCP ภายหลัง)
  */
-export type JournalImportKey = 'book' | 'group' | 'date' | 'ref' | 'description' | 'account' | 'line_description' | 'department' | 'job' | 'debit' | 'credit'
+export type JournalImportKey = 'book' | 'group' | 'voucher_no' | 'date' | 'ref' | 'description' | 'account' | 'line_description' | 'department' | 'job' | 'debit' | 'credit'
   | 'tax' | 'tax_no' | 'tax_date' | 'tax_month' | 'party' | 'party_tax_id' | 'party_branch' | 'tax_base' | 'tax_rate' | 'income_type';
 export interface JournalImportColumn { key: JournalImportKey; th: string; aliases: string[]; required?: boolean; hint: string; example: [string, string, string] }
 
 export const JOURNAL_IMPORT_COLUMNS: JournalImportColumn[] = [
   { key: 'book', th: 'สมุด', aliases: ['สมุดรายวัน', 'รหัสสมุด', 'book', 'journal'], required: true, hint: 'ตัวนำหน้าหรือรหัสของสมุดรายวัน เช่น JV PV RV SV UV (ดูที่ บัญชี › สร้างสมุดรายวัน)', example: ['PV', 'PV', 'JV'] },
-  { key: 'group', th: 'เลขที่กลุ่ม', aliases: ['กลุ่ม', 'ใบที่', 'เลขที่ใบ', 'group', 'voucher'], required: true, hint: 'แถวที่สมุดและเลขที่กลุ่มเดียวกัน = ใบสำคัญใบเดียวกัน (เลขที่ใบสำคัญจริงระบบออกให้) · บริษัทที่ตั้งให้ป้อนเลขที่เอง = ใช้เลขนี้เป็นเลขที่ใบสำคัญ', example: ['1', '1', '2'] },
+  { key: 'group', th: 'เลขที่กลุ่ม', aliases: ['กลุ่ม', 'ใบที่', 'เลขที่ใบ', 'group', 'voucher'], required: true, hint: 'แถวที่สมุดและเลขที่กลุ่มเดียวกัน = ใบสำคัญใบเดียวกัน · ว่างได้ถ้าใส่ "เลขที่ใบสำคัญ" ทุกแถว (ใช้เลขที่ใบสำคัญจัดกลุ่ม)', example: ['1', '1', '2'] },
+  // เลขที่ใบสำคัญที่ผู้ใช้กำหนดเอง (เจ้าของ 18/11/2569 "เพิ่มเลขที่เอกสารที่สามารถสร้างเองได้ แต่รหัสจะถูกบังคับตามสมุดรายวัน เช่น PV ต้องขึ้นต้นด้วย PVxxxxxxx")
+  { key: 'voucher_no', th: 'เลขที่ใบสำคัญ', aliases: ['เลขที่เอกสาร', 'voucherno', 'docno', 'documentno'], hint: 'ว่าง = ระบบออกเลขให้ตามสมุด · ใส่เอง = ต้องขึ้นต้นด้วยตัวนำหน้าของสมุด (สมุด PV → PV…) ไม่เกิน 30 ตัว ไม่มีช่องว่าง ห้ามซ้ำกับใบสำคัญที่มีอยู่ (ใบที่ยกเลิกแล้วยังจองเลขไว้จนกว่าจะลบ) · ใส่แถวแรกของกลุ่มก็พอ (ถ้าไม่ใส่เลขที่กลุ่ม ต้องใส่ทุกแถว)', example: ['', '', ''] },
   { key: 'date', th: 'วันที่', aliases: ['วันที่ใบสำคัญ', 'date'], required: true, hint: 'วว/ดด/ปปปป (พ.ศ. หรือ ค.ศ.) หรือช่องวันที่ของ Excel — ต้องอยู่ในงวดที่ยังไม่ปิด', example: ['', '', ''] },
   { key: 'ref', th: 'อ้างอิง', aliases: ['เลขที่อ้างอิง', 'reference', 'ref'], hint: 'เลขที่เอกสารต้นทาง (ใบเสร็จ ใบกำกับ) ไม่เกิน 30 ตัว — อ้างอิงเดิมในสมุดเดิมที่ยังไม่ยกเลิก = นำเข้าซ้ำ ไม่รับ', example: ['INV-6901', '', 'ADJ-01'] },
   { key: 'description', th: 'คำอธิบาย', aliases: ['คำอธิบายหัว', 'คำอธิบายใบสำคัญ', 'description'], hint: 'คำอธิบายของใบสำคัญ (แถวแรกของกลุ่ม)', example: ['จ่ายค่าไฟฟ้าเดือนตุลาคม', '', 'ปรับปรุงค่าใช้จ่ายค้างจ่าย'] },
@@ -54,7 +56,9 @@ export const MAX_JOURNAL_IMPORT_ROWS = 5000;
 export const MAX_JOURNAL_IMPORT_VOUCHERS = 500;
 
 export interface JournalImportLine { row: number; account: string; description: string | null; department: string | null; job: string | null; debit: string; credit: string; tax: JournalImportTax | null }
-export interface JournalImportVoucher { book: string; group: string; row: number; date: string; ref: string | null; description: string | null; lines: JournalImportLine[]; debit: string; credit: string;
+export interface JournalImportVoucher { book: string; group: string;
+  /** เลขที่ใบสำคัญที่กำหนดเอง (ตัวพิมพ์ใหญ่) · null = ระบบออกเลขให้ · server ตรวจตัวนำหน้าของสมุดและซ้ำในบริษัท */
+  voucher_no: string | null; row: number; date: string; ref: string | null; description: string | null; lines: JournalImportLine[]; debit: string; credit: string;
   /** มีแถวผิด/ไม่ดุล — แจ้งใน errors แล้ว ไม่ต้องลองบันทึก */
   invalid?: boolean }
 
@@ -85,10 +89,13 @@ export function mapJournalImport(rows: string[][], ys: YearSystem): { vouchers: 
     if (++count > MAX_JOURNAL_IMPORT_ROWS) { errors.push({ row: no, message: `แฟ้มเดียวนำเข้าได้ไม่เกิน ${MAX_JOURNAL_IMPORT_ROWS.toLocaleString()} แถว — แบ่งเป็นหลายแฟ้ม` }); break; }
     const before = errors.length;
     const bad = (m: string) => errors.push({ row: no, message: m });
-    const book = cell(row, 'book'), group = cell(row, 'group'), account = cell(row, 'account');
+    const vno = cell(row, 'voucher_no').toUpperCase() || null;
+    const book = cell(row, 'book'), group = cell(row, 'group') || vno || '', account = cell(row, 'account');
     if (!book) bad('ไม่มีสมุด (เช่น JV PV RV)');
-    if (!group) bad('ไม่มีเลขที่กลุ่ม — แถวของใบสำคัญใบเดียวกันใช้เลขเดียวกัน');
+    if (!group) bad('ไม่มีเลขที่กลุ่ม — แถวของใบสำคัญใบเดียวกันใช้เลขเดียวกัน (หรือใส่ "เลขที่ใบสำคัญ" ทุกแถวของใบนั้น)');
     if (group.length > 30) bad(`เลขที่กลุ่ม "${group}" ยาวเกิน 30 ตัว`);
+    if (vno && vno.length > 30) bad(`เลขที่ใบสำคัญ "${vno}" ยาวเกิน 30 ตัว`);
+    else if (vno && /\s/.test(vno)) bad(`เลขที่ใบสำคัญ "${vno}" มีช่องว่าง — ลบช่องว่างออก`);
     const date = importDate(cell(row, 'date'), ys);
     if (!date) bad(`วันที่ "${cell(row, 'date')}" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป`);
     if (!account) bad('ไม่มีเลขที่บัญชี');
@@ -115,7 +122,7 @@ export function mapJournalImport(rows: string[][], ys: YearSystem): { vouchers: 
     let v = out.get(key);
     if (!v) {
       if (out.size >= MAX_JOURNAL_IMPORT_VOUCHERS) { bad(`แฟ้มเดียวนำเข้าได้ไม่เกิน ${MAX_JOURNAL_IMPORT_VOUCHERS} ใบสำคัญ — แบ่งเป็นหลายแฟ้ม`); break; }
-      v = { book, group, row: no, date: date!, ref, description: desc, lines: [], debit: '0', credit: '0' };
+      v = { book, group, voucher_no: vno, row: no, date: date!, ref, description: desc, lines: [], debit: '0', credit: '0' };
       out.set(key, v);
     } else {
       // ข้อมูลหัวใบสำคัญต้องตรงกันทุกแถวของกลุ่มเดียวกัน (ช่องว่าง = ตามแถวแรก)
@@ -124,12 +131,22 @@ export function mapJournalImport(rows: string[][], ys: YearSystem): { vouchers: 
       if (v.date !== date) bad(`${tag}: วันที่ไม่ตรงกับแถว ${v.row}`);
       if (ref && v.ref && ref !== v.ref) bad(`${tag}: อ้างอิงไม่ตรงกับแถว ${v.row}`);
       if (desc && v.description && desc !== v.description) bad(`${tag}: คำอธิบายไม่ตรงกับแถว ${v.row} (ใส่คำอธิบายเฉพาะแถวแรก หรือใช้ "คำอธิบายรายการ")`);
+      if (vno && v.voucher_no && vno !== v.voucher_no) bad(`${tag}: เลขที่ใบสำคัญ ${vno} ไม่ตรงกับแถว ${v.row} (${v.voucher_no}) — ใบสำคัญใบเดียวใช้เลขเดียว`);
       if (errors.length > b2) { badGroups.add(key); continue; }
-      v.ref ??= ref; v.description ??= desc;
+      v.ref ??= ref; v.description ??= desc; v.voucher_no ??= vno;
     }
     v.lines.push({ row: no, account, description: ldesc, department: cell(row, 'department') || null, job: cell(row, 'job') || null, debit: d(dr!).toFixed(2), credit: d(cr!).toFixed(2), tax });
   }
   const vouchers = [...out.values()];
+  // เลขที่ใบสำคัญซ้ำกับกลุ่มอื่นในแฟ้ม (ห้ามซ้ำทั้งบริษัท ทุกสมุด — เหมือน createJournal)
+  const byNo = new Map<string, JournalImportVoucher>();
+  for (const v of vouchers) {
+    if (!v.voucher_no) continue;
+    const twin = byNo.get(v.voucher_no);
+    if (!twin) { byNo.set(v.voucher_no, v); continue; }
+    errors.push({ row: v.row, message: `${v.book} กลุ่ม ${v.group}: เลขที่ใบสำคัญ ${v.voucher_no} ซ้ำกับ ${twin.book} กลุ่ม ${twin.group} (แถว ${twin.row}) ในแฟ้มเดียวกัน` });
+    badGroups.add(`${v.book.toUpperCase()}|${v.group}`);
+  }
   for (const v of vouchers) {
     const D = v.lines.reduce((s, l) => s.plus(l.debit), d(0)), C = v.lines.reduce((s, l) => s.plus(l.credit), d(0));
     v.debit = D.toFixed(2); v.credit = C.toFixed(2);
