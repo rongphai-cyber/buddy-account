@@ -70,9 +70,10 @@
 },
 {
 "th": "บันทึก",
-"n": 104,
+"n": 105,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
+"apps/web/src/components/LineEndPrompt.tsx",
 "apps/web/src/components/LkSelect.tsx",
 "apps/web/src/components/MasterBar.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -875,6 +876,32 @@
 ]
 },
 {
+"th": "สินค้า",
+"n": 30,
+"files": [
+"apps/web/src/components/LineEndPrompt.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/items.ts",
+"apps/server/src/modules/serials.ts",
+"apps/server/src/modules/stock.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/etax.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/items.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เงินเดือน",
 "n": 30,
 "files": [
@@ -905,31 +932,6 @@
 "apps/server/src/modules/reports/stock.ts",
 "packages/core/src/doc-line-rules.ts",
 "packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "สินค้า",
-"n": 29,
-"files": [
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/items.ts",
-"apps/server/src/modules/serials.ts",
-"apps/server/src/modules/stock.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/stock.ts",
-"packages/core/src/etax.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/items.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
 ]
 },
@@ -2291,23 +2293,6 @@
 ]
 },
 {
-"th": "ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)",
-"n": 11,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
 "th": "ดูอย่างเดียว — กด แก้ไข (Alt+E)",
 "n": 11,
 "files": [
@@ -3185,6 +3170,19 @@
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)",
+"n": 7,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -4745,6 +4743,16 @@
 ]
 },
 {
+"th": "Enter = บันทึก? · Shift+Enter = ขึ้นบรรทัดใหม่",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "{0} รายการ",
 "n": 4,
 "files": [
@@ -4960,6 +4968,16 @@
 "files": [
 "apps/web/src/pages/settings/DataTables.tsx",
 "apps/web/src/pages/settings/Departments.tsx"
+]
+},
+{
+"th": "ช่องถัดไป · บรรทัดว่าง = ถามทำต่อ · หมายเหตุ = ถามบันทึก",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
 ]
 },
 {
@@ -7124,6 +7142,14 @@
 ]
 },
 {
+"th": "เลือก{0}",
+"n": 3,
+"files": [
+"apps/web/src/components/LineEndPrompt.tsx",
+"apps/server/src/modules/docs/cashdocs.ts"
+]
+},
+{
 "th": "เลือกบัญชีของรายการหัก",
 "n": 3,
 "files": [
@@ -7892,6 +7918,14 @@
 "files": [
 "apps/web/src/pages/parties/Parties.tsx",
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ขึ้นบรรทัดใหม่ในหมายเหตุ",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -12231,13 +12265,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "เลือก{0}",
-"n": 2,
-"files": [
-"apps/server/src/modules/docs/cashdocs.ts"
 ]
 },
 {
@@ -17862,6 +17889,13 @@
 "n": 1,
 "files": [
 "apps/web/src/App.tsx"
+]
+},
+{
+"th": "กลับไปคีย์ต่อ",
+"n": 1,
+"files": [
+"apps/web/src/components/LineEndPrompt.tsx"
 ]
 },
 {
@@ -26857,6 +26891,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/notes.ts"
+]
+},
+{
+"th": "บรรทัดนี้ยังว่าง — เลือก{0}เพิ่มอีกบรรทัด หรือคีย์ครบแล้วให้บันทึก",
+"n": 1,
+"files": [
+"apps/web/src/components/LineEndPrompt.tsx"
 ]
 },
 {
@@ -37462,6 +37503,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "รายการ{0} — จะทำอะไรต่อ?",
+"n": 1,
+"files": [
+"apps/web/src/components/LineEndPrompt.tsx"
 ]
 },
 {
@@ -52774,6 +52822,13 @@
 ]
 },
 {
+"th": "ไปส่วนท้าย (หมายเหตุ)",
+"n": 1,
+"files": [
+"apps/web/src/components/LineEndPrompt.tsx"
+]
+},
+{
 "th": "ไปหน้าเข้าระบบ",
 "n": 1,
 "files": [
@@ -54801,6 +54856,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocEdit.tsx"
+]
+},
+{
+"th": "← → หรือ Tab เลือกปุ่ม · Enter กดปุ่มที่เลือก · F9 บันทึก · Esc กลับไปช่องรหัส",
+"n": 1,
+"files": [
+"apps/web/src/components/LineEndPrompt.tsx"
 ]
 },
 {

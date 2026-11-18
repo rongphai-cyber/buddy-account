@@ -151,6 +151,13 @@ export function focusNext(el: HTMLElement | null) {
 export function navKey(e: RKE<HTMLElement>, onEnd?: () => void) {
   if (e.key !== 'Enter' || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
   const t = e.target as HTMLElement;
+  // หมายเหตุท้ายเอกสาร (data-enterend): Enter = ช่องสุดท้าย → ถามบันทึก · Shift+Enter = ขึ้นบรรทัดใหม่ (เจ้าของ 18/11/2569)
+  if (t.matches('textarea') && t.dataset.enterend != null) {
+    if (e.shiftKey) return;
+    e.preventDefault();
+    if (onEnd) onEnd(); else (e.currentTarget as HTMLElement).dispatchEvent(new CustomEvent('navend', { bubbles: true }));
+    return;
+  }
   if (!t.matches('input, select') || t.dataset.noenter != null) return;
   const box = e.currentTarget as HTMLElement;
   const els = [...box.querySelectorAll<HTMLElement>('input:not([disabled]):not([readonly]):not([type=checkbox]):not([type=radio]), select:not([disabled])')]

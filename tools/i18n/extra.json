@@ -1588,5 +1588,13 @@
  "ⓘ เลือกประเภทเอกสารก่อน": "ⓘ Choose the document type first",
  "ปิดหน้าจอ": "Close screen",
  "คลัง (แสดงรหัส)": "Warehouse (shown by code)",
- "พิมพ์แบบฟอร์ม 1 (Alt+P){0}": "Print form 1 (Alt+P){0}"
+ "พิมพ์แบบฟอร์ม 1 (Alt+P){0}": "Print form 1 (Alt+P){0}",
+ "Enter = บันทึก? · Shift+Enter = ขึ้นบรรทัดใหม่": "Enter = save? · Shift+Enter = new line",
+ "ช่องถัดไป · บรรทัดว่าง = ถามทำต่อ · หมายเหตุ = ถามบันทึก": "next field · empty line = asks what next · remarks = asks to save",
+ "ขึ้นบรรทัดใหม่ในหมายเหตุ": "New line in remarks",
+ "กลับไปคีย์ต่อ": "Back to keying",
+ "บรรทัดนี้ยังว่าง — เลือก{0}เพิ่มอีกบรรทัด หรือคีย์ครบแล้วให้บันทึก": "This line is empty — choose another {0} line, or save if you are done",
+ "รายการ{0} — จะทำอะไรต่อ?": "{0} lines — what next?",
+ "ไปส่วนท้าย (หมายเหตุ)": "Go to the footer (remarks)",
+ "← → หรือ Tab เลือกปุ่ม · Enter กดปุ่มที่เลือก · F9 บันทึก · Esc กลับไปช่องรหัส": "← → or Tab to pick a button · Enter presses it · F9 saves · Esc goes back to the code cell"
 }

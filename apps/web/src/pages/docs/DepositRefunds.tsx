@@ -248,7 +248,7 @@ export function DepositRefundFormPage() {
             <SearchPick<PurposeRow> options={PURPOSE_ROWS} value={purposeRow} label={(r: PurposeRow) => r.name} describe={(r: PurposeRow) => r.group} disabled={ro} required aria-label="รหัสเหตุผลใบลดหนี้"
               onPick={(r: PurposeRow | null) => { if (r) set({ purpose: r.code }); }} /></Field>}
           <Field label={rt.hasVat ? 'เหตุผลที่ลดหนี้' : 'หมายเหตุ'} req={rt.hasVat} hint={rt.hasVat ? (purpose99 ? 'รหัส 99 เหตุอื่น — ต้องระบุสาเหตุ · พิมพ์ในใบลดหนี้' : 'พิมพ์ในใบลดหนี้ เช่น ยกเลิกสัญญา คืนเงินมัดจำ') : undefined}>
-            <textarea rows={2} value={h.remark} maxLength={2000} disabled={ro} required={rt.hasVat} aria-invalid={rt.hasVat && !h.remark.trim() ? true : undefined} onChange={(e) => set({ remark: e.target.value })} /></Field>
+            <textarea data-enterend="" title="Enter = บันทึก? · Shift+Enter = ขึ้นบรรทัดใหม่" rows={2} value={h.remark} maxLength={2000} disabled={ro} required={rt.hasVat} aria-invalid={rt.hasVat && !h.remark.trim() ? true : undefined} onChange={(e) => set({ remark: e.target.value })} /></Field>
           <table className="totals-table"><tbody>
             {rt.hasVat && <><tr><td>มูลค่าก่อน VAT ที่ลด</td><td className="r"><Money v={rt.base.toFixed(2)} /></td></tr><tr><td>ภาษีขายที่ลด</td><td className="r"><Money v={rt.vat.toFixed(2)} /></td></tr></>}
             <tr className="grand"><td>{rt.hasVat ? 'ยอดคืนเงิน (รวม VAT)' : 'ยอดคืนเงินมัดจำ'}</td><td className="r"><Money v={total} /></td></tr>

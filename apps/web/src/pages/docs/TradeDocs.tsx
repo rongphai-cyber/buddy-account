@@ -9,6 +9,7 @@ import { WhtCert } from './WhtCert';
 import { PostingTab } from './PostingTab';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
+import { useLineEnd } from '../../components/LineEndPrompt';
 import { useDocNo } from '../../components/DocNo';
 import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
@@ -374,6 +375,8 @@ export function TradeFormPage({ path }: { path: string }) {
       }
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
+  // Enter ที่บรรทัดว่าง (มีรายการแล้ว) = ถามว่าจะทำอะไรต่อ ไม่ข้ามออกจากตารางเงียบ ๆ (เจ้าของ 18/11/2569)
+  const le = useLineEnd({ onSave: () => void save() });
   const cancelDoc = async () => {
     try { await api.post(`/api/v1/${K.path}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.path] }); nav(K.route); }
     catch (e) { setAskCancel(false); setErr(e); }
@@ -417,6 +420,7 @@ export function TradeFormPage({ path }: { path: string }) {
       <div className="type-row"><DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} /><TypeNotice show={!id && !!h && !h.doc_type_id} /></div>
       </div>
       {ed.dialog}
+      {le.dialog}
       <ErrorBox error={err ?? cur.error} />
       {K.cls === 'QT' && !!cur.data?.converted.length && <p className="hint">แปลงเป็นใบสั่งขายแล้ว: {cur.data.converted.map((x) => <span key={x.id}><DocLink id={x.id} no={x.doc_no} cls="SO" /> </span>)}</p>}
       {h && <div className="doc-body" onKeyDown={(e) => navKey(e, ed.end)}>
@@ -469,7 +473,7 @@ export function TradeFormPage({ path }: { path: string }) {
                 <tr key={l.key}>
                   <td className="muted">{i + 1}</td>
                   <td><SearchPick endpoint="/api/v1/item-search" params={{ module: K.module }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} disabled={readOnly} label={(r: ItemHit) => r.name_th} onPick={(r: ItemHit | null) => pickItem(l.key, r)}
-                    required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={focusAfterTable} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
+                    required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={le.onEmptyEnter} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
                   <td><div className="desc-cell"><input value={l.description} title={l.description || undefined} maxLength={200} disabled={readOnly} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={readOnly} label={l.item_code} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} />{l.source_no && <span className="small muted">อ้าง <DocLink id={l.source_header_id} no={l.source_no} cls={K.orderRef} keep={dirty} /></span>}</td>
                   <td data-cell={`warehouse-${l.key}`} className={cx(needWh(l) && !l.warehouse_id && !readOnly && 'cell-err')}><LkSelect byId table="21" rows={lk.data?.WH} value={l.warehouse_id} disabled={readOnly} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" data-required={needWh(l) ? 'คลัง' : undefined} /></td>
                   <td data-cell={`qty-${l.key}`} className={cx(!!l.item_id && !Number(l.qty || 0) && !readOnly && 'cell-err')}><NumInput neg value={l.qty} disabled={readOnly} onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวน" data-required={l.item_id ? 'จำนวน' : undefined} /></td>
@@ -544,7 +548,7 @@ export function TradeFormPage({ path }: { path: string }) {
         {tab === 'vat' && id && <DocVatTab headerId={id} cls={K.cls} vatBasis={h.vat_basis} />}
         {tab === 'gl' && <PostingTab id={id} path={K.path} editing={!readOnly} bodyOf={bodyOf} />}
         <div className="trade-foot">
-          <Field label="หมายเหตุ"><textarea id="doc-remark" rows={2} value={h.remark} maxLength={2000} disabled={readOnly} onChange={(e) => set({ remark: e.target.value })} /></Field>
+          <Field label="หมายเหตุ"><textarea id="doc-remark" data-enterend="" title="Enter = บันทึก? · Shift+Enter = ขึ้นบรรทัดใหม่" rows={2} value={h.remark} maxLength={2000} disabled={readOnly} onChange={(e) => set({ remark: e.target.value })} /></Field>
           {calc && <table className="totals-table"><tbody>
             <tr><td>จำนวนเงิน</td><td className="r"><Money v={calc.amount} /></td></tr>
             <tr><td>หักส่วนลด <DiscountInput value={h.discount_text} disabled={readOnly} onChange={(v) => set({ discount_text: v })} label="ส่วนลดท้ายบิล" base={calc?.amount} style={{ width: 110 }} /></td><td className="r"><Money v={calc.discount_amount} /></td></tr>
@@ -565,7 +569,7 @@ export function TradeFormPage({ path }: { path: string }) {
       {vatCheck && <VatCheckAfterSave headerId={vatCheck} cls={K.cls} onDone={() => setVatCheck(null)} />}
       <div className="page-foot">
         {calc && h && <div className="sum-strip" aria-label="สรุปยอด"><span>รายการ <b>{lines.filter((l) => l.item_id).length}</b></span><span>จำนวนเงิน <b><Money v={calc.amount} /></b></span>{!d(calc.discount_amount).isZero() && <span>ส่วนลด <b><Money v={calc.discount_amount} /></b></span>}{h.price_type !== '0' && <span>VAT <b><Money v={calc.vat_amount} /></b></span>}<span className="grand">รวมทั้งสิ้น <b><Money v={calc.net_amount} /></b></span>{!whtTotal.isZero() && <span>หัก ณ ที่จ่าย <b><Money v={whtTotal.toFixed(2)} /></b></span>}</div>}
-        <KeyHints keys={[['Enter', 'ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ...(K.payments ? [['F7', 'ชำระโดยอื่น'] as [string, string]] : []), ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
+        <KeyHints keys={[['Enter', 'ช่องถัดไป · บรรทัดว่าง = ถามทำต่อ · หมายเหตุ = ถามบันทึก'], ['Shift+Enter', 'ขึ้นบรรทัดใหม่ในหมายเหตุ'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ...(K.payments ? [['F7', 'ชำระโดยอื่น'] as [string, string]] : []), ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       </div>
       {depAsk && depOpen.data && <Confirm title="มีเงินมัดจำคงเหลือ" okText="หักเงินมัดจำ" onClose={() => setDepAsk(false)} onOk={() => { setDepAsk(false); setTab('deposit'); }}
         text={<>{partyWord(K)}รายนี้มีเงินมัดจำคงเหลือ {depOpen.data.rows.length} ใบ รวม <Money v={depOpen.data.rows.reduce((t, o) => t.plus(d(o.outstanding)), d(0)).toFixed(2)} /> — ต้องการหักในบิลนี้หรือไม่?
