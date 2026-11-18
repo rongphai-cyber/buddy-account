@@ -156,6 +156,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/menu': SELF, 'GET /api/v1/auth/me': SELF, 'POST /api/v1/auth/logout': SELF, 'POST /api/v1/auth/password': SELF, 'POST /api/v1/auth/select': SELF,
   'GET /api/v1/ai/status': LOOKUP, 'GET /api/v1/ai/config': M('SET.AI', 'read'), 'PUT /api/v1/ai/config': M('SET.AI', 'edit'), 'GET /api/v1/ai/usage': M('SET.AI', 'read'),
   'POST /api/v1/ai/read-bill': { kind: 'menu', menu: 'PU.RR', action: 'add', pick: async (req) => AI_BILL_TARGETS.find((k) => k.path === (req.body as { target?: string } | undefined)?.target)?.menu ?? 'PU.RR' },
+  'POST /api/v1/ai/read-bill-text': { kind: 'menu', menu: 'PU.RR', action: 'add', pick: async (req) => AI_BILL_TARGETS.find((k) => k.path === (req.body as { target?: string } | undefined)?.target)?.menu ?? 'PU.RR' },
   'GET /api/v1/etax/docs': M('FI.VAT.ETAX', 'read'), 'GET /api/v1/etax/doc/:id': M('FI.VAT.ETAX', 'print'), 'GET /api/v1/etax/export': M('FI.VAT.ETAX', 'print'),
   'GET /api/v1/api-keys': M('SET.API', 'read'), 'POST /api/v1/api-keys': M('SET.API', 'add'), 'POST /api/v1/api-keys/:id/revoke': M('SET.API', 'cancel'), 'PUT /api/v1/api-keys/:id/scope': M('SET.API', 'edit'), 'GET /api/v1/api-docs': M('SET.API', 'read'),
   'GET /api/v1/users': SELF, 'POST /api/v1/users': SELF, 'PUT /api/v1/users/:id': SELF, 'POST /api/v1/user-groups': SELF,

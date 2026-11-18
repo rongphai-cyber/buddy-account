@@ -3996,6 +3996,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect(r.body.lines.map((l: { item: { id: string } | null }) => l.item?.id ?? null)).toEqual([item, null]);
     expect(r.body.bill).toMatchObject({ price_type: '2', vat_rate: '7', doc_no: 'INV-9001', doc_date: '2027-12-15', total: '1391.00', warnings: [] });
     expect(r.body.usage).toMatchObject({ cost_usd: '0.0360', monthly_limit_usd: 20 });   // อ่านบิล 0.028 + แนะนำรหัส 0.008
+    expect(r.body.read_by).toBe('claude_image');
     // คำขอที่ส่งให้ Claude: รุ่น/fallback/โครงข้อมูล/รูปแบบแฟ้ม และกุญแจของบริษัท
     const q = sent.at(-2)!;
     expect([q.apiKey, q.model, q.fallbacks, q.betas[0], q.output_config.effort, q.output_config.format.type]).toEqual([key, 'claude-opus-5-5', 'default', 'server-side-fallback-2026-07-01', 'medium', 'json_schema']);
@@ -4027,6 +4028,22 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await read('purchase-invoices')).body.error.message).toMatch(/ครบเพดาน 0.14/);
     await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null });
     expect((await call('GET', '/api/v1/ai/config')).body).toMatchObject({ has_key: true, monthly_limit_usd: null, available: true });
+    // อ่านบิลแบบผสม (เจ้าของ 18/11/2569): ข้อความจาก Typhoon-OCR ในเครื่องผู้ใช้ → Claude จัดร่างจากข้อความ (ไม่มีรูป) → ตรวจผู้จำหน่าย/แนะนำรหัสเหมือนเดิม · บันทึกที่มาในการใช้
+    const ocr = 'ใบกำกับภาษี บริษัท ขายส่ง จำกัด\nเลขประจำตัวผู้เสียภาษี 0105537095903\nกระดาษ A4 ทดสอบ AI | 10 | 120.00 | 1,200.00\nรวมทั้งสิ้น 1,391.00';
+    const readText = (target: string, body: object = {}) => call('POST', '/api/v1/ai/read-bill-text', { target, file_name: 'bill.jpg', file_size: 123456, text: ocr, pages: 1, ocr_ms: 5200, ...body });
+    const t1 = await readText('purchase-invoices');
+    expect(t1.status).toBe(200);
+    expect(t1.body).toMatchObject({ read_by: 'local_ocr', supplier: { code: 'S-AI1' }, supplier_check: { status: 'match' }, bill: { doc_no: 'INV-9001', total: '1391.00' } });
+    expect(t1.body.lines[0].suggestion).toMatchObject({ item: { code: '02-TEST-000095' } });
+    const tq = sent.at(-2)!;
+    expect([tq.apiKey, tq.model, tq.output_config.format.type, tq.messages[0].content.length, tq.messages[0].content[0].type]).toEqual([key, 'claude-opus-5-5', 'json_schema', 1, 'text']);
+    expect(tq.messages[0].content[0].text).toContain(`<ocr>\n${ocr}\n</ocr>`);
+    expect(String(tq.system)).toContain('เอกสารซื้อ');
+    expect(JSON.stringify(tq.messages)).not.toMatch(/"type":"(image|document)"/);
+    const tu = (await call('GET', '/api/v1/ai/usage')).body as Array<{ status: string; message: string | null; file_name: string }>;
+    expect(tu.some((u) => u.status === 'OK' && u.message === 'อ่านภาพในเครื่องด้วย Typhoon-OCR 1 หน้า 5.2 วินาที → Claude จัดร่างจากข้อความ')).toBe(true);
+    expect((await readText('purchase-invoices', { text: 'สั้น' })).body.error.message).toMatch(/สั้นเกินไป/);
+    expect((await readText('sales-invoices')).status).toBe(400);   // เฉพาะเอกสารซื้อ เหมือนอ่านภาพ
     // ผิดพลาด/ปฏิเสธ → บันทึกการใช้ ไม่เติมร่าง
     next = () => { throw new Error('ECONNRESET'); };
     expect((await read('purchase-invoices')).body.error.message).toMatch(/เชื่อมต่อ Anthropic ไม่ได้/);
@@ -4041,8 +4058,9 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('GET', '/api/v1/ai/config')).status).toBe(403);
     expect((await call('GET', '/api/v1/ai/status')).body.has_key).toBe(true);
     cookie = admin;
-    // บริษัทอื่น: ไม่มีกุญแจ ไม่เห็นการใช้
+    // บริษัทอื่น: ไม่มีกุญแจ ไม่เห็นการใช้ · อ่านจากข้อความก็ไม่ใช้กุญแจของบริษัทนี้
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
+    expect((await readText('purchase-invoices')).body.error.message).toMatch(/ยังไม่ได้ตั้งค่า AI/);
     expect((await call('GET', '/api/v1/ai/config')).body).toMatchObject({ has_key: false, month_count: 0 });
     expect((await call('GET', '/api/v1/ai/usage')).body).toEqual([]);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
@@ -4773,6 +4791,33 @@ describe('โลโก้และลายเซ็นในแบบฟอร�
 
 describe('รูปภาพสินค้า (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
   const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  it('AI bill from local OCR text (hybrid): another customer (tenant) cannot use this company\'s key or see its usage, company_id in the body is ignored', async () => {
+    process.env.BUDDY_SECRET_KEY = Buffer.alloc(32, 7).toString('base64');
+    let calls = 0;
+    setAiClientFactory(() => ({ beta: { messages: { parse: async (params: Record<string, any>) => { calls++; return String(params.system).includes('เลือกรหัส')
+      ? { model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 }, parsed_output: { lines: [] } }
+      : { model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 50 }, parsed_output: { doc_kind: 'receipt', supplier: { name: 'ร้านทดสอบ', tax_id: null, branch_no: null, address: null }, doc_no: 'R-1', doc_date: '2027-01-02', price_type: 'no_vat', vat_rate: null, lines: [{ description: 'น้ำดื่ม', qty: '1', unit: null, unit_price: '20', amount: '20' }], subtotal: '20', discount: null, vat_amount: null, total: '20', notes: [] } }; } } } }) as never);
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('PUT', '/api/v1/ai/config', { api_key: 'sk-ant-api03-TENANTA_' + 'y'.repeat(30) + 'zz99', monthly_limit_usd: 20 })).body.has_key).toBe(true);
+    const body = { target: 'purchase-invoices', file_name: 'r.jpg', file_size: 1000, text: 'ใบเสร็จรับเงิน ร้านทดสอบ น้ำดื่ม 1 ขวด 20.00 รวม 20.00' };
+    expect((await call('POST', '/api/v1/ai/read-bill-text', body)).body.read_by).toBe('local_ocr');
+    const mine = calls;
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    const bCo = (await call('GET', '/api/v1/auth/me')).body.companies[0].id;
+    await call('POST', '/api/v1/auth/select', { company_id: bCo });
+    expect((await call('POST', '/api/v1/ai/read-bill-text', { ...body, company_id: co })).body.error.message).toMatch(/ยังไม่ได้ตั้งค่า AI/);
+    expect(calls).toBe(mine);   // ไม่ได้เรียก Claude ด้วยกุญแจของลูกค้าอื่น
+    expect((await call('GET', '/api/v1/ai/usage')).body).toEqual([]);
+    expect((await call('GET', '/api/v1/ai/config')).body).toMatchObject({ has_key: false, month_count: 0 });
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('PUT', '/api/v1/ai/config', { api_key: null, monthly_limit_usd: 20 })).body.has_key).toBe(false);
+  });
   it('upload up to 8, first is main, set main, delete wipes + promotes, image file, list/search show main, rights, other tenants', async () => {
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);

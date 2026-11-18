@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AI_BUSINESS_TYPES, d, fmt } from '@buddy/core';
+import { AI_BUSINESS_TYPES, d, fmt, TYPHOON_MODEL } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { DateText, ErrorBox, Field, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { checkOllama, localOcrOn, setLocalOcrOn, type OllamaCheck } from '../../localOcr';
 
 type Config = { model: string; has_key: boolean; key_hint: string | null; key_broken: boolean; monthly_limit_usd: number | null; month_cost_usd: string; month_count: number; available: boolean; business_type: string | null; guidance: string | null };
 const GUIDE_EXAMPLE = `ตัวอย่าง:
@@ -69,8 +70,9 @@ export function AiSettingsPage() {
             {c.has_key && <button disabled={busy || !can('edit')} onClick={() => { if (window.confirm('ลบกุญแจ API? ปุ่มอ่านบิลจะหายจนกว่าจะใส่ใหม่')) void save({ api_key: null }); }}>ลบกุญแจ</button>}
           </div>
           <p className="hint">กด บันทึก ด้านล่างเพื่อบันทึกทั้งกุญแจ เพดาน และข้อมูลสำหรับแนะนำการลงบัญชี</p>
-          <p className="hint">ข้อมูลในบิลถูกส่งไปให้ Anthropic ประมวลผลเพื่ออ่านเท่านั้น · กุญแจเก็บแบบเข้ารหัส เห็นได้เฉพาะ 4 ตัวท้าย และไม่ติดไปกับแฟ้มสำรองข้อมูล (นำข้อมูลไปเครื่องอื่นต้องใส่กุญแจใหม่)</p>
+          <p className="hint">ข้อมูลในบิลถูกส่งไปให้ Anthropic ประมวลผลเพื่ออ่านเท่านั้น (โหมดอ่านในเครื่องนี้ก่อน: ภาพอยู่ในเครื่อง ส่งเฉพาะข้อความที่อ่านได้) · กุญแจเก็บแบบเข้ารหัส เห็นได้เฉพาะ 4 ตัวท้าย และไม่ติดไปกับแฟ้มสำรองข้อมูล (นำข้อมูลไปเครื่องอื่นต้องใส่กุญแจใหม่)</p>
         </fieldset>
+        <LocalOcrBox />
         <fieldset className="box">
           <legend>ข้อมูลสำหรับให้ AI แนะนำการลงบัญชี (ของบริษัทนี้)</legend>
           <Field label="ประเภทธุรกิจ" hint="ช่วยแยกว่าของที่ซื้อควรเป็นสินค้า (ซื้อมาขาย/วัตถุดิบ) หรือค่าใช้จ่าย">
@@ -98,11 +100,39 @@ export function AiSettingsPage() {
           <thead><tr><th style={{ width: 160 }}>เวลา</th><th>ผู้ใช้</th><th>แฟ้ม</th><th>ผล</th><th className="r">โทเคน เข้า/ออก</th><th className="r">ค่าใช้จ่าย ($)</th></tr></thead>
           <tbody>{usage.data?.map((u, i) => <tr key={i}>
             <td><DateText v={u.created_at} /> <span className="muted small">{new Date(u.created_at).toLocaleTimeString('th-TH')}</span></td><td>{u.username}</td><td>{u.file_name}</td>
-            <td>{u.status === 'OK' ? <Pill tone="n">อ่านได้</Pill> : <span title={u.message ?? ''}><Pill tone="x">{u.status === 'REFUSED' ? 'ปฏิเสธ' : 'ไม่สำเร็จ'}</Pill> <span className="small muted">{u.message}</span></span>}</td>
+            <td>{u.status === 'OK' ? <><Pill tone="n">อ่านได้</Pill>{u.message && <span className="small muted"> {u.message}</span>}</> : <span title={u.message ?? ''}><Pill tone="x">{u.status === 'REFUSED' ? 'ปฏิเสธ' : 'ไม่สำเร็จ'}</Pill> <span className="small muted">{u.message}</span></span>}</td>
             <td className="r">{fmt(String(u.input_tokens), { places: 0 })} / {fmt(String(u.output_tokens), { places: 0 })}</td><td className="r">{d(u.cost_usd).toFixed(4)}</td></tr>)}
             {usage.data && !usage.data.length && <tr><td colSpan={6} className="empty">เดือนนี้ยังไม่มีการใช้งาน</td></tr>}</tbody>
         </table>
       </div>
     </div>
+  );
+}
+
+/**
+ * อ่านบิลแบบผสม (เจ้าของ 18/11/2569): ตั้งต่อเบราว์เซอร์/เครื่อง ไม่ใช่ต่อบริษัท — เครื่องที่ติดตั้ง Ollama + Typhoon-OCR เปิดใช้ได้
+ * เปิดแล้ว: อ่านภาพในเครื่องนี้ก่อน ส่งเฉพาะข้อความให้ Claude · ใช้ไม่ได้ → Claude อ่านภาพตามเดิม (บอกเหตุในหน้าต่างอ่านบิล)
+ */
+function LocalOcrBox() {
+  const [on, setOn] = useState(localOcrOn());
+  const [ck, setCk] = useState<OllamaCheck | null>(null);
+  const [busy, setBusy] = useState(false);
+  const test = async () => { setBusy(true); try { setCk(await checkOllama(5000)); } finally { setBusy(false); } };
+  return (
+    <fieldset className="box">
+      <legend>อ่านภาพในเครื่องนี้ก่อน (Typhoon-OCR ผ่าน Ollama)</legend>
+      <label className="check"><input type="checkbox" checked={on} onChange={(e) => { setLocalOcrOn(e.target.checked); setOn(e.target.checked); if (e.target.checked) void test(); }} /> อ่านภาพในเครื่องนี้ก่อน แล้วส่งเฉพาะข้อความให้ Claude จัดร่าง <span className="muted small">(ตั้งเฉพาะเบราว์เซอร์นี้)</span></label>
+      <p className="hint">ภาพบิลไม่ออกจากเครื่อง ค่าใช้จ่าย Claude ต่ำลง (ส่งข้อความแทนภาพ) · ใช้ได้เฉพาะเครื่องที่ติดตั้ง Ollama และโมเดล {TYPHOON_MODEL} · อ่านในเครื่องไม่ได้หรืออ่านไม่ชัด จะส่งภาพให้ Claude อ่านแทนโดยอัตโนมัติ</p>
+      <div className="toolbar"><button type="button" disabled={busy} onClick={() => void test()}>{busy ? 'กำลังตรวจ…' : 'ตรวจการเชื่อมต่อ'}</button>
+        {ck && <span>{ck.ok && ck.model ? <Pill tone="n">พร้อมใช้</Pill> : <Pill tone="x">ยังใช้ไม่ได้</Pill>} <span className="small">{ck.message}</span></span>}</div>
+      <details className="hint">
+        <summary>วิธีติดตั้ง (ครั้งเดียวต่อเครื่อง)</summary>
+        <ol style={{ margin: '4px 0 0 18px' }}>
+          <li>ติดตั้ง Ollama จาก ollama.com แล้วเปิด PowerShell พิมพ์ <code>ollama pull {TYPHOON_MODEL}</code> (ราว 3.2 GB · การ์ดจอ NVIDIA จะอ่านเร็ว ราว 5 วินาทีต่อหน้า)</li>
+          <li>อนุญาตให้โปรแกรมนี้เรียก Ollama: พิมพ์ใน PowerShell <code>setx OLLAMA_ORIGINS "{location.origin}"</code> แล้วปิด Ollama ที่ไอคอนมุมขวาล่าง (Quit Ollama) และเปิดใหม่</li>
+          <li>ติ๊ก "อ่านภาพในเครื่องนี้ก่อน" ด้านบน แล้วกด ตรวจการเชื่อมต่อ — ถ้าเบราว์เซอร์ถามขออนุญาตเข้าถึงแอป/อุปกรณ์ในเครื่องหรือเครือข่ายในบ้าน ให้กด อนุญาต (Allow)</li>
+        </ol>
+      </details>
+    </fieldset>
   );
 }

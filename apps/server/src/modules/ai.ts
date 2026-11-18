@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import Anthropic from '@anthropic-ai/sdk';
 import { jsonSchemaOutputFormat } from '@anthropic-ai/sdk/helpers/json-schema';
 import { sql } from 'kysely';
@@ -97,68 +97,91 @@ export function aiRoutes(app: FastifyInstance, db: Db) {
        ORDER BY g.created_at DESC LIMIT 500`.execute(db)).rows;
   });
 
-  /** อ่านบิล → ร่างข้อมูลเอกสารซื้อ (ผู้จำหน่ายตามเลขผู้เสียภาษี · รหัสสินค้า/ค่าใช้จ่ายตามชื่อ) */
+  /** อ่านบิล → ร่างข้อมูลเอกสารซื้อ (ผู้จำหน่ายตามเลขผู้เสียภาษี · รหัสสินค้า/ค่าใช้จ่ายตามชื่อ) — Claude อ่านรูป/PDF */
   app.post('/api/v1/ai/read-bill', async (req, reply) => {
-    // ผิดพลาดหลังเรียก AI: ตอบข้อผิดพลาดโดยไม่ throw เพื่อให้บันทึกการใช้ (มีค่าใช้จ่าย) ไม่ถูกย้อนกลับไปกับทรานแซกชันของคำขอ
-    const fail = (status: number, code: string, message: string) => reply.code(status).send({ error: { code, message } });
     const a = requireCompany(req);
     const b = parse(z.object({
       target: z.string().refine((p) => AI_BILL_TARGETS.some((k) => k.path === p), 'ชนิดเอกสารไม่ถูกต้อง'),
       file_name: z.string().trim().min(1).max(200), media_type: z.enum(MEDIA, { message: 'รองรับรูป JPG PNG WEBP GIF หรือ PDF เท่านั้น' }),
       data: z.string().min(10).max(Math.ceil(MAX_BYTES * 4 / 3) + 4, 'แฟ้มใหญ่เกิน 10 MB — ย่อรูปหรือสแกนใหม่'),
     }), req.body);
-    const size = Math.floor(b.data.length * 3 / 4);
-    const key = await apiKeyOf(db, a.companyId);
-    if (!key?.key) throw badRequest(key ? 'กุญแจ API ที่เก็บไว้ถอดรหัสไม่ได้ (ย้ายเครื่อง?) — ผู้ดูแลใส่กุญแจใหม่ที่ เริ่มระบบ › AI อ่านบิล' : 'ยังไม่ได้ตั้งค่า AI อ่านบิล — ผู้ดูแลใส่กุญแจ API ที่ เริ่มระบบ › AI อ่านบิล');
-    const limit = await limitOf(db, a.companyId), used = await monthUsage(db, a.companyId);
-    if (limit !== null && used.cost.gte(limit)) throw badRequest(`ใช้ AI เดือนนี้ครบเพดาน ${limit} ดอลลาร์แล้ว (ใช้ไป ${used.cost.toFixed(2)}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือป้อนเอง`);
-
     const source = { type: 'base64' as const, media_type: b.media_type, data: b.data };
-    let res: Awaited<ReturnType<AiClient['beta']['messages']['parse']>>;
-    try {
-      res = await makeClient(key.key).beta.messages.parse({
-        model: AI_MODEL, max_tokens: 16000,
-        // รุ่นที่ปฏิเสธ (refusal) ส่งต่อให้รุ่นสำรองอัตโนมัติ
-        betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
-        output_config: { effort: 'medium', format: jsonSchemaOutputFormat(BILL_SCHEMA as never) },
-        system: BILL_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: [
-          b.media_type === 'application/pdf' ? { type: 'document', source: source as Anthropic.Beta.BetaBase64PDFSource } : { type: 'image', source: source as Anthropic.Beta.BetaBase64ImageSource },
-          { type: 'text', text: 'อ่านเอกสารซื้อนี้ตามโครงข้อมูล' },
-        ] }],
-      });
-    } catch (e) {
-      const msg = e instanceof Anthropic.AuthenticationError ? 'กุญแจ API ไม่ถูกต้องหรือถูกยกเลิก — ผู้ดูแลตรวจที่ console.anthropic.com แล้วใส่ใหม่'
-        : e instanceof Anthropic.PermissionDeniedError ? 'บัญชี Anthropic ไม่มีสิทธิ์ใช้รุ่นนี้ หรือเครดิตหมด — ตรวจที่ console.anthropic.com › Billing'
-        : e instanceof Anthropic.RateLimitError ? 'เรียกใช้ถี่เกินกำหนดของบัญชี Anthropic — รอสักครู่แล้วลองใหม่'
-        : e instanceof Anthropic.BadRequestError ? `Anthropic ไม่รับแฟ้มนี้: ${e.message.slice(0, 200)}`
-        : e instanceof Anthropic.APIError ? `บริการ Anthropic ขัดข้อง (${e.status ?? 'เชื่อมต่อไม่ได้'}) — ลองใหม่ภายหลัง`
-        : `เชื่อมต่อ Anthropic ไม่ได้: ${(e as Error).message.slice(0, 200)}`;
-      await record(db, a, { status: 'ERROR', file_name: b.file_name, file_size: size, message: msg });
-      return fail(502, 'AI_FAILED', msg);
-    }
-    const cost = aiCost(res.usage, AI_MODEL, res.model).toFixed(4);
-    if (res.stop_reason === 'refusal' || res.stop_reason === 'max_tokens' || !res.parsed_output) {
-      const msg = res.stop_reason === 'refusal' ? 'AI ปฏิเสธการอ่านแฟ้มนี้ — ป้อนเอง' : 'AI อ่านแฟ้มนี้ไม่สำเร็จ — ลองรูปที่ชัดกว่า หรือป้อนเอง';
-      await record(db, a, { model: res.model, usage: res.usage, cost, status: res.stop_reason === 'refusal' ? 'REFUSED' : 'ERROR', file_name: b.file_name, file_size: size, message: msg });
-      return fail(422, 'AI_UNREADABLE', msg);
-    }
-    await record(db, a, { model: res.model, usage: res.usage, cost, status: 'OK', file_name: b.file_name, file_size: size });
-    const bill = normalizeBill(res.parsed_output as unknown as RawBill);
-
-    const K = AI_BILL_TARGETS.find((k) => k.path === b.target)!;
-    const sc = await checkSupplier(db, a.companyId, bill);
-    const dup = sc.supplier && bill.doc_no ? (await sql<{ doc_no: string; doc_class: string; doc_date: string }>`SELECT doc_no, doc_class, doc_date::text AS doc_date FROM doc_header
-        WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND doc_status <> 'C' AND supplier_id = ${sc.supplier.id} AND ref_no = ${bill.doc_no} ORDER BY doc_date DESC LIMIT 1`.execute(db)).rows[0] ?? null : null;
-    const sg = await suggestLines(db, a, key.key, K.service, bill, sc.supplier, b.file_name, size);
-    const total = d(cost).plus(sg.cost).toFixed(4);
-    await logActivity(db, a, { module: K.menu, action: 'AI_READ_BILL', docNo: bill.doc_no || null, detail: { file: b.file_name, cost_usd: total, supplier: sc.supplier?.code ?? null, supplier_check: sc.status, duplicate: dup?.doc_no ?? null } });
-    return {
-      bill, supplier: sc.supplier, supplier_check: { status: sc.status, message: sc.message, candidate: sc.candidate }, duplicate: dup,
-      lines: bill.lines.map((l, i) => ({ ...l, ...sg.lines[i]! })), suggest_note: sg.note,
-      usage: { model: res.model, cost_usd: total, month_cost_usd: used.cost.plus(total).toFixed(4), monthly_limit_usd: limit },
-    };
+    return readBill(db, a, reply, { target: b.target, file_name: b.file_name, size: Math.floor(b.data.length * 3 / 4), read_by: 'claude_image', content: [
+      b.media_type === 'application/pdf' ? { type: 'document', source: source as Anthropic.Beta.BetaBase64PDFSource } : { type: 'image', source: source as Anthropic.Beta.BetaBase64ImageSource },
+      { type: 'text', text: 'อ่านเอกสารซื้อนี้ตามโครงข้อมูล' },
+    ] });
   });
+
+  /**
+   * อ่านบิลแบบผสม (เจ้าของ 18/11/2569): หน้าจออ่านภาพด้วย Typhoon-OCR ใน Ollama ของเครื่องผู้ใช้เอง แล้วส่งเฉพาะข้อความมา
+   * Claude จัดร่างตามโครงเดิม + แนะนำรหัสเหมือนอ่านภาพ — ภาพไม่ออกจากเครื่อง ค่าใช้จ่ายต่ำกว่า · เพดาน/บันทึกการใช้แบบเดียวกัน (ระบุที่มาในหมายเหตุการใช้)
+   */
+  app.post('/api/v1/ai/read-bill-text', async (req, reply) => {
+    const a = requireCompany(req);
+    const b = parse(z.object({
+      target: z.string().refine((p) => AI_BILL_TARGETS.some((k) => k.path === p), 'ชนิดเอกสารไม่ถูกต้อง'),
+      file_name: z.string().trim().min(1).max(200), file_size: z.number().int().min(0).max(MAX_BYTES * 4),
+      text: z.string().trim().min(10, 'ข้อความที่อ่านจากภาพสั้นเกินไป — ให้ Claude อ่านภาพแทน').max(60000, 'ข้อความยาวเกิน 60,000 ตัวอักษร — บิลมีหลายหน้าเกินไป'),
+      pages: z.number().int().min(1).max(50).optional(), ocr_ms: z.number().int().min(0).max(3_600_000).optional(),
+    }), req.body);
+    return readBill(db, a, reply, { target: b.target, file_name: b.file_name, size: b.file_size, read_by: 'local_ocr',
+      note: `อ่านภาพในเครื่องด้วย Typhoon-OCR${b.pages ? ` ${b.pages} หน้า` : ''}${b.ocr_ms ? ` ${(b.ocr_ms / 1000).toFixed(1)} วินาที` : ''} → Claude จัดร่างจากข้อความ`,
+      content: [{ type: 'text', text: `ข้อความด้านล่างได้จากการอ่านภาพเอกสารซื้อด้วย OCR (Typhoon-OCR) ในเครื่องของผู้ใช้ ไม่มีภาพแนบ — ตารางแสดงแถวละบรรทัด คั่นช่องด้วย " | " · OCR อาจอ่านตัวเลข/ตัวอักษรผิดได้ ถ้าตัวเลขขัดกันเอง (เช่น ยอดรวมไม่เท่ากับผลรวมรายการ) ให้ตอบตามที่พิมพ์และบอกใน notes\nอ่านเอกสารซื้อนี้ตามโครงข้อมูล\n\n<ocr>\n${b.text}\n</ocr>` }] });
+  });
+}
+
+type ReadInput = { target: string; file_name: string; size: number; read_by: 'claude_image' | 'local_ocr'; note?: string; content: Anthropic.Beta.BetaContentBlockParam[] };
+/** อ่านบิลด้วย Claude (รูป/PDF หรือข้อความจาก OCR) → ร่างบิล + ตรวจผู้จำหน่าย/บิลซ้ำ + แนะนำรหัส · ตรวจกุญแจและเพดานก่อนเรียกทุกครั้ง */
+async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: FastifyReply, b: ReadInput) {
+  // ผิดพลาดหลังเรียก AI: ตอบข้อผิดพลาดโดยไม่ throw เพื่อให้บันทึกการใช้ (มีค่าใช้จ่าย) ไม่ถูกย้อนกลับไปกับทรานแซกชันของคำขอ
+  const fail = (status: number, code: string, message: string) => reply.code(status).send({ error: { code, message } });
+  const size = b.size;
+  const key = await apiKeyOf(db, a.companyId);
+  if (!key?.key) throw badRequest(key ? 'กุญแจ API ที่เก็บไว้ถอดรหัสไม่ได้ (ย้ายเครื่อง?) — ผู้ดูแลใส่กุญแจใหม่ที่ เริ่มระบบ › AI อ่านบิล' : 'ยังไม่ได้ตั้งค่า AI อ่านบิล — ผู้ดูแลใส่กุญแจ API ที่ เริ่มระบบ › AI อ่านบิล');
+  const limit = await limitOf(db, a.companyId), used = await monthUsage(db, a.companyId);
+  if (limit !== null && used.cost.gte(limit)) throw badRequest(`ใช้ AI เดือนนี้ครบเพดาน ${limit} ดอลลาร์แล้ว (ใช้ไป ${used.cost.toFixed(2)}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือป้อนเอง`);
+
+  let res: Awaited<ReturnType<AiClient['beta']['messages']['parse']>>;
+  try {
+    res = await makeClient(key.key).beta.messages.parse({
+      model: AI_MODEL, max_tokens: 16000,
+      // รุ่นที่ปฏิเสธ (refusal) ส่งต่อให้รุ่นสำรองอัตโนมัติ
+      betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      output_config: { effort: 'medium', format: jsonSchemaOutputFormat(BILL_SCHEMA as never) },
+      system: BILL_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: b.content }],
+    });
+  } catch (e) {
+    const msg = e instanceof Anthropic.AuthenticationError ? 'กุญแจ API ไม่ถูกต้องหรือถูกยกเลิก — ผู้ดูแลตรวจที่ console.anthropic.com แล้วใส่ใหม่'
+      : e instanceof Anthropic.PermissionDeniedError ? 'บัญชี Anthropic ไม่มีสิทธิ์ใช้รุ่นนี้ หรือเครดิตหมด — ตรวจที่ console.anthropic.com › Billing'
+      : e instanceof Anthropic.RateLimitError ? 'เรียกใช้ถี่เกินกำหนดของบัญชี Anthropic — รอสักครู่แล้วลองใหม่'
+      : e instanceof Anthropic.BadRequestError ? `Anthropic ไม่รับแฟ้มนี้: ${e.message.slice(0, 200)}`
+      : e instanceof Anthropic.APIError ? `บริการ Anthropic ขัดข้อง (${e.status ?? 'เชื่อมต่อไม่ได้'}) — ลองใหม่ภายหลัง`
+      : `เชื่อมต่อ Anthropic ไม่ได้: ${(e as Error).message.slice(0, 200)}`;
+    await record(db, a, { status: 'ERROR', file_name: b.file_name, file_size: size, message: b.note ? `${msg} (${b.note})` : msg });
+    return fail(502, 'AI_FAILED', msg);
+  }
+  const cost = aiCost(res.usage, AI_MODEL, res.model).toFixed(4);
+  if (res.stop_reason === 'refusal' || res.stop_reason === 'max_tokens' || !res.parsed_output) {
+    const msg = res.stop_reason === 'refusal' ? 'AI ปฏิเสธการอ่านแฟ้มนี้ — ป้อนเอง' : 'AI อ่านแฟ้มนี้ไม่สำเร็จ — ลองรูปที่ชัดกว่า หรือป้อนเอง';
+    await record(db, a, { model: res.model, usage: res.usage, cost, status: res.stop_reason === 'refusal' ? 'REFUSED' : 'ERROR', file_name: b.file_name, file_size: size, message: b.note ? `${msg} (${b.note})` : msg });
+    return fail(422, 'AI_UNREADABLE', msg);
+  }
+  await record(db, a, { model: res.model, usage: res.usage, cost, status: 'OK', file_name: b.file_name, file_size: size, message: b.note ?? null });
+  const bill = normalizeBill(res.parsed_output as unknown as RawBill);
+
+  const K = AI_BILL_TARGETS.find((k) => k.path === b.target)!;
+  const sc = await checkSupplier(db, a.companyId, bill);
+  const dup = sc.supplier && bill.doc_no ? (await sql<{ doc_no: string; doc_class: string; doc_date: string }>`SELECT doc_no, doc_class, doc_date::text AS doc_date FROM doc_header
+      WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND doc_status <> 'C' AND supplier_id = ${sc.supplier.id} AND ref_no = ${bill.doc_no} ORDER BY doc_date DESC LIMIT 1`.execute(db)).rows[0] ?? null : null;
+  const sg = await suggestLines(db, a, key.key, K.service, bill, sc.supplier, b.file_name, size);
+  const total = d(cost).plus(sg.cost).toFixed(4);
+  await logActivity(db, a, { module: K.menu, action: 'AI_READ_BILL', docNo: bill.doc_no || null, detail: { file: b.file_name, read_by: b.read_by, cost_usd: total, supplier: sc.supplier?.code ?? null, supplier_check: sc.status, duplicate: dup?.doc_no ?? null } });
+  return {
+    bill, supplier: sc.supplier, supplier_check: { status: sc.status, message: sc.message, candidate: sc.candidate }, duplicate: dup,
+    lines: bill.lines.map((l, i) => ({ ...l, ...sg.lines[i]! })), suggest_note: sg.note, read_by: b.read_by,
+    usage: { model: res.model, cost_usd: total, month_cost_usd: used.cost.plus(total).toFixed(4), monthly_limit_usd: limit },
+  };
 }
 
 type Sup = { id: string; code: string; name: string; tax_id: string | null; tax_branch_no: string | null };

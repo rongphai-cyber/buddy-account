@@ -3959,6 +3959,17 @@
 ]
 },
 {
+"th": "กำลังตรวจ…",
+"n": 5,
+"files": [
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Backup.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
 "th": "กำลังทำ",
 "n": 5,
 "files": [
@@ -4775,16 +4786,6 @@
 "apps/web/src/pages/payroll/Filing.tsx",
 "apps/web/src/pages/tax/Wht50.tsx",
 "packages/core/src/payroll.ts"
-]
-},
-{
-"th": "กำลังตรวจ…",
-"n": 4,
-"files": [
-"apps/web/src/pages/Login.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/settings/Backup.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -5912,6 +5913,14 @@
 "files": [
 "apps/web/src/pages/items/ItemTables.tsx",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "ชนิดเอกสารไม่ถูกต้อง",
+"n": 3,
+"files": [
+"apps/server/src/modules/ai.ts",
+"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -8452,14 +8461,6 @@
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx",
 "apps/server/src/modules/trade-import.ts"
-]
-},
-{
-"th": "ชนิดเอกสารไม่ถูกต้อง",
-"n": 2,
-"files": [
-"apps/server/src/modules/ai.ts",
-"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -13357,6 +13358,13 @@
 ]
 },
 {
+"th": "(ตั้งเฉพาะเบราว์เซอร์นี้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
 "th": "(ต้องใช้ใบรับรองของกิจการ) จึงยังยื่นกรมสรรพากรโดยตรงไม่ได้ ใช้ส่งให้ผู้ให้บริการลงนาม/นำส่ง หรือตรวจข้อมูลล่วงหน้า",
 "n": 1,
 "files": [
@@ -13529,6 +13537,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
+"th": "(ราว 3.2 GB · การ์ดจอ NVIDIA จะอ่านเร็ว ราว 5 วินาทีต่อหน้า)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -15240,6 +15255,27 @@
 ]
 },
 {
+"th": "Claude กำลังจัดร่างจากข้อความ…",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "Claude กำลังอ่านภาพ…",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "Claude อ่านภาพ",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "Cr. ขายสินค้า",
 "n": 1,
 "files": [
@@ -15534,6 +15570,13 @@
 ]
 },
 {
+"th": "Ollama ตอบ {0} — ตรวจว่าตั้ง OLLAMA_ORIGINS ให้โปรแกรมนี้แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/localOcr.ts"
+]
+},
+{
 "th": "PGlite ไม่รองรับ stream",
 "n": 1,
 "files": [
@@ -15622,6 +15665,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "Typhoon-OCR {0} หน้า {1} วินาที",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -17718,6 +17768,13 @@
 ]
 },
 {
+"th": "· ไม่ได้อ่านในเครื่อง: {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "ก",
 "n": 1,
 "files": [
@@ -18411,6 +18468,13 @@
 ]
 },
 {
+"th": "กำลังตรวจ Ollama ในเครื่องนี้…",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "กำลังตรวจแฟ้ม…",
 "n": 1,
 "files": [
@@ -18502,6 +18566,13 @@
 ]
 },
 {
+"th": "กำลังอ่านในเครื่องนี้ หน้า {0}/{1}…",
+"n": 1,
+"files": [
+"apps/web/src/localOcr.ts"
+]
+},
+{
 "th": "กำลังอ่าน… (ประมาณ 10–60 วินาที)",
 "n": 1,
 "files": [
@@ -18513,6 +18584,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
+]
+},
+{
+"th": "กำลังเตรียมภาพ…",
+"n": 1,
+"files": [
+"apps/web/src/localOcr.ts"
 ]
 },
 {
@@ -19335,10 +19413,31 @@
 ]
 },
 {
+"th": "ข้อความด้านล่างได้จากการอ่านภาพเอกสารซื้อด้วย OCR (Typhoon-OCR) ในเครื่องของผู้ใช้ ไม่มีภาพแนบ — ตารางแสดงแถวละบรรทัด คั่นช่องด้วย \" | \" · OCR อาจอ่านตัวเลข/ตัวอักษรผิดได้ ถ้าตัวเลขขัดกันเอง (เช่น ยอดรวมไม่เท่ากับผลรวมรายการ) ให้ตอบตามที่พิมพ์และบอกใน notes\\nอ่านเอกสารซื้อนี้ตามโครงข้อมูล\\n\\n<ocr>\\n{0}\\n</ocr>",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "ข้อความที่พิมพ์ในเอกสาร",
 "n": 1,
 "files": [
 "apps/web/src/components/AddressFields.tsx"
+]
+},
+{
+"th": "ข้อความที่อ่านจากภาพสั้นเกินไป — ให้ Claude อ่านภาพแทน",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "ข้อความที่อ่านได้ในเครื่อง (ส่งให้ Claude)",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -19353,6 +19452,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "ข้อความยาวเกิน 60,000 ตัวอักษร — บิลมีหลายหน้าเกินไป",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
 ]
 },
 {
@@ -19587,7 +19693,7 @@
 ]
 },
 {
-"th": "ข้อมูลในบิลถูกส่งไปให้ Anthropic ประมวลผลเพื่ออ่านเท่านั้น · กุญแจเก็บแบบเข้ารหัส เห็นได้เฉพาะ 4 ตัวท้าย และไม่ติดไปกับแฟ้มสำรองข้อมูล (นำข้อมูลไปเครื่องอื่นต้องใส่กุญแจใหม่)",
+"th": "ข้อมูลในบิลถูกส่งไปให้ Anthropic ประมวลผลเพื่ออ่านเท่านั้น (โหมดอ่านในเครื่องนี้ก่อน: ภาพอยู่ในเครื่อง ส่งเฉพาะข้อความที่อ่านได้) · กุญแจเก็บแบบเข้ารหัส เห็นได้เฉพาะ 4 ตัวท้าย และไม่ติดไปกับแฟ้มสำรองข้อมูล (นำข้อมูลไปเครื่องอื่นต้องใส่กุญแจใหม่)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
@@ -23899,6 +24005,13 @@
 ]
 },
 {
+"th": "ตรวจการเชื่อมต่อ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
 "th": "ตรวจก่อนใช้งาน = ใช้ได้เฉพาะเมนูที่กำหนดในสิทธิ์รายเมนู (ของผู้ใช้หรือกลุ่ม)",
 "n": 1,
 "files": [
@@ -24760,6 +24873,13 @@
 ]
 },
 {
+"th": "ติดตั้ง Ollama จาก ollama.com แล้วเปิด PowerShell พิมพ์",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
 "th": "ติดตั้งแอป",
 "n": 1,
 "files": [
@@ -24823,6 +24943,13 @@
 ]
 },
 {
+"th": "ติ๊ก \"อ่านภาพในเครื่องนี้ก่อน\" ด้านบน แล้วกด ตรวจการเชื่อมต่อ — ถ้าเบราว์เซอร์ถามขออนุญาตเข้าถึงแอป/อุปกรณ์ในเครื่องหรือเครือข่ายในบ้าน ให้กด อนุญาต (Allow)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
 "th": "ติ๊ก = Dr บัญชีคู่ / Cr เงินมัดจำรับ ทันที · ไม่ติ๊ก = เข้าทะเบียนอย่างเดียว เมื่อยอดเงินมัดจำรับคีย์ไว้แล้วที่ บันทึกยอดยกมา (กันยอดซ้ำ)",
 "n": 1,
 "files": [
@@ -24883,6 +25010,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositRefunds.tsx"
+]
+},
+{
+"th": "ต่อ Ollama ในเครื่องนี้ไม่ได้ — เปิดโปรแกรม Ollama · ตั้ง OLLAMA_ORIGINS · และกดอนุญาตเมื่อเบราว์เซอร์ถามเรื่องเข้าถึงอุปกรณ์/แอปในเครื่อง",
+"n": 1,
+"files": [
+"apps/web/src/localOcr.ts"
+]
+},
+{
+"th": "ต่อ Ollama ไม่ได้ (หมดเวลา) — เปิดโปรแกรม Ollama ในเครื่องนี้",
+"n": 1,
+"files": [
+"apps/web/src/localOcr.ts"
 ]
 },
 {
@@ -31620,6 +31761,20 @@
 ]
 },
 {
+"th": "พบ Ollama แต่ยังไม่มีโมเดล — เปิด PowerShell พิมพ์ ollama pull {0}",
+"n": 1,
+"files": [
+"apps/web/src/localOcr.ts"
+]
+},
+{
+"th": "พบ Ollama และโมเดล {0}",
+"n": 1,
+"files": [
+"apps/web/src/localOcr.ts"
+]
+},
+{
 "th": "พบ {0}",
 "n": 1,
 "files": [
@@ -31687,6 +31842,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
+"th": "พร้อมใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -32170,6 +32332,13 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "ภาพบิลไม่ออกจากเครื่อง ค่าใช้จ่าย Claude ต่ำลง (ส่งข้อความแทนภาพ) · ใช้ได้เฉพาะเครื่องที่ติดตั้ง Ollama และโมเดล {0} · อ่านในเครื่องไม่ได้หรืออ่านไม่ชัด จะส่งภาพให้ Claude อ่านแทนโดยอัตโนมัติ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -34501,6 +34670,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/ModuleSwitches.tsx"
+]
+},
+{
+"th": "ยังใช้ไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -40713,6 +40889,13 @@
 ]
 },
 {
+"th": "วิธีติดตั้ง (ครั้งเดียวต่อเครื่อง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
 "th": "วิธีรับ/จ่ายชำระ",
 "n": 1,
 "files": [
@@ -43380,6 +43563,13 @@
 ]
 },
 {
+"th": "อนุญาตให้โปรแกรมนี้เรียก Ollama: พิมพ์ใน PowerShell",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
 "th": "อนุมัติ: ตามลูกค้าผู้ใช้บริการ · ไม่อนุมัติ: ล้างข้อมูลเมื่อครบ 90 วัน",
 "n": 1,
 "files": [
@@ -43975,6 +44165,34 @@
 ]
 },
 {
+"th": "อ่านภาพในเครื่องด้วย Typhoon-OCR{0}{1} → Claude จัดร่างจากข้อความ",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "อ่านภาพในเครื่องนี้ก่อน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "อ่านภาพในเครื่องนี้ก่อน (Typhoon-OCR ผ่าน Ollama)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "อ่านภาพในเครื่องนี้ก่อน แล้วส่งเฉพาะข้อความให้ Claude จัดร่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
 "th": "อ่านรูปหรือ PDF ของบิลผู้จำหน่ายด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก",
 "n": 1,
 "files": [
@@ -44028,6 +44246,27 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "อ่านในเครื่องนี้ + Claude จัดร่าง",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "อ่านในเครื่องได้ไม่ชัด",
+"n": 1,
+"files": [
+"apps/web/src/localOcr.ts"
+]
+},
+{
+"th": "อ่านในเครื่องไม่สำเร็จ: {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -45106,6 +45345,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "เฉพาะข้อความ",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -50996,6 +51242,13 @@
 ]
 },
 {
+"th": "แล้วปิด Ollama ที่ไอคอนมุมขวาล่าง (Quit Ollama) และเปิดใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
 "th": "แล้วใส่ที่อยู่นี้ ({0}) กับรหัสตั้งเครื่อง",
 "n": 1,
 "files": [
@@ -51357,6 +51610,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/CompanyImages.tsx"
+]
+},
+{
+"th": "โหมดอ่านในเครื่องนี้ก่อน: Typhoon-OCR อ่านภาพในเครื่องนี้ แล้วส่ง",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -52883,6 +53143,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "ให้ Claude (Anthropic) จัดร่าง — ภาพไม่ออกจากเครื่อง · ถ้าอ่านในเครื่องไม่ได้ จะส่งภาพให้ Claude อ่านแทน (เปลี่ยนได้ที่ เริ่มระบบ › AI อ่านบิล)",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -54549,6 +54816,13 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "ไม่ได้อ่านในเครื่อง: {0} — ส่งภาพให้ Claude อ่านแทน",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {

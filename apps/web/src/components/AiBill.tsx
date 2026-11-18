@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt, type BillDraft } from '@buddy/core';
 import { api } from '../api';
 import { ErrorBox, Modal, Pill } from '../ui';
+import { checkOllama, localOcrOn, readBillLocally, type LocalRead } from '../localOcr';
 
 type Pick = { id: string; code: string; name_th: string; item_type?: string; base_unit_id: string | null };
 type Sup = { id: string; code: string; name: string; tax_id?: string | null; tax_branch_no: string | null };
@@ -19,6 +20,8 @@ export interface AiBillResult {
     note?: string | null;
   }>;
   usage: { model: string; cost_usd: string; month_cost_usd: string; monthly_limit_usd: number | null };
+  /** local_ocr = อ่านภาพในเครื่องนี้ (Typhoon-OCR) แล้ว Claude จัดร่างจากข้อความ · claude_image = Claude อ่านภาพ */
+  read_by?: 'local_ocr' | 'claude_image';
 }
 const CONF: Record<string, [string, 'n' | 'm' | 'c']> = { high: ['มั่นใจ', 'n'], medium: ['น่าจะใช่', 'm'], low: ['ไม่แน่ใจ', 'c'] };
 const SRC: Record<string, string> = { ai: 'AI', history: 'ประวัติ', name: 'ชื่อรหัส' };
@@ -55,6 +58,11 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
   const [res, setRes] = useState<AiBillResult | null>(null);
+  /** อ่านบิลแบบผสม: ขั้นที่กำลังทำ · ผลอ่านในเครื่อง · เหตุที่กลับไปให้ Claude อ่านภาพ */
+  const [step, setStep] = useState<string | null>(null);
+  const [local, setLocal] = useState<LocalRead | null>(null);
+  const [fallback, setFallback] = useState<string | null>(null);
+  const localMode = localOcrOn();
   /** รหัสที่พนักงานบัญชีเลือกต่อบรรทัด ('' = ไม่ใส่รหัส) · ใช้ผู้จำหน่ายที่ชื่อคล้าย */
   const [choice, setChoice] = useState<string[]>([]);
   const [useCand, setUseCand] = useState(false);
@@ -67,29 +75,46 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
   };
   const read = async () => {
     if (!file) return;
-    setBusy(true); setErr(null);
+    setBusy(true); setErr(null); setLocal(null); setFallback(null);
     try {
-      const r = await api.post<AiBillResult>('/api/v1/ai/read-bill', { target, file_name: file.name, media_type: file.type, data: await toBase64(file) });
+      // อ่านในเครื่องนี้ก่อน (เปิดที่ เริ่มระบบ › AI อ่านบิล) — ใช้ไม่ได้ก็ให้ Claude อ่านภาพ พร้อมบอกเหตุ
+      let lr: LocalRead | null = null;
+      if (localMode) {
+        setStep('กำลังตรวจ Ollama ในเครื่องนี้…');
+        const ck = await checkOllama();
+        if (!ck.ok || !ck.model) setFallback(ck.message);
+        else try { lr = await readBillLocally(file, setStep); } catch (e) { setFallback(`อ่านในเครื่องไม่สำเร็จ: ${(e as Error).message.slice(0, 160)}`); }
+      }
+      setLocal(lr);
+      setStep(lr ? 'Claude กำลังจัดร่างจากข้อความ…' : 'Claude กำลังอ่านภาพ…');
+      const r = lr ? await api.post<AiBillResult>('/api/v1/ai/read-bill-text', { target, file_name: file.name, file_size: file.size, text: lr.text, pages: lr.pages, ocr_ms: lr.ms })
+        : await api.post<AiBillResult>('/api/v1/ai/read-bill', { target, file_name: file.name, media_type: file.type, data: await toBase64(file) });
       setRes(r); setUseCand(false);
       // ค่าเริ่มต้น: ใช้คำแนะนำที่ไม่ใช่ "ไม่แน่ใจ" — พนักงานบัญชีเปลี่ยนได้ก่อนใส่ลงเอกสาร
       setChoice(r.lines.map((l) => (l.suggestion && l.suggestion.confidence !== 'low' ? l.suggestion.item.id : '')));
-    } catch (e) { setErr(e); } finally { setBusy(false); qc.invalidateQueries({ queryKey: ['ai-status'] }); }
+    } catch (e) { setErr(e); } finally { setBusy(false); setStep(null); qc.invalidateQueries({ queryKey: ['ai-status'] }); }
   };
   const b = res?.bill;
   return (
     <Modal title="อ่านบิลด้วย AI (Claude)" size="wide" onClose={onClose} footer={<>
       <button onClick={onClose}>ปิด</button>
-      {!res ? <button className="primary" disabled={!file || busy} onClick={read}>{busy ? 'กำลังอ่าน… (ประมาณ 10–60 วินาที)' : 'อ่านบิล'}</button>
+      {!res ? <button className="primary" disabled={!file || busy} onClick={read}>{busy ? step ?? 'กำลังอ่าน… (ประมาณ 10–60 วินาที)' : 'อ่านบิล'}</button>
         : <button className="primary" autoFocus onClick={() => onApply({ ...res, supplier: res.supplier ?? (useCand ? res.supplier_check?.candidate ?? null : null),
             lines: res.lines.map((l, i) => ({ ...l, item: [l.suggestion?.item, ...(l.alternatives ?? [])].find((x) => x && x.id === choice[i]) ?? null })) })}>ใส่ลงเอกสาร (ร่าง)</button>}</>}>
       <div className="ai-bill">
         <div className="ai-bill-file">
           <input type="file" accept={MEDIA.join(',')} disabled={busy} onChange={(e) => pick(e.target.files?.[0] ?? null)} aria-label="แฟ้มบิล" />
           {url ? <img src={url} alt="บิลที่เลือก" style={{ maxWidth: '100%', maxHeight: 420, marginTop: 8, border: '1px solid var(--line, #ccc)' }} /> : file && <p className="muted">📄 {file.name} ({Math.ceil(file.size / 1024)} KB)</p>}
-          <p className="hint">ส่งแฟ้มไปให้ Claude (Anthropic) อ่าน — ใช้เฉพาะบิลของกิจการ · ค่าใช้จ่ายคิดตามจริงประมาณ 1–3 บาทต่อใบ</p>
+          {localMode ? <p className="hint">โหมดอ่านในเครื่องนี้ก่อน: Typhoon-OCR อ่านภาพในเครื่องนี้ แล้วส่ง<b>เฉพาะข้อความ</b>ให้ Claude (Anthropic) จัดร่าง — ภาพไม่ออกจากเครื่อง · ถ้าอ่านในเครื่องไม่ได้ จะส่งภาพให้ Claude อ่านแทน (เปลี่ยนได้ที่ เริ่มระบบ › AI อ่านบิล)</p>
+            : <p className="hint">ส่งแฟ้มไปให้ Claude (Anthropic) อ่าน — ใช้เฉพาะบิลของกิจการ · ค่าใช้จ่ายคิดตามจริงประมาณ 1–3 บาทต่อใบ</p>}
         </div>
+        {fallback && !res && <p className="muted small">ไม่ได้อ่านในเครื่อง: {fallback} — ส่งภาพให้ Claude อ่านแทน</p>}
         <ErrorBox error={err} />
         {b && res && <div className="ai-bill-result">
+          <p className="small"><Pill tone={res.read_by === 'local_ocr' ? 'n' : 'm'}>{res.read_by === 'local_ocr' ? 'อ่านในเครื่องนี้ + Claude จัดร่าง' : 'Claude อ่านภาพ'}</Pill>
+            {local && <span className="muted"> Typhoon-OCR {local.pages} หน้า {(local.ms / 1000).toFixed(1)} วินาที</span>}
+            {fallback && <span className="muted"> · ไม่ได้อ่านในเครื่อง: {fallback}</span>}</p>
+          {local && <details className="small"><summary>ข้อความที่อ่านได้ในเครื่อง (ส่งให้ Claude)</summary><pre style={{ whiteSpace: 'pre-wrap', maxHeight: 220, overflow: 'auto' }}>{local.text}</pre></details>}
           {res.duplicate && <p className="bad"><b>บิลซ้ำ:</b> เลขที่ {b.doc_no} ของผู้จำหน่ายนี้บันทึกแล้วใน {res.duplicate.doc_no} ({res.duplicate.doc_date}) — ตรวจก่อนบันทึกซ้ำ</p>}
           {res.supplier_check && <p className={SUPOK.has(res.supplier_check.status) ? 'small' : 'bad small'}>{SUPOK.has(res.supplier_check.status) ? '✓ ' : '⚠ '}{res.supplier_check.message}
             {res.supplier_check.candidate && !res.supplier && <label className="check" style={{ marginLeft: 8 }}><input type="checkbox" checked={useCand} onChange={(e) => setUseCand(e.target.checked)} /> ใช้ {res.supplier_check.candidate.code}</label>}</p>}
