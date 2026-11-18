@@ -227,7 +227,7 @@
 },
 {
 "th": "จำนวนเงิน",
-"n": 67,
+"n": 69,
 "files": [
 "apps/web/src/components/DiscountInput.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -848,6 +848,25 @@
 ]
 },
 {
+"th": "คลัง",
+"n": 30,
+"files": [
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/server/src/modules/reports/check.ts",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/doc-line-rules.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ถึง",
 "n": 30,
 "files": [
@@ -915,25 +934,6 @@
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "คลัง",
-"n": 29,
-"files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/server/src/modules/reports/check.ts",
-"apps/server/src/modules/reports/stock.ts",
-"packages/core/src/doc-line-rules.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1016,6 +1016,27 @@
 ]
 },
 {
+"th": "จำนวน",
+"n": 27,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/server/src/modules/items.ts",
+"apps/server/src/modules/payroll/master.ts",
+"apps/server/src/modules/payroll/runs.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/check.ts",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/doc-line-rules.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ทั้งหมด",
 "n": 27,
 "files": [
@@ -1035,26 +1056,6 @@
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "จำนวน",
-"n": 25,
-"files": [
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/server/src/modules/items.ts",
-"apps/server/src/modules/payroll/master.ts",
-"apps/server/src/modules/payroll/runs.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/check.ts",
-"apps/server/src/modules/reports/stock.ts",
-"packages/core/src/doc-line-rules.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -5765,6 +5766,15 @@
 "apps/web/src/ui.tsx",
 "apps/web/src/components/AuxTools.tsx",
 "apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
+"th": "คลัง (แสดงรหัส)",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx"
 ]
 },
 {
@@ -19640,13 +19650,6 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "คลัง (แสดงรหัส)",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {

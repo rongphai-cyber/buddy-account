@@ -326,7 +326,8 @@ export function ChequeSlipFormPage() {
   const c = cur.data;
   const ys: YearSystem = me?.company?.year_system ?? 'B';
   return (
-    <div className={cx('page', c?.doc_status === 'C' && 'doc-cancelled')} data-tone="finance">
+    <div className={cx('page', 'doc-fit', c?.doc_status === 'C' && 'doc-cancelled')} data-tone="finance">
+      <div className="doc-sticky">
       <div className="doc-title"><p className="eyebrow">ธนาคาร › ใบนำฝากเช็ค</p><h1>{id ? c?.doc_no : 'ใบนำฝากใหม่'}</h1><CancelStamp show={c?.doc_status === 'C'} reason={c?.cancel_reason} />
         <span className="doc-state">{c?.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : c?.passed ? <Pill tone="n">10 เช็คผ่าน{c.pass_voucher_no ? <> · <DocLink id={c.journal_id} no={c.pass_voucher_no} cls="GL" /></> : ''}</Pill> : <Pill tone="c">01 รอเรียกเก็บ</Pill>}</span></div>
       <div className="toolbar">
@@ -339,8 +340,9 @@ export function ChequeSlipFormPage() {
         <CloseScreen />
         <button onClick={() => nav('/fi/cheques/slips')}>รายการ <kbd>Esc</kbd></button>
       </div>
+      </div>
       <ErrorBox error={err ?? cur.error} />
-      {h && <div onKeyDown={navKey}>
+      {h && <div className="doc-body" onKeyDown={navKey}>
         <div className="head-grid trade-head">
           <div className="col">
             <Field label="เข้าบัญชี" req>{ro ? <span>{c?.account_code} {c?.account_name}</span> : <BankSelect value={h.bank} onChange={(v) => setH({ ...h, bank: v })} label="เข้าบัญชี" />}</Field>

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { d, fmt } from '@buddy/core';
+import { d, fillRowCount, fmt, requiredLineIssues } from '@buddy/core';
 import { api } from '../../api';
 import { CancelStamp, CloseScreen, DocDelete, SourceStamp } from '../../components/DocDelete';
 import { useCan } from '../../session';
@@ -101,6 +101,9 @@ export function StockOpeningFormPage() {
   const totQ = used.reduce((s, l) => s.plus(d(l.qty || 0)), d(0)), totV = used.reduce((s, l) => s.plus(d(l.value || 0)), d(0));
   const save = async (andNew = false) => {
     if (!h || busy || ro) return;
+    // ช่องที่ต้องมีของบรรทัด (เจ้าของ 18/11/2569): แจ้งบรรทัดแล้วพาไปช่องนั้น
+    const miss = requiredLineIssues(used.map((l) => ({ code: l.item_code, item_type: '0', unit_id: 'base', qty: l.qty, warehouse_id: l.warehouse_id })));
+    if (miss.length) { setErr(new Error(miss[0]!.message)); const k = used[miss[0]!.line - 1]!.key, f = miss[0]!.field; setTimeout(() => (document.querySelector(`td[data-cell="${f}-${k}"] select, td[data-cell="${f}-${k}"] input`) as HTMLElement | null)?.focus(), 50); return; }
     setErr(null); setBusy(true);
     const body = { branch_id: br.body, doc_no: h.doc_no, doc_date: h.doc_date, remark: h.remark || null, lines: used.map((l) => ({ item_id: l.item_id, warehouse_id: l.warehouse_id, qty: l.qty || '0', value: l.value || '0' })) };
     try {
@@ -112,6 +115,13 @@ export function StockOpeningFormPage() {
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   // Enter ที่บรรทัดว่าง (มีรายการแล้ว) = ถามว่าจะทำอะไรต่อ ไม่ข้ามออกจากตารางเงียบ ๆ (เจ้าของ 18/11/2569)
+  // บรรทัดว่างพอดีจอ ~5 บรรทัด (เจ้าของ 18/11/2569) — บรรทัดว่างไม่บันทึก
+  const hOn = !!h;
+  useEffect(() => {
+    if (!hOn || ro) return;
+    const want = fillRowCount(window.innerHeight);
+    if (lines.length < want) setLines((ls) => [...ls, ...Array.from({ length: want - ls.length }, () => blank(ls.at(-1)?.warehouse_id ?? null))]);
+  }, [hOn, ro, lines.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   const le = useLineEnd({ onSave: () => void save(), hasLines: lines.some((l) => l.item_id) });
   const cancelDoc = async () => {
     try { await api.post(`/api/v1/stock-opening/${id}/cancel`, { reason }); toast('ยกเลิกล็อตยกมาแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: ['stock-opening'] }); qc.invalidateQueries({ queryKey: ['stock'] }); nav(ROUTE); }
@@ -120,7 +130,8 @@ export function StockOpeningFormPage() {
   useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': id && can('cancel') && !cancelled ? () => setAskCancel(true) : undefined,
     Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(ROUTE); } }, []);
   return (
-    <div className={cx('page', cancelled && 'doc-cancelled')} data-tone="inventory">
+    <div className={cx('page', 'doc-fit', cancelled && 'doc-cancelled')} data-tone="inventory">
+      <div className="doc-sticky">
       <div className="doc-title"><p className="eyebrow">สินค้า › ยอดยกมาสินค้า</p><h1>{id ? cur.data?.doc_no : 'ล็อตใหม่'}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} /><SourceStamp doc={cur.data as Parameters<typeof SourceStamp>[0]['doc']} />
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ยอดยกมา (ไม่ลงบัญชี)</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
@@ -134,10 +145,11 @@ export function StockOpeningFormPage() {
         <CloseScreen dirty={dirty} />
         <button onClick={() => nav(ROUTE)}>รายการ <kbd>Esc</kbd></button>
       </div>
+      </div>
       {ed.dialog}
       {le.dialog}
       <ErrorBox error={err ?? cur.error} />
-      {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
+      {h && <div className="doc-body" onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col">
             <Field label="เลขที่เอกสาร (ล็อต)" req hint="FIFO: เลขที่เอกสารรับเข้าเดิม เช่น RR0000002 · ไม่ทราบล็อต ใส่ “ยอดยกมา”"><input className="mono" value={h.doc_no} maxLength={30} disabled={ro} autoFocus={!id} onChange={(e) => set({ doc_no: e.target.value })} /></Field>
@@ -147,18 +159,18 @@ export function StockOpeningFormPage() {
             <Field label="วันที่ของล็อต" req hint="ต้องก่อนวันเริ่มใช้โปรแกรม · FIFO ตัดล็อตเก่าก่อนตามวันที่"><DateInput value={h.doc_date} disabled={ro} onChange={(v) => set({ doc_date: v })} /></Field>
           </div>
         </div>
-        <div className="table-wrap">
-          <table className="grid lines">
-            <thead><tr><th style={{ width: 40 }}>#</th><th style={{ width: 200 }}>รหัสสินค้า</th><th>ชื่อสินค้า</th><th style={{ width: 130 }}>คลัง</th><th className="r" style={{ width: 130 }}>จำนวนยกมา</th><th style={{ width: 70 }}>หน่วย</th><th className="r" style={{ width: 150 }}>มูลค่ายกมา</th><th className="r" style={{ width: 110 }}>ทุน/หน่วย</th><th style={{ width: 40 }} /></tr></thead>
+        <div className="table-wrap lines">
+          <table className="grid">
+            <thead><tr><th style={{ width: 30 }}>#</th><th style={{ width: 150 }}>รหัสสินค้า</th><th>ชื่อสินค้า</th><th style={{ width: 80 }} title="คลัง (แสดงรหัส)">คลัง</th><th className="r" style={{ width: 100 }}>จำนวนยกมา</th><th style={{ width: 70 }}>หน่วย</th><th className="r" style={{ width: 150 }}>มูลค่ายกมา</th><th className="r" style={{ width: 110 }}>ทุน/หน่วย</th><th style={{ width: 40 }} /></tr></thead>
             <tbody>
               {lines.map((l, i) => (
                 <tr key={l.key}>
                   <td className="muted">{i + 1}</td>
                   <td><SearchPick endpoint="/api/v1/item-search" params={{ module: 'AP', types: '0' }} value={l.item_id ? { id: l.item_id, code: l.item_code } : null} required={!lines.some((x) => x.item_id && x.key !== l.key)} onEmptyEnter={le.onEmptyEnter} onEmptyEscape={le.onEmptyEscape} disabled={ro} label={(r: { name_th: string }) => r.name_th}
                     onPick={(r: { id: string; code: string; name_th: string; base_unit_code?: string | null } | null) => pickItem(l.key, r)} aria-label={`รหัสสินค้า ${i + 1}`} /></td>
-                  <td>{l.item_name}</td>
-                  <td><LkSelect byId table="21" rows={lk.data?.WH} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" /></td>
-                  <td><NumInput value={l.qty} disabled={ro} title="คิดเป็นหน่วยนับย่อย" onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวนยกมา" /></td>
+                  <td className="small" title={l.item_name || undefined}>{l.item_name}</td>
+                  <td data-cell={`warehouse-${l.key}`} className={cx(!!l.item_id && !l.warehouse_id && !ro && 'cell-err')}><LkSelect byId table="21" rows={lk.data?.WH} value={l.warehouse_id} disabled={ro} onChange={(v) => setLine(l.key, { warehouse_id: v || null })} aria-label="คลัง" data-required={l.item_id ? 'คลัง' : undefined} /></td>
+                  <td data-cell={`qty-${l.key}`} className={cx(!!l.item_id && !Number(l.qty || 0) && !ro && 'cell-err')}><NumInput value={l.qty} disabled={ro} title="คิดเป็นหน่วยนับย่อย" onChange={(v) => setLine(l.key, { qty: v })} aria-label="จำนวนยกมา" data-required={l.item_id ? 'จำนวน' : undefined} /></td>
                   <td>{l.unit_code}</td>
                   <td><MoneyInput value={l.value} disabled={ro} onChange={(v) => setLine(l.key, { value: v })} aria-label="มูลค่ายกมา" /></td>
                   <td className="r muted">{l.qty && d(l.qty).gt(0) && l.value ? fmt(d(l.value).div(d(l.qty)).toFixed(4), { places: 4 }) : ''}</td>

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { d, fmt, settlementTotals, todayIso } from '@buddy/core';
+import { d, fillRowCount, fmt, settlementTotals, todayIso } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
@@ -176,6 +176,13 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   // จ่ายค่าใช้จ่ายจากเงินสดย่อย: Enter ที่ช่องบัญชีว่าง = เลือกบัญชี · Esc = ถามบันทึก/ยกเลิก (เจ้าของ 18/11/2569 "ทุกหน้าจอของ ชื้อขาย ค่าใช้จ่าย")
+  // บรรทัดว่างพอดีจอ ~5 บรรทัด (เจ้าของ 18/11/2569) — บรรทัดว่างไม่บันทึก
+  const hOn = !!h;
+  useEffect(() => {
+    if (!hOn || ro || kind !== 'dp') return;
+    const want = fillRowCount(window.innerHeight);
+    if (lines.length < want) setLines((ls) => [...ls, ...Array.from({ length: want - ls.length }, () => blank(ls.at(-1)))]);
+  }, [hOn, ro, lines.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   const le = useLineEnd({ onSave: () => void save(), hasLines: lines.some((l) => l.account_id), word: 'ค่าใช้จ่าย', onDiscard: id ? undefined : () => { setH(null); setLines([]); setPick(new Set()); setPays([]); setDirty(false); nav(`${BASE}/${kind}/new`); } });
   const cancelDoc = async () => {
     try { await api.post(`/api/v1/${K.api}/${id}/cancel`, { reason }); toast('ยกเลิกเอกสารแล้ว'); setAskCancel(false); qc.invalidateQueries({ queryKey: [K.api] }); nav(kind === 'dp' ? BASE : `${BASE}/vr`); }
@@ -188,7 +195,8 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const acctName = (aid: string | null) => accts.data?.find((a) => a.id === aid)?.name_th ?? '';
   return (
-    <div className={cx('page', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="gl" style={bookStyle(tColor)}>
+    <div className={cx('page', 'doc-fit', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="gl" style={bookStyle(tColor)}>
+      <div className="doc-sticky">
       <div className="doc-title"><p className="eyebrow">การเงิน › เงินสดย่อย › {K.label}</p><h1>{id ? cur.data?.doc_no : dn.value ?? (dtCode ? `${dtCode.code}**NEW**` : '')}</h1><CancelStamp show={cancelled} reason={(cur.data as { cancel_reason?: string | null } | undefined)?.cancel_reason} /><SourceStamp doc={cur.data as Parameters<typeof SourceStamp>[0]['doc']} />{tCur && <span className="book-pill" title="ประเภทเอกสาร">{!id ? 'กำลังบันทึก: ' : ''}{tCur.code} {tCur.name_th}</span>}
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">{kind === 'vr' ? 'ลงบัญชีแล้ว' : cur.data?.vr_no ? <>เบิกชดเชยแล้วใน <DocLink id={cur.data.vr_id} no={cur.data.vr_no} cls="VR" /></> : WAIT_VR}</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}</span></div>
       <div className="toolbar">
@@ -199,12 +207,12 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
         <DocActions kind="doc" id={id} dirty={dirty} menu={'GL.PC'} del={{ cancelled, cancelUrl: `/api/v1/${K.api}/${id}/cancel`, listPath: kind === 'dp' ? BASE : `${BASE}/vr` }} />
         <button onClick={() => nav(kind === 'dp' ? BASE : `${BASE}/vr`)}>รายการ <kbd>Esc</kbd></button>
       </div>
-      <DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} />
-      <TypeNotice show={!id && !!h && !h.doc_type_id} />
+      <div className="type-row"><DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} /><TypeNotice show={!id && !!h && !h.doc_type_id} /></div>
+      </div>
       {ed.dialog}
       {le.dialog}
       <ErrorBox error={err ?? cur.error ?? openDps.error} />
-      {h && <div onKeyDown={(e) => navKey(e, ed.end)}>
+      {h && <div className="doc-body" onKeyDown={(e) => navKey(e, ed.end)}>
         <div className="head-grid trade-head">
           <div className="col"><Field label="คำอธิบาย/หมายเหตุ" wide><input value={h.remark} maxLength={200} disabled={ro} autoFocus={!id} onChange={(e) => set({ remark: e.target.value })} placeholder={kind === 'vr' ? 'เช่น เบิกชดเชยเงินสดย่อย 1–15/11' : 'เช่น ค่าเดินทางพนักงานขาย'} /></Field></div>
           <div className="col">
@@ -232,7 +240,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
                     <td><AddWrap kind="dept"><select value={l.department_id} disabled={ro} onChange={(e) => setLine(l.key, { department_id: e.target.value })} aria-label="แผนก"><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === l.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></td>
                     {jobOn && <td><JobSelect value={l.project_id} disabled={ro} label={`Job บรรทัด ${i + 1}`} onChange={(v) => setLine(l.key, { project_id: v })} /></td>}
                     <td><div className="desc-cell"><input value={l.description} maxLength={200} disabled={ro} onChange={(e) => setLine(l.key, { description: e.target.value })} aria-label="รายละเอียด" /><LineNoteButton note={l.line_note} print={l.line_note_print} disabled={ro} label={l.description} onChange={(v) => setLine(l.key, v)} /></div><LineNotePreview note={l.line_note} print={l.line_note_print} /></td>
-                    <td><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" /></td>
+                    <td className={cx(!!l.account_id && !Number(l.amount || 0) && !ro && 'cell-err')}><MoneyInput value={l.amount} disabled={ro} onChange={(v) => setLine(l.key, { amount: v })} aria-label="จำนวนเงิน" data-required={l.account_id ? 'จำนวนเงิน' : undefined} /></td>
                     <td>{!ro && <button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => { setLines((ls) => ls.filter((x) => x.key !== l.key)); setDirty(true); }}>✕</button>}</td>
                   </tr>
                 ))}
