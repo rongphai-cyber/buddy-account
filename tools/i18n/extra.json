@@ -1811,5 +1811,6 @@
  "✔ {0} — เข้ารหัสแล้ว": "✔ {0} — encrypted",
  "✔ นำข้อมูลสำรองของ {0} กลับแล้ว — ตรวจครบ {1} ตาราง {2} แถว ตรงกับแฟ้ม": "✔ Backup of {0} restored — checked {1} tables, {2} rows, all match the file",
  "✕ แฟ้มนี้เป็นของบริษัทอื่น — เลือกบริษัท {0} ก่อนนำข้อมูลกลับ": "✕ This file belongs to another company — select company {0} before restoring",
- "🔒 แฟ้มเข้ารหัสแล้ว": "🔒 File is encrypted"
+ "🔒 แฟ้มเข้ารหัสแล้ว": "🔒 File is encrypted",
+ "↑↓ เลื่อน · Space ติ๊ก (ยอดเริ่มต้น = คงเหลือทั้งหมด แก้ได้) · Enter ที่ยอด = ใบถัดไป · F9 ตกลง แล้วไปคีย์รายการสินค้า · Esc หรือ Enter ตอนยังไม่ติ๊ก = ไม่หักมัดจำ คีย์ต่อช่องถัดไป · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้": "↑↓ move · Space tick (default = full remaining, editable) · Enter on the amount = next deposit · F9 OK, then key the item lines · Esc, or Enter with nothing ticked = no deduction, continue to the next field · the deposit must have the same price/VAT type as this bill"
 }

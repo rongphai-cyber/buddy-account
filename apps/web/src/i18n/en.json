@@ -7722,6 +7722,7 @@
 "↑ ↓ เลือก · Enter เปิด · Esc ปิด": "↑ ↓ Select · Enter Open · Esc Close",
 "↑ ↓ เลือก · Enter ใช้รายการนี้ {0}· Esc ปิด": "↑ ↓ Select · Enter Use this item {0}· Esc Close",
 "↑↓ เลือกแถว · คลิกแถว = แก้ไข": "↑↓ select row · click row = edit",
+"↑↓ เลื่อน · Space ติ๊ก (ยอดเริ่มต้น = คงเหลือทั้งหมด แก้ได้) · Enter ที่ยอด = ใบถัดไป · F9 ตกลง แล้วไปคีย์รายการสินค้า · Esc หรือ Enter ตอนยังไม่ติ๊ก = ไม่หักมัดจำ คีย์ต่อช่องถัดไป · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้": "↑↓ move · Space tick (default = full remaining, editable) · Enter on the amount = next deposit · F9 OK, then key the item lines · Esc, or Enter with nothing ticked = no deduction, continue to the next field · the deposit must have the same price/VAT type as this bill",
 "↑↓ เลื่อน · Space ติ๊ก (ยอดเริ่มต้น = คงเหลือทั้งหมด แก้ได้) · Enter ที่ยอด = ใบถัดไป · F9 ตกลง แล้วไปคีย์รายการสินค้า · Esc ไม่หักมัดจำ · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้": "↑↓ move · Space tick (default = full remaining, editable) · Enter on the amount = next deposit · F9 OK, then key the item lines · Esc no deduction · the deposit must have the same price/VAT type as this bill",
 "→ ย้ายขึ้นที่เก็บไฟล์": "→ Move to file storage",
 "↗ เปิดหน้าพิมพ์ในแท็บใหม่": "↗ Open print page in new tab",

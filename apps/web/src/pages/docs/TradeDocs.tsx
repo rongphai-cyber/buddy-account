@@ -11,7 +11,7 @@ import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { useLineEnd } from '../../components/LineEndPrompt';
 import { useDocNo } from '../../components/DocNo';
-import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, focusNext, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { DiscountInput, LineAmountInput } from '../../components/DiscountInput';
@@ -132,6 +132,7 @@ function RefInvoicePicker({ K, refId, onPick, onClose }: { K: TradeKind; refId: 
 /**
  * มีเงินมัดจำคงเหลือ: เลือกใบมัดจำและยอดที่หักในหน้าต่างเดียว (เจ้าของ 18/11/2569 — เดิมถามแล้วต้องไปคีย์ที่แท็บ "หักเงินมัดจำ" แล้วไม่มีอะไรเกิดขึ้น)
  * ↑↓ เลื่อน · Space ติ๊ก (ยอดเริ่มต้น = คงเหลือทั้งหมด แก้ได้) · Enter ที่ยอด = ใบถัดไป · F9/ตกลง = หักแล้วไปคีย์รายการสินค้า · Esc/ไม่หัก = ไม่หักมัดจำ
+ * ยังไม่ติ๊กใบใดเลย: Enter / F9 / ตกลง = ไม่หักมัดจำ แล้วคีย์ต่อที่ช่องถัดไปของส่วนหัว (เจ้าของ 19/11/2569 "ไม่ได้เลือก Enter ผ่าน … เคอเซอร์ต่อไปไม่มี" · HANDOFF 148)
  * กติกาเดิม: ประเภทราคาต้องตรงกับบิล · หักไม่เกินยอดคงเหลือ · แท็บ "หักเงินมัดจำ" ยังใช้ตรวจ/แก้ภายหลัง
  */
 type OpenDep = { header_id: string; doc_no: string; doc_date: string; price_type: string; amount: string; outstanding: string; vat_amount: string | null };
@@ -178,7 +179,7 @@ function DepositAsk({ K, rows, priceType, initial, onOk, onClose }: { K: TradeKi
               <tr key={o.header_id} className={cx(on && 'picked')}>
                 <td className="c"><input type="checkbox" checked={on} disabled={bad} autoFocus={i === firstOk} title={bad ? 'ประเภทราคาของใบมัดจำไม่ตรงกับบิล' : 'Space = ติ๊ก/เอาออก'} aria-label={`หักมัดจำ ${o.doc_no}`}
                   onChange={(e) => toggle(i, o, e.target.checked)}
-                  onKeyDown={(e) => { if (e.key === 'ArrowDown') move(e, i, 1); else if (e.key === 'ArrowUp') move(e, i, -1); else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (on) focusAt(i, 'input[data-amt]'); else move(e, i, 1); } }} /></td>
+                  onKeyDown={(e) => { if (e.key === 'ArrowDown') move(e, i, 1); else if (e.key === 'ArrowUp') move(e, i, -1); else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (on) focusAt(i, 'input[data-amt]'); else if (!Object.keys(amt).length) onClose(); else move(e, i, 1); } }} /></td>
                 <td className="mono">{o.doc_no}</td><td><DateText v={o.doc_date} /></td><td>{o.price_type}{bad && <span className="bad small"> ไม่ตรงกับบิล</span>}</td>
                 <td className="r"><Money v={o.amount} /></td><td className="r"><Money v={o.outstanding} /></td>
                 <td className={cx(cellBad && 'cell-err')}>{on && <MoneyInput data-amt="" value={amt[o.header_id]} onChange={(v) => { setErr(null); setAmt((m) => ({ ...m, [o.header_id]: v })); }} aria-label={`ยอดหักมัดจำ ${o.doc_no}`}
@@ -189,7 +190,7 @@ function DepositAsk({ K, rows, priceType, initial, onOk, onClose }: { K: TradeKi
         </tbody>
         <tfoot><tr><td colSpan={6} className="r">หักเงินมัดจำรวม</td><td className="r"><b><Money v={total.toFixed(2)} /></b></td></tr></tfoot>
       </table></div>
-      <p className="hint">↑↓ เลื่อน · Space ติ๊ก (ยอดเริ่มต้น = คงเหลือทั้งหมด แก้ได้) · Enter ที่ยอด = ใบถัดไป · F9 ตกลง แล้วไปคีย์รายการสินค้า · Esc ไม่หักมัดจำ · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้</p>
+      <p className="hint">↑↓ เลื่อน · Space ติ๊ก (ยอดเริ่มต้น = คงเหลือทั้งหมด แก้ได้) · Enter ที่ยอด = ใบถัดไป · F9 ตกลง แล้วไปคีย์รายการสินค้า · Esc หรือ Enter ตอนยังไม่ติ๊ก = ไม่หักมัดจำ คีย์ต่อช่องถัดไป · ใบมัดจำต้องมีประเภทราคา/ภาษีเหมือนบิลนี้</p>
     </Modal>
   );
 }
@@ -328,9 +329,22 @@ export function TradeFormPage({ path }: { path: string }) {
   // ข้อกำหนดเจ้าของ (30/10/2569): คู่ค้ามีเงินมัดจำคงเหลือ → ถามว่าจะหักในบิลนี้หรือไม่ (ถามครั้งเดียวต่อคู่ค้า ในเอกสารใหม่)
   const [depAsk, setDepAsk] = useState(false);
   const [depAsked, setDepAsked] = useState<string | null>(null);
+  const depReturn = useRef<HTMLElement | null>(null);
+  /**
+   * ไม่หักมัดจำ (Esc · ปุ่ม · Enter/F9 ตอนยังไม่ติ๊ก): คีย์ต่อที่ช่องถัดไปของส่วนหัวตามลำดับ Enter — ช่องที่อยู่ตอนหน้าต่างขึ้น (ถ้าคีย์เลยรหัสคู่ค้าไปแล้ว)
+   * ไม่เช่นนั้น = ช่องถัดจากรหัสลูกค้า/ผู้จำหน่าย (Bill to / สาขาผู้ขาย) · รอหน้าต่างปิดและคืนโฟกัสเดิมก่อน (HANDOFF 148 — เดิมเคอร์เซอร์หายไป ต้องคลิกเอง)
+   */
+  const afterNoDeposit = () => setTimeout(() => {
+    const party = document.querySelector<HTMLElement>('.trade-head .pick input');
+    const was = depReturn.current;
+    depReturn.current = null;
+    if (was?.isConnected && was !== party && was.matches('.trade-head input:not([disabled]):not([readonly]), .trade-head select:not([disabled])')) { was.focus(); (was as HTMLInputElement).select?.(); return; }
+    if (party) focusNext(party);
+  }, 80);
   useEffect(() => {
     const pid = h?.party?.id;
     if (!pid || id || readOnly || depAsked === pid || !depOpen.data?.rows.length || Object.keys(deps).length) return;
+    depReturn.current = document.activeElement as HTMLElement | null;
     setDepAsked(pid); setDepAsk(true);
   }, [depOpen.data, h?.party?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   // ยังไม่มีรายการ: ยังไม่หักมัดจำในยอด (แสดง "หักเมื่อมีรายการ") ไม่ให้ยอดติดลบ/เตือนแดงก่อนคีย์สินค้า — ตอนบันทึกยังตรวจว่าหักไม่เกินยอดหลังหักส่วนลด (เจ้าของ 18/11/2569)
@@ -660,8 +674,8 @@ export function TradeFormPage({ path }: { path: string }) {
         {calc && h && <div className="sum-strip" aria-label="สรุปยอด"><span>รายการ <b>{lines.filter((l) => l.item_id).length}</b></span><span>จำนวนเงิน <b><Money v={calc.amount} /></b></span>{!d(calc.discount_amount).isZero() && <span>ส่วนลด <b><Money v={calc.discount_amount} /></b></span>}{h.price_type !== '0' && <span>VAT <b><Money v={calc.vat_amount} /></b></span>}<span className="grand">รวมทั้งสิ้น <b><Money v={calc.net_amount} /></b></span>{!whtTotal.isZero() && <span>หัก ณ ที่จ่าย <b><Money v={whtTotal.toFixed(2)} /></b></span>}</div>}
         <KeyHints keys={[['Enter', 'ช่องถัดไป: หัว → ท้าย (ส่วนลด VAT หมายเหตุ) → รายการ · ช่องรหัสว่าง = เลือกสินค้า'], ['Esc', 'ที่ช่องรหัสว่าง = บันทึก/ยกเลิก'], ['Shift+Enter', 'ขึ้นบรรทัดใหม่ในหมายเหตุ'], ['Alt+E', 'แก้ไขเอกสารที่บันทึกแล้ว'], ['F4', 'ค้นหารหัส'], ['Ctrl+Ins', 'เพิ่มบรรทัด'], ...(K.payments ? [['F7', 'ชำระโดยอื่น'] as [string, string]] : []), ['F9', 'บันทึก'], ['Ctrl+Enter', 'บันทึก+ใหม่'], ['Alt+C', 'ยกเลิกเอกสาร'], ['Esc', 'กลับรายการ']]} />
       </div>
-      {depAsk && depOpen.data && h && <DepositAsk K={K} rows={depOpen.data.rows} priceType={h.price_type} initial={deps} onClose={() => setDepAsk(false)}
-        onOk={(picks) => { setDeps(picks); if (Object.keys(picks).length) setDirty(true); setDepAsk(false); setTab('lines'); if (Object.keys(picks).length) setTimeout(focusFirstItem, 80); }} />}
+      {depAsk && depOpen.data && h && <DepositAsk K={K} rows={depOpen.data.rows} priceType={h.price_type} initial={deps} onClose={() => { setDepAsk(false); afterNoDeposit(); }}
+        onOk={(picks) => { setDeps(picks); if (Object.keys(picks).length) setDirty(true); setDepAsk(false); setTab('lines'); if (Object.keys(picks).length) setTimeout(focusFirstItem, 80); else afterNoDeposit(); }} />}
       {pickOrder && h?.party && <OrderPicker K={K} partyId={h.party.id} invoiceId={id} priceType={h.price_type} taken={lines.map((l) => l.source_line_id).filter((x): x is string => !!x)} onClose={() => setPickOrder(false)}
         onPick={(rows) => { setLines((ls) => [...ls.filter((l) => l.item_id), ...rows.map((r) => ({ key: ++seq, item_id: r.item_id ?? '', item_code: r.item_code ?? '', description: r.description ?? '', warehouse_id: r.warehouse_id, qty: r.qty, unit_id: r.unit_id, factor: num(r.factor) || '1',
           unit_price: num(r.unit_price), discount_text: r.discount_text ?? '', is_free: r.is_free, return_to_stock: false, vat: '1' as VatCode, project_id: r.project_id ?? (h.project_id || null), source_line_id: r.line_id, source_no: r.doc_no }))]); setDirty(true); setPickOrder(false); setTab('lines'); }} />}
