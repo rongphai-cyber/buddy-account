@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { jsonSchemaOutputFormat } from '@anthropic-ai/sdk/helpers/json-schema';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, AI_BUSINESS_TYPES, AI_MODEL, aiCost, BILL_SCHEMA, BILL_SYSTEM_PROMPT, checkTaxId, d, normalizeBill, SUGGEST_SCHEMA, SUGGEST_SYSTEM_PROMPT, suggestPrompt, textSim, type BillDraft, type RawBill, type SuggestCandidate } from '@buddy/core';
+import { AI_BILL_TARGETS, AI_BUSINESS_TYPES, AI_MODEL, aiCost, BILL_SCHEMA, buyerTaxCheck, BILL_SYSTEM_PROMPT, checkTaxId, d, normalizeBill, SUGGEST_SCHEMA, SUGGEST_SYSTEM_PROMPT, suggestPrompt, textSim, type BillDraft, type RawBill, type SuggestCandidate } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -169,6 +169,10 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
   }
   await record(db, a, { model: res.model, usage: res.usage, cost, status: 'OK', file_name: b.file_name, file_size: size, message: b.note ?? null });
   const bill = normalizeBill(res.parsed_output as unknown as RawBill);
+  // ผู้ซื้อในบิลต้องเป็นบริษัทนี้ (เจ้าของ 19/11/2569): อ่านเพี้ยนเล็กน้อย = ใช้เลขของบริษัท · เลขของผู้อื่น = เตือนก่อนใช้ขอคืนภาษีซื้อ
+  const co = await db.selectFrom('sys_company').select(['tax_id', 'name_th']).where('id', '=', a.companyId).executeTakeFirst();
+  const buyer = buyerTaxCheck(bill.buyer.tax_id_read, co?.tax_id);
+  if (buyer.message) bill.warnings.unshift(buyer.message);
 
   const K = AI_BILL_TARGETS.find((k) => k.path === b.target)!;
   const sc = await checkSupplier(db, a.companyId, bill);
@@ -179,7 +183,7 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
   await logActivity(db, a, { module: K.menu, action: 'AI_READ_BILL', docNo: bill.doc_no || null, detail: { file: b.file_name, read_by: b.read_by, cost_usd: total, supplier: sc.supplier?.code ?? null, supplier_check: sc.status, duplicate: dup?.doc_no ?? null } });
   return {
     bill, supplier: sc.supplier, supplier_check: { status: sc.status, message: sc.message, candidate: sc.candidate }, duplicate: dup,
-    lines: bill.lines.map((l, i) => ({ ...l, ...sg.lines[i]! })), suggest_note: sg.note, read_by: b.read_by,
+    lines: bill.lines.map((l, i) => ({ ...l, ...sg.lines[i]! })), suggest_note: sg.note, read_by: b.read_by, buyer_check: { ...buyer, company_name: co?.name_th ?? null, company_tax_id: co?.tax_id ?? null },
     usage: { model: res.model, cost_usd: total, month_cost_usd: used.cost.plus(total).toFixed(4), monthly_limit_usd: limit },
   };
 }
@@ -195,10 +199,16 @@ async function checkSupplier(db: Db, companyId: string, bill: BillDraft): Promis
   const badTax = ck && !ck.ok ? ` · เลขผู้เสียภาษีในบิล ${tax} ${ck.error} (อ่านผิดหรือบิลพิมพ์ผิด)` : '';
   const byTax = tax ? all.filter((x) => x.tax_id === tax) : [];
   if (byTax.length) {
-    const s = byTax.find((x) => (x.tax_branch_no ?? null) === (bill.supplier.branch_no ?? null)) ?? byTax[0]!;
+    // สาขาของผู้จำหน่าย (แท็บสาขา — เจ้าของ 19/11/2569): สาขาในบิลอยู่ในแฟ้มหรือแท็บสาขา = ตรง · ไม่มี = เสนอเพิ่มสาขาให้รายนี้ (ไม่สร้างเจ้าหนี้ซ้ำ)
+    const brs = await sql<{ supplier_id: string; branch_no: string; name: string }>`SELECT supplier_id, branch_no, name FROM md_supplier_branch WHERE company_id = ${companyId} AND deleted_at IS NULL AND supplier_id = ANY(${byTax.map((x) => x.id)}::uuid[])`.execute(db);
+    const want = bill.supplier.branch_no;
+    const has = (x: Sup) => !want || (x.tax_branch_no ?? '00000') === want || brs.rows.some((r) => r.supplier_id === x.id && r.branch_no === want);
+    const s = byTax.find(has) ?? byTax[0]!;
     const sim = textSim(bill.supplier.name, s.name);
     if (bill.supplier.name && sim < 0.45) return { supplier: s, status: 'name_mismatch', message: `เลขผู้เสียภาษีตรงกับ ${s.code} ${s.name} แต่ชื่อในบิล "${bill.supplier.name}" ต่างกัน — ตรวจว่าเป็นรายเดียวกัน${badTax}`, candidate: null };
-    if (bill.supplier.branch_no && s.tax_branch_no && s.tax_branch_no !== bill.supplier.branch_no) return { supplier: s, status: 'branch_mismatch', message: `ผู้จำหน่าย ${s.code}: สาขาในบิล ${bill.supplier.branch_no} ไม่ตรงกับแฟ้ม (${s.tax_branch_no}) — ภาษีซื้อต้องใช้สาขาตามใบกำกับ`, candidate: null };
+    if (!has(s)) return { supplier: s, status: 'branch_new', message: `ผู้จำหน่าย ${s.code} ${s.name} เลขผู้เสียภาษีตรงกัน แต่ยังไม่มีสาขา ${want} — เพิ่มสาขานี้ให้ ${s.code} (ไม่สร้างเจ้าหนี้ซ้ำ) · ภาษีซื้อต้องใช้สาขาตามใบกำกับ`, candidate: null };
+    const bn = brs.rows.find((r) => r.supplier_id === s.id && r.branch_no === want);
+    if (bn) return { supplier: s, status: 'match', message: `ตรงกับผู้จำหน่าย ${s.code} ${s.name} สาขา ${bn.branch_no} ${bn.name}${badTax}`, candidate: null };
     return { supplier: s, status: 'match', message: `ตรงกับผู้จำหน่าย ${s.code} ${s.name} (เลขผู้เสียภาษี${bill.supplier.branch_no ? ` สาขา ${bill.supplier.branch_no}` : ''} ตรงกัน)${badTax}`, candidate: null };
   }
   const near = bill.supplier.name ? all.map((x) => ({ x, sim: textSim(bill.supplier.name, x.name) })).filter((r) => r.sim >= 0.6).sort((p, q) => q.sim - p.sim)[0]?.x ?? null : null;

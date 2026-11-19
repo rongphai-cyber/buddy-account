@@ -2090,6 +2090,63 @@ export interface MdSupplierTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** สาขาของผู้จำหน่าย — บิลที่ออกจากสาขา (ใหม่ — เจ้าของ 19/11/2569: เลขผู้เสียภาษีเดียวกันคนละสาขา ให้เพิ่มสาขาในเจ้าหนี้รายนั้น ไม่สร้างเจ้าหนี้ซ้ำ) */
+export interface MdSupplierBranchTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** ผู้จำหน่าย (บริษัทเดียวกัน — เจ้าหนี้ยังอยู่ที่รหัสผู้จำหน่ายนี้) */
+  supplier_id: string;
+  /** เลขที่สาขาตามกรมสรรพากร 5 หลัก (สาขาตามแฟ้มผู้จำหน่าย = ที่อยู่ในแฟ้มผู้จำหน่าย) */
+  branch_no: string;
+  /** ชื่อสาขา เช่น สาขาเชียงใหม่ */
+  name: string;
+  /** ที่อยู่ 1 */
+  address_1: Gen<string | null>;
+  /** ที่อยู่ 2 */
+  address_2: Gen<string | null>;
+  /** ที่อยู่ 3 */
+  address_3: Gen<string | null>;
+  /** รหัสไปรษณีย์ */
+  zip_code: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: เลขที่ */
+  addr_no: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่ที่ */
+  addr_moo: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่บ้าน */
+  addr_village: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: อาคาร */
+  addr_building: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ห้องเลขที่ */
+  addr_room: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ชั้นที่ */
+  addr_floor: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ซอย */
+  addr_soi: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ถนน */
+  addr_road: Gen<string | null>;
+  /** ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th) */
+  addr_geo_code: Gen<string | null>;
+  /** โทรศัพท์ */
+  phone: Gen<string | null>;
+  /** ผู้ติดต่อ */
+  contact: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ผู้ติดต่อของลูกค้า/ผู้จำหน่าย (ข้อเสนอ: หลายคน — Express มีช่องเดียว) */
 export interface MdPartyContactTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -4879,6 +4936,7 @@ export interface DB {
   md_customer_ship_to: MdCustomerShipToTable;
   md_customer_branch: MdCustomerBranchTable;
   md_supplier: MdSupplierTable;
+  md_supplier_branch: MdSupplierBranchTable;
   md_party_contact: MdPartyContactTable;
   md_supplier_bank: MdSupplierBankTable;
   md_salesperson: MdSalespersonTable;

@@ -376,7 +376,7 @@ export function TradeFormPage({ path }: { path: string }) {
   /** เติมร่างจากบิลที่ AI อ่าน (T7.7) — ยังไม่บันทึก ผู้ใช้ตรวจ/เลือกรหัสที่ยังไม่พบ แล้วบันทึกเอง */
   const applyBill = async (r: AiBillResult) => {
     if (r.supplier) await pickParty({ id: r.supplier.id, code: r.supplier.code, name: r.supplier.name });
-    set({ price_type: r.bill.price_type, vat_rate: r.bill.vat_rate, ...(r.bill.doc_no ? { ref: { id: '', code: r.bill.doc_no } } : {}) });
+    set({ price_type: r.bill.price_type, vat_rate: r.bill.vat_rate, ...(r.bill.doc_no ? { ref: { id: '', code: r.bill.doc_no } } : {}), ...(r.supplier && r.bill.supplier.branch_no ? { party_tax_branch_no: r.bill.supplier.branch_no } : {}) });
     if (r.bill.doc_date) setRefDate(r.bill.doc_date);
     setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l) => {
       const gross = d(l.qty || 0).times(d(l.unit_price || 0)).toDecimalPlaces(2), disc = l.amount ? gross.minus(d(l.amount)) : d(0);
@@ -464,7 +464,7 @@ export function TradeFormPage({ path }: { path: string }) {
   // Bill to = สาขาของลูกค้ารายเดียวกัน (เจ้าของ 18/11/2569 รอบ 2): สาขาตามแฟ้มลูกค้า + แท็บสาขา (+ เลขที่ที่เอกสารนี้ใช้อยู่)
   const masterBr = pd.data?.tax_branch_no || '00000';
   const billBr = h?.party_tax_branch_no || masterBr;
-  const billOpts = [{ no: masterBr, label: `${masterBr} ${masterBr === '00000' ? 'สำนักงานใหญ่' : 'สาขา'} (ตามแฟ้มลูกค้า)`, addr: '' }, ...(pd.data?.branches ?? []).map((b) => ({ no: b.branch_no, label: `${b.branch_no} ${b.name}`, addr: [b.address_1, b.address_2, b.address_3, b.zip_code].filter(Boolean).join(' ') }))];
+  const billOpts = [{ no: masterBr, label: `${masterBr} ${masterBr === '00000' ? 'สำนักงานใหญ่' : 'สาขา'} (ตามแฟ้ม${partyWord(K)})`, addr: '' }, ...(pd.data?.branches ?? []).map((b) => ({ no: b.branch_no, label: `${b.branch_no} ${b.name}`, addr: [b.address_1, b.address_2, b.address_3, b.zip_code].filter(Boolean).join(' ') }))];
   if (h?.party_tax_branch_no && !billOpts.some((o) => o.no === h.party_tax_branch_no)) billOpts.push({ no: h.party_tax_branch_no, label: h.party_tax_branch_no, addr: '' });
   const shipOpts = (pd.data?.ship_tos ?? []).filter((x) => !x.branch_no || x.branch_no === billBr || x.id === h?.ship_to_id);
   const needWh = (l: Line) => !!l.item_id && isStockItemType(l.item_type);
@@ -501,8 +501,8 @@ export function TradeFormPage({ path }: { path: string }) {
           <div className="col">
             <Field label={`รหัส${partyWord(K)}`} req><SearchPick<{ id: string; code: string; name: string; tax_id?: string | null }> endpoint={partyEndpoint(K)} value={h.party} required disabled={readOnly} autoFocus={!id} label={(r: { name: string }) => r.name} describe={(r: { tax_id?: string | null; on_hold?: boolean }) => holdTag(K.party, r) + (r.tax_id ?? '')}
               onPick={(r: { id: string; code: string; name: string } | null) => pickParty(r)} /></Field>
-            {K.party === 'customer'
-              ? <Field label="Bill to (สาขา)" hint="ออกใบกำกับถึงสาขาไหนของลูกค้ารายนี้ — ลูกหนี้ยังเป็นรหัสลูกค้า · เพิ่มสาขาที่แท็บสาขาในรายละเอียดลูกค้า"><select value={billBr} disabled={readOnly || !h.party} title={billOpts.find((o) => o.no === billBr)?.addr || undefined}
+            {K.party === 'customer' || (pd.data?.branches?.length ?? 0) > 0
+              ? <Field label={K.party === 'customer' ? 'Bill to (สาขา)' : 'สาขาผู้ขาย'} hint={K.party === 'customer' ? 'ออกใบกำกับถึงสาขาไหนของลูกค้ารายนี้ — ลูกหนี้ยังเป็นรหัสลูกค้า · เพิ่มสาขาที่แท็บสาขาในรายละเอียดลูกค้า' : 'สาขาของผู้จำหน่ายที่ออกบิล — ภาษีซื้อใช้เลขที่และที่อยู่ของสาขานี้ · เจ้าหนี้ยังเป็นรหัสผู้จำหน่าย · เพิ่มสาขาที่แท็บสาขาในรายละเอียดผู้จำหน่าย'}><select value={billBr} disabled={readOnly || !h.party} title={billOpts.find((o) => o.no === billBr)?.addr || undefined}
                   onChange={(e) => { const no = e.target.value; const keep = (pd.data?.ship_tos ?? []).find((x) => x.id === h.ship_to_id); set({ party_tax_branch_no: no, ...(keep?.branch_no && keep.branch_no !== no ? { ship_to_id: '' } : {}) }); }} aria-label="Bill to (สาขา)">
                   {billOpts.map((o) => <option key={o.no} value={o.no}>{o.label}</option>)}</select></Field>
               : <Field label="สาขา#"><BranchPick value={h.party_tax_branch_no} options={branches.data?.tax_branches} disabled={readOnly} onChange={(v) => set({ party_tax_branch_no: v })} /></Field>}

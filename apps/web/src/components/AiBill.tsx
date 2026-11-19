@@ -22,6 +22,8 @@ export interface AiBillResult {
     note?: string | null;
   }>;
   usage: { model: string; cost_usd: string; month_cost_usd: string; monthly_limit_usd: number | null };
+  /** ผู้ซื้อในบิลเทียบกับบริษัทนี้ (same/misread = แสดงเลขบริษัท · other/unclear = เตือน) */
+  buyer_check?: { status: 'none' | 'same' | 'misread' | 'other' | 'unclear'; shown: string | null; message: string | null; company_name: string | null; company_tax_id: string | null };
   /** local_ocr = อ่านภาพในเครื่องนี้ (Typhoon-OCR) แล้ว Claude จัดร่างจากข้อความ · claude_image = Claude อ่านภาพ */
   read_by?: 'local_ocr' | 'claude_image';
 }
@@ -81,12 +83,24 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
       if (ck?.ok) {
         const r = await api.get<{ rows: SupRow[] }>('/api/v1/suppliers', { q: tax, status: 'all', limit: 50 });
         const hit = r.rows.filter((x) => (x.tax_id ?? '').replace(/\D/g, '') === tax);
-        same = hit.filter((x) => (x.tax_branch_no ?? '00000') === init.tax_branch_no);
-        other = hit.filter((x) => (x.tax_branch_no ?? '00000') !== init.tax_branch_no);
+        // สาขาเดียวกัน = สาขาตามแฟ้ม หรือมีในแท็บสาขาของรายนั้น (เจ้าของ 19/11/2569)
+        const det = await Promise.all(hit.map((x) => api.get<{ branches?: Array<{ branch_no: string }> }>(`/api/v1/suppliers/${x.id}`)));
+        const hasBr = (x: SupRow, i: number) => (x.tax_branch_no ?? '00000') === init.tax_branch_no || (det[i]!.branches ?? []).some((b) => b.branch_no === init.tax_branch_no);
+        same = hit.filter(hasBr);
+        other = hit.filter((x, i) => !hasBr(x, i));
       }
       const code = (await api.get<{ code: string }>('/api/v1/suppliers/next-code')).code;
       const badTax = !tax ? 'บิลนี้อ่านเลขผู้เสียภาษีไม่ได้ — ใส่เลขในแท็บ ภาษีและบัญชี (ตรวจซ้ำได้เมื่อมีเลข)' : ck && !ck.ok ? `เลขผู้เสียภาษีที่อ่านได้ ${tax} ${ck.error} — แก้ในแท็บ ภาษีและบัญชี ก่อนบันทึก (อาจอ่านผิด)` : null;
       setAdd({ init: { ...init, code, from_bill: true }, same, other, form: !same.length && !other.length, badTax });
+    } catch (e) { setErr(e); }
+  };
+  /** เลขผู้เสียภาษีเดียวกันคนละสาขา = เพิ่มสาขาให้ผู้จำหน่ายรายเดิม ไม่สร้างเจ้าหนี้ซ้ำ (เจ้าของ 19/11/2569) */
+  const addBranch = async (sid: string) => {
+    if (!res) return;
+    const init = supplierFromBill(res.bill);
+    try {
+      await api.post(`/api/v1/suppliers/${sid}/branches`, { branch_no: init.tax_branch_no, name: `สาขา ${init.tax_branch_no}`, address_1: init.address_1 || null, address_2: init.address_2 || null, address_3: init.address_3 || null, zip_code: init.zip_code || null, phone: init.phone || null });
+      await chooseSupplier(sid, `เพิ่มสาขา ${init.tax_branch_no} ให้ผู้จำหน่ายแล้ว:`);
     } catch (e) { setErr(e); }
   };
   /** ใช้ผู้จำหน่ายรายนี้ในร่าง (เพิ่มใหม่หรือรายเดิมที่เลขตรงกัน) */
@@ -147,13 +161,14 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
           {res.duplicate && <p className="bad"><b>บิลซ้ำ:</b> เลขที่ {b.doc_no} ของผู้จำหน่ายนี้บันทึกแล้วใน {res.duplicate.doc_no} ({res.duplicate.doc_date}) — ตรวจก่อนบันทึกซ้ำ</p>}
           {res.supplier_check && <p className={SUPOK.has(res.supplier_check.status) ? 'small' : 'bad small'}>{SUPOK.has(res.supplier_check.status) ? '✓ ' : '⚠ '}{res.supplier_check.message}
             {res.supplier_check.candidate && !res.supplier && <label className="check" style={{ marginLeft: 8 }}><input type="checkbox" checked={useCand} onChange={(e) => setUseCand(e.target.checked)} /> ใช้ {res.supplier_check.candidate.code}</label>}
-            {!res.supplier && !useCand && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void startAdd()}>＋ เพิ่มผู้จำหน่ายใหม่จากบิลนี้</button>}</p>}
+            {!res.supplier && !useCand && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void startAdd()}>＋ เพิ่มผู้จำหน่ายใหม่จากบิลนี้</button>}
+            {res.supplier && res.supplier_check.status === 'branch_new' && b.supplier.branch_no && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void addBranch(res.supplier!.id)}>＋ เพิ่มสาขา {b.supplier.branch_no} ให้ {res.supplier.code}</button>}</p>}
           {add && !add.form && <div className="box small" role="alert" style={{ margin: '6px 0', padding: 8, border: '1px solid var(--line, #ccc)', borderRadius: 6 }}>
             {add.same.length > 0 ? <p className="bad"><b>ไม่เพิ่มซ้ำ:</b> เลขผู้เสียภาษี {String(add.init.tax_id)} สาขา {String(add.init.tax_branch_no)} มีในแฟ้มผู้จำหน่ายแล้ว — ใช้รายเดิม</p>
-              : <p className="bad">เลขผู้เสียภาษี {String(add.init.tax_id)} มีในแฟ้มแล้วแต่<b>คนละสาขา</b> — ถ้าบิลนี้มาจากสาขาเดิม ให้เลือกรายเดิม ถ้าเป็นสาขาใหม่จริง (สาขา {String(add.init.tax_branch_no)}) ค่อยเพิ่ม</p>}
+              : <p className="bad">เลขผู้เสียภาษี {String(add.init.tax_id)} เป็นของผู้จำหน่ายในแฟ้มแล้ว แต่ยังไม่มีสาขา {String(add.init.tax_branch_no)} — <b>เพิ่มสาขาให้รายเดิม</b> (ไม่สร้างเจ้าหนี้ซ้ำ) หรือเลือกรายเดิมถ้าบิลมาจากสาขาที่มีอยู่</p>}
             <table className="grid"><tbody>{[...add.same, ...add.other].map((x) => <tr key={x.id}><td className="mono">{x.code}</td><td>{x.name}</td><td className="mono">{x.tax_id} สาขา {x.tax_branch_no ?? '00000'}</td>
-              <td>{x.status === 'I' ? <span className="muted">เลิกใช้แล้ว — เปิดใช้ที่ ซื้อ › รายละเอียดผู้จำหน่าย</span> : <button type="button" onClick={() => void chooseSupplier(x.id, 'ใช้ผู้จำหน่ายเดิม').catch(setErr)}>ใช้รายนี้</button>}</td></tr>)}</tbody></table>
-            <div className="toolbar">{!add.same.length && <button type="button" onClick={() => setAdd({ ...add, form: true })}>เพิ่มเป็นสาขา {String(add.init.tax_branch_no)} ใหม่</button>}<button type="button" onClick={() => setAdd(null)}>ปิด</button></div>
+              <td>{x.status === 'I' ? <span className="muted">เลิกใช้แล้ว — เปิดใช้ที่ ซื้อ › รายละเอียดผู้จำหน่าย</span> : <>{add.other.includes(x) && <button type="button" className="primary" onClick={() => void addBranch(x.id)}>＋ เพิ่มสาขา {String(add.init.tax_branch_no)} ให้รายนี้</button>} <button type="button" onClick={() => void chooseSupplier(x.id, 'ใช้ผู้จำหน่ายเดิม').catch(setErr)}>ใช้รายนี้</button></>}</td></tr>)}</tbody></table>
+            <div className="toolbar"><button type="button" onClick={() => setAdd(null)}>ปิด</button></div>
           </div>}
           {add?.form && <Suspense fallback={null}><SupplierForm id={null} initial={add.init} startTab={add.badTax ? 'tax' : 'main'} onClose={() => setAdd(null)}
             onSaved={(sv) => { if (!sv) { setAdd(null); return; } void chooseSupplier(sv.id, 'เพิ่มผู้จำหน่ายใหม่แล้ว:').catch(setErr); }} /></Suspense>}
@@ -163,6 +178,9 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
           <table className="grid info-table"><tbody>
             <tr><th>ผู้จำหน่าย</th><td>{b.supplier.name} {b.supplier.tax_id && <span className="mono small">{b.supplier.tax_id}{b.supplier.branch_no ? ` สาขา ${b.supplier.branch_no}` : ''}</span>}
               {' '}{res.supplier ? <Pill tone="n">พบ {res.supplier.code}</Pill> : <Pill tone="c">ไม่พบในแฟ้มผู้จำหน่าย — ใส่เป็นชื่อหรือเลือกเอง</Pill>}</td></tr>
+            {res.buyer_check && res.buyer_check.status !== 'none' && <tr><th>ผู้ซื้อ</th><td>{res.buyer_check.status === 'same' || res.buyer_check.status === 'misread'
+              ? <>{res.buyer_check.company_name} <span className="mono small">{res.buyer_check.company_tax_id}</span> <Pill tone="n">บริษัทนี้</Pill>{res.buyer_check.status === 'misread' && <span className="muted small"> (อ่านเลขในบิลเพี้ยนเล็กน้อย — ใช้เลขของบริษัท)</span>}</>
+              : <><span className="mono small">{res.buyer_check.shown}</span> <Pill tone="x">{res.buyer_check.status === 'other' ? 'บิลนี้ออกในนามผู้อื่น' : 'ตรวจเลขผู้ซื้อ'}</Pill></>}</td></tr>}
             <tr><th>เลขที่ / วันที่</th><td>{b.doc_no || '—'} · {b.doc_date ?? '—'}</td></tr>
             <tr><th>ประเภทราคา</th><td>{PT[b.price_type]}{b.price_type !== '0' ? ` ${b.vat_rate}%` : ''}</td></tr>
             <tr><th>ยอด</th><td>ก่อน VAT {b.subtotal ? fmt(b.subtotal) : '—'} · VAT {b.vat_amount ? fmt(b.vat_amount) : '—'} · รวม <b>{b.total ? fmt(b.total) : '—'}</b></td></tr>

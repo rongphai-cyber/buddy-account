@@ -338,7 +338,7 @@
 },
 {
 "th": "ลูกค้า",
-"n": 53,
+"n": 55,
 "files": [
 "apps/web/src/components/LkSelect.tsx",
 "apps/web/src/components/PartyAddress.tsx",
@@ -459,7 +459,7 @@
 },
 {
 "th": "ผู้จำหน่าย",
-"n": 45,
+"n": 48,
 "files": [
 "apps/web/src/components/AiBill.tsx",
 "apps/web/src/components/LkSelect.tsx",
@@ -497,7 +497,7 @@
 },
 {
 "th": "สาขา",
-"n": 45,
+"n": 46,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/AuxTools.tsx",
@@ -2948,6 +2948,19 @@
 ]
 },
 {
+"th": "สาขา {0}",
+"n": 8,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/PartyAddress.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
 "th": "สาขา#",
 "n": 8,
 "files": [
@@ -3346,19 +3359,6 @@
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "สาขา {0}",
-"n": 7,
-"files": [
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/components/PartyAddress.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/reports/JobCost.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx"
 ]
 },
 {
@@ -5106,6 +5106,16 @@
 ]
 },
 {
+"th": "ผู้ซื้อ",
+"n": 4,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/Etax.tsx"
+]
+},
+{
 "th": "ผู้สั่งจ่าย",
 "n": 4,
 "files": [
@@ -5997,6 +6007,14 @@
 ]
 },
 {
+"th": "ซ้ำ",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/server/src/modules/parties.ts"
+]
+},
+{
 "th": "ณ วันที่",
 "n": 3,
 "files": [
@@ -6315,15 +6333,6 @@
 "apps/server/src/modules/docs/stockdocs.ts",
 "apps/server/src/modules/docs/stockopening.ts",
 "apps/server/src/modules/docs/trade.ts"
-]
-},
-{
-"th": "ผู้ซื้อ",
-"n": 3,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/Etax.tsx"
 ]
 },
 {
@@ -8637,14 +8646,6 @@
 ]
 },
 {
-"th": "ซ้ำ",
-"n": 2,
-"files": [
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/server/src/modules/parties.ts"
-]
-},
-{
 "th": "ฐานทางกฎหมาย",
 "n": 2,
 "files": [
@@ -9496,6 +9497,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "บิลนี้ออกในนามผู้อื่น",
+"n": 2,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -11417,6 +11426,14 @@
 ]
 },
 {
+"th": "สาขาผู้ขาย",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "สำรองข้อมูล / นำข้อมูลสำรองมาใช้",
 "n": 2,
 "files": [
@@ -12271,6 +12288,13 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/company.ts",
+"apps/server/src/modules/parties.ts"
+]
+},
+{
+"th": "เลขที่สาขา {0} ซ้ำ",
+"n": 2,
+"files": [
 "apps/server/src/modules/parties.ts"
 ]
 },
@@ -13603,6 +13627,13 @@
 ]
 },
 {
+"th": "(อ่านเลขในบิลเพี้ยนเล็กน้อย — ใช้เลขของบริษัท)",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "(เลิกใช้)",
 "n": 1,
 "files": [
@@ -13614,6 +13645,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "(เลิกใช้อยู่ — เปิดใช้รหัสเดิม)",
+"n": 1,
+"files": [
+"apps/server/src/modules/parties.ts"
 ]
 },
 {
@@ -13705,6 +13743,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/forms.ts"
+]
+},
+{
+"th": "(ไม่สร้างเจ้าหนี้ซ้ำ) หรือเลือกรายเดิมถ้าบิลมาจากสาขาที่มีอยู่",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -15570,6 +15615,13 @@
 ]
 },
 {
+"th": "OCR อ่านเพี้ยน",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
+]
+},
+{
 "th": "Ollama ตอบ {0} — ตรวจว่าตั้ง OLLAMA_ORIGINS ให้โปรแกรมนี้แล้ว",
 "n": 1,
 "files": [
@@ -16123,7 +16175,7 @@
 ]
 },
 {
-"th": "{0} {1} (ตามแฟ้มลูกค้า)",
+"th": "{0} {1} (ตามแฟ้ม{2})",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
@@ -19525,6 +19577,13 @@
 ]
 },
 {
+"th": "ข้อมูลติดต่อของสาขาผู้จำหน่าย",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
+]
+},
+{
 "th": "ข้อมูลติดต่อของสาขาลูกค้า",
 "n": 1,
 "files": [
@@ -19795,13 +19854,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx"
-]
-},
-{
-"th": "คนละสาขา",
-"n": 1,
-"files": [
-"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -23704,6 +23756,13 @@
 ]
 },
 {
+"th": "ซ้ำกับสาขาตามแฟ้ม",
+"n": 1,
+"files": [
+"apps/server/src/modules/parties.ts"
+]
+},
+{
 "th": "ซ้ำกับเอกสารที่มีอยู่",
 "n": 1,
 "files": [
@@ -24005,6 +24064,13 @@
 ]
 },
 {
+"th": "ตรงกับผู้จำหน่าย {0} {1} สาขา {2} {3}{4}",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "ตรงกับลำดับในใบแนบ ภ.ง.ด.",
 "n": 1,
 "files": [
@@ -24100,6 +24166,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "ตรวจเลขผู้ซื้อ",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -24923,6 +24996,13 @@
 },
 {
 "th": "ติดต่อพนักงาน ส่งสลิปเงินเดือน",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "ติดต่อสาขาที่ออกบิล",
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
@@ -26057,6 +26137,13 @@
 },
 {
 "th": "ที่อยู่สาขาของกิจการ",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "ที่อยู่สาขาของผู้จำหน่าย",
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
@@ -27334,6 +27421,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "บริษัทนี้",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -29052,6 +29146,13 @@
 ]
 },
 {
+"th": "บิลจากสาขา",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "บิลซ้ำ:",
 "n": 1,
 "files": [
@@ -29091,6 +29192,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/opening.ts"
+]
+},
+{
+"th": "บิลนี้ออกในนามผู้อื่น — เลขผู้ซื้อในบิล {0} ไม่ใช่เลขของบริษัท ({1}) ตรวจก่อนใช้ขอคืนภาษีซื้อ",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -31117,6 +31225,13 @@
 ]
 },
 {
+"th": "ผู้จำหน่าย {0} {1} เลขผู้เสียภาษีตรงกัน แต่ยังไม่มีสาขา {2} — เพิ่มสาขานี้ให้ {3} (ไม่สร้างเจ้าหนี้ซ้ำ) · ภาษีซื้อต้องใช้สาขาตามใบกำกับ",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "ผู้จำหน่าย {0} ซื้อเกินวงเงิน — ยอดค้างจ่ายรวมบิลนี้ {1} วงเงิน {2} (เกิน {3})",
 "n": 1,
 "files": [
@@ -31124,17 +31239,17 @@
 ]
 },
 {
-"th": "ผู้จำหน่าย {0} มีเอกสารแล้ว ลบไม่ได้ — เปลี่ยนสถานะเป็นเลิกใช้แทน",
+"th": "ผู้จำหน่าย {0} มีสาขา {1} อยู่แล้ว — ใช้สาขาเดิม",
 "n": 1,
 "files": [
 "apps/server/src/modules/parties.ts"
 ]
 },
 {
-"th": "ผู้จำหน่าย {0}: สาขาในบิล {1} ไม่ตรงกับแฟ้ม ({2}) — ภาษีซื้อต้องใช้สาขาตามใบกำกับ",
+"th": "ผู้จำหน่าย {0} มีเอกสารแล้ว ลบไม่ได้ — เปลี่ยนสถานะเป็นเลิกใช้แทน",
 "n": 1,
 "files": [
-"apps/server/src/modules/ai.ts"
+"apps/server/src/modules/parties.ts"
 ]
 },
 {
@@ -32563,6 +32678,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "ภาษีซื้อตามสาขาที่ออกใบกำกับ",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -35121,7 +35243,7 @@
 ]
 },
 {
-"th": "ยังไม่มีสาขาอื่น — ออกบิลถึงสาขา {0} ตามที่อยู่ในแฟ้มลูกค้า",
+"th": "ยังไม่มีสาขาอื่น — {0} {1} ตามที่อยู่ในแฟ้ม{2}",
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
@@ -41862,6 +41984,13 @@
 ]
 },
 {
+"th": "สาขา {0} คือที่อยู่ในแฟ้ม{1}นี้อยู่แล้ว (สาขาตามแฟ้ม) — ลบแถวนี้ หรือเปลี่ยนเลขที่สาขา",
+"n": 1,
+"files": [
+"apps/server/src/modules/parties.ts"
+]
+},
+{
 "th": "สาขา {0} คือที่อยู่ในแฟ้มลูกค้านี้อยู่แล้ว (สาขาตามแฟ้มลูกค้า) — ลบแถวนี้ หรือเปลี่ยนเลขที่สาขา",
 "n": 1,
 "files": [
@@ -41887,6 +42016,20 @@
 "n": 1,
 "files": [
 "apps/web/src/components/BranchPick.tsx"
+]
+},
+{
+"th": "สาขาของผู้จำหน่ายที่ออกบิล — ภาษีซื้อใช้เลขที่และที่อยู่ของสาขานี้ · เจ้าหนี้ยังเป็นรหัสผู้จำหน่าย · เพิ่มสาขาที่แท็บสาขาในรายละเอียดผู้จำหน่าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "สาขาของผู้จำหน่ายรายนี้ (เลขผู้เสียภาษีเดียวกัน — ไม่สร้างเจ้าหนี้ซ้ำ) — เอกสารซื้อ/ค่าใช้จ่ายเลือกสาขาที่ออกบิลได้ ใบกำกับภาษีและรายงานภาษีซื้อใช้เลขที่และที่อยู่ของสาขานั้น · เจ้าหนี้ยังอยู่ที่รหัสผู้จำหน่ายนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
 ]
 },
 {
@@ -41957,13 +42100,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
-]
-},
-{
-"th": "สาขาผู้ขาย",
-"n": 1,
-"files": [
-"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -43682,6 +43818,13 @@
 ]
 },
 {
+"th": "ออกบิลถึงสาขา",
+"n": 1,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
 "th": "ออกเลขที่หนังสือรับรอง",
 "n": 1,
 "files": [
@@ -44239,6 +44382,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "อ่านเลขผู้ซื้อในบิลได้ {0} ไม่ตรงกับเลขของบริษัท ({1}) — ตรวจว่าบิลออกในนามบริษัท",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -47490,6 +47640,20 @@
 ]
 },
 {
+"th": "เพิ่มสาขา {0} ให้ผู้จำหน่ายแล้ว:",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "เพิ่มสาขาให้รายเดิม",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "เพิ่มสินค้าในรายการนับแล้ว",
 "n": 1,
 "files": [
@@ -47564,13 +47728,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
-]
-},
-{
-"th": "เพิ่มเป็นสาขา {0} ใหม่",
-"n": 1,
-"files": [
-"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -47952,6 +48109,13 @@
 ]
 },
 {
+"th": "เลขของผู้อื่น",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
+]
+},
+{
 "th": "เลขทะเบียน",
 "n": 1,
 "files": [
@@ -48222,13 +48386,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Branches.tsx"
-]
-},
-{
-"th": "เลขที่สาขา {0} ซ้ำ",
-"n": 1,
-"files": [
-"apps/server/src/modules/parties.ts"
 ]
 },
 {
@@ -48701,13 +48858,6 @@
 ]
 },
 {
-"th": "เลขผู้เสียภาษี {0} มีในแฟ้มแล้วแต่",
-"n": 1,
-"files": [
-"apps/web/src/components/AiBill.tsx"
-]
-},
-{
 "th": "เลขผู้เสียภาษี {0} สาขา {1} มีในแฟ้มผู้จำหน่ายแล้ว — ใช้รายเดิม",
 "n": 1,
 "files": [
@@ -48715,17 +48865,24 @@
 ]
 },
 {
-"th": "เลขผู้เสียภาษี {0} สาขา {1} เป็นของผู้จำหน่าย {2} {3} แล้ว (เลิกใช้อยู่) — เปิดใช้รหัสเดิมที่ ซื้อ › รายละเอียดผู้จำหน่าย แทนการเพิ่มใหม่",
+"th": "เลขผู้เสียภาษี {0} สาขา {1} ใช้กับ{2} {3} {4} แล้ว — ถ้าเป็นรายเดียวกันให้ใช้รหัสเดิม ถ้าเป็นคนละสาขาให้ใส่เลขสาขาให้ถูกต้อง (สำนักงานใหญ่ = 00000)",
 "n": 1,
 "files": [
 "apps/server/src/modules/parties.ts"
 ]
 },
 {
-"th": "เลขผู้เสียภาษี {0} สาขา {1} ใช้กับ{2} {3} {4} แล้ว — ถ้าเป็นรายเดียวกันให้ใช้รหัสเดิม ถ้าเป็นคนละสาขาให้ใส่เลขสาขาให้ถูกต้อง (สำนักงานใหญ่ = 00000)",
+"th": "เลขผู้เสียภาษี {0} เป็นของผู้จำหน่าย {1} {2}{3} แล้ว — ถ้าเป็นสาขาอื่นของรายเดียวกัน ให้เพิ่มสาขาที่แท็บ สาขา ของ {4} (ไม่สร้างเจ้าหนี้ซ้ำ)",
 "n": 1,
 "files": [
 "apps/server/src/modules/parties.ts"
+]
+},
+{
+"th": "เลขผู้เสียภาษี {0} เป็นของผู้จำหน่ายในแฟ้มแล้ว แต่ยังไม่มีสาขา {1} —",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -55036,13 +55193,6 @@
 ]
 },
 {
-"th": "— ถ้าบิลนี้มาจากสาขาเดิม ให้เลือกรายเดิม ถ้าเป็นสาขาใหม่จริง (สาขา {0}) ค่อยเพิ่ม",
-"n": 1,
-"files": [
-"apps/web/src/components/AiBill.tsx"
-]
-},
-{
 "th": "— ที่ WTS-Living ส่งมา หรือคีย์ที่นี่สำหรับลูกค้าอื่น · ลงบัญชี Dr บัญชีพักยอดยกมา / Cr เงินมัดจำรับ ไม่มี VAT · ใบเสร็จหักมัดจำ / ใบคืนเงินมัดจำ ใช้ได้ตามปกติ",
 "n": 1,
 "files": [
@@ -55793,6 +55943,20 @@
 },
 {
 "th": "＋ เพิ่มผู้จำหน่ายใหม่จากบิลนี้",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "＋ เพิ่มสาขา {0} ให้ {1}",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "＋ เพิ่มสาขา {0} ให้รายนี้",
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"

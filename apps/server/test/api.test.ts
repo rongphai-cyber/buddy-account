@@ -596,7 +596,7 @@ describe('Buddy Account API (PGlite)', () => {
     // ผู้จำหน่ายใช้กฎเดียวกัน (ตรวจแยกจากลูกค้า แต่เตือนเมื่อเลขเดียวกันเป็นลูกค้าด้วย)
     const sx = await call('POST', '/api/v1/suppliers', { code: 'SX1', name: 'บริษัท ภาษี จำกัด', tax_id: T });
     expect(sx.status).toBe(200); expect(sx.body.warnings.join()).toMatch(/เป็นลูกค้าด้วย: TX-OLD, TX1, TX2, TX3/);
-    expect((await call('POST', '/api/v1/suppliers', { code: 'SX2', name: 'ซ้ำ', tax_id: T, tax_branch_no: '00000' })).body.error.message).toMatch(/ใช้กับผู้จำหน่าย SX1/);
+    expect((await call('POST', '/api/v1/suppliers', { code: 'SX2', name: 'ซ้ำ', tax_id: T, tax_branch_no: '00000' })).body.error.message).toMatch(/เป็นของผู้จำหน่าย SX1/);
     // บริษัทอื่นใช้เลขเดียวกันได้ ไม่เตือนข้ามบริษัท
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
     const ox = await call('POST', '/api/v1/customers', { ...tx, code: 'TX1' });
@@ -626,7 +626,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('PUT', `/api/v1/customers/${c.body.id}`, { ...cus, addr_geo_code: '', addr_no: '', ship_tos: [] })).status).toBe(200);
     expect((await call('GET', `/api/v1/customers/${c.body.id}`)).body).toMatchObject({ addr_geo_code: null, addr_no: null, address_1: lines.address_1 });
     // ผู้จำหน่าย / พนักงานขาย
-    const s = await call('POST', '/api/v1/suppliers', { code: 'SADDR', name: 'ผู้จำหน่าย ที่อยู่', tax_id: '0105537095903', tax_branch_no: '2', ...parts, ...lines });
+    const s = await call('POST', '/api/v1/suppliers', { code: 'SADDR', name: 'ผู้จำหน่าย ที่อยู่', tax_id: '0105537095920', tax_branch_no: '2', ...parts, ...lines });
     expect(s.status, JSON.stringify(s.body)).toBe(200);
     expect((await call('GET', `/api/v1/suppliers/${s.body.id}`)).body).toMatchObject(parts);
     const sp = await call('POST', '/api/v1/salespersons', { code: 'SADDR', name: 'พนักงาน ที่อยู่', address: '99/1 หมู่ 5 ตำบลสันผักหวาน อำเภอหางดง จังหวัดเชียงใหม่ 50230', ...parts });
@@ -4791,7 +4791,7 @@ describe('โลโก้และลายเซ็นในแบบฟอร�
 
 describe('รูปภาพสินค้า (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
   const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-  it('add a supplier from an AI-read bill (เจ้าของ 19/11/2569): tax ID is the key — no duplicates (even inactive), other branch warns, bad tax ID refused, next code, activity log, other customers separate', async () => {
+  it('add a supplier from an AI-read bill (เจ้าของ 19/11/2569): tax ID is the key — no second supplier for the same tax ID (any branch, even inactive), other branch = branch of the same supplier used on purchase docs/VAT, bad tax ID refused, next code, activity log, other customers separate', async () => {
     cookie = '';
     await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
     const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
@@ -4805,17 +4805,36 @@ describe('รูปภาพสินค้า (ข้อกำหนดเจ�
     const log = (await sql<{ detail: { from?: string; tax_id?: string } }>`SELECT detail FROM sys_activity_log WHERE table_name = 'md_supplier' AND row_id = ${s1.body.id} AND action = 'ADD'`.execute(database.db)).rows[0];
     expect(log?.detail).toMatchObject({ from: 'AI_BILL', tax_id: '0994000165501' });
     // เลข+สาขาเดียวกัน (ชื่อต่างกันก็ตาม) = ไม่เพิ่มซ้ำ — ทั้งจากบิลและหน้าผู้จำหน่ายปกติ
-    expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-DUP', name: 'กฟภ.' })).body.error.message).toMatch(/0994000165501 สาขา 00000 ใช้กับผู้จำหน่าย .+ แล้ว/);
+    expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-DUP', name: 'กฟภ.' })).body.error.message).toMatch(/0994000165501 เป็นของผู้จำหน่าย .+ แล้ว — ถ้าเป็นสาขาอื่นของรายเดียวกัน ให้เพิ่มสาขาที่แท็บ สาขา/);
     expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-DUP', from_bill: undefined })).status).toBe(409);
     // เลิกใช้แล้ว: จากบิลไม่ให้เพิ่ม (ให้เปิดใช้รหัสเดิม) · หน้าปกติยังเตือนตามกติกาเดิม (30/10/2569)
     const cur = (await call('GET', `/api/v1/suppliers/${s1.body.id}`)).body;
     expect((await call('PUT', `/api/v1/suppliers/${s1.body.id}`, { ...pea, code: next, from_bill: undefined, status: 'I', banks: [], contacts: [], ap_account_id: cur.ap_account_id })).status).toBe(200);
     expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-DUP' })).body.error.message).toMatch(/เลิกใช้อยู่.+เปิดใช้รหัสเดิม/);
     await call('PUT', `/api/v1/suppliers/${s1.body.id}`, { ...pea, code: next, from_bill: undefined, status: 'A', banks: [], contacts: [], ap_account_id: cur.ap_account_id });
-    // คนละสาขา: เพิ่มได้ พร้อมคำเตือน
-    const s2 = await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-B1', tax_branch_no: '1' });
-    expect(s2.status).toBe(200);
-    expect(s2.body.warnings.join(' ')).toMatch(/สาขาอื่น/);
+    // คนละสาขา: ไม่สร้างเจ้าหนี้ซ้ำ — เพิ่มสาขาให้รายเดิม (แท็บสาขา หรือจากหน้าต่างอ่านบิล)
+    expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-B1', tax_branch_no: '1' })).status).toBe(409);
+    const br = { branch_no: '00012', name: 'สาขา 00012', address_1: '12 ถนนสาขาสิบสอง', zip_code: '50000', phone: null };
+    expect((await call('POST', `/api/v1/suppliers/${s1.body.id}/branches`, br)).status).toBe(200);
+    expect((await call('POST', `/api/v1/suppliers/${s1.body.id}/branches`, br)).status).toBe(409);
+    expect((await call('POST', `/api/v1/suppliers/${s1.body.id}/branches`, { ...br, branch_no: '00000' })).status).toBe(409);
+    const det = (await call('GET', `/api/v1/suppliers/${s1.body.id}`)).body;
+    expect([det.branches.map((x: { branch_no: string }) => x.branch_no), det.tax_branches.includes('00012')]).toEqual([['00012'], true]);
+    // แท็บสาขาในแฟ้ม: ห้ามซ้ำกับสาขาตามแฟ้ม/ซ้ำกันเอง
+    expect((await call('PUT', `/api/v1/suppliers/${s1.body.id}`, { ...pea, code: next, from_bill: undefined, banks: [], contacts: [], branches: [br, br], ap_account_id: cur.ap_account_id })).body.error.message).toMatch(/ซ้ำ/);
+    // เอกสารค่าใช้จ่ายจากสาขา 00012 → ที่อยู่สาขา + ภาษีซื้อสาขา 00012
+    const acc = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
+    const expAcc = acc.find((x) => !x.is_control && x.account_no.startsWith('5'))!.id;
+    const expR = await call('POST', '/api/v1/other-expenses', { code: '95-PEA1-01', name_th: 'ค่าไฟฟ้าทดสอบ', accounts: { expense: expAcc } });
+    expect(expR.status, JSON.stringify(expR.body)).toBe(200);
+    const exp = expR.body.id;
+    const oeT = (await call('GET', '/api/v1/trade-defaults/OE')).body.types[0].id;
+    const oe = (await call('POST', '/api/v1/other-expense-docs', { doc_type_id: oeT, doc_date: '2027-12-05', party_id: s1.body.id, party_tax_branch_no: '00012', ref_no: 'E-1', ref_date: '2027-12-05', price_type: '2', vat_rate: 7, lines: [{ item_id: exp, description: 'ค่าไฟฟ้า', amount: 1000 }] })).body;
+    expect(oe.id, JSON.stringify(oe)).toBeTruthy();
+    const oh = (await sql<{ party_address: string; party_tax_branch_no: string }>`SELECT party_address, party_tax_branch_no FROM doc_header WHERE id = ${oe.id}`.execute(database.db)).rows[0]!;
+    expect([oh.party_tax_branch_no, oh.party_address]).toEqual(['00012', '12 ถนนสาขาสิบสอง 50000']);
+    expect((await sql<{ b: string }>`SELECT party_tax_branch_no AS b FROM tax_vat_entry WHERE header_id = ${oe.id} AND deleted_at IS NULL`.execute(database.db)).rows.map((r) => r.b)).toEqual(['00012']);
+    expect((await call('POST', `/api/v1/other-expense-docs/${oe.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
     // เลขอ่านผิด (12 หลัก / หลักตรวจสอบผิด) = บันทึกไม่ได้ ให้แก้
     expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-X', tax_id: '099400016550' })).status).toBe(400);
     expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-X', tax_id: '0994000165502' })).status).toBe(400);
@@ -4828,24 +4847,36 @@ describe('รูปภาพสินค้า (ข้อกำหนดเจ�
     expect((await call('GET', `/api/v1/suppliers/${s1.body.id}`)).status).toBe(404);
     const bNext = (await call('GET', '/api/v1/suppliers/next-code')).body.code;
     expect((await call('POST', '/api/v1/suppliers', { ...pea, code: bNext, company_id: co })).status).toBe(200);
-    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM md_supplier WHERE company_id = ${co} AND tax_id = '0994000165501' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(2);
+    expect((await call('POST', `/api/v1/suppliers/${s1.body.id}/branches`, { ...br, branch_no: '00013' })).status).toBe(404);   // เพิ่มสาขาให้ผู้จำหน่ายของลูกค้าอื่นไม่ได้
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM md_supplier WHERE company_id = ${co} AND tax_id = '0994000165501' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(1);
     cookie = '';
     await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
     await call('POST', '/api/v1/auth/select', { company_id: co });
   });
   it('AI bill from local OCR text (hybrid): another customer (tenant) cannot use this company\'s key or see its usage, company_id in the body is ignored', async () => {
     process.env.BUDDY_SECRET_KEY = Buffer.alloc(32, 7).toString('base64');
-    let calls = 0;
+    let calls = 0, buyerTax: string | null = null;
     setAiClientFactory(() => ({ beta: { messages: { parse: async (params: Record<string, any>) => { calls++; return String(params.system).includes('เลือกรหัส')
       ? { model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 }, parsed_output: { lines: [] } }
-      : { model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 50 }, parsed_output: { doc_kind: 'receipt', supplier: { name: 'ร้านทดสอบ', tax_id: null, branch_no: null, address: null }, doc_no: 'R-1', doc_date: '2027-01-02', price_type: 'no_vat', vat_rate: null, lines: [{ description: 'น้ำดื่ม', qty: '1', unit: null, unit_price: '20', amount: '20' }], subtotal: '20', discount: null, vat_amount: null, total: '20', notes: [] } }; } } } }) as never);
+      : { model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 50 }, parsed_output: { doc_kind: 'receipt', supplier: { name: 'ร้านทดสอบ', tax_id: null, branch_no: null, address: null }, buyer: { name: 'บริษัท', tax_id: buyerTax }, doc_no: 'R-1', doc_date: '2027-01-02', price_type: 'no_vat', vat_rate: null, lines: [{ description: 'น้ำดื่ม', qty: '1', unit: null, unit_price: '20', amount: '20' }], subtotal: '20', discount: null, vat_amount: null, total: '20', notes: [] } }; } } } }) as never);
     cookie = '';
     await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
     const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
     await call('POST', '/api/v1/auth/select', { company_id: co });
     expect((await call('PUT', '/api/v1/ai/config', { api_key: 'sk-ant-api03-TENANTA_' + 'y'.repeat(30) + 'zz99', monthly_limit_usd: 20 })).body.has_key).toBe(true);
     const body = { target: 'purchase-invoices', file_name: 'r.jpg', file_size: 1000, text: 'ใบเสร็จรับเงิน ร้านทดสอบ น้ำดื่ม 1 ขวด 20.00 รวม 20.00' };
-    expect((await call('POST', '/api/v1/ai/read-bill-text', body)).body.read_by).toBe('local_ocr');
+    const t0 = (await call('POST', '/api/v1/ai/read-bill-text', body)).body;
+    expect([t0.read_by, t0.buyer_check.status]).toEqual(['local_ocr', 'none']);   // บิลไม่มีเลขผู้ซื้อ
+    // ผู้ซื้อ = บริษัทนี้ (เจ้าของ 19/11/2569): อ่านเพี้ยน 1 หลัก = ใช้เลขบริษัท · เลขของผู้อื่น = เตือน
+    const coTax = (await sql<{ t: string | null }>`SELECT tax_id AS t FROM sys_company WHERE id = ${co}`.execute(database.db)).rows[0]!.t;
+    await sql`UPDATE sys_company SET tax_id = '0105537095903' WHERE id = ${co}`.execute(database.db);
+    buyerTax = '010553709590';
+    const t1 = (await call('POST', '/api/v1/ai/read-bill-text', body)).body;
+    expect([t1.buyer_check.status, t1.buyer_check.company_tax_id, t1.bill.warnings.some((w: string) => /ในนามผู้อื่น/.test(w))]).toEqual(['misread', '0105537095903', false]);
+    buyerTax = '0994000165501';
+    const t2 = (await call('POST', '/api/v1/ai/read-bill-text', body)).body;
+    expect([t2.buyer_check.status, t2.bill.warnings[0]]).toEqual(['other', expect.stringMatching(/^บิลนี้ออกในนามผู้อื่น/)]);
+    await sql`UPDATE sys_company SET tax_id = ${coTax} WHERE id = ${co}`.execute(database.db);
     const mine = calls;
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);

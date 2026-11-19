@@ -11,6 +11,18 @@ import { addrShape, ADDR_COLS } from '../address.js';
 
 const uuid = z.string().uuid();
 const str = (max: number) => z.string().trim().max(max).nullable().optional().transform((v) => (v ? v : null));
+/** แท็บสาขาของลูกค้า/ผู้จำหน่าย (เลขที่สาขา 5 หลัก ชื่อ ที่อยู่ โทรศัพท์ ผู้ติดต่อ) */
+const branchRow = z.object({ branch_no: z.string().trim().regex(/^\d{5}$/, 'เลขที่สาขา 5 หลัก เช่น 00001'), name: z.string().trim().min(1, 'ป้อนชื่อสาขา').max(120), address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), ...addrShape, phone: str(60), contact: str(60) });
+const branchRows = z.array(branchRow).max(500).default([]);
+/** สาขาในแท็บต้องไม่ซ้ำกันและไม่ซ้ำกับสาขาตามแฟ้ม (ที่อยู่ในแฟ้ม = สาขานั้นอยู่แล้ว) */
+function checkBranchRows(master: string | null, rows: Array<{ branch_no: string }>, who: string) {
+  const m = master || '00000', seen = new Set<string>([m]);
+  for (const r of rows) {
+    if (r.branch_no === m) throw badRequest(`สาขา ${r.branch_no} คือที่อยู่ในแฟ้ม${who}นี้อยู่แล้ว (สาขาตามแฟ้ม) — ลบแถวนี้ หรือเปลี่ยนเลขที่สาขา`, [{ field: 'branches', message: 'ซ้ำกับสาขาตามแฟ้ม' }]);
+    if (seen.has(r.branch_no)) throw badRequest(`เลขที่สาขา ${r.branch_no} ซ้ำ`, [{ field: 'branches', message: 'ซ้ำ' }]);
+    seen.add(r.branch_no);
+  }
+}
 const num = z.union([z.number(), z.string()]).nullable().optional().transform((v) => (v === '' || v === null || v === undefined ? null : Number(v)));
 
 /** ตารางอ้างอิงที่หน้าจอลูกค้า/ผู้จำหน่าย/พนักงานขายใช้ (คู่มือบทที่ 6 ตารางข้อมูล): 40 เขตการขาย 41 ขนส่งโดย 45 ประเภทลูกค้า 46 ประเภทผู้จำหน่าย 47 ประเภทพนักงานขาย 55 หมวดภาษีหัก ณ ที่จ่าย */
@@ -117,7 +129,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     wht_form: str(4), wht_rate: num, wht_category: str(4), wht_condition: z.enum(['', '1', '2', '3']).nullable().optional().transform((v) => v || null), default_ship_to: str(10),
     ship_tos: z.array(z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสถานที่ส่ง').max(10), address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), ...addrShape, phone: str(60), contact: str(60), branch_no: str(5) })).max(200).default([]),
     // สาขาของลูกค้า (เจ้าของ 18/11/2569) — Bill to ออกใบกำกับในนามสาขา · สำนักงานใหญ่/สาขาตามแฟ้มลูกค้า = ที่อยู่ในแฟ้มลูกค้า
-    branches: z.array(z.object({ branch_no: z.string().trim().regex(/^\d{5}$/, 'เลขที่สาขา 5 หลัก เช่น 00001'), name: z.string().trim().min(1, 'ป้อนชื่อสาขา').max(120), address_1: str(100), address_2: str(100), address_3: str(100), zip_code: str(10), ...addrShape, phone: str(60), contact: str(60) })).max(500).default([]),
+    branches: branchRows,
     contacts: z.array(contactBody).max(50).default([]),
   });
 
@@ -264,6 +276,8 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     wht_form: str(4), wht_income_desc: str(60), wht_rate: num, wht_condition: z.enum(['', '1', '2', '3']).nullable().optional().transform((v) => v || null),
     banks: z.array(z.object({ bank_code: z.string().trim().min(1, 'เลือกธนาคาร').max(10), branch: str(60), account_no: z.string().trim().min(1, 'ป้อนเลขที่บัญชี').max(20), account_name: str(120), is_default: z.boolean().default(false) })).max(20).default([]),
     contacts: z.array(contactBody).max(50).default([]),
+    /** สาขาของผู้จำหน่าย (เจ้าของ 19/11/2569) — เลขผู้เสียภาษีเดียวกันคนละสาขาอยู่ในเจ้าหนี้รายเดียว */
+    branches: branchRows,
     /** เพิ่มจากหน้าต่างอ่านบิลด้วย AI (เจ้าของ 19/11/2569) — ห้ามซ้ำเข้มกว่าปกติ: เลข+สาขาเดียวกับผู้จำหน่ายที่เลิกใช้ก็ไม่ให้เพิ่ม (ให้เปิดใช้รหัสเดิม) */
     from_bill: z.boolean().optional(),
   });
@@ -298,7 +312,8 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     const banks = await db.selectFrom('md_supplier_bank').select(['bank_code', 'branch', 'account_no', 'account_name', 'is_default']).where('company_id', '=', a.companyId).where('supplier_id', '=', id).where('deleted_at', 'is', null).orderBy('line_no').execute();
     const bills = await outstandingBills(db, 'AP', a.companyId, id);
     const last = await db.selectFrom('doc_header').select(sql<string | null>`max(doc_date)`.as('d')).where('company_id', '=', a.companyId).where('supplier_id', '=', id).where('doc_class', '=', 'RR').where('doc_status', '<>', 'C').where('deleted_at', 'is', null).executeTakeFirst();
-    return { ...s, tax_branches: await taxBranchesOf(db, a.companyId, 'supplier_id', id, s.tax_branch_no), banks, contacts: await contactsOf(db, a.companyId, 'S', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_bill_date: last?.d ?? null };
+    const branches = await db.selectFrom('md_supplier_branch').select(['branch_no', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', ...ADDR_COLS, 'phone', 'contact']).where('company_id', '=', a.companyId).where('supplier_id', '=', id).where('deleted_at', 'is', null).orderBy('branch_no').execute();
+    return { ...s, tax_branches: [...new Set([...(await taxBranchesOf(db, a.companyId, 'supplier_id', id, s.tax_branch_no)), ...branches.map((x) => x.branch_no)])].sort(), branches, banks, contacts: await contactsOf(db, a.companyId, 'S', id), outstanding_bills: bills, balance: bills.reduce((t, b) => t.plus(d(b.outstanding)), ZERO).toFixed(2), last_bill_date: last?.d ?? null };
   });
 
   async function saveSupplier(a: AuthContext & { companyId: string }, id: string | null, b: z.infer<typeof supplierBody>) {
@@ -306,16 +321,19 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     if (dup && dup.id !== id) throw conflict(`รหัสผู้จำหน่าย ${b.code} มีอยู่แล้ว`);
     const prev = id ? await db.selectFrom('md_supplier').select(['tax_id', 'tax_branch_no']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const tax = await checkTax(db, a.companyId, b.tax_id, b.tax_branch_no, prev ? prev.tax_id : undefined);
-    if (b.from_bill && !id && tax.tax_id) {
-      const off = await db.selectFrom('md_supplier').select(['code', 'name']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('tax_id', '=', tax.tax_id).where('status', '=', 'I')
-        .where(sql<boolean>`coalesce(tax_branch_no, '00000') = ${tax.tax_branch_no ?? '00000'}`).orderBy('code').executeTakeFirst();
-      if (off) throw conflict(`เลขผู้เสียภาษี ${tax.tax_id} สาขา ${tax.tax_branch_no ?? '00000'} เป็นของผู้จำหน่าย ${off.code} ${off.name} แล้ว (เลิกใช้อยู่) — เปิดใช้รหัสเดิมที่ ซื้อ › รายละเอียดผู้จำหน่าย แทนการเพิ่มใหม่`);
+    // เลขผู้เสียภาษี = กุญแจของเจ้าหนี้ (เจ้าของ 19/11/2569): เพิ่มใหม่/เปลี่ยนเลขแล้วซ้ำกับผู้จำหน่ายรายอื่น (ทุกสาขา ทุกสถานะ) = ไม่ให้ — สาขาอื่นเพิ่มที่แท็บสาขาของรายเดิม
+    // ข้อมูลเดิมที่ซ้ำอยู่แล้ว (ย้ายจากระบบเดิม) ยังแก้ช่องอื่นได้ · ไม่ใช้ unique index ในฐานข้อมูล (ดู HANDOFF 144)
+    if (tax.tax_id && (!prev || prev.tax_id !== tax.tax_id)) {
+      const owner = await db.selectFrom('md_supplier').select(['code', 'name', 'status', 'tax_branch_no']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('tax_id', '=', tax.tax_id)
+        .where('id', '<>', id ?? '00000000-0000-0000-0000-000000000000').orderBy('code').executeTakeFirst();
+      if (owner) throw conflict(`เลขผู้เสียภาษี ${tax.tax_id} เป็นของผู้จำหน่าย ${owner.code} ${owner.name}${owner.status === 'I' ? ' (เลิกใช้อยู่ — เปิดใช้รหัสเดิม)' : ''} แล้ว — ถ้าเป็นสาขาอื่นของรายเดียวกัน ให้เพิ่มสาขาที่แท็บ สาขา ของ ${owner.code} (ไม่สร้างเจ้าหนี้ซ้ำ)`);
     }
+    checkBranchRows(tax.tax_branch_no, b.branches, 'ผู้จำหน่าย');
     const warnings = await checkTaxDup(db, a.companyId, 'S', id, tax, prev);
     await checkAccount(db, a.companyId, b.ap_account_id, 'ap_account_id');
     if (b.wht_rate !== null && (b.wht_rate < 0 || b.wht_rate > 100)) throw badRequest('อัตราภาษีที่หักต้องอยู่ระหว่าง 0–100%', [{ field: 'wht_rate', message: '0–100' }]);
     if (b.banks.filter((x) => x.is_default).length > 1) throw badRequest('บัญชีที่ใช้โอนเป็นประจำเลือกได้บัญชีเดียว');
-    const { banks, contacts, from_bill: fromBill, ...h } = b;
+    const { banks, contacts, branches, from_bill: fromBill, ...h } = b;
     const row = { ...h, ...tax, ap_account_id: b.ap_account_id ?? null, credit_limit: b.credit_limit === null ? null : d(b.credit_limit).toFixed(2), wht_rate: b.wht_rate === null ? null : String(b.wht_rate), vat_rate: b.vat_rate === null ? null : String(b.vat_rate), inactive_date: b.status === 'I' ? sql`COALESCE(inactive_date, CURRENT_DATE)` as never : null };
     return db.transaction().execute(async (tx) => {
       let sid = id;
@@ -330,11 +348,28 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
       await tx.updateTable('md_supplier_bank').set({ deleted_at: sql`now()` as never }).where('company_id', '=', a.companyId).where('supplier_id', '=', sid!).where('deleted_at', 'is', null).execute();
       if (banks.length) await tx.insertInto('md_supplier_bank').values(banks.map((x, i) => ({ ...x, line_no: i + 1, company_id: a.companyId, supplier_id: sid!, created_by: a.userId }))).execute();
       await saveContacts(tx, a, 'S', sid!, contacts);
+      await tx.updateTable('md_supplier_branch').set({ deleted_at: sql`now()` as never }).where('company_id', '=', a.companyId).where('supplier_id', '=', sid!).where('deleted_at', 'is', null).execute();
+      if (branches.length) await tx.insertInto('md_supplier_branch').values(branches.map((r) => ({ ...r, company_id: a.companyId, supplier_id: sid!, created_by: a.userId }))).execute();
       await logActivity(tx, a, { module: 'AP', action: id ? 'EDIT' : 'ADD', docNo: b.code, table: 'md_supplier', rowId: sid, detail: id ? { before } : fromBill ? { from: 'AI_BILL', tax_id: tax.tax_id, tax_branch_no: tax.tax_branch_no } : undefined });
       return { id: sid, warnings };
     });
   }
   app.post('/api/v1/suppliers', async (req) => saveSupplier(requireCompany(req), null, parse(supplierBody, req.body)));
+  /** เพิ่มสาขาให้ผู้จำหน่ายรายเดิม (หน้าต่างอ่านบิล: เลขผู้เสียภาษีเดียวกันคนละสาขา — เจ้าของ 19/11/2569) */
+  app.post('/api/v1/suppliers/:id/branches', async (req) => {
+    const a = requireCompany(req);
+    const { id } = parse(z.object({ id: uuid }), req.params);
+    const r = parse(branchRow, req.body);
+    const s = await db.selectFrom('md_supplier').select(['code', 'tax_branch_no']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!s) throw notFound('ผู้จำหน่าย');
+    const have = await db.selectFrom('md_supplier_branch').select('branch_no').where('company_id', '=', a.companyId).where('supplier_id', '=', id).where('deleted_at', 'is', null).execute();
+    if (have.some((x) => x.branch_no === r.branch_no) || (s.tax_branch_no || '00000') === r.branch_no) throw conflict(`ผู้จำหน่าย ${s.code} มีสาขา ${r.branch_no} อยู่แล้ว — ใช้สาขาเดิม`);
+    return db.transaction().execute(async (tx) => {
+      await tx.insertInto('md_supplier_branch').values({ ...r, company_id: a.companyId, supplier_id: id, created_by: a.userId }).execute();
+      await logActivity(tx, a, { module: 'AP', action: 'EDIT', docNo: s.code, table: 'md_supplier', rowId: id, detail: { branch_added: r.branch_no, name: r.name } });
+      return { ok: true, branch_no: r.branch_no };
+    });
+  });
   app.put('/api/v1/suppliers/:id', async (req) => saveSupplier(requireCompany(req), parse(z.object({ id: uuid }), req.params).id, parse(supplierBody, req.body)));
   app.delete('/api/v1/suppliers/:id', async (req) => {
     const a = requireCompany(req);

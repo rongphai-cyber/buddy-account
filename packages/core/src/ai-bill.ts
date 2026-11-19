@@ -2,6 +2,7 @@ import type { Decimal } from 'decimal.js';
 import { d } from './money.js';
 import { parseInput } from './money.js';
 import { CASH_KINDS, TRADE_KINDS } from './doc-calc.js';
+import { checkTaxId } from './taxid.js';
 
 /**
  * AI อ่านบิล (T7.7) — กฎที่ไม่ขึ้นกับฐานข้อมูล: ราคาต่อโทเคน · โครงข้อมูลที่ให้ Claude ตอบ · ตรวจ/แปลงผลเป็นร่างเอกสารซื้อ
@@ -44,13 +45,14 @@ const str = { anyOf: [{ type: 'string' }, { type: 'null' }] } as const;
 export const BILL_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['doc_kind', 'supplier', 'doc_no', 'doc_date', 'price_type', 'vat_rate', 'lines', 'subtotal', 'discount', 'vat_amount', 'total', 'notes'],
+  required: ['doc_kind', 'supplier', 'buyer', 'doc_no', 'doc_date', 'price_type', 'vat_rate', 'lines', 'subtotal', 'discount', 'vat_amount', 'total', 'notes'],
   properties: {
     doc_kind: { type: 'string', enum: ['tax_invoice', 'receipt_tax_invoice', 'abbreviated_tax_invoice', 'invoice', 'receipt', 'other'] },
     supplier: {
       type: 'object', additionalProperties: false, required: ['name', 'tax_id', 'branch_no', 'address', 'phone'],
       properties: { name: str, tax_id: str, branch_no: str, address: str, phone: str },
     },
+    buyer: { type: 'object', additionalProperties: false, required: ['name', 'tax_id'], properties: { name: str, tax_id: str } },
     doc_no: str,
     doc_date: str,
     price_type: { type: 'string', enum: ['excl_vat', 'incl_vat', 'no_vat'] },
@@ -71,6 +73,7 @@ export const BILL_SYSTEM_PROMPT = `คุณอ่านเอกสารซื
 ข้อมูลนี้จะถูกเติมเป็นร่างเอกสารซื้อในโปรแกรมบัญชี ผู้ใช้จะตรวจก่อนบันทึก จึงต้องตรงกับที่พิมพ์ในเอกสารจริง ห้ามเดา:
 - อ่านไม่ออกหรือไม่มีในเอกสาร ให้ตอบ null และบอกเหตุใน notes (ภาษาไทยสั้น ๆ)
 - supplier คือผู้ขาย/ผู้ออกเอกสาร (ไม่ใช่ผู้ซื้อ) · tax_id เลข 13 หลักไม่มีขีด · branch_no 5 หลัก สำนักงานใหญ่ = "00000" · phone เบอร์โทรของผู้ขายตามที่พิมพ์
+- buyer คือผู้ซื้อ/ลูกค้าที่บิลออกในนาม (ชื่อและเลขผู้เสียภาษีตามที่พิมพ์ — ไม่มี = null)
 - doc_date เป็นปี ค.ศ. รูปแบบ YYYY-MM-DD (ปี พ.ศ. ลบ 543 เช่น 15/03/2569 → 2026-03-15)
 - จำนวนเงินและจำนวนเป็นตัวเลขทศนิยมแบบข้อความ ไม่มีจุลภาคหรือสกุลเงิน เช่น "1234.50"
 - price_type: ราคาในรายการยังไม่รวม VAT = excl_vat · รวม VAT แล้ว = incl_vat · ไม่มี VAT = no_vat · vat_rate เช่น "7"
@@ -79,6 +82,7 @@ export const BILL_SYSTEM_PROMPT = `คุณอ่านเอกสารซื
 
 export interface RawBill {
   doc_kind: string; supplier: { name: string | null; tax_id: string | null; branch_no: string | null; address: string | null; phone?: string | null };
+  buyer?: { name: string | null; tax_id: string | null } | null;
   doc_no: string | null; doc_date: string | null; price_type: 'excl_vat' | 'incl_vat' | 'no_vat'; vat_rate: string | null;
   lines: Array<{ description: string; qty: string | null; unit: string | null; unit_price: string | null; amount: string | null }>;
   subtotal: string | null; discount: string | null; vat_amount: string | null; total: string | null; notes: string[];
@@ -86,6 +90,8 @@ export interface RawBill {
 export interface BillDraft {
   /** tax_id = เลข 13 หลักที่อ่านได้ (ไม่ครบ = null) · tax_id_read = ตัวเลขตามที่อ่านได้ (ใช้เติมแบบฟอร์มเพิ่มผู้จำหน่ายให้ผู้ใช้แก้) */
   doc_kind: string; supplier: { name: string; tax_id: string | null; tax_id_read: string; branch_no: string | null; address: string; phone: string | null };
+  /** ผู้ซื้อตามบิล (ตัวเลขตามที่อ่านได้) — เทียบกับเลขของบริษัทด้วย buyerTaxCheck */
+  buyer: { name: string; tax_id_read: string };
   doc_no: string; doc_date: string | null; price_type: '0' | '1' | '2'; vat_rate: string;
   lines: Array<{ description: string; qty: string; unit: string | null; unit_price: string; amount: string }>;
   subtotal: string | null; discount: string | null; vat_amount: string | null; total: string | null;
@@ -132,6 +138,7 @@ export function normalizeBill(raw: RawBill): BillDraft {
   return {
     doc_kind: raw.doc_kind,
     supplier: { name: (raw.supplier?.name ?? '').trim(), tax_id: tax.length === 13 ? tax : null, tax_id_read: tax.slice(0, 20), phone: raw.supplier?.phone?.trim().slice(0, 60) || null, branch_no: branch ? branch.padStart(5, '0').slice(-5) : null, address: (raw.supplier?.address ?? '').trim() },
+    buyer: { name: (raw.buyer?.name ?? '').trim().slice(0, 200), tax_id_read: (raw.buyer?.tax_id ?? '').replace(/\D/g, '').slice(0, 20) },
     doc_no: (raw.doc_no ?? '').trim().slice(0, 30), doc_date: date, price_type: pt, vat_rate: rate.toString(), lines,
     subtotal: fx(sub), discount: fx(disc), vat_amount: fx(vat), total: fx(total), warnings: w,
   };
@@ -207,8 +214,10 @@ export function suggestPrompt(x: { businessType?: string | null; guidance?: stri
 
 /** ข้อความที่อยู่ → 3 บรรทัด (บรรทัดละไม่เกิน max ตัด ณ ช่องว่าง) + รหัสไปรษณีย์ 5 หลักตัวสุดท้าย — ผู้ใช้กด "แยกช่องจากที่อยู่เดิม" ในแบบฟอร์มได้ */
 export function addressLines(text: string | null | undefined, max = 100): { address_1: string; address_2: string; address_3: string; zip_code: string } {
-  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
-  const zips = t.match(/(?:^|\D)(\d{5})(?!\d)/g) ?? [];
+  const t0 = String(text ?? '').replace(/\s+/g, ' ').trim();
+  const zips = t0.match(/(?:^|\D)(\d{5})(?!\d)/g) ?? [];
+  // รหัสไปรษณีย์ท้ายข้อความย้ายไปช่องรหัสไปรษณีย์ (ไม่ให้ซ้ำสองที่)
+  const t = t0.replace(/(?:^|\s)\d{5}\s*$/, '').trim();
   const out: string[] = [];
   let rest = t;
   while (rest && out.length < 3) {
@@ -242,4 +251,32 @@ export function nextCode(codes: Array<string | null | undefined>, fallback = '')
   const best = [...g.values()].sort((p, q) => q.n - p.n || q.max - p.max)[0];
   if (!best) return fallback;
   return best.prefix + String(best.max + 1).padStart(best.width, '0');
+}
+
+/* ───────── เลขผู้เสียภาษีของผู้ซื้อ = เลขของบริษัทที่นำเข้าบิล (เจ้าของ 19/11/2569) ───────── */
+
+/** ระยะแก้ไข (Levenshtein) ระหว่างตัวเลขสองชุด — ใช้แยก "OCR อ่านเพี้ยน" จาก "เลขของผู้อื่น" */
+export function digitDistance(a: string, b: string): number {
+  const x = a.replace(/\D/g, ''), y = b.replace(/\D/g, '');
+  let prev = Array.from({ length: y.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= x.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= y.length; j++) cur[j] = Math.min(prev[j]! + 1, cur[j - 1]! + 1, prev[j - 1]! + (x[i - 1] === y[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[y.length]!;
+}
+
+export type BuyerCheck = { status: 'none' | 'same' | 'misread' | 'other' | 'unclear'; shown: string | null; message: string | null };
+/**
+ * ผู้ซื้อในบิลต้องเป็นบริษัทนี้: ตรงกัน หรืออ่านเพี้ยนเล็กน้อย (ต่างไม่เกิน 2 หลัก เช่นขาด 1 หลัก) = แสดงเลขของบริษัท ไม่เตือน
+ * เป็นเลข 13 หลักที่ถูกต้องแต่ต่างชัดเจน = "บิลนี้ออกในนามผู้อื่น" · อ่านไม่ชัดและต่างมาก = ให้ตรวจ · บิลไม่มีเลขผู้ซื้อ = ไม่ตรวจ
+ */
+export function buyerTaxCheck(read: string | null | undefined, companyTaxId: string | null | undefined): BuyerCheck {
+  const r = String(read ?? '').replace(/\D/g, ''), c = String(companyTaxId ?? '').replace(/\D/g, '');
+  if (!r || !c) return { status: 'none', shown: c || null, message: null };
+  if (r === c) return { status: 'same', shown: c, message: null };
+  if (digitDistance(r, c) <= 2) return { status: 'misread', shown: c, message: null };
+  if (r.length === 13 && checkTaxId(r).ok) return { status: 'other', shown: r, message: `บิลนี้ออกในนามผู้อื่น — เลขผู้ซื้อในบิล ${r} ไม่ใช่เลขของบริษัท (${c}) ตรวจก่อนใช้ขอคืนภาษีซื้อ` };
+  return { status: 'unclear', shown: r, message: `อ่านเลขผู้ซื้อในบิลได้ ${r} ไม่ตรงกับเลขของบริษัท (${c}) — ตรวจว่าบิลออกในนามบริษัท` };
 }

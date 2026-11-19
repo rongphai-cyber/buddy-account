@@ -81,11 +81,14 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body,
   const name = party ? [party.title, party.name].filter(Boolean).join(' ') : (b.party_name ?? '');
   const credit = b.credit_days ?? 0;
   const branchId = await saveBranch(db, a, id, b.branch_id);
+  // สาขาของผู้จำหน่ายที่ออกบิล (แท็บสาขา) → ที่อยู่ของสาขานั้นในเอกสาร/ภาษีซื้อ (เจ้าของ 19/11/2569)
+  const sb = K.party === 'supplier' && party && b.party_tax_branch_no && b.party_tax_branch_no !== (party.tax_branch_no || '00000')
+    ? await db.selectFrom('md_supplier_branch').select(['address_1', 'address_2', 'address_3', 'zip_code']).where('company_id', '=', a.companyId).where('supplier_id', '=', party.id).where('branch_no', '=', b.party_tax_branch_no).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
   const header = {
     ...(branchId ? { branch_id: branchId } : {}), 
     doc_type_id: dt.id, doc_class: K.cls, module: K.module, doc_date: b.doc_date, payment_date: b.doc_date,
     customer_id: K.party === 'customer' ? party?.id ?? null : null, supplier_id: K.party === 'supplier' ? party?.id ?? null : null,
-    party_name: name.slice(0, 200) || null, party_address: party ? [party.address_1, party.address_2, party.address_3, party.zip_code].filter(Boolean).join(' ').slice(0, 500) || null : null,
+    party_name: name.slice(0, 200) || null, party_address: party ? [(sb ?? party).address_1, (sb ?? party).address_2, (sb ?? party).address_3, (sb ?? party).zip_code].filter(Boolean).join(' ').slice(0, 500) || null : null,
     party_tax_id: party?.tax_id ?? null, party_tax_branch_no: b.party_tax_branch_no ?? party?.tax_branch_no ?? null,
     your_ref: b.your_ref, ref_no: b.ref_no, ref_date: b.ref_date ?? null, department_id: b.department_id ?? dt.department_id, project_id: b.project_id ?? null, salesperson_id: b.salesperson_id,
     credit_days: K.deposit ? credit : null, due_date: K.deposit ? dueDate(b.doc_date, credit) : null,

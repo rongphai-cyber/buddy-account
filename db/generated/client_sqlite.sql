@@ -984,6 +984,38 @@ CREATE TABLE IF NOT EXISTS md_supplier (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_md_supplier_company_code ON md_supplier (company_id, code) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS ix_md_supplier_company_name ON md_supplier (company_id, name);
 
+-- md_supplier_branch: สาขาของผู้จำหน่าย — บิลที่ออกจากสาขา (ใหม่ — เจ้าของ 19/11/2569: เลขผู้เสียภาษีเดียวกันคนละสาขา ให้เพิ่มสาขาในเจ้าหนี้รายนั้น ไม่สร้างเจ้าหนี้ซ้ำ)
+CREATE TABLE IF NOT EXISTS md_supplier_branch (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  supplier_id TEXT NOT NULL REFERENCES md_supplier(id) DEFERRABLE INITIALLY DEFERRED,
+  branch_no TEXT NOT NULL,
+  name TEXT NOT NULL,
+  address_1 TEXT,
+  address_2 TEXT,
+  address_3 TEXT,
+  zip_code TEXT,
+  addr_no TEXT,
+  addr_moo TEXT,
+  addr_village TEXT,
+  addr_building TEXT,
+  addr_room TEXT,
+  addr_floor TEXT,
+  addr_soi TEXT,
+  addr_road TEXT,
+  addr_geo_code TEXT,
+  phone TEXT,
+  contact TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_md_supplier_branch_company_supplier_branch_no ON md_supplier_branch (company_id, supplier_id, branch_no) WHERE deleted_at IS NULL;
+
 -- md_party_contact: ผู้ติดต่อของลูกค้า/ผู้จำหน่าย (ข้อเสนอ: หลายคน — Express มีช่องเดียว)
 CREATE TABLE IF NOT EXISTS md_party_contact (
   id TEXT PRIMARY KEY,
@@ -3381,6 +3413,29 @@ CREATE TRIGGER IF NOT EXISTS trg_md_supplier_ver AFTER UPDATE ON md_supplier
 WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
 BEGIN
   UPDATE md_supplier SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_supplier_branch_insert_outbox AFTER INSERT ON md_supplier_branch
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_supplier_branch', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'supplier_id', NEW.supplier_id, 'branch_no', NEW.branch_no, 'name', NEW.name, 'address_1', NEW.address_1, 'address_2', NEW.address_2, 'address_3', NEW.address_3, 'zip_code', NEW.zip_code, 'addr_no', NEW.addr_no, 'addr_moo', NEW.addr_moo, 'addr_village', NEW.addr_village, 'addr_building', NEW.addr_building, 'addr_room', NEW.addr_room, 'addr_floor', NEW.addr_floor, 'addr_soi', NEW.addr_soi, 'addr_road', NEW.addr_road, 'addr_geo_code', NEW.addr_geo_code, 'phone', NEW.phone, 'contact', NEW.contact, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_supplier_branch_update_outbox AFTER UPDATE ON md_supplier_branch
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'md_supplier_branch', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'supplier_id', NEW.supplier_id, 'branch_no', NEW.branch_no, 'name', NEW.name, 'address_1', NEW.address_1, 'address_2', NEW.address_2, 'address_3', NEW.address_3, 'zip_code', NEW.zip_code, 'addr_no', NEW.addr_no, 'addr_moo', NEW.addr_moo, 'addr_village', NEW.addr_village, 'addr_building', NEW.addr_building, 'addr_room', NEW.addr_room, 'addr_floor', NEW.addr_floor, 'addr_soi', NEW.addr_soi, 'addr_road', NEW.addr_road, 'addr_geo_code', NEW.addr_geo_code, 'phone', NEW.phone, 'contact', NEW.contact, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_md_supplier_branch_ver AFTER UPDATE ON md_supplier_branch
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE md_supplier_branch SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS trg_md_party_contact_insert_outbox AFTER INSERT ON md_party_contact
 WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'

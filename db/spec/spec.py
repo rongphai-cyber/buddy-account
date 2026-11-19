@@ -711,6 +711,19 @@ add(T('md_supplier', 'ผู้จำหน่าย / เจ้าหนี้'
   C('inactive_date', 'date', th='วันที่เลิกใช้', src='APMAS.INACTDAT'),
 ], uniq=[('company_id','code')], idx=[('company_id','name')]))
 
+add(T('md_supplier_branch', 'สาขาของผู้จำหน่าย — บิลที่ออกจากสาขา (ใหม่ — เจ้าของ 19/11/2569: เลขผู้เสียภาษีเดียวกันคนละสาขา ให้เพิ่มสาขาในเจ้าหนี้รายนั้น ไม่สร้างเจ้าหนี้ซ้ำ)', 'md', cols=[
+  lk('supplier_id', 'md_supplier', 'ผู้จำหน่าย (บริษัทเดียวกัน — เจ้าหนี้ยังอยู่ที่รหัสผู้จำหน่ายนี้)', nn=True),
+  C('branch_no', 'code5', nn=True, th='เลขที่สาขาตามกรมสรรพากร 5 หลัก (สาขาตามแฟ้มผู้จำหน่าย = ที่อยู่ในแฟ้มผู้จำหน่าย)'),
+  C('name', 'str120', nn=True, th='ชื่อสาขา เช่น สาขาเชียงใหม่'),
+  C('address_1', 'str100', th='ที่อยู่ 1'),
+  C('address_2', 'str100', th='ที่อยู่ 2'),
+  C('address_3', 'str100', th='ที่อยู่ 3'),
+  C('zip_code', 'code10', th='รหัสไปรษณีย์'),
+  *ADDR(),
+  C('phone', 'str60', th='โทรศัพท์'),
+  C('contact', 'str60', th='ผู้ติดต่อ'),
+], uniq=[('company_id','supplier_id','branch_no')], note='เอกสารซื้อ/ค่าใช้จ่ายเก็บเลขที่สาขาและที่อยู่ของสาขาที่ออกบิล (snapshot ใน doc_header) → ภาษีซื้อใช้สาขานี้ · Express ไม่มีแฟ้มนี้'))
+
 add(T('md_party_contact', 'ผู้ติดต่อของลูกค้า/ผู้จำหน่าย (ข้อเสนอ: หลายคน — Express มีช่องเดียว)', 'md', express='(ใหม่) ARMAS/APMAS.CONTACT', cols=[
   C('party_type', 'char1', nn=True, th='C=ลูกค้า S=ผู้จำหน่าย', chk="party_type IN ('C','S')"),
   C('party_id', 'uuid', nn=True, th='id ของลูกค้าหรือผู้จำหน่าย'),

@@ -81,6 +81,7 @@ async function subjectReport(db: Db, companyId: string, kind: Kind, id: string) 
         dates.push(ser.last);
       } else {
         out.bank_accounts = await rows(db, sql`SELECT line_no, bank_code, branch, account_no, account_name FROM md_supplier_bank WHERE company_id = ${companyId} AND supplier_id = ${id} AND deleted_at IS NULL ORDER BY line_no`);
+        out.branches = await rows(db, sql`SELECT branch_no, name, address_1, address_2, address_3, zip_code, phone, contact FROM md_supplier_branch WHERE company_id = ${companyId} AND supplier_id = ${id} AND deleted_at IS NULL ORDER BY branch_no`);
       }
     }
   }
@@ -107,6 +108,7 @@ async function eraseContact(db: Db, companyId: string, kind: Kind, id: string, u
     await run('md_note', erasedNotes);
   } else if (kind === 'SUPPLIER') {
     await run('md_supplier', sql`UPDATE md_supplier SET phone = NULL, contact = NULL, remark = NULL, updated_by = ${userId} WHERE company_id = ${companyId} AND id = ${id}`);
+    await run('md_supplier_branch', sql`UPDATE md_supplier_branch SET phone = NULL, contact = NULL, updated_by = ${userId} WHERE company_id = ${companyId} AND supplier_id = ${id}`);
     await run('md_supplier_bank', sql`UPDATE md_supplier_bank SET account_no = '-', account_name = NULL, branch = NULL, is_default = false, deleted_at = coalesce(deleted_at, now()), updated_by = ${userId}
         WHERE company_id = ${companyId} AND supplier_id = ${id}`);
     await run('md_party_contact', erasedContacts('S'));
@@ -149,6 +151,7 @@ async function eraseFull(db: Db, companyId: string, kind: Kind, id: string, user
     await run('md_customer_branch', sql`UPDATE md_customer_branch SET address_1 = NULL, address_2 = NULL, address_3 = NULL, zip_code = NULL, ${addrNullSql()} WHERE company_id = ${companyId} AND customer_id = ${id}`);
     await run('md_serial', sql`UPDATE md_serial SET customer_name = NULL WHERE company_id = ${companyId} AND customer_id = ${id}`);
   } else {
+    await run('md_supplier_branch', sql`UPDATE md_supplier_branch SET address_1 = NULL, address_2 = NULL, address_3 = NULL, zip_code = NULL, ${addrNullSql()} WHERE company_id = ${companyId} AND supplier_id = ${id}`);
     await run('fin_cheque', sql`UPDATE fin_cheque SET payee_name = ${PDPA_ERASED} WHERE company_id = ${companyId} AND supplier_id = ${id} AND payee_name IS NOT NULL`);
   }
   // เอกสารเก่าอยู่ในงวดที่ปิดแล้ว — อนุญาตเฉพาะในทรานแซกชันนี้ แล้วปิดกลับ

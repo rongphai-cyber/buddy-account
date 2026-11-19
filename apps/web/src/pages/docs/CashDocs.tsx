@@ -181,7 +181,7 @@ export function CashFormPage({ path }: { path: string }) {
   const applyBill = async (r: AiBillResult) => {
     if (r.supplier) await pickParty({ id: r.supplier.id, code: r.supplier.code, name: r.supplier.name });
     else if (r.bill.supplier.name) set({ party: null, party_name: r.bill.supplier.name.slice(0, 200) });
-    set({ price_type: r.bill.price_type, vat_rate: r.bill.vat_rate, ref_no: r.bill.doc_no, ref_date: r.bill.doc_date ?? '' });
+    set({ price_type: r.bill.price_type, vat_rate: r.bill.vat_rate, ref_no: r.bill.doc_no, ref_date: r.bill.doc_date ?? '', ...(r.supplier && r.bill.supplier.branch_no ? { party_tax_branch_no: r.bill.supplier.branch_no } : {}) });
     setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l) => ({ ...blankLine(), item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', description: l.description, amount: l.amount }))]);
     const missing = r.lines.filter((l) => !l.item).length;
     toast(`เติมจากบิลแล้ว${missing ? ` — เลือกรหัสค่าใช้จ่ายอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);

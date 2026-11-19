@@ -93,8 +93,11 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
   if (b.bill_to_customer_id && K.party === 'customer' && !billTo) throw badRequest('ไม่พบลูกค้า Bill to');
   // Bill to = สาขาของลูกค้ารายเดียวกัน (เจ้าของ 18/11/2569): สาขาที่มีในแฟ้มสาขาลูกค้า → ใบกำกับ/ภาษีขายใช้ชื่อลูกค้า + ที่อยู่/เลขที่สาขานั้น · ลูกหนี้ยังเป็นรหัสลูกค้า
   // (bill_to_customer_id = Bill to แบบเดิมของ Express — คงไว้ให้เอกสารเดิม/API)
-  const wantBranch = K.party === 'customer' && !billTo && b.party_tax_branch_no && b.party_tax_branch_no !== (party.tax_branch_no || '00000') ? b.party_tax_branch_no : null;
-  const cb = wantBranch ? await db.selectFrom('md_customer_branch').select(['branch_no', 'address_1', 'address_2', 'address_3', 'zip_code']).where('company_id', '=', a.companyId).where('customer_id', '=', party.id).where('branch_no', '=', wantBranch).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
+  // ผู้จำหน่าย: สาขาที่ออกบิล (แท็บสาขาของผู้จำหน่าย — เจ้าของ 19/11/2569) → ใบกำกับ/ภาษีซื้อใช้เลขที่และที่อยู่ของสาขานั้น
+  const wantBranch = !billTo && b.party_tax_branch_no && b.party_tax_branch_no !== (party.tax_branch_no || '00000') ? b.party_tax_branch_no : null;
+  const cb = !wantBranch ? undefined : K.party === 'customer'
+    ? await db.selectFrom('md_customer_branch').select(['branch_no', 'address_1', 'address_2', 'address_3', 'zip_code']).where('company_id', '=', a.companyId).where('customer_id', '=', party.id).where('branch_no', '=', wantBranch).where('deleted_at', 'is', null).executeTakeFirst()
+    : await db.selectFrom('md_supplier_branch').select(['branch_no', 'address_1', 'address_2', 'address_3', 'zip_code']).where('company_id', '=', a.companyId).where('supplier_id', '=', party.id).where('branch_no', '=', wantBranch).where('deleted_at', 'is', null).executeTakeFirst();
   const shown = billTo ?? (cb ? { ...party, address_1: cb.address_1, address_2: cb.address_2, address_3: cb.address_3, zip_code: cb.zip_code, tax_branch_no: cb.branch_no } : party);
   // สถานที่ส่งของต้องเป็นของลูกค้ารายนี้ (หรือใช้ร่วมทุกลูกค้า) และของสาขาที่ออกบิล ถ้าสถานที่นั้นระบุสาขา
   if (b.ship_to_id && K.party === 'customer') {

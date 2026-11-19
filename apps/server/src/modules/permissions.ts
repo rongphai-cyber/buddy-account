@@ -207,7 +207,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/customers-labels': M('SA.CUS', 'print'), 'GET /api/v1/suppliers-labels': M('PU.SUP', 'print'),
   'GET /api/v1/customers': LOOKUP, 'GET /api/v1/customers/:id': LOOKUP, 'POST /api/v1/customers': M('SA.CUS', 'add'),
   'PUT /api/v1/customers/:id': M('SA.CUS', 'edit'), 'DELETE /api/v1/customers/:id': M('SA.CUS', 'delete'),
-  'GET /api/v1/suppliers': LOOKUP, 'GET /api/v1/suppliers/next-code': LOOKUP, 'GET /api/v1/suppliers/:id': LOOKUP, 'POST /api/v1/suppliers': M('PU.SUP', 'add'),
+  'GET /api/v1/suppliers': LOOKUP, 'GET /api/v1/suppliers/next-code': LOOKUP, 'GET /api/v1/suppliers/:id': LOOKUP, 'POST /api/v1/suppliers': M('PU.SUP', 'add'), 'POST /api/v1/suppliers/:id/branches': M('PU.SUP', 'edit'),
   'PUT /api/v1/suppliers/:id': M('PU.SUP', 'edit'), 'DELETE /api/v1/suppliers/:id': M('PU.SUP', 'delete'),
   'GET /api/v1/item-account-groups': LOOKUP, 'POST /api/v1/item-account-groups': M('SET.IAG', 'add'),
   'PUT /api/v1/item-account-groups/:id': M('SET.IAG', 'edit'), 'DELETE /api/v1/item-account-groups/:id': M('SET.IAG', 'delete'),

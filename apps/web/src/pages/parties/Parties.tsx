@@ -230,8 +230,6 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
   const remove = () => api.del(`/api/v1/customers/${id}`).then(() => { toast('ลบลูกค้าแล้ว'); onSaved(); });
   const setShip = (i: number, p: Partial<ShipTo>) => setShips((s) => s.map((x, k) => (k === i ? { ...x, ...p } as ShipTo : x)));
   const [shipAddr, setShipAddr] = useState<number | null>(null);
-  const setBranch = (i: number, p: Partial<CusBranch>) => setBranches((s) => s.map((x, k) => (k === i ? { ...x, ...p } as CusBranch : x)));
-  const [brAddr, setBrAddr] = useState<number | null>(null);
   const masterBr = val(f ?? {}, 'tax_branch_no') || '00000';
   return (
     <MasterModal notes={{ entity: 'customer', id, code: val(f ?? {}, 'code') }} title={id ? `แก้ไขลูกค้า ${val(f ?? {}, 'code')}` : 'เพิ่มลูกค้า'} menu="SA.CUS" isNew={!id} busy={busy} ready={!!f} err={err ?? cur.error} onClose={onClose} onSave={save} onDelete={remove} onNavEnd={nextTab}
@@ -294,29 +292,9 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
         {shipAddr !== null && ships[shipAddr] && <ShipAddrDialog row={ships[shipAddr]!} onClose={() => setShipAddr(null)} onOk={(r) => { setShip(shipAddr, r); setShipAddr(null); }} />}
         {tab === 'bills' && (id ? <BillsGrid rows={cur.data?.outstanding_bills ?? []} /> : <p className="muted">บันทึกลูกค้าก่อน</p>)}
         {(tab === 'periods' || tab === 'cheques') && id && <PartyActivity mod="AR" id={id} view={tab} />}
-        {brAddr !== null && branches[brAddr] && <ShipAddrDialog title={`ที่อยู่สาขา ${branches[brAddr]!.branch_no}`} row={branches[brAddr]! as unknown as ShipTo} onClose={() => setBrAddr(null)} onOk={(r) => { setBranch(brAddr, r as unknown as CusBranch); setBrAddr(null); }} />}
         {tab === 'branches' && <div className="table-wrap lines">
           <p className="hint">สาขาของลูกค้ารายนี้ (บริษัทเดียวกัน) — เอกสารขายเลือก "Bill to" เป็นสาขาได้ ใบกำกับภาษีและรายงานภาษีขายใช้ชื่อลูกค้า + ที่อยู่และเลขที่สาขานั้น · ลูกหนี้ยังอยู่ที่รหัสลูกค้านี้ · สาขา {masterBr} = ที่อยู่ในแท็บที่อยู่/ติดต่อ</p>
-          <table className="grid">
-            <thead><tr><th style={{ width: 90 }}>เลขที่สาขา</th><th style={{ width: 180 }}>ชื่อสาขา</th><th>ที่อยู่ บรรทัด 1</th><th>บรรทัด 2</th><th>บรรทัด 3</th><th style={{ width: 90 }}>ไปรษณีย์</th><th style={{ width: 120 }}>โทร.</th><th style={{ width: 120 }}>ผู้ติดต่อ</th><th style={{ width: 70 }} /></tr></thead>
-            <tbody>
-              {branches.map((b, i) => (
-                <tr key={i}>
-                  <td><input className="mono" value={b.branch_no} maxLength={5} inputMode="numeric" placeholder="00001" onChange={(e) => setBranch(i, { branch_no: e.target.value.replace(/\D/g, '') })} aria-label="เลขที่สาขา" /></td>
-                  <td><input value={b.name} maxLength={120} placeholder="สาขาเชียงใหม่" onChange={(e) => setBranch(i, { name: e.target.value })} aria-label="ชื่อสาขา" /></td>
-                  <td><input value={b.address_1 ?? ''} maxLength={100} onChange={(e) => setBranch(i, { address_1: e.target.value })} aria-label="ที่อยู่ บรรทัด 1" /></td>
-                  <td><input value={b.address_2 ?? ''} maxLength={100} onChange={(e) => setBranch(i, { address_2: e.target.value })} aria-label="ที่อยู่ บรรทัด 2" /></td>
-                  <td><input value={b.address_3 ?? ''} maxLength={100} onChange={(e) => setBranch(i, { address_3: e.target.value })} aria-label="ที่อยู่ บรรทัด 3" /></td>
-                  <td><input value={b.zip_code ?? ''} maxLength={10} onChange={(e) => setBranch(i, { zip_code: e.target.value })} aria-label="ไปรษณีย์" /></td>
-                  <td><input value={b.phone ?? ''} maxLength={60} onChange={(e) => setBranch(i, { phone: e.target.value })} aria-label="โทร." /></td>
-                  <td><input value={b.contact ?? ''} maxLength={60} onChange={(e) => setBranch(i, { contact: e.target.value })} aria-label="ผู้ติดต่อ" /></td>
-                  <td className="nowrap"><button type="button" className="icon-btn" tabIndex={-1} title="ที่อยู่แยกช่อง — กรอกรหัสไปรษณีย์แล้วเติมจังหวัด อำเภอ ตำบลให้" onClick={() => setBrAddr(i)}>📍</button><button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => setBranches((x) => x.filter((_, k) => k !== i))}>✕</button></td>
-                </tr>
-              ))}
-              {!branches.length && <tr><td colSpan={9} className="empty">ยังไม่มีสาขาอื่น — ออกบิลถึงสาขา {masterBr} ตามที่อยู่ในแฟ้มลูกค้า</td></tr>}
-            </tbody>
-            <tfoot><tr><td colSpan={9}><button type="button" onClick={() => setBranches((x) => [...x, { branch_no: '', name: '', address_1: null, address_2: null, address_3: null, zip_code: null, phone: null, contact: null }])}>+ เพิ่มสาขา</button></td></tr></tfoot>
-          </table>
+          <BranchesGrid branches={branches} setBranches={setBranches} masterBr={masterBr} word="ลูกค้า" />
         </div>}
         {tab === 'ship' && <>
           <div className="form-grid">
@@ -356,7 +334,35 @@ export function CustomerForm({ id, onClose, onSaved, initial }: { id: string | n
 
 /* ---------------------------------------------------------------- ผู้จำหน่าย S-AP-01 */
 interface BankRow { bank_code: string; branch: string | null; account_no: string; account_name: string | null; is_default: boolean }
-interface SupplierDetail extends Record<string, unknown> { id: string; ap_account_id: string | null; on_hold: boolean; banks: BankRow[]; contacts: Contact[]; outstanding_bills: Bill[]; balance: string; last_bill_date: string | null }
+/** แท็บสาขาของคู่ค้า (ลูกค้า / ผู้จำหน่าย): เลขที่สาขา ชื่อ ที่อยู่ 3 บรรทัด ไปรษณีย์ โทร. ผู้ติดต่อ + 📍 ที่อยู่แยกช่อง */
+function BranchesGrid({ branches, setBranches, masterBr, word }: { branches: CusBranch[]; setBranches: (f: (x: CusBranch[]) => CusBranch[]) => void; masterBr: string; word: string }) {
+  const [brAddr, setBrAddr] = useState<number | null>(null);
+  const setBranch = (i: number, p: Partial<CusBranch>) => setBranches((s) => s.map((x, k) => (k === i ? { ...x, ...p } as CusBranch : x)));
+  return <>
+    {brAddr !== null && branches[brAddr] && <ShipAddrDialog title={`ที่อยู่สาขา ${branches[brAddr]!.branch_no}`} row={branches[brAddr]! as unknown as ShipTo} onClose={() => setBrAddr(null)} onOk={(r) => { setBranch(brAddr, r as unknown as CusBranch); setBrAddr(null); }} />}
+      <table className="grid">
+        <thead><tr><th style={{ width: 90 }}>เลขที่สาขา</th><th style={{ width: 180 }}>ชื่อสาขา</th><th>ที่อยู่ บรรทัด 1</th><th>บรรทัด 2</th><th>บรรทัด 3</th><th style={{ width: 90 }}>ไปรษณีย์</th><th style={{ width: 120 }}>โทร.</th><th style={{ width: 120 }}>ผู้ติดต่อ</th><th style={{ width: 70 }} /></tr></thead>
+        <tbody>
+          {branches.map((b, i) => (
+            <tr key={i}>
+              <td><input className="mono" value={b.branch_no} maxLength={5} inputMode="numeric" placeholder="00001" onChange={(e) => setBranch(i, { branch_no: e.target.value.replace(/\D/g, '') })} aria-label="เลขที่สาขา" /></td>
+              <td><input value={b.name} maxLength={120} placeholder="สาขาเชียงใหม่" onChange={(e) => setBranch(i, { name: e.target.value })} aria-label="ชื่อสาขา" /></td>
+              <td><input value={b.address_1 ?? ''} maxLength={100} onChange={(e) => setBranch(i, { address_1: e.target.value })} aria-label="ที่อยู่ บรรทัด 1" /></td>
+              <td><input value={b.address_2 ?? ''} maxLength={100} onChange={(e) => setBranch(i, { address_2: e.target.value })} aria-label="ที่อยู่ บรรทัด 2" /></td>
+              <td><input value={b.address_3 ?? ''} maxLength={100} onChange={(e) => setBranch(i, { address_3: e.target.value })} aria-label="ที่อยู่ บรรทัด 3" /></td>
+              <td><input value={b.zip_code ?? ''} maxLength={10} onChange={(e) => setBranch(i, { zip_code: e.target.value })} aria-label="ไปรษณีย์" /></td>
+              <td><input value={b.phone ?? ''} maxLength={60} onChange={(e) => setBranch(i, { phone: e.target.value })} aria-label="โทร." /></td>
+              <td><input value={b.contact ?? ''} maxLength={60} onChange={(e) => setBranch(i, { contact: e.target.value })} aria-label="ผู้ติดต่อ" /></td>
+              <td className="nowrap"><button type="button" className="icon-btn" tabIndex={-1} title="ที่อยู่แยกช่อง — กรอกรหัสไปรษณีย์แล้วเติมจังหวัด อำเภอ ตำบลให้" onClick={() => setBrAddr(i)}>📍</button><button type="button" className="icon-btn" tabIndex={-1} title="ลบบรรทัด" onClick={() => setBranches((x) => x.filter((_, k) => k !== i))}>✕</button></td>
+            </tr>
+          ))}
+          {!branches.length && <tr><td colSpan={9} className="empty">ยังไม่มีสาขาอื่น — {word === 'ลูกค้า' ? 'ออกบิลถึงสาขา' : 'บิลจากสาขา'} {masterBr} ตามที่อยู่ในแฟ้ม{word}</td></tr>}
+        </tbody>
+        <tfoot><tr><td colSpan={9}><button type="button" onClick={() => setBranches((x) => [...x, { branch_no: '', name: '', address_1: null, address_2: null, address_3: null, zip_code: null, phone: null, contact: null }])}>+ เพิ่มสาขา</button></td></tr></tfoot>
+      </table>
+  </>;
+}
+interface SupplierDetail extends Record<string, unknown> { id: string; ap_account_id: string | null; on_hold: boolean; banks: BankRow[]; branches?: CusBranch[]; contacts: Contact[]; outstanding_bills: Bill[]; balance: string; last_bill_date: string | null }
 const SUP_KEYS = [...HEAD_KEYS, 'on_hold_reason', 'email', 'supplier_type', 'price_type', 'vat_rate', 'wht_income_desc'];
 
 export function SuppliersPage() {
@@ -371,20 +377,21 @@ export function SupplierForm({ id, onClose, onSaved, initial, startTab }: { id: 
   const [f, setF] = useState<Form | null>(id ? null : { ...toForm({}, SUP_KEYS), status: 'A', tax_branch_no: '00000', price_type: '2', vat_rate: '7', wht_condition: '1', on_hold: false, ...initial });
   const [ap, setAp] = useState<string | null>(null);
   const [banks, setBanks] = useState<BankRow[]>([]);
+  const [branches, setBranches] = useState<CusBranch[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tab, setTab] = useState<string>(startTab ?? 'main');
   const nextTab = useTabFlow(['main', 'buy', 'tax'], tab, setTab);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   if (id && cur.data && !f) {
-    setF({ ...toForm(cur.data, SUP_KEYS), on_hold: cur.data.on_hold }); setAp(cur.data.ap_account_id); setBanks(cur.data.banks); setContacts(cur.data.contacts);
+    setF({ ...toForm(cur.data, SUP_KEYS), on_hold: cur.data.on_hold }); setAp(cur.data.ap_account_id); setBanks(cur.data.banks); setBranches(cur.data.branches ?? []); setContacts(cur.data.contacts);
   }
   const set = (p: Form) => setF((x) => ({ ...x!, ...p }));
   const t = useText(f, set);
   const save = async () => {
     if (!f || busy) return;
     setErr(null); setBusy(true);
-    const body = { ...f, ap_account_id: ap, banks: banks.filter((b) => b.bank_code || b.account_no), contacts: contacts.filter((c) => c.name.trim()) };
+    const body = { ...f, ap_account_id: ap, banks: banks.filter((b) => b.bank_code || b.account_no), branches: branches.filter((b) => b.branch_no.trim() || b.name.trim()), contacts: contacts.filter((c) => c.name.trim()) };
     try {
       const r = id ? await api.put<{ id: string; warnings?: string[] }>(`/api/v1/suppliers/${id}`, body) : await api.post<{ id: string; warnings?: string[] }>('/api/v1/suppliers', body);
       toast(`บันทึกผู้จำหน่าย ${f.code} แล้ว`);
@@ -405,7 +412,7 @@ export function SupplierForm({ id, onClose, onSaved, initial, startTab }: { id: 
           <Field label="ชื่อผู้จำหน่าย" req><input {...t('name', 120)} /></Field>
           <Field label="สถานะ"><select value={val(f, 'status')} onChange={(e) => set({ status: e.target.value })}><option value="A">ใช้งาน (Active)</option><option value="I">เลิกใช้ (Inactive)</option></select></Field>
         </div>
-        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'ที่อยู่/ติดต่อ' }, { key: 'buy', label: 'การซื้อและเครดิต' }, { key: 'tax', label: 'ภาษีและบัญชี' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'banks', label: 'บัญชีธนาคาร', badge: banks.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, ...(id ? [{ key: 'periods', label: 'ยอดรายงวด' }, { key: 'cheques', label: 'เช็คจ่ายที่ยังไม่ผ่านบัญชี' }] : [])]} />
+        <Tabs active={tab} onChange={setTab} tabs={[{ key: 'main', label: 'ที่อยู่/ติดต่อ' }, { key: 'buy', label: 'การซื้อและเครดิต' }, { key: 'tax', label: 'ภาษีและบัญชี' }, { key: 'contacts', label: 'ผู้ติดต่อ', badge: contacts.length || undefined }, { key: 'banks', label: 'บัญชีธนาคาร', badge: banks.length || undefined }, { key: 'branches', label: 'สาขา', badge: branches.length || undefined }, { key: 'bills', label: 'บิลที่ค้างชำระ', badge: cur.data?.outstanding_bills.length || undefined }, ...(id ? [{ key: 'periods', label: 'ยอดรายงวด' }, { key: 'cheques', label: 'เช็คจ่ายที่ยังไม่ผ่านบัญชี' }] : [])]} />
         {tab === 'main' && <div className="form-grid party-grid tab-flow">
           <AddressFields value={f} onChange={set} target={{ kind: 'lines3' }} />
           <Field label="โทรศัพท์"><input {...t('phone', 60)} /></Field>
@@ -459,6 +466,10 @@ export function SupplierForm({ id, onClose, onSaved, initial, startTab }: { id: 
             </tbody>
             <tfoot><tr><td colSpan={6}><button type="button" onClick={() => setBanks((x) => [...x, { bank_code: '', branch: null, account_no: '', account_name: val(f, 'name') || null, is_default: !x.length }])}>+ เพิ่มบัญชีธนาคาร</button> <span className="hint">ใช้ตอนโอนจ่ายชำระหนี้ · รายชื่อธนาคารจากตารางธนาคาร</span></td></tr></tfoot>
           </table>
+        </div>}
+        {tab === 'branches' && <div className="table-wrap lines">
+          <p className="hint">สาขาของผู้จำหน่ายรายนี้ (เลขผู้เสียภาษีเดียวกัน — ไม่สร้างเจ้าหนี้ซ้ำ) — เอกสารซื้อ/ค่าใช้จ่ายเลือกสาขาที่ออกบิลได้ ใบกำกับภาษีและรายงานภาษีซื้อใช้เลขที่และที่อยู่ของสาขานั้น · เจ้าหนี้ยังอยู่ที่รหัสผู้จำหน่ายนี้</p>
+          <BranchesGrid branches={branches} setBranches={setBranches} masterBr={val(f ?? {}, 'tax_branch_no') || '00000'} word="ผู้จำหน่าย" />
         </div>}
         {tab === 'bills' && (id ? <BillsGrid rows={cur.data?.outstanding_bills ?? []} /> : <p className="muted">บันทึกผู้จำหน่ายก่อน</p>)}
         {(tab === 'periods' || tab === 'cheques') && id && <PartyActivity mod="AP" id={id} view={tab} />}
