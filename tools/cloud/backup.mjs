@@ -3,6 +3,8 @@
 //
 //   node tools/cloud/backup.mjs                 สำรอง 4 ฐาน (buddy wtspos wtsliving wtshr) จาก .data/cloud-prod.env แล้วทดสอบกู้คืนทันที
 //   node tools/cloud/backup.mjs --verify [โฟลเดอร์]   ทดสอบกู้คืนอย่างเดียว (ไม่ระบุ = ชุดล่าสุด)
+//   node tools/cloud/backup.mjs --offsite-fetch <โฟลเดอร์ชุดนอกเครื่อง | r2:<ชุด>> [--out โฟลเดอร์]
+//                                               ถอดรหัสสำเนานอกเครื่องกลับเป็นชุดปกติ แล้วทดสอบกู้คืนทันที (ใช้เมื่อเครื่องนี้เสีย/ไฟล์หลักหาย)
 //   node tools/local-pg/pg.mjs run -- node tools/cloud/backup.mjs --rehearse
 //                                               ซ้อมกับ PostgreSQL ในเครื่อง (DEMO) — เก็บที่ .data/backup-rehearse แล้วลบทิ้ง (--keep = ไม่ลบ)
 //
@@ -11,6 +13,9 @@
 // สำรอง: นับแถวทุกตาราง + ยอดเดบิต/เครดิตของ Buddy ใน snapshot เดียวกับ pg_dump (--snapshot) → ตัวเลขตรงกับไฟล์สำรองเป๊ะ
 // ทดสอบกู้คืน: เปิดฐานชั่วคราว PostgreSQL 17 ในเครื่อง (พอร์ตว่าง · ไม่แตะฐานใช้งาน) → pg_restore ทุกไฟล์ → นับแถวเทียบ manifest + ยอดเดบิต/เครดิต → ปิดและลบ
 // ความลับ: รหัสผ่านส่งให้ pg_dump ทาง PGPASSWORD ไม่อยู่ในบรรทัดคำสั่ง · ข้อความบนจอปิดบังที่อยู่ฐาน
+// สำเนานอกเครื่อง (HANDOFF 146 · tools/cloud/offsite.mjs): ชุดที่ทดสอบกู้คืนผ่านแล้ว → เข้ารหัสด้วยกุญแจของเจ้าของ → โฟลเดอร์ที่สอง และ/หรือ R2 bucket แยก · เก็บ 90 วัน
+//   ตั้งค่า: node tools/cloud/setup-offsite.mjs (README ข้อ 8) · ผลอยู่ใน last-run.log และ ประวัติการสำรอง.txt · สำเนานอกเครื่องไม่สำเร็จ = exit 2 (สำรองหลักยังสำเร็จ)
+//   ซ้อม: --rehearse --offsite-dir <โฟลเดอร์ทดลอง> [--offsite-key <ไฟล์กุญแจทดลอง>]
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -18,12 +23,14 @@ import { createServer } from 'node:net';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fetchOffsite, loadKey, newKeyFile, offsiteConfig, sendOffsite } from './offsite.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pg = createRequire(join(ROOT, 'apps/server/package.json'))('pg');
 const argv = process.argv.slice(2);
 const REHEARSE = argv.includes('--rehearse');
 const VERIFY_ONLY = argv.includes('--verify');
+const argOf = (k) => { const i = argv.indexOf(k); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : null; };
 const DBS = ['buddy', 'wtspos', 'wtsliving', 'wtshr'];
 const KEEP_DAYS = 30;
 const BIN = resolve(process.env.WTS_PG17_BIN ?? join(ROOT, '.data/pg17/pgsql/bin'));
@@ -217,6 +224,29 @@ mkdirSync(BACKUP_ROOT, { recursive: true });
 const history = join(BACKUP_ROOT, 'ประวัติการสำรอง.txt');
 const note = (line) => { try { appendFileSync(history, `${thaiStamp().text}  ${line}\r\n`); } catch { /* ไม่มีสิทธิ์เขียน = ข้าม */ } };
 
+if (argv.includes('--offsite-fetch')) {
+  const src = argOf('--offsite-fetch');
+  if (!src) await fail('ระบุโฟลเดอร์ชุดนอกเครื่อง หรือ r2:<ชื่อชุด> เช่น --offsite-fetch r2:2569-11-19_1230');
+  const envFile = join(ROOT, '.data/cloud-prod.env');
+  const oc = offsiteConfig(ROOT, existsSync(envFile) ? readEnv(envFile) : {});
+  for (const s of oc.secrets) secrets.add(s);
+  const key = loadKey(resolve(argOf('--offsite-key') ?? oc.keyFile));
+  if (!key) await fail(`ไม่พบกุญแจ ${oc.keyFile} — ใช้สำเนากุญแจที่เก็บไว้นอกเครื่อง: --offsite-key <ไฟล์>`);
+  const r2t = src.startsWith('r2:') ? oc.targets.find((t) => t.kind === 'r2') : null;
+  if (src.startsWith('r2:') && !r2t) await fail('ยังไม่ได้ตั้งกุญแจ R2 ของสำเนานอกเครื่อง (BACKUP_R2_* ใน .data/cloud-prod.env)');
+  const set = src.startsWith('r2:') ? src.slice(3) : src.split(/[\\/]/).filter(Boolean).pop();
+  const outDir = resolve(argOf('--out') ?? join(ROOT, '.data/offsite-restore', set));
+  if (existsSync(join(outDir, 'manifest.json'))) await fail(`มีชุดอยู่แล้วที่ ${outDir} — ระบุ --out โฟลเดอร์ใหม่`);
+  try {
+    const r = await fetchOffsite({ source: src.startsWith('r2:') ? set : resolve(src), out: outDir, key, r2: r2t?.r2 ?? null, prefix: r2t?.prefix });
+    out(`✓ ถอดรหัสสำเนานอกเครื่อง ${r.set}: ${r.files} ไฟล์ → ${outDir}`);
+  } catch (e) { await fail(`ถอดรหัสสำเนานอกเครื่องไม่ได้ — ${e.message}`); }
+  const v = await verify(outDir);
+  if (!v.ok) { for (const p of v.problems) out(`  ✗ ${p}`); process.exit(1); }
+  out('✓ สำเนานอกเครื่องกู้คืนได้ครบ ตรงกับตอนสำรองทุกตาราง');
+  process.exit(0);
+}
+
 if (VERIFY_ONLY) {
   const arg = argv[argv.indexOf('--verify') + 1];
   const dir = arg && !arg.startsWith('--') ? resolve(arg) : (latest() ? join(BACKUP_ROOT, latest()) : null);
@@ -229,7 +259,7 @@ if (VERIFY_ONLY) {
   process.exit(0);
 }
 
-let source, dbs, label;
+let source, dbs, label, envVars = {};
 if (REHEARSE) {
   if (!process.env.DATABASE_URL) await fail('โหมดซ้อมต้องรันผ่าน node tools/local-pg/pg.mjs run --');
   const a = new pg.Client({ connectionString: withDb(process.env.DATABASE_URL, 'postgres') });
@@ -244,6 +274,7 @@ if (REHEARSE) {
   const envFile = join(ROOT, '.data/cloud-prod.env');
   if (!existsSync(envFile)) await fail('ไม่พบ .data/cloud-prod.env');
   const env = readEnv(envFile);
+  envVars = env;
   if (!env.SUPABASE_PROJECT_URL) await fail('ไม่พบ SUPABASE_PROJECT_URL ใน .data/cloud-prod.env');
   source = env.SUPABASE_PROJECT_URL;
   dbs = DBS;
@@ -263,6 +294,19 @@ if (!v.ok) {
   process.exit(1);
 }
 const removed = REHEARSE ? [] : prune();
-note(`✓ สำรอง ${dbs.length} ฐาน ${mb(total)} · ทดสอบกู้คืนผ่าน — ${dir}${removed.length ? ` · ลบชุดเก่า ${removed.length}` : ''}`);
 out(`✓ สำรองเสร็จและทดสอบกู้คืนผ่าน — ${dir} (${mb(total)})${removed.length ? ` · ลบชุดเก่ากว่า ${KEEP_DAYS} วัน ${removed.length} ชุด` : ''}`);
+// สำเนานอกเครื่อง (เข้ารหัส) — ทำหลังชุดหลักผ่านการทดสอบกู้คืนเท่านั้น
+const oc = offsiteConfig(ROOT, REHEARSE ? {} : envVars);
+if (argOf('--offsite-dir')) {
+  oc.targets = [{ kind: 'folder', label: `โฟลเดอร์ ${resolve(argOf('--offsite-dir'))}`, folder: resolve(argOf('--offsite-dir')) }];
+  if (argOf('--offsite-key')) oc.keyFile = resolve(argOf('--offsite-key'));
+  else { oc.keyFile = join(ROOT, '.data/backup-offsite-rehearse.key'); if (!existsSync(oc.keyFile)) newKeyFile(oc.keyFile); }
+} else if (REHEARSE) oc.targets = [];
+for (const s of oc.secrets) secrets.add(s);
+const off = await sendOffsite(dir, oc);
+for (const r of off) out(`${r.ok ? '✓' : '✗'} สำเนานอกเครื่อง ${r.label}: ${r.message}`);
+if (!off.length) out(REHEARSE ? 'ซ้อม: ไม่ส่งสำเนานอกเครื่อง (ใส่ --offsite-dir เพื่อซ้อมส่วนนี้)' : '⚠ ยังไม่ได้ตั้งที่เก็บนอกเครื่อง — ไฟล์สำรองอยู่ในเครื่องนี้เครื่องเดียว (node tools/cloud/setup-offsite.mjs)');
+const offText = off.length ? ` · นอกเครื่อง: ${off.map((r) => `${r.ok ? '✓' : '✗'} ${r.label}${r.ok ? '' : ` (${r.message})`}`).join(' · ')}` : ' · ⚠ ยังไม่มีสำเนานอกเครื่อง';
+note(`✓ สำรอง ${dbs.length} ฐาน ${mb(total)} · ทดสอบกู้คืนผ่าน — ${dir}${removed.length ? ` · ลบชุดเก่า ${removed.length}` : ''}${offText}`);
 if (REHEARSE && !argv.includes('--keep')) { rmSync(dir, { recursive: true, force: true }); out('ซ้อมเสร็จ — ลบไฟล์สำรองที่ซ้อมแล้ว'); }
+if (off.some((r) => !r.ok)) process.exit(2);

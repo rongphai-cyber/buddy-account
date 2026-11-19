@@ -1,7 +1,7 @@
 ﻿# ใส่กุญแจที่เก็บไฟล์ Cloudflare R2 ของแต่ละโปรแกรมลงไฟล์ค่าตั้ง (แทนการแก้ใน Notepad) — docs/20 ข้อ 9 · tools/cloud/README.md ข้อ 5
 #   powershell -ExecutionPolicy Bypass -File tools\cloud\set-r2-keys.ps1                (ค่าเริ่มต้น .data\cloud-prod.env)
 #   powershell -ExecutionPolicy Bypass -File tools\cloud\set-r2-keys.ps1 -EnvFile .data\cloud-s0.env
-# 1 bucket + 1 กุญแจ ต่อโปรแกรม: wts-buddy-files · wts-pos-files · wts-living-files
+# 1 bucket + 1 กุญแจ ต่อโปรแกรม: wts-buddy-files · wts-pos-files · wts-living-files · สำรองนอกเครื่อง wts-backup-offsite (bucket แยก — กุญแจใช้ได้เฉพาะ bucket นี้)
 # Secret Access Key พิมพ์แล้วไม่ขึ้นจอ · ไม่แสดงค่าที่บันทึก · ไฟล์อยู่ใน .data\ ซึ่งไม่เข้า git · กด Enter ว่าง = ข้ามโปรแกรมนั้น (ใส่ทีหลังได้)
 param(
   [string]$EnvFile = ''
@@ -36,7 +36,8 @@ Set-Line 'R2_ACCOUNT_ID' $acct
 $apps = @(
   @{ key = 'BUDDY'; name = 'Buddy Account'; bucket = 'wts-buddy-files' },
   @{ key = 'WTSPOS'; name = 'WTS-POS'; bucket = 'wts-pos-files' },
-  @{ key = 'WTSLIVING'; name = 'WTS-Living'; bucket = 'wts-living-files' }
+  @{ key = 'WTSLIVING'; name = 'WTS-Living'; bucket = 'wts-living-files' },
+  @{ key = 'BACKUP'; name = 'สำรองนอกเครื่อง (สำเนาเข้ารหัสของงานสำรองรายวัน · HANDOFF 146)'; bucket = 'wts-backup-offsite' }
 )
 $saved = @()
 foreach ($a in $apps) {
