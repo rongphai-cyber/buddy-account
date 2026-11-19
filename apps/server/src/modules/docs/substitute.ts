@@ -77,8 +77,9 @@ export function substituteRoutes(app: FastifyInstance, db: Db) {
       .where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!h) throw notFound('เอกสาร');
     if (!h.receipt_substitute) throw badRequest('เอกสารนี้ไม่ใช่บิลเจ้าหนี้กลาง — พิมพ์ใบรับรองแทนใบเสร็จได้เฉพาะเอกสารที่ใช้เจ้าหนี้กลาง');
-    const lines = (await sql<{ description: string | null; net_amount: string }>`SELECT description, net_amount::text AS net_amount FROM doc_line
-        WHERE header_id = ${id} AND company_id = ${a.companyId} AND deleted_at IS NULL ORDER BY line_no`.execute(db)).rows;
+    // รายละเอียด = ข้อความตามบิล/ที่ผู้ใช้พิมพ์ (เจ้าของ 19/11/2569 "ใช้ข้อความตามบิล") · ว่าง = ชื่อรหัสค่าใช้จ่าย/สินค้า
+    const lines = (await sql<{ description: string | null; net_amount: string }>`SELECT coalesce(nullif(trim(l.description), ''), i.name_th) AS description, l.net_amount::text AS net_amount FROM doc_line l LEFT JOIN md_item i ON i.id = l.item_id
+        WHERE l.header_id = ${id} AND l.company_id = ${a.companyId} AND l.deleted_at IS NULL ORDER BY l.line_no`.execute(db)).rows;
     const co = await db.selectFrom('sys_company').select(['name_th', 'tax_id', 'address_th']).where('id', '=', a.companyId).executeTakeFirst();
     const p = h.payer_employee_id ? await db.selectFrom('pay_employee').select(['title', 'first_name', 'last_name', 'position']).where('id', '=', h.payer_employee_id).where('company_id', '=', a.companyId).executeTakeFirst() : undefined;
     const total = lines.reduce((t, l) => t.plus(d(l.net_amount)), d(0));

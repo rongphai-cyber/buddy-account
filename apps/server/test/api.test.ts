@@ -4829,6 +4829,12 @@ describe('รูปภาพสินค้า (ข้อกำหนดเจ�
     const rcp = (await call('GET', `/api/v1/docs/${sr.id}/substitute-receipt`)).body;
     expect(rcp).toMatchObject({ doc_no: sr.doc_no, total: '1070.00', total_text: 'หนึ่งพันเจ็ดสิบบาทถ้วน', payer: { name: 'นาย สมชาย จ่ายจริง', position: 'พนักงานจัดซื้อ' }, lines: [{ description: 'ค่าน้ำมัน', amount: '1070.00' }] });
     expect((await call('GET', `/api/v1/docs/${nv.id}/substitute-receipt`)).status).toBe(400);   // ไม่ใช่บิลเจ้าหนี้กลาง
+    // รายละเอียดในใบรับรอง = ข้อความตามบิล/ที่พิมพ์ · บรรทัดที่ไม่มีคำอธิบาย = ชื่อรหัส (เจ้าของ 19/11/2569 "ใช้ข้อความตามบิล")
+    const sr2 = (await oe({ party_id: c1.id, payer_employee_id: emp, lines: [{ item_id: expR.body.id, description: 'ค่าแท็กซี่ไปลูกค้า', amount: 120 }, { item_id: expR.body.id, description: '', amount: 30 }] })).body;
+    expect(sr2.id, JSON.stringify(sr2)).toBeTruthy();
+    expect((await call('GET', `/api/v1/docs/${sr2.id}/substitute-receipt`)).body.lines.map((l: { description: string }) => l.description)).toEqual(['ค่าแท็กซี่ไปลูกค้า', 'ค่าใช้จ่ายทดสอบไม่จด VAT']);
+    expect((await call('GET', `/api/v1/other-expense-docs/${sr2.id}`)).body.lines[0]).toMatchObject({ description: 'ค่าแท็กซี่ไปลูกค้า', item_name: 'ค่าใช้จ่ายทดสอบไม่จด VAT' });
+    expect((await call('POST', `/api/v1/other-expense-docs/${sr2.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
     // ลูกค้าอื่น: ไม่เห็นใบรับรอง/พนักงานของบริษัทนี้ ใช้พนักงานของบริษัทนี้เป็นผู้จ่ายไม่ได้ · เจ้าหนี้กลางของตัวเองแยกกัน
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);

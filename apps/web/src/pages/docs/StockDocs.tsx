@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { d, fillRowCount, fmt, requiredLineIssues, STOCK_KINDS, todayIso, type StockKind } from '@buddy/core';
+import { d, descriptionAfterPick, fillRowCount, fmt, requiredLineIssues, STOCK_KINDS, todayIso, type StockKind } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { focusAfterTable, LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
@@ -70,7 +70,7 @@ export function StockDocListPage({ cls }: { cls: StockKind['cls'] }) {
 }
 
 interface ItemHit { id: string; code: string; name_th: string; base_unit_id: string | null; std_cost: string | null; cost_method?: string | null }
-interface Line { key: number; /** เบิกใช้: Job/โครงการของบรรทัด */ project_id?: string | null; item_id: string | null; item_code: string; description: string; line_note?: string; line_note_print?: boolean; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_cost: string; amount: string; source_line_id: string | null; cost_amount: string | null; cost_unit: string | null }
+interface Line { key: number; /** เบิกใช้: Job/โครงการของบรรทัด */ project_id?: string | null; item_id: string | null; item_code: string; /** ชื่อของรหัสที่เลือกอยู่ (ดู descriptionAfterPick) */ item_name?: string | null; description: string; line_note?: string; line_note_print?: boolean; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_cost: string; amount: string; source_line_id: string | null; cost_amount: string | null; cost_unit: string | null }
 interface Head { doc_type_id: string; doc_date: string; department_id: string; project_id?: string; remark: string; your_ref: string; warehouse_id: string | null; to_warehouse_id: string | null }
 let seq = 0;
 const blank = (job?: string | null): Line => ({ key: ++seq, project_id: job || null, item_id: null, item_code: '', description: '', warehouse_id: null, qty: '', unit_id: null, factor: '1', unit_cost: '', amount: '', source_line_id: null, cost_amount: null, cost_unit: null });
@@ -119,7 +119,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
     setH({ doc_type_id: c.doc_type_id!, doc_date: String(c.doc_date).slice(0, 10), department_id: c.department_id ?? '', project_id: c.project_id ?? '', remark: c.remark ?? '', your_ref: c.your_ref ?? '', warehouse_id: c.warehouse_id ?? null, to_warehouse_id: c.to_warehouse_id ?? null });
     setLines(c.lines.map((l): Line => {
       const eff = Number(l.stock_effect), qty = d(String(l.qty ?? 0)).times(cls === 'JU' ? eff : 1);
-      return { key: ++seq, project_id: (l.project_id as string | null) ?? null, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), description: String(l.description ?? ''), line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, warehouse_id: (l.warehouse_id as string) ?? null, qty: qty.toString(), unit_id: (l.unit_id as string) ?? null, factor: d(String(l.factor ?? 1)).toString(),
+      return { key: ++seq, project_id: (l.project_id as string | null) ?? null, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), item_name: (l.item_name as string | null) ?? null, description: String(l.description ?? ''), line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, warehouse_id: (l.warehouse_id as string) ?? null, qty: qty.toString(), unit_id: (l.unit_id as string) ?? null, factor: d(String(l.factor ?? 1)).toString(),
         unit_cost: cls === 'JU' && eff > 0 ? d(String(l.cost_unit ?? 0)).toString() : '', amount: cls === 'CA' ? d(String(l.cost_amount ?? 0)).toString() : '', source_line_id: (l.source_line_id as string) ?? null, cost_amount: (l.cost_amount as string) ?? null, cost_unit: (l.cost_unit as string) ?? null };
     }).concat(c.editable && can('edit') ? [blank(c.project_id)] : []));
   }
@@ -135,7 +135,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   const pickItem = (key: number, r: ItemHit | null) => {
     if (!r) return setLine(key, { item_id: null, item_code: '', description: '' });
     setLines((ls) => {
-      const next = ls.map((l) => (l.key === key ? { ...l, item_id: r.id, item_code: r.code, description: r.name_th, unit_id: r.base_unit_id, factor: '1', cost_amount: null, cost_unit: null } : l));
+      const next = ls.map((l) => (l.key === key ? { ...l, item_id: r.id, item_code: r.code, item_name: r.name_th, description: descriptionAfterPick(l.description, l.item_name, r.name_th), unit_id: r.base_unit_id, factor: '1', cost_amount: null, cost_unit: null } : l));
       return next[next.length - 1]!.item_id ? [...next, blank(h?.project_id)] : next;
     });
     setDirty(true);

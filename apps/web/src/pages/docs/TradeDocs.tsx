@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { billAsExpense, computeDoc, d, dueDate, fillRowCount, fmt, isStockItemType, requiredLineIssues, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
+import { billAsExpense, computeDoc, d, descriptionAfterPick, dueDate, fillRowCount, fmt, isStockItemType, requiredLineIssues, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
 import { PartyAddress, savedPartyOf, usePartyDetail } from '../../components/PartyAddress';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
@@ -231,7 +231,7 @@ type VatCode = '0' | '1' | '2';
 const vatOf = (c: string | null | undefined): VatCode => (c === '0' || c === '2' ? c : '1');
 /* ---------------------------------------------------------------- หน้าเอกสาร */
 interface ItemHit { id: string; code: string; name_th: string; item_type: string; vat_code: string | null; base_unit_id: string | null; sales_unit_id: string | null; sales_factor: string | null; purchase_unit_id: string | null; purchase_factor: string | null; price_1: string | null; price_2: string | null; price_3: string | null; price_4: string | null; price_5: string | null; std_cost: string | null }
-interface Line { key: number; item_id: string; item_code: string; /** ชนิดสินค้า (0/1/2 = มีสต๊อก ต้องมีคลัง) */ item_type?: string | null; description: string; line_note?: string; line_note_print?: boolean; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_price: string; discount_text: string; is_free: boolean; return_to_stock: boolean; vat: VatCode; /** Job/โครงการของบรรทัด */ project_id?: string | null;
+interface Line { key: number; item_id: string; item_code: string; /** ชื่อของรหัสที่เลือกอยู่ — เลือกรหัสใหม่แล้วคำอธิบายยังเป็นชื่อนี้ = เปลี่ยนตาม (ข้อความตามบิล/ที่พิมพ์เองคงไว้) */ item_name?: string | null; /** ชนิดสินค้า (0/1/2 = มีสต๊อก ต้องมีคลัง) */ item_type?: string | null; description: string; line_note?: string; line_note_print?: boolean; warehouse_id: string | null; qty: string; unit_id: string | null; factor: string; unit_price: string; discount_text: string; is_free: boolean; return_to_stock: boolean; vat: VatCode; /** Job/โครงการของบรรทัด */ project_id?: string | null;
   /** บรรทัดใบสั่งที่อ้าง (บิล) */ source_line_id?: string | null; source_no?: string | null; source_header_id?: string | null;
   /** ใบสั่ง: รหัสบรรทัด + ยอดค้าง (ดูอย่างเดียว) */ line_id?: string; remaining?: string | null; delivered?: string | null; cancelled?: string | null }
 interface Pay { key: number; payment_method_id: string; amount: string; reference_no: string }
@@ -298,7 +298,7 @@ export function TradeFormPage({ path }: { path: string }) {
       party_tax_branch_no: c.party_tax_branch_no ?? '', your_ref: c.your_ref ?? '', ref: c.ref_no ? { id: c.ref_header_id ?? '', code: c.ref_no } : null, department_id: c.department_id ?? '', project_id: c.project_id ?? '', salesperson_id: c.salesperson_id ?? '', sales_area_code: c.sales_area_code ?? '', ship_via_code: c.ship_via_code ?? '',
       credit_days: c.credit_days === null ? '' : String(c.credit_days), price_type: (c.price_type ?? '2') as Head['price_type'], vat_rate: num(c.vat_rate), vat_basis: (c.vat_basis === '2' ? '2' : '1'), discount_text: c.discount_text ?? '', remark: c.remark ?? '', price_level: '1', ship_to_id: c.ship_to_id ?? '' });
     setWhts(whtsFrom((cur.data as { wht?: Parameters<typeof whtsFrom>[0] }).wht ?? [])); setWhtAmt(d(c.wht_amount ?? 0).isZero() ? '' : num(c.wht_amount));
-    setLines(cur.data.lines.map((l) => ({ key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), item_type: (l.item_type as string) ?? null, description: String(l.description ?? ''), line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, warehouse_id: (l.warehouse_id as string) ?? null, qty: num(l.qty), unit_id: (l.unit_id as string) ?? null, factor: num(l.factor) || '1',
+    setLines(cur.data.lines.map((l) => ({ key: ++seq, item_id: String(l.item_id), item_code: String(l.item_code ?? ''), item_name: (l.item_name as string | null) ?? null, item_type: (l.item_type as string) ?? null, description: String(l.description ?? ''), line_note: String(l.line_note ?? ''), line_note_print: !!l.line_note_print, warehouse_id: (l.warehouse_id as string) ?? null, qty: num(l.qty), unit_id: (l.unit_id as string) ?? null, factor: num(l.factor) || '1',
       unit_price: num(l.unit_price), discount_text: String(l.discount_text ?? ''), is_free: !!l.is_free, return_to_stock: !!l.return_to_stock, vat: vatOf(l.vat_code as string | null), project_id: (l.project_id as string) ?? null,
       source_line_id: (l.source_line_id as string) ?? null, source_no: (l.source as { doc_no?: string } | null)?.doc_no ?? null, source_header_id: (l.source as { header_id?: string } | null)?.header_id ?? null, line_id: l.id as string,
       remaining: (l.remaining_qty as string) ?? null, delivered: (l.delivered_qty as string) ?? null, cancelled: (l.cancelled_qty as string) ?? null })));
@@ -372,7 +372,7 @@ export function TradeFormPage({ path }: { path: string }) {
     const fromBill = !!was && !was.item_id && !!was.unit_price;   // บรรทัดที่ AI เติมจากบิล — คงราคาตามบิล
     const stockItem = it.item_type === '0' || it.item_type === '1' || it.item_type === '2';
     const wh = was?.warehouse_id ?? (stockItem ? (defs.data?.types.find((t) => t.id === h?.doc_type_id)?.warehouse_id ?? defs.data?.main_warehouse_id ?? null) : null);
-    setLine(k, { item_id: it.id, item_code: it.code, item_type: it.item_type, description: it.name_th, warehouse_id: wh, unit_id: unit, factor: num(factor) || '1', unit_price: fromBill ? was.unit_price : num(price), vat: vatOf(it.vat_code), qty: was?.qty || '1' });
+    setLine(k, { item_id: it.id, item_code: it.code, item_name: it.name_th, item_type: it.item_type, description: descriptionAfterPick(was?.description, was?.item_name, it.name_th), warehouse_id: wh, unit_id: unit, factor: num(factor) || '1', unit_price: fromBill ? was.unit_price : num(price), vat: vatOf(it.vat_code), qty: was?.qty || '1' });
   };
   /** เติมร่างจากบิลที่ AI อ่าน (T7.7) — ยังไม่บันทึก ผู้ใช้ตรวจ/เลือกรหัสที่ยังไม่พบ แล้วบันทึกเอง */
   const applyBill = async (r: AiBillResult) => {
@@ -384,7 +384,7 @@ export function TradeFormPage({ path }: { path: string }) {
     setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l0, i) => {
       const l = asExp ? { ...l0, ...asExp[i] } : l0;
       const gross = d(l.qty || 0).times(d(l.unit_price || 0)).toDecimalPlaces(2), disc = l.amount ? gross.minus(d(l.amount)) : d(0);
-      return { key: ++seq, item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', description: l.description, warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: l.qty, unit_id: l.item?.base_unit_id ?? null,
+      return { key: ++seq, item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', item_name: l.item?.name_th ?? null, description: l.description, warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: l.qty, unit_id: l.item?.base_unit_id ?? null,
         factor: '1', unit_price: l.unit_price, discount_text: disc.gt(0.005) ? disc.toFixed(2) : '', is_free: false, return_to_stock: false, vat: '1' as VatCode, project_id: h?.project_id || null };
     })]);
     const missing = r.lines.filter((l) => !l.item).length;

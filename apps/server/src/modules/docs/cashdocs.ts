@@ -179,7 +179,7 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
       const h = await db.selectFrom('doc_header').selectAll().where('id', '=', id).where('company_id', '=', a.companyId).where('doc_class', '=', K.cls).where('deleted_at', 'is', null).executeTakeFirst();
       if (!h) throw notFound(K.label);
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id')
-        .select(['l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.line_amount as amount', 'l.net_amount', 'l.department_id', 'l.project_id', 'l.line_note', 'l.line_note_print'])
+        .select(['l.line_no', 'l.item_id', 'i.code as item_code', 'i.name_th as item_name', 'l.description', 'l.line_amount as amount', 'l.net_amount', 'l.department_id', 'l.project_id', 'l.line_note', 'l.line_note_print'])
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).orderBy('l.line_no').execute();
       const { payments, wht } = await readMoneyParts(db, a.companyId, id);
       const partyId = h.customer_id ?? h.supplier_id;

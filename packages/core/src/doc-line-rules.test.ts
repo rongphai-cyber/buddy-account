@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fillRowCount, isStockItemType, missingUnitIssues, isBlankTextLine, isCompleteTextLine, requiredLineIssues, textLineIssues } from './doc-line-rules.js';
+import { fillRowCount, isStockItemType, missingUnitIssues, descriptionAfterPick, isBlankTextLine, isCompleteTextLine, requiredLineIssues, textLineIssues } from './doc-line-rules.js';
 
 describe('document line rules (เจ้าของ 18/11/2569)', () => {
   it('every purchase/sale line needs a unit — the message names the line and the fix', () => {
@@ -35,5 +35,13 @@ describe('document line rules (เจ้าของ 18/11/2569)', () => {
     expect(textLineIssues([])[0]!.message).toMatch(/^ยังไม่มีรายการ/);
     expect([{ description: '', amount: '0.00' }, { description: ' ', amount: '' }, { description: 'a', amount: '' }].map(isBlankTextLine)).toEqual([true, true, false]);
     expect([{ description: 'a', amount: '1,000.00' }, { description: 'a', amount: '0' }, { description: '', amount: '5' }].map(isCompleteTextLine)).toEqual([true, false, false]);
+  });
+  it('picking a code keeps the bill wording / typed description; empty or the previous code name gets the new code name (เจ้าของ 19/11/2569)', () => {
+    expect(descriptionAfterPick('', null, 'ค่าเดินทาง')).toBe('ค่าเดินทาง');                                  // ว่าง = ชื่อรหัส
+    expect(descriptionAfterPick('ค่าแท็กซี่ไปลูกค้า', null, 'ค่าเดินทาง')).toBe('ค่าแท็กซี่ไปลูกค้า');       // ข้อความตามบิลจาก AI คงไว้
+    expect(descriptionAfterPick('ค่าแท็กซี่ไปลูกค้า', undefined, 'ค่าเดินทาง')).toBe('ค่าแท็กซี่ไปลูกค้า');
+    expect(descriptionAfterPick('ค่าโฆษณา', 'ค่าโฆษณา', 'ค่าเดินทาง')).toBe('ค่าเดินทาง');                  // ยังเป็นชื่อรหัสเดิม = เปลี่ยนตาม
+    expect(descriptionAfterPick('ค่าโฆษณาเฟซบุ๊ก', 'ค่าโฆษณา', 'ค่าเดินทาง')).toBe('ค่าโฆษณาเฟซบุ๊ก');     // ผู้ใช้แก้แล้ว = คงไว้
+    expect(descriptionAfterPick('   ', 'x', 'ค่าเดินทาง')).toBe('ค่าเดินทาง');
   });
 });

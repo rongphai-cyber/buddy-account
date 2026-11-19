@@ -60,3 +60,15 @@ export function textLineIssues(lines: TextAmountLine[]): LineIssue[] {
   if (!any) out.push({ line: 1, field: 'description', message: 'ยังไม่มีรายการ — ใส่คำอธิบายและจำนวนเงินอย่างน้อย 1 บรรทัด' });
   return out;
 }
+
+/**
+ * คำอธิบายบรรทัดเมื่อเลือกรหัส (สินค้า/ค่าใช้จ่าย/รายได้) — เจ้าของ 19/11/2569 "ใช้ข้อความตามบิล":
+ * ว่าง หรือยังเป็นชื่อของรหัสที่เลือกไว้ก่อน = ใช้ชื่อรหัสใหม่ (คีย์เองสะดวกเหมือนเดิม) · ผู้ใช้พิมพ์เอง/ข้อความตามบิล (AI) = คงไว้
+ * prevName ไม่ทราบ (undefined) = ถือว่าข้อความที่มีเป็นของผู้ใช้
+ */
+export function descriptionAfterPick(current: string | null | undefined, prevName: string | null | undefined, nextName: string): string {
+  const cur = (current ?? '').trim();
+  if (!cur) return nextName;
+  if (prevName != null && cur === prevName.trim()) return nextName;
+  return current!;
+}

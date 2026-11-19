@@ -177,7 +177,7 @@ export function stockDocRoutes(app: FastifyInstance, db: Db) {
       if (!h) throw notFound(K.label);
       // โอนย้าย: แสดงเฉพาะบรรทัดออก (คู่บรรทัดเข้าเป็นรายการเดียวกัน)
       const lines = await db.selectFrom('doc_line as l').leftJoin('md_item as i', 'i.id', 'l.item_id').leftJoin('md_unit as u', 'u.id', 'l.unit_id')
-        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'l.description', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.cost_unit', 'l.cost_amount', 'l.stock_effect', 'l.source_line_id', 'l.project_id', 'l.line_note', 'l.line_note_print'])
+        .select(['l.id', 'l.line_no', 'l.item_id', 'i.code as item_code', 'i.name_th as item_name', 'l.description', 'l.warehouse_id', 'l.qty', 'l.unit_id', 'u.code as unit_code', 'l.factor', 'l.cost_unit', 'l.cost_amount', 'l.stock_effect', 'l.source_line_id', 'l.project_id', 'l.line_note', 'l.line_note_print'])
         .where('l.header_id', '=', id).where('l.deleted_at', 'is', null).$if(K.cls === 'RL', (qb) => qb.where('l.stock_effect', '=', -1)).orderBy('l.line_no').execute();
       return { ...h, lines, editable: h.doc_status !== 'C' && !isMigAdj(h.doc_no) && !(await countLinked(db, id)), from_count: await countLinked(db, id) };
     });
