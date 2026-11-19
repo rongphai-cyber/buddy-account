@@ -50,6 +50,8 @@ export interface AuthContext {
   sessionId: string;
   /** ผู้ดูแลระบบที่ยังไม่ตั้งยืนยันตัวตนสองขั้น (T0.16) — ใช้ได้เฉพาะหน้าตั้งค่า */
   mfaSetupRequired?: boolean;
+  /** ลูกค้าตั้ง "บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้" (sys_tenant.require_mfa · HANDOFF 146) — ไม่ใช้กับเจ้าหน้าที่ผู้ให้บริการ */
+  tenantRequireMfa?: boolean;
   /** เข้าด้วยกุญแจ API (T7.5): รหัสกุญแจ · อ่านอย่างเดียว */
   apiKeyId?: string;
   apiKeyReadOnly?: boolean;

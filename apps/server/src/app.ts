@@ -164,7 +164,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   faRoutes(app, db);
   faPostingRoutes(app, db);
   yearEndRoutes(app, db);
-  backupRoutes(app, db);
+  backupRoutes(app, database);
   noteRoutes(app, db);
   apiKeyRoutes(app, db);
   etaxRoutes(app, db);

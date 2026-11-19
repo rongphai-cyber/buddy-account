@@ -9,6 +9,33 @@ import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null }
 interface Group { id: string; code: string; name: string }
+interface TenantSecurity { require_mfa: boolean; users: number; without_mfa: number }
+
+/** ผู้ดูแลระบบของลูกค้า: บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ (HANDOFF 146 · ค่าเริ่มต้น ปิด) */
+function TenantMfaBox() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['tenant-security'], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
+  const [ask, setAsk] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<unknown>(null);
+  const save = async (on: boolean) => {
+    setBusy(true); setErr(null);
+    try { await api.put('/api/v1/tenant/security', { require_mfa: on }); toast(on ? 'บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้แล้ว' : 'เลิกบังคับยืนยันตัวตนสองขั้นแล้ว (ผู้ดูแลระบบยังบังคับ)'); setAsk(null); qc.invalidateQueries({ queryKey: ['tenant-security'] }); qc.invalidateQueries({ queryKey: ['users'] }); }
+    catch (e) { setErr(e); } finally { setBusy(false); }
+  };
+  if (!q.data) return null;
+  return (
+    <fieldset className="box"><legend>ความปลอดภัยการเข้าระบบ</legend>
+      <label className="check"><input type="checkbox" checked={q.data.require_mfa} disabled={busy} onChange={(e) => setAsk(e.target.checked)} aria-label="บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้" /> บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้</label>
+      <p className="small muted">{q.data.require_mfa ? `เปิดอยู่ — ผู้ใช้ที่ยังไม่ตั้ง (${q.data.without_mfa} จาก ${q.data.users} คน) จะถูกพาไปหน้าตั้งค่าทันทีหลังเข้าระบบ ก่อนใช้งานอื่น` : `ปิดอยู่ — บังคับเฉพาะผู้ดูแลระบบ · ผู้ใช้ที่ยังไม่ตั้ง ${q.data.without_mfa} จาก ${q.data.users} คน`} · ใช้แอป Google/Microsoft Authenticator บนมือถือ</p>
+      <ErrorBox error={err} />
+      {ask !== null && <Modal title={ask ? 'บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้' : 'เลิกบังคับยืนยันตัวตนสองขั้น'} size="confirm" onClose={() => setAsk(null)}
+        footer={<><button onClick={() => setAsk(null)}>ยกเลิก</button><button className="primary" autoFocus disabled={busy} onClick={() => save(ask)}>{busy ? 'กำลังบันทึก…' : 'ยืนยัน'}</button></>}>
+        <p>{ask ? `ผู้ใช้ทุกคนของกิจการต้องตั้งยืนยันตัวตนสองขั้น — ผู้ที่ยังไม่ตั้ง (${q.data.without_mfa} คน) และ session ที่เปิดอยู่ จะถูกพาไปหน้าตั้งค่าทันทีในการใช้งานครั้งถัดไป · ถ้าคุณเองยังไม่ตั้ง ต้องตั้งก่อนใช้งานต่อ` : 'ผู้ใช้ทั่วไปจะเลือกเปิด/ปิดยืนยันตัวตนสองขั้นเองได้ · ผู้ดูแลระบบยังบังคับเหมือนเดิม'}</p>
+      </Modal>}
+    </fieldset>
+  );
+}
 
 /** กลุ่มผู้ใช้ + แฟ้มผู้ใช้งานระบบ — คู่มือบทที่ 23 S-SEC-01/02 · สิทธิ์ 7 ชนิดรายเมนูที่หน้า /settings/permissions */
 export function UsersPage() {
@@ -19,12 +46,15 @@ export function UsersPage() {
   const [edit, setEdit] = useState<User | 'new' | null>(null);
   const [addGroup, setAddGroup] = useState(false);
   const rs = useRowSelect(q.data?.users);
+  const sec = useQuery({ enabled: !!me?.user.is_admin && !!me?.user.tenant_id, queryKey: ['tenant-security'], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
+  const mfaAll = !!sec.data?.require_mfa;
   if (!me?.user.is_admin) return <div className="page"><div className="notebox">เฉพาะผู้ดูแลระบบ</div></div>;
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="ผู้ใช้งานระบบ" lead="ผู้ใช้ในกลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · ผู้ใช้อื่นเข้าได้เฉพาะบริษัทที่กำหนด ตามระดับอนุมัติ (0–4 พนักงาน · 5–8 หัวหน้าแผนก · 9 ผู้จัดการระบบ) และจำกัดเพิ่มด้วยสิทธิ์รายเมนูถ้าเปิดตรวจสอบสิทธิ์"
         actions={<><button onClick={() => nav('/settings/permissions')}>สิทธิ์รายเมนู</button><button onClick={() => setAddGroup(true)}>+ เพิ่มกลุ่ม</button></>} />
       <ErrorBox error={q.error} />
+      {me.user.tenant_id && <TenantMfaBox />}
       <MasterBar rs={rs} word="ผู้ใช้" label={(u) => `${u.username} ${u.display_name}`} onAdd={() => setEdit('new')} onEdit={(u) => setEdit(u)} />
       <div className="table-wrap">
         <table className="grid">
@@ -36,7 +66,7 @@ export function UsersPage() {
                 <td className="small">{u.group_code === 'ADMIN' ? 'ทุกบริษัท' : u.companies.map((c) => me.companies.find((x) => x.id === c)?.code ?? '?').join(', ')}</td>
                 <td className="small">{appsText(u)}</td>
                 <td className="small">{u.last_login_at ? new Date(u.last_login_at).toLocaleString('th-TH') : '—'}</td>
-                <td>{u.mfa_enabled ? <Pill tone="n">เปิด</Pill> : u.group_code === 'ADMIN' ? <Pill tone="d">ยังไม่ตั้ง</Pill> : <span className="muted">—</span>}</td>
+                <td>{u.mfa_enabled ? <Pill tone="n">เปิด</Pill> : u.group_code === 'ADMIN' || mfaAll ? <Pill tone="d">ยังไม่ตั้ง</Pill> : <span className="muted">—</span>}</td>
                 <td>{u.status === 'A' ? 'ใช้งาน' : 'ระงับ'}{u.locked_until && <> <Pill tone="c">ล็อกถึง {new Date(u.locked_until).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</Pill></>}</td>
               </tr>
             ))}

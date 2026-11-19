@@ -21,6 +21,7 @@ CREATE TABLE sys_tenant (
   purge_after date,
   purged_at timestamptz,
   moved_to varchar(200),
+  require_mfa boolean DEFAULT false NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -46,6 +47,7 @@ COMMENT ON COLUMN sys_tenant.terminated_on IS 'วันที่เลิกใ
 COMMENT ON COLUMN sys_tenant.purge_after IS 'ลบข้อมูลได้ตั้งแต่วันนี้ (เลิกใช้บริการ + 90 วัน ให้ลูกค้าขอสำเนาข้อมูลก่อน)';
 COMMENT ON COLUMN sys_tenant.purged_at IS 'ลบข้อมูลทั้งหมดของลูกค้าแล้วเมื่อ (เหลือเฉพาะรหัสและแฟ้มบันทึกเหตุการณ์)';
 COMMENT ON COLUMN sys_tenant.moved_to IS 'ย้ายไปใช้เซิร์ฟเวอร์/ฐานข้อมูลแยกแล้ว: ที่อยู่ใหม่ (T0.18) — ผู้ใช้เข้าระบบที่นี่ไม่ได้ ระบบบอกที่อยู่ใหม่';
+COMMENT ON COLUMN sys_tenant.require_mfa IS 'บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ของลูกค้านี้ (ผู้ดูแลระบบของลูกค้าตั้ง · ค่าเริ่มต้น ปิด — ผู้ดูแลระบบบังคับเสมอ · ไม่ใช้กับเจ้าหน้าที่ผู้ให้บริการ · HANDOFF 146)';
 COMMENT ON COLUMN sys_tenant.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN sys_tenant.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN sys_tenant.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';

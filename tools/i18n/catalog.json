@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 144,
+"n": 145,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -1664,6 +1664,27 @@
 ]
 },
 {
+"th": "เพิ่ม",
+"n": 16,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Backup.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "เลขที่เอกสาร",
 "n": 16,
 "files": [
@@ -1792,26 +1813,6 @@
 "apps/server/src/modules/gl/reports.ts",
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/gl-link.ts"
-]
-},
-{
-"th": "เพิ่ม",
-"n": 15,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -2819,6 +2820,19 @@
 ]
 },
 {
+"th": "คืนเงินมัดจำ",
+"n": 8,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/server/src/modules/backup.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "งบประมาณ",
 "n": 8,
 "files": [
@@ -3172,18 +3186,6 @@
 "apps/web/src/pages/settings/Permissions.tsx",
 "apps/web/src/pages/settings/Users.tsx",
 "packages/core/src/journal-import.ts"
-]
-},
-{
-"th": "คืนเงินมัดจำ",
-"n": 7,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -4840,6 +4842,14 @@
 ]
 },
 {
+"th": "ความปลอดภัยการเข้าระบบ",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/Users.tsx",
+"packages/core/src/pdpa.ts"
+]
+},
+{
 "th": "คำอธิบายอังกฤษ",
 "n": 4,
 "files": [
@@ -5174,6 +5184,16 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/server/src/modules/print.ts",
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "ยืนยัน",
+"n": 4,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/settings/TwoFactor.tsx",
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -5817,14 +5837,6 @@
 ]
 },
 {
-"th": "ความปลอดภัยการเข้าระบบ",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/Users.tsx",
-"packages/core/src/pdpa.ts"
-]
-},
-{
 "th": "คำขอ",
 "n": 3,
 "files": [
@@ -6200,6 +6212,13 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้",
+"n": 3,
+"files": [
 "apps/web/src/pages/settings/Users.tsx"
 ]
 },
@@ -6588,15 +6607,6 @@
 ]
 },
 {
-"th": "ยืนยัน",
-"n": 3,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/Login.tsx",
-"apps/web/src/pages/settings/TwoFactor.tsx"
-]
-},
-{
 "th": "ยืนยันรหัสผ่าน",
 "n": 3,
 "files": [
@@ -6629,6 +6639,14 @@
 "files": [
 "apps/web/src/pages/Login.tsx",
 "apps/web/src/pages/Signup.tsx"
+]
+},
+{
+"th": "รหัสผ่านของแฟ้ม",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -7885,6 +7903,14 @@
 ]
 },
 {
+"th": "กำลังบันทึก…",
+"n": 2,
+"files": [
+"apps/web/src/components/ItemImages.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "กำลังสร้าง…",
 "n": 2,
 "files": [
@@ -8841,6 +8867,14 @@
 "files": [
 "apps/web/src/pages/settings/Import.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx"
+]
+},
+{
+"th": "ตาราง {0}",
+"n": 2,
+"files": [
+"apps/server/src/modules/backup.ts",
+"apps/server/src/modules/data-tables.ts"
 ]
 },
 {
@@ -10568,6 +10602,13 @@
 "files": [
 "apps/server/src/modules/company.ts",
 "apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "รหัสผ่านของแฟ้มผู้ใช้",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -12596,6 +12637,13 @@
 ]
 },
 {
+"th": "แฟ้มข้อมูลสำรอง",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "แฟ้มบันทึกเหตุการณ์ทำงาน",
 "n": 2,
 "files": [
@@ -12617,6 +12665,21 @@
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "แฟ้มสำรองผู้ใช้",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx",
+"apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "แฟ้มสำรองผู้ใช้งาน",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -13243,6 +13306,13 @@
 ]
 },
 {
+"th": "%รอเครดิต%",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
 "th": "('/api/v1/pay/w50/issue', {0}); toast(r.issued ? `ออกเลขที่หนังสือรับรอง ${1} ฉบับแล้ว` : 'ทุกคนมีเลขที่แล้ว'); qc.invalidateQueries({2}); } catch (e) {3} }; const printW50 = (copies: Array",
 "n": 1,
 "files": [
@@ -13513,6 +13583,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
+]
+},
+{
+"th": "(ปรับ: {0})",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -13835,6 +13912,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "); } /** * สำรอง / ทดสอบ / นำข้อมูลสำรองมาใช้ (คู่มือบทที่ 20 S-DM-02/03/04) + ข้อมูลผู้ใช้งาน (บทที่ 23 S-SEC-07/08) * แฟ้มสำรองเข้ารหัสด้วยรหัสผ่านที่ผู้ใช้ตั้ง (HANDOFF 146) · เก็บที่เครื่องผู้ใช้ (ดาวน์โหลด) — แนะนำเก็บสื่อภายนอก แยกชุดตามวันที่ ไม่เขียนทับ * แฟ้มจากโปรแกรมรุ่นเก่ากว่านำกลับได้ ระบบปรับให้อัตโนมัติ · ตรวจจำนวนแถว/ยอดใบสำคัญหลังนำกลับ */ export function BackupPage() {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -14290,6 +14374,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/BranchPick.tsx"
+]
+},
+{
+"th": "0068: รูปแบบคำสั่งเปลี่ยน",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -15798,6 +15889,13 @@
 ]
 },
 {
+"th": "VAT ของมัดจำที่คืน",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
 "th": "VAT ของรายการหัก",
 "n": 1,
 "files": [
@@ -16435,6 +16533,13 @@
 ]
 },
 {
+"th": "{0} · ใช้แอป Google/Microsoft Authenticator บนมือถือ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "{0} · 🔍/F4 เลือกต้นแบบ · 📋/Ctrl+F6 คัดลอกจากใบสำคัญอื่น",
 "n": 1,
 "files": [
@@ -16610,6 +16715,20 @@
 ]
 },
 {
+"th": "{0} รหัสผ่าน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "{0} รหัสผ่านอีกครั้ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "{0} รอบ",
 "n": 1,
 "files": [
@@ -16771,6 +16890,13 @@
 ]
 },
 {
+"th": "{0} — ตั้งรหัสผ่านของแฟ้ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "{0} — ต้องระดับ {1} · {2} · พิมพ์ซ้ำระดับ {3}",
 "n": 1,
 "files": [
@@ -16782,6 +16908,13 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "{0} — ต้องใช้รหัสจากมือถือทุกครั้งที่เข้าระบบ เพื่อป้องกันบัญชีถูกขโมย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/TwoFactor.tsx"
 ]
 },
 {
@@ -17702,6 +17835,13 @@
 ]
 },
 {
+"th": "· ปรับจากรุ่นเก่าให้แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "· ปรับปรุง {0}",
 "n": 1,
 "files": [
@@ -17849,6 +17989,13 @@
 ]
 },
 {
+"th": "· เดบิต = เครดิต ✔",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "· เทียบยอดที่ย้ายมาจาก Express",
 "n": 1,
 "files": [
@@ -17909,6 +18056,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "· ⚠ เดบิตไม่เท่าเครดิต (ตามแฟ้มสำรอง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -18633,13 +18787,6 @@
 ]
 },
 {
-"th": "กำลังบันทึก…",
-"n": 1,
-"files": [
-"apps/web/src/components/ItemImages.tsx"
-]
-},
-{
 "th": "กำลังประมวลผล…",
 "n": 1,
 "files": [
@@ -19008,6 +19155,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "กิจการของคุณกำหนดให้ทุกผู้ใช้ (รวม {0})",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "กิจการของคุณกำหนดให้ทุกผู้ใช้ตั้งค่ายืนยันตัวตนสองขั้นก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ",
+"n": 1,
+"files": [
+"apps/server/src/modules/security.ts"
 ]
 },
 {
@@ -19669,7 +19830,7 @@
 ]
 },
 {
-"th": "ข้อมูลทั้งหมดของบริษัทนี้ (เอกสาร ใบสำคัญ แฟ้มหลัก ค่าเริ่มต้น) — สำรองทุกวันหลังเลิกงาน เก็บไว้หลายชุด",
+"th": "ข้อมูลทั้งหมดของบริษัทนี้ (เอกสาร ใบสำคัญ แฟ้มหลัก ค่าเริ่มต้น) เข้ารหัสด้วยรหัสผ่านที่ตั้ง — สำรองทุกวันหลังเลิกงาน เก็บไว้หลายชุด",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
@@ -19739,7 +19900,7 @@
 ]
 },
 {
-"th": "ข้อมูลปัจจุบันทั้งหมดของบริษัท {0} จะถูกแทนที่ด้วยข้อมูลในแฟ้มสำรอง — รายการที่ทำหลังวันสำรองจะหายไป ควรสำรองข้อมูลปัจจุบันเก็บไว้ก่อน",
+"th": "ข้อมูลปัจจุบันทั้งหมดของบริษัท {0} จะถูกแทนที่ด้วยข้อมูลในแฟ้มสำรอง — รายการที่ทำหลังวันสำรองจะหายไป ควรสำรองข้อมูลปัจจุบันเก็บไว้ก่อน · ระบบตรวจจำนวนแถวและยอดใบสำคัญให้ ไม่ตรง = ยกเลิกทั้งหมด ข้อมูลเดิมไม่หาย",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
@@ -19890,6 +20051,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "คงสิทธิ์สำรองข้อมูลของผู้ใช้ระดับ 5–8",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -24142,6 +24310,13 @@
 ]
 },
 {
+"th": "ตกลง — โหลดหน้าจอใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "ตรงกับผู้จำหน่าย {0} {1} (เลขผู้เสียภาษี{2} ตรงกัน){3}",
 "n": 1,
 "files": [
@@ -24786,6 +24961,13 @@
 ]
 },
 {
+"th": "ตั้งได้เฉพาะผู้ดูแลระบบของลูกค้า — เข้าระบบด้วยผู้ดูแลของกิจการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/security.ts"
+]
+},
+{
 "th": "ตามกฎหมาย",
 "n": 1,
 "files": [
@@ -24947,13 +25129,6 @@
 ]
 },
 {
-"th": "ตาราง {0}",
-"n": 1,
-"files": [
-"apps/server/src/modules/data-tables.ts"
-]
-},
-{
 "th": "ตาราง {0} {1}",
 "n": 1,
 "files": [
@@ -24965,6 +25140,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "ตารางข้อมูลตั้งต้น (คำนำหน้าชื่อ ตำแหน่ง …)",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -26634,6 +26816,20 @@
 ]
 },
 {
+"th": "นำข้อมูลกลับแล้วจำนวนแถวไม่ตรงกับแฟ้ม ({0}) — ยกเลิกแล้ว ข้อมูลเดิมยังอยู่ครบ ติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "นำข้อมูลกลับแล้วยอดใบสำคัญไม่ตรงกับแฟ้ม (แฟ้ม {0} ใบ เดบิต {1} เครดิต {2} · ได้ {3} ใบ {4} / {5}) — ยกเลิกแล้ว ข้อมูลเดิมยังอยู่ครบ",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
 "th": "นำข้อมูลจาก Express",
 "n": 1,
 "files": [
@@ -26648,10 +26844,17 @@
 ]
 },
 {
-"th": "นำข้อมูลผู้ใช้กลับแล้ว ({0} รายการ)",
+"th": "นำข้อมูลผู้ใช้กลับแล้ว ({0} รายการ){1}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "นำข้อมูลผู้ใช้กลับแล้วจำนวนไม่ตรงกับแฟ้ม ({0}) — ยกเลิกแล้ว ข้อมูลเดิมยังอยู่ครบ",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -27446,7 +27649,7 @@
 ]
 },
 {
-"th": "บริษัท {0} {1} — แฟ้มสำรองบีบอัดและตรวจความสมบูรณ์ได้ · นำกลับได้เฉพาะบริษัทเดียวกันกับที่สำรอง ไม่กระทบบริษัทอื่น",
+"th": "บริษัท {0} {1} — แฟ้มสำรองเข้ารหัสด้วยรหัสผ่านที่ตั้ง ตรวจความสมบูรณ์ได้ · นำกลับได้เฉพาะบริษัทเดียวกันกับที่สำรอง ไม่กระทบบริษัทอื่น · แฟ้มจากโปรแกรมรุ่นเก่ากว่าก็นำกลับได้",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
@@ -27607,6 +27810,13 @@
 ]
 },
 {
+"th": "บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "บังคับให้ป้อนคลังสินค้าที่ใบสั่งขาย",
 "n": 1,
 "files": [
@@ -27698,7 +27908,7 @@
 ]
 },
 {
-"th": "บัญชี {0} เป็นผู้ดูแลระบบ — ต้องใช้รหัสจากมือถือทุกครั้งที่เข้าระบบ เพื่อป้องกันบัญชีถูกขโมย",
+"th": "บัญชี {0} เป็นผู้ดูแลระบบ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
@@ -28059,6 +28269,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/wts-living.ts"
+]
+},
+{
+"th": "บัญชีมาตรฐาน ภ.พ.36 / ภาษีถูกหักเรียกคืน",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -29763,6 +29980,13 @@
 ]
 },
 {
+"th": "ประเภทเอกสาร คืนเงินมัดจำ (RD)",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
 "th": "ประเภทเอกสารนี้มีเอกสารแล้ว เปลี่ยนหมวดเอกสารไม่ได้",
 "n": 1,
 "files": [
@@ -29781,6 +30005,13 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "ปรับข้อมูลจากรุ่น {0} ให้แล้ว{1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -30145,6 +30376,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/ModuleSwitches.tsx"
+]
+},
+{
+"th": "ปิดอยู่ — บังคับเฉพาะผู้ดูแลระบบ · ผู้ใช้ที่ยังไม่ตั้ง {0} จาก {1} คน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -30761,6 +30999,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ActivityLog.tsx"
+]
+},
+{
+"th": "ป้อนรหัสผ่านอีกครั้ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -31667,7 +31912,7 @@
 ]
 },
 {
-"th": "ผู้ใช้ กลุ่มผู้ใช้ รหัสผ่าน การผูกบริษัท และตารางสิทธิ์ของลูกค้ารายนี้ (S-SEC-07/08) — นำกลับแล้วรหัสผ่านที่เปลี่ยนหลังวันสำรองจะกลับเป็นแบบเดิม",
+"th": "ผู้ใช้ กลุ่มผู้ใช้ รหัสผ่าน การผูกบริษัท และตารางสิทธิ์ของลูกค้ารายนี้ (S-SEC-07/08) เข้ารหัสด้วยรหัสผ่านที่ตั้ง — นำกลับแล้วรหัสผ่านที่เปลี่ยนหลังวันสำรองจะกลับเป็นแบบเดิม",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
@@ -31723,10 +31968,24 @@
 ]
 },
 {
+"th": "ผู้ใช้ทั่วไปจะเลือกเปิด/ปิดยืนยันตัวตนสองขั้นเองได้ · ผู้ดูแลระบบยังบังคับเหมือนเดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ผู้ใช้ที่บันทึกเอกสารนี้ถูกระงับหรือไม่มีที่สำนักงานใหญ่",
 "n": 1,
 "files": [
 "apps/server/src/modules/sync/central.ts"
+]
+},
+{
+"th": "ผู้ใช้ทุกคนของกิจการต้องตั้งยืนยันตัวตนสองขั้น — ผู้ที่ยังไม่ตั้ง ({0} คน) และ session ที่เปิดอยู่ จะถูกพาไปหน้าตั้งค่าทันทีในการใช้งานครั้งถัดไป · ถ้าคุณเองยังไม่ตั้ง ต้องตั้งก่อนใช้งานต่อ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -33680,6 +33939,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "มูลค่าภาษีของเอกสารราคารวม VAT",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -36665,6 +36931,13 @@
 ]
 },
 {
+"th": "รหัสที่ตั้งไว้ตอนสำรอง (แฟ้มรุ่นก่อนที่ไม่เข้ารหัสเว้นว่างได้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "รหัสที่ใช้อ้างอิงในหน้าจออื่น ๆ — เพิ่ม แก้ไข ลบได้ตลอดเวลา แต่รหัสที่ถูกนำไปใช้ในการเดินรายการแล้ว ห้ามลบหรือแก้รหัส (แก้ชื่อได้) · แผนกกำหนดที่ เริ่มระบบ › แผนก · สมุดรายวันที่ บัญชี › สร้างสมุดรายวัน",
 "n": 1,
 "files": [
@@ -36819,13 +37092,6 @@
 ]
 },
 {
-"th": "รหัสผ่านของแฟ้ม",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
 "th": "รหัสผ่านของแฟ้ม (อย่างน้อย 12 ตัว)",
 "n": 1,
 "files": [
@@ -36837,6 +37103,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/tenant-move.ts"
+]
+},
+{
+"th": "รหัสผ่านของแฟ้มสำรองต้องยาวอย่างน้อย {0} ตัวอักษร",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "รหัสผ่านของแฟ้มสำรองไม่ถูกต้อง — ป้อนรหัสที่ตั้งไว้ตอนสำรอง (ตัวพิมพ์เล็ก/ใหญ่และภาษาต้องตรง)",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -36854,6 +37134,13 @@
 ]
 },
 {
+"th": "รหัสผ่านทั้งสองช่องไม่ตรงกัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "รหัสผ่านยาวเกิน 200 ตัวอักษร",
 "n": 1,
 "files": [
@@ -36861,10 +37148,24 @@
 ]
 },
 {
+"th": "รหัสผ่านยาวเกินไป",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
 "th": "รหัสผ่านสั้นเกินไป — ต้อง{0}",
 "n": 1,
 "files": [
 "packages/core/src/password.ts"
+]
+},
+{
+"th": "รหัสผ่านอย่างน้อย {0} ตัวอักษร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -37026,6 +37327,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "รหัสลูกค้าไม่ถูกต้อง",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -37649,6 +37957,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Defaults.tsx"
+]
+},
+{
+"th": "ระบบไม่รู้จักรุ่นโครงสร้างข้อมูลของแฟ้มนี้ ({0}) — ติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -38937,6 +39252,13 @@
 "n": 1,
 "files": [
 "apps/web/src/App.tsx"
+]
+},
+{
+"th": "รุ่นเก่ากว่า — นำกลับได้ ระบบจะปรับให้อัตโนมัติ",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -40337,6 +40659,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/opening.ts"
+]
+},
+{
+"th": "ลูกหนี้อื่น%",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -42356,6 +42685,13 @@
 ]
 },
 {
+"th": "สำรองข้อมูลทั้งบริษัทได้เฉพาะผู้ดูแลระบบ หรือผู้ที่ผู้ดูแลให้สิทธิ์ \"เพิ่ม\" ที่เมนูนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "สำรองข้อมูลผู้ใช้",
 "n": 1,
 "files": [
@@ -42370,14 +42706,14 @@
 ]
 },
 {
-"th": "สำรองข้อมูลผู้ใช้แล้ว {0}",
+"th": "สำรองข้อมูลผู้ใช้แล้ว {0} (เข้ารหัสแล้ว)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
-"th": "สำรองข้อมูลแล้ว {0}",
+"th": "สำรองข้อมูลแล้ว {0} (เข้ารหัสแล้ว)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
@@ -42479,6 +42815,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "สิทธิ์เมนู บันทึกเงินมัดจำยกมา",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -43420,6 +43763,13 @@
 ]
 },
 {
+"th": "หมายเหตุรายบรรทัดย้ายเข้าบรรทัดเอกสาร",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
 "th": "หมายเหตุสั้น",
 "n": 1,
 "files": [
@@ -43956,6 +44306,13 @@
 "n": 1,
 "files": [
 "packages/core/src/password.ts"
+]
+},
+{
+"th": "อย่างน้อย {0} ตัวอักษร · จดเก็บไว้ ลืมแล้วเปิดแฟ้มไม่ได้ (ผู้ให้บริการกู้ให้ไม่ได้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -47333,6 +47690,13 @@
 ]
 },
 {
+"th": "เปิดอยู่ — ผู้ใช้ที่ยังไม่ตั้ง ({0} จาก {1} คน) จะถูกพาไปหน้าตั้งค่าทันทีหลังเข้าระบบ ก่อนใช้งานอื่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "เปิดเอกสาร {0}{1}",
 "n": 1,
 "files": [
@@ -49129,6 +49493,20 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "เลิกบังคับยืนยันตัวตนสองขั้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "เลิกบังคับยืนยันตัวตนสองขั้นแล้ว (ผู้ดูแลระบบยังบังคับ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -51232,13 +51610,6 @@
 ]
 },
 {
-"th": "แฟ้มข้อมูลสำรอง",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Backup.tsx"
-]
-},
-{
 "th": "แฟ้มจากที่อื่นหรือจาก OCR: ตัวเลขแบบข้อความ จุลภาค ช่องว่าง เลขไทย ขีด (-) แทนศูนย์ วันที่แบบข้อความหรือช่องวันที่ของ Excel เลขผู้เสียภาษีที่เลข 0 ข้างหน้าหาย รับได้ — ค่าที่ไม่แน่ใจระบบแจ้งแถวให้แก้",
 "n": 1,
 "files": [
@@ -51257,20 +51628,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/express-import.ts"
-]
-},
-{
-"th": "แฟ้มนี้มาจากโปรแกรมรุ่นโครงสร้างข้อมูลอื่น ({0}) — นำกลับไม่ได้",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Backup.tsx"
-]
-},
-{
-"th": "แฟ้มนี้เป็นของบริษัทอื่น — เลือกบริษัท {0} ก่อนนำข้อมูลกลับ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -51400,6 +51757,20 @@
 ]
 },
 {
+"th": "แฟ้มสำรอง",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "แฟ้มสำรองนี้เข้ารหัสไว้ — ป้อนรหัสผ่านของแฟ้มที่ตั้งไว้ตอนสำรอง",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
 "th": "แฟ้มสำรองนี้เป็นของบริษัท {0} {1} — เลือกบริษัทนั้นก่อนนำข้อมูลกลับ (นำข้อมูลข้ามบริษัทไม่ได้)",
 "n": 1,
 "files": [
@@ -51407,7 +51778,7 @@
 ]
 },
 {
-"th": "แฟ้มสำรองผู้ใช้งาน",
+"th": "แฟ้มสำรองบริษัท",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
@@ -51415,13 +51786,6 @@
 },
 {
 "th": "แฟ้มสำรองผู้ใช้นี้เป็นของลูกค้ารายอื่น นำมาใช้ไม่ได้",
-"n": 1,
-"files": [
-"apps/server/src/modules/backup.ts"
-]
-},
-{
-"th": "แฟ้มสำรองผู้ใช้มาจากโปรแกรมรุ่นอื่น — ใช้แฟ้มที่ทำจากรุ่นเดียวกัน",
 "n": 1,
 "files": [
 "apps/server/src/modules/backup.ts"
@@ -51442,14 +51806,28 @@
 ]
 },
 {
-"th": "แฟ้มสำรองมาจากโปรแกรมรุ่นโครงสร้างข้อมูล {0} แต่ระบบปัจจุบันเป็น {1} — ใช้แฟ้มสำรองที่ทำจากรุ่นเดียวกัน",
+"th": "แฟ้มสำรองมาจากโปรแกรมรุ่นใหม่กว่า (โครงสร้างข้อมูล {0}) แต่ระบบนี้เป็นรุ่น {1} — อัปเดตโปรแกรมก่อน แล้วจึงนำข้อมูลกลับ",
 "n": 1,
 "files": [
 "apps/server/src/modules/backup.ts"
 ]
 },
 {
-"th": "แฟ้มสำรองมีตารางที่ระบบไม่รู้จัก: {0}",
+"th": "แฟ้มสำรองมีข้อมูลที่ระบบรุ่นนี้ไม่มีแล้ว ({0}{1}) — นำกลับไม่ได้ ติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "แฟ้มสำรองรุ่นโครงสร้างข้อมูล {0} เก่าเกินกว่าที่ระบบนำกลับได้ — ติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "แฟ้มสำรองเสียหาย (รหัสผ่านถูกต้องแต่ข้อมูลในแฟ้มถูกแก้หรือไม่ครบ) — ใช้แฟ้มสำรองชุดอื่น",
 "n": 1,
 "files": [
 "apps/server/src/modules/backup.ts"
@@ -51463,7 +51841,21 @@
 ]
 },
 {
+"th": "แฟ้มสำรองเสียหาย อ่านไม่ได้ (ไม่ใช่แฟ้ม .buddy ของ Buddy Account) — ใช้แฟ้มสำรองชุดอื่น",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
 "th": "แฟ้มสำรองไม่สมบูรณ์ (ข้อมูลไม่ตรงกับที่บันทึกไว้) — ใช้แฟ้มสำรองชุดอื่น",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "แฟ้มสำรองไม่สมบูรณ์ (ยอดใบสำคัญในแฟ้มไม่ตรงกับหัวแฟ้ม) — ใช้แฟ้มสำรองชุดอื่น",
 "n": 1,
 "files": [
 "apps/server/src/modules/backup.ts"
@@ -53168,6 +53560,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/journals.ts"
+]
+},
+{
+"th": "ใบสำคัญ {0} ใบ · เดบิต {1} · เครดิต {2}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "ใบสำคัญ {0} ใบ · เดบิต {1} · เครดิต {2} {3}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -55908,6 +56314,13 @@
 ]
 },
 {
+"th": "⚠ แฟ้มรุ่นก่อนที่ไม่ได้เข้ารหัส — นำกลับได้ แต่ใครได้แฟ้มไปก็เปิดอ่านได้ ควรสำรองใหม่ (เข้ารหัส) แล้วลบแฟ้มนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "⚡ ออฟไลน์",
 "n": 1,
 "files": [
@@ -55999,6 +56412,20 @@
 ]
 },
 {
+"th": "✔ {0} — เข้ารหัสแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "✔ นำข้อมูลสำรองของ {0} กลับแล้ว — ตรวจครบ {1} ตาราง {2} แถว ตรงกับแฟ้ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "✔ รับรอง",
 "n": 1,
 "files": [
@@ -56014,6 +56441,13 @@
 },
 {
 "th": "✔ แฟ้มสมบูรณ์ — บริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "✕ แฟ้มนี้เป็นของบริษัทอื่น — เลือกบริษัท {0} ก่อนนำข้อมูลกลับ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
@@ -56262,6 +56696,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
+"th": "🔒 แฟ้มเข้ารหัสแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {

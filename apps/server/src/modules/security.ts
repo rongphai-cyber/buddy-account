@@ -134,11 +134,13 @@ export async function finishSecondStep(db: Db, ticket: string, code: string, ip:
   throw new AppError(401, 'MFA_INVALID', 'รหัสยืนยันไม่ถูกต้อง — ใช้รหัส 6 หลักล่าสุดจากแอป (ตรวจเวลาในมือถือให้ตรง) หรือรหัสสำรอง');
 }
 
-/** ผู้ดูแลระบบที่ยังไม่ตั้งยืนยันตัวตนสองขั้น ใช้ได้เฉพาะ API เหล่านี้ */
+/** ผู้ที่ต้องตั้งยืนยันตัวตนสองขั้นแต่ยังไม่ตั้ง (ผู้ดูแลระบบ · ผู้ใช้ของลูกค้าที่บังคับทุกผู้ใช้) ใช้ได้เฉพาะ API เหล่านี้ */
 export const MFA_SETUP_ALLOWED = new Set(['GET /api/v1/auth/me', 'POST /api/v1/auth/logout', 'GET /api/v1/auth/2fa', 'POST /api/v1/auth/2fa/setup', 'POST /api/v1/auth/2fa/enable', 'GET /api/v1/menu', 'POST /api/v1/auth/password']);
+/** ผู้ใช้นี้ต้องมียืนยันตัวตนสองขั้นหรือไม่ (ผู้ดูแลระบบ หรือ ลูกค้าบังคับทุกผู้ใช้) */
+export const mfaRequiredFor = (a: AuthContext) => (a.isAdmin && adminMfaRequired()) || !!a.tenantRequireMfa;
 export function checkMfaGate(req: FastifyRequest, method: string, url: string) {
   if (req.auth?.mfaSetupRequired && !MFA_SETUP_ALLOWED.has(`${method} ${url}`))
-    throw new AppError(403, 'MFA_SETUP_REQUIRED', 'ผู้ดูแลระบบต้องตั้งค่ายืนยันตัวตนสองขั้นก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ');
+    throw new AppError(403, 'MFA_SETUP_REQUIRED', req.auth.isAdmin ? 'ผู้ดูแลระบบต้องตั้งค่ายืนยันตัวตนสองขั้นก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ' : 'กิจการของคุณกำหนดให้ทุกผู้ใช้ตั้งค่ายืนยันตัวตนสองขั้นก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ');
 }
 
 async function checkPassword(db: Db, userId: string, password: string) {
@@ -150,7 +152,7 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/auth/2fa', async (req) => {
     const a = requireAuth(req);
     const s = await secOf(db, a.userId);
-    return { enabled: !!s?.totp_enabled, required: a.isAdmin && adminMfaRequired(), recovery_left: Array.isArray(s?.totp_recovery) ? (s!.totp_recovery as string[]).length : 0 };
+    return { enabled: !!s?.totp_enabled, required: mfaRequiredFor(a), recovery_left: Array.isArray(s?.totp_recovery) ? (s!.totp_recovery as string[]).length : 0 };
   });
   /** เริ่มตั้งค่า: สร้างกุญแจใหม่ (ยังไม่เปิดจนกว่าจะยืนยันรหัสจากแอป) */
   app.post('/api/v1/auth/2fa/setup', async (req) => {
@@ -193,7 +195,31 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
     await checkPassword(db, a.userId, password);
     await setSec(db, a.userId, { totp_secret_enc: null, totp_enabled: false, totp_enabled_at: null, totp_last_step: null, totp_recovery: null });
     await logActivity(db, a, { module: 'SYS', action: 'MFA_DISABLE' });
-    return { ok: true, required: a.isAdmin && adminMfaRequired() };
+    return { ok: true, required: mfaRequiredFor(a) };
+  });
+
+  /**
+   * ผู้ดูแลระบบของลูกค้า: "บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้" (HANDOFF 146 · ค่าเริ่มต้น ปิด) — ตั้งที่ระดับลูกค้า (ผู้ใช้หนึ่งคนเข้าได้หลายบริษัทของลูกค้าเดียวกัน)
+   * เปิดแล้ว: ผู้ใช้ที่ยังไม่ตั้งถูกพาไปหน้าตั้งค่าทันทีหลังเข้าระบบ (และคำขอถัดไปของ session ที่เปิดอยู่) · ไม่กระทบลูกค้ารายอื่นและเจ้าหน้าที่ผู้ให้บริการ
+   */
+  const tenantAdmin = (req: FastifyRequest) => {
+    const a = requireAuth(req);
+    if (!a.isAdmin || !a.tenantId) throw forbidden('ตั้งได้เฉพาะผู้ดูแลระบบของลูกค้า — เข้าระบบด้วยผู้ดูแลของกิจการ');
+    return { ...a, tenantId: a.tenantId };
+  };
+  const tenantSecurity = async (tid: string) => {
+    const t = await db.selectFrom('sys_tenant').select('require_mfa').where('id', '=', tid).executeTakeFirstOrThrow();
+    const u = (await sql<{ users: number; without: number }>`SELECT count(*)::int AS users, count(*) FILTER (WHERE NOT coalesce(s.totp_enabled, false))::int AS without
+        FROM sys_user x LEFT JOIN sys_user_security s ON s.user_id = x.id AND s.deleted_at IS NULL WHERE x.tenant_id = ${tid} AND x.deleted_at IS NULL AND x.status = 'A'`.execute(db)).rows[0]!;
+    return { require_mfa: t.require_mfa, users: u.users, without_mfa: u.without };
+  };
+  app.get('/api/v1/tenant/security', async (req) => tenantSecurity(tenantAdmin(req).tenantId));
+  app.put('/api/v1/tenant/security', async (req) => {
+    const a = tenantAdmin(req);
+    const { require_mfa } = parse(z.object({ require_mfa: z.boolean() }), req.body);
+    await db.updateTable('sys_tenant').set({ require_mfa, updated_by: a.userId }).where('id', '=', a.tenantId).execute();
+    await logActivity(db, a, { module: 'SET.SEC', action: require_mfa ? 'TENANT_MFA_ON' : 'TENANT_MFA_OFF', table: 'sys_tenant', rowId: a.tenantId });
+    return tenantSecurity(a.tenantId);
   });
 
   /** ผู้ดูแล: ปลดล็อก / ล้างยืนยันตัวตนสองขั้นของผู้ใช้ในลูกค้าเดียวกัน (ผู้ให้บริการทำได้ทุกราย) */

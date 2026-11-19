@@ -71,6 +71,14 @@ function tableValue(rows: PermRow[], menu: string, action: Action): string | nul
   return null;
 }
 
+/** การทำงานที่ต้องเป็นผู้ดูแล/ระดับ 9 หรือได้รับสิทธิ์โดยตรง: ดาวน์โหลดแฟ้มสำรองทั้งบริษัท · นำข้อมูลสำรองกลับ */
+export const BACKUP_ADMIN_ONLY = new Set(['OT.BACKUP:add', 'OT.BACKUP:edit']);
+/** แถวสิทธิ์ที่เมนูนี้โดยตรง (ไม่นับ "ทุกระบบ"/เมนูหลัก) ของผู้ใช้ก่อน แล้วของกลุ่ม */
+function explicitGrant(rows: PermRow[], menu: string, action: Action) {
+  const r = rows.find((x) => x.subject_type === 'U' && x.code === menu) ?? rows.find((x) => x.subject_type === 'G' && x.code === menu);
+  return !!r && (r[COL[action]] === 'Y' || r[COL[action]] === 'L');
+}
+
 /** ระบบที่บริษัทปิดไว้ (ข้อกำหนดเจ้าของ: ปิดบางระบบทั้งบริษัท) — รหัสใน MODULE_SWITCHES */
 /** ระบบที่ผู้ใช้ปิดไว้ (หน้า ระบบที่ใช้งาน) */
 export async function modulesOffRaw(db: Db, companyId: string | null): Promise<string[]> {
@@ -92,6 +100,8 @@ function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action, o
   // ผู้ใช้ที่ผู้ดูแลไม่ให้เปิด Buddy (เปิดได้เฉพาะโปรแกรมอื่นจาก Hub · sys_user.app_access): เหลือหน้าเปิดโปรแกรม + รหัสผ่าน
   if (hubOnly(a.apps) && !HUB_ONLY_MENUS.includes(menu)) return { allowed: false, log: false, screenOnly: false };
   if (!baseAllowed(a.approvalLevel, menu, action)) return { allowed: false, log: false, screenOnly: false };
+  // สำรอง (ดาวน์โหลดข้อมูลทั้งบริษัท) / นำข้อมูลสำรองกลับ: ผู้ดูแลระบบหรือระดับ 9 — ระดับต่ำกว่าต้องได้รับสิทธิ์ที่เมนูนี้โดยตรง (แถวสิทธิ์ของผู้ใช้/กลุ่มที่เมนู OT.BACKUP เป็น Y/L) แม้ไม่ได้ตรวจสิทธิ์ก่อนใช้งาน (HANDOFF 146)
+  if (BACKUP_ADMIN_ONLY.has(`${menu}:${action}`) && a.approvalLevel < 9 && !explicitGrant(rows, menu, action)) return { allowed: false, log: false, screenOnly: false };
   if (!a.checkRights) return { allowed: true, log: false, screenOnly: false };
   const v = tableValue(rows, menu, action);
   if (v === 'Y' || v === 'L') return { allowed: true, log: v === 'L', screenOnly: false };
@@ -148,6 +158,7 @@ const MNOTE = (action: Action): Rule => ({ kind: 'menu', menu: 'IC.ITEM', action
 const LOOKUP: Rule = { kind: 'lookup' }, SELF: Rule = { kind: 'self' }, OPEN: Rule = { kind: 'open' };
 export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/health': OPEN, 'GET /api/v1/setup/status': OPEN, 'POST /api/v1/setup': OPEN, 'POST /api/v1/auth/login': OPEN, 'POST /api/v1/auth/login/totp': OPEN,
+  'GET /api/v1/tenant/security': SELF, 'PUT /api/v1/tenant/security': SELF,
   'GET /api/v1/auth/2fa': SELF, 'POST /api/v1/auth/2fa/setup': SELF, 'POST /api/v1/auth/2fa/enable': SELF, 'POST /api/v1/auth/2fa/recovery': SELF, 'POST /api/v1/auth/2fa/disable': SELF,
   'POST /api/v1/users/:id/unlock': SELF, 'POST /api/v1/users/:id/reset-2fa': SELF,
   // T0.12 นำข้อมูลจาก Express (ผู้ดูแลระบบ — ตรวจในตัว API)
@@ -336,8 +347,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/pay/runs/:id/import/template': M('PAY.RUN', 'edit'), 'POST /api/v1/pay/runs/:id/import': M('PAY.RUN', 'edit'),
   'GET /api/v1/pay/filings': M('PAY.TAX', 'read'), 'GET /api/v1/pay/filings/due': M('PAY.TAX', 'read'), 'POST /api/v1/pay/filings': M('PAY.TAX', 'add'), 'POST /api/v1/pay/filings/:id/cancel': M('PAY.TAX', 'cancel'),
   'GET /api/v1/pay/reports/register': M('PAY.RPT', 'read'), 'GET /api/v1/pay/reports/yearly': M('PAY.RPT', 'read'), 'GET /api/v1/pay/reports/cost': M('PAY.RPT', 'read'),
-  'GET /api/v1/backup/company': M('OT.BACKUP', 'add'), 'POST /api/v1/backup/verify': M('OT.BACKUP', 'read'), 'POST /api/v1/backup/restore': M('OT.BACKUP', 'edit'),
-  'GET /api/v1/backup/users': M('SET.SEC', 'read'), 'POST /api/v1/backup/users/restore': M('SET.SEC', 'edit'),
+  'POST /api/v1/backup/company': M('OT.BACKUP', 'add'), 'POST /api/v1/backup/verify': M('OT.BACKUP', 'read'), 'POST /api/v1/backup/restore': M('OT.BACKUP', 'edit'),
+  'POST /api/v1/backup/users': M('SET.SEC', 'read'), 'POST /api/v1/backup/users/restore': M('SET.SEC', 'edit'),
   'GET /api/v1/gl/year-end': M('OT.YE', 'read'), 'POST /api/v1/gl/year-end/inventory-jv': M('OT.YE', 'add'), 'POST /api/v1/gl/year-end/close': M('OT.YE', 'edit'), 'POST /api/v1/gl/year-end/reopen': M('OT.YE', 'cancel'),
   'POST /api/v1/fa/depreciate': M('FA.DEPR', 'add'), 'GET /api/v1/fa/depreciation-periods': M('FA.DEPR', 'read'),
   'GET /api/v1/bank-recon': M('FI.BK.REC', 'read'), 'PUT /api/v1/bank-recon/statement': M('FI.BK.REC', 'edit'), 'POST /api/v1/bank-recon/clear': M('FI.BK.REC', 'edit'),
@@ -408,9 +419,11 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
       const rk = req.headers['x-buddy-replay'];
       const replay = typeof rk === 'string' ? replays.get(rk) : undefined;
       const branch = branchStateOf(database);
-      if (!branch && !replay) return run();
+      // งานที่ต้องทำหลังทรานแซกชันของคำขอ commit แล้ว (ใช้การเชื่อมต่ออื่น เช่น execScript) — ตั้งด้วย afterCommit(req, fn) · คำขอล้ม = ไม่ทำ
+      const finish = async (p: unknown) => { const out = await p; const after = (req as { afterCommit?: () => Promise<void> }).afterCommit; if (after) await after(); return out; };
+      if (!branch && !replay) return finish(run());
       const capture = branch ? branchCapture(database, req, routeKey) ?? undefined : undefined;
-      return syncCtx.run({ ...syncCtx.getStore(), ...(replay ? { replay } : {}), ...(branch ? { branch } : {}), capture }, run);
+      return finish(syncCtx.run({ ...syncCtx.getStore(), ...(replay ? { replay } : {}), ...(branch ? { branch } : {}), capture }, run));
     };
   });
   app.addHook('preHandler', async (req) => {

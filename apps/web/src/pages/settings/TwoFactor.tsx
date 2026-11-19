@@ -88,7 +88,7 @@ export function MfaRequiredPage() {
   return (
     <div className="login" data-tone="home">
       <div className="login-card mfa-card">
-        <div className="login-brand"><b>ตั้งค่ายืนยันตัวตนสองขั้น</b><span>บัญชี {me?.user.username} เป็นผู้ดูแลระบบ — ต้องใช้รหัสจากมือถือทุกครั้งที่เข้าระบบ เพื่อป้องกันบัญชีถูกขโมย</span></div>
+        <div className="login-brand"><b>ตั้งค่ายืนยันตัวตนสองขั้น</b><span>{me?.user.is_admin ? `บัญชี ${me?.user.username} เป็นผู้ดูแลระบบ` : `กิจการของคุณกำหนดให้ทุกผู้ใช้ (รวม ${me?.user.username ?? ''})`} — ต้องใช้รหัสจากมือถือทุกครั้งที่เข้าระบบ เพื่อป้องกันบัญชีถูกขโมย</span></div>
         <TwoFactorSetup onDone={() => { toast('เปิดยืนยันตัวตนสองขั้นแล้ว'); refresh(); }} />
         <button type="button" className="link" onClick={logout}>ออกจากระบบ</button>
       </div>

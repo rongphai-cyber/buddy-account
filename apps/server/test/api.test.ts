@@ -3166,15 +3166,32 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('POST', '/api/v1/gl/year-end/reopen', { fiscal_year_id: y69.id })).status).toBe(404);
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
   });
-  it('backup / verify / restore per company and users (T6.4): replace only this company, tamper checks, cross-company/tenant blocked', async () => {
+  it('backup / verify / restore per company and users (T6.4 · HANDOFF 146): encrypted files, wrong password, old-version restore, totals check, admin-only, cross-company/tenant blocked', async () => {
     const admin = cookie;
     const { gunzipSync, gzipSync } = await import('node:zlib');
-    const raw = async (method: 'GET' | 'POST', url: string, payload?: Buffer) => {
-      const r = await app.inject({ method, url, payload, headers: { ...(cookie ? { cookie } : {}), ...(payload ? { 'content-type': 'application/octet-stream' } : {}) } });
+    const { createHash } = await import('node:crypto');
+    const { readFile } = await import('node:fs/promises');
+    const { unsealBackup, sealBackup } = await import('../src/modules/backup.js');
+    const PW = 'สำรองX-2569';
+    const raw = async (method: 'GET' | 'POST', url: string, payload?: Buffer | object, extra: Record<string, string> = {}) => {
+      const isBuf = Buffer.isBuffer(payload);
+      const r = await app.inject({ method, url, payload: payload as never, headers: { ...(cookie ? { cookie } : {}), ...(isBuf ? { 'content-type': 'application/octet-stream' } : payload ? { 'content-type': 'application/json' } : {}), ...extra } });
       return { status: r.statusCode, buf: r.rawPayload, json: (() => { try { return JSON.parse(r.body); } catch { return null; } })(), disp: String(r.headers['content-disposition'] ?? '') };
     };
+    const withPw = (pw: string, file = 'ทดสอบ.buddy') => ({ 'x-backup-password': encodeURIComponent(pw), 'x-backup-file': encodeURIComponent(file) });
+    /** สร้างแฟ้มสำรองใหม่จากข้อความที่แก้แล้ว (หัวแฟ้มนับแถว/sha256 ใหม่) — จำลองแฟ้มจากโปรแกรมรุ่นเก่า */
+    const rebuild = (text: string, edit: (h: Record<string, unknown>, rows: Array<[string, Record<string, unknown>]>) => Array<[string, Record<string, unknown>]>) => {
+      const nl = text.indexOf('\n');
+      const h = JSON.parse(text.slice(0, nl));
+      const rows = text.slice(nl + 1).split('\n').filter(Boolean).map((l) => { const i = l.indexOf('\t'); return [l.slice(0, i), JSON.parse(l.slice(i + 1))] as [string, Record<string, unknown>]; });
+      const out = edit(h, rows);
+      const body = out.map(([t, r]) => `${t}\t${JSON.stringify(r)}`).join('\n') + '\n';
+      const tables: Record<string, number> = {};
+      for (const [t] of out) tables[t] = (tables[t] ?? 0) + 1;
+      return gzipSync(Buffer.from(JSON.stringify({ ...h, tables, sha256: createHash('sha256').update(body).digest('hex') }) + '\n' + body));
+    };
     const login = async (u: string, p: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: p })).status).toBe(200); };
-    expect((await call('GET', '/api/v1/backup/users')).body.error.message).toMatch(/ผู้ดูแลของลูกค้า/);
+    expect((await raw('POST', '/api/v1/backup/users', { password: PW })).json.error.message).toMatch(/ผู้ดูแลของลูกค้า/);
     expect((await call('POST', '/api/v1/tenants', { code: 'BKUPX', name: 'ลูกค้าสำรอง X', admin_username: 'bx.admin', admin_name: 'ผู้ดูแล X', admin_password: 'passX1234' })).status).toBe(200);
     expect((await call('POST', '/api/v1/tenants', { code: 'BKUPY', name: 'ลูกค้าสำรอง Y', admin_username: 'by.admin', admin_name: 'ผู้ดูแล Y', admin_password: 'passY1234' })).status).toBe(200);
     await login('bx.admin', 'passX1234');
@@ -3187,47 +3204,132 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await jv('10.25')).status).toBe(200);
     const tb = async () => (await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body.totals;
     const before = await tb();
-    // สำรอง → ทดสอบ
-    const b = await raw('GET', '/api/v1/backup/company');
-    expect([b.status, /\d{8}-X1\.buddy/.test(b.disp)]).toEqual([200, true]);
-    const v = (await raw('POST', '/api/v1/backup/verify', b.buf)).json;
-    expect([v.same_company, v.schema_ok, v.company.code, v.rows > 100]).toEqual([true, true, 'X1', true]);
+    // สำรอง (ต้องตั้งรหัสผ่าน ≥ 8) → แฟ้มเข้ารหัส → ทดสอบ (ไม่มีรหัส / รหัสผิด / ถูก)
+    expect((await raw('POST', '/api/v1/backup/company', { password: 'short' })).json.error.message).toMatch(/อย่างน้อย 8/);
+    expect((await raw('GET', '/api/v1/backup/company')).status).not.toBe(200);   // ดาวน์โหลดแบบเดิม (ไม่เข้ารหัส) ไม่มีแล้ว
+    const b = await raw('POST', '/api/v1/backup/company', { password: PW });
+    expect([b.status, /\d{8}-X1\.buddy/.test(b.disp), b.buf.subarray(0, 12).toString()]).toEqual([200, true, 'BUDDYBACKUP2']);
+    expect(b.buf.includes(Buffer.from('ฝ่ายขาย'))).toBe(false);
+    expect((await raw('POST', '/api/v1/backup/verify', b.buf)).json.error.message).toMatch(/เข้ารหัสไว้ — ป้อนรหัสผ่าน/);
+    expect((await raw('POST', '/api/v1/backup/verify', b.buf, withPw('wrong-password'))).json.error.message).toMatch(/รหัสผ่านของแฟ้มสำรองไม่ถูกต้อง/);
+    const v = (await raw('POST', '/api/v1/backup/verify', b.buf, withPw(PW))).json;
+    expect([v.same_company, v.schema_ok, v.schema_status, v.encrypted, v.company.code, v.rows > 100, v.totals.journals, v.totals.debit]).toEqual([true, true, 'same', true, 'X1', true, 1, '10.25']);
+    const broken = Buffer.from(b.buf); broken[broken.length - 5] = broken[broken.length - 5]! ^ 0xff;
+    expect((await raw('POST', '/api/v1/backup/verify', broken, withPw(PW))).json.error.message).toMatch(/เสียหาย \(รหัสผ่านถูกต้อง/);
     expect((await raw('POST', '/api/v1/backup/verify', Buffer.from('not a backup'))).json.error.message).toMatch(/เสียหาย/);
-    const text = gunzipSync(b.buf).toString('utf-8');
+    const text = gunzipSync(unsealBackup(b.buf, PW)).toString('utf-8');
+    expect(JSON.parse(text.slice(0, text.indexOf('\n')))).toMatchObject({ version: 2, totals: { journals: 1, debit: '10.25', credit: '10.25' } });
+    // แฟ้มรุ่นก่อน (gzip ไม่เข้ารหัส): ยังตรวจ/นำกลับได้ พร้อมคำเตือน · แก้เนื้อแฟ้ม = ไม่สมบูรณ์
+    const legacy = gzipSync(Buffer.from(text));
+    expect((await raw('POST', '/api/v1/backup/verify', legacy)).json).toMatchObject({ encrypted: false, schema_ok: true });
     expect((await raw('POST', '/api/v1/backup/verify', gzipSync(Buffer.from(text.replace('ฝ่ายขาย', 'ฝ่ายขโมย'))))).json.error.message).toMatch(/ไม่สมบูรณ์/);
-    // เปลี่ยนข้อมูลหลังสำรอง แล้วนำข้อมูลสำรองกลับ
+    // เปลี่ยนข้อมูลหลังสำรอง แล้วนำข้อมูลสำรองกลับ (ตรวจจำนวนแถว + ยอดใบสำคัญในทรานแซกชัน)
     expect((await call('PUT', `/api/v1/departments/${dept}`, { code: 'D1', name_th: 'ฝ่ายขายใหม่' })).status).toBe(200);
     expect((await call('POST', '/api/v1/departments', { code: 'D2', name_th: 'ฝ่ายบัญชี' })).status).toBe(200);
     expect((await jv('99')).status).toBe(200);
-    expect((await raw('POST', '/api/v1/backup/restore', b.buf)).json.error.message).toMatch(/ป้อน YES/);
-    const r = await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf);
-    expect([r.status, r.json.restored]).toEqual([200, 'X1']);
+    expect((await raw('POST', '/api/v1/backup/restore', b.buf, withPw(PW))).json.error.message).toMatch(/ป้อน YES/);
+    const r = await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf, withPw(PW, '20261119-X1.buddy'));
+    expect([r.status, r.json.restored, r.json.upgraded_from, r.json.checks.journals, r.json.checks.debit, r.json.checks.balanced]).toEqual([200, 'X1', null, 1, '10.25', true]);
     const depts = (await call('GET', '/api/v1/departments')).body as Array<{ code: string; name_th: string }>;
     expect(depts.map((x) => `${x.code}:${x.name_th}`).filter((x) => x.startsWith('D'))).toEqual(['D1:ฝ่ายขาย']);
     expect(await tb()).toEqual(before);
-    // ข้อมูลผู้ใช้: สำรอง → เปลี่ยนชื่อ → นำกลับ
+    // บันทึกเหตุการณ์: ผู้ใช้ + ชื่อแฟ้ม ไม่มีรหัสผ่าน
+    const logs = (await sql<{ action: string; detail: string }>`SELECT action, detail::text AS detail FROM sys_activity_log WHERE company_id = ${x1} AND action IN ('BACKUP', 'RESTORE') ORDER BY seq`.execute(database.db)).rows;
+    expect(logs.map((l) => l.action)).toEqual(['BACKUP', 'RESTORE']);
+    expect(logs[1]!.detail).toContain('20261119-X1.buddy');
+    expect(logs.some((l) => l.detail.includes(PW) || l.detail.includes(encodeURIComponent(PW)))).toBe(false);
+
+    // ── แฟ้มจากโปรแกรมรุ่นเก่า (โครงสร้าง 0052): ไม่มีตาราง md_supplier_branch · ไม่มีช่อง receipt_substitute/payer_employee_id/line_note_print · ไม่มีประเภท RD และตาราง 70–76
+    const old = rebuild(text, (h, rows) => {
+      h.schema = '0052_address_parts.sql'; h.version = 1; delete h.totals;
+      return rows.filter(([t, x]) => t !== 'md_supplier_branch' && !(t === 'md_doc_type' && x.code === 'RD') && !(t === 'md_lookup' && Number(x.type_code) >= 70) && !(t === 'gl_posting_rule' && x.doc_class === 'RD'))
+        .map(([t, x]) => { if (t === 'doc_header') { delete x.receipt_substitute; delete x.payer_employee_id; } if (t === 'gl_journal_line') delete x.line_note_print; return [t, x]; });
+    });
+    const rules = async () => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_posting_rule WHERE company_id = ${x1}`.execute(database.db)).rows[0]!.n;
+    const rulesBefore = await rules();
+    const ov = (await raw('POST', '/api/v1/backup/verify', old)).json;
+    expect([ov.schema_status, ov.schema_ok, ov.schema_message, ov.steps.length >= 3]).toEqual(['older', true, 'รุ่นเก่ากว่า — นำกลับได้ ระบบจะปรับให้อัตโนมัติ', true]);
+    expect((await jv('5')).status).toBe(200);
+    const ro = await raw('POST', '/api/v1/backup/restore?confirm=YES', old);
+    expect([ro.status, ro.json.upgraded_from, ro.json.checks?.journals, ro.json.checks?.balanced], JSON.stringify(ro.json)).toEqual([200, '0052_address_parts.sql', 1, true]);
+    expect(ro.json.steps).toEqual(expect.arrayContaining(['ประเภทเอกสาร คืนเงินมัดจำ (RD)', 'ตารางข้อมูลตั้งต้น (คำนำหน้าชื่อ ตำแหน่ง …)']));
+    expect(await tb()).toEqual(before);
+    const after = (await sql<{ rd: number; lk: number; lnp: number }>`SELECT (SELECT count(*)::int FROM md_doc_type WHERE company_id = ${x1} AND code = 'RD' AND deleted_at IS NULL) AS rd,
+        (SELECT count(*)::int FROM md_lookup WHERE company_id = ${x1} AND type_code = '70') AS lk,
+        (SELECT count(*)::int FROM gl_journal_line WHERE company_id = ${x1} AND line_note_print IS NULL) AS lnp`.execute(database.db)).rows[0]!;
+    expect(after).toEqual({ rd: 1, lk: 11, lnp: 0 });
+    expect([rulesBefore > 0, await rules()]).toEqual([true, rulesBefore]);   // กฎการลงบัญชีที่แฟ้มเก่าไม่มี (RD) เติมจากแม่แบบหลัง commit   // ขั้นปรับข้อมูลทำแล้ว · ช่องใหม่ได้ค่าเริ่มต้น ไม่ใช่ NULL
+    // รุ่นใหม่กว่า = อัปเดตโปรแกรมก่อน · ช่องที่ระบบไม่มีแล้ว = นำกลับไม่ได้ · รุ่นที่ระบบไม่รู้จัก = ปฏิเสธ
+    const newer = rebuild(text, (h, rows) => { h.schema = '0999_future.sql'; return rows; });
+    expect((await raw('POST', '/api/v1/backup/verify', newer)).json).toMatchObject({ schema_status: 'newer', schema_ok: false });
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', newer)).json.error.message).toMatch(/อัปเดตโปรแกรมก่อน/);
+    const gone = rebuild(text, (h, rows) => rows.map(([t, x]) => [t, t === 'md_department' ? { ...x, old_column_x: 1 } : x]));
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', gone)).json.error.message).toMatch(/md_department: old_column_x/);
+    const wrongTotals = rebuild(text, (h, rows) => { h.totals = { journals: 1, debit: '10.24', credit: '10.25' }; return rows; });
+    expect((await raw('POST', '/api/v1/backup/verify', wrongTotals)).json.error.message).toMatch(/ยอดใบสำคัญในแฟ้มไม่ตรง/);
+    expect((await raw('POST', '/api/v1/backup/verify', sealBackup(newer, PW), withPw(PW))).json.schema_status).toBe('newer');
+
+    // ── ข้อมูลผู้ใช้: สำรอง (เข้ารหัส) → เปลี่ยนชื่อ → นำกลับ · แฟ้มผู้ใช้รุ่นเก่า (0059) นำกลับได้
     const u = (await call('POST', '/api/v1/users', { username: 'bx.user1', display_name: 'พนักงาน เอ็กซ์', password: 'userX1234', companies: [x1] })).body.id;
-    const ub = await raw('GET', '/api/v1/backup/users');
-    expect(ub.status).toBe(200);
+    expect((await raw('POST', '/api/v1/backup/users', { password: 'short' })).json.error.message).toMatch(/อย่างน้อย 8/);
+    const ub = await raw('POST', '/api/v1/backup/users', { password: PW });
+    expect([ub.status, ub.buf.subarray(0, 12).toString(), ub.buf.includes(Buffer.from('bx.user1'))]).toEqual([200, 'BUDDYBACKUP2', false]);
     expect((await call('PUT', `/api/v1/users/${u}`, { username: 'bx.user1', display_name: 'ชื่อเปลี่ยนแล้ว', companies: [x1] })).status).toBe(200);
-    expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', ub.buf)).status).toBe(200);
+    expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', ub.buf, withPw('wrong-password'))).json.error.message).toMatch(/ไม่ถูกต้อง/);
+    expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', ub.buf, withPw(PW))).status).toBe(200);
     expect((await call('GET', '/api/v1/users')).body.users.find((x: { id: string }) => x.id === u).display_name).toBe('พนักงาน เอ็กซ์');
-    expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', b.buf)).json.error.message).toMatch(/ไม่ใช่แฟ้มสำรองข้อมูลผู้ใช้/);
-    // ลูกค้ารายอื่น: นำแฟ้มของ X มาใช้ไม่ได้ · แก้หัวแฟ้มเป็นบริษัทตัวเองก็ทับข้อมูลของ X ไม่ได้
+    expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', b.buf, withPw(PW))).json.error.message).toMatch(/ไม่ใช่แฟ้มสำรองข้อมูลผู้ใช้/);
+    const utext = gunzipSync(unsealBackup(ub.buf, PW)).toString('utf-8');
+    const uold = rebuild(utext, (h, rows) => { h.schema = '0059_rd_etax_purpose.sql'; return rows.map(([t, x]) => { if (t === 'sys_user') delete x.app_access; return [t, x]; }); });
+    const ur = await raw('POST', '/api/v1/backup/users/restore?confirm=YES', uold);
+    expect([ur.status, ur.json.upgraded_from], JSON.stringify(ur.json)).toEqual([200, '0059_rd_etax_purpose.sql']);
+
+    // ── สิทธิ์: ระดับ 5 (ไม่ใช่ผู้ดูแล) ดาวน์โหลด/นำกลับไม่ได้ จนกว่าผู้ดูแลให้สิทธิ์ที่เมนูโดยตรง · migration 0068 คงสิทธิ์ของผู้ใช้เดิม
+    const lv5 = (await call('POST', '/api/v1/users', { username: 'bx.acct5', display_name: 'หัวหน้าบัญชี', password: 'acct51234', companies: [x1], approval_level: 5 })).body.id;
+    expect(lv5).toBeTruthy();
+    await login('bx.acct5', 'acct51234');
+    await call('POST', '/api/v1/auth/select', { company_id: x1 });
+    expect((await raw('POST', '/api/v1/backup/company', { password: PW })).status).toBe(403);
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf, withPw(PW))).status).toBe(403);
+    expect((await raw('POST', '/api/v1/backup/verify', b.buf, withPw(PW))).status).toBe(200);   // ทดสอบแฟ้มยังทำได้ (ไม่เปิดข้อมูล ไม่เปลี่ยนข้อมูล)
+    const m0068 = await readFile(new URL('../../../db/migrations/0068_backup_rights_explicit.sql', import.meta.url), 'utf8');
+    await database.execScript(m0068);   // ผู้ใช้ที่มีอยู่ก่อนอัปเกรด → ได้แถวสิทธิ์ที่เมนูโดยตรง ใช้ได้เหมือนเดิม
+    expect((await raw('POST', '/api/v1/backup/company', { password: PW })).status).toBe(200);
+    await database.execScript(m0068);   // รันซ้ำได้ ไม่สร้างซ้ำ
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission p JOIN sys_menu m ON m.id = p.menu_id WHERE p.subject_id = ${lv5} AND m.code = 'OT.BACKUP' AND p.deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(1);
+
+    // ── ลูกค้ารายอื่น: นำแฟ้มของ X มาใช้ไม่ได้ (แม้รู้รหัสผ่าน) · แก้หัวแฟ้มเป็นบริษัทตัวเองก็ทับข้อมูลของ X ไม่ได้
     await login('by.admin', 'passY1234');
     const y1 = (await call('POST', '/api/v1/companies', { code: 'Y1', name_th: 'บริษัท วาย จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
     await call('POST', '/api/v1/auth/select', { company_id: y1 });
-    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf)).json.error.message).toMatch(/เป็นของบริษัท X1/);
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf, withPw(PW))).json.error.message).toMatch(/เป็นของบริษัท X1/);
     const nl = text.indexOf('\n'), head = JSON.parse(text.slice(0, nl));
     const forged = gzipSync(Buffer.from(JSON.stringify({ ...head, company: { ...head.company, id: y1 } }) + '\n' + text.slice(nl + 1)));
     expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', forged)).status).not.toBe(200);
-    expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', ub.buf)).json.error.message).toMatch(/ลูกค้ารายอื่น/);
+    expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', ub.buf, withPw(PW))).json.error.message).toMatch(/ลูกค้ารายอื่น/);
     await login('bx.admin', 'passX1234');
     await call('POST', '/api/v1/auth/select', { company_id: x1 });
     expect((await call('GET', '/api/v1/departments')).body.some((x: { code: string }) => x.code === 'D1')).toBe(true);
     expect(await tb()).toEqual(before);
     cookie = admin;
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
+  });
+  it('restore steps list covers every data-changing migration since backups exist (HANDOFF 146)', async () => {
+    const { readdir, readFile } = await import('node:fs/promises');
+    const { COMPANY_STEPS, USER_STEPS } = await import('../src/modules/backup.js');
+    const dir = new URL('../../../db/migrations/', import.meta.url);
+    const covered = new Set([...COMPANY_STEPS, ...USER_STEPS].map((s) => s.n));
+    // ตรวจแล้วว่าไม่ต้องทำซ้ำตอนนำกลับ: แก้เฉพาะตารางกลาง (ไม่อยู่ในแฟ้มสำรอง)
+    const GLOBAL = new Set(['sys_menu', 'md_lookup_type', 'sys_setting_def', 'sys_doc_class', 'sys_schema_migration', 'sync_change_log']);   // sync_change_log = ในฟังก์ชันทริกเกอร์ 0032 (คิวซิงก์ไม่อยู่ในแฟ้มสำรอง)
+    const missing: string[] = [];
+    for (const f of (await readdir(dir)).filter((x) => /^\d{4}_.*\.sql$/.test(x)).sort()) {
+      const n = Number(f.slice(0, 4));
+      if (n < 23) continue;
+      const body = (await readFile(new URL(f, dir), 'utf8')).split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+      const touched = [...body.matchAll(/^\s*(?:UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+([a-z_][a-z0-9_]*)/gim)].map((m) => m[1]!.toLowerCase()).filter((t) => !GLOBAL.has(t));
+      if (touched.length && !covered.has(n)) missing.push(`${f}: ${[...new Set(touched)].join(', ')}`);
+    }
+    expect(missing).toEqual([]);
   });
   it('stock data check report 4.6 (T6.5): negative balance and value without quantity flagged, isolation', async () => {
     const unit = (await call('GET', '/api/v1/lookups?types=UNIT')).body.UNIT[0].id;
@@ -3463,7 +3565,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await keyCall(rw.key, 'POST', '/api/v1/auth/select', { company_id: otherCompanyId })).status).toBe(403);
     expect((await keyCall(rw.key, 'GET', '/api/v1/api-keys')).status).toBe(403);
     expect((await keyCall(rw.key, 'POST', '/api/v1/api-keys', { name: 'x', user_id: adminId })).status).toBe(403);
-    expect((await keyCall(rw.key, 'GET', '/api/v1/backup/company')).status).toBe(403);
+    expect((await keyCall(rw.key, 'POST', '/api/v1/backup/company')).status).toBe(403);
     // ข้อมูลบริษัทอื่นไม่เห็น
     await call('POST', '/api/v1/auth/select', { company_id: otherCompanyId });
     const otherCus = (await call('POST', '/api/v1/customers', { code: 'K-OTHER', name: 'ลูกค้าบริษัทอื่น', tax_id: tid(6) })).body.id;
@@ -4439,6 +4541,46 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       cookie = bCookie; expect((await call('GET', '/api/v1/auth/me')).status).toBe(401);
       expect((await login('b.admin', 'passB1234')).body).toEqual({ ok: true });
     } finally { process.env.BUDDY_REQUIRE_ADMIN_2FA = '0'; }
+  });
+  it('customer setting "require two-factor for all users" (HANDOFF 146): off by default, admin only, existing sessions follow, provider staff and other customers unaffected', async () => {
+    expect((await login('b.admin', 'passB1234')).body).toEqual({ ok: true });
+    const bAdmin = cookie;
+    const coB = (await call('GET', '/api/v1/auth/me')).body.companies[0].id;
+    expect((await call('GET', '/api/v1/tenant/security')).body).toMatchObject({ require_mfa: false });
+    expect((await call('POST', '/api/v1/users', { username: 'b.staff', display_name: 'พนักงาน บี', password: 'staffB1234', companies: [coB] })).status).toBe(200);
+    expect((await login('b.staff', 'staffB1234')).body).toEqual({ ok: true });
+    const staff = cookie;
+    expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(false);
+    expect((await call('PUT', '/api/v1/tenant/security', { require_mfa: true })).status).toBe(403);   // ผู้ใช้ทั่วไปตั้งไม่ได้
+    cookie = admin;
+    expect((await call('GET', '/api/v1/tenant/security')).status).toBe(403);   // เจ้าหน้าที่ผู้ให้บริการไม่มีค่าของลูกค้า
+    cookie = bAdmin;
+    const on = await call('PUT', '/api/v1/tenant/security', { require_mfa: true });
+    expect([on.status, on.body.require_mfa, on.body.without_mfa >= 2]).toEqual([200, true, true]);
+    // session ที่เปิดอยู่ถูกบังคับตั้งแต่คำขอถัดไป · หน้าตั้งค่ายังใช้ได้
+    cookie = staff;
+    expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(true);
+    const blocked = await call('GET', '/api/v1/departments');
+    expect([blocked.status, blocked.body.error.code]).toEqual([403, 'MFA_SETUP_REQUIRED']);
+    expect(blocked.body.error.message).toMatch(/กิจการของคุณกำหนดให้ทุกผู้ใช้/);
+    expect((await call('GET', '/api/v1/auth/2fa')).body.required).toBe(true);
+    const key = base32Decode((await call('POST', '/api/v1/auth/2fa/setup')).body.secret);
+    expect((await call('POST', '/api/v1/auth/2fa/enable', { code: totpAt(key, stepOf()) })).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(false);
+    expect((await call('GET', '/api/v1/departments')).body.error?.code).not.toBe('MFA_SETUP_REQUIRED');
+    // ลูกค้ารายอื่น + เจ้าหน้าที่ผู้ให้บริการ ไม่ถูกบังคับ
+    expect((await login('sec.lock', 'lockMe123')).body).toEqual({ ok: true });
+    expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(false);
+    cookie = admin;
+    expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(false);
+    expect((await call('GET', '/api/v1/users')).status).toBe(200);
+    // ผู้ดูแลของลูกค้าที่ยังไม่ตั้ง ก็ต้องตั้งก่อน (ปิดค่ากลับได้หลังตั้ง)
+    cookie = bAdmin;
+    expect((await call('PUT', '/api/v1/tenant/security', { require_mfa: false })).body.error.code).toBe('MFA_SETUP_REQUIRED');
+    const acts = (await database.db.selectFrom('sys_activity_log').select('action').where('action', 'in', ['TENANT_MFA_ON', 'TENANT_MFA_OFF']).execute()).map((x) => x.action);
+    expect(acts).toEqual(['TENANT_MFA_ON']);
+    await database.db.updateTable('sys_tenant').set({ require_mfa: false }).execute();   // คืนค่าให้ชุดทดสอบถัดไป
+    expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(false);
   });
 });
 

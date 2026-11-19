@@ -25,7 +25,7 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     .leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
     .leftJoin('sys_user_security as sec', (j) => j.onRef('sec.user_id', '=', 'u.id').on('sec.deleted_at', 'is', null))
     .select(['sec.totp_enabled', 's.id', 's.user_id', 's.current_company_id', 's.current_branch_id', 's.work_date', 'u.username', 'u.display_name', 'u.status', 'u.tenant_id', 'u.approval_level', 'u.check_rights', 'u.user_group_id', 'u.app_access',
-      'g.code as group_code', 'g.tenant_id as group_tenant_id', 't.status as tenant_status', 't.expires_on as tenant_expires'])
+      'g.code as group_code', 'g.tenant_id as group_tenant_id', 't.status as tenant_status', 't.expires_on as tenant_expires', 't.require_mfa as tenant_require_mfa'])
     .where('s.token_hash', '=', sha(token))
     .where('s.ended_at', 'is', null)
     .where('s.expires_at', '>', sql<string>`now()`)
@@ -40,7 +40,9 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     tenantId: row.tenant_id, isAdmin, isPlatform: isAdmin && !row.tenant_id,
     companyId: row.current_company_id, branchId: row.current_branch_id, workDate: row.work_date,
     approvalLevel: row.approval_level, checkRights: row.check_rights, groupId: row.user_group_id, apps: normalizeAppAccess(row.app_access),
-    mfaSetupRequired: isAdmin && !row.totp_enabled && adminMfaRequired(),
+    // ยังไม่ตั้ง 2FA: ผู้ดูแลระบบ (บังคับเสมอ) · ผู้ใช้ของลูกค้าที่ตั้งบังคับทุกผู้ใช้ — อ่านทุกคำขอ session เดิมจึงถูกบังคับตั้งแต่คำขอถัดไป · เจ้าหน้าที่ผู้ให้บริการ (ไม่มี tenant) ไม่ขึ้นกับค่าของลูกค้า
+    tenantRequireMfa: !!row.tenant_id && !!row.tenant_require_mfa,
+    mfaSetupRequired: !row.totp_enabled && ((isAdmin && adminMfaRequired()) || (!!row.tenant_id && !!row.tenant_require_mfa)),
   };
   // บริษัทที่ค้างใน session ต้องยังเข้าได้ (เช่น ถูกถอนสิทธิ์ หรือเป็นของ tenant อื่น)
   if (a.companyId && !(await canAccessCompany(db, a, a.companyId))) { a.companyId = null; a.branchId = null; }
