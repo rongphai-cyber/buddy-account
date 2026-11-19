@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { bahtText, depositRefundPurpose, etaxPurposeText, fmt, receiptVatSummary, depositCreditNoteAmounts, checkApprove, checkPrint, checkUnapprove, copyMark, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
+import { bahtText, depositRefundPurpose, etaxPurposeText, fmt, receiptVatSummary, depositCreditNoteAmounts, checkApprove, checkPrint, checkUnapprove, copyMark, d, depositRefundParts, DOC_CLASSES, docMenuOf, findReport, formatDate, normalizeLayout, PRINT_BASES, printFamily, printMenu, printTitle, receiptItemTotals, RD_CREDIT_NOTE_TITLE, type ApprovalRule, type ApprovalState, type Decimal } from '@buddy/core';
 import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { companyImages } from './company-images.js';
@@ -91,12 +91,19 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
   let lines: Array<Record<string, string>> = [];
   /** ใบเสร็จ: รายการสินค้า/บริการของทุกบิลที่ชำระ (แบบฟอร์มเลือกแสดงแทนเลขที่บิล) */
   let detail: Array<Record<string, string>> | undefined;
+  /** ใบเสร็จแบบรายการสินค้า (HANDOFF 153): แถวสินค้า/บริการของบิล + ยอดรวมตามบิลเดิม (ItemTotals) */
+  let receiptItems: Array<Record<string, string>> | undefined;
+  let settleRows: Row[] = [];
+  let itemTotals: Array<{ label: string; value: string }> | undefined;
   /** ใบเสร็จรับเงิน/ใบกำกับภาษี: ตัดบิลภาษีเกณฑ์เงินสด (ค่าบริการ — ภาษีถึงกำหนดเมื่อรับเงิน) */
   // ฐานภาษี = ยอดชำระของบิลที่มีภาษีถึงกำหนด − ภาษี (ตรงกับรายการภาษีขายของใบเสร็จ vat.ts syncVatEntries) · บิลที่ไม่มีภาษีแสดงแยก
   let vatDue = d(0), paidTotal = d(0), vatBase = d(0);
   const vatRates = new Set<string>();
   if (fam === 'settle') {
-    const sr = (await sql<Row>`SELECT i.id, i.doc_no, i.doc_date, i.due_date, i.doc_class, i.net_amount, i.vat_rate, i.exempt_amount, i.zero_rate_amount, s.amount, s.vat_amount, s.express_rectype, CASE WHEN s.line_note_print THEN s.line_note END AS note FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id
+    const sr = (await sql<Row>`SELECT i.id, i.doc_no, i.doc_date, i.due_date, i.doc_class, i.net_amount, i.vat_rate, i.exempt_amount, i.zero_rate_amount, s.amount, s.vat_amount, s.express_rectype, CASE WHEN s.line_note_print THEN s.line_note END AS note,
+          i.amount AS inv_amount, i.discount_amount AS inv_discount, i.discount_text AS inv_discount_text, i.amount_after_discount AS inv_after, i.deposit_amount AS inv_deposit, i.price_type AS inv_price_type,
+          i.taxable_amount AS inv_taxable, i.vat_amount AS inv_vat, i.vat_basis AS inv_vat_basis
+        FROM doc_settlement s JOIN doc_header i ON i.id = s.invoice_header_id
         WHERE s.payment_header_id = ${id} AND s.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows;
     // ยอดภาษีชุดเดียวกับ e-Tax T03 (receiptVatSummary · core)
     const sum = receiptVatSummary(sr.map((r) => ({ amount: r.amount ?? 0, vat: r.vat_amount, inv_net: r.net_amount, inv_exempt: r.exempt_amount, inv_zero: r.zero_rate_amount, vat_rate: r.vat_rate, rectype: r.express_rectype })));
@@ -104,12 +111,27 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     for (const x of sum.rates) vatRates.add(x);
     const billRow = (r: Row, i: number) => ({ no: String(i + 1), code: txt(r.doc_no), ref_date: txt(r.doc_date), due_date: txt(r.due_date), name: DOC_CLASSES[r.doc_class ?? '']?.label ?? '', ref_amount: money(r.net_amount), amount: money(r.amount) });
     lines = sr.map((r, i) => ({ ...billRow(r, i), ...(r.note ? { note: txt(r.note) } : {}) }));
-    const items = sr.length ? (await sql<Row>`SELECT l.header_id, it.code AS item_code, l.description, l.qty, u.name_th AS unit, l.unit_price, l.line_amount, CASE WHEN l.line_note_print THEN l.line_note END AS note
+    const items = sr.length ? (await sql<Row>`SELECT l.header_id, it.code AS item_code, l.description, l.qty, u.name_th AS unit, l.unit_price, l.discount_text, l.line_amount, l.is_free, CASE WHEN l.line_note_print THEN l.line_note END AS note
         FROM doc_line l LEFT JOIN md_item it ON it.id = l.item_id LEFT JOIN md_unit u ON u.id = l.unit_id
        WHERE l.header_id IN (${sql.join(sr.map((r) => r.id))}) AND l.deleted_at IS NULL AND l.line_kind <> 'K' ORDER BY l.line_no`.execute(db)).rows : [];
     detail = sr.flatMap((r, i) => [{ ...billRow(r, i), kind: 'bill', name: `${DOC_CLASSES[r.doc_class ?? '']?.label ?? ''}${d(r.amount ?? 0).lt(d(r.net_amount ?? 0)) ? ' (ชำระบางส่วน)' : ''}` },
       ...items.filter((l) => l.header_id === r.id).map((l) => ({ kind: 'item', no: '', code: txt(l.item_code), ref_date: '', due_date: '', amount: '', ref_amount: money(l.line_amount),
         name: [txt(l.description), l.qty !== null && !d(l.qty).isZero() ? `${d(l.qty).toString()} ${txt(l.unit)} × ${l.unit_price !== null ? fmt(l.unit_price) : ''}`.trim() : ''].filter(Boolean).join('  '), ...(l.note ? { note: txt(l.note) } : {}) }))]);
+    // HANDOFF 153 (เจ้าของ: ใบเสร็จแสดงรายละเอียดสินค้าของ Invoice ยอดแต่ละแถว ยอดรวมใหม่ตาม invoice เดิม · เลขที่บิลเป็นเอกสารอ้างอิง):
+    // รายการสินค้า/บริการของทุกบิลเป็นแถวปกติ (คอลัมน์แบบใบแจ้งหนี้) · บิลไม่มีรายการ (ยกมา) = หนึ่งแถว · ใบลดหนี้ที่นำมาหัก = หนึ่งแถวยอดลบ
+    const sign = (r: Row) => (r.express_rectype === '5' ? -1 : 1);
+    let no = 0;
+    receiptItems = sr.flatMap((r) => {
+      const mine = items.filter((l) => l.header_id === r.id);
+      const label = DOC_CLASSES[r.doc_class ?? '']?.label ?? '';
+      if (sign(r) < 0 || !mine.length) return [{ no: String(++no), code: txt(r.doc_no), name: sign(r) < 0 ? `หัก${label} ${txt(r.doc_no)}` : `${label} ${txt(r.doc_no)}`.trim(), qty: '', unit: '', price: '', disc: '', amount: d(r.net_amount ?? 0).times(sign(r)).toFixed(2) }];
+      return mine.map((l) => ({ no: String(++no), code: txt(l.item_code), name: txt(l.description) + (l.is_free ? ' (ของแถม)' : ''), ...(l.note ? { note: txt(l.note) } : {}),
+        qty: l.qty !== null && !d(l.qty).isZero() ? d(l.qty).toString() : '', unit: txt(l.unit), price: l.unit_price !== null && !d(l.unit_price).isZero() ? d(l.unit_price).toFixed(2) : '',
+        disc: txt(l.discount_text), amount: money(l.line_amount) }));
+    });
+    // เลขที่บิลที่ชำระ = เอกสารอ้างอิงที่หัวเอกสาร (วันที่ ISO — หน้าจอพิมพ์ตามระบบปีของบริษัท) · ชำระไม่เต็มบิล = ชำระบางส่วน
+    fields.ref_docs = sr.map((r) => `${txt(r.doc_no)} (${txt(r.doc_date).slice(0, 10)})${sign(r) > 0 && d(r.amount ?? 0).lt(d(r.net_amount ?? 0)) ? ' ชำระบางส่วน' : ''}`).join(', ');
+    settleRows = sr;
   } else if (fam === 'bill') {
     lines = (await sql<Row>`SELECT i.doc_no, i.doc_date, i.due_date, i.doc_class, b.amount FROM doc_bill_item b JOIN doc_header i ON i.id = b.invoice_header_id
         WHERE b.bill_header_id = ${id} AND b.deleted_at IS NULL ORDER BY i.doc_date, i.doc_no`.execute(db)).rows
@@ -192,22 +214,28 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     if (h.price_type !== '0') totals.push({ label: 'มูลค่าสินค้า/บริการ', value: value.toFixed(2) }, { label: `ภาษีมูลค่าเพิ่ม ${d(h.vat_rate ?? 0).toString()}%`, value: money(h.vat_amount) });
     totals.push({ label: 'จำนวนเงินรวมทั้งสิ้น', value: money(h.net_amount) });
   } else if (fam === 'settle') {
-    totals.push({ label: 'รวมยอดชำระ', value: lines.reduce((s, l) => s.plus(d(l.amount || 0)), d(0)).toFixed(2) });
-    if (nz(h.cash_discount_amount)) totals.push({ label: 'ส่วนลดเงินสด', value: money(h.cash_discount_amount) });
-    if (nz(h.interest_amount)) totals.push({ label: 'ดอกเบี้ย', value: money(h.interest_amount) });
-    if (nz(h.fx_amount)) totals.push({ label: d(h.fx_amount).gt(0) ? 'กำไรจากอัตราแลกเปลี่ยน' : 'ขาดทุนจากอัตราแลกเปลี่ยน', value: money(d(h.fx_amount).abs()) });
+    type T = { label: string; value: string };
+    const adjBefore: T[] = [], adjAfter: T[] = [], vatBlock: T[] = [];
+    if (nz(h.cash_discount_amount)) adjBefore.push({ label: 'ส่วนลดเงินสด', value: money(h.cash_discount_amount) });
+    if (nz(h.interest_amount)) adjBefore.push({ label: 'ดอกเบี้ย', value: money(h.interest_amount) });
+    if (nz(h.fx_amount)) adjBefore.push({ label: d(h.fx_amount).gt(0) ? 'กำไรจากอัตราแลกเปลี่ยน' : 'ขาดทุนจากอัตราแลกเปลี่ยน', value: money(d(h.fx_amount).abs()) });
     // ใบเสร็จรับเงิน/ใบกำกับภาษี (ม.86/4 (6)): ภาษีแยกจากมูลค่า + อัตรา · มูลค่าที่ไม่มีภาษี (ค่าเช่าที่อยู่อาศัย ค่าปรับ) แยกบรรทัด
+    // HANDOFF 153: บิลขายสินค้าที่ออกใบกำกับภาษีไปแล้ว (VAT เกณฑ์สิทธิ) = "ชำระตามใบกำกับภาษีที่ออกแล้ว" ไม่ใช่ "มูลค่าที่ไม่มีภาษี" — ใบกำกับภาษีฉบับนี้มีผลเฉพาะส่วนเกณฑ์เงินสด
+    const issued = settleRows.filter((r) => d(r.vat_amount ?? 0).isZero() && !d(r.inv_vat ?? 0).isZero() && r.inv_vat_basis !== '2')
+      .reduce((s, r) => s.plus(d(r.amount ?? 0).times(r.express_rectype === '5' ? -1 : 1)), d(0));
     if (!vatDue.isZero()) {
-      const nonVat = paidTotal.minus(vatBase).minus(vatDue);
+      const nonVat = paidTotal.minus(vatBase).minus(vatDue).minus(issued);
       const rate = vatRates.size === 1 ? ` ${[...vatRates][0]}%` : '';
-      totals.push({ label: nonVat.isZero() ? 'มูลค่าสินค้า/บริการ' : 'มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม', value: vatBase.toFixed(2) }, { label: `ภาษีมูลค่าเพิ่ม${rate}`, value: vatDue.toFixed(2) });
-      if (!nonVat.isZero()) totals.push({ label: 'มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม', value: nonVat.toFixed(2) });
+      vatBlock.push({ label: nonVat.isZero() && issued.isZero() ? 'มูลค่าสินค้า/บริการ' : 'มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม', value: vatBase.toFixed(2) }, { label: `ภาษีมูลค่าเพิ่ม${rate}`, value: vatDue.toFixed(2) });
+      if (!issued.isZero()) vatBlock.push({ label: 'ชำระตามใบกำกับภาษีที่ออกแล้ว', value: issued.toFixed(2) });
+      if (!nonVat.isZero()) vatBlock.push({ label: 'มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม', value: nonVat.toFixed(2) });
     }
-    if (nz(h.wht_amount)) totals.push({ label: 'ภาษีหัก ณ ที่จ่าย', value: money(h.wht_amount) });
+    if (nz(h.wht_amount)) adjAfter.push({ label: 'ภาษีหัก ณ ที่จ่าย', value: money(h.wht_amount) });
     // รายการที่แพลตฟอร์มหักก่อนโอน (ค่าบริการ + VAT ในประเทศ)
     const fee = d((await sql<{ v: string }>`SELECT coalesce(sum(amount + CASE WHEN vat_type = '1' THEN vat_amount ELSE 0 END), 0) AS v FROM doc_charge WHERE header_id = ${id} AND company_id = ${a.companyId} AND deleted_at IS NULL`.execute(db)).rows[0]!.v);
-    if (!fee.isZero()) totals.push({ label: PLATFORM_FEE_LABEL, value: fee.toFixed(2) });
-    totals.push({ label: 'ยอดสุทธิ', value: money(h.net_amount) });
+    if (!fee.isZero()) adjAfter.push({ label: PLATFORM_FEE_LABEL, value: fee.toFixed(2) });
+    totals.push({ label: 'รวมยอดชำระ', value: lines.reduce((s, l) => s.plus(d(l.amount || 0)), d(0)).toFixed(2) }, ...adjBefore, ...vatBlock, ...adjAfter, { label: 'ยอดสุทธิ', value: money(h.net_amount) });
+    if (receiptItems) itemTotals = receiptItemTotals(settleRows as unknown as Parameters<typeof receiptItemTotals>[0], { paid: paidTotal, vatDue, issued, net: d(String(h.net_amount ?? 0)), vatBlock, adjBefore, adjAfter });
   } else if (fam === 'stock') {
     if (lines.some((l) => l.amount)) totals.push({ label: 'รวมมูลค่า', value: lines.reduce((s, l) => s.plus(d(l.amount || 0)), d(0)).toFixed(2) });
   } else if (cn) {
@@ -230,6 +258,7 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
   const title = H.scope === 'RE' ? (receiptTax ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : H.scope === 'PS' ? 'ใบสำคัญจ่าย' : rdVat ? RD_CREDIT_NOTE_TITLE : std.th || DOC_CLASSES[H.scope]?.label || 'เอกสาร';
   const titleEn = H.scope === 'RE' ? (receiptTax ? 'RECEIPT / TAX INVOICE' : 'RECEIPT') : H.scope === 'PS' ? 'PAYMENT VOUCHER' : rdVat ? 'CREDIT NOTE / DEPOSIT REFUND' : std.en;
   return { kind, scope: H.scope, family: fam, title, title_en: titleEn, doc_no: txt(h.doc_no), doc_date: txt(h.doc_date), receipt_tax: receiptTax, ...(detail ? { detail } : {}),
+    ...(receiptItems ? { items: receiptItems, item_totals: itemTotals } : {}),
     cancelled: h.doc_status === 'C', company, party: partyOut, fields, lines, totals, amount_text: fam === 'stock' ? '' : bahtText(net), payments, notes, journal: jl,
     print_count: H.state.printCount, approved: H.state.approved, source_system: txt(h.source_system) || null };
 }

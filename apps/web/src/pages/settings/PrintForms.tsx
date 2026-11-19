@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan } from '../../session';
 import { Confirm, ErrorBox, Field, PageHead, Tabs, toast, useHotkeys, useYearSystem } from '../../ui';
 import { PrintSheet, type PrintData } from '../../components/DocPrint';
+import { PagedSheets } from '../../printPages';
 import { CompanyImagesPanel, useCompanyImages } from '../../components/CompanyImages';
 import { confirmLeave, useUnsaved } from '../../unsaved';
 
@@ -171,6 +172,7 @@ export function PrintFormsPage() {
           </>}
           {pt === 'cols' && <>
           <h3 className="small">คอลัมน์ตาราง</h3>
+          {fam === 'settle' && L.settle_detail !== 'bills' && <p className="muted small">ใบเสร็จที่แสดงรายการสินค้า/บริการของบิล ใช้คอลัมน์แบบใบแจ้งหนี้ (ลำดับ รหัสสินค้า รายละเอียด จำนวน หน่วย ราคา/หน่วย ส่วนลด จำนวนเงิน) — คอลัมน์ด้านล่างใช้เมื่อแสดงเลขที่บิลเป็นแถว</p>}
           <table className="grid pf-cols"><thead><tr><th>แสดง</th><th>หัวคอลัมน์</th><th>ภาษาอังกฤษ</th><th className="r">กว้าง</th><th>จัด</th><th /></tr></thead>
             <tbody>{L.columns.map((c, i) => <tr key={c.key}>
               <td className="c"><input type="checkbox" checked={c.show} aria-label={`แสดง ${c.label}`} onChange={(e) => set({ columns: L.columns.map((x) => (x.key === c.key ? { ...x, show: e.target.checked } : x)) })} /></td>
@@ -192,7 +194,7 @@ export function PrintFormsPage() {
         </div>
         <div className="pf-preview">
           <p className="muted small">{sampleData ? `ตัวอย่างจากเอกสารล่าสุด ${sampleData.doc_no}` : sample.isLoading ? 'กำลังโหลดตัวอย่าง…' : 'ยังไม่มีเอกสารชนิดนี้ — ตัวอย่างจะแสดงเมื่อมีเอกสาร'}</p>
-          {sampleData && preview && <div className="ds-preview"><PrintSheet data={sampleData} form={preview} prior={0} ys={ys} images={images} /></div>}
+          {sampleData && preview && <PagedSheets className="ds-preview"><PrintSheet data={sampleData} form={preview} prior={0} ys={ys} images={images} /></PagedSheets>}
         </div>
       </div>}
       {askDel && <Confirm title="กลับไปใช้ต้นแบบ" danger text={`ลบแบบฟอร์มของบริษัท ${scope} หมายเลข ${slot} (${cur?.name ?? ''})?`} okText="ลบ" onOk={remove} onClose={() => setAskDel(false)} />}

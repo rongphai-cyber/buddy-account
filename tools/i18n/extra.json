@@ -1911,5 +1911,15 @@
  "แถบสีเหนือส่วนหัว (ต้นแบบมืออาชีพ)": "Color bar above the header (Professional template)",
  "แบบอักษร (ฟอนต์)": "Font",
  "ไม่พิมพ์ชื่อ ที่อยู่ และโลโก้บริษัท (เช่น พิมพ์ลงกระดาษหัวจดหมาย) — ติ๊กเพื่อพิมพ์": "The company name, address and logo are not printed (e.g. printing on letterhead) — tick to print them",
- "ไม่แสดง": "Hide"
+ "ไม่แสดง": "Hide",
+ "ชำระบางส่วน": "partly paid",
+ "ชำระตามใบกำกับภาษีที่ออกแล้ว": "Paid on Tax Invoices Already Issued",
+ "ยอดชำระครั้งนี้": "Paid This Receipt",
+ "รวมตามใบแจ้งหนี้": "Total per Invoices",
+ "หน้า": "Page",
+ "หัก{0} {1}": "Less {0} {1}",
+ "อัตโนมัติ (ใบเสร็จรับเงิน/ใบกำกับภาษีแสดงรายการสินค้า · ใบเสร็จแสดงเลขที่บิล)": "Automatic (receipt/tax invoice shows the items · receipt shows the invoice numbers)",
+ "แสดงรายการสินค้า/บริการของบิล (เลขที่บิลเป็นเอกสารอ้างอิง)": "Show the invoices' goods/services (invoice numbers as references)",
+ "แสดงเลขที่บิลที่ชำระเป็นแถวในตาราง": "Show the paid invoice numbers as table rows",
+ "ใบเสร็จที่แสดงรายการสินค้า/บริการของบิล ใช้คอลัมน์แบบใบแจ้งหนี้ (ลำดับ รหัสสินค้า รายละเอียด จำนวน หน่วย ราคา/หน่วย ส่วนลด จำนวนเงิน) — คอลัมน์ด้านล่างใช้เมื่อแสดงเลขที่บิลเป็นแถว": "Receipts that show the invoices' goods/services use invoice columns (No., item code, description, qty, unit, unit price, discount, amount) — the columns below apply when invoice numbers are shown as rows"
 }

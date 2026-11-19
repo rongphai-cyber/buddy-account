@@ -1,0 +1,115 @@
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+
+/**
+ * แบ่งหน้าเอกสารพิมพ์ + เลขหน้า (HANDOFF 153 — เจ้าของ: เอกสารยาวหลายหน้า ต้องแสดงเลขที่หน้าเอกสารด้วย)
+ *
+ * แผ่นเอกสาร (.doc-sheet หนึ่งแผ่นต่อสำเนา) ที่ยาวเกินหนึ่งหน้ากระดาษ แยกเป็นหลายแผ่น แผ่นละหน้า:
+ * - ทุกหน้ามีส่วนหัว (ชื่อบริษัท ชื่อเอกสาร เลขที่) ข้อมูลลูกค้า และหัวตาราง · แถวรายการแบ่งตามที่ว่างของหน้า (แถวกับหมายเหตุรายการไม่แยกกัน)
+ * - ยอดรวม จำนวนเงินตัวอักษร รายการบัญชี ช่องลงชื่อ ท้ายเอกสาร อยู่หน้าสุดท้าย (ไม่พอ = ยกแถวสุดท้ายไปด้วยหนึ่งแถว)
+ * - เลขหน้า "หน้า 1/2" (แบบฟอร์มอังกฤษ "Page 1 of 2") มุมขวาล่างของทุกหน้า · หน้าเดียว = ไม่พิมพ์เลขหน้า · แต่ละสำเนา (ต้นฉบับ/สำเนา) เริ่มหน้า 1 ใหม่
+ * - บรรทัดว่างเติมตาราง (บรรทัดขั้นต่ำ) อยู่หน้าสุดท้ายเท่าที่ที่ว่างพอ
+ * วัดจากหน้าจอ (ความกว้างแผ่นคงที่ 210 มม. เท่ากระดาษ) — ใช้ทั้งกรอบพิมพ์ (printFrame) และตัวอย่างบนจอ (PagedSheets)
+ */
+const MM = 96 / 25.4;
+/** ที่ว่างล่างหน้าสำหรับเลขหน้า (นอกเหนือจากขอบล่างของแผ่น) */
+const RESERVE_MM = 6;
+const pageMm = (s: Element) => (s.classList.contains('b-half') ? 148 : s.classList.contains('b-cont') ? 279.4 : 297);
+
+type Group = { rows: HTMLTableRowElement[]; h: number; fill: boolean };
+
+function paginate(sheet: HTMLElement): void {
+  const win = sheet.ownerDocument.defaultView;
+  if (!win || sheet.dataset.paged) return;
+  sheet.dataset.paged = '1';
+  const table = sheet.querySelector<HTMLTableElement>(':scope > table.ds-lines');
+  const tb = table?.tBodies[0];
+  const kids = [...sheet.children] as HTMLElement[];
+  if (!table || !tb || !kids.length) return;
+  const top = sheet.getBoundingClientRect().top;
+  const padB = parseFloat(win.getComputedStyle(sheet).paddingBottom) || 0;
+  const contentBottom = Math.max(...kids.map((k) => k.getBoundingClientRect().bottom)) - top;
+  const pageH = pageMm(sheet) * MM;
+  if (contentBottom + padB <= pageH + 1) return;
+
+  // แถวรายการเป็นกลุ่ม (แถว + แถวหมายเหตุของแถวนั้น) · ความสูงรวมเส้นขอบ = ระยะจากก้นกลุ่มก่อนหน้า
+  const groups: Group[] = [];
+  let prevBottom = tb.getBoundingClientRect().top;
+  for (const r of [...tb.rows]) {
+    const g = r.classList.contains('ds-line-note') && groups.length ? groups[groups.length - 1]! : (groups.push({ rows: [], h: 0, fill: r.classList.contains('ds-fill') }), groups[groups.length - 1]!);
+    g.rows.push(r);
+    const b = r.getBoundingClientRect().bottom;
+    g.h += b - prevBottom;
+    prevBottom = b;
+  }
+  const headPart = tb.getBoundingClientRect().top - top;
+  const tailNeed = contentBottom - (tb.getBoundingClientRect().bottom - top);
+  const avail = pageH - padB - RESERVE_MM * MM - headPart;
+  if (avail <= 0) return;
+
+  const pages: Group[][] = [];
+  let cur: Group[] = [], used = 0;
+  for (const g of groups.filter((x) => !x.fill)) {
+    if (cur.length && used + g.h > avail) { pages.push(cur); cur = []; used = 0; }
+    cur.push(g); used += g.h;
+  }
+  if (used + tailNeed > avail) {
+    if (cur.length > 1) { const moved = cur.pop()!; pages.push(cur); cur = [moved]; used = moved.h; }
+    else if (cur.length === 1 && tailNeed < avail) { pages.push(cur); cur = []; used = 0; }
+  }
+  for (const g of groups.filter((x) => x.fill)) { if (used + g.h + tailNeed > avail) break; cur.push(g); used += g.h; }
+  pages.push(cur);
+
+  const n = pages.length;
+  const en = sheet.getAttribute('lang') === 'en';
+  [...tb.rows].forEach((r, i) => { r.dataset.pr = String(i); });
+  const index = new Map([...tb.rows].map((r, i) => [r, i]));
+  const out = pages.map((pg, k) => {
+    const keep = new Set(pg.flatMap((g) => g.rows.map((r) => index.get(r)!)));
+    const c = sheet.cloneNode(true) as HTMLElement;
+    c.classList.add('ds-page');
+    const ct = c.querySelector<HTMLTableElement>(':scope > table.ds-lines')!;
+    for (const r of [...ct.tBodies[0]!.rows]) if (!keep.has(Number(r.dataset.pr))) r.remove();
+    if (k < n - 1) {
+      ct.tFoot?.remove();
+      let x = ct.nextElementSibling;
+      while (x) { const nx = x.nextElementSibling; x.remove(); x = nx; }
+    }
+    if (n > 1) {
+      const lab = c.ownerDocument.createElement('div');
+      lab.className = 'ds-pageno';
+      lab.textContent = en ? 'Page ' + (k + 1) + ' of ' + n : 'หน้า ' + (k + 1) + '/' + n;
+      c.appendChild(lab);
+    }
+    return c;
+  });
+  for (const c of out) sheet.before(c);
+  sheet.remove();
+}
+
+/** แบ่งหน้าทุกแผ่นเอกสารใน root (แผ่นที่แบ่งแล้วข้าม) */
+export function paginateSheets(root: ParentNode): void {
+  for (const s of [...root.querySelectorAll<HTMLElement>('.doc-sheet')]) paginate(s);
+}
+
+/**
+ * ตัวอย่างบนจอแบบแบ่งหน้า: วาด children (แผ่นเอกสาร) ไว้ในที่ซ่อน แล้วคัดลอกมาแบ่งหน้าในกล่องที่แสดง
+ * (กล่องที่แสดงไม่มี children ของ React — แก้ DOM ได้) · วาดใหม่เมื่อข้อมูล/แบบอักษรเปลี่ยน
+ */
+export function PagedSheets({ className, children }: { className?: string; children: ReactNode }) {
+  const src = useRef<HTMLDivElement>(null);
+  const out = useRef<HTMLDivElement>(null);
+  const [, setTick] = useState(0);
+  useLayoutEffect(() => {
+    if (!src.current || !out.current) return;
+    out.current.innerHTML = src.current.innerHTML;
+    paginateSheets(out.current);
+  });
+  useEffect(() => {
+    let alive = true;
+    const again = () => { if (alive) setTick((t) => t + 1); };
+    void document.fonts?.ready.then(again);
+    document.fonts?.addEventListener?.('loadingdone', again);
+    return () => { alive = false; document.fonts?.removeEventListener?.('loadingdone', again); };
+  }, []);
+  return <><div ref={out} className={className} /><div ref={src} hidden>{children}</div></>;
+}

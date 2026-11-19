@@ -1,4 +1,5 @@
 import { BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from './doc-calc.js';
+import { d, type MoneyInput } from './money.js';
 
 /**
  * แบบฟอร์มพิมพ์เอกสาร (คู่มือบทที่ 25 S-RD-01/02 · บทที่ 3 S-UI-08/10)
@@ -84,7 +85,8 @@ export type PrintLang = 'th' | 'en';
 export const PRINT_LANGS: Array<{ key: PrintLang; label: string }> = [{ key: 'th', label: 'ภาษาไทย' }, { key: 'en', label: 'ภาษาอังกฤษ (English)' }];
 export type SettleDetail = 'auto' | 'bills' | 'items';
 export const SETTLE_DETAILS: Array<{ key: SettleDetail; label: string }> = [
-  { key: 'auto', label: 'อัตโนมัติ (ใบกำกับภาษีแสดงรายการสินค้า · ใบเสร็จแสดงเลขที่บิล)' }, { key: 'bills', label: 'แสดงเลขที่บิลที่ชำระ' }, { key: 'items', label: 'แสดงรายการสินค้า/บริการของทุกบิล' },
+  { key: 'auto', label: 'อัตโนมัติ (ใบเสร็จรับเงิน/ใบกำกับภาษีแสดงรายการสินค้า · ใบเสร็จแสดงเลขที่บิล)' }, { key: 'bills', label: 'แสดงเลขที่บิลที่ชำระเป็นแถวในตาราง' },
+  { key: 'items', label: 'แสดงรายการสินค้า/บริการของบิล (เลขที่บิลเป็นเอกสารอ้างอิง)' },
 ];
 export type PrintLogoPos = 'none' | 'left' | 'center' | 'right';
 export const PRINT_LOGO_POS: Array<{ key: PrintLogoPos; label: string }> = [
@@ -362,17 +364,17 @@ export function checkUnapprove(rule: ApprovalRule, s: ApprovalState, userLevel: 
  */
 export const PRINT_WORDS_EN = {
   no: 'No.', date: 'Date', tel: 'Tel.', taxId: 'Tax ID', remarks: 'Remarks', total: 'Total', cancelled: 'CANCELLED', signDate: 'Date ......../......../........',
-  accountNo: 'Account No.', accountName: 'Account Name', debit: 'Debit', credit: 'Credit', customer: 'Customer', supplier: 'Supplier',
+  accountNo: 'Account No.', accountName: 'Account Name', debit: 'Debit', credit: 'Credit', customer: 'Customer', supplier: 'Supplier', refDocs: 'Ref. Invoices', page: 'Page',
 } as const;
 /** คำกำกับสำเนา/สาขา (ต้นฉบับ → ORIGINAL · สำเนา → COPY · สำนักงานใหญ่ → Head Office · สาขาที่ n → Branch n) */
 export function printTextEn(th: string): string {
-  return th.split(COPY_ORIGINAL).join('ORIGINAL').split(COPY_DUPLICATE).join('COPY').replace('สำนักงานใหญ่', 'Head Office').replace(/สาขาที่\s*/, 'Branch ');
+  return th.split(COPY_ORIGINAL).join('ORIGINAL').split(COPY_DUPLICATE).join('COPY').replace('สำนักงานใหญ่', 'Head Office').replace(/สาขาที่\s*/, 'Branch ').replace('ชำระบางส่วน', 'partly paid');
 }
 
 /** คำของยอดรวม/วิธีชำระที่ระบบพิมพ์ → อังกฤษ (ลำดับสำคัญ: คำที่ยาวกว่า/เฉพาะกว่าก่อน) */
 const LABEL_EN: Array<[RegExp, string]> = [
   [/^จำนวนเงินรวมทั้งสิ้น$/, 'Grand Total'], [/^รวมเงินคืนทั้งสิ้น$/, 'Total Refund'], [/^รวมทั้งสิ้น$/, 'Grand Total'], [/^รวมยอดชำระ$/, 'Total Paid'], [/^รวมมูลค่า$/, 'Total Value'],
-  [/^รวมเงิน$/, 'Subtotal'], [/^รวม$/, 'Total'], [/^ยอดสุทธิ$/, 'Net Amount'], [/^หลังหักส่วนลด$/, 'After Discount'], [/^ส่วนลดเงินสด$/, 'Cash Discount'],
+  [/^รวมเงิน$/, 'Subtotal'], [/^ยอดชำระครั้งนี้$/, 'Paid This Receipt'], [/^รวมตามใบแจ้งหนี้$/, 'Total per Invoices'], [/^ชำระตามใบกำกับภาษีที่ออกแล้ว$/, 'Paid on Tax Invoices Already Issued'], [/^รวม$/, 'Total'], [/^ยอดสุทธิ$/, 'Net Amount'], [/^หลังหักส่วนลด$/, 'After Discount'], [/^ส่วนลดเงินสด$/, 'Cash Discount'],
   [/^ส่วนลด\s*(.*)$/, 'Discount $1'], [/^หักเงินมัดจำ$/, 'Less Deposit'], [/^หักค่าบริการแพลตฟอร์ม$/, 'Less Platform Fees'],
   [/^มูลค่าสินค้า\/บริการที่มีภาษีมูลค่าเพิ่ม$/, 'Value Subject to VAT'], [/^มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม$/, 'Non-VAT Value'], [/^มูลค่าสินค้า\/บริการ$/, 'Value of Goods/Services'],
   [/^มูลค่าก่อนภาษี$/, 'Amount before VAT'], [/^ภาษีมูลค่าเพิ่มของผลต่าง\s*(.*)$/, 'VAT on Difference $1'], [/^ภาษีมูลค่าเพิ่ม\s*(.*)$/, 'VAT $1'],
@@ -385,4 +387,49 @@ export function printLabelEn(th: string): string {
   const t = th.trim();
   for (const [re, en] of LABEL_EN) if (re.test(t)) return t.replace(re, en).trim();
   return th;
+}
+
+/** บิลหนึ่งใบที่ใบเสร็จตัด (doc_settlement + หัวบิล) สำหรับยอดรวมแบบรายการสินค้า — rectype '5' = ใบลดหนี้ที่นำมาหัก (ยอดลบ) */
+export interface ReceiptBillTotals {
+  amount: MoneyInput; express_rectype?: string | null; net_amount: MoneyInput; vat_rate?: MoneyInput | null;
+  inv_amount: MoneyInput; inv_discount?: MoneyInput | null; inv_discount_text?: string | null; inv_after?: MoneyInput | null; inv_deposit?: MoneyInput | null;
+  inv_price_type?: string | null; inv_taxable?: MoneyInput | null; inv_vat?: MoneyInput | null;
+}
+type TotalLine = { label: string; value: string };
+/**
+ * ยอดรวมของใบเสร็จแบบรายการสินค้า/บริการ (HANDOFF 153 — เจ้าของ: ยอดรวมใหม่ตาม invoice เดิม)
+ * ส่วนบิล: รวมเงิน · ส่วนลด/หลังหักส่วนลด · หักเงินมัดจำ · มูลค่าสินค้า/บริการ (ไม่รวม VAT) · VAT · รวมตามบิล — กฎ HANDOFF 152: "รวมเงิน" ซ้ำกับบรรทัดอื่น = ไม่พิมพ์
+ * ส่วนใบเสร็จ: ยอดชำระครั้งนี้ (เมื่อไม่เท่ายอดบิล — ชำระบางส่วน/หักใบลดหนี้) · ภาษีของใบเสร็จนี้ (ใบเสร็จรับเงิน/ใบกำกับภาษีที่ VAT ไม่เท่ากับ VAT ของบิล
+ * เช่น ชำระบางส่วน หรือมีบิลขายสินค้าที่ออกใบกำกับภาษีแล้วปนอยู่ — VAT ของบิลไม่พิมพ์ในส่วนบิล ใช้ภาษีถึงกำหนดของใบเสร็จแทน) · ส่วนลดเงินสด ฯลฯ · ยอดสุทธิ
+ * ไม่มีอะไรต่อจากยอดบิลและยอดสุทธิเท่ากัน = บรรทัดสุดท้ายคือ "จำนวนเงินรวมทั้งสิ้น" ของบิล
+ */
+export function receiptItemTotals(rows: ReceiptBillTotals[], x: { paid: MoneyInput; vatDue: MoneyInput; issued: MoneyInput; net: MoneyInput; vatBlock: TotalLine[]; adjBefore: TotalLine[]; adjAfter: TotalLine[] }): TotalLine[] {
+  let amt = d(0), disc = d(0), after = d(0), dep = d(0), value = d(0), vat = d(0), net = d(0);
+  let anyVat = false;
+  const rates = new Set<string>(), discTexts = new Set<string>();
+  for (const r of rows) {
+    const s = r.express_rectype === '5' ? -1 : 1, pt = r.inv_price_type ?? '0';
+    const v = d(r.inv_vat ?? 0), tx = d(r.inv_taxable ?? 0);
+    amt = amt.plus(d(r.inv_amount ?? 0).times(s)); net = net.plus(d(r.net_amount ?? 0).times(s));
+    if (!d(r.inv_discount ?? 0).isZero()) { disc = disc.plus(d(r.inv_discount ?? 0).times(s)); discTexts.add((r.inv_discount_text ?? '').trim()); }
+    after = after.plus(d(r.inv_after ?? r.inv_amount ?? 0).times(s)); dep = dep.plus(d(r.inv_deposit ?? 0).times(s));
+    if (pt !== '0') { anyVat = true; value = value.plus((pt === '1' ? tx.minus(v) : tx).times(s)); vat = vat.plus(v.times(s)); if (!v.isZero()) rates.add(d(r.vat_rate ?? 0).toString()); }
+  }
+  const paid = d(x.paid), vatDue = d(x.vatDue), recNet = d(x.net);
+  // ภาษีของใบเสร็จนี้พิมพ์แยก เมื่อเป็นใบกำกับภาษีแต่ VAT/ยอดไม่ตรงกับบิลทั้งใบ (ชำระบางส่วน · มีบิลที่ออกใบกำกับภาษีแล้ว)
+  const taxSeparate = !vatDue.isZero() && !(vatDue.eq(vat) && paid.eq(net) && d(x.issued).isZero());
+  const out: TotalLine[] = [];
+  const dupSum = disc.isZero() && dep.isZero() && (taxSeparate || amt.eq(net) || (anyVat && amt.eq(value)));
+  if (!dupSum) out.push({ label: 'รวมเงิน', value: amt.toFixed(2) });
+  if (!disc.isZero()) out.push({ label: `ส่วนลด ${discTexts.size === 1 ? [...discTexts][0] : ''}`.trim(), value: disc.toFixed(2) }, { label: 'หลังหักส่วนลด', value: after.toFixed(2) });
+  if (!dep.isZero()) out.push({ label: 'หักเงินมัดจำ', value: dep.toFixed(2) });
+  // มูลค่าที่ไม่มี VAT (รายการยกเว้น/0% ในบิล · บิลไม่มี VAT) แยกบรรทัด — มูลค่า + VAT + ไม่มี VAT = รวมตามบิล
+  const rest = net.minus(value).minus(vat);
+  if (anyVat && !taxSeparate) {
+    out.push({ label: rest.isZero() ? 'มูลค่าสินค้า/บริการ' : 'มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม', value: value.toFixed(2) }, { label: `ภาษีมูลค่าเพิ่ม${rates.size === 1 ? ` ${[...rates][0]}%` : ''}`, value: vat.toFixed(2) });
+    if (!rest.isZero()) out.push({ label: 'มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม', value: rest.toFixed(2) });
+  }
+  const tail: TotalLine[] = [...(paid.eq(net) ? [] : [{ label: 'ยอดชำระครั้งนี้', value: paid.toFixed(2) }]), ...(taxSeparate ? x.vatBlock : []), ...x.adjBefore, ...x.adjAfter];
+  if (!tail.length && recNet.eq(net)) return [...out, { label: 'จำนวนเงินรวมทั้งสิ้น', value: net.toFixed(2) }];
+  return [...out, { label: 'รวมตามใบแจ้งหนี้', value: net.toFixed(2) }, ...tail, { label: 'ยอดสุทธิ', value: recNet.toFixed(2) }];
 }

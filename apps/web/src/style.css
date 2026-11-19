@@ -745,6 +745,10 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .doc-sheet .ds-head > .ds-title { max-width: 55%; }
 .doc-sheet.b-pro .ds-head > .ds-title h1 { white-space: normal; }
 .doc-sheet .ds-head > .ds-co { min-width: 0; overflow-wrap: anywhere; }
+/* เอกสารหลายหน้า (HANDOFF 153 · printPages.tsx): หนึ่งแผ่นต่อหน้ากระดาษ + เลขหน้ามุมขวาล่าง · อ้างอิงเลขที่บิลของใบเสร็จ (เลขที่+วันที่ไม่ตัดบรรทัด) */
+.doc-sheet.ds-page { position: relative; }
+.doc-sheet .ds-pageno { position: absolute; right: 12mm; bottom: 3.5mm; font-size: 8.5pt; color: #555; white-space: nowrap; }
+.doc-sheet .ds-refs .nw { white-space: nowrap; }
 .doc-sheet.b-pro.no-topbar { padding-top: 6mm; }
 .doc-sheet.b-pro.no-topbar::before { display: none; }
 .doc-sheet.has-band table.ds-lines thead th, .doc-sheet.has-band .ds-totals tr.ds-net th, .doc-sheet.has-band .ds-totals tr.ds-net td {

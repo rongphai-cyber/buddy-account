@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { paginateSheets } from './printPages';
 
 /**
  * พิมพ์ในกรอบแยก (iframe) — HANDOFF 151 (เจ้าของ: กดพิมพ์บนคลาวด์ ตัวอย่างก่อนพิมพ์ว่างเปล่า)
@@ -48,6 +49,12 @@ export async function printHtml(html: string, title = document.title): Promise<v
   if (doc.fonts) await settle(Promise.all(fams.flatMap((fam) => ['400', '600', '700'].map((w) => doc.fonts.load(w + ' 12pt "' + fam + '"', String.fromCharCode(0x0e01, 0x0e02) + ' ABC 123')))), 6000);
   await settle(doc.fonts?.ready ?? Promise.resolve(), 4000);
   await Promise.all([...doc.images].map((img) => settle(img.decode(), 4000)));
+  // long documents → one sheet per paper page with "page n/N" (HANDOFF 153)
+  // .doc-print is display:none on screen; the frame is invisible anyway, so lay it out to measure the pages
+  const show = doc.createElement('style');
+  show.textContent = '.doc-print{display:block!important}';
+  doc.head.appendChild(show);
+  paginateSheets(doc.body);
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   if (frame !== f) return; // a newer print replaced this frame while waiting
   const w = f.contentWindow!;

@@ -2342,6 +2342,32 @@
 ]
 },
 {
+"th": "หักเงินมัดจำ",
+"n": 11,
+"files": [
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts",
+"packages/core/src/etax.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "อ้างอิง",
+"n": 11,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"packages/core/src/journal-import.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เช็ค",
 "n": 11,
 "files": [
@@ -2493,30 +2519,6 @@
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/server/src/modules/reports/register.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "หักเงินมัดจำ",
-"n": 10,
-"files": [
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts",
-"packages/core/src/etax.ts"
-]
-},
-{
-"th": "อ้างอิง",
-"n": 10,
-"files": [
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"packages/core/src/journal-import.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
 ]
@@ -4032,6 +4034,17 @@
 ]
 },
 {
+"th": "จำนวนเงินรวมทั้งสิ้น",
+"n": 5,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "จ่ายสุทธิ",
 "n": 5,
 "files": [
@@ -4302,6 +4315,16 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/date.ts"
+]
+},
+{
+"th": "มูลค่าสินค้า/บริการ",
+"n": 5,
+"files": [
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -4903,16 +4926,6 @@
 ]
 },
 {
-"th": "จำนวนเงินรวมทั้งสิ้น",
-"n": 4,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts"
-]
-},
-{
 "th": "ชั่วโมงทำงาน",
 "n": 4,
 "files": [
@@ -5152,15 +5165,6 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/tax.ts"
-]
-},
-{
-"th": "มูลค่าสินค้า/บริการ",
-"n": 4,
-"files": [
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/print.ts",
 "apps/server/src/modules/reports/tax.ts"
 ]
 },
@@ -5593,6 +5597,14 @@
 "apps/web/src/pages/reports/Ledger.tsx",
 "apps/web/src/pages/reports/TrialBalance.tsx",
 "apps/server/src/modules/reports/gl.ts"
+]
+},
+{
+"th": "(ของแถม)",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -7500,14 +7512,6 @@
 ]
 },
 {
-"th": "(ของแถม)",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts"
-]
-},
-{
 "th": "(ณ สิ้นช่วง)",
 "n": 2,
 "files": [
@@ -8552,6 +8556,14 @@
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "ชำระบางส่วน",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -10150,6 +10162,14 @@
 ]
 },
 {
+"th": "ภาษีมูลค่าเพิ่ม{0}",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ภาษีหัก ณ ที่จ่ายต้องไม่ติดลบ",
 "n": 2,
 "files": [
@@ -10241,10 +10261,26 @@
 ]
 },
 {
+"th": "มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "มูลค่าผลต่าง",
 "n": 2,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -10425,6 +10461,14 @@
 ]
 },
 {
+"th": "ยอดสุทธิ",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ยอดหักมัดจำ {0}",
 "n": 2,
 "files": [
@@ -10562,6 +10606,14 @@
 "files": [
 "apps/web/src/pages/payroll/Forms.tsx",
 "apps/server/src/modules/gl/reports.ts"
+]
+},
+{
+"th": "รวมเงิน",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -11623,6 +11675,14 @@
 ]
 },
 {
+"th": "ส่วนลด {0}",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "หนี้สูญ",
 "n": 2,
 "files": [
@@ -11689,6 +11749,14 @@
 "files": [
 "apps/web/src/components/ItemImages.tsx",
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "หลังหักส่วนลด",
+"n": 2,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -23248,6 +23316,13 @@
 ]
 },
 {
+"th": "ชำระตามใบกำกับภาษีที่ออกแล้ว",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
+]
+},
+{
 "th": "ชำระเกิน (ถ้า 10. มากกว่า 8. หรือ 9. รวมกับ 10.)",
 "n": 1,
 "files": [
@@ -33622,13 +33697,6 @@
 ]
 },
 {
-"th": "ภาษีมูลค่าเพิ่ม{0}",
-"n": 1,
-"files": [
-"apps/server/src/modules/print.ts"
-]
-},
-{
 "th": "ภาษีมูลค่าเพิ่มของผลต่าง {0}%",
 "n": 1,
 "files": [
@@ -34287,13 +34355,6 @@
 ]
 },
 {
-"th": "มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม",
-"n": 1,
-"files": [
-"apps/server/src/modules/print.ts"
-]
-},
-{
 "th": "มูลค่าภาษีของเอกสารราคารวม VAT",
 "n": 1,
 "files": [
@@ -34326,13 +34387,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/register.ts"
-]
-},
-{
-"th": "มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม",
-"n": 1,
-"files": [
-"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -35015,6 +35069,13 @@
 ]
 },
 {
+"th": "ยอดชำระครั้งนี้",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ยอดชำระจริง",
 "n": 1,
 "files": [
@@ -35446,13 +35507,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
-]
-},
-{
-"th": "ยอดสุทธิ",
-"n": 1,
-"files": [
-"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -36835,6 +36889,13 @@
 ]
 },
 {
+"th": "รวมตามใบแจ้งหนี้",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "รวมต้นทุนการผลิต",
 "n": 1,
 "files": [
@@ -36972,13 +37033,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/PriorYear.tsx"
-]
-},
-{
-"th": "รวมเงิน",
-"n": 1,
-"files": [
-"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -43779,13 +43833,6 @@
 ]
 },
 {
-"th": "ส่วนลด {0}",
-"n": 1,
-"files": [
-"apps/server/src/modules/print.ts"
-]
-},
-{
 "th": "ส่วนลดการค้าที่ได้รับ",
 "n": 1,
 "files": [
@@ -44021,6 +44068,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "หน้า",
+"n": 1,
+"files": [
+"apps/web/src/printPages.tsx"
 ]
 },
 {
@@ -44311,13 +44365,6 @@
 ]
 },
 {
-"th": "หลังหักส่วนลด",
-"n": 1,
-"files": [
-"apps/server/src/modules/print.ts"
-]
-},
-{
 "th": "หอพัก อพาร์ตเมนต์ นิติบุคคล",
 "n": 1,
 "files": [
@@ -44392,6 +44439,13 @@
 "n": 1,
 "files": [
 "apps/server/src/import/express/migrate.ts"
+]
+},
+{
+"th": "หัก{0} {1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/print.ts"
 ]
 },
 {
@@ -45151,7 +45205,7 @@
 ]
 },
 {
-"th": "อัตโนมัติ (ใบกำกับภาษีแสดงรายการสินค้า · ใบเสร็จแสดงเลขที่บิล)",
+"th": "อัตโนมัติ (ใบเสร็จรับเงิน/ใบกำกับภาษีแสดงรายการสินค้า · ใบเสร็จแสดงเลขที่บิล)",
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
@@ -52704,7 +52758,7 @@
 ]
 },
 {
-"th": "แสดงรายการสินค้า/บริการของทุกบิล",
+"th": "แสดงรายการสินค้า/บริการของบิล (เลขที่บิลเป็นเอกสารอ้างอิง)",
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
@@ -52746,7 +52800,7 @@
 ]
 },
 {
-"th": "แสดงเลขที่บิลที่ชำระ",
+"th": "แสดงเลขที่บิลที่ชำระเป็นแถวในตาราง",
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
@@ -54339,6 +54393,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/engine.ts"
+]
+},
+{
+"th": "ใบเสร็จที่แสดงรายการสินค้า/บริการของบิล ใช้คอลัมน์แบบใบแจ้งหนี้ (ลำดับ รหัสสินค้า รายละเอียด จำนวน หน่วย ราคา/หน่วย ส่วนลด จำนวนเงิน) — คอลัมน์ด้านล่างใช้เมื่อแสดงเลขที่บิลเป็นแถว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {

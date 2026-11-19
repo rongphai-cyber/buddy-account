@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkApprove, checkPrint, checkUnapprove, copyMark, defaultLayout, sheetCopies, docMenuOf, docPath, normalizeLayout, printFamily, printMenu, printLabelEn, printPartyLabel, printTextEn, printTitle, PRINT_FONTS, PRINT_POS9 } from './printforms.js';
+import { checkApprove, checkPrint, checkUnapprove, copyMark, defaultLayout, sheetCopies, docMenuOf, docPath, normalizeLayout, printFamily, printMenu, printLabelEn, printPartyLabel, printTextEn, printTitle, PRINT_FONTS, PRINT_POS9, receiptItemTotals } from './printforms.js';
 import { bahtTextEn } from './baht.js';
 import { formatDateEn } from './date.js';
 
@@ -137,5 +137,36 @@ describe('print form header grid, top bar, font, second name line (HANDOFF 152)'
   it('plain template keeps the company header off by default (pre-printed stationery)', () => {
     expect([defaultLayout('IV', 'plain').show_company, defaultLayout('IV', 'plain').logo]).toEqual([false, 'none']);
     expect(defaultLayout('IV', 'pro').show_company).toBe(true);
+  });
+});
+
+describe('receipt with item detail: totals from the original invoices (HANDOFF 153)', () => {
+  const inv = (amount: number, vat: number, x: Record<string, unknown> = {}) => ({ amount: String(amount + vat), net_amount: String(amount + vat), vat_rate: '7', inv_amount: String(amount), inv_after: String(amount), inv_price_type: '2', inv_taxable: String(amount), inv_vat: String(vat), ...x });
+  const base = { vatBlock: [], adjBefore: [], adjAfter: [] };
+  const t = (rows: Parameters<typeof receiptItemTotals>[0], x: Partial<Parameters<typeof receiptItemTotals>[1]>) => receiptItemTotals(rows, { paid: 0, vatDue: 0, issued: 0, net: 0, ...base, ...x }).map((l) => `${l.label}=${l.value}`);
+  it('goods invoices paid in full: value / VAT / grand total (no duplicate รวมเงิน)', () => {
+    expect(t([inv(100, 7), inv(200, 14)], { paid: 321, issued: 321, net: 321 })).toEqual(['มูลค่าสินค้า/บริการ=300.00', 'ภาษีมูลค่าเพิ่ม 7%=21.00', 'จำนวนเงินรวมทั้งสิ้น=321.00']);
+  });
+  it('part payment: invoice total, then the amount paid this time and the net', () => {
+    expect(t([inv(100, 7), inv(200, 14, { amount: '43' })], { paid: 150, issued: 150, net: 150 })).toEqual(['มูลค่าสินค้า/บริการ=300.00', 'ภาษีมูลค่าเพิ่ม 7%=21.00', 'รวมตามใบแจ้งหนี้=321.00', 'ยอดชำระครั้งนี้=150.00', 'ยอดสุทธิ=150.00']);
+  });
+  it('service (cash-basis VAT) paid in full: the invoice figures are the tax invoice figures', () => {
+    expect(t([inv(100, 7)], { paid: 107, vatDue: 7, net: 107 })).toEqual(['มูลค่าสินค้า/บริการ=100.00', 'ภาษีมูลค่าเพิ่ม 7%=7.00', 'จำนวนเงินรวมทั้งสิ้น=107.00']);
+  });
+  it('goods + service on one receipt: VAT of this receipt only, goods paid on tax invoices already issued', () => {
+    const vatBlock = [{ label: 'มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม', value: '200.00' }, { label: 'ภาษีมูลค่าเพิ่ม 7%', value: '14.00' }, { label: 'ชำระตามใบกำกับภาษีที่ออกแล้ว', value: '107.00' }];
+    expect(t([inv(100, 7), inv(200, 14)], { paid: 321, vatDue: 14, issued: 107, net: 321, vatBlock }))
+      .toEqual(['รวมตามใบแจ้งหนี้=321.00', 'มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม=200.00', 'ภาษีมูลค่าเพิ่ม 7%=14.00', 'ชำระตามใบกำกับภาษีที่ออกแล้ว=107.00', 'ยอดสุทธิ=321.00']);
+  });
+  it('discounts, VAT-inclusive invoices, credit notes deducted, cash discount', () => {
+    const incl = inv(0, 0, { amount: '107', net_amount: '107', inv_amount: '107', inv_after: '107', inv_price_type: '1', inv_taxable: '107', inv_vat: '7' });
+    const disc = inv(100, 6.3, { amount: '96.3', net_amount: '96.3', inv_discount: '10', inv_discount_text: '10', inv_after: '90', inv_taxable: '90' });
+    const cn = inv(10, 0.7, { express_rectype: '5' });
+    expect(t([incl, disc, cn], { paid: 192.6, issued: 192.6, net: 190.6, adjBefore: [{ label: 'ส่วนลดเงินสด', value: '2.00' }] }))
+      .toEqual(['รวมเงิน=197.00', 'ส่วนลด 10=10.00', 'หลังหักส่วนลด=187.00', 'มูลค่าสินค้า/บริการ=180.00', 'ภาษีมูลค่าเพิ่ม 7%=12.60', 'รวมตามใบแจ้งหนี้=192.60', 'ส่วนลดเงินสด=2.00', 'ยอดสุทธิ=190.60']);
+  });
+  it('English words for the new lines and the partly-paid reference', () => {
+    expect(['ยอดชำระครั้งนี้', 'รวมตามใบแจ้งหนี้', 'ชำระตามใบกำกับภาษีที่ออกแล้ว'].map(printLabelEn)).toEqual(['Paid This Receipt', 'Total per Invoices', 'Paid on Tax Invoices Already Issued']);
+    expect(printTextEn('IV0000137 (2026-11-04) ชำระบางส่วน')).toBe('IV0000137 (2026-11-04) partly paid');
   });
 });

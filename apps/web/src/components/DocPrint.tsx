@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { bahtTextEn, fmt, formatDate, formatDateEn, PRINT_HEAD_FIELDS, PRINT_WORDS_EN as EN, printLabelEn, printPartyLabel, printTextEn, sheetCopies, type PrintAlign, type PrintFamily, type PrintFormEntry, type PrintVAlign, type YearSystem } from '@buddy/core';
+import { bahtTextEn, COPY_ORIGINAL, defaultLayout, fmt, formatDate, formatDateEn, PRINT_HEAD_FIELDS, PRINT_WORDS_EN as EN, printLabelEn, printPartyLabel, printTextEn, sheetCopies, type PrintAlign, type PrintFamily, type PrintFormEntry, type PrintVAlign, type YearSystem } from '@buddy/core';
 import { CloseScreen, DocDelete } from './DocDelete';
 import { api } from '../api';
 import type { CompanyImages } from './CompanyImages';
@@ -9,6 +9,7 @@ import { useCan, useSession } from '../session';
 import { DateInput, ErrorBox, Field, Modal, Pill, toast, toastError, useHotkeys, useYearSystem } from '../ui';
 import { DocNotesDialog } from './Notes';
 import { PrintJob } from '../printFrame';
+import { PagedSheets } from '../printPages';
 import { ensurePrintFont, printFontStack } from '../printFonts';
 
 export interface PrintData {
@@ -21,6 +22,8 @@ export interface PrintData {
   journal: Array<Record<string, string>>; print_count: number; approved: boolean;
   /** ใบเสร็จ: ตัดบิลภาษีเกณฑ์เงินสด = ใบเสร็จรับเงิน/ใบกำกับภาษี · detail = บิลพร้อมรายการสินค้า/บริการ (kind bill/item) */
   receipt_tax?: boolean; detail?: Array<Record<string, string>>;
+  /** ใบเสร็จแบบรายการสินค้า (HANDOFF 153): แถวสินค้า/บริการของบิล (คอลัมน์แบบใบแจ้งหนี้) + ยอดรวมตามบิลเดิม · เลขที่บิลอยู่ที่ fields.ref_docs */
+  items?: Array<Record<string, string>>; item_totals?: Array<{ label: string; value: string }>;
 }
 type PrintResp = { data: PrintData; forms: PrintFormEntry[]; rule: { approveLevel: number; method: string | null; reprintLevel: number }; block: string | null; images?: CompanyImages };
 
@@ -43,17 +46,22 @@ const inkOn = (hex: string) => { const n = parseInt(hex.slice(1), 16); const [r,
 export function PrintSheet({ data, form, ys, images, prior }: { data: PrintData; form: PrintFormEntry; ys: YearSystem; images?: CompanyImages | null; prior?: number }) {
   const L = form.layout;
   const en = L.lang === 'en';
-  // ใบเสร็จ: แสดงรายการสินค้า/บริการของบิล (ฟอร์มเลือก หรืออัตโนมัติเมื่อเป็นใบกำกับภาษี) — คอลัมน์รายการต้องแสดง
-  const items = data.family === 'settle' && !!data.detail && (L.settle_detail === 'items' || (L.settle_detail !== 'bills' && !!data.receipt_tax));
-  const lines = items ? data.detail! : data.lines;
-  const shown = L.columns.filter((c) => c.show || (items && c.key === 'name'));
+  // ใบเสร็จ: แสดงรายการสินค้า/บริการของบิล (ฟอร์มเลือก หรืออัตโนมัติเมื่อเป็นใบกำกับภาษี)
+  // HANDOFF 153: แถวสินค้า/บริการตามบิลเดิม (คอลัมน์แบบใบแจ้งหนี้ของต้นแบบเดียวกัน) · เลขที่บิลเป็นเอกสารอ้างอิงที่หัวเอกสาร · ยอดรวมตามบิลเดิม (item_totals)
+  const items = data.family === 'settle' && !!data.items && (L.settle_detail === 'items' || (L.settle_detail !== 'bills' && !!data.receipt_tax));
+  const lines = items ? data.items! : data.lines;
+  const shown = items ? defaultLayout('IV', form.base).columns.filter((c) => c.show) : L.columns.filter((c) => c.show);
+  const totals = items && data.item_totals ? data.item_totals : data.totals;
+  const refDocs = items ? (data.fields.ref_docs ?? '').split(', ').filter(Boolean) : [];
   // เจ้าของ 19/11/2569 "กรณีไม่มีส่วนลด ไม่ต้องแสดงส่วนลด": ไม่มีบรรทัดใดมีส่วนลด = ซ่อนคอลัมน์ส่วนลด ให้ความกว้างแก่รายละเอียด
   // (ยอดรวม: server ใส่บรรทัดส่วนลด/หลังหักส่วนลด/ส่วนลดเงินสด เฉพาะเมื่อมียอด)
   const hasDisc = lines.some((l) => { const v = (l.disc ?? '').trim(); return !!v && !/^[0.,%\s]+$/.test(v); });
   const discCol = hasDisc ? undefined : shown.find((c) => c.key === 'disc');
   const cols = discCol ? shown.filter((c) => c !== discCol).map((c) => (c.key === 'name' ? { ...c, width: c.width + discCol.width } : c)) : shown;
   const totalW = cols.reduce((s, c) => s + c.width, 0) || 1;
-  const copies = sheetCopies(L, prior ?? data.print_count);
+  // ใบเสร็จรับเงิน/ใบกำกับภาษี: แบบฟอร์มไม่มีคำกำกับ = แผ่นเดียวกำกับ "ต้นฉบับ" (พิมพ์ซ้ำ = "สำเนา" ตาม sheetCopies)
+  const sc = sheetCopies(L, prior ?? data.print_count);
+  const copies = data.receipt_tax && sc.length === 1 && !sc[0] ? [COPY_ORIGINAL] : sc;
   const fill = Math.max(0, L.min_rows - lines.length - lines.filter((l) => l.note).length);
   // หมายเหตุรายการเริ่มใต้คอลัมน์รายละเอียด (ไม่มี = ใต้คอลัมน์ที่ 2)
   const noteAt = Math.max(0, cols.findIndex((c) => c.key === 'name')) || Math.min(1, cols.length - 1);
@@ -130,7 +138,7 @@ export function PrintSheet({ data, form, ys, images, prior }: { data: PrintData;
     ...(L.top_bar && L.top_bar !== 'none' ? { '--topbar': L.top_bar } as CSSProperties : {}) };
   const sheetCls = `doc-sheet b-${form.base}${band ? ' has-band' : ''}${L.body_color ? ' has-body-ink' : ''}${L.top_bar === 'none' ? ' no-topbar' : ''}`;
   const bodySize: CSSProperties | undefined = L.body_pt >= 6 ? { fontSize: `${L.body_pt}pt` } : undefined;
-  const amountText = data.amount_text ? (en ? bahtTextEn(data.totals.at(-1)?.value ?? '0') : data.amount_text) : '';
+  const amountText = data.amount_text ? (en ? bahtTextEn(totals.at(-1)?.value ?? '0') : data.amount_text) : '';
   const lab = (th: string) => (en ? printLabelEn(th) : th);
   return (
     <>
@@ -149,6 +157,12 @@ export function PrintSheet({ data, form, ys, images, prior }: { data: PrintData;
             <table className="ds-meta"><tbody>
               <tr><th>{en ? EN.no : 'เลขที่'}</th><td>{data.doc_no}</td></tr>
               <tr><th>{en ? EN.date : 'วันที่'}</th><td>{dateOf(data.doc_date, ys, en)}</td></tr>
+              {refDocs.length > 0 && <tr><th>{en ? EN.refDocs : 'อ้างอิง'}</th><td className="ds-refs">{refDocs.map((r, i) => {
+                // "IV0000137 (04/11/2569)" never breaks · a "partly paid" note after it may wrap
+                const t = (en ? printTextEn(r) : r).replace(/\b(\d{4}-\d{2}-\d{2})\b/g, (x) => dateOf(x, ys, en));
+                const k = t.indexOf(')') + 1;
+                return <span key={i}>{i > 0 && ', '}<span className="nw">{k > 0 ? t.slice(0, k) : t}</span>{k > 0 && t.slice(k)}</span>;
+              })}</td></tr>}
               {heads.map((h) => <tr key={h.k}><th>{h.label}</th><td>{DATE_FIELDS.has(h.k) ? dateOf(h.v, ys, en) : h.v.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, (x) => dateOf(x, ys, en))}</td></tr>)}
             </tbody></table>
           </div>
@@ -168,7 +182,7 @@ export function PrintSheet({ data, form, ys, images, prior }: { data: PrintData;
               {L.show_payments && data.payments.length > 0 && <table className="ds-pay"><tbody>{data.payments.map((p, i) => <tr key={i}><td>{lab(p.method)}</td><td>{p.ref}</td><td>{p.date ? dateOf(p.date, ys, en) : ''}</td><td className="r">{fmt(p.amount)}</td></tr>)}</tbody></table>}
               {L.show_notes && (data.notes.length > 0 || (data.fields.remark && !L.head_fields.includes('remark'))) && <div className="ds-notes">{en ? EN.remarks : 'หมายเหตุ'}: {[data.fields.remark, ...data.notes].filter(Boolean).join(' · ')}</div>}
             </div>
-            {L.show_totals && !isJ && <table className="ds-totals" style={bodySize}><tbody>{data.totals.map((t, i) => <tr key={i} className={i === data.totals.length - 1 ? 'ds-net' : ''}><th>{lab(t.label)}</th><td className="r">{fmt(t.value)}</td></tr>)}</tbody></table>}
+            {L.show_totals && !isJ && <table className="ds-totals" style={bodySize}><tbody>{totals.map((t, i) => <tr key={i} className={i === totals.length - 1 ? 'ds-net' : ''}><th>{lab(t.label)}</th><td className="r">{fmt(t.value)}</td></tr>)}</tbody></table>}
           </div>
           {L.show_journal && !isJ && data.journal.length > 0 && <table className="ds-jnl"><thead><tr><th>{en ? EN.accountNo : 'เลขที่บัญชี'}</th><th>{en ? EN.accountName : 'ชื่อบัญชี'}</th><th className="r">{en ? EN.debit : 'เดบิต'}</th><th className="r">{en ? EN.credit : 'เครดิต'}</th></tr></thead>
             <tbody>{data.journal.map((j, i) => <tr key={i}><td>{j.code}</td><td>{j.name}</td><td className="r">{j.debit && fmt(j.debit)}</td><td className="r">{j.credit && fmt(j.credit)}</td></tr>)}</tbody></table>}
@@ -274,7 +288,7 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
           {!screenOnly && <button className="primary" disabled={!can('print')} onClick={() => doPrint(preview.slot)}>🖨 พิมพ์</button>}</>}>
         {r.block && <p className="err-msg">{r.block}</p>}
         {r.data.print_count > 0 && preview.layout.reprint_copy && <p className="muted small" data-testid="reprint-note">เอกสารนี้พิมพ์แล้ว {r.data.print_count} ครั้ง — พิมพ์ซ้ำออกเป็น "สำเนา" (ต้นฉบับออกได้ครั้งเดียว · ตั้งที่ แบบฟอร์มพิมพ์เอกสาร › ทั่วไป/กระดาษ)</p>}
-        <div className="ds-preview"><PrintSheet data={r.data} form={preview} ys={ys} images={r.images} /></div>
+        <PagedSheets className="ds-preview"><PrintSheet data={r.data} form={preview} ys={ys} images={r.images} /></PagedSheets>
       </Modal>}
       {/* พิมพ์ในกรอบแยก (HANDOFF 151 — เดิมแผ่นอยู่ในหน้าแล้วเอาออกหลังพิมพ์ ตัวอย่างก่อนพิมพ์บางครั้งว่าง) */}
       {printing && r && <PrintJob title={r.data.doc_no} onDone={() => setPrinting(null)}><div className="doc-print"><PrintSheet data={r.data} form={printing.form} prior={printing.prior} ys={ys} images={r.images} /></div></PrintJob>}
@@ -310,7 +324,7 @@ export function PrintPage({ kind, id, slot }: { kind: 'doc' | 'journal'; id: str
     <div className="print-page">
       <div className="print-page-bar no-print"><b>{q.data.data.doc_no}</b> · {f.slot}. {f.name}{q.data.block && <span className="err-msg"> {q.data.block}</span>}
         <button className="primary" disabled={!!q.data.block} onClick={() => window.print()}>🖨 พิมพ์ (Ctrl+P)</button><button onClick={() => window.close()}>ปิดแท็บ</button></div>
-      <div className="print-page-body"><PrintSheet data={q.data.data} form={f} prior={prior} ys={ys} images={q.data.images} /></div>
+      <PagedSheets className="print-page-body"><PrintSheet data={q.data.data} form={f} prior={prior} ys={ys} images={q.data.images} /></PagedSheets>
     </div>
   );
 }

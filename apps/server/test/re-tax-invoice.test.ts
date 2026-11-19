@@ -124,6 +124,15 @@ describe('RE = ใบเสร็จรับเงิน/ใบกำกับ�
     const tot = Object.fromEntries(p.totals.map((t: { label: string; value: string }) => [t.label, t.value]));
     expect(tot).toMatchObject({ 'รวมยอดชำระ': '4654.71', 'มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม': '978.65', 'ภาษีมูลค่าเพิ่ม 7%': '68.51', 'มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม': '3607.55', 'ยอดสุทธิ': '4654.71' });
     expect(p.amount_text).toBe('สี่พันหกร้อยห้าสิบสี่บาทเจ็ดสิบเอ็ดสตางค์');
+    // HANDOFF 153: แบบรายการสินค้า — แถวสินค้า/บริการของบิล (ยอดทุกแถว) · เลขที่บิลเป็นเอกสารอ้างอิง · ยอดรวมตามบิลเดิม (ชำระเต็มบิล = ตัวเลขชุดเดียวกับภาษีขาย)
+    expect(p.items.map((x: { name: string; amount: string }) => `${x.name}:${x.amount}`)).toEqual(['ค่าเช่าห้อง:3500.00', 'ค่าน้ำ/ค่าไฟ:978.65', 'ค่าปรับชำระล่าช้า:107.55']);
+    expect(p.fields.ref_docs.split(', ')).toHaveLength(2);
+    expect(p.fields.ref_docs.startsWith(`${pIv.doc_no} (`)).toBe(true);
+    expect(p.fields.ref_docs).toMatch(/^IV\d+ \(\d{4}-\d{2}-\d{2}\), IV\d+ \(\d{4}-\d{2}-\d{2}\)$/);
+    expect(p.fields.ref_docs).not.toContain('ชำระบางส่วน');
+    const it = Object.fromEntries(p.item_totals.map((t: { label: string; value: string }) => [t.label, t.value]));
+    expect(it).toMatchObject({ 'มูลค่าสินค้า/บริการที่มีภาษีมูลค่าเพิ่ม': '978.65', 'ภาษีมูลค่าเพิ่ม 7%': '68.51', 'มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม': '3607.55', 'จำนวนเงินรวมทั้งสิ้น': '4654.71' });
+    expect(p.item_totals.at(-1)).toEqual({ label: 'จำนวนเงินรวมทั้งสิ้น', value: '4654.71' });
 
     // ภาษีที่พิมพ์ = รายการภาษีขายของ RE
     const vat = (await call('GET', `/api/v1/vat/S?header_id=${ids.re}`)).body;
