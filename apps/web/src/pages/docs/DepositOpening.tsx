@@ -16,6 +16,7 @@ import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { PostingTab } from './PostingTab';
+import { confirmLeave } from '../../unsaved';
 
 /**
  * เงินมัดจำยกมา (HANDOFF ข้อ 86 91 — Express ไม่มีหน้าจอนี้): ใบรับเงินมัดจำ AI ที่ is_opening
@@ -140,7 +141,7 @@ export function DepositOpeningFormPage() {
   const usedNow = (cur.data?.links ?? []).filter((x) => x.doc_status !== 'C');
   const canCancel = !!id && !cancelled && can('cancel') && !usedNow.length;
   useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': canCancel ? () => setAskCancel(true) : undefined,
-    Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
+    Escape: () => { void confirmLeave().then((ok) => { if (ok) nav(K.route); }); } }, []);
   const startHint = meta.data?.start_date ? <>วันเริ่มใช้ <DateText v={meta.data.start_date} /> · </> : null;
   const defAcc = meta.data?.opening_account;
   return (
@@ -150,7 +151,7 @@ export function DepositOpeningFormPage() {
           {dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && !cancelled && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}
           {roBase && !cancelled && id && cur.data && !fromSource && !!usedNow.length && <Pill tone="d">มีเอกสารใช้มัดจำนี้แล้ว — แก้ไข/ยกเลิกไม่ได้</Pill>}</span></div>
       <div className="toolbar">
-        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setDirty(false); nav(`${K.route}/new`); } }}>+ ใหม่</button>
+        <button onClick={() => { void confirmLeave().then((ok) => { if (ok) { setH(null); setDirty(false); nav(`${K.route}/new`); } }) }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>

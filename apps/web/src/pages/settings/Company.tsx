@@ -8,6 +8,7 @@ import { ThemePicker } from '../../components/ThemePicker';
 import { AddressFields } from '../../components/AddressFields';
 import { ModuleSwitches } from '../../components/ModuleSwitches';
 import { WtsLivingSetup, WtsPosSetup } from '../../components/WtsConnect';
+import { useUnsaved } from '../../unsaved';
 
 type Co = {
   name_th: string; name_en: string | null; address_th_1: string; address_th_2: string; address_en_1: string; address_en_2: string; phone: string | null; business_type: 'J' | 'P';
@@ -39,6 +40,8 @@ export function CompanyPage() {
     } catch (e) { setErr(e); }
   };
   useHotkeys({ F9: save, 'Ctrl+S': save, 'Alt+E': () => setEdit(true) }, [f]);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(edit && !!f && !!q.data && JSON.stringify(f) !== JSON.stringify({ ...q.data, tax_branch_no: String(Number(q.data.tax_branch_no)) }), { word: 'รายละเอียดกิจการ', save: () => void save() });
   if (!f) return <div className="page"><ErrorBox error={q.error} /></div>;
   const tax = f.tax_id ? checkTaxId(f.tax_id) : null;
   const set = <K extends keyof Co>(k: K, v: Co[K]) => setF({ ...f, [k]: v });

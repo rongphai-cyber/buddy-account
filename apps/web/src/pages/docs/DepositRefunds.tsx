@@ -19,6 +19,7 @@ import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { DepositPickTable, depositsBody, depositsFrom, refundTotals, savedRefundVat, useOpenDeposits, type DepositPicks } from './DepositPick';
+import { confirmLeave } from '../../unsaved';
 
 /**
  * คืนเงินมัดจำ (RD — Buddy เพิ่ม 05/11/2569 · Express ไม่มีเอกสารนี้): คืนยอดคงเหลือของใบรับเงินมัดจำให้ลูกค้า
@@ -199,7 +200,7 @@ export function DepositRefundFormPage() {
   const cancelled = cur.data?.doc_status === 'C';
   useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F6: () => setTab('deposits'), F7: () => setTab('pay'),
     'Alt+C': id && can('cancel') && !cancelled ? () => setAskCancel(true) : undefined,
-    Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
+    Escape: () => { void confirmLeave().then((ok) => { if (ok) nav(K.route); }); } }, []);
   const docNo = id ? cur.data?.doc_no : dn.value ?? (tCur ? `${tCur.code}**NEW**` : '');
   return (
     <div className={cx('page', 'doc-fit', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="sales" style={bookStyle(tColor)}>
@@ -208,7 +209,7 @@ export function DepositRefundFormPage() {
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}
           {rt.hasVat && <Pill tone="m">ใบลดหนี้ (มัดจำมี VAT)</Pill>}{h?.party && Object.keys(deps).length > 0 && !t.ok && !ro && <Pill tone="d">ยอดเงินไม่เรียบร้อย</Pill>}</span></div>
       <div className="toolbar">
-        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { reset(); nav(`${K.route}/new`); } }}>+ ใหม่</button>
+        <button onClick={() => { void confirmLeave().then((ok) => { if (ok) { reset(); nav(`${K.route}/new`); } }) }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>

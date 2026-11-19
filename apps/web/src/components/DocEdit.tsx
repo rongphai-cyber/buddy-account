@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { focusStart, Modal, toast, useHotkeys } from '../ui';
+import { confirmLeave, useUnsaved } from '../unsaved';
 
 /**
  * โหมดดู/แก้ไขของหน้าเอกสาร (ข้อกำหนดเจ้าของ 30/10/2569)
@@ -15,12 +16,12 @@ export function useDocEdit({ id, allowed, dirty, onSave, onDiscard, word = 'เ�
   const [ask, setAsk] = useState(false);
   useEffect(() => setEditing(!id), [id]);
   const locked = !!id && !editing;
+  // ถามก่อนออกจากหน้าเมื่อมีการแก้ไขที่ยังไม่บันทึก (HANDOFF 149) — บันทึก = ปุ่มบันทึกของหน้าจอ · ทิ้ง = ล้างการแก้ไข
+  useUnsaved(dirty && !locked, { word, save: () => onSave(), discard: onDiscard });
   // แก้ไข (Alt+E/ปุ่ม) → เคอร์เซอร์ไปช่องแรกที่แก้ได้ทันที ไม่ค้างที่ปุ่ม (ข้อกำหนดเจ้าของ 01/11/2569 — ใช้คีย์บอร์ดล้วนได้)
   const start = () => { setEditing(true); toast(`แก้ไข${word} — แก้แล้วกด F9 เพื่อบันทึก`); focusStart(); };
-  const stop = () => {
-    if (dirty && !window.confirm('ทิ้งการแก้ไขที่ยังไม่บันทึก?')) return;
-    setEditing(false); onDiscard?.();
-  };
+  // เลิกแก้ไข: มีการแก้ไขค้าง = หน้าต่างเดียวกับตอนออกจากหน้า (บันทึก / ไม่บันทึก / กลับไปคีย์ต่อ)
+  const stop = () => { void confirmLeave().then((ok) => { if (ok) { setEditing(false); onDiscard?.(); } }); };
   useHotkeys({ 'Alt+E': id && allowed ? () => (locked ? start() : stop()) : undefined }, []);
   const editButton = id
     ? <button disabled={!allowed} onClick={() => (locked ? start() : stop())} title={allowed ? (locked ? `เปิดให้แก้ไข${word}นี้` : 'เลิกแก้ไข กลับเป็นดูอย่างเดียว') : `${word}นี้แก้ไขไม่ได้`}>{locked ? 'แก้ไข' : 'เลิกแก้ไข'} <kbd>Alt+E</kbd></button>

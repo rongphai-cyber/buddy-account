@@ -18,6 +18,7 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [ticket, setTicket] = useState<string | null>(null); // เปิดยืนยันตัวตนสองขั้น → ขั้นที่ 2
   const [code, setCode] = useState('');
+  const [lost] = useState(() => { try { const w = sessionStorage.getItem('buddy.lostWork'); sessionStorage.removeItem('buddy.lostWork'); return w; } catch { return null; } });
   const go = async () => {
     setBusy(true); setErr(null);
     try {
@@ -50,6 +51,7 @@ export function LoginPage() {
     <div className="login" data-tone="home">
       <form className="login-card" onKeyDown={navKey} onSubmit={(e) => { e.preventDefault(); go(); }}>
         <div className="login-brand"><b>Buddy Account</b><span>โปรแกรมบัญชีสำหรับกิจการไทย</span></div>
+        {lost && <p className="bad" role="alert">หมดเวลาเข้าระบบระหว่างคีย์ — {lost} ที่ยังไม่บันทึกไม่ได้เก็บไว้ เข้าระบบแล้วคีย์ใหม่</p>}
         <ErrorBox error={err} />
         <Field label="รหัสผู้ใช้" req><input autoFocus autoComplete="username" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>
         <Field label="รหัสผ่าน" req><input type="password" autoComplete="current-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} data-noenter onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), go())} /></Field>

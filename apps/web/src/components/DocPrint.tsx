@@ -179,7 +179,7 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
   const nb = useQuery({ enabled: !!id, queryKey: ['neighbors', kind, id], queryFn: () => api.get<Record<'first' | 'prev' | 'next' | 'last', { id: string; no: string } | null>>(`/api/v1/neighbors/${kind}/${id}`) });
   const go = (t: { id: string; no: string } | null | undefined) => {
     if (!t || !id || t.id === id) return;
-    if (dirty && !window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ไปเอกสารอื่นโดยไม่บันทึก?')) return;
+    // งานที่ยังไม่บันทึก: ด่านกลาง (unsaved.tsx) ถามเมื่อเปลี่ยนหน้า (HANDOFF 149)
     nav(loc.pathname.replace(id, t.id) + loc.search);
   };
   const navBtn = (k: 'first' | 'prev' | 'next' | 'last', icon: string, label: string) => {

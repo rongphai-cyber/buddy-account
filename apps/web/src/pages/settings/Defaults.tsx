@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { useCan } from '../../session';
 import { AccountCell, useAccounts } from '../../components/AccountCell';
 import { cx, ErrorBox, KeyHints, MoneyInput, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { useUnsaved } from '../../unsaved';
 
 type Vals = Record<string, unknown>;
 type Tier = { amount: number; level: number };
@@ -45,6 +46,8 @@ export function DefaultsPage() {
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   useHotkeys({ 'Alt+E': () => can('edit') && setEditing(true), F9: save, 'Ctrl+S': save, Escape: () => (editing ? cancel() : nav('/')) }, [editing, vals, busy, sec]);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(editing && !!q.data && JSON.stringify(vals) !== JSON.stringify(q.data.values), { word: 'ค่าเริ่มต้น', save: () => void save() });
   const own = new Set(q.data?.customized ?? []);
   return (
     <div className="page" data-tone="setup">

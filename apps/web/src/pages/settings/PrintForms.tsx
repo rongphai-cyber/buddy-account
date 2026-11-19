@@ -7,6 +7,7 @@ import { useCan } from '../../session';
 import { Confirm, ErrorBox, Field, PageHead, Tabs, toast, useHotkeys, useYearSystem } from '../../ui';
 import { PrintSheet, type PrintData } from '../../components/DocPrint';
 import { CompanyImagesPanel, useCompanyImages } from '../../components/CompanyImages';
+import { confirmLeave, useUnsaved } from '../../unsaved';
 
 type FormsResp = { menu: PrintFormEntry[]; custom: Array<{ slot: number; name: string; base: string; status: string }>; sample: { kind: 'doc' | 'journal'; id: string } | null };
 const SCOPES = [...Object.entries(DOC_CLASSES).map(([k, v]) => ({ k, label: `${k} ${v.label}` })), { k: 'GL', label: 'GL ใบสำคัญ (สมุดรายวัน)' }];
@@ -66,14 +67,16 @@ export function PrintFormsPage() {
     catch (e) { setErr(e); }
   };
   useHotkeys({ F9: save, 'Ctrl+S': save });
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(dirty, { word: 'แบบฟอร์มพิมพ์', save: () => void save() });
   const moveCol = (i: number, dir: -1 | 1) => { if (!L) return; const c = [...L.columns]; const j = i + dir; if (j < 0 || j >= c.length) return; [c[i], c[j]] = [c[j]!, c[i]!]; set({ columns: c }); };
 
   return (
     <div className="page" data-tone="settings">
       <PageHead eyebrow="รายงาน › แบบฟอร์มพิมพ์เอกสาร" title="แบบฟอร์มพิมพ์เอกสาร" lead="ฟอร์ม 1–4 เป็นต้นแบบในโปรแกรม (มีเส้น/ไม่มีเส้น/ครึ่งหน้า/ต่อเนื่อง) — บันทึกทับหมายเลขเดิมหรือเพิ่มหมายเลข 5–9 ได้ เมนูพิมพ์ของเอกสารแสดงตามลำดับหมายเลข (Alt+P = ฟอร์ม 1)" />
       <div className="toolbar">
-        <label>ชนิดเอกสาร <select value={scope} onChange={(e) => { if (dirty && !window.confirm('ทิ้งการแก้ไข?')) return; setSp({ scope: e.target.value }); setSlot(1); }}>{SCOPES.map((s) => <option key={s.k} value={s.k}>{s.label}</option>)}</select></label>
-        <label>หมายเลขฟอร์ม <select value={slot} onChange={(e) => { if (dirty && !window.confirm('ทิ้งการแก้ไข?')) return; setSlot(Number(e.target.value)); }}>
+        <label>ชนิดเอกสาร <select value={scope} onChange={(e) => { const v = e.target.value; void confirmLeave().then((ok) => { if (ok) { setSp({ scope: v }); setSlot(1); } }); }}>{SCOPES.map((s) => <option key={s.k} value={s.k}>{s.label}</option>)}</select></label>
+        <label>หมายเลขฟอร์ม <select value={slot} onChange={(e) => { const v = Number(e.target.value); void confirmLeave().then((ok) => { if (ok) setSlot(v); }); }}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => { const m = forms.data?.menu.find((f) => f.slot === n); const c = forms.data?.custom.find((f) => f.slot === n); return <option key={n} value={n}>{n}. {m?.name ?? c?.name ?? '(ว่าง)'}{c ? ' — ของบริษัท' : m ? ' — ต้นแบบ' : ''}{c?.status === 'I' ? ' (ซ่อน)' : ''}</option>; })}
         </select></label>
         <button className="primary" disabled={!can('edit') || !L} onClick={save}>บันทึก <kbd>F9</kbd></button>

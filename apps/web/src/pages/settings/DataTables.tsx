@@ -5,6 +5,7 @@ import { api } from '../../api';
 import { useCan } from '../../session';
 import { cx, ErrorBox, KeyHints, navKey, PageHead, toast, useHotkeys } from '../../ui';
 import { GridBar } from '../../components/MasterBar';
+import { confirmLeave, useUnsaved } from '../../unsaved';
 
 interface TableInfo { code: string; label: string; rate: boolean; hint: string | null; count: number }
 interface Row { id?: string; code: string; short_th: string | null; short_en: string | null; name_th: string; name_en: string | null; rate: string | null; status: string; used?: number }
@@ -25,7 +26,7 @@ export function DataTablesPage() {
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const dirty = !!rows && !!cur.data && JSON.stringify(rows.map(({ used: _u, ...r }) => r)) !== JSON.stringify(cur.data.map(({ used: _u, ...r }) => ({ ...r, rate: r.rate === null ? null : String(Number(r.rate)) })));
-  const pick = (c: string) => { if (c === code) return; if (dirty && !window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ทิ้งการแก้ไข?')) return; setCode(c); setRows(null); setAt(null); setStamp(''); setErr(null); };
+  const pick = (c: string) => { if (c === code) return; void confirmLeave().then((ok) => { if (ok) { setCode(c); setRows(null); setAt(null); setStamp(''); setErr(null); } }); };
   const save = async () => {
     if (!rows || busy || !can('edit')) return;
     setErr(null); setBusy(true);
@@ -37,6 +38,8 @@ export function DataTablesPage() {
   };
   const add = () => { if (!rows) return; setRows([...rows, { code: '', short_th: null, short_en: null, name_th: '', name_en: null, rate: t?.rate ? '1' : null, status: 'A' }]); setAt(rows.length); setTimeout(() => document.querySelector<HTMLInputElement>('.dt-grid tbody tr:last-child input')?.focus(), 0); };
   useHotkeys({ F9: save, 'Ctrl+S': save, Insert: add }, []);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(dirty, { word: 'ตารางข้อมูล', save: () => void save() });
   const set = (i: number, p: Partial<Row>) => setRows((rs) => rs!.map((r, k) => (k === i ? { ...r, ...p } : r)));
   return (
     <div className="page" data-tone="setup">

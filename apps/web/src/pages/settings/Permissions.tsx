@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, type PermAction } from '../../api';
 import { useSession } from '../../session';
 import { cx, ErrorBox, KeyHints, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
+import { useUnsaved } from '../../unsaved';
 
 interface MenuRow { code: string; label: string; depth: number; group: boolean }
 interface Subjects { users: Array<{ id: string; username: string; display_name: string; approval_level: number; check_rights: boolean; group_code: string | null }>; groups: Array<{ id: string; code: string; name: string }> }
@@ -43,6 +44,8 @@ export function PermissionsPage() {
     } catch (e) { setErr(e); }
   };
   useHotkeys({ F9: save, 'Ctrl+S': save, Escape: () => nav('/settings/users') }, [vals, type, id]);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(dirty, { word: 'ตารางสิทธิ์', save: () => void save() });
   const s = cur.data?.subject;
   const eff = cur.data?.effective;
   return (

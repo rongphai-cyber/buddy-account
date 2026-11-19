@@ -4,7 +4,13 @@ export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public issues?: ApiIssue[]) { super(message); }
 }
 
+/** จำนวนคำขอที่ยังไม่ได้คำตอบ — ด่านงานที่ยังไม่บันทึก (unsaved.tsx) ใช้ดูว่าการบันทึกจบแล้วหรือยัง */
+export const net = { inflight: 0 };
 async function call<T>(method: string, url: string, body?: unknown): Promise<T> {
+  net.inflight++;
+  try { return await callInner<T>(method, url, body); } finally { net.inflight--; }
+}
+async function callInner<T>(method: string, url: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
     res = await fetch(url, {

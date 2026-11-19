@@ -4,6 +4,7 @@ import { d } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
 import { Confirm, cx, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { useUnsaved } from '../../unsaved';
 
 /** บัญชีสินค้าคงเหลือ Periodic (คู่มือ S-GL-14/15) — ยอดปลายงวดที่ยืนยันใช้ในงบการเงิน (ข้อมูลชนิด INV) */
 interface Row { period_no: number; date: string; entered: string | null; source: 'M' | 'S' | null; system: string | null; gl: string }
@@ -37,6 +38,8 @@ export function InventoryAccountPage() {
     catch (e) { setCalc(false); setErr(e); }
   };
   useHotkeys({ F9: can('edit') ? save : undefined, 'Ctrl+S': can('edit') ? save : undefined, F5: can('edit') && data.data ? () => setCalc(true) : undefined }, []);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(dirty, { word: 'ยอดสินค้าคงเหลือปลายงวด', save: () => void save() });
   const opening = rows.find((r) => r.period_no === 0);
   return (
     <div className="page" data-tone="ledger">

@@ -7,6 +7,7 @@ import { AccountCell } from '../../components/AccountCell';
 import { LkSelect, useLookups } from '../../components/LkSelect';
 import { Confirm, DateInput, ErrorBox, Field, KeyHints, Modal, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, cx } from '../../ui';
 import { GridBar, MasterBar, useRowSelect } from '../../components/MasterBar';
+import { confirmLeave, useUnsaved } from '../../unsaved';
 
 /* ---------------------------------------------------------------- บัญชีเงินฝาก S-CQ-01 / S-BK-01 */
 interface BankAccount { id: string; code: string; name: string; branch: string | null; account_number: string | null; short_name: string | null; account_kind: string | null; bank_id: string | null; bank_code: string | null; bank_name: string | null; gl_account_id: string | null; account_no: string | null; account_name: string | null; currency: string; opening_balance: string | null; opening_date: string | null; status: string; cheque_count: number; method_count: number }
@@ -118,11 +119,13 @@ export function PaymentMethodsPage() {
   useHotkeys({ F9: save, 'Ctrl+S': save, Insert: add }, []);
   const bankRows = banks.data?.map((b) => ({ id: b.id, code: b.code, name: b.name }));
   const dirty = JSON.stringify(rows) !== JSON.stringify(list.data);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(dirty, { word: 'รายการธนาคาร', save: () => void save() });
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › วิธีรับ/จ่ายชำระหนี้" title={dir === 'R' ? 'วิธีการรับชำระหนี้' : 'วิธีการจ่ายชำระหนี้'}
         lead={<>3 ลักษณะ: <b>เช็ค/บัตร</b> ที่ต้องนำฝากและรอผ่าน (ติ๊ก เช็ค? + บัญชีเช็ครับ/จ่ายล่วงหน้า) · <b>เงินโอน</b> เลือกธนาคาร (บัญชีเงินฝาก) ไม่ต้องป้อนเลขที่บัญชี · <b>อื่น ๆ</b> ที่เสร็จในขั้นตอนเดียว เช่น เงินสด ส่วนลด ภาษีหัก ณ ที่จ่าย ป้อนเฉพาะเลขที่บัญชี</>} />
-      <Tabs active={dir} onChange={(k) => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ทิ้งการแก้ไข?')) { setDir(k as 'R'); setRows(null); setCur(null); setLoaded(''); } }}
+      <Tabs active={dir} onChange={(k) => { void confirmLeave().then((ok) => { if (ok) { setDir(k as 'R'); setRows(null); setCur(null); setLoaded(''); } }) }}
         tabs={[{ key: 'R', label: 'วิธีการรับชำระหนี้ (ขายและลูกหนี้)' }, { key: 'P', label: 'วิธีการจ่ายชำระหนี้ (ซื้อและเจ้าหนี้)' }]} />
       <ErrorBox error={err ?? list.error} />
       {rows && <GridBar word="วิธีชำระ" cur={cur !== null && cur < rows.length ? cur : null} label={cur !== null && rows[cur] ? `${rows[cur]!.code} ${rows[cur]!.name_th}` : undefined} canEdit={can('edit')}

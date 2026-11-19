@@ -11,6 +11,7 @@ import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Mon
 import { RecNav, usePayItems, type PayItem } from './common';
 import { ImportModal } from './Filing';
 import { AddWrap } from '../../components/AddWrap';
+import { confirmLeave, useUnsaved } from '../../unsaved';
 
 interface Row { id: string; code: string; name: string; nickname: string | null; position: string | null; employee_type: string | null; hire_date: string; end_date: string | null; wage_type: string; status: string;
   tax_id_masked: string | null; department_code: string | null; branch_code: string | null; rate: string | null }
@@ -123,8 +124,10 @@ export function EmployeeFormPage() {
       if (!id) nav(`/pay/employees/${r.id}`, { replace: true });
     } catch (e) { setErr(e); }
   };
-  const back = () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav('/pay/employees'); };
+  const back = () => { void confirmLeave().then((ok) => { if (ok) nav('/pay/employees'); }); };
   useHotkeys({ F9: save, 'Ctrl+S': save, Escape: back }, []);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(dirty, { word: 'ข้อมูลพนักงาน', save: () => void save() });
   const reload = () => qc.invalidateQueries({ queryKey: ['pay-employee', id] });
   const branches = me?.branches ?? [];
   return (
@@ -133,10 +136,10 @@ export function EmployeeFormPage() {
         <span className="doc-state">{!id ? <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill> : x?.end_date ? <Pill tone="x">ออกแล้ว <DateText v={String(x.end_date)} /></Pill> : x?.status === 'I' ? <Pill tone="d">เลิกใช้</Pill> : <Pill tone="n">ทำงานอยู่</Pill>}
           {dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}</span></div>
       <div className="toolbar">
-        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setF({ ...EMPTY }); nav('/pay/employees/new'); } }}>+ ใหม่</button>
+        <button onClick={() => { void confirmLeave().then((ok) => { if (ok) { setF({ ...EMPTY }); nav('/pay/employees/new'); } }) }}>+ ใหม่</button>
         <button className="primary" disabled={readOnly || !f} onClick={save}>บันทึก <kbd>F9</kbd></button>
         <button disabled={!id || !can('delete') || x?.used} title={x?.used ? 'มีรอบเงินเดือนแล้ว — ใส่วันที่ออกแทน' : undefined} onClick={() => setAskDel(true)}>ลบ</button>
-        <RecNav ids={(all.data ?? []).map((r) => r.id)} cur={id} go={(to) => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) nav(`/pay/employees/${to}`); }} />
+        <RecNav ids={(all.data ?? []).map((r) => r.id)} cur={id} go={(to) => { void confirmLeave().then((ok) => { if (ok) nav(`/pay/employees/${to}`); }); }} />
         <button onClick={back}>รายการ <kbd>Esc</kbd></button>
       </div>
       <ErrorBox error={err ?? cur.error} />

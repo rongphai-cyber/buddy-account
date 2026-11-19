@@ -21,6 +21,7 @@ import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { JobSelect, followHeadJob, showJob, useJobs } from '../../components/JobSelect';
+import { confirmLeave } from '../../unsaved';
 
 /** รายการประจำวันสินค้า (คู่มือบทที่ 14 S-IC-06/08/10 + เพิ่ม/ลดต้นทุน) — สต๊อกคำนวณสดจากเอกสาร */
 const MENU = 'IC.TRN';
@@ -187,7 +188,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
     catch (e) { setAskCancel(false); setErr(e); }
   };
   useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), 'Alt+C': id && can('cancel') && !cancelled && (cur.data?.editable || cur.data?.from_count) ? () => setAskCancel(true) : undefined,
-    Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
+    Escape: () => { void confirmLeave().then((ok) => { if (ok) nav(K.route); }); } }, []);
   const whRows = lk.data?.WH;
   return (
     <div className={cx('page', 'doc-fit', tColor && 'book-colored', cancelled && 'doc-cancelled')} data-tone="inventory" style={bookStyle(tColor)}>
@@ -196,7 +197,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={ro} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">บันทึกแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}{!cancelled && cur.data?.doc_no?.startsWith('MIG-') && <Pill tone="d">ปรับยอดตอนย้ายข้อมูล — แก้ไข/ยกเลิกไม่ได้</Pill>}{!cancelled && cur.data?.from_count && <Pill tone="d">สร้างจากการตรวจนับ — แก้ที่หน้ารายการตรวจนับ</Pill>}</span></div>
       <div className="toolbar">
         {/* + ใหม่: หน้าจอว่างเริ่มคีย์ใหม่ทุกครั้ง (ข้อกำหนดเจ้าของ 01/11/2569 — แถบเครื่องมือมาตรฐาน) */}
-        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setLines([]); setDirty(false); nav(`${K.route}/new`); } }}>+ ใหม่</button>
+        <button onClick={() => { void confirmLeave().then((ok) => { if (ok) { setH(null); setLines([]); setDirty(false); nav(`${K.route}/new`); } }) }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>

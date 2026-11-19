@@ -25,6 +25,7 @@ import { DocVatTab, VatCheckAfterSave, vatTabLabel } from '../../components/DocT
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { DepositPickTable, depositsBody, depositsFrom, depositTotal, usableDeposits, useOpenDeposits, type DepositPicks } from './DepositPick';
+import { confirmLeave } from '../../unsaved';
 
 const kindOf = (path: string) => SETTLE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: SettleKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -252,7 +253,7 @@ export function SettleFormPage({ path }: { path: string }) {
   };
   useHotkeys({ F9: () => save(), 'Ctrl+S': () => save(), 'Ctrl+Enter': () => save(true), F5: () => { setTab('bills'); if (!ro && h?.party && rows.length) setPicking(true); }, F7: () => setTab('pay'), F8: isRe ? () => setTab('fee') : undefined, F6: isRe ? () => setTab('deposit') : undefined, 'Ctrl+F7': id ? () => setTab('vat') : undefined, 'Ctrl+F10': K.cls === 'PS' ? () => setTab('wht') : undefined,
     'Alt+C': id && can('cancel') && cur.data?.doc_status !== 'C' ? () => setAskCancel(true) : undefined,
-    Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav(K.route); } }, []);
+    Escape: () => { void confirmLeave().then((ok) => { if (ok) nav(K.route); }); } }, []);
   const dn = useDocNo(tCur, id ? cur.data?.doc_no : undefined, { disabled: readOnly, resetKey: h ? 'on' : 'off' });
   const dtCode = defs.data?.types.find((x) => x.id === h?.doc_type_id);
   const cancelled = cur.data?.doc_status === 'C';
@@ -265,7 +266,7 @@ export function SettleFormPage({ path }: { path: string }) {
         <span className="doc-state"><DocBranch value={br.value} onChange={(v) => { br.set(v); setDirty(true); }} disabled={readOnly} /> {cancelled ? <Pill tone="x">ยกเลิก</Pill> : id ? <Pill tone="n">ลงบัญชีแล้ว</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}{ed.locked && !roBase && <Pill tone="n">ดูอย่างเดียว — กด แก้ไข (Alt+E)</Pill>}
           {h?.party && chosen.length > 0 && !t.ok && !ro && <Pill tone="d">ยอดเงินไม่เรียบร้อย</Pill>}</span></div>
       <div className="toolbar">
-        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setH(null); setPick({}); setNotes({}); setPays([]); setWhts([]); setChHead(emptyChargeHead()); setCharges([]); setDeps({}); nav(`${K.route}/new`); } }}>+ ใหม่</button>
+        <button onClick={() => { void confirmLeave().then((ok) => { if (ok) { setH(null); setPick({}); setNotes({}); setPays([]); setWhts([]); setChHead(emptyChargeHead()); setCharges([]); setDeps({}); nav(`${K.route}/new`); } }) }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>

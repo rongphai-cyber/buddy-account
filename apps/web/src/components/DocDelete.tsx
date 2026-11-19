@@ -5,6 +5,7 @@ import { sourceSystemLabel } from '@buddy/core';
 import { api } from '../api';
 import { Confirm, Field, toast, toastError, useHotkeys } from '../ui';
 import { ReasonInput } from './ReasonInput';
+import { confirmLeave } from '../unsaved';
 
 /**
  * ป้าย "เอกสารยกเลิก" สีแดงข้างเลขที่ (ข้อกำหนดเจ้าของ 30/10/2569): เอกสารยังแสดงอยู่ แต่ยอดไม่นำไปใช้ที่ใด และไม่ลงบัญชี
@@ -67,7 +68,7 @@ export function DocDelete({ kind, id, docNo, cancelled, cancelUrl, listPath, can
 /** ปุ่ม "ปิดหน้าจอ" (Alt+X): ปิดเอกสารนี้กลับหน้าแรก — มีงานค้างให้ยืนยันก่อน */
 export function CloseScreen({ dirty }: { dirty?: boolean }) {
   const nav = useNavigate();
-  const close = () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ปิดหน้าจอโดยไม่บันทึก?')) nav('/'); };
+  const close = () => { void confirmLeave().then((ok) => { if (ok) nav('/'); }); };
   useHotkeys({ 'Alt+X': close });
   return <button onClick={close} title="ปิดหน้าจอนี้ กลับหน้าแรก (Alt+X)" aria-label="ปิดหน้าจอ">✕<span className="tb-txt"> ปิดหน้าจอ</span></button>;
 }

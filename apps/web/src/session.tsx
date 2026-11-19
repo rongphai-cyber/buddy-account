@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type Me, ApiError } from './api';
 import { applyTheme } from './theme';
 import { loadDataNames } from './i18n';
+import { dirtyWords } from './unsaved';
 
 interface SessionValue { me: Me | null; loading: boolean; needsSetup: boolean; refresh: () => Promise<void>; select: (p: { company_id?: string; branch_id?: string | null; work_date?: string | null }) => Promise<void>; logout: () => Promise<void> }
 const Ctx = createContext<SessionValue>({ me: null, loading: true, needsSetup: false, refresh: async () => {}, select: async () => {}, logout: async () => {} });
@@ -16,7 +17,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryFn: async () => { try { return await api.get<Me>('/api/v1/auth/me'); } catch (e) { if (e instanceof ApiError && e.status === 401) return null; throw e; } },
   });
   useEffect(() => {
-    const h = () => qc.setQueryData(['me'], null);
+    // หมดเวลาเข้าระบบระหว่างคีย์ (HANDOFF 149): หน้าจอถูกแทนด้วยหน้าเข้าระบบ งานที่ยังไม่บันทึกเก็บไว้ไม่ได้ — บอกผู้ใช้ตรง ๆ ที่หน้าเข้าระบบ ไม่หายเงียบ
+    const h = () => { const w = dirtyWords(); if (w.length) { try { sessionStorage.setItem('buddy.lostWork', w.join(', ')); } catch { /* ไม่มีที่เก็บ */ } } qc.setQueryData(['me'], null); };
     window.addEventListener('buddy:unauthorized', h);
     return () => window.removeEventListener('buddy:unauthorized', h);
   }, [qc]);

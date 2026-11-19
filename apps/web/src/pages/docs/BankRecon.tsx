@@ -4,6 +4,7 @@ import { d, todayIso } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { cx, DateInput, DateText, ErrorBox, Field, KeyHints, Money, MoneyInput, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { useUnsaved } from '../../unsaved';
 
 /** กระทบยอดเงินฝากธนาคาร — ติ๊กรายการที่ปรากฏในใบแจ้งยอด แล้วเทียบยอดตามบัญชี (ปรับปรุง) กับยอดตามใบแจ้งยอด */
 interface Line { id: string; voucher_no: string; voucher_date: string; description: string | null; debit: string; credit: string; cleared: boolean; source_doc_no: string | null; reference: string | null }
@@ -33,6 +34,8 @@ export function BankReconPage() {
     try { await api.put('/api/v1/bank-recon/statement', { bank_account_id: cur, statement_date: date, closing_balance: stmt || '0' }); toast('บันทึกยอดตามใบแจ้งยอดแล้ว'); setStmt(null); qc.invalidateQueries({ queryKey: ['bank-recon'] }); } catch (e) { setErr(e); }
   };
   useHotkeys({ F9: can('edit') ? saveStmt : undefined }, [stmt]);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(!!x && stmt !== null && stmt !== (x.statement_balance ?? ''), { word: 'ยอดตามใบแจ้งยอดธนาคาร', save: () => void saveStmt() });
   const lines = (x?.lines ?? []).filter((l) => filter === 'all' || !l.cleared);
   return (
     <div className="page" data-tone="finance">

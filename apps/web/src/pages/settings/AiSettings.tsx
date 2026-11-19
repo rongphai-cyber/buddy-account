@@ -5,6 +5,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { DateText, ErrorBox, Field, PageHead, Pill, toast, useHotkeys } from '../../ui';
 import { checkOllama, localOcrOn, setLocalOcrOn, type OllamaCheck } from '../../localOcr';
+import { useUnsaved } from '../../unsaved';
 
 type Config = { model: string; has_key: boolean; key_hint: string | null; key_broken: boolean; monthly_limit_usd: number | null; month_cost_usd: string; month_count: number; available: boolean; business_type: string | null; guidance: string | null };
 const GUIDE_EXAMPLE = `ตัวอย่าง:
@@ -46,6 +47,8 @@ export function AiSettingsPage() {
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   useHotkeys({ F9: can('edit') ? () => save(key.trim() ? { api_key: key.trim() } : {}) : undefined }, [key, lim, bt, gd, c]);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(!!key.trim() || limit !== null || biz !== null || guide !== null, { word: 'ค่าตั้ง AI อ่านบิล', save: () => void save(key.trim() ? { api_key: key.trim() } : {}) });
   return (
     <div className="page" data-tone="settings">
       <PageHead eyebrow="เริ่มระบบ" title="AI อ่านบิล (Claude)"

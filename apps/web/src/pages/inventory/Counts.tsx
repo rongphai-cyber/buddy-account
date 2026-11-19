@@ -8,6 +8,7 @@ import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, PageHead, Pill, toast, useHotkeys } from '../../ui';
 import { ReasonInput } from '../../components/ReasonInput';
+import { confirmLeave, useUnsaved } from '../../unsaved';
 
 /** ตรวจนับสินค้า (คู่มือบทที่ 14 S-IC-15..22) — ยอดตามระบบ ณ วันนับคำนวณสดทุกครั้ง */
 interface Row { id: string; warehouse_id: string; warehouse_code: string; warehouse_name: string; item_id: string; item_code: string; item_name: string; shelf: string | null; flag: '1' | '3' | '6';
@@ -65,7 +66,9 @@ export function CountsPage() {
   };
   const print = (m: PrintMode) => { setPrintMode(m); setTimeout(() => { window.print(); setPrintMode(null); }, 100); };
   useHotkeys({ F9: can('edit') ? save : undefined, 'Ctrl+S': can('edit') ? save : undefined, Insert: can('add') && cur ? () => setAdd(true) : undefined,
-    Escape: () => { if (!dirty || window.confirm('มียอดนับที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav('/ic/stock'); } }, []);
+    Escape: () => { void confirmLeave().then((ok) => { if (ok) nav('/ic/stock'); }); } }, []);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(dirty > 0, { word: 'ยอดนับสินค้า', save: () => void save() });
   const wrows = lk.data?.WH;
   return (
     <div className="page" data-tone="inventory">

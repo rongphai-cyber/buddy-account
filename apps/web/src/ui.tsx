@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as RKE, type FocusEvent as RFE } from 'react';
 import { d, fmt, formatDate, parseDateInput, parseInput, type YearSystem } from '@buddy/core';
-import { ApiError } from './api';
+import { ApiError, net } from './api';
+import { confirmLeave, useUnsaved } from './unsaved';
 import { useSession } from './session';
 
 export const cx = (...a: Array<string | false | null | undefined>) => a.filter(Boolean).join(' ');
@@ -104,8 +105,40 @@ function focusSave(box: HTMLElement) {
   const b = box.querySelector<HTMLButtonElement>('.modal-foot button.primary:not([disabled]), .modal-foot button.danger:not([disabled])');
   if (b) b.focus();
 }
+/** ปุ่มบันทึกในแถวปุ่มของหน้าต่าง (หน้าต่างแบบฟอร์ม) — ไม่มี = หน้าต่างค้นหา/ถาม/เลือก ไม่ต้องถามก่อนปิด */
+const saveButtonOf = (box: HTMLElement | null) => [...(box?.querySelectorAll<HTMLButtonElement>('.modal-foot button') ?? [])].find((b) => !b.disabled && /บันทึก/.test(b.textContent ?? '')) ?? null;
 export function Modal({ title, onClose, children, size = 'form', footer }: { title: string; onClose: () => void; children: ReactNode; size?: 'form' | 'wide' | 'confirm'; footer?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  /**
+   * หน้าต่างแบบฟอร์ม (มีปุ่มบันทึก): คีย์แล้วยังไม่บันทึก → ปิดด้วย Esc / คลิกนอกหน้าต่าง / ✕ หรือเปลี่ยนหน้า = ถามก่อน (HANDOFF 149 — เดิมหายเงียบ ๆ)
+   * ปุ่มยกเลิกในแถวปุ่ม = ตั้งใจทิ้ง ปิดเลย · บันทึกผ่าน (ไม่มีข้อผิดพลาดหลังส่งข้อมูลเสร็จ) = ไม่ค้าง
+   */
+  const [dirty, setDirty] = useState(false);
+  const unsavedId = useUnsaved(dirty, { word: `ข้อมูลในหน้าต่าง "${title}"`, save: () => saveButtonOf(ref.current)?.click(), discard: onClose });
+  const close = () => { if (!dirty) onClose(); else void confirmLeave(unsavedId).then((ok) => { if (ok && ref.current?.isConnected) onClose(); }); };
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    const box = ref.current;
+    if (!box) return;
+    const typed = (e: Event) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('.modal-body') || t.closest('.modal') !== box || t.matches('input[type=search], input.search') || !saveButtonOf(box)) return;
+      setDirty(true);
+    };
+    // กดบันทึกแล้วส่งข้อมูลเสร็จโดยไม่มีข้อผิดพลาดในหน้าต่าง = ไม่ค้าง (หน้าต่างที่ยังเปิดต่อหลังบันทึก)
+    const saved = (e: Event) => {
+      const b = (e.target as HTMLElement).closest('button');
+      if (!b || b !== saveButtonOf(box)) return;
+      const t0 = Date.now();
+      const poll = () => { if (!box.isConnected) return; if (net.inflight > 0 && Date.now() - t0 < 60_000) { setTimeout(poll, 150); return; } if (!box.querySelector('.errbox, [role=alert], [aria-invalid=true]')) setDirty(false); };
+      setTimeout(poll, 300);
+    };
+    box.addEventListener('input', typed, true);
+    box.addEventListener('change', typed, true);
+    box.addEventListener('click', saved, true);
+    return () => { box.removeEventListener('input', typed, true); box.removeEventListener('change', typed, true); box.removeEventListener('click', saved, true); };
+  }, []);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
     const f = ref.current?.querySelector<HTMLElement>('[autofocus], input:not([readonly]), select, textarea, button.primary');
@@ -113,7 +146,7 @@ export function Modal({ title, onClose, children, size = 'form', footer }: { tit
     const esc = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       const all = document.querySelectorAll('.modal');
-      if (all[all.length - 1] === ref.current) { e.preventDefault(); e.stopPropagation(); onClose(); }
+      if (all[all.length - 1] === ref.current) { e.preventDefault(); e.stopPropagation(); closeRef.current(); }
     };
     window.addEventListener('keydown', esc, true);
     // ฟอร์มในหน้าต่างที่ใช้ navKey ของตัวเอง: จบช่องสุดท้ายแล้วส่ง navend → ไปปุ่มบันทึก
@@ -125,9 +158,9 @@ export function Modal({ title, onClose, children, size = 'form', footer }: { tit
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className={'modal m-' + size} role="dialog" aria-modal="true" aria-label={title} ref={ref} onKeyDown={modalKey}>
-        <div className="modal-head"><h2>{title}</h2><button className="icon-btn" onClick={onClose} aria-label="ปิด" title="ปิด (Esc)">✕</button></div>
+        <div className="modal-head"><h2>{title}</h2><button className="icon-btn" onClick={close} aria-label="ปิด" title="ปิด (Esc)">✕</button></div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>

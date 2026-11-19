@@ -1,3 +1,4 @@
+import { confirmLeave, UnsavedHost } from './unsaved';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PrintPage } from './components/DocPrint';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -111,7 +112,7 @@ export function App() {
   // หน้าพิมพ์แยก (เปิดจากปุ่ม "เปิดหน้าพิมพ์ในแท็บใหม่"): เอกสารอย่างเดียว ไม่มีเมนู
   const pm = /^\/print\/(doc|journal)\/([0-9a-f-]{36})$/.exec(loc.pathname);
   if (pm) return <><PrintPage kind={pm[1] as 'doc' | 'journal'} id={pm[2]!} slot={Number(new URLSearchParams(loc.search).get('slot')) || 1} /><Toasts /></>;
-  return <><Shell /><AuxTools /><Toasts /></>;
+  return <><Shell /><AuxTools /><Toasts /><UnsavedHost /></>;
 }
 
 /** ผู้ใช้เฉพาะหน้าเปิดโปรแกรม: การ์ดโปรแกรมที่ได้รับสิทธิ์ + รหัสผ่าน/ยืนยันตัวตน (ที่อยู่อื่นทั้งหมด = หน้าเปิดโปรแกรม) */
@@ -184,12 +185,12 @@ function Shell() {
       <header className="topbar">
         <button className="burger" onClick={() => setMobileMenu((x) => !x)} aria-label="เมนู">☰</button>
         <button className="brand" onClick={() => nav('/')} title="หน้าแรก (Alt+H)"><b>Buddy Account</b><span>โปรแกรมบัญชี</span></button>
-        <select className="company-sel" value={me.company.id} aria-label="บริษัท" onChange={(e) => select({ company_id: e.target.value }).then(() => nav('/')).catch(toastError)}>
+        <select className="company-sel" value={me.company.id} aria-label="บริษัท" onChange={(e) => { const v = e.target.value; void confirmLeave().then((ok) => { if (ok) select({ company_id: v }).then(() => nav('/')).catch(toastError); }); }}>
           {me.companies.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name_th}</option>)}
         </select>
         <div className="scope">
           {me.branches.length > 1 && (
-            <select value={me.branch?.id ?? ''} aria-label="สาขา" onChange={(e) => select({ branch_id: e.target.value || null }).catch(toastError)}>
+            <select value={me.branch?.id ?? ''} aria-label="สาขา" onChange={(e) => { const v = e.target.value || null; void confirmLeave().then((ok) => { if (ok) select({ branch_id: v }).catch(toastError); }); }}>
               <option value="">ทุกสาขา</option>
               {me.branches.map((b) => <option key={b.id} value={b.id}>{b.code} {b.name}</option>)}
             </select>
@@ -199,7 +200,7 @@ function Shell() {
           <button className="period" onClick={() => setWorkDateOpen(true)} title="เปลี่ยนวันทำการ">วันทำการ {formatDate(me.work_date ?? new Date().toISOString().slice(0, 10), ys)}</button>
           <button className="user link" title={`${me.user.username} — รหัสผ่านและยืนยันตัวตนสองขั้น`} onClick={() => nav('/account/password')}>{me.user.display_name}</button>
           <LangSwitch />
-          <button onClick={() => logout()} title="ออกจากระบบ">ออก</button>
+          <button onClick={() => void confirmLeave().then((ok) => { if (ok) void logout(); })} title="ออกจากระบบ">ออก</button>
         </div>
       </header>
       <nav className="sidebar" aria-label="เมนูหลัก">

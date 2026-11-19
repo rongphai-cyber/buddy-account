@@ -10,6 +10,7 @@ import { NumInput, Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Moda
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { DocLink } from '../../components/DocLink';
 import { AddWrap } from '../../components/AddWrap';
+import { confirmLeave, useUnsaved } from '../../unsaved';
 
 interface Group { id: string; code: string; name_th: string; name_en: string | null; asset_account_id: string | null; depr_expense_account_id: string | null; accum_depr_account_id: string | null; asset_count: number }
 interface Row { id: string; code: string; name_th: string; category_code: string | null; group_code: string; purchase_date: string; cost: string; method: string; rate: string | null; status: string; sold_date: string | null; is_depreciable: boolean; accumulated: string; book_value: string }
@@ -135,14 +136,16 @@ export function AssetFormPage() {
     try { const r = await api.post<{ code: string }>(`/api/v1/fa/assets/${id}/recode`, { code: recode }); toast(`เปลี่ยนรหัสเป็น ${r.code} แล้ว`); setRecode(null); qc.invalidateQueries({ queryKey: ['fa-asset', id] }); qc.invalidateQueries({ queryKey: ['fa-assets'] }); }
     catch (e) { toastError(e); }
   };
-  useHotkeys({ F9: save, 'Ctrl+S': save, Escape: () => { if (!dirty || window.confirm('มีการแก้ไขที่ยังไม่บันทึก — ออกโดยไม่บันทึก?')) nav('/fa/assets'); } }, []);
+  useHotkeys({ F9: save, 'Ctrl+S': save, Escape: () => { void confirmLeave().then((ok) => { if (ok) nav('/fa/assets'); }); } }, []);
+  // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  useUnsaved(dirty, { word: 'ทะเบียนทรัพย์สิน', save: () => void save() });
   const sold = !!x?.sold_date;
   return (
     <div className="page" data-tone="gl">
       <div className="doc-title"><p className="eyebrow">บัญชี › รายการทรัพย์สิน</p><h1 className="mono">{id ? x?.code : 'ทรัพย์สินใหม่'}</h1>
         <span className="doc-state">{sold ? <Pill tone="x">ขาย/ตัดจำหน่าย <DateText v={x?.sold_date} /></Pill> : id ? <Pill tone="n">ใช้งานอยู่</Pill> : <Pill tone="m">ใหม่ — ยังไม่บันทึก</Pill>}{dirty && <Pill tone="c">มีการแก้ไขที่ยังไม่บันทึก</Pill>}</span></div>
       <div className="toolbar">
-        <button onClick={() => { if (!dirty || window.confirm('ทิ้งการแก้ไข?')) { setF({ ...EMPTY }); nav('/fa/assets/new'); } }}>+ ใหม่</button>
+        <button onClick={() => { void confirmLeave().then((ok) => { if (ok) { setF({ ...EMPTY }); nav('/fa/assets/new'); } }) }}>+ ใหม่</button>
         <button className="primary" disabled={readOnly || !f} onClick={save}>บันทึก <kbd>F9</kbd></button>
         <button disabled={!id || !can('edit')} onClick={() => setRecode(x?.code ?? '')} title="เปลี่ยนรหัสทรัพย์สิน (S-FA-02)">เปลี่ยนรหัส</button>
         {!x?.sold_date ? <button disabled={!id || !can('edit')} onClick={() => setSell({ sold_date: '', sold_amount: '' })} title="บันทึกขายทรัพย์สิน (SOLD F/A)">บันทึกขาย</button>

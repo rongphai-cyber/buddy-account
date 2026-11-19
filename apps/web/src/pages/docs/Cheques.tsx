@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Mon
 import { useDocNo } from '../../components/DocNo';
 import { DocLink } from '../../components/DocLink';
 import { ReasonInput } from '../../components/ReasonInput';
+import { useUnsaved } from '../../unsaved';
 
 /** เช็ครับ/เช็คจ่าย (คู่มือบทที่ 13 S-BK-04..13) — ยอดเงินฝากเพิ่มเมื่อผ่านเช็คเท่านั้น */
 type Dir = 'R' | 'P';
@@ -323,6 +324,11 @@ export function ChequeSlipFormPage() {
   };
   const run = async (fn: () => Promise<unknown>, msg: string, back = false) => { setErr(null); try { await fn(); toast(msg); setAct(null); refresh(qc); if (back) nav('/fi/cheques/slips'); else { await qc.refetchQueries({ queryKey: ['cheque-deposits', 'one', id] }); setH(null); } } catch (e) { setErr(e); setAct(null); } };
   useHotkeys({ F9: save, 'Ctrl+S': save, F8: !ro ? () => setPicking(true) : undefined, Escape: () => nav('/fi/cheques/slips') }, []);
+  // ใบนำฝากเช็ค: เทียบกับค่าตอนเปิด/บันทึกล่าสุด → ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
+  const snap = h ? JSON.stringify({ h, s: [...sel].sort() }) : null;
+  const base = useRef<string | null>(null);
+  if (!h) base.current = null; else if (base.current === null) base.current = snap;
+  useUnsaved(!ro && !!h && snap !== base.current, { word: 'ใบนำฝากเช็ค', save: () => void save() });
   const c = cur.data;
   const ys: YearSystem = me?.company?.year_system ?? 'B';
   return (
