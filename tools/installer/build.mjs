@@ -68,7 +68,8 @@ const crlf = (s) => s.replace(/\r?\n/g, '\r\n');
 const bom = '\ufeff';   // Windows PowerShell 5.1 อ่านภาษาไทยในสคริปต์ถูกเมื่อมี BOM
 for (const f of ['install.ps1', 'uninstall.ps1']) writeFileSync(join(PKG, f), bom + crlf(readFileSync(join(HERE, f), 'utf8')));
 for (const f of ['Buddy Account.cmd', 'Stop Buddy Account.cmd']) writeFileSync(join(PKG, f), crlf(readFileSync(join(HERE, f), 'utf8')));
-writeFileSync(join(APP, 'buddy.ico'), icon());
+// ไอคอนโปรแกรม = ไอคอน WTS ของเจ้าของ (WTS_Logo_Pack/07_Icons/Program_Windows_Mac · 16–256px · HANDOFF 150) · ไม่มีไฟล์ = ไอคอนที่วาดเอง
+if (existsSync(join(HERE, 'WTS_app.ico'))) copyFileSync(join(HERE, 'WTS_app.ico'), join(APP, 'buddy.ico')); else writeFileSync(join(APP, 'buddy.ico'), icon());
 writeFileSync(join(APP, 'version.json'), JSON.stringify({ version, commit, built: new Date().toISOString(), node: process.version }, null, 2));
 writeFileSync(join(PKG, 'อ่านก่อน.txt'), bom + crlf(readFileSync(join(HERE, 'README.txt'), 'utf8').replace('{version}', version)));
 

@@ -93,6 +93,10 @@ a.doc-link:hover, a.doc-link:focus-visible, .shell a.doc-link:hover, .shell a.do
 .topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background: var(--bar); color: var(--bar-ink); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
 .brand { border: 0; background: transparent; padding: 0; flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.1; }
 .brand b { font-size: 17px; letter-spacing: 0.02em; }
+/* โลโก้ WTS Buddy Account (WTS_Logo_Pack 06 · HANDOFF 150) — ความสูงเท่าข้อความเดิม แถบบนไม่สูงขึ้น · จอแคบ ≤480px เหลือสัญลักษณ์ WTS */
+.brand picture, .brand img { display: block; }
+.brand img { height: 38px; width: auto; }
+@media (max-width: 480px) { .brand img { height: 30px; } }
 .brand span { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
 .company { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
 .scope { display: flex; gap: 8px; align-items: center; margin-left: auto; }

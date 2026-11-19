@@ -379,6 +379,7 @@
 "Buddy Account พร้อมใช้งานที่ http://localhost:{0} (ฐานข้อมูล: {1})": "Buddy Account is ready at http://localhost:{0} (database: {1})",
 "Buddy Account รุ่น": "Buddy Account version",
 "Buddy Account — รหัสสำรองยืนยันตัวตนสองขั้น\\nใช้ได้รหัสละ 1 ครั้ง เมื่อไม่มีมือถือ\\n\\n{0}\\n": "Buddy Account — 2FA backup codes\\nEach code can be used once, when you don't have your phone\\n\\n{0}\\n",
+"Buddy Account — หน้าแรก": "Buddy Account — Home",
 "Buddy ไม่ลบรายการของปีที่ปิด — ยอดยกมาของสินทรัพย์ หนี้สิน ทุน และกำไรสะสมคำนวณจากใบสำคัญอัตโนมัติ การปิดปีจะล็อคทุกงวดของปีนั้น (แก้ไขย้อนหลังไม่ได้) และสร้างรอบบัญชีปีถัดไป": "Buddy does not delete entries of a closed year — opening balances of assets, liabilities, equity, and retained earnings are calculated automatically from vouchers. Closing the year locks every period of that year (no retroactive edits) and creates the next year's accounting cycle",
 "CDNS04 บอกเลิกสัญญาบริการ": "CDNS04 Terminate Service Contract",
 "CSV รายชื่อ เลขบัญชี ยอดโอน — นำเข้าระบบโอนเงินของธนาคาร": "CSV of names, account numbers, transfer amounts — import into the bank's transfer system",

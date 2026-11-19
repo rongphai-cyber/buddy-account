@@ -50,7 +50,7 @@ export function LoginPage() {
   return (
     <div className="login" data-tone="home">
       <form className="login-card" onKeyDown={navKey} onSubmit={(e) => { e.preventDefault(); go(); }}>
-        <div className="login-brand"><b>Buddy Account</b><span>โปรแกรมบัญชีสำหรับกิจการไทย</span></div>
+        <div className="login-brand"><img className="login-logo" src="/brand/buddy-logo-80.png" srcSet="/brand/buddy-logo-160.png 2x" alt="Buddy Account" width={152} height={80} /><span>โปรแกรมบัญชีสำหรับกิจการไทย</span></div>
         {lost && <p className="bad" role="alert">หมดเวลาเข้าระบบระหว่างคีย์ — {lost} ที่ยังไม่บันทึกไม่ได้เก็บไว้ เข้าระบบแล้วคีย์ใหม่</p>}
         <ErrorBox error={err} />
         <Field label="รหัสผู้ใช้" req><input autoFocus autoComplete="username" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>

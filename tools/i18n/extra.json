@@ -1831,5 +1831,6 @@
  "หมดเวลาเข้าระบบระหว่างคีย์ — {0} ที่ยังไม่บันทึกไม่ได้เก็บไว้ เข้าระบบแล้วคีย์ใหม่": "Your sign-in expired while keying — the unsaved {0} could not be kept. Sign in and key it again",
  "แบบฟอร์มพิมพ์": "print form",
  "ไม่บันทึก — ทิ้งการแก้ไข": "Don't save — discard changes",
- "ข้อมูลปัจจุบันทั้งหมดของบริษัท {0} จะถูกแทนที่ด้วยข้อมูลในแฟ้มสำรอง — รายการที่ทำหลังวันสำรองจะหายไป ควรสำรองข้อมูลปัจจุบันเก็บไว้ก่อน · ระบบตรวจจำนวนแถวและยอดใบสำคัญให้ ไม่ตรง = ยกเลิกทั้งหมด ข้อมูลเดิมไม่หาย": "All current data of company {0} will be replaced by the data in the backup file — entries made after the backup date will be lost; back up the current data first · the system checks row counts and voucher totals; any mismatch cancels everything and the existing data is kept"
+ "ข้อมูลปัจจุบันทั้งหมดของบริษัท {0} จะถูกแทนที่ด้วยข้อมูลในแฟ้มสำรอง — รายการที่ทำหลังวันสำรองจะหายไป ควรสำรองข้อมูลปัจจุบันเก็บไว้ก่อน · ระบบตรวจจำนวนแถวและยอดใบสำคัญให้ ไม่ตรง = ยกเลิกทั้งหมด ข้อมูลเดิมไม่หาย": "All current data of company {0} will be replaced by the data in the backup file — entries made after the backup date will be lost; back up the current data first · the system checks row counts and voucher totals; any mismatch cancels everything and the existing data is kept",
+ "Buddy Account — หน้าแรก": "Buddy Account — Home"
 }

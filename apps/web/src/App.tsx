@@ -184,7 +184,7 @@ function Shell() {
     <div className={cx('shell', mini && 'mini', mobileMenu && 'menu-open')}>
       <header className="topbar">
         <button className="burger" onClick={() => setMobileMenu((x) => !x)} aria-label="เมนู">☰</button>
-        <button className="brand" onClick={() => nav('/')} title="หน้าแรก (Alt+H)"><b>Buddy Account</b><span>โปรแกรมบัญชี</span></button>
+        <button className="brand" onClick={() => nav('/')} title="หน้าแรก (Alt+H)" aria-label="Buddy Account — หน้าแรก"><picture><source media="(max-width: 480px)" srcSet="/brand/wts-icon-64.png" /><img src="/brand/buddy-logo-40.png" srcSet="/brand/buddy-logo-80.png 2x, /brand/buddy-logo-160.png 4x" alt="Buddy Account" /></picture></button>
         <select className="company-sel" value={me.company.id} aria-label="บริษัท" onChange={(e) => { const v = e.target.value; void confirmLeave().then((ok) => { if (ok) select({ company_id: v }).then(() => nav('/')).catch(toastError); }); }}>
           {me.companies.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name_th}</option>)}
         </select>
