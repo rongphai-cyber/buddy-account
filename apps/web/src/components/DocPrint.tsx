@@ -1,18 +1,19 @@
-import { Fragment, useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { fmt, formatDate, PRINT_HEAD_FIELDS, printPartyLabel, sheetCopies, type PrintFamily, type PrintFormEntry, type YearSystem } from '@buddy/core';
+import { bahtTextEn, fmt, formatDate, formatDateEn, PRINT_HEAD_FIELDS, PRINT_WORDS_EN as EN, printLabelEn, printPartyLabel, printTextEn, sheetCopies, type PrintAlign, type PrintFamily, type PrintFormEntry, type YearSystem } from '@buddy/core';
 import { CloseScreen, DocDelete } from './DocDelete';
 import { api } from '../api';
 import type { CompanyImages } from './CompanyImages';
 import { useCan, useSession } from '../session';
 import { DateInput, ErrorBox, Field, Modal, Pill, toast, toastError, useHotkeys, useYearSystem } from '../ui';
 import { DocNotesDialog } from './Notes';
+import { PrintJob } from '../printFrame';
 
 export interface PrintData {
   kind: 'doc' | 'journal'; scope: string; family: PrintFamily; title: string; title_en: string; doc_no: string; doc_date: string; cancelled: boolean;
-  company: { name: string; name_en: string; address: string; phone: string; tax_id: string; branch: string };
+  /** address_en = ที่อยู่ภาษาอังกฤษของบริษัท (แบบฟอร์มภาษาอังกฤษ · ว่าง = ใช้ที่อยู่ไทย) */
+  company: { name: string; name_en: string; address: string; address_en?: string; phone: string; tax_id: string; branch: string };
   party: { code: string; name: string; address: string; phone: string; tax_id: string; branch: string } | null;
   fields: Record<string, string>; lines: Array<Record<string, string>>; totals: Array<{ label: string; value: string; value2?: string }>;
   amount_text: string; payments: Array<{ method: string; ref: string; date: string; amount: string }>; notes: string[];
@@ -25,14 +26,22 @@ type PrintResp = { data: PrintData; forms: PrintFormEntry[]; rule: { approveLeve
 const MONEY_KEYS = new Set(['price', 'amount', 'ref_amount', 'debit', 'credit']);
 const DATE_KEYS = new Set(['ref_date', 'due_date', 'date']);
 const DATE_FIELDS = new Set(['due_date', 'delivery_date', 'appointment_date', 'payment_date']);
-const cellText = (key: string, v: string | undefined, ys: YearSystem) => (!v ? '' : MONEY_KEYS.has(key) ? fmt(v) : DATE_KEYS.has(key) ? formatDate(v, ys) : v);
+/** วันที่บนแผ่น: ไทย = ตามระบบปีของบริษัท (dd/mm/พ.ศ.) · อังกฤษ = 19 Nov 2026 */
+const dateOf = (v: string, ys: YearSystem, en: boolean) => (en ? formatDateEn(v) : formatDate(v, ys));
+const cellText = (key: string, v: string | undefined, ys: YearSystem, en = false) => (!v ? '' : MONEY_KEYS.has(key) ? fmt(v) : DATE_KEYS.has(key) ? dateOf(v, ys, en) : v);
+/** ขนาด/สีเฉพาะส่วนของแบบฟอร์ม — ไม่ได้ตั้ง = undefined (DOM เหมือนเดิม) */
+const sty = (pt: number, color: string): CSSProperties | undefined => (pt >= 6 || color ? { ...(pt >= 6 ? { fontSize: `${pt}pt` } : {}), ...(color ? { color } : {}) } : undefined);
+/** สีตัวอักษรบนแถบสี (ไม่ได้ตั้ง) = ดำ/ขาวตามความสว่างของแถบ */
+const inkOn = (hex: string) => { const n = parseInt(hex.slice(1), 16); const [r, g, b] = [n >> 16 & 255, n >> 8 & 255, n & 255]; return 0.299 * r + 0.587 * g + 0.114 * b > 160 ? '#1d1d24' : '#ffffff'; };
 
 /**
  * แผ่นเอกสารตามแบบฟอร์ม — ใช้ทั้งดูทางจอภาพและพิมพ์ (หนึ่งแผ่นต่อสำเนา)
  * prior = ครั้งที่พิมพ์ไปแล้วก่อนครั้งนี้ (พิมพ์ซ้ำ = "ต้นฉบับ" เป็น "สำเนา" · sheetCopies) — ไม่ส่ง = ตามข้อมูลเอกสาร (ดูทางจอภาพ = หน้าตาของการพิมพ์ครั้งถัดไป)
+ * HANDOFF 151: ตำแหน่ง/ขนาด/สีของส่วนหัว · สีแถบและตัวอักษรในตาราง · ภาษาอังกฤษ — ค่าเริ่มต้นได้หน้าตา (DOM) เดิมทุกอย่าง
  */
 export function PrintSheet({ data, form, ys, images, prior }: { data: PrintData; form: PrintFormEntry; ys: YearSystem; images?: CompanyImages | null; prior?: number }) {
   const L = form.layout;
+  const en = L.lang === 'en';
   // ใบเสร็จ: แสดงรายการสินค้า/บริการของบิล (ฟอร์มเลือก หรืออัตโนมัติเมื่อเป็นใบกำกับภาษี) — คอลัมน์รายการต้องแสดง
   const items = data.family === 'settle' && !!data.detail && (L.settle_detail === 'items' || (L.settle_detail !== 'bills' && !!data.receipt_tax));
   const lines = items ? data.detail! : data.lines;
@@ -42,65 +51,95 @@ export function PrintSheet({ data, form, ys, images, prior }: { data: PrintData;
   const fill = Math.max(0, L.min_rows - lines.length - lines.filter((l) => l.note).length);
   // หมายเหตุรายการเริ่มใต้คอลัมน์รายละเอียด (ไม่มี = ใต้คอลัมน์ที่ 2)
   const noteAt = Math.max(0, cols.findIndex((c) => c.key === 'name')) || Math.min(1, cols.length - 1);
-  const heads = L.head_fields.map((k) => ({ k, label: PRINT_HEAD_FIELDS.find((f) => f.key === k)?.label ?? k, v: data.fields[k] ?? '' })).filter((x) => x.v);
+  const heads = L.head_fields.map((k) => { const f = PRINT_HEAD_FIELDS.find((x) => x.key === k); return { k, label: (en ? f?.label_en : f?.label) ?? k, v: data.fields[k] ?? '' }; }).filter((x) => x.v);
   const isJ = data.family === 'journal';
   // ชื่ออังกฤษตามชนิดเอกสาร (INVOICE / TAX INVOICE · RECEIPT · PAYMENT VOUCHER …) เมื่อแบบฟอร์มไม่ได้ตั้งหัวเรื่องเอง
   // ใบเสร็จรับเงิน/ใบกำกับภาษี: หัวเรื่องที่แบบฟอร์มตั้งเองต้องมีคำว่า "ใบกำกับภาษี" (ม.86/4 (1)) ไม่งั้นใช้ชื่อมาตรฐาน
   const formTitle = data.receipt_tax && L.title && !L.title.includes('ใบกำกับภาษี') ? '' : L.title;
   const titleEn = !formTitle || formTitle === data.title ? data.title_en : '';
+  const thTitle = formTitle || data.title;
+  const enTitle = (formTitle && L.title_en) || titleEn;
+  // แบบฟอร์มภาษาอังกฤษ: ชื่ออังกฤษเป็นหัวเรื่อง · ชื่อไทยบรรทัดรอง (ใบกำกับภาษียังมีคำว่า "ใบกำกับภาษี")
+  const [mainTitle, subTitle] = en ? [enTitle || L.title_en || thTitle, enTitle || L.title_en ? thTitle : ''] : [thTitle, enTitle];
   const partyLabel = printPartyLabel(data.scope);
+  const partyText = en ? (partyLabel === 'ผู้จำหน่าย' ? EN.supplier : partyLabel ? EN.customer : '') : partyLabel;
   // โลโก้/ลายเซ็นของบริษัท (ข้อกำหนดเจ้าของ) — แบบฟอร์มเลือกตำแหน่งโลโก้ และรูปลายเซ็นของแต่ละช่องลงชื่อ
   const logo = L.logo !== 'none' ? images?.logo ?? null : null;
   const signOf = (i: number) => { const id = L.signature_images[i]; return id ? images?.signs[id]?.data ?? null : null; };
+  const co = data.company;
+  const coName = en ? co.name_en || co.name : co.name;
+  const coName2 = en ? (co.name_en ? co.name : '') : co.name_en;
+  const coInfo = sty(L.co_info_pt, L.co_info_color);
+  const coLine = en ? [co.phone && `${EN.tel} ${co.phone}`, co.tax_id && `${EN.taxId} ${co.tax_id}`, printTextEn(co.branch)] : [co.phone && `โทร ${co.phone}`, co.tax_id && `เลขประจำตัวผู้เสียภาษี ${co.tax_id}`, co.branch];
+  const coBlock = L.show_company && <div className="ds-co"><b style={sty(L.co_name_pt, L.co_name_color)}>{coName}</b>{coName2 && <div style={coInfo}>{coName2}</div>}
+    <div style={coInfo}>{en ? co.address_en || co.address : co.address}</div>
+    <div style={coInfo}>{coLine.filter(Boolean).join('  ')}</div></div>;
+  const titleBlock = (cp: string) => <div className="ds-title"><h1 style={sty(L.title_pt, L.title_color)}>{mainTitle}</h1>{subTitle && <div className="ds-en">{subTitle}</div>}
+    {cp && <div className="ds-copy">{en ? printTextEn(cp) : cp}</div>}{data.cancelled && <div className="ds-void">{en ? EN.cancelled : 'ยกเลิก'}</div>}</div>;
+  const logoImg = <img className="ds-logo" src={logo ?? ''} alt="" style={{ height: `${L.logo_mm}mm` }} />;
+  // ส่วนหัวแบบเดิม (ชื่อบริษัทซ้าย ชื่อเอกสารขวา) = DOM เดิม · ตั้งตำแหน่งอื่น = 3 ช่อง ซ้าย/กลาง/ขวา
+  const stdHead = L.co_align === 'left' && L.title_align === 'right';
+  const head = (cp: string): ReactNode => {
+    if (stdHead) return <header className="ds-head">
+      {logo && L.logo === 'left' && logoImg}{coBlock}{titleBlock(cp)}{logo && L.logo === 'right' && logoImg}</header>;
+    const slots = (['left', 'center', 'right'] as PrintAlign[]).map((pos) => {
+      const lg = logo && L.logo === pos && pos !== 'center';
+      const txt = <>{L.co_align === pos && coBlock}{L.title_align === pos && titleBlock(cp)}</>;
+      if (!lg && L.co_align !== pos && L.title_align !== pos) return null;
+      return <div key={pos} className={`ds-slot ds-slot-${pos}`}>{lg && pos === 'left' && logoImg}<div className="ds-slot-txt">{txt}</div>{lg && pos === 'right' && logoImg}</div>;
+    });
+    return <header className={`ds-head ds-head-x${slots[1] ? ' has-c' : ''}`}>{slots}</header>;
+  };
+  // สีแถบหัวตาราง/ยอดรวมทั้งสิ้น · ตัวอักษรในตาราง (ตัวแปร CSS ที่แผ่น — ไม่ได้ตั้ง = ไม่มี)
+  const band = !!(L.band_color || L.band_text_color);
+  const sheetStyle: CSSProperties = { fontSize: `${L.font_pt}pt`,
+    ...(band ? { '--band': L.band_color || undefined, '--band-ink': L.band_text_color || (L.band_color ? inkOn(L.band_color) : undefined) } as CSSProperties : {}),
+    ...(L.body_color ? { '--body-ink': L.body_color } as CSSProperties : {}) };
+  const sheetCls = `doc-sheet b-${form.base}${band ? ' has-band' : ''}${L.body_color ? ' has-body-ink' : ''}`;
+  const bodySize: CSSProperties | undefined = L.body_pt >= 6 ? { fontSize: `${L.body_pt}pt` } : undefined;
+  const amountText = data.amount_text ? (en ? bahtTextEn(data.totals.at(-1)?.value ?? '0') : data.amount_text) : '';
+  const lab = (th: string) => (en ? printLabelEn(th) : th);
   return (
     <>
       {copies.map((cp, ci) => (
-        <div key={ci} className={`doc-sheet b-${form.base}`} style={{ fontSize: `${L.font_pt}pt` }}>
+        <div key={ci} className={sheetCls} style={sheetStyle} lang={en ? 'en' : undefined}>
           {logo && L.logo === 'center' && <div className="ds-logo-c"><img src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} /></div>}
-          <header className="ds-head">
-            {logo && L.logo === 'left' && <img className="ds-logo" src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} />}
-            {L.show_company && <div className="ds-co"><b>{data.company.name}</b>{data.company.name_en && <div>{data.company.name_en}</div>}
-              <div>{data.company.address}</div>
-              <div>{[data.company.phone && `โทร ${data.company.phone}`, data.company.tax_id && `เลขประจำตัวผู้เสียภาษี ${data.company.tax_id}`, data.company.branch].filter(Boolean).join('  ')}</div></div>}
-            <div className="ds-title"><h1>{formTitle || data.title}</h1>{((formTitle && L.title_en) || titleEn) && <div className="ds-en">{(formTitle && L.title_en) || titleEn}</div>}
-              {cp && <div className="ds-copy">{cp}</div>}{data.cancelled && <div className="ds-void">ยกเลิก</div>}</div>
-            {logo && L.logo === 'right' && <img className="ds-logo" src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} />}
-          </header>
+          {head(cp)}
           <div className="ds-info">
             {L.show_party && data.party ? <div className="ds-party">
-              {partyLabel && <div className="ds-label">{partyLabel}</div>}
+              {partyText && <div className="ds-label">{partyText}</div>}
               <div><b>{data.party.name}</b>{data.party.code && <span className="ds-muted"> ({data.party.code})</span>}</div>
               {data.party.address && <div>{data.party.address}</div>}
-              {(data.party.tax_id || data.party.branch) && <div>{data.party.tax_id && `เลขประจำตัวผู้เสียภาษี ${data.party.tax_id}`} {data.party.branch}</div>}
-              {data.party.phone && <div>โทร {data.party.phone}</div>}
+              {(data.party.tax_id || data.party.branch) && <div>{data.party.tax_id && `${en ? EN.taxId : 'เลขประจำตัวผู้เสียภาษี'} ${data.party.tax_id}`} {en ? printTextEn(data.party.branch) : data.party.branch}</div>}
+              {data.party.phone && <div>{en ? EN.tel : 'โทร'} {data.party.phone}</div>}
             </div> : <div />}
             <table className="ds-meta"><tbody>
-              <tr><th>เลขที่</th><td>{data.doc_no}</td></tr>
-              <tr><th>วันที่</th><td>{formatDate(data.doc_date, ys)}</td></tr>
-              {heads.map((h) => <tr key={h.k}><th>{h.label}</th><td>{DATE_FIELDS.has(h.k) ? formatDate(h.v, ys) : h.v.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, (x) => formatDate(x, ys))}</td></tr>)}
+              <tr><th>{en ? EN.no : 'เลขที่'}</th><td>{data.doc_no}</td></tr>
+              <tr><th>{en ? EN.date : 'วันที่'}</th><td>{dateOf(data.doc_date, ys, en)}</td></tr>
+              {heads.map((h) => <tr key={h.k}><th>{h.label}</th><td>{DATE_FIELDS.has(h.k) ? dateOf(h.v, ys, en) : h.v.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, (x) => dateOf(x, ys, en))}</td></tr>)}
             </tbody></table>
           </div>
-          <table className="ds-lines">
+          <table className="ds-lines" style={bodySize}>
             <colgroup>{cols.map((c) => <col key={c.key} style={{ width: `${(c.width / totalW) * 100}%` }} />)}</colgroup>
-            <thead><tr>{cols.map((c) => <th key={c.key} className={c.align}>{c.label}</th>)}</tr></thead>
+            <thead><tr>{cols.map((c) => <th key={c.key} className={c.align}>{en ? c.label_en || c.label : c.label}</th>)}</tr></thead>
             <tbody>
-              {lines.map((l, i) => <Fragment key={i}><tr className={l.kind === 'bill' && items ? 'ds-bill' : l.kind === 'item' ? 'ds-item' : undefined}>{cols.map((c) => <td key={c.key} className={c.align}>{cellText(c.key, l[c.key], ys)}</td>)}</tr>
+              {lines.map((l, i) => <Fragment key={i}><tr className={l.kind === 'bill' && items ? 'ds-bill' : l.kind === 'item' ? 'ds-item' : undefined}>{cols.map((c) => <td key={c.key} className={c.align}>{cellText(c.key, l[c.key], ys, en)}</td>)}</tr>
                 {l.note && <tr className="ds-line-note">{cols.slice(0, noteAt).map((c) => <td key={c.key} />)}<td colSpan={cols.length - noteAt}>{l.note}</td></tr>}</Fragment>)}
               {[...Array(fill).keys()].map((i) => <tr key={`f${i}`} className="ds-fill">{cols.map((c) => <td key={c.key}>&nbsp;</td>)}</tr>)}
             </tbody>
-            {isJ && data.totals[0] && <tfoot><tr>{cols.map((c, i) => <td key={c.key} className={c.align}>{c.key === 'debit' ? fmt(data.totals[0]!.value) : c.key === 'credit' ? fmt(data.totals[0]!.value2 ?? '') : i === 0 ? 'รวม' : ''}</td>)}</tr></tfoot>}
+            {isJ && data.totals[0] && <tfoot><tr>{cols.map((c, i) => <td key={c.key} className={c.align}>{c.key === 'debit' ? fmt(data.totals[0]!.value) : c.key === 'credit' ? fmt(data.totals[0]!.value2 ?? '') : i === 0 ? (en ? EN.total : 'รวม') : ''}</td>)}</tr></tfoot>}
           </table>
           <div className="ds-sum">
             <div className="ds-left">
-              {L.show_amount_text && data.amount_text && <div className="ds-baht">({data.amount_text})</div>}
-              {L.show_payments && data.payments.length > 0 && <table className="ds-pay"><tbody>{data.payments.map((p, i) => <tr key={i}><td>{p.method}</td><td>{p.ref}</td><td>{formatDate(p.date, ys)}</td><td className="r">{fmt(p.amount)}</td></tr>)}</tbody></table>}
-              {L.show_notes && (data.notes.length > 0 || (data.fields.remark && !L.head_fields.includes('remark'))) && <div className="ds-notes">หมายเหตุ: {[data.fields.remark, ...data.notes].filter(Boolean).join(' · ')}</div>}
+              {L.show_amount_text && amountText && <div className="ds-baht">({amountText})</div>}
+              {L.show_payments && data.payments.length > 0 && <table className="ds-pay"><tbody>{data.payments.map((p, i) => <tr key={i}><td>{lab(p.method)}</td><td>{p.ref}</td><td>{p.date ? dateOf(p.date, ys, en) : ''}</td><td className="r">{fmt(p.amount)}</td></tr>)}</tbody></table>}
+              {L.show_notes && (data.notes.length > 0 || (data.fields.remark && !L.head_fields.includes('remark'))) && <div className="ds-notes">{en ? EN.remarks : 'หมายเหตุ'}: {[data.fields.remark, ...data.notes].filter(Boolean).join(' · ')}</div>}
             </div>
-            {L.show_totals && !isJ && <table className="ds-totals"><tbody>{data.totals.map((t, i) => <tr key={i} className={i === data.totals.length - 1 ? 'ds-net' : ''}><th>{t.label}</th><td className="r">{fmt(t.value)}</td></tr>)}</tbody></table>}
+            {L.show_totals && !isJ && <table className="ds-totals" style={bodySize}><tbody>{data.totals.map((t, i) => <tr key={i} className={i === data.totals.length - 1 ? 'ds-net' : ''}><th>{lab(t.label)}</th><td className="r">{fmt(t.value)}</td></tr>)}</tbody></table>}
           </div>
-          {L.show_journal && !isJ && data.journal.length > 0 && <table className="ds-jnl"><thead><tr><th>เลขที่บัญชี</th><th>ชื่อบัญชี</th><th className="r">เดบิต</th><th className="r">เครดิต</th></tr></thead>
+          {L.show_journal && !isJ && data.journal.length > 0 && <table className="ds-jnl"><thead><tr><th>{en ? EN.accountNo : 'เลขที่บัญชี'}</th><th>{en ? EN.accountName : 'ชื่อบัญชี'}</th><th className="r">{en ? EN.debit : 'เดบิต'}</th><th className="r">{en ? EN.credit : 'เครดิต'}</th></tr></thead>
             <tbody>{data.journal.map((j, i) => <tr key={i}><td>{j.code}</td><td>{j.name}</td><td className="r">{j.debit && fmt(j.debit)}</td><td className="r">{j.credit && fmt(j.credit)}</td></tr>)}</tbody></table>}
-          {L.signatures.length > 0 && <div className="ds-sign">{L.signatures.map((s, i) => <div key={i}>{signOf(i) ? <img className="ds-sign-img" src={signOf(i)!} alt="" /> : null}<div className="ds-line" /><div>{s}</div><div className="ds-muted">วันที่ ......../......../........</div></div>)}</div>}
+          {L.signatures.length > 0 && <div className="ds-sign">{L.signatures.map((s, i) => <div key={i}>{signOf(i) ? <img className="ds-sign-img" src={signOf(i)!} alt="" /> : null}<div className="ds-line" /><div>{en ? L.signatures_en[i] || s : s}</div><div className="ds-muted">{en ? EN.signDate : 'วันที่ ......../......../........'}</div></div>)}</div>}
           {L.footer && <div className="ds-footer">{L.footer}</div>}
         </div>
       ))}
@@ -134,14 +173,6 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
   const approved = !!r?.data.approved;
   const screenOnly = me?.perms?.[menu]?.print === 'S';
 
-  useEffect(() => {
-    if (!printing) return;
-    // เก็บแผ่นเอกสารไว้จนเบราว์เซอร์แจ้งว่าพิมพ์เสร็จ (afterprint) — บางเบราว์เซอร์/แอป window.print ไม่รอหน้าต่างพิมพ์ ถ้าลบทันทีจะพิมพ์ได้หน้าว่าง
-    const done = () => setPrinting(null);
-    window.addEventListener('afterprint', done, { once: true });
-    const t = setTimeout(() => { try { window.focus(); window.print(); } catch { done(); } }, 150);
-    return () => { clearTimeout(t); window.removeEventListener('afterprint', done); };
-  }, [printing]);
   useEffect(() => { if (!open) return; const close = () => setOpen(false); window.addEventListener('click', close); return () => window.removeEventListener('click', close); }, [open]);
 
   const doPrint = async (slot: number) => {
@@ -212,7 +243,8 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
         {r.data.print_count > 0 && preview.layout.reprint_copy && <p className="muted small" data-testid="reprint-note">เอกสารนี้พิมพ์แล้ว {r.data.print_count} ครั้ง — พิมพ์ซ้ำออกเป็น "สำเนา" (ต้นฉบับออกได้ครั้งเดียว · ตั้งที่ แบบฟอร์มพิมพ์เอกสาร › ทั่วไป/กระดาษ)</p>}
         <div className="ds-preview"><PrintSheet data={r.data} form={preview} ys={ys} images={r.images} /></div>
       </Modal>}
-      {printing && r && createPortal(<div className="doc-print"><PrintSheet data={r.data} form={printing.form} prior={printing.prior} ys={ys} images={r.images} /></div>, document.body)}
+      {/* พิมพ์ในกรอบแยก (HANDOFF 151 — เดิมแผ่นอยู่ในหน้าแล้วเอาออกหลังพิมพ์ ตัวอย่างก่อนพิมพ์บางครั้งว่าง) */}
+      {printing && r && <PrintJob title={r.data.doc_no} onDone={() => setPrinting(null)}><div className="doc-print"><PrintSheet data={r.data} form={printing.form} prior={printing.prior} ys={ys} images={r.images} /></div></PrintJob>}
       {info && id && <RecordInfo kind={kind} id={id} onClose={() => setInfo(false)} />}
       {notes && id && <DocNotesDialog id={id} canEdit={can('edit')} onClose={() => setNotes(false)} />}
       {range && <ApproveRange kind={kind} scope={r?.data.scope} typeId={typeId ?? null} onClose={() => setRange(false)} onDone={() => qc.invalidateQueries({ queryKey: ['print'] })} />}

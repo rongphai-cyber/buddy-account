@@ -38,3 +38,33 @@ export function bahtText(value: MoneyInput): string {
   const satang = frac !== '00' ? words(frac) + 'สตางค์' : 'ถ้วน';
   return (v.isNeg() ? 'ลบ' : '') + baht + satang;
 }
+
+const ONES_EN = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const TENS_EN = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+const SCALE_EN = ['', 'Thousand', 'Million', 'Billion', 'Trillion'];
+/** 0–999 เป็นคำอังกฤษ (Twenty-One · One Hundred Five) */
+function hundredsEn(n: number): string {
+  const h = Math.floor(n / 100), r = n % 100;
+  const rest = r < 20 ? ONES_EN[r]! : TENS_EN[Math.floor(r / 10)]! + (r % 10 ? `-${ONES_EN[r % 10]}` : '');
+  return [h ? `${ONES_EN[h]} Hundred` : '', rest].filter(Boolean).join(' ');
+}
+/** จำนวนเต็มบวก (สตริงตัวเลข) เป็นคำอังกฤษ แบ่งทีละ 3 หลัก */
+function wordsEn(digits: string): string {
+  const s = digits.replace(/^0+/, '');
+  if (!s) return 'Zero';
+  const groups: number[] = [];
+  for (let i = s.length; i > 0; i -= 3) groups.unshift(Number(s.slice(Math.max(0, i - 3), i)));
+  return groups.map((g, i) => (g ? `${hundredsEn(g)}${SCALE_EN[groups.length - 1 - i] ? ` ${SCALE_EN[groups.length - 1 - i]}` : ''}` : '')).filter(Boolean).join(' ');
+}
+/**
+ * จำนวนเงินเป็นตัวอักษรภาษาอังกฤษ (แบบฟอร์มพิมพ์ภาษาอังกฤษ · HANDOFF 151)
+ * 27124.50 → Twenty-Seven Thousand One Hundred Twenty-Four Baht and Fifty Satang · 100 → One Hundred Baht Only
+ */
+export function bahtTextEn(value: MoneyInput): string {
+  const v = d(value).toDecimalPlaces(2);
+  if (v.isZero()) return 'Zero Baht Only';
+  const [int, frac = '00'] = v.abs().toFixed(2).split('.');
+  const baht = int !== '0' ? `${wordsEn(int!)} Baht` : '';
+  const text = frac !== '00' ? [baht, `${wordsEn(frac)} Satang`].filter(Boolean).join(' and ') : `${baht} Only`;
+  return (v.isNeg() ? 'Minus ' : '') + text;
+}

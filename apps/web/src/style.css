@@ -722,6 +722,19 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .doc-sheet tr.ds-bill td { font-weight: 600; border-top: 1px solid #000; }
 .doc-sheet .ds-lines td.c { white-space: nowrap; }
 .doc-sheet tr.ds-item td:first-child + td, .doc-sheet tr.ds-item td { font-size: .95em; }
+/* แบบฟอร์ม: ตำแหน่งส่วนหัว ซ้าย/กลาง/ขวา · สีแถบ · ตัวอักษรในตาราง (เจ้าของ 19/11/2569 HANDOFF 151) — ใช้เฉพาะเมื่อแบบฟอร์มตั้งค่า */
+.doc-sheet .ds-head-x { display: flex; align-items: flex-start; gap: 6mm; }
+.doc-sheet .ds-head-x.has-c { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.doc-sheet.b-pro .ds-head-x { align-items: center; }
+.doc-sheet .ds-head-x .ds-slot { display: flex; align-items: center; gap: 4mm; min-width: 0; }
+.doc-sheet .ds-head-x .ds-slot-left { grid-column: 1; text-align: left; }
+.doc-sheet .ds-head-x .ds-slot-center { grid-column: 2; text-align: center; justify-content: center; }
+.doc-sheet .ds-head-x .ds-slot-right { grid-column: 3; text-align: right; justify-content: flex-end; margin-left: auto; }
+.doc-sheet .ds-head-x .ds-slot-txt { display: flex; flex-direction: column; gap: 1.5mm; min-width: 0; }
+.doc-sheet .ds-head-x .ds-title { text-align: inherit; margin-left: 0; }
+.doc-sheet.has-band table.ds-lines thead th, .doc-sheet.has-band .ds-totals tr.ds-net th, .doc-sheet.has-band .ds-totals tr.ds-net td {
+  background: var(--band, var(--pa, transparent)); color: var(--band-ink, #fff); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.doc-sheet.has-body-ink table.ds-lines tbody td, .doc-sheet.has-body-ink .ds-totals tr:not(.ds-net) th, .doc-sheet.has-body-ink .ds-totals tr:not(.ds-net) td { color: var(--body-ink); }
 /* หน้าพิมพ์แยก /print/:kind/:id */
 .print-page { background: #e9e9ef; min-height: 100vh; padding: 12px; }
 .print-page-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin-bottom: 10px; }
@@ -737,10 +750,13 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 }
 .pf-layout { display: grid; grid-template-columns: minmax(380px, 520px) 1fr; gap: 16px; align-items: start; }
 .pf-side h3 { margin: 12px 0 4px; }
+.pf-side .tabs { flex-wrap: wrap; overflow-x: visible; }
 .pf-checks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .pf-checks label { display: inline-flex; gap: 4px; align-items: center; }
 .pf-cols input:not([type=checkbox]), .pf-cols select { width: 100%; }
 .pf-preview { position: sticky; top: 150px; }
+.pf-look { margin: 6px 0 10px; } .pf-look th { text-align: left; font-weight: 500; } .pf-look input[type=number] { width: 110px; }
+.pf-color { display: inline-flex; align-items: center; gap: 8px; } .pf-color input[type=color] { width: 44px; height: 28px; padding: 2px; border: 1px solid var(--field-line); border-radius: 6px; background: var(--field-bg); cursor: pointer; }
 .pf-preview .ds-preview { max-height: calc(100vh - 140px); }
 .pf-preview .doc-sheet { zoom: .72; }
 @media (max-width: 1100px) { .pf-layout { grid-template-columns: minmax(0, 1fr); } .pf-preview { position: static; } }

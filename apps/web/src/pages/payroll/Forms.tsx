@@ -1,5 +1,4 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { bahtText, d, fmt, formatTaxId, MONTH_TH, MONTH_TH_SHORT, todayIso, type Wht50Data } from '@buddy/core';
 import { api } from '../../api';
@@ -8,6 +7,7 @@ import { cx, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, Tabs, toast, t
 import { Wht50Sheet } from '../tax/Wht50';
 import { downloadFile } from './common';
 import { FilingsTab } from './Filing';
+import { PrintJob } from '../../printFrame';
 
 const be = (y: number | string) => Number(y) + 543;
 const monthLabel = (ym: string) => `${MONTH_TH[Number(ym.slice(5, 7)) - 1]} ${be(ym.slice(0, 4))}`;
@@ -15,16 +15,11 @@ const dmy = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${be(iso.sl
 const chunk = <T,>(xs: T[], n: number) => Array.from({ length: Math.max(1, Math.ceil(xs.length / n)) }, (_, i) => xs.slice(i * n, i * n + n));
 const nameOf = (r: { title: string | null; first_name: string; last_name: string | null }) => `${r.title ?? ''}${r.first_name}${r.last_name ? ` ${r.last_name}` : ''}`;
 
-/** พิมพ์ผ่าน portal .pay-print (ซ่อนหน้าจอโปรแกรมตอนพิมพ์) — สร้างเฉพาะตอนสั่งพิมพ์ แล้วเอาออก */
+/** พิมพ์แผ่น .pay-print/.w50-print ในกรอบแยก (printFrame · HANDOFF 151) — สร้างเฉพาะตอนสั่งพิมพ์ แล้วเอาออก */
 export function usePrintJob() {
   const [job, setJob] = useState<{ node: ReactNode; cls: string; done?: () => void } | null>(null);
-  useEffect(() => {
-    if (!job) return;
-    const t = setTimeout(() => { window.print(); job.done?.(); setJob(null); }, 80);
-    return () => clearTimeout(t);
-  }, [job]);
   return {
-    portal: job ? createPortal(<div className={job.cls}>{job.node}</div>, document.body) : null,
+    portal: job ? <PrintJob onDone={() => { job.done?.(); setJob(null); }}><div className={job.cls}>{job.node}</div></PrintJob> : null,
     print: (node: ReactNode, opt: { land?: boolean; w50?: boolean; done?: () => void } = {}) => setJob({ node, cls: opt.w50 ? 'w50-print' : cx('pay-print', opt.land && 'land'), done: opt.done }),
   };
 }

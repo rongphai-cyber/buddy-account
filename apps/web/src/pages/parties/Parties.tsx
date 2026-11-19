@@ -1,5 +1,4 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt } from '@buddy/core';
 import { api, type FiscalYear } from '../../api';
@@ -12,6 +11,7 @@ import { AddressFields } from '../../components/AddressFields';
 import { Confirm, cx, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { AddWrap } from '../../components/AddWrap';
+import { PrintJob } from '../../printFrame';
 
 /* ---------------------------------------------------------------- ส่วนร่วม */
 type Form = Record<string, string | boolean | null>;
@@ -655,14 +655,14 @@ function LabelPrint({ kind, q, status, onClose }: { kind: 'customers' | 'supplie
   </div>;
   const sheet = <div className={`labels l-${layout}`}>{(rows.data ?? []).map((r) => <div key={r.id} className="lbl-cell">{one(r)}</div>)}</div>;
   return (
-    <Modal title="พิมพ์จ่าหน้าซอง/สติ๊กเกอร์" size="wide" onClose={onClose} footer={<><button onClick={onClose}>ปิด</button><button className="primary" disabled={!rows.data?.length} onClick={() => { setPrinting(true); setTimeout(() => { window.print(); setPrinting(false); }, 80); }}>🖨 พิมพ์ {rows.data?.length ?? 0} รายการ</button></>}>
+    <Modal title="พิมพ์จ่าหน้าซอง/สติ๊กเกอร์" size="wide" onClose={onClose} footer={<><button onClick={onClose}>ปิด</button><button className="primary" disabled={!rows.data?.length} onClick={() => setPrinting(true)}>🖨 พิมพ์ {rows.data?.length ?? 0} รายการ</button></>}>
       <div className="toolbar">
         <label>แบบ <select value={layout} onChange={(e) => setLayout(e.target.value as 'sticker')}><option value="sticker">สติ๊กเกอร์ A4 (3 × 8 ดวง)</option><option value="envelope">ซองจดหมาย DL (220 × 110 มม.)</option></select></label>
         <label className="check"><input type="checkbox" checked={attn} onChange={(e) => setAttn(e.target.checked)} /> พิมพ์ชื่อผู้ติดต่อ</label>
         <span className="muted small">ตามคำค้น "{q || 'ทั้งหมด'}" · {rows.data?.length ?? 0} รายการ (สูงสุด 2,000)</span>
       </div>
       <div className="labels-preview">{sheet}</div>
-      {printing && createPortal(<div className="label-print">{sheet}</div>, document.body)}
+      {printing && <PrintJob onDone={() => setPrinting(false)}><div className="label-print">{sheet}</div></PrintJob>}
     </Modal>
   );
 }

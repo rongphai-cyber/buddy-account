@@ -53,11 +53,12 @@ async function journalLines(db: Db, journalIds: string[]) {
 async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
   const H = await loadHead(db, a, kind, id);
   const h = H.row;
-  const co = (await sql<Row>`SELECT c.name_th, c.name_en, c.address_th, c.phone, c.tax_id, c.year_system, b.name AS branch_name, b.tax_branch_no, b.address AS branch_address, b.is_head_office
+  const co = (await sql<Row>`SELECT c.name_th, c.name_en, c.address_th, c.address_en, c.phone, c.tax_id, c.year_system, b.name AS branch_name, b.tax_branch_no, b.address AS branch_address, b.is_head_office
       FROM sys_company c LEFT JOIN sys_branch b ON b.id = ${h.branch_id ?? null} AND b.company_id = c.id WHERE c.id = ${a.companyId}`.execute(db)).rows[0]!;
   // ผู้ออกใบกำกับภาษีต้องระบุสำนักงานใหญ่/สาขาที่ (ประกาศอธิบดีฯ VAT ฉบับที่ 199) — เอกสารที่ไม่ระบุสาขา = ออกที่สำนักงานใหญ่
   const branchText = (no: string | null | undefined, head: unknown) => (no ? (head || no === '00000' ? 'สำนักงานใหญ่' : `สาขาที่ ${no}`) : '');
-  const company = { name: txt(co.name_th), name_en: txt(co.name_en), address: txt(co.branch_address || co.address_th), phone: txt(co.phone), tax_id: txt(co.tax_id),
+  // ที่อยู่ภาษาอังกฤษ (แบบฟอร์มภาษาอังกฤษ · HANDOFF 151) = ของบริษัท (สำนักงานใหญ่) — สาขาที่มีที่อยู่ของตัวเองยังไม่มีที่อยู่อังกฤษ จึงใช้ที่อยู่ไทยของสาขา
+  const company = { name: txt(co.name_th), name_en: txt(co.name_en), address: txt(co.branch_address || co.address_th), address_en: !co.branch_address || co.is_head_office ? txt(co.address_en) : '', phone: txt(co.phone), tax_id: txt(co.tax_id),
     branch: branchText(co.tax_branch_no, co.is_head_office) || (co.tax_id ? 'สำนักงานใหญ่' : '') };
   if (kind === 'journal') {
     const lines = await journalLines(db, [id]);

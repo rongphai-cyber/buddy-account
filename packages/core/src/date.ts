@@ -36,6 +36,16 @@ export function formatDate(iso: string | null | undefined, ys: YearSystem = 'B')
   return `${pad(d)}/${pad(m)}/${ys === 'B' ? y + BE_OFFSET : y}`;
 }
 
+export const MONTH_EN_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/**
+ * วันที่บนเอกสารภาษาอังกฤษ (HANDOFF 151): "19 Nov 2026" — ปี ค.ศ. เสมอ (ผู้อ่านต่างชาติ) · ชื่อเดือนย่อ ไม่สับสนวัน/เดือนแบบอเมริกัน
+ */
+export function formatDateEn(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const { y, m, d } = parseIso(iso);
+  return `${d} ${MONTH_EN_SHORT[m - 1]} ${y}`;
+}
+
 export function formatDateLong(iso: string, ys: YearSystem = 'B'): string {
   const { y, m, d } = parseIso(iso);
   return `${d} ${MONTH_TH[m - 1]} ${ys === 'B' ? y + BE_OFFSET : y}`;

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fmt, formatDate, todayIso, type YearSystem } from '@buddy/core';
@@ -9,6 +8,7 @@ import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { NumInput, Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, PageHead, Pill, toast, useHotkeys } from '../../ui';
 import { ReasonInput } from '../../components/ReasonInput';
 import { confirmLeave, useUnsaved } from '../../unsaved';
+import { PrintJob } from '../../printFrame';
 
 /** ตรวจนับสินค้า (คู่มือบทที่ 14 S-IC-15..22) — ยอดตามระบบ ณ วันนับคำนวณสดทุกครั้ง */
 interface Row { id: string; warehouse_id: string; warehouse_code: string; warehouse_name: string; item_id: string; item_code: string; item_name: string; shelf: string | null; flag: '1' | '3' | '6';
@@ -64,7 +64,7 @@ export function CountsPage() {
       toast(`บันทึกยอดนับ ${res.updated} รายการแล้ว`); setEdits({}); refresh();
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
-  const print = (m: PrintMode) => { setPrintMode(m); setTimeout(() => { window.print(); setPrintMode(null); }, 100); };
+  const print = (m: PrintMode) => setPrintMode(m);
   useHotkeys({ F9: can('edit') ? save : undefined, 'Ctrl+S': can('edit') ? save : undefined, Insert: can('add') && cur ? () => setAdd(true) : undefined,
     Escape: () => { void confirmLeave().then((ok) => { if (ok) nav('/ic/stock'); }); } }, []);
   // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
@@ -126,7 +126,7 @@ export function CountsPage() {
       {adj && cur && <AdjustModal date={cur} onClose={() => setAdj(false)} onDone={() => { setAdj(false); refresh(); }} />}
       {add && cur && <AddModal date={cur} onClose={() => setAdd(false)} onDone={() => { setAdd(false); refresh(); }} />}
       {reopen && <ReopenConfirm doc={reopen} onClose={() => setReopen(null)} onDone={() => { setReopen(null); refresh(); }} />}
-      {printMode && cur && createPortal(<CountPrint mode={printMode} date={cur} rows={rows} company={me?.company?.name_th ?? ''} yearSystem={me?.company?.year_system ?? 'B'} />, document.body)}
+      {printMode && cur && <PrintJob onDone={() => setPrintMode(null)}><CountPrint mode={printMode} date={cur} rows={rows} company={me?.company?.name_th ?? ''} yearSystem={me?.company?.year_system ?? 'B'} /></PrintJob>}
     </div>
   );
 }

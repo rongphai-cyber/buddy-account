@@ -461,9 +461,10 @@
 },
 {
 "th": "ผู้จำหน่าย",
-"n": 48,
+"n": 49,
 "files": [
 "apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/LkSelect.tsx",
 "apps/web/src/components/PartyAddress.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
@@ -537,6 +538,40 @@
 ]
 },
 {
+"th": "หมายเหตุ",
+"n": 45,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เลขที่บัญชี",
 "n": 45,
 "files": [
@@ -571,39 +606,6 @@
 "packages/core/src/payroll-import.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "หมายเหตุ",
-"n": 44,
-"files": [
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/Jobs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1576,7 +1578,7 @@
 },
 {
 "th": "สำนักงานใหญ่",
-"n": 17,
+"n": 18,
 "files": [
 "apps/web/src/components/DocBranch.tsx",
 "apps/web/src/components/PartyAddress.tsx",
@@ -1591,6 +1593,7 @@
 "apps/server/src/modules/payroll/forms.ts",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/payroll-files.ts",
+"packages/core/src/printforms.ts",
 "packages/core/src/taxid.ts"
 ]
 },
@@ -1707,6 +1710,22 @@
 ]
 },
 {
+"th": "เลขประจำตัวผู้เสียภาษี",
+"n": 16,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/settings/NewCompany.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "ชนิด",
 "n": 15,
 "files": [
@@ -1796,21 +1815,6 @@
 "apps/server/src/modules/gl/reports.ts",
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/gl-link.ts"
-]
-},
-{
-"th": "เลขประจำตัวผู้เสียภาษี",
-"n": 15,
-"files": [
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/settings/NewCompany.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -5768,6 +5772,21 @@
 ]
 },
 {
+"th": "ขนาดอักษร (pt)",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ขวา",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ขอคืนไม่ได้",
 "n": 3,
 "files": [
@@ -5982,6 +6001,14 @@
 "files": [
 "apps/web/src/pages/settings/DataTables.tsx",
 "apps/web/src/pages/settings/Departments.tsx"
+]
+},
+{
+"th": "ชื่อเอกสาร",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -7868,6 +7895,14 @@
 ]
 },
 {
+"th": "กลาง",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "การเชื่อมต่อบัญชี",
 "n": 2,
 "files": [
@@ -7942,14 +7977,6 @@
 "files": [
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/pages/payroll/common.tsx"
-]
-},
-{
-"th": "ขวา",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/PrintForms.tsx",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -8580,6 +8607,14 @@
 ]
 },
 {
+"th": "ชื่อบริษัท",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/NewCompany.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ชื่อบัญชี / คำอธิบาย",
 "n": 2,
 "files": [
@@ -8655,13 +8690,6 @@
 ]
 },
 {
-"th": "ชื่อเอกสาร",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/DocTypes.tsx"
-]
-},
-{
 "th": "ชุดบรรทัด",
 "n": 2,
 "files": [
@@ -8682,6 +8710,14 @@
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "ซ้าย",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -8840,6 +8876,13 @@
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/payroll/Forms.tsx"
+]
+},
+{
+"th": "ตามต้นแบบ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -10035,6 +10078,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "ภาษาไทย",
+"n": 2,
+"files": [
+"apps/web/src/components/LangSwitch.tsx",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -11528,6 +11579,13 @@
 ]
 },
 {
+"th": "สี",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "สุดท้าย",
 "n": 2,
 "files": [
@@ -11549,6 +11607,13 @@
 "files": [
 "apps/web/src/components/ExcelExport.tsx",
 "apps/web/src/pages/reports/ReportCenter.tsx"
+]
+},
+{
+"th": "ส่วน",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -12375,13 +12440,6 @@
 ]
 },
 {
-"th": "เลขประจำตัวผู้เสียภาษี {0}",
-"n": 2,
-"files": [
-"apps/web/src/components/DocPrint.tsx"
-]
-},
-{
 "th": "เลขผู้เสียภาษีของผู้ถูกหักต้องเป็น 13 หลัก",
 "n": 2,
 "files": [
@@ -12734,13 +12792,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
-]
-},
-{
-"th": "โทร {0}",
-"n": 2,
-"files": [
-"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {
@@ -18338,17 +18389,17 @@
 ]
 },
 {
+"th": "กลับไปใช้สีของต้นแบบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "กลับไปใช้อัตราตามกฎหมายในโปรแกรม?",
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/PaySetup.tsx"
-]
-},
-{
-"th": "กลาง",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -19290,7 +19341,28 @@
 ]
 },
 {
-"th": "ขนาดอักษร (pt)",
+"th": "ขนาดชื่อบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ขนาดชื่อเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ขนาดตัวอักษรในตาราง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ขนาดที่อยู่บริษัท",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
@@ -20533,6 +20605,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx"
+]
+},
+{
+"th": "คำกำกับ หัวคอลัมน์ ยอดรวม จำนวนเงินตัวอักษร และวันที่ (เช่น 19 Nov 2026 ปี ค.ศ.) เป็นภาษาอังกฤษ · ชื่อ/ที่อยู่บริษัทใช้ภาษาอังกฤษถ้ามี (รายละเอียดกิจการ) · รายการสินค้าและข้อมูลที่คีย์คงเดิม · ชื่อเอกสารภาษาไทยอยู่บรรทัดรอง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -23329,13 +23408,6 @@
 ]
 },
 {
-"th": "ชื่อบริษัท",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/NewCompany.tsx"
-]
-},
-{
 "th": "ชื่อบัญชี (ไทย)",
 "n": 1,
 "files": [
@@ -23791,6 +23863,13 @@
 ]
 },
 {
+"th": "ช่องลงชื่อภาษาอังกฤษ (คั่นด้วย ,)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ช่องหัวเอกสาร (นอกจากเลขที่/วันที่)",
 "n": 1,
 "files": [
@@ -23981,13 +24060,6 @@
 },
 {
 "th": "ซ่อนหมายเลขนี้",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
-"th": "ซ้าย",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
@@ -24729,6 +24801,13 @@
 ]
 },
 {
+"th": "ตัวอักษรบนแถบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ตัวอักษรหรือตัวเลขไม่เกิน 4 ตัว เช่น ST01",
 "n": 1,
 "files": [
@@ -24754,6 +24833,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/NewCompany.tsx"
+]
+},
+{
+"th": "ตัวอักษรในตารางและยอดรวม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -25230,6 +25316,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ตำแหน่งชื่อบริษัท/ที่อยู่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ตำแหน่งชื่อเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -26483,6 +26583,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
+]
+},
+{
+"th": "ที่อยู่และข้อมูลบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -32912,6 +33019,34 @@
 ]
 },
 {
+"th": "ภาษาของแบบฟอร์ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ภาษาอังกฤษ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ภาษาอังกฤษ (English)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ภาษาอังกฤษ = เอกสารสำหรับลูกค้าต่างชาติ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ภาษาอังกฤษ/ตัวเลข เช่น ACC FIN",
 "n": 1,
 "files": [
@@ -32923,13 +33058,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Templates.tsx"
-]
-},
-{
-"th": "ภาษาไทย",
-"n": 1,
-"files": [
-"apps/web/src/components/LangSwitch.tsx"
 ]
 },
 {
@@ -41802,6 +41930,13 @@
 ]
 },
 {
+"th": "ว่าง/ตามต้นแบบ = หน้าตาเดิมของต้นแบบ (สีตามธีมบริษัท) · ขนาดอักษรทั้งแผ่นตั้งที่แท็บ ทั่วไป/กระดาษ · ตัวอย่างด้านขวาเปลี่ยนทันที",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ว่างได้ถ้าดูแลหลายเขต",
 "n": 1,
 "files": [
@@ -43083,6 +43218,48 @@
 ]
 },
 {
+"th": "สีชื่อบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "สีชื่อเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "สีตัวอักษรบนแถบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "สีตัวอักษรในตาราง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "สีที่อยู่บริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "สีแถบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "สี่",
 "n": 1,
 "files": [
@@ -43314,6 +43491,13 @@
 ]
 },
 {
+"th": "ส่วนกลาง (ตารางรายการและยอดรวม)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ส่วนของนายจ้าง",
 "n": 1,
 "files": [
@@ -43388,6 +43572,13 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ส่วนหัวเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -43731,13 +43922,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Serials.tsx"
-]
-},
-{
-"th": "หมายเหตุ: {0}",
-"n": 1,
-"files": [
-"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {
@@ -44133,6 +44317,13 @@
 ]
 },
 {
+"th": "หัวคอลัมน์ภาษาอังกฤษ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "หัวคอลัมน์สีชมพูมี * = ต้องใส่ · สีเหลือง = ใส่เมื่อมีภาษี (ใบที่ไม่มีภาษีเว้นว่างได้ทั้งหมด) · สีม่วงอ่อน = ว่างได้ · ช่องรหัส/เลขที่/วันที่ตั้งเป็นข้อความไว้แล้ว (เลข 0 ข้างหน้าไม่หาย) · ช่องเงินเป็นตัวเลข #,##0.00",
 "n": 1,
 "files": [
@@ -44172,6 +44363,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "หัวเอกสาร/สี",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -47052,6 +47250,20 @@
 ]
 },
 {
+"th": "เดิม = ขวา · ตำแหน่งเดียวกัน = เรียงต่อกันลงมา",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "เดิม = ซ้าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "เดียวกันรวมเป็นเอกสารเดียว · เลือกแฟ้มแล้วระบบ",
 "n": 1,
 "files": [
@@ -49348,6 +49560,13 @@
 ]
 },
 {
+"th": "เลขประจำตัวผู้เสียภาษี {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
+]
+},
+{
 "th": "เลขประจำตัวผู้เสียภาษีของกิจการ: {0} — แก้ที่ เริ่มระบบ › รายละเอียดกิจการ",
 "n": 1,
 "files": [
@@ -51245,6 +51464,13 @@
 ]
 },
 {
+"th": "แถบหัวตาราง/ยอดรวมทั้งสิ้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "แถมให้ลูกค้า",
 "n": 1,
 "files": [
@@ -52316,6 +52542,20 @@
 ]
 },
 {
+"th": "โทร",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "โทร {0}",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
+]
+},
+{
 "th": "โทเคน เข้า/ออก",
 "n": 1,
 "files": [
@@ -52813,6 +53053,13 @@
 ]
 },
 {
+"th": "ใช้สีต้นแบบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ใช้ส่งสลิปเงินเดือน",
 "n": 1,
 "files": [
@@ -52887,6 +53134,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "ใช้เมื่อภาษาของแบบฟอร์ม = อังกฤษ · ลำดับเดียวกับช่องลงชื่อ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {

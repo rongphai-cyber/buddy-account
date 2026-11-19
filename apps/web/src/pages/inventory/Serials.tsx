@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDate, type YearSystem } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, PageHead, toast, useHotkeys } from '../../ui';
+import { PrintJob } from '../../printFrame';
 
 /** ทะเบียนหมายเลขสินค้า (คู่มือ S-IC-12) + บัตรรับประกัน (S-IC-13) + รายงานประวัติการให้บริการ (S-IC-14) */
 interface Svc { service_date: string; service_by: string | null; detail: string | null }
@@ -20,7 +20,7 @@ export function SerialsPage() {
   const [open, setOpen] = useState<string | 'new' | null>(null);
   const [report, setReport] = useState(false);
   const list = useQuery({ queryKey: ['serials', q], queryFn: () => api.get<{ rows: Sn[] }>('/api/v1/serials', { q, with_services: 'Y', limit: 2000 }), placeholderData: (p) => p });
-  const printReport = () => { setReport(true); setTimeout(() => { window.print(); setReport(false); }, 100); };
+  const printReport = () => setReport(true);
   useHotkeys({ Insert: can('add') && !open ? () => setOpen('new') : undefined, 'Ctrl+P': !open ? printReport : undefined }, []);
   const ys: YearSystem = me?.company?.year_system ?? 'B';
   return (
@@ -48,12 +48,12 @@ export function SerialsPage() {
       </div>
       <KeyHints keys={[['Ins', 'เพิ่มหมายเลข'], ['คลิก/Enter', 'เปิดรายละเอียด'], ['Ctrl+P', 'รายงานประวัติบริการ']]} />
       {open && <SerialForm id={open === 'new' ? null : open} onClose={() => setOpen(null)} />}
-      {report && list.data && createPortal(<div className="vat-print">
+      {report && list.data && <PrintJob onDone={() => setReport(false)}><div className="vat-print">
         <h2>ทะเบียนสินค้า เรียงตามหมายเลขสินค้า</h2><p style={{ textAlign: 'center' }}>{me?.company?.name_th}</p>
         <table><thead><tr><th>หมายเลขสินค้า</th><th>หมายเลขเครื่อง</th><th>รหัสอ้างอิง</th><th>หมวด</th><th>รายละเอียด</th><th>วันที่ขาย</th><th>หมดประกัน</th><th>รหัสลูกค้า</th></tr></thead>
           <tbody>{list.data.rows.flatMap((r) => [<tr key={r.id}><td>{r.serial_no}</td><td>{r.machine_no}</td><td>{r.ref_code}</td><td>{r.category_code}</td><td>{r.description ?? r.item_name}</td><td>{formatDate(r.sale_date, ys)}</td><td>{formatDate(r.warranty_end, ys)}</td><td>{r.customer_code}</td></tr>,
             ...r.services.map((s, i) => <tr key={r.id + i}><td /><td colSpan={2}>{formatDate(s.service_date, ys)}</td><td colSpan={2}>{s.service_by}</td><td colSpan={3}>{s.detail}</td></tr>)])}</tbody></table>
-      </div>, document.body)}
+      </div></PrintJob>}
     </div>
   );
 }
@@ -91,7 +91,7 @@ function SerialForm({ id, onClose }: { id: string | null; onClose: () => void })
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const remove = async () => { try { await api.del(`/api/v1/serials/${id}`); toast('ลบหมายเลขแล้ว'); qc.invalidateQueries({ queryKey: ['serials'] }); onClose(); } catch (e) { setDel(false); setErr(e); } };
-  const printCard = async () => { setCard(true); try { await api.post(`/api/v1/serials/${id}/printed`, {}); } catch { /* นับครั้งไม่สำเร็จไม่ขวางการพิมพ์ */ } setTimeout(() => { window.print(); setCard(false); qc.invalidateQueries({ queryKey: ['serials'] }); }, 100); };
+  const printCard = async () => { setCard(true); try { await api.post(`/api/v1/serials/${id}/printed`, {}); } catch { /* นับครั้งไม่สำเร็จไม่ขวางการพิมพ์ */ }  };
   useHotkeys({ F9: save, 'Ctrl+S': save }, []);
   const c = cur.data;
   const ys: YearSystem = me?.company?.year_system ?? 'B';
@@ -133,7 +133,7 @@ function SerialForm({ id, onClose }: { id: string | null; onClose: () => void })
         {!ro && <button style={{ marginTop: 8 }} onClick={() => set({ services: [...f.services, { service_date: me?.work_date ?? '', service_by: '', detail: '' }] })}>+ เพิ่มประวัติบริการ</button>}
       </>}
       {del && <Confirm danger title="ลบหมายเลขสินค้า" text={<>ลบ <b>{c?.serial_no}</b> ออกจากทะเบียน?</>} okText="ลบ" onClose={() => setDel(false)} onOk={remove} />}
-      {card && c && createPortal(<div className="vat-print">
+      {card && c && <PrintJob onDone={() => { setCard(false); qc.invalidateQueries({ queryKey: ['serials'] }); }}><div className="vat-print">
         <h2>{me?.company?.name_th}</h2><h2>บัตรรับประกัน</h2>
         <table><tbody>
           <tr><th>หมายเลขสินค้า</th><td>{c.serial_no}</td><th>หมายเลขเครื่อง</th><td>{c.machine_no}</td></tr>
@@ -144,7 +144,7 @@ function SerialForm({ id, onClose }: { id: string | null; onClose: () => void })
           <tr><th>รายละเอียด</th><td colSpan={3}>{c.description ?? c.item_name}</td></tr>
           <tr><th>ผู้ขาย</th><td colSpan={3}>{c.salesperson_name}</td></tr>
         </tbody></table>
-      </div>, document.body)}
+      </div></PrintJob>}
     </Modal>
   );
 }

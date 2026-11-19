@@ -7,7 +7,8 @@ import { BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, SETTLE_KINDS, STOCK
  */
 export type PrintBase = 'pro' | 'grid' | 'plain' | 'half' | 'cont';
 export type PrintFamily = 'trade' | 'settle' | 'bill' | 'cash' | 'stock' | 'bank' | 'petty' | 'journal';
-export interface PrintColumn { key: string; label: string; width: number; align: 'l' | 'r' | 'c'; show: boolean }
+/** label_en = หัวคอลัมน์ในแบบฟอร์มภาษาอังกฤษ (HANDOFF 151) */
+export interface PrintColumn { key: string; label: string; label_en: string; width: number; align: 'l' | 'r' | 'c'; show: boolean }
 export interface PrintLayout {
   title: string; title_en: string;
   /** สำเนาที่พิมพ์ต่อครั้ง เช่น ["ต้นฉบับ", "สำเนา"] — ว่าง = หนึ่งชุดไม่มีคำกำกับ */
@@ -34,7 +35,26 @@ export interface PrintLayout {
    * auto = ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด) แสดงรายการสินค้า ที่เหลือแสดงเลขที่บิล
    */
   settle_detail: SettleDetail;
+  /**
+   * ส่วนหัวเอกสาร (เจ้าของ 19/11/2569 HANDOFF 151): ตำแหน่งชื่อ/ข้อมูลบริษัทและชื่อเอกสาร · ขนาดอักษร (pt) และสี
+   * ค่าเริ่มต้น (left/right · 0 · '') = หน้าตาเดิมของต้นแบบ — 0 = ขนาดตามต้นแบบ · '' = สีตามต้นแบบ/ธีมบริษัท
+   */
+  co_align: PrintAlign; title_align: PrintAlign;
+  co_name_pt: number; co_name_color: string;
+  co_info_pt: number; co_info_color: string;
+  title_pt: number; title_color: string;
+  /** ส่วนกลาง: สีแถบหัวตาราง/แถบยอดรวมทั้งสิ้น + สีตัวอักษรบนแถบ · ขนาดอักษร/สีของตัวอักษรในตารางรายการและยอดรวม */
+  band_color: string; band_text_color: string;
+  body_pt: number; body_color: string;
+  /** ภาษาของแบบฟอร์ม: th = ไทย · en = อังกฤษ (หัวข้อ/คำกำกับ/จำนวนเงินตัวอักษร/วันที่ — ข้อมูลที่ผู้ใช้คีย์คงเดิม) */
+  lang: PrintLang;
+  /** ช่องลงชื่อในแบบฟอร์มภาษาอังกฤษ (ลำดับเดียวกับ signatures) */
+  signatures_en: string[];
 }
+export type PrintAlign = 'left' | 'center' | 'right';
+export const PRINT_ALIGNS: Array<{ key: PrintAlign; label: string }> = [{ key: 'left', label: 'ซ้าย' }, { key: 'center', label: 'กลาง' }, { key: 'right', label: 'ขวา' }];
+export type PrintLang = 'th' | 'en';
+export const PRINT_LANGS: Array<{ key: PrintLang; label: string }> = [{ key: 'th', label: 'ภาษาไทย' }, { key: 'en', label: 'ภาษาอังกฤษ (English)' }];
 export type SettleDetail = 'auto' | 'bills' | 'items';
 export const SETTLE_DETAILS: Array<{ key: SettleDetail; label: string }> = [
   { key: 'auto', label: 'อัตโนมัติ (ใบกำกับภาษีแสดงรายการสินค้า · ใบเสร็จแสดงเลขที่บิล)' }, { key: 'bills', label: 'แสดงเลขที่บิลที่ชำระ' }, { key: 'items', label: 'แสดงรายการสินค้า/บริการของทุกบิล' },
@@ -140,41 +160,46 @@ export function docPath(docClass: string | null | undefined, id: string, isOpeni
 
 /** คอลัมน์ที่เลือกได้ของแต่ละกลุ่มเอกสาร (key ตรงกับข้อมูลบรรทัดที่ API พิมพ์ส่งมา) */
 export const PRINT_COLUMNS: Record<PrintFamily, Array<Omit<PrintColumn, 'show'> & { show?: boolean }>> = {
-  trade: [{ key: 'no', label: 'ลำดับ', width: 6, align: 'c' }, { key: 'code', label: 'รหัสสินค้า', width: 14, align: 'l' }, { key: 'name', label: 'รายละเอียด', width: 34, align: 'l' },
-    { key: 'wh', label: 'คลัง', width: 7, align: 'c', show: false }, { key: 'qty', label: 'จำนวน', width: 9, align: 'r' }, { key: 'unit', label: 'หน่วย', width: 8, align: 'c' },
-    { key: 'price', label: 'ราคา/หน่วย', width: 11, align: 'r' }, { key: 'disc', label: 'ส่วนลด', width: 8, align: 'r' }, { key: 'amount', label: 'จำนวนเงิน', width: 13, align: 'r' }],
-  settle: [{ key: 'no', label: 'ลำดับ', width: 6, align: 'c' }, { key: 'code', label: 'เลขที่เอกสาร', width: 18, align: 'l' }, { key: 'ref_date', label: 'ลงวันที่', width: 12, align: 'c' },
-    { key: 'due_date', label: 'ครบกำหนด', width: 12, align: 'c' }, { key: 'name', label: 'รายการ', width: 22, align: 'l', show: false }, { key: 'ref_amount', label: 'ยอดตามเอกสาร', width: 15, align: 'r' }, { key: 'amount', label: 'ยอดชำระ', width: 15, align: 'r' }],
-  bill: [{ key: 'no', label: 'ลำดับ', width: 6, align: 'c' }, { key: 'code', label: 'เลขที่เอกสาร', width: 18, align: 'l' }, { key: 'ref_date', label: 'ลงวันที่', width: 13, align: 'c' },
-    { key: 'due_date', label: 'ครบกำหนด', width: 13, align: 'c' }, { key: 'name', label: 'รายการ', width: 22, align: 'l', show: false }, { key: 'amount', label: 'จำนวนเงิน', width: 16, align: 'r' }],
-  cash: [{ key: 'no', label: 'ลำดับ', width: 6, align: 'c' }, { key: 'code', label: 'รหัส', width: 14, align: 'l' }, { key: 'name', label: 'รายการ', width: 50, align: 'l' },
-    { key: 'qty', label: 'จำนวน', width: 9, align: 'r', show: false }, { key: 'amount', label: 'จำนวนเงิน', width: 16, align: 'r' }],
-  stock: [{ key: 'no', label: 'ลำดับ', width: 6, align: 'c' }, { key: 'code', label: 'รหัสสินค้า', width: 15, align: 'l' }, { key: 'name', label: 'รายละเอียด', width: 37, align: 'l' },
-    { key: 'wh', label: 'คลัง', width: 8, align: 'c' }, { key: 'qty', label: 'จำนวน', width: 10, align: 'r' }, { key: 'unit', label: 'หน่วย', width: 8, align: 'c' },
-    { key: 'price', label: 'ต้นทุน/หน่วย', width: 11, align: 'r', show: false }, { key: 'amount', label: 'มูลค่า', width: 13, align: 'r', show: false }],
-  bank: [{ key: 'no', label: 'ลำดับ', width: 6, align: 'c' }, { key: 'code', label: 'วิธี/เลขที่', width: 18, align: 'l' }, { key: 'name', label: 'รายการ', width: 50, align: 'l' }, { key: 'amount', label: 'จำนวนเงิน', width: 16, align: 'r' }],
-  petty: [{ key: 'no', label: 'ลำดับ', width: 6, align: 'c' }, { key: 'code', label: 'เลขที่บัญชี', width: 14, align: 'l' }, { key: 'name', label: 'รายการ', width: 44, align: 'l' },
-    { key: 'dept', label: 'แผนก', width: 8, align: 'c', show: false }, { key: 'amount', label: 'จำนวนเงิน', width: 16, align: 'r' }],
-  journal: [{ key: 'code', label: 'เลขที่บัญชี', width: 14, align: 'l' }, { key: 'name', label: 'ชื่อบัญชี / คำอธิบาย', width: 46, align: 'l' }, { key: 'dept', label: 'แผนก', width: 8, align: 'c' },
-    { key: 'debit', label: 'เดบิต', width: 15, align: 'r' }, { key: 'credit', label: 'เครดิต', width: 15, align: 'r' }],
+  trade: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'รหัสสินค้า', label_en: 'Item Code', width: 14, align: 'l' }, { key: 'name', label: 'รายละเอียด', label_en: 'Description', width: 34, align: 'l' },
+    { key: 'wh', label: 'คลัง', label_en: 'WH', width: 7, align: 'c', show: false }, { key: 'qty', label: 'จำนวน', label_en: 'Qty', width: 9, align: 'r' }, { key: 'unit', label: 'หน่วย', label_en: 'Unit', width: 8, align: 'c' },
+    { key: 'price', label: 'ราคา/หน่วย', label_en: 'Unit Price', width: 11, align: 'r' }, { key: 'disc', label: 'ส่วนลด', label_en: 'Discount', width: 8, align: 'r' }, { key: 'amount', label: 'จำนวนเงิน', label_en: 'Amount', width: 13, align: 'r' }],
+  settle: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'เลขที่เอกสาร', label_en: 'Document No.', width: 18, align: 'l' }, { key: 'ref_date', label: 'ลงวันที่', label_en: 'Date', width: 12, align: 'c' },
+    { key: 'due_date', label: 'ครบกำหนด', label_en: 'Due Date', width: 12, align: 'c' }, { key: 'name', label: 'รายการ', label_en: 'Description', width: 22, align: 'l', show: false }, { key: 'ref_amount', label: 'ยอดตามเอกสาร', label_en: 'Document Amount', width: 15, align: 'r' }, { key: 'amount', label: 'ยอดชำระ', label_en: 'Paid', width: 15, align: 'r' }],
+  bill: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'เลขที่เอกสาร', label_en: 'Document No.', width: 18, align: 'l' }, { key: 'ref_date', label: 'ลงวันที่', label_en: 'Date', width: 13, align: 'c' },
+    { key: 'due_date', label: 'ครบกำหนด', label_en: 'Due Date', width: 13, align: 'c' }, { key: 'name', label: 'รายการ', label_en: 'Description', width: 22, align: 'l', show: false }, { key: 'amount', label: 'จำนวนเงิน', label_en: 'Amount', width: 16, align: 'r' }],
+  cash: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'รหัส', label_en: 'Code', width: 14, align: 'l' }, { key: 'name', label: 'รายการ', label_en: 'Description', width: 50, align: 'l' },
+    { key: 'qty', label: 'จำนวน', label_en: 'Qty', width: 9, align: 'r', show: false }, { key: 'amount', label: 'จำนวนเงิน', label_en: 'Amount', width: 16, align: 'r' }],
+  stock: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'รหัสสินค้า', label_en: 'Item Code', width: 15, align: 'l' }, { key: 'name', label: 'รายละเอียด', label_en: 'Description', width: 37, align: 'l' },
+    { key: 'wh', label: 'คลัง', label_en: 'WH', width: 8, align: 'c' }, { key: 'qty', label: 'จำนวน', label_en: 'Qty', width: 10, align: 'r' }, { key: 'unit', label: 'หน่วย', label_en: 'Unit', width: 8, align: 'c' },
+    { key: 'price', label: 'ต้นทุน/หน่วย', label_en: 'Unit Cost', width: 11, align: 'r', show: false }, { key: 'amount', label: 'มูลค่า', label_en: 'Value', width: 13, align: 'r', show: false }],
+  bank: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'วิธี/เลขที่', label_en: 'Method / No.', width: 18, align: 'l' }, { key: 'name', label: 'รายการ', label_en: 'Description', width: 50, align: 'l' }, { key: 'amount', label: 'จำนวนเงิน', label_en: 'Amount', width: 16, align: 'r' }],
+  petty: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'เลขที่บัญชี', label_en: 'Account No.', width: 14, align: 'l' }, { key: 'name', label: 'รายการ', label_en: 'Description', width: 44, align: 'l' },
+    { key: 'dept', label: 'แผนก', label_en: 'Dept.', width: 8, align: 'c', show: false }, { key: 'amount', label: 'จำนวนเงิน', label_en: 'Amount', width: 16, align: 'r' }],
+  journal: [{ key: 'code', label: 'เลขที่บัญชี', label_en: 'Account No.', width: 14, align: 'l' }, { key: 'name', label: 'ชื่อบัญชี / คำอธิบาย', label_en: 'Account / Description', width: 46, align: 'l' }, { key: 'dept', label: 'แผนก', label_en: 'Dept.', width: 8, align: 'c' },
+    { key: 'debit', label: 'เดบิต', label_en: 'Debit', width: 15, align: 'r' }, { key: 'credit', label: 'เครดิต', label_en: 'Credit', width: 15, align: 'r' }],
 };
 
 /** ช่องหัวเอกสารที่เลือกพิมพ์ได้ */
-export const PRINT_HEAD_FIELDS: Array<{ key: string; label: string; families?: PrintFamily[] }> = [
-  { key: 'due_date', label: 'วันครบกำหนด', families: ['trade', 'bill'] }, { key: 'credit_days', label: 'เครดิต (วัน)', families: ['trade'] },
-  { key: 'your_ref', label: 'อ้างอิง', families: ['trade', 'cash', 'settle', 'stock', 'bank', 'petty'] }, { key: 'ref_no', label: 'เลขที่อ้างอิง/ใบกำกับผู้จำหน่าย', families: ['trade', 'cash', 'stock'] },
-  { key: 'salesperson', label: 'พนักงานขาย', families: ['trade', 'settle', 'bill'] }, { key: 'department', label: 'แผนก' },
-  { key: 'delivery_date', label: 'วันส่ง/รับของ', families: ['trade'] }, { key: 'ship_via', label: 'ขนส่งโดย', families: ['trade'] },
-  { key: 'payment_terms', label: 'เงื่อนไขการชำระ', families: ['trade', 'bill'] }, { key: 'appointment_date', label: 'วันนัดชำระ', families: ['bill'] },
-  { key: 'warehouse', label: 'คลัง', families: ['stock'] }, { key: 'to_warehouse', label: 'คลังปลายทาง', families: ['stock'] },
-  { key: 'bank_account', label: 'บัญชีเงินฝาก', families: ['bank'] }, { key: 'to_bank_account', label: 'โอนเข้าบัญชี', families: ['bank'] },
-  { key: 'ref_invoice', label: 'ใบกำกับภาษีเดิม', families: ['trade'] }, { key: 'payment_date', label: 'วันที่รับ/จ่ายเงิน', families: ['settle'] }, { key: 'voucher_no', label: 'เลขที่ใบสำคัญ' }, { key: 'remark', label: 'หมายเหตุ' },
+export const PRINT_HEAD_FIELDS: Array<{ key: string; label: string; label_en: string; families?: PrintFamily[] }> = [
+  { key: 'due_date', label: 'วันครบกำหนด', label_en: 'Due Date', families: ['trade', 'bill'] }, { key: 'credit_days', label: 'เครดิต (วัน)', label_en: 'Credit (days)', families: ['trade'] },
+  { key: 'your_ref', label: 'อ้างอิง', label_en: 'Reference', families: ['trade', 'cash', 'settle', 'stock', 'bank', 'petty'] }, { key: 'ref_no', label: 'เลขที่อ้างอิง/ใบกำกับผู้จำหน่าย', label_en: 'Ref. / Supplier Invoice', families: ['trade', 'cash', 'stock'] },
+  { key: 'salesperson', label: 'พนักงานขาย', label_en: 'Salesperson', families: ['trade', 'settle', 'bill'] }, { key: 'department', label: 'แผนก', label_en: 'Department' },
+  { key: 'delivery_date', label: 'วันส่ง/รับของ', label_en: 'Delivery Date', families: ['trade'] }, { key: 'ship_via', label: 'ขนส่งโดย', label_en: 'Ship Via', families: ['trade'] },
+  { key: 'payment_terms', label: 'เงื่อนไขการชำระ', label_en: 'Payment Terms', families: ['trade', 'bill'] }, { key: 'appointment_date', label: 'วันนัดชำระ', label_en: 'Payment Appointment', families: ['bill'] },
+  { key: 'warehouse', label: 'คลัง', label_en: 'Warehouse', families: ['stock'] }, { key: 'to_warehouse', label: 'คลังปลายทาง', label_en: 'To Warehouse', families: ['stock'] },
+  { key: 'bank_account', label: 'บัญชีเงินฝาก', label_en: 'Bank Account', families: ['bank'] }, { key: 'to_bank_account', label: 'โอนเข้าบัญชี', label_en: 'To Account', families: ['bank'] },
+  { key: 'ref_invoice', label: 'ใบกำกับภาษีเดิม', label_en: 'Original Tax Invoice', families: ['trade'] }, { key: 'payment_date', label: 'วันที่รับ/จ่ายเงิน', label_en: 'Payment Date', families: ['settle'] }, { key: 'voucher_no', label: 'เลขที่ใบสำคัญ', label_en: 'Voucher No.' }, { key: 'remark', label: 'หมายเหตุ', label_en: 'Remarks' },
 ];
 
 const SIGN: Record<PrintFamily, string[]> = {
   trade: ['ผู้รับสินค้า', 'ผู้ส่งสินค้า', 'ผู้มีอำนาจลงนาม'], settle: ['ผู้รับเงิน', 'ผู้จ่ายเงิน', 'ผู้มีอำนาจลงนาม'], bill: ['ผู้รับวางบิล', 'ผู้วางบิล'],
   cash: ['ผู้รับเงิน', 'ผู้จ่ายเงิน', 'ผู้อนุมัติ'], stock: ['ผู้เบิก', 'ผู้จ่าย', 'ผู้อนุมัติ'], bank: ['ผู้จัดทำ', 'ผู้ตรวจสอบ', 'ผู้อนุมัติ'],
   petty: ['ผู้รับเงิน', 'ผู้จ่ายเงิน', 'ผู้อนุมัติ'], journal: ['ผู้จัดทำ', 'ผู้ตรวจสอบ', 'ผู้อนุมัติ'],
+};
+const SIGN_EN: Record<PrintFamily, string[]> = {
+  trade: ['Received by', 'Delivered by', 'Authorized Signature'], settle: ['Received by', 'Paid by', 'Authorized Signature'], bill: ['Bill Received by', 'Billed by'],
+  cash: ['Received by', 'Paid by', 'Approved by'], stock: ['Requested by', 'Issued by', 'Approved by'], bank: ['Prepared by', 'Checked by', 'Approved by'],
+  petty: ['Received by', 'Paid by', 'Approved by'], journal: ['Prepared by', 'Checked by', 'Approved by'],
 };
 const HEAD: Record<PrintFamily, string[]> = {
   trade: ['due_date', 'your_ref', 'salesperson', 'ref_invoice'], settle: ['payment_date', 'your_ref', 'voucher_no'], bill: ['due_date', 'appointment_date'], cash: ['your_ref', 'voucher_no'],
@@ -197,6 +222,8 @@ export function defaultLayout(scope: string, base: PrintBase, title = ''): Print
     show_notes: true, show_journal: fam === 'journal', signatures: SIGN[fam], footer: '', min_rows: small || base === 'pro' ? 0 : base === 'cont' ? 12 : 8,
     // แบบไม่มีเส้น (พิมพ์ลงกระดาษที่มีหัวแล้ว) และกระดาษต่อเนื่อง ไม่พิมพ์โลโก้
     logo: base === 'plain' || base === 'cont' ? 'none' : 'left', logo_mm: base === 'half' ? 12 : 18, signature_images: [], settle_detail: 'auto',
+    co_align: 'left', title_align: 'right', co_name_pt: 0, co_name_color: '', co_info_pt: 0, co_info_color: '', title_pt: 0, title_color: '',
+    band_color: '', band_text_color: '', body_pt: 0, body_color: '', lang: 'th', signatures_en: SIGN_EN[fam],
   };
 }
 
@@ -212,9 +239,13 @@ export function normalizeLayout(scope: string, base: PrintBase, raw: unknown): P
   // คอลัมน์ตามลำดับที่ผู้ใช้จัด + คอลัมน์ใหม่ที่โปรแกรมเพิ่มภายหลัง (ซ่อนไว้)
   const columns: PrintColumn[] = [...cols.map((c) => {
     const k = known.find((y) => y.key === c.key)!;
-    return { key: k.key, label: str(c.label, 40, k.label) || k.label, width: Math.min(80, Math.max(3, Number(c.width) || k.width)), align: c.align === 'l' || c.align === 'r' || c.align === 'c' ? c.align : k.align, show: bool(c.show, true) };
+    return { key: k.key, label: str(c.label, 40, k.label) || k.label, label_en: str(c.label_en, 40, k.label_en).trim() || k.label_en, width: Math.min(80, Math.max(3, Number(c.width) || k.width)), align: c.align === 'l' || c.align === 'r' || c.align === 'c' ? c.align : k.align, show: bool(c.show, true) };
   }), ...known.filter((k) => !cols.some((c) => c.key === k.key)).map((k) => ({ ...k, show: cols.length ? false : k.show !== false }))];
   const fonts = Number(x.font_pt);
+  // ขนาดอักษรเฉพาะส่วน: 0 = ตามต้นแบบ · 6–40 pt (ทีละครึ่ง) · สี: #rrggbb หรือ '' = ตามต้นแบบ
+  const pt = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n >= 6 && n <= 40 ? Math.round(n * 2) / 2 : 0; };
+  const color = (v: unknown) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : '');
+  const align = (v: unknown, dflt: PrintAlign) => (PRINT_ALIGNS.some((a) => a.key === v) ? (v as PrintAlign) : dflt);
   return {
     title: str(x.title, 120, def.title), title_en: str(x.title_en, 120, ''), copies: list(x.copies, 6, def.copies), reprint_copy: bool(x.reprint_copy, def.reprint_copy),
     font_pt: Number.isFinite(fonts) && fonts >= 7 && fonts <= 16 ? fonts : def.font_pt, columns,
@@ -227,6 +258,11 @@ export function normalizeLayout(scope: string, base: PrintBase, raw: unknown): P
     logo_mm: Number.isFinite(Number(x.logo_mm)) ? Math.min(40, Math.max(6, Number(x.logo_mm))) : def.logo_mm,
     signature_images: (Array.isArray(x.signature_images) ? x.signature_images : []).slice(0, 4).map((v) => (typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v) ? v : null)),
     settle_detail: SETTLE_DETAILS.some((o) => o.key === x.settle_detail) ? (x.settle_detail as SettleDetail) : def.settle_detail,
+    co_align: align(x.co_align, def.co_align), title_align: align(x.title_align, def.title_align),
+    co_name_pt: pt(x.co_name_pt), co_name_color: color(x.co_name_color), co_info_pt: pt(x.co_info_pt), co_info_color: color(x.co_info_color),
+    title_pt: pt(x.title_pt), title_color: color(x.title_color), band_color: color(x.band_color), band_text_color: color(x.band_text_color),
+    body_pt: pt(x.body_pt), body_color: color(x.body_color), lang: x.lang === 'en' ? 'en' : 'th',
+    signatures_en: Array.isArray(x.signatures_en) ? (x.signatures_en as unknown[]).slice(0, 4).map((v) => (typeof v === 'string' ? v.trim().slice(0, 60) : '')) : def.signatures_en,
   };
 }
 
@@ -285,4 +321,35 @@ export function checkUnapprove(rule: ApprovalRule, s: ApprovalState, userLevel: 
   if (!s.approved) return 'เอกสารนี้ยังไม่ได้รับรอง';
   if (!isAdmin && userLevel < Math.max(rule.approveLevel, 1)) return `ยกเลิกการรับรองต้องใช้ผู้มีระดับอนุมัติตั้งแต่ ${Math.max(rule.approveLevel, 1)} (ระดับของคุณ ${userLevel})`;
   return null;
+}
+
+/**
+ * คำบนแบบฟอร์มภาษาอังกฤษ (HANDOFF 151) — คำกำกับที่โปรแกรมพิมพ์เอง (ข้อมูลที่ผู้ใช้คีย์ไม่แปล)
+ * ยอดรวม: server ส่ง label_en มาด้วย · ที่นี่เป็นคำของแผ่นเอกสาร
+ */
+export const PRINT_WORDS_EN = {
+  no: 'No.', date: 'Date', tel: 'Tel.', taxId: 'Tax ID', remarks: 'Remarks', total: 'Total', cancelled: 'CANCELLED', signDate: 'Date ......../......../........',
+  accountNo: 'Account No.', accountName: 'Account Name', debit: 'Debit', credit: 'Credit', customer: 'Customer', supplier: 'Supplier',
+} as const;
+/** คำกำกับสำเนา/สาขา (ต้นฉบับ → ORIGINAL · สำเนา → COPY · สำนักงานใหญ่ → Head Office · สาขาที่ n → Branch n) */
+export function printTextEn(th: string): string {
+  return th.split(COPY_ORIGINAL).join('ORIGINAL').split(COPY_DUPLICATE).join('COPY').replace('สำนักงานใหญ่', 'Head Office').replace(/สาขาที่\s*/, 'Branch ');
+}
+
+/** คำของยอดรวม/วิธีชำระที่ระบบพิมพ์ → อังกฤษ (ลำดับสำคัญ: คำที่ยาวกว่า/เฉพาะกว่าก่อน) */
+const LABEL_EN: Array<[RegExp, string]> = [
+  [/^จำนวนเงินรวมทั้งสิ้น$/, 'Grand Total'], [/^รวมเงินคืนทั้งสิ้น$/, 'Total Refund'], [/^รวมทั้งสิ้น$/, 'Grand Total'], [/^รวมยอดชำระ$/, 'Total Paid'], [/^รวมมูลค่า$/, 'Total Value'],
+  [/^รวมเงิน$/, 'Subtotal'], [/^รวม$/, 'Total'], [/^ยอดสุทธิ$/, 'Net Amount'], [/^หลังหักส่วนลด$/, 'After Discount'], [/^ส่วนลดเงินสด$/, 'Cash Discount'],
+  [/^ส่วนลด\s*(.*)$/, 'Discount $1'], [/^หักเงินมัดจำ$/, 'Less Deposit'], [/^หักค่าบริการแพลตฟอร์ม$/, 'Less Platform Fees'],
+  [/^มูลค่าสินค้า\/บริการที่มีภาษีมูลค่าเพิ่ม$/, 'Value Subject to VAT'], [/^มูลค่าที่ไม่มีภาษีมูลค่าเพิ่ม$/, 'Non-VAT Value'], [/^มูลค่าสินค้า\/บริการ$/, 'Value of Goods/Services'],
+  [/^มูลค่าก่อนภาษี$/, 'Amount before VAT'], [/^ภาษีมูลค่าเพิ่มของผลต่าง\s*(.*)$/, 'VAT on Difference $1'], [/^ภาษีมูลค่าเพิ่ม\s*(.*)$/, 'VAT $1'],
+  [/^ภาษีหัก ณ ที่จ่าย$/, 'Withholding Tax'], [/^มูลค่าสินค้าตามใบกำกับเดิม$/, 'Original Invoice Value'], [/^มูลค่าตามใบกำกับภาษีเดิม$/, 'Original Tax Invoice Value'],
+  [/^ลดหนี้ครั้งก่อน$/, 'Previous Credit Notes'], [/^มูลค่าที่ถูกต้อง$/, 'Correct Value'], [/^ผลต่าง$/, 'Difference'], [/^ดอกเบี้ย$/, 'Interest'],
+  [/^กำไรจากอัตราแลกเปลี่ยน$/, 'Exchange Gain'], [/^ขาดทุนจากอัตราแลกเปลี่ยน$/, 'Exchange Loss'],
+];
+/** คำกำกับยอดรวม/วิธีชำระของระบบเป็นภาษาอังกฤษ — คำที่ไม่รู้จัก (ผู้ใช้ตั้งเอง) คงเดิม */
+export function printLabelEn(th: string): string {
+  const t = th.trim();
+  for (const [re, en] of LABEL_EN) if (re.test(t)) return t.replace(re, en).trim();
+  return th;
 }

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fmt, formatDate } from '@buddy/core';
 import { api } from '../api';
 import { ErrorBox, Modal, useYearSystem } from '../ui';
+import { PrintJob } from '../printFrame';
 
 type Data = {
   company: { name: string; tax_id: string | null; address: string | null };
@@ -49,13 +49,6 @@ export function SubstituteReceiptButton({ id }: { id: string }) {
   const [open, setOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
   const q = useQuery({ enabled: open, queryKey: ['substitute-receipt', id], queryFn: () => api.get<Data>(`/api/v1/docs/${id}/substitute-receipt`), staleTime: 0 });
-  useEffect(() => {
-    if (!printing) return;
-    const done = () => setPrinting(false);
-    window.addEventListener('afterprint', done, { once: true });
-    const t = setTimeout(() => { try { window.focus(); window.print(); } catch { done(); } }, 150);
-    return () => { clearTimeout(t); window.removeEventListener('afterprint', done); };
-  }, [printing]);
   return <>
     <button type="button" onClick={() => setOpen(true)} title="บิลไม่มีชื่อผู้ขาย — พิมพ์ใบรับรองแทนใบเสร็จรับเงิน (บ.ก.111) ให้ผู้จ่ายเงินลงชื่อ">🧾 ใบรับรองแทนใบเสร็จ</button>
     {open && <Modal title="ใบรับรองแทนใบเสร็จรับเงิน (บ.ก.111)" size="wide" onClose={() => setOpen(false)}
@@ -63,6 +56,6 @@ export function SubstituteReceiptButton({ id }: { id: string }) {
       <ErrorBox error={q.error} />
       {q.data && <div className="sr-preview"><Sheet x={q.data} /></div>}
     </Modal>}
-    {printing && q.data && createPortal(<div className="doc-print"><Sheet x={q.data} /></div>, document.body)}
+    {printing && q.data && <PrintJob onDone={() => setPrinting(false)}><div className="doc-print"><Sheet x={q.data} /></div></PrintJob>}
   </>;
 }

@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, docPath, fmt, formatDate, todayIso, type YearSystem } from '@buddy/core';
@@ -12,6 +11,7 @@ import { useDocNo } from '../../components/DocNo';
 import { DocLink } from '../../components/DocLink';
 import { ReasonInput } from '../../components/ReasonInput';
 import { useUnsaved } from '../../unsaved';
+import { PrintJob } from '../../printFrame';
 
 /** เช็ครับ/เช็คจ่าย (คู่มือบทที่ 13 S-BK-04..13) — ยอดเงินฝากเพิ่มเมื่อผ่านเช็คเท่านั้น */
 type Dir = 'R' | 'P';
@@ -152,7 +152,7 @@ export function ChequeDetail({ id, onClose }: { id: string; onClose: () => void 
   const left = x ? d(x.remaining_amount ?? 0).minus(d(x.written_off_amount ?? 0)) : d(0);
   useHotkeys({ 'Alt+E': x?.editable && can('edit') ? () => { setF({ ...f, cheque_no: x.cheque_no ?? '' }); setAct('edit'); } : undefined }, [x?.editable]);
   const ys: YearSystem = me?.company?.year_system ?? 'B';
-  const doPrint = () => { setPrint(true); setTimeout(() => { window.print(); setPrint(false); }, 100); };
+  const doPrint = () => setPrint(true);
   return (
     <Modal title={x ? `${x.direction === 'R' ? 'เช็ครับ' : 'เช็คจ่าย'} ${x.cheque_no}` : 'เช็ค'} size="wide" onClose={onClose} footer={<>
       {x?.editable && can('edit') && <button onClick={() => { setF({ ...f, cheque_no: x.cheque_no ?? '' }); setAct('edit'); }}>แก้เลขที่เช็ค <kbd>Alt+E</kbd></button>}
@@ -202,9 +202,9 @@ export function ChequeDetail({ id, onClose }: { id: string; onClose: () => void 
         <Field label="เลขที่เช็ค" req><input className="mono" autoFocus value={f.cheque_no} maxLength={30} onChange={(e) => setF({ ...f, cheque_no: e.target.value })} /></Field>
       </Confirm>}
       {act === 'delete' && <Confirm danger title="ลบเช็ค" text={`ลบเช็ค ${x?.cheque_no} ออกจากทะเบียน?`} okText="ลบ" onClose={() => setAct(null)} onOk={() => run(async () => { await api.del(`/api/v1/cheques/${id}`); onClose(); }, 'ลบเช็คแล้ว')} />}
-      {print && x && createPortal(<div className="vat-print"><h2>เช็ค</h2><table><tbody>
+      {print && x && <PrintJob onDone={() => setPrint(false)}><div className="vat-print"><h2>เช็ค</h2><table><tbody>
         <tr><th>วันที่</th><td>{formatDate(x.cheque_date, ys)}</td></tr><tr><th>จ่าย</th><td>{x.payee_name ?? x.supplier_name}</td></tr><tr><th>จำนวนเงิน</th><td>{fmt(x.amount)}</td></tr><tr><th>เลขที่เช็ค</th><td>{x.cheque_no}</td></tr>
-      </tbody></table></div>, document.body)}
+      </tbody></table></div></PrintJob>}
     </Modal>
   );
 }
@@ -340,7 +340,7 @@ export function ChequeSlipFormPage() {
         <button className="primary" disabled={ro} onClick={save}>บันทึก <kbd>F9</kbd></button>
         {id && !c?.passed && c?.doc_status !== 'C' && canPass('add') && <button onClick={() => setAct('pass')}>บันทึกเช็คผ่าน (ทั้งใบนำฝาก)</button>}
         {id && c?.passed && canPass('cancel') && <button onClick={() => setAct('unpass')}>ยกเลิกการผ่าน</button>}
-        {id && <button onClick={() => { setPrint(true); setTimeout(() => { window.print(); setPrint(false); }, 100); }}>🖨 พิมพ์ใบนำฝาก</button>}
+        {id && <button onClick={() => setPrint(true)}>🖨 พิมพ์ใบนำฝาก</button>}
         <button disabled={!id || c?.doc_status === 'C' || !!c?.passed || !can('cancel')} onClick={() => setAct('cancel')}>ยกเลิกใบนำฝาก</button>
         <DocDelete kind="doc" id={id} docNo={c?.doc_no} cancelled={c?.doc_status === 'C'} cancelUrl={`/api/v1/cheque-deposits/${id}/cancel`} listPath="/fi/cheques/slips" canDelete={can('delete')} canCancel={can('cancel') && !c?.passed} />
         <CloseScreen />
@@ -391,10 +391,10 @@ export function ChequeSlipFormPage() {
       {act === 'cancel' && <Confirm danger title="ยกเลิกใบนำฝาก" text="เช็คทุกใบกลับเป็นเช็คในมือ (เปลี่ยนสถานะ ไม่ลบ)" okText="ยกเลิกใบนำฝาก" onClose={() => setAct(null)} onOk={() => run(() => api.post(`/api/v1/cheque-deposits/${id}/cancel`, { reason: f.reason }), 'ยกเลิกใบนำฝากแล้ว', true)}>
         <Field label="เหตุผลที่ยกเลิก" req><ReasonInput value={f.reason} onChange={(v) => setF({ ...f, reason: v })} /></Field>
       </Confirm>}
-      {print && c && createPortal(<div className="vat-print"><h2>ใบนำฝากเช็ค {c.doc_no}</h2><p style={{ textAlign: 'center' }}>{me?.company?.name_th} · วันที่นำฝาก {formatDate(String(c.doc_date).slice(0, 10), ys)}</p>
+      {print && c && <PrintJob title={c.doc_no ?? undefined} onDone={() => setPrint(false)}><div className="vat-print"><h2>ใบนำฝากเช็ค {c.doc_no}</h2><p style={{ textAlign: 'center' }}>{me?.company?.name_th} · วันที่นำฝาก {formatDate(String(c.doc_date).slice(0, 10), ys)}</p>
         <table><thead><tr><th>#</th><th>เลขที่เช็ค</th><th>ลงวันที่</th><th>ธนาคาร</th><th>สาขา</th><th>จำนวนเงิน</th></tr></thead>
           <tbody>{c.cheques.map((x, i) => <tr key={x.id}><td>{i + 1}</td><td>{x.cheque_no}</td><td>{formatDate(String(x.cheque_date).slice(0, 10), ys)}</td><td>{x.bank_name}</td><td>{x.bank_branch}</td><td className="r">{fmt(x.amount)}</td></tr>)}
-            <tr><td colSpan={5} className="r">รวม</td><td className="r">{fmt(c.amount ?? '0')}</td></tr></tbody></table></div>, document.body)}
+            <tr><td colSpan={5} className="r">รวม</td><td className="r">{fmt(c.amount ?? '0')}</td></tr></tbody></table></div></PrintJob>}
     </div>
   );
 }

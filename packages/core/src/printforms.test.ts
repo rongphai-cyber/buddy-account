@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { checkApprove, checkPrint, checkUnapprove, copyMark, defaultLayout, sheetCopies, docMenuOf, docPath, normalizeLayout, printFamily, printMenu, printPartyLabel, printTitle } from './printforms.js';
+import { checkApprove, checkPrint, checkUnapprove, copyMark, defaultLayout, sheetCopies, docMenuOf, docPath, normalizeLayout, printFamily, printMenu, printLabelEn, printPartyLabel, printTextEn, printTitle } from './printforms.js';
+import { bahtTextEn } from './baht.js';
+import { formatDateEn } from './date.js';
 
 describe('แบบฟอร์มพิมพ์เอกสาร (S-RD-01/02)', () => {
   it('จัดกลุ่มเอกสารและเมนูสิทธิ์', () => {
@@ -79,5 +81,38 @@ describe('แบบฟอร์มพิมพ์เอกสาร (S-RD-01/02)
     expect(checkApprove({ ...r, approveLevel: 0 }, { printCount: 0, approved: false, cancelled: false }, 9)).toMatch(/ไม่ต้องรับรอง/);
     expect(checkApprove(r, { printCount: 1, approved: true, cancelled: false }, 9)).toMatch(/รับรองแล้ว/);
     expect(checkUnapprove(r, { printCount: 1, approved: true, cancelled: false }, 3)).toMatch(/ตั้งแต่ 5/);
+  });
+});
+
+describe('แบบฟอร์มพิมพ์: ส่วนหัว/ส่วนกลาง/ภาษาอังกฤษ (HANDOFF 151)', () => {
+  it('ฟอร์มเดิม (ไม่มีค่าใหม่) = หน้าตาเดิม: ชื่อบริษัทซ้าย ชื่อเอกสารขวา ไม่มีขนาด/สีพิเศษ ภาษาไทย', () => {
+    const L = normalizeLayout('IV', 'pro', { title: 'x', font_pt: 11 });
+    expect([L.co_align, L.title_align, L.co_name_pt, L.co_name_color, L.title_pt, L.band_color, L.body_pt, L.body_color, L.lang]).toEqual(['left', 'right', 0, '', 0, '', 0, '', 'th']);
+    expect(L.signatures_en).toEqual(['Received by', 'Delivered by', 'Authorized Signature']);
+    expect(L.columns.find((c) => c.key === 'price')?.label_en).toBe('Unit Price');
+  });
+  it('ตัดค่าที่ผิด: สีต้องเป็น #rrggbb · ขนาด 6–40 pt · ตำแหน่ง left/center/right · ภาษา th/en', () => {
+    const L = normalizeLayout('IV', 'pro', { co_align: 'center', title_align: 'top', co_name_pt: 22, title_pt: 3, title_color: '#AB12CD', band_color: 'red', body_pt: 9.3, lang: 'en', signatures_en: ['Buyer', 7] });
+    expect([L.co_align, L.title_align, L.co_name_pt, L.title_pt, L.title_color, L.band_color, L.body_pt, L.lang]).toEqual(['center', 'right', 22, 0, '#ab12cd', '', 9.5, 'en']);
+    expect(L.signatures_en).toEqual(['Buyer', '']);
+  });
+  it('หัวคอลัมน์ภาษาอังกฤษ: ตั้งเองได้ ว่าง = ค่าเริ่มต้น', () => {
+    const L = normalizeLayout('IV', 'pro', { columns: [{ key: 'name', label: 'สินค้า', label_en: 'Goods' }, { key: 'qty', label: 'จำนวน', label_en: ' ' }] });
+    expect(L.columns.slice(0, 2).map((c) => c.label_en)).toEqual(['Goods', 'Qty']);
+  });
+  it('คำกำกับยอดรวม/สำเนาเป็นภาษาอังกฤษ', () => {
+    expect(['รวมเงิน', 'ส่วนลด 5%', 'หักเงินมัดจำ', 'มูลค่าสินค้า/บริการ', 'ภาษีมูลค่าเพิ่ม 7%', 'ภาษีมูลค่าเพิ่มของผลต่าง 7%', 'จำนวนเงินรวมทั้งสิ้น', 'ส่วนลดเงินสด', 'ค่าขนส่งพิเศษ'].map(printLabelEn))
+      .toEqual(['Subtotal', 'Discount 5%', 'Less Deposit', 'Value of Goods/Services', 'VAT 7%', 'VAT on Difference 7%', 'Grand Total', 'Cash Discount', 'ค่าขนส่งพิเศษ']);
+    expect(['ต้นฉบับ', 'สำเนา (ลูกค้า)', 'สำนักงานใหญ่', 'สาขาที่ 00002'].map(printTextEn)).toEqual(['ORIGINAL', 'COPY (ลูกค้า)', 'Head Office', 'Branch 00002']);
+  });
+  it('จำนวนเงินเป็นตัวอักษรภาษาอังกฤษ · วันที่ภาษาอังกฤษ', () => {
+    expect(bahtTextEn('27124.50')).toBe('Twenty-Seven Thousand One Hundred Twenty-Four Baht and Fifty Satang');
+    expect(bahtTextEn('100')).toBe('One Hundred Baht Only');
+    expect(bahtTextEn('1000000.01')).toBe('One Million Baht and One Satang');
+    expect(bahtTextEn('0.75')).toBe('Seventy-Five Satang');
+    expect(bahtTextEn('115')).toBe('One Hundred Fifteen Baht Only');
+    expect(bahtTextEn(0)).toBe('Zero Baht Only');
+    expect(formatDateEn('2026-11-19')).toBe('19 Nov 2026');
+    expect(formatDateEn('2027-01-05')).toBe('5 Jan 2027');
   });
 });

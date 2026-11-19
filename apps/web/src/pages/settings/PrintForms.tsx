@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { DOC_CLASSES, normalizeLayout, PRINT_BASES, PRINT_LOGO_POS, PRINT_HEAD_FIELDS, printFamily, SETTLE_DETAILS, type PrintBase, type PrintFormEntry, type PrintLayout } from '@buddy/core';
+import { DOC_CLASSES, normalizeLayout, PRINT_ALIGNS, PRINT_BASES, PRINT_LANGS, PRINT_LOGO_POS, PRINT_HEAD_FIELDS, printFamily, SETTLE_DETAILS, type PrintBase, type PrintFormEntry, type PrintLayout } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
 import { Confirm, ErrorBox, Field, PageHead, Tabs, toast, useHotkeys, useYearSystem } from '../../ui';
@@ -12,6 +12,18 @@ import { confirmLeave, useUnsaved } from '../../unsaved';
 type FormsResp = { menu: PrintFormEntry[]; custom: Array<{ slot: number; name: string; base: string; status: string }>; sample: { kind: 'doc' | 'journal'; id: string } | null };
 const SCOPES = [...Object.entries(DOC_CLASSES).map(([k, v]) => ({ k, label: `${k} ${v.label}` })), { k: 'GL', label: 'GL ใบสำคัญ (สมุดรายวัน)' }];
 const list = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
+
+/** ขนาดอักษร (pt) ของส่วนในแบบฟอร์ม — ว่าง = ตามต้นแบบ (HANDOFF 151) */
+function PtInput({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
+  return <input type="number" min={6} max={40} step={0.5} value={value || ''} placeholder="ตามต้นแบบ" aria-label={label} onChange={(e) => onChange(Number(e.target.value) || 0)} />;
+}
+/** สีของส่วนในแบบฟอร์ม — "ตามต้นแบบ" = ไม่ตั้ง (สีเดิมของต้นแบบ/ธีมบริษัท) */
+function ColorInput({ value, onChange, label, dflt }: { value: string; onChange: (v: string) => void; label: string; dflt: string }) {
+  return <span className="pf-color">
+    <input type="color" value={value || dflt} aria-label={label} onChange={(e) => onChange(e.target.value)} />
+    {value ? <button type="button" className="link-btn" onClick={() => onChange('')} title="กลับไปใช้สีของต้นแบบ">ใช้สีต้นแบบ</button> : <span className="muted small">ตามต้นแบบ</span>}
+  </span>;
+}
 
 /**
  * แบบฟอร์มพิมพ์เอกสาร (คู่มือบทที่ 25 S-RD-01/02 · ทำแบบใหม่แทนภาษารายงาน)
@@ -90,23 +102,44 @@ export function PrintFormsPage() {
       <CompanyImagesPanel />
       {L && <div className="pf-layout">
         <div className="pf-side">
-          <Tabs active={pt} onChange={setPt} tabs={[{ key: 'gen', label: 'ทั่วไป/กระดาษ' }, { key: 'parts', label: 'ส่วนที่พิมพ์' }, { key: 'cols', label: 'คอลัมน์ตาราง', badge: L.columns.filter((c) => c.show).length }, { key: 'sign', label: 'ลายเซ็นและท้ายเอกสาร' }]} />
+          <Tabs active={pt} onChange={setPt} tabs={[{ key: 'gen', label: 'ทั่วไป/กระดาษ' }, { key: 'look', label: 'หัวเอกสาร/สี' }, { key: 'parts', label: 'ส่วนที่พิมพ์' }, { key: 'cols', label: 'คอลัมน์ตาราง', badge: L.columns.filter((c) => c.show).length }, { key: 'sign', label: 'ลายเซ็นและท้ายเอกสาร' }]} />
           {pt === 'gen' && <div className="form-grid">
             <Field label="ชื่อแบบฟอร์ม (ในเมนูพิมพ์)" req wide><input value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setDirty(true); }} /></Field>
             <Field label="ต้นแบบ / ขนาดกระดาษ" wide hint={PRINT_BASES.find((b) => b.key === base)?.hint}><select value={base} onChange={(e) => { setBase(e.target.value as PrintBase); setDirty(true); }}>{PRINT_BASES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}</select></Field>
             <Field label="หัวเรื่อง" wide hint={`ว่าง = ชื่อประเภทเอกสาร${sampleData ? ` (${sampleData.title})` : ''}`}><input value={L.title} maxLength={120} placeholder="เช่น ใบส่งของ/ใบกำกับภาษี" onChange={(e) => set({ title: e.target.value })} /></Field>
             <Field label="หัวเรื่องภาษาอังกฤษ" wide><input value={L.title_en} maxLength={120} placeholder="INVOICE / TAX INVOICE" onChange={(e) => set({ title_en: e.target.value })} /></Field>
+            <Field label="ภาษาของแบบฟอร์ม" wide hint={L.lang === 'en' ? 'คำกำกับ หัวคอลัมน์ ยอดรวม จำนวนเงินตัวอักษร และวันที่ (เช่น 19 Nov 2026 ปี ค.ศ.) เป็นภาษาอังกฤษ · ชื่อ/ที่อยู่บริษัทใช้ภาษาอังกฤษถ้ามี (รายละเอียดกิจการ) · รายการสินค้าและข้อมูลที่คีย์คงเดิม · ชื่อเอกสารภาษาไทยอยู่บรรทัดรอง' : 'ภาษาอังกฤษ = เอกสารสำหรับลูกค้าต่างชาติ'}>
+              <select value={L.lang} onChange={(e) => set({ lang: e.target.value as PrintLayout['lang'] })}>{PRINT_LANGS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}</select></Field>
             <Field label="สำเนาที่พิมพ์ (คั่นด้วย ,)" wide hint="เช่น ต้นฉบับ, สำเนา — หนึ่งแผ่นต่อคำ ว่าง = แผ่นเดียว"><input defaultValue={L.copies.join(', ')} key={`c${slot}${scope}${L.copies.join()}`} onBlur={(e) => set({ copies: list(e.target.value) })} /></Field>
             <Field label="พิมพ์ซ้ำ" wide hint="ติ๊ก = เอกสารที่พิมพ์ไปแล้ว พิมพ์อีกครั้งได้แผ่นเท่าเดิมแต่คำว่า ต้นฉบับ เปลี่ยนเป็น สำเนา (แบบฟอร์มที่ไม่มีคำกำกับจะขึ้นคำว่า สำเนา) — ใบกำกับภาษีต้นฉบับออกได้ครั้งเดียว">
               <label className="check"><input type="checkbox" checked={L.reprint_copy} onChange={(e) => set({ reprint_copy: e.target.checked })} /> พิมพ์ซ้ำเป็น "สำเนา"</label></Field>
             <Field label="ขนาดอักษร (pt)"><input type="number" min={7} max={16} value={L.font_pt} onChange={(e) => set({ font_pt: Number(e.target.value) || 10 })} /></Field>
             <Field label="บรรทัดขั้นต่ำในตาราง" hint="เติมบรรทัดว่างให้สูงเท่ากันทุกใบ"><input type="number" min={0} max={40} value={L.min_rows} onChange={(e) => set({ min_rows: Number(e.target.value) || 0 })} /></Field>
-            <Field label="โลโก้บริษัท" hint={images.logo ? undefined : 'ยังไม่มีโลโก้ — อัปโหลดด้านบน'}><select value={L.logo} onChange={(e) => set({ logo: e.target.value as PrintLayout['logo'] })}>{PRINT_LOGO_POS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></Field>
-            <Field label="ความสูงโลโก้ (มม.)"><input type="number" min={6} max={40} value={L.logo_mm} disabled={L.logo === 'none'} onChange={(e) => set({ logo_mm: Number(e.target.value) || 18 })} /></Field>
             {fam === 'settle' && <Field label="รายการในใบเสร็จ" hint="ใบเสร็จรับเงิน/ใบกำกับภาษี (ภาษีเกณฑ์เงินสด) ควรแสดงรายการสินค้า/บริการ"><select value={L.settle_detail} onChange={(e) => set({ settle_detail: e.target.value as PrintLayout['settle_detail'] })} aria-label="รายการในใบเสร็จ">
               {SETTLE_DETAILS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}</select></Field>}
             <Field label="แสดงในเมนูพิมพ์"><select value={status} onChange={(e) => { setStatus(e.target.value as 'A' | 'I'); setDirty(true); }}><option value="A">แสดง</option><option value="I">ซ่อนหมายเลขนี้</option></select></Field>
           </div>}
+          {pt === 'look' && <>
+          <h3 className="small">ส่วนหัวเอกสาร</h3>
+          <div className="form-grid">
+            <Field label="โลโก้บริษัท" hint={images.logo ? undefined : 'ยังไม่มีโลโก้ — อัปโหลดด้านบน'}><select value={L.logo} onChange={(e) => set({ logo: e.target.value as PrintLayout['logo'] })}>{PRINT_LOGO_POS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></Field>
+            <Field label="ความสูงโลโก้ (มม.)"><input type="number" min={6} max={40} value={L.logo_mm} disabled={L.logo === 'none'} onChange={(e) => set({ logo_mm: Number(e.target.value) || 18 })} /></Field>
+            <Field label="ตำแหน่งชื่อบริษัท/ที่อยู่" hint="เดิม = ซ้าย"><select value={L.co_align} onChange={(e) => set({ co_align: e.target.value as PrintLayout['co_align'] })}>{PRINT_ALIGNS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}</select></Field>
+            <Field label="ตำแหน่งชื่อเอกสาร" hint="เดิม = ขวา · ตำแหน่งเดียวกัน = เรียงต่อกันลงมา"><select value={L.title_align} onChange={(e) => set({ title_align: e.target.value as PrintLayout['title_align'] })}>{PRINT_ALIGNS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}</select></Field>
+          </div>
+          <table className="grid pf-look"><thead><tr><th>ส่วน</th><th>ขนาดอักษร (pt)</th><th>สี</th></tr></thead><tbody>
+            <tr><th>ชื่อบริษัท</th><td><PtInput label="ขนาดชื่อบริษัท" value={L.co_name_pt} onChange={(v) => set({ co_name_pt: v })} /></td><td><ColorInput label="สีชื่อบริษัท" dflt="#111111" value={L.co_name_color} onChange={(v) => set({ co_name_color: v })} /></td></tr>
+            <tr><th>ที่อยู่และข้อมูลบริษัท</th><td><PtInput label="ขนาดที่อยู่บริษัท" value={L.co_info_pt} onChange={(v) => set({ co_info_pt: v })} /></td><td><ColorInput label="สีที่อยู่บริษัท" dflt="#33333d" value={L.co_info_color} onChange={(v) => set({ co_info_color: v })} /></td></tr>
+            <tr><th>ชื่อเอกสาร</th><td><PtInput label="ขนาดชื่อเอกสาร" value={L.title_pt} onChange={(v) => set({ title_pt: v })} /></td><td><ColorInput label="สีชื่อเอกสาร" dflt="#6f5db8" value={L.title_color} onChange={(v) => set({ title_color: v })} /></td></tr>
+          </tbody></table>
+          <h3 className="small">ส่วนกลาง (ตารางรายการและยอดรวม)</h3>
+          <table className="grid pf-look"><thead><tr><th>ส่วน</th><th>ขนาดอักษร (pt)</th><th>สี</th></tr></thead><tbody>
+            <tr><th>แถบหัวตาราง/ยอดรวมทั้งสิ้น</th><td className="muted small">—</td><td><ColorInput label="สีแถบ" dflt="#6f5db8" value={L.band_color} onChange={(v) => set({ band_color: v })} /></td></tr>
+            <tr><th>ตัวอักษรบนแถบ</th><td className="muted small">—</td><td><ColorInput label="สีตัวอักษรบนแถบ" dflt="#ffffff" value={L.band_text_color} onChange={(v) => set({ band_text_color: v })} /></td></tr>
+            <tr><th>ตัวอักษรในตารางและยอดรวม</th><td><PtInput label="ขนาดตัวอักษรในตาราง" value={L.body_pt} onChange={(v) => set({ body_pt: v })} /></td><td><ColorInput label="สีตัวอักษรในตาราง" dflt="#1d1d24" value={L.body_color} onChange={(v) => set({ body_color: v })} /></td></tr>
+          </tbody></table>
+          <p className="muted small">ว่าง/ตามต้นแบบ = หน้าตาเดิมของต้นแบบ (สีตามธีมบริษัท) · ขนาดอักษรทั้งแผ่นตั้งที่แท็บ ทั่วไป/กระดาษ · ตัวอย่างด้านขวาเปลี่ยนทันที</p>
+          </>}
           {pt === 'parts' && <>
           <h3 className="small">ส่วนที่พิมพ์</h3>
           <div className="pf-checks">
@@ -119,10 +152,11 @@ export function PrintFormsPage() {
           </>}
           {pt === 'cols' && <>
           <h3 className="small">คอลัมน์ตาราง</h3>
-          <table className="grid pf-cols"><thead><tr><th>แสดง</th><th>หัวคอลัมน์</th><th className="r">กว้าง</th><th>จัด</th><th /></tr></thead>
+          <table className="grid pf-cols"><thead><tr><th>แสดง</th><th>หัวคอลัมน์</th><th>ภาษาอังกฤษ</th><th className="r">กว้าง</th><th>จัด</th><th /></tr></thead>
             <tbody>{L.columns.map((c, i) => <tr key={c.key}>
               <td className="c"><input type="checkbox" checked={c.show} aria-label={`แสดง ${c.label}`} onChange={(e) => set({ columns: L.columns.map((x) => (x.key === c.key ? { ...x, show: e.target.checked } : x)) })} /></td>
               <td><input value={c.label} maxLength={40} onChange={(e) => set({ columns: L.columns.map((x) => (x.key === c.key ? { ...x, label: e.target.value } : x)) })} aria-label="หัวคอลัมน์" /></td>
+              <td><input value={c.label_en} maxLength={40} onChange={(e) => set({ columns: L.columns.map((x) => (x.key === c.key ? { ...x, label_en: e.target.value } : x)) })} aria-label="หัวคอลัมน์ภาษาอังกฤษ" /></td>
               <td><input className="r" type="number" min={3} max={80} value={c.width} style={{ width: 64 }} onChange={(e) => set({ columns: L.columns.map((x) => (x.key === c.key ? { ...x, width: Number(e.target.value) || 3 } : x)) })} aria-label="ความกว้าง" /></td>
               <td><select value={c.align} onChange={(e) => set({ columns: L.columns.map((x) => (x.key === c.key ? { ...x, align: e.target.value as 'l' } : x)) })} aria-label="การจัดวาง"><option value="l">ซ้าย</option><option value="c">กลาง</option><option value="r">ขวา</option></select></td>
               <td className="nowrap"><button type="button" className="icon-btn" title="เลื่อนขึ้น" onClick={() => moveCol(i, -1)}>▲</button><button type="button" className="icon-btn" title="เลื่อนลง" onClick={() => moveCol(i, 1)}>▼</button></td>
@@ -130,6 +164,7 @@ export function PrintFormsPage() {
           </>}
           {pt === 'sign' && <div className="form-grid" style={{ marginTop: 10 }}>
             <Field label="ช่องลงชื่อ (คั่นด้วย ,)" wide hint="สูงสุด 4 ช่อง"><input defaultValue={L.signatures.join(', ')} key={`s${slot}${scope}${L.signatures.join()}`} onBlur={(e) => set({ signatures: list(e.target.value) })} /></Field>
+            <Field label="ช่องลงชื่อภาษาอังกฤษ (คั่นด้วย ,)" wide hint="ใช้เมื่อภาษาของแบบฟอร์ม = อังกฤษ · ลำดับเดียวกับช่องลงชื่อ"><input defaultValue={L.signatures_en.join(', ')} key={`se${slot}${scope}${L.signatures_en.join()}`} onBlur={(e) => set({ signatures_en: list(e.target.value) })} /></Field>
             {L.signatures.map((s, i) => <Field key={`sg${i}${s}`} label={`รูปลายเซ็นช่อง "${s}"`} hint={signList.length ? undefined : 'เพิ่มรูปลายเซ็นด้านบนก่อน'}>
               <select value={L.signature_images[i] ?? ''} onChange={(e) => { const arr = L.signatures.map((_, k) => L.signature_images[k] ?? null); arr[i] = e.target.value || null; set({ signature_images: arr }); }}>
                 <option value="">— เว้นว่างให้เซ็นมือ —</option>{signList.map(([id, x]) => <option key={id} value={id}>{x.name}</option>)}</select></Field>)}
