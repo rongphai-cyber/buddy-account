@@ -45,7 +45,12 @@ export function PrintSheet({ data, form, ys, images, prior }: { data: PrintData;
   // ใบเสร็จ: แสดงรายการสินค้า/บริการของบิล (ฟอร์มเลือก หรืออัตโนมัติเมื่อเป็นใบกำกับภาษี) — คอลัมน์รายการต้องแสดง
   const items = data.family === 'settle' && !!data.detail && (L.settle_detail === 'items' || (L.settle_detail !== 'bills' && !!data.receipt_tax));
   const lines = items ? data.detail! : data.lines;
-  const cols = L.columns.filter((c) => c.show || (items && c.key === 'name'));
+  const shown = L.columns.filter((c) => c.show || (items && c.key === 'name'));
+  // เจ้าของ 19/11/2569 "กรณีไม่มีส่วนลด ไม่ต้องแสดงส่วนลด": ไม่มีบรรทัดใดมีส่วนลด = ซ่อนคอลัมน์ส่วนลด ให้ความกว้างแก่รายละเอียด
+  // (ยอดรวม: server ใส่บรรทัดส่วนลด/หลังหักส่วนลด/ส่วนลดเงินสด เฉพาะเมื่อมียอด)
+  const hasDisc = lines.some((l) => { const v = (l.disc ?? '').trim(); return !!v && !/^[0.,%\s]+$/.test(v); });
+  const discCol = hasDisc ? undefined : shown.find((c) => c.key === 'disc');
+  const cols = discCol ? shown.filter((c) => c !== discCol).map((c) => (c.key === 'name' ? { ...c, width: c.width + discCol.width } : c)) : shown;
   const totalW = cols.reduce((s, c) => s + c.width, 0) || 1;
   const copies = sheetCopies(L, prior ?? data.print_count);
   const fill = Math.max(0, L.min_rows - lines.length - lines.filter((l) => l.note).length);
