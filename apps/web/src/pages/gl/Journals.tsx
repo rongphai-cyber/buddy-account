@@ -6,7 +6,7 @@ import { api, type Book } from '../../api';
 import { bookColor, bookStyle } from '../../bookColor';
 import { useSession } from '../../session';
 import { DocLink } from '../../components/DocLink';
-import { cx, DateInput, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, Tabs, useHotkeys } from '../../ui';
+import { cx, DateInput, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, revealSelectedRow, Tabs, useHotkeys } from '../../ui';
 import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 
 interface Row { id: string; voucher_no: string; voucher_date: string; description: string | null; reference: string | null; total_debit: string; doc_status: string; source_module: string | null; source_header_id: string | null; book_code: string; source_doc_no: string | null; source_doc_class: string | null }
@@ -30,7 +30,7 @@ export function JournalsPage() {
   const set = (p: Partial<typeof f>) => { const n = { ...f, ...p }; setF(n); setPage(0); setSel(0); setSp({ book: n.book_id, from: n.from, to: n.to }, { replace: true }); };
   const newUrl = `/gl/journals/new${f.book_id ? `?book=${f.book_id}` : ''}`;
   const curBook = books.data?.find((b) => b.id === f.book_id);
-  useHotkeys({ Insert: () => nav(newUrl), 'Alt+A': () => nav(newUrl), ArrowDown: () => setSel((s) => Math.min(s + 1, rows.length - 1)), ArrowUp: () => setSel((s) => Math.max(0, s - 1)), Enter: () => rows[sel] && nav(`/gl/journals/${rows[sel]!.id}`) }, [rows, sel, newUrl]);
+  useHotkeys({ Insert: () => nav(newUrl), 'Alt+A': () => nav(newUrl), ArrowDown: () => { setSel((s) => Math.min(s + 1, rows.length - 1)); revealSelectedRow(); }, ArrowUp: () => { setSel((s) => Math.max(0, s - 1)); revealSelectedRow(); }, Enter: () => rows[sel] && nav(`/gl/journals/${rows[sel]!.id}`) }, [rows, sel, newUrl]);
   const total = useMemo(() => rows.filter((r) => r.doc_status === 'N').reduce((s, r) => s + Number(r.total_debit), 0), [rows]);
   const showBr = useShowBranchCol();
   return (

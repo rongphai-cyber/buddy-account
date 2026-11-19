@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { DATA_TABLES, ITEM_KINDS, itemKindOf } from '@buddy/core';
 import { useCan } from '../session';
-import { clearFieldTips, ErrorBox, Field, Modal, navKey, toast, useHotkeys } from '../ui';
+import { clearFieldTips, ErrorBox, Field, keepInList, Modal, navKey, toast, useHotkeys } from '../ui';
 import type { AddKind } from './AddMaster';
 
 const AddMaster = lazy(() => import('./AddMaster'));
@@ -20,7 +20,7 @@ const ADD_MENU = (k: AddKind) => (k === 'customer' ? 'SA.CUS' : k === 'supplier'
  * รายการให้เลือกของช่องค้นหา — ลอยเหนือทุกกรอบ (ตาราง/แท็บ/หน้าต่าง ที่ตัดส่วนเกิน) วางใต้ช่อง หรือเหนือช่องถ้าที่ด้านล่างไม่พอ
  * ตามช่องเมื่อเลื่อนหน้าจอ/ปรับขนาด (ข้อกำหนดเจ้าของ: รายการต้องแสดงขึ้นมาให้เลือก ไม่ถูกบัง)
  */
-function PickPopup({ anchor, children }: { anchor: React.RefObject<HTMLDivElement>; children: React.ReactNode }) {
+function PickPopup({ anchor, sel, listKey, children }: { anchor: React.RefObject<HTMLDivElement>; /** แถวที่เลือก (ลูกศรขึ้น/ลง) */ sel: number; /** เปลี่ยนเมื่อได้รายการชุดใหม่ (คำค้น) */ listKey: string; children: React.ReactNode }) {
   const ref = useRef<HTMLUListElement>(null);
   const [pos, setPos] = useState<React.CSSProperties>({ visibility: 'hidden' });
   useLayoutEffect(() => {
@@ -40,6 +40,9 @@ function PickPopup({ anchor, children }: { anchor: React.RefObject<HTMLDivElemen
     window.addEventListener('resize', place);
     return () => { window.removeEventListener('scroll', place, true); window.removeEventListener('resize', place); };
   }, [anchor, children]);
+  // เลื่อนด้วยลูกศรขึ้น/ลง: เลื่อนรายการตามแถวที่เลือก (li.on) ให้มองเห็นเสมอ — เลื่อนเฉพาะในกรอบรายการ ไม่เลื่อนหน้าจอ (เจ้าของ 19/11/2569)
+  // ขึ้นกับแถวที่เลือก/ชุดรายการ ไม่ใช่ทุก render — เลื่อนด้วยล้อเมาส์แล้วผลค้นหามาใหม่ (render ซ้ำ) รายการไม่ดีดกลับ
+  useEffect(() => keepInList(ref.current), [sel, listKey]);
   return createPortal(<ul ref={ref} className="pick-list floating" role="listbox" style={pos} onMouseDown={(e) => e.preventDefault()}>{children}</ul>, document.body);
 }
 
@@ -201,7 +204,7 @@ export function SearchPick<T extends { id: string }>({ endpoint = '', options, p
         }} />
       {!rest.disabled && <button type="button" className="pick-btn" tabIndex={-1} title="ค้นหา (F4)" aria-label="ค้นหา" onMouseDown={(e) => e.preventDefault()} onClick={() => (q === null ? openList() : (setQ(null), setBrowse(false)))}>🔍</button>}
       {q !== null && (q.trim() || browse) && (
-        <PickPopup anchor={box}>
+        <PickPopup anchor={box} sel={sel} listKey={q ?? ''}>
           {rows.map((r, i) => <li key={r.id} role="option" aria-selected={i === sel} tabIndex={-1} className={i === sel ? 'on' : undefined} onMouseDown={(e) => { e.preventDefault(); pick(r); }}>
             {(r as { image_id?: string | null }).image_id && <img className="pick-thumb" src={`/api/v1/item-images/${(r as { image_id?: string }).image_id}?size=thumb`} alt="" loading="lazy" />}
             <b className="mono">{codeText(r)}</b> {label ? label(r) : ''} {describe && <span className="muted small">{describe(r)}</span>}

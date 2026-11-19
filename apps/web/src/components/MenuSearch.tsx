@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU, textSim, type MenuItem } from '@buddy/core';
 import type { Me } from '../api';
-import { cx, Modal } from '../ui';
+import { cx, keepInList, Modal } from '../ui';
 
 type Row = { code: string; label: string; path: string[]; route: string };
 const lower = (s: string) => s.toLowerCase().normalize('NFC');
@@ -38,6 +38,8 @@ export function MenuSearch({ perms, onClose }: { perms: Me['perms'] | undefined;
   }, [all, q]);
   const go = (r: Row | undefined) => { if (!r) return; onClose(); nav(r.route); };
   const cur = Math.min(sel, Math.max(0, rows.length - 1));
+  const list = useRef<HTMLUListElement>(null);
+  useEffect(() => keepInList(list.current), [cur, q]);   // ลูกศรขึ้น/ลงเลื่อนรายการตามแถวที่เลือก (HANDOFF 147)
   return (
     <Modal title="ค้นหาเมนู" size="form" onClose={onClose}>
       <input type="search" autoFocus value={q} placeholder="พิมพ์ชื่อหน้า เช่น ภาษีซื้อ, เช็ค, ใบกำกับ, งบทดลอง" aria-label="ค้นหาเมนู" style={{ width: '100%' }}
@@ -47,7 +49,7 @@ export function MenuSearch({ perms, onClose }: { perms: Me['perms'] | undefined;
           else if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(0, s - 1)); }
           else if (e.key === 'Enter') { e.preventDefault(); go(rows[cur]); }
         }} />
-      <ul className="menu-search-list" role="listbox" aria-label="ผลการค้นหาเมนู">
+      <ul ref={list} className="menu-search-list" role="listbox" aria-label="ผลการค้นหาเมนู">
         {rows.map((r, i) => (
           <li key={r.code} role="option" aria-selected={i === cur} className={cx(i === cur && 'on')} onMouseEnter={() => setSel(i)} onClick={() => go(r)}>
             <b>{r.label}</b>{r.path.length > 0 && <span className="muted small"> · {r.path.join(' › ')}</span>}

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, type Account } from '../../api';
 import { useSession } from '../../session';
 import { ChartTemplateDialog } from './ChartTemplate';
-import { Confirm, cx, downloadCsv, ErrorBox, Field, GROUP_TH, Modal, Money, PageHead, Pill, toast, toastError, useHotkeys, KeyHints } from '../../ui';
+import { Confirm, cx, downloadCsv, ErrorBox, Field, GROUP_TH, Modal, Money, PageHead, Pill, toast, toastError, useHotkeys, KeyHints, revealSelectedRow } from '../../ui';
 
 /** ผังบัญชี — คู่มือบทที่ 7 หน้า 96 (S-GL-01) + เปลี่ยนเลขที่บัญชี (S-GL-02) */
 export function AccountsPage() {
@@ -41,7 +41,7 @@ export function AccountsPage() {
         </>} />
       <div className="filters">
         <input className="search" placeholder="ค้นหาเลขที่หรือชื่อบัญชี (Alt+S)" value={q} onChange={(e) => { setQ(e.target.value); setSel(0); }} accessKey="s"
-          onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, list.length - 1)); } if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(0, s - 1)); } if (e.key === 'Enter' && cur) setEdit(cur); }} />
+          onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, list.length - 1)); revealSelectedRow(); } if (e.key === 'ArrowUp') { e.preventDefault(); revealSelectedRow(); setSel((s) => Math.max(0, s - 1)); } if (e.key === 'Enter' && cur) setEdit(cur); }} />
         <div className="seg">{['', '1', '2', '3', '4', '5'].map((g) => <button key={g} className={cx(group === g && 'on')} onClick={() => setGroup(g)}>{g ? `${g} ${GROUP_TH[g]}` : 'ทั้งหมด'}</button>)}</div>
         <label className="inline">เรียงตาม <select value={sort} onChange={(e) => setSort(e.target.value as 'no' | 'name')}><option value="no">เลขที่บัญชี</option><option value="name">ชื่อบัญชี</option></select></label>
         <span className="summary"><b>{list.length}</b> บัญชี</span>

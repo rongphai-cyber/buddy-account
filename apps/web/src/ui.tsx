@@ -251,6 +251,24 @@ export function focusStart() {
 }
 
 /** ปุ่มลัดของหน้าจอ: { 'F9': save, 'Ctrl+S': save, 'Alt+C': cancel } — ใช้ค่าล่าสุดของ map เสมอ (deps คงไว้เพื่อเข้ากันได้กับโค้ดเดิม) */
+/**
+ * รายการในกรอบที่เลื่อนได้ (รายการค้นหา/เลือก): ให้แถวที่เลือกด้วยลูกศรขึ้น/ลงอยู่ในกรอบเสมอ — เลื่อนเฉพาะกรอบรายการ ไม่เลื่อนหน้าจอ (เจ้าของ 19/11/2569 · HANDOFF 147)
+ * เรียกใน useEffect ที่ขึ้นกับแถวที่เลือก (ไม่ใช่ทุกครั้งที่ render — ผู้ใช้เลื่อนด้วยล้อเมาส์แล้วรายการไม่ดีดกลับ)
+ */
+export function keepInList(list: HTMLElement | null, item = 'li.on') {
+  const li = list?.querySelector<HTMLElement>(item);
+  if (!list || !li) return;
+  if (!li.previousElementSibling) { list.scrollTop = 0; return; }   // แถวแรก = ชิดบนสุด (รวมระยะขอบในกรอบ)
+  const a = list.getBoundingClientRect(), b = li.getBoundingClientRect();
+  const top = a.top + list.clientTop, bottom = top + list.clientHeight;
+  if (b.top < top) list.scrollTop -= top - b.top;
+  else if (b.bottom > bottom) list.scrollTop += b.bottom - bottom;
+}
+/** ตารางในหน้า (แฟ้มข้อมูล รายการเอกสาร): เลื่อนแถวที่เลือก (tr.sel) ให้เห็นหลังกดลูกศรขึ้น/ลง — เรียกจากปุ่มลัดลูกศรเท่านั้น (เมาส์ชี้ไม่เลื่อนหน้าจอ) */
+export function revealSelectedRow() {
+  requestAnimationFrame(() => document.querySelector<HTMLElement>('.page tr.sel')?.scrollIntoView({ block: 'nearest' }));
+}
+
 export function useHotkeys(map: HotkeyMap, _deps: unknown[] = [], opts?: { base?: boolean }) {
   const ref = useRef(map);
   ref.current = map;

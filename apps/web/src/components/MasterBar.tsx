@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Confirm, toast, toastError, useHotkeys } from '../ui';
+import { Confirm, revealSelectedRow, toast, toastError, useHotkeys } from '../ui';
 
 /**
  * แถบเครื่องมือหน้ากำหนดข้อมูล/แฟ้มหลัก (ข้อกำหนดเจ้าของ 01/11/2569): เพิ่ม · แก้ไข · เลิกใช้/ใช้งาน · ลบ
@@ -25,8 +25,8 @@ export function MasterBar<T>({ rs, word, label, onAdd, onEdit, onToggle, isActiv
     Insert: canAdd && onAdd ? onAdd : undefined,
     Enter: r && canEdit && onEdit ? () => onEdit(r) : undefined,
     Delete: r && canDelete && onDelete ? () => setAsk(r) : undefined,
-    ArrowDown: rs.n ? () => rs.setSel(Math.min(rs.sel + 1, rs.n - 1)) : undefined,
-    ArrowUp: rs.n ? () => rs.setSel(Math.max(rs.sel - 1, 0)) : undefined,
+    ArrowDown: rs.n ? () => { rs.setSel(Math.min(rs.sel + 1, rs.n - 1)); revealSelectedRow(); } : undefined,
+    ArrowUp: rs.n ? () => { rs.setSel(Math.max(rs.sel - 1, 0)); revealSelectedRow(); } : undefined,
   }, []);
   const toggle = () => r && onToggle?.(r).then(() => toast(isActive?.(r) ? `เลิกใช้ ${label(r)} แล้ว` : `เปิดใช้ ${label(r)} แล้ว`)).catch(toastError);
   return (
