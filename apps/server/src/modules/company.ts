@@ -37,7 +37,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       zip_code: c.zip_code, ...Object.fromEntries(ADDR_COLS.map((k) => [k, c[k]])),
       phone: c.phone, tax_id: c.tax_id, trade_reg_no: c.trade_reg_no, social_security_no: c.social_security_no, year_system: c.year_system,
       tax_branch_no: hq?.tax_branch_no ?? '00000', business_type: s['gen.business_type'] ?? 'J', branch_short_name: s['gen.branch_short_name'] ?? '',
-      allow_blank_party_tax_id: s['gen.allow_blank_party_tax_id'] ?? true, vat_rate: s['gen.vat_rate'] ?? 7, account_mask: s['gl.account_mask'] ?? '9999-99',
+      allow_blank_party_tax_id: s['gen.allow_blank_party_tax_id'] ?? true, vat_registered: s['gen.vat_registered'] !== false, vat_rate: s['gen.vat_rate'] ?? 7, account_mask: s['gl.account_mask'] ?? '9999-99',
       voucher_numbering: s['gl.voucher_numbering'] ?? '4', use_department: s['gen.use_department'] ?? true, use_project: s['gen.use_project'] === true, posting_method: s['ic.posting_method'] ?? 'PERIODIC',
     };
   });
@@ -48,7 +48,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     zip_code: z.string().trim().regex(/^(\d{5})?$/, 'รหัสไปรษณีย์ 5 หลัก').nullable().optional().transform((v) => v || null), ...addrShape,
     business_type: z.enum(['J', 'P']), tax_id: z.string().trim().min(1, 'ป้อนเลขประจำตัวผู้เสียภาษี'),
     tax_branch_no: z.string().trim().regex(/^\d{1,5}$/, 'สาขา# เป็นตัวเลข (สำนักงานใหญ่ = 0)'),
-    branch_short_name: opt(30), allow_blank_party_tax_id: z.boolean(), trade_reg_no: opt(20), social_security_no: opt(20),
+    branch_short_name: opt(30), allow_blank_party_tax_id: z.boolean(), vat_registered: z.boolean().optional(), trade_reg_no: opt(20), social_security_no: opt(20),
     year_system: z.enum(['B', 'C']), vat_rate: z.coerce.number().min(0).max(100), account_mask: z.string().trim().min(1).max(20),
     voucher_numbering: z.enum(['4', 'M']), use_department: z.boolean(), use_project: z.boolean().optional(),
   });
@@ -67,7 +67,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       await tx.updateTable('sys_branch').set({ tax_branch_no: b.tax_branch_no.padStart(5, '0') }).where('company_id', '=', a.companyId).where('is_head_office', '=', true).execute();
       const set = (k: string, v: unknown) => setSetting(tx, a.companyId, k, v, a.userId);
       await set('gen.business_type', b.business_type); await set('gen.branch_short_name', b.branch_short_name ?? '');
-      await set('gen.allow_blank_party_tax_id', b.allow_blank_party_tax_id); await set('gen.year_system', b.year_system);
+      await set('gen.allow_blank_party_tax_id', b.allow_blank_party_tax_id); if (b.vat_registered !== undefined) await set('gen.vat_registered', b.vat_registered); await set('gen.year_system', b.year_system);
       await set('gen.vat_rate', b.vat_rate); await set('gl.account_mask', b.account_mask); await set('gl.voucher_numbering', b.voucher_numbering);
       await set('gen.use_department', b.use_department);
       if (b.use_project !== undefined) await set('gen.use_project', b.use_project);

@@ -4791,6 +4791,60 @@ describe('โลโก้และลายเซ็นในแบบฟอร�
 
 describe('รูปภาพสินค้า (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
   const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  it('non-VAT company and bills without a seller name (เจ้าของ 19/11/2569): VAT becomes expense; central supplier + payer employee + substitute receipt (บ.ก.111), no input VAT, no WHT; other customers separate', async () => {
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const acc = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
+    const expR = await call('POST', '/api/v1/other-expenses', { code: '95-NVAT-01', name_th: 'ค่าใช้จ่ายทดสอบไม่จด VAT', accounts: { expense: acc.find((x) => !x.is_control && x.account_no.startsWith('5'))!.id } });
+    expect(expR.status, JSON.stringify(expR.body)).toBe(200);
+    const oeT = (await call('GET', '/api/v1/trade-defaults/OE')).body.types[0].id;
+    const vatRows = async (hid: string) => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM tax_vat_entry WHERE header_id = ${hid} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n;
+    const oe = (b: object) => call('POST', '/api/v1/other-expense-docs', { doc_type_id: oeT, doc_date: '2027-12-07', price_type: '2', vat_rate: 7, lines: [{ item_id: expR.body.id, description: 'ค่าน้ำมัน', amount: 1070 }], ...b });
+    // ไม่จด VAT: ประเภทราคาเป็น 0 เสมอ ยอดทั้งหมดเป็นค่าใช้จ่าย ไม่มีภาษีซื้อ
+    expect((await call('GET', '/api/v1/trade-defaults/OE')).body).toMatchObject({ vat_registered: true });
+    await sql`INSERT INTO sys_setting (company_id, module, key, value) VALUES (${co}, 'GEN', 'gen.vat_registered', 'false'::jsonb)`.execute(database.db);
+    expect((await call('GET', '/api/v1/trade-defaults/OE')).body.vat_registered).toBe(false);
+    const nv = (await oe({ party_name: 'ร้านทดสอบไม่จด VAT' })).body;
+    expect(nv.id, JSON.stringify(nv)).toBeTruthy();
+    const nh = (await sql<{ price_type: string; vat_amount: string; net_amount: string; receipt_substitute: boolean }>`SELECT price_type, vat_amount::text, net_amount::text, receipt_substitute FROM doc_header WHERE id = ${nv.id}`.execute(database.db)).rows[0]!;
+    expect([nh.price_type, nh.vat_amount, nh.net_amount, nh.receipt_substitute, await vatRows(nv.id)]).toEqual(['0', '0.00', '1070.00', false, 0]);
+    await sql`DELETE FROM sys_setting WHERE company_id = ${co} AND key = 'gen.vat_registered'`.execute(database.db);
+    // เจ้าหนี้กลาง: สร้างครั้งแรกแล้วจำไว้ (เรียกซ้ำได้รหัสเดิม)
+    const c1 = (await call('POST', '/api/v1/ai/central-supplier', { target: 'other-expense-docs' })).body;
+    expect(c1).toMatchObject({ code: 'NONAME', status: 'A' });
+    expect((await call('POST', '/api/v1/ai/central-supplier', { target: 'other-expense-docs' })).body.id).toBe(c1.id);
+    expect((await call('GET', '/api/v1/trade-defaults/OE')).body.central_supplier_id).toBe(c1.id);
+    // ผู้จ่ายเงิน = พนักงาน
+    const emp = (await sql<{ id: string }>`INSERT INTO pay_employee (company_id, code, title, first_name, last_name, position, hire_date) VALUES (${co}, 'EPAY1', 'นาย', 'สมชาย', 'จ่ายจริง', 'พนักงานจัดซื้อ', '2027-01-01') RETURNING id`.execute(database.db)).rows[0]!.id;
+    expect((await call('GET', '/api/v1/payers?q=สมชาย')).body.rows).toEqual([{ id: emp, code: 'EPAY1', name: 'นาย สมชาย จ่ายจริง', position: 'พนักงานจัดซื้อ' }]);
+    expect((await oe({ party_id: c1.id })).body.error.message).toMatch(/เลือกผู้จ่ายเงิน \(พนักงาน\)/);
+    expect((await oe({ party_id: c1.id, payer_employee_id: emp, wht: [{ form_type: 'S53', income_type: 'ค่าบริการ', rate: 3, paid_amount: 1000, tax_amount: 30 }] })).body.error.message).toMatch(/ไม่หักภาษี ณ ที่จ่าย/);
+    const sr = (await oe({ party_id: c1.id, payer_employee_id: emp })).body;
+    expect(sr.id, JSON.stringify(sr)).toBeTruthy();
+    const sh = (await sql<{ price_type: string; vat_amount: string; net_amount: string; receipt_substitute: boolean; payer_employee_id: string }>`SELECT price_type, vat_amount::text, net_amount::text, receipt_substitute, payer_employee_id FROM doc_header WHERE id = ${sr.id}`.execute(database.db)).rows[0]!;
+    expect([sh.price_type, sh.vat_amount, sh.net_amount, sh.receipt_substitute, sh.payer_employee_id, await vatRows(sr.id)]).toEqual(['0', '0.00', '1070.00', true, emp, 0]);
+    expect((await call('GET', `/api/v1/other-expense-docs/${sr.id}`)).body.payer).toMatchObject({ id: emp, code: 'EPAY1', name: 'นาย สมชาย จ่ายจริง' });
+    const rcp = (await call('GET', `/api/v1/docs/${sr.id}/substitute-receipt`)).body;
+    expect(rcp).toMatchObject({ doc_no: sr.doc_no, total: '1070.00', total_text: 'หนึ่งพันเจ็ดสิบบาทถ้วน', payer: { name: 'นาย สมชาย จ่ายจริง', position: 'พนักงานจัดซื้อ' }, lines: [{ description: 'ค่าน้ำมัน', amount: '1070.00' }] });
+    expect((await call('GET', `/api/v1/docs/${nv.id}/substitute-receipt`)).status).toBe(400);   // ไม่ใช่บิลเจ้าหนี้กลาง
+    // ลูกค้าอื่น: ไม่เห็นใบรับรอง/พนักงานของบริษัทนี้ ใช้พนักงานของบริษัทนี้เป็นผู้จ่ายไม่ได้ · เจ้าหนี้กลางของตัวเองแยกกัน
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    const bCo = (await call('GET', '/api/v1/auth/me')).body.companies[0].id;
+    await call('POST', '/api/v1/auth/select', { company_id: bCo });
+    expect((await call('GET', `/api/v1/docs/${sr.id}/substitute-receipt`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/payers?q=สมชาย')).body.rows).toEqual([]);
+    const bc = (await call('POST', '/api/v1/ai/central-supplier', { target: 'other-expense-docs' })).body;
+    expect(bc.id && bc.id !== c1.id).toBe(true);
+    const bT = (await call('GET', '/api/v1/trade-defaults/OE')).body.types[0]?.id;
+    if (bT) expect((await call('POST', '/api/v1/other-expense-docs', { doc_type_id: bT, doc_date: '2027-12-07', party_id: bc.id, payer_employee_id: emp, price_type: '0', vat_rate: 7, lines: [{ description: 'x', amount: 10 }] })).body.error.message).toMatch(/ผู้จ่ายเงิน|รหัสค่าใช้จ่าย/);
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    for (const x of [nv, sr]) expect((await call('POST', `/api/v1/other-expense-docs/${x.id}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+  });
   it('add a supplier from an AI-read bill (เจ้าของ 19/11/2569): tax ID is the key — no second supplier for the same tax ID (any branch, even inactive), other branch = branch of the same supplier used on purchase docs/VAT, bad tax ID refused, next code, activity log, other customers separate', async () => {
     cookie = '';
     await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });

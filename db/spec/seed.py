@@ -88,6 +88,8 @@ SETTINGS = [
  ('gen.use_project','GEN','bool','false','ใช้โครงการ/Job','USEJOB'),
  ('gen.business_type','GEN','code','"J"','ประเภทกิจการ J=นิติบุคคล P=บุคคลธรรมดา','ISINFO.BUSTYP'),
  ('gen.branch_short_name','GEN','text','""','ชื่อย่อสาขา (เริ่มระบบ 1.1 ข้อ 5.2)','ISINFO.BRNSHORT'),
+ ('gen.vat_registered','GEN','bool','true','จดทะเบียนภาษีมูลค่าเพิ่ม (ไม่จด = VAT ในบิลซื้อ/ค่าใช้จ่ายรวมเป็นค่าใช้จ่าย ไม่มีภาษีซื้อ — เจ้าของ 19/11/2569)','(ใหม่)'),
+ ('ap.central_supplier_id','AP','text','null','เจ้าหนี้กลาง / ผู้ขายไม่ระบุชื่อ — บิลไม่มีชื่อผู้ขาย ใช้รหัสนี้ + ผู้จ่ายเงิน (พนักงาน) + ใบรับรองแทนใบเสร็จ (เจ้าของ 19/11/2569)','(ใหม่)'),
  ('gen.allow_blank_party_tax_id','GEN','bool','true','ยอมให้เลขผู้เสียภาษีของลูกค้า/ผู้จำหน่ายว่างได้ (ข้อ 5.3)','ISINFO.TAXIDBLANK'),
  ('ic.posting_method','IC','code','"PERIODIC"','วิธีบันทึกบัญชีสินค้า PERPETUAL / PERIODIC','ISPERPETUA'),
  ('ic.cost_method','IC','code','"FIFO"','วิธีคิดต้นทุน FIFO / AVERAGE','COSMTD'),

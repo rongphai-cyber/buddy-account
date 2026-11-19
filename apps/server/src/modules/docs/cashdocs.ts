@@ -12,6 +12,7 @@ import { lineNoteFields, noteCols, cancelDocument, postDocument, unpostDocument,
 import { checkHold, noteHold } from './hold.js';
 import { checkJobs, jobsOfDoc } from '../projects.js';
 import { checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, saveBranch, whtSchema, writePayments, writeWht } from './payments.js';
+import { apTaxRules, payerOf } from './substitute.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -25,6 +26,8 @@ const body = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, party_id: optId, party_name: str(200), party_tax_branch_no: str(5), your_ref: str(60),
   ref_no: str(30), ref_date: isoDate.nullable().optional(), department_id: optId, project_id: optId, salesperson_id: optId,
   credit_days: z.coerce.number().int().min(0).max(999).nullable().optional(), price_type: z.enum(['0', '1', '2']), vat_rate: num, remark: str(2000),
+  /** ผู้จ่ายเงิน (พนักงาน) — บิลเจ้าหนี้กลาง/ใบรับรองแทนใบเสร็จ (เจ้าของ 19/11/2569) */
+  payer_employee_id: optId,
   lines: z.array(z.object({ item_id: optId, description: str(200), amount: num, department_id: optId, project_id: optId, ...lineNoteFields })).min(1, 'ป้อนรายการอย่างน้อย 1 บรรทัด').max(200),
   /** มัดจำรับ/รายได้อื่น: ยอดที่ลูกค้าหักภาษี ณ ที่จ่ายไว้ */
   wht_amount: num.default('0'),
@@ -37,6 +40,9 @@ type Body = z.infer<typeof body>;
 async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body, opt: { keyed?: boolean } = {}) {
   const dt = await db.selectFrom('md_doc_type').select(['id', 'doc_class', 'department_id', 'status']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!dt || dt.doc_class !== K.cls) throw badRequest(`เลือกประเภทเอกสารของ${K.label}`);
+  // บริษัทไม่จด VAT / บิลเจ้าหนี้กลาง: VAT รวมเป็นค่าใช้จ่าย · เจ้าหนี้กลางต้องมีผู้จ่ายเงิน ไม่หัก ณ ที่จ่าย (เจ้าของ 19/11/2569)
+  const apx = await apTaxRules(db, a, K.module, b.party_id, b);
+  b = { ...b, price_type: apx.price_type };
   if (!id && dt.status !== 'A') throw badRequest('ประเภทเอกสารนี้เลิกใช้แล้ว');
   const word = K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย';
   if (K.partyRequired && !b.party_id) throw badRequest(`เลือก${word}`, [{ field: 'party_id', message: `เลือก${word}` }]);
@@ -92,6 +98,7 @@ async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body,
     party_tax_id: party?.tax_id ?? null, party_tax_branch_no: b.party_tax_branch_no ?? party?.tax_branch_no ?? null,
     your_ref: b.your_ref, ref_no: b.ref_no, ref_date: b.ref_date ?? null, department_id: b.department_id ?? dt.department_id, project_id: b.project_id ?? null, salesperson_id: b.salesperson_id,
     credit_days: K.deposit ? credit : null, due_date: K.deposit ? dueDate(b.doc_date, credit) : null,
+    receipt_substitute: apx.receipt_substitute, payer_employee_id: apx.payer_employee_id,
     price_type: b.price_type, vat_rate: b.vat_rate, vat_basis: '1', vat_date: b.ref_date ?? b.doc_date,
     amount: calc.amount, amount_after_discount: calc.amount_after_discount, zero_rate_amount: calc.zero_rate_amount, exempt_amount: calc.exempt_amount, taxable_amount: calc.taxable_amount, vat_amount: calc.vat_amount, net_amount: calc.net_amount,
     wht_amount: wht.toFixed(2), cash_amount: t.cash, cheque_amount: t.other, remark: b.remark, updated_by: a.userId,
@@ -180,7 +187,7 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
       const usedBy = K.deposit ? (await sql<{ id: string; doc_no: string; doc_date: string; doc_class: string; amount: string }>`SELECT t.id, t.doc_no, t.doc_date, t.doc_class, l.amount FROM doc_link l JOIN doc_header t ON t.id = l.to_header_id
           WHERE l.from_header_id = ${id} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL ORDER BY t.doc_date, t.doc_no`.execute(db)).rows : [];
       const rem = K.deposit ? (await sql<{ outstanding: string }>`SELECT outstanding FROM v_deposit_outstanding WHERE header_id = ${id}`.execute(db)).rows[0]?.outstanding ?? null : null;
-      return { ...h, party_code: pc?.code ?? null, lines, payments, wht, used_by: usedBy, remaining: rem, editable: h.doc_status !== 'C' };
+      return { ...h, party_code: pc?.code ?? null, payer: await payerOf(db, a.companyId, h.payer_employee_id), lines, payments, wht, used_by: usedBy, remaining: rem, editable: h.doc_status !== 'C' };
     });
     // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
     app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveCash(tx, a, K, id ?? null, parse(body, req.body), { keyed: !a.apiKeyId })); });

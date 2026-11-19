@@ -11,7 +11,7 @@ import { WtsLivingSetup, WtsPosSetup } from '../../components/WtsConnect';
 
 type Co = {
   name_th: string; name_en: string | null; address_th_1: string; address_th_2: string; address_en_1: string; address_en_2: string; phone: string | null; business_type: 'J' | 'P';
-  tax_id: string | null; tax_branch_no: string; branch_short_name: string; allow_blank_party_tax_id: boolean; trade_reg_no: string | null; social_security_no: string | null;
+  tax_id: string | null; tax_branch_no: string; branch_short_name: string; allow_blank_party_tax_id: boolean; vat_registered?: boolean; trade_reg_no: string | null; social_security_no: string | null;
   year_system: 'B' | 'C'; vat_rate: number; account_mask: string; voucher_numbering: '4' | 'M'; use_department: boolean; use_project?: boolean; code: string;
   zip_code: string | null; [k: string]: unknown;
 };
@@ -62,6 +62,7 @@ export function CompanyPage() {
           <Field label="5.1 สาขา#" req hint="สำนักงานใหญ่ = 0"><input className="num" value={f.tax_branch_no} onChange={(e) => set('tax_branch_no', e.target.value.replace(/\D/g, ''))} maxLength={5} /></Field>
           <Field label="5.2 ชื่อย่อสาขา"><input value={f.branch_short_name} onChange={(e) => set('branch_short_name', e.target.value)} /></Field>
           <label className="inline chk wide"><input type="checkbox" checked={f.allow_blank_party_tax_id} onChange={(e) => set('allow_blank_party_tax_id', e.target.checked)} /> 5.3 ยอมให้เลขประจำตัวผู้เสียภาษีในทะเบียนผู้จำหน่าย/ลูกค้าว่างได้</label>
+          <label className="inline chk wide" title="ไม่ติ๊ก = บริษัทไม่ได้จดทะเบียนภาษีมูลค่าเพิ่ม: เอกสารซื้อ/ค่าใช้จ่ายรวม VAT เป็นค่าใช้จ่าย ไม่มีภาษีซื้อ ไม่เข้ารายงานภาษีซื้อ"><input type="checkbox" checked={f.vat_registered !== false} onChange={(e) => set('vat_registered', e.target.checked)} /> บริษัทจดทะเบียนภาษีมูลค่าเพิ่ม (VAT) — ไม่จด: VAT ในบิลซื้อ/ค่าใช้จ่ายรวมเป็นค่าใช้จ่าย</label>
           <Field label="6. เลขทะเบียนการค้า / นิติบุคคล"><input value={f.trade_reg_no ?? ''} onChange={(e) => set('trade_reg_no', e.target.value)} /></Field>
           <Field label="เลขที่บัญชีนายจ้าง (ประกันสังคม)"><input value={f.social_security_no ?? ''} onChange={(e) => set('social_security_no', e.target.value)} /></Field>
         </div>}

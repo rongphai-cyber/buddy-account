@@ -227,9 +227,10 @@
 },
 {
 "th": "จำนวนเงิน",
-"n": 71,
+"n": 72,
 "files": [
 "apps/web/src/components/DiscountInput.tsx",
+"apps/web/src/components/SubstituteReceipt.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/CashDocs.tsx",
@@ -605,6 +606,43 @@
 ]
 },
 {
+"th": "ปิด",
+"n": 42,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/ItemImages.tsx",
+"apps/web/src/components/ModuleSwitches.tsx",
+"apps/web/src/components/SubstituteReceipt.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/ChartTemplate.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Periods.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
+]
+},
+{
 "th": "เลขที่",
 "n": 42,
 "files": [
@@ -641,42 +679,6 @@
 ]
 },
 {
-"th": "ปิด",
-"n": 41,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/ItemImages.tsx",
-"apps/web/src/components/ModuleSwitches.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/ChartTemplate.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Periods.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
 "th": "รับ",
 "n": 38,
 "files": [
@@ -701,7 +703,7 @@
 },
 {
 "th": "เอกสาร",
-"n": 37,
+"n": 38,
 "files": [
 "apps/web/src/components/DocEdit.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -722,6 +724,7 @@
 "apps/server/src/modules/print.ts",
 "apps/server/src/modules/docs/engine.ts",
 "apps/server/src/modules/docs/routes.ts",
+"apps/server/src/modules/docs/substitute.ts",
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts"
 ]
@@ -1524,9 +1527,10 @@
 },
 {
 "th": "พิมพ์",
-"n": 18,
+"n": 19,
 "files": [
 "apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/SubstituteReceipt.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/inventory/Counts.tsx",
 "apps/web/src/pages/payroll/Forms.tsx",
@@ -2900,6 +2904,20 @@
 ]
 },
 {
+"th": "รวมทั้งสิ้น",
+"n": 8,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"apps/server/src/modules/reports/tax.ts"
+]
+},
+{
 "th": "รหัส{0}",
 "n": 8,
 "files": [
@@ -3322,19 +3340,6 @@
 ]
 },
 {
-"th": "รวมทั้งสิ้น",
-"n": 7,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"apps/server/src/modules/reports/tax.ts"
-]
-},
-{
 "th": "รหัสผู้ใช้",
 "n": 7,
 "files": [
@@ -3610,6 +3615,16 @@
 "apps/server/src/import/express/migrate.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "ผู้จ่ายเงิน",
+"n": 6,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -5095,14 +5110,6 @@
 "apps/web/src/pages/gl/Budget.tsx",
 "apps/web/src/pages/gl/PriorYear.tsx",
 "apps/web/src/pages/payroll/Filing.tsx"
-]
-},
-{
-"th": "ผู้จ่ายเงิน",
-"n": 4,
-"files": [
-"apps/web/src/pages/tax/Wht50.tsx",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -6840,6 +6847,23 @@
 ]
 },
 {
+"th": "วัน เดือน ปี",
+"n": 3,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "วันที่ ......../......../........",
+"n": 3,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/SubstituteReceipt.tsx"
+]
+},
+{
 "th": "วันที่คืน",
 "n": 3,
 "files": [
@@ -7788,6 +7812,14 @@
 "files": [
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "· เลขประจำตัวผู้เสียภาษี {0}",
+"n": 2,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx",
+"apps/web/src/pages/payroll/Forms.tsx"
 ]
 },
 {
@@ -9275,6 +9307,14 @@
 ]
 },
 {
+"th": "บริษัทไม่ได้จดทะเบียน VAT — VAT รวมเป็นค่าใช้จ่าย (ใส่ราคารวม VAT)",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "บอกเลิกสัญญาบริการ",
 "n": 2,
 "files": [
@@ -9505,6 +9545,14 @@
 "files": [
 "apps/web/src/components/AiBill.tsx",
 "packages/core/src/ai-bill.ts"
+]
+},
+{
+"th": "บิลไม่มีชื่อผู้ขาย (เจ้าหนี้กลาง) — ใบรับรองแทนใบเสร็จรับเงิน: ไม่ใช่ใบกำกับภาษี VAT รวมเป็นค่าใช้จ่าย ไม่หัก ณ ที่จ่าย",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -9790,6 +9838,14 @@
 ]
 },
 {
+"th": "ผู้จ่ายเงิน (พนักงาน)",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "ผู้ตรวจสอบ",
 "n": 2,
 "files": [
@@ -9864,6 +9920,14 @@
 "files": [
 "packages/core/src/doc-calc.ts",
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "พนักงานที่จ่ายเงินจริงและลงชื่อในใบรับรองแทนใบเสร็จรับเงิน — จากทะเบียนพนักงาน (ระบบเงินเดือน)",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -11119,14 +11183,6 @@
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/payroll/Runs.tsx"
-]
-},
-{
-"th": "วัน เดือน ปี",
-"n": 2,
-"files": [
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts"
 ]
 },
 {
@@ -12987,6 +13043,14 @@
 "files": [
 "apps/server/src/modules/cheques.ts",
 "apps/server/src/modules/vat.ts"
+]
+},
+{
+"th": "ไม่มี VAT",
+"n": 2,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -16756,6 +16820,13 @@
 ]
 },
 {
+"th": "{0} — ในเอกสารเลือกผู้จ่ายเงิน (พนักงาน) แล้วพิมพ์ใบรับรองแทนใบเสร็จรับเงิน · ไม่มีภาษีซื้อ ไม่หัก ณ ที่จ่าย",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "{0}% ของ {1}",
 "n": 1,
 "files": [
@@ -17666,6 +17737,13 @@
 ]
 },
 {
+"th": "· ยกเลิกแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
+]
+},
+{
 "th": "· ยอดปีที่แล้วมาจากการป้อนเอง ตรวจและแก้ที่",
 "n": 1,
 "files": [
@@ -17778,10 +17856,10 @@
 ]
 },
 {
-"th": "· เลขประจำตัวผู้เสียภาษี {0}",
+"th": "· เลขที่บิล {0}",
 "n": 1,
 "files": [
-"apps/web/src/pages/payroll/Forms.tsx"
+"apps/web/src/components/SubstituteReceipt.tsx"
 ]
 },
 {
@@ -19784,6 +19862,13 @@
 "n": 1,
 "files": [
 "apps/server/src/http.ts"
+]
+},
+{
+"th": "ข้าพเจ้า {0} ตำแหน่ง {1} ขอรับรองว่า รายจ่ายข้างต้นนี้ไม่อาจเรียกใบเสร็จรับเงินจากผู้รับได้ และข้าพเจ้าได้จ่ายไปในงานของ {2} โดยแท้",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
 ]
 },
 {
@@ -26836,6 +26921,13 @@
 ]
 },
 {
+"th": "บ.ก. 111",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
+]
+},
+{
 "th": "บ/ช ขายสินค้า",
 "n": 1,
 "files": [
@@ -27393,6 +27485,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/PaySetup.tsx"
+]
+},
+{
+"th": "บริษัทจดทะเบียนภาษีมูลค่าเพิ่ม (VAT) — ไม่จด: VAT ในบิลซื้อ/ค่าใช้จ่ายรวมเป็นค่าใช้จ่าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
 ]
 },
 {
@@ -29188,6 +29287,13 @@
 ]
 },
 {
+"th": "บิลที่ไม่มีชื่อผู้ขาย — ผู้จ่ายเงิน (พนักงาน) ลงชื่อในใบรับรองแทนใบเสร็จรับเงิน · ไม่มีภาษีซื้อ ไม่หัก ณ ที่จ่าย",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/substitute.ts"
+]
+},
+{
 "th": "บิลนี้มีการรับ/จ่ายชำระแล้ว แก้ไขไม่ได้",
 "n": 1,
 "files": [
@@ -29227,6 +29333,27 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "บิลไม่มีชื่อผู้ขาย (เจ้าหนี้กลาง): เลือกผู้จ่ายเงิน (พนักงาน) ที่จะลงชื่อในใบรับรองแทนใบเสร็จรับเงิน",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/substitute.ts"
+]
+},
+{
+"th": "บิลไม่มีชื่อผู้ขาย — พิมพ์ใบรับรองแทนใบเสร็จรับเงิน (บ.ก.111) ให้ผู้จ่ายเงินลงชื่อ",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
+]
+},
+{
+"th": "บิลไม่สมบูรณ์ ไม่มีชื่อ/เลขผู้เสียภาษีของผู้ขาย — บันทึกกับเจ้าหนี้กลาง ผู้จ่ายเงิน (พนักงาน) ลงชื่อในใบรับรองแทนใบเสร็จรับเงิน",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -31187,6 +31314,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx"
+]
+},
+{
+"th": "ผู้ขายไม่ระบุชื่อ (เจ้าหนี้กลาง)",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/substitute.ts"
 ]
 },
 {
@@ -38680,6 +38814,13 @@
 ]
 },
 {
+"th": "รายละเอียดรายจ่าย",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
+]
+},
+{
 "th": "รายละเอียดสินค้าชุด",
 "n": 1,
 "files": [
@@ -38950,6 +39091,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Forms.tsx"
+]
+},
+{
+"th": "ลงชื่อ ผู้จ่ายเงิน",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
+]
+},
+{
+"th": "ลงชื่อ ผู้อนุมัติ",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
 ]
 },
 {
@@ -40399,13 +40554,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx"
-]
-},
-{
-"th": "วันที่ ......../......../........",
-"n": 1,
-"files": [
-"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {
@@ -44550,6 +44698,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "อ้างอิงเอกสาร {0}{1}{2}",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
 ]
 },
 {
@@ -49397,6 +49552,13 @@
 ]
 },
 {
+"th": "เลือกผู้จ่ายเงิน",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/substitute.ts"
+]
+},
+{
 "th": "เลือกผู้ใช้ที่กุญแจจะทำงานในนาม",
 "n": 1,
 "files": [
@@ -50206,6 +50368,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/PostingTab.tsx"
+]
+},
+{
+"th": "เอกสารนี้ไม่ใช่บิลเจ้าหนี้กลาง — พิมพ์ใบรับรองแทนใบเสร็จได้เฉพาะเอกสารที่ใช้เจ้าหนี้กลาง",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/substitute.ts"
 ]
 },
 {
@@ -52253,6 +52422,13 @@
 ]
 },
 {
+"th": "ใช้เจ้าหนี้กลาง (ไม่มีชื่อผู้ขาย):",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "ใช้เป็นคำอธิบายรายการของทุกบรรทัด (แก้รายบรรทัดได้) — แสดงในบัญชีแยกประเภท",
 "n": 1,
 "files": [
@@ -52810,6 +52986,27 @@
 "n": 1,
 "files": [
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "ใบรับรองแทนใบเสร็จรับเงิน",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
+]
+},
+{
+"th": "ใบรับรองแทนใบเสร็จรับเงิน (บ.ก.111)",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
+]
+},
+{
+"th": "ใบรับรองแทนใบเสร็จรับเงิน (เจ้าหนี้กลาง) ไม่หักภาษี ณ ที่จ่าย — ลบรายการภาษีหัก ณ ที่จ่ายออก",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/substitute.ts"
 ]
 },
 {
@@ -53618,6 +53815,13 @@
 ]
 },
 {
+"th": "ไม่ติ๊ก = บริษัทไม่ได้จดทะเบียนภาษีมูลค่าเพิ่ม: เอกสารซื้อ/ค่าใช้จ่ายรวม VAT เป็นค่าใช้จ่าย ไม่มีภาษีซื้อ ไม่เข้ารายงานภาษีซื้อ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
 "th": "ไม่ติ๊ก = ปิดระบบนั้นทั้งบริษัท: ทุกคน (รวมผู้ดูแล) ไม่เห็นเมนูและใช้ไม่ได้ ·",
 "n": 1,
 "files": [
@@ -53919,6 +54123,13 @@
 ]
 },
 {
+"th": "ไม่พบพนักงาน",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/substitute.ts"
+]
+},
+{
 "th": "ไม่พบพนักงานขายนี้",
 "n": 1,
 "files": [
@@ -53930,6 +54141,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/runs.ts"
+]
+},
+{
+"th": "ไม่พบพนักงานผู้จ่ายเงินนี้ในบริษัท — เลือกใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/substitute.ts"
 ]
 },
 {
@@ -54248,13 +54466,6 @@
 ]
 },
 {
-"th": "ไม่มี VAT",
-"n": 1,
-"files": [
-"apps/web/src/components/AiBill.tsx"
-]
-},
-{
 "th": "ไม่มี VAT (ภาษีของมัดจำยื่นไปแล้วในระบบเดิม)",
 "n": 1,
 "files": [
@@ -54343,6 +54554,13 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "ไม่มีชื่อผู้ขาย — ใช้เจ้าหนี้กลาง",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -54952,6 +55170,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "ไม่หักภาษี ณ ที่จ่าย",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/substitute.ts"
 ]
 },
 {
@@ -56156,6 +56381,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocDelete.tsx"
+]
+},
+{
+"th": "🧾 ใบรับรองแทนใบเสร็จ",
+"n": 1,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx"
 ]
 }
 ]

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CASH_KINDS, type CashKind, computeDoc, d, DEPOSIT_REFUND, DOC_CLASSES, dueDate, fillRowCount, fmt, isBlankTextLine, isCompleteTextLine, settlementTotals, textLineIssues, todayIso, wht50FormOf } from '@buddy/core';
+import { billAsExpense, CASH_KINDS, type CashKind, computeDoc, d, DEPOSIT_REFUND, DOC_CLASSES, dueDate, fillRowCount, fmt, isBlankTextLine, isCompleteTextLine, settlementTotals, textLineIssues, todayIso, wht50FormOf } from '@buddy/core';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
 import { WhtCert } from './WhtCert';
@@ -18,6 +18,7 @@ import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
 import { useDocNo } from '../../components/DocNo';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
+import { SubstituteReceiptButton } from '../../components/SubstituteReceipt';
 import { DocActions } from '../../components/DocPrint';
 import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 import { PostingTab } from './PostingTab';
@@ -108,7 +109,7 @@ export function CashFormPage({ path }: { path: string }) {
   const can = useCan(K.menu);
   const canRefund = useCan(DEPOSIT_REFUND.menu);
   const { me } = useSession();
-  const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; price_type: string | null; vat_rate: string | null }>; vat_rate: number; price_type: string }>(`/api/v1/trade-defaults/${K.cls}`) });
+  const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; price_type: string | null; vat_rate: string | null }>; vat_rate: number; price_type: string; vat_registered?: boolean; central_supplier_id?: string | null }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const slms = useQuery({ enabled: K.module === 'AR', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const cur = useQuery({ enabled: !!id, queryKey: [K.path, 'one', id], queryFn: () => api.get<Detail>(`/api/v1/${K.path}/${id}`), staleTime: 0 });
@@ -125,6 +126,13 @@ export function CashFormPage({ path }: { path: string }) {
   const [askCancel, setAskCancel] = useState(false);
   const [reason, setReason] = useState('');
   const [dirty, setDirty] = useState(false);
+  // บริษัทไม่จด VAT / บิลเจ้าหนี้กลาง (เจ้าของ 19/11/2569): VAT รวมเป็นค่าใช้จ่าย (ประเภทราคา 0) · เจ้าหนี้กลางต้องมีผู้จ่ายเงิน (พนักงาน) + พิมพ์ใบรับรองแทนใบเสร็จ
+  const isCentral = K.module === 'AP' && !!h?.party?.id && h.party.id === defs.data?.central_supplier_id;
+  const apNoVat = K.module === 'AP' && (defs.data?.vat_registered === false || isCentral);
+  const [payer, setPayer] = useState<{ id: string; code: string; name: string } | null>(null);
+  useEffect(() => { setPayer((cur.data as { payer?: { id: string; code: string; name: string } | null } | undefined)?.payer ?? null); }, [cur.data]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!h) setPayer(null); }, [h]);
+  useEffect(() => { if (apNoVat && h && h.price_type !== '0' && !roBase) setH((x) => x && { ...x, price_type: '0' }); }, [apNoVat, h?.price_type]);   // eslint-disable-line react-hooks/exhaustive-deps
   const date0 = me?.work_date ?? todayIso();
   const blankLine = (): Line => ({ key: nextKey(), item_id: '', item_code: '', description: '', amount: '', project_id: h?.project_id || null });
   if (!h && !id && defs.data) {
@@ -181,8 +189,9 @@ export function CashFormPage({ path }: { path: string }) {
   const applyBill = async (r: AiBillResult) => {
     if (r.supplier) await pickParty({ id: r.supplier.id, code: r.supplier.code, name: r.supplier.name });
     else if (r.bill.supplier.name) set({ party: null, party_name: r.bill.supplier.name.slice(0, 200) });
-    set({ price_type: r.bill.price_type, vat_rate: r.bill.vat_rate, ref_no: r.bill.doc_no, ref_date: r.bill.doc_date ?? '', ...(r.supplier && r.bill.supplier.branch_no ? { party_tax_branch_no: r.bill.supplier.branch_no } : {}) });
-    setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l) => ({ ...blankLine(), item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', description: l.description, amount: l.amount }))]);
+    const asExp = K.module === 'AP' && (defs.data?.vat_registered === false || (!!r.supplier && r.supplier.id === defs.data?.central_supplier_id)) ? billAsExpense(r.bill) : null;
+    set({ price_type: asExp ? '0' : r.bill.price_type, vat_rate: r.bill.vat_rate, ref_no: r.bill.doc_no, ref_date: r.bill.doc_date ?? '', ...(r.supplier && r.bill.supplier.branch_no ? { party_tax_branch_no: r.bill.supplier.branch_no } : {}) });
+    setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l, i) => ({ ...blankLine(), item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', description: l.description, amount: asExp ? asExp[i]!.amount : l.amount }))]);
     const missing = r.lines.filter((l) => !l.item).length;
     toast(`เติมจากบิลแล้ว${missing ? ` — เลือกรหัสค่าใช้จ่ายอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
   };
@@ -194,7 +203,7 @@ export function CashFormPage({ path }: { path: string }) {
   /** เนื้อหาที่ส่งบันทึก — ใช้ทั้งปุ่มบันทึกและตัวอย่างการลงบัญชี (แท็บใบสำคัญ) */
   const bodyOf0 = () => {
     if (!h) return null;
-    return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id ?? null, party_name: h.party ? null : h.party_name || null, party_tax_branch_no: h.party ? h.party_tax_branch_no || null : null, your_ref: h.your_ref || null,
+    return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id ?? null, payer_employee_id: isCentral ? payer?.id ?? null : null, party_name: h.party ? null : h.party_name || null, party_tax_branch_no: h.party ? h.party_tax_branch_no || null : null, your_ref: h.your_ref || null,
         ref_no: h.ref_no || null, ref_date: h.ref_date || null, department_id: h.department_id || null, project_id: jobCol ? h.project_id || null : null, salesperson_id: h.salesperson_id || null, credit_days: h.credit_days === '' ? null : Number(h.credit_days),
         price_type: h.price_type, vat_rate: h.vat_rate || '0', remark: h.remark || null, wht_amount: K.whtEntries ? '0' : h.wht || '0', cash_amount: h.cash === '' ? null : h.cash,
         lines: used.map((l) => ({ item_id: K.lines === 'code' ? l.item_id || null : null, description: l.description || null, amount: l.amount || '0', project_id: jobCol ? l.project_id ?? null : null, line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
@@ -298,6 +307,7 @@ export function CashFormPage({ path }: { path: string }) {
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         {K.cls === 'OE' && !ro && h && <AiBillButton target={K.path} onApply={applyBill} />}
+        {id && (cur.data as { receipt_substitute?: boolean } | undefined)?.receipt_substitute && <SubstituteReceiptButton id={id} />}
         {K.cls === 'AI' && id && !cancelled && cur.data?.remaining != null && d(cur.data.remaining).gt(0) && d(String(cur.data.vat_amount ?? 0)).isZero() && canRefund('add') &&
           <button title="คืนยอดมัดจำคงเหลือให้ลูกค้า (เงินสด/โอน/เช็ค)" onClick={() => nav(`${DEPOSIT_REFUND.route}/new?ai=${id}`)}>คืนเงินมัดจำ</button>}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
@@ -330,7 +340,10 @@ export function CashFormPage({ path }: { path: string }) {
             {K.deposit && <Field label="ครบกำหนด (วัน)" hint="ใช้ติดตามว่าตัดสินใจซื้อ/ส่งของเกินกำหนดหรือไม่"><div className="pair"><input type="number" min={0} value={h.credit_days} disabled={ro} onChange={(e) => set({ credit_days: e.target.value })} aria-label="ครบกำหนด (วัน)" /><span className="muted small" style={{ alignSelf: 'center' }}><DateText v={dueDate(h.doc_date, Number(h.credit_days || 0))} /></span></div></Field>}
             <Field label="แผนก"><AddWrap kind="dept"><select value={h.department_id} disabled={ro} onChange={(e) => set({ department_id: e.target.value })}><option value="">—</option>{depts.data?.filter((x) => x.status === 'A' || x.id === h.department_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name_th}</option>)}</select></AddWrap></Field>
             {jobCol && <Field label="Job/โครงการ" hint="ค่าเริ่มต้นของทุกบรรทัด — แก้รายบรรทัดได้"><AddWrap kind="job"><JobSelect value={h.project_id} disabled={ro} onChange={(v) => { setLines((ls) => followHeadJob(ls, h.project_id, v)); set({ project_id: v ?? '' }); }} /></AddWrap></Field>}
-            <Field label="ประเภทราคา" hint={K.deposit ? 'ต้องตรงกับบิลที่จะนำมัดจำไปหัก' : undefined}><select value={h.price_type} disabled={ro} onChange={(e) => set({ price_type: e.target.value as Head['price_type'] })}><option value="0">0 ยกเว้นภาษี</option><option value="1">1 รวมภาษีแล้ว</option><option value="2">2 แยก VAT</option></select></Field>
+            <Field label="ประเภทราคา" hint={K.deposit ? 'ต้องตรงกับบิลที่จะนำมัดจำไปหัก' : undefined}><select value={h.price_type} disabled={ro || apNoVat} onChange={(e) => set({ price_type: e.target.value as Head['price_type'] })}><option value="0">0 ยกเว้นภาษี</option><option value="1">1 รวมภาษีแล้ว</option><option value="2">2 แยก VAT</option></select></Field>
+            {apNoVat && <p className="hint party-addr-note">{isCentral ? 'บิลไม่มีชื่อผู้ขาย (เจ้าหนี้กลาง) — ใบรับรองแทนใบเสร็จรับเงิน: ไม่ใช่ใบกำกับภาษี VAT รวมเป็นค่าใช้จ่าย ไม่หัก ณ ที่จ่าย' : 'บริษัทไม่ได้จดทะเบียน VAT — VAT รวมเป็นค่าใช้จ่าย (ใส่ราคารวม VAT)'}</p>}
+            {isCentral && <Field label="ผู้จ่ายเงิน (พนักงาน)" hint="พนักงานที่จ่ายเงินจริงและลงชื่อในใบรับรองแทนใบเสร็จรับเงิน — จากทะเบียนพนักงาน (ระบบเงินเดือน)"><SearchPick<{ id: string; code: string; name: string; position?: string | null }> endpoint="/api/v1/payers" value={payer} required disabled={ro}
+              label={(r: { name: string }) => r.name} describe={(r: { position?: string | null }) => r.position ?? ''} onPick={(r: { id: string; code: string; name: string } | null) => { setPayer(r ? { id: r.id, code: r.code, name: r.name } : null); setDirty(true); }} aria-label="ผู้จ่ายเงิน" /></Field>}
           </div>
         </div>
         {!id && !readOnly && <HoldNote party={K.party} partyId={h.party?.id} cls={K.cls} />}

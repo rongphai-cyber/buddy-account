@@ -53,6 +53,7 @@ import { noteRoutes } from './modules/notes.js';
 import { apiKeyRoutes } from './modules/apikeys.js';
 import { etaxRoutes } from './modules/etax.js';
 import { aiRoutes } from './modules/ai.js';
+import { substituteRoutes } from './modules/docs/substitute.js';
 import { securityRoutes } from './modules/security.js';
 import { expressImportRoutes } from './modules/express-import.js';
 import { pdpaRoutes } from './modules/pdpa.js';
@@ -168,6 +169,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   apiKeyRoutes(app, db);
   etaxRoutes(app, db);
   aiRoutes(app, db);
+  substituteRoutes(app, db);
   securityRoutes(app, db);
   expressImportRoutes(app, database);
   pdpaRoutes(app, db);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { computeDoc, d, dueDate, fillRowCount, fmt, isStockItemType, requiredLineIssues, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
+import { billAsExpense, computeDoc, d, dueDate, fillRowCount, fmt, isStockItemType, requiredLineIssues, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
 import { PartyAddress, savedPartyOf, usePartyDetail } from '../../components/PartyAddress';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
@@ -20,6 +20,7 @@ import { BranchPick } from '../../components/BranchPick';
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
+import { SubstituteReceiptButton } from '../../components/SubstituteReceipt';
 import { DocActions } from '../../components/DocPrint';
 import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
@@ -248,7 +249,7 @@ export function TradeFormPage({ path }: { path: string }) {
   const can = useCan(K.menu);
   const { me } = useSession();
   const lk = useLookups('40,41,UNIT,WH');
-  const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; next_no: string; price_type: string | null; vat_rate: string | null; vat_basis: string | null; warehouse_id?: string | null }>; main_warehouse_id?: string | null; vat_rate: number; price_type: string ; service_vat_basis?: string }>(`/api/v1/trade-defaults/${K.cls}`) });
+  const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; next_no: string; price_type: string | null; vat_rate: string | null; vat_basis: string | null; warehouse_id?: string | null }>; main_warehouse_id?: string | null; vat_rate: number; price_type: string ; service_vat_basis?: string; vat_registered?: boolean; central_supplier_id?: string | null }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
   const slms = useQuery({ enabled: K.module === 'AR', queryKey: ['salespersons'], queryFn: () => api.get<Array<{ id: string; code: string; name: string; status: string }>>('/api/v1/salespersons') });
   const methods = useQuery({ enabled: !!K.payments, queryKey: ['payment-methods', K.module === 'AR' ? 'R' : 'P'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>(`/api/v1/payment-methods/${K.module === 'AR' ? 'R' : 'P'}`) });
@@ -376,9 +377,12 @@ export function TradeFormPage({ path }: { path: string }) {
   /** เติมร่างจากบิลที่ AI อ่าน (T7.7) — ยังไม่บันทึก ผู้ใช้ตรวจ/เลือกรหัสที่ยังไม่พบ แล้วบันทึกเอง */
   const applyBill = async (r: AiBillResult) => {
     if (r.supplier) await pickParty({ id: r.supplier.id, code: r.supplier.code, name: r.supplier.name });
-    set({ price_type: r.bill.price_type, vat_rate: r.bill.vat_rate, ...(r.bill.doc_no ? { ref: { id: '', code: r.bill.doc_no } } : {}), ...(r.supplier && r.bill.supplier.branch_no ? { party_tax_branch_no: r.bill.supplier.branch_no } : {}) });
+    // บริษัทไม่จด VAT / เจ้าหนี้กลาง: VAT รวมเป็นค่าใช้จ่าย — บรรทัดเป็นยอดรวม VAT ประเภทราคา 0 (เจ้าของ 19/11/2569)
+    const asExp = K.module === 'AP' && (defs.data?.vat_registered === false || (!!r.supplier && r.supplier.id === defs.data?.central_supplier_id)) ? billAsExpense(r.bill) : null;
+    set({ price_type: asExp ? '0' : r.bill.price_type, vat_rate: r.bill.vat_rate, ...(r.bill.doc_no ? { ref: { id: '', code: r.bill.doc_no } } : {}), ...(r.supplier && r.bill.supplier.branch_no ? { party_tax_branch_no: r.bill.supplier.branch_no } : {}) });
     if (r.bill.doc_date) setRefDate(r.bill.doc_date);
-    setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l) => {
+    setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l0, i) => {
+      const l = asExp ? { ...l0, ...asExp[i] } : l0;
       const gross = d(l.qty || 0).times(d(l.unit_price || 0)).toDecimalPlaces(2), disc = l.amount ? gross.minus(d(l.amount)) : d(0);
       return { key: ++seq, item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', description: l.description, warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: l.qty, unit_id: l.item?.base_unit_id ?? null,
         factor: '1', unit_price: l.unit_price, discount_text: disc.gt(0.005) ? disc.toFixed(2) : '', is_free: false, return_to_stock: false, vat: '1' as VatCode, project_id: h?.project_id || null };
@@ -402,7 +406,7 @@ export function TradeFormPage({ path }: { path: string }) {
   /** เนื้อหาที่ส่งบันทึก — ใช้ทั้งปุ่มบันทึกและตัวอย่างการลงบัญชี (แท็บใบสำคัญ) */
   const bodyOf0 = () => {
     if (!h) return null;
-    return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id, bill_to_customer_id: h.bill_to?.id ?? null, party_tax_branch_no: h.party_tax_branch_no || null, your_ref: h.your_ref || null,
+    return { doc_type_id: h.doc_type_id, doc_no: dn.value, doc_date: h.doc_date, party_id: h.party?.id, payer_employee_id: isCentral ? payer?.id ?? null : null, bill_to_customer_id: h.bill_to?.id ?? null, party_tax_branch_no: h.party_tax_branch_no || null, your_ref: h.your_ref || null,
         ref_header_id: h.ref?.id || null, ref_no: h.ref?.code || null, ref_date: supInv ? refDate || null : null, department_id: h.department_id || null, project_id: h.project_id || null, salesperson_id: h.salesperson_id || null, ship_to_id: K.party === 'customer' ? h.ship_to_id || null : null, sales_area_code: h.sales_area_code || null, ship_via_code: h.ship_via_code || null,
         credit_days: h.credit_days === '' ? null : Number(h.credit_days), price_type: h.price_type, vat_rate: h.vat_rate || '0', vat_basis: h.vat_basis, discount_text: h.discount_text || null, remark: h.remark || null,
         lines: lines.filter((l) => l.item_id).map((l) => ({ item_id: l.item_id, description: l.description || null, warehouse_id: l.warehouse_id, qty: l.qty || '0', unit_id: l.unit_id, factor: l.factor || '1', unit_price: l.unit_price || '0', discount_text: l.discount_text || null, is_free: l.is_free, return_to_stock: l.return_to_stock, source_line_id: l.source_line_id ?? null, vat_code: l.vat, project_id: l.project_id ?? null, line_note: l.line_note || null, line_note_print: !!l.line_note_print })),
@@ -460,6 +464,13 @@ export function TradeFormPage({ path }: { path: string }) {
   const dtCode = defs.data?.types.find((t) => t.id === h?.doc_type_id);
   // สาขาของคู่ค้าให้เลือก (สำนักงานใหญ่ + แฟ้มคู่ค้า + ที่เคยใช้)
   const pd = usePartyDetail(K.party, h?.party?.id);
+  // บริษัทไม่จด VAT / บิลเจ้าหนี้กลาง (เจ้าของ 19/11/2569): VAT รวมเป็นค่าใช้จ่าย (ประเภทราคา 0) · เจ้าหนี้กลางต้องมีผู้จ่ายเงิน (พนักงาน) + พิมพ์ใบรับรองแทนใบเสร็จ
+  const isCentral = K.module === 'AP' && !!h?.party?.id && h.party.id === defs.data?.central_supplier_id;
+  const apNoVat = K.module === 'AP' && (defs.data?.vat_registered === false || isCentral);
+  const [payer, setPayer] = useState<{ id: string; code: string; name: string } | null>(null);
+  useEffect(() => { setPayer((cur.data as { payer?: { id: string; code: string; name: string } | null } | undefined)?.payer ?? null); }, [cur.data]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!h) setPayer(null); }, [h]);
+  useEffect(() => { if (apNoVat && h && h.price_type !== '0' && !readOnly) setH((x) => x && { ...x, price_type: '0' }); }, [apNoVat, h?.price_type]);   // eslint-disable-line react-hooks/exhaustive-deps
   const branches = { data: pd.data };
   // Bill to = สาขาของลูกค้ารายเดียวกัน (เจ้าของ 18/11/2569 รอบ 2): สาขาตามแฟ้มลูกค้า + แท็บสาขา (+ เลขที่ที่เอกสารนี้ใช้อยู่)
   const masterBr = pd.data?.tax_branch_no || '00000';
@@ -488,6 +499,7 @@ export function TradeFormPage({ path }: { path: string }) {
         {K.cls === 'QT' && id && !cancelled && <button disabled={!canSO('add')} onClick={() => setAskConvert(true)}>แปลงเป็นใบสั่งขาย</button>}
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} typeId={h?.doc_type_id} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         {supInv && !readOnly && h && <AiBillButton target={K.path} onApply={applyBill} />}
+        {id && (cur.data as { receipt_substitute?: boolean } | undefined)?.receipt_substitute && <SubstituteReceiptButton id={id} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>
       <div className="type-row"><DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} /><TypeNotice show={!id && !!h && !h.doc_type_id} /></div>
@@ -525,7 +537,10 @@ export function TradeFormPage({ path }: { path: string }) {
             {K.module === 'AR' && <Field label="พนักงานขาย"><AddWrap kind="slm"><select value={h.salesperson_id} disabled={readOnly} onChange={(e) => set({ salesperson_id: e.target.value })}><option value="">—</option>{slms.data?.filter((x) => x.status === 'A' || x.id === h.salesperson_id).map((x) => <option key={x.id} value={x.id}>{x.code} {x.name}</option>)}</select></AddWrap></Field>}
             {K.module === 'AR' && <Field label="เขตการขาย"><LkSelect table="40" rows={lk.data?.['40']} value={h.sales_area_code} disabled={readOnly} onChange={(v) => set({ sales_area_code: v })} /></Field>}
             <Field label="ขนส่งโดย"><LkSelect table="41" rows={lk.data?.['41']} value={h.ship_via_code} disabled={readOnly} onChange={(v) => set({ ship_via_code: v })} /></Field>
-            <Field label="ประเภทราคา"><select value={h.price_type} disabled={readOnly} onChange={(e) => set({ price_type: e.target.value as Head['price_type'] })}><option value="0">0 ยกเว้นภาษี</option><option value="1">1 รวมภาษีแล้ว</option><option value="2">2 แยก VAT</option></select></Field>
+            <Field label="ประเภทราคา"><select value={h.price_type} disabled={readOnly || apNoVat} onChange={(e) => set({ price_type: e.target.value as Head['price_type'] })}><option value="0">0 ยกเว้นภาษี</option><option value="1">1 รวมภาษีแล้ว</option><option value="2">2 แยก VAT</option></select></Field>
+            {apNoVat && <p className="hint party-addr-note">{isCentral ? 'บิลไม่มีชื่อผู้ขาย (เจ้าหนี้กลาง) — ใบรับรองแทนใบเสร็จรับเงิน: ไม่ใช่ใบกำกับภาษี VAT รวมเป็นค่าใช้จ่าย ไม่หัก ณ ที่จ่าย' : 'บริษัทไม่ได้จดทะเบียน VAT — VAT รวมเป็นค่าใช้จ่าย (ใส่ราคารวม VAT)'}</p>}
+            {isCentral && <Field label="ผู้จ่ายเงิน (พนักงาน)" hint="พนักงานที่จ่ายเงินจริงและลงชื่อในใบรับรองแทนใบเสร็จรับเงิน — จากทะเบียนพนักงาน (ระบบเงินเดือน)"><SearchPick<{ id: string; code: string; name: string; position?: string | null }> endpoint="/api/v1/payers" value={payer} required disabled={readOnly}
+              label={(r: { name: string }) => r.name} describe={(r: { position?: string | null }) => r.position ?? ''} onPick={(r: { id: string; code: string; name: string } | null) => { setPayer(r ? { id: r.id, code: r.code, name: r.name } : null); setDirty(true); }} aria-label="ผู้จ่ายเงิน" /></Field>}
             {K.module === 'AP' && !K.order && <Field label="ภาระภาษีซื้อ" hint="บริการ: เกณฑ์เงินสด = ภาษีซื้อเกิดเมื่อจ่ายเงิน"><select value={h.vat_basis} disabled={readOnly} onChange={(e) => set({ vat_basis: e.target.value as '1' | '2' })}><option value="1">เกณฑ์สิทธิ</option><option value="2">เกณฑ์เงินสด</option></select></Field>}
             {K.module === 'AR' && !K.order && <Field label="ภาระภาษีขาย" hint="บริการ/ผ่อนชำระ เลือกเกณฑ์เงินสดได้"><select value={h.vat_basis} disabled={readOnly} onChange={(e) => set({ vat_basis: e.target.value as '1' | '2' })}><option value="1">เกณฑ์สิทธิ</option><option value="2">เกณฑ์เงินสด</option></select></Field>}
           </div>

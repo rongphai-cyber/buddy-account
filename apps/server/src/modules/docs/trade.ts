@@ -14,6 +14,7 @@ import { checkNegative, issueCost, recostAfter, stockSettings } from './stockcos
 import { checkWht, readMoneyParts, saveBranch, whtSchema, writeWht } from './payments.js';
 import { checkHold, noteHold } from './hold.js';
 import { checkJobs, jobsOfDoc } from '../projects.js';
+import { apTaxRules, payerOf } from './substitute.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -29,6 +30,8 @@ export const tradeBody = z.object({
   credit_days: z.coerce.number().int().min(0).max(999).nullable().optional(), due_date: isoDate.nullable().optional(),
   price_type: z.enum(['0', '1', '2']), vat_rate: num, vat_basis: z.enum(['1', '2']).nullable().optional(), discount_text: str(20),
   remark: str(2000), payment_terms: str(60),
+  /** ผู้จ่ายเงิน (พนักงาน) — บิลเจ้าหนี้กลาง/ใบรับรองแทนใบเสร็จ (เจ้าของ 19/11/2569) */
+  payer_employee_id: optId,
   /** ใบสั่งขาย/ใบสั่งซื้อ: วันส่งของ/รับของ */
   delivery_date: isoDate.nullable().optional(),
   lines: z.array(z.object({
@@ -82,6 +85,9 @@ function checkAbbr(K: TradeKind, b: Body, calc: ReturnType<typeof computeDoc>) {
 export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null, b: Body, opt: { requireUnit?: boolean } = {}) {
   const dt = await db.selectFrom('md_doc_type').select(['id', 'doc_class', 'warehouse_id', 'department_id', 'vat_rate', 'price_type', 'status']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!dt || dt.doc_class !== K.cls) throw badRequest(`เลือกประเภทเอกสารของ${K.label}`);
+  // บริษัทไม่จด VAT / บิลเจ้าหนี้กลาง: VAT รวมเป็นค่าใช้จ่าย (ประเภทราคา 0 — ไม่มีภาษีซื้อ) · เจ้าหนี้กลางต้องมีผู้จ่ายเงิน ไม่หัก ณ ที่จ่าย (เจ้าของ 19/11/2569)
+  const apx = await apTaxRules(db, a, K.module, b.party_id, b);
+  b = { ...b, price_type: apx.price_type };
   if (!id && dt.status !== 'A') throw badRequest('ประเภทเอกสารนี้เลิกใช้แล้ว');
   const partyTbl = K.party === 'customer' ? 'md_customer' : 'md_supplier';
   const party = await db.selectFrom(partyTbl).select(['id', 'code', 'title', 'name', 'address_1', 'address_2', 'address_3', 'zip_code', 'tax_id', 'tax_branch_no', 'status', 'credit_days']).where('id', '=', b.party_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
@@ -195,6 +201,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     party_tax_id: shown.tax_id, party_tax_branch_no: b.party_tax_branch_no || shown.tax_branch_no || '00000',
     your_ref: b.your_ref, ref_no: b.ref_no, ref_date: b.ref_date ?? null, department_id: b.department_id ?? dt.department_id, project_id: b.project_id ?? null, salesperson_id: b.salesperson_id,
     sales_area_code: b.sales_area_code, ship_via_code: b.ship_via_code, ship_to_id: b.ship_to_id, warehouse_id: b.warehouse_id ?? dt.warehouse_id,
+    receipt_substitute: apx.receipt_substitute, payer_employee_id: apx.payer_employee_id,
     credit_days: credit, due_date: b.due_date ?? dueDate(b.doc_date, credit), price_type: b.price_type, vat_rate: b.vat_rate, vat_basis: b.vat_basis ?? '1',
     amount: calc.amount, discount_text: b.discount_text, discount_amount: calc.discount_amount, amount_after_discount: calc.amount_after_discount,
     deposit_amount: calc.deposit_amount, zero_rate_amount: calc.zero_rate_amount, exempt_amount: calc.exempt_amount, taxable_amount: calc.taxable_amount, vat_amount: calc.vat_amount, net_amount: calc.net_amount,
@@ -408,7 +415,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
           WHERE l.from_header_id = ${id} AND l.link_type = 'CONVERT' AND l.deleted_at IS NULL AND t.doc_status <> 'C' AND t.deleted_at IS NULL ORDER BY t.doc_date`.execute(db)).rows : [];
       const abbr_invoices = K.cls === 'HS' ? await db.selectFrom('doc_abbr_invoice').select(['line_no', 'pos_device_code', 'inv_from', 'inv_to', 'inv_count', 'base_amount', 'vat_amount', 'exempt_amount'])
         .where('header_id', '=', id).where('deleted_at', 'is', null).orderBy('line_no').execute() : [];
-      return { ...h, abbr_invoices, converted, party_code: pc?.code ?? null, lines: lines.map((l) => ({ ...l, ...(orderLines.find((o) => o.line_no === l.line_no) ?? {}), source: sources.find((x) => x.line_id === (l as { id?: string }).id) ?? null })),
+      return { ...h, abbr_invoices, converted, party_code: pc?.code ?? null, payer: await payerOf(db, a.companyId, h.payer_employee_id), lines: lines.map((l) => ({ ...l, ...(orderLines.find((o) => o.line_no === l.line_no) ?? {}), source: sources.find((x) => x.line_id === (l as { id?: string }).id) ?? null })),
         deliveries, cancels, payments, deposits, wht: K.payments ? (await readMoneyParts(db, a.companyId, id)).wht : [], settlements: settled, outstanding: out?.outstanding ?? null, editable: h.doc_status !== 'C' && !h.is_opening && !settled.some((x) => x.doc_status !== 'C') && !(deliveries as unknown[]).length };
     });
     // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
@@ -480,6 +487,7 @@ export function tradeRoutes(app: FastifyInstance, db: Db) {
     const types = await db.selectFrom('md_doc_type').select(['id', 'code', 'name_th', 'next_no', 'price_type', 'vat_rate', 'vat_basis', 'warehouse_id', 'department_id'])
       .where('company_id', '=', a.companyId).where('doc_class', '=', cls).where('status', '=', 'A').where('deleted_at', 'is', null).orderBy('code').execute();
     // ภาระภาษีของสินค้าบริการ (ค่าเริ่มต้นระบบขาย ข้อ 11): 1 เกณฑ์สิทธิ 2 เกณฑ์เงินสด 3 ให้ผู้ใช้เลือกตอนเปิดบิล
-    return { types, main_warehouse_id: (await stockSettings(db, a.companyId)).mainWarehouseId, vat_rate: s['gen.vat_rate'] ?? 7, price_type: s['gen.price_type'] ?? '2', service_vat_basis: String(s[cls === 'IV' || cls === 'HS' || cls === 'DR' || cls === 'CN' ? 'ar.service_vat_basis' : 'ap.service_vat_basis'] ?? '3') };
+    return { types, main_warehouse_id: (await stockSettings(db, a.companyId)).mainWarehouseId, vat_rate: s['gen.vat_rate'] ?? 7, price_type: s['gen.price_type'] ?? '2',
+      vat_registered: s['gen.vat_registered'] !== false, central_supplier_id: typeof s['ap.central_supplier_id'] === 'string' ? s['ap.central_supplier_id'] : null, service_vat_basis: String(s[cls === 'IV' || cls === 'HS' || cls === 'DR' || cls === 'CN' ? 'ar.service_vat_basis' : 'ap.service_vat_basis'] ?? '3') };
   });
 }

@@ -103,6 +103,15 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
       await chooseSupplier(sid, `เพิ่มสาขา ${init.tax_branch_no} ให้ผู้จำหน่ายแล้ว:`);
     } catch (e) { setErr(e); }
   };
+  /** บิลไม่มีชื่อผู้ขาย (ใบเสร็จไม่สมบูรณ์ หาบเร่ แท็กซี่ ฯลฯ) → เจ้าหนี้กลาง + ในเอกสารเลือกผู้จ่ายเงิน (พนักงาน) แล้วพิมพ์ใบรับรองแทนใบเสร็จ (เจ้าของ 19/11/2569) */
+  const pickCentral = async () => {
+    try {
+      const c = await api.post<{ id: string }>('/api/v1/ai/central-supplier', { target });
+      qc.invalidateQueries({ queryKey: ['trade-defaults'] });
+      await chooseSupplier(c.id, 'ใช้เจ้าหนี้กลาง (ไม่มีชื่อผู้ขาย):');
+      setRes((r) => r && { ...r, supplier_check: { ...r.supplier_check!, message: `${r.supplier_check!.message} — ในเอกสารเลือกผู้จ่ายเงิน (พนักงาน) แล้วพิมพ์ใบรับรองแทนใบเสร็จรับเงิน · ไม่มีภาษีซื้อ ไม่หัก ณ ที่จ่าย` } });
+    } catch (e) { setErr(e); }
+  };
   /** ใช้ผู้จำหน่ายรายนี้ในร่าง (เพิ่มใหม่หรือรายเดิมที่เลขตรงกัน) */
   const chooseSupplier = async (sid: string, msg: string) => {
     const x = await api.get<Sup & { status: string }>(`/api/v1/suppliers/${sid}`);
@@ -162,6 +171,7 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
           {res.supplier_check && <p className={SUPOK.has(res.supplier_check.status) ? 'small' : 'bad small'}>{SUPOK.has(res.supplier_check.status) ? '✓ ' : '⚠ '}{res.supplier_check.message}
             {res.supplier_check.candidate && !res.supplier && <label className="check" style={{ marginLeft: 8 }}><input type="checkbox" checked={useCand} onChange={(e) => setUseCand(e.target.checked)} /> ใช้ {res.supplier_check.candidate.code}</label>}
             {!res.supplier && !useCand && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void startAdd()}>＋ เพิ่มผู้จำหน่ายใหม่จากบิลนี้</button>}
+            {!res.supplier && !useCand && <button type="button" style={{ marginLeft: 8 }} onClick={() => void pickCentral()} title="บิลไม่สมบูรณ์ ไม่มีชื่อ/เลขผู้เสียภาษีของผู้ขาย — บันทึกกับเจ้าหนี้กลาง ผู้จ่ายเงิน (พนักงาน) ลงชื่อในใบรับรองแทนใบเสร็จรับเงิน">ไม่มีชื่อผู้ขาย — ใช้เจ้าหนี้กลาง</button>}
             {res.supplier && res.supplier_check.status === 'branch_new' && b.supplier.branch_no && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void addBranch(res.supplier!.id)}>＋ เพิ่มสาขา {b.supplier.branch_no} ให้ {res.supplier.code}</button>}</p>}
           {add && !add.form && <div className="box small" role="alert" style={{ margin: '6px 0', padding: 8, border: '1px solid var(--line, #ccc)', borderRadius: 6 }}>
             {add.same.length > 0 ? <p className="bad"><b>ไม่เพิ่มซ้ำ:</b> เลขผู้เสียภาษี {String(add.init.tax_id)} สาขา {String(add.init.tax_branch_no)} มีในแฟ้มผู้จำหน่ายแล้ว — ใช้รายเดิม</p>

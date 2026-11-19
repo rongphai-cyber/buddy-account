@@ -1038,3 +1038,16 @@ tr.sel > td { background: color-mix(in srgb, var(--tone) 10%, transparent); }
   .dob-list td:empty { display: none; }
   .dob-list td[data-label]::before { content: attr(data-label) ' · '; color: var(--muted); font-size: 12px; }
 }
+
+/* ใบรับรองแทนใบเสร็จรับเงิน บ.ก.111 (เจ้าของ 19/11/2569) — ดูทางจอและพิมพ์ */
+.sub-receipt { font-size: 14px; color: #000; background: #fff; padding: 14mm 16mm; }
+.sr-preview { border: 1px solid var(--line, #ccc); max-height: 70vh; overflow: auto; }
+.sub-receipt .sr-form { text-align: right; margin: 0; font-size: 12px; }
+.sub-receipt h2 { text-align: center; margin: 4px 0 6px; font-size: 20px; }
+.sub-receipt .sr-co, .sub-receipt .sr-ref { text-align: center; margin: 2px 0; }
+.sub-receipt table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+.sub-receipt th, .sub-receipt td { border: 1px solid #000; padding: 4px 6px; }
+.sub-receipt td.r { text-align: right; } .sub-receipt td.c { text-align: center; }
+.sub-receipt .sr-cert { margin: 12px 0 0; line-height: 1.8; }
+.sub-receipt .sr-signs { display: flex; justify-content: space-around; margin-top: 36px; text-align: center; }
+.sub-receipt .sr-line { border-bottom: 1px dotted #000; width: 200px; margin: 0 auto 4px; height: 28px; }

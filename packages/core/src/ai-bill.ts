@@ -280,3 +280,24 @@ export function buyerTaxCheck(read: string | null | undefined, companyTaxId: str
   if (r.length === 13 && checkTaxId(r).ok) return { status: 'other', shown: r, message: `บิลนี้ออกในนามผู้อื่น — เลขผู้ซื้อในบิล ${r} ไม่ใช่เลขของบริษัท (${c}) ตรวจก่อนใช้ขอคืนภาษีซื้อ` };
   return { status: 'unclear', shown: r, message: `อ่านเลขผู้ซื้อในบิลได้ ${r} ไม่ตรงกับเลขของบริษัท (${c}) — ตรวจว่าบิลออกในนามบริษัท` };
 }
+
+/* ───────── VAT รวมเป็นค่าใช้จ่าย (บริษัทไม่จด VAT / บิลเจ้าหนี้กลาง — เจ้าของ 19/11/2569) ───────── */
+
+/**
+ * บรรทัดบิลแบบ "ไม่มี VAT" ที่ยอดรวมเท่ายอดรวมทั้งสิ้นของบิล: ราคารวม VAT (1) ใช้ตามเดิม · แยก VAT (2) กระจาย VAT ตามสัดส่วนยอดบรรทัด
+ * (ใช้ VAT ตามบิลถ้ามี ไม่มีใช้อัตรา) เศษสตางค์ไปบรรทัดสุดท้าย · ราคาต่อหน่วยคำนวณใหม่ (4 ตำแหน่ง)
+ */
+export function billAsExpense(b: Pick<BillDraft, 'price_type' | 'vat_rate' | 'vat_amount' | 'lines'>): BillDraft['lines'] {
+  if (b.price_type !== '2') return b.lines.map((l) => ({ ...l }));
+  const amt = (l: BillDraft['lines'][number]) => d(l.amount || 0);
+  const sum = b.lines.reduce((t, l) => t.plus(amt(l)), d(0));
+  const vat = b.vat_amount ? d(b.vat_amount) : sum.times(d(b.vat_rate || 0)).div(100).toDecimalPlaces(2);
+  let left = vat;
+  return b.lines.map((l, i) => {
+    const share = i === b.lines.length - 1 ? left : sum.isZero() ? d(0) : vat.times(amt(l)).div(sum).toDecimalPlaces(2);
+    left = left.minus(share);
+    const gross = amt(l).plus(share);
+    const q = d(l.qty || 1);
+    return { ...l, amount: gross.toFixed(2), unit_price: (q.isZero() ? gross : gross.div(q)).toDecimalPlaces(4).toString() };
+  });
+}

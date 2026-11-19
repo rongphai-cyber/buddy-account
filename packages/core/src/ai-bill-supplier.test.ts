@@ -41,3 +41,16 @@ describe('buyer tax ID = this company (owner 19/11/2569)', () => {
     expect([buyerTaxCheck(null, co).status, buyerTaxCheck('0994000165501', null).status]).toEqual(['none', 'none']);
   });
 });
+
+describe('VAT becomes expense (non-VAT company / central supplier — owner 19/11/2569)', () => {
+  it('excl. VAT bill: VAT spread over the lines by amount, total = bill total, rounding on the last line; incl. VAT unchanged', async () => {
+    const { billAsExpense } = await import('./ai-bill.js');
+    const lines = [{ description: 'ก', qty: '3', unit: null, unit_price: '100', amount: '300.00' }, { description: 'ข', qty: '1', unit: null, unit_price: '33.33', amount: '33.33' }];
+    const r = billAsExpense({ price_type: '2', vat_rate: '7', vat_amount: '23.33', lines });
+    expect(r.map((l) => l.amount)).toEqual(['321.00', '35.66']);
+    expect(r.reduce((t, l) => t + Number(l.amount), 0).toFixed(2)).toBe('356.66');
+    expect(r[0]!.unit_price).toBe('107');
+    expect(billAsExpense({ price_type: '2', vat_rate: '7', vat_amount: null, lines: [lines[0]!] })[0]!.amount).toBe('321.00');
+    expect(billAsExpense({ price_type: '1', vat_rate: '7', vat_amount: '21', lines })).toEqual(lines);
+  });
+});

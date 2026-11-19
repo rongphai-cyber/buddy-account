@@ -2900,6 +2900,8 @@ CREATE TABLE doc_header (
   is_opening boolean DEFAULT false NOT NULL,
   opening_offset_account_id uuid,
   payment_terms varchar(60),
+  receipt_substitute boolean DEFAULT false NOT NULL,
+  payer_employee_id uuid,
   remark text,
   etax_purpose_code varchar(10),
   gl_posted char(1) DEFAULT 'N' NOT NULL,
@@ -2998,6 +3000,8 @@ COMMENT ON COLUMN doc_header.payment_date IS 'วันที่รับ/จ่
 COMMENT ON COLUMN doc_header.is_opening IS 'ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04): ลงวันที่ก่อนเริ่มใช้ ไม่ลงบัญชี ไม่ตัดสต๊อก ไม่เข้าแฟ้มภาษี';
 COMMENT ON COLUMN doc_header.opening_offset_account_id IS 'ยอดยกมาที่ลงบัญชี (ระบบอื่นส่งมา เช่น WTS-Living): บัญชีคู่ของลูกหนี้/มัดจำรับยกมา — ว่าง = ไม่ลงบัญชี (ยอดบัญชีอยู่ที่บันทึกยอดยกมา)';
 COMMENT ON COLUMN doc_header.payment_terms IS 'เงื่อนไขการชำระ [Express: PAYCOND]';
+COMMENT ON COLUMN doc_header.receipt_substitute IS 'ใบรับรองแทนใบเสร็จรับเงิน (บ.ก.111) — บิลไม่มีชื่อผู้ขาย ใช้เจ้าหนี้กลาง: ไม่ใช่ใบกำกับภาษี ไม่มีภาษีซื้อ ไม่หัก ณ ที่จ่าย ยอดทั้งหมดเป็นค่าใช้จ่าย (ใหม่ — เจ้าของ 19/11/2569)';
+COMMENT ON COLUMN doc_header.payer_employee_id IS 'ผู้จ่ายเงิน (พนักงานบริษัท) ที่ลงชื่อในใบรับรองแทนใบเสร็จรับเงิน (ใหม่ — เจ้าของ 19/11/2569)';
 COMMENT ON COLUMN doc_header.remark IS 'หมายเหตุสั้น [Express: REMARK]';
 COMMENT ON COLUMN doc_header.etax_purpose_code IS 'รหัสเหตุผลใบลดหนี้ e-Tax (ETDA CDNG01-05/99 CDNS01-04/99) ของใบคืนเงินมัดจำ (RD) ที่มี VAT — ผู้ใช้เลือก (docs/19 ข้อ 8 · HANDOFF ข้อ 90) · ว่าง = ค่าเริ่มต้น CDNS04 บอกเลิกสัญญาบริการ';
 COMMENT ON COLUMN doc_header.gl_posted IS 'N=ยังไม่ลงบัญชี Y=ลงแล้ว P=รอเซิร์ฟเวอร์ลง [Express: POSTGL]';
@@ -5929,6 +5933,8 @@ ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_vat_period_id FOREIGN KEY (v
 CREATE INDEX IF NOT EXISTS ix_fk_doc_header_vat_period_id ON doc_header (vat_period_id);
 ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_opening_offset_account_id FOREIGN KEY (opening_offset_account_id) REFERENCES gl_account(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_doc_header_opening_offset_account_id ON doc_header (opening_offset_account_id);
+ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_payer_employee_id FOREIGN KEY (payer_employee_id) REFERENCES pay_employee(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_doc_header_payer_employee_id ON doc_header (payer_employee_id);
 ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_journal_id FOREIGN KEY (journal_id) REFERENCES gl_journal(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_doc_header_journal_id ON doc_header (journal_id);
 ALTER TABLE doc_header ADD CONSTRAINT fk_doc_header_approved_by FOREIGN KEY (approved_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
