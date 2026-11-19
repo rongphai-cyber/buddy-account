@@ -364,7 +364,7 @@ export function SuppliersPage() {
     lead="ทะเบียนผู้จำหน่าย: บัญชีเจ้าหนี้ เครดิต ประเภทราคา ภาษีหัก ณ ที่จ่าย และบัญชีธนาคารสำหรับโอนจ่าย — ค่าเหล่านี้ขึ้นอัตโนมัติตอนเปิดเอกสารซื้อ" />;
 }
 
-export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | null; onClose: () => void; onSaved: (saved?: { id: string; code: string }) => void; initial?: Form }) {
+export function SupplierForm({ id, onClose, onSaved, initial, startTab }: { id: string | null; onClose: () => void; onSaved: (saved?: { id: string; code: string }) => void; initial?: Form; startTab?: 'main' | 'buy' | 'tax' }) {
   const qc = useQueryClient();
   const lk = useLookups('41,46,55,70,72,BANK');
   const cur = useQuery({ enabled: !!id, queryKey: ['supplier', id], queryFn: () => api.get<SupplierDetail>(`/api/v1/suppliers/${id}`), staleTime: 0 });
@@ -372,7 +372,7 @@ export function SupplierForm({ id, onClose, onSaved, initial }: { id: string | n
   const [ap, setAp] = useState<string | null>(null);
   const [banks, setBanks] = useState<BankRow[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [tab, setTab] = useState('main');
+  const [tab, setTab] = useState<string>(startTab ?? 'main');
   const nextTab = useTabFlow(['main', 'buy', 'tax'], tab, setTab);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);

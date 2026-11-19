@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { checkTaxId, d, ZERO, addMonths } from '@buddy/core';
+import { checkTaxId, d, ZERO, addMonths, nextCode } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, conflict, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -264,6 +264,15 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     wht_form: str(4), wht_income_desc: str(60), wht_rate: num, wht_condition: z.enum(['', '1', '2', '3']).nullable().optional().transform((v) => v || null),
     banks: z.array(z.object({ bank_code: z.string().trim().min(1, 'เลือกธนาคาร').max(10), branch: str(60), account_no: z.string().trim().min(1, 'ป้อนเลขที่บัญชี').max(20), account_name: str(120), is_default: z.boolean().default(false) })).max(20).default([]),
     contacts: z.array(contactBody).max(50).default([]),
+    /** เพิ่มจากหน้าต่างอ่านบิลด้วย AI (เจ้าของ 19/11/2569) — ห้ามซ้ำเข้มกว่าปกติ: เลข+สาขาเดียวกับผู้จำหน่ายที่เลิกใช้ก็ไม่ให้เพิ่ม (ให้เปิดใช้รหัสเดิม) */
+    from_bill: z.boolean().optional(),
+  });
+
+  /** รหัสผู้จำหน่ายถัดไปตามแบบที่บริษัทใช้มากที่สุด (เช่น S015 → S016) — ค่าเริ่มต้นของแบบฟอร์ม แก้ได้ */
+  app.get('/api/v1/suppliers/next-code', async (req) => {
+    const a = requireCompany(req);
+    const rows = await db.selectFrom('md_supplier').select('code').where('company_id', '=', a.companyId).where('deleted_at', 'is', null).execute();
+    return { code: nextCode(rows.map((r) => r.code), 'S001') };
   });
 
   app.get('/api/v1/suppliers', async (req) => {
@@ -297,11 +306,16 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
     if (dup && dup.id !== id) throw conflict(`รหัสผู้จำหน่าย ${b.code} มีอยู่แล้ว`);
     const prev = id ? await db.selectFrom('md_supplier').select(['tax_id', 'tax_branch_no']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const tax = await checkTax(db, a.companyId, b.tax_id, b.tax_branch_no, prev ? prev.tax_id : undefined);
+    if (b.from_bill && !id && tax.tax_id) {
+      const off = await db.selectFrom('md_supplier').select(['code', 'name']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('tax_id', '=', tax.tax_id).where('status', '=', 'I')
+        .where(sql<boolean>`coalesce(tax_branch_no, '00000') = ${tax.tax_branch_no ?? '00000'}`).orderBy('code').executeTakeFirst();
+      if (off) throw conflict(`เลขผู้เสียภาษี ${tax.tax_id} สาขา ${tax.tax_branch_no ?? '00000'} เป็นของผู้จำหน่าย ${off.code} ${off.name} แล้ว (เลิกใช้อยู่) — เปิดใช้รหัสเดิมที่ ซื้อ › รายละเอียดผู้จำหน่าย แทนการเพิ่มใหม่`);
+    }
     const warnings = await checkTaxDup(db, a.companyId, 'S', id, tax, prev);
     await checkAccount(db, a.companyId, b.ap_account_id, 'ap_account_id');
     if (b.wht_rate !== null && (b.wht_rate < 0 || b.wht_rate > 100)) throw badRequest('อัตราภาษีที่หักต้องอยู่ระหว่าง 0–100%', [{ field: 'wht_rate', message: '0–100' }]);
     if (b.banks.filter((x) => x.is_default).length > 1) throw badRequest('บัญชีที่ใช้โอนเป็นประจำเลือกได้บัญชีเดียว');
-    const { banks, contacts, ...h } = b;
+    const { banks, contacts, from_bill: fromBill, ...h } = b;
     const row = { ...h, ...tax, ap_account_id: b.ap_account_id ?? null, credit_limit: b.credit_limit === null ? null : d(b.credit_limit).toFixed(2), wht_rate: b.wht_rate === null ? null : String(b.wht_rate), vat_rate: b.vat_rate === null ? null : String(b.vat_rate), inactive_date: b.status === 'I' ? sql`COALESCE(inactive_date, CURRENT_DATE)` as never : null };
     return db.transaction().execute(async (tx) => {
       let sid = id;
@@ -316,7 +330,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
       await tx.updateTable('md_supplier_bank').set({ deleted_at: sql`now()` as never }).where('company_id', '=', a.companyId).where('supplier_id', '=', sid!).where('deleted_at', 'is', null).execute();
       if (banks.length) await tx.insertInto('md_supplier_bank').values(banks.map((x, i) => ({ ...x, line_no: i + 1, company_id: a.companyId, supplier_id: sid!, created_by: a.userId }))).execute();
       await saveContacts(tx, a, 'S', sid!, contacts);
-      await logActivity(tx, a, { module: 'AP', action: id ? 'EDIT' : 'ADD', docNo: b.code, table: 'md_supplier', rowId: sid, detail: id ? { before } : undefined });
+      await logActivity(tx, a, { module: 'AP', action: id ? 'EDIT' : 'ADD', docNo: b.code, table: 'md_supplier', rowId: sid, detail: id ? { before } : fromBill ? { from: 'AI_BILL', tax_id: tax.tax_id, tax_branch_no: tax.tax_branch_no } : undefined });
       return { id: sid, warnings };
     });
   }

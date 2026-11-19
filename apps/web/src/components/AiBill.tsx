@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { d, fmt, type BillDraft } from '@buddy/core';
+import { checkTaxId, d, fmt, supplierFromBill, type BillDraft } from '@buddy/core';
 import { api } from '../api';
 import { ErrorBox, Modal, Pill } from '../ui';
+const SupplierForm = lazy(() => import('../pages/parties/Parties').then((m) => ({ default: m.SupplierForm })));
 import { checkOllama, localOcrOn, readBillLocally, type LocalRead } from '../localOcr';
 
 type Pick = { id: string; code: string; name_th: string; item_type?: string; base_unit_id: string | null };
 type Sup = { id: string; code: string; name: string; tax_id?: string | null; tax_branch_no: string | null };
+type SupRow = Sup & { status: string };
 export interface AiBillResult {
   bill: BillDraft;
   supplier: Sup | null;
@@ -66,6 +68,33 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
   /** รหัสที่พนักงานบัญชีเลือกต่อบรรทัด ('' = ไม่ใส่รหัส) · ใช้ผู้จำหน่ายที่ชื่อคล้าย */
   const [choice, setChoice] = useState<string[]>([]);
   const [useCand, setUseCand] = useState(false);
+  /** เพิ่มผู้จำหน่ายจากบิล (เจ้าของ 19/11/2569): ตรวจเลขผู้เสียภาษีซ้ำก่อน — เลข+สาขาเดียวกันมีแล้ว = ให้เลือกรายเดิม ไม่เพิ่มซ้ำ · คนละสาขา = เตือนให้ตัดสินใจ */
+  const [add, setAdd] = useState<{ init: Record<string, string | boolean>; same: SupRow[]; other: SupRow[]; form: boolean; badTax: string | null } | null>(null);
+  const startAdd = async () => {
+    if (!res) return;
+    setErr(null);
+    try {
+      const init = supplierFromBill(res.bill);
+      const tax = init.tax_id.replace(/\D/g, '');
+      const ck = tax ? checkTaxId(tax) : null;
+      let same: SupRow[] = [], other: SupRow[] = [];
+      if (ck?.ok) {
+        const r = await api.get<{ rows: SupRow[] }>('/api/v1/suppliers', { q: tax, status: 'all', limit: 50 });
+        const hit = r.rows.filter((x) => (x.tax_id ?? '').replace(/\D/g, '') === tax);
+        same = hit.filter((x) => (x.tax_branch_no ?? '00000') === init.tax_branch_no);
+        other = hit.filter((x) => (x.tax_branch_no ?? '00000') !== init.tax_branch_no);
+      }
+      const code = (await api.get<{ code: string }>('/api/v1/suppliers/next-code')).code;
+      const badTax = !tax ? 'บิลนี้อ่านเลขผู้เสียภาษีไม่ได้ — ใส่เลขในแท็บ ภาษีและบัญชี (ตรวจซ้ำได้เมื่อมีเลข)' : ck && !ck.ok ? `เลขผู้เสียภาษีที่อ่านได้ ${tax} ${ck.error} — แก้ในแท็บ ภาษีและบัญชี ก่อนบันทึก (อาจอ่านผิด)` : null;
+      setAdd({ init: { ...init, code, from_bill: true }, same, other, form: !same.length && !other.length, badTax });
+    } catch (e) { setErr(e); }
+  };
+  /** ใช้ผู้จำหน่ายรายนี้ในร่าง (เพิ่มใหม่หรือรายเดิมที่เลขตรงกัน) */
+  const chooseSupplier = async (sid: string, msg: string) => {
+    const x = await api.get<Sup & { status: string }>(`/api/v1/suppliers/${sid}`);
+    setRes((r) => r && { ...r, supplier: { id: x.id, code: x.code, name: x.name, tax_id: x.tax_id, tax_branch_no: x.tax_branch_no }, supplier_check: { status: 'match', message: `${msg} ${x.code} ${x.name}`, candidate: null } });
+    setAdd(null); setUseCand(false);
+  };
   const pick = (f: File | null) => {
     setRes(null); setErr(null);
     if (url) URL.revokeObjectURL(url);
@@ -117,7 +146,18 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
           {local && <details className="small"><summary>ข้อความที่อ่านได้ในเครื่อง (ส่งให้ Claude)</summary><pre style={{ whiteSpace: 'pre-wrap', maxHeight: 220, overflow: 'auto' }}>{local.text}</pre></details>}
           {res.duplicate && <p className="bad"><b>บิลซ้ำ:</b> เลขที่ {b.doc_no} ของผู้จำหน่ายนี้บันทึกแล้วใน {res.duplicate.doc_no} ({res.duplicate.doc_date}) — ตรวจก่อนบันทึกซ้ำ</p>}
           {res.supplier_check && <p className={SUPOK.has(res.supplier_check.status) ? 'small' : 'bad small'}>{SUPOK.has(res.supplier_check.status) ? '✓ ' : '⚠ '}{res.supplier_check.message}
-            {res.supplier_check.candidate && !res.supplier && <label className="check" style={{ marginLeft: 8 }}><input type="checkbox" checked={useCand} onChange={(e) => setUseCand(e.target.checked)} /> ใช้ {res.supplier_check.candidate.code}</label>}</p>}
+            {res.supplier_check.candidate && !res.supplier && <label className="check" style={{ marginLeft: 8 }}><input type="checkbox" checked={useCand} onChange={(e) => setUseCand(e.target.checked)} /> ใช้ {res.supplier_check.candidate.code}</label>}
+            {!res.supplier && !useCand && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void startAdd()}>＋ เพิ่มผู้จำหน่ายใหม่จากบิลนี้</button>}</p>}
+          {add && !add.form && <div className="box small" role="alert" style={{ margin: '6px 0', padding: 8, border: '1px solid var(--line, #ccc)', borderRadius: 6 }}>
+            {add.same.length > 0 ? <p className="bad"><b>ไม่เพิ่มซ้ำ:</b> เลขผู้เสียภาษี {String(add.init.tax_id)} สาขา {String(add.init.tax_branch_no)} มีในแฟ้มผู้จำหน่ายแล้ว — ใช้รายเดิม</p>
+              : <p className="bad">เลขผู้เสียภาษี {String(add.init.tax_id)} มีในแฟ้มแล้วแต่<b>คนละสาขา</b> — ถ้าบิลนี้มาจากสาขาเดิม ให้เลือกรายเดิม ถ้าเป็นสาขาใหม่จริง (สาขา {String(add.init.tax_branch_no)}) ค่อยเพิ่ม</p>}
+            <table className="grid"><tbody>{[...add.same, ...add.other].map((x) => <tr key={x.id}><td className="mono">{x.code}</td><td>{x.name}</td><td className="mono">{x.tax_id} สาขา {x.tax_branch_no ?? '00000'}</td>
+              <td>{x.status === 'I' ? <span className="muted">เลิกใช้แล้ว — เปิดใช้ที่ ซื้อ › รายละเอียดผู้จำหน่าย</span> : <button type="button" onClick={() => void chooseSupplier(x.id, 'ใช้ผู้จำหน่ายเดิม').catch(setErr)}>ใช้รายนี้</button>}</td></tr>)}</tbody></table>
+            <div className="toolbar">{!add.same.length && <button type="button" onClick={() => setAdd({ ...add, form: true })}>เพิ่มเป็นสาขา {String(add.init.tax_branch_no)} ใหม่</button>}<button type="button" onClick={() => setAdd(null)}>ปิด</button></div>
+          </div>}
+          {add?.form && <Suspense fallback={null}><SupplierForm id={null} initial={add.init} startTab={add.badTax ? 'tax' : 'main'} onClose={() => setAdd(null)}
+            onSaved={(sv) => { if (!sv) { setAdd(null); return; } void chooseSupplier(sv.id, 'เพิ่มผู้จำหน่ายใหม่แล้ว:').catch(setErr); }} /></Suspense>}
+          {add?.form && add.badTax && <p className="bad small">{add.badTax}</p>}
           {b.warnings.length > 0 && <ul className="bad small">{b.warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
           {res.suggest_note && <p className="muted small">{res.suggest_note}</p>}
           <table className="grid info-table"><tbody>

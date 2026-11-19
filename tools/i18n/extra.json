@@ -1662,5 +1662,22 @@
  "แล้วปิด Ollama ที่ไอคอนมุมขวาล่าง (Quit Ollama) และเปิดใหม่": "then quit Ollama from the icon at the bottom right (Quit Ollama) and open it again",
  "โหมดอ่านในเครื่องนี้ก่อน: Typhoon-OCR อ่านภาพในเครื่องนี้ แล้วส่ง": "Read-on-this-computer mode: Typhoon-OCR reads the image on this computer, then sends",
  "ให้ Claude (Anthropic) จัดร่าง — ภาพไม่ออกจากเครื่อง · ถ้าอ่านในเครื่องไม่ได้ จะส่งภาพให้ Claude อ่านแทน (เปลี่ยนได้ที่ เริ่มระบบ › AI อ่านบิล)": "to Claude (Anthropic) to draft — the image stays on the computer · if it cannot read here, the image is sent to Claude instead (change at Setup › AI bill reading)",
- "ไม่ได้อ่านในเครื่อง: {0} — ส่งภาพให้ Claude อ่านแทน": "Not read on this computer: {0} — sent the image to Claude instead"
+ "ไม่ได้อ่านในเครื่อง: {0} — ส่งภาพให้ Claude อ่านแทน": "Not read on this computer: {0} — sent the image to Claude instead",
+ "{0} สาขา {1}": "{0} branch {1}",
+ "คนละสาขา": "a different branch",
+ "ตัวนำ + ตัวเลข": "prefix + number",
+ "บิลนี้อ่านเลขผู้เสียภาษีไม่ได้ — ใส่เลขในแท็บ ภาษีและบัญชี (ตรวจซ้ำได้เมื่อมีเลข)": "The tax ID could not be read from this bill — enter it in the Tax and accounts tab (duplicates can be checked once there is a number)",
+ "เพิ่มผู้จำหน่ายใหม่แล้ว:": "New supplier added:",
+ "เพิ่มเป็นสาขา {0} ใหม่": "Add as new branch {0}",
+ "เลขผู้เสียภาษี {0} มีในแฟ้มแล้วแต่": "Tax ID {0} is already on file, but at",
+ "เลขผู้เสียภาษี {0} สาขา {1} มีในแฟ้มผู้จำหน่ายแล้ว — ใช้รายเดิม": "Tax ID {0} branch {1} is already in the supplier file — use the existing one",
+ "เลขผู้เสียภาษี {0} สาขา {1} เป็นของผู้จำหน่าย {2} {3} แล้ว (เลิกใช้อยู่) — เปิดใช้รหัสเดิมที่ ซื้อ › รายละเอียดผู้จำหน่าย แทนการเพิ่มใหม่": "Tax ID {0} branch {1} already belongs to supplier {2} {3} (inactive) — reactivate that code at Purchasing › Supplier details instead of adding a new one",
+ "เลขผู้เสียภาษีที่อ่านได้ {0} {1} — แก้ในแท็บ ภาษีและบัญชี ก่อนบันทึก (อาจอ่านผิด)": "The tax ID read, {0}, {1} — fix it in the Tax and accounts tab before saving (it may be misread)",
+ "เลิกใช้แล้ว — เปิดใช้ที่ ซื้อ › รายละเอียดผู้จำหน่าย": "Inactive — reactivate at Purchasing › Supplier details",
+ "แยกช่องจากที่อยู่เดิม": "Split fields from the old address",
+ "ใช้ผู้จำหน่ายเดิม": "Using existing supplier",
+ "ใช้รายนี้": "Use this one",
+ "ไม่เพิ่มซ้ำ:": "Not adding a duplicate:",
+ "— ถ้าบิลนี้มาจากสาขาเดิม ให้เลือกรายเดิม ถ้าเป็นสาขาใหม่จริง (สาขา {0}) ค่อยเพิ่ม": "— if this bill is from the existing branch, pick it; add only if it really is a new branch ({0})",
+ "＋ เพิ่มผู้จำหน่ายใหม่จากบิลนี้": "＋ Add a new supplier from this bill"
 }

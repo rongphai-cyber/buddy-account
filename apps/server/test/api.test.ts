@@ -4791,6 +4791,48 @@ describe('โลโก้และลายเซ็นในแบบฟอร�
 
 describe('รูปภาพสินค้า (ข้อกำหนดเจ้าของ 30/10/2569)', () => {
   const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  it('add a supplier from an AI-read bill (เจ้าของ 19/11/2569): tax ID is the key — no duplicates (even inactive), other branch warns, bad tax ID refused, next code, activity log, other customers separate', async () => {
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const pea = { name: 'การไฟฟ้าส่วนภูมิภาค', tax_id: '0994000165501', tax_branch_no: '00000', address_1: '200 ถนนงามวงศ์วาน กรุงเทพมหานคร 10900', zip_code: '10900', phone: '1129', from_bill: true };
+    const next = (await call('GET', '/api/v1/suppliers/next-code')).body.code as string;
+    expect(next).toMatch(/\d$/);
+    const s1 = await call('POST', '/api/v1/suppliers', { ...pea, code: next });
+    expect(s1.status).toBe(200);
+    expect((await call('GET', '/api/v1/suppliers/next-code')).body.code).not.toBe(next);
+    const log = (await sql<{ detail: { from?: string; tax_id?: string } }>`SELECT detail FROM sys_activity_log WHERE table_name = 'md_supplier' AND row_id = ${s1.body.id} AND action = 'ADD'`.execute(database.db)).rows[0];
+    expect(log?.detail).toMatchObject({ from: 'AI_BILL', tax_id: '0994000165501' });
+    // เลข+สาขาเดียวกัน (ชื่อต่างกันก็ตาม) = ไม่เพิ่มซ้ำ — ทั้งจากบิลและหน้าผู้จำหน่ายปกติ
+    expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-DUP', name: 'กฟภ.' })).body.error.message).toMatch(/0994000165501 สาขา 00000 ใช้กับผู้จำหน่าย .+ แล้ว/);
+    expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-DUP', from_bill: undefined })).status).toBe(409);
+    // เลิกใช้แล้ว: จากบิลไม่ให้เพิ่ม (ให้เปิดใช้รหัสเดิม) · หน้าปกติยังเตือนตามกติกาเดิม (30/10/2569)
+    const cur = (await call('GET', `/api/v1/suppliers/${s1.body.id}`)).body;
+    expect((await call('PUT', `/api/v1/suppliers/${s1.body.id}`, { ...pea, code: next, from_bill: undefined, status: 'I', banks: [], contacts: [], ap_account_id: cur.ap_account_id })).status).toBe(200);
+    expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-DUP' })).body.error.message).toMatch(/เลิกใช้อยู่.+เปิดใช้รหัสเดิม/);
+    await call('PUT', `/api/v1/suppliers/${s1.body.id}`, { ...pea, code: next, from_bill: undefined, status: 'A', banks: [], contacts: [], ap_account_id: cur.ap_account_id });
+    // คนละสาขา: เพิ่มได้ พร้อมคำเตือน
+    const s2 = await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-B1', tax_branch_no: '1' });
+    expect(s2.status).toBe(200);
+    expect(s2.body.warnings.join(' ')).toMatch(/สาขาอื่น/);
+    // เลขอ่านผิด (12 หลัก / หลักตรวจสอบผิด) = บันทึกไม่ได้ ให้แก้
+    expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-X', tax_id: '099400016550' })).status).toBe(400);
+    expect((await call('POST', '/api/v1/suppliers', { ...pea, code: 'PEA-X', tax_id: '0994000165502' })).status).toBe(400);
+    // ลูกค้าอื่น: ไม่เห็นผู้จำหน่ายของบริษัทนี้ เพิ่มเลขเดียวกันในบริษัทของตัวเองได้ (ตรวจซ้ำเฉพาะในบริษัท) · รหัสถัดไปคิดจากบริษัทตัวเอง
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    const bCo = (await call('GET', '/api/v1/auth/me')).body.companies[0].id;
+    await call('POST', '/api/v1/auth/select', { company_id: bCo });
+    expect((await call('GET', '/api/v1/suppliers?q=0994000165501&status=all')).body.rows).toEqual([]);
+    expect((await call('GET', `/api/v1/suppliers/${s1.body.id}`)).status).toBe(404);
+    const bNext = (await call('GET', '/api/v1/suppliers/next-code')).body.code;
+    expect((await call('POST', '/api/v1/suppliers', { ...pea, code: bNext, company_id: co })).status).toBe(200);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM md_supplier WHERE company_id = ${co} AND tax_id = '0994000165501' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(2);
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+  });
   it('AI bill from local OCR text (hybrid): another customer (tenant) cannot use this company\'s key or see its usage, company_id in the body is ignored', async () => {
     process.env.BUDDY_SECRET_KEY = Buffer.alloc(32, 7).toString('base64');
     let calls = 0;

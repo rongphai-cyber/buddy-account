@@ -48,8 +48,8 @@ export const BILL_SCHEMA = {
   properties: {
     doc_kind: { type: 'string', enum: ['tax_invoice', 'receipt_tax_invoice', 'abbreviated_tax_invoice', 'invoice', 'receipt', 'other'] },
     supplier: {
-      type: 'object', additionalProperties: false, required: ['name', 'tax_id', 'branch_no', 'address'],
-      properties: { name: str, tax_id: str, branch_no: str, address: str },
+      type: 'object', additionalProperties: false, required: ['name', 'tax_id', 'branch_no', 'address', 'phone'],
+      properties: { name: str, tax_id: str, branch_no: str, address: str, phone: str },
     },
     doc_no: str,
     doc_date: str,
@@ -70,7 +70,7 @@ export const BILL_SCHEMA = {
 export const BILL_SYSTEM_PROMPT = `คุณอ่านเอกสารซื้อของกิจการในประเทศไทย (ใบกำกับภาษี ใบเสร็จรับเงิน ใบแจ้งหนี้ ใบกำกับภาษีอย่างย่อ) จากรูปหรือ PDF แล้วตอบเป็นข้อมูลตามโครงที่กำหนด
 ข้อมูลนี้จะถูกเติมเป็นร่างเอกสารซื้อในโปรแกรมบัญชี ผู้ใช้จะตรวจก่อนบันทึก จึงต้องตรงกับที่พิมพ์ในเอกสารจริง ห้ามเดา:
 - อ่านไม่ออกหรือไม่มีในเอกสาร ให้ตอบ null และบอกเหตุใน notes (ภาษาไทยสั้น ๆ)
-- supplier คือผู้ขาย/ผู้ออกเอกสาร (ไม่ใช่ผู้ซื้อ) · tax_id เลข 13 หลักไม่มีขีด · branch_no 5 หลัก สำนักงานใหญ่ = "00000"
+- supplier คือผู้ขาย/ผู้ออกเอกสาร (ไม่ใช่ผู้ซื้อ) · tax_id เลข 13 หลักไม่มีขีด · branch_no 5 หลัก สำนักงานใหญ่ = "00000" · phone เบอร์โทรของผู้ขายตามที่พิมพ์
 - doc_date เป็นปี ค.ศ. รูปแบบ YYYY-MM-DD (ปี พ.ศ. ลบ 543 เช่น 15/03/2569 → 2026-03-15)
 - จำนวนเงินและจำนวนเป็นตัวเลขทศนิยมแบบข้อความ ไม่มีจุลภาคหรือสกุลเงิน เช่น "1234.50"
 - price_type: ราคาในรายการยังไม่รวม VAT = excl_vat · รวม VAT แล้ว = incl_vat · ไม่มี VAT = no_vat · vat_rate เช่น "7"
@@ -78,13 +78,14 @@ export const BILL_SYSTEM_PROMPT = `คุณอ่านเอกสารซื
 - ถ้าไม่ใช่เอกสารซื้อขาย ให้ doc_kind = "other" และอธิบายใน notes`;
 
 export interface RawBill {
-  doc_kind: string; supplier: { name: string | null; tax_id: string | null; branch_no: string | null; address: string | null };
+  doc_kind: string; supplier: { name: string | null; tax_id: string | null; branch_no: string | null; address: string | null; phone?: string | null };
   doc_no: string | null; doc_date: string | null; price_type: 'excl_vat' | 'incl_vat' | 'no_vat'; vat_rate: string | null;
   lines: Array<{ description: string; qty: string | null; unit: string | null; unit_price: string | null; amount: string | null }>;
   subtotal: string | null; discount: string | null; vat_amount: string | null; total: string | null; notes: string[];
 }
 export interface BillDraft {
-  doc_kind: string; supplier: { name: string; tax_id: string | null; branch_no: string | null; address: string };
+  /** tax_id = เลข 13 หลักที่อ่านได้ (ไม่ครบ = null) · tax_id_read = ตัวเลขตามที่อ่านได้ (ใช้เติมแบบฟอร์มเพิ่มผู้จำหน่ายให้ผู้ใช้แก้) */
+  doc_kind: string; supplier: { name: string; tax_id: string | null; tax_id_read: string; branch_no: string | null; address: string; phone: string | null };
   doc_no: string; doc_date: string | null; price_type: '0' | '1' | '2'; vat_rate: string;
   lines: Array<{ description: string; qty: string; unit: string | null; unit_price: string; amount: string }>;
   subtotal: string | null; discount: string | null; vat_amount: string | null; total: string | null;
@@ -130,7 +131,7 @@ export function normalizeBill(raw: RawBill): BillDraft {
   }
   return {
     doc_kind: raw.doc_kind,
-    supplier: { name: (raw.supplier?.name ?? '').trim(), tax_id: tax.length === 13 ? tax : null, branch_no: branch ? branch.padStart(5, '0').slice(-5) : null, address: (raw.supplier?.address ?? '').trim() },
+    supplier: { name: (raw.supplier?.name ?? '').trim(), tax_id: tax.length === 13 ? tax : null, tax_id_read: tax.slice(0, 20), phone: raw.supplier?.phone?.trim().slice(0, 60) || null, branch_no: branch ? branch.padStart(5, '0').slice(-5) : null, address: (raw.supplier?.address ?? '').trim() },
     doc_no: (raw.doc_no ?? '').trim().slice(0, 30), doc_date: date, price_type: pt, vat_rate: rate.toString(), lines,
     subtotal: fx(sub), discount: fx(disc), vat_amount: fx(vat), total: fx(total), warnings: w,
   };
@@ -200,4 +201,45 @@ export function suggestPrompt(x: { businessType?: string | null; guidance?: stri
     `expense_codes (รหัสค่าใช้จ่ายทั้งหมดที่ใช้ได้): ${JSON.stringify(x.expenseCodes.map((c) => ({ code: c.code, name: c.name, account: c.account ?? undefined })))}`,
     `lines: ${JSON.stringify(x.lines.map((l) => ({ index: l.index, description: l.description, amount: l.amount, candidates: l.candidates.map((c) => ({ code: c.code, name: c.name, kind: c.kind, account: c.account ?? undefined, history: c.history || undefined, same_supplier: c.sameSupplier || undefined })) })))}`,
   ].join('\n');
+}
+
+/* ───────── เพิ่มผู้จำหน่ายใหม่จากบิลที่อ่าน (เจ้าของ 19/11/2569) ───────── */
+
+/** ข้อความที่อยู่ → 3 บรรทัด (บรรทัดละไม่เกิน max ตัด ณ ช่องว่าง) + รหัสไปรษณีย์ 5 หลักตัวสุดท้าย — ผู้ใช้กด "แยกช่องจากที่อยู่เดิม" ในแบบฟอร์มได้ */
+export function addressLines(text: string | null | undefined, max = 100): { address_1: string; address_2: string; address_3: string; zip_code: string } {
+  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
+  const zips = t.match(/(?:^|\D)(\d{5})(?!\d)/g) ?? [];
+  const out: string[] = [];
+  let rest = t;
+  while (rest && out.length < 3) {
+    if (rest.length <= max || out.length === 2) { out.push(rest.slice(0, max)); break; }
+    const cut = rest.lastIndexOf(' ', max);
+    const at = cut > max * 0.4 ? cut : max;
+    out.push(rest.slice(0, at).trim()); rest = rest.slice(at).trim();
+  }
+  return { address_1: out[0] ?? '', address_2: out[1] ?? '', address_3: out[2] ?? '', zip_code: zips.length ? zips[zips.length - 1]!.replace(/\D/g, '') : '' };
+}
+
+/** ค่าเริ่มต้นของแบบฟอร์มผู้จำหน่ายจากบิล: ชื่อ เลขผู้เสียภาษี (ตามที่อ่าน ให้ผู้ใช้แก้ถ้าผิด) สาขา (ไม่ระบุ = สำนักงานใหญ่ 00000) ที่อยู่ โทรศัพท์ */
+export function supplierFromBill(b: BillDraft) {
+  const sp = b.supplier;
+  return { name: sp.name.slice(0, 120), tax_id: sp.tax_id ?? sp.tax_id_read ?? '', tax_branch_no: sp.branch_no ?? '00000', phone: (sp.phone ?? '').slice(0, 60), ...addressLines(sp.address) };
+}
+
+/**
+ * รหัสถัดไปตามแบบที่บริษัทใช้: กลุ่มรหัส "ตัวนำ + ตัวเลข" ที่มีมากที่สุด (เท่ากัน = กลุ่มที่เลขมากสุด) → เลขมากสุด + 1 เติมศูนย์ให้ยาวเท่าเดิม
+ * ไม่มีรหัสแบบนี้ = ใช้ fallback (ผู้ใช้แก้ได้เสมอ)
+ */
+export function nextCode(codes: Array<string | null | undefined>, fallback = ''): string {
+  const g = new Map<string, { n: number; max: number; width: number; prefix: string }>();
+  for (const c of codes) {
+    const m = String(c ?? '').trim().match(/^(.*?)(\d+)$/);
+    if (!m) continue;
+    const key = `${m[1]}#${m[2]!.length}`;
+    const x = g.get(key) ?? { n: 0, max: 0, width: m[2]!.length, prefix: m[1]! };
+    x.n++; x.max = Math.max(x.max, Number(m[2])); g.set(key, x);
+  }
+  const best = [...g.values()].sort((p, q) => q.n - p.n || q.max - p.max)[0];
+  if (!best) return fallback;
+  return best.prefix + String(best.max + 1).padStart(best.width, '0');
 }

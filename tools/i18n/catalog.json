@@ -642,7 +642,7 @@
 },
 {
 "th": "ปิด",
-"n": 40,
+"n": 41,
 "files": [
 "apps/web/src/ui.tsx",
 "apps/web/src/components/AiBill.tsx",
@@ -16550,6 +16550,13 @@
 ]
 },
 {
+"th": "{0} สาขา {1}",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "{0} สาขาที่ {1}",
 "n": 1,
 "files": [
@@ -19788,6 +19795,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx"
+]
+},
+{
+"th": "คนละสาขา",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -24275,6 +24289,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/items.ts"
+]
+},
+{
+"th": "ตัวนำ + ตัวเลข",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -29070,6 +29091,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/opening.ts"
+]
+},
+{
+"th": "บิลนี้อ่านเลขผู้เสียภาษีไม่ได้ — ใส่เลขในแท็บ ภาษีและบัญชี (ตรวจซ้ำได้เมื่อมีเลข)",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -47343,6 +47371,13 @@
 ]
 },
 {
+"th": "เพิ่มผู้จำหน่ายใหม่แล้ว:",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "เพิ่มผู้ใช้",
 "n": 1,
 "files": [
@@ -47529,6 +47564,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
+]
+},
+{
+"th": "เพิ่มเป็นสาขา {0} ใหม่",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -48659,6 +48701,27 @@
 ]
 },
 {
+"th": "เลขผู้เสียภาษี {0} มีในแฟ้มแล้วแต่",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "เลขผู้เสียภาษี {0} สาขา {1} มีในแฟ้มผู้จำหน่ายแล้ว — ใช้รายเดิม",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "เลขผู้เสียภาษี {0} สาขา {1} เป็นของผู้จำหน่าย {2} {3} แล้ว (เลิกใช้อยู่) — เปิดใช้รหัสเดิมที่ ซื้อ › รายละเอียดผู้จำหน่าย แทนการเพิ่มใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/parties.ts"
+]
+},
+{
 "th": "เลขผู้เสียภาษี {0} สาขา {1} ใช้กับ{2} {3} {4} แล้ว — ถ้าเป็นรายเดียวกันให้ใช้รหัสเดิม ถ้าเป็นคนละสาขาให้ใส่เลขสาขาให้ถูกต้อง (สำนักงานใหญ่ = 00000)",
 "n": 1,
 "files": [
@@ -48677,6 +48740,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "เลขผู้เสียภาษีที่อ่านได้ {0} {1} — แก้ในแท็บ ภาษีและบัญชี ก่อนบันทึก (อาจอ่านผิด)",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -48775,6 +48845,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เลิกใช้แล้ว — เปิดใช้ที่ ซื้อ › รายละเอียดผู้จำหน่าย",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -51144,6 +51221,13 @@
 ]
 },
 {
+"th": "แยกช่องจากที่อยู่เดิม",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
+]
+},
+{
 "th": "แยกช่องจากที่อยู่เดิมแล้ว — ตรวจให้ถูกต้อง แล้วกด \"ประกอบข้อความใหม่\" ถ้าต้องการ",
 "n": 1,
 "files": [
@@ -51921,6 +52005,13 @@
 ]
 },
 {
+"th": "ใช้ผู้จำหน่ายเดิม",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "ใช้ยอดคงเหลือในเช็ค",
 "n": 1,
 "files": [
@@ -51946,6 +52037,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "ใช้รายนี้",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -54742,6 +54840,13 @@
 ]
 },
 {
+"th": "ไม่เพิ่มซ้ำ:",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "ไม่แน่ใจ",
 "n": 1,
 "files": [
@@ -54928,6 +55033,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "— ถ้าบิลนี้มาจากสาขาเดิม ให้เลือกรายเดิม ถ้าเป็นสาขาใหม่จริง (สาขา {0}) ค่อยเพิ่ม",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
@@ -55677,6 +55789,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/LkSelect.tsx"
+]
+},
+{
+"th": "＋ เพิ่มผู้จำหน่ายใหม่จากบิลนี้",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
 ]
 },
 {
