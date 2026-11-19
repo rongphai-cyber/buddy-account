@@ -180,10 +180,16 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
     }
   }
   if (fam === 'trade') {
-    totals.push({ label: 'รวมเงิน', value: money(h.amount) });
+    // HANDOFF 152 (เจ้าของ: ไม่มีส่วนลด รวมเงินกับมูลค่าสินค้า/บริการ ยอดเท่ากัน ให้เหลือบรรทัดเดียว):
+    // มูลค่าสินค้า/บริการ = มูลค่าไม่รวม VAT เสมอ (ราคารวม VAT: มูลค่าที่คิด VAT − VAT · ม.86/4 แยกภาษีออกจากมูลค่าสินค้า)
+    // ไม่มีส่วนลด/มัดจำ แล้ว "รวมเงิน" เท่ากับบรรทัดอื่น (แยก VAT = มูลค่าสินค้า/บริการ · รวม VAT/ไม่มี VAT = จำนวนเงินรวมทั้งสิ้น) = ไม่พิมพ์ "รวมเงิน"
+    const value = h.price_type === '1' ? d(String(h.taxable_amount ?? 0)).minus(d(String(h.vat_amount ?? 0))) : d(String(h.taxable_amount ?? 0));
+    const amt = d(String(h.amount ?? 0));
+    const sumDup = !nz(h.discount_amount) && !nz(h.deposit_amount) && (amt.eq(d(String(h.net_amount ?? 0))) || (h.price_type !== '0' && amt.eq(value)));
+    if (!sumDup) totals.push({ label: 'รวมเงิน', value: money(h.amount) });
     if (nz(h.discount_amount)) totals.push({ label: `ส่วนลด ${txt(h.discount_text)}`.trim(), value: money(h.discount_amount) }, { label: 'หลังหักส่วนลด', value: money(h.amount_after_discount) });
     if (nz(h.deposit_amount)) totals.push({ label: 'หักเงินมัดจำ', value: money(h.deposit_amount) });
-    if (h.price_type !== '0') totals.push({ label: 'มูลค่าสินค้า/บริการ', value: money(h.taxable_amount) }, { label: `ภาษีมูลค่าเพิ่ม ${d(h.vat_rate ?? 0).toString()}%`, value: money(h.vat_amount) });
+    if (h.price_type !== '0') totals.push({ label: 'มูลค่าสินค้า/บริการ', value: value.toFixed(2) }, { label: `ภาษีมูลค่าเพิ่ม ${d(h.vat_rate ?? 0).toString()}%`, value: money(h.vat_amount) });
     totals.push({ label: 'จำนวนเงินรวมทั้งสิ้น', value: money(h.net_amount) });
   } else if (fam === 'settle') {
     totals.push({ label: 'รวมยอดชำระ', value: lines.reduce((s, l) => s.plus(d(l.amount || 0)), d(0)).toFixed(2) });

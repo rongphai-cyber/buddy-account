@@ -2961,6 +2961,19 @@ describe('Buddy Account API (PGlite)', () => {
     expect(p.data.lines[0]).toMatchObject({ code, qty: '2', price: '150.00', amount: '300.00' });
     expect(p.data.totals.at(-1)).toEqual({ label: 'จำนวนเงินรวมทั้งสิ้น', value: '321.00' });
     expect(p.data.amount_text).toBe('สามร้อยยี่สิบเอ็ดบาทถ้วน');
+    // ยอดรวม (HANDOFF 152): ไม่มีส่วนลด "รวมเงิน" ซ้ำกับบรรทัดอื่น = ไม่พิมพ์ · มูลค่าสินค้า/บริการ = ไม่รวม VAT เสมอ · มีส่วนลด = เหมือนเดิม
+    const tot = (x: { data: { totals: Array<{ label: string; value: string }> } }) => x.data.totals.map((t) => `${t.label}=${t.value}`);
+    expect(tot(p)).toEqual(['มูลค่าสินค้า/บริการ=300.00', 'ภาษีมูลค่าเพิ่ม 7%=21.00', 'จำนวนเงินรวมทั้งสิ้น=321.00']);
+    const sumCase = async (extra: Record<string, unknown>) => {
+      const x = (await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2027-06-05', party_id: cus, vat_rate: 7, warehouse_id: w1, lines: [{ item_id: item, qty: 1, unit_price: 107 }], ...extra })).body as { id: string };
+      const t = tot((await call('GET', `/api/v1/print/doc/${x.id}`)).body);
+      expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ทดสอบยอดรวมที่พิมพ์' })).status).toBe(200);
+      return t;
+    };
+    expect(await sumCase({ price_type: '1' })).toEqual(['มูลค่าสินค้า/บริการ=100.00', 'ภาษีมูลค่าเพิ่ม 7%=7.00', 'จำนวนเงินรวมทั้งสิ้น=107.00']);
+    expect(await sumCase({ price_type: '0' })).toEqual(['จำนวนเงินรวมทั้งสิ้น=107.00']);
+    expect(await sumCase({ price_type: '2', discount_text: '7' })).toEqual(['รวมเงิน=107.00', 'ส่วนลด 7=7.00', 'หลังหักส่วนลด=100.00', 'มูลค่าสินค้า/บริการ=100.00', 'ภาษีมูลค่าเพิ่ม 7%=7.00', 'จำนวนเงินรวมทั้งสิ้น=107.00']);
+    expect(await sumCase({ price_type: '1', discount_text: '7' })).toEqual(['รวมเงิน=107.00', 'ส่วนลด 7=7.00', 'หลังหักส่วนลด=100.00', 'มูลค่าสินค้า/บริการ=93.46', 'ภาษีมูลค่าเพิ่ม 7%=6.54', 'จำนวนเงินรวมทั้งสิ้น=100.00']);
     expect(p.forms.map((f: { slot: number; base: string }) => `${f.slot}:${f.base}`)).toEqual(['1:pro', '2:plain', '3:half', '4:cont', '6:grid']);
     // ชื่อเอกสารมาตรฐาน (04/11/2569): ขายเชื่อมี VAT = ใบแจ้งหนี้/ใบกำกับภาษี (เว้นแต่ประเภทเอกสารตั้งชื่อเอง)
     const dts = (await call('GET', '/api/v1/doc-types')).body;

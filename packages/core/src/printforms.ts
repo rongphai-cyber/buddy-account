@@ -50,9 +50,36 @@ export interface PrintLayout {
   lang: PrintLang;
   /** ช่องลงชื่อในแบบฟอร์มภาษาอังกฤษ (ลำดับเดียวกับ signatures) */
   signatures_en: string[];
+  /**
+   * HANDOFF 152 (เจ้าของ 19/11/2569): ตำแหน่งแนวตั้ง บน/กลาง/ล่าง ของโลโก้ ชื่อบริษัท ชื่อเอกสาร (คู่กับ logo/co_align/title_align = ตาราง 9 ช่อง) · ค่าเริ่มต้น top = หน้าตาเดิม
+   * co_name2 = ชื่อบริษัทบรรทัดที่สอง (ฟอร์มไทย = ชื่ออังกฤษ · ฟอร์มอังกฤษ = ชื่อไทย) — 0/'' = ตามที่อยู่บริษัท
+   * top_bar = แถบสีบนสุดของต้นแบบมืออาชีพ: '' = สีธีม · #rrggbb · none = ไม่แสดง
+   * font = แบบอักษรของแผ่น ('' = ตามต้นแบบ · PRINT_FONTS)
+   */
+  logo_v: PrintVAlign; co_v: PrintVAlign; title_v: PrintVAlign;
+  co_name2_pt: number; co_name2_color: string;
+  top_bar: string;
+  font: string;
 }
 export type PrintAlign = 'left' | 'center' | 'right';
 export const PRINT_ALIGNS: Array<{ key: PrintAlign; label: string }> = [{ key: 'left', label: 'ซ้าย' }, { key: 'center', label: 'กลาง' }, { key: 'right', label: 'ขวา' }];
+export type PrintVAlign = 'top' | 'middle' | 'bottom';
+export const PRINT_VALIGNS: Array<{ key: PrintVAlign; label: string }> = [{ key: 'top', label: 'บน' }, { key: 'middle', label: 'กลาง' }, { key: 'bottom', label: 'ล่าง' }];
+/** ตำแหน่ง 9 ช่องของส่วนหัว (แนวตั้ง × แนวนอน) — ชื่อที่แสดงในหน้าออกแบบ */
+export const PRINT_POS9: Array<{ v: PrintVAlign; h: PrintAlign; label: string }> = [
+  { v: 'top', h: 'left', label: 'ซ้ายบน' }, { v: 'top', h: 'center', label: 'กลางบน' }, { v: 'top', h: 'right', label: 'ขวาบน' },
+  { v: 'middle', h: 'left', label: 'ซ้ายกลาง' }, { v: 'middle', h: 'center', label: 'กึ่งกลาง' }, { v: 'middle', h: 'right', label: 'ขวากลาง' },
+  { v: 'bottom', h: 'left', label: 'ซ้ายล่าง' }, { v: 'bottom', h: 'center', label: 'กลางล่าง' }, { v: 'bottom', h: 'right', label: 'ขวาล่าง' },
+];
+/**
+ * แบบอักษรของแผ่นเอกสาร (HANDOFF 152) — แบบอักษรไทยของ Google Fonts (โหลดเมื่อใช้ · โปรแกรมโหลด IBM Plex Sans Thai และ Sarabun อยู่แล้ว)
+ * '' = ตามต้นแบบ (มืออาชีพ = IBM Plex Sans Thai · ต้นแบบอื่น = Sarabun)
+ */
+export const PRINT_FONTS: Array<{ key: string; label: string }> = [
+  { key: '', label: 'ตามต้นแบบ (มืออาชีพ = IBM Plex Sans Thai · อื่น ๆ = Sarabun)' }, { key: 'IBM Plex Sans Thai', label: 'IBM Plex Sans Thai (แบบอักษรของโปรแกรม)' },
+  { key: 'Sarabun', label: 'Sarabun (สารบรรณ — แบบหนังสือราชการ)' }, { key: 'Noto Sans Thai', label: 'Noto Sans Thai (อ่านง่าย มีหัว)' },
+  { key: 'Prompt', label: 'Prompt (ไม่มีหัว ทันสมัย)' }, { key: 'Kanit', label: 'Kanit (ไม่มีหัว หนา)' },
+];
 export type PrintLang = 'th' | 'en';
 export const PRINT_LANGS: Array<{ key: PrintLang; label: string }> = [{ key: 'th', label: 'ภาษาไทย' }, { key: 'en', label: 'ภาษาอังกฤษ (English)' }];
 export type SettleDetail = 'auto' | 'bills' | 'items';
@@ -68,7 +95,7 @@ export interface PrintFormEntry { slot: number; name: string; base: PrintBase; l
 export const PRINT_BASES: Array<{ key: PrintBase; label: string; hint: string }> = [
   { key: 'pro', label: 'มืออาชีพ สีตามธีมบริษัท (A4)', hint: 'กระดาษ A4 แนวตั้ง หัวเอกสารและยอดรวมใช้สีธีมของบริษัท (เจ้าของ 04/11/2569: แบบฟอร์มสวยงามแบบมืออาชีพ) — พิมพ์ขาวดำก็อ่านชัด' },
   { key: 'grid', label: 'มาตรฐาน มีเส้นตาราง (A4)', hint: 'กระดาษ A4 แนวตั้ง มีเส้นตาราง' },
-  { key: 'plain', label: 'ไม่มีเส้นตาราง (A4)', hint: 'สำหรับพิมพ์ลงแบบฟอร์มที่พิมพ์เส้นไว้แล้ว' },
+  { key: 'plain', label: 'ไม่มีเส้นตาราง (A4)', hint: 'สำหรับพิมพ์ลงแบบฟอร์มที่พิมพ์หัวบริษัทและเส้นไว้แล้ว — จึงไม่พิมพ์ชื่อบริษัทและโลโก้ (ใช้กระดาษเปล่า: แท็บ หัวเอกสาร/สี › ติ๊ก "พิมพ์ส่วนหัวบริษัท")' },
   { key: 'half', label: 'ครึ่งหน้า (A5 แนวนอน)', hint: 'ครึ่งหนึ่งของ A4 — เอกสารรายการน้อย' },
   { key: 'cont', label: 'กระดาษต่อเนื่อง 9×11 นิ้ว', hint: 'เครื่องพิมพ์ดอตแมทริกซ์ (Express 12/15 cpi)' },
 ];
@@ -224,6 +251,7 @@ export function defaultLayout(scope: string, base: PrintBase, title = ''): Print
     logo: base === 'plain' || base === 'cont' ? 'none' : 'left', logo_mm: base === 'half' ? 12 : 18, signature_images: [], settle_detail: 'auto',
     co_align: 'left', title_align: 'right', co_name_pt: 0, co_name_color: '', co_info_pt: 0, co_info_color: '', title_pt: 0, title_color: '',
     band_color: '', band_text_color: '', body_pt: 0, body_color: '', lang: 'th', signatures_en: SIGN_EN[fam],
+    logo_v: 'top', co_v: 'top', title_v: 'top', co_name2_pt: 0, co_name2_color: '', top_bar: '', font: '',
   };
 }
 
@@ -246,6 +274,7 @@ export function normalizeLayout(scope: string, base: PrintBase, raw: unknown): P
   const pt = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n >= 6 && n <= 40 ? Math.round(n * 2) / 2 : 0; };
   const color = (v: unknown) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : '');
   const align = (v: unknown, dflt: PrintAlign) => (PRINT_ALIGNS.some((a) => a.key === v) ? (v as PrintAlign) : dflt);
+  const valign = (v: unknown): PrintVAlign => (PRINT_VALIGNS.some((a) => a.key === v) ? (v as PrintVAlign) : 'top');
   return {
     title: str(x.title, 120, def.title), title_en: str(x.title_en, 120, ''), copies: list(x.copies, 6, def.copies), reprint_copy: bool(x.reprint_copy, def.reprint_copy),
     font_pt: Number.isFinite(fonts) && fonts >= 7 && fonts <= 16 ? fonts : def.font_pt, columns,
@@ -263,6 +292,10 @@ export function normalizeLayout(scope: string, base: PrintBase, raw: unknown): P
     title_pt: pt(x.title_pt), title_color: color(x.title_color), band_color: color(x.band_color), band_text_color: color(x.band_text_color),
     body_pt: pt(x.body_pt), body_color: color(x.body_color), lang: x.lang === 'en' ? 'en' : 'th',
     signatures_en: Array.isArray(x.signatures_en) ? (x.signatures_en as unknown[]).slice(0, 4).map((v) => (typeof v === 'string' ? v.trim().slice(0, 60) : '')) : def.signatures_en,
+    logo_v: valign(x.logo_v), co_v: valign(x.co_v), title_v: valign(x.title_v),
+    co_name2_pt: pt(x.co_name2_pt), co_name2_color: color(x.co_name2_color),
+    top_bar: x.top_bar === 'none' ? 'none' : color(x.top_bar),
+    font: PRINT_FONTS.some((f) => f.key === x.font) ? (x.font as string) : '',
   };
 }
 

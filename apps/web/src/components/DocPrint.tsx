@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { bahtTextEn, fmt, formatDate, formatDateEn, PRINT_HEAD_FIELDS, PRINT_WORDS_EN as EN, printLabelEn, printPartyLabel, printTextEn, sheetCopies, type PrintAlign, type PrintFamily, type PrintFormEntry, type YearSystem } from '@buddy/core';
+import { bahtTextEn, fmt, formatDate, formatDateEn, PRINT_HEAD_FIELDS, PRINT_WORDS_EN as EN, printLabelEn, printPartyLabel, printTextEn, sheetCopies, type PrintAlign, type PrintFamily, type PrintFormEntry, type PrintVAlign, type YearSystem } from '@buddy/core';
 import { CloseScreen, DocDelete } from './DocDelete';
 import { api } from '../api';
 import type { CompanyImages } from './CompanyImages';
@@ -9,6 +9,7 @@ import { useCan, useSession } from '../session';
 import { DateInput, ErrorBox, Field, Modal, Pill, toast, toastError, useHotkeys, useYearSystem } from '../ui';
 import { DocNotesDialog } from './Notes';
 import { PrintJob } from '../printFrame';
+import { ensurePrintFont, printFontStack } from '../printFonts';
 
 export interface PrintData {
   kind: 'doc' | 'journal'; scope: string; family: PrintFamily; title: string; title_en: string; doc_no: string; doc_date: string; cancelled: boolean;
@@ -76,39 +77,66 @@ export function PrintSheet({ data, form, ys, images, prior }: { data: PrintData;
   const coName2 = en ? (co.name_en ? co.name : '') : co.name_en;
   const coInfo = sty(L.co_info_pt, L.co_info_color);
   const coLine = en ? [co.phone && `${EN.tel} ${co.phone}`, co.tax_id && `${EN.taxId} ${co.tax_id}`, printTextEn(co.branch)] : [co.phone && `โทร ${co.phone}`, co.tax_id && `เลขประจำตัวผู้เสียภาษี ${co.tax_id}`, co.branch];
-  const coBlock = L.show_company && <div className="ds-co"><b style={sty(L.co_name_pt, L.co_name_color)}>{coName}</b>{coName2 && <div style={coInfo}>{coName2}</div>}
+  // ชื่อบริษัทบรรทัดที่สอง (HANDOFF 152): ตั้งขนาด/สีเองได้ · ไม่ได้ตั้ง = ตามที่อยู่บริษัท (DOM เดิม)
+  const name2Style = L.co_name2_pt >= 6 || L.co_name2_color ? sty(L.co_name2_pt >= 6 ? L.co_name2_pt : L.co_info_pt, L.co_name2_color || L.co_info_color) : coInfo;
+  const coBlock = L.show_company && <div className="ds-co"><b style={sty(L.co_name_pt, L.co_name_color)}>{coName}</b>{coName2 && <div style={name2Style}>{coName2}</div>}
     <div style={coInfo}>{en ? co.address_en || co.address : co.address}</div>
     <div style={coInfo}>{coLine.filter(Boolean).join('  ')}</div></div>;
   const titleBlock = (cp: string) => <div className="ds-title"><h1 style={sty(L.title_pt, L.title_color)}>{mainTitle}</h1>{subTitle && <div className="ds-en">{subTitle}</div>}
     {cp && <div className="ds-copy">{en ? printTextEn(cp) : cp}</div>}{data.cancelled && <div className="ds-void">{en ? EN.cancelled : 'ยกเลิก'}</div>}</div>;
   const logoImg = <img className="ds-logo" src={logo ?? ''} alt="" style={{ height: `${L.logo_mm}mm` }} />;
-  // ส่วนหัวแบบเดิม (ชื่อบริษัทซ้าย ชื่อเอกสารขวา) = DOM เดิม · ตั้งตำแหน่งอื่น = 3 ช่อง ซ้าย/กลาง/ขวา
-  const stdHead = L.co_align === 'left' && L.title_align === 'right';
+  // ส่วนหัวแบบเดิม (ชื่อบริษัทซ้ายบน ชื่อเอกสารขวาบน · โลโก้ซ้าย/ขวา/กลางบน) = DOM เดิม
+  const allTop = L.co_v === 'top' && L.title_v === 'top' && (L.logo_v === 'top' || L.logo === 'none' || !logo);
+  const stdHead = allTop && L.co_align === 'left' && L.title_align === 'right';
+  const logoAbove = !!logo && stdHead && L.logo === 'center';
   const head = (cp: string): ReactNode => {
     if (stdHead) return <header className="ds-head">
       {logo && L.logo === 'left' && logoImg}{coBlock}{titleBlock(cp)}{logo && L.logo === 'right' && logoImg}</header>;
-    const slots = (['left', 'center', 'right'] as PrintAlign[]).map((pos) => {
-      const lg = logo && L.logo === pos && pos !== 'center';
-      const txt = <>{L.co_align === pos && coBlock}{L.title_align === pos && titleBlock(cp)}</>;
-      if (!lg && L.co_align !== pos && L.title_align !== pos) return null;
-      return <div key={pos} className={`ds-slot ds-slot-${pos}`}>{lg && pos === 'left' && logoImg}<div className="ds-slot-txt">{txt}</div>{lg && pos === 'right' && logoImg}</div>;
-    });
-    return <header className={`ds-head ds-head-x${slots[1] ? ' has-c' : ''}`}>{slots}</header>;
+    return gridHead(cp);
   };
-  // สีแถบหัวตาราง/ยอดรวมทั้งสิ้น · ตัวอักษรในตาราง (ตัวแปร CSS ที่แผ่น — ไม่ได้ตั้ง = ไม่มี)
+  /**
+   * ส่วนหัว 9 ช่อง (HANDOFF 152): คอลัมน์ ซ้าย/กลาง/ขวา × แถว บน/กลาง/ล่าง — ไม่ทับกันทุกกรณี (ข้อความขึ้นบรรทัดใหม่แทน)
+   * ช่องเดียวกัน: ชื่อบริษัทแล้วชื่อเอกสารเรียงลงมา · โลโก้อยู่ข้างข้อความ (ซ้าย = หน้า · ขวา = หลัง · กลาง = เหนือ)
+   */
+  const gridHead = (cp: string): ReactNode => {
+    const items: Array<{ k: 'logo' | 'co' | 'title'; h: PrintAlign; v: PrintVAlign }> = [];
+    if (logo && L.logo !== 'none') items.push({ k: 'logo', h: L.logo, v: L.logo_v });
+    if (coBlock) items.push({ k: 'co', h: L.co_align, v: L.co_v });
+    items.push({ k: 'title', h: L.title_align, v: L.title_v });
+    const hs = (['left', 'center', 'right'] as PrintAlign[]).filter((h) => items.some((x) => x.h === h));
+    const mid = hs.includes('center');
+    // มีช่องกลาง = 3 คอลัมน์ (กลางอยู่กลางแผ่นเสมอ) · ไม่มี = เฉพาะคอลัมน์ที่ใช้ แบ่งที่ว่างเท่า ๆ กัน
+    const tpl = mid ? 'minmax(0, 1fr) minmax(0, max-content) minmax(0, 1fr)' : hs.map(() => 'minmax(0, max-content)').join(' ');
+    const just = !mid && hs.length === 1 ? (hs[0] === 'right' ? 'end' : 'start') : 'space-between';
+    return <header className="ds-head ds-head-g" style={{ gridTemplateColumns: tpl, justifyContent: just }}>
+      {hs.map((h, ci) => <div key={h} className={`ds-col ds-col-${h}`} style={{ gridColumn: mid ? (['left', 'center', 'right'] as PrintAlign[]).indexOf(h) + 1 : ci + 1 }}>
+        {(['top', 'middle', 'bottom'] as PrintVAlign[]).map((v) => {
+          const here = items.filter((x) => x.h === h && x.v === v);
+          if (!here.length) return null;
+          const lg = here.some((x) => x.k === 'logo');
+          const txt = here.some((x) => x.k !== 'logo') && <div className="ds-txt">{here.some((x) => x.k === 'co') && coBlock}{here.some((x) => x.k === 'title') && titleBlock(cp)}</div>;
+          return <div key={v} className={`ds-cell ds-cell-${v}`}>{lg && h !== 'right' && logoImg}{txt}{lg && h === 'right' && logoImg}</div>;
+        })}
+      </div>)}
+    </header>;
+  };
+  // สีแถบหัวตาราง/ยอดรวมทั้งสิ้น · ตัวอักษรในตาราง · แถบบนสุด · แบบอักษร (ตัวแปร CSS ที่แผ่น — ไม่ได้ตั้ง = ไม่มี)
   const band = !!(L.band_color || L.band_text_color);
+  useEffect(() => { ensurePrintFont(L.font); }, [L.font]);
   const sheetStyle: CSSProperties = { fontSize: `${L.font_pt}pt`,
+    ...(L.font ? { fontFamily: printFontStack(L.font) } : {}),
     ...(band ? { '--band': L.band_color || undefined, '--band-ink': L.band_text_color || (L.band_color ? inkOn(L.band_color) : undefined) } as CSSProperties : {}),
-    ...(L.body_color ? { '--body-ink': L.body_color } as CSSProperties : {}) };
-  const sheetCls = `doc-sheet b-${form.base}${band ? ' has-band' : ''}${L.body_color ? ' has-body-ink' : ''}`;
+    ...(L.body_color ? { '--body-ink': L.body_color } as CSSProperties : {}),
+    ...(L.top_bar && L.top_bar !== 'none' ? { '--topbar': L.top_bar } as CSSProperties : {}) };
+  const sheetCls = `doc-sheet b-${form.base}${band ? ' has-band' : ''}${L.body_color ? ' has-body-ink' : ''}${L.top_bar === 'none' ? ' no-topbar' : ''}`;
   const bodySize: CSSProperties | undefined = L.body_pt >= 6 ? { fontSize: `${L.body_pt}pt` } : undefined;
   const amountText = data.amount_text ? (en ? bahtTextEn(data.totals.at(-1)?.value ?? '0') : data.amount_text) : '';
   const lab = (th: string) => (en ? printLabelEn(th) : th);
   return (
     <>
       {copies.map((cp, ci) => (
-        <div key={ci} className={sheetCls} style={sheetStyle} lang={en ? 'en' : undefined}>
-          {logo && L.logo === 'center' && <div className="ds-logo-c"><img src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} /></div>}
+        <div key={ci} className={sheetCls} style={sheetStyle} lang={en ? 'en' : undefined} data-font={L.font || undefined}>
+          {logoAbove && <div className="ds-logo-c"><img src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} /></div>}
           {head(cp)}
           <div className="ds-info">
             {L.show_party && data.party ? <div className="ds-party">

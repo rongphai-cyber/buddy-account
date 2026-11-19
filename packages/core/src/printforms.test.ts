@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkApprove, checkPrint, checkUnapprove, copyMark, defaultLayout, sheetCopies, docMenuOf, docPath, normalizeLayout, printFamily, printMenu, printLabelEn, printPartyLabel, printTextEn, printTitle } from './printforms.js';
+import { checkApprove, checkPrint, checkUnapprove, copyMark, defaultLayout, sheetCopies, docMenuOf, docPath, normalizeLayout, printFamily, printMenu, printLabelEn, printPartyLabel, printTextEn, printTitle, PRINT_FONTS, PRINT_POS9 } from './printforms.js';
 import { bahtTextEn } from './baht.js';
 import { formatDateEn } from './date.js';
 
@@ -114,5 +114,28 @@ describe('แบบฟอร์มพิมพ์: ส่วนหัว/ส่�
     expect(bahtTextEn(0)).toBe('Zero Baht Only');
     expect(formatDateEn('2026-11-19')).toBe('19 Nov 2026');
     expect(formatDateEn('2027-01-05')).toBe('5 Jan 2027');
+  });
+});
+
+describe('print form header grid, top bar, font, second name line (HANDOFF 152)', () => {
+  it('old saved forms get the old look: top row, theme top bar, template font, second name line follows the address', () => {
+    const L = normalizeLayout('IV', 'pro', { co_align: 'right', title_align: 'left' });
+    expect([L.logo_v, L.co_v, L.title_v, L.top_bar, L.font, L.co_name2_pt, L.co_name2_color]).toEqual(['top', 'top', 'top', '', '', 0, '']);
+    expect([L.co_align, L.title_align]).toEqual(['right', 'left']);
+  });
+  it('drops bad values: vertical position, top bar colour/none, font outside the list', () => {
+    const L = normalizeLayout('IV', 'pro', { logo_v: 'bottom', co_v: 'middle', title_v: 'up', top_bar: 'none', font: 'Kanit', co_name2_pt: 11, co_name2_color: '#00AA00' });
+    expect([L.logo_v, L.co_v, L.title_v, L.top_bar, L.font, L.co_name2_pt, L.co_name2_color]).toEqual(['bottom', 'middle', 'top', 'none', 'Kanit', 11, '#00aa00']);
+    const M = normalizeLayout('IV', 'pro', { top_bar: 'red', font: 'Comic Sans MS' });
+    expect([M.top_bar, M.font]).toEqual(['', '']);
+    expect(normalizeLayout('IV', 'pro', { top_bar: '#123ABC' }).top_bar).toBe('#123abc');
+  });
+  it('nine positions in reading order', () => {
+    expect(PRINT_POS9.map((p) => p.label)).toEqual(['ซ้ายบน', 'กลางบน', 'ขวาบน', 'ซ้ายกลาง', 'กึ่งกลาง', 'ขวากลาง', 'ซ้ายล่าง', 'กลางล่าง', 'ขวาล่าง']);
+    expect(PRINT_FONTS[0]!.key).toBe('');
+  });
+  it('plain template keeps the company header off by default (pre-printed stationery)', () => {
+    expect([defaultLayout('IV', 'plain').show_company, defaultLayout('IV', 'plain').logo]).toEqual([false, 'none']);
+    expect(defaultLayout('IV', 'pro').show_company).toBe(true);
   });
 });

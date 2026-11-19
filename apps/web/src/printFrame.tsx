@@ -43,6 +43,9 @@ export async function printHtml(html: string, title = document.title): Promise<v
   doc.close();
   // stylesheets, then fonts, then images
   await Promise.all([...doc.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((l) => (l.sheet ? Promise.resolve() : settle(new Promise((ok) => { l.onload = ok; l.onerror = ok; }), 4000))));
+  // the form's chosen font (data-font on the sheet, HANDOFF 152): load regular + bold explicitly, then wait for every pending font
+  const fams = [...new Set([...doc.querySelectorAll<HTMLElement>('[data-font]')].map((n) => n.dataset.font ?? '').filter(Boolean))];
+  if (doc.fonts) await settle(Promise.all(fams.flatMap((fam) => ['400', '600', '700'].map((w) => doc.fonts.load(w + ' 12pt "' + fam + '"', String.fromCharCode(0x0e01, 0x0e02) + ' ABC 123')))), 6000);
   await settle(doc.fonts?.ready ?? Promise.resolve(), 4000);
   await Promise.all([...doc.images].map((img) => settle(img.decode(), 4000)));
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));

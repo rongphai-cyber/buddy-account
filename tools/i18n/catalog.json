@@ -5711,6 +5711,14 @@
 ]
 },
 {
+"th": "กลาง",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "กลุ่มผู้ใช้",
 "n": 3,
 "files": [
@@ -7895,14 +7903,6 @@
 ]
 },
 {
-"th": "กลาง",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/PrintForms.tsx",
-"packages/core/src/printforms.ts"
-]
-},
-{
 "th": "การเชื่อมต่อบัญชี",
 "n": 2,
 "files": [
@@ -8607,14 +8607,6 @@
 ]
 },
 {
-"th": "ชื่อบริษัท",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/NewCompany.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
 "th": "ชื่อบัญชี / คำอธิบาย",
 "n": 2,
 "files": [
@@ -8915,6 +8907,13 @@
 "files": [
 "apps/web/src/components/AddressFields.tsx",
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "ตำแหน่งชื่อเอกสาร",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -12598,6 +12597,13 @@
 ]
 },
 {
+"th": "แถบสีบนสุด",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "แถวที่",
 "n": 2,
 "files": [
@@ -12626,6 +12632,14 @@
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx",
 "apps/server/src/import/express/migrate.ts"
+]
+},
+{
+"th": "แบบอักษร",
+"n": 2,
+"files": [
+"apps/web/src/components/ThemePicker.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -13210,6 +13224,14 @@
 ]
 },
 {
+"th": "ไม่แสดงโลโก้",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx",
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ไม่ได้คีย์เลขที่เอง — ใช้เลขที่อัตโนมัติ {0} (ออกเลขจริงตอนบันทึก · ต้องการเลขเองให้คลิกช่องแล้วพิมพ์)",
 "n": 2,
 "files": [
@@ -13500,6 +13522,13 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "(ชื่อ ที่อยู่ และโลโก้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -15715,6 +15744,13 @@
 ]
 },
 {
+"th": "IBM Plex Sans Thai (แบบอักษรของโปรแกรม)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "IN002 ค่าล่วงเวลา",
 "n": 1,
 "files": [
@@ -15747,6 +15783,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
+"th": "Kanit (ไม่มีหัว หนา)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -15792,6 +15835,13 @@
 ]
 },
 {
+"th": "Noto Sans Thai (อ่านง่าย มีหัว)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "OCR อ่านเพี้ยน",
 "n": 1,
 "files": [
@@ -15831,6 +15881,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AuxTools.tsx"
+]
+},
+{
+"th": "Prompt (ไม่มีหัว ทันสมัย)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -15880,6 +15937,13 @@
 "n": 1,
 "files": [
 "apps/server/src/import/express/migrate.ts"
+]
+},
+{
+"th": "Sarabun (สารบรรณ — แบบหนังสือราชการ)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -18403,6 +18467,20 @@
 ]
 },
 {
+"th": "กลางบน",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "กลางล่าง",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "กลางหน้า (เหนือชื่อบริษัท)",
 "n": 1,
 "files": [
@@ -19208,6 +19286,13 @@
 ]
 },
 {
+"th": "กึ่งกลาง",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "กุญแจ API ของ Anthropic",
 "n": 1,
 "files": [
@@ -19348,6 +19433,13 @@
 ]
 },
 {
+"th": "ขนาดชื่อบริษัทบรรทัดที่สอง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ขนาดชื่อเอกสาร",
 "n": 1,
 "files": [
@@ -19373,6 +19465,27 @@
 "n": 1,
 "files": [
 "apps/web/src/App.tsx"
+]
+},
+{
+"th": "ขวากลาง",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ขวาบน",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ขวาล่าง",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -23310,13 +23423,6 @@
 ]
 },
 {
-"th": "ชื่อ/ที่อยู่กิจการ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
 "th": "ชื่อกลุ่ม",
 "n": 1,
 "files": [
@@ -23405,6 +23511,41 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ชื่อบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/NewCompany.tsx"
+]
+},
+{
+"th": "ชื่อบริษัทภาษาอังกฤษ (บรรทัดที่สอง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ชื่อบริษัทภาษาอังกฤษ (บรรทัดแรก)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ชื่อบริษัทภาษาไทย (บรรทัดที่สอง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ชื่อบริษัทภาษาไทย (บรรทัดแรก)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -24067,6 +24208,27 @@
 },
 {
 "th": "ซ้าย (หน้าชื่อบริษัท)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ซ้ายกลาง",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ซ้ายบน",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ซ้ายล่าง",
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
@@ -25109,6 +25271,13 @@
 ]
 },
 {
+"th": "ตามต้นแบบ (มืออาชีพ = IBM Plex Sans Thai · อื่น ๆ = Sarabun)",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ตามที่พิมพ์บนใบกำกับภาษีของกิจการ",
 "n": 1,
 "files": [
@@ -25162,6 +25331,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ตามสีธีมบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -25305,6 +25481,13 @@
 ]
 },
 {
+"th": "ตำแหน่ง 9 ช่อง: ซ้าย/กลาง/ขวา × บน/กลาง/ล่าง · อยู่ช่องเดียวกัน = ชื่อบริษัทแล้วชื่อเอกสารเรียงลงมา โลโก้อยู่ข้างข้อความ · ข้อความยาวขึ้นบรรทัดใหม่ ไม่ทับกัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ตำแหน่ง {0}",
 "n": 1,
 "files": [
@@ -25319,14 +25502,14 @@
 ]
 },
 {
-"th": "ตำแหน่งชื่อบริษัท/ที่อยู่",
+"th": "ตำแหน่งชื่อบริษัท",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
-"th": "ตำแหน่งชื่อเอกสาร",
+"th": "ตำแหน่งชื่อบริษัท/ที่อยู่",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
@@ -25337,6 +25520,13 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ตำแหน่งโลโก้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -25638,6 +25828,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AuxTools.tsx"
+]
+},
+{
+"th": "ต้นแบบ \"ไม่มีเส้นตาราง\" ปิดส่วนหัวบริษัทไว้ เพราะใช้พิมพ์ลงกระดาษที่พิมพ์ชื่อ/โลโก้บริษัทไว้แล้ว (กระดาษหัวจดหมาย/แบบฟอร์มสำเร็จรูป) — ถ้าใช้กระดาษเปล่า ติ๊ก \"พิมพ์ส่วนหัวบริษัท\" แล้วกดบันทึก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -26296,6 +26493,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "ทั้งแผ่นเอกสาร · ตัวอย่างด้านขวาเปลี่ยนทันที",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -27304,6 +27508,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/doc-types.ts"
+]
+},
+{
+"th": "บน",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -32676,6 +32887,13 @@
 ]
 },
 {
+"th": "พิมพ์ส่วนหัวบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "พิมพ์หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ)",
 "n": 1,
 "files": [
@@ -33912,6 +34130,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "มีเฉพาะต้นแบบมืออาชีพ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -40887,6 +41112,13 @@
 ]
 },
 {
+"th": "ล่าง",
+"n": 1,
+"files": [
+"packages/core/src/printforms.ts"
+]
+},
+{
 "th": "ล้างของตัวเองไม่ได้ — ใช้ บัญชีของฉัน › ยืนยันตัวตนสองขั้น",
 "n": 1,
 "files": [
@@ -42910,7 +43142,7 @@
 ]
 },
 {
-"th": "สำหรับพิมพ์ลงแบบฟอร์มที่พิมพ์เส้นไว้แล้ว",
+"th": "สำหรับพิมพ์ลงแบบฟอร์มที่พิมพ์หัวบริษัทและเส้นไว้แล้ว — จึงไม่พิมพ์ชื่อบริษัทและโลโก้ (ใช้กระดาษเปล่า: แท็บ หัวเอกสาร/สี › ติ๊ก \"พิมพ์ส่วนหัวบริษัท\")",
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
@@ -43225,6 +43457,13 @@
 ]
 },
 {
+"th": "สีชื่อบริษัทบรรทัดที่สอง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "สีชื่อเอกสาร",
 "n": 1,
 "files": [
@@ -43254,6 +43493,13 @@
 },
 {
 "th": "สีแถบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "สีแถบบนสุด",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
@@ -43572,6 +43818,13 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ส่วนหัวบริษัท (ชื่อ ที่อยู่ โลโก้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -47250,14 +47503,14 @@
 ]
 },
 {
-"th": "เดิม = ขวา · ตำแหน่งเดียวกัน = เรียงต่อกันลงมา",
+"th": "เดิม = ขวาบน",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
-"th": "เดิม = ซ้าย",
+"th": "เดิม = ซ้ายบน",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
@@ -50337,6 +50590,13 @@
 ]
 },
 {
+"th": "เลือกสีเอง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "เลือกสีให้แต่ละบริษัทต่างกัน จะได้รู้ทันทีว่ากำลังทำงานบริษัทไหน · สีประจำระบบงาน (ซื้อ ขาย การเงิน ฯลฯ) คงเดิม · ขนาดตัวอักษรปรับที่เบราว์เซอร์ด้วย Ctrl + / Ctrl −",
 "n": 1,
 "files": [
@@ -51464,6 +51724,13 @@
 ]
 },
 {
+"th": "แถบสีเหนือส่วนหัว (ต้นแบบมืออาชีพ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "แถบหัวตาราง/ยอดรวมทั้งสิ้น",
 "n": 1,
 "files": [
@@ -51744,10 +52011,10 @@
 ]
 },
 {
-"th": "แบบอักษร",
+"th": "แบบอักษร (ฟอนต์)",
 "n": 1,
 "files": [
-"apps/web/src/components/ThemePicker.tsx"
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -55160,6 +55427,13 @@
 ]
 },
 {
+"th": "ไม่พิมพ์ชื่อ ที่อยู่ และโลโก้บริษัท (เช่น พิมพ์ลงกระดาษหัวจดหมาย) — ติ๊กเพื่อพิมพ์",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "ไม่มี (สร้างเอง)",
 "n": 1,
 "files": [
@@ -55944,10 +56218,10 @@
 ]
 },
 {
-"th": "ไม่แสดงโลโก้",
+"th": "ไม่แสดง",
 "n": 1,
 "files": [
-"packages/core/src/printforms.ts"
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {

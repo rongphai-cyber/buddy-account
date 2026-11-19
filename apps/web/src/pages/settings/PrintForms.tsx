@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { DOC_CLASSES, normalizeLayout, PRINT_ALIGNS, PRINT_BASES, PRINT_LANGS, PRINT_LOGO_POS, PRINT_HEAD_FIELDS, printFamily, SETTLE_DETAILS, type PrintBase, type PrintFormEntry, type PrintLayout } from '@buddy/core';
+import { DOC_CLASSES, normalizeLayout, PRINT_BASES, PRINT_FONTS, PRINT_LANGS, PRINT_POS9, PRINT_HEAD_FIELDS, printFamily, SETTLE_DETAILS, type PrintAlign, type PrintBase, type PrintFormEntry, type PrintLayout, type PrintVAlign } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
 import { Confirm, ErrorBox, Field, PageHead, Tabs, toast, useHotkeys, useYearSystem } from '../../ui';
@@ -81,6 +81,9 @@ export function PrintFormsPage() {
   useHotkeys({ F9: save, 'Ctrl+S': save });
   // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
   useUnsaved(dirty, { word: 'แบบฟอร์มพิมพ์', save: () => void save() });
+  // พิมพ์ส่วนหัวบริษัท (HANDOFF 152) = ชื่อ/ที่อยู่ + โลโก้ไปด้วยกัน (เปิด: โลโก้ที่ปิดอยู่กลับมาซ้ายบน · ปิด: ไม่พิมพ์โลโก้)
+  const setHeader = (on: boolean) => set(on ? { show_company: true, ...(L?.logo === 'none' ? { logo: 'left', logo_v: 'top' } : {}) } : { show_company: false, logo: 'none' });
+  const pos = (h: PrintAlign, v: PrintVAlign) => `${v}-${h}`;
   const moveCol = (i: number, dir: -1 | 1) => { if (!L) return; const c = [...L.columns]; const j = i + dir; if (j < 0 || j >= c.length) return; [c[i], c[j]] = [c[j]!, c[i]!]; set({ columns: c }); };
 
   return (
@@ -121,14 +124,29 @@ export function PrintFormsPage() {
           </div>}
           {pt === 'look' && <>
           <h3 className="small">ส่วนหัวเอกสาร</h3>
+          <label className="check pf-headon"><input type="checkbox" checked={L.show_company} onChange={(e) => setHeader(e.target.checked)} /> <b>พิมพ์ส่วนหัวบริษัท</b> (ชื่อ ที่อยู่ และโลโก้)</label>
+          {!L.show_company && <p className="muted small pf-why">{base === 'plain'
+            ? 'ต้นแบบ "ไม่มีเส้นตาราง" ปิดส่วนหัวบริษัทไว้ เพราะใช้พิมพ์ลงกระดาษที่พิมพ์ชื่อ/โลโก้บริษัทไว้แล้ว (กระดาษหัวจดหมาย/แบบฟอร์มสำเร็จรูป) — ถ้าใช้กระดาษเปล่า ติ๊ก "พิมพ์ส่วนหัวบริษัท" แล้วกดบันทึก'
+            : 'ไม่พิมพ์ชื่อ ที่อยู่ และโลโก้บริษัท (เช่น พิมพ์ลงกระดาษหัวจดหมาย) — ติ๊กเพื่อพิมพ์'}</p>}
           <div className="form-grid">
-            <Field label="โลโก้บริษัท" hint={images.logo ? undefined : 'ยังไม่มีโลโก้ — อัปโหลดด้านบน'}><select value={L.logo} onChange={(e) => set({ logo: e.target.value as PrintLayout['logo'] })}>{PRINT_LOGO_POS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></Field>
+            <Field label="โลโก้บริษัท" hint={images.logo ? undefined : 'ยังไม่มีโลโก้ — อัปโหลดด้านบน'}><select value={L.logo === 'none' ? 'none' : pos(L.logo, L.logo_v)} aria-label="ตำแหน่งโลโก้" onChange={(e) => { const v = e.target.value; if (v === 'none') set({ logo: 'none' }); else { const [vv, hh] = v.split('-') as [PrintVAlign, PrintAlign]; set({ logo: hh, logo_v: vv }); } }}>
+              {PRINT_POS9.map((p) => <option key={pos(p.h, p.v)} value={pos(p.h, p.v)}>{p.label}</option>)}<option value="none">ไม่แสดงโลโก้</option></select></Field>
             <Field label="ความสูงโลโก้ (มม.)"><input type="number" min={6} max={40} value={L.logo_mm} disabled={L.logo === 'none'} onChange={(e) => set({ logo_mm: Number(e.target.value) || 18 })} /></Field>
-            <Field label="ตำแหน่งชื่อบริษัท/ที่อยู่" hint="เดิม = ซ้าย"><select value={L.co_align} onChange={(e) => set({ co_align: e.target.value as PrintLayout['co_align'] })}>{PRINT_ALIGNS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}</select></Field>
-            <Field label="ตำแหน่งชื่อเอกสาร" hint="เดิม = ขวา · ตำแหน่งเดียวกัน = เรียงต่อกันลงมา"><select value={L.title_align} onChange={(e) => set({ title_align: e.target.value as PrintLayout['title_align'] })}>{PRINT_ALIGNS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}</select></Field>
+            <Field label="ตำแหน่งชื่อบริษัท/ที่อยู่" hint="เดิม = ซ้ายบน"><select value={pos(L.co_align, L.co_v)} disabled={!L.show_company} aria-label="ตำแหน่งชื่อบริษัท" onChange={(e) => { const [vv, hh] = e.target.value.split('-') as [PrintVAlign, PrintAlign]; set({ co_align: hh, co_v: vv }); }}>
+              {PRINT_POS9.map((p) => <option key={pos(p.h, p.v)} value={pos(p.h, p.v)}>{p.label}</option>)}</select></Field>
+            <Field label="ตำแหน่งชื่อเอกสาร" hint="เดิม = ขวาบน"><select value={pos(L.title_align, L.title_v)} aria-label="ตำแหน่งชื่อเอกสาร" onChange={(e) => { const [vv, hh] = e.target.value.split('-') as [PrintVAlign, PrintAlign]; set({ title_align: hh, title_v: vv }); }}>
+              {PRINT_POS9.map((p) => <option key={pos(p.h, p.v)} value={pos(p.h, p.v)}>{p.label}</option>)}</select></Field>
+            <Field label="แถบสีบนสุด" hint={base === 'pro' ? 'แถบสีเหนือส่วนหัว (ต้นแบบมืออาชีพ)' : 'มีเฉพาะต้นแบบมืออาชีพ'}>
+              <span className="pf-color"><select value={L.top_bar === 'none' ? 'none' : L.top_bar ? 'color' : ''} disabled={base !== 'pro'} aria-label="แถบสีบนสุด"
+                onChange={(e) => set({ top_bar: e.target.value === 'none' ? 'none' : e.target.value === 'color' ? (L.top_bar && L.top_bar !== 'none' ? L.top_bar : '#6f5db8') : '' })}>
+                <option value="">ตามสีธีมบริษัท</option><option value="color">เลือกสีเอง</option><option value="none">ไม่แสดง</option></select>
+                {base === 'pro' && L.top_bar && L.top_bar !== 'none' && <input type="color" value={L.top_bar} aria-label="สีแถบบนสุด" onChange={(e) => set({ top_bar: e.target.value })} />}</span></Field>
+            <Field label="แบบอักษร (ฟอนต์)" hint="ทั้งแผ่นเอกสาร · ตัวอย่างด้านขวาเปลี่ยนทันที"><select value={L.font} aria-label="แบบอักษร" onChange={(e) => set({ font: e.target.value })}>{PRINT_FONTS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}</select></Field>
           </div>
+          <p className="muted small">ตำแหน่ง 9 ช่อง: ซ้าย/กลาง/ขวา × บน/กลาง/ล่าง · อยู่ช่องเดียวกัน = ชื่อบริษัทแล้วชื่อเอกสารเรียงลงมา โลโก้อยู่ข้างข้อความ · ข้อความยาวขึ้นบรรทัดใหม่ ไม่ทับกัน</p>
           <table className="grid pf-look"><thead><tr><th>ส่วน</th><th>ขนาดอักษร (pt)</th><th>สี</th></tr></thead><tbody>
-            <tr><th>ชื่อบริษัท</th><td><PtInput label="ขนาดชื่อบริษัท" value={L.co_name_pt} onChange={(v) => set({ co_name_pt: v })} /></td><td><ColorInput label="สีชื่อบริษัท" dflt="#111111" value={L.co_name_color} onChange={(v) => set({ co_name_color: v })} /></td></tr>
+            <tr><th>{L.lang === 'en' ? 'ชื่อบริษัทภาษาอังกฤษ (บรรทัดแรก)' : 'ชื่อบริษัทภาษาไทย (บรรทัดแรก)'}</th><td><PtInput label="ขนาดชื่อบริษัท" value={L.co_name_pt} onChange={(v) => set({ co_name_pt: v })} /></td><td><ColorInput label="สีชื่อบริษัท" dflt="#111111" value={L.co_name_color} onChange={(v) => set({ co_name_color: v })} /></td></tr>
+            <tr><th>{L.lang === 'en' ? 'ชื่อบริษัทภาษาไทย (บรรทัดที่สอง)' : 'ชื่อบริษัทภาษาอังกฤษ (บรรทัดที่สอง)'}</th><td><PtInput label="ขนาดชื่อบริษัทบรรทัดที่สอง" value={L.co_name2_pt} onChange={(v) => set({ co_name2_pt: v })} /></td><td><ColorInput label="สีชื่อบริษัทบรรทัดที่สอง" dflt="#33333d" value={L.co_name2_color} onChange={(v) => set({ co_name2_color: v })} /></td></tr>
             <tr><th>ที่อยู่และข้อมูลบริษัท</th><td><PtInput label="ขนาดที่อยู่บริษัท" value={L.co_info_pt} onChange={(v) => set({ co_info_pt: v })} /></td><td><ColorInput label="สีที่อยู่บริษัท" dflt="#33333d" value={L.co_info_color} onChange={(v) => set({ co_info_color: v })} /></td></tr>
             <tr><th>ชื่อเอกสาร</th><td><PtInput label="ขนาดชื่อเอกสาร" value={L.title_pt} onChange={(v) => set({ title_pt: v })} /></td><td><ColorInput label="สีชื่อเอกสาร" dflt="#6f5db8" value={L.title_color} onChange={(v) => set({ title_color: v })} /></td></tr>
           </tbody></table>
@@ -143,7 +161,8 @@ export function PrintFormsPage() {
           {pt === 'parts' && <>
           <h3 className="small">ส่วนที่พิมพ์</h3>
           <div className="pf-checks">
-            {([['show_company', 'ชื่อ/ที่อยู่กิจการ'], ['show_party', 'ลูกค้า/ผู้จำหน่าย'], ['show_totals', 'ยอดรวมท้ายเอกสาร'], ['show_amount_text', 'จำนวนเงินตัวอักษร'],
+            <label><input type="checkbox" checked={L.show_company} onChange={(e) => setHeader(e.target.checked)} /> ส่วนหัวบริษัท (ชื่อ ที่อยู่ โลโก้)</label>
+            {([['show_party', 'ลูกค้า/ผู้จำหน่าย'], ['show_totals', 'ยอดรวมท้ายเอกสาร'], ['show_amount_text', 'จำนวนเงินตัวอักษร'],
               ['show_payments', 'รายการรับ/จ่ายเงิน'], ['show_notes', 'หมายเหตุ'], ['show_journal', 'รายการบัญชี (ใบสำคัญ)']] as Array<[keyof PrintLayout, string]>).map(([k, t]) =>
               <label key={k}><input type="checkbox" checked={!!L[k]} onChange={(e) => set({ [k]: e.target.checked } as Partial<PrintLayout>)} /> {t}</label>)}
           </div>
