@@ -50,13 +50,63 @@ async function status(db: Db, companyId: string) {
     available: !!k?.key && (limit === null || u.cost.lt(limit)), business_type: (st['ai.business_type'] as string | null) ?? null, guidance: (st['ai.guidance'] as string | null) ?? null };
 }
 
-async function record(db: Db, a: AuthContext & { companyId: string }, v: { model?: string | null; usage?: Anthropic.Beta.BetaUsage | null; cost?: string; status: 'OK' | 'ERROR' | 'REFUSED'; file_name: string; file_size: number; message?: string | null; purpose?: 'BILL' | 'SUGGEST' }) {
+async function record(db: Db, a: AuthContext & { companyId: string }, v: { model?: string | null; usage?: Anthropic.Beta.BetaUsage | null; cost?: string; status: 'OK' | 'ERROR' | 'REFUSED'; file_name: string; file_size: number; message?: string | null; purpose?: 'BILL' | 'SUGGEST' | 'MAP' }) {
   await db.insertInto('sys_ai_usage').values({
     company_id: a.companyId, user_id: a.userId, purpose: v.purpose ?? 'BILL', model: v.model ?? null,
     input_tokens: v.usage?.input_tokens ?? 0, output_tokens: v.usage?.output_tokens ?? 0,
     cache_read_tokens: v.usage?.cache_read_input_tokens ?? 0, cache_write_tokens: v.usage?.cache_creation_input_tokens ?? 0,
     cost_usd: v.cost ?? '0', status: v.status, file_name: v.file_name.slice(0, 200), file_size: v.file_size, message: v.message?.slice(0, 500) ?? null, created_by: a.userId, updated_by: a.userId,
   }).execute();
+}
+
+/** เปิดใช้ AI ได้ไหม (มีกุญแจ ยังไม่ถึงเพดาน) — หน้านำเข้า Excel ซ่อนปุ่ม AI เมื่อใช้ไม่ได้ */
+export async function aiAvailability(db: Db, companyId: string) {
+  const s = await status(db, companyId);
+  return { available: s.available, has_key: s.has_key, model: s.model, monthly_limit_usd: s.monthly_limit_usd, month_cost_usd: s.month_cost_usd };
+}
+/** ข้อผิดพลาดจาก Anthropic → ข้อความไทยบอกวิธีแก้ */
+function aiErrorMessage(e: unknown) {
+  return e instanceof Anthropic.AuthenticationError ? 'กุญแจ API ไม่ถูกต้องหรือถูกยกเลิก — ผู้ดูแลตรวจที่ console.anthropic.com แล้วใส่ใหม่'
+    : e instanceof Anthropic.PermissionDeniedError ? 'บัญชี Anthropic ไม่มีสิทธิ์ใช้รุ่นนี้ หรือเครดิตหมด — ตรวจที่ console.anthropic.com › Billing'
+    : e instanceof Anthropic.RateLimitError ? 'เรียกใช้ถี่เกินกำหนดของบัญชี Anthropic — รอสักครู่แล้วลองใหม่'
+    : e instanceof Anthropic.BadRequestError ? `Anthropic ไม่รับแฟ้มนี้: ${e.message.slice(0, 200)}`
+    : e instanceof Anthropic.APIError ? `บริการ Anthropic ขัดข้อง (${e.status ?? 'เชื่อมต่อไม่ได้'}) — ลองใหม่ภายหลัง`
+    : `เชื่อมต่อ Anthropic ไม่ได้: ${(e as Error).message.slice(0, 200)}`;
+}
+/** กุญแจและเพดานรายเดือน (ก่อนเรียก AI ทุกครั้ง) */
+async function aiPrecheck(db: Db, companyId: string) {
+  const key = await apiKeyOf(db, companyId);
+  if (!key?.key) throw badRequest(key ? 'กุญแจ API ที่เก็บไว้ถอดรหัสไม่ได้ (ย้ายเครื่อง?) — ผู้ดูแลใส่กุญแจใหม่ที่ เริ่มระบบ › AI อ่านบิล' : 'ยังไม่ได้ตั้งค่า AI อ่านบิล — ผู้ดูแลใส่กุญแจ API ที่ เริ่มระบบ › AI อ่านบิล');
+  const limit = await limitOf(db, companyId), used = await monthUsage(db, companyId);
+  if (limit !== null && used.cost.gte(limit)) throw badRequest(`ใช้ AI เดือนนี้ครบเพดาน ${limit} ดอลลาร์แล้ว (ใช้ไป ${used.cost.toFixed(2)}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือป้อนเอง`);
+  return { key: key.key, limit, used: used.cost, model: await modelOf(db, companyId) };
+}
+/**
+ * เรียก Claude ตอบตามโครงข้อมูล (structured outputs) — นำเข้า Excel: จับคู่คอลัมน์ / แนะนำรหัส (HANDOFF 168)
+ * กุญแจ/เพดาน/รุ่นของบริษัทเดียวกับ AI อ่านบิล · บันทึกการใช้ (sys_ai_usage) ทุกครั้ง รวมเพดานเดือนเดียวกัน
+ * ผิดพลาดหลังเรียก = คืน ok:false (ไม่ throw) ให้ผู้เรียกตอบโดยไม่ย้อนบันทึกการใช้
+ */
+export async function aiStructured(db: Db, a: AuthContext & { companyId: string }, o: { purpose: 'MAP' | 'SUGGEST'; file_name: string; file_size: number; system: string; prompt: string; schema: object; effort: 'low' | 'medium'; max_tokens: number }) {
+  const pre = await aiPrecheck(db, a.companyId);
+  let res: Awaited<ReturnType<AiClient['beta']['messages']['parse']>>;
+  try {
+    res = await makeClient(pre.key).beta.messages.parse({
+      ...aiRequestOptions(pre.model), max_tokens: o.max_tokens,
+      output_config: { effort: o.effort, format: jsonSchemaOutputFormat(o.schema as never) },
+      system: o.system, messages: [{ role: 'user', content: o.prompt }],
+    });
+  } catch (e) {
+    const message = aiErrorMessage(e);
+    await record(db, a, { status: 'ERROR', file_name: o.file_name, file_size: o.file_size, purpose: o.purpose, message });
+    return { ok: false as const, status: 502, code: 'AI_FAILED', message };
+  }
+  const cost = aiCost(res.usage, pre.model, res.model);
+  const good = res.stop_reason !== 'refusal' && res.stop_reason !== 'max_tokens' && !!res.parsed_output;
+  const message = good ? null : res.stop_reason === 'refusal' ? 'AI ปฏิเสธงานนี้ — จับคู่เอง' : 'AI ตอบไม่สำเร็จ — ลองอีกครั้ง หรือจับคู่เอง';
+  await record(db, a, { model: res.model, usage: res.usage, cost: cost.toFixed(4), status: good ? 'OK' : res.stop_reason === 'refusal' ? 'REFUSED' : 'ERROR', file_name: o.file_name, file_size: o.file_size, purpose: o.purpose, message });
+  const usage = { model: res.model, cost_usd: cost.toFixed(4), month_cost_usd: pre.used.plus(cost).toFixed(4), monthly_limit_usd: pre.limit };
+  if (!good) return { ok: false as const, status: 422, code: 'AI_UNREADABLE', message: message!, usage };
+  return { ok: true as const, parsed: res.parsed_output as unknown, usage };
 }
 
 export function aiRoutes(app: FastifyInstance, db: Db) {
@@ -159,12 +209,7 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
       messages: [{ role: 'user', content: b.content }],
     });
   } catch (e) {
-    const msg = e instanceof Anthropic.AuthenticationError ? 'กุญแจ API ไม่ถูกต้องหรือถูกยกเลิก — ผู้ดูแลตรวจที่ console.anthropic.com แล้วใส่ใหม่'
-      : e instanceof Anthropic.PermissionDeniedError ? 'บัญชี Anthropic ไม่มีสิทธิ์ใช้รุ่นนี้ หรือเครดิตหมด — ตรวจที่ console.anthropic.com › Billing'
-      : e instanceof Anthropic.RateLimitError ? 'เรียกใช้ถี่เกินกำหนดของบัญชี Anthropic — รอสักครู่แล้วลองใหม่'
-      : e instanceof Anthropic.BadRequestError ? `Anthropic ไม่รับแฟ้มนี้: ${e.message.slice(0, 200)}`
-      : e instanceof Anthropic.APIError ? `บริการ Anthropic ขัดข้อง (${e.status ?? 'เชื่อมต่อไม่ได้'}) — ลองใหม่ภายหลัง`
-      : `เชื่อมต่อ Anthropic ไม่ได้: ${(e as Error).message.slice(0, 200)}`;
+    const msg = aiErrorMessage(e);
     await record(db, a, { status: 'ERROR', file_name: b.file_name, file_size: size, message: b.note ? `${msg} (${b.note})` : msg });
     return fail(502, 'AI_FAILED', msg);
   }

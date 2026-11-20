@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { compareJournalSides, d, formatDate, JOURNAL_IMPORT_COLUMNS, JOURNAL_IMPORT_FORMAT_LABEL, JOURNAL_IMPORT_NEED_LABEL, JOURNAL_IMPORT_TAX_LABEL, journalImportHeader, journalImportKey, journalImportSide, mapJournalImport, ZERO,
-  type ImportIssue, type JournalCompareSide, type JournalImportVoucher, type YearSystem } from '@buddy/core';
+  type ImportIssue, type JournalCompareSide, type JournalImportVoucher, type YearSystem, missingCodeRows } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { AppError, badRequest, forbidden, parse, requireCompany } from '../../http.js';
 import { logActivity } from '../../audit.js';
@@ -10,6 +10,7 @@ import { companySettings } from '../../company-template.js';
 import { buildXlsx } from '../../xlsx.js';
 import { allowedFor } from '../permissions.js';
 import { readTable } from '../trade-import.js';
+import { codesBody, mappingBody, transformTable } from '../import-map.js';
 import { branchOf } from '../docs/payments.js';
 import { createJournal, periodFor, updateJournal } from './journals.js';
 import { addManualVat } from '../vat.js';
@@ -247,6 +248,8 @@ const importBody = z.object({
   file_name: z.string().trim().min(1).max(200), data: z.string().min(1, 'เลือกแฟ้ม').max(Math.ceil(MAX_FILE * 1.4) + 200, 'แฟ้มใหญ่เกิน 10 MB'), commit: z.boolean().default(false),
   // the choice for each duplicate voucher, keyed by book|group from the check result (never a journal id)
   actions: z.record(z.string().max(80), z.enum(['skip', 'overwrite', 'new'])).optional(),
+  /** ให้ AI จัดรูปแบบ Excel (HANDOFF 168): การจับคู่คอลัมน์ที่ผู้ใช้ยืนยัน · เลขที่บัญชีที่ยอมรับจากคำแนะนำ (แถว → เลขที่บัญชี) */
+  mapping: mappingBody.optional(), codes: codesBody,
 });
 
 export function journalImportRoutes(app: FastifyInstance, db: Db) {
@@ -300,13 +303,14 @@ export function journalImportRoutes(app: FastifyInstance, db: Db) {
     const b = parse(importBody, req.body);
     if (!(await allowedFor(db, a, 'GL.JNL', 'add')).allowed) throw forbidden('ไม่มีสิทธิ์เพิ่มใบสำคัญ — นำเข้าไม่ได้');
     const co = await db.selectFrom('sys_company').select('year_system').where('id', '=', a.companyId).executeTakeFirstOrThrow();
-    const rows = readTable(b.file_name, Buffer.from(b.data.replace(/^data:[^,]*,/, ''), 'base64'));
+    const tf = transformTable(readTable(b.file_name, Buffer.from(b.data.replace(/^data:[^,]*,/, ''), 'base64')), 'journal', b.mapping, b.codes);
+    const rows = tf.table;
     const { vouchers, errors, hasTax } = mapJournalImport(rows, co.year_system as YearSystem);
     if (Object.values(b.actions ?? {}).includes('overwrite') && !(await allowedFor(db, a, 'GL.JNL', 'edit')).allowed) throw forbidden('ไม่มีสิทธิ์แก้ไขใบสำคัญ — เลือก "สร้างเป็นเอกสารใหม่" หรือ "ไม่นำเข้า" แทน "ทับเอกสารเดิม"');
     const r = await importJournals(db, a, vouchers, errors, b.commit, { actions: b.actions, hasTax });
     const saved = r.vouchers.filter((x) => x.status === 'created' || x.status === 'overwritten');
     if (b.commit) await logActivity(db, a, { module: 'GL', action: 'IMPORT', docNo: saved[0]?.voucher_no ?? null, detail: { file: b.file_name, created: saved.filter((x) => x.status === 'created').length,
-      overwritten: saved.filter((x) => x.status === 'overwritten').map((x) => x.voucher_no), skipped: r.vouchers.filter((x) => x.status === 'skipped').length, first: saved[0]?.voucher_no, last: saved.at(-1)?.voucher_no } });
-    return { ...r, file_vouchers: vouchers.length };
+      overwritten: saved.filter((x) => x.status === 'overwritten').map((x) => x.voucher_no), skipped: r.vouchers.filter((x) => x.status === 'skipped').length, first: saved[0]?.voucher_no, last: saved.at(-1)?.voucher_no, mapped: tf.mapped, codes: Object.keys(b.codes ?? {}).length } });
+    return { ...r, file_vouchers: vouchers.length, mapped: tf.mapped, skipped_rows: tf.skipped, row_shift: tf.rowShift, need_codes: b.commit ? [] : missingCodeRows(rows, 'journal') };
   });
 }

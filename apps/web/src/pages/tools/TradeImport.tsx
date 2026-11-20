@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { formatTaxId, IMPORT_DOC_KINDS } from '@buddy/core';
+import { formatTaxId, IMPORT_DOC_KINDS, type ImportMapping } from '@buddy/core';
+import { CodeSuggestPanel, ImportMapPanel, useImportMap } from '../../components/ImportMapping';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { Confirm, DateText, ErrorBox, Field, KeyHints, Money, PageHead, Pill, toast, useHotkeys } from '../../ui';
@@ -10,7 +11,8 @@ const IMPORT_KINDS = IMPORT_DOC_KINDS;
 
 type DocRow = { ref: string; row: number; date: string; party_code: string; party_name: string | null; party_new: boolean; lines: number; new_items: number; amount: string | null; vat_amount: string | null; wht_amount: string | null; net_amount: string | null; doc_no: string | null; warnings: string[] };
 type Masters = { parties: Array<{ code: string; name: string; tax_id: string | null; tax_branch_no: string; row: number }>; items: Array<{ code: string; name: string; kind: '0' | '3'; unit: string | null; row: number }>; units: string[] };
-type Result = { ok: boolean; committed: boolean; price_type: string; vat_rate: string; create_masters: boolean; docs: DocRow[]; errors: Array<{ row: number; message: string }>; file_docs: number; total_net: string; new_masters: Masters };
+type Result = { ok: boolean; committed: boolean; price_type: string; vat_rate: string; create_masters: boolean; docs: DocRow[]; errors: Array<{ row: number; message: string }>; file_docs: number; total_net: string; new_masters: Masters;
+  mapped: boolean; skipped_rows: number[]; row_shift: number; need_codes: Array<{ row: number; text: string; amount: string }> };
 type Defaults = { types: Array<{ id: string; code: string; name_th: string; price_type: string | null; vat_rate: string | null }>; vat_rate: number | string; price_type: string };
 
 /** ดาวน์โหลดแบบฟอร์มตัวอย่าง (คุกกี้ session) */
@@ -40,6 +42,8 @@ export function TradeImportPage() {
   const [path, setPath] = useState(from?.path ?? kinds[0]?.path ?? 'sales-invoices');
   const K = IMPORT_KINDS.find((k) => k.path === path) ?? IMPORT_KINDS[0]!;
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<Defaults>(`/api/v1/trade-defaults/${K.cls}`) });
+  // files in other layouts: map columns by hand or with AI (HANDOFF 168)
+  const im = useImportMap(K.path, K.cash ? 'expense' : 'trade');
   const [docType, setDocType] = useState('');
   const [priceType, setPriceType] = useState('');
   const [vatRate, setVatRate] = useState('');
@@ -58,11 +62,12 @@ export function TradeImportPage() {
     setVatRate(String(Number(t.vat_rate ?? defs.data.vat_rate ?? 7)));
   }, [defs.data, docType]);
   const reset = () => { setRes(null); setErr(null); };
-  const run = async (commit: boolean, f = file, createMasters = masters) => {
+  const run = async (commit: boolean, f = file, createMasters = masters, m: ImportMapping | null = im.mapping, codes: Record<string, string> = im.codes) => {
     if (!f || !docType || busy) return;
     setBusy(true); setErr(null);
     try {
-      const r = await api.post<Result>(`/api/v1/trade-import/${K.path}`, { file_name: f.name, data: f.data, doc_type_id: docType, price_type: priceType, vat_rate: vatRate, create_masters: createMasters, commit });
+      const r = await api.post<Result>(`/api/v1/trade-import/${K.path}`, { file_name: f.name, data: f.data, doc_type_id: docType, price_type: priceType, vat_rate: vatRate, create_masters: createMasters, commit,
+        ...(m ? { mapping: m } : {}), ...(Object.keys(codes).length ? { codes } : {}) });
       setRes(r);
       if (commit) {
         const nm = r.new_masters.parties.length + r.new_masters.items.length;
@@ -74,8 +79,9 @@ export function TradeImportPage() {
   const pick = async (f: File | undefined) => {
     if (!f) return;
     reset();
-    try { const v = { name: f.name, data: await readBase64(f) }; setFile(v); await run(false, v); } catch (e) { setErr(e); }
+    try { const v = { name: f.name, data: await readBase64(f) }; setFile(v); await im.start(v, (m, c) => run(false, v, masters, m, c)); } catch (e) { setErr(e); }
   };
+  im.bind((m, c) => run(false, file, masters, m, c));
   const ready = !!res && !res.committed && res.ok && res.docs.length > 0;
   const back = from ? () => nav(from.route) : undefined;
   useHotkeys({ F9: can('add') && ready ? () => setAsk(true) : undefined, Escape: back && !ask ? back : undefined }, [ready, ask, back]);
@@ -94,7 +100,7 @@ export function TradeImportPage() {
       <div className="card ti-steps">
         <div className="form-grid">
           <Field label="1. ชนิดเอกสาร" req>
-            <select value={path} onChange={(e) => { setPath(e.target.value); setDocType(''); setFile(null); reset(); }}>
+            <select value={path} onChange={(e) => { setPath(e.target.value); setDocType(''); setFile(null); reset(); im.reset(); }}>
               <optgroup label="ขาย">{kinds.filter((k) => k.module === 'AR').map((k) => <option key={k.path} value={k.path}>{k.label}</option>)}</optgroup>
               <optgroup label="ซื้อ">{kinds.filter((k) => k.module === 'AP').map((k) => <option key={k.path} value={k.path}>{k.label}</option>)}</optgroup>
             </select>
@@ -120,13 +126,17 @@ export function TradeImportPage() {
         </div>
       </div>
       <ErrorBox error={err ?? defs.error} />
-      {res && <>
+      <ImportMapPanel im={im} busy={busy} />
+      {res && !im.review && <>
         <div className="ti-summary">
           {res.committed ? <Pill tone="n">✓ นำเข้าแล้ว {res.docs.length} ฉบับ</Pill> : res.ok ? <Pill tone="n">พร้อมนำเข้า {res.docs.length} ฉบับ</Pill> : <Pill tone="x">ต้องแก้ {res.errors.length} รายการ</Pill>}
           <span>ยอดรวม <b><Money v={res.total_net} /></b> บาท</span>
           {!res.committed && !res.ok && <span className="muted small">ผ่านการตรวจ {res.docs.length} จาก {res.file_docs} เอกสาร — แก้ในแฟ้มแล้วเลือกแฟ้มใหม่ (ไม่มีอะไรถูกบันทึก)</span>}
           {warnCount > 0 && <span className="warn-text small">มีคำเตือน {warnCount} ฉบับ (บันทึกได้)</span>}
+          {res.skipped_rows?.length > 0 && <span className="muted small">ไม่นำเข้าแถว {res.skipped_rows.slice(0, 12).join(', ')}{res.skipped_rows.length > 12 ? ' …' : ''} (รวม/หัวตารางซ้ำ/ไม่มีข้อมูล)</span>}
+          {res.row_shift > 0 && <span className="muted small">แฟ้มไม่มีหัวตาราง — เลขแถวในรายการ = แถวในแฟ้ม + 1</span>}
         </div>
+        {!res.committed && file && <CodeSuggestPanel im={im} need={res.need_codes ?? []} fileName={file.name} aiAvailable={!!im.analysis?.ai.available} busy={busy} />}
         {newCount > 0 && <div className="card ti-new">
           <h3>{res.committed ? 'เพิ่มข้อมูลหลักใหม่แล้ว' : 'จะเพิ่มใหม่'} — {nm!.parties.length > 0 && <>{partyTh}ใหม่ <b>{nm!.parties.length}</b> ราย</>}{nm!.parties.length > 0 && nm!.items.length > 0 && ' · '}{nm!.items.length > 0 && <>สินค้าใหม่ <b>{nm!.items.length}</b> รายการ</>}{nm!.units.length > 0 && <> · หน่วยนับใหม่ {nm!.units.join(', ')}</>}</h3>
           {!res.committed && <p className="muted small">เพิ่มพร้อมกับเอกสารเมื่อกดนำเข้า (ยังไม่บันทึก) · รหัสที่ไม่ได้ใส่ในแฟ้ม ระบบออกต่อจากรหัสล่าสุด · แก้รายละเอียดอื่นได้ภายหลังที่หน้ารายละเอียด{partyTh}/สินค้า</p>}

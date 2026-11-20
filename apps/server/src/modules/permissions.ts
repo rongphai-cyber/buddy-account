@@ -261,6 +261,8 @@ export const API_RULES: Record<string, Rule> = {
   // นำเข้ารายการขาย/ซื้อจาก Excel: สิทธิ์เมนูนำเข้า + (ตรวจในคำขอ) สิทธิ์เพิ่มเอกสารชนิดนั้น
   'GET /api/v1/gl/journal-import/template': M('GL.JNL', 'read'), 'POST /api/v1/gl/journal-import': M('GL.JNL', 'add'),
   'GET /api/v1/trade-import/:path/template': M('OT.IMPTRADE', 'read'), 'POST /api/v1/trade-import/:path': M('OT.IMPTRADE', 'add'),
+  // ให้ AI จัดรูปแบบ Excel (HANDOFF 168): ใบสำคัญ = สิทธิ์เพิ่มใบสำคัญ · ขาย/ซื้อ/ค่าใช้จ่าย = นำเข้ารายการขาย/ซื้อ (ตัวจัดการตรวจสิทธิ์เพิ่มเอกสารชนิดนั้นด้วย)
+  ...Object.fromEntries(['analyze', 'ai', 'save', 'suggest'].map((x) => [`POST /api/v1/import-map/${x}`, { kind: 'menu', menu: 'OT.IMPTRADE', action: 'add', pick: async (req) => ((req.body as { target?: string } | undefined)?.target === 'journal' ? 'GL.JNL' : 'OT.IMPTRADE') } as Rule])),
   'POST /api/v1/kits/:id/copy': M('IC.KIT', 'add'),
   'GET /api/v1/items/:id/prices': M('IC.PRICE', 'read'), 'PUT /api/v1/items/:id/prices': M('IC.PRICE', 'edit'),
   'GET /api/v1/items/:id/reorder': M('IC.REORDER', 'read'), 'PUT /api/v1/items/:id/reorder': M('IC.REORDER', 'edit'),

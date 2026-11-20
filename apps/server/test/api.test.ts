@@ -5420,6 +5420,145 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect(await count(sql`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND detail->>'file' = 'b.csv'`)).toBe(0);
   });
 
+  it('HANDOFF 168: AI maps a messy Excel (mocked — header + sample only), mapping applied to every row, remembered per company/kind/header, code suggestions, AI usage logged, no leak to another tenant', async () => {
+    process.env.BUDDY_SECRET_KEY = Buffer.alloc(32, 7).toString('base64');
+    const prompts: string[] = [];
+    let calls = 0, expCode = '';
+    const MAP = { header_row: 2, columns: [{ target: 'ref', source: 0, constant: '' }, { target: 'date', source: 1, constant: '' }, { target: 'party_name', source: 2, constant: '' }, { target: 'description', source: 3, constant: '' },
+      { target: 'code', source: 4, constant: '' }, { target: 'amount', source: 5, constant: '' }, { target: 'bogus', source: 1, constant: '' }], date_order: 'dmy', year: 'be', decimal: 'dot', group: 'continue', skip_words: ['รวม'], notes: 'ตรวจปี พ.ศ.' };
+    setAiClientFactory(() => ({ beta: { messages: { parse: async (params: Record<string, any>) => {
+      calls++; prompts.push(JSON.stringify(params.messages));
+      expect(params.model).toBe('claude-haiku-5-5');
+      expect(JSON.stringify(params.output_config.format)).not.toMatch(/anyOf|"null"/);
+      return String(params.system).includes('จับคู่คอลัมน์')
+        ? { model: 'claude-haiku-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 400 }, parsed_output: MAP }
+        : { model: 'claude-haiku-5-5', stop_reason: 'end_turn', usage: { input_tokens: 1000, output_tokens: 100 }, parsed_output: { lines: [{ index: 0, code: expCode, confidence: 'medium', reason: 'ค่าเดินทาง' }, { index: 5, code: 'NOT-IN-LIST', confidence: 'high', reason: 'x' }] } };
+    } } } }) as never);
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expCode = (await call('GET', '/api/v1/other-expenses?status=A')).body.rows[0].code;
+    const oeType = (await call('GET', '/api/v1/trade-defaults/OE')).body.types[0].id;
+    const fillers = Array.from({ length: 30 }, (_, i) => [`F-${i + 1}`, '17/07/2569', 'แท็กซี่', `ค่าแท็กซี่ FILLER-${i + 1}`, expCode, '10']);
+    const messy = csv([['รายงานค่าใช้จ่าย ก.ค. 2569'], [''], ['เลขที่', 'ว/ด/ป', 'จ่ายให้', 'รายการ', 'รหัส', 'ยอดเงิน'],
+      ['M-1', '15 ก.ค. 2569', 'ผู้ขายเดิม', 'ค่าขนส่ง', expCode, '"1,000.00"'], ['', '', '', 'ค่าทางด่วน', expCode, '50.00'],
+      ['M-2', '16/07/69', 'แท็กซี่หน้าบริษัท', 'ค่าแท็กซี่ไปธนาคาร', '', '120'], ['', '', '', 'รวมทั้งสิ้น', '', '"1,170.00"'], ...fillers]);
+    const file = { target: 'other-expense-docs', file_name: 'ค่าใช้จ่าย-OCR.csv', data: messy };
+    const aiRows = async (purpose: string) => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_ai_usage WHERE company_id = ${co} AND purpose = ${purpose} AND status = 'OK'`.execute(database.db)).rows[0]!.n;
+
+    // ยังไม่เปิด AI: ตรวจรูปแบบได้ (ไม่ตรงแบบฟอร์ม ไม่มีการจับคู่ที่บันทึก) แต่เรียก AI ไม่ได้
+    const a0 = (await call('POST', '/api/v1/import-map/analyze', file)).body;
+    expect(a0).toMatchObject({ target: 'expense', matches: false, saved: null, ai: { available: false, has_key: false }, total_rows: 37, width: 6 });
+    expect(a0.preview).toHaveLength(37);
+    expect((await call('POST', '/api/v1/import-map/ai', file)).body.error.message).toMatch(/ยังไม่ได้ตั้งค่า AI/);
+    expect(calls).toBe(0);
+    // แฟ้มตามแบบฟอร์มอยู่แล้ว = ตรง
+    expect((await call('POST', '/api/v1/import-map/analyze', { ...file, data: csv([['เลขที่อ้างอิง', 'วันที่', 'รหัสค่าใช้จ่าย', 'จำนวนเงิน'], ['A', '1/7/2569', expCode, '1']]) })).body.matches).toBe(true);
+
+    expect((await call('PUT', '/api/v1/ai/config', { api_key: 'sk-ant-api03-MAP168_' + 'q'.repeat(30) + 'aa11', monthly_limit_usd: 20, model: 'claude-haiku-5-5' })).body.has_key).toBe(true);
+    expect((await call('POST', '/api/v1/import-map/analyze', file)).body.ai).toMatchObject({ available: true, model: 'claude-haiku-5-5' });
+    const mapBefore = await aiRows('MAP');
+    const ai = await call('POST', '/api/v1/import-map/ai', file);
+    expect(ai.status).toBe(200);
+    expect(calls).toBe(1);
+    // ส่งเฉพาะต้นแฟ้ม (25 แถว) — แถวท้ายแฟ้มไม่ถูกส่ง
+    expect(prompts[0]).toMatch(/ค่าขนส่ง/); expect(prompts[0]).toMatch(/FILLER-18/); expect(prompts[0]).not.toMatch(/FILLER-19|FILLER-30/);
+    expect(ai.body.mapping.columns.map((c: { target: string }) => c.target)).toEqual(['ref', 'date', 'party_name', 'description', 'code', 'amount']);   // ช่องที่ไม่รู้จักถูกตัด
+    expect(ai.body.usage).toMatchObject({ model: 'claude-haiku-5-5', cost_usd: '0.0005' });
+    expect(await aiRows('MAP')).toBe(mapBefore + 1);
+    const mapping = ai.body.mapping;
+
+    // ตรวจด้วยการจับคู่: ทุกแถว (ไม่ใช่แค่ตัวอย่าง) · แถวต่อเนื่องรวมเข้าเอกสารด้านบน · แถวรวมไม่นำเข้า · แถวไม่มีรหัส = ให้แนะนำรหัส
+    const url = '/api/v1/trade-import/other-expense-docs';
+    const base = { file_name: file.file_name, data: messy, doc_type_id: oeType, price_type: '2', vat_rate: 7, create_masters: true };
+    const c1 = (await call('POST', url, { ...base, mapping })).body;
+    expect(c1.mapped).toBe(true);
+    expect(c1.skipped_rows).toEqual([7]);
+    expect(c1.need_codes).toEqual([{ row: 6, text: 'ค่าแท็กซี่ไปธนาคาร', amount: '120' }]);
+    expect(c1.errors.map((e: { row: number }) => e.row)).toEqual([6]);
+    expect(c1.docs).toHaveLength(31);
+    expect(c1.docs[0]).toMatchObject({ ref: 'M-1', row: 4, date: '2026-07-15', party_code: 'IMP-S1', lines: 2, amount: '1050.00' });
+    // แนะนำรหัส: ประวัติ/ชื่อรหัสก่อน (ไม่เรียก AI) · กด AI = เรียกครั้งเดียวเฉพาะแถวที่เหลือ · รหัสนอกรายการไม่รับ
+    const sBody = { target: 'other-expense-docs', file_name: file.file_name, items: c1.need_codes };
+    const s0 = (await call('POST', '/api/v1/import-map/suggest', sBody)).body;
+    expect(calls).toBe(1);
+    expect(s0.kind).toBe('expense');
+    const sugBefore = await aiRows('SUGGEST');
+    const s1 = (await call('POST', '/api/v1/import-map/suggest', { ...sBody, use_ai: true })).body;
+    expect(s0.rows[0].suggestion).toBeNull();   // ไม่มีประวัติ/ชื่อรหัสที่ตรง → เหลือให้ AI
+    {
+      expect(calls).toBe(2);
+      expect(s1.rows[0].suggestion).toMatchObject({ code: expCode, source: 'ai', confidence: 'medium' });
+      expect(await aiRows('SUGGEST')).toBe(sugBefore + 1);
+    }
+    // ยอมรับรหัส → ตรวจผ่าน
+    const c2 = (await call('POST', url, { ...base, mapping, codes: { 6: expCode } })).body;
+    expect(c2.errors).toEqual([]); expect(c2.need_codes).toEqual([]);
+    expect(c2.total_net).toBe('1572.90');   // 1,050 + 120 + 30 × 10 = 1,470 + VAT 7%
+    // ยืนยันการจับคู่ → จำไว้ (บริษัทนี้ · ค่าใช้จ่ายอื่น · ลายมือหัวตาราง)
+    const sv = await call('POST', '/api/v1/import-map/save', { target: 'other-expense-docs', header: ['เลขที่', 'ว/ด/ป', 'จ่ายให้', 'รายการ', 'รหัส', 'ยอดเงิน'], mapping, company_id: 'x' });
+    expect(sv.status).toBe(200);
+    const keys = (await sql<{ key: string; company_id: string }>`SELECT key, company_id FROM sys_setting WHERE key LIKE 'imp.map.%' AND deleted_at IS NULL`.execute(database.db)).rows;
+    expect(keys).toEqual([{ key: `imp.map.OE.${sv.body.signature}`, company_id: co }]);
+    // แฟ้มรูปแบบเดิมครั้งต่อไป (หัวรายงานต่างกัน หัวตารางอยู่แถวแรก) → ใช้การจับคู่ที่บันทึก ไม่เรียก AI
+    const again = csv([['เลขที่', 'ว/ด/ป', 'จ่ายให้', 'รายการ', 'รหัส ', 'ยอดเงิน'], ['M-9', '18/07/2569', 'ผู้ขายเดิม', 'ค่าน้ำมัน', '', '300']]);
+    const a2 = (await call('POST', '/api/v1/import-map/analyze', { ...file, data: again })).body;
+    expect(a2.matches).toBe(false);
+    expect(a2.saved).toMatchObject({ signature: sv.body.signature, mapping: { header_row: 0, group: 'continue', year: 'be' } });
+    expect(calls).toBe(2);
+    // นำเข้าจริง (แฟ้มแรก + รหัสที่ยอมรับ): ลงบัญชีด้วย saveCash เดิม
+    const cm = await call('POST', url, { ...base, mapping, codes: { 6: expCode }, commit: true });
+    expect(cm.body.error?.message ?? 'ok').toBe('ok');
+    const oh = (await sql<{ your_ref: string; net_amount: string; party_name: string; gl_posted: string }>`SELECT your_ref, net_amount, party_name, gl_posted FROM doc_header WHERE company_id = ${co} AND doc_class = 'OE' AND your_ref IN ('M-1', 'M-2') AND doc_status <> 'C' ORDER BY your_ref`.execute(database.db)).rows;
+    expect(oh).toEqual([{ your_ref: 'M-1', net_amount: '1123.50', party_name: 'ผู้ขายเดิม', gl_posted: 'Y' }, { your_ref: 'M-2', net_amount: '128.40', party_name: 'แท็กซี่หน้าบริษัท', gl_posted: 'Y' }]);
+    expect((await sql<{ d: { mapped: boolean; codes: number } }>`SELECT detail AS d FROM sys_activity_log WHERE company_id = ${co} AND action = 'IMPORT' AND detail->>'file' = ${file.file_name}`.execute(database.db)).rows[0]!.d).toMatchObject({ mapped: true, codes: 1 });
+
+    // ใบสำคัญจากโปรแกรมอื่น: ไม่มีหัวตาราง · สมุดเป็นค่าคงที่ · แถวว่างเลขที่ = รายการต่อ
+    const B = (await call('GET', '/api/v1/gl/books')).body.find((b: { code: string }) => b.code === '00') as { code: string; prefix: string | null };
+    const jFile = csv([['15/07/2569', 'ADJ-168', 'ค่าเช่า ก.ค.', '5380-06', '"1,000.00"', ''], ['', '', '', '1111-00', '', '"1,000.00"']]);
+    expect((await call('POST', '/api/v1/import-map/analyze', { target: 'journal', file_name: 'gl.csv', data: jFile })).body).toMatchObject({ target: 'journal', matches: false, saved: null });
+    const jm = { header_row: -1, columns: [{ target: 'book', source: -1, constant: B.prefix?.trim() || B.code }, { target: 'date', source: 0, constant: '' }, { target: 'ref', source: 1, constant: '' }, { target: 'description', source: 2, constant: '' },
+      { target: 'account', source: 3, constant: '' }, { target: 'debit', source: 4, constant: '' }, { target: 'credit', source: 5, constant: '' }], date_order: 'dmy', year: 'be', decimal: 'dot', group: 'continue', skip_words: [], notes: '' };
+    const jr = (await call('POST', '/api/v1/gl/journal-import', { file_name: 'gl.csv', data: jFile, mapping: jm })).body;
+    expect(jr).toMatchObject({ ok: true, mapped: true, row_shift: 1, import_count: 1, total_debit: '1000.00', total_credit: '1000.00' });
+    expect((await call('POST', '/api/v1/import-map/save', { target: 'journal', header: [], mapping: jm })).body.error.message).toMatch(/ไม่มีหัวตาราง/);
+
+    // ผู้ใช้ไม่มีสิทธิ์นำเข้า
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'imp.clerk', password: 'clerkImp123' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('POST', '/api/v1/import-map/analyze', file)).status).toBe(403);
+    expect((await call('POST', '/api/v1/import-map/analyze', { ...file, target: 'journal' })).status).toBe(403);
+    // ลูกค้าอื่น (tenant B): ไม่เห็นการจับคู่ของ DEMO · ใช้กุญแจ AI ของ DEMO ไม่ได้ · บันทึกการจับคู่เป็นของบริษัทตัวเอง · แนะนำรหัสจากข้อมูลของตัวเอง
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    const bCo = (await call('GET', '/api/v1/auth/me')).body.companies[0].id as string;
+    await call('POST', '/api/v1/auth/select', { company_id: bCo });
+    const n0 = calls;
+    const b1 = (await call('POST', '/api/v1/import-map/analyze', { ...file, data: again, company_id: co })).body;
+    expect(b1.saved).toBeNull();
+    expect(b1.ai).toMatchObject({ available: false, has_key: false });
+    expect((await call('POST', '/api/v1/import-map/ai', { ...file, company_id: co })).body.error.message).toMatch(/ยังไม่ได้ตั้งค่า AI/);
+    expect(calls).toBe(n0);
+    const bs = await call('POST', '/api/v1/import-map/save', { target: 'other-expense-docs', header: ['เลขที่', 'ว/ด/ป', 'จ่ายให้', 'รายการ', 'รหัส', 'ยอดเงิน'], mapping: { ...mapping, notes: 'B' } });
+    expect(bs.body.signature).toBe(sv.body.signature);
+    const all = (await sql<{ company_id: string; notes: string }>`SELECT company_id, value->'mapping'->>'notes' AS notes FROM sys_setting WHERE key = ${`imp.map.OE.${sv.body.signature}`} AND deleted_at IS NULL ORDER BY notes`.execute(database.db)).rows;
+    expect(all).toEqual([{ company_id: bCo, notes: 'B' }, { company_id: co, notes: 'ตรวจปี พ.ศ.' }]);
+    const bSug = (await call('POST', '/api/v1/import-map/suggest', { target: 'other-expense-docs', items: [{ row: 2, text: 'ค่าแท็กซี่ไปธนาคาร', amount: '120' }], use_ai: true })).body;
+    // ไม่มีแถวเหลือให้ AI = ไม่เรียก · มีแถวเหลือ = ต้องเปิด AI ของบริษัทตัวเองก่อน (กุญแจของ DEMO ใช้ไม่ได้)
+    if (bSug.error) expect(bSug.error.message).toMatch(/ยังไม่ได้ตั้งค่า AI/);
+    expect(calls).toBe(n0);
+    const bLocal = (await call('POST', '/api/v1/import-map/suggest', { target: 'other-expense-docs', items: [{ row: 2, text: 'ค่าแท็กซี่ไปธนาคาร', amount: '120' }] })).body;
+    const bCodes = new Set((await sql<{ code: string }>`SELECT code FROM md_item WHERE company_id = ${bCo}`.execute(database.db)).rows.map((r) => r.code));
+    for (const x of bLocal.rows[0].alternatives) expect(bCodes.has(x.code)).toBe(true);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_ai_usage WHERE company_id = ${bCo}`.execute(database.db)).rows[0]!.n).toBe(0);
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('PUT', '/api/v1/ai/config', { api_key: null, monthly_limit_usd: 20 })).body.has_key).toBe(false);
+  });
+
   it('journal import (เจ้าของ 17/11/2569): template, check without saving, all-or-nothing commit via createJournal, line description default, duplicate ref, rights, other tenants', async () => {
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { CASH_KINDS, computeDoc, d, EXPENSE_IMPORT_COLUMNS, formatDate, IMPORT_COLUMNS, mapExpenseImport, mapImport, parseCsv, TRADE_KINDS, wht50FormOf, WHT_INCOME_TYPES, whtRateOf, xlsxSharedStrings, xlsxSheetRows,
+import { CASH_KINDS, computeDoc, d, EXPENSE_IMPORT_COLUMNS, formatDate, IMPORT_COLUMNS, mapExpenseImport, mapImport, missingCodeRows, parseCsv, TRADE_KINDS, wht50FormOf, WHT_INCOME_TYPES, whtRateOf, xlsxSharedStrings, xlsxSheetRows,
   type CashKind, type ImportIssue, type TradeKind, type YearSystem, ZERO } from '@buddy/core';
 import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
@@ -12,6 +12,7 @@ import { allowedFor } from './permissions.js';
 import { saveTrade, tradeBody } from './docs/trade.js';
 import { cashBody, saveCash } from './docs/cashdocs.js';
 import { createMasters, masterRightIssues, planItems, planParties, type PartyHit, type PlannedItem, type PlannedParty } from './import-masters.js';
+import { codesBody, mappingBody, transformTable } from './import-map.js';
 
 /**
  * นำเข้ารายการขาย/ซื้อจากแฟ้ม Excel (ข้อกำหนดเจ้าของข้อ 7, 30/10/2569)
@@ -109,6 +110,8 @@ const importBody = z.object({
   price_type: z.enum(['0', '1', '2']).optional(), vat_rate: z.union([z.number(), z.string()]).optional(), commit: z.boolean().default(false),
   /** เพิ่มลูกค้า/ผู้จำหน่าย/สินค้าที่ยังไม่มีให้อัตโนมัติ (HANDOFF 167 · หน้าจอติ๊กไว้เป็นค่าเริ่มต้น) — ไม่ส่ง = ไม่เพิ่ม (กุญแจ API/หน้าจอเดิม) */
   create_masters: z.boolean().default(false),
+  /** ให้ AI จัดรูปแบบ Excel (HANDOFF 168): การจับคู่คอลัมน์ที่ผู้ใช้ยืนยัน · รหัสที่ยอมรับจากคำแนะนำ (แถว → รหัส) */
+  mapping: mappingBody.optional(), codes: codesBody,
 });
 type Result = { ref: string; row: number; date: string; party_code: string; party_name: string | null; party_new: boolean; lines: number; new_items: number; amount: string | null; vat_amount: string | null; wht_amount: string | null; net_amount: string | null; doc_no: string | null; warnings: string[] };
 
@@ -137,7 +140,9 @@ export function tradeImportRoutes(app: FastifyInstance, db: Db) {
     const priceType = b.price_type ?? ((dt.price_type || null) as '0' | '1' | '2' | null) ?? (String(s['gen.price_type'] ?? '2') as '0' | '1' | '2');
     const vatRate = String(b.vat_rate ?? dt.vat_rate ?? s['gen.vat_rate'] ?? 7);
     const co = await db.selectFrom('sys_company').select('year_system').where('id', '=', a.companyId).executeTakeFirstOrThrow();
-    const rows = readTable(b.file_name, Buffer.from(b.data.replace(/^data:[^,]*,/, ''), 'base64'));
+    const target = k.cash ? 'expense' : 'trade';
+    const tf = transformTable(readTable(b.file_name, Buffer.from(b.data.replace(/^data:[^,]*,/, ''), 'base64')), target, b.mapping, b.codes);
+    const rows = tf.table;
     const ys = co.year_system as YearSystem;
     const run = k.cash ? importExpense(db, a, k.K, rows, ys, { ...b, priceType, vatRate, dtId: dt.id }) : importTrade(db, a, k.K, rows, ys, { ...b, priceType, vatRate, dtId: dt.id });
     const { results, issues, fileDocs, masters, ran } = await run;
@@ -146,9 +151,11 @@ export function tradeImportRoutes(app: FastifyInstance, db: Db) {
     if (b.commit && issues.length) throw badRequest(ran ? `นำเข้าไม่ได้ — ${issues[0]!.message} (แถว ${issues[0]!.row})` : `นำเข้าไม่ได้ — มีข้อผิดพลาด ${issues.length} รายการ กด "ตรวจแฟ้ม" ดูรายละเอียดแล้วแก้ในแฟ้ม`,
       issues.slice(0, 200).map((x) => ({ field: `row:${x.row}`, message: x.message })));
     if (b.commit) await logActivity(db, a, { module: K.module, action: 'IMPORT', docNo: results[0]?.doc_no ?? null, detail: { file: b.file_name, docs: results.length, first: results[0]?.doc_no, last: results.at(-1)?.doc_no,
-      new_parties: masters.parties.map((p) => p.code), new_items: masters.items.map((i) => i.code), new_units: masters.units } });
+      new_parties: masters.parties.map((p) => p.code), new_items: masters.items.map((i) => i.code), new_units: masters.units, mapped: tf.mapped, codes: Object.keys(b.codes ?? {}).length } });
     return { ok: !issues.length, committed: b.commit, price_type: priceType, vat_rate: vatRate, create_masters: b.create_masters, docs: results, errors: issues, file_docs: fileDocs, new_masters: masters,
-      total_net: results.reduce((t, r) => t.plus(d(r.net_amount ?? 0)), ZERO).toFixed(2) };
+      total_net: results.reduce((t, r) => t.plus(d(r.net_amount ?? 0)), ZERO).toFixed(2),
+      // แถวที่มีคำอธิบายแต่ไม่มีรหัส (ให้หน้าจอแนะนำรหัส) · แถวที่การจับคู่ข้าม (รวม/หัวตารางซ้ำ/ว่าง)
+      mapped: tf.mapped, skipped_rows: tf.skipped, row_shift: tf.rowShift, need_codes: b.commit ? [] : missingCodeRows(rows, target) };
   });
 }
 

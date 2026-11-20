@@ -64,6 +64,7 @@ import { companyImageRoutes } from './modules/company-images.js';
 import { initFileStore, type FileStore } from './storage/index.js';
 import { itemImageRoutes } from './modules/item-images.js';
 import { tradeImportRoutes } from './modules/trade-import.js';
+import { importMapRoutes } from './modules/import-map.js';
 import { journalImportRoutes } from './modules/gl/journal-import.js';
 import { signupRoutes } from './modules/signup.js';
 import { i18nNameRoutes } from './modules/i18n-names.js';
@@ -183,6 +184,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   payrollFormRoutes(app, db);
   payrollFileRoutes(app, db);
   tradeImportRoutes(app, db);
+  importMapRoutes(app, db);
   journalImportRoutes(app, db);
   signupRoutes(app, database, cfg);
   i18nNameRoutes(app, db);

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { JOURNAL_IMPORT_COLUMNS, JOURNAL_IMPORT_NEED_LABEL, journalImportHeader, type JournalImportNeed } from '@buddy/core';
+import { JOURNAL_IMPORT_COLUMNS, JOURNAL_IMPORT_NEED_LABEL, journalImportHeader, type ImportMapping, type JournalImportNeed } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
 import { Confirm, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, toast, useHotkeys } from '../../ui';
 import { download, readBase64 } from '../tools/TradeImport';
+import { CodeSuggestPanel, ImportMapPanel, useImportMap } from '../../components/ImportMapping';
 
 type Action = 'skip' | 'overwrite' | 'new';
 type CLine = { account: string; description: string; department: string; job: string; debit: string; credit: string };
@@ -16,7 +17,8 @@ type Status = 'ok' | 'dup' | 'error' | 'created' | 'overwritten' | 'skipped';
 type VRow = { key: string; group: string; book: string; row: number; date: string; ref: string | null; description: string | null; lines: number; debit: string; credit: string; diff: string;
   voucher_no: string | null; taxes: number; status: Status; action: Action | null; match: Match | null };
 type Result = { ok: boolean; committed: boolean; vouchers: VRow[]; errors: Array<{ row: number; message: string }>; file_vouchers: number;
-  total_debit: string; total_credit: string; total_diff: string; import_count: number; import_debit: string; dup_count: number; has_tax: boolean };
+  total_debit: string; total_credit: string; total_diff: string; import_count: number; import_debit: string; dup_count: number; has_tax: boolean;
+  mapped: boolean; skipped_rows: number[]; row_shift: number; need_codes: Array<{ row: number; text: string; amount: string }> };
 
 const ACTION_LABEL: Record<Action, string> = { skip: 'ไม่นำเข้า', overwrite: 'ทับเอกสารเดิม', new: 'สร้างเป็นเอกสารใหม่' };
 const STATUS: Record<Status, [string, 'n' | 'm' | 'c' | 'd' | 'x']> = {
@@ -40,11 +42,13 @@ export function JournalImportPage() {
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [ask, setAsk] = useState(false);
-  const run = async (commit: boolean, f = file, a = acts) => {
+  // แฟ้มรูปแบบอื่น (โปรแกรมอื่น/OCR) → จับคู่คอลัมน์ / ให้ AI จัดรูปแบบ (HANDOFF 168)
+  const im = useImportMap('journal', 'journal');
+  const run = async (commit: boolean, f = file, a = acts, m: ImportMapping | null = im.mapping, codes: Record<string, string> = im.codes) => {
     if (!f || busy) return;
     setBusy(true); setErr(null);
     try {
-      const r = await api.post<Result>('/api/v1/gl/journal-import', { file_name: f.name, data: f.data, commit, actions: a });
+      const r = await api.post<Result>('/api/v1/gl/journal-import', { file_name: f.name, data: f.data, commit, actions: a, ...(m ? { mapping: m } : {}), ...(Object.keys(codes).length ? { codes } : {}) });
       setRes(r);
       if (commit) { toast(`นำเข้าใบสำคัญ ${r.import_count} ใบแล้ว`); qc.invalidateQueries({ queryKey: ['journals'] }); }
     } catch (e) { setErr(e); } finally { setBusy(false); }
@@ -52,8 +56,9 @@ export function JournalImportPage() {
   const pick = async (f: File | undefined) => {
     if (!f) return;
     setRes(null); setErr(null); setActs({});
-    try { const v = { name: f.name, data: await readBase64(f) }; setFile(v); await run(false, v, {}); } catch (e) { setErr(e); }
+    try { const v = { name: f.name, data: await readBase64(f) }; setFile(v); await im.start(v, (m, c) => run(false, v, {}, m, c)); } catch (e) { setErr(e); }
   };
+  im.bind((m, c) => run(false, file, acts, m, c));
   /** เปลี่ยนการเลือกของใบซ้ำ → ตรวจแฟ้มใหม่ทันที (ระบบตรวจการเลือกซ้ำอีกครั้งตอนนำเข้า) */
   const choose = (next: Record<string, Action>) => { setActs(next); void run(false, file, next); };
   const dups = (res?.vouchers ?? []).filter((x) => x.match);
@@ -91,7 +96,8 @@ export function JournalImportPage() {
         <p className="hint">ใบที่ไม่มีภาษีเว้นช่องสีเหลืองว่างได้ทั้งหมด · ช่องเงินรับตัวเลขแบบข้อความ จุลภาค เลขไทย และขีด (-) แทนศูนย์ · วันที่แบบข้อความ วว/ดด/ปปปป (พ.ศ. หรือ ค.ศ.) หรือช่องวันที่ของ Excel · รายละเอียดและรูปแบบช่องอยู่ในแผ่น "คำอธิบาย" ของแบบฟอร์ม</p>
       </div>
       <ErrorBox error={err} />
-      {res && <>
+      <ImportMapPanel im={im} busy={busy} />
+      {res && !im.review && <>
         <div className="ti-summary">
           {res.committed ? <Pill tone="m">✓ นำเข้าแล้ว {res.import_count} ใบ</Pill> : res.ok ? <Pill tone="n">พร้อมนำเข้า {res.import_count} ใบ</Pill> : <Pill tone="c">ต้องแก้ {res.errors.length} รายการ</Pill>}
           <span>เดบิตรวม <b><Money v={res.total_debit} /></b></span>
@@ -102,6 +108,8 @@ export function JournalImportPage() {
           {!res.committed && !res.ok && <span className="muted small">ผ่านการตรวจ {res.import_count} จาก {res.file_vouchers} ใบ — แก้ในแฟ้มแล้วเลือกแฟ้มใหม่ (ไม่มีอะไรถูกบันทึก)</span>}
           {unbalanced && <span className="warn-text small">ใบที่เดบิตไม่เท่าเครดิตนำเข้าไม่ได้ — ดูคอลัมน์ผลต่าง</span>}
         </div>
+        {!res.committed && file && <CodeSuggestPanel im={im} need={res.need_codes ?? []} fileName={file.name} aiAvailable={!!im.analysis?.ai.available} busy={busy} />}
+        {res.skipped_rows?.length > 0 && <p className="muted small">ไม่นำเข้าแถว {res.skipped_rows.slice(0, 12).join(', ')}{res.skipped_rows.length > 12 ? ' …' : ''} (รวม/หัวตารางซ้ำ/ไม่มีข้อมูล){res.row_shift > 0 ? ' · แฟ้มไม่มีหัวตาราง — เลขแถว = แถวในแฟ้ม + 1' : ''}</p>}
         {res.errors.length > 0 && <div className="table-wrap ti-errors">
           <table className="grid">
             <thead><tr><th style={{ width: 70 }}>แถวที่</th><th>ต้องแก้</th></tr></thead>
