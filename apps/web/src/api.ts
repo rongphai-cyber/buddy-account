@@ -6,6 +6,17 @@ export class ApiError extends Error {
 
 /** จำนวนคำขอที่ยังไม่ได้คำตอบ — ด่านงานที่ยังไม่บันทึก (unsaved.tsx) ใช้ดูว่าการบันทึกจบแล้วหรือยัง */
 export const net = { inflight: 0 };
+
+/**
+ * แก้พร้อมกันสองคน (HANDOFF 163): รุ่นของรายการ/ตารางที่เปิดอยู่ (header x-row-version จาก GET) — บันทึก (PUT ที่อยู่เดียวกัน) ส่งกลับใน x-if-version
+ * ระหว่างมีงานที่ยังไม่บันทึก GET ซ้ำไม่เปลี่ยนรุ่นที่จำไว้ (รุ่นต้องตรงกับข้อมูลที่ผู้ใช้กำลังแก้) · บันทึกสำเร็จ = รุ่นใหม่จากคำตอบ
+ */
+const versions = new Map<string, string>();
+let editing = () => false;
+/** unsaved.tsx บอกว่ามีงานค้าง (ไม่ import กลับกันวน) */
+export function setEditingProbe(fn: () => boolean) { editing = fn; }
+/** ลืมรุ่นที่จำไว้ (เปิดฉบับล่าสุด) */
+export function forgetVersion(url?: string) { if (url) versions.delete(url); else versions.clear(); }
 async function call<T>(method: string, url: string, body?: unknown): Promise<T> {
   net.inflight++;
   try { return await callInner<T>(method, url, body); } finally { net.inflight--; }
@@ -13,9 +24,10 @@ async function call<T>(method: string, url: string, body?: unknown): Promise<T> 
 async function callInner<T>(method: string, url: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
+    const ver = method === 'PUT' ? versions.get(url) : undefined;
     res = await fetch(url, {
       method, credentials: 'same-origin',
-      headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
+      headers: { ...(body !== undefined ? { 'content-type': 'application/json' } : {}), ...(ver ? { 'x-if-version': ver } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
@@ -28,8 +40,12 @@ async function callInner<T>(method: string, url: string, body?: unknown): Promis
     // ได้หน้าเว็บแทนข้อมูล = ระบบบนคลาวด์กำลังเริ่มทำงาน/อัปเดต — ไม่โชว์ "Unexpected token '<'"
     throw new ApiError(res.status, 'NOT_READY', `ระบบกำลังเริ่มทำงานหรืออัปเดต — รอสักครู่แล้วกด F5 (${res.status})`);
   }
+  const rv = res.headers.get('x-row-version');
+  if (res.ok && rv && (method === 'PUT' || !(versions.has(url) && editing()))) versions.set(url, rv);
   if (!res.ok) {
     const e = data?.error ?? {};
+    // คนอื่นบันทึกไปก่อน — หน้าต่างให้เลือกเปิดฉบับล่าสุด หรือกลับไปแก้ต่อ (unsaved.tsx ConflictHost)
+    if (res.status === 409 && e.code === 'VERSION_CONFLICT') window.dispatchEvent(new CustomEvent('buddy:conflict', { detail: { url, message: e.message } }));
     if (res.status === 401 && !url.includes('/auth/login')) window.dispatchEvent(new CustomEvent('buddy:unauthorized', { detail: { code: e.code } }));
     throw new ApiError(res.status, e.code ?? 'ERROR', e.message ?? `เกิดข้อผิดพลาด (${res.status})`, e.issues);
   }

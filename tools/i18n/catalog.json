@@ -5303,6 +5303,15 @@
 ]
 },
 {
+"th": "รายละเอียดกิจการ",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/Company.tsx",
+"apps/server/src/versions.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "รายได้จากการให้บริการ",
 "n": 4,
 "files": [
@@ -6914,14 +6923,6 @@
 "apps/web/src/pages/docs/BankDocs.tsx",
 "apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx"
-]
-},
-{
-"th": "รายละเอียดกิจการ",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/Company.tsx",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -9082,6 +9083,13 @@
 "files": [
 "apps/server/src/modules/backup.ts",
 "apps/server/src/modules/data-tables.ts"
+]
+},
+{
+"th": "ตารางนี้",
+"n": 2,
+"files": [
+"apps/server/src/versions.ts"
 ]
 },
 {
@@ -17996,6 +18004,13 @@
 ]
 },
 {
+"th": "{0}ถูกแก้ไขโดย {1} เมื่อ {2} หลังจากคุณเปิด — เปิดใหม่เพื่อดูฉบับล่าสุด แล้วแก้อีกครั้ง (การแก้ไขของคุณยังไม่ถูกบันทึก)",
+"n": 1,
+"files": [
+"apps/server/src/versions.ts"
+]
+},
+{
 "th": "{0}ที่กำลังคีย์ยังไม่ได้บันทึก — ถ้าออกจากหน้านี้ การแก้ไขจะหายไป",
 "n": 1,
 "files": [
@@ -18896,6 +18911,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "กลับไปแก้ต่อ",
+"n": 1,
+"files": [
+"apps/web/src/unsaved.tsx"
+]
+},
+{
+"th": "กลับไปแก้ต่อ = การแก้ไขของคุณยังอยู่บนจอ (ยังไม่ได้บันทึก) คัดลอกส่วนที่ต้องการไว้ก่อน แล้วค่อยเปิดฉบับล่าสุดเพื่อแก้อีกครั้ง",
+"n": 1,
+"files": [
+"apps/web/src/unsaved.tsx"
 ]
 },
 {
@@ -20534,6 +20563,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ข้อมูลนี้",
+"n": 1,
+"files": [
+"apps/server/src/versions.ts"
 ]
 },
 {
@@ -22298,6 +22334,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/OpeningDocs.tsx"
+]
+},
+{
+"th": "ค่าเริ่มต้นนี้",
+"n": 1,
+"files": [
+"apps/server/src/versions.ts"
 ]
 },
 {
@@ -26141,6 +26184,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "ตารางสิทธิ์นี้",
+"n": 1,
+"files": [
+"apps/server/src/versions.ts"
 ]
 },
 {
@@ -33235,6 +33285,13 @@
 ]
 },
 {
+"th": "ผู้ใช้อื่น",
+"n": 1,
+"files": [
+"apps/server/src/versions.ts"
+]
+},
+{
 "th": "ผู้ใช้ในกลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · ผู้ใช้อื่นเข้าได้เฉพาะบริษัทที่กำหนด ตามระดับอนุมัติ (0–4 พนักงาน · 5–8 หัวหน้าแผนก · 9 ผู้จัดการระบบ) และจำกัดเพิ่มด้วยสิทธิ์รายเมนูถ้าเปิดตรวจสอบสิทธิ์",
 "n": 1,
 "files": [
@@ -34898,6 +34955,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
+]
+},
+{
+"th": "มีคนอื่นบันทึกรายการนี้ไปก่อน",
+"n": 1,
+"files": [
+"apps/web/src/unsaved.tsx"
 ]
 },
 {
@@ -49356,6 +49420,13 @@
 ]
 },
 {
+"th": "เปิดฉบับล่าสุด",
+"n": 1,
+"files": [
+"apps/web/src/unsaved.tsx"
+]
+},
+{
 "th": "เปิดดูรายการที่เลือก (ดูอย่างเดียว)",
 "n": 1,
 "files": [
@@ -52520,6 +52591,13 @@
 ]
 },
 {
+"th": "เอกสารนี้",
+"n": 1,
+"files": [
+"apps/server/src/versions.ts"
+]
+},
+{
 "th": "เอกสารนี้ต้องรับรองก่อนพิมพ์ — ให้ผู้มีระดับอนุมัติตั้งแต่",
 "n": 1,
 "files": [
@@ -55646,6 +55724,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
+]
+},
+{
+"th": "ใบสำคัญนี้",
+"n": 1,
+"files": [
+"apps/server/src/versions.ts"
 ]
 },
 {

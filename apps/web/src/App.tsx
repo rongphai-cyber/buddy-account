@@ -1,4 +1,4 @@
-import { confirmLeave, UnsavedHost } from './unsaved';
+import { ConflictHost, confirmLeave, UnsavedHost } from './unsaved';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PrintPage } from './components/DocPrint';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -113,7 +113,7 @@ export function App() {
   // หน้าพิมพ์แยก (เปิดจากปุ่ม "เปิดหน้าพิมพ์ในแท็บใหม่"): เอกสารอย่างเดียว ไม่มีเมนู
   const pm = /^\/print\/(doc|journal)\/([0-9a-f-]{36})$/.exec(loc.pathname);
   if (pm) return <><PrintPage kind={pm[1] as 'doc' | 'journal'} id={pm[2]!} slot={Number(new URLSearchParams(loc.search).get('slot')) || 1} /><Toasts /></>;
-  return <><Shell /><AuxTools /><Toasts /><UnsavedHost /></>;
+  return <><Shell /><AuxTools /><Toasts /><UnsavedHost /><ConflictHost /></>;
 }
 
 /** ผู้ใช้เฉพาะหน้าเปิดโปรแกรม: การ์ดโปรแกรมที่ได้รับสิทธิ์ + รหัสผ่าน/ยืนยันตัวตน (ที่อยู่อื่นทั้งหมด = หน้าเปิดโปรแกรม) */

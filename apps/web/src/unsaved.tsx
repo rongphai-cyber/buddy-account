@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useBlocker, useNavigate, type Location } from 'react-router-dom';
-import { net } from './api';
+import { forgetVersion, net, setEditingProbe } from './api';
 import { Modal } from './ui';
 import { isReadOnlyNow } from './roflag';
 
@@ -22,6 +22,7 @@ export const dirtyWords = () => dirtyEntries().map((e) => e.word);
 export const anyDirty = () => Date.now() > bypassUntil && dirtyEntries().length > 0;
 /** ผู้ใช้เลือกออกแล้ว (ทิ้ง/บันทึกแล้ว) — ปล่อยการเปลี่ยนหน้าช่วงสั้น ๆ ไม่ถามซ้ำ */
 const allowLeave = (ms = 8000) => { bypassUntil = Date.now() + ms; };
+setEditingProbe(() => dirtyEntries().length > 0);
 
 /**
  * ลงทะเบียนสถานะแก้ไขค้างของหน้าจอ/หน้าต่าง — dirty = ป้าย "มีการแก้ไขที่ยังไม่บันทึก"
@@ -83,6 +84,30 @@ export function confirmLeave(only?: number): Promise<boolean> {
     } finally { pending = null; }
   })();
   return pending;
+}
+
+/**
+ * คนอื่นบันทึกรายการเดียวกันไปก่อน (HANDOFF 163 · 409 VERSION_CONFLICT จาก api.ts): บอกชื่อ/เวลา แล้วให้เลือก
+ * เปิดฉบับล่าสุด = ทิ้งการแก้ไขบนจอ โหลดหน้าใหม่ · กลับไปแก้ต่อ = การแก้ไขยังอยู่บนจอ (คัดลอกไว้ก่อน แล้วค่อยเปิดฉบับล่าสุด)
+ */
+export function ConflictHost() {
+  const [c, setC] = useState<{ url: string; message: string } | null>(null);
+  useEffect(() => {
+    const h = (e: Event) => setC((e as CustomEvent<{ url: string; message: string }>).detail);
+    window.addEventListener('buddy:conflict', h);
+    return () => window.removeEventListener('buddy:conflict', h);
+  }, []);
+  if (!c) return null;
+  const latest = () => { forgetVersion(); allowLeave(60_000); location.reload(); };
+  return (
+    <Modal title="มีคนอื่นบันทึกรายการนี้ไปก่อน" size="confirm" onClose={() => setC(null)} footer={<>
+      <button onClick={() => setC(null)}>กลับไปแก้ต่อ <kbd>Esc</kbd></button>
+      <button className="primary" autoFocus onClick={latest}>เปิดฉบับล่าสุด</button>
+    </>}>
+      <p>{c.message}</p>
+      <p className="hint">กลับไปแก้ต่อ = การแก้ไขของคุณยังอยู่บนจอ (ยังไม่ได้บันทึก) คัดลอกส่วนที่ต้องการไว้ก่อน แล้วค่อยเปิดฉบับล่าสุดเพื่อแก้อีกครั้ง</p>
+    </Modal>
+  );
 }
 
 /** วางครั้งเดียวในแอป (ภายใน router): ด่านเปลี่ยนหน้า + ปิดแท็บ + หน้าต่างถาม */

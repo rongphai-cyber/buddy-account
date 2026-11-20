@@ -56,7 +56,8 @@ export function PermissionsPage() {
     try {
       // เก็บเฉพาะแถวที่ต่างจากค่าที่ได้จากเมนูหลัก (สิทธิ์ที่ได้จริงเท่าเดิม · หน้าจอแสดงค่าที่ได้รับแบบจาง)
       const rows = Object.entries(permCompact(vals)).map(([menu_code, v]) => ({ menu_code, ...EMPTY, ...v }));
-      const r = await api.put<{ rows: number }>('/api/v1/permissions', { subject_type: type, subject_id: id, rows });
+      // ที่อยู่เดียวกับตอนโหลด (มี subject ใน query) — รุ่นของตารางสิทธิ์ส่งกลับให้ตรวจแก้พร้อมกัน (HANDOFF 163)
+      const r = await api.put<{ rows: number }>(`/api/v1/permissions?subject_type=${encodeURIComponent(type)}&subject_id=${encodeURIComponent(id)}`, { subject_type: type, subject_id: id, rows });
       toast(`บันทึกสิทธิ์แล้ว (${r.rows} เมนู)`);
       qc.invalidateQueries({ queryKey: ['perms'] }); qc.invalidateQueries({ queryKey: ['perm-by-menu'] });
     } catch (e) { setErr(e); }

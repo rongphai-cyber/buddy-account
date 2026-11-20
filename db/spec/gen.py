@@ -142,10 +142,15 @@ def pg_str(s):
 
 PG_FUNCS = r"""
 -- ---------------------------------------------------------------- Functions
--- เพิ่ม row_version และ updated_at ทุกครั้งที่แก้ไข
+-- เพิ่ม row_version และ updated_at ทุกครั้งที่แก้ไข — ไม่นับการนับครั้งที่พิมพ์ (HANDOFF 163: ล็อกแก้พร้อมกันไม่เตือนเพราะมีคนพิมพ์เอกสาร)
 CREATE OR REPLACE FUNCTION sys_bump_version() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF NEW IS DISTINCT FROM OLD THEN
+    IF TG_TABLE_NAME IN ('doc_header', 'gl_journal', 'tax_wht_entry', 'md_serial')
+       AND (to_jsonb(NEW) - 'print_count' - 'last_printed_by' - 'last_printed_at' - 'updated_at' - 'updated_by')
+           IS NOT DISTINCT FROM (to_jsonb(OLD) - 'print_count' - 'last_printed_by' - 'last_printed_at' - 'updated_at' - 'updated_by') THEN
+      RETURN NEW;
+    END IF;
     NEW.row_version := OLD.row_version + 1;
     NEW.updated_at := now();
   END IF;

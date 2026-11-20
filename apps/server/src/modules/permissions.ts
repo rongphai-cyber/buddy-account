@@ -11,6 +11,7 @@ import { replays, syncCtx } from '../sync-context.js';
 import { branchCapture, branchStateOf, checkBranchWrite } from './sync/branch.js';
 import { withSource } from './source.js';
 import { payrollSource } from './wts.js';
+import { withVersion } from '../versions.js';
 
 /**
  * สิทธิ์ 7 ชนิดรายเมนู — คู่มือบทที่ 23 (S-SEC-01/02/03)
@@ -439,7 +440,7 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
       if (!a?.companyId) return handler.call(this, req, reply);
       // WTS Connect (docs/17 B0.1): เอกสารจากระบบอื่น ส่งซ้ำไม่ลงซ้ำ + แก้ที่หน้าจอไม่ได้
       const run = () => runInCompanyScope(database, { companyId: a.companyId!, tenantId: a.tenantId, isPlatform: a.isPlatform, rls },
-        async () => withSource(database, req, reply, routeKey, () => handler.call(this, req, reply), handlers, authorize));
+        async () => withSource(database, req, reply, routeKey, () => withVersion(db, r.url, req, reply, a.companyId!, () => handler.call(this, req, reply)), handlers, authorize));
       // ออฟไลน์สาขา (T7.8): สำนักงานใหญ่รับเอกสารจากสาขา (replay) / เครื่องสาขาจดเอกสารลงคิว (capture)
       const rk = req.headers['x-buddy-replay'];
       const replay = typeof rk === 'string' ? replays.get(rk) : undefined;

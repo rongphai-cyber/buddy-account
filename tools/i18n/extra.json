@@ -2128,5 +2128,17 @@
  "ใช้ค่าเดียวกันทั้งหมด": "Apply to all",
  "ดู": "View",
  "เปิดดูรายการที่เลือก (ดูอย่างเดียว)": "Open the selected record (view only)",
- "↑↓ เลือกแถว · คลิกแถว = ดู": "↑↓ select row · click row = view"
+ "↑↓ เลือกแถว · คลิกแถว = ดู": "↑↓ select row · click row = view",
+ "ตารางนี้": "This table",
+ "ข้อมูลนี้": "This record",
+ "ค่าเริ่มต้นนี้": "These defaults",
+ "ตารางสิทธิ์นี้": "This rights table",
+ "เอกสารนี้": "This document",
+ "ใบสำคัญนี้": "This voucher",
+ "ผู้ใช้อื่น": "another user",
+ "{0}ถูกแก้ไขโดย {1} เมื่อ {2} หลังจากคุณเปิด — เปิดใหม่เพื่อดูฉบับล่าสุด แล้วแก้อีกครั้ง (การแก้ไขของคุณยังไม่ถูกบันทึก)": "{0} was changed by {1} at {2} after you opened it — reopen to see the latest version, then edit again (your changes were not saved)",
+ "กลับไปแก้ต่อ": "Back to editing",
+ "กลับไปแก้ต่อ = การแก้ไขของคุณยังอยู่บนจอ (ยังไม่ได้บันทึก) คัดลอกส่วนที่ต้องการไว้ก่อน แล้วค่อยเปิดฉบับล่าสุดเพื่อแก้อีกครั้ง": "Back to editing = your changes stay on screen (not saved); copy what you need, then open the latest version and edit again",
+ "มีคนอื่นบันทึกรายการนี้ไปก่อน": "Someone else saved this first",
+ "เปิดฉบับล่าสุด": "Open latest version"
 }

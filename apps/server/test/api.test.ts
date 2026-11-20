@@ -5898,6 +5898,78 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     cookie = '';
   });
 
+  it('two people editing the same record (HANDOFF 163): A saves, B gets 409 with A\'s name, B reloads and saves; no version = old behaviour; printing is not an edit', async () => {
+    const req = async (ck: string, method: 'GET' | 'PUT' | 'POST', url: string, body?: unknown, ver?: string) => {
+      const r = await app.inject({ method, url, payload: body as object, headers: { cookie: ck, ...(ver ? { 'x-if-version': ver } : {}) } });
+      return { status: r.statusCode, body: r.body ? JSON.parse(r.body) : null, ver: r.headers['x-row-version'] as string | undefined };
+    };
+    const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
+    const A = await login('st.a', 'passStA1');
+    const coId = (await sql<{ id: string }>`SELECT id FROM sys_company WHERE code = 'STTRADE'`.execute(database.db)).rows[0]!.id;
+    await req(A, 'POST', '/api/v1/auth/select', { company_id: coId });
+    const adminGroup = ((await req(A, 'GET', '/api/v1/users')).body.groups as Array<{ id: string; code: string }>).find((g) => g.code === 'ADMIN')!.id;
+    expect((await req(A, 'POST', '/api/v1/users', { username: 'st.a2', display_name: 'ผู้ดูแลคนที่สอง', password: 'passStA2x', user_group_id: adminGroup, approval_level: 9, companies: [] })).status).toBe(200);
+    const B = await login('st.a2', 'passStA2x');
+    await req(B, 'POST', '/api/v1/auth/select', { company_id: coId });
+    const aName = (await req(A, 'GET', '/api/v1/auth/me')).body.user.display_name as string;
+    const typeOf = async (c: string) => (await req(A, 'GET', `/api/v1/trade-defaults/${c}`)).body.types[0].id as string;
+    const pcs = ((await req(A, 'GET', '/api/v1/data-tables/20')).body as Array<{ id: string; code: string }>).find((u) => u.code === 'PCS')!.id;
+    const item = (await req(A, 'GET', '/api/v1/items?q=01-STAR-000001')).body.rows[0] as { id: string };
+    const cus = ((await req(A, 'GET', '/api/v1/customers?q=C1')).body.rows as Array<{ id: string; code: string }>).find((c) => c.code === 'C1')!.id;
+    const ivBody = (remark: string) => ({ doc_type_id: ivType, doc_date: '2026-02-05', party_id: cus, price_type: '2', vat_rate: 7, remark, lines: [{ item_id: item.id, qty: 1, unit_price: 100 }] });
+    const ivType = await typeOf('IV');
+    const iv = (await req(A, 'POST', '/api/v1/sales-invoices', ivBody('v1'))).body.id as string;
+    const iv2 = (await req(A, 'POST', '/api/v1/sales-invoices', ivBody('for receipt'))).body.id as string;
+    const reBody = (remark: string) => ({ doc_type_id: reType, doc_date: '2026-02-06', party_id: cus, remark, settlements: [{ invoice_header_id: iv2, amount: '107.00' }] });
+    const reType = await typeOf('RE');
+    const re = (await req(A, 'POST', '/api/v1/ar-receipts', reBody('r1'))).body.id as string;
+    const chart = (await req(A, 'GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string }>;
+    const cash = chart.find((x) => x.account_no === '1111-00')!.id;
+    const book = (await req(A, 'GET', '/api/v1/gl/books')).body[0].id as string;
+    const jvBody = (d: string) => ({ journal_book_id: book, voucher_date: '2026-02-07', description: d, lines: [{ account_id: cash, debit: '10' }, { account_id: cash, credit: '10' }] });
+    const jv = (await req(A, 'POST', '/api/v1/gl/journals', jvBody('j1'))).body.id as string;
+    const cases: Array<[string, string, (n: string) => unknown]> = [
+      ['IV', `/api/v1/sales-invoices/${iv}`, (n) => ivBody(n)],
+      ['RE', `/api/v1/ar-receipts/${re}`, (n) => reBody(n)],
+      ['JV', `/api/v1/gl/journals/${jv}`, (n) => jvBody(n)],
+      ['customer', `/api/v1/customers/${cus}`, (n) => ({ code: 'C1', name: `ลูกค้าทดลอง ${n}`, tax_id: tid(160) })],
+      ['item', `/api/v1/items/${item.id}`, (n) => ({ code: '01-STAR-000001', name_th: `สินค้าทดลอง ${n}`, base_unit_id: pcs, std_cost: '50' })],
+    ];
+    for (const [name, url, body] of cases) {
+      const ga = await req(A, 'GET', url), gb = await req(B, 'GET', url);
+      expect([name, typeof ga.ver, ga.ver === gb.ver]).toEqual([name, 'string', true]);
+      const pa = await req(A, 'PUT', url, body('A'), ga.ver);
+      expect([name, pa.status, pa.body?.error?.message]).toEqual([name, 200, undefined]);
+      expect([name, pa.ver !== ga.ver]).toEqual([name, true]);
+      const pb = await req(B, 'PUT', url, body('B'), gb.ver);
+      expect([name, pb.status, pb.body.error.code]).toEqual([name, 409, 'VERSION_CONFLICT']);
+      expect(pb.body.error.message).toContain(aName);
+      expect(pb.body.error.message).toMatch(/หลังจากคุณเปิด — เปิดใหม่เพื่อดูฉบับล่าสุด แล้วแก้อีกครั้ง \(การแก้ไขของคุณยังไม่ถูกบันทึก\)/);
+      expect(pb.body.error.message).toMatch(/\d{1,2}\/\d{1,2}\/25\d\d \d\d:\d\d/);   // วันเวลา พ.ศ.
+      const gb2 = await req(B, 'GET', url);
+      const pb2 = await req(B, 'PUT', url, body('B2'), gb2.ver);
+      expect([name, pb2.status, pb2.body?.error?.message]).toEqual([name, 200, undefined]);
+      // ไม่ส่งรุ่น (ระบบอื่น/เครื่องสาขา) = บันทึกได้เหมือนเดิม
+      expect([name, (await req(A, 'PUT', url, body('API'))).status]).toEqual([name, 200]);
+    }
+    // ตารางหลายแถว: ตารางข้อมูลหน่วยนับ — ทั้งตารางเป็นรุ่นเดียว
+    const t = '/api/v1/data-tables/20';
+    const ta = await req(A, 'GET', t), tb = await req(B, 'GET', t);
+    const rows = (x: { body: Array<Record<string, unknown>> }, nm: string) => x.body.map(({ used: _u, ...r }) => (r.code === 'PCS' ? { ...r, name_th: nm } : r));
+    expect((await req(A, 'PUT', t, { rows: rows(ta, 'ชิ้น (A)') }, ta.ver)).status).toBe(200);
+    const tbx = await req(B, 'PUT', t, { rows: rows(tb, 'ชิ้น (B)') }, tb.ver);
+    expect([tbx.status, tbx.body.error.code]).toEqual([409, 'VERSION_CONFLICT']);
+    expect(tbx.body.error.message).toMatch(/^ตารางนี้ถูกแก้ไขโดย/);
+    const tb2 = await req(B, 'GET', t);
+    expect((await req(B, 'PUT', t, { rows: rows(tb2, 'ชิ้น') }, tb2.ver)).status).toBe(200);
+    // พิมพ์เอกสาร (นับครั้งที่พิมพ์) ไม่ใช่การแก้ไข — รุ่นไม่เปลี่ยน
+    const g1 = await req(A, 'GET', `/api/v1/sales-invoices/${iv}`);
+    expect((await req(B, 'POST', `/api/v1/print/doc/${iv}/printed`, { slot: 1 })).status).toBe(200);
+    expect((await req(A, 'GET', `/api/v1/sales-invoices/${iv}`)).ver).toBe(g1.ver);
+    expect((await req(A, 'PUT', `/api/v1/sales-invoices/${iv}`, ivBody('after print'), g1.ver)).status).toBe(200);
+    cookie = '';
+  });
+
   it('1 รหัสเข้าได้ทีละ 1 เครื่อง: the second login ends the first session with SESSION_REPLACED; per-user option; no cross-tenant change (HANDOFF 156)', async () => {
     const login = async (u: string, pw: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: pw })).status).toBe(200); return cookie; };
     const as = async (c: string, url: string) => { cookie = c; return call('GET', url); };
