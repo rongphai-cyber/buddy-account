@@ -214,7 +214,8 @@ export async function activeSettlement(db: Db, companyId: string, invoiceId: str
 /** before: งานเพิ่มเติมของเอกสารแต่ละชนิดในทรานแซกชันเดียวกัน (เช่น ใบเสร็จ: ยกเลิกเช็ค/ภาษีหัก ณ ที่จ่าย) */
 export async function cancelDocument(db: Db, ctx: Ctx, headerId: string, reason: string, before?: (tx: Db) => Promise<void>) {
   return db.transaction().execute(async (tx) => {
-    const h = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_date', 'is_opening']).where('id', '=', headerId).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    // ล็อกหัวเอกสาร (HANDOFF 158): ใบเสร็จ/ใบสำคัญจ่ายที่กำลังตัดเอกสารนี้ล็อกแถวเดียวกัน → รอกันทีละราย ตรวจการอ้างถึงหลังอีกรายบันทึกเสร็จ
+    const h = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_date', 'is_opening']).where('id', '=', headerId).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).forUpdate().executeTakeFirst();
     if (!h) throw notFound('เอกสาร');
     if (h.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว');
     const paid = await activeSettlement(tx, ctx.companyId, headerId);
@@ -243,7 +244,7 @@ export async function cancelDocument(db: Db, ctx: Ctx, headerId: string, reason:
 const CHEQUE_IN_SLIP = 'เช็คในใบนำฝาก';
 export async function deleteDocument(db: Db, ctx: Ctx, headerId: string, reason: string) {
   return db.transaction().execute(async (tx) => {
-    const h = await tx.selectFrom('doc_header').select(['doc_no', 'doc_class', 'doc_status', 'doc_date', 'is_opening', 'net_amount', 'cancel_reason']).where('id', '=', headerId).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    const h = await tx.selectFrom('doc_header').select(['doc_no', 'doc_class', 'doc_status', 'doc_date', 'is_opening', 'net_amount', 'cancel_reason']).where('id', '=', headerId).where('company_id', '=', ctx.companyId).where('deleted_at', 'is', null).forUpdate().executeTakeFirst();
     if (!h) throw notFound('เอกสาร');
     if (h.doc_status !== 'C') throw badRequest(`ยกเลิกเอกสาร ${h.doc_no} ก่อนจึงลบได้`);
     if (!h.is_opening) await periodFor(tx, ctx.companyId, String(h.doc_date).slice(0, 10));

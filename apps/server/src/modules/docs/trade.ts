@@ -212,7 +212,7 @@ export async function saveTrade(db: Db, a: Ctx, K: TradeKind, id: string | null,
     await periodFor(tx, a.companyId, b.doc_date);
     let hid = id, docNo: string;
     if (id) {
-      const cur = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_class', 'doc_date', 'is_opening']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+      const cur = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_class', 'doc_date', 'is_opening']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).forUpdate().executeTakeFirst();
       if (!cur || cur.doc_class !== K.cls) throw notFound(K.label);
       if (cur.is_opening) throw badRequest(`${cur.doc_no} เป็นยอดยกมา — แก้ที่เมนู บันทึกรายการ${K.module === 'AR' ? 'ลูกหนี้' : 'เจ้าหนี้'}คงค้าง-ยกมา`);
       if (cur.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว แก้ไขไม่ได้');

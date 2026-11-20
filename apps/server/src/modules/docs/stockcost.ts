@@ -42,6 +42,10 @@ export async function issueCost(db: Db, companyId: string, x: { itemId: string; 
 export async function checkNegative(db: Db, companyId: string, st: StockSettings, issues: Map<string, { itemId: string; warehouseId: string; qty: ReturnType<typeof d>; code: string; whCode?: string }>) {
   // ยอมติดลบ หรือระดับการตรวจ 0 (ไม่ตรวจ — ข้อ 11) ไม่ต้องตรวจ
   if (st.allowNegative === 'Y' || st.checkLevel === '0') return;
+  // HANDOFF 158: ล็อกสินค้าที่จ่าย (เรียงตาม id) ก่อนอ่านคงเหลือ — ขายสินค้าเดียวกันพร้อมกันสองเครื่องต้องรอกัน เครื่องที่สองเห็นคงเหลือหลังเครื่องแรกบันทึก
+  // FOR NO KEY UPDATE: ไม่ขวางการบันทึกเอกสารอื่นที่อ้างถึงสินค้า (FK ใช้ KEY SHARE)
+  const ids = [...new Set([...issues.values()].map((x) => x.itemId))].sort();
+  if (ids.length) await sql`SELECT id FROM md_item WHERE id = ANY(${ids}::uuid[]) AND company_id = ${companyId} ORDER BY id FOR NO KEY UPDATE`.execute(db);
   for (const x of issues.values()) {
     const b = (await sql<{ q: string }>`SELECT coalesce(sum(qty), 0) AS q FROM v_stock_move WHERE company_id = ${companyId} AND item_id = ${x.itemId} AND warehouse_id = ${x.warehouseId}`.execute(db)).rows[0]!.q;
     if (d(b).minus(x.qty).lt(0)) throw badRequest(`สินค้า ${x.code} คงเหลือ ${d(b).toString()} ไม่พอจ่าย ${x.qty.toString()} — ค่าเริ่มต้นระบบสินค้าไม่ยอมให้ยอดติดลบ (ข้อ 9)`);

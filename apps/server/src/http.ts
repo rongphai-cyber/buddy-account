@@ -25,11 +25,19 @@ export function zodToAppError(e: ZodError): AppError {
   return badRequest(issues[0]?.message ?? 'ข้อมูลไม่ถูกต้อง', issues);
 }
 
+/** ข้อมูลซ้ำ (23505) ตามดัชนีไม่ซ้ำ — บอกวิธีแก้ ไม่แสดงชื่อดัชนี (HANDOFF 158) */
+const DUPLICATE: Record<string, string> = {
+  uq_doc_header_company_doc_type_doc_no: 'เลขที่เอกสารนี้มีผู้บันทึกไปก่อนแล้ว (อาจบันทึกพร้อมกันจากอีกเครื่อง) — เว้นช่องเลขที่ว่างเพื่อใช้เลขอัตโนมัติ หรือเปลี่ยนเลขที่ แล้วบันทึกอีกครั้ง',
+  uq_gl_journal_company_journal_book_voucher_no: 'เลขที่ใบสำคัญนี้มีผู้บันทึกไปก่อนแล้ว (อาจบันทึกพร้อมกันจากอีกเครื่อง) — กดบันทึกอีกครั้งเพื่อใช้เลขถัดไป หรือเปลี่ยนเลขที่ใบสำคัญ',
+  uq_md_customer_company_code: 'รหัสลูกค้านี้มีอยู่แล้ว (อาจมีผู้เพิ่มพร้อมกันจากอีกเครื่อง) — เปลี่ยนรหัสลูกค้าแล้วบันทึกอีกครั้ง',
+  uq_md_supplier_company_code: 'รหัสผู้จำหน่ายนี้มีอยู่แล้ว (อาจมีผู้เพิ่มพร้อมกันจากอีกเครื่อง) — เปลี่ยนรหัสผู้จำหน่ายแล้วบันทึกอีกครั้ง',
+  uq_md_item_company_code: 'รหัสสินค้านี้มีอยู่แล้ว (อาจมีผู้เพิ่มพร้อมกันจากอีกเครื่อง) — เปลี่ยนรหัสสินค้าแล้วบันทึกอีกครั้ง',
+};
 /** แปลงข้อผิดพลาดของ PostgreSQL ที่พบบ่อยเป็นข้อความไทย */
 export function pgToAppError(e: unknown): AppError | null {
   const err = e as { code?: string; message?: string; constraint?: string; detail?: string };
   if (!err || typeof err.code !== 'string') return null;
-  if (err.code === '23505') return conflict(`ข้อมูลซ้ำกับที่มีอยู่แล้ว${err.constraint ? ` (${err.constraint})` : ''}`);
+  if (err.code === '23505') return conflict(DUPLICATE[err.constraint ?? ''] ?? 'ข้อมูลซ้ำกับที่มีอยู่แล้ว (อาจมีผู้บันทึกรายการเดียวกันพร้อมกันจากอีกเครื่อง) — ตรวจรหัส/เลขที่ที่ซ้ำ แล้วบันทึกอีกครั้ง');
   if (err.code === '23503') return conflict('ข้อมูลนี้ถูกอ้างถึงอยู่ หรืออ้างถึงข้อมูลที่ไม่มี');
   if (err.code === '23514') return badRequest(`ข้อมูลไม่ผ่านเงื่อนไข${err.constraint ? ` (${err.constraint})` : ''}`);
   if (err.code === 'P0001') {

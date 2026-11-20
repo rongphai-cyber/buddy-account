@@ -22,7 +22,8 @@ export async function periodFor(db: Db, companyId: string, date: string) {
     .select(['p.id', 'p.period_no', 'p.is_locked', 'p.start_date', 'p.end_date', 'y.code as year_code'])
     .where('p.company_id', '=', companyId).where('p.deleted_at', 'is', null)
     .where('p.start_date', '<=', date).where('p.end_date', '>=', date)
-    .orderBy('p.period_no').executeTakeFirst();
+    // HANDOFF 158: FOR SHARE — ปิดงวด/ประมวลผลสิ้นปี (UPDATE gl_period) รอเอกสารที่กำลังบันทึกในงวดนั้นให้เสร็จก่อน · บันทึกพร้อมกันหลายใบไม่รอกัน
+    .orderBy('p.period_no').modifyEnd(sql`FOR SHARE OF p`).executeTakeFirst();
   if (!p) throw new AppError(400, 'NO_PERIOD', 'วันที่ไม่อยู่ในรอบบัญชี (Message# 71) — กำหนดรอบบัญชีปีนี้ก่อนที่เมนู เริ่มระบบ › รอบบัญชี');
   if (p.is_locked) throw new AppError(400, 'PERIOD_LOCKED', `วันที่อยู่ในงวดที่ปิดแล้ว (Message# 1021) — งวดที่ ${p.period_no} ปี ${p.year_code}`);
   return p;
@@ -33,7 +34,8 @@ export async function periodFor(db: Db, companyId: string, date: string) {
  * ตัวนำเลขที่ของสมุด + 1 YMMDDxx / 2 YMMxxxx / 3 YYMMxxxx / 4 YYMMDDxxx เช่น JV520101001 · 0 = ป้อนเลขเอง (คืนค่าว่าง)
  */
 export async function nextVoucherNo(db: Db, companyId: string, bookId: string, date: string, style = '4') {
-  const book = await db.selectFrom('gl_journal_book').select(['prefix']).where('id', '=', bookId).where('company_id', '=', companyId).executeTakeFirst();
+  // HANDOFF 158: ล็อกสมุดรายวันก่อนหาเลขล่าสุด — ใบสำคัญสมุดเดียวกันบันทึกพร้อมกันได้เลขถัดกัน ไม่ชนกัน (ในทรานแซกชันของการบันทึก)
+  const book = await db.selectFrom('gl_journal_book').select(['prefix']).where('id', '=', bookId).where('company_id', '=', companyId).modifyEnd(sql`FOR NO KEY UPDATE`).executeTakeFirst();
   if (!book) throw notFound('สมุดรายวัน');
   const co = await db.selectFrom('sys_company').select('year_system').where('id', '=', companyId).executeTakeFirst();
   const pat = voucherNoPattern(style, book.prefix, date, (co?.year_system as 'B' | 'C') ?? 'B');

@@ -682,6 +682,29 @@
 ]
 },
 {
+"th": "รับ",
+"n": 39,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "เอกสาร",
 "n": 39,
 "files": [
@@ -711,31 +734,8 @@
 ]
 },
 {
-"th": "รับ",
-"n": 38,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/stock.ts"
-]
-},
-{
 "th": "จ่าย",
-"n": 36,
+"n": 37,
 "files": [
 "apps/web/src/components/DocTaxTabs.tsx",
 "apps/web/src/pages/docs/BillDocs.tsx",
@@ -9612,6 +9612,14 @@
 ]
 },
 {
+"th": "บิลที่เลือก",
+"n": 2,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/server/src/modules/docs/settle.ts"
+]
+},
+{
 "th": "บิลนี้ออกในนามผู้อื่น",
 "n": 2,
 "files": [
@@ -16908,6 +16916,13 @@
 ]
 },
 {
+"th": "{0} ถูกยกเลิกหรือลบระหว่างบันทึก (อาจทำพร้อมกันจากอีกเครื่อง) — ไม่ได้บันทึก{1} · เปิดรายการบิลค้างใหม่แล้วบันทึกอีกครั้ง",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/settle.ts"
+]
+},
+{
 "th": "{0} บรรทัด {1}",
 "n": 1,
 "files": [
@@ -17455,6 +17470,13 @@
 },
 {
 "th": "{0}: ภาษีหัก ณ ที่จ่ายต้องไม่เกินค่าบริการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/docs/settle.ts"
+]
+},
+{
+"th": "{0}: ยอด{1}ชำระรวมเกินยอดคงค้าง — มีใบอื่นตัดบิลนี้พร้อมกัน (ตัดแล้ว {2} เกินยอดบิล) · ไม่ได้บันทึก{3} เปิดรายการบิลค้างใหม่แล้วบันทึกอีกครั้ง",
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/settle.ts"
@@ -20142,7 +20164,7 @@
 ]
 },
 {
-"th": "ข้อมูลซ้ำกับที่มีอยู่แล้ว{0}",
+"th": "ข้อมูลซ้ำกับที่มีอยู่แล้ว (อาจมีผู้บันทึกรายการเดียวกันพร้อมกันจากอีกเครื่อง) — ตรวจรหัส/เลขที่ที่ซ้ำ แล้วบันทึกอีกครั้ง",
 "n": 1,
 "files": [
 "apps/server/src/http.ts"
@@ -30068,13 +30090,6 @@
 ]
 },
 {
-"th": "บิลที่เลือก",
-"n": 1,
-"files": [
-"apps/web/src/components/AiBill.tsx"
-]
-},
-{
 "th": "บิลที่ไม่มีชื่อผู้ขาย — ผู้จ่ายเงิน (พนักงาน) ลงชื่อในใบรับรองแทนใบเสร็จรับเงิน · ไม่มีภาษีซื้อ ไม่หัก ณ ที่จ่าย",
 "n": 1,
 "files": [
@@ -37656,6 +37671,13 @@
 ]
 },
 {
+"th": "รหัสผู้จำหน่ายนี้มีอยู่แล้ว (อาจมีผู้เพิ่มพร้อมกันจากอีกเครื่อง) — เปลี่ยนรหัสผู้จำหน่ายแล้วบันทึกอีกครั้ง",
+"n": 1,
+"files": [
+"apps/server/src/http.ts"
+]
+},
+{
 "th": "รหัสผู้ใช้ (ใช้เข้าระบบ)",
 "n": 1,
 "files": [
@@ -37936,6 +37958,13 @@
 ]
 },
 {
+"th": "รหัสลูกค้านี้มีอยู่แล้ว (อาจมีผู้เพิ่มพร้อมกันจากอีกเครื่อง) — เปลี่ยนรหัสลูกค้าแล้วบันทึกอีกครั้ง",
+"n": 1,
+"files": [
+"apps/server/src/http.ts"
+]
+},
+{
 "th": "รหัสลูกค้าใช้ A-Z 0-9 _ -",
 "n": 1,
 "files": [
@@ -38003,6 +38032,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/LkSelect.tsx"
+]
+},
+{
+"th": "รหัสสินค้านี้มีอยู่แล้ว (อาจมีผู้เพิ่มพร้อมกันจากอีกเครื่อง) — เปลี่ยนรหัสสินค้าแล้วบันทึกอีกครั้ง",
+"n": 1,
+"files": [
+"apps/server/src/http.ts"
 ]
 },
 {
@@ -49885,6 +49921,13 @@
 ]
 },
 {
+"th": "เลขที่เอกสารนี้มีผู้บันทึกไปก่อนแล้ว (อาจบันทึกพร้อมกันจากอีกเครื่อง) — เว้นช่องเลขที่ว่างเพื่อใช้เลขอัตโนมัติ หรือเปลี่ยนเลขที่ แล้วบันทึกอีกครั้ง",
+"n": 1,
+"files": [
+"apps/server/src/http.ts"
+]
+},
+{
 "th": "เลขที่เอกสารภายใน",
 "n": 1,
 "files": [
@@ -50008,6 +50051,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/routes.ts"
+]
+},
+{
+"th": "เลขที่ใบสำคัญนี้มีผู้บันทึกไปก่อนแล้ว (อาจบันทึกพร้อมกันจากอีกเครื่อง) — กดบันทึกอีกครั้งเพื่อใช้เลขถัดไป หรือเปลี่ยนเลขที่ใบสำคัญ",
+"n": 1,
+"files": [
+"apps/server/src/http.ts"
 ]
 },
 {

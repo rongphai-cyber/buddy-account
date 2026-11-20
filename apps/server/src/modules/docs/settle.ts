@@ -192,7 +192,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
     await periodFor(tx, a.companyId, b.doc_date);
     let hid = id, docNo: string;
     if (id) {
-      const cur = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_class', 'doc_date']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+      const cur = await tx.selectFrom('doc_header').select(['doc_no', 'doc_status', 'doc_class', 'doc_date']).where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).forUpdate().executeTakeFirst();
       if (!cur || cur.doc_class !== K.cls) throw notFound(K.label);
       if (cur.doc_status === 'C') throw badRequest('เอกสารนี้ถูกยกเลิกแล้ว แก้ไขไม่ได้');
       await periodFor(tx, a.companyId, String(cur.doc_date).slice(0, 10));
@@ -207,6 +207,8 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
       docNo = await docNoFor(tx, a.companyId, dt.id, b.doc_no);
       hid = (await tx.insertInto('doc_header').values({ ...header, company_id: a.companyId, branch_id: branchId!, doc_no: docNo, doc_status: 'N', created_by: a.userId }).returning('id').executeTakeFirstOrThrow()).id;
     }
+    // HANDOFF 158: ล็อกบิลที่ตัด (เรียงตาม id กันรอกันเอง) — สองใบเสร็จตัดบิลเดียวกันพร้อมกัน / ยกเลิกบิลระหว่างออกใบเสร็จ ต้องรอกันทีละราย
+    await lockHeaders(tx, a.companyId, ids);
     // express_rectype: รหัสรายการตัดแบบ Express (3 บิล 4 เพิ่มหนี้ 5 ลดหนี้) — เครื่องลงบัญชีใช้กลับเครื่องหมายใบลดหนี้
     await tx.insertInto('doc_settlement').values(setts.map((s, i) => ({ company_id: a.companyId, payment_header_id: hid!, invoice_header_id: s.o.header_id, express_rectype: s.rectype, amount: s.amount, vat_amount: s.vat, ...noteCols(b.settlements[i]!), created_by: a.userId }))).execute();
     await writePayments(tx, a, { headerId: hid!, direction: K.direction, payDate, methods: mById, payments: b.payments, customerId: header.customer_id, supplierId: header.supplier_id, partyName: header.party_name, departmentId: header.department_id });
@@ -214,6 +216,7 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
       payee: { name: header.party_name || party.code, address: header.party_address, tax_id: party.tax_id, branch_no: party.tax_branch_no } });
     await writeCharges(tx, a, { headerId: hid!, docNo, payDate, departmentId: header.department_id, charges: b.charges, suppliers: charge.suppliers });
     await writeDepositLinks(tx, a, hid!, dep.rows);
+    await checkSettledAfterWrite(tx, a.companyId, K, ids);
     const curJ = id ? await tx.selectFrom('gl_journal').select('id').where('source_header_id', '=', id).where('doc_status', '=', 'N').where('deleted_at', 'is', null).executeTakeFirst() : undefined;
     const posted = await postDocument(tx, a, hid!, curJ?.id);
     if (!posted.journal_id && curJ) await unpostDocument(tx, a, hid!);
@@ -223,6 +226,31 @@ async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: B
     return { id: hid, doc_no: docNo, journal_id: posted.journal_id, net_amount: t.billed, cash_amount: t.cash, deposit_amount: t.deposit, warnings };
   });
 }
+
+/** ล็อกหัวเอกสารหลายใบเรียงตาม id (ทุกทางที่ล็อกหลายใบเรียงแบบเดียวกัน — ไม่รอกันเป็นวง) */
+export async function lockHeaders(tx: Db, companyId: string, ids: string[]) {
+  const sorted = [...new Set(ids)].sort();
+  if (sorted.length) await sql`SELECT id FROM doc_header WHERE id = ANY(${sorted}::uuid[]) AND company_id = ${companyId} ORDER BY id FOR UPDATE`.execute(tx);
+}
+
+/**
+ * ตรวจซ้ำหลังเขียนรายการตัด (ในทรานแซกชันเดียวกัน หลังล็อกบิล) — การตรวจก่อนบันทึกอ่านยอดตอนกดบันทึก ซึ่งอีกเครื่องอาจตัดบิลเดียวกันไปพร้อมกัน
+ * บิลถูกยกเลิก/ลบไปแล้ว หรือยอดที่ตัดรวมเกินยอดบิล = ไม่บันทึก (ไม่ให้ลูกหนี้/เจ้าหนี้ติดลบ) — HANDOFF 158
+ */
+async function checkSettledAfterWrite(tx: Db, companyId: string, K: SettleKind, ids: string[]) {
+  if (!ids.length) return;
+  const view = K.module === 'AR' ? 'v_ar_outstanding' : 'v_ap_outstanding';
+  const rows = (await sql<{ header_id: string; doc_no: string; amount: string; settled: string }>`
+    SELECT header_id, doc_no, abs(amount) AS amount, settled FROM ${sql.table(view)} WHERE company_id = ${companyId} AND header_id = ANY(${ids}::uuid[])`.execute(tx)).rows;
+  const gone = ids.find((x) => !rows.some((r) => r.header_id === x));
+  if (gone) {
+    const h = await tx.selectFrom('doc_header').select('doc_no').where('id', '=', gone).executeTakeFirst();
+    throw badRequest(`${h?.doc_no ?? 'บิลที่เลือก'} ถูกยกเลิกหรือลบระหว่างบันทึก (อาจทำพร้อมกันจากอีกเครื่อง) — ไม่ได้บันทึก${K.label} · เปิดรายการบิลค้างใหม่แล้วบันทึกอีกครั้ง`);
+  }
+  const over = rows.find((r) => d(r.settled).gt(d(r.amount)));
+  if (over) throw badRequest(`${over.doc_no}: ยอด${K.direction === 'R' ? 'รับ' : 'จ่าย'}ชำระรวมเกินยอดคงค้าง — มีใบอื่นตัดบิลนี้พร้อมกัน (ตัดแล้ว ${formatMoney(d(over.settled).minus(d(over.amount)))} เกินยอดบิล) · ไม่ได้บันทึก${K.label} เปิดรายการบิลค้างใหม่แล้วบันทึกอีกครั้ง`);
+}
+const formatMoney = (v: ReturnType<typeof d>) => v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
 export function settleRoutes(app: FastifyInstance, db: Db) {
   for (const K of SETTLE_KINDS) {
