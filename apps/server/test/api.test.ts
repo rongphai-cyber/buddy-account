@@ -5734,6 +5734,67 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     cookie = '';
   });
 
+  it('standard user groups for customers + a user must get a company (HANDOFF 159): new tenant/company/signup get SALE PURCH ACC VIEW with rights, provider button is idempotent, no cross-tenant', async () => {
+    const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
+    const STD = ['ACC', 'PURCH', 'SALE', 'VIEW'];
+    const platform = await login('admin', 'secret123');
+    for (const [code, u, pw] of [['GRP-A', 'grp.a', 'passGrpA1'], ['GRP-B', 'grp.b', 'passGrpB1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
+    const tenants = (await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; name: string; status: string }>;
+    const A = tenants.find((t) => t.code === 'GRP-A')!, B = tenants.find((t) => t.code === 'GRP-B')!;
+    // ลูกค้าใหม่ได้กลุ่มตั้งต้นทันที · บริษัทแรกและบริษัทที่สองได้สิทธิ์ของกลุ่มเหล่านั้น
+    const adminA = await login('grp.a', 'passGrpA1');
+    const co1 = (await call('POST', '/api/v1/companies', { code: 'GRPA1', name_th: 'บริษัท เอหนึ่ง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    const co2 = (await call('POST', '/api/v1/companies', { code: 'GRPA2', name_th: 'บริษัท เอสอง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    let ul = (await call('GET', '/api/v1/users')).body as { users: Array<{ id: string; username: string; rights_in: string[] }>; groups: Array<{ id: string; code: string; rights_in: string[] }> };
+    expect(ul.groups.map((g) => g.code).sort()).toEqual(['ADMIN', ...STD].sort());
+    for (const c of STD) expect(ul.groups.find((g) => g.code === c)!.rights_in.sort()).toEqual([co1, co2].sort());
+    const G = Object.fromEntries(ul.groups.map((g) => [g.code, g.id]));
+    // ผู้ใช้ที่ไม่ใช่ ADMIN ต้องเลือกบริษัท · กลุ่ม ADMIN ไม่ต้อง
+    const base = { display_name: 'พนักงาน', password: 'Staff-Pass-159', approval_level: 0, check_rights: true, status: 'A' };
+    const none = await call('POST', '/api/v1/users', { ...base, username: 'grp.nocomp', user_group_id: G.SALE, companies: [] });
+    expect([none.status, none.body.error.message, none.body.error.issues[0].field]).toEqual([400, expect.stringMatching(/ยังไม่ได้เลือกบริษัทที่เข้าได้/), 'companies']);
+    expect((await call('POST', '/api/v1/users', { ...base, username: 'grp.nogroup', companies: [] })).status).toBe(400);
+    expect((await call('POST', '/api/v1/users', { ...base, username: 'grp.admin2', user_group_id: G.ADMIN, companies: [] })).status).toBe(200);
+    const sale = await call('POST', '/api/v1/users', { ...base, username: 'grp.sale', user_group_id: G.SALE, companies: [co1] });
+    expect(sale.status).toBe(200);
+    // แก้ผู้ใช้ให้ไม่มีบริษัท = ไม่ได้เหมือนกัน
+    expect((await call('PUT', `/api/v1/users/${sale.body.id}`, { ...base, password: undefined, username: 'grp.sale', user_group_id: G.SALE, companies: [] })).body.error.message).toMatch(/ยังไม่ได้เลือกบริษัท/);
+    // พนักงานกลุ่มฝ่ายขายใช้ได้ทันที: ขายได้ บัญชี/เงินเดือน/ตั้งค่าไม่ได้
+    await login('grp.sale', 'Staff-Pass-159');
+    await call('POST', '/api/v1/auth/select', { company_id: co1 });
+    const perms = (await call('GET', '/api/v1/auth/me')).body.perms;
+    expect([perms['SA.IV'].add, perms['FI.AR.RE'].add, perms['IC.STOCK'].read, perms['IC.ITEM'].add, perms['GL.JNL'].read, perms['SET.CO'].edit]).toEqual([true, true, true, false, false, false]);
+    expect((await call('GET', '/api/v1/sales-invoices?limit=1')).status).toBe(200);
+    expect((await call('GET', '/api/v1/gl/journals')).status).toBe(403);
+    // ข้ามลูกค้าไม่ได้ (กติกา 7.1): ผู้ดูแลลูกค้า B ไม่เห็นกลุ่มของ A ใช้กลุ่ม/บริษัทของ A ไม่ได้ กดปุ่มของผู้ให้บริการไม่ได้
+    await login('grp.b', 'passGrpB1');
+    const coB = (await call('POST', '/api/v1/companies', { code: 'GRPB1', name_th: 'บริษัท บีหนึ่ง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    const ulB = (await call('GET', '/api/v1/users')).body as typeof ul;
+    expect(ulB.groups.map((g) => g.code).sort()).toEqual(['ADMIN', ...STD].sort());
+    expect(ulB.groups.some((g) => g.id === G.SALE)).toBe(false);
+    expect(ulB.groups.every((g) => g.rights_in.every((c) => c === coB))).toBe(true);
+    expect((await call('POST', '/api/v1/users', { ...base, username: 'grp.cross1', user_group_id: G.SALE, companies: [coB] })).body.error.message).toMatch(/กลุ่มผู้ใช้ต้องเป็นของลูกค้ารายเดียวกับผู้ใช้/);
+    expect((await call('POST', '/api/v1/users', { ...base, username: 'grp.cross2', user_group_id: ulB.groups.find((g) => g.code === 'SALE')!.id, companies: [co1] })).status).toBe(400);
+    expect((await call('POST', `/api/v1/tenants/${A.id}/standard-groups`)).status).toBe(403);
+    // ปุ่มผู้ให้บริการ: ลูกค้าเดิมที่ยังไม่มีกลุ่มตั้งต้น → สร้างครบ · กดซ้ำ = ไม่เพิ่มอะไร · สิทธิ์ที่ลูกค้าแก้เองไม่ถูกเขียนทับ
+    await sql`UPDATE sys_user_group SET deleted_at = now() WHERE tenant_id = ${B.id} AND code IN ('SALE', 'PURCH', 'ACC', 'VIEW')`.execute(database.db);
+    cookie = platform;
+    const r1 = await call('POST', `/api/v1/tenants/${B.id}/standard-groups`);
+    expect([r1.status, r1.body.created.sort(), r1.body.companies]).toEqual([200, [...STD].sort(), 1]);
+    expect(r1.body.rows).toBeGreaterThan(10);
+    const accB = (await sql<{ id: string }>`SELECT id FROM sys_user_group WHERE tenant_id = ${B.id} AND code = 'ACC' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.id;
+    await sql`UPDATE sys_permission SET can_add = 'N' WHERE subject_id = ${accB} AND deleted_at IS NULL`.execute(database.db);
+    const r2 = await call('POST', `/api/v1/tenants/${B.id}/standard-groups`);
+    expect([r2.status, r2.body.created, r2.body.rows]).toEqual([200, [], 0]);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE subject_id = ${accB} AND deleted_at IS NULL AND can_add = 'Y'`.execute(database.db)).rows[0]!.n).toBe(0);
+    // ลูกค้าที่สมัครเองและได้รับอนุมัติ (ชุดทดสอบสมัครใช้งานด้านบน — สร้างบริษัทแรก SUAUTO ให้): กลุ่มตั้งต้นมีสิทธิ์ในบริษัทนั้น
+    const su = (await sql<{ code: string }>`SELECT DISTINCT g.code FROM sys_permission p JOIN sys_user_group g ON g.id = p.subject_id AND g.deleted_at IS NULL
+        JOIN sys_company c ON c.id = p.company_id AND c.tenant_id = g.tenant_id WHERE p.deleted_at IS NULL AND c.code = 'SUAUTO' ORDER BY 1`.execute(database.db)).rows.map((x) => x.code);
+    expect(su).toEqual([...STD].sort());
+    void adminA;
+    cookie = '';
+  });
+
   it('1 รหัสเข้าได้ทีละ 1 เครื่อง: the second login ends the first session with SESSION_REPLACED; per-user option; no cross-tenant change (HANDOFF 156)', async () => {
     const login = async (u: string, pw: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: pw })).status).toBe(200); return cookie; };
     const as = async (c: string, url: string) => { cookie = c; return call('GET', url); };

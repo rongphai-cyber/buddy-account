@@ -1107,3 +1107,5 @@ button.ro-off, [role=button].ro-off { opacity: .45; cursor: not-allowed; filter:
 html[data-readonly] .main .form-grid input:not([type=search]), html[data-readonly] .main .form-grid select, html[data-readonly] .main .form-grid textarea,
 html[data-readonly] .modal-body .form-grid input:not([type=search]), html[data-readonly] .modal-body .form-grid select, html[data-readonly] .modal-body .form-grid textarea,
 html[data-readonly] .main table.grid input, html[data-readonly] .main table.grid select { background: #f6f5f2; cursor: not-allowed; }
+/* ช่องบังคับที่ยังไม่ได้เลือก (หน้าผู้ใช้งาน: บริษัทที่เข้าได้ · HANDOFF 159) */
+fieldset.invalid { border: 1px solid var(--bad); border-radius: 8px; padding: 6px 8px; background: #fff5f5; }

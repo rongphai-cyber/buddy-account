@@ -200,7 +200,7 @@ export const API_RULES: Record<string, Rule> = {
   // ชื่อภาษาอังกฤษของข้อมูลบริษัทนี้ (โหมด EN)
   'GET /api/v1/i18n/names': LOOKUP,
   'GET /api/v1/signup/config': OPEN, 'POST /api/v1/signup': OPEN, 'GET /api/v1/signups': SELF, 'POST /api/v1/signups/:id/approve': SELF, 'POST /api/v1/signups/:id/reject': SELF,
-  'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/tenants/:id/purge': SELF, 'POST /api/v1/tenants/:id/viewers': SELF, 'POST /api/v1/tenants/:id/export': SELF, 'POST /api/v1/tenants/import': SELF, 'POST /api/v1/companies': SELF,
+  'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/tenants/:id/purge': SELF, 'POST /api/v1/tenants/:id/viewers': SELF, 'POST /api/v1/tenants/:id/standard-groups': SELF, 'POST /api/v1/tenants/:id/export': SELF, 'POST /api/v1/tenants/import': SELF, 'POST /api/v1/companies': SELF,
   // T7.8 ออฟไลน์สาขา: เครื่องสาขา (ผู้ดูแลบริษัท) · API ของเครื่องสาขายืนยันด้วยรหัสเครื่อง (OPEN + ตรวจในตัว) · สถานะ/ส่งใหม่ของเครื่องสาขา (SELF)
   'GET /api/v1/devices': M('SET.DEVICE', 'read'), 'POST /api/v1/devices': M('SET.DEVICE', 'add'), 'POST /api/v1/devices/:id/new-code': M('SET.DEVICE', 'edit'),
   'POST /api/v1/devices/:id/suspend': M('SET.DEVICE', 'cancel'), 'GET /api/v1/devices/:id/conflicts': M('SET.DEVICE', 'read'),

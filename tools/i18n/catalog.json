@@ -2513,6 +2513,18 @@
 ]
 },
 {
+"th": "ลูกค้าผู้ใช้บริการ",
+"n": 10,
+"files": [
+"apps/web/src/pages/settings/Import.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/tenant-modules.ts",
+"apps/server/src/modules/tenant-move.ts"
+]
+},
+{
 "th": "ส่วนลด",
 "n": 10,
 "files": [
@@ -2670,18 +2682,6 @@
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "ลูกค้าผู้ใช้บริการ",
-"n": 9,
-"files": [
-"apps/web/src/pages/settings/Import.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/tenant-modules.ts",
-"apps/server/src/modules/tenant-move.ts"
 ]
 },
 {
@@ -4782,6 +4782,15 @@
 ]
 },
 {
+"th": "กลับไปแก้",
+"n": 4,
+"files": [
+"apps/web/src/components/DocEdit.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "กลุ่มบัญชี",
 "n": 4,
 "files": [
@@ -6099,6 +6108,14 @@
 ]
 },
 {
+"th": "ตรวจสอบสิทธิ์ก่อนใช้งาน",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ตัดจากบัญชี",
 "n": 3,
 "files": [
@@ -6220,14 +6237,6 @@
 "apps/server/src/modules/docs/stockdocs.ts",
 "apps/server/src/modules/docs/stockopening.ts",
 "apps/server/src/modules/docs/trade.ts"
-]
-},
-{
-"th": "บริษัทที่เข้าได้",
-"n": 3,
-"files": [
-"apps/web/src/pages/Hub.tsx",
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -7903,14 +7912,6 @@
 ]
 },
 {
-"th": "กลับไปแก้",
-"n": 2,
-"files": [
-"apps/web/src/components/DocEdit.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx"
-]
-},
-{
 "th": "กลับไปใช้ต้นแบบ",
 "n": 2,
 "files": [
@@ -8765,6 +8766,14 @@
 ]
 },
 {
+"th": "ดูอย่างเดียว (อ่าน/พิมพ์ออกจอ)",
+"n": 2,
+"files": [
+"apps/server/src/standard-groups.ts",
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "ตรวจกระทบยอดกับ Express",
 "n": 2,
 "files": [
@@ -8792,14 +8801,6 @@
 "th": "ตรวจสอบสิทธิ์",
 "n": 2,
 "files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
-"th": "ตรวจสอบสิทธิ์ก่อนใช้งาน",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx",
 "apps/web/src/pages/settings/Users.tsx"
 ]
 },
@@ -9376,6 +9377,14 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "บริษัทที่เข้าได้",
+"n": 2,
+"files": [
+"apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -10000,6 +10009,30 @@
 "files": [
 "packages/core/src/doc-calc.ts",
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ฝ่ายขาย",
+"n": 2,
+"files": [
+"apps/server/src/standard-groups.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "ฝ่ายจัดซื้อ",
+"n": 2,
+"files": [
+"apps/server/src/standard-groups.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "ฝ่ายบัญชี",
+"n": 2,
+"files": [
+"apps/server/src/standard-groups.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -18694,6 +18727,13 @@
 ]
 },
 {
+"th": "กลุ่ม ADMIN เข้าได้ทุกบริษัทของกิจการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "กลุ่มบัญชี {0}",
 "n": 1,
 "files": [
@@ -18719,6 +18759,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/fa.ts"
+]
+},
+{
+"th": "กลุ่มผู้ใช้ตั้งต้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -24749,13 +24796,6 @@
 ]
 },
 {
-"th": "ดูอย่างเดียว (อ่าน/พิมพ์ออกจอ)",
-"n": 1,
-"files": [
-"apps/server/src/modules/company.ts"
-]
-},
-{
 "th": "ดูอย่างเดียว — บัญชีนี้ไม่มีสิทธิ์เพิ่มหรือแก้ไขในเมนูนี้ (ขอสิทธิ์จากผู้ดูแลระบบ)",
 "n": 1,
 "files": [
@@ -25894,6 +25934,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/BankRecon.tsx"
+]
+},
+{
+"th": "ติ๊กบริษัทอย่างน้อย 1 บริษัท",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -28298,6 +28345,13 @@
 ]
 },
 {
+"th": "บริษัทที่เข้าได้{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "บริษัทที่ให้สิทธิ์ต้องเป็นของลูกค้ารายเดียวกัน",
 "n": 1,
 "files": [
@@ -29075,6 +29129,13 @@
 ]
 },
 {
+"th": "บันทึก แล้วไปกำหนดสิทธิ์รายเมนู",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "บันทึก{0}ก่อน (F9) แล้วเปิดแก้ไขอีกครั้งเพื่อเพิ่มรูป",
 "n": 1,
 "files": [
@@ -29419,6 +29480,13 @@
 },
 {
 "th": "บันทึกผู้ใช้แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "บันทึกผู้ใช้แล้ว — กำหนดสิทธิ์รายเมนูของผู้ใช้นี้ต่อ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -32792,24 +32860,10 @@
 ]
 },
 {
-"th": "ฝ่ายขาย",
+"th": "ฝ่ายขาย · ฝ่ายจัดซื้อ · ฝ่ายบัญชี · ดูอย่างเดียว พร้อมสิทธิ์รายเมนูทุกบริษัทของลูกค้านี้ — ลูกค้าใหม่ได้อัตโนมัติ · ลูกค้าเดิมกดเพิ่มได้ (กดซ้ำได้ สร้างเฉพาะที่ยังไม่มี ไม่เขียนทับสิทธิ์ที่ลูกค้าแก้เอง)",
 "n": 1,
 "files": [
-"packages/core/src/menu.ts"
-]
-},
-{
-"th": "ฝ่ายจัดซื้อ",
-"n": 1,
-"files": [
-"packages/core/src/menu.ts"
-]
-},
-{
-"th": "ฝ่ายบัญชี",
-"n": 1,
-"files": [
-"packages/core/src/menu.ts"
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -34252,6 +34306,13 @@
 "n": 1,
 "files": [
 "packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "มีกลุ่มตั้งต้นและสิทธิ์ครบแล้ว — ไม่ได้เพิ่มอะไร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -36593,6 +36654,13 @@
 ]
 },
 {
+"th": "ยังไม่ได้กำหนดสิทธิ์รายเมนู",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ยังไม่ได้ตั้ง (ตั้งค่าระบบเงินเดือน ข้อ 1)",
 "n": 1,
 "files": [
@@ -36709,6 +36777,27 @@
 "n": 1,
 "files": [
 "packages/core/src/hub.ts"
+]
+},
+{
+"th": "ยังไม่ได้เลือกบริษัทที่เข้าได้ — ติ๊กบริษัทอย่างน้อย 1 บริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ยังไม่ได้เลือกบริษัทที่เข้าได้ — ผู้ใช้นี้จะเข้าบริษัทใดไม่ได้ ติ๊กบริษัทอย่างน้อย 1 บริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ยังไม่ได้เลือกบริษัทที่เข้าได้ — ผู้ใช้นี้จะเข้าบริษัทใดไม่ได้ ติ๊กบริษัทอย่างน้อย 1 บริษัท (หรือเลือกกลุ่ม ADMIN ซึ่งเข้าได้ทุกบริษัท)",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -44601,10 +44690,24 @@
 ]
 },
 {
+"th": "หรือบันทึก แล้วกำหนดสิทธิ์รายเมนูของผู้ใช้นี้ต่อทันที",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "หรือบันทึกแล้วเริ่มใบถัดไปทันที",
 "n": 1,
 "files": [
 "apps/web/src/components/DocEdit.tsx"
+]
+},
+{
+"th": "หรือไม่ตรวจสอบสิทธิ์ ใช้สิทธิ์ตามระดับอนุมัติ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -48780,6 +48883,20 @@
 ]
 },
 {
+"th": "เพิ่มกลุ่ม {0} · สิทธิ์รายเมนู {1} แถว ({2} บริษัท)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เพิ่มกลุ่มตั้งต้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "เพิ่มกลุ่มบัญชีทรัพย์สิน",
 "n": 1,
 "files": [
@@ -50418,6 +50535,13 @@
 ]
 },
 {
+"th": "เลือก \"ตรวจสอบสิทธิ์ก่อนใช้งาน\" แต่ทั้งผู้ใช้นี้{0}ยังไม่มีสิทธิ์รายเมนูในบริษัทที่ติ๊กไว้ — ถ้าบันทึกเลย ผู้ใช้จะเปิดเมนูใดไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "เลือก Job ที่กำลังทำ",
 "n": 1,
 "files": [
@@ -50499,6 +50623,13 @@
 "n": 1,
 "files": [
 "apps/server/src/owned.ts"
+]
+},
+{
+"th": "เลือกกลุ่มตั้งต้น (ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ดูอย่างเดียว) ซึ่งมีสิทธิ์รายเมนูพร้อมใช้ — กด \"กลับไปแก้\"",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -52924,6 +53055,13 @@
 ]
 },
 {
+"th": "และกลุ่มที่เลือก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "และย้ายยอดเป็นภาษีขอคืนไม่ได้",
 "n": 1,
 "files": [
@@ -55144,6 +55282,13 @@
 },
 {
 "th": "ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ) แล้วบันทึก",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"

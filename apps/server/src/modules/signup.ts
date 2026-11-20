@@ -6,6 +6,7 @@ import { checkTaxId, passwordProblem } from '@buddy/core';
 import type { Config } from '../config.js';
 import type { Database, DB } from '../db.js';
 import { applyPostingTemplate, createStandardCompany } from '../company-template.js';
+import { ensureStandardGroups } from '../standard-groups.js';
 import { badRequest, conflict, forbidden, notFound, parse, requireAuth } from '../http.js';
 import { logActivity } from '../audit.js';
 
@@ -27,6 +28,8 @@ export async function createTenantWithAdmin(tx: Kysely<DB>, actor: string | null
     max_companies: t.max_companies ?? null, max_users: t.max_users ?? null, expires_on: t.expires_on ?? null, status: t.status ?? 'A', dpa_signed_on: t.dpa_signed_on ?? null, single_session: t.single_session ?? false, created_by: actor }).returning('id').executeTakeFirstOrThrow();
   const g = await tx.insertInto('sys_user_group').values({ tenant_id: row.id, code: 'ADMIN', name: 'ผู้ดูแลระบบของลูกค้า', created_by: actor }).returning('id').executeTakeFirstOrThrow();
   await tx.insertInto('sys_user').values({ tenant_id: row.id, username: t.admin_username, display_name: t.admin_name, password_hash: t.password_hash, user_group_id: g.id, approval_level: 9, created_by: actor }).execute();
+  // กลุ่มตั้งต้น ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ดูอย่างเดียว (HANDOFF 159) — สิทธิ์รายเมนูใส่ตอนสร้างบริษัท
+  await ensureStandardGroups(tx, row.id, actor, { createGroups: true });
   return row;
 }
 
@@ -62,6 +65,7 @@ async function approve(db: Kysely<DB>, id: string, actor: string | null, o: { co
   let company: { id: string; code: string } | null = null;
   if (o.first_company !== false) {
     company = await createStandardCompany(db, { tenantId: t.id, code, name_th: s.business_name, tax_id: s.tax_id ?? null, fiscal_start: o.fiscal_start ?? thisYearStart(), actor });
+    await ensureStandardGroups(db, t.id, actor, { createGroups: false, companyIds: [company.id] });
     await logActivity(db, { companyId: company.id, userId: actor }, { module: 'SYS', action: 'NEW_COMPANY', docNo: company.code, table: 'sys_company', rowId: company.id, detail: { code: company.code, tenant_id: t.id, signup: id, chart: 'express' } });
   }
   return { tenant_id: t.id, code, company_id: company?.id ?? null, company_code: company?.code ?? null };

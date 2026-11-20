@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { SignupsPanel } from './Signups';
-import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, useHotkeys } from '../../ui';
+import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, toastError, useHotkeys } from '../../ui';
 
 interface Tenant { id: string; code: string; name: string; contact_email: string | null; contact_phone: string | null; plan: string; max_companies: number | null; max_users: number | null; expires_on: string | null; status: string; company_count: number; user_count: number;
   dpa_signed_on: string | null; terminated_on: string | null; purge_after: string | null; purged_at: string | null; moved_to: string | null; single_session?: boolean }
@@ -78,6 +78,13 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
         </Field>
         <Field label="ลงนามข้อตกลงประมวลผลข้อมูล (DPA)" hint="ดูแบบข้อตกลงใน docs/10_PDPA.md"><DateInput value={f.dpa_signed_on} onChange={(v) => setF({ ...f, dpa_signed_on: v })} /></Field>
         {t && <TenantModules tenantId={t.id} />}
+        {t && !t.purged_at && <>
+          <h3 className="wide">กลุ่มผู้ใช้ตั้งต้น</h3>
+          <p className="wide small muted">ฝ่ายขาย · ฝ่ายจัดซื้อ · ฝ่ายบัญชี · ดูอย่างเดียว พร้อมสิทธิ์รายเมนูทุกบริษัทของลูกค้านี้ — ลูกค้าใหม่ได้อัตโนมัติ · ลูกค้าเดิมกดเพิ่มได้ (กดซ้ำได้ สร้างเฉพาะที่ยังไม่มี ไม่เขียนทับสิทธิ์ที่ลูกค้าแก้เอง)</p>
+          <div className="wide"><button type="button" onClick={() => api.post<{ created: string[]; rows: number; companies: number }>(`/api/v1/tenants/${t.id}/standard-groups`)
+            .then((r) => toast(r.created.length || r.rows ? `เพิ่มกลุ่ม ${r.created.join(' ') || '—'} · สิทธิ์รายเมนู ${r.rows} แถว (${r.companies} บริษัท)` : 'มีกลุ่มตั้งต้นและสิทธิ์ครบแล้ว — ไม่ได้เพิ่มอะไร'))
+            .catch(toastError)}>เพิ่มกลุ่มตั้งต้น</button></div>
+        </>}
         {t && t.status === 'A' && <>
           <h3 className="wide">ผู้ใช้ดูอย่างเดียว (ให้ลูกค้าทดลองดูข้อมูลตัวอย่าง)</h3>
           <p className="wide small muted">อ่านและดูตัวอย่างพิมพ์ทางจอได้ทุกบริษัทของลูกค้านี้ — เพิ่ม แก้ไข ยกเลิก ลบ รับรอง ไม่ได้ · เห็นเฉพาะข้อมูลของลูกค้านี้ · แนะนำหนึ่งรหัสต่อลูกค้าทดลองหนึ่งราย (ปิดเฉพาะรายได้ที่หน้า ผู้ใช้งานและสิทธิ์)</p>

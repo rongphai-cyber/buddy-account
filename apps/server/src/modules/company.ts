@@ -15,6 +15,7 @@ import { purgeTenant } from './pdpa.js';
 import { modulesOffRaw } from './permissions.js';
 import { payrollSource } from './wts.js';
 import { createTenantWithAdmin } from './signup.js';
+import { ensureStandardGroups, permissionCompanies } from '../standard-groups.js';
 import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, seedLookups, setSetting } from '../company-template.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
@@ -144,6 +145,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
         await seedLookups(tx, c.id);
         if (b.chart === 'copy') await copyChart(tx, b.copy_from_company_id!, c.id);
       }
+      // บริษัทที่สอง ฯลฯ: กลุ่มตั้งต้นที่ลูกค้ามีอยู่ได้สิทธิ์ในบริษัทใหม่ด้วย (ไม่สร้างกลุ่มใหม่ ไม่แตะสิทธิ์ที่แก้เองแล้ว) — HANDOFF 159
+      await ensureStandardGroups(tx, tenantId, a.userId, { createGroups: false, companyIds: [c.id] });
       await logActivity(tx, { companyId: c.id, userId: a.userId }, { module: 'SYS', action: 'NEW_COMPANY', table: 'sys_company', rowId: c.id, detail: { code: b.code, tenant_id: tenantId, copied_from: b.copy_from_company_id ?? null, copied } });
       return c.id;
     });
@@ -202,7 +205,11 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     // ยืนยันตัวตนสองขั้น / ล็อก (T0.16)
     const secs = users.length ? await db.selectFrom('sys_user_security').select(['user_id', 'totp_enabled', 'locked_until']).where('user_id', 'in', users.map((u) => u.id)).where('deleted_at', 'is', null).execute() : [];
     const links = users.length ? await db.selectFrom('sys_user_company').select(['user_id', 'company_id']).where('user_id', 'in', users.map((u) => u.id)).where('deleted_at', 'is', null).execute() : [];
-    return { users: users.map((u) => { const sc = secs.find((x) => x.user_id === u.id); return { ...u, app_access: normalizeAppAccess(u.app_access), companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id), mfa_enabled: !!sc?.totp_enabled, locked_until: sc?.locked_until && new Date(sc.locked_until).getTime() > Date.now() ? sc.locked_until : null }; }), groups: await gq.orderBy('code').execute() };
+    const groups = await gq.orderBy('code').execute();
+    // บริษัทที่ผู้ใช้/กลุ่มมีแถวสิทธิ์รายเมนู — หน้าจอเตือนเมื่อ "ตรวจสอบสิทธิ์ก่อนใช้งาน" แต่ไม่มีสิทธิ์ในบริษัทที่เลือก (HANDOFF 159)
+    const rowsIn = await permissionCompanies(db, [...users.map((u) => u.id), ...groups.map((g) => g.id)]);
+    return { users: users.map((u) => { const sc = secs.find((x) => x.user_id === u.id); return { ...u, app_access: normalizeAppAccess(u.app_access), companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id), rights_in: rowsIn.get(u.id) ?? [], mfa_enabled: !!sc?.totp_enabled, locked_until: sc?.locked_until && new Date(sc.locked_until).getTime() > Date.now() ? sc.locked_until : null }; }),
+      groups: groups.map((g) => ({ ...g, rights_in: rowsIn.get(g.id) ?? [] })) };
   });
   /** ค่าที่เก็บใน sys_user.app_access (jsonb): null = ทุกโปรแกรมของลูกค้า · รายการเรียงตาม TENANT_MODULES ไม่ซ้ำ */
   const appAccessValue = (v: string[] | null | undefined) => { const n = normalizeAppAccess(v ?? null); return n === null ? null : (JSON.stringify(n) as never); };
@@ -216,12 +223,17 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     // โปรแกรมที่เปิดได้จาก Hub (09/11/2569): null = ทุกโปรแกรมของลูกค้า · [...] = เฉพาะที่ระบุ · ไม่ส่ง (หน้าจอรุ่นเก่า) = คงค่าเดิม
     app_access: z.array(z.string().refine(isTenantModuleKey, (k) => ({ message: `ไม่รู้จักโปรแกรม "${k}" — ใช้ได้: ${TENANT_MODULES.map((m) => m.key).join(' ')}` }))).max(TENANT_MODULES.length).nullable().optional(),
   });
+  const NO_COMPANY = 'ยังไม่ได้เลือกบริษัทที่เข้าได้ — ผู้ใช้นี้จะเข้าบริษัทใดไม่ได้ ติ๊กบริษัทอย่างน้อย 1 บริษัท (หรือเลือกกลุ่ม ADMIN ซึ่งเข้าได้ทุกบริษัท)';
   /** ตรวจว่ากลุ่มและบริษัทที่กำหนดให้ผู้ใช้อยู่ใน tenant เดียวกับผู้ใช้ — กันการให้สิทธิ์ข้ามลูกค้า */
   async function checkUserScope(tenantId: string | null, b: z.infer<typeof userBody>) {
+    let admin = false;
     if (b.user_group_id) {
-      const g = await db.selectFrom('sys_user_group').select('tenant_id').where('id', '=', b.user_group_id).executeTakeFirst();
+      const g = await db.selectFrom('sys_user_group').select(['tenant_id', 'code']).where('id', '=', b.user_group_id).executeTakeFirst();
       if (!g || (g.tenant_id ?? null) !== tenantId) throw badRequest('กลุ่มผู้ใช้ต้องเป็นของลูกค้ารายเดียวกับผู้ใช้');
+      admin = g.code === 'ADMIN';
     }
+    // ผู้ใช้ที่ไม่ใช่กลุ่ม ADMIN ต้องเข้าได้อย่างน้อย 1 บริษัท — ไม่งั้นบันทึกได้แต่ใช้อะไรไม่ได้เลย (HANDOFF 159 · ข้อกำหนดเจ้าของ: ช่องบังคับเตือน)
+    if (!admin && !b.companies.length) throw badRequest(NO_COMPANY, [{ field: 'companies', message: 'ติ๊กบริษัทอย่างน้อย 1 บริษัท' }]);
     if (b.companies.length) {
       const cs = await db.selectFrom('sys_company').select(['id', 'tenant_id']).where('id', 'in', b.companies).execute();
       if (cs.length !== b.companies.length || cs.some((c) => c.tenant_id !== tenantId)) throw badRequest('บริษัทที่ให้สิทธิ์ต้องเป็นของลูกค้ารายเดียวกับผู้ใช้');
@@ -341,6 +353,21 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       await markPasswordChanged(tx, u.id);
       await logActivity(tx, a, { module: 'SYS', action: 'ADD_USER', table: 'sys_user', rowId: u.id, detail: { username: b.username, tenant_id: id, viewer: true, companies: companies.length } });
       return { id: u.id, username: b.username, tenant_code: t.code, companies: companies.length };
+    });
+  });
+  /**
+   * เพิ่มกลุ่มตั้งต้น (ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ดูอย่างเดียว) ให้ลูกค้าที่สร้างก่อนมีกลุ่มตั้งต้น — HANDOFF 159
+   * เจ้าหน้าที่ผู้ให้บริการกดทีละลูกค้า · ทำซ้ำได้: สร้างเฉพาะกลุ่มที่ยังไม่มี ใส่สิทธิ์เฉพาะบริษัทที่กลุ่มยังไม่มีแถวสิทธิ์ (ไม่เขียนทับที่ลูกค้าแก้เอง)
+   */
+  app.post('/api/v1/tenants/:id/standard-groups', async (req) => {
+    const a = requirePlatform(req);
+    const { id } = parse(z.object({ id: uuid }), req.params);
+    const t = await db.selectFrom('sys_tenant').select(['id', 'code', 'purged_at']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!t || t.purged_at) throw notFound('ลูกค้าผู้ใช้บริการ');
+    return db.transaction().execute(async (tx) => {
+      const r = await ensureStandardGroups(tx, id, a.userId, { createGroups: true });
+      await logActivity(tx, a, { module: 'SYS', action: 'TENANT_STANDARD_GROUPS', docNo: t.code, table: 'sys_tenant', rowId: id, detail: r });
+      return { ...r, tenant_code: t.code };
     });
   });
   app.put('/api/v1/tenants/:id', async (req) => {

@@ -10,6 +10,7 @@ import { AppError, badRequest, forbidden, notFound, parse, requireAuth, type Aut
 import { logActivity } from '../audit.js';
 import { applyPostingTemplate } from '../company-template.js';
 import { importExpress, validateExpress, folderSource, type ImportReport } from '../import/express/migrate.js';
+import { ensureStandardGroups } from '../standard-groups.js';
 import { defaultTenant } from './company.js';
 
 /**
@@ -65,6 +66,8 @@ async function run(database: Database, j: Job) {
       onProgress: (step, pct) => { j.step = step; j.pct = Math.min(90, Math.max(j.pct, Math.round(pct * 0.9))); } });
     j.step = 'ใส่กฎการลงบัญชี'; j.pct = 92;
     await applyPostingTemplate(database.execScript, report.company_id);
+    // บริษัทใหม่ของลูกค้า: กลุ่มตั้งต้นที่ลูกค้ามีอยู่ได้สิทธิ์ในบริษัทนี้ด้วย (HANDOFF 159)
+    if (j.tenantId) await ensureStandardGroups(db, j.tenantId, j.userId ?? null, { createGroups: false, companyIds: [report.company_id] });
     j.step = 'ตรวจกระทบยอดกับ Express'; j.pct = 95;
     const validation = await validateExpress(db, src, report.company_id).catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) }));
     await logActivity(db, { companyId: report.company_id, userId: j.userId }, { module: 'SYS', action: 'IMPORT_EXPRESS', docNo: j.code, detail: { files: Object.keys(j.files).length, counts: report.counts } });

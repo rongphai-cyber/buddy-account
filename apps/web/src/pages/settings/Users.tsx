@@ -7,8 +7,8 @@ import { HUB_APPS, PASSWORD_RULE, TENANT_MODULES, type TenantModuleKey } from '@
 import { Confirm, cx, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, useHotkeys } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
-interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean }
-interface Group { id: string; code: string; name: string }
+interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean; rights_in?: string[] }
+interface Group { id: string; code: string; name: string; rights_in?: string[] }
 interface TenantSecurity { require_mfa: boolean; single_session?: boolean; users: number; without_mfa: number }
 
 /** ผู้ดูแลระบบของลูกค้า: บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ (HANDOFF 146 · ค่าเริ่มต้น ปิด) */
@@ -86,8 +86,25 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved }: { u: User | null; 
     app_access: (u?.app_access ?? null) as TenantModuleKey[] | null });
   const [err, setErr] = useState<unknown>(null);
   const [sec, setSec] = useState<null | 'unlock' | 'reset-2fa'>(null);
+  const nav = useNavigate();
+  // ตรวจก่อนบันทึก (HANDOFF 159 · ข้อกำหนดเจ้าของ: ช่องบังคับเตือนและให้เลือก)
+  const [noCompany, setNoCompany] = useState(false);
+  const [askRights, setAskRights] = useState(false);
+  const isAdminGroup = groups.find((g) => g.id === f.user_group_id)?.code === 'ADMIN';
   const runSec = () => { const k = sec; setSec(null); api.post(`/api/v1/users/${u!.id}/${k}`).then(() => { toast(k === 'unlock' ? 'ปลดล็อกแล้ว' : 'ล้างยืนยันตัวตนสองขั้นแล้ว — ผู้ใช้ต้องเข้าระบบใหม่'); onSaved(); }).catch(setErr); };
-  const save = () => (u ? api.put(`/api/v1/users/${u.id}`, { ...f, password: f.password || undefined, user_group_id: f.user_group_id || null }) : api.post('/api/v1/users', { ...f, user_group_id: f.user_group_id || null })).then(() => { toast('บันทึกผู้ใช้แล้ว'); onSaved(); }).catch(setErr);
+  const send = (body: typeof f) => (u ? api.put<{ id: string }>(`/api/v1/users/${u.id}`, { ...body, password: body.password || undefined, user_group_id: body.user_group_id || null }) : api.post<{ id: string }>('/api/v1/users', { ...body, user_group_id: body.user_group_id || null }));
+  const done = () => { toast('บันทึกผู้ใช้แล้ว'); onSaved(); };
+  /** มีแถวสิทธิ์รายเมนู (ของผู้ใช้หรือกลุ่ม) ในบริษัทที่ติ๊กอย่างน้อย 1 บริษัท */
+  const hasRights = () => { const g = groups.find((x) => x.id === f.user_group_id); const inCo = [...(u?.rights_in ?? []), ...(g?.rights_in ?? [])]; return f.companies.some((c) => inCo.includes(c)); };
+  const save = () => {
+    setErr(null);
+    if (!isAdminGroup && !f.companies.length) { setNoCompany(true); toast('ยังไม่ได้เลือกบริษัทที่เข้าได้ — ติ๊กบริษัทอย่างน้อย 1 บริษัท', 'warn'); return; }
+    if (f.check_rights && !isAdminGroup && !hasRights()) { setAskRights(true); return; }
+    send(f).then(done).catch(setErr);
+  };
+  // (ก) เปลี่ยนเป็นไม่ตรวจสอบสิทธิ์ แล้วบันทึก · (ข) บันทึก แล้วไปกำหนดสิทธิ์รายเมนูของผู้ใช้นี้
+  const saveAsLevel = () => { setAskRights(false); const next = { ...f, check_rights: false }; setF(next); send(next).then(done).catch(setErr); };
+  const saveThenRights = () => { setAskRights(false); send(f).then((r) => { toast('บันทึกผู้ใช้แล้ว — กำหนดสิทธิ์รายเมนูของผู้ใช้นี้ต่อ'); onSaved(); nav(`/settings/permissions?s=U:${r.id}`); }).catch(setErr); };
   useHotkeys({ F9: save, 'Ctrl+S': save }, [f]);
   return (
     <Modal title={u ? `แก้ไขผู้ใช้ ${u.username}` : 'เพิ่มผู้ใช้'} onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button></>}>
@@ -107,8 +124,10 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved }: { u: User | null; 
         <Field label="เข้าระบบพร้อมกัน" hint={tenantOne ? 'ลูกค้านี้ตั้งไว้ 1 เครื่องทุกผู้ใช้ (ผู้ให้บริการตั้ง)' : '1 เครื่อง = เข้าระบบจากเครื่องใหม่ เครื่องเดิมออกจากระบบ (มีผลครั้งถัดไปที่เข้าระบบ)'}>
           <select value={tenantOne || f.single_session ? '1' : '0'} disabled={tenantOne} onChange={(e) => setF({ ...f, single_session: e.target.value === '1' })}><option value="0">หลายเครื่องพร้อมกันได้</option><option value="1">1 รหัสเข้าได้ทีละ 1 เครื่อง</option></select>
         </Field>
-        <fieldset className="wide"><span className="lbl">บริษัทที่เข้าได้</span>
+        <fieldset className={cx('wide', noCompany && !f.companies.length && !isAdminGroup && 'invalid')}><span className="lbl">บริษัทที่เข้าได้{!isAdminGroup && <b className="req" aria-hidden="true">*</b>}</span>
           {me?.companies.map((c) => <label key={c.id} className="inline chk"><input type="checkbox" checked={f.companies.includes(c.id)} onChange={(e) => setF({ ...f, companies: e.target.checked ? [...f.companies, c.id] : f.companies.filter((x) => x !== c.id) })} /> {c.code} {c.name_th}</label>)}
+          {isAdminGroup ? <p className="small muted">กลุ่ม ADMIN เข้าได้ทุกบริษัทของกิจการ</p>
+            : noCompany && !f.companies.length && <p className="bad small" role="alert">ยังไม่ได้เลือกบริษัทที่เข้าได้ — ผู้ใช้นี้จะเข้าบริษัทใดไม่ได้ ติ๊กบริษัทอย่างน้อย 1 บริษัท</p>}
         </fieldset>
         <AppAccessField value={f.app_access} onChange={(v) => setF({ ...f, app_access: v })} admin={groups.find((g) => g.id === f.user_group_id)?.code === 'ADMIN'} />
         {u && (u.locked_until || (u.mfa_enabled && u.id !== me?.user.id)) && (
@@ -118,6 +137,18 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved }: { u: User | null; 
           </fieldset>
         )}
       </div>
+      {askRights && <Modal title="ยังไม่ได้กำหนดสิทธิ์รายเมนู" size="confirm" onClose={() => setAskRights(false)} footer={<>
+        <button onClick={() => setAskRights(false)}>กลับไปแก้ <kbd>Esc</kbd></button>
+        <button onClick={saveAsLevel}>ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ) แล้วบันทึก</button>
+        <button className="primary" autoFocus onClick={saveThenRights}>บันทึก แล้วไปกำหนดสิทธิ์รายเมนู</button>
+      </>}>
+        <p>เลือก "ตรวจสอบสิทธิ์ก่อนใช้งาน" แต่ทั้งผู้ใช้นี้{f.user_group_id ? 'และกลุ่มที่เลือก' : ''}ยังไม่มีสิทธิ์รายเมนูในบริษัทที่ติ๊กไว้ — ถ้าบันทึกเลย ผู้ใช้จะเปิดเมนูใดไม่ได้</p>
+        <ul className="small">
+          <li>เลือกกลุ่มตั้งต้น (ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ดูอย่างเดียว) ซึ่งมีสิทธิ์รายเมนูพร้อมใช้ — กด "กลับไปแก้"</li>
+          <li>หรือไม่ตรวจสอบสิทธิ์ ใช้สิทธิ์ตามระดับอนุมัติ</li>
+          <li>หรือบันทึก แล้วกำหนดสิทธิ์รายเมนูของผู้ใช้นี้ต่อทันที</li>
+        </ul>
+      </Modal>}
       {sec && <Confirm title={sec === 'unlock' ? 'ปลดล็อกผู้ใช้' : 'ล้างยืนยันตัวตนสองขั้น'} danger={sec === 'reset-2fa'} onClose={() => setSec(null)} onOk={runSec}
         text={sec === 'unlock' ? `ให้ ${u?.username} เข้าระบบได้ทันที` : `${u?.username} จะถูกออกจากระบบ และเข้าด้วยรหัสผ่านอย่างเดียว (ผู้ดูแลระบบต้องตั้งใหม่ทันที) — ตรวจว่าเป็นเจ้าของบัญชีจริงก่อน`} />}
     </Modal>
