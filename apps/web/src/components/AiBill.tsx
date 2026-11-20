@@ -193,7 +193,7 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
               : <><span className="mono small">{res.buyer_check.shown}</span> <Pill tone="x">{res.buyer_check.status === 'other' ? 'บิลนี้ออกในนามผู้อื่น' : 'ตรวจเลขผู้ซื้อ'}</Pill></>}</td></tr>}
             <tr><th>เลขที่ / วันที่</th><td>{b.doc_no || '—'} · {b.doc_date ?? '—'}</td></tr>
             <tr><th>ประเภทราคา</th><td>{PT[b.price_type]}{b.price_type !== '0' ? ` ${b.vat_rate}%` : ''}</td></tr>
-            <tr><th>ยอด</th><td>ก่อน VAT {b.subtotal ? fmt(b.subtotal) : '—'} · VAT {b.vat_amount ? fmt(b.vat_amount) : '—'} · รวม <b>{b.total ? fmt(b.total) : '—'}</b></td></tr>
+            <tr><th>ยอด</th><td>ก่อน VAT {b.subtotal ? fmt(b.subtotal) : '—'} · VAT {b.vat_amount ? fmt(b.vat_amount) : '—'} · รวม <b>{b.total ? fmt(b.total) : '—'}</b>{b.wht && <> · หัก ณ ที่จ่าย {fmt(b.wht.amount)}{b.wht.rate ? ` (${b.wht.rate}%)` : ''}</>}</td></tr>
           </tbody></table>
           <table className="grid" style={{ marginTop: 8 }}>
             <thead><tr><th>#</th><th>รายการตามบิล</th><th style={{ minWidth: 260 }}>แนะนำลงบัญชี (ตรวจ/เลือก)</th><th className="r">จำนวน</th><th className="r">ราคา</th><th className="r">ยอด</th></tr></thead>

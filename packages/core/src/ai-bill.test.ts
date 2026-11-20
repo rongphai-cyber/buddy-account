@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AI_MODEL, AI_MODELS, aiBillEstimate, aiCost, aiModelOf, aiRequestOptions, BILL_SCHEMA, normalizeBill, SUGGEST_SCHEMA, suggestPrompt, textSim, type RawBill } from './ai-bill.js';
+import { AI_MODEL, AI_MODELS, aiBillEstimate, aiCost, aiModelOf, aiRequestOptions, BILL_SCHEMA, normalizeBill, SUGGEST_SCHEMA, suggestPrompt, textSim, whtRateOf, billWhtRow, type RawBill } from './ai-bill.js';
 
 /** Anthropic structured outputs: at most 16 parameters with union types (type arrays or anyOf) per schema */
 function unionParams(node: unknown): number {
@@ -74,6 +74,36 @@ describe('AI อ่านบิล (T7.7)', () => {
     const all = b.warnings.join('\n');
     for (const re of [/AI: ตัวเลขบรรทัด 2 เลือน/, /อย่างย่อ/, /ปี พ\.ศ\./, /บรรทัดที่ 3: อ่านราคาไม่ได้/, /ไม่สอดคล้องกับยอดรวมทั้งสิ้น 1500\.00/, /VAT 50\.00 ไม่เท่ากับ 7%/]) expect(all).toMatch(re);
     expect(normalizeBill({ ...raw, price_type: 'incl_vat', subtotal: '1391', vat_amount: '91', total: '1300' }).price_type).toBe('1');
+  });
+  it('HANDOFF 167: withholding tax on the bill (RE260219025) — no false total warning, WHT base = subtotal, rate 3%', () => {
+    const re = { ...raw, lines: [{ description: 'ค่าบริการขนส่งและติดตั้ง', qty: '1', unit: null, unit_price: '58244.93', amount: '58,244.93' }],
+      subtotal: '58,244.93', vat_amount: '4,077.15', wht_amount: '1,747.35' };
+    // grand total printed after WHT (58,244.93 + 4,077.15 − 1,747.35)
+    const after = normalizeBill({ ...re, total: '60,574.73' });
+    expect(after.warnings).toEqual([]);
+    expect(after.wht).toEqual({ amount: '1747.35', base: '58244.93', rate: '3' });
+    expect(after.total).toBe('60574.73');
+    // draft row for the WHT tab: juristic supplier (0-…) = ภ.ง.ด.53 · 3% = ค่าบริการ · base = subtotal
+    expect(billWhtRow(after)).toEqual({ form_type: 'S53', income_type: 'ค่าบริการ', rate: '3', paid_amount: '58244.93', tax_amount: '1747.35' });
+    expect(billWhtRow({ supplier: { ...after.supplier, tax_id: '3100600445566' }, wht: { amount: '50', base: '1000', rate: '5' } })).toMatchObject({ form_type: 'S03', income_type: 'ค่าเช่า' });
+    expect(billWhtRow({ ...after, wht: null })).toBeNull();
+    // grand total printed before WHT is also consistent
+    expect(normalizeBill({ ...re, total: '62322.08' }).warnings).toEqual([]);
+    // still a warning when neither matches; no WHT on the bill → no WHT draft and the old check
+    expect(normalizeBill({ ...re, total: '60000' }).warnings.join()).toMatch(/ไม่สอดคล้องกับยอดรวมทั้งสิ้น 60000\.00.*ภาษีหัก ณ ที่จ่าย/);
+    const none = normalizeBill({ ...re, wht_amount: '', total: '60,574.73' });
+    expect(none.wht).toBeNull();
+    expect(none.warnings.join()).toMatch(/ไม่สอดคล้อง/);
+    expect(normalizeBill({ ...re, wht_amount: null, total: '62322.08' }).wht).toBeNull();
+    // non-standard rate: amount kept, rate left for the user + warning
+    const odd = normalizeBill({ ...re, wht_amount: '2000', total: '60322.08' });
+    expect(odd.wht).toEqual({ amount: '2000.00', base: '58244.93', rate: null });
+    expect(odd.warnings.join()).toMatch(/3\.43% .*ไม่ตรงอัตรามาตรฐาน/);
+    // no subtotal printed: base = lines − discount (− VAT when prices include VAT)
+    expect(normalizeBill({ ...re, subtotal: '', wht_amount: '582.45', total: '61739.63' }).wht).toEqual({ amount: '582.45', base: '58244.93', rate: '1' });
+    expect(normalizeBill({ ...re, price_type: 'incl_vat', subtotal: '', lines: [{ description: 'ค่าเช่า', qty: '1', unit: null, unit_price: '10700', amount: '10700' }], vat_amount: '700', wht_amount: '500', total: '10200' }).wht)
+      .toEqual({ amount: '500.00', base: '10000.00', rate: '5' });
+    expect([whtRateOf('30.04', '1000').rate, whtRateOf('30.6', '1000').rate, whtRateOf('5', '0').rate]).toEqual(['3', null, null]);
   });
   it('Thai text similarity (no word spaces) and suggestion prompt carries only this company data', () => {
     expect(textSim('ค่าน้ำมันรถ', 'ค่าน้ำมันรถ')).toBe(1);

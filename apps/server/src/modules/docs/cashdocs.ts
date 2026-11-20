@@ -22,7 +22,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไ�
 /** รหัสที่ใช้ในบรรทัด: รายได้อื่น = 4 · ค่าใช้จ่ายอื่น = 5 (และ 2 ตามข้อมูลที่ย้ายจาก Express — ดู HANDOFF เรื่อง item_type) */
 const CODE_TYPES: Record<string, string[]> = { OI: ['4'], OE: ['5', '2'] };
 
-const body = z.object({
+export const cashBody = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, party_id: optId, party_name: str(200), party_tax_branch_no: str(5), your_ref: str(60),
   ref_no: str(30), ref_date: isoDate.nullable().optional(), department_id: optId, project_id: optId, salesperson_id: optId,
   credit_days: z.coerce.number().int().min(0).max(999).nullable().optional(), price_type: z.enum(['0', '1', '2']), vat_rate: num, remark: str(2000),
@@ -34,10 +34,10 @@ const body = z.object({
   cash_amount: num.nullable().optional(),
   payments: paymentsSchema, wht: whtSchema,
 });
-type Body = z.infer<typeof body>;
+type Body = z.infer<typeof cashBody>;
 
 /** opt.keyed: บันทึกจากหน้าจอ (session) — บรรทัดคำอธิบาย+จำนวนเงิน ต้องมีทั้งสองช่องและจำนวนเงินมากกว่า 0 (เจ้าของ 18/11/2569) · กุญแจ API (WTS-Living ฯลฯ) ตามเดิม */
-async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body, opt: { keyed?: boolean } = {}) {
+export async function saveCash(db: Db, a: Ctx, K: CashKind, id: string | null, b: Body, opt: { keyed?: boolean } = {}) {
   const dt = await db.selectFrom('md_doc_type').select(['id', 'doc_class', 'department_id', 'status']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!dt || dt.doc_class !== K.cls) throw badRequest(`เลือกประเภทเอกสารของ${K.label}`);
   // บริษัทไม่จด VAT / บิลเจ้าหนี้กลาง: VAT รวมเป็นค่าใช้จ่าย · เจ้าหนี้กลางต้องมีผู้จ่ายเงิน ไม่หัก ณ ที่จ่าย (เจ้าของ 19/11/2569)
@@ -190,9 +190,9 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
       return { ...h, party_code: pc?.code ?? null, payer: await payerOf(db, a.companyId, h.payer_employee_id), lines, payments, wht, used_by: usedBy, remaining: rem, editable: h.doc_status !== 'C' };
     });
     // ตัวอย่างการลงบัญชีก่อนบันทึก (บันทึกจริงในทรานแซกชันแล้วย้อนกลับ)
-    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveCash(tx, a, K, id ?? null, parse(body, req.body), { keyed: !a.apiKeyId })); });
-    app.post(base, async (req) => { const a = requireCompany(req); return saveCash(db, a, K, null, parse(body, req.body), { keyed: !a.apiKeyId }); });
-    app.put(`${base}/:id`, async (req) => { const a = requireCompany(req); return saveCash(db, a, K, parse(z.object({ id: uuid }), req.params).id, parse(body, req.body), { keyed: !a.apiKeyId }); });
+    app.post(`${base}/posting-preview`, async (req) => { const a = requireCompany(req); const { id } = parse(previewQuery, req.query); return previewSave(db, a.companyId, (tx) => saveCash(tx, a, K, id ?? null, parse(cashBody, req.body), { keyed: !a.apiKeyId })); });
+    app.post(base, async (req) => { const a = requireCompany(req); return saveCash(db, a, K, null, parse(cashBody, req.body), { keyed: !a.apiKeyId }); });
+    app.put(`${base}/:id`, async (req) => { const a = requireCompany(req); return saveCash(db, a, K, parse(z.object({ id: uuid }), req.params).id, parse(cashBody, req.body), { keyed: !a.apiKeyId }); });
     app.post(`${base}/:id/cancel`, async (req) => {
       const a = requireCompany(req);
       const { id } = parse(z.object({ id: uuid }), req.params);

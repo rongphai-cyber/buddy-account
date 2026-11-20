@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { billAsExpense, CASH_KINDS, type CashKind, computeDoc, d, descriptionAfterPick, DEPOSIT_REFUND, DOC_CLASSES, dueDate, fillRowCount, fmt, isBlankTextLine, isCompleteTextLine, settlementTotals, textLineIssues, todayIso, wht50FormOf } from '@buddy/core';
+import { billAsExpense, billWhtRow, CASH_KINDS, type CashKind, computeDoc, d, descriptionAfterPick, DEPOSIT_REFUND, DOC_CLASSES, dueDate, fillRowCount, fmt, isBlankTextLine, isCompleteTextLine, settlementTotals, textLineIssues, todayIso, wht50FormOf } from '@buddy/core';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
 import { WhtCert } from './WhtCert';
@@ -18,6 +18,7 @@ import { useDocEdit } from '../../components/DocEdit';
 import { DocLink } from '../../components/DocLink';
 import { useDocNo } from '../../components/DocNo';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
+import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { SubstituteReceiptButton } from '../../components/SubstituteReceipt';
 import { DocActions } from '../../components/DocPrint';
 import { CancelStamp, SourceStamp } from '../../components/DocDelete';
@@ -193,8 +194,11 @@ export function CashFormPage({ path }: { path: string }) {
     const asExp = K.module === 'AP' && (defs.data?.vat_registered === false || (!!r.supplier && r.supplier.id === defs.data?.central_supplier_id)) ? billAsExpense(r.bill) : null;
     set({ price_type: asExp ? '0' : r.bill.price_type, vat_rate: r.bill.vat_rate, ref_no: r.bill.doc_no, ref_date: r.bill.doc_date ?? '', ...(r.supplier && r.bill.supplier.branch_no ? { party_tax_branch_no: r.bill.supplier.branch_no } : {}) });
     setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l, i) => ({ ...blankLine(), item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', item_name: l.item?.name_th ?? null, description: l.description, amount: asExp ? asExp[i]!.amount : l.amount }))]);
+    // บิลที่หัก ณ ที่จ่าย → แท็บภาษีหัก ณ ที่จ่าย (ฐาน = ยอดก่อน VAT · อัตรามาตรฐาน — HANDOFF 167) · เจ้าหนี้กลาง/บริษัทไม่จด VAT ไม่หัก
+    const w = K.whtEntries && !asExp ? billWhtRow(r.bill) : null;
+    if (w) setWhts([{ key: nextKey(), ...w, taxEdited: true, certificate_no: '', certificate_date: '' }]);
     const missing = r.lines.filter((l) => !l.item).length;
-    toast(`เติมจากบิลแล้ว${missing ? ` — เลือกรหัสค่าใช้จ่ายอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
+    toast(`เติมจากบิลแล้ว${missing ? ` — เลือกรหัสค่าใช้จ่ายอีก ${missing} บรรทัด` : ''}${w ? ` · ภาษีหัก ณ ที่จ่าย ${w.tax_amount}${w.rate ? ` (${w.rate}%)` : ' — ใส่อัตราเอง'}` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
   };
   /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
   const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.price_type ? { price_type: t.price_type as Head['price_type'] } : {}), ...(t?.vat_rate != null ? { vat_rate: num(t.vat_rate) } : {}) }); };
@@ -312,6 +316,7 @@ export function CashFormPage({ path }: { path: string }) {
         {K.cls === 'AI' && id && !cancelled && cur.data?.remaining != null && d(cur.data.remaining).gt(0) && d(String(cur.data.vat_amount ?? 0)).isZero() && canRefund('add') &&
           <button title="คืนยอดมัดจำคงเหลือให้ลูกค้า (เงินสด/โอน/เช็ค)" onClick={() => nav(`${DEPOSIT_REFUND.route}/new?ai=${id}`)}>คืนเงินมัดจำ</button>}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
+        <ImportExcelButton cls={K.cls} menu={K.menu} label={K.label} />
       </div>
       <div className="type-row"><DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} /><TypeNotice show={!id && !!h && !h.doc_type_id} /></div>
       </div>

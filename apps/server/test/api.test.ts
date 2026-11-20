@@ -5219,7 +5219,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const t = await app.inject({ method: 'GET', url: '/api/v1/trade-import/sales-invoices/template', headers: { cookie } });
     expect(t.statusCode).toBe(200); expect(t.headers['content-type']).toMatch(/spreadsheetml/);
     const tr = readTable('import-IV.xlsx', t.rawPayload);
-    expect(tr[0]!.slice(0, 7)).toEqual(['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'รายละเอียด', 'จำนวน', 'หน่วย']);
+    expect(tr[0]!.slice(0, 7)).toEqual(['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'ชื่อลูกค้า', 'รหัสสินค้า', 'ชื่อสินค้า', 'รายละเอียด']);
     expect(tr).toHaveLength(3);
     expect((await app.inject({ method: 'GET', url: '/api/v1/trade-import/sales-orders/template', headers: { cookie } })).statusCode).toBe(404);   // ใบสั่งขายไม่ใช่รายการขาย
 
@@ -5279,6 +5279,145 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
     await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
     expect((await call('POST', url, { ...base, data: bad })).body.error.message).toMatch(/เลือกประเภทเอกสาร/);
+  });
+
+  it('HANDOFF 167: missing suppliers/items added in the same transaction (check = nothing saved), rights, OE with WHT, other tenant gets its own masters', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('POST', '/api/v1/suppliers', { code: 'IMP-S1', name: 'ผู้ขายเดิม', tax_id: tid(960) })).status).toBe(200);
+    const item = (await call('GET', '/api/v1/items?status=A')).body.rows.find((r: { unit_code: string | null }) => r.unit_code) as { code: string };
+    expect(item?.code).toBeTruthy();
+    const rrType = (await call('GET', '/api/v1/trade-defaults/RR')).body.types[0].id;
+    const next = (await call('GET', '/api/v1/suppliers/next-code')).body.code as string;
+    const q = async <T,>(s: ReturnType<typeof sql>) => (await s.execute(database.db)).rows as T[];
+    const count = async (s: ReturnType<typeof sql>) => (await q<{ n: number }>(s))[0]!.n;
+
+    // แบบฟอร์ม: คอลัมน์รหัสตามด้วยชื่อ · คอลัมน์ข้อมูลหลักใหม่อยู่ท้าย · แผ่นคำอธิบายบอกวิธีเพิ่มรายใหม่
+    const t = await app.inject({ method: 'GET', url: '/api/v1/trade-import/purchase-invoices/template', headers: { cookie } });
+    const tr = readTable('import-RR.xlsx', t.rawPayload);
+    expect(tr[0]!.slice(0, 6)).toEqual(['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'รหัสสินค้า', 'ชื่อสินค้า']);
+    expect(tr[0]!.slice(-5)).toEqual(['เลขผู้เสียภาษี', 'สาขา', 'ที่อยู่', 'โทรศัพท์', 'ชนิดสินค้า']);
+
+    const H = ['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'เลขผู้เสียภาษี', 'สาขา', 'ที่อยู่', 'รหัสสินค้า', 'ชื่อสินค้า', 'ชนิดสินค้า', 'จำนวน', 'หน่วย', 'ราคาต่อหน่วย'];
+    const file = csv([H,
+      ['IMPN-1', '15/07/2569', '', 'ผู้ขายใหม่จาก Excel', tid(961), '', '9 ถนนทดสอบ', item.code, '', '', '2', '', '100'],
+      ['IMPN-1', '15/07/2569', '', '', tid(961), '0', '', '', 'ของใหม่นำเข้า', 'สินค้า', '3', 'กล่องX', '50'],
+      ['IMPN-2', '16/07/2569', 'IMP-S9', 'ผู้ขายรหัสเอง', tid(962), '', '', '99-IMPS-SV0001', 'ค่าบริการนำเข้า', 'บริการ', '1', '', '1000'],
+      ['IMPN-3', '16/07/2569', 'IMP-S1', '', '', '', '', '', 'ของใหม่นำเข้า', '', '1', 'กล่องX', '50']]);
+    const url = '/api/v1/trade-import/purchase-invoices';
+    const base = { file_name: 'ซื้อ.csv', doc_type_id: rrType, price_type: '2', vat_rate: 7, data: file };
+    const nothing = async () => [
+      await count(sql`SELECT count(*)::int AS n FROM md_supplier WHERE tax_id = ${tid(961)} OR code = 'IMP-S9'`),
+      await count(sql`SELECT count(*)::int AS n FROM md_item WHERE code = '99-IMPS-SV0001' OR name_th = 'ของใหม่นำเข้า'`),
+      await count(sql`SELECT count(*)::int AS n FROM md_unit WHERE code = 'กล่องX'`),
+      await count(sql`SELECT count(*)::int AS n FROM doc_header WHERE your_ref LIKE 'IMPN-%'`)];
+
+    // ไม่ติ๊ก (ค่าเดิมของ API) = รหัสที่ไม่พบเป็นข้อผิดพลาดเหมือนเดิม
+    const off = await call('POST', url, base);
+    expect(off.body.ok).toBe(false);
+    expect(off.body.errors.map((e: { message: string }) => e.message).join('|')).toMatch(/ไม่พบผู้จำหน่ายเลขผู้เสียภาษี .*ติ๊ก "เพิ่มข้อมูลหลักที่ยังไม่มีให้อัตโนมัติ".*\|.*ไม่พบสินค้าชื่อ "ของใหม่นำเข้า".*\|.*ไม่พบรหัสผู้จำหน่าย IMP-S9.*\|.*ไม่พบรหัสสินค้า 99-IMPS-SV0001/);
+    // ติ๊ก + ตรวจ: บอกรายการที่จะเพิ่ม ลองบันทึกจริงแล้วถอยกลับ — ไม่มีอะไรค้างในฐานข้อมูล
+    const pv = await call('POST', url, { ...base, create_masters: true });
+    expect(pv.body.errors).toEqual([]);
+    expect(pv.body).toMatchObject({ ok: true, committed: false, create_masters: true, total_net: '1498.00' });
+    expect(pv.body.new_masters).toEqual({
+      parties: [{ code: next, name: 'ผู้ขายใหม่จาก Excel', tax_id: tid(961), tax_branch_no: '00000', row: 2 }, { code: 'IMP-S9', name: 'ผู้ขายรหัสเอง', tax_id: tid(962), tax_branch_no: '00000', row: 4 }],
+      items: [expect.objectContaining({ name: 'ของใหม่นำเข้า', kind: '0', unit: 'กล่องX', row: 3 }), { code: '99-IMPS-SV0001', name: 'ค่าบริการนำเข้า', kind: '3', unit: null, row: 4 }], units: ['กล่องX'] });
+    expect(pv.body.docs.map((x: { ref: string; party_code: string; party_new: boolean; new_items: number; net_amount: string; doc_no: string | null }) => [x.ref, x.party_code, x.party_new, x.new_items, x.net_amount, x.doc_no]))
+      .toEqual([['IMPN-1', next, true, 1, '374.50', null], ['IMPN-2', 'IMP-S9', true, 1, '1070.00', null], ['IMPN-3', 'IMP-S1', false, 1, '53.50', null]]);
+    expect(await nothing()).toEqual([0, 0, 0, 0]);
+
+    // ผู้ใช้ที่มีสิทธิ์นำเข้า/ซื้อ แต่ไม่มีสิทธิ์เพิ่มผู้จำหน่าย/สินค้า → บอกสิทธิ์ที่ขาด ไม่บันทึก
+    const admin = cookie;
+    const uid = (await call('POST', '/api/v1/users', { username: 'imp.buyer', display_name: 'พนักงานซื้อ', password: 'buyerImp123', companies: [co], check_rights: true })).body.id;
+    const R = (menu_code: string, v: Partial<Record<string, string>>) => ({ menu_code, can_read: '', can_add: '', can_edit: '', can_cancel: '', can_delete: '', can_print: '', can_approve: '', ...v });
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'U', subject_id: uid, rows: [R('OT.IMPTRADE', { can_read: 'Y', can_add: 'Y' }), R('PU.RR', { can_read: 'Y', can_add: 'Y' }), R('PU.SUP', { can_read: 'Y' }), R('IC.ITEM', { can_read: 'Y' })] })).status).toBe(200);
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'imp.buyer', password: 'buyerImp123' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const nr = await call('POST', url, { ...base, create_masters: true, commit: true });
+    expect(nr.status).toBe(400);
+    expect(nr.body.error.message).toMatch(/มีข้อผิดพลาด 4 รายการ/);
+    expect(nr.body.error.issues.map((f: { message: string }) => f.message).join('|')).toMatch(/ไม่มีสิทธิ์เพิ่มผู้จำหน่าย \(เมนู รายละเอียดผู้จำหน่าย\).*\|.*ไม่มีสิทธิ์เพิ่มสินค้า \(เมนู รายละเอียดสินค้า\).*\|.*ไม่มีสิทธิ์เพิ่มสินค้าบริการ/);
+    // ตรวจ (ไม่บันทึก) ก็เห็นสิทธิ์ที่ขาดรายแถว
+    expect((await call('POST', url, { ...base, create_masters: true })).body.errors.map((e: { row: number }) => e.row)).toEqual([2, 3, 4, 4]);
+    expect(await nothing()).toEqual([0, 0, 0, 0]);
+    cookie = admin;
+
+    // บันทึก: ข้อมูลหลัก + เอกสารในทรานแซกชันเดียว · ลงบัญชีปกติ · ประวัติทุกราย
+    const ok = await call('POST', url, { ...base, create_masters: true, commit: true });
+    expect(ok.body.error?.message ?? 'ok').toBe('ok');
+    expect(ok.body).toMatchObject({ ok: true, committed: true, total_net: '1498.00' });
+    const sup = (await q<{ id: string; code: string; name: string; tax_branch_no: string; address_1: string; status: string; company_id: string }>(sql`SELECT id, code, name, tax_branch_no, address_1, status, company_id FROM md_supplier WHERE tax_id = ${tid(961)} AND deleted_at IS NULL`))[0]!;
+    expect(sup).toMatchObject({ code: next, name: 'ผู้ขายใหม่จาก Excel', tax_branch_no: '00000', address_1: '9 ถนนทดสอบ', status: 'A', company_id: co });
+    const items = await q<{ id: string; code: string; item_type: string; unit: string | null; rate: string | null; company_id: string }>(sql`SELECT i.id, i.code, i.item_type, u.code AS unit, u.rate::text AS rate, i.company_id FROM md_item i LEFT JOIN md_unit u ON u.id = i.base_unit_id
+        WHERE (i.code = '99-IMPS-SV0001' OR i.name_th = 'ของใหม่นำเข้า') AND i.deleted_at IS NULL ORDER BY i.item_type`);
+    expect(items.map((i) => [i.item_type, i.unit, i.company_id])).toEqual([['0', 'กล่องX', co], ['3', null, co]]);
+    expect(Number(items[0]!.rate)).toBe(1);
+    const docs = await q<{ your_ref: string; supplier_id: string; gl_posted: string; net_amount: string }>(sql`SELECT your_ref, supplier_id, gl_posted, net_amount FROM doc_header WHERE company_id = ${co} AND your_ref LIKE 'IMPN-%' ORDER BY your_ref`);
+    expect(docs.map((x) => [x.your_ref, x.gl_posted, x.net_amount])).toEqual([['IMPN-1', 'Y', '374.50'], ['IMPN-2', 'Y', '1070.00'], ['IMPN-3', 'Y', '53.50']]);
+    expect(docs[0]!.supplier_id).toBe(sup.id);
+    const lineItems = await q<{ item_id: string }>(sql`SELECT l.item_id FROM doc_line l JOIN doc_header h ON h.id = l.header_id WHERE h.your_ref IN ('IMPN-1', 'IMPN-3') AND l.deleted_at IS NULL ORDER BY h.your_ref, l.line_no`);
+    expect(lineItems.map((l) => l.item_id).slice(1)).toEqual([items[0]!.id, items[0]!.id]);   // สินค้าใหม่ตัวเดียว ใช้ทั้งสองเอกสาร
+    const logs = await q<{ table_name: string; doc_no: string }>(sql`SELECT table_name, doc_no FROM sys_activity_log WHERE company_id = ${co} AND action = 'ADD' AND detail->>'from' = 'IMPORT' AND detail->>'file' = 'ซื้อ.csv' ORDER BY seq`);
+    expect(logs.map((l) => `${l.table_name}:${l.doc_no}`)).toEqual([`md_supplier:${next}`, 'md_supplier:IMP-S9', 'md_unit:กล่องX', `md_item:${items[0]!.code}`, 'md_item:99-IMPS-SV0001']);
+    const imp = (await q<{ detail: { new_parties: string[]; new_items: string[]; new_units: string[] } }>(sql`SELECT detail FROM sys_activity_log WHERE company_id = ${co} AND action = 'IMPORT' AND detail->>'file' = 'ซื้อ.csv'`))[0]!;
+    expect(imp.detail).toMatchObject({ new_parties: [next, 'IMP-S9'], new_items: [items[0]!.code, '99-IMPS-SV0001'], new_units: ['กล่องX'] });
+    // นำเข้าแฟ้มเดิมอีกครั้ง: หาเจอจากเลขผู้เสียภาษี/ชื่อ/รหัส (ไม่เพิ่มซ้ำ) และกันเอกสารซ้ำ
+    const again = await call('POST', url, { ...base, create_masters: true });
+    expect(again.body.new_masters).toEqual({ parties: [], items: [], units: [] });
+    expect(again.body.errors.map((e: { message: string }) => e.message)).toEqual([expect.stringMatching(/IMPN-1 เคยนำเข้าแล้ว/), expect.stringMatching(/IMPN-2 เคยนำเข้าแล้ว/), expect.stringMatching(/IMPN-3 เคยนำเข้าแล้ว/)]);
+
+    // บันทึกค่าใช้จ่ายอื่น ๆ (OE): ภาษีหัก ณ ที่จ่ายต่อเอกสาร (ฐาน = ยอดก่อน VAT) · ชื่ออย่างเดียว = ไม่เพิ่มผู้จำหน่าย · รหัสค่าใช้จ่ายไม่เพิ่มให้
+    const exp = (await call('GET', '/api/v1/other-expenses?status=A')).body.rows[0].code as string;
+    const oeType = (await call('GET', '/api/v1/trade-defaults/OE')).body.types[0].id;
+    const ot = readTable('import-OE.xlsx', (await app.inject({ method: 'GET', url: '/api/v1/trade-import/other-expense-docs/template', headers: { cookie } })).rawPayload);
+    expect(ot[0]!.slice(0, 11)).toEqual(['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'รหัสค่าใช้จ่าย', 'รายละเอียด', 'จำนวนเงิน', 'อัตราหัก ณ ที่จ่าย', 'ภาษีหัก ณ ที่จ่าย', 'ประเภทเงินได้', 'แบบ ภ.ง.ด.']);
+    const EH = ['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'รหัสค่าใช้จ่าย', 'รายละเอียด', 'จำนวนเงิน', 'อัตราหัก ณ ที่จ่าย', 'ภาษีหัก ณ ที่จ่าย', 'ประเภทเงินได้'];
+    const oeRows = [EH,
+      ['IMPE-1', '15/07/2569', 'IMP-S1', '', exp, 'ค่าขนส่ง ก.ค.', '1000', '1', '', ''],
+      ['IMPE-1', '15/07/2569', 'IMP-S1', '', exp, '', '500', '', '', ''],
+      ['IMPE-2', '16/07/2569', '', 'แท็กซี่หน้าบริษัท', exp, '', '120', '', '', '']];
+    const oeUrl = '/api/v1/trade-import/other-expense-docs';
+    const oeBase = { file_name: 'ค่าใช้จ่าย.csv', doc_type_id: oeType, price_type: '2', vat_rate: 7, create_masters: true };
+    const oeBad = await call('POST', oeUrl, { ...oeBase, data: csv([...oeRows, ['IMPE-3', '16/07/2569', 'IMP-S1', '', 'NOEXP-1', '', '100', '', '', '']]) });
+    expect(oeBad.body.errors).toEqual([{ row: 5, message: 'ไม่พบรหัสค่าใช้จ่าย NOEXP-1 — เพิ่มที่ ซื้อ › รายละเอียดค่าใช้จ่ายอื่น ๆ ก่อน (ระบบไม่เพิ่มให้ เพราะต้องกำหนดบัญชีค่าใช้จ่าย)' }]);
+    expect(oeBad.body.new_masters).toEqual({ parties: [], items: [], units: [] });
+    expect(oeBad.body.docs.map((x: { ref: string; party_code: string; party_name: string; amount: string; vat_amount: string; wht_amount: string; net_amount: string }) => [x.ref, x.party_code, x.party_name, x.amount, x.vat_amount, x.wht_amount, x.net_amount]))
+      .toEqual([['IMPE-1', 'IMP-S1', 'ผู้ขายเดิม', '1500.00', '105.00', '15.00', '1605.00'], ['IMPE-2', '', 'แท็กซี่หน้าบริษัท', '120.00', '8.40', '0.00', '128.40']]);
+    const oe = await call('POST', oeUrl, { ...oeBase, data: csv(oeRows), commit: true });
+    expect(oe.body.error?.message ?? 'ok').toBe('ok');
+    const oh = await q<{ id: string; your_ref: string; supplier_id: string | null; party_name: string; wht_amount: string; cash_amount: string; gl_posted: string }>(sql`SELECT id, your_ref, supplier_id, party_name, wht_amount, cash_amount, gl_posted FROM doc_header
+        WHERE company_id = ${co} AND doc_class = 'OE' AND your_ref LIKE 'IMPE-%' ORDER BY your_ref`);
+    expect(oh.map((x) => [x.your_ref, !!x.supplier_id, x.party_name, x.wht_amount, x.cash_amount, x.gl_posted])).toEqual([['IMPE-1', true, 'ผู้ขายเดิม', '15.00', '1590.00', 'Y'], ['IMPE-2', false, 'แท็กซี่หน้าบริษัท', '0.00', '128.40', 'Y']]);
+    const w = await q<{ form_type: string; income_type: string; rate: string; paid_amount: string; tax_amount: string; payee_name: string }>(sql`SELECT form_type, income_type, rate::text AS rate, paid_amount, tax_amount, payee_name FROM tax_wht_entry WHERE header_id = ${oh[0]!.id} AND deleted_at IS NULL`);
+    expect(w.map((x) => [x.form_type, x.income_type, Number(x.rate), x.paid_amount, x.tax_amount, x.payee_name])).toEqual([['S53', 'ค่าขนส่ง', 1, '1500.00', '15.00', 'ผู้ขายเดิม']]);
+    expect(await count(sql`SELECT count(*)::int AS n FROM md_supplier WHERE name = 'แท็กซี่หน้าบริษัท'`)).toBe(0);
+
+    // ลูกค้าอื่น (คนละ tenant): รหัสเดียวกับของ DEMO ไม่ถูกใช้ข้ามบริษัท — เพิ่มใหม่ในบริษัทของตัวเองเท่านั้น
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    const bCo = (await call('GET', '/api/v1/auth/me')).body.companies[0].id as string;
+    expect(bCo).not.toBe(co);
+    await call('POST', '/api/v1/auth/select', { company_id: bCo });
+    const bRr = (await call('GET', '/api/v1/trade-defaults/RR')).body.types[0]?.id as string;
+    expect(bRr).toBeTruthy();
+    const bFile = csv([['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'เลขผู้เสียภาษี', 'รหัสสินค้า', 'ชื่อสินค้า', 'ชนิดสินค้า', 'จำนวน', 'ราคาต่อหน่วย'],
+      ['IMPB-1', '15/07/2569', 'IMP-S1', 'ผู้ขายของบริษัท B', tid(960), '99-IMPS-SV0001', 'บริการของ B', 'บริการ', '1', '100']]);
+    // company_id ที่แอบส่งมาในคำขอไม่มีผล (ใช้บริษัทจาก session)
+    const bp = await call('POST', url, { file_name: 'b.csv', data: bFile, doc_type_id: bRr, price_type: '2', vat_rate: 7, create_masters: true, company_id: co });
+    expect(bp.body.errors).toEqual([]);
+    expect(bp.body.new_masters.parties).toEqual([expect.objectContaining({ code: 'IMP-S1', name: 'ผู้ขายของบริษัท B' })]);
+    expect(bp.body.new_masters.items).toEqual([expect.objectContaining({ code: '99-IMPS-SV0001', name: 'บริการของ B' })]);
+    // ใช้ประเภทเอกสารของ DEMO ไม่ได้
+    expect((await call('POST', url, { file_name: 'b.csv', data: bFile, doc_type_id: rrType, create_masters: true, commit: true })).body.error.message).toMatch(/เลือกประเภทเอกสาร/);
+    const bc = await call('POST', url, { file_name: 'b.csv', data: bFile, doc_type_id: bRr, price_type: '2', vat_rate: 7, create_masters: true, commit: true, company_id: co });
+    expect(bc.body.error?.message ?? 'ok').toBe('ok');
+    expect(await q<{ company_id: string; name: string }>(sql`SELECT company_id, name FROM md_supplier WHERE code = 'IMP-S1' AND deleted_at IS NULL ORDER BY name`)).toEqual([{ company_id: bCo, name: 'ผู้ขายของบริษัท B' }, { company_id: co, name: 'ผู้ขายเดิม' }]);
+    expect(await q<{ company_id: string; name_th: string }>(sql`SELECT company_id, name_th FROM md_item WHERE code = '99-IMPS-SV0001' AND deleted_at IS NULL ORDER BY name_th`)).toEqual([{ company_id: co, name_th: 'ค่าบริการนำเข้า' }, { company_id: bCo, name_th: 'บริการของ B' }]);
+    expect(await count(sql`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND detail->>'file' = 'b.csv'`)).toBe(0);
   });
 
   it('journal import (เจ้าของ 17/11/2569): template, check without saving, all-or-nothing commit via createJournal, line description default, duplicate ref, rights, other tenants', async () => {

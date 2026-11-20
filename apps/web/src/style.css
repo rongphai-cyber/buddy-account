@@ -864,6 +864,10 @@ td.img-cell { padding-top: 2px; padding-bottom: 2px; }
 .ti-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
 .ti-actions .btn { display: inline-block; cursor: pointer; padding: 6px 14px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent-soft); color: var(--ink); }
 .ti-summary { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 10px 0; }
+.ti-masters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.ti-new { padding: 10px 14px; margin: 10px 0; border-left: 4px solid var(--accent); }
+.ti-new h3 { margin: 0 0 4px; font-size: 1rem; }
+.ti-new-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 10px; margin-top: 6px; }
 .ti-errors { margin-bottom: 12px; border-color: var(--bad); }
 .ti-errors th { background: var(--bad-soft); }
 .warn-text { color: var(--warn); }

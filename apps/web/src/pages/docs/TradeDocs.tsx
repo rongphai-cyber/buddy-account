@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { billAsExpense, computeDoc, d, descriptionAfterPick, dueDate, fillRowCount, fmt, isStockItemType, requiredLineIssues, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
+import { billAsExpense, billWhtRow, computeDoc, d, descriptionAfterPick, dueDate, fillRowCount, fmt, isStockItemType, requiredLineIssues, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
 import { PartyAddress, savedPartyOf, usePartyDetail } from '../../components/PartyAddress';
 import { api } from '../../api';
 import { HoldNote, holdTag } from './HoldNote';
@@ -20,13 +20,14 @@ import { BranchPick } from '../../components/BranchPick';
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
+import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { SubstituteReceiptButton } from '../../components/SubstituteReceipt';
 import { DocActions } from '../../components/DocPrint';
 import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { DocVatTab, DocWhtList, VAT_KIND_OF, VatCheckAfterSave, vatTabLabel } from '../../components/DocTaxTabs';
-import { WhtTable, whtsBody, whtsFrom, type Wht } from './MoneyParts';
+import { nextKey, WhtTable, whtsBody, whtsFrom, type Wht } from './MoneyParts';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { JobSelect, followHeadJob, showJob, useJobs } from '../../components/JobSelect';
@@ -402,8 +403,12 @@ export function TradeFormPage({ path }: { path: string }) {
       return { key: ++seq, item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', item_name: l.item?.name_th ?? null, description: l.description, warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: l.qty, unit_id: l.item?.base_unit_id ?? null,
         factor: '1', unit_price: l.unit_price, discount_text: disc.gt(0.005) ? disc.toFixed(2) : '', is_free: false, return_to_stock: false, vat: '1' as VatCode, project_id: h?.project_id || null };
     })]);
+    // บิลที่หัก ณ ที่จ่าย (HANDOFF 167): ซื้อเงินสด → แท็บภาษีหัก ณ ที่จ่าย · ซื้อเงินเชื่อหักตอนจ่ายชำระหนี้
+    const w = asExp ? null : billWhtRow(r.bill);
+    if (w && K.cls === 'HP') setWhts([{ key: nextKey(), ...w, taxEdited: true, certificate_no: '', certificate_date: '' }]);
+    if (w && K.cls !== 'HP') toast(`บิลนี้หักภาษี ณ ที่จ่าย ${w.tax_amount} — ${K.label}บันทึกภาษีหัก ณ ที่จ่ายตอนจ่ายชำระหนี้`, 'warn');
     const missing = r.lines.filter((l) => !l.item).length;
-    toast(`เติมจากบิลแล้ว${r.supplier ? '' : ' — ไม่พบผู้จำหน่ายตามเลขผู้เสียภาษี เลือก/เพิ่มผู้จำหน่ายเอง'}${missing ? ` · เลือกรหัสสินค้าอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
+    toast(`เติมจากบิลแล้ว${w && K.cls === 'HP' ? ` · ภาษีหัก ณ ที่จ่าย ${w.tax_amount}${w.rate ? ` (${w.rate}%)` : ' — ใส่อัตราเอง'}` : ''}${r.supplier ? '' : ' — ไม่พบผู้จำหน่ายตามเลขผู้เสียภาษี เลือก/เพิ่มผู้จำหน่ายเอง'}${missing ? ` · เลือกรหัสสินค้าอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
   };
   const addLine = () => { setLines((ls) => [...ls, { key: ++seq, item_id: '', item_code: '', description: '', warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: '', unit_id: null, factor: '1', unit_price: '', discount_text: '', is_free: false, return_to_stock: K.cls === 'CN' || K.cls === 'DN', vat: '1' as VatCode, project_id: h?.project_id || null }]); };
   // บรรทัดว่างให้พอดีจอ (เจ้าของ 18/11/2569 "ให้แสดงหลายๆแถวให้พอดีกับหน้าจอ") — บรรทัดว่างไม่บันทึก ไม่นับ · Ctrl+Ins/+ เพิ่มบรรทัด ยังเพิ่มต่อได้
@@ -516,6 +521,7 @@ export function TradeFormPage({ path }: { path: string }) {
         {supInv && !readOnly && h && <AiBillButton target={K.path} onApply={applyBill} />}
         {id && (cur.data as { receipt_substitute?: boolean } | undefined)?.receipt_substitute && <SubstituteReceiptButton id={id} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
+        <ImportExcelButton cls={K.cls} menu={K.menu} label={K.label} />
       </div>
       <div className="type-row"><DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} /><TypeNotice show={!id && !!h && !h.doc_type_id} /></div>
       </div>

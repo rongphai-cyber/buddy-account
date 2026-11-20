@@ -1,6 +1,6 @@
 import { d } from './money.js';
 import type { YearSystem } from './date.js';
-import { importDate, importNumber, type ImportIssue } from './trade-import.js';
+import { importDate, importNumber, importTaxId, type ImportIssue } from './trade-import.js';
 import { checkTaxId } from './taxid.js';
 
 /**
@@ -65,17 +65,6 @@ export function cleanImportCell(v: unknown): string {
   return String(v ?? '').replace(/[๐-๙]/g, (c) => String(c.charCodeAt(0) - 0x0e50)).replace(/[​-‍⁠﻿]/g, '').replace(/ /g, ' ').trim();
 }
 
-/**
- * เลขผู้เสียภาษีจาก Excel: ตัดช่องว่าง/ขีด · 1.0555E+12 → ตัวเลขเต็ม · Excel ตัดเลข 0 ข้างหน้า (12 หลัก) → เติม 0 เมื่อหลักตรวจสอบถูกต้องเท่านั้น
- * คืนค่าเดิมเมื่อแก้ไม่ได้ (ให้ตัวตรวจแจ้งข้อผิดพลาด)
- */
-export function importTaxId(v: string): string {
-  let t = v.replace(/[\s-]/g, '');
-  if (/^\d+(\.\d+)?e\+?\d+$/i.test(t)) { const n = importNumber(t); if (n && /^\d+$/.test(n)) t = n; }
-  t = t.replace(/\.0+$/, '');
-  if (/^\d{10,12}$/.test(t)) { const p = t.padStart(13, '0'); if (checkTaxId(p).ok) return p; }
-  return t;
-}
 const TAX_DETAIL_KEYS: JournalImportKey[] = ['tax_no', 'tax_date', 'tax_month', 'party', 'party_tax_id', 'party_branch', 'tax_base', 'tax_rate', 'income_type'];
 export type JournalImportTaxKind = 'P' | 'S' | 'S03' | 'S53';
 export const JOURNAL_IMPORT_TAX_LABEL: Record<JournalImportTaxKind, string> = { P: 'ภาษีซื้อ', S: 'ภาษีขาย', S03: 'ภ.ง.ด.3', S53: 'ภ.ง.ด.53' };

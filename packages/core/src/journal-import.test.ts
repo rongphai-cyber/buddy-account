@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { cleanImportCell, compareJournalSides, importTaxId, JOURNAL_IMPORT_COLUMNS, journalImportKey, journalImportSide, mapJournalImport, type JournalCompareSide } from './journal-import.js';
+import { importTaxId } from './trade-import.js';
+import { cleanImportCell, compareJournalSides, JOURNAL_IMPORT_COLUMNS, journalImportKey, journalImportSide, mapJournalImport, type JournalCompareSide } from './journal-import.js';
 
 const H = ['สมุด', 'เลขที่กลุ่ม', 'วันที่', 'อ้างอิง', 'คำอธิบาย', 'เลขที่บัญชี', 'คำอธิบายรายการ', 'แผนก', 'Job', 'เดบิต', 'เครดิต'];
 

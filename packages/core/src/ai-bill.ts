@@ -1,8 +1,9 @@
 import type { Decimal } from 'decimal.js';
-import { d } from './money.js';
+import { d, type MoneyInput } from './money.js';
 import { parseInput } from './money.js';
 import { CASH_KINDS, TRADE_KINDS } from './doc-calc.js';
 import { checkTaxId } from './taxid.js';
+import { WHT_INCOME_TYPES, wht50FormOf } from './forms/wht50.js';
 
 /**
  * AI อ่านบิล (T7.7) — กฎที่ไม่ขึ้นกับฐานข้อมูล: ราคาต่อโทเคน · โครงข้อมูลที่ให้ Claude ตอบ · ตรวจ/แปลงผลเป็นร่างเอกสารซื้อ
@@ -88,7 +89,7 @@ const str = { type: 'string' } as const;
 export const BILL_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['doc_kind', 'supplier', 'buyer', 'doc_no', 'doc_date', 'price_type', 'vat_rate', 'lines', 'subtotal', 'discount', 'vat_amount', 'total', 'notes'],
+  required: ['doc_kind', 'supplier', 'buyer', 'doc_no', 'doc_date', 'price_type', 'vat_rate', 'lines', 'subtotal', 'discount', 'vat_amount', 'wht_amount', 'total', 'notes'],
   properties: {
     doc_kind: { type: 'string', enum: ['tax_invoice', 'receipt_tax_invoice', 'abbreviated_tax_invoice', 'invoice', 'receipt', 'other'] },
     supplier: {
@@ -107,7 +108,7 @@ export const BILL_SCHEMA = {
         properties: { description: { type: 'string' }, qty: str, unit: str, unit_price: str, amount: str },
       },
     },
-    subtotal: str, discount: str, vat_amount: str, total: str,
+    subtotal: str, discount: str, vat_amount: str, wht_amount: str, total: str,
     notes: { type: 'array', items: { type: 'string' } },
   },
 } as const;
@@ -120,7 +121,8 @@ export const BILL_SYSTEM_PROMPT = `คุณอ่านเอกสารซื
 - doc_date เป็นปี ค.ศ. รูปแบบ YYYY-MM-DD (ปี พ.ศ. ลบ 543 เช่น 15/03/2569 → 2026-03-15)
 - จำนวนเงินและจำนวนเป็นตัวเลขทศนิยมแบบข้อความ ไม่มีจุลภาคหรือสกุลเงิน เช่น "1234.50"
 - price_type: ราคาในรายการยังไม่รวม VAT = excl_vat · รวม VAT แล้ว = incl_vat · ไม่มี VAT = no_vat · vat_rate เช่น "7"
-- lines ตามลำดับในเอกสาร amount คือยอดของบรรทัดตามที่พิมพ์ · subtotal ยอดรวมก่อน VAT · discount ส่วนลดท้ายบิล · vat_amount ภาษีมูลค่าเพิ่ม · total ยอดรวมทั้งสิ้น
+- lines ตามลำดับในเอกสาร amount คือยอดของบรรทัดตามที่พิมพ์ · subtotal ยอดรวมก่อน VAT · discount ส่วนลดท้ายบิล · vat_amount ภาษีมูลค่าเพิ่ม · total ยอดรวมทั้งสิ้นตามที่พิมพ์
+- wht_amount ภาษีหัก ณ ที่จ่ายที่พิมพ์ในเอกสาร (เช่น "หัก ณ ที่จ่าย 3%") เป็นจำนวนเงิน · ไม่มี = ""
 - ถ้าไม่ใช่เอกสารซื้อขาย ให้ doc_kind = "other" และอธิบายใน notes`;
 
 /** คำตอบของ AI ตาม BILL_SCHEMA: ช่องว่าง = "" (ยังรับ null/ไม่มีช่องได้ — normalizeBill ถือว่าเหมือนกัน) */
@@ -130,7 +132,7 @@ export interface RawBill {
   buyer?: { name: Txt; tax_id: Txt } | null;
   doc_no: Txt; doc_date: Txt; price_type: 'excl_vat' | 'incl_vat' | 'no_vat'; vat_rate: Txt;
   lines: Array<{ description: Txt; qty: Txt; unit: Txt; unit_price: Txt; amount: Txt }>;
-  subtotal: Txt; discount: Txt; vat_amount: Txt; total: Txt; notes: string[];
+  subtotal: Txt; discount: Txt; vat_amount: Txt; wht_amount?: Txt; total: Txt; notes: string[];
 }
 export interface BillDraft {
   /** tax_id = เลข 13 หลักที่อ่านได้ (ไม่ครบ = null) · tax_id_read = ตัวเลขตามที่อ่านได้ (ใช้เติมแบบฟอร์มเพิ่มผู้จำหน่ายให้ผู้ใช้แก้) */
@@ -140,7 +142,20 @@ export interface BillDraft {
   doc_no: string; doc_date: string | null; price_type: '0' | '1' | '2'; vat_rate: string;
   lines: Array<{ description: string; qty: string; unit: string | null; unit_price: string; amount: string }>;
   subtotal: string | null; discount: string | null; vat_amount: string | null; total: string | null;
+  /** ภาษีหัก ณ ที่จ่ายตามบิล (HANDOFF 167): ยอด · ฐาน (ยอดก่อน VAT) · อัตรามาตรฐานที่ใกล้ (1 2 3 5 — ห่างเกิน 0.05% = null ให้ผู้ใช้ใส่เอง) */
+  wht: { amount: string; base: string; rate: string | null } | null;
   warnings: string[];
+}
+
+/** อัตราภาษีหัก ณ ที่จ่ายที่ใช้บ่อย (ร้อยละ) */
+export const WHT_STANDARD_RATES = ['1', '2', '3', '5'] as const;
+/** อัตราจากยอดภาษี ÷ ฐาน → อัตรามาตรฐานที่ห่างไม่เกิน 0.05 จุด · ไม่ใกล้อัตราใด = null */
+export function whtRateOf(amount: MoneyInput, base: MoneyInput): { raw: string; rate: string | null } {
+  const b = d(base);
+  if (b.lte(0)) return { raw: '', rate: null };
+  const raw = d(amount).div(b).times(100);
+  const hit = WHT_STANDARD_RATES.find((r) => raw.minus(r).abs().lte(0.05));
+  return { raw: raw.toDecimalPlaces(2).toString(), rate: hit ?? null };
 }
 
 /** ข้อความจาก AI → ตัดช่องว่าง · "" / null / "null" / "-" = ไม่มี ("") */
@@ -173,12 +188,23 @@ export function normalizeBill(raw: RawBill): BillDraft {
   });
   if (!lines.length) w.push('ไม่พบรายการสินค้า/บริการ');
   const sub = money(raw.subtotal), disc = money(raw.discount), vat = money(raw.vat_amount), total = money(raw.total);
+  const whtAmt = money(raw.wht_amount);
+  const wht = whtAmt && whtAmt.gt(0) ? whtAmt : null;
   const sumLines = lines.reduce((s, l) => s.plus(d(l.amount || 0)), d(0));
-  // ยอดรวมบรรทัด − ส่วนลด (+ VAT ถ้าราคาไม่รวม VAT) = ยอดรวมทั้งสิ้น
+  // ยอดรวมบรรทัด − ส่วนลด (+ VAT ถ้าราคาไม่รวม VAT) = ยอดรวมทั้งสิ้น · บิลที่หัก ณ ที่จ่าย: ยอดรวมที่พิมพ์เป็นได้ทั้งก่อนหักหรือหลังหัก (HANDOFF 167)
   if (total) {
     const calc = sumLines.minus(disc ?? 0).plus(pt === '2' ? (vat ?? 0) : 0);
-    if (calc.minus(total).abs().gt(0.05)) w.push(`ยอดรายการรวม ${sumLines.toFixed(2)} ไม่สอดคล้องกับยอดรวมทั้งสิ้น ${total.toFixed(2)} ในเอกสาร — ตรวจรายการ/ส่วนลด`);
+    const near = (x: Decimal) => x.minus(total).abs().lte(0.05);
+    if (!near(calc) && !(wht && near(calc.minus(wht)))) w.push(`ยอดรายการรวม ${sumLines.toFixed(2)} ไม่สอดคล้องกับยอดรวมทั้งสิ้น ${total.toFixed(2)} ในเอกสาร — ตรวจรายการ/ส่วนลด${wht ? '/ภาษีหัก ณ ที่จ่าย' : ''}`);
   } else w.push('ไม่พบยอดรวมทั้งสิ้นในเอกสาร');
+  // ฐานภาษีหัก ณ ที่จ่าย = ยอดก่อน VAT (subtotal · ไม่มี = รายการ − ส่วนลด − VAT ถ้าราคารวม VAT)
+  let whtOut: BillDraft['wht'] = null;
+  if (wht) {
+    const base = sub ?? sumLines.minus(disc ?? 0).minus(pt === '1' ? (vat ?? 0) : 0);
+    const r = whtRateOf(wht, base);
+    if (!r.rate) w.push(`ภาษีหัก ณ ที่จ่าย ${wht.toFixed(2)} คิดเป็น ${r.raw || '?'}% ของ ${base.toFixed(2)} ไม่ตรงอัตรามาตรฐาน (1 2 3 5%) — ใส่อัตราเองที่แท็บภาษีหัก ณ ที่จ่าย`);
+    whtOut = { amount: wht.toFixed(2), base: base.toFixed(2), rate: r.rate };
+  }
   if (pt !== '0' && vat && sub && !rate.isZero()) {
     const base = pt === '1' ? sub.minus(vat) : sub;
     if (base.times(rate).div(100).toDecimalPlaces(2).minus(vat).abs().gt(0.05) && sub.times(rate).div(100).toDecimalPlaces(2).minus(vat).abs().gt(0.05)) w.push(`VAT ${vat.toFixed(2)} ไม่เท่ากับ ${rate.toString()}% ของฐาน — ตรวจ`);
@@ -188,7 +214,20 @@ export function normalizeBill(raw: RawBill): BillDraft {
     supplier: { name: txt(raw.supplier?.name), tax_id: tax.length === 13 ? tax : null, tax_id_read: tax.slice(0, 20), phone: txt(raw.supplier?.phone).slice(0, 60) || null, branch_no: branch ? branch.padStart(5, '0').slice(-5) : null, address: txt(raw.supplier?.address) },
     buyer: { name: txt(raw.buyer?.name).slice(0, 200), tax_id_read: txt(raw.buyer?.tax_id).replace(/\D/g, '').slice(0, 20) },
     doc_no: txt(raw.doc_no).slice(0, 30), doc_date: date, price_type: pt, vat_rate: rate.toString(), lines,
-    subtotal: fx(sub), discount: fx(disc), vat_amount: fx(vat), total: fx(total), warnings: w,
+    subtotal: fx(sub), discount: fx(disc), vat_amount: fx(vat), total: fx(total), wht: whtOut, warnings: w,
+  };
+}
+
+/**
+ * แถวภาษีหัก ณ ที่จ่ายของร่างเอกสาร (แท็บภาษีหัก ณ ที่จ่าย — ค่าใช้จ่ายอื่น/ซื้อเงินสด · HANDOFF 167)
+ * แบบ ภ.ง.ด. ตามเลขผู้เสียภาษีผู้ขาย · ประเภทเงินได้ตามอัตรา (3% ค่าบริการ 1% ค่าขนส่ง 2% ค่าโฆษณา 5% ค่าเช่า) · ไม่มีอัตรามาตรฐาน = rate ว่างให้ผู้ใช้ใส่
+ */
+export function billWhtRow(b: Pick<BillDraft, 'wht' | 'supplier'>): { form_type: 'S03' | 'S53'; income_type: string; rate: string; paid_amount: string; tax_amount: string } | null {
+  if (!b.wht) return null;
+  return {
+    form_type: wht50FormOf(null, b.supplier.tax_id) === '3' ? 'S03' : 'S53',
+    income_type: WHT_INCOME_TYPES.find((x) => x.rate === b.wht!.rate)?.text ?? 'ค่าบริการ',
+    rate: b.wht.rate ?? '', paid_amount: b.wht.base, tax_amount: b.wht.amount,
   };
 }
 
