@@ -213,7 +213,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/pdpa/requests': M('SET.PDPA', 'read'), 'POST /api/v1/pdpa/requests': M('SET.PDPA', 'add'), 'PUT /api/v1/pdpa/requests/:id': M('SET.PDPA', 'edit'),
   'GET /api/v1/activity-log': LOOKUP, 'GET /api/v1/activity-log/search': M('OT.LOG', 'read'),
   // บริษัท สาขา แผนก รอบบัญชี
-  'GET /api/v1/company': LOOKUP, 'PUT /api/v1/company': M('SET.CO', 'edit'), 'PUT /api/v1/company/ui-theme': M('SET.CO', 'edit'), 'GET /api/v1/company/modules': LOOKUP, 'PUT /api/v1/company/modules': M('SET.CO', 'edit'),
+  'GET /api/v1/company': LOOKUP, 'GET /api/v1/company/starter-data': M('SET.CO', 'read'), 'POST /api/v1/company/starter-data': M('SET.CO', 'edit'), 'PUT /api/v1/company': M('SET.CO', 'edit'), 'PUT /api/v1/company/ui-theme': M('SET.CO', 'edit'), 'GET /api/v1/company/modules': LOOKUP, 'PUT /api/v1/company/modules': M('SET.CO', 'edit'),
   'GET /api/v1/branches': LOOKUP, 'POST /api/v1/branches': M('SET.BRANCH', 'add'), 'PUT /api/v1/branches/:id': M('SET.BRANCH', 'edit'),
   'GET /api/v1/projects/options': LOOKUP, 'GET /api/v1/projects': M('GL.JOB', 'read'), 'GET /api/v1/projects/:id': M('GL.JOB', 'read'), 'POST /api/v1/projects': M('GL.JOB', 'add'), 'PUT /api/v1/projects/:id': M('GL.JOB', 'edit'), 'DELETE /api/v1/projects/:id': M('GL.JOB', 'delete'),
   'GET /api/v1/reports/jobs': M('RP.JOB', 'read'), 'GET /api/v1/reports/jobs/:id': M('RP.JOB', 'read'),

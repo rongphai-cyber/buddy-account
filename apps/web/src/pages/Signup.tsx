@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { StarterSelect } from '../components/StarterFill';
 import { PASSWORD_RULE } from '@buddy/core';
 import { api } from '../api';
 import { ErrorBox, Field, navKey, PasswordInput } from '../ui';
@@ -16,7 +17,7 @@ export function useSignupMode() {
  */
 export function SignupPage({ onBack }: { onBack: () => void }) {
   const mode = useSignupMode();
-  const [f, setF] = useState({ business_name: '', tax_id: '', contact_name: '', contact_email: '', contact_phone: '', username: '', password: '', password2: '', website: '' });
+  const [f, setF] = useState({ business_name: '', tax_id: '', business_template: 'TRADE', contact_name: '', contact_email: '', contact_phone: '', username: '', password: '', password2: '', website: '' });
   const [accept, setAccept] = useState(false);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -50,6 +51,7 @@ export function SignupPage({ onBack }: { onBack: () => void }) {
         <ErrorBox error={err} />
         <Field label="ชื่อกิจการ / ร้าน" req hint="ใช้เป็นชื่อบริษัทแรกของคุณ (แก้ได้ภายหลัง)"><input autoFocus maxLength={120} value={f.business_name} onChange={set('business_name')} /></Field>
         <Field label="เลขประจำตัวผู้เสียภาษี" hint="13 หลัก ถ้ามี — ไม่มี/ยังไม่จดทะเบียน เว้นว่างได้"><input inputMode="numeric" maxLength={20} placeholder="เช่น 0105560000001" value={f.tax_id} onChange={set('tax_id')} /></Field>
+        <Field label="ประเภทธุรกิจ" hint="ข้อมูลตั้งต้นของบริษัทแรก (หน่วยนับ คลังสินค้า กลุ่มบัญชี วิธีรับ/จ่าย …) — แก้ไขได้ภายหลัง"><StarterSelect value={f.business_template} onChange={(v) => setF({ ...f, business_template: v })} /></Field>
         <Field label="ชื่อผู้ติดต่อ" req><input maxLength={120} autoComplete="name" value={f.contact_name} onChange={set('contact_name')} /></Field>
         <div className="form-grid">
           <Field label="อีเมล" req><input type="email" maxLength={120} autoComplete="email" value={f.contact_email} onChange={set('contact_email')} /></Field>

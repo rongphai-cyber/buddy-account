@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { StarterSelect } from '../../components/StarterFill';
+import { STARTER_TEMPLATES } from '@buddy/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { DateInput, DateText, ErrorBox, Field, Modal, Pill, toast } from '../../ui';
 
-type Row = { id: string; business_name: string; contact_name: string; contact_email: string; contact_phone: string; tax_id: string | null; username: string; status: 'P' | 'A' | 'R'; created_at: string;
+type Row = { id: string; business_name: string; contact_name: string; contact_email: string; contact_phone: string; tax_id: string | null; business_template?: string | null; username: string; status: 'P' | 'A' | 'R'; created_at: string;
   decided_at: string | null; reject_reason: string | null; client_ip: string | null; tenant_code: string | null; decided_by_name: string | null };
 const ST: Record<string, [string, 'n' | 'd' | 'x']> = { P: ['รออนุมัติ', 'd'], A: ['อนุมัติแล้ว', 'n'], R: ['ไม่อนุมัติ', 'x'] };
 const MODE_TH = { review: 'ผู้ให้บริการอนุมัติก่อน', auto: 'เปิดบัญชีทันที (อนุมัติอัตโนมัติ)', off: 'ปิดรับสมัคร' };
@@ -45,13 +47,13 @@ export function SignupsPanel({ onApproved }: { onApproved: () => void }) {
 }
 
 function ApproveForm({ r, onClose, onDone }: { r: Row; onClose: () => void; onDone: () => void }) {
-  const [f, setF] = useState({ code: '', plan: 'standard', max_companies: '', max_users: '', expires_on: '', first_company: true, fiscal_start: `${new Date().getFullYear()}-01-01` });
+  const [f, setF] = useState({ code: '', plan: 'standard', max_companies: '', max_users: '', expires_on: '', first_company: true, fiscal_start: `${new Date().getFullYear()}-01-01`, starter: r.business_template || 'TRADE' });
   const [err, setErr] = useState<unknown>(null);
   const go = async () => {
     setErr(null);
     try {
       const x = await api.post<{ code: string; company_code: string | null }>(`/api/v1/signups/${r.id}/approve`, { code: f.code || undefined, plan: f.plan, max_companies: f.max_companies ? Number(f.max_companies) : null, max_users: f.max_users ? Number(f.max_users) : null, expires_on: f.expires_on || null,
-        first_company: f.first_company, fiscal_start: f.first_company ? f.fiscal_start || undefined : undefined });
+        first_company: f.first_company, fiscal_start: f.first_company ? f.fiscal_start || undefined : undefined, starter: f.first_company ? f.starter : undefined });
       toast(`อนุมัติแล้ว — สร้างลูกค้า ${x.code}${x.company_code ? ` และบริษัท ${x.company_code}` : ''} · แจ้งผู้สมัครให้เข้าระบบด้วยรหัส ${r.username}`); onDone();
     } catch (e) { setErr(e); }
   };
@@ -67,6 +69,7 @@ function ApproveForm({ r, onClose, onDone }: { r: Row; onClose: () => void; onDo
         <Field label="หมดอายุ" hint="ว่าง = ไม่หมดอายุ (เช่น ทดลองใช้ 30 วัน)"><DateInput value={f.expires_on} onChange={(v) => setF({ ...f, expires_on: v ?? '' })} /></Field>
         <Field label="บริษัทแรก" wide><label className="inline chk"><input type="checkbox" checked={f.first_company} onChange={(e) => setF({ ...f, first_company: e.target.checked })} /> สร้างบริษัทแรกให้อัตโนมัติ (ผังบัญชีมาตรฐาน)</label></Field>
         {f.first_company && <Field label="รอบบัญชีเริ่ม" hint="ปกติ 1 ม.ค. ของปีนี้ · ปีถัดไปเพิ่มได้ที่ รอบบัญชี"><DateInput value={f.fiscal_start} onChange={(v) => setF({ ...f, fiscal_start: v ?? '' })} /></Field>}
+        {f.first_company && <Field label="ประเภทธุรกิจ (ข้อมูลตั้งต้น)" hint={`ผู้สมัครเลือก: ${r.business_template ? STARTER_TEMPLATES.find((t) => t.key === r.business_template)?.th ?? r.business_template : '— (ใช้ ซื้อมาขายไป)'}`}><StarterSelect value={f.starter} onChange={(v) => setF({ ...f, starter: v })} /></Field>}
       </div>
     </Modal>
   );

@@ -16,6 +16,7 @@ import { modulesOffRaw } from './permissions.js';
 import { payrollSource } from './wts.js';
 import { createTenantWithAdmin } from './signup.js';
 import { ensureStandardGroups, permissionCompanies } from '../standard-groups.js';
+import { applyStarter, lastStarter } from '../starter.js';
 import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, seedLookups, setSetting } from '../company-template.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
@@ -116,6 +117,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       /** คัดลอกจากบริษัทต้นแบบ (S-CO-04/05): chart = เฉพาะผังบัญชี · setup = ค่าตั้งระบบทั้งหมด · all = ค่าตั้ง + แฟ้มหลัก (ลูกค้า ผู้จำหน่าย สินค้า พนักงานขาย) */
       copy_scope: z.enum(['chart', 'setup', 'all']).default('chart'),
       tenant_id: uuid.optional(),
+      /** ประเภทธุรกิจ: ข้อมูลตั้งต้น (HANDOFF 160) · ไม่ส่ง = ว่าง (แบบเดิม) */
+      starter: z.enum(['TRADE', 'SERVICE', 'MFG', 'BLANK']).default('BLANK'),
     }), req.body);
     // ผู้ดูแลของลูกค้าสร้างได้เฉพาะใน tenant ตัวเอง; ผู้ให้บริการเลือก tenant ได้ (ไม่ระบุ = ลูกค้าเริ่มต้น)
     const tenantId = a.isPlatform ? (b.tenant_id ?? (await defaultTenant(db))) : a.tenantId!;
@@ -144,6 +147,11 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
         await seedDocTypes(tx, c.id);
         await seedLookups(tx, c.id);
         if (b.chart === 'copy') await copyChart(tx, b.copy_from_company_id!, c.id);
+        // ข้อมูลตั้งต้นตามประเภทธุรกิจ (HANDOFF 160) — ผังมาตรฐานเท่านั้น (คัดลอกจากบริษัทอื่น = ใช้ข้อมูลของบริษัทต้นแบบ)
+        if (b.chart !== 'copy' && b.starter !== 'BLANK') {
+          const st = await applyStarter(tx, c.id, b.starter, a.userId);
+          await logActivity(tx, { companyId: c.id, userId: a.userId }, { module: 'SYS', action: 'STARTER_DATA', table: 'sys_company', rowId: c.id, detail: { template: st.template, added: st.added } });
+        }
       }
       // บริษัทที่สอง ฯลฯ: กลุ่มตั้งต้นที่ลูกค้ามีอยู่ได้สิทธิ์ในบริษัทใหม่ด้วย (ไม่สร้างกลุ่มใหม่ ไม่แตะสิทธิ์ที่แก้เองแล้ว) — HANDOFF 159
       await ensureStandardGroups(tx, tenantId, a.userId, { createGroups: false, companyIds: [c.id] });
@@ -152,6 +160,24 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     });
     await applyPostingTemplate(database.execScript, id);
     return { id };
+  });
+
+  /* ---------------------------------------------------------------- ข้อมูลตั้งต้นตามประเภทธุรกิจ (HANDOFF 160) */
+  // บริษัทที่มีอยู่แล้ว (เช่น สร้างก่อนมีต้นแบบ): ดูก่อนว่าจะเพิ่มอะไร แล้วเติมเฉพาะรหัสที่ยังไม่มี — ไม่แก้สิ่งที่ลูกค้าตั้งเอง
+  const starterKey = z.object({ template: z.enum(['TRADE', 'SERVICE', 'MFG']) });
+  app.get('/api/v1/company/starter-data', async (req) => {
+    const a = requireCompany(req);
+    const q = req.query as { template?: string };
+    const last = await lastStarter(db, a.companyId);
+    const template = (q.template ? parse(starterKey, q).template : (last && last !== 'BLANK' ? last : 'TRADE'));
+    return { last, preview: await applyStarter(db, a.companyId, template, a.userId, true) };
+  });
+  app.post('/api/v1/company/starter-data', async (req) => {
+    const a = requireCompany(req);
+    const { template } = parse(starterKey, req.body);
+    const r = await applyStarter(db, a.companyId, template, a.userId);
+    await logActivity(db, a, { module: 'SYS', action: 'STARTER_DATA', table: 'sys_company', rowId: a.companyId, detail: { template, added: r.added, manual: true } });
+    return r;
   });
 
   /* ---------------------------------------------------------------- สาขา */

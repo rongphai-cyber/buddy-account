@@ -1,3 +1,6 @@
+import { applyStarter } from './starter.js';
+import { logActivity } from './audit.js';
+import type { StarterKey } from '@buddy/core';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { sql, type Kysely } from 'kysely';
@@ -109,7 +112,7 @@ export async function seedDocTypes(db: Kysely<DB>, companyId: string) {
  * เหมือนหน้า "กำหนดบริษัทใหม่" แบบผังมาตรฐาน — กฎการลงบัญชี (applyPostingTemplate) เรียกหลัง commit
  * รหัสบริษัทซ้ำ = ต่อท้าย -2, -3 …
  */
-export async function createStandardCompany(tx: Kysely<DB>, x: { tenantId: string; code: string; name_th: string; tax_id: string | null; fiscal_start: string; actor: string | null }) {
+export async function createStandardCompany(tx: Kysely<DB>, x: { tenantId: string; code: string; name_th: string; tax_id: string | null; fiscal_start: string; actor: string | null; starter?: StarterKey }) {
   const base = (x.code.toUpperCase().replace(/[^A-Z0-9_-]/g, '') || 'CO').slice(0, 16);
   let code = base;
   for (let i = 2; await tx.selectFrom('sys_company').select('id').where('code', '=', code).where('deleted_at', 'is', null).executeTakeFirst(); i++) code = `${base}-${i}`;
@@ -119,5 +122,8 @@ export async function createStandardCompany(tx: Kysely<DB>, x: { tenantId: strin
   await seedChart(tx, c.id, { chart: 'express' });
   await seedDocTypes(tx, c.id);
   await seedLookups(tx, c.id);
+  // ข้อมูลตั้งต้นตามประเภทธุรกิจ (HANDOFF 160) — หน่วยนับ คลัง ธนาคาร แผนก ตารางข้อมูล กลุ่มบัญชี วิธีรับ/จ่ายชำระ
+  const st = await applyStarter(tx, c.id, x.starter ?? 'TRADE', x.actor);
+  if (st.added) await logActivity(tx, { companyId: c.id, userId: x.actor }, { module: 'SYS', action: 'STARTER_DATA', table: 'sys_company', rowId: c.id, detail: { template: st.template, added: st.added } });
   return { id: c.id, code };
 }

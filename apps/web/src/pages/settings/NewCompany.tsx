@@ -3,18 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { DateInput, ErrorBox, Field, navKey, PageHead, toast } from '../../ui';
+import { StarterSelect, starterHint } from '../../components/StarterFill';
 
 /** กำหนดบริษัทใหม่ — คู่มือบทที่ 4 S-CO-03 / เลือกแหล่งข้อมูล S-CO-04 */
 export function NewCompanyPage() {
   const { me, select } = useSession();
   const nav = useNavigate();
-  const [f, setF] = useState({ code: '', name_th: '', tax_id: '', fiscal_start: `${new Date().getFullYear()}-01-01`, chart: 'express', copy_from_company_id: '', copy_scope: 'setup' });
+  const [f, setF] = useState({ code: '', name_th: '', tax_id: '', fiscal_start: `${new Date().getFullYear()}-01-01`, chart: 'express', copy_from_company_id: '', copy_scope: 'setup', starter: 'TRADE' });
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const go = async () => {
     setErr(null); setBusy(true);
     try {
-      const r = await api.post<{ id: string }>('/api/v1/companies', { ...f, tax_id: f.tax_id || undefined, copy_from_company_id: f.copy_from_company_id || undefined });
+      const r = await api.post<{ id: string }>('/api/v1/companies', { ...f, tax_id: f.tax_id || undefined, copy_from_company_id: f.copy_from_company_id || undefined, starter: f.chart === 'copy' || f.chart === 'none' ? 'BLANK' : f.starter });
       await select({ company_id: r.id });
       toast('สร้างบริษัทใหม่แล้ว');
       nav('/settings/company');
@@ -37,6 +38,9 @@ export function NewCompanyPage() {
             <option value="none">ไม่มี (สร้างเอง)</option>
           </select>
         </Field>
+        {(f.chart === 'express' || f.chart === 'th_en') && <Field label="ต้นแบบธุรกิจ (ข้อมูลตั้งต้น)" hint={`${starterHint(f.starter)} · แก้ไข/ลบเองได้ภายหลัง`}>
+          <StarterSelect value={f.starter} onChange={(v) => setF({ ...f, starter: v })} />
+        </Field>}
         {f.chart === 'copy' && <Field label="บริษัทต้นแบบ" req wide><select value={f.copy_from_company_id} onChange={(e) => setF({ ...f, copy_from_company_id: e.target.value })}><option value="">— เลือก —</option>{me?.companies.map((c) => <option key={c.id} value={c.id}>{c.code} {c.name_th}</option>)}</select></Field>}
         {f.chart === 'copy' && <Field label="ข้อมูลที่คัดลอก" req wide hint="ไม่คัดลอกรายการประจำวัน ยอดยกมา และสิทธิ์ผู้ใช้ — เริ่มบันทึกได้ทันที"><select value={f.copy_scope} onChange={(e) => setF({ ...f, copy_scope: e.target.value })}>
           <option value="chart">เฉพาะผังบัญชีและบัญชีเพื่อลงรายวัน</option><option value="setup">ค่าตั้งระบบทั้งหมด (ผังบัญชี ประเภทเอกสาร สมุดรายวัน แผนก คลัง หน่วยนับ ตารางข้อมูล ค่าเริ่มต้น แบบฟอร์ม งบการเงิน)</option>

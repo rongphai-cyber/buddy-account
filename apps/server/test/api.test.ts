@@ -5801,6 +5801,100 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     cookie = '';
   });
 
+  it('starter data by business type (HANDOFF 160): each template passes normal validation, an invoice saves right away, fill button is idempotent and keeps edits, signup choice, no cross-tenant', async () => {
+    const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
+    await login('admin', 'secret123');
+    for (const [code, u, pw] of [['ST-A', 'st.a', 'passStA1'], ['ST-B', 'st.b', 'passStB1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
+    await login('st.a', 'passStA1');
+    const co: Record<string, string> = {};
+    for (const t of ['TRADE', 'SERVICE', 'MFG', 'BLANK']) {
+      const r = await call('POST', '/api/v1/companies', { code: `ST${t}`, name_th: `บริษัท ${t} จำกัด`, fiscal_start: '2026-01-01', chart: 'express', starter: t });
+      expect([t, r.status, r.body.error?.message]).toEqual([t, 200, undefined]);
+      co[t] = r.body.id;
+    }
+    const count = async (id: string) => {
+      const n = async (q: string) => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM ${sql.table(q)} WHERE company_id = ${id} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n;
+      return { unit: await n('md_unit'), wh: await n('md_warehouse'), bank: await n('md_bank'), dept: await n('md_department'), ig: await n('md_item_account_group'), ag: await n('md_asset_account_group'), pm: await n('md_payment_method') };
+    };
+    expect(await count(co.TRADE!)).toEqual({ unit: 14, wh: 1, bank: 12, dept: 4, ig: 1, ag: 5, pm: 4 });
+    expect(await count(co.SERVICE!)).toEqual({ unit: 8, wh: 1, bank: 12, dept: 4, ig: 2, ag: 5, pm: 4 });
+    expect(await count(co.MFG!)).toEqual({ unit: 18, wh: 3, bank: 12, dept: 6, ig: 4, ag: 6, pm: 4 });
+    expect(await count(co.BLANK!)).toEqual({ unit: 0, wh: 0, bank: 0, dept: 0, ig: 0, ag: 0, pm: 0 });
+    // ค่าเริ่มต้น: คลังหลัก · บริการ = ภาษีขายบริการเกณฑ์เงินสด (D1) · ผลิต = คลังหลัก 03 สินค้าสำเร็จรูป (D2)
+    const setting = async (c: string, k: string) => { await call('POST', '/api/v1/auth/select', { company_id: c }); return (await call('GET', '/api/v1/settings')).body.values[k]; };
+    expect([await setting(co.TRADE!, 'ic.main_warehouse'), await setting(co.SERVICE!, 'ar.service_vat_basis'), await setting(co.MFG!, 'ic.main_warehouse')]).toEqual(['01', '2', '03']);
+    // ผ่านการตรวจตามปกติ: บันทึกตารางข้อมูล/วิธีรับจ่าย/กลุ่มบัญชีกลับทั้งชุด ได้
+    for (const t of ['TRADE', 'SERVICE', 'MFG']) {
+      await call('POST', '/api/v1/auth/select', { company_id: co[t] });
+      for (const tbl of ['01', '20', '21', '22', '41', '45', '46', '51']) {
+        const rows = (await call('GET', `/api/v1/data-tables/${tbl}`)).body as Array<Record<string, unknown>>;
+        const put = await call('PUT', `/api/v1/data-tables/${tbl}`, { rows: rows.map(({ used: _u, ...r }) => r) });
+        expect([t, tbl, put.status, put.body?.error?.message]).toEqual([t, tbl, 200, undefined]);
+      }
+      for (const dir of ['R', 'P']) {
+        const pms = (await call('GET', `/api/v1/payment-methods/${dir}`)).body as Array<Record<string, unknown>>;
+        const put = await call('PUT', `/api/v1/payment-methods/${dir}`, { rows: pms.map(({ used: _u, ...r }) => r) });
+        expect([t, dir, put.status, put.body?.error?.message]).toEqual([t, dir, 200, undefined]);
+      }
+      const igs = (await call('GET', '/api/v1/item-account-groups')).body as Array<{ code: string; sales_account_id: string | null; cogs_account_id: string | null }>;
+      expect(igs.length).toBeGreaterThan(0);
+      expect(igs.every((g) => g.sales_account_id)).toBe(true);
+    }
+    // บริษัทใหม่แบบซื้อมาขายไป: สินค้า (หน่วยนับตั้งต้น) → ซื้อเข้าคลังหลัก → ขายเงินเชื่อ ไม่ต้องตั้งอะไรเพิ่ม
+    await call('POST', '/api/v1/auth/select', { company_id: co.TRADE });
+    const pcs = ((await call('GET', '/api/v1/data-tables/20')).body as Array<{ id: string; code: string }>).find((u) => u.code === 'PCS')!.id;
+    const gd = ((await call('GET', '/api/v1/item-account-groups')).body as Array<{ id: string; code: string }>).find((g) => g.code === 'GD')!.id;
+    const item = await call('POST', '/api/v1/items', { code: '01-STAR-000001', name_th: 'สินค้าทดลอง', base_unit_id: pcs, account_group_id: gd, std_cost: '50' });
+    expect([item.status, item.body.error?.message]).toEqual([200, undefined]);
+    const cus = (await call('POST', '/api/v1/customers', { code: 'C1', name: 'ลูกค้าทดลอง', tax_id: tid(160) })).body.id;
+    const sup = (await call('POST', '/api/v1/suppliers', { code: 'S1', name: 'ผู้จำหน่ายทดลอง', tax_id: tid(161) })).body.id;
+    const typeOf = async (c: string) => (await call('GET', `/api/v1/trade-defaults/${c}`)).body.types[0].id as string;
+    const rr = await call('POST', '/api/v1/purchase-invoices', { doc_type_id: await typeOf('RR'), doc_date: '2026-02-01', party_id: sup, price_type: '2', vat_rate: 7, lines: [{ item_id: item.body.id, qty: 10, unit_price: 50 }] });
+    expect([rr.status, rr.body.error?.message]).toEqual([200, undefined]);
+    const iv = await call('POST', '/api/v1/sales-invoices', { doc_type_id: await typeOf('IV'), doc_date: '2026-02-02', party_id: cus, price_type: '2', vat_rate: 7, lines: [{ item_id: item.body.id, qty: 2, unit_price: 100 }] });
+    expect([iv.status, iv.body.error?.message, iv.body.net_amount]).toEqual([200, undefined, '214.00']);
+    const line = (await call('GET', `/api/v1/sales-invoices/${iv.body.id}`)).body.lines[0];
+    expect([line.unit_id, line.warehouse_id]).toEqual([pcs, ((await call('GET', '/api/v1/data-tables/21')).body as Array<{ id: string }>)[0]!.id]);
+    // รับชำระด้วยวิธีตั้งต้น (เงินสด CH)
+    const ch = ((await call('GET', '/api/v1/payment-methods/R')).body as Array<{ id: string; code: string }>).find((m) => m.code === 'CH')!.id;
+    const re = await call('POST', '/api/v1/ar-receipts', { doc_type_id: await typeOf('RE'), doc_date: '2026-02-03', party_id: cus, settlements: [{ invoice_header_id: iv.body.id, amount: '214.00' }], payments: [{ payment_method_id: ch, amount: '214.00' }] });
+    expect([re.status, re.body.error?.message]).toEqual([200, undefined]);
+    // บริษัทเดิม (ว่าง): ดูก่อน → เติม → เติมซ้ำ = 0 · ที่ลูกค้าแก้เองไม่ถูกทับ · ที่ลบไปแล้ว (ยังไม่ใช้) เติมกลับได้
+    await call('POST', '/api/v1/auth/select', { company_id: co.BLANK });
+    const pv = (await call('GET', '/api/v1/company/starter-data?template=SERVICE')).body;
+    expect(pv.preview.added).toBeGreaterThan(50);
+    expect(pv.preview.tables.find((t: { key: string }) => t.key === 'units').add).toContain('HR ชั่วโมง');
+    expect((await count(co.BLANK!)).unit).toBe(0);   // ดูก่อน = ไม่บันทึก
+    const f1 = await call('POST', '/api/v1/company/starter-data', { template: 'SERVICE' });
+    expect([f1.status, f1.body.added]).toEqual([200, pv.preview.added]);
+    await sql`UPDATE md_unit SET name_th = 'ชม. (แก้เอง)' WHERE company_id = ${co.BLANK} AND code = 'HR'`.execute(database.db);
+    const f2 = await call('POST', '/api/v1/company/starter-data', { template: 'SERVICE' });
+    expect(f2.body.added).toBe(0);
+    expect((await sql<{ name_th: string }>`SELECT name_th FROM md_unit WHERE company_id = ${co.BLANK} AND code = 'HR'`.execute(database.db)).rows[0]!.name_th).toBe('ชม. (แก้เอง)');
+    expect((await call('GET', '/api/v1/company/starter-data')).body).toMatchObject({ last: 'SERVICE' });
+    expect((await call('POST', '/api/v1/company/starter-data', { template: 'NOPE' })).status).toBe(400);
+    // ข้ามลูกค้าไม่ได้ (กติกา 7.1): เติมได้เฉพาะบริษัทที่เลือกอยู่ใน session — ลูกค้า B เลือกบริษัทของ A ไม่ได้ ข้อมูลของ A ไม่เปลี่ยน
+    const before = await count(co.BLANK!);
+    await login('st.b', 'passStB1');
+    expect((await call('POST', '/api/v1/auth/select', { company_id: co.BLANK })).body.error?.message).toMatch(/ไม่มีสิทธิ์เข้าบริษัทนี้/);
+    const coB = (await call('POST', '/api/v1/companies', { code: 'STB1', name_th: 'บริษัท บี จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: coB });
+    expect((await call('POST', '/api/v1/company/starter-data', { template: 'MFG' })).body.added).toBeGreaterThan(50);
+    expect(await count(co.BLANK!)).toEqual(before);
+    // สมัครใช้งานเลือกประเภทธุรกิจ → อนุมัติ (ผู้ให้บริการเปลี่ยนได้)
+    cookie = '';
+    appCfg.signup = 'review';
+    const sg = await call('POST', '/api/v1/signup', { business_name: 'ร้านผลิตทดลอง', contact_name: 'คุณผลิต', contact_email: 'st.mfg@example.com', contact_phone: '081-234-5678', username: 'st.mfg', password: 'Signup-Pass99', accept_terms: true, business_template: 'MFG' });
+    expect(sg.status).toBe(200);
+    expect((await sql<{ t: string }>`SELECT business_template AS t FROM sys_signup WHERE username = 'st.mfg'`.execute(database.db)).rows[0]!.t).toBe('MFG');
+    await login('admin', 'secret123');
+    const sid = (await sql<{ id: string }>`SELECT id FROM sys_signup WHERE username = 'st.mfg'`.execute(database.db)).rows[0]!.id;
+    const ap = await call('POST', `/api/v1/signups/${sid}/approve`, {});
+    expect([ap.status, ap.body.error?.message]).toEqual([200, undefined]);
+    expect((await count(ap.body.company_id)).wh).toBe(3);
+    cookie = '';
+  });
+
   it('1 รหัสเข้าได้ทีละ 1 เครื่อง: the second login ends the first session with SESSION_REPLACED; per-user option; no cross-tenant change (HANDOFF 156)', async () => {
     const login = async (u: string, pw: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: pw })).status).toBe(200); return cookie; };
     const as = async (c: string, url: string) => { cookie = c; return call('GET', url); };

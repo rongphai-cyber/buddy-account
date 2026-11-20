@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql, type Kysely } from 'kysely';
 import { z } from 'zod';
-import { checkTaxId, passwordProblem } from '@buddy/core';
+import { checkTaxId, isStarterKey, passwordProblem, type StarterKey } from '@buddy/core';
 import type { Config } from '../config.js';
 import type { Database, DB } from '../db.js';
 import { applyPostingTemplate, createStandardCompany } from '../company-template.js';
@@ -51,7 +51,7 @@ const thisYearStart = () => `${new Date(Date.now() + 7 * 3600_000).getUTCFullYea
  * — ลูกค้าเข้าระบบแล้วเริ่มคีย์เอกสารได้ทันที ไม่ต้องให้ผู้ให้บริการตั้งบริษัท · first_company=false = ไม่สร้าง (ลูกค้าสร้างเองที่ กำหนดบริษัทใหม่)
  * กฎการลงบัญชีของบริษัทใหม่ (company_id) ให้ผู้เรียกใช้ applyPostingTemplate หลัง commit
  */
-async function approve(db: Kysely<DB>, id: string, actor: string | null, o: { code?: string; plan?: string; max_companies?: number | null; max_users?: number | null; expires_on?: string | null; first_company?: boolean; fiscal_start?: string } = {}) {
+async function approve(db: Kysely<DB>, id: string, actor: string | null, o: { code?: string; plan?: string; max_companies?: number | null; max_users?: number | null; expires_on?: string | null; first_company?: boolean; starter?: StarterKey; fiscal_start?: string } = {}) {
   const s = await db.selectFrom('sys_signup').selectAll().where('id', '=', id).where('deleted_at', 'is', null).forUpdate().executeTakeFirst();
   if (!s) throw notFound('ใบสมัคร');
   if (s.status !== 'P' || !s.password_hash) throw badRequest('ใบสมัครนี้พิจารณาไปแล้ว');
@@ -64,7 +64,8 @@ async function approve(db: Kysely<DB>, id: string, actor: string | null, o: { co
   await logActivity(db, { companyId: null, userId: actor }, { module: 'SYS', action: 'NEW_TENANT', docNo: code, table: 'sys_tenant', rowId: t.id, detail: { code, signup: id, auto: !actor } });
   let company: { id: string; code: string } | null = null;
   if (o.first_company !== false) {
-    company = await createStandardCompany(db, { tenantId: t.id, code, name_th: s.business_name, tax_id: s.tax_id ?? null, fiscal_start: o.fiscal_start ?? thisYearStart(), actor });
+    company = await createStandardCompany(db, { tenantId: t.id, code, name_th: s.business_name, tax_id: s.tax_id ?? null, fiscal_start: o.fiscal_start ?? thisYearStart(), actor,
+      starter: o.starter ?? (isStarterKey(s.business_template) ? s.business_template : 'TRADE') });
     await ensureStandardGroups(db, t.id, actor, { createGroups: false, companyIds: [company.id] });
     await logActivity(db, { companyId: company.id, userId: actor }, { module: 'SYS', action: 'NEW_COMPANY', docNo: company.code, table: 'sys_company', rowId: company.id, detail: { code: company.code, tenant_id: t.id, signup: id, chart: 'express' } });
   }
@@ -95,6 +96,8 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
       username: z.string().trim().min(3, 'รหัสผู้ใช้อย่างน้อย 3 ตัว').max(30).regex(/^[A-Za-z0-9_.@-]+$/, 'รหัสผู้ใช้ใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข _ . @ -'),
       password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })),
       accept_terms: z.literal(true, { errorMap: () => ({ message: 'อ่านและยอมรับเงื่อนไขการใช้บริการและการคุ้มครองข้อมูลส่วนบุคคลก่อน' }) }),
+      /** ประเภทธุรกิจ (ไม่บังคับ — ข้อมูลตั้งต้นของบริษัทแรก · HANDOFF 160) */
+      business_template: z.string().optional().transform((v) => (isStarterKey(v) ? v : undefined)),
       /** ช่องดักบอท (ซ่อนจากผู้ใช้จริง) */
       website: z.string().max(200).optional(),
     }), req.body);
@@ -112,7 +115,7 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
       throw conflict(`รหัสผู้ใช้ ${user} มีผู้ใช้แล้ว — เลือกรหัสอื่น`);
     if (await db.selectFrom('sys_signup').select('id').where(sql`lower(contact_email)`, '=', b.contact_email.toLowerCase()).where('status', '=', 'P').where('deleted_at', 'is', null).executeTakeFirst())
       throw conflict('อีเมลนี้ส่งใบสมัครไว้แล้ว — รอผู้ให้บริการติดต่อกลับ');
-    const r = await db.insertInto('sys_signup').values({ business_name: b.business_name, contact_name: b.contact_name, contact_email: b.contact_email, contact_phone: b.contact_phone, tax_id: taxId,
+    const r = await db.insertInto('sys_signup').values({ business_name: b.business_name, contact_name: b.contact_name, contact_email: b.contact_email, contact_phone: b.contact_phone, tax_id: taxId, business_template: b.business_template ?? null,
       username: user, password_hash: await bcrypt.hash(b.password, 10), accepted_terms_at: sql`now()` as never, client_ip: ip, status: 'P' }).returning('id').executeTakeFirstOrThrow();
     await logActivity(db, { companyId: null, userId: null }, { module: 'SYS', action: 'SIGNUP', docNo: user, table: 'sys_signup', rowId: r.id });
     if (mode() === 'auto') {
@@ -130,7 +133,7 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
     await sql`UPDATE sys_signup SET business_name = '-', contact_name = '-', contact_email = '-', contact_phone = '-', tax_id = NULL, client_ip = NULL, password_hash = NULL
                WHERE status = 'R' AND decided_at < now() - make_interval(days => ${PURGE_DAYS}) AND contact_email <> '-'`.execute(db);
     let s = db.selectFrom('sys_signup as s').leftJoin('sys_tenant as t', 't.id', 's.tenant_id').leftJoin('sys_user as u', 'u.id', 's.decided_by')
-      .select(['s.id', 's.business_name', 's.contact_name', 's.contact_email', 's.contact_phone', 's.tax_id', 's.username', 's.status', 's.created_at', 's.accepted_terms_at', 's.decided_at', 's.reject_reason', 's.client_ip',
+      .select(['s.id', 's.business_name', 's.contact_name', 's.contact_email', 's.contact_phone', 's.tax_id', 's.business_template', 's.username', 's.status', 's.created_at', 's.accepted_terms_at', 's.decided_at', 's.reject_reason', 's.client_ip',
         't.code as tenant_code', 'u.username as decided_by_name'])
       .where('s.deleted_at', 'is', null);
     if (q.status !== 'all') s = s.where('s.status', '=', q.status);
@@ -144,6 +147,7 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
       plan: z.string().trim().max(20).optional(), max_companies: z.coerce.number().int().min(1).nullable().optional(), max_users: z.coerce.number().int().min(1).nullable().optional(),
       expires_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       first_company: z.boolean().default(true), fiscal_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันเริ่มรอบบัญชีไม่ถูกต้อง').optional(),
+      starter: z.string().optional().transform((v) => (isStarterKey(v) ? v : undefined)),
     }), req.body ?? {});
     return approveAndSetup(id, a.userId, o);
   });

@@ -104,6 +104,7 @@ CREATE TABLE sys_signup (
   contact_email varchar(120) NOT NULL,
   contact_phone varchar(60) NOT NULL,
   tax_id varchar(13),
+  business_template varchar(10),
   username varchar(30) NOT NULL,
   password_hash varchar(100),
   accepted_terms_at timestamptz NOT NULL,
@@ -129,6 +130,7 @@ COMMENT ON COLUMN sys_signup.contact_name IS 'ชื่อผู้สมัค�
 COMMENT ON COLUMN sys_signup.contact_email IS 'อีเมลผู้ติดต่อ';
 COMMENT ON COLUMN sys_signup.contact_phone IS 'โทรศัพท์ผู้ติดต่อ';
 COMMENT ON COLUMN sys_signup.tax_id IS 'เลขประจำตัวผู้เสียภาษีของกิจการ (ไม่บังคับ) — ใช้ตั้งบริษัทแรกเมื่ออนุมัติ (HANDOFF 154)';
+COMMENT ON COLUMN sys_signup.business_template IS 'ประเภทธุรกิจที่เลือกตอนสมัคร (TRADE ซื้อมาขายไป · SERVICE บริการ · MFG ผลิต · BLANK ว่าง) — ข้อมูลตั้งต้นของบริษัทแรกเมื่ออนุมัติ (HANDOFF 160)';
 COMMENT ON COLUMN sys_signup.username IS 'รหัสผู้ใช้ที่ขอ (ผู้ดูแลคนแรกของลูกค้า)';
 COMMENT ON COLUMN sys_signup.password_hash IS 'รหัสผ่านที่ตั้ง (bcrypt) — ล้างทิ้งเมื่ออนุมัติ/ไม่อนุมัติแล้ว';
 COMMENT ON COLUMN sys_signup.accepted_terms_at IS 'เวลาที่ยอมรับเงื่อนไขการใช้บริการและข้อตกลงข้อมูลส่วนบุคคล';

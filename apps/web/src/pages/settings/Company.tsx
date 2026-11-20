@@ -9,6 +9,7 @@ import { AddressFields } from '../../components/AddressFields';
 import { ModuleSwitches } from '../../components/ModuleSwitches';
 import { WtsLivingSetup, WtsPosSetup } from '../../components/WtsConnect';
 import { useUnsaved } from '../../unsaved';
+import { StarterFillButton } from '../../components/StarterFill';
 
 type Co = {
   name_th: string; name_en: string | null; address_th_1: string; address_th_2: string; address_en_1: string; address_en_2: string; phone: string | null; business_type: 'J' | 'P';
@@ -49,7 +50,7 @@ export function CompanyPage() {
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › รายละเอียดกิจการ" title="รายละเอียดกิจการ" lead={`รหัสบริษัท ${f.code} — ชื่อและที่อยู่ใช้พิมพ์บนหัวรายงานและแบบฟอร์ม`}
-        actions={edit ? <><button onClick={() => { setEdit(false); setF(q.data ? { ...q.data, tax_branch_no: String(Number(q.data.tax_branch_no)) } : null); }}>ยกเลิก</button><button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button></> : <button className="primary" onClick={() => setEdit(true)}>แก้ไข <kbd>Alt+E</kbd></button>} />
+        actions={edit ? <><button onClick={() => { setEdit(false); setF(q.data ? { ...q.data, tax_branch_no: String(Number(q.data.tax_branch_no)) } : null); }}>ยกเลิก</button><button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button></> : <><StarterFillButton /><button className="primary" onClick={() => setEdit(true)}>แก้ไข <kbd>Alt+E</kbd></button></>} />
       <ErrorBox error={err} />
       <Tabs active={tab} onChange={setTab} tabs={[{ key: 'info', label: 'ข้อมูลกิจการ' }, { key: 'tax', label: 'ภาษีและทะเบียน' }, { key: 'gen', label: 'เรื่องทั่วไป' }, { key: 'modules', label: 'ระบบที่ใช้งาน' }, { key: 'pos', label: 'เชื่อมต่อ WTS POS' }, ...(living ? [{ key: 'living', label: 'เชื่อมต่อ WTS-Living' }] : []), { key: 'theme', label: 'ธีมและแบบอักษร' }]} />
       {['info', 'tax', 'gen'].includes(tab) && <fieldset disabled={!edit} onKeyDown={(e) => navKey(e, nextTab)}>
