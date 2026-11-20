@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AI_BUSINESS_TYPES, d, fmt, TYPHOON_MODEL } from '@buddy/core';
+import { AI_BUSINESS_TYPES, AI_MODELS, aiBillEstimate, aiModelLabel, d, fmt, TYPHOON_MODEL } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { DateText, ErrorBox, Field, PageHead, PasswordInput, Pill, toast, useHotkeys } from '../../ui';
@@ -30,25 +30,27 @@ export function AiSettingsPage() {
   const [limit, setLimit] = useState<string | null>(null);
   const [biz, setBiz] = useState<string | null>(null);
   const [guide, setGuide] = useState<string | null>(null);
+  const [mdl, setMdl] = useState<string | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const c = cfg.data;
   const lim = limit ?? (c ? (c.monthly_limit_usd === null ? '' : String(c.monthly_limit_usd)) : '');
   const bt = biz ?? c?.business_type ?? '';
   const gd = guide ?? c?.guidance ?? '';
+  const md = mdl ?? c?.model ?? AI_MODELS[0].id;
   const save = async (body: { api_key?: string | null }) => {
     if (!c || busy) return;
     setBusy(true); setErr(null);
     try {
-      await api.put('/api/v1/ai/config', { ...body, monthly_limit_usd: lim.trim() === '' ? null : Number(lim), business_type: bt || null, guidance: gd.trim() || null });
+      await api.put('/api/v1/ai/config', { ...body, monthly_limit_usd: lim.trim() === '' ? null : Number(lim), business_type: bt || null, guidance: gd.trim() || null, model: md });
       toast(body.api_key === null ? 'ลบกุญแจแล้ว' : body.api_key ? 'บันทึกกุญแจแล้ว' : 'บันทึกแล้ว');
-      setKey(''); setLimit(null); setBiz(null); setGuide(null);
+      setKey(''); setLimit(null); setBiz(null); setGuide(null); setMdl(null);
       qc.invalidateQueries({ queryKey: ['ai-config'] }); qc.invalidateQueries({ queryKey: ['ai-status'] });
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
-  useHotkeys({ F9: can('edit') ? () => save(key.trim() ? { api_key: key.trim() } : {}) : undefined }, [key, lim, bt, gd, c]);
+  useHotkeys({ F9: can('edit') ? () => save(key.trim() ? { api_key: key.trim() } : {}) : undefined }, [key, lim, bt, gd, md, c]);
   // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
-  useUnsaved(!!key.trim() || limit !== null || biz !== null || guide !== null, { word: 'ค่าตั้ง AI อ่านบิล', save: () => void save(key.trim() ? { api_key: key.trim() } : {}) });
+  useUnsaved(!!key.trim() || limit !== null || biz !== null || guide !== null || mdl !== null, { word: 'ค่าตั้ง AI อ่านบิล', save: () => void save(key.trim() ? { api_key: key.trim() } : {}) });
   return (
     <div className="page" data-tone="settings">
       <PageHead eyebrow="เริ่มระบบ" title="AI อ่านบิล (Claude)"
@@ -58,21 +60,26 @@ export function AiSettingsPage() {
         <fieldset className="box">
           <legend>สถานะ</legend>
           <p>{c.has_key ? <Pill tone="n">พร้อมใช้ · กุญแจ {c.key_hint}</Pill> : c.key_broken ? <Pill tone="x">กุญแจที่เก็บไว้ถอดรหัสไม่ได้ — ใส่ใหม่</Pill> : <Pill tone="c">ยังไม่ได้ใส่กุญแจ</Pill>}
-            {' '}เดือนนี้อ่านแล้ว {c.month_count} ใบ · ค่าใช้จ่าย <b>${d(c.month_cost_usd).toFixed(2)}</b>{c.monthly_limit_usd !== null ? ` จากเพดาน $${c.monthly_limit_usd}` : ' (ไม่จำกัด)'} · รุ่น {c.model}</p>
+            {' '}เดือนนี้อ่านแล้ว {c.month_count} ใบ · ค่าใช้จ่าย <b>${d(c.month_cost_usd).toFixed(2)}</b>{c.monthly_limit_usd !== null ? ` จากเพดาน $${c.monthly_limit_usd}` : ' (ไม่จำกัด)'} · รุ่น <b>{aiModelLabel(c.model)}</b></p>
         </fieldset>
         <fieldset className="box">
           <legend>กุญแจ API ของ Anthropic</legend>
           <Field label={c.has_key ? 'เปลี่ยนกุญแจ (ว่าง = ใช้กุญแจเดิม)' : 'กุญแจ API'} hint="สร้างที่ console.anthropic.com › API Keys (ขึ้นต้นด้วย sk-ant-) — ค่าใช้จ่ายเรียกเก็บกับบัญชี Anthropic ของคุณ">
             <PasswordInput autoComplete="off" value={key} disabled={!can('edit')} placeholder={c.has_key ? `ใช้อยู่ ${c.key_hint}` : 'sk-ant-…'} onChange={(e) => setKey(e.target.value)} style={{ width: '100%' }} />
           </Field>
-          <Field label="เพดานค่าใช้จ่ายต่อเดือน (ดอลลาร์สหรัฐ)" hint="ครบเพดานแล้วปุ่มอ่านบิลใช้ไม่ได้จนถึงเดือนถัดไป · ว่าง = ไม่จำกัด · บิลละประมาณ $0.03–0.08">
+          <Field label="รุ่น AI" hint="ใช้ทั้งอ่านบิลและแนะนำรหัส · ค่าใช้จ่ายต่อบิลเป็นค่าประมาณ (ขึ้นกับขนาดรูปและจำนวนรายการ) · รุ่นประหยัดอ่านบิลทั่วไปได้ดี ถ้าอ่านผิดบ่อยค่อยเปลี่ยนเป็นรุ่นที่แม่นกว่า">
+            <select value={md} disabled={!can('edit')} onChange={(e) => setMdl(e.target.value)}>
+              {AI_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label} · ประมาณ ${aiBillEstimate(m.id).toFixed(4)} ต่อบิล</option>)}
+            </select>
+          </Field>
+          <Field label="เพดานค่าใช้จ่ายต่อเดือน (ดอลลาร์สหรัฐ)" hint="ครบเพดานแล้วปุ่มอ่านบิลใช้ไม่ได้จนถึงเดือนถัดไป · ว่าง = ไม่จำกัด">
             <input className="r" inputMode="decimal" value={lim} disabled={!can('edit')} onChange={(e) => setLimit(e.target.value.replace(/[^\d.]/g, ''))} style={{ width: 140 }} />
           </Field>
           <div className="toolbar">
             <button className="primary" disabled={busy || !can('edit')} onClick={() => save(key.trim() ? { api_key: key.trim() } : {})}>บันทึก <kbd>F9</kbd></button>
             {c.has_key && <button disabled={busy || !can('edit')} onClick={() => { if (window.confirm('ลบกุญแจ API? ปุ่มอ่านบิลจะหายจนกว่าจะใส่ใหม่')) void save({ api_key: null }); }}>ลบกุญแจ</button>}
           </div>
-          <p className="hint">กด บันทึก ด้านล่างเพื่อบันทึกทั้งกุญแจ เพดาน และข้อมูลสำหรับแนะนำการลงบัญชี</p>
+          <p className="hint">กด บันทึก ด้านล่างเพื่อบันทึกทั้งกุญแจ รุ่น เพดาน และข้อมูลสำหรับแนะนำการลงบัญชี</p>
           <p className="hint">ข้อมูลในบิลถูกส่งไปให้ Anthropic ประมวลผลเพื่ออ่านเท่านั้น (โหมดอ่านในเครื่องนี้ก่อน: ภาพอยู่ในเครื่อง ส่งเฉพาะข้อความที่อ่านได้) · กุญแจเก็บแบบเข้ารหัส เห็นได้เฉพาะ 4 ตัวท้าย และไม่ติดไปกับแฟ้มสำรองข้อมูล (นำข้อมูลไปเครื่องอื่นต้องใส่กุญแจใหม่)</p>
         </fieldset>
         <LocalOcrBox />

@@ -2151,5 +2151,15 @@
  "เข้าระบบจากเครื่องนี้": "Sign-ins from this device",
  "เข้าระบบด้วยรหัสผู้ใช้นี้": "Sign-ins with this username",
  "โหลดช่องตรวจสอบของ Cloudflare ไม่ได้ — ตรวจอินเทอร์เน็ต แล้วโหลดหน้านี้ใหม่": "Could not load the Cloudflare check — check the internet connection and reload this page",
- "ใส่รหัสยืนยันตัวตนสองขั้นจากเครื่องนี้": "Two-factor codes from this device"
+ "ใส่รหัสยืนยันตัวตนสองขั้นจากเครื่องนี้": "Two-factor codes from this device",
+ "{0} · ประมาณ ${1} ต่อบิล": "{0} · about ${1} per bill",
+ "{0} · รุ่น": "{0} · Model",
+ "กด บันทึก ด้านล่างเพื่อบันทึกทั้งกุญแจ รุ่น เพดาน และข้อมูลสำหรับแนะนำการลงบัญชี": "Press Save below to save the key, model, limit and the posting-suggestion information",
+ "ครบเพดานแล้วปุ่มอ่านบิลใช้ไม่ได้จนถึงเดือนถัดไป · ว่าง = ไม่จำกัด": "Once the limit is reached, the Read bill button is unavailable until next month · Blank = no limit",
+ "ประหยัดที่สุด (Haiku 5.5)": "Lowest cost (Haiku 5.5)",
+ "รุ่น AI": "AI model",
+ "สมดุล (Sonnet 5.5)": "Balanced (Sonnet 5.5)",
+ "เลือกรุ่น AI จากรายการ": "Choose an AI model from the list",
+ "แม่นยำที่สุด (Opus 5.5)": "Most accurate (Opus 5.5)",
+ "ใช้ทั้งอ่านบิลและแนะนำรหัส · ค่าใช้จ่ายต่อบิลเป็นค่าประมาณ (ขึ้นกับขนาดรูปและจำนวนรายการ) · รุ่นประหยัดอ่านบิลทั่วไปได้ดี ถ้าอ่านผิดบ่อยค่อยเปลี่ยนเป็นรุ่นที่แม่นกว่า": "Used for both reading bills and suggesting codes · Cost per bill is an estimate (depends on image size and number of lines) · The lowest-cost model reads ordinary bills well; switch to a more accurate model if it often misreads"
 }

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { checkTaxId, d, fmt, supplierFromBill, type BillDraft } from '@buddy/core';
+import { checkTaxId, d, fmt, supplierFromBill, type BillDraft, aiModelLabel } from '@buddy/core';
 import { api } from '../api';
 import { ErrorBox, Modal, Pill } from '../ui';
 const SupplierForm = lazy(() => import('../pages/parties/Parties').then((m) => ({ default: m.SupplierForm })));
@@ -214,7 +214,7 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
             })}</tbody>
           </table>
           <p className="hint">คำแนะนำมาจากประวัติการลงบัญชีของกิจการนี้ แฟ้มรหัส และแนวทางที่ตั้งไว้ (เริ่มระบบ › AI อ่านบิล) — พนักงานบัญชีตรวจและยืนยันทุกบรรทัด · เมื่อบันทึกเอกสารแล้ว ครั้งต่อไปจะแนะนำตามที่บันทึกนี้</p>
-          <p className="muted small">ค่าใช้จ่ายครั้งนี้ ${res.usage.cost_usd} · เดือนนี้ ${d(res.usage.month_cost_usd).toFixed(2)}{res.usage.monthly_limit_usd !== null ? ` / เพดาน $${res.usage.monthly_limit_usd}` : ''} · {res.usage.model}</p>
+          <p className="muted small">ค่าใช้จ่ายครั้งนี้ ${res.usage.cost_usd} · เดือนนี้ ${d(res.usage.month_cost_usd).toFixed(2)}{res.usage.monthly_limit_usd !== null ? ` / เพดาน $${res.usage.monthly_limit_usd}` : ''} · {aiModelLabel(res.usage.model)}</p>
         </div>}
       </div>
     </Modal>

@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { jsonSchemaOutputFormat } from '@anthropic-ai/sdk/helpers/json-schema';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, AI_BUSINESS_TYPES, AI_MODEL, aiCost, BILL_SCHEMA, buyerTaxCheck, BILL_SYSTEM_PROMPT, checkTaxId, d, normalizeBill, SUGGEST_SCHEMA, SUGGEST_SYSTEM_PROMPT, suggestPrompt, textSim, type BillDraft, type RawBill, type SuggestCandidate } from '@buddy/core';
+import { AI_BILL_TARGETS, AI_BUSINESS_TYPES, AI_MODELS, aiCost, aiModelOf, aiRequestOptions, type AiModelId, BILL_SCHEMA, buyerTaxCheck, BILL_SYSTEM_PROMPT, checkTaxId, d, normalizeBill, SUGGEST_SCHEMA, SUGGEST_SYSTEM_PROMPT, suggestPrompt, textSim, type BillDraft, type RawBill, type SuggestCandidate } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -16,6 +16,8 @@ import { decryptSecret, encryptSecret } from '../secret.js';
  */
 const SECRET = 'ANTHROPIC_KEY';
 const LIMIT_KEY = 'ai.monthly_limit_usd';
+/** รุ่น Claude ของบริษัท (HANDOFF 166) — ไม่ตั้ง = Haiku 5.5 (ถูกที่สุด) */
+const MODEL_KEY = 'ai.model';
 const DEFAULT_LIMIT = 20;
 const MEDIA = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'] as const;
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -38,10 +40,13 @@ async function monthUsage(db: Db, companyId: string) {
       WHERE company_id = ${companyId} AND deleted_at IS NULL AND created_at >= date_trunc('month', now())`.execute(db)).rows[0]!;
   return { cost: d(r.cost), count: r.n };
 }
+async function modelOf(db: Db, companyId: string): Promise<AiModelId> {
+  return aiModelOf((await companySettings(db, companyId))[MODEL_KEY]);
+}
 async function status(db: Db, companyId: string) {
   const [k, limit, u] = await Promise.all([apiKeyOf(db, companyId), limitOf(db, companyId), monthUsage(db, companyId)]);
   const st = await companySettings(db, companyId);
-  return { model: AI_MODEL, has_key: !!k?.key, key_hint: k?.hint ?? null, key_broken: !!k && !k.key, monthly_limit_usd: limit, month_cost_usd: u.cost.toFixed(4), month_count: u.count,
+  return { model: aiModelOf(st[MODEL_KEY]), has_key: !!k?.key, key_hint: k?.hint ?? null, key_broken: !!k && !k.key, monthly_limit_usd: limit, month_cost_usd: u.cost.toFixed(4), month_count: u.count,
     available: !!k?.key && (limit === null || u.cost.lt(limit)), business_type: (st['ai.business_type'] as string | null) ?? null, guidance: (st['ai.guidance'] as string | null) ?? null };
 }
 
@@ -72,6 +77,7 @@ export function aiRoutes(app: FastifyInstance, db: Db) {
       monthly_limit_usd: z.union([z.number().min(0).max(100000), z.null()]),
       business_type: z.enum(Object.keys(AI_BUSINESS_TYPES) as [string, ...string[]]).nullable().optional(),
       guidance: z.string().max(4000, 'แนวทางยาวได้ไม่เกิน 4,000 ตัวอักษร').nullable().optional(),
+      model: z.enum(AI_MODELS.map((m) => m.id) as [AiModelId, ...AiModelId[]], { message: 'เลือกรุ่น AI จากรายการ' }).optional(),
     }), req.body);
     await db.transaction().execute(async (tx) => {
       if (b.api_key !== undefined) {
@@ -81,7 +87,8 @@ export function aiRoutes(app: FastifyInstance, db: Db) {
       await setSetting(tx, a.companyId, LIMIT_KEY, b.monthly_limit_usd, a.userId);
       if (b.business_type !== undefined) await setSetting(tx, a.companyId, 'ai.business_type', b.business_type, a.userId);
       if (b.guidance !== undefined) await setSetting(tx, a.companyId, 'ai.guidance', b.guidance?.trim() || null, a.userId);
-      await logActivity(tx, a, { module: 'SET.AI', action: b.api_key === undefined ? 'AI_CONFIG' : b.api_key ? 'AI_KEY_SET' : 'AI_KEY_REMOVE', table: 'sys_secret', detail: { monthly_limit_usd: b.monthly_limit_usd } });
+      if (b.model !== undefined) await setSetting(tx, a.companyId, MODEL_KEY, b.model, a.userId);
+      await logActivity(tx, a, { module: 'SET.AI', action: b.api_key === undefined ? 'AI_CONFIG' : b.api_key ? 'AI_KEY_SET' : 'AI_KEY_REMOVE', table: 'sys_secret', detail: { monthly_limit_usd: b.monthly_limit_usd, ...(b.model ? { model: b.model } : {}) } });
     });
     return status(db, a.companyId);
   });
@@ -140,13 +147,13 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
   if (!key?.key) throw badRequest(key ? 'กุญแจ API ที่เก็บไว้ถอดรหัสไม่ได้ (ย้ายเครื่อง?) — ผู้ดูแลใส่กุญแจใหม่ที่ เริ่มระบบ › AI อ่านบิล' : 'ยังไม่ได้ตั้งค่า AI อ่านบิล — ผู้ดูแลใส่กุญแจ API ที่ เริ่มระบบ › AI อ่านบิล');
   const limit = await limitOf(db, a.companyId), used = await monthUsage(db, a.companyId);
   if (limit !== null && used.cost.gte(limit)) throw badRequest(`ใช้ AI เดือนนี้ครบเพดาน ${limit} ดอลลาร์แล้ว (ใช้ไป ${used.cost.toFixed(2)}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือป้อนเอง`);
+  const model = await modelOf(db, a.companyId);
 
   let res: Awaited<ReturnType<AiClient['beta']['messages']['parse']>>;
   try {
     res = await makeClient(key.key).beta.messages.parse({
-      model: AI_MODEL, max_tokens: 16000,
-      // รุ่นที่ปฏิเสธ (refusal) ส่งต่อให้รุ่นสำรองอัตโนมัติ
-      betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      // รุ่นที่บริษัทเลือก · Sonnet/Opus ที่ปฏิเสธ (refusal) ส่งต่อให้รุ่นสำรองอัตโนมัติ (Haiku ไม่มีรุ่นสำรอง)
+      ...aiRequestOptions(model), max_tokens: 16000,
       output_config: { effort: 'medium', format: jsonSchemaOutputFormat(BILL_SCHEMA as never) },
       system: BILL_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: b.content }],
@@ -161,7 +168,7 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
     await record(db, a, { status: 'ERROR', file_name: b.file_name, file_size: size, message: b.note ? `${msg} (${b.note})` : msg });
     return fail(502, 'AI_FAILED', msg);
   }
-  const cost = aiCost(res.usage, AI_MODEL, res.model).toFixed(4);
+  const cost = aiCost(res.usage, model, res.model).toFixed(4);
   if (res.stop_reason === 'refusal' || res.stop_reason === 'max_tokens' || !res.parsed_output) {
     const msg = res.stop_reason === 'refusal' ? 'AI ปฏิเสธการอ่านแฟ้มนี้ — ป้อนเอง' : 'AI อ่านแฟ้มนี้ไม่สำเร็จ — ลองรูปที่ชัดกว่า หรือป้อนเอง';
     await record(db, a, { model: res.model, usage: res.usage, cost, status: res.stop_reason === 'refusal' ? 'REFUSED' : 'ERROR', file_name: b.file_name, file_size: size, message: b.note ? `${msg} (${b.note})` : msg });
@@ -178,7 +185,7 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
   const sc = await checkSupplier(db, a.companyId, bill);
   const dup = sc.supplier && bill.doc_no ? (await sql<{ doc_no: string; doc_class: string; doc_date: string }>`SELECT doc_no, doc_class, doc_date::text AS doc_date FROM doc_header
       WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND doc_status <> 'C' AND supplier_id = ${sc.supplier.id} AND ref_no = ${bill.doc_no} ORDER BY doc_date DESC LIMIT 1`.execute(db)).rows[0] ?? null : null;
-  const sg = await suggestLines(db, a, key.key, K.service, bill, sc.supplier, b.file_name, size);
+  const sg = await suggestLines(db, a, key.key, model, K.service, bill, sc.supplier, b.file_name, size);
   const total = d(cost).plus(sg.cost).toFixed(4);
   await logActivity(db, a, { module: K.menu, action: 'AI_READ_BILL', docNo: bill.doc_no || null, detail: { file: b.file_name, read_by: b.read_by, cost_usd: total, supplier: sc.supplier?.code ?? null, supplier_check: sc.status, duplicate: dup?.doc_no ?? null } });
   return {
@@ -230,7 +237,7 @@ const pickOf = (c: Cat) => ({ id: c.id, code: c.code, name_th: c.name_th, item_t
  * 2) แฟ้มรหัส: ชื่อ/หมายเหตุของรหัสสินค้าและรหัสค่าใช้จ่ายที่คล้ายกัน
  * 3) Claude เลือกจากรายการข้อ 1–2 ตามประเภทธุรกิจและแนวทางของบริษัท (ตั้งที่ เริ่มระบบ › AI อ่านบิล) — ผิดพลาดใช้ประวัติแทน
  */
-async function suggestLines(db: Db, a: AuthContext & { companyId: string }, apiKey: string, expenseOnly: boolean, bill: BillDraft, sup: Sup | null, fileName: string, size: number) {
+async function suggestLines(db: Db, a: AuthContext & { companyId: string }, apiKey: string, model: AiModelId, expenseOnly: boolean, bill: BillDraft, sup: Sup | null, fileName: string, size: number) {
   const types = expenseOnly ? ['5', '2'] : ['0', '1', '2', '3', '5'];
   const cat = (await sql<Cat>`SELECT i.id, i.code, i.name_th, i.item_type, i.remark, i.base_unit_id,
         (SELECT ac.account_no || ' ' || ac.name_th FROM gl_account ac WHERE ac.id = CASE WHEN i.item_type IN ('5', '2') THEN g.inventory_account_id ELSE coalesce(g.purchase_account_id, g.inventory_account_id) END) AS account
@@ -279,14 +286,14 @@ async function suggestLines(db: Db, a: AuthContext & { companyId: string }, apiK
     };
     try {
       const res = await makeClient(apiKey).beta.messages.parse({
-        model: AI_MODEL, max_tokens: 8000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+        ...aiRequestOptions(model), max_tokens: 8000,
         output_config: { effort: 'low', format: jsonSchemaOutputFormat(SUGGEST_SCHEMA as never) },
         system: SUGGEST_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: suggestPrompt({ businessType: s['ai.business_type'] as string | null, guidance: s['ai.guidance'] as string | null, target: expenseOnly ? 'expense' : 'purchase',
           supplierName: sup?.name ?? bill.supplier.name, supplierKnown: !!sup, lines: bill.lines.map((l, i) => ({ index: i, description: l.description, amount: l.amount, candidates: cand(i) })),
           expenseCodes: expList.map((c) => ({ code: c.code, name: c.name_th, kind: 'expense', account: c.account })) }) }],
       });
-      cost = aiCost(res.usage, AI_MODEL, res.model);
+      cost = aiCost(res.usage, model, res.model);
       const ok = res.stop_reason !== 'refusal' && res.stop_reason !== 'max_tokens' && res.parsed_output;
       await record(db, a, { model: res.model, usage: res.usage, cost: cost.toFixed(4), status: ok ? 'OK' : res.stop_reason === 'refusal' ? 'REFUSED' : 'ERROR', file_name: fileName, file_size: size, purpose: 'SUGGEST', message: ok ? null : 'แนะนำรหัสไม่สำเร็จ' });
       if (ok) ai = (res.parsed_output as unknown as { lines: AiPick[] }).lines;

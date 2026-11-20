@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { aiCost, normalizeBill, suggestPrompt, textSim, type RawBill } from './ai-bill.js';
+import { AI_MODEL, AI_MODELS, aiBillEstimate, aiCost, aiModelOf, aiRequestOptions, BILL_SCHEMA, normalizeBill, SUGGEST_SCHEMA, suggestPrompt, textSim, type RawBill } from './ai-bill.js';
+
+/** Anthropic structured outputs: at most 16 parameters with union types (type arrays or anyOf) per schema */
+function unionParams(node: unknown): number {
+  if (!node || typeof node !== 'object') return 0;
+  const n = node as Record<string, unknown>;
+  let c = Array.isArray(n.type) || Array.isArray(n.anyOf) ? 1 : 0;
+  for (const v of Object.values(n)) c += Array.isArray(v) ? v.reduce((t: number, x) => t + unionParams(x), 0) : unionParams(v);
+  return c;
+}
 
 const raw: RawBill = {
   doc_kind: 'tax_invoice', supplier: { name: 'บริษัท ขายส่ง จำกัด', tax_id: '0-1055-37095-90-3', branch_no: '0', address: '1 ถนนพระราม 4 กรุงเทพฯ 10500' },
@@ -16,6 +25,38 @@ describe('AI อ่านบิล (T7.7)', () => {
     expect(aiCost({ output_tokens: 1000 }, 'claude-someday-9').toString()).toBe('0.05');
   });
 
+  it('HANDOFF 166: both schemas stay under the 16 union-typed parameter limit (was 18 -> 400 on the cloud)', () => {
+    expect(unionParams({ a: { anyOf: [{ type: 'string' }, { type: 'null' }] }, b: { type: ['string', 'null'] }, c: { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'null' }] } } })).toBe(3);
+    expect(unionParams(BILL_SCHEMA)).toBeLessThanOrEqual(16);
+    expect(unionParams(SUGGEST_SCHEMA)).toBeLessThanOrEqual(16);
+    expect(unionParams(BILL_SCHEMA) + unionParams(SUGGEST_SCHEMA)).toBe(0);   // "" = not present / unreadable
+  });
+  it('HANDOFF 166: "" and null mean the same (not present) in every field', () => {
+    const blank = (v: '' | null) => normalizeBill({ doc_kind: 'tax_invoice', supplier: { name: 'ร้าน ก', tax_id: v, branch_no: v, address: v, phone: v }, buyer: { name: v, tax_id: v },
+      doc_no: v, doc_date: v, price_type: 'excl_vat', vat_rate: v,
+      lines: [{ description: 'ของ', qty: v, unit: v, unit_price: '50', amount: '100' }], subtotal: v, discount: v, vat_amount: v, total: '107', notes: [] });
+    const a = blank(''), b = blank(null);
+    expect(a).toEqual(b);
+    expect(a.supplier).toEqual({ name: 'ร้าน ก', tax_id: null, tax_id_read: '', phone: null, branch_no: null, address: '' });
+    expect([a.doc_no, a.doc_date, a.vat_rate, a.buyer, a.lines[0]!.unit, a.lines[0]!.qty]).toEqual(['', null, '7', { name: '', tax_id_read: '' }, null, '2']);
+    expect(a.warnings.some((x) => /13 หลัก|อ่านไม่ได้/.test(x))).toBe(false);   // empty is not "unreadable"
+    expect(normalizeBill({ ...raw, doc_no: 'null', discount: '-' }).doc_no).toBe('');
+  });
+  it('HANDOFF 166: model choice — Haiku 5.5 default, no fallback for Haiku, price per model', () => {
+    expect(AI_MODEL).toBe('claude-haiku-5-5');
+    expect(AI_MODELS.map((m) => m.id)).toEqual(['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5']);
+    expect([aiModelOf(undefined), aiModelOf(null), aiModelOf('claude-opus-4-1'), aiModelOf('claude-sonnet-5-5')]).toEqual(['claude-haiku-5-5', 'claude-haiku-5-5', 'claude-haiku-5-5', 'claude-sonnet-5-5']);
+    expect(aiRequestOptions('claude-haiku-5-5')).toEqual({ model: 'claude-haiku-5-5' });
+    for (const m of ['claude-sonnet-5-5', 'claude-opus-5-5'] as const) expect(aiRequestOptions(m)).toEqual({ model: m, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' });
+    const u = { input_tokens: 3000, output_tokens: 800 };
+    expect([aiCost(u, 'claude-haiku-5-5'), aiCost(u, 'claude-sonnet-5-5'), aiCost(u, 'claude-opus-5-5')].map(String)).toEqual(['0.0007', '0.014', '0.028']);
+    // Haiku: prompts over 100K tokens use the long-context rate ($0.50 / $2.50) for the whole request
+    expect(aiCost({ input_tokens: 100_000, output_tokens: 1000 }, 'claude-haiku-5-5').toString()).toBe('0.0105');
+    expect(aiCost({ input_tokens: 100_001, output_tokens: 1000 }, 'claude-haiku-5-5').toString()).toBe('0.0525');
+    expect(aiCost({ input_tokens: 60_000, cache_read_input_tokens: 50_000 }, 'claude-haiku-5-5').toString()).toBe('0.0325');
+    expect(aiCost({ cache_read_input_tokens: 1_000_000 }, 'claude-sonnet-5-5').toString()).toBe('0.1');
+    expect([aiBillEstimate('claude-haiku-5-5'), aiBillEstimate('claude-sonnet-5-5'), aiBillEstimate('claude-opus-5-5')].map(String)).toEqual(['0.0016', '0.031', '0.062']);
+  });
   it('normalizes Thai bill output: tax id digits, branch 00000, amounts without commas, derived qty/price, consistent totals', () => {
     const b = normalizeBill(raw);
     expect(b.supplier).toMatchObject({ tax_id: '0105537095903', branch_no: '00000' });

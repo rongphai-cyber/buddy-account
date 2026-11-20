@@ -4082,7 +4082,7 @@ describe('Buddy Account API (PGlite)', () => {
     let suggestOut: unknown = { lines: [{ index: 0, code: '02-TEST-000095', confidence: 'high', reason: 'ชื่อตรงกับรหัสสินค้า' }, { index: 1, code: null, confidence: 'low', reason: 'ไม่มีรหัสค่าขนส่ง' }] };
     setAiClientFactory((apiKey) => ({ beta: { messages: { parse: async (params: Record<string, any>) => {
       sent.push({ ...params, apiKey });
-      if (String(params.system).includes('เลือกรหัส')) return { model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 1000, output_tokens: 200 }, parsed_output: suggestOut };
+      if (String(params.system).includes('เลือกรหัส')) return { model: params.model, stop_reason: 'end_turn', usage: { input_tokens: 1000, output_tokens: 200 }, parsed_output: suggestOut };
       return next();
     } } } }) as never);
     const img = Buffer.from('fake-image-bytes').toString('base64');
@@ -4091,7 +4091,7 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await read('purchase-invoices')).body.error.message).toMatch(/ยังไม่ได้ตั้งค่า AI/);
     expect((await call('PUT', '/api/v1/ai/config', { api_key: 'not-a-key', monthly_limit_usd: 20 })).body.error.message).toMatch(/sk-ant-/);
     const key = 'sk-ant-api03-TESTKEY_' + 'x'.repeat(30) + 'ab12';
-    expect((await call('PUT', '/api/v1/ai/config', { api_key: key, monthly_limit_usd: 20 })).body).toMatchObject({ has_key: true, key_hint: '…ab12', monthly_limit_usd: 20 });
+    expect((await call('PUT', '/api/v1/ai/config', { api_key: key, monthly_limit_usd: 20 })).body).toMatchObject({ has_key: true, key_hint: '…ab12', monthly_limit_usd: 20, model: 'claude-haiku-5-5' });   // HANDOFF 166: ไม่เคยเลือก = Haiku 5.5
     const enc = (await sql<{ value_enc: string }>`SELECT value_enc FROM sys_secret WHERE company_id = ${companyId} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.value_enc;
     expect(enc.includes('TESTKEY')).toBe(false);
     expect(JSON.stringify((await call('GET', '/api/v1/ai/config')).body).includes('TESTKEY')).toBe(false);
@@ -4100,7 +4100,7 @@ describe('Buddy Account API (PGlite)', () => {
     const item = (await call('POST', '/api/v1/items', { code: '02-TEST-000095', name_th: 'กระดาษ A4 ทดสอบ AI', base_unit_id: unit, std_cost: '1' })).body.id;
     const sup = (await call('POST', '/api/v1/suppliers', { code: 'S-AI1', name: 'บริษัท ขายส่ง จำกัด', tax_id: '0105537095903', tax_branch_no: '0' })).body.id;
     expect([item, sup].every(Boolean)).toBe(true);
-    await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: 20, business_type: 'trading', guidance: 'ค่าขนส่งสินค้าเข้า ลงรหัสค่าขนส่ง' });
+    expect((await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: 20, business_type: 'trading', guidance: 'ค่าขนส่งสินค้าเข้า ลงรหัสค่าขนส่ง', model: 'claude-opus-5-5' })).body.model).toBe('claude-opus-5-5');
     const r = await read('purchase-invoices');
     expect(r.status).toBe(200);
     expect(r.body.supplier_check).toMatchObject({ status: 'match' });
@@ -4168,6 +4168,24 @@ describe('Buddy Account API (PGlite)', () => {
     next = () => ({ model: 'claude-opus-5-5', stop_reason: 'refusal', usage: { input_tokens: 100, output_tokens: 0 }, parsed_output: null });
     expect((await read('purchase-invoices')).status).toBe(422);
     expect((await call('GET', '/api/v1/ai/usage')).body.map((u: { status: string }) => u.status).slice(0, 2)).toEqual(['REFUSED', 'ERROR']);
+    // HANDOFF 166: รุ่นของบริษัทใช้ทั้งอ่านบิลและแนะนำรหัส — Haiku ไม่ส่ง betas/fallbacks (ไม่มีรุ่นสำรอง) · Sonnet/Opus ส่ง · effort ระบุชัด · ไม่ส่ง thinking · ค่าใช้จ่ายตามรุ่น
+    for (const [m, fb, cost] of [['claude-haiku-5-5', false, '0.0009'], ['claude-sonnet-5-5', true, '0.0180'], ['claude-opus-5-5', true, '0.0360']] as const) {
+      expect((await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null, model: m })).body.model).toBe(m);
+      next = () => ({ model: m, stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: raw });
+      const rm = await read('purchase-invoices');
+      expect([rm.status, rm.body.usage.model, rm.body.usage.cost_usd]).toEqual([200, m, cost]);
+      const [bq, sq2] = sent.slice(-2) as [Record<string, any>, Record<string, any>];
+      for (const x of [bq, sq2]) expect([x.model, 'betas' in x, 'fallbacks' in x, 'thinking' in x, x.output_config.format.type]).toEqual([m, fb, fb, false, 'json_schema']);
+      if (fb) expect([bq.betas, bq.fallbacks]).toEqual([['server-side-fallback-2026-07-01'], 'default']);
+      expect([bq.output_config.effort, sq2.output_config.effort]).toEqual(['medium', 'low']);
+    }
+    // Haiku ปฏิเสธ = ไม่มีรุ่นสำรอง → แจ้งเหมือนเดิม
+    await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null, model: 'claude-haiku-5-5' });
+    next = () => ({ model: 'claude-haiku-5-5', stop_reason: 'refusal', usage: { input_tokens: 100, output_tokens: 0 }, parsed_output: null });
+    expect((await read('purchase-invoices')).body.error).toMatchObject({ code: 'AI_UNREADABLE', message: 'AI ปฏิเสธการอ่านแฟ้มนี้ — ป้อนเอง' });
+    expect((await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null, model: 'claude-opus-4-1' })).body.error.message).toMatch(/เลือกรุ่น AI/);
+    await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null, model: 'claude-opus-5-5' });
+    next = () => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: raw });
     expect((await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null, business_type: 'bogus' })).status).toBe(400);
     expect((await read('sales-invoices')).status).toBe(400);   // อ่านบิลได้เฉพาะเอกสารซื้อ
     // สิทธิ์: พนักงานระดับ 0 ตั้งค่า/ดูการใช้ไม่ได้ แต่เห็นสถานะ · กุญแจ API ของระบบอื่นใช้หน้าตั้งค่าไม่ได้
