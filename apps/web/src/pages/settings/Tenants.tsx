@@ -51,6 +51,7 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
   const [err, setErr] = useState<unknown>(null);
   const [purge, setPurge] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [viewer, setViewer] = useState(false);
   const body = { ...f, contact_email: f.contact_email || null, contact_phone: f.contact_phone || null, max_companies: f.max_companies ? Number(f.max_companies) : null, max_users: f.max_users ? Number(f.max_users) : null, expires_on: f.expires_on || null, dpa_signed_on: f.dpa_signed_on || null, moved_to: f.moved_to || null };
   const save = () => (t ? api.put(`/api/v1/tenants/${t.id}`, body) : api.post('/api/v1/tenants', body)).then(() => { toast('บันทึกลูกค้าแล้ว'); onSaved(); }).catch(setErr);
   useHotkeys({ F9: save, 'Ctrl+S': save }, [f]);
@@ -74,6 +75,11 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
         <Field label="จำนวนผู้ใช้สูงสุด" hint="ว่าง = ไม่จำกัด"><input className="num" value={f.max_users} onChange={(e) => setF({ ...f, max_users: e.target.value.replace(/\D/g, '') })} /></Field>
         <Field label="ลงนามข้อตกลงประมวลผลข้อมูล (DPA)" hint="ดูแบบข้อตกลงใน docs/10_PDPA.md"><DateInput value={f.dpa_signed_on} onChange={(v) => setF({ ...f, dpa_signed_on: v })} /></Field>
         {t && <TenantModules tenantId={t.id} />}
+        {t && t.status === 'A' && <>
+          <h3 className="wide">ผู้ใช้ดูอย่างเดียว (ให้ลูกค้าทดลองดูข้อมูลตัวอย่าง)</h3>
+          <p className="wide small muted">อ่านและดูตัวอย่างพิมพ์ทางจอได้ทุกบริษัทของลูกค้านี้ — เพิ่ม แก้ไข ยกเลิก ลบ รับรอง ไม่ได้ · เห็นเฉพาะข้อมูลของลูกค้านี้ · แนะนำหนึ่งรหัสต่อลูกค้าทดลองหนึ่งราย (ปิดเฉพาะรายได้ที่หน้า ผู้ใช้งานและสิทธิ์)</p>
+          <div className="wide"><button type="button" onClick={() => setViewer(true)}>+ เพิ่มผู้ใช้ดูอย่างเดียว…</button></div>
+        </>}
         {t && <>
           <h3 className="wide">ย้ายไปเซิร์ฟเวอร์/ฐานข้อมูลแยก (ลูกค้ารายใหญ่)</h3>
           <p className="wide small muted">1) ส่งออกแฟ้มย้ายลูกค้า 2) ที่เครื่องใหม่กด "รับลูกค้าที่ย้ายมา" 3) ตรวจผลแล้วกลับมาใส่ที่อยู่ใหม่ และเปลี่ยนสถานะเป็น "เลิกใช้" — ผู้ใช้จะถูกบอกให้ไปเข้าที่อยู่ใหม่ และลบสำเนาที่เครื่องนี้ได้ทันที</p>
@@ -95,6 +101,33 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
       </div>
       {purge && t && <PurgeTenant t={t} onClose={() => setPurge(false)} onDone={onSaved} />}
       {exporting && t && <ExportTenant t={t} onClose={() => setExporting(false)} />}
+      {viewer && t && <AddViewer t={t} onClose={() => setViewer(false)} />}
+    </Modal>
+  );
+}
+
+/** เพิ่มผู้ใช้ดูอย่างเดียวให้ลูกค้ารายนี้ (HANDOFF 154 — ลูกค้าทดลองดูข้อมูลตัวอย่างทั้งปีโดยแก้ไม่ได้) */
+function AddViewer({ t, onClose }: { t: Tenant; onClose: () => void }) {
+  const [f, setF] = useState({ username: '', display_name: '', password: '' });
+  const [err, setErr] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setErr(null); setBusy(true);
+    try {
+      const r = await api.post<{ username: string; companies: number }>(`/api/v1/tenants/${t.id}/viewers`, f);
+      toast(`เพิ่มผู้ใช้ดูอย่างเดียว ${r.username} แล้ว (${r.companies} บริษัท) — ส่งรหัสผู้ใช้และรหัสผ่านให้ลูกค้าทดลอง`); onClose();
+    } catch (e) { setErr(e); } finally { setBusy(false); }
+  };
+  return (
+    <Modal title={`ผู้ใช้ดูอย่างเดียว — ลูกค้า ${t.code}`} onClose={onClose}
+      footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" disabled={busy || !f.username || !f.display_name || !f.password} onClick={run}>{busy ? 'กำลังเพิ่ม…' : 'เพิ่มผู้ใช้'}</button></>}>
+      <ErrorBox error={err} />
+      <p className="hint">ผู้ใช้นี้อยู่ในลูกค้า <b>{t.name}</b> เปิดดูได้ทุกเมนูและดูตัวอย่างพิมพ์ทางจอ แต่บันทึก แก้ไข ยกเลิก ลบ ไม่ได้ — ปุ่มบันทึกจะกดไม่ได้</p>
+      <div className="form-grid">
+        <Field label="รหัสผู้ใช้" req hint="เช่น demo.shopa (ตัวอักษรอังกฤษ ตัวเลข _ . -)"><input autoFocus maxLength={30} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value.trim() })} /></Field>
+        <Field label="ชื่อที่แสดง" req><input maxLength={120} placeholder="เช่น ลูกค้าทดลอง ร้านเอ" value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} /></Field>
+        <Field label="รหัสผ่านเริ่มต้น" req wide hint="อย่างน้อย 8 ตัว มีตัวอักษรและตัวเลข — ส่งให้ลูกค้าทางช่องทางส่วนตัว"><input type="password" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
+      </div>
     </Modal>
   );
 }

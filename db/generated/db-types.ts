@@ -95,6 +95,8 @@ export interface SysSignupTable {
   contact_email: string;
   /** โทรศัพท์ผู้ติดต่อ */
   contact_phone: string;
+  /** เลขประจำตัวผู้เสียภาษีของกิจการ (ไม่บังคับ) — ใช้ตั้งบริษัทแรกเมื่ออนุมัติ (HANDOFF 154) */
+  tax_id: Gen<string | null>;
   /** รหัสผู้ใช้ที่ขอ (ผู้ดูแลคนแรกของลูกค้า) */
   username: string;
   /** รหัสผ่านที่ตั้ง (bcrypt) — ล้างทิ้งเมื่ออนุมัติ/ไม่อนุมัติแล้ว */

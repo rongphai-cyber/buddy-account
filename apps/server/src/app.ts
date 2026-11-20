@@ -184,7 +184,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   payrollFileRoutes(app, db);
   tradeImportRoutes(app, db);
   journalImportRoutes(app, db);
-  signupRoutes(app, db, cfg);
+  signupRoutes(app, database, cfg);
   i18nNameRoutes(app, db);
   changeRoutes(app, db);
   wtsRoutes(app, db);

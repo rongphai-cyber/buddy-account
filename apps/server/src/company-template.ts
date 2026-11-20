@@ -103,3 +103,21 @@ export async function seedDocTypes(db: Kysely<DB>, companyId: string) {
       journal_book_id: t.book ? books.get(t.book) ?? null : null, is_tax_invoice: ['IV', 'HS', 'DR', 'CN', 'AI', 'RE'].includes(t.cls) }).onConflict((oc) => oc.doNothing()).execute();
   }
 }
+
+/**
+ * บริษัทใหม่จากแม่แบบมาตรฐาน (HANDOFF 154 บริษัทแรกอัตโนมัติ): บริษัท + สำนักงานใหญ่ + ปีบัญชี 12 งวด + ผังบัญชีมาตรฐาน/สมุดรายวัน + ประเภทเอกสาร + ตารางข้อมูลตั้งต้น
+ * เหมือนหน้า "กำหนดบริษัทใหม่" แบบผังมาตรฐาน — กฎการลงบัญชี (applyPostingTemplate) เรียกหลัง commit
+ * รหัสบริษัทซ้ำ = ต่อท้าย -2, -3 …
+ */
+export async function createStandardCompany(tx: Kysely<DB>, x: { tenantId: string; code: string; name_th: string; tax_id: string | null; fiscal_start: string; actor: string | null }) {
+  const base = (x.code.toUpperCase().replace(/[^A-Z0-9_-]/g, '') || 'CO').slice(0, 16);
+  let code = base;
+  for (let i = 2; await tx.selectFrom('sys_company').select('id').where('code', '=', code).where('deleted_at', 'is', null).executeTakeFirst(); i++) code = `${base}-${i}`;
+  const c = await tx.insertInto('sys_company').values({ tenant_id: x.tenantId, code, name_th: x.name_th, tax_id: x.tax_id, created_by: x.actor }).returning('id').executeTakeFirstOrThrow();
+  await tx.insertInto('sys_branch').values({ company_id: c.id, code: '00000', name: 'สำนักงานใหญ่', tax_branch_no: '00000', is_head_office: true, created_by: x.actor }).execute();
+  await createFiscalYear(tx, c.id, x.fiscal_start, x.actor ?? undefined);
+  await seedChart(tx, c.id, { chart: 'express' });
+  await seedDocTypes(tx, c.id);
+  await seedLookups(tx, c.id);
+  return { id: c.id, code };
+}

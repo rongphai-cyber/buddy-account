@@ -16,7 +16,7 @@ export function useSignupMode() {
  */
 export function SignupPage({ onBack }: { onBack: () => void }) {
   const mode = useSignupMode();
-  const [f, setF] = useState({ business_name: '', contact_name: '', contact_email: '', contact_phone: '', username: '', password: '', password2: '', website: '' });
+  const [f, setF] = useState({ business_name: '', tax_id: '', contact_name: '', contact_email: '', contact_phone: '', username: '', password: '', password2: '', website: '' });
   const [accept, setAccept] = useState(false);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -46,9 +46,10 @@ export function SignupPage({ onBack }: { onBack: () => void }) {
     <div className="login signup" data-tone="home">
       <form className="login-card" onKeyDown={navKey} onSubmit={(e) => { e.preventDefault(); void go(); }}>
         <div className="login-brand"><b>สมัครใช้งาน Buddy Account</b>
-          <span>{mode === 'auto' ? 'กรอกแล้วเข้าระบบได้ทันที แล้วสร้างบริษัทแรกของคุณ' : 'ผู้ให้บริการตรวจใบสมัครแล้วติดต่อกลับ เมื่ออนุมัติแล้วเข้าระบบด้วยรหัสที่ตั้งไว้'}</span></div>
+          <span>{mode === 'auto' ? 'กรอกแล้วเข้าระบบได้ทันที บริษัทแรกพร้อมผังบัญชีมาตรฐานรออยู่แล้ว' : 'ผู้ให้บริการตรวจใบสมัครแล้วติดต่อกลับ เมื่ออนุมัติแล้วเข้าระบบด้วยรหัสที่ตั้งไว้'}</span></div>
         <ErrorBox error={err} />
-        <Field label="ชื่อกิจการ / ร้าน" req><input autoFocus maxLength={120} value={f.business_name} onChange={set('business_name')} /></Field>
+        <Field label="ชื่อกิจการ / ร้าน" req hint="ใช้เป็นชื่อบริษัทแรกของคุณ (แก้ได้ภายหลัง)"><input autoFocus maxLength={120} value={f.business_name} onChange={set('business_name')} /></Field>
+        <Field label="เลขประจำตัวผู้เสียภาษี" hint="13 หลัก ถ้ามี — ไม่มี/ยังไม่จดทะเบียน เว้นว่างได้"><input inputMode="numeric" maxLength={20} placeholder="เช่น 0105560000001" value={f.tax_id} onChange={set('tax_id')} /></Field>
         <Field label="ชื่อผู้ติดต่อ" req><input maxLength={120} autoComplete="name" value={f.contact_name} onChange={set('contact_name')} /></Field>
         <div className="form-grid">
           <Field label="อีเมล" req><input type="email" maxLength={120} autoComplete="email" value={f.contact_email} onChange={set('contact_email')} /></Field>

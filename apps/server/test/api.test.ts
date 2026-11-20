@@ -5575,7 +5575,8 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await call('POST', '/api/v1/signup', form('su.one', { contact_phone: '12' }))).body.error.message).toMatch(/เบอร์โทรศัพท์/);
     expect((await call('POST', '/api/v1/signup', form('su.one', { website: 'http://spam' }))).status).toBe(400);   // ช่องดักบอท
     expect((await call('POST', '/api/v1/signup', form('admin'))).body.error.message).toMatch(/มีผู้ใช้แล้ว/);
-    const s1 = await call('POST', '/api/v1/signup', form('su.one'));
+    expect((await call('POST', '/api/v1/signup', form('su.one', { tax_id: '0105560000001' }))).body.error.message).toMatch(/เลขประจำตัวผู้เสียภาษี/);
+    const s1 = await call('POST', '/api/v1/signup', form('su.one', { tax_id: tid(901) }));
     expect(s1.status).toBe(200); expect(s1.body).toMatchObject({ status: 'P', username: 'su.one' });
     expect((await call('POST', '/api/v1/signup', form('SU.ONE', { contact_email: 'x1@example.com' }))).status).toBe(409);   // รหัสซ้ำกับใบที่รออนุมัติ
     expect((await call('POST', '/api/v1/signup', form('su.other', { contact_email: 'su.one@example.com' }))).body.error.message).toMatch(/อีเมลนี้ส่งใบสมัครไว้แล้ว/);
@@ -5599,12 +5600,25 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await call('POST', `/api/v1/signups/${two.id}/reject`, { reason: '' })).status).toBe(400);
     expect((await call('POST', `/api/v1/signups/${two.id}/reject`, { reason: 'ข้อมูลติดต่อไม่ครบ' })).status).toBe(200);
     expect((await call('POST', `/api/v1/signups/${two.id}/approve`, {})).status).toBe(400);
-    // ผู้สมัครที่อนุมัติแล้วเข้าระบบได้ด้วยรหัสผ่านที่ตั้งเอง เป็นผู้ดูแลของลูกค้าตัวเอง ยังไม่มีบริษัท
+    // ผู้สมัครที่อนุมัติแล้วเข้าระบบได้ด้วยรหัสผ่านที่ตั้งเอง เป็นผู้ดูแลของลูกค้าตัวเอง
+    // HANDOFF 154: บริษัทแรกพร้อมใช้ (ชื่อกิจการ + เลขผู้เสียภาษีตามใบสมัคร · ผังบัญชีมาตรฐาน ประเภทเอกสาร ปีบัญชี กฎการลงบัญชี)
+    expect(ap.body.company_code).toBe('SUONE');
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'su.one', password: 'Signup-Pass99' })).status).toBe(200);
     const me = (await call('GET', '/api/v1/auth/me')).body;
-    expect(me.user).toMatchObject({ is_admin: true, is_platform: false, tenant_id: ap.body.tenant_id }); expect(me.companies).toEqual([]);
+    expect(me.user).toMatchObject({ is_admin: true, is_platform: false, tenant_id: ap.body.tenant_id });
+    expect(me.companies.map((c: { code: string; name_th: string }) => `${c.code}:${c.name_th}`)).toEqual(['SUONE:ร้านทดสอบ su.one']);
     expect((await call('GET', '/api/v1/tenants')).status).toBe(403);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: ap.body.company_id })).status).toBe(200);
+    expect((await call('GET', '/api/v1/company')).body).toMatchObject({ code: 'SUONE', tax_id: tid(901) });
+    expect(((await call('GET', '/api/v1/gl/accounts')).body as unknown[]).length).toBeGreaterThan(100);
+    expect((await call('GET', '/api/v1/trade-defaults/IV')).body.types.length).toBeGreaterThan(0);
+    expect((await call('GET', '/api/v1/gl/periods')).status).toBe(200);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_posting_rule WHERE company_id = ${ap.body.company_id} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBeGreaterThan(10);
+    // ลูกค้ารายใหม่เห็น/เลือกบริษัทของลูกค้ารายอื่นไม่ได้ (CLAUDE.md 7.1)
+    const otherCo = (await sql<{ id: string }>`SELECT c.id FROM sys_company c JOIN sys_tenant t ON t.id = c.tenant_id WHERE t.id <> ${ap.body.tenant_id} AND c.deleted_at IS NULL LIMIT 1`.execute(database.db)).rows[0]!.id;
+    expect((await call('POST', '/api/v1/auth/select', { company_id: otherCo })).body.error?.message).toMatch(/ไม่มีสิทธิ์เข้าบริษัทนี้/);
+    expect((await call('GET', '/api/v1/auth/me')).body.company.id).toBe(ap.body.company_id);
     expect((await call('POST', '/api/v1/auth/login', { username: 'su.two', password: 'Signup-Pass99' })).status).toBe(401);
     // ไม่เกิน 5 ใบต่อ IP ต่อชั่วโมง
     cookie = '';
@@ -5615,6 +5629,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     appCfg.signup = 'auto';
     expect((await call('POST', '/api/v1/signup', form('su.auto'))).body).toMatchObject({ status: 'A' });
     expect((await call('POST', '/api/v1/auth/login', { username: 'su.auto', password: 'Signup-Pass99' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toEqual(['SUAUTO']);
     cookie = '';
     appCfg.signup = 'off';
     expect((await call('GET', '/api/v1/signup/config')).body).toEqual({ mode: 'off' });
@@ -5625,6 +5640,48 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
     expect((await call('GET', '/api/v1/signups?status=R')).body.rows.find((r: { id: string }) => r.id === two.id)).toMatchObject({ contact_email: '-', contact_name: '-', client_ip: null, reject_reason: 'ข้อมูลติดต่อไม่ครบ' });
     expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action IN ('SIGNUP', 'SIGNUP_REJECT')`.execute(database.db)).rows[0]!.n).toBe(7);
+  });
+
+  it('read-only viewer of another tenant\'s sample data (HANDOFF 154): staff only, reads and prints to screen, cannot write, sees only that tenant', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
+    const tenants = (await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string }>;
+    const suone = tenants.find((t) => t.code === 'SUONE')!;
+    const demo = (await sql<{ id: string; tenant_id: string }>`SELECT c.id, c.tenant_id FROM sys_company c WHERE c.tenant_id <> ${suone.id} AND c.deleted_at IS NULL
+        AND EXISTS (SELECT 1 FROM doc_header h WHERE h.company_id = c.id AND h.doc_class = 'IV' AND h.deleted_at IS NULL) ORDER BY c.created_at LIMIT 1`.execute(database.db)).rows[0]!;
+    const body = { username: 'demo.view1', display_name: 'ลูกค้าทดลอง ดูตัวอย่าง', password: 'View-Only-99' };
+    expect((await call('POST', `/api/v1/tenants/${demo.tenant_id}/viewers`, { ...body, password: '123' })).status).toBe(400);
+    const v = await call('POST', `/api/v1/tenants/${demo.tenant_id}/viewers`, body);
+    expect([v.status, v.body.error?.message]).toEqual([200, undefined]);
+    expect((await call('POST', `/api/v1/tenants/${demo.tenant_id}/viewers`, body)).body.error.message).toMatch(/มีผู้ใช้แล้ว/);
+    const iv = (await sql<{ id: string }>`SELECT id FROM doc_header WHERE company_id = ${demo.id} AND doc_class = 'IV' AND deleted_at IS NULL LIMIT 1`.execute(database.db)).rows[0]!.id;
+    const suCo = (await sql<{ id: string }>`SELECT id FROM sys_company WHERE tenant_id = ${suone.id} LIMIT 1`.execute(database.db)).rows[0]!.id;
+    // ผู้ดูแลของลูกค้า (ไม่ใช่เจ้าหน้าที่) เพิ่มผู้ใช้ดูอย่างเดียวให้ลูกค้ารายอื่นไม่ได้
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'su.one', password: 'Signup-Pass99' })).status).toBe(200);
+    expect((await call('POST', `/api/v1/tenants/${demo.tenant_id}/viewers`, { ...body, username: 'demo.view2' })).status).toBe(403);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: demo.id })).body.error?.message).toMatch(/ไม่มีสิทธิ์เข้าบริษัทนี้/);
+    // ผู้ใช้ดูอย่างเดียว: อ่าน/ดูตัวอย่างพิมพ์ได้ · เพิ่ม/แก้/ยกเลิกไม่ได้ · เห็นเฉพาะบริษัทของลูกค้านั้น
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'demo.view1', password: 'View-Only-99' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: demo.id })).status).toBe(200);
+    const me = (await call('GET', '/api/v1/auth/me')).body;
+    expect(me.user).toMatchObject({ is_admin: false, is_platform: false, tenant_id: demo.tenant_id, check_rights: true });
+    expect(me.companies.every((c: { tenant_id?: string; id: string }) => c.id !== suCo)).toBe(true);
+    expect(me.perms['SA.IV']).toMatchObject({ read: true, add: false, edit: false, cancel: false, delete: false, approve: false, print: 'S' });
+    expect((await call('GET', '/api/v1/sales-invoices?limit=5')).status).toBe(200);
+    expect((await call('GET', `/api/v1/sales-invoices/${iv}`)).status).toBe(200);
+    expect((await call('GET', `/api/v1/print/doc/${iv}`)).status).toBe(200);
+    const doc = (await call('GET', `/api/v1/sales-invoices/${iv}`)).body;
+    expect((await call('PUT', `/api/v1/sales-invoices/${iv}`, { ...doc, remark: 'แก้ไม่ได้' })).status).toBe(403);
+    expect((await call('POST', `/api/v1/sales-invoices/${iv}/cancel`, { reason: 'ลองยกเลิก' })).status).toBe(403);
+    expect((await call('POST', '/api/v1/customers', { code: 'VIEWX', name: 'ห้ามเพิ่ม' })).status).toBe(403);
+    expect((await call('PUT', '/api/v1/company/ui-theme', { theme: 'blue' })).status).toBe(403);
+    expect((await call('POST', `/api/v1/print/doc/${iv}/printed`, { slot: 1 })).status).toBe(403);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: suCo })).body.error?.message).toMatch(/ไม่มีสิทธิ์เข้าบริษัทนี้/);
+    expect((await call('GET', '/api/v1/tenants')).status).toBe(403);
+    expect((await call('GET', '/api/v1/users')).status).toBe(403);
+    cookie = '';
   });
 });
 

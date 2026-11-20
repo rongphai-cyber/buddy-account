@@ -302,6 +302,42 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       return t;
     });
   });
+  /**
+   * ผู้ใช้ดูอย่างเดียว (HANDOFF 154 · เจ้าของ "เชิญลูกค้าทดลองก่อน"): ให้ลูกค้าทดลองดูข้อมูลตัวอย่างทั้งปี (ลูกค้า DEMO) โดยแก้ไม่ได้
+   * กลุ่ม VIEW ของลูกค้านั้น = สิทธิ์ "ทุกระบบงาน" อ่าน Y · พิมพ์ S (ออกจอเท่านั้น — ไม่นับครั้งที่พิมพ์ของเอกสารตัวอย่าง) · เพิ่ม/แก้/ยกเลิก/ลบ/รับรอง N ทุกบริษัทของลูกค้า
+   * ผู้ใช้ = ตรวจสอบสิทธิ์ก่อนใช้งาน · ระดับอนุมัติ 0 · เปิดได้เฉพาะ Buddy · เข้าได้ทุกบริษัทของลูกค้านั้น — อยู่ใน tenant นั้นเท่านั้น (เห็นลูกค้ารายอื่นไม่ได้)
+   */
+  app.post('/api/v1/tenants/:id/viewers', async (req) => {
+    const a = requirePlatform(req);
+    const { id } = parse(z.object({ id: uuid }), req.params);
+    const b = parse(z.object({ username: userBody.shape.username, display_name: userBody.shape.display_name,
+      password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })) }), req.body);
+    const t = await db.selectFrom('sys_tenant').select(['id', 'code', 'max_users', 'status']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!t) throw notFound('ลูกค้าผู้ใช้บริการ');
+    if (await db.selectFrom('sys_user').select('id').where(sql`lower(username)`, '=', b.username.toLowerCase()).where('deleted_at', 'is', null).executeTakeFirst()) throw badRequest(`รหัสผู้ใช้ ${b.username} มีผู้ใช้แล้ว — เลือกรหัสอื่น`);
+    if (t.max_users != null) {
+      const n = await db.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).where('tenant_id', '=', id).where('deleted_at', 'is', null).executeTakeFirstOrThrow();
+      if (Number(n.n) >= t.max_users) throw badRequest(`แพ็กเกจของลูกค้านี้มีผู้ใช้ได้สูงสุด ${t.max_users} คน — เพิ่มจำนวนผู้ใช้ที่ลูกค้าก่อน`);
+    }
+    const companies = await db.selectFrom('sys_company').select('id').where('tenant_id', '=', id).where('deleted_at', 'is', null).execute();
+    if (!companies.length) throw badRequest('ลูกค้านี้ยังไม่มีบริษัท — ไม่มีข้อมูลให้ดู');
+    const all = await db.selectFrom('sys_menu').select('id').where('code', '=', 'ALL').where('deleted_at', 'is', null).executeTakeFirst();
+    if (!all) throw new AppError(500, 'NO_MENU', 'ไม่พบเมนู "ทุกระบบงาน" ในตารางเมนู');
+    return db.transaction().execute(async (tx) => {
+      let g = await tx.selectFrom('sys_user_group').select('id').where('tenant_id', '=', id).where('code', '=', 'VIEW').where('deleted_at', 'is', null).executeTakeFirst();
+      if (!g) g = await tx.insertInto('sys_user_group').values({ tenant_id: id, code: 'VIEW', name: 'ดูอย่างเดียว (อ่าน/พิมพ์ออกจอ)', created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+      for (const c of companies) {
+        await tx.updateTable('sys_permission').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('company_id', '=', c.id).where('subject_type', '=', 'G').where('subject_id', '=', g.id).where('deleted_at', 'is', null).execute();
+        await tx.insertInto('sys_permission').values({ company_id: c.id, subject_type: 'G', subject_id: g.id, menu_id: all.id, can_read: 'Y', can_add: 'N', can_edit: 'N', can_cancel: 'N', can_delete: 'N', can_print: 'S', can_approve: 'N', created_by: a.userId }).execute();
+      }
+      const u = await tx.insertInto('sys_user').values({ tenant_id: id, username: b.username, display_name: b.display_name, password_hash: await bcrypt.hash(b.password, 10), user_group_id: g.id, approval_level: 0, check_rights: true,
+        app_access: appAccessValue(['buddy']), status: 'A', created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+      for (const c of companies) await tx.insertInto('sys_user_company').values({ company_id: c.id, user_id: u.id, created_by: a.userId }).execute();
+      await markPasswordChanged(tx, u.id);
+      await logActivity(tx, a, { module: 'SYS', action: 'ADD_USER', table: 'sys_user', rowId: u.id, detail: { username: b.username, tenant_id: id, viewer: true, companies: companies.length } });
+      return { id: u.id, username: b.username, tenant_code: t.code, companies: companies.length };
+    });
+  });
   app.put('/api/v1/tenants/:id', async (req) => {
     const a = requirePlatform(req);
     const { id } = parse(z.object({ id: uuid }), req.params);

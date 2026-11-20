@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 145,
+"n": 146,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -1548,6 +1548,28 @@
 ]
 },
 {
+"th": "สำนักงานใหญ่",
+"n": 19,
+"files": [
+"apps/web/src/components/DocBranch.tsx",
+"apps/web/src/components/PartyAddress.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/company-template.ts",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/routes.ts",
+"apps/server/src/modules/payroll/forms.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/payroll-files.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/taxid.ts"
+]
+},
+{
 "th": "รหัสสินค้า",
 "n": 18,
 "files": [
@@ -1577,24 +1599,20 @@
 ]
 },
 {
-"th": "สำนักงานใหญ่",
-"n": 18,
+"th": "เลขประจำตัวผู้เสียภาษี",
+"n": 17,
 "files": [
-"apps/web/src/components/DocBranch.tsx",
-"apps/web/src/components/PartyAddress.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/Signup.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/settings/NewCompany.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/routes.ts",
-"apps/server/src/modules/payroll/forms.ts",
+"apps/web/src/pages/tax/WhtRegister.tsx",
 "apps/server/src/modules/reports/tax.ts",
-"packages/core/src/payroll-files.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/taxid.ts"
+"packages/core/src/journal-import.ts",
+"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -1707,22 +1725,6 @@
 "packages/core/src/menu.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เลขประจำตัวผู้เสียภาษี",
-"n": 16,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/settings/NewCompany.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -2671,6 +2673,18 @@
 ]
 },
 {
+"th": "ลูกค้าผู้ใช้บริการ",
+"n": 9,
+"files": [
+"apps/web/src/pages/settings/Import.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/tenant-modules.ts",
+"apps/server/src/modules/tenant-move.ts"
+]
+},
+{
 "th": "วันที่จ่าย",
 "n": 9,
 "files": [
@@ -2916,6 +2930,17 @@
 ]
 },
 {
+"th": "รหัสผู้ใช้",
+"n": 8,
+"files": [
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "รับชำระหนี้",
 "n": 8,
 "files": [
@@ -2936,18 +2961,6 @@
 "apps/server/src/modules/items.ts",
 "apps/server/src/modules/reports/fa.ts",
 "apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "ลูกค้าผู้ใช้บริการ",
-"n": 8,
-"files": [
-"apps/web/src/pages/settings/Import.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/tenant-modules.ts",
-"apps/server/src/modules/tenant-move.ts"
 ]
 },
 {
@@ -3062,6 +3075,19 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/server/src/modules/vat.ts",
 "apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "เลขผู้เสียภาษี",
+"n": 8,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -3313,17 +3339,6 @@
 ]
 },
 {
-"th": "รหัสผู้ใช้",
-"n": 7,
-"files": [
-"apps/web/src/pages/Login.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
 "th": "วันที่นำฝาก",
 "n": 7,
 "files": [
@@ -3379,18 +3394,6 @@
 "apps/web/src/pages/tools/TradeImport.tsx",
 "packages/core/src/journal-import.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เลขผู้เสียภาษี",
-"n": 7,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/journal-import.ts"
 ]
 },
 {
@@ -10664,6 +10667,14 @@
 ]
 },
 {
+"th": "รหัสผู้ใช้ {0} มีผู้ใช้แล้ว — เลือกรหัสอื่น",
+"n": 2,
+"files": [
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/signup.ts"
+]
+},
+{
 "th": "รหัสผู้ใช้ใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข _ . @ -",
 "n": 2,
 "files": [
@@ -10684,6 +10695,14 @@
 "files": [
 "apps/server/src/modules/auth.ts",
 "packages/core/src/password.ts"
+]
+},
+{
+"th": "รหัสผ่านเริ่มต้น",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -12310,6 +12329,14 @@
 ]
 },
 {
+"th": "เพิ่มผู้ใช้",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "เพิ่มพนักงานขาย",
 "n": 2,
 "files": [
@@ -13796,7 +13823,7 @@
 ]
 },
 {
-"th": "(รหัสผ่านที่ผู้สมัครตั้งไว้) — ผู้สมัครสร้างบริษัทแรกเองหลังเข้าระบบ",
+"th": "(รหัสผ่านที่ผู้สมัครตั้งไว้) + บริษัทแรกชื่อ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
@@ -14248,6 +14275,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "+ เพิ่มผู้ใช้ดูอย่างเดียว…",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -14710,6 +14744,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "13 หลัก ถ้ามี — ไม่มี/ยังไม่จดทะเบียน เว้นว่างได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/Signup.tsx"
 ]
 },
 {
@@ -17842,6 +17883,13 @@
 ]
 },
 {
+"th": "} พร้อมผังบัญชีมาตรฐาน ประเภทเอกสาร และรอบบัญชี — ผู้สมัครเข้าระบบแล้วเริ่มคีย์เอกสารได้ทันที",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "} เงินสด",
 "n": 1,
 "files": [
@@ -18346,7 +18394,7 @@
 ]
 },
 {
-"th": "กรอกแล้วเข้าระบบได้ทันที แล้วสร้างบริษัทแรกของคุณ",
+"th": "กรอกแล้วเข้าระบบได้ทันที บริษัทแรกพร้อมผังบัญชีมาตรฐานรออยู่แล้ว",
 "n": 1,
 "files": [
 "apps/web/src/pages/Signup.tsx"
@@ -19064,6 +19112,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocLink.tsx"
+]
+},
+{
+"th": "กำลังเพิ่ม…",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -23526,7 +23581,7 @@
 ]
 },
 {
-"th": "ชื่อกิจการ ชื่อ ข้อมูลติดต่อ IP ของผู้สมัครใช้บริการ",
+"th": "ชื่อกิจการ เลขผู้เสียภาษี ชื่อ ข้อมูลติดต่อ IP ของผู้สมัครใช้บริการ",
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
@@ -23579,6 +23634,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "ชื่อที่แสดง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -24594,6 +24656,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/ItemImages.tsx"
+]
+},
+{
+"th": "ดูอย่างเดียว (อ่าน/พิมพ์ออกจอ)",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -28209,6 +28278,13 @@
 ]
 },
 {
+"th": "บริษัทแรก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "บวก รายการจ่าย/เช็คที่ธนาคารยังไม่ตัด",
 "n": 1,
 "files": [
@@ -30033,6 +30109,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
+]
+},
+{
+"th": "ปกติ 1 ม.ค. ของปีนี้ · ปีถัดไปเพิ่มได้ที่ รอบบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -32381,6 +32464,20 @@
 ]
 },
 {
+"th": "ผู้ใช้ดูอย่างเดียว (ให้ลูกค้าทดลองดูข้อมูลตัวอย่าง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ผู้ใช้ดูอย่างเดียว — ลูกค้า {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ผู้ใช้ทั่วไปจะเลือกเปิด/ปิดยืนยันตัวตนสองขั้นเองได้ · ผู้ดูแลระบบยังบังคับเหมือนเดิม",
 "n": 1,
 "files": [
@@ -32413,6 +32510,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/apikeys.ts"
+]
+},
+{
+"th": "ผู้ใช้นี้อยู่ในลูกค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -37470,13 +37574,6 @@
 ]
 },
 {
-"th": "รหัสผู้ใช้ {0} มีผู้ใช้แล้ว — เลือกรหัสอื่น",
-"n": 1,
-"files": [
-"apps/server/src/modules/signup.ts"
-]
-},
-{
 "th": "รหัสผู้ใช้ {0} มีผู้ใช้แล้ว — ไม่อนุมัติใบนี้และแจ้งผู้สมัครให้สมัครใหม่ด้วยรหัสอื่น",
 "n": 1,
 "files": [
@@ -37614,13 +37711,6 @@
 "n": 1,
 "files": [
 "packages/core/src/password.ts"
-]
-},
-{
-"th": "รหัสผ่านเริ่มต้น",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -38062,6 +38152,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/YearEnd.tsx"
+]
+},
+{
+"th": "รอบบัญชีเริ่ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -40991,6 +41088,13 @@
 ]
 },
 {
+"th": "ลูกค้านี้ยังไม่มีบริษัท — ไม่มีข้อมูลให้ดู",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "ลูกค้าผู้ใช้บริการ (ผู้ให้บริการ)",
 "n": 1,
 "files": [
@@ -41803,6 +41907,13 @@
 ]
 },
 {
+"th": "วันเริ่มรอบบัญชีไม่ถูกต้อง",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup.ts"
+]
+},
+{
 "th": "วันเริ่มใช้",
 "n": 1,
 "files": [
@@ -42605,6 +42716,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/NewCompany.tsx"
+]
+},
+{
+"th": "สร้างบริษัทแรกให้อัตโนมัติ (ผังบัญชีมาตรฐาน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -44785,7 +44903,7 @@
 ]
 },
 {
-"th": "อนุมัติแล้ว — สร้างลูกค้า {0} · แจ้งผู้สมัครให้เข้าระบบด้วยรหัส {1}",
+"th": "อนุมัติแล้ว — สร้างลูกค้า {0}{1} · แจ้งผู้สมัครให้เข้าระบบด้วยรหัส {2}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
@@ -44838,6 +44956,13 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "อย่างน้อย 8 ตัว มีตัวอักษรและตัวเลข — ส่งให้ลูกค้าทางช่องทางส่วนตัว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -45454,6 +45579,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "อ่านและดูตัวอย่างพิมพ์ทางจอได้ทุกบริษัทของลูกค้านี้ — เพิ่ม แก้ไข ยกเลิก ลบ รับรอง ไม่ได้ · เห็นเฉพาะข้อมูลของลูกค้านี้ · แนะนำหนึ่งรหัสต่อลูกค้าทดลองหนึ่งราย (ปิดเฉพาะรายได้ที่หน้า ผู้ใช้งานและสิทธิ์)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -47165,6 +47297,13 @@
 ]
 },
 {
+"th": "เช่น 0105560000001",
+"n": 1,
+"files": [
+"apps/web/src/pages/Signup.tsx"
+]
+},
+{
 "th": "เช่น 10%, 5+2%, 1500",
 "n": 1,
 "files": [
@@ -47298,6 +47437,13 @@
 ]
 },
 {
+"th": "เช่น demo.shopa (ตัวอักษรอังกฤษ ตัวเลข _ . -)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "เช่น https://bigco.buddy.example",
 "n": 1,
 "files": [
@@ -47414,6 +47560,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/CashDocs.tsx"
+]
+},
+{
+"th": "เช่น ลูกค้าทดลอง ร้านเอ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -48145,6 +48298,13 @@
 ]
 },
 {
+"th": "เปิดดูได้ทุกเมนูและดูตัวอย่างพิมพ์ทางจอ แต่บันทึก แก้ไข ยกเลิก ลบ ไม่ได้ — ปุ่มบันทึกจะกดไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "เปิดบนมือถือที่ติดตั้งแอปแล้ว",
 "n": 1,
 "files": [
@@ -48173,7 +48333,7 @@
 ]
 },
 {
-"th": "เปิดบัญชีแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้ แล้วสร้างบริษัทแรกได้เลย",
+"th": "เปิดบัญชีแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้ บริษัทแรกพร้อมผังบัญชีมาตรฐานรออยู่แล้ว",
 "n": 1,
 "files": [
 "apps/server/src/modules/signup.ts"
@@ -48600,10 +48760,10 @@
 ]
 },
 {
-"th": "เพิ่มผู้ใช้",
+"th": "เพิ่มผู้ใช้ดูอย่างเดียว {0} แล้ว ({1} บริษัท) — ส่งรหัสผู้ใช้และรหัสผ่านให้ลูกค้าทดลอง",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/Users.tsx"
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -52121,6 +52281,13 @@
 ]
 },
 {
+"th": "แพ็กเกจของลูกค้านี้มีผู้ใช้ได้สูงสุด {0} คน — เพิ่มจำนวนผู้ใช้ที่ลูกค้าก่อน",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "แพ็กเกจนี้มีผู้ใช้ได้สูงสุด {0} คน",
 "n": 1,
 "files": [
@@ -53427,6 +53594,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "ใช้เป็นชื่อบริษัทแรกของคุณ (แก้ได้ภายหลัง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/Signup.tsx"
 ]
 },
 {
@@ -55394,6 +55568,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/MenuSearch.tsx"
+]
+},
+{
+"th": "ไม่พบเมนู \"ทุกระบบงาน\" ในตารางเมนู",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
 ]
 },
 {
