@@ -39,7 +39,7 @@ export function useImportMap(path: string, target: ImportMapTarget) {
     setAnalysis(a);
     if (a.matches) return fn(null, {});
     if (a.saved) { setMapping(a.saved.mapping); setSource('saved'); return fn(a.saved.mapping, {}); }
-    setReview(guessMapping(a.preview, target));
+    setReview(guessMapping(a.preview, target, importKindOf(path)));
   };
   const runAi = async () => {
     if (!file.current || aiBusy) return;
@@ -62,7 +62,7 @@ export function useImportMap(path: string, target: ImportMapTarget) {
   };
   /** ตัวตรวจแฟ้มล่าสุดของหน้า (ค่าบนหน้าจอเปลี่ยนได้หลังเลือกแฟ้ม) */
   const bind = (fn: CheckFn) => { check.current = fn; };
-  const edit = () => setReview(mapping ?? (analysis ? guessMapping(analysis.preview, target) : null));
+  const edit = () => setReview(mapping ?? (analysis ? guessMapping(analysis.preview, target, importKindOf(path)) : null));
   const cancelReview = () => setReview(null);
   /** ยอมรับรหัสที่แนะนำ → ตรวจใหม่พร้อมรหัสเหล่านั้น */
   const acceptCodes = async (next: Record<string, string>) => { const all = { ...codes, ...next }; setCodes(all); await check.current?.(mapping, all); };

@@ -1,4 +1,4 @@
-import { IMPORT_COLUMNS, EXPENSE_IMPORT_COLUMNS, importColumnsFor, importNumber, type ImportKindLike } from './trade-import.js';
+import { IMPORT_COLUMNS, EXPENSE_IMPORT_COLUMNS, importColumnsFor, importNumber, importReadColumns, type ImportKindLike } from './trade-import.js';
 import { JOURNAL_IMPORT_COLUMNS, cleanImportCell } from './journal-import.js';
 
 /**
@@ -17,12 +17,13 @@ export const MAP_CODE_COLUMN: Record<ImportMapTarget, { code: string; text: stri
   journal: { code: 'account', text: ['line_description', 'description'], amount: ['debit', 'credit'] },
 };
 /** ช่องที่เป็นกุญแจรวมแถวเป็นเอกสารเดียว + ช่องหัวเอกสารที่แถวต่อ ๆ ไปเว้นว่างได้ (group = continue) */
-const GROUP: Record<ImportMapTarget, { key: string; head: string[] }> = {
-  trade: { key: 'ref', head: ['date', 'party', 'party_name', 'party_tax_id', 'party_branch', 'party_address', 'party_phone', 'ref_invoice', 'credit_days', 'remark'] },
-  expense: { key: 'ref', head: ['date', 'party', 'party_name', 'party_tax_id', 'party_branch', 'party_address', 'party_phone', 'remark'] },
+const GROUP: Record<ImportMapTarget, { key: string; head: string[]; alt?: string }> = {
+  // alt = ช่องที่ใช้แทนกุญแจเมื่อไม่ได้จับคู่ (เลขที่เอกสาร · HANDOFF 170)
+  trade: { key: 'ref', alt: 'doc_no', head: ['date', 'party', 'party_name', 'party_tax_id', 'party_branch', 'party_address', 'party_phone', 'ref_invoice', 'credit_days', 'remark'] },
+  expense: { key: 'ref', alt: 'doc_no', head: ['date', 'party', 'party_name', 'party_tax_id', 'party_branch', 'party_address', 'party_phone', 'remark'] },
   journal: { key: 'group', head: ['book', 'voucher_no', 'date', 'ref', 'description'] },
 };
-const TRADE_NUM = new Set(['qty', 'price', 'credit_days', 'wht_amount', 'wht_rate']);
+const TRADE_NUM = new Set(['qty', 'price', 'credit_days', 'wht_amount', 'wht_rate', 'vat_amount', 'net_total']);
 const EXP_NUM = new Set(['amount', 'wht_rate', 'wht_amount']);
 /** คอลัมน์ของแบบฟอร์มปลายทาง (ใช้กับหน้าจับคู่และข้อความถึง AI) · kind = เฉพาะช่องที่หน้าจอเอกสารชนิดนั้นมี (HANDOFF 169) */
 export function mapColumns(target: ImportMapTarget, kind?: ImportKindLike | null): MapColumn[] {
@@ -72,7 +73,10 @@ export const MAP_SYSTEM_PROMPT = `คุณช่วยโปรแกรมบ�
 คุณเห็นเฉพาะแถวต้นแฟ้ม (ไม่เกิน 25 แถว) — ตอบเป็น "การจับคู่" เท่านั้น ห้ามแปลงหรือแต่งข้อมูล โปรแกรมจะใช้การจับคู่นี้กับทุกแถวเอง และผู้ใช้จะตรวจก่อนนำเข้า
 - header_row = เลขแถว (row ที่ให้มา เริ่ม 0) ที่เป็นหัวตาราง · ไม่มีหัวตาราง = -1
 - columns: หนึ่งรายการต่อคอลัมน์ปลายทางที่หาได้ · source = เลขคอลัมน์ต้นทาง (เริ่ม 0) · ไม่มีในแฟ้มแต่ทั้งแฟ้มเป็นค่าเดียวกันที่รู้แน่ (เช่น สมุดรายวัน) ให้ source = -1 และ constant = ค่านั้น · ไม่มีและไม่รู้ = ไม่ต้องใส่ · constant ไม่ใช้ = ""
-- อย่าจับคู่คอลัมน์ต้นทางเดียวกับหลายคอลัมน์ปลายทาง เว้นแต่จำเป็นจริง · คอลัมน์ยอดรวม/ภาษีที่คำนวณได้เองไม่ต้องจับคู่
+- อย่าจับคู่คอลัมน์ต้นทางเดียวกับหลายคอลัมน์ปลายทาง เว้นแต่จำเป็นจริง · คอลัมน์ยอดรวมก่อนภาษีที่คำนวณได้เอง (จำนวน × ราคา) ไม่ต้องจับคู่
+- ถ้าปลายทางมี vat_amount / net_total: คอลัมน์ยอดภาษี (VAT) ของบรรทัด → vat_amount (โปรแกรมใช้กำหนดประเภท VAT รายบรรทัด: ว่าง/0 = ยกเว้น VAT) · ยอดรวมภาษี/ราคาสุทธิของบรรทัด → net_total (ใช้ตรวจยอดกับที่โปรแกรมคำนวณ)
+- เลขที่ใบเสร็จ/ใบกำกับ/เลขที่เอกสารของแต่ละบิล → doc_no เมื่อไม่มีคอลัมน์เลขที่อ้างอิงแยก (โปรแกรมใช้รวมแถวเป็นบิลเดียว · เลขที่ไม่ขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร โปรแกรมเก็บเป็นเลขที่อ้างอิงแล้วออกเลขให้)
+- ราคาต่อหน่วยมีทั้งแบบรวมและไม่รวมภาษี ให้เลือกแบบที่ตรงกับคำในหัวคอลัมน์ และบอกใน notes ว่าต้องเลือกประเภทราคา "ไม่รวม VAT" หรือ "รวม VAT" ตอนนำเข้า
 - date_order ลำดับ วัน/เดือน/ปี ของวันที่ในแฟ้ม · year: be = ปี พ.ศ. · ce = ค.ศ. · auto = ปนกัน/ดูจากตัวเลข (เช่น 2569 = พ.ศ.)
 - decimal: dot = 1,234.50 · comma = 1.234,50
 - group: column = แถวที่เลขที่เอกสาร/เลขที่กลุ่มเดียวกันคือเอกสารเดียวกัน · continue = แถวที่ช่องเลขที่ (หรือวันที่) ว่างเป็นรายการต่อของเอกสารด้านบน · row = แถวละหนึ่งเอกสาร
@@ -192,8 +196,9 @@ export function applyMapping(rows: string[][], m: ImportMapping, target: ImportM
   const cols = mapColumns(target);
   const used = m.columns.map((c) => ({ ...c, col: cols.find((x) => x.key === c.target)! })).filter((c) => c.col);
   const g = GROUP[target];
-  // ช่องกุญแจรวมแถว: ไม่ได้จับคู่ = เพิ่มให้ (เลขแถวเริ่มเอกสาร)
+  // ช่องกุญแจรวมแถว: ไม่ได้จับคู่ = เพิ่มให้ (เลขแถวเริ่มเอกสาร) · จับคู่เลขที่เอกสารแทน = ใช้เลขที่เอกสารเป็นกุญแจ (ตัวนำเข้ารวมแถวด้วยเลขที่เอกสาร)
   const keyMapped = used.some((c) => c.target === g.key);
+  const altKey = !keyMapped && g.alt && used.some((c) => c.target === g.alt) ? g.alt : null;
   const outCols = keyMapped ? used : [...used, { target: g.key, source: -1, constant: '', col: cols.find((x) => x.key === g.key)! }];
   const head = outCols.map((c) => c.col.th);
   const shift = m.header_row < 0 ? 1 : 0;
@@ -218,9 +223,10 @@ export function applyMapping(rows: string[][], m: ImportMapping, target: ImportM
     if (!used.some((c) => !c.constant && v[c.target])) { skipped.push(no); continue; }
     if (m.group === 'row') v[g.key] = keyMapped && v[g.key] ? `${v[g.key]}#${no}` : `R${no}`;
     else if (m.group === 'continue') {
-      const starts = keyMapped ? !!v[g.key] : !!v.date;
-      if (starts || !curKey) { curKey = keyMapped && v[g.key] ? v[g.key]! : `R${no}`; prev = { ...v }; }
-      v[g.key] = curKey;
+      const k0 = keyMapped ? g.key : altKey;
+      const starts = k0 ? !!v[k0] : !!v.date;
+      if (starts || !curKey) { curKey = k0 && v[k0] ? v[k0]! : `R${no}`; prev = { ...v }; }
+      if (altKey) { if (!v[altKey]) v[altKey] = prev[altKey] ?? ''; v[g.key] = v[altKey] ? '' : curKey; } else v[g.key] = curKey;
       for (const k of g.head) if (!v[k] && prev[k]) v[k] = prev[k]!;
     } else if (!v[g.key]) v[g.key] = '';
     table[r + shift] = outCols.map((c) => v[c.target] ?? '');
@@ -295,19 +301,22 @@ export function importSuggestPrompt(x: { businessType?: string | null; guidance?
  * เดาการจับคู่โดยไม่ใช้ AI (ตั้งต้นหน้าจับคู่เอง / เมื่อไม่ได้เปิด AI): แถวหัวตาราง = แถวต้นแฟ้มที่มีข้อความ (ไม่ใช่ตัวเลข) มากที่สุด
  * คอลัมน์ = ชื่อหัวตรงกับชื่อ/ชื่ออื่นของคอลัมน์แบบฟอร์ม หรือคล้ายมาก
  */
-export function guessMapping(rows: string[][], target: ImportMapTarget): ImportMapping {
+export function guessMapping(rows: string[][], target: ImportMapTarget, kind?: ImportKindLike | null): ImportMapping {
   let header = -1, best = 1;
   for (let r = 0; r < Math.min(rows.length, 20); r++) {
     const n = (rows[r] ?? []).filter((c) => { const t = cleanImportCell(c); return t && !/^[\d.,()\-/ ]+$/.test(t); }).length;
     if (n > best) { best = n; header = r; }
   }
-  const all = target === 'journal' ? JOURNAL_IMPORT_COLUMNS : target === 'expense' ? EXPENSE_IMPORT_COLUMNS : IMPORT_COLUMNS;
+  const all = target === 'journal' ? JOURNAL_IMPORT_COLUMNS : target === 'expense' ? EXPENSE_IMPORT_COLUMNS : importReadColumns(kind);
   const names = new Map<string, string>();
   for (const c of all) for (const n of [c.th, ...c.aliases]) names.set(normHead(n), c.key);
+  // ชื่อเดียวกันสองคอลัมน์ (เช่น "รหัสสินค้า" แล้ว "สินค้า") — คอลัมน์ที่สองเป็นชื่อ
+  const second: Record<string, string> = { item: 'item_name', party: 'party_name' };
   const columns: ImportMapping['columns'] = [];
   const used = new Set<string>();
   (header >= 0 ? rows[header]! : []).forEach((cell, i) => {
-    const k = names.get(normHead(String(cell ?? '')));
+    let k = names.get(normHead(String(cell ?? '')));
+    if (k && used.has(k) && second[k] && target !== 'journal') k = second[k];
     if (k && !used.has(k)) { used.add(k); columns.push({ target: k, source: i, constant: '' }); }
   });
   return { header_row: header, columns, date_order: 'dmy', year: 'auto', decimal: 'dot', group: 'column', skip_words: ['รวม', 'total'], notes: '' };

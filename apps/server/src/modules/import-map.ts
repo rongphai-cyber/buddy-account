@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { applyMapping, cleanImportCell, headerSignature, importMapKey, importSuggestPrompt, IMPORT_DOC_KINDS, mapExpenseImport, mapImport, mapJournalImport, mapPrompt, mapSchema, MAP_SAMPLE_ROWS, MAP_SYSTEM_PROMPT,
-  missingCodeRows, normalizeMapping, importKindOf, setImportCodes, SUGGEST_SCHEMA, textSim, type ImportMapping, type ImportMapTarget, type YearSystem } from '@buddy/core';
+  missingCodeRows, normalizeMapping, importKindOf, setImportCodes, SUGGEST_SCHEMA, textSim, type ImportKindLike, type ImportMapping, type ImportMapTarget, type YearSystem } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -51,8 +51,8 @@ export function transformTable(rows: string[][], target: ImportMapTarget, mappin
   return { table, skipped, rowShift, mapped: !!mapping };
 }
 /** แฟ้มตรงแบบฟอร์มของ Buddy อยู่แล้ว (หาหัวตารางและคอลัมน์บังคับเจอ) */
-function matchesTemplate(rows: string[][], target: ImportMapTarget, ys: YearSystem) {
-  const r = target === 'journal' ? mapJournalImport(rows, ys) : target === 'expense' ? mapExpenseImport(rows, ys) : mapImport(rows, ys);
+function matchesTemplate(rows: string[][], target: ImportMapTarget, ys: YearSystem, kind?: ImportKindLike | null) {
+  const r = target === 'journal' ? mapJournalImport(rows, ys) : target === 'expense' ? mapExpenseImport(rows, ys) : mapImport(rows, ys, kind);
   const n = 'vouchers' in r ? r.vouchers.length : r.docs.length;
   return !(n === 0 && r.errors.length === 1 && /^(ไม่พบหัวตาราง|ไม่มีคอลัมน์)/.test(r.errors[0]!.message));
 }
@@ -74,7 +74,7 @@ export function importMapRoutes(app: FastifyInstance, db: Db) {
     const sv = hit ? saved.find((s) => s.key === importMapKey(T.cls, hit.sig))! : null;
     const savedMap = sv ? normalizeMapping({ ...((sv.value as { mapping?: Partial<ImportMapping> }).mapping ?? {}), header_row: hit!.i }, T.target, width) : null;
     return {
-      target: T.target, label: T.label, matches: matchesTemplate(rows, T.target, co.year_system as YearSystem), width, total_rows: rows.length,
+      target: T.target, label: T.label, matches: matchesTemplate(rows, T.target, co.year_system as YearSystem, importKindOf(T.path)), width, total_rows: rows.length,
       preview: rows.slice(0, 40).map((r) => r.map((c) => String(c ?? '').slice(0, 80))),
       saved: savedMap && sv ? { mapping: savedMap, signature: hit!.sig, saved_at: sv.updated_at } : null,
       ai: await aiAvailability(db, a.companyId),

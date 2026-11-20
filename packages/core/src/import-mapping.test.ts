@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { applyMapping, guessMapping, headerSignature, importMapKey, mapColumns, mapDate, mapNumber, mapSchema, missingCodeRows, normalizeMapping, setImportCodes, unmappedRequired, type ImportMapping } from './import-mapping.js';
 import { mapExpenseImport, mapImport } from './trade-import.js';
+import { computeDoc, TRADE_KINDS } from './doc-calc.js';
+import { d } from './money.js';
 import { mapJournalImport } from './journal-import.js';
 
 /** Anthropic structured outputs: at most 16 union-typed parameters — keep 0 (HANDOFF 166 rule) */
@@ -130,5 +132,53 @@ describe('ให้ AI จัดรูปแบบ Excel (HANDOFF 168)', () => {
     expect(g.columns).toEqual([{ target: 'ref', source: 0, constant: '' }, { target: 'date', source: 1, constant: '' }, { target: 'party', source: 2, constant: '' }, { target: 'item', source: 3, constant: '' },
       { target: 'qty', source: 4, constant: '' }, { target: 'price', source: 5, constant: '' }]);
     expect(guessMapping([['1', '2']], 'journal').header_row).toBe(-1);
+  });
+
+  /** แฟ้มส่งออกใบเสร็จรับเงินจากโปรแกรมอื่น (รูปแบบเดียวกับแฟ้มจริงของเจ้าของ 20/11/2569 — ข้อมูลสมมุติ ไม่มีชื่อจริง) */
+  const RECEIPTS = [
+    ['ใบเสร็จรับเงิน', 'สถานะ', 'วันที่', 'ชื่อลูกค้า', 'ชื่อโปรเจกต์', 'รหัสสินค้า', 'สินค้า', 'รายละเอียด', 'จำนวน', 'ราคาต่อหน่วย (ไม่รวมภาษี)', 'ส่วนลด (ไม่รวมภาษี)', 'ราคารวม (ไม่รวมภาษี)', 'ภาษี VAT', 'ราคาสุทธิ'],
+    ['RE-261001001', 'รับเงินแล้ว', '46296', 'ลูกค้าสมมุติ หนึ่ง', 'คอร์สตัวอย่าง', 'CRS-01', 'ค่าคอร์สเรียน', 'รุ่นที่ 1', '1', '5854.2056074766', '0', '5854.2056074766', '409.79439252336', '6264'],
+    ['RE-261001001', 'รับเงินแล้ว', '46296', 'ลูกค้าสมมุติ หนึ่ง', 'คอร์สตัวอย่าง', 'MEM-01', 'ค่าสมาชิก', 'รายปี', '1', '350', '0', '350', '', '350'],
+    ['RE-261001002', 'รับเงินแล้ว', '46297', 'ลูกค้าสมมุติ สอง', 'คอร์สตัวอย่าง', 'CRS-01', 'ค่าคอร์สเรียน', 'รุ่นที่ 1', '2', '5854.2056074766', '0', '11708.4112149532', '819.588785046724', '12528'],
+    ['RE-261001003', 'รับเงินแล้ว', '46297', 'ลูกค้าสมมุติ หนึ่ง', '', 'MEM-01', 'ค่าสมาชิก', '', '1', '350', '0', '350', '', '350'],
+  ];
+  const HS = TRADE_KINDS.find((k) => k.cls === 'HS')!;
+  const receiptTotals = (table: string[][], m: ImportMapping) => {
+    const r = mapImport(applyMapping(table, m, 'trade').table, 'B', HS);
+    return { r, totals: r.docs.map((x) => {
+      const c = computeDoc({ price_type: '2', vat_rate: 7, lines: x.lines.map((l) => ({ qty: l.qty, unit_price: l.price, discount_text: l.discount, vat_code: l.vat_code ?? '1' })) });
+      return [x.ref, c.vat_amount, c.net_amount, x.lines.reduce((t, l) => t.plus(d(l.net_total ?? 0)), d(0)).toFixed(2)];
+    }) };
+  };
+  it('HANDOFF 170: receipt export from another program (guess without AI) → receipt number groups bills, names, mixed VAT per line, totals = the file', () => {
+    const g = guessMapping(RECEIPTS, 'trade', HS);
+    expect(g.header_row).toBe(0);
+    expect(Object.fromEntries(g.columns.map((c) => [c.target, c.source]))).toEqual({ doc_no: 0, date: 2, party_name: 3, item: 5, item_name: 6, description: 7, qty: 8, price: 9, discount: 10, vat_amount: 12, net_total: 13 });
+    expect(unmappedRequired(g, 'trade', HS)).toEqual([]);
+    const { r, totals } = receiptTotals(RECEIPTS, g);
+    expect(r.errors).toEqual([]);
+    expect(r.docs.map((x) => [x.ref, x.doc_no, x.date, x.party_name, x.lines.map((l) => `${l.item}:${l.vat_code}:${l.price}`).join(' ')])).toEqual([
+      ['RE-261001001', 'RE-261001001', '2026-10-01', 'ลูกค้าสมมุติ หนึ่ง', 'CRS-01:1:5854.2056 MEM-01:0:350'],
+      ['RE-261001002', 'RE-261001002', '2026-10-02', 'ลูกค้าสมมุติ สอง', 'CRS-01:1:5854.2056'],
+      ['RE-261001003', 'RE-261001003', '2026-10-02', 'ลูกค้าสมมุติ หนึ่ง', 'MEM-01:0:350'],
+    ]);
+    // ราคาไม่รวม VAT ทศนิยมยาว: ยอดบรรทัด 5,854.21 · VAT 409.79 · รวม 6,264.00 — ทุกใบเท่ากับ "ราคาสุทธิ" รวมในแฟ้ม
+    expect(totals).toEqual([['RE-261001001', '409.79', '6614.00', '6614.00'], ['RE-261001002', '819.59', '12528.00', '12528.00'], ['RE-261001003', '0.00', '350.00', '350.00']]);
+  });
+  it('HANDOFF 170: the same file with an AI-style mapping (mocked answer) gives the same documents', () => {
+    const ai = normalizeMapping({ header_row: 0, date_order: 'dmy', year: 'auto', decimal: 'dot', group: 'column', skip_words: [], notes: 'ราคาไม่รวมภาษี — เลือกประเภทราคา "ไม่รวม VAT"',
+      columns: [{ target: 'doc_no', source: 0, constant: '' }, { target: 'date', source: 2, constant: '' }, { target: 'party_name', source: 3, constant: '' }, { target: 'item', source: 5, constant: '' },
+        { target: 'item_name', source: 6, constant: '' }, { target: 'description', source: 7, constant: '' }, { target: 'qty', source: 8, constant: '' }, { target: 'price', source: 9, constant: '' },
+        { target: 'vat_amount', source: 12, constant: '' }, { target: 'net_total', source: 13, constant: '' }] }, 'trade', 14);
+    expect(receiptTotals(RECEIPTS, ai).totals).toEqual(receiptTotals(RECEIPTS, guessMapping(RECEIPTS, 'trade', HS)).totals);
+    // continuation rows (receipt number only on the first row of each bill) still group by the number
+    const cont = RECEIPTS.map((r, i) => (i === 2 ? ['', ...r.slice(1)] : r));
+    const c = receiptTotals(cont, { ...ai, group: 'continue' });
+    expect(c.r.docs.map((x) => [x.ref, x.lines.length])).toEqual([['RE-261001001', 2], ['RE-261001002', 1], ['RE-261001003', 1]]);
+    // the schema offers the new targets, still without union types
+    const sch = mapSchema('trade', HS);
+    expect(sch.properties.columns.items.properties.target.enum).toEqual(expect.arrayContaining(['doc_no', 'vat_amount', 'net_total']));
+    expect(unionParams(sch)).toBe(0);
+    expect(mapColumns('trade', HS).filter((c) => ['vat_amount', 'net_total'].includes(c.key)).map((c) => c.format)).toEqual(['number', 'number']);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { importBranch, importColumnsFor, importDate, importFlag, importHeaderText, importItemKind, importKindOf, importNeedLabel, importNumber, importPartyKey, importVatBasis, importVatCode, importWhtForm, mapExpenseImport, mapImport, mapPaymentImport, parseCsv, xlsxSharedStrings, xlsxSheetRows } from './trade-import.js';
+import { importBranch, importColumnsFor, importDate, importDocNoError, importPrice, importReadColumns, importFlag, importHeaderText, importItemKind, importKindOf, importNeedLabel, importNumber, importPartyKey, importVatBasis, importVatCode, importWhtForm, mapExpenseImport, mapImport, mapPaymentImport, parseCsv, xlsxSharedStrings, xlsxSheetRows } from './trade-import.js';
 import { TRADE_KINDS } from './doc-calc.js';
 
 describe('นำเข้ารายการขาย/ซื้อจากแฟ้ม Excel', () => {
@@ -56,7 +56,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     ];
     const r = mapImport(rows, 'B');
     expect(r.docs.map((x) => [x.ref, x.row, x.date, x.party, x.lines.length, x.remark])).toEqual([['INV1', 3, '2026-10-15', 'C001', 2, 'หน้าร้าน'], ['INV2', 6, '2025-10-15', 'C002', 1, null]]);
-    expect(r.docs[0]!.lines[0]).toEqual({ row: 3, item: 'A-1', item_name: null, item_kind: null, description: null, qty: '2', unit: null, price: '1500', discount: '10%', warehouse: null, free: null, job: null, vat_code: null, ret: null });
+    expect(r.docs[0]!.lines[0]).toEqual({ row: 3, item: 'A-1', item_name: null, item_kind: null, description: null, qty: '2', unit: null, price: '1500', discount: '10%', warehouse: null, free: null, job: null, vat_code: null, ret: null, vat_amount: null, net_total: null });
     expect(r.errors).toEqual([
       { row: 7, message: 'จำนวน "x" ไม่ใช่ตัวเลข' },
       { row: 8, message: 'เลขที่อ้างอิง INV1: วันที่ไม่ตรงกับแถว 3' },
@@ -190,5 +190,54 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect(r.pays).toEqual([{ row: 2, ref: 'HS-1', method: 'เงินสด', amount: '1000', pay_ref: null, cheque_date: null }, { row: 3, ref: 'HS-1', method: 'TR', amount: '605.50', pay_ref: 'T-9', cheque_date: null }]);
     expect(r.errors.map((e) => e.message)).toEqual(['แผ่นรับ/จ่ายชำระ: ไม่มีวิธีชำระ', 'แผ่นรับ/จ่ายชำระ: จำนวนเงิน "0" ต้องเป็นตัวเลขมากกว่า 0', 'แผ่นรับ/จ่ายชำระ: วันที่เช็ค "32/1/2569" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป']);
     expect(mapPaymentImport([[''], []], 'B')).toEqual({ pays: [], errors: [] });
+  });
+
+  it('HANDOFF 170: own document number — optional column, groups by it when there is no reference, one number per document, no duplicates in the file', () => {
+    const K = (cls: string) => TRADE_KINDS.find((k) => k.cls === cls)!;
+    const col = (cls: string, key: string) => importColumnsFor(K(cls)).find((c) => c.key === key)!;
+    expect([importNeedLabel(col('HS', 'doc_no')), importNeedLabel(col('HS', 'ref'))]).toEqual(['ไม่บังคับ (ค่าเริ่มต้น = ออกเลขอัตโนมัติ)', 'ต้องมีถ้าไม่ใส่เลขที่เอกสาร']);
+    // reference + own number: grouped by reference, number kept
+    const a = mapImport([['เลขที่อ้างอิง', 'เลขที่เอกสาร', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน'],
+      ['A1', 'HS6910-01', '1/10/2569', 'C1', 'X', '1'], ['A1', '', '1/10/2569', 'C1', 'Y', '1'], ['A2', '', '1/10/2569', 'C1', 'X', '1'],
+      ['A3', 'HS6910-01', '1/10/2569', 'C1', 'X', '1'], ['A4', 'HS 01', '1/10/2569', 'C1', 'X', '1'], ['A1', 'HS6910-02', '1/10/2569', 'C1', 'Z', '1']], 'B');
+    expect(a.docs.map((x) => [x.ref, x.doc_no, x.lines.length])).toEqual([['A1', 'HS6910-01', 2], ['A2', null, 1]]);
+    expect(a.errors.map((e) => [e.row, e.message])).toEqual([
+      [5, 'เลขที่เอกสาร HS6910-01 ซ้ำกับเลขที่อ้างอิง A1 (แถว 2) — หนึ่งเลขที่ใช้ได้เอกสารเดียว'],
+      [6, 'เลขที่เอกสาร "HS 01" ใช้ได้เฉพาะตัวอักษร ตัวเลข และ / - . _ (ไม่มีช่องว่าง)'],
+      [7, 'เลขที่อ้างอิง A1: เลขที่เอกสาร HS6910-02 ไม่ตรงกับแถว 2 (HS6910-01) — หนึ่งเอกสารใช้เลขที่เดียว'],
+    ]);
+    // no reference column: the number groups the rows and is also the reference
+    const b = mapImport([['ใบเสร็จรับเงิน', 'วันที่', 'ชื่อลูกค้า', 'รหัสสินค้า', 'จำนวน'], ['RE-1', '1/10/2569', 'ก', 'X', '1'], ['RE-1', '1/10/2569', 'ก', 'Y', '1'], ['RE-2', '2/10/2569', 'ข', 'X', '1'], ['', '2/10/2569', 'ข', 'X', '1']], 'B');
+    expect(b.docs.map((x) => [x.ref, x.doc_no, x.lines.length])).toEqual([['RE-1', 'RE-1', 2], ['RE-2', 'RE-2', 1]]);
+    expect(b.errors.map((e) => e.message)).toEqual(['ไม่มีเลขที่อ้างอิง (คอลัมน์ "เลขที่อ้างอิง" หรือ "เลขที่เอกสาร" ต้องมีทุกแถว — แถวที่เลขเดียวกันรวมเป็นเอกสารเดียว)']);
+    // "เลขที่ใบกำกับ": sales = own document number · purchases = supplier invoice number
+    const head = ['เลขที่ใบกำกับ', 'วันที่', 'รหัสคู่ค้า', 'รหัสสินค้า', 'จำนวน'], row = ['INV-9', '1/10/2569', 'C1', 'X', '1'];
+    expect(mapImport([head, row], 'B', K('HS')).docs[0]).toMatchObject({ ref: 'INV-9', doc_no: 'INV-9' });
+    expect(mapImport([head, row], 'B', K('RR')).errors[0]?.message).toMatch(/ไม่มีคอลัมน์ "เลขที่อ้างอิง"/);
+    expect(mapImport([['เลขที่อ้างอิง', ...head], ['R1', ...row]], 'B', K('RR')).docs[0]).toMatchObject({ ref: 'R1', doc_no: null, ref_no: 'INV-9' });
+    expect(importReadColumns(K('IV')).find((c) => c.key === 'doc_no')!.aliases).toContain('เลขที่ใบกำกับ');
+    expect([importDocNoError(''), importDocNoError('HS-1/2.3_4'), importDocNoError('x'.repeat(31))]).toEqual([null, null, `เลขที่เอกสาร "${'x'.repeat(31)}" ยาวเกิน 30 ตัว`]);
+    // OE: same column
+    const e = mapExpenseImport([['เลขที่เอกสาร', 'วันที่', 'ชื่อผู้จำหน่าย', 'รหัสค่าใช้จ่าย', 'จำนวนเงิน'], ['OE6910-1', '1/10/2569', 'ร้าน', 'E1', '100'], ['OE6910-1', '1/10/2569', 'ร้าน', 'E2', '50']], 'B');
+    expect(e.docs.map((x) => [x.ref, x.doc_no, x.lines.length])).toEqual([['OE6910-1', 'OE6910-1', 2]]);
+  });
+
+  it('HANDOFF 170: VAT type per line from a VAT-amount column; long-decimal prices kept to 4 places like the screen; zero discount = none', () => {
+    const r = mapImport([['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน', 'ราคาต่อหน่วย (ไม่รวมภาษี)', 'ส่วนลด (ไม่รวมภาษี)', 'ภาษี VAT', 'ราคาสุทธิ', 'ประเภท VAT'],
+      ['B1', '1/10/2569', 'C1', 'CRS', '1', '5854.2056074766', '0', '409.79439252336', '6264', ''],
+      ['B1', '1/10/2569', 'C1', 'MEM', '1', '350', '0.00', '', '350', ''],
+      ['B1', '1/10/2569', 'C1', 'Z', '1', '100', '5', '0', '95', '2'],
+      ['B2', '1/10/2569', 'C1', 'Z', '1', '100', '', 'abc', '', '']], 'B');
+    expect(r.docs[0]!.lines.map((l) => [l.price, l.discount, l.vat_code, l.vat_amount, l.net_total])).toEqual([
+      ['5854.2056', null, '1', '409.794393', '6264'], ['350', null, '0', '0', '350'], ['100', '5', '2', '0', '95']]);
+    expect(r.errors.map((e) => [e.row, e.message])).toEqual([[5, 'ภาษี VAT "abc" ไม่ใช่ตัวเลข (คอลัมน์ "ภาษี VAT" — เว้นว่างได้ถ้าไม่มีภาษี)']]);
+    // without a VAT-amount column the item's own VAT type still applies (null)
+    expect(mapImport([['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน'], ['B1', '1/10/2569', 'C1', 'X', '1']], 'B').docs[0]!.lines[0]!.vat_code).toBeNull();
+    expect(['5854.2056074766', '1.23455', '(2.000049)', '12', '1,234.5', 'x'].map(importPrice)).toEqual(['5854.2056', '1.2346', '-2', '12', '1234.5', null]);
+    // "สินค้า" (name) and "รหัสสินค้า" (code) in either order
+    const two = (h: string[], v: string[]) => mapImport([['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'จำนวน', ...h], ['B1', '1/10/2569', 'C1', '1', ...v]], 'B').docs[0]!.lines[0]!;
+    expect([two(['รหัสสินค้า', 'สินค้า'], ['X1', 'ชื่อ X']), two(['สินค้า', 'รหัสสินค้า'], ['ชื่อ X', 'X1'])].map((l) => [l.item, l.item_name])).toEqual([['X1', 'ชื่อ X'], ['X1', 'ชื่อ X']]);
+    // check columns are readable but not part of the screen-shaped template sheet
+    expect(importColumnsFor(TRADE_KINDS[0]!).filter((c) => c.check).map((c) => c.key)).toEqual(['vat_amount', 'net_total']);
   });
 });

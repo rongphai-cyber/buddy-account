@@ -5220,8 +5220,8 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const t = await app.inject({ method: 'GET', url: '/api/v1/trade-import/sales-invoices/template', headers: { cookie } });
     expect(t.statusCode).toBe(200); expect(t.headers['content-type']).toMatch(/spreadsheetml/);
     const tr = readTable('import-IV.xlsx', t.rawPayload);
-    expect(tr[0]!.slice(0, 7)).toEqual(['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสลูกค้า', 'ชื่อลูกค้า', 'Bill to (สาขาลูกค้า)', 'สถานที่ส่งของ', 'อ้างอิงเอกสาร']);
-    expect(tr).toHaveLength(3);
+    expect(tr[0]!.slice(0, 7)).toEqual(['เลขที่อ้างอิง', 'เลขที่เอกสาร', 'วันที่ *', 'รหัสลูกค้า', 'ชื่อลูกค้า', 'Bill to (สาขาลูกค้า)', 'สถานที่ส่งของ']);
+    expect(tr).toHaveLength(4);
     expect((await app.inject({ method: 'GET', url: '/api/v1/trade-import/sales-orders/template', headers: { cookie } })).statusCode).toBe(404);   // ใบสั่งขายไม่ใช่รายการขาย
 
     const url = '/api/v1/trade-import/sales-invoices';
@@ -5298,7 +5298,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     // แบบฟอร์ม: คอลัมน์รหัสตามด้วยชื่อ · คอลัมน์ข้อมูลหลักใหม่อยู่ท้าย · แผ่นคำอธิบายบอกวิธีเพิ่มรายใหม่
     const t = await app.inject({ method: 'GET', url: '/api/v1/trade-import/purchase-invoices/template', headers: { cookie } });
     const tr = readTable('import-RR.xlsx', t.rawPayload);
-    expect(tr[0]!.slice(0, 6)).toEqual(['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'สาขาผู้ขาย', 'เลขที่ใบกำกับผู้จำหน่าย']);
+    expect(tr[0]!.slice(0, 7)).toEqual(['เลขที่อ้างอิง', 'เลขที่เอกสาร', 'วันที่ *', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'สาขาผู้ขาย', 'เลขที่ใบกำกับผู้จำหน่าย']);
     expect(tr[0]!.slice(-4)).toEqual(['เลขผู้เสียภาษี', 'ที่อยู่', 'โทรศัพท์', 'ชนิดสินค้า']);
 
     const H = ['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'เลขผู้เสียภาษี', 'สาขา', 'ที่อยู่', 'รหัสสินค้า', 'ชื่อสินค้า', 'ชนิดสินค้า', 'จำนวน', 'หน่วย', 'ราคาต่อหน่วย'];
@@ -5375,7 +5375,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const exp = (await call('GET', '/api/v1/other-expenses?status=A')).body.rows[0].code as string;
     const oeType = (await call('GET', '/api/v1/trade-defaults/OE')).body.types[0].id;
     const ot = readTable('import-OE.xlsx', (await app.inject({ method: 'GET', url: '/api/v1/trade-import/other-expense-docs/template', headers: { cookie } })).rawPayload);
-    expect(ot[0]!).toEqual(expect.arrayContaining(['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'รหัสค่าใช้จ่าย *', 'รายละเอียด', 'จำนวนเงิน *', 'อัตราหัก ณ ที่จ่าย', 'ภาษีหัก ณ ที่จ่าย', 'ประเภทเงินได้', 'แบบ ภ.ง.ด.', 'วิธีชำระ']));
+    expect(ot[0]!).toEqual(expect.arrayContaining(['เลขที่อ้างอิง', 'เลขที่เอกสาร', 'วันที่ *', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'รหัสค่าใช้จ่าย *', 'รายละเอียด', 'จำนวนเงิน *', 'อัตราหัก ณ ที่จ่าย', 'ภาษีหัก ณ ที่จ่าย', 'ประเภทเงินได้', 'แบบ ภ.ง.ด.', 'วิธีชำระ']));
     const EH = ['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'รหัสค่าใช้จ่าย', 'รายละเอียด', 'จำนวนเงิน', 'อัตราหัก ณ ที่จ่าย', 'ภาษีหัก ณ ที่จ่าย', 'ประเภทเงินได้'];
     const oeRows = [EH,
       ['IMPE-1', '15/07/2569', 'IMP-S1', '', exp, 'ค่าขนส่ง ก.ค.', '1000', '1', '', ''],
@@ -5570,8 +5570,9 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const hs = await tpl('cash-sales');
     expect(hs.map((s) => s.name)).toEqual(['นำเข้า', 'รับชำระ', 'คำอธิบาย']);
     expect(hs[0]!.rows[0]).not.toContain('เครดิต (วัน)');
-    expect(hs[0]!.rows[0]).toEqual(expect.arrayContaining(['เลขที่อ้างอิง *', 'วันที่ *', 'Bill to (สาขาลูกค้า)', 'สถานที่ส่งของ', 'พนักงานขาย', 'วิธีชำระ', 'เลขที่อ้างอิง/เช็ค', 'ภาษีถูกหัก ณ ที่จ่าย', 'จำนวน *', 'ของแถม (F)', 'ประเภท VAT']));
-    expect(hs[1]!.rows[0]).toEqual(['เลขที่อ้างอิง *', 'วิธีชำระ *', 'จำนวนเงิน *', 'เลขที่อ้างอิง/เช็ค']);
+    expect(hs[0]!.rows[0]).toEqual(expect.arrayContaining(['เลขที่อ้างอิง', 'เลขที่เอกสาร', 'วันที่ *', 'Bill to (สาขาลูกค้า)', 'สถานที่ส่งของ', 'พนักงานขาย', 'วิธีชำระ', 'เลขที่อ้างอิง/เช็ค', 'ภาษีถูกหัก ณ ที่จ่าย', 'จำนวน *', 'ของแถม (F)', 'ประเภท VAT']));
+    expect(hs[1]!.rows[0]![0]).toMatch(/^วิธีเดียว: ใช้คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า · หลายวิธี .* ใส่ทั้งสองที่ = ผิด/);   // กติกาบนสุดของแผ่น (HANDOFF 170)
+    expect(hs[1]!.rows[1]).toEqual(['เลขที่อ้างอิง *', 'วิธีชำระ *', 'จำนวนเงิน *', 'เลขที่อ้างอิง/เช็ค']);
     const need = (sheet: string[][], th: string) => sheet.find((r) => r[0] === th)?.[1];
     expect([need(hs[2]!.rows, 'จำนวน'), need(hs[2]!.rows, 'วิธีชำระ'), need(hs[2]!.rows, 'รหัสสินค้า'), need(hs[2]!.rows, 'คลัง')])
       .toEqual(['ต้องมี', 'ไม่บังคับ (ค่าเริ่มต้น = เงินสดทั้งจำนวน)', 'ต้องมีถ้าไม่ใส่ชื่อสินค้า', 'ไม่บังคับ (ค่าเริ่มต้น = ตามประเภทเอกสาร/คลังหลัก)']);
@@ -5581,7 +5582,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect(iv[0]!.rows[0]).not.toContain('วิธีชำระ');
     const oe = await tpl('other-expense-docs');
     expect(oe.map((s) => s.name)).toEqual(['นำเข้า', 'จ่ายชำระ', 'คำอธิบาย']);
-    expect(oe[1]!.rows[0]).toContain('วันที่เช็ค');
+    expect(oe[1]!.rows[1]).toContain('วันที่เช็ค');
 
     // วิธีรับ/จ่ายชำระของบริษัท: เงินสด · เงินโอน (ผูกบัญชีเงินฝาก) · โอนที่ยังไม่ผูกบัญชี · เช็ค
     const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
@@ -5653,6 +5654,109 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect(oc.error?.message ?? 'ok').toBe('ok');
     expect(oc.file_warnings).toHaveLength(1);
     expect((await sql<{ c: number | null; cash: string }>`SELECT credit_days AS c, cash_amount AS cash FROM doc_header WHERE company_id = ${co} AND your_ref = 'HSX-OLD' AND doc_status <> 'C'`.execute(database.db)).rows[0]).toMatchObject({ cash: '53.50' });
+  });
+  it('HANDOFF 170: own document numbers (file order, never reused by automatic numbering), VAT type from a VAT-amount column, totals cross-check, payment source; the receipt-export fixture end to end', async () => {
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const types = (await call('GET', '/api/v1/trade-defaults/HS')).body.types as Array<{ id: string; code: string }>;
+    const hsType = types[0]!.id, P = types[0]!.code;
+    const url = '/api/v1/trade-import/cash-sales';
+    const base = { file_name: 'ขายสด.xlsx', doc_type_id: hsType, price_type: '2', vat_rate: 7, create_masters: true };
+    const xl = (main: string[][], pay?: string[][]) => buildXlsx([{ name: 'นำเข้า', rows: main }, ...(pay ? [{ name: 'รับชำระ', rows: pay }] : [])]).toString('base64');
+    const item = (await call('GET', '/api/v1/items?status=A')).body.rows.find((r: { unit_code: string | null }) => r.unit_code) as { id: string; code: string };
+    const nextNo = async () => Number((await sql<{ n: string }>`SELECT next_no::text AS n FROM md_doc_type WHERE id = ${hsType}`.execute(database.db)).rows[0]!.n);
+    const fmtNo = (n: number) => `${P}${String(n).padStart(7, '0')}`;
+
+    // ก. เลขที่เอกสารเอง = เลขอัตโนมัติถัดไป (ฉบับอัตโนมัติอยู่ก่อนในแฟ้ม) → ไม่ชน: ฉบับที่กำหนดเลขบันทึกก่อน เลขอัตโนมัติข้ามไป
+    const n0 = await nextNo();
+    const H = ['เลขที่อ้างอิง', 'เลขที่เอกสาร', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน', 'ราคาต่อหน่วย', 'วิธีชำระ'];
+    const own = [H, ['DN-A', '', '15/07/2569', 'IMP-C1', item.code, '1', '100', ''], ['DN-B', fmtNo(n0), '15/07/2569', 'IMP-C1', item.code, '1', '200', ''], ['DN-C', `${P}-IMP-7`, '15/07/2569', 'IMP-C1', item.code, '1', '300', '']];
+    const ck = (await call('POST', url, { ...base, data: xl(own) })).body;
+    expect(ck.errors).toEqual([]);
+    expect(ck.docs.map((x: { ref: string; doc_no: string | null; doc_no_source: string; pay_source: string }) => [x.ref, x.doc_no, x.doc_no_source, x.pay_source]))
+      .toEqual([['DN-A', null, 'auto', 'cash'], ['DN-B', fmtNo(n0), 'file', 'cash'], ['DN-C', `${P}-IMP-7`, 'file', 'cash']]);
+    const cm = (await call('POST', url, { ...base, data: xl(own), commit: true })).body;
+    expect(cm.error?.message ?? 'ok').toBe('ok');
+    expect(cm.docs.map((x: { ref: string; doc_no: string }) => [x.ref, x.doc_no])).toEqual([['DN-A', fmtNo(n0 + 1)], ['DN-B', fmtNo(n0)], ['DN-C', `${P}-IMP-7`]]);
+    // หน้าจอบันทึกต่อ: ได้เลขถัดไป ไม่ชนเลขในแฟ้ม
+    const sc = await call('POST', '/api/v1/cash-sales', { doc_type_id: hsType, doc_date: '2026-07-15', party_id: (await call('GET', '/api/v1/customers?q=IMP-C1')).body.rows[0].id, price_type: '2', vat_rate: 7, lines: [{ item_id: item.id, qty: 1, unit_price: 10 }] });
+    expect(sc.status).toBe(200);
+    expect(sc.body.doc_no).toBe(fmtNo(n0 + 2));
+    // ซ้ำของเดิม · ซ้ำในแฟ้ม · ไม่ขึ้นต้นด้วยตัวนำหน้า (มีเลขที่อ้างอิงแยก = ผิด) · ใบยกเลิกยังจองเลข
+    const errs = async (m: string[][]) => (await call('POST', url, { ...base, data: xl(m) })).body.errors.map((e: { row: number; message: string }) => `${e.row}: ${e.message}`);
+    expect(await errs([H, ['DN-D', fmtNo(n0), '15/07/2569', 'IMP-C1', item.code, '1', '1', ''], ['DN-E', 'XX-1', '15/07/2569', 'IMP-C1', item.code, '1', '1', ''], ['DN-F', `${P}-IMP-8`, '15/07/2569', 'IMP-C1', item.code, '1', '1', ''], ['DN-G', `${P}-IMP-8`, '15/07/2569', 'IMP-C1', item.code, '1', '1', '']]))
+      .toEqual([`2: เลขที่เอกสาร ${fmtNo(n0)} มีอยู่แล้ว (ลงวันที่ 15/07/2569) — เปลี่ยนเลขที่ หรือเว้นว่างให้ระบบออกเลข`,
+        `3: เลขที่เอกสาร XX-1 ต้องขึ้นต้นด้วย ${P} ตามประเภทเอกสารที่เลือก (เช่น ${P}-1) — แก้ในคอลัมน์ "เลขที่เอกสาร" หรือเว้นว่างให้ระบบออกเลข`,
+        `5: เลขที่เอกสาร ${P}-IMP-8 ซ้ำกับเลขที่อ้างอิง DN-F (แถว 4) — หนึ่งเลขที่ใช้ได้เอกสารเดียว`]);
+    const cid = (await sql<{ id: string }>`SELECT id FROM doc_header WHERE company_id = ${co} AND doc_no = ${`${P}-IMP-7`} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.id;
+    expect((await call('POST', `/api/v1/cash-sales/${cid}/cancel`, { reason: 'ทดสอบ' })).status).toBe(200);
+    expect((await errs([H, ['DN-H', `${P}-IMP-7`, '15/07/2569', 'IMP-C1', item.code, '1', '1', '']]))[0]).toMatch(/มีอยู่แล้ว .*ยกเลิกแล้ว — ลบเอกสารนั้นก่อนจึงใช้เลขนี้ได้/);
+
+    // ข. แฟ้มส่งออกใบเสร็จจากโปรแกรมอื่น (รูปแบบเดียวกับแฟ้มจริงของเจ้าของ — ข้อมูลสมมุติ): ตรงแบบฟอร์มพอให้อ่านได้เลย
+    // ลูกค้าในแฟ้มมีแต่ชื่อ: บริษัทนี้ (ข้อทดสอบก่อนหน้า) ตั้งไม่ให้เลขผู้เสียภาษีว่าง — เปิดให้ว่างได้ระหว่างข้อนี้ · รหัสสินค้าตามรูปแบบรหัสของบริษัท 99-!!!!-!!!!!!
+    expect((await call('PUT', '/api/v1/settings', { values: { 'gen.allow_blank_party_tax_id': true } })).status).toBe(200);
+    const R = [['ใบเสร็จรับเงิน', 'สถานะ', 'วันที่', 'ชื่อลูกค้า', 'ชื่อโปรเจกต์', 'รหัสสินค้า', 'สินค้า', 'รายละเอียด', 'จำนวน', 'ราคาต่อหน่วย (ไม่รวมภาษี)', 'ส่วนลด (ไม่รวมภาษี)', 'ราคารวม (ไม่รวมภาษี)', 'ภาษี VAT', 'ราคาสุทธิ'],
+      ['RE-261001001', 'รับเงินแล้ว', '46296', 'ลูกค้าสมมุติ หนึ่ง', 'คอร์สตัวอย่าง', '10-CRSE-000001', 'ค่าคอร์สเรียน', 'รุ่นที่ 1', '1', '5854.2056074766', '0', '5854.2056074766', '409.79439252336', '6264'],
+      ['RE-261001001', 'รับเงินแล้ว', '46296', 'ลูกค้าสมมุติ หนึ่ง', 'คอร์สตัวอย่าง', '10-MEMB-000001', 'ค่าสมาชิก', 'รายปี', '1', '350', '0', '350', '', '350'],
+      ['RE-261001002', 'รับเงินแล้ว', '46297', 'ลูกค้าสมมุติ สอง', 'คอร์สตัวอย่าง', '10-CRSE-000001', 'ค่าคอร์สเรียน', 'รุ่นที่ 1', '2', '5854.2056074766', '0', '11708.4112149532', '819.588785046724', '12528'],
+      ['RE-261001003', 'รับเงินแล้ว', '46297', 'ลูกค้าสมมุติ หนึ่ง', '', '10-MEMB-000001', 'ค่าสมาชิก', '', '1', '350', '0', '350', '', '350']];
+    const an = (await call('POST', '/api/v1/import-map/analyze', { target: 'cash-sales', file_name: 'receipts.xlsx', data: xl(R) })).body;
+    expect(an.matches).toBe(true);
+    // การจับคู่แบบ AI (คำตอบจำลอง — ไม่เรียก AI จริง) ให้ผลเดียวกับอ่านตรง
+    const aiMap = { header_row: 0, date_order: 'dmy', year: 'auto', decimal: 'dot', group: 'column', skip_words: [], notes: '',
+      columns: [['doc_no', 0], ['date', 2], ['party_name', 3], ['item', 5], ['item_name', 6], ['description', 7], ['qty', 8], ['price', 9], ['vat_amount', 12], ['net_total', 13]].map(([t, i]) => ({ target: t, source: i, constant: '' })) };
+    const fb = { ...base, file_name: 'receipts.xlsx', data: xl(R) };
+    const direct = (await call('POST', url, fb)).body, mapped = (await call('POST', url, { ...fb, mapping: aiMap })).body;
+    for (const r of [direct, mapped]) {
+      expect(r.errors).toEqual([]);
+      expect(r.file_warnings).toEqual([`เลขที่เอกสารในแฟ้ม 3 ฉบับ (เช่น RE-261001001) ไม่ขึ้นต้นด้วย ${P} ตามประเภทเอกสาร — เก็บเป็นเลขที่อ้างอิง (ค้นหาด้วยเลขเดิมได้) และออกเลขที่เอกสารอัตโนมัติ · ต้องการใช้เลขเอง: ใส่เลขที่ขึ้นต้นด้วย ${P}`]);
+      expect(r.docs.map((x: Record<string, unknown>) => [x.ref, x.doc_no_source, x.party_new, x.lines, x.vat_lines, x.amount, x.vat_amount, x.net_amount, x.file_vat, x.file_net, x.check, x.warnings, x.pay_source])).toEqual([
+        ['RE-261001001', 'auto', true, 2, { 0: 1, 1: 1, 2: 0 }, '6204.21', '409.79', '6614.00', '409.79', '6614.00', 'ok', [], 'cash'],
+        ['RE-261001002', 'auto', true, 1, { 0: 0, 1: 1, 2: 0 }, '11708.41', '819.59', '12528.00', '819.59', '12528.00', 'ok', [], 'cash'],
+        ['RE-261001003', 'auto', true, 1, { 0: 1, 1: 0, 2: 0 }, '350.00', '0.00', '350.00', '0.00', '350.00', 'ok', [], 'cash'],
+      ]);
+      expect(r.new_masters.parties.map((p: { name: string }) => p.name)).toEqual(['ลูกค้าสมมุติ หนึ่ง', 'ลูกค้าสมมุติ สอง']);
+      expect(r.new_masters.items.map((i: { code: string; name: string }) => `${i.code} ${i.name}`)).toEqual(['10-CRSE-000001 ค่าคอร์สเรียน', '10-MEMB-000001 ค่าสมาชิก']);
+    }
+    // ทุกใบ: รวมทั้งสิ้น = ราคาสุทธิในแฟ้มรวมกัน (6,264 + 350 · 12,528 · 350)
+    expect(direct.total_net).toBe('19492.00');
+    // ประเภทราคาผิด (รวม VAT) → เตือน พร้อมบอกประเภทราคาที่ทำให้ตรง (ไม่ผิด บันทึกได้)
+    const wrong = (await call('POST', url, { ...fb, price_type: '1' })).body;
+    expect(wrong.ok).toBe(true);
+    expect(wrong.docs[0].check).toBe('diff');
+    expect(wrong.docs[0].warnings).toEqual(['ภาษี VAT ตามแฟ้ม 409.79 · โปรแกรมคำนวณ 382.99 (ต่าง 26.80)', 'ราคาสุทธิตามแฟ้ม 6,614.00 · โปรแกรมคำนวณรวมทั้งสิ้น 6,204.21 (ต่าง 409.79)',
+      'ถ้าเลือก "ประเภทราคาในแฟ้ม" เป็น 2 แยกภาษี (ราคาก่อน VAT) ยอดจะตรงกับแฟ้ม — เปลี่ยนแล้วตรวจแฟ้มอีกครั้ง']);
+    // บันทึก: ลูกค้าใหม่จากชื่อ · บรรทัดยกเว้น VAT เป็น 0 (ไม่ใช่ VAT ตามค่าเริ่มต้นของสินค้าใหม่) · ยอดเท่าแฟ้ม · เลขที่ใบเสร็จเดิมเป็นเลขที่อ้างอิง
+    const done = (await call('POST', url, { ...fb, commit: true })).body;
+    expect(done.error?.message ?? 'ok').toBe('ok');
+    const saved = (await sql<{ ref: string; doc_no: string; net: string; vat: string; codes: string }>`SELECT h.your_ref AS ref, h.doc_no, h.net_amount AS net, h.vat_amount AS vat,
+        string_agg(i.code || ':' || l.vat_code || ':' || l.unit_price::text || ':' || l.line_amount::text, ' ' ORDER BY l.line_no) AS codes
+        FROM doc_header h JOIN doc_line l ON l.header_id = h.id AND l.deleted_at IS NULL JOIN md_item i ON i.id = l.item_id
+        WHERE h.company_id = ${co} AND h.your_ref LIKE 'RE-26100100%' AND h.doc_status <> 'C' GROUP BY h.your_ref, h.doc_no, h.net_amount, h.vat_amount ORDER BY h.your_ref`.execute(database.db)).rows;
+    expect(saved.map((x) => [x.ref, x.net, x.vat, x.codes])).toEqual([
+      ['RE-261001001', '6614.00', '409.79', '10-CRSE-000001:1:5854.2056:5854.21 10-MEMB-000001:0:350.0000:350.00'],
+      ['RE-261001002', '12528.00', '819.59', '10-CRSE-000001:1:5854.2056:11708.41'],
+      ['RE-261001003', '350.00', '0.00', '10-MEMB-000001:0:350.0000:350.00'],
+    ]);
+    expect(saved.every((x) => x.doc_no.startsWith(P))).toBe(true);
+    // นำเข้าซ้ำ = แจ้งว่าเคยนำเข้าแล้ว
+    expect((await call('POST', url, fb)).body.errors[0].message).toMatch(/เลขที่อ้างอิง RE-261001001 เคยนำเข้าแล้วเป็น/);
+
+    // ค. ที่มาของการรับชำระ: วิธีเดียว (แผ่นนำเข้า) · แผ่นรับชำระ · ไม่ใส่ = เงินสดทั้งหมด · แผ่นที่มีบรรทัดกติกาด้านบนยังอ่านได้
+    const tpl = readSheets('import-HS.xlsx', (await app.inject({ method: 'GET', url: '/api/v1/trade-import/cash-sales/template', headers: { cookie } })).rawPayload);
+    expect(tpl[0]!.rows[3]![1]).toBe(`${P}-EX-001`);                                    // ตัวอย่างแถว 4 = เลขที่เอกสารเอง
+    expect(tpl[2]!.rows.some((r) => r[0] === 'ภาษี VAT')).toBe(true);                   // คอลัมน์ตรวจยอดอธิบายในแผ่นคำอธิบาย
+    expect(tpl[0]!.rows[0]).not.toContain('ภาษี VAT');
+    const pm = (await sql<{ code: string }>`SELECT code FROM md_payment_method WHERE company_id = ${co} AND direction = 'R' AND code = 'Q8' AND deleted_at IS NULL`.execute(database.db)).rows[0];
+    expect(pm?.code).toBe('Q8');   // จากข้อ HANDOFF 169
+    const PH = ['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน', 'ราคาต่อหน่วย', 'วิธีชำระ', 'เลขที่อ้างอิง/เช็ค'];
+    const src = (await call('POST', url, { ...base, data: xl([PH, ['PS-1', '15/07/2569', 'IMP-C1', item.code, '1', '100', 'Q8', 'T1'], ['PS-2', '15/07/2569', 'IMP-C1', item.code, '1', '100', '', ''], ['PS-3', '15/07/2569', 'IMP-C1', item.code, '1', '100', '', '']],
+      [[tpl[1]!.rows[0]![0]!], ['เลขที่อ้างอิง', 'วิธีชำระ', 'จำนวนเงิน', 'เลขที่อ้างอิง/เช็ค'], ['PS-2', 'Q8', '7', 'T2'], ['PS-2', 'Q7', '100', '']]) })).body;
+    expect(src.errors).toEqual([]);
+    expect(src.docs.map((x: { ref: string; pay_source: string; other_amount: string }) => [x.ref, x.pay_source, x.other_amount])).toEqual([['PS-1', 'main', '107.00'], ['PS-2', 'sheet', '7.00'], ['PS-3', 'cash', '0.00']]);
+    expect((await call('PUT', '/api/v1/settings', { values: { 'gen.allow_blank_party_tax_id': false } })).status).toBe(200);
   });
   it('journal import (เจ้าของ 17/11/2569): template, check without saving, all-or-nothing commit via createJournal, line description default, duplicate ref, rights, other tenants', async () => {
     cookie = '';

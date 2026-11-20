@@ -1540,6 +1540,25 @@
 ]
 },
 {
+"th": "เลขที่เอกสาร",
+"n": 20,
+"files": [
+"apps/web/src/components/DocNo.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/RepostPanel.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ค้นหา",
 "n": 19,
 "files": [
@@ -1648,24 +1667,6 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "เลขที่เอกสาร",
-"n": 18,
-"files": [
-"apps/web/src/components/DocNo.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/RepostPanel.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2167,6 +2168,23 @@
 ]
 },
 {
+"th": "ภาษีมูลค่าเพิ่ม",
+"n": 13,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/source-totals.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "มูลค่า",
 "n": 13,
 "files": [
@@ -2260,22 +2278,6 @@
 ]
 },
 {
-"th": "ภาษีมูลค่าเพิ่ม",
-"n": 12,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/source-totals.ts"
-]
-},
-{
 "th": "ลูกหนี้",
 "n": 12,
 "files": [
@@ -2322,6 +2324,19 @@
 "apps/server/src/modules/reports/parties.ts",
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "เลขที่อ้างอิง",
+"n": 12,
+"files": [
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/trade-import.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2819,6 +2834,21 @@
 ]
 },
 {
+"th": "รวมทั้งสิ้น",
+"n": 9,
+"files": [
+"apps/web/src/components/SubstituteReceipt.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "วันที่จ่าย",
 "n": 9,
 "files": [
@@ -2852,18 +2882,6 @@
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/Periods.tsx",
 "apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
-"th": "เลขที่อ้างอิง",
-"n": 9,
-"files": [
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"packages/core/src/journal-import.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -3083,20 +3101,6 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "รวมทั้งสิ้น",
-"n": 8,
-"files": [
-"apps/web/src/components/SubstituteReceipt.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"apps/server/src/modules/reports/tax.ts"
 ]
 },
 {
@@ -3609,6 +3613,17 @@
 ]
 },
 {
+"th": "เลขที่ใบกำกับ",
+"n": 7,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"packages/core/src/journal-import.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ใบรับวางบิล",
 "n": 7,
 "files": [
@@ -4065,6 +4080,17 @@
 ]
 },
 {
+"th": "เลขที่ใบกำกับภาษี",
+"n": 6,
+"files": [
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/tax.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เลือกทั้งหมด",
 "n": 6,
 "files": [
@@ -4135,6 +4161,17 @@
 "apps/web/src/pages/settings/Branches.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "1 รวมภาษีแล้ว",
+"n": 5,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -4839,27 +4876,6 @@
 ]
 },
 {
-"th": "เลขที่ใบกำกับ",
-"n": 5,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"packages/core/src/journal-import.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เลขที่ใบกำกับภาษี",
-"n": 5,
-"files": [
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/tax.ts",
-"packages/core/src/journal-import.ts"
-]
-},
-{
 "th": "เลขประจำตัวประชาชน",
 "n": 5,
 "files": [
@@ -4976,16 +4992,6 @@
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/NewCompany.tsx"
-]
-},
-{
-"th": "1 รวมภาษีแล้ว",
-"n": 4,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -6350,6 +6356,15 @@
 ]
 },
 {
+"th": "จำนวนภาษี",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "จำนวนเงินต้องมากกว่า 0",
 "n": 3,
 "files": [
@@ -7079,6 +7094,24 @@
 ]
 },
 {
+"th": "ยอดรวมทั้งสิ้น",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ยอดสุทธิ",
+"n": 3,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ยังไม่ดุล",
 "n": 3,
 "files": [
@@ -7109,6 +7142,15 @@
 "apps/web/src/pages/Login.tsx",
 "apps/web/src/pages/Signup.tsx",
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "รวม VAT",
+"n": 3,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/pages/docs/DepositPick.tsx",
+"packages/core/src/import-mapping.ts"
 ]
 },
 {
@@ -7999,6 +8041,15 @@
 ]
 },
 {
+"th": "ใบเสร็จรับเงิน",
+"n": 3,
+"files": [
+"apps/server/src/modules/print.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ใบเสร็จรับเงิน/ใบกำกับภาษี",
 "n": 3,
 "files": [
@@ -8210,14 +8261,6 @@
 ]
 },
 {
-"th": "1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0%",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "1 · ภาษีซื้อ 7%",
 "n": 2,
 "files": [
@@ -8275,6 +8318,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "2 แยกภาษี (ราคาก่อน VAT)",
+"n": 2,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -9076,14 +9127,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
-"th": "จำนวนภาษี",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx"
 ]
 },
 {
@@ -10407,6 +10450,14 @@
 ]
 },
 {
+"th": "ประเภทราคาในแฟ้ม",
+"n": 2,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "ปรับปรุงค่าใช้จ่ายค้างจ่าย",
 "n": 2,
 "files": [
@@ -10892,6 +10943,13 @@
 ]
 },
 {
+"th": "ภาษี VAT",
+"n": 2,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ภาษี › ภาษีมูลค่าเพิ่ม",
 "n": 2,
 "files": [
@@ -11239,14 +11297,6 @@
 ]
 },
 {
-"th": "ยอดรวมทั้งสิ้น",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
 "th": "ยอดรายงวด",
 "n": 2,
 "files": [
@@ -11258,14 +11308,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/reports/JobCost.tsx"
-]
-},
-{
-"th": "ยอดสุทธิ",
-"n": 2,
-"files": [
-"apps/server/src/modules/print.ts",
-"packages/core/src/printforms.ts"
 ]
 },
 {
@@ -11365,14 +11407,6 @@
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx",
 "packages/core/src/journal-import.ts"
-]
-},
-{
-"th": "รวม VAT",
-"n": 2,
-"files": [
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/pages/docs/DepositPick.tsx"
 ]
 },
 {
@@ -11728,6 +11762,21 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/docs/deposits.ts"
+]
+},
+{
+"th": "ราคารวมภาษี",
+"n": 2,
+"files": [
+"packages/core/src/settings.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ราคาสุทธิ",
+"n": 2,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -12660,6 +12709,13 @@
 ]
 },
 {
+"th": "หรือ \"เลขที่เอกสาร\"",
+"n": 2,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "หลัก",
 "n": 2,
 "files": [
@@ -13399,6 +13455,13 @@
 ]
 },
 {
+"th": "เลขที่ตามแฟ้ม",
+"n": 2,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
 "th": "เลขที่บัญชี (ผังบัญชี)",
 "n": 2,
 "files": [
@@ -13473,6 +13536,13 @@
 ]
 },
 {
+"th": "เลขที่อ้างอิง {0}: เลขที่เอกสาร {1} ไม่ตรงกับแถว {2} ({3}) — หนึ่งเอกสารใช้เลขที่เดียว",
+"n": 2,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เลขที่เช็ค {0} มีในทะเบียนแล้ว",
 "n": 2,
 "files": [
@@ -13481,6 +13551,13 @@
 },
 {
 "th": "เลขที่เช็ค หรือเลขที่อ้างอิงการโอน",
+"n": 2,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "เลขที่เอกสาร {0} ซ้ำกับเลขที่อ้างอิง {1} (แถว {2}) — หนึ่งเลขที่ใช้ได้เอกสารเดียว",
 "n": 2,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -13763,6 +13840,14 @@
 "files": [
 "apps/server/src/modules/company.ts",
 "apps/server/src/modules/express-import.ts"
+]
+},
+{
+"th": "แฟ้ม",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -14113,14 +14198,6 @@
 ]
 },
 {
-"th": "ใบเสร็จรับเงิน",
-"n": 2,
-"files": [
-"apps/server/src/modules/print.ts",
-"packages/core/src/printforms.ts"
-]
-},
-{
 "th": "ใบแจ้งหนี้",
 "n": 2,
 "files": [
@@ -14338,13 +14415,6 @@
 ]
 },
 {
-"th": "ไม่มีเลขที่อ้างอิง",
-"n": 2,
-"files": [
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "ไม่มีเลขประจำตัวประชาชน",
 "n": 2,
 "files": [
@@ -14397,6 +14467,13 @@
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx",
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ไม่ใส่เลขที่เอกสาร",
+"n": 2,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -14899,7 +14976,7 @@
 ]
 },
 {
-"th": "(ยังไม่บันทึก) · กดนำเข้าแล้วบันทึกและลงบัญชีทุกฉบับพร้อมกัน — ถ้าผิดฉบับเดียวจะไม่บันทึกเลย · เลขที่เอกสารออกตามประเภทเอกสาร เลขที่อ้างอิงเก็บในช่อง \"อ้างอิง\" และกันนำเข้าซ้ำ",
+"th": "(ยังไม่บันทึก) · กดนำเข้าแล้วบันทึกและลงบัญชีทุกฉบับพร้อมกัน — ถ้าผิดฉบับเดียวจะไม่บันทึกเลย ·",
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/TradeImport.tsx"
@@ -15676,6 +15753,20 @@
 ]
 },
 {
+"th": "1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0%",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "1 = มี VAT · 0 = ยกเว้น VAT · 2 = อัตรา 0% — บิลเดียวมีทั้งสินค้ามี VAT และยกเว้นได้ (ใส่ต่อบรรทัด)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "1 = มีใบกำกับภาษีในประเทศ (ภาษีซื้อ) · 3 = ผู้ให้บริการต่างประเทศ เรายื่น ภ.พ.36 นำส่งแทน (เป็นภาษีซื้อเดือนถัดไป) · 0 = ไม่มี VAT หรือ VAT ที่ขอคืนไม่ได้ (รวมในค่าบริการ)",
 "n": 1,
 "files": [
@@ -15974,13 +16065,6 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
-]
-},
-{
-"th": "2 แยกภาษี (ราคาก่อน VAT)",
-"n": 1,
-"files": [
-"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -16429,6 +16513,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
+]
+},
+{
+"th": ": เว้นว่าง = ออกตามประเภทเอกสาร · ใส่เองในคอลัมน์ \"เลขที่เอกสาร\" (ขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร) · เลขที่อ้างอิงเก็บในช่อง \"อ้างอิง\" และกันนำเข้าซ้ำ",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -19141,6 +19232,13 @@
 ]
 },
 {
+"th": "{0}แฟ้ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
 "th": "{0}แล้ว — แก้ไขไม่ได้",
 "n": 1,
 "files": [
@@ -19295,7 +19393,7 @@
 ]
 },
 {
-"th": "· {0}เงินด้วยวิธีอื่น: คอลัมน์ \"วิธีชำระ\" (ทั้งยอด) หรือแผ่น \"{1}\" (แบ่งหลายวิธี) · ไม่ใส่ = เงินสดทั้งหมด",
+"th": "· {0}เงินด้วยวิธีอื่น: วิธีเดียว = คอลัมน์ \"วิธีชำระ\" ในแผ่นนำเข้า · หลายวิธี = แผ่น \"{1}\" (เว้นคอลัมน์วิธีชำระ) · ใส่ทั้งสองที่ = ผิด · ไม่ใส่ = เงินสดทั้งหมด",
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/TradeImport.tsx"
@@ -19467,6 +19565,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/SubstituteReceipt.tsx"
+]
+},
+{
+"th": "· ยกเลิกแล้ว — ลบเอกสารนั้นก่อนจึงใช้เลขนี้ได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -22291,6 +22396,13 @@
 ]
 },
 {
+"th": "คอลัมน์ตรวจยอด",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "คอลัมน์ที่แสดง ({0}/{1})",
 "n": 1,
 "files": [
@@ -23586,7 +23698,7 @@
 ]
 },
 {
-"th": "ค่าเริ่มต้น = ตามแฟ้มสินค้า",
+"th": "ค่าเริ่มต้น = ตามแฟ้มสินค้า (มีคอลัมน์ \"ภาษี VAT\" = ตามยอดภาษี)",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -23615,6 +23727,13 @@
 },
 {
 "th": "ค่าเริ่มต้น = หน่วยย่อยของสินค้า",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ค่าเริ่มต้น = ออกเลขอัตโนมัติ",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -24629,6 +24748,13 @@
 ]
 },
 {
+"th": "จากแผ่น{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
 "th": "จำการจับคู่ไว้ใช้กับแฟ้มรูปแบบนี้ครั้งต่อไป",
 "n": 1,
 "files": [
@@ -24937,6 +25063,13 @@
 ]
 },
 {
+"th": "จำนวนเงินรวมภาษี",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "จำนวนเงินว่างไว้ได้ ผู้ใช้ป้อนตอนนำต้นแบบไปใช้",
 "n": 1,
 "files": [
@@ -25200,6 +25333,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "ฉบับ · ออกเลขอัตโนมัติ {0} ฉบับ",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -27485,7 +27625,7 @@
 ]
 },
 {
-"th": "ตามประเภทราคาที่เลือกตอนนำเข้า (รวมหรือแยกภาษี)",
+"th": "ตามประเภทราคาที่เลือกตอนนำเข้า (รวมหรือแยกภาษี) · ทศนิยมเกิน 4 ตำแหน่งปัดเป็น 4 ตำแหน่ง (เท่าที่หน้าจอเก็บ)",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -28532,6 +28672,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "ถ้าเลือก \"ประเภทราคาในแฟ้ม\" เป็น {0} ยอดจะตรงกับแฟ้ม — เปลี่ยนแล้วตรวจแฟ้มอีกครั้ง",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -32287,6 +32434,13 @@
 ]
 },
 {
+"th": "บิลเดียวหลายสินค้า = หลายแถวที่เลขที่อ้างอิงเดียวกัน (ตัวอย่างแถว 2–3) · สินค้ามี VAT กับยกเว้น VAT ในบิลเดียว: ใส่ \"ประเภท VAT\" ต่อแถว 1 = มี VAT · 0 = ยกเว้น (ว่าง = ตามแฟ้มสินค้า)",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "บิลเลขที่",
 "n": 1,
 "files": [
@@ -32648,13 +32802,6 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
-]
-},
-{
-"th": "ประเภทราคาในแฟ้ม",
-"n": 1,
-"files": [
-"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -35787,6 +35934,20 @@
 ]
 },
 {
+"th": "ภาษี VAT \"{0}\" ไม่ใช่ตัวเลข (คอลัมน์ \"ภาษี VAT\" — เว้นว่างได้ถ้าไม่มีภาษี)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ภาษี VAT ตามแฟ้ม {0} · โปรแกรมคำนวณ {1} (ต่าง {2})",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "ภาษี: {0}{1} · ส่วนของเงินได้ไม่ประจำ {2}",
 "n": 1,
 "files": [
@@ -36445,6 +36606,13 @@
 ]
 },
 {
+"th": "มี VAT {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
 "th": "มี VAT {0} — ใบลดหนี้",
 "n": 1,
 "files": [
@@ -36659,6 +36827,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/journals.ts"
+]
+},
+{
+"th": "มีแฟ้มจากโปรแกรมอื่นอยู่แล้ว (รูปแบบไม่ตรงแบบฟอร์มนี้): ไม่ต้องคัดลอกมากรอก — เลือกแฟ้มนั้นที่หน้านำเข้าได้เลย ระบบจับคู่คอลัมน์ให้ (หรือกด \"✨ ให้ AI จัดรูปแบบ\") ตรวจการจับคู่ แล้วกดตรวจแฟ้ม/นำเข้า",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -37250,7 +37425,21 @@
 ]
 },
 {
+"th": "ยกเว้น {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
 "th": "ยกเว้นvat",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ยอด VAT",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -37845,6 +38034,20 @@
 ]
 },
 {
+"th": "ยอดภาษี",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ยอดภาษีของบรรทัดจากโปรแกรมเดิม (ไม่บันทึก — โปรแกรมคำนวณเอง): ไม่ใส่ \"ประเภท VAT\" → ว่าง/0 = ยกเว้น VAT (0) · มากกว่า 0 = มี VAT (1) · ยอดรวมของเอกสารต่างจากที่คำนวณเกิน 0.05 = เตือน",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ยอดภาษีหัก ณ ที่จ่ายในใบสำคัญ {0} · ป้อนในแฟ้มแล้ว {1}{2}",
 "n": 1,
 "files": [
@@ -37940,6 +38143,20 @@
 "n": 1,
 "files": [
 "packages/core/src/import-mapping.ts"
+]
+},
+{
+"th": "ยอดรวม VAT",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ยอดรวม VAT ของบรรทัด (หรือยอดทั้งบิลซ้ำทุกแถว) จากโปรแกรมเดิม — ไม่บันทึก ใช้ตรวจยอดรวมทั้งสิ้นของเอกสาร (ต่างเกิน 0.05 = เตือน)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -38115,6 +38332,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/source.ts"
+]
+},
+{
+"th": "ยอดไม่ตรงกับแฟ้ม {0} จาก {1} ฉบับ",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -41492,6 +41716,27 @@
 ]
 },
 {
+"th": "ราคาต่อหน่วย (รวมภาษี)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ราคาต่อหน่วย (ไม่รวมภาษี)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ราคาต่อหน่วยก่อนภาษี",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ราคาต่อหน่วยในแฟ้มรวมหรือแยกภาษี",
 "n": 1,
 "files": [
@@ -41506,10 +41751,24 @@
 ]
 },
 {
-"th": "ราคารวมภาษี",
+"th": "ราคารวม (รวมภาษี)",
 "n": 1,
 "files": [
-"packages/core/src/settings.ts"
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ราคาสุทธิ \"{0}\" ไม่ใช่ตัวเลข (คอลัมน์ \"ราคาสุทธิ\")",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ราคาสุทธิตามแฟ้ม {0} · โปรแกรมคำนวณรวมทั้งสิ้น {1} (ต่าง {2})",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -44873,6 +45132,13 @@
 ]
 },
 {
+"th": "วิธีชำระจากแผ่นนำเข้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
 "th": "วิธีติดตั้ง (ครั้งเดียวต่อเครื่อง)",
 "n": 1,
 "files": [
@@ -44891,6 +45157,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/StarterFill.tsx"
+]
+},
+{
+"th": "วิธีเดียว: ใช้คอลัมน์ \"วิธีชำระ\" ในแผ่นนำเข้า · หลายวิธี (เช่น เงินสด + เงินโอน): ใช้แผ่นนี้ หนึ่งแถว = หนึ่งวิธี และเว้นคอลัมน์ \"วิธีชำระ\" ในแผ่นนำเข้า · ใส่ทั้งสองที่ = ผิด · ไม่ใส่ทั้งสองที่ = เงินสดทั้งหมด",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -46882,6 +47155,20 @@
 ]
 },
 {
+"th": "ส่วนลด (รวมภาษี)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ส่วนลด (ไม่รวมภาษี)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ส่วนลดการค้าที่ได้รับ",
 "n": 1,
 "files": [
@@ -48020,6 +48307,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Forms.tsx"
+]
+},
+{
+"th": "ออกเลขอัตโนมัติ",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -49455,6 +49749,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "เงินสดทั้งหมด",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -52979,6 +53280,20 @@
 ]
 },
 {
+"th": "เลขที่เอกสาร \"{0}\" ยาวเกิน 30 ตัว",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "เลขที่เอกสาร \"{0}\" ใช้ได้เฉพาะตัวอักษร ตัวเลข และ / - . _ (ไม่มีช่องว่าง)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เลขที่เอกสาร (ขึ้นต้นด้วย)",
 "n": 1,
 "files": [
@@ -52993,10 +53308,31 @@
 ]
 },
 {
+"th": "เลขที่เอกสาร {0} ต้องขึ้นต้นด้วย {1} ตามประเภทเอกสารที่เลือก (เช่น {2}{3}) — แก้ในคอลัมน์ \"เลขที่เอกสาร\" หรือเว้นว่างให้ระบบออกเลข",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
+"th": "เลขที่เอกสาร {0} มีอยู่แล้ว (ลงวันที่ {1}{2}) — เปลี่ยนเลขที่ หรือเว้นว่างให้ระบบออกเลข",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "เลขที่เอกสาร การลงบัญชี และค่าเริ่มต้นเป็นไปตามประเภทที่เลือก",
 "n": 1,
 "files": [
 "apps/web/src/components/DocTypeTabs.tsx"
+]
+},
+{
+"th": "เลขที่เอกสาร: เว้นว่าง = ระบบออกเลขตามประเภทเอกสาร · ใส่เอง = ต้องขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร (เช่น {0}…) ไม่ซ้ำกับเอกสารใดในบริษัท (ตัวอย่างแถว 4) · เลขของโปรแกรมเดิม (ไม่ขึ้นต้นด้วย {1}) ใส่ในคอลัมน์ \"เลขที่อ้างอิง\" — ระบบออกเลขให้ และค้นหาด้วยเลขเดิมได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -53067,6 +53403,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/engine.ts"
+]
+},
+{
+"th": "เลขที่เอกสารในแฟ้ม {0} ฉบับ (เช่น {1}) ไม่ขึ้นต้นด้วย {2} ตามประเภทเอกสาร — เก็บเป็นเลขที่อ้างอิง (ค้นหาด้วยเลขเดิมได้) และออกเลขที่เอกสารอัตโนมัติ · ต้องการใช้เลขเอง: ใส่เลขที่ขึ้นต้นด้วย {3}",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -53182,10 +53525,24 @@
 ]
 },
 {
+"th": "เลขที่ใบเสร็จ",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "เลขที่ใบเสร็จ/อ้างอิง",
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Filing.tsx"
+]
+},
+{
+"th": "เลขที่ใบเสร็จรับเงิน",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -55345,14 +55702,14 @@
 ]
 },
 {
-"th": "แถวที่เลขเดียวกันรวมเป็นเอกสารเดียว · เก็บในช่อง \"อ้างอิง\" ของเอกสาร (ไม่เกิน 30 ตัว) และใช้กันนำเข้าซ้ำ",
+"th": "แถวที่เลขเดียวกันรวมเป็นเอกสารเดียว · เก็บในช่อง \"อ้างอิง\" ของเอกสาร (ไม่เกิน 30 ตัว) และใช้กันนำเข้าซ้ำ · ว่างได้ถ้าใส่ \"เลขที่เอกสาร\"",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
 ]
 },
 {
-"th": "แถวที่เลขเดียวกันรวมเป็นเอกสารเดียว · เก็บไว้ในช่อง \"อ้างอิง\" ของเอกสาร (ไม่เกิน 30 ตัว) และใช้กันนำเข้าซ้ำ",
+"th": "แถวที่เลขเดียวกันรวมเป็นเอกสารเดียว · เก็บไว้ในช่อง \"อ้างอิง\" ของเอกสาร (ไม่เกิน 30 ตัว) และใช้กันนำเข้าซ้ำ · ว่างได้ถ้าใส่ \"เลขที่เอกสาร\"",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -55548,7 +55905,7 @@
 ]
 },
 {
-"th": "แบบฟอร์มของแต่ละชนิดมีเฉพาะช่องที่หน้าจอเอกสารนั้นมี · หัวคอลัมน์สีชมพู มี * = ต้องมี · สีเหลือง = ต้องมีตามเงื่อนไข · อื่น ๆ เว้นว่างได้ (ค่าเริ่มต้นเดียวกับหน้าจอ — ดูแผ่น \"คำอธิบาย\"){0}",
+"th": "แบบฟอร์มของแต่ละชนิดมีเฉพาะช่องที่หน้าจอเอกสารนั้นมี · หัวคอลัมน์สีชมพู มี * = ต้องมี · สีเหลือง = ต้องมีตามเงื่อนไข · อื่น ๆ เว้นว่างได้ (ค่าเริ่มต้นเดียวกับหน้าจอ — ดูแผ่น \"คำอธิบาย\"){0} · มีแฟ้มจากโปรแกรมอื่น: เลือกแฟ้มนั้นได้เลย (จับคู่คอลัมน์เอง หรือให้ AI จัดรูปแบบ)",
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/TradeImport.tsx"
@@ -55727,13 +56084,6 @@
 "n": 1,
 "files": [
 "packages/core/src/starter-data.ts"
-]
-},
-{
-"th": "แฟ้ม",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -58432,6 +58782,13 @@
 ]
 },
 {
+"th": "ใส่เลขเอง: ต้องขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสารที่เลือก (เช่น HS…) ไม่เกิน 30 ตัว ไม่มีช่องว่าง ไม่ซ้ำกับเอกสารใดในบริษัท · ว่าง = ระบบออกเลขให้ · ไม่มีคอลัมน์ \"เลขที่อ้างอิง\" = ใช้เลขนี้รวมแถวเป็นเอกสารเดียว (และเก็บเป็นเลขที่อ้างอิง) — เลขที่ไม่ขึ้นต้นด้วยตัวนำหน้า (เช่นเลขจากโปรแกรมเดิม) ใช้เป็นเลขที่อ้างอิง ระบบออกเลขให้",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ใส่ให้อัตโนมัติตอนเปิดบิลขาย",
 "n": 1,
 "files": [
@@ -59916,7 +60273,21 @@
 ]
 },
 {
-"th": "ไม่มีเลขที่อ้างอิง (คอลัมน์ \"เลขที่อ้างอิง\" ต้องมีทุกแถว — แถวที่เลขเดียวกันรวมเป็นเอกสารเดียว)",
+"th": "ไม่มีเลขที่อ้างอิง",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ไม่มีเลขที่อ้างอิง (คอลัมน์ \"เลขที่อ้างอิง\"{0} ต้องมีทุกแถว — แถวที่เลขเดียวกันรวมเป็นเอกสารเดียว)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ไม่มีเลขที่อ้างอิง (คอลัมน์ \"เลขที่อ้างอิง\"{0} ต้องมีทุกแถว)",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -59986,6 +60357,13 @@
 ]
 },
 {
+"th": "ไม่มีในแบบฟอร์มนี้ — ใช้กับแฟ้มจากโปรแกรมอื่นที่มียอดภาษี/ยอดสุทธิ (เพิ่มคอลัมน์ชื่อนี้ได้)",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "ไม่มีใบจ่ายเงินสดย่อยที่รอเบิกชดเชย",
 "n": 1,
 "files": [
@@ -60025,6 +60403,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Journals.tsx"
+]
+},
+{
+"th": "ไม่รวม VAT",
+"n": 1,
+"files": [
+"packages/core/src/import-mapping.ts"
 ]
 },
 {
@@ -61054,6 +61439,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
+"th": "✓ ยอดภาษี/ยอดรวมตรงกับแฟ้มทุกฉบับ ({0})",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {

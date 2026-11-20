@@ -71,6 +71,8 @@ export function readTable(fileName: string, buf: Buffer): string[][] {
   return readSheets(fileName, buf)[0]?.rows ?? [];
 }
 /** แผ่น "รับชำระ"/"จ่ายชำระ" (แบ่งหลายวิธีชำระ — HANDOFF 169) */
+/** กติกาบนสุดของแผ่นรับ/จ่ายชำระ (เจ้าของงงว่าใส่ที่ไหน — HANDOFF 170) */
+export const PAY_SHEET_RULE = 'วิธีเดียว: ใช้คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า · หลายวิธี (เช่น เงินสด + เงินโอน): ใช้แผ่นนี้ หนึ่งแถว = หนึ่งวิธี และเว้นคอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า · ใส่ทั้งสองที่ = ผิด · ไม่ใส่ทั้งสองที่ = เงินสดทั้งหมด';
 const paySheetOf = (sheets: Array<{ name: string; rows: string[][] }>) => sheets.slice(1).find((s) => /รับชำระ|จ่ายชำระ|ชำระ|payment/i.test(s.name))?.rows ?? [];
 
 type TplCol = { key: string; th: string; need: ImportNeed; when?: string; dflt?: string; forNew?: boolean; hint: string; example: [string, string] };
@@ -81,19 +83,29 @@ const NUM_KEYS = new Set(['qty', 'price', 'amount', 'wht_amount', 'wht_rate']);
  * แบบฟอร์มตัวอย่าง .xlsx ตามชนิดเอกสาร (HANDOFF 169 — มีทุกช่องที่หน้าจอเอกสารนั้นมี ไม่มีช่องที่หน้าจอไม่มี):
  * แผ่น "นำเข้า" (หัวสีชมพู * = ต้องมี · สีเหลือง = ต้องมีถ้า… · ตัวอย่าง 2 แถว) · ขาย/ซื้อเงินสด ค่าใช้จ่ายอื่น: แผ่น "รับชำระ"/"จ่ายชำระ" · แผ่น "คำอธิบาย"
  */
-export function buildTemplate(K: ImportKindLike & { label: string }, sample: { party: string | null; partyName?: string | null; items: string[]; date: string }, cash = false): Buffer {
-  const cols: TplCol[] = cash ? EXPENSE_IMPORT_COLUMNS : importColumnsFor(K);
+export function buildTemplate(K: ImportKindLike & { label: string }, sample: { party: string | null; partyName?: string | null; items: string[]; date: string; prefix?: string | null }, cash = false): Buffer {
+  const all: Array<TplCol & { check?: boolean }> = cash ? EXPENSE_IMPORT_COLUMNS : importColumnsFor(K);
+  // ช่องตรวจยอด (ภาษี VAT · ราคาสุทธิ) ไม่ใช่ช่องของหน้าจอ — ไม่อยู่ในแผ่นนำเข้า (อธิบายในแผ่นคำอธิบาย)
+  const cols = all.filter((c) => !c.check), checks = all.filter((c) => c.check);
   const who = K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย';
-  const ex = (row: 0 | 1) => cols.map((c) => c.key === 'party' ? sample.party ?? c.example[row] : c.key === 'party_name' ? (sample.party ? sample.partyName ?? '' : c.example[row])
-    : c.key === 'item' || c.key === 'code' ? sample.items[row] ?? sample.items[0] ?? c.example[row] : c.key === 'date' ? sample.date : c.example[row]);
+  const prefix = sample.prefix || K.cls;
+  // ตัวอย่าง: แถว 2–3 = บิลเดียวสองบรรทัด (มี VAT + ยกเว้น VAT · เลขที่ออกอัตโนมัติ) · แถว 4 = บิลที่ใส่เลขที่เอกสารเอง
+  const ex = (row: 0 | 1 | 2) => cols.map((c) => {
+    const r = row === 2 ? 0 : row;
+    if (row === 2 && c.key === 'ref') return c.example[0].replace(/1$/, '2');
+    if (c.key === 'doc_no') return row === 2 ? `${prefix}-EX-001` : '';
+    return c.key === 'party' ? sample.party ?? c.example[r] : c.key === 'party_name' ? (sample.party ? sample.partyName ?? '' : c.example[r])
+      : c.key === 'item' || c.key === 'code' ? sample.items[r] ?? sample.items[0] ?? c.example[r] : c.key === 'date' ? sample.date : c.example[r];
+  });
   const kinds = (cs: Array<{ need: ImportNeed }>) => Object.fromEntries(cs.map((c, i) => [i, c.need === 'req' ? 'req' : c.need === 'cond' ? 'cond' : null] as const).filter((x) => x[1])) as Record<number, 'req' | 'cond'>;
   const idx = (cs: Array<{ key: string }>, set: Set<string>) => cs.map((c, i) => (set.has(c.key) ? i : -1)).filter((i) => i >= 0);
-  const sheets: XlsxSheet[] = [{ name: 'นำเข้า', rows: [cols.map(importHeaderText), ex(0), ex(1)], textCols: idx(cols, TEXT_KEYS), numCols: idx(cols, NUM_KEYS), headKinds: kinds(cols),
+  const sheets: XlsxSheet[] = [{ name: 'นำเข้า', rows: [cols.map(importHeaderText), ex(0), ex(1), ex(2)], textCols: idx(cols, TEXT_KEYS), numCols: idx(cols, NUM_KEYS), headKinds: kinds(cols),
     widths: cols.map((c) => (['description', 'remark', 'party_name', 'item_name', 'party_address'].includes(c.key) ? 28 : 15)) }];
   const hasPay = cash || !!(K as ImportKindLike).payments;
   const payName = K.module === 'AR' ? 'รับชำระ' : 'จ่ายชำระ';
   const pcols = PAYMENT_IMPORT_COLUMNS.filter((c) => c.key !== 'cheque_date' || cash);
-  if (hasPay) sheets.push({ name: payName, rows: [pcols.map(importHeaderText)], textCols: idx(pcols, TEXT_KEYS), numCols: idx(pcols, NUM_KEYS), headKinds: kinds(pcols), widths: pcols.map(() => 18) });
+  // กติกาไว้บนสุดของแผ่น (ตัวอ่านหาหัวตารางเองภายใน 20 แถวแรก — แถวกติกาไม่ใช่หัวตาราง)
+  if (hasPay) sheets.push({ name: payName, rows: [[PAY_SHEET_RULE], pcols.map(importHeaderText)], headAt: 1, textCols: idx(pcols, TEXT_KEYS), numCols: idx(pcols, NUM_KEYS), headKinds: kinds(pcols), widths: pcols.map(() => 18) });
   const line = cash ? 'รหัสค่าใช้จ่ายหนึ่งบรรทัด' : 'สินค้าหนึ่งบรรทัด';
   const help: string[][] = [['คอลัมน์', 'จำเป็น', 'คำอธิบาย'], ...cols.map((c) => [c.th, importNeedLabel(c), c.hint]),
     ['', '', ''],
@@ -101,6 +113,10 @@ export function buildTemplate(K: ImportKindLike & { label: string }, sample: { p
     ['', '', 'หัวคอลัมน์สีชมพู มี * = ต้องมี (หน้าจอบันทึกไม่ได้ถ้าไม่มี) · สีเหลือง = ต้องมีตามเงื่อนไข · สีปกติ = ไม่บังคับ เว้นว่าง = ค่าเริ่มต้นเดียวกับหน้าจอ · ลบคอลัมน์ที่ไม่ใช้ได้'],
     ['', '', 'ช่องรหัส (คลัง แผนก Job พนักงานขาย เขตการขาย ขนส่งโดย วิธีชำระ) ใส่รหัสหรือชื่อที่มีในโปรแกรมได้'],
     ['', '', `${who}/สินค้าที่ยังไม่มีในโปรแกรม: ติ๊ก "เพิ่มข้อมูลหลักที่ยังไม่มีให้อัตโนมัติ" ตอนนำเข้า — ระบบเพิ่มให้พร้อมกับเอกสาร`],
+    ...(cash ? [] : [['', '', 'บิลเดียวหลายสินค้า = หลายแถวที่เลขที่อ้างอิงเดียวกัน (ตัวอย่างแถว 2–3) · สินค้ามี VAT กับยกเว้น VAT ในบิลเดียว: ใส่ "ประเภท VAT" ต่อแถว 1 = มี VAT · 0 = ยกเว้น (ว่าง = ตามแฟ้มสินค้า)']]),
+    ['', '', `เลขที่เอกสาร: เว้นว่าง = ระบบออกเลขตามประเภทเอกสาร · ใส่เอง = ต้องขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร (เช่น ${prefix}…) ไม่ซ้ำกับเอกสารใดในบริษัท (ตัวอย่างแถว 4) · เลขของโปรแกรมเดิม (ไม่ขึ้นต้นด้วย ${prefix}) ใส่ในคอลัมน์ "เลขที่อ้างอิง" — ระบบออกเลขให้ และค้นหาด้วยเลขเดิมได้`],
+    ['', '', 'มีแฟ้มจากโปรแกรมอื่นอยู่แล้ว (รูปแบบไม่ตรงแบบฟอร์มนี้): ไม่ต้องคัดลอกมากรอก — เลือกแฟ้มนั้นที่หน้านำเข้าได้เลย ระบบจับคู่คอลัมน์ให้ (หรือกด "✨ ให้ AI จัดรูปแบบ") ตรวจการจับคู่ แล้วกดตรวจแฟ้ม/นำเข้า'],
+    ...(checks.length ? [['', '', ''], ['คอลัมน์ตรวจยอด', '', 'ไม่มีในแบบฟอร์มนี้ — ใช้กับแฟ้มจากโปรแกรมอื่นที่มียอดภาษี/ยอดสุทธิ (เพิ่มคอลัมน์ชื่อนี้ได้)'], ...checks.map((c) => [c.th, importNeedLabel(c), c.hint])] : []),
     ...(hasPay ? [['', '', ''], [`แผ่น "${payName}"`, '', `แบ่ง${K.module === 'AR' ? 'รับ' : 'จ่าย'}หลายวิธี (เช่น เงินสด + เงินโอน): หนึ่งแถว = หนึ่งวิธี ใส่เลขที่อ้างอิงของเอกสาร · ยอดรวมทุกแถว = ยอดรวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย · วิธีเดียวใช้คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้าได้ (ใช้ยอดทั้งเอกสาร) · ไม่ใส่ = เงินสดทั้งหมด · ใช้แผ่นนี้ได้เฉพาะแฟ้ม .xlsx`],
       ...pcols.map((c) => [c.th, importNeedLabel(c), c.hint])] : []),
     ...(!cash && !hasPay ? [['', '', `${K.label}ไม่มีการรับ/จ่ายเงินในเอกสาร — รับ/จ่ายชำระที่เมนูรับชำระหนี้/จ่ายชำระหนี้`]] : []),
@@ -119,7 +135,16 @@ const importBody = z.object({
   /** ให้ AI จัดรูปแบบ Excel (HANDOFF 168): การจับคู่คอลัมน์ที่ผู้ใช้ยืนยัน · รหัสที่ยอมรับจากคำแนะนำ (แถว → รหัส) */
   mapping: mappingBody.optional(), codes: codesBody,
 });
-type Result = { cash_amount?: string | null; other_amount?: string | null; payments?: number; ref: string; row: number; date: string; party_code: string; party_name: string | null; party_new: boolean; lines: number; new_items: number; amount: string | null; vat_amount: string | null; wht_amount: string | null; net_amount: string | null; doc_no: string | null; warnings: string[] };
+type Result = {
+  /** file = เลขที่เอกสารตามแฟ้ม · auto = ระบบออกเลข (HANDOFF 170) */
+  doc_no_source: 'file' | 'auto';
+  /** ที่มาของการรับ/จ่ายชำระ: main = คอลัมน์วิธีชำระในแผ่นนำเข้า · sheet = แผ่นรับ/จ่ายชำระ · cash = เงินสดทั้งหมด */
+  pay_source?: 'main' | 'sheet' | 'cash';
+  /** ยอดภาษี/ยอดรวมตามแฟ้ม (คอลัมน์ตรวจยอด) · check = ตรง/ต่าง · null = แฟ้มไม่มียอด */
+  file_vat?: string | null; file_net?: string | null; check?: 'ok' | 'diff' | null;
+  /** จำนวนบรรทัดตามประเภท VAT (1 มี VAT · 0 ยกเว้น · 2 อัตรา 0%) */
+  vat_lines?: Record<'0' | '1' | '2', number>;
+  cash_amount?: string | null; other_amount?: string | null; payments?: number; ref: string; row: number; date: string; party_code: string; party_name: string | null; party_new: boolean; lines: number; new_items: number; amount: string | null; vat_amount: string | null; wht_amount: string | null; net_amount: string | null; doc_no: string | null; warnings: string[] };
 
 export function tradeImportRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/trade-import/:path/template', async (req, reply) => {
@@ -130,8 +155,9 @@ export function tradeImportRoutes(app: FastifyInstance, db: Db) {
     const items = await db.selectFrom('md_item').select('code').where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('status', '=', 'A')
       .where('item_type', 'in', k.cash ? ['5'] : ['0', '3']).orderBy('item_type').orderBy('code').limit(2).execute();
     const today = new Date().toISOString().slice(0, 10);
+    const dt = await db.selectFrom('md_doc_type').select('code').where('company_id', '=', a.companyId).where('doc_class', '=', k.K.cls).where('status', '=', 'A').where('deleted_at', 'is', null).orderBy('code').executeTakeFirst();
     reply.header('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').header('content-disposition', `attachment; filename="import-${k.K.cls}.xlsx"`);
-    return buildTemplate(k.K, { party: party?.code ?? null, partyName: party?.name ?? null, items: items.map((x) => x.code), date: formatDate(today, co.year_system as YearSystem) }, k.cash);
+    return buildTemplate(k.K, { party: party?.code ?? null, partyName: party?.name ?? null, items: items.map((x) => x.code), date: formatDate(today, co.year_system as YearSystem), prefix: dt?.code ?? null }, k.cash);
   });
 
   app.post('/api/v1/trade-import/:path', async (req) => {
@@ -151,9 +177,11 @@ export function tradeImportRoutes(app: FastifyInstance, db: Db) {
     const tf = transformTable(sheets[0]?.rows ?? [], target, b.mapping, b.codes);
     const rows = tf.table;
     const ys = co.year_system as YearSystem;
-    const run = k.cash ? importExpense(db, a, k.K, rows, ys, { ...b, priceType, vatRate, dtId: dt.id }, paySheetOf(sheets)) : importTrade(db, a, k.K, rows, ys, { ...b, priceType, vatRate, dtId: dt.id }, paySheetOf(sheets));
+    const opt = { ...b, priceType, vatRate, dtId: dt.id, dtCode: dt.code };
+    const run = k.cash ? importExpense(db, a, k.K, rows, ys, opt, paySheetOf(sheets)) : importTrade(db, a, k.K, rows, ys, opt, paySheetOf(sheets));
     const { results, issues, fileDocs, masters, ran, warnings } = await run;
     issues.sort((p, q) => p.row - q.row);
+    results.sort((p, q) => p.row - q.row);   // บันทึกฉบับที่กำหนดเลขเองก่อน — แสดงตามลำดับในแฟ้ม
     // ตรวจแฟ้มไม่ผ่าน (ยังไม่ได้ลองบันทึก) = บอกจำนวนให้กดตรวจ · ลองบันทึกแล้วผิด = บอกข้อแรก
     if (b.commit && issues.length) throw badRequest(ran ? `นำเข้าไม่ได้ — ${issues[0]!.message} (แถว ${issues[0]!.row})` : `นำเข้าไม่ได้ — มีข้อผิดพลาด ${issues.length} รายการ กด "ตรวจแฟ้ม" ดูรายละเอียดแล้วแก้ในแฟ้ม`,
       issues.slice(0, 200).map((x) => ({ field: `row:${x.row}`, message: x.message })));
@@ -166,7 +194,7 @@ export function tradeImportRoutes(app: FastifyInstance, db: Db) {
   });
 }
 
-type Opt = z.infer<typeof importBody> & { priceType: '0' | '1' | '2'; vatRate: string; dtId: string };
+type Opt = z.infer<typeof importBody> & { priceType: '0' | '1' | '2'; vatRate: string; dtId: string; dtCode: string };
 type Masters = { parties: Array<{ code: string; name: string; tax_id: string | null; tax_branch_no: string; row: number }>; items: Array<{ code: string; name: string; kind: '0' | '3'; unit: string | null; row: number }>; units: string[] };
 const mastersOf = (pp: PlannedParty[], ip: PlannedItem[], units: string[]): Masters => ({
   parties: pp.map((p) => ({ code: p.code, name: p.name, tax_id: p.tax_id, tax_branch_no: p.tax_branch_no, row: p.row })),
@@ -200,7 +228,7 @@ async function tryAll<T extends { doc: { ref: string; row: number } }>(db: Db, c
     }
   }
   await sql.raw(commit && !issues.length ? 'RELEASE SAVEPOINT trade_import_all' : 'ROLLBACK TO SAVEPOINT trade_import_all').execute(db);
-  if (!commit) for (const r of results) r.doc_no = null;
+  if (!commit) for (const r of results) if (r.doc_no_source !== 'file') r.doc_no = null;
   return { results, units, ran: true };
 }
 
@@ -211,6 +239,60 @@ function whtEntry(w: ExpenseImportWht, base: ReturnType<typeof d>, sup: { wht_fo
   const form = w.form ?? (wht50FormOf(sup?.wht_form, tax) === '3' ? 'S03' : 'S53');
   const income = w.income ?? sup?.wht_income_desc ?? WHT_INCOME_TYPES.find((t) => t.rate === d(rate || 0).toString())?.text ?? 'ค่าบริการ';
   return { form_type: form, income_type: income, rate: rate || '0', paid_amount: base.toFixed(2), tax_amount: amount.toFixed(2), condition: '1' as const };
+}
+/**
+ * เลขที่เอกสารตามแฟ้ม (HANDOFF 170) — กติกาเดียวกับช่องเลขที่เอกสารบนหน้าจอ (docNoFor · ข้อกำหนดเจ้าของ 30/10/2569 "ต้องห้ามปล่อยผ่าน"):
+ * ขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร = ใช้เลขนั้น (ห้ามซ้ำกับเอกสาร/ใบสำคัญใดในบริษัทที่ยังไม่ลบ — ฉบับยกเลิกยังจองเลข) · ใส่แค่ตัวนำหน้า = อัตโนมัติ
+ * ไม่ขึ้นต้นด้วยตัวนำหน้า: แฟ้มไม่มีเลขที่อ้างอิงแยก (เลขของโปรแกรมเดิม เช่น RE-…) = เก็บเป็นเลขที่อ้างอิง ออกเลขอัตโนมัติ + เตือน · มีเลขที่อ้างอิงแยก = ผิด (ตั้งใจกำหนดเลขเอง)
+ * คืน เลขที่อ้างอิง → เลขที่เอกสารที่ใช้
+ */
+async function fileNumbers(db: Db, companyId: string, prefix: string, ys: YearSystem, docs: Array<{ ref: string; row: number; doc_no: string | null }>, issues: ImportIssue[], warnings: string[]) {
+  const P = prefix.toUpperCase();
+  const own = new Map<string, string>(), asRef: string[] = [];
+  for (const x of docs) {
+    if (!x.doc_no || x.doc_no.toUpperCase() === P) continue;
+    if (x.doc_no.toUpperCase().startsWith(P)) own.set(x.ref, x.doc_no);
+    else if (x.ref === x.doc_no) asRef.push(x.doc_no);
+    else issues.push({ row: x.row, message: `เลขที่เอกสาร ${x.doc_no} ต้องขึ้นต้นด้วย ${prefix} ตามประเภทเอกสารที่เลือก (เช่น ${prefix}${x.doc_no.replace(/^[A-Za-zก-๙]+/, '') || '0000001'}) — แก้ในคอลัมน์ "เลขที่เอกสาร" หรือเว้นว่างให้ระบบออกเลข` });
+  }
+  if (asRef.length) warnings.push(`เลขที่เอกสารในแฟ้ม ${asRef.length} ฉบับ (เช่น ${asRef[0]}) ไม่ขึ้นต้นด้วย ${prefix} ตามประเภทเอกสาร — เก็บเป็นเลขที่อ้างอิง (ค้นหาด้วยเลขเดิมได้) และออกเลขที่เอกสารอัตโนมัติ · ต้องการใช้เลขเอง: ใส่เลขที่ขึ้นต้นด้วย ${prefix}`);
+  const nos = [...new Set(own.values())];
+  if (nos.length) {
+    const used = (await sql<{ no: string; date: string; status: string }>`SELECT doc_no AS no, doc_date::text AS date, doc_status AS status FROM doc_header WHERE company_id = ${companyId} AND deleted_at IS NULL AND doc_no = ANY(${nos}::text[])
+        UNION ALL SELECT voucher_no, voucher_date::text, doc_status FROM gl_journal WHERE company_id = ${companyId} AND deleted_at IS NULL AND voucher_no = ANY(${nos}::text[])`.execute(db)).rows;
+    for (const x of docs) {
+      const no = own.get(x.ref);
+      const u = no ? used.find((r) => r.no === no) : undefined;
+      if (!no || !u) continue;
+      issues.push({ row: x.row, message: `เลขที่เอกสาร ${no} มีอยู่แล้ว (ลงวันที่ ${formatDate(u.date.slice(0, 10), ys)}${u.status === 'C' ? ' · ยกเลิกแล้ว — ลบเอกสารนั้นก่อนจึงใช้เลขนี้ได้' : ''}) — เปลี่ยนเลขที่ หรือเว้นว่างให้ระบบออกเลข` });
+      own.delete(x.ref);
+    }
+  }
+  return own;
+}
+/** ฉบับที่กำหนดเลขเองบันทึกก่อน — เลขอัตโนมัติ (issueDocNo ข้ามเลขที่มีอยู่แล้ว) จึงไม่ชนเลขในแฟ้ม */
+const ownFirst = <T extends { body: { doc_no?: string | null } }>(xs: T[]) => [...xs].sort((p, q) => Number(!!q.body.doc_no) - Number(!!p.body.doc_no));
+const PRICE_TYPE_TH: Record<string, string> = { '1': '1 รวมภาษีแล้ว', '2': '2 แยกภาษี (ราคาก่อน VAT)' };
+const fmt2 = (v: ReturnType<typeof d>) => v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+/**
+ * ตรวจยอดกับแฟ้ม (HANDOFF 170): ยอดภาษี/ราคาสุทธิตามแฟ้ม = รวมทุกบรรทัด (หรือยอดทั้งบิลที่ใส่ซ้ำทุกแถว) · ต่างเกิน 0.05 = เตือน (บันทึกได้) พร้อมบอกประเภทราคาที่ทำให้ตรง
+ */
+function fileCheck(lines: Array<{ vat_amount: string | null; net_total: string | null }>, vat: string | null, net: string | null, alt: { pt: string; vat: string; net: string } | null) {
+  const pickFile = (vals: Array<string | null>, got: ReturnType<typeof d>) => {
+    if (vals.every((v) => v === null)) return null;
+    const sum = vals.reduce((t, v) => t.plus(d(v ?? 0)), ZERO);
+    const one = vals.length > 1 && vals.every((v) => v !== null && v === vals[0]) ? d(vals[0]!) : null;
+    return one && one.minus(got).abs().lt(sum.minus(got).abs()) ? one : sum;
+  };
+  const gv = d(vat ?? 0), gn = d(net ?? 0);
+  const fv = pickFile(lines.map((l) => l.vat_amount), gv), fn = pickFile(lines.map((l) => l.net_total), gn);
+  const warnings: string[] = [];
+  const off = (f: ReturnType<typeof d> | null, g: ReturnType<typeof d>) => !!f && f.minus(g).abs().gt('0.05');
+  if (off(fv, gv)) warnings.push(`ภาษี VAT ตามแฟ้ม ${fmt2(fv!.toDecimalPlaces(2))} · โปรแกรมคำนวณ ${fmt2(gv)} (ต่าง ${fmt2(fv!.minus(gv).abs().toDecimalPlaces(2))})`);
+  if (off(fn, gn)) warnings.push(`ราคาสุทธิตามแฟ้ม ${fmt2(fn!.toDecimalPlaces(2))} · โปรแกรมคำนวณรวมทั้งสิ้น ${fmt2(gn)} (ต่าง ${fmt2(fn!.minus(gn).abs().toDecimalPlaces(2))})`);
+  const fx = fn ?? null;
+  if (warnings.length && alt && fx && !off(fx, d(alt.net)) && !off(fv, d(alt.vat))) warnings.push(`ถ้าเลือก "ประเภทราคาในแฟ้ม" เป็น ${PRICE_TYPE_TH[alt.pt]} ยอดจะตรงกับแฟ้ม — เปลี่ยนแล้วตรวจแฟ้มอีกครั้ง`);
+  return { file_vat: fv ? fv.toDecimalPlaces(2).toFixed(2) : null, file_net: fn ? fn.toDecimalPlaces(2).toFixed(2) : null, check: fv || fn ? (warnings.length ? 'diff' as const : 'ok' as const) : null, warnings };
 }
 /** คอลัมน์ในแฟ้มที่หน้าจอเอกสารชนิดนี้ไม่มี → ไม่นำเข้า + เตือน (เช่น เครดิต (วัน) ของขายเงินสด — แฟ้มเดิมยังนำเข้าได้) */
 function columnWarnings(present: string[], allowed: Set<string>, all: Array<{ key: string; th: string }>, label: string, cashSale: boolean) {
@@ -235,10 +317,11 @@ function paySheetByRef(rows: string[][], ys: YearSystem, refs: string[], use: bo
 
 /** ขาย/ซื้อ (IV HS DR CN RR HP CP DN): ทุกช่องของหน้าจอเอกสาร (HANDOFF 169) → saveTrade เดียวกับหน้าจอ */
 async function importTrade(db: Db, a: Ctx, K: TradeKind, rows: string[][], ys: YearSystem, b: Opt, payRows: string[][]) {
-  const { docs, errors, cols: present } = mapImport(rows, ys);
+  const { docs, errors, cols: present } = mapImport(rows, ys, K);
   const issues: ImportIssue[] = [...errors];
   const allowed = new Set<string>(importColumnsFor(K).map((c) => c.key));
   const warnings = columnWarnings(present, allowed, IMPORT_COLUMNS, K.label, !!K.payments);
+  const own = await fileNumbers(db, a.companyId, b.dtCode, ys, docs, issues, warnings);
   const paysBy = paySheetByRef(payRows, ys, docs.map((x) => x.ref), !!K.payments, K.label, issues, warnings);
   const pp = await planParties(db, a.companyId, K.party, docs, { create: b.create_masters });
   const allLines = docs.flatMap((x) => x.lines);
@@ -323,7 +406,7 @@ async function importTrade(db: Db, a: Ctx, K: TradeKind, rows: string[][], ys: Y
       unitBy = await loadUnits();   // รวมหน่วยที่เพิ่งเพิ่มให้สินค้าใหม่
       return r.units;
     },
-    () => ready.flatMap((x) => {
+    () => ownFirst(ready.flatMap((x) => {
       const lines = x.doc.lines.map((l) => {
         const ih = lineHit.get(l)!;
         const it = ih.kind === 'found' ? ih.item : ih.kind === 'new' ? { id: ih.plan.id!, code: ih.plan.code, base_unit_id: ih.plan.unit_id ?? null, sales_unit_id: null, sales_factor: null, purchase_unit_id: null, purchase_factor: null, vat_code: null } : null;
@@ -342,28 +425,38 @@ async function importTrade(db: Db, a: Ctx, K: TradeKind, rows: string[][], ys: Y
       const def = x.party.kind === 'found' ? pdef.get(x.party.party.id) : undefined;
       const discount = x.doc.bill_discount ?? def?.discount_text ?? null;
       let payments: unknown[] = [], wht: unknown[] = [], whtAmount = '0';
+      // ยอดแบบเดียวกับหน้าจอ (ยอดที่ต้องรับ/จ่าย) + ประเภทราคาอีกแบบ (บอกผู้ใช้เมื่อยอดไม่ตรงกับแฟ้ม)
+      const calcOf = (pt: '1' | '2' | '0') => computeDoc({ price_type: pt, vat_rate: b.vatRate, discount_text: discount, lines: lines.map((l) => ({ qty: l!.qty, unit_price: l!.is_free ? 0 : l!.unit_price, discount_text: l!.discount_text, vat_code: l!._vat })) });
+      const calc = calcOf(b.priceType);
+      const altPt = b.priceType === '1' ? '2' : b.priceType === '2' ? '1' : null;
+      const alt = altPt ? (() => { const c = calcOf(altPt); return { pt: altPt, vat: c.vat_amount, net: c.net_amount }; })() : null;
+      const vatLines = { '0': 0, '1': 0, '2': 0 } as Record<'0' | '1' | '2', number>;
+      for (const l of lines) vatLines[(l!._vat === '0' || l!._vat === '2' ? l!._vat : '1') as '0' | '1' | '2']++;
+      const sheet = paysBy.get(x.doc.ref) ?? [];
+      const paySource = !K.payments ? undefined : sheet.length ? 'sheet' as const : x.doc.pay_method ? 'main' as const : 'cash' as const;
       if (K.payments) {
         // ยอดที่ต้องรับ/จ่าย = รวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย (คิดแบบเดียวกับหน้าจอ)
-        const calc = computeDoc({ price_type: b.priceType, vat_rate: b.vatRate, discount_text: discount, lines: lines.map((l) => ({ qty: l!.qty, unit_price: l!.is_free ? 0 : l!.unit_price, discount_text: l!.discount_text, vat_code: l!._vat })) });
         let w = d(0);
         if (x.doc.wht && K.cls === 'HS') { w = d(x.doc.wht.amount ?? 0); whtAmount = w.toFixed(2); }
         if (x.doc.wht && K.cls === 'HP') { const e = whtEntry(x.doc.wht, d(calc.net_amount).minus(d(calc.vat_amount)), def ? { wht_form: def.wht_form, wht_income_desc: def.wht_income_desc } : undefined, party.tax); w = d(e.tax_amount); wht = [e]; }
-        const p = buildPayments({ ref: x.doc.ref, row: x.doc.row, due: d(calc.net_amount).minus(w).toFixed(2), label: K.label, recv: K.module === 'AR', main: { method: x.doc.pay_method, pay_ref: x.doc.pay_ref }, sheet: paysBy.get(x.doc.ref) ?? [], method: method!, issues });
+        const p = buildPayments({ ref: x.doc.ref, row: x.doc.row, due: d(calc.net_amount).minus(w).toFixed(2), label: K.label, recv: K.module === 'AR', main: { method: x.doc.pay_method, pay_ref: x.doc.pay_ref }, sheet, method: method!, issues });
         if (!p) return [];
         payments = p.map(({ cheque_date: _c, ...q }) => q);
       }
-      return [{ doc: x.doc, party, newItems: x.doc.lines.filter((l) => lineHit.get(l)!.kind === 'new').length,
-        body: { doc_type_id: b.dtId, doc_date: x.doc.date, party_id: party.id, ...(party.branch ? { party_tax_branch_no: party.branch } : {}), your_ref: x.doc.ref,
+      return [{ doc: x.doc, party, newItems: x.doc.lines.filter((l) => lineHit.get(l)!.kind === 'new').length, alt, vatLines, paySource,
+        body: { doc_type_id: b.dtId, doc_no: own.get(x.doc.ref) ?? null, doc_date: x.doc.date, party_id: party.id, ...(party.branch ? { party_tax_branch_no: party.branch } : {}), your_ref: x.doc.ref,
           ref_no: K.refInvoice ? x.doc.ref_invoice : x.doc.ref_no, ...(K.module === 'AP' && !K.refInvoice && x.doc.ref_date ? { ref_date: x.doc.ref_date } : {}),
           credit_days: K.payments ? null : x.doc.credit_days, price_type: b.priceType, vat_rate: b.vatRate, ...(x.doc.vat_basis ? { vat_basis: x.doc.vat_basis } : {}), discount_text: discount, remark: x.doc.remark,
           ...x.head, lines: lines.map((l) => { const { _vat: _v, ...rest } = l!; return rest; }), payments, wht, wht_amount: whtAmount } }];
-    }),
+    })),
     async (x) => {
       const r = await saveTrade(db, a, K, null, parse(tradeBody, x.body));
       const h = await db.selectFrom('doc_header').select(['amount_after_discount', 'vat_amount', 'wht_amount', 'net_amount', 'cash_amount', 'cheque_amount']).where('id', '=', r.id!).executeTakeFirstOrThrow();
+      const chk = fileCheck(x.doc.lines, h.vat_amount, h.net_amount, x.alt);
       return { ref: x.doc.ref, row: x.doc.row, date: x.doc.date, party_code: x.party.code, party_name: x.party.name, party_new: x.party.isNew, lines: x.doc.lines.length, new_items: x.newItems,
-        amount: h.amount_after_discount, vat_amount: h.vat_amount, wht_amount: K.payments ? h.wht_amount : null, net_amount: h.net_amount, doc_no: r.doc_no, warnings: r.warnings,
-        ...(K.payments ? { cash_amount: h.cash_amount, other_amount: h.cheque_amount, payments: (x.body.payments as unknown[]).length } : {}) };
+        amount: h.amount_after_discount, vat_amount: h.vat_amount, wht_amount: K.payments ? h.wht_amount : null, net_amount: h.net_amount, doc_no: r.doc_no, doc_no_source: x.body.doc_no ? 'file' as const : 'auto' as const,
+        warnings: [...r.warnings, ...chk.warnings], file_vat: chk.file_vat, file_net: chk.file_net, check: chk.check, vat_lines: x.vatLines,
+        ...(K.payments ? { cash_amount: h.cash_amount, other_amount: h.cheque_amount, payments: (x.body.payments as unknown[]).length, pay_source: x.paySource } : {}) };
     });
   return { results, issues, fileDocs: docs.length, masters: mastersOf(pp.planned, ip.planned, units), ran, warnings };
 }
@@ -373,6 +466,7 @@ async function importExpense(db: Db, a: Ctx, K: CashKind, rows: string[][], ys: 
   const { docs, errors } = mapExpenseImport(rows, ys);
   const issues: ImportIssue[] = [...errors];
   const warnings: string[] = [];
+  const own = await fileNumbers(db, a.companyId, b.dtCode, ys, docs, issues, warnings);
   const paysBy = paySheetByRef(payRows, ys, docs.map((x) => x.ref), true, K.label, issues, warnings);
   const pp = await planParties(db, a.companyId, 'supplier', docs, { create: b.create_masters, nameOnly: true });
   issues.push(...await masterRightIssues(db, a, 'supplier', pp.planned, []));
@@ -418,7 +512,7 @@ async function importExpense(db: Db, a: Ctx, K: CashKind, rows: string[][], ys: 
   });
   const { results, units, ran } = await tryAll(db, b.commit, issues,
     async () => (await createMasters(db, a, 'supplier', [...usedP], [], b.file_name)).units,
-    () => ready.flatMap((x) => {
+    () => ownFirst(ready.flatMap((x) => {
       const p = x.party;
       const party = p.kind === 'found' ? { id: p.party.id, code: p.party.code, name: p.party.name, tax: p.party.tax_id, isNew: false, branch: p.branch ?? x.doc.party_branch }
         : p.kind === 'new' ? { id: p.plan.id!, code: p.plan.code, name: p.plan.name, tax: p.plan.tax_id, isNew: true, branch: null } : { id: null, code: '', name: (p as { name: string }).name, tax: x.doc.party_tax_id, isNew: false, branch: null };
@@ -426,18 +520,20 @@ async function importExpense(db: Db, a: Ctx, K: CashKind, rows: string[][], ys: 
       const calc = computeDoc({ price_type: b.priceType, vat_rate: b.vatRate, lines: lines.map((l) => ({ qty: 1, unit_price: l.amount, vat_code: l.vat_code })) });
       let wht: unknown[] = [], w = d(0);
       if (x.doc.wht) { const e = whtEntry(x.doc.wht, d(calc.net_amount).minus(d(calc.vat_amount)), party.id ? sups.get(party.id) : undefined, party.tax); wht = [e]; w = d(e.tax_amount); }
-      const payments = buildPayments({ ref: x.doc.ref, row: x.doc.row, due: d(calc.net_amount).minus(w).toFixed(2), label: K.label, recv: false, main: { method: x.doc.pay_method, pay_ref: x.doc.pay_ref }, sheet: paysBy.get(x.doc.ref) ?? [], method, issues });
+      const sheet = paysBy.get(x.doc.ref) ?? [];
+      const payments = buildPayments({ ref: x.doc.ref, row: x.doc.row, due: d(calc.net_amount).minus(w).toFixed(2), label: K.label, recv: false, main: { method: x.doc.pay_method, pay_ref: x.doc.pay_ref }, sheet, method, issues });
       if (!payments) return [];
-      return [{ doc: x.doc, party, body: { doc_type_id: b.dtId, doc_date: x.doc.date, party_id: party.id, party_name: party.id ? null : party.name, ...(party.branch ? { party_tax_branch_no: party.branch } : {}),
+      const paySource = sheet.length ? 'sheet' as const : x.doc.pay_method ? 'main' as const : 'cash' as const;
+      return [{ doc: x.doc, party, paySource, body: { doc_type_id: b.dtId, doc_no: own.get(x.doc.ref) ?? null, doc_date: x.doc.date, party_id: party.id, party_name: party.id ? null : party.name, ...(party.branch ? { party_tax_branch_no: party.branch } : {}),
         your_ref: x.doc.ref, ref_no: x.doc.ref_no, ...(x.doc.ref_date ? { ref_date: x.doc.ref_date } : {}), department_id: x.dept, project_id: x.job,
         price_type: b.priceType, vat_rate: b.vatRate, remark: x.doc.remark, lines: lines.map(({ vat_code: _v, ...l }) => l), payments, wht } }];
-    }),
+    })),
     async (x) => {
       const r = await saveCash(db, a, K, null, parse(cashBody, x.body), { keyed: true });
       const h = await db.selectFrom('doc_header').select(['amount_after_discount', 'vat_amount', 'wht_amount', 'net_amount', 'cash_amount', 'cheque_amount']).where('id', '=', r.id!).executeTakeFirstOrThrow();
       return { ref: x.doc.ref, row: x.doc.row, date: x.doc.date, party_code: x.party.code, party_name: x.party.name, party_new: x.party.isNew, lines: x.doc.lines.length, new_items: 0,
-        amount: h.amount_after_discount, vat_amount: h.vat_amount, wht_amount: h.wht_amount, net_amount: h.net_amount, doc_no: r.doc_no, warnings: r.warnings,
-        cash_amount: h.cash_amount, other_amount: h.cheque_amount, payments: (x.body.payments as unknown[]).length };
+        amount: h.amount_after_discount, vat_amount: h.vat_amount, wht_amount: h.wht_amount, net_amount: h.net_amount, doc_no: r.doc_no, doc_no_source: x.body.doc_no ? 'file' as const : 'auto' as const, warnings: r.warnings,
+        cash_amount: h.cash_amount, other_amount: h.cheque_amount, payments: (x.body.payments as unknown[]).length, pay_source: x.paySource };
     });
   return { results, issues, fileDocs: docs.length, masters: mastersOf(pp.planned, [], units), ran, warnings };
 }

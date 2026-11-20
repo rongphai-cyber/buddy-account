@@ -9,6 +9,8 @@ export interface XlsxSheet { name: string; rows: string[][]; textCols?: number[]
   numCols?: number[];
   /** header colour per column: req = must fill (pink) · cond = fill when needed (yellow) */
   headKinds?: Record<number, 'req' | 'cond'>;
+  /** header row index (rows above = notes, e.g. a rule for the sheet) — default 0 */
+  headAt?: number;
 }
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const colName = (i: number) => { let s = '', n = i + 1; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
@@ -18,15 +20,15 @@ const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 function sheetXml(s: XlsxSheet) {
   const text = new Set(s.textCols ?? []), nums = new Set(s.numCols ?? []);
   const headStyle = (ci: number) => (s.headKinds?.[ci] === 'req' ? 4 : s.headKinds?.[ci] === 'cond' ? 5 : 1);
-  const head = s.header !== false;
+  const head = s.header !== false, hr = s.headAt ?? 0;
   const rows = s.rows.map((r, ri) => `<row r="${ri + 1}">${r.map((v, ci) => {
-    const ref = `${colName(ci)}${ri + 1}`, style = head && ri === 0 ? headStyle(ci) : text.has(ci) ? 2 : nums.has(ci) ? 3 : 0;
+    const ref = `${colName(ci)}${ri + 1}`, style = head && ri === hr ? headStyle(ci) : ri < hr ? 0 : text.has(ci) ? 2 : nums.has(ci) ? 3 : 0;
     if (v === '') return style ? `<c r="${ref}" s="${style}"/>` : '';
-    return !text.has(ci) && !(head && ri === 0) && /^-?\d+(\.\d+)?$/.test(v) ? `<c r="${ref}"${style ? ` s="${style}"` : ''}><v>${v}</v></c>` : `<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
+    return !text.has(ci) && !(head && ri <= hr) && /^-?\d+(\.\d+)?$/.test(v) ? `<c r="${ref}"${style ? ` s="${style}"` : ''}><v>${v}</v></c>` : `<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
   }).join('')}</row>`).join('');
   const ncol = Math.max(1, ...s.rows.map((r) => r.length));
   const cols = `<cols>${Array.from({ length: ncol }, (_, i) => `<col min="${i + 1}" max="${i + 1}" width="${s.widths?.[i] ?? 16}" customWidth="1"${text.has(i) ? ' style="2"' : nums.has(i) ? ' style="3"' : ''}/>`).join('')}</cols>`;
-  const pane = head ? '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' : '';
+  const pane = head ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="${hr + 1}" topLeftCell="A${hr + 2}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` : '';
   return `${XML}<worksheet ${NS}>${pane}${cols}<sheetData>${rows}</sheetData></worksheet>`;
 }
 
