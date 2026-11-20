@@ -486,6 +486,23 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await page.goto(BASE + '/gl/jobs'); await page.waitForSelector('.master-bar'); await shot('15j-jobs');
     await page.goto(BASE + '/reports/jobs'); await page.waitForSelector('table.report, .empty', { timeout: 15000 }); await shot('15k-job-report');
   });
+  await step('quick-add keeps the cursor moving (HANDOFF 162): IV header customer + line 2 item', async () => {
+    // ค้นหาไม่พบ → Enter เปิดหน้าต่างเพิ่ม → บันทึก → ช่องถัดไป (ไม่ค้างที่ body) · ใบขายไม่บันทึก (ทิ้งเมื่อเปลี่ยนหน้า) — ลูกค้า/สินค้าใหม่อยู่ในสำเนาที่ทดสอบ
+    const N = String(Date.now() % 1000000).padStart(6, '0');
+    const act = () => page.evaluate(() => { const a = document.activeElement; if (!a || a === document.body) return 'BODY'; const tr = a.closest('tr'); return `${a.getAttribute('aria-label') ?? ''}|${tr ? [...tr.parentElement.children].indexOf(tr) + 1 : 0}|${a.closest('.head-grid') ? 'head' : ''}`; });
+    await page.goto(BASE + '/sa/invoices/new'); await page.waitForSelector('.head-grid .pick input');
+    await page.locator('.head-grid .pick input').first().focus(); await page.keyboard.type(`QC${N}`); await page.waitForTimeout(1500); await page.keyboard.press('Enter');
+    await page.waitForSelector('.modal label.field'); await page.locator('.modal').last().locator('label.field:has-text("ชื่อ") input').first().fill('ลูกค้าทดสอบโฟกัส');
+    await page.keyboard.press('F9'); await page.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 15000 }); await page.waitForTimeout(800);
+    const h = await act(); if (h === 'BODY' || !h.endsWith('head') || h.startsWith('รหัสลูกค้า')) throw new Error('header: focus after quick-add = ' + h);
+    await page.locator('input[aria-label="รหัสสินค้า 1"]').focus(); await page.keyboard.type('01-'); await page.waitForTimeout(2500); await page.keyboard.press('Enter'); await page.waitForTimeout(800);
+    await page.locator('input[aria-label="รหัสสินค้า 2"]').focus(); await page.keyboard.type(`01-QFOC-${N}`); await page.waitForTimeout(1500); await page.keyboard.press('Enter');
+    const m = page.locator('.modal').last(); await m.locator('label.field:has-text("ชื่อไทย") input').first().fill('สินค้าทดสอบโฟกัส', { timeout: 15000 });
+    const u = m.locator('label.field:has-text("หน่วยนับย่อย") select').first(); await u.locator('option:nth-child(2)').waitFor({ state: 'attached', timeout: 15000 }); await u.selectOption((await u.locator('option').evaluateAll((os) => os.map((o) => o.value).filter(Boolean)))[0]);
+    await page.keyboard.press('F9'); await page.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 15000 }); await page.waitForTimeout(800);
+    const l = await act(); if (l !== 'รายละเอียด|2|') throw new Error('line 2: focus after quick-add = ' + l);
+    await shot('15q-quick-add-focus');
+  });
   await step('periods', async () => { await page.goto(BASE + '/settings/periods'); await page.waitForSelector('.period-cell'); await shot('16-periods'); });
   await step('company', async () => { await page.goto(BASE + '/settings/company'); await page.waitForSelector('.card .field input'); await shot('17-company'); });
   await step('planned menu', async () => { await page.goto(BASE + '/planned/SA.IV'); await page.waitForSelector('.notebox'); await shot('18-planned'); });

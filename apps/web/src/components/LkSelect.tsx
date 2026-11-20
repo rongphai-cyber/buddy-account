@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { DATA_TABLES, ITEM_KINDS, itemKindOf } from '@buddy/core';
 import { useCan } from '../session';
-import { clearFieldTips, ErrorBox, Field, keepInList, Modal, navKey, toast, useHotkeys } from '../ui';
+import { advanceFrom, clearFieldTips, ErrorBox, Field, keepInList, Modal, navKey, toast, useHotkeys } from '../ui';
 import type { AddKind } from './AddMaster';
 
 const AddMaster = lazy(() => import('./AddMaster'));
@@ -110,6 +110,7 @@ export function LkSelect({ rows, value, onChange, blank = '—', byId, byName, m
   const qc = useQueryClient();
   const canAdd = useCan('SET.TBL')('add') && !!table && !rest.disabled;
   const [adding, setAdding] = useState(false);
+  const wrap = useRef<HTMLSpanElement>(null);
   const label = tableLabel(table);
   const sel = (
     <select value={v} onChange={(e) => onChange(e.target.value)} {...rest}
@@ -122,7 +123,7 @@ export function LkSelect({ rows, value, onChange, blank = '—', byId, byName, m
   );
   if (!canAdd) return sel;
   return (
-    <span className="lk-add">
+    <span className="lk-add" ref={wrap}>
       {sel}
       <button type="button" className="icon-btn" tabIndex={-1} title={`เพิ่ม${label}ใหม่ (Insert)`} aria-label={`เพิ่ม${label}ใหม่`} onClick={() => setAdding(true)}>➕</button>
       {adding && <QuickAdd title={`เพิ่ม${label}`} rate={table === '20'} onClose={() => setAdding(false)} onSave={async (b) => {
@@ -131,6 +132,7 @@ export function LkSelect({ rows, value, onChange, blank = '—', byId, byName, m
         toast(`เพิ่ม${label} ${r.code} ${r.name} แล้ว`);
         onChange(byId ? r.id : byName ? r.name : r.code);
         setAdding(false);
+        advanceFrom(wrap.current?.querySelector('select'));   // เลือกรายการใหม่แล้วไปช่องถัดไป (HANDOFF 162)
       }} />}
     </span>
   );
@@ -175,7 +177,7 @@ export function SearchPick<T extends { id: string }>({ endpoint = '', options, p
     setAdding(null);
     const r = await api.get<{ rows: T[] }>(endpoint, { ...params, q: code, limit: 15 });
     const hit = r.rows.find((x) => (codeOf ? codeOf(x) : (x as unknown as { code: string }).code)?.toUpperCase() === code.toUpperCase()) ?? r.rows[0];
-    if (hit) pick(hit);
+    if (hit) { pick(hit); advanceFrom(box.current?.querySelector('input')); }   // ไปช่องถัดไปเหมือน Enter (HANDOFF 162)
   };
   const openList = () => { setBrowse(true); setQ(''); box.current?.querySelector('input')?.focus(); };
   const shown = q ?? (value ? `${value.code}${value.name ? ' ' + value.name : ''}` : '');

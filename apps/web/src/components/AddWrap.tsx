@@ -6,7 +6,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { useCan } from '../session';
-import { toast } from '../ui';
+import { advanceFrom, toast } from '../ui';
 import { QuickAdd } from './LkSelect';
 
 const KINDS = {
@@ -31,6 +31,7 @@ export function AddWrap({ kind, children }: { kind: keyof typeof KINDS; children
         Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!.call(sel, id);
         sel.dispatchEvent(new Event('change', { bubbles: true }));
         sel.focus();
+        advanceFrom(sel);   // ไปช่องถัดไปเหมือน Enter (HANDOFF 162)
       } else if (tries++ < 40) setTimeout(tick, 50);
     };
     tick();

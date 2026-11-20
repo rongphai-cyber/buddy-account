@@ -109,6 +109,9 @@ function focusSave(box: HTMLElement) {
 const saveButtonOf = (box: HTMLElement | null) => [...(box?.querySelectorAll<HTMLButtonElement>('.modal-foot button') ?? [])].find((b) => !b.disabled && /บันทึก/.test(b.textContent ?? '')) ?? null;
 export function Modal({ title, onClose, children, size = 'form', footer }: { title: string; onClose: () => void; children: ReactNode; size?: 'form' | 'wide' | 'confirm'; footer?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  // ช่องที่เปิดหน้าต่างนี้ — จำตอน render ครั้งแรก (ก่อนช่อง autoFocus ในหน้าต่างแย่งโฟกัส) · ปิดหน้าต่างแล้วกลับไปที่ช่องนี้ (HANDOFF 162)
+  const opener = useRef<HTMLElement | null | undefined>(undefined);
+  if (opener.current === undefined) opener.current = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
   /**
    * หน้าต่างแบบฟอร์ม (มีปุ่มบันทึก): คีย์แล้วยังไม่บันทึก → ปิดด้วย Esc / คลิกนอกหน้าต่าง / ✕ หรือเปลี่ยนหน้า = ถามก่อน (HANDOFF 149 — เดิมหายเงียบ ๆ)
    * ปุ่มยกเลิกในแถวปุ่ม = ตั้งใจทิ้ง ปิดเลย · บันทึกผ่าน (ไม่มีข้อผิดพลาดหลังส่งข้อมูลเสร็จ) = ไม่ค้าง
@@ -140,7 +143,6 @@ export function Modal({ title, onClose, children, size = 'form', footer }: { tit
     return () => { box.removeEventListener('input', typed, true); box.removeEventListener('change', typed, true); box.removeEventListener('click', saved, true); };
   }, []);
   useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
     const f = ref.current?.querySelector<HTMLElement>('[autofocus], input:not([readonly]), select, textarea, button.primary');
     f?.focus();
     const esc = (e: KeyboardEvent) => {
@@ -151,10 +153,11 @@ export function Modal({ title, onClose, children, size = 'form', footer }: { tit
     window.addEventListener('keydown', esc, true);
     // ฟอร์มในหน้าต่างที่ใช้ navKey ของตัวเอง: จบช่องสุดท้ายแล้วส่ง navend → ไปปุ่มบันทึก
     const box = ref.current;
+    if (box && opener.current) MODAL_OPENER.set(box, opener.current);
     const onEnd = (e: Event) => { e.stopPropagation(); if (box) focusSave(box); };
     box?.addEventListener('navend', onEnd);
     const popLayer = pushHotkeyLayer({});
-    return () => { window.removeEventListener('keydown', esc, true); box?.removeEventListener('navend', onEnd); popLayer(); prev?.focus?.(); };
+    return () => { window.removeEventListener('keydown', esc, true); box?.removeEventListener('navend', onEnd); popLayer(); restoreFocus(opener.current ?? null); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
@@ -166,6 +169,55 @@ export function Modal({ title, onClose, children, size = 'form', footer }: { tit
       </div>
     </div>
   );
+}
+
+/**
+ * ปิดหน้าต่างแล้วโฟกัสกลับไปที่ช่องที่เปิดหน้าต่าง (HANDOFF 162 · เจ้าของ "บันทึกแล้ว Enter เคอร์เซอร์ไม่ไปแสดงตรงช่องไหนเลย … เช็คระบบอื่นๆด้วย")
+ * ปุ่ม ➕/🔍 ข้างช่อง = กลับไปที่ช่องนั้น · ช่องเดิมไม่อยู่แล้ว = หน้าต่างที่ยังเปิดอยู่ หรือแถบเครื่องมือ/ช่องแรกของหน้า — ไม่ปล่อยไว้ที่ body
+ */
+/** หน้าต่าง → ช่องที่เปิดหน้าต่างนั้น (ช่องเดิมอยู่ในหน้าต่างที่ปิดไปแล้ว เช่น ค้นหาบัญชี F4 → Insert เพิ่มบัญชี = ย้อนไปช่องที่เปิดหน้าต่างค้นหา) */
+const MODAL_OPENER = new WeakMap<Element, HTMLElement>();
+export function restoreFocus(opener0: HTMLElement | null) {
+  let opener = opener0;
+  for (let i = 0; i < 5 && opener && !opener.isConnected; i++) { const m = opener.closest('.modal'); opener = m ? MODAL_OPENER.get(m) ?? null : null; }
+  const target = () => {
+    if (!opener?.isConnected) return null;
+    const field = opener.closest('.lk-add, .pick, .desc-cell')?.querySelector<HTMLElement>('input:not([disabled]), select:not([disabled])');
+    return field ?? opener;
+  };
+  const t = target();
+  if (t && t !== document.body) t.focus?.();
+  // หลังหน้าจอวาดใหม่ (แถวรายการ/หน้าต่างที่ปิดตามกัน): ยังค้างที่ body → ช่องเดิม หรือที่ที่เหมาะสม
+  setTimeout(() => {
+    const a = document.activeElement;
+    if (a && a !== document.body && a.isConnected) return;
+    const again = target();
+    if (again && again !== document.body && again.offsetParent !== null) { again.focus(); return; }
+    focusFallback();
+  }, 0);
+}
+/** ที่วางโฟกัสเมื่อช่องเดิมหายไป: หน้าต่างบนสุดที่ยังเปิด → ช่อง/ปุ่มแรก · ไม่มีหน้าต่าง → แถบเครื่องมือ/ช่องแรกของหน้า */
+export function focusFallback() {
+  const modals = document.querySelectorAll<HTMLElement>('.modal');
+  const scope = modals[modals.length - 1] ?? document.querySelector<HTMLElement>('#main .page, .page');
+  if (!scope) return;
+  const el = scope.querySelector<HTMLElement>('input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled])')
+    ?? scope.querySelector<HTMLElement>('.toolbar button:not([disabled]), button:not([disabled])');
+  el?.focus();
+}
+/**
+ * หลังเลือก/เพิ่มรายการใหม่จากหน้าต่าง (เพิ่มสินค้า ลูกค้า ผู้จำหน่าย แผนก ตารางข้อมูล …): ไปช่องถัดไปเหมือนกด Enter ในช่องนั้น (กติกาข้อ 11 · HANDOFF 162)
+ * รอให้ค่าที่เลือกแสดงในช่องก่อน แล้วส่ง Enter ให้ลำดับการคีย์ของหน้า (navKey) · ไม่มีลำดับ = ช่องถัดไปในหน้า
+ */
+export function advanceFrom(el: HTMLElement | null | undefined, delay = 80) {
+  if (!el) return;
+  setTimeout(() => {
+    if (!el.isConnected || (el as HTMLInputElement).disabled) return;
+    el.focus();
+    const ev = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    el.dispatchEvent(ev);
+    if (document.activeElement === el && !ev.defaultPrevented) focusNext(el);
+  }, delay);
 }
 
 export function Confirm({ title, text, okText = 'ยืนยัน', danger, onOk, onClose, children }: { title: string; text: ReactNode; okText?: string; danger?: boolean; onOk: () => void; onClose: () => void; children?: ReactNode }) {
