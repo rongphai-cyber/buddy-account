@@ -18,7 +18,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   });
   useEffect(() => {
     // หมดเวลาเข้าระบบระหว่างคีย์ (HANDOFF 149): หน้าจอถูกแทนด้วยหน้าเข้าระบบ งานที่ยังไม่บันทึกเก็บไว้ไม่ได้ — บอกผู้ใช้ตรง ๆ ที่หน้าเข้าระบบ ไม่หายเงียบ
-    const h = () => { const w = dirtyWords(); if (w.length) { try { sessionStorage.setItem('buddy.lostWork', w.join(', ')); } catch { /* ไม่มีที่เก็บ */ } } qc.setQueryData(['me'], null); };
+    const h = (ev: Event) => {
+      const w = dirtyWords(); if (w.length) { try { sessionStorage.setItem('buddy.lostWork', w.join(', ')); } catch { /* ไม่มีที่เก็บ */ } }
+      // 1 รหัส 1 เครื่อง (HANDOFF 156): เครื่องนี้ถูกแทนด้วยการเข้าระบบจากเครื่องอื่น — หน้าเข้าระบบบอกเหตุ
+      if ((ev as CustomEvent<{ code?: string }>).detail?.code === 'SESSION_REPLACED') { try { sessionStorage.setItem('buddy.replaced', '1'); } catch { /* ไม่มีที่เก็บ */ } }
+      qc.setQueryData(['me'], null);
+    };
     window.addEventListener('buddy:unauthorized', h);
     return () => window.removeEventListener('buddy:unauthorized', h);
   }, [qc]);

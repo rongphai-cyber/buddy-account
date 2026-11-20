@@ -1958,5 +1958,13 @@
  "ตั้งรหัสผ่านใหม่ให้ผู้ดูแลระบบ {0} แล้ว": "Password reset for administrator {0}",
  "รหัสผู้ใช้ {0} เป็นผู้ใช้ของลูกค้า ไม่ใช่ผู้ดูแลระบบของผู้ให้บริการ — คำสั่งนี้ไม่เปลี่ยนให้ (กันการได้สิทธิ์เห็นทุกลูกค้า)\\n": "Username {0} belongs to a customer, not a provider administrator — this command will not change it (prevents gaining access to every customer)\\n",
  "• ผู้ใช้ของลูกค้าลืมรหัสผ่าน: เข้าระบบด้วยรหัสผู้ดูแลระบบของผู้ให้บริการ แล้วตั้งรหัสใหม่ให้ {0} ที่หน้า ผู้ใช้งานและสิทธิ์": "• A customer user forgot the password: log in as the provider administrator, then set a new password for {0} on Users and rights",
- "• ลืมรหัสผ่านผู้ดูแลระบบของผู้ให้บริการ: ใส่รหัสผู้ใช้ของตัวเอง (ผู้ใช้คนแรกที่ตั้งตอนตั้งค่าครั้งแรก เช่น admin)": "• Forgot the provider administrator password: enter your own username (the first user created at first-time setup, e.g. admin)"
+ "• ลืมรหัสผ่านผู้ดูแลระบบของผู้ให้บริการ: ใส่รหัสผู้ใช้ของตัวเอง (ผู้ใช้คนแรกที่ตั้งตอนตั้งค่าครั้งแรก เช่น admin)": "• Forgot the provider administrator password: enter your own username (the first user created at first-time setup, e.g. admin)",
+ "1 รหัสเข้าได้ทีละ 1 เครื่อง": "One device at a time per username",
+ "หลายเครื่องพร้อมกันได้": "Several devices at once",
+ "เข้าระบบพร้อมกัน": "Simultaneous sign-in",
+ "รหัสผู้ใช้นี้เข้าระบบจากเครื่องอื่นแล้ว (ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง) — ถ้าเป็นคุณ เข้าระบบใหม่ที่เครื่องนี้ได้ เครื่องอื่นจะออกจากระบบแทน · ถ้าไม่ใช่คุณ เปลี่ยนรหัสผ่านทันที": "This username has signed in on another device (set to one device at a time) — if that was you, sign in again here and the other device will be signed out · if it was not you, change your password now",
+ "1 เครื่อง = ทุกผู้ใช้ของลูกค้านี้ เข้าระบบจากเครื่องใหม่แล้วเครื่องเดิมออกจากระบบ (กันใช้รหัสเดียวกันหลายคน) · มีผลตั้งแต่การเข้าระบบครั้งถัดไป": "One device = for every user of this customer, signing in on a new device signs out the old one (stops several people sharing one username) · takes effect from the next sign-in",
+ "1 เครื่อง = เข้าระบบจากเครื่องใหม่ เครื่องเดิมออกจากระบบ (มีผลครั้งถัดไปที่เข้าระบบ)": "One device = signing in on a new device signs out the old one (takes effect at the next sign-in)",
+ "ลูกค้านี้ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ — เข้าระบบจากเครื่องใหม่ เครื่องเดิมจะออกจากระบบ (ผู้ให้บริการตั้ง)": "This customer is set to one device at a time for every user — signing in on a new device signs out the old one (set by the provider)",
+ "ลูกค้านี้ตั้งไว้ 1 เครื่องทุกผู้ใช้ (ผู้ให้บริการตั้ง)": "This customer is set to one device for every user (set by the provider)"
 }

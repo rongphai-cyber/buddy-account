@@ -208,10 +208,10 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
     return { ...a, tenantId: a.tenantId };
   };
   const tenantSecurity = async (tid: string) => {
-    const t = await db.selectFrom('sys_tenant').select('require_mfa').where('id', '=', tid).executeTakeFirstOrThrow();
+    const t = await db.selectFrom('sys_tenant').select(['require_mfa', 'single_session']).where('id', '=', tid).executeTakeFirstOrThrow();
     const u = (await sql<{ users: number; without: number }>`SELECT count(*)::int AS users, count(*) FILTER (WHERE NOT coalesce(s.totp_enabled, false))::int AS without
         FROM sys_user x LEFT JOIN sys_user_security s ON s.user_id = x.id AND s.deleted_at IS NULL WHERE x.tenant_id = ${tid} AND x.deleted_at IS NULL AND x.status = 'A'`.execute(db)).rows[0]!;
-    return { require_mfa: t.require_mfa, users: u.users, without_mfa: u.without };
+    return { require_mfa: t.require_mfa, single_session: t.single_session, users: u.users, without_mfa: u.without };
   };
   app.get('/api/v1/tenant/security', async (req) => tenantSecurity(tenantAdmin(req).tenantId));
   app.put('/api/v1/tenant/security', async (req) => {

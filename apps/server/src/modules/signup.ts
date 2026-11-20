@@ -21,10 +21,10 @@ const PER_IP_HOUR = 5, MAX_PENDING = 500, PURGE_DAYS = 90;
 /** สร้างลูกค้าผู้ใช้บริการ + กลุ่ม ADMIN + ผู้ดูแลคนแรก (ใช้ทั้งเจ้าหน้าที่สร้างเองและอนุมัติใบสมัคร) */
 export async function createTenantWithAdmin(tx: Kysely<DB>, actor: string | null, t: {
   code: string; name: string; contact_email?: string | null; contact_phone?: string | null; plan?: string; max_companies?: number | null; max_users?: number | null;
-  expires_on?: string | null; status?: string; dpa_signed_on?: string | null; admin_username: string; admin_name: string; password_hash: string;
+  expires_on?: string | null; status?: string; dpa_signed_on?: string | null; single_session?: boolean; admin_username: string; admin_name: string; password_hash: string;
 }) {
   const row = await tx.insertInto('sys_tenant').values({ code: t.code, name: t.name, contact_email: t.contact_email ?? null, contact_phone: t.contact_phone ?? null, plan: t.plan ?? 'standard',
-    max_companies: t.max_companies ?? null, max_users: t.max_users ?? null, expires_on: t.expires_on ?? null, status: t.status ?? 'A', dpa_signed_on: t.dpa_signed_on ?? null, created_by: actor }).returning('id').executeTakeFirstOrThrow();
+    max_companies: t.max_companies ?? null, max_users: t.max_users ?? null, expires_on: t.expires_on ?? null, status: t.status ?? 'A', dpa_signed_on: t.dpa_signed_on ?? null, single_session: t.single_session ?? false, created_by: actor }).returning('id').executeTakeFirstOrThrow();
   const g = await tx.insertInto('sys_user_group').values({ tenant_id: row.id, code: 'ADMIN', name: 'ผู้ดูแลระบบของลูกค้า', created_by: actor }).returning('id').executeTakeFirstOrThrow();
   await tx.insertInto('sys_user').values({ tenant_id: row.id, username: t.admin_username, display_name: t.admin_name, password_hash: t.password_hash, user_group_id: g.id, approval_level: 9, created_by: actor }).execute();
   return row;

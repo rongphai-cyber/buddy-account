@@ -19,6 +19,7 @@ export function LoginPage() {
   const [ticket, setTicket] = useState<string | null>(null); // เปิดยืนยันตัวตนสองขั้น → ขั้นที่ 2
   const [code, setCode] = useState('');
   const [lost] = useState(() => { try { const w = sessionStorage.getItem('buddy.lostWork'); sessionStorage.removeItem('buddy.lostWork'); return w; } catch { return null; } });
+  const [replaced] = useState(() => { try { const w = sessionStorage.getItem('buddy.replaced'); sessionStorage.removeItem('buddy.replaced'); return !!w; } catch { return false; } });
   const go = async () => {
     setBusy(true); setErr(null);
     try {
@@ -51,6 +52,7 @@ export function LoginPage() {
     <div className="login" data-tone="home">
       <form className="login-card" onKeyDown={navKey} onSubmit={(e) => { e.preventDefault(); go(); }}>
         <div className="login-brand"><img className="login-logo" src="/brand/buddy-logo-80.png" srcSet="/brand/buddy-logo-160.png 2x" alt="Buddy Account" width={152} height={80} /><span>โปรแกรมบัญชีสำหรับกิจการไทย</span></div>
+        {replaced && <p className="bad" role="alert">รหัสผู้ใช้นี้เข้าระบบจากเครื่องอื่นแล้ว (ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง) — ถ้าเป็นคุณ เข้าระบบใหม่ที่เครื่องนี้ได้ เครื่องอื่นจะออกจากระบบแทน · ถ้าไม่ใช่คุณ เปลี่ยนรหัสผ่านทันที</p>}
         {lost && <p className="bad" role="alert">หมดเวลาเข้าระบบระหว่างคีย์ — {lost} ที่ยังไม่บันทึกไม่ได้เก็บไว้ เข้าระบบแล้วคีย์ใหม่</p>}
         <ErrorBox error={err} />
         <Field label="รหัสผู้ใช้" req><input autoFocus autoComplete="username" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>

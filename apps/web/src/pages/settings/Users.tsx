@@ -7,9 +7,9 @@ import { HUB_APPS, PASSWORD_RULE, TENANT_MODULES, type TenantModuleKey } from '@
 import { Confirm, cx, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, useHotkeys } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
-interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null }
+interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean }
 interface Group { id: string; code: string; name: string }
-interface TenantSecurity { require_mfa: boolean; users: number; without_mfa: number }
+interface TenantSecurity { require_mfa: boolean; single_session?: boolean; users: number; without_mfa: number }
 
 /** ผู้ดูแลระบบของลูกค้า: บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ (HANDOFF 146 · ค่าเริ่มต้น ปิด) */
 function TenantMfaBox() {
@@ -28,6 +28,7 @@ function TenantMfaBox() {
     <fieldset className="box"><legend>ความปลอดภัยการเข้าระบบ</legend>
       <label className="check"><input type="checkbox" checked={q.data.require_mfa} disabled={busy} onChange={(e) => setAsk(e.target.checked)} aria-label="บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้" /> บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้</label>
       <p className="small muted">{q.data.require_mfa ? `เปิดอยู่ — ผู้ใช้ที่ยังไม่ตั้ง (${q.data.without_mfa} จาก ${q.data.users} คน) จะถูกพาไปหน้าตั้งค่าทันทีหลังเข้าระบบ ก่อนใช้งานอื่น` : `ปิดอยู่ — บังคับเฉพาะผู้ดูแลระบบ · ผู้ใช้ที่ยังไม่ตั้ง ${q.data.without_mfa} จาก ${q.data.users} คน`} · ใช้แอป Google/Microsoft Authenticator บนมือถือ</p>
+      {q.data.single_session && <p className="small">ลูกค้านี้ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ — เข้าระบบจากเครื่องใหม่ เครื่องเดิมจะออกจากระบบ (ผู้ให้บริการตั้ง)</p>}
       <ErrorBox error={err} />
       {ask !== null && <Modal title={ask ? 'บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้' : 'เลิกบังคับยืนยันตัวตนสองขั้น'} size="confirm" onClose={() => setAsk(null)}
         footer={<><button onClick={() => setAsk(null)}>ยกเลิก</button><button className="primary" autoFocus disabled={busy} onClick={() => save(ask)}>{busy ? 'กำลังบันทึก…' : 'ยืนยัน'}</button></>}>
@@ -74,14 +75,14 @@ export function UsersPage() {
         </table>
       </div>
       {addGroup && <GroupForm onClose={() => setAddGroup(false)} onSaved={() => { setAddGroup(false); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
-      {edit && q.data && <UserForm u={edit === 'new' ? null : edit} groups={q.data.groups} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
+      {edit && q.data && <UserForm u={edit === 'new' ? null : edit} groups={q.data.groups} tenantOne={!!sec.data?.single_session} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
     </div>
   );
 }
 
-function UserForm({ u, groups, onClose, onSaved }: { u: User | null; groups: Group[]; onClose: () => void; onSaved: () => void }) {
+function UserForm({ u, groups, tenantOne, onClose, onSaved }: { u: User | null; groups: Group[]; tenantOne?: boolean; onClose: () => void; onSaved: () => void }) {
   const { me } = useSession();
-  const [f, setF] = useState({ username: u?.username ?? '', display_name: u?.display_name ?? '', password: '', user_group_id: u?.user_group_id ?? '', approval_level: u?.approval_level ?? 0, check_rights: u?.check_rights ?? false, status: u?.status ?? 'A', companies: u?.companies ?? [] as string[],
+  const [f, setF] = useState({ username: u?.username ?? '', display_name: u?.display_name ?? '', password: '', user_group_id: u?.user_group_id ?? '', approval_level: u?.approval_level ?? 0, check_rights: u?.check_rights ?? false, status: u?.status ?? 'A', companies: u?.companies ?? [] as string[], single_session: u?.single_session ?? false,
     app_access: (u?.app_access ?? null) as TenantModuleKey[] | null });
   const [err, setErr] = useState<unknown>(null);
   const [sec, setSec] = useState<null | 'unlock' | 'reset-2fa'>(null);
@@ -103,6 +104,9 @@ function UserForm({ u, groups, onClose, onSaved }: { u: User | null; groups: Gro
           <select value={f.check_rights ? '1' : '0'} onChange={(e) => setF({ ...f, check_rights: e.target.value === '1' })}><option value="0">ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ)</option><option value="1">ตรวจสอบสิทธิ์ก่อนใช้งาน</option></select>
         </Field>
         <Field label="สถานะ"><select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="A">ใช้งาน</option><option value="I">ระงับ</option></select></Field>
+        <Field label="เข้าระบบพร้อมกัน" hint={tenantOne ? 'ลูกค้านี้ตั้งไว้ 1 เครื่องทุกผู้ใช้ (ผู้ให้บริการตั้ง)' : '1 เครื่อง = เข้าระบบจากเครื่องใหม่ เครื่องเดิมออกจากระบบ (มีผลครั้งถัดไปที่เข้าระบบ)'}>
+          <select value={tenantOne || f.single_session ? '1' : '0'} disabled={tenantOne} onChange={(e) => setF({ ...f, single_session: e.target.value === '1' })}><option value="0">หลายเครื่องพร้อมกันได้</option><option value="1">1 รหัสเข้าได้ทีละ 1 เครื่อง</option></select>
+        </Field>
         <fieldset className="wide"><span className="lbl">บริษัทที่เข้าได้</span>
           {me?.companies.map((c) => <label key={c.id} className="inline chk"><input type="checkbox" checked={f.companies.includes(c.id)} onChange={(e) => setF({ ...f, companies: e.target.checked ? [...f.companies, c.id] : f.companies.filter((x) => x !== c.id) })} /> {c.code} {c.name_th}</label>)}
         </fieldset>

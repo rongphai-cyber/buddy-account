@@ -7642,6 +7642,14 @@
 ]
 },
 {
+"th": "1 รหัสเข้าได้ทีละ 1 เครื่อง",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "1 ราคารวมภาษีแล้ว",
 "n": 2,
 "files": [
@@ -10675,6 +10683,14 @@
 ]
 },
 {
+"th": "รหัสผู้ใช้นี้เข้าระบบจากเครื่องอื่นแล้ว (ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง) — ถ้าเป็นคุณ เข้าระบบใหม่ที่เครื่องนี้ได้ เครื่องอื่นจะออกจากระบบแทน · ถ้าไม่ใช่คุณ เปลี่ยนรหัสผ่านทันที",
+"n": 2,
+"files": [
+"apps/web/src/pages/Login.tsx",
+"apps/server/src/modules/auth.ts"
+]
+},
+{
 "th": "รหัสผู้ใช้ใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข _ . @ -",
 "n": 2,
 "files": [
@@ -11779,6 +11795,14 @@
 ]
 },
 {
+"th": "หลายเครื่องพร้อมกันได้",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "หักมัดจำ {0}",
 "n": 2,
 "files": [
@@ -11990,6 +12014,14 @@
 "files": [
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "เข้าระบบพร้อมกัน",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -14639,6 +14671,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "1 เครื่อง = ทุกผู้ใช้ของลูกค้านี้ เข้าระบบจากเครื่องใหม่แล้วเครื่องเดิมออกจากระบบ (กันใช้รหัสเดียวกันหลายคน) · มีผลตั้งแต่การเข้าระบบครั้งถัดไป",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "1 เครื่อง = เข้าระบบจากเครื่องใหม่ เครื่องเดิมออกจากระบบ (มีผลครั้งถัดไปที่เข้าระบบ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -41113,6 +41159,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "ลูกค้านี้ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ — เข้าระบบจากเครื่องใหม่ เครื่องเดิมจะออกจากระบบ (ผู้ให้บริการตั้ง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ลูกค้านี้ตั้งไว้ 1 เครื่องทุกผู้ใช้ (ผู้ให้บริการตั้ง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {

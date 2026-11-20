@@ -22,6 +22,7 @@ CREATE TABLE sys_tenant (
   purged_at timestamptz,
   moved_to varchar(200),
   require_mfa boolean DEFAULT false NOT NULL,
+  single_session boolean DEFAULT false NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -48,6 +49,7 @@ COMMENT ON COLUMN sys_tenant.purge_after IS 'ลบข้อมูลได้�
 COMMENT ON COLUMN sys_tenant.purged_at IS 'ลบข้อมูลทั้งหมดของลูกค้าแล้วเมื่อ (เหลือเฉพาะรหัสและแฟ้มบันทึกเหตุการณ์)';
 COMMENT ON COLUMN sys_tenant.moved_to IS 'ย้ายไปใช้เซิร์ฟเวอร์/ฐานข้อมูลแยกแล้ว: ที่อยู่ใหม่ (T0.18) — ผู้ใช้เข้าระบบที่นี่ไม่ได้ ระบบบอกที่อยู่ใหม่';
 COMMENT ON COLUMN sys_tenant.require_mfa IS 'บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ของลูกค้านี้ (ผู้ดูแลระบบของลูกค้าตั้ง · ค่าเริ่มต้น ปิด — ผู้ดูแลระบบบังคับเสมอ · ไม่ใช้กับเจ้าหน้าที่ผู้ให้บริการ · HANDOFF 146)';
+COMMENT ON COLUMN sys_tenant.single_session IS '1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ของลูกค้านี้ (ผู้ให้บริการตั้งที่หน้า ลูกค้าผู้ใช้บริการ · ค่าเริ่มต้น ปิด) — เข้าระบบจากเครื่องใหม่ = เครื่องเดิมออกจากระบบ · HANDOFF 156';
 COMMENT ON COLUMN sys_tenant.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN sys_tenant.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN sys_tenant.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -287,6 +289,7 @@ CREATE TABLE sys_user (
   default_printer varchar(60),
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
   last_login_at timestamptz,
+  single_session boolean DEFAULT false NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -310,6 +313,7 @@ COMMENT ON COLUMN sys_user.menu_language IS 'ภาษาเมนู th/en';
 COMMENT ON COLUMN sys_user.default_printer IS 'เครื่องพิมพ์ประจำ';
 COMMENT ON COLUMN sys_user.status IS 'สถานะ';
 COMMENT ON COLUMN sys_user.last_login_at IS 'เข้าระบบครั้งล่าสุด';
+COMMENT ON COLUMN sys_user.single_session IS '1 รหัสเข้าได้ทีละ 1 เครื่อง เฉพาะผู้ใช้นี้ (เข้มกว่าค่าของลูกค้าได้ ผ่อนไม่ได้ — ลูกค้าเปิดแล้วทุกคนถูกจำกัด) · HANDOFF 156';
 COMMENT ON COLUMN sys_user.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN sys_user.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN sys_user.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -372,6 +376,7 @@ CREATE TABLE sys_session (
   ip_address varchar(60),
   user_agent varchar(200),
   ended_at timestamptz,
+  end_reason varchar(20),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -392,6 +397,7 @@ COMMENT ON COLUMN sys_session.expires_at IS 'หมดอายุ';
 COMMENT ON COLUMN sys_session.ip_address IS 'IP ที่เข้าระบบ';
 COMMENT ON COLUMN sys_session.user_agent IS 'เบราว์เซอร์';
 COMMENT ON COLUMN sys_session.ended_at IS 'ออกจากระบบเมื่อ';
+COMMENT ON COLUMN sys_session.end_reason IS 'เหตุที่สิ้นสุด: ว่าง = ออกจากระบบเอง · REPLACED = เข้าระบบจากเครื่องอื่น (1 รหัส 1 เครื่อง · HANDOFF 156)';
 COMMENT ON COLUMN sys_session.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN sys_session.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN sys_session.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';

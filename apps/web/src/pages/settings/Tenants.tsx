@@ -6,7 +6,7 @@ import { SignupsPanel } from './Signups';
 import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, useHotkeys } from '../../ui';
 
 interface Tenant { id: string; code: string; name: string; contact_email: string | null; contact_phone: string | null; plan: string; max_companies: number | null; max_users: number | null; expires_on: string | null; status: string; company_count: number; user_count: number;
-  dpa_signed_on: string | null; terminated_on: string | null; purge_after: string | null; purged_at: string | null; moved_to: string | null }
+  dpa_signed_on: string | null; terminated_on: string | null; purge_after: string | null; purged_at: string | null; moved_to: string | null; single_session?: boolean }
 const ST: Record<string, [string, 'n' | 'd' | 'x']> = { A: ['ใช้งาน', 'n'], S: ['ระงับ', 'd'], I: ['เลิกใช้', 'x'] };
 
 /** ลูกค้าผู้ใช้บริการ (tenant) — เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม: ลูกค้าแต่ละรายมีบริษัทและผู้ใช้ของตัวเอง ข้อมูลไม่ปนกัน */
@@ -47,7 +47,7 @@ export function TenantsPage() {
 
 function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({ code: t?.code ?? '', name: t?.name ?? '', contact_email: t?.contact_email ?? '', contact_phone: t?.contact_phone ?? '', plan: t?.plan ?? 'standard',
-    max_companies: t?.max_companies?.toString() ?? '', max_users: t?.max_users?.toString() ?? '', expires_on: t?.expires_on ?? '', status: t?.status ?? 'A', dpa_signed_on: t?.dpa_signed_on ?? '', moved_to: t?.moved_to ?? '', admin_username: '', admin_name: '', admin_password: '' });
+    max_companies: t?.max_companies?.toString() ?? '', max_users: t?.max_users?.toString() ?? '', expires_on: t?.expires_on ?? '', status: t?.status ?? 'A', dpa_signed_on: t?.dpa_signed_on ?? '', moved_to: t?.moved_to ?? '', single_session: t?.single_session ?? false, admin_username: '', admin_name: '', admin_password: '' });
   const [err, setErr] = useState<unknown>(null);
   const [purge, setPurge] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -73,6 +73,9 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
         <Field label="หมดอายุ"><DateInput value={f.expires_on} onChange={(v) => setF({ ...f, expires_on: v })} /></Field>
         <Field label="จำนวนบริษัทสูงสุด" hint="ว่าง = ไม่จำกัด"><input className="num" value={f.max_companies} onChange={(e) => setF({ ...f, max_companies: e.target.value.replace(/\D/g, '') })} /></Field>
         <Field label="จำนวนผู้ใช้สูงสุด" hint="ว่าง = ไม่จำกัด"><input className="num" value={f.max_users} onChange={(e) => setF({ ...f, max_users: e.target.value.replace(/\D/g, '') })} /></Field>
+        <Field label="เข้าระบบพร้อมกัน" hint="1 เครื่อง = ทุกผู้ใช้ของลูกค้านี้ เข้าระบบจากเครื่องใหม่แล้วเครื่องเดิมออกจากระบบ (กันใช้รหัสเดียวกันหลายคน) · มีผลตั้งแต่การเข้าระบบครั้งถัดไป">
+          <select value={f.single_session ? '1' : '0'} onChange={(e) => setF({ ...f, single_session: e.target.value === '1' })}><option value="0">หลายเครื่องพร้อมกันได้</option><option value="1">1 รหัสเข้าได้ทีละ 1 เครื่อง</option></select>
+        </Field>
         <Field label="ลงนามข้อตกลงประมวลผลข้อมูล (DPA)" hint="ดูแบบข้อตกลงใน docs/10_PDPA.md"><DateInput value={f.dpa_signed_on} onChange={(v) => setF({ ...f, dpa_signed_on: v })} /></Field>
         {t && <TenantModules tenantId={t.id} />}
         {t && t.status === 'A' && <>

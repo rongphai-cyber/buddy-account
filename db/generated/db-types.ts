@@ -35,6 +35,8 @@ export interface SysTenantTable {
   moved_to: Gen<string | null>;
   /** บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ของลูกค้านี้ (ผู้ดูแลระบบของลูกค้าตั้ง · ค่าเริ่มต้น ปิด — ผู้ดูแลระบบบังคับเสมอ · ไม่ใช้กับเจ้าหน้าที่ผู้ให้บริการ · HANDOFF 146) */
   require_mfa: Gen<boolean>;
+  /** 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ของลูกค้านี้ (ผู้ให้บริการตั้งที่หน้า ลูกค้าผู้ใช้บริการ · ค่าเริ่มต้น ปิด) — เข้าระบบจากเครื่องใหม่ = เครื่องเดิมออกจากระบบ · HANDOFF 156 */
+  single_session: Gen<boolean>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -278,6 +280,8 @@ export interface SysUserTable {
   status: Gen<string>;
   /** เข้าระบบครั้งล่าสุด */
   last_login_at: Gen<string | null>;
+  /** 1 รหัสเข้าได้ทีละ 1 เครื่อง เฉพาะผู้ใช้นี้ (เข้มกว่าค่าของลูกค้าได้ ผ่อนไม่ได้ — ลูกค้าเปิดแล้วทุกคนถูกจำกัด) · HANDOFF 156 */
+  single_session: Gen<boolean>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -352,6 +356,8 @@ export interface SysSessionTable {
   user_agent: Gen<string | null>;
   /** ออกจากระบบเมื่อ */
   ended_at: Gen<string | null>;
+  /** เหตุที่สิ้นสุด: ว่าง = ออกจากระบบเอง · REPLACED = เข้าระบบจากเครื่องอื่น (1 รหัส 1 เครื่อง · HANDOFF 156) */
+  end_reason: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

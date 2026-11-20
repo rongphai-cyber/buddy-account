@@ -194,7 +194,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   app.get('/api/v1/users', async (req) => {
     const a = requireAdmin(req);
     let uq = db.selectFrom('sys_user as u').leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id').leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
-      .select(['u.id', 'u.username', 'u.display_name', 'u.status', 'u.approval_level', 'u.check_rights', 'u.app_access', 'u.last_login_at', 'u.user_group_id', 'u.tenant_id', 't.code as tenant_code', 'g.code as group_code', 'g.name as group_name'])
+      .select(['u.id', 'u.username', 'u.display_name', 'u.status', 'u.approval_level', 'u.check_rights', 'u.single_session', 'u.app_access', 'u.last_login_at', 'u.user_group_id', 'u.tenant_id', 't.code as tenant_code', 'g.code as group_code', 'g.name as group_name'])
       .where('u.deleted_at', 'is', null);
     let gq = db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id']).where('deleted_at', 'is', null);
     if (!a.isPlatform) { uq = uq.where('u.tenant_id', '=', a.tenantId!); gq = gq.where('tenant_id', '=', a.tenantId!); }
@@ -211,6 +211,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     display_name: z.string().trim().min(1, 'ป้อนชื่อผู้ใช้').max(120), password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })).optional(),
     user_group_id: uuid.nullable().optional(), approval_level: z.coerce.number().int().min(0).max(9).default(0), check_rights: z.boolean().default(false), status: z.enum(['A', 'I']).default('A'),
     companies: z.array(uuid).default([]), tenant_id: uuid.nullable().optional(),
+    // 1 รหัสเข้าได้ทีละ 1 เครื่อง เฉพาะผู้ใช้นี้ (HANDOFF 156) · ไม่ส่ง = คงค่าเดิม
+    single_session: z.boolean().optional(),
     // โปรแกรมที่เปิดได้จาก Hub (09/11/2569): null = ทุกโปรแกรมของลูกค้า · [...] = เฉพาะที่ระบุ · ไม่ส่ง (หน้าจอรุ่นเก่า) = คงค่าเดิม
     app_access: z.array(z.string().refine(isTenantModuleKey, (k) => ({ message: `ไม่รู้จักโปรแกรม "${k}" — ใช้ได้: ${TENANT_MODULES.map((m) => m.key).join(' ')}` }))).max(TENANT_MODULES.length).nullable().optional(),
   });
@@ -239,7 +241,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       }
     }
     return db.transaction().execute(async (tx) => {
-      const u = await tx.insertInto('sys_user').values({ tenant_id: tenantId, username: b.username, display_name: b.display_name, password_hash: await bcrypt.hash(b.password!, 10), user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, app_access: appAccessValue(b.app_access), status: b.status, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+      const u = await tx.insertInto('sys_user').values({ tenant_id: tenantId, username: b.username, display_name: b.display_name, password_hash: await bcrypt.hash(b.password!, 10), user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, single_session: b.single_session ?? false, app_access: appAccessValue(b.app_access), status: b.status, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
       for (const c of b.companies) await tx.insertInto('sys_user_company').values({ company_id: c, user_id: u.id, created_by: a.userId }).execute();
       await markPasswordChanged(tx, u.id);
       await logActivity(tx, a, { module: 'SYS', action: 'ADD_USER', table: 'sys_user', rowId: u.id, detail: { username: b.username, tenant_id: tenantId, app_access: normalizeAppAccess(b.app_access ?? null) } });
@@ -258,6 +260,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       const patch: Record<string, unknown> = { username: b.username, display_name: b.display_name, user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, status: b.status, updated_by: a.userId };
       if (b.password) patch.password_hash = await bcrypt.hash(b.password, 10);
       if (b.app_access !== undefined) patch.app_access = appAccessValue(b.app_access);
+      if (b.single_session !== undefined) patch.single_session = b.single_session;
       await tx.updateTable('sys_user').set(patch).where('id', '=', id).execute();
       if (b.password) await setSec(tx, id, { password_changed_at: new Date().toISOString(), failed_logins: 0, locked_until: null }); // ตั้งรหัสใหม่ = ปลดล็อกด้วย
       await tx.deleteFrom('sys_user_company').where('user_id', '=', id).execute();
@@ -280,7 +283,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   app.get('/api/v1/tenants', async (req) => {
     requirePlatform(req);
     return db.selectFrom('sys_tenant as t').select(['t.id', 't.code', 't.name', 't.contact_email', 't.contact_phone', 't.plan', 't.max_companies', 't.max_users', 't.expires_on', 't.status',
-      't.dpa_signed_on', 't.terminated_on', 't.purge_after', 't.purged_at', 't.moved_to',
+      't.dpa_signed_on', 't.terminated_on', 't.purge_after', 't.purged_at', 't.moved_to', 't.single_session',
       sql<number>`(SELECT count(*) FROM sys_company c WHERE c.tenant_id = t.id AND c.deleted_at IS NULL)`.as('company_count'),
       sql<number>`(SELECT count(*) FROM sys_user u WHERE u.tenant_id = t.id AND u.deleted_at IS NULL)`.as('user_count')])
       .where('t.deleted_at', 'is', null).orderBy('t.code').execute();
@@ -291,6 +294,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     max_companies: z.coerce.number().int().min(1).nullable().optional(), max_users: z.coerce.number().int().min(1).nullable().optional(),
     expires_on: isoDate.nullable().optional(), status: z.enum(['A', 'S', 'I']).default('A'), dpa_signed_on: isoDate.nullable().optional(),
     moved_to: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
+    // 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ของลูกค้า (HANDOFF 156 · ค่าเริ่มต้น ปิด) · ไม่ส่ง = คงค่าเดิม — มีผลตั้งแต่การเข้าระบบครั้งถัดไป
+    single_session: z.boolean().optional(),
   });
   /** สร้างลูกค้าใหม่ + กลุ่ม ADMIN ของลูกค้า + ผู้ดูแลคนแรกของลูกค้า */
   app.post('/api/v1/tenants', async (req) => {
@@ -351,7 +356,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const end = b.status === 'I' ? (cur.status === 'I' && cur.terminated_on ? { terminated_on: cur.terminated_on } : { terminated_on: today, purge_after: pdpaPurgeAfter(today) }) : { terminated_on: null, purge_after: null };
     await db.updateTable('sys_tenant').set({ ...b, ...end, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, dpa_signed_on: b.dpa_signed_on ?? null, moved_to: b.moved_to ?? null, updated_by: a.userId }).where('id', '=', id).execute();
     if (b.status !== 'A') await db.updateTable('sys_session').set({ ended_at: sql`now()` as never }).where('ended_at', 'is', null).where('user_id', 'in', db.selectFrom('sys_user').select('id').where('tenant_id', '=', id)).execute();
-    await logActivity(db, a, { module: 'SYS', action: 'EDIT_TENANT', table: 'sys_tenant', rowId: id, detail: { status: b.status } });
+    await logActivity(db, a, { module: 'SYS', action: 'EDIT_TENANT', table: 'sys_tenant', rowId: id, detail: { status: b.status, ...(b.single_session !== undefined ? { single_session: b.single_session } : {}) } });
     return { id };
   });
   /** T0.17 ลบข้อมูลทั้งหมดของลูกค้าที่เลิกใช้บริการครบ 90 วันแล้ว — พิมพ์รหัสลูกค้ายืนยัน · ย้อนกลับไม่ได้ */

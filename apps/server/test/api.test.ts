@@ -5708,6 +5708,59 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await row('ops.155'))!.tenant_id).toBeNull();
     cookie = '';
   });
+
+  it('1 รหัสเข้าได้ทีละ 1 เครื่อง: the second login ends the first session with SESSION_REPLACED; per-user option; no cross-tenant change (HANDOFF 156)', async () => {
+    const login = async (u: string, pw: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: pw })).status).toBe(200); return cookie; };
+    const as = async (c: string, url: string) => { cookie = c; return call('GET', url); };
+    await login('admin', 'secret123');
+    // ลูกค้าใหม่ 2 ราย (CUSTA/CUSTB ถูกระงับ/ย้ายในชุดก่อนหน้า)
+    for (const [code, u, pw] of [['ONE-A', 'one.a', 'passOneA1'], ['ONE-B', 'one.b', 'passOneB1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
+    const tenants = (await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; name: string; status: string; single_session: boolean }>;
+    const A = tenants.find((t) => t.code === 'ONE-A')!, B = tenants.find((t) => t.code === 'ONE-B')!;
+    expect(A.single_session).toBe(false); expect(B.single_session).toBe(false);   // ค่าเริ่มต้น ปิด
+    // ปิดอยู่ = เข้าได้หลายเครื่องเหมือนเดิม
+    const b1 = await login('one.b', 'passOneB1'), b2 = await login('one.b', 'passOneB1');
+    expect((await as(b1, '/api/v1/auth/me')).status).toBe(200); expect((await as(b2, '/api/v1/auth/me')).status).toBe(200);
+    // ผู้ให้บริการเปิดให้ลูกค้า A (ส่งเฉพาะช่องที่มี — ไม่ส่ง single_session = คงค่าเดิม)
+    await login('admin', 'secret123');
+    expect((await call('PUT', `/api/v1/tenants/${A.id}`, { code: A.code, name: A.name, status: A.status })).status).toBe(200);
+    expect((await call('GET', '/api/v1/tenants')).body.find((t: { id: string }) => t.id === A.id).single_session).toBe(false);
+    expect((await call('PUT', `/api/v1/tenants/${A.id}`, { code: A.code, name: A.name, status: A.status, single_session: true })).status).toBe(200);
+    const a1 = await login('one.a', 'passOneA1');
+    expect((await as(a1, '/api/v1/auth/me')).status).toBe(200);
+    const a2 = await login('one.a', 'passOneA1');
+    const kicked = await as(a1, '/api/v1/auth/me');
+    expect(kicked.status).toBe(401);
+    expect(kicked.body.error.code).toBe('SESSION_REPLACED');
+    expect(kicked.body.error.message).toMatch(/เข้าระบบจากเครื่องอื่นแล้ว/);
+    expect((await as(a2, '/api/v1/auth/me')).status).toBe(200);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'SESSION_REPLACED'`.execute(database.db)).rows[0]!.n).toBeGreaterThan(0);
+    // ออกจากระบบเอง = ข้อความเดิม (ไม่ใช่ "เครื่องอื่น")
+    cookie = a2; await call('POST', '/api/v1/auth/logout');
+    expect((await as(a2, '/api/v1/auth/me')).body.error.code).toBe('UNAUTHORIZED');
+    // ลูกค้า B ไม่ได้รับผล: ทั้งสองเครื่องเดิมยังใช้ได้
+    expect((await as(b1, '/api/v1/auth/me')).status).toBe(200); expect((await as(b2, '/api/v1/auth/me')).status).toBe(200);
+    // ข้ามลูกค้าไม่ได้ (กติกา 7.1): ผู้ดูแลของลูกค้า B แก้ค่าของลูกค้า A / ผู้ใช้ของลูกค้า A ไม่ได้
+    cookie = b1;
+    expect((await call('PUT', `/api/v1/tenants/${A.id}`, { code: A.code, name: A.name, status: A.status, single_session: false })).status).toBe(403);
+    const aUser = (await sql<{ id: string }>`SELECT id FROM sys_user WHERE username = 'one.a'`.execute(database.db)).rows[0]!.id;
+    expect((await call('PUT', `/api/v1/users/${aUser}`, { username: 'one.a', display_name: 'x', single_session: false })).status).toBe(404);
+    expect((await call('GET', '/api/v1/tenant/security')).body.single_session).toBe(false);
+    expect((await sql<{ single_session: boolean }>`SELECT single_session FROM sys_tenant WHERE id = ${A.id}`.execute(database.db)).rows[0]!.single_session).toBe(true);
+    // รายผู้ใช้: ผู้ดูแลของลูกค้า B เปิดเฉพาะตัวเอง (ลูกค้า B ยังปิด) → เข้าเครื่องใหม่ เครื่องเดิมออก
+    const me = (await call('GET', '/api/v1/users')).body.users.find((u: { username: string }) => u.username === 'one.b');
+    expect(me.single_session).toBe(false);
+    expect((await call('PUT', `/api/v1/users/${me.id}`, { username: me.username, display_name: me.display_name, user_group_id: me.user_group_id, approval_level: me.approval_level, check_rights: me.check_rights, status: me.status, companies: me.companies, single_session: true })).status).toBe(200);
+    const b3 = await login('one.b', 'passOneB1');
+    expect((await as(b1, '/api/v1/auth/me')).body.error?.code).toBe('SESSION_REPLACED');
+    expect((await as(b2, '/api/v1/auth/me')).body.error?.code).toBe('SESSION_REPLACED');
+    expect((await as(b3, '/api/v1/auth/me')).status).toBe(200);
+    // คืนค่าเดิม (ชุดทดสอบอื่นเข้าระบบหลายครั้ง)
+    expect((await call('PUT', `/api/v1/users/${me.id}`, { username: me.username, display_name: me.display_name, user_group_id: me.user_group_id, approval_level: me.approval_level, check_rights: me.check_rights, status: me.status, companies: me.companies, single_session: false })).status).toBe(200);
+    await login('admin', 'secret123');
+    expect((await call('PUT', `/api/v1/tenants/${A.id}`, { code: A.code, name: A.name, status: A.status, single_session: false })).status).toBe(200);
+    cookie = '';
+  });
 });
 
 describe('ชื่อภาษาอังกฤษของข้อมูล (โหมด EN)', () => {

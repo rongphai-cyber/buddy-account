@@ -79,12 +79,30 @@ async function newSession(db: Db, cfg: Config, userId: string, req: FastifyReque
   const expires = new Date(Date.now() + cfg.sessionHours * 3600_000).toISOString();
   // เลือกบริษัทล่าสุดที่ใช้ หรือบริษัทแรกที่เข้าได้
   const last = await db.selectFrom('sys_session').select(['current_company_id', 'current_branch_id']).where('user_id', '=', userId).where('current_company_id', 'is not', null).orderBy('created_at', 'desc').limit(1).executeTakeFirst();
-  await db.insertInto('sys_session').values({
+  const s = await db.insertInto('sys_session').values({
     user_id: userId, token_hash: sha(token), expires_at: expires, ip_address: req.ip?.slice(0, 60) ?? null,
     user_agent: (req.headers['user-agent'] ?? '').slice(0, 200), current_company_id: last?.current_company_id ?? null,
     current_branch_id: last?.current_branch_id ?? null, work_date: workDate ?? null,
-  }).execute();
+  }).returning('id').executeTakeFirstOrThrow();
+  // 1 รหัสเข้าได้ทีละ 1 เครื่อง (HANDOFF 156): ลูกค้าเปิดทุกผู้ใช้ หรือผู้ใช้นี้เปิดเอง → เครื่องอื่นที่เปิดค้างอยู่ออกจากระบบ (REPLACED = บอกเหตุที่เครื่องเดิม)
+  if (await singleSession(db, userId)) {
+    const ended = await db.updateTable('sys_session').set({ ended_at: sql`now()` as never, end_reason: SESSION_REPLACED })
+      .where('user_id', '=', userId).where('id', '<>', s.id).where('ended_at', 'is', null).where('deleted_at', 'is', null).returning('id').execute();
+    if (ended.length) await logActivity(db, { companyId: null, userId }, { module: 'SYS', action: 'SESSION_REPLACED', detail: { ended: ended.length, ip: req.ip } });
+  }
   return token;
+}
+
+export const SESSION_REPLACED = 'REPLACED';
+/** ผู้ใช้นี้ถูกจำกัด 1 เครื่อง: ค่าของลูกค้า (ผู้ให้บริการตั้ง) หรือค่าของผู้ใช้ — ผู้ใช้เข้มกว่าได้ ผ่อนค่าของลูกค้าไม่ได้ */
+async function singleSession(db: Db, userId: string) {
+  const r = await db.selectFrom('sys_user as u').leftJoin('sys_tenant as t', 't.id', 'u.tenant_id').select(['u.single_session as own', 't.single_session as tenant']).where('u.id', '=', userId).executeTakeFirst();
+  return !!r && (r.own || !!r.tenant);
+}
+/** cookie ของ session ที่ถูกแทนด้วยการเข้าระบบจากเครื่องอื่น → ข้อความชัดเจนแทน "กรุณาเข้าสู่ระบบ" */
+async function replacedError(db: Db, token: string) {
+  const r = await db.selectFrom('sys_session').select('id').where('token_hash', '=', sha(token)).where('end_reason', '=', SESSION_REPLACED).where('deleted_at', 'is', null).executeTakeFirst();
+  return r ? new AppError(401, 'SESSION_REPLACED', 'รหัสผู้ใช้นี้เข้าระบบจากเครื่องอื่นแล้ว (ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง) — ถ้าเป็นคุณ เข้าระบบใหม่ที่เครื่องนี้ได้ เครื่องอื่นจะออกจากระบบแทน · ถ้าไม่ใช่คุณ เปลี่ยนรหัสผ่านทันที') : null;
 }
 
 export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
@@ -246,6 +264,6 @@ export function attachAuth(app: FastifyInstance, db: Db) {
     // เครื่องสาขา (T7.8) ยืนยันด้วยรหัสเครื่องใน header x-buddy-device แทนการเข้าระบบ
     const open = ['/api/v1/setup', '/api/v1/setup/status', '/api/v1/auth/login', '/api/v1/auth/login/totp', '/api/v1/health', '/api/v1/signup', '/api/v1/signup/config',
       '/api/v1/sync/setup-branch', '/api/v1/sync/bootstrap', '/api/v1/sync/push', '/api/v1/sync/pull', '/api/v1/sso/jwks'];
-    if (!req.auth && !open.some((p) => req.url.split('?')[0] === p)) throw unauthorized();
+    if (!req.auth && !open.some((p) => req.url.split('?')[0] === p)) throw (token ? await replacedError(db, token) : null) ?? unauthorized();
   });
 }

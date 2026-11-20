@@ -30,7 +30,7 @@ async function callInner<T>(method: string, url: string, body?: unknown): Promis
   }
   if (!res.ok) {
     const e = data?.error ?? {};
-    if (res.status === 401 && !url.includes('/auth/login')) window.dispatchEvent(new CustomEvent('buddy:unauthorized'));
+    if (res.status === 401 && !url.includes('/auth/login')) window.dispatchEvent(new CustomEvent('buddy:unauthorized', { detail: { code: e.code } }));
     throw new ApiError(res.status, e.code ?? 'ERROR', e.message ?? `เกิดข้อผิดพลาด (${res.status})`, e.issues);
   }
   return data as T;
