@@ -1109,3 +1109,7 @@ html[data-readonly] .modal-body .form-grid input:not([type=search]), html[data-r
 html[data-readonly] .main table.grid input, html[data-readonly] .main table.grid select { background: #f6f5f2; cursor: not-allowed; }
 /* ช่องบังคับที่ยังไม่ได้เลือก (หน้าผู้ใช้งาน: บริษัทที่เข้าได้ · HANDOFF 159) */
 fieldset.invalid { border: 1px solid var(--bad); border-radius: 8px; padding: 6px 8px; background: #fff5f5; }
+/* สิทธิ์รายเมนู: ค่าที่ได้จากเมนูหลัก (ไม่ได้ตั้งที่เมนูนี้) จางและเอียง · ← รหัสเมนูหลัก (HANDOFF 161) */
+select.perm-inh, td.perm-inh { color: #9a9aa6; font-style: italic; background: #f7f7fa; }
+select.perm-inh.bad, td.perm-inh.bad { color: #c99a9a; }
+.perm-from { color: #9a9aa6; font-style: italic; margin-left: 4px; }

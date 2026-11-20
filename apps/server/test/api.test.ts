@@ -378,6 +378,9 @@ describe('Buddy Account API (PGlite)', () => {
     expect([eff.effective['GL.JNL'].read, eff.effective['GL.JNL'].edit, eff.effective['GL.JNL'].print, eff.effective['RP.TB'].read, eff.effective['RP.LEDGER'].read]).toEqual([true, false, 'S', false, true]);
     const byMenu = (await call('GET', '/api/v1/permissions/by-menu?menu_code=GL.JNL')).body;
     expect(byMenu.map((r: { code: string; can_add: string }) => [r.code, r.can_add])).toEqual([['ACC', 'L']]);
+    // ตามเมนู: กลุ่มที่ได้สิทธิ์จากเมนูหลัก (RP) แสดงด้วย พร้อมบอกว่ามาจากเมนูไหน (HANDOFF 161)
+    const inh = (await call('GET', '/api/v1/permissions/by-menu?menu_code=RP.LEDGER')).body as Array<{ code: string; menu_code: string; can_read: string }>;
+    expect(inh.map((r) => [r.code, r.menu_code, r.can_read])).toEqual([['ACC', 'RP', 'Y']]);
     me = await as('ctl5', 'ctl5pass');
     expect((await call('GET', '/api/v1/gl/journals')).status).toBe(200);
     const jv1 = (await call('POST', '/api/v1/gl/journals', jvBody)).body.id;

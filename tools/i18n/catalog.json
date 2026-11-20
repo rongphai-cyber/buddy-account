@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 147,
+"n": 148,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -3585,6 +3585,14 @@
 ]
 },
 {
+"th": "ทุกระบบงาน",
+"n": 6,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "บันทึกแล้ว",
 "n": 6,
 "files": [
@@ -5080,14 +5088,6 @@
 "apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
-"th": "ทุกระบบงาน",
-"n": 4,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -9058,6 +9058,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ตามเมนูหลัก {0} {1}",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -18204,7 +18211,7 @@
 ]
 },
 {
-"th": "· Y = ใช้ได้ · L = ใช้ได้และบันทึกเหตุการณ์ · N = ไม่ให้ใช้ · S = (ช่องพิมพ์) พิมพ์ออกจอเท่านั้น · ว่าง = ไม่กำหนด (ใช้แถวเมนูหลักหรือ \"ทุกระบบงาน\")",
+"th": "· Y = ใช้ได้ · L = ใช้ได้และบันทึกเหตุการณ์ · N = ไม่ให้ใช้ · S = (ช่องพิมพ์) พิมพ์ออกจอเท่านั้น · ค่าจาง ← รหัส = ได้จากเมนูหลักหรือ \"ทุกระบบงาน\" (ตั้งที่เมนูหลักแล้วเมนูย่อยได้ค่าเดียวกัน · เลือกค่าที่เมนูย่อยเพื่อตั้งเฉพาะเมนูนั้น)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -20714,6 +20721,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "คงค่าเดิมไว้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -25996,6 +26010,13 @@
 },
 {
 "th": "ตามเมนู (ระบบงานที่อนุญาต)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "ตามเมนูหลัก {0} {1} — เลือกค่าเพื่อตั้งเฉพาะเมนูนี้",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -36460,6 +36481,13 @@
 ]
 },
 {
+"th": "ยังไม่กำหนด (ไม่มีเมนูหลักที่ตั้งไว้) = ใช้ไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ยังไม่คิด",
 "n": 1,
 "files": [
@@ -36537,7 +36565,7 @@
 ]
 },
 {
-"th": "ยังไม่มีกลุ่มหรือผู้ใช้ที่กำหนดสิทธิ์ในเมนูนี้โดยตรง (อาจได้จากเมนูหลักหรือ \"ทุกระบบงาน\")",
+"th": "ยังไม่มีกลุ่มหรือผู้ใช้ที่กำหนดสิทธิ์ในเมนูนี้ เมนูหลัก หรือ \"ทุกระบบงาน\"",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -42148,6 +42176,13 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ล้าง (ตามเมนูหลัก)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -50117,6 +50152,27 @@
 ]
 },
 {
+"th": "เมนูย่อย {0} รายการตั้งไว้ต่างจากนี้ — ใช้ค่าเดียวกันทั้งหมด หรือคงค่าเดิมของเมนูย่อยเหล่านี้ไว้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "เมนูย่อยตั้งไว้ต่างจากนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "เมนูย่อยที่ไม่ได้ตั้งเองได้ค่าใหม่จากเมนูหลักทันที",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "เมียนมา",
 "n": 1,
 "files": [
@@ -54545,6 +54601,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ใช้ค่าเดียวกันทั้งหมด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {

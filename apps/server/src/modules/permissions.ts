@@ -552,16 +552,24 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/permissions/by-menu', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ menu_code: z.string().min(1).max(30) }), req.query);
-    const rows = await sql<{ subject_type: string; subject_id: string; code: string | null; name: string | null } & Record<string, string>>`
-      SELECT p.subject_type, p.subject_id, COALESCE(u.username, g.code) AS code, COALESCE(u.display_name, g.name) AS name,
+    // แถวของเมนูนี้ + เมนูหลักทุกชั้น + ทุกระบบงาน (HANDOFF 161: หน้าจอแสดงสิทธิ์ที่ได้จากเมนูหลักแบบจาง) — menu_code บอกว่ามาจากเมนูไหน
+    const chain = chainOf(q.menu_code);
+    const rows = await sql<{ subject_type: string; subject_id: string; code: string | null; name: string | null; menu_code: string } & Record<string, string>>`
+      SELECT p.subject_type, p.subject_id, COALESCE(u.username, g.code) AS code, COALESCE(u.display_name, g.name) AS name, m.code AS menu_code,
              p.can_read, p.can_add, p.can_edit, p.can_cancel, p.can_delete, p.can_print, p.can_approve
         FROM sys_permission p JOIN sys_menu m ON m.id = p.menu_id
         LEFT JOIN sys_user u ON p.subject_type = 'U' AND u.id = p.subject_id
         LEFT JOIN sys_user_group g ON p.subject_type = 'G' AND g.id = p.subject_id
-       WHERE p.company_id = ${a.companyId} AND p.deleted_at IS NULL AND m.code = ${q.menu_code}
+       WHERE p.company_id = ${a.companyId} AND p.deleted_at IS NULL AND m.code = ANY(${chain}::text[])
          AND (${a.isPlatform} OR COALESCE(u.tenant_id, g.tenant_id) IS NOT DISTINCT FROM ${a.tenantId ?? null}::uuid)
        ORDER BY p.subject_type DESC, 3`.execute(db);
-    return rows.rows;
+    // ต่อผู้ใช้/กลุ่ม: แถวของเมนูที่ใกล้ที่สุดในสาย (ตัวเอง → เมนูหลัก → ALL)
+    const best = new Map<string, (typeof rows.rows)[number]>();
+    for (const r of rows.rows) {
+      const k = `${r.subject_type}:${r.subject_id}`, b = best.get(k);
+      if (!b || chain.indexOf(r.menu_code) < chain.indexOf(b.menu_code)) best.set(k, r);
+    }
+    return rows.rows.filter((r) => best.get(`${r.subject_type}:${r.subject_id}`) === r);
   });
 
   app.put('/api/v1/permissions', async (req) => {

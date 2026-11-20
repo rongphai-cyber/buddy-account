@@ -2114,5 +2114,16 @@
  "ฝ่ายการตลาด": "Marketing",
  "ฝ่ายบริการ/ปฏิบัติการ": "Service / operations",
  "ฝ่ายผลิต": "Production",
- "· … อีก": "· … more"
+ "· … อีก": "· … more",
+ "ตามเมนูหลัก {0} {1}": "From parent menu {0} {1}",
+ "· Y = ใช้ได้ · L = ใช้ได้และบันทึกเหตุการณ์ · N = ไม่ให้ใช้ · S = (ช่องพิมพ์) พิมพ์ออกจอเท่านั้น · ค่าจาง ← รหัส = ได้จากเมนูหลักหรือ \"ทุกระบบงาน\" (ตั้งที่เมนูหลักแล้วเมนูย่อยได้ค่าเดียวกัน · เลือกค่าที่เมนูย่อยเพื่อตั้งเฉพาะเมนูนั้น)": "· Y = allowed · L = allowed and logged · N = not allowed · S = (print column) print to screen only · greyed value ← code = taken from the parent menu or \"All systems\" (set it on the parent and every sub-menu gets the same value · pick a value on a sub-menu to set that menu only)",
+ "คงค่าเดิมไว้": "Keep their values",
+ "ตามเมนูหลัก {0} {1} — เลือกค่าเพื่อตั้งเฉพาะเมนูนี้": "From parent menu {0} {1} — pick a value to set this menu only",
+ "ยังไม่กำหนด (ไม่มีเมนูหลักที่ตั้งไว้) = ใช้ไม่ได้": "Not set (no parent menu set) = not allowed",
+ "ยังไม่มีกลุ่มหรือผู้ใช้ที่กำหนดสิทธิ์ในเมนูนี้ เมนูหลัก หรือ \"ทุกระบบงาน\"": "No group or user has rights set on this menu, its parent menus, or \"All systems\"",
+ "ล้าง (ตามเมนูหลัก)": "Clear (use parent menu)",
+ "เมนูย่อย {0} รายการตั้งไว้ต่างจากนี้ — ใช้ค่าเดียวกันทั้งหมด หรือคงค่าเดิมของเมนูย่อยเหล่านี้ไว้": "{0} sub-menus are set differently — apply the same value to all, or keep their own values",
+ "เมนูย่อยตั้งไว้ต่างจากนี้": "Sub-menus set differently",
+ "เมนูย่อยที่ไม่ได้ตั้งเองได้ค่าใหม่จากเมนูหลักทันที": "Sub-menus without their own setting take the new value from the parent right away",
+ "ใช้ค่าเดียวกันทั้งหมด": "Apply to all"
 }
