@@ -7051,6 +7051,7 @@
 "เลขที่อ้างอิง {0}: {1}": "Reference No. {0}: {1}",
 "เลขที่อ้างอิง {0}: {1}ต้องมี \"อ้างใบกำกับ\" (เลขที่ใบกำกับเดิม)": "Reference no. {0}: {1} must have \"Original Invoice Ref.\" (the original tax invoice no.)",
 "เลขที่อ้างอิง {0}: {1}ต้องมี \"อ้างใบกำกับ\" (เลขที่ใบกำกับเดิม) — ใส่ในคอลัมน์ \"อ้างใบกำกับ\"": "Reference {0}: {1} needs \"Ref. invoice\" (original invoice no.) — fill in the \"Ref. invoice\" column",
+"เลขที่อ้างอิง {0}: คอลัมน์ \"{1}\" = \"{2}\" ไม่ตรงกับแถว {3} (\"{4}\") — ช่องหัวเอกสารใส่แถวแรกพอ แถวต่อมาเว้นว่างหรือใส่ค่าเดิม": "Reference {0}: column \"{1}\" = \"{2}\" differs from row {3} (\"{4}\") — header fields need the first row only; later rows may be blank or repeat the same value",
 "เลขที่อ้างอิง {0}: ภาษีหัก ณ ที่จ่ายไม่ตรงกับแถว {1} — ใส่แถวเดียวของเอกสาร": "Reference {0}: withholding tax does not match row {1} — fill in only one row of the document",
 "เลขที่อ้างอิง {0}: รหัสคู่ค้าไม่ตรงกับแถว {1}": "Reference No. {0}: partner code does not match row {1}",
 "เลขที่อ้างอิง {0}: วันที่ไม่ตรงกับแถว {1}": "Reference no. {0}: the date does not match row {1}",

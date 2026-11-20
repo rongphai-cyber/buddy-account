@@ -240,4 +240,42 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     // check columns are readable but not part of the screen-shaped template sheet
     expect(importColumnsFor(TRADE_KINDS[0]!).filter((c) => c.check).map((c) => c.key)).toEqual(['vat_amount', 'net_total']);
   });
+
+  it('HANDOFF 170 G: later rows of a document may leave head fields blank (date, customer, …) — they follow the first row; a different value is an error naming the column and row', () => {
+    const K = TRADE_KINDS.find((k) => k.cls === 'HS')!;
+    // the reported case: HS template, 4 rows of ทดลอง-HS-101, only the first has date + customer
+    const H = ['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสลูกค้า', 'ชื่อลูกค้า', 'แผนก', 'หมายเหตุ', 'รหัสสินค้า', 'จำนวน *', 'ราคาต่อหน่วย'];
+    const r = mapImport([H,
+      ['ทดลอง-HS-101', '20/11/2569', 'C001', '', 'D1', 'หน้าร้าน', 'A-1', '1', '100'],
+      ['ทดลอง-HS-101', '', '', '', '', '', 'A-2', '2', '50'],
+      ['ทดลอง-HS-101', '', '', '', '', '', 'A-3', '1', '10'],
+      ['ทดลอง-HS-101', '', '', '', '', '', 'A-4', '3', '5']], 'B', K);
+    expect(r.errors).toEqual([]);
+    expect(r.docs.map((x) => [x.ref, x.date, x.party, x.department, x.remark, x.lines.length])).toEqual([['ทดลอง-HS-101', '2026-11-20', 'C001', 'D1', 'หน้าร้าน', 4]]);
+    // a different non-blank head value = error with the column and row (the date/customer rules stay as they were)
+    const bad = mapImport([H,
+      ['B1', '20/11/2569', 'C001', '', 'D1', 'หน้าร้าน', 'A-1', '1', '100'],
+      ['B1', '', '', '', 'D2', '', 'A-2', '1', '1'],
+      ['B1', '21/11/2569', '', '', '', '', 'A-3', '1', '1'],
+      ['B1', '', 'C002', '', '', '', 'A-4', '1', '1'],
+      ['B1', '20/11/2569', 'C001', '', 'D1', 'หน้าร้าน', 'A-5', '1', '1']], 'B', K);
+    expect(bad.errors.map((e) => [e.row, e.message])).toEqual([
+      [3, 'เลขที่อ้างอิง B1: คอลัมน์ "แผนก" = "D2" ไม่ตรงกับแถว 2 ("D1") — ช่องหัวเอกสารใส่แถวแรกพอ แถวต่อมาเว้นว่างหรือใส่ค่าเดิม'],
+      [4, 'เลขที่อ้างอิง B1: วันที่ไม่ตรงกับแถว 2'],
+      [5, 'เลขที่อ้างอิง B1: รหัสคู่ค้าไม่ตรงกับแถว 2'],
+    ]);
+    expect(bad.docs[0]!.lines.map((l) => l.item)).toEqual(['A-1', 'A-5']);
+    // a new customer by name: later rows blank → the same new customer
+    expect(mapImport([['เลขที่อ้างอิง', 'วันที่', 'ชื่อลูกค้า', 'รหัสสินค้า', 'จำนวน'], ['N1', '1/10/2569', 'ร้านใหม่', 'X', '1'], ['N1', '', '', 'Y', '1']], 'B', K).docs[0]).toMatchObject({ party: '', party_name: 'ร้านใหม่' });
+    // grouping by document number (no reference column) follows the same rule
+    const dn = mapImport([['เลขที่เอกสาร', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน'], ['HS-9', '1/10/2569', 'C1', 'X', '1'], ['HS-9', '', '', 'Y', '1'], ['', '', '', 'Z', '1']], 'B', K);
+    expect(dn.docs.map((x) => [x.ref, x.doc_no, x.date, x.party, x.lines.length])).toEqual([['HS-9', 'HS-9', '2026-10-01', 'C1', 2]]);
+    expect(dn.errors.map((e) => e.row)).toEqual([4]);   // no number at all = no document to follow
+    // first row blank = still an error on that row
+    expect(mapImport([H, ['B2', '', 'C001', '', '', '', 'A-1', '1', '1']], 'B', K).errors[0]).toEqual({ row: 2, message: 'วันที่ "" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป' });
+    // OE: the same
+    const e = mapExpenseImport([['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'รหัสค่าใช้จ่าย', 'จำนวนเงิน', 'หมายเหตุ'], ['E1', '1/10/2569', 'S1', 'X', '100', 'ก'], ['E1', '', '', 'Y', '50', ''], ['E1', '', '', 'Z', '5', 'ข']], 'B');
+    expect(e.docs.map((x) => [x.date, x.party, x.lines.length])).toEqual([['2026-10-01', 'S1', 2]]);
+    expect(e.errors.map((x) => [x.row, x.message])).toEqual([[4, 'เลขที่อ้างอิง E1: คอลัมน์ "หมายเหตุ" = "ข" ไม่ตรงกับแถว 2 ("ก") — ช่องหัวเอกสารใส่แถวแรกพอ แถวต่อมาเว้นว่างหรือใส่ค่าเดิม']]);
+  });
 });

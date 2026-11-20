@@ -5756,6 +5756,21 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
       [[tpl[1]!.rows[0]![0]!], ['เลขที่อ้างอิง', 'วิธีชำระ', 'จำนวนเงิน', 'เลขที่อ้างอิง/เช็ค'], ['PS-2', 'Q8', '7', 'T2'], ['PS-2', 'Q7', '100', '']]) })).body;
     expect(src.errors).toEqual([]);
     expect(src.docs.map((x: { ref: string; pay_source: string; other_amount: string }) => [x.ref, x.pay_source, x.other_amount])).toEqual([['PS-1', 'main', '107.00'], ['PS-2', 'sheet', '7.00'], ['PS-3', 'cash', '0.00']]);
+
+    // ช. (G) แถวต่อมาของบิลเดียวกันเว้นวันที่/ลูกค้าได้ · (H) สินค้าใหม่ไม่มีรหัส (บริการ + สินค้า) ภายใต้รูปแบบรหัส 99-!!!!-!!!!!! ได้รหัสเสมอ — แฟ้มแบบตัวอย่าง 4 ของเจ้าของ
+    const G = ['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสลูกค้า', 'ชื่อลูกค้า', 'รหัสสินค้า', 'ชื่อสินค้า', 'ชนิดสินค้า', 'หน่วย', 'จำนวน *', 'ราคาต่อหน่วย', 'ประเภท VAT'];
+    const unitCode = (await sql<{ code: string }>`SELECT u.code FROM md_unit u WHERE u.company_id = ${co} AND u.deleted_at IS NULL ORDER BY u.code LIMIT 1`.execute(database.db)).rows[0]!.code;
+    const g = (await call('POST', url, { ...base, data: xl([G,
+      ['ทดลอง-HS-101', '20/11/2569', 'IMP-C1', '', item.code, '', '', '', '1', '100', '1'],
+      ['ทดลอง-HS-101', '', '', '', '', 'หนังสือทดลองนำเข้า', 'สินค้า', unitCode, '2', '50', '1'],
+      ['ทดลอง-HS-101', '', '', '', '', 'ค่าอบรม (ยกเว้น VAT)', 'บริการ', '', '1', '500', '0'],
+      ['ทดลอง-HS-101', '', '', '', '', 'ค่าอบรม (ยกเว้น VAT)', 'บริการ', '', '1', '300', '0']]) })).body;
+    expect(g.errors).toEqual([]);
+    expect(g.docs.map((x: { ref: string; lines: number; party_code: string }) => [x.ref, x.lines, x.party_code])).toEqual([['ทดลอง-HS-101', 4, 'IMP-C1']]);
+    const newItems = g.new_masters.items as Array<{ code: string; name: string; kind: string }>;
+    expect(newItems.map((i) => [i.name, i.kind])).toEqual([['หนังสือทดลองนำเข้า', '0'], ['ค่าอบรม (ยกเว้น VAT)', '3']]);
+    for (const i of newItems) expect(i.code, i.code).toMatch(/^\d\d-[A-Z0-9]{4}-[A-Z0-9]{1,6}$/);   // ตรงรูปแบบ 99-!!!!-!!!!!!
+    expect(newItems[1]!.code).toMatch(/^99-SERV-\d{6}$|^\d\d-[A-Z0-9]{4}-/);
     expect((await call('PUT', '/api/v1/settings', { values: { 'gen.allow_blank_party_tax_id': false } })).status).toBe(200);
   });
   it('journal import (เจ้าของ 17/11/2569): template, check without saving, all-or-nothing commit via createJournal, line description default, duplicate ref, rights, other tenants', async () => {

@@ -266,6 +266,19 @@ function partyCells(cell: (k: ImportKey) => string, bad: (m: string) => void): I
   if (addr.length > 300) { bad('ที่อยู่ยาวเกิน 300 ตัว'); ok = false; }
   return ok ? { party, party_name: name || null, party_tax_id: tax || null, party_branch: br ?? null, party_address: addr || null, party_phone: cell('party_phone').slice(0, 60) || null } : null;
 }
+/** แถวต่อมาของเอกสารเดียวกันที่ไม่ใส่คู่ค้าเลย (รหัส ชื่อ เลขผู้เสียภาษี ว่าง) = คู่ค้าของแถวแรก */
+function inheritParty(p: ImportParty | null, first: ImportParty | undefined): ImportParty | null {
+  if (!p || !first || p.party || p.party_name || p.party_tax_id) return p;
+  return { party: first.party, party_name: first.party_name, party_tax_id: first.party_tax_id, party_branch: p.party_branch ?? first.party_branch, party_address: p.party_address ?? first.party_address, party_phone: p.party_phone ?? first.party_phone };
+}
+/** ช่องหัวเอกสารที่แถวต่อมาใส่ค่าไม่ตรงกับแถวแรก = ผิด บอกคอลัมน์และแถว (ช่องว่าง = ตามแถวแรก · ช่องที่มีกติกาเฉพาะอยู่แล้วข้าม) */
+function headConflicts(ref: string, doc: { row: number }, head: Record<string, unknown>, skip: string[], thOf: (k: string) => string, bad: (m: string) => void) {
+  const d0 = doc as unknown as Record<string, unknown>;
+  for (const [k, v] of Object.entries(head)) {
+    if (skip.includes(k) || v === null || v === undefined || d0[k] === null || d0[k] === undefined) continue;
+    if (String(v) !== String(d0[k])) bad(`เลขที่อ้างอิง ${ref}: คอลัมน์ "${thOf(k)}" = "${String(v)}" ไม่ตรงกับแถว ${doc.row} ("${String(d0[k])}") — ช่องหัวเอกสารใส่แถวแรกพอ แถวต่อมาเว้นว่างหรือใส่ค่าเดิม`);
+  }
+}
 /** แถวต่อมาของเอกสารเดียวกัน: คู่ค้าต้องตรงกับแถวแรก · ช่องที่แถวแรกว่างเติมจากแถวนี้ */
 function samePartyOrBad(doc: ImportParty & { ref: string; row: number }, p: ImportParty, bad: (m: string) => void) {
   if (importPartyKey(doc) !== importPartyKey(p)) { bad(`เลขที่อ้างอิง ${doc.ref}: รหัสคู่ค้าไม่ตรงกับแถว ${doc.row}`); return false; }
@@ -281,7 +294,9 @@ function samePartyOrBad(doc: ImportParty & { ref: string; row: number }, p: Impo
  */
 export function mapImport(rows: string[][], ys: YearSystem, kind?: ImportKindLike | null): { docs: ImportDoc[]; errors: ImportIssue[]; cols: ImportKey[] } {
   const errors: ImportIssue[] = [];
-  const h = findHeader(rows, importReadColumns(kind));
+  const readCols = importReadColumns(kind);
+  const docKind = kind;
+  const h = findHeader(rows, readCols);
   if ('error' in h) return { docs: [], errors: [h.error], cols: [] };
   const { headAt, cols } = h;
   const docs = new Map<string, ImportDoc>();
@@ -302,9 +317,11 @@ export function mapImport(rows: string[][], ys: YearSystem, kind?: ImportKindLik
     if (ref.length > 30) bad(`เลขที่อ้างอิง "${ref}" ยาวเกิน 30 ตัว`);
     const docNoBad = importDocNoError(docNo);
     if (docNoBad) bad(docNoBad);
-    const date = importDate(cell('date'), ys);
+    // แถวต่อมาของเอกสารเดียวกัน (เลขที่อ้างอิง/เลขที่เอกสารเดียวกัน): ช่องหัวเอกสารที่ว่าง = ตามแถวแรก (HANDOFF 170 ข้อ G — ตามแผ่นคำอธิบาย "ใส่แถวแรกพอ")
+    const first = docs.get(ref);
+    const date = !cell('date') && first ? first.date : importDate(cell('date'), ys);
     if (!date) bad(`วันที่ "${cell('date')}" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป`);
-    const p = partyCells(cell, bad);
+    const p = inheritParty(partyCells(cell, bad), first);
     if (p && !p.party && !p.party_name && !p.party_tax_id) bad('ไม่มีรหัสคู่ค้า (คู่ค้าใหม่: ใส่ชื่อคู่ค้า)');
     if (!item && !itemName) bad('ไม่มีรหัสสินค้า (สินค้าใหม่: ใส่ชื่อสินค้า)');
     if (item.length > 30) bad(`รหัสสินค้า "${item}" ยาวเกิน 30 ตัว`);
@@ -355,6 +372,7 @@ export function mapImport(rows: string[][], ys: YearSystem, kind?: ImportKindLik
       if (head.ref_invoice && doc.ref_invoice && head.ref_invoice !== doc.ref_invoice) bad(`เลขที่อ้างอิง ${ref}: อ้างใบกำกับไม่ตรงกับแถว ${doc.row}`);
       if (head.pay_method && doc.pay_method && head.pay_method !== doc.pay_method) bad(`เลขที่อ้างอิง ${ref}: วิธีชำระไม่ตรงกับแถว ${doc.row} — ใส่แถวเดียว หรือใช้แผ่น "รับชำระ"/"จ่ายชำระ" เมื่อแบ่งหลายวิธี`);
       if (wht && doc.wht && JSON.stringify(wht) !== JSON.stringify(doc.wht)) bad(`เลขที่อ้างอิง ${ref}: ภาษีหัก ณ ที่จ่ายไม่ตรงกับแถว ${doc.row} — ใส่แถวเดียวของเอกสาร`);
+      headConflicts(ref, doc, head, ['date', 'doc_no', 'ref_invoice', 'pay_method', 'wht'], (k) => { const c = readCols.find((x) => x.key === k); return c ? (docKind && c.thFor ? c.thFor(docKind) : c.th) : k; }, bad);
       if (errors.length > before) continue;
       const d0 = doc as unknown as Record<string, unknown>;
       for (const [k, v] of Object.entries(head)) if (k !== 'date' && (d0[k] === null || d0[k] === undefined)) d0[k] = v;
@@ -532,9 +550,10 @@ export function mapExpenseImport(rows: string[][], ys: YearSystem): { docs: Expe
     if (ref.length > 30) bad(`เลขที่อ้างอิง "${ref}" ยาวเกิน 30 ตัว`);
     const docNoBad = importDocNoError(docNo);
     if (docNoBad) bad(docNoBad);
-    const date = importDate(cell('date'), ys);
+    const first = docs.get(ref);
+    const date = !cell('date') && first ? first.date : importDate(cell('date'), ys);
     if (!date) bad(`วันที่ "${cell('date')}" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป`);
-    const p = partyCells((k) => cell(k as ExpenseImportKey), bad);
+    const p = inheritParty(partyCells((k) => cell(k as ExpenseImportKey), bad), first);
     if (p && !p.party && !p.party_name && !p.party_tax_id) bad('ไม่มีรหัสหรือชื่อผู้จำหน่าย');
     if (!code) bad('ไม่มีรหัสค่าใช้จ่าย');
     const amount = importNumber(cell('amount'));
@@ -558,6 +577,7 @@ export function mapExpenseImport(rows: string[][], ys: YearSystem): { docs: Expe
       if (wht && doc.wht && JSON.stringify(wht) !== JSON.stringify(doc.wht)) bad(`เลขที่อ้างอิง ${ref}: ภาษีหัก ณ ที่จ่ายไม่ตรงกับแถว ${doc.row} — ใส่แถวเดียวของเอกสาร`);
       if (head.pay_method && doc.pay_method && head.pay_method !== doc.pay_method) bad(`เลขที่อ้างอิง ${ref}: วิธีชำระไม่ตรงกับแถว ${doc.row} — ใส่แถวเดียว หรือใช้แผ่น "จ่ายชำระ" เมื่อแบ่งหลายวิธี`);
       if (head.doc_no && doc.doc_no && head.doc_no !== doc.doc_no) bad(`เลขที่อ้างอิง ${ref}: เลขที่เอกสาร ${head.doc_no} ไม่ตรงกับแถว ${doc.row} (${doc.doc_no}) — หนึ่งเอกสารใช้เลขที่เดียว`);
+      headConflicts(ref, doc, head, ['doc_no', 'pay_method'], (k) => EXPENSE_IMPORT_COLUMNS.find((x) => x.key === k)?.th ?? k, bad);
       if (errors.length > before) continue;
       doc.wht ??= wht;
       const d0 = doc as unknown as Record<string, unknown>;

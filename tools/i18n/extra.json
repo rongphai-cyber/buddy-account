@@ -2581,5 +2581,6 @@
  "ไม่มีเลขที่อ้างอิง (คอลัมน์ \"เลขที่อ้างอิง\"{0} ต้องมีทุกแถว)": "No reference (column \"Reference\"{0} is required on every row)",
  "ไม่มีในแบบฟอร์มนี้ — ใช้กับแฟ้มจากโปรแกรมอื่นที่มียอดภาษี/ยอดสุทธิ (เพิ่มคอลัมน์ชื่อนี้ได้)": "Not in this form — for files from another program with VAT/net totals (you may add a column with this name)",
  "ไม่รวม VAT": "excl. VAT",
- "✓ ยอดภาษี/ยอดรวมตรงกับแฟ้มทุกฉบับ ({0})": "✓ VAT and totals match the file on every document ({0})"
+ "✓ ยอดภาษี/ยอดรวมตรงกับแฟ้มทุกฉบับ ({0})": "✓ VAT and totals match the file on every document ({0})",
+ "เลขที่อ้างอิง {0}: คอลัมน์ \"{1}\" = \"{2}\" ไม่ตรงกับแถว {3} (\"{4}\") — ช่องหัวเอกสารใส่แถวแรกพอ แถวต่อมาเว้นว่างหรือใส่ค่าเดิม": "Reference {0}: column \"{1}\" = \"{2}\" differs from row {3} (\"{4}\") — header fields need the first row only; later rows may be blank or repeat the same value"
 }

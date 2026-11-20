@@ -1,5 +1,5 @@
 import { sql } from 'kysely';
-import { applyMaskCase, fitsMask, importPartyKey, nextCode, type ImportIssue, type ImportParty } from '@buddy/core';
+import { applyMaskCase, fitsMask, importPartyKey, newCode, type ImportIssue, type ImportParty } from '@buddy/core';
 import type { Db } from '../db.js';
 import type { AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -26,15 +26,11 @@ export type PartyHit = { kind: 'found'; party: PartyRow; branch: string | null }
 
 const low = (s: string | null | undefined) => (s ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 const fullName = (p: { title: string | null; name: string }) => [p.title, p.name].filter(Boolean).join(' ');
-/** รหัสถัดไปตามแบบที่ใช้มากที่สุด ไม่ซ้ำกับรหัสที่มีหรือที่เพิ่งออกในแฟ้มนี้ */
-function freshCode(pool: string[], taken: Set<string>, fallback: string) {
-  const codes = [...pool];
-  for (let i = 0; i < 10000; i++) {
-    const c = nextCode(codes, fallback);
-    if (!taken.has(c.toUpperCase())) { taken.add(c.toUpperCase()); return c; }
-    codes.push(c);
-  }
-  throw new Error('ออกรหัสใหม่ไม่ได้');
+/** รหัสใหม่ไม่ซ้ำกับรหัสที่มีหรือที่เพิ่งออกในแฟ้มนี้ — ต่อจากรหัสเดิมที่ตรงรูปแบบ หรือสร้างจากรูปแบบ (core newCode · HANDOFF 170 ข้อ H) */
+function freshCode(pool: string[], taken: Set<string>, fallback: string, mask?: string | null, label?: string) {
+  const c = newCode(mask, pool, taken, fallback, label);
+  if (!c) throw new Error('ออกรหัสใหม่ไม่ได้');
+  return c;
 }
 /** ที่อยู่ยาว → 3 บรรทัด บรรทัดละไม่เกิน 100 ตัว (ตัดที่ช่องว่าง) */
 export function splitAddress(a: string | null): [string | null, string | null, string | null] {
@@ -174,9 +170,8 @@ export async function planItems(db: Db, companyId: string, lines: Array<{ row: n
     const all = (await sql<{ code: string; item_type: string }>`SELECT code, item_type FROM md_item WHERE company_id = ${companyId} AND deleted_at IS NULL`.execute(db)).rows;
     const taken = new Set([...all.map((r) => r.code), ...list.map((p) => p.code)].filter(Boolean).map((c) => c.toUpperCase()));
     for (const p of toCode) {
-      p.code = freshCode(all.filter((r) => r.item_type === p.kind).map((r) => r.code), taken, p.kind === '3' ? 'SV001' : 'P0001');
-      const f = fitsMask(mask, p.code);
-      if (!f.ok) hits.forEach((h, i) => { if (h.kind === 'new' && h.plan === p) hits[i] = { kind: 'error', message: `ออกรหัสให้สินค้าใหม่ "${p.name}" ตามรูปแบบรหัส ${mask} ไม่ได้ — ใส่รหัสสินค้าในแฟ้ม` }; });
+      p.code = newCode(mask, all.filter((r) => r.item_type === p.kind).map((r) => r.code), taken, p.kind === '3' ? 'SV001' : 'P0001', p.kind === '3' ? 'SERV' : 'ITEM') ?? '';
+      if (!p.code) hits.forEach((h, i) => { if (h.kind === 'new' && h.plan === p) hits[i] = { kind: 'error', message: `ออกรหัสให้สินค้าใหม่ "${p.name}" ตามรูปแบบรหัส ${mask} ไม่ได้ — ใส่รหัสสินค้าในแฟ้ม` }; });
     }
   }
   return { hits, planned: list.filter((p) => hits.some((h) => h.kind === 'new' && h.plan === p)) };

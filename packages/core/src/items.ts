@@ -3,6 +3,7 @@
  * STMAS.STKTYP: 0 สินค้า · 1 ชุดธรรมดา · 2 ชุดพิเศษ · 3 สินค้าบริการ · 4 รายได้อื่น · 5 ค่าใช้จ่ายอื่น
  */
 import { d, type Decimal, type MoneyInput } from './money.js';
+import { nextCode } from './ai-bill.js';
 
 export type ItemKind = 'stock' | 'kit' | 'service' | 'income' | 'expense';
 export interface ItemKindDef { kind: ItemKind; types: string[]; menu: string; path: string; route: string; label: string; screen: string }
@@ -30,6 +31,47 @@ export function fitsMask(mask: string | null | undefined, code: string): { ok: b
       return { ok: false, error: `รหัสไม่ตรงรูปแบบ ${mask} ที่ตัวที่ ${i + 1} (${m === '9' ? 'ต้องเป็นตัวเลข' : m === '!' || m.toUpperCase() === 'X' ? 'ห้ามเว้นวรรค' : `ต้องเป็น "${m}"`})` };
   }
   return { ok: true };
+}
+/**
+ * รหัสใหม่ที่ไม่ซ้ำ (นำเข้า Excel เพิ่มสินค้า/บริการ/คู่ค้าให้ — HANDOFF 170 ข้อ H):
+ * 1) ต่อจากรหัสเดิมของกลุ่มนี้ที่ตรงรูปแบบ (nextCode — แบบที่ใช้มากที่สุด) · ไม่มีรูปแบบ = ต่อจากรหัสเดิมทั้งหมด (ไม่มีเลย = fallback)
+ * 2) ต่อไม่ได้/ไม่มีรหัสที่ตรงรูปแบบ = สร้างจากรูปแบบเอง: กลุ่มสุดท้ายเป็นเลขลำดับ · กลุ่ม 9 อื่น = 9 · กลุ่ม !/X อื่น = label (เช่น 99-SERV-000001)
+ * taken = รหัสที่มีแล้ว (ตัวพิมพ์ใหญ่) — รหัสที่ออกให้เพิ่มเข้าไป · null = รูปแบบนี้ออกรหัสไม่ซ้ำไม่ได้
+ */
+export function newCode(mask: string | null | undefined, pool: string[], taken: Set<string>, fallback: string, label = 'AUTO'): string | null {
+  const free = (c: string) => !!c && !taken.has(c.toUpperCase()) && fitsMask(mask, c).ok;
+  const fits = pool.filter((c) => fitsMask(mask, c).ok);
+  const seq = [...fits];
+  if (fits.length || !mask) {
+    for (let i = 0; i < 10000; i++) {
+      const c = applyMaskCase(mask, nextCode(seq, mask ? '' : fallback));
+      if (!c) break;
+      if (free(c)) { taken.add(c.toUpperCase()); return c; }
+      if (!fitsMask(mask, c).ok) break;   // เลขลำดับยาวเกินรูปแบบ
+      seq.push(c);
+    }
+  }
+  if (!mask) return null;
+  // จากรูปแบบ: แบ่งกลุ่มตำแหน่งที่ใส่ค่าได้ (9 ! X) คั่นด้วยตัวคั่น
+  const groups: Array<{ at: number; len: number; digit: boolean }> = [];
+  for (let i = 0; i < mask.length; i++) {
+    const m = mask[i]!, slot = m === '9' || m === '!' || m.toUpperCase() === 'X';
+    if (!slot) continue;
+    const g = groups.at(-1);
+    if (g && g.at + g.len === i && g.digit === (m === '9')) g.len++; else groups.push({ at: i, len: 1, digit: m === '9' });
+  }
+  const last = groups.at(-1);
+  if (!last) return null;
+  const word = label.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'AUTO';
+  const base = [...mask].map((m) => (m === '9' || m === '!' || m.toUpperCase() === 'X' ? '' : m));
+  for (const g of groups.slice(0, -1)) for (let k = 0; k < g.len; k++) base[g.at + k] = g.digit ? '9' : word[k] ?? 'X';
+  const max = 10 ** Math.min(last.len, 9);
+  for (let n = 1; n < max && n < 1000000; n++) {
+    const digits = String(n).padStart(last.len, '0');
+    const c = base.map((ch, i) => (i >= last.at && i < last.at + last.len ? digits[i - last.at]! : ch)).join('');
+    if (free(c)) { taken.add(c.toUpperCase()); return c; }
+  }
+  return null;
 }
 /** ตำแหน่ง ! ในรูปแบบเป็นตัวพิมพ์ใหญ่ */
 export function applyMaskCase(mask: string | null | undefined, code: string): string {

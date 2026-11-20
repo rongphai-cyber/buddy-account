@@ -60,8 +60,31 @@ describe('50 ทวิ layout', () => {
   });
 });
 
-import { fitsMask, applyMaskCase, allocateKit, itemKindOf } from './items.js';
+import { fitsMask, applyMaskCase, allocateKit, itemKindOf, newCode } from './items.js';
 describe('items (บทที่ 7)', () => {
+  it('HANDOFF 170 H: new codes for imported items/services under a code mask — continue the kind\'s codes, else build one from the mask', () => {
+    const M = '99-!!!!-!!!!!!';
+    // services: no service code fits the mask (DEMO has codes like *** or SV001) → built from the mask, skipping taken ones
+    const taken = new Set(['99-SERV-000001']);
+    expect(newCode(M, ['***', 'SV001'], taken, 'SV001', 'SERV')).toBe('99-SERV-000002');
+    expect(newCode(M, [], taken, 'SV001', 'SERV')).toBe('99-SERV-000003');   // taken grows with each code issued
+    expect(fitsMask(M, '99-SERV-000003').ok).toBe(true);
+    // services with codes that fit: continue them
+    expect(newCode(M, ['30-SERV-000007', '30-SERV-000009', 'X'], new Set(['30-SERV-000009']), 'SV001', 'SERV')).toBe('30-SERV-000010');
+    // stock items: continue the latest series (book lands in the paper series — known limitation, user can type a code)
+    expect(newCode(M, ['11-PAPR-A480', '11-PAPR-A479'], new Set(['11-PAPR-A480']), 'P0001', 'ITEM')).toBe('11-PAPR-A481');
+    // the series cannot grow inside the mask (999999 → 1000000 too long) → built from the mask
+    expect(newCode(M, ['12-BOOK-999999'], new Set(['12-BOOK-999999']), 'P0001', 'ITEM')).toBe('99-ITEM-000001');
+    // other masks: digits only · lower-case x · short groups
+    expect(newCode('9999', [], new Set(), 'P0001')).toBe('0001');
+    expect(newCode('x-99', [], new Set(), 'P0001', 'SERV')).toBe('S-01');
+    // no mask = previous behaviour (continue codes, fallback when none)
+    expect(newCode(null, [], new Set(), 'C001')).toBe('C001');
+    expect(newCode(null, ['C001', 'C025'], new Set(['C001', 'C025']), 'C001')).toBe('C026');
+    // a mask that cannot give a unique code
+    expect(newCode('A-B', [], new Set(), 'P0001')).toBeNull();
+    expect(newCode('9', [], new Set(['1', '2', '3', '4', '5', '6', '7', '8', '9']), 'P0001')).toBeNull();
+  });
   it('checks item code mask like Express', () => {
     expect(fitsMask('99-!!!!-!!!!!!', '01-INTL-CL-600').ok).toBe(true);
     expect(fitsMask('99-!!!!-!!!!!!', '01-INTL').ok).toBe(true);          // สั้นกว่ารูปแบบได้
