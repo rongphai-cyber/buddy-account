@@ -1966,5 +1966,8 @@
  "1 เครื่อง = ทุกผู้ใช้ของลูกค้านี้ เข้าระบบจากเครื่องใหม่แล้วเครื่องเดิมออกจากระบบ (กันใช้รหัสเดียวกันหลายคน) · มีผลตั้งแต่การเข้าระบบครั้งถัดไป": "One device = for every user of this customer, signing in on a new device signs out the old one (stops several people sharing one username) · takes effect from the next sign-in",
  "1 เครื่อง = เข้าระบบจากเครื่องใหม่ เครื่องเดิมออกจากระบบ (มีผลครั้งถัดไปที่เข้าระบบ)": "One device = signing in on a new device signs out the old one (takes effect at the next sign-in)",
  "ลูกค้านี้ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ — เข้าระบบจากเครื่องใหม่ เครื่องเดิมจะออกจากระบบ (ผู้ให้บริการตั้ง)": "This customer is set to one device at a time for every user — signing in on a new device signs out the old one (set by the provider)",
- "ลูกค้านี้ตั้งไว้ 1 เครื่องทุกผู้ใช้ (ผู้ให้บริการตั้ง)": "This customer is set to one device for every user (set by the provider)"
+ "ลูกค้านี้ตั้งไว้ 1 เครื่องทุกผู้ใช้ (ผู้ให้บริการตั้ง)": "This customer is set to one device for every user (set by the provider)",
+ "ดูอย่างเดียว — บัญชีนี้ไม่มีสิทธิ์เพิ่มหรือแก้ไขในเมนูนี้ (ขอสิทธิ์จากผู้ดูแลระบบ)": "View only — this account has no right to add or edit in this menu (ask the administrator for rights)",
+ "ผู้ใช้ดูอย่างเดียวส่งเอกสารใหม่ไม่ได้ — ให้ผู้ใช้ที่มีสิทธิ์บันทึกหรือผู้ดูแลระบบทำ": "A view-only user cannot resend documents — ask a user with save rights or the administrator",
+ "🔒 ดูอย่างเดียว — บัญชีนี้อ่านเมนูนี้ได้อย่างเดียว เพิ่ม แก้ไข หรือบันทึกไม่ได้ (ขอสิทธิ์จากผู้ดูแลระบบ)": "🔒 View only — this account can only read this menu; it cannot add, edit or save (ask the administrator for rights)"
 }

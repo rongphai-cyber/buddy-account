@@ -183,6 +183,20 @@ export function flattenMenu(items: MenuItem[] = MENU, parent?: string): Array<Me
 }
 
 /**
+ * ผู้ใช้ดูอย่างเดียว (HANDOFF 157 · เจ้าของ 20/11/2569 "ดูได้อย่างเดียว ขอตรวจเช็คทุกเมนู"):
+ * เมนูที่มีไว้ "ทำ" อย่างเดียว (สร้าง/นำเข้า/ปิดงวด/ประมวลผล/สำรอง) — ไม่มีสิทธิ์เพิ่มและแก้ไข = ไม่แสดงในแถบเมนูและค้นหาเมนู
+ */
+export const ACTION_MENUS: ReadonlySet<string> = new Set(['SET.NEWCO', 'SET.LINK', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'OT.IMPTRADE', 'OT.IMPJNL', 'FA.DEPR']);
+/** เมนูที่เป็นการอ่านอยู่แล้ว (รายงาน แฟ้มบันทึกเหตุการณ์ บัญชีของตัวเอง) — ไม่เข้าโหมดดูอย่างเดียว ช่องเงื่อนไขใช้ได้ตามปกติ */
+export const readOnlyExempt = (code: string) => code === 'RP' || code.startsWith('RP.') || ['OT.CHECK', 'OT.LOG', 'OT.PASS', 'OT.HUB'].includes(code);
+const ROUTES = flattenMenu().filter((m) => m.route).map((m) => ({ code: m.code, path: m.route!.split('?')[0]! })).sort((a, b) => b.path.length - a.path.length);
+/** เมนูของหน้าจอจากที่อยู่ (ตรงยาวที่สุด เช่น /sa/invoices/123 → SA.IV) · ไม่ใช่หน้าของเมนูใด = null */
+export function menuForPath(pathname: string): string | null {
+  const p = pathname.replace(/\/+$/, '') || '/';
+  return ROUTES.find((r) => p === r.path || p.startsWith(r.path + '/'))?.code ?? null;
+}
+
+/**
  * ตารางข้อมูล (เริ่มระบบ › 2 ตารางข้อมูล — คู่มือบทที่ 6 S-TBL-00/01)
  * table: เก็บในตารางของตัวเอง (อ้างด้วย id) หรือ md_lookup (อ้างด้วยรหัส) · refs = ช่องที่อ้างรหัสนี้ (ใช้แล้วห้ามลบ/แก้รหัส)
  */

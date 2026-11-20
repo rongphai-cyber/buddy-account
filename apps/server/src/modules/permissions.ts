@@ -111,6 +111,12 @@ function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action, o
 
 /** ผลการตรวจสิทธิ์ (เมนู, การทำงาน) ของผู้ใช้ปัจจุบัน — ใช้ใน API ที่ต้องรู้รายละเอียด เช่น สิทธิ์พิมพ์ออกจอเท่านั้น */
 export async function allowedFor(db: Db, a: AuthContext, menu: string, action: Action) { return decide(a, await loadRows(db, a), menu, action, await modulesOff(db, a.companyId)); }
+/** ผู้ใช้ที่เพิ่ม/แก้อะไรไม่ได้เลยในบริษัทนี้ (ผู้ใช้ดูอย่างเดียว) — API แบบ self ที่เปลี่ยนข้อมูลใช้ตรวจ (HANDOFF 157) */
+export async function readOnlyUser(db: Db, a: AuthContext) {
+  if (a.isAdmin) return false;
+  const rows = await loadRows(db, a), off = await modulesOff(db, a.companyId);
+  return !FLAT.some((m) => decide(a, rows, m.code, 'add', off).allowed || decide(a, rows, m.code, 'edit', off).allowed);
+}
 
 /** สิทธิ์ทุกเมนูของผู้ใช้ในบริษัทปัจจุบัน — หน้าจอใช้ซ่อนเมนู/ปุ่ม (ด่านจริงอยู่ที่ API) */
 export async function permissionMatrix(db: Db, a: AuthContext) {
@@ -156,6 +162,23 @@ const DOC = (action: Action): Rule => ({ kind: 'menu', menu: 'GL.JNL', action, p
 const NOTE_MENU: Record<string, string> = { item: 'IC.ITEM', customer: 'SA.CUS', supplier: 'PU.SUP' };
 const MNOTE = (action: Action): Rule => ({ kind: 'menu', menu: 'IC.ITEM', action, pick: async (req) => NOTE_MENU[String((req.params as { entity?: string }).entity)] ?? 'IC.ITEM' });
 const LOOKUP: Rule = { kind: 'lookup' }, SELF: Rule = { kind: 'self' }, OPEN: Rule = { kind: 'open' };
+/**
+ * API เขียนที่ผู้ใช้ดูอย่างเดียวเรียกได้ (HANDOFF 157): บัญชีของตัวเอง/ไม่ต้องเข้าระบบ — ไม่เขียนข้อมูลของบริษัท
+ * นอกจากนี้ทุก POST/PUT/PATCH/DELETE ต้องตอบ 403 ให้ผู้ใช้ที่ไม่มีสิทธิ์เพิ่ม/แก้/ยกเลิก/ลบ (ชุดทดสอบเรียกทุกเส้น)
+ */
+export const VIEWER_OWN_ACCOUNT_ROUTES = [
+  'POST /api/v1/setup', 'POST /api/v1/auth/login', 'POST /api/v1/auth/login/totp', 'POST /api/v1/auth/logout', 'POST /api/v1/auth/password', 'POST /api/v1/auth/select',
+  'POST /api/v1/auth/2fa/setup', 'POST /api/v1/auth/2fa/enable', 'POST /api/v1/auth/2fa/recovery', 'POST /api/v1/auth/2fa/disable',
+  'POST /api/v1/signup',
+  // เครื่องสาขา (ยืนยันด้วยรหัสเครื่อง ไม่ใช่ผู้ใช้) · ตั้งเครื่องสาขาได้เฉพาะเครื่องที่ยังไม่มีข้อมูล · ซิงก์ทันที = ส่ง/ดึงคิวเดิม ไม่สร้างข้อมูลใหม่
+  'POST /api/v1/sync/bootstrap', 'POST /api/v1/sync/pull', 'POST /api/v1/sync/push', 'POST /api/v1/sync/setup-branch', 'POST /api/v1/sync/now',
+  // เปิดโปรแกรมอื่นจาก Hub (ตรวจสิทธิ์เปิดโปรแกรมของผู้ใช้ในตัว API)
+  'POST /api/v1/hub/launch',
+  // POST ที่อ่านอย่างเดียว: ตรวจแฟ้มสำรอง (ไม่นำกลับ) · รายงาน (ส่งเงื่อนไขทาง body)
+  'POST /api/v1/backup/verify', 'POST /api/v1/rpt/:code/run',
+];
+/** ตัวอย่างการลงบัญชีก่อนบันทึก: เรียกฟังก์ชันบันทึกจริงใน SAVEPOINT แล้วถอยกลับทั้งหมด (docs/preview.ts) — ไม่มีอะไรถูกบันทึก */
+export const POSTING_PREVIEW = /\/posting-preview$/;
 export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/health': OPEN, 'GET /api/v1/setup/status': OPEN, 'POST /api/v1/setup': OPEN, 'POST /api/v1/auth/login': OPEN, 'POST /api/v1/auth/login/totp': OPEN,
   'GET /api/v1/tenant/security': SELF, 'PUT /api/v1/tenant/security': SELF,
@@ -370,7 +393,7 @@ export const API_RULES: Record<string, Rule> = {
   ])),
   'GET /api/v1/wht/efile': M('FI.WHT', 'print'),
   'GET /api/v1/wht': M('FI.WHT', 'read'), 'GET /api/v1/wht/:id': M('FI.WHT', 'read'), 'POST /api/v1/wht': M('FI.WHT', 'add'),
-  'PUT /api/v1/wht/:id': M('FI.WHT', 'edit'), 'POST /api/v1/wht/:id/cancel': M('FI.WHT', 'cancel'), 'POST /api/v1/wht/:id/printed': M('FI.WHT.CERT', 'read'),
+  'PUT /api/v1/wht/:id': M('FI.WHT', 'edit'), 'POST /api/v1/wht/:id/cancel': M('FI.WHT', 'cancel'), 'POST /api/v1/wht/:id/printed': M('FI.WHT.CERT', 'print'),
   // WTS Connect ฟีดข้อมูลหลักที่เปลี่ยน (docs/17 B0.3) — ข้อมูลเดียวกับหน้าต่างค้นหา
   'GET /api/v1/changes': LOOKUP,
   // WTS Solutions (docs/17 B0.5): คิดเงินเดือนที่ไหน · ตั้งค่าสำหรับ WTS-POS
@@ -453,6 +476,8 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     if (offBy?.key === 'PAY' && (await payrollSource(db, a.companyId)) === 'wts-sop') throw forbidden('บริษัทนี้คิดเงินเดือนที่ WTS-HR — ใบสำคัญเงินเดือนส่งเข้ามาจาก WTS-HR · เปลี่ยนได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน');
     if (offBy) throw forbidden(`${offBy.label}ปิดอยู่ในบริษัทนี้ — ผู้มีสิทธิ์เปิดได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน`);
     const r = decide(a, await loadRows(db, a), menu, rule.action, off);
+    // พิมพ์ออกจอเท่านั้น (S): ดูตัวอย่างได้ แต่คำขอที่บันทึกการพิมพ์ (นับครั้งที่พิมพ์ · POST …/printed) ไม่ได้ — HANDOFF 157
+    if (r.allowed && r.screenOnly && method !== 'GET') throw forbidden('สิทธิ์ของคุณพิมพ์ได้เฉพาะแสดงทางจอภาพ — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์พิมพ์ออกเครื่องพิมพ์');
     if (!r.allowed) {
       throw forbidden(`ไม่มีสิทธิ์${ACTION_TH[rule.action]}ในเมนู "${LABEL.get(menu) ?? menu}" — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ (เมนู อื่น ๆ › ผู้ใช้งานและสิทธิ์)`);
     }

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PrintPage } from './components/DocPrint';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MENU, flattenMenu, formatDate, type MenuItem } from '@buddy/core';
+import { menuVisible, ReadOnlyGuard } from './readonly';
 import { useSession } from './session';
 import type { Me } from './api';
 import { cx, DateInput, focusStart, Modal, Toasts, toastError, useHotkeys } from './ui';
@@ -219,6 +220,7 @@ function Shell() {
       </nav>
       {search && <MenuSearch perms={me.perms} onClose={() => setSearch(false)} />}
       <main className="main" id="main">
+        <ReadOnlyGuard />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/gl/accounts" element={<AccountsPage />} />
@@ -352,7 +354,7 @@ function MovedTo({ from, to }: { from: string; to: string }) {
 function canSee(it: MenuItem, perms: Me['perms'] | undefined): boolean {
   if (it.nav === false) return false;
   if (it.children) return it.children.some((c) => canSee(c, perms));
-  return !it.route || perms?.[it.code]?.read !== false;
+  return !it.route || menuVisible(it.code, perms);
 }
 
 function MenuEntry({ it, perms }: { it: MenuItem; perms: Me['perms'] | undefined }) {

@@ -9,7 +9,7 @@ import { sql } from 'kysely';
 import { migrate } from '../src/migrate.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
-import { API_RULES, REGISTERED_ROUTES, syncMenus } from '../src/modules/permissions.js';
+import { API_RULES, POSTING_PREVIEW, REGISTERED_ROUTES, VIEWER_OWN_ACCOUNT_ROUTES, syncMenus } from '../src/modules/permissions.js';
 import { setAiClientFactory } from '../src/modules/ai.js';
 import { base32Decode, stepOf, totpAt } from '../src/modules/security.js';
 import { d, taxIdCheckDigit } from '@buddy/core';
@@ -5706,6 +5706,31 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await call('POST', '/api/v1/auth/login', { username: 'ops.155', password: 'Ops-Pass-155' })).status).toBe(401);
     expect((await call('POST', '/api/v1/auth/login', { username: 'ops.155', password: 'Ops-Pass-156' })).status).toBe(200);
     expect((await row('ops.155'))!.tenant_id).toBeNull();
+    cookie = '';
+  });
+
+  it('read-only viewer: EVERY registered write route (POST/PUT/PATCH/DELETE) is refused with 403 — a new route without a proper rule fails here (HANDOFF 157)', async () => {
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'demo.view1', password: 'View-Only-99' })).status).toBe(200);
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies[0].id;
+    expect((await call('POST', '/api/v1/auth/select', { company_id: co })).status).toBe(200);
+    const viewer = cookie;
+    // บัญชีของตัวเอง (ไม่ใช่ข้อมูลบริษัท): ออก/เลือกบริษัท/เปลี่ยนรหัสผ่าน/ยืนยันตัวตนสองขั้น — ไม่ได้เขียนข้อมูลบัญชี · ไม่ต้องเข้าระบบ: เข้าระบบ/ตั้งค่าครั้งแรก/สมัคร
+    const OWN_ACCOUNT = new Set(VIEWER_OWN_ACCOUNT_ROUTES);
+    const zero = '00000000-0000-4000-8000-000000000000';
+    const leaks: string[] = [];
+    for (const r of [...REGISTERED_ROUTES].sort()) {
+      const [method, url] = r.split(' ') as ['POST' | 'PUT' | 'DELETE' | 'PATCH', string];
+      if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) || OWN_ACCOUNT.has(r) || POSTING_PREVIEW.test(url)) continue;
+      const path = url.replace(/:kind\b/g, 'doc').replace(/:entity\b/g, 'item').replace(/:[A-Za-z_]+/g, zero);
+      cookie = viewer;
+      const res = await app.inject({ method, url: path, payload: {}, headers: { cookie: viewer } });
+      if (res.statusCode !== 403) leaks.push(`${r} → ${res.statusCode} ${res.body.slice(0, 120)}`);
+    }
+    expect(leaks).toEqual([]);
+    // ยังอ่านได้ และยังเป็นผู้ใช้เดิม (ไม่มีคำขอใดเปลี่ยนสิทธิ์/ออกจากระบบ)
+    cookie = viewer;
+    expect((await call('GET', '/api/v1/auth/me')).body.user).toMatchObject({ username: 'demo.view1', is_admin: false });
     cookie = '';
   });
 

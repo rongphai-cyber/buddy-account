@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU, textSim, type MenuItem } from '@buddy/core';
+import { menuVisible } from '../readonly';
 import type { Me } from '../api';
 import { cx, keepInList, Modal } from '../ui';
 
@@ -20,7 +21,7 @@ export function MenuSearch({ perms, onClose }: { perms: Me['perms'] | undefined;
     const walk = (items: MenuItem[], path: string[]) => items.forEach((it) => {
       if (it.nav === false) return;
       if (it.children) walk(it.children, [...path, it.label]);
-      else if (it.route && perms?.[it.code]?.read !== false) out.push({ code: it.code, label: it.label, path, route: it.route });
+      else if (it.route && menuVisible(it.code, perms)) out.push({ code: it.code, label: it.label, path, route: it.route });
     });
     walk(MENU, []);
     return out;

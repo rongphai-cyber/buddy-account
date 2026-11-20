@@ -249,6 +249,8 @@ export function syncBranchRoutes(app: FastifyInstance, database: Database) {
   /** ส่งใหม่ (แก้ที่สำนักงานใหญ่แล้ว เช่น เปิดงวด) */
   app.post('/api/v1/sync/outbox/:id/retry', async (req) => {
     const a = requireAuth(req);
+    // ผู้ใช้ดูอย่างเดียวส่งเอกสารใหม่ไม่ได้ (HANDOFF 157) — import ตอนเรียก: permissions.ts นำเข้าไฟล์นี้อยู่แล้ว
+    if (await (await import('../permissions.js')).readOnlyUser(db, a)) throw forbidden('ผู้ใช้ดูอย่างเดียวส่งเอกสารใหม่ไม่ได้ — ให้ผู้ใช้ที่มีสิทธิ์บันทึกหรือผู้ดูแลระบบทำ');
     const o = await outboxOf(parse(z.object({ id: z.string().uuid() }), req.params).id);
     if (o.status !== 'CONFLICT') throw badRequest('รายการนี้ไม่ได้ติดปัญหา');
     await sql`UPDATE sync_outbox SET status = 'PENDING', last_error = NULL WHERE id = ${o.id}`.execute(db);

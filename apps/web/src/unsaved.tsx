@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useBlocker, useNavigate, type Location } from 'react-router-dom';
 import { net } from './api';
 import { Modal } from './ui';
+import { isReadOnlyNow } from './roflag';
 
 /**
  * งานที่ยังไม่บันทึก — ด่านเดียวทั้งโปรแกรม (เจ้าของ 19/11/2569 "คีย์มัดจำอยู่ … พอไปคลิกเมนูอื่นๆ … เอกสารที่กำลังบันทึกหายไปเฉยๆ (เงียบๆ) เช็คระบบอื่นๆด้วย" · HANDOFF 149)
@@ -71,7 +72,7 @@ export function confirmLeave(only?: number): Promise<boolean> {
       for (let round = 0; round < 5; round++) {
         const top = mine().at(-1);
         if (!top || (only === undefined && Date.now() <= bypassUntil)) return true;
-        const c = await new Promise<'save' | 'discard' | 'stay'>((resolve) => showAsk ? showAsk({ word: top.word, canSave: !!top.save, resolve }) : resolve('stay'));
+        const c = await new Promise<'save' | 'discard' | 'stay'>((resolve) => showAsk ? showAsk({ word: top.word, canSave: !!top.save && !isReadOnlyNow(), resolve }) : resolve('stay'));
         showAsk?.(null);
         if (c === 'stay') return false;
         if (c === 'discard') { for (const e of mine()) e.discard?.(); if (only === undefined) allowLeave(); return true; }
