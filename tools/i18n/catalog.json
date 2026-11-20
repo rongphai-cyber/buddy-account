@@ -5504,6 +5504,15 @@
 ]
 },
 {
+"th": "เปลี่ยนรหัสผ่าน",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/Password.tsx",
+"apps/server/src/botguard.ts"
+]
+},
+{
 "th": "เปิดรายการ",
 "n": 4,
 "files": [
@@ -7315,14 +7324,6 @@
 "files": [
 "packages/core/src/gl-link.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "เปลี่ยนรหัสผ่าน",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/Password.tsx"
 ]
 },
 {
@@ -18039,6 +18040,13 @@
 ]
 },
 {
+"th": "{0}บ่อยเกินไป — ลองใหม่ในอีก {1} นาที (กันการเดารหัสผ่าน)",
+"n": 1,
+"files": [
+"apps/server/src/botguard.ts"
+]
+},
+{
 "th": "{0}ปิดอยู่ในบริษัทนี้ — ผู้มีสิทธิ์เปิดได้ที่ เริ่มระบบ › รายละเอียดกิจการ › ระบบที่ใช้งาน",
 "n": 1,
 "files": [
@@ -25337,6 +25345,20 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "ตรวจสอบว่าไม่ใช่บอทไม่ผ่าน หรือหมดเวลา — โหลดหน้านี้ใหม่ แล้วลองอีกครั้ง",
+"n": 1,
+"files": [
+"apps/server/src/botguard.ts"
+]
+},
+{
+"th": "ตรวจสอบว่าไม่ใช่บอทไม่สำเร็จ (ติดต่อ Cloudflare ไม่ได้) — ลองใหม่อีกครั้งในอีกสักครู่",
+"n": 1,
+"files": [
+"apps/server/src/botguard.ts"
 ]
 },
 {
@@ -37541,6 +37563,13 @@
 ]
 },
 {
+"th": "ยืนยันว่าไม่ใช่บอทก่อน — รอช่องตรวจสอบ (Cloudflare) ขึ้นเครื่องหมายถูก แล้วกดอีกครั้ง",
+"n": 1,
+"files": [
+"apps/server/src/botguard.ts"
+]
+},
+{
 "th": "ยืนยันสองขั้น",
 "n": 1,
 "files": [
@@ -38945,6 +38974,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/security.ts"
+]
+},
+{
+"th": "รอช่องตรวจสอบว่าไม่ใช่บอท (Cloudflare) ขึ้นเครื่องหมายถูกก่อน แล้วกดส่งใบสมัครอีกครั้ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/Signup.tsx"
+]
+},
+{
+"th": "รอช่องตรวจสอบว่าไม่ใช่บอท (Cloudflare) ขึ้นเครื่องหมายถูกก่อน แล้วกดเข้าสู่ระบบอีกครั้ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/Login.tsx"
 ]
 },
 {
@@ -44912,6 +44955,13 @@
 ]
 },
 {
+"th": "ส่งใบสมัครจากเครื่องนี้",
+"n": 1,
+"files": [
+"apps/server/src/botguard.ts"
+]
+},
+{
 "th": "ส่งใบสมัครจากเครื่องนี้บ่อยเกินไป — ลองใหม่ในอีก 1 ชั่วโมง",
 "n": 1,
 "files": [
@@ -47002,6 +47052,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Hub.tsx"
+]
+},
+{
+"th": "เข้าระบบจากเครื่องนี้",
+"n": 1,
+"files": [
+"apps/server/src/botguard.ts"
+]
+},
+{
+"th": "เข้าระบบด้วยรหัสผู้ใช้นี้",
+"n": 1,
+"files": [
+"apps/server/src/botguard.ts"
 ]
 },
 {
@@ -54453,6 +54517,13 @@
 ]
 },
 {
+"th": "โหลดช่องตรวจสอบของ Cloudflare ไม่ได้ — ตรวจอินเทอร์เน็ต แล้วโหลดหน้านี้ใหม่",
+"n": 1,
+"files": [
+"apps/web/src/components/Turnstile.tsx"
+]
+},
+{
 "th": "โหลดรายการจังหวัด/อำเภอ/ตำบลไม่สำเร็จ — รีเฟรชหน้าจอแล้วลองใหม่",
 "n": 1,
 "files": [
@@ -56011,6 +56082,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "ใส่รหัสยืนยันตัวตนสองขั้นจากเครื่องนี้",
+"n": 1,
+"files": [
+"apps/server/src/botguard.ts"
 ]
 },
 {

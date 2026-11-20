@@ -183,7 +183,7 @@ export const VIEWER_OWN_ACCOUNT_ROUTES = [
 /** ตัวอย่างการลงบัญชีก่อนบันทึก: เรียกฟังก์ชันบันทึกจริงใน SAVEPOINT แล้วถอยกลับทั้งหมด (docs/preview.ts) — ไม่มีอะไรถูกบันทึก */
 export const POSTING_PREVIEW = /\/posting-preview$/;
 export const API_RULES: Record<string, Rule> = {
-  'GET /api/v1/health': OPEN, 'GET /api/v1/setup/status': OPEN, 'POST /api/v1/setup': OPEN, 'POST /api/v1/auth/login': OPEN, 'POST /api/v1/auth/login/totp': OPEN,
+  'GET /api/v1/health': OPEN, 'GET /api/v1/auth/bot-check': OPEN, 'GET /api/v1/setup/status': OPEN, 'POST /api/v1/setup': OPEN, 'POST /api/v1/auth/login': OPEN, 'POST /api/v1/auth/login/totp': OPEN,
   'GET /api/v1/tenant/security': SELF, 'PUT /api/v1/tenant/security': SELF,
   'GET /api/v1/auth/2fa': SELF, 'POST /api/v1/auth/2fa/setup': SELF, 'POST /api/v1/auth/2fa/enable': SELF, 'POST /api/v1/auth/2fa/recovery': SELF, 'POST /api/v1/auth/2fa/disable': SELF,
   'POST /api/v1/users/:id/unlock': SELF, 'POST /api/v1/users/:id/reset-2fa': SELF,

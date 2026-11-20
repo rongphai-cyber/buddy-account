@@ -223,3 +223,21 @@ Worker แยก `wts-watch` (`cloud/watch/` · ไม่มี container · Wor
 3. ภายใน 1–2 นาที เจ้าของได้อีเมล "เริ่มเฝ้าระบบแล้ว" · ดูบันทึก: `npx wrangler tail wts-watch`
 
 ทดสอบในเครื่อง: `npx wrangler dev -c cloud/watch/wrangler.jsonc --test-scheduled --port 8799 --var ALERT_TO:owner@example.com` แล้วเปิด `http://127.0.0.1:8799/__scheduled?cron=*+*+*+*+*` (อีเมลบันทึกเป็นไฟล์ .eml ใน `cloud/watch/.wrangler/`) · ตรรกะทดสอบที่ `apps/server/test/watch.test.ts`
+
+## 12. กันบอทที่หน้าเข้าระบบ/สมัครใช้งาน — Cloudflare Turnstile (20/11/2569 · HANDOFF 165 — เจ้าของทำ)
+ยังไม่ตั้ง = หน้าจอไม่แสดงช่องตรวจ และโปรแกรมไม่ตรวจ (ทำงานเหมือนเดิม) · การจำกัดจำนวนครั้งต่อเครื่อง/รหัสผู้ใช้ทำงานอยู่แล้ว ไม่ต้องตั้งอะไร
+1. เจ้าของ: Cloudflare (บัญชีที่มีโดเมน worktruesolution.net) › **Turnstile** › **Add widget**
+   - Widget name: `Buddy Account` · Hostname: `app.worktruesolution.net` · Widget Mode: **Managed** › Create
+   - หน้าถัดไปแสดง **Site Key** และ **Secret Key** (คัดลอกไว้ — Secret ห้ามส่งในแชต)
+2. เจ้าของ: เปิดแท็บ Terminal ในแอป Claude แล้วพิมพ์เอง (ผู้ช่วยไม่พิมพ์ค่าเหล่านี้):
+```powershell
+cd E:\BuddyAccount
+npx.cmd wrangler secret put TURNSTILE_SITE_KEY
+npx.cmd wrangler secret put TURNSTILE_SECRET
+```
+   แต่ละคำสั่งจะถามค่า → วาง Site Key / Secret Key → Enter
+3. ผู้ช่วย (ขออนุญาตก่อนตามปกติ): deploy รุ่นที่มี HANDOFF 165 — `cloud/worker.js` ส่ง TURNSTILE_SITE_KEY / TURNSTILE_SECRET เข้า container แล้ว
+4. ตรวจ: เปิด https://app.worktruesolution.net → หน้าเข้าระบบมีกล่อง Cloudflare เหนือปุ่ม "เข้าสู่ระบบ" ขึ้นเครื่องหมายถูกเอง (Managed) แล้วเข้าระบบได้ตามปกติ · หน้า https://app.worktruesolution.net/signup ก็มีกล่องเดียวกัน
+5. ยกเลิก: `npx.cmd wrangler secret delete TURNSTILE_SECRET` แล้ว deploy ใหม่ — กล่องหายไป ตรวจเหมือนเดิม
+- เครื่องสำนักงาน (ไม่บังคับ): ใส่ตัวแปร TURNSTILE_SITE_KEY / TURNSTILE_SECRET ในตัวเปิดโปรแกรม แล้วเพิ่ม hostname ของเครื่องนั้นใน widget เดียวกัน
+- จำกัดจำนวนครั้ง (ในหน่วยความจำของโปรแกรม — คลาวด์ container เดียว · เครื่องสำนักงานโปรแกรมเดียว): เข้าระบบ 30 ครั้ง/10 นาที/เครื่อง · 10 ครั้ง/10 นาที/รหัสผู้ใช้ · รหัสยืนยันตัวตนสองขั้น 20/10 นาที/เครื่อง · สมัครใช้งาน 10/ชั่วโมง/เครื่อง · เปลี่ยนรหัสผ่าน 10/10 นาที/ผู้ใช้ — ซ้อนกับล็อกบัญชีเมื่อใส่รหัสผิด 5 ครั้ง (15 นาที) เดิม · เกิน = ข้อความไทยบอกว่าลองใหม่ได้ในกี่นาที · IP จริงจาก Worker (CF-Connecting-IP) เท่านั้น — X-Forwarded-For ที่ผู้ใช้ส่งมาเองไม่มีผล

@@ -7,6 +7,7 @@ import { permissionMatrix } from './permissions.js';
 import type { Db } from '../db.js';
 import { AppError, badRequest, parse, requireAuth, unauthorized, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
+import { rateLimit, requireHuman, turnstileSiteKey } from '../botguard.js';
 import type { Config } from '../config.js';
 import { loadApiKey } from './apikeys.js';
 import { hubOnly, normalizeAppAccess, passwordProblem, normalizeUiTheme } from '@buddy/core';
@@ -142,8 +143,15 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     return { ok: true };
   });
 
+  /** หน้าเข้าระบบ/สมัครใช้งาน: ช่องตรวจว่าไม่ใช่บอท (Cloudflare Turnstile) — ว่าง = ไม่แสดง (HANDOFF 165) */
+  app.get('/api/v1/auth/bot-check', async () => ({ site_key: turnstileSiteKey() }));
+
   app.post('/api/v1/auth/login', async (req, reply) => {
     const body = parse(z.object({ username: z.string().trim().min(1, 'ป้อนรหัสผู้ใช้'), password: z.string().min(1, 'ป้อนรหัสผ่าน'), work_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }), req.body);
+    // กันเดารหัสผ่าน (HANDOFF 165): ต่อ IP และต่อรหัสผู้ใช้ ก่อนตรวจรหัสผ่าน · ไม่ใช่บอท (ถ้าตั้ง Turnstile)
+    rateLimit('login-ip', req.ip, reply);
+    rateLimit('login-user', body.username, reply);
+    await requireHuman(req);
     const u = await db.selectFrom('sys_user as u').leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
       .select(['u.id', 'u.password_hash', 'u.status', 'u.tenant_id', 't.status as tenant_status', 't.expires_on', 't.moved_to']).where(sql`lower(u.username)`, '=', body.username.toLowerCase()).where('u.deleted_at', 'is', null).executeTakeFirst();
     const sec = u ? await secOf(db, u.id) : undefined;
@@ -175,6 +183,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
   /** ขั้นที่ 2: รหัส 6 หลักจากแอป หรือรหัสสำรอง */
   app.post('/api/v1/auth/login/totp', async (req, reply) => {
     const b = parse(z.object({ ticket: z.string().min(10).max(100), code: z.string().trim().min(1, 'ป้อนรหัสจากแอป').max(20) }), req.body);
+    rateLimit('totp-ip', req.ip, reply);
     const r = await finishSecondStep(db, b.ticket, b.code, req.ip);
     const token = await newSession(db, cfg, r.userId, req, r.workDate);
     await db.updateTable('sys_user').set({ last_login_at: sql`now()` }).where('id', '=', r.userId).execute();
@@ -239,8 +248,9 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     return { ok: true };
   });
 
-  app.post('/api/v1/auth/password', async (req) => {
+  app.post('/api/v1/auth/password', async (req, reply) => {
     const a = requireAuth(req);
+    rateLimit('password-user', a.userId, reply);
     const body = parse(z.object({ old_password: z.string().min(1, 'ป้อนรหัสผ่านเดิม'), new_password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })) }), req.body);
     const u = await db.selectFrom('sys_user').select('password_hash').where('id', '=', a.userId).executeTakeFirstOrThrow();
     if (!u.password_hash || !(await bcrypt.compare(body.old_password, u.password_hash))) throw badRequest('รหัสผ่านเดิมไม่ถูกต้อง');
@@ -262,7 +272,7 @@ export function attachAuth(app: FastifyInstance, db: Db) {
     const token = req.cookies?.[SESSION_COOKIE];
     req.auth = await loadSession(db, token);
     // เครื่องสาขา (T7.8) ยืนยันด้วยรหัสเครื่องใน header x-buddy-device แทนการเข้าระบบ
-    const open = ['/api/v1/setup', '/api/v1/setup/status', '/api/v1/auth/login', '/api/v1/auth/login/totp', '/api/v1/health', '/api/v1/signup', '/api/v1/signup/config',
+    const open = ['/api/v1/setup', '/api/v1/setup/status', '/api/v1/auth/bot-check', '/api/v1/auth/login', '/api/v1/auth/login/totp', '/api/v1/health', '/api/v1/signup', '/api/v1/signup/config',
       '/api/v1/sync/setup-branch', '/api/v1/sync/bootstrap', '/api/v1/sync/push', '/api/v1/sync/pull', '/api/v1/sso/jwks'];
     if (!req.auth && !open.some((p) => req.url.split('?')[0] === p)) throw (token ? await replacedError(db, token) : null) ?? unauthorized();
   });

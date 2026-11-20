@@ -13,7 +13,7 @@ const APP = {
   port: 4100,
   health: '/api/v1/health',
   /** ตัวแปรที่ส่งเข้า container (มีค่าเท่านั้น) */
-  env: ['DATABASE_URL', 'BUDDY_SECRET_KEY', 'BUDDY_PUBLIC_URL', 'BUDDY_TRUST_PROXY', 'BUDDY_COOKIE_SECURE', 'BUDDY_REQUIRE_ADMIN_2FA', 'BUDDY_SIGNUP', 'LOG_LEVEL'],
+  env: ['DATABASE_URL', 'BUDDY_SECRET_KEY', 'BUDDY_PUBLIC_URL', 'BUDDY_TRUST_PROXY', 'BUDDY_COOKIE_SECURE', 'BUDDY_REQUIRE_ADMIN_2FA', 'BUDDY_SIGNUP', 'LOG_LEVEL', 'TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET'],
   /** ต้องมีก่อนเปิด — ไม่มี = 503 (ไม่ปล่อยให้โปรแกรมเปิดด้วยฐานชั่วคราวในเครื่อง) */
   required: ['DATABASE_URL', 'BUDDY_SECRET_KEY'],
   /**

@@ -9,6 +9,7 @@ import { applyPostingTemplate, createStandardCompany } from '../company-template
 import { ensureStandardGroups } from '../standard-groups.js';
 import { badRequest, conflict, forbidden, notFound, parse, requireAuth } from '../http.js';
 import { logActivity } from '../audit.js';
+import { rateLimit, requireHuman } from '../botguard.js';
 
 /**
  * สมัครใช้งานเอง (ข้อกำหนดเจ้าของ 30/10/2569: "สมัครใช้งาน: สมัครเอง หรือผู้ดูแลกำหนดบริษัทให้")
@@ -85,8 +86,11 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
 
   app.get('/api/v1/signup/config', async () => ({ mode: mode() }));
 
-  app.post('/api/v1/signup', async (req) => {
+  app.post('/api/v1/signup', async (req, reply) => {
     if (mode() === 'off') throw notFound('หน้าสมัครใช้งาน (ปิดรับสมัคร — ติดต่อผู้ให้บริการ)');
+    // กันบอท/สแปม (HANDOFF 165): ต่อ IP + ไม่ใช่บอท (ถ้าตั้ง Turnstile) — ซ้อนกับ 5 ใบ/ชั่วโมง/IP เดิม
+    rateLimit('signup-ip', req.ip, reply);
+    await requireHuman(req);
     const b = parse(z.object({
       business_name: z.string().trim().min(1, 'ป้อนชื่อกิจการ/ร้าน').max(120), contact_name: z.string().trim().min(1, 'ป้อนชื่อผู้ติดต่อ').max(120),
       contact_email: z.string().trim().max(120).email('อีเมลไม่ถูกต้อง'),

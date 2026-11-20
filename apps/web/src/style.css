@@ -1113,3 +1113,5 @@ fieldset.invalid { border: 1px solid var(--bad); border-radius: 8px; padding: 6p
 select.perm-inh, td.perm-inh { color: #9a9aa6; font-style: italic; background: #f7f7fa; }
 select.perm-inh.bad, td.perm-inh.bad { color: #c99a9a; }
 .perm-from { color: #9a9aa6; font-style: italic; margin-left: 4px; }
+/* ช่องตรวจว่าไม่ใช่บอท (Cloudflare Turnstile · HANDOFF 165) */
+.bot-check { margin: 4px 0 10px; min-height: 0; }

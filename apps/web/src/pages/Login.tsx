@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTurnstile } from '../components/Turnstile';
 import { api, ApiError } from '../api';
 import { useSession } from '../session';
 import { PASSWORD_RULE } from '@buddy/core';
@@ -20,15 +21,17 @@ export function LoginPage() {
   const [code, setCode] = useState('');
   const [lost] = useState(() => { try { const w = sessionStorage.getItem('buddy.lostWork'); sessionStorage.removeItem('buddy.lostWork'); return w; } catch { return null; } });
   const [replaced] = useState(() => { try { const w = sessionStorage.getItem('buddy.replaced'); sessionStorage.removeItem('buddy.replaced'); return !!w; } catch { return false; } });
+  const bot = useTurnstile();
   const go = async () => {
+    if (bot.required && !bot.token) { setErr(new Error('รอช่องตรวจสอบว่าไม่ใช่บอท (Cloudflare) ขึ้นเครื่องหมายถูกก่อน แล้วกดเข้าสู่ระบบอีกครั้ง')); return; }
     setBusy(true); setErr(null);
     try {
-      const r = await api.post<{ need_totp?: boolean; ticket?: string }>('/api/v1/auth/login', { ...f, work_date: new Date().toISOString().slice(0, 10) });
+      const r = await api.post<{ need_totp?: boolean; ticket?: string }>('/api/v1/auth/login', { ...f, work_date: new Date().toISOString().slice(0, 10), ...(bot.token ? { turnstile: bot.token } : {}) });
       if (r.need_totp && r.ticket) { setTicket(r.ticket); setCode(''); return; }
       markLanding();
       await refresh();
     }
-    catch (e) { setErr(e); } finally { setBusy(false); }
+    catch (e) { setErr(e); bot.reset(); } finally { setBusy(false); }
   };
   const go2 = async () => {
     setBusy(true); setErr(null);
@@ -57,6 +60,7 @@ export function LoginPage() {
         <ErrorBox error={err} />
         <Field label="รหัสผู้ใช้" req><input autoFocus autoComplete="username" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>
         <Field label="รหัสผ่าน" req><PasswordInput capsHint autoComplete="current-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} data-noenter onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), go())} /></Field>
+        {bot.el}
         <button className="primary" type="submit" disabled={busy}>{busy ? 'กำลังเข้าระบบ…' : 'เข้าสู่ระบบ'}</button>
         <p className="hint">Enter ไปช่องถัดไป · ลืมรหัสผ่านให้ผู้ดูแลระบบตั้งรหัสใหม่ให้</p>
         {signup && signup !== 'off' && <button type="button" className="link" onClick={() => nav('/signup')}>ยังไม่มีบัญชี? สมัครใช้งาน</button>}

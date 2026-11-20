@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTurnstile } from '../components/Turnstile';
 import { StarterSelect } from '../components/StarterFill';
 import { PASSWORD_RULE } from '@buddy/core';
 import { api } from '../api';
@@ -23,12 +24,14 @@ export function SignupPage({ onBack }: { onBack: () => void }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ status: string; username: string; message: string } | null>(null);
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+  const bot = useTurnstile();
   const go = async () => {
     setErr(null);
+    if (bot.required && !bot.token) { setErr(new Error('รอช่องตรวจสอบว่าไม่ใช่บอท (Cloudflare) ขึ้นเครื่องหมายถูกก่อน แล้วกดส่งใบสมัครอีกครั้ง')); return; }
     if (f.password !== f.password2) { setErr(new Error('ยืนยันรหัสผ่านไม่ตรงกัน — พิมพ์รหัสผ่านให้เหมือนกันทั้งสองช่อง')); return; }
     if (!accept) { setErr(new Error('อ่านและติ๊กยอมรับเงื่อนไขการใช้บริการและการคุ้มครองข้อมูลส่วนบุคคลก่อน')); return; }
     setBusy(true);
-    try { const { password2: _p, ...body } = f; setDone(await api.post('/api/v1/signup', { ...body, accept_terms: true })); } catch (e) { setErr(e); } finally { setBusy(false); }
+    try { const { password2: _p, ...body } = f; setDone(await api.post('/api/v1/signup', { ...body, accept_terms: true, ...(bot.token ? { turnstile: bot.token } : {}) })); } catch (e) { setErr(e); bot.reset(); } finally { setBusy(false); }
   };
   if (mode === 'off') return (
     <div className="login" data-tone="home"><div className="login-card">
@@ -74,6 +77,7 @@ export function SignupPage({ onBack }: { onBack: () => void }) {
           </ul>
         </details>
         <label className="inline chk"><input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} /> ฉันอ่านและยอมรับเงื่อนไขการใช้บริการและการคุ้มครองข้อมูลส่วนบุคคล</label>
+        {bot.el}
         <button className="primary" type="submit" disabled={busy || !mode}>{busy ? 'กำลังส่ง…' : mode === 'auto' ? 'สมัครและเปิดบัญชี' : 'ส่งใบสมัคร'}</button>
         <button type="button" className="link" onClick={onBack}>มีบัญชีแล้ว — กลับไปหน้าเข้าระบบ</button>
       </form>
