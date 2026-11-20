@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type Re
 import { d, fmt, formatDate, parseDateInput, parseInput, type YearSystem } from '@buddy/core';
 import { ApiError, net } from './api';
 import { confirmLeave, useUnsaved } from './unsaved';
+import { isReadOnlyNow } from './roflag';
 import { useSession } from './session';
 
 export const cx = (...a: Array<string | false | null | undefined>) => a.filter(Boolean).join(' ');
@@ -163,7 +164,7 @@ export function Modal({ title, onClose, children, size = 'form', footer }: { tit
   return (
     <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className={'modal m-' + size} role="dialog" aria-modal="true" aria-label={title} ref={ref} onKeyDown={modalKey}>
-        <div className="modal-head"><h2>{title}</h2><button className="icon-btn" onClick={close} aria-label="ปิด" title="ปิด (Esc)">✕</button></div>
+        <div className="modal-head"><h2>{viewTitle(title)}</h2><button className="icon-btn" onClick={close} aria-label="ปิด" title="ปิด (Esc)">✕</button></div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>
@@ -175,6 +176,15 @@ export function Modal({ title, onClose, children, size = 'form', footer }: { tit
  * ปิดหน้าต่างแล้วโฟกัสกลับไปที่ช่องที่เปิดหน้าต่าง (HANDOFF 162 · เจ้าของ "บันทึกแล้ว Enter เคอร์เซอร์ไม่ไปแสดงตรงช่องไหนเลย … เช็คระบบอื่นๆด้วย")
  * ปุ่ม ➕/🔍 ข้างช่อง = กลับไปที่ช่องนั้น · ช่องเดิมไม่อยู่แล้ว = หน้าต่างที่ยังเปิดอยู่ หรือแถบเครื่องมือ/ช่องแรกของหน้า — ไม่ปล่อยไว้ที่ body
  */
+/**
+ * ผู้ใช้ที่อ่านได้แต่แก้ไม่ได้ (โหมดดูอย่างเดียว readonly.tsx · HANDOFF 164): "แก้ไข…" ที่เปิดรายการ = "ดู…"
+ * ชื่อหน้าต่าง (แก้ไขลูกค้า C001 → ดูลูกค้า C001) · คำอธิบายปุ่มลัด (คลิก/Enter แก้ไข → ดู)
+ */
+const EDIT_WORD = 'แก้ไข', VIEW_WORD = 'ดู';
+export function viewTitle(t: string) {
+  if (!isReadOnlyNow() || !t.startsWith(EDIT_WORD)) return t;
+  return VIEW_WORD + t.slice(EDIT_WORD.length);
+}
 /** หน้าต่าง → ช่องที่เปิดหน้าต่างนั้น (ช่องเดิมอยู่ในหน้าต่างที่ปิดไปแล้ว เช่น ค้นหาบัญชี F4 → Insert เพิ่มบัญชี = ย้อนไปช่องที่เปิดหน้าต่างค้นหา) */
 const MODAL_OPENER = new WeakMap<Element, HTMLElement>();
 export function restoreFocus(opener0: HTMLElement | null) {
@@ -553,7 +563,7 @@ export function PageHead({ eyebrow, title, lead, actions }: { eyebrow?: string; 
 }
 
 export function KeyHints({ keys }: { keys: Array<[string, string]> }) {
-  return <div className="keyhints" aria-label="ปุ่มลัด">{keys.map(([k, t]) => <span key={k}><kbd>{k}</kbd> {t}</span>)}</div>;
+  return <div className="keyhints" aria-label="ปุ่มลัด">{keys.map(([k, t]) => <span key={k}><kbd>{k}</kbd> {viewTitle(t)}</span>)}</div>;
 }
 
 export function Empty({ title, text, action }: { title: string; text?: ReactNode; action?: ReactNode }) {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Confirm, revealSelectedRow, toast, toastError, useHotkeys } from '../ui';
+import { useReadOnly } from '../readonly';
 
 /**
  * แถบเครื่องมือหน้ากำหนดข้อมูล/แฟ้มหลัก (ข้อกำหนดเจ้าของ 01/11/2569): เพิ่ม · แก้ไข · เลิกใช้/ใช้งาน · ลบ
@@ -21,9 +22,12 @@ export function MasterBar<T>({ rs, word, label, onAdd, onEdit, onToggle, isActiv
 }) {
   const [ask, setAsk] = useState<T | null>(null);
   const r = rs.row;
+  // ดูอย่างเดียว (HANDOFF 164): ปุ่ม "แก้ไข" = "ดู" เปิดรายการให้ดูได้ (ช่องในหน้าต่างแก้ไม่ได้ · บันทึกไม่ได้)
+  const view = useReadOnly();
+  const canOpen = canEdit || view;
   useHotkeys({
     Insert: canAdd && onAdd ? onAdd : undefined,
-    Enter: r && canEdit && onEdit ? () => onEdit(r) : undefined,
+    Enter: r && canOpen && onEdit ? () => onEdit(r) : undefined,
     Delete: r && canDelete && onDelete ? () => setAsk(r) : undefined,
     ArrowDown: rs.n ? () => { rs.setSel(Math.min(rs.sel + 1, rs.n - 1)); revealSelectedRow(); } : undefined,
     ArrowUp: rs.n ? () => { rs.setSel(Math.max(rs.sel - 1, 0)); revealSelectedRow(); } : undefined,
@@ -32,10 +36,12 @@ export function MasterBar<T>({ rs, word, label, onAdd, onEdit, onToggle, isActiv
   return (
     <div className="toolbar master-bar" role="toolbar" aria-label="แถบเครื่องมือ">
       {onAdd && <button className="primary" disabled={!canAdd} onClick={onAdd}>+ เพิ่ม{word} <kbd>Ins</kbd></button>}
-      {onEdit && <button disabled={!r || !canEdit} onClick={() => r && onEdit(r)}>แก้ไข <kbd>Enter</kbd></button>}
+      {onEdit && (view
+        ? <button disabled={!r} onClick={() => r && onEdit(r)} title="เปิดดูรายการที่เลือก (ดูอย่างเดียว)">ดู <kbd>Enter</kbd></button>
+        : <button disabled={!r || !canEdit} onClick={() => r && onEdit(r)}>แก้ไข <kbd>Enter</kbd></button>)}
       {onToggle && <button disabled={!r || !canEdit} onClick={toggle}>{r && isActive && !isActive(r) ? 'ใช้งาน' : 'เลิกใช้'}</button>}
       {onDelete && <button className="danger-outline" disabled={!r || !canDelete} onClick={() => r && setAsk(r)}>ลบ <kbd>Del</kbd></button>}
-      <span className="hint">{r && <>เลือก: <b>{label(r)}</b> · </>}<span>↑↓ เลือกแถว · คลิกแถว = แก้ไข</span></span>
+      <span className="hint">{r && <>เลือก: <b>{label(r)}</b> · </>}<span>{view ? '↑↓ เลือกแถว · คลิกแถว = ดู' : '↑↓ เลือกแถว · คลิกแถว = แก้ไข'}</span></span>
       {ask && onDelete && <Confirm danger title={`ลบ${word}`} text={deleteText?.(ask) ?? `ลบ${word} ${label(ask)}? ลบได้เฉพาะรายการที่ยังไม่ถูกใช้ — ถ้าใช้แล้วให้เปลี่ยนเป็นเลิกใช้`} okText="ลบ"
         onClose={() => setAsk(null)} onOk={() => { const x = ask; setAsk(null); onDelete(x).then(() => toast(`ลบ${word} ${label(x)} แล้ว`)).catch(toastError); }} />}
     </div>

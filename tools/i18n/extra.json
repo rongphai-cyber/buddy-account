@@ -2125,5 +2125,8 @@
  "เมนูย่อย {0} รายการตั้งไว้ต่างจากนี้ — ใช้ค่าเดียวกันทั้งหมด หรือคงค่าเดิมของเมนูย่อยเหล่านี้ไว้": "{0} sub-menus are set differently — apply the same value to all, or keep their own values",
  "เมนูย่อยตั้งไว้ต่างจากนี้": "Sub-menus set differently",
  "เมนูย่อยที่ไม่ได้ตั้งเองได้ค่าใหม่จากเมนูหลักทันที": "Sub-menus without their own setting take the new value from the parent right away",
- "ใช้ค่าเดียวกันทั้งหมด": "Apply to all"
+ "ใช้ค่าเดียวกันทั้งหมด": "Apply to all",
+ "ดู": "View",
+ "เปิดดูรายการที่เลือก (ดูอย่างเดียว)": "Open the selected record (view only)",
+ "↑↓ เลือกแถว · คลิกแถว = ดู": "↑↓ select row · click row = view"
 }

@@ -975,30 +975,10 @@
 ]
 },
 {
-"th": "ชื่อ",
-"n": 28,
-"files": [
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/server/src/modules/payroll/files.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/payroll-import.ts",
-"packages/core/src/pdpa.ts"
-]
-},
-{
 "th": "แก้ไข",
-"n": 28,
+"n": 29,
 "files": [
+"apps/web/src/ui.tsx",
 "apps/web/src/components/DocEdit.tsx",
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/MasterBar.tsx",
@@ -1025,6 +1005,27 @@
 "apps/server/src/modules/payroll/files.ts",
 "apps/server/src/modules/payroll/runs.ts",
 "apps/server/src/modules/reports/gl.ts"
+]
+},
+{
+"th": "ชื่อ",
+"n": 28,
+"files": [
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/server/src/modules/payroll/files.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/payroll-import.ts",
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -8915,6 +8916,14 @@
 "n": 2,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "ดู",
+"n": 2,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {
@@ -49347,6 +49356,13 @@
 ]
 },
 {
+"th": "เปิดดูรายการที่เลือก (ดูอย่างเดียว)",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
+]
+},
+{
 "th": "เปิดดูได้ทุกเมนูและดูตัวอย่างพิมพ์ทางจอ แต่บันทึก แก้ไข ยกเลิก ลบ ไม่ได้ — ปุ่มบันทึกจะกดไม่ได้",
 "n": 1,
 "files": [
@@ -58248,6 +58264,13 @@
 "n": 1,
 "files": [
 "apps/web/src/ui.tsx"
+]
+},
+{
+"th": "↑↓ เลือกแถว · คลิกแถว = ดู",
+"n": 1,
+"files": [
+"apps/web/src/components/MasterBar.tsx"
 ]
 },
 {
