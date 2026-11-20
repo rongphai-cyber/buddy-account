@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, docMenuOf, findReport, HUB_ONLY_MENUS, hubOnly, menuOffBy, normalizeAppAccess, BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { AI_BILL_TARGETS, PLATFORM_MENUS, docMenuOf, findReport, HUB_ONLY_MENUS, hubOnly, menuOffBy, normalizeAppAccess, BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -96,6 +96,8 @@ export async function modulesOff(db: Db, companyId: string | null): Promise<stri
 function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action, off: string[] = []): { allowed: boolean; log: boolean; screenOnly: boolean } {
   // ระบบที่ปิดทั้งบริษัท: ไม่มีใครใช้ได้ (รวมผู้ดูแลระบบ) จนกว่าจะเปิดกลับ
   if (off.length && menuOffBy(menu, off)) return { allowed: false, log: false, screenOnly: false };
+  // เมนูของผู้ให้บริการ: ผู้ดูแลของลูกค้า (ADMIN ใน tenant) ก็ไม่ได้ — ไม่แสดงในเมนู (HANDOFF 159.1)
+  if (PLATFORM_MENUS.has(menu) && !a.isPlatform) return { allowed: false, log: false, screenOnly: false };
   if (a.isAdmin) return { allowed: true, log: false, screenOnly: false };
   // ผู้ใช้ที่ผู้ดูแลไม่ให้เปิด Buddy (เปิดได้เฉพาะโปรแกรมอื่นจาก Hub · sys_user.app_access): เหลือหน้าเปิดโปรแกรม + รหัสผ่าน
   if (hubOnly(a.apps) && !HUB_ONLY_MENUS.includes(menu)) return { allowed: false, log: false, screenOnly: false };

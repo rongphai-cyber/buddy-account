@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTION_MENUS, flattenMenu, menuForPath, readOnlyExempt } from './menu.js';
+import { ACTION_MENUS, PLATFORM_MENUS, flattenMenu, menuForPath, readOnlyExempt } from './menu.js';
 
 describe('read-only viewer menus (HANDOFF 157)', () => {
   it('maps a screen address to its menu (longest route wins, sub-pages included)', () => {
@@ -18,6 +18,7 @@ describe('read-only viewer menus (HANDOFF 157)', () => {
   it('action-only menus exist in the menu; reports and own account are never read-only mode', () => {
     const codes = new Set(flattenMenu().map((m) => m.code));
     for (const c of ACTION_MENUS) expect(codes.has(c)).toBe(true);
+    for (const c of PLATFORM_MENUS) expect(codes.has(c)).toBe(true);
     expect(readOnlyExempt('RP.TB')).toBe(true);
     expect(readOnlyExempt('OT.PASS')).toBe(true);
     expect(readOnlyExempt('SET.TBL')).toBe(false);

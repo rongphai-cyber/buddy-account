@@ -186,6 +186,11 @@ export function flattenMenu(items: MenuItem[] = MENU, parent?: string): Array<Me
  * ผู้ใช้ดูอย่างเดียว (HANDOFF 157 · เจ้าของ 20/11/2569 "ดูได้อย่างเดียว ขอตรวจเช็คทุกเมนู"):
  * เมนูที่มีไว้ "ทำ" อย่างเดียว (สร้าง/นำเข้า/ปิดงวด/ประมวลผล/สำรอง) — ไม่มีสิทธิ์เพิ่มและแก้ไข = ไม่แสดงในแถบเมนูและค้นหาเมนู
  */
+/**
+ * เมนูของเจ้าหน้าที่ผู้ให้บริการเท่านั้น (ADMIN ที่ไม่สังกัดลูกค้า) — ผู้ดูแลของลูกค้าไม่เห็นในแถบเมนู/ค้นหาเมนู และสิทธิ์ทุกชนิด = ไม่ได้ (HANDOFF 159.1)
+ * ลูกค้าผู้ใช้บริการ: ใบสมัคร · โปรแกรมของลูกค้า · ย้ายลูกค้า · ผู้ใช้ดูอย่างเดียว · กลุ่มตั้งต้น อยู่ในหน้านี้ทั้งหมด
+ */
+export const PLATFORM_MENUS: ReadonlySet<string> = new Set(['SET.TENANT']);
 export const ACTION_MENUS: ReadonlySet<string> = new Set(['SET.NEWCO', 'SET.LINK', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'OT.IMPTRADE', 'OT.IMPJNL', 'FA.DEPR']);
 /** เมนูที่เป็นการอ่านอยู่แล้ว (รายงาน แฟ้มบันทึกเหตุการณ์ บัญชีของตัวเอง) — ไม่เข้าโหมดดูอย่างเดียว ช่องเงื่อนไขใช้ได้ตามปกติ */
 export const readOnlyExempt = (code: string) => code === 'RP' || code.startsWith('RP.') || ['OT.CHECK', 'OT.LOG', 'OT.PASS', 'OT.HUB'].includes(code);

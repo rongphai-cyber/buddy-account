@@ -12,7 +12,7 @@ import { loadConfig } from '../src/config.js';
 import { API_RULES, POSTING_PREVIEW, REGISTERED_ROUTES, VIEWER_OWN_ACCOUNT_ROUTES, syncMenus } from '../src/modules/permissions.js';
 import { setAiClientFactory } from '../src/modules/ai.js';
 import { base32Decode, stepOf, totpAt } from '../src/modules/security.js';
-import { d, taxIdCheckDigit } from '@buddy/core';
+import { d, PLATFORM_MENUS, taxIdCheckDigit } from '@buddy/core';
 import { createZip } from '../src/zip.js';
 import { readTable } from '../src/modules/trade-import.js';
 import { readZip } from '../src/zip.js';
@@ -5745,6 +5745,11 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     const adminA = await login('grp.a', 'passGrpA1');
     const co1 = (await call('POST', '/api/v1/companies', { code: 'GRPA1', name_th: 'บริษัท เอหนึ่ง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
     const co2 = (await call('POST', '/api/v1/companies', { code: 'GRPA2', name_th: 'บริษัท เอสอง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    // เมนูของผู้ให้บริการ: ผู้ดูแลของลูกค้าไม่เห็น (สิทธิ์ทุกชนิด = ไม่ได้) · เจ้าหน้าที่ผู้ให้บริการเห็น (HANDOFF 159.1)
+    await call('POST', '/api/v1/auth/select', { company_id: co1 });
+    const tenantPerms = (await call('GET', '/api/v1/auth/me')).body.perms as Record<string, Record<string, unknown>>;
+    for (const m of PLATFORM_MENUS) expect([m, Object.values(tenantPerms[m]!).some((v) => v !== false)]).toEqual([m, false]);
+    expect([tenantPerms['SET.NEWCO']!.add, tenantPerms['SET.DEVICE']!.read, tenantPerms['OT.IMPORT']!.add]).toEqual([true, true, true]);
     let ul = (await call('GET', '/api/v1/users')).body as { users: Array<{ id: string; username: string; rights_in: string[] }>; groups: Array<{ id: string; code: string; rights_in: string[] }> };
     expect(ul.groups.map((g) => g.code).sort()).toEqual(['ADMIN', ...STD].sort());
     for (const c of STD) expect(ul.groups.find((g) => g.code === c)!.rights_in.sort()).toEqual([co1, co2].sort());
@@ -5779,6 +5784,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     // ปุ่มผู้ให้บริการ: ลูกค้าเดิมที่ยังไม่มีกลุ่มตั้งต้น → สร้างครบ · กดซ้ำ = ไม่เพิ่มอะไร · สิทธิ์ที่ลูกค้าแก้เองไม่ถูกเขียนทับ
     await sql`UPDATE sys_user_group SET deleted_at = now() WHERE tenant_id = ${B.id} AND code IN ('SALE', 'PURCH', 'ACC', 'VIEW')`.execute(database.db);
     cookie = platform;
+    expect((await call('GET', '/api/v1/auth/me')).body.perms['SET.TENANT'].read).toBe(true);
     const r1 = await call('POST', `/api/v1/tenants/${B.id}/standard-groups`);
     expect([r1.status, r1.body.created.sort(), r1.body.companies]).toEqual([200, [...STD].sort(), 1]);
     expect(r1.body.rows).toBeGreaterThan(10);
