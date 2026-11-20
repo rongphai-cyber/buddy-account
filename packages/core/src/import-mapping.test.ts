@@ -45,8 +45,8 @@ describe('ให้ AI จัดรูปแบบ Excel (HANDOFF 168)', () => {
     const m = normalizeMapping({ header_row: 40, columns: [{ target: 'date', source: 1, constant: '' }, { target: 'date', source: 2, constant: '' }, { target: 'nope', source: 0, constant: '' }, { target: 'qty', source: 9, constant: '' }, { target: 'unit', source: -1, constant: ' กล่อง ' }],
       date_order: 'xyz' as never, year: 'be', decimal: 'dot', group: 'continue', skip_words: [' รวม ', ''], notes: 'ok' }, 'trade', 5);
     expect(m).toEqual({ header_row: 19, columns: [{ target: 'date', source: 1, constant: '' }, { target: 'unit', source: -1, constant: 'กล่อง' }], date_order: 'dmy', year: 'be', decimal: 'dot', group: 'continue', skip_words: ['รวม'], notes: 'ok' });
-    expect(unmappedRequired(m, 'trade').map((c) => c.key)).toEqual(['party', 'item', 'qty', 'price']);   // ref not needed when rows continue
-    expect(unmappedRequired({ ...m, group: 'column' }, 'trade').map((c) => c.key)).toEqual(['ref', 'party', 'item', 'qty', 'price']);
+    expect(unmappedRequired(m, 'trade').map((c) => c.key)).toEqual(['party', 'item', 'qty']);   // ref not needed when rows continue
+    expect(unmappedRequired({ ...m, group: 'column' }, 'trade').map((c) => c.key)).toEqual(['ref', 'party', 'item', 'qty']);
   });
 
   it('header signature ignores spacing/case/punctuation and trailing empty cells; setting key fits 40 chars', () => {

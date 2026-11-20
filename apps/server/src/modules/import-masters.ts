@@ -116,10 +116,10 @@ export async function planParties(db: Db, companyId: string, side: PartySide, do
   return { hits, planned: [...planned.values()] };
 }
 
-export interface ItemRow { id: string; code: string; name_th: string; item_type: string; barcode: string | null; base_unit_id: string | null; sales_unit_id: string | null; sales_factor: string | null; purchase_unit_id: string | null; purchase_factor: string | null }
+export interface ItemRow { id: string; code: string; name_th: string; item_type: string; barcode: string | null; base_unit_id: string | null; sales_unit_id: string | null; sales_factor: string | null; purchase_unit_id: string | null; purchase_factor: string | null; vat_code: string | null }
 export interface PlannedItem { key: string; code: string; name: string; kind: '0' | '3'; unit: string | null; row: number; id?: string; unit_id?: string | null }
 export type ItemHit = { kind: 'found'; item: ItemRow } | { kind: 'new'; plan: PlannedItem } | { kind: 'error'; message: string };
-const ITEM_COLS = sql`id, code, name_th, item_type, barcode, base_unit_id, sales_unit_id, sales_factor, purchase_unit_id, purchase_factor`;
+const ITEM_COLS = sql`id, code, name_th, item_type, barcode, base_unit_id, sales_unit_id, sales_factor, purchase_unit_id, purchase_factor, vat_code`;
 
 /** หาสินค้าของทุกบรรทัดในแฟ้ม · ชื่อหาเฉพาะสินค้า/ชุด/บริการที่ยังใช้ · สินค้าใหม่ต้องมีหน่วย (ไม่มี = หน่วยที่บริษัทใช้มากที่สุด) */
 export async function planItems(db: Db, companyId: string, lines: Array<{ row: number; item: string; item_name: string | null; item_kind: '0' | '3' | null; unit: string | null; description: string | null }>, opt: { create: boolean }) {

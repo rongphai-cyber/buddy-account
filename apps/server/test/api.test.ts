@@ -14,7 +14,8 @@ import { setAiClientFactory } from '../src/modules/ai.js';
 import { base32Decode, stepOf, totpAt } from '../src/modules/security.js';
 import { d, PLATFORM_MENUS, taxIdCheckDigit } from '@buddy/core';
 import { createZip } from '../src/zip.js';
-import { readTable } from '../src/modules/trade-import.js';
+import { readSheets, readTable } from '../src/modules/trade-import.js';
+import { buildXlsx } from '../src/xlsx.js';
 import { readZip } from '../src/zip.js';
 import { verifySsoToken } from '../src/sso.js';
 /** เลขผู้เสียภาษีที่ถูกต้องและไม่ซ้ำกัน สำหรับคู่ค้าทดสอบ (เลข + สาขาซ้ำในบริษัทเดียวกันบันทึกไม่ได้) */
@@ -5219,7 +5220,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const t = await app.inject({ method: 'GET', url: '/api/v1/trade-import/sales-invoices/template', headers: { cookie } });
     expect(t.statusCode).toBe(200); expect(t.headers['content-type']).toMatch(/spreadsheetml/);
     const tr = readTable('import-IV.xlsx', t.rawPayload);
-    expect(tr[0]!.slice(0, 7)).toEqual(['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'ชื่อลูกค้า', 'รหัสสินค้า', 'ชื่อสินค้า', 'รายละเอียด']);
+    expect(tr[0]!.slice(0, 7)).toEqual(['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสลูกค้า', 'ชื่อลูกค้า', 'Bill to (สาขาลูกค้า)', 'สถานที่ส่งของ', 'อ้างอิงเอกสาร']);
     expect(tr).toHaveLength(3);
     expect((await app.inject({ method: 'GET', url: '/api/v1/trade-import/sales-orders/template', headers: { cookie } })).statusCode).toBe(404);   // ใบสั่งขายไม่ใช่รายการขาย
 
@@ -5297,8 +5298,8 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     // แบบฟอร์ม: คอลัมน์รหัสตามด้วยชื่อ · คอลัมน์ข้อมูลหลักใหม่อยู่ท้าย · แผ่นคำอธิบายบอกวิธีเพิ่มรายใหม่
     const t = await app.inject({ method: 'GET', url: '/api/v1/trade-import/purchase-invoices/template', headers: { cookie } });
     const tr = readTable('import-RR.xlsx', t.rawPayload);
-    expect(tr[0]!.slice(0, 6)).toEqual(['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'รหัสสินค้า', 'ชื่อสินค้า']);
-    expect(tr[0]!.slice(-5)).toEqual(['เลขผู้เสียภาษี', 'สาขา', 'ที่อยู่', 'โทรศัพท์', 'ชนิดสินค้า']);
+    expect(tr[0]!.slice(0, 6)).toEqual(['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'สาขาผู้ขาย', 'เลขที่ใบกำกับผู้จำหน่าย']);
+    expect(tr[0]!.slice(-4)).toEqual(['เลขผู้เสียภาษี', 'ที่อยู่', 'โทรศัพท์', 'ชนิดสินค้า']);
 
     const H = ['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'เลขผู้เสียภาษี', 'สาขา', 'ที่อยู่', 'รหัสสินค้า', 'ชื่อสินค้า', 'ชนิดสินค้า', 'จำนวน', 'หน่วย', 'ราคาต่อหน่วย'];
     const file = csv([H,
@@ -5374,7 +5375,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const exp = (await call('GET', '/api/v1/other-expenses?status=A')).body.rows[0].code as string;
     const oeType = (await call('GET', '/api/v1/trade-defaults/OE')).body.types[0].id;
     const ot = readTable('import-OE.xlsx', (await app.inject({ method: 'GET', url: '/api/v1/trade-import/other-expense-docs/template', headers: { cookie } })).rawPayload);
-    expect(ot[0]!.slice(0, 11)).toEqual(['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'รหัสค่าใช้จ่าย', 'รายละเอียด', 'จำนวนเงิน', 'อัตราหัก ณ ที่จ่าย', 'ภาษีหัก ณ ที่จ่าย', 'ประเภทเงินได้', 'แบบ ภ.ง.ด.']);
+    expect(ot[0]!).toEqual(expect.arrayContaining(['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'รหัสค่าใช้จ่าย *', 'รายละเอียด', 'จำนวนเงิน *', 'อัตราหัก ณ ที่จ่าย', 'ภาษีหัก ณ ที่จ่าย', 'ประเภทเงินได้', 'แบบ ภ.ง.ด.', 'วิธีชำระ']));
     const EH = ['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'ชื่อผู้จำหน่าย', 'รหัสค่าใช้จ่าย', 'รายละเอียด', 'จำนวนเงิน', 'อัตราหัก ณ ที่จ่าย', 'ภาษีหัก ณ ที่จ่าย', 'ประเภทเงินได้'];
     const oeRows = [EH,
       ['IMPE-1', '15/07/2569', 'IMP-S1', '', exp, 'ค่าขนส่ง ก.ค.', '1000', '1', '', ''],
@@ -5559,6 +5560,100 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect((await call('PUT', '/api/v1/ai/config', { api_key: null, monthly_limit_usd: 20 })).body.has_key).toBe(false);
   });
 
+  it('HANDOFF 169: per-kind templates mirror the screen; cash-sale/purchase payments (split sheet, one method, checks) posted like the screen; old credit-days column = warning', async () => {
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const tpl = async (path: string) => readSheets(`import-${path}.xlsx`, (await app.inject({ method: 'GET', url: `/api/v1/trade-import/${path}/template`, headers: { cookie } })).rawPayload);
+    // แบบฟอร์มตามหน้าจอ: ขายสด = วิธีชำระ + แผ่นรับชำระ ไม่มีเครดิต · ขายเชื่อ = มีเครดิต ไม่มีวิธีชำระ
+    const hs = await tpl('cash-sales');
+    expect(hs.map((s) => s.name)).toEqual(['นำเข้า', 'รับชำระ', 'คำอธิบาย']);
+    expect(hs[0]!.rows[0]).not.toContain('เครดิต (วัน)');
+    expect(hs[0]!.rows[0]).toEqual(expect.arrayContaining(['เลขที่อ้างอิง *', 'วันที่ *', 'Bill to (สาขาลูกค้า)', 'สถานที่ส่งของ', 'พนักงานขาย', 'วิธีชำระ', 'เลขที่อ้างอิง/เช็ค', 'ภาษีถูกหัก ณ ที่จ่าย', 'จำนวน *', 'ของแถม (F)', 'ประเภท VAT']));
+    expect(hs[1]!.rows[0]).toEqual(['เลขที่อ้างอิง *', 'วิธีชำระ *', 'จำนวนเงิน *', 'เลขที่อ้างอิง/เช็ค']);
+    const need = (sheet: string[][], th: string) => sheet.find((r) => r[0] === th)?.[1];
+    expect([need(hs[2]!.rows, 'จำนวน'), need(hs[2]!.rows, 'วิธีชำระ'), need(hs[2]!.rows, 'รหัสสินค้า'), need(hs[2]!.rows, 'คลัง')])
+      .toEqual(['ต้องมี', 'ไม่บังคับ (ค่าเริ่มต้น = เงินสดทั้งจำนวน)', 'ต้องมีถ้าไม่ใส่ชื่อสินค้า', 'ไม่บังคับ (ค่าเริ่มต้น = ตามประเภทเอกสาร/คลังหลัก)']);
+    const iv = await tpl('sales-invoices');
+    expect(iv.map((s) => s.name)).toEqual(['นำเข้า', 'คำอธิบาย']);
+    expect(iv[0]!.rows[0]).toContain('เครดิต (วัน)');
+    expect(iv[0]!.rows[0]).not.toContain('วิธีชำระ');
+    const oe = await tpl('other-expense-docs');
+    expect(oe.map((s) => s.name)).toEqual(['นำเข้า', 'จ่ายชำระ', 'คำอธิบาย']);
+    expect(oe[1]!.rows[0]).toContain('วันที่เช็ค');
+
+    // วิธีรับ/จ่ายชำระของบริษัท: เงินสด · เงินโอน (ผูกบัญชีเงินฝาก) · โอนที่ยังไม่ผูกบัญชี · เช็ค
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
+    const cashAcc = accs.find((x) => x.account_no === '1111-00')!;
+    const bank = (await sql<{ id: string; gl: string }>`SELECT id, gl_account_id AS gl FROM md_bank_account WHERE company_id = ${co} AND deleted_at IS NULL AND gl_account_id IS NOT NULL ORDER BY code LIMIT 1`.execute(database.db)).rows[0]!;
+    const bankAcc = accs.find((x) => x.id === bank.gl)!;
+    expect(bankAcc).toBeTruthy();
+    const pm = async (dir: 'R' | 'P', b: Record<string, unknown>) => { const r = await call('POST', `/api/v1/payment-methods/${dir}`, b); expect(r.status, JSON.stringify(r.body)).toBeLessThan(300); };
+    await pm('R', { code: 'Q7', name_th: 'เงินสดนำเข้า', kind: 'CASH', gl_account_id: cashAcc.id });
+    await pm('R', { code: 'Q8', name_th: 'เงินโอนนำเข้า', kind: 'TRANSFER', bank_account_id: bank.id });
+    // วิธีที่ยังไม่ผูกบัญชี (ข้อมูลย้ายจากระบบเดิม — หน้าตั้งค่าไม่ให้บันทึกแบบนี้)
+    await sql`INSERT INTO md_payment_method (company_id, direction, code, name_th, kind) VALUES (${co}, 'R', 'Q9', 'โอนยังไม่ผูกบัญชี', 'TRANSFER')`.execute(database.db);
+    await pm('R', { code: 'Q5', name_th: 'เช็คนำเข้า', kind: 'CHEQUE', creates_cheque: true, bank_account_id: bank.id });
+    await pm('P', { code: 'Q6', name_th: 'โอนจ่ายนำเข้า', kind: 'TRANSFER', bank_account_id: bank.id });
+    const item = (await call('GET', '/api/v1/items?status=A')).body.rows.find((r: { unit_code: string | null }) => r.unit_code) as { id: string; code: string };
+    const hsType = (await call('GET', '/api/v1/trade-defaults/HS')).body.types[0].id;
+    const url = '/api/v1/trade-import/cash-sales';
+    const xl = (main: string[][], pay?: string[][]) => buildXlsx([{ name: 'นำเข้า', rows: main }, ...(pay ? [{ name: 'รับชำระ', rows: pay }] : [])]).toString('base64');
+    const H = ['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน', 'ราคาต่อหน่วย', 'วิธีชำระ', 'เลขที่อ้างอิง/เช็ค', 'เครดิต (วัน)'];
+    const P = ['เลขที่อ้างอิง', 'วิธีชำระ', 'จำนวนเงิน', 'เลขที่อ้างอิง/เช็ค'];
+    const base = { file_name: 'ขายสด.xlsx', doc_type_id: hsType, price_type: '2', vat_rate: 7 };
+    // แบ่ง 2 วิธี (เงินสด + เงินโอน) — รวม = 1,070 · คอลัมน์เครดิตของแฟ้มเดิม = เตือน ไม่ผิด
+    const main = [H, ['HSX-1', '15/07/2569', 'IMP-C1', item.code, '10', '100', '', '', '30']];
+    const ok = (await call('POST', url, { ...base, data: xl(main, [P, ['HSX-1', 'Q7', '470', ''], ['HSX-1', 'เงินโอนนำเข้า', '600', 'TR-1']]) })).body;
+    expect(ok.errors).toEqual([]);
+    expect(ok.file_warnings).toEqual(['คอลัมน์ "เครดิต (วัน)" ไม่มีในหน้าจอขายเงินสด — ไม่นำเข้าค่าในคอลัมน์นี้ (รับ/จ่ายเงินวันเดียวกัน ไม่มีเครดิต)']);
+    expect(ok.docs[0]).toMatchObject({ ref: 'HSX-1', net_amount: '1070.00', payments: 1, other_amount: '600.00', cash_amount: '470.00' });
+    // ยอดรวมไม่เท่า · วิธีที่ยังไม่ผูกบัญชี · เช็คไม่มีเลขที่ · วิธีชำระที่ไม่มี · ทั้งสองแผ่น
+    const errs = async (m: string[][], p?: string[][]) => (await call('POST', url, { ...base, data: xl(m, p) })).body.errors.map((e: { message: string }) => e.message).join(' | ');
+    expect(await errs(main, [P, ['HSX-1', 'Q8', '500', 'TR-1']])).toMatch(/ยอดรับชำระรวม 500\.00 ไม่เท่ากับยอดที่ต้องรับ 1070\.00 \(รวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย\) — แก้แผ่น "รับชำระ"/);
+    expect(await errs([H, ['HSX-1', '15/07/2569', 'IMP-C1', item.code, '10', '100', 'Q9', '', '']])).toMatch(/วิธีรับชำระ Q9 โอนยังไม่ผูกบัญชี ยังไม่ได้ผูกบัญชีเงินฝาก\/บัญชีแยกประเภท — กำหนดที่ เริ่มระบบ › วิธีรับ\/จ่ายชำระหนี้ ก่อน/);
+    expect(await errs([H, ['HSX-1', '15/07/2569', 'IMP-C1', item.code, '10', '100', 'Q5', '', '']])).toMatch(/วิธีรับชำระ Q5 เช็คนำเข้า ต้องมีเลขที่เช็ค\/เลขที่อ้างอิง — ใส่ในคอลัมน์ "เลขที่อ้างอิง\/เช็ค"/);
+    expect(await errs([H, ['HSX-1', '15/07/2569', 'IMP-C1', item.code, '10', '100', 'ZZ', '', '']])).toMatch(/ไม่พบวิธีรับชำระ "ZZ"/);
+    expect(await errs([H, ['HSX-1', '15/07/2569', 'IMP-C1', item.code, '10', '100', 'Q8', '', '']], [P, ['HSX-1', 'Q8', '1070', '']])).toMatch(/ใส่วิธีชำระทั้งในแผ่นนำเข้าและแผ่น "รับชำระ"/);
+    expect(await errs(main, [P, ['NOPE', 'Q8', '1', '']])).toMatch(/ไม่มีเลขที่อ้างอิง NOPE ในแผ่นนำเข้า/);
+    // ช่องที่ต้องมี: บอกคอลัมน์ แถว และวิธีแก้
+    const miss = (await call('POST', url, { ...base, data: xl([H, ['HSX-1', '15/07/2569', 'IMP-C1', item.code, '', '100', '', '', '']]) })).body.errors;
+    expect(miss).toEqual([{ row: 2, message: 'ไม่มีจำนวน (คอลัมน์ "จำนวน" ต้องมี)' }]);
+
+    // บันทึก: บรรทัดวิธีชำระเหมือนแท็บ "รับชำระด้วยวิธีอื่น" · เงินสดคงเหลือ · ไม่มีเครดิต · ลงบัญชีเหมือนบันทึกที่หน้าจอ
+    const cm = await call('POST', url, { ...base, data: xl(main, [P, ['HSX-1', 'Q7', '470', ''], ['HSX-1', 'Q8', '600', 'TR-1']]), commit: true });
+    expect(cm.body.error?.message ?? 'ok').toBe('ok');
+    const hid = (await sql<{ id: string; cash_amount: string; cheque_amount: string; credit_days: number | null }>`SELECT id, cash_amount, cheque_amount, credit_days FROM doc_header WHERE company_id = ${co} AND your_ref = 'HSX-1' AND doc_class = 'HS' AND doc_status <> 'C'`.execute(database.db)).rows[0]!;
+    expect([hid.cash_amount, hid.cheque_amount, hid.credit_days ?? 0]).toEqual(['470.00', '600.00', 0]);
+    const tab = await call('GET', `/api/v1/cash-sales/${hid.id}`);
+    expect(tab.body.payments.map((p: { method_code: string; amount: string; reference_no: string | null }) => [p.method_code, p.amount, p.reference_no])).toEqual([['Q8', '600.00', 'TR-1']]);
+    const q8 = (await sql<{ id: string }>`SELECT id FROM md_payment_method WHERE company_id = ${co} AND direction = 'R' AND code = 'Q8' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.id;
+    const screen = await call('POST', '/api/v1/cash-sales', { doc_type_id: hsType, doc_date: '2026-07-15', party_id: (await call('GET', '/api/v1/customers?q=IMP-C1')).body.rows[0].id, your_ref: 'HSX-SCREEN', price_type: '2', vat_rate: 7,
+      lines: [{ item_id: item.id, qty: 10, unit_price: 100 }], payments: [{ payment_method_id: q8, amount: '600', reference_no: 'TR-1' }] });
+    expect(screen.status).toBe(200);
+    const gl = async (ref: string) => (await sql<{ a: string; dr: string; cr: string }>`SELECT g.account_no AS a, sum(l.debit)::text AS dr, sum(l.credit)::text AS cr FROM gl_journal_line l JOIN gl_journal j ON j.id = l.journal_id
+        JOIN doc_header h ON h.id = j.source_header_id JOIN gl_account g ON g.id = l.account_id WHERE h.company_id = ${co} AND h.your_ref = ${ref} AND j.doc_status = 'N' AND l.deleted_at IS NULL GROUP BY g.account_no ORDER BY g.account_no`.execute(database.db)).rows;
+    const imported = await gl('HSX-1');
+    expect(imported).toEqual(await gl('HSX-SCREEN'));
+    expect(imported.find((x) => x.a === bankAcc.account_no)?.dr).toBe('600.00');   // เงินโอน → บัญชีของบัญชีเงินฝากที่ผูกกับวิธีชำระ (เงินสดคงเหลือ → บัญชีเงินสดตามประเภทเอกสาร)
+
+    // ซื้อเงินสด: วิธีเดียวในแผ่นหลัก + หัก ณ ที่จ่าย 3% → ยอดโอน = รวม − ภาษีหัก
+    const hpType = (await call('GET', '/api/v1/trade-defaults/HP')).body.types[0].id;
+    const hp = csv([['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'รหัสสินค้า', 'จำนวน', 'ราคาต่อหน่วย', 'วิธีชำระ', 'เลขที่อ้างอิง/เช็ค', 'อัตราหัก ณ ที่จ่าย'],
+      ['HPX-1', '15/07/2569', 'IMP-S1', item.code, '10', '100', 'Q6', 'PAY-1', '3']]);
+    const hc = await call('POST', '/api/v1/trade-import/cash-purchases', { file_name: 'ซื้อสด.csv', data: hp, doc_type_id: hpType, price_type: '2', vat_rate: 7, commit: true });
+    expect(hc.body.error?.message ?? 'ok').toBe('ok');
+    const hph = (await sql<{ id: string; cash_amount: string; cheque_amount: string; wht_amount: string }>`SELECT id, cash_amount, cheque_amount, wht_amount FROM doc_header WHERE company_id = ${co} AND your_ref = 'HPX-1' AND doc_class = 'HP' AND doc_status <> 'C'`.execute(database.db)).rows[0]!;
+    expect([hph.wht_amount, hph.cheque_amount, hph.cash_amount]).toEqual(['30.00', '1040.00', '0.00']);   // 1,070 − 30
+    expect((await sql<{ rate: string; tax_amount: string }>`SELECT rate::text AS rate, tax_amount FROM tax_wht_entry WHERE header_id = ${hph.id} AND deleted_at IS NULL`.execute(database.db)).rows.map((r) => [Number(r.rate), r.tax_amount])).toEqual([[3, '30.00']]);
+    // ขายสดแฟ้มเดิม (CSV แบบฟอร์มรุ่นก่อน มีคอลัมน์เครดิต) ยังนำเข้าได้: เตือน ไม่ใช้ค่าเครดิต · เงินสดทั้งหมด
+    const old = csv([['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน', 'หน่วย', 'ราคาต่อหน่วย', 'ส่วนลด', 'เครดิต (วัน)'], ['HSX-OLD', '16/07/2569', 'IMP-C1', item.code, '1', '', '50', '', '15']]);
+    const oc = (await call('POST', url, { ...base, file_name: 'old.csv', data: old, commit: true })).body;
+    expect(oc.error?.message ?? 'ok').toBe('ok');
+    expect(oc.file_warnings).toHaveLength(1);
+    expect((await sql<{ c: number | null; cash: string }>`SELECT credit_days AS c, cash_amount AS cash FROM doc_header WHERE company_id = ${co} AND your_ref = 'HSX-OLD' AND doc_status <> 'C'`.execute(database.db)).rows[0]).toMatchObject({ cash: '53.50' });
+  });
   it('journal import (เจ้าของ 17/11/2569): template, check without saving, all-or-nothing commit via createJournal, line description default, duplicate ref, rights, other tenants', async () => {
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);

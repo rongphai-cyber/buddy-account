@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { applyMapping, cleanImportCell, headerSignature, importMapKey, importSuggestPrompt, IMPORT_DOC_KINDS, mapExpenseImport, mapImport, mapJournalImport, mapPrompt, mapSchema, MAP_SAMPLE_ROWS, MAP_SYSTEM_PROMPT,
-  missingCodeRows, normalizeMapping, setImportCodes, SUGGEST_SCHEMA, textSim, type ImportMapping, type ImportMapTarget, type YearSystem } from '@buddy/core';
+  missingCodeRows, normalizeMapping, importKindOf, setImportCodes, SUGGEST_SCHEMA, textSim, type ImportMapping, type ImportMapTarget, type YearSystem } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -90,8 +90,8 @@ export function importMapRoutes(app: FastifyInstance, db: Db) {
     const sample = rows.slice(0, MAP_SAMPLE_ROWS);
     while (sample.length && !sample[sample.length - 1]!.some((c) => cleanImportCell(c))) sample.pop();
     if (!sample.length) throw badRequest('แฟ้มนี้ไม่มีข้อมูล');
-    const r = await aiStructured(db, a, { purpose: 'MAP', file_name: b.file_name, file_size: Math.floor(b.data.length * 3 / 4), system: MAP_SYSTEM_PROMPT, prompt: mapPrompt(T.target, sample, T.label),
-      schema: mapSchema(T.target), effort: 'medium', max_tokens: 4000 });
+    const r = await aiStructured(db, a, { purpose: 'MAP', file_name: b.file_name, file_size: Math.floor(b.data.length * 3 / 4), system: MAP_SYSTEM_PROMPT, prompt: mapPrompt(T.target, sample, T.label, importKindOf(T.path)),
+      schema: mapSchema(T.target, importKindOf(T.path)), effort: 'medium', max_tokens: 4000 });
     if (!r.ok) return reply.code(r.status).send({ error: { code: r.code, message: r.message }, usage: r.usage ?? null });
     const mapping = normalizeMapping(r.parsed as Partial<ImportMapping>, T.target, widthOf(rows));
     await logActivity(db, a, { module: T.module, action: 'AI_IMPORT_MAP', detail: { file: b.file_name, target: T.path, cost_usd: r.usage.cost_usd, columns: mapping.columns.length } });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { importBranch, importDate, importItemKind, importNumber, importPartyKey, importWhtForm, mapExpenseImport, mapImport, parseCsv, xlsxSharedStrings, xlsxSheetRows } from './trade-import.js';
+import { importBranch, importColumnsFor, importDate, importFlag, importHeaderText, importItemKind, importKindOf, importNeedLabel, importNumber, importPartyKey, importVatBasis, importVatCode, importWhtForm, mapExpenseImport, mapImport, mapPaymentImport, parseCsv, xlsxSharedStrings, xlsxSheetRows } from './trade-import.js';
+import { TRADE_KINDS } from './doc-calc.js';
 
 describe('นำเข้ารายการขาย/ซื้อจากแฟ้ม Excel', () => {
   it('reads dates: Excel serial, ISO, 4-digit year decides BE/CE, short year follows company', () => {
@@ -55,7 +56,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     ];
     const r = mapImport(rows, 'B');
     expect(r.docs.map((x) => [x.ref, x.row, x.date, x.party, x.lines.length, x.remark])).toEqual([['INV1', 3, '2026-10-15', 'C001', 2, 'หน้าร้าน'], ['INV2', 6, '2025-10-15', 'C002', 1, null]]);
-    expect(r.docs[0]!.lines[0]).toEqual({ row: 3, item: 'A-1', item_name: null, item_kind: null, description: null, qty: '2', unit: null, price: '1500', discount: '10%', warehouse: null });
+    expect(r.docs[0]!.lines[0]).toEqual({ row: 3, item: 'A-1', item_name: null, item_kind: null, description: null, qty: '2', unit: null, price: '1500', discount: '10%', warehouse: null, free: null, job: null, vat_code: null, ret: null });
     expect(r.errors).toEqual([
       { row: 7, message: 'จำนวน "x" ไม่ใช่ตัวเลข' },
       { row: 8, message: 'เลขที่อ้างอิง INV1: วันที่ไม่ตรงกับแถว 3' },
@@ -66,7 +67,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
 
   it('reports a missing header or required column clearly', () => {
     expect(mapImport([['a', 'b'], ['1', '2']], 'B').errors[0]!.message).toMatch(/ไม่พบหัวตาราง/);
-    expect(mapImport([['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า']], 'B').errors[0]!.message).toBe('ไม่มีคอลัมน์ "จำนวน", "ราคาต่อหน่วย" — ใช้ชื่อหัวคอลัมน์ตามแบบฟอร์มตัวอย่าง');
+    expect(mapImport([['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า']], 'B').errors[0]!.message).toBe('ไม่มีคอลัมน์ "จำนวน" — ใช้ชื่อหัวคอลัมน์ตามแบบฟอร์มตัวอย่าง');
     expect(mapImport([['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน', 'ราคาต่อหน่วย']], 'B').errors[0]!.message).toBe('ไม่มีรายการใต้หัวตาราง');
   });
 
@@ -134,5 +135,60 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
       { row: 7, message: 'เลขที่อ้างอิง E1: ภาษีหัก ณ ที่จ่ายไม่ตรงกับแถว 2 — ใส่แถวเดียวของเอกสาร' },
     ]);
     expect(mapExpenseImport([['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย']], 'B').errors[0]!.message).toBe('ไม่มีคอลัมน์ "รหัสค่าใช้จ่าย", "จำนวนเงิน" — ใช้ชื่อหัวคอลัมน์ตามแบบฟอร์มตัวอย่าง');
+  });
+
+  it('HANDOFF 169: each kind\'s template = the fields its screen has (no credit days on cash sales, no payments on credit sales)', () => {
+    const K = (cls: string) => TRADE_KINDS.find((k) => k.cls === cls)!;
+    const keys = (cls: string) => importColumnsFor(K(cls)).map((c) => c.key);
+    const th = (cls: string, key: string) => importColumnsFor(K(cls)).find((c) => c.key === key)?.th;
+    expect(keys('HS')).not.toContain('credit_days');
+    expect(keys('HS')).toEqual(expect.arrayContaining(['pay_method', 'pay_ref', 'wht_amount', 'party_branch', 'ship_to', 'salesperson', 'sales_area', 'ship_via', 'department', 'project', 'vat_basis', 'bill_discount', 'free', 'line_job', 'vat_code']));
+    expect(th('HS', 'wht_amount')).toBe('ภาษีถูกหัก ณ ที่จ่าย');
+    expect(th('HS', 'party_branch')).toBe('Bill to (สาขาลูกค้า)');
+    expect(keys('IV')).toContain('credit_days');
+    expect(keys('IV')).not.toEqual(expect.arrayContaining(['pay_method']));
+    expect(keys('IV')).not.toContain('wht_amount');
+    expect(keys('HP')).toEqual(expect.arrayContaining(['pay_method', 'wht_amount', 'wht_rate', 'wht_income', 'wht_form', 'ref_no', 'ref_date']));
+    expect(keys('HP')).not.toContain('salesperson');
+    expect([th('RR', 'ref_no'), th('RR', 'party_branch'), th('HP', 'wht_amount')]).toEqual(['เลขที่ใบกำกับผู้จำหน่าย', 'สาขาผู้ขาย', 'ภาษีหัก ณ ที่จ่าย']);
+    expect(keys('CN')).toEqual(expect.arrayContaining(['ref_invoice', 'return', 'credit_days']));
+    expect(keys('CN')).not.toContain('ref_no');
+    expect(keys('RR')).not.toContain('return');
+    expect(importKindOf('cash-sales')?.cls).toBe('HS');
+    expect(importKindOf('other-expense-docs')).toMatchObject({ cls: 'OE', cash: true });
+    expect(importKindOf('quotations')).toBeNull();
+    // one wording for "required"
+    const col = (cls: string, key: string) => importColumnsFor(K(cls)).find((c) => c.key === key)!;
+    expect([importNeedLabel(col('HS', 'qty')), importNeedLabel(col('HS', 'item')), importNeedLabel(col('HS', 'pay_method')), importNeedLabel(col('HS', 'party_tax_id')), importNeedLabel(col('CN', 'ref_invoice'))])
+      .toEqual(['ต้องมี', 'ต้องมีถ้าไม่ใส่ชื่อสินค้า', 'ไม่บังคับ (ค่าเริ่มต้น = เงินสดทั้งจำนวน)', 'ไม่บังคับ (ใช้เมื่อเพิ่มรายใหม่)', 'ต้องมี']);
+    expect([importHeaderText(col('HS', 'qty')), importHeaderText(col('HS', 'price'))]).toEqual(['จำนวน *', 'ราคาต่อหน่วย']);
+  });
+
+  it('HANDOFF 169: reads every screen field (header with * markers), old files still fine', () => {
+    const head = ['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสลูกค้า', 'Bill to (สาขาลูกค้า)', 'สถานที่ส่งของ', 'อ้างอิงเอกสาร', 'แผนก', 'Job/โครงการ', 'พนักงานขาย', 'เขตการขาย', 'ขนส่งโดย', 'ภาษีขาย', 'ส่วนลดท้ายบิล',
+      'วิธีชำระ', 'เลขที่อ้างอิง/เช็ค', 'ภาษีถูกหัก ณ ที่จ่าย', 'รหัสสินค้า', 'จำนวน *', 'ราคาต่อหน่วย', 'ของแถม (F)', 'Job รายบรรทัด', 'ประเภท VAT', 'เครดิต (วัน)'];
+    const r = mapImport([head,
+      ['HS-1', '15/10/2569', 'C001', '1', 'SH1', 'PO-77', 'D1', 'J1', 'SL1', 'BKK', 'TRK', 'เกณฑ์เงินสด', '5%', 'TR', 'T-001', '30', 'A-1', '2', '100', '', 'J2', '0', '30'],
+      ['HS-1', '15/10/2569', 'C001', '', '', '', '', '', '', '', '', '', '', '', '', '', 'A-2', '1', '', 'ใช่', '', '', ''],
+      ['HS-2', '15/10/2569', 'C001', '', '', '', '', '', '', '', '', 'ไม่รู้', '', '', '', '', 'A-1', '', '1', 'อาจจะ', '', '9', ''],
+    ], 'B');
+    expect(r.errors.map((e) => [e.row, e.message])).toEqual([
+      [4, 'ไม่มีจำนวน (คอลัมน์ "จำนวน" ต้องมี)'], [4, 'ภาระภาษี "ไม่รู้" ใช้ "เกณฑ์สิทธิ" หรือ "เกณฑ์เงินสด"'], [4, 'ของแถม "อาจจะ" ใช้ ใช่/ไม่ใช่ (Y/N)'], [4, 'ประเภท VAT "9" ใช้ 1 = มี VAT · 0 = ยกเว้น · 2 = อัตรา 0%'],
+    ]);
+    expect(r.cols).toEqual(expect.arrayContaining(['credit_days', 'pay_method', 'wht_amount']));
+    expect(r.docs[0]).toMatchObject({ ref: 'HS-1', party_branch: '00001', ship_to: 'SH1', ref_no: 'PO-77', department: 'D1', project: 'J1', salesperson: 'SL1', sales_area: 'BKK', ship_via: 'TRK', vat_basis: '2', bill_discount: '5%',
+      pay_method: 'TR', pay_ref: 'T-001', credit_days: 30, wht: { rate: null, amount: '30', income: null, form: null } });
+    expect(r.docs[0]!.lines.map((l) => [l.item, l.price, l.free, l.job, l.vat_code])).toEqual([['A-1', '100', null, 'J2', '0'], ['A-2', '0', true, null, null]]);
+  });
+
+  it('HANDOFF 169: cell helpers + payment sheet (several methods per document)', () => {
+    expect(['', 'ใช่', 'Y', '1', 'ไม่ใช่', 'n', 'x', 'บางที'].map(importFlag)).toEqual([null, true, true, true, false, false, true, undefined]);
+    expect(['', 'เกณฑ์สิทธิ', 'เกณฑ์ เงินสด', '2', 'x'].map(importVatBasis)).toEqual([null, '1', '2', '2', undefined]);
+    expect(['', 'มี VAT', '0', 'ยกเว้น', '0%', '2', 'x'].map(importVatCode)).toEqual([null, '1', '0', '0', '2', '2', undefined]);
+    const r = mapPaymentImport([['เลขที่อ้างอิง *', 'วิธีชำระ *', 'จำนวนเงิน *', 'เลขที่อ้างอิง/เช็ค', 'วันที่เช็ค'],
+      ['HS-1', 'เงินสด', '1,000', '', ''], ['HS-1', 'TR', '605.50', 'T-9', ''], ['HS-2', '', '0', '', '32/1/2569'], ['', '', '', '', '']], 'B');
+    expect(r.pays).toEqual([{ row: 2, ref: 'HS-1', method: 'เงินสด', amount: '1000', pay_ref: null, cheque_date: null }, { row: 3, ref: 'HS-1', method: 'TR', amount: '605.50', pay_ref: 'T-9', cheque_date: null }]);
+    expect(r.errors.map((e) => e.message)).toEqual(['แผ่นรับ/จ่ายชำระ: ไม่มีวิธีชำระ', 'แผ่นรับ/จ่ายชำระ: จำนวนเงิน "0" ต้องเป็นตัวเลขมากกว่า 0', 'แผ่นรับ/จ่ายชำระ: วันที่เช็ค "32/1/2569" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป']);
+    expect(mapPaymentImport([[''], []], 'B')).toEqual({ pays: [], errors: [] });
   });
 });

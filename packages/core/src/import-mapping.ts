@@ -1,4 +1,4 @@
-import { IMPORT_COLUMNS, EXPENSE_IMPORT_COLUMNS, importNumber } from './trade-import.js';
+import { IMPORT_COLUMNS, EXPENSE_IMPORT_COLUMNS, importColumnsFor, importNumber, type ImportKindLike } from './trade-import.js';
 import { JOURNAL_IMPORT_COLUMNS, cleanImportCell } from './journal-import.js';
 
 /**
@@ -22,13 +22,13 @@ const GROUP: Record<ImportMapTarget, { key: string; head: string[] }> = {
   expense: { key: 'ref', head: ['date', 'party', 'party_name', 'party_tax_id', 'party_branch', 'party_address', 'party_phone', 'remark'] },
   journal: { key: 'group', head: ['book', 'voucher_no', 'date', 'ref', 'description'] },
 };
-const TRADE_NUM = new Set(['qty', 'price', 'credit_days']);
+const TRADE_NUM = new Set(['qty', 'price', 'credit_days', 'wht_amount', 'wht_rate']);
 const EXP_NUM = new Set(['amount', 'wht_rate', 'wht_amount']);
-/** คอลัมน์ของแบบฟอร์มปลายทาง (ใช้กับหน้าจับคู่และข้อความถึง AI) */
-export function mapColumns(target: ImportMapTarget): MapColumn[] {
+/** คอลัมน์ของแบบฟอร์มปลายทาง (ใช้กับหน้าจับคู่และข้อความถึง AI) · kind = เฉพาะช่องที่หน้าจอเอกสารชนิดนั้นมี (HANDOFF 169) */
+export function mapColumns(target: ImportMapTarget, kind?: ImportKindLike | null): MapColumn[] {
   if (target === 'journal') return JOURNAL_IMPORT_COLUMNS.map((c) => ({ key: c.key, th: c.th, required: !!c.required, format: c.format === 'date' ? 'date' : c.format === 'number' ? 'number' : 'text', hint: c.hint }));
   if (target === 'expense') return EXPENSE_IMPORT_COLUMNS.map((c) => ({ key: c.key, th: c.th, required: !!c.required, ...(c.alt ? { alt: c.alt } : {}), format: c.key === 'date' ? 'date' : EXP_NUM.has(c.key) ? 'number' : 'text', hint: c.hint }));
-  return IMPORT_COLUMNS.map((c) => ({ key: c.key, th: c.th, required: !!c.required, ...(c.alt ? { alt: c.alt } : {}), format: c.key === 'date' ? 'date' : TRADE_NUM.has(c.key) ? 'number' : 'text', hint: c.hint }));
+  return (kind ? importColumnsFor(kind) : IMPORT_COLUMNS).map((c) => ({ key: c.key, th: c.th, required: !!c.required || (!!kind && c.need === 'req'), ...(c.alt ? { alt: c.alt } : {}), format: c.key === 'date' || c.key === 'ref_date' ? 'date' : TRADE_NUM.has(c.key) ? 'number' : 'text', hint: c.hint }));
 }
 
 export interface ImportMapping {
@@ -47,7 +47,7 @@ export interface ImportMapping {
 
 const str = { type: 'string' } as const;
 /** โครงคำตอบของ AI (structured outputs) — ไม่มีช่อง null/union (กฎ HANDOFF 166) · ไม่มีค่า = "" หรือ −1 */
-export function mapSchema(target: ImportMapTarget) {
+export function mapSchema(target: ImportMapTarget, kind?: ImportKindLike | null) {
   return {
     type: 'object', additionalProperties: false,
     required: ['header_row', 'columns', 'date_order', 'year', 'decimal', 'group', 'skip_words', 'notes'],
@@ -56,7 +56,7 @@ export function mapSchema(target: ImportMapTarget) {
       columns: {
         type: 'array',
         items: { type: 'object', additionalProperties: false, required: ['target', 'source', 'constant'],
-          properties: { target: { type: 'string', enum: mapColumns(target).map((c) => c.key) }, source: { type: 'integer' }, constant: str } },
+          properties: { target: { type: 'string', enum: mapColumns(target, kind).map((c) => c.key) }, source: { type: 'integer' }, constant: str } },
       },
       date_order: { type: 'string', enum: ['dmy', 'mdy', 'ymd'] },
       year: { type: 'string', enum: ['be', 'ce', 'auto'] },
@@ -80,11 +80,11 @@ export const MAP_SYSTEM_PROMPT = `คุณช่วยโปรแกรมบ�
 - notes ภาษาไทยสั้น ๆ: สิ่งที่ผู้ใช้ควรตรวจ (ถ้าไม่มี = "")`;
 
 /** ข้อความถึง AI: คอลัมน์ปลายทาง + แถวต้นแฟ้ม (ช่องละไม่เกิน 60 ตัว) — ไม่ส่งทั้งแฟ้ม */
-export function mapPrompt(target: ImportMapTarget, rows: string[][], label: string) {
+export function mapPrompt(target: ImportMapTarget, rows: string[][], label: string, kind?: ImportKindLike | null) {
   const sample = rows.slice(0, 25).map((r, i) => ({ row: i, cells: r.map((c) => cleanImportCell(c).slice(0, 60)) }));
   return [
     `แบบฟอร์มปลายทาง: ${label}`,
-    `คอลัมน์ปลายทาง: ${JSON.stringify(mapColumns(target).map((c) => ({ key: c.key, name: c.th, required: c.required || undefined, format: c.format, hint: c.hint.slice(0, 120) })))}`,
+    `คอลัมน์ปลายทาง: ${JSON.stringify(mapColumns(target, kind).map((c) => ({ key: c.key, name: c.th, required: c.required || undefined, format: c.format, hint: c.hint.slice(0, 120) })))}`,
     `แถวต้นแฟ้ม (row เริ่ม 0 · cells ตามลำดับคอลัมน์ เริ่ม 0): ${JSON.stringify(sample)}`,
   ].join('\n');
 }
@@ -111,9 +111,9 @@ export function normalizeMapping(raw: Partial<ImportMapping> | null | undefined,
   };
 }
 /** คอลัมน์บังคับที่ยังไม่ได้จับคู่ (ช่องที่แทนกันได้ เช่น รหัส/ชื่อ จับคู่ช่องใดช่องหนึ่งพอ · บัญชีเดบิต/เครดิตอย่างน้อยหนึ่งช่อง) */
-export function unmappedRequired(m: ImportMapping, target: ImportMapTarget): MapColumn[] {
+export function unmappedRequired(m: ImportMapping, target: ImportMapTarget, kind?: ImportKindLike | null): MapColumn[] {
   const has = new Set(m.columns.map((c) => c.target));
-  const out = mapColumns(target).filter((c) => c.required && !has.has(c.key) && !(c.alt && has.has(c.alt)));
+  const out = mapColumns(target, kind).filter((c) => c.required && !has.has(c.key) && !(c.alt && has.has(c.alt)));
   // เลขที่กลุ่ม/เลขที่อ้างอิง: รวมแถวแบบต่อเนื่อง/แถวละเอกสาร ไม่ต้องมีช่องนี้
   const g = GROUP[target].key;
   const res = m.group === 'column' ? out : out.filter((c) => c.key !== g);

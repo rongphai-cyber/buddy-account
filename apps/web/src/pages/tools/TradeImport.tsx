@@ -9,9 +9,9 @@ import { Confirm, DateText, ErrorBox, Field, KeyHints, Money, PageHead, Pill, to
 
 const IMPORT_KINDS = IMPORT_DOC_KINDS;
 
-type DocRow = { ref: string; row: number; date: string; party_code: string; party_name: string | null; party_new: boolean; lines: number; new_items: number; amount: string | null; vat_amount: string | null; wht_amount: string | null; net_amount: string | null; doc_no: string | null; warnings: string[] };
+type DocRow = { cash_amount?: string | null; other_amount?: string | null; payments?: number; ref: string; row: number; date: string; party_code: string; party_name: string | null; party_new: boolean; lines: number; new_items: number; amount: string | null; vat_amount: string | null; wht_amount: string | null; net_amount: string | null; doc_no: string | null; warnings: string[] };
 type Masters = { parties: Array<{ code: string; name: string; tax_id: string | null; tax_branch_no: string; row: number }>; items: Array<{ code: string; name: string; kind: '0' | '3'; unit: string | null; row: number }>; units: string[] };
-type Result = { ok: boolean; committed: boolean; price_type: string; vat_rate: string; create_masters: boolean; docs: DocRow[]; errors: Array<{ row: number; message: string }>; file_docs: number; total_net: string; new_masters: Masters;
+type Result = { file_warnings?: string[]; ok: boolean; committed: boolean; price_type: string; vat_rate: string; create_masters: boolean; docs: DocRow[]; errors: Array<{ row: number; message: string }>; file_docs: number; total_net: string; new_masters: Masters;
   mapped: boolean; skipped_rows: number[]; row_shift: number; need_codes: Array<{ row: number; text: string; amount: string }> };
 type Defaults = { types: Array<{ id: string; code: string; name_th: string; price_type: string | null; vat_rate: string | null }>; vat_rate: number | string; price_type: string };
 
@@ -90,6 +90,9 @@ export function TradeImportPage() {
   const nm = res?.new_masters;
   const newCount = nm ? nm.parties.length + nm.items.length : 0;
   const lineWord = K.cash ? 'รหัสค่าใช้จ่ายหนึ่งบรรทัด' : 'สินค้าหนึ่งบรรทัด';
+  /** เอกสารที่รับ/จ่ายเงินในตัว: ขายสด ซื้อสด ค่าใช้จ่ายอื่น */
+  const pays = K.cash || K.cls === 'HS' || K.cls === 'HP';
+  const paySheet = K.module === 'AR' ? 'รับชำระ' : 'จ่ายชำระ';
 
   return (
     <div className="page" data-tone={K.module === 'AR' ? 'sales' : 'purchase'}>
@@ -117,6 +120,7 @@ export function TradeImportPage() {
           <input type="checkbox" checked={masters} onChange={(e) => { setMasters(e.target.checked); if (file && !res?.committed) void run(false, file, e.target.checked); else reset(); }} />
           เพิ่มข้อมูลหลักที่ยังไม่มีให้อัตโนมัติ <span className="muted small">({K.cash ? 'ผู้จำหน่าย — รหัสค่าใช้จ่ายต้องมีในโปรแกรมแล้ว' : `${partyTh} สินค้า และหน่วยนับ`} · ไม่ติ๊ก = รหัสที่ไม่พบต้องแก้ในแฟ้ม)</span>
         </label>
+        <p className="hint small">แบบฟอร์มของแต่ละชนิดมีเฉพาะช่องที่หน้าจอเอกสารนั้นมี · หัวคอลัมน์สีชมพู มี * = ต้องมี · สีเหลือง = ต้องมีตามเงื่อนไข · อื่น ๆ เว้นว่างได้ (ค่าเริ่มต้นเดียวกับหน้าจอ — ดูแผ่น "คำอธิบาย"){pays ? ` · ${K.module === 'AR' ? 'รับ' : 'จ่าย'}เงินด้วยวิธีอื่น: คอลัมน์ "วิธีชำระ" (ทั้งยอด) หรือแผ่น "${paySheet}" (แบ่งหลายวิธี) · ไม่ใส่ = เงินสดทั้งหมด` : ''}</p>
         <div className="ti-actions">
           <button type="button" onClick={() => download(`/api/v1/trade-import/${K.path}/template`, `import-${K.cls}.xlsx`).then((n) => toast(`ดาวน์โหลด ${n} แล้ว`)).catch(setErr)}>⬇ 2. แบบฟอร์มตัวอย่าง {K.label} (.xlsx)</button>
           {can('add') && <label className="btn primary-soft">⬆ 3. เลือกแฟ้มที่กรอกแล้ว (.xlsx / .csv)…<input type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ''; }} /></label>}
@@ -133,6 +137,7 @@ export function TradeImportPage() {
           <span>ยอดรวม <b><Money v={res.total_net} /></b> บาท</span>
           {!res.committed && !res.ok && <span className="muted small">ผ่านการตรวจ {res.docs.length} จาก {res.file_docs} เอกสาร — แก้ในแฟ้มแล้วเลือกแฟ้มใหม่ (ไม่มีอะไรถูกบันทึก)</span>}
           {warnCount > 0 && <span className="warn-text small">มีคำเตือน {warnCount} ฉบับ (บันทึกได้)</span>}
+          {res.file_warnings?.map((w, i) => <span key={i} className="warn-text small">⚠ {w}</span>)}
           {res.skipped_rows?.length > 0 && <span className="muted small">ไม่นำเข้าแถว {res.skipped_rows.slice(0, 12).join(', ')}{res.skipped_rows.length > 12 ? ' …' : ''} (รวม/หัวตารางซ้ำ/ไม่มีข้อมูล)</span>}
           {res.row_shift > 0 && <span className="muted small">แฟ้มไม่มีหัวตาราง — เลขแถวในรายการ = แถวในแฟ้ม + 1</span>}
         </div>
@@ -161,12 +166,12 @@ export function TradeImportPage() {
           <table className="grid">
             <thead><tr>
               <th style={{ width: 60 }}>แถว</th><th style={{ width: 130 }}>เลขที่อ้างอิง</th>{res.committed && <th style={{ width: 120 }}>เลขที่เอกสาร</th>}<th style={{ width: 110 }}>วันที่</th>
-              <th>{partyTh}</th><th className="r" style={{ width: 60 }}>บรรทัด</th><th className="r" style={{ width: 120 }}>มูลค่า</th><th className="r" style={{ width: 100 }}>VAT</th>{K.cash && <th className="r" style={{ width: 110 }}>หัก ณ ที่จ่าย</th>}<th className="r" style={{ width: 120 }}>รวม</th>
+              <th>{partyTh}</th><th className="r" style={{ width: 60 }}>บรรทัด</th><th className="r" style={{ width: 120 }}>มูลค่า</th><th className="r" style={{ width: 100 }}>VAT</th>{K.cash && <th className="r" style={{ width: 110 }}>หัก ณ ที่จ่าย</th>}<th className="r" style={{ width: 120 }}>รวม</th>{pays && <th className="r" style={{ width: 150 }} title="ยอดที่รับ/จ่ายด้วยวิธีอื่น (เงินโอน QR เช็ค …) · ที่เหลือเป็นเงินสด">{K.module === 'AR' ? 'รับ' : 'จ่าย'}โดยวิธีอื่น / เงินสด</th>}
             </tr></thead>
             <tbody>{res.docs.map((x) => <tr key={x.ref}>
               <td className="r num muted">{x.row}</td><td className="mono">{x.ref}</td>{res.committed && <td className="mono"><b>{x.doc_no}</b></td>}<td><DateText v={x.date} /></td>
               <td>{x.party_new && <Pill tone="n">ใหม่</Pill>} <span className="mono">{x.party_code}</span> {x.party_name}{x.new_items > 0 && <span className="muted small"> · สินค้าใหม่ {x.new_items} บรรทัด</span>}{x.warnings.map((w, i) => <div key={i} className="warn-text small">⚠ {w}</div>)}</td>
-              <td className="r num">{x.lines}</td><td className="r"><Money v={x.amount} /></td><td className="r"><Money v={x.vat_amount} /></td>{K.cash && <td className="r"><Money v={x.wht_amount} blankZero /></td>}<td className="r"><b><Money v={x.net_amount} /></b></td>
+              <td className="r num">{x.lines}</td><td className="r"><Money v={x.amount} /></td><td className="r"><Money v={x.vat_amount} /></td>{K.cash && <td className="r"><Money v={x.wht_amount} blankZero /></td>}<td className="r"><b><Money v={x.net_amount} /></b></td>{pays && <td className="r small">{x.payments ? <>{x.payments} วิธี <Money v={x.other_amount} /></> : '—'} / <Money v={x.cash_amount} /></td>}
             </tr>)}</tbody>
           </table>
         </div>}

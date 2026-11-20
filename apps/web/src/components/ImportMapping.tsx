@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { aiCost, aiModelLabel, guessMapping, mapColumns, unmappedRequired, type ImportMapping, type ImportMapTarget } from '@buddy/core';
+import { aiCost, aiModelLabel, guessMapping, importKindOf, mapColumns, unmappedRequired, type ImportMapping, type ImportMapTarget } from '@buddy/core';
 import { api } from '../api';
 import { cx, ErrorBox, Pill, toast } from '../ui';
 
@@ -93,8 +93,9 @@ export function ImportMapPanel({ im, busy }: { im: ImportMap; busy?: boolean }) 
     );
   }
   const m = im.review;
-  const cols = mapColumns(im.target);
-  const missing = unmappedRequired(m, im.target);
+  const kind = importKindOf(im.path);
+  const cols = mapColumns(im.target, kind);
+  const missing = unmappedRequired(m, im.target, kind);
   const miss = new Set(missing.map((c) => c.key));
   const set = (p: Partial<ImportMapping>) => im.setReview({ ...m, ...p });
   const colOf = (key: string) => m.columns.find((c) => c.target === key);
