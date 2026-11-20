@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PASSWORD_RULE } from '@buddy/core';
 import { api } from '../api';
-import { ErrorBox, Field, navKey } from '../ui';
+import { ErrorBox, Field, navKey, PasswordInput } from '../ui';
 
 /** หน้าสมัครใช้งานเปิดหรือไม่ (ผู้ให้บริการตั้ง BUDDY_SIGNUP) */
 export function useSignupMode() {
@@ -57,8 +57,8 @@ export function SignupPage({ onBack }: { onBack: () => void }) {
         </div>
         <Field label="รหัสผู้ใช้ (ใช้เข้าระบบ)" req hint="ตัวอักษรอังกฤษ ตัวเลข _ . @ - อย่างน้อย 3 ตัว"><input maxLength={30} autoComplete="username" value={f.username} onChange={set('username')} /></Field>
         <div className="form-grid">
-          <Field label="รหัสผ่าน" req hint={PASSWORD_RULE}><input type="password" autoComplete="new-password" value={f.password} onChange={set('password')} /></Field>
-          <Field label="ยืนยันรหัสผ่าน" req><input type="password" autoComplete="new-password" value={f.password2} onChange={set('password2')} /></Field>
+          <Field label="รหัสผ่าน" req hint={PASSWORD_RULE}><PasswordInput autoComplete="new-password" value={f.password} onChange={set('password')} /></Field>
+          <Field label="ยืนยันรหัสผ่าน" req><PasswordInput autoComplete="new-password" value={f.password2} onChange={set('password2')} /></Field>
         </div>
         {/* ช่องดักบอท — คนไม่เห็น */}
         <input className="hp-field" tabIndex={-1} autoComplete="off" aria-hidden="true" value={f.website} onChange={set('website')} name="website" />

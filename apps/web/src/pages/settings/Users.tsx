@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { HUB_APPS, PASSWORD_RULE, TENANT_MODULES, type TenantModuleKey } from '@buddy/core';
-import { Confirm, cx, ErrorBox, Field, Modal, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { Confirm, cx, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, useHotkeys } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null }
@@ -94,7 +94,7 @@ function UserForm({ u, groups, onClose, onSaved }: { u: User | null; groups: Gro
       <div className="form-grid">
         <Field label="รหัสผู้ใช้" req><input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>
         <Field label="ชื่อผู้ใช้" req><input value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} /></Field>
-        <Field label={u ? 'ตั้งรหัสผ่านใหม่ (ว่าง = ไม่เปลี่ยน)' : 'รหัสผ่านเริ่มต้น'} hint={PASSWORD_RULE} req={!u}><input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" /></Field>
+        <Field label={u ? 'ตั้งรหัสผ่านใหม่ (ว่าง = ไม่เปลี่ยน)' : 'รหัสผ่านเริ่มต้น'} hint={PASSWORD_RULE} req={!u}><PasswordInput value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" /></Field>
         <Field label="กลุ่มผู้ใช้"><select value={f.user_group_id} onChange={(e) => setF({ ...f, user_group_id: e.target.value })}><option value="">— ไม่มีกลุ่ม —</option>{groups.map((g) => <option key={g.id} value={g.id}>{g.code} · {g.name}</option>)}</select></Field>
         <Field label="ระดับอนุมัติ" hint="0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/กำหนดค่าโปรแกรม · 9 ทุกอย่างรวมระบบความปลอดภัย">
           <select value={f.approval_level} onChange={(e) => setF({ ...f, approval_level: Number(e.target.value) })}>{Array.from({ length: 10 }, (_, i) => <option key={i} value={i}>{i} · {i <= 4 ? 'พนักงาน' : i <= 8 ? 'หัวหน้าแผนก' : 'ผู้จัดการระบบ'}</option>)}</select>

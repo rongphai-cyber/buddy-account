@@ -5683,6 +5683,31 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await call('GET', '/api/v1/users')).status).toBe(403);
     cookie = '';
   });
+
+  it('cli create-admin (tools/cloud/reset-admin.ps1) refuses a customer user, resets provider staff, creates a new admin (HANDOFF 155)', async () => {
+    const { createOrResetAdmin } = await import('../src/admin-cli.js');
+    const row = async (u: string) => (await sql<{ tenant_id: string | null; user_group_id: string | null; password_hash: string; status: string }>`SELECT tenant_id, user_group_id, password_hash, status FROM sys_user WHERE lower(username) = ${u} AND deleted_at IS NULL`.execute(database.db)).rows[0];
+    // ผู้ใช้ของลูกค้า (ไม่สนตัวพิมพ์) = ปฏิเสธ ไม่เปลี่ยนอะไรเลย
+    const before = await row('b.admin');
+    expect(before!.tenant_id).toBeTruthy();
+    await expect(createOrResetAdmin(database.db, 'B.Admin', 'ผู้ดูแล', 'New-Pass-155')).rejects.toThrow(/เป็นผู้ใช้ของลูกค้า/);
+    expect(await row('b.admin')).toEqual(before);
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.user.is_platform).toBe(false);
+    // รหัสใหม่ = ผู้ดูแลระบบของผู้ให้บริการ · ผู้ดูแลเดิม = ตั้งรหัสใหม่ (ยังเป็นเจ้าหน้าที่ผู้ให้บริการ)
+    await expect(createOrResetAdmin(database.db, 'ops.155', 'ผู้ดูแล 155', 'short')).rejects.toThrow();
+    expect(await createOrResetAdmin(database.db, 'ops.155', 'ผู้ดูแล 155', 'Ops-Pass-155')).toBe('created');
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'ops.155', password: 'Ops-Pass-155' })).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.user).toMatchObject({ is_platform: true, is_admin: true, tenant_id: null });
+    expect(await createOrResetAdmin(database.db, 'OPS.155', 'ผู้ดูแล 155', 'Ops-Pass-156')).toBe('reset');
+    cookie = '';
+    expect((await call('POST', '/api/v1/auth/login', { username: 'ops.155', password: 'Ops-Pass-155' })).status).toBe(401);
+    expect((await call('POST', '/api/v1/auth/login', { username: 'ops.155', password: 'Ops-Pass-156' })).status).toBe(200);
+    expect((await row('ops.155'))!.tenant_id).toBeNull();
+    cookie = '';
+  });
 });
 
 describe('ชื่อภาษาอังกฤษของข้อมูล (โหมด EN)', () => {

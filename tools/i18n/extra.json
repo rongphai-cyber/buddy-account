@@ -1951,5 +1951,12 @@
  "เพิ่มผู้ใช้ดูอย่างเดียว {0} แล้ว ({1} บริษัท) — ส่งรหัสผู้ใช้และรหัสผ่านให้ลูกค้าทดลอง": "Read-only user {0} added ({1} companies) — send the username and password to the trial customer",
  "แพ็กเกจของลูกค้านี้มีผู้ใช้ได้สูงสุด {0} คน — เพิ่มจำนวนผู้ใช้ที่ลูกค้าก่อน": "This customer's plan allows at most {0} users — raise the user limit first",
  "ใช้เป็นชื่อบริษัทแรกของคุณ (แก้ได้ภายหลัง)": "Used as the name of your first company (can be changed later)",
- "ไม่พบเมนู \"ทุกระบบงาน\" ในตารางเมนู": "Menu \"All systems\" not found in the menu table"
+ "ไม่พบเมนู \"ทุกระบบงาน\" ในตารางเมนู": "Menu \"All systems\" not found in the menu table",
+ "Caps Lock เปิดอยู่ — ตัวอักษรที่พิมพ์เป็นตัวพิมพ์ใหญ่": "Caps Lock is on — letters are typed in capitals",
+ "ซ่อนรหัสผ่าน": "Hide password",
+ "แสดงรหัสผ่าน": "Show password",
+ "ตั้งรหัสผ่านใหม่ให้ผู้ดูแลระบบ {0} แล้ว": "Password reset for administrator {0}",
+ "รหัสผู้ใช้ {0} เป็นผู้ใช้ของลูกค้า ไม่ใช่ผู้ดูแลระบบของผู้ให้บริการ — คำสั่งนี้ไม่เปลี่ยนให้ (กันการได้สิทธิ์เห็นทุกลูกค้า)\\n": "Username {0} belongs to a customer, not a provider administrator — this command will not change it (prevents gaining access to every customer)\\n",
+ "• ผู้ใช้ของลูกค้าลืมรหัสผ่าน: เข้าระบบด้วยรหัสผู้ดูแลระบบของผู้ให้บริการ แล้วตั้งรหัสใหม่ให้ {0} ที่หน้า ผู้ใช้งานและสิทธิ์": "• A customer user forgot the password: log in as the provider administrator, then set a new password for {0} on Users and rights",
+ "• ลืมรหัสผ่านผู้ดูแลระบบของผู้ให้บริการ: ใส่รหัสผู้ใช้ของตัวเอง (ผู้ใช้คนแรกที่ตั้งตอนตั้งค่าครั้งแรก เช่น admin)": "• Forgot the provider administrator password: enter your own username (the first user created at first-time setup, e.g. admin)"
 }

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AI_BUSINESS_TYPES, d, fmt, TYPHOON_MODEL } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
-import { DateText, ErrorBox, Field, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { DateText, ErrorBox, Field, PageHead, PasswordInput, Pill, toast, useHotkeys } from '../../ui';
 import { checkOllama, localOcrOn, setLocalOcrOn, type OllamaCheck } from '../../localOcr';
 import { useUnsaved } from '../../unsaved';
 
@@ -63,7 +63,7 @@ export function AiSettingsPage() {
         <fieldset className="box">
           <legend>กุญแจ API ของ Anthropic</legend>
           <Field label={c.has_key ? 'เปลี่ยนกุญแจ (ว่าง = ใช้กุญแจเดิม)' : 'กุญแจ API'} hint="สร้างที่ console.anthropic.com › API Keys (ขึ้นต้นด้วย sk-ant-) — ค่าใช้จ่ายเรียกเก็บกับบัญชี Anthropic ของคุณ">
-            <input type="password" autoComplete="off" value={key} disabled={!can('edit')} placeholder={c.has_key ? `ใช้อยู่ ${c.key_hint}` : 'sk-ant-…'} onChange={(e) => setKey(e.target.value)} style={{ width: '100%' }} />
+            <PasswordInput autoComplete="off" value={key} disabled={!can('edit')} placeholder={c.has_key ? `ใช้อยู่ ${c.key_hint}` : 'sk-ant-…'} onChange={(e) => setKey(e.target.value)} style={{ width: '100%' }} />
           </Field>
           <Field label="เพดานค่าใช้จ่ายต่อเดือน (ดอลลาร์สหรัฐ)" hint="ครบเพดานแล้วปุ่มอ่านบิลใช้ไม่ได้จนถึงเดือนถัดไป · ว่าง = ไม่จำกัด · บิลละประมาณ $0.03–0.08">
             <input className="r" inputMode="decimal" value={lim} disabled={!can('edit')} onChange={(e) => setLimit(e.target.value.replace(/[^\d.]/g, ''))} style={{ width: 140 }} />

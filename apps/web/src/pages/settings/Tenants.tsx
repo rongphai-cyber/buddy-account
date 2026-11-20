@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { SignupsPanel } from './Signups';
-import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, useHotkeys } from '../../ui';
 
 interface Tenant { id: string; code: string; name: string; contact_email: string | null; contact_phone: string | null; plan: string; max_companies: number | null; max_users: number | null; expires_on: string | null; status: string; company_count: number; user_count: number;
   dpa_signed_on: string | null; terminated_on: string | null; purge_after: string | null; purged_at: string | null; moved_to: string | null }
@@ -96,7 +96,7 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
           <h3 className="wide">ผู้ดูแลระบบคนแรกของลูกค้า</h3>
           <Field label="รหัสผู้ใช้" req><input value={f.admin_username} onChange={(e) => setF({ ...f, admin_username: e.target.value })} /></Field>
           <Field label="ชื่อ" req><input value={f.admin_name} onChange={(e) => setF({ ...f, admin_name: e.target.value })} /></Field>
-          <Field label="รหัสผ่านเริ่มต้น (อย่างน้อย 8 ตัว)" req wide><input type="password" autoComplete="new-password" value={f.admin_password} onChange={(e) => setF({ ...f, admin_password: e.target.value })} /></Field>
+          <Field label="รหัสผ่านเริ่มต้น (อย่างน้อย 8 ตัว)" req wide><PasswordInput autoComplete="new-password" value={f.admin_password} onChange={(e) => setF({ ...f, admin_password: e.target.value })} /></Field>
         </>}
       </div>
       {purge && t && <PurgeTenant t={t} onClose={() => setPurge(false)} onDone={onSaved} />}
@@ -126,7 +126,7 @@ function AddViewer({ t, onClose }: { t: Tenant; onClose: () => void }) {
       <div className="form-grid">
         <Field label="รหัสผู้ใช้" req hint="เช่น demo.shopa (ตัวอักษรอังกฤษ ตัวเลข _ . -)"><input autoFocus maxLength={30} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value.trim() })} /></Field>
         <Field label="ชื่อที่แสดง" req><input maxLength={120} placeholder="เช่น ลูกค้าทดลอง ร้านเอ" value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} /></Field>
-        <Field label="รหัสผ่านเริ่มต้น" req wide hint="อย่างน้อย 8 ตัว มีตัวอักษรและตัวเลข — ส่งให้ลูกค้าทางช่องทางส่วนตัว"><input type="password" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
+        <Field label="รหัสผ่านเริ่มต้น" req wide hint="อย่างน้อย 8 ตัว มีตัวอักษรและตัวเลข — ส่งให้ลูกค้าทางช่องทางส่วนตัว"><PasswordInput autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
       </div>
     </Modal>
   );
@@ -174,8 +174,8 @@ function ExportTenant({ t, onClose }: { t: Tenant; onClose: () => void }) {
       <p>แฟ้มมีข้อมูลทุกบริษัท ผู้ใช้ (รหัสผ่านและ 2FA เดิม) และแฟ้มบันทึกเหตุการณ์ของลูกค้ารายนี้ เข้ารหัสด้วยรหัสผ่านด้านล่าง — ส่งรหัสผ่านแยกจากแฟ้ม</p>
       <p className="small muted">ลูกค้ายังใช้งานที่นี่ต่อได้ ถ้ามีการบันทึกหลังส่งออก ให้ส่งออกใหม่ก่อนย้ายจริง (แนะนำทำนอกเวลาทำงาน)</p>
       <div className="form-grid">
-        <Field label="รหัสผ่านของแฟ้ม (อย่างน้อย 12 ตัว)" req wide><input type="password" autoComplete="new-password" value={p1} onChange={(e) => setP1(e.target.value)} autoFocus /></Field>
-        <Field label="ยืนยันรหัสผ่าน" req wide error={p2 && p1 !== p2 ? 'รหัสผ่านไม่ตรงกัน' : undefined}><input type="password" autoComplete="new-password" value={p2} onChange={(e) => setP2(e.target.value)} /></Field>
+        <Field label="รหัสผ่านของแฟ้ม (อย่างน้อย 12 ตัว)" req wide><PasswordInput autoComplete="new-password" value={p1} onChange={(e) => setP1(e.target.value)} autoFocus /></Field>
+        <Field label="ยืนยันรหัสผ่าน" req wide error={p2 && p1 !== p2 ? 'รหัสผ่านไม่ตรงกัน' : undefined}><PasswordInput autoComplete="new-password" value={p2} onChange={(e) => setP2(e.target.value)} /></Field>
       </div>
     </Modal>
   );
@@ -209,7 +209,7 @@ function ImportTenant({ onClose, onDone }: { onClose: () => void; onDone: () => 
         <p>เลือกแฟ้ม .buddy-tenant ที่ส่งออกจากเครื่องเดิม — เครื่องนี้ต้องเป็นโปรแกรมรุ่นเดียวกัน และต้องยังไม่มีลูกค้า/บริษัท/ผู้ใช้รหัสเดียวกัน</p>
         <div className="form-grid">
           <Field label="แฟ้มย้ายลูกค้า" req wide><input type="file" accept=".buddy-tenant" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
-          <Field label="รหัสผ่านของแฟ้ม" req wide><input type="password" autoComplete="off" value={pass} onChange={(e) => setPass(e.target.value)} /></Field>
+          <Field label="รหัสผ่านของแฟ้ม" req wide><PasswordInput autoComplete="off" value={pass} onChange={(e) => setPass(e.target.value)} /></Field>
         </div>
         {busy && <p className="small muted">ลูกค้าขนาดใหญ่ใช้เวลาหลายนาที (ข้อมูลตัวอย่าง DEMO ประมาณ 40 วินาที) — อย่าปิดหน้านี้</p>}
       </> : <>

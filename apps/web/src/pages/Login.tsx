@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { useSession } from '../session';
 import { PASSWORD_RULE } from '@buddy/core';
-import { ErrorBox, Field, navKey } from '../ui';
+import { ErrorBox, Field, navKey, PasswordInput } from '../ui';
 import { useNavigate } from 'react-router-dom';
 import { useSignupMode } from './Signup';
 import { LangSwitch } from '../components/LangSwitch';
@@ -54,7 +54,7 @@ export function LoginPage() {
         {lost && <p className="bad" role="alert">หมดเวลาเข้าระบบระหว่างคีย์ — {lost} ที่ยังไม่บันทึกไม่ได้เก็บไว้ เข้าระบบแล้วคีย์ใหม่</p>}
         <ErrorBox error={err} />
         <Field label="รหัสผู้ใช้" req><input autoFocus autoComplete="username" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>
-        <Field label="รหัสผ่าน" req><input type="password" autoComplete="current-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} data-noenter onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), go())} /></Field>
+        <Field label="รหัสผ่าน" req><PasswordInput capsHint autoComplete="current-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} data-noenter onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), go())} /></Field>
         <button className="primary" type="submit" disabled={busy}>{busy ? 'กำลังเข้าระบบ…' : 'เข้าสู่ระบบ'}</button>
         <p className="hint">Enter ไปช่องถัดไป · ลืมรหัสผ่านให้ผู้ดูแลระบบตั้งรหัสใหม่ให้</p>
         {signup && signup !== 'off' && <button type="button" className="link" onClick={() => nav('/signup')}>ยังไม่มีบัญชี? สมัครใช้งาน</button>}
@@ -91,8 +91,8 @@ export function SetupPage() {
         <ErrorBox error={err} />
         <Field label="รหัสผู้ใช้" req><input autoFocus value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>
         <Field label="ชื่อผู้ใช้" req><input value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} /></Field>
-        <Field label="รหัสผ่าน" hint={PASSWORD_RULE} req><input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
-        <Field label="ยืนยันรหัสผ่าน" req><input type="password" value={f.confirm} onChange={(e) => setF({ ...f, confirm: e.target.value })} /></Field>
+        <Field label="รหัสผ่าน" hint={PASSWORD_RULE} req><PasswordInput value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
+        <Field label="ยืนยันรหัสผ่าน" req><PasswordInput value={f.confirm} onChange={(e) => setF({ ...f, confirm: e.target.value })} /></Field>
         <button className="primary" type="submit" disabled={busy}>{busy ? 'กำลังสร้าง…' : 'สร้างผู้ดูแลระบบ'}</button>
         <button type="button" className="link" onClick={() => setMode('branch')}>เครื่องนี้เป็นเครื่องสาขา (เชื่อมกับสำนักงานใหญ่) →</button>
       </form>

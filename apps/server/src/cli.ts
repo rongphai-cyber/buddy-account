@@ -12,14 +12,13 @@
  *   tenant-import <แฟ้ม>                  นำเข้าแฟ้ม .buddy-tenant ที่เครื่องปลายทาง แล้วตรวจยอดใบสำคัญรายบริษัท
  */
 import { mkdirSync } from 'node:fs';
-import bcrypt from 'bcryptjs';
 import { loadConfig } from './config.js';
 import { openDatabase } from './db.js';
 import { migrate } from './migrate.js';
 import { applyPostingTemplate } from './company-template.js';
 import { comparePosting } from './modules/posting.js';
-import { passwordProblem } from '@buddy/core';
 import { logActivity } from './audit.js';
+import { createOrResetAdmin } from './admin-cli.js';
 
 const [cmd, ...args] = process.argv.slice(2);
 const cfg = loadConfig();
@@ -41,15 +40,9 @@ try {
     const [username, name, pwArg] = args;
     const password = pwArg === '-' ? process.env.BUDDY_NEW_PASSWORD : pwArg;
     if (!username || !name || !password) throw new Error('ใช้: create-admin <user> <ชื่อ> <รหัสผ่าน>');
-    let g = await db.selectFrom('sys_user_group').select('id').where('code', '=', 'ADMIN').where('tenant_id', 'is', null).executeTakeFirst(); // ผู้ดูแลของผู้ให้บริการ (ไม่สังกัด tenant)
-    if (!g) g = await db.insertInto('sys_user_group').values({ code: 'ADMIN', name: 'ผู้ดูแลระบบ' }).returning('id').executeTakeFirstOrThrow();
-    const bad = passwordProblem(password, username);
-    if (bad) throw new Error(bad);
-    const hash = await bcrypt.hash(password, 10);
-    const ex = await db.selectFrom('sys_user').select('id').where('username', '=', username).where('deleted_at', 'is', null).executeTakeFirst();
-    if (ex) await db.updateTable('sys_user').set({ password_hash: hash, user_group_id: g.id, status: 'A', tenant_id: null }).where('id', '=', ex.id).execute();
-    else await db.insertInto('sys_user').values({ username, display_name: name, password_hash: hash, user_group_id: g.id, approval_level: 9 }).execute();
-    console.log(`สร้างผู้ดูแลระบบ ${username} แล้ว`);
+    // ผู้ใช้ของลูกค้า (tenant) = ปฏิเสธ · ได้เฉพาะเจ้าหน้าที่ผู้ให้บริการเดิมหรือรหัสใหม่ (HANDOFF 155 · admin-cli.ts)
+    const r = await createOrResetAdmin(db, username, name, password);
+    console.log(r === 'created' ? `สร้างผู้ดูแลระบบ ${username} แล้ว` : `ตั้งรหัสผ่านใหม่ให้ผู้ดูแลระบบ ${username} แล้ว`);
   } else if (cmd === 'unlock' || cmd === 'reset-2fa') {
     const [username] = args;
     const u = username ? await db.selectFrom('sys_user').select('id').where('username', '=', username).where('deleted_at', 'is', null).executeTakeFirst() : undefined;
@@ -114,6 +107,10 @@ try {
   } else {
     console.log('คำสั่ง: migrate | create-admin <user> <ชื่อ> <รหัสผ่าน> | unlock <user> | reset-2fa <user> | company-template <company_id> | posting-compare <รหัสบริษัท> | tenant-export <รหัสลูกค้า> <แฟ้ม> | tenant-import <แฟ้ม>');
   }
+} catch (e) {
+  // message only (no stack trace) — the owner runs this from PowerShell (tools/cloud/reset-admin.ps1)
+  console.error('X ' + (e instanceof Error ? e.message : String(e)));
+  process.exitCode = 1;
 } finally {
   await database.close();
 }

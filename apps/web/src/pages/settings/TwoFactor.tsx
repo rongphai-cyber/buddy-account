@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qrEncode, qrSvgPath } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
-import { ErrorBox, Field, Modal, navKey, toast } from '../../ui';
+import { ErrorBox, Field, Modal, navKey, PasswordInput, toast } from '../../ui';
 
 /**
  * ยืนยันตัวตนสองขั้น (T0.16) — รหัส 6 หลักจากแอปในมือถือ (Google Authenticator / Microsoft Authenticator / แอป TOTP อื่น)
@@ -134,7 +134,7 @@ export function TwoFactorCard() {
           footer={<><button onClick={() => setAsk(null)}>ยกเลิก</button><button className={ask === 'disable' ? 'danger' : 'primary'} onClick={run}>ยืนยัน</button></>}>
           <ErrorBox error={err} />
           <p>{ask === 'recovery' ? 'รหัสสำรองชุดเดิมจะใช้ไม่ได้ทันที' : s?.required ? 'ผู้ดูแลระบบต้องตั้งใหม่ทันทีหลังปิด (เช่นเมื่อเปลี่ยนมือถือ)' : 'การเข้าระบบจะใช้แค่รหัสผ่าน'}</p>
-          <Field label="ยืนยันด้วยรหัสผ่านปัจจุบัน" req wide><input type="password" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} data-noenter onKeyDown={(e) => e.key === 'Enter' && run()} /></Field>
+          <Field label="ยืนยันด้วยรหัสผ่านปัจจุบัน" req wide><PasswordInput autoFocus value={pw} onChange={(e) => setPw(e.target.value)} data-noenter onKeyDown={(e) => e.key === 'Enter' && run()} /></Field>
         </Modal>
       )}
       {codes && <Modal title="รหัสสำรองชุดใหม่" onClose={() => setCodes(null)}><RecoveryCodes codes={codes} onDone={() => setCodes(null)} /></Modal>}

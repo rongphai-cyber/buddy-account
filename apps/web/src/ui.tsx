@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as RKE, type FocusEvent as RFE } from 'react';
+import { useEffect, useMemo, useRef, useState, type InputHTMLAttributes, type ReactNode, type KeyboardEvent as RKE, type FocusEvent as RFE } from 'react';
 import { d, fmt, formatDate, parseDateInput, parseInput, type YearSystem } from '@buddy/core';
 import { ApiError, net } from './api';
 import { confirmLeave, useUnsaved } from './unsaved';
@@ -317,6 +317,33 @@ export function Field({ label, hint, error, children, wide, req }: { label: stri
       {/* คำอธิบายแบบข้อความ: หัวเอกสาร (head-grid) แสดงเป็น ⓘ ชี้เมาส์ดู ให้หัวเอกสารเตี้ย (เจ้าของ 18/11/2569) · มือถือ/ฟอร์มอื่นแสดงใต้ช่องตามเดิม */}
       {error ? <span className="err-msg">{error}</span> : hint ? <span className={cx('hint', typeof hint === 'string' && 'txt')}>{hint}</span> : null}
     </label>
+  );
+}
+
+/**
+ * ช่องรหัสผ่าน + ปุ่มรูปตา แสดง/ซ่อนรหัสที่พิมพ์ (เจ้าของ 20/11/2569 "ขอเพิ่มที่ปิด เปิดดูรหัสที่พิมพ์หน่อยจะได้รู้ว่าพิมพ์ถูกต้อง" · HANDOFF 155)
+ * เริ่มต้นซ่อน · ปุ่มกดด้วยเมาส์/นิ้ว หรือ Tab ไปที่ปุ่มแล้ว Space/Enter · ไม่อยู่ในลำดับ Enter ไปช่องถัดไป (navKey ข้ามปุ่ม) · กดปุ่มแล้วเคอร์เซอร์อยู่ในช่องเดิม
+ * capsHint = เตือน "Caps Lock เปิดอยู่" ใต้ช่อง (หน้าเข้าระบบ)
+ */
+export function PasswordInput({ capsHint, onKeyDown, onKeyUp, onBlur, ...p }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { capsHint?: boolean }) {
+  const [show, setShow] = useState(false);
+  const [caps, setCaps] = useState(false);
+  const tip = show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน';
+  const capsOf = (e: RKE<HTMLInputElement>) => { if (capsHint) setCaps(!!e.getModifierState?.('CapsLock')); };
+  return (
+    <span className="pw-wrap">
+      <span className="pw-box">
+        <input {...p} type={show ? 'text' : 'password'} spellCheck={false} autoCapitalize="off" autoCorrect="off"
+          onKeyDown={(e) => { capsOf(e); onKeyDown?.(e); }} onKeyUp={(e) => { capsOf(e); onKeyUp?.(e); }} onBlur={(e) => { setCaps(false); onBlur?.(e); }} />
+        <button type="button" className="pw-eye" aria-label={tip} title={tip} aria-pressed={show} disabled={p.disabled}
+          onMouseDown={(e) => e.preventDefault()} onClick={() => setShow((x) => !x)}>
+          {show
+            ? <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A10.4 10.4 0 0 1 12 5c5 0 9 4.5 10 7a12.6 12.6 0 0 1-3.2 4.3M6.6 6.6C4.4 8 2.8 10.1 2 12c1 2.5 5 7 10 7a9.8 9.8 0 0 0 5.4-1.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            : <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M2 12c1-2.5 5-7 10-7s9 4.5 10 7c-1 2.5-5 7-10 7S3 14.5 2 12z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" /></svg>}
+        </button>
+      </span>
+      {capsHint && caps && <span className="pw-caps" role="status">Caps Lock เปิดอยู่ — ตัวอักษรที่พิมพ์เป็นตัวพิมพ์ใหญ่</span>}
+    </span>
   );
 }
 

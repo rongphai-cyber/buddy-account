@@ -2,6 +2,7 @@
 #   powershell -ExecutionPolicy Bypass -File tools\cloud\reset-admin.ps1
 # อ่านที่อยู่ฐานจาก .data\cloud-prod.env · รหัสผ่านพิมพ์แล้วไม่ขึ้นจอ ไม่อยู่ในประวัติคำสั่ง · ตั้งรหัสใหม่ + ปลดล็อก + (เลือกได้) ล้างยืนยันตัวตนสองขั้น
 # ใช้กับเครื่องสำนักงาน (localhost:4100) ไม่ได้ — ที่นั่นใช้ pnpm --filter @buddy/server cli ตามเดิม
+# ใช้ได้เฉพาะผู้ดูแลระบบของผู้ให้บริการ (ผู้ใช้คนแรกที่ตั้งตอนตั้งค่าครั้งแรก เช่น admin) หรือรหัสใหม่ — ผู้ใช้ของลูกค้า (เช่น demo.admin) ถูกปฏิเสธ (HANDOFF 155)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $envFile = Join-Path $root '.data\cloud-prod.env'
@@ -19,7 +20,7 @@ function Read-Secret([string]$prompt) {
 
 Write-Host ''
 Write-Host 'ตั้งรหัสผ่านใหม่ให้ผู้ดูแลระบบของ Buddy บนคลาวด์'
-$user = (Read-Host 'รหัสผู้ใช้ (Enter = admin)').Trim()
+$user = (Read-Host 'รหัสผู้ใช้ของผู้ดูแลระบบผู้ให้บริการ (Enter = admin)').Trim()
 if (-not $user) { $user = 'admin' }
 $pw = Read-Secret 'รหัสผ่านใหม่ (อย่างน้อย 8 ตัว มีทั้งตัวอักษรและตัวเลข — ไม่ขึ้นจอ)'
 $pw2 = Read-Secret 'พิมพ์รหัสผ่านใหม่อีกครั้ง'
@@ -40,7 +41,7 @@ try {
     Write-Host 'ล้างยืนยันตัวตนสองขั้นแล้ว — เข้าระบบครั้งถัดไปจะให้ตั้งใหม่' -ForegroundColor Yellow
   }
   Write-Host ''
-  Write-Host ('เสร็จ — เข้า https://wts-buddy.rongphai.workers.dev ด้วยรหัสผู้ใช้ ' + $user + ' และรหัสผ่านใหม่') -ForegroundColor Green
+  Write-Host ('เสร็จ — เข้า https://app.worktruesolution.net ด้วยรหัสผู้ใช้ ' + $user + ' และรหัสผ่านใหม่') -ForegroundColor Green
 } catch {
   Write-Host ('X ' + $_) -ForegroundColor Red
   exit 1

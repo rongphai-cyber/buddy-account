@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCan, useSession } from '../../session';
-import { ErrorBox, Field, Modal, PageHead, toast } from '../../ui';
+import { ErrorBox, Field, Modal, PageHead, PasswordInput, toast } from '../../ui';
 
 type Totals = { journals: number; debit: string; credit: string };
 type Verify = { company: { id: string; code: string; name: string }; created_at: string; schema: string; current_schema: string; schema_status: 'same' | 'older' | 'newer' | 'unknown' | 'too_old';
@@ -39,10 +39,10 @@ function NewPassword({ value, onChange, label }: { value: [string, string]; onCh
   return (
     <div className="form-grid">
       <Field label={`${label} — ตั้งรหัสผ่านของแฟ้ม`} req hint={`อย่างน้อย ${BACKUP_PASSWORD_MIN} ตัวอักษร · จดเก็บไว้ ลืมแล้วเปิดแฟ้มไม่ได้ (ผู้ให้บริการกู้ให้ไม่ได้)`}>
-        <input type="password" autoComplete="new-password" value={a} onChange={(e) => onChange([e.target.value, b])} aria-label={`${label} รหัสผ่าน`} />
+        <PasswordInput autoComplete="new-password" value={a} onChange={(e) => onChange([e.target.value, b])} aria-label={`${label} รหัสผ่าน`} />
       </Field>
       <Field label="ป้อนรหัสผ่านอีกครั้ง" req error={err ?? undefined}>
-        <input type="password" autoComplete="new-password" value={b} onChange={(e) => onChange([a, e.target.value])} aria-label={`${label} รหัสผ่านอีกครั้ง`} />
+        <PasswordInput autoComplete="new-password" value={b} onChange={(e) => onChange([a, e.target.value])} aria-label={`${label} รหัสผ่านอีกครั้ง`} />
       </Field>
     </div>
   );
@@ -100,7 +100,7 @@ export function BackupPage() {
       <fieldset className="box"><legend>2. ทดสอบข้อมูลสำรอง / 3. นำข้อมูลสำรองมาใช้</legend>
         <div className="form-grid">
           <Field label="แฟ้มข้อมูลสำรอง" req><input type="file" accept=".buddy,application/gzip,application/octet-stream" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setInfo(null); setDone(null); }} aria-label="แฟ้มข้อมูลสำรอง" /></Field>
-          <Field label="รหัสผ่านของแฟ้ม" hint="รหัสที่ตั้งไว้ตอนสำรอง (แฟ้มรุ่นก่อนที่ไม่เข้ารหัสเว้นว่างได้)"><input type="password" autoComplete="off" value={filePw} onChange={(e) => setFilePw(e.target.value)} aria-label="รหัสผ่านของแฟ้ม" /></Field>
+          <Field label="รหัสผ่านของแฟ้ม" hint="รหัสที่ตั้งไว้ตอนสำรอง (แฟ้มรุ่นก่อนที่ไม่เข้ารหัสเว้นว่างได้)"><PasswordInput autoComplete="off" value={filePw} onChange={(e) => setFilePw(e.target.value)} aria-label="รหัสผ่านของแฟ้ม" /></Field>
         </div>
         <div className="toolbar">
           <button disabled={!file || !can('read') || !!busy} onClick={() => run('verify', async () => setInfo(await upload<Verify>('/api/v1/backup/verify', file!, filePw)))}>{busy === 'verify' ? 'กำลังตรวจ…' : 'ทดสอบข้อมูลสำรอง'}</button>
@@ -129,7 +129,7 @@ export function BackupPage() {
         </div>
         <div className="form-grid">
           <Field label="แฟ้มสำรองผู้ใช้งาน"><input type="file" accept=".buddy,application/gzip,application/octet-stream" onChange={(e) => setUfile(e.target.files?.[0] ?? null)} aria-label="แฟ้มสำรองผู้ใช้งาน" /></Field>
-          <Field label="รหัสผ่านของแฟ้มผู้ใช้"><input type="password" autoComplete="off" value={ufilePw} onChange={(e) => setUfilePw(e.target.value)} aria-label="รหัสผ่านของแฟ้มผู้ใช้" /></Field>
+          <Field label="รหัสผ่านของแฟ้มผู้ใช้"><PasswordInput autoComplete="off" value={ufilePw} onChange={(e) => setUfilePw(e.target.value)} aria-label="รหัสผ่านของแฟ้มผู้ใช้" /></Field>
         </div>
         <div className="toolbar">
           <button className="danger" disabled={!ufile || !canSec('edit') || !!busy} onClick={() => setAsk({ kind: 'users', text: '' })}>นำข้อมูลผู้ใช้ที่สำรองไว้กลับ…</button>
