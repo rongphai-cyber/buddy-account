@@ -9,7 +9,7 @@ import { Confirm, DateText, ErrorBox, Field, KeyHints, Money, PageHead, Pill, to
 
 const IMPORT_KINDS = IMPORT_DOC_KINDS;
 
-type DocRow = { doc_no_source?: 'file' | 'auto'; pay_source?: 'main' | 'sheet' | 'cash'; file_vat?: string | null; file_net?: string | null; check?: 'ok' | 'diff' | null; vat_lines?: Record<'0' | '1' | '2', number>;
+type DocRow = { doc_no_source?: 'file' | 'auto'; pay_source?: 'main' | 'sheet' | 'cash'; cash_remainder?: string | null; cash_name?: string | null; file_vat?: string | null; file_net?: string | null; check?: 'ok' | 'diff' | null; vat_lines?: Record<'0' | '1' | '2', number>;
   cash_amount?: string | null; other_amount?: string | null; payments?: number; ref: string; row: number; date: string; party_code: string; party_name: string | null; party_new: boolean; lines: number; new_items: number; amount: string | null; vat_amount: string | null; wht_amount: string | null; net_amount: string | null; doc_no: string | null; warnings: string[] };
 type Masters = { parties: Array<{ code: string; name: string; tax_id: string | null; tax_branch_no: string; row: number }>; items: Array<{ code: string; name: string; kind: '0' | '3'; unit: string | null; row: number }>; units: string[] };
 type Result = { file_warnings?: string[]; ok: boolean; committed: boolean; price_type: string; vat_rate: string; create_masters: boolean; docs: DocRow[]; errors: Array<{ row: number; message: string }>; file_docs: number; total_net: string; new_masters: Masters;
@@ -128,7 +128,7 @@ export function TradeImportPage() {
           <input type="checkbox" checked={masters} onChange={(e) => { setMasters(e.target.checked); if (file && !res?.committed) void run(false, file, e.target.checked); else reset(); }} />
           เพิ่มข้อมูลหลักที่ยังไม่มีให้อัตโนมัติ <span className="muted small">({K.cash ? 'ผู้จำหน่าย — รหัสค่าใช้จ่ายต้องมีในโปรแกรมแล้ว' : `${partyTh} สินค้า และหน่วยนับ`} · ไม่ติ๊ก = รหัสที่ไม่พบต้องแก้ในแฟ้ม)</span>
         </label>
-        <p className="hint small">แบบฟอร์มของแต่ละชนิดมีเฉพาะช่องที่หน้าจอเอกสารนั้นมี · หัวคอลัมน์สีชมพู มี * = ต้องมี · สีเหลือง = ต้องมีตามเงื่อนไข · อื่น ๆ เว้นว่างได้ (ค่าเริ่มต้นเดียวกับหน้าจอ — ดูแผ่น "คำอธิบาย"){pays ? ` · ${K.module === 'AR' ? 'รับ' : 'จ่าย'}เงินด้วยวิธีอื่น: วิธีเดียว = คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า · หลายวิธี = แผ่น "${paySheet}" (เว้นคอลัมน์วิธีชำระ) · ใส่ทั้งสองที่ = ผิด · ไม่ใส่ = เงินสดทั้งหมด` : ''} · มีแฟ้มจากโปรแกรมอื่น: เลือกแฟ้มนั้นได้เลย (จับคู่คอลัมน์เอง หรือให้ AI จัดรูปแบบ)</p>
+        <p className="hint small">แบบฟอร์มของแต่ละชนิดมีเฉพาะช่องที่หน้าจอเอกสารนั้นมี · หัวคอลัมน์สีชมพู มี * = ต้องมี · สีเหลือง = ต้องมีตามเงื่อนไข · อื่น ๆ เว้นว่างได้ (ค่าเริ่มต้นเดียวกับหน้าจอ — ดูแผ่น "คำอธิบาย"){pays ? ` · ${K.module === 'AR' ? 'รับ' : 'จ่าย'}เงินด้วยวิธีอื่น: วิธีเดียว = คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า · หลายวิธี = แผ่น "${paySheet}" ใส่เฉพาะวิธีที่ไม่ใช่เงินสด (เว้นคอลัมน์วิธีชำระ) ส่วนที่เหลือ = เงินสด · รวมเกินยอด = ผิด · ใส่ทั้งสองที่ = ผิด · ไม่ใส่ = เงินสดทั้งหมด` : ''} · มีแฟ้มจากโปรแกรมอื่น: เลือกแฟ้มนั้นได้เลย (จับคู่คอลัมน์เอง หรือให้ AI จัดรูปแบบ)</p>
         <div className="ti-actions">
           <button type="button" onClick={() => download(`/api/v1/trade-import/${K.path}/template`, `import-${K.cls}.xlsx`).then((n) => toast(`ดาวน์โหลด ${n} แล้ว`)).catch(setErr)}>⬇ 2. แบบฟอร์มตัวอย่าง {K.label} (.xlsx)</button>
           {can('add') && <label className="btn primary-soft">⬆ 3. เลือกแฟ้มที่กรอกแล้ว (.xlsx / .csv)…<input type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ''; }} /></label>}
@@ -186,7 +186,7 @@ export function TradeImportPage() {
               <td className="r num">{x.lines}{x.vat_lines && (x.vat_lines['0'] > 0 || x.vat_lines['2'] > 0) && <div className="muted small ti-vat">{[x.vat_lines['1'] && `มี VAT ${x.vat_lines['1']}`, x.vat_lines['0'] && `ยกเว้น ${x.vat_lines['0']}`, x.vat_lines['2'] && `0% ${x.vat_lines['2']}`].filter(Boolean).join(' · ')}</div>}</td>
               <td className="r"><Money v={x.amount} /></td><td className="r"><Money v={x.vat_amount} />{x.file_vat != null && <div className={`small ${x.check === 'diff' ? 'warn-text' : 'muted'}`}>แฟ้ม <Money v={x.file_vat} /></div>}</td>{K.cash && <td className="r"><Money v={x.wht_amount} blankZero /></td>}
               <td className="r"><b><Money v={x.net_amount} /></b>{x.file_net != null && <div className={`small ${x.check === 'diff' ? 'warn-text' : 'muted'}`}>{x.check === 'ok' ? '✓ ' : ''}แฟ้ม <Money v={x.file_net} /></div>}</td>
-              {pays && <td className="r small">{x.payments ? <>{x.payments} วิธี <Money v={x.other_amount} /></> : '—'} / <Money v={x.cash_amount} /><div className="muted">{paySourceText(x.pay_source)}</div></td>}
+              {pays && <td className="r small">{x.payments ? <>{x.payments} วิธี <Money v={x.other_amount} /></> : '—'} / <Money v={x.cash_amount} /><div className="muted">{paySourceText(x.pay_source)}</div>{x.cash_remainder && <div className="small">{x.cash_name ?? 'เงินสด'} (ส่วนที่เหลือ) <Money v={x.cash_remainder} /></div>}</td>}
             </tr>)}</tbody>
           </table>
         </div>}

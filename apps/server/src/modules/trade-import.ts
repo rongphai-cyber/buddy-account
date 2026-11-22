@@ -15,7 +15,7 @@ import { saveTrade, tradeBody } from './docs/trade.js';
 import { cashBody, saveCash } from './docs/cashdocs.js';
 import { createMasters, masterRightIssues, planItems, planParties, type PartyHit, type PlannedItem, type PlannedParty } from './import-masters.js';
 import { codesBody, mappingBody, transformTable } from './import-map.js';
-import { buildPayments, finder, loadRefs, methodsOf, shipTosOf } from './import-fields.js';
+import { buildPayments, finder, loadRefs, methodsOf, shipTosOf, type PayInfo } from './import-fields.js';
 
 /**
  * นำเข้ารายการขาย/ซื้อจากแฟ้ม Excel (ข้อกำหนดเจ้าของข้อ 7, 30/10/2569)
@@ -73,7 +73,7 @@ export function readTable(fileName: string, buf: Buffer): string[][] {
 }
 /** แผ่น "รับชำระ"/"จ่ายชำระ" (แบ่งหลายวิธีชำระ — HANDOFF 169) */
 /** กติกาบนสุดของแผ่นรับ/จ่ายชำระ (เจ้าของงงว่าใส่ที่ไหน — HANDOFF 170) */
-export const PAY_SHEET_RULE = 'วิธีเดียว: ใช้คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า · หลายวิธี (เช่น เงินสด + เงินโอน): ใช้แผ่นนี้ หนึ่งแถว = หนึ่งวิธี และเว้นคอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า · ใส่ทั้งสองที่ = ผิด · ไม่ใส่ทั้งสองที่ = เงินสดทั้งหมด';
+export const PAY_SHEET_RULE = 'วิธีเดียว: ใช้คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า · หลายวิธี (เช่น เงินโอน + เงินสด): ใส่แผ่นนี้เฉพาะวิธีที่ไม่ใช่เงินสด หนึ่งแถว = หนึ่งวิธี และเว้นคอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า — ส่วนที่เหลือ = เงินสด · รวมเกินยอดที่ต้องรับ/จ่าย = ผิด · ใส่ทั้งสองที่ = ผิด · ไม่ใส่ทั้งสองที่ = เงินสดทั้งหมด';
 const paySheetOf = (sheets: Array<{ name: string; rows: string[][] }>) => sheets.slice(1).find((s) => /รับชำระ|จ่ายชำระ|ชำระ|payment/i.test(s.name))?.rows ?? [];
 
 type TplCol = { key: string; th: string; need: ImportNeed; when?: string; dflt?: string; forNew?: boolean; hint: string; example: [string, string] };
@@ -119,7 +119,7 @@ export function buildTemplate(K: ImportKindLike & { label: string }, sample: { p
     ['', '', `เลขที่เอกสาร: เว้นว่าง = ระบบออกเลขตามประเภทเอกสาร · ใส่เอง = ต้องขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร (เช่น ${prefix}…) ไม่ซ้ำกับเอกสารใดในบริษัท (ตัวอย่างแถว 4) · เลขของโปรแกรมเดิม (ไม่ขึ้นต้นด้วย ${prefix}) ใส่ในคอลัมน์ "เลขที่อ้างอิง" — ระบบออกเลขให้ และค้นหาด้วยเลขเดิมได้`],
     ['', '', 'มีแฟ้มจากโปรแกรมอื่นอยู่แล้ว (รูปแบบไม่ตรงแบบฟอร์มนี้): ไม่ต้องคัดลอกมากรอก — เลือกแฟ้มนั้นที่หน้านำเข้าได้เลย ระบบจับคู่คอลัมน์ให้ (หรือกด "✨ ให้ AI จัดรูปแบบ") ตรวจการจับคู่ แล้วกดตรวจแฟ้ม/นำเข้า'],
     ...(checks.length ? [['', '', ''], ['คอลัมน์ตรวจยอด', '', 'ไม่มีในแบบฟอร์มนี้ — ใช้กับแฟ้มจากโปรแกรมอื่นที่มียอดภาษี/ยอดสุทธิ (เพิ่มคอลัมน์ชื่อนี้ได้)'], ...checks.map((c) => [c.th, importNeedLabel(c), c.hint])] : []),
-    ...(hasPay ? [['', '', ''], [`แผ่น "${payName}"`, '', `แบ่ง${K.module === 'AR' ? 'รับ' : 'จ่าย'}หลายวิธี (เช่น เงินสด + เงินโอน): หนึ่งแถว = หนึ่งวิธี ใส่เลขที่อ้างอิงของเอกสาร · ยอดรวมทุกแถว = ยอดรวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย · วิธีเดียวใช้คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้าได้ (ใช้ยอดทั้งเอกสาร) · ไม่ใส่ = เงินสดทั้งหมด · ใช้แผ่นนี้ได้เฉพาะแฟ้ม .xlsx`],
+    ...(hasPay ? [['', '', ''], [`แผ่น "${payName}"`, '', `แบ่ง${K.module === 'AR' ? 'รับ' : 'จ่าย'}หลายวิธี (เช่น เงินสด + เงินโอน): หนึ่งแถว = หนึ่งวิธี ใส่เลขที่อ้างอิงของเอกสาร · ใส่เฉพาะวิธีที่ไม่ใช่เงินสด (เช่น เงินโอน) — ยอดที่ต้องรับ/จ่าย (ยอดรวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย) ที่เหลือ = เงินสดให้อัตโนมัติ · รวมเกินยอดที่ต้องรับ/จ่าย = ผิด (ไม่บันทึก) · วิธีเดียวใช้คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้าได้ (ใช้ยอดทั้งเอกสาร) · ไม่ใส่ = เงินสดทั้งหมด · ใช้แผ่นนี้ได้เฉพาะแฟ้ม .xlsx`],
       ...pcols.map((c) => [c.th, importNeedLabel(c), c.hint])] : []),
     ...(!cash && !hasPay ? [['', '', (K as ImportKindLike).order ? `${K.label}ไม่ลงบัญชี ไม่ตัดสต๊อก — นำเข้าแล้วอ้างถึงตอนออกบิล${K.cls === 'QT' ? ' (แปลงเป็นใบสั่งขายที่หน้าจอ)' : ''}` : `${K.label}ไม่มีการรับ/จ่ายเงินในเอกสาร — รับ/จ่ายชำระที่เมนูรับชำระหนี้/จ่ายชำระหนี้`]] : []),
     ...(hasPay && !cash ? [['', '', `${K.label}รับ/จ่ายเงินวันเดียวกัน — ไม่มีช่องเครดิต (วัน) · แฟ้มเดิมที่มีคอลัมน์นี้ยังนำเข้าได้ (ไม่ใช้ค่าในคอลัมน์ และแจ้งเตือน)`]] : []),
@@ -142,6 +142,8 @@ type Result = {
   doc_no_source: 'file' | 'auto';
   /** ที่มาของการรับ/จ่ายชำระ: main = คอลัมน์วิธีชำระในแผ่นนำเข้า · sheet = แผ่นรับ/จ่ายชำระ · cash = เงินสดทั้งหมด */
   pay_source?: 'main' | 'sheet' | 'cash';
+  /** แผ่นรับ/จ่ายชำระรวมน้อยกว่ายอด → ส่วนที่เหลือเป็นเงินสด (ชื่อวิธีแบบเงินสด) — HANDOFF 172 */
+  cash_remainder?: string | null; cash_name?: string | null;
   /** ยอดภาษี/ยอดรวมตามแฟ้ม (คอลัมน์ตรวจยอด) · check = ตรง/ต่าง · null = แฟ้มไม่มียอด */
   file_vat?: string | null; file_net?: string | null; check?: 'ok' | 'diff' | null;
   /** จำนวนบรรทัดตามประเภท VAT (1 มี VAT · 0 ยกเว้น · 2 อัตรา 0%) */
@@ -427,6 +429,7 @@ async function importTrade(db: Db, a: Ctx, K: TradeKind, rows: string[][], ys: Y
       const def = x.party.kind === 'found' ? pdef.get(x.party.party.id) : undefined;
       const discount = x.doc.bill_discount ?? def?.discount_text ?? null;
       let payments: unknown[] = [], wht: unknown[] = [], whtAmount = '0';
+      const payInfo: PayInfo = { remainder: null, cash_name: null };
       // ยอดแบบเดียวกับหน้าจอ (ยอดที่ต้องรับ/จ่าย) + ประเภทราคาอีกแบบ (บอกผู้ใช้เมื่อยอดไม่ตรงกับแฟ้ม)
       const calcOf = (pt: '1' | '2' | '0') => computeDoc({ price_type: pt, vat_rate: b.vatRate, discount_text: discount, lines: lines.map((l) => ({ qty: l!.qty, unit_price: l!.is_free ? 0 : l!.unit_price, discount_text: l!.discount_text, vat_code: l!._vat })) });
       const calc = calcOf(b.priceType);
@@ -441,11 +444,11 @@ async function importTrade(db: Db, a: Ctx, K: TradeKind, rows: string[][], ys: Y
         let w = d(0);
         if (x.doc.wht && K.cls === 'HS') { w = d(x.doc.wht.amount ?? 0); whtAmount = w.toFixed(2); }
         if (x.doc.wht && K.cls === 'HP') { const e = whtEntry(x.doc.wht, d(calc.net_amount).minus(d(calc.vat_amount)), def ? { wht_form: def.wht_form, wht_income_desc: def.wht_income_desc } : undefined, party.tax); w = d(e.tax_amount); wht = [e]; }
-        const p = buildPayments({ ref: x.doc.ref, row: x.doc.row, due: d(calc.net_amount).minus(w).toFixed(2), label: K.label, recv: K.module === 'AR', main: { method: x.doc.pay_method, pay_ref: x.doc.pay_ref }, sheet, method: method!, issues });
+        const p = buildPayments({ info: payInfo, ref: x.doc.ref, row: x.doc.row, due: d(calc.net_amount).minus(w).toFixed(2), label: K.label, recv: K.module === 'AR', main: { method: x.doc.pay_method, pay_ref: x.doc.pay_ref }, sheet, method: method!, issues });
         if (!p) return [];
         payments = p.map(({ cheque_date: _c, ...q }) => q);
       }
-      return [{ doc: x.doc, party, newItems: x.doc.lines.filter((l) => lineHit.get(l)!.kind === 'new').length, alt, vatLines, paySource,
+      return [{ doc: x.doc, party, newItems: x.doc.lines.filter((l) => lineHit.get(l)!.kind === 'new').length, alt, vatLines, paySource, payInfo,
         body: { doc_type_id: b.dtId, doc_no: own.get(x.doc.ref) ?? null, doc_date: x.doc.date, party_id: party.id, ...(party.branch ? { party_tax_branch_no: party.branch } : {}), your_ref: x.doc.ref,
           ref_no: K.refInvoice ? x.doc.ref_invoice : x.doc.ref_no, ...(K.module === 'AP' && !K.refInvoice && x.doc.ref_date ? { ref_date: x.doc.ref_date } : {}),
           ...(K.order && K.cls !== 'QT' ? { delivery_date: x.doc.delivery_date } : {}),
@@ -459,7 +462,7 @@ async function importTrade(db: Db, a: Ctx, K: TradeKind, rows: string[][], ys: Y
       return { ref: x.doc.ref, row: x.doc.row, date: x.doc.date, party_code: x.party.code, party_name: x.party.name, party_new: x.party.isNew, lines: x.doc.lines.length, new_items: x.newItems,
         amount: h.amount_after_discount, vat_amount: h.vat_amount, wht_amount: K.payments ? h.wht_amount : null, net_amount: h.net_amount, doc_no: r.doc_no, doc_no_source: x.body.doc_no ? 'file' as const : 'auto' as const,
         warnings: [...r.warnings, ...chk.warnings], file_vat: chk.file_vat, file_net: chk.file_net, check: chk.check, vat_lines: x.vatLines,
-        ...(K.payments ? { cash_amount: h.cash_amount, other_amount: h.cheque_amount, payments: (x.body.payments as unknown[]).length, pay_source: x.paySource } : {}) };
+        ...(K.payments ? { cash_amount: h.cash_amount, other_amount: h.cheque_amount, payments: (x.body.payments as unknown[]).length, pay_source: x.paySource, cash_remainder: x.payInfo.remainder, cash_name: x.payInfo.cash_name } : {}) };
     });
   return { results, issues, fileDocs: docs.length, masters: mastersOf(pp.planned, ip.planned, units), ran, warnings };
 }
@@ -535,10 +538,11 @@ async function importExpense(db: Db, a: Ctx, K: CashKind, rows: string[][], ys: 
       if (x.doc.wht && K.whtEntries) { const e = whtEntry(x.doc.wht, d(calc.net_amount).minus(d(calc.vat_amount)), party.id ? sups.get(party.id) : undefined, party.tax); wht = [e]; w = d(e.tax_amount); }
       if (x.doc.wht && !K.whtEntries) { w = d(x.doc.wht.amount ?? 0); whtAmount = w.toFixed(2); }
       const sheet = paysBy.get(x.doc.ref) ?? [];
-      const payments = buildPayments({ ref: x.doc.ref, row: x.doc.row, due: d(calc.net_amount).minus(w).toFixed(2), label: K.label, recv, main: { method: x.doc.pay_method, pay_ref: x.doc.pay_ref }, sheet, method, issues });
+      const payInfo: PayInfo = { remainder: null, cash_name: null };
+      const payments = buildPayments({ info: payInfo, ref: x.doc.ref, row: x.doc.row, due: d(calc.net_amount).minus(w).toFixed(2), label: K.label, recv, main: { method: x.doc.pay_method, pay_ref: x.doc.pay_ref }, sheet, method, issues });
       if (!payments) return [];
       const paySource = sheet.length ? 'sheet' as const : x.doc.pay_method ? 'main' as const : 'cash' as const;
-      return [{ doc: x.doc, party, paySource, body: { doc_type_id: b.dtId, doc_no: own.get(x.doc.ref) ?? null, doc_date: x.doc.date, party_id: party.id, party_name: party.id ? null : party.name, ...(party.branch ? { party_tax_branch_no: party.branch } : {}),
+      return [{ doc: x.doc, party, paySource, payInfo, body: { doc_type_id: b.dtId, doc_no: own.get(x.doc.ref) ?? null, doc_date: x.doc.date, party_id: party.id, party_name: party.id ? null : party.name, ...(party.branch ? { party_tax_branch_no: party.branch } : {}),
         your_ref: x.doc.ref, ref_no: K.party === 'supplier' ? x.doc.ref_no : null, ...(K.party === 'supplier' && x.doc.ref_date ? { ref_date: x.doc.ref_date } : {}), department_id: x.dept, project_id: x.job,
         price_type: b.priceType, vat_rate: b.vatRate, remark: x.doc.remark, lines: lines.map(({ vat_code: _v, ...l }) => l), payments, wht, wht_amount: whtAmount } }];
     })),
@@ -547,7 +551,7 @@ async function importExpense(db: Db, a: Ctx, K: CashKind, rows: string[][], ys: 
       const h = await db.selectFrom('doc_header').select(['amount_after_discount', 'vat_amount', 'wht_amount', 'net_amount', 'cash_amount', 'cheque_amount']).where('id', '=', r.id!).executeTakeFirstOrThrow();
       return { ref: x.doc.ref, row: x.doc.row, date: x.doc.date, party_code: x.party.code, party_name: x.party.name, party_new: x.party.isNew, lines: x.doc.lines.length, new_items: 0,
         amount: h.amount_after_discount, vat_amount: h.vat_amount, wht_amount: h.wht_amount, net_amount: h.net_amount, doc_no: r.doc_no, doc_no_source: x.body.doc_no ? 'file' as const : 'auto' as const, warnings: r.warnings,
-        cash_amount: h.cash_amount, other_amount: h.cheque_amount, payments: (x.body.payments as unknown[]).length, pay_source: x.paySource };
+        cash_amount: h.cash_amount, other_amount: h.cheque_amount, payments: (x.body.payments as unknown[]).length, pay_source: x.paySource, cash_remainder: x.payInfo.remainder, cash_name: x.payInfo.cash_name };
     });
   return { results, issues, fileDocs: docs.length, masters: mastersOf(pp.planned, [], units), ran, warnings };
 }

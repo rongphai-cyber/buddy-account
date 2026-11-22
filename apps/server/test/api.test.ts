@@ -5645,7 +5645,14 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect(ok.docs[0]).toMatchObject({ ref: 'HSX-1', net_amount: '1070.00', payments: 1, other_amount: '600.00', cash_amount: '470.00' });
     // ยอดรวมไม่เท่า · วิธีที่ยังไม่ผูกบัญชี · เช็คไม่มีเลขที่ · วิธีชำระที่ไม่มี · ทั้งสองแผ่น
     const errs = async (m: string[][], p?: string[][]) => (await call('POST', url, { ...base, data: xl(m, p) })).body.errors.map((e: { message: string }) => e.message).join(' | ');
-    expect(await errs(main, [P, ['HSX-1', 'Q8', '500', 'TR-1']])).toMatch(/ยอดรับชำระรวม 500\.00 ไม่เท่ากับยอดที่ต้องรับ 1070\.00 \(รวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย\) — แก้แผ่น "รับชำระ"/);
+    // HANDOFF 172 (เจ้าของ 21/11/2569 "sheet รับชำระใส่แค่วิธีการโอนเงินเท่านั้นก็พอส่วนผลต่างให้ถือว่าเป็นเงินสด"):
+    // รวม = ยอด → ตามแผ่น (ไม่มีส่วนที่เหลือ) · รวมน้อยกว่า → ส่วนที่เหลือ = เงินสด · รวมเกิน = ผิด ไม่บันทึก
+    expect(ok.docs[0].cash_remainder).toBeNull();
+    const lt = (await call('POST', url, { ...base, data: xl(main, [P, ['HSX-1', 'Q8', '500', 'TR-1']]) })).body;
+    expect(lt.errors).toEqual([]);
+    expect(lt.docs[0]).toMatchObject({ net_amount: '1070.00', payments: 1, other_amount: '500.00', cash_amount: '570.00', cash_remainder: '570.00', pay_source: 'sheet' });
+    expect(lt.docs[0].cash_name).toBeTruthy();
+    expect(await errs(main, [P, ['HSX-1', 'Q8', '1100', 'TR-1']])).toMatch(/ยอดรับชำระรวม 1100\.00 เกินยอดที่ต้องรับ 1070\.00 \(รวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย\) — รับเกินไม่ได้ แก้แผ่น "รับชำระ"/);
     expect(await errs([H, ['HSX-1', '15/07/2569', 'IMP-C1', item.code, '10', '100', 'Q9', '', '']])).toMatch(/วิธีรับชำระ Q9 โอนยังไม่ผูกบัญชี ยังไม่ได้ผูกบัญชีเงินฝาก\/บัญชีแยกประเภท — กำหนดที่ เริ่มระบบ › วิธีรับ\/จ่ายชำระหนี้ ก่อน/);
     expect(await errs([H, ['HSX-1', '15/07/2569', 'IMP-C1', item.code, '10', '100', 'Q5', '', '']])).toMatch(/วิธีรับชำระ Q5 เช็คนำเข้า ต้องมีเลขที่เช็ค\/เลขที่อ้างอิง — ใส่ในคอลัมน์ "เลขที่อ้างอิง\/เช็ค"/);
     expect(await errs([H, ['HSX-1', '15/07/2569', 'IMP-C1', item.code, '10', '100', 'ZZ', '', '']])).toMatch(/ไม่พบวิธีรับชำระ "ZZ"/);
@@ -5678,6 +5685,16 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
       ['HPX-1', '15/07/2569', 'IMP-S1', item.code, '10', '100', 'Q6', 'PAY-1', '3']]);
     const hc = await call('POST', '/api/v1/trade-import/cash-purchases', { file_name: 'ซื้อสด.csv', data: hp, doc_type_id: hpType, price_type: '2', vat_rate: 7, commit: true });
     expect(hc.body.error?.message ?? 'ok').toBe('ok');
+    // HANDOFF 172 + หัก ณ ที่จ่าย: ยอดที่ต้องจ่าย = 1,070 − 30 = 1,040 · แผ่นจ่ายชำระโอน 1,000 → เงินสด 40 · โอน 1,050 = เกิน
+    await pm('P', { code: 'Q4', name_th: 'เงินสดจ่ายนำเข้า', kind: 'CASH', gl_account_id: cashAcc.id });
+    const HW = ['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'รหัสสินค้า', 'จำนวน', 'ราคาต่อหน่วย', 'อัตราหัก ณ ที่จ่าย'];
+    const hpx = (amt: string) => buildXlsx([{ name: 'นำเข้า', rows: [HW, ['HPX-2', '15/07/2569', 'IMP-S1', item.code, '10', '100', '3']] }, { name: 'จ่ายชำระ', rows: [P, ['HPX-2', 'Q6', amt, 'PAY-2']] }]).toString('base64');
+    const hw = (await call('POST', '/api/v1/trade-import/cash-purchases', { file_name: 'ซื้อสด.xlsx', data: hpx('1000'), doc_type_id: hpType, price_type: '2', vat_rate: 7 })).body;
+    expect(hw.errors).toEqual([]);
+    expect(hw.docs[0]).toMatchObject({ net_amount: '1070.00', wht_amount: '30.00', other_amount: '1000.00', cash_amount: '40.00', cash_remainder: '40.00' });
+    const hwx = (await call('POST', '/api/v1/trade-import/cash-purchases', { file_name: 'ซื้อสด.xlsx', data: hpx('1050'), doc_type_id: hpType, price_type: '2', vat_rate: 7, commit: true }));
+    expect([hwx.status, hwx.body.error.message]).toEqual([400, expect.stringMatching(/ยอดจ่ายชำระรวม 1050\.00 เกินยอดที่ต้องจ่าย 1040\.00/)]);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM doc_header WHERE company_id = ${co} AND your_ref = 'HPX-2' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(0);
     const hph = (await sql<{ id: string; cash_amount: string; cheque_amount: string; wht_amount: string }>`SELECT id, cash_amount, cheque_amount, wht_amount FROM doc_header WHERE company_id = ${co} AND your_ref = 'HPX-1' AND doc_class = 'HP' AND doc_status <> 'C'`.execute(database.db)).rows[0]!;
     expect([hph.wht_amount, hph.cheque_amount, hph.cash_amount]).toEqual(['30.00', '1040.00', '0.00']);   // 1,070 − 30
     expect((await sql<{ rate: string; tax_amount: string }>`SELECT rate::text AS rate, tax_amount FROM tax_wht_entry WHERE header_id = ${hph.id} AND deleted_at IS NULL`.execute(database.db)).rows.map((r) => [Number(r.rate), r.tax_amount])).toEqual([[3, '30.00']]);

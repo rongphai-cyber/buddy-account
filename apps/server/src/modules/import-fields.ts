@@ -44,15 +44,22 @@ export async function methodsOf(db: Db, companyId: string, direction: 'R' | 'P')
   const rows = (await sql<Method>`SELECT id, code, name_th, kind, creates_cheque, gl_account_id, bank_account_id, status FROM md_payment_method
       WHERE company_id = ${companyId} AND direction = ${direction} AND deleted_at IS NULL ORDER BY code`.execute(db)).rows;
   const f = finder(rows.map((r) => ({ id: r.id, code: r.code, name: r.name_th })));
-  return (v: string) => { const r = f(v); return r ? rows.find((x) => x.id === r.id)! : undefined; };
+  // วิธีแบบเงินสดของบริษัท (ใช้กับส่วนที่เหลือของแผ่นรับ/จ่ายชำระ — HANDOFF 172) · ไม่มี = null
+  const cash = rows.find((r) => r.kind === 'CASH' && r.status === 'A') ?? null;
+  return Object.assign((v: string) => { const r = f(v); return r ? rows.find((x) => x.id === r.id)! : undefined; }, { cash });
 }
+/** ผลรับ/จ่ายชำระของเอกสาร: ส่วนที่เหลือจากแผ่นรับ/จ่ายชำระที่เป็นเงินสด (HANDOFF 172) */
+export interface PayInfo { remainder: string | null; cash_name: string | null }
 
 /**
  * การรับ/จ่ายชำระของเอกสารหนึ่งฉบับ (ขายสด/ซื้อสด/ค่าใช้จ่ายอื่น) แบบเดียวกับแท็บ "ชำระโดยอื่น ๆ" ของหน้าจอ:
  * วิธีเงินสด = ยอดเงินสดคงเหลือ (ไม่เป็นบรรทัด) · วิธีอื่นเป็นบรรทัด (วิธี ยอด เลขที่อ้างอิง/เช็ค วันที่เช็ค)
- * ยอดรวมแผ่นรับ/จ่ายชำระ = ยอดรวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย · วิธีเดียวที่แผ่นหลัก = ทั้งยอด · ไม่ใส่ = เงินสดทั้งหมด
+ * วิธีเดียวที่แผ่นหลัก = ทั้งยอด · ไม่ใส่ = เงินสดทั้งหมด
+ * แผ่นรับ/จ่ายชำระ (เจ้าของ 21/11/2569 · HANDOFF 172 "sheet รับชำระใส่แค่วิธีการโอนเงินเท่านั้นก็พอส่วนผลต่างให้ถือว่าเป็นเงินสด"):
+ *   รวม = ยอดที่ต้องรับ/จ่าย (รวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย เหมือนหน้าจอ) → ตามแผ่น · น้อยกว่า → ส่วนที่เหลือเป็นเงินสด (วิธีแบบเงินสดของบริษัท — ไม่มี = ผิด)
+ *   มากกว่า = ผิด (รับ/จ่ายเกินไม่ได้) · ใส่ทั้งคอลัมน์วิธีชำระและแผ่น = ผิดเหมือนเดิม
  */
-export function buildPayments(o: { ref: string; row: number; due: string; label: string; recv: boolean; main: { method: string | null; pay_ref: string | null } | null; sheet: ImportPayment[]; method: (v: string) => Method | undefined; issues: ImportIssue[] }) {
+export function buildPayments(o: { ref: string; row: number; due: string; label: string; recv: boolean; main: { method: string | null; pay_ref: string | null } | null; sheet: ImportPayment[]; method: ((v: string) => Method | undefined) & { cash?: Method | null }; issues: ImportIssue[]; info?: PayInfo }) {
   const word = o.recv ? 'รับ' : 'จ่าย', sheetName = o.recv ? 'รับชำระ' : 'จ่ายชำระ';
   const bad = (row: number, m: string) => { o.issues.push({ row, message: `เลขที่อ้างอิง ${o.ref}: ${m}` }); };
   if (o.sheet.length && o.main?.method) { bad(o.row, `ใส่วิธีชำระทั้งในแผ่นนำเข้าและแผ่น "${sheetName}" — ใช้อย่างใดอย่างหนึ่ง (แบ่งหลายวิธี = แผ่น "${sheetName}")`); return null; }
@@ -70,8 +77,12 @@ export function buildPayments(o: { ref: string; row: number; due: string; label:
     out.push({ payment_method_id: m.id, amount: d(l.amount).toFixed(2), reference_no: l.ref, ...(l.cheque_date ? { cheque_date: l.cheque_date } : {}) });
   }
   if (o.sheet.length) {
-    const sum = o.sheet.reduce((s, p) => s.plus(d(p.amount)), d(0));
-    if (!sum.minus(d(o.due)).abs().lt(0.005)) bad(o.sheet[0]!.row, `ยอด${word}ชำระรวม ${sum.toFixed(2)} ไม่เท่ากับยอดที่ต้อง${word} ${d(o.due).toFixed(2)} (รวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย) — แก้แผ่น "${sheetName}"`);
+    const sum = o.sheet.reduce((s, p) => s.plus(d(p.amount)), d(0)), left = d(o.due).minus(sum);
+    if (left.lt(-0.005)) bad(o.sheet[0]!.row, `ยอด${word}ชำระรวม ${sum.toFixed(2)} เกินยอดที่ต้อง${word} ${d(o.due).toFixed(2)} (รวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย) — ${word}เกินไม่ได้ แก้แผ่น "${sheetName}"`);
+    else if (left.gt(0.005)) {
+      if (!o.method.cash) bad(o.sheet[0]!.row, `ยอด${word}ชำระรวม ${sum.toFixed(2)} น้อยกว่ายอดที่ต้อง${word} ${d(o.due).toFixed(2)} — ส่วนที่เหลือเป็นเงินสด แต่บริษัทยังไม่มีวิธี${word}ชำระแบบเงินสด เพิ่มที่ เริ่มระบบ › วิธีรับ/จ่ายชำระหนี้ (ชนิด เงินสด)`);
+      else if (o.info) { o.info.remainder = left.toFixed(2); o.info.cash_name = o.method.cash.name_th; }
+    }
   }
   return o.issues.length > n0 ? null : out;
 }

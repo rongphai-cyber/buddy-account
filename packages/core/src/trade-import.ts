@@ -459,8 +459,8 @@ function whtCells(cell: (k: string) => string, bad: (m: string) => void): Expens
 export type PaymentImportKey = 'ref' | 'method' | 'amount' | 'pay_ref' | 'cheque_date';
 export const PAYMENT_IMPORT_COLUMNS: Array<{ key: PaymentImportKey; th: string; aliases: string[]; required?: boolean; need: ImportNeed; when?: string; dflt?: string; hint: string; example: [string, string] }> = [
   { key: 'ref', th: 'เลขที่อ้างอิง', aliases: ['เลขที่', 'เลขที่เอกสาร', 'เลขที่บิล', 'อ้างอิง'], required: true, need: 'req', hint: 'เลขที่อ้างอิงของเอกสารในแผ่นนำเข้า (หลายแถว = หลายวิธีของเอกสารเดียวกัน)', example: ['INV-0001', 'INV-0001'] },
-  { key: 'method', th: 'วิธีชำระ', aliases: ['วิธีรับชำระ', 'วิธีจ่ายชำระ', 'ชำระโดย', 'วิธีชำระเงิน'], required: true, need: 'req', hint: 'รหัสหรือชื่อวิธีรับ/จ่ายชำระ (เงินสด เงินโอน QR เช็ค บัตร …)', example: ['เงินสด', 'เงินโอน'] },
-  { key: 'amount', th: 'จำนวนเงิน', aliases: ['ยอดเงิน', 'ยอดชำระ', 'amount'], required: true, need: 'req', hint: 'ยอดของวิธีนี้ · รวมทุกแถวของเอกสาร = ยอดรวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย', example: ['1000', '605'] },
+  { key: 'method', th: 'วิธีชำระ', aliases: ['วิธีรับชำระ', 'วิธีจ่ายชำระ', 'ชำระโดย', 'วิธีชำระเงิน'], required: true, need: 'req', hint: 'รหัสหรือชื่อวิธีรับ/จ่ายชำระที่ไม่ใช่เงินสด (เงินโอน QR เช็ค บัตร …) — ส่วนที่เหลือเป็นเงินสดให้เอง', example: ['เงินโอน', 'เงินโอน'] },
+  { key: 'amount', th: 'จำนวนเงิน', aliases: ['ยอดเงิน', 'ยอดชำระ', 'amount'], required: true, need: 'req', hint: 'ยอดของวิธีนี้ · รวมทุกแถวของเอกสารไม่เกินยอดที่ต้องรับ/จ่าย (รวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย) · ส่วนที่เหลือ = เงินสด', example: ['1000', '605'] },
   { key: 'pay_ref', th: 'เลขที่อ้างอิง/เช็ค', aliases: ['เลขที่เช็ค', 'อ้างอิงการชำระ', 'เลขที่โอน'], need: 'cond', when: 'วิธีชำระเป็นเช็ค', hint: 'เลขที่เช็ค หรือเลขที่อ้างอิงการโอน', example: ['', 'TR-0001'] },
   { key: 'cheque_date', th: 'วันที่เช็ค', aliases: ['ลงวันที่เช็ค'], need: 'opt', dflt: 'ค่าเริ่มต้น = วันที่เอกสาร', hint: 'ค่าใช้จ่ายอื่น: วันที่หน้าเช็คที่จ่าย', example: ['', ''] },
 ];
