@@ -6501,14 +6501,6 @@
 ]
 },
 {
-"th": "กำหนดส่ง",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "กำไร (ขาดทุน)",
 "n": 3,
 "files": [
@@ -6671,14 +6663,6 @@
 "th": "ค่าเริ่มต้น = ไม่มี",
 "n": 3,
 "files": [
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ค่าเริ่มต้น = ไม่ระบุ",
-"n": 3,
-"files": [
-"packages/core/src/doc-import.ts",
 "packages/core/src/trade-import.ts"
 ]
 },
@@ -9169,6 +9153,13 @@
 ]
 },
 {
+"th": "กำหนดส่ง",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
 "th": "กำไรขั้นต้น",
 "n": 2,
 "files": [
@@ -9525,6 +9516,14 @@
 },
 {
 "th": "ค่าเริ่มต้น = เงินสดทั้งจำนวน",
+"n": 2,
+"files": [
+"packages/core/src/doc-import.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ค่าเริ่มต้น = ไม่ระบุ",
 "n": 2,
 "files": [
 "packages/core/src/doc-import.ts",
@@ -12870,25 +12869,11 @@
 ]
 },
 {
-"th": "วันที่รับของ",
-"n": 2,
-"files": [
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "วันที่สิ้นงวดไม่อยู่ในรอบบัญชี",
 "n": 2,
 "files": [
 "apps/server/src/modules/gl/reports.ts",
 "apps/server/src/modules/reports/gl.ts"
-]
-},
-{
-"th": "วันที่ส่งของ",
-"n": 2,
-"files": [
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -15576,7 +15561,7 @@
 ]
 },
 {
-"th": "(ยังไม่บันทึก) · กดนำเข้าแล้วบันทึก{0}ทุกฉบับพร้อมกัน — ถ้าผิดฉบับเดียวจะไม่บันทึกเลย ·",
+"th": "(ยังไม่บันทึก) · กดนำเข้าแล้วบันทึกและลงบัญชีทุกฉบับพร้อมกัน — ถ้าผิดฉบับเดียวจะไม่บันทึกเลย ·",
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/TradeImport.tsx"
@@ -15723,13 +15708,6 @@
 ]
 },
 {
-"th": "(แปลงเป็นใบสั่งขายที่หน้าจอ)",
-"n": 1,
-"files": [
-"apps/server/src/modules/trade-import.ts"
-]
-},
-{
 "th": "(แผ่นที่ {0}/{1})",
 "n": 1,
 "files": [
@@ -15811,13 +15789,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/forms.ts"
-]
-},
-{
-"th": "(ไม่ลงบัญชี)",
-"n": 1,
-"files": [
-"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -19944,13 +19915,6 @@
 ]
 },
 {
-"th": "{0}ไม่ลงบัญชี ไม่ตัดสต๊อก — นำเข้าแล้วอ้างถึงตอนออกบิล{1}",
-"n": 1,
-"files": [
-"apps/server/src/modules/trade-import.ts"
-]
-},
-{
 "th": "{0}ไม่ได้รับสถานะเกิน {1} นาที — หน้าร้านยังขายได้ ตรวจเน็ตหรือเครื่องแม่ข่ายของโปรแกรม",
 "n": 1,
 "files": [
@@ -21523,13 +21487,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "กำหนดรับของ",
-"n": 1,
-"files": [
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -45466,13 +45423,6 @@
 ]
 },
 {
-"th": "วว/ดด/ปปปป — กำหนดส่งของ (ใบสั่งขาย) / กำหนดรับของ (ใบสั่งซื้อ)",
-"n": 1,
-"files": [
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "วัน × อัตรา",
 "n": 1,
 "files": [
@@ -45764,20 +45714,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
-]
-},
-{
-"th": "วันที่ส่ง",
-"n": 1,
-"files": [
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "วันที่ส่งของ \"{0}\" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป",
-"n": 1,
-"files": [
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -56204,7 +56140,7 @@
 ]
 },
 {
-"th": "เอกสารขาย ใบสั่งขาย ใบเสนอราคา (เลือกได้เฉพาะรหัสสินค้า/บริการที่ขาย — ไม่มีรหัสค่าใช้จ่าย)",
+"th": "เอกสารขาย (เลือกได้เฉพาะรหัสสินค้า/บริการที่ขาย — ไม่มีรหัสค่าใช้จ่าย)",
 "n": 1,
 "files": [
 "packages/core/src/ai-bill.ts"
@@ -57937,20 +57873,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx"
-]
-},
-{
-"th": "และลงบัญชี",
-"n": 1,
-"files": [
-"apps/web/src/pages/tools/TradeImport.tsx"
-]
-},
-{
-"th": "และลงบัญชีทันที",
-"n": 1,
-"files": [
-"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {

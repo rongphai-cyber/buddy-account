@@ -3,17 +3,17 @@ import { checkTaxId } from './taxid.js';
 import { CASH_KINDS, TRADE_KINDS } from './doc-calc.js';
 import { d } from './money.js';
 
-/** ชนิดเอกสารที่นำเข้าจาก Excel ได้: ขาย/ซื้อที่ลงบัญชี + บันทึกค่าใช้จ่ายอื่น ๆ (HANDOFF 167) + ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อ (HANDOFF 171 — ไม่ลงบัญชี) — ปุ่ม "นำเข้า Excel" บนหน้าเอกสารเหล่านี้ */
+/** ชนิดเอกสารที่นำเข้าจาก Excel ได้: ขาย/ซื้อที่ลงบัญชี + เอกสารรับ/จ่ายเงิน — ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อไม่ลงบัญชี ไม่มีนำเข้า (เจ้าของ 22/11/2569 "เอาออก") — ปุ่ม "นำเข้า Excel" บนหน้าเอกสารเหล่านี้ */
 export interface ImportDocKind { path: string; cls: string; module: 'AR' | 'AP'; menu: string; party: 'customer' | 'supplier'; label: string; route: string; cash?: boolean }
 export const IMPORT_DOC_KINDS: ImportDocKind[] = [
-  ...TRADE_KINDS.map(({ path, cls, module, menu, party, label, route }) => ({ path, cls, module, menu, party, label, route })),
+  ...TRADE_KINDS.filter((k) => !k.order).map(({ path, cls, module, menu, party, label, route }) => ({ path, cls, module, menu, party, label, route })),
   // เอกสารรับ/จ่ายเงิน: ค่าใช้จ่ายอื่น (HANDOFF 167) · มัดจำรับ/จ่าย รายได้อื่น (HANDOFF 171)
   ...CASH_KINDS.map(({ path, cls, module, menu, party, label, route }) => ({ path, cls, module, menu, party, label, route, cash: true })),
 ];
 export const importPathOf = (cls: string) => IMPORT_DOC_KINDS.find((k) => k.cls === cls)?.path ?? null;
 /** ชนิดเอกสารของหน้านำเข้า (ตามเส้นทาง) — ใช้เลือกคอลัมน์ของแบบฟอร์ม/การจับคู่ (HANDOFF 169) */
 export function importKindOf(path: string): (ImportKindLike & { label: string }) | null {
-  const t = TRADE_KINDS.find((k) => k.path === path);
+  const t = TRADE_KINDS.find((k) => k.path === path && !k.order);
   if (t) return t;
   const c = CASH_KINDS.find((k) => k.path === path);
   return c ? { cls: c.cls, module: c.module, party: c.party, cash: true, label: c.label } : null;
@@ -25,7 +25,7 @@ export function importKindOf(path: string): (ImportKindLike & { label: string })
  * ส่วนนี้อ่านตาราง (xlsx/csv ที่คลายแล้ว) → เอกสารร่าง + ข้อผิดพลาดรายแถว · การหารหัสและบันทึกอยู่ที่เซิร์ฟเวอร์
  */
 /** ชนิดเอกสารที่ใช้เลือกคอลัมน์ของแบบฟอร์ม (ขาย/ซื้อ/ค่าใช้จ่ายอื่น) */
-export interface ImportKindLike { cls: string; module: 'AR' | 'AP'; party: 'customer' | 'supplier'; payments?: boolean; refInvoice?: boolean; cash?: boolean; order?: 'SO' | 'PO' }
+export interface ImportKindLike { cls: string; module: 'AR' | 'AP'; party: 'customer' | 'supplier'; payments?: boolean; refInvoice?: boolean; cash?: boolean }
 /** ต้องมี / ต้องมีถ้า… / ไม่บังคับ (ค่าเริ่มต้น = …) — HANDOFF 169 (ต้องมี = ช่องที่หน้าจอบันทึกไม่ได้ถ้าไม่มี) */
 export type ImportNeed = 'req' | 'cond' | 'opt';
 export interface ImportColumn {
@@ -48,7 +48,7 @@ export interface ImportColumn {
   /** ช่องตรวจยอดจากโปรแกรมเดิม (ไม่ใช่ช่องของหน้าจอ — ไม่อยู่ในแผ่นนำเข้าของแบบฟอร์ม · อ่านได้/จับคู่ได้ · HANDOFF 170) */
   check?: boolean;
 }
-export type ImportKey = 'ref' | 'doc_no' | 'vat_amount' | 'net_total' | 'date' | 'party' | 'party_name' | 'party_branch' | 'ship_to' | 'ref_no' | 'ref_date' | 'delivery_date' | 'ref_invoice' | 'credit_days' | 'department' | 'project' | 'salesperson' | 'sales_area'
+export type ImportKey = 'ref' | 'doc_no' | 'vat_amount' | 'net_total' | 'date' | 'party' | 'party_name' | 'party_branch' | 'ship_to' | 'ref_no' | 'ref_date' | 'ref_invoice' | 'credit_days' | 'department' | 'project' | 'salesperson' | 'sales_area'
   | 'ship_via' | 'vat_basis' | 'bill_discount' | 'remark' | 'pay_method' | 'pay_ref' | 'wht_amount' | 'wht_rate' | 'wht_income' | 'wht_form'
   | 'item' | 'item_name' | 'description' | 'warehouse' | 'qty' | 'unit' | 'price' | 'discount' | 'free' | 'line_job' | 'vat_code' | 'return'
   | 'party_tax_id' | 'party_address' | 'party_phone' | 'item_kind';
@@ -98,9 +98,6 @@ export const IMPORT_COLUMNS: ImportColumn[] = [
   { key: 'ship_to', th: 'สถานที่ส่งของ', aliases: ['รหัสสถานที่ส่ง', 'สถานที่ส่งสินค้า', 'ship to'], need: 'opt', dflt: 'ค่าเริ่มต้น = สถานที่ส่งประจำของลูกค้า', head: true, for: isAR, hint: 'รหัสสถานที่ส่งในแฟ้มลูกค้า (แท็บสถานที่ส่งสินค้า)', example: ['', ''] },
   { ...REF_NO_AP, for: (k) => !k.refInvoice },
   REF_DATE_AP,
-  // ใบสั่งขาย/ใบสั่งซื้อ (HANDOFF 171): วันที่ส่งของ/ถึงกำหนดรับของ — ใบเสนอราคาไม่มีช่องนี้บนหน้าจอ
-  { key: 'delivery_date', th: 'วันที่ส่งของ', aliases: ['กำหนดส่ง', 'วันที่ส่ง', 'วันที่รับของ', 'กำหนดรับของ', 'delivery date'], need: 'opt', dflt: 'ค่าเริ่มต้น = ไม่ระบุ', head: true,
-    for: (k) => !!k.order && k.cls !== 'QT', thFor: (k) => (k.module === 'AR' ? 'วันที่ส่งของ' : 'วันที่รับของ'), hint: 'วว/ดด/ปปปป — กำหนดส่งของ (ใบสั่งขาย) / กำหนดรับของ (ใบสั่งซื้อ)', example: ['', ''] },
   { key: 'ref_invoice', th: 'อ้างใบกำกับ', aliases: ['ใบกำกับเดิม', 'อ้างถึงใบกำกับ', 'เลขที่ใบกำกับที่อ้างถึง'], need: 'req', head: true, for: (k) => !!k.refInvoice, hint: 'ใบลดหนี้/เพิ่มหนี้: เลขที่ใบกำกับเดิม', example: ['', ''] },
   { key: 'credit_days', th: 'เครดิต (วัน)', aliases: ['เครดิต', 'จำนวนวันเครดิต', 'credit'], need: 'opt', dflt: 'ค่าเริ่มต้น = ตามรายละเอียดลูกค้า/ผู้จำหน่าย', head: true, for: (k) => !pays(k), hint: 'จำนวนวันเครดิต 0–999 (ขาย/ซื้อเงินสดไม่มีช่องนี้ — รับ/จ่ายเงินวันเดียวกัน)', example: ['30', '30'] },
   DEPT_COL, JOB_COL,
@@ -160,7 +157,7 @@ export interface ImportLine { row: number; item: string; item_name: string | nul
 export interface ImportDoc extends ImportParty { ref: string; row: number; date: string;
   /** เลขที่เอกสารกำหนดเอง (ว่าง = อัตโนมัติ · HANDOFF 170) */
   doc_no: string | null; ref_invoice: string | null; credit_days: number | null; remark: string | null;
-  ship_to: string | null; ref_no: string | null; ref_date: string | null; delivery_date: string | null; department: string | null; project: string | null; salesperson: string | null; sales_area: string | null; ship_via: string | null;
+  ship_to: string | null; ref_no: string | null; ref_date: string | null; department: string | null; project: string | null; salesperson: string | null; sales_area: string | null; ship_via: string | null;
   vat_basis: '1' | '2' | null; bill_discount: string | null; pay_method: string | null; pay_ref: string | null; wht: ExpenseImportWht | null; lines: ImportLine[] }
 export interface ImportIssue { row: number; message: string }
 
@@ -346,8 +343,6 @@ export function mapImport(rows: string[][], ys: YearSystem, kind?: ImportKindLik
     if (credit !== null && !(Number.isInteger(credit) && credit >= 0 && credit <= 999)) bad(`เครดิต "${cd}" ต้องเป็นจำนวนวัน 0–999`);
     const refDateT = cell('ref_date'), refDate = refDateT ? importDate(refDateT, ys) : null;
     if (refDateT && !refDate) bad(`วันที่ใบกำกับ "${refDateT}" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป`);
-    const delT = cell('delivery_date'), delivery = delT ? importDate(delT, ys) : null;
-    if (delT && !delivery) bad(`วันที่ส่งของ "${delT}" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป`);
     const basis = importVatBasis(cell('vat_basis'));
     if (basis === undefined) bad(`ภาระภาษี "${cell('vat_basis')}" ใช้ "เกณฑ์สิทธิ" หรือ "เกณฑ์เงินสด"`);
     const free = importFlag(cell('free')), ret = importFlag(cell('return'));
@@ -360,7 +355,7 @@ export function mapImport(rows: string[][], ys: YearSystem, kind?: ImportKindLik
     const wht = whtCells((k) => cell(k as ImportKey), bad);
     if (errors.length > n0 || !date || !p || qty === null || price === null) continue;
     const head = {
-      date, doc_no: docNo || null, ref_invoice: cell('ref_invoice') || null, credit_days: credit, remark: cell('remark') || null, ship_to: cell('ship_to') || null, ref_no: cell('ref_no').slice(0, 30) || null, ref_date: refDate, delivery_date: delivery,
+      date, doc_no: docNo || null, ref_invoice: cell('ref_invoice') || null, credit_days: credit, remark: cell('remark') || null, ship_to: cell('ship_to') || null, ref_no: cell('ref_no').slice(0, 30) || null, ref_date: refDate,
       department: cell('department') || null, project: cell('project') || null, salesperson: cell('salesperson') || null, sales_area: cell('sales_area') || null, ship_via: cell('ship_via') || null,
       vat_basis: basis ?? null, bill_discount: cell('bill_discount') || null, pay_method: cell('pay_method') || null, pay_ref: cell('pay_ref').slice(0, 30) || null, wht,
     };

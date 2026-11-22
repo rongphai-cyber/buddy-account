@@ -44,7 +44,8 @@ export function aiRequestOptions(model: AiModelId) {
  */
 export interface AiBillTarget { path: string; cls: string; menu: string; party: 'customer' | 'supplier' | 'none'; lines: 'item' | 'expense' | 'income' | 'text' | 'stock'; service: boolean }
 export const AI_BILL_TARGETS: AiBillTarget[] = [
-  ...TRADE_KINDS.map((k) => ({ path: k.path, cls: k.cls, menu: k.menu, party: k.party, lines: 'item' as const, service: false })),
+  // ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อไม่ลงบัญชี — ไม่มีอ่านบิล (เจ้าของ 22/11/2569 "เอาออก")
+  ...TRADE_KINDS.filter((k) => !k.order).map((k) => ({ path: k.path, cls: k.cls, menu: k.menu, party: k.party, lines: 'item' as const, service: false })),
   ...CASH_KINDS.map((k) => ({ path: k.path, cls: k.cls, menu: k.menu, party: k.party, lines: k.lines === 'text' ? 'text' as const : k.itemType === '4' ? 'income' as const : 'expense' as const, service: k.cls === 'OE' })),
   // เจ้าของ 22/11/2569 ข้อ 1–5: ใบเสร็จ/ใบแจ้งโอนของคู่ค้า → รับ/จ่ายชำระหนี้ · สลิปธนาคาร · ใบเบิก/ใบโอน/ใบตรวจนับ → เอกสารคลัง · ใบเสร็จ → จ่ายเงินสดย่อย · บิล → ใบสำคัญ
   ...SETTLE_KINDS.map((k) => ({ path: k.path, cls: k.cls, menu: k.menu, party: k.party, lines: 'text' as const, service: false })),
@@ -336,7 +337,7 @@ const TARGET_TH: Record<'purchase' | 'expense' | 'sale' | 'income' | 'stock', st
   stock: 'เอกสารคลังสินค้า (เบิก/โอน/ปรับปรุง — เลือกได้เฉพาะรหัสสินค้าที่มีสต๊อก)',
   purchase: 'ซื้อเงินเชื่อ/เงินสด (ใช้ได้ทั้งรหัสสินค้าและรหัสค่าใช้จ่าย)',
   expense: 'บันทึกค่าใช้จ่ายอื่น ๆ (ใช้ได้เฉพาะรหัสค่าใช้จ่าย)',
-  sale: 'เอกสารขาย ใบสั่งขาย ใบเสนอราคา (เลือกได้เฉพาะรหัสสินค้า/บริการที่ขาย — ไม่มีรหัสค่าใช้จ่าย)',
+  sale: 'เอกสารขาย (เลือกได้เฉพาะรหัสสินค้า/บริการที่ขาย — ไม่มีรหัสค่าใช้จ่าย)',
   income: 'บันทึกรายได้อื่น ๆ (ใช้ได้เฉพาะรหัสรายได้อื่น)',
 };
 export interface SuggestCandidate { code: string; name: string; kind: 'item' | 'expense'; account?: string | null; history?: number; sameSupplier?: number }

@@ -124,13 +124,14 @@ describe('AI อ่านบิล (T7.7)', () => {
   it('HANDOFF 171: AI bill on every document entry screen — sales side reads the customer from the buyer on the paper', () => {
     // ทุกเอกสารขาย/ซื้อ/ใบสั่ง และเอกสารรับ/จ่ายเงิน (มัดจำ รายได้อื่น ค่าใช้จ่ายอื่น)
     // + รับ/จ่ายชำระหนี้ · ธนาคาร · คลัง · จ่ายเงินสดย่อย · ใบสำคัญ (เจ้าของ 22/11/2569) — ไม่มีใบรับเงินชดเชยเงินสดย่อย/ใบวางบิล/ใบนำฝากเช็ค/ยอดยกมา
-    expect(AI_BILL_TARGETS.map((t) => t.cls).sort()).toEqual([...TRADE_KINDS.map((k) => k.cls), ...CASH_KINDS.map((k) => k.cls), 'RE', 'PS', 'BD', 'BW', 'BT', 'BU', 'BV', 'OU', 'RL', 'JU', 'CA', 'DP', 'JV'].sort());
+    expect(AI_BILL_TARGETS.map((t) => t.cls).sort()).toEqual([...TRADE_KINDS.filter((k) => !k.order).map((k) => k.cls), ...CASH_KINDS.map((k) => k.cls), 'RE', 'PS', 'BD', 'BW', 'BT', 'BU', 'BV', 'OU', 'RL', 'JU', 'CA', 'DP', 'JV'].sort());
     expect(AI_BILL_TARGETS.filter((t) => aiBillSide(t) === 'other').map((t) => t.cls)).toEqual(['BD', 'BW', 'BT', 'BU', 'BV', 'OU', 'RL', 'JU', 'CA', 'DP', 'JV']);
     const t = (cls: string) => AI_BILL_TARGETS.find((x) => x.cls === cls)!;
     expect([t('RE').party, t('PS').party, t('RE').lines, t('OU').lines, t('DP').lines]).toEqual(['customer', 'supplier', 'text', 'stock', 'expense']);
-    expect(['IV', 'HS', 'DR', 'CN', 'QT', 'SO', 'AI', 'OI'].map((c) => aiBillSide(t(c)))).toEqual(Array(8).fill('sale'));
-    expect(['RR', 'HP', 'CP', 'DN', 'PO', 'AE', 'OE'].map((c) => aiBillSide(t(c)))).toEqual(Array(7).fill('purchase'));
-    expect([t('OE').lines, t('OI').lines, t('AI').lines, t('AE').lines, t('SO').lines]).toEqual(['expense', 'income', 'text', 'text', 'item']);
+    expect(['IV', 'HS', 'DR', 'CN', 'AI', 'OI'].map((c) => aiBillSide(t(c)))).toEqual(Array(6).fill('sale'));
+    expect(['RR', 'HP', 'CP', 'DN', 'AE', 'OE'].map((c) => aiBillSide(t(c)))).toEqual(Array(6).fill('purchase'));
+    expect(['QT', 'SO', 'PO'].map((c) => AI_BILL_TARGETS.some((x) => x.cls === c))).toEqual([false, false, false]);   // ไม่ลงบัญชี — ไม่มีอ่านบิล
+    expect([t('OE').lines, t('OI').lines, t('AI').lines, t('AE').lines, t('IV').lines]).toEqual(['expense', 'income', 'text', 'text', 'item']);
     expect(AI_BILL_TARGETS.filter((x) => x.service).map((x) => x.cls)).toEqual(['OE', 'DP']);
     expect(BILL_SYSTEM_PROMPT_SALES).toContain('buyer คือลูกค้า');
     expect(BILL_SCHEMA.properties.buyer.required).toContain('branch_no');

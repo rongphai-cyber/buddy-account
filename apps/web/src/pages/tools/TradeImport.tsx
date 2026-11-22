@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { docImportKindOf, formatTaxId, IMPORT_DOC_KINDS, TRADE_KINDS, type ImportMapping } from '@buddy/core';
+import { docImportKindOf, formatTaxId, IMPORT_DOC_KINDS, type ImportMapping } from '@buddy/core';
 import { DocImportPage } from './DocImport';
 import { CodeSuggestPanel, ImportMapPanel, useImportMap } from '../../components/ImportMapping';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { Confirm, DateText, ErrorBox, Field, KeyHints, Money, PageHead, Pill, toast, useHotkeys } from '../../ui';
 
-/** ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อไม่อยู่ในรายการ (ไม่ลงบัญชี — เจ้าของ 22/11/2569) */
-const IMPORT_KINDS = IMPORT_DOC_KINDS.filter((k) => !TRADE_KINDS.find((t) => t.path === k.path)?.order);
+const IMPORT_KINDS = IMPORT_DOC_KINDS;
 
 type DocRow = { doc_no_source?: 'file' | 'auto'; pay_source?: 'main' | 'sheet' | 'cash'; cash_remainder?: string | null; cash_name?: string | null; file_vat?: string | null; file_net?: string | null; check?: 'ok' | 'diff' | null; vat_lines?: Record<'0' | '1' | '2', number>;
   cash_amount?: string | null; other_amount?: string | null; payments?: number; ref: string; row: number; date: string; party_code: string; party_name: string | null; party_new: boolean; lines: number; new_items: number; amount: string | null; vat_amount: string | null; wht_amount: string | null; net_amount: string | null; doc_no: string | null; warnings: string[] };
@@ -49,8 +48,6 @@ function TradeImportInner() {
   const from = kinds.find((k) => k.path === sp.get('kind'));
   const [path, setPath] = useState(from?.path ?? kinds[0]?.path ?? 'sales-invoices');
   const K = IMPORT_KINDS.find((k) => k.path === path) ?? IMPORT_KINDS[0]!;
-  /** ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อ (HANDOFF 171): บันทึกแต่ไม่ลงบัญชี */
-  const isOrder = !!TRADE_KINDS.find((k) => k.path === K.path)?.order;
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<Defaults>(`/api/v1/trade-defaults/${K.cls}`) });
   // files in other layouts: map columns by hand or with AI (HANDOFF 168)
   const im = useImportMap(K.path, K.cash ? 'expense' : 'trade');
@@ -112,7 +109,7 @@ function TradeImportInner() {
   return (
     <div className="page" data-tone={K.module === 'AR' ? 'sales' : 'purchase'}>
       <PageHead eyebrow="อื่น ๆ › นำเข้าข้อมูล" title="นำเข้ารายการขาย/ซื้อจากแฟ้ม Excel"
-        lead={<>หนึ่งแถวในแฟ้ม = {lineWord} · แถวที่ <b>เลขที่อ้างอิง</b> เดียวกันรวมเป็นเอกสารเดียว · เลือกแฟ้มแล้วระบบ<b>ตรวจก่อน</b> (ยังไม่บันทึก) · กดนำเข้าแล้วบันทึก{isOrder ? '' : 'และลงบัญชี'}ทุกฉบับพร้อมกัน — ถ้าผิดฉบับเดียวจะไม่บันทึกเลย · <b>เลขที่เอกสาร</b>: เว้นว่าง = ออกตามประเภทเอกสาร · ใส่เองในคอลัมน์ "เลขที่เอกสาร" (ขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร) · เลขที่อ้างอิงเก็บในช่อง "อ้างอิง" และกันนำเข้าซ้ำ</>}
+        lead={<>หนึ่งแถวในแฟ้ม = {lineWord} · แถวที่ <b>เลขที่อ้างอิง</b> เดียวกันรวมเป็นเอกสารเดียว · เลือกแฟ้มแล้วระบบ<b>ตรวจก่อน</b> (ยังไม่บันทึก) · กดนำเข้าแล้วบันทึกและลงบัญชีทุกฉบับพร้อมกัน — ถ้าผิดฉบับเดียวจะไม่บันทึกเลย · <b>เลขที่เอกสาร</b>: เว้นว่าง = ออกตามประเภทเอกสาร · ใส่เองในคอลัมน์ "เลขที่เอกสาร" (ขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสาร) · เลขที่อ้างอิงเก็บในช่อง "อ้างอิง" และกันนำเข้าซ้ำ</>}
         actions={<>{can('add') && <button className="primary" disabled={!ready || busy} onClick={() => setAsk(true)}>นำเข้า {ready ? `${res!.docs.length} ฉบับ` : ''} <kbd>F9</kbd></button>}
           {back && <button onClick={back} title={`กลับไปหน้า${from!.label}`}>{from!.label} <kbd>Esc</kbd></button>}</>} />
       <div className="card ti-steps">
@@ -200,7 +197,7 @@ function TradeImportInner() {
       </>}
       <KeyHints keys={[['F9', 'นำเข้า (เมื่อตรวจผ่าน)'], ...(back ? [['Esc', `กลับไปหน้า${from!.label}`] as [string, string]] : [])]} />
       {ask && res && <Confirm title={`นำเข้า${K.label}`} okText={`นำเข้า ${res.docs.length} ฉบับ`}
-        text={<>บันทึก{K.label} <b>{res.docs.length}</b> ฉบับ ยอดรวม <b><Money v={res.total_net} /></b> บาท{isOrder ? ' (ไม่ลงบัญชี)' : ' และลงบัญชีทันที'}{newCount > 0 && <> พร้อมเพิ่ม{nm!.parties.length > 0 ? `${partyTh}ใหม่ ${nm!.parties.length} ราย ` : ''}{nm!.items.length > 0 ? `สินค้าใหม่ ${nm!.items.length} รายการ` : ''}</>} — ถ้าต้องการแก้ภายหลังให้ยกเลิกทีละฉบับที่หน้า{K.label}</>}
+        text={<>บันทึก{K.label} <b>{res.docs.length}</b> ฉบับ ยอดรวม <b><Money v={res.total_net} /></b> บาท และลงบัญชีทันที{newCount > 0 && <> พร้อมเพิ่ม{nm!.parties.length > 0 ? `${partyTh}ใหม่ ${nm!.parties.length} ราย ` : ''}{nm!.items.length > 0 ? `สินค้าใหม่ ${nm!.items.length} รายการ` : ''}</>} — ถ้าต้องการแก้ภายหลังให้ยกเลิกทีละฉบับที่หน้า{K.label}</>}
         onOk={() => { setAsk(false); void run(true); }} onClose={() => setAsk(false)} />}
     </div>
   );

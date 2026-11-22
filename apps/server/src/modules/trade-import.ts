@@ -24,8 +24,8 @@ import { buildPayments, finder, loadRefs, methodsOf, shipTosOf, type PayInfo } f
  * เลขที่อ้างอิงในแฟ้มเก็บใน your_ref — เอกสารที่ยังไม่ยกเลิกของคู่ค้าเดิมที่อ้างอิงเดียวกัน = นำเข้าซ้ำ
  * HANDOFF 167: บันทึกค่าใช้จ่ายอื่น ๆ (OE → saveCash เดียวกับหน้าจอ) · ลูกค้า/ผู้จำหน่าย/สินค้าที่ยังไม่มี เพิ่มให้ในทรานแซกชันเดียวกัน (import-masters.ts)
  */
-/** ขาย/ซื้อทุกชนิด รวมใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อ (HANDOFF 171 — saveTrade เดียวกับหน้าจอ ไม่ลงบัญชี) */
-export const IMPORT_KINDS = TRADE_KINDS;
+/** ขาย/ซื้อที่ลงบัญชี — ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อไม่มีนำเข้า (เจ้าของ 22/11/2569 "เอาออก") */
+export const IMPORT_KINDS = TRADE_KINDS.filter((k) => !k.order);
 /** เอกสารรับ/จ่ายเงินทุกชนิด (HANDOFF 171: มัดจำรับ/จ่าย รายได้อื่น + ค่าใช้จ่ายอื่นเดิม) → saveCash เดียวกับหน้าจอ */
 type Ctx = AuthContext & { companyId: string };
 type Kind = { cash: false; K: TradeKind } | { cash: true; K: CashKind };
@@ -77,7 +77,7 @@ export const PAY_SHEET_RULE = 'วิธีเดียว: ใช้คอล�
 export const paySheetOf = (sheets: Array<{ name: string; rows: string[][] }>) => sheets.slice(1).find((s) => /รับชำระ|จ่ายชำระ|ชำระ|payment/i.test(s.name))?.rows ?? [];
 
 type TplCol = { key: string; th: string; need: ImportNeed; when?: string; dflt?: string; forNew?: boolean; hint: string; example: [string, string] };
-const TEXT_KEYS = new Set(['ref', 'date', 'party', 'item', 'code', 'unit', 'warehouse', 'ref_invoice', 'ref_no', 'ref_date', 'delivery_date', 'party_tax_id', 'party_branch', 'party_phone', 'wht_form', 'ship_to', 'department', 'project',
+const TEXT_KEYS = new Set(['ref', 'date', 'party', 'item', 'code', 'unit', 'warehouse', 'ref_invoice', 'ref_no', 'ref_date', 'party_tax_id', 'party_branch', 'party_phone', 'wht_form', 'ship_to', 'department', 'project',
   'salesperson', 'sales_area', 'ship_via', 'pay_ref', 'line_job', 'vat_code', 'cheque_date', 'method']);
 const NUM_KEYS = new Set(['qty', 'price', 'amount', 'wht_amount', 'wht_rate']);
 /**
@@ -121,7 +121,7 @@ export function buildTemplate(K: ImportKindLike & { label: string }, sample: { p
     ...(checks.length ? [['', '', ''], ['คอลัมน์ตรวจยอด', '', 'ไม่มีในแบบฟอร์มนี้ — ใช้กับแฟ้มจากโปรแกรมอื่นที่มียอดภาษี/ยอดสุทธิ (เพิ่มคอลัมน์ชื่อนี้ได้)'], ...checks.map((c) => [c.th, importNeedLabel(c), c.hint])] : []),
     ...(hasPay ? [['', '', ''], [`แผ่น "${payName}"`, '', `แบ่ง${K.module === 'AR' ? 'รับ' : 'จ่าย'}หลายวิธี (เช่น เงินสด + เงินโอน): หนึ่งแถว = หนึ่งวิธี ใส่เลขที่อ้างอิงของเอกสาร · ใส่เฉพาะวิธีที่ไม่ใช่เงินสด (เช่น เงินโอน) — ยอดที่ต้องรับ/จ่าย (ยอดรวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย) ที่เหลือ = เงินสดให้อัตโนมัติ · รวมเกินยอดที่ต้องรับ/จ่าย = ผิด (ไม่บันทึก) · วิธีเดียวใช้คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้าได้ (ใช้ยอดทั้งเอกสาร) · ไม่ใส่ = เงินสดทั้งหมด · ใช้แผ่นนี้ได้เฉพาะแฟ้ม .xlsx`],
       ...pcols.map((c) => [c.th, importNeedLabel(c), c.hint])] : []),
-    ...(!cash && !hasPay ? [['', '', (K as ImportKindLike).order ? `${K.label}ไม่ลงบัญชี ไม่ตัดสต๊อก — นำเข้าแล้วอ้างถึงตอนออกบิล${K.cls === 'QT' ? ' (แปลงเป็นใบสั่งขายที่หน้าจอ)' : ''}` : `${K.label}ไม่มีการรับ/จ่ายเงินในเอกสาร — รับ/จ่ายชำระที่เมนูรับชำระหนี้/จ่ายชำระหนี้`]] : []),
+    ...(!cash && !hasPay ? [['', '', `${K.label}ไม่มีการรับ/จ่ายเงินในเอกสาร — รับ/จ่ายชำระที่เมนูรับชำระหนี้/จ่ายชำระหนี้`]] : []),
     ...(hasPay && !cash ? [['', '', `${K.label}รับ/จ่ายเงินวันเดียวกัน — ไม่มีช่องเครดิต (วัน) · แฟ้มเดิมที่มีคอลัมน์นี้ยังนำเข้าได้ (ไม่ใช้ค่าในคอลัมน์ และแจ้งเตือน)`]] : []),
     ['', '', 'ลบแถวตัวอย่างก่อนใช้ · ชื่อหัวคอลัมน์ห้ามแก้ (สลับลำดับได้) · บันทึกเป็น .xlsx (หรือ .csv เฉพาะแผ่นนำเข้า)']];
   sheets.push({ name: 'คำอธิบาย', rows: help, widths: [26, 34, 110] });
@@ -451,7 +451,6 @@ async function importTrade(db: Db, a: Ctx, K: TradeKind, rows: string[][], ys: Y
       return [{ doc: x.doc, party, newItems: x.doc.lines.filter((l) => lineHit.get(l)!.kind === 'new').length, alt, vatLines, paySource, payInfo,
         body: { doc_type_id: b.dtId, doc_no: own.get(x.doc.ref) ?? null, doc_date: x.doc.date, party_id: party.id, ...(party.branch ? { party_tax_branch_no: party.branch } : {}), your_ref: x.doc.ref,
           ref_no: K.refInvoice ? x.doc.ref_invoice : x.doc.ref_no, ...(K.module === 'AP' && !K.refInvoice && x.doc.ref_date ? { ref_date: x.doc.ref_date } : {}),
-          ...(K.order && K.cls !== 'QT' ? { delivery_date: x.doc.delivery_date } : {}),
           credit_days: K.payments ? null : x.doc.credit_days, price_type: b.priceType, vat_rate: b.vatRate, ...(x.doc.vat_basis ? { vat_basis: x.doc.vat_basis } : {}), discount_text: discount, remark: x.doc.remark,
           ...x.head, lines: lines.map((l) => { const { _vat: _v, ...rest } = l!; return rest; }), payments, wht, wht_amount: whtAmount } }];
     })),

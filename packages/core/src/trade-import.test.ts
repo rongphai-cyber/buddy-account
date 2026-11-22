@@ -156,12 +156,8 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect(keys('RR')).not.toContain('return');
     expect(importKindOf('cash-sales')?.cls).toBe('HS');
     expect(importKindOf('other-expense-docs')).toMatchObject({ cls: 'OE', cash: true });
-    // HANDOFF 171: ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อนำเข้าได้ — วันที่ส่งของ/รับของเฉพาะใบสั่ง (ใบเสนอราคาไม่มีช่องนี้บนหน้าจอ)
-    expect(importKindOf('quotations')).toMatchObject({ cls: 'QT', order: 'SO' });
-    expect(importKindOf('no-such-kind')).toBeNull();
-    const delCol = (path: string) => importColumnsFor(importKindOf(path)!).find((c) => c.key === 'delivery_date')?.th ?? null;
-    expect([delCol('quotations'), delCol('sales-orders'), delCol('purchase-orders'), delCol('sales-invoices')]).toEqual([null, 'วันที่ส่งของ', 'วันที่รับของ', null]);
-    expect(importColumnsFor(importKindOf('sales-orders')!).some((c) => c.key === 'pay_method' || c.key === 'wht_amount')).toBe(false);
+    // ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อไม่ลงบัญชี — ไม่มีนำเข้า (เจ้าของ 22/11/2569 "เอาออก")
+    expect([importKindOf('quotations'), importKindOf('sales-orders'), importKindOf('purchase-orders'), importKindOf('no-such-kind')]).toEqual([null, null, null, null]);
     // one wording for "required"
     const col = (cls: string, key: string) => importColumnsFor(K(cls)).find((c) => c.key === key)!;
     expect([importNeedLabel(col('HS', 'qty')), importNeedLabel(col('HS', 'item')), importNeedLabel(col('HS', 'pay_method')), importNeedLabel(col('HS', 'party_tax_id')), importNeedLabel(col('CN', 'ref_invoice'))])

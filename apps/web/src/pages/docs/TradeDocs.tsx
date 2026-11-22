@@ -524,7 +524,7 @@ export function TradeFormPage({ path }: { path: string }) {
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         {K.cls === 'QT' && id && !cancelled && <button disabled={!canSO('add')} onClick={() => setAskConvert(true)}>แปลงเป็นใบสั่งขาย</button>}
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} typeId={h?.doc_type_id} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
-        {/* ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อไม่ลงบัญชี — ไม่มีปุ่มอ่านบิล/นำเข้า (เจ้าของ 22/11/2569) */}
+        {/* ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อไม่ลงบัญชี — ไม่มีปุ่มอ่านบิล/นำเข้า (เจ้าของ 22/11/2569 "เอาออก") */}
         {!K.order && !readOnly && h && <AiBillButton target={K.path} party={K.party} onApply={applyBill} />}
         {id && (cur.data as { receipt_substitute?: boolean } | undefined)?.receipt_substitute && <SubstituteReceiptButton id={id} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
