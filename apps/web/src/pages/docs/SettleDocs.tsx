@@ -25,6 +25,7 @@ import { DocVatTab, VatCheckAfterSave, vatTabLabel } from '../../components/DocT
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { ImportExcelButton } from '../../components/ImportExcelButton';
+import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DepositPickTable, depositsBody, depositsFrom, depositTotal, usableDeposits, useOpenDeposits, type DepositPicks } from './DepositPick';
 import { confirmLeave } from '../../unsaved';
 
@@ -160,6 +161,31 @@ export function SettleFormPage({ path }: { path: string }) {
   const readOnly = roBase || ed.locked;
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const rows = open.data?.rows ?? [];
+  /**
+   * ใบเสร็จ/ใบแจ้งการโอน/ใบสำคัญรับเงินของคู่ค้า → ร่าง (HANDOFF 171 · เจ้าของ 22/11/2569 ข้อ 1): คู่ค้าตามเอกสาร · วันที่ · ติ๊กบิลค้างที่เลขที่ (หรือเลขที่ใบกำกับผู้จำหน่าย) ปรากฏในเอกสาร
+   * บิลเดียว = ยอดตามเอกสาร (ไม่เกินคงค้าง) · หลายบิล = ยอดคงค้างของแต่ละบิล — ผู้ใช้ตรวจ/แก้ที่แท็บบิลก่อนบันทึก
+   */
+  const [aiMatch, setAiMatch] = useState<{ text: string; total: string | null } | null>(null);
+  const applyBill = async (r: AiBillResult) => {
+    const b = r.bill;
+    if (r.supplier && r.supplier.id !== h?.party?.id) await pickParty({ id: r.supplier.id, code: r.supplier.code, name: r.supplier.name });
+    set({ ...(b.doc_date ? { doc_date: b.doc_date, payment_date: b.doc_date } : {}), ...(b.doc_no ? { your_ref: b.doc_no.slice(0, 60) } : {}) });
+    setAiMatch({ text: [b.doc_no, ...b.lines.map((l) => l.description), ...b.warnings].join(' '), total: b.total });
+    if (!r.supplier && !h?.party) toast(`ไม่พบ${K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย'}ตามเอกสาร — เลือกเอง แล้วเลือกบิลค้าง (F5)`, 'warn');
+  };
+  useEffect(() => {
+    if (!aiMatch || !h?.party || open.isFetching || !open.data) return;
+    const norm = (v: string | null | undefined) => (v ?? '').toUpperCase().replace(/[\s-]/g, '');
+    const text = norm(aiMatch.text);
+    const hits = rows.filter((o) => (norm(o.doc_no).length >= 4 && text.includes(norm(o.doc_no))) || (K.module === 'AP' && norm(o.ref_no).length >= 4 && text.includes(norm(o.ref_no))));
+    if (hits.length) {
+      const one = hits.length === 1 && aiMatch.total ? d(aiMatch.total) : null;
+      setPick(Object.fromEntries(hits.map((o) => [o.header_id, (one && one.gt(0) && one.lt(d(o.outstanding)) ? one : d(o.outstanding)).toFixed(2)])));
+      setPicking(false); setTab('bills'); setDirty(true);
+    }
+    toast(hits.length ? `เติมจากเอกสารแล้ว — ติ๊กบิล ${hits.map((o) => o.doc_no).join(', ')} · ตรวจยอดก่อนบันทึก` : 'เติมจากเอกสารแล้ว — ไม่พบเลขที่บิลค้างในเอกสาร เลือกบิลเอง (F5)', hits.length ? undefined : 'warn');
+    setAiMatch(null);
+  }, [aiMatch, h?.party, open.isFetching, open.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   // เลือกคู่ค้าที่ไม่มีบิลค้าง (เช่น พิมพ์รหัสตรง) → เตือนทันทีและไม่ให้ทำต่อ
   useEffect(() => {
     if (id || !h?.party || !open.data || open.data.rows.length || open.isFetching) return;
@@ -273,6 +299,7 @@ export function SettleFormPage({ path }: { path: string }) {
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
+        {!ro && h && <AiBillButton target={K.path} party={K.party} textLines onApply={(r) => void applyBill(r)} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
         <ImportExcelButton cls={K.cls} menu={K.menu} label={K.label} />
       </div>

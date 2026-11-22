@@ -2751,5 +2751,20 @@
  "ใส่เลขที่บัญชีหรือชื่อบัญชีในผังบัญชี": "Enter an account number or name from the chart of accounts",
  "ใส่เลขเอง: ต้องขึ้นต้นด้วยตัวนำหน้าของประเภทเอกสารที่เลือก (เช่น {0}…) ไม่เกิน 30 ตัว ไม่มีช่องว่าง ไม่ซ้ำกับเอกสารใดในบริษัท": "Own number: must start with the selected document type prefix (e.g. {0}…), max 30 characters, no spaces, unique in the company",
  "ไม่พบบิลค้าง \"{0}\" ของ{1} {2} — ใส่เลขที่เอกสารที่ยังค้างชำระ{3} (บิลที่ตัดครบแล้ว/ยกเลิก/ของคู่ค้ารายอื่นใช้ไม่ได้)": "No open bill \"{0}\" for {1} {2} — enter the number of a bill still outstanding{3} (fully settled/cancelled/other party's bills cannot be used)",
- "ไม่มี{0} (คอลัมน์ \"{1}\" ต้องมี)": "No {0} (column \"{1}\" is required)"
+ "ไม่มี{0} (คอลัมน์ \"{1}\" ต้องมี)": "No {0} (column \"{1}\" is required)",
+ "· กรอกรายละเอียดภาษีที่แท็บภาษี": "· fill in the tax details on the tax tab",
+ "นำเข้าใบสำคัญหลายใบจากแฟ้ม Excel (สมุดรายวันทุกเล่ม)": "Import many journal vouchers from an Excel file (all journals)",
+ "ผู้ออกเอกสาร": "Issued by",
+ "อ่านรูปหรือ PDF ของเอกสาร (สลิปธนาคาร ใบเบิก/โอนสินค้า ใบเสร็จ บิล) ด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก": "Read an image or PDF of a document (bank slip, issue/transfer slip, receipt, bill) with AI and fill a draft — check before saving",
+ "เงินสด/ธนาคาร/ลูกหนี้": "cash/bank/receivable",
+ "เงินสด/ธนาคาร/เจ้าหนี้": "cash/bank/payable",
+ "เติมจาก{0}แล้ว — เลือกเลขที่บัญชีอีก {1} บรรทัด (บรรทัดยอดรวม: {2}){3} · ตรวจยอดก่อนบันทึก": "Filled from the {0} — choose an account on {1} more lines (total line: {2}){3} · check the amounts before saving",
+ "เติมจากเอกสารแล้ว — ติ๊กบิล {0} · ตรวจยอดก่อนบันทึก": "Filled from the document — ticked bills {0} · check the amounts before saving",
+ "เติมจากเอกสารแล้ว — ไม่พบเลขที่บิลค้างในเอกสาร เลือกบิลเอง (F5)": "Filled from the document — no open bill number found in it; choose the bills yourself (F5)",
+ "เติมจากเอกสารแล้ว{0} · ตรวจจำนวน/คลังก่อนบันทึก": "Filled from the document{0} · check quantities/warehouses before saving",
+ "เติมจากเอกสารแล้ว{0} · ตรวจยอดกับสลิปก่อนบันทึก": "Filled from the document{0} · check the amount against the slip before saving",
+ "เติมจากใบเสร็จแล้ว{0} · ตรวจยอดก่อนบันทึก": "Filled from the receipt{0} · check the amounts before saving",
+ "เอกสารคลังสินค้า (เบิก/โอน/ปรับปรุง — เลือกได้เฉพาะรหัสสินค้าที่มีสต๊อก)": "Stock document (issue/transfer/adjust — only stock item codes)",
+ "ไม่พบ{0}ตามเอกสาร — เลือกเอง แล้วเลือกบิลค้าง (F5)": "No {0} found from the document — choose one, then choose the open bills (F5)",
+ "— เลือกบัญชีเงินฝาก": "— choose the bank account"
 }

@@ -23,6 +23,7 @@ import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { ImportExcelButton } from '../../components/ImportExcelButton';
+import { accountNoOf, AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { JobSelect, showJob, useJobs } from '../../components/JobSelect';
 import { confirmLeave } from '../../unsaved';
 
@@ -127,6 +128,21 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const ro = roBase || ed.locked;
   const set = (p: Partial<NonNullable<typeof h>>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
   const setLine = (k: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === k ? { ...l, ...p } : l))); setDirty(true); };
+  /** ใบเสร็จค่าใช้จ่าย → บรรทัดจ่ายเงินสดย่อย (HANDOFF 171): รายละเอียด จำนวนเงิน (รวม VAT — เงินสดย่อยไม่แยกภาษี) · บัญชีจากรหัสค่าใช้จ่ายที่เลือก */
+  const applyBill = (r: AiBillResult) => {
+    const accOf = (l: AiBillResult['lines'][number]) => { const no = accountNoOf(l); return no ? accts.data?.find((a) => a.account_no === no)?.id ?? null : null; };
+    const rows = r.lines.length ? r.lines : [];
+    // ราคาไม่รวม VAT: เฉลี่ย VAT เข้าบรรทัด (ยอดรวมเท่ายอดในใบเสร็จ)
+    const sum = rows.reduce((t, l) => t.plus(d(l.amount || 0)), d(0)), total = r.bill.total ? d(r.bill.total) : sum;
+    set({ ...(r.bill.doc_date ? { doc_date: r.bill.doc_date } : {}), ...(!h?.remark && r.bill.supplier.name ? { remark: `${r.bill.supplier.name}${r.bill.doc_no ? ` ${r.bill.doc_no}` : ''}`.slice(0, 200) } : {}) });
+    setLines((ls) => [...ls.filter((l) => l.account_id), ...rows.map((l, i): Line => {
+      const amt = sum.isZero() ? d(0) : i === rows.length - 1 ? total.minus(rows.slice(0, -1).reduce((t, x) => t.plus(d(x.amount || 0).times(total).div(sum).toDecimalPlaces(2)), d(0))) : d(l.amount || 0).times(total).div(sum).toDecimalPlaces(2);
+      return { ...blank(), account_id: accOf(l), description: l.description.slice(0, 200), amount: amt.toFixed(2) };
+    })]);
+    setDirty(true);
+    const missing = rows.filter((l) => !accOf(l)).length;
+    toast(`เติมจากใบเสร็จแล้ว${missing ? ` — เลือกเลขที่บัญชีอีก ${missing} บรรทัด` : ''} · ตรวจยอดก่อนบันทึก`);
+  };
   const jobs = useJobs();
   const jobOn = kind === 'dp' && showJob(jobs.enabled, ...lines.map((l) => l.project_id));
   const dpRows = openDps.data?.rows ?? [];
@@ -207,6 +223,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
         {ed.editButton}
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={'GL.PC'} del={{ cancelled, cancelUrl: `/api/v1/${K.api}/${id}/cancel`, listPath: kind === 'dp' ? BASE : `${BASE}/vr` }} />
+        {kind === 'dp' && !ro && h && <AiBillButton target="petty-payments" party="none" onApply={applyBill} />}
         <button onClick={() => nav(kind === 'dp' ? BASE : `${BASE}/vr`)}>รายการ <kbd>Esc</kbd></button>
         {kind === 'dp' && <ImportExcelButton cls="DP" menu="GL.PC" label={K.label} />}
       </div>

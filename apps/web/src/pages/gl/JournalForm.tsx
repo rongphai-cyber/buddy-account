@@ -20,6 +20,7 @@ import { TemplateForm, templateToLines, useTemplates } from './Templates';
 import { JournalPicker } from '../../components/JournalPicker';
 import { ReasonInput } from '../../components/ReasonInput';
 import { JobSelect, showJob, useJobs } from '../../components/JobSelect';
+import { accountNoOf, AiBillButton, type AiBillResult } from '../../components/AiBill';
 
 const FIX_AT_SOURCE = ' — แก้ที่เอกสารต้นทาง';
 interface Line { key: number; account_id: string | null; department_id: string | null; project_id?: string | null; description: string; debit: string; credit: string; line_note?: string; line_note_print?: boolean }
@@ -261,6 +262,34 @@ export function JournalFormPage() {
   const roles = useQuery({ queryKey: ['default-accounts'], queryFn: () => api.get<Array<{ role: string; account_id: string }>>('/api/v1/gl/default-accounts') });
   const roleSum = (role: string, side: 1 | -1) => { const acc = roles.data?.find((r) => r.role === role)?.account_id; return acc ? lines.filter((l) => l.account_id === acc).reduce((t, l) => t.plus(d(l.debit || 0).minus(d(l.credit || 0)).times(side)), d(0)) : d(0); };
   // แท็บแสดงตลอด (ใบสำคัญใหม่ด้วย) พร้อมยอดบรรทัดบัญชีนั้น — ข้อกำหนดเจ้าของ 30/10/2569
+  /**
+   * บิล → ร่างบรรทัดใบสำคัญ (HANDOFF 171 · เจ้าของ 22/11/2569 ข้อ 2): บิลซื้อ (ผู้ขายไม่ใช่บริษัทนี้) = เดบิตรายการตามบิล (บัญชีจากรหัสที่เลือก) + ภาษีซื้อ · เครดิตยอดสุทธิ (+ ภาษีหัก ณ ที่จ่ายค้างจ่าย) เลือกบัญชีเอง
+   * บิลขาย (ผู้ขายคือบริษัทนี้) = กลับข้าง: เครดิตรายการ + ภาษีขาย · เดบิตยอดรวม (เงินสด/ธนาคาร/ลูกหนี้ เลือกเอง) — ยอดก่อน VAT ตามประเภทราคาในบิล
+   */
+  const applyBill = (r: AiBillResult & { seller_check?: { status: string } }) => {
+    const b = r.bill, sale = r.seller_check?.status === 'same' || r.seller_check?.status === 'misread';
+    const role = (x: string) => roles.data?.find((q) => q.role === x)?.account_id ?? null;
+    const accOf = (l: AiBillResult['lines'][number]) => { const no = accountNoOf(l); return no ? accts.data?.find((a) => a.account_no === no)?.id ?? null : null; };
+    const vat = d(b.vat_amount ?? 0), sum = b.lines.reduce((t, l) => t.plus(d(l.amount || 0)), d(0));
+    // ยอดก่อน VAT ของแต่ละบรรทัด: ราคารวม VAT = หักสัดส่วน VAT ออก (เศษสตางค์ไปบรรทัดสุดท้าย)
+    const net = b.price_type === '1' && !vat.isZero() ? sum.minus(vat) : sum;
+    const parts = b.lines.map((l) => (sum.isZero() ? d(0) : d(l.amount || 0).times(net).div(sum).toDecimalPlaces(2)));
+    if (parts.length) parts[parts.length - 1] = parts.at(-1)!.plus(net.minus(parts.reduce((t, x) => t.plus(x), d(0))));
+    const wht = b.wht ? d(b.wht.amount) : d(0), total = net.plus(vat);
+    const side = (v: ReturnType<typeof d>, dr: boolean) => (dr ? { debit: v.toFixed(2), credit: '' } : { debit: '', credit: v.toFixed(2) });
+    const desc = (x: string) => x.slice(0, 200);
+    const out: Line[] = [
+      ...r.lines.map((l, i) => ({ ...blank(), account_id: accOf(l), description: desc(l.description), ...side(parts[i]!, !sale) })),
+      ...(vat.gt(0) ? [{ ...blank(), account_id: role(sale ? 'OUTPUT_VAT' : 'INPUT_VAT'), description: desc(((sale ? 'ภาษีขาย' : 'ภาษีซื้อ') + ' ' + b.doc_no).trim()), ...side(vat, !sale) }] : []),
+      ...(wht.gt(0) && !sale ? [{ ...blank(), account_id: role('WHT_PAYABLE'), description: desc(('ภาษีหัก ณ ที่จ่าย ' + b.doc_no).trim()), ...side(wht, false) }] : []),
+      { ...blank(), account_id: null, description: desc(((sale ? b.buyer.name : b.supplier.name) + ' ' + b.doc_no).trim()), ...side(total.minus(sale ? 0 : wht), sale) },
+    ];
+    setLines((ls) => [...ls.filter((l) => l.account_id || d(l.debit || 0).gt(0) || d(l.credit || 0).gt(0)), ...out]);
+    setH((x) => ({ ...x, ...(b.doc_date ? { voucher_date: b.doc_date } : {}), ...(!x.description ? { description: desc(((sale ? 'ขาย ' : 'ซื้อ ') + (sale ? b.buyer.name : b.supplier.name) + ' ' + b.doc_no).trim()) } : {}), ...(!x.reference && b.doc_no ? { reference: b.doc_no.slice(0, 30) } : {}) }));
+    setDirty(true);
+    const missing = out.filter((l) => !l.account_id).length;
+    return void toast(`เติมจาก${sale ? 'บิลขาย' : 'บิลซื้อ'}แล้ว — เลือกเลขที่บัญชีอีก ${missing} บรรทัด (บรรทัดยอดรวม: ${sale ? 'เงินสด/ธนาคาร/ลูกหนี้' : 'เงินสด/ธนาคาร/เจ้าหนี้'})${vat.gt(0) ? ' · กรอกรายละเอียดภาษีที่แท็บภาษี' : ''} · ตรวจยอดก่อนบันทึก`);
+  };
   const sums = { vatP: roleSum('INPUT_VAT', 1), vatS: roleSum('OUTPUT_VAT', -1), wht: roleSum('WHT_PAYABLE', -1), chqP: roleSum('CHEQUE_PAID', -1), chqR: roleSum('CHEQUE_RECEIVED', 1) };
   const tabEditable = isNew ? editable : !!doc.data && doc.data.doc_status === 'N' && doc.data.editable;
   const linkInfo = { id: id ?? null, no: doc.data?.voucher_no ?? '', date: String(h.voucher_date).slice(0, 10) };
@@ -305,7 +334,8 @@ export function JournalFormPage() {
           <DocActions kind="journal" id={isNew ? undefined : id} menu="GL.JNL" typeId={h.journal_book_id} dirty={dirty}
             del={j && !j.source_header_id && (!j.source_module || j.source_module === 'GL') ? { cancelled: j.doc_status === 'C', cancelUrl: `/api/v1/gl/journals/${id}/cancel`, listPath: '/gl/journals', docNo: j.voucher_no } : undefined} />
         </div>
-        <div className="tb-group"><button onClick={() => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`)} title="กลับไปรายการ (Esc)">รายการ <kbd>Esc</kbd></button></div>
+        <div className="tb-group">{editable && <AiBillButton target="journal" party="none" onApply={applyBill} />}<button onClick={() => leave(`/gl/journals${h.journal_book_id ? `?book=${h.journal_book_id}` : ''}`)} title="กลับไปรายการ (Esc)">รายการ <kbd>Esc</kbd></button>
+          {can('add') && <button onClick={() => leave('/gl/journals/import')} title="นำเข้าใบสำคัญหลายใบจากแฟ้ม Excel (สมุดรายวันทุกเล่ม)">⬆ นำเข้า Excel</button>}</div>
       </div>
       {isNew && !h.journal_book_id && books.data && <p className="notebox">เลือกสมุดรายวันจากแถบด้านบนก่อน — เลขที่ใบสำคัญและต้นแบบรายการตามสมุดที่เลือก</p>}
       {ed.dialog}

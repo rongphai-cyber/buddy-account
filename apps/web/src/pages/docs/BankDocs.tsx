@@ -19,6 +19,7 @@ import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { ImportExcelButton } from '../../components/ImportExcelButton';
+import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { confirmLeave } from '../../unsaved';
 
 /** การเคลื่อนไหวบัญชีเงินฝาก (คู่มือบทที่ 13 S-BK-02/03 + รายได้/ค่าใช้จ่ายธนาคาร) — ลงบัญชีทันทีเมื่อบันทึก */
@@ -114,6 +115,13 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
   const ro = roBase || ed.locked;
   const cancelled = cur.data?.doc_status === 'C';
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
+  /** สลิปธนาคาร/ใบแจ้งดอกเบี้ย-ค่าธรรมเนียม → ร่าง (HANDOFF 171): วันที่ จำนวนเงิน (ยอดรวม/ผลรวมรายการ) หมายเหตุ · ภาษีที่ธนาคารหัก (รายได้ธนาคาร) — บัญชีเงินฝากเลือกเอง */
+  const applyBill = (r: AiBillResult) => {
+    const b = r.bill, sum = b.lines.reduce((t, l) => t.plus(d(l.amount || 0)), d(0));
+    const amt = b.total ? d(b.total).plus(K.cls === 'BU' && b.wht ? d(b.wht.amount) : 0) : sum;
+    set({ ...(b.doc_date ? { doc_date: b.doc_date } : {}), ...(amt.gt(0) ? { amount: amt.toFixed(2) } : {}), remark: [b.lines[0]?.description, b.doc_no].filter(Boolean).join(' ').slice(0, 200), ...(K.cls === 'BU' && b.wht ? { wht: b.wht.amount } : {}) });
+    toast(`เติมจากเอกสารแล้ว${h?.bank_account_id ? '' : ' — เลือกบัญชีเงินฝาก'} · ตรวจยอดกับสลิปก่อนบันทึก`);
+  };
   const total = h ? (cls === 'BT' ? d(h.amount || 0).plus(d(h.fee || 0)) : cls === 'BU' ? d(h.amount || 0).minus(d(h.wht || 0)) : d(h.amount || 0)) : d(0);
   /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
   const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.department_id ? { department_id: t.department_id } : {}) }); };
@@ -160,6 +168,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกรายการ <kbd>Alt+C</kbd></button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={MENU} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
+        {!ro && h && <AiBillButton target={K.path} party="none" textLines onApply={applyBill} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
         <ImportExcelButton cls={K.cls} menu={'FI.BK.TX'} label={K.label} />
       </div>

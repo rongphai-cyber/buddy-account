@@ -29,6 +29,12 @@ export interface AiBillResult {
   /** local_ocr = อ่านภาพในเครื่องนี้ (Typhoon-OCR) แล้ว Claude จัดร่างจากข้อความ · claude_image = Claude อ่านภาพ */
   read_by?: 'local_ocr' | 'claude_image';
 }
+/** เลขที่บัญชีของรหัสที่เลือกในบรรทัด (บัญชีค่าใช้จ่าย/ซื้อ/ขายของกลุ่มบัญชีสินค้า "เลขที่ ชื่อ") — เงินสดย่อย/ใบสำคัญเติมบัญชีจากรหัสที่เลือก (HANDOFF 171) */
+export function accountNoOf(l: AiBillResult['lines'][number]): string | null {
+  if (!l.item) return null;
+  const t = l.suggestion?.item.id === l.item.id ? l.suggestion.account : l.alternatives?.find((x) => x.id === l.item!.id)?.account;
+  return t ? t.split(' ')[0]! : null;
+}
 const CONF: Record<string, [string, 'n' | 'm' | 'c']> = { high: ['มั่นใจ', 'n'], medium: ['น่าจะใช่', 'm'], low: ['ไม่แน่ใจ', 'c'] };
 const SRC: Record<string, string> = { ai: 'AI', history: 'ประวัติ', name: 'ชื่อรหัส' };
 const SUPOK = new Set(['match']);
@@ -47,19 +53,21 @@ const toBase64 = (f: File) => new Promise<string>((ok, bad) => {
  * อ่านรูป/PDF ของบิลผู้จำหน่าย (party=supplier) หรือกระดาษฝั่งขาย เช่น ใบสั่งซื้อของลูกค้า บิลเขียนมือ (party=customer) ด้วย Claude → แสดงผลให้ตรวจ → "ใส่ลงเอกสาร" เติมเป็นร่าง (ยังไม่บันทึก)
  * textLines = เอกสารที่บรรทัดเป็นคำอธิบาย + จำนวนเงิน (มัดจำ) — ไม่เลือกรหัส
  */
-export function AiBillButton({ target, disabled, onApply, party = 'supplier', textLines = false }: { target: string; disabled?: boolean; onApply: (r: AiBillResult) => void; party?: 'supplier' | 'customer'; textLines?: boolean }) {
+export function AiBillButton({ target, disabled, onApply, party = 'supplier', textLines = false }: { target: string; disabled?: boolean; onApply: (r: AiBillResult) => void; party?: 'supplier' | 'customer' | 'none'; textLines?: boolean }) {
   const st = useQuery({ queryKey: ['ai-status'], queryFn: () => api.get<{ available: boolean; has_key: boolean; monthly_limit_usd: number | null; month_cost_usd: string }>('/api/v1/ai/status'), staleTime: 60_000 });
   const [open, setOpen] = useState(false);
   if (!st.data?.has_key) return null;
   return <>
     <button type="button" disabled={disabled || !st.data.available} onClick={() => setOpen(true)}
-      title={!st.data.available ? `ใช้ AI เดือนนี้ครบเพดาน ${st.data.monthly_limit_usd} ดอลลาร์แล้ว` : party === 'customer' ? 'อ่านรูปหรือ PDF ของเอกสารฝั่งขาย (ใบสั่งซื้อของลูกค้า บิลเขียนมือ) ด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก' : 'อ่านรูปหรือ PDF ของบิลผู้จำหน่ายด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก'}>📷 อ่านบิลด้วย AI</button>
+      title={!st.data.available ? `ใช้ AI เดือนนี้ครบเพดาน ${st.data.monthly_limit_usd} ดอลลาร์แล้ว` : party === 'none' ? 'อ่านรูปหรือ PDF ของเอกสาร (สลิปธนาคาร ใบเบิก/โอนสินค้า ใบเสร็จ บิล) ด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก' : party === 'customer' ? 'อ่านรูปหรือ PDF ของเอกสารฝั่งขาย (ใบสั่งซื้อของลูกค้า บิลเขียนมือ) ด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก' : 'อ่านรูปหรือ PDF ของบิลผู้จำหน่ายด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก'}>📷 อ่านบิลด้วย AI</button>
     {open && <AiBillDialog target={target} party={party} textLines={textLines} onClose={() => setOpen(false)} onApply={(r) => { setOpen(false); onApply(r); }} />}
   </>;
 }
 
-function AiBillDialog({ target, party, textLines, onClose, onApply }: { target: string; party: 'supplier' | 'customer'; textLines: boolean; onClose: () => void; onApply: (r: AiBillResult) => void }) {
+function AiBillDialog({ target, party, textLines, onClose, onApply }: { target: string; party: 'supplier' | 'customer' | 'none'; textLines: boolean; onClose: () => void; onApply: (r: AiBillResult) => void }) {
   const cust = party === 'customer';
+  /** เอกสารที่ไม่มีคู่ค้า (สลิปธนาคาร ใบเบิก/โอนสินค้า ใบเสร็จเงินสดย่อย บิลลงใบสำคัญ — HANDOFF 171): ไม่หา/เพิ่มคู่ค้า */
+  const none = party === 'none';
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -172,7 +180,7 @@ function AiBillDialog({ target, party, textLines, onClose, onApply }: { target: 
             {fallback && <span className="muted"> · ไม่ได้อ่านในเครื่อง: {fallback}</span>}</p>
           {local && <details className="small"><summary>ข้อความที่อ่านได้ในเครื่อง (ส่งให้ Claude)</summary><pre style={{ whiteSpace: 'pre-wrap', maxHeight: 220, overflow: 'auto' }}>{local.text}</pre></details>}
           {res.duplicate && <p className="bad"><b>บิลซ้ำ:</b> เลขที่ {b.doc_no} ของผู้จำหน่ายนี้บันทึกแล้วใน {res.duplicate.doc_no} ({res.duplicate.doc_date}) — ตรวจก่อนบันทึกซ้ำ</p>}
-          {res.supplier_check && <p className={SUPOK.has(res.supplier_check.status) ? 'small' : 'bad small'}>{SUPOK.has(res.supplier_check.status) ? '✓ ' : '⚠ '}{res.supplier_check.message}
+          {!none && res.supplier_check && <p className={SUPOK.has(res.supplier_check.status) ? 'small' : 'bad small'}>{SUPOK.has(res.supplier_check.status) ? '✓ ' : '⚠ '}{res.supplier_check.message}
             {res.supplier_check.candidate && !res.supplier && <label className="check" style={{ marginLeft: 8 }}><input type="checkbox" checked={useCand} onChange={(e) => setUseCand(e.target.checked)} /> ใช้ {res.supplier_check.candidate.code}</label>}
             {!cust && !res.supplier && !useCand && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void startAdd()}>＋ เพิ่มผู้จำหน่ายใหม่จากบิลนี้</button>}
             {!cust && !res.supplier && !useCand && <button type="button" style={{ marginLeft: 8 }} onClick={() => void pickCentral()} title="บิลไม่สมบูรณ์ ไม่มีชื่อ/เลขผู้เสียภาษีของผู้ขาย — บันทึกกับเจ้าหนี้กลาง ผู้จ่ายเงิน (พนักงาน) ลงชื่อในใบรับรองแทนใบเสร็จรับเงิน">ไม่มีชื่อผู้ขาย — ใช้เจ้าหนี้กลาง</button>}
@@ -192,6 +200,7 @@ function AiBillDialog({ target, party, textLines, onClose, onApply }: { target: 
           <table className="grid info-table"><tbody>
             {cust ? <tr><th>ลูกค้า</th><td>{b.buyer.name || '—'} {b.buyer.tax_id_read && <span className="mono small">{b.buyer.tax_id_read}{b.buyer.branch_no ? ` สาขา ${b.buyer.branch_no}` : ''}</span>}
               {' '}{res.supplier ? <Pill tone="n">พบ {res.supplier.code}</Pill> : <Pill tone="c">ไม่พบในแฟ้มลูกค้า — เลือกหรือเพิ่มลูกค้าในเอกสาร</Pill>}</td></tr>
+            : none ? <tr><th>ผู้ออกเอกสาร</th><td>{b.supplier.name || '—'} {b.supplier.tax_id && <span className="mono small">{b.supplier.tax_id}</span>}</td></tr>
             : <tr><th>ผู้จำหน่าย</th><td>{b.supplier.name} {b.supplier.tax_id && <span className="mono small">{b.supplier.tax_id}{b.supplier.branch_no ? ` สาขา ${b.supplier.branch_no}` : ''}</span>}
               {' '}{res.supplier ? <Pill tone="n">พบ {res.supplier.code}</Pill> : <Pill tone="c">ไม่พบในแฟ้มผู้จำหน่าย — ใส่เป็นชื่อหรือเลือกเอง</Pill>}</td></tr>}
             {res.buyer_check && res.buyer_check.status !== 'none' && <tr><th>{cust ? 'ผู้ขาย' : 'ผู้ซื้อ'}</th><td>{res.buyer_check.status === 'same' || res.buyer_check.status === 'misread'

@@ -21,6 +21,7 @@ import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { ImportExcelButton } from '../../components/ImportExcelButton';
+import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { JobSelect, followHeadJob, showJob, useJobs } from '../../components/JobSelect';
 import { confirmLeave } from '../../unsaved';
 
@@ -133,6 +134,15 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   /** Job เฉพาะเบิกใช้ภายใน (OU) — เจ้าของ 17/11/2569 */
   const jobOn = cls === 'OU' && showJob(jobs.enabled, h?.project_id, ...lines.map((l) => l.project_id));
   const set = (p: Partial<Head>) => { setH((x) => ({ ...x!, ...p })); setDirty(true); };
+  /** ใบเบิก/ใบโอนย้าย/ใบตรวจนับ → ร่าง (HANDOFF 171): วันที่ อ้างอิง · บรรทัดสินค้า (รหัสที่แนะนำจากประวัติ/ชื่อสินค้าที่มีสต๊อก) จำนวน · ปรับต้นทุน = จำนวนเงิน */
+  const applyBill = (r: AiBillResult) => {
+    set({ ...(r.bill.doc_date ? { doc_date: r.bill.doc_date } : {}), ...(r.bill.doc_no ? { your_ref: r.bill.doc_no.slice(0, 60) } : {}) });
+    setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l): Line => ({ ...blank(h?.project_id), item_id: l.item?.id ?? null, item_code: l.item?.code ?? '', item_name: l.item?.name_th ?? null, description: l.description,
+      unit_id: l.item?.base_unit_id ?? null, qty: K.cls === 'CA' ? '' : l.qty, amount: K.cls === 'CA' ? l.amount : '' }))]);
+    setDirty(true);
+    const missing = r.lines.filter((l) => !l.item).length;
+    return void toast(`เติมจากเอกสารแล้ว${missing ? ` — เลือกรหัสสินค้าอีก ${missing} บรรทัด` : ''} · ตรวจจำนวน/คลังก่อนบันทึก`);
+  };
   const setLine = (key: number, p: Partial<Line>) => { setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...p, cost_amount: null, cost_unit: null } : l))); setDirty(true); };
   const pickItem = (key: number, r: ItemHit | null) => {
     if (!r) return setLine(key, { item_id: null, item_code: '', description: '' });
@@ -205,6 +215,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
         <button disabled={!id || cancelled || !(cur.data?.editable || cur.data?.from_count) || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร <kbd>Alt+C</kbd></button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={MENU} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         {cls === 'JU' && !ro && <button disabled={!used.some((l) => d(l.qty || 0).gt(0))} onClick={() => setProdCost(true)} title="รวมต้นทุนจากการเบิกวัตถุดิบและค่าแรง/โสหุ้ย แล้วกระจายเป็นทุนต่อหน่วยของสินค้าที่รับเข้า (บทที่ 26)">🏭 ต้นทุนการผลิต</button>}
+        {!ro && h && <AiBillButton target={K.path} party="none" onApply={applyBill} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
         <ImportExcelButton cls={K.cls} menu={'IC.TRN'} label={K.label} />
       </div>

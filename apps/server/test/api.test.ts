@@ -4220,6 +4220,17 @@ describe('Buddy Account API (PGlite)', () => {
     expect([re2.status, re2.body.side, re2.body.supplier?.code]).toEqual([200, 'purchase', 'S-AI1']);
     // ใบสั่งซื้อ/ใบลดหนี้ผู้จำหน่าย = ฝั่งซื้อเหมือนซื้อเงินเชื่อ
     for (const target of ['purchase-orders', 'ap-credit-notes']) expect((await read(target)).body).toMatchObject({ side: 'purchase', supplier: { code: 'S-AI1' } });
+    // HANDOFF 171 (เจ้าของ 22/11/2569 ข้อ 1–5): รับ/จ่ายชำระหนี้ = คู่ค้าตามเอกสาร ไม่แนะนำรหัส · ธนาคาร/คลัง/เงินสดย่อย/ใบสำคัญ = ไม่หาคู่ค้า พรอมต์เอกสารทั่วไป
+    const n1 = sent.length;
+    expect((await read('ap-payments')).body).toMatchObject({ side: 'purchase', supplier: { code: 'S-AI1' } });
+    expect(sent.length - n1).toBe(1);   // บรรทัดเป็นข้อความ — ไม่เรียกแนะนำรหัส
+    for (const target of ['bank-deposits', 'stock-adjustments', 'petty-payments', 'journal']) {
+      const rr = await read(target);
+      expect([target, rr.status, rr.body.side, rr.body.supplier, rr.body.supplier_check.status]).toEqual([target, 200, 'other', null, 'none']);
+      expect(String([...sent].reverse().find((x) => !String(x.system).includes('เลือกรหัส'))!.system)).toContain('สลิปฝาก/ถอน/โอนเงิน');
+    }
+    expect((await read('journal')).body.seller_check).toHaveProperty('status');   // ใบสำคัญแยกบิลซื้อ/ขายจากผู้ขายในเอกสาร
+    expect((await read('no-such-target')).status).toBe(400);
     await sql`DELETE FROM md_customer WHERE id = ${cust}`.execute(database.db);
     // สิทธิ์: พนักงานระดับ 0 ตั้งค่า/ดูการใช้ไม่ได้ แต่เห็นสถานะ · กุญแจ API ของระบบอื่นใช้หน้าตั้งค่าไม่ได้
     const admin = cookie;

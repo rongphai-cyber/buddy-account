@@ -1,7 +1,7 @@
 import type { Decimal } from 'decimal.js';
 import { d, type MoneyInput } from './money.js';
 import { parseInput } from './money.js';
-import { CASH_KINDS, TRADE_KINDS } from './doc-calc.js';
+import { BANK_KINDS, CASH_KINDS, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from './doc-calc.js';
 import { checkTaxId } from './taxid.js';
 import { WHT_INCOME_TYPES, wht50FormOf } from './forms/wht50.js';
 
@@ -42,13 +42,20 @@ export function aiRequestOptions(model: AiModelId) {
  * lines: item = รหัสสินค้า/บริการ (ซื้อใช้รหัสค่าใช้จ่ายได้) · expense = รหัสค่าใช้จ่าย (OE) · income = รหัสรายได้ (OI) · text = คำอธิบาย + จำนวนเงิน (มัดจำ AI/AE)
  * service = เฉพาะรหัสค่าใช้จ่าย (OE — ชื่อเดิม)
  */
-export interface AiBillTarget { path: string; cls: string; menu: string; party: 'customer' | 'supplier'; lines: 'item' | 'expense' | 'income' | 'text'; service: boolean }
+export interface AiBillTarget { path: string; cls: string; menu: string; party: 'customer' | 'supplier' | 'none'; lines: 'item' | 'expense' | 'income' | 'text' | 'stock'; service: boolean }
 export const AI_BILL_TARGETS: AiBillTarget[] = [
   ...TRADE_KINDS.map((k) => ({ path: k.path, cls: k.cls, menu: k.menu, party: k.party, lines: 'item' as const, service: false })),
   ...CASH_KINDS.map((k) => ({ path: k.path, cls: k.cls, menu: k.menu, party: k.party, lines: k.lines === 'text' ? 'text' as const : k.itemType === '4' ? 'income' as const : 'expense' as const, service: k.cls === 'OE' })),
+  // เจ้าของ 22/11/2569 ข้อ 1–5: ใบเสร็จ/ใบแจ้งโอนของคู่ค้า → รับ/จ่ายชำระหนี้ · สลิปธนาคาร · ใบเบิก/ใบโอน/ใบตรวจนับ → เอกสารคลัง · ใบเสร็จ → จ่ายเงินสดย่อย · บิล → ใบสำคัญ
+  ...SETTLE_KINDS.map((k) => ({ path: k.path, cls: k.cls, menu: k.menu, party: k.party, lines: 'text' as const, service: false })),
+  ...BANK_KINDS.map((k) => ({ path: k.path, cls: k.cls, menu: 'FI.BK.TX', party: 'none' as const, lines: 'text' as const, service: false })),
+  ...STOCK_KINDS.map((k) => ({ path: k.path, cls: k.cls, menu: 'IC.TRN', party: 'none' as const, lines: 'stock' as const, service: false })),
+  // เงินสดย่อย: แนะนำรหัสค่าใช้จ่าย → บัญชีค่าใช้จ่ายของรหัสนั้น (หน้าจอเติมเลขที่บัญชี)
+  { path: 'petty-payments', cls: 'DP', menu: 'GL.PC', party: 'none', lines: 'expense', service: true },
+  { path: 'journal', cls: 'JV', menu: 'GL.JNL', party: 'none', lines: 'item', service: false },
 ];
 /** ฝั่งของกระดาษที่อ่าน: ขาย = ลูกค้าเป็นผู้ซื้อในเอกสาร · ซื้อ = ผู้จำหน่ายเป็นผู้ขาย */
-export const aiBillSide = (t: Pick<AiBillTarget, 'party'>): 'sale' | 'purchase' => (t.party === 'customer' ? 'sale' : 'purchase');
+export const aiBillSide = (t: Pick<AiBillTarget, 'party'>): 'sale' | 'purchase' | 'other' => (t.party === 'customer' ? 'sale' : t.party === 'none' ? 'other' : 'purchase');
 
 type Price = { input: number; output: number; cacheRead: number };
 /**
@@ -150,6 +157,19 @@ export const BILL_SYSTEM_PROMPT_SALES = `คุณอ่านเอกสาร
 - wht_amount ภาษีหัก ณ ที่จ่ายที่พิมพ์ในเอกสาร เป็นจำนวนเงิน · ไม่มี = ""
 - ถ้าไม่ใช่เอกสารซื้อขาย ให้ doc_kind = "other" และอธิบายใน notes`;
 
+/**
+ * อ่านกระดาษทั่วไปที่ไม่มีคู่ค้า (HANDOFF 171): สลิปฝาก/ถอน/โอน ใบแจ้งดอกเบี้ย/ค่าธรรมเนียม ใบเบิกสินค้า ใบโอนย้าย ใบตรวจนับ ใบเสร็จค่าใช้จ่ายย่อย บิลที่จะลงใบสำคัญ
+ * โครงข้อมูลเดียวกับบิล — ใช้ doc_no doc_date lines total ตามที่มี · ผู้ใช้ตรวจและเลือกบัญชี/สินค้า/บัญชีเงินฝากเองก่อนบันทึก
+ */
+export const BILL_SYSTEM_PROMPT_OTHER = `คุณอ่านเอกสารของกิจการในประเทศไทย (สลิปฝาก/ถอน/โอนเงิน ใบแจ้งดอกเบี้ยหรือค่าธรรมเนียมธนาคาร ใบเบิกสินค้า ใบโอนย้ายสินค้า ใบตรวจนับ ใบเสร็จรับเงิน ใบกำกับภาษี) จากรูปหรือ PDF แล้วตอบเป็นข้อมูลตามโครงที่กำหนด
+ข้อมูลนี้จะถูกเติมเป็นร่างเอกสารในโปรแกรมบัญชี ผู้ใช้จะตรวจก่อนบันทึก จึงต้องตรงกับที่พิมพ์หรือเขียนในเอกสารจริง ห้ามเดา:
+- อ่านไม่ออกหรือไม่มีในเอกสาร ให้ตอบ "" (ข้อความว่าง) และบอกเหตุใน notes (ภาษาไทยสั้น ๆ)
+- supplier คือผู้ขาย/ผู้ออกเอกสาร/ธนาคาร (ถ้ามี) · buyer คือผู้ซื้อ/ผู้รับเอกสาร (ถ้ามี) · tax_id เลข 13 หลักไม่มีขีด · branch_no 5 หลัก
+- doc_no เลขที่เอกสาร/เลขที่อ้างอิงของรายการ · doc_date เป็นปี ค.ศ. รูปแบบ YYYY-MM-DD (ปี พ.ศ. ลบ 543)
+- lines คือรายการตามลำดับในเอกสาร (สินค้า/รายการ/คำอธิบาย) · qty จำนวน · amount ยอดของบรรทัด · สลิปธนาคารที่มีรายการเดียวให้มีหนึ่งบรรทัด (คำอธิบาย = ประเภทรายการ เช่น ฝากเงินสด โอนเงิน ดอกเบี้ย)
+- จำนวนเงินและจำนวนเป็นตัวเลขทศนิยมแบบข้อความ ไม่มีจุลภาคหรือสกุลเงิน · total ยอดรวมทั้งสิ้นตามที่พิมพ์ · ไม่มี VAT = price_type no_vat
+- ถ้าไม่ใช่เอกสารทางการเงินหรือรายการสินค้า ให้ doc_kind = "other" และอธิบายใน notes`;
+
 /** คำตอบของ AI ตาม BILL_SCHEMA: ช่องว่าง = "" (ยังรับ null/ไม่มีช่องได้ — normalizeBill ถือว่าเหมือนกัน) */
 type Txt = string | null | undefined;
 export interface RawBill {
@@ -189,9 +209,9 @@ const money = (v: Txt) => { const t = txt(v); if (!t) return null; const x = par
 const fx = (v: Decimal | null) => (v === null ? null : v.toFixed(2));
 
 /** ตรวจ/แปลงผลจาก AI → ร่างเอกสาร + ข้อสังเกตที่ผู้ใช้ต้องตรวจ (ภาษาไทย) */
-export function normalizeBill(raw: RawBill, side: 'sale' | 'purchase' = 'purchase'): BillDraft {
+export function normalizeBill(raw: RawBill, side: 'sale' | 'purchase' | 'other' = 'purchase'): BillDraft {
   const w: string[] = [...(raw.notes ?? []).filter(Boolean).map((n) => `AI: ${n}`)];
-  if (raw.doc_kind === 'other') w.push('ไม่แน่ใจว่าเป็นเอกสารซื้อขาย — ตรวจแฟ้มที่เลือก');
+  if (raw.doc_kind === 'other' && side !== 'other') w.push('ไม่แน่ใจว่าเป็นเอกสารซื้อขาย — ตรวจแฟ้มที่เลือก');
   if (raw.doc_kind === 'abbreviated_tax_invoice' && side === 'purchase') w.push('เป็นใบกำกับภาษีอย่างย่อ — ใช้ขอคืนภาษีซื้อไม่ได้');
   const taxRead = txt(raw.supplier?.tax_id), tax = taxRead.replace(/\D/g, '');
   if (taxRead && tax.length !== 13 && side === 'purchase') w.push(`เลขผู้เสียภาษีผู้ขาย "${taxRead}" ไม่ครบ 13 หลัก`);
@@ -225,7 +245,7 @@ export function normalizeBill(raw: RawBill, side: 'sale' | 'purchase' = 'purchas
     const calc = sumLines.minus(disc ?? 0).plus(pt === '2' ? (vat ?? 0) : 0);
     const near = (x: Decimal) => x.minus(total).abs().lte(0.05);
     if (!near(calc) && !(wht && near(calc.minus(wht)))) w.push(`ยอดรายการรวม ${sumLines.toFixed(2)} ไม่สอดคล้องกับยอดรวมทั้งสิ้น ${total.toFixed(2)} ในเอกสาร — ตรวจรายการ/ส่วนลด${wht ? '/ภาษีหัก ณ ที่จ่าย' : ''}`);
-  } else w.push('ไม่พบยอดรวมทั้งสิ้นในเอกสาร');
+  } else if (side !== 'other') w.push('ไม่พบยอดรวมทั้งสิ้นในเอกสาร');
   // ฐานภาษีหัก ณ ที่จ่าย = ยอดก่อน VAT (subtotal · ไม่มี = รายการ − ส่วนลด − VAT ถ้าราคารวม VAT)
   let whtOut: BillDraft['wht'] = null;
   if (wht) {
@@ -312,7 +332,8 @@ export const SUGGEST_SYSTEM_PROMPT = `คุณช่วยพนักงาน
 - reason ภาษาไทยสั้น ๆ ไม่เกิน 1 ประโยค`;
 
 /** เอกสารที่จะบันทึก (บอก AI ว่าเลือกรหัสชนิดใดได้) */
-const TARGET_TH: Record<'purchase' | 'expense' | 'sale' | 'income', string> = {
+const TARGET_TH: Record<'purchase' | 'expense' | 'sale' | 'income' | 'stock', string> = {
+  stock: 'เอกสารคลังสินค้า (เบิก/โอน/ปรับปรุง — เลือกได้เฉพาะรหัสสินค้าที่มีสต๊อก)',
   purchase: 'ซื้อเงินเชื่อ/เงินสด (ใช้ได้ทั้งรหัสสินค้าและรหัสค่าใช้จ่าย)',
   expense: 'บันทึกค่าใช้จ่ายอื่น ๆ (ใช้ได้เฉพาะรหัสค่าใช้จ่าย)',
   sale: 'เอกสารขาย ใบสั่งขาย ใบเสนอราคา (เลือกได้เฉพาะรหัสสินค้า/บริการที่ขาย — ไม่มีรหัสค่าใช้จ่าย)',
@@ -320,7 +341,7 @@ const TARGET_TH: Record<'purchase' | 'expense' | 'sale' | 'income', string> = {
 };
 export interface SuggestCandidate { code: string; name: string; kind: 'item' | 'expense'; account?: string | null; history?: number; sameSupplier?: number }
 /** ข้อความที่ส่งให้ AI (ข้อมูลของบริษัทนี้เท่านั้น) */
-export function suggestPrompt(x: { businessType?: string | null; guidance?: string | null; target: 'purchase' | 'expense' | 'sale' | 'income'; supplierName: string; supplierKnown: boolean;
+export function suggestPrompt(x: { businessType?: string | null; guidance?: string | null; target: 'purchase' | 'expense' | 'sale' | 'income' | 'stock'; supplierName: string; supplierKnown: boolean;
   lines: Array<{ index: number; description: string; amount: string; candidates: SuggestCandidate[] }>; expenseCodes: SuggestCandidate[] }) {
   const biz = x.businessType ? AI_BUSINESS_TYPES[x.businessType] ?? x.businessType : 'ไม่ระบุ';
   return [
@@ -329,7 +350,7 @@ export function suggestPrompt(x: { businessType?: string | null; guidance?: stri
     `เอกสารที่จะบันทึก: ${TARGET_TH[x.target]}`,
     x.target === 'sale' || x.target === 'income' ? `ลูกค้า: ${x.supplierName || 'ไม่ทราบ'}${x.supplierKnown ? ' (มีในแฟ้มลูกค้า)' : ' (ไม่พบในแฟ้ม)'} — same_supplier = เคยขายรหัสนี้ให้ลูกค้ารายนี้`
       : `ผู้จำหน่าย: ${x.supplierName || 'ไม่ทราบ'}${x.supplierKnown ? ' (มีในแฟ้มผู้จำหน่าย)' : ' (ไม่พบในแฟ้ม)'}`,
-    `expense_codes (${x.target === 'income' ? 'รหัสรายได้อื่นทั้งหมดที่ใช้ได้' : x.target === 'sale' ? 'ไม่ใช้ — เอกสารขายเลือกได้เฉพาะ candidates' : 'รหัสค่าใช้จ่ายทั้งหมดที่ใช้ได้'}): ${JSON.stringify(x.expenseCodes.map((c) => ({ code: c.code, name: c.name, account: c.account ?? undefined })))}`,
+    `expense_codes (${x.target === 'income' ? 'รหัสรายได้อื่นทั้งหมดที่ใช้ได้' : x.target === 'sale' || x.target === 'stock' ? 'ไม่ใช้ — เอกสารขายเลือกได้เฉพาะ candidates' : 'รหัสค่าใช้จ่ายทั้งหมดที่ใช้ได้'}): ${JSON.stringify(x.expenseCodes.map((c) => ({ code: c.code, name: c.name, account: c.account ?? undefined })))}`,
     `lines: ${JSON.stringify(x.lines.map((l) => ({ index: l.index, description: l.description, amount: l.amount, candidates: l.candidates.map((c) => ({ code: c.code, name: c.name, kind: c.kind, account: c.account ?? undefined, history: c.history || undefined, same_supplier: c.sameSupplier || undefined })) })))}`,
   ].join('\n');
 }
