@@ -8,7 +8,8 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { Confirm, DateText, ErrorBox, Field, KeyHints, Money, PageHead, Pill, toast, useHotkeys } from '../../ui';
 
-const IMPORT_KINDS = IMPORT_DOC_KINDS;
+/** ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อไม่อยู่ในรายการ (ไม่ลงบัญชี — เจ้าของ 22/11/2569) */
+const IMPORT_KINDS = IMPORT_DOC_KINDS.filter((k) => !TRADE_KINDS.find((t) => t.path === k.path)?.order);
 
 type DocRow = { doc_no_source?: 'file' | 'auto'; pay_source?: 'main' | 'sheet' | 'cash'; cash_remainder?: string | null; cash_name?: string | null; file_vat?: string | null; file_net?: string | null; check?: 'ok' | 'diff' | null; vat_lines?: Record<'0' | '1' | '2', number>;
   cash_amount?: string | null; other_amount?: string | null; payments?: number; ref: string; row: number; date: string; party_code: string; party_name: string | null; party_new: boolean; lines: number; new_items: number; amount: string | null; vat_amount: string | null; wht_amount: string | null; net_amount: string | null; doc_no: string | null; warnings: string[] };
