@@ -10,6 +10,7 @@ import { NumInput, Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Moda
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { DocLink } from '../../components/DocLink';
 import { AddWrap } from '../../components/AddWrap';
+import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { confirmLeave, useUnsaved } from '../../unsaved';
 
 interface Group { id: string; code: string; name_th: string; name_en: string | null; asset_account_id: string | null; depr_expense_account_id: string | null; accum_depr_account_id: string | null; asset_count: number }
@@ -40,7 +41,7 @@ export function AssetsPage() {
   return (
     <div className="page" data-tone="gl">
       <PageHead eyebrow="บัญชี › ทรัพย์สินถาวร" title="รายการทรัพย์สิน" lead="ทะเบียนทรัพย์สินและค่าเสื่อมราคา — โปรแกรมคิดค่าเสื่อมรายวันตามวิธีของ Express (เส้นตรง/ลดยอด) การซื้อ/ขายทรัพย์สินลงสมุดรายวันเอง"
-        actions={can('add') && <button className="primary" onClick={() => nav('/fa/assets/new')}>+ เพิ่มทรัพย์สิน <kbd>Ins</kbd></button>} />
+        actions={<>{can('add') && <button className="primary" onClick={() => nav('/fa/assets/new')}>+ เพิ่มทรัพย์สิน <kbd>Ins</kbd></button>}<ImportExcelButton master="fa-assets" menu="FA.ASSET" label="ทรัพย์สิน" /></>} />
       <div className="toolbar">
         <input type="search" autoFocus placeholder="ค้นหารหัส ชื่อ หรือเลขทะเบียน" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" />
         <select value={status} onChange={(e) => setStatus(e.target.value as 'A')} aria-label="สถานะ"><option value="A">ใช้งานอยู่</option><option value="S">ขาย/ตัดจำหน่ายแล้ว</option><option value="all">ทั้งหมด</option></select>
@@ -152,6 +153,7 @@ export function AssetFormPage() {
           : <button disabled={!can('cancel')} onClick={() => setAskUnsell(true)}>ยกเลิกการขาย</button>}
         <button disabled={!id || !can('delete')} onClick={() => setAskDel(true)}>ลบ</button>
         <button onClick={() => nav('/fa/assets')}>รายการ <kbd>Esc</kbd></button>
+        <ImportExcelButton master="fa-assets" menu="FA.ASSET" label="ทรัพย์สิน" />
       </div>
       <ErrorBox error={err ?? cur.error} />
       {f && <div onKeyDown={navKey}>

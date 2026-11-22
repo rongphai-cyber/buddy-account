@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { docImportKindOf, formatTaxId, IMPORT_DOC_KINDS, type ImportMapping } from '@buddy/core';
+import { docImportKindOf, masterImportKindOf, formatTaxId, IMPORT_DOC_KINDS, type ImportMapping } from '@buddy/core';
 import { DocImportPage } from './DocImport';
+import { MasterImportPage } from './MasterImport';
 import { CodeSuggestPanel, ImportMapPanel, useImportMap } from '../../components/ImportMapping';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
@@ -35,7 +36,9 @@ export const readBase64 = (f: File) => new Promise<string>((ok, bad) => { const 
 export function TradeImportPage() {
   // เอกสารอื่นที่ลงบัญชี (รับ/จ่ายชำระ ธนาคาร คลัง เงินสดย่อย — HANDOFF 171): หน้านำเข้าเอกสาร (ปุ่ม นำเข้า Excel บนหน้าเอกสารนั้น)
   const [sp] = useSearchParams();
-  return docImportKindOf(sp.get('kind') ?? '') ? <DocImportPage /> : <TradeImportInner />;
+  const kind = sp.get('kind') ?? '';
+  // ข้อมูลหลัก (ลูกค้า ผู้จำหน่าย สินค้า บริการ ทรัพย์สิน — HANDOFF 173): เพิ่มใหม่ + แก้เมื่อติ๊ก
+  return masterImportKindOf(kind) ? <MasterImportPage /> : docImportKindOf(kind) ? <DocImportPage /> : <TradeImportInner />;
 }
 function TradeImportInner() {
   const can = useCan('OT.IMPTRADE');

@@ -5881,6 +5881,101 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const oe = (await call('POST', '/api/v1/trade-import/other-income-docs', { file_name: 'รายได้.xlsx', data: oiFile, doc_type_id: oiType, price_type: '0', vat_rate: 0 })).body;
     expect(oe.errors[0].message).toMatch(new RegExp(`${item.code} ไม่ใช่รหัสรายได้อื่น — ใช้รหัสจาก ขาย › รายละเอียดรายได้อื่น ๆ`));
   });
+  it('HANDOFF 173: master-data Excel import — add new, skip existing, update only when ticked (blank keeps value), screen save + activity log, all-or-nothing, fixed assets with posted depreciation, other company', async () => {
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const tpl = async (path: string) => readSheets(`import-${path}.xlsx`, (await app.inject({ method: 'GET', url: `/api/v1/master-import/${path}/template`, headers: { cookie } })).rawPayload);
+    const imp = (path: string, rows: string[][], extra: object = {}) => call('POST', `/api/v1/master-import/${path}`, { file_name: `${path}.xlsx`, data: buildXlsx([{ name: 'นำเข้า', rows }]).toString('base64'), ...extra });
+    // แบบฟอร์ม: ทุกช่องของหน้าจอ · * = ต้องมีเมื่อเพิ่มใหม่ · แผ่นคำอธิบาย
+    const ct = await tpl('customers');
+    expect(ct.map((x) => x.name)).toEqual(['นำเข้า', 'คำอธิบาย']);
+    expect(ct[0]!.rows[0]).toEqual(expect.arrayContaining(['รหัสลูกค้า', 'ชื่อลูกค้า *', 'เลขผู้เสียภาษี', 'บัญชีลูกหนี้', 'พนักงานขาย', 'วงเงินเครดิต', 'ระดับราคา']));
+    expect((await tpl('items'))[0]!.rows[0]).toEqual(expect.arrayContaining(['ชื่อสินค้า *', 'หน่วยนับ *', 'กลุ่มบัญชีสินค้า', 'ราคาขาย 1']));
+    expect((await tpl('services'))[0]!.rows[0]).toEqual(expect.arrayContaining(['ชื่อบริการ *', 'บัญชีรายได้ *']));
+    expect((await tpl('fa-assets'))[0]!.rows[0]).toEqual(expect.arrayContaining(['ชื่อทรัพย์สิน *', 'กลุ่มบัญชีทรัพย์สิน *', 'ราคาทุน *', 'วันที่เริ่มคิดค่าเสื่อม *']));
+    expect((await app.inject({ method: 'GET', url: '/api/v1/master-import/nope/template', headers: { cookie } })).statusCode).toBe(404);
+
+    // ลูกค้า: รหัสใหม่ = เพิ่ม · ว่าง = ออกรหัสให้ · รหัสที่มีแล้ว = ข้าม · ผิด = บอกแถว
+    const slm = (await sql<{ code: string }>`SELECT code FROM md_salesperson WHERE company_id = ${co} AND deleted_at IS NULL ORDER BY code LIMIT 1`.execute(database.db)).rows[0]?.code ?? '';
+    const H = ['รหัสลูกค้า', 'ชื่อลูกค้า *', 'เลขผู้เสียภาษี', 'โทรศัพท์', 'เครดิต (วัน)', 'พนักงานขาย', 'บัญชีลูกหนี้'];
+    const cA = tid(1731), cB = tid(1732);
+    const rows1 = [H, ['MI-C1', 'ลูกค้านำเข้า หนึ่ง', cA, '02-111-1111', '30', slm, ''], ['', 'ลูกค้านำเข้า สอง', cB, '', '', '', ''], ['IMP-C1', 'ชื่อใหม่ของ IMP-C1', '', '099', '', '', '']];
+    const ck = (await imp('customers', rows1)).body;
+    expect(ck.errors).toEqual([]);
+    expect(ck.rows.map((r: { row: number; action: string }) => [r.row, r.action])).toEqual([[2, 'add'], [3, 'add'], [4, 'skip']]);
+    expect(ck.rows[1].code).toMatch(/\S/);   // ออกรหัสให้
+    const cnt = async (code: string) => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM md_customer WHERE company_id = ${co} AND code = ${code} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n;
+    expect(await cnt('MI-C1')).toBe(0);   // ตรวจ = ไม่บันทึก
+    // ผิดแถวเดียว = ไม่บันทึกเลย: เลขผู้เสียภาษีผิด · บัญชีที่ไม่มี · ชื่อว่าง (รายใหม่)
+    const bad = (await imp('customers', [H, ['MI-C1', 'ลูกค้านำเข้า หนึ่ง', cA, '', '', '', ''], ['MI-C9', 'x', '0105537095904', '', '', '', ''], ['MI-C8', 'y', '', '', '', '', 'NOSUCH-99'], ['MI-C7', '', '', '', '', '', '']])).body;
+    expect(bad.errors.map((e: { row: number }) => e.row)).toEqual([3, 4, 5]);
+    expect(bad.errors[1].message).toMatch(/ไม่พบเลขที่บัญชี "NOSUCH-99" \(คอลัมน์ "บัญชีลูกหนี้"\)/);
+    expect(bad.errors[2].message).toBe('ไม่มี"ชื่อลูกค้า" — ต้องมีเมื่อเพิ่มลูกค้าใหม่');
+    expect((await imp('customers', [H, ['MI-C1', 'ลูกค้านำเข้า หนึ่ง', cA, '', '', '', ''], ['MI-C9', 'x', '0105537095904', '', '', '', '']], { commit: true })).status).toBe(400);
+    expect(await cnt('MI-C1')).toBe(0);
+    const cm = (await imp('customers', rows1, { commit: true })).body;
+    expect([cm.errors, cm.added, cm.updated, cm.skipped]).toEqual([[], 2, 0, 1]);
+    const c1 = (await sql<{ id: string; phone: string; credit_days: number; tax_id: string; name: string }>`SELECT id, phone, credit_days, tax_id, name FROM md_customer WHERE company_id = ${co} AND code = 'MI-C1' AND deleted_at IS NULL`.execute(database.db)).rows[0]!;
+    expect([c1.phone, c1.credit_days, c1.tax_id]).toEqual(['02-111-1111', 30, cA]);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND table_name = 'md_customer' AND action = 'ADD' AND doc_no = 'MI-C1'`.execute(database.db)).rows[0]!.n).toBe(1);
+    expect((await sql<{ name: string }>`SELECT name FROM md_customer WHERE company_id = ${co} AND code = 'IMP-C1' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.name).not.toBe('ชื่อใหม่ของ IMP-C1');   // ไม่ติ๊ก = ข้าม
+    // แก้เมื่อติ๊ก: เฉพาะช่องที่ใส่ · ช่องว่างคงค่าเดิม · ผู้ติดต่อ (แท็บย่อย) คงเดิม · รหัสไม่เปลี่ยน · log EDIT
+    expect((await call('PUT', `/api/v1/customers/${c1.id}`, { ...(await call('GET', `/api/v1/customers/${c1.id}`)).body, contacts: [{ name: 'คุณติดต่อ', is_primary: true }] })).status).toBe(200);
+    const up = (await imp('customers', [['รหัสลูกค้า', 'ชื่อลูกค้า *', 'โทรศัพท์', 'เครดิต (วัน)'], ['mi-c1', '', '02-222-2222', '']], { update: true, commit: true })).body;
+    expect([up.errors, up.updated, up.rows[0].changed]).toEqual([[], 1, ['โทรศัพท์']]);
+    const c1b = (await call('GET', `/api/v1/customers/${c1.id}`)).body;
+    expect([c1b.code, c1b.name, c1b.phone, c1b.credit_days, c1b.tax_id, c1b.contacts.map((x: { name: string }) => x.name)]).toEqual(['MI-C1', 'ลูกค้านำเข้า หนึ่ง', '02-222-2222', 30, cA, ['คุณติดต่อ']]);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND table_name = 'md_customer' AND action = 'EDIT' AND row_id = ${c1.id}`.execute(database.db)).rows[0]!.n).toBeGreaterThanOrEqual(2);
+
+    // สินค้า/บริการ: หน่วย กลุ่มบัญชี · บริการต้องมีบัญชีรายได้ · รหัสว่าง = ออกตามรูปแบบรหัส
+    const unit = (await sql<{ code: string }>`SELECT code FROM md_unit WHERE company_id = ${co} AND deleted_at IS NULL ORDER BY code LIMIT 1`.execute(database.db)).rows[0]!.code;
+    const it = (await imp('items', [['รหัสสินค้า', 'ชื่อสินค้า *', 'หน่วยนับ *', 'ราคาขาย 1'], ['', 'สินค้านำเข้าข้อมูลหลัก', unit, '120'], ['', 'ไม่มีหน่วย', '', '']])).body;
+    expect(it.rows.map((r: { action: string }) => r.action)).toEqual(['add']);
+    expect(it.errors[0].message).toMatch(/หน่วยนับ/);
+    const rev = (await call('GET', '/api/v1/gl/accounts')).body.find((x: { account_no: string; is_control: boolean }) => !x.is_control && x.account_no.startsWith('4')).account_no;
+    const sv = (await imp('services', [['รหัสบริการ', 'ชื่อบริการ *', 'บัญชีรายได้ *'], ['', 'บริการนำเข้า', rev], ['', 'บริการไม่มีบัญชี', '']])).body;
+    expect(sv.rows.map((r: { action: string }) => r.action)).toEqual(['add']);
+    expect(sv.errors[0].message).toMatch(/บัญชีรายได้/);
+
+    // ทรัพย์สิน: เพิ่ม · คิดค่าเสื่อมลงบัญชีแล้ว = แก้ราคาทุน/วันที่ ทางนำเข้าไม่ได้ (ข้อ 7) · แก้ชื่อได้
+    const grp = (await sql<{ code: string }>`SELECT code FROM md_asset_account_group WHERE company_id = ${co} AND deleted_at IS NULL ORDER BY code LIMIT 1`.execute(database.db)).rows[0]?.code
+      ?? await (async () => {
+        const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ id: string; account_no: string; is_control: boolean }>;
+        const pick = (p: string) => accs.find((x) => !x.is_control && x.account_no.startsWith(p))!.id;
+        const g = await call('POST', '/api/v1/asset-account-groups', { code: 'MIG1', name_th: 'กลุ่มทดสอบนำเข้า', asset_account_id: pick('1'), depr_expense_account_id: pick('5'), accum_depr_account_id: pick('1') });
+        expect(g.status, JSON.stringify(g.body)).toBeLessThan(300);
+        return 'MIG1';
+      })();
+    const AH = ['รหัสทรัพย์สิน', 'ชื่อทรัพย์สิน *', 'กลุ่มบัญชีทรัพย์สิน *', 'วันที่ซื้อ *', 'ราคาทุน *', 'วันที่เริ่มคิดค่าเสื่อม *', 'อายุการใช้งาน (ปี)'];
+    const fa = (await imp('fa-assets', [AH, ['MI-FA1', 'คอมพิวเตอร์นำเข้า', grp, '01/01/2569', '35000', '01/01/2569', '5']], { commit: true })).body;
+    expect([fa.errors, fa.added]).toEqual([[], 1]);
+    const faId = (await sql<{ id: string }>`SELECT id FROM fa_asset WHERE company_id = ${co} AND code = 'MI-FA1' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.id;
+    const per = (await sql<{ id: string }>`SELECT id FROM gl_period WHERE company_id = ${co} AND deleted_at IS NULL ORDER BY start_date LIMIT 1`.execute(database.db)).rows[0]!.id;
+    await sql`INSERT INTO fa_depreciation (company_id, asset_id, period_id, amount) VALUES (${co}, ${faId}, ${per}, 583.33)`.execute(database.db);
+    const fx = (await imp('fa-assets', [AH, ['MI-FA1', 'คอมพิวเตอร์นำเข้า (แก้ชื่อ)', '', '', '36000', '', '']], { update: true })).body;
+    expect(fx.errors[0].message).toMatch(/คิดค่าเสื่อมลงบัญชีแล้ว — แก้ ราคาทุน ทางนำเข้าไม่ได้/);
+    const fs2 = (await imp('fa-assets', [AH, ['MI-FA1', 'คอมพิวเตอร์นำเข้า (แก้ชื่อ)', grp, '01/01/2569', '35000.00', '', '']], { update: true, commit: true })).body;
+    expect([fs2.errors, fs2.updated]).toEqual([[], 1]);   // ค่าเดิม (35000 = 35000.00) ไม่ถือว่าแก้
+    expect((await sql<{ name_th: string; cost: string }>`SELECT name_th, cost::text AS cost FROM fa_asset WHERE id = ${faId}`.execute(database.db)).rows[0]).toEqual({ name_th: 'คอมพิวเตอร์นำเข้า (แก้ชื่อ)', cost: '35000.00' });
+    await sql`DELETE FROM fa_depreciation WHERE asset_id = ${faId}`.execute(database.db);
+
+    // สิทธิ์: ผู้ใช้ที่ไม่มีสิทธิ์นำเข้า = 403
+    cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: 'imp.clerk', password: 'clerkImp123' })).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await imp('customers', rows1)).status).toBe(403);
+    // ข้อ 7.1: บริษัทอื่นใช้บริษัทจาก session เท่านั้น — รหัสของ DEMO = รายใหม่ในบริษัทอื่น ไม่แตะ DEMO · บัญชี/พนักงานขายของ DEMO หาไม่พบ
+    cookie = ''; await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const other = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { id: string }) => c.id !== co);
+    expect(other).toBeTruthy();
+    await call('POST', '/api/v1/auth/select', { company_id: other.id });
+    const xo = (await imp('customers', [H, ['MI-C1', 'แอบแก้ข้ามบริษัท', '', '', '', slm || 'NOPE', '']], { update: true })).body;
+    expect(xo.rows.map((r: { action: string }) => r.action).concat(xo.errors.map(() => 'error'))).not.toContain('update');
+    if (slm) expect(xo.errors[0]?.message ?? '').toMatch(/ไม่พบพนักงานขาย|^$/);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await call('GET', `/api/v1/customers/${c1.id}`)).body.name).toBe('ลูกค้านำเข้า หนึ่ง');
+  });
   it('HANDOFF 171: Excel import for receipts/payments, bank, stock and petty-cash documents — template, check saves nothing, all-or-nothing, posted like the screen, duplicate guard, rights', async () => {
     cookie = '';
     await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });

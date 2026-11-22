@@ -5,6 +5,7 @@ import { d, faAnnual, faEndDate, faRate, faValidate, faYearSchedule, type Decima
 import type { Db } from '../db.js';
 import { badRequest, conflict, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
+import { registerMasterSaver } from './master-registry.js';
 import { checkAccount } from './parties.js';
 import { voidJournal } from './cheques.js';
 import { createJournal } from './gl/journals.js';
@@ -190,6 +191,7 @@ export function faRoutes(app: FastifyInstance, db: Db) {
     await logActivity(db, a, { module: 'FA', action: dup ? 'EDIT' : 'ADD', docNo: code, table: 'fa_asset', rowId: id });
     return { id, code };
   }
+  registerMasterSaver(app, 'asset', { body: assetBody, save: saveAsset as never });   // นำเข้า Excel (HANDOFF 173)
   app.post('/api/v1/fa/assets', async (req) => saveAsset(requireCompany(req), null, parse(assetBody, req.body)));
   app.put('/api/v1/fa/assets/:id', async (req) => saveAsset(requireCompany(req), parse(z.object({ id: uuid }), req.params).id, parse(assetBody, req.body)));
 

@@ -5,6 +5,7 @@ import { applyMaskCase, d, fitsMask, ITEM_KINDS, type ItemKindDef } from '@buddy
 import type { Db } from '../db.js';
 import { badRequest, conflict, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
+import { registerMasterSaver } from './master-registry.js';
 import { companySettings } from '../company-template.js';
 import { checkAccount } from './parties.js';
 import { mainImageId } from './item-images.js';
@@ -338,6 +339,7 @@ function kindRoutes(app: FastifyInstance, db: Db, K: ItemKindDef) {
       return { id: iid };
     });
   }
+  if (K.kind === 'stock' || K.kind === 'service') registerMasterSaver(app, K.kind, { body: itemBody, save: saveItem as never });   // นำเข้า Excel (HANDOFF 173)
   app.post(base, async (req) => saveItem(requireCompany(req), null, parse(itemBody, req.body)));
   app.put(`${base}/:id`, async (req) => saveItem(requireCompany(req), parse(z.object({ id: uuid }), req.params).id, parse(itemBody, req.body)));
 

@@ -8,6 +8,7 @@ import { LkSelect, SearchPick, useLookups } from '../../components/LkSelect';
 import { MasterNotesDialog } from '../../components/Notes';
 import { ItemImagesTab, ItemThumb } from '../../components/ItemImages';
 import { NumInput, Confirm, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, Money, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys, cx } from '../../ui';
+import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 type F = Record<string, string | null>;
@@ -62,7 +63,8 @@ function ItemsPage({ kind }: { kind: ItemKind }) {
   const title = kind === 'income' ? 'รายละเอียดรายได้อื่น ๆ' : kind === 'expense' ? 'รายละเอียดค่าใช้จ่ายอื่น ๆ' : `รายละเอียด${K.label}`;
   return (
     <div className="page" data-tone={TONE[kind]}>
-      <PageHead eyebrow={`${EYEBROW[kind]} › ${title}`} title={title} lead={LEADS[kind]} />
+      <PageHead eyebrow={`${EYEBROW[kind]} › ${title}`} title={title} lead={LEADS[kind]}
+        actions={kind === 'stock' || kind === 'service' ? <ImportExcelButton master={kind === 'stock' ? 'items' : 'services'} menu={K.menu} label={K.label} /> : undefined} />
       <div className="toolbar">
         <input type="search" autoFocus placeholder="ค้นหารหัส ชื่อ หรือบาร์โค้ด" value={q} onChange={(e) => { setQ(e.target.value); setLimit(200); }} style={{ minWidth: 300 }} aria-label={`ค้นหา${K.label}`} />
         <LkSelect table="22" rows={lk.data?.['22']} value={cat} onChange={(v) => { setCat(v); setLimit(200); }} blank="ทุกหมวด" aria-label="หมวดสินค้า" />

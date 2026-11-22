@@ -11,6 +11,7 @@ import { AddressFields } from '../../components/AddressFields';
 import { Confirm, cx, DateText, ErrorBox, Field, KeyHints, Modal, Money, MoneyInput, navKey, PageHead, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { AddWrap } from '../../components/AddWrap';
+import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { PrintJob } from '../../printFrame';
 
 /* ---------------------------------------------------------------- ส่วนร่วม */
@@ -41,7 +42,7 @@ function PartyList({ kind, eyebrow, title, lead, menu, Form: FormC }: { kind: 'c
   return (
     <div className="page" data-tone={kind === 'customers' ? 'sales' : 'purchase'}>
       <PageHead eyebrow={eyebrow} title={title} lead={lead}
-        actions={<>{can('print') && <button onClick={() => setLabels(true)} title="พิมพ์จ่าหน้าซอง/สติ๊กเกอร์ ตามรายการที่ค้นหา">🖨 จ่าหน้าซอง/สติ๊กเกอร์</button>}</>} />
+        actions={<>{can('print') && <button onClick={() => setLabels(true)} title="พิมพ์จ่าหน้าซอง/สติ๊กเกอร์ ตามรายการที่ค้นหา">🖨 จ่าหน้าซอง/สติ๊กเกอร์</button>}<ImportExcelButton master={kind} menu={menu} label={kind === 'customers' ? 'ลูกค้า' : 'ผู้จำหน่าย'} /></>} />
       {labels && <LabelPrint kind={kind} q={q} status={status} onClose={() => setLabels(false)} />}
       <div className="toolbar">
         <input type="search" autoFocus placeholder={`ค้นหารหัส ชื่อ เลขผู้เสียภาษี โทรศัพท์ ผู้ติดต่อ`} value={q} onChange={(e) => { setQ(e.target.value); setLimit(200); }} style={{ minWidth: 320 }} aria-label={`ค้นหา${who}`} />

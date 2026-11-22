@@ -5,6 +5,7 @@ import { checkTaxId, d, ZERO, addMonths, nextCode } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, conflict, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
+import { registerMasterSaver } from './master-registry.js';
 import { companySettings } from '../company-template.js';
 import { fiscalYearOf } from './gl/balances.js';
 import { addrShape, ADDR_COLS } from '../address.js';
@@ -253,6 +254,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
       return { id: cid, warnings };
     });
   }
+  registerMasterSaver(app, 'customer', { body: customerBody, save: saveCustomer as never });   // นำเข้า Excel (HANDOFF 173)
   app.post('/api/v1/customers', async (req) => saveCustomer(requireCompany(req), null, parse(customerBody, req.body)));
   app.put('/api/v1/customers/:id', async (req) => saveCustomer(requireCompany(req), parse(z.object({ id: uuid }), req.params).id, parse(customerBody, req.body)));
   app.delete('/api/v1/customers/:id', async (req) => {
@@ -354,6 +356,7 @@ export function partyRoutes(app: FastifyInstance, db: Db) {
       return { id: sid, warnings };
     });
   }
+  registerMasterSaver(app, 'supplier', { body: supplierBody, save: saveSupplier as never });
   app.post('/api/v1/suppliers', async (req) => saveSupplier(requireCompany(req), null, parse(supplierBody, req.body)));
   /** เพิ่มสาขาให้ผู้จำหน่ายรายเดิม (หน้าต่างอ่านบิล: เลขผู้เสียภาษีเดียวกันคนละสาขา — เจ้าของ 19/11/2569) */
   app.post('/api/v1/suppliers/:id/branches', async (req) => {
