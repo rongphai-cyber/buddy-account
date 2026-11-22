@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { CASH_KINDS, computeDoc, d, EXPENSE_IMPORT_COLUMNS, formatDate, IMPORT_COLUMNS, importColumnsFor, importHeaderText, importNeedLabel, mapExpenseImport, mapImport, mapPaymentImport, missingCodeRows, parseCsv,
+import { CASH_KINDS, cashImportColumnsFor, computeDoc, d, EXPENSE_IMPORT_COLUMNS, formatDate, IMPORT_COLUMNS, importColumnsFor, importHeaderText, importNeedLabel, mapExpenseImport, mapImport, mapPaymentImport, missingCodeRows, parseCsv,
   PAYMENT_IMPORT_COLUMNS, TRADE_KINDS, wht50FormOf, WHT_INCOME_TYPES, whtRateOf, xlsxSharedStrings, xlsxSheetRows,
   type CashKind, type ExpenseImportWht, type ImportIssue, type ImportKindLike, type ImportNeed, type ImportPayment, type TradeKind, type YearSystem, ZERO } from '@buddy/core';
 import type { Db } from '../db.js';
@@ -24,12 +24,13 @@ import { buildPayments, finder, loadRefs, methodsOf, shipTosOf } from './import-
  * เลขที่อ้างอิงในแฟ้มเก็บใน your_ref — เอกสารที่ยังไม่ยกเลิกของคู่ค้าเดิมที่อ้างอิงเดียวกัน = นำเข้าซ้ำ
  * HANDOFF 167: บันทึกค่าใช้จ่ายอื่น ๆ (OE → saveCash เดียวกับหน้าจอ) · ลูกค้า/ผู้จำหน่าย/สินค้าที่ยังไม่มี เพิ่มให้ในทรานแซกชันเดียวกัน (import-masters.ts)
  */
-export const IMPORT_KINDS = TRADE_KINDS.filter((k) => !k.order);
-const OE = CASH_KINDS.find((k) => k.cls === 'OE')!;
+/** ขาย/ซื้อทุกชนิด รวมใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อ (HANDOFF 171 — saveTrade เดียวกับหน้าจอ ไม่ลงบัญชี) */
+export const IMPORT_KINDS = TRADE_KINDS;
+/** เอกสารรับ/จ่ายเงินทุกชนิด (HANDOFF 171: มัดจำรับ/จ่าย รายได้อื่น + ค่าใช้จ่ายอื่นเดิม) → saveCash เดียวกับหน้าจอ */
 type Ctx = AuthContext & { companyId: string };
 type Kind = { cash: false; K: TradeKind } | { cash: true; K: CashKind };
 const kindOf = (path: string): Kind => {
-  if (path === OE.path) return { cash: true, K: OE };
+  const C = CASH_KINDS.find((k) => k.path === path); if (C) return { cash: true, K: C };
   const K = IMPORT_KINDS.find((k) => k.path === path); if (!K) throw notFound('ชนิดเอกสาร'); return { cash: false, K };
 };
 const MAX_FILE = 10 * 1024 * 1024;
@@ -76,7 +77,7 @@ export const PAY_SHEET_RULE = 'วิธีเดียว: ใช้คอล�
 const paySheetOf = (sheets: Array<{ name: string; rows: string[][] }>) => sheets.slice(1).find((s) => /รับชำระ|จ่ายชำระ|ชำระ|payment/i.test(s.name))?.rows ?? [];
 
 type TplCol = { key: string; th: string; need: ImportNeed; when?: string; dflt?: string; forNew?: boolean; hint: string; example: [string, string] };
-const TEXT_KEYS = new Set(['ref', 'date', 'party', 'item', 'code', 'unit', 'warehouse', 'ref_invoice', 'ref_no', 'ref_date', 'party_tax_id', 'party_branch', 'party_phone', 'wht_form', 'ship_to', 'department', 'project',
+const TEXT_KEYS = new Set(['ref', 'date', 'party', 'item', 'code', 'unit', 'warehouse', 'ref_invoice', 'ref_no', 'ref_date', 'delivery_date', 'party_tax_id', 'party_branch', 'party_phone', 'wht_form', 'ship_to', 'department', 'project',
   'salesperson', 'sales_area', 'ship_via', 'pay_ref', 'line_job', 'vat_code', 'cheque_date', 'method']);
 const NUM_KEYS = new Set(['qty', 'price', 'amount', 'wht_amount', 'wht_rate']);
 /**
@@ -84,7 +85,8 @@ const NUM_KEYS = new Set(['qty', 'price', 'amount', 'wht_amount', 'wht_rate']);
  * แผ่น "นำเข้า" (หัวสีชมพู * = ต้องมี · สีเหลือง = ต้องมีถ้า… · ตัวอย่าง 2 แถว) · ขาย/ซื้อเงินสด ค่าใช้จ่ายอื่น: แผ่น "รับชำระ"/"จ่ายชำระ" · แผ่น "คำอธิบาย"
  */
 export function buildTemplate(K: ImportKindLike & { label: string }, sample: { party: string | null; partyName?: string | null; items: string[]; date: string; prefix?: string | null }, cash = false): Buffer {
-  const all: Array<TplCol & { check?: boolean }> = cash ? EXPENSE_IMPORT_COLUMNS : importColumnsFor(K);
+  const all: Array<TplCol & { check?: boolean }> = cash ? cashImportColumnsFor(K.cls) : importColumnsFor(K);
+  const ck = cash ? CASH_KINDS.find((x) => x.cls === K.cls) : undefined;
   // ช่องตรวจยอด (ภาษี VAT · ราคาสุทธิ) ไม่ใช่ช่องของหน้าจอ — ไม่อยู่ในแผ่นนำเข้า (อธิบายในแผ่นคำอธิบาย)
   const cols = all.filter((c) => !c.check), checks = all.filter((c) => c.check);
   const who = K.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย';
@@ -106,7 +108,7 @@ export function buildTemplate(K: ImportKindLike & { label: string }, sample: { p
   const pcols = PAYMENT_IMPORT_COLUMNS.filter((c) => c.key !== 'cheque_date' || cash);
   // กติกาไว้บนสุดของแผ่น (ตัวอ่านหาหัวตารางเองภายใน 20 แถวแรก — แถวกติกาไม่ใช่หัวตาราง)
   if (hasPay) sheets.push({ name: payName, rows: [[PAY_SHEET_RULE], pcols.map(importHeaderText)], headAt: 1, textCols: idx(pcols, TEXT_KEYS), numCols: idx(pcols, NUM_KEYS), headKinds: kinds(pcols), widths: pcols.map(() => 18) });
-  const line = cash ? 'รหัสค่าใช้จ่ายหนึ่งบรรทัด' : 'สินค้าหนึ่งบรรทัด';
+  const line = !cash ? 'สินค้าหนึ่งบรรทัด' : ck?.lines === 'text' ? 'รายละเอียด + จำนวนเงินหนึ่งบรรทัด' : ck?.itemType === '4' ? 'รหัสรายได้หนึ่งบรรทัด' : 'รหัสค่าใช้จ่ายหนึ่งบรรทัด';
   const help: string[][] = [['คอลัมน์', 'จำเป็น', 'คำอธิบาย'], ...cols.map((c) => [c.th, importNeedLabel(c), c.hint]),
     ['', '', ''],
     ['', '', `หนึ่งแถว = ${line} · แถวที่เลขที่อ้างอิงเดียวกันรวมเป็น${K.label}ฉบับเดียว — ช่องของหัวเอกสาร (วันที่ ${who} แผนก …) ใส่แถวแรกพอ แถวต่อมาเว้นว่างหรือใส่ค่าเดิม`],
@@ -119,7 +121,7 @@ export function buildTemplate(K: ImportKindLike & { label: string }, sample: { p
     ...(checks.length ? [['', '', ''], ['คอลัมน์ตรวจยอด', '', 'ไม่มีในแบบฟอร์มนี้ — ใช้กับแฟ้มจากโปรแกรมอื่นที่มียอดภาษี/ยอดสุทธิ (เพิ่มคอลัมน์ชื่อนี้ได้)'], ...checks.map((c) => [c.th, importNeedLabel(c), c.hint])] : []),
     ...(hasPay ? [['', '', ''], [`แผ่น "${payName}"`, '', `แบ่ง${K.module === 'AR' ? 'รับ' : 'จ่าย'}หลายวิธี (เช่น เงินสด + เงินโอน): หนึ่งแถว = หนึ่งวิธี ใส่เลขที่อ้างอิงของเอกสาร · ยอดรวมทุกแถว = ยอดรวมทั้งสิ้น − ภาษีหัก ณ ที่จ่าย · วิธีเดียวใช้คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้าได้ (ใช้ยอดทั้งเอกสาร) · ไม่ใส่ = เงินสดทั้งหมด · ใช้แผ่นนี้ได้เฉพาะแฟ้ม .xlsx`],
       ...pcols.map((c) => [c.th, importNeedLabel(c), c.hint])] : []),
-    ...(!cash && !hasPay ? [['', '', `${K.label}ไม่มีการรับ/จ่ายเงินในเอกสาร — รับ/จ่ายชำระที่เมนูรับชำระหนี้/จ่ายชำระหนี้`]] : []),
+    ...(!cash && !hasPay ? [['', '', (K as ImportKindLike).order ? `${K.label}ไม่ลงบัญชี ไม่ตัดสต๊อก — นำเข้าแล้วอ้างถึงตอนออกบิล${K.cls === 'QT' ? ' (แปลงเป็นใบสั่งขายที่หน้าจอ)' : ''}` : `${K.label}ไม่มีการรับ/จ่ายเงินในเอกสาร — รับ/จ่ายชำระที่เมนูรับชำระหนี้/จ่ายชำระหนี้`]] : []),
     ...(hasPay && !cash ? [['', '', `${K.label}รับ/จ่ายเงินวันเดียวกัน — ไม่มีช่องเครดิต (วัน) · แฟ้มเดิมที่มีคอลัมน์นี้ยังนำเข้าได้ (ไม่ใช้ค่าในคอลัมน์ และแจ้งเตือน)`]] : []),
     ['', '', 'ลบแถวตัวอย่างก่อนใช้ · ชื่อหัวคอลัมน์ห้ามแก้ (สลับลำดับได้) · บันทึกเป็น .xlsx (หรือ .csv เฉพาะแผ่นนำเข้า)']];
   sheets.push({ name: 'คำอธิบาย', rows: help, widths: [26, 34, 110] });
@@ -153,7 +155,7 @@ export function tradeImportRoutes(app: FastifyInstance, db: Db) {
     const co = await db.selectFrom('sys_company').select('year_system').where('id', '=', a.companyId).executeTakeFirstOrThrow();
     const party = await db.selectFrom(k.K.party === 'customer' ? 'md_customer' : 'md_supplier').select(['code', 'name']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('status', '=', 'A').orderBy('code').executeTakeFirst();
     const items = await db.selectFrom('md_item').select('code').where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('status', '=', 'A')
-      .where('item_type', 'in', k.cash ? ['5'] : ['0', '3']).orderBy('item_type').orderBy('code').limit(2).execute();
+      .where('item_type', 'in', !k.cash ? ['0', '3'] : k.K.lines === 'text' ? ['-'] : k.K.itemType === '4' ? ['4'] : ['5']).orderBy('item_type').orderBy('code').limit(2).execute();
     const today = new Date().toISOString().slice(0, 10);
     const dt = await db.selectFrom('md_doc_type').select('code').where('company_id', '=', a.companyId).where('doc_class', '=', k.K.cls).where('status', '=', 'A').where('deleted_at', 'is', null).orderBy('code').executeTakeFirst();
     reply.header('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').header('content-disposition', `attachment; filename="import-${k.K.cls}.xlsx"`);
@@ -190,7 +192,7 @@ export function tradeImportRoutes(app: FastifyInstance, db: Db) {
     return { ok: !issues.length, committed: b.commit, price_type: priceType, vat_rate: vatRate, create_masters: b.create_masters, docs: results, errors: issues, file_docs: fileDocs, new_masters: masters, file_warnings: warnings,
       total_net: results.reduce((t, r) => t.plus(d(r.net_amount ?? 0)), ZERO).toFixed(2),
       // แถวที่มีคำอธิบายแต่ไม่มีรหัส (ให้หน้าจอแนะนำรหัส) · แถวที่การจับคู่ข้าม (รวม/หัวตารางซ้ำ/ว่าง)
-      mapped: tf.mapped, skipped_rows: tf.skipped, row_shift: tf.rowShift, need_codes: b.commit ? [] : missingCodeRows(rows, target) };
+      mapped: tf.mapped, skipped_rows: tf.skipped, row_shift: tf.rowShift, need_codes: b.commit || (k.cash && k.K.lines === 'text') ? [] : missingCodeRows(rows, target) };
   });
 }
 
@@ -446,6 +448,7 @@ async function importTrade(db: Db, a: Ctx, K: TradeKind, rows: string[][], ys: Y
       return [{ doc: x.doc, party, newItems: x.doc.lines.filter((l) => lineHit.get(l)!.kind === 'new').length, alt, vatLines, paySource,
         body: { doc_type_id: b.dtId, doc_no: own.get(x.doc.ref) ?? null, doc_date: x.doc.date, party_id: party.id, ...(party.branch ? { party_tax_branch_no: party.branch } : {}), your_ref: x.doc.ref,
           ref_no: K.refInvoice ? x.doc.ref_invoice : x.doc.ref_no, ...(K.module === 'AP' && !K.refInvoice && x.doc.ref_date ? { ref_date: x.doc.ref_date } : {}),
+          ...(K.order && K.cls !== 'QT' ? { delivery_date: x.doc.delivery_date } : {}),
           credit_days: K.payments ? null : x.doc.credit_days, price_type: b.priceType, vat_rate: b.vatRate, ...(x.doc.vat_basis ? { vat_basis: x.doc.vat_basis } : {}), discount_text: discount, remark: x.doc.remark,
           ...x.head, lines: lines.map((l) => { const { _vat: _v, ...rest } = l!; return rest; }), payments, wht, wht_amount: whtAmount } }];
     })),
@@ -463,25 +466,31 @@ async function importTrade(db: Db, a: Ctx, K: TradeKind, rows: string[][], ys: Y
 
 /** บันทึกค่าใช้จ่ายอื่น ๆ (OE): รหัสค่าใช้จ่าย + จำนวนเงิน · หัวเอกสารครบตามหน้าจอ · ภาษีหัก ณ ที่จ่าย · จ่ายชำระโดยวิธีอื่น → saveCash เดียวกับหน้าจอ */
 async function importExpense(db: Db, a: Ctx, K: CashKind, rows: string[][], ys: YearSystem, b: Opt, payRows: string[][]) {
-  const { docs, errors } = mapExpenseImport(rows, ys);
+  // HANDOFF 171: มัดจำรับ/จ่าย (บรรทัดข้อความ) · รายได้อื่น (รหัสรายได้ ลูกค้า) · ค่าใช้จ่ายอื่น (เดิม)
+  const { docs, errors } = mapExpenseImport(rows, ys, K.cls);
+  const textLines = K.lines === 'text', recv = K.direction === 'R';
+  const types = K.itemType === '4' ? ['4'] : ['5', '2'];
+  const codeWord = K.itemType === '4' ? 'รหัสรายได้' : 'รหัสค่าใช้จ่าย';
+  const codeMenu = K.itemType === '4' ? 'ขาย › รายละเอียดรายได้อื่น ๆ' : 'ซื้อ › รายละเอียดค่าใช้จ่ายอื่น ๆ';
   const issues: ImportIssue[] = [...errors];
   const warnings: string[] = [];
   const own = await fileNumbers(db, a.companyId, b.dtCode, ys, docs, issues, warnings);
   const paysBy = paySheetByRef(payRows, ys, docs.map((x) => x.ref), true, K.label, issues, warnings);
-  const pp = await planParties(db, a.companyId, 'supplier', docs, { create: b.create_masters, nameOnly: true });
-  issues.push(...await masterRightIssues(db, a, 'supplier', pp.planned, []));
+  // มัดจำต้องมีคู่ค้าในทะเบียน (หน้าจอบังคับ) — ชื่ออย่างเดียวใช้ไม่ได้
+  const pp = await planParties(db, a.companyId, K.party, docs, { create: b.create_masters, nameOnly: !K.partyRequired });
+  issues.push(...await masterRightIssues(db, a, K.party, pp.planned, []));
   const R = await loadRefs(db, a.companyId);
-  const method = await methodsOf(db, a.companyId, 'P');
-  const items = (await sql<{ id: string; code: string; name: string; item_type: string; status: string; vat_code: string | null }>`SELECT id, code, name_th AS name, item_type, status, vat_code FROM md_item
-      WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND item_type IN ('5', '2')`.execute(db)).rows;
+  const method = await methodsOf(db, a.companyId, recv ? 'R' : 'P');
+  const items = textLines ? [] : (await sql<{ id: string; code: string; name: string; item_type: string; status: string; vat_code: string | null }>`SELECT id, code, name_th AS name, item_type, status, vat_code FROM md_item
+      WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND item_type = ANY(${types}::text[])`.execute(db)).rows;
   const findCode = finder(items);
   const itemOf = (v: string) => { const r = findCode(v); return r ? items.find((i) => i.id === r.id) : undefined; };
-  const others = new Map((await sql<{ code: string }>`SELECT code FROM md_item WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND item_type NOT IN ('5', '2')`.execute(db)).rows.map((r) => [r.code.toUpperCase(), r.code]));
+  const others = new Map(textLines ? [] : (await sql<{ code: string }>`SELECT code FROM md_item WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND NOT (item_type = ANY(${types}::text[]))`.execute(db)).rows.map((r) => [r.code.toUpperCase(), r.code]));
   const supIds = pp.hits.flatMap((h) => (h.kind === 'found' ? [h.party.id] : []));
-  const sups = new Map((supIds.length ? (await sql<{ id: string; wht_form: string | null; wht_income_desc: string | null; wht_rate: string | null }>`SELECT id, wht_form, wht_income_desc, wht_rate FROM md_supplier
+  const sups = new Map((supIds.length && K.party === 'supplier' ? (await sql<{ id: string; wht_form: string | null; wht_income_desc: string | null; wht_rate: string | null }>`SELECT id, wht_form, wht_income_desc, wht_rate FROM md_supplier
       WHERE company_id = ${a.companyId} AND id = ANY(${supIds}::uuid[])`.execute(db)).rows : []).map((x) => [x.id, x]));
   const refs = docs.map((x) => x.ref);
-  const prior = refs.length ? (await sql<{ your_ref: string; party: string | null; party_name: string | null; doc_no: string }>`SELECT your_ref, supplier_id AS party, party_name, doc_no FROM doc_header
+  const prior = refs.length ? (await sql<{ your_ref: string; party: string | null; party_name: string | null; doc_no: string }>`SELECT your_ref, ${K.party === 'customer' ? sql`customer_id` : sql`supplier_id`} AS party, party_name, doc_no FROM doc_header
       WHERE company_id = ${a.companyId} AND doc_class = ${K.cls} AND doc_status <> 'C' AND deleted_at IS NULL AND your_ref = ANY(${refs}::text[])`.execute(db)).rows : [];
   const notFound = (row: number, what: string, col: string, v: string, fix: string) => issues.push({ row, message: `ไม่พบ${what} "${v}" (คอลัมน์ "${col}") — ${fix}` });
   const usedP = new Set<PlannedParty>();
@@ -498,10 +507,12 @@ async function importExpense(db: Db, a: Ctx, K: CashKind, rows: string[][], ys: 
     if (doc.project && !job) notFound(doc.row, 'Job', 'Job/โครงการ', doc.project, 'ใส่รหัสหรือชื่อ Job ที่มีในโปรแกรม');
     const lineJob = new Map<(typeof doc.lines)[number], string | null>();
     for (const l of doc.lines) {
-      const it = itemOf(l.code);
-      if (!it) issues.push({ row: l.row, message: others.has(l.code.toUpperCase()) ? `${others.get(l.code.toUpperCase())} ไม่ใช่รหัสค่าใช้จ่ายอื่น — ใช้รหัสจาก ซื้อ › รายละเอียดค่าใช้จ่ายอื่น ๆ`
+      const it = textLines ? null : itemOf(l.code);
+      if (textLines) { /* บรรทัดข้อความ: รายละเอียด + จำนวนเงิน (ตรวจที่ตัวแปลงแฟ้ม) */ } else if (!it) issues.push({ row: l.row, message: K.itemType === '4'
+        ? (others.has(l.code.toUpperCase()) ? `${others.get(l.code.toUpperCase())} ไม่ใช่รหัสรายได้อื่น — ใช้รหัสจาก ${codeMenu}` : `ไม่พบ${codeWord} ${l.code} — เพิ่มที่ ${codeMenu} ก่อน (ระบบไม่เพิ่มให้ เพราะต้องกำหนดบัญชีรายได้)`)
+        : others.has(l.code.toUpperCase()) ? `${others.get(l.code.toUpperCase())} ไม่ใช่รหัสค่าใช้จ่ายอื่น — ใช้รหัสจาก ซื้อ › รายละเอียดค่าใช้จ่ายอื่น ๆ`
         : `ไม่พบรหัสค่าใช้จ่าย ${l.code} — เพิ่มที่ ซื้อ › รายละเอียดค่าใช้จ่ายอื่น ๆ ก่อน (ระบบไม่เพิ่มให้ เพราะต้องกำหนดบัญชีค่าใช้จ่าย)` });
-      else if (it.status === 'I') issues.push({ row: l.row, message: `รหัสค่าใช้จ่าย ${it.code} เลิกใช้แล้ว` });
+      else if (it.status === 'I') issues.push({ row: l.row, message: `${codeWord} ${it.code} เลิกใช้แล้ว` });
       const lj = l.job ? R.job(l.job) : undefined;
       if (l.job && !lj) notFound(l.row, 'Job', 'Job รายบรรทัด', l.job, 'ใส่รหัสหรือชื่อ Job ที่มีในโปรแกรม');
       lineJob.set(l, lj?.id ?? null);
@@ -511,22 +522,25 @@ async function importExpense(db: Db, a: Ctx, K: CashKind, rows: string[][], ys: 
     ready.push({ doc, party: h, dept: dept?.id ?? null, job: job?.id ?? null, lineJob });
   });
   const { results, units, ran } = await tryAll(db, b.commit, issues,
-    async () => (await createMasters(db, a, 'supplier', [...usedP], [], b.file_name)).units,
+    async () => (await createMasters(db, a, K.party, [...usedP], [], b.file_name)).units,
     () => ownFirst(ready.flatMap((x) => {
       const p = x.party;
       const party = p.kind === 'found' ? { id: p.party.id, code: p.party.code, name: p.party.name, tax: p.party.tax_id, isNew: false, branch: p.branch ?? x.doc.party_branch }
         : p.kind === 'new' ? { id: p.plan.id!, code: p.plan.code, name: p.plan.name, tax: p.plan.tax_id, isNew: true, branch: null } : { id: null, code: '', name: (p as { name: string }).name, tax: x.doc.party_tax_id, isNew: false, branch: null };
-      const lines = x.doc.lines.map((l) => { const it = itemOf(l.code)!; return { item_id: it.id, description: l.description, amount: l.amount, vat_code: it.vat_code, project_id: x.lineJob.get(l) ?? x.job }; });
+      // บรรทัดข้อความ (มัดจำ): ไม่มีรหัส — VAT ตามประเภทราคาของเอกสาร (เหมือนหน้าจอ)
+      const lines = x.doc.lines.map((l) => { const it = textLines ? null : itemOf(l.code)!; return { item_id: it?.id ?? null, description: l.description, amount: l.amount, vat_code: it?.vat_code ?? null, project_id: x.lineJob.get(l) ?? x.job }; });
       const calc = computeDoc({ price_type: b.priceType, vat_rate: b.vatRate, lines: lines.map((l) => ({ qty: 1, unit_price: l.amount, vat_code: l.vat_code })) });
-      let wht: unknown[] = [], w = d(0);
-      if (x.doc.wht) { const e = whtEntry(x.doc.wht, d(calc.net_amount).minus(d(calc.vat_amount)), party.id ? sups.get(party.id) : undefined, party.tax); wht = [e]; w = d(e.tax_amount); }
+      // ภาษีหัก ณ ที่จ่าย: ฝั่งจ่าย = รายละเอียดภาษี (50 ทวิ) · ฝั่งรับ = ยอดที่ลูกค้าหักไว้ (ช่องเดียวเหมือนหน้าจอ)
+      let wht: unknown[] = [], w = d(0), whtAmount = '0';
+      if (x.doc.wht && K.whtEntries) { const e = whtEntry(x.doc.wht, d(calc.net_amount).minus(d(calc.vat_amount)), party.id ? sups.get(party.id) : undefined, party.tax); wht = [e]; w = d(e.tax_amount); }
+      if (x.doc.wht && !K.whtEntries) { w = d(x.doc.wht.amount ?? 0); whtAmount = w.toFixed(2); }
       const sheet = paysBy.get(x.doc.ref) ?? [];
-      const payments = buildPayments({ ref: x.doc.ref, row: x.doc.row, due: d(calc.net_amount).minus(w).toFixed(2), label: K.label, recv: false, main: { method: x.doc.pay_method, pay_ref: x.doc.pay_ref }, sheet, method, issues });
+      const payments = buildPayments({ ref: x.doc.ref, row: x.doc.row, due: d(calc.net_amount).minus(w).toFixed(2), label: K.label, recv, main: { method: x.doc.pay_method, pay_ref: x.doc.pay_ref }, sheet, method, issues });
       if (!payments) return [];
       const paySource = sheet.length ? 'sheet' as const : x.doc.pay_method ? 'main' as const : 'cash' as const;
       return [{ doc: x.doc, party, paySource, body: { doc_type_id: b.dtId, doc_no: own.get(x.doc.ref) ?? null, doc_date: x.doc.date, party_id: party.id, party_name: party.id ? null : party.name, ...(party.branch ? { party_tax_branch_no: party.branch } : {}),
-        your_ref: x.doc.ref, ref_no: x.doc.ref_no, ...(x.doc.ref_date ? { ref_date: x.doc.ref_date } : {}), department_id: x.dept, project_id: x.job,
-        price_type: b.priceType, vat_rate: b.vatRate, remark: x.doc.remark, lines: lines.map(({ vat_code: _v, ...l }) => l), payments, wht } }];
+        your_ref: x.doc.ref, ref_no: K.party === 'supplier' ? x.doc.ref_no : null, ...(K.party === 'supplier' && x.doc.ref_date ? { ref_date: x.doc.ref_date } : {}), department_id: x.dept, project_id: x.job,
+        price_type: b.priceType, vat_rate: b.vatRate, remark: x.doc.remark, lines: lines.map(({ vat_code: _v, ...l }) => l), payments, wht, wht_amount: whtAmount } }];
     })),
     async (x) => {
       const r = await saveCash(db, a, K, null, parse(cashBody, x.body), { keyed: true });

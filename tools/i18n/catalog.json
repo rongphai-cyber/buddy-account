@@ -306,6 +306,52 @@
 ]
 },
 {
+"th": "ลูกค้า",
+"n": 61,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/components/PartyAddress.tsx",
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/HoldNote.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/ai.ts",
+"apps/server/src/modules/import-masters.ts",
+"apps/server/src/modules/parties.ts",
+"apps/server/src/modules/serials.ts",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/docs/bills.ts",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/pdpa.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "รายการ",
 "n": 60,
 "files": [
@@ -391,52 +437,8 @@
 ]
 },
 {
-"th": "ลูกค้า",
-"n": 57,
-"files": [
-"apps/web/src/components/LkSelect.tsx",
-"apps/web/src/components/PartyAddress.tsx",
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/HoldNote.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/Jobs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/import-masters.ts",
-"apps/server/src/modules/parties.ts",
-"apps/server/src/modules/serials.ts",
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/docs/bills.ts",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/pdpa.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "ผู้จำหน่าย",
-"n": 52,
+"n": 55,
 "files": [
 "apps/web/src/components/AiBill.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -456,6 +458,7 @@
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/tools/TradeImport.tsx",
 "apps/server/src/owned.ts",
+"apps/server/src/modules/ai.ts",
 "apps/server/src/modules/import-masters.ts",
 "apps/server/src/modules/parties.ts",
 "apps/server/src/modules/trade-import.ts",
@@ -1142,6 +1145,42 @@
 ]
 },
 {
+"th": "รายได้",
+"n": 26,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ค่าใช้จ่าย",
+"n": 25,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/doc-calc.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ชื่อบัญชี",
 "n": 25,
 "files": [
@@ -1229,23 +1268,6 @@
 ]
 },
 {
-"th": "ค่าใช้จ่าย",
-"n": 24,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "พนักงานขาย",
 "n": 24,
 "files": [
@@ -1266,24 +1288,6 @@
 "packages/core/src/printforms.ts",
 "packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "รายได้",
-"n": 24,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/reports/JobCost.tsx",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/doc-calc.ts",
-"packages/core/src/gl-link.ts"
 ]
 },
 {
@@ -2410,6 +2414,21 @@
 ]
 },
 {
+"th": "รหัส{0}",
+"n": 11,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/settings/TwoFactor.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "รหัสลูกค้า",
 "n": 11,
 "files": [
@@ -2602,21 +2621,6 @@
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts"
-]
-},
-{
-"th": "รหัส{0}",
-"n": 10,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/settings/TwoFactor.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2856,6 +2860,19 @@
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/tax/Wht50.tsx",
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "สาขา {0}",
+"n": 9,
+"files": [
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/PartyAddress.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/JobCost.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx"
 ]
 },
 {
@@ -3149,19 +3166,6 @@
 ]
 },
 {
-"th": "สาขา {0}",
-"n": 8,
-"files": [
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/components/PartyAddress.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/web/src/pages/reports/JobCost.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx"
-]
-},
-{
 "th": "สาขา#",
 "n": 8,
 "files": [
@@ -3416,6 +3420,26 @@
 ]
 },
 {
+"th": "ชื่อ{0}",
+"n": 7,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ชื่อลูกค้า",
+"n": 7,
+"files": [
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ช่องถัดไป (ช่องสุดท้าย = ถามบันทึก)",
 "n": 7,
 "files": [
@@ -3481,6 +3505,17 @@
 "apps/web/src/pages/gl/YearEnd.tsx",
 "apps/web/src/pages/reports/JobCost.tsx",
 "apps/server/src/modules/projects.ts"
+]
+},
+{
+"th": "ผู้จ่ายเงิน",
+"n": 7,
+"files": [
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -3762,16 +3797,6 @@
 ]
 },
 {
-"th": "ชื่อ{0}",
-"n": 6,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "ชื่อผู้ติดต่อ",
 "n": 6,
 "files": [
@@ -3788,16 +3813,6 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/Defaults.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx"
-]
-},
-{
-"th": "ชื่อลูกค้า",
-"n": 6,
-"files": [
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -3871,13 +3886,14 @@
 ]
 },
 {
-"th": "ผู้จ่ายเงิน",
+"th": "ผู้ขาย",
 "n": 6,
 "files": [
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"packages/core/src/printforms.ts"
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/server/src/modules/serials.ts"
 ]
 },
 {
@@ -4476,16 +4492,6 @@
 "apps/web/src/pages/gl/Budget.tsx",
 "apps/web/src/pages/reports/Dashboard.tsx",
 "apps/server/src/modules/gl/reports.ts"
-]
-},
-{
-"th": "ผู้ขาย",
-"n": 5,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/server/src/modules/serials.ts"
 ]
 },
 {
@@ -5495,12 +5501,31 @@
 ]
 },
 {
+"th": "รหัสค่าใช้จ่าย",
+"n": 4,
+"files": [
+"apps/web/src/components/ImportMapping.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/server/src/modules/trade-import.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "รหัสพนักงาน",
 "n": 4,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/server/src/modules/payroll/files.ts",
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "รหัสรายได้",
+"n": 4,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/server/src/modules/trade-import.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -6068,6 +6093,13 @@
 ]
 },
 {
+"th": "Bill to (สาขาลูกค้า)",
+"n": 3,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "Job รายบรรทัด",
 "n": 3,
 "files": [
@@ -6188,6 +6220,14 @@
 "apps/web/src/App.tsx",
 "apps/web/src/pages/settings/NewCompany.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "กำหนดส่ง",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -6317,6 +6357,13 @@
 },
 {
 "th": "ค่าเริ่มต้น = ไม่มี",
+"n": 3,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ค่าเริ่มต้น = ไม่หัก",
 "n": 3,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -7167,15 +7214,6 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx",
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "รหัสค่าใช้จ่าย",
-"n": 3,
-"files": [
-"apps/web/src/components/ImportMapping.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
 "packages/core/src/trade-import.ts"
 ]
 },
@@ -8194,6 +8232,13 @@
 ]
 },
 {
+"th": "(ไม่พบในแฟ้ม)",
+"n": 2,
+"files": [
+"packages/core/src/ai-bill.ts"
+]
+},
+{
 "th": "(ไม่มีรหัส)",
 "n": 2,
 "files": [
@@ -8387,13 +8432,6 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/ai.ts"
-]
-},
-{
-"th": "Bill to (สาขาลูกค้า)",
-"n": 2,
-"files": [
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -8596,13 +8634,6 @@
 "files": [
 "apps/web/src/pages/items/ItemTables.tsx",
 "packages/core/src/menu.ts"
-]
-},
-{
-"th": "กำหนดส่ง",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -8921,7 +8952,7 @@
 ]
 },
 {
-"th": "ค่าเริ่มต้น = ไม่หัก",
+"th": "ค่าเริ่มต้น = ไม่ระบุ",
 "n": 2,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -10857,6 +10888,13 @@
 ]
 },
 {
+"th": "พบ {0}",
+"n": 2,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "พบ {0} รายการ",
 "n": 2,
 "files": [
@@ -11583,13 +11621,6 @@
 ]
 },
 {
-"th": "รหัสรายได้",
-"n": 2,
-"files": [
-"apps/web/src/components/WtsConnect.tsx"
-]
-},
-{
 "th": "รหัสลูกค้า {0} มีอยู่แล้ว",
 "n": 2,
 "files": [
@@ -12248,11 +12279,25 @@
 ]
 },
 {
+"th": "วันที่รับของ",
+"n": 2,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "วันที่สิ้นงวดไม่อยู่ในรอบบัญชี",
 "n": 2,
 "files": [
 "apps/server/src/modules/gl/reports.ts",
 "apps/server/src/modules/reports/gl.ts"
+]
+},
+{
+"th": "วันที่ส่งของ",
+"n": 2,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -14251,6 +14296,13 @@
 ]
 },
 {
+"th": "ไม่ทราบ",
+"n": 2,
+"files": [
+"packages/core/src/ai-bill.ts"
+]
+},
+{
 "th": "ไม่ผ่าน",
 "n": 2,
 "files": [
@@ -14969,6 +15021,13 @@
 ]
 },
 {
+"th": "(มีในแฟ้มลูกค้า)",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
+]
+},
+{
 "th": "(ยอดคงเหลือต้องดุล และกำไรปีนั้นต้องอยู่ในบัญชีรายได้/ค่าใช้จ่าย ไม่ใช่กำไรสะสม)",
 "n": 1,
 "files": [
@@ -14976,7 +15035,7 @@
 ]
 },
 {
-"th": "(ยังไม่บันทึก) · กดนำเข้าแล้วบันทึกและลงบัญชีทุกฉบับพร้อมกัน — ถ้าผิดฉบับเดียวจะไม่บันทึกเลย ·",
+"th": "(ยังไม่บันทึก) · กดนำเข้าแล้วบันทึก{0}ทุกฉบับพร้อมกัน — ถ้าผิดฉบับเดียวจะไม่บันทึกเลย ·",
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/TradeImport.tsx"
@@ -15116,6 +15175,13 @@
 ]
 },
 {
+"th": "(แปลงเป็นใบสั่งขายที่หน้าจอ)",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "(แผ่นที่ {0}/{1})",
 "n": 1,
 "files": [
@@ -15172,13 +15238,6 @@
 ]
 },
 {
-"th": "(ไม่พบในแฟ้ม)",
-"n": 1,
-"files": [
-"packages/core/src/ai-bill.ts"
-]
-},
-{
 "th": "(ไม่พิมพ์)",
 "n": 1,
 "files": [
@@ -15204,6 +15263,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/forms.ts"
+]
+},
+{
+"th": "(ไม่ลงบัญชี)",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -17601,13 +17667,6 @@
 ]
 },
 {
-"th": "expense_codes (รหัสค่าใช้จ่ายทั้งหมดที่ใช้ได้): {0}",
-"n": 1,
-"files": [
-"packages/core/src/ai-bill.ts"
-]
-},
-{
 "th": "k[0] === kind)?.[1]} — {0} รายการ{1}",
 "n": 1,
 "files": [
@@ -17885,6 +17944,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/item-images.ts"
+]
+},
+{
+"th": "{0} {1} เลิกใช้แล้ว",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -18414,6 +18480,13 @@
 },
 {
 "th": "{0} ไม่ใช่รหัสค่าใช้จ่ายอื่น — ใช้รหัสจาก ซื้อ › รายละเอียดค่าใช้จ่ายอื่น ๆ",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
+"th": "{0} ไม่ใช่รหัสรายได้อื่น — ใช้รหัสจาก {1}",
 "n": 1,
 "files": [
 "apps/server/src/modules/trade-import.ts"
@@ -19295,6 +19368,13 @@
 ]
 },
 {
+"th": "{0}ไม่ลงบัญชี ไม่ตัดสต๊อก — นำเข้าแล้วอ้างถึงตอนออกบิล{1}",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "{0}ไม่ได้รับสถานะเกิน {1} นาที — หน้าร้านยังขายได้ ตรวจเน็ตหรือเครื่องแม่ข่ายของโปรแกรม",
 "n": 1,
 "files": [
@@ -19737,6 +19817,13 @@
 },
 {
 "th": "· เลขผู้เสียภาษีในบิล {0} {1} (อ่านผิดหรือบิลพิมพ์ผิด)",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "· เลขผู้เสียภาษีในเอกสาร {0} {1} (อ่านผิดหรือพิมพ์ผิด)",
 "n": 1,
 "files": [
 "apps/server/src/modules/ai.ts"
@@ -20835,6 +20922,13 @@
 ]
 },
 {
+"th": "กำหนดรับของ",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "กำหนดวิธีคิดต้นทุน (FIFO / ถัวเฉลี่ย) และบัญชีที่ใช้ลงรายวันอัตโนมัติของสินค้าแต่ละกลุ่ม — ผูกกลุ่มกับสินค้าที่หน้ารายละเอียดสินค้า · บัญชีที่ว่างใช้บัญชีจาก เริ่มระบบ 5.2",
 "n": 1,
 "files": [
@@ -21381,6 +21475,13 @@
 ]
 },
 {
+"th": "ขาย › รายละเอียดรายได้อื่น ๆ",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "ขาย › รายละเอียดลูกค้า",
 "n": 1,
 "files": [
@@ -21619,7 +21720,7 @@
 ]
 },
 {
-"th": "ข้อความด้านล่างได้จากการอ่านภาพเอกสารซื้อด้วย OCR (Typhoon-OCR) ในเครื่องของผู้ใช้ ไม่มีภาพแนบ — ตารางแสดงแถวละบรรทัด คั่นช่องด้วย \" | \" · OCR อาจอ่านตัวเลข/ตัวอักษรผิดได้ ถ้าตัวเลขขัดกันเอง (เช่น ยอดรวมไม่เท่ากับผลรวมรายการ) ให้ตอบตามที่พิมพ์และบอกใน notes\\nอ่านเอกสารซื้อนี้ตามโครงข้อมูล\\n\\n<ocr>\\n{0}\\n</ocr>",
+"th": "ข้อความด้านล่างได้จากการอ่านภาพ{0}ด้วย OCR (Typhoon-OCR) ในเครื่องของผู้ใช้ ไม่มีภาพแนบ — ตารางแสดงแถวละบรรทัด คั่นช่องด้วย \" | \" · OCR อาจอ่านตัวเลข/ตัวอักษรผิดได้ ถ้าตัวเลขขัดกันเอง (เช่น ยอดรวมไม่เท่ากับผลรวมรายการ) ให้ตอบตามที่พิมพ์และบอกใน notes\\nอ่าน{1}นี้ตามโครงข้อมูล\\n\\n<ocr>\\n{2}\\n</ocr>",
 "n": 1,
 "files": [
 "apps/server/src/modules/ai.ts"
@@ -23600,6 +23701,13 @@
 ]
 },
 {
+"th": "ค่าเช่าเดือน ต.ค.",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ค่าเดียวกันทุกแถว…",
 "n": 1,
 "files": [
@@ -23629,6 +23737,13 @@
 },
 {
 "th": "ค่าเริ่มต้น = ชื่อรหัสค่าใช้จ่าย",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ค่าเริ่มต้น = ชื่อรหัสรายได้",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -23755,13 +23870,6 @@
 },
 {
 "th": "ค่าเริ่มต้น = ใช่ (เข้า/ออกสต๊อก)",
-"n": 1,
-"files": [
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ค่าเริ่มต้น = ไม่ระบุ",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -25658,6 +25766,13 @@
 ]
 },
 {
+"th": "ชื่อ{0} — ใช้เมื่อไม่ใส่รหัส หรือเพิ่ม{1}ใหม่",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ชื่อกลุ่ม",
 "n": 1,
 "files": [
@@ -25708,6 +25823,13 @@
 },
 {
 "th": "ชื่อคล้ายผู้จำหน่าย {0} {1} แต่เลขผู้เสียภาษีในแฟ้ม ({2}) ไม่ตรงกับบิล ({3}) — ตรวจว่าบิลหรือแฟ้มผิด{4}",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "ชื่อคล้ายลูกค้า {0} {1} แต่เลขผู้เสียภาษีในแฟ้ม ({2}) ไม่ตรงกับเอกสาร ({3}) — ตรวจว่าเอกสารหรือแฟ้มผิด{4}",
 "n": 1,
 "files": [
 "apps/server/src/modules/ai.ts"
@@ -26337,6 +26459,13 @@
 ]
 },
 {
+"th": "ซื้อ › รายละเอียดค่าใช้จ่ายอื่น ๆ",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "ซื้อ › รายละเอียดผู้จำหน่าย",
 "n": 1,
 "files": [
@@ -26873,6 +27002,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "ตรงกับลูกค้า {0} {1} (เลขผู้เสียภาษี{2} ตรงกัน){3}",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
 ]
 },
 {
@@ -30474,6 +30610,13 @@
 ]
 },
 {
+"th": "บรรทัดเป็นคำอธิบายและจำนวนเงินตามเอกสาร — ตรวจยอดก่อนบันทึก",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "บรรทัดเอกสาร",
 "n": 1,
 "files": [
@@ -31878,6 +32021,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
+"th": "บันทึกรายได้อื่น ๆ (ใช้ได้เฉพาะรหัสรายได้อื่น)",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -34471,6 +34621,13 @@
 ]
 },
 {
+"th": "ผู้ขายในเอกสาร (เลข {0}) ไม่ใช่บริษัทนี้ — ตรวจว่าเป็นเอกสารขายของกิจการนี้ (ลูกค้าคือผู้ซื้อในเอกสาร)",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "ผู้ขายไม่ระบุชื่อ (เจ้าหนี้กลาง)",
 "n": 1,
 "files": [
@@ -35290,13 +35447,6 @@
 ]
 },
 {
-"th": "พบ {0}",
-"n": 1,
-"files": [
-"apps/web/src/components/AiBill.tsx"
-]
-},
-{
 "th": "พบ {0} รายการ — {1}",
 "n": 1,
 "files": [
@@ -35312,6 +35462,13 @@
 },
 {
 "th": "พบผู้จำหน่ายชื่อคล้าย {0} {1} แต่แฟ้มยังไม่มีเลขผู้เสียภาษี{2}{3}",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "พบลูกค้าชื่อคล้าย {0} {1}{2}{3}",
 "n": 1,
 "files": [
 "apps/server/src/modules/ai.ts"
@@ -36512,6 +36669,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/CashDocs.tsx"
+]
+},
+{
+"th": "มัดจำค่าสินค้าตามใบสั่งซื้อ",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "มัดจำงานติดตั้ง",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -37933,6 +38104,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
+"th": "ยอดที่ลูกค้าหัก ณ ที่จ่ายไว้ (ต่อเอกสาร — ใส่แถวใดแถวหนึ่ง)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -39980,10 +40158,24 @@
 ]
 },
 {
+"th": "รหัส{0} ({1}ต้องมี{2}) · ไม่มีในโปรแกรม = เพิ่มใหม่ด้วยรหัสนี้ · ว่างได้: ใส่ชื่อ{3}/เลขผู้เสียภาษี (หา/เพิ่มในทะเบียน)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "รหัส{0} {1}",
 "n": 1,
 "files": [
 "apps/server/src/modules/import-masters.ts"
+]
+},
+{
+"th": "รหัส{0} · ไม่มีในโปรแกรม = เพิ่มใหม่ด้วยรหัสนี้ · ว่างได้: ใส่ชื่อ{1} (มีเลขผู้เสียภาษี = หา/เพิ่มในทะเบียน · ชื่ออย่างเดียวที่ไม่มีในทะเบียน = ใส่ชื่อในเอกสาร)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -40057,10 +40249,10 @@
 ]
 },
 {
-"th": "รหัสค่าใช้จ่าย {0} เลิกใช้แล้ว",
+"th": "รหัสค่าใช้จ่ายทั้งหมดที่ใช้ได้",
 "n": 1,
 "files": [
-"apps/server/src/modules/trade-import.ts"
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -40547,10 +40739,31 @@
 ]
 },
 {
+"th": "รหัสรายได้หนึ่งบรรทัด",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
+"th": "รหัสรายได้อื่น",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "รหัสรายได้อื่น ใช้ที่ ขาย › บันทึกรายได้อื่น ๆ — เครดิตบัญชีรายได้ที่กำหนด",
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "รหัสรายได้อื่นทั้งหมดที่ใช้ได้",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -40709,6 +40922,13 @@
 },
 {
 "th": "รหัสหรือชื่อพนักงานขาย",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "รหัสหรือชื่อรายได้อื่นที่มีในโปรแกรมแล้ว (ขาย › รายละเอียดรายได้อื่น ๆ — ต้องมีบัญชีรายได้ จึงไม่เพิ่มให้อัตโนมัติ)",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -42514,6 +42734,13 @@
 ]
 },
 {
+"th": "รายละเอียด + จำนวนเงินหนึ่งบรรทัด",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
+]
+},
+{
 "th": "รายละเอียด / เหตุผล",
 "n": 1,
 "files": [
@@ -42532,6 +42759,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "รายละเอียดของ{0} (บรรทัดละรายการ) — หน้าจอต้องมีรายละเอียดทุกบรรทัด",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -43998,6 +44232,13 @@
 ]
 },
 {
+"th": "ลูกค้า {0} {1} เลขผู้เสียภาษีตรงกัน แต่ยังไม่มีสาขา {2} — เพิ่มสาขาที่แท็บสาขาในรายละเอียดลูกค้า แล้วเลือก Bill to (สาขา) ในเอกสาร",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "ลูกค้า {0} ขายเกินวงเงิน — ยอดค้างรวมบิลนี้ {1} วงเงิน {2} (เกิน {3})",
 "n": 1,
 "files": [
@@ -44030,6 +44271,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "ลูกค้า: {0}{1} — same_supplier = เคยขายรหัสนี้ให้ลูกค้ารายนี้",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -44170,6 +44418,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "ลูกค้าใหม่ ยังไม่มีในแฟ้ม{0}{1} — เลือกหรือเพิ่มลูกค้าในเอกสาร{2}",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
 ]
 },
 {
@@ -44394,6 +44649,13 @@
 "n": 1,
 "files": [
 "packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "วว/ดด/ปปปป — กำหนดส่งของ (ใบสั่งขาย) / กำหนดรับของ (ใบสั่งซื้อ)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -44688,6 +44950,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "วันที่ส่ง",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "วันที่ส่งของ \"{0}\" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -48793,6 +49069,13 @@
 ]
 },
 {
+"th": "อ่าน{0}นี้ตามโครงข้อมูล",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "อ่านที่อยู่ไม่ได้",
 "n": 1,
 "files": [
@@ -48856,6 +49139,13 @@
 ]
 },
 {
+"th": "อ่านรูปหรือ PDF ของเอกสารฝั่งขาย (ใบสั่งซื้อของลูกค้า บิลเขียนมือ) ด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "อ่านอย่างเดียว",
 "n": 1,
 "files": [
@@ -48874,13 +49164,6 @@
 "n": 1,
 "files": [
 "packages/core/src/ai-bill.ts"
-]
-},
-{
-"th": "อ่านเอกสารซื้อนี้ตามโครงข้อมูล",
-"n": 1,
-"files": [
-"apps/server/src/modules/ai.ts"
 ]
 },
 {
@@ -51285,24 +51568,24 @@
 ]
 },
 {
-"th": "เติมจากบิลแล้ว{0}{1} · ตรวจยอดกับบิลก่อนบันทึก",
+"th": "เติมจากยอดจริงปีที่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/Budget.tsx"
+]
+},
+{
+"th": "เติมจากเอกสารแล้ว{0}{1} · ตรวจยอดกับบิลก่อนบันทึก",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/CashDocs.tsx"
 ]
 },
 {
-"th": "เติมจากบิลแล้ว{0}{1}{2} · ตรวจยอดกับบิลก่อนบันทึก",
+"th": "เติมจากเอกสารแล้ว{0}{1}{2} · ตรวจยอดกับเอกสารก่อนบันทึก",
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
-]
-},
-{
-"th": "เติมจากยอดจริงปีที่แล้ว",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/Budget.tsx"
 ]
 },
 {
@@ -53784,6 +54067,13 @@
 ]
 },
 {
+"th": "เลขผู้เสียภาษีตรงกับลูกค้า {0} {1} แต่ชื่อในเอกสาร \"{2}\" ต่างกัน — ตรวจว่าเป็นรายเดียวกัน{3}",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "เลขผู้เสียภาษีที่อ่านได้ {0} {1} — แก้ในแท็บ ภาษีและบัญชี ก่อนบันทึก (อาจอ่านผิด)",
 "n": 1,
 "files": [
@@ -53799,6 +54089,13 @@
 },
 {
 "th": "เลขผู้เสียภาษีผู้ขาย \"{0}\" ไม่ครบ 13 หลัก",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
+]
+},
+{
+"th": "เลขผู้เสียภาษีลูกค้า \"{0}\" ไม่ครบ 13 หลัก",
 "n": 1,
 "files": [
 "packages/core/src/ai-bill.ts"
@@ -54932,10 +55229,24 @@
 ]
 },
 {
+"th": "เอกสารขาย",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "เอกสารขาย (ขายเชื่อ ขายสด ลดหนี้ เพิ่มหนี้ ใบเสร็จรับเงิน รับเงินมัดจำ คืนเงินมัดจำ ที่ไม่ยกเลิก)",
 "n": 1,
 "files": [
 "apps/server/src/modules/etax.ts"
+]
+},
+{
+"th": "เอกสารขาย ใบสั่งขาย ใบเสนอราคา (เลือกได้เฉพาะรหัสสินค้า/บริการที่ขาย — ไม่มีรหัสค่าใช้จ่าย)",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -54964,6 +55275,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/notes.ts"
+]
+},
+{
+"th": "เอกสารซื้อ",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
 ]
 },
 {
@@ -54999,6 +55317,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/Notes.tsx"
+]
+},
+{
+"th": "เอกสารที่จะบันทึก",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
 ]
 },
 {
@@ -55111,6 +55436,13 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "เอกสารนี้ลูกค้าหักภาษี ณ ที่จ่าย {0} — บันทึกตอนรับชำระหนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {
@@ -56623,6 +56955,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx"
+]
+},
+{
+"th": "และลงบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
+"th": "และลงบัญชีทันที",
+"n": 1,
+"files": [
+"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -59083,13 +59429,6 @@
 ]
 },
 {
-"th": "ไม่ทราบ",
-"n": 1,
-"files": [
-"packages/core/src/ai-bill.ts"
-]
-},
-{
 "th": "ไม่ทราบให้เว้นว่าง ป้อนภายหลังได้",
 "n": 1,
 "files": [
@@ -59178,6 +59517,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "ไม่พบ{0} {1} — เพิ่มที่ {2} ก่อน (ระบบไม่เพิ่มให้ เพราะต้องกำหนดบัญชีรายได้)",
+"n": 1,
+"files": [
+"apps/server/src/modules/trade-import.ts"
 ]
 },
 {
@@ -59706,6 +60052,13 @@
 ]
 },
 {
+"th": "ไม่พบในแฟ้มลูกค้า — เลือกหรือเพิ่มลูกค้าในเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "ไม่พบใบกำกับที่อ้างถึง",
 "n": 1,
 "files": [
@@ -60007,6 +60360,13 @@
 ]
 },
 {
+"th": "ไม่มีรหัสรายได้",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ไม่มีรหัสสินค้า (สินค้าใหม่: ใส่ชื่อสินค้า)",
 "n": 1,
 "files": [
@@ -60014,7 +60374,7 @@
 ]
 },
 {
-"th": "ไม่มีรหัสหรือชื่อผู้จำหน่าย",
+"th": "ไม่มีรหัสหรือชื่อ{0}",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -60060,6 +60420,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "ไม่มีรายละเอียด (คอลัมน์ \"รายละเอียด\" ต้องมีทุกแถว)",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -60616,6 +60983,13 @@
 ]
 },
 {
+"th": "ไม่ใช่บริษัทนี้",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
 "th": "ไม่ใช่แฟ้ม Excel (.xlsx)",
 "n": 1,
 "files": [
@@ -60644,10 +61018,24 @@
 ]
 },
 {
+"th": "ไม่ใช้ — เอกสารขายเลือกได้เฉพาะ candidates",
+"n": 1,
+"files": [
+"packages/core/src/ai-bill.ts"
+]
+},
+{
 "th": "ไม่ใส่ข้อมูลตั้งต้น — มีเฉพาะผังบัญชี เลขที่เอกสาร และการเชื่อมต่อบัญชี",
 "n": 1,
 "files": [
 "packages/core/src/starter-data.ts"
+]
+},
+{
+"th": "ไม่ใส่ชื่อ{0}",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -60673,6 +61061,13 @@
 },
 {
 "th": "ไม่ใส่รหัส",
+"n": 1,
+"files": [
+"packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ไม่ใส่รหัส{0}",
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
@@ -61096,13 +61491,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Defaults.tsx"
-]
-},
-{
-"th": "— ไม่พบผู้จำหน่ายตามเลขผู้เสียภาษี เลือก/เพิ่มผู้จำหน่ายเอง",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/TradeDocs.tsx"
 ]
 },
 {

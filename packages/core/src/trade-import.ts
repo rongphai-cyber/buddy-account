@@ -3,19 +3,20 @@ import { checkTaxId } from './taxid.js';
 import { CASH_KINDS, TRADE_KINDS } from './doc-calc.js';
 import { d } from './money.js';
 
-/** ชนิดเอกสารที่นำเข้าจาก Excel ได้: ขาย/ซื้อที่ลงบัญชี + บันทึกค่าใช้จ่ายอื่น ๆ (HANDOFF 167) — ปุ่ม "นำเข้า Excel" บนหน้าเอกสารเหล่านี้ */
+/** ชนิดเอกสารที่นำเข้าจาก Excel ได้: ขาย/ซื้อที่ลงบัญชี + บันทึกค่าใช้จ่ายอื่น ๆ (HANDOFF 167) + ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อ (HANDOFF 171 — ไม่ลงบัญชี) — ปุ่ม "นำเข้า Excel" บนหน้าเอกสารเหล่านี้ */
 export interface ImportDocKind { path: string; cls: string; module: 'AR' | 'AP'; menu: string; party: 'customer' | 'supplier'; label: string; route: string; cash?: boolean }
-const OE_KIND = CASH_KINDS.find((k) => k.cls === 'OE')!;
 export const IMPORT_DOC_KINDS: ImportDocKind[] = [
-  ...TRADE_KINDS.filter((k) => !k.order).map(({ path, cls, module, menu, party, label, route }) => ({ path, cls, module, menu, party, label, route })),
-  { path: OE_KIND.path, cls: OE_KIND.cls, module: OE_KIND.module, menu: OE_KIND.menu, party: OE_KIND.party, label: OE_KIND.label, route: OE_KIND.route, cash: true },
+  ...TRADE_KINDS.map(({ path, cls, module, menu, party, label, route }) => ({ path, cls, module, menu, party, label, route })),
+  // เอกสารรับ/จ่ายเงิน: ค่าใช้จ่ายอื่น (HANDOFF 167) · มัดจำรับ/จ่าย รายได้อื่น (HANDOFF 171)
+  ...CASH_KINDS.map(({ path, cls, module, menu, party, label, route }) => ({ path, cls, module, menu, party, label, route, cash: true })),
 ];
 export const importPathOf = (cls: string) => IMPORT_DOC_KINDS.find((k) => k.cls === cls)?.path ?? null;
 /** ชนิดเอกสารของหน้านำเข้า (ตามเส้นทาง) — ใช้เลือกคอลัมน์ของแบบฟอร์ม/การจับคู่ (HANDOFF 169) */
 export function importKindOf(path: string): (ImportKindLike & { label: string }) | null {
-  const t = TRADE_KINDS.find((k) => k.path === path && !k.order);
+  const t = TRADE_KINDS.find((k) => k.path === path);
   if (t) return t;
-  return path === OE_KIND.path ? { cls: OE_KIND.cls, module: OE_KIND.module, party: OE_KIND.party, cash: true, label: OE_KIND.label } : null;
+  const c = CASH_KINDS.find((k) => k.path === path);
+  return c ? { cls: c.cls, module: c.module, party: c.party, cash: true, label: c.label } : null;
 }
 
 /**
@@ -24,7 +25,7 @@ export function importKindOf(path: string): (ImportKindLike & { label: string })
  * ส่วนนี้อ่านตาราง (xlsx/csv ที่คลายแล้ว) → เอกสารร่าง + ข้อผิดพลาดรายแถว · การหารหัสและบันทึกอยู่ที่เซิร์ฟเวอร์
  */
 /** ชนิดเอกสารที่ใช้เลือกคอลัมน์ของแบบฟอร์ม (ขาย/ซื้อ/ค่าใช้จ่ายอื่น) */
-export interface ImportKindLike { cls: string; module: 'AR' | 'AP'; party: 'customer' | 'supplier'; payments?: boolean; refInvoice?: boolean; cash?: boolean }
+export interface ImportKindLike { cls: string; module: 'AR' | 'AP'; party: 'customer' | 'supplier'; payments?: boolean; refInvoice?: boolean; cash?: boolean; order?: 'SO' | 'PO' }
 /** ต้องมี / ต้องมีถ้า… / ไม่บังคับ (ค่าเริ่มต้น = …) — HANDOFF 169 (ต้องมี = ช่องที่หน้าจอบันทึกไม่ได้ถ้าไม่มี) */
 export type ImportNeed = 'req' | 'cond' | 'opt';
 export interface ImportColumn {
@@ -47,7 +48,7 @@ export interface ImportColumn {
   /** ช่องตรวจยอดจากโปรแกรมเดิม (ไม่ใช่ช่องของหน้าจอ — ไม่อยู่ในแผ่นนำเข้าของแบบฟอร์ม · อ่านได้/จับคู่ได้ · HANDOFF 170) */
   check?: boolean;
 }
-export type ImportKey = 'ref' | 'doc_no' | 'vat_amount' | 'net_total' | 'date' | 'party' | 'party_name' | 'party_branch' | 'ship_to' | 'ref_no' | 'ref_date' | 'ref_invoice' | 'credit_days' | 'department' | 'project' | 'salesperson' | 'sales_area'
+export type ImportKey = 'ref' | 'doc_no' | 'vat_amount' | 'net_total' | 'date' | 'party' | 'party_name' | 'party_branch' | 'ship_to' | 'ref_no' | 'ref_date' | 'delivery_date' | 'ref_invoice' | 'credit_days' | 'department' | 'project' | 'salesperson' | 'sales_area'
   | 'ship_via' | 'vat_basis' | 'bill_discount' | 'remark' | 'pay_method' | 'pay_ref' | 'wht_amount' | 'wht_rate' | 'wht_income' | 'wht_form'
   | 'item' | 'item_name' | 'description' | 'warehouse' | 'qty' | 'unit' | 'price' | 'discount' | 'free' | 'line_job' | 'vat_code' | 'return'
   | 'party_tax_id' | 'party_address' | 'party_phone' | 'item_kind';
@@ -97,6 +98,9 @@ export const IMPORT_COLUMNS: ImportColumn[] = [
   { key: 'ship_to', th: 'สถานที่ส่งของ', aliases: ['รหัสสถานที่ส่ง', 'สถานที่ส่งสินค้า', 'ship to'], need: 'opt', dflt: 'ค่าเริ่มต้น = สถานที่ส่งประจำของลูกค้า', head: true, for: isAR, hint: 'รหัสสถานที่ส่งในแฟ้มลูกค้า (แท็บสถานที่ส่งสินค้า)', example: ['', ''] },
   { ...REF_NO_AP, for: (k) => !k.refInvoice },
   REF_DATE_AP,
+  // ใบสั่งขาย/ใบสั่งซื้อ (HANDOFF 171): วันที่ส่งของ/ถึงกำหนดรับของ — ใบเสนอราคาไม่มีช่องนี้บนหน้าจอ
+  { key: 'delivery_date', th: 'วันที่ส่งของ', aliases: ['กำหนดส่ง', 'วันที่ส่ง', 'วันที่รับของ', 'กำหนดรับของ', 'delivery date'], need: 'opt', dflt: 'ค่าเริ่มต้น = ไม่ระบุ', head: true,
+    for: (k) => !!k.order && k.cls !== 'QT', thFor: (k) => (k.module === 'AR' ? 'วันที่ส่งของ' : 'วันที่รับของ'), hint: 'วว/ดด/ปปปป — กำหนดส่งของ (ใบสั่งขาย) / กำหนดรับของ (ใบสั่งซื้อ)', example: ['', ''] },
   { key: 'ref_invoice', th: 'อ้างใบกำกับ', aliases: ['ใบกำกับเดิม', 'อ้างถึงใบกำกับ', 'เลขที่ใบกำกับที่อ้างถึง'], need: 'req', head: true, for: (k) => !!k.refInvoice, hint: 'ใบลดหนี้/เพิ่มหนี้: เลขที่ใบกำกับเดิม', example: ['', ''] },
   { key: 'credit_days', th: 'เครดิต (วัน)', aliases: ['เครดิต', 'จำนวนวันเครดิต', 'credit'], need: 'opt', dflt: 'ค่าเริ่มต้น = ตามรายละเอียดลูกค้า/ผู้จำหน่าย', head: true, for: (k) => !pays(k), hint: 'จำนวนวันเครดิต 0–999 (ขาย/ซื้อเงินสดไม่มีช่องนี้ — รับ/จ่ายเงินวันเดียวกัน)', example: ['30', '30'] },
   DEPT_COL, JOB_COL,
@@ -156,7 +160,7 @@ export interface ImportLine { row: number; item: string; item_name: string | nul
 export interface ImportDoc extends ImportParty { ref: string; row: number; date: string;
   /** เลขที่เอกสารกำหนดเอง (ว่าง = อัตโนมัติ · HANDOFF 170) */
   doc_no: string | null; ref_invoice: string | null; credit_days: number | null; remark: string | null;
-  ship_to: string | null; ref_no: string | null; ref_date: string | null; department: string | null; project: string | null; salesperson: string | null; sales_area: string | null; ship_via: string | null;
+  ship_to: string | null; ref_no: string | null; ref_date: string | null; delivery_date: string | null; department: string | null; project: string | null; salesperson: string | null; sales_area: string | null; ship_via: string | null;
   vat_basis: '1' | '2' | null; bill_discount: string | null; pay_method: string | null; pay_ref: string | null; wht: ExpenseImportWht | null; lines: ImportLine[] }
 export interface ImportIssue { row: number; message: string }
 
@@ -342,6 +346,8 @@ export function mapImport(rows: string[][], ys: YearSystem, kind?: ImportKindLik
     if (credit !== null && !(Number.isInteger(credit) && credit >= 0 && credit <= 999)) bad(`เครดิต "${cd}" ต้องเป็นจำนวนวัน 0–999`);
     const refDateT = cell('ref_date'), refDate = refDateT ? importDate(refDateT, ys) : null;
     if (refDateT && !refDate) bad(`วันที่ใบกำกับ "${refDateT}" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป`);
+    const delT = cell('delivery_date'), delivery = delT ? importDate(delT, ys) : null;
+    if (delT && !delivery) bad(`วันที่ส่งของ "${delT}" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป`);
     const basis = importVatBasis(cell('vat_basis'));
     if (basis === undefined) bad(`ภาระภาษี "${cell('vat_basis')}" ใช้ "เกณฑ์สิทธิ" หรือ "เกณฑ์เงินสด"`);
     const free = importFlag(cell('free')), ret = importFlag(cell('return'));
@@ -354,7 +360,7 @@ export function mapImport(rows: string[][], ys: YearSystem, kind?: ImportKindLik
     const wht = whtCells((k) => cell(k as ImportKey), bad);
     if (errors.length > n0 || !date || !p || qty === null || price === null) continue;
     const head = {
-      date, doc_no: docNo || null, ref_invoice: cell('ref_invoice') || null, credit_days: credit, remark: cell('remark') || null, ship_to: cell('ship_to') || null, ref_no: cell('ref_no').slice(0, 30) || null, ref_date: refDate,
+      date, doc_no: docNo || null, ref_invoice: cell('ref_invoice') || null, credit_days: credit, remark: cell('remark') || null, ship_to: cell('ship_to') || null, ref_no: cell('ref_no').slice(0, 30) || null, ref_date: refDate, delivery_date: delivery,
       department: cell('department') || null, project: cell('project') || null, salesperson: cell('salesperson') || null, sales_area: cell('sales_area') || null, ship_via: cell('ship_via') || null,
       vat_basis: basis ?? null, bill_discount: cell('bill_discount') || null, pay_method: cell('pay_method') || null, pay_ref: cell('pay_ref').slice(0, 30) || null, wht,
     };
@@ -513,6 +519,39 @@ export const EXPENSE_IMPORT_COLUMNS: ExpenseImportColumn[] = [
   { ...LINE_JOB, key: 'line_job' },
   { ...PARTY_NEW_COLS.party_tax_id, key: 'party_tax_id' }, { ...PARTY_NEW_COLS.party_address, key: 'party_address' }, { ...PARTY_NEW_COLS.party_phone, key: 'party_phone' },
 ];
+/**
+ * คอลัมน์ของแบบนำเข้าเอกสารรับ/จ่ายเงิน ตามหน้าจอของชนิดนั้น (HANDOFF 171) — ไม่ระบุ = ค่าใช้จ่ายอื่น (OE)
+ * มัดจำรับ/จ่าย (AI/AE): บรรทัด = รายละเอียด + จำนวนเงิน (ไม่มีรหัส) · รายได้อื่น (OI): รหัสรายได้ · ฝั่งรับเงิน (AI/OI): ลูกค้า ไม่มีเลขที่ใบกำกับผู้จำหน่าย
+ * ภาษีหัก ณ ที่จ่าย: ฝั่งจ่าย (AE/OE) = อัตรา/ยอด/ประเภทเงินได้/แบบ ภ.ง.ด. · ฝั่งรับ (AI/OI) = ยอดที่ลูกค้าหักไว้อย่างเดียว (เหมือนหน้าจอ)
+ * ชื่อหัวคอลัมน์ของค่าใช้จ่ายอื่นยังอ่านได้ทุกชนิด (ใช้เป็นชื่ออื่น)
+ */
+export function cashImportColumnsFor(cls?: string | null): ExpenseImportColumn[] {
+  const k = CASH_KINDS.find((x) => x.cls === cls);
+  if (!k || k.cls === 'OE') return EXPENSE_IMPORT_COLUMNS;
+  const cust = k.party === 'customer', w = cust ? 'ลูกค้า' : 'ผู้จำหน่าย';
+  const keep = (c: ExpenseImportColumn) => [...c.aliases, c.th];
+  return EXPENSE_IMPORT_COLUMNS.flatMap((c): ExpenseImportColumn[] => {
+    if (k.lines === 'text' && c.key === 'code') return [];
+    if (cust && (c.key === 'ref_no' || c.key === 'ref_date')) return [];
+    if (!k.whtEntries && (c.key === 'wht_rate' || c.key === 'wht_income' || c.key === 'wht_form')) return [];
+    switch (c.key) {
+      case 'ref': return [{ ...c, example: [`${k.cls}-0001`, k.lines === 'text' ? `${k.cls}-0002` : `${k.cls}-0001`] }];
+      case 'doc_no': return [{ ...c, hint: c.hint.replace('OE…', `${k.cls}…`) }];
+      case 'party': return [{ ...c, th: `รหัส${w}`, aliases: keep(c), when: `ไม่ใส่ชื่อ${w}`, need: 'cond',
+        hint: k.partyRequired ? `รหัส${w} (${k.label}ต้องมี${w}) · ไม่มีในโปรแกรม = เพิ่มใหม่ด้วยรหัสนี้ · ว่างได้: ใส่ชื่อ${w}/เลขผู้เสียภาษี (หา/เพิ่มในทะเบียน)`
+          : `รหัส${w} · ไม่มีในโปรแกรม = เพิ่มใหม่ด้วยรหัสนี้ · ว่างได้: ใส่ชื่อ${w} (มีเลขผู้เสียภาษี = หา/เพิ่มในทะเบียน · ชื่ออย่างเดียวที่ไม่มีในทะเบียน = ใส่ชื่อในเอกสาร)`,
+        example: cust ? ['C001', 'C001'] : c.example }];
+      case 'party_name': return [{ ...c, th: `ชื่อ${w}`, aliases: [...keep(c), 'ชื่อลูกค้า', 'ผู้จ่ายเงิน'], when: `ไม่ใส่รหัส${w}`, hint: `ชื่อ${w} — ใช้เมื่อไม่ใส่รหัส หรือเพิ่ม${w}ใหม่` }];
+      case 'party_branch': return [{ ...c, th: cust ? 'Bill to (สาขาลูกค้า)' : c.th, aliases: keep(c) }];
+      case 'wht_amount': return cust ? [{ ...c, dflt: 'ค่าเริ่มต้น = ไม่หัก', hint: 'ยอดที่ลูกค้าหัก ณ ที่จ่ายไว้ (ต่อเอกสาร — ใส่แถวใดแถวหนึ่ง)', example: ['', ''] }] : [c];
+      case 'code': return [{ ...c, th: 'รหัสรายได้', aliases: [...keep(c), 'รายได้', 'รหัสรายได้อื่น', 'income'], hint: 'รหัสหรือชื่อรายได้อื่นที่มีในโปรแกรมแล้ว (ขาย › รายละเอียดรายได้อื่น ๆ — ต้องมีบัญชีรายได้ จึงไม่เพิ่มให้อัตโนมัติ)', example: ['I-001', 'I-002'] }];
+      case 'description': return k.lines === 'text'
+        ? [{ ...c, required: true, need: 'req', dflt: undefined, hint: `รายละเอียดของ${k.label} (บรรทัดละรายการ) — หน้าจอต้องมีรายละเอียดทุกบรรทัด`, example: ['มัดจำค่าสินค้าตามใบสั่งซื้อ', 'มัดจำงานติดตั้ง'] }]
+        : [{ ...c, dflt: 'ค่าเริ่มต้น = ชื่อรหัสรายได้', example: ['ค่าเช่าเดือน ต.ค.', ''] }];
+      default: return [c];
+    }
+  });
+}
 export interface ExpenseImportWht { rate: string | null; amount: string | null; income: string | null; form: 'S03' | 'S53' | null }
 export interface ExpenseImportLine { row: number; code: string; description: string | null; amount: string; job: string | null }
 export interface ExpenseImportDoc extends ImportParty { ref: string; row: number; date: string; doc_no: string | null; remark: string | null; wht: ExpenseImportWht | null; lines: ExpenseImportLine[];
@@ -527,10 +566,16 @@ export function importWhtForm(v: string): 'S03' | 'S53' | null | undefined {
   return undefined;
 }
 
-/** แฟ้มค่าใช้จ่ายอื่น ๆ → เอกสาร (หนึ่งแถว = รหัสค่าใช้จ่ายหนึ่งบรรทัด · ภาษีหัก ณ ที่จ่ายต่อเอกสาร) */
-export function mapExpenseImport(rows: string[][], ys: YearSystem): { docs: ExpenseImportDoc[]; errors: ImportIssue[]; cols: ExpenseImportKey[] } {
+/**
+ * แฟ้มเอกสารรับ/จ่ายเงิน → เอกสาร (หนึ่งแถว = หนึ่งบรรทัด · ภาษีหัก ณ ที่จ่ายต่อเอกสาร) — cls ไม่ระบุ = ค่าใช้จ่ายอื่น (OE)
+ * มัดจำ (บรรทัดเป็นข้อความ): ไม่มีรหัส ต้องมีรายละเอียด (HANDOFF 171)
+ */
+export function mapExpenseImport(rows: string[][], ys: YearSystem, cls?: string | null): { docs: ExpenseImportDoc[]; errors: ImportIssue[]; cols: ExpenseImportKey[] } {
   const errors: ImportIssue[] = [];
-  const h = findHeader(rows, EXPENSE_IMPORT_COLUMNS);
+  const COLS = cashImportColumnsFor(cls);
+  const ck = CASH_KINDS.find((x) => x.cls === cls) ?? CASH_KINDS.find((x) => x.cls === 'OE')!;
+  const textLines = ck.lines === 'text', who = ck.party === 'customer' ? 'ลูกค้า' : 'ผู้จำหน่าย';
+  const h = findHeader(rows, COLS);
   if ('error' in h) return { docs: [], errors: [h.error], cols: [] };
   const { headAt, cols } = h;
   const docs = new Map<string, ExpenseImportDoc>();
@@ -554,8 +599,9 @@ export function mapExpenseImport(rows: string[][], ys: YearSystem): { docs: Expe
     const date = !cell('date') && first ? first.date : importDate(cell('date'), ys);
     if (!date) bad(`วันที่ "${cell('date')}" ไม่ถูกต้อง — ใช้ วว/ดด/ปปปป`);
     const p = inheritParty(partyCells((k) => cell(k as ExpenseImportKey), bad), first);
-    if (p && !p.party && !p.party_name && !p.party_tax_id) bad('ไม่มีรหัสหรือชื่อผู้จำหน่าย');
-    if (!code) bad('ไม่มีรหัสค่าใช้จ่าย');
+    if (p && !p.party && !p.party_name && !p.party_tax_id) bad(`ไม่มีรหัสหรือชื่อ${who}`);
+    if (!textLines && !code) bad(ck.itemType === '4' ? 'ไม่มีรหัสรายได้' : 'ไม่มีรหัสค่าใช้จ่าย');
+    if (textLines && !cell('description')) bad('ไม่มีรายละเอียด (คอลัมน์ "รายละเอียด" ต้องมีทุกแถว)');
     const amount = importNumber(cell('amount'));
     if (amount === null) bad(`จำนวนเงิน "${cell('amount')}" ไม่ใช่ตัวเลข`);
     else if (Number(amount) === 0) bad('จำนวนเงินเป็น 0');
@@ -577,7 +623,7 @@ export function mapExpenseImport(rows: string[][], ys: YearSystem): { docs: Expe
       if (wht && doc.wht && JSON.stringify(wht) !== JSON.stringify(doc.wht)) bad(`เลขที่อ้างอิง ${ref}: ภาษีหัก ณ ที่จ่ายไม่ตรงกับแถว ${doc.row} — ใส่แถวเดียวของเอกสาร`);
       if (head.pay_method && doc.pay_method && head.pay_method !== doc.pay_method) bad(`เลขที่อ้างอิง ${ref}: วิธีชำระไม่ตรงกับแถว ${doc.row} — ใส่แถวเดียว หรือใช้แผ่น "จ่ายชำระ" เมื่อแบ่งหลายวิธี`);
       if (head.doc_no && doc.doc_no && head.doc_no !== doc.doc_no) bad(`เลขที่อ้างอิง ${ref}: เลขที่เอกสาร ${head.doc_no} ไม่ตรงกับแถว ${doc.row} (${doc.doc_no}) — หนึ่งเอกสารใช้เลขที่เดียว`);
-      headConflicts(ref, doc, head, ['doc_no', 'pay_method'], (k) => EXPENSE_IMPORT_COLUMNS.find((x) => x.key === k)?.th ?? k, bad);
+      headConflicts(ref, doc, head, ['doc_no', 'pay_method'], (k) => COLS.find((x) => x.key === k)?.th ?? k, bad);
       if (errors.length > before) continue;
       doc.wht ??= wht;
       const d0 = doc as unknown as Record<string, unknown>;
@@ -588,7 +634,7 @@ export function mapExpenseImport(rows: string[][], ys: YearSystem): { docs: Expe
       if (at && at.ref !== ref) { bad(`เลขที่เอกสาร ${doc.doc_no} ซ้ำกับเลขที่อ้างอิง ${at.ref} (แถว ${at.row}) — หนึ่งเลขที่ใช้ได้เอกสารเดียว`); if (doc.lines.length === 0) docs.delete(ref); continue; }
       if (!at) docNoAt.set(doc.doc_no.toUpperCase(), { ref, row: doc.row });
     }
-    doc.lines.push({ row: no, code, description: cell('description') || null, amount, job: cell('line_job') || null });
+    doc.lines.push({ row: no, code: textLines ? '' : code, description: cell('description') || null, amount, job: cell('line_job') || null });
   }
   if (!docs.size && !errors.length) errors.push({ row: headAt + 2, message: 'ไม่มีรายการใต้หัวตาราง' });
   return { docs: [...docs.values()], errors, cols: [...cols.keys()] };

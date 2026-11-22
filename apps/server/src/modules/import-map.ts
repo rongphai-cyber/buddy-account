@@ -23,7 +23,7 @@ type Ctx = AuthContext & { companyId: string };
 export interface MapTarget { path: string; target: ImportMapTarget; cls: string; label: string; menu: string; module: 'AR' | 'AP' | 'GL'; classes: string[] }
 export const MAP_TARGETS: MapTarget[] = [
   ...IMPORT_DOC_KINDS.map((k): MapTarget => ({ path: k.path, target: k.cash ? 'expense' : 'trade', cls: k.cls, label: k.label, menu: k.menu, module: k.module,
-    classes: k.cash ? ['OE', 'RR', 'HP'] : k.module === 'AR' ? ['IV', 'HS', 'DR', 'CN'] : ['RR', 'HP', 'CP', 'DN'] })),
+    classes: k.cash ? (k.cls === 'OI' ? ['OI'] : k.cls === 'OE' ? ['OE', 'RR', 'HP'] : []) : k.module === 'AR' ? ['IV', 'HS', 'DR', 'CN'] : ['RR', 'HP', 'CP', 'DN'] })),
   { path: 'journal', target: 'journal', cls: 'JV', label: 'ใบสำคัญ (สมุดรายวัน)', menu: 'GL.JNL', module: 'GL', classes: [] },
 ];
 export const mapTargetOf = (path: string) => { const T = MAP_TARGETS.find((t) => t.path === path); if (!T) throw notFound('ชนิดเอกสาร'); return T; };
@@ -52,7 +52,7 @@ export function transformTable(rows: string[][], target: ImportMapTarget, mappin
 }
 /** แฟ้มตรงแบบฟอร์มของ Buddy อยู่แล้ว (หาหัวตารางและคอลัมน์บังคับเจอ) */
 function matchesTemplate(rows: string[][], target: ImportMapTarget, ys: YearSystem, kind?: ImportKindLike | null) {
-  const r = target === 'journal' ? mapJournalImport(rows, ys) : target === 'expense' ? mapExpenseImport(rows, ys) : mapImport(rows, ys, kind);
+  const r = target === 'journal' ? mapJournalImport(rows, ys) : target === 'expense' ? mapExpenseImport(rows, ys, kind?.cls) : mapImport(rows, ys, kind);
   const n = 'vouchers' in r ? r.vouchers.length : r.docs.length;
   return !(n === 0 && r.errors.length === 1 && /^(ไม่พบหัวตาราง|ไม่มีคอลัมน์)/.test(r.errors[0]!.message));
 }
@@ -131,12 +131,12 @@ async function catalogOf(db: Db, companyId: string, T: MapTarget): Promise<{ cat
         WHERE j.company_id = ${companyId} AND j.deleted_at IS NULL AND l.deleted_at IS NULL AND j.doc_status <> 'C' AND j.voucher_date >= (current_date - 1095) ORDER BY j.voucher_date DESC LIMIT 4000`.execute(db)).rows;
     return { cat, hist, kind: 'account' };
   }
-  const types = T.target === 'expense' ? ['5', '2'] : T.module === 'AR' ? ['0', '1', '2', '3', '4'] : ['0', '1', '2', '3', '5'];
+  const types = T.target === 'expense' ? (T.cls === 'OI' ? ['4'] : ['5', '2']) : T.module === 'AR' ? ['0', '1', '2', '3', '4'] : ['0', '1', '2', '3', '5'];
   const cat = (await sql<Cand>`SELECT id, code, name_th AS name FROM md_item WHERE company_id = ${companyId} AND deleted_at IS NULL AND status = 'A' AND item_type = ANY(${types}::text[]) ORDER BY code LIMIT 8000`.execute(db)).rows;
   const hist = (await sql<{ text: string | null; id: string }>`SELECT l.description AS text, l.item_id AS id FROM doc_line l JOIN doc_header h ON h.id = l.header_id
       WHERE h.company_id = ${companyId} AND h.deleted_at IS NULL AND l.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_class = ANY(${T.classes}::text[]) AND l.item_id IS NOT NULL
         AND h.doc_date >= (current_date - 1095) ORDER BY h.doc_date DESC LIMIT 4000`.execute(db)).rows;
-  return { cat, hist, kind: T.target === 'expense' ? 'expense' : 'item' };
+  return { cat, hist, kind: T.target === 'expense' && T.cls !== 'OI' ? 'expense' : 'item' };
 }
 
 /** แนะนำรหัส: ประวัติ (คำอธิบายคล้าย ≥ 0.8) → ชื่อรหัสตรง (≥ 0.85) → AI เฉพาะที่เหลือ ครั้งเดียว (เมื่อผู้ใช้กด) — ผู้ใช้เลือกยอมรับเอง */

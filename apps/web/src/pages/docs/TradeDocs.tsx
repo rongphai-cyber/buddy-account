@@ -395,8 +395,14 @@ export function TradeFormPage({ path }: { path: string }) {
     if (r.supplier) await pickParty({ id: r.supplier.id, code: r.supplier.code, name: r.supplier.name });
     // บริษัทไม่จด VAT / เจ้าหนี้กลาง: VAT รวมเป็นค่าใช้จ่าย — บรรทัดเป็นยอดรวม VAT ประเภทราคา 0 (เจ้าของ 19/11/2569)
     const asExp = K.module === 'AP' && (defs.data?.vat_registered === false || (!!r.supplier && r.supplier.id === defs.data?.central_supplier_id)) ? billAsExpense(r.bill) : null;
-    set({ price_type: asExp ? '0' : r.bill.price_type, vat_rate: r.bill.vat_rate, ...(r.bill.doc_no ? { ref: { id: '', code: r.bill.doc_no } } : {}), ...(r.supplier && r.bill.supplier.branch_no ? { party_tax_branch_no: r.bill.supplier.branch_no } : {}) });
-    if (r.bill.doc_date) setRefDate(r.bill.doc_date);
+    // เลขที่ของกระดาษ (HANDOFF 171): ซื้อเงินเชื่อ/เงินสด = เลขที่ใบกำกับผู้จำหน่าย + ลงวันที่ · เอกสารอื่น = อ้างอิง (เลขที่ใบสั่งซื้อของลูกค้า ใบเสนอราคา/ใบลดหนี้ของผู้จำหน่าย)
+    // ฝั่งขาย: ลูกค้า = ผู้ซื้อในเอกสาร (สาขาตามเอกสาร) · วันที่เอกสาร = วันที่ในกระดาษ (บิลเขียนมือคีย์ย้อนหลัง)
+    const br = K.party === 'customer' ? r.bill.buyer.branch_no : r.bill.supplier.branch_no;
+    set({ price_type: asExp ? '0' : r.bill.price_type, vat_rate: r.bill.vat_rate,
+      ...(r.bill.doc_no ? (supInv ? { ref: { id: '', code: r.bill.doc_no } } : { your_ref: r.bill.doc_no.slice(0, 30) }) : {}),
+      ...(K.party === 'customer' && r.bill.doc_date ? { doc_date: r.bill.doc_date } : {}),
+      ...(r.supplier && br ? { party_tax_branch_no: br } : {}) });
+    if (supInv && r.bill.doc_date) setRefDate(r.bill.doc_date);
     setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l0, i) => {
       const l = asExp ? { ...l0, ...asExp[i] } : l0;
       const gross = d(l.qty || 0).times(d(l.unit_price || 0)).toDecimalPlaces(2), disc = l.amount ? gross.minus(d(l.amount)) : d(0);
@@ -406,9 +412,9 @@ export function TradeFormPage({ path }: { path: string }) {
     // บิลที่หัก ณ ที่จ่าย (HANDOFF 167): ซื้อเงินสด → แท็บภาษีหัก ณ ที่จ่าย · ซื้อเงินเชื่อหักตอนจ่ายชำระหนี้
     const w = asExp ? null : billWhtRow(r.bill);
     if (w && K.cls === 'HP') setWhts([{ key: nextKey(), ...w, taxEdited: true, certificate_no: '', certificate_date: '' }]);
-    if (w && K.cls !== 'HP') toast(`บิลนี้หักภาษี ณ ที่จ่าย ${w.tax_amount} — ${K.label}บันทึกภาษีหัก ณ ที่จ่ายตอนจ่ายชำระหนี้`, 'warn');
+    if (w && K.cls !== 'HP') toast(K.party === 'customer' ? `เอกสารนี้ลูกค้าหักภาษี ณ ที่จ่าย ${w.tax_amount} — บันทึกตอนรับชำระหนี้` : `บิลนี้หักภาษี ณ ที่จ่าย ${w.tax_amount} — ${K.label}บันทึกภาษีหัก ณ ที่จ่ายตอนจ่ายชำระหนี้`, 'warn');
     const missing = r.lines.filter((l) => !l.item).length;
-    toast(`เติมจากบิลแล้ว${w && K.cls === 'HP' ? ` · ภาษีหัก ณ ที่จ่าย ${w.tax_amount}${w.rate ? ` (${w.rate}%)` : ' — ใส่อัตราเอง'}` : ''}${r.supplier ? '' : ' — ไม่พบผู้จำหน่ายตามเลขผู้เสียภาษี เลือก/เพิ่มผู้จำหน่ายเอง'}${missing ? ` · เลือกรหัสสินค้าอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
+    toast(`เติมจากเอกสารแล้ว${w && K.cls === 'HP' ? ` · ภาษีหัก ณ ที่จ่าย ${w.tax_amount}${w.rate ? ` (${w.rate}%)` : ' — ใส่อัตราเอง'}` : ''}${r.supplier ? '' : ` — ไม่พบ${partyWord(K)}ตามเลขผู้เสียภาษี เลือก/เพิ่ม${partyWord(K)}เอง`}${missing ? ` · เลือกรหัสสินค้าอีก ${missing} บรรทัด` : ''} · ตรวจยอดกับเอกสารก่อนบันทึก`);
   };
   const addLine = () => { setLines((ls) => [...ls, { key: ++seq, item_id: '', item_code: '', description: '', warehouse_id: ls.at(-1)?.warehouse_id ?? null, qty: '', unit_id: null, factor: '1', unit_price: '', discount_text: '', is_free: false, return_to_stock: K.cls === 'CN' || K.cls === 'DN', vat: '1' as VatCode, project_id: h?.project_id || null }]); };
   // บรรทัดว่างให้พอดีจอ (เจ้าของ 18/11/2569 "ให้แสดงหลายๆแถวให้พอดีกับหน้าจอ") — บรรทัดว่างไม่บันทึก ไม่นับ · Ctrl+Ins/+ เพิ่มบรรทัด ยังเพิ่มต่อได้
@@ -518,7 +524,7 @@ export function TradeFormPage({ path }: { path: string }) {
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         {K.cls === 'QT' && id && !cancelled && <button disabled={!canSO('add')} onClick={() => setAskConvert(true)}>แปลงเป็นใบสั่งขาย</button>}
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} typeId={h?.doc_type_id} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
-        {supInv && !readOnly && h && <AiBillButton target={K.path} onApply={applyBill} />}
+        {!readOnly && h && <AiBillButton target={K.path} party={K.party} onApply={applyBill} />}
         {id && (cur.data as { receipt_substitute?: boolean } | undefined)?.receipt_substitute && <SubstituteReceiptButton id={id} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
         <ImportExcelButton cls={K.cls} menu={K.menu} label={K.label} />

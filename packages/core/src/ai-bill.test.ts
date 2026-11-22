@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { AI_BILL_TARGETS, aiBillSide, BILL_SYSTEM_PROMPT_SALES } from './ai-bill.js';
+import { CASH_KINDS, TRADE_KINDS } from './doc-calc.js';
 import { AI_MODEL, AI_MODELS, aiBillEstimate, aiCost, aiModelOf, aiRequestOptions, BILL_SCHEMA, normalizeBill, SUGGEST_SCHEMA, suggestPrompt, textSim, whtRateOf, billWhtRow, type RawBill } from './ai-bill.js';
 
 /** Anthropic structured outputs: at most 16 parameters with union types (type arrays or anyOf) per schema */
@@ -117,5 +119,30 @@ describe('AI อ่านบิล (T7.7)', () => {
     expect(p).toContain('ลงรหัส 95-5300-01');
     expect(p).toContain('ใช้ได้เฉพาะรหัสค่าใช้จ่าย');
     expect(p).toContain('"history":4');
+  });
+
+  it('HANDOFF 171: AI bill on every document entry screen — sales side reads the customer from the buyer on the paper', () => {
+    // ทุกเอกสารขาย/ซื้อ/ใบสั่ง และเอกสารรับ/จ่ายเงิน (มัดจำ รายได้อื่น ค่าใช้จ่ายอื่น)
+    expect(AI_BILL_TARGETS.map((t) => t.cls).sort()).toEqual([...TRADE_KINDS.map((k) => k.cls), ...CASH_KINDS.map((k) => k.cls)].sort());
+    const t = (cls: string) => AI_BILL_TARGETS.find((x) => x.cls === cls)!;
+    expect(['IV', 'HS', 'DR', 'CN', 'QT', 'SO', 'AI', 'OI'].map((c) => aiBillSide(t(c)))).toEqual(Array(8).fill('sale'));
+    expect(['RR', 'HP', 'CP', 'DN', 'PO', 'AE', 'OE'].map((c) => aiBillSide(t(c)))).toEqual(Array(7).fill('purchase'));
+    expect([t('OE').lines, t('OI').lines, t('AI').lines, t('AE').lines, t('SO').lines]).toEqual(['expense', 'income', 'text', 'text', 'item']);
+    expect(AI_BILL_TARGETS.filter((x) => x.service).map((x) => x.cls)).toEqual(['OE']);
+    expect(BILL_SYSTEM_PROMPT_SALES).toContain('buyer คือลูกค้า');
+    expect(BILL_SCHEMA.properties.buyer.required).toContain('branch_no');
+    // ใบสั่งซื้อของลูกค้า: ลูกค้า = ผู้ซื้อ (เลข 13 หลัก + สาขา) · ผู้ขาย = บริษัทเรา · ไม่เตือนเรื่องภาษีซื้อ
+    const po: RawBill = { ...raw, doc_kind: 'abbreviated_tax_invoice', supplier: { name: 'บริษัทเรา', tax_id: '', branch_no: '', address: '' }, buyer: { name: 'ห้างลูกค้า', tax_id: '0-1055-37095-90-3', branch_no: '3' }, doc_no: 'PO-77' };
+    const b = normalizeBill(po, 'sale');
+    expect(b.buyer).toEqual({ name: 'ห้างลูกค้า', tax_id_read: '0105537095903', branch_no: '00003' });
+    expect(b.warnings.some((w) => /ภาษีซื้อ|ผู้ขาย/.test(w))).toBe(false);
+    expect(normalizeBill({ ...po, buyer: { name: 'x', tax_id: '12345', branch_no: '' } }, 'sale').warnings).toContain('เลขผู้เสียภาษีลูกค้า "12345" ไม่ครบ 13 หลัก');
+    expect(normalizeBill(po).warnings.some((w) => /ภาษีซื้อ/.test(w))).toBe(true);   // ฝั่งซื้อยังเตือนเหมือนเดิม
+    // คำขอแนะนำรหัสฝั่งขาย/รายได้อื่น: บอกชนิดรหัสที่เลือกได้ และคู่ค้าเป็นลูกค้า
+    const lines = [{ index: 0, description: 'กระดาษ', amount: '100', candidates: [] }];
+    const sp = suggestPrompt({ target: 'sale', supplierName: 'ห้างลูกค้า', supplierKnown: true, lines, expenseCodes: [] });
+    expect(sp).toContain('เลือกได้เฉพาะรหัสสินค้า/บริการที่ขาย');
+    expect(sp).toContain('ลูกค้า: ห้างลูกค้า (มีในแฟ้มลูกค้า)');
+    expect(suggestPrompt({ target: 'income', supplierName: '', supplierKnown: false, lines, expenseCodes: [] })).toContain('ใช้ได้เฉพาะรหัสรายได้อื่น');
   });
 });

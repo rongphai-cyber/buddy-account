@@ -11,6 +11,8 @@ type Sup = { id: string; code: string; name: string; tax_id?: string | null; tax
 type SupRow = Sup & { status: string };
 export interface AiBillResult {
   bill: BillDraft;
+  /** sale = กระดาษฝั่งขาย (ลูกค้า = ผู้ซื้อในเอกสาร — HANDOFF 171) · supplier = คู่ค้าที่พบ (ฝั่งขายคือลูกค้า) */
+  side?: 'sale' | 'purchase';
   supplier: Sup | null;
   supplier_check?: { status: string; message: string; candidate: Sup | null };
   duplicate?: { doc_no: string; doc_class: string; doc_date: string } | null;
@@ -41,21 +43,23 @@ const toBase64 = (f: File) => new Promise<string>((ok, bad) => {
 });
 
 /**
- * ปุ่ม 📷 อ่านบิลด้วย AI (T7.7) — แสดงเมื่อบริษัทตั้งค่ากุญแจ API แล้ว
- * อ่านรูป/PDF ของบิลผู้จำหน่ายด้วย Claude → แสดงผลให้ตรวจ → "ใส่ลงเอกสาร" เติมเป็นร่าง (ยังไม่บันทึก)
+ * ปุ่ม 📷 อ่านบิลด้วย AI (T7.7) — แสดงเมื่อบริษัทตั้งค่ากุญแจ API แล้ว · มีทุกหน้าจอที่คีย์เอกสาร (HANDOFF 171)
+ * อ่านรูป/PDF ของบิลผู้จำหน่าย (party=supplier) หรือกระดาษฝั่งขาย เช่น ใบสั่งซื้อของลูกค้า บิลเขียนมือ (party=customer) ด้วย Claude → แสดงผลให้ตรวจ → "ใส่ลงเอกสาร" เติมเป็นร่าง (ยังไม่บันทึก)
+ * textLines = เอกสารที่บรรทัดเป็นคำอธิบาย + จำนวนเงิน (มัดจำ) — ไม่เลือกรหัส
  */
-export function AiBillButton({ target, disabled, onApply }: { target: string; disabled?: boolean; onApply: (r: AiBillResult) => void }) {
+export function AiBillButton({ target, disabled, onApply, party = 'supplier', textLines = false }: { target: string; disabled?: boolean; onApply: (r: AiBillResult) => void; party?: 'supplier' | 'customer'; textLines?: boolean }) {
   const st = useQuery({ queryKey: ['ai-status'], queryFn: () => api.get<{ available: boolean; has_key: boolean; monthly_limit_usd: number | null; month_cost_usd: string }>('/api/v1/ai/status'), staleTime: 60_000 });
   const [open, setOpen] = useState(false);
   if (!st.data?.has_key) return null;
   return <>
     <button type="button" disabled={disabled || !st.data.available} onClick={() => setOpen(true)}
-      title={st.data.available ? 'อ่านรูปหรือ PDF ของบิลผู้จำหน่ายด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก' : `ใช้ AI เดือนนี้ครบเพดาน ${st.data.monthly_limit_usd} ดอลลาร์แล้ว`}>📷 อ่านบิลด้วย AI</button>
-    {open && <AiBillDialog target={target} onClose={() => setOpen(false)} onApply={(r) => { setOpen(false); onApply(r); }} />}
+      title={!st.data.available ? `ใช้ AI เดือนนี้ครบเพดาน ${st.data.monthly_limit_usd} ดอลลาร์แล้ว` : party === 'customer' ? 'อ่านรูปหรือ PDF ของเอกสารฝั่งขาย (ใบสั่งซื้อของลูกค้า บิลเขียนมือ) ด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก' : 'อ่านรูปหรือ PDF ของบิลผู้จำหน่ายด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก'}>📷 อ่านบิลด้วย AI</button>
+    {open && <AiBillDialog target={target} party={party} textLines={textLines} onClose={() => setOpen(false)} onApply={(r) => { setOpen(false); onApply(r); }} />}
   </>;
 }
 
-function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: () => void; onApply: (r: AiBillResult) => void }) {
+function AiBillDialog({ target, party, textLines, onClose, onApply }: { target: string; party: 'supplier' | 'customer'; textLines: boolean; onClose: () => void; onApply: (r: AiBillResult) => void }) {
+  const cust = party === 'customer';
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -170,9 +174,9 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
           {res.duplicate && <p className="bad"><b>บิลซ้ำ:</b> เลขที่ {b.doc_no} ของผู้จำหน่ายนี้บันทึกแล้วใน {res.duplicate.doc_no} ({res.duplicate.doc_date}) — ตรวจก่อนบันทึกซ้ำ</p>}
           {res.supplier_check && <p className={SUPOK.has(res.supplier_check.status) ? 'small' : 'bad small'}>{SUPOK.has(res.supplier_check.status) ? '✓ ' : '⚠ '}{res.supplier_check.message}
             {res.supplier_check.candidate && !res.supplier && <label className="check" style={{ marginLeft: 8 }}><input type="checkbox" checked={useCand} onChange={(e) => setUseCand(e.target.checked)} /> ใช้ {res.supplier_check.candidate.code}</label>}
-            {!res.supplier && !useCand && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void startAdd()}>＋ เพิ่มผู้จำหน่ายใหม่จากบิลนี้</button>}
-            {!res.supplier && !useCand && <button type="button" style={{ marginLeft: 8 }} onClick={() => void pickCentral()} title="บิลไม่สมบูรณ์ ไม่มีชื่อ/เลขผู้เสียภาษีของผู้ขาย — บันทึกกับเจ้าหนี้กลาง ผู้จ่ายเงิน (พนักงาน) ลงชื่อในใบรับรองแทนใบเสร็จรับเงิน">ไม่มีชื่อผู้ขาย — ใช้เจ้าหนี้กลาง</button>}
-            {res.supplier && res.supplier_check.status === 'branch_new' && b.supplier.branch_no && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void addBranch(res.supplier!.id)}>＋ เพิ่มสาขา {b.supplier.branch_no} ให้ {res.supplier.code}</button>}</p>}
+            {!cust && !res.supplier && !useCand && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void startAdd()}>＋ เพิ่มผู้จำหน่ายใหม่จากบิลนี้</button>}
+            {!cust && !res.supplier && !useCand && <button type="button" style={{ marginLeft: 8 }} onClick={() => void pickCentral()} title="บิลไม่สมบูรณ์ ไม่มีชื่อ/เลขผู้เสียภาษีของผู้ขาย — บันทึกกับเจ้าหนี้กลาง ผู้จ่ายเงิน (พนักงาน) ลงชื่อในใบรับรองแทนใบเสร็จรับเงิน">ไม่มีชื่อผู้ขาย — ใช้เจ้าหนี้กลาง</button>}
+            {!cust && res.supplier && res.supplier_check.status === 'branch_new' && b.supplier.branch_no && <button type="button" className="primary" style={{ marginLeft: 8 }} onClick={() => void addBranch(res.supplier!.id)}>＋ เพิ่มสาขา {b.supplier.branch_no} ให้ {res.supplier.code}</button>}</p>}
           {add && !add.form && <div className="box small" role="alert" style={{ margin: '6px 0', padding: 8, border: '1px solid var(--line, #ccc)', borderRadius: 6 }}>
             {add.same.length > 0 ? <p className="bad"><b>ไม่เพิ่มซ้ำ:</b> เลขผู้เสียภาษี {String(add.init.tax_id)} สาขา {String(add.init.tax_branch_no)} มีในแฟ้มผู้จำหน่ายแล้ว — ใช้รายเดิม</p>
               : <p className="bad">เลขผู้เสียภาษี {String(add.init.tax_id)} เป็นของผู้จำหน่ายในแฟ้มแล้ว แต่ยังไม่มีสาขา {String(add.init.tax_branch_no)} — <b>เพิ่มสาขาให้รายเดิม</b> (ไม่สร้างเจ้าหนี้ซ้ำ) หรือเลือกรายเดิมถ้าบิลมาจากสาขาที่มีอยู่</p>}
@@ -186,22 +190,24 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
           {b.warnings.length > 0 && <ul className="bad small">{b.warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
           {res.suggest_note && <p className="muted small">{res.suggest_note}</p>}
           <table className="grid info-table"><tbody>
-            <tr><th>ผู้จำหน่าย</th><td>{b.supplier.name} {b.supplier.tax_id && <span className="mono small">{b.supplier.tax_id}{b.supplier.branch_no ? ` สาขา ${b.supplier.branch_no}` : ''}</span>}
-              {' '}{res.supplier ? <Pill tone="n">พบ {res.supplier.code}</Pill> : <Pill tone="c">ไม่พบในแฟ้มผู้จำหน่าย — ใส่เป็นชื่อหรือเลือกเอง</Pill>}</td></tr>
-            {res.buyer_check && res.buyer_check.status !== 'none' && <tr><th>ผู้ซื้อ</th><td>{res.buyer_check.status === 'same' || res.buyer_check.status === 'misread'
+            {cust ? <tr><th>ลูกค้า</th><td>{b.buyer.name || '—'} {b.buyer.tax_id_read && <span className="mono small">{b.buyer.tax_id_read}{b.buyer.branch_no ? ` สาขา ${b.buyer.branch_no}` : ''}</span>}
+              {' '}{res.supplier ? <Pill tone="n">พบ {res.supplier.code}</Pill> : <Pill tone="c">ไม่พบในแฟ้มลูกค้า — เลือกหรือเพิ่มลูกค้าในเอกสาร</Pill>}</td></tr>
+            : <tr><th>ผู้จำหน่าย</th><td>{b.supplier.name} {b.supplier.tax_id && <span className="mono small">{b.supplier.tax_id}{b.supplier.branch_no ? ` สาขา ${b.supplier.branch_no}` : ''}</span>}
+              {' '}{res.supplier ? <Pill tone="n">พบ {res.supplier.code}</Pill> : <Pill tone="c">ไม่พบในแฟ้มผู้จำหน่าย — ใส่เป็นชื่อหรือเลือกเอง</Pill>}</td></tr>}
+            {res.buyer_check && res.buyer_check.status !== 'none' && <tr><th>{cust ? 'ผู้ขาย' : 'ผู้ซื้อ'}</th><td>{res.buyer_check.status === 'same' || res.buyer_check.status === 'misread'
               ? <>{res.buyer_check.company_name} <span className="mono small">{res.buyer_check.company_tax_id}</span> <Pill tone="n">บริษัทนี้</Pill>{res.buyer_check.status === 'misread' && <span className="muted small"> (อ่านเลขในบิลเพี้ยนเล็กน้อย — ใช้เลขของบริษัท)</span>}</>
-              : <><span className="mono small">{res.buyer_check.shown}</span> <Pill tone="x">{res.buyer_check.status === 'other' ? 'บิลนี้ออกในนามผู้อื่น' : 'ตรวจเลขผู้ซื้อ'}</Pill></>}</td></tr>}
+              : <><span className="mono small">{res.buyer_check.shown}</span> <Pill tone="x">{cust ? 'ไม่ใช่บริษัทนี้' : res.buyer_check.status === 'other' ? 'บิลนี้ออกในนามผู้อื่น' : 'ตรวจเลขผู้ซื้อ'}</Pill></>}</td></tr>}
             <tr><th>เลขที่ / วันที่</th><td>{b.doc_no || '—'} · {b.doc_date ?? '—'}</td></tr>
             <tr><th>ประเภทราคา</th><td>{PT[b.price_type]}{b.price_type !== '0' ? ` ${b.vat_rate}%` : ''}</td></tr>
             <tr><th>ยอด</th><td>ก่อน VAT {b.subtotal ? fmt(b.subtotal) : '—'} · VAT {b.vat_amount ? fmt(b.vat_amount) : '—'} · รวม <b>{b.total ? fmt(b.total) : '—'}</b>{b.wht && <> · หัก ณ ที่จ่าย {fmt(b.wht.amount)}{b.wht.rate ? ` (${b.wht.rate}%)` : ''}</>}</td></tr>
           </tbody></table>
           <table className="grid" style={{ marginTop: 8 }}>
-            <thead><tr><th>#</th><th>รายการตามบิล</th><th style={{ minWidth: 260 }}>แนะนำลงบัญชี (ตรวจ/เลือก)</th><th className="r">จำนวน</th><th className="r">ราคา</th><th className="r">ยอด</th></tr></thead>
+            <thead><tr><th>#</th><th>รายการตามบิล</th>{!textLines && <th style={{ minWidth: 260 }}>แนะนำลงบัญชี (ตรวจ/เลือก)</th>}<th className="r">จำนวน</th><th className="r">ราคา</th><th className="r">ยอด</th></tr></thead>
             <tbody>{res.lines.map((l, i) => {
               const opts = [...(l.suggestion ? [{ ...l.suggestion.item, kind: l.suggestion.kind, account: l.suggestion.account }] : []), ...(l.alternatives ?? [])];
               const chosen = opts.find((o) => o.id === choice[i]);
               return <tr key={i}><td>{i + 1}</td><td>{l.description}</td>
-                <td>
+                {!textLines && <td>
                   <select value={choice[i] ?? ''} onChange={(e) => setChoice((c) => c.map((x, k) => (k === i ? e.target.value : x)))} aria-label={`รหัสบรรทัด ${i + 1}`} style={{ width: '100%' }}>
                     <option value="">— ไม่ใส่รหัส (เลือกเองในเอกสาร) —</option>
                     {opts.map((o, k) => <option key={o.id} value={o.id}>{k === 0 && l.suggestion ? '★ ' : ''}{o.code} {o.name_th}{o.kind === 'expense' ? ' (ค่าใช้จ่าย)' : ''}</option>)}
@@ -209,11 +215,11 @@ function AiBillDialog({ target, onClose, onApply }: { target: string; onClose: (
                   {chosen?.account && <div className="small muted">บัญชี {chosen.account}</div>}
                   {l.suggestion && <div className="small">{(() => { const [t, tone] = CONF[l.suggestion.confidence]!; return <Pill tone={tone}>{t}</Pill>; })()} <span className="muted">{SRC[l.suggestion.source]}: {l.suggestion.reason}</span></div>}
                   {l.note && <div className="small bad">{l.note}</div>}
-                </td>
+                </td>}
                 <td className="r">{d(l.qty).toString()} {l.unit}</td><td className="r">{l.unit_price ? fmt(l.unit_price, { places: 2 }) : ''}</td><td className="r">{l.amount ? fmt(l.amount) : ''}</td></tr>;
             })}</tbody>
           </table>
-          <p className="hint">คำแนะนำมาจากประวัติการลงบัญชีของกิจการนี้ แฟ้มรหัส และแนวทางที่ตั้งไว้ (เริ่มระบบ › AI อ่านบิล) — พนักงานบัญชีตรวจและยืนยันทุกบรรทัด · เมื่อบันทึกเอกสารแล้ว ครั้งต่อไปจะแนะนำตามที่บันทึกนี้</p>
+          {textLines ? <p className="hint">บรรทัดเป็นคำอธิบายและจำนวนเงินตามเอกสาร — ตรวจยอดก่อนบันทึก</p> : <p className="hint">คำแนะนำมาจากประวัติการลงบัญชีของกิจการนี้ แฟ้มรหัส และแนวทางที่ตั้งไว้ (เริ่มระบบ › AI อ่านบิล) — พนักงานบัญชีตรวจและยืนยันทุกบรรทัด · เมื่อบันทึกเอกสารแล้ว ครั้งต่อไปจะแนะนำตามที่บันทึกนี้</p>}
           <p className="muted small">ค่าใช้จ่ายครั้งนี้ ${res.usage.cost_usd} · เดือนนี้ ${d(res.usage.month_cost_usd).toFixed(2)}{res.usage.monthly_limit_usd !== null ? ` / เพดาน $${res.usage.monthly_limit_usd}` : ''} · {aiModelLabel(res.usage.model)}</p>
         </div>}
       </div>

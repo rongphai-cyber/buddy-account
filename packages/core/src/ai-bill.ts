@@ -36,11 +36,19 @@ export function aiRequestOptions(model: AiModelId) {
   return { model, ...(fb ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}) };
 }
 
-/** เอกสารที่เติมจากบิลได้: ซื้อเงินเชื่อ/เงินสด (รายการเป็นสินค้า) · บันทึกค่าใช้จ่ายอื่น ๆ (รายการเป็นรหัสค่าใช้จ่าย) */
-export const AI_BILL_TARGETS = [
-  ...TRADE_KINDS.filter((k) => k.module === 'AP' && !k.refInvoice && !k.order).map((k) => ({ path: k.path, menu: k.menu, service: false })),
-  ...CASH_KINDS.filter((k) => k.cls === 'OE').map((k) => ({ path: k.path, menu: k.menu, service: true })),
+/**
+ * เอกสารที่เติมจากบิลได้ — ทุกหน้าจอที่คีย์เอกสาร (เจ้าของ 21/11/2569 · HANDOFF 171 "ขอมีอ่านบิลด้วย Ai และ นำเข้า Excel ทั้งสองแบบ")
+ * party: supplier = กระดาษจากผู้จำหน่าย (บิลซื้อ ใบลด/เพิ่มหนี้ ใบเสนอราคาผู้ขาย) · customer = กระดาษฝั่งขาย (ใบสั่งซื้อของลูกค้า บิลเขียนมือ) — ลูกค้า = ผู้ซื้อในเอกสาร
+ * lines: item = รหัสสินค้า/บริการ (ซื้อใช้รหัสค่าใช้จ่ายได้) · expense = รหัสค่าใช้จ่าย (OE) · income = รหัสรายได้ (OI) · text = คำอธิบาย + จำนวนเงิน (มัดจำ AI/AE)
+ * service = เฉพาะรหัสค่าใช้จ่าย (OE — ชื่อเดิม)
+ */
+export interface AiBillTarget { path: string; cls: string; menu: string; party: 'customer' | 'supplier'; lines: 'item' | 'expense' | 'income' | 'text'; service: boolean }
+export const AI_BILL_TARGETS: AiBillTarget[] = [
+  ...TRADE_KINDS.map((k) => ({ path: k.path, cls: k.cls, menu: k.menu, party: k.party, lines: 'item' as const, service: false })),
+  ...CASH_KINDS.map((k) => ({ path: k.path, cls: k.cls, menu: k.menu, party: k.party, lines: k.lines === 'text' ? 'text' as const : k.itemType === '4' ? 'income' as const : 'expense' as const, service: k.cls === 'OE' })),
 ];
+/** ฝั่งของกระดาษที่อ่าน: ขาย = ลูกค้าเป็นผู้ซื้อในเอกสาร · ซื้อ = ผู้จำหน่ายเป็นผู้ขาย */
+export const aiBillSide = (t: Pick<AiBillTarget, 'party'>): 'sale' | 'purchase' => (t.party === 'customer' ? 'sale' : 'purchase');
 
 type Price = { input: number; output: number; cacheRead: number };
 /**
@@ -96,7 +104,7 @@ export const BILL_SCHEMA = {
       type: 'object', additionalProperties: false, required: ['name', 'tax_id', 'branch_no', 'address', 'phone'],
       properties: { name: str, tax_id: str, branch_no: str, address: str, phone: str },
     },
-    buyer: { type: 'object', additionalProperties: false, required: ['name', 'tax_id'], properties: { name: str, tax_id: str } },
+    buyer: { type: 'object', additionalProperties: false, required: ['name', 'tax_id', 'branch_no'], properties: { name: str, tax_id: str, branch_no: str } },
     doc_no: str,
     doc_date: str,
     price_type: { type: 'string', enum: ['excl_vat', 'incl_vat', 'no_vat'] },
@@ -117,7 +125,7 @@ export const BILL_SYSTEM_PROMPT = `คุณอ่านเอกสารซื
 ข้อมูลนี้จะถูกเติมเป็นร่างเอกสารซื้อในโปรแกรมบัญชี ผู้ใช้จะตรวจก่อนบันทึก จึงต้องตรงกับที่พิมพ์ในเอกสารจริง ห้ามเดา:
 - อ่านไม่ออกหรือไม่มีในเอกสาร ให้ตอบ "" (ข้อความว่าง) และบอกเหตุใน notes (ภาษาไทยสั้น ๆ)
 - supplier คือผู้ขาย/ผู้ออกเอกสาร (ไม่ใช่ผู้ซื้อ) · tax_id เลข 13 หลักไม่มีขีด · branch_no 5 หลัก สำนักงานใหญ่ = "00000" · phone เบอร์โทรของผู้ขายตามที่พิมพ์
-- buyer คือผู้ซื้อ/ลูกค้าที่บิลออกในนาม (ชื่อและเลขผู้เสียภาษีตามที่พิมพ์ — ไม่มี = "")
+- buyer คือผู้ซื้อ/ลูกค้าที่บิลออกในนาม (ชื่อ เลขผู้เสียภาษี และเลขสาขา 5 หลักตามที่พิมพ์ — ไม่มี = "")
 - doc_date เป็นปี ค.ศ. รูปแบบ YYYY-MM-DD (ปี พ.ศ. ลบ 543 เช่น 15/03/2569 → 2026-03-15)
 - จำนวนเงินและจำนวนเป็นตัวเลขทศนิยมแบบข้อความ ไม่มีจุลภาคหรือสกุลเงิน เช่น "1234.50"
 - price_type: ราคาในรายการยังไม่รวม VAT = excl_vat · รวม VAT แล้ว = incl_vat · ไม่มี VAT = no_vat · vat_rate เช่น "7"
@@ -125,11 +133,28 @@ export const BILL_SYSTEM_PROMPT = `คุณอ่านเอกสารซื
 - wht_amount ภาษีหัก ณ ที่จ่ายที่พิมพ์ในเอกสาร (เช่น "หัก ณ ที่จ่าย 3%") เป็นจำนวนเงิน · ไม่มี = ""
 - ถ้าไม่ใช่เอกสารซื้อขาย ให้ doc_kind = "other" และอธิบายใน notes`;
 
+/**
+ * อ่านกระดาษฝั่งขาย (HANDOFF 171): ใบสั่งซื้อของลูกค้า บิล/ใบส่งของเขียนมือ ใบเสนอราคาที่ลูกค้าส่งกลับ — โครงข้อมูลเดียวกับบิลซื้อ
+ * ลูกค้า = buyer (ผู้ออกใบสั่งซื้อ) · supplier = ผู้ขาย (ปกติคือกิจการของผู้ใช้) — ระบบเทียบ supplier กับเลขของบริษัทเอง
+ */
+export const BILL_SYSTEM_PROMPT_SALES = `คุณอ่านเอกสารฝั่งขายของกิจการในประเทศไทย (ใบสั่งซื้อที่ลูกค้าส่งมา บิล/ใบส่งของ/ใบกำกับที่เขียนด้วยมือ ใบเสนอราคา ใบลด/เพิ่มหนี้) จากรูปหรือ PDF แล้วตอบเป็นข้อมูลตามโครงที่กำหนด
+ข้อมูลนี้จะถูกเติมเป็นร่างเอกสารขายในโปรแกรมบัญชี ผู้ใช้จะตรวจก่อนบันทึก จึงต้องตรงกับที่พิมพ์หรือเขียนในเอกสารจริง ห้ามเดา:
+- อ่านไม่ออกหรือไม่มีในเอกสาร ให้ตอบ "" (ข้อความว่าง) และบอกเหตุใน notes (ภาษาไทยสั้น ๆ)
+- buyer คือลูกค้า/ผู้ซื้อ (ในใบสั่งซื้อของลูกค้า = บริษัทที่ออกใบสั่งซื้อ) · tax_id เลข 13 หลักไม่มีขีด · branch_no 5 หลัก สำนักงานใหญ่ = "00000"
+- supplier คือผู้ขาย/ผู้รับใบสั่งซื้อ (ปกติคือกิจการของผู้ใช้ — ไม่มีในเอกสาร = "") · address phone ตามที่พิมพ์
+- doc_no คือเลขที่ของเอกสารนี้ (เช่น เลขที่ใบสั่งซื้อของลูกค้า เลขที่บิล)
+- doc_date เป็นปี ค.ศ. รูปแบบ YYYY-MM-DD (ปี พ.ศ. ลบ 543 เช่น 15/03/2569 → 2026-03-15)
+- จำนวนเงินและจำนวนเป็นตัวเลขทศนิยมแบบข้อความ ไม่มีจุลภาคหรือสกุลเงิน เช่น "1234.50"
+- price_type: ราคาในรายการยังไม่รวม VAT = excl_vat · รวม VAT แล้ว = incl_vat · ไม่มี VAT = no_vat · vat_rate เช่น "7"
+- lines ตามลำดับในเอกสาร amount คือยอดของบรรทัดตามที่พิมพ์ · subtotal ยอดรวมก่อน VAT · discount ส่วนลดท้ายบิล · vat_amount ภาษีมูลค่าเพิ่ม · total ยอดรวมทั้งสิ้นตามที่พิมพ์
+- wht_amount ภาษีหัก ณ ที่จ่ายที่พิมพ์ในเอกสาร เป็นจำนวนเงิน · ไม่มี = ""
+- ถ้าไม่ใช่เอกสารซื้อขาย ให้ doc_kind = "other" และอธิบายใน notes`;
+
 /** คำตอบของ AI ตาม BILL_SCHEMA: ช่องว่าง = "" (ยังรับ null/ไม่มีช่องได้ — normalizeBill ถือว่าเหมือนกัน) */
 type Txt = string | null | undefined;
 export interface RawBill {
   doc_kind: string; supplier: { name: Txt; tax_id: Txt; branch_no: Txt; address: Txt; phone?: Txt };
-  buyer?: { name: Txt; tax_id: Txt } | null;
+  buyer?: { name: Txt; tax_id: Txt; branch_no?: Txt } | null;
   doc_no: Txt; doc_date: Txt; price_type: 'excl_vat' | 'incl_vat' | 'no_vat'; vat_rate: Txt;
   lines: Array<{ description: Txt; qty: Txt; unit: Txt; unit_price: Txt; amount: Txt }>;
   subtotal: Txt; discount: Txt; vat_amount: Txt; wht_amount?: Txt; total: Txt; notes: string[];
@@ -138,7 +163,7 @@ export interface BillDraft {
   /** tax_id = เลข 13 หลักที่อ่านได้ (ไม่ครบ = null) · tax_id_read = ตัวเลขตามที่อ่านได้ (ใช้เติมแบบฟอร์มเพิ่มผู้จำหน่ายให้ผู้ใช้แก้) */
   doc_kind: string; supplier: { name: string; tax_id: string | null; tax_id_read: string; branch_no: string | null; address: string; phone: string | null };
   /** ผู้ซื้อตามบิล (ตัวเลขตามที่อ่านได้) — เทียบกับเลขของบริษัทด้วย buyerTaxCheck */
-  buyer: { name: string; tax_id_read: string };
+  buyer: { name: string; tax_id_read: string; branch_no?: string | null };
   doc_no: string; doc_date: string | null; price_type: '0' | '1' | '2'; vat_rate: string;
   lines: Array<{ description: string; qty: string; unit: string | null; unit_price: string; amount: string }>;
   subtotal: string | null; discount: string | null; vat_amount: string | null; total: string | null;
@@ -164,12 +189,16 @@ const money = (v: Txt) => { const t = txt(v); if (!t) return null; const x = par
 const fx = (v: Decimal | null) => (v === null ? null : v.toFixed(2));
 
 /** ตรวจ/แปลงผลจาก AI → ร่างเอกสาร + ข้อสังเกตที่ผู้ใช้ต้องตรวจ (ภาษาไทย) */
-export function normalizeBill(raw: RawBill): BillDraft {
+export function normalizeBill(raw: RawBill, side: 'sale' | 'purchase' = 'purchase'): BillDraft {
   const w: string[] = [...(raw.notes ?? []).filter(Boolean).map((n) => `AI: ${n}`)];
   if (raw.doc_kind === 'other') w.push('ไม่แน่ใจว่าเป็นเอกสารซื้อขาย — ตรวจแฟ้มที่เลือก');
-  if (raw.doc_kind === 'abbreviated_tax_invoice') w.push('เป็นใบกำกับภาษีอย่างย่อ — ใช้ขอคืนภาษีซื้อไม่ได้');
+  if (raw.doc_kind === 'abbreviated_tax_invoice' && side === 'purchase') w.push('เป็นใบกำกับภาษีอย่างย่อ — ใช้ขอคืนภาษีซื้อไม่ได้');
   const taxRead = txt(raw.supplier?.tax_id), tax = taxRead.replace(/\D/g, '');
-  if (taxRead && tax.length !== 13) w.push(`เลขผู้เสียภาษีผู้ขาย "${taxRead}" ไม่ครบ 13 หลัก`);
+  if (taxRead && tax.length !== 13 && side === 'purchase') w.push(`เลขผู้เสียภาษีผู้ขาย "${taxRead}" ไม่ครบ 13 หลัก`);
+  // ฝั่งขาย (HANDOFF 171): ลูกค้า = ผู้ซื้อในเอกสาร — ตรวจเลขของผู้ซื้อแทน
+  const buyerTaxRead = txt(raw.buyer?.tax_id), buyerTax = buyerTaxRead.replace(/\D/g, '');
+  if (side === 'sale' && buyerTaxRead && buyerTax.length !== 13) w.push(`เลขผู้เสียภาษีลูกค้า "${buyerTaxRead}" ไม่ครบ 13 หลัก`);
+  const buyerBranch = txt(raw.buyer?.branch_no).replace(/\D/g, '');
   const branch = txt(raw.supplier?.branch_no).replace(/\D/g, '');
   const dateRead = txt(raw.doc_date);
   const date = /^\d{4}-\d{2}-\d{2}$/.test(dateRead) ? dateRead : null;
@@ -212,7 +241,7 @@ export function normalizeBill(raw: RawBill): BillDraft {
   return {
     doc_kind: raw.doc_kind,
     supplier: { name: txt(raw.supplier?.name), tax_id: tax.length === 13 ? tax : null, tax_id_read: tax.slice(0, 20), phone: txt(raw.supplier?.phone).slice(0, 60) || null, branch_no: branch ? branch.padStart(5, '0').slice(-5) : null, address: txt(raw.supplier?.address) },
-    buyer: { name: txt(raw.buyer?.name).slice(0, 200), tax_id_read: txt(raw.buyer?.tax_id).replace(/\D/g, '').slice(0, 20) },
+    buyer: { name: txt(raw.buyer?.name).slice(0, 200), tax_id_read: txt(raw.buyer?.tax_id).replace(/\D/g, '').slice(0, 20), ...(buyerBranch ? { branch_no: buyerBranch.padStart(5, '0').slice(-5) } : {}) },
     doc_no: txt(raw.doc_no).slice(0, 30), doc_date: date, price_type: pt, vat_rate: rate.toString(), lines,
     subtotal: fx(sub), discount: fx(disc), vat_amount: fx(vat), total: fx(total), wht: whtOut, warnings: w,
   };
@@ -274,7 +303,7 @@ export const SUGGEST_SCHEMA = {
   },
 } as const;
 
-export const SUGGEST_SYSTEM_PROMPT = `คุณช่วยพนักงานบัญชีของกิจการไทยเลือกรหัสสินค้า/รหัสค่าใช้จ่ายให้รายการในบิลซื้อ ผลเป็นคำแนะนำที่พนักงานบัญชีจะตรวจและยืนยันเอง
+export const SUGGEST_SYSTEM_PROMPT = `คุณช่วยพนักงานบัญชีของกิจการไทยเลือกรหัสสินค้า/รหัสค่าใช้จ่ายให้รายการในบิล (บิลซื้อ หรือเอกสารขาย/รายได้ ตามที่บอกใน "เอกสารที่จะบันทึก") ผลเป็นคำแนะนำที่พนักงานบัญชีจะตรวจและยืนยันเอง
 - เลือก code ได้เฉพาะรหัสที่อยู่ใน candidates ของบรรทัดนั้น (หรือ expense_codes) เท่านั้น ถ้าไม่มีรหัสที่เหมาะ ให้ code = "" (ข้อความว่าง) และอธิบาย
 - ให้น้ำหนักกับประวัติการลงบัญชีของกิจการ (history: เคยลงรหัสนี้กี่ครั้ง กับผู้จำหน่ายรายนี้หรือไม่) มากที่สุด รองลงมาคือแนวทางของกิจการ (guidance) และประเภทธุรกิจ
 - ธุรกิจซื้อมาขายไป: ของที่ซื้อมาเพื่อขาย = รหัสสินค้า · ของใช้สิ้นเปลือง ค่าบริการ ค่าสาธารณูปโภค = รหัสค่าใช้จ่าย
@@ -282,17 +311,25 @@ export const SUGGEST_SYSTEM_PROMPT = `คุณช่วยพนักงาน
 - confidence: high = ตรงกับประวัติหรือชื่อรหัสชัดเจน · medium = น่าจะใช่ · low = เดา
 - reason ภาษาไทยสั้น ๆ ไม่เกิน 1 ประโยค`;
 
+/** เอกสารที่จะบันทึก (บอก AI ว่าเลือกรหัสชนิดใดได้) */
+const TARGET_TH: Record<'purchase' | 'expense' | 'sale' | 'income', string> = {
+  purchase: 'ซื้อเงินเชื่อ/เงินสด (ใช้ได้ทั้งรหัสสินค้าและรหัสค่าใช้จ่าย)',
+  expense: 'บันทึกค่าใช้จ่ายอื่น ๆ (ใช้ได้เฉพาะรหัสค่าใช้จ่าย)',
+  sale: 'เอกสารขาย ใบสั่งขาย ใบเสนอราคา (เลือกได้เฉพาะรหัสสินค้า/บริการที่ขาย — ไม่มีรหัสค่าใช้จ่าย)',
+  income: 'บันทึกรายได้อื่น ๆ (ใช้ได้เฉพาะรหัสรายได้อื่น)',
+};
 export interface SuggestCandidate { code: string; name: string; kind: 'item' | 'expense'; account?: string | null; history?: number; sameSupplier?: number }
 /** ข้อความที่ส่งให้ AI (ข้อมูลของบริษัทนี้เท่านั้น) */
-export function suggestPrompt(x: { businessType?: string | null; guidance?: string | null; target: 'purchase' | 'expense'; supplierName: string; supplierKnown: boolean;
+export function suggestPrompt(x: { businessType?: string | null; guidance?: string | null; target: 'purchase' | 'expense' | 'sale' | 'income'; supplierName: string; supplierKnown: boolean;
   lines: Array<{ index: number; description: string; amount: string; candidates: SuggestCandidate[] }>; expenseCodes: SuggestCandidate[] }) {
   const biz = x.businessType ? AI_BUSINESS_TYPES[x.businessType] ?? x.businessType : 'ไม่ระบุ';
   return [
     `ประเภทธุรกิจ: ${biz}`,
     `แนวทางการลงบัญชีของกิจการ (guidance): ${x.guidance?.trim() || '— ไม่มี —'}`,
-    `เอกสารที่จะบันทึก: ${x.target === 'purchase' ? 'ซื้อเงินเชื่อ/เงินสด (ใช้ได้ทั้งรหัสสินค้าและรหัสค่าใช้จ่าย)' : 'บันทึกค่าใช้จ่ายอื่น ๆ (ใช้ได้เฉพาะรหัสค่าใช้จ่าย)'}`,
-    `ผู้จำหน่าย: ${x.supplierName || 'ไม่ทราบ'}${x.supplierKnown ? ' (มีในแฟ้มผู้จำหน่าย)' : ' (ไม่พบในแฟ้ม)'}`,
-    `expense_codes (รหัสค่าใช้จ่ายทั้งหมดที่ใช้ได้): ${JSON.stringify(x.expenseCodes.map((c) => ({ code: c.code, name: c.name, account: c.account ?? undefined })))}`,
+    `เอกสารที่จะบันทึก: ${TARGET_TH[x.target]}`,
+    x.target === 'sale' || x.target === 'income' ? `ลูกค้า: ${x.supplierName || 'ไม่ทราบ'}${x.supplierKnown ? ' (มีในแฟ้มลูกค้า)' : ' (ไม่พบในแฟ้ม)'} — same_supplier = เคยขายรหัสนี้ให้ลูกค้ารายนี้`
+      : `ผู้จำหน่าย: ${x.supplierName || 'ไม่ทราบ'}${x.supplierKnown ? ' (มีในแฟ้มผู้จำหน่าย)' : ' (ไม่พบในแฟ้ม)'}`,
+    `expense_codes (${x.target === 'income' ? 'รหัสรายได้อื่นทั้งหมดที่ใช้ได้' : x.target === 'sale' ? 'ไม่ใช้ — เอกสารขายเลือกได้เฉพาะ candidates' : 'รหัสค่าใช้จ่ายทั้งหมดที่ใช้ได้'}): ${JSON.stringify(x.expenseCodes.map((c) => ({ code: c.code, name: c.name, account: c.account ?? undefined })))}`,
     `lines: ${JSON.stringify(x.lines.map((l) => ({ index: l.index, description: l.description, amount: l.amount, candidates: l.candidates.map((c) => ({ code: c.code, name: c.name, kind: c.kind, account: c.account ?? undefined, history: c.history || undefined, same_supplier: c.sameSupplier || undefined })) })))}`,
   ].join('\n');
 }

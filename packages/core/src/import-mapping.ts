@@ -1,4 +1,4 @@
-import { IMPORT_COLUMNS, EXPENSE_IMPORT_COLUMNS, importColumnsFor, importNumber, importReadColumns, type ImportKindLike } from './trade-import.js';
+import { IMPORT_COLUMNS, EXPENSE_IMPORT_COLUMNS, cashImportColumnsFor, importColumnsFor, importNumber, importReadColumns, type ImportKindLike } from './trade-import.js';
 import { JOURNAL_IMPORT_COLUMNS, cleanImportCell } from './journal-import.js';
 
 /**
@@ -28,7 +28,7 @@ const EXP_NUM = new Set(['amount', 'wht_rate', 'wht_amount']);
 /** คอลัมน์ของแบบฟอร์มปลายทาง (ใช้กับหน้าจับคู่และข้อความถึง AI) · kind = เฉพาะช่องที่หน้าจอเอกสารชนิดนั้นมี (HANDOFF 169) */
 export function mapColumns(target: ImportMapTarget, kind?: ImportKindLike | null): MapColumn[] {
   if (target === 'journal') return JOURNAL_IMPORT_COLUMNS.map((c) => ({ key: c.key, th: c.th, required: !!c.required, format: c.format === 'date' ? 'date' : c.format === 'number' ? 'number' : 'text', hint: c.hint }));
-  if (target === 'expense') return EXPENSE_IMPORT_COLUMNS.map((c) => ({ key: c.key, th: c.th, required: !!c.required, ...(c.alt ? { alt: c.alt } : {}), format: c.key === 'date' ? 'date' : EXP_NUM.has(c.key) ? 'number' : 'text', hint: c.hint }));
+  if (target === 'expense') return cashImportColumnsFor(kind?.cls).map((c) => ({ key: c.key, th: c.th, required: !!c.required, ...(c.alt ? { alt: c.alt } : {}), format: c.key === 'date' ? 'date' : EXP_NUM.has(c.key) ? 'number' : 'text', hint: c.hint }));
   return (kind ? importColumnsFor(kind) : IMPORT_COLUMNS).map((c) => ({ key: c.key, th: c.th, required: !!c.required || (!!kind && c.need === 'req'), ...(c.alt ? { alt: c.alt } : {}), format: c.key === 'date' || c.key === 'ref_date' ? 'date' : TRADE_NUM.has(c.key) ? 'number' : 'text', hint: c.hint }));
 }
 
@@ -307,7 +307,7 @@ export function guessMapping(rows: string[][], target: ImportMapTarget, kind?: I
     const n = (rows[r] ?? []).filter((c) => { const t = cleanImportCell(c); return t && !/^[\d.,()\-/ ]+$/.test(t); }).length;
     if (n > best) { best = n; header = r; }
   }
-  const all = target === 'journal' ? JOURNAL_IMPORT_COLUMNS : target === 'expense' ? EXPENSE_IMPORT_COLUMNS : importReadColumns(kind);
+  const all = target === 'journal' ? JOURNAL_IMPORT_COLUMNS : target === 'expense' ? cashImportColumnsFor(kind?.cls) : importReadColumns(kind);
   const names = new Map<string, string>();
   for (const c of all) for (const n of [c.th, ...c.aliases]) names.set(normHead(n), c.key);
   // ชื่อเดียวกันสองคอลัมน์ (เช่น "รหัสสินค้า" แล้ว "สินค้า") — คอลัมน์ที่สองเป็นชื่อ

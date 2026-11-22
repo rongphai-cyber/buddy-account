@@ -4162,7 +4162,7 @@ describe('Buddy Account API (PGlite)', () => {
     const tu = (await call('GET', '/api/v1/ai/usage')).body as Array<{ status: string; message: string | null; file_name: string }>;
     expect(tu.some((u) => u.status === 'OK' && u.message === 'อ่านภาพในเครื่องด้วย Typhoon-OCR 1 หน้า 5.2 วินาที → Claude จัดร่างจากข้อความ')).toBe(true);
     expect((await readText('purchase-invoices', { text: 'สั้น' })).body.error.message).toMatch(/สั้นเกินไป/);
-    expect((await readText('sales-invoices')).status).toBe(400);   // เฉพาะเอกสารซื้อ เหมือนอ่านภาพ
+    expect((await readText('no-such-doc')).status).toBe(400);   // ชนิดเอกสารที่ไม่มี
     // ผิดพลาด/ปฏิเสธ → บันทึกการใช้ ไม่เติมร่าง
     next = () => { throw new Error('ECONNRESET'); };
     expect((await read('purchase-invoices')).body.error.message).toMatch(/เชื่อมต่อ Anthropic ไม่ได้/);
@@ -4188,7 +4188,39 @@ describe('Buddy Account API (PGlite)', () => {
     await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null, model: 'claude-opus-5-5' });
     next = () => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: raw });
     expect((await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: null, business_type: 'bogus' })).status).toBe(400);
-    expect((await read('sales-invoices')).status).toBe(400);   // อ่านบิลได้เฉพาะเอกสารซื้อ
+    expect((await read('no-such-doc')).status).toBe(400);
+    // HANDOFF 171: อ่านบิลด้วย AI ทุกหน้าจอที่คีย์เอกสาร — ฝั่งขาย: ลูกค้า = ผู้ซื้อในเอกสาร (ใบสั่งซื้อของลูกค้า บิลเขียนมือ) · พรอมต์ฝั่งขาย · แนะนำรหัสจากสินค้าที่ขาย
+    const ctax = tid(1711);
+    const cust = (await call('POST', '/api/v1/customers', { code: 'C-AI171', name: 'ห้างลูกค้า เอไอ จำกัด', tax_id: ctax, tax_branch_no: '0' })).body.id;
+    expect(cust).toBeTruthy();
+    const custPo = { ...raw, supplier: { name: '', tax_id: '', branch_no: '', address: '' }, buyer: { name: 'ห้างลูกค้า เอไอ จำกัด', tax_id: ctax, branch_no: '00000' }, doc_no: 'CPO-171' };
+    next = () => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: custPo });
+    suggestOut = { lines: [{ index: 0, code: '02-TEST-000095', confidence: 'high', reason: 'ชื่อตรงกับรหัสสินค้า' }, { index: 1, code: null, confidence: 'low', reason: 'ไม่มีรหัส' }] };
+    for (const target of ['sales-orders', 'sales-invoices', 'quotations', 'cash-sales']) {
+      const rs = await read(target);
+      expect([target, rs.status, rs.body.side, rs.body.supplier?.code, rs.body.supplier_check?.status]).toEqual([target, 200, 'sale', 'C-AI171', 'match']);
+      expect(rs.body.lines[0].suggestion).toMatchObject({ item: { code: '02-TEST-000095' } });
+      const [bq, sq] = sent.slice(-2) as [Record<string, any>, Record<string, any>];
+      expect(String(bq.system)).toContain('เอกสารฝั่งขาย');
+      expect(JSON.stringify(bq.messages)).toContain('อ่านเอกสารขายนี้ตามโครงข้อมูล');
+      expect(sq.messages[0].content).toContain('ลูกค้า: ห้างลูกค้า เอไอ จำกัด (มีในแฟ้มลูกค้า)');
+    }
+    // ลูกค้าใหม่ (ไม่พบตามเลข/ชื่อ) — แจ้งให้เลือก/เพิ่มในเอกสาร · ไม่ใช้ผู้จำหน่าย
+    next = () => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: { ...custPo, buyer: { name: 'ร้านใหม่ไม่เคยมี', tax_id: tid(1712), branch_no: '' } } });
+    const rn = await read('sales-orders');
+    expect([rn.body.supplier, rn.body.supplier_check.status]).toEqual([null, 'new']);
+    expect(rn.body.supplier_check.message).toMatch(/^ลูกค้าใหม่/);
+    // มัดจำ (บรรทัดเป็นคำอธิบาย + จำนวนเงิน): ไม่เรียก AI แนะนำรหัส · มัดจำรับ = ลูกค้า · มัดจำจ่าย = ผู้จำหน่าย
+    next = () => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: custPo });
+    const n0 = sent.length;
+    const ra = await read('ar-deposits');
+    expect([ra.status, ra.body.side, ra.body.supplier?.code, sent.length - n0, ra.body.lines.every((l: { suggestion: unknown }) => l.suggestion === null)]).toEqual([200, 'sale', 'C-AI171', 1, true]);
+    next = () => ({ model: 'claude-opus-5-5', stop_reason: 'end_turn', usage: { input_tokens: 3000, output_tokens: 800 }, parsed_output: raw });
+    const re2 = await read('ap-deposits');
+    expect([re2.status, re2.body.side, re2.body.supplier?.code]).toEqual([200, 'purchase', 'S-AI1']);
+    // ใบสั่งซื้อ/ใบลดหนี้ผู้จำหน่าย = ฝั่งซื้อเหมือนซื้อเงินเชื่อ
+    for (const target of ['purchase-orders', 'ap-credit-notes']) expect((await read(target)).body).toMatchObject({ side: 'purchase', supplier: { code: 'S-AI1' } });
+    await sql`DELETE FROM md_customer WHERE id = ${cust}`.execute(database.db);
     // สิทธิ์: พนักงานระดับ 0 ตั้งค่า/ดูการใช้ไม่ได้ แต่เห็นสถานะ · กุญแจ API ของระบบอื่นใช้หน้าตั้งค่าไม่ได้
     const admin = cookie;
     cookie = ''; await call('POST', '/api/v1/auth/login', { username: 'clerk0', password: 'clerk0pass' });
@@ -5222,7 +5254,8 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const tr = readTable('import-IV.xlsx', t.rawPayload);
     expect(tr[0]!.slice(0, 7)).toEqual(['เลขที่อ้างอิง', 'เลขที่เอกสาร', 'วันที่ *', 'รหัสลูกค้า', 'ชื่อลูกค้า', 'Bill to (สาขาลูกค้า)', 'สถานที่ส่งของ']);
     expect(tr).toHaveLength(4);
-    expect((await app.inject({ method: 'GET', url: '/api/v1/trade-import/sales-orders/template', headers: { cookie } })).statusCode).toBe(404);   // ใบสั่งขายไม่ใช่รายการขาย
+    expect((await app.inject({ method: 'GET', url: '/api/v1/trade-import/sales-orders/template', headers: { cookie } })).statusCode).toBe(200);   // HANDOFF 171: ใบสั่งขายนำเข้าได้แล้ว
+    expect((await app.inject({ method: 'GET', url: '/api/v1/trade-import/no-such-kind/template', headers: { cookie } })).statusCode).toBe(404);
 
     const url = '/api/v1/trade-import/sales-invoices';
     const base = { file_name: 'ขาย.csv', doc_type_id: ivType, price_type: '2', vat_rate: 7 };
@@ -5772,6 +5805,89 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     for (const i of newItems) expect(i.code, i.code).toMatch(/^\d\d-[A-Z0-9]{4}-[A-Z0-9]{1,6}$/);   // ตรงรูปแบบ 99-!!!!-!!!!!!
     expect(newItems[1]!.code).toMatch(/^99-SERV-\d{6}$|^\d\d-[A-Z0-9]{4}-/);
     expect((await call('PUT', '/api/v1/settings', { values: { 'gen.allow_blank_party_tax_id': false } })).status).toBe(200);
+  });
+  it('HANDOFF 171: Excel import for quotations / sales orders / purchase orders — template per screen, delivery date, check saves nothing, commit all-or-nothing, not posted, activity log', async () => {
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const tpl = async (path: string) => readSheets(`import-${path}.xlsx`, (await app.inject({ method: 'GET', url: `/api/v1/trade-import/${path}/template`, headers: { cookie } })).rawPayload);
+    // แบบฟอร์มตามหน้าจอ: ใบสั่งขาย = วันที่ส่งของ · ใบสั่งซื้อ = วันที่รับของ · ใบเสนอราคาไม่มี · ไม่มีวิธีชำระ/แผ่นรับชำระ/หัก ณ ที่จ่าย
+    const so = await tpl('sales-orders'), po = await tpl('purchase-orders'), qt = await tpl('quotations');
+    expect([so.map((x) => x.name), po.map((x) => x.name), qt.map((x) => x.name)]).toEqual([['นำเข้า', 'คำอธิบาย'], ['นำเข้า', 'คำอธิบาย'], ['นำเข้า', 'คำอธิบาย']]);
+    expect([so[0]!.rows[0]!.includes('วันที่ส่งของ'), po[0]!.rows[0]!.includes('วันที่รับของ'), qt[0]!.rows[0]!.some((h) => /วันที่ส่ง|วันที่รับ/.test(h))]).toEqual([true, true, false]);
+    for (const t of [so, po, qt]) expect(t[0]!.rows[0]!.some((h) => /วิธีชำระ|หัก ณ ที่จ่าย/.test(h))).toBe(false);
+    expect(so[0]!.rows[0]).toEqual(expect.arrayContaining(['วันที่ *', 'รหัสลูกค้า', 'รหัสสินค้า', 'จำนวน *']));
+    expect(JSON.stringify(so[1]!.rows)).toContain('ใบสั่งขายไม่ลงบัญชี ไม่ตัดสต๊อก');
+    const types = (await call('GET', '/api/v1/trade-defaults/SO')).body.types as Array<{ id: string }>;
+    const url = '/api/v1/trade-import/sales-orders';
+    const item = (await call('GET', '/api/v1/items?status=A')).body.rows.find((r: { unit_code: string | null; item_type?: string }) => r.unit_code) as { code: string };
+    const H = ['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสลูกค้า', 'วันที่ส่งของ', 'รหัสสินค้า', 'จำนวน *', 'ราคาต่อหน่วย'];
+    const file = buildXlsx([{ name: 'นำเข้า', rows: [H, ['CPO-9001', '18/11/2569', 'IMP-C1', '30/11/2569', item.code, '5', '100'], ['CPO-9001', '', '', '', item.code, '2', '50'], ['CPO-9002', '19/11/2569', 'IMP-C1', '', item.code, '1', '10']] }]).toString('base64');
+    const base = { file_name: 'ใบสั่งซื้อลูกค้า.xlsx', data: file, doc_type_id: types[0]!.id, price_type: '2', vat_rate: 7 };
+    const count = async () => Number((await sql<{ n: string }>`SELECT count(*)::text AS n FROM doc_header WHERE company_id = ${co} AND doc_class = 'SO' AND your_ref LIKE 'CPO-90%' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n);
+    // ตรวจ: ไม่บันทึก · บิลแรก 2 บรรทัด (แถวต่อมาเว้นหัวเอกสาร)
+    const ck = (await call('POST', url, base)).body;
+    expect(ck.errors).toEqual([]);
+    expect(ck.docs.map((x: { ref: string; lines: number; amount: string }) => [x.ref, x.lines, x.amount])).toEqual([['CPO-9001', 2, '600.00'], ['CPO-9002', 1, '10.00']]);
+    expect(await count()).toBe(0);
+    // วันที่ส่งของผิด = ผิดทั้งแฟ้ม ไม่บันทึกฉบับใดเลย
+    const badFile = buildXlsx([{ name: 'นำเข้า', rows: [H, ['CPO-9001', '18/11/2569', 'IMP-C1', '31/02/2569', item.code, '5', '100'], ['CPO-9002', '19/11/2569', 'IMP-C1', '', item.code, '1', '10']] }]).toString('base64');
+    expect((await call('POST', url, { ...base, data: badFile, commit: true })).status).toBe(400);
+    const bad = (await call('POST', url, { ...base, data: badFile })).body;
+    expect(bad.errors.map((e: { message: string }) => e.message).join(' ')).toMatch(/วันที่ส่งของ "31\/02\/2569" ไม่ถูกต้อง/);
+    expect(await count()).toBe(0);
+    // บันทึก: saveTrade เดียวกับหน้าจอ — วันที่ส่งของตามแฟ้ม (ว่าง = วันที่เอกสาร) · ไม่ลงบัญชี · บันทึก sys_activity_log
+    const cm = (await call('POST', url, { ...base, commit: true })).body;
+    expect([cm.errors, cm.committed, cm.docs.length]).toEqual([[], true, 2]);
+    const rows = (await sql<{ your_ref: string; delivery_date: string; gl: number; module: string }>`SELECT h.your_ref, h.delivery_date::text AS delivery_date, h.module,
+        (SELECT count(*)::int FROM gl_journal j WHERE j.source_header_id = h.id AND j.deleted_at IS NULL) AS gl
+      FROM doc_header h WHERE h.company_id = ${co} AND h.doc_class = 'SO' AND h.your_ref LIKE 'CPO-90%' AND h.deleted_at IS NULL ORDER BY h.your_ref`.execute(database.db)).rows;
+    expect(rows).toEqual([{ your_ref: 'CPO-9001', delivery_date: '2026-11-30', module: 'SO', gl: 0 }, { your_ref: 'CPO-9002', delivery_date: '2026-11-19', module: 'SO', gl: 0 }]);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND action = 'IMPORT' AND occurred_at > now() - interval '5 minutes' AND detail->>'file' = 'ใบสั่งซื้อลูกค้า.xlsx'`.execute(database.db)).rows[0]!.n).toBeGreaterThan(0);
+    // นำเข้าซ้ำ = เลขที่อ้างอิงเคยนำเข้าแล้ว
+    expect((await call('POST', url, base)).body.errors[0].message).toMatch(/เคยนำเข้าแล้ว/);
+    // บริษัทอื่นนำเข้าด้วยประเภทเอกสารของบริษัทนี้ไม่ได้ (company_id จาก session)
+    const other = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { id: string }) => c.id !== co);
+    if (other) {
+      await call('POST', '/api/v1/auth/select', { company_id: other.id });
+      expect((await call('POST', url, base)).status).toBe(400);
+      await call('POST', '/api/v1/auth/select', { company_id: co });
+    }
+    const ids = (await sql<{ id: string }>`SELECT id FROM doc_header WHERE company_id = ${co} AND doc_class = 'SO' AND your_ref LIKE 'CPO-90%' AND deleted_at IS NULL`.execute(database.db)).rows;
+    for (const x of ids) expect((await call('POST', `/api/v1/sales-orders/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+
+    // มัดจำรับ (AI) · มัดจำจ่าย (AE) · รายได้อื่น (OI): แบบฟอร์มตามหน้าจอ · บรรทัดข้อความ · บันทึกด้วย saveCash เดียวกับหน้าจอ (ลงบัญชี)
+    const ai = await tpl('ar-deposits'), ae = await tpl('ap-deposits'), oi = await tpl('other-income-docs');
+    expect([ai.map((x) => x.name), ae.map((x) => x.name), oi.map((x) => x.name)]).toEqual([['นำเข้า', 'รับชำระ', 'คำอธิบาย'], ['นำเข้า', 'จ่ายชำระ', 'คำอธิบาย'], ['นำเข้า', 'รับชำระ', 'คำอธิบาย']]);
+    expect(ai[0]!.rows[0]).toEqual(expect.arrayContaining(['รหัสลูกค้า', 'รายละเอียด *', 'จำนวนเงิน *']));
+    expect(ai[0]!.rows[0]!.some((h) => /รหัสค่าใช้จ่าย|ใบกำกับผู้จำหน่าย/.test(h))).toBe(false);
+    expect(ae[0]!.rows[0]).toEqual(expect.arrayContaining(['รหัสผู้จำหน่าย', 'อัตราหัก ณ ที่จ่าย', 'รายละเอียด *']));
+    expect(oi[0]!.rows[0]).toEqual(expect.arrayContaining(['รหัสรายได้ *', 'รหัสลูกค้า']));
+    const aiType = ((await call('GET', '/api/v1/trade-defaults/AI')).body.types as Array<{ id: string }>)[0]!.id;
+    const DH = ['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสลูกค้า', 'รายละเอียด *', 'จำนวนเงิน *'];
+    const dep = buildXlsx([{ name: 'นำเข้า', rows: [DH, ['DEP-9001', '20/11/2569', 'IMP-C1', 'มัดจำค่าสินค้าตามใบสั่งซื้อ', '1000'], ['DEP-9001', '', '', 'มัดจำค่าติดตั้ง', '500'], ['DEP-9002', '20/11/2569', '', 'ไม่มีลูกค้า', '100']] }]).toString('base64');
+    const dbase = { file_name: 'มัดจำ.xlsx', data: dep, doc_type_id: aiType, price_type: '0', vat_rate: 0 };
+    const dk = (await call('POST', '/api/v1/trade-import/ar-deposits', dbase)).body;
+    // มัดจำต้องมีลูกค้า (หน้าจอบังคับ)
+    expect(dk.errors.map((e: { row: number; message: string }) => e.row)).toEqual([4]);
+    const dep2 = buildXlsx([{ name: 'นำเข้า', rows: [DH, ['DEP-9001', '20/11/2569', 'IMP-C1', 'มัดจำค่าสินค้าตามใบสั่งซื้อ', '1000'], ['DEP-9001', '', '', 'มัดจำค่าติดตั้ง', '500']] }]).toString('base64');
+    const dc = (await call('POST', '/api/v1/trade-import/ar-deposits', { ...dbase, data: dep2 })).body;
+    expect([dc.errors, dc.docs.map((x: { ref: string; lines: number; net_amount: string; pay_source: string }) => [x.ref, x.lines, x.net_amount, x.pay_source])]).toEqual([[], [['DEP-9001', 2, '1500.00', 'cash']]]);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM doc_header WHERE company_id = ${co} AND doc_class = 'AI' AND your_ref = 'DEP-9001' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(0);
+    const dm = (await call('POST', '/api/v1/trade-import/ar-deposits', { ...dbase, data: dep2, commit: true })).body;
+    expect([dm.errors, dm.committed]).toEqual([[], true]);
+    const dh = (await sql<{ id: string; net_amount: string; posted: number; lines: string }>`SELECT h.id, h.net_amount::text AS net_amount,
+        (SELECT count(*)::int FROM gl_journal j WHERE j.source_header_id = h.id AND j.deleted_at IS NULL AND j.doc_status <> 'C') AS posted,
+        (SELECT string_agg(l.description, ' / ' ORDER BY l.line_no) FROM doc_line l WHERE l.header_id = h.id AND l.deleted_at IS NULL) AS lines
+      FROM doc_header h WHERE h.company_id = ${co} AND h.doc_class = 'AI' AND h.your_ref = 'DEP-9001' AND h.deleted_at IS NULL`.execute(database.db)).rows;
+    expect(dh.map((x) => [x.net_amount, x.posted, x.lines])).toEqual([['1500.00', 1, 'มัดจำค่าสินค้าตามใบสั่งซื้อ / มัดจำค่าติดตั้ง']]);
+    expect((await call('POST', `/api/v1/ar-deposits/${dh[0]!.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+    // รายได้อื่น: รหัสที่ไม่ใช่รหัสรายได้ = ผิด บอกเมนูที่ต้องเพิ่ม
+    const oiType = ((await call('GET', '/api/v1/trade-defaults/OI')).body.types as Array<{ id: string }>)[0]!.id;
+    const oiFile = buildXlsx([{ name: 'นำเข้า', rows: [['เลขที่อ้างอิง *', 'วันที่ *', 'ชื่อลูกค้า', 'รหัสรายได้ *', 'จำนวนเงิน *'], ['OI-9001', '20/11/2569', 'ผู้เช่าทดสอบ', item.code, '300']] }]).toString('base64');
+    const oe = (await call('POST', '/api/v1/trade-import/other-income-docs', { file_name: 'รายได้.xlsx', data: oiFile, doc_type_id: oiType, price_type: '0', vat_rate: 0 })).body;
+    expect(oe.errors[0].message).toMatch(new RegExp(`${item.code} ไม่ใช่รหัสรายได้อื่น — ใช้รหัสจาก ขาย › รายละเอียดรายได้อื่น ๆ`));
   });
   it('journal import (เจ้าของ 17/11/2569): template, check without saving, all-or-nothing commit via createJournal, line description default, duplicate ref, rights, other tenants', async () => {
     cookie = '';

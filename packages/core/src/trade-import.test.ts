@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { importBranch, importColumnsFor, importDate, importDocNoError, importPrice, importReadColumns, importFlag, importHeaderText, importItemKind, importKindOf, importNeedLabel, importNumber, importPartyKey, importVatBasis, importVatCode, importWhtForm, mapExpenseImport, mapImport, mapPaymentImport, parseCsv, xlsxSharedStrings, xlsxSheetRows } from './trade-import.js';
+import { cashImportColumnsFor, importBranch, importColumnsFor, importDate, importDocNoError, importPrice, importReadColumns, importFlag, importHeaderText, importItemKind, importKindOf, importNeedLabel, importNumber, importPartyKey, importVatBasis, importVatCode, importWhtForm, mapExpenseImport, mapImport, mapPaymentImport, parseCsv, xlsxSharedStrings, xlsxSheetRows } from './trade-import.js';
 import { TRADE_KINDS } from './doc-calc.js';
 
 describe('นำเข้ารายการขาย/ซื้อจากแฟ้ม Excel', () => {
@@ -156,7 +156,12 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect(keys('RR')).not.toContain('return');
     expect(importKindOf('cash-sales')?.cls).toBe('HS');
     expect(importKindOf('other-expense-docs')).toMatchObject({ cls: 'OE', cash: true });
-    expect(importKindOf('quotations')).toBeNull();
+    // HANDOFF 171: ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อนำเข้าได้ — วันที่ส่งของ/รับของเฉพาะใบสั่ง (ใบเสนอราคาไม่มีช่องนี้บนหน้าจอ)
+    expect(importKindOf('quotations')).toMatchObject({ cls: 'QT', order: 'SO' });
+    expect(importKindOf('no-such-kind')).toBeNull();
+    const delCol = (path: string) => importColumnsFor(importKindOf(path)!).find((c) => c.key === 'delivery_date')?.th ?? null;
+    expect([delCol('quotations'), delCol('sales-orders'), delCol('purchase-orders'), delCol('sales-invoices')]).toEqual([null, 'วันที่ส่งของ', 'วันที่รับของ', null]);
+    expect(importColumnsFor(importKindOf('sales-orders')!).some((c) => c.key === 'pay_method' || c.key === 'wht_amount')).toBe(false);
     // one wording for "required"
     const col = (cls: string, key: string) => importColumnsFor(K(cls)).find((c) => c.key === key)!;
     expect([importNeedLabel(col('HS', 'qty')), importNeedLabel(col('HS', 'item')), importNeedLabel(col('HS', 'pay_method')), importNeedLabel(col('HS', 'party_tax_id')), importNeedLabel(col('CN', 'ref_invoice'))])
@@ -277,5 +282,28 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const e = mapExpenseImport([['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'รหัสค่าใช้จ่าย', 'จำนวนเงิน', 'หมายเหตุ'], ['E1', '1/10/2569', 'S1', 'X', '100', 'ก'], ['E1', '', '', 'Y', '50', ''], ['E1', '', '', 'Z', '5', 'ข']], 'B');
     expect(e.docs.map((x) => [x.date, x.party, x.lines.length])).toEqual([['2026-10-01', 'S1', 2]]);
     expect(e.errors.map((x) => [x.row, x.message])).toEqual([[4, 'เลขที่อ้างอิง E1: คอลัมน์ "หมายเหตุ" = "ข" ไม่ตรงกับแถว 2 ("ก") — ช่องหัวเอกสารใส่แถวแรกพอ แถวต่อมาเว้นว่างหรือใส่ค่าเดิม']]);
+  });
+  it('HANDOFF 171: deposits (AI/AE) and other income (OI) import — columns follow each screen, text lines need a description, received-side WHT is an amount', () => {
+    const th = (cls: string) => cashImportColumnsFor(cls).map((c) => c.th);
+    // มัดจำรับ: ลูกค้า · ไม่มีรหัส · ไม่มีเลขที่ใบกำกับผู้จำหน่าย · หัก ณ ที่จ่ายเป็นยอดอย่างเดียว
+    expect(th('AI')).toEqual(expect.arrayContaining(['รหัสลูกค้า', 'ชื่อลูกค้า', 'Bill to (สาขาลูกค้า)', 'รายละเอียด', 'จำนวนเงิน', 'ภาษีหัก ณ ที่จ่าย']));
+    expect(th('AI').some((h) => /รหัสค่าใช้จ่าย|รหัสรายได้|ใบกำกับผู้จำหน่าย|อัตราหัก|แบบ ภ.ง.ด./.test(h))).toBe(false);
+    // มัดจำจ่าย: ผู้จำหน่าย + รายละเอียดภาษีหัก ณ ที่จ่ายครบ · ไม่มีรหัส
+    expect(th('AE')).toEqual(expect.arrayContaining(['รหัสผู้จำหน่าย', 'เลขที่ใบกำกับผู้จำหน่าย', 'อัตราหัก ณ ที่จ่าย', 'แบบ ภ.ง.ด.']));
+    expect(th('AE')).not.toContain('รหัสค่าใช้จ่าย');
+    // รายได้อื่น: รหัสรายได้ + ลูกค้า · ค่าใช้จ่ายอื่นเหมือนเดิม
+    expect(th('OI')).toEqual(expect.arrayContaining(['รหัสรายได้', 'รหัสลูกค้า']));
+    expect(cashImportColumnsFor('OE')).toBe(cashImportColumnsFor(null));
+    expect(cashImportColumnsFor('AI').find((c) => c.key === 'description')).toMatchObject({ required: true, need: 'req' });
+    // แฟ้มมัดจำรับ: บรรทัดข้อความ · แถวต่อมาเว้นหัวเอกสาร · ไม่มีรายละเอียด = ผิด · หัวคอลัมน์ของค่าใช้จ่ายอื่นยังอ่านได้
+    const H = ['เลขที่อ้างอิง', 'วันที่', 'รหัสลูกค้า', 'รายละเอียด', 'จำนวนเงิน', 'ภาษีหัก ณ ที่จ่าย'];
+    const r = mapExpenseImport([H, ['D1', '01/11/2569', 'C001', 'มัดจำงวด 1', '1000', '30'], ['D1', '', '', 'มัดจำงวด 2', '500', ''], ['D2', '02/11/2569', 'C001', '', '200', '']], 'B', 'AI');
+    expect(r.errors.map((e) => [e.row, e.message])).toEqual([[4, 'ไม่มีรายละเอียด (คอลัมน์ "รายละเอียด" ต้องมีทุกแถว)']]);
+    expect(r.docs.map((x) => [x.ref, x.party, x.lines.map((l) => `${l.code}|${l.description}|${l.amount}`).join(' '), x.wht?.amount])).toEqual([['D1', 'C001', '|มัดจำงวด 1|1000 |มัดจำงวด 2|500', '30']]);
+    expect(mapExpenseImport([['เลขที่อ้างอิง', 'วันที่', 'รหัสผู้จำหน่าย', 'รายละเอียด', 'จำนวนเงิน'], ['D9', '01/11/2569', 'S001', 'มัดจำ', '100']], 'B', 'AE').docs).toHaveLength(1);
+    // รายได้อื่น: ไม่มีรหัสรายได้ = ผิดด้วยคำของรายได้
+    const oi = mapExpenseImport([['เลขที่อ้างอิง', 'วันที่', 'ชื่อลูกค้า', 'รหัสรายได้', 'จำนวนเงิน'], ['I1', '01/11/2569', 'ร้านเช่า', '', '100']], 'B', 'OI');
+    expect(oi.errors.map((e) => e.message)).toEqual(['ไม่มีรหัสรายได้']);
+    expect(importKindOf('ar-deposits')).toMatchObject({ cls: 'AI', cash: true, party: 'customer' });
   });
 });

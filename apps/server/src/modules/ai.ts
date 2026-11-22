@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { jsonSchemaOutputFormat } from '@anthropic-ai/sdk/helpers/json-schema';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, AI_BUSINESS_TYPES, AI_MODELS, aiCost, aiModelOf, aiRequestOptions, type AiModelId, BILL_SCHEMA, buyerTaxCheck, BILL_SYSTEM_PROMPT, checkTaxId, d, normalizeBill, SUGGEST_SCHEMA, SUGGEST_SYSTEM_PROMPT, suggestPrompt, textSim, type BillDraft, type RawBill, type SuggestCandidate } from '@buddy/core';
+import { AI_BILL_TARGETS, AI_BUSINESS_TYPES, AI_MODELS, aiCost, aiModelOf, aiRequestOptions, type AiModelId, BILL_SCHEMA, buyerTaxCheck, BILL_SYSTEM_PROMPT, BILL_SYSTEM_PROMPT_SALES, aiBillSide, checkTaxId, d, normalizeBill, SUGGEST_SCHEMA, SUGGEST_SYSTEM_PROMPT, suggestPrompt, textSim, type BillDraft, type RawBill, type SuggestCandidate } from '@buddy/core';
 import type { Db } from '../db.js';
 import { badRequest, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -165,7 +165,7 @@ export function aiRoutes(app: FastifyInstance, db: Db) {
     const source = { type: 'base64' as const, media_type: b.media_type, data: b.data };
     return readBill(db, a, reply, { target: b.target, file_name: b.file_name, size: Math.floor(b.data.length * 3 / 4), read_by: 'claude_image', content: [
       b.media_type === 'application/pdf' ? { type: 'document', source: source as Anthropic.Beta.BetaBase64PDFSource } : { type: 'image', source: source as Anthropic.Beta.BetaBase64ImageSource },
-      { type: 'text', text: 'อ่านเอกสารซื้อนี้ตามโครงข้อมูล' },
+      { type: 'text', text: `อ่าน${docWord(b.target)}นี้ตามโครงข้อมูล` },
     ] });
   });
 
@@ -183,10 +183,12 @@ export function aiRoutes(app: FastifyInstance, db: Db) {
     }), req.body);
     return readBill(db, a, reply, { target: b.target, file_name: b.file_name, size: b.file_size, read_by: 'local_ocr',
       note: `อ่านภาพในเครื่องด้วย Typhoon-OCR${b.pages ? ` ${b.pages} หน้า` : ''}${b.ocr_ms ? ` ${(b.ocr_ms / 1000).toFixed(1)} วินาที` : ''} → Claude จัดร่างจากข้อความ`,
-      content: [{ type: 'text', text: `ข้อความด้านล่างได้จากการอ่านภาพเอกสารซื้อด้วย OCR (Typhoon-OCR) ในเครื่องของผู้ใช้ ไม่มีภาพแนบ — ตารางแสดงแถวละบรรทัด คั่นช่องด้วย " | " · OCR อาจอ่านตัวเลข/ตัวอักษรผิดได้ ถ้าตัวเลขขัดกันเอง (เช่น ยอดรวมไม่เท่ากับผลรวมรายการ) ให้ตอบตามที่พิมพ์และบอกใน notes\nอ่านเอกสารซื้อนี้ตามโครงข้อมูล\n\n<ocr>\n${b.text}\n</ocr>` }] });
+      content: [{ type: 'text', text: `ข้อความด้านล่างได้จากการอ่านภาพ${docWord(b.target)}ด้วย OCR (Typhoon-OCR) ในเครื่องของผู้ใช้ ไม่มีภาพแนบ — ตารางแสดงแถวละบรรทัด คั่นช่องด้วย " | " · OCR อาจอ่านตัวเลข/ตัวอักษรผิดได้ ถ้าตัวเลขขัดกันเอง (เช่น ยอดรวมไม่เท่ากับผลรวมรายการ) ให้ตอบตามที่พิมพ์และบอกใน notes\nอ่าน${docWord(b.target)}นี้ตามโครงข้อมูล\n\n<ocr>\n${b.text}\n</ocr>` }] });
   });
 }
 
+/** คำเรียกกระดาษที่อ่าน (ซื้อ/ขาย — HANDOFF 171) */
+const docWord = (target: string) => (aiBillSide(AI_BILL_TARGETS.find((k) => k.path === target) ?? { party: 'supplier' }) === 'sale' ? 'เอกสารขาย' : 'เอกสารซื้อ');
 type ReadInput = { target: string; file_name: string; size: number; read_by: 'claude_image' | 'local_ocr'; note?: string; content: Anthropic.Beta.BetaContentBlockParam[] };
 /** อ่านบิลด้วย Claude (รูป/PDF หรือข้อความจาก OCR) → ร่างบิล + ตรวจผู้จำหน่าย/บิลซ้ำ + แนะนำรหัส · ตรวจกุญแจและเพดานก่อนเรียกทุกครั้ง */
 async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: FastifyReply, b: ReadInput) {
@@ -198,6 +200,8 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
   const limit = await limitOf(db, a.companyId), used = await monthUsage(db, a.companyId);
   if (limit !== null && used.cost.gte(limit)) throw badRequest(`ใช้ AI เดือนนี้ครบเพดาน ${limit} ดอลลาร์แล้ว (ใช้ไป ${used.cost.toFixed(2)}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือป้อนเอง`);
   const model = await modelOf(db, a.companyId);
+  const K = AI_BILL_TARGETS.find((k) => k.path === b.target)!;
+  const side = aiBillSide(K);
 
   let res: Awaited<ReturnType<AiClient['beta']['messages']['parse']>>;
   try {
@@ -205,7 +209,7 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
       // รุ่นที่บริษัทเลือก · Sonnet/Opus ที่ปฏิเสธ (refusal) ส่งต่อให้รุ่นสำรองอัตโนมัติ (Haiku ไม่มีรุ่นสำรอง)
       ...aiRequestOptions(model), max_tokens: 16000,
       output_config: { effort: 'medium', format: jsonSchemaOutputFormat(BILL_SCHEMA as never) },
-      system: BILL_SYSTEM_PROMPT,
+      system: side === 'sale' ? BILL_SYSTEM_PROMPT_SALES : BILL_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: b.content }],
     });
   } catch (e) {
@@ -220,21 +224,29 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
     return fail(422, 'AI_UNREADABLE', msg);
   }
   await record(db, a, { model: res.model, usage: res.usage, cost, status: 'OK', file_name: b.file_name, file_size: size, message: b.note ?? null });
-  const bill = normalizeBill(res.parsed_output as unknown as RawBill);
+  const bill = normalizeBill(res.parsed_output as unknown as RawBill, side);
   // ผู้ซื้อในบิลต้องเป็นบริษัทนี้ (เจ้าของ 19/11/2569): อ่านเพี้ยนเล็กน้อย = ใช้เลขของบริษัท · เลขของผู้อื่น = เตือนก่อนใช้ขอคืนภาษีซื้อ
+  // ฝั่งขาย (HANDOFF 171): ผู้ขายในเอกสาร (ถ้ามี) ต้องเป็นบริษัทนี้ — ลูกค้าคือผู้ซื้อ
   const co = await db.selectFrom('sys_company').select(['tax_id', 'name_th']).where('id', '=', a.companyId).executeTakeFirst();
-  const buyer = buyerTaxCheck(bill.buyer.tax_id_read, co?.tax_id);
+  const buyer0 = buyerTaxCheck(side === 'sale' ? bill.supplier.tax_id_read : bill.buyer.tax_id_read, co?.tax_id);
+  const buyer = side === 'sale' && buyer0.message ? { ...buyer0, message: `ผู้ขายในเอกสาร (เลข ${buyer0.shown}) ไม่ใช่บริษัทนี้ — ตรวจว่าเป็นเอกสารขายของกิจการนี้ (ลูกค้าคือผู้ซื้อในเอกสาร)` } : buyer0;
   if (buyer.message) bill.warnings.unshift(buyer.message);
 
-  const K = AI_BILL_TARGETS.find((k) => k.path === b.target)!;
-  const sc = await checkSupplier(db, a.companyId, bill);
-  const dup = sc.supplier && bill.doc_no ? (await sql<{ doc_no: string; doc_class: string; doc_date: string }>`SELECT doc_no, doc_class, doc_date::text AS doc_date FROM doc_header
-      WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND doc_status <> 'C' AND supplier_id = ${sc.supplier.id} AND ref_no = ${bill.doc_no} ORDER BY doc_date DESC LIMIT 1`.execute(db)).rows[0] ?? null : null;
-  const sg = await suggestLines(db, a, key.key, model, K.service, bill, sc.supplier, b.file_name, size);
+  const sc = side === 'sale' ? await checkCustomer(db, a.companyId, bill) : await checkSupplier(db, a.companyId, bill);
+  // บิลซ้ำ: ซื้อ = เลขที่บิลผู้จำหน่ายเดียวกัน (ทุกชนิด) · ขาย = อ้างอิง (เลขที่ใบสั่งซื้อของลูกค้า) เดียวกันในเอกสารชนิดเดียวกัน (ใบสั่งขายแล้วออกบิลด้วยเลขเดียวกันได้)
+  const dup = sc.supplier && bill.doc_no ? (side === 'sale'
+    ? (await sql<{ doc_no: string; doc_class: string; doc_date: string }>`SELECT doc_no, doc_class, doc_date::text AS doc_date FROM doc_header
+      WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND doc_status <> 'C' AND customer_id = ${sc.supplier.id} AND doc_class = ${K.cls} AND your_ref = ${bill.doc_no} ORDER BY doc_date DESC LIMIT 1`.execute(db)).rows[0] ?? null
+    : (await sql<{ doc_no: string; doc_class: string; doc_date: string }>`SELECT doc_no, doc_class, doc_date::text AS doc_date FROM doc_header
+      WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND doc_status <> 'C' AND supplier_id = ${sc.supplier.id} AND ref_no = ${bill.doc_no} ORDER BY doc_date DESC LIMIT 1`.execute(db)).rows[0] ?? null) : null;
+  const mode = K.lines === 'text' ? null : side === 'sale' ? (K.lines === 'income' ? 'income' : 'sale') : K.service ? 'expense' : 'purchase';
+  const sg = mode ? await suggestLines(db, a, key.key, model, mode, bill, sc.supplier, b.file_name, size)
+    : { lines: bill.lines.map(() => ({ suggestion: null, alternatives: [], item: null, note: null })), cost: d(0), note: null };
   const total = d(cost).plus(sg.cost).toFixed(4);
-  await logActivity(db, a, { module: K.menu, action: 'AI_READ_BILL', docNo: bill.doc_no || null, detail: { file: b.file_name, read_by: b.read_by, cost_usd: total, supplier: sc.supplier?.code ?? null, supplier_check: sc.status, duplicate: dup?.doc_no ?? null } });
+  await logActivity(db, a, { module: K.menu, action: 'AI_READ_BILL', docNo: bill.doc_no || null, detail: { file: b.file_name, read_by: b.read_by, cost_usd: total, side, party: sc.supplier?.code ?? null, party_check: sc.status, duplicate: dup?.doc_no ?? null } });
   return {
-    bill, supplier: sc.supplier, supplier_check: { status: sc.status, message: sc.message, candidate: sc.candidate }, duplicate: dup,
+    /** supplier = คู่ค้าที่พบ (ฝั่งขาย = ลูกค้า — ชื่อเดิมของช่อง) · side บอกฝั่ง */
+    bill, side, supplier: sc.supplier, supplier_check: { status: sc.status, message: sc.message, candidate: sc.candidate }, duplicate: dup,
     lines: bill.lines.map((l, i) => ({ ...l, ...sg.lines[i]! })), suggest_note: sg.note, read_by: b.read_by, buyer_check: { ...buyer, company_name: co?.name_th ?? null, company_tax_id: co?.tax_id ?? null },
     usage: { model: res.model, cost_usd: total, month_cost_usd: used.cost.plus(total).toFixed(4), monthly_limit_usd: limit },
   };
@@ -271,6 +283,31 @@ async function checkSupplier(db: Db, companyId: string, bill: BillDraft): Promis
   return { supplier: null, status: 'new', message: `ผู้จำหน่ายใหม่ ยังไม่มีในแฟ้ม${tax ? ` (เลขผู้เสียภาษี ${tax})` : ''} — เพิ่มที่ รายละเอียดผู้จำหน่าย ก่อนบันทึก${badTax}`, candidate: null };
 }
 
+/**
+ * ตรวจลูกค้ากับแฟ้มของบริษัท (อ่านกระดาษฝั่งขาย — HANDOFF 171): ลูกค้า = ผู้ซื้อในเอกสาร · พบตามเลขผู้เสียภาษี (+สาขาในแท็บสาขา) · ชื่อคล้าย · ลูกค้าใหม่
+ * ไม่มีปุ่มเพิ่มลูกค้าจากบิล — ผู้ใช้เลือก/เพิ่มลูกค้าในเอกสาร
+ */
+async function checkCustomer(db: Db, companyId: string, bill: BillDraft): Promise<{ supplier: Sup | null; status: string; message: string; candidate: Sup | null }> {
+  const read = bill.buyer.tax_id_read, name = bill.buyer.name, want = bill.buyer.branch_no ?? null;
+  const tax = read.length === 13 ? read : null;
+  const all = (await sql<Sup>`SELECT id, code, name, replace(coalesce(tax_id, ''), '-', '') AS tax_id, tax_branch_no FROM md_customer WHERE company_id = ${companyId} AND deleted_at IS NULL AND status = 'A' LIMIT 20000`.execute(db)).rows;
+  const ck = tax ? checkTaxId(tax) : null;
+  const badTax = ck && !ck.ok ? ` · เลขผู้เสียภาษีในเอกสาร ${tax} ${ck.error} (อ่านผิดหรือพิมพ์ผิด)` : '';
+  const byTax = tax ? all.filter((x) => x.tax_id === tax) : [];
+  if (byTax.length) {
+    const brs = await sql<{ customer_id: string; branch_no: string; name: string }>`SELECT customer_id, branch_no, name FROM md_customer_branch WHERE company_id = ${companyId} AND deleted_at IS NULL AND customer_id = ANY(${byTax.map((x) => x.id)}::uuid[])`.execute(db);
+    const has = (x: Sup) => !want || (x.tax_branch_no ?? '00000') === want || brs.rows.some((r) => r.customer_id === x.id && r.branch_no === want);
+    const c = byTax.find(has) ?? byTax[0]!;
+    if (name && textSim(name, c.name) < 0.45) return { supplier: c, status: 'name_mismatch', message: `เลขผู้เสียภาษีตรงกับลูกค้า ${c.code} ${c.name} แต่ชื่อในเอกสาร "${name}" ต่างกัน — ตรวจว่าเป็นรายเดียวกัน${badTax}`, candidate: null };
+    if (!has(c)) return { supplier: c, status: 'branch_new', message: `ลูกค้า ${c.code} ${c.name} เลขผู้เสียภาษีตรงกัน แต่ยังไม่มีสาขา ${want} — เพิ่มสาขาที่แท็บสาขาในรายละเอียดลูกค้า แล้วเลือก Bill to (สาขา) ในเอกสาร`, candidate: null };
+    return { supplier: c, status: 'match', message: `ตรงกับลูกค้า ${c.code} ${c.name} (เลขผู้เสียภาษี${want ? ` สาขา ${want}` : ''} ตรงกัน)${badTax}`, candidate: null };
+  }
+  const near = name ? all.map((x) => ({ x, sim: textSim(name, x.name) })).filter((r) => r.sim >= 0.6).sort((p, q) => q.sim - p.sim)[0]?.x ?? null : null;
+  if (near) return { supplier: null, status: near.tax_id && tax ? 'tax_mismatch' : 'no_tax', message: near.tax_id && tax ? `ชื่อคล้ายลูกค้า ${near.code} ${near.name} แต่เลขผู้เสียภาษีในแฟ้ม (${near.tax_id}) ไม่ตรงกับเอกสาร (${tax}) — ตรวจว่าเอกสารหรือแฟ้มผิด${badTax}`
+    : `พบลูกค้าชื่อคล้าย ${near.code} ${near.name}${tax ? ` — ถ้าเป็นรายเดียวกัน เพิ่มเลข ${tax} ที่แฟ้มลูกค้า` : ''}${badTax}`, candidate: near };
+  return { supplier: null, status: 'new', message: `ลูกค้าใหม่ ยังไม่มีในแฟ้ม${tax ? ` (เลขผู้เสียภาษี ${tax})` : ''}${name ? ` "${name}"` : ''} — เลือกหรือเพิ่มลูกค้าในเอกสาร${badTax}`, candidate: null };
+}
+
 type Cat = { id: string; code: string; name_th: string; item_type: string; remark: string | null; base_unit_id: string | null; account: string | null };
 type Suggestion = { item: { id: string; code: string; name_th: string; item_type: string; base_unit_id: string | null }; kind: 'item' | 'expense'; account: string | null; confidence: 'high' | 'medium' | 'low'; reason: string; source: 'ai' | 'history' | 'name' };
 const kindOf = (t: string) => (t === '5' || t === '2' ? 'expense' : 'item') as 'item' | 'expense';
@@ -282,15 +319,18 @@ const pickOf = (c: Cat) => ({ id: c.id, code: c.code, name_th: c.name_th, item_t
  * 2) แฟ้มรหัส: ชื่อ/หมายเหตุของรหัสสินค้าและรหัสค่าใช้จ่ายที่คล้ายกัน
  * 3) Claude เลือกจากรายการข้อ 1–2 ตามประเภทธุรกิจและแนวทางของบริษัท (ตั้งที่ เริ่มระบบ › AI อ่านบิล) — ผิดพลาดใช้ประวัติแทน
  */
-async function suggestLines(db: Db, a: AuthContext & { companyId: string }, apiKey: string, model: AiModelId, expenseOnly: boolean, bill: BillDraft, sup: Sup | null, fileName: string, size: number) {
-  const types = expenseOnly ? ['5', '2'] : ['0', '1', '2', '3', '5'];
+async function suggestLines(db: Db, a: AuthContext & { companyId: string }, apiKey: string, model: AiModelId, mode: 'purchase' | 'expense' | 'sale' | 'income', bill: BillDraft, sup: Sup | null, fileName: string, size: number) {
+  const expenseOnly = mode === 'expense', sale = mode === 'sale' || mode === 'income';
+  // ขาย = สินค้า/ชุด/บริการ (HANDOFF 171) · รายได้อื่น = รหัสรายได้ (4)
+  const types = expenseOnly ? ['5', '2'] : mode === 'sale' ? ['0', '1', '2', '3'] : mode === 'income' ? ['4'] : ['0', '1', '2', '3', '5'];
   const cat = (await sql<Cat>`SELECT i.id, i.code, i.name_th, i.item_type, i.remark, i.base_unit_id,
-        (SELECT ac.account_no || ' ' || ac.name_th FROM gl_account ac WHERE ac.id = CASE WHEN i.item_type IN ('5', '2') THEN g.inventory_account_id ELSE coalesce(g.purchase_account_id, g.inventory_account_id) END) AS account
+        (SELECT ac.account_no || ' ' || ac.name_th FROM gl_account ac WHERE ac.id = CASE WHEN ${sale} THEN coalesce(g.sales_account_id, g.inventory_account_id) WHEN i.item_type IN ('5', '2') THEN g.inventory_account_id ELSE coalesce(g.purchase_account_id, g.inventory_account_id) END) AS account
       FROM md_item i LEFT JOIN md_item_account_group g ON g.id = i.account_group_id
      WHERE i.company_id = ${a.companyId} AND i.deleted_at IS NULL AND i.status = 'A' AND i.item_type = ANY(${types}::text[]) ORDER BY i.code LIMIT 8000`.execute(db)).rows;
   const byId = new Map(cat.map((c) => [c.id, c])), byCode = new Map(cat.map((c) => [c.code, c]));
-  const hist = (await sql<{ description: string | null; item_id: string; supplier_id: string | null }>`SELECT l.description, l.item_id, h.supplier_id FROM doc_line l JOIN doc_header h ON h.id = l.header_id
-      WHERE h.company_id = ${a.companyId} AND h.deleted_at IS NULL AND l.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_class IN ('RR', 'HP', 'OE') AND l.item_id IS NOT NULL
+  const classes = mode === 'sale' ? ['IV', 'HS', 'SO', 'QT', 'DR', 'CN'] : mode === 'income' ? ['OI'] : ['RR', 'HP', 'OE'];
+  const hist = (await sql<{ description: string | null; item_id: string; supplier_id: string | null }>`SELECT l.description, l.item_id, ${sale ? sql`h.customer_id` : sql`h.supplier_id`} AS supplier_id FROM doc_line l JOIN doc_header h ON h.id = l.header_id
+      WHERE h.company_id = ${a.companyId} AND h.deleted_at IS NULL AND l.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_class = ANY(${classes}::text[]) AND l.item_id IS NOT NULL
         AND h.doc_date >= (current_date - 1095) ORDER BY h.doc_date DESC LIMIT 4000`.execute(db)).rows;
   const per = bill.lines.map((l) => {
     const agg = new Map<string, { n: number; same: number; best: number }>();
@@ -307,13 +347,14 @@ async function suggestLines(db: Db, a: AuthContext & { companyId: string }, apiK
       .sort((p, q) => q.sim - p.sim).slice(0, 5);
     return { history, names };
   });
-  const expenses = cat.filter((c) => kindOf(c.item_type) === 'expense');
+  // รายการรหัสทั้งหมดที่ส่งให้ AI: ซื้อ = รหัสค่าใช้จ่าย · รายได้อื่น = รหัสรายได้ · ขาย = ไม่ส่ง (เลือกจาก candidates)
+  const expenses = mode === 'sale' ? [] : mode === 'income' ? cat : cat.filter((c) => kindOf(c.item_type) === 'expense');
   const expList = (expenses.length <= 200 ? expenses : expenses.map((c) => ({ c, s: Math.max(...bill.lines.map((l) => textSim(l.description, c.name_th))) })).sort((p, q) => q.s - p.s).slice(0, 30).map((x) => x.c));
 
   // ค่าเริ่มต้น: ประวัติที่คล้ายมาก หรือชื่อรหัสตรงกัน
   const local = (i: number): Suggestion | null => {
     const h = per[i]!.history[0];
-    if (h && h.best >= 0.8) return { item: pickOf(h.c), kind: kindOf(h.c.item_type), account: h.c.account, confidence: h.same >= 1 && h.n >= 2 ? 'high' : 'medium', reason: `เคยลงรหัสนี้ ${h.n} ครั้ง${h.same ? ` (กับผู้จำหน่ายนี้ ${h.same} ครั้ง)` : ''}`, source: 'history' };
+    if (h && h.best >= 0.8) return { item: pickOf(h.c), kind: kindOf(h.c.item_type), account: h.c.account, confidence: h.same >= 1 && h.n >= 2 ? 'high' : 'medium', reason: `เคยลงรหัสนี้ ${h.n} ครั้ง${h.same ? ` (กับ${sale ? 'ลูกค้า' : 'ผู้จำหน่าย'}นี้ ${h.same} ครั้ง)` : ''}`, source: 'history' };
     const n = per[i]!.names[0];
     if (n && n.sim >= 0.85) return { item: pickOf(n.c), kind: kindOf(n.c.item_type), account: n.c.account, confidence: 'medium', reason: 'ชื่อตรงกับรหัสในแฟ้ม', source: 'name' };
     return null;
@@ -334,7 +375,7 @@ async function suggestLines(db: Db, a: AuthContext & { companyId: string }, apiK
         ...aiRequestOptions(model), max_tokens: 8000,
         output_config: { effort: 'low', format: jsonSchemaOutputFormat(SUGGEST_SCHEMA as never) },
         system: SUGGEST_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: suggestPrompt({ businessType: s['ai.business_type'] as string | null, guidance: s['ai.guidance'] as string | null, target: expenseOnly ? 'expense' : 'purchase',
+        messages: [{ role: 'user', content: suggestPrompt({ businessType: s['ai.business_type'] as string | null, guidance: s['ai.guidance'] as string | null, target: mode,
           supplierName: sup?.name ?? bill.supplier.name, supplierKnown: !!sup, lines: bill.lines.map((l, i) => ({ index: i, description: l.description, amount: l.amount, candidates: cand(i) })),
           expenseCodes: expList.map((c) => ({ code: c.code, name: c.name_th, kind: 'expense', account: c.account })) }) }],
       });

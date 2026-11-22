@@ -189,16 +189,19 @@ export function CashFormPage({ path }: { path: string }) {
   };
   /** เติมร่างจากบิลที่ AI อ่าน (T7.7): ไม่พบผู้จำหน่าย = ใส่เป็นชื่อ · รายการไม่พบรหัสค่าใช้จ่าย = เลือกเอง */
   const applyBill = async (r: AiBillResult) => {
+    // ฝั่งรับเงิน (มัดจำรับ AI · รายได้อื่น OI — HANDOFF 171): คู่ค้า = ลูกค้า (ผู้ซื้อในเอกสาร) · ฝั่งจ่าย = ผู้จำหน่าย (ผู้ขาย)
+    const cust = K.party === 'customer', who = cust ? r.bill.buyer : r.bill.supplier;
     if (r.supplier) await pickParty({ id: r.supplier.id, code: r.supplier.code, name: r.supplier.name });
-    else if (r.bill.supplier.name) set({ party: null, party_name: r.bill.supplier.name.slice(0, 200) });
+    else if (who.name) set({ party: null, party_name: who.name.slice(0, 200) });
     const asExp = K.module === 'AP' && (defs.data?.vat_registered === false || (!!r.supplier && r.supplier.id === defs.data?.central_supplier_id)) ? billAsExpense(r.bill) : null;
-    set({ price_type: asExp ? '0' : r.bill.price_type, vat_rate: r.bill.vat_rate, ref_no: r.bill.doc_no, ref_date: r.bill.doc_date ?? '', ...(r.supplier && r.bill.supplier.branch_no ? { party_tax_branch_no: r.bill.supplier.branch_no } : {}) });
+    set({ price_type: asExp ? '0' : r.bill.price_type, vat_rate: r.bill.vat_rate, ...(cust ? { ...(r.bill.doc_no ? { your_ref: r.bill.doc_no.slice(0, 30) } : {}), ...(r.bill.doc_date ? { doc_date: r.bill.doc_date } : {}) } : { ref_no: r.bill.doc_no, ref_date: r.bill.doc_date ?? '' }),
+      ...(r.supplier && who.branch_no ? { party_tax_branch_no: who.branch_no } : {}) });
     setLines((ls) => [...ls.filter((l) => l.item_id), ...r.lines.map((l, i) => ({ ...blankLine(), item_id: l.item?.id ?? '', item_code: l.item?.code ?? '', item_name: l.item?.name_th ?? null, description: l.description, amount: asExp ? asExp[i]!.amount : l.amount }))]);
     // บิลที่หัก ณ ที่จ่าย → แท็บภาษีหัก ณ ที่จ่าย (ฐาน = ยอดก่อน VAT · อัตรามาตรฐาน — HANDOFF 167) · เจ้าหนี้กลาง/บริษัทไม่จด VAT ไม่หัก
     const w = K.whtEntries && !asExp ? billWhtRow(r.bill) : null;
     if (w) setWhts([{ key: nextKey(), ...w, taxEdited: true, certificate_no: '', certificate_date: '' }]);
     const missing = r.lines.filter((l) => !l.item).length;
-    toast(`เติมจากบิลแล้ว${missing ? ` — เลือกรหัสค่าใช้จ่ายอีก ${missing} บรรทัด` : ''}${w ? ` · ภาษีหัก ณ ที่จ่าย ${w.tax_amount}${w.rate ? ` (${w.rate}%)` : ' — ใส่อัตราเอง'}` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
+    toast(`เติมจากเอกสารแล้ว${missing && K.lines === 'code' ? ` — เลือกรหัส${K.itemType === '4' ? 'รายได้' : 'ค่าใช้จ่าย'}อีก ${missing} บรรทัด` : ''}${w ? ` · ภาษีหัก ณ ที่จ่าย ${w.tax_amount}${w.rate ? ` (${w.rate}%)` : ' — ใส่อัตราเอง'}` : ''} · ตรวจยอดกับบิลก่อนบันทึก`);
   };
   /** เลือกประเภทจากแถบ (ใบใหม่) — ค่าเริ่มต้นตามประเภทนั้น */
   const pickType = (v: string) => { const t = defs.data?.types.find((x) => x.id === v); set({ doc_type_id: v, ...(t?.price_type ? { price_type: t.price_type as Head['price_type'] } : {}), ...(t?.vat_rate != null ? { vat_rate: num(t.vat_rate) } : {}) }); };
@@ -311,7 +314,7 @@ export function CashFormPage({ path }: { path: string }) {
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
-        {K.cls === 'OE' && !ro && h && <AiBillButton target={K.path} onApply={applyBill} />}
+        {!ro && h && <AiBillButton target={K.path} party={K.party} textLines={K.lines === 'text'} onApply={applyBill} />}
         {id && (cur.data as { receipt_substitute?: boolean } | undefined)?.receipt_substitute && <SubstituteReceiptButton id={id} />}
         {K.cls === 'AI' && id && !cancelled && cur.data?.remaining != null && d(cur.data.remaining).gt(0) && d(String(cur.data.vat_amount ?? 0)).isZero() && canRefund('add') &&
           <button title="คืนยอดมัดจำคงเหลือให้ลูกค้า (เงินสด/โอน/เช็ค)" onClick={() => nav(`${DEPOSIT_REFUND.route}/new?ai=${id}`)}>คืนเงินมัดจำ</button>}
