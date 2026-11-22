@@ -74,7 +74,7 @@ export function readTable(fileName: string, buf: Buffer): string[][] {
 /** แผ่น "รับชำระ"/"จ่ายชำระ" (แบ่งหลายวิธีชำระ — HANDOFF 169) */
 /** กติกาบนสุดของแผ่นรับ/จ่ายชำระ (เจ้าของงงว่าใส่ที่ไหน — HANDOFF 170) */
 export const PAY_SHEET_RULE = 'วิธีเดียว: ใช้คอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า · หลายวิธี (เช่น เงินโอน + เงินสด): ใส่แผ่นนี้เฉพาะวิธีที่ไม่ใช่เงินสด หนึ่งแถว = หนึ่งวิธี และเว้นคอลัมน์ "วิธีชำระ" ในแผ่นนำเข้า — ส่วนที่เหลือ = เงินสด · รวมเกินยอดที่ต้องรับ/จ่าย = ผิด · ใส่ทั้งสองที่ = ผิด · ไม่ใส่ทั้งสองที่ = เงินสดทั้งหมด';
-const paySheetOf = (sheets: Array<{ name: string; rows: string[][] }>) => sheets.slice(1).find((s) => /รับชำระ|จ่ายชำระ|ชำระ|payment/i.test(s.name))?.rows ?? [];
+export const paySheetOf = (sheets: Array<{ name: string; rows: string[][] }>) => sheets.slice(1).find((s) => /รับชำระ|จ่ายชำระ|ชำระ|payment/i.test(s.name))?.rows ?? [];
 
 type TplCol = { key: string; th: string; need: ImportNeed; when?: string; dflt?: string; forNew?: boolean; hint: string; example: [string, string] };
 const TEXT_KEYS = new Set(['ref', 'date', 'party', 'item', 'code', 'unit', 'warehouse', 'ref_invoice', 'ref_no', 'ref_date', 'delivery_date', 'party_tax_id', 'party_branch', 'party_phone', 'wht_form', 'ship_to', 'department', 'project',
@@ -237,7 +237,7 @@ async function tryAll<T extends { doc: { ref: string; row: number } }>(db: Db, c
 }
 
 /** ภาษีหัก ณ ที่จ่ายของเอกสาร (ซื้อเงินสด/ค่าใช้จ่ายอื่น): ฐาน = ยอดก่อน VAT · ใส่อัตรา = คำนวณภาษี · ใส่ยอด = คำนวณอัตรา · แบบ/ประเภทเงินได้ว่าง = ตามผู้จำหน่าย/อัตรา */
-function whtEntry(w: ExpenseImportWht, base: ReturnType<typeof d>, sup: { wht_form: string | null; wht_income_desc: string | null } | undefined, tax: string | null) {
+export function whtEntry(w: ExpenseImportWht, base: ReturnType<typeof d>, sup: { wht_form: string | null; wht_income_desc: string | null } | undefined, tax: string | null) {
   const amount = w.amount ? d(w.amount) : base.times(d(w.rate!)).div(100).toDecimalPlaces(2);
   const rate = w.rate ?? (() => { const r = whtRateOf(amount, base); return r.rate ?? r.raw; })();
   const form = w.form ?? (wht50FormOf(sup?.wht_form, tax) === '3' ? 'S03' : 'S53');
@@ -250,7 +250,7 @@ function whtEntry(w: ExpenseImportWht, base: ReturnType<typeof d>, sup: { wht_fo
  * ไม่ขึ้นต้นด้วยตัวนำหน้า: แฟ้มไม่มีเลขที่อ้างอิงแยก (เลขของโปรแกรมเดิม เช่น RE-…) = เก็บเป็นเลขที่อ้างอิง ออกเลขอัตโนมัติ + เตือน · มีเลขที่อ้างอิงแยก = ผิด (ตั้งใจกำหนดเลขเอง)
  * คืน เลขที่อ้างอิง → เลขที่เอกสารที่ใช้
  */
-async function fileNumbers(db: Db, companyId: string, prefix: string, ys: YearSystem, docs: Array<{ ref: string; row: number; doc_no: string | null }>, issues: ImportIssue[], warnings: string[]) {
+export async function fileNumbers(db: Db, companyId: string, prefix: string, ys: YearSystem, docs: Array<{ ref: string; row: number; doc_no: string | null }>, issues: ImportIssue[], warnings: string[]) {
   const P = prefix.toUpperCase();
   const own = new Map<string, string>(), asRef: string[] = [];
   for (const x of docs) {
@@ -306,7 +306,7 @@ function columnWarnings(present: string[], allowed: Set<string>, all: Array<{ ke
   });
 }
 /** แผ่นรับ/จ่ายชำระ → รายการต่อเลขที่อ้างอิง (แถวที่ไม่มีเอกสารในแผ่นนำเข้า = ผิด) */
-function paySheetByRef(rows: string[][], ys: YearSystem, refs: string[], use: boolean, label: string, issues: ImportIssue[], warnings: string[]) {
+export function paySheetByRef(rows: string[][], ys: YearSystem, refs: string[], use: boolean, label: string, issues: ImportIssue[], warnings: string[]) {
   const by = new Map<string, ImportPayment[]>();
   if (!rows.some((r) => r.some((c) => String(c ?? '').trim()))) return by;
   if (!use) { warnings.push(`แผ่นรับ/จ่ายชำระไม่ใช้กับ${label} — ไม่นำเข้า`); return by; }

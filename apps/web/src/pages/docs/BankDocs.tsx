@@ -18,6 +18,7 @@ import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
+import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { confirmLeave } from '../../unsaved';
 
 /** การเคลื่อนไหวบัญชีเงินฝาก (คู่มือบทที่ 13 S-BK-02/03 + รายได้/ค่าใช้จ่ายธนาคาร) — ลงบัญชีทันทีเมื่อบันทึก */
@@ -160,6 +161,7 @@ export function BankDocFormPage({ cls }: { cls: BankKind['cls'] }) {
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกรายการ <kbd>Alt+C</kbd></button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={MENU} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
+        <ImportExcelButton cls={K.cls} menu={'FI.BK.TX'} label={K.label} />
       </div>
       <div className="type-row"><DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} /><TypeNotice show={!id && !!h && !h.doc_type_id} /></div>
       </div>

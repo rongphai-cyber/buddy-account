@@ -26,7 +26,7 @@ const optId = uuid.nullable().optional().transform((v) => v ?? null);
 const str = (max: number) => z.string().trim().max(max).nullable().optional().transform((v) => (v ? v : null));
 const num = z.union([z.number(), z.string()]).transform((v) => String(v === '' ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
-const body = z.object({
+export const body = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, department_id: optId, project_id: optId, remark: str(2000), your_ref: str(60),
   warehouse_id: optId, to_warehouse_id: optId,
   lines: z.array(z.object({

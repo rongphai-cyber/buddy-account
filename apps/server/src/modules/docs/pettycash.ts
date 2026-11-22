@@ -25,7 +25,7 @@ const optId = uuid.nullable().optional().transform((v) => v ?? null);
 const str = (max: number) => z.string().trim().max(max).nullable().optional().transform((v) => (v ? v : null));
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
 
-const dpBody = z.object({
+export const dpBody = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, remark: str(2000),
   lines: z.array(z.object({ account_id: uuid, department_id: optId, project_id: optId, description: str(200), amount: num, ...lineNoteFields })).min(1, 'ป้อนรายการที่จ่ายอย่างน้อย 1 บรรทัด').max(200),
 });
@@ -50,7 +50,7 @@ async function docType(db: Db, a: Ctx, id: string, cls: string, isNew: boolean) 
   return dt;
 }
 
-async function saveDp(db: Db, a: Ctx, id: string | null, b: z.infer<typeof dpBody>) {
+export async function saveDp(db: Db, a: Ctx, id: string | null, b: z.infer<typeof dpBody>) {
   const dt = await docType(db, a, b.doc_type_id, 'DP', !id);
   const accs = await db.selectFrom('gl_account').select(['id', 'account_no', 'is_control', 'status']).where('company_id', '=', a.companyId).where('id', 'in', [...new Set(b.lines.map((l) => l.account_id))]).where('deleted_at', 'is', null).execute();
   const byId = new Map(accs.map((x) => [x.id, x]));

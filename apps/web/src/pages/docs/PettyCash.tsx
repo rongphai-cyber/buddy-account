@@ -22,6 +22,7 @@ import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
+import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { JobSelect, showJob, useJobs } from '../../components/JobSelect';
 import { confirmLeave } from '../../unsaved';
 
@@ -207,6 +208,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
         <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={'GL.PC'} del={{ cancelled, cancelUrl: `/api/v1/${K.api}/${id}/cancel`, listPath: kind === 'dp' ? BASE : `${BASE}/vr` }} />
         <button onClick={() => nav(kind === 'dp' ? BASE : `${BASE}/vr`)}>รายการ <kbd>Esc</kbd></button>
+        {kind === 'dp' && <ImportExcelButton cls="DP" menu="GL.PC" label={K.label} />}
       </div>
       <div className="type-row"><DocTypeTabs types={defs.data?.types} value={h?.doc_type_id ?? ''} locked={!!id} onChange={pickType} /><TypeNotice show={!id && !!h && !h.doc_type_id} /></div>
       </div>

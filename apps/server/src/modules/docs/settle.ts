@@ -30,7 +30,7 @@ const chargesSchema = z.array(z.object({
 })).max(50).default([]);
 type Charges = z.infer<typeof chargesSchema>;
 
-const body = z.object({
+export const body = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, payment_date: isoDate.nullable().optional(),
   party_id: z.string({ required_error: 'เลือกลูกค้า/ผู้จำหน่าย', invalid_type_error: 'เลือกลูกค้า/ผู้จำหน่าย' }).uuid('เลือกลูกค้า/ผู้จำหน่าย'),
   department_id: optId, salesperson_id: optId, your_ref: str(60), remark: str(2000),
@@ -130,7 +130,7 @@ async function readCharges(db: Db, companyId: string, headerId: string) {
 }
 
 /** ใบเสร็จ/ใบสำคัญจ่าย: ตัดบิล ผลต่าง วิธีชำระ เช็ค ภาษีหัก ณ ที่จ่าย แล้วลงบัญชีในทรานแซกชันเดียวกัน */
-async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: Body) {
+export async function saveSettle(db: Db, a: Ctx, K: SettleKind, id: string | null, b: Body) {
   const dt = await db.selectFrom('md_doc_type').select(['id', 'doc_class', 'department_id', 'status']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!dt || dt.doc_class !== K.cls) throw badRequest(`เลือกประเภทเอกสารของ${K.label}`);
   if (!id && dt.status !== 'A') throw badRequest('ประเภทเอกสารนี้เลิกใช้แล้ว');

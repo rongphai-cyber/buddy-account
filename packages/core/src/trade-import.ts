@@ -229,7 +229,7 @@ export function importNumber(v: string): string | null {
 
 const SECOND_COL: Record<string, string> = { item: 'item_name', party: 'party_name' };
 /** หาหัวตารางจากชื่อคอลัมน์ (แถวแรกที่ตรงอย่างน้อย 3 ชื่อ ภายใน 20 แถวแรก) ลำดับคอลัมน์สลับได้ */
-function findHeader<K extends string>(rows: string[][], columns: Array<{ key: K; th: string; aliases: readonly string[]; required?: boolean; alt?: K }>):
+export function findHeader<K extends string>(rows: string[][], columns: Array<{ key: K; th: string; aliases: readonly string[]; required?: boolean; alt?: K }>):
   { headAt: number; cols: Map<K, number> } | { error: ImportIssue } {
   const lookup = new Map<string, K>();
   for (const c of columns) for (const n of [c.th, ...c.aliases]) lookup.set(norm(n), c.key);
@@ -276,7 +276,7 @@ function inheritParty(p: ImportParty | null, first: ImportParty | undefined): Im
   return { party: first.party, party_name: first.party_name, party_tax_id: first.party_tax_id, party_branch: p.party_branch ?? first.party_branch, party_address: p.party_address ?? first.party_address, party_phone: p.party_phone ?? first.party_phone };
 }
 /** ช่องหัวเอกสารที่แถวต่อมาใส่ค่าไม่ตรงกับแถวแรก = ผิด บอกคอลัมน์และแถว (ช่องว่าง = ตามแถวแรก · ช่องที่มีกติกาเฉพาะอยู่แล้วข้าม) */
-function headConflicts(ref: string, doc: { row: number }, head: Record<string, unknown>, skip: string[], thOf: (k: string) => string, bad: (m: string) => void) {
+export function headConflicts(ref: string, doc: { row: number }, head: Record<string, unknown>, skip: string[], thOf: (k: string) => string, bad: (m: string) => void) {
   const d0 = doc as unknown as Record<string, unknown>;
   for (const [k, v] of Object.entries(head)) {
     if (skip.includes(k) || v === null || v === undefined || d0[k] === null || d0[k] === undefined) continue;

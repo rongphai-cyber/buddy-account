@@ -5906,6 +5906,98 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const oe = (await call('POST', '/api/v1/trade-import/other-income-docs', { file_name: 'รายได้.xlsx', data: oiFile, doc_type_id: oiType, price_type: '0', vat_rate: 0 })).body;
     expect(oe.errors[0].message).toMatch(new RegExp(`${item.code} ไม่ใช่รหัสรายได้อื่น — ใช้รหัสจาก ขาย › รายละเอียดรายได้อื่น ๆ`));
   });
+  it('HANDOFF 171: Excel import for receipts/payments, bank, stock and petty-cash documents — template, check saves nothing, all-or-nothing, posted like the screen, duplicate guard, rights', async () => {
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const co = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const typeOf = async (cls: string) => ((await call('GET', `/api/v1/trade-defaults/${cls}`)).body.types as Array<{ id: string }>)[0]!.id;
+    const tpl = async (path: string) => readSheets(`import-${path}.xlsx`, (await app.inject({ method: 'GET', url: `/api/v1/doc-import/${path}/template`, headers: { cookie } })).rawPayload);
+    const imp = (path: string, rows: string[][], extra: object = {}, pay?: string[][]) => call('POST', `/api/v1/doc-import/${path}`, { file_name: `${path}.xlsx`,
+      data: buildXlsx([{ name: 'นำเข้า', rows }, ...(pay ? [{ name: 'รับชำระ', rows: pay }] : [])]).toString('base64'), ...extra });
+    // แบบฟอร์มตามหน้าจอ: * = ต้องมี · แผ่นรับชำระ (ใบเสร็จ) · แผ่นคำอธิบาย
+    const re = await tpl('ar-receipts');
+    expect(re.map((x) => x.name)).toEqual(['นำเข้า', 'รับชำระ', 'คำอธิบาย']);
+    expect(re[0]!.rows[0]).toEqual(expect.arrayContaining(['วันที่ *', 'รหัสลูกค้า *', 'เลขที่บิลที่ตัด *', 'ยอดชำระ', 'วิธีชำระ']));
+    expect((await tpl('bank-transfers'))[0]!.rows[0]).toEqual(expect.arrayContaining(['บัญชีที่โอนออก *', 'บัญชีที่โอนเข้า *', 'จำนวนเงิน *', 'ค่าธรรมเนียม']));
+    expect((await tpl('stock-adjustments'))[0]!.rows[0]).toEqual(expect.arrayContaining(['รหัสสินค้า *', 'จำนวน *', 'ทุนต่อหน่วย']));
+    expect((await tpl('petty-payments'))[0]!.rows[0]).toEqual(expect.arrayContaining(['รหัสบัญชี *', 'จำนวนเงิน *']));
+    expect((await app.inject({ method: 'GET', url: '/api/v1/doc-import/no-such/template', headers: { cookie } })).statusCode).toBe(404);
+
+    // รับชำระหนี้: ขายเชื่อ 2 ใบของ IMP-C1 → ตัดใบแรกเต็ม ใบที่สองบางส่วน · โอน 500 ที่แผ่นรับชำระ ส่วนที่เหลือเงินสด
+    const cust = (await call('GET', '/api/v1/customers?q=IMP-C1')).body.rows[0].id;
+    const item = (await call('GET', '/api/v1/items?status=A')).body.rows.find((r: { unit_code: string | null }) => r.unit_code) as { id: string; code: string };
+    const ivType = await typeOf('IV');
+    const ivs: Array<{ id: string; doc_no: string }> = [];
+    for (const p of [100, 200]) ivs.push((await call('POST', '/api/v1/sales-invoices', { doc_type_id: ivType, doc_date: '2026-11-01', party_id: cust, price_type: '2', vat_rate: 7, lines: [{ item_id: item.id, qty: 1, unit_price: p }] })).body);
+    expect(ivs.every((x) => x.id)).toBe(true);
+    const reType = await typeOf('RE');
+    const RH = ['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสลูกค้า *', 'เลขที่บิลที่ตัด *', 'ยอดชำระ'];
+    const reRows = [RH, ['RCV-171', '05/11/2569', 'IMP-C1', ivs[0]!.doc_no, ''], ['RCV-171', '', '', ivs[1]!.doc_no, '100']];
+    const P = ['เลขที่อ้างอิง', 'วิธีชำระ', 'จำนวนเงิน', 'เลขที่อ้างอิง/เช็ค'];
+    const meth = (await sql<{ code: string }>`SELECT code FROM md_payment_method WHERE company_id = ${co} AND direction = 'R' AND kind = 'TRANSFER' AND deleted_at IS NULL AND status = 'A' AND (bank_account_id IS NOT NULL OR gl_account_id IS NOT NULL) ORDER BY code LIMIT 1`.execute(database.db)).rows[0]!.code;
+    const ck = (await imp('ar-receipts', reRows, { doc_type_id: reType }, [P, ['RCV-171', meth, '50', 'TR-171']])).body;
+    expect(ck.errors).toEqual([]);
+    expect(ck.docs.map((x: { ref: string; lines: number; amount: string; pay_source: string; cash_remainder: string }) => [x.ref, x.lines, x.amount, x.pay_source, x.cash_remainder])).toEqual([['RCV-171', 2, '207.00', 'sheet', '157.00']]);
+    const reCount = async () => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM doc_header WHERE company_id = ${co} AND doc_class = 'RE' AND your_ref = 'RCV-171' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n;
+    expect(await reCount()).toBe(0);
+    // บิลที่ไม่มี/ยอดเกินคงค้าง = ผิด ไม่บันทึกเลย
+    const bad = (await imp('ar-receipts', [RH, ['RCV-171', '05/11/2569', 'IMP-C1', 'NO-SUCH-BILL', ''], ['RCV-172', '05/11/2569', 'IMP-C1', ivs[1]!.doc_no, '9999']], { doc_type_id: reType })).body;
+    expect(bad.errors.map((e: { message: string }) => e.message).join(' | ')).toMatch(/ไม่พบบิลค้าง "NO-SUCH-BILL" ของลูกค้า IMP-C1.*มากกว่ายอดคงค้าง 214\.00/);
+    expect((await imp('ar-receipts', [RH, ['RCV-171', '05/11/2569', 'IMP-C1', 'NO-SUCH-BILL', '']], { doc_type_id: reType, commit: true })).status).toBe(400);
+    const cm = (await imp('ar-receipts', reRows, { doc_type_id: reType, commit: true }, [P, ['RCV-171', meth, '50', 'TR-171']])).body;
+    expect([cm.errors, cm.committed]).toEqual([[], true]);
+    const reh = (await sql<{ id: string; net_amount: string; cash_amount: string; cheque_amount: string; posted: number }>`SELECT h.id, h.net_amount::text AS net_amount, h.cash_amount::text AS cash_amount, h.cheque_amount::text AS cheque_amount,
+        (SELECT count(*)::int FROM gl_journal j WHERE j.source_header_id = h.id AND j.deleted_at IS NULL AND j.doc_status <> 'C') AS posted
+      FROM doc_header h WHERE h.company_id = ${co} AND h.doc_class = 'RE' AND h.your_ref = 'RCV-171' AND h.deleted_at IS NULL`.execute(database.db)).rows;
+    expect(reh.map((x) => [x.cash_amount, x.cheque_amount, x.posted])).toEqual([['157.00', '50.00', 1]]);
+    expect((await imp('ar-receipts', reRows, { doc_type_id: reType })).body.errors[0].message).toMatch(/เคยนำเข้าแล้ว/);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND action = 'IMPORT' AND detail->>'file' = 'ar-receipts.xlsx'`.execute(database.db)).rows[0]!.n).toBe(1);
+
+    // ฝากเงินสด: หนึ่งแถว = หนึ่งฉบับ · บัญชีเงินฝากตามรหัส · ลงบัญชี
+    const bank = (await sql<{ code: string }>`SELECT code FROM md_bank_account WHERE company_id = ${co} AND deleted_at IS NULL AND gl_account_id IS NOT NULL ORDER BY code LIMIT 1`.execute(database.db)).rows[0]!.code;
+    const BH = ['เลขที่อ้างอิง *', 'วันที่ *', 'บัญชีเงินฝาก *', 'จำนวนเงิน *'];
+    const bd = (await imp('bank-deposits', [BH, ['BD-171-1', '05/11/2569', bank, '1000'], ['BD-171-2', '05/11/2569', bank, '250.50']], { doc_type_id: await typeOf('BD'), commit: true })).body;
+    expect([bd.errors, bd.docs.map((x: { amount: string }) => x.amount)]).toEqual([[], ['1000.00', '250.50']]);
+    expect((await imp('bank-deposits', [BH, ['BD-171-3', '05/11/2569', bank, '1'], ['BD-171-3', '05/11/2569', bank, '2']], { doc_type_id: await typeOf('BD') })).body.errors[0].message).toMatch(/หนึ่งแถวเป็นหนึ่งเอกสาร/);
+    expect((await imp('bank-deposits', [BH, ['BD-171-4', '05/11/2569', 'NOPE', '1']], { doc_type_id: await typeOf('BD') })).body.errors[0].message).toMatch(/ไม่พบบัญชีเงินฝาก "NOPE"/);
+
+    // ปรับปรุงเพิ่มสินค้า: สินค้าที่มีสต๊อก · บริการ = ผิด
+    const stockItem = (await sql<{ code: string }>`SELECT i.code FROM md_item i WHERE i.company_id = ${co} AND i.deleted_at IS NULL AND i.status = 'A' AND i.item_type = '0' AND i.base_unit_id IS NOT NULL ORDER BY i.code LIMIT 1`.execute(database.db)).rows[0]!.code;
+    const wh = (await sql<{ code: string }>`SELECT code FROM md_warehouse WHERE company_id = ${co} AND deleted_at IS NULL ORDER BY code LIMIT 1`.execute(database.db)).rows[0]!.code;
+    const JH = ['เลขที่อ้างอิง *', 'วันที่ *', 'คลัง', 'รหัสสินค้า *', 'จำนวน *', 'ทุนต่อหน่วย'];
+    const ju = (await imp('stock-adjustments', [JH, ['JU-171', '05/11/2569', wh, stockItem, '3', '10'], ['JU-171', '', '', stockItem, '2', '10']], { doc_type_id: await typeOf('JU'), commit: true })).body;
+    expect([ju.errors, ju.docs.map((x: { lines: number }) => x.lines)]).toEqual([[], [2]]);
+
+    // จ่ายเงินสดย่อย: บัญชีตามเลขที่บัญชี · บัญชีคุม = ผิด
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Array<{ account_no: string; is_control: boolean; account_type?: string }>;
+    const expAcc = accs.find((x) => !x.is_control && x.account_no.startsWith('5'))!.account_no, ctl = accs.find((x) => x.is_control)!.account_no;
+    const DH = ['เลขที่อ้างอิง *', 'วันที่ *', 'รหัสบัญชี *', 'รายละเอียด', 'จำนวนเงิน *'];
+    expect((await imp('petty-payments', [DH, ['DP-171', '05/11/2569', ctl, 'x', '10']], { doc_type_id: await typeOf('DP') })).body.errors[0].message).toMatch(/เป็นบัญชีคุม/);
+    const dp = (await imp('petty-payments', [DH, ['DP-171', '05/11/2569', expAcc, 'ค่าแท็กซี่', '120'], ['DP-171', '', expAcc, 'ค่าไปรษณีย์', '30']], { doc_type_id: await typeOf('DP'), commit: true })).body;
+    expect([dp.errors, dp.docs.map((x: { amount: string }) => x.amount)]).toEqual([[], ['150.00']]);
+
+    // สิทธิ์: พนักงานที่ไม่มีสิทธิ์นำเข้า → 403 · บริษัทอื่นใช้ประเภทเอกสารของบริษัทนี้ไม่ได้
+    const admin = cookie;
+    const bdType0 = await typeOf('BD');
+    cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: 'imp.clerk', password: 'clerkImp123' })).status).toBe(200);   // ผู้ใช้ที่ตรวจสอบสิทธิ์และไม่มีแถวสิทธิ์ (นำเข้าขาย/ซื้อ)
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    expect((await imp('bank-deposits', [BH, ['BD-X', '05/11/2569', bank, '1']], { doc_type_id: bdType0 })).status).toBe(403);
+    cookie = admin;
+    const other = (await call('GET', '/api/v1/auth/me')).body.companies.find((c: { id: string }) => c.id !== co);
+    if (other) {
+      const bdType = await typeOf('BD');
+      await call('POST', '/api/v1/auth/select', { company_id: other.id });
+      expect((await imp('bank-deposits', [BH, ['BD-X', '05/11/2569', bank, '1']], { doc_type_id: bdType })).status).toBe(400);
+      await call('POST', '/api/v1/auth/select', { company_id: co });
+    }
+    // ล้างข้อมูลทดสอบ (ยกเลิก — ไม่ลบ)
+    for (const [path, cls, ref] of [['ar-receipts', 'RE', 'RCV-171'], ['bank-deposits', 'BD', 'BD-171-1'], ['bank-deposits', 'BD', 'BD-171-2'], ['stock-adjustments', 'JU', 'JU-171'], ['petty-payments', 'DP', 'DP-171']] as const) {
+      const id = (await sql<{ id: string }>`SELECT id FROM doc_header WHERE company_id = ${co} AND doc_class = ${cls} AND your_ref = ${ref} AND deleted_at IS NULL AND doc_status <> 'C'`.execute(database.db)).rows[0]!.id;
+      expect((await call('POST', `/api/v1/${path}/${id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status, `${path} ${ref}`).toBe(200);
+    }
+    for (const x of ivs) expect((await call('POST', `/api/v1/sales-invoices/${x.id}/cancel`, { reason: 'ล้างข้อมูลทดสอบ' })).status).toBe(200);
+  });
   it('journal import (เจ้าของ 17/11/2569): template, check without saving, all-or-nothing commit via createJournal, line description default, duplicate ref, rights, other tenants', async () => {
     cookie = '';
     expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);

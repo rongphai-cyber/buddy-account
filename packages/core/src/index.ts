@@ -21,6 +21,7 @@ export * from './fixedasset.js';
 export * from './etax.js';
 export * from './ai-bill.js';
 export * from './trade-import.js';
+export * from './doc-import.js';
 export * from './journal-import.js';
 export * from './import-mapping.js';
 export * from './doc-line-rules.js';

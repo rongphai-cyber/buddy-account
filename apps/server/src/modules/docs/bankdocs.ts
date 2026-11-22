@@ -23,12 +23,12 @@ const uuid = z.string().uuid();
 const optId = uuid.nullable().optional().transform((v) => v ?? null);
 const money = z.union([z.number(), z.string()]).transform((v) => String(v === '' || v === null ? 0 : v)).refine((v) => !Number.isNaN(Number(v)), 'ต้องเป็นตัวเลข');
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ไม่ถูกต้อง');
-const body = z.object({
+export const body = z.object({
   branch_id: z.string().uuid().nullable().optional(), doc_type_id: uuid, doc_no: docNoInput, doc_date: isoDate, department_id: optId, remark: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
   bank_account_id: uuid, to_bank_account_id: optId, amount: money, fee: money.optional(), wht: money.optional(),
 });
 
-async function save(db: Db, a: Ctx, K: BankKind, id: string | null, b: z.infer<typeof body>) {
+export async function save(db: Db, a: Ctx, K: BankKind, id: string | null, b: z.infer<typeof body>) {
   const dt = await db.selectFrom('md_doc_type').select(['id', 'doc_class', 'status', 'department_id']).where('id', '=', b.doc_type_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
   if (!dt || dt.doc_class !== K.cls) throw badRequest(`เลือกประเภทเอกสารของ${K.label}`);
   if (!id && dt.status !== 'A') throw badRequest('ประเภทเอกสารนี้เลิกใช้แล้ว');
