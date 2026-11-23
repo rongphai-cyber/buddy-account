@@ -25,6 +25,7 @@ import { AddWrap } from '../../components/AddWrap';
 import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { accountNoOf, AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { JobSelect, showJob, useJobs } from '../../components/JobSelect';
+import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
 
 /**
@@ -44,8 +45,8 @@ export function PettyListPage({ kind }: { kind: Kind }) {
   const { me } = useSession();
   const today = me?.work_date ?? todayIso();
   const [q, setQ] = useState('');
-  const [from, setFrom] = useState(today.slice(0, 5) + '01-01');
-  const [to, setTo] = useState(today);
+  // ช่วงวันที่ค่าเริ่มต้น = ปีบัญชีที่ทำงาน (วันทำการ — HANDOFF 174)
+  const { from, setFrom, to, setTo } = useWorkRangeState();
   const [open, setOpen] = useState(false);
   const tt = useTypeTabs(K.cls);
   const list = useQuery({ queryKey: [K.api, q, from, to, open, tt.tab], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.api}`, { type_id: tt.tab || undefined, q, from, to, ...(open ? { open: 'true' } : {}) }), placeholderData: (p) => p });

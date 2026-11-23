@@ -20,6 +20,7 @@ import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
+import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
 
 /** การเคลื่อนไหวบัญชีเงินฝาก (คู่มือบทที่ 13 S-BK-02/03 + รายได้/ค่าใช้จ่ายธนาคาร) — ลงบัญชีทันทีเมื่อบันทึก */
@@ -216,8 +217,8 @@ export function BankBookPage() {
   const banks = useBanks();
   const today = me?.work_date ?? todayIso();
   const [bank, setBank] = useState('');
-  const [from, setFrom] = useState(today.slice(0, 8) + '01');
-  const [to, setTo] = useState(today);
+  // ช่วงวันที่ค่าเริ่มต้น = ปีบัญชีที่ทำงาน (วันทำการ — HANDOFF 174)
+  const { from, setFrom, to, setTo } = useWorkRangeState();
   const cur = bank || banks.data?.find((b) => b.status === 'A' && b.gl_account_id)?.id || '';
   const book = useQuery({ enabled: !!cur, queryKey: ['bank-book', cur, from, to], queryFn: () => api.get<{ bank: { code: string; name: string; account_number: string | null }; account: { account_no: string; name_th: string }; opening: string; closing: string; debit: string; credit: string;
     rows: Array<{ journal_id: string; voucher_no: string; voucher_date: string; journal_description: string | null; description: string | null; debit: string; credit: string; balance: string; source_doc_no: string | null; source_header_id: string | null; source_doc_class: string | null; reference: string | null }> }>('/api/v1/bank-book', { bank_account_id: cur, from, to }) });

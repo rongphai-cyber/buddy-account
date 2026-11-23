@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { downloadXlsx } from '../../components/ExcelExport';
 import { useCan, useSession } from '../../session';
 import { SearchPick } from '../../components/LkSelect';
+import { useWorkYear } from '../../workRange';
 import { Confirm, cx, DateInput, ErrorBox, Field, KeyHints, Modal, PageHead, toast, useHotkeys } from '../../ui';
 
 /** ศูนย์รายงาน (คู่มือบทที่ 17 S-RP-01..04) — ต้นไม้รายงานตามรหัส Express · ขอบเขต · แสดงผล พิมพ์ ส่งออก */
@@ -16,10 +17,11 @@ const PICK: Partial<Record<string, { endpoint: string; params?: Record<string, s
   customer: { endpoint: '/api/v1/customers' }, supplier: { endpoint: '/api/v1/suppliers' }, item: { endpoint: '/api/v1/item-search', params: { module: 'AR' } },
 };
 const monthStart = (iso: string) => iso.slice(0, 8) + '01';
-function defaults(def: ReportDef, work: string): Vals {
+function defaults(def: ReportDef, work: string, range: { from: string; to: string }): Vals {
   const v: Vals = {};
   for (const f of def.filters) {
-    if (f.kind === 'dateRange') { v[`${f.key}_from`] = monthStart(work); v[`${f.key}_to`] = work; }
+    // ช่วงวันที่ = ปีบัญชีที่ทำงาน (HANDOFF 174 — เดิมต้นเดือนของวันทำการ)
+    if (f.kind === 'dateRange') { v[`${f.key}_from`] = range.from; v[`${f.key}_to`] = range.to; }
     else if (f.kind === 'asOf') v[f.key] = work;
     else if (f.kind === 'period') v[f.key] = work.slice(0, 7);
     else if (f.kind === 'dept') v[f.key] = '*';
@@ -104,6 +106,7 @@ export function ReportCenterPage() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const work = me?.work_date ?? todayIso();
+  const wy = useWorkYear();
   const ys: YearSystem = me?.company?.year_system ?? 'B';
   const avail = useQuery({ queryKey: ['rpt-available'], queryFn: () => api.get<{ codes: string[] }>('/api/v1/rpt/available') });
   const codes = useMemo(() => new Set(avail.data?.codes ?? []), [avail.data]);
@@ -122,11 +125,11 @@ export function ReportCenterPage() {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [saveAs, setSaveAs] = useState<{ code: string; name: string; landscape: string } | null>(null);
   const [askDel, setAskDel] = useState(false);
-  const pick = (x: ReportDef) => { setDef(x); setVals(defaults(x, work)); setRes(null); setErr(null); setCustom(null); setHidden(new Set()); };
+  const pick = (x: ReportDef) => { setDef(x); setVals(defaults(x, work, wy)); setRes(null); setErr(null); setCustom(null); setHidden(new Set()); };
   const pickCustom = (c: CustomRpt) => {
     const base = findReport(c.base_code);
     if (!base) return toast(`ไม่พบรายงานต้นฉบับ ${c.base_code}`, 'bad');
-    setDef(base); setVals({ ...defaults(base, work), ...c.params }); setRes(null); setErr(null); setCustom(c); setHidden(new Set(c.hidden_cols));
+    setDef(base); setVals({ ...defaults(base, work, wy), ...c.params }); setRes(null); setErr(null); setCustom(c); setHidden(new Set(c.hidden_cols));
   };
   const saveCustom = async (asNew: boolean) => {
     if (!def) return;

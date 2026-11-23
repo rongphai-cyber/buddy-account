@@ -72,6 +72,8 @@ export interface Me {
   branches: Array<{ id: string; code: string; name: string; tax_branch_no: string; is_head_office: boolean }>;
   companies: Array<{ id: string; code: string; name_th: string; year_system: 'B' | 'C' }>;
   work_date: string | null;
+  /** ปีบัญชีของบริษัท (HANDOFF 174) — ปีที่ทำงาน = ปีที่มีวันทำการ */
+  fiscal_years?: Array<{ id: string; code: string; start_date: string; end_date: string; status: string }>;
   /** ธีมของบริษัทที่เลือกอยู่ (ชุดสี + แบบอักษร) */
   ui_theme?: import('@buddy/core').UiTheme;
   /** สิทธิ์รายเมนูของบริษัทปัจจุบัน: true = ใช้ได้, 'S' = พิมพ์ออกจอเท่านั้น, false = ไม่มีสิทธิ์ */

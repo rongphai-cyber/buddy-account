@@ -2,7 +2,8 @@ import { ConflictHost, confirmLeave, UnsavedHost } from './unsaved';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PrintPage } from './components/DocPrint';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { MENU, flattenMenu, formatDate, type MenuItem } from '@buddy/core';
+import { MENU, flattenMenu, fiscalYearLabel, formatDate, todayIso, workDateForYear, type MenuItem } from '@buddy/core';
+import { useWorkYear } from './workRange';
 import { menuVisible, ReadOnlyGuard } from './readonly';
 import { useSession } from './session';
 import type { Me } from './api';
@@ -198,7 +199,7 @@ function Shell() {
           )}
           <SyncBadge />
           <button className="hub-btn" onClick={() => nav('/hub')} title="กลับหน้าเลือกโปรแกรม (WTS Solutions) — เปิดโปรแกรมอื่นด้วยล็อกอินเดียว">▦<span className="lbl"> WTS</span></button>
-          <button className="period" onClick={() => setWorkDateOpen(true)} title="เปลี่ยนวันทำการ">วันทำการ {formatDate(me.work_date ?? new Date().toISOString().slice(0, 10), ys)}</button>
+          <WorkYearChip ys={ys} workDate={me.work_date} onOpen={() => setWorkDateOpen(true)} />
           <button className="user link" title={`${me.user.username} — รหัสผ่านและยืนยันตัวตนสองขั้น`} onClick={() => nav('/account/password')}>{me.user.display_name}</button>
           <LangSwitch />
           <button onClick={() => void confirmLeave().then((ok) => { if (ok) void logout(); })} title="ออกจากระบบ">ออก</button>
@@ -378,13 +379,40 @@ function PlannedPage() {
   );
 }
 
+/** ปุ่มวันทำการบนแถบบน: แสดงปีบัญชีที่ทำงาน (HANDOFF 174 — เจ้าของ 23/11/2569 "คลิกว่าเราทำงานอยุ่กับงวดปีไหน") */
+function WorkYearChip({ ys, workDate, onOpen }: { ys: 'B' | 'C'; workDate: string | null; onOpen: () => void }) {
+  const w = useWorkYear();
+  return (
+    <button className="period" onClick={onOpen} title="เปลี่ยนปีบัญชีที่ทำงาน / วันทำการ — หน้ารายการและรายงานเริ่มที่ปีบัญชีนี้">
+      {w.label && <b>ทำงานปี {w.label}</b>}{w.label && ' · '}<span className="hide-sm">วันทำการ </span><span className="nw">{formatDate(workDate ?? todayIso(), ys)}</span>
+    </button>
+  );
+}
+
+/**
+ * เปลี่ยนปีที่ทำงาน/วันทำการ: เลือกปีบัญชีของบริษัท = วันทำการเป็นวันนี้ (ปีปัจจุบัน) หรือสิ้นปี (ปีที่ผ่านมา/ปิดแล้ว) · หรือป้อนวันที่เอง
+ * วันทำการเก็บต่อผู้ใช้/บริษัทเหมือนเดิม · หน้ารายการและรายงานที่มีช่วงวันที่เริ่มที่ต้น–สิ้นปีบัญชีนี้ (docs/18)
+ */
 function WorkDateDialog({ onClose }: { onClose: () => void }) {
   const { me, select } = useSession();
-  const [v, setV] = useState(me?.work_date ?? new Date().toISOString().slice(0, 10));
+  const ys = me?.company?.year_system ?? 'B';
+  const [v, setV] = useState(me?.work_date ?? todayIso());
+  const years = [...(me?.fiscal_years ?? [])].reverse();
+  const cur = years.find((y) => y.start_date <= v && y.end_date >= v);
+  const save = (d: string) => select({ work_date: d }).then(onClose).catch(toastError);
   return (
-    <Modal title="เปลี่ยนวันทำการ" size="confirm" onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" onClick={() => select({ work_date: v }).then(onClose).catch(toastError)}>ตกลง</button></>}>
-      <p className="muted">วันทำการใช้เป็นวันที่เริ่มต้นของเอกสารใหม่ (เหมือน Express ป้อนตอนเข้าโปรแกรม)</p>
+    <Modal title="ปีบัญชีที่ทำงาน / วันทำการ" size="confirm" onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" onClick={() => void save(v)}>ตกลง</button></>}>
+      {years.length > 0 && <>
+        <p className="muted">เลือกปีบัญชีที่ทำงาน — หน้ารายการและรายงานจะแสดงช่วงต้นปี–สิ้นปีบัญชีนี้ (แก้ช่วงในแต่ละหน้าได้)</p>
+        <div className="seg" role="group" aria-label="ปีบัญชี" style={{ flexWrap: 'wrap', marginBottom: 10 }}>
+          {years.map((y) => <button key={y.id} type="button" className={cx(cur?.id === y.id && 'on')} aria-pressed={cur?.id === y.id}
+            title={`${formatDate(y.start_date, ys)} – ${formatDate(y.end_date, ys)}${y.status === 'C' ? ' (ปิดปีแล้ว)' : ''}`}
+            onClick={() => setV(workDateForYear(y, todayIso()))}>ปีบัญชี {fiscalYearLabel(y, ys)}{y.status === 'C' ? ' 🔒' : ''}</button>)}
+        </div>
+      </>}
+      <p className="muted">วันทำการ (วันที่เริ่มต้นของเอกสารใหม่ — เหมือน Express ป้อนตอนเข้าโปรแกรม)</p>
       <DateInput value={v} onChange={setV} autoFocus />
+      {cur && <p className="small">ทำงานปี <b>{fiscalYearLabel(cur, ys)}</b> ({formatDate(cur.start_date, ys)} – {formatDate(cur.end_date, ys)})</p>}
     </Modal>
   );
 }

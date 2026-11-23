@@ -6,6 +6,7 @@ import { DocLink } from '../../components/DocLink';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { LkSelect, useLookups } from '../../components/LkSelect';
+import { useWorkRangeState } from '../../workRange';
 import { cx, DateInput, DateText, ErrorBox, KeyHints, Modal, Money, PageHead } from '../../ui';
 
 /** เอกสารต้นทางที่เปิดได้จากสต๊อกการ์ด */
@@ -55,8 +56,8 @@ function StockCard({ row, onClose }: { row: Bal; onClose: () => void }) {
   const nav = useNavigate();
   const { me } = useSession();
   const today = me?.work_date ?? todayIso();
-  const [from, setFrom] = useState(today.slice(0, 5) + '01-01');
-  const [to, setTo] = useState(today);
+  // ช่วงวันที่ค่าเริ่มต้น = ปีบัญชีที่ทำงาน (วันทำการ — HANDOFF 174)
+  const { from, setFrom, to, setTo } = useWorkRangeState();
   const [all, setAll] = useState(false);
   const card = useQuery({ queryKey: ['stock-card', row.item_id, all ? null : row.warehouse_id, from, to], queryFn: () => api.get<{ opening: { qty: string; value: string }; closing: { qty: string; value: string };
     in: { qty: string; value: string }; out: { qty: string; value: string };

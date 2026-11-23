@@ -219,6 +219,9 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
         // โปรแกรมที่เปิดได้ (null = ทุกโปรแกรมของลูกค้า) · hub_only = ไม่มีสิทธิ์ Buddy → หน้าจอพาไปหน้าเปิดโปรแกรม
         apps: a.apps ?? null, hub_only: hubOnly(a.apps, a.isAdmin) },
       company, branch, branches, companies, work_date: a.workDate,
+      // ปีบัญชีของบริษัท (HANDOFF 174): หน้าจอใช้เลือกปีที่ทำงาน และช่วงวันที่ค่าเริ่มต้น = ปีบัญชีของวันทำการ
+      fiscal_years: company ? (await sql<{ id: string; code: string; start_date: string; end_date: string; status: string }>`SELECT id, code, to_char(start_date, 'YYYY-MM-DD') AS start_date, to_char(end_date, 'YYYY-MM-DD') AS end_date, status
+          FROM gl_fiscal_year WHERE company_id = ${company.id} AND deleted_at IS NULL ORDER BY start_date`.execute(db)).rows : [],
       // ธีมของบริษัทนี้ (ข้อกำหนดเจ้าของ) — หน้าจอใส่สีและแบบอักษรทันทีที่เลือกบริษัท
       ui_theme: normalizeUiTheme(company ? (await db.selectFrom('sys_setting').select('value').where('company_id', '=', company.id).where('branch_id', 'is', null).where('key', '=', 'ui.theme').where('deleted_at', 'is', null).executeTakeFirst())?.value : null),
       // สิทธิ์รายเมนูของบริษัทนี้ — หน้าจอใช้ซ่อนเมนู/ปุ่ม (ด่านจริงอยู่ที่ API)

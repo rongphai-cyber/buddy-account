@@ -19,6 +19,7 @@ import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { DepositPickTable, depositsBody, depositsFrom, refundTotals, savedRefundVat, useOpenDeposits, type DepositPicks } from './DepositPick';
+import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
 
 /**
@@ -38,8 +39,8 @@ export function DepositRefundListPage() {
   const { me } = useSession();
   const today = me?.work_date ?? todayIso();
   const [q, setQ] = useState('');
-  const [from, setFrom] = useState(today.slice(0, 8) + '01');
-  const [to, setTo] = useState(today);
+  // ช่วงวันที่ค่าเริ่มต้น = ปีบัญชีที่ทำงาน (วันทำการ — HANDOFF 174)
+  const { from, setFrom, to, setTo } = useWorkRangeState();
   const [status, setStatus] = useState<'N' | 'C' | 'all'>('all');
   const tt = useTypeTabs(K.cls);
   const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500 }), placeholderData: (p) => p });

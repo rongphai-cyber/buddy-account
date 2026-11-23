@@ -18,6 +18,7 @@ import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 import { DocTypeTabs, initialType, NO_TYPE_MSG, TypeNotice, useTypeTabs } from '../../components/DocTypeTabs';
 import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
+import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
 
 const kindOf = (path: string) => BILL_KINDS.find((k) => k.path === path)!;
@@ -37,8 +38,8 @@ export function BillListPage({ path, appointments }: { path: string; appointment
   const { me } = useSession();
   const today = me?.work_date ?? todayIso();
   const [q, setQ] = useState('');
-  const [from, setFrom] = useState(appointments ? today.slice(0, 5) + '01-01' : today.slice(0, 8) + '01');
-  const [to, setTo] = useState(today);
+  // ช่วงวันที่ค่าเริ่มต้น = ปีบัญชีที่ทำงาน (วันทำการ — HANDOFF 174)
+  const { from, setFrom, to, setTo } = useWorkRangeState();
   const [err, setErr] = useState<unknown>(null);
   const tt = useTypeTabs(K.cls);
   const list = useQuery({ queryKey: [K.path, q, from, to, appointments, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status: appointments ? 'N' : 'all', order: appointments ? 'appointment' : 'date', limit: 500 }), placeholderData: (p) => p });

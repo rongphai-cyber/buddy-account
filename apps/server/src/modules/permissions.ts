@@ -262,6 +262,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/gl/journal-import/template': M('GL.JNL', 'read'), 'POST /api/v1/gl/journal-import': M('GL.JNL', 'add'),
   'GET /api/v1/trade-import/:path/template': M('OT.IMPTRADE', 'read'), 'POST /api/v1/trade-import/:path': M('OT.IMPTRADE', 'add'),
   // นำเข้าเอกสารอื่นที่ลงบัญชี (HANDOFF 171): สิทธิ์นำเข้า + สิทธิ์เพิ่มที่เมนูของเอกสารนั้น (ตรวจใน route)
+  // ลบ/กู้คืนบริษัท (HANDOFF 175): ตรวจผู้ดูแลของลูกค้า/เจ้าหน้าที่ผู้ให้บริการใน route
+  'GET /api/v1/companies/manage': SELF, 'POST /api/v1/companies/:id/delete': SELF, 'POST /api/v1/companies/:id/restore': SELF,
   'GET /api/v1/doc-import/:path/template': M('OT.IMPTRADE', 'read'), 'POST /api/v1/doc-import/:path': M('OT.IMPTRADE', 'add'),
   // นำเข้าข้อมูลหลัก (HANDOFF 173): สิทธิ์นำเข้า + เพิ่ม (และแก้เมื่อติ๊ก) ที่เมนูของแฟ้มนั้น (ตรวจใน route)
   'GET /api/v1/master-import/:path/template': M('OT.IMPTRADE', 'read'), 'POST /api/v1/master-import/:path': M('OT.IMPTRADE', 'add'),

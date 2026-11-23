@@ -5881,6 +5881,86 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const oe = (await call('POST', '/api/v1/trade-import/other-income-docs', { file_name: 'รายได้.xlsx', data: oiFile, doc_type_id: oiType, price_type: '0', vat_rate: 0 })).body;
     expect(oe.errors[0].message).toMatch(new RegExp(`${item.code} ไม่ใช่รหัสรายได้อื่น — ใช้รหัสจาก ขาย › รายละเอียดรายได้อื่น ๆ`));
   });
+  it('HANDOFF 175: delete a company (tenant admin / service staff only) — soft delete, hidden from the picker, restore, activity log, current/last company refused, 2FA, other tenant', async () => {
+    const call2 = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };
+    expect((await call2('admin', 'secret123')).status).toBe(200);
+    const platform = cookie;
+    expect((await call('POST', '/api/v1/tenants', { code: 'DELTA', name: 'ลูกค้าลบบริษัท', admin_username: 'del.admin', admin_name: 'ผู้ดูแลลบ', admin_password: 'passDel1234', max_companies: 3 })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { code: 'DELTB', name: 'ลูกค้าอีกราย', admin_username: 'delb.admin', admin_name: 'ผู้ดูแลอีกราย', admin_password: 'passDelB1234' })).status).toBe(200);
+    expect((await call2('del.admin', 'passDel1234')).status).toBe(200);
+    const c1 = (await call('POST', '/api/v1/companies', { code: 'DEL-CO1', name_th: 'บริษัทใช้งาน', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+    const c2 = (await call('POST', '/api/v1/companies', { code: 'DEL-CO2', name_th: 'บริษัทสร้างผิด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+    expect([c1, c2].every(Boolean)).toBe(true);
+    // บริษัทที่สร้างผิดมีใบสำคัญ 1 ใบ (จำนวนเอกสารก่อนลบ)
+    await call('POST', '/api/v1/auth/select', { company_id: c2 });
+    const acc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control);
+    expect((await call('POST', '/api/v1/gl/journals', { journal_book_id: (await call('GET', '/api/v1/gl/books')).body[0].id, voucher_date: '2026-03-01', lines: [{ account_id: acc[0].id, debit: '10' }, { account_id: acc[1].id, credit: '10' }] })).status).toBe(200);
+    // ผู้ใช้ทั่วไปของลูกค้าที่มีสิทธิ์ในบริษัทนี้ (ลบแล้วสิทธิ์ถูกลบด้วย · กู้คืนแล้วกลับมา)
+    expect((await call('POST', '/api/v1/users', { username: 'del.user', display_name: 'ผู้ใช้บริษัทที่ลบ', password: 'delUser1234', companies: [c1, c2] })).status).toBe(200);
+    // บริษัทที่เลือกอยู่ลบไม่ได้
+    expect((await call('POST', `/api/v1/companies/${c2}/delete`, { confirm_code: 'DEL-CO2' })).body.error.message).toMatch(/กำลังใช้งานอยู่ในหน้านี้ — เปลี่ยนไปบริษัทอื่น/);
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    const man = (await call('GET', '/api/v1/companies/manage')).body.rows as Array<{ code: string; journal_count: number; last_date: string | null; deleted_at: string | null; current: boolean }>;
+    expect(man.map((r) => [r.code, r.journal_count, r.last_date, r.current])).toEqual([['DEL-CO1', 0, null, true], ['DEL-CO2', 1, '2026-03-01', false]]);
+    // พิมพ์รหัสบริษัทไม่ตรง = ไม่ลบ · เปิดยืนยันสองขั้นแล้วต้องมีรหัส 6 หลัก
+    expect((await call('POST', `/api/v1/companies/${c2}/delete`, { confirm_code: 'DEL-CO' })).body.error.message).toMatch(/พิมพ์รหัสบริษัท "DEL-CO2" ให้ตรง/);
+    const st = (await call('POST', '/api/v1/auth/2fa/setup')).body;
+    const key = base32Decode(st.secret), now = stepOf();
+    expect((await call('POST', '/api/v1/auth/2fa/enable', { code: totpAt(key, now) })).status).toBe(200);
+    expect((await call('POST', `/api/v1/companies/${c2}/delete`, { confirm_code: 'del-co2' })).body.error.code).toBe('MFA_REQUIRED');
+    expect((await call('POST', `/api/v1/companies/${c2}/delete`, { confirm_code: 'del-co2', totp_code: '000000' })).body.error.code).toBe('MFA_INVALID');
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_company WHERE id = ${c2} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(1);
+    // ลูกค้าอื่น (ข้อ 7.1): ไม่เห็น ลบ/กู้คืนไม่ได้ · ผู้ใช้ที่ไม่ใช่ผู้ดูแล = 403
+    const mine = cookie;
+    expect((await call2('delb.admin', 'passDelB1234')).status).toBe(200);
+    expect(((await call('GET', '/api/v1/companies/manage')).body.rows as Array<{ id: string }>).some((r) => r.id === c2)).toBe(false);
+    expect((await call('POST', `/api/v1/companies/${c2}/delete`, { confirm_code: 'DEL-CO2' })).status).toBe(404);
+    expect((await call2('imp.clerk', 'clerkImp123')).status).toBe(200);
+    expect((await call('GET', '/api/v1/companies/manage')).status).toBe(403);
+    expect((await call('POST', `/api/v1/companies/${c2}/delete`, { confirm_code: 'DEL-CO2' })).status).toBe(403);
+    // ลบ: ตั้ง deleted_at (บริษัท + สิทธิ์ผู้ใช้) · หายจากตัวเลือกบริษัท/จำนวนบริษัทของลูกค้า · ข้อมูลยังอยู่ · log DELETE_COMPANY
+    cookie = mine;
+    const ok = await call('POST', `/api/v1/companies/${c2}/delete`, { confirm_code: 'DEL-CO2', totp_code: totpAt(key, now + 1) });
+    expect([ok.status, ok.body]).toEqual([200, { ok: true, code: 'DEL-CO2' }]);
+    expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toEqual(['DEL-CO1']);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: c2 })).status).toBeGreaterThanOrEqual(400);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_journal WHERE company_id = ${c2}`.execute(database.db)).rows[0]!.n).toBe(1);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_user_company WHERE company_id = ${c2} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(0);
+    expect((await sql<{ detail: { docs: number } }>`SELECT detail FROM sys_activity_log WHERE company_id = ${c2} AND action = 'DELETE_COMPANY'`.execute(database.db)).rows.map((r) => r.detail.docs)).toEqual([1]);
+    cookie = platform;
+    expect(((await call('GET', '/api/v1/tenants')).body as Array<{ code: string; company_count: number }>).find((t) => t.code === 'DELTA')!.company_count).toBe(1);
+    // บริษัทสุดท้ายของลูกค้าลบไม่ได้ (เจ้าหน้าที่ผู้ให้บริการ — ไม่ได้เลือกบริษัทนี้อยู่)
+    expect((await call('POST', `/api/v1/companies/${c1}/delete`, { confirm_code: 'DEL-CO1' })).body.error.message).toMatch(/ลบบริษัทสุดท้ายของลูกค้าไม่ได้/);
+    // กู้คืน: กลับมาในตัวเลือกบริษัท พร้อมสิทธิ์ผู้ใช้เดิม · log RESTORE_COMPANY
+    cookie = mine;
+    const gone = ((await call('GET', '/api/v1/companies/manage')).body.rows as Array<{ id: string; deleted_at: string | null }>).find((r) => r.id === c2)!;
+    expect(gone.deleted_at).toBeTruthy();
+    expect((await call('POST', `/api/v1/companies/${c2}/restore`, {})).status).toBe(200);
+    expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toEqual(['DEL-CO1', 'DEL-CO2']);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_user_company WHERE company_id = ${c2} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBeGreaterThan(0);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${c2} AND action = 'RESTORE_COMPANY'`.execute(database.db)).rows[0]!.n).toBe(1);
+    expect((await call('POST', `/api/v1/companies/${c2}/restore`, {})).body.error.message).toMatch(/ยังใช้งานอยู่/);
+    cookie = platform;
+  });
+  it('HANDOFF 174: the session carries the company fiscal years (working year = the year of the working date)', async () => {
+    cookie = '';
+    await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });
+    const me0 = (await call('GET', '/api/v1/auth/me')).body;
+    const co = me0.companies.find((c: { code: string }) => c.code === 'DEMO').id;
+    await call('POST', '/api/v1/auth/select', { company_id: co, work_date: '2026-06-15' });
+    const me = (await call('GET', '/api/v1/auth/me')).body;
+    const db = (await sql<{ code: string; s: string }>`SELECT code, to_char(start_date, 'YYYY-MM-DD') AS s FROM gl_fiscal_year WHERE company_id = ${co} AND deleted_at IS NULL ORDER BY start_date`.execute(database.db)).rows;
+    expect(me.fiscal_years.map((y: { code: string; start_date: string }) => [y.code, y.start_date])).toEqual(db.map((y) => [y.code, y.s]));
+    expect(me.work_date).toBe('2026-06-15');
+    // บริษัทอื่น = ปีบัญชีของบริษัทนั้นเท่านั้น
+    const other = me0.companies.find((c: { id: string }) => c.id !== co);
+    if (other) {
+      await call('POST', '/api/v1/auth/select', { company_id: other.id });
+      const ids = new Set((await sql<{ id: string }>`SELECT id FROM gl_fiscal_year WHERE company_id = ${other.id} AND deleted_at IS NULL`.execute(database.db)).rows.map((r) => r.id));
+      expect((await call('GET', '/api/v1/auth/me')).body.fiscal_years.every((y: { id: string }) => ids.has(y.id))).toBe(true);
+    }
+    await call('POST', '/api/v1/auth/select', { company_id: co, work_date: null });
+  });
   it('HANDOFF 173: master-data Excel import — add new, skip existing, update only when ticked (blank keeps value), screen save + activity log, all-or-nothing, fixed assets with posted depreciation, other company', async () => {
     cookie = '';
     await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' });

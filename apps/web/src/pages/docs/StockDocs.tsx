@@ -23,6 +23,7 @@ import { AddWrap } from '../../components/AddWrap';
 import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { JobSelect, followHeadJob, showJob, useJobs } from '../../components/JobSelect';
+import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
 
 /** รายการประจำวันสินค้า (คู่มือบทที่ 14 S-IC-06/08/10 + เพิ่ม/ลดต้นทุน) — สต๊อกคำนวณสดจากเอกสาร */
@@ -294,8 +295,8 @@ type CostDoc = { id: string; doc_no: string; doc_date: string; type_code: string
  * แล้วกระจายเป็นทุนต่อหน่วยตามจำนวนหน่วยย่อยของบรรทัดรับเข้า (จำนวน × ตัวคูณ) — ผู้ใช้ตรวจ/แก้ทุนต่อหน่วยได้ก่อนบันทึก
  */
 function ProductionCost({ date, departmentId, lines, onClose, onApply }: { date: string; departmentId: string; lines: Line[]; onClose: () => void; onApply: (costs: Record<number, string>, note: string) => void }) {
-  const [from, setFrom] = useState(date.slice(0, 8) + '01');
-  const [to, setTo] = useState(date);
+  // ช่วงวันที่ค่าเริ่มต้น = ปีบัญชีที่ทำงาน (วันทำการ — HANDOFF 174)
+  const { from, setFrom, to, setTo } = useWorkRangeState();
   const [dept, setDept] = useState(!!departmentId);
   const q = useQuery({ queryKey: ['production-costs', from, to, dept && departmentId], queryFn: () => api.get<{ issues: CostDoc[]; expenses: CostDoc[] }>('/api/v1/stock/production-costs', { from, to, department_id: dept && departmentId ? departmentId : undefined }), staleTime: 0 });
   const [off, setOff] = useState<Set<string>>(new Set());

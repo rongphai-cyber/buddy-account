@@ -67,6 +67,18 @@ export async function secOf(db: Db, userId: string): Promise<Sec | undefined> {
   return db.selectFrom('sys_user_security').select(['id', 'totp_secret_enc', 'totp_enabled', 'totp_last_step', 'totp_recovery', 'failed_logins', 'locked_until'])
     .where('user_id', '=', userId).where('deleted_at', 'is', null).executeTakeFirst() as Promise<Sec | undefined>;
 }
+/**
+ * ยืนยันตัวตนซ้ำก่อนทำงานสำคัญ (เช่น ลบบริษัท — HANDOFF 175): ผู้ใช้ที่เปิดยืนยันสองขั้นต้องป้อนรหัส 6 หลักจากแอป · ไม่ได้เปิด = ผ่าน
+ */
+export async function confirmSecondFactor(db: Db, userId: string, code: string | null | undefined) {
+  const sec = await secOf(db, userId);
+  if (!sec?.totp_enabled || !sec.totp_secret_enc) return;
+  if (!code?.trim()) throw new AppError(400, 'MFA_REQUIRED', 'ป้อนรหัสยืนยันตัวตน 6 หลักจากแอปยืนยันตัวตน (บัญชีนี้เปิดยืนยันสองขั้น)');
+  const secret = decryptSecret(sec.totp_secret_enc);
+  const step = secret ? verifyTotp(base32Decode(secret), code.trim(), sec.totp_last_step === null ? null : Number(sec.totp_last_step)) : null;
+  if (step === null) throw new AppError(400, 'MFA_INVALID', 'รหัสยืนยันตัวตนไม่ถูกต้อง — ใช้รหัส 6 หลักล่าสุดจากแอป (ตรวจเวลาในมือถือ)');
+  await setSec(db, userId, { totp_last_step: String(step) });
+}
 export async function setSec(db: Db, userId: string, patch: Record<string, unknown>) {
   const cur = await secOf(db, userId);
   if (cur) await db.updateTable('sys_user_security').set(patch as never).where('id', '=', cur.id).execute();

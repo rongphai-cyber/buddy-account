@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ETAX_TYPES, todayIso, type EtaxTypeCode } from '@buddy/core';
 import { api } from '../../api';
 import { useCan, useSession } from '../../session';
+import { useWorkRangeState } from '../../workRange';
 import { DateInput, DateText, ErrorBox, Field, KeyHints, Money, PageHead, Pill, toast, useHotkeys } from '../../ui';
 
 type Row = { id: string; doc_no: string; doc_date: string; doc_class: string; type_code: EtaxTypeCode; party_name: string | null; net_amount: string; purpose_code: string | null; errors: string[] };
@@ -27,8 +28,8 @@ export function EtaxPage() {
   const can = useCan('FI.VAT.ETAX');
   const { me } = useSession();
   const today = me?.work_date ?? todayIso();
-  const [from, setFrom] = useState(today.slice(0, 8) + '01');
-  const [to, setTo] = useState(today);
+  // ช่วงวันที่ค่าเริ่มต้น = ปีบัญชีที่ทำงาน (วันทำการ — HANDOFF 174)
+  const { from, setFrom, to, setTo } = useWorkRangeState();
   const [ivType, setIvType] = useState<EtaxTypeCode>(() => (store.get() as EtaxTypeCode) || 'T02');
   const [pick, setPick] = useState<Set<string>>(new Set());
   const [err, setErr] = useState<unknown>(null);

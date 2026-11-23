@@ -9,7 +9,7 @@ import { AppError, badRequest, forbidden, notFound, parse, requireAuth, requireC
 import { canAccessCompany, companiesForUser } from './auth.js';
 import { copyCompanyData } from '../company-copy.js';
 import { logActivity } from '../audit.js';
-import { markPasswordChanged, setSec } from './security.js';
+import { confirmSecondFactor, markPasswordChanged, setSec } from './security.js';
 import { addrShape, ADDR_COLS } from '../address.js';
 import { purgeTenant } from './pdpa.js';
 import { modulesOffRaw } from './permissions.js';
@@ -104,6 +104,77 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     await setSetting(db, a.companyId, 'sys.modules_off', off, a.userId);
     await logActivity(db, a, { module: 'SYS', action: 'SET_MODULES', table: 'sys_company', rowId: a.companyId, detail: { before, after: off } });
     return { off };
+  });
+
+  /* ---------------------------------------------------------------- ลบ/กู้คืนบริษัท (HANDOFF 175 — เจ้าของ 23/11/2569 "กรณีสร้างบริษัทผิด หรือต้องการลบบริษัทที่ไม่ใช้แล้ว … (Admin เท่านั้นที่ทำได้)") */
+  /**
+   * ผู้ดูแลระบบของลูกค้า (บริษัทของลูกค้าตัวเอง) หรือเจ้าหน้าที่ผู้ให้บริการเท่านั้น · ลบ = ตั้ง deleted_at ของบริษัทและสิทธิ์ผู้ใช้ในบริษัทนั้น (ไม่ลบข้อมูลจริง)
+   * หายจากรายการเลือกบริษัทและจำนวนบริษัทของลูกค้า · กู้คืนได้จากรายการ "บริษัทที่ลบแล้ว" · บันทึก sys_activity_log ทั้งลบและกู้คืน
+   */
+  const manager = (req: Parameters<typeof requireAuth>[0]) => {
+    const a = requireAuth(req);
+    if (!a.isPlatform && !(a.isAdmin && a.tenantId)) throw forbidden('เฉพาะผู้ดูแลระบบของลูกค้า หรือเจ้าหน้าที่ผู้ให้บริการ ลบ/กู้คืนบริษัทได้');
+    return a;
+  };
+  const companyOf = async (a: AuthContext, id: string) => {
+    const c = await db.selectFrom('sys_company').select(['id', 'code', 'name_th', 'tenant_id', 'deleted_at']).where('id', '=', id).executeTakeFirst();
+    // ข้ามลูกค้าไม่ได้ (ข้อ 7.1): บริษัทของลูกค้าอื่น = ไม่พบ
+    if (!c || (!a.isPlatform && c.tenant_id !== a.tenantId)) throw notFound('บริษัท');
+    return c;
+  };
+  app.get('/api/v1/companies/manage', async (req) => {
+    const a = manager(req);
+    const rows = (await sql<{ id: string; code: string; name_th: string; tenant_code: string | null; deleted_at: string | null; deleted_by: string | null; doc_count: number; journal_count: number; last_date: string | null }>`
+      SELECT c.id, c.code, c.name_th, t.code AS tenant_code, c.deleted_at::text AS deleted_at, u.display_name AS deleted_by,
+             (SELECT count(*)::int FROM doc_header h WHERE h.company_id = c.id AND h.deleted_at IS NULL) AS doc_count,
+             (SELECT count(*)::int FROM gl_journal j WHERE j.company_id = c.id AND j.deleted_at IS NULL) AS journal_count,
+             to_char(greatest((SELECT max(h.doc_date) FROM doc_header h WHERE h.company_id = c.id AND h.deleted_at IS NULL),
+                              (SELECT max(j.voucher_date) FROM gl_journal j WHERE j.company_id = c.id AND j.deleted_at IS NULL)), 'YYYY-MM-DD') AS last_date
+        FROM sys_company c LEFT JOIN sys_tenant t ON t.id = c.tenant_id LEFT JOIN sys_user u ON u.id = c.updated_by AND c.deleted_at IS NOT NULL
+       WHERE ${a.isPlatform ? sql`true` : sql`c.tenant_id = ${a.tenantId}`}
+       ORDER BY c.deleted_at NULLS FIRST, c.code LIMIT 1000`.execute(db)).rows;
+    return { rows: rows.map((r) => ({ ...r, current: r.id === a.companyId })) };
+  });
+  app.post('/api/v1/companies/:id/delete', async (req) => {
+    const a = manager(req);
+    const { id } = parse(z.object({ id: uuid }), req.params);
+    const b = parse(z.object({ confirm_code: z.string().trim().min(1, 'พิมพ์รหัสบริษัทเพื่อยืนยัน'), totp_code: z.string().trim().max(20).nullable().optional() }), req.body);
+    const c = await companyOf(a, id);
+    if (c.deleted_at) throw badRequest(`บริษัท ${c.code} ถูกลบไปแล้ว`);
+    if (b.confirm_code.toUpperCase() !== c.code.toUpperCase()) throw badRequest(`พิมพ์รหัสบริษัท "${c.code}" ให้ตรงเพื่อยืนยันการลบ`, [{ field: 'confirm_code', message: 'ไม่ตรง' }]);
+    if (a.companyId === id) throw badRequest(`บริษัท ${c.code} กำลังใช้งานอยู่ในหน้านี้ — เปลี่ยนไปบริษัทอื่นที่ตัวเลือกบริษัทด้านบนก่อน แล้วจึงลบ`);
+    const left = await db.selectFrom('sys_company').select(sql<number>`count(*)::int`.as('n')).where('tenant_id', '=', c.tenant_id).where('deleted_at', 'is', null).where('id', '<>', id).executeTakeFirstOrThrow();
+    if (Number(left.n) < 1) throw badRequest('ลบบริษัทสุดท้ายของลูกค้าไม่ได้ — ต้องมีบริษัทที่ใช้งานอย่างน้อย 1 บริษัท');
+    await confirmSecondFactor(db, a.userId, b.totp_code);
+    const info = (await sql<{ docs: number; last_date: string | null }>`SELECT (SELECT count(*)::int FROM doc_header WHERE company_id = ${id} AND deleted_at IS NULL) + (SELECT count(*)::int FROM gl_journal WHERE company_id = ${id} AND deleted_at IS NULL) AS docs,
+        to_char(greatest((SELECT max(doc_date) FROM doc_header WHERE company_id = ${id} AND deleted_at IS NULL), (SELECT max(voucher_date) FROM gl_journal WHERE company_id = ${id} AND deleted_at IS NULL)), 'YYYY-MM-DD') AS last_date`.execute(db)).rows[0]!;
+    const ts = new Date().toISOString();
+    await db.transaction().execute(async (tx) => {
+      await tx.updateTable('sys_company').set({ deleted_at: ts as never, updated_by: a.userId }).where('id', '=', id).execute();
+      await tx.updateTable('sys_user_company').set({ deleted_at: ts as never, updated_by: a.userId }).where('company_id', '=', id).where('deleted_at', 'is', null).execute();
+      await logActivity(tx, { companyId: id, userId: a.userId }, { module: 'SYS', action: 'DELETE_COMPANY', docNo: c.code, table: 'sys_company', rowId: id, detail: { name: c.name_th, docs: info.docs, last_date: info.last_date, tenant_id: c.tenant_id } });
+    });
+    return { ok: true, code: c.code };
+  });
+  app.post('/api/v1/companies/:id/restore', async (req) => {
+    const a = manager(req);
+    const { id } = parse(z.object({ id: uuid }), req.params);
+    const c = await companyOf(a, id);
+    if (!c.deleted_at) throw badRequest(`บริษัท ${c.code} ยังใช้งานอยู่`);
+    const dup = await db.selectFrom('sys_company').select('id').where('code', '=', c.code).where('deleted_at', 'is', null).executeTakeFirst();
+    if (dup) throw badRequest(`มีบริษัทรหัส ${c.code} ที่ใช้งานอยู่แล้ว — กู้คืนไม่ได้จนกว่าจะเปลี่ยนรหัสบริษัทนั้น`);
+    const t = c.tenant_id ? await db.selectFrom('sys_tenant').select(['max_companies']).where('id', '=', c.tenant_id).executeTakeFirst() : undefined;
+    if (t?.max_companies != null) {
+      const n = await db.selectFrom('sys_company').select(sql<number>`count(*)::int`.as('n')).where('tenant_id', '=', c.tenant_id).where('deleted_at', 'is', null).executeTakeFirstOrThrow();
+      if (Number(n.n) >= t.max_companies) throw badRequest(`แพ็กเกจนี้มีบริษัทได้สูงสุด ${t.max_companies} บริษัท — ลบบริษัทอื่นก่อน หรือติดต่อผู้ให้บริการ`);
+    }
+    await db.transaction().execute(async (tx) => {
+      await tx.updateTable('sys_company').set({ deleted_at: null, updated_by: a.userId }).where('id', '=', id).execute();
+      // สิทธิ์ผู้ใช้ที่ถูกลบพร้อมบริษัท (เวลาเดียวกัน) กลับมา
+      await tx.updateTable('sys_user_company').set({ deleted_at: null, updated_by: a.userId }).where('company_id', '=', id).where('deleted_at', '=', c.deleted_at as never).execute();
+      await logActivity(tx, { companyId: id, userId: a.userId }, { module: 'SYS', action: 'RESTORE_COMPANY', docNo: c.code, table: 'sys_company', rowId: id, detail: { name: c.name_th, deleted_at: c.deleted_at } });
+    });
+    return { ok: true, code: c.code };
   });
 
   /* ---------------------------------------------------------------- กำหนดบริษัทใหม่ (บทที่ 4 S-CO-03 / S-CO-07) */

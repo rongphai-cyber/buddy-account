@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addMonths, todayIso } from '@buddy/core';
@@ -7,6 +7,7 @@ import { bookColor, bookStyle } from '../../bookColor';
 import { useSession } from '../../session';
 import { DocLink } from '../../components/DocLink';
 import { cx, DateInput, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, revealSelectedRow, Tabs, useHotkeys } from '../../ui';
+import { useWorkYear } from '../../workRange';
 import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 
 interface Row { id: string; voucher_no: string; voucher_date: string; description: string | null; reference: string | null; total_debit: string; doc_status: string; source_module: string | null; source_header_id: string | null; book_code: string; source_doc_no: string | null; source_doc_class: string | null }
@@ -17,7 +18,11 @@ export function JournalsPage() {
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
   const wd = me?.work_date ?? todayIso();
-  const [f, setF] = useState({ book_id: sp.get('book') ?? '', from: sp.get('from') ?? addMonths(wd.slice(0, 8) + '01', -2), to: sp.get('to') ?? wd, q: sp.get('q') ?? '', source: 'all', status: 'all' });
+  // ช่วงวันที่ค่าเริ่มต้น = ปีบัญชีที่ทำงาน (HANDOFF 174 — เดิม 2 เดือนก่อนวันทำการ) · ช่วงใน URL ใช้ก่อน · เปลี่ยนปีที่ทำงานแล้วตามปีใหม่
+  const w = useWorkYear();
+  const [f, setF] = useState({ book_id: sp.get('book') ?? '', from: sp.get('from') ?? w.from, to: sp.get('to') ?? w.to, q: sp.get('q') ?? '', source: 'all', status: 'all' });
+  const wKey = useRef(`${w.from}|${w.to}`);
+  useEffect(() => { const k = `${w.from}|${w.to}`; if (wKey.current !== k) { wKey.current = k; setF((x) => ({ ...x, from: w.from, to: w.to })); setSp((p) => { const n = new URLSearchParams(p); n.set('from', w.from); n.set('to', w.to); return n; }, { replace: true }); } }, [w.from, w.to, setSp]);
   const [page, setPage] = useState(0);
   // เรียงตามคอลัมน์ที่คลิก (คลิกซ้ำ = กลับทิศ) · ค่าเริ่มต้น วันที่ล่าสุดก่อน
   const [sort, setSort] = useState<{ k: string; dir: 'asc' | 'desc' }>({ k: 'date', dir: 'desc' });
