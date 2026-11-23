@@ -7,6 +7,7 @@ export * from './starter-data.js';
 export * from './perm-tree.js';
 export * from './fs-layout.js';
 export * from './print-paging.js';
+export * from './party-view.js';
 export * from './settings.js';
 export * from './baht.js';
 export * from './forms/wht50.js';
