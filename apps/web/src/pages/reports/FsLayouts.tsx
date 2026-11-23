@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { FS_COLUMN_KINDS, fsColumnHead } from '@buddy/core';
 import { api, type Department } from '../../api';
 import { cx, ErrorBox, Field, KeyHints, Modal, PageHead, toast, useHotkeys } from '../../ui';
 import { AddWrap } from '../../components/AddWrap';
@@ -70,6 +71,8 @@ function LayoutEditor({ id, onClose, onSaved }: { id: string | null; onClose: ()
   const setC = (i: number, p: Partial<Col>) => setH((x) => ({ ...x, columns: x.columns.map((c, k) => (k === i ? { ...c, ...p } : c)) }));
   // งบ 12 เดือน: งวดที่ 1–12 ของปี + ยอดสะสม (หัวคอลัมน์ว่าง = ใช้ชื่องวดอัตโนมัติ)
   const twelve = () => setH((x) => ({ ...x, columns: [...Array.from({ length: 12 }, (_, i) => ({ expr: `PTD${i + 1}`, head1: '', head2: '' })), { expr: 'BAL', head1: 'รวมทั้งปี', head2: '' }].slice(0, 18) }));
+  // งบเปรียบเทียบ 3 ปี (HANDOFF 176): ปีนี้ · ปีที่แล้ว · 2 ปีก่อน · % เปลี่ยนแปลงปีนี้เทียบปีที่แล้ว
+  const threeYears = () => setH((x) => ({ ...x, columns: [{ expr: 'BAL', head1: '', head2: '' }, { expr: 'BAL LY', head1: '', head2: '' }, { expr: 'BAL LY2', head1: '', head2: '' }, { expr: '(C1-C2)*100/C2', head1: '% เปลี่ยนแปลง', head2: '' }] }));
   const setL = (i: number, p: Partial<Line>) => setLines((ls) => ls.map((l, k) => (k === i ? { ...l, ...p } : l)));
   const addAfter = (i: number) => setLines((ls) => { const base = ls[i]?.line_no ?? 0; const next = ls[i + 1]?.line_no ?? base + 20; const no = Math.floor((base + next) / 2) === base ? base + 1 : Math.floor((base + next) / 2); const n = [...ls]; n.splice(i + 1, 0, { line_no: no, data_type: 'A/C', source: '', sign_filter: '', print_condition: 'Z', accumulate: {}, description_th: '', description_en: '' }); return n; });
   const save = () => api[id ? 'put' : 'post'](id ? `/api/v1/fs/layouts/${id}` : '/api/v1/fs/layouts', { ...h, line_set_code: h.line_set_code || h.code, lines: lines.map((l) => ({ ...l, source: l.source || null, sign_filter: l.sign_filter || '', print_condition: l.print_condition || '' })) })
@@ -86,7 +89,7 @@ function LayoutEditor({ id, onClose, onSaved }: { id: string | null; onClose: ()
         {h.header_lines.map((x, i) => <Field key={i} label={`หัวรายงานบรรทัด ${i + 1}`} hint={i === 0 ? '\\NAME = ชื่อบริษัท · \\END_PRD = วันสิ้นงวด' : undefined}><input value={x} onChange={(e) => setH({ ...h, header_lines: h.header_lines.map((y, k) => (k === i ? e.target.value : y)) })} /></Field>)}
       </div>
       <h3>คอลัมน์ (สูงสุด 18)</h3>
-      <p className="hint">ฟิลด์/สูตร: BAL ยอดสะสม · PTD ประจำงวด · PTD1–PTD12 งวดที่ 1–12 · ต่อท้าย LY = ปีที่แล้ว · BUD / PTD BUD งบประมาณ · สูตรอ้างคอลัมน์ เช่น (C1-C2)*100/C2 · แผนกใช้ wildcard ได้ เช่น ขาย*</p>
+      <p className="hint">ฟิลด์/สูตร: BAL ยอดสะสม · PTD ประจำงวด · PTD1–PTD12 งวดที่ 1–12 · ต่อท้าย LY = ปีที่แล้ว · LY2 = 2 ปีก่อน (งบเปรียบเทียบ 3 ปี) · BUD / PTD BUD งบประมาณ · สูตรอ้างคอลัมน์ เช่น (C1-C2)*100/C2 · แผนกใช้ wildcard ได้ เช่น ขาย*</p>
       <div className="table-wrap lines">
         <table className="grid">
           <thead><tr><th style={{ width: 40 }}>คอลัมน์</th><th style={{ width: 150 }}>ฟิลด์/สูตร</th><th>หัว 1</th><th>หัว 2</th><th style={{ width: 100 }}>แผนก</th><th style={{ width: 70 }} title="พิมพ์คอลัมน์ % ของยอดขายต่อท้าย">% ยอดขาย</th><th style={{ width: 90 }} title="เลขบรรทัดที่เป็นฐาน 100% (ว่าง = บรรทัดแรกที่มียอด)">ฐาน % บรรทัด</th><th style={{ width: 50 }} title="ไม่ติ๊ก = ใช้คำนวณอย่างเดียว ไม่พิมพ์">พิมพ์</th><th style={{ width: 36 }} /></tr></thead>
@@ -94,8 +97,8 @@ function LayoutEditor({ id, onClose, onSaved }: { id: string | null; onClose: ()
             {h.columns.map((c, i) => (
               <tr key={i} className={cx(c.hidden && 'void')}>
                 <td className="mono muted">C{i + 1}</td>
-                <td><input className="mono" value={c.expr} onChange={(e) => setC(i, { expr: e.target.value })} /></td>
-                <td><input value={c.head1 ?? ''} placeholder="ว่าง = หัวมาตรฐาน" onChange={(e) => setC(i, { head1: e.target.value })} /></td>
+                <td><input className="mono" list="fs-col-kinds" value={c.expr} title="เลือกจากรายการ หรือพิมพ์สูตร เช่น (C1-C2)*100/C2" onChange={(e) => setC(i, { expr: e.target.value })} /></td>
+                <td><input value={c.head1 ?? ''} placeholder={`ว่าง = ${fsColumnHead(c.expr)}`} onChange={(e) => setC(i, { head1: e.target.value })} /></td>
                 <td><input value={c.head2 ?? ''} onChange={(e) => setC(i, { head2: e.target.value })} /></td>
                 <td><input className="mono" value={c.department_code ?? ''} placeholder="ทุกแผนก" onChange={(e) => setC(i, { department_code: e.target.value || null })} /></td>
                 <td className="c"><input type="checkbox" checked={!!c.percent} onChange={(e) => setC(i, { percent: e.target.checked })} /></td>
@@ -107,7 +110,9 @@ function LayoutEditor({ id, onClose, onSaved }: { id: string | null; onClose: ()
           </tbody>
           <tfoot><tr><td colSpan={9}>
             {h.columns.length < 18 && <button onClick={() => setH({ ...h, columns: [...h.columns, { expr: 'BAL', head1: '' }] })}>+ คอลัมน์</button>}{' '}
-            <button onClick={twelve} title="แทนคอลัมน์ทั้งหมดด้วยงวดที่ 1–12 และยอดรวมทั้งปี">งบ 12 เดือน</button>
+            <button onClick={twelve} title="แทนคอลัมน์ทั้งหมดด้วยงวดที่ 1–12 และยอดรวมทั้งปี">งบ 12 เดือน</button>{' '}
+            <button onClick={threeYears} title="แทนคอลัมน์ทั้งหมดด้วย ปีนี้ · ปีที่แล้ว · 2 ปีก่อน · % เปลี่ยนแปลง">งบเปรียบเทียบ 3 ปี</button>
+            <datalist id="fs-col-kinds">{FS_COLUMN_KINDS.map((k) => <option key={k} value={k}>{fsColumnHead(k)}</option>)}</datalist>
           </td></tr></tfoot>
         </table>
       </div>

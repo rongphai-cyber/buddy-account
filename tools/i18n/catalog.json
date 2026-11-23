@@ -3295,7 +3295,7 @@
 "apps/web/src/pages/gl/Budget.tsx",
 "apps/web/src/pages/gl/Jobs.tsx",
 "apps/web/src/pages/reports/JobCost.tsx",
-"apps/server/src/modules/gl/reports.ts",
+"packages/core/src/fs-layout.ts",
 "packages/core/src/menu.ts"
 ]
 },
@@ -3784,6 +3784,18 @@
 "apps/web/src/pages/gl/YearEnd.tsx",
 "apps/web/src/pages/reports/JobCost.tsx",
 "apps/server/src/modules/projects.ts"
+]
+},
+{
+"th": "ปีที่แล้ว",
+"n": 7,
+"files": [
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/reports/Dashboard.tsx",
+"apps/web/src/pages/reports/Statements.tsx",
+"apps/server/src/modules/gl/reports.ts",
+"packages/core/src/fs-layout.ts"
 ]
 },
 {
@@ -4528,6 +4540,16 @@
 ]
 },
 {
+"th": "2 ปีก่อน",
+"n": 5,
+"files": [
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/reports/Statements.tsx",
+"apps/server/src/modules/gl/reports.ts",
+"packages/core/src/fs-layout.ts"
+]
+},
+{
 "th": "Job บรรทัด {0}",
 "n": 5,
 "files": [
@@ -4820,15 +4842,6 @@
 "apps/web/src/pages/payroll/Forms.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "ปีที่แล้ว",
-"n": 5,
-"files": [
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/reports/Dashboard.tsx",
-"apps/server/src/modules/gl/reports.ts"
 ]
 },
 {
@@ -7789,6 +7802,14 @@
 ]
 },
 {
+"th": "ยอดปีที่แล้ว",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/PriorYear.tsx",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "ยอดมัดจำ",
 "n": 3,
 "files": [
@@ -9007,6 +9028,14 @@
 ]
 },
 {
+"th": "% เปลี่ยนแปลง",
+"n": 2,
+"files": [
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/server/src/modules/gl/reports.ts"
+]
+},
+{
 "th": "%ใช้งบ",
 "n": 2,
 "files": [
@@ -10018,16 +10047,16 @@
 "th": "งบประมาณงวดนี้",
 "n": 2,
 "files": [
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts"
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/fs-layout.ts"
 ]
 },
 {
 "th": "งบประมาณสะสม",
 "n": 2,
 "files": [
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts"
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/fs-layout.ts"
 ]
 },
 {
@@ -12353,14 +12382,6 @@
 ]
 },
 {
-"th": "ยอดปีที่แล้ว",
-"n": 2,
-"files": [
-"apps/web/src/pages/gl/PriorYear.tsx",
-"packages/core/src/menu.ts"
-]
-},
-{
 "th": "ยอดภาษีหัก ณ ที่จ่าย",
 "n": 2,
 "files": [
@@ -14080,6 +14101,14 @@
 ]
 },
 {
+"th": "อื่น ๆ › ประมวลผลสิ้นปี",
+"n": 2,
+"files": [
+"apps/web/src/components/OpenYearsWarning.tsx",
+"apps/web/src/pages/gl/YearEnd.tsx"
+]
+},
+{
 "th": "อ่านไฟล์",
 "n": 2,
 "files": [
@@ -15685,13 +15714,6 @@
 ]
 },
 {
-"th": "% เปลี่ยนแปลง",
-"n": 1,
-"files": [
-"apps/server/src/modules/gl/reports.ts"
-]
-},
-{
 "th": "% ใช้ไป",
 "n": 1,
 "files": [
@@ -16028,6 +16050,13 @@
 ]
 },
 {
+"th": "(ปี {0})",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/PriorYear.tsx"
+]
+},
+{
 "th": "(ป้อนเลขที่เช็คต่อ)",
 "n": 1,
 "files": [
@@ -16221,6 +16250,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "(เปิดย้อนจากปีล่าสุด) แล้วจึงเปิดงวด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Periods.tsx"
 ]
 },
 {
@@ -17355,6 +17391,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "3 ปี",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Statements.tsx"
 ]
 },
 {
@@ -19703,6 +19746,13 @@
 ]
 },
 {
+"th": "{0} — ปี {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/PriorYear.tsx"
+]
+},
+{
 "th": "{0} — รหัสผ่านและยืนยันตัวตนสองขั้น",
 "n": 1,
 "files": [
@@ -20231,7 +20281,7 @@
 "th": "{0}งวดที่ {1}{2}",
 "n": 1,
 "files": [
-"apps/server/src/modules/gl/reports.ts"
+"packages/core/src/fs-layout.ts"
 ]
 },
 {
@@ -20760,7 +20810,7 @@
 ]
 },
 {
-"th": "· ต่างจากคงเหลือสิ้นปีที่แล้ว {0}",
+"th": "· ต่างจากคงเหลือสิ้นปี {0} {1}",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/PriorYear.tsx"
@@ -20844,7 +20894,7 @@
 ]
 },
 {
-"th": "· ยอดปีที่แล้วมาจากการป้อนเอง ตรวจและแก้ที่",
+"th": "· ยอดปีก่อนมาจากการป้อนเอง ตรวจและแก้ที่",
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Statements.tsx"
@@ -20872,7 +20922,7 @@
 ]
 },
 {
-"th": "· ยังไม่มีในรอบบัญชี จะสร้างให้เมื่อบันทึก",
+"th": "· ยังไม่มีในรอบบัญชี จะสร้างให้เมื่อบันทึก (ปิดปีไว้)",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/PriorYear.tsx"
@@ -23371,7 +23421,7 @@
 ]
 },
 {
-"th": "คงเหลือสิ้นปีที่แล้ว",
+"th": "คงเหลือสิ้นปี {0}",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/PriorYear.tsx"
@@ -25702,6 +25752,13 @@
 ]
 },
 {
+"th": "งบ{0}ไม่ดุล — สินทรัพย์ต่างจากหนี้สินและส่วนของผู้ถือหุ้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Statements.tsx"
+]
+},
+{
 "th": "งบกำไรขาดทุน (ตามผังบัญชี)",
 "n": 1,
 "files": [
@@ -25800,17 +25857,17 @@
 ]
 },
 {
-"th": "งบปีที่แล้วไม่ดุล — สินทรัพย์ต่างจากหนี้สินและส่วนของผู้ถือหุ้น",
+"th": "งบปีปัจจุบันไม่ดุล ต่าง",
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Statements.tsx"
 ]
 },
 {
-"th": "งบปีปัจจุบันไม่ดุล ต่าง",
+"th": "งบเปรียบเทียบ 3 ปี",
 "n": 1,
 "files": [
-"apps/web/src/pages/reports/Statements.tsx"
+"apps/web/src/pages/reports/FsLayouts.tsx"
 ]
 },
 {
@@ -25905,10 +25962,17 @@
 ]
 },
 {
+"th": "งวดเดียวกัน 2 ปีก่อน",
+"n": 1,
+"files": [
+"packages/core/src/fs-layout.ts"
+]
+},
+{
 "th": "งวดเดียวกันปีที่แล้ว",
 "n": 1,
 "files": [
-"apps/server/src/modules/gl/reports.ts"
+"packages/core/src/fs-layout.ts"
 ]
 },
 {
@@ -26231,6 +26295,13 @@
 "n": 1,
 "files": [
 "packages/core/src/master-import.ts"
+]
+},
+{
+"th": "จำนวนปีเปรียบเทียบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Statements.tsx"
 ]
 },
 {
@@ -33423,7 +33494,7 @@
 ]
 },
 {
-"th": "บันทึกยอดปีที่แล้วเรียบร้อย",
+"th": "บันทึกยอดปี {0} เรียบร้อย",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/PriorYear.tsx"
@@ -34301,7 +34372,7 @@
 "th": "ประจำงวด",
 "n": 1,
 "files": [
-"apps/server/src/modules/gl/reports.ts"
+"packages/core/src/fs-layout.ts"
 ]
 },
 {
@@ -34316,13 +34387,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/YearEnd.tsx"
-]
-},
-{
-"th": "ประมวลผลสิ้นปีแล้ว",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Periods.tsx"
 ]
 },
 {
@@ -34977,6 +35041,20 @@
 ]
 },
 {
+"th": "ปี {0} ประมวลผลสิ้นปีแล้ว — เปิดงวดในปีนั้นไม่ได้ ถ้าต้องแก้ไขให้เปิดปีกลับก่อนที่ อื่น ๆ › ประมวลผลสิ้นปี (เปิดปีกลับย้อนจากปีล่าสุด) แล้วจึงเปิดงวด",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/routes.ts"
+]
+},
+{
+"th": "ปี {0} ประมวลผลสิ้นปีแล้ว — เปิดงวดไม่ได้ ถ้าต้องแก้ไขให้เปิดปีกลับที่ อื่น ๆ › ประมวลผลสิ้นปี ก่อน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
 "th": "ปี {0} ปิดแล้ว",
 "n": 1,
 "files": [
@@ -35026,17 +35104,17 @@
 ]
 },
 {
+"th": "ปีที่ป้อน",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/PriorYear.tsx"
+]
+},
+{
 "th": "ปีที่ยื่น",
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx"
-]
-},
-{
-"th": "ปีที่แล้ว:",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/PriorYear.tsx"
 ]
 },
 {
@@ -35051,6 +35129,27 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "ปีนี้/ปีที่แล้ว",
+"n": 1,
+"files": [
+"apps/server/src/modules/gl/reports.ts"
+]
+},
+{
+"th": "ปีนี้ประมวลผลสิ้นปีแล้ว — เปิดงวดไม่ได้ (ยอดยกมาปีถัดไปต้องต่อเนื่อง) · ถ้าต้องแก้ไข ให้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
+"th": "ปีนี้ประมวลผลสิ้นปีแล้ว — เปิดปีกลับก่อนจึงเปิดงวดได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Periods.tsx"
 ]
 },
 {
@@ -35082,7 +35181,7 @@
 ]
 },
 {
-"th": "ปีบัญชี {0} ไม่ได้เริ่มก่อนปีปัจจุบัน 12 เดือนพอดี — ตรวจรอบบัญชีที่เมนู เริ่มระบบ › รอบบัญชี",
+"th": "ปีบัญชี {0} ไม่ได้เริ่มก่อนปีปัจจุบัน {1} เดือนพอดี — ตรวจรอบบัญชีที่เมนู เริ่มระบบ › รอบบัญชี",
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/prior-year.ts"
@@ -37476,7 +37575,7 @@
 ]
 },
 {
-"th": "ฟิลด์/สูตร: BAL ยอดสะสม · PTD ประจำงวด · PTD1–PTD12 งวดที่ 1–12 · ต่อท้าย LY = ปีที่แล้ว · BUD / PTD BUD งบประมาณ · สูตรอ้างคอลัมน์ เช่น (C1-C2)*100/C2 · แผนกใช้ wildcard ได้ เช่น ขาย*",
+"th": "ฟิลด์/สูตร: BAL ยอดสะสม · PTD ประจำงวด · PTD1–PTD12 งวดที่ 1–12 · ต่อท้าย LY = ปีที่แล้ว · LY2 = 2 ปีก่อน (งบเปรียบเทียบ 3 ปี) · BUD / PTD BUD งบประมาณ · สูตรอ้างคอลัมน์ เช่น (C1-C2)*100/C2 · แผนกใช้ wildcard ได้ เช่น ขาย*",
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/FsLayouts.tsx"
@@ -39254,6 +39353,13 @@
 ]
 },
 {
+"th": "ยอด 2 ปีก่อน",
+"n": 1,
+"files": [
+"apps/web/src/pages/gl/PriorYear.tsx"
+]
+},
+{
 "th": "ยอด VAT",
 "n": 1,
 "files": [
@@ -39891,13 +39997,6 @@
 ]
 },
 {
-"th": "ยอดปีที่แล้ว — ปี {0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/PriorYear.tsx"
-]
-},
-{
 "th": "ยอดภาษี",
 "n": 1,
 "files": [
@@ -39982,14 +40081,14 @@
 ]
 },
 {
-"th": "ยอดยกมาต้นปีที่แล้ว ณ",
+"th": "ยอดยกมาต้นปี {0} ณ",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/PriorYear.tsx"
 ]
 },
 {
-"th": "ยอดยกมาปีปัจจุบัน{0}",
+"th": "ยอดยกมาปี {0}{1}",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/PriorYear.tsx"
@@ -40069,7 +40168,7 @@
 "th": "ยอดสะสม",
 "n": 1,
 "files": [
-"apps/server/src/modules/gl/reports.ts"
+"packages/core/src/fs-layout.ts"
 ]
 },
 {
@@ -47381,6 +47480,13 @@
 ]
 },
 {
+"th": "ว่าง = {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/FsLayouts.tsx"
+]
+},
+{
 "th": "ว่าง = ชื่อประเภทเอกสาร{0}",
 "n": 1,
 "files": [
@@ -47483,13 +47589,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
-]
-},
-{
-"th": "ว่าง = หัวมาตรฐาน",
-"n": 1,
-"files": [
-"apps/web/src/pages/reports/FsLayouts.tsx"
 ]
 },
 {
@@ -50979,13 +51078,6 @@
 ]
 },
 {
-"th": "อื่น ๆ › ประมวลผลสิ้นปี",
-"n": 1,
-"files": [
-"apps/web/src/pages/gl/YearEnd.tsx"
-]
-},
-{
 "th": "อื่น ๆ › ผู้ใช้งานและสิทธิ์ › โปรแกรมที่เปิดได้",
 "n": 1,
 "files": [
@@ -53898,6 +53990,13 @@
 ]
 },
 {
+"th": "เปรียบเทียบ 2 ปี",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/Statements.tsx"
+]
+},
+{
 "th": "เปลี่ยน",
 "n": 1,
 "files": [
@@ -54175,6 +54274,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/YearEnd.tsx"
+]
+},
+{
+"th": "เปิดปีกลับที่ อื่น ๆ › ประมวลผลสิ้นปี",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Periods.tsx"
 ]
 },
 {
@@ -56516,6 +56622,13 @@
 ]
 },
 {
+"th": "เลือกจากรายการ หรือพิมพ์สูตร เช่น (C1-C2)*100/C2",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/FsLayouts.tsx"
+]
+},
+{
 "th": "เลือกฉบับที่จะพิมพ์",
 "n": 1,
 "files": [
@@ -58266,6 +58379,13 @@
 ]
 },
 {
+"th": "แทนคอลัมน์ทั้งหมดด้วย ปีนี้ · ปีที่แล้ว · 2 ปีก่อน · % เปลี่ยนแปลง",
+"n": 1,
+"files": [
+"apps/web/src/pages/reports/FsLayouts.tsx"
+]
+},
+{
 "th": "แทนคอลัมน์ทั้งหมดด้วยงวดที่ 1–12 และยอดรวมทั้งปี",
 "n": 1,
 "files": [
@@ -59939,7 +60059,7 @@
 ]
 },
 {
-"th": "ใช้ทำงบการเงินเปรียบเทียบ (คอลัมน์ปีที่แล้ว) — ป้อนเมื่อปีที่แล้วไม่มีใบสำคัญในโปรแกรม เช่น เริ่มใช้กลางปีหรือย้ายมาจากโปรแกรมอื่น · ไม่กระทบยอดปีปัจจุบัน (ยอดยกมาปีนี้ป้อนที่หน้าบันทึกยอดยกมา)",
+"th": "ใช้ทำงบการเงินเปรียบเทียบ (คอลัมน์ปีที่แล้ว / 2 ปีก่อน สำหรับงบเปรียบเทียบ 3 ปี) — ป้อนเมื่อปีนั้นไม่มีใบสำคัญในโปรแกรม เช่น เริ่มใช้กลางปีหรือย้ายมาจากโปรแกรมอื่น · ไม่กระทบยอดปีปัจจุบัน (ยอดยกมาปีนี้ป้อนที่หน้าบันทึกยอดยกมา)",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/PriorYear.tsx"
@@ -64125,6 +64245,13 @@
 ]
 },
 {
+"th": "⚠️ ปี {0} ยังไม่ได้ประมวลผลสิ้นปี — มีปีบัญชีที่ยังเปิดอยู่เกิน 3 ปี ควรตรวจและประมวลผลสิ้นปีตามลำดับ เพื่อให้ยอดยกมาแต่ละปีต่อเนื่องและแก้ไขย้อนหลังไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/components/OpenYearsWarning.tsx"
+]
+},
+{
 "th": "⚡ ออฟไลน์",
 "n": 1,
 "files": [
@@ -64521,6 +64648,20 @@
 "n": 1,
 "files": [
 "apps/web/src/readonly.tsx"
+]
+},
+{
+"th": "🔒 ประมวลผลสิ้นปีแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
+"th": "🔒 ปิดปีแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Periods.tsx"
 ]
 },
 {

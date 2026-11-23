@@ -32,3 +32,13 @@ export function fiscalYearLabel(y: FiscalYearLike, ys: 'B' | 'C' = 'B'): string 
   const yr = Number(iso(y.end_date).slice(0, 4));
   return String(ys === 'B' ? yr + 543 : yr);
 }
+
+/**
+ * Open-years warning (HANDOFF 176): more than `keep` fiscal years still open (status 'O') = the oldest open years
+ * beyond the newest `keep` have not been through year-end yet. Warning only; nothing is blocked.
+ * Returns those oldest open years (oldest first), or [] when at most `keep` are open.
+ */
+export function staleOpenYears<T extends FiscalYearLike>(years: readonly T[] | null | undefined, keep = 3): T[] {
+  const open = [...(years ?? [])].filter((y) => (y.status ?? 'O') === 'O').sort((a, b) => iso(a.start_date).localeCompare(iso(b.start_date)));
+  return open.length > keep ? open.slice(0, open.length - keep) : [];
+}

@@ -5881,6 +5881,96 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const oe = (await call('POST', '/api/v1/trade-import/other-income-docs', { file_name: 'รายได้.xlsx', data: oiFile, doc_type_id: oiType, price_type: '0', vat_rate: 0 })).body;
     expect(oe.errors[0].message).toMatch(new RegExp(`${item.code} ไม่ใช่รหัสรายได้อื่น — ใช้รหัสจาก ขาย › รายละเอียดรายได้อื่น ๆ`));
   });
+  it('HANDOFF 176: closed year blocks period unlock · 3-year comparative statements (BAL LY2) · prior-year balances 2 years back', async () => {
+    const start = cookie;
+    const login = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { code: 'YRLK', name: 'ลูกค้าปิดปี', admin_username: 'yr.admin', admin_name: 'ผู้ดูแลปิดปี', admin_password: 'passYear1234', max_companies: 3 })).status).toBe(200);
+    expect((await login('yr.admin', 'passYear1234')).status).toBe(200);
+    const co = (await call('POST', '/api/v1/companies', { code: 'YR-CO1', name_th: 'บริษัทสามปี', fiscal_start: '2024-01-01', chart: 'express' })).body.id;
+    const co2 = (await call('POST', '/api/v1/companies', { code: 'YR-CO2', name_th: 'บริษัทยอดสองปีก่อน', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+    expect([co, co2].every(Boolean)).toBe(true);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    for (const dt of ['2025-01-01', '2026-01-01']) expect((await call('POST', '/api/v1/gl/periods/years', { start_date: dt })).status).toBe(200);
+    type Acc = { id: string; account_no: string; account_group: string; is_control: boolean };
+    const leaf = (accs: Acc[], g: string) => accs.find((x) => x.account_group === g && !x.is_control)!;
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body as Acc[];
+    const [cashA, capA, revA] = [leaf(accs, '1'), leaf(accs, '3'), leaf(accs, '4')];
+    const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const jv = (date: string, dr: string, cr: string, amt: string) => call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: date, lines: [{ account_id: dr, debit: amt }, { account_id: cr, credit: amt }] });
+    // ปี 2567: ทุน 100 · ปี 2568: ขาย 50 · ปี 2569: ขาย 30
+    for (const [dt, dr, cr, amt] of [['2024-03-01', cashA.id, capA.id, '100'], ['2025-03-01', cashA.id, revA.id, '50'], ['2026-03-01', cashA.id, revA.id, '30']] as const) expect((await jv(dt, dr, cr, amt)).status).toBe(200);
+    // งบตามผังบัญชีเปรียบเทียบ 3 ปี: ยอดตรงกับใบสำคัญ
+    const bs = (await call('GET', '/api/v1/fs/run?kind=BS&end=2026-12-31&years=3')).body;
+    expect(bs.columns.map((c: { head1: string }) => c.head1)).toEqual(['ปีปัจจุบัน', 'ปีที่แล้ว', '2 ปีก่อน', '% เปลี่ยนแปลง']);
+    expect(bs.rows.find((r: { text: string }) => r.text === 'รวมสินทรัพย์').values).toEqual(['180.00', '150.00', '100.00', '20.00']);
+    expect(bs.balance_diff).toEqual(['0.00', '0.00', '0.00']);
+    const pl = (await call('GET', '/api/v1/fs/run?kind=PL&end=2026-12-31&years=3')).body;
+    expect(pl.rows.find((r: { text: string }) => r.text === 'กำไร (ขาดทุน) สุทธิ').values).toEqual(['30.00', '50.00', '0.00', '-40.00']);
+    expect((await call('GET', '/api/v1/fs/run?kind=BS&end=2026-12-31')).body.columns).toHaveLength(3);
+    // แบบงบที่สร้างเอง: BAL LY2 / PTD LY2 (หัวมาตรฐาน "2 ปีก่อน")
+    const lay = await call('POST', '/api/v1/fs/layouts', { code: 'Y3', name: 'เปรียบเทียบ 3 ปี', header_lines: ['\\NAME'], line_set_code: 'Y3',
+      columns: [{ expr: 'BAL' }, { expr: 'BAL LY' }, { expr: 'BAL LY2' }, { expr: 'PTD LY2' }],
+      lines: [{ line_no: 10, data_type: 'A/C', source: cashA.account_no, accumulate: {}, description_th: 'เงินสด' }, { line_no: 20, data_type: 'A/C', source: revA.account_no, accumulate: {}, description_th: 'รายได้' }] });
+    expect(lay.status).toBe(200);
+    const run = (await call('GET', `/api/v1/fs/run?layout_id=${lay.body.id}&end=2026-03-31`)).body;
+    expect(run.columns.map((c: { head1: string }) => c.head1)).toEqual(['ยอดสะสม', 'ปีที่แล้ว', '2 ปีก่อน', 'งวดเดียวกัน 2 ปีก่อน']);
+    expect(run.rows.filter((r: { kind: string }) => r.kind === 'value').map((r: { values: string[] }) => r.values)).toEqual([['180.00', '150.00', '100.00', '100.00'], ['30.00', '50.00', '0.00', '0.00']]);
+    // ปิดปี 2567 แล้ว: เปิดงวดในปีนั้นไม่ได้
+    const years = () => call('GET', '/api/v1/gl/periods').then((r) => r.body as Array<{ id: string; code: string; status: string; start_date: string; periods: Array<{ id: string; is_locked: boolean; start_date: string }> }>);
+    let ys = await years();
+    const y67 = ys.find((y) => String(y.start_date).startsWith('2024'))!;
+    const close = await call('POST', '/api/v1/gl/year-end/close', { fiscal_year_id: y67.id, confirm: 'YES' });
+    expect([close.status, close.body.error?.message]).toEqual([200, undefined]);
+    ys = await years();
+    const p67 = ys.find((y) => y.id === y67.id)!.periods;
+    expect(p67.every((p) => p.is_locked)).toBe(true);
+    const un = await call('POST', `/api/v1/gl/periods/${p67[5]!.id}/lock`, { locked: false });
+    expect(un.status).toBe(400);
+    expect(un.body.error.message).toMatch(/ปี 2567 ประมวลผลสิ้นปีแล้ว — เปิดงวดในปีนั้นไม่ได้.*อื่น ๆ › ประมวลผลสิ้นปี/);
+    expect((await years()).find((y) => y.id === y67.id)!.periods.every((p) => p.is_locked)).toBe(true);
+    // ปีที่ยังเปิด: ล็อค/เปิดงวดได้ตามเดิม และไม่แตะปีที่ปิด
+    const p68 = ys.find((y) => String(y.start_date).startsWith('2025'))!.periods;
+    expect((await call('POST', `/api/v1/gl/periods/${p68[2]!.id}/lock`, { locked: true })).body.changed).toBe(3);
+    expect((await call('POST', `/api/v1/gl/periods/${p68[0]!.id}/lock`, { locked: false })).body.changed).toBe(3);
+    expect((await years()).find((y) => y.id === y67.id)!.periods.every((p) => p.is_locked)).toBe(true);
+    // เปิดปีกลับแล้วจึงเปิดงวดได้
+    expect((await call('POST', '/api/v1/gl/year-end/reopen', { fiscal_year_id: y67.id })).status).toBe(200);
+    expect((await call('POST', `/api/v1/gl/periods/${p67[5]!.id}/lock`, { locked: true })).status).toBe(200);
+    expect((await call('POST', `/api/v1/gl/periods/${p67[5]!.id}/lock`, { locked: false })).status).toBe(200);
+    // ยอด 2 ปีก่อนที่ป้อนเอง (บริษัทเริ่มปี 2569 ไม่มีปีก่อน): สร้างปี 2567 แบบปิด · งบ 3 ปีมีคอลัมน์ 2 ปีก่อน · ปีที่แล้วไม่มี = ว่าง
+    await call('POST', '/api/v1/auth/select', { company_id: co2 });
+    const fy69 = (await years()).find((y) => String(y.start_date).startsWith('2026'))!.id;
+    const accs2 = (await call('GET', '/api/v1/gl/accounts')).body as Acc[];
+    const [cash2, cap2] = [leaf(accs2, '1'), leaf(accs2, '3')];
+    let s2 = (await call('GET', `/api/v1/gl/prior-year?fiscal_year_id=${fy69}&back=2`)).body;
+    expect([s2.back, s2.prior.code, s2.prior.id, s2.prior.start_date, s2.voucher_count]).toEqual([2, '2567', null, '2024-01-01', 0]);
+    expect(s2.choices.map((c: { back: number; code: string }) => [c.back, c.code])).toEqual([[1, '2568'], [2, '2567']]);
+    const put2 = (account_id: string, opening: object) => call('PUT', '/api/v1/gl/prior-year/entry', { fiscal_year_id: fy69, back: 2, account_id, opening, periods: [] });
+    expect((await put2(cash2.id, { debit: '1000' })).status).toBe(200);
+    expect((await put2(cap2.id, { credit: '1000' })).status).toBe(200);
+    s2 = (await call('GET', `/api/v1/gl/prior-year?fiscal_year_id=${fy69}&back=2`)).body;
+    expect([s2.prior.code, s2.rows.length, s2.closing_debit, s2.closing_credit]).toEqual(['2567', 2, '1000.00', '1000.00']);
+    const y67b = (await years()).find((y) => String(y.start_date).startsWith('2024'))!;
+    expect([y67b.status, y67b.periods.every((p) => p.is_locked)]).toEqual(['C', true]);
+    expect((await call('GET', `/api/v1/gl/prior-year/entry?fiscal_year_id=${fy69}&back=2&account_id=${cash2.id}`)).body.opening.debit).toBe('1000.00');
+    expect((await call('GET', `/api/v1/gl/prior-year?fiscal_year_id=${fy69}`)).body.rows).toEqual([]);
+    const bs2 = (await call('GET', '/api/v1/fs/run?kind=BS&end=2026-12-31&years=3')).body;
+    expect(bs2.rows.find((r: { text: string }) => r.text === 'รวมสินทรัพย์').values).toEqual(['0.00', null, '1000.00', null]);
+    // ปีที่สร้างเพื่อยอดเปรียบเทียบ = ปิดปีแล้ว → เปิดงวดไม่ได้เช่นกัน
+    expect((await call('POST', `/api/v1/gl/periods/${y67b.periods[0]!.id}/lock`, { locked: false })).body.error.message).toMatch(/ปี 2567 ประมวลผลสิ้นปีแล้ว/);
+    // ปีที่มีใบสำคัญ: ป้อน 2 ปีก่อนไม่ได้ (บริษัทแรก ปี 2567 มีใบสำคัญ)
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const fy69a = (await years()).find((y) => String(y.start_date).startsWith('2026'))!.id;
+    expect((await call('PUT', '/api/v1/gl/prior-year/entry', { fiscal_year_id: fy69a, back: 2, account_id: cashA.id, opening: { debit: '1' }, periods: [] })).body.error.message).toMatch(/ปี 2567 มีใบสำคัญในระบบแล้ว/);
+    // ข้ามลูกค้า/บริษัท (ข้อ 7 / 7.1): ลูกค้าอื่นเปิด/ปิดงวด หรือดู/ป้อนยอด 2 ปีก่อนของบริษัทนี้ไม่ได้
+    cookie = start;
+    expect((await call('POST', `/api/v1/gl/periods/${p68[0]!.id}/lock`, { locked: true })).status).toBe(404);
+    expect((await call('GET', `/api/v1/gl/prior-year?fiscal_year_id=${fy69}&back=2`)).status).toBe(404);
+    expect((await call('PUT', '/api/v1/gl/prior-year/entry', { fiscal_year_id: fy69, back: 2, account_id: cash2.id, opening: { debit: '1' }, periods: [] })).status).toBeGreaterThanOrEqual(400);
+    expect((await call('GET', '/api/v1/gl/prior-year?back=3')).status).toBe(400);
+  });
+
   it('HANDOFF 175: delete a company (tenant admin / service staff only) — soft delete, hidden from the picker, restore, activity log, current/last company refused, 2FA, other tenant', async () => {
     const call2 = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };
     expect((await call2('admin', 'secret123')).status).toBe(200);

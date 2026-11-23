@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { fmt } from '@buddy/core';
+import { fmt, staleOpenYears } from '@buddy/core';
+import { OpenYearsWarning } from '../../components/OpenYearsWarning';
 import { api } from '../../api';
 import { useCan } from '../../session';
 import { Confirm, DateInput, DateText, ErrorBox, Field, Modal, PageHead, Pill, toast, toastError } from '../../ui';
@@ -38,6 +39,7 @@ export function YearEndPage() {
     } catch (e) { toastError(e); }
   };
   const blocked = x?.checks.some((c) => c.block && !c.ok);
+  const stale = staleOpenYears(x?.years.map((y) => ({ ...y, start_date: y.start, end_date: y.end })));
   return (
     <div className="page" data-tone="gl">
       <PageHead eyebrow="อื่น ๆ › ประมวลผลสิ้นปี" title="ประมวลผลสิ้นปี" lead="Buddy ไม่ลบรายการของปีที่ปิด — ยอดยกมาของสินทรัพย์ หนี้สิน ทุน และกำไรสะสมคำนวณจากใบสำคัญอัตโนมัติ การปิดปีจะล็อคทุกงวดของปีนั้น (แก้ไขย้อนหลังไม่ได้) และสร้างรอบบัญชีปีถัดไป" />
@@ -47,6 +49,7 @@ export function YearEndPage() {
         {x?.fiscal_year.status === 'C' ? <Pill tone="d">ปิดแล้ว {x.fiscal_year.closed_at ? new Date(x.fiscal_year.closed_at).toLocaleDateString('th-TH') : ''}</Pill> : x && <Pill tone="n">เปิดอยู่ · งวดที่ยังไม่ล็อค {x.unlocked_periods}</Pill>}
       </div>
       <ErrorBox error={q.error} />
+      {stale.length > 0 && <OpenYearsWarning codes={stale.map((y) => y.code)} />}
       {x && <>
         <h3 className="small">ตรวจความพร้อมก่อนปิดปี</h3>
         <table className="grid" style={{ maxWidth: 900 }}><tbody>

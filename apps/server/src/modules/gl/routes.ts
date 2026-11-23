@@ -206,6 +206,13 @@ export function glRoutes(app: FastifyInstance, db: Db) {
     const { locked } = parse(z.object({ locked: z.boolean() }), req.body);
     const p = await db.selectFrom('gl_period').select(['id', 'start_date', 'end_date']).where('id', '=', id).where('company_id', '=', a.companyId).executeTakeFirst();
     if (!p) throw notFound('งวดบัญชี');
+    // เปิดงวด = เปิดงวดนี้และงวดหลังจากนั้นที่ปิดอยู่ — ห้ามเปิดงวดในปีที่ประมวลผลสิ้นปีแล้ว (HANDOFF 176: ยอดยกมาปีถัดไปต้องต่อเนื่อง)
+    if (!locked) {
+      const closed = await db.selectFrom('gl_period as gp').innerJoin('gl_fiscal_year as y', 'y.id', 'gp.fiscal_year_id').select('y.code').distinct()
+        .where('gp.company_id', '=', a.companyId).where('gp.deleted_at', 'is', null).where('y.deleted_at', 'is', null).where('y.status', '=', 'C')
+        .where('gp.start_date', '>=', p.start_date).where('gp.is_locked', '=', true).orderBy('y.code').execute();
+      if (closed.length) throw badRequest(`ปี ${closed.map((x) => x.code).join(', ')} ประมวลผลสิ้นปีแล้ว — เปิดงวดในปีนั้นไม่ได้ ถ้าต้องแก้ไขให้เปิดปีกลับก่อนที่ อื่น ๆ › ประมวลผลสิ้นปี (เปิดปีกลับย้อนจากปีล่าสุด) แล้วจึงเปิดงวด`);
+    }
     const q = db.updateTable('gl_period').where('company_id', '=', a.companyId).where('deleted_at', 'is', null);
     const r = locked
       ? await q.set({ is_locked: true, locked_by: a.userId, locked_at: sql`now()` as never }).where('end_date', '<=', p.end_date).where('is_locked', '=', false).executeTakeFirst()

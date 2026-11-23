@@ -2,7 +2,8 @@ import { ConflictHost, confirmLeave, UnsavedHost } from './unsaved';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PrintPage } from './components/DocPrint';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { MENU, flattenMenu, fiscalYearLabel, formatDate, todayIso, workDateForYear, type MenuItem } from '@buddy/core';
+import { MENU, flattenMenu, fiscalYearLabel, formatDate, staleOpenYears, todayIso, workDateForYear, type MenuItem } from '@buddy/core';
+import { OpenYearsWarning } from './components/OpenYearsWarning';
 import { useWorkYear } from './workRange';
 import { menuVisible, ReadOnlyGuard } from './readonly';
 import { useSession } from './session';
@@ -399,9 +400,11 @@ function WorkDateDialog({ onClose }: { onClose: () => void }) {
   const [v, setV] = useState(me?.work_date ?? todayIso());
   const years = [...(me?.fiscal_years ?? [])].reverse();
   const cur = years.find((y) => y.start_date <= v && y.end_date >= v);
+  const stale = staleOpenYears(me?.fiscal_years);
   const save = (d: string) => select({ work_date: d }).then(onClose).catch(toastError);
   return (
     <Modal title="ปีบัญชีที่ทำงาน / วันทำการ" size="confirm" onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" onClick={() => void save(v)}>ตกลง</button></>}>
+      {stale.length > 0 && <OpenYearsWarning codes={stale.map((y) => fiscalYearLabel(y, ys))} onGo={onClose} />}
       {years.length > 0 && <>
         <p className="muted">เลือกปีบัญชีที่ทำงาน — หน้ารายการและรายงานจะแสดงช่วงต้นปี–สิ้นปีบัญชีนี้ (แก้ช่วงในแต่ละหน้าได้)</p>
         <div className="seg" role="group" aria-label="ปีบัญชี" style={{ flexWrap: 'wrap', marginBottom: 10 }}>

@@ -15,16 +15,18 @@ const money = z.union([z.string(), z.number()]).nullable().optional();
  * ยอดปีที่แล้ว — คู่มือบทที่ 15 S-GL-16 (บัญชี › 3.2 ยอดปีที่แล้ว)
  * ปีที่แล้วที่มีใบสำคัญในระบบ: ยอดคำนวณจากใบสำคัญ (ดูได้อย่างเดียว)
  * ปีที่แล้วที่ไม่มีใบสำคัญ (เริ่มใช้กลางปี/ย้ายจากโปรแกรมอื่น): ป้อนยอดยกมาและยอดเคลื่อนไหวรายงวดเอง ใช้ทำงบเปรียบเทียบเท่านั้น
+ * back = 1 ปีที่แล้ว · 2 = สองปีก่อน (งบเปรียบเทียบ 3 ปี — HANDOFF 176) กติกาเดียวกัน: ป้อนได้เฉพาะปีที่ไม่มีใบสำคัญ · ไม่มีปีบัญชี = สร้างให้แบบปิดแล้ว
  */
+const back = z.coerce.number().int().min(1).max(2).default(1);
 export function priorYearRoutes(app: FastifyInstance, db: Db) {
-  /** ปีปัจจุบัน (ที่เลือกหรือตามวันทำการ) และปีที่แล้วของมัน */
-  async function years(a: AuthContext & { companyId: string }, currentId?: string) {
+  /** ปีปัจจุบัน (ที่เลือกหรือตามวันทำการ) และปีย้อนหลัง n ปีของมัน (1 = ปีที่แล้ว, 2 = สองปีก่อน) */
+  async function years(a: AuthContext & { companyId: string }, currentId?: string, n = 1) {
     const cur = currentId
       ? await db.selectFrom('gl_fiscal_year').select(['id', 'code', 'start_date', 'end_date']).where('id', '=', currentId).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst()
       : await fiscalYearOf(db, a.companyId, a.workDate ?? new Date().toISOString().slice(0, 10));
     if (!cur) throw currentId ? notFound('ปีบัญชี') : badRequest('วันทำการไม่อยู่ในรอบบัญชี — เลือกปีบัญชีปัจจุบันก่อน');
-    const start = addMonths(cur.start_date, -12);
-    const end = addDays(cur.start_date, -1);
+    const start = addMonths(cur.start_date, -12 * n);
+    const end = addDays(addMonths(start, 12), -1);
     const prior = await db.selectFrom('gl_fiscal_year').select(['id', 'code', 'start_date', 'end_date']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null)
       .where('start_date', '<=', end).where('end_date', '>=', start).orderBy('start_date').executeTakeFirst();
     const v = await db.selectFrom('gl_journal').select(sql<number>`count(*)`.as('n')).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('doc_status', '=', 'N')
@@ -32,14 +34,16 @@ export function priorYearRoutes(app: FastifyInstance, db: Db) {
     return {
       current: { id: cur.id, code: cur.code, start_date: cur.start_date, end_date: cur.end_date },
       prior: { id: prior?.id ?? null, code: prior?.code ?? String(Number(end.slice(0, 4)) + 543), start_date: prior?.start_date ?? start, end_date: prior?.end_date ?? end },
-      voucher_count: Number(v.n),
+      voucher_count: Number(v.n), back: n,
     };
   }
 
   app.get('/api/v1/gl/prior-year', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ fiscal_year_id: uuid.optional() }), req.query);
-    const y = await years(a, q.fiscal_year_id);
+    const q = parse(z.object({ fiscal_year_id: uuid.optional(), back }), req.query);
+    const y = await years(a, q.fiscal_year_id, q.back);
+    // ตัวเลือกปีที่ป้อน: ปีที่แล้ว / 2 ปีก่อน (ชื่อปีและมีใบสำคัญหรือไม่)
+    const choices = await Promise.all([1, 2].map(async (n) => { const x = n === q.back ? y : await years(a, y.current.id, n); return { back: n, code: x.prior.code, start_date: x.prior.start_date, end_date: x.prior.end_date, voucher_count: x.voucher_count }; }));
     const list = await db.selectFrom('gl_fiscal_year').select(['id', 'code', 'start_date', 'end_date']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('start_date', 'desc').execute();
     const rows = y.prior.id ? await db.selectFrom('gl_prior_year_balance as b').innerJoin('gl_account as g', 'g.id', 'b.account_id').leftJoin('md_department as dp', 'dp.id', 'b.department_id')
       .select(['b.account_id', 'g.account_no', 'g.name_th', 'g.account_group', 'b.department_id', 'dp.code as department_code',
@@ -54,13 +58,13 @@ export function priorYearRoutes(app: FastifyInstance, db: Db) {
       if (closing.isPositive()) dr = dr.plus(closing); else cr = cr.plus(closing.neg());
       return { ...r, opening: d(r.opening).toFixed(2), debit: d(r.debit).toFixed(2), credit: d(r.credit).toFixed(2), closing: closing.toFixed(2) };
     });
-    return { ...y, years: list, rows: out, closing_debit: dr.toFixed(2), closing_credit: cr.toFixed(2) };
+    return { ...y, years: list, choices, rows: out, closing_debit: dr.toFixed(2), closing_credit: cr.toFixed(2) };
   });
 
   app.get('/api/v1/gl/prior-year/entry', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ fiscal_year_id: uuid.optional(), account_id: uuid, department_id: uuid.optional() }), req.query);
-    const y = await years(a, q.fiscal_year_id);
+    const q = parse(z.object({ fiscal_year_id: uuid.optional(), account_id: uuid, department_id: uuid.optional(), back }), req.query);
+    const y = await years(a, q.fiscal_year_id, q.back);
     const acc = await db.selectFrom('gl_account').select(['id', 'account_no', 'name_th', 'account_group', 'is_control']).where('id', '=', q.account_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!acc) throw notFound('บัญชี');
     const dept = q.department_id ?? null;
@@ -89,14 +93,15 @@ export function priorYearRoutes(app: FastifyInstance, db: Db) {
         if (r.period_no === 0) opening = v; else Object.assign(months[r.period_no - 1]!, v);
       }
     }
-    // ยอดยกมาปีปัจจุบัน (จากหน้ายอดยกมา/ใบสำคัญ) — ไว้เทียบกับยอดคงเหลือสิ้นปีที่แล้ว
+    // ยอดยกมาของปีถัดจากปีที่ป้อน (ปีที่แล้ว → ปีปัจจุบัน · 2 ปีก่อน → ปีที่แล้ว) — ไว้เทียบกับยอดคงเหลือสิ้นปีที่ป้อน
     const chart = await loadChart(db, a.companyId);
-    const cur = (await leafTotals(db, a.companyId, chart, y.current.start_date, y.current.start_date, { departmentId: dept })).get(acc.id);
+    const nextStart = addDays(y.prior.end_date, 1);
+    const cur = (await leafTotals(db, a.companyId, chart, nextStart, nextStart, { departmentId: dept })).get(acc.id);
     return { ...y, account: acc, department_id: dept, read_only: y.voucher_count > 0, opening, periods: months, current_opening: (cur?.opening ?? ZERO).toFixed(2), is_pl: isPL(acc.account_group) };
   });
 
   const body = z.object({
-    fiscal_year_id: uuid.optional(), account_id: uuid, department_id: uuid.nullable().optional(),
+    fiscal_year_id: uuid.optional(), account_id: uuid, department_id: uuid.nullable().optional(), back,
     opening: z.object({ debit: money, credit: money }),
     periods: z.array(z.object({ period_no: z.number().int().min(1).max(12), debit: money, credit: money })).max(12),
   });
@@ -104,9 +109,9 @@ export function priorYearRoutes(app: FastifyInstance, db: Db) {
   app.put('/api/v1/gl/prior-year/entry', async (req) => {
     const a = requireCompany(req);
     const b = parse(body, req.body);
-    const y = await years(a, b.fiscal_year_id);
+    const y = await years(a, b.fiscal_year_id, b.back);
     if (y.voucher_count > 0) throw badRequest(`ปี ${y.prior.code} มีใบสำคัญในระบบแล้ว ${y.voucher_count.toLocaleString()} ใบ — ยอดปีที่แล้วคำนวณจากใบสำคัญ ไม่ต้องป้อนเอง`);
-    if (y.prior.id && y.prior.start_date !== addMonths(y.current.start_date, -12)) throw badRequest(`ปีบัญชี ${y.prior.code} ไม่ได้เริ่มก่อนปีปัจจุบัน 12 เดือนพอดี — ตรวจรอบบัญชีที่เมนู เริ่มระบบ › รอบบัญชี`);
+    if (y.prior.id && y.prior.start_date !== addMonths(y.current.start_date, -12 * y.back)) throw badRequest(`ปีบัญชี ${y.prior.code} ไม่ได้เริ่มก่อนปีปัจจุบัน ${12 * y.back} เดือนพอดี — ตรวจรอบบัญชีที่เมนู เริ่มระบบ › รอบบัญชี`);
     const acc = await db.selectFrom('gl_account').select(['id', 'account_no', 'account_group', 'is_control', 'status']).where('id', '=', b.account_id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!acc) throw badRequest('ไม่พบบัญชีนี้ในผังบัญชี');
     if (acc.is_control) throw badRequest(`บัญชี ${acc.account_no} เป็นบัญชีคุม ป้อนยอดไม่ได้ ให้ใช้บัญชีย่อย`);
@@ -137,7 +142,7 @@ export function priorYearRoutes(app: FastifyInstance, db: Db) {
       const rows = all.filter((r) => !d(r.debit).isZero() || !d(r.credit).isZero())
         .map((r) => ({ company_id: a.companyId, fiscal_year_id: fyId, account_id: acc.id, department_id: dept, period_no: r.period_no, debit: d(r.debit).toFixed(2), credit: d(r.credit).toFixed(2), created_by: a.userId }));
       if (rows.length) await tx.insertInto('gl_prior_year_balance').values(rows).execute();
-      await logActivity(tx, a, { module: 'GL', action: 'PRIOR_YEAR', docNo: acc.account_no, table: 'gl_prior_year_balance', rowId: acc.id, detail: { fiscal_year: y.prior.code, department_id: dept, before, rows: rows.length } });
+      await logActivity(tx, a, { module: 'GL', action: 'PRIOR_YEAR', docNo: acc.account_no, table: 'gl_prior_year_balance', rowId: acc.id, detail: { fiscal_year: y.prior.code, back: y.back, department_id: dept, before, rows: rows.length } });
       const closing = closingOf({ opening: d(b.opening.debit).minus(d(b.opening.credit)), debit: b.periods.reduce((s, p) => s.plus(d(p.debit)), ZERO), credit: b.periods.reduce((s, p) => s.plus(d(p.credit)), ZERO) });
       return { fiscal_year_id: fyId, closing: closing.toFixed(2) };
     });

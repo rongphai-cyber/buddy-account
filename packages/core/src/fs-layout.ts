@@ -12,7 +12,7 @@ import { d, ZERO, Decimal } from './money.js';
  * print_condition: Z = ไม่แสดงถ้าเป็นศูนย์ทุกคอลัมน์, N = ไม่แสดง (คำนวณอย่างเดียว), C = ข้อความกึ่งกลาง
  * sign_filter: + ใช้เฉพาะยอดบวก, - ใช้เฉพาะยอดติดลบ (กลับเป็นบวก)
  * accumulate: ตัวแปร A–E แต่ละตัว '+' บวกเข้า, '-' ลบออก, '0' ล้างเป็นศูนย์ (หลังแสดง), '/' หาร
- * คอลัมน์: BAL ยอดสะสม ณ สิ้นงวด, PTD เฉพาะงวด, BAL LY / PTD LY ปีที่แล้ว, BUD / PTD BUD งบประมาณ, หรือสูตร เช่น (C1-C2)*100/C2
+ * คอลัมน์: BAL ยอดสะสม ณ สิ้นงวด, PTD เฉพาะงวด, BAL LY / PTD LY ปีที่แล้ว, BAL LY2 / PTD LY2 สองปีก่อน, BUD / PTD BUD งบประมาณ, หรือสูตร เช่น (C1-C2)*100/C2
  */
 export type FsDataType = 'A/C' | 'BEG' | 'INV' | 'VAR' | 'TXT' | '---' | '===';
 export const FS_VARS = ['A', 'B', 'C', 'D', 'E'] as const;
@@ -42,6 +42,35 @@ export interface FsValueProvider {
   value(kind: string, account: string, dataType: 'A/C' | 'BEG' | 'INV', departmentCode?: string | null): Decimal | null;
   accountExists(account: string): boolean;
 }
+
+/**
+ * ชนิดคอลัมน์ของแบบงบ: BAL ยอดสะสม · PTD เฉพาะงวด · PTD1–PTD12 งวดที่ 1–12 ของปี (งบ 12 เดือน)
+ * ต่อท้าย LY = ปีที่แล้ว · LY2 = 2 ปีก่อน (งบเปรียบเทียบ 3 ปี — HANDOFF 176) · BUD / PTD BUD / PTDn BUD = งบประมาณ (S-GL-17)
+ * range: YTD | PTD | P1..P12 · lag: 0 ปีปัจจุบัน, 1 ปีที่แล้ว, 2 สองปีก่อน · null = ไม่ใช่ชนิดที่รู้จัก
+ */
+export interface FsColumnKind { range: string; lag: 0 | 1 | 2; bud: boolean }
+export function parseFsColumnKind(kind: string): FsColumnKind | null {
+  const k = kind.trim().toUpperCase().replace(/\s+/g, ' ');
+  const bud = /\bBUD\b/.test(k);
+  const lag: 0 | 1 | 2 = /\bLY ?2\b/.test(k) ? 2 : /\bLY\b/.test(k) ? 1 : 0;
+  const m = k.match(/^PTD ?(\d{1,2})\b/);
+  if (m) { const n = Number(m[1]); return n >= 1 && n <= 12 ? { range: `P${n}`, lag, bud } : null; }
+  if (k.startsWith('PTD')) return { range: 'PTD', lag, bud };
+  if (k.startsWith('BAL') || k === 'BUD' || k.startsWith('BUD ')) return { range: 'YTD', lag, bud };
+  return null;
+}
+
+/** หัวคอลัมน์มาตรฐานเมื่อผู้ใช้ไม่ได้ตั้งหัวเอง */
+export function fsColumnHead(expr: string): string {
+  const k = expr.trim().toUpperCase().replace(/\s+/g, ' ').replace(/\bLY 2\b/, 'LY2');
+  const m = k.match(/^PTD ?(\d{1,2})( LY2?)?( BUD)?$/);
+  const lagText = (x?: string) => (!x ? '' : x.trim() === 'LY2' ? ' 2 ปีก่อน' : ' ปีที่แล้ว');
+  if (m) return `${m[3] ? 'งบประมาณ' : ''}งวดที่ ${Number(m[1])}${lagText(m[2])}`;
+  return ({ BAL: 'ยอดสะสม', PTD: 'ประจำงวด', 'BAL LY': 'ปีที่แล้ว', 'PTD LY': 'งวดเดียวกันปีที่แล้ว', 'BAL LY2': '2 ปีก่อน', 'PTD LY2': 'งวดเดียวกัน 2 ปีก่อน', BUD: 'งบประมาณสะสม', 'PTD BUD': 'งบประมาณงวดนี้' } as Record<string, string>)[k] ?? expr;
+}
+
+/** ตัวเลือกชนิดคอลัมน์สำหรับหน้าแก้แบบงบ */
+export const FS_COLUMN_KINDS = ['BAL', 'PTD', 'BAL LY', 'PTD LY', 'BAL LY2', 'PTD LY2', 'BUD', 'PTD BUD'] as const;
 
 const FORMULA_RE = /[()*/]|C\d+/i;
 export const isFormulaColumn = (expr: string) => FORMULA_RE.test(expr) && /C\d+/i.test(expr);

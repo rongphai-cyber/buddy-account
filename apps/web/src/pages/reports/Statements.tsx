@@ -20,10 +20,13 @@ export function StatementsPage() {
   const [sel, setSel] = useState(sp.get('layout') ?? (sp.get('kind') ? `chart:${sp.get('kind')}` : 'chart:BS'));
   const [range, setRange] = useState({ from: '', to: sp.get('end') ?? '' });
   const [lang, setLang] = useState<'th' | 'en'>('th');
+  // งบตามผังบัญชี: เปรียบเทียบ 2 ปี หรือ 3 ปี (HANDOFF 176)
+  const [years, setYears] = useState(sp.get('years') === '3' ? 3 : 2);
   const onRange = useCallback((v: { from: string; to: string }) => setRange(v), []);
   const layouts = useQuery({ queryKey: ['fs-layouts'], queryFn: () => api.get<Layout[]>('/api/v1/fs/layouts') });
-  const params = sel.startsWith('chart:') ? { kind: sel.slice(6) } : { layout_id: sel };
-  const q = useQuery({ enabled: !!range.to, queryKey: ['fs-run', sel, range.to, lang, me?.branch?.id], queryFn: () => api.get<Run>('/api/v1/fs/run', { ...params, end: range.to, lang, branch_id: me?.branch?.id }) });
+  const chart = sel.startsWith('chart:');
+  const params = chart ? { kind: sel.slice(6), years } : { layout_id: sel };
+  const q = useQuery({ enabled: !!range.to, queryKey: ['fs-run', sel, range.to, lang, me?.branch?.id, chart ? years : 0], queryFn: () => api.get<Run>('/api/v1/fs/run', { ...params, end: range.to, lang, branch_id: me?.branch?.id }) });
   const R = q.data;
   const accounts = useQuery({ queryKey: ['accounts', 'plain'], queryFn: () => api.get<Array<{ id: string; account_no: string }>>('/api/v1/gl/accounts') });
   const open = (no?: string) => { const a = no && accounts.data?.find((x) => x.account_no === no); if (a) nav(`/reports/ledger?account_id=${a.id}&to=${range.to}&from=${range.to.slice(0, 4)}-01-01`); };
@@ -36,13 +39,14 @@ export function StatementsPage() {
           <optgroup label="แบบงบที่สร้างเอง (Express)">{layouts.data?.map((l) => <option key={l.id} value={l.id}>{l.code} · {l.name}</option>)}</optgroup>
         </select>
         <PeriodRange value={range} onChange={onRange} single />
+        {chart && <div className="seg" role="group" aria-label="จำนวนปีเปรียบเทียบ"><button className={cx(years === 2 && 'on')} onClick={() => setYears(2)}>เปรียบเทียบ 2 ปี</button><button className={cx(years === 3 && 'on')} onClick={() => setYears(3)}>3 ปี</button></div>}
         <div className="seg"><button className={cx(lang === 'th' && 'on')} onClick={() => setLang('th')}>ไทย</button><button className={cx(lang === 'en' && 'on')} onClick={() => setLang('en')}>English</button></div>
       </div>
       <ErrorBox error={q.error} />
       {R?.balance_diff?.map((x, i) => x !== null && Math.abs(Number(x)) >= 0.005 && (
         <div key={i} className="notebox no-print">
-          {i === 1
-            ? <>งบปีที่แล้วไม่ดุล — สินทรัพย์ต่างจากหนี้สินและส่วนของผู้ถือหุ้น <b className="num">{fmt(x, { paren: true })}</b> · ยอดปีที่แล้วมาจากการป้อนเอง ตรวจและแก้ที่ <button className="linklike" onClick={() => nav('/gl/prior-year')}>บัญชี › ยอดปีที่แล้ว</button> (ยอดคงเหลือต้องดุล และกำไรปีนั้นต้องอยู่ในบัญชีรายได้/ค่าใช้จ่าย ไม่ใช่กำไรสะสม)</>
+          {i >= 1
+            ? <>งบ{i === 2 ? ' 2 ปีก่อน' : 'ปีที่แล้ว'}ไม่ดุล — สินทรัพย์ต่างจากหนี้สินและส่วนของผู้ถือหุ้น <b className="num">{fmt(x, { paren: true })}</b> · ยอดปีก่อนมาจากการป้อนเอง ตรวจและแก้ที่ <button className="linklike" onClick={() => nav('/gl/prior-year')}>บัญชี › ยอดปีที่แล้ว</button> (ยอดคงเหลือต้องดุล และกำไรปีนั้นต้องอยู่ในบัญชีรายได้/ค่าใช้จ่าย ไม่ใช่กำไรสะสม)</>
             : <>งบปีปัจจุบันไม่ดุล ต่าง <b className="num">{fmt(x, { paren: true })}</b> — ตรวจผังบัญชี (หมวดบัญชี) ที่ เริ่มระบบ › ผังบัญชี</>}
         </div>
       ))}

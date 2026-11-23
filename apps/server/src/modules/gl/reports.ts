@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { d, ZERO, addMonths, addDays, formatDate, runFsLayout, expandHeader, isFormulaColumn, type FsColumn, type FsLine, type FsRow, Decimal } from '@buddy/core';
+import { d, ZERO, addMonths, addDays, formatDate, runFsLayout, expandHeader, isFormulaColumn, parseFsColumnKind, fsColumnHead, type FsColumn, type FsLine, type FsRow, Decimal } from '@buddy/core';
 import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../../http.js';
 import { closingOf, fiscalYearOf, isPL, leafTotals, loadChart, rollUp, type AccountRow, type BalanceFilter, type Chart, type Totals, hqBranch } from './balances.js';
@@ -218,7 +218,7 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
   /** พิมพ์งบการเงิน (บทที่ 24 S-FS-04): แบบที่ผู้ใช้สร้าง (layout_id) หรือ งบตามผังบัญชี (kind=BS|PL) */
   app.get('/api/v1/fs/run', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ layout_id: uuid.optional(), kind: z.enum(['BS', 'PL']).optional(), end: isoDate, branch_id: uuid.optional(), department_id: uuid.optional(), lang: z.enum(['th', 'en']).default('th') }), req.query);
+    const q = parse(z.object({ layout_id: uuid.optional(), kind: z.enum(['BS', 'PL']).optional(), end: isoDate, branch_id: uuid.optional(), department_id: uuid.optional(), lang: z.enum(['th', 'en']).default('th'), years: z.coerce.number().int().min(2).max(3).default(2) }), req.query);
     const company = await db.selectFrom('sys_company').select(['name_th', 'name_en', 'year_system']).where('id', '=', a.companyId).executeTakeFirstOrThrow();
     const chart = await loadChart(db, a.companyId);
     const f = { branchId: q.branch_id, departmentId: q.department_id };
@@ -262,41 +262,27 @@ export function reportRoutes(app: FastifyInstance, db: Db) {
       const coverage = coverageOf(chart, ctx, lines, rep.line_set_code ?? rep.code);
       return { kind: 'layout', title: rep.name, headers: heads, columns: outCols, rows, missing_accounts: res.missingAccounts, coverage, end: q.end, fiscal_year: ctx.fy };
     }
-    const ctx = await statementContext(db, a.companyId, chart, q.end, f);
+    // งบตามผังบัญชี: เปรียบเทียบ 2 ปี (ปีนี้/ปีที่แล้ว) หรือ 3 ปี (+ 2 ปีก่อน — HANDOFF 176)
+    const yearCols = (['BAL', 'BAL LY', 'BAL LY2'] as const).slice(0, q.years);
+    const ctx = await statementContext(db, a.companyId, chart, q.end, f, yearCols.map((k) => [k, null]));
     const kind = q.kind ?? 'BS';
+    const heads = { BAL: 'ปีปัจจุบัน', 'BAL LY': 'ปีที่แล้ว', 'BAL LY2': '2 ปีก่อน' };
     return { kind: 'chart', title: kind === 'BS' ? 'งบแสดงฐานะการเงิน (ตามผังบัญชี)' : 'งบกำไรขาดทุน (ตามผังบัญชี)', headers: [company.name_th, kind === 'BS' ? 'งบแสดงฐานะการเงิน' : 'งบกำไรขาดทุน', `${kind === 'BS' ? 'ณ วันที่' : 'สำหรับงวดสิ้นสุดวันที่'} ${endText}`],
-      columns: [{ expr: 'BAL', head1: 'ปีปัจจุบัน', head2: '', formula: false }, { expr: 'BAL LY', head1: 'ปีที่แล้ว', head2: '', formula: false }, { expr: '(C1-C2)*100/C2', head1: '% เปลี่ยนแปลง', head2: '', formula: true }],
-      ...chartStatement(chart, ctx, kind), missing_accounts: [], coverage: null, end: q.end, fiscal_year: ctx.fy };
+      columns: [...yearCols.map((k) => ({ expr: k, head1: heads[k], head2: '', formula: false })), { expr: '(C1-C2)*100/C2', head1: '% เปลี่ยนแปลง', head2: q.years === 3 ? 'ปีนี้/ปีที่แล้ว' : '', formula: true }],
+      ...chartStatement(chart, ctx, kind, yearCols), years: q.years, missing_accounts: [], coverage: null, end: q.end, fiscal_year: ctx.fy };
   });
 }
 
-const defaultHead = (e: string) => {
-  const k = e.trim().toUpperCase().replace(/\s+/g, ' ');
-  const m = k.match(/^PTD ?(\d{1,2})( LY)?( BUD)?$/);
-  if (m) return `${m[3] ? 'งบประมาณ' : ''}งวดที่ ${Number(m[1])}${m[2] ? ' ปีที่แล้ว' : ''}`;
-  return ({ BAL: 'ยอดสะสม', PTD: 'ประจำงวด', 'BAL LY': 'ปีที่แล้ว', 'PTD LY': 'งวดเดียวกันปีที่แล้ว', BUD: 'งบประมาณสะสม', 'PTD BUD': 'งบประมาณงวดนี้' } as Record<string, string>)[k] ?? e;
-};
+const defaultHead = fsColumnHead;
 
 interface StatementCtx {
   fy: { code: string; start_date: string; end_date: string } | null;
   provider: { value: (kind: string, accountNo: string, dt: 'A/C' | 'BEG' | 'INV', departmentCode?: string | null) => Decimal | null; accountExists: (no: string) => boolean };
-  bal: (accountNo: string, which: 'BAL' | 'BAL LY') => Decimal | null;
+  bal: (accountNo: string, which: 'BAL' | 'BAL LY' | 'BAL LY2') => Decimal | null;
 }
 
-/**
- * ชนิดคอลัมน์ของแบบงบ: BAL ยอดสะสม · PTD เฉพาะงวด · PTD1–PTD12 งวดที่ 1–12 ของปี (งบ 12 เดือน) · ต่อท้าย LY = ปีที่แล้ว
- * BUD / PTD BUD / PTDn BUD = งบประมาณ (S-GL-17)
- */
-function parseKind(kind: string): { range: string; ly: boolean; bud: boolean } | null {
-  const k = kind.trim().toUpperCase().replace(/\s+/g, ' ');
-  const bud = /\bBUD\b/.test(k), ly = /\bLY\b/.test(k);
-  const m = k.match(/^PTD ?(\d{1,2})\b/);
-  if (m) { const n = Number(m[1]); return n >= 1 && n <= 12 ? { range: `P${n}`, ly, bud } : null; }
-  if (k.startsWith('PTD')) return { range: 'PTD', ly, bud };
-  if (k.startsWith('BAL') || k === 'BUD' || k.startsWith('BUD ')) return { range: 'YTD', ly, bud };
-  return null;
-}
-const keyOf = (range: string, ly: boolean, dept: string | null) => `${range}${ly ? '-LY' : ''}|${dept ?? ''}`;
+const parseKind = parseFsColumnKind;
+const keyOf = (range: string, lag: number, dept: string | null) => `${range}${lag ? `-LY${lag}` : ''}|${dept ?? ''}`;
 
 /**
  * เตรียมยอดของทุกบัญชีที่งบต้องใช้ ตามคู่ (ชนิดคอลัมน์, แผนก) ที่แบบงบอ้างถึง
@@ -308,16 +294,17 @@ async function statementContext(db: Db, companyId: string, chart: Chart, end: st
   if (!fy) throw badRequest('วันที่สิ้นงวดไม่อยู่ในรอบบัญชี');
   const p = await db.selectFrom('gl_period').select(['start_date']).where('company_id', '=', companyId).where('deleted_at', 'is', null).where('start_date', '<=', end).where('end_date', '>=', end).orderBy('period_no').executeTakeFirst();
   const pStart = p?.start_date ?? end;
-  const endLY = addDays(addMonths(addDays(end, 1), -12), -1);
-  const fyLY = await fiscalYearOf(db, companyId, endLY);
+  /** ปีย้อนหลัง lag ปี (1 = ปีที่แล้ว · 2 = สองปีก่อน — งบเปรียบเทียบ 3 ปี HANDOFF 176): วันสิ้นงวดเดียวกันของปีนั้น */
+  const endOf = (lag: number) => (lag ? addDays(addMonths(addDays(end, 1), -12 * lag), -1) : end);
+  const fyAt = [fy, await fiscalYearOf(db, companyId, endOf(1)), await fiscalYearOf(db, companyId, endOf(2))];
   const periodsOf = async (fyId: string | undefined) => fyId ? await db.selectFrom('gl_period').select(['period_no', 'start_date', 'end_date']).where('company_id', '=', companyId).where('fiscal_year_id', '=', fyId).where('deleted_at', 'is', null).execute() : [];
-  const pCur = await periodsOf(fy.id), pLY = await periodsOf(fyLY?.id);
+  const pAt = [await periodsOf(fy.id), await periodsOf(fyAt[1]?.id), await periodsOf(fyAt[2]?.id)];
   // บัญชีสินค้าคงเหลือ Periodic (S-GL-14): ยอดปลายงวดที่ผู้ใช้ยืนยัน (GLINV) ใช้กับข้อมูลชนิด INV — ไม่มี = ใช้ยอดบัญชี
   const invRows = await db.selectFrom('gl_inventory_balance as b').innerJoin('gl_account as g', 'g.id', 'b.account_id').leftJoin('md_department as dp', 'dp.id', 'b.department_id')
     .select(['b.fiscal_year_id', 'g.account_no', 'dp.code as dept', 'b.period_no', 'b.amount']).where('b.company_id', '=', companyId).where('b.deleted_at', 'is', null)
-    .where('b.fiscal_year_id', 'in', [fy.id, fyLY?.id ?? fy.id]).execute();
-  const invOf = (no: string, ly: boolean, dept: string | null) => {
-    const yr = ly ? fyLY : fy, ps = ly ? pLY : pCur, e = ly ? endLY : end;
+    .where('b.fiscal_year_id', 'in', fyAt.map((y) => y?.id ?? fy.id)).execute();
+  const invOf = (no: string, lag: number, dept: string | null) => {
+    const yr = fyAt[lag], ps = pAt[lag] ?? [], e = endOf(lag);
     const per = ps.find((x) => String(x.start_date).slice(0, 10) <= e && String(x.end_date).slice(0, 10) >= e);
     const r = yr && per ? invRows.find((x) => x.fiscal_year_id === yr.id && x.account_no === no && (x.dept ?? null) === (dept || null) && x.period_no === per.period_no) : undefined;
     return r ? d(r.amount) : null;
@@ -331,12 +318,13 @@ async function statementContext(db: Db, companyId: string, chart: Chart, end: st
     return { branchId: f.branchId, departmentIds: depts.filter((x) => re.test(x.code)).map((x) => x.id) };
   };
   /** ช่วงวันที่ของแต่ละชนิด (null = ไม่มีปี/งวดนั้น) */
-  const rangeOf = (range: string, ly: boolean): [string, string] | null => {
-    if (ly && !fyLY) return null;
-    if (range === 'YTD') return ly ? [fyLY!.start_date, endLY] : [fy.start_date, end];
-    if (range === 'PTD') return ly ? [addMonths(pStart, -12), endLY] : [pStart, end];
+  const rangeOf = (range: string, lag: number): [string, string] | null => {
+    const yr = fyAt[lag];
+    if (!yr) return null;
+    if (range === 'YTD') return [yr.start_date, endOf(lag)];
+    if (range === 'PTD') return [addMonths(pStart, -12 * lag), endOf(lag)];
     const n = Number(range.slice(1));
-    const per = (ly ? pLY : pCur).find((x) => x.period_no === n);
+    const per = (pAt[lag] ?? []).find((x) => x.period_no === n);
     return per ? [per.start_date, per.end_date] : null;
   };
   const tot = new Map<string, Map<string, Totals> | null>();
@@ -347,9 +335,9 @@ async function statementContext(db: Db, companyId: string, chart: Chart, end: st
     const dk = (dept ?? '').trim() || null;
     // สินค้าคงเหลือปลายงวด (INV) ใช้ยอดสะสม จึงเตรียม YTD คู่กันเสมอ
     for (const range of s.bud ? [s.range] : [...new Set([s.range, 'YTD'])]) {
-      const k = keyOf(range, s.ly, dk);
-      const r = rangeOf(range, s.ly);
-      if (s.bud) { if (!s.ly && !bud.has(k)) bud.set(k, r ? await budgetTotals(db, companyId, chart, r[0], r[1], deptFilter(dk)) : null); }
+      const k = keyOf(range, s.lag, dk);
+      const r = rangeOf(range, s.lag);
+      if (s.bud) { if (!s.lag && !bud.has(k)) bud.set(k, r ? await budgetTotals(db, companyId, chart, r[0], r[1], deptFilter(dk)) : null); }
       else if (!tot.has(k)) tot.set(k, r ? rollUp(chart, await leafTotals(db, companyId, chart, r[0], r[1], deptFilter(dk))) : null);
     }
   }
@@ -369,16 +357,16 @@ async function statementContext(db: Db, companyId: string, chart: Chart, end: st
       if (!s) return null;
       const dk = (departmentCode ?? '').trim() || null;
       if (s.bud) {
-        if (dt !== 'A/C' || s.ly) return null;
-        const m = bud.get(keyOf(s.range, false, dk));
+        if (dt !== 'A/C' || s.lag) return null;
+        const m = bud.get(keyOf(s.range, 0, dk));
         if (!m) return null;
         const acc = chart.byNo.get(no);
         return acc ? m.get(acc.id) ?? ZERO : ZERO;
       }
-      const m = tot.get(keyOf(s.range, s.ly, dk));
+      const m = tot.get(keyOf(s.range, s.lag, dk));
       if (dt === 'BEG') return nat(no, m, 'opening');
       // INV: สินค้าคงเหลือปลายงวด — ยอดที่ยืนยันในบัญชีสินค้าคงเหลือ (Periodic) ก่อน ไม่มีจึงใช้ยอดบัญชี ณ สิ้นงวด
-      if (dt === 'INV') return invOf(no, s.ly, dk) ?? nat(no, tot.get(keyOf('YTD', s.ly, dk)), 'closing');
+      if (dt === 'INV') return invOf(no, s.lag, dk) ?? nat(no, tot.get(keyOf('YTD', s.lag, dk)), 'closing');
       // ยอดสะสม: บัญชีงบดุลใช้ยอดคงเหลือ บัญชีกำไรขาดทุนใช้ยอดตั้งแต่ต้นปี (ยกมาเป็นศูนย์) · รายงวด: ยอดเคลื่อนไหวในงวด
       return nat(no, m, s.range === 'YTD' ? 'closing' : 'move');
     },
@@ -410,17 +398,18 @@ function coverageOf(chart: Chart, ctx: StatementCtx, lines: Array<{ data_type: s
 }
 
 /** งบตามผังบัญชี — ดุลกับงบทดลองเสมอ */
-function chartStatement(chart: Chart, ctx: StatementCtx, kind: 'BS' | 'PL') {
+function chartStatement(chart: Chart, ctx: StatementCtx, kind: 'BS' | 'PL', yearCols: ReadonlyArray<'BAL' | 'BAL LY' | 'BAL LY2'> = ['BAL', 'BAL LY']) {
   type Row = { kind: 'text'; text: string; textEn: string; center: boolean; line_no: number } | { kind: 'rule'; double: boolean; line_no: number } | { kind: 'value'; text: string; textEn: string; values: (string | null)[]; account?: string; isTotal: boolean; line_no: number };
   const rows: Row[] = [];
-  /** งบดุล: สินทรัพย์ − (หนี้สิน + ส่วนของผู้ถือหุ้น) ต่อคอลัมน์ — ปีที่แล้วมาจากยอดที่ป้อนเอง (S-GL-16) จึงไม่ดุลได้ */
+  /** งบดุล: สินทรัพย์ − (หนี้สิน + ส่วนของผู้ถือหุ้น) ต่อคอลัมน์ปี — ปีก่อนมาจากยอดที่ป้อนเอง (S-GL-16) จึงไม่ดุลได้ */
   let balance_diff: (string | null)[] = [];
   let n = 0;
-  const v = (no: string) => [ctx.bal(no, 'BAL'), ctx.bal(no, 'BAL LY')];
+  const v = (no: string) => yearCols.map((k) => ctx.bal(no, k));
+  const cols = yearCols.map((_, i) => i);
   const pct = (x: (Decimal | null)[]) => (x[0] && x[1] && !x[1].isZero() ? x[0].minus(x[1]).times(100).div(x[1].abs()) : null);
   const fmt = (x: (Decimal | null)[]) => [...x, pct(x)].map((y) => (y === null ? null : y.toFixed(2)));
   const nz = (no: string) => v(no).some((x) => x && x.abs().gt('0.004'));
-  const sumOf = (ids: string[]) => [0, 1].map((i) => ids.reduce<Decimal | null>((s, id) => { const x = v(chart.byId.get(id)!.account_no)[i]; return s === null || x === null || x === undefined ? null : s.plus(x); }, ZERO));
+  const sumOf = (ids: string[]) => cols.map((i) => ids.reduce<Decimal | null>((s, id) => { const x = v(chart.byId.get(id)!.account_no)[i]; return s === null || x === null || x === undefined ? null : s.plus(x); }, ZERO));
   const roots = (g: string) => chart.roots().filter((r) => r.account_group === g);
   const section = (g: string, title: string, titleEn: string) => {
     rows.push({ kind: 'text', text: title, textEn: titleEn, center: true, line_no: ++n });
@@ -448,14 +437,14 @@ function chartStatement(chart: Chart, ctx: StatementCtx, kind: 'BS' | 'PL') {
     rows.push({ kind: 'value', text: '      รวมหนี้สิน', textEn: '      Total Liabilities', values: fmt(liab), isTotal: true, line_no: ++n });
     const eq = section('3', 'ส่วนของผู้ถือหุ้น', "Shareholders' Equity");
     const inc = sumOf(roots('4').map((r) => r.id)), exp = sumOf([...roots('5'), ...chart.roots().filter((r) => r.account_group > '5')].map((r) => r.id));
-    const profit = [0, 1].map((i) => (inc[i] == null || exp[i] == null ? null : inc[i]!.minus(exp[i]!)));
+    const profit = cols.map((i) => (inc[i] == null || exp[i] == null ? null : inc[i]!.minus(exp[i]!)));
     rows.push({ kind: 'value', text: '   กำไร (ขาดทุน) ปีปัจจุบัน', textEn: '   Profit (loss) for the year', values: fmt(profit), isTotal: false, line_no: ++n });
-    const eqT = [0, 1].map((i) => (eq[i] == null || profit[i] == null ? null : eq[i]!.plus(profit[i]!)));
+    const eqT = cols.map((i) => (eq[i] == null || profit[i] == null ? null : eq[i]!.plus(profit[i]!)));
     rows.push({ kind: 'rule', double: false, line_no: ++n });
     rows.push({ kind: 'value', text: '      รวมส่วนของผู้ถือหุ้น', textEn: "      Total Shareholders' Equity", values: fmt(eqT), isTotal: true, line_no: ++n });
     rows.push({ kind: 'rule', double: false, line_no: ++n });
-    const le = [0, 1].map((i) => (liab[i] == null || eqT[i] == null ? null : liab[i]!.plus(eqT[i]!)));
-    balance_diff = [0, 1].map((i) => (assets[i] == null || le[i] == null ? null : assets[i]!.minus(le[i]!).toFixed(2)));
+    const le = cols.map((i) => (liab[i] == null || eqT[i] == null ? null : liab[i]!.plus(eqT[i]!)));
+    balance_diff = cols.map((i) => (assets[i] == null || le[i] == null ? null : assets[i]!.minus(le[i]!).toFixed(2)));
     rows.push({ kind: 'value', text: 'รวมหนี้สินและส่วนของผู้ถือหุ้น', textEn: "Total Liabilities and Shareholders' Equity", values: fmt(le), isTotal: true, line_no: ++n });
     rows.push({ kind: 'rule', double: true, line_no: ++n });
   } else {
@@ -466,7 +455,7 @@ function chartStatement(chart: Chart, ctx: StatementCtx, kind: 'BS' | 'PL') {
     rows.push({ kind: 'rule', double: false, line_no: ++n });
     rows.push({ kind: 'value', text: '      รวมค่าใช้จ่าย', textEn: '      Total Expenses', values: fmt(exp), isTotal: true, line_no: ++n });
     rows.push({ kind: 'rule', double: false, line_no: ++n });
-    rows.push({ kind: 'value', text: 'กำไร (ขาดทุน) สุทธิ', textEn: 'Net Profit (Loss)', values: fmt([0, 1].map((i) => (inc[i] == null || exp[i] == null ? null : inc[i]!.minus(exp[i]!)))), isTotal: true, line_no: ++n });
+    rows.push({ kind: 'value', text: 'กำไร (ขาดทุน) สุทธิ', textEn: 'Net Profit (Loss)', values: fmt(cols.map((i) => (inc[i] == null || exp[i] == null ? null : inc[i]!.minus(exp[i]!)))), isTotal: true, line_no: ++n });
     rows.push({ kind: 'rule', double: true, line_no: ++n });
   }
   return { rows, balance_diff };
