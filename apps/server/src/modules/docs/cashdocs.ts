@@ -13,6 +13,7 @@ import { checkHold, noteHold } from './hold.js';
 import { checkJobs, jobsOfDoc } from '../projects.js';
 import { checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, saveBranch, whtSchema, writePayments, writeWht } from './payments.js';
 import { apTaxRules, payerOf } from './substitute.js';
+import { partyNameSql } from './party-name.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -165,11 +166,11 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
         sql`h.company_id = ${a.companyId}`, sql`h.doc_class = ${K.cls}`, sql`h.deleted_at IS NULL`, ...(a.branchId ? [sql`h.branch_id = ${a.branchId}`] : []),
         ...(q.from ? [sql`h.doc_date >= ${q.from}`] : []), ...(q.to ? [sql`h.doc_date <= ${q.to}`] : []),
         ...(q.party_id ? [sql`h.${sql.ref(partyCol)} = ${q.party_id}`] : []), ...(q.status !== 'all' ? [sql`h.doc_status = ${q.status}`] : []), ...(q.type_id ? [sql`h.doc_type_id = ${q.type_id}`] : []),
-        ...(like ? [sql`(h.doc_no ILIKE ${like} OR h.party_name ILIKE ${like} OR p.code ILIKE ${like} OR h.your_ref ILIKE ${like} OR h.ref_no ILIKE ${like})`] : []),
+        ...(like ? [sql`(h.doc_no ILIKE ${like} OR ${partyNameSql('h', 'p')} ILIKE ${like} OR p.code ILIKE ${like} OR h.your_ref ILIKE ${like} OR h.ref_no ILIKE ${like})`] : []),
       ], sql` AND `);
       const from = sql`FROM doc_header h LEFT JOIN ${sql.table(partyTbl)} p ON p.id = h.${sql.ref(partyCol)} WHERE ${where}`;
       const total = (await sql<{ n: number }>`SELECT count(*) AS n ${from}`.execute(db)).rows[0]!.n;
-      const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.due_date, h.party_name, p.code AS party_code, h.ref_no, h.amount, h.vat_amount, h.net_amount, h.wht_amount, h.doc_status,
+      const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.due_date, ${partyNameSql('h', 'p')} AS party_name, p.code AS party_code, h.ref_no, h.amount, h.vat_amount, h.net_amount, h.wht_amount, h.doc_status,
           ${K.deposit ? sql`(SELECT o.outstanding FROM v_deposit_outstanding o WHERE o.header_id = h.id)` : sql`NULL`} AS remaining ${from} ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT ${q.limit} OFFSET ${q.offset}`.execute(db)).rows;
       return { total: Number(total), rows };
     });

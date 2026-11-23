@@ -28,7 +28,7 @@ const exVat = (h: Record<string, unknown>) => d(s(h.net_amount) || 0).minus(d(s(
 async function loadDocs(db: Db, companyId: string, where: ReturnType<typeof sql>, iv: EtaxTypeCode) {
   const co = await db.selectFrom('sys_company').select(['name_th', 'tax_id', 'address_th', 'phone', 'year_system']).where('id', '=', companyId).executeTakeFirstOrThrow();
   const hs = (await sql<H>`SELECT h.*, h.doc_date::text AS doc_date, h.ref_date::text AS ref_date, h.due_date::text AS due_date, to_char(h.created_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD"T"HH24:MI:SS.MS') AS created_at,
-        b.tax_branch_no AS seller_branch, c.code AS cus_code, c.address_1, c.address_2, c.address_3, c.zip_code, c.email, c.phone AS cus_phone, c.tax_branch_no AS cus_branch
+        b.tax_branch_no AS seller_branch, c.code AS cus_code, c.address_1, c.address_2, c.address_3, c.zip_code, c.email, c.phone AS cus_phone, c.tax_branch_no AS cus_branch, nullif(trim(concat_ws(' ', c.title, c.name)), '') AS cus_name, c.tax_id AS cus_tax_id
       FROM doc_header h LEFT JOIN sys_branch b ON b.id = h.branch_id LEFT JOIN md_customer c ON c.id = coalesce(h.bill_to_customer_id, h.customer_id)
      WHERE h.company_id = ${companyId} AND h.deleted_at IS NULL AND h.doc_status <> 'C' AND h.doc_class IN (${sql.join([...CLASSES])}) AND ${where}
      ORDER BY h.doc_date, h.doc_no LIMIT 5000`.execute(db)).rows;
@@ -80,7 +80,7 @@ async function loadDocs(db: Db, companyId: string, where: ReturnType<typeof sql>
     const address = s(h.party_address) || joinAddr(h.address_1, h.address_2, h.address_3, h.zip_code);
     const doc: EtaxDoc = {
       typeCode, id: h.doc_no, issueDate: h.doc_date, createdAt: h.created_at, seller: { ...seller, branchNo: s(h.seller_branch) || '00000' },
-      buyer: { name: s(h.party_name), code: h.cus_code, taxId: h.party_tax_id, branchNo: h.party_tax_branch_no || (h.party_tax_id ? h.cus_branch : null), address, postcode: etaxPostcode(address) ?? h.zip_code, email: h.email, phone: h.cus_phone },
+      buyer: { name: s(h.party_name || h.cus_name), code: h.cus_code, taxId: h.party_tax_id || h.cus_tax_id, branchNo: h.party_tax_branch_no || (h.party_tax_id || h.cus_tax_id ? h.cus_branch : null), address, postcode: etaxPostcode(address) ?? h.zip_code, email: h.email, phone: h.cus_phone },
       lines: ls.map((l) => ({ code: l.item_code ?? l.account_no, name: s(l.description), qty: l.qty ?? '1', unitCode: l.unit_code,
         unitPrice: incl ? d(l.unit_price ?? 0).times(100).div(rate.plus(100)).toDecimalPlaces(4) : (l.unit_price ?? '0'), net: l.net_amount })),
       vat: pt === '0' ? null : { rate: rate.toString(), basis: vatBasis.toFixed(2), amount: vatAmt.toFixed(2) },
@@ -138,7 +138,7 @@ export function etaxRoutes(app: FastifyInstance, db: Db) {
     const q = parse(z.object({ from: isoDate, to: isoDate, iv_type: ivType }), req.query);
     const rows = await loadDocs(db, a.companyId, sql`h.doc_date BETWEEN ${q.from} AND ${q.to} AND ${TAX_ONLY}`, q.iv_type);
     return {
-      rows: rows.map(({ h, doc, errors }) => ({ id: h.id, doc_no: h.doc_no, doc_date: h.doc_date, doc_class: h.doc_class, type_code: doc.typeCode, party_name: h.party_name, net_amount: String(doc.grandTotal), purpose_code: doc.purposeCode ?? null, errors })),
+      rows: rows.map(({ h, doc, errors }) => ({ id: h.id, doc_no: h.doc_no, doc_date: h.doc_date, doc_class: h.doc_class, type_code: doc.typeCode, party_name: h.party_name || h.cus_name, net_amount: String(doc.grandTotal), purpose_code: doc.purposeCode ?? null, errors })),
     };
   });
 
@@ -164,7 +164,7 @@ export function etaxRoutes(app: FastifyInstance, db: Db) {
     const ok = rows.filter((r) => !r.errors.length), bad = rows.filter((r) => r.errors.length);
     if (!ok.length) throw badRequest(rows.length ? `ทุกฉบับในช่วงนี้ยังสร้างแฟ้มไม่ได้ (${bad.length} ฉบับ) — แก้ตามข้อความในรายการก่อน` : 'ไม่มีเอกสารขายในช่วงวันที่นี้');
     const files = ok.map((r) => ({ name: etaxFileName(r.doc), data: buildEtaxXml(r.doc) }));
-    const summary = ['เลขที่,วันที่,ชนิด,ผู้ซื้อ,ยอดรวม,ผล', ...rows.map((r) => [r.h.doc_no, r.h.doc_date, r.doc.typeCode, `"${s(r.h.party_name).replace(/"/g, '""')}"`, String(r.doc.grandTotal), r.errors.length ? `"ข้าม: ${r.errors.join(' · ').replace(/"/g, '""')}"` : 'สร้างแฟ้มแล้ว'].join(','))];
+    const summary = ['เลขที่,วันที่,ชนิด,ผู้ซื้อ,ยอดรวม,ผล', ...rows.map((r) => [r.h.doc_no, r.h.doc_date, r.doc.typeCode, `"${s(r.h.party_name || r.h.cus_name).replace(/"/g, '""')}"`, String(r.doc.grandTotal), r.errors.length ? `"ข้าม: ${r.errors.join(' · ').replace(/"/g, '""')}"` : 'สร้างแฟ้มแล้ว'].join(','))];
     files.push({ name: 'สรุป.csv', data: '﻿' + summary.join('\r\n') + '\r\n' });
     await logActivity(db, a, { module: 'FI.VAT.ETAX', action: 'ETAX_EXPORT', detail: { from: q.from, to: q.to, files: ok.length, skipped: bad.length } });
     reply.header('content-type', 'application/zip').header('content-disposition', `attachment; filename="etax-${q.from.replaceAll('-', '')}-${q.to.replaceAll('-', '')}.zip"`);

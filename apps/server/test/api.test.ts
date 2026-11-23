@@ -5881,6 +5881,49 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const oe = (await call('POST', '/api/v1/trade-import/other-income-docs', { file_name: 'รายได้.xlsx', data: oiFile, doc_type_id: oiType, price_type: '0', vat_rate: 0 })).body;
     expect(oe.errors[0].message).toMatch(new RegExp(`${item.code} ไม่ใช่รหัสรายได้อื่น — ใช้รหัสจาก ขาย › รายละเอียดรายได้อื่น ๆ`));
   });
+  it('HANDOFF 177: documents without a party name (migrated from Express) show the master name in lists, the VAT file, the VAT report and e-Tax', async () => {
+    const me = (await call('GET', '/api/v1/auth/me')).body;
+    const co = me.company.id as string;
+    // ใบขายเชื่อที่มีแฟ้มภาษีขาย ของลูกค้าที่มีเลขผู้เสียภาษี — ทำให้เหมือนข้อมูลที่ย้ายจาก Express รุ่นก่อน (หัวเอกสาร/แฟ้มภาษีไม่มีชื่อ)
+    const iv = (await sql<{ id: string; doc_no: string; customer_id: string; vat_id: string; month: string }>`SELECT h.id, h.doc_no, h.customer_id, v.id AS vat_id, to_char(gp.start_date, 'YYYY-MM') AS month
+        FROM doc_header h JOIN tax_vat_entry v ON v.header_id = h.id AND v.deleted_at IS NULL AND v.vat_kind = 'S' JOIN gl_period gp ON gp.id = v.vat_period_id
+       WHERE h.company_id = ${co} AND h.doc_class = 'IV' AND h.doc_status = 'N' AND h.deleted_at IS NULL AND h.customer_id IS NOT NULL ORDER BY h.doc_date LIMIT 1`.execute(database.db)).rows[0]!;
+    expect(iv).toBeTruthy();
+    const before = (await sql<{ name: string; tax: string | null; br: string | null; addr: string | null }>`SELECT party_name AS name, party_tax_id AS tax, party_tax_branch_no AS br, party_address AS addr FROM doc_header WHERE id = ${iv.id}`.execute(database.db)).rows[0]!;
+    const vBefore = (await sql<{ name: string; tax: string | null; br: string | null }>`SELECT party_name AS name, party_tax_id AS tax, party_tax_branch_no AS br FROM tax_vat_entry WHERE id = ${iv.vat_id}`.execute(database.db)).rows[0]!;
+    const cus = (await sql<{ title: string | null; name: string; tax_id: string | null; tax_branch_no: string | null }>`SELECT title, name, tax_id, tax_branch_no FROM md_customer WHERE id = ${iv.customer_id}`.execute(database.db)).rows[0]!;
+    await sql`UPDATE md_customer SET tax_id = '0505566016991', tax_branch_no = '00000' WHERE id = ${iv.customer_id}`.execute(database.db);
+    const want = [cus.title, cus.name].filter(Boolean).join(' ');
+    await sql`UPDATE doc_header SET party_name = NULL, party_address = NULL, party_tax_id = NULL, party_tax_branch_no = NULL WHERE id = ${iv.id}`.execute(database.db);
+    await sql`UPDATE tax_vat_entry SET party_name = NULL, party_tax_id = NULL, party_tax_branch_no = NULL WHERE id = ${iv.vat_id}`.execute(database.db);
+    try {
+      // หน้ารายการขายเงินเชื่อ: ชื่อจากข้อมูลหลัก · ค้นด้วยชื่อลูกค้าก็พบ
+      const row = (await call('GET', `/api/v1/sales-invoices?q=${encodeURIComponent(iv.doc_no)}&status=all`)).body.rows.find((r: { id: string }) => r.id === iv.id);
+      expect(row.party_name).toBe(want);
+      expect((await call('GET', `/api/v1/sales-invoices?q=${encodeURIComponent(cus.name)}&status=all&limit=1000`)).body.rows.some((r: { id: string }) => r.id === iv.id)).toBe(true);
+      // แฟ้มภาษีขาย: ชื่อ เลขผู้เสียภาษี สาขา จากข้อมูลหลัก
+      const vr = (await call('GET', `/api/v1/vat/S?header_id=${iv.id}&status=all`)).body.rows.find((r: { id: string }) => r.id === iv.vat_id);
+      expect([vr.party_name, vr.party_tax_id, vr.party_tax_branch_no]).toEqual([want, '0505566016991', '00000']);
+      // รายงานภาษีขาย 6.3
+      const rep = (await call('POST', '/api/v1/rpt/6.3/run', { params: { period: iv.month } })).body;
+      const line = (rep.rows as Array<{ c?: { doc?: string; name?: string; tax?: string } }>).find((r) => r.c?.doc === iv.doc_no);
+      expect([line?.c?.name, line?.c?.tax]).toEqual([want, '0505566016991']);
+      // e-Tax: ผู้ซื้อจากข้อมูลหลัก
+      const ex = (await call('GET', `/api/v1/etax/docs?from=2000-01-01&to=2099-12-31`)).body;
+      const er = (ex.rows ?? []).find((r: { id: string }) => r.id === iv.id);
+      if (er) expect(er.party_name).toBe(want);
+    } finally {
+      await sql`UPDATE doc_header SET party_name = ${before.name}, party_tax_id = ${before.tax}, party_tax_branch_no = ${before.br}, party_address = ${before.addr} WHERE id = ${iv.id}`.execute(database.db);
+      await sql`UPDATE tax_vat_entry SET party_name = ${vBefore.name}, party_tax_id = ${vBefore.tax}, party_tax_branch_no = ${vBefore.br} WHERE id = ${iv.vat_id}`.execute(database.db);
+      await sql`UPDATE md_customer SET tax_id = ${cus.tax_id}, tax_branch_no = ${cus.tax_branch_no} WHERE id = ${iv.customer_id}`.execute(database.db);
+    }
+    // ใบกำกับอย่างย่อ/แถวที่มีชื่ออยู่แล้วไม่ถูกแทน: ชื่อในแฟ้มภาษีที่ต่างจากลูกค้ายังเป็นค่าเดิม
+    await sql`UPDATE tax_vat_entry SET party_name = 'ชื่อตามใบกำกับ', party_tax_id = NULL WHERE id = ${iv.vat_id}`.execute(database.db);
+    const keep = (await call('GET', `/api/v1/vat/S?header_id=${iv.id}&status=all`)).body.rows.find((r: { id: string }) => r.id === iv.vat_id);
+    expect([keep.party_name, keep.party_tax_id]).toEqual(['ชื่อตามใบกำกับ', null]);
+    await sql`UPDATE tax_vat_entry SET party_name = ${vBefore.name}, party_tax_id = ${vBefore.tax} WHERE id = ${iv.vat_id}`.execute(database.db);
+  });
+
   it('HANDOFF 176: closed year blocks period unlock · 3-year comparative statements (BAL LY2) · prior-year balances 2 years back', async () => {
     const start = cookie;
     const login = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };

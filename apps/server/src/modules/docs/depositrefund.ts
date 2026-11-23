@@ -23,6 +23,7 @@ import { periodFor } from '../gl/journals.js';
 import { cancelDocument, postDocument, unpostDocument, docNoFor, docNoInput } from './engine.js';
 import { checkReceivedDeposits, clearDepositLinks, depositsSchema, readDepositLinks, writeDepositLinks } from './deposits.js';
 import { clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, saveBranch, writePayments } from './payments.js';
+import { partyNameSql } from './party-name.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -118,12 +119,12 @@ export function depositRefundRoutes(app: FastifyInstance, db: Db) {
       sql`h.company_id = ${a.companyId}`, sql`h.doc_class = ${K.cls}`, sql`h.deleted_at IS NULL`, ...(a.branchId ? [sql`h.branch_id = ${a.branchId}`] : []),
       ...(q.from ? [sql`h.doc_date >= ${q.from}`] : []), ...(q.to ? [sql`h.doc_date <= ${q.to}`] : []),
       ...(q.party_id ? [sql`h.customer_id = ${q.party_id}`] : []), ...(q.status !== 'all' ? [sql`h.doc_status = ${q.status}`] : []), ...(q.type_id ? [sql`h.doc_type_id = ${q.type_id}`] : []),
-      ...(like ? [sql`(h.doc_no ILIKE ${like} OR h.party_name ILIKE ${like} OR p.code ILIKE ${like} OR h.your_ref ILIKE ${like}
+      ...(like ? [sql`(h.doc_no ILIKE ${like} OR ${partyNameSql('h', 'p')} ILIKE ${like} OR p.code ILIKE ${like} OR h.your_ref ILIKE ${like}
         OR EXISTS (SELECT 1 FROM doc_link l JOIN doc_header f ON f.id = l.from_header_id WHERE l.to_header_id = h.id AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL AND f.doc_no ILIKE ${like}))`] : []),
     ], sql` AND `);
     const from = sql`FROM doc_header h LEFT JOIN md_customer p ON p.id = h.customer_id WHERE ${where}`;
     const total = (await sql<{ n: number }>`SELECT count(*) AS n ${from}`.execute(db)).rows[0]!.n;
-    const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.party_name, p.code AS party_code, h.your_ref, h.net_amount, h.cash_amount, h.cheque_amount, h.doc_status,
+    const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, ${partyNameSql('h', 'p')} AS party_name, p.code AS party_code, h.your_ref, h.net_amount, h.cash_amount, h.cheque_amount, h.doc_status,
         (SELECT string_agg(f.doc_no, ', ' ORDER BY f.doc_no) FROM doc_link l JOIN doc_header f ON f.id = l.from_header_id WHERE l.to_header_id = h.id AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL) AS deposit_nos
         ${from} ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT ${q.limit} OFFSET ${q.offset}`.execute(db)).rows;
     return { total: Number(total), rows };

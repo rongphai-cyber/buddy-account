@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { CompiledQuery, sql, type Kysely, type Transaction } from 'kysely';
 import { SETTING_DEFS } from '@buddy/core';
 import type { DB } from '../../db.js';
+import { fillPartyFromMaster } from '../../modules/docs/party-name.js';
 import { dbfRecords, daysInMonth, isoOf, pyFloatParse, pyStrip, PY_WS, type DbfRecord, type DbfValue } from './dbf.js';
 
 /* ================================================================== API */
@@ -1143,6 +1144,9 @@ async function runImport(tx: Transaction<DB>, src: DbfSource, opts: ImportOption
     }
     done('tax_vat_entry', await insert('tax_vat_entry', rows), 'ISVAT');
   }
+  // HANDOFF 177: Express ARTRN/APTRN/OESO/POPR/ISVAT have no party name — fill empty header name/address/tax id/branch from the
+  // customer/supplier master (as screens do on save), then VAT rows from their header, so lists, VAT reports and e-Tax show the party
+  await fillPartyFromMaster(tx as never, COMPANY);
   {
     const rows: Row[] = [];
     for (const r of dbf('ISTAX')) {

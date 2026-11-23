@@ -194,4 +194,26 @@ describe('importExpress on PGlite', () => {
     await importExpress(database.db, memSource(files), { code: 'TESTCO2', tenantId: tenant.id, idNamespace: 'express-import/job-1', userId: user.id });
     expect(await database.db.selectFrom('gl_journal_line').select('id').where('company_id', '=', rep.company_id).execute()).toHaveLength(4);
   });
+
+  it('HANDOFF 177: invoices and VAT rows get the customer name/address/tax id from ARMAS (Express ARTRN/ISVAT carry only the code)', async () => {
+    const f2: Record<string, Buffer> = { ...files };
+    f2.ARMAS = writeDbf([['CUSCOD', 'C', 10], ['PRENAM', 'C', 15], ['CUSNAM', 'C', 40], ['ADDR01', 'C', 30], ['ADDR02', 'C', 30], ['ZIPCOD', 'C', 5], ['TAXID', 'C', 15], ['STATUS', 'C', 1]],
+      [{ v: ['OCIO', 'บริษัท', 'โอซีไอโอ ฮอสพิทาลิตี้ จำกัด', '99 ถนนทดสอบ', 'เมือง เชียงใหม่', '50000', '0505566016991', 'A'] }]);
+    const trF: FieldSpec[] = [['DOCNUM', 'C', 12], ['RECTYP', 'C', 1], ['DOCDAT', 'D', 8], ['CUSCOD', 'C', 10], ['FLGVAT', 'C', 1], ['AMOUNT', 'N', 14], ['TOTAL', 'N', 14], ['VATRAT', 'N', 5], ['VATAMT', 'N', 14], ['NETAMT', 'N', 14], ['DOCSTAT', 'C', 1]];
+    f2.ARTRN = writeDbf(trF, [{ v: ['IV100301001', '3', '2010-03-20', 'OCIO', '1', '1000', '1000', '7', '70', '1070', 'N'] }, { v: ['IV100301002', '3', '2010-03-21', 'OCIO', '0', '500', '500', '0', '0', '500', 'N'] }]);
+    f2.ISVAT = writeDbf([['VATREC', 'C', 1], ['DOCNUM', 'C', 12], ['REFNUM', 'C', 15], ['VATDAT', 'D', 8], ['DOCDAT', 'D', 8], ['AMT01', 'N', 14], ['VAT01', 'N', 14], ['DESCRP', 'C', 40], ['DOCSTAT', 'C', 1]],
+      [{ v: ['S', 'IV100301001', 'IV100301001', '2010-03-20', '2010-03-20', '1000', '70', 'ขายเชื่อ', 'N'] }]);
+    const rep = await importExpress(database.db, memSource(f2), { code: 'TESTCO3', tenantId: null, idNamespace: 'express-import/h177' });
+    const hs = await database.db.selectFrom('doc_header').select(['doc_no', 'party_name', 'party_address', 'party_tax_id', 'party_tax_branch_no', 'vat_amount'])
+      .where('company_id', '=', rep.company_id).where('doc_no', 'like', 'IV1003%').orderBy('doc_no').execute();
+    expect(hs).toEqual([
+      { doc_no: 'IV100301001', party_name: 'บริษัท โอซีไอโอ ฮอสพิทาลิตี้ จำกัด', party_address: '99 ถนนทดสอบ เมือง เชียงใหม่ 50000', party_tax_id: '0505566016991', party_tax_branch_no: '00000', vat_amount: '70.00' },
+      // ขายที่ไม่มี VAT ใน Express (VATAMT 0) = ช่อง "ภาษี" ในรายการว่าง (แสดงว่างเมื่อเป็นศูนย์) — ไม่ใช่ข้อมูลหาย
+      { doc_no: 'IV100301002', party_name: 'บริษัท โอซีไอโอ ฮอสพิทาลิตี้ จำกัด', party_address: '99 ถนนทดสอบ เมือง เชียงใหม่ 50000', party_tax_id: '0505566016991', party_tax_branch_no: '00000', vat_amount: '0.00' },
+    ]);
+    const v = await database.db.selectFrom('tax_vat_entry').select(['party_name', 'party_tax_id', 'party_tax_branch_no']).where('company_id', '=', rep.company_id).execute();
+    expect(v).toEqual([{ party_name: 'บริษัท โอซีไอโอ ฮอสพิทาลิตี้ จำกัด', party_tax_id: '0505566016991', party_tax_branch_no: '00000' }]);
+    // บริษัทอื่นไม่ถูกแตะ
+    expect((await database.db.selectFrom('doc_header').select('id').where('company_id', '<>', rep.company_id).where('party_name', 'is not', null).execute())).toHaveLength(0);
+  });
 });

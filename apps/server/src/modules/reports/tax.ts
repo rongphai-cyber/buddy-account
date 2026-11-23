@@ -4,6 +4,7 @@ import type { Db } from '../../db.js';
 import { badRequest } from '../../http.js';
 import { defineReport, type Ctx, type P } from './index.js';
 import { pp36Credit, VAT_NEG_CLASSES } from '../vat.js';
+import { vatPartyBranch, vatPartyJoin, vatPartyName, vatPartyTaxId } from '../docs/party-name.js';
 
 /**
  * รายงานภาษี (กลุ่ม 6 + คู่มือบทที่ 16 S-TX-05/08) — จากแฟ้มภาษีซื้อ/ขาย (tax_vat_entry) และแฟ้มภาษีหัก ณ ที่จ่าย (tax_wht_entry) ตามงวดภาษีที่ยื่น
@@ -23,8 +24,8 @@ type V = { tax_invoice_date: string; tax_invoice_no: string; doc_no: string | nu
 async function vatRows(db: Db, a: Ctx, p: P, kind: 'P' | 'S', per: string) {
   // ภ.พ.36 นำส่งในนามบริษัท (สำนักงานใหญ่) — รายงานแยกสาขาอื่นไม่รวม
   const pp36 = kind === 'P' && (p.str('filing') ?? 'normal') !== 'late' && (!p.branchId || p.isHq);
-  return (await sql<V>`SELECT v.tax_invoice_date, v.tax_invoice_no, v.doc_no, CASE WHEN v.vat_kind = 'R' THEN 'PP36' ELSE h.doc_class END AS doc_class, v.party_name, v.party_tax_id, v.party_tax_branch_no, v.base_amount, v.vat_amount, v.zero_rate_amount, v.exempt_amount, v.nonclaim_base, v.nonclaim_vat, v.header_id
-      FROM tax_vat_entry v JOIN gl_period gp ON gp.id = v.vat_period_id LEFT JOIN doc_header h ON h.id = v.header_id LEFT JOIN md_department dp ON dp.id = v.department_id
+  return (await sql<V>`SELECT v.tax_invoice_date, v.tax_invoice_no, v.doc_no, CASE WHEN v.vat_kind = 'R' THEN 'PP36' ELSE h.doc_class END AS doc_class, ${vatPartyName} AS party_name, ${vatPartyTaxId} AS party_tax_id, ${vatPartyBranch} AS party_tax_branch_no, v.base_amount, v.vat_amount, v.zero_rate_amount, v.exempt_amount, v.nonclaim_base, v.nonclaim_vat, v.header_id
+      FROM tax_vat_entry v JOIN gl_period gp ON gp.id = v.vat_period_id LEFT JOIN doc_header h ON h.id = v.header_id ${vatPartyJoin} LEFT JOIN md_department dp ON dp.id = v.department_id
      WHERE v.company_id = ${a.companyId} AND v.deleted_at IS NULL AND v.doc_status <> 'C' ${p.dept(sql`dp.code`)} ${p.branch(sql`v.branch_id`)}
        AND ((v.vat_kind = ${kind} AND to_char(gp.start_date, 'YYYY-MM') = ${per} ${filing(p)})
          ${pp36 ? sql`OR (v.vat_kind = 'R' AND to_char(gp.start_date, 'YYYY-MM') = to_char((${per + '-01'}::date - interval '1 month'), 'YYYY-MM'))` : sql``})

@@ -7,6 +7,7 @@ import { badRequest, notFound, parse, requireCompany, type AuthContext } from '.
 import { checkOwned } from '../owned.js';
 import { logActivity } from '../audit.js';
 import { closingOf, leafTotals, loadChart } from './gl/balances.js';
+import { vatPartyBranch, vatPartyJoin, vatPartyName, vatPartyTaxId } from './docs/party-name.js';
 
 /**
  * แฟ้มภาษีซื้อ/ภาษีขาย (คู่มือบทที่ 16 S-TX-01..08)
@@ -216,10 +217,10 @@ export function vatRoutes(app: FastifyInstance, db: Db) {
         ...(q.month ? [sql`to_char(p.start_date, 'YYYY-MM') = ${q.month}`] : []), ...(q.journal_id ? [sql`v.journal_id = ${q.journal_id}`] : []), ...(q.header_id ? [sql`v.header_id = ${q.header_id}`] : []), ...(q.invoice_id ? [sql`(v.header_id = ${q.invoice_id} OR v.header_id IN (SELECT s.payment_header_id FROM doc_settlement s WHERE s.invoice_header_id = ${q.invoice_id} AND s.company_id = ${a.companyId} AND s.deleted_at IS NULL))`] : []), ...(q.late !== 'all' ? [sql`v.is_late = ${q.late === 'Y'}`] : []), ...(q.status !== 'all' ? [sql`v.doc_status = ${q.status}`] : []),
         ...(like ? [sql`(v.tax_invoice_no ILIKE ${like} OR v.doc_no ILIKE ${like} OR v.party_name ILIKE ${like} OR v.party_tax_id ILIKE ${like} OR v.description ILIKE ${like})`] : [])], sql` AND `);
       const rows = (await sql<{ base_amount: string; vat_amount: string; zero_rate_amount: string; exempt_amount: string; nonclaim_base: string; nonclaim_vat: string; sign: number; doc_status: string }>`
-        SELECT v.id, v.tax_invoice_no, v.tax_invoice_date, v.doc_no, v.doc_date, to_char(p.start_date, 'YYYY-MM') AS month, v.is_late, v.description, v.party_name, v.party_tax_id, v.party_tax_branch_no,
+        SELECT v.id, v.tax_invoice_no, v.tax_invoice_date, v.doc_no, v.doc_date, to_char(p.start_date, 'YYYY-MM') AS month, v.is_late, v.description, ${vatPartyName} AS party_name, ${vatPartyTaxId} AS party_tax_id, ${vatPartyBranch} AS party_tax_branch_no,
                v.base_amount, v.vat_amount, v.zero_rate_amount, v.exempt_amount, v.nonclaim_base, v.nonclaim_vat, v.is_manual, v.is_modified, v.doc_status, v.remark, v.department_id,
                h.id AS header_id, h.doc_class, ${signSql} AS sign
-          FROM tax_vat_entry v JOIN gl_period p ON p.id = v.vat_period_id LEFT JOIN doc_header h ON h.id = v.header_id
+          FROM tax_vat_entry v JOIN gl_period p ON p.id = v.vat_period_id LEFT JOIN doc_header h ON h.id = v.header_id ${vatPartyJoin}
          WHERE ${where} ORDER BY ${kind === 'P' ? sql`v.doc_date, v.doc_no` : sql`v.tax_invoice_date, v.tax_invoice_no`} LIMIT ${q.limit}`.execute(db)).rows;
       const sum = (k: 'base_amount' | 'vat_amount' | 'zero_rate_amount' | 'exempt_amount' | 'nonclaim_base' | 'nonclaim_vat') => rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r[k]).times(r.sign)), d(0)).toFixed(2);
       return { rows, totals: { base: sum('base_amount'), vat: sum('vat_amount'), zero: sum('zero_rate_amount'), exempt: sum('exempt_amount'), nonclaim_base: sum('nonclaim_base'), nonclaim_vat: sum('nonclaim_vat') } };

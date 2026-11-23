@@ -9,6 +9,7 @@ import { checkOwned } from '../../owned.js';
 import { cancelDocument, postDocument, unpostDocument, usedBy } from './engine.js';
 import { saveBranch } from './payments.js';
 import { previewQuery, previewSave } from './preview.js';
+import { partyNameSql } from './party-name.js';
 
 /**
  * ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04): บิลค้าง ณ วันเริ่มใช้ — เลขที่ป้อนเอง ลงวันที่ก่อนเริ่มใช้
@@ -168,13 +169,13 @@ export function openingRoutes(app: FastifyInstance, db: Db) {
       const a = requireCompany(req);
       const q = parse(z.object({ q: z.string().optional(), status: z.enum(['N', 'C', 'all']).default('all'), limit: z.coerce.number().int().min(1).max(2000).default(500) }), req.query);
       const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
-      const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.due_date, h.ref_no, h.party_name, p.code AS party_code, h.net_amount, h.vat_basis, h.doc_status,
+      const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.due_date, h.ref_no, ${partyNameSql('h', 'p')} AS party_name, p.code AS party_code, h.net_amount, h.vat_basis, h.doc_status,
           (SELECT o.outstanding FROM ${sql.table(view)} o WHERE o.header_id = h.id) AS outstanding,
           ${K.cls === 'AI' ? sql`(SELECT o.used::numeric(18,2) FROM v_deposit_outstanding o WHERE o.header_id = h.id)` : sql`NULL`} AS used,
           h.source_system, h.source_ref, EXISTS (SELECT 1 FROM gl_journal j WHERE j.source_header_id = h.id AND j.doc_status <> 'C' AND j.deleted_at IS NULL) AS posted
           FROM doc_header h LEFT JOIN ${sql.table(partyTbl)} p ON p.id = h.${sql.ref(partyCol)}
          WHERE h.company_id = ${a.companyId} AND h.doc_class = ${K.cls} AND h.is_opening AND h.deleted_at IS NULL ${a.branchId ? sql`AND h.branch_id = ${a.branchId}` : sql``}
-           ${q.status !== 'all' ? sql`AND h.doc_status = ${q.status}` : sql``} ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.party_name ILIKE ${like} OR p.code ILIKE ${like} OR h.ref_no ILIKE ${like} OR h.source_ref ILIKE ${like})` : sql``}
+           ${q.status !== 'all' ? sql`AND h.doc_status = ${q.status}` : sql``} ${like ? sql`AND (h.doc_no ILIKE ${like} OR ${partyNameSql('h', 'p')} ILIKE ${like} OR p.code ILIKE ${like} OR h.ref_no ILIKE ${like} OR h.source_ref ILIKE ${like})` : sql``}
          ORDER BY p.code, h.doc_date, h.doc_no LIMIT ${q.limit}`.execute(db)).rows as Array<{ outstanding: string | null; doc_status: string }>;
       const start = await startDate(db, a.companyId);
       // บัญชีพักยอดยกมา (บทบาท OPENING_BALANCE) = บัญชีคู่ค่าเริ่มต้นของหน้าจอ
