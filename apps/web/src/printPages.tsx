@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { blankRowCount, pageLabel, planPages, shrinkToFit } from '@buddy/core';
 
 /**
  * แบ่งหน้าเอกสารพิมพ์ + เลขหน้า (HANDOFF 153 — เจ้าของ: เอกสารยาวหลายหน้า ต้องแสดงเลขที่หน้าเอกสารด้วย)
@@ -9,6 +10,10 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
  * - เลขหน้า "หน้า 1/2" (แบบฟอร์มอังกฤษ "Page 1 of 2") มุมขวาล่างของทุกหน้า · หน้าเดียว = ไม่พิมพ์เลขหน้า · แต่ละสำเนา (ต้นฉบับ/สำเนา) เริ่มหน้า 1 ใหม่
  * - บรรทัดว่างเติมตาราง (บรรทัดขั้นต่ำ) อยู่หน้าสุดท้ายเท่าที่ที่ว่างพอ
  * วัดจากหน้าจอ (ความกว้างแผ่นคงที่ 210 มม. เท่ากระดาษ) — ใช้ทั้งกรอบพิมพ์ (printFrame) และตัวอย่างบนจอ (PagedSheets)
+ *
+ * HANDOFF 178 (เจ้าของ 23/11/2569): ยอดรวมชิดล่างเหนือช่องลงชื่อ (CSS .ds-sum margin-top:auto) · ที่ว่างระหว่างรายการกับยอดรวม
+ * เติมบรรทัดว่างตามแบบฟอร์ม (data-blank = lines/zebra · none = ว่าง) · ตัวเลขไม่ตัดบรรทัด (ย่ออักษรให้พอดีช่อง)
+ * · หน้าที่พอดีกระดาษติด .ds-fit (พิมพ์สูงเท่ากระดาษพอดี = หนึ่งแผ่น ไม่ล้นไปแผ่นที่ 2) — คำนวณหน้า/บรรทัดว่างใน core print-paging
  */
 const MM = 96 / 25.4;
 /** ที่ว่างล่างหน้าสำหรับเลขหน้า (นอกเหนือจากขอบล่างของแผ่น) */
@@ -17,10 +22,49 @@ const pageMm = (s: Element) => (s.classList.contains('b-half') ? 148 : s.classLi
 
 type Group = { rows: HTMLTableRowElement[]; h: number; fill: boolean };
 
+/** ตัวเลข (ราคา จำนวนเงิน ยอดรวม) ไม่ตัดบรรทัด: กว้างเกินช่อง = ย่ออักษรลงจนพอดี (ไม่ต่ำกว่า 70%) */
+function fitNumbers(sheet: HTMLElement): void {
+  for (const td of sheet.querySelectorAll<HTMLElement>('table.ds-lines td.r, table.ds-totals td.r')) {
+    td.style.fontSize = '';
+    const k = shrinkToFit(td.scrollWidth, td.clientWidth);
+    if (k < 1) td.style.fontSize = `${k}em`;
+  }
+}
+
+/** เติมบรรทัดว่างในที่ว่างระหว่างตารางรายการกับยอดรวม (หน้าเดียว/หน้าสุดท้าย) ตามแบบฟอร์ม */
+function fillBlank(sheet: HTMLElement): void {
+  const mode = sheet.dataset.blank;
+  const win = sheet.ownerDocument.defaultView;
+  const table = sheet.querySelector<HTMLTableElement>(':scope > table.ds-lines');
+  const tb = table?.tBodies[0];
+  const sum = sheet.querySelector<HTMLElement>(':scope > .ds-sum');
+  if (!win || (mode !== 'lines' && mode !== 'zebra') || !table || !tb || !sum || table.nextElementSibling !== sum) return;
+  const ncol = table.querySelectorAll(':scope > colgroup > col').length || table.tHead?.rows[0]?.cells.length || 1;
+  const make = () => {
+    const tr = sheet.ownerDocument.createElement('tr');
+    tr.className = 'ds-fill ds-blank';
+    for (let i = 0; i < ncol; i++) { const td = sheet.ownerDocument.createElement('td'); td.innerHTML = '&nbsp;'; tr.appendChild(td); }
+    return tr;
+  };
+  const gap = parseFloat(win.getComputedStyle(sheet).rowGap) || 0;
+  const free = sum.getBoundingClientRect().top - table.getBoundingClientRect().bottom - gap;
+  const first = make();
+  tb.appendChild(first);
+  const h = first.getBoundingClientRect().height;
+  const n = blankRowCount(free, h);
+  if (!n) { first.remove(); return; }
+  for (let i = 1; i < n; i++) tb.appendChild(make());
+  // กันล้นหน้า (ปัดเศษ/เส้นขอบ): แผ่นสูงเกินกระดาษ = เอาบรรทัดว่างออกทีละบรรทัด
+  const pageH = pageMm(sheet) * MM;
+  const blanks = [...tb.querySelectorAll<HTMLTableRowElement>('tr.ds-blank')];
+  while (blanks.length && sheet.getBoundingClientRect().height > pageH + 1) blanks.pop()!.remove();
+}
+
 function paginate(sheet: HTMLElement): void {
   const win = sheet.ownerDocument.defaultView;
   if (!win || sheet.dataset.paged) return;
   sheet.dataset.paged = '1';
+  fitNumbers(sheet);
   const table = sheet.querySelector<HTMLTableElement>(':scope > table.ds-lines');
   const tb = table?.tBodies[0];
   const kids = [...sheet.children] as HTMLElement[];
@@ -29,7 +73,7 @@ function paginate(sheet: HTMLElement): void {
   const padB = parseFloat(win.getComputedStyle(sheet).paddingBottom) || 0;
   const contentBottom = Math.max(...kids.map((k) => k.getBoundingClientRect().bottom)) - top;
   const pageH = pageMm(sheet) * MM;
-  if (contentBottom + padB <= pageH + 1) return;
+  if (contentBottom + padB <= pageH + 1) { sheet.classList.add('ds-fit'); fillBlank(sheet); return; }
 
   // แถวรายการเป็นกลุ่ม (แถว + แถวหมายเหตุของแถวนั้น) · ความสูงรวมเส้นขอบ = ระยะจากก้นกลุ่มก่อนหน้า
   const groups: Group[] = [];
@@ -46,18 +90,7 @@ function paginate(sheet: HTMLElement): void {
   const avail = pageH - padB - RESERVE_MM * MM - headPart;
   if (avail <= 0) return;
 
-  const pages: Group[][] = [];
-  let cur: Group[] = [], used = 0;
-  for (const g of groups.filter((x) => !x.fill)) {
-    if (cur.length && used + g.h > avail) { pages.push(cur); cur = []; used = 0; }
-    cur.push(g); used += g.h;
-  }
-  if (used + tailNeed > avail) {
-    if (cur.length > 1) { const moved = cur.pop()!; pages.push(cur); cur = [moved]; used = moved.h; }
-    else if (cur.length === 1 && tailNeed < avail) { pages.push(cur); cur = []; used = 0; }
-  }
-  for (const g of groups.filter((x) => x.fill)) { if (used + g.h + tailNeed > avail) break; cur.push(g); used += g.h; }
-  pages.push(cur);
+  const pages: Group[][] = planPages(groups, avail, tailNeed).map((p) => p.map((i) => groups[i]!));
 
   const n = pages.length;
   const en = sheet.getAttribute('lang') === 'en';
@@ -66,7 +99,7 @@ function paginate(sheet: HTMLElement): void {
   const out = pages.map((pg, k) => {
     const keep = new Set(pg.flatMap((g) => g.rows.map((r) => index.get(r)!)));
     const c = sheet.cloneNode(true) as HTMLElement;
-    c.classList.add('ds-page');
+    c.classList.add('ds-page', 'ds-fit');
     const ct = c.querySelector<HTMLTableElement>(':scope > table.ds-lines')!;
     for (const r of [...ct.tBodies[0]!.rows]) if (!keep.has(Number(r.dataset.pr))) r.remove();
     if (k < n - 1) {
@@ -77,13 +110,14 @@ function paginate(sheet: HTMLElement): void {
     if (n > 1) {
       const lab = c.ownerDocument.createElement('div');
       lab.className = 'ds-pageno';
-      lab.textContent = en ? 'Page ' + (k + 1) + ' of ' + n : 'หน้า ' + (k + 1) + '/' + n;
+      lab.textContent = pageLabel(k + 1, n, en);
       c.appendChild(lab);
     }
     return c;
   });
   for (const c of out) sheet.before(c);
   sheet.remove();
+  fillBlank(out[out.length - 1]!);
 }
 
 /** แบ่งหน้าทุกแผ่นเอกสารใน root (แผ่นที่แบ่งแล้วข้าม) */

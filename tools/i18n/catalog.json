@@ -37519,6 +37519,13 @@
 ]
 },
 {
+"th": "พื้นที่ว่างในตาราง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
 "th": "พุทธศักราช",
 "n": 1,
 "files": [
@@ -40127,6 +40134,13 @@
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ยอดรวม จำนวนเงินตัวอักษร และหมายเหตุ อยู่ชิดล่างเหนือช่องลงชื่อเสมอ — ที่ว่างระหว่างรายการกับยอดรวมแสดงเป็น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PrintForms.tsx"
 ]
 },
 {
@@ -47480,6 +47494,13 @@
 ]
 },
 {
+"th": "ว่าง (ไม่มีเส้น)",
+"n": 1,
+"files": [
+"packages/core/src/print-paging.ts"
+]
+},
+{
 "th": "ว่าง = {0}",
 "n": 1,
 "files": [
@@ -49769,17 +49790,17 @@
 ]
 },
 {
-"th": "หน้า",
-"n": 1,
-"files": [
-"apps/web/src/printPages.tsx"
-]
-},
-{
 "th": "หน้า {0} / {1}",
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Journals.tsx"
+]
+},
+{
+"th": "หน้า {0}/{1}",
+"n": 1,
+"files": [
+"packages/core/src/print-paging.ts"
 ]
 },
 {
@@ -57371,6 +57392,13 @@
 ]
 },
 {
+"th": "เส้นบรรทัด",
+"n": 1,
+"files": [
+"packages/core/src/print-paging.ts"
+]
+},
+{
 "th": "เหตุการณ์ (รหัส)",
 "n": 1,
 "files": [
@@ -57924,6 +57952,13 @@
 ]
 },
 {
+"th": "แก้ช่องลงชื่อ ข้อความท้ายเอกสาร และพื้นที่ว่างในตาราง ของแบบฟอร์มนี้",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
+]
+},
+{
 "th": "แก้ภาษี",
 "n": 1,
 "files": [
@@ -58257,6 +58292,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Branches.tsx"
+]
+},
+{
+"th": "แถบสีสลับบรรทัด",
+"n": 1,
+"files": [
+"packages/core/src/print-paging.ts"
 ]
 },
 {
@@ -64291,6 +64333,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/WhtCert.tsx"
+]
+},
+{
+"th": "✎ แก้ไขส่วนท้าย",
+"n": 1,
+"files": [
+"apps/web/src/components/DocPrint.tsx"
 ]
 },
 {

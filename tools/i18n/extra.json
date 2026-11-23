@@ -2969,5 +2969,13 @@
  "ใช้ทำงบการเงินเปรียบเทียบ (คอลัมน์ปีที่แล้ว / 2 ปีก่อน สำหรับงบเปรียบเทียบ 3 ปี) — ป้อนเมื่อปีนั้นไม่มีใบสำคัญในโปรแกรม เช่น เริ่มใช้กลางปีหรือย้ายมาจากโปรแกรมอื่น · ไม่กระทบยอดปีปัจจุบัน (ยอดยกมาปีนี้ป้อนที่หน้าบันทึกยอดยกมา)": "Used for comparative financial statements (last-year / 2-years-ago columns for 3-year comparatives) — enter when that year has no vouchers in the program, e.g. you started mid-year or migrated from another program · Does not affect current-year balances (enter this year's opening balances on the Opening Balance page)",
  "⚠️ ปี {0} ยังไม่ได้ประมวลผลสิ้นปี — มีปีบัญชีที่ยังเปิดอยู่เกิน 3 ปี ควรตรวจและประมวลผลสิ้นปีตามลำดับ เพื่อให้ยอดยกมาแต่ละปีต่อเนื่องและแก้ไขย้อนหลังไม่ได้": "⚠️ Year {0} has not been through Year-end Closing — more than 3 fiscal years are still open. Review them and run Year-end Closing in order so each year's opening balances stay continuous and past entries are locked",
  "🔒 ประมวลผลสิ้นปีแล้ว": "🔒 Year-end Closing done",
- "🔒 ปิดปีแล้ว": "🔒 Year closed"
+ "🔒 ปิดปีแล้ว": "🔒 Year closed",
+ "พื้นที่ว่างในตาราง": "Blank area in the table",
+ "ยอดรวม จำนวนเงินตัวอักษร และหมายเหตุ อยู่ชิดล่างเหนือช่องลงชื่อเสมอ — ที่ว่างระหว่างรายการกับยอดรวมแสดงเป็น": "Totals, amount in words and remarks always sit at the bottom, right above the signature boxes — the space between the items and the totals is shown as",
+ "ว่าง (ไม่มีเส้น)": "Blank (no lines)",
+ "หน้า {0}/{1}": "Page {0}/{1}",
+ "เส้นบรรทัด": "Ruled lines",
+ "แก้ช่องลงชื่อ ข้อความท้ายเอกสาร และพื้นที่ว่างในตาราง ของแบบฟอร์มนี้": "Edit the signature boxes, footer text and table blank area of this form",
+ "แถบสีสลับบรรทัด": "Alternating color bands",
+ "✎ แก้ไขส่วนท้าย": "✎ Edit footer"
 }

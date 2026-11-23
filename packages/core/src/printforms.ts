@@ -1,5 +1,6 @@
 import { BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from './doc-calc.js';
 import { d, type MoneyInput } from './money.js';
+import { PRINT_BLANK_AREAS, type PrintBlankArea } from './print-paging.js';
 
 /**
  * แบบฟอร์มพิมพ์เอกสาร (คู่มือบทที่ 25 S-RD-01/02 · บทที่ 3 S-UI-08/10)
@@ -61,6 +62,11 @@ export interface PrintLayout {
   co_name2_pt: number; co_name2_color: string;
   top_bar: string;
   font: string;
+  /**
+   * HANDOFF 178 (เจ้าของ 23/11/2569): ยอดรวม/จำนวนเงินตัวอักษร/หมายเหตุ ชิดล่างเหนือช่องลงชื่อเสมอ — ที่ว่างระหว่างรายการกับยอดรวม
+   * lines = เติมบรรทัดว่างมีเส้น · zebra = แถบสีสลับบรรทัด · none = ว่าง
+   */
+  blank_area: PrintBlankArea;
 }
 export type PrintAlign = 'left' | 'center' | 'right';
 export const PRINT_ALIGNS: Array<{ key: PrintAlign; label: string }> = [{ key: 'left', label: 'ซ้าย' }, { key: 'center', label: 'กลาง' }, { key: 'right', label: 'ขวา' }];
@@ -189,9 +195,9 @@ export function docPath(docClass: string | null | undefined, id: string, isOpeni
 
 /** คอลัมน์ที่เลือกได้ของแต่ละกลุ่มเอกสาร (key ตรงกับข้อมูลบรรทัดที่ API พิมพ์ส่งมา) */
 export const PRINT_COLUMNS: Record<PrintFamily, Array<Omit<PrintColumn, 'show'> & { show?: boolean }>> = {
-  trade: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'รหัสสินค้า', label_en: 'Item Code', width: 14, align: 'l' }, { key: 'name', label: 'รายละเอียด', label_en: 'Description', width: 34, align: 'l' },
+  trade: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'รหัสสินค้า', label_en: 'Item Code', width: 14, align: 'l' }, { key: 'name', label: 'รายละเอียด', label_en: 'Description', width: 30, align: 'l' },
     { key: 'wh', label: 'คลัง', label_en: 'WH', width: 7, align: 'c', show: false }, { key: 'qty', label: 'จำนวน', label_en: 'Qty', width: 9, align: 'r' }, { key: 'unit', label: 'หน่วย', label_en: 'Unit', width: 8, align: 'c' },
-    { key: 'price', label: 'ราคา/หน่วย', label_en: 'Unit Price', width: 11, align: 'r' }, { key: 'disc', label: 'ส่วนลด', label_en: 'Discount', width: 8, align: 'r' }, { key: 'amount', label: 'จำนวนเงิน', label_en: 'Amount', width: 13, align: 'r' }],
+    { key: 'price', label: 'ราคา/หน่วย', label_en: 'Unit Price', width: 13, align: 'r' }, { key: 'disc', label: 'ส่วนลด', label_en: 'Discount', width: 8, align: 'r' }, { key: 'amount', label: 'จำนวนเงิน', label_en: 'Amount', width: 15, align: 'r' }],
   settle: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'เลขที่เอกสาร', label_en: 'Document No.', width: 18, align: 'l' }, { key: 'ref_date', label: 'ลงวันที่', label_en: 'Date', width: 12, align: 'c' },
     { key: 'due_date', label: 'ครบกำหนด', label_en: 'Due Date', width: 12, align: 'c' }, { key: 'name', label: 'รายการ', label_en: 'Description', width: 22, align: 'l', show: false }, { key: 'ref_amount', label: 'ยอดตามเอกสาร', label_en: 'Document Amount', width: 15, align: 'r' }, { key: 'amount', label: 'ยอดชำระ', label_en: 'Paid', width: 15, align: 'r' }],
   bill: [{ key: 'no', label: 'ลำดับ', label_en: 'No.', width: 6, align: 'c' }, { key: 'code', label: 'เลขที่เอกสาร', label_en: 'Document No.', width: 18, align: 'l' }, { key: 'ref_date', label: 'ลงวันที่', label_en: 'Date', width: 13, align: 'c' },
@@ -239,8 +245,8 @@ const HEAD: Record<PrintFamily, string[]> = {
 export function defaultLayout(scope: string, base: PrintBase, title = ''): PrintLayout {
   const fam = printFamily(scope);
   const small = base === 'half';
-  // มืออาชีพ: รหัสสินค้ากว้างพอไม่ตัดบรรทัด · ไม่เติมบรรทัดว่าง (ไม่มีเส้นแนวตั้ง)
-  const proW: Record<string, number> = base === 'pro' ? { code: 17, name: 29, unit: 10 } : {};
+  // มืออาชีพ: รหัสสินค้ากว้างพอไม่ตัดบรรทัด · ไม่เติมบรรทัดว่าง (ไม่มีเส้นแนวตั้ง) · ราคา/จำนวนเงินกว้างพอยอดหลักล้าน (HANDOFF 178)
+  const proW: Record<string, number> = base === 'pro' ? { code: 17, name: 25, unit: 10 } : {};
   return {
     title, title_en: '', copies: fam === 'trade' && !['QT', 'SO', 'PO'].includes(scope) ? ['ต้นฉบับ', 'สำเนา'] : [], reprint_copy: true,
     font_pt: small ? 9 : base === 'cont' ? 11 : 10,
@@ -254,6 +260,8 @@ export function defaultLayout(scope: string, base: PrintBase, title = ''): Print
     co_align: 'left', title_align: 'right', co_name_pt: 0, co_name_color: '', co_info_pt: 0, co_info_color: '', title_pt: 0, title_color: '',
     band_color: '', band_text_color: '', body_pt: 0, body_color: '', lang: 'th', signatures_en: SIGN_EN[fam],
     logo_v: 'top', co_v: 'top', title_v: 'top', co_name2_pt: 0, co_name2_color: '', top_bar: '', font: '',
+    // กระดาษที่พิมพ์หัว/เส้นไว้แล้ว และกระดาษต่อเนื่อง ไม่พิมพ์เส้นเพิ่ม
+    blank_area: base === 'plain' || base === 'cont' ? 'none' : 'lines',
   };
 }
 
@@ -298,6 +306,7 @@ export function normalizeLayout(scope: string, base: PrintBase, raw: unknown): P
     co_name2_pt: pt(x.co_name2_pt), co_name2_color: color(x.co_name2_color),
     top_bar: x.top_bar === 'none' ? 'none' : color(x.top_bar),
     font: PRINT_FONTS.some((f) => f.key === x.font) ? (x.font as string) : '',
+    blank_area: PRINT_BLANK_AREAS.some((o) => o.key === x.blank_area) ? (x.blank_area as PrintBlankArea) : def.blank_area,
   };
 }
 

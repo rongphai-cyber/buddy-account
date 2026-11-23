@@ -652,7 +652,7 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .doc-sheet.b-half table.ds-lines th, .doc-sheet.b-half table.ds-lines td { border-left: 1px solid #000; border-right: 1px solid #000; }
 .doc-sheet table.ds-lines tfoot td { border-top: 1px solid #000; border-bottom: 2px solid #000; font-weight: 700; padding: 1mm 1.5mm; }
 .doc-sheet .r { text-align: right; } .doc-sheet .c { text-align: center; } .doc-sheet .l { text-align: left; }
-.doc-sheet .ds-sum { display: grid; grid-template-columns: 1fr auto; gap: 6mm; align-items: start; }
+.doc-sheet .ds-sum { display: grid; grid-template-columns: 1fr auto; gap: 6mm; align-items: start; margin-top: auto; }
 .doc-sheet .ds-baht { font-weight: 600; border: 1px solid #000; padding: 1mm 3mm; display: inline-block; }
 .doc-sheet.b-plain .ds-baht { border: 0; padding: 0; }
 .doc-sheet .ds-totals { border-collapse: collapse; min-width: 75mm; }
@@ -664,7 +664,7 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .doc-sheet .ds-jnl { width: 100%; }
 .doc-sheet .ds-jnl th, .doc-sheet .ds-jnl td { border: 1px solid #000; padding: .4mm 1.5mm; font-size: .9em; }
 .doc-sheet .ds-notes { margin-top: 2mm; }
-.doc-sheet .ds-sign { display: flex; justify-content: space-around; gap: 6mm; margin-top: auto; padding-top: 8mm; text-align: center; }
+.doc-sheet .ds-sign { display: flex; justify-content: space-around; gap: 6mm; padding-top: 8mm; text-align: center; }
 .doc-sheet.b-half .ds-sign { padding-top: 4mm; }
 .doc-sheet .ds-sign > div { flex: 1; max-width: 55mm; }
 .doc-sheet .ds-line { border-bottom: 1px dotted #000; height: 8mm; margin-bottom: 1mm; }
@@ -729,6 +729,10 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
   .doc-print .doc-sheet.b-half { page: doc-a5; min-height: 148mm; height: 148mm; overflow: hidden; }
   .doc-print .doc-sheet.b-cont { page: doc-cont; min-height: 11in; }
   .doc-print .doc-sheet:last-child { break-after: auto; }
+  /* หน้าที่พอดีกระดาษ (แบ่งหน้าแล้ว) สูงเท่ากระดาษพอดี — เอกสารหน้าเดียวออกแผ่นเดียว (HANDOFF 178) */
+  .doc-print .doc-sheet.ds-fit, .print-page-body .doc-sheet.ds-fit { height: 297mm; overflow: hidden; }
+  .doc-print .doc-sheet.b-half.ds-fit, .print-page-body .doc-sheet.b-half.ds-fit { height: 148mm; }
+  .doc-print .doc-sheet.b-cont.ds-fit, .print-page-body .doc-sheet.b-cont.ds-fit { height: 11in; }
 }
 .doc-sheet tr.ds-bill td { font-weight: 600; border-top: 1px solid #000; }
 .doc-sheet .ds-lines td.c { white-space: nowrap; }
@@ -758,6 +762,13 @@ table.info-table th { width: 170px; text-align: left; color: var(--muted); font-
 .doc-sheet .ds-head > .ds-co { min-width: 0; overflow-wrap: anywhere; }
 /* เอกสารหลายหน้า (HANDOFF 153 · printPages.tsx): หนึ่งแผ่นต่อหน้ากระดาษ + เลขหน้ามุมขวาล่าง · อ้างอิงเลขที่บิลของใบเสร็จ (เลขที่+วันที่ไม่ตัดบรรทัด) */
 .doc-sheet.ds-page { position: relative; }
+/* HANDOFF 178: ยอดรวมชิดล่างเหนือช่องลงชื่อ (.ds-sum margin-top:auto) · ที่ว่างเติมบรรทัด (printPages.tsx fillBlank) · ตัวเลขไม่ตัดบรรทัด (ย่ออักษร) */
+.doc-sheet table.ds-lines td.r, .doc-sheet table.ds-lines th.r, .doc-sheet .ds-totals td { white-space: nowrap; }
+.doc-sheet[data-blank="lines"] table.ds-lines tbody tr.ds-blank td { border-bottom: 1px solid #c9c9d3; background: transparent; }
+.doc-sheet[data-blank="zebra"] table.ds-lines tbody tr:nth-child(even) td { background: var(--ps, #eef0f8); }
+.doc-sheet[data-blank="zebra"] table.ds-lines tbody tr.ds-blank td { border-bottom: 0; }
+.doc-sheet table.ds-lines tbody tr.ds-blank:last-child td { border-bottom: 1px solid #000; }
+.doc-sheet.b-pro table.ds-lines tbody tr.ds-blank:last-child td { border-bottom: 1.5px solid var(--pa); }
 .doc-sheet .ds-pageno { position: absolute; right: 12mm; bottom: 3.5mm; font-size: 8.5pt; color: #555; white-space: nowrap; }
 .doc-sheet .ds-refs .nw { white-space: nowrap; }
 .doc-sheet.b-pro.no-topbar { padding-top: 6mm; }

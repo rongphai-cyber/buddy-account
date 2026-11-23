@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { DOC_CLASSES, normalizeLayout, PRINT_BASES, PRINT_FONTS, PRINT_LANGS, PRINT_POS9, PRINT_HEAD_FIELDS, printFamily, SETTLE_DETAILS, type PrintAlign, type PrintBase, type PrintFormEntry, type PrintLayout, type PrintVAlign } from '@buddy/core';
+import { DOC_CLASSES, normalizeLayout, PRINT_BASES, PRINT_BLANK_AREAS, PRINT_FONTS, PRINT_LANGS, PRINT_POS9, PRINT_HEAD_FIELDS, printFamily, SETTLE_DETAILS, type PrintAlign, type PrintBase, type PrintFormEntry, type PrintLayout, type PrintVAlign } from '@buddy/core';
 import { api } from '../../api';
 import { useCan } from '../../session';
 import { Confirm, ErrorBox, Field, PageHead, Tabs, toast, useHotkeys, useYearSystem } from '../../ui';
@@ -36,7 +36,8 @@ export function PrintFormsPage() {
   const can = useCan('RP.FORM');
   const [sp, setSp] = useSearchParams();
   const scope = sp.get('scope') ?? 'IV';
-  const [slot, setSlot] = useState(1);
+  // เปิดจากปุ่ม "แก้ไขส่วนท้าย" ในหน้าดูทางจอภาพ (HANDOFF 178): ?slot=n&tab=sign
+  const [slot, setSlot] = useState(() => Number(sp.get('slot')) || 1);
   const forms = useQuery({ queryKey: ['print-forms', scope], queryFn: () => api.get<FormsResp>('/api/v1/print-forms', { scope }) });
   const sample = useQuery({ enabled: !!forms.data?.sample, queryKey: ['print-sample', forms.data?.sample?.id], queryFn: () => api.get<{ data: PrintData }>(`/api/v1/print/${forms.data!.sample!.kind}/${forms.data!.sample!.id}`) });
   const cur = forms.data?.menu.find((f) => f.slot === slot);
@@ -49,7 +50,7 @@ export function PrintFormsPage() {
   const [err, setErr] = useState<unknown>(null);
   const [askDel, setAskDel] = useState(false);
   const [copyFrom, setCopyFrom] = useState('');
-  const [pt, setPt] = useState('gen');
+  const [pt, setPt] = useState(() => sp.get('tab') ?? 'gen');
   useEffect(() => {
     if (!forms.data) return;
     const c = forms.data.custom.find((x) => x.slot === slot);
@@ -189,6 +190,8 @@ export function PrintFormsPage() {
             {L.signatures.map((s, i) => <Field key={`sg${i}${s}`} label={`รูปลายเซ็นช่อง "${s}"`} hint={signList.length ? undefined : 'เพิ่มรูปลายเซ็นด้านบนก่อน'}>
               <select value={L.signature_images[i] ?? ''} onChange={(e) => { const arr = L.signatures.map((_, k) => L.signature_images[k] ?? null); arr[i] = e.target.value || null; set({ signature_images: arr }); }}>
                 <option value="">— เว้นว่างให้เซ็นมือ —</option>{signList.map(([id, x]) => <option key={id} value={id}>{x.name}</option>)}</select></Field>)}
+            <Field label="พื้นที่ว่างในตาราง" wide hint="ยอดรวม จำนวนเงินตัวอักษร และหมายเหตุ อยู่ชิดล่างเหนือช่องลงชื่อเสมอ — ที่ว่างระหว่างรายการกับยอดรวมแสดงเป็น">
+              <select value={L.blank_area} onChange={(e) => set({ blank_area: e.target.value as PrintLayout['blank_area'] })}>{PRINT_BLANK_AREAS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}</select></Field>
             <Field label="ข้อความท้ายเอกสาร" wide><input value={L.footer} maxLength={300} placeholder="เช่น สินค้าซื้อแล้วไม่รับคืน" onChange={(e) => set({ footer: e.target.value })} /></Field>
           </div>}
         </div>

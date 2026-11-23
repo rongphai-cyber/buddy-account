@@ -35,7 +35,7 @@ describe('แบบฟอร์มพิมพ์เอกสาร (S-RD-01/02)
   });
   it('ทำความสะอาดแบบฟอร์ม: คอลัมน์ที่ไม่รู้จักถูกตัด คอลัมน์ใหม่ต่อท้ายแบบซ่อน ค่าที่เกินช่วงใช้ค่าเริ่มต้น', () => {
     const l = normalizeLayout('IV', 'grid', { columns: [{ key: 'amount', label: 'Amount', width: 500 }, { key: 'hack', label: 'x' }, { key: 'name', show: false }], font_pt: 99, min_rows: -5, head_fields: ['due_date', 'bogus'], signatures: ['ก', '', 'ข'] });
-    expect(l.columns.slice(0, 2).map((c) => `${c.key}:${c.label}:${c.width}:${c.show}`)).toEqual(['amount:Amount:80:true', 'name:รายละเอียด:34:false']);
+    expect(l.columns.slice(0, 2).map((c) => `${c.key}:${c.label}:${c.width}:${c.show}`)).toEqual(['amount:Amount:80:true', 'name:รายละเอียด:30:false']);
     expect(l.columns.find((c) => c.key === 'qty')?.show).toBe(false);
     expect([l.font_pt, l.min_rows, l.head_fields, l.signatures]).toEqual([10, 0, ['due_date'], ['ก', 'ข']]);
     expect(defaultLayout('HS', 'half').columns.find((c) => c.key === 'disc')?.show).toBe(false);

@@ -143,7 +143,7 @@ export function PrintSheet({ data, form, ys, images, prior }: { data: PrintData;
   return (
     <>
       {copies.map((cp, ci) => (
-        <div key={ci} className={sheetCls} style={sheetStyle} lang={en ? 'en' : undefined} data-font={L.font || undefined}>
+        <div key={ci} className={sheetCls} style={sheetStyle} lang={en ? 'en' : undefined} data-font={L.font || undefined} data-blank={L.blank_area}>
           {logoAbove && <div className="ds-logo-c"><img src={logo} alt="" style={{ height: `${L.logo_mm}mm` }} /></div>}
           {head(cp)}
           <div className="ds-info">
@@ -284,7 +284,9 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
       <button disabled={!id} onClick={() => setInfo(true)} title="รายละเอียดแฟ้มข้อมูล (Ctrl+I)">ℹ</button>
       <CloseScreen dirty={dirty} />
       {preview && r && <Modal title={`ดูทางจอภาพ — ${preview.slot}. ${preview.name}`} size="wide" onClose={() => setPreview(null)}
-        footer={<><button onClick={() => setPreview(null)}>ปิด</button>{!screenOnly && <button disabled={!can('print') || !id} title="เปิดเอกสารในแท็บใหม่ แล้วพิมพ์/บันทึกเป็น PDF จากหน้านั้น (ใช้เมื่อกดพิมพ์แล้วไม่ออก)" onClick={() => id && window.open(`/print/${kind}/${id}?slot=${preview.slot}`, '_blank')}>↗ เปิดหน้าพิมพ์ในแท็บใหม่</button>}
+        footer={<><button onClick={() => setPreview(null)}>ปิด</button>
+          {canForm('edit') && <button title="แก้ช่องลงชื่อ ข้อความท้ายเอกสาร และพื้นที่ว่างในตาราง ของแบบฟอร์มนี้" onClick={() => nav(`/settings/print-forms?scope=${r.data.scope}&slot=${preview.slot}&tab=sign`)}>✎ แก้ไขส่วนท้าย</button>}
+          {!screenOnly && <button disabled={!can('print') || !id} title="เปิดเอกสารในแท็บใหม่ แล้วพิมพ์/บันทึกเป็น PDF จากหน้านั้น (ใช้เมื่อกดพิมพ์แล้วไม่ออก)" onClick={() => id && window.open(`/print/${kind}/${id}?slot=${preview.slot}`, '_blank')}>↗ เปิดหน้าพิมพ์ในแท็บใหม่</button>}
           {!screenOnly && <button className="primary" disabled={!can('print')} onClick={() => doPrint(preview.slot)}>🖨 พิมพ์</button>}</>}>
         {r.block && <p className="err-msg">{r.block}</p>}
         {r.data.print_count > 0 && preview.layout.reprint_copy && <p className="muted small" data-testid="reprint-note">เอกสารนี้พิมพ์แล้ว {r.data.print_count} ครั้ง — พิมพ์ซ้ำออกเป็น "สำเนา" (ต้นฉบับออกได้ครั้งเดียว · ตั้งที่ แบบฟอร์มพิมพ์เอกสาร › ทั่วไป/กระดาษ)</p>}
