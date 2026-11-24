@@ -155,6 +155,8 @@ export const MENU: MenuItem[] = [
     m('SET.AI', 'AI อ่านบิล (Claude)', 'P7', '/settings/ai'),
     m('SET.PDPA', 'ข้อมูลส่วนบุคคล (PDPA)', 'P0', '/settings/pdpa'),
     m('SET.DEVICE', 'เครื่องสาขา (ออฟไลน์)', 'P7', '/settings/devices'),
+    // HANDOFF 183: แก้วันที่ที่พิมพ์ปี พ.ศ. ในบริษัท ค.ศ. ก่อนรุ่น 182 (เก็บเป็นปี 2400 ขึ้นไป) — เฉพาะผู้ดูแลระบบ
+    m('SET.YEARFIX', 'ตรวจวันที่ปีผิดระบบ (พ.ศ./ค.ศ.)', 'P0', '/settings/year-fix'),
     m('SET.NEWCO', 'กำหนดบริษัทใหม่', 'P0', '/companies/new', ['ch04:S-CO-03']),
     m('SET.TENANT', 'ลูกค้าผู้ใช้บริการ (ผู้ให้บริการ)', 'P0', '/admin/tenants'),
   ]),

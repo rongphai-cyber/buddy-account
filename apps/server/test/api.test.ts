@@ -6069,6 +6069,108 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect((await call('GET', '/api/v1/company/addresses')).body.rows.some((r: { id: string }) => r.id === oldId)).toBe(false);
   });
 
+  it('HANDOFF 183: dates stored 543 years late (BE typed in an AD company) — scan every company date column, fix in one transaction (closed periods, fiscal year code, month ends), trial balance unchanged, log, overlap refused, admin only, other company/tenant untouched', async () => {
+    const start = cookie;
+    const login = async (u: string, pw: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: pw }); };
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { code: 'YFXT', name: 'ลูกค้าวันที่ผิดปี', admin_username: 'yfx.admin', admin_name: 'ผู้ดูแลวันที่', admin_password: 'passYear1234', max_companies: 3 })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { code: 'YFXB', name: 'ลูกค้าอีกรายวันที่', admin_username: 'yfxb.admin', admin_name: 'ผู้ดูแลอีกราย', admin_password: 'passYearB1234' })).status).toBe(200);
+    expect((await login('yfx.admin', 'passYear1234')).status).toBe(200);
+    const co = (await call('POST', '/api/v1/companies', { code: 'YF-A', name_th: 'บริษัทวันที่ผิดปี', fiscal_start: '2025-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    // ปีบัญชีที่พิมพ์ปี พ.ศ. 2567 ในบริษัท ค.ศ. ก่อนรุ่น 182 → เก็บเป็น ค.ศ. 2567 (รหัสปี 3110)
+    expect((await call('POST', '/api/v1/gl/periods/years', { start_date: '2567-01-01' })).status).toBe(200);
+    type Acc = { id: string; account_group: string; is_control: boolean };
+    const accs = ((await call('GET', '/api/v1/gl/accounts')).body as Acc[]).filter((x) => !x.is_control);
+    const [cashA, capA, revA] = ['1', '3', '4'].map((g) => accs.find((x) => x.account_group === g)!) as [Acc, Acc, Acc];
+    const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const jv = (date: string, dr: string, cr: string, amt: string) => call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: date, lines: [{ account_id: dr, debit: amt }, { account_id: cr, credit: amt }] });
+    expect((await jv('2025-03-01', cashA.id, capA.id, '1000')).status).toBe(200);
+    expect((await jv('2567-03-15', cashA.id, revA.id, '500')).status).toBe(200);
+    expect((await call('POST', '/api/v1/company/addresses', { effective_from: '2566-07-17', address_th_1: '17 ถนนเดิม' })).status).toBe(200);
+    const branch = (await sql<{ id: string }>`SELECT id FROM sys_branch WHERE company_id = ${co} AND is_head_office`.execute(database.db)).rows[0]!.id;
+    const dt = (await sql<{ id: string; doc_class: string; module: string }>`SELECT id, doc_class, module FROM md_doc_type WHERE company_id = ${co} AND deleted_at IS NULL ORDER BY code LIMIT 1`.execute(database.db)).rows[0]!;
+    await sql`INSERT INTO doc_header (company_id, branch_id, doc_type_id, doc_class, module, doc_no, doc_date) VALUES (${co}, ${branch}, ${dt.id}, ${dt.doc_class}, ${dt.module}, 'YF-WRONG', '2567-03-20')`.execute(database.db);
+    // ปิดงวดถึง มี.ค. ของปีที่ผิด (ใบสำคัญที่ผิดอยู่ในงวดที่ปิด)
+    type Yr = { code: string; start_date: string; periods: Array<{ id: string; start_date: string; end_date: string; is_locked: boolean }> };
+    const wrongY = ((await call('GET', '/api/v1/gl/periods')).body as Yr[]).find((y) => y.code === '3110')!;
+    expect((await call('POST', `/api/v1/gl/periods/${wrongY.periods[2]!.id}/lock`, { locked: true })).body.changed).toBe(15);
+
+    // บริษัทที่สองของลูกค้าเดียวกัน: ปีที่ผิด (2569 → 2026) จะซ้อนกับปี 2026 ที่มีอยู่ → ปฏิเสธ
+    const co2 = (await call('POST', '/api/v1/companies', { code: 'YF-B', name_th: 'บริษัทปีซ้อน', fiscal_start: '2025-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: co2 });
+    expect((await call('POST', '/api/v1/gl/periods/years', { start_date: '2026-01-01' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/gl/periods/years', { start_date: '2569-01-01' })).status).toBe(200);
+    const s2 = (await call('GET', '/api/v1/tools/year-fix')).body;
+    expect(s2.fiscal_years.map((y: { code: string; new_code: string }) => `${y.code}→${y.new_code}`)).toEqual(['3112→2569']);
+    expect(s2.conflicts).toHaveLength(1);
+    expect(s2.conflicts[0]).toMatch(/ย้ายเป็น 2026-01-01 – 2026-12-31 แล้วจะซ้อนกับปีบัญชี 2569/);
+    const r2 = await call('POST', '/api/v1/tools/year-fix', { expect_total: s2.total });
+    expect([r2.status, r2.body.error.message]).toEqual([409, expect.stringMatching(/^ยังแก้ไม่ได้ — ปีบัญชี 3112/)]);
+    expect((await call('GET', '/api/v1/tools/year-fix')).body.total).toBe(s2.total);
+
+    // ตรวจบริษัทแรก: ทุกช่องวันที่ของบริษัท (จากโครงสร้างจริง) · ตัวอย่างก่อน/หลัง · ปีบัญชี
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const scan = (await call('GET', '/api/v1/tools/year-fix')).body;
+    const byCol = Object.fromEntries(scan.columns.map((c: { table: string; column: string; count: number }) => [`${c.table}.${c.column}`, c.count]));
+    expect(byCol).toEqual({ 'sys_address_history.effective_from': 1, 'gl_fiscal_year.start_date': 1, 'gl_fiscal_year.end_date': 1, 'gl_period.start_date': 12, 'gl_period.end_date': 12, 'doc_header.doc_date': 1, 'gl_journal.voucher_date': 1 });
+    expect(scan.total).toBe(29);
+    expect(scan.conflicts).toEqual([]);
+    expect(scan.fiscal_years).toMatchObject([{ code: '3110', new_code: '2567', start_date: '2567-01-01', new_start: '2024-01-01', end_date: '2567-12-31', new_end: '2024-12-31', conflict: null }]);
+    const pEnd = scan.columns.find((c: { table: string; column: string }) => c.table === 'gl_period' && c.column === 'end_date');
+    expect(pEnd.samples.slice(0, 2)).toEqual([{ label: '1', before: '2567-01-31', after: '2024-01-31' }, { label: '2', before: '2567-02-28', after: '2024-02-29' }]);
+    expect(scan.columns.find((c: { table: string }) => c.table === 'gl_journal').samples[0]).toMatchObject({ before: '2567-03-15', after: '2024-03-15' });
+    expect(scan.columns.find((c: { table: string }) => c.table === 'gl_fiscal_year').table_th).toBe('ปีบัญชี');
+
+    // ผู้ใช้ที่ไม่ใช่ผู้ดูแลระบบ: ตรวจ/แก้ไม่ได้
+    expect((await call('POST', '/api/v1/users', { username: 'yfx.clerk', display_name: 'พนักงานวันที่', password: 'clerkYear123', companies: [co], check_rights: true })).status).toBe(200);
+    expect((await login('yfx.clerk', 'clerkYear123')).status).toBe(200);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: co })).status).toBe(200);
+    expect((await call('GET', '/api/v1/tools/year-fix')).status).toBe(403);
+    expect((await call('POST', '/api/v1/tools/year-fix', { expect_total: 29 })).status).toBe(403);
+
+    // ลูกค้าอื่น (ข้อ 7.1): ใช้บริษัทของตัวเองเท่านั้น (ส่ง company_id มาก็ไม่สน) — ข้อมูลของลูกค้านี้ไม่เปลี่ยน
+    expect((await login('yfxb.admin', 'passYearB1234')).status).toBe(200);
+    const other = (await call('POST', '/api/v1/companies', { code: 'YFB-1', name_th: 'บริษัทลูกค้าอื่น', fiscal_start: '2025-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: other });
+    expect((await call('GET', '/api/v1/tools/year-fix')).body).toMatchObject({ total: 0, columns: [], fiscal_years: [] });
+    const steal = await call('POST', '/api/v1/tools/year-fix', { expect_total: 29, company_id: co });
+    expect([steal.status, steal.body.error.message]).toEqual([400, expect.stringMatching(/ไม่พบวันที่ปีผิดระบบ/)]);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: co })).status).not.toBe(200);
+    const wrongLeft = async (c: string) => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_period WHERE company_id = ${c} AND start_date >= '2400-01-01'`.execute(database.db)).rows[0]!.n;
+    expect([await wrongLeft(co), await wrongLeft(co2)]).toEqual([12, 12]);
+
+    // แก้: จำนวนต้องตรงกับที่ตรวจ · ทรานแซกชันเดียว · งวดปิดแก้ได้ · งบทดลองรายบัญชีเท่าเดิม
+    expect((await login('yfx.admin', 'passYear1234')).status).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const tbAll = async () => (await call('GET', '/api/v1/reports/trial-balance?from=2000-01-01&to=2999-12-31')).body.totals;
+    const before = await tbAll();
+    expect((await call('POST', '/api/v1/tools/year-fix', { expect_total: 28 })).body.error.message).toMatch(/ข้อมูลเปลี่ยนไปตั้งแต่ตรวจครั้งก่อน \(พบ 29 รายการ ไม่ใช่ 28\)/);
+    const fix = await call('POST', '/api/v1/tools/year-fix', { expect_total: 29 });
+    expect(fix.status, JSON.stringify(fix.body)).toBe(200);
+    expect(fix.body).toMatchObject({ total: 29, fiscal_years: [{ code: '3110', new_code: '2567' }], check: { same: true, diff: [], before: { debit: '1500.00', credit: '1500.00' }, after: { debit: '1500.00', credit: '1500.00' } } });
+    expect(fix.body.check.accounts).toBe(3);
+    expect(await tbAll()).toEqual(before);
+    expect((await call('GET', '/api/v1/tools/year-fix')).body).toMatchObject({ total: 0, columns: [], fiscal_years: [], conflicts: [] });
+    expect((await call('GET', '/api/v1/reports/trial-balance?from=2024-01-01&to=2024-12-31')).body.totals.debit).toBe('500.00');
+    const years = (await call('GET', '/api/v1/gl/periods')).body as Yr[];
+    expect(years.map((y) => `${y.code}:${String(y.start_date).slice(0, 10)}`)).toEqual(['2567:2024-01-01', '2568:2025-01-01']);
+    const y24 = years[0]!.periods;
+    expect([String(y24[1]!.end_date).slice(0, 10), String(y24[2]!.start_date).slice(0, 10), y24.map((p) => p.is_locked)]).toEqual(['2024-02-29', '2024-03-01', [true, true, true, false, false, false, false, false, false, false, false, false]]);
+    const j = (await sql<{ voucher_date: string; ok: boolean }>`SELECT j.voucher_date::text AS voucher_date, j.voucher_date BETWEEN p.start_date AND p.end_date AS ok FROM gl_journal j JOIN gl_period p ON p.id = j.period_id WHERE j.company_id = ${co} ORDER BY j.voucher_date`.execute(database.db)).rows;
+    expect(j).toEqual([{ voucher_date: '2024-03-15', ok: true }, { voucher_date: '2025-03-01', ok: true }]);
+    expect((await sql<{ d: string }>`SELECT doc_date::text AS d FROM doc_header WHERE company_id = ${co} AND doc_no = 'YF-WRONG'`.execute(database.db)).rows[0]!.d).toBe('2024-03-20');
+    expect((await call('GET', '/api/v1/company/addresses')).body.rows.map((r: { effective_from: string }) => r.effective_from)).toContain('2023-07-17');
+    const log = (await sql<{ table_name: string | null; detail: { column?: string; count?: number; total?: number; samples?: Array<{ before: string; after: string }> } }>`SELECT table_name, detail FROM sys_activity_log WHERE company_id = ${co} AND action = 'FIX_YEAR' ORDER BY seq`.execute(database.db)).rows;
+    expect(log).toHaveLength(8);
+    expect(log.find((r) => r.table_name === 'gl_journal')!.detail).toMatchObject({ column: 'voucher_date', count: 1, samples: [{ before: '2567-03-15', after: '2024-03-15' }] });
+    expect(log.at(-1)!.detail).toMatchObject({ total: 29 });
+    expect((await call('POST', '/api/v1/tools/year-fix', { expect_total: 29 })).body.error.message).toMatch(/ไม่พบวันที่ปีผิดระบบแล้ว/);
+    // บริษัทที่สองไม่ถูกแตะ
+    expect(await wrongLeft(co2)).toBe(12);
+    cookie = start;
+  });
+
   it('HANDOFF 176: closed year blocks period unlock · 3-year comparative statements (BAL LY2) · prior-year balances 2 years back', async () => {
     const start = cookie;
     const login = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };

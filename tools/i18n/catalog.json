@@ -186,7 +186,7 @@
 },
 {
 "th": "สถานะ",
-"n": 86,
+"n": 87,
 "files": [
 "apps/web/src/components/AddressHistory.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -227,6 +227,7 @@
 "apps/web/src/pages/settings/Sync.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
 "apps/web/src/pages/settings/Users.tsx",
+"apps/web/src/pages/settings/YearFix.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "apps/server/src/modules/reports/gl.ts",
@@ -1020,6 +1021,34 @@
 ]
 },
 {
+"th": "เครดิต",
+"n": 32,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/gl/Opening.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/JournalBook.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/web/src/pages/settings/RepostPanel.tsx",
+"apps/web/src/pages/settings/YearFix.tsx",
+"apps/server/src/modules/docs/opening.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/journal-import.ts",
+"packages/core/src/master-import.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ถึง",
 "n": 31,
 "files": [
@@ -1065,28 +1094,24 @@
 ]
 },
 {
-"th": "เครดิต",
+"th": "จำนวน",
 "n": 30,
 "files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/gl/Opening.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
 "apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/JournalBook.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/web/src/pages/settings/RepostPanel.tsx",
-"apps/server/src/modules/docs/opening.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/master-import.ts",
+"apps/web/src/pages/settings/YearFix.tsx",
+"apps/server/src/modules/items.ts",
+"apps/server/src/modules/payroll/master.ts",
+"apps/server/src/modules/payroll/runs.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/check.ts",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/doc-import.ts",
+"packages/core/src/doc-line-rules.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
 ]
@@ -1104,28 +1129,6 @@
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "จำนวน",
-"n": 29,
-"files": [
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/server/src/modules/items.ts",
-"apps/server/src/modules/payroll/master.ts",
-"apps/server/src/modules/payroll/runs.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/check.ts",
-"apps/server/src/modules/reports/stock.ts",
-"packages/core/src/doc-import.ts",
-"packages/core/src/doc-line-rules.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2933,6 +2936,21 @@
 ]
 },
 {
+"th": "กำลังตรวจ…",
+"n": 9,
+"files": [
+"apps/web/src/components/StarterFill.tsx",
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Backup.tsx",
+"apps/web/src/pages/settings/YearFix.tsx",
+"apps/web/src/pages/tools/DocImport.tsx",
+"apps/web/src/pages/tools/MasterImport.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
 "th": "ขนส่งโดย",
 "n": 9,
 "files": [
@@ -3234,20 +3252,6 @@
 "packages/core/src/master-import.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/starter-data.ts"
-]
-},
-{
-"th": "กำลังตรวจ…",
-"n": 8,
-"files": [
-"apps/web/src/components/StarterFill.tsx",
-"apps/web/src/pages/Login.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Backup.tsx",
-"apps/web/src/pages/tools/DocImport.tsx",
-"apps/web/src/pages/tools/MasterImport.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx"
 ]
 },
 {
@@ -4062,6 +4066,16 @@
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "ข้อมูล",
+"n": 6,
+"files": [
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/settings/YearFix.tsx",
+"apps/server/src/http.ts",
+"apps/server/src/modules/notes.ts"
 ]
 },
 {
@@ -5244,6 +5258,17 @@
 ]
 },
 {
+"th": "เฉพาะผู้ดูแลระบบ",
+"n": 5,
+"files": [
+"apps/web/src/pages/settings/Import.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/web/src/pages/settings/YearFix.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/security.ts"
+]
+},
+{
 "th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
 "n": 5,
 "files": [
@@ -5469,6 +5494,15 @@
 ]
 },
 {
+"th": "กลับ",
+"n": 4,
+"files": [
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "กลับไปแก้",
 "n": 4,
 "files": [
@@ -5521,15 +5555,6 @@
 "apps/web/src/pages/settings/Defaults.tsx",
 "apps/web/src/pages/settings/Sync.tsx",
 "packages/core/src/journal-import.ts"
-]
-},
-{
-"th": "ข้อมูล",
-"n": 4,
-"files": [
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/server/src/http.ts",
-"apps/server/src/modules/notes.ts"
 ]
 },
 {
@@ -6434,16 +6459,6 @@
 ]
 },
 {
-"th": "เฉพาะผู้ดูแลระบบ",
-"n": 4,
-"files": [
-"apps/web/src/pages/settings/Import.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/security.ts"
-]
-},
-{
 "th": "เช็คคืน",
 "n": 4,
 "files": [
@@ -7244,6 +7259,14 @@
 "files": [
 "apps/server/src/modules/reports/stock.ts",
 "packages/core/src/starter-data.ts"
+]
+},
+{
+"th": "ช่อง",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -8814,6 +8837,15 @@
 ]
 },
 {
+"th": "แฟ้มบันทึกเหตุการณ์ทำงาน",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/YearFix.tsx",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "แฟ้มภาษีหัก ณ ที่จ่าย",
 "n": 3,
 "files": [
@@ -9519,14 +9551,6 @@
 "files": [
 "apps/web/src/pages/docs/BankRecon.tsx",
 "packages/core/src/menu.ts"
-]
-},
-{
-"th": "กลับ",
-"n": 2,
-"files": [
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/inventory/Counts.tsx"
 ]
 },
 {
@@ -10593,6 +10617,14 @@
 ]
 },
 {
+"th": "ตรวจวันที่ปีผิดระบบ (พ.ศ./ค.ศ.)",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "ตรวจสอบข้อมูล",
 "n": 2,
 "files": [
@@ -10628,6 +10660,13 @@
 "files": [
 "apps/server/src/modules/doc-import.ts",
 "apps/server/src/modules/master-import.ts"
+]
+},
+{
+"th": "ตรวจใหม่",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -15129,14 +15168,6 @@
 ]
 },
 {
-"th": "แฟ้มบันทึกเหตุการณ์ทำงาน",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"packages/core/src/menu.ts"
-]
-},
-{
 "th": "แฟ้มภาษีขาย",
 "n": 2,
 "files": [
@@ -15479,6 +15510,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
+"th": "ไม่ตรง",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx",
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -15903,6 +15942,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "(FIX_YEAR) · งวดที่ปิดอยู่ยังปิดเหมือนเดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -16379,6 +16425,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "(เช่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -19609,6 +19662,13 @@
 ]
 },
 {
+"th": "{0} ย้ายแล้วไม่มีงวดบัญชีรองรับ — เปิดปีบัญชีของวันนั้นก่อนที่ เริ่มระบบ › รอบบัญชี แล้วตรวจใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
 "th": "{0} รหัสผ่าน",
 "n": 1,
 "files": [
@@ -19900,6 +19960,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "{0} › {1}: {2} รายการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -20736,6 +20803,13 @@
 ]
 },
 {
+"th": "} · กด \"แก้วันที่ทั้งหมด\" เพื่อลบ 543 ปี (ตรวจยอดเงินก่อน/หลังให้ และบันทึกเหตุการณ์)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "} · ลองล่าสุด {0} · เอกสารรอส่ง {1}",
 "n": 1,
 "files": [
@@ -21153,6 +21227,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
+"th": "· หลังแก้ เดบิต",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -22227,6 +22308,13 @@
 ]
 },
 {
+"th": "กำลังแก้…",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "กำลังแสดงตัวอย่าง — ยังไม่บันทึก",
 "n": 1,
 "files": [
@@ -22651,6 +22739,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "ก่อนรุ่น 2569.11.24-4 บริษัทที่ใช้ระบบปี ค.ศ. ถ้าพิมพ์ปี พ.ศ. (เช่น 17/07/2566) ระบบเก็บเป็นปี ค.ศ. 2566 — วันที่เลื่อนไป 543 ปี · หน้านี้ตรวจทุกข้อมูลของบริษัทนี้ (เอกสาร ใบสำคัญ ปีบัญชี/งวด ที่อยู่ ทะเบียนต่าง ๆ) หาวันที่ตั้งแต่ปี 2400 ขึ้นไป แล้วแก้ให้โดยลบ 543 ปี เมื่อผู้ดูแลระบบยืนยัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -23312,6 +23407,20 @@
 ]
 },
 {
+"th": "ข้อมูลที่พบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
+"th": "ข้อมูลที่ห้ามซ้ำ",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
 "th": "ข้อมูลที่เห็น/บันทึกได้ = ของบริษัทที่สร้างกุญแจเท่านั้น ตามสิทธิ์ของผู้ใช้ที่ผูกไว้ · บันทึกเอกสาร = ลงบัญชีทันทีเหมือนบันทึกที่หน้าจอ",
 "n": 1,
 "files": [
@@ -23463,6 +23572,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/ModuleSwitches.tsx"
+]
+},
+{
+"th": "ข้อมูลเปลี่ยนไปตั้งแต่ตรวจครั้งก่อน (พบ {0} รายการ ไม่ใช่ {1}) — กดตรวจใหม่ แล้วดูรายการก่อนแก้",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
 ]
 },
 {
@@ -23862,6 +23978,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/YearEnd.tsx"
+]
+},
+{
+"th": "ควรเป็น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -26126,6 +26249,13 @@
 ]
 },
 {
+"th": "งวดบัญชีที่เริ่ม {0} ย้ายแล้วจะซ้อนกับงวดที่มีอยู่ — ตรวจรอบบัญชีที่ เริ่มระบบ › รอบบัญชี ก่อน แล้วตรวจใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
 "th": "งวดปิดแล้ว",
 "n": 1,
 "files": [
@@ -27785,6 +27915,20 @@
 ]
 },
 {
+"th": "ช่วงวันที่หลังแก้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
+"th": "ช่วงวันที่เดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "ช่วงวิเคราะห์อายุลูกหนี้ — ยังไม่ครบกำหนด (วัน)",
 "n": 1,
 "files": [
@@ -27873,13 +28017,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
-]
-},
-{
-"th": "ช่อง",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -28202,6 +28339,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "ซ้อน/ซ้ำ — ดูด้านบน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -28611,6 +28755,13 @@
 ]
 },
 {
+"th": "ตรงทุกบัญชี ✓ (ยอดเงินไม่เปลี่ยน เปลี่ยนเฉพาะวันที่)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "ตรวจ",
 "n": 1,
 "files": [
@@ -28636,6 +28787,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/YearEnd.tsx"
+]
+},
+{
+"th": "ตรวจงบทดลองรายบัญชีทุกวันที่ {0} บัญชี: ก่อนแก้ เดบิต",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -28965,6 +29123,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/routes.ts"
+]
+},
+{
+"th": "ตัวอย่าง (เดิม → ใหม่)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
+"th": "ตัวอย่าง (เลขที่/รหัส: วันที่เก็บไว้ → หลังแก้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -34316,6 +34488,13 @@
 ]
 },
 {
+"th": "บันทึกไว้ที่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "บางรายการปรับปรุงยอดแล้ว — ยกเลิกใบปรับปรุงก่อน (ผลนับจะกลับเป็น บันทึกยอดนับแล้ว) แล้วจึงแก้ยอดนับ",
 "n": 1,
 "files": [
@@ -34680,6 +34859,13 @@
 ]
 },
 {
+"th": "ประมวลผลสิ้นปีแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "ประวัติการขาย",
 "n": 1,
 "files": [
@@ -34726,6 +34912,13 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "ประวัติที่อยู่วันที่มีผล {0} ย้ายแล้วซ้ำกับรายการที่มีอยู่ — ลบหรือแก้รายการที่ซ้ำที่ รายละเอียดกิจการ › ประวัติที่อยู่ ก่อน แล้วตรวจใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
 ]
 },
 {
@@ -35478,6 +35671,27 @@
 ]
 },
 {
+"th": "ปีบัญชี {0} ({1} – {2}) ย้ายเป็น {3} – {4} แล้วจะซ้อนกับปีบัญชี {5} ที่มีอยู่ — ไม่รวมให้อัตโนมัติ: ตรวจว่าปีไหนถูก แล้วลบปีที่สร้างผิดหรือย้ายรายการไปปีที่ถูกก่อน (เริ่มระบบ › รอบบัญชี) แล้วตรวจใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
+"th": "ปีบัญชี {0} ย้ายแล้วรหัสปีจะเป็น {1} ซ้ำกับปีบัญชีที่มีอยู่ — ตรวจปีบัญชี {2} ก่อน แล้วตรวจใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
+"th": "ปีบัญชี {0} วันเริ่ม {1} กับวันสิ้นปี {2} ใช้ระบบปีต่างกัน — แก้วันที่ของปีนี้ที่ เริ่มระบบ › รอบบัญชี ก่อน",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
 "th": "ปีบัญชี {0} ไม่ได้เริ่มก่อนปีปัจจุบัน {1} เดือนพอดี — ตรวจรอบบัญชีที่เมนู เริ่มระบบ › รอบบัญชี",
 "n": 1,
 "files": [
@@ -35496,6 +35710,13 @@
 "n": 1,
 "files": [
 "apps/web/src/App.tsx"
+]
+},
+{
+"th": "ปีบัญชีที่วันที่ผิด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -36448,6 +36669,13 @@
 "n": 1,
 "files": [
 "apps/server/src/db.ts"
+]
+},
+{
+"th": "ผลตรวจ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -37456,6 +37684,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "พบวันที่ปีผิดระบบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -40539,6 +40774,13 @@
 ]
 },
 {
+"th": "ยอดรายบัญชีหลังย้ายวันที่ไม่เท่าเดิม — ยกเลิกการแก้ทั้งหมด (แจ้งผู้ให้บริการ)",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
 "th": "ยอดสะสม",
 "n": 1,
 "files": [
@@ -40718,6 +40960,20 @@
 "n": 1,
 "files": [
 "apps/web/src/components/ModuleSwitches.tsx"
+]
+},
+{
+"th": "ยังแก้ไม่ได้ — {0}",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
+"th": "ยังแก้ไม่ได้ — แก้เรื่องต่อไปนี้ก่อน แล้วกดตรวจใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -41827,6 +42083,13 @@
 ]
 },
 {
+"th": "ย้ายวันที่แล้วซ้ำกับข้อมูลที่มีอยู่ ({0}) — ยกเลิกการแก้ทั้งหมด ตรวจรายการที่ซ้ำก่อน แล้วตรวจใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
 "th": "ย้ายสินค้าจากคลังหนึ่งไปอีกคลัง จำนวนและต้นทุนเท่ากันทั้งสองฝั่ง ไม่ลงบัญชี",
 "n": 1,
 "files": [
@@ -41852,6 +42115,13 @@
 "n": 1,
 "files": [
 "apps/server/src/storage/migrate-files.ts"
+]
+},
+{
+"th": "ย้ายได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -42748,6 +43018,13 @@
 "n": 1,
 "files": [
 "packages/core/src/master-import.ts"
+]
+},
+{
+"th": "รหัสปี (เดิม → ใหม่)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -44480,6 +44757,13 @@
 ]
 },
 {
+"th": "รายการ ใน {0} ช่องข้อมูล {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "รายการก่อนวันนี้ถือว่ากระทบแล้ว (ค่าเริ่มต้น = ต้นปีบัญชี)",
 "n": 1,
 "files": [
@@ -44526,6 +44810,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "รายการตามตาราง{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -45821,6 +46112,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
+"th": "ลบ 543 ปีจากวันที่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
+"th": "ลบ 543 ปีจากวันที่ที่พบทั้งหมด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -53034,6 +53339,20 @@
 ]
 },
 {
+"th": "เฉพาะผู้ดูแลระบบของบริษัทใช้หน้านี้ได้ — ให้ผู้ดูแลระบบเป็นผู้ตรวจ/แก้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
+"th": "เฉพาะผู้ดูแลระบบของบริษัทใช้เมนูนี้ได้ — ให้ผู้ดูแลระบบเป็นผู้ตรวจ/แก้",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
 "th": "เฉพาะผู้ดูแลระบบของลูกค้า หรือเจ้าหน้าที่ผู้ให้บริการ ลบ/กู้คืนบริษัทได้",
 "n": 1,
 "files": [
@@ -54588,6 +54907,13 @@
 ]
 },
 {
+"th": "เปลี่ยนเฉพาะวันที่ ยอดเงินไม่เปลี่ยน — ระบบตรวจงบทดลองรายบัญชีก่อน/หลัง ไม่เท่า = ยกเลิกทั้งหมด · งวดที่ปิดอยู่ยังปิด · ทุกช่องที่แก้บันทึกในแฟ้มบันทึกเหตุการณ์ทำงาน (FIX_YEAR) · แนะนำสำรองข้อมูลก่อน (อื่น ๆ › สำรองข้อมูล)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "เปลี่ยนเดือนที่จ่าย = เปลี่ยนเดือนภาษี",
 "n": 1,
 "files": [
@@ -54823,6 +55149,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Hub.tsx"
+]
+},
+{
+"th": "เปิดอยู่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -55754,6 +56087,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Branches.tsx"
+]
+},
+{
+"th": "เริ่มระบบ › เครื่องมือ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -58431,6 +58771,13 @@
 ]
 },
 {
+"th": "แก้ {0} รายการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "แก้/ยกเลิก {0}",
 "n": 1,
 "files": [
@@ -58463,6 +58810,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "แก้ปัญหาที่แจ้งด้านล่างก่อน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -58522,6 +58876,34 @@
 ]
 },
 {
+"th": "แก้วันที่ทั้งหมด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
+"th": "แก้วันที่ทั้งหมด{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
+"th": "แก้วันที่ปีผิดระบบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
+"th": "แก้วันที่แล้ว {0} รายการ (ลบ 543 ปี)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "แก้วันนัด",
 "n": 1,
 "files": [
@@ -58561,6 +58943,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "แก้แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
+"th": "แก้แล้วยังเหลือวันที่ปีผิดระบบ {0} รายการ — ยกเลิกการแก้ทั้งหมด",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
 ]
 },
 {
@@ -61574,6 +61970,13 @@
 ]
 },
 {
+"th": "ใบสำคัญ {0} ย้ายแล้วไม่มีงวดบัญชีรองรับ — ยกเลิกการแก้ทั้งหมด",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
 "th": "ใบสำคัญ {0} เกิดจากเอกสาร/ระบบอื่น — ลบที่เอกสารต้นทาง",
 "n": 1,
 "files": [
@@ -62323,13 +62726,6 @@
 ]
 },
 {
-"th": "ไม่ตรง",
-"n": 1,
-"files": [
-"apps/server/src/modules/company.ts"
-]
-},
-{
 "th": "ไม่ตรงรูปแบบ",
 "n": 1,
 "files": [
@@ -62894,6 +63290,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/depositrefund.ts"
+]
+},
+{
+"th": "ไม่พบวันที่ปีผิดระบบแล้ว — ไม่ต้องแก้",
+"n": 1,
+"files": [
+"apps/server/src/modules/year-fix.ts"
+]
+},
+{
+"th": "ไม่พบวันที่ปีผิดระบบในบริษัทนี้ ✓ — ไม่ต้องแก้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -63468,6 +63878,13 @@
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ไม่มีวันที่ต้องแก้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -64434,6 +64851,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "— เช่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {

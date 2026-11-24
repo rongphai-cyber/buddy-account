@@ -67,6 +67,7 @@ import { ActivityLogPage } from './pages/settings/ActivityLog';
 import { TradeImportPage } from './pages/tools/TradeImport';
 import { AuxTools } from './components/AuxTools';
 import { DataTablesPage } from './pages/settings/DataTables';
+import { YearFixPage } from './pages/settings/YearFix';
 import { TradeFormPage, TradeListPage } from './pages/docs/TradeDocs';
 import { SettleFormPage, SettleListPage } from './pages/docs/SettleDocs';
 import { CashFormPage, CashListPage } from './pages/docs/CashDocs';
@@ -304,6 +305,7 @@ function Shell() {
           <Route path="/tools/trade-import" element={<TradeImportPage />} />
           <Route path="/settings/gl-link" element={<GlLinkPage />} />
           <Route path="/settings/data-tables" element={<DataTablesPage />} />
+          <Route path="/settings/year-fix" element={<YearFixPage />} />
           {TRADE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<TradeListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<TradeFormPage key={k.path} path={k.path} />} />])}
           {SETTLE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<SettleListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<SettleFormPage key={k.path} path={k.path} />} />])}
           {CASH_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<CashListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<CashFormPage key={k.path} path={k.path} />} />])}
