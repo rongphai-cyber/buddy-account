@@ -3,11 +3,11 @@ import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { checkTaxId, todayIso } from '@buddy/core';
+import { checkTaxId, d, todayIso } from '@buddy/core';
 import type { Database, Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth, requireCompany, type AuthContext } from '../http.js';
 import { canAccessCompany, companiesForUser } from './auth.js';
-import { copyCompanyData } from '../company-copy.js';
+import { cloneCompanyFull, copyCompanyData, copyProfile, COPY_GROUP_KEYS, LEGACY_SCOPE_GROUPS, type CopyGroup } from '../company-copy.js';
 import { logActivity } from '../audit.js';
 import { confirmSecondFactor, markPasswordChanged, setSec } from './security.js';
 import { addrShape, ADDR_COLS } from '../address.js';
@@ -130,8 +130,10 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   };
   app.get('/api/v1/companies/manage', async (req) => {
     const a = manager(req);
-    const rows = (await sql<{ id: string; code: string; name_th: string; tenant_code: string | null; deleted_at: string | null; deleted_by: string | null; doc_count: number; journal_count: number; last_date: string | null }>`
+    const rows = (await sql<{ id: string; code: string; name_th: string; tenant_code: string | null; deleted_at: string | null; deleted_by: string | null; doc_count: number; journal_count: number; last_date: string | null; next_start: string | null }>`
       SELECT c.id, c.code, c.name_th, t.code AS tenant_code, c.deleted_at::text AS deleted_at, u.display_name AS deleted_by,
+             -- เปิดแฟ้มข้อมูลใหม่: วันเริ่มปีบัญชีที่แนะนำ = วันถัดจากสิ้นปีบัญชีที่ทำงานอยู่ (ปีที่เริ่มแล้วล่าสุด)
+             (SELECT to_char(y.end_date + 1, 'YYYY-MM-DD') FROM gl_fiscal_year y WHERE y.company_id = c.id AND y.deleted_at IS NULL AND y.start_date <= current_date ORDER BY y.start_date DESC LIMIT 1) AS next_start,
              (SELECT count(*)::int FROM doc_header h WHERE h.company_id = c.id AND h.deleted_at IS NULL) AS doc_count,
              (SELECT count(*)::int FROM gl_journal j WHERE j.company_id = c.id AND j.deleted_at IS NULL) AS journal_count,
              to_char(greatest((SELECT max(h.doc_date) FROM doc_header h WHERE h.company_id = c.id AND h.deleted_at IS NULL),
@@ -141,6 +143,43 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
        ORDER BY c.deleted_at NULLS FIRST, c.code LIMIT 1000`.execute(db)).rows;
     return { rows: rows.map((r) => ({ ...r, current: r.id === a.companyId })) };
   });
+  /**
+   * แก้รหัสบริษัท (HANDOFF 181 ข้อ 1) — ผู้ดูแลระบบของลูกค้า/เจ้าหน้าที่ผู้ให้บริการ · รูปแบบเดียวกับตอนสร้าง · ไม่ซ้ำกับบริษัทที่ใช้งานอยู่
+   * ระบบอ้างบริษัทด้วยรหัสแถว (id) ทุกที่ (การเชื่อม POS/Living กุญแจ API แฟ้มสำรอง e-Tax เครื่องสาขา) — รหัสบริษัทใช้แสดงและตั้งชื่อแฟ้มเท่านั้น
+   */
+  app.put('/api/v1/companies/:id/code', async (req) => {
+    const a = manager(req);
+    const { id } = parse(z.object({ id: uuid }), req.params);
+    const b = parse(z.object({ code: codeRule }), req.body);
+    const c = await companyOf(a, id);
+    if (c.deleted_at) throw badRequest(`บริษัท ${c.code} ถูกลบไปแล้ว — กู้คืนก่อนจึงแก้รหัสได้`);
+    if (b.code === c.code) return { ok: true, code: c.code };
+    const dup = await db.selectFrom('sys_company').select('id').where('code', '=', b.code).where('deleted_at', 'is', null).where('id', '<>', id).executeTakeFirst();
+    if (dup) throw badRequest(`รหัสบริษัท ${b.code} มีอยู่แล้ว — เลือกรหัสอื่น`, [{ field: 'code', message: 'รหัสซ้ำ' }]);
+    await db.transaction().execute(async (tx) => {
+      await tx.updateTable('sys_company').set({ code: b.code, updated_by: a.userId }).where('id', '=', id).execute();
+      await logActivity(tx, { companyId: id, userId: a.userId }, { module: 'SYS', action: 'EDIT_CODE', docNo: b.code, table: 'sys_company', rowId: id, detail: { before: c.code, after: b.code } });
+    });
+    return { ok: true, code: b.code };
+  });
+
+  /**
+   * คัดลอกบริษัท (HANDOFF 181 ข้อ 2) — บริษัทเดิมไม่ถูกแก้/ลบ · บริษัทใหม่อยู่กับลูกค้ารายเดียวกับบริษัทเดิม
+   * mode full = ทั้งหมด (ตรวจจำนวนแถว/ใบสำคัญ/เดบิต/เครดิตเท่าเดิม ไม่เท่า = ยกเลิก) · new = เปิดแฟ้มข้อมูลใหม่ (ค่าตั้งระบบ + ข้อมูลหลักที่เลือก + ปีบัญชีใหม่)
+   */
+  app.post('/api/v1/companies/:id/copy', async (req) => {
+    const a = manager(req);
+    const { id } = parse(z.object({ id: uuid }), req.params);
+    const b = parse(z.object({
+      code: codeRule, name_th: z.string().trim().min(1, 'ป้อนชื่อบริษัท').max(120), mode: z.enum(['full', 'new']),
+      groups: z.array(z.enum(COPY_GROUP_KEYS as [CopyGroup, ...CopyGroup[]])).default([]), fiscal_start: isoDate.optional(),
+    }), req.body);
+    const c = await companyOf(a, id);
+    if (c.deleted_at) throw badRequest(`บริษัท ${c.code} ถูกลบไปแล้ว — กู้คืนก่อนจึงคัดลอกได้`);
+    const r = await createCompany(a, { code: b.code, name_th: b.name_th, chart: 'copy', copy_from_company_id: id, copy_scope: b.mode, copy_groups: b.groups, fiscal_start: b.fiscal_start, tenantId: c.tenant_id, starter: 'BLANK' });
+    return { id: r.id, code: b.code, copied: r.copied, check: r.check, seconds: r.seconds };
+  });
+
   app.post('/api/v1/companies/:id/delete', async (req) => {
     const a = manager(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
@@ -184,21 +223,19 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   });
 
   /* ---------------------------------------------------------------- กำหนดบริษัทใหม่ (บทที่ 4 S-CO-03 / S-CO-07) */
-  app.post('/api/v1/companies', async (req) => {
-    const a = requireAuth(req);
-    if (!a.isAdmin) throw forbidden('เฉพาะผู้ดูแลระบบสร้างบริษัทใหม่ได้');
-    const b = parse(z.object({
-      code: z.string().trim().min(1, 'ป้อนรหัสบริษัท').max(20).regex(/^[A-Za-z0-9_-]+$/, 'รหัสบริษัทใช้ตัวอักษรอังกฤษ ตัวเลข _ -'),
-      name_th: z.string().trim().min(1, 'ป้อนชื่อบริษัท').max(120), tax_id: z.string().trim().optional(),
-      fiscal_start: isoDate, chart: z.enum(['express', 'th_en', 'copy', 'none']).default('express'), copy_from_company_id: uuid.optional(),
-      /** คัดลอกจากบริษัทต้นแบบ (S-CO-04/05): chart = เฉพาะผังบัญชี · setup = ค่าตั้งระบบทั้งหมด · all = ค่าตั้ง + แฟ้มหลัก (ลูกค้า ผู้จำหน่าย สินค้า พนักงานขาย) */
-      copy_scope: z.enum(['chart', 'setup', 'all']).default('chart'),
-      tenant_id: uuid.optional(),
-      /** ประเภทธุรกิจ: ข้อมูลตั้งต้น (HANDOFF 160) · ไม่ส่ง = ว่าง (แบบเดิม) */
-      starter: z.enum(['TRADE', 'SERVICE', 'MFG', 'BLANK']).default('BLANK'),
-    }), req.body);
-    // ผู้ดูแลของลูกค้าสร้างได้เฉพาะใน tenant ตัวเอง; ผู้ให้บริการเลือก tenant ได้ (ไม่ระบุ = ลูกค้าเริ่มต้น)
-    const tenantId = a.isPlatform ? (b.tenant_id ?? (await defaultTenant(db))) : a.tenantId!;
+  const codeRule = z.string().trim().min(1, 'ป้อนรหัสบริษัท').max(20).regex(/^[A-Za-z0-9_-]+$/, 'รหัสบริษัทใช้ตัวอักษรอังกฤษ ตัวเลข _ -');
+  type NewCompany = {
+    code: string; name_th: string; tax_id?: string; fiscal_start?: string; chart: 'express' | 'th_en' | 'copy' | 'none'; copy_from_company_id?: string;
+    copy_scope: 'chart' | 'setup' | 'all' | 'new' | 'full'; copy_groups?: CopyGroup[]; tenantId: string; starter: 'TRADE' | 'SERVICE' | 'MFG' | 'BLANK';
+  };
+  /**
+   * สร้างบริษัทใหม่ (S-CO-03) — ทางเดียวทั้ง "กำหนดบริษัทใหม่" และ "คัดลอกบริษัท" (HANDOFF 181)
+   * copy_scope: chart = เฉพาะผังบัญชี · new (เปิดแฟ้มข้อมูลใหม่) = ค่าตั้งระบบ + ข้อมูลหลักตาม copy_groups · full = ทั้งหมดรวมเอกสาร/ใบสำคัญ/ยอดยกมา (ตรวจยอดเท่าเดิม ไม่เท่า = ยกเลิก)
+   * setup/all = ชื่อเดิมของ new (setup = + บัญชีเงินฝาก · all = + ลูกค้า ผู้จำหน่าย พนักงานขาย สินค้า)
+   */
+  async function createCompany(a: AuthContext, b: NewCompany) {
+    const tenantId = b.tenantId;
+    if (!(b.chart === 'copy' && b.copy_scope === 'full') && !b.fiscal_start) throw badRequest('ป้อนวันเริ่มรอบบัญชี', [{ field: 'fiscal_start', message: 'ป้อนวันที่' }]);
     const t = await db.selectFrom('sys_tenant').select(['id', 'max_companies', 'status']).where('id', '=', tenantId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!t) throw badRequest('ไม่พบลูกค้าผู้ใช้บริการ');
     if (t.max_companies !== null) {
@@ -210,33 +247,66 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     if (exists) throw badRequest(`รหัสบริษัท ${b.code} มีอยู่แล้ว`);
     let taxId: string | null = null;
     if (b.tax_id) { const tx = checkTaxId(b.tax_id); if (!tx.ok) throw badRequest(tx.error); taxId = tx.normalized; }
-    const id = await db.transaction().execute(async (tx) => {
+    const copying = b.chart === 'copy';
+    if (copying && !b.copy_from_company_id) throw badRequest('เลือกบริษัทต้นแบบที่จะคัดลอก');
+    const full = copying && b.copy_scope === 'full';
+    const groups: CopyGroup[] = b.copy_scope === 'setup' || b.copy_scope === 'all' ? LEGACY_SCOPE_GROUPS[b.copy_scope] : b.copy_groups ?? [];
+    const started = Date.now();
+    const r = await db.transaction().execute(async (tx) => {
       const c = await tx.insertInto('sys_company').values({ tenant_id: tenantId, code: b.code, name_th: b.name_th, tax_id: taxId, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
-      await tx.insertInto('sys_branch').values({ company_id: c.id, code: '00000', name: 'สำนักงานใหญ่', tax_branch_no: '00000', is_head_office: true, created_by: a.userId }).execute();
-      await createFiscalYear(tx, c.id, b.fiscal_start, a.userId);
       let copied: Record<string, number> | null = null;
-      if (b.chart === 'copy' && !b.copy_from_company_id) throw badRequest('เลือกบริษัทต้นแบบที่จะคัดลอก');
-      if (b.chart === 'copy' && b.copy_scope !== 'chart') {
-        copied = await copyCompanyData(tx, b.copy_from_company_id!, c.id, a.userId, b.copy_scope === 'all');
-        if (!copied.gl_account) throw new AppError(400, 'EMPTY_CHART', 'บริษัทต้นแบบไม่มีผังบัญชี');
+      let check: Awaited<ReturnType<typeof cloneCompanyFull>> | null = null;
+      if (full) {
+        // คัดลอกทั้งหมด: สาขา ปีบัญชี/งวด เอกสาร ใบสำคัญ ยอดยกมา ทรัพย์สิน รูป แบบฟอร์ม … ของบริษัทเดิม (id ใหม่) — ไม่สร้างสาขา/ปีบัญชีใหม่
+        await copyProfile(tx, b.copy_from_company_id!, c.id);
+        check = await cloneCompanyFull(tx, b.copy_from_company_id!, c.id);
+        if (!check.ok) throw new AppError(409, 'COPY_CHECK_FAILED', `คัดลอกแล้วข้อมูลไม่ตรงกับบริษัทเดิม (${[...check.diff.slice(0, 3), check.totals.source.j !== check.totals.copy.j ? `ใบสำคัญ ${check.totals.source.j}→${check.totals.copy.j}` : '', !d(check.totals.source.dr).eq(check.totals.copy.dr) ? `เดบิต ${check.totals.source.dr}→${check.totals.copy.dr}` : ''].filter(Boolean).join(', ')}) — ยกเลิกแล้ว ไม่มีอะไรถูกสร้าง`);
       } else {
-        await seedChart(tx, c.id, { chart: b.chart === 'express' || b.chart === 'th_en' ? b.chart : null });
-        await seedDocTypes(tx, c.id);
-        await seedLookups(tx, c.id);
-        if (b.chart === 'copy') await copyChart(tx, b.copy_from_company_id!, c.id);
-        // ข้อมูลตั้งต้นตามประเภทธุรกิจ (HANDOFF 160) — ผังมาตรฐานเท่านั้น (คัดลอกจากบริษัทอื่น = ใช้ข้อมูลของบริษัทต้นแบบ)
-        if (b.chart !== 'copy' && b.starter !== 'BLANK') {
-          const st = await applyStarter(tx, c.id, b.starter, a.userId);
-          await logActivity(tx, { companyId: c.id, userId: a.userId }, { module: 'SYS', action: 'STARTER_DATA', table: 'sys_company', rowId: c.id, detail: { template: st.template, added: st.added } });
+        await tx.insertInto('sys_branch').values({ company_id: c.id, code: '00000', name: 'สำนักงานใหญ่', tax_branch_no: '00000', is_head_office: true, created_by: a.userId }).execute();
+        await createFiscalYear(tx, c.id, b.fiscal_start!, a.userId);
+        if (copying && b.copy_scope !== 'chart') {
+          await copyProfile(tx, b.copy_from_company_id!, c.id);
+          copied = await copyCompanyData(tx, b.copy_from_company_id!, c.id, a.userId, groups, { newStart: b.fiscal_start });
+          if (!copied.gl_account) throw new AppError(400, 'EMPTY_CHART', 'บริษัทต้นแบบไม่มีผังบัญชี');
+        } else {
+          await seedChart(tx, c.id, { chart: b.chart === 'express' || b.chart === 'th_en' ? b.chart : null });
+          await seedDocTypes(tx, c.id);
+          await seedLookups(tx, c.id);
+          if (copying) await copyChart(tx, b.copy_from_company_id!, c.id);
+          // ข้อมูลตั้งต้นตามประเภทธุรกิจ (HANDOFF 160) — ผังมาตรฐานเท่านั้น (คัดลอกจากบริษัทอื่น = ใช้ข้อมูลของบริษัทต้นแบบ)
+          if (!copying && b.starter !== 'BLANK') {
+            const st = await applyStarter(tx, c.id, b.starter, a.userId);
+            await logActivity(tx, { companyId: c.id, userId: a.userId }, { module: 'SYS', action: 'STARTER_DATA', table: 'sys_company', rowId: c.id, detail: { template: st.template, added: st.added } });
+          }
         }
       }
-      // บริษัทที่สอง ฯลฯ: กลุ่มตั้งต้นที่ลูกค้ามีอยู่ได้สิทธิ์ในบริษัทใหม่ด้วย (ไม่สร้างกลุ่มใหม่ ไม่แตะสิทธิ์ที่แก้เองแล้ว) — HANDOFF 159
+      // บริษัทที่สอง ฯลฯ: กลุ่มตั้งต้นที่ลูกค้ามีอยู่ได้สิทธิ์ในบริษัทใหม่ด้วย (ไม่สร้างกลุ่มใหม่ ไม่แตะสิทธิ์ที่แก้เอง)
       await ensureStandardGroups(tx, tenantId, a.userId, { createGroups: false, companyIds: [c.id] });
-      await logActivity(tx, { companyId: c.id, userId: a.userId }, { module: 'SYS', action: 'NEW_COMPANY', table: 'sys_company', rowId: c.id, detail: { code: b.code, tenant_id: tenantId, copied_from: b.copy_from_company_id ?? null, copied } });
-      return c.id;
+      await logActivity(tx, { companyId: c.id, userId: a.userId }, { module: 'SYS', action: copying && b.copy_scope !== 'chart' ? 'COPY_COMPANY' : 'NEW_COMPANY', table: 'sys_company', rowId: c.id,
+        detail: { code: b.code, tenant_id: tenantId, copied_from: b.copy_from_company_id ?? null, scope: copying ? b.copy_scope : null, groups: copying && !full ? groups : undefined, copied, check: check ? { tables: check.tables, rows: check.rows, totals: check.totals } : undefined } });
+      return { id: c.id, copied, check };
     });
-    await applyPostingTemplate(database.execScript, id);
-    return { id };
+    await applyPostingTemplate(database.execScript, r.id);
+    return { ...r, seconds: Math.round((Date.now() - started) / 100) / 10 };
+  }
+
+  app.post('/api/v1/companies', async (req) => {
+    const a = requireAuth(req);
+    if (!a.isAdmin) throw forbidden('เฉพาะผู้ดูแลระบบสร้างบริษัทใหม่ได้');
+    const b = parse(z.object({
+      code: codeRule,
+      name_th: z.string().trim().min(1, 'ป้อนชื่อบริษัท').max(120), tax_id: z.string().trim().optional(),
+      fiscal_start: isoDate.optional(), chart: z.enum(['express', 'th_en', 'copy', 'none']).default('express'), copy_from_company_id: uuid.optional(),
+      /** คัดลอกจากบริษัทต้นแบบ: chart = เฉพาะผังบัญชี · new = เปิดแฟ้มข้อมูลใหม่ (copy_groups) · full = ทั้งหมด · setup/all = แบบเดิม */
+      copy_scope: z.enum(['chart', 'setup', 'all', 'new', 'full']).default('chart'), copy_groups: z.array(z.enum(COPY_GROUP_KEYS as [CopyGroup, ...CopyGroup[]])).optional(),
+      tenant_id: uuid.optional(),
+      /** ประเภทธุรกิจ: ข้อมูลตั้งต้น (HANDOFF 160) · ไม่ส่ง = ว่าง (แบบเดิม) */
+      starter: z.enum(['TRADE', 'SERVICE', 'MFG', 'BLANK']).default('BLANK'),
+    }), req.body);
+    // ผู้ดูแลของลูกค้าสร้างได้เฉพาะใน tenant ตัวเอง; ผู้ให้บริการเลือก tenant ได้ (ไม่ระบุ = ลูกค้าเริ่มต้น)
+    const tenantId = a.isPlatform ? (b.tenant_id ?? (await defaultTenant(db))) : a.tenantId!;
+    const r = await createCompany(a, { ...b, tenantId });
+    return { id: r.id, copied: r.copied, check: r.check, seconds: r.seconds };
   });
 
   /* ---------------------------------------------------------------- ข้อมูลตั้งต้นตามประเภทธุรกิจ (HANDOFF 160) */

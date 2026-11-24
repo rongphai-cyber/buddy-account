@@ -5924,6 +5924,93 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     await sql`UPDATE tax_vat_entry SET party_name = ${vBefore.name}, party_tax_id = ${vBefore.tax} WHERE id = ${iv.vat_id}`.execute(database.db);
   });
 
+  it('HANDOFF 181: edit company code · copy company "all" (verified equal, locked periods kept) and "open new file" (setup + chosen masters, assets carry accumulated depreciation), source untouched, other tenant 404', async () => {
+    const start = cookie;
+    const login = async (u: string, pw: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: pw }); };
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { code: 'CPYT', name: 'ลูกค้าคัดลอกบริษัท', admin_username: 'cpy.admin', admin_name: 'ผู้ดูแลคัดลอก', admin_password: 'passCopy1234', max_companies: 4 })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { code: 'CPYB', name: 'ลูกค้าอีกราย', admin_username: 'cpyb.admin', admin_name: 'ผู้ดูแลอีกราย', admin_password: 'passCopyB1234' })).status).toBe(200);
+    expect((await login('cpy.admin', 'passCopy1234')).status).toBe(200);
+    const src = (await call('POST', '/api/v1/companies', { code: 'CPY-SRC', name_th: 'บริษัทต้นฉบับ', fiscal_start: '2025-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: src });
+    expect((await call('POST', '/api/v1/gl/periods/years', { start_date: '2026-01-01' })).status).toBe(200);
+    type Acc = { id: string; account_group: string; is_control: boolean };
+    const accs = ((await call('GET', '/api/v1/gl/accounts')).body as Acc[]).filter((x) => !x.is_control);
+    const [cashA, capA, revA, expA] = ['1', '3', '4', '5'].map((g) => accs.find((x) => x.account_group === g)!) as [Acc, Acc, Acc, Acc];
+    const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const jv = (date: string, dr: string, cr: string, amt: string) => call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: date, lines: [{ account_id: dr, debit: amt }, { account_id: cr, credit: amt }] });
+    for (const [dt, dr, cr, amt] of [['2025-03-01', cashA.id, capA.id, '1000'], ['2025-06-01', cashA.id, revA.id, '250.50'], ['2026-02-01', expA.id, cashA.id, '40']] as const) expect((await jv(dt, dr, cr, amt)).status).toBe(200);
+    { const r = await call('POST', '/api/v1/customers', { code: 'C1', name: 'ลูกค้าหนึ่ง', tax_id: '0105537095903', tax_branch_no: '0' }); expect(r.status, JSON.stringify(r.body)).toBe(200); }
+    { const r = await call('POST', '/api/v1/suppliers', { code: 'S1', name: 'ผู้ขายหนึ่ง', tax_id: '0105537095903', wht_form: '53', wht_rate: 3 }); expect(r.status, JSON.stringify(r.body)).toBe(200); }
+    const g = await call('POST', '/api/v1/asset-account-groups', { code: 'VEH', name_th: 'ยานพาหนะ', depr_expense_account_id: expA.id, accum_depr_account_id: cashA.id });
+    expect(g.status).toBe(200);
+    // ราคาทุน 12,001 ซาก 1 อายุ 5 ปี เริ่ม 01/01/2025 = ค่าเสื่อมปีละ 2,400
+    expect((await call('POST', '/api/v1/fa/assets', { code: 'CAR', name_th: 'รถกระบะ', account_group_id: g.body.id, purchase_date: '2025-01-01', start_date: '2025-01-01', cost: '12001', salvage_value: '1', method: '1', useful_life_years: 5 })).status).toBe(200);
+    // ปิดงวดปี 2025 ทั้งปี (คัดลอกทั้งหมดต้องคัดลอกใบสำคัญในงวดที่ปิดได้)
+    const y25 = ((await call('GET', '/api/v1/gl/periods')).body as Array<{ start_date: string; periods: Array<{ id: string }> }>).find((y) => String(y.start_date).startsWith('2025'))!;
+    expect((await call('POST', `/api/v1/gl/periods/${y25.periods[11]!.id}/lock`, { locked: true })).body.changed).toBe(12);
+
+    // 1) แก้รหัสบริษัท: รูปแบบเดียวกับตอนสร้าง · ไม่ซ้ำ · บันทึกการทำรายการ
+    expect((await call('PUT', `/api/v1/companies/${src}/code`, { code: 'ผิด รูปแบบ' })).status).toBe(400);
+    expect((await call('PUT', `/api/v1/companies/${src}/code`, { code: 'CPY-TMP' })).status).toBe(200);
+    expect((await call('PUT', `/api/v1/companies/${src}/code`, { code: 'CPY-SRC' })).status).toBe(200);
+    const other = (await call('POST', '/api/v1/companies', { code: 'CPY-X', name_th: 'อีกบริษัท', fiscal_start: '2025-01-01', chart: 'express' })).body.id;
+    expect((await call('PUT', `/api/v1/companies/${src}/code`, { code: 'CPY-X' })).body.error.message).toMatch(/รหัสบริษัท CPY-X มีอยู่แล้ว/);
+    expect((await call('PUT', `/api/v1/companies/${src}/code`, { code: 'CPY-ORG' })).body).toEqual({ ok: true, code: 'CPY-ORG' });
+    expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toContain('CPY-ORG');
+    const logCode = (await sql<{ detail: { before: string; after: string } }>`SELECT detail FROM sys_activity_log WHERE company_id = ${src} AND action = 'EDIT_CODE' ORDER BY occurred_at`.execute(database.db)).rows.map((r) => `${r.detail.before}→${r.detail.after}`);
+    expect(logCode).toEqual(['CPY-SRC→CPY-TMP', 'CPY-TMP→CPY-SRC', 'CPY-SRC→CPY-ORG']);
+    expect((await call('PUT', `/api/v1/companies/${src}/code`, { code: 'DEMO' })).body.error.message).toMatch(/รหัสบริษัท DEMO มีอยู่แล้ว/);
+
+    const tb = async (from: string, to: string) => (await call('GET', `/api/v1/reports/trial-balance?from=${from}&to=${to}`)).body.totals;
+    const bs = async (end: string) => (await call('GET', `/api/v1/fs/run?kind=BS&end=${end}`)).body.rows.filter((r: { kind: string }) => r.kind === 'value').map((r: { text: string; values: string[] }) => [r.text, r.values[0]]);
+    const srcTb = [await tb('2025-01-01', '2025-06-30'), await tb('2025-01-01', '2025-12-31'), await tb('2026-01-01', '2026-12-31')];
+    const srcBs = [await bs('2025-06-30'), await bs('2026-12-31')];
+    const srcJournals = (await call('GET', '/api/v1/gl/journals?limit=1000')).body;
+
+    // 2a) คัดลอกทั้งหมด: ตรวจเท่าเดิมในทรานแซกชันเดียวกัน · งบทดลอง/งบแสดงฐานะเท่าบริษัทเดิม · งวดที่ปิดยังปิด
+    const full = await call('POST', `/api/v1/companies/${src}/copy`, { code: 'CPY-FULL', name_th: 'สำเนาทั้งหมด', mode: 'full' });
+    expect(full.status, JSON.stringify(full.body)).toBe(200);
+    expect(full.body.check).toMatchObject({ ok: true, diff: [], totals: { source: { j: 3, dr: '1290.50', cr: '1290.50' }, copy: { j: 3, dr: '1290.50', cr: '1290.50' } } });
+    await call('POST', '/api/v1/auth/select', { company_id: full.body.id });
+    expect([await tb('2025-01-01', '2025-06-30'), await tb('2025-01-01', '2025-12-31'), await tb('2026-01-01', '2026-12-31')]).toEqual(srcTb);
+    expect([await bs('2025-06-30'), await bs('2026-12-31')]).toEqual(srcBs);
+    const fj = (await call('GET', '/api/v1/gl/journals?limit=1000')).body;
+    expect(fj.rows.map((r: { voucher_no: string }) => r.voucher_no)).toEqual(srcJournals.rows.map((r: { voucher_no: string }) => r.voucher_no));
+    expect(fj.rows.some((r: { id: string }) => srcJournals.rows.some((x: { id: string }) => x.id === r.id))).toBe(false);
+    const fy = (await call('GET', '/api/v1/gl/periods')).body as Array<{ start_date: string; periods: Array<{ is_locked: boolean }> }>;
+    expect([fy.length, fy.find((y) => String(y.start_date).startsWith('2025'))!.periods.every((p) => p.is_locked)]).toEqual([2, true]);
+    expect(((await call('GET', '/api/v1/customers')).body.rows ?? (await call('GET', '/api/v1/customers')).body).map((c: { code: string }) => c.code)).toEqual(['C1']);
+    expect((await call('GET', '/api/v1/company')).body.name_th).toBe('สำเนาทั้งหมด');
+
+    // 2b) เปิดแฟ้มข้อมูลใหม่: ค่าตั้งระบบ + ลูกค้า + ทรัพย์สิน (ไม่เอาผู้จำหน่าย) · ไม่มีใบสำคัญ · ปีบัญชีใหม่ · ทรัพย์สินยกค่าเสื่อมสะสมถึง 31/12/2025
+    await call('POST', '/api/v1/auth/select', { company_id: src });
+    const nf = await call('POST', `/api/v1/companies/${src}/copy`, { code: 'CPY-NEW', name_th: 'แฟ้มใหม่ 2569', mode: 'new', groups: ['customers', 'assets'], fiscal_start: '2026-01-01' });
+    expect(nf.status, JSON.stringify(nf.body)).toBe(200);
+    await call('POST', '/api/v1/auth/select', { company_id: nf.body.id });
+    expect((await call('GET', '/api/v1/gl/journals?limit=1000')).body.rows).toEqual([]);
+    expect((await call('GET', '/api/v1/gl/accounts')).body.length).toBe((accs.length > 0 ? (await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_account WHERE company_id = ${src} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n : 0));
+    const cus = (await call('GET', '/api/v1/customers')).body, sups = (await call('GET', '/api/v1/suppliers')).body;
+    expect([(cus.rows ?? cus).map((c: { code: string }) => c.code), (sups.rows ?? sups).length]).toEqual([['C1'], 0]);
+    const asset = (await sql<{ accum_depr_bf: string; accum_bf_date: string; cost: string }>`SELECT accum_depr_bf, accum_bf_date::text AS accum_bf_date, cost FROM fa_asset WHERE company_id = ${nf.body.id}`.execute(database.db)).rows;
+    expect(asset).toEqual([{ accum_depr_bf: '2400.00', accum_bf_date: '2025-12-31', cost: '12001.00' }]);
+    const nfy = (await call('GET', '/api/v1/gl/periods')).body as Array<{ start_date: string }>;
+    expect(nfy.map((y) => String(y.start_date).slice(0, 10))).toEqual(['2026-01-01']);
+    expect((await call('POST', `/api/v1/companies/${src}/copy`, { code: 'CPY-NEW2', name_th: 'x', mode: 'new' })).body.error.message).toMatch(/ป้อนวันเริ่มรอบบัญชี/);
+    // บริษัทเดิมไม่เปลี่ยน · แพ็กเกจจำกัด 4 บริษัท
+    await call('POST', '/api/v1/auth/select', { company_id: src });
+    expect((await call('GET', '/api/v1/gl/journals?limit=1000')).body.rows.length).toBe(3);
+    expect((await call('POST', `/api/v1/companies/${src}/copy`, { code: 'CPY-5', name_th: 'เกิน', mode: 'full' })).body.error.message).toMatch(/สูงสุด 4 บริษัท/);
+    expect(other).toBeTruthy();
+    // ลูกค้าอื่น (ข้อ 7.1) / ผู้ใช้ที่ไม่ใช่ผู้ดูแล: คัดลอก/แก้รหัสบริษัทนี้ไม่ได้
+    expect((await login('cpyb.admin', 'passCopyB1234')).status).toBe(200);
+    expect((await call('POST', `/api/v1/companies/${src}/copy`, { code: 'STEAL', name_th: 'ขโมย', mode: 'full' })).status).toBe(404);
+    expect((await call('PUT', `/api/v1/companies/${src}/code`, { code: 'STEAL' })).status).toBe(404);
+    expect((await login('imp.clerk', 'clerkImp123')).status).toBe(200);
+    expect((await call('PUT', `/api/v1/companies/${src}/code`, { code: 'STEAL' })).status).toBe(403);
+    cookie = start;
+  });
+
   it('HANDOFF 180: company address history by effective date — documents print the address in effect on their date (HQ and branch), log, other tenant 404', async () => {
     const start = cookie;
     const login = async (u: string, pw: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: pw }); };

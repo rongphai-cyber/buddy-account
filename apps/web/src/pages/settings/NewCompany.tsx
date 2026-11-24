@@ -4,18 +4,22 @@ import { api } from '../../api';
 import { useSession } from '../../session';
 import { DateInput, ErrorBox, Field, navKey, PageHead, toast } from '../../ui';
 import { StarterSelect, starterHint } from '../../components/StarterFill';
+import { ALL_COPY_GROUPS, CopyGroupsPicker, type CopyGroup } from '../../components/CopyChoices';
 
 /** กำหนดบริษัทใหม่ — คู่มือบทที่ 4 S-CO-03 / เลือกแหล่งข้อมูล S-CO-04 */
 export function NewCompanyPage() {
   const { me, select } = useSession();
   const nav = useNavigate();
-  const [f, setF] = useState({ code: '', name_th: '', tax_id: '', fiscal_start: `${new Date().getFullYear()}-01-01`, chart: 'express', copy_from_company_id: '', copy_scope: 'setup', starter: 'TRADE' });
+  const [f, setF] = useState({ code: '', name_th: '', tax_id: '', fiscal_start: `${new Date().getFullYear()}-01-01`, chart: 'express', copy_from_company_id: '', copy_scope: 'new', starter: 'TRADE' });
+  // คัดลอกจากบริษัทที่มีอยู่: ทางเดียวกับ "คัดลอกบริษัท" (HANDOFF 181) — เปิดแฟ้มข้อมูลใหม่เลือกข้อมูลหลักได้ · ทั้งหมด = รวมเอกสาร/ใบสำคัญ
+  const [groups, setGroups] = useState<CopyGroup[]>([...ALL_COPY_GROUPS]);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const go = async () => {
     setErr(null); setBusy(true);
     try {
-      const r = await api.post<{ id: string }>('/api/v1/companies', { ...f, tax_id: f.tax_id || undefined, copy_from_company_id: f.copy_from_company_id || undefined, starter: f.chart === 'copy' || f.chart === 'none' ? 'BLANK' : f.starter });
+      const r = await api.post<{ id: string }>('/api/v1/companies', { ...f, tax_id: f.tax_id || undefined, copy_from_company_id: f.copy_from_company_id || undefined, starter: f.chart === 'copy' || f.chart === 'none' ? 'BLANK' : f.starter,
+        copy_groups: f.chart === 'copy' && f.copy_scope === 'new' ? groups : undefined, fiscal_start: f.chart === 'copy' && f.copy_scope === 'full' ? undefined : f.fiscal_start });
       await select({ company_id: r.id });
       toast('สร้างบริษัทใหม่แล้ว');
       nav('/settings/company');
@@ -42,9 +46,11 @@ export function NewCompanyPage() {
           <StarterSelect value={f.starter} onChange={(v) => setF({ ...f, starter: v })} />
         </Field>}
         {f.chart === 'copy' && <Field label="บริษัทต้นแบบ" req wide><select value={f.copy_from_company_id} onChange={(e) => setF({ ...f, copy_from_company_id: e.target.value })}><option value="">— เลือก —</option>{me?.companies.map((c) => <option key={c.id} value={c.id}>{c.code} {c.name_th}</option>)}</select></Field>}
-        {f.chart === 'copy' && <Field label="ข้อมูลที่คัดลอก" req wide hint="ไม่คัดลอกรายการประจำวัน ยอดยกมา และสิทธิ์ผู้ใช้ — เริ่มบันทึกได้ทันที"><select value={f.copy_scope} onChange={(e) => setF({ ...f, copy_scope: e.target.value })}>
-          <option value="chart">เฉพาะผังบัญชีและบัญชีเพื่อลงรายวัน</option><option value="setup">ค่าตั้งระบบทั้งหมด (ผังบัญชี ประเภทเอกสาร สมุดรายวัน แผนก คลัง หน่วยนับ ตารางข้อมูล ค่าเริ่มต้น แบบฟอร์ม งบการเงิน)</option>
-          <option value="all">ค่าตั้งระบบ + แฟ้มหลัก (ลูกค้า ผู้จำหน่าย สินค้า พนักงานขาย)</option></select></Field>}
+        {f.chart === 'copy' && <Field label="ข้อมูลที่คัดลอก" req wide hint={f.copy_scope === 'full' ? 'รวมเอกสาร ใบสำคัญ ยอดยกมา ปีบัญชีของบริษัทต้นแบบ (วันเริ่มรอบบัญชีด้านบนไม่ใช้) · ตรวจยอดให้เท่าเดิม ไม่เท่า = ยกเลิก' : 'ไม่คัดลอกรายการประจำวัน ยอดยกมา และสิทธิ์ผู้ใช้ — เริ่มบันทึกได้ทันที'}><select value={f.copy_scope} onChange={(e) => setF({ ...f, copy_scope: e.target.value })}>
+          <option value="chart">เฉพาะผังบัญชีและบัญชีเพื่อลงรายวัน</option>
+          <option value="new">เปิดแฟ้มข้อมูลใหม่: ค่าตั้งระบบ + ข้อมูลหลักที่เลือก</option>
+          <option value="full">ทั้งหมด (รวมเอกสาร ใบสำคัญ ยอดยกมา)</option></select></Field>}
+        {f.chart === 'copy' && f.copy_scope === 'new' && <div className="wide"><CopyGroupsPicker value={groups} onChange={setGroups} /></div>}
       </div>
       <div className="actions"><button className="primary" disabled={busy} onClick={go}>{busy ? 'กำลังสร้าง…' : 'สร้างบริษัท'}</button><button onClick={() => nav(-1)}>ยกเลิก</button></div>
     </div>

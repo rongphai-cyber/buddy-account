@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { formatDate } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
-import { ErrorBox, Field, Modal, Pill, toast } from '../../ui';
+import { DateInput, ErrorBox, Field, Modal, Pill, toast } from '../../ui';
+import { ALL_COPY_GROUPS, CopyGroupsPicker, type CopyGroup } from '../../components/CopyChoices';
 
-type Row = { id: string; code: string; name_th: string; tenant_code: string | null; deleted_at: string | null; deleted_by: string | null; doc_count: number; journal_count: number; last_date: string | null; current: boolean };
+type Row = { id: string; code: string; name_th: string; tenant_code: string | null; deleted_at: string | null; deleted_by: string | null; doc_count: number; journal_count: number; last_date: string | null; current: boolean; next_start: string | null };
 
 /**
  * บริษัททั้งหมดของลูกค้า — ลบ/กู้คืนบริษัท (HANDOFF 175 — เจ้าของ 23/11/2569 "กรณีสร้างบริษัทผิด หรือต้องการลบบริษัทที่ไม่ใช้แล้ว … (Admin เท่านั้นที่ทำได้)")
@@ -24,6 +25,11 @@ export function CompaniesAdmin() {
   const [totp, setTotp] = useState('');
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+  // แก้รหัสบริษัท / คัดลอกบริษัท (HANDOFF 181)
+  const [recode, setRecode] = useState<Row | null>(null);
+  const [newCode, setNewCode] = useState('');
+  const [cp, setCp] = useState<{ row: Row; code: string; name: string; mode: 'full' | 'new'; groups: CopyGroup[]; start: string } | null>(null);
+  const [done, setDone] = useState<{ id: string; code: string; seconds: number; full: boolean; journals?: number } | null>(null);
   const rows = q.data?.rows ?? [];
   const active = rows.filter((r) => !r.deleted_at), gone = rows.filter((r) => r.deleted_at);
   const reload = async () => { await qc.invalidateQueries({ queryKey: ['companies-manage'] }); await refresh(); };
@@ -35,9 +41,24 @@ export function CompaniesAdmin() {
   const restore = async (r: Row) => {
     try { await api.post(`/api/v1/companies/${r.id}/restore`, {}); toast(`กู้คืนบริษัท ${r.code} แล้ว`); await reload(); } catch (e) { setErr(e); }
   };
+  const saveCode = async () => {
+    if (!recode) return;
+    setBusy(true); setErr(null);
+    try { await api.put(`/api/v1/companies/${recode.id}/code`, { code: newCode.trim() }); toast(`เปลี่ยนรหัสบริษัท ${recode.code} เป็น ${newCode.trim()} แล้ว`); setRecode(null); await reload(); } catch (e) { setErr(e); } finally { setBusy(false); }
+  };
+  const doCopy = async () => {
+    if (!cp) return;
+    setBusy(true); setErr(null);
+    try {
+      const r = await api.post<{ id: string; code: string; seconds: number; check?: { totals: { copy: { j: number } } } | null }>(`/api/v1/companies/${cp.row.id}/copy`,
+        { code: cp.code.trim(), name_th: cp.name.trim(), mode: cp.mode, groups: cp.mode === 'new' ? cp.groups : [], fiscal_start: cp.mode === 'new' ? cp.start : undefined });
+      setDone({ id: r.id, code: r.code, seconds: r.seconds, full: cp.mode === 'full', journals: r.check?.totals.copy.j });
+      setCp(null); await reload();
+    } catch (e) { setErr(e); } finally { setBusy(false); }
+  };
   /** สำรองข้อมูลก่อนลบ: เปิดบริษัทนั้นแล้วไปหน้าสำรองข้อมูล (กลับมาลบจากบริษัทอื่น) */
   const backup = (r: Row) => void select({ company_id: r.id }).then(() => nav('/tools/backup'));
-  const head = <tr><th style={{ width: 150 }}>รหัสบริษัท</th><th>ชื่อบริษัท</th>{me?.user.is_platform && <th style={{ width: 110 }}>ลูกค้า</th>}<th className="r" style={{ width: 110 }}>เอกสาร</th><th className="r" style={{ width: 110 }}>ใบสำคัญ</th><th style={{ width: 130 }}>เอกสารล่าสุด</th><th style={{ width: 240 }}></th></tr>;
+  const head = <tr><th style={{ width: 150 }}>รหัสบริษัท</th><th>ชื่อบริษัท</th>{me?.user.is_platform && <th style={{ width: 110 }}>ลูกค้า</th>}<th className="r" style={{ width: 110 }}>เอกสาร</th><th className="r" style={{ width: 110 }}>ใบสำคัญ</th><th style={{ width: 130 }}>เอกสารล่าสุด</th><th style={{ width: 420 }}></th></tr>;
   return (
     <div className="card">
       <p className="hint">บริษัทที่สร้างผิดหรือไม่ใช้แล้ว: <b>ลบ</b> = ซ่อนจากตัวเลือกบริษัทและไม่นับในจำนวนบริษัทของลูกค้า — ข้อมูลยังอยู่ กู้คืนได้ที่ "บริษัทที่ลบแล้ว" · ลบบริษัทที่เลือกอยู่ไม่ได้ (เปลี่ยนบริษัทก่อน) · ลบบริษัทสุดท้ายไม่ได้ · แนะนำ <b>สำรองข้อมูลก่อน</b></p>
@@ -47,7 +68,9 @@ export function CompaniesAdmin() {
         <tbody>{active.map((r) => <tr key={r.id}>
           <td className="mono">{r.code} {r.current && <Pill tone="n">ใช้อยู่</Pill>}</td><td>{r.name_th}</td>{me?.user.is_platform && <td className="mono small">{r.tenant_code}</td>}
           <td className="r num">{r.doc_count.toLocaleString()}</td><td className="r num">{r.journal_count.toLocaleString()}</td><td>{r.last_date ? formatDate(r.last_date, ys) : <span className="muted">ไม่มี</span>}</td>
-          <td>{!r.current && <><button type="button" onClick={() => backup(r)} title="เปิดบริษัทนี้แล้วไปหน้าสำรองข้อมูล">สำรองข้อมูลก่อน</button>{' '}
+          <td><button type="button" onClick={() => { setRecode(r); setNewCode(r.code); setErr(null); }} title="แก้รหัสบริษัท (ข้อมูลทั้งหมดอ้างบริษัทด้วยรหัสภายใน ไม่กระทบเอกสาร)">แก้รหัส</button>{' '}
+            <button type="button" onClick={() => { setErr(null); setCp({ row: r, code: '', name: `${r.name_th} (สำเนา)`, mode: 'new', groups: [...ALL_COPY_GROUPS], start: r.next_start ?? `${new Date().getFullYear() + 1}-01-01` }); }} title="สร้างบริษัทใหม่จากบริษัทนี้ — บริษัทเดิมไม่ถูกลบหรือแก้ไข">คัดลอกบริษัท</button>{' '}
+            {!r.current && <><button type="button" onClick={() => backup(r)} title="เปิดบริษัทนี้แล้วไปหน้าสำรองข้อมูล">สำรองข้อมูลก่อน</button>{' '}
             <button type="button" className="danger" disabled={active.length < 2} title={active.length < 2 ? 'ลบบริษัทสุดท้ายไม่ได้' : undefined} onClick={() => { setDel(r); setCode(''); setTotp(''); setErr(null); }}>ลบบริษัท</button></>}</td>
         </tr>)}</tbody>
       </table></div>
@@ -68,6 +91,37 @@ export function CompaniesAdmin() {
         <Field label={`พิมพ์รหัสบริษัท ${del.code} เพื่อยืนยัน`} req><input value={code} onChange={(e) => setCode(e.target.value)} autoFocus aria-label="รหัสบริษัทเพื่อยืนยัน" /></Field>
         <Field label="รหัสยืนยันตัวตน 6 หลัก" hint="เฉพาะบัญชีที่เปิดยืนยันสองขั้น (จากแอปยืนยันตัวตน)"><input value={totp} inputMode="numeric" maxLength={11} onChange={(e) => setTotp(e.target.value)} aria-label="รหัสยืนยันตัวตน" /></Field>
         <ErrorBox error={err} />
+      </Modal>}
+      {recode && <Modal title={`แก้รหัสบริษัท ${recode.code}`} size="confirm" onClose={() => setRecode(null)} footer={<><button onClick={() => setRecode(null)}>ยกเลิก</button>
+        <button className="primary" disabled={busy || !newCode.trim() || newCode.trim() === recode.code} onClick={() => void saveCode()}>บันทึก</button></>}>
+        <p><b>{recode.code} · {recode.name_th}</b></p>
+        <Field label="รหัสบริษัทใหม่" req hint="ตัวอักษรอังกฤษ ตัวเลข _ - · ห้ามซ้ำกับบริษัทอื่น · เอกสาร ใบสำคัญ การเชื่อม POS/Living แฟ้มสำรอง อ้างบริษัทด้วยรหัสภายใน จึงไม่กระทบ">
+          <input autoFocus className="mono" value={newCode} maxLength={20} onChange={(e) => setNewCode(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void saveCode()} aria-label="รหัสบริษัทใหม่" /></Field>
+        <ErrorBox error={err} />
+      </Modal>}
+      {cp && <Modal title={`คัดลอกบริษัท ${cp.row.code}`} onClose={() => !busy && setCp(null)} footer={<><button disabled={busy} onClick={() => setCp(null)}>ยกเลิก</button>
+        <button className="primary" disabled={busy || !cp.code.trim() || !cp.name.trim() || (cp.mode === 'new' && !cp.start)} onClick={() => void doCopy()}>{busy ? 'กำลังคัดลอก…' : 'คัดลอก'}</button></>}>
+        <p className="notebox">สร้าง<b>บริษัทใหม่</b>จาก {cp.row.code} · {cp.row.name_th} — <b>บริษัทเดิมไม่ถูกลบหรือแก้ไข</b> ใช้งานต่อได้ตามเดิม</p>
+        <div className="form-grid">
+          <Field label="รหัสบริษัทใหม่" req hint="ตัวอักษรอังกฤษ ตัวเลข _ - ห้ามซ้ำ"><input autoFocus className="mono" value={cp.code} maxLength={20} onChange={(e) => setCp({ ...cp, code: e.target.value })} aria-label="รหัสบริษัทใหม่" /></Field>
+          <Field label="ชื่อบริษัทใหม่" req><input value={cp.name} maxLength={120} onChange={(e) => setCp({ ...cp, name: e.target.value })} aria-label="ชื่อบริษัทใหม่" /></Field>
+        </div>
+        <div className="seg" role="radiogroup" aria-label="ข้อมูลที่คัดลอก" style={{ margin: '8px 0' }}>
+          <button type="button" className={cp.mode === 'new' ? 'on' : ''} aria-pressed={cp.mode === 'new'} onClick={() => setCp({ ...cp, mode: 'new' })}>เปิดแฟ้มข้อมูลใหม่</button>
+          <button type="button" className={cp.mode === 'full' ? 'on' : ''} aria-pressed={cp.mode === 'full'} onClick={() => setCp({ ...cp, mode: 'full' })}>ทั้งหมด</button>
+        </div>
+        {cp.mode === 'full'
+          ? <p className="hint">คัดลอกทุกอย่าง: เอกสาร ใบสำคัญ ยอดยกมา ปีบัญชี/งวด (ที่ปิดแล้วยังปิด) ทรัพย์สิน ข้อมูลหลัก ค่าตั้งระบบ รูป แบบฟอร์ม · ตรวจจำนวนรายการและยอดเดบิต/เครดิตให้เท่าบริษัทเดิม ไม่เท่า = ยกเลิกทั้งหมด · สิทธิ์ผู้ใช้ให้ตามกลุ่มผู้ใช้เหมือนสร้างบริษัทใหม่ · บริษัทเดิมมีเอกสาร {cp.row.doc_count.toLocaleString()} ฉบับ ใบสำคัญ {cp.row.journal_count.toLocaleString()} ใบ</p>
+          : <>
+            <Field label="วันเริ่มปีบัญชีของบริษัทใหม่" req hint="ค่าแนะนำ = วันถัดจากสิ้นปีบัญชีที่ทำงานอยู่ของบริษัทเดิม"><DateInput value={cp.start} onChange={(v) => setCp({ ...cp, start: v })} /></Field>
+            <CopyGroupsPicker value={cp.groups} onChange={(g) => setCp({ ...cp, groups: g })} />
+          </>}
+        <ErrorBox error={err} />
+      </Modal>}
+      {done && <Modal title="คัดลอกบริษัทแล้ว" size="confirm" onClose={() => setDone(null)} footer={<><button onClick={() => setDone(null)}>ปิด</button>
+        <button className="primary" onClick={() => void select({ company_id: done.id }).then(() => { setDone(null); nav('/settings/company'); })}>เปิดบริษัท {done.code}</button></>}>
+        <p>สร้างบริษัท <b>{done.code}</b> แล้ว ({done.seconds.toLocaleString()} วินาที){done.full && done.journals !== undefined ? <> · ตรวจแล้ว ใบสำคัญ {done.journals.toLocaleString()} ใบ ยอดเดบิต/เครดิตเท่าบริษัทเดิม</> : ''}</p>
+        <p className="hint">บริษัทใหม่อยู่ในตัวเลือกบริษัทด้านบนแล้ว · บริษัทเดิมไม่เปลี่ยน</p>
       </Modal>}
     </div>
   );

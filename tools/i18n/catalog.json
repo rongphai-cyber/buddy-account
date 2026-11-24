@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 151,
+"n": 153,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/AddressHistory.tsx",
@@ -74,7 +74,7 @@
 },
 {
 "th": "บันทึก",
-"n": 107,
+"n": 108,
 "files": [
 "apps/web/src/unsaved.tsx",
 "apps/web/src/components/AddressHistory.tsx",
@@ -119,6 +119,7 @@
 "apps/web/src/pages/settings/AiSettings.tsx",
 "apps/web/src/pages/settings/ApiKeys.tsx",
 "apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
 "apps/web/src/pages/settings/Company.tsx",
 "apps/web/src/pages/settings/DataTables.tsx",
 "apps/web/src/pages/settings/Defaults.tsx",
@@ -757,7 +758,7 @@
 },
 {
 "th": "ปิด",
-"n": 42,
+"n": 43,
 "files": [
 "apps/web/src/ui.tsx",
 "apps/web/src/components/AiBill.tsx",
@@ -783,6 +784,7 @@
 "apps/web/src/pages/payroll/Filing.tsx",
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/settings/Periods.tsx",
@@ -821,6 +823,38 @@
 "apps/server/src/modules/docs/substitute.ts",
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "สินค้า",
+"n": 38,
+"files": [
+"apps/web/src/components/CopyChoices.tsx",
+"apps/web/src/components/LineEndPrompt.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/import/express/migrate.ts",
+"apps/server/src/modules/doc-import.ts",
+"apps/server/src/modules/import-masters.ts",
+"apps/server/src/modules/items.ts",
+"apps/server/src/modules/serials.ts",
+"apps/server/src/modules/stock.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/stock.ts",
+"packages/core/src/doc-import.ts",
+"packages/core/src/etax.ts",
+"packages/core/src/gl-link.ts",
+"packages/core/src/items.ts",
+"packages/core/src/master-import.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -870,37 +904,6 @@
 "packages/core/src/doc-import.ts",
 "packages/core/src/journal-import.ts",
 "packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "สินค้า",
-"n": 37,
-"files": [
-"apps/web/src/components/LineEndPrompt.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/import/express/migrate.ts",
-"apps/server/src/modules/doc-import.ts",
-"apps/server/src/modules/import-masters.ts",
-"apps/server/src/modules/items.ts",
-"apps/server/src/modules/serials.ts",
-"apps/server/src/modules/stock.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/stock.ts",
-"packages/core/src/doc-import.ts",
-"packages/core/src/etax.ts",
-"packages/core/src/gl-link.ts",
-"packages/core/src/items.ts",
-"packages/core/src/master-import.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
 ]
 },
@@ -1183,7 +1186,7 @@
 },
 {
 "th": "ทั้งหมด",
-"n": 27,
+"n": 28,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/gl/Accounts.tsx",
@@ -1191,6 +1194,7 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
@@ -1201,6 +1205,32 @@
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "พนักงานขาย",
+"n": 27,
+"files": [
+"apps/web/src/components/AddWrap.tsx",
+"apps/web/src/components/CopyChoices.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/master-import.ts",
+"apps/server/src/modules/parties.ts",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/master-import.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/pdpa.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/reports.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1247,31 +1277,6 @@
 "apps/server/src/modules/payroll/files.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts"
-]
-},
-{
-"th": "พนักงานขาย",
-"n": 26,
-"files": [
-"apps/web/src/components/AddWrap.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/master-import.ts",
-"apps/server/src/modules/parties.ts",
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/register.ts",
-"packages/core/src/master-import.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/pdpa.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/reports.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -3817,6 +3822,18 @@
 ]
 },
 {
+"th": "ผังบัญชี",
+"n": 7,
+"files": [
+"apps/web/src/components/CopyChoices.tsx",
+"apps/web/src/pages/Home.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/server/src/import/express/migrate.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "ผู้จ่ายเงิน",
 "n": 7,
 "files": [
@@ -4048,6 +4065,17 @@
 ]
 },
 {
+"th": "คัดลอก",
+"n": 6,
+"files": [
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
 "th": "คำนำหน้าชื่อ",
 "n": 6,
 "files": [
@@ -4221,17 +4249,6 @@
 "apps/server/src/modules/cheques.ts",
 "apps/server/src/modules/payroll/files.ts",
 "apps/server/src/modules/payroll/runs.ts"
-]
-},
-{
-"th": "ผังบัญชี",
-"n": 6,
-"files": [
-"apps/web/src/pages/Home.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/server/src/import/express/migrate.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -4651,16 +4668,6 @@
 ]
 },
 {
-"th": "คัดลอก",
-"n": 5,
-"files": [
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/TwoFactor.tsx"
-]
-},
-{
 "th": "คืน",
 "n": 5,
 "files": [
@@ -5031,6 +5038,16 @@
 ]
 },
 {
+"th": "รายการทรัพย์สิน",
+"n": 5,
+"files": [
+"apps/web/src/components/CopyChoices.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"packages/core/src/menu.ts",
+"packages/core/src/reports.ts"
+]
+},
+{
 "th": "รายการนี้ถูกยกเลิกแล้ว",
 "n": 5,
 "files": [
@@ -5118,6 +5135,16 @@
 "apps/server/src/modules/banking.ts",
 "packages/core/src/doc-import.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "สร้าง",
+"n": 5,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -6070,6 +6097,13 @@
 ]
 },
 {
+"th": "รหัสบริษัทใหม่",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "รหัสบัญชี",
 "n": 4,
 "files": [
@@ -6159,15 +6193,6 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/items/Items.tsx",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "รายการทรัพย์สิน",
-"n": 4,
-"files": [
-"apps/web/src/pages/fa/Assets.tsx",
-"packages/core/src/menu.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -6278,15 +6303,6 @@
 "files": [
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
-"th": "สร้าง",
-"n": 4,
-"files": [
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx"
 ]
 },
 {
@@ -7361,6 +7377,15 @@
 ]
 },
 {
+"th": "ทะเบียนหมายเลขสินค้า",
+"n": 3,
+"files": [
+"apps/web/src/components/CopyChoices.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "ทั่วไป",
 "n": 3,
 "files": [
@@ -7573,6 +7598,13 @@
 "apps/web/src/pages/Home.tsx",
 "apps/web/src/pages/settings/ActivityLog.tsx",
 "apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
+"th": "ป้อนชื่อบริษัท",
+"n": 3,
+"files": [
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -9397,6 +9429,14 @@
 ]
 },
 {
+"th": "{0} (สำเนา)",
+"n": 2,
+"files": [
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "{0} (ส่วนที่เหลือ)",
 "n": 2,
 "files": [
@@ -9662,6 +9702,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/payroll/PaySetup.tsx"
+]
+},
+{
+"th": "ข้อมูลที่คัดลอก",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"apps/web/src/pages/settings/NewCompany.tsx"
 ]
 },
 {
@@ -10379,6 +10427,13 @@
 ]
 },
 {
+"th": "ชื่อบริษัทใหม่",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "ชื่อบัญชี / คำอธิบาย",
 "n": 2,
 "files": [
@@ -10860,14 +10915,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
-]
-},
-{
-"th": "ทะเบียนหมายเลขสินค้า",
-"n": 2,
-"files": [
-"apps/web/src/pages/inventory/Serials.tsx",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -11671,13 +11718,6 @@
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/server/src/modules/wht.ts"
-]
-},
-{
-"th": "ป้อนชื่อบริษัท",
-"n": 2,
-"files": [
-"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -12660,6 +12700,14 @@
 "files": [
 "packages/core/src/import-mapping.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "รหัสซ้ำ",
+"n": 2,
+"files": [
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/projects.ts"
 ]
 },
 {
@@ -13685,6 +13733,14 @@
 ]
 },
 {
+"th": "สร้างบริษัท",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"apps/web/src/pages/settings/NewCompany.tsx"
+]
+},
+{
 "th": "สร้างรหัสสำรองใหม่",
 "n": 2,
 "files": [
@@ -14476,6 +14532,14 @@
 "files": [
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
+]
+},
+{
+"th": "เปิดแฟ้มข้อมูลใหม่",
+"n": 2,
+"files": [
+"apps/web/src/components/CopyChoices.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -19090,13 +19154,6 @@
 ]
 },
 {
-"th": "{0} (สำเนา)",
-"n": 1,
-"files": [
-"apps/web/src/pages/reports/FsLayouts.tsx"
-]
-},
-{
 "th": "{0} (เพดานรวม)",
 "n": 1,
 "files": [
@@ -20889,6 +20946,13 @@
 ]
 },
 {
+"th": "· ตรวจแล้ว ใบสำคัญ {0} ใบ ยอดเดบิต/เครดิตเท่าบริษัทเดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "· ต่างจากคงเหลือสิ้นปี {0} {1}",
 "n": 1,
 "files": [
@@ -21971,6 +22035,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "กำลังคัดลอก…",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -23227,13 +23298,6 @@
 ]
 },
 {
-"th": "ข้อมูลที่คัดลอก",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/NewCompany.tsx"
-]
-},
-{
 "th": "ข้อมูลที่ต้องมี",
 "n": 1,
 "files": [
@@ -23252,6 +23316,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "ข้อมูลที่ไม่เอาไปบริษัทใหม่ (ติ๊ก = ไม่เอา · แบบ \"เปิดแฟ้มข้อมูลใหม่\" ของ Express)",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
 ]
 },
 {
@@ -23969,10 +24040,38 @@
 ]
 },
 {
+"th": "คัดลอกทุกอย่าง: เอกสาร ใบสำคัญ ยอดยกมา ปีบัญชี/งวด (ที่ปิดแล้วยังปิด) ทรัพย์สิน ข้อมูลหลัก ค่าตั้งระบบ รูป แบบฟอร์ม · ตรวจจำนวนรายการและยอดเดบิต/เครดิตให้เท่าบริษัทเดิม ไม่เท่า = ยกเลิกทั้งหมด · สิทธิ์ผู้ใช้ให้ตามกลุ่มผู้ใช้เหมือนสร้างบริษัทใหม่ · บริษัทเดิมมีเอกสาร {0} ฉบับ ใบสำคัญ {1} ใบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "คัดลอกบรรทัดเป็นชุดใหม่ (ไม่ติ๊ก = ใช้ชุดบรรทัดร่วมกับงบเดิม)",
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/FsLayouts.tsx"
+]
+},
+{
+"th": "คัดลอกบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "คัดลอกบริษัท {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "คัดลอกบริษัทแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -24064,6 +24163,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/FsLayouts.tsx"
+]
+},
+{
+"th": "คัดลอกแล้วข้อมูลไม่ตรงกับบริษัทเดิม ({0}) — ยกเลิกแล้ว ไม่มีอะไรถูกสร้าง",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -24774,17 +24880,10 @@
 ]
 },
 {
-"th": "ค่าตั้งระบบ + แฟ้มหลัก (ลูกค้า ผู้จำหน่าย สินค้า พนักงานขาย)",
+"th": "ค่าตั้งระบบเอาไปเสมอ: ค่าเริ่มต้นแต่ละระบบ ประเภทเอกสาร/เลขที่ สมุดรายวัน การเชื่อมต่อบัญชี แบบฟอร์มพิมพ์ แบบงบการเงิน หน่วยนับ คลัง แผนก โลโก้ ที่อยู่กิจการ · บริษัทเดิมไม่ถูกลบหรือแก้ไข",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/NewCompany.tsx"
-]
-},
-{
-"th": "ค่าตั้งระบบทั้งหมด (ผังบัญชี ประเภทเอกสาร สมุดรายวัน แผนก คลัง หน่วยนับ ตารางข้อมูล ค่าเริ่มต้น แบบฟอร์ม งบการเงิน)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/NewCompany.tsx"
+"apps/web/src/components/CopyChoices.tsx"
 ]
 },
 {
@@ -25492,6 +25591,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
+]
+},
+{
+"th": "ค่าแนะนำ = วันถัดจากสิ้นปีบัญชีที่ทำงานอยู่ของบริษัทเดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -26234,6 +26340,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Import.tsx"
+]
+},
+{
+"th": "จาก {0} · {1} —",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -28925,6 +29038,20 @@
 ]
 },
 {
+"th": "ตัวอักษรอังกฤษ ตัวเลข _ - · ห้ามซ้ำกับบริษัทอื่น · เอกสาร ใบสำคัญ การเชื่อม POS/Living แฟ้มสำรอง อ้างบริษัทด้วยรหัสภายใน จึงไม่กระทบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "ตัวอักษรอังกฤษ ตัวเลข _ - ห้ามซ้ำ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "ตัวอักษรอังกฤษ ตัวเลข _ - ไม่เกิน 20 ตัว (ห้ามซ้ำกับบริษัทที่มี)",
 "n": 1,
 "files": [
@@ -30479,6 +30606,13 @@
 ]
 },
 {
+"th": "ทะเบียนผู้จำหน่าย",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
+]
+},
+{
 "th": "ทะเบียนผู้จำหน่าย: บัญชีเจ้าหนี้ เครดิต ประเภทราคา ภาษีหัก ณ ที่จ่าย และบัญชีธนาคารสำหรับโอนจ่าย — ค่าเหล่านี้ขึ้นอัตโนมัติตอนเปิดเอกสารซื้อ",
 "n": 1,
 "files": [
@@ -30504,6 +30638,13 @@
 "n": 1,
 "files": [
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "ทะเบียนลูกค้า",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
 ]
 },
 {
@@ -30581,6 +30722,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
+]
+},
+{
+"th": "ทั้งหมด (รวมเอกสาร ใบสำคัญ ยอดยกมา)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/NewCompany.tsx"
 ]
 },
 {
@@ -32292,6 +32440,20 @@
 ]
 },
 {
+"th": "บริษัท {0} ถูกลบไปแล้ว — กู้คืนก่อนจึงคัดลอกได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "บริษัท {0} ถูกลบไปแล้ว — กู้คืนก่อนจึงแก้รหัสได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "บริษัท {0} ยังใช้งานอยู่",
 "n": 1,
 "files": [
@@ -32453,6 +32615,13 @@
 ]
 },
 {
+"th": "บริษัทเดิมไม่ถูกลบหรือแก้ไข",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "บริษัทเอกชน",
 "n": 1,
 "files": [
@@ -32464,6 +32633,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "บริษัทใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "บริษัทใหม่อยู่ในตัวเลือกบริษัทด้านบนแล้ว · บริษัทเดิมไม่เปลี่ยน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -33066,6 +33249,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/finance/Banking.tsx"
+]
+},
+{
+"th": "บัญชีเงินฝากธนาคาร",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
 ]
 },
 {
@@ -35967,6 +36157,13 @@
 ]
 },
 {
+"th": "ป้อนวันที่",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "ป้อนวันที่ของค่าเสื่อมสะสมยกมา (ยอดยกมาครอบคลุมถึงก่อนวันนี้)",
 "n": 1,
 "files": [
@@ -35992,6 +36189,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/files.ts"
+]
+},
+{
+"th": "ป้อนวันเริ่มรอบบัญชี",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -39117,6 +39321,13 @@
 ]
 },
 {
+"th": "ยกค่าเสื่อมราคาสะสมถึงวันก่อนเริ่มปีบัญชีใหม่เป็นยอดยกมา · ที่ขายแล้วไม่ยกไป",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
+]
+},
+{
 "th": "ยกเลิก / กลับ",
 "n": 1,
 "files": [
@@ -40213,6 +40424,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/routes.ts"
+]
+},
+{
+"th": "ยอดยกมาของทุกระบบ",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
 ]
 },
 {
@@ -41903,10 +42121,31 @@
 ]
 },
 {
+"th": "รวมสาขา บัญชีธนาคาร ผู้ติดต่อ",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
+]
+},
+{
+"th": "รวมสาขา สถานที่ส่งของ ผู้ติดต่อ",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
+]
+},
+{
 "th": "รวมสินทรัพย์",
 "n": 1,
 "files": [
 "apps/server/src/modules/gl/reports.ts"
+]
+},
+{
+"th": "รวมสูตรการผลิต ราคาตามจำนวน รูปสินค้า",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
 ]
 },
 {
@@ -41963,6 +42202,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
+]
+},
+{
+"th": "รวมเอกสาร ใบสำคัญ ยอดยกมา ปีบัญชีของบริษัทต้นแบบ (วันเริ่มรอบบัญชีด้านบนไม่ใช้) · ตรวจยอดให้เท่าเดิม ไม่เท่า = ยกเลิก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/NewCompany.tsx"
 ]
 },
 {
@@ -42295,13 +42541,6 @@
 ]
 },
 {
-"th": "รหัสซ้ำ",
-"n": 1,
-"files": [
-"apps/server/src/modules/projects.ts"
-]
-},
-{
 "th": "รหัสซ้ำในตารางข้อมูล (เปลี่ยนรหัส)",
 "n": 1,
 "files": [
@@ -42450,6 +42689,13 @@
 },
 {
 "th": "รหัสบริษัท {0} มีอยู่แล้ว",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "รหัสบริษัท {0} มีอยู่แล้ว — เลือกรหัสอื่น",
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
@@ -44546,6 +44792,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "รายการรายวันของทุกระบบ (เอกสาร ใบสำคัญ)",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
 ]
 },
 {
@@ -47433,6 +47686,13 @@
 ]
 },
 {
+"th": "วันเริ่มปีบัญชีของบริษัทใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "วันเริ่มรอบบัญชีที่ยื่นภาษี (ไม่ใช่วันเริ่มใช้โปรแกรม) — ระบบสร้างงวดรายเดือน 12 งวด",
 "n": 1,
 "files": [
@@ -48273,17 +48533,17 @@
 ]
 },
 {
-"th": "สร้างบริษัท",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/NewCompany.tsx"
-]
-},
-{
 "th": "สร้างบริษัทแรกให้อัตโนมัติ (ผังบัญชีมาตรฐาน)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "สร้างบริษัทใหม่จากบริษัทนี้ — บริษัทเดิมไม่ถูกลบหรือแก้ไข",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -54286,6 +54546,13 @@
 ]
 },
 {
+"th": "เปลี่ยนรหัสบริษัท {0} เป็น {1} แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "เปลี่ยนรหัสผ่านแล้ว",
 "n": 1,
 "files": [
@@ -54454,6 +54721,13 @@
 ]
 },
 {
+"th": "เปิดบริษัท {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "เปิดบริษัท {0} {1}",
 "n": 1,
 "files": [
@@ -54591,6 +54865,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/trade-import.ts"
+]
+},
+{
+"th": "เปิดแฟ้มข้อมูลใหม่: ค่าตั้งระบบ + ข้อมูลหลักที่เลือก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/NewCompany.tsx"
 ]
 },
 {
@@ -58192,6 +58473,13 @@
 ]
 },
 {
+"th": "แก้รหัส",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "แก้รหัสด้วยปุ่ม \"เปลี่ยนรหัส\"",
 "n": 1,
 "files": [
@@ -58203,6 +58491,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/fa.ts"
+]
+},
+{
+"th": "แก้รหัสบริษัท (ข้อมูลทั้งหมดอ้างบริษัทด้วยรหัสภายใน ไม่กระทบเอกสาร)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "แก้รหัสบริษัท {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -59592,6 +59894,13 @@
 ]
 },
 {
+"th": "แล้ว ({0} วินาที){1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "แล้วคีย์รายการสินค้า",
 "n": 1,
 "files": [
@@ -60303,6 +60612,13 @@
 "n": 1,
 "files": [
 "packages/core/src/master-import.ts"
+]
+},
+{
+"th": "ใช้งานต่อได้ตามเดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -64223,6 +64539,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "— เอาไปเสมอ (ค่าตั้งระบบ ประเภทเอกสาร และการเชื่อมต่อบัญชีอ้างผังบัญชี)",
+"n": 1,
+"files": [
+"apps/web/src/components/CopyChoices.tsx"
 ]
 },
 {
