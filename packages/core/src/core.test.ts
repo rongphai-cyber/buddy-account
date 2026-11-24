@@ -32,6 +32,33 @@ describe('date (พ.ศ.)', () => {
     expect(parseDateInput('1503', 'B', '2026-07-01')).toBe('2026-03-15');
     expect(parseDateInput('15/03/2026', 'C')).toBe('2026-03-15');
   });
+  it('converts a 4-digit year typed in the other year system (HANDOFF 182)', () => {
+    // บริษัท ค.ศ. พิมพ์ปี พ.ศ.
+    expect(parseDateInput('02/04/2568', 'C')).toBe('2025-04-02');
+    expect(parseDateInput('02042568', 'C')).toBe('2025-04-02');
+    expect(parseDateInput('2.4.2568', 'C')).toBe('2025-04-02');
+    expect(parseDateInput('29/02/2567', 'C')).toBe('2024-02-29'); // leap year checked after conversion
+    expect(parseDateInput('29/02/2568', 'C')).toBeNull();
+    expect(formatDate(parseDateInput('02/04/2568', 'C'), 'C')).toBe('02/04/2025');
+    // บริษัท พ.ศ. พิมพ์ปี ค.ศ.
+    expect(parseDateInput('02/04/2025', 'B')).toBe('2025-04-02');
+    expect(parseDateInput('02042025', 'B')).toBe('2025-04-02');
+    expect(formatDate(parseDateInput('02/04/2025', 'B'), 'B')).toBe('02/04/2568');
+    // correct system unchanged
+    expect(parseDateInput('02/04/2568', 'B')).toBe('2025-04-02');
+    expect(parseDateInput('02/04/2025', 'C')).toBe('2025-04-02');
+    // threshold: 2399 = ค.ศ., 2400 = พ.ศ. (ค.ศ. 1857)
+    expect(parseDateInput('01/01/2399', 'C')).toBe('2399-01-01');
+    expect(parseDateInput('01/01/2400', 'C')).toBe('1857-01-01');
+    expect(parseDateInput('01/01/2399', 'B')).toBe('2399-01-01');
+    // 2-digit and 6-digit forms keep the company's system
+    expect(parseDateInput('020468', 'B', '2025-01-01')).toBe('2025-04-02');
+    expect(parseDateInput('02/04/25', 'C', '2025-01-01')).toBe('2025-04-02');
+    expect(parseDateInput('020425', 'C', '2025-01-01')).toBe('2025-04-02');
+    expect(parseDateInput('02/04/68', 'B', '2025-01-01')).toBe('2025-04-02');
+    // a 2-digit year never jumps systems: 68 in a ค.ศ. company = 2068
+    expect(parseDateInput('02/04/68', 'C', '2025-01-01')).toBe('2068-04-02');
+  });
   it('formats', () => {
     expect(formatDate('2026-03-15', 'B')).toBe('15/03/2569');
     expect(addMonths('2026-01-31', 1)).toBe('2026-02-28');

@@ -52,9 +52,22 @@ export function formatDateLong(iso: string, ys: YearSystem = 'B'): string {
 }
 
 /**
+ * ปีที่พิมพ์ → ปี ค.ศ. (HANDOFF 182): ปีสี่หลักที่พิมพ์ผิดระบบปี แปลงให้ตามระบบปีของบริษัท
+ *  ปี ≥ 2400 = พ.ศ. (พ.ศ. 2400 = ค.ศ. 1857 · ค.ศ. 2400 ยังอีกไกล) · 1000–2399 = ค.ศ.
+ *  เช่น บริษัทใช้ ค.ศ. พิมพ์ 2568 → 2025 · บริษัทใช้ พ.ศ. พิมพ์ 2025 → 2025 (เดิมได้ ค.ศ. 1482)
+ *  ปีที่สั้นกว่าสี่หลัก ถือเป็นปีในระบบปีของบริษัทตามเดิม
+ */
+export const BE_YEAR_MIN = 2400;
+export function yearToCe(y: number, ys: YearSystem = 'B'): number {
+  if (y >= 1000) return y >= BE_YEAR_MIN ? y - BE_OFFSET : y;
+  return ys === 'B' ? y - BE_OFFSET : y;
+}
+
+/**
  * อ่านวันที่ที่ผู้ใช้พิมพ์ — รับแบบเดียวกับ Express:
  *  "15/03/2569", "15/3/69", "150369", "15032569", "15/03" (ใช้ปีของ refIso)
  * ปีสองหลักถือเป็นปีในระบบปีของบริษัท (69 → 2569 ถ้าเป็น พ.ศ.)
+ * ปีสี่หลักที่ผิดระบบปีแปลงให้ (yearToCe): บริษัท ค.ศ. พิมพ์ 02/04/2568 → 2025-04-02
  */
 export function parseDateInput(text: string, ys: YearSystem = 'B', refIso?: string): string | null {
   const t = text.trim();
@@ -79,7 +92,7 @@ export function parseDateInput(text: string, ys: YearSystem = 'B', refIso?: stri
       const century = Math.floor(refInSys / 100) * 100;
       y = century + y;
     }
-    ce = ys === 'B' ? y - BE_OFFSET : y;
+    ce = yearToCe(y, ys);
   }
   if (!isValidYmd(ce, m, d)) return null;
   return isoDate(ce, m, d);
