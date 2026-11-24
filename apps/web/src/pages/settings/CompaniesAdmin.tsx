@@ -58,7 +58,8 @@ export function CompaniesAdmin() {
   };
   /** สำรองข้อมูลก่อนลบ: เปิดบริษัทนั้นแล้วไปหน้าสำรองข้อมูล (กลับมาลบจากบริษัทอื่น) */
   const backup = (r: Row) => void select({ company_id: r.id }).then(() => nav('/tools/backup'));
-  const head = <tr><th style={{ width: 150 }}>รหัสบริษัท</th><th>ชื่อบริษัท</th>{me?.user.is_platform && <th style={{ width: 110 }}>ลูกค้า</th>}<th className="r" style={{ width: 110 }}>เอกสาร</th><th className="r" style={{ width: 110 }}>ใบสำคัญ</th><th style={{ width: 130 }}>เอกสารล่าสุด</th><th style={{ width: 420 }}></th></tr>;
+  // ชื่อบริษัทกว้างพออ่านได้ · ปุ่มรายการเป็นกลุ่มที่ขึ้นบรรทัดใหม่เองเมื่อแคบ (ไม่บีบคอลัมน์ชื่อ)
+  const head = <tr><th style={{ width: 150 }}>รหัสบริษัท</th><th className="co-name">ชื่อบริษัท</th>{me?.user.is_platform && <th style={{ width: 110 }}>ลูกค้า</th>}<th className="r" style={{ width: 110 }}>เอกสาร</th><th className="r" style={{ width: 110 }}>ใบสำคัญ</th><th style={{ width: 120 }}>เอกสารล่าสุด</th><th className="co-act-h"></th></tr>;
   return (
     <div className="card">
       <p className="hint">บริษัทที่สร้างผิดหรือไม่ใช้แล้ว: <b>ลบ</b> = ซ่อนจากตัวเลือกบริษัทและไม่นับในจำนวนบริษัทของลูกค้า — ข้อมูลยังอยู่ กู้คืนได้ที่ "บริษัทที่ลบแล้ว" · ลบบริษัทที่เลือกอยู่ไม่ได้ (เปลี่ยนบริษัทก่อน) · ลบบริษัทสุดท้ายไม่ได้ · แนะนำ <b>สำรองข้อมูลก่อน</b></p>
@@ -66,21 +67,21 @@ export function CompaniesAdmin() {
       <div className="table-wrap"><table className="grid">
         <thead>{head}</thead>
         <tbody>{active.map((r) => <tr key={r.id}>
-          <td className="mono">{r.code} {r.current && <Pill tone="n">ใช้อยู่</Pill>}</td><td>{r.name_th}</td>{me?.user.is_platform && <td className="mono small">{r.tenant_code}</td>}
-          <td className="r num">{r.doc_count.toLocaleString()}</td><td className="r num">{r.journal_count.toLocaleString()}</td><td>{r.last_date ? formatDate(r.last_date, ys) : <span className="muted">ไม่มี</span>}</td>
-          <td><button type="button" onClick={() => { setRecode(r); setNewCode(r.code); setErr(null); }} title="แก้รหัสบริษัท (ข้อมูลทั้งหมดอ้างบริษัทด้วยรหัสภายใน ไม่กระทบเอกสาร)">แก้รหัส</button>{' '}
+          <td className="mono">{r.code} {r.current && <Pill tone="n">ใช้อยู่</Pill>}</td><td className="co-name">{r.name_th}</td>{me?.user.is_platform && <td className="mono small">{r.tenant_code}</td>}
+          <td className="r num">{r.doc_count.toLocaleString()}</td><td className="r num">{r.journal_count.toLocaleString()}</td><td className="nowrap">{r.last_date ? formatDate(r.last_date, ys) : <span className="muted">ไม่มี</span>}</td>
+          <td><div className="co-actions"><button type="button" onClick={() => { setRecode(r); setNewCode(r.code); setErr(null); }} title="แก้รหัสบริษัท (ข้อมูลทั้งหมดอ้างบริษัทด้วยรหัสภายใน ไม่กระทบเอกสาร)">แก้รหัส</button>{' '}
             <button type="button" onClick={() => { setErr(null); setCp({ row: r, code: '', name: `${r.name_th} (สำเนา)`, mode: 'new', groups: [...ALL_COPY_GROUPS], start: r.next_start ?? `${new Date().getFullYear() + 1}-01-01` }); }} title="สร้างบริษัทใหม่จากบริษัทนี้ — บริษัทเดิมไม่ถูกลบหรือแก้ไข">คัดลอกบริษัท</button>{' '}
             {!r.current && <><button type="button" onClick={() => backup(r)} title="เปิดบริษัทนี้แล้วไปหน้าสำรองข้อมูล">สำรองข้อมูลก่อน</button>{' '}
-            <button type="button" className="danger" disabled={active.length < 2} title={active.length < 2 ? 'ลบบริษัทสุดท้ายไม่ได้' : undefined} onClick={() => { setDel(r); setCode(''); setTotp(''); setErr(null); }}>ลบบริษัท</button></>}</td>
+            <button type="button" className="danger" disabled={active.length < 2} title={active.length < 2 ? 'ลบบริษัทสุดท้ายไม่ได้' : undefined} onClick={() => { setDel(r); setCode(''); setTotp(''); setErr(null); }}>ลบบริษัท</button></>}</div></td>
         </tr>)}</tbody>
       </table></div>
       <h3 style={{ marginTop: 18 }}>บริษัทที่ลบแล้ว {gone.length > 0 && <span className="muted small">({gone.length})</span>}</h3>
       {gone.length === 0 ? <p className="muted">ไม่มี</p> : <div className="table-wrap"><table className="grid">
         <thead>{head}</thead>
         <tbody>{gone.map((r) => <tr key={r.id} className="muted-row">
-          <td className="mono">{r.code}</td><td>{r.name_th}<div className="muted small">ลบเมื่อ {formatDate(String(r.deleted_at).slice(0, 10), ys)}{r.deleted_by ? ` โดย ${r.deleted_by}` : ''}</div></td>{me?.user.is_platform && <td className="mono small">{r.tenant_code}</td>}
-          <td className="r num">{r.doc_count.toLocaleString()}</td><td className="r num">{r.journal_count.toLocaleString()}</td><td>{r.last_date ? formatDate(r.last_date, ys) : <span className="muted">ไม่มี</span>}</td>
-          <td><button type="button" onClick={() => void restore(r)}>กู้คืน</button></td>
+          <td className="mono">{r.code}</td><td className="co-name">{r.name_th}<div className="muted small">ลบเมื่อ {formatDate(String(r.deleted_at).slice(0, 10), ys)}{r.deleted_by ? ` โดย ${r.deleted_by}` : ''}</div></td>{me?.user.is_platform && <td className="mono small">{r.tenant_code}</td>}
+          <td className="r num">{r.doc_count.toLocaleString()}</td><td className="r num">{r.journal_count.toLocaleString()}</td><td className="nowrap">{r.last_date ? formatDate(r.last_date, ys) : <span className="muted">ไม่มี</span>}</td>
+          <td><div className="co-actions"><button type="button" onClick={() => void restore(r)}>กู้คืน</button></div></td>
         </tr>)}</tbody>
       </table></div>}
       {del && <Modal title={`ลบบริษัท ${del.code}`} size="confirm" onClose={() => setDel(null)} footer={<><button onClick={() => setDel(null)}>ยกเลิก</button>
