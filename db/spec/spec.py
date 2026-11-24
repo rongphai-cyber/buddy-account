@@ -186,6 +186,15 @@ add(T('sys_user_security', 'ความปลอดภัยการเข้�
   C('password_changed_at', 'ts', th='เปลี่ยนรหัสผ่านล่าสุด'),
 ], uniq=[('user_id',)]))
 
+add(T('sys_user_invite', 'ลิงก์เชิญผู้ใช้ตั้งรหัสผ่านเอง (HANDOFF 184 · เจ้าของ 24/11/2569) — ผู้ดูแลของลูกค้าสร้างลิงก์ส่งทาง LINE · ใช้ได้ครั้งเดียว มีวันหมดอายุ ยกเลิก/ออกใหม่ได้ · เก็บเฉพาะ hash ของ token · ผู้ดูแลไม่เห็นรหัสผ่าน — อยู่เฉพาะเซิร์ฟเวอร์ ไม่ซิงก์ลงเครื่องลูก', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
+  lk('user_id', 'sys_user', 'ผู้ใช้ที่ถูกเชิญ', nn=True),
+  lk('tenant_id', 'sys_tenant', 'ลูกค้าผู้ใช้บริการของผู้ใช้ (ว่าง = เจ้าหน้าที่ผู้ให้บริการ)'),
+  C('token_hash', 'str100', nn=True, th='SHA-256 ของ token ในลิงก์ (ไม่เก็บ token จริง)'),
+  C('expires_at', 'ts', nn=True, th='ลิงก์หมดอายุ'),
+  C('used_at', 'ts', th='ใช้ลิงก์ตั้งรหัสผ่านแล้วเมื่อ (ใช้ได้ครั้งเดียว)'),
+  C('revoked_at', 'ts', th='ยกเลิกลิงก์เมื่อ (ผู้ดูแลยกเลิก หรือออกลิงก์ใหม่แทน)'),
+], uniq=[('token_hash',)]))
+
 add(T('sys_session', 'การเข้าระบบ (session) ของผู้ใช้ — Buddy Account', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
   lk('user_id', 'sys_user', 'ผู้ใช้', nn=True),
   C('token_hash', 'str100', nn=True, th='SHA-256 ของ token ใน cookie (ไม่เก็บ token จริง)'),

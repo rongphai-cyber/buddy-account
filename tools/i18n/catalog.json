@@ -759,7 +759,7 @@
 },
 {
 "th": "ปิด",
-"n": 43,
+"n": 44,
 "files": [
 "apps/web/src/ui.tsx",
 "apps/web/src/components/AiBill.tsx",
@@ -791,6 +791,7 @@
 "apps/web/src/pages/settings/Periods.tsx",
 "apps/web/src/pages/settings/Sync.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
 ]
@@ -910,8 +911,9 @@
 },
 {
 "th": "ชื่อ",
-"n": 35,
+"n": 36,
 "files": [
+"apps/web/src/pages/Invite.tsx",
 "apps/web/src/pages/items/Items.tsx",
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/payroll/Forms.tsx",
@@ -1263,6 +1265,29 @@
 ]
 },
 {
+"th": "ใช้งาน",
+"n": 27,
+"files": [
+"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/settings/DataTables.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/invite.ts",
+"packages/core/src/master-import.ts"
+]
+},
+{
 "th": "ธนาคาร",
 "n": 26,
 "files": [
@@ -1299,28 +1324,6 @@
 "packages/core/src/doc-calc.ts",
 "packages/core/src/gl-link.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ใช้งาน",
-"n": 26,
-"files": [
-"apps/web/src/components/MasterBar.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/settings/DataTables.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"packages/core/src/master-import.ts"
 ]
 },
 {
@@ -1890,6 +1893,25 @@
 ]
 },
 {
+"th": "ผู้ใช้",
+"n": 16,
+"files": [
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/apikeys.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/invite.ts",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/security.ts",
+"apps/server/src/modules/reports/gl.ts"
+]
+},
+{
 "th": "มีการแก้ไขที่ยังไม่บันทึก",
 "n": 16,
 "files": [
@@ -2006,24 +2028,6 @@
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/Permissions.tsx",
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "ผู้ใช้",
-"n": 15,
-"files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/server/src/modules/apikeys.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/security.ts",
-"apps/server/src/modules/reports/gl.ts"
 ]
 },
 {
@@ -2184,6 +2188,23 @@
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/master-import.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "บริษัท",
+"n": 14,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/Invite.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/wht.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -2354,22 +2375,6 @@
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx",
 "apps/web/src/pages/payroll/Employees.tsx"
-]
-},
-{
-"th": "บริษัท",
-"n": 13,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/Hub.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/wht.ts",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -3069,6 +3074,18 @@
 ]
 },
 {
+"th": "รหัสผู้ใช้",
+"n": 9,
+"files": [
+"apps/web/src/pages/Invite.tsx",
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "วันที่จ่าย",
 "n": 9,
 "files": [
@@ -3435,17 +3452,6 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "รหัสผู้ใช้",
-"n": 8,
-"files": [
-"apps/web/src/pages/Login.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -4682,6 +4688,14 @@
 ]
 },
 {
+"th": "ความปลอดภัยการเข้าระบบ",
+"n": 5,
+"files": [
+"apps/web/src/pages/settings/Users.tsx",
+"packages/core/src/pdpa.ts"
+]
+},
+{
 "th": "คืน",
 "n": 5,
 "files": [
@@ -5011,6 +5025,16 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "รหัสผ่าน",
+"n": 5,
+"files": [
+"apps/web/src/pages/Invite.tsx",
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/Signup.tsx",
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -5576,14 +5600,6 @@
 ]
 },
 {
-"th": "ความปลอดภัยการเข้าระบบ",
-"n": 4,
-"files": [
-"apps/web/src/pages/settings/Users.tsx",
-"packages/core/src/pdpa.ts"
-]
-},
-{
 "th": "คำอธิบายอังกฤษ",
 "n": 4,
 "files": [
@@ -5955,6 +5971,15 @@
 ]
 },
 {
+"th": "ป้อนรหัสผ่าน",
+"n": 4,
+"files": [
+"apps/server/src/modules/auth.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/security.ts"
+]
+},
+{
 "th": "ผู้ซื้อ",
 "n": 4,
 "files": [
@@ -6063,6 +6088,16 @@
 "apps/web/src/pages/Login.tsx",
 "apps/web/src/pages/settings/TwoFactor.tsx",
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ยืนยันรหัสผ่าน",
+"n": 4,
+"files": [
+"apps/web/src/pages/Invite.tsx",
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/Signup.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -6892,6 +6927,15 @@
 ]
 },
 {
+"th": "กำลังบันทึก…",
+"n": 3,
+"files": [
+"apps/web/src/components/ItemImages.tsx",
+"apps/web/src/pages/Invite.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "กำหนดบริษัทใหม่",
 "n": 3,
 "files": [
@@ -7648,14 +7692,6 @@
 ]
 },
 {
-"th": "ป้อนรหัสผ่าน",
-"n": 3,
-"files": [
-"apps/server/src/modules/auth.ts",
-"apps/server/src/modules/security.ts"
-]
-},
-{
 "th": "ป้อนรายการสินค้าอย่างน้อย 1 บรรทัด",
 "n": 3,
 "files": [
@@ -7960,15 +7996,6 @@
 ]
 },
 {
-"th": "ยืนยันรหัสผ่าน",
-"n": 3,
-"files": [
-"apps/web/src/pages/Login.tsx",
-"apps/web/src/pages/Signup.tsx",
-"apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
 "th": "รวม VAT",
 "n": 3,
 "files": [
@@ -7993,14 +8020,6 @@
 "apps/web/src/pages/gl/Jobs.tsx",
 "packages/core/src/doc-import.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "รหัสผ่าน",
-"n": 3,
-"files": [
-"apps/web/src/pages/Login.tsx",
-"apps/web/src/pages/Signup.tsx"
 ]
 },
 {
@@ -8222,6 +8241,14 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/gl/Templates.tsx"
+]
+},
+{
+"th": "ล้างยืนยันตัวตนสองขั้น",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/invite.ts"
 ]
 },
 {
@@ -9593,14 +9620,6 @@
 ]
 },
 {
-"th": "กำลังบันทึก…",
-"n": 2,
-"files": [
-"apps/web/src/components/ItemImages.tsx",
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
 "th": "กำลังสร้าง…",
 "n": 2,
 "files": [
@@ -9628,6 +9647,14 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/reports/analysis.ts"
+]
+},
+{
+"th": "กิจการ",
+"n": 2,
+"files": [
+"apps/web/src/pages/Invite.tsx",
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -12423,6 +12450,13 @@
 ]
 },
 {
+"th": "ยกเลิกลิงก์เชิญ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ยกเลิกล็อต",
 "n": 2,
 "files": [
@@ -13429,6 +13463,13 @@
 ]
 },
 {
+"th": "ลูกค้านี้ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ — เข้าระบบจากเครื่องใหม่ เครื่องเดิมจะออกจากระบบ (ผู้ให้บริการตั้ง)",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ลูกค้าเริ่มต้น",
 "n": 2,
 "files": [
@@ -14106,6 +14147,13 @@
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/pages/payroll/Employees.tsx"
+]
+},
+{
+"th": "ออกลิงก์เชิญใหม่",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -15513,6 +15561,14 @@
 ]
 },
 {
+"th": "ไปหน้าเข้าระบบ",
+"n": 2,
+"files": [
+"apps/web/src/pages/Invite.tsx",
+"apps/web/src/pages/Signup.tsx"
+]
+},
+{
 "th": "ไม่ตรง",
 "n": 2,
 "files": [
@@ -16127,6 +16183,13 @@
 ]
 },
 {
+"th": "(ถึง {0}){1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "(ทดลอง — ใส่ --apply เพื่อย้ายจริง)",
 "n": 1,
 "files": [
@@ -16166,6 +16229,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
+]
+},
+{
+"th": "(บังคับ — ต้องเปิด)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/TwoFactor.tsx"
 ]
 },
 {
@@ -16236,13 +16306,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
-]
-},
-{
-"th": "(ผู้ดูแลระบบต้องเปิด)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/TwoFactor.tsx"
 ]
 },
 {
@@ -16481,6 +16544,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ActivityLog.tsx"
+]
+},
+{
+"th": "(แอป Google/Microsoft Authenticator บนมือถือ) — ผู้ที่ยังไม่ตั้ง ({0} จาก {1} คน) จะถูกพาไปหน้าตั้งค่าเมื่อเข้าระบบครั้งถัดไป · มือถือหาย: เปิดผู้ใช้นั้นแล้วกด \"ล้างยืนยันตัวตนสองขั้น\"",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -17170,6 +17240,13 @@
 ]
 },
 {
+"th": "1 ตั้งรหัสผ่าน",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
+]
+},
+{
 "th": "1 บริษัทคิดเงินเดือนที่เดียว — เลือก WTS-HR แล้วเมนูคิดเงินเดือนของบริษัทนี้ใน Buddy จะปิด (ข้อมูลเดิมไม่หาย)",
 "n": 1,
 "files": [
@@ -17443,6 +17520,13 @@
 ]
 },
 {
+"th": "2 ยืนยันตัวตนสองขั้น (แอปในมือถือ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
+]
+},
+{
 "th": "2 ราคาไม่รวมภาษี",
 "n": 1,
 "files": [
@@ -17608,6 +17692,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
+"th": "3 เริ่มใช้งาน",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
 ]
 },
 {
@@ -18710,6 +18801,13 @@
 ]
 },
 {
+"th": "QR code ของลิงก์เชิญ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "QR code สำหรับแอปยืนยันตัวตน",
 "n": 1,
 "files": [
@@ -19550,7 +19648,14 @@
 ]
 },
 {
-"th": "{0} จะถูกออกจากระบบ และเข้าด้วยรหัสผ่านอย่างเดียว (ผู้ดูแลระบบต้องตั้งใหม่ทันที) — ตรวจว่าเป็นเจ้าของบัญชีจริงก่อน",
+"th": "{0} จะตั้งรหัสผ่านใหม่เองจากลิงก์ (ใช้ได้ครั้งเดียว ภายใน 72 ชั่วโมง){1}{2}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "{0} จะถูกออกจากระบบ และต้องตั้งยืนยันตัวตนสองขั้นใหม่ด้วยมือถือเครื่องใหม่ทันทีที่เข้าระบบครั้งถัดไป — ตรวจว่าเป็นเจ้าของบัญชีจริงก่อน",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -19781,6 +19886,13 @@
 ]
 },
 {
+"th": "{0} เปิดยืนยันตัวตนสองขั้นแล้ว — ลิงก์เชิญใช้กับผู้ใช้ที่ยังไม่ได้ตั้ง · ถ้าลืมรหัสผ่าน ให้ตั้งรหัสผ่านใหม่ที่หน้าแก้ไขผู้ใช้ · ถ้ามือถือหาย ให้ \"ล้างยืนยันตัวตนสองขั้น\" ก่อน แล้วสร้างลิงก์ใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
+]
+},
+{
 "th": "{0} เป็นบัญชีคุม ใช้บันทึกรายการไม่ได้ — ใช้บัญชีย่อย",
 "n": 1,
 "files": [
@@ -19904,13 +20016,6 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
-]
-},
-{
-"th": "{0} — ต้องใช้รหัสจากมือถือทุกครั้งที่เข้าระบบ เพื่อป้องกันบัญชีถูกขโมย",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/TwoFactor.tsx"
 ]
 },
 {
@@ -21153,6 +21258,13 @@
 ]
 },
 {
+"th": "· รหัสผ่านเดิมใช้ได้จนกว่าจะตั้งใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "· รอส่ง {0}",
 "n": 1,
 "files": [
@@ -21185,6 +21297,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "· ลิงก์เดิมจะใช้ไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "· ลิงก์เดิมใช้ไม่ได้แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -22147,6 +22273,13 @@
 ]
 },
 {
+"th": "กำลังตรวจลิงก์…",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
+]
+},
+{
 "th": "กำลังตรวจแฟ้ม…",
 "n": 1,
 "files": [
@@ -22567,20 +22700,6 @@
 ]
 },
 {
-"th": "กิจการ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Signups.tsx"
-]
-},
-{
-"th": "กิจการของคุณกำหนดให้ทุกผู้ใช้ (รวม {0})",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/TwoFactor.tsx"
-]
-},
-{
 "th": "กิจการของคุณกำหนดให้ทุกผู้ใช้ตั้งค่ายืนยันตัวตนสองขั้นก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ",
 "n": 1,
 "files": [
@@ -22921,6 +23040,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
+]
+},
+{
+"th": "ขั้นตอน",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
 ]
 },
 {
@@ -24128,6 +24254,13 @@
 ]
 },
 {
+"th": "คัดลอกข้อความเชิญแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "คัดลอกงบ {0}",
 "n": 1,
 "files": [
@@ -24205,6 +24338,13 @@
 ]
 },
 {
+"th": "คัดลอกพร้อมข้อความ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "คัดลอกรหัส",
 "n": 1,
 "files": [
@@ -24268,6 +24408,20 @@
 ]
 },
 {
+"th": "คัดลอกลิงก์",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "คัดลอกลิงก์แล้ว — วางในแชต LINE ได้เลย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "คัดลอกเก็บไว้ตอนนี้",
 "n": 1,
 "files": [
@@ -24300,6 +24454,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx"
+]
+},
+{
+"th": "คัดลอกไม่ได้ — เลือกข้อความในช่องแล้วกด Ctrl+C",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -29378,6 +29539,27 @@
 ]
 },
 {
+"th": "ตั้งรหัสผ่านเพื่อเริ่มใช้งาน",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
+]
+},
+{
+"th": "ตั้งรหัสผ่านเริ่มต้นเอง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ตั้งรหัสผ่านและเข้าระบบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
+]
+},
+{
 "th": "ตั้งรหัสผ่านใหม่ (ว่าง = ไม่เปลี่ยน)",
 "n": 1,
 "files": [
@@ -30246,6 +30428,13 @@
 ]
 },
 {
+"th": "ต้องตั้งใหม่ทันทีหลังปิด (เช่นเมื่อเปลี่ยนมือถือ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
 "th": "ต้องต่างจากชุดย่อย",
 "n": 1,
 "files": [
@@ -30925,6 +31114,13 @@
 ]
 },
 {
+"th": "ทาง LINE — เปิดแล้วตั้งรหัสผ่านเอง แล้วตั้งยืนยันตัวตนสองขั้นด้วยแอปในมือถือ ·",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ทำงานต่อได้แม้อินเทอร์เน็ตดับ แล้วส่งเอกสารเข้าสำนักงานใหญ่เอง",
 "n": 1,
 "files": [
@@ -31311,6 +31507,27 @@
 },
 {
 "th": "ทุกบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ทุกผู้ใช้ (รวม {0}) ต้องใช้รหัสจากแอปในมือถือทุกครั้งที่เข้าระบบ เพื่อป้องกันบัญชีถูกขโมย — ตั้งครั้งเดียว ใช้เวลาประมาณ 2 นาที",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "ทุกผู้ใช้ต้องตั้งค่ายืนยันตัวตนสองขั้น (แอปในมือถือ) ก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ",
+"n": 1,
+"files": [
+"apps/server/src/modules/security.ts"
+]
+},
+{
+"th": "ทุกผู้ใช้ต้องตั้งยืนยันตัวตนสองขั้น",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -32941,13 +33158,6 @@
 ]
 },
 {
-"th": "บัญชี {0} เป็นผู้ดูแลระบบ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/TwoFactor.tsx"
-]
-},
-{
 "th": "บัญชี {0} เลิกใช้แล้ว",
 "n": 1,
 "files": [
@@ -33071,6 +33281,13 @@
 "n": 1,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "บัญชีของกิจการย้ายไปใช้ที่ {0} แล้ว — ขอลิงก์ใหม่จากผู้ดูแลระบบของกิจการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
 ]
 },
 {
@@ -33263,6 +33480,13 @@
 ]
 },
 {
+"th": "บัญชีนี้เปิดยืนยันตัวตนสองขั้นแล้ว — ลิงก์เชิญใช้ไม่ได้ ติดต่อผู้ดูแลระบบของกิจการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
+]
+},
+{
 "th": "บัญชีนี้ใช้บันทึกรายการไม่ได้",
 "n": 1,
 "files": [
@@ -33281,6 +33505,13 @@
 "n": 1,
 "files": [
 "packages/core/src/doc-import.ts"
+]
+},
+{
+"th": "บัญชีผู้ใช้บริการของกิจการถูกระงับหรือหมดอายุ — ติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
 ]
 },
 {
@@ -34387,6 +34618,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
+"th": "บันทึกแล้วจะได้ลิงก์ + QR ให้คัดลอกส่ง · ใช้ได้ครั้งเดียว ภายใน 72 ชั่วโมง · ผู้ใช้ตั้งรหัสผ่านแล้วตั้งยืนยันตัวตนสองขั้นต่อทันที",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -36224,7 +36462,7 @@
 ]
 },
 {
-"th": "ป้อนรหัสผ่านเริ่มต้น",
+"th": "ป้อนรหัสผ่านเริ่มต้น หรือเลือก \"ให้ผู้ใช้ตั้งรหัสผ่านเองจากลิงก์เชิญ\"",
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
@@ -37001,20 +37239,6 @@
 ]
 },
 {
-"th": "ผู้ดูแลระบบต้องตั้งค่ายืนยันตัวตนสองขั้นก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ",
-"n": 1,
-"files": [
-"apps/server/src/modules/security.ts"
-]
-},
-{
-"th": "ผู้ดูแลระบบต้องตั้งใหม่ทันทีหลังปิด (เช่นเมื่อเปลี่ยนมือถือ)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/TwoFactor.tsx"
-]
-},
-{
 "th": "ผู้ดูแลระบบยังไม่ให้สิทธิ์คุณเปิด {0} — ขอสิทธิ์จากผู้ดูแลระบบของบริษัท (อื่น ๆ › ผู้ใช้งานและสิทธิ์ › โปรแกรมที่เปิดได้)",
 "n": 1,
 "files": [
@@ -37204,6 +37428,13 @@
 ]
 },
 {
+"th": "ผู้ใช้ {0} ถูกระงับอยู่ — เปลี่ยนสถานะเป็น \"ใช้งาน\" ก่อนสร้างลิงก์เชิญ",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
+]
+},
+{
 "th": "ผู้ใช้ {0} ยังไม่มีสิทธิ์เข้าบริษัทนี้ — ให้สิทธิ์ที่ ตั้งค่า › ผู้ใช้งานและสิทธิ์ ก่อน",
 "n": 1,
 "files": [
@@ -37313,6 +37544,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ผู้ใช้นี้ถูกระงับ — ติดต่อผู้ดูแลระบบของกิจการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
 ]
 },
 {
@@ -39276,6 +39514,13 @@
 ]
 },
 {
+"th": "มีลิงก์เชิญที่ยังไม่ใช้ ถึง {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "มีลูกค้ารหัส {0}… แล้ว {1} ราย",
 "n": 1,
 "files": [
@@ -39798,6 +40043,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
+"th": "ยกเลิกลิงก์เชิญแล้ว — ลิงก์เดิมใช้ไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -41019,6 +41271,13 @@
 ]
 },
 {
+"th": "ยังไม่ตั้งรหัสผ่าน — ออกลิงก์เชิญ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ยังไม่ปิดปี {0} — ปิดตามลำดับปี",
 "n": 1,
 "files": [
@@ -41954,6 +42213,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
+]
+},
+{
+"th": "ยืนยันรหัสผ่านไม่ตรงกัน — พิมพ์รหัสผ่านเดียวกันทั้งสองช่อง",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
 ]
 },
 {
@@ -43791,10 +44057,24 @@
 ]
 },
 {
+"th": "รอช่องตรวจสอบว่าไม่ใช่บอท (Cloudflare) ขึ้นเครื่องหมายถูกก่อน แล้วกดอีกครั้ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
+]
+},
+{
 "th": "รอช่องตรวจสอบว่าไม่ใช่บอท (Cloudflare) ขึ้นเครื่องหมายถูกก่อน แล้วกดเข้าสู่ระบบอีกครั้ง",
 "n": 1,
 "files": [
 "apps/web/src/pages/Login.tsx"
+]
+},
+{
+"th": "รอตั้งรหัสผ่าน (ลิงก์ถึง {0})",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -46983,6 +47263,76 @@
 ]
 },
 {
+"th": "ลิงก์นี้แสดงครั้งเดียว — ระบบไม่เก็บลิงก์ไว้ ปิดหน้าต่างแล้วถ้าต้องการอีกให้กด \"ออกลิงก์ใหม่\" (ลิงก์เดิมจะใช้ไม่ได้) · คุณไม่เห็นรหัสผ่านที่พนักงานตั้ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ลิงก์นี้ใช้ตั้งรหัสผ่านไปแล้ว (ใช้ได้ครั้งเดียว) — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้ หรือขอลิงก์ใหม่จากผู้ดูแลระบบของกิจการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
+]
+},
+{
+"th": "ลิงก์นี้ใช้ได้ครั้งเดียว ถึง {0} · ผู้ดูแลระบบไม่เห็นรหัสผ่านของคุณ · ขั้นถัดไปเตรียมมือถือที่ติดตั้ง Google Authenticator หรือ Microsoft Authenticator",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
+]
+},
+{
+"th": "ลิงก์นี้ใช้ไปแล้วหรือหมดอายุ — ขอลิงก์ใหม่จากผู้ดูแลระบบของกิจการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
+]
+},
+{
+"th": "ลิงก์เชิญ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ลิงก์เชิญ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ลิงก์เชิญของ {0} จะใช้ไม่ได้ทันที",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ลิงก์เชิญหมดอายุแล้ว (ใช้ได้ {0} ชั่วโมง) — ขอลิงก์ใหม่จากผู้ดูแลระบบของกิจการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
+]
+},
+{
+"th": "ลิงก์เชิญไม่ถูกต้อง",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
+]
+},
+{
+"th": "ลิงก์เชิญไม่ถูกต้องหรือถูกยกเลิกแล้ว — ขอลิงก์ใหม่จากผู้ดูแลระบบของกิจการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
+]
+},
+{
 "th": "ลิตร",
 "n": 1,
 "files": [
@@ -47085,13 +47435,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
-]
-},
-{
-"th": "ลูกค้านี้ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ — เข้าระบบจากเครื่องใหม่ เครื่องเดิมจะออกจากระบบ (ผู้ให้บริการตั้ง)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -47354,13 +47697,6 @@
 ]
 },
 {
-"th": "ล้างยืนยันตัวตนสองขั้น",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
 "th": "ล้างยืนยันตัวตนสองขั้น (มือถือหาย)",
 "n": 1,
 "files": [
@@ -47375,7 +47711,7 @@
 ]
 },
 {
-"th": "ล้างยืนยันตัวตนสองขั้นแล้ว — ผู้ใช้ต้องเข้าระบบใหม่",
+"th": "ล้างยืนยันตัวตนสองขั้นแล้ว — ผู้ใช้ต้องเข้าระบบใหม่และตั้งใหม่",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -48943,6 +49279,27 @@
 ]
 },
 {
+"th": "สร้างลิงก์เชิญ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "สร้างลิงก์เชิญ (ให้ตั้งรหัสผ่านเอง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "สร้างลิงก์เชิญให้ตัวเองไม่ได้ — เปลี่ยนรหัสผ่านที่ บัญชีของฉัน",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
+]
+},
+{
 "th": "สร้างลูกค้าผู้ใช้บริการ + ผู้ดูแลคนแรก",
 "n": 1,
 "files": [
@@ -50042,6 +50399,20 @@
 ]
 },
 {
+"th": "ส่งทาง LINE",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ส่งลิงก์นี้ให้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ส่งออก e-Tax Invoice",
 "n": 1,
 "files": [
@@ -50812,6 +51183,13 @@
 ]
 },
 {
+"th": "หรือให้พนักงานสแกน QR นี้ด้วยกล้องมือถือ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "หรือไม่ตรวจสอบสิทธิ์ ใช้สิทธิ์ตามระดับอนุมัติ",
 "n": 1,
 "files": [
@@ -51390,6 +51768,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/import-masters.ts"
+]
+},
+{
+"th": "ออกลิงก์ใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -52597,6 +52982,13 @@
 ]
 },
 {
+"th": "เครื่องนี้เข้าระบบอยู่ในชื่อ",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
+]
+},
+{
 "th": "เครื่องนี้เป็นเครื่องสาขา",
 "n": 1,
 "files": [
@@ -53374,6 +53766,13 @@
 ]
 },
 {
+"th": "เฉพาะผู้ดูแลระบบสร้าง/ยกเลิกลิงก์เชิญได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/invite.ts"
+]
+},
+{
 "th": "เฉพาะผู้ดูแลระบบสร้างบริษัทใหม่ได้",
 "n": 1,
 "files": [
@@ -53399,6 +53798,13 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "เชิญใช้ Buddy Account — รหัสผู้ใช้ {0}\\nเปิดลิงก์นี้เพื่อตั้งรหัสผ่านของคุณ (ใช้ได้ครั้งเดียว ถึง {1}):\\n{2}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -55145,6 +55551,13 @@
 ]
 },
 {
+"th": "เปิดลิงก์เชิญจากเครื่องนี้",
+"n": 1,
+"files": [
+"apps/server/src/botguard.ts"
+]
+},
+{
 "th": "เปิดหน้าเว็บ ↗",
 "n": 1,
 "files": [
@@ -55583,6 +55996,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เพิ่มผู้ใช้แล้ว — ส่งลิงก์เชิญให้ผู้ใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -59359,6 +59779,13 @@
 ]
 },
 {
+"th": "แทน",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
+]
+},
+{
 "th": "แทนคอลัมน์ทั้งหมดด้วย ปีนี้ · ปีที่แล้ว · 2 ปีก่อน · % เปลี่ยนแปลง",
 "n": 1,
 "files": [
@@ -61354,6 +61781,13 @@
 ]
 },
 {
+"th": "ใช้ได้ครั้งเดียว ภายใน {0} ชั่วโมง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ใช้ได้ถึง",
 "n": 1,
 "files": [
@@ -62558,6 +62992,13 @@
 ]
 },
 {
+"th": "ให้ผู้ใช้ตั้งรหัสผ่านเองจากลิงก์เชิญ (แนะนำ — ส่งทาง LINE · ผู้ดูแลไม่เห็นรหัสผ่าน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ให้ผู้ใช้เลือกตอนเปิดบิล",
 "n": 1,
 "files": [
@@ -62646,13 +63087,6 @@
 "n": 1,
 "files": [
 "apps/web/src/components/LineEndPrompt.tsx"
-]
-},
-{
-"th": "ไปหน้าเข้าระบบ",
-"n": 1,
-"files": [
-"apps/web/src/pages/Signup.tsx"
 ]
 },
 {
@@ -64718,6 +65152,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Statements.tsx"
+]
+},
+{
+"th": "— ตั้งรหัสผ่านแล้วจะเข้าระบบเป็น",
+"n": 1,
+"files": [
+"apps/web/src/pages/Invite.tsx"
 ]
 },
 {

@@ -387,6 +387,37 @@ export interface SysUserSecurityTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** ลิงก์เชิญผู้ใช้ตั้งรหัสผ่านเอง (HANDOFF 184 · เจ้าของ 24/11/2569) — ผู้ดูแลของลูกค้าสร้างลิงก์ส่งทาง LINE · ใช้ได้ครั้งเดียว มีวันหมดอายุ ยกเลิก/ออกใหม่ได้ · เก็บเฉพาะ hash ของ token · ผู้ดูแลไม่เห็นรหัสผ่าน — อยู่เฉพาะเซิร์ฟเวอร์ ไม่ซิงก์ลงเครื่องลูก */
+export interface SysUserInviteTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** ผู้ใช้ที่ถูกเชิญ */
+  user_id: string;
+  /** ลูกค้าผู้ใช้บริการของผู้ใช้ (ว่าง = เจ้าหน้าที่ผู้ให้บริการ) */
+  tenant_id: Gen<string | null>;
+  /** SHA-256 ของ token ในลิงก์ (ไม่เก็บ token จริง) */
+  token_hash: string;
+  /** ลิงก์หมดอายุ */
+  expires_at: string;
+  /** ใช้ลิงก์ตั้งรหัสผ่านแล้วเมื่อ (ใช้ได้ครั้งเดียว) */
+  used_at: Gen<string | null>;
+  /** ยกเลิกลิงก์เมื่อ (ผู้ดูแลยกเลิก หรือออกลิงก์ใหม่แทน) */
+  revoked_at: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** การเข้าระบบ (session) ของผู้ใช้ — Buddy Account */
 export interface SysSessionTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -4960,6 +4991,7 @@ export interface DB {
   sys_address_history: SysAddressHistoryTable;
   sys_user: SysUserTable;
   sys_user_security: SysUserSecurityTable;
+  sys_user_invite: SysUserInviteTable;
   sys_session: SysSessionTable;
   sys_user_group: SysUserGroupTable;
   sys_user_company: SysUserCompanyTable;

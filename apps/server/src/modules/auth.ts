@@ -11,7 +11,7 @@ import { rateLimit, requireHuman, turnstileSiteKey } from '../botguard.js';
 import type { Config } from '../config.js';
 import { loadApiKey } from './apikeys.js';
 import { hubOnly, normalizeAppAccess, passwordProblem, normalizeUiTheme } from '@buddy/core';
-import { adminMfaRequired, clearFails, finishSecondStep, lockedError, lockedUntil, markPasswordChanged, registerFail, secOf, startSecondStep } from './security.js';
+import { mfaForAll, clearFails, finishSecondStep, lockedError, lockedUntil, markPasswordChanged, registerFail, secOf, startSecondStep } from './security.js';
 
 export const SESSION_COOKIE = 'buddy_session';
 const ADMIN_GROUP = 'ADMIN';
@@ -41,9 +41,9 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     tenantId: row.tenant_id, isAdmin, isPlatform: isAdmin && !row.tenant_id,
     companyId: row.current_company_id, branchId: row.current_branch_id, workDate: row.work_date,
     approvalLevel: row.approval_level, checkRights: row.check_rights, groupId: row.user_group_id, apps: normalizeAppAccess(row.app_access),
-    // ยังไม่ตั้ง 2FA: ผู้ดูแลระบบ (บังคับเสมอ) · ผู้ใช้ของลูกค้าที่ตั้งบังคับทุกผู้ใช้ — อ่านทุกคำขอ session เดิมจึงถูกบังคับตั้งแต่คำขอถัดไป · เจ้าหน้าที่ผู้ให้บริการ (ไม่มี tenant) ไม่ขึ้นกับค่าของลูกค้า
+    // ยังไม่ตั้ง 2FA: ทุกผู้ใช้ (HANDOFF 184 · ชุดทดสอบปิดได้) · ผู้ใช้ของลูกค้าที่ตั้งบังคับทุกผู้ใช้ — อ่านทุกคำขอ session เดิมจึงถูกบังคับตั้งแต่คำขอถัดไป
     tenantRequireMfa: !!row.tenant_id && !!row.tenant_require_mfa,
-    mfaSetupRequired: !row.totp_enabled && ((isAdmin && adminMfaRequired()) || (!!row.tenant_id && !!row.tenant_require_mfa)),
+    mfaSetupRequired: !row.totp_enabled && (mfaForAll() || (!!row.tenant_id && !!row.tenant_require_mfa)),
   };
   // บริษัทที่ค้างใน session ต้องยังเข้าได้ (เช่น ถูกถอนสิทธิ์ หรือเป็นของ tenant อื่น)
   if (a.companyId && !(await canAccessCompany(db, a, a.companyId))) { a.companyId = null; a.branchId = null; }
@@ -75,7 +75,7 @@ export async function canAccessCompany(db: Db, a: Pick<AuthContext, 'userId' | '
   return (await companiesForUser(db, a)).some((c) => c.id === companyId);
 }
 
-async function newSession(db: Db, cfg: Config, userId: string, req: FastifyRequest, workDate?: string | null) {
+export async function newSession(db: Db, cfg: Config, userId: string, req: FastifyRequest, workDate?: string | null) {
   const token = randomBytes(32).toString('base64url');
   const expires = new Date(Date.now() + cfg.sessionHours * 3600_000).toISOString();
   // เลือกบริษัทล่าสุดที่ใช้ หรือบริษัทแรกที่เข้าได้
@@ -106,9 +106,11 @@ async function replacedError(db: Db, token: string) {
   return r ? new AppError(401, 'SESSION_REPLACED', 'รหัสผู้ใช้นี้เข้าระบบจากเครื่องอื่นแล้ว (ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง) — ถ้าเป็นคุณ เข้าระบบใหม่ที่เครื่องนี้ได้ เครื่องอื่นจะออกจากระบบแทน · ถ้าไม่ใช่คุณ เปลี่ยนรหัสผ่านทันที') : null;
 }
 
+export const sessionCookieOptions = (cfg: Config, req: FastifyRequest) => ({ path: '/', httpOnly: true, sameSite: 'lax' as const, secure: cfg.cookieSecure || req.protocol === 'https', maxAge: cfg.sessionHours * 3600 });
+
 export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
   // คุกกี้ Secure เมื่อตั้ง BUDDY_COOKIE_SECURE หรือคำขอมาทาง https (Cloudflare Tunnel buddyapp — req.protocol จาก X-Forwarded-Proto ของ cloudflared บนเครื่องนี้ · app.ts trustProxy)
-  const cookieOpts = (req: FastifyRequest) => ({ path: '/', httpOnly: true, sameSite: 'lax' as const, secure: cfg.cookieSecure || req.protocol === 'https', maxAge: cfg.sessionHours * 3600 });
+  const cookieOpts = (req: FastifyRequest) => sessionCookieOptions(cfg, req);
 
   app.get('/api/v1/setup/status', async () => {
     const n = await db.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).where('deleted_at', 'is', null).executeTakeFirstOrThrow();
@@ -277,6 +279,9 @@ export function attachAuth(app: FastifyInstance, db: Db) {
     // เครื่องสาขา (T7.8) ยืนยันด้วยรหัสเครื่องใน header x-buddy-device แทนการเข้าระบบ
     const open = ['/api/v1/setup', '/api/v1/setup/status', '/api/v1/auth/bot-check', '/api/v1/auth/login', '/api/v1/auth/login/totp', '/api/v1/health', '/api/v1/signup', '/api/v1/signup/config',
       '/api/v1/sync/setup-branch', '/api/v1/sync/bootstrap', '/api/v1/sync/push', '/api/v1/sync/pull', '/api/v1/sso/jwks'];
-    if (!req.auth && !open.some((p) => req.url.split('?')[0] === p)) throw (token ? await replacedError(db, token) : null) ?? unauthorized();
+    const path = req.url.split('?')[0]!;
+    // ลิงก์เชิญ (HANDOFF 184): เปิด/ตั้งรหัสผ่านได้โดยไม่ต้องเข้าระบบ — token ในลิงก์คือการยืนยัน
+    const invite = /^\/api\/v1\/invite\/[A-Za-z0-9_-]+(\/accept)?$/.test(path);
+    if (!req.auth && !invite && !open.some((p) => path === p)) throw (token ? await replacedError(db, token) : null) ?? unauthorized();
   });
 }

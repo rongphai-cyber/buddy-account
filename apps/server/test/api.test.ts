@@ -4662,6 +4662,118 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     await database.db.updateTable('sys_tenant').set({ require_mfa: false }).execute();   // คืนค่าให้ชุดทดสอบถัดไป
     expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(false);
   });
+
+  it('HANDOFF 184: two-factor for every user (staff, provider) · invite link: admin creates (hash only, 72 h, re-issue/revoke), staff sets own password then forced 2FA, once only, Turnstile + rate limit, other tenant 404, log', async () => {
+    const start = cookie;
+    const { setTurnstileVerifier, resetRateLimits } = await import('../src/botguard.js');
+    const { createHash } = await import('node:crypto');
+    const sha = (t: string) => createHash('sha256').update(t).digest('hex');
+    const tokenOf = (url: string) => url.split('/invite/')[1]!;
+    try {
+      expect((await login('b.admin', 'passB1234')).body).toEqual({ ok: true });
+      const bAdmin = cookie;
+      const coB = (await call('GET', '/api/v1/auth/me')).body.companies[0] as { id: string; name_th: string };
+      // เพิ่มผู้ใช้โดยไม่ตั้งรหัสผ่าน = ต้องเลือกเชิญ · ผู้ใช้ยังเข้าระบบไม่ได้จนกว่าจะตั้งเอง
+      expect((await call('POST', '/api/v1/users', { username: 'b.nopw', display_name: 'ไม่มีรหัส', companies: [coB.id] })).body.error.message).toMatch(/ป้อนรหัสผ่านเริ่มต้น หรือเลือก/);
+      const nu = await call('POST', '/api/v1/users', { username: 'b.invitee', display_name: 'พนักงานเชิญ', companies: [coB.id], invite: true });
+      expect(nu.status, JSON.stringify(nu.body)).toBe(200);
+      const uid = nu.body.id as string;
+      expect((await login('b.invitee', 'anything123')).status).toBe(401);
+      cookie = bAdmin;
+      expect((await call('POST', '/api/v1/users', { username: 'b.plain', display_name: 'พนักงานเดิม', password: 'plainB1234', companies: [coB.id] })).status).toBe(200);
+      // ลิงก์: ที่อยู่จากค่าตั้ง (BUDDY_PUBLIC_URL) · 72 ชั่วโมง · เก็บเฉพาะ SHA-256
+      appCfg.publicUrl = 'https://app.example.test';
+      const inv1 = await call('POST', `/api/v1/users/${uid}/invite`);
+      expect(inv1.body).toMatchObject({ hours: 72, username: 'b.invitee', display_name: 'พนักงานเชิญ', reissued: false });
+      expect(inv1.body.url).toMatch(/^https:\/\/app\.example\.test\/invite\/[A-Za-z0-9_-]{43}$/);
+      expect(Math.round((Date.parse(inv1.body.expires_at) - Date.now()) / 3_600_000)).toBe(72);
+      const t1 = tokenOf(inv1.body.url);
+      expect((await database.db.selectFrom('sys_user_invite').select('token_hash').where('user_id', '=', uid).execute()).map((r) => r.token_hash)).toEqual([sha(t1)]);
+      const list = (await call('GET', '/api/v1/users')).body;
+      const row = list.users.find((u: { id: string }) => u.id === uid);
+      expect([row.has_password, !!row.invite_expires_at, list.mfa_all]).toEqual([false, true, false]);
+      expect(JSON.stringify(list)).not.toMatch(/password_hash|\$2[aby]\$/);
+      // ออกลิงก์ใหม่ = ลิงก์เดิมใช้ไม่ได้
+      const inv2 = await call('POST', `/api/v1/users/${uid}/invite`);
+      expect(inv2.body.reissued).toBe(true);
+      const t2 = tokenOf(inv2.body.url);
+      cookie = '';
+      expect(await call('GET', `/api/v1/invite/${t1}`)).toMatchObject({ status: 410, body: { error: { code: 'INVITE_INVALID' } } });
+      expect((await call('GET', `/api/v1/invite/${t2}`)).body).toMatchObject({ username: 'b.invitee', display_name: 'พนักงานเชิญ', tenant_name: 'ลูกค้า B', companies: [coB.name_th], hours: 72 });
+      expect((await call('GET', '/api/v1/invite/not-a-real-token-0123456789')).body.error.code).toBe('INVITE_INVALID');
+
+      // ลูกค้าอื่น (ข้อ 7.1): เชิญ/ยกเลิก/ล้าง 2FA ผู้ใช้ของลูกค้า B ไม่ได้ · ผู้ใช้ทั่วไปสร้างลิงก์ไม่ได้
+      cookie = admin;
+      expect((await call('POST', '/api/v1/tenants', { code: 'INVX', name: 'ลูกค้าเชิญอื่น', admin_username: 'inv.admin', admin_name: 'ผู้ดูแลอื่น', admin_password: 'passInv1234' })).status).toBe(200);
+      expect((await login('inv.admin', 'passInv1234')).status).toBe(200);
+      expect((await call('POST', `/api/v1/users/${uid}/invite`)).status).toBe(404);
+      expect((await call('DELETE', `/api/v1/users/${uid}/invite`)).status).toBe(404);
+      expect((await call('POST', `/api/v1/users/${uid}/reset-2fa`)).status).toBe(404);
+      expect((await call('GET', '/api/v1/users')).body.users.some((u: { id: string }) => u.id === uid)).toBe(false);
+      expect((await login('b.plain', 'plainB1234')).status).toBe(200);
+      expect((await call('POST', `/api/v1/users/${uid}/invite`)).status).toBe(403);
+
+      // ตั้งรหัสผ่านจากลิงก์: กฎรหัสผ่านเดิม · ต้องผ่านช่องตรวจบอท (เมื่อตั้ง Turnstile) · เข้าระบบแล้วต้องตั้ง 2FA ก่อน (บังคับทุกผู้ใช้)
+      process.env.TURNSTILE_SITE_KEY = 'site-test'; process.env.TURNSTILE_SECRET = 'secret-test';
+      setTurnstileVerifier(async (t) => t === 'human');
+      cookie = '';
+      expect((await call('POST', `/api/v1/invite/${t2}/accept`, { password: 'short' })).status).toBe(400);
+      expect((await call('POST', `/api/v1/invite/${t2}/accept`, { password: 'Invitee1234' })).body.error.code).toBe('BOT_CHECK');
+      process.env.BUDDY_REQUIRE_ADMIN_2FA = '1';
+      const acc = await call('POST', `/api/v1/invite/${t2}/accept`, { password: 'Invitee1234', turnstile: 'human' });
+      expect(acc.body).toEqual({ ok: true, username: 'b.invitee' });
+      expect((await call('GET', '/api/v1/auth/me')).body.user).toMatchObject({ username: 'b.invitee', mfa_setup_required: true });
+      const blocked = await call('GET', '/api/v1/departments');
+      expect([blocked.status, blocked.body.error.code]).toEqual([403, 'MFA_SETUP_REQUIRED']);
+      expect(blocked.body.error.message).toMatch(/ทุกผู้ใช้ต้องตั้งค่ายืนยันตัวตนสองขั้น/);
+      const key = base32Decode((await call('POST', '/api/v1/auth/2fa/setup')).body.secret);
+      expect((await call('POST', '/api/v1/auth/2fa/enable', { code: totpAt(key, stepOf()) })).status).toBe(200);
+      expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(false);
+      // ใช้ได้ครั้งเดียว · เข้าระบบครั้งต่อไปด้วยรหัสผ่านที่ตั้งเอง + รหัสจากแอป
+      cookie = '';
+      expect((await call('GET', `/api/v1/invite/${t2}`)).body.error.code).toBe('INVITE_USED');
+      expect((await call('POST', `/api/v1/invite/${t2}/accept`, { password: 'Other12345', turnstile: 'human' })).status).toBe(410);
+      expect((await login('b.invitee', 'Invitee1234')).body.error.code).toBe('BOT_CHECK');   // Turnstile ตั้งอยู่ = หน้าเข้าระบบก็ตรวจ
+      expect((await call('POST', '/api/v1/auth/login', { username: 'b.invitee', password: 'Invitee1234', turnstile: 'human' })).body.need_totp).toBe(true);
+      delete process.env.TURNSTILE_SITE_KEY; delete process.env.TURNSTILE_SECRET;
+      // ผู้ใช้เดิมที่ยังไม่ตั้ง: เข้าระบบได้ (ไม่ถูกล็อก) แล้วถูกพาไปหน้าตั้งค่า · เจ้าหน้าที่ผู้ให้บริการก็ต้องตั้ง
+      expect((await login('b.plain', 'plainB1234')).body).toEqual({ ok: true });
+      expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(true);
+      expect((await call('GET', '/api/v1/auth/2fa')).body.required).toBe(true);
+      cookie = admin;
+      expect((await call('GET', '/api/v1/auth/me')).body.user).toMatchObject({ is_platform: true, mfa_setup_required: true });
+      process.env.BUDDY_REQUIRE_ADMIN_2FA = '0';
+
+      // ผู้ใช้ที่เปิด 2FA แล้ว: ไม่ออกลิงก์ (กันข้ามขั้นที่ 2) · มือถือหาย = ผู้ดูแลล้างให้ในลูกค้าเดียวกัน แล้วออกลิงก์ได้
+      cookie = bAdmin;
+      expect((await call('POST', `/api/v1/users/${uid}/invite`)).body.error.message).toMatch(/เปิดยืนยันตัวตนสองขั้นแล้ว/);
+      expect((await call('POST', `/api/v1/users/${uid}/reset-2fa`)).status).toBe(200);
+      const inv3 = await call('POST', `/api/v1/users/${uid}/invite`);
+      expect(inv3.status).toBe(200);
+      // ยกเลิก · หมดอายุ
+      expect((await call('DELETE', `/api/v1/users/${uid}/invite`)).body).toEqual({ revoked: 1 });
+      expect((await call('GET', `/api/v1/invite/${tokenOf(inv3.body.url)}`)).body.error.code).toBe('INVITE_INVALID');
+      const inv4 = await call('POST', `/api/v1/users/${uid}/invite`);
+      await database.db.updateTable('sys_user_invite').set({ expires_at: new Date(Date.now() - 60_000).toISOString() }).where('token_hash', '=', sha(tokenOf(inv4.body.url))).execute();
+      cookie = '';
+      const exp = await call('GET', `/api/v1/invite/${tokenOf(inv4.body.url)}`);
+      expect([exp.status, exp.body.error.code, exp.body.error.message]).toEqual([410, 'INVITE_EXPIRED', expect.stringMatching(/หมดอายุ.*72 ชั่วโมง/)]);
+
+      // จำกัดจำนวนครั้งต่อเครื่อง (เดาลิงก์)
+      process.env.BUDDY_RATE_LIMIT = 'on'; resetRateLimits();
+      for (let i = 0; i < 20; i++) expect((await call('GET', `/api/v1/invite/guess-token-000000000000${i}`)).status).toBe(410);
+      expect((await call('GET', '/api/v1/invite/guess-token-0000000000000x')).status).toBe(429);
+
+      const acts = (await sql<{ action: string }>`SELECT action FROM sys_activity_log WHERE row_id = ${uid} AND action LIKE 'INVITE_%' ORDER BY seq`.execute(database.db)).rows.map((r) => r.action);
+      expect(acts).toEqual(['INVITE_CREATE', 'INVITE_CREATE', 'INVITE_ACCEPT', 'INVITE_CREATE', 'INVITE_REVOKE', 'INVITE_CREATE']);
+    } finally {
+      process.env.BUDDY_REQUIRE_ADMIN_2FA = '0';
+      delete process.env.TURNSTILE_SITE_KEY; delete process.env.TURNSTILE_SECRET; setTurnstileVerifier(null);
+      delete process.env.BUDDY_RATE_LIMIT; resetRateLimits();
+      appCfg.publicUrl = undefined;
+      cookie = start;
+    }
+  });
 });
 
 describe('นำข้อมูลจาก Express ผ่านหน้าจอ (T0.12) — สิทธิ์และการตรวจ', () => {

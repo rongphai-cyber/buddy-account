@@ -9,7 +9,7 @@ import { AppError, badRequest, forbidden, notFound, parse, requireAuth, requireC
 import { canAccessCompany, companiesForUser } from './auth.js';
 import { cloneCompanyFull, copyCompanyData, copyProfile, COPY_GROUP_KEYS, LEGACY_SCOPE_GROUPS, type CopyGroup } from '../company-copy.js';
 import { logActivity } from '../audit.js';
-import { confirmSecondFactor, markPasswordChanged, setSec } from './security.js';
+import { confirmSecondFactor, markPasswordChanged, mfaForAll, setSec } from './security.js';
 import { addrShape, ADDR_COLS } from '../address.js';
 import { purgeTenant } from './pdpa.js';
 import { modulesOffRaw } from './permissions.js';
@@ -374,7 +374,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   app.get('/api/v1/users', async (req) => {
     const a = requireAdmin(req);
     let uq = db.selectFrom('sys_user as u').leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id').leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
-      .select(['u.id', 'u.username', 'u.display_name', 'u.status', 'u.approval_level', 'u.check_rights', 'u.single_session', 'u.app_access', 'u.last_login_at', 'u.user_group_id', 'u.tenant_id', 't.code as tenant_code', 'g.code as group_code', 'g.name as group_name'])
+      .select(['u.id', 'u.username', 'u.display_name', 'u.status', 'u.approval_level', 'u.check_rights', 'u.single_session', 'u.app_access', 'u.last_login_at', 'u.user_group_id', 'u.tenant_id', 't.code as tenant_code', 'g.code as group_code', 'g.name as group_name',
+        sql<boolean>`u.password_hash IS NOT NULL`.as('has_password')])
       .where('u.deleted_at', 'is', null);
     let gq = db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id']).where('deleted_at', 'is', null);
     if (!a.isPlatform) { uq = uq.where('u.tenant_id', '=', a.tenantId!); gq = gq.where('tenant_id', '=', a.tenantId!); }
@@ -385,8 +386,12 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const groups = await gq.orderBy('code').execute();
     // บริษัทที่ผู้ใช้/กลุ่มมีแถวสิทธิ์รายเมนู — หน้าจอเตือนเมื่อ "ตรวจสอบสิทธิ์ก่อนใช้งาน" แต่ไม่มีสิทธิ์ในบริษัทที่เลือก (HANDOFF 159)
     const rowsIn = await permissionCompanies(db, [...users.map((u) => u.id), ...groups.map((g) => g.id)]);
-    return { users: users.map((u) => { const sc = secs.find((x) => x.user_id === u.id); return { ...u, app_access: normalizeAppAccess(u.app_access), companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id), rights_in: rowsIn.get(u.id) ?? [], mfa_enabled: !!sc?.totp_enabled, locked_until: sc?.locked_until && new Date(sc.locked_until).getTime() > Date.now() ? sc.locked_until : null }; }),
-      groups: groups.map((g) => ({ ...g, rights_in: rowsIn.get(g.id) ?? [] })) };
+    // ลิงก์เชิญที่ยังใช้ได้ (HANDOFF 184) — แสดงสถานะ "รอตั้งรหัสผ่าน ถึง …"
+    const invites = users.length ? await db.selectFrom('sys_user_invite').select(['user_id', 'expires_at']).where('user_id', 'in', users.map((u) => u.id))
+      .where('used_at', 'is', null).where('revoked_at', 'is', null).where('deleted_at', 'is', null).where('expires_at', '>', sql<string>`now()`).execute() : [];
+    return { users: users.map((u) => { const sc = secs.find((x) => x.user_id === u.id); return { ...u, app_access: normalizeAppAccess(u.app_access), companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id), rights_in: rowsIn.get(u.id) ?? [], mfa_enabled: !!sc?.totp_enabled, locked_until: sc?.locked_until && new Date(sc.locked_until).getTime() > Date.now() ? sc.locked_until : null,
+      invite_expires_at: invites.find((x) => x.user_id === u.id)?.expires_at ?? null }; }),
+      groups: groups.map((g) => ({ ...g, rights_in: rowsIn.get(g.id) ?? [] })), mfa_all: mfaForAll() };
   });
   /** ค่าที่เก็บใน sys_user.app_access (jsonb): null = ทุกโปรแกรมของลูกค้า · รายการเรียงตาม TENANT_MODULES ไม่ซ้ำ */
   const appAccessValue = (v: string[] | null | undefined) => { const n = normalizeAppAccess(v ?? null); return n === null ? null : (JSON.stringify(n) as never); };
@@ -397,6 +402,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     companies: z.array(uuid).default([]), tenant_id: uuid.nullable().optional(),
     // 1 รหัสเข้าได้ทีละ 1 เครื่อง เฉพาะผู้ใช้นี้ (HANDOFF 156) · ไม่ส่ง = คงค่าเดิม
     single_session: z.boolean().optional(),
+    // เพิ่มผู้ใช้โดยไม่ตั้งรหัสผ่าน แล้วสร้างลิงก์เชิญให้ตั้งเอง (HANDOFF 184)
+    invite: z.boolean().optional(),
     // โปรแกรมที่เปิดได้จาก Hub (09/11/2569): null = ทุกโปรแกรมของลูกค้า · [...] = เฉพาะที่ระบุ · ไม่ส่ง (หน้าจอรุ่นเก่า) = คงค่าเดิม
     app_access: z.array(z.string().refine(isTenantModuleKey, (k) => ({ message: `ไม่รู้จักโปรแกรม "${k}" — ใช้ได้: ${TENANT_MODULES.map((m) => m.key).join(' ')}` }))).max(TENANT_MODULES.length).nullable().optional(),
   });
@@ -419,7 +426,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   app.post('/api/v1/users', async (req) => {
     const a = requireAdmin(req);
     const b = parse(userBody, req.body);
-    if (!b.password) throw badRequest('ป้อนรหัสผ่านเริ่มต้น');
+    // ไม่ตั้งรหัสผ่าน = เชิญด้วยลิงก์ (HANDOFF 184) — ผู้ใช้ตั้งรหัสผ่านเองจากลิงก์ เข้าระบบไม่ได้จนกว่าจะตั้ง
+    if (!b.password && !b.invite) throw badRequest('ป้อนรหัสผ่านเริ่มต้น หรือเลือก "ให้ผู้ใช้ตั้งรหัสผ่านเองจากลิงก์เชิญ"', [{ field: 'password', message: 'ป้อนรหัสผ่าน' }]);
     const tenantId = await tenantFor(a, b.tenant_id, b.companies);
     await checkUserScope(tenantId, b);
     if (tenantId) {
@@ -430,10 +438,10 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       }
     }
     return db.transaction().execute(async (tx) => {
-      const u = await tx.insertInto('sys_user').values({ tenant_id: tenantId, username: b.username, display_name: b.display_name, password_hash: await bcrypt.hash(b.password!, 10), user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, single_session: b.single_session ?? false, app_access: appAccessValue(b.app_access), status: b.status, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+      const u = await tx.insertInto('sys_user').values({ tenant_id: tenantId, username: b.username, display_name: b.display_name, password_hash: b.password ? await bcrypt.hash(b.password, 10) : null, user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, single_session: b.single_session ?? false, app_access: appAccessValue(b.app_access), status: b.status, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
       for (const c of b.companies) await tx.insertInto('sys_user_company').values({ company_id: c, user_id: u.id, created_by: a.userId }).execute();
-      await markPasswordChanged(tx, u.id);
-      await logActivity(tx, a, { module: 'SYS', action: 'ADD_USER', table: 'sys_user', rowId: u.id, detail: { username: b.username, tenant_id: tenantId, app_access: normalizeAppAccess(b.app_access ?? null) } });
+      if (b.password) await markPasswordChanged(tx, u.id);
+      await logActivity(tx, a, { module: 'SYS', action: 'ADD_USER', table: 'sys_user', rowId: u.id, detail: { username: b.username, tenant_id: tenantId, invite: !b.password, app_access: normalizeAppAccess(b.app_access ?? null) } });
       return u;
     });
   });

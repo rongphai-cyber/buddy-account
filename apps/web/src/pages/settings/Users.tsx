@@ -6,12 +6,36 @@ import { useSession } from '../../session';
 import { HUB_APPS, PASSWORD_RULE, TENANT_MODULES, type TenantModuleKey } from '@buddy/core';
 import { Confirm, cx, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, useHotkeys } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
+import { QrCode } from './TwoFactor';
 
-interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean; rights_in?: string[] }
+interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean; rights_in?: string[]; has_password?: boolean; invite_expires_at?: string | null }
 interface Group { id: string; code: string; name: string; rights_in?: string[] }
-interface TenantSecurity { require_mfa: boolean; single_session?: boolean; users: number; without_mfa: number }
+interface TenantSecurity { require_mfa: boolean; service_requires_mfa?: boolean; single_session?: boolean; users: number; without_mfa: number }
+type InviteLink = { url: string; expires_at: string; hours: number; username: string; display_name: string; reissued?: boolean };
+const when = (iso: string) => new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' });
 
-/** ผู้ดูแลระบบของลูกค้า: บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ (HANDOFF 146 · ค่าเริ่มต้น ปิด) */
+/**
+ * ลิงก์เชิญ (HANDOFF 184): แสดงครั้งเดียว (ระบบเก็บเฉพาะ hash) — คัดลอก / QR / ส่งทาง LINE · ใช้ได้ครั้งเดียว หมดอายุตามที่แสดง
+ */
+function InviteDialog({ link, onClose }: { link: InviteLink; onClose: () => void }) {
+  const msg = `เชิญใช้ Buddy Account — รหัสผู้ใช้ ${link.username}\nเปิดลิงก์นี้เพื่อตั้งรหัสผ่านของคุณ (ใช้ได้ครั้งเดียว ถึง ${when(link.expires_at)}):\n${link.url}`;
+  const copy = (t: string, ok: string) => navigator.clipboard?.writeText(t).then(() => toast(ok)).catch(() => toast('คัดลอกไม่ได้ — เลือกข้อความในช่องแล้วกด Ctrl+C', 'warn'));
+  return (
+    <Modal title={`ลิงก์เชิญ ${link.username}`} onClose={onClose} footer={<button className="primary" autoFocus onClick={onClose}>ปิด</button>}>
+      <p>ส่งลิงก์นี้ให้ <b>{link.display_name}</b> ทาง LINE — เปิดแล้วตั้งรหัสผ่านเอง แล้วตั้งยืนยันตัวตนสองขั้นด้วยแอปในมือถือ · <b>ใช้ได้ครั้งเดียว ภายใน {link.hours} ชั่วโมง</b> (ถึง {when(link.expires_at)}){link.reissued && ' · ลิงก์เดิมใช้ไม่ได้แล้ว'}</p>
+      <div className="invite-link">
+        <input readOnly value={link.url} aria-label="ลิงก์เชิญ" onFocus={(e) => e.target.select()} />
+        <button type="button" className="primary" onClick={() => copy(link.url, 'คัดลอกลิงก์แล้ว — วางในแชต LINE ได้เลย')}>คัดลอกลิงก์</button>
+        <button type="button" onClick={() => copy(msg, 'คัดลอกข้อความเชิญแล้ว')}>คัดลอกพร้อมข้อความ</button>
+        <a className="btn" href={`https://line.me/R/share?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer noopener">ส่งทาง LINE</a>
+      </div>
+      <div className="invite-qr"><QrCode text={link.url} label="QR code ของลิงก์เชิญ" /><p className="small muted">หรือให้พนักงานสแกน QR นี้ด้วยกล้องมือถือ</p></div>
+      <p className="notebox">ลิงก์นี้แสดงครั้งเดียว — ระบบไม่เก็บลิงก์ไว้ ปิดหน้าต่างแล้วถ้าต้องการอีกให้กด "ออกลิงก์ใหม่" (ลิงก์เดิมจะใช้ไม่ได้) · คุณไม่เห็นรหัสผ่านที่พนักงานตั้ง</p>
+    </Modal>
+  );
+}
+
+/** ผู้ดูแลระบบของลูกค้า: บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ (HANDOFF 146 · ค่าเริ่มต้น ปิด · HANDOFF 184: ผู้ให้บริการบังคับทุกผู้ใช้แล้ว) */
 function TenantMfaBox() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['tenant-security'], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
@@ -24,6 +48,12 @@ function TenantMfaBox() {
     catch (e) { setErr(e); } finally { setBusy(false); }
   };
   if (!q.data) return null;
+  if (q.data.service_requires_mfa) return (
+    <fieldset className="box"><legend>ความปลอดภัยการเข้าระบบ</legend>
+      <p>✅ <b>ทุกผู้ใช้ต้องตั้งยืนยันตัวตนสองขั้น</b> (แอป Google/Microsoft Authenticator บนมือถือ) — ผู้ที่ยังไม่ตั้ง ({q.data.without_mfa} จาก {q.data.users} คน) จะถูกพาไปหน้าตั้งค่าเมื่อเข้าระบบครั้งถัดไป · มือถือหาย: เปิดผู้ใช้นั้นแล้วกด "ล้างยืนยันตัวตนสองขั้น"</p>
+      {q.data.single_session && <p className="small">ลูกค้านี้ตั้งไว้ 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ — เข้าระบบจากเครื่องใหม่ เครื่องเดิมจะออกจากระบบ (ผู้ให้บริการตั้ง)</p>}
+    </fieldset>
+  );
   return (
     <fieldset className="box"><legend>ความปลอดภัยการเข้าระบบ</legend>
       <label className="check"><input type="checkbox" checked={q.data.require_mfa} disabled={busy} onChange={(e) => setAsk(e.target.checked)} aria-label="บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้" /> บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้</label>
@@ -42,13 +72,14 @@ function TenantMfaBox() {
 export function UsersPage() {
   const { me } = useSession();
   const qc = useQueryClient();
-  const q = useQuery({ enabled: !!me?.user.is_admin, queryKey: ['users'], queryFn: () => api.get<{ users: User[]; groups: Group[] }>('/api/v1/users') });
+  const q = useQuery({ enabled: !!me?.user.is_admin, queryKey: ['users'], queryFn: () => api.get<{ users: User[]; groups: Group[]; mfa_all?: boolean }>('/api/v1/users') });
   const nav = useNavigate();
   const [edit, setEdit] = useState<User | 'new' | null>(null);
   const [addGroup, setAddGroup] = useState(false);
+  const [link, setLink] = useState<InviteLink | null>(null);
   const rs = useRowSelect(q.data?.users);
   const sec = useQuery({ enabled: !!me?.user.is_admin && !!me?.user.tenant_id, queryKey: ['tenant-security'], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
-  const mfaAll = !!sec.data?.require_mfa;
+  const mfaAll = !!sec.data?.require_mfa || !!q.data?.mfa_all;
   if (!me?.user.is_admin) return <div className="page"><div className="notebox">เฉพาะผู้ดูแลระบบ</div></div>;
   return (
     <div className="page" data-tone="setup">
@@ -68,32 +99,45 @@ export function UsersPage() {
                 <td className="small">{appsText(u)}</td>
                 <td className="small">{u.last_login_at ? new Date(u.last_login_at).toLocaleString('th-TH') : '—'}</td>
                 <td>{u.mfa_enabled ? <Pill tone="n">เปิด</Pill> : u.group_code === 'ADMIN' || mfaAll ? <Pill tone="d">ยังไม่ตั้ง</Pill> : <span className="muted">—</span>}</td>
-                <td>{u.status === 'A' ? 'ใช้งาน' : 'ระงับ'}{u.locked_until && <> <Pill tone="c">ล็อกถึง {new Date(u.locked_until).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</Pill></>}</td>
+                <td>{u.status === 'A' ? 'ใช้งาน' : 'ระงับ'}{u.has_password === false && <> <Pill tone={u.invite_expires_at ? 'm' : 'd'}>{u.invite_expires_at ? `รอตั้งรหัสผ่าน (ลิงก์ถึง ${when(u.invite_expires_at)})` : 'ยังไม่ตั้งรหัสผ่าน — ออกลิงก์เชิญ'}</Pill></>}{u.locked_until &&<> <Pill tone="c">ล็อกถึง {new Date(u.locked_until).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</Pill></>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       {addGroup && <GroupForm onClose={() => setAddGroup(false)} onSaved={() => { setAddGroup(false); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
-      {edit && q.data && <UserForm u={edit === 'new' ? null : edit} groups={q.data.groups} tenantOne={!!sec.data?.single_session} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
+      {edit && q.data && <UserForm u={edit === 'new' ? null : edit} groups={q.data.groups} tenantOne={!!sec.data?.single_session} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['users'] }); }}
+        onLink={(l) => { setEdit(null); setLink(l); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
+      {link && <InviteDialog link={link} onClose={() => setLink(null)} />}
     </div>
   );
 }
 
-function UserForm({ u, groups, tenantOne, onClose, onSaved }: { u: User | null; groups: Group[]; tenantOne?: boolean; onClose: () => void; onSaved: () => void }) {
+function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User | null; groups: Group[]; tenantOne?: boolean; onClose: () => void; onSaved: () => void; onLink: (l: InviteLink) => void }) {
+  // ผู้ใช้ใหม่: ค่าเริ่มต้น = ให้ตั้งรหัสผ่านเองจากลิงก์เชิญ (HANDOFF 184 — ผู้ดูแลไม่ต้องรู้รหัสผ่าน)
+  const [invite, setInvite] = useState(!u);
   const { me } = useSession();
   const [f, setF] = useState({ username: u?.username ?? '', display_name: u?.display_name ?? '', password: '', user_group_id: u?.user_group_id ?? '', approval_level: u?.approval_level ?? 0, check_rights: u?.check_rights ?? false, status: u?.status ?? 'A', companies: u?.companies ?? [] as string[], single_session: u?.single_session ?? false,
     app_access: (u?.app_access ?? null) as TenantModuleKey[] | null });
   const [err, setErr] = useState<unknown>(null);
-  const [sec, setSec] = useState<null | 'unlock' | 'reset-2fa'>(null);
+  const [sec, setSec] = useState<null | 'unlock' | 'reset-2fa' | 'invite' | 'revoke'>(null);
   const nav = useNavigate();
   // ตรวจก่อนบันทึก (HANDOFF 159 · ข้อกำหนดเจ้าของ: ช่องบังคับเตือนและให้เลือก)
   const [noCompany, setNoCompany] = useState(false);
   const [askRights, setAskRights] = useState(false);
   const isAdminGroup = groups.find((g) => g.id === f.user_group_id)?.code === 'ADMIN';
-  const runSec = () => { const k = sec; setSec(null); api.post(`/api/v1/users/${u!.id}/${k}`).then(() => { toast(k === 'unlock' ? 'ปลดล็อกแล้ว' : 'ล้างยืนยันตัวตนสองขั้นแล้ว — ผู้ใช้ต้องเข้าระบบใหม่'); onSaved(); }).catch(setErr); };
-  const send = (body: typeof f) => (u ? api.put<{ id: string }>(`/api/v1/users/${u.id}`, { ...body, password: body.password || undefined, user_group_id: body.user_group_id || null }) : api.post<{ id: string }>('/api/v1/users', { ...body, user_group_id: body.user_group_id || null }));
-  const done = () => { toast('บันทึกผู้ใช้แล้ว'); onSaved(); };
+  const runSec = () => {
+    const k = sec; setSec(null);
+    if (k === 'invite') { api.post<InviteLink>(`/api/v1/users/${u!.id}/invite`).then(onLink).catch(setErr); return; }
+    if (k === 'revoke') { api.del(`/api/v1/users/${u!.id}/invite`).then(() => { toast('ยกเลิกลิงก์เชิญแล้ว — ลิงก์เดิมใช้ไม่ได้'); onSaved(); }).catch(setErr); return; }
+    api.post(`/api/v1/users/${u!.id}/${k}`).then(() => { toast(k === 'unlock' ? 'ปลดล็อกแล้ว' : 'ล้างยืนยันตัวตนสองขั้นแล้ว — ผู้ใช้ต้องเข้าระบบใหม่และตั้งใหม่'); onSaved(); }).catch(setErr);
+  };
+  const send = (body: typeof f) => (u ? api.put<{ id: string }>(`/api/v1/users/${u.id}`, { ...body, password: body.password || undefined, user_group_id: body.user_group_id || null })
+    : api.post<{ id: string }>('/api/v1/users', { ...body, password: invite ? undefined : body.password, invite, user_group_id: body.user_group_id || null }));
+  const done = (r?: { id: string }) => {
+    if (!u && invite && r?.id) { api.post<InviteLink>(`/api/v1/users/${r.id}/invite`).then((l) => { toast('เพิ่มผู้ใช้แล้ว — ส่งลิงก์เชิญให้ผู้ใช้'); onLink(l); }).catch((e) => { setErr(e); onSaved(); }); return; }
+    toast('บันทึกผู้ใช้แล้ว'); onSaved();
+  };
   /** มีแถวสิทธิ์รายเมนู (ของผู้ใช้หรือกลุ่ม) ในบริษัทที่ติ๊กอย่างน้อย 1 บริษัท */
   const hasRights = () => { const g = groups.find((x) => x.id === f.user_group_id); const inCo = [...(u?.rights_in ?? []), ...(g?.rights_in ?? [])]; return f.companies.some((c) => inCo.includes(c)); };
   const save = () => {
@@ -112,7 +156,12 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved }: { u: User | null; 
       <div className="form-grid">
         <Field label="รหัสผู้ใช้" req><input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>
         <Field label="ชื่อผู้ใช้" req><input value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} /></Field>
-        <Field label={u ? 'ตั้งรหัสผ่านใหม่ (ว่าง = ไม่เปลี่ยน)' : 'รหัสผ่านเริ่มต้น'} hint={PASSWORD_RULE} req={!u}><PasswordInput value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" /></Field>
+        {!u && <fieldset className="wide"><span className="lbl">รหัสผ่าน</span>
+          <label className="inline chk"><input type="radio" name="pw-mode" checked={invite} onChange={() => setInvite(true)} /> ให้ผู้ใช้ตั้งรหัสผ่านเองจากลิงก์เชิญ (แนะนำ — ส่งทาง LINE · ผู้ดูแลไม่เห็นรหัสผ่าน)</label>
+          <label className="inline chk"><input type="radio" name="pw-mode" checked={!invite} onChange={() => setInvite(false)} /> ตั้งรหัสผ่านเริ่มต้นเอง</label>
+          {invite && <p className="hint">บันทึกแล้วจะได้ลิงก์ + QR ให้คัดลอกส่ง · ใช้ได้ครั้งเดียว ภายใน 72 ชั่วโมง · ผู้ใช้ตั้งรหัสผ่านแล้วตั้งยืนยันตัวตนสองขั้นต่อทันที</p>}
+        </fieldset>}
+        {(u || !invite) && <Field label={u ? 'ตั้งรหัสผ่านใหม่ (ว่าง = ไม่เปลี่ยน)' : 'รหัสผ่านเริ่มต้น'} hint={PASSWORD_RULE} req={!u}><PasswordInput value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" /></Field>}
         <Field label="กลุ่มผู้ใช้"><select value={f.user_group_id} onChange={(e) => setF({ ...f, user_group_id: e.target.value })}><option value="">— ไม่มีกลุ่ม —</option>{groups.map((g) => <option key={g.id} value={g.id}>{g.code} · {g.name}</option>)}</select></Field>
         <Field label="ระดับอนุมัติ" hint="0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/กำหนดค่าโปรแกรม · 9 ทุกอย่างรวมระบบความปลอดภัย">
           <select value={f.approval_level} onChange={(e) => setF({ ...f, approval_level: Number(e.target.value) })}>{Array.from({ length: 10 }, (_, i) => <option key={i} value={i}>{i} · {i <= 4 ? 'พนักงาน' : i <= 8 ? 'หัวหน้าแผนก' : 'ผู้จัดการระบบ'}</option>)}</select>
@@ -130,10 +179,13 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved }: { u: User | null; 
             : noCompany && !f.companies.length && <p className="bad small" role="alert">ยังไม่ได้เลือกบริษัทที่เข้าได้ — ผู้ใช้นี้จะเข้าบริษัทใดไม่ได้ ติ๊กบริษัทอย่างน้อย 1 บริษัท</p>}
         </fieldset>
         <AppAccessField value={f.app_access} onChange={(v) => setF({ ...f, app_access: v })} admin={groups.find((g) => g.id === f.user_group_id)?.code === 'ADMIN'} />
-        {u && (u.locked_until || (u.mfa_enabled && u.id !== me?.user.id)) && (
+        {u && u.id !== me?.user.id && (
           <fieldset className="wide"><span className="lbl">ความปลอดภัยการเข้าระบบ</span>
+            {!u.mfa_enabled && u.status === 'A' && <button type="button" className="primary" onClick={() => setSec('invite')}>{u.invite_expires_at ? 'ออกลิงก์เชิญใหม่' : 'สร้างลิงก์เชิญ (ให้ตั้งรหัสผ่านเอง)'}</button>}{' '}
+            {u.invite_expires_at && <button type="button" onClick={() => setSec('revoke')}>ยกเลิกลิงก์เชิญ</button>}{' '}
             {u.locked_until && <button type="button" onClick={() => setSec('unlock')}>ปลดล็อก (ใส่รหัสผิดเกิน 5 ครั้ง)</button>}{' '}
-            {u.mfa_enabled && u.id !== me?.user.id && <button type="button" className="danger" onClick={() => setSec('reset-2fa')}>ล้างยืนยันตัวตนสองขั้น (มือถือหาย)</button>}
+            {u.mfa_enabled && <button type="button" className="danger" onClick={() => setSec('reset-2fa')}>ล้างยืนยันตัวตนสองขั้น (มือถือหาย)</button>}
+            {u.invite_expires_at && <p className="small muted">มีลิงก์เชิญที่ยังไม่ใช้ ถึง {when(u.invite_expires_at)}</p>}
           </fieldset>
         )}
       </div>
@@ -149,8 +201,14 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved }: { u: User | null; 
           <li>หรือบันทึก แล้วกำหนดสิทธิ์รายเมนูของผู้ใช้นี้ต่อทันที</li>
         </ul>
       </Modal>}
-      {sec && <Confirm title={sec === 'unlock' ? 'ปลดล็อกผู้ใช้' : 'ล้างยืนยันตัวตนสองขั้น'} danger={sec === 'reset-2fa'} onClose={() => setSec(null)} onOk={runSec}
-        text={sec === 'unlock' ? `ให้ ${u?.username} เข้าระบบได้ทันที` : `${u?.username} จะถูกออกจากระบบ และเข้าด้วยรหัสผ่านอย่างเดียว (ผู้ดูแลระบบต้องตั้งใหม่ทันที) — ตรวจว่าเป็นเจ้าของบัญชีจริงก่อน`} />}
+      {sec && <Confirm title={{ unlock: 'ปลดล็อกผู้ใช้', 'reset-2fa': 'ล้างยืนยันตัวตนสองขั้น', invite: u?.invite_expires_at ? 'ออกลิงก์เชิญใหม่' : 'สร้างลิงก์เชิญ', revoke: 'ยกเลิกลิงก์เชิญ' }[sec]}
+        danger={sec === 'reset-2fa' || sec === 'revoke'} onClose={() => setSec(null)} onOk={runSec}
+        text={{
+          unlock: `ให้ ${u?.username} เข้าระบบได้ทันที`,
+          'reset-2fa': `${u?.username} จะถูกออกจากระบบ และต้องตั้งยืนยันตัวตนสองขั้นใหม่ด้วยมือถือเครื่องใหม่ทันทีที่เข้าระบบครั้งถัดไป — ตรวจว่าเป็นเจ้าของบัญชีจริงก่อน`,
+          invite: `${u?.username} จะตั้งรหัสผ่านใหม่เองจากลิงก์ (ใช้ได้ครั้งเดียว ภายใน 72 ชั่วโมง)${u?.invite_expires_at ? ' · ลิงก์เดิมจะใช้ไม่ได้' : ''}${u?.has_password ? ' · รหัสผ่านเดิมใช้ได้จนกว่าจะตั้งใหม่' : ''}`,
+          revoke: `ลิงก์เชิญของ ${u?.username} จะใช้ไม่ได้ทันที`,
+        }[sec]} />}
     </Modal>
   );
 }

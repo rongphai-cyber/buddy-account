@@ -34,7 +34,7 @@ export async function requireHuman(req: FastifyRequest) {
 }
 
 /* ------------------------------------------------------------------ Rate limit */
-export type LimitName = 'login-ip' | 'login-user' | 'totp-ip' | 'signup-ip' | 'password-user';
+export type LimitName = 'login-ip' | 'login-user' | 'totp-ip' | 'signup-ip' | 'password-user' | 'invite-ip';
 /** จำนวนครั้งที่ยอม ต่อช่วงเวลา (นาที) — เกินแล้วรอจนครั้งแรกในช่วงพ้นไป */
 export const LIMITS: Record<LimitName, { max: number; minutes: number; what: string }> = {
   'login-ip': { max: 30, minutes: 10, what: 'เข้าระบบจากเครื่องนี้' },
@@ -42,6 +42,7 @@ export const LIMITS: Record<LimitName, { max: number; minutes: number; what: str
   'totp-ip': { max: 20, minutes: 10, what: 'ใส่รหัสยืนยันตัวตนสองขั้นจากเครื่องนี้' },
   'signup-ip': { max: 10, minutes: 60, what: 'ส่งใบสมัครจากเครื่องนี้' },
   'password-user': { max: 10, minutes: 10, what: 'เปลี่ยนรหัสผ่าน' },
+  'invite-ip': { max: 20, minutes: 10, what: 'เปิดลิงก์เชิญจากเครื่องนี้' },
 };
 const hits = new Map<string, number[]>();
 /** ปิดในชุดทดสอบเดิม (เข้าระบบซ้ำจาก IP เดียวหลายร้อยครั้ง) — ชุดทดสอบของข้อนี้เปิดด้วย BUDDY_RATE_LIMIT=on */

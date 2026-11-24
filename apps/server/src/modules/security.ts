@@ -9,14 +9,17 @@ import { logActivity } from '../audit.js';
 import { decryptSecret, encryptSecret } from '../secret.js';
 
 /**
- * ความปลอดภัยการเข้าระบบ (T0.16) — เจ้าของเลือก: ยืนยันตัวตนสองขั้นบังคับเฉพาะผู้ดูแลระบบ · ใส่รหัสผิด 5 ครั้งล็อก 15 นาที · ไม่บังคับเปลี่ยนรหัสตามรอบ
+ * ความปลอดภัยการเข้าระบบ (T0.16) — ใส่รหัสผิด 5 ครั้งล็อก 15 นาที · ไม่บังคับเปลี่ยนรหัสตามรอบ
+ * ยืนยันตัวตนสองขั้น: เดิมบังคับเฉพาะผู้ดูแลระบบ → HANDOFF 184 (เจ้าของ 24/11/2569 "ใช้แอปยืนยันตัวตน แต่ไม่อยากจะต้องมาใส่อีเมล์ให้ Cloudflare ทุกอีเมล์" · "ทำต่อเลย")
+ *   บังคับ **ทุกผู้ใช้** (ผู้ดูแล ผู้ใช้ของลูกค้า ผู้ใช้ดูอย่างเดียว เจ้าหน้าที่ผู้ให้บริการ) — Buddy เป็นด่านเดียวแทน Cloudflare Access · ผู้ใช้เดิมที่ยังไม่ตั้งถูกพาไปหน้าตั้งค่าตอนเข้าระบบครั้งถัดไป
  * TOTP ตาม RFC 6238 (SHA-1, 6 หลัก, 30 วินาที — ใช้กับ Google/Microsoft Authenticator ได้) · กุญแจเข้ารหัสด้วยกุญแจหลักของเครื่องแม่ข่าย
- * BUDDY_REQUIRE_ADMIN_2FA=0 ปิดการบังคับ (ใช้กับเครื่องทดสอบอัตโนมัติเท่านั้น)
+ * BUDDY_REQUIRE_ADMIN_2FA=0 ปิดการบังคับ (ชื่อเดิมคงไว้ · ใช้กับชุดทดสอบ/เครื่องทดสอบอัตโนมัติเท่านั้น) — ค่าของลูกค้า "บังคับทุกผู้ใช้" (HANDOFF 146) ยังมีผลแม้ปิด
  */
 export const MAX_FAILS = 5;
 export const LOCK_MINUTES = 15;
 const ISSUER = 'Buddy Account';
-export const adminMfaRequired = () => process.env.BUDDY_REQUIRE_ADMIN_2FA !== '0';
+/** บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ (ค่าเริ่มต้น) — ปิดได้เฉพาะชุดทดสอบด้วย BUDDY_REQUIRE_ADMIN_2FA=0 */
+export const mfaForAll = () => process.env.BUDDY_REQUIRE_ADMIN_2FA !== '0';
 
 /* ───────── TOTP ───────── */
 const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -146,13 +149,15 @@ export async function finishSecondStep(db: Db, ticket: string, code: string, ip:
   throw new AppError(401, 'MFA_INVALID', 'รหัสยืนยันไม่ถูกต้อง — ใช้รหัส 6 หลักล่าสุดจากแอป (ตรวจเวลาในมือถือให้ตรง) หรือรหัสสำรอง');
 }
 
-/** ผู้ที่ต้องตั้งยืนยันตัวตนสองขั้นแต่ยังไม่ตั้ง (ผู้ดูแลระบบ · ผู้ใช้ของลูกค้าที่บังคับทุกผู้ใช้) ใช้ได้เฉพาะ API เหล่านี้ */
-export const MFA_SETUP_ALLOWED = new Set(['GET /api/v1/auth/me', 'POST /api/v1/auth/logout', 'GET /api/v1/auth/2fa', 'POST /api/v1/auth/2fa/setup', 'POST /api/v1/auth/2fa/enable', 'GET /api/v1/menu', 'POST /api/v1/auth/password']);
-/** ผู้ใช้นี้ต้องมียืนยันตัวตนสองขั้นหรือไม่ (ผู้ดูแลระบบ หรือ ลูกค้าบังคับทุกผู้ใช้) */
-export const mfaRequiredFor = (a: AuthContext) => (a.isAdmin && adminMfaRequired()) || !!a.tenantRequireMfa;
+/** ผู้ที่ต้องตั้งยืนยันตัวตนสองขั้นแต่ยังไม่ตั้ง ใช้ได้เฉพาะ API เหล่านี้ */
+export const MFA_SETUP_ALLOWED = new Set(['GET /api/v1/auth/me', 'POST /api/v1/auth/logout', 'GET /api/v1/auth/2fa', 'POST /api/v1/auth/2fa/setup', 'POST /api/v1/auth/2fa/enable', 'GET /api/v1/menu', 'POST /api/v1/auth/password',
+  // ลิงก์เชิญ (HANDOFF 184): เปิดจากเครื่องที่มี session ของผู้ใช้อื่นค้างอยู่ได้
+  'GET /api/v1/invite/:token', 'POST /api/v1/invite/:token/accept']);
+/** ผู้ใช้นี้ต้องมียืนยันตัวตนสองขั้นหรือไม่ (ทุกผู้ใช้ · หรือลูกค้าบังคับทุกผู้ใช้เมื่อชุดทดสอบปิดค่ากลาง) — กุญแจ API ไม่ผ่านด่านนี้ */
+export const mfaRequiredFor = (a: AuthContext) => mfaForAll() || !!a.tenantRequireMfa;
 export function checkMfaGate(req: FastifyRequest, method: string, url: string) {
   if (req.auth?.mfaSetupRequired && !MFA_SETUP_ALLOWED.has(`${method} ${url}`))
-    throw new AppError(403, 'MFA_SETUP_REQUIRED', req.auth.isAdmin ? 'ผู้ดูแลระบบต้องตั้งค่ายืนยันตัวตนสองขั้นก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ' : 'กิจการของคุณกำหนดให้ทุกผู้ใช้ตั้งค่ายืนยันตัวตนสองขั้นก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ');
+    throw new AppError(403, 'MFA_SETUP_REQUIRED', mfaForAll() ? 'ทุกผู้ใช้ต้องตั้งค่ายืนยันตัวตนสองขั้น (แอปในมือถือ) ก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ' : 'กิจการของคุณกำหนดให้ทุกผู้ใช้ตั้งค่ายืนยันตัวตนสองขั้นก่อนใช้งาน — ทำตามขั้นตอนบนหน้าจอ');
 }
 
 async function checkPassword(db: Db, userId: string, password: string) {
@@ -223,7 +228,7 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
     const t = await db.selectFrom('sys_tenant').select(['require_mfa', 'single_session']).where('id', '=', tid).executeTakeFirstOrThrow();
     const u = (await sql<{ users: number; without: number }>`SELECT count(*)::int AS users, count(*) FILTER (WHERE NOT coalesce(s.totp_enabled, false))::int AS without
         FROM sys_user x LEFT JOIN sys_user_security s ON s.user_id = x.id AND s.deleted_at IS NULL WHERE x.tenant_id = ${tid} AND x.deleted_at IS NULL AND x.status = 'A'`.execute(db)).rows[0]!;
-    return { require_mfa: t.require_mfa, single_session: t.single_session, users: u.users, without_mfa: u.without };
+    return { require_mfa: t.require_mfa, service_requires_mfa: mfaForAll(), single_session: t.single_session, users: u.users, without_mfa: u.without };
   };
   app.get('/api/v1/tenant/security', async (req) => tenantSecurity(tenantAdmin(req).tenantId));
   app.put('/api/v1/tenant/security', async (req) => {

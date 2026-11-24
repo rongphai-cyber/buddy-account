@@ -179,7 +179,7 @@ const LOOKUP: Rule = { kind: 'lookup' }, SELF: Rule = { kind: 'self' }, OPEN: Ru
 export const VIEWER_OWN_ACCOUNT_ROUTES = [
   'POST /api/v1/setup', 'POST /api/v1/auth/login', 'POST /api/v1/auth/login/totp', 'POST /api/v1/auth/logout', 'POST /api/v1/auth/password', 'POST /api/v1/auth/select',
   'POST /api/v1/auth/2fa/setup', 'POST /api/v1/auth/2fa/enable', 'POST /api/v1/auth/2fa/recovery', 'POST /api/v1/auth/2fa/disable',
-  'POST /api/v1/signup',
+  'POST /api/v1/signup', 'POST /api/v1/invite/:token/accept',
   // เครื่องสาขา (ยืนยันด้วยรหัสเครื่อง ไม่ใช่ผู้ใช้) · ตั้งเครื่องสาขาได้เฉพาะเครื่องที่ยังไม่มีข้อมูล · ซิงก์ทันที = ส่ง/ดึงคิวเดิม ไม่สร้างข้อมูลใหม่
   'POST /api/v1/sync/bootstrap', 'POST /api/v1/sync/pull', 'POST /api/v1/sync/push', 'POST /api/v1/sync/setup-branch', 'POST /api/v1/sync/now',
   // เปิดโปรแกรมอื่นจาก Hub (ตรวจสิทธิ์เปิดโปรแกรมของผู้ใช้ในตัว API)
@@ -194,6 +194,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/tenant/security': SELF, 'PUT /api/v1/tenant/security': SELF,
   'GET /api/v1/auth/2fa': SELF, 'POST /api/v1/auth/2fa/setup': SELF, 'POST /api/v1/auth/2fa/enable': SELF, 'POST /api/v1/auth/2fa/recovery': SELF, 'POST /api/v1/auth/2fa/disable': SELF,
   'POST /api/v1/users/:id/unlock': SELF, 'POST /api/v1/users/:id/reset-2fa': SELF,
+  // ลิงก์เชิญ (HANDOFF 184): ผู้ดูแลสร้าง/ยกเลิก (ตรวจในตัว API) · หน้าเปิดลิงก์ไม่ต้องเข้าระบบ
+  'POST /api/v1/users/:id/invite': SELF, 'DELETE /api/v1/users/:id/invite': SELF, 'GET /api/v1/invite/:token': OPEN, 'POST /api/v1/invite/:token/accept': OPEN,
   // T0.12 นำข้อมูลจาก Express (ผู้ดูแลระบบ — ตรวจในตัว API)
   'POST /api/v1/express-import/jobs': SELF, 'PUT /api/v1/express-import/jobs/:id/files/:name': SELF, 'POST /api/v1/express-import/jobs/:id/run': SELF,
   'GET /api/v1/express-import/jobs/:id': SELF, 'DELETE /api/v1/express-import/jobs/:id': SELF, 'GET /api/v1/express-import/files': SELF,

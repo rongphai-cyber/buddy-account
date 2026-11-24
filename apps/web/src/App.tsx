@@ -36,6 +36,7 @@ import { UsersPage } from './pages/settings/Users';
 import { NewCompanyPage } from './pages/settings/NewCompany';
 import { PasswordPage } from './pages/settings/Password';
 import { MfaRequiredPage } from './pages/settings/TwoFactor';
+import { InvitePage } from './pages/Invite';
 import { ImportPage } from './pages/settings/Import';
 import { TenantsPage } from './pages/settings/Tenants';
 import { TrialBalancePage } from './pages/reports/TrialBalance';
@@ -103,6 +104,9 @@ export function App() {
   const loc = useLocation();
   const nav = useNavigate();
   if (loading) return <div className="boot">กำลังเปิด Buddy Account…</div>;
+  // HANDOFF 184 invite link: opens without signing in (also from a browser signed in as someone else)
+  const inv = /^\/invite\/([A-Za-z0-9_-]{20,100})$/.exec(loc.pathname);
+  if (inv) return <><InvitePage token={inv[1]!} /><Toasts /></>;
   if (needsSetup) return <><SetupPage /><Toasts /></>;
   // สมัครใช้งานเอง (ข้อกำหนดเจ้าของ): ลิงก์ /signup เปิดได้โดยไม่ต้องเข้าระบบ
   if (!me) return <>{loc.pathname === '/signup' ? <SignupPage onBack={() => nav('/')} /> : <LoginPage />}<Toasts /></>;

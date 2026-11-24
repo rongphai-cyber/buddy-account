@@ -50,11 +50,11 @@ export function TwoFactorSetup({ onDone }: { onDone: () => void }) {
 }
 
 /** QR code ของลิงก์ otpauth:// (สร้างในเครื่อง ไม่ส่งกุญแจไปบริการภายนอก) — ดำบนขาวเสมอแม้ธีมมืด เพื่อให้กล้องอ่านได้ */
-function QrCode({ text }: { text: string }) {
+export function QrCode({ text, label }: { text: string; label?: string }) {
   const qr = useMemo(() => qrSvgPath(qrEncode(text).modules), [text]);
   return (
     <div className="mfa-qr">
-      <svg viewBox={qr.viewBox} role="img" aria-label="QR code สำหรับแอปยืนยันตัวตน" shapeRendering="crispEdges">
+      <svg viewBox={qr.viewBox} role="img" aria-label={label ?? "QR code สำหรับแอปยืนยันตัวตน"} shapeRendering="crispEdges">
         <rect width="100%" height="100%" fill="#fff" /><path d={qr.d} fill="#000" />
       </svg>
     </div>
@@ -82,13 +82,13 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
   );
 }
 
-/** หน้าบังคับ: ผู้ดูแลระบบที่ยังไม่ตั้งยืนยันตัวตนสองขั้น ใช้งานอื่นไม่ได้จนกว่าจะตั้งเสร็จ */
+/** หน้าบังคับ: ผู้ใช้ที่ยังไม่ตั้งยืนยันตัวตนสองขั้น (ทุกผู้ใช้ · HANDOFF 184) ใช้งานอื่นไม่ได้จนกว่าจะตั้งเสร็จ */
 export function MfaRequiredPage() {
   const { me, refresh, logout } = useSession();
   return (
     <div className="login" data-tone="home">
       <div className="login-card mfa-card">
-        <div className="login-brand"><b>ตั้งค่ายืนยันตัวตนสองขั้น</b><span>{me?.user.is_admin ? `บัญชี ${me?.user.username} เป็นผู้ดูแลระบบ` : `กิจการของคุณกำหนดให้ทุกผู้ใช้ (รวม ${me?.user.username ?? ''})`} — ต้องใช้รหัสจากมือถือทุกครั้งที่เข้าระบบ เพื่อป้องกันบัญชีถูกขโมย</span></div>
+        <div className="login-brand"><b>ตั้งค่ายืนยันตัวตนสองขั้น</b><span>ทุกผู้ใช้ (รวม {me?.user.username ?? ''}) ต้องใช้รหัสจากแอปในมือถือทุกครั้งที่เข้าระบบ เพื่อป้องกันบัญชีถูกขโมย — ตั้งครั้งเดียว ใช้เวลาประมาณ 2 นาที</span></div>
         <TwoFactorSetup onDone={() => { toast('เปิดยืนยันตัวตนสองขั้นแล้ว'); refresh(); }} />
         <button type="button" className="link" onClick={logout}>ออกจากระบบ</button>
       </div>
@@ -118,7 +118,7 @@ export function TwoFactorCard() {
       <h3>ยืนยันตัวตนสองขั้น</h3>
       <ErrorBox error={st.error} />
       {s && !s.enabled && !setup && <>
-        <p>ยังไม่เปิด — เมื่อเปิดแล้ว ตอนเข้าระบบต้องป้อนรหัส 6 หลักจากแอปในมือถือด้วย แม้รหัสผ่านรั่วก็เข้าไม่ได้{s.required && <b> (ผู้ดูแลระบบต้องเปิด)</b>}</p>
+        <p>ยังไม่เปิด — เมื่อเปิดแล้ว ตอนเข้าระบบต้องป้อนรหัส 6 หลักจากแอปในมือถือด้วย แม้รหัสผ่านรั่วก็เข้าไม่ได้{s.required && <b> (บังคับ — ต้องเปิด)</b>}</p>
         <div className="actions"><button className="primary" onClick={() => setSetup(true)}>เปิดยืนยันตัวตนสองขั้น</button></div>
       </>}
       {s && !s.enabled && setup && <TwoFactorSetup onDone={() => { setSetup(false); toast('เปิดยืนยันตัวตนสองขั้นแล้ว'); reload(); }} />}
@@ -133,7 +133,7 @@ export function TwoFactorCard() {
         <Modal title={ask === 'recovery' ? 'สร้างรหัสสำรองใหม่' : 'ปิดยืนยันตัวตนสองขั้น'} onClose={() => setAsk(null)}
           footer={<><button onClick={() => setAsk(null)}>ยกเลิก</button><button className={ask === 'disable' ? 'danger' : 'primary'} onClick={run}>ยืนยัน</button></>}>
           <ErrorBox error={err} />
-          <p>{ask === 'recovery' ? 'รหัสสำรองชุดเดิมจะใช้ไม่ได้ทันที' : s?.required ? 'ผู้ดูแลระบบต้องตั้งใหม่ทันทีหลังปิด (เช่นเมื่อเปลี่ยนมือถือ)' : 'การเข้าระบบจะใช้แค่รหัสผ่าน'}</p>
+          <p>{ask === 'recovery' ? 'รหัสสำรองชุดเดิมจะใช้ไม่ได้ทันที' : s?.required ? 'ต้องตั้งใหม่ทันทีหลังปิด (เช่นเมื่อเปลี่ยนมือถือ)' : 'การเข้าระบบจะใช้แค่รหัสผ่าน'}</p>
           <Field label="ยืนยันด้วยรหัสผ่านปัจจุบัน" req wide><PasswordInput autoFocus value={pw} onChange={(e) => setPw(e.target.value)} data-noenter onKeyDown={(e) => e.key === 'Enter' && run()} /></Field>
         </Modal>
       )}

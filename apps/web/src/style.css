@@ -1154,3 +1154,16 @@ select.perm-inh.bad, td.perm-inh.bad { color: #c99a9a; }
 .co-actions { display: flex; flex-wrap: wrap; gap: 4px 6px; justify-content: flex-end; min-width: 200px; max-width: 330px; margin-left: auto; }
 .co-actions button { padding: 3px 9px; font-size: 13px; white-space: nowrap; }
 @media (max-width: 640px) { .grid th.co-name, .grid td.co-name { min-width: 11em; } .co-actions { min-width: 150px; max-width: 200px; } }
+/* HANDOFF 184 invite link: steps on the invite page, who is invited, link + QR in the admin dialog */
+.invite-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0; padding: 0; font-size: 12.5px; }
+.invite-steps li { padding: 3px 9px; border-radius: 999px; background: var(--surface-2, #f3f0fa); color: var(--muted); }
+.invite-steps li.on { background: var(--accent-soft, #e9e2fb); color: var(--accent, #5b3fb3); font-weight: 600; }
+.invite-who { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.invite-who dt { color: var(--muted); }
+.invite-who dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.invite-link { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.invite-link input { flex: 1 1 260px; min-width: 0; font-family: var(--mono, monospace); font-size: 12.5px; }
+.invite-link .btn { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 8px; border: 1px solid #06c755; background: #06c755; color: #fff; text-decoration: none; font-weight: 600; }
+.invite-qr { display: flex; flex-direction: column; align-items: center; margin: 10px 0 4px; }
+.invite-qr .mfa-qr { margin: 0 0 4px; }
+.invite-qr .mfa-qr svg { width: 190px; height: 190px; }
