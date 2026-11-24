@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { checkTaxId } from '@buddy/core';
+import { checkTaxId, todayIso } from '@buddy/core';
 import type { Database, Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth, requireCompany, type AuthContext } from '../http.js';
 import { canAccessCompany, companiesForUser } from './auth.js';
@@ -18,6 +18,7 @@ import { createTenantWithAdmin } from './signup.js';
 import { ensureStandardGroups, permissionCompanies } from '../standard-groups.js';
 import { applyStarter, lastStarter } from '../starter.js';
 import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, seedLookups, setSetting } from '../company-template.js';
+import { companyAddressAt, saveCurrentAddress } from './company-address.js';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'รูปแบบวันที่ไม่ถูกต้อง');
 const uuid = z.string().uuid();
@@ -32,6 +33,9 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const c = await db.selectFrom('sys_company').selectAll().where('id', '=', a.companyId).executeTakeFirstOrThrow();
     const hq = await db.selectFrom('sys_branch').select(['id', 'tax_branch_no', 'name']).where('company_id', '=', a.companyId).where('is_head_office', '=', true).where('deleted_at', 'is', null).executeTakeFirst();
     const s = await companySettings(db, a.companyId);
+    // ที่อยู่ที่มีผลวันนี้ (ประวัติที่อยู่ HANDOFF 180) — ย้ายที่อยู่ที่ตั้งวันล่วงหน้าไว้ แสดงเมื่อถึงวัน
+    const now = await companyAddressAt(db, a.companyId, todayIso(), null);
+    if (now.history_id) Object.assign(c, { address_th: now.address_th, address_en: now.address_en, zip_code: now.zip_code, ...Object.fromEntries(ADDR_COLS.map((k) => [k, now[k] ?? null])) });
     const [addr1, ...addr2] = (c.address_th ?? '').split('\n');
     const [addrEn1, ...addrEn2] = (c.address_en ?? '').split('\n');
     return {
@@ -67,6 +71,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
         phone: b.phone ?? null, tax_id: tax.normalized, trade_reg_no: b.trade_reg_no ?? null, social_security_no: b.social_security_no ?? null, year_system: b.year_system, updated_by: a.userId,
       }).where('id', '=', a.companyId).execute();
       await tx.updateTable('sys_branch').set({ tax_branch_no: b.tax_branch_no.padStart(5, '0') }).where('company_id', '=', a.companyId).where('is_head_office', '=', true).execute();
+      // แก้ที่อยู่ที่หน้านี้ = แก้ที่อยู่ที่มีผลวันนี้ในประวัติที่อยู่ (HANDOFF 180) — ย้ายที่อยู่ใช้ "เพิ่มที่อยู่ใหม่"
+      await saveCurrentAddress(tx, a, null, { address_th: join(b.address_th_1, b.address_th_2), address_en: join(b.address_en_1, b.address_en_2), zip_code: b.zip_code ?? null, ...Object.fromEntries(ADDR_COLS.map((k) => [k, b[k] ?? null])) });
       const set = (k: string, v: unknown) => setSetting(tx, a.companyId, k, v, a.userId);
       await set('gen.business_type', b.business_type); await set('gen.branch_short_name', b.branch_short_name ?? '');
       await set('gen.allow_blank_party_tax_id', b.allow_blank_party_tax_id); if (b.vat_registered !== undefined) await set('gen.vat_registered', b.vat_registered); await set('gen.year_system', b.year_system);
@@ -263,6 +269,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const b = parse(branchBody, req.body);
     const r = await db.insertInto('sys_branch').values({ ...b, address: b.address ?? null, company_id: a.companyId, is_head_office: false, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
     await logActivity(db, a, { module: 'SYS', action: 'ADD', docNo: b.code, table: 'sys_branch', rowId: r.id });
+    await saveCurrentAddress(db, a, r.id, { address_th: b.address ?? null, address_en: null, zip_code: b.zip_code ?? null, ...Object.fromEntries(ADDR_COLS.map((k) => [k, b[k] ?? null])) });
     return r;
   });
   app.put('/api/v1/branches/:id', async (req) => {
@@ -271,6 +278,9 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const b = parse(branchBody, req.body);
     const r = await db.updateTable('sys_branch').set({ ...b, address: b.address ?? null, updated_by: a.userId }).where('id', '=', id).where('company_id', '=', a.companyId).executeTakeFirst();
     if (!Number(r.numUpdatedRows)) throw notFound('สาขา');
+    // ที่อยู่สาขา = แถวที่มีผลวันนี้ในประวัติที่อยู่ (HANDOFF 180) · สาขาสำนักงานใหญ่ใช้ที่อยู่ของบริษัท
+    const hq = (await db.selectFrom('sys_branch').select('is_head_office').where('id', '=', id).executeTakeFirst())?.is_head_office;
+    if (!hq) await saveCurrentAddress(db, a, id, { address_th: b.address ?? null, address_en: null, zip_code: b.zip_code ?? null, ...Object.fromEntries(ADDR_COLS.map((k) => [k, b[k] ?? null])) });
     return { id };
   });
 

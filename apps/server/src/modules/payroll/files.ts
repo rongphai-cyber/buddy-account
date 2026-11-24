@@ -15,7 +15,7 @@ import { readTable } from '../trade-import.js';
 import { buildXls } from '../../xls.js';
 import { buildXlsx } from '../../xlsx.js';
 import { empBody, empName, loadEmp, payItems, payLaw, paySettings, saveEmployee, uuid, type Ctx } from './master.js';
-import { addrOf, draftCount, employees, endOfMonth, payer, totalsBy, yearTotals } from './forms.js';
+import { addrOf, draftCount, employees, endOfMonth, payer, payerDate, totalsBy, yearTotals } from './forms.js';
 import { bookFor, calcCtx, calcEmployee, loadRun, mustDraft, nextPayNo, totals, writeJournal } from './runs.js';
 
 /**
@@ -48,7 +48,7 @@ export function payrollFileRoutes(app: FastifyInstance, db: Db) {
     const r = await rdRows(db, a.companyId, q);
     if (!r.rows.length) throw badRequest('ไม่มีเงินได้ในช่วงนี้ (หรือรอบเงินเดือนยังเป็นร่าง) — ไม่มีอะไรให้ยื่น');
     problems(rdProblems(r.rows, !q.month));
-    const p = await payer(db, a.companyId, q.branch_id);
+    const p = await payer(db, a.companyId, q.branch_id, payerDate(q.month, q.year));
     if (!p.tax_id) throw badRequest('ยังไม่ได้ใส่เลขประจำตัวผู้เสียภาษีของบริษัท — แก้ที่ เริ่มระบบ › รายละเอียดกิจการ');
     const year = q.month ? Number(q.month.slice(0, 4)) : q.year!;
     const text = rdPrepText(r.rows, !q.month, year);
@@ -62,7 +62,7 @@ export function payrollFileRoutes(app: FastifyInstance, db: Db) {
   const efiling = async (a: Ctx, q: { month?: string; year?: number; branch_id?: string; filing_no: number; channel: 'internet' | 'media' }, reply: FastifyReply) => {
     const r = await rdRows(db, a.companyId, q);
     if (!r.rows.length) throw badRequest('ไม่มีเงินได้ในช่วงนี้ (หรือรอบเงินเดือนยังเป็นร่าง) — ไม่มีอะไรให้ยื่น');
-    const p = await payer(db, a.companyId, q.branch_id);
+    const p = await payer(db, a.companyId, q.branch_id, payerDate(q.month, q.year));
     const s = await paySettings(db, a.companyId);
     const year = q.month ? Number(q.month.slice(0, 4)) : q.year!;
     const h = { company_tax_id: p.tax_id ?? '', branch6: branch6(p.branch_no), branch_name: p.branch_name, form: (q.month ? 'PND1' : 'PND1A') as 'PND1' | 'PND1A', year, month: q.month ? Number(q.month.slice(5, 7)) : null,
@@ -85,7 +85,7 @@ export function payrollFileRoutes(app: FastifyInstance, db: Db) {
     const emps = new Map((await employees(db, a.companyId, t.map((x) => x.employee_id))).map((e) => [e.id, e]));
     const law = await payLaw(db, a.companyId, Number(q.month.slice(0, 4)));
     const f = ssoForm(t.map((x) => { const e = emps.get(x.employee_id)!; return { employee_id: e.id, code: e.code, title: e.title, first_name: e.first_name, last_name: e.last_name, tax_id: e.tax_id, wage: x.sso_wage, ee: x.sso_ee, er: x.sso_er }; }), law.ssoOn(endOfMonth(q.month)));
-    const p = await payer(db, a.companyId, q.branch_id);
+    const p = await payer(db, a.companyId, q.branch_id, payerDate(q.month));
     problems(ssoFileProblems(p.sso_employer_no, f.rows.map((r) => ({ tax_id: r.tax_id, title: r.title, first_name: r.first_name, last_name: r.last_name, wage_paid: r.wage_paid, ee: r.ee }))));
     const rows = [['เลขบัตรประชาชน', 'คำนำหน้า', 'ชื่อ', 'สกุล', 'ค่าจ้าง', 'เงินสมทบ'], ...f.rows.map((r) => [{ n: Number(r.tax_id), fmt: 'id13' as const }, r.title ?? '', r.first_name, r.last_name ?? '', { n: Number(r.wage_paid), fmt: '0.00' as const }, { n: Number(r.ee), fmt: '0.00' as const }])];
     await logActivity(db, a, { module: 'PAY', action: 'EXPORT', docNo: `สปส.1-10 ${q.month}`, table: 'pay_run', detail: { file: 'SSO e-Service', rows: f.count } });

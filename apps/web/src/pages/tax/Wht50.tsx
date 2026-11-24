@@ -57,6 +57,8 @@ export function Wht50Page() {
   const company = useQuery({ queryKey: ['company'], queryFn: () => api.get<Company>('/api/v1/company') });
   const [payer, setPayer] = useState<{ name: string; address: string; tax_id: string; branch_no: string } | null>(null);
   if (!payer && company.data) setPayer({ name: company.data.name_th, address: joinAddr(company.data.address_th_1, company.data.address_th_2), tax_id: company.data.tax_id ?? '', branch_no: company.data.tax_branch_no });
+  // ที่อยู่ผู้จ่ายเงิน = ที่อยู่ที่มีผล ณ วันที่ออกหนังสือรับรอง (ประวัติที่อยู่ HANDOFF 180) — ผู้ใช้ยังแก้ในช่องได้
+  const [addrFor, setAddrFor] = useState('');
   const [payee, setPayee] = useState({ name: '', address: '', tax_id: '', branch_no: '' });
   const [rate, setRate] = useState('3');
   const [h, setH] = useState({ book_no: '', run_no: '', seq_no: '', form: '53' as Wht50Form, condition: '1' as Wht50Data['condition'], condition_other: '', issue_date: todayIso(), rate_4b14: '', text_4b25: '', text_6: '', gpf: '', sso: '', pvd: '' });
@@ -81,6 +83,8 @@ export function Wht50Page() {
     setLines(rows.map(({ row, l }) => ({ key: ++seq, row, date: String(l.certificate_date).slice(0, 10), amount: d(l.paid_amount).toFixed(2), tax: d(l.tax_amount).toFixed(2), taxEdited: true })));
     if (w.lines[0]) setRate(d(w.lines[0].rate).toString());
   }
+  const coAddr = useQuery({ enabled: !!payer && !!h.issue_date, queryKey: ['company-address-at', h.issue_date], queryFn: () => api.get<{ address_th_1: string; address_th_2: string }>('/api/v1/company/address-at', { date: h.issue_date }) });
+  if (payer && coAddr.data && addrFor !== h.issue_date) { setAddrFor(h.issue_date); setPayer({ ...payer, address: joinAddr(coAddr.data.address_th_1, coAddr.data.address_th_2) }); }
   const sups = useQuery({ enabled: q.trim().length > 0, queryKey: ['suppliers', 'w50', q], queryFn: () => api.get<{ rows: SupRow[] }>('/api/v1/suppliers', { q, limit: 12 }), placeholderData: (p) => p });
 
   const pickSupplier = async (id: string) => {

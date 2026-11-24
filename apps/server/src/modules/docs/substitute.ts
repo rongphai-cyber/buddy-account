@@ -6,6 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany, type AuthContext } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { companySettings, setSetting } from '../../company-template.js';
+import { companyAddressAt } from '../company-address.js';
 
 /**
  * เอกสารซื้อ/ค่าใช้จ่าย (เจ้าของ 19/11/2569 · HANDOFF 144):
@@ -84,7 +85,8 @@ export function substituteRoutes(app: FastifyInstance, db: Db) {
     const p = h.payer_employee_id ? await db.selectFrom('pay_employee').select(['title', 'first_name', 'last_name', 'position']).where('id', '=', h.payer_employee_id).where('company_id', '=', a.companyId).executeTakeFirst() : undefined;
     const total = lines.reduce((t, l) => t.plus(d(l.net_amount)), d(0));
     return {
-      company: { name: co?.name_th ?? '', tax_id: co?.tax_id ?? null, address: co?.address_th ?? null },
+      // ที่อยู่ที่มีผล ณ วันที่เอกสาร (HANDOFF 180)
+      company: { name: co?.name_th ?? '', tax_id: co?.tax_id ?? null, address: (await companyAddressAt(db, a.companyId, String(h.doc_date).slice(0, 10), null)).address_th || co?.address_th || null },
       doc_no: h.doc_no, doc_date: h.doc_date, cancelled: h.doc_status === 'C', ref_no: h.ref_no,
       lines: lines.map((l) => ({ date: h.doc_date, description: l.description ?? '', amount: d(l.net_amount).toFixed(2) })),
       total: total.toFixed(2), total_text: bahtText(total), payer: p ? { name: empName(p), position: p.position } : null,

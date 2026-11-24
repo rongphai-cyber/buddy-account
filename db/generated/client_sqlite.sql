@@ -74,6 +74,35 @@ CREATE TABLE IF NOT EXISTS sys_branch (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_sys_branch_company_code ON sys_branch (company_id, code) WHERE deleted_at IS NULL;
 
+-- sys_address_history: ประวัติที่อยู่ของกิจการ (สำนักงานใหญ่/สาขา) ตามวันที่มีผล — เอกสารพิมพ์ที่อยู่ที่มีผล ณ วันที่เอกสาร (HANDOFF 180 · เจ้าของ 24/11/2569 "ปี 2567 ใช้ที่ 303 … ปี 2568 เป็น 340 … เอกสารแต่ละช่วงเวลาจะต้องออกให้ถูกต้อง")
+CREATE TABLE IF NOT EXISTS sys_address_history (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
+  branch_id TEXT REFERENCES sys_branch(id) DEFERRABLE INITIALLY DEFERRED,
+  effective_from TEXT NOT NULL,
+  address_th TEXT,
+  address_en TEXT,
+  zip_code TEXT,
+  addr_no TEXT,
+  addr_moo TEXT,
+  addr_village TEXT,
+  addr_building TEXT,
+  addr_room TEXT,
+  addr_floor TEXT,
+  addr_soi TEXT,
+  addr_road TEXT,
+  addr_geo_code TEXT,
+  remark TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
+  row_version INTEGER NOT NULL DEFAULT 1,
+  deleted_at TEXT,
+  origin_device_id TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_sys_address_history_company_branch_effective_from ON sys_address_history (company_id, branch_id, effective_from);
+
 -- sys_user: ผู้ใช้งาน
 CREATE TABLE IF NOT EXISTS sys_user (
   id TEXT PRIMARY KEY,
@@ -2542,6 +2571,29 @@ CREATE TRIGGER IF NOT EXISTS trg_sys_branch_ver AFTER UPDATE ON sys_branch
 WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
 BEGIN
   UPDATE sys_branch SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_sys_address_history_insert_outbox AFTER INSERT ON sys_address_history
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_address_history', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          NULL, json_object('id', NEW.id, 'company_id', NEW.company_id, 'branch_id', NEW.branch_id, 'effective_from', NEW.effective_from, 'address_th', NEW.address_th, 'address_en', NEW.address_en, 'zip_code', NEW.zip_code, 'addr_no', NEW.addr_no, 'addr_moo', NEW.addr_moo, 'addr_village', NEW.addr_village, 'addr_building', NEW.addr_building, 'addr_room', NEW.addr_room, 'addr_floor', NEW.addr_floor, 'addr_soi', NEW.addr_soi, 'addr_road', NEW.addr_road, 'addr_geo_code', NEW.addr_geo_code, 'remark', NEW.remark, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_sys_address_history_update_outbox AFTER UPDATE ON sys_address_history
+WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1' AND NEW.row_version <> OLD.row_version
+BEGIN
+  INSERT INTO sync_outbox(id, seq, table_name, row_id, op, base_version, payload, tx_id, created_at)
+  VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-7'||substr(hex(randomblob(2)),2)||'-'||substr('89ab',1+(abs(random())%4),1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), (SELECT IFNULL(MAX(seq),0)+1 FROM sync_outbox), 'sys_address_history', NEW.id,
+          CASE WHEN NEW.deleted_at IS NULL THEN 'U' ELSE 'D' END,
+          OLD.row_version, json_object('id', NEW.id, 'company_id', NEW.company_id, 'branch_id', NEW.branch_id, 'effective_from', NEW.effective_from, 'address_th', NEW.address_th, 'address_en', NEW.address_en, 'zip_code', NEW.zip_code, 'addr_no', NEW.addr_no, 'addr_moo', NEW.addr_moo, 'addr_village', NEW.addr_village, 'addr_building', NEW.addr_building, 'addr_room', NEW.addr_room, 'addr_floor', NEW.addr_floor, 'addr_soi', NEW.addr_soi, 'addr_road', NEW.addr_road, 'addr_geo_code', NEW.addr_geo_code, 'remark', NEW.remark, 'created_at', NEW.created_at, 'created_by', NEW.created_by, 'updated_at', NEW.updated_at, 'updated_by', NEW.updated_by, 'row_version', NEW.row_version, 'deleted_at', NEW.deleted_at, 'origin_device_id', NEW.origin_device_id),
+          IFNULL((SELECT value FROM sync_state WHERE key='current_tx'), NEW.id), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+END;
+CREATE TRIGGER IF NOT EXISTS trg_sys_address_history_ver AFTER UPDATE ON sys_address_history
+WHEN NEW.row_version = OLD.row_version AND IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'
+BEGIN
+  UPDATE sys_address_history SET row_version = OLD.row_version + 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = NEW.id;
 END;
 CREATE TRIGGER IF NOT EXISTS trg_sys_user_insert_outbox AFTER INSERT ON sys_user
 WHEN IFNULL((SELECT value FROM sync_state WHERE key='applying_remote'),'0') <> '1'

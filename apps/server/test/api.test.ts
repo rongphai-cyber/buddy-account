@@ -5924,6 +5924,64 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     await sql`UPDATE tax_vat_entry SET party_name = ${vBefore.name}, party_tax_id = ${vBefore.tax} WHERE id = ${iv.vat_id}`.execute(database.db);
   });
 
+  it('HANDOFF 180: company address history by effective date — documents print the address in effect on their date (HQ and branch), log, other tenant 404', async () => {
+    const start = cookie;
+    const login = async (u: string, pw: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: pw }); };
+    expect((await login('admin', 'secret123')).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { code: 'ADRT', name: 'ลูกค้าย้ายที่อยู่', admin_username: 'adr.admin', admin_name: 'ผู้ดูแลที่อยู่', admin_password: 'passAddr1234', max_companies: 2 })).status).toBe(200);
+    expect((await login('adr.admin', 'passAddr1234')).status).toBe(200);
+    const co = (await call('POST', '/api/v1/companies', { code: 'ADR-CO1', name_th: 'บริษัทย้ายที่อยู่', fiscal_start: '2024-01-01', chart: 'express' })).body.id;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    for (const dt of ['2025-01-01', '2026-01-01']) expect((await call('POST', '/api/v1/gl/periods/years', { start_date: dt })).status).toBe(200);
+    // ที่อยู่ปัจจุบันจากหน้ารายละเอียดกิจการ = แถวแรกของประวัติ (มีผลตั้งแต่ต้นปีบัญชีแรก)
+    const cur = (await call('GET', '/api/v1/company')).body;
+    const coBody = { ...cur, tax_id: '0105537095903', vat_rate: Number(cur.vat_rate), tax_branch_no: '0', address_th_1: '303 ถนนเดิม', address_th_2: 'เมืองเชียงใหม่ 50000', address_en_1: '303 Old Road', address_en_2: 'Chiang Mai 50000' };
+    { const r = await call('PUT', '/api/v1/company', coBody); expect(r.status, JSON.stringify(r.body)).toBe(200); }
+    let h = (await call('GET', '/api/v1/company/addresses')).body;
+    expect(h.rows.map((r: { effective_from: string; address_th_1: string; in_effect: boolean }) => [r.effective_from, r.address_th_1, r.in_effect])).toEqual([['2024-01-01', '303 ถนนเดิม', true]]);
+    // ย้ายสำนักงานใหญ่ มีผล 01/01/2568 (2025)
+    const add = await call('POST', '/api/v1/company/addresses', { effective_from: '2025-01-01', address_th_1: '340 ถนนใหม่', address_th_2: 'เมืองเชียงใหม่ 50300', address_en_1: '340 New Road', zip_code: '50300', remark: 'ย้ายสำนักงาน' });
+    expect(add.status, JSON.stringify(add.body)).toBe(200);
+    expect((await call('POST', '/api/v1/company/addresses', { effective_from: '2025-01-01', address_th_1: 'ซ้ำ' })).body.error.message).toMatch(/มีที่อยู่ที่มีผลวันที่ 2025-01-01 อยู่แล้ว/);
+    expect((await call('POST', '/api/v1/company/addresses', { effective_from: '2025-02-01' })).body.error.message).toMatch(/ป้อนที่อยู่ภาษาไทย/);
+    h = (await call('GET', '/api/v1/company/addresses')).body;
+    expect(h.rows.map((r: { effective_from: string; effective_to: string | null; in_effect: boolean }) => [r.effective_from, r.effective_to, r.in_effect])).toEqual([['2025-01-01', null, true], ['2024-01-01', '2024-12-31', false]]);
+    // หน้ารายละเอียดกิจการแสดงที่อยู่ที่มีผลวันนี้ · แฟ้มบริษัทตามด้วย
+    expect((await call('GET', '/api/v1/company')).body).toMatchObject({ address_th_1: '340 ถนนใหม่', address_en_1: '340 New Road', zip_code: '50300' });
+    const at = async (date: string, branch?: string) => (await call('GET', `/api/v1/company/address-at?date=${date}${branch ? `&branch_id=${branch}` : ''}`)).body;
+    expect([(await at('2020-05-01')).address_th_1, (await at('2024-12-31')).address_th_1, (await at('2025-01-01')).address_th_1]).toEqual(['303 ถนนเดิม', '303 ถนนเดิม', '340 ถนนใหม่']);
+    // สาขา: มีที่อยู่ของตัวเอง = ที่อยู่สาขา · ไม่มี = สำนักงานใหญ่ ณ วันนั้น
+    const b1 = (await call('POST', '/api/v1/branches', { code: 'B01', name: 'สาขานิมมาน', tax_branch_no: '00001', address: '1 ถนนนิมมานเหมินท์' })).body.id;
+    const b2 = (await call('POST', '/api/v1/branches', { code: 'B02', name: 'สาขาไม่มีที่อยู่', tax_branch_no: '00002' })).body.id;
+    expect(((await at('2024-03-01', b1)) as { address_th: string; from_branch: boolean })).toMatchObject({ address_th: '1 ถนนนิมมานเหมินท์', from_branch: true });
+    expect(((await at('2024-03-01', b2)) as { address_th: string; from_branch: boolean })).toMatchObject({ address_th: '303 ถนนเดิม\nเมืองเชียงใหม่ 50000', from_branch: false });
+    expect((await call('POST', '/api/v1/company/addresses', { branch_id: b1, effective_from: '2026-07-01', address_th_1: '9 ถนนห้วยแก้ว' })).status).toBe(200);
+    expect([(await at('2026-06-30', b1)).address_th, (await at('2026-07-01', b1)).address_th]).toEqual(['1 ถนนนิมมานเหมินท์', '9 ถนนห้วยแก้ว']);
+    expect((await call('GET', `/api/v1/company/addresses?branch_id=${b1}`)).body.rows).toHaveLength(2);
+    // เอกสารพิมพ์ที่อยู่ ณ วันที่เอกสาร (ใบสำคัญ ปี 2567 / 2568 · สาขา 2569)
+    const accs = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control);
+    const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+    const jv = async (date: string, branch_id?: string) => (await call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: date, ...(branch_id ? { branch_id } : {}), lines: [{ account_id: accs[0].id, debit: '1' }, { account_id: accs[1].id, credit: '1' }] })).body.id;
+    const printed = async (id: string) => (await call('GET', `/api/v1/print/journal/${id}`)).body.data.company as { address: string; address_en: string };
+    expect(await printed(await jv('2024-06-15'))).toMatchObject({ address: '303 ถนนเดิม\nเมืองเชียงใหม่ 50000', address_en: '303 Old Road\nChiang Mai 50000' });
+    expect(await printed(await jv('2025-06-15'))).toMatchObject({ address: '340 ถนนใหม่\nเมืองเชียงใหม่ 50300', address_en: '340 New Road' });
+    // แก้/ลบ: บันทึกการทำรายการ · ลบแถวสุดท้ายของบริษัทไม่ได้ · ลบแถวที่มีผลวันนี้ = แฟ้มบริษัทกลับเป็นที่อยู่เดิม
+    const newId = h.rows[0].id, oldId = h.rows[1].id;
+    expect((await call('PUT', `/api/v1/company/addresses/${newId}`, { effective_from: '2025-01-01', address_th_1: '340/1 ถนนใหม่', address_en_1: '340/1 New Road' })).status).toBe(200);
+    expect((await call('DELETE', `/api/v1/company/addresses/${newId}`)).status).toBe(200);
+    expect((await call('GET', '/api/v1/company')).body.address_th_1).toBe('303 ถนนเดิม');
+    expect((await call('DELETE', `/api/v1/company/addresses/${oldId}`)).body.error.message).toMatch(/อย่างน้อย 1 รายการ/);
+    const log = (await sql<{ action: string }>`SELECT action FROM sys_activity_log WHERE company_id = ${co} AND table_name = 'sys_address_history' ORDER BY occurred_at`.execute(database.db)).rows.map((r) => r.action);
+    expect(log).toEqual(expect.arrayContaining(['ADD', 'EDIT', 'DELETE']));
+    // ลูกค้าอื่น (ข้อ 7.1): ไม่เห็น แก้ ลบ ประวัติที่อยู่ของบริษัทนี้
+    cookie = start;
+    expect((await call('GET', `/api/v1/company/addresses?branch_id=${b1}`)).status).toBe(404);
+    expect((await call('PUT', `/api/v1/company/addresses/${oldId}`, { effective_from: '2024-01-01', address_th_1: 'x' })).status).toBe(404);
+    expect((await call('DELETE', `/api/v1/company/addresses/${oldId}`)).status).toBe(404);
+    expect((await call('POST', '/api/v1/company/addresses', { branch_id: b1, effective_from: '2027-01-01', address_th_1: 'x' })).status).toBe(404);
+    expect((await call('GET', '/api/v1/company/addresses')).body.rows.some((r: { id: string }) => r.id === oldId)).toBe(false);
+  });
+
   it('HANDOFF 176: closed year blocks period unlock · 3-year comparative statements (BAL LY2) · prior-year balances 2 years back', async () => {
     const start = cookie;
     const login = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };

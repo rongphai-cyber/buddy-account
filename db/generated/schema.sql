@@ -276,6 +276,61 @@ COMMENT ON COLUMN sys_branch.deleted_at IS 'ลบแบบ soft delete (Express
 COMMENT ON COLUMN sys_branch.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_sys_branch_company_code ON sys_branch (company_id, code) WHERE deleted_at IS NULL;
 
+-- sys_address_history: ประวัติที่อยู่ของกิจการ (สำนักงานใหญ่/สาขา) ตามวันที่มีผล — เอกสารพิมพ์ที่อยู่ที่มีผล ณ วันที่เอกสาร (HANDOFF 180 · เจ้าของ 24/11/2569 "ปี 2567 ใช้ที่ 303 … ปี 2568 เป็น 340 … เอกสารแต่ละช่วงเวลาจะต้องออกให้ถูกต้อง")  [Express: (ใหม่) — Express มีที่อยู่ชุดเดียวใน ISINFO]
+CREATE TABLE sys_address_history (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  company_id uuid NOT NULL,
+  branch_id uuid,
+  effective_from date NOT NULL,
+  address_th text,
+  address_en text,
+  zip_code varchar(5),
+  addr_no varchar(20),
+  addr_moo varchar(20),
+  addr_village varchar(100),
+  addr_building varchar(40),
+  addr_room varchar(20),
+  addr_floor varchar(20),
+  addr_soi varchar(100),
+  addr_road varchar(100),
+  addr_geo_code varchar(6),
+  remark varchar(200),
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_address_history IS 'ประวัติที่อยู่ของกิจการ (สำนักงานใหญ่/สาขา) ตามวันที่มีผล — เอกสารพิมพ์ที่อยู่ที่มีผล ณ วันที่เอกสาร (HANDOFF 180 · เจ้าของ 24/11/2569 "ปี 2567 ใช้ที่ 303 … ปี 2568 เป็น 340 … เอกสารแต่ละช่วงเวลาจะต้องออกให้ถูกต้อง") | Express: (ใหม่) — Express มีที่อยู่ชุดเดียวใน ISINFO | ที่อยู่ ณ วันที่ = แถวที่ effective_from มากที่สุดที่ไม่เกินวันนั้น (ก่อนแถวแรก = แถวแรก) · สาขาที่ไม่มีประวัติใช้ของสำนักงานใหญ่ · ช่องที่อยู่ใน sys_company/sys_branch = ที่อยู่ที่มีผลวันนี้ (แก้ที่หน้าจอเดิม = แก้แถวที่มีผลวันนี้)';
+COMMENT ON COLUMN sys_address_history.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_address_history.company_id IS 'บริษัท';
+COMMENT ON COLUMN sys_address_history.branch_id IS 'สาขา (ว่าง = ที่อยู่ของบริษัท/สำนักงานใหญ่)';
+COMMENT ON COLUMN sys_address_history.effective_from IS 'มีผลตั้งแต่วันที่';
+COMMENT ON COLUMN sys_address_history.address_th IS 'ที่อยู่ภาษาไทยที่พิมพ์ในเอกสาร (บรรทัด 1–2 คั่นด้วยขึ้นบรรทัดใหม่ · สาขา = ที่อยู่สาขา)';
+COMMENT ON COLUMN sys_address_history.address_en IS 'ที่อยู่ภาษาอังกฤษที่พิมพ์ในเอกสาร (บรรทัด 1–2)';
+COMMENT ON COLUMN sys_address_history.zip_code IS 'รหัสไปรษณีย์';
+COMMENT ON COLUMN sys_address_history.addr_no IS 'ที่อยู่แยกช่อง: เลขที่';
+COMMENT ON COLUMN sys_address_history.addr_moo IS 'ที่อยู่แยกช่อง: หมู่ที่';
+COMMENT ON COLUMN sys_address_history.addr_village IS 'ที่อยู่แยกช่อง: หมู่บ้าน';
+COMMENT ON COLUMN sys_address_history.addr_building IS 'ที่อยู่แยกช่อง: อาคาร';
+COMMENT ON COLUMN sys_address_history.addr_room IS 'ที่อยู่แยกช่อง: ห้องเลขที่';
+COMMENT ON COLUMN sys_address_history.addr_floor IS 'ที่อยู่แยกช่อง: ชั้นที่';
+COMMENT ON COLUMN sys_address_history.addr_soi IS 'ที่อยู่แยกช่อง: ซอย';
+COMMENT ON COLUMN sys_address_history.addr_road IS 'ที่อยู่แยกช่อง: ถนน';
+COMMENT ON COLUMN sys_address_history.addr_geo_code IS 'ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th)';
+COMMENT ON COLUMN sys_address_history.remark IS 'หมายเหตุ เช่น ย้ายสำนักงาน';
+COMMENT ON COLUMN sys_address_history.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN sys_address_history.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN sys_address_history.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN sys_address_history.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN sys_address_history.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN sys_address_history.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN sys_address_history.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE INDEX ix_sys_address_history_company_branch_effective_from ON sys_address_history (company_id, branch_id, effective_from);
+
 -- sys_user: ผู้ใช้งาน  [Express: SCUSER (ไฟล์ระบบรักษาความปลอดภัย บทที่ 23)]
 CREATE TABLE sys_user (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -5433,6 +5488,14 @@ ALTER TABLE sys_branch ADD CONSTRAINT fk_sys_branch_created_by FOREIGN KEY (crea
 CREATE INDEX IF NOT EXISTS ix_fk_sys_branch_created_by ON sys_branch (created_by);
 ALTER TABLE sys_branch ADD CONSTRAINT fk_sys_branch_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_branch_updated_by ON sys_branch (updated_by);
+ALTER TABLE sys_address_history ADD CONSTRAINT fk_sys_address_history_company_id FOREIGN KEY (company_id) REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_address_history_company_id ON sys_address_history (company_id);
+ALTER TABLE sys_address_history ADD CONSTRAINT fk_sys_address_history_branch_id FOREIGN KEY (branch_id) REFERENCES sys_branch(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_address_history_branch_id ON sys_address_history (branch_id);
+ALTER TABLE sys_address_history ADD CONSTRAINT fk_sys_address_history_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_address_history_created_by ON sys_address_history (created_by);
+ALTER TABLE sys_address_history ADD CONSTRAINT fk_sys_address_history_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_address_history_updated_by ON sys_address_history (updated_by);
 ALTER TABLE sys_user ADD CONSTRAINT fk_sys_user_tenant_id FOREIGN KEY (tenant_id) REFERENCES sys_tenant(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_user_tenant_id ON sys_user (tenant_id);
 ALTER TABLE sys_user ADD CONSTRAINT fk_sys_user_user_group_id FOREIGN KEY (user_group_id) REFERENCES sys_user_group(id) DEFERRABLE INITIALLY DEFERRED;
@@ -6628,6 +6691,7 @@ END $$;
 -- ---------------------------------------------------------------- Attach triggers
 CREATE TRIGGER trg_sys_company_ver BEFORE UPDATE ON sys_company FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_branch_ver BEFORE UPDATE ON sys_branch FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_sys_address_history_ver BEFORE UPDATE ON sys_address_history FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_user_ver BEFORE UPDATE ON sys_user FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_user_group_ver BEFORE UPDATE ON sys_user_group FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_user_company_ver BEFORE UPDATE ON sys_user_company FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
@@ -6736,6 +6800,7 @@ CREATE TRIGGER trg_inv_cost_consumption_ver BEFORE UPDATE ON inv_cost_consumptio
 CREATE TRIGGER trg_gl_balance_ver BEFORE UPDATE ON gl_balance FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_company_log AFTER INSERT OR UPDATE ON sys_company FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_branch_log AFTER INSERT OR UPDATE ON sys_branch FOR EACH ROW EXECUTE FUNCTION sync_log_change();
+CREATE TRIGGER trg_sys_address_history_log AFTER INSERT OR UPDATE ON sys_address_history FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_user_log AFTER INSERT OR UPDATE ON sys_user FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_user_group_log AFTER INSERT OR UPDATE ON sys_user_group FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_user_company_log AFTER INSERT OR UPDATE ON sys_user_company FOR EACH ROW EXECUTE FUNCTION sync_log_change();
@@ -6829,6 +6894,7 @@ CREATE TRIGGER trg_pay_filing_log AFTER INSERT OR UPDATE ON pay_filing FOR EACH 
 CREATE TRIGGER trg_sync_conflict_log AFTER INSERT OR UPDATE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sync_log_change();
 CREATE TRIGGER trg_sys_company_del AFTER DELETE ON sys_company FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sys_branch_del AFTER DELETE ON sys_branch FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
+CREATE TRIGGER trg_sys_address_history_del AFTER DELETE ON sys_address_history FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sys_user_del AFTER DELETE ON sys_user FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sys_user_group_del AFTER DELETE ON sys_user_group FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sys_user_company_del AFTER DELETE ON sys_user_company FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
@@ -6921,6 +6987,7 @@ CREATE TRIGGER trg_pay_wht_cert_del AFTER DELETE ON pay_wht_cert FOR EACH ROW EX
 CREATE TRIGGER trg_pay_filing_del AFTER DELETE ON pay_filing FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sync_conflict_del AFTER DELETE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sync_log_delete();
 CREATE TRIGGER trg_sys_branch_rid BEFORE INSERT ON sys_branch FOR EACH ROW EXECUTE FUNCTION sync_row_id();
+CREATE TRIGGER trg_sys_address_history_rid BEFORE INSERT ON sys_address_history FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_user_company_rid BEFORE INSERT ON sys_user_company FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_permission_rid BEFORE INSERT ON sys_permission FOR EACH ROW EXECUTE FUNCTION sync_row_id();
 CREATE TRIGGER trg_sys_device_rid BEFORE INSERT ON sys_device FOR EACH ROW EXECUTE FUNCTION sync_row_id();

@@ -6,6 +6,7 @@ import type { Db } from '../../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../../http.js';
 import { logActivity } from '../../audit.js';
 import { empName, payLaw, payItems, paySettings, uuid, type Ctx } from './master.js';
+import { companyAddressAt } from '../company-address.js';
 
 /**
  * แบบฟอร์มและรายงานระบบเงินเดือน (ระยะ 2): สลิป · ภ.ง.ด.1 / 1ก · 50 ทวิ ประจำปี · สปส.1-10 · ทะเบียนเงินเดือน · สรุปรายปี · ค่าใช้จ่ายตามแผนก
@@ -42,13 +43,16 @@ export type Emp = Awaited<ReturnType<typeof employees>>[number];
 export const addrOf = (e: Emp) => ({ house_no: e.reg_house_no, moo: e.reg_moo, village: e.reg_village, building: e.reg_building, soi: e.reg_soi, road: e.reg_road, subdistrict: e.reg_subdistrict, district: e.reg_district, province: e.reg_province, postcode: e.reg_postcode });
 const mask = (v: string | null | undefined) => (v ? `•••${v.slice(-4)}` : null);
 
-/** ผู้จ่ายเงิน (บริษัท + สาขาที่ยื่น) */
-export async function payer(db: Db, companyId: string, branchId?: string) {
+/** วันที่ของที่อยู่ผู้จ่ายเงิน (HANDOFF 180): รายเดือน = สิ้นเดือน · รายปี = 31 ธ.ค. · ไม่ระบุ = วันนี้ */
+export const payerDate = (month?: string | null, year?: number | string | null) => (month ? new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10) : year ? `${year}-12-31` : undefined);
+/** ผู้จ่ายเงิน (บริษัท + สาขาที่ยื่น) — ที่อยู่ที่มีผล ณ วันที่ของแบบ (ประวัติที่อยู่ HANDOFF 180) */
+export async function payer(db: Db, companyId: string, branchId?: string, date?: string) {
   const c = await db.selectFrom('sys_company').select(['name_th', 'address_th', 'tax_id', 'social_security_no', 'phone']).where('id', '=', companyId).executeTakeFirstOrThrow();
   const b = branchId ? await db.selectFrom('sys_branch').select(['code', 'name', 'tax_branch_no', 'is_head_office']).where('id', '=', branchId).where('company_id', '=', companyId).executeTakeFirst() : null;
   if (branchId && !b) throw notFound('สาขา');
   const s = await paySettings(db, companyId);
-  return { name: c.name_th, address: (c.address_th ?? '').replace(/\n/g, ' '), tax_id: c.tax_id, branch_no: b?.tax_branch_no ?? '00000', branch_name: b ? (b.is_head_office ? 'สำนักงานใหญ่' : b.name) : 'ทุกสาขา',
+  const at = await companyAddressAt(db, companyId, date, branchId ?? null);
+  return { name: c.name_th, address: (at.address_th || c.address_th || '').replace(/\n/g, ' '), tax_id: c.tax_id, branch_no: b?.tax_branch_no ?? '00000', branch_name: b ? (b.is_head_office ? 'สำนักงานใหญ่' : b.name) : 'ทุกสาขา',
     phone: c.phone, sso_employer_no: s.sso_employer_no || c.social_security_no || '', sso_branch_no: s.sso_branch_no };
 }
 /** ยอดยกมาต้นปีของพนักงาน (นับในเงินได้ทั้งปี 1ก / 50 ทวิ) */
@@ -122,7 +126,7 @@ export function payrollFormRoutes(app: FastifyInstance, db: Db) {
     const emps = new Map((await employees(db, a.companyId, t.map((x) => x.employee_id))).map((e) => [e.id, e]));
     const r = pnd1Rows(t.map((x) => { const e = emps.get(x.employee_id)!; return { employee_id: e.id, code: e.code, title: e.title, first_name: e.first_name, last_name: e.last_name, tax_id: e.tax_id, bearer: e.tax_bearer as TaxBearer,
       pay_date: x.pay_date <= endOfMonth(q.month) ? x.pay_date : endOfMonth(q.month), totals: x }; }), { taxedOnly: q.taxed_only === '1' });
-    return { month: q.month, payer: await payer(db, a.companyId, q.branch_id), ...r, drafts: await draftCount(db, a.companyId, from, from, q.branch_id) };
+    return { month: q.month, payer: await payer(db, a.companyId, q.branch_id, payerDate(q.month)), ...r, drafts: await draftCount(db, a.companyId, from, from, q.branch_id) };
   });
   // ---- ภ.ง.ด.1ก ประจำปี (รวมยอดยกมา · ต้องมีที่อยู่ตามทะเบียนบ้าน)
   app.get('/api/v1/pay/pnd1a', async (req) => {
@@ -133,7 +137,7 @@ export function payrollFormRoutes(app: FastifyInstance, db: Db) {
     const r = pnd1Rows(t.map((x) => { const e = emps.get(x.employee_id)!; return { employee_id: e.id, code: e.code, title: e.title, first_name: e.first_name, last_name: e.last_name, tax_id: e.tax_id, bearer: e.tax_bearer as TaxBearer,
       pay_date: `${q.year}-12-31`, totals: x, address: thaiAddress(addrOf(e)) }; }));
     const rows = r.rows.map((x) => ({ ...x, problem: x.problem ?? addressProblem(addrOf(emps.get(x.employee_id)!)) }));
-    return { year: q.year, payer: await payer(db, a.companyId, q.branch_id), ...r, rows, drafts: await draftCount(db, a.companyId, `${q.year}-01-01`, `${q.year}-12-01`, q.branch_id) };
+    return { year: q.year, payer: await payer(db, a.companyId, q.branch_id, payerDate(null, q.year)), ...r, rows, drafts: await draftCount(db, a.companyId, `${q.year}-01-01`, `${q.year}-12-01`, q.branch_id) };
   });
 
   // ---- 50 ทวิ ประจำปี: เลขที่ออกครั้งเดียวเก็บถาวร (เล่มที่ = ปี พ.ศ. · เลขที่ = ลำดับตามรหัสพนักงาน)

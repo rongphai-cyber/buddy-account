@@ -6,6 +6,7 @@ import type { Db } from '../db.js';
 import { badRequest, notFound, parse, requireCompany } from '../http.js';
 import { logActivity } from '../audit.js';
 import { createZip } from '../zip.js';
+import { companyAddressAt } from './company-address.js';
 
 /**
  * ส่งออกใบกำกับภาษีอิเล็กทรอนิกส์ (e-Tax Invoice) เป็นแฟ้ม XML ตาม ETDA ขมธอ. 3-2560 (T7.6) — ยังไม่ลงลายมือชื่อ
@@ -43,7 +44,17 @@ async function loadDocs(db: Db, companyId: string, where: ReturnType<typeof sql>
   const refNos = [...new Set(hs.filter((h) => (h.doc_class === 'CN' || h.doc_class === 'DR') && h.ref_no).map((h) => h.ref_no!))];
   const refs = refNos.length ? (await sql<{ doc_no: string; doc_class: string; doc_date: string; customer_id: string; net_amount: string; vat_amount: string }>`SELECT doc_no, doc_class, doc_date::text AS doc_date, customer_id, net_amount, vat_amount FROM doc_header
       WHERE company_id = ${companyId} AND deleted_at IS NULL AND doc_status <> 'C' AND doc_class IN ('IV', 'HS') AND doc_no = ANY(${refNos}::text[])`.execute(db)).rows : [];
-  const seller = { name: co.name_th, taxId: co.tax_id, address: co.address_th, postcode: etaxPostcode(co.address_th), phone: co.phone };
+  // ผู้ขาย: ที่อยู่ที่มีผล ณ วันที่เอกสาร ตามสาขาของเอกสาร (HANDOFF 180) — แคชตาม (สาขา, วันที่)
+  const sellerCache = new Map<string, { name: string; taxId: string | null; address: string | null; postcode: string | null; phone: string | null }>();
+  const sellerOf = async (h: H) => {
+    const k = `${h.branch_id ?? ''}|${h.doc_date}`;
+    if (!sellerCache.has(k)) {
+      const at = await companyAddressAt(db, companyId, h.doc_date, h.branch_id ?? null);
+      const addr = at.address_th || co.address_th;
+      sellerCache.set(k, { name: co.name_th, taxId: co.tax_id, address: addr, postcode: etaxPostcode(addr) ?? at.zip_code ?? null, phone: co.phone });
+    }
+    return sellerCache.get(k)!;
+  };
   // RE: บิลที่ตัด + รายการของบิล (ยอดภาษีชุดเดียวกับใบพิมพ์ — etaxReceiptParts)
   const reIds = hs.filter((h) => h.doc_class === 'RE').map((h) => h.id);
   const settles = reIds.length ? (await sql<{ payment_header_id: string; inv_id: string; doc_no: string; doc_class: string; price_type: string | null; vat_rate: string | null; net_amount: string; exempt_amount: string; zero_rate_amount: string; amount: string; vat_amount: string; express_rectype: string | null }>`
@@ -68,6 +79,8 @@ async function loadDocs(db: Db, companyId: string, where: ReturnType<typeof sql>
        WHERE l.company_id = ${companyId} AND l.link_type = 'DEPOSIT' AND l.deleted_at IS NULL AND t.doc_class = 'RD' AND t.doc_status <> 'C' AND t.deleted_at IS NULL
          AND l.from_header_id = ANY(${depIds}::uuid[])`.execute(db)).rows : [];
   const ys = co.year_system === 'C' ? 'C' : 'B';
+  const sellers = new Map<string, Awaited<ReturnType<typeof sellerOf>>>();
+  for (const h of hs) sellers.set(h.id, await sellerOf(h));
 
   return hs.map((h) => {
     const cls = h.doc_class;
@@ -79,7 +92,7 @@ async function loadDocs(db: Db, companyId: string, where: ReturnType<typeof sql>
     const vatBasis = pt === '0' ? d(0) : incl ? taxable.minus(vatAmt) : taxable;
     const address = s(h.party_address) || joinAddr(h.address_1, h.address_2, h.address_3, h.zip_code);
     const doc: EtaxDoc = {
-      typeCode, id: h.doc_no, issueDate: h.doc_date, createdAt: h.created_at, seller: { ...seller, branchNo: s(h.seller_branch) || '00000' },
+      typeCode, id: h.doc_no, issueDate: h.doc_date, createdAt: h.created_at, seller: { ...sellers.get(h.id)!, branchNo: s(h.seller_branch) || '00000' },
       buyer: { name: s(h.party_name || h.cus_name), code: h.cus_code, taxId: h.party_tax_id || h.cus_tax_id, branchNo: h.party_tax_branch_no || (h.party_tax_id || h.cus_tax_id ? h.cus_branch : null), address, postcode: etaxPostcode(address) ?? h.zip_code, email: h.email, phone: h.cus_phone },
       lines: ls.map((l) => ({ code: l.item_code ?? l.account_no, name: s(l.description), qty: l.qty ?? '1', unitCode: l.unit_code,
         unitPrice: incl ? d(l.unit_price ?? 0).times(100).div(rate.plus(100)).toDecimalPlaces(4) : (l.unit_price ?? '0'), net: l.net_amount })),

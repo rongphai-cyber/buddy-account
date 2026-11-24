@@ -1,9 +1,10 @@
 [
 {
 "th": "ยกเลิก",
-"n": 150,
+"n": 151,
 "files": [
 "apps/web/src/App.tsx",
+"apps/web/src/components/AddressHistory.tsx",
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/DocTaxTabs.tsx",
 "apps/web/src/components/ImportMapping.tsx",
@@ -73,9 +74,10 @@
 },
 {
 "th": "บันทึก",
-"n": 106,
+"n": 107,
 "files": [
 "apps/web/src/unsaved.tsx",
+"apps/web/src/components/AddressHistory.tsx",
 "apps/web/src/components/DocEdit.tsx",
 "apps/web/src/components/LineEndPrompt.tsx",
 "apps/web/src/components/LkSelect.tsx",
@@ -183,8 +185,9 @@
 },
 {
 "th": "สถานะ",
-"n": 85,
+"n": 86,
 "files": [
+"apps/web/src/components/AddressHistory.tsx",
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -502,8 +505,9 @@
 },
 {
 "th": "ลบ",
-"n": 52,
+"n": 53,
 "files": [
+"apps/web/src/components/AddressHistory.tsx",
 "apps/web/src/components/CompanyImages.tsx",
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/ItemImages.tsx",
@@ -537,8 +541,9 @@
 },
 {
 "th": "หมายเหตุ",
-"n": 49,
+"n": 51,
 "files": [
+"apps/web/src/components/AddressHistory.tsx",
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/WtsConnect.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -572,37 +577,8 @@
 ]
 },
 {
-"th": "รับ",
-"n": 48,
-"files": [
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tools/DocImport.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/starter.ts",
-"apps/server/src/modules/doc-import.ts",
-"apps/server/src/modules/import-fields.ts",
-"apps/server/src/modules/trade-import.ts",
-"apps/server/src/modules/docs/cashdocs.ts",
-"apps/server/src/modules/docs/payments.ts",
-"apps/server/src/modules/docs/settle.ts",
-"apps/server/src/modules/docs/trade.ts",
-"apps/server/src/modules/reports/stock.ts"
-]
-},
-{
 "th": "สาขา",
-"n": 48,
+"n": 49,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/AuxTools.tsx",
@@ -631,6 +607,7 @@
 "apps/web/src/pages/settings/Branches.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/settings/Sync.tsx",
+"apps/server/src/modules/company-address.ts",
 "apps/server/src/modules/company.ts",
 "apps/server/src/modules/payroll/files.ts",
 "apps/server/src/modules/payroll/forms.ts",
@@ -639,6 +616,35 @@
 "packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "รับ",
+"n": 48,
+"files": [
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tools/DocImport.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/starter.ts",
+"apps/server/src/modules/doc-import.ts",
+"apps/server/src/modules/import-fields.ts",
+"apps/server/src/modules/trade-import.ts",
+"apps/server/src/modules/docs/cashdocs.ts",
+"apps/server/src/modules/docs/payments.ts",
+"apps/server/src/modules/docs/settle.ts",
+"apps/server/src/modules/docs/trade.ts",
+"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -1011,24 +1017,10 @@
 ]
 },
 {
-"th": "ยกเลิกเอกสาร",
+"th": "ถึง",
 "n": 31,
 "files": [
-"apps/web/src/components/LineEndPrompt.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx"
-]
-},
-{
-"th": "ถึง",
-"n": 30,
-"files": [
+"apps/web/src/components/AddressHistory.tsx",
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/PeriodPicker.tsx",
 "apps/web/src/components/ReportFilters.tsx",
@@ -1052,6 +1044,21 @@
 "apps/web/src/pages/settings/ActivityLog.tsx",
 "apps/web/src/pages/tax/Etax.tsx",
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "ยกเลิกเอกสาร",
+"n": 31,
+"files": [
+"apps/web/src/components/LineEndPrompt.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -4910,6 +4917,15 @@
 ]
 },
 {
+"th": "มีผลตั้งแต่",
+"n": 5,
+"files": [
+"apps/web/src/components/AddressHistory.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx"
+]
+},
+{
 "th": "มูลค่าสินค้า/บริการ",
 "n": 5,
 "files": [
@@ -5043,6 +5059,17 @@
 "packages/core/src/payroll-import.ts",
 "packages/core/src/payroll.ts",
 "packages/core/src/settings.ts"
+]
+},
+{
+"th": "รูปแบบวันที่ไม่ถูกต้อง",
+"n": 5,
+"files": [
+"apps/server/src/modules/company-address.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/projects.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/gl/routes.ts"
 ]
 },
 {
@@ -5949,14 +5976,6 @@
 ]
 },
 {
-"th": "มีผลตั้งแต่",
-"n": 4,
-"files": [
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx"
-]
-},
-{
 "th": "มูลค่าคงเหลือ",
 "n": 4,
 "files": [
@@ -6106,6 +6125,15 @@
 ]
 },
 {
+"th": "รหัสไปรษณีย์ 5 หลัก",
+"n": 4,
+"files": [
+"apps/server/src/modules/company-address.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/payroll/master.ts"
+]
+},
+{
 "th": "ระงับการขาย",
 "n": 4,
 "files": [
@@ -6165,16 +6193,6 @@
 "n": 4,
 "files": [
 "packages/core/src/living-setup.ts"
-]
-},
-{
-"th": "รูปแบบวันที่ไม่ถูกต้อง",
-"n": 4,
-"files": [
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/projects.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/gl/routes.ts"
 ]
 },
 {
@@ -6574,6 +6592,16 @@
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/payroll/Employees.tsx",
 "packages/core/src/reports.ts"
+]
+},
+{
+"th": "ใช้อยู่",
+"n": 4,
+"files": [
+"apps/web/src/components/AddressHistory.tsx",
+"apps/web/src/components/ThemePicker.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -7489,6 +7517,14 @@
 ]
 },
 {
+"th": "ประวัติที่อยู่",
+"n": 3,
+"files": [
+"apps/web/src/components/AddressHistory.tsx",
+"apps/server/src/modules/company-address.ts"
+]
+},
+{
 "th": "ประเภทค่าจ้าง",
 "n": 3,
 "files": [
@@ -7950,14 +7986,6 @@
 "packages/core/src/doc-import.ts",
 "packages/core/src/master-import.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "รหัสไปรษณีย์ 5 หลัก",
-"n": 3,
-"files": [
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/payroll/master.ts"
 ]
 },
 {
@@ -8826,15 +8854,6 @@
 "n": 3,
 "files": [
 "apps/web/src/components/ImportMapping.tsx"
-]
-},
-{
-"th": "ใช้อยู่",
-"n": 3,
-"files": [
-"apps/web/src/components/ThemePicker.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -10914,6 +10933,14 @@
 ]
 },
 {
+"th": "ที่อยู่กิจการ",
+"n": 2,
+"files": [
+"apps/web/src/components/AddressHistory.tsx",
+"apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
 "th": "ที่อยู่ตามทะเบียนบ้าน",
 "n": 2,
 "files": [
@@ -10927,6 +10954,14 @@
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx",
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "ที่อยู่สาขา (พิมพ์บนใบกำกับภาษี)",
+"n": 2,
+"files": [
+"apps/web/src/components/AddressHistory.tsx",
+"apps/web/src/pages/settings/Branches.tsx"
 ]
 },
 {
@@ -11562,6 +11597,14 @@
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/server/src/modules/vat.ts"
+]
+},
+{
+"th": "ปัจจุบัน",
+"n": 2,
+"files": [
+"apps/web/src/components/AddressHistory.tsx",
+"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -14476,6 +14519,14 @@
 ]
 },
 {
+"th": "เพิ่มที่อยู่ใหม่",
+"n": 2,
+"files": [
+"apps/web/src/components/AddressHistory.tsx",
+"apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
 "th": "เพิ่มผู้ใช้",
 "n": 2,
 "files": [
@@ -16225,6 +16276,20 @@
 ]
 },
 {
+"th": "(สาขาที่ไม่มีที่อยู่ของตัวเองใช้ที่อยู่สำนักงานใหญ่)",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
+"th": "(สาขาที่ไม่มีที่อยู่ใช้ที่อยู่สำนักงานใหญ่)",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
 "th": "(หมดแล้ว)",
 "n": 1,
 "files": [
@@ -16407,6 +16472,13 @@
 ]
 },
 {
+"th": ") — เอกสารทุกใบตั้งแต่วันนั้นจะพิมพ์ที่อยู่ที่แก้ · ถ้าย้ายที่อยู่ ให้ใช้ \"เพิ่มที่อยู่ใหม่\" ในประวัติที่อยู่ด้านล่าง เพื่อให้เอกสารเก่ายังพิมพ์ที่อยู่เดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
 "th": "); } /** * สำรอง / ทดสอบ / นำข้อมูลสำรองมาใช้ (คู่มือบทที่ 20 S-DM-02/03/04) + ข้อมูลผู้ใช้งาน (บทที่ 23 S-SEC-07/08) * แฟ้มสำรองเข้ารหัสด้วยรหัสผ่านที่ผู้ใช้ตั้ง (HANDOFF 146) · เก็บที่เครื่องผู้ใช้ (ดาวน์โหลด) — แนะนำเก็บสื่อภายนอก แยกชุดตามวันที่ ไม่เขียนทับ * แฟ้มจากโปรแกรมรุ่นเก่ากว่านำกลับได้ ระบบปรับให้อัตโนมัติ · ตรวจจำนวนแถว/ยอดใบสำคัญหลังนำกลับ */ export function BackupPage() {0}",
 "n": 1,
 "files": [
@@ -16586,6 +16658,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/fa/Assets.tsx"
+]
+},
+{
+"th": "+ เพิ่มที่อยู่ใหม่ (ย้ายที่อยู่)",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
 ]
 },
 {
@@ -21083,6 +21162,13 @@
 ]
 },
 {
+"th": "· แก้ที่อยู่ที่ช่องด้านบน = แก้รายการที่ใช้อยู่ (มีผลตั้งแต่",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
 "th": "· แก้ไขล่าสุด",
 "n": 1,
 "files": [
@@ -22060,6 +22146,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "กำลังแก้ที่อยู่ที่ใช้อยู่ (มีผลตั้งแต่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Company.tsx"
 ]
 },
 {
@@ -29917,6 +30010,13 @@
 ]
 },
 {
+"th": "ต้องมีที่อยู่ของบริษัทอย่างน้อย 1 รายการ — แก้รายการนี้แทนการลบ",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-address.ts"
+]
+},
+{
 "th": "ต้องมีรหัสหรือชื่อ{0}",
 "n": 1,
 "files": [
@@ -30645,13 +30745,6 @@
 ]
 },
 {
-"th": "ที่อยู่กิจการ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Company.tsx"
-]
-},
-{
 "th": "ที่อยู่กิจการต้องมีรหัสไปรษณีย์ 5 หลักท้ายที่อยู่ — แก้ที่ เริ่มระบบ › รายละเอียดกิจการ",
 "n": 1,
 "files": [
@@ -30684,6 +30777,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll-forms.ts"
+]
+},
+{
+"th": "ที่อยู่ที่พิมพ์ในเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
 ]
 },
 {
@@ -30729,13 +30829,6 @@
 ]
 },
 {
-"th": "ที่อยู่สาขา (พิมพ์บนใบกำกับภาษี)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Branches.tsx"
-]
-},
-{
 "th": "ที่อยู่สาขา {0}",
 "n": 1,
 "files": [
@@ -30775,6 +30868,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "ที่อยู่สำนักงานใหญ่และประวัติที่อยู่ แก้ที่ เริ่มระบบ › รายละเอียดกิจการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Branches.tsx"
 ]
 },
 {
@@ -34425,6 +34525,20 @@
 ]
 },
 {
+"th": "ประวัติที่อยู่ของกิจการ (แถวแรก = ที่อยู่ปัจจุบัน)",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "ประวัติที่อยู่ของกิจการ/สาขาตามวันที่มีผล (HANDOFF 180 · เป็นข้อมูลบุคคลเมื่อเจ้าของเป็นบุคคลธรรมดา)",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
+]
+},
+{
 "th": "ประวัติสถานะ",
 "n": 1,
 "files": [
@@ -34800,13 +34914,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/YearEnd.tsx"
-]
-},
-{
-"th": "ปัจจุบัน",
-"n": 1,
-"files": [
-"apps/web/src/pages/reports/JobCost.tsx"
 ]
 },
 {
@@ -35521,6 +35628,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/runs.ts"
+]
+},
+{
+"th": "ป้อนที่อยู่",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-address.ts"
+]
+},
+{
+"th": "ป้อนที่อยู่ภาษาไทย (บรรทัด 1)",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-address.ts"
 ]
 },
 {
@@ -37295,6 +37416,13 @@
 ]
 },
 {
+"th": "พิมพ์ที่อยู่ที่ถูกต้องตามวันที่เอกสาร",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
+]
+},
+{
 "th": "พิมพ์บนกระดาษ A4 · ในหน้าต่างพิมพ์ให้เลือกขนาด \"จริง (100%)\" และไม่ใส่หัว/ท้ายกระดาษ",
 "n": 1,
 "files": [
@@ -38611,6 +38739,13 @@
 ]
 },
 {
+"th": "มีที่อยู่ที่มีผลวันที่ {0} อยู่แล้ว — แก้รายการนั้นแทน หรือเลือกวันที่อื่น",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-address.ts"
+]
+},
+{
 "th": "มีบริษัทรหัส {0} ที่ใช้งานอยู่แล้ว — กู้คืนไม่ได้จนกว่าจะเปลี่ยนรหัสบริษัทนั้น",
 "n": 1,
 "files": [
@@ -38629,6 +38764,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Signup.tsx"
+]
+},
+{
+"th": "มีผลตั้งแต่วันที่",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
 ]
 },
 {
@@ -40582,6 +40724,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "ยังไม่มีประวัติ — ที่อยู่ที่บันทึกด้านบนจะเป็นรายการแรก{0}",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
 ]
 },
 {
@@ -45688,6 +45837,27 @@
 ]
 },
 {
+"th": "ลบที่อยู่ที่มีผลตั้งแต่ {0}? เอกสารช่วงนั้นจะพิมพ์ที่อยู่ของรายการก่อนหน้าแทน",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
+"th": "ลบที่อยู่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
+"th": "ลบที่อยู่ในประวัติ",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
 "th": "ลบบริษัท {0}",
 "n": 1,
 "files": [
@@ -46591,6 +46761,13 @@
 ]
 },
 {
+"th": "ล่วงหน้า",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
 "th": "ล่วงหน้าค่าบริการที่มี VAT · ออกใบกำกับภาษีตอนรับเงิน · หักในบิลค่าบริการ แล้วคิด VAT จากยอดที่เหลือ · เหลือคืนด้วยใบลดหนี้",
 "n": 1,
 "files": [
@@ -46847,6 +47024,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "วันที่ซ้ำ",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-address.ts"
 ]
 },
 {
@@ -53353,6 +53537,13 @@
 ]
 },
 {
+"th": "เช่น ย้ายสำนักงาน",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
 "th": "เช่น ย้ายออกห้อง 101 วันที่ 31/07/2569",
 "n": 1,
 "files": [
@@ -53532,6 +53723,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "เดิม",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
 ]
 },
 {
@@ -54687,6 +54885,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Templates.tsx"
+]
+},
+{
+"th": "เพิ่มที่อยู่ใหม่ (ย้ายที่อยู่)",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
+"th": "เพิ่มที่อยู่ใหม่แล้ว — เอกสารตั้งแต่วันที่มีผลจะพิมพ์ที่อยู่นี้",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
 ]
 },
 {
@@ -57658,6 +57870,13 @@
 ]
 },
 {
+"th": "เอกสารที่ลงวันที่ตั้งแต่วันนี้เป็นต้นไปพิมพ์ที่อยู่นี้ (จนถึงที่อยู่ถัดไป)",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
 "th": "เอกสารที่สำนักงานใหญ่ไม่รับ: เอกสารถัดไปจะรอจนกว่าจะแก้ — แก้สาเหตุที่สำนักงานใหญ่ (เช่น เปิดงวด) แล้วกด \"ส่งใหม่\" หรือผู้ดูแลกด \"ยกเลิกเอกสารนี้\" (ลบที่เครื่องสาขา เลขที่นั้นไม่ถูกใช้)",
 "n": 1,
 "files": [
@@ -57809,6 +58028,13 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "เอกสารพิมพ์ที่อยู่ที่มีผล ณ วันที่ของเอกสาร{0} · ย้ายที่อยู่ ให้กด \"เพิ่มที่อยู่ใหม่\" แล้วใส่วันที่มีผล — เอกสารก่อนวันนั้นยังพิมพ์ที่อยู่เดิม {1}",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
 ]
 },
 {
@@ -58089,6 +58315,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Templates.tsx"
+]
+},
+{
+"th": "แก้ไขที่อยู่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
+]
+},
+{
+"th": "แก้ไขที่อยู่ในประวัติ",
+"n": 1,
+"files": [
+"apps/web/src/components/AddressHistory.tsx"
 ]
 },
 {

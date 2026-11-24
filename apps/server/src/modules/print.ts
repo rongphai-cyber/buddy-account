@@ -7,6 +7,7 @@ import { AppError, badRequest, forbidden, notFound, parse, requireCompany, type 
 import { companyImages } from './company-images.js';
 import { logActivity } from '../audit.js';
 import { allowedFor } from './permissions.js';
+import { companyAddressAt } from './company-address.js';
 
 const uuid = z.string().uuid();
 const kindParam = z.object({ kind: z.enum(['doc', 'journal']), id: uuid });
@@ -58,7 +59,9 @@ async function printData(db: Db, a: Ctx, kind: 'doc' | 'journal', id: string) {
   // ผู้ออกใบกำกับภาษีต้องระบุสำนักงานใหญ่/สาขาที่ (ประกาศอธิบดีฯ VAT ฉบับที่ 199) — เอกสารที่ไม่ระบุสาขา = ออกที่สำนักงานใหญ่
   const branchText = (no: string | null | undefined, head: unknown) => (no ? (head || no === '00000' ? 'สำนักงานใหญ่' : `สาขาที่ ${no}`) : '');
   // ที่อยู่ภาษาอังกฤษ (แบบฟอร์มภาษาอังกฤษ · HANDOFF 151) = ของบริษัท (สำนักงานใหญ่) — สาขาที่มีที่อยู่ของตัวเองยังไม่มีที่อยู่อังกฤษ จึงใช้ที่อยู่ไทยของสาขา
-  const company = { name: txt(co.name_th), name_en: txt(co.name_en), address: txt(co.branch_address || co.address_th), address_en: !co.branch_address || co.is_head_office ? txt(co.address_en) : '', phone: txt(co.phone), tax_id: txt(co.tax_id),
+  // ที่อยู่ที่มีผล ณ วันที่เอกสาร (HANDOFF 180 — ประวัติที่อยู่สำนักงานใหญ่/สาขา) · ที่อยู่ของสาขาไม่มีภาษาอังกฤษ = แบบฟอร์มอังกฤษใช้ที่อยู่ไทยของสาขา
+  const at = await companyAddressAt(db, a.companyId, txt(kind === 'journal' ? h.voucher_date : h.doc_date), h.branch_id ?? null);
+  const company = { name: txt(co.name_th), name_en: txt(co.name_en), address: txt(at.address_th), address_en: at.from_branch ? '' : txt(at.address_en), phone: txt(co.phone), tax_id: txt(co.tax_id),
     branch: branchText(co.tax_branch_no, co.is_head_office) || (co.tax_id ? 'สำนักงานใหญ่' : '') };
   if (kind === 'journal') {
     const lines = await journalLines(db, [id]);

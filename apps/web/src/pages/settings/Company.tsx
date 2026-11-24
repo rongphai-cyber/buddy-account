@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { checkTaxId } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
-import { ErrorBox, Field, navKey, PageHead, Tabs, toast, useHotkeys } from '../../ui';
+import { DateText, ErrorBox, Field, navKey, PageHead, Tabs, toast, useHotkeys } from '../../ui';
 import { ThemePicker } from '../../components/ThemePicker';
 import { AddressFields } from '../../components/AddressFields';
 import { ModuleSwitches } from '../../components/ModuleSwitches';
@@ -11,6 +11,7 @@ import { WtsLivingSetup, WtsPosSetup } from '../../components/WtsConnect';
 import { useUnsaved } from '../../unsaved';
 import { StarterFillButton } from '../../components/StarterFill';
 import { CompaniesAdmin } from './CompaniesAdmin';
+import { AddressHistory, useAddressHistory } from '../../components/AddressHistory';
 
 type Co = {
   name_th: string; name_en: string | null; address_th_1: string; address_th_2: string; address_en_1: string; address_en_2: string; phone: string | null; business_type: 'J' | 'P';
@@ -26,6 +27,7 @@ export function CompanyPage() {
   /** ลบ/กู้คืนบริษัท: ผู้ดูแลระบบของลูกค้า/เจ้าหน้าที่ผู้ให้บริการ (HANDOFF 175) */
   const canManage = !!me && (me.user.is_platform || (me.user.is_admin && !!me.user.tenant_id));
   const q = useQuery({ queryKey: ['company'], queryFn: () => api.get<Co>('/api/v1/company') });
+  const curAddr = useAddressHistory(null).data?.rows.find((r) => r.in_effect);
   const [f, setF] = useState<Co | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [edit, setEdit] = useState(false);
@@ -60,6 +62,7 @@ export function CompanyPage() {
         {tab === 'info' && <div className="card form-grid three tab-flow">
           <Field label="1. ชื่อบริษัท" req wide><input value={f.name_th} onChange={(e) => set('name_th', e.target.value)} /></Field>
           <Field label="2. ชื่อภาษาอังกฤษ" wide><input value={f.name_en ?? ''} onChange={(e) => set('name_en', e.target.value)} /></Field>
+          {edit && curAddr && <p className="notebox wide">กำลังแก้ที่อยู่ที่ใช้อยู่ (มีผลตั้งแต่ <DateText v={curAddr.effective_from} />) — เอกสารทุกใบตั้งแต่วันนั้นจะพิมพ์ที่อยู่ที่แก้ · ถ้าย้ายที่อยู่ ให้ใช้ "เพิ่มที่อยู่ใหม่" ในประวัติที่อยู่ด้านล่าง เพื่อให้เอกสารเก่ายังพิมพ์ที่อยู่เดิม</p>}
           <AddressFields value={f} onChange={(p) => setF((x) => ({ ...x!, ...p }))} target={{ kind: 'company' }} title="ที่อยู่กิจการ" disabled={!edit} />
           <Field label="3. หมายเลขโทรศัพท์"><input value={f.phone ?? ''} onChange={(e) => set('phone', e.target.value)} /></Field>
         </div>}
@@ -82,6 +85,7 @@ export function CompanyPage() {
           <label className="inline chk" title="แสดงช่อง Job ในเอกสารซื้อ ขาย ค่าใช้จ่าย เบิกใช้ และสมุดรายวัน — เปิดให้อัตโนมัติเมื่อเพิ่ม Job แรก"><input type="checkbox" checked={!!f.use_project} onChange={(e) => set('use_project', e.target.checked)} /> ใช้ Job/โครงการ (คิดต้นทุนรายงาน)</label>
         </div>}
       </fieldset>}
+      {tab === 'info' && <AddressHistory onChanged={() => void q.refetch()} />}
       {tab === 'modules' && <ModuleSwitches />}
       {tab === 'pos' && <WtsPosSetup />}
       {tab === 'living' && living && <WtsLivingSetup />}

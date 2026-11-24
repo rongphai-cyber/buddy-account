@@ -10,6 +10,7 @@ import { ZodError } from 'zod';
 import { sql } from 'kysely';
 import { attachAuth, authRoutes } from './modules/auth.js';
 import { companyRoutes } from './modules/company.js';
+import { companyAddressRoutes } from './modules/company-address.js';
 import { glRoutes } from './modules/gl/routes.js';
 import { reportRoutes } from './modules/gl/reports.js';
 import { templateRoutes } from './modules/gl/templates.js';
@@ -127,6 +128,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   app.get('/api/v1/menu', async () => MENU);
   authRoutes(app, db, cfg);
   companyRoutes(app, database);
+  companyAddressRoutes(app, db);
   glRoutes(app, db);
   templateRoutes(app, db);
   priorYearRoutes(app, db);

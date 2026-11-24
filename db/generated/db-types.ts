@@ -254,6 +254,57 @@ export interface SysBranchTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** ประวัติที่อยู่ของกิจการ (สำนักงานใหญ่/สาขา) ตามวันที่มีผล — เอกสารพิมพ์ที่อยู่ที่มีผล ณ วันที่เอกสาร (HANDOFF 180 · เจ้าของ 24/11/2569 "ปี 2567 ใช้ที่ 303 … ปี 2568 เป็น 340 … เอกสารแต่ละช่วงเวลาจะต้องออกให้ถูกต้อง") */
+export interface SysAddressHistoryTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** บริษัท */
+  company_id: string;
+  /** สาขา (ว่าง = ที่อยู่ของบริษัท/สำนักงานใหญ่) */
+  branch_id: Gen<string | null>;
+  /** มีผลตั้งแต่วันที่ */
+  effective_from: string;
+  /** ที่อยู่ภาษาไทยที่พิมพ์ในเอกสาร (บรรทัด 1–2 คั่นด้วยขึ้นบรรทัดใหม่ · สาขา = ที่อยู่สาขา) */
+  address_th: Gen<string | null>;
+  /** ที่อยู่ภาษาอังกฤษที่พิมพ์ในเอกสาร (บรรทัด 1–2) */
+  address_en: Gen<string | null>;
+  /** รหัสไปรษณีย์ */
+  zip_code: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: เลขที่ */
+  addr_no: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่ที่ */
+  addr_moo: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: หมู่บ้าน */
+  addr_village: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: อาคาร */
+  addr_building: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ห้องเลขที่ */
+  addr_room: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ชั้นที่ */
+  addr_floor: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ซอย */
+  addr_soi: Gen<string | null>;
+  /** ที่อยู่แยกช่อง: ถนน */
+  addr_road: Gen<string | null>;
+  /** ตำบล/แขวง รหัส 6 หลักกรมการปกครอง (จังหวัด/อำเภอได้จากรหัส · packages/core geo-th) */
+  addr_geo_code: Gen<string | null>;
+  /** หมายเหตุ เช่น ย้ายสำนักงาน */
+  remark: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ผู้ใช้งาน */
 export interface SysUserTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -4906,6 +4957,7 @@ export interface DB {
   sys_signup: SysSignupTable;
   sys_company: SysCompanyTable;
   sys_branch: SysBranchTable;
+  sys_address_history: SysAddressHistoryTable;
   sys_user: SysUserTable;
   sys_user_security: SysUserSecurityTable;
   sys_session: SysSessionTable;

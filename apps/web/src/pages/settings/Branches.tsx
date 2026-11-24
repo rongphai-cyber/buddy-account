@@ -5,6 +5,7 @@ import { api } from '../../api';
 import { useSession } from '../../session';
 import { cx, ErrorBox, Field, Modal, navKey, PageHead, Pill, toast, useHotkeys } from '../../ui';
 import { AddressFields } from '../../components/AddressFields';
+import { AddressHistory } from '../../components/AddressHistory';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 
 
@@ -50,6 +51,9 @@ function BranchForm({ b, onClose, onSaved }: { b: Branch | null; onClose: () => 
         <AddressFields value={f} onChange={(p) => setF((x) => ({ ...x, ...p }))} target={{ kind: 'text', key: 'address' }} title="ที่อยู่สาขา (พิมพ์บนใบกำกับภาษี)" />
         <Field label="สถานะ"><select value={v('status')} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="A">ใช้งาน</option><option value="I">เลิกใช้</option></select></Field>
       </div>
+      {/* ประวัติที่อยู่ของสาขา (HANDOFF 180) — สาขาสำนักงานใหญ่ใช้ประวัติที่อยู่ที่หน้ารายละเอียดกิจการ */}
+      {b && !b.is_head_office && <AddressHistory branchId={b.id} />}
+      {b?.is_head_office && <p className="hint">ที่อยู่สำนักงานใหญ่และประวัติที่อยู่ แก้ที่ เริ่มระบบ › รายละเอียดกิจการ</p>}
     </Modal>
   );
 }

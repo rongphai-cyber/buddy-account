@@ -161,6 +161,13 @@ const DOC = (action: Action): Rule => ({ kind: 'menu', menu: 'GL.JNL', action, p
   const t = b.type_id && /^[0-9a-f-]{36}$/i.test(b.type_id) ? await db.selectFrom('md_doc_type').select('doc_class').where('id', '=', b.type_id).where('company_id', '=', companyId).executeTakeFirst() : undefined;
   return t ? docMenuOf(t.doc_class) : 'GL.JNL';
 } });
+/** ประวัติที่อยู่ (HANDOFF 180): ที่อยู่ของสาขา = สิทธิ์เมนูสาขา · สำนักงานใหญ่ = รายละเอียดกิจการ */
+const ADDR = (action: Action): Rule => ({ kind: 'menu', menu: 'SET.CO', action, pick: async (req, db, companyId) => {
+  const b = (req.body ?? {}) as Record<string, unknown>, p = (req.params ?? {}) as Record<string, string>;
+  let br = typeof b.branch_id === 'string' ? b.branch_id : null;
+  if (p.id && /^[0-9a-f-]{36}$/i.test(p.id)) br = (await db.selectFrom('sys_address_history').select('branch_id').where('id', '=', p.id).where('company_id', '=', companyId).executeTakeFirst())?.branch_id ?? null;
+  return br ? 'SET.BRANCH' : 'SET.CO';
+} });
 /** หมายเหตุแฟ้มหลัก: สิทธิ์ตามเมนูของแฟ้ม (สินค้า/ลูกค้า/ผู้จำหน่าย) */
 const NOTE_MENU: Record<string, string> = { item: 'IC.ITEM', customer: 'SA.CUS', supplier: 'PU.SUP' };
 const MNOTE = (action: Action): Rule => ({ kind: 'menu', menu: 'IC.ITEM', action, pick: async (req) => NOTE_MENU[String((req.params as { entity?: string }).entity)] ?? 'IC.ITEM' });
@@ -215,6 +222,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/activity-log': LOOKUP, 'GET /api/v1/activity-log/search': M('OT.LOG', 'read'),
   // บริษัท สาขา แผนก รอบบัญชี
   'GET /api/v1/company': LOOKUP, 'GET /api/v1/company/starter-data': M('SET.CO', 'read'), 'POST /api/v1/company/starter-data': M('SET.CO', 'edit'), 'PUT /api/v1/company': M('SET.CO', 'edit'), 'PUT /api/v1/company/ui-theme': M('SET.CO', 'edit'), 'GET /api/v1/company/modules': LOOKUP, 'PUT /api/v1/company/modules': M('SET.CO', 'edit'),
+  'GET /api/v1/company/addresses': LOOKUP, 'GET /api/v1/company/address-at': LOOKUP, 'POST /api/v1/company/addresses': ADDR('edit'), 'PUT /api/v1/company/addresses/:id': ADDR('edit'), 'DELETE /api/v1/company/addresses/:id': ADDR('edit'),
   'GET /api/v1/branches': LOOKUP, 'POST /api/v1/branches': M('SET.BRANCH', 'add'), 'PUT /api/v1/branches/:id': M('SET.BRANCH', 'edit'),
   'GET /api/v1/projects/options': LOOKUP, 'GET /api/v1/projects': M('GL.JOB', 'read'), 'GET /api/v1/projects/:id': M('GL.JOB', 'read'), 'POST /api/v1/projects': M('GL.JOB', 'add'), 'PUT /api/v1/projects/:id': M('GL.JOB', 'edit'), 'DELETE /api/v1/projects/:id': M('GL.JOB', 'delete'),
   'GET /api/v1/reports/jobs': M('RP.JOB', 'read'), 'GET /api/v1/reports/jobs/:id': M('RP.JOB', 'read'),

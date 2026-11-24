@@ -188,6 +188,18 @@ export const COMPANY_STEPS: Step[] = [
       WHERE NOT EXISTS (SELECT 1 FROM md_doc_type t WHERE t.company_id = ${id} AND t.code = 'RD' AND t.deleted_at IS NULL)`.execute(tx) },
   { n: 56, name: 'VAT ของมัดจำที่คืน', run: (tx, id) => sql`UPDATE doc_link SET vat_amount = 0 WHERE company_id = ${id} AND link_type = 'DEPOSIT'
       AND to_header_id IN (SELECT h.id FROM doc_header h WHERE h.company_id = ${id} AND h.doc_class = 'RD')`.execute(tx) },
+  // 0074 ประวัติที่อยู่ (HANDOFF 180): แฟ้มสำรองรุ่นก่อนไม่มีประวัติ → ที่อยู่ปัจจุบันเป็นแถวแรก (มีผลตั้งแต่ต้นปีบัญชีแรก)
+  { n: 74, name: 'ประวัติที่อยู่ของกิจการ (แถวแรก = ที่อยู่ปัจจุบัน)', run: async (tx, id) => {
+    await sql`INSERT INTO sys_address_history (company_id, branch_id, effective_from, address_th, address_en, zip_code, addr_no, addr_moo, addr_village, addr_building, addr_room, addr_floor, addr_soi, addr_road, addr_geo_code)
+      SELECT c.id, NULL, coalesce((SELECT min(y.start_date) FROM gl_fiscal_year y WHERE y.company_id = c.id AND y.deleted_at IS NULL), c.created_at::date),
+             c.address_th, c.address_en, c.zip_code, c.addr_no, c.addr_moo, c.addr_village, c.addr_building, c.addr_room, c.addr_floor, c.addr_soi, c.addr_road, c.addr_geo_code
+        FROM sys_company c WHERE c.id = ${id} AND NOT EXISTS (SELECT 1 FROM sys_address_history h WHERE h.company_id = c.id AND h.branch_id IS NULL AND h.deleted_at IS NULL)`.execute(tx);
+    await sql`INSERT INTO sys_address_history (company_id, branch_id, effective_from, address_th, zip_code, addr_no, addr_moo, addr_village, addr_building, addr_room, addr_floor, addr_soi, addr_road, addr_geo_code)
+      SELECT b.company_id, b.id, coalesce((SELECT min(y.start_date) FROM gl_fiscal_year y WHERE y.company_id = b.company_id AND y.deleted_at IS NULL), b.created_at::date),
+             b.address, b.zip_code, b.addr_no, b.addr_moo, b.addr_village, b.addr_building, b.addr_room, b.addr_floor, b.addr_soi, b.addr_road, b.addr_geo_code
+        FROM sys_branch b WHERE b.company_id = ${id} AND b.deleted_at IS NULL AND NOT b.is_head_office AND coalesce(trim(b.address), '') <> ''
+         AND NOT EXISTS (SELECT 1 FROM sys_address_history h WHERE h.branch_id = b.id AND h.deleted_at IS NULL)`.execute(tx);
+  } },
 ];
 /** แฟ้มสำรองผู้ใช้: 0060 คัดลอกสิทธิ์ ยอดยกมาลูกหนี้ → เงินมัดจำยกมา (ทำกับบริษัทของลูกค้ารายนี้) */
 export const USER_STEPS: Step[] = [
