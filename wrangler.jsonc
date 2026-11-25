@@ -31,6 +31,8 @@
   "vars": {
     "BUDDY_TRUST_PROXY": "1",
     "BUDDY_COOKIE_SECURE": "1",
-    "BUDDY_MAIL": "cloudflare"
+    "BUDDY_MAIL": "cloudflare",
+    // ที่อยู่หน้าเว็บในลิงก์อีเมล/ลิงก์เชิญ (HANDOFF 184/187) — ไม่ตั้ง = ใช้ชื่อเว็บที่ผู้ใช้เปิดอยู่
+    "BUDDY_PUBLIC_URL": "https://app.worktruesolution.net"
   }
 }

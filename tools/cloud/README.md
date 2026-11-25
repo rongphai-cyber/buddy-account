@@ -275,7 +275,7 @@ npx.cmd wrangler secret put TURNSTILE_SECRET
 2. เมนูซ้าย **Compute** › **Email Service** › **Email Sending** (ถ้าไม่เห็น ใช้ช่องค้นหาด้านบน พิมพ์ Email Sending)
 3. กด **Onboard Domain** › เลือก **worktruesolution.net** › ดูรายการ DNS ที่จะเพิ่ม (MX และ SPF ที่ `cf-bounce` · DKIM · DMARC ที่ `_dmarc`) › กด **Done** — Cloudflare เพิ่มให้เอง เพราะ DNS อยู่ที่ Cloudflare อยู่แล้ว
 4. รอ 5–15 นาที (นานสุด 24 ชั่วโมง) จนสถานะโดเมนพร้อมส่ง
-5. บอกผู้ช่วยให้ deploy รุ่นที่มี HANDOFF 187 (ขออนุญาตก่อนตามปกติ) — wrangler.jsonc มี `send_email` และ `BUDDY_MAIL=cloudflare` แล้ว
+5. บอกผู้ช่วยให้ deploy รุ่นที่มี HANDOFF 187 (ขออนุญาตก่อนตามปกติ) — wrangler.jsonc มี `send_email` · `BUDDY_MAIL=cloudflare` และ `BUDDY_PUBLIC_URL=https://app.worktruesolution.net` แล้ว (ตัวส่งอีเมลใน container ใช้ `BUDDY_PUBLIC_URL` + `/__wts/mail` — ไม่ตั้ง = ไม่ส่ง บันทึกว่า "ไม่ได้ส่ง" · ถ้าเปิดด่าน Cloudflare Access กลับ (ฉุกเฉิน docs/21 ข้อ ข) อีเมลจะส่งไม่สำเร็จจนกว่าจะเอาด่านออก)
 6. เปิด https://app.worktruesolution.net/admin/tenants › กด **✉ ตั้งค่าอีเมลแจ้งเตือน** › ใส่ **อีเมลรับแจ้งเตือนใบสมัคร** (อีเมลของเจ้าของ คั่นด้วยจุลภาคได้หลายอีเมล) และ **ตอบกลับที่ (Reply-To)** (อีเมลที่อยากให้ผู้สมัครตอบกลับมา) › บันทึก — ผู้ส่งค่าเริ่มต้น noreply@worktruesolution.net
 7. ทดลอง: ในหน้าต่างเดียวกันกดดู **ตัวอย่างอีเมล** ทั้ง 4 แบบ · แล้วสมัครทดลองที่ https://app.worktruesolution.net/signup ด้วยอีเมลของเจ้าของเอง → ควรได้ 2 ฉบับ (แจ้งผู้ให้บริการ + ได้รับใบสมัคร) · ไม่เห็นให้ดูโฟลเดอร์ Spam
 8. ใบสมัครทดลองนั้นกด **ไม่อนุมัติ** (ใส่เหตุผล "ทดลองระบบ") → ควรได้อีเมล "ผลการพิจารณาใบสมัคร"
