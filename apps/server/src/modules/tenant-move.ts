@@ -64,7 +64,8 @@ async function checksOf(db: Db, companyId: string) {
  */
 export async function exportTenant(db: Db, tenantId: string, pass: string, opt: { companyIds?: string[] } = {}) {
   return db.transaction().setIsolationLevel('repeatable read').execute(async (tx) => {
-    const tenant = (await rows<Obj>(tx, sql`SELECT to_jsonb(t) AS j FROM sys_tenant t WHERE id = ${tenantId} AND deleted_at IS NULL`))[0]?.j as Obj | undefined;
+    // package_code (HANDOFF 185): แพ็กเกจเป็นตารางกลางของแต่ละเครื่อง — เครื่องปลายทางผูกแพ็กเกจรหัสเดียวกัน (ไม่มี = ไม่มีแพ็กเกจ)
+    const tenant = (await rows<Obj>(tx, sql`SELECT to_jsonb(t) || jsonb_build_object('package_code', (SELECT p.code FROM sys_package p WHERE p.id = t.package_id)) AS j FROM sys_tenant t WHERE id = ${tenantId} AND deleted_at IS NULL`))[0]?.j as Obj | undefined;
     if (!tenant) throw notFound('ลูกค้าผู้ใช้บริการ');
     if (tenant.purged_at) throw badRequest('ลบข้อมูลของลูกค้ารายนี้ไปแล้ว — ไม่มีข้อมูลให้ย้าย');
     const lines: string[] = [];
@@ -155,6 +156,9 @@ export async function importTenant(db: Db, buf: Buffer, pass: string, userId: st
       await insertJson(tx, t, rs.map((r) => JSON.stringify(r)));
       counts[t] = rs.length;
     }
+    // แพ็กเกจ: ผูกตามรหัสของเครื่องนี้ (รหัสไม่มี = ไม่มีแพ็กเกจ · ค่าที่ลูกค้าตั้งทับไว้ย้ายมาตามเดิม)
+    const pkgCode = (get('sys_tenant')[0] as { package_code?: string | null } | undefined)?.package_code ?? null;
+    await sql`UPDATE sys_tenant SET package_id = (SELECT p.id FROM sys_package p WHERE p.code = ${pkgCode} AND p.deleted_at IS NULL) WHERE id = ${h.tenant.id}`.execute(tx);
     // แฟ้มบันทึกเหตุการณ์: ต่อท้ายตามลำดับเดิม ลำดับที่ (seq) ของเครื่องนี้
     const logs = get('sys_activity_log');
     const cols = (await rows<{ c: string }>(tx, sql`SELECT column_name AS c FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sys_activity_log' AND column_name <> 'seq' ORDER BY ordinal_position`)).map((r) => sql.id(r.c));

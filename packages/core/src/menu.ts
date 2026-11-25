@@ -159,6 +159,9 @@ export const MENU: MenuItem[] = [
     m('SET.YEARFIX', 'ตรวจวันที่ปีผิดระบบ (พ.ศ./ค.ศ.)', 'P0', '/settings/year-fix'),
     m('SET.NEWCO', 'กำหนดบริษัทใหม่', 'P0', '/companies/new', ['ch04:S-CO-03']),
     m('SET.TENANT', 'ลูกค้าผู้ใช้บริการ (ผู้ให้บริการ)', 'P0', '/admin/tenants'),
+    // HANDOFF 185: แพ็กเกจบริการ + การใช้งาน — ลูกค้า (ผู้ดูแลของกิจการ อ่านอย่างเดียว) · ผู้ให้บริการ (แค็ตตาล็อก ทุกลูกค้า ส่วนเกินรายเดือน)
+    m('SET.USAGE', 'การใช้งานและแพ็กเกจ', 'P0', '/settings/usage'),
+    m('SET.PKG', 'แพ็กเกจและการใช้งานลูกค้า (ผู้ให้บริการ)', 'P0', '/admin/packages'),
   ]),
   g('OT', 'อื่น ๆ', 'P1', [
     // ไม่อยู่ในแถบเมนู (เจ้าของ 10/11/2569) — กลับหน้าเลือกโปรแกรมด้วยปุ่ม ▦ WTS บนแถบบน · รหัสยังใช้กำหนดสิทธิ์
@@ -192,7 +195,7 @@ export function flattenMenu(items: MenuItem[] = MENU, parent?: string): Array<Me
  * เมนูของเจ้าหน้าที่ผู้ให้บริการเท่านั้น (ADMIN ที่ไม่สังกัดลูกค้า) — ผู้ดูแลของลูกค้าไม่เห็นในแถบเมนู/ค้นหาเมนู และสิทธิ์ทุกชนิด = ไม่ได้ (HANDOFF 159.1)
  * ลูกค้าผู้ใช้บริการ: ใบสมัคร · โปรแกรมของลูกค้า · ย้ายลูกค้า · ผู้ใช้ดูอย่างเดียว · กลุ่มตั้งต้น อยู่ในหน้านี้ทั้งหมด
  */
-export const PLATFORM_MENUS: ReadonlySet<string> = new Set(['SET.TENANT']);
+export const PLATFORM_MENUS: ReadonlySet<string> = new Set(['SET.TENANT', 'SET.PKG']);
 export const ACTION_MENUS: ReadonlySet<string> = new Set(['SET.NEWCO', 'SET.LINK', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'OT.IMPTRADE', 'OT.IMPJNL', 'FA.DEPR']);
 /** เมนูที่เป็นการอ่านอยู่แล้ว (รายงาน แฟ้มบันทึกเหตุการณ์ บัญชีของตัวเอง) — ไม่เข้าโหมดดูอย่างเดียว ช่องเงื่อนไขใช้ได้ตามปกติ */
 export const readOnlyExempt = (code: string) => code === 'RP' || code.startsWith('RP.') || ['OT.CHECK', 'OT.LOG', 'OT.PASS', 'OT.HUB'].includes(code);

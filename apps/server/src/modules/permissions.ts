@@ -195,6 +195,9 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/auth/2fa': SELF, 'POST /api/v1/auth/2fa/setup': SELF, 'POST /api/v1/auth/2fa/enable': SELF, 'POST /api/v1/auth/2fa/recovery': SELF, 'POST /api/v1/auth/2fa/disable': SELF,
   'POST /api/v1/users/:id/unlock': SELF, 'POST /api/v1/users/:id/reset-2fa': SELF,
   // ลิงก์เชิญ (HANDOFF 184): ผู้ดูแลสร้าง/ยกเลิก (ตรวจในตัว API) · หน้าเปิดลิงก์ไม่ต้องเข้าระบบ
+  // แพ็กเกจ + การใช้งาน (HANDOFF 185): ลูกค้าเห็นของตัวเอง · แค็ตตาล็อก/ทุกลูกค้า = ผู้ให้บริการ (ตรวจในตัว API · รวมทุกบริษัทของลูกค้า จึงไม่อยู่ใต้ RLS ของบริษัท)
+  'GET /api/v1/usage': SELF, 'GET /api/v1/usage/alert': SELF, 'GET /api/v1/packages': SELF, 'POST /api/v1/packages': SELF, 'PUT /api/v1/packages/:id': SELF,
+  'GET /api/v1/admin/usage': SELF, 'GET /api/v1/admin/usage/:tenantId': SELF,
   'POST /api/v1/users/:id/invite': SELF, 'DELETE /api/v1/users/:id/invite': SELF, 'GET /api/v1/invite/:token': OPEN, 'POST /api/v1/invite/:token/accept': OPEN,
   // T0.12 นำข้อมูลจาก Express (ผู้ดูแลระบบ — ตรวจในตัว API)
   'POST /api/v1/express-import/jobs': SELF, 'PUT /api/v1/express-import/jobs/:id/files/:name': SELF, 'POST /api/v1/express-import/jobs/:id/run': SELF,

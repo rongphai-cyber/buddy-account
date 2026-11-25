@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StarterSelect } from '../../components/StarterFill';
+import { packageBody, PackageFields, packageValues } from '../../components/PackageFields';
 import { STARTER_TEMPLATES } from '@buddy/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
@@ -47,12 +48,13 @@ export function SignupsPanel({ onApproved }: { onApproved: () => void }) {
 }
 
 function ApproveForm({ r, onClose, onDone }: { r: Row; onClose: () => void; onDone: () => void }) {
-  const [f, setF] = useState({ code: '', plan: 'standard', max_companies: '', max_users: '', expires_on: '', first_company: true, fiscal_start: `${new Date().getFullYear()}-01-01`, starter: r.business_template || 'TRADE' });
+  const [f, setF] = useState({ code: '', expires_on: '', first_company: true, fiscal_start: `${new Date().getFullYear()}-01-01`, starter: r.business_template || 'TRADE' });
+  const [pk, setPk] = useState(() => packageValues(null));
   const [err, setErr] = useState<unknown>(null);
   const go = async () => {
     setErr(null);
     try {
-      const x = await api.post<{ code: string; company_code: string | null }>(`/api/v1/signups/${r.id}/approve`, { code: f.code || undefined, plan: f.plan, max_companies: f.max_companies ? Number(f.max_companies) : null, max_users: f.max_users ? Number(f.max_users) : null, expires_on: f.expires_on || null,
+      const x = await api.post<{ code: string; company_code: string | null }>(`/api/v1/signups/${r.id}/approve`, { code: f.code || undefined, ...packageBody(pk), expires_on: f.expires_on || null,
         first_company: f.first_company, fiscal_start: f.first_company ? f.fiscal_start || undefined : undefined, starter: f.first_company ? f.starter : undefined });
       toast(`อนุมัติแล้ว — สร้างลูกค้า ${x.code}${x.company_code ? ` และบริษัท ${x.company_code}` : ''} · แจ้งผู้สมัครให้เข้าระบบด้วยรหัส ${r.username}`); onDone();
     } catch (e) { setErr(e); }
@@ -63,9 +65,7 @@ function ApproveForm({ r, onClose, onDone }: { r: Row; onClose: () => void; onDo
       <p className="hint">สร้างลูกค้าผู้ใช้บริการ + ผู้ดูแลคนแรก <b className="mono">{r.username}</b> (รหัสผ่านที่ผู้สมัครตั้งไว้) + บริษัทแรกชื่อ <b>{r.business_name}</b>{r.tax_id && <> เลขผู้เสียภาษี <span className="mono">{r.tax_id}</span></>} พร้อมผังบัญชีมาตรฐาน ประเภทเอกสาร และรอบบัญชี — ผู้สมัครเข้าระบบแล้วเริ่มคีย์เอกสารได้ทันที</p>
       <div className="form-grid">
         <Field label="รหัสลูกค้า" hint="ว่าง = ตั้งจากรหัสผู้ใช้"><input className="mono" maxLength={20} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} /></Field>
-        <Field label="แพ็กเกจ"><input maxLength={20} value={f.plan} onChange={(e) => setF({ ...f, plan: e.target.value })} /></Field>
-        <Field label="บริษัทสูงสุด" hint="ว่าง = ไม่จำกัด"><input inputMode="numeric" value={f.max_companies} onChange={(e) => setF({ ...f, max_companies: e.target.value.replace(/\D/g, '') })} /></Field>
-        <Field label="ผู้ใช้สูงสุด" hint="ว่าง = ไม่จำกัด"><input inputMode="numeric" value={f.max_users} onChange={(e) => setF({ ...f, max_users: e.target.value.replace(/\D/g, '') })} /></Field>
+        <PackageFields value={pk} onChange={setPk} />
         <Field label="หมดอายุ" hint="ว่าง = ไม่หมดอายุ (เช่น ทดลองใช้ 30 วัน)"><DateInput value={f.expires_on} onChange={(v) => setF({ ...f, expires_on: v ?? '' })} /></Field>
         <Field label="บริษัทแรก" wide><label className="inline chk"><input type="checkbox" checked={f.first_company} onChange={(e) => setF({ ...f, first_company: e.target.checked })} /> สร้างบริษัทแรกให้อัตโนมัติ (ผังบัญชีมาตรฐาน)</label></Field>
         {f.first_company && <Field label="รอบบัญชีเริ่ม" hint="ปกติ 1 ม.ค. ของปีนี้ · ปีถัดไปเพิ่มได้ที่ รอบบัญชี"><DateInput value={f.fiscal_start} onChange={(v) => setF({ ...f, fiscal_start: v ?? '' })} /></Field>}

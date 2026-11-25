@@ -28,6 +28,7 @@ import { docRoutes } from './modules/docs/routes.js';
 import { repostBatchRoutes } from './modules/docs/repost-batch.js';
 import { yearFixRoutes } from './modules/year-fix.js';
 import { inviteRoutes } from './modules/invite.js';
+import { usageRoutes } from './modules/usage.js';
 import { projectRoutes } from './modules/projects.js';
 import { tradeRoutes } from './modules/docs/trade.js';
 import { settleRoutes } from './modules/docs/settle.js';
@@ -130,6 +131,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   app.get('/api/v1/menu', async () => MENU);
   authRoutes(app, db, cfg);
   inviteRoutes(app, db, cfg);
+  usageRoutes(app, db);
   companyRoutes(app, database);
   companyAddressRoutes(app, db);
   glRoutes(app, db);

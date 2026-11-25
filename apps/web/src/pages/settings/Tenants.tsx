@@ -4,9 +4,11 @@ import { api } from '../../api';
 import { useSession } from '../../session';
 import { SignupsPanel } from './Signups';
 import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, toastError, useHotkeys } from '../../ui';
+import { packageBody, PackageFields, packageValues } from '../../components/PackageFields';
 
 interface Tenant { id: string; code: string; name: string; contact_email: string | null; contact_phone: string | null; plan: string; max_companies: number | null; max_users: number | null; expires_on: string | null; status: string; company_count: number; user_count: number;
-  dpa_signed_on: string | null; terminated_on: string | null; purge_after: string | null; purged_at: string | null; moved_to: string | null; single_session?: boolean }
+  dpa_signed_on: string | null; terminated_on: string | null; purge_after: string | null; purged_at: string | null; moved_to: string | null; single_session?: boolean;
+  package_id?: string | null; package_name?: string | null; docs_per_month?: number | null; file_quota_mb?: number | null; ai_per_month?: number | null; over_action?: 'W' | 'S' }
 const ST: Record<string, [string, 'n' | 'd' | 'x']> = { A: ['ใช้งาน', 'n'], S: ['ระงับ', 'd'], I: ['เลิกใช้', 'x'] };
 
 /** ลูกค้าผู้ใช้บริการ (tenant) — เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม: ลูกค้าแต่ละรายมีบริษัทและผู้ใช้ของตัวเอง ข้อมูลไม่ปนกัน */
@@ -30,7 +32,7 @@ export function TenantsPage() {
           <tbody>
             {q.data?.map((t) => (
               <tr key={t.id} className="row-open" onClick={() => setEdit(t)}>
-                <td className="mono">{t.code}</td><td>{t.name}</td><td className="small">{t.contact_email} {t.contact_phone}</td><td>{t.plan}</td>
+                <td className="mono">{t.code}</td><td>{t.name}</td><td className="small">{t.contact_email} {t.contact_phone}</td><td>{t.package_name ?? <span className="muted" title={t.plan}>ไม่มีแพ็กเกจ</span>}</td>
                 <td className="r">{t.company_count}{t.max_companies ? ` / ${t.max_companies}` : ''}</td><td className="r">{t.user_count}{t.max_users ? ` / ${t.max_users}` : ''}</td>
                 <td><DateText v={t.expires_on} /></td><td>{t.dpa_signed_on ? <DateText v={t.dpa_signed_on} /> : <span className="small muted">ยังไม่ลงนาม</span>}</td>
                 <td><Pill tone={ST[t.status]?.[1]}>{t.purged_at ? 'ลบข้อมูลแล้ว' : t.moved_to ? 'ย้ายแล้ว' : ST[t.status]?.[0]}</Pill>{t.moved_to && <div className="small muted">{t.moved_to}</div>}{t.purge_after && !t.purged_at && !t.moved_to && <div className="small muted">ลบได้ตั้งแต่ <DateText v={t.purge_after} /></div>}</td>
@@ -47,14 +49,15 @@ export function TenantsPage() {
 
 function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({ code: t?.code ?? '', name: t?.name ?? '', contact_email: t?.contact_email ?? '', contact_phone: t?.contact_phone ?? '', plan: t?.plan ?? 'standard',
-    max_companies: t?.max_companies?.toString() ?? '', max_users: t?.max_users?.toString() ?? '', expires_on: t?.expires_on ?? '', status: t?.status ?? 'A', dpa_signed_on: t?.dpa_signed_on ?? '', moved_to: t?.moved_to ?? '', single_session: t?.single_session ?? false, admin_username: '', admin_name: '', admin_password: '' });
+    expires_on: t?.expires_on ?? '', status: t?.status ?? 'A', dpa_signed_on: t?.dpa_signed_on ?? '', moved_to: t?.moved_to ?? '', single_session: t?.single_session ?? false, admin_username: '', admin_name: '', admin_password: '' });
+  const [pk, setPk] = useState(() => packageValues(t));
   const [err, setErr] = useState<unknown>(null);
   const [purge, setPurge] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [viewer, setViewer] = useState(false);
-  const body = { ...f, contact_email: f.contact_email || null, contact_phone: f.contact_phone || null, max_companies: f.max_companies ? Number(f.max_companies) : null, max_users: f.max_users ? Number(f.max_users) : null, expires_on: f.expires_on || null, dpa_signed_on: f.dpa_signed_on || null, moved_to: f.moved_to || null };
+  const body = { ...f, contact_email: f.contact_email || null, contact_phone: f.contact_phone || null, expires_on: f.expires_on || null, dpa_signed_on: f.dpa_signed_on || null, moved_to: f.moved_to || null, ...packageBody(pk) };
   const save = () => (t ? api.put(`/api/v1/tenants/${t.id}`, body) : api.post('/api/v1/tenants', body)).then(() => { toast('บันทึกลูกค้าแล้ว'); onSaved(); }).catch(setErr);
-  useHotkeys({ F9: save, 'Ctrl+S': save }, [f]);
+  useHotkeys({ F9: save, 'Ctrl+S': save }, [f, pk]);
   if (t?.purged_at) return (
     <Modal title={`ลูกค้า ${t.code}`} onClose={onClose} footer={<button onClick={onClose}>ปิด</button>}>
       <div className="notebox">ลบข้อมูลทั้งหมดของลูกค้ารายนี้แล้วเมื่อ <DateText v={t.purged_at.slice(0, 10)} /> (เลิกใช้บริการ <DateText v={t.terminated_on} />) — เหลือเฉพาะรหัสลูกค้าและแฟ้มบันทึกเหตุการณ์ แก้ไขหรือเปิดใช้อีกไม่ได้</div>
@@ -69,10 +72,8 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
         <Field label="ชื่อลูกค้า" req wide><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
         <Field label="อีเมลผู้ติดต่อ"><input value={f.contact_email} onChange={(e) => setF({ ...f, contact_email: e.target.value })} /></Field>
         <Field label="โทรศัพท์"><input value={f.contact_phone} onChange={(e) => setF({ ...f, contact_phone: e.target.value })} /></Field>
-        <Field label="แพ็กเกจ"><input value={f.plan} onChange={(e) => setF({ ...f, plan: e.target.value })} /></Field>
         <Field label="หมดอายุ"><DateInput value={f.expires_on} onChange={(v) => setF({ ...f, expires_on: v })} /></Field>
-        <Field label="จำนวนบริษัทสูงสุด" hint="ว่าง = ไม่จำกัด"><input className="num" value={f.max_companies} onChange={(e) => setF({ ...f, max_companies: e.target.value.replace(/\D/g, '') })} /></Field>
-        <Field label="จำนวนผู้ใช้สูงสุด" hint="ว่าง = ไม่จำกัด"><input className="num" value={f.max_users} onChange={(e) => setF({ ...f, max_users: e.target.value.replace(/\D/g, '') })} /></Field>
+        <PackageFields value={pk} onChange={setPk} />
         <Field label="เข้าระบบพร้อมกัน" hint="1 เครื่อง = ทุกผู้ใช้ของลูกค้านี้ เข้าระบบจากเครื่องใหม่แล้วเครื่องเดิมออกจากระบบ (กันใช้รหัสเดียวกันหลายคน) · มีผลตั้งแต่การเข้าระบบครั้งถัดไป">
           <select value={f.single_session ? '1' : '0'} onChange={(e) => setF({ ...f, single_session: e.target.value === '1' })}><option value="0">หลายเครื่องพร้อมกันได้</option><option value="1">1 รหัสเข้าได้ทีละ 1 เครื่อง</option></select>
         </Field>

@@ -3337,7 +3337,7 @@ describe('Buddy Account API (PGlite)', () => {
     const dir = new URL('../../../db/migrations/', import.meta.url);
     const covered = new Set([...COMPANY_STEPS, ...USER_STEPS].map((s) => s.n));
     // ตรวจแล้วว่าไม่ต้องทำซ้ำตอนนำกลับ: แก้เฉพาะตารางกลาง (ไม่อยู่ในแฟ้มสำรอง)
-    const GLOBAL = new Set(['sys_menu', 'md_lookup_type', 'sys_setting_def', 'sys_doc_class', 'sys_schema_migration', 'sync_change_log']);   // sync_change_log = ในฟังก์ชันทริกเกอร์ 0032 (คิวซิงก์ไม่อยู่ในแฟ้มสำรอง)
+    const GLOBAL = new Set(['sys_menu', 'md_lookup_type', 'sys_setting_def', 'sys_doc_class', 'sys_schema_migration', 'sync_change_log', 'sys_package']);   // sys_package = แพ็กเกจตั้งต้นของผู้ให้บริการ (0076)   // sync_change_log = ในฟังก์ชันทริกเกอร์ 0032 (คิวซิงก์ไม่อยู่ในแฟ้มสำรอง)
     const missing: string[] = [];
     for (const f of (await readdir(dir)).filter((x) => /^\d{4}_.*\.sql$/.test(x)).sort()) {
       const n = Number(f.slice(0, 4));
@@ -4773,6 +4773,119 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       appCfg.publicUrl = undefined;
       cookie = start;
     }
+  });
+
+  it('HANDOFF 185: package catalog (provider only), tenant package + overrides, live usage meter (docs never blocked), stop mode refuses files/AI, overage in Decimal, customer sees own tenant only, ordinary user 403', async () => {
+    const start = cookie;
+    const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    try {
+      cookie = admin;
+      // แค็ตตาล็อกตั้งต้น 4 แพ็กเกจ (migration 0076)
+      const cat = (await call('GET', '/api/v1/packages')).body as Array<{ id: string; code: string; price_year: string; docs_per_month: number; file_quota_mb: number }>;
+      expect(cat.map((p) => `${p.code}:${p.price_year}:${p.docs_per_month}:${p.file_quota_mb}`)).toEqual(['START:3900.00:500:2048', 'STANDARD:5900.00:2000:5120', 'PRO:9900.00:5000:10240', 'OFFICE:24000.00:20000:30720']);
+      const tiny = await call('POST', '/api/v1/packages', { code: 'tiny', name_th: 'ทดลองเล็ก', price_year: '1,200', max_companies: 1, max_users: 2, docs_per_month: 3, file_quota_mb: 1, ai_per_month: 1,
+        over_company_year: '900', over_user_year: '600', over_doc: '0.50', over_file_gb_month: '20', over_ai: '2.00' });
+      expect(tiny.status, JSON.stringify(tiny.body)).toBe(200);
+      expect((await call('POST', '/api/v1/packages', { code: 'TINY', name_th: 'ซ้ำ', price_year: '1', over_company_year: '0', over_user_year: '0', over_doc: '0', over_file_gb_month: '0', over_ai: '0' })).body.error.message).toMatch(/TINY มีอยู่แล้ว/);
+      expect((await call('POST', '/api/v1/packages', { code: 'BAD', name_th: 'x', price_year: '-5', over_company_year: '0', over_user_year: '0', over_doc: '0', over_file_gb_month: '0', over_ai: '0' })).status).toBe(400);
+      // ลูกค้าใหม่พร้อมแพ็กเกจ · อีกรายไม่มีแพ็กเกจ (= ไม่จำกัด)
+      expect((await call('POST', '/api/v1/tenants', { code: 'PKGA', name: 'ลูกค้าแพ็กเกจ', admin_username: 'pkga.admin', admin_name: 'ผู้ดูแลแพ็กเกจ', admin_password: 'passPkgA1234', package_id: tiny.body.id })).status).toBe(200);
+      expect((await call('POST', '/api/v1/tenants', { code: 'PKGB', name: 'ลูกค้าไม่มีแพ็กเกจ', admin_username: 'pkgb.admin', admin_name: 'ผู้ดูแลบี', admin_password: 'passPkgB1234' })).status).toBe(200);
+      const ta = ((await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; plan: string; package_name: string | null; over_action: string }>).find((t) => t.code === 'PKGA')!;
+      expect([ta.plan, ta.package_name, ta.over_action]).toEqual(['TINY', 'ทดลองเล็ก', 'W']);
+      // ลูกค้าเดิม (ก่อนมีแพ็กเกจ) ไม่เปลี่ยน
+      expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_tenant WHERE code = 'CUSTB' AND package_id IS NULL`.execute(database.db)).rows[0]!.n).toBe(1);
+
+      // ลูกค้า: บริษัท/ผู้ใช้ตามแพ็กเกจ (ห้ามเกิน)
+      expect((await login('pkga.admin', 'passPkgA1234')).status).toBe(200);
+      const pkgaAdmin = cookie;
+      const co = (await call('POST', '/api/v1/companies', { code: 'PKA-1', name_th: 'บริษัทแพ็กเกจ', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+      expect((await call('POST', '/api/v1/companies', { code: 'PKA-2', name_th: 'เกิน', fiscal_start: '2026-01-01', chart: 'express' })).body.error.message).toMatch(/สูงสุด 1 บริษัท/);
+      await call('POST', '/api/v1/auth/select', { company_id: co });
+      expect((await call('POST', '/api/v1/users', { username: 'pkga.staff', display_name: 'พนักงาน', password: 'staffPkg123', companies: [co] })).status).toBe(200);
+      expect((await call('POST', '/api/v1/users', { username: 'pkga.staff2', display_name: 'เกิน', password: 'staffPkg123', companies: [co] })).body.error.message).toMatch(/สูงสุด 2 คน/);
+      // เอกสารไม่หยุดเด็ดขาด: ใบสำคัญ 4 ใบ (ขีดจำกัด 3) บันทึกได้ทุกใบ
+      type Acc = { id: string; account_group: string; is_control: boolean };
+      const accs = ((await call('GET', '/api/v1/gl/accounts')).body as Acc[]).filter((x) => !x.is_control);
+      const [cashA, capA] = ['1', '3'].map((g) => accs.find((x) => x.account_group === g)!) as [Acc, Acc];
+      const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+      const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+      const jv = () => call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: today.startsWith('2026') ? today : '2026-06-01', lines: [{ account_id: cashA.id, debit: '10' }, { account_id: capA.id, credit: '10' }] });
+      for (let i = 0; i < 4; i++) expect((await jv()).status).toBe(200);
+      // เอกสารที่ย้ายมาจาก Express ไม่นับ
+      const branch = (await sql<{ id: string }>`SELECT id FROM sys_branch WHERE company_id = ${co} AND is_head_office`.execute(database.db)).rows[0]!.id;
+      const dt = (await sql<{ id: string; doc_class: string; module: string }>`SELECT id, doc_class, module FROM md_doc_type WHERE company_id = ${co} AND deleted_at IS NULL ORDER BY code LIMIT 1`.execute(database.db)).rows[0]!;
+      await sql`INSERT INTO doc_header (company_id, branch_id, doc_type_id, doc_class, module, doc_no, doc_date, express_rectype) VALUES (${co}, ${branch}, ${dt.id}, ${dt.doc_class}, ${dt.module}, 'EXP-OLD', '2026-01-05', '1')`.execute(database.db);
+      await sql`INSERT INTO doc_header (company_id, branch_id, doc_type_id, doc_class, module, doc_no, doc_date) VALUES (${co}, ${branch}, ${dt.id}, ${dt.doc_class}, ${dt.module}, 'API-NEW', '2026-06-02')`.execute(database.db);
+      // ไฟล์ (เตือนและคิดเงินส่วนเกิน = อัปโหลดได้แม้ครบ)
+      expect((await call('PUT', '/api/v1/company-images/logo', { data: PNG })).status).toBe(200);
+      await sql`INSERT INTO sys_ai_usage (company_id, purpose, status, file_name) VALUES (${co}, 'BILL', 'OK', 'bill.jpg'), (${co}, 'BILL', 'ERROR', 'bad.jpg')`.execute(database.db);
+      const u = (await call('GET', '/api/v1/usage')).body;
+      expect(u.tenant.code).toBe('PKGA');
+      expect(u.package).toMatchObject({ code: 'TINY', price_year: '1200.00' });
+      expect(u.usage).toMatchObject({ companies: 1, users: 2, docs: 5, ai: 1 });
+      expect(u.usage.file_bytes).toBeGreaterThan(0);
+      expect(u.rows.map((r: { key: string; pct: number; level: string }) => `${r.key}:${r.pct}:${r.level}`)).toEqual(['companies:100:ok', 'users:100:ok', 'docs:166:over', `files:${Math.floor(u.usage.file_bytes * 100 / 1048576)}:ok`, 'ai:100:over']);
+      expect(u.companies).toEqual([expect.objectContaining({ code: 'PKA-1', docs: 5, vouchers: 4, ai: 1 })]);
+      expect(u.companies[0].db_bytes).toBeUndefined();   // ขนาดข้อมูลโดยประมาณ = ผู้ให้บริการเท่านั้น
+      expect(u.overage).toBeUndefined();
+      expect(u.docs_definition).toMatch(/ใบสำคัญที่บันทึกเอง/);
+      expect((await call('GET', '/api/v1/usage/alert')).body).toMatchObject({ level: 'over' });
+      // ลูกค้าเรียกหน้าของผู้ให้บริการไม่ได้
+      for (const [m, url] of [['GET', '/api/v1/packages'], ['GET', '/api/v1/admin/usage'], ['GET', `/api/v1/admin/usage/${ta.id}`]] as const) expect((await call(m, url)).status).toBe(403);
+      expect((await call('PUT', `/api/v1/packages/${tiny.body.id}`, { code: 'TINY', name_th: 'x', price_year: '0', over_company_year: '0', over_user_year: '0', over_doc: '0', over_file_gb_month: '0', over_ai: '0' })).status).toBe(403);
+
+      // โหมด "หยุด": ไฟล์/AI ปฏิเสธ · เอกสารยังบันทึกได้
+      cookie = admin;
+      const put = (b: object) => call('PUT', `/api/v1/tenants/${ta.id}`, { code: 'PKGA', name: 'ลูกค้าแพ็กเกจ', status: 'A', ...b });
+      expect((await put({ package_id: tiny.body.id, over_action: 'S', file_quota_mb: 0 })).status).toBe(200);
+      cookie = pkgaAdmin;
+      const up = await call('POST', '/api/v1/company-images/signs', { name: 'กรรมการ', data: PNG });
+      expect([up.status, up.body.error.code]).toEqual([403, 'QUOTA_STOP']);
+      expect(up.body.error.message).toMatch(/พื้นที่ไฟล์ของกิจการเต็มแล้ว.*ติดต่อผู้ให้บริการ/);
+      const ai = await call('POST', '/api/v1/ai/read-bill-text', { target: 'purchase-invoices', file_name: 'b.jpg', file_size: 10, text: 'ใบกำกับภาษี ทดสอบ 0123456789' });
+      expect([ai.status, ai.body.error.code]).toEqual([403, 'QUOTA_STOP']);
+      expect(ai.body.error.message).toMatch(/อ่านบิลด้วย AI ครบ 1 บิล/);
+      expect((await jv()).status).toBe(200);   // เอกสารไม่หยุด
+      // กลับเป็น "เตือน" = อัปโหลดได้ (คิดส่วนเกิน)
+      cookie = admin;
+      expect((await put({ over_action: 'W' })).status).toBe(200);
+      cookie = pkgaAdmin;
+      expect((await call('POST', '/api/v1/company-images/signs', { name: 'กรรมการ', data: PNG })).status).toBe(200);
+      expect((await call('POST', '/api/v1/ai/read-bill-text', { target: 'purchase-invoices', file_name: 'b.jpg', file_size: 10, text: 'ใบกำกับภาษี ทดสอบ 0123456789' })).body.error?.code).not.toBe('QUOTA_STOP');
+
+      // ผู้ใช้ทั่วไป 403 · แถบเตือนไม่แสดง
+      expect((await login('pkga.staff', 'staffPkg123')).status).toBe(200);
+      await call('POST', '/api/v1/auth/select', { company_id: co });
+      expect((await call('GET', '/api/v1/usage')).status).toBe(403);
+      expect((await call('GET', '/api/v1/usage/alert')).body.level).toBe('none');
+      // ลูกค้าอื่น (ข้อ 7.1): เห็นเฉพาะของตัวเอง ไม่มีแพ็กเกจ = ไม่จำกัด
+      expect((await login('pkgb.admin', 'passPkgB1234')).status).toBe(200);
+      const ub = (await call('GET', '/api/v1/usage?month=2026-06')).body;
+      expect([ub.tenant.code, ub.package, ub.level, ub.usage.docs, ub.companies.length]).toEqual(['PKGB', null, 'none', 0, 0]);
+      expect((await call('GET', `/api/v1/admin/usage/${ta.id}`)).status).toBe(403);
+
+      // ผู้ให้บริการ: ทุกลูกค้า + ขนาดข้อมูลโดยประมาณ + ส่วนเกิน (Decimal)
+      cookie = admin;
+      const month = (u.month as string);
+      const all = (await call('GET', `/api/v1/admin/usage?month=${month}`)).body;
+      const ra = all.rows.find((r: { tenant: { code: string } }) => r.tenant.code === 'PKGA');
+      expect(ra.companies[0].db_bytes).toBeGreaterThan(0);
+      // เอกสาร 6 (เกิน 3 × 0.50 = 1.50) · ไฟล์เกินเล็กน้อย (< 0.005 GB = ไม่คิด) · AI 1 (ไม่เกิน)
+      expect(ra.usage.docs).toBe(6);
+      expect(ra.overage).toEqual({ lines: [{ key: 'docs', label: 'เอกสารต่อเดือน', over: '3', unit: 'ใบ', rate: '0.50', amount: '1.50', note: 'ต่อใบ' }], total: '1.50' });
+      expect(all.rows.find((r: { tenant: { code: string } }) => r.tenant.code === 'PKGB').overage).toEqual({ lines: [], total: '0.00' });
+      // ขยายให้ลูกค้า 2 บริษัท (ทับแพ็กเกจ 1) → บริษัทที่ 2 = ส่วนเกิน 900/ปี ÷ 12 = 75.00
+      expect((await put({ max_companies: 2 })).status).toBe(200);
+      cookie = pkgaAdmin;
+      expect((await call('POST', '/api/v1/companies', { code: 'PKA-2', name_th: 'บริษัทที่สอง', fiscal_start: '2026-01-01', chart: 'express' })).status).toBe(200);
+      cookie = admin;
+      const d2 = (await call('GET', `/api/v1/admin/usage/${ta.id}?month=${month}`)).body;
+      expect(d2.overage.lines.map((x: { key: string; amount: string }) => `${x.key}:${x.amount}`)).toEqual(['companies:75.00', 'docs:1.50']);
+      expect(d2.overage.total).toBe('76.50');
+      const acts = (await sql<{ action: string }>`SELECT action FROM sys_activity_log WHERE action IN ('ADD_PACKAGE', 'EDIT_TENANT') AND (doc_no = 'TINY' OR row_id = ${ta.id}) ORDER BY seq`.execute(database.db)).rows.map((r) => r.action);
+      expect(acts).toEqual(['ADD_PACKAGE', 'EDIT_TENANT', 'EDIT_TENANT', 'EDIT_TENANT']);
+    } finally { cookie = start; }
   });
 });
 

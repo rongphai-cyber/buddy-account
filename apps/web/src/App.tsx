@@ -37,6 +37,8 @@ import { NewCompanyPage } from './pages/settings/NewCompany';
 import { PasswordPage } from './pages/settings/Password';
 import { MfaRequiredPage } from './pages/settings/TwoFactor';
 import { InvitePage } from './pages/Invite';
+import { UsageAlert, UsagePage } from './pages/settings/Usage';
+import { PackagesPage } from './pages/settings/Packages';
 import { ImportPage } from './pages/settings/Import';
 import { TenantsPage } from './pages/settings/Tenants';
 import { TrialBalancePage } from './pages/reports/TrialBalance';
@@ -228,6 +230,7 @@ function Shell() {
       {search && <MenuSearch perms={me.perms} onClose={() => setSearch(false)} />}
       <main className="main" id="main">
         <ReadOnlyGuard />
+        <UsageAlert onOpen={() => nav('/settings/usage')} />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/gl/accounts" element={<AccountsPage />} />
@@ -333,6 +336,8 @@ function Shell() {
           <Route path="/account/password" element={<PasswordPage />} />
           <Route path="/admin/import" element={<ImportPage />} />
           <Route path="/admin/tenants" element={<TenantsPage />} />
+          <Route path="/admin/packages" element={<PackagesPage />} />
+          <Route path="/settings/usage" element={<UsagePage />} />
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
           <Route path="/reports/ledger" element={<LedgerPage />} />
           <Route path="/reports/jobs" element={<JobCostPage />} />

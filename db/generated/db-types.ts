@@ -1,6 +1,57 @@
 // สร้างอัตโนมัติจาก db/spec/spec.py ด้วย `pnpm db:gen` — ห้ามแก้ไฟล์นี้ด้วยมือ
 import type { ColumnType } from 'kysely';
 type Gen<T> = ColumnType<T, T | undefined, T>;
+/** แพ็กเกจบริการ (HANDOFF 185 · เจ้าของ 25/11/2569 แบบ A เอกสาร+ไฟล์) — ราคาต่อปี ไม่รวม VAT · ขีดจำกัดบริษัท ผู้ใช้ เอกสาร/เดือน พื้นที่ไฟล์ AI/เดือน + อัตราส่วนเกิน · ผู้ให้บริการแก้/เพิ่มได้ · อยู่เฉพาะเซิร์ฟเวอร์ */
+export interface SysPackageTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** รหัสแพ็กเกจ */
+  code: string;
+  /** ชื่อแพ็กเกจ */
+  name_th: string;
+  /** ราคาต่อปี (บาท ไม่รวม VAT) */
+  price_year: Gen<string>;
+  /** จำนวนบริษัทสูงสุด (ว่าง = ไม่จำกัด) */
+  max_companies: Gen<number | null>;
+  /** จำนวนผู้ใช้สูงสุด (ว่าง = ไม่จำกัด) */
+  max_users: Gen<number | null>;
+  /** เอกสารต่อเดือน (ว่าง = ไม่จำกัด · เกินแล้วคิดส่วนเกิน ไม่หยุด) */
+  docs_per_month: Gen<number | null>;
+  /** พื้นที่ไฟล์ (MB · ว่าง = ไม่จำกัด) */
+  file_quota_mb: Gen<number | null>;
+  /** อ่านบิลด้วย AI ต่อเดือน (ว่าง = ไม่จำกัด) */
+  ai_per_month: Gen<number | null>;
+  /** ส่วนเกิน: บริษัทเพิ่ม บาทต่อปี */
+  over_company_year: Gen<string>;
+  /** ส่วนเกิน: ผู้ใช้เพิ่ม บาทต่อปี */
+  over_user_year: Gen<string>;
+  /** ส่วนเกิน: บาทต่อเอกสาร */
+  over_doc: Gen<string>;
+  /** ส่วนเกิน: บาทต่อ GB ต่อเดือน */
+  over_file_gb_month: Gen<string>;
+  /** ส่วนเกิน: บาทต่อบิลที่อ่านด้วย AI */
+  over_ai: Gen<string>;
+  /** A=ใช้ได้ I=เลิกขาย (ลูกค้าเดิมยังใช้ต่อ) */
+  status: Gen<string>;
+  /** ลำดับแสดง */
+  sort_order: Gen<number>;
+  /** หมายเหตุ */
+  remark: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ลูกค้าผู้ใช้บริการ (tenant) — หนึ่งรายมีได้หลายบริษัท ข้อมูลแต่ละรายแยกขาดจากกัน — Buddy Account */
 export interface SysTenantTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -37,6 +88,16 @@ export interface SysTenantTable {
   require_mfa: Gen<boolean>;
   /** 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ของลูกค้านี้ (ผู้ให้บริการตั้งที่หน้า ลูกค้าผู้ใช้บริการ · ค่าเริ่มต้น ปิด) — เข้าระบบจากเครื่องใหม่ = เครื่องเดิมออกจากระบบ · HANDOFF 156 */
   single_session: Gen<boolean>;
+  /** แพ็กเกจบริการ (HANDOFF 185 · ว่าง = ไม่มีแพ็กเกจ ไม่จำกัด · max_companies/max_users ของลูกค้า = ค่าที่ทับแพ็กเกจ) */
+  package_id: Gen<string | null>;
+  /** เอกสารต่อเดือนของลูกค้านี้ (ว่าง = ตามแพ็กเกจ) */
+  docs_per_month: Gen<number | null>;
+  /** พื้นที่ไฟล์ MB ของลูกค้านี้ (ว่าง = ตามแพ็กเกจ) */
+  file_quota_mb: Gen<number | null>;
+  /** อ่านบิลด้วย AI ต่อเดือนของลูกค้านี้ (ว่าง = ตามแพ็กเกจ) */
+  ai_per_month: Gen<number | null>;
+  /** ไฟล์/AI ครบ 100%: W=เตือนและคิดเงินส่วนเกิน S=หยุด (เอกสารไม่หยุดเด็ดขาด) */
+  over_action: Gen<string>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -4983,6 +5044,7 @@ export interface SyncConflictTable {
   origin_device_id: Gen<string | null>;
 }
 export interface DB {
+  sys_package: SysPackageTable;
   sys_tenant: SysTenantTable;
   sys_tenant_module: SysTenantModuleTable;
   sys_signup: SysSignupTable;

@@ -15,6 +15,7 @@ import { purgeTenant } from './pdpa.js';
 import { modulesOffRaw } from './permissions.js';
 import { payrollSource } from './wts.js';
 import { createTenantWithAdmin } from './signup.js';
+import { packagePlan, tenantLimits, TENANT_PACKAGE_FIELDS } from './usage.js';
 import { ensureStandardGroups, permissionCompanies } from '../standard-groups.js';
 import { applyStarter, lastStarter } from '../starter.js';
 import { applyPostingTemplate, companySettings, createFiscalYear, seedChart, seedDocTypes, seedLookups, setSetting } from '../company-template.js';
@@ -26,6 +27,8 @@ const opt = (n: number) => z.string().trim().max(n).nullable().optional();
 
 export function companyRoutes(app: FastifyInstance, database: Database) {
   const db: Db = database.db;
+  /** จำนวนบริษัท/ผู้ใช้สูงสุดที่ใช้จริง (ค่าของลูกค้าทับแพ็กเกจ · HANDOFF 185) — ว่าง = ไม่จำกัด */
+  const maxOf = async (tenantId: string, k: 'companies' | 'users') => (await tenantLimits(db, tenantId))?.limits[k] ?? null;
 
   /* ---------------------------------------------------------------- รายละเอียดกิจการ (บทที่ 5 S-SET-01) */
   app.get('/api/v1/company', async (req) => {
@@ -208,10 +211,10 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     if (!c.deleted_at) throw badRequest(`บริษัท ${c.code} ยังใช้งานอยู่`);
     const dup = await db.selectFrom('sys_company').select('id').where('code', '=', c.code).where('deleted_at', 'is', null).executeTakeFirst();
     if (dup) throw badRequest(`มีบริษัทรหัส ${c.code} ที่ใช้งานอยู่แล้ว — กู้คืนไม่ได้จนกว่าจะเปลี่ยนรหัสบริษัทนั้น`);
-    const t = c.tenant_id ? await db.selectFrom('sys_tenant').select(['max_companies']).where('id', '=', c.tenant_id).executeTakeFirst() : undefined;
-    if (t?.max_companies != null) {
+    const maxCo = c.tenant_id ? await maxOf(c.tenant_id, 'companies') : null;
+    if (maxCo != null) {
       const n = await db.selectFrom('sys_company').select(sql<number>`count(*)::int`.as('n')).where('tenant_id', '=', c.tenant_id).where('deleted_at', 'is', null).executeTakeFirstOrThrow();
-      if (Number(n.n) >= t.max_companies) throw badRequest(`แพ็กเกจนี้มีบริษัทได้สูงสุด ${t.max_companies} บริษัท — ลบบริษัทอื่นก่อน หรือติดต่อผู้ให้บริการ`);
+      if (Number(n.n) >= maxCo) throw badRequest(`แพ็กเกจนี้มีบริษัทได้สูงสุด ${maxCo} บริษัท — ลบบริษัทอื่นก่อน หรือติดต่อผู้ให้บริการ`);
     }
     await db.transaction().execute(async (tx) => {
       await tx.updateTable('sys_company').set({ deleted_at: null, updated_by: a.userId }).where('id', '=', id).execute();
@@ -238,9 +241,10 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     if (!(b.chart === 'copy' && b.copy_scope === 'full') && !b.fiscal_start) throw badRequest('ป้อนวันเริ่มรอบบัญชี', [{ field: 'fiscal_start', message: 'ป้อนวันที่' }]);
     const t = await db.selectFrom('sys_tenant').select(['id', 'max_companies', 'status']).where('id', '=', tenantId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!t) throw badRequest('ไม่พบลูกค้าผู้ใช้บริการ');
-    if (t.max_companies !== null) {
+    const maxCo = await maxOf(tenantId, 'companies');
+    if (maxCo !== null) {
       const n = await db.selectFrom('sys_company').select(sql<number>`count(*)`.as('n')).where('tenant_id', '=', tenantId).where('deleted_at', 'is', null).executeTakeFirstOrThrow();
-      if (Number(n.n) >= t.max_companies) throw badRequest(`แพ็กเกจนี้สร้างบริษัทได้สูงสุด ${t.max_companies} บริษัท`);
+      if (Number(n.n) >= maxCo) throw badRequest(`แพ็กเกจนี้สร้างบริษัทได้สูงสุด ${maxCo} บริษัท`);
     }
     if (b.copy_from_company_id && !(await canAccessCompany(db, a, b.copy_from_company_id))) throw forbidden('ไม่มีสิทธิ์คัดลอกจากบริษัทนี้');
     const exists = await db.selectFrom('sys_company').select('id').where('code', '=', b.code).where('deleted_at', 'is', null).executeTakeFirst();
@@ -431,10 +435,10 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const tenantId = await tenantFor(a, b.tenant_id, b.companies);
     await checkUserScope(tenantId, b);
     if (tenantId) {
-      const t = await db.selectFrom('sys_tenant').select('max_users').where('id', '=', tenantId).executeTakeFirst();
-      if (t?.max_users != null) {
+      const maxU = await maxOf(tenantId, 'users');
+      if (maxU != null) {
         const n = await db.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).where('tenant_id', '=', tenantId).where('deleted_at', 'is', null).executeTakeFirstOrThrow();
-        if (Number(n.n) >= t.max_users) throw badRequest(`แพ็กเกจนี้มีผู้ใช้ได้สูงสุด ${t.max_users} คน`);
+        if (Number(n.n) >= maxU) throw badRequest(`แพ็กเกจนี้มีผู้ใช้ได้สูงสุด ${maxU} คน`);
       }
     }
     return db.transaction().execute(async (tx) => {
@@ -481,6 +485,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     requirePlatform(req);
     return db.selectFrom('sys_tenant as t').select(['t.id', 't.code', 't.name', 't.contact_email', 't.contact_phone', 't.plan', 't.max_companies', 't.max_users', 't.expires_on', 't.status',
       't.dpa_signed_on', 't.terminated_on', 't.purge_after', 't.purged_at', 't.moved_to', 't.single_session',
+      't.package_id', 't.docs_per_month', 't.file_quota_mb', 't.ai_per_month', 't.over_action',
+      sql<string | null>`(SELECT p.name_th FROM sys_package p WHERE p.id = t.package_id)`.as('package_name'),
       sql<number>`(SELECT count(*) FROM sys_company c WHERE c.tenant_id = t.id AND c.deleted_at IS NULL)`.as('company_count'),
       sql<number>`(SELECT count(*) FROM sys_user u WHERE u.tenant_id = t.id AND u.deleted_at IS NULL)`.as('user_count')])
       .where('t.deleted_at', 'is', null).orderBy('t.code').execute();
@@ -493,13 +499,15 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     moved_to: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
     // 1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ของลูกค้า (HANDOFF 156 · ค่าเริ่มต้น ปิด) · ไม่ส่ง = คงค่าเดิม — มีผลตั้งแต่การเข้าระบบครั้งถัดไป
     single_session: z.boolean().optional(),
+    // แพ็กเกจ (HANDOFF 185): ว่าง = ไม่มีแพ็กเกจ · ขีดจำกัดของลูกค้า ว่าง = ตามแพ็กเกจ · ไม่ส่ง = คงค่าเดิม
+    ...TENANT_PACKAGE_FIELDS,
   });
   /** สร้างลูกค้าใหม่ + กลุ่ม ADMIN ของลูกค้า + ผู้ดูแลคนแรกของลูกค้า */
   app.post('/api/v1/tenants', async (req) => {
     const a = requirePlatform(req);
     const b = parse(tenantBody.extend({ admin_username: userBody.shape.username, admin_name: userBody.shape.display_name, admin_password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })) }), req.body);
     return db.transaction().execute(async (tx) => {
-      const t = await createTenantWithAdmin(tx, a.userId, { ...b, admin_username: b.admin_username, admin_name: b.admin_name, password_hash: await bcrypt.hash(b.admin_password, 10) });
+      const t = await createTenantWithAdmin(tx, a.userId, { ...b, ...(await packagePlan(tx, b)), admin_username: b.admin_username, admin_name: b.admin_name, password_hash: await bcrypt.hash(b.admin_password, 10) });
       await logActivity(tx, a, { module: 'SYS', action: 'NEW_TENANT', table: 'sys_tenant', rowId: t.id, detail: { code: b.code } });
       return t;
     });
@@ -517,9 +525,10 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const t = await db.selectFrom('sys_tenant').select(['id', 'code', 'max_users', 'status']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!t) throw notFound('ลูกค้าผู้ใช้บริการ');
     if (await db.selectFrom('sys_user').select('id').where(sql`lower(username)`, '=', b.username.toLowerCase()).where('deleted_at', 'is', null).executeTakeFirst()) throw badRequest(`รหัสผู้ใช้ ${b.username} มีผู้ใช้แล้ว — เลือกรหัสอื่น`);
-    if (t.max_users != null) {
+    const maxU = await maxOf(id, 'users');
+    if (maxU != null) {
       const n = await db.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).where('tenant_id', '=', id).where('deleted_at', 'is', null).executeTakeFirstOrThrow();
-      if (Number(n.n) >= t.max_users) throw badRequest(`แพ็กเกจของลูกค้านี้มีผู้ใช้ได้สูงสุด ${t.max_users} คน — เพิ่มจำนวนผู้ใช้ที่ลูกค้าก่อน`);
+      if (Number(n.n) >= maxU) throw badRequest(`แพ็กเกจของลูกค้านี้มีผู้ใช้ได้สูงสุด ${maxU} คน — เพิ่มจำนวนผู้ใช้ที่ลูกค้าก่อน`);
     }
     const companies = await db.selectFrom('sys_company').select('id').where('tenant_id', '=', id).where('deleted_at', 'is', null).execute();
     if (!companies.length) throw badRequest('ลูกค้านี้ยังไม่มีบริษัท — ไม่มีข้อมูลให้ดู');
@@ -564,11 +573,13 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     if (cur.purged_at) throw badRequest('ลบข้อมูลของลูกค้ารายนี้ไปแล้ว (เลิกใช้บริการ) — แก้ไขหรือเปิดใช้อีกไม่ได้ สร้างลูกค้ารายใหม่แทน');
     if (b.moved_to && b.status !== 'I') throw badRequest('ลูกค้าที่ย้ายไปเซิร์ฟเวอร์แยกแล้วต้องมีสถานะ "เลิกใช้" ที่เครื่องนี้');
     // T0.17 เลิกใช้บริการ (I): เริ่มนับ 90 วันให้ลูกค้าขอสำเนาข้อมูลก่อนลบ · กลับมาใช้ (A/S) = ยกเลิกกำหนดลบ
+    const pkg = await packagePlan(db, b);
     const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
     const end = b.status === 'I' ? (cur.status === 'I' && cur.terminated_on ? { terminated_on: cur.terminated_on } : { terminated_on: today, purge_after: pdpaPurgeAfter(today) }) : { terminated_on: null, purge_after: null };
-    await db.updateTable('sys_tenant').set({ ...b, ...end, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, dpa_signed_on: b.dpa_signed_on ?? null, moved_to: b.moved_to ?? null, updated_by: a.userId }).where('id', '=', id).execute();
+    await db.updateTable('sys_tenant').set({ ...b, ...end, ...pkg, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, dpa_signed_on: b.dpa_signed_on ?? null, moved_to: b.moved_to ?? null, updated_by: a.userId }).where('id', '=', id).execute();
     if (b.status !== 'A') await db.updateTable('sys_session').set({ ended_at: sql`now()` as never }).where('ended_at', 'is', null).where('user_id', 'in', db.selectFrom('sys_user').select('id').where('tenant_id', '=', id)).execute();
-    await logActivity(db, a, { module: 'SYS', action: 'EDIT_TENANT', table: 'sys_tenant', rowId: id, detail: { status: b.status, ...(b.single_session !== undefined ? { single_session: b.single_session } : {}) } });
+    await logActivity(db, a, { module: 'SYS', action: 'EDIT_TENANT', table: 'sys_tenant', rowId: id, detail: { status: b.status, ...(b.single_session !== undefined ? { single_session: b.single_session } : {}),
+      ...(b.package_id !== undefined ? { package: pkg.plan ?? null, docs_per_month: b.docs_per_month, file_quota_mb: b.file_quota_mb, ai_per_month: b.ai_per_month, over_action: b.over_action } : {}) } });
     return { id };
   });
   /** T0.17 ลบข้อมูลทั้งหมดของลูกค้าที่เลิกใช้บริการครบ 90 วันแล้ว — พิมพ์รหัสลูกค้ายืนยัน · ย้อนกลับไม่ได้ */

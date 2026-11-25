@@ -4,6 +4,61 @@
 -- =====================================================================
 -- ต้องใช้ PostgreSQL 13+ (gen_random_uuid มีในตัว) — ใช้ได้ทั้ง PostgreSQL และ PGlite
 
+-- sys_package: แพ็กเกจบริการ (HANDOFF 185 · เจ้าของ 25/11/2569 แบบ A เอกสาร+ไฟล์) — ราคาต่อปี ไม่รวม VAT · ขีดจำกัดบริษัท ผู้ใช้ เอกสาร/เดือน พื้นที่ไฟล์ AI/เดือน + อัตราส่วนเกิน · ผู้ให้บริการแก้/เพิ่มได้ · อยู่เฉพาะเซิร์ฟเวอร์  [Express: (ใหม่)]
+CREATE TABLE sys_package (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  code varchar(20) NOT NULL,
+  name_th varchar(120) NOT NULL,
+  price_year numeric(18,2) DEFAULT 0 NOT NULL,
+  max_companies integer,
+  max_users integer,
+  docs_per_month integer,
+  file_quota_mb integer,
+  ai_per_month integer,
+  over_company_year numeric(18,2) DEFAULT 0 NOT NULL,
+  over_user_year numeric(18,2) DEFAULT 0 NOT NULL,
+  over_doc numeric(18,2) DEFAULT 0 NOT NULL,
+  over_file_gb_month numeric(18,2) DEFAULT 0 NOT NULL,
+  over_ai numeric(18,2) DEFAULT 0 NOT NULL,
+  status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','I')),
+  sort_order integer DEFAULT 0 NOT NULL,
+  remark varchar(200),
+  created_at timestamptz DEFAULT now() NOT NULL,
+  created_by uuid,
+  updated_at timestamptz DEFAULT now() NOT NULL,
+  updated_by uuid,
+  row_version bigint DEFAULT 1 NOT NULL,
+  deleted_at timestamptz,
+  origin_device_id uuid,
+  PRIMARY KEY (id)
+);
+COMMENT ON TABLE sys_package IS 'แพ็กเกจบริการ (HANDOFF 185 · เจ้าของ 25/11/2569 แบบ A เอกสาร+ไฟล์) — ราคาต่อปี ไม่รวม VAT · ขีดจำกัดบริษัท ผู้ใช้ เอกสาร/เดือน พื้นที่ไฟล์ AI/เดือน + อัตราส่วนเกิน · ผู้ให้บริการแก้/เพิ่มได้ · อยู่เฉพาะเซิร์ฟเวอร์ | Express: (ใหม่)';
+COMMENT ON COLUMN sys_package.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
+COMMENT ON COLUMN sys_package.code IS 'รหัสแพ็กเกจ';
+COMMENT ON COLUMN sys_package.name_th IS 'ชื่อแพ็กเกจ';
+COMMENT ON COLUMN sys_package.price_year IS 'ราคาต่อปี (บาท ไม่รวม VAT)';
+COMMENT ON COLUMN sys_package.max_companies IS 'จำนวนบริษัทสูงสุด (ว่าง = ไม่จำกัด)';
+COMMENT ON COLUMN sys_package.max_users IS 'จำนวนผู้ใช้สูงสุด (ว่าง = ไม่จำกัด)';
+COMMENT ON COLUMN sys_package.docs_per_month IS 'เอกสารต่อเดือน (ว่าง = ไม่จำกัด · เกินแล้วคิดส่วนเกิน ไม่หยุด)';
+COMMENT ON COLUMN sys_package.file_quota_mb IS 'พื้นที่ไฟล์ (MB · ว่าง = ไม่จำกัด)';
+COMMENT ON COLUMN sys_package.ai_per_month IS 'อ่านบิลด้วย AI ต่อเดือน (ว่าง = ไม่จำกัด)';
+COMMENT ON COLUMN sys_package.over_company_year IS 'ส่วนเกิน: บริษัทเพิ่ม บาทต่อปี';
+COMMENT ON COLUMN sys_package.over_user_year IS 'ส่วนเกิน: ผู้ใช้เพิ่ม บาทต่อปี';
+COMMENT ON COLUMN sys_package.over_doc IS 'ส่วนเกิน: บาทต่อเอกสาร';
+COMMENT ON COLUMN sys_package.over_file_gb_month IS 'ส่วนเกิน: บาทต่อ GB ต่อเดือน';
+COMMENT ON COLUMN sys_package.over_ai IS 'ส่วนเกิน: บาทต่อบิลที่อ่านด้วย AI';
+COMMENT ON COLUMN sys_package.status IS 'A=ใช้ได้ I=เลิกขาย (ลูกค้าเดิมยังใช้ต่อ)';
+COMMENT ON COLUMN sys_package.sort_order IS 'ลำดับแสดง';
+COMMENT ON COLUMN sys_package.remark IS 'หมายเหตุ';
+COMMENT ON COLUMN sys_package.created_at IS 'เวลาสร้าง';
+COMMENT ON COLUMN sys_package.created_by IS 'ผู้สร้าง [Express: CREBY]';
+COMMENT ON COLUMN sys_package.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
+COMMENT ON COLUMN sys_package.updated_by IS 'ผู้แก้ไขล่าสุด [Express: USERID]';
+COMMENT ON COLUMN sys_package.row_version IS 'เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict)';
+COMMENT ON COLUMN sys_package.deleted_at IS 'ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ)';
+COMMENT ON COLUMN sys_package.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
+CREATE UNIQUE INDEX uq_sys_package_code ON sys_package (code) WHERE deleted_at IS NULL;
+
 -- sys_tenant: ลูกค้าผู้ใช้บริการ (tenant) — หนึ่งรายมีได้หลายบริษัท ข้อมูลแต่ละรายแยกขาดจากกัน — Buddy Account  [Express: (ใหม่)]
 CREATE TABLE sys_tenant (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -23,6 +78,11 @@ CREATE TABLE sys_tenant (
   moved_to varchar(200),
   require_mfa boolean DEFAULT false NOT NULL,
   single_session boolean DEFAULT false NOT NULL,
+  package_id uuid,
+  docs_per_month integer,
+  file_quota_mb integer,
+  ai_per_month integer,
+  over_action char(1) DEFAULT 'W' NOT NULL CHECK (over_action IN ('W','S')),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -50,6 +110,11 @@ COMMENT ON COLUMN sys_tenant.purged_at IS 'ลบข้อมูลทั้ง�
 COMMENT ON COLUMN sys_tenant.moved_to IS 'ย้ายไปใช้เซิร์ฟเวอร์/ฐานข้อมูลแยกแล้ว: ที่อยู่ใหม่ (T0.18) — ผู้ใช้เข้าระบบที่นี่ไม่ได้ ระบบบอกที่อยู่ใหม่';
 COMMENT ON COLUMN sys_tenant.require_mfa IS 'บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ของลูกค้านี้ (ผู้ดูแลระบบของลูกค้าตั้ง · ค่าเริ่มต้น ปิด — ผู้ดูแลระบบบังคับเสมอ · ไม่ใช้กับเจ้าหน้าที่ผู้ให้บริการ · HANDOFF 146)';
 COMMENT ON COLUMN sys_tenant.single_session IS '1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ของลูกค้านี้ (ผู้ให้บริการตั้งที่หน้า ลูกค้าผู้ใช้บริการ · ค่าเริ่มต้น ปิด) — เข้าระบบจากเครื่องใหม่ = เครื่องเดิมออกจากระบบ · HANDOFF 156';
+COMMENT ON COLUMN sys_tenant.package_id IS 'แพ็กเกจบริการ (HANDOFF 185 · ว่าง = ไม่มีแพ็กเกจ ไม่จำกัด · max_companies/max_users ของลูกค้า = ค่าที่ทับแพ็กเกจ)';
+COMMENT ON COLUMN sys_tenant.docs_per_month IS 'เอกสารต่อเดือนของลูกค้านี้ (ว่าง = ตามแพ็กเกจ)';
+COMMENT ON COLUMN sys_tenant.file_quota_mb IS 'พื้นที่ไฟล์ MB ของลูกค้านี้ (ว่าง = ตามแพ็กเกจ)';
+COMMENT ON COLUMN sys_tenant.ai_per_month IS 'อ่านบิลด้วย AI ต่อเดือนของลูกค้านี้ (ว่าง = ตามแพ็กเกจ)';
+COMMENT ON COLUMN sys_tenant.over_action IS 'ไฟล์/AI ครบ 100%: W=เตือนและคิดเงินส่วนเกิน S=หยุด (เอกสารไม่หยุดเด็ดขาด)';
 COMMENT ON COLUMN sys_tenant.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN sys_tenant.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN sys_tenant.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
@@ -5491,6 +5556,12 @@ COMMENT ON COLUMN sync_state.value IS 'ค่า';
 
 -- ---------------------------------------------------------------- Foreign keys
 -- DEFERRABLE INITIALLY DEFERRED: ให้รับข้อมูลซิงก์หลายตารางในทรานแซกชันเดียวโดยไม่ต้องเรียงลำดับ
+ALTER TABLE sys_package ADD CONSTRAINT fk_sys_package_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_package_created_by ON sys_package (created_by);
+ALTER TABLE sys_package ADD CONSTRAINT fk_sys_package_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_package_updated_by ON sys_package (updated_by);
+ALTER TABLE sys_tenant ADD CONSTRAINT fk_sys_tenant_package_id FOREIGN KEY (package_id) REFERENCES sys_package(id) DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS ix_fk_sys_tenant_package_id ON sys_tenant (package_id);
 ALTER TABLE sys_tenant ADD CONSTRAINT fk_sys_tenant_created_by FOREIGN KEY (created_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
 CREATE INDEX IF NOT EXISTS ix_fk_sys_tenant_created_by ON sys_tenant (created_by);
 ALTER TABLE sys_tenant ADD CONSTRAINT fk_sys_tenant_updated_by FOREIGN KEY (updated_by) REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED;
@@ -6826,6 +6897,7 @@ CREATE TRIGGER trg_pay_run_line_ver BEFORE UPDATE ON pay_run_line FOR EACH ROW E
 CREATE TRIGGER trg_pay_wht_cert_ver BEFORE UPDATE ON pay_wht_cert FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_pay_filing_ver BEFORE UPDATE ON pay_filing FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sync_conflict_ver BEFORE UPDATE ON sync_conflict FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
+CREATE TRIGGER trg_sys_package_ver BEFORE UPDATE ON sys_package FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_tenant_ver BEFORE UPDATE ON sys_tenant FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_tenant_module_ver BEFORE UPDATE ON sys_tenant_module FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
 CREATE TRIGGER trg_sys_signup_ver BEFORE UPDATE ON sys_signup FOR EACH ROW EXECUTE FUNCTION sys_bump_version();
