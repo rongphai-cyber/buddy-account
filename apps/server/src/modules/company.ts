@@ -381,13 +381,21 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       .select(['u.id', 'u.username', 'u.display_name', 'u.status', 'u.approval_level', 'u.check_rights', 'u.single_session', 'u.app_access', 'u.last_login_at', 'u.user_group_id', 'u.tenant_id', 't.code as tenant_code', 'g.code as group_code', 'g.name as group_name',
         sql<boolean>`u.password_hash IS NOT NULL`.as('has_password')])
       .where('u.deleted_at', 'is', null);
-    let gq = db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id']).where('deleted_at', 'is', null);
-    if (!a.isPlatform) { uq = uq.where('u.tenant_id', '=', a.tenantId!); gq = gq.where('tenant_id', '=', a.tenantId!); }
+    let gq = db.selectFrom('sys_user_group as g').leftJoin('sys_tenant as t', 't.id', 'g.tenant_id').select(['g.id', 'g.code', 'g.name', 'g.tenant_id', 't.code as tenant_code']).where('g.deleted_at', 'is', null);
+    if (!a.isPlatform) { uq = uq.where('u.tenant_id', '=', a.tenantId!); gq = gq.where('g.tenant_id', '=', a.tenantId!); }
+    // ?for=company: เฉพาะผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทที่เลือกอยู่ — หน้าสิทธิ์รายเมนู (HANDOFF 191 · ผู้ให้บริการก็เห็นเฉพาะลูกค้ารายนี้)
+    const { for: forScope } = parse(z.object({ for: z.enum(['company']).optional() }), req.query ?? {});
+    if (forScope === 'company') {
+      if (!a.companyId) throw badRequest('ยังไม่ได้เลือกบริษัท — เลือกบริษัทก่อนกำหนดสิทธิ์รายเมนู');
+      const ct = (await db.selectFrom('sys_company').select('tenant_id').where('id', '=', a.companyId).executeTakeFirst())?.tenant_id ?? null;
+      uq = ct ? uq.where('u.tenant_id', '=', ct) : uq.where('u.tenant_id', 'is', null);
+      gq = ct ? gq.where('g.tenant_id', '=', ct) : gq.where('g.tenant_id', 'is', null);
+    }
     const users = await uq.orderBy('u.username').execute();
     // ยืนยันตัวตนสองขั้น / ล็อก (T0.16)
     const secs = users.length ? await db.selectFrom('sys_user_security').select(['user_id', 'totp_enabled', 'locked_until']).where('user_id', 'in', users.map((u) => u.id)).where('deleted_at', 'is', null).execute() : [];
     const links = users.length ? await db.selectFrom('sys_user_company').select(['user_id', 'company_id']).where('user_id', 'in', users.map((u) => u.id)).where('deleted_at', 'is', null).execute() : [];
-    const groups = await gq.orderBy('code').execute();
+    const groups = await gq.orderBy('t.code').orderBy('g.code').execute();
     // บริษัทที่ผู้ใช้/กลุ่มมีแถวสิทธิ์รายเมนู — หน้าจอเตือนเมื่อ "ตรวจสอบสิทธิ์ก่อนใช้งาน" แต่ไม่มีสิทธิ์ในบริษัทที่เลือก (HANDOFF 159)
     const rowsIn = await permissionCompanies(db, [...users.map((u) => u.id), ...groups.map((g) => g.id)]);
     // ลิงก์เชิญที่ยังใช้ได้ (HANDOFF 184) — แสดงสถานะ "รอตั้งรหัสผ่าน ถึง …"

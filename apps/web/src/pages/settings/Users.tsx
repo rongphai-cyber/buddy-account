@@ -8,8 +8,23 @@ import { Confirm, cx, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toa
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { QrCode } from './TwoFactor';
 
-interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean; rights_in?: string[]; has_password?: boolean; invite_expires_at?: string | null }
-interface Group { id: string; code: string; name: string; rights_in?: string[] }
+interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean; rights_in?: string[]; has_password?: boolean; invite_expires_at?: string | null; tenant_id?: string | null }
+interface Group { id: string; code: string; name: string; rights_in?: string[]; tenant_id?: string | null; tenant_code?: string | null }
+/** ป้ายระดับอนุมัติ (HANDOFF 191) — 0–4 สิทธิ์พื้นฐานเท่ากัน ตัวเลขใช้กับเงื่อนไขอนุมัติ */
+const levelLabel = (i: number) => `${i} · ${i <= 4 ? 'พนักงาน' : i <= 8 ? 'หัวหน้าแผนก (ยกเลิก/อนุมัติได้)' : 'ผู้จัดการระบบ (ทุกอย่าง)'}`;
+const LEVEL_HELP = (
+  <ul className="small level-help">
+    <li><b>0–4</b> อ่าน/เพิ่ม/แก้ไข/พิมพ์ — สิทธิ์พื้นฐานเท่ากัน ตัวเลขใช้กับเงื่อนไขอนุมัติ เช่น ขายเกินวงเงินเครดิต ขายให้ลูกค้าที่ระงับไว้</li>
+    <li><b>5–8</b> + ยกเลิก/ลบ/อนุมัติ กำหนดค่าโปรแกรม ปิดงวด และระบบเงินเดือน</li>
+    <li><b>9</b> ทุกอย่าง รวมระบบความปลอดภัย (ผู้ใช้/สิทธิ์ AI อ่านบิล PDPA บันทึกการใช้งาน แบบฟอร์ม)</li>
+  </ul>
+);
+const RIGHTS_HELP = (
+  <ul className="small level-help">
+    <li><b>ไม่ตรวจ</b> = ใช้ได้ทุกเมนูตามระดับอนุมัติ — กลุ่มผู้ใช้ไม่มีผล</li>
+    <li><b>ตรวจก่อนใช้งาน</b> = ใช้ได้เฉพาะเมนูที่กำหนดในสิทธิ์รายเมนูของผู้ใช้หรือกลุ่ม</li>
+  </ul>
+);
 interface TenantSecurity { require_mfa: boolean; service_requires_mfa?: boolean; single_session?: boolean; users: number; without_mfa: number }
 type InviteLink = { url: string; expires_at: string; hours: number; username: string; display_name: string; reissued?: boolean };
 const when = (iso: string) => new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' });
@@ -126,6 +141,33 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
   const [noCompany, setNoCompany] = useState(false);
   const [askRights, setAskRights] = useState(false);
   const isAdminGroup = groups.find((g) => g.id === f.user_group_id)?.code === 'ADMIN';
+  /**
+   * กลุ่มต้องเป็นของลูกค้ารายเดียวกับผู้ใช้ (HANDOFF 191): ผู้ใช้เดิม = ลูกค้าของผู้ใช้ · ผู้ใช้ใหม่ = ลูกค้าของบริษัทที่ติ๊ก (หรือของกลุ่มที่เลือกไว้ก่อน)
+   * undefined = ยังไม่รู้ (ผู้ให้บริการยังไม่ได้ติ๊กบริษัท) · null = เจ้าหน้าที่ผู้ให้บริการ
+   */
+  const coTenant = (id: string) => me?.companies.find((c) => c.id === id)?.tenant_id ?? null;
+  const multiTenant = new Set(groups.map((g) => g.tenant_id ?? null)).size > 1;
+  const tenantOf = (companies: string[], groupId: string): string | null | undefined => (u ? u.tenant_id ?? null
+    : companies.length ? coTenant(companies[0]!) : groupId ? groups.find((g) => g.id === groupId)?.tenant_id ?? null : undefined);
+  const formTenant = tenantOf(f.companies, f.user_group_id);
+  const tenantName = (t: string | null) => (t ? groups.find((g) => g.tenant_id === t)?.tenant_code ?? 'ลูกค้า' : 'ผู้ให้บริการ');
+  const shownGroups = formTenant === undefined ? groups : groups.filter((g) => (g.tenant_id ?? null) === formTenant);
+  const tenantGroups = [...new Set(groups.map((g) => g.tenant_id ?? null))];
+  /** เลือกกลุ่ม: กลุ่มที่ไม่ใช่ ADMIN มีผลเฉพาะเมื่อตรวจสอบสิทธิ์ก่อนใช้งาน → เปิดให้อัตโนมัติ */
+  const pickGroup = (id: string) => {
+    const g = groups.find((x) => x.id === id);
+    setF({ ...f, user_group_id: id, ...(g && g.code !== 'ADMIN' && !f.check_rights ? { check_rights: true } : {}) });
+  };
+  /** ติ๊กบริษัท: กลุ่มที่เลือกไว้เป็นของลูกค้ารายอื่น → ล้างกลุ่ม */
+  const tickCompany = (id: string, on: boolean) => {
+    const companies = on ? [...f.companies, id] : f.companies.filter((x) => x !== id);
+    const t = tenantOf(companies, '');
+    const g = groups.find((x) => x.id === f.user_group_id);
+    const clear = !!g && t !== undefined && (g.tenant_id ?? null) !== t;
+    if (clear) toast(`ล้างกลุ่ม ${g!.code} — เป็นกลุ่มของ ${tenantName(g!.tenant_id ?? null)} ไม่ใช่ลูกค้าของบริษัทที่ติ๊ก · เลือกกลุ่มใหม่`, 'warn');
+    setF({ ...f, companies, ...(clear ? { user_group_id: '' } : {}) });
+  };
+  const groupNoEffect = !!f.user_group_id && !isAdminGroup && !f.check_rights;
   const runSec = () => {
     const k = sec; setSec(null);
     if (k === 'invite') { api.post<InviteLink>(`/api/v1/users/${u!.id}/invite`).then(onLink).catch(setErr); return; }
@@ -162,19 +204,34 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
           {invite && <p className="hint">บันทึกแล้วจะได้ลิงก์ + QR ให้คัดลอกส่ง · ใช้ได้ครั้งเดียว ภายใน 72 ชั่วโมง · ผู้ใช้ตั้งรหัสผ่านแล้วตั้งยืนยันตัวตนสองขั้นต่อทันที</p>}
         </fieldset>}
         {(u || !invite) && <Field label={u ? 'ตั้งรหัสผ่านใหม่ (ว่าง = ไม่เปลี่ยน)' : 'รหัสผ่านเริ่มต้น'} hint={PASSWORD_RULE} req={!u}><PasswordInput value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" /></Field>}
-        <Field label="กลุ่มผู้ใช้"><select value={f.user_group_id} onChange={(e) => setF({ ...f, user_group_id: e.target.value })}><option value="">— ไม่มีกลุ่ม —</option>{groups.map((g) => <option key={g.id} value={g.id}>{g.code} · {g.name}</option>)}</select></Field>
-        <Field label="ระดับอนุมัติ" hint="0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/กำหนดค่าโปรแกรม · 9 ทุกอย่างรวมระบบความปลอดภัย">
-          <select value={f.approval_level} onChange={(e) => setF({ ...f, approval_level: Number(e.target.value) })}>{Array.from({ length: 10 }, (_, i) => <option key={i} value={i}>{i} · {i <= 4 ? 'พนักงาน' : i <= 8 ? 'หัวหน้าแผนก' : 'ผู้จัดการระบบ'}</option>)}</select>
+        <Field label="กลุ่มผู้ใช้" hint={multiTenant && formTenant === undefined ? 'ติ๊กบริษัทที่เข้าได้ก่อน รายการจะเหลือเฉพาะกลุ่มของลูกค้ารายนั้น' : multiTenant ? `เฉพาะกลุ่มของ ${tenantName(formTenant ?? null)}` : undefined}>
+          <select aria-label="กลุ่มผู้ใช้" value={f.user_group_id} onChange={(e) => pickGroup(e.target.value)}><option value="">— ไม่มีกลุ่ม —</option>
+            {multiTenant && formTenant === undefined
+              ? tenantGroups.map((t) => <optgroup key={t ?? '-'} label={tenantName(t)}>{groups.filter((g) => (g.tenant_id ?? null) === t).map((g) => <option key={g.id} value={g.id}>{g.code} · {g.name} ({tenantName(t)})</option>)}</optgroup>)
+              : shownGroups.map((g) => <option key={g.id} value={g.id}>{g.code} · {g.name}</option>)}
+          </select>
         </Field>
-        <Field label="ตรวจสอบสิทธิ์" hint="ตรวจก่อนใช้งาน = ใช้ได้เฉพาะเมนูที่กำหนดในสิทธิ์รายเมนู (ของผู้ใช้หรือกลุ่ม)">
-          <select value={f.check_rights ? '1' : '0'} onChange={(e) => setF({ ...f, check_rights: e.target.value === '1' })}><option value="0">ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ)</option><option value="1">ตรวจสอบสิทธิ์ก่อนใช้งาน</option></select>
+        <Field label="ระดับอนุมัติ" hint={LEVEL_HELP}>
+          <select aria-label="ระดับอนุมัติ" value={f.approval_level} onChange={(e) => setF({ ...f, approval_level: Number(e.target.value) })}>{Array.from({ length: 10 }, (_, i) => <option key={i} value={i}>{levelLabel(i)}</option>)}</select>
         </Field>
+        <Field label="ตรวจสอบสิทธิ์" hint={RIGHTS_HELP}>
+          <select aria-label="ตรวจสอบสิทธิ์" value={f.check_rights ? '1' : '0'} onChange={(e) => setF({ ...f, check_rights: e.target.value === '1' })}><option value="0">ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ)</option><option value="1">ตรวจสอบสิทธิ์ก่อนใช้งาน</option></select>
+        </Field>
+        {groupNoEffect && <div className="wide notebox warn group-no-effect" role="alert">
+          ⚠ เลือกกลุ่ม <b>{groups.find((g) => g.id === f.user_group_id)?.code}</b> ไว้ แต่ตั้ง "ไม่ตรวจสอบสิทธิ์" — กลุ่มจะไม่มีผล ผู้ใช้ใช้ได้ทุกเมนูตามระดับอนุมัติ {f.approval_level}
+          {' '}<button type="button" className="primary" onClick={() => setF({ ...f, check_rights: true })}>เปลี่ยนเป็นตรวจสอบสิทธิ์ก่อนใช้งาน</button>
+        </div>}
         <Field label="สถานะ"><select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="A">ใช้งาน</option><option value="I">ระงับ</option></select></Field>
         <Field label="เข้าระบบพร้อมกัน" hint={tenantOne ? 'ลูกค้านี้ตั้งไว้ 1 เครื่องทุกผู้ใช้ (ผู้ให้บริการตั้ง)' : '1 เครื่อง = เข้าระบบจากเครื่องใหม่ เครื่องเดิมออกจากระบบ (มีผลครั้งถัดไปที่เข้าระบบ)'}>
           <select value={tenantOne || f.single_session ? '1' : '0'} disabled={tenantOne} onChange={(e) => setF({ ...f, single_session: e.target.value === '1' })}><option value="0">หลายเครื่องพร้อมกันได้</option><option value="1">1 รหัสเข้าได้ทีละ 1 เครื่อง</option></select>
         </Field>
         <fieldset className={cx('wide', noCompany && !f.companies.length && !isAdminGroup && 'invalid')}><span className="lbl">บริษัทที่เข้าได้{!isAdminGroup && <b className="req" aria-hidden="true">*</b>}</span>
-          {me?.companies.map((c) => <label key={c.id} className="inline chk"><input type="checkbox" checked={f.companies.includes(c.id)} onChange={(e) => setF({ ...f, companies: e.target.checked ? [...f.companies, c.id] : f.companies.filter((x) => x !== c.id) })} /> {c.code} {c.name_th}</label>)}
+          {me?.companies.map((c) => {
+            // บริษัทของลูกค้ารายอื่น (ผู้ให้บริการเห็นทุกราย): ติ๊กไม่ได้ — ผู้ใช้หนึ่งคนอยู่ได้ลูกค้ารายเดียว
+            const other = formTenant !== undefined && (c.tenant_id ?? null) !== formTenant && !f.companies.includes(c.id);
+            return <label key={c.id} className={cx('inline chk', other && 'muted')} title={other ? `เป็นบริษัทของ ${tenantName(c.tenant_id ?? null)} — ผู้ใช้นี้อยู่กับ ${tenantName(formTenant ?? null)}` : undefined}>
+              <input type="checkbox" disabled={other} checked={f.companies.includes(c.id)} onChange={(e) => tickCompany(c.id, e.target.checked)} /> {c.code} {c.name_th}{multiTenant && <span className="muted small"> ({tenantName(c.tenant_id ?? null)})</span>}</label>;
+          })}
           {isAdminGroup ? <p className="small muted">กลุ่ม ADMIN เข้าได้ทุกบริษัทของกิจการ</p>
             : noCompany && !f.companies.length && <p className="bad small" role="alert">ยังไม่ได้เลือกบริษัทที่เข้าได้ — ผู้ใช้นี้จะเข้าบริษัทใดไม่ได้ ติ๊กบริษัทอย่างน้อย 1 บริษัท</p>}
         </fieldset>

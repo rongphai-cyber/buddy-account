@@ -25,7 +25,8 @@ export function PermissionsPage() {
   const [tab, setTab] = useState(sp.get('menu') ? 'menu' : 'subject');
   const subject = sp.get('s') ?? '';   // G:<id> หรือ U:<id>
   const menus = useQuery({ queryKey: ['perm-menus'], queryFn: () => api.get<MenuRow[]>('/api/v1/permissions/menus') });
-  const subs = useQuery({ queryKey: ['users'], queryFn: () => api.get<Subjects>('/api/v1/users') });
+  // เฉพาะกลุ่ม/ผู้ใช้ของลูกค้าเจ้าของบริษัทที่เลือกอยู่ — ผู้ให้บริการก็เช่นกัน (HANDOFF 191)
+  const subs = useQuery({ queryKey: ['users', 'company', me?.company?.id], queryFn: () => api.get<Subjects>('/api/v1/users', { for: 'company' }) });
   const [type, id] = subject ? (subject.split(':') as ['U' | 'G', string]) : [null, null];
   const cur = useQuery({ enabled: !!id, queryKey: ['perms', subject], queryFn: () => api.get<{ subject: { code: string; name: string; approval_level: number | null; check_rights: boolean | null }; rows: Record<string, Vals>; effective: Record<string, Record<PermAction, boolean | 'S'>> | null }>('/api/v1/permissions', { subject_type: type, subject_id: id }) });
   const [vals, setVals] = useState<PermRows>({});
@@ -85,7 +86,7 @@ export function PermissionsPage() {
             {s && type === 'U' && <span>ระดับอนุมัติ <b>{s.approval_level}</b> · {s.check_rights ? <Pill tone="n">ตรวจสอบสิทธิ์ก่อนใช้งาน</Pill> : <Pill tone="d">ไม่ตรวจสอบสิทธิ์ — ตารางนี้ยังไม่มีผล (เปิดที่หน้าผู้ใช้)</Pill>}</span>}
           </div>
           <ErrorBox error={err ?? cur.error ?? menus.error} />
-          {!id && <p className="notebox">เลือกกลุ่มหรือผู้ใช้ที่จะกำหนดสิทธิ์ · ผู้ใช้ได้สิทธิ์จากแถวของตัวเองก่อน ถ้าไม่มีจึงใช้ของกลุ่ม · สิทธิ์ในตารางจำกัดได้ไม่เกินสิทธิ์พื้นฐานตามระดับอนุมัติ (0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/รับรอง/กำหนดค่า · 9 ทุกอย่าง)</p>}
+          {!id && <p className="notebox">เลือกกลุ่มหรือผู้ใช้ที่จะกำหนดสิทธิ์ (แสดงเฉพาะกลุ่มและผู้ใช้ของกิจการเจ้าของบริษัทนี้ · กิจการอื่นให้เลือกบริษัทของกิจการนั้นก่อน) · ตารางนี้มีผลเฉพาะผู้ใช้ที่ตั้ง "ตรวจสอบสิทธิ์ก่อนใช้งาน" · ผู้ใช้ได้สิทธิ์จากแถวของตัวเองก่อน ถ้าไม่มีจึงใช้ของกลุ่ม · สิทธิ์ในตารางจำกัดได้ไม่เกินสิทธิ์พื้นฐานตามระดับอนุมัติ (0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/รับรอง/กำหนดค่า · 9 ทุกอย่าง)</p>}
           {id && menus.data && (
             <div className="table-wrap lines">
               <table className="grid">

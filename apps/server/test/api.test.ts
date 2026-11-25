@@ -5011,6 +5011,59 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     }
   });
 
+  it('HANDOFF 191: user groups and menu rights stay within the customer that owns the current company — provider included', async () => {
+    const start = cookie;
+    const R = (menu_code: string, v: Partial<Record<string, string>>) => ({ menu_code, can_read: '', can_add: '', can_edit: '', can_cancel: '', can_delete: '', can_print: '', can_approve: '', ...v });
+    try {
+      cookie = admin;
+      expect((await call('POST', '/api/v1/tenants', { code: 'GRP191', name: 'ลูกค้ากลุ่มผู้ใช้ 191', admin_username: 'g191.admin', admin_name: 'ผู้ดูแล 191', admin_password: 'passG19112345' })).status).toBe(200);
+      const tid191 = ((await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string }>).find((t) => t.code === 'GRP191')!.id;
+      expect((await login('g191.admin', 'passG19112345')).status).toBe(200);
+      const co = (await call('POST', '/api/v1/companies', { code: 'G191-1', name_th: 'บริษัท กลุ่ม 191 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+      // ลูกค้า: เห็นเฉพาะของตัวเองอยู่แล้ว (มีหรือไม่มี ?for=company ผลเท่ากัน)
+      await call('POST', '/api/v1/auth/select', { company_id: co });
+      const own = (await call('GET', '/api/v1/users?for=company')).body;
+      expect(own.groups.length).toBeGreaterThan(1);
+      expect(own.groups.every((g: { tenant_id: string; tenant_code: string }) => g.tenant_id === tid191 && g.tenant_code === 'GRP191')).toBe(true);
+      expect(own.users.map((u: { username: string }) => u.username)).toEqual(['g191.admin']);
+
+      // ผู้ให้บริการ: หน้าผู้ใช้เห็นทุกลูกค้า (มีรหัสลูกค้าของกลุ่ม) · หน้าสิทธิ์รายเมนู (?for=company) เห็นเฉพาะลูกค้าเจ้าของบริษัทที่เลือกอยู่
+      cookie = admin;
+      const all = (await call('GET', '/api/v1/users')).body as { users: Array<{ id: string; tenant_id: string | null }>; groups: Array<{ id: string; code: string; tenant_id: string | null; tenant_code: string | null }> };
+      expect(new Set(all.groups.map((g) => g.tenant_id)).size).toBeGreaterThan(1);
+      const foreignG = all.groups.find((g) => g.tenant_id !== tid191 && g.code !== 'ADMIN')!;
+      const foreignU = all.users.find((u) => u.tenant_id !== tid191)!;
+      expect((await call('POST', '/api/v1/auth/select', { company_id: co })).status).toBe(200);
+      const scoped = (await call('GET', '/api/v1/users?for=company')).body as typeof all;
+      expect(scoped.groups.map((g) => g.id).sort()).toEqual(own.groups.map((g: { id: string }) => g.id).sort());
+      expect(scoped.users.every((u) => u.tenant_id === tid191)).toBe(true);
+      expect((await call('GET', '/api/v1/users?for=other')).status).toBe(400);
+
+      // เขียน/อ่านสิทธิ์ของกลุ่ม/ผู้ใช้ลูกค้ารายอื่นในบริษัทนี้ไม่ได้ แม้เป็นผู้ให้บริการ
+      for (const [t, id] of [['G', foreignG.id], ['U', foreignU.id]] as const) {
+        const w = await call('PUT', '/api/v1/permissions', { subject_type: t, subject_id: id, rows: [R('GL.JNL', { can_read: 'Y' })] });
+        expect(w.status).toBe(400);
+        expect(w.body.error.message).toMatch(/เป็นของลูกค้ารายอื่น.*เลือกบริษัทของลูกค้ารายนั้นก่อน/);
+        expect((await call('GET', `/api/v1/permissions?subject_type=${t}&subject_id=${id}`)).status).toBe(400);
+      }
+      expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE company_id = ${co} AND subject_id IN (${foreignG.id}, ${foreignU.id})`.execute(database.db)).rows[0]!.n).toBe(0);
+      // กลุ่มของลูกค้าเจ้าของบริษัท: ได้ตามเดิม
+      const ownG = own.groups.find((g: { code: string }) => g.code !== 'ADMIN')!.id as string;
+      expect((await call('PUT', '/api/v1/permissions', { subject_type: 'G', subject_id: ownG, rows: [R('GL.JNL', { can_read: 'Y' })] })).status).toBe(200);
+      // แถวข้ามลูกค้าที่มีอยู่ก่อน (ข้อมูลเดิม) ไม่แสดงในมุมมองตามเมนู
+      const allMenu = (await sql<{ id: string }>`SELECT id FROM sys_menu WHERE code = 'ALL'`.execute(database.db)).rows[0]!.id;
+      await sql`INSERT INTO sys_permission (company_id, subject_type, subject_id, menu_id, can_read, can_add, can_edit, can_cancel, can_delete, can_print, can_approve)
+                VALUES (${co}, 'G', ${foreignG.id}, ${allMenu}, 'Y', 'N', 'N', 'N', 'N', 'N', 'N')`.execute(database.db);
+      const by = (await call('GET', '/api/v1/permissions/by-menu?menu_code=GL.JNL')).body as Array<{ subject_id: string }>;
+      const ownIds = [...own.groups, ...own.users].map((x: { id: string }) => x.id);
+      expect(by.map((r) => r.subject_id)).toContain(ownG);
+      expect(by.every((r) => ownIds.includes(r.subject_id))).toBe(true);   // ไม่มีกลุ่มของลูกค้ารายอื่น
+      await sql`DELETE FROM sys_permission WHERE company_id = ${co} AND subject_id = ${foreignG.id}`.execute(database.db);
+    } finally {
+      cookie = start;
+    }
+  });
+
   it('HANDOFF 186: 30-day retention — unpaid suspension and termination count down, other suspension and reactivation do not, no extension, sign-in tells the deletion date, provider can hand over a backup, purge refused before the date, provider only, logged', async () => {
     const start = cookie;
     const { formatDate, pdpaPurgeAfter } = await import('@buddy/core');

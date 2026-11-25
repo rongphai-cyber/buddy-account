@@ -542,13 +542,21 @@ export async function syncMenus(db: Db) {
 /** หน้าจอกำหนดสิทธิ์ — ตามกลุ่ม (S-SEC-01) ตามผู้ใช้ (S-SEC-02) และตามเมนู (S-SEC-03) ของบริษัทปัจจุบัน */
 export function permissionRoutes(app: FastifyInstance, db: Db) {
   const val = z.enum(['', 'Y', 'L', 'N', 'S']);
-  /** ผู้ใช้/กลุ่มต้องเป็นของลูกค้า (tenant) เดียวกับผู้ดูแล — ผู้ให้บริการเห็นทุกราย */
-  async function subjectOf(a: AuthContext, type: 'U' | 'G', id: string) {
+  /** ลูกค้า (tenant) เจ้าของบริษัทที่เลือกอยู่ — null = บริษัทของผู้ให้บริการ */
+  const companyTenant = async (companyId: string) => (await db.selectFrom('sys_company').select('tenant_id').where('id', '=', companyId).executeTakeFirst())?.tenant_id ?? null;
+  /**
+   * ผู้ใช้/กลุ่มต้องเป็นของลูกค้า (tenant) เดียวกับผู้ดูแล และเดียวกับเจ้าของบริษัทที่เลือกอยู่
+   * HANDOFF 191: ผู้ให้บริการก็กำหนดสิทธิ์ในบริษัทนี้ให้ผู้ใช้/กลุ่มของลูกค้ารายอื่นไม่ได้ (ไม่ให้มีแถวสิทธิ์ข้ามลูกค้า)
+   */
+  async function subjectOf(a: AuthContext & { companyId: string }, type: 'U' | 'G', id: string) {
     const q = type === 'U'
       ? db.selectFrom('sys_user').select(['id', 'username as code', 'display_name as name', 'tenant_id', 'approval_level', 'check_rights', 'user_group_id', 'app_access']).where('id', '=', id).where('deleted_at', 'is', null)
       : db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id', sql<number>`9`.as('approval_level'), sql<boolean>`true`.as('check_rights'), sql<string | null>`NULL::uuid`.as('user_group_id'), sql<unknown>`NULL::jsonb`.as('app_access')]).where('id', '=', id).where('deleted_at', 'is', null);
     const s = await q.executeTakeFirst();
     if (!s || (!a.isPlatform && (s.tenant_id ?? null) !== (a.tenantId ?? null))) throw notFound(type === 'U' ? 'ผู้ใช้' : 'กลุ่มผู้ใช้');
+    if ((s.tenant_id ?? null) !== (await companyTenant(a.companyId))) {
+      throw badRequest(`${type === 'U' ? 'ผู้ใช้' : 'กลุ่มผู้ใช้'} ${s.code} เป็นของลูกค้ารายอื่น ไม่ใช่เจ้าของบริษัทที่เลือกอยู่ — เลือกบริษัทของลูกค้ารายนั้นก่อน แล้วจึงกำหนดสิทธิ์รายเมนู`);
+    }
     return s;
   }
   const menuIds = async () => new Map((await db.selectFrom('sys_menu').select(['id', 'code']).where('deleted_at', 'is', null).execute()).map((r) => [r.code, r.id]));
@@ -581,6 +589,8 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
     const q = parse(z.object({ menu_code: z.string().min(1).max(30) }), req.query);
     // แถวของเมนูนี้ + เมนูหลักทุกชั้น + ทุกระบบงาน (HANDOFF 161: หน้าจอแสดงสิทธิ์ที่ได้จากเมนูหลักแบบจาง) — menu_code บอกว่ามาจากเมนูไหน
     const chain = chainOf(q.menu_code);
+    // เฉพาะผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทนี้ — ผู้ให้บริการก็เช่นกัน (HANDOFF 191)
+    const ct = await companyTenant(a.companyId);
     const rows = await sql<{ subject_type: string; subject_id: string; code: string | null; name: string | null; menu_code: string } & Record<string, string>>`
       SELECT p.subject_type, p.subject_id, COALESCE(u.username, g.code) AS code, COALESCE(u.display_name, g.name) AS name, m.code AS menu_code,
              p.can_read, p.can_add, p.can_edit, p.can_cancel, p.can_delete, p.can_print, p.can_approve
@@ -589,6 +599,8 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
         LEFT JOIN sys_user_group g ON p.subject_type = 'G' AND g.id = p.subject_id
        WHERE p.company_id = ${a.companyId} AND p.deleted_at IS NULL AND m.code = ANY(${chain}::text[])
          AND (${a.isPlatform} OR COALESCE(u.tenant_id, g.tenant_id) IS NOT DISTINCT FROM ${a.tenantId ?? null}::uuid)
+         AND COALESCE(u.tenant_id, g.tenant_id) IS NOT DISTINCT FROM ${ct}::uuid
+         AND (u.id IS NOT NULL OR g.id IS NOT NULL)
        ORDER BY p.subject_type DESC, 3`.execute(db);
     // ต่อผู้ใช้/กลุ่ม: แถวของเมนูที่ใกล้ที่สุดในสาย (ตัวเอง → เมนูหลัก → ALL)
     const best = new Map<string, (typeof rows.rows)[number]>();

@@ -284,7 +284,7 @@
 },
 {
 "th": "ลูกค้า",
-"n": 74,
+"n": 75,
 "files": [
 "apps/web/src/components/AiBill.tsx",
 "apps/web/src/components/LkSelect.tsx",
@@ -307,6 +307,7 @@
 "apps/web/src/pages/settings/CompaniesAdmin.tsx",
 "apps/web/src/pages/settings/Packages.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Users.tsx",
 "apps/web/src/pages/tools/DocImport.tsx",
 "apps/web/src/pages/tools/TradeImport.tsx",
 "apps/server/src/owned.ts",
@@ -1598,6 +1599,27 @@
 ]
 },
 {
+"th": "ผู้ใช้",
+"n": 22,
+"files": [
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/apikeys.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/invite.ts",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/security.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/usage.ts"
+]
+},
+{
 "th": "เลขที่เอกสาร",
 "n": 22,
 "files": [
@@ -1674,27 +1696,6 @@
 "apps/server/src/owned.ts",
 "apps/server/src/modules/doc-types.ts",
 "apps/server/src/modules/docs/engine.ts"
-]
-},
-{
-"th": "ผู้ใช้",
-"n": 21,
-"files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/server/src/modules/apikeys.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/invite.ts",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/security.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/usage.ts"
 ]
 },
 {
@@ -4741,6 +4742,15 @@
 ]
 },
 {
+"th": "กลุ่มผู้ใช้",
+"n": 5,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "กันยายน",
 "n": 5,
 "files": [
@@ -5882,6 +5892,14 @@
 ]
 },
 {
+"th": "ตรวจสอบสิทธิ์ก่อนใช้งาน",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ตัวคูณ",
 "n": 4,
 "files": [
@@ -6361,6 +6379,14 @@
 "apps/server/src/import/express/migrate.ts",
 "packages/core/src/master-import.ts",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ระดับอนุมัติ",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -7033,15 +7059,6 @@
 ]
 },
 {
-"th": "กลุ่มผู้ใช้",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/server/src/modules/permissions.ts"
-]
-},
-{
 "th": "การทำงาน",
 "n": 3,
 "files": [
@@ -7511,10 +7528,9 @@
 ]
 },
 {
-"th": "ตรวจสอบสิทธิ์ก่อนใช้งาน",
+"th": "ตรวจสอบสิทธิ์",
 "n": 3,
 "files": [
-"apps/web/src/pages/settings/Permissions.tsx",
 "apps/web/src/pages/settings/Users.tsx"
 ]
 },
@@ -7870,6 +7886,15 @@
 ]
 },
 {
+"th": "ผู้ให้บริการ",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"packages/core/src/starter-data.ts"
+]
+},
+{
 "th": "ฝ่ายจัดซื้อ",
 "n": 3,
 "files": [
@@ -8210,14 +8235,6 @@
 "files": [
 "apps/server/src/modules/payroll/forms.ts",
 "apps/server/src/modules/payroll/runs.ts"
-]
-},
-{
-"th": "ระดับอนุมัติ",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -10909,13 +10926,6 @@
 ]
 },
 {
-"th": "ตรวจสอบสิทธิ์",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
 "th": "ตรวจเดือน",
 "n": 2,
 "files": [
@@ -12232,14 +12242,6 @@
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/settings/Permissions.tsx"
-]
-},
-{
-"th": "ผู้ให้บริการ",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"packages/core/src/starter-data.ts"
 ]
 },
 {
@@ -17209,6 +17211,13 @@
 ]
 },
 {
+"th": "+ ยกเลิก/ลบ/อนุมัติ กำหนดค่าโปรแกรม ปิดงวด และระบบเงินเดือน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "+ รับชำระหนี้",
 "n": 1,
 "files": [
@@ -17626,13 +17635,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
-]
-},
-{
-"th": "0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/กำหนดค่าโปรแกรม · 9 ทุกอย่างรวมระบบความปลอดภัย",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -18571,6 +18573,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "= ใช้ได้ทุกเมนูตามระดับอนุมัติ — กลุ่มผู้ใช้ไม่มีผล",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "= ใช้ได้เฉพาะเมนูที่กำหนดในสิทธิ์รายเมนูของผู้ใช้หรือกลุ่ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -19978,6 +19994,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/item-images.ts"
+]
+},
+{
+"th": "{0} {1} เป็นของลูกค้ารายอื่น ไม่ใช่เจ้าของบริษัทที่เลือกอยู่ — เลือกบริษัทของลูกค้ารายนั้นก่อน แล้วจึงกำหนดสิทธิ์รายเมนู",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -29872,7 +29895,7 @@
 ]
 },
 {
-"th": "ตรวจก่อนใช้งาน = ใช้ได้เฉพาะเมนูที่กำหนดในสิทธิ์รายเมนู (ของผู้ใช้หรือกลุ่ม)",
+"th": "ตรวจก่อนใช้งาน",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -31157,6 +31180,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/BankRecon.tsx"
+]
+},
+{
+"th": "ติ๊กบริษัทที่เข้าได้ก่อน รายการจะเหลือเฉพาะกลุ่มของลูกค้ารายนั้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -32690,6 +32720,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "ทุกอย่าง รวมระบบความปลอดภัย (ผู้ใช้/สิทธิ์ AI อ่านบิล PDPA บันทึกการใช้งาน แบบฟอร์ม)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -38321,7 +38358,7 @@
 ]
 },
 {
-"th": "ผู้จัดการระบบ",
+"th": "ผู้จัดการระบบ (ทุกอย่าง)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -43463,6 +43500,13 @@
 "n": 1,
 "files": [
 "packages/core/src/hub.ts"
+]
+},
+{
+"th": "ยังไม่ได้เลือกบริษัท — เลือกบริษัทก่อนกำหนดสิทธิ์รายเมนู",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -49234,6 +49278,13 @@
 ]
 },
 {
+"th": "ล้างกลุ่ม {0} — เป็นกลุ่มของ {1} ไม่ใช่ลูกค้าของบริษัทที่ติ๊ก · เลือกกลุ่มใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ล้างของตัวเองไม่ได้ — ใช้ บัญชีของฉัน › ยืนยันตัวตนสองขั้น",
 "n": 1,
 "files": [
@@ -53203,7 +53254,7 @@
 ]
 },
 {
-"th": "หัวหน้าแผนก",
+"th": "หัวหน้าแผนก (ยกเลิก/อนุมัติได้)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -54012,6 +54063,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "อ่าน/เพิ่ม/แก้ไข/พิมพ์ — สิทธิ์พื้นฐานเท่ากัน ตัวเลขใช้กับเงื่อนไขอนุมัติ เช่น ขายเกินวงเงินเครดิต ขายให้ลูกค้าที่ระงับไว้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -55405,6 +55463,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "เฉพาะกลุ่มของ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -57165,6 +57230,13 @@
 ]
 },
 {
+"th": "เปลี่ยนเป็นตรวจสอบสิทธิ์ก่อนใช้งาน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "เปลี่ยนเป็นภาษาไทย",
 "n": 1,
 "files": [
@@ -57533,6 +57605,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocEdit.tsx"
+]
+},
+{
+"th": "เป็นบริษัทของ {0} — ผู้ใช้นี้อยู่กับ {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -59769,7 +59848,7 @@
 ]
 },
 {
-"th": "เลือกกลุ่มหรือผู้ใช้ที่จะกำหนดสิทธิ์ · ผู้ใช้ได้สิทธิ์จากแถวของตัวเองก่อน ถ้าไม่มีจึงใช้ของกลุ่ม · สิทธิ์ในตารางจำกัดได้ไม่เกินสิทธิ์พื้นฐานตามระดับอนุมัติ (0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/รับรอง/กำหนดค่า · 9 ทุกอย่าง)",
+"th": "เลือกกลุ่มหรือผู้ใช้ที่จะกำหนดสิทธิ์ (แสดงเฉพาะกลุ่มและผู้ใช้ของกิจการเจ้าของบริษัทนี้ · กิจการอื่นให้เลือกบริษัทของกิจการนั้นก่อน) · ตารางนี้มีผลเฉพาะผู้ใช้ที่ตั้ง \"ตรวจสอบสิทธิ์ก่อนใช้งาน\" · ผู้ใช้ได้สิทธิ์จากแถวของตัวเองก่อน ถ้าไม่มีจึงใช้ของกลุ่ม · สิทธิ์ในตารางจำกัดได้ไม่เกินสิทธิ์พื้นฐานตามระดับอนุมัติ (0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/รับรอง/กำหนดค่า · 9 ทุกอย่าง)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -65285,6 +65364,20 @@
 ]
 },
 {
+"th": "ไม่ตรวจ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ไม่ตรวจสอบสิทธิ์",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ)",
 "n": 1,
 "files": [
@@ -67280,6 +67373,13 @@
 ]
 },
 {
+"th": "ไว้ แต่ตั้ง \"ไม่ตรวจสอบสิทธิ์\" — กลุ่มจะไม่มีผล ผู้ใช้ใช้ได้ทุกเมนูตามระดับอนุมัติ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "— (ใช้ ซื้อมาขายไป)",
 "n": 1,
 "files": [
@@ -67942,6 +68042,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
+]
+},
+{
+"th": "⚠ เลือกกลุ่ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
