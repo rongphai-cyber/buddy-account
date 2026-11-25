@@ -3604,5 +3604,6 @@
  "— บริษัทใช้กุญแจ API ของตัวเอง (ถ้าเคยใส่ไว้ยังอยู่)": "— the company uses its own API key (one entered before is kept)",
  "— เลือกลูกค้าปลายทาง —": "— choose the target tenant —",
  "— ใช้งานไม่ได้": "— not available",
- "✅ ย้าย": "✅ Moved"
+ "✅ ย้าย": "✅ Moved",
+ "ทำเครื่องหมายใบสำคัญที่ย้ายมาจาก Express": "Mark vouchers migrated from Express"
 }

@@ -3856,6 +3856,8 @@ export interface GlJournalTable {
   source_ref: Gen<string | null>;
   /** รุ่นของเอกสารต้นทาง: สูงกว่า = แก้เอกสารเดิม · ต่ำกว่า = ปฏิเสธ */
   source_version: Gen<number | null>;
+  /** ย้ายมาจาก Express (GLJNL) — ไม่นับเป็นการใช้งานของแพ็กเกจ (HANDOFF 193) */
+  from_express: Gen<boolean>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */

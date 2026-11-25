@@ -4189,6 +4189,7 @@ CREATE TABLE gl_journal (
   source_system varchar(30),
   source_ref varchar(100),
   source_version integer,
+  from_express boolean DEFAULT false NOT NULL,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -4225,6 +4226,7 @@ COMMENT ON COLUMN gl_journal.last_printed_at IS 'วันเวลาพิม�
 COMMENT ON COLUMN gl_journal.source_system IS 'ระบบต้นทางที่ส่งเอกสารผ่าน API (WTS Connect v1) เช่น wts-pos wts-living wts-sop — ว่าง = คีย์ใน Buddy';
 COMMENT ON COLUMN gl_journal.source_ref IS 'เลขอ้างอิงของเอกสารที่ระบบต้นทาง (ส่งซ้ำด้วยเลขเดิม = ไม่สร้างซ้ำ)';
 COMMENT ON COLUMN gl_journal.source_version IS 'รุ่นของเอกสารต้นทาง: สูงกว่า = แก้เอกสารเดิม · ต่ำกว่า = ปฏิเสธ';
+COMMENT ON COLUMN gl_journal.from_express IS 'ย้ายมาจาก Express (GLJNL) — ไม่นับเป็นการใช้งานของแพ็กเกจ (HANDOFF 193)';
 COMMENT ON COLUMN gl_journal.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN gl_journal.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN gl_journal.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';

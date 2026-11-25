@@ -999,7 +999,7 @@ async function runImport(tx: Transaction<DB>, src: DbfSource, opts: ImportOption
       rows.push(base({ id: jid, branch_id: BRANCH, journal_book_id: jb, voucher_no: v, voucher_date: r.VOUDAT, period_id: await periodOf(r.VOUDAT),
         description: r.DESCRP, reference: st(r.REFNUM), source_module: isFa ? 'FA' : st(r.SRCJNL), source_header_id: H(v),
         status: r.TRNSTAT === 'P' ? 'P' : 'U', doc_status: r.DOCSTAT === 'C' ? 'C' : 'N',
-        print_count: T(r.PRNCNT) ? pyInt(or(r.PRNCNT, 0)) : 0 }));
+        print_count: T(r.PRNCNT) ? pyInt(or(r.PRNCNT, 0)) : 0, from_express: true }));   // HANDOFF 193: not counted as package usage
     }
     done('gl_journal', await insert('gl_journal', rows), 'GLJNL');
   }

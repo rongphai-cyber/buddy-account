@@ -47,7 +47,7 @@ export async function tenantUsage(db: Db, tenantId: string, month: string, opts:
       WHERE company_id = ANY(${idList}::uuid[]) AND created_at >= ${from}::timestamptz AND created_at < ${to}::timestamptz AND express_rectype IS NULL GROUP BY 1`);
   // ใบสำคัญที่บันทึกเอง (ไม่ได้มาจากเอกสาร/ค่าเสื่อม/ปิดปี)
   const vouchers = await by(sql<{ c: string; n: string }>`SELECT company_id::text AS c, count(*)::text AS n FROM gl_journal
-      WHERE company_id = ANY(${idList}::uuid[]) AND created_at >= ${from}::timestamptz AND created_at < ${to}::timestamptz AND source_header_id IS NULL AND coalesce(source_module, 'GL') = 'GL' GROUP BY 1`);
+      WHERE company_id = ANY(${idList}::uuid[]) AND created_at >= ${from}::timestamptz AND created_at < ${to}::timestamptz AND source_header_id IS NULL AND coalesce(source_module, 'GL') = 'GL' AND NOT from_express GROUP BY 1`);
   const files = await by(sql<{ c: string; n: string }>`SELECT c, sum(b)::text AS n FROM (
       SELECT company_id::text AS c, bytes::bigint AS b FROM sys_company_image WHERE company_id = ANY(${idList}::uuid[]) AND deleted_at IS NULL
       UNION ALL SELECT company_id::text, bytes::bigint FROM md_item_image WHERE company_id = ANY(${idList}::uuid[]) AND deleted_at IS NULL) x GROUP BY c`);

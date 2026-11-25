@@ -32516,6 +32516,13 @@
 ]
 },
 {
+"th": "ทำเครื่องหมายใบสำคัญที่ย้ายมาจาก Express",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
 "th": "ทิศทาง",
 "n": 1,
 "files": [

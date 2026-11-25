@@ -1319,6 +1319,7 @@ add(T('gl_journal', 'ใบสำคัญ / รายการสมุดร�
   C('source_system', 'code30', th='ระบบต้นทางที่ส่งเอกสารผ่าน API (WTS Connect v1) เช่น wts-pos wts-living wts-sop — ว่าง = คีย์ใน Buddy'),
   C('source_ref', 'str100', th='เลขอ้างอิงของเอกสารที่ระบบต้นทาง (ส่งซ้ำด้วยเลขเดิม = ไม่สร้างซ้ำ)'),
   C('source_version', 'int', th='รุ่นของเอกสารต้นทาง: สูงกว่า = แก้เอกสารเดิม · ต่ำกว่า = ปฏิเสธ'),
+  C('from_express', 'bool', nn=True, d='false', th='ย้ายมาจาก Express (GLJNL) — ไม่นับเป็นการใช้งานของแพ็กเกจ (HANDOFF 193)'),
 ], uniq=[('company_id','journal_book_id','voucher_no'),('company_id','source_system','source_ref')], idx=[('company_id','voucher_date'),('source_header_id',)]))
 
 add(T('gl_journal_line', 'รายการเดบิต/เครดิตของใบสำคัญ', 'gl', express='GLJNLIT', cols=[

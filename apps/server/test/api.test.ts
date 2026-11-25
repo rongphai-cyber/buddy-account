@@ -4818,6 +4818,9 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       const dt = (await sql<{ id: string; doc_class: string; module: string }>`SELECT id, doc_class, module FROM md_doc_type WHERE company_id = ${co} AND deleted_at IS NULL ORDER BY code LIMIT 1`.execute(database.db)).rows[0]!;
       await sql`INSERT INTO doc_header (company_id, branch_id, doc_type_id, doc_class, module, doc_no, doc_date, express_rectype) VALUES (${co}, ${branch}, ${dt.id}, ${dt.doc_class}, ${dt.module}, 'EXP-OLD', '2026-01-05', '1')`.execute(database.db);
       await sql`INSERT INTO doc_header (company_id, branch_id, doc_type_id, doc_class, module, doc_no, doc_date) VALUES (${co}, ${branch}, ${dt.id}, ${dt.doc_class}, ${dt.module}, 'API-NEW', '2026-06-02')`.execute(database.db);
+      // HANDOFF 193: ใบสำคัญที่ย้ายมาจาก Express (from_express) ไม่นับ · ใบที่คีย์เองเดือนนี้ 4 ใบยังนับ
+      await sql`INSERT INTO gl_journal (company_id, branch_id, journal_book_id, voucher_no, voucher_date, period_id, from_express)
+        SELECT company_id, branch_id, journal_book_id, 'EXP-JV1', voucher_date, period_id, true FROM gl_journal WHERE company_id = ${co} LIMIT 1`.execute(database.db);
       // ไฟล์ (เตือนและคิดเงินส่วนเกิน = อัปโหลดได้แม้ครบ)
       expect((await call('PUT', '/api/v1/company-images/logo', { data: PNG })).status).toBe(200);
       await sql`INSERT INTO sys_ai_usage (company_id, purpose, status, file_name) VALUES (${co}, 'BILL', 'OK', 'bill.jpg'), (${co}, 'BILL', 'ERROR', 'bad.jpg')`.execute(database.db);

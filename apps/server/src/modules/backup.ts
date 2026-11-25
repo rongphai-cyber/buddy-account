@@ -200,6 +200,19 @@ export const COMPANY_STEPS: Step[] = [
         FROM sys_branch b WHERE b.company_id = ${id} AND b.deleted_at IS NULL AND NOT b.is_head_office AND coalesce(trim(b.address), '') <> ''
          AND NOT EXISTS (SELECT 1 FROM sys_address_history h WHERE h.branch_id = b.id AND h.deleted_at IS NULL)`.execute(tx);
   } },
+  // 0080 ใบสำคัญที่ย้ายมาจาก Express (HANDOFF 193): กติกาเดียวกับ migration — รหัส UUID รุ่น 5 (ตัวย้ายข้อมูลเท่านั้นที่สร้าง)
+  // และ created_at ตรงกับเวลาสร้างบริษัท หรือบริษัทมีหลักฐานว่าย้ายจาก Express
+  // เป็นเครื่องหมายอย่างเดียว ไม่ใช่การแก้ใบสำคัญ → ทำได้แม้งวดปิดแล้ว (คืนค่าเดิมหลังทำ)
+  { n: 80, name: 'ทำเครื่องหมายใบสำคัญที่ย้ายมาจาก Express', run: async (tx, id) => {
+    const prev = (await sql<{ v: string | null }>`SELECT current_setting('app.allow_locked_period', true) AS v`.execute(tx)).rows[0]?.v ?? '';
+    await sql`SELECT set_config('app.allow_locked_period', 'on', true)`.execute(tx);
+    await sql`UPDATE gl_journal j SET from_express = true
+      FROM sys_company c WHERE c.id = ${id} AND j.company_id = c.id AND NOT j.from_express AND substr(j.id::text, 15, 1) = '5'
+       AND (j.created_at = c.created_at
+            OR EXISTS (SELECT 1 FROM doc_header h WHERE h.company_id = c.id AND h.express_rectype IS NOT NULL)
+            OR EXISTS (SELECT 1 FROM sys_activity_log l WHERE l.company_id = c.id AND l.action = 'IMPORT_EXPRESS'))`.execute(tx);
+    await sql`SELECT set_config('app.allow_locked_period', ${prev}, true)`.execute(tx);
+  } },
 ];
 /** แฟ้มสำรองผู้ใช้: 0060 คัดลอกสิทธิ์ ยอดยกมาลูกหนี้ → เงินมัดจำยกมา (ทำกับบริษัทของลูกค้ารายนี้) */
 export const USER_STEPS: Step[] = [

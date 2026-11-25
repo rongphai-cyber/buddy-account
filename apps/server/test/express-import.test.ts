@@ -3,11 +3,13 @@
  * ค่าที่คาดหวังของ uuid5/round/repr/sum มาจาก Python 3.12 (migrate_express.py ต้นฉบับ)
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { sql } from 'kysely';
 import { openDatabase, type Database } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { loadConfig } from '../src/config.js';
 import { openDbf, dbfRecords } from '../src/import/express/dbf.js';
 import { importExpress, validateExpress, uuid5, pyRound, pyFloatRepr, pySum, NAMESPACE_URL, type DbfSource } from '../src/import/express/migrate.js';
+import { COMPANY_STEPS } from '../src/modules/backup.js';
 
 /* ------------------------------------------------------------------ ตัวเขียน DBF เล็ก ๆ สำหรับทดสอบ */
 type FieldSpec = [name: string, type: 'C' | 'N' | 'D' | 'L' | 'B' | 'I' | 'Y' | 'M', len: number];
@@ -176,6 +178,27 @@ describe('importExpress on PGlite', () => {
     expect(v.journals_total).toBe(2);
     expect(v.journals_unbalanced).toBe(0);
     expect(v.row_parity).toMatchObject({ GLJNLIT: [4, 4] });
+  });
+
+  it('HANDOFF 193: migrated journals are marked from_express; the backfill rule (uuid v5 + same transaction as the company) finds them again and never a hand-keyed journal', async () => {
+    const co = uuid5(uuid5(NAMESPACE_URL, 'express-migration/TESTCO'), 'company');
+    const flags = async (db: typeof database.db) => (await sql<{ v: string; f: boolean }>`SELECT voucher_no AS v, from_express AS f FROM gl_journal WHERE company_id = ${co} ORDER BY voucher_no`.execute(db)).rows;
+    expect(await flags(database.db)).toEqual([{ v: 'JV000', f: true }, { v: 'JV001', f: true }]);
+    class Rollback extends Error {}
+    await database.db.transaction().execute(async (tx) => {
+      await sql`SELECT set_config('app.allow_locked_period', 'on', true)`.execute(tx);
+      // ใบที่คีย์เองใน Buddy (รหัสสุ่มรุ่น 4) แม้เวลาสร้างตรงกับบริษัทก็ไม่ถูกทำเครื่องหมาย
+      await sql`INSERT INTO gl_journal (company_id, branch_id, journal_book_id, voucher_no, voucher_date, period_id, created_at)
+        SELECT j.company_id, j.branch_id, j.journal_book_id, 'MAN001', j.voucher_date, j.period_id, c.created_at FROM gl_journal j JOIN sys_company c ON c.id = j.company_id WHERE j.company_id = ${co} LIMIT 1`.execute(tx);
+      // ข้อมูลก่อน migration 0080 (ยังไม่มีเครื่องหมาย) — ไม่มีเอกสาร Express และไม่มีบันทึก IMPORT_EXPRESS (นำเข้าทางคำสั่ง) ก็ยังพบด้วยเวลาสร้างบริษัท
+      await sql`UPDATE gl_journal SET from_express = false WHERE company_id = ${co}`.execute(tx);
+      await sql`SELECT set_config('app.allow_locked_period', 'off', true)`.execute(tx);
+      await COMPANY_STEPS.find((s) => s.n === 80)!.run(tx, co);   // งวดปิดอยู่ (ISPRD LOCK1) ก็ทำเครื่องหมายได้
+      expect(await flags(tx)).toEqual([{ v: 'JV000', f: true }, { v: 'JV001', f: true }, { v: 'MAN001', f: false }]);
+      expect((await sql<{ v: string }>`SELECT current_setting('app.allow_locked_period', true) AS v`.execute(tx)).rows[0]!.v).toBe('off');
+      throw new Rollback();
+    }).catch((e) => { if (!(e instanceof Rollback)) throw e; });
+    expect(await flags(database.db)).toEqual([{ v: 'JV000', f: true }, { v: 'JV001', f: true }]);
   });
 
   it('second import with its own namespace/tenant/user does not touch the first company', async () => {
