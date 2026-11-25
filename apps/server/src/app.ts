@@ -79,6 +79,7 @@ import { changeRoutes } from './modules/changes.js';
 import { wtsRoutes } from './modules/wts.js';
 import { wtsLivingRoutes } from './modules/wts-living.js';
 import { tenantModuleRoutes } from './modules/tenant-modules.js';
+import { companyMoveRoutes } from './modules/company-move.js';
 import { hubRoutes } from './modules/hub.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 import { payrollMasterRoutes } from './modules/payroll/master.js';
@@ -206,6 +207,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   wtsRoutes(app, db);
   wtsLivingRoutes(app, db);
   tenantModuleRoutes(app, db);
+  companyMoveRoutes(app, db);
   hubRoutes(app, db, cfg);
   inventoryAccountRoutes(app, db);
   reportRoutes(app, db);

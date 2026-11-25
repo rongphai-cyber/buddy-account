@@ -1209,3 +1209,8 @@ select.perm-inh.bad, td.perm-inh.bad { color: #c99a9a; }
 .level-help { margin: 4px 0 0; padding-left: 18px; line-height: 1.45; }
 .level-help li { margin: 1px 0; }
 .group-no-effect button { margin-left: 6px; }
+/* HANDOFF 192: move companies to another customer — preview */
+.move-preview h3 { margin: 12px 0 6px; }
+.move-preview h4 { margin: 10px 0 4px; font-size: 14px; }
+.move-list { margin: 8px 0; padding-left: 18px; line-height: 1.5; }
+.move-result ul { margin: 6px 0; padding-left: 18px; }

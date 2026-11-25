@@ -5064,6 +5064,109 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     }
   });
 
+  it('HANDOFF 192: provider moves companies to another customer — preview, typed confirmation, users/rights/keys follow the rules, accounting data and trial balance unchanged, old customer loses access, customer admins cannot', async () => {
+    const start = cookie;
+    try {
+      cookie = admin;
+      for (const [code, user] of [['SRC192', 'src192.admin'], ['DST192', 'dst192.admin']]) {
+        expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: user, admin_name: `ผู้ดูแล ${code}`, admin_password: 'passMove19212' })).status).toBe(200);
+      }
+      const ts = (await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; name: string }>;
+      const src = ts.find((t) => t.code === 'SRC192')!, dst = ts.find((t) => t.code === 'DST192')!;
+
+      // ลูกค้าเดิม: 3 บริษัท (ย้าย 2 เก็บ 1) · ใบสำคัญใน M1 · ผู้ใช้ 2 คน · กุญแจ API
+      expect((await login('src192.admin', 'passMove19212')).status).toBe(200);
+      const srcAdmin = cookie;
+      const mk = async (code: string) => (await call('POST', '/api/v1/companies', { code, name_th: `บริษัท ${code} จำกัด`, fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+      const m1 = await mk('M192-1'), m2 = await mk('M192-2'), k1 = await mk('K192-1');
+      await call('POST', '/api/v1/auth/select', { company_id: m1 });
+      const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
+      const acc = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control);
+      expect((await call('POST', '/api/v1/gl/journals', { journal_book_id: book, voucher_date: '2026-03-01', lines: [{ account_id: acc[0].id, debit: '1234.56' }, { account_id: acc[1].id, credit: '1234.56' }] })).status).toBe(200);
+      const tb = async () => (await call('GET', '/api/v1/reports/trial-balance?from=2026-01-01&to=2026-12-31')).body;
+      const tbBefore = await tb();
+      expect(tbBefore.totals.debit).toBe('1234.56');
+      const jvBefore = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_journal WHERE company_id = ${m1} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n;
+      const srcGroups = (await call('GET', '/api/v1/users')).body.groups as Array<{ id: string; code: string }>;
+      const accG = srcGroups.find((g) => g.code === 'ACC')!.id;
+      const only = (await call('POST', '/api/v1/users', { username: 'mv.only', display_name: 'เฉพาะบริษัทที่ย้าย', password: 'passOnly19212', companies: [m1, m2], user_group_id: accG, check_rights: true })).body.id as string;
+      const both = (await call('POST', '/api/v1/users', { username: 'mv.both', display_name: 'มีบริษัทที่ไม่ย้าย', password: 'passBoth19212', companies: [m1, k1] })).body.id as string;
+      const key = await call('POST', '/api/v1/api-keys', { name: 'ระบบของ mv.both', user_id: both, read_only: true });
+      expect(key.status).toBe(200);
+      const body = { target_tenant_id: dst.id, company_ids: [m1, m2] };
+
+      // ผู้ดูแลของลูกค้าเรียกไม่ได้
+      expect((await call('POST', `/api/v1/tenants/${src.id}/move-companies/preview`, body)).status).toBe(403);
+      expect((await call('POST', `/api/v1/tenants/${src.id}/move-companies`, { ...body, confirm: 'M192-1 M192-2' })).status).toBe(403);
+
+      cookie = admin;
+      const preview = `/api/v1/tenants/${src.id}/move-companies/preview`, move = `/api/v1/tenants/${src.id}/move-companies`;
+      // ปฏิเสธ: ลูกค้าเดียวกัน · บริษัทของลูกค้าอื่น · ลูกค้าปลายทางถูกระงับ
+      expect((await call('POST', preview, { ...body, target_tenant_id: src.id })).status).toBe(400);
+      const other = (await sql<{ id: string }>`SELECT id FROM sys_company WHERE tenant_id <> ${src.id} AND deleted_at IS NULL LIMIT 1`.execute(database.db)).rows[0]!.id;
+      expect((await call('POST', preview, { ...body, company_ids: [m1, other] })).status).toBe(400);
+      const putDst = (b: object) => call('PUT', `/api/v1/tenants/${dst.id}`, { code: 'DST192', name: dst.name, ...b });
+      expect((await putDst({ status: 'S', suspend_reason: 'OTHER' })).status).toBe(200);
+      const susp = await call('POST', preview, body);
+      expect(susp.status).toBe(400); expect(susp.body.error.message).toMatch(/ถูกระงับ/);
+      expect((await putDst({ status: 'A', max_companies: 2 })).status).toBe(200);
+
+      const pv = (await call('POST', preview, body)).body;
+      expect(pv.companies.map((c: { code: string }) => c.code)).toEqual(['M192-1', 'M192-2']);
+      expect(pv.companies[0].journals).toBe(jvBefore);
+      const act = Object.fromEntries(pv.users.map((u: { username: string; action: string; new_group: string | null }) => [u.username, [u.action, u.new_group]]));
+      expect(act).toEqual({ 'mv.only': ['move', 'ACC'], 'mv.both': ['unlink', null] });
+      expect(pv.api_keys).toHaveLength(1);
+      expect(pv.permissions.drop).toBeGreaterThan(0);
+      expect(pv.quota).toMatchObject({ companies_after: 2, max_companies: 2 });
+      expect(pv.confirm_text).toBe('M192-1 M192-2');
+      expect(pv.permissions.drop_ids).toBeUndefined();
+
+      // ยืนยันผิด = ไม่ย้าย
+      expect((await call('POST', move, { ...body, confirm: 'M192-1' })).status).toBe(400);
+      expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${m1}`.execute(database.db)).rows[0]!.t).toBe(src.id);
+      const r = await call('POST', move, { ...body, confirm: 'm192-2, m192-1' });
+      expect(r.status).toBe(200);
+      expect(r.body).toMatchObject({ users_moved: 1, links_removed: 1, api_keys_disabled: 1 });
+      expect(r.body.standard_rights_added).toBeGreaterThan(0);
+
+      // ฐานข้อมูล: บริษัท/ผู้ใช้/กลุ่ม/สิทธิ์/กุญแจ
+      expect((await sql<{ t: string }>`SELECT DISTINCT tenant_id::text AS t FROM sys_company WHERE id IN (${m1}, ${m2})`.execute(database.db)).rows.map((x) => x.t)).toEqual([dst.id]);
+      const u1 = (await sql<{ t: string; g: string }>`SELECT u.tenant_id::text AS t, g.code AS g FROM sys_user u JOIN sys_user_group g ON g.id = u.user_group_id WHERE u.id = ${only}`.execute(database.db)).rows[0]!;
+      expect(u1).toEqual({ t: dst.id, g: 'ACC' });
+      expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission p LEFT JOIN sys_user_group g ON g.id = p.subject_id LEFT JOIN sys_user u ON u.id = p.subject_id
+        WHERE p.company_id IN (${m1}, ${m2}) AND p.deleted_at IS NULL AND COALESCE(g.tenant_id, u.tenant_id) <> ${dst.id}`.execute(database.db)).rows[0]!.n).toBe(0);
+      expect((await sql<{ s: string }>`SELECT status AS s FROM sys_api_key WHERE id = ${key.body.id}`.execute(database.db)).rows[0]!.s).toBe('I');
+      expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM gl_journal WHERE company_id = ${m1} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(jvBefore);
+      const log = (await sql<{ detail: { from: { code: string }; to: { code: string }; users_moved: number } }>`SELECT detail FROM sys_activity_log WHERE action = 'MOVE_COMPANY' AND company_id = ${m1}`.execute(database.db)).rows;
+      expect(log).toHaveLength(1);
+      expect([log[0]!.detail.from.code, log[0]!.detail.to.code, log[0]!.detail.users_moved]).toEqual(['SRC192', 'DST192', 1]);
+      // ย้ายซ้ำไม่ได้ (ไม่ใช่บริษัทของลูกค้าเดิมแล้ว)
+      expect((await call('POST', preview, body)).status).toBe(400);
+
+      // ลูกค้าปลายทางเห็นบริษัท · งบทดลองเท่าเดิม
+      expect((await login('dst192.admin', 'passMove19212')).status).toBe(200);
+      expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toEqual(['M192-1', 'M192-2']);
+      expect((await call('POST', '/api/v1/auth/select', { company_id: m1 })).status).toBe(200);
+      const tbAfter = await tb();
+      expect(tbAfter.rows).toEqual(tbBefore.rows);
+      expect(tbAfter.totals).toEqual(tbBefore.totals);
+      expect((await call('GET', '/api/v1/users')).body.users.map((u: { username: string }) => u.username).sort()).toEqual(['dst192.admin', 'mv.only']);
+      // ลูกค้าเดิมเลิกเห็น
+      cookie = srcAdmin;
+      expect((await call('GET', '/api/v1/auth/me')).status).toBe(200);
+      expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toEqual(['K192-1']);
+      expect((await call('POST', '/api/v1/auth/select', { company_id: m1 })).status).toBe(400);
+      expect((await call('GET', '/api/v1/users')).body.users.map((u: { username: string }) => u.username).sort()).toEqual(['mv.both', 'src192.admin']);
+      expect((await login('mv.both', 'passBoth19212')).status).toBe(200);
+      expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toEqual(['K192-1']);
+      expect((await login('mv.only', 'passOnly19212')).status).toBe(200);
+      expect((await call('GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toEqual(['M192-1', 'M192-2']);
+    } finally {
+      cookie = start;
+    }
+  });
+
   it('HANDOFF 186: 30-day retention — unpaid suspension and termination count down, other suspension and reactivation do not, no extension, sign-in tells the deletion date, provider can hand over a backup, purge refused before the date, provider only, logged', async () => {
     const start = cookie;
     const { formatDate, pdpaPurgeAfter } = await import('@buddy/core');

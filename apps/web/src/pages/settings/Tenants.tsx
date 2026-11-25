@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { useSession } from '../../session';
 import { SignupsPanel } from './Signups';
 import { PlatformAiKey } from './PlatformAiKey';
+import { MoveCompanies } from './MoveCompanies';
 import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, toastError, useHotkeys } from '../../ui';
 import { packageBody, PackageFields, packageValues } from '../../components/PackageFields';
 import { useNavigate } from 'react-router-dom';
@@ -70,6 +71,7 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
   const [purge, setPurge] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [viewer, setViewer] = useState(false);
+  const [moving, setMoving] = useState(false);
   const body = { ...f, suspend_reason: f.status === 'S' ? reason || null : null, contact_email: f.contact_email || null, contact_phone: f.contact_phone || null, expires_on: f.expires_on || null, dpa_signed_on: f.dpa_signed_on || null, moved_to: f.moved_to || null, ...packageBody(pk) };
   const save = () => {
     // ช่องบังคับ: ระงับต้องเลือกเหตุ (ค้างชำระ = นับวันลบข้อมูล)
@@ -119,6 +121,11 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
           <p className="wide small muted">อ่านและดูตัวอย่างพิมพ์ทางจอได้ทุกบริษัทของลูกค้านี้ — เพิ่ม แก้ไข ยกเลิก ลบ รับรอง ไม่ได้ · เห็นเฉพาะข้อมูลของลูกค้านี้ · แนะนำหนึ่งรหัสต่อลูกค้าทดลองหนึ่งราย (ปิดเฉพาะรายได้ที่หน้า ผู้ใช้งานและสิทธิ์)</p>
           <div className="wide"><button type="button" onClick={() => setViewer(true)}>+ เพิ่มผู้ใช้ดูอย่างเดียว…</button></div>
         </>}
+        {t && t.status === 'A' && !t.moved_to && companies.length > 0 && <>
+          <h3 className="wide">ย้ายบริษัทไปลูกค้ารายอื่น</h3>
+          <p className="wide small muted">ย้ายบริษัทของลูกค้านี้ไปเป็นของลูกค้าอีกรายในเครื่องนี้ (เช่น ไปอยู่กับสำนักงานบัญชีที่ดูแล) โดยไม่ต้องสร้างลูกค้าใหม่ — ข้อมูลบัญชีย้ายตามบริษัทครบ ดูผลก่อนย้ายได้ แล้วพิมพ์รหัสบริษัทยืนยัน</p>
+          <div className="wide"><button type="button" onClick={() => setMoving(true)}>ย้ายบริษัทไปลูกค้ารายอื่น…</button></div>
+        </>}
         {t && <>
           <h3 className="wide">ย้ายไปเซิร์ฟเวอร์/ฐานข้อมูลแยก (ลูกค้ารายใหญ่)</h3>
           <p className="wide small muted">1) ส่งออกแฟ้มย้ายลูกค้า 2) ที่เครื่องใหม่กด "รับลูกค้าที่ย้ายมา" 3) ตรวจผลแล้วกลับมาใส่ที่อยู่ใหม่ และเปลี่ยนสถานะเป็น "เลิกใช้" — ผู้ใช้จะถูกบอกให้ไปเข้าที่อยู่ใหม่ และลบสำเนาที่เครื่องนี้ได้ทันที</p>
@@ -145,6 +152,7 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
       {purge && t && <PurgeTenant t={t} onClose={() => setPurge(false)} onDone={onSaved} />}
       {exporting && t && <ExportTenant t={t} onClose={() => setExporting(false)} />}
       {viewer && t && <AddViewer t={t} onClose={() => setViewer(false)} />}
+      {moving && t && <MoveCompanies source={t} onClose={() => setMoving(false)} onDone={() => { setMoving(false); onSaved(); }} />}
     </Modal>
   );
 }
