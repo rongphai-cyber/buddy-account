@@ -256,7 +256,7 @@ npx.cmd wrangler secret put TURNSTILE_SECRET
    แล้วบอกผู้ช่วยให้ deploy ใหม่ · ตรวจ: เปิด https://app.worktruesolution.net ต้องเห็นกล่อง Cloudflare เหนือปุ่ม "เข้าสู่ระบบ"
 3. **ลองเชิญพนักงานทดลอง 1 คน**: https://app.worktruesolution.net/settings/users › เพิ่มผู้ใช้ › เลือก "ให้ผู้ใช้ตั้งรหัสผ่านเองจากลิงก์เชิญ" › บันทึก → ได้ลิงก์ + QR → เปิดลิงก์ในมือถือ (หรือหน้าต่างไม่ระบุตัวตน) ตั้งรหัสผ่าน แล้วตั้งยืนยันตัวตนสองขั้น — ลิงก์ต้องขึ้นต้นด้วย `https://app.worktruesolution.net/invite/` (ถ้าไม่ใช่ บอกผู้ช่วยให้ตั้ง BUDDY_PUBLIC_URL)
 4. **เอาด่าน Access ออก**: https://one.dash.cloudflare.com › เลือกบัญชี › **Access controls › Applications** › แอปของ `app.worktruesolution.net` › **Delete** (หรือแก้ Policy เป็น Bypass — Everyone ถ้าอยากเก็บไว้เปิดกลับง่าย) → Save
-   - **อย่าลบ** ของ `buddy-api` / กุญแจ API (ข้อ ช ข้อ 6 ใน docs/21) — ลบเฉพาะด่านของหน้าเว็บ app
+   - **อย่าลบ** ของ `buddy-api` / กุญแจ API (ข้อ ซ ข้อ 6 ใน docs/21) — ลบเฉพาะด่านของหน้าเว็บ app
 5. **ตรวจหลังเอาออก**: เปิด https://app.worktruesolution.net จากมือถือที่ไม่เคยเข้า (ปิด Wi-Fi ใช้ 4G) → ต้องเห็นหน้าเข้าระบบ Buddy ทันที (ไม่มีหน้าใส่อีเมลของ Cloudflare) + กล่อง Turnstile · เข้าระบบแล้วต้องถามรหัส 6 หลักจากแอป
 6. 1–2 วันหลังเอาออก: อื่น ๆ › แฟ้มบันทึกเหตุการณ์ทำงาน ค้น `LOGIN_FAIL` — ถ้ามีมากผิดปกติ แจ้งผู้ช่วย · เปิดด่านกลับได้ทันทีที่ Cloudflare (ข้อ 4 ย้อนกลับ) ถ้ามีปัญหา
 
