@@ -4,7 +4,7 @@ import { packageBody, PackageFields, packageValues } from '../../components/Pack
 import { STARTER_TEMPLATES } from '@buddy/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
-import { DateInput, DateText, ErrorBox, Field, Modal, Pill, toast, toastError, useHotkeys } from '../../ui';
+import { Confirm, DateInput, DateText, ErrorBox, Field, Modal, Pill, toast, toastError, useHotkeys } from '../../ui';
 
 type Row = { id: string; business_name: string; contact_name: string; contact_email: string; contact_phone: string; tax_id: string | null; business_template?: string | null; username: string; status: 'P' | 'A' | 'R'; created_at: string;
   decided_at: string | null; reject_reason: string | null; client_ip: string | null; tenant_code: string | null; decided_by_name: string | null; mail?: MailRow[] };
@@ -16,13 +16,81 @@ const MAIL_ST: Record<MailRow['status'], [string, 'n' | 'c' | 'x']> = { S: ['ส
 /** อีเมลที่ควรมีตามสถานะใบสมัคร */
 const expectedMails = (r: Row): MailKind[] => ['SIGNUP_NOTIFY', ...(r.status === 'P' ? ['SIGNUP_RECEIVED'] as MailKind[] : r.status === 'A' ? ['SIGNUP_APPROVED'] as MailKind[] : ['SIGNUP_REJECTED'] as MailKind[])];
 const ST: Record<string, [string, 'n' | 'd' | 'x']> = { P: ['รออนุมัติ', 'd'], A: ['อนุมัติแล้ว', 'n'], R: ['ไม่อนุมัติ', 'x'] };
-const MODE_TH = { review: 'ผู้ให้บริการอนุมัติก่อน', auto: 'เปิดบัญชีทันที (อนุมัติอัตโนมัติ)', off: 'ปิดรับสมัคร' };
+/** สถานะการรับสมัคร (HANDOFF 189) — จาก GET /api/v1/platform/signup-settings */
+type SignupState = { env: 'off' | 'review' | 'auto'; locked: boolean; open: boolean; max_pending: number | null; closed_message: string | null; pending: number; full: boolean; mode: 'off' | 'review' | 'auto' };
+type SignupSave = { open: boolean; max_pending: number | null; closed_message: string | null };
+
+/**
+ * เปิด/ปิดรับสมัครจากหน้าจอ (HANDOFF 189 เจ้าของ "ช่วงทดลอง ... ไม่ให้ลูกค้าทดลองจริงมากเกินไป") — มีผลทันที ไม่ต้อง deploy
+ * ปิด = ยืนยันก่อน + ใส่ข้อความหน้าปิดรับสมัครได้ · ตั้งจำนวนใบรออนุมัติสูงสุด (ครบแล้วปิดเอง) · ปิดที่เซิร์ฟเวอร์ (BUDDY_SIGNUP=off) = เปิดจากหน้าจอไม่ได้
+ */
+function SignupOpenBar() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['signup-settings'], queryFn: () => api.get<SignupState>('/api/v1/platform/signup-settings') });
+  const [closing, setClosing] = useState<string | null>(null);
+  const [edit, setEdit] = useState(false);
+  const save = (s: SignupState, body: Partial<SignupSave>) => api.put<SignupState>('/api/v1/platform/signup-settings', { open: s.open, max_pending: s.max_pending, closed_message: s.closed_message, ...body })
+    .then((x) => { qc.setQueryData(['signup-settings'], x); qc.invalidateQueries({ queryKey: ['signups'] }); toast(x.mode === 'off' ? 'ปิดรับสมัครแล้ว — หน้าสมัครแสดงว่าปิดรับสมัคร' : 'เปิดรับสมัครแล้ว'); return x; });
+  if (!q.data) return <ErrorBox error={q.error} />;
+  const s = q.data;
+  const [label, tone]: [string, 'm' | 'd' | 'c'] = s.locked ? ['ปิดรับสมัคร (ล็อกที่การตั้งค่าระบบ)', 'c'] : !s.open ? ['ปิดรับสมัคร', 'c'] : s.full ? ['ปิดชั่วคราว — ใบรออนุมัติครบจำนวน', 'd'] : ['เปิดรับสมัคร', 'm'];
+  return (
+    <div className="su-open" role="group" aria-label="การรับสมัครใช้งาน">
+      <span>การรับสมัคร: <Pill tone={tone}>{label}</Pill></span>
+      {s.mode !== 'off' && <span className="small muted">{s.env === 'auto' ? 'สมัครแล้วเปิดบัญชีให้ทันที' : 'ผู้ให้บริการอนุมัติก่อนเข้าใช้'}</span>}
+      {s.max_pending !== null && <span className="small muted">รออนุมัติ {s.pending} / {s.max_pending} ใบ</span>}
+      {s.locked ? <span className="small muted">ปิดไว้ที่การตั้งค่าเซิร์ฟเวอร์ — เปิดจากหน้าจอนี้ไม่ได้</span>
+        : s.open ? <button type="button" className="danger" onClick={() => setClosing(s.closed_message ?? '')}>ปิดรับสมัคร…</button>
+        : <button type="button" className="primary" onClick={() => save(s, { open: true }).catch(toastError)}>เปิดรับสมัคร</button>}
+      <button type="button" className="linklike" onClick={() => setEdit(true)}>ตั้งค่าการรับสมัคร</button>
+      {closing !== null && <Confirm title="ปิดรับสมัครใช้งาน" danger okText="ปิดรับสมัคร"
+        text="หน้าสมัครจะแสดงว่าปิดรับสมัคร และส่งใบสมัครใหม่ไม่ได้ — ใบที่รออนุมัติอยู่ยังพิจารณาได้ตามปกติ · กดเปิดรับสมัครได้ทุกเมื่อ"
+        onOk={() => save(s, { open: false, closed_message: closing.trim() || null }).then(() => setClosing(null)).catch(toastError)} onClose={() => setClosing(null)}>
+        <Field label="ข้อความบนหน้าปิดรับสมัคร (ไม่บังคับ)" hint="ว่าง = ข้อความมาตรฐาน ติดต่อผู้ให้บริการเพื่อเปิดบัญชี"><textarea rows={2} maxLength={300} value={closing} placeholder="เช่น ขณะนี้ปิดรับสมัครชั่วคราว ติดต่อ 08x-xxx-xxxx" onChange={(e) => setClosing(e.target.value)} /></Field>
+      </Confirm>}
+      {edit && <SignupSettings s={s} onClose={() => setEdit(false)} save={(b) => save(s, b).then(() => setEdit(false))} />}
+    </div>
+  );
+}
+
+/** ตั้งค่าการรับสมัคร: เปิด/ปิด · รับใบรออนุมัติสูงสุด · ข้อความหน้าปิดรับสมัคร */
+function SignupSettings({ s, onClose, save }: { s: SignupState; onClose: () => void; save: (b: SignupSave) => Promise<void> }) {
+  const [f, setF] = useState({ open: s.open, max: s.max_pending === null ? '' : String(s.max_pending), msg: s.closed_message ?? '' });
+  const [err, setErr] = useState<unknown>(null);
+  const [ask, setAsk] = useState(false);
+  const body = (): SignupSave | null => {
+    const m = f.max.trim();
+    if (m && !/^\d+$/.test(m)) { setErr(new Error('จำนวนใบสมัครสูงสุดต้องเป็นตัวเลข — ไม่จำกัดให้เว้นว่าง')); return null; }
+    return { open: f.open, max_pending: m ? Number(m) : null, closed_message: f.msg.trim() || null };
+  };
+  const go = () => { setErr(null); const b = body(); if (!b) return; if (s.open && !b.open) { setAsk(true); return; } save(b).catch(setErr); };
+  useHotkeys({ F9: go, 'Ctrl+S': go }, [f]);
+  return (
+    <Modal title="ตั้งค่าการรับสมัคร" onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" onClick={go}>บันทึก <kbd>F9</kbd></button></>}>
+      <ErrorBox error={err} />
+      {s.locked && <p className="notebox warn">ระบบปิดรับสมัครไว้ที่การตั้งค่าเซิร์ฟเวอร์ — เปิดจากหน้าจอนี้ไม่ได้ (ตั้งข้อความและจำนวนไว้ล่วงหน้าได้)</p>}
+      <div className="form-grid">
+        <Field label="การรับสมัคร" wide>
+          <div className="radio-row">
+            <label><input type="radio" name="su-open" checked={f.open} disabled={s.locked} onChange={() => setF({ ...f, open: true })} /> เปิดรับสมัคร (ผู้ให้บริการอนุมัติก่อน)</label>
+            <label><input type="radio" name="su-open" checked={!f.open} onChange={() => setF({ ...f, open: false })} /> ปิดรับสมัคร</label>
+          </div>
+        </Field>
+        <Field label="รับใบสมัครที่รออนุมัติได้สูงสุด (ใบ)" hint="ครบจำนวนแล้วหน้าสมัครปิดเอง จนกว่าจะพิจารณาใบที่รออยู่ · ว่าง = ไม่จำกัด"><input inputMode="numeric" value={f.max} placeholder="ไม่จำกัด" onChange={(e) => setF({ ...f, max: e.target.value })} /></Field>
+        <Field label="ข้อความบนหน้าปิดรับสมัคร" wide hint="ไม่บังคับ — ว่าง = ข้อความมาตรฐาน ติดต่อผู้ให้บริการเพื่อเปิดบัญชี"><textarea rows={2} maxLength={300} value={f.msg} placeholder="เช่น ขณะนี้ปิดรับสมัครชั่วคราว ติดต่อ 08x-xxx-xxxx" onChange={(e) => setF({ ...f, msg: e.target.value })} /></Field>
+      </div>
+      <p className="small muted">ใบสมัครที่รออนุมัติขณะนี้ {s.pending} ใบ</p>
+      {ask && <Confirm title="ปิดรับสมัครใช้งาน" danger okText="ปิดรับสมัคร" text="หน้าสมัครจะแสดงว่าปิดรับสมัคร และส่งใบสมัครใหม่ไม่ได้ — ใบที่รออนุมัติอยู่ยังพิจารณาได้ตามปกติ"
+        onOk={() => { setAsk(false); const b = body(); if (b) save(b).catch(setErr); }} onClose={() => setAsk(false)} />}
+    </Modal>
+  );
+}
 
 /** ใบสมัครใช้งานจากหน้าสมัครเอง — เจ้าหน้าที่ผู้ให้บริการอนุมัติ (สร้างลูกค้า + ผู้ดูแลคนแรก) หรือไม่อนุมัติ */
 export function SignupsPanel({ onApproved }: { onApproved: () => void }) {
   const qc = useQueryClient();
   const [status, setStatus] = useState<'P' | 'A' | 'R' | 'all'>('P');
-  const q = useQuery({ queryKey: ['signups', status], queryFn: () => api.get<{ mode: keyof typeof MODE_TH; rows: Row[]; notify_set?: boolean }>('/api/v1/signups', { status }) });
+  const q = useQuery({ queryKey: ['signups', status], queryFn: () => api.get<{ mode: 'off' | 'review' | 'auto'; rows: Row[]; notify_set?: boolean }>('/api/v1/signups', { status }) });
   const [busy, setBusy] = useState<string | null>(null);
   const resend = (r: Row, kind: MailKind) => {
     setBusy(`${r.id}:${kind}`);
@@ -39,9 +107,10 @@ export function SignupsPanel({ onApproved }: { onApproved: () => void }) {
       <div className="su-head">
         <h2>ใบสมัครใช้งาน</h2>
         <select value={status} onChange={(e) => setStatus(e.target.value as 'P')} aria-label="สถานะใบสมัคร"><option value="P">รออนุมัติ</option><option value="A">อนุมัติแล้ว</option><option value="R">ไม่อนุมัติ</option><option value="all">ทั้งหมด</option></select>
-        {q.data && <span className="muted small">หน้าสมัคร: <b>{MODE_TH[q.data.mode]}</b> (ตั้งด้วย BUDDY_SIGNUP = review / auto / off) · ลิงก์สมัคร: <span className="mono">{location.origin}/signup</span></span>}
+        <span className="muted small">ลิงก์หน้าสมัคร: <span className="mono">{location.origin}/signup</span></span>
         <button type="button" onClick={() => setMailSet(true)}>✉ ตั้งค่าอีเมลแจ้งเตือน</button>
       </div>
+      <SignupOpenBar />
       {q.data && q.data.notify_set === false && <p className="notebox warn" role="status">ยังไม่ได้ตั้ง "อีเมลรับแจ้งเตือนใบสมัคร" — ผู้ให้บริการจะไม่ได้รับอีเมลเมื่อมีผู้สมัครใหม่ <button type="button" className="linklike" onClick={() => setMailSet(true)}>ตั้งค่าเลย</button></p>}
       <ErrorBox error={q.error} />
       <div className="table-wrap">

@@ -64,6 +64,7 @@ export function LoginPage() {
         <button className="primary" type="submit" disabled={busy}>{busy ? 'กำลังเข้าระบบ…' : 'เข้าสู่ระบบ'}</button>
         <p className="hint">Enter ไปช่องถัดไป · ลืมรหัสผ่านให้ผู้ดูแลระบบตั้งรหัสใหม่ให้</p>
         {signup && signup !== 'off' && <button type="button" className="link" onClick={() => nav('/signup')}>ยังไม่มีบัญชี? สมัครใช้งาน</button>}
+        {signup === 'off' && <p className="hint su-closed-note">ขณะนี้ปิดรับสมัครใช้งานใหม่ชั่วคราว — ติดต่อผู้ให้บริการเพื่อเปิดบัญชี</p>}
         <LangSwitch className="login-lang" />
         <p className="app-version">Buddy Account รุ่น <span data-no-i18n>{APP_VERSION}</span></p>
       </form>

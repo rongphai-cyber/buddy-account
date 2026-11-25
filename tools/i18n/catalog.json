@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 155,
+"n": 156,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/AddressHistory.tsx",
@@ -75,7 +75,7 @@
 },
 {
 "th": "บันทึก",
-"n": 110,
+"n": 111,
 "files": [
 "apps/web/src/unsaved.tsx",
 "apps/web/src/components/AddressHistory.tsx",
@@ -2836,6 +2836,17 @@
 ]
 },
 {
+"th": "ไม่จำกัด",
+"n": 11,
+"files": [
+"apps/web/src/components/PackageFields.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Usage.tsx"
+]
+},
+{
 "th": "ทุกสาขา",
 "n": 10,
 "files": [
@@ -2994,16 +3005,6 @@
 "packages/core/src/menu.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "ไม่จำกัด",
-"n": 10,
-"files": [
-"apps/web/src/components/PackageFields.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Usage.tsx"
 ]
 },
 {
@@ -6050,6 +6051,13 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "packages/core/src/doc-import.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ปิดรับสมัคร",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -10976,6 +10984,13 @@
 ]
 },
 {
+"th": "ตั้งค่าการรับสมัคร",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ตั้งค่าผู้ดูแลระบบไปแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้",
 "n": 2,
 "files": [
@@ -11940,6 +11955,13 @@
 "n": 2,
 "files": [
 "apps/web/src/components/ModuleSwitches.tsx"
+]
+},
+{
+"th": "ปิดรับสมัครใช้งาน",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -14775,6 +14797,13 @@
 ]
 },
 {
+"th": "เช่น ขณะนี้ปิดรับสมัครชั่วคราว ติดต่อ 08x-xxx-xxxx",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "เช่น ค่าบริการ ค่าขนส่ง ค่าเช่า ค่าโฆษณา",
 "n": 2,
 "files": [
@@ -14873,6 +14902,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "เปิดรับสมัคร",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -16480,13 +16516,6 @@
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
-]
-},
-{
-"th": "(ตั้งด้วย BUDDY_SIGNUP = review / auto / off) · ลิงก์สมัคร:",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -22587,6 +22616,27 @@
 ]
 },
 {
+"th": "การรับสมัคร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "การรับสมัคร:",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "การรับสมัครใช้งาน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "การลบ",
 "n": 1,
 "files": [
@@ -23343,10 +23393,24 @@
 ]
 },
 {
-"th": "ขณะนี้ปิดรับสมัครทางหน้าเว็บ — ติดต่อผู้ให้บริการเพื่อเปิดบัญชี",
+"th": "ขณะนี้ปิดรับสมัครใช้งาน — {0}",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "ขณะนี้ปิดรับสมัครใช้งานชั่วคราว",
 "n": 1,
 "files": [
 "apps/web/src/pages/Signup.tsx"
+]
+},
+{
+"th": "ขณะนี้ปิดรับสมัครใช้งานใหม่ชั่วคราว — ติดต่อผู้ให้บริการเพื่อเปิดบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/Login.tsx"
 ]
 },
 {
@@ -23522,6 +23586,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx"
+]
+},
+{
+"th": "ขออภัย ยังไม่เปิดรับสมัครใหม่ทางหน้าเว็บในช่วงนี้ — ติดต่อผู้ให้บริการเพื่อเปิดบัญชี หรือกลับมาสมัครภายหลัง",
+"n": 1,
+"files": [
+"apps/web/src/pages/Signup.tsx"
 ]
 },
 {
@@ -23917,6 +23988,20 @@
 ]
 },
 {
+"th": "ข้อความบนหน้าปิดรับสมัคร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ข้อความบนหน้าปิดรับสมัคร (ไม่บังคับ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ข้อความภาษาไทยบอกวิธีแก้ · 401 กุญแจไม่ถูกต้อง/หมดอายุ · 403 ไม่มีสิทธิ์ · 429 เกิน {0} ครั้ง/นาที",
 "n": 1,
 "files": [
@@ -23942,6 +24027,13 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ข้อความหน้าปิดรับสมัครไม่เกิน 300 ตัวอักษร",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup.ts"
 ]
 },
 {
@@ -24376,6 +24468,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ครบจำนวนแล้วหน้าสมัครปิดเอง จนกว่าจะพิจารณาใบที่รออยู่ · ว่าง = ไม่จำกัด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -27725,6 +27824,20 @@
 ]
 },
 {
+"th": "จำนวนใบสมัครต้องเป็นจำนวนเต็ม",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "จำนวนใบสมัครสูงสุดต้องเป็นตัวเลข — ไม่จำกัดให้เว้นว่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "จำลองส่งไม่สำเร็จ ({0})",
 "n": 1,
 "files": [
@@ -30704,6 +30817,13 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "ติดต่อผู้ให้บริการเพื่อเปิดบัญชี",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup.ts"
 ]
 },
 {
@@ -36426,6 +36546,13 @@
 ]
 },
 {
+"th": "ปิดชั่วคราว — ใบรออนุมัติครบจำนวน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ปิดบังข้อมูลทั้งหมด",
 "n": 1,
 "files": [
@@ -36524,7 +36651,21 @@
 ]
 },
 {
-"th": "ปิดรับสมัคร",
+"th": "ปิดรับสมัคร (ล็อกที่การตั้งค่าระบบ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ปิดรับสมัครแล้ว — หน้าสมัครแสดงว่าปิดรับสมัคร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ปิดรับสมัคร…",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
@@ -36577,6 +36718,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Periods.tsx"
+]
+},
+{
+"th": "ปิดไว้ที่การตั้งค่าเซิร์ฟเวอร์ — เปิดจากหน้าจอนี้ไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -38526,7 +38674,7 @@
 ]
 },
 {
-"th": "ผู้ให้บริการอนุมัติก่อน",
+"th": "ผู้ให้บริการอนุมัติก่อนเข้าใช้",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
@@ -45176,6 +45324,13 @@
 ]
 },
 {
+"th": "รออนุมัติ {0} / {1} ใบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "รออัปโหลดแฟ้ม",
 "n": 1,
 "files": [
@@ -45432,6 +45587,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
+]
+},
+{
+"th": "ระบบปิดรับสมัครไว้ที่การตั้งค่าเซิร์ฟเวอร์ (BUDDY_SIGNUP=off) — เปิดจากหน้าจอไม่ได้ ติดต่อผู้ดูแลเซิร์ฟเวอร์",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "ระบบปิดรับสมัครไว้ที่การตั้งค่าเซิร์ฟเวอร์ — เปิดจากหน้าจอนี้ไม่ได้ (ตั้งข้อความและจำนวนไว้ล่วงหน้าได้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -45817,6 +45986,27 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "รับใบสมัครที่รออนุมัติได้สูงสุด (ใบ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "รับใบสมัครที่รออนุมัติได้ไม่เกิน {0} ใบ",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "รับใบสมัครอย่างน้อย 1 ใบ — ไม่จำกัดให้เว้นว่าง",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup.ts"
 ]
 },
 {
@@ -48319,6 +48509,13 @@
 ]
 },
 {
+"th": "ลิงก์หน้าสมัคร:",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ลิงก์เชิญ",
 "n": 1,
 "files": [
@@ -49642,6 +49839,13 @@
 ]
 },
 {
+"th": "ว่าง = ข้อความมาตรฐาน ติดต่อผู้ให้บริการเพื่อเปิดบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ว่าง = ชื่อประเภทเอกสาร{0}",
 "n": 1,
 "files": [
@@ -50076,10 +50280,10 @@
 ]
 },
 {
-"th": "สมัครใช้งาน",
+"th": "สมัครแล้วเปิดบัญชีให้ทันที",
 "n": 1,
 "files": [
-"apps/web/src/pages/Signup.tsx"
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -52078,17 +52282,17 @@
 ]
 },
 {
-"th": "หน้าสมัคร:",
+"th": "หน้าสมัครจะแสดงว่าปิดรับสมัคร และส่งใบสมัครใหม่ไม่ได้ — ใบที่รออนุมัติอยู่ยังพิจารณาได้ตามปกติ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
-"th": "หน้าสมัครใช้งาน (ปิดรับสมัคร — ติดต่อผู้ให้บริการ)",
+"th": "หน้าสมัครจะแสดงว่าปิดรับสมัคร และส่งใบสมัครใหม่ไม่ได้ — ใบที่รออนุมัติอยู่ยังพิจารณาได้ตามปกติ · กดเปิดรับสมัครได้ทุกเมื่อ",
 "n": 1,
 "files": [
-"apps/server/src/modules/signup.ts"
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -56796,13 +57000,6 @@
 ]
 },
 {
-"th": "เปิดบัญชีทันที (อนุมัติอัตโนมัติ)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Signups.tsx"
-]
-},
-{
 "th": "เปิดบัญชีแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้ บริษัทแรกพร้อมผังบัญชีมาตรฐานรออยู่แล้ว",
 "n": 1,
 "files": [
@@ -56842,6 +57039,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/security.ts"
+]
+},
+{
+"th": "เปิดรับสมัคร (ผู้ให้บริการอนุมัติก่อน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "เปิดรับสมัครแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -63824,6 +64035,13 @@
 ]
 },
 {
+"th": "ใบสมัครที่รออนุมัติขณะนี้ {0} ใบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ใบสมัครนี้พิจารณาไปแล้ว",
 "n": 1,
 "files": [
@@ -64815,6 +65033,13 @@
 "n": 1,
 "files": [
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ไม่บังคับ — ว่าง = ข้อความมาตรฐาน ติดต่อผู้ให้บริการเพื่อเปิดบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {

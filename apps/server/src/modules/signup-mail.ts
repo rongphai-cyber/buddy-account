@@ -23,7 +23,7 @@ export async function mailSettings(db: Db): Promise<Settings> {
   const notify = v('mail.signup_notify');
   return { notify: Array.isArray(notify) ? notify.filter((x): x is string => typeof x === 'string') : [], reply_to: (v('mail.reply_to') as string | null) ?? null, from: (v('mail.from') as string) || process.env.BUDDY_MAIL_FROM || MAIL_FROM_DEFAULT };
 }
-async function setSetting(db: Db, key: string, value: unknown, by: string) {
+export async function setSetting(db: Db, key: string, value: unknown, by: string) {
   const cur = await db.selectFrom('sys_platform_setting').select('id').where('key', '=', key).where('deleted_at', 'is', null).executeTakeFirst();
   const json = JSON.stringify(value) as never;
   if (cur) await db.updateTable('sys_platform_setting').set({ value: json, updated_by: by }).where('id', '=', cur.id).execute();

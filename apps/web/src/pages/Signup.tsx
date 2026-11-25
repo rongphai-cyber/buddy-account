@@ -5,19 +5,22 @@ import { PASSWORD_RULE, RETENTION_TERMS } from '@buddy/core';
 import { api } from '../api';
 import { ErrorBox, Field, navKey, PasswordInput } from '../ui';
 
-/** หน้าสมัครใช้งานเปิดหรือไม่ (ผู้ให้บริการตั้ง BUDDY_SIGNUP) */
-export function useSignupMode() {
-  const [mode, setMode] = useState<'off' | 'review' | 'auto' | null>(null);
-  useEffect(() => { api.get<{ mode: 'off' | 'review' | 'auto' }>('/api/v1/signup/config').then((r) => setMode(r.mode)).catch(() => setMode('off')); }, []);
-  return mode;
+type SignupConfig = { mode: 'off' | 'review' | 'auto'; message?: string };
+/** หน้าสมัครใช้งานเปิดหรือไม่ + ข้อความเมื่อปิด (ผู้ให้บริการเปิด/ปิดจากหน้าจอ · HANDOFF 189) */
+export function useSignupConfig() {
+  const [cfg, setCfg] = useState<SignupConfig | null>(null);
+  useEffect(() => { api.get<SignupConfig>('/api/v1/signup/config').then(setCfg).catch(() => setCfg({ mode: 'off' })); }, []);
+  return cfg;
 }
+export function useSignupMode() { return useSignupConfig()?.mode ?? null; }
 
 /**
  * สมัครใช้งานเอง (ข้อกำหนดเจ้าของ 30/10/2569) — ไม่ต้องเข้าระบบ · ได้บัญชีผู้ดูแลของกิจการตัวเอง แล้วสร้างบริษัทแรกเอง
  * โหมดตรวจก่อน: ผู้ให้บริการอนุมัติแล้วจึงเข้าระบบได้ · โหมดอัตโนมัติ: เข้าระบบได้ทันที
  */
 export function SignupPage({ onBack }: { onBack: () => void }) {
-  const mode = useSignupMode();
+  const cfg = useSignupConfig();
+  const mode = cfg?.mode ?? null;
   const [f, setF] = useState({ business_name: '', tax_id: '', business_template: 'TRADE', contact_name: '', contact_email: '', contact_phone: '', username: '', password: '', password2: '', website: '' });
   const [accept, setAccept] = useState(false);
   const [err, setErr] = useState<unknown>(null);
@@ -33,10 +36,15 @@ export function SignupPage({ onBack }: { onBack: () => void }) {
     setBusy(true);
     try { const { password2: _p, ...body } = f; setDone(await api.post('/api/v1/signup', { ...body, accept_terms: true, ...(bot.token ? { turnstile: bot.token } : {}) })); } catch (e) { setErr(e); bot.reset(); } finally { setBusy(false); }
   };
+  // ปิดรับสมัคร: ข้อความสองภาษา + ข้อความของผู้ให้บริการ (ถ้าตั้ง) · ไม่มีแบบฟอร์ม
   if (mode === 'off') return (
-    <div className="login" data-tone="home"><div className="login-card">
-      <div className="login-brand"><b>สมัครใช้งาน</b><span>ขณะนี้ปิดรับสมัครทางหน้าเว็บ — ติดต่อผู้ให้บริการเพื่อเปิดบัญชี</span></div>
-      <button type="button" className="link" onClick={onBack}>กลับไปหน้าเข้าระบบ</button>
+    <div className="login" data-tone="home"><div className="login-card su-closed">
+      <div className="login-brand"><img className="login-logo" src="/brand/buddy-logo-80.png" srcSet="/brand/buddy-logo-160.png 2x" alt="Buddy Account" width={152} height={80} /></div>
+      <h2 data-no-i18n>ขณะนี้ปิดรับสมัครใช้งานชั่วคราว</h2>
+      <p data-no-i18n>ขออภัย ยังไม่เปิดรับสมัครใหม่ทางหน้าเว็บในช่วงนี้ — ติดต่อผู้ให้บริการเพื่อเปิดบัญชี หรือกลับมาสมัครภายหลัง</p>
+      <p lang="en" className="muted" data-no-i18n>Sign-up is temporarily closed. Please contact the service provider to open an account, or try again later.</p>
+      {cfg?.message && <p className="notebox su-closed-msg" data-no-i18n>{cfg.message}</p>}
+      <button type="button" className="primary" onClick={onBack}>กลับไปหน้าเข้าระบบ</button>
     </div></div>
   );
   if (done) return (

@@ -951,6 +951,15 @@ td.img-cell { padding-top: 2px; padding-bottom: 2px; }
 .su-head h2 { margin: 0; }
 .login-card label.chk { white-space: normal; align-items: flex-start; line-height: 1.45; }
 .su-head select { width: auto; min-width: 140px; flex: none; }
+/* เปิด/ปิดรับสมัคร (HANDOFF 189) */
+.su-open { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 8px 10px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+.su-open button { flex: none; }
+.radio-row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.radio-row label { display: inline-flex; gap: 6px; align-items: center; font-weight: normal; }
+.su-closed h2 { font-size: 18px; margin: 6px 0 8px; text-align: center; }
+.su-closed p { text-align: center; }
+.su-closed-msg { text-align: left; white-space: pre-wrap; }
+.su-closed-note { text-align: center; }
 
 /* ตรวจทุกหน้าจอบนมือถือ/แท็บเล็ต (ข้อกำหนดเจ้าของข้อ 10) — ตรวจด้วย tools/demo-check/mobile-sweep.cjs */
 select { max-width: 100%; }

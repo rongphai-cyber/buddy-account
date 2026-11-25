@@ -7339,7 +7339,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     cookie = '';
     appCfg.signup = 'off';
     expect((await call('GET', '/api/v1/signup/config')).body).toEqual({ mode: 'off' });
-    expect((await call('POST', '/api/v1/signup', form('su.off'))).status).toBe(404);
+    expect((await call('POST', '/api/v1/signup', form('su.off'))).status).toBe(403);
     appCfg.signup = 'review';
     // PDPA: ใบที่ไม่อนุมัติครบ 90 วัน ล้างข้อมูลติดต่อ
     await sql`UPDATE sys_signup SET decided_at = now() - interval '100 days' WHERE id = ${two.id}`.execute(database.db);
@@ -7347,6 +7347,81 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await call('GET', '/api/v1/signups?status=R')).body.rows.find((r: { id: string }) => r.id === two.id)).toMatchObject({ contact_email: '-', contact_name: '-', client_ip: null, reject_reason: 'ข้อมูลติดต่อไม่ครบ' });
     // HANDOFF 187 test signups (mail.*) excluded
     expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action IN ('SIGNUP', 'SIGNUP_REJECT') AND row_id NOT IN (SELECT id FROM sys_signup WHERE username LIKE 'mail.%')`.execute(database.db)).rows[0]!.n).toBe(7);
+  });
+
+  it('HANDOFF 189: provider opens/closes signup on screen without restart, pending cap closes it, env off cannot be overridden, provider only, logged', async () => {
+    const signup = async (n: string, ip: string) => { const r = await app.inject({ method: 'POST', url: '/api/v1/signup', payload: form(n), remoteAddress: ip }); return { status: r.statusCode, body: JSON.parse(r.body) }; };
+    const oldMode = appCfg.signup;
+    const loginAs = async (u: string, pw: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: pw })).status).toBe(200); };
+    try {
+      appCfg.signup = 'review';
+      await loginAs('admin', 'secret123');
+      const st0 = (await call('GET', '/api/v1/platform/signup-settings')).body;
+      expect(st0).toMatchObject({ env: 'review', locked: false, open: true, max_pending: null, closed_message: null, full: false, mode: 'review' });
+      // ผู้ที่ไม่ใช่ผู้ให้บริการ: ดู/เปลี่ยนไม่ได้
+      await loginAs('b.admin', 'passB1234');
+      expect((await call('GET', '/api/v1/platform/signup-settings')).status).toBe(403);
+      expect((await call('PUT', '/api/v1/platform/signup-settings', { open: false, max_pending: null })).status).toBe(403);
+      cookie = '';
+      expect((await call('GET', '/api/v1/platform/signup-settings')).status).toBe(401);
+
+      // ปิดจากหน้าจอ → มีผลทันที (ไม่ต้องเริ่มระบบใหม่) · API ปฏิเสธพร้อมข้อความของผู้ให้บริการ
+      await loginAs('admin', 'secret123');
+      const off = await call('PUT', '/api/v1/platform/signup-settings', { open: false, max_pending: null, closed_message: '  ปิดรับสมัครชั่วคราว ติดต่อ 081-000-0000  ' });
+      expect(off.body).toMatchObject({ open: false, mode: 'off', closed_message: 'ปิดรับสมัครชั่วคราว ติดต่อ 081-000-0000' });
+      cookie = '';
+      expect((await call('GET', '/api/v1/signup/config')).body).toEqual({ mode: 'off', message: 'ปิดรับสมัครชั่วคราว ติดต่อ 081-000-0000' });
+      const refused = await signup('su.closed', '10.89.0.1');
+      expect([refused.status, refused.body.error.message]).toEqual([403, 'ขณะนี้ปิดรับสมัครใช้งาน — ปิดรับสมัครชั่วคราว ติดต่อ 081-000-0000']);
+      expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_signup WHERE username = 'su.closed'`.execute(database.db)).rows[0]!.n).toBe(0);
+      // log: ใคร จาก → เป็น
+      const log = (await sql<{ user_id: string; detail: { from: { open: boolean }; to: { open: boolean; closed_message: string } } }>`SELECT user_id, detail FROM sys_activity_log WHERE action = 'SIGNUP_SETTINGS' ORDER BY seq DESC LIMIT 1`.execute(database.db)).rows[0]!;
+      expect(log.detail.from).toMatchObject({ open: true, mode: 'review' });
+      expect(log.detail.to).toMatchObject({ open: false, mode: 'off', closed_message: 'ปิดรับสมัครชั่วคราว ติดต่อ 081-000-0000' });
+      expect(log.user_id).toBe((await sql<{ id: string }>`SELECT id FROM sys_user WHERE username = 'admin'`.execute(database.db)).rows[0]!.id);
+
+      // เปิดอีกครั้ง → สมัครได้ · ข้อความปิดไม่แสดงเมื่อเปิด
+      await loginAs('admin', 'secret123');
+      expect((await call('PUT', '/api/v1/platform/signup-settings', { open: true, max_pending: null, closed_message: null })).body).toMatchObject({ open: true, mode: 'review' });
+      cookie = '';
+      expect((await call('GET', '/api/v1/signup/config')).body).toEqual({ mode: 'review' });
+      expect((await signup('su.open1', '10.89.0.2')).status).toBe(200);
+
+      // จำนวนใบรออนุมัติสูงสุด: ครบแล้วปิดเอง · ลดลงแล้วเปิดเอง
+      await loginAs('admin', 'secret123');
+      const pending = (await call('GET', '/api/v1/platform/signup-settings')).body.pending as number;
+      expect((await call('PUT', '/api/v1/platform/signup-settings', { open: true, max_pending: 0 })).status).toBe(400);
+      expect((await call('PUT', '/api/v1/platform/signup-settings', { open: true, max_pending: pending + 1, closed_message: 'รับครบแล้ว' })).body).toMatchObject({ full: false, mode: 'review' });
+      cookie = '';
+      expect((await signup('su.cap1', '10.89.0.3')).status).toBe(200);
+      expect((await call('GET', '/api/v1/signup/config')).body).toEqual({ mode: 'off', message: 'รับครบแล้ว' });
+      expect((await signup('su.cap2', '10.89.0.4')).status).toBe(403);
+      await loginAs('admin', 'secret123');
+      expect((await call('GET', '/api/v1/platform/signup-settings')).body).toMatchObject({ open: true, full: true, mode: 'off' });
+      const cap1 = ((await call('GET', '/api/v1/signups?status=P')).body.rows as Array<{ id: string; username: string }>).find((r) => r.username === 'su.cap1')!;
+      expect((await call('POST', `/api/v1/signups/${cap1.id}/reject`, { reason: 'ทดสอบจำนวนสูงสุด' })).status).toBe(200);
+      expect((await call('GET', '/api/v1/platform/signup-settings')).body).toMatchObject({ full: false, mode: 'review' });
+      // ไม่ส่งข้อความ = คงเดิม
+      expect((await call('PUT', '/api/v1/platform/signup-settings', { open: true, max_pending: null })).body).toMatchObject({ closed_message: 'รับครบแล้ว', max_pending: null });
+
+      // BUDDY_SIGNUP=off ที่เซิร์ฟเวอร์: หน้าจอเปิดไม่ได้ (ปิดได้ · ตั้งข้อความได้)
+      appCfg.signup = 'off';
+      expect((await call('GET', '/api/v1/platform/signup-settings')).body).toMatchObject({ env: 'off', locked: true, open: true, mode: 'off' });
+      const lockedOpen = await call('PUT', '/api/v1/platform/signup-settings', { open: true, max_pending: null });
+      expect([lockedOpen.status, lockedOpen.body.error.message]).toEqual([400, expect.stringMatching(/BUDDY_SIGNUP=off/)]);
+      expect((await call('PUT', '/api/v1/platform/signup-settings', { open: false, max_pending: null })).status).toBe(200);
+      cookie = '';
+      expect((await signup('su.envoff', '10.89.0.5')).status).toBe(403);
+      // auto ตั้งที่ env เท่านั้น: เปิดจากหน้าจอแล้วใช้โหมดของ env
+      appCfg.signup = 'auto';
+      await loginAs('admin', 'secret123');
+      expect((await call('PUT', '/api/v1/platform/signup-settings', { open: true, max_pending: null })).body).toMatchObject({ env: 'auto', mode: 'auto' });
+      expect((await call('PUT', '/api/v1/platform/signup-settings', { open: true, max_pending: null, mode: 'auto' })).body).toMatchObject({ mode: 'auto' });   // ไม่มีช่องเลือกโหมด
+    } finally {
+      appCfg.signup = oldMode;
+      await sql`DELETE FROM sys_platform_setting WHERE key LIKE 'signup.%'`.execute(database.db);
+      cookie = '';
+    }
   });
 
   it('read-only viewer of another tenant\'s sample data (HANDOFF 154): staff only, reads and prints to screen, cannot write, sees only that tenant', async () => {

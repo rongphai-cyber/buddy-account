@@ -11,7 +11,7 @@ import { badRequest, conflict, forbidden, notFound, parse, requireAuth } from '.
 import { logActivity } from '../audit.js';
 import { rateLimit, requireHuman } from '../botguard.js';
 import { packagePlan, TENANT_PACKAGE_FIELDS } from './usage.js';
-import { mailSettings, mailStatusOf, queueSignupMail } from './signup-mail.js';
+import { mailSettings, mailStatusOf, queueSignupMail, setSetting } from './signup-mail.js';
 
 /**
  * สมัครใช้งานเอง (ข้อกำหนดเจ้าของ 30/10/2569: "สมัครใช้งาน: สมัครเอง หรือผู้ดูแลกำหนดบริษัทให้")
@@ -21,6 +21,26 @@ import { mailSettings, mailStatusOf, queueSignupMail } from './signup-mail.js';
  */
 export type SignupMode = 'off' | 'review' | 'auto';
 const PER_IP_HOUR = 5, MAX_PENDING = 500, PURGE_DAYS = 90;
+
+/**
+ * เปิด/ปิดรับสมัครจากหน้าจอ (HANDOFF 189 เจ้าของ "ช่วงทดลอง ... ไม่ให้ลูกค้าทดลองจริงมากเกินไป") — ไม่ต้อง deploy
+ * เก็บใน sys_platform_setting: signup.open (true/false · ไม่มี = เปิดตาม BUDDY_SIGNUP) · signup.max_pending (รับใบรออนุมัติสูงสุด · null = ไม่จำกัด) · signup.closed_message (ข้อความหน้าปิดรับสมัคร)
+ * BUDDY_SIGNUP = off → ล็อกปิด เปิดจากหน้าจอไม่ได้ · auto ตั้งได้ที่ env อย่างเดียว (หน้าจอเลือกแค่ เปิด/ปิด)
+ * ใบรออนุมัติถึงจำนวนที่ตั้ง = หน้าสมัครปิดเอง (เปิดอีกครั้งเมื่อพิจารณาใบสมัครแล้วจำนวนลดลง)
+ */
+export type SignupState = { env: SignupMode; locked: boolean; open: boolean; max_pending: number | null; closed_message: string | null; pending: number; full: boolean; mode: SignupMode };
+const SIGNUP_KEYS = ['signup.open', 'signup.max_pending', 'signup.closed_message'];
+export async function signupState(db: Kysely<DB>, env: SignupMode): Promise<SignupState> {
+  const rows = await db.selectFrom('sys_platform_setting').select(['key', 'value']).where('key', 'in', SIGNUP_KEYS).where('deleted_at', 'is', null).execute();
+  const v = (k: string) => rows.find((r) => r.key === k)?.value as unknown;
+  const max = v('signup.max_pending'), msg = v('signup.closed_message');
+  const max_pending = typeof max === 'number' && max > 0 ? Math.floor(max) : null;
+  const pending = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_signup WHERE status = 'P' AND deleted_at IS NULL`.execute(db)).rows[0]!.n;
+  const locked = env === 'off', open = v('signup.open') !== false, full = max_pending !== null && pending >= max_pending;
+  return { env, locked, open, max_pending, closed_message: typeof msg === 'string' && msg.trim() ? msg.trim() : null, pending, full, mode: locked || !open || full ? 'off' : env };
+}
+/** ข้อความเมื่อปิดรับสมัคร (API ปฏิเสธ · หน้าสมัคร) */
+const closedText = (s: SignupState) => `ขณะนี้ปิดรับสมัครใช้งาน — ${s.closed_message ?? 'ติดต่อผู้ให้บริการเพื่อเปิดบัญชี'}`;
 
 /** สร้างลูกค้าผู้ใช้บริการ + กลุ่ม ADMIN + ผู้ดูแลคนแรก (ใช้ทั้งเจ้าหน้าที่สร้างเองและอนุมัติใบสมัคร) */
 export async function createTenantWithAdmin(tx: Kysely<DB>, actor: string | null, t: {
@@ -88,14 +108,17 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
     return r;
   };
   const mode = (): SignupMode => cfg.signup;
+  const state = () => signupState(db, mode());
   /** ที่อยู่หน้าเว็บสำหรับลิงก์ในอีเมล (BUDDY_PUBLIC_URL · ไม่ตั้ง = ที่อยู่ที่เปิดอยู่) */
   const baseOf = (req: FastifyRequest) => cfg.publicUrl ?? `${req.protocol}://${req.host}`;
   const requirePlatform = (req: Parameters<typeof requireAuth>[0]) => { const a = requireAuth(req); if (!a.isPlatform) throw forbidden('เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม'); return a; };
 
-  app.get('/api/v1/signup/config', async () => ({ mode: mode() }));
+  /** หน้าสมัคร/หน้าเข้าระบบใช้ — สถานะจริงหลังรวมค่าตั้งของผู้ให้บริการ (ไม่บอกจำนวนใบสมัคร) */
+  app.get('/api/v1/signup/config', async () => { const s = await state(); return { mode: s.mode, ...(s.mode === 'off' && s.closed_message ? { message: s.closed_message } : {}) }; });
 
   app.post('/api/v1/signup', async (req, reply) => {
-    if (mode() === 'off') throw notFound('หน้าสมัครใช้งาน (ปิดรับสมัคร — ติดต่อผู้ให้บริการ)');
+    const open = await state();
+    if (open.mode === 'off') throw forbidden(closedText(open));
     // กันบอท/สแปม (HANDOFF 165): ต่อ IP + ไม่ใช่บอท (ถ้าตั้ง Turnstile) — ซ้อนกับ 5 ใบ/ชั่วโมง/IP เดิม
     rateLimit('signup-ip', req.ip, reply);
     await requireHuman(req);
@@ -130,7 +153,7 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
     const r = await db.insertInto('sys_signup').values({ business_name: b.business_name, contact_name: b.contact_name, contact_email: b.contact_email, contact_phone: b.contact_phone, tax_id: taxId, business_template: b.business_template ?? null,
       username: user, password_hash: await bcrypt.hash(b.password, 10), accepted_terms_at: sql`now()` as never, client_ip: ip, status: 'P' }).returning('id').executeTakeFirstOrThrow();
     await logActivity(db, { companyId: null, userId: null }, { module: 'SYS', action: 'SIGNUP', docNo: user, table: 'sys_signup', rowId: r.id });
-    if (mode() === 'auto') {
+    if (open.mode === 'auto') {
       await approveAndSetup(r.id, null);
       // อีเมล (HANDOFF 187): หลัง commit · ส่งไม่สำเร็จไม่ย้อนการสมัคร
       queueSignupMail(db, ['SIGNUP_NOTIFY', 'SIGNUP_APPROVED'], r.id, baseOf(req));
@@ -156,7 +179,7 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
     if (q.status !== 'all') s = s.where('s.status', '=', q.status);
     const rows = await s.orderBy('s.created_at', 'desc').limit(500).execute();
     const mail = await mailStatusOf(db, rows.map((x) => x.id));
-    return { mode: mode(), rows: rows.map((x) => ({ ...x, mail: mail.get(x.id) ?? [] })), notify_set: (await mailSettings(db)).notify.length > 0 };
+    return { mode: (await state()).mode, rows: rows.map((x) => ({ ...x, mail: mail.get(x.id) ?? [] })), notify_set: (await mailSettings(db)).notify.length > 0 };
   });
   app.post('/api/v1/signups/:id/approve', async (req) => {
     const a = requirePlatform(req);
@@ -183,5 +206,27 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
     await logActivity(db, a, { module: 'SYS', action: 'SIGNUP_REJECT', table: 'sys_signup', rowId: id, detail: { reason } });
     queueSignupMail(db, ['SIGNUP_REJECTED'], id, baseOf(req));
     return { ok: true };
+  });
+
+  /* ---- เปิด/ปิดรับสมัคร (HANDOFF 189) — เจ้าหน้าที่ผู้ให้บริการเท่านั้น */
+  app.get('/api/v1/platform/signup-settings', async (req) => { requirePlatform(req); return state(); });
+  app.put('/api/v1/platform/signup-settings', async (req) => {
+    const a = requirePlatform(req);
+    const b = parse(z.object({
+      open: z.boolean(),
+      max_pending: z.number().int('จำนวนใบสมัครต้องเป็นจำนวนเต็ม').min(1, 'รับใบสมัครอย่างน้อย 1 ใบ — ไม่จำกัดให้เว้นว่าง').max(MAX_PENDING, `รับใบสมัครที่รออนุมัติได้ไม่เกิน ${MAX_PENDING} ใบ`).nullable(),
+      closed_message: z.string().trim().max(300, 'ข้อความหน้าปิดรับสมัครไม่เกิน 300 ตัวอักษร').nullable().optional(),
+    }), req.body);
+    const before = await state();
+    if (b.open && before.locked) throw badRequest('ระบบปิดรับสมัครไว้ที่การตั้งค่าเซิร์ฟเวอร์ (BUDDY_SIGNUP=off) — เปิดจากหน้าจอไม่ได้ ติดต่อผู้ดูแลเซิร์ฟเวอร์');
+    // ไม่ส่งข้อความมา = คงข้อความเดิม · ส่งว่าง = ล้าง
+    const msg = b.closed_message === undefined ? before.closed_message : (b.closed_message?.trim() || null);
+    await setSetting(db, 'signup.open', b.open, a.userId);
+    await setSetting(db, 'signup.max_pending', b.max_pending, a.userId);
+    await setSetting(db, 'signup.closed_message', msg, a.userId);
+    const after = await state();
+    const pick = (s: SignupState) => ({ open: s.open, max_pending: s.max_pending, closed_message: s.closed_message, mode: s.mode });
+    await logActivity(db, a, { module: 'SYS', action: 'SIGNUP_SETTINGS', table: 'sys_platform_setting', detail: { from: pick(before), to: pick(after) } });
+    return after;
   });
 }
