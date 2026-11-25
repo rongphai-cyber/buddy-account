@@ -196,6 +196,8 @@ export const API_RULES: Record<string, Rule> = {
   'POST /api/v1/users/:id/unlock': SELF, 'POST /api/v1/users/:id/reset-2fa': SELF,
   // ลิงก์เชิญ (HANDOFF 184): ผู้ดูแลสร้าง/ยกเลิก (ตรวจในตัว API) · หน้าเปิดลิงก์ไม่ต้องเข้าระบบ
   // แพ็กเกจ + การใช้งาน (HANDOFF 185): ลูกค้าเห็นของตัวเอง · แค็ตตาล็อก/ทุกลูกค้า = ผู้ให้บริการ (ตรวจในตัว API · รวมทุกบริษัทของลูกค้า จึงไม่อยู่ใต้ RLS ของบริษัท)
+  // อีเมลใบสมัคร (HANDOFF 187): ผู้ให้บริการเท่านั้น (ตรวจในตัว API)
+  'GET /api/v1/platform/mail-settings': SELF, 'PUT /api/v1/platform/mail-settings': SELF, 'GET /api/v1/platform/mail-preview': SELF, 'POST /api/v1/signups/:id/mail/:kind': SELF,
   'GET /api/v1/usage': SELF, 'GET /api/v1/usage/alert': SELF, 'GET /api/v1/packages': SELF, 'POST /api/v1/packages': SELF, 'PUT /api/v1/packages/:id': SELF,
   'GET /api/v1/admin/usage': SELF, 'GET /api/v1/admin/usage/:tenantId': SELF,
   'POST /api/v1/users/:id/invite': SELF, 'DELETE /api/v1/users/:id/invite': SELF, 'GET /api/v1/invite/:token': OPEN, 'POST /api/v1/invite/:token/accept': OPEN,

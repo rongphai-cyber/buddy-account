@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql, type Kysely } from 'kysely';
 import { z } from 'zod';
@@ -11,6 +11,7 @@ import { badRequest, conflict, forbidden, notFound, parse, requireAuth } from '.
 import { logActivity } from '../audit.js';
 import { rateLimit, requireHuman } from '../botguard.js';
 import { packagePlan, TENANT_PACKAGE_FIELDS } from './usage.js';
+import { mailSettings, mailStatusOf, queueSignupMail } from './signup-mail.js';
 
 /**
  * สมัครใช้งานเอง (ข้อกำหนดเจ้าของ 30/10/2569: "สมัครใช้งาน: สมัครเอง หรือผู้ดูแลกำหนดบริษัทให้")
@@ -87,6 +88,8 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
     return r;
   };
   const mode = (): SignupMode => cfg.signup;
+  /** ที่อยู่หน้าเว็บสำหรับลิงก์ในอีเมล (BUDDY_PUBLIC_URL · ไม่ตั้ง = ที่อยู่ที่เปิดอยู่) */
+  const baseOf = (req: FastifyRequest) => cfg.publicUrl ?? `${req.protocol}://${req.host}`;
   const requirePlatform = (req: Parameters<typeof requireAuth>[0]) => { const a = requireAuth(req); if (!a.isPlatform) throw forbidden('เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม'); return a; };
 
   app.get('/api/v1/signup/config', async () => ({ mode: mode() }));
@@ -129,8 +132,11 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
     await logActivity(db, { companyId: null, userId: null }, { module: 'SYS', action: 'SIGNUP', docNo: user, table: 'sys_signup', rowId: r.id });
     if (mode() === 'auto') {
       await approveAndSetup(r.id, null);
+      // อีเมล (HANDOFF 187): หลัง commit · ส่งไม่สำเร็จไม่ย้อนการสมัคร
+      queueSignupMail(db, ['SIGNUP_NOTIFY', 'SIGNUP_APPROVED'], r.id, baseOf(req));
       return { status: 'A', username: user, message: 'เปิดบัญชีแล้ว — เข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้ บริษัทแรกพร้อมผังบัญชีมาตรฐานรออยู่แล้ว' };
     }
+    queueSignupMail(db, ['SIGNUP_NOTIFY', 'SIGNUP_RECEIVED'], r.id, baseOf(req));
     return { status: 'P', username: user, message: 'ได้รับใบสมัครแล้ว — ผู้ให้บริการจะตรวจสอบและติดต่อกลับทางอีเมล/โทรศัพท์ เมื่ออนุมัติแล้วเข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้' };
   });
 
@@ -141,12 +147,16 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
     // PDPA: ใบที่ไม่อนุมัติเกิน 90 วัน ล้างข้อมูลติดต่อ (คงแถวไว้เป็นสถิติ)
     await sql`UPDATE sys_signup SET business_name = '-', contact_name = '-', contact_email = '-', contact_phone = '-', tax_id = NULL, client_ip = NULL, password_hash = NULL
                WHERE status = 'R' AND decided_at < now() - make_interval(days => ${PURGE_DAYS}) AND contact_email <> '-'`.execute(db);
+    // อีเมลที่ส่งถึงผู้สมัครที่ล้างข้อมูลแล้ว: ล้างผู้รับด้วย (HANDOFF 187)
+    await sql`UPDATE sys_mail_log SET recipients = '-' WHERE kind <> 'SIGNUP_NOTIFY' AND recipients <> '-' AND signup_id IN (SELECT id FROM sys_signup WHERE contact_email = '-')`.execute(db);
     let s = db.selectFrom('sys_signup as s').leftJoin('sys_tenant as t', 't.id', 's.tenant_id').leftJoin('sys_user as u', 'u.id', 's.decided_by')
       .select(['s.id', 's.business_name', 's.contact_name', 's.contact_email', 's.contact_phone', 's.tax_id', 's.business_template', 's.username', 's.status', 's.created_at', 's.accepted_terms_at', 's.decided_at', 's.reject_reason', 's.client_ip',
         't.code as tenant_code', 'u.username as decided_by_name'])
       .where('s.deleted_at', 'is', null);
     if (q.status !== 'all') s = s.where('s.status', '=', q.status);
-    return { mode: mode(), rows: await s.orderBy('s.created_at', 'desc').limit(500).execute() };
+    const rows = await s.orderBy('s.created_at', 'desc').limit(500).execute();
+    const mail = await mailStatusOf(db, rows.map((x) => x.id));
+    return { mode: mode(), rows: rows.map((x) => ({ ...x, mail: mail.get(x.id) ?? [] })), notify_set: (await mailSettings(db)).notify.length > 0 };
   });
   app.post('/api/v1/signups/:id/approve', async (req) => {
     const a = requirePlatform(req);
@@ -159,7 +169,9 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
       starter: z.string().optional().transform((v) => (isStarterKey(v) ? v : undefined)),
       ...TENANT_PACKAGE_FIELDS,
     }), req.body ?? {});
-    return approveAndSetup(id, a.userId, o);
+    const r = await approveAndSetup(id, a.userId, o);
+    queueSignupMail(db, ['SIGNUP_APPROVED'], id, baseOf(req));
+    return r;
   });
   app.post('/api/v1/signups/:id/reject', async (req) => {
     const a = requirePlatform(req);
@@ -169,6 +181,7 @@ export function signupRoutes(app: FastifyInstance, database: Database, cfg: Conf
       .where('id', '=', id).where('status', '=', 'P').where('deleted_at', 'is', null).executeTakeFirst();
     if (!Number(r.numUpdatedRows)) throw badRequest('ไม่พบใบสมัครที่รออนุมัติ');
     await logActivity(db, a, { module: 'SYS', action: 'SIGNUP_REJECT', table: 'sys_signup', rowId: id, detail: { reason } });
+    queueSignupMail(db, ['SIGNUP_REJECTED'], id, baseOf(req));
     return { ok: true };
   });
 }

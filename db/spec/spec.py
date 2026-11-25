@@ -125,6 +125,11 @@ add(T('sys_tenant_module', 'โมดูล/โปรแกรมที่ลู
   C('app_url', 'str200', th='ที่อยู่หน้าเว็บของโปรแกรมสำหรับลูกค้านี้ — Hub เปิดพร้อมบัตรผ่าน (docs/17 B6) เช่น https://wtspos.example.com/office/'),
 ], uniq=[('tenant_id','module_key')]))
 
+add(T('sys_platform_setting', 'ค่าตั้งของผู้ให้บริการ (ทั้งระบบ ไม่ใช่ของบริษัท) เช่น อีเมลรับแจ้งเตือนใบสมัคร Reply-To ผู้ส่ง (HANDOFF 187) — เก็บในฐานข้อมูล ไม่อยู่ใน repo · อยู่เฉพาะเซิร์ฟเวอร์', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
+  C('key', 'code40', nn=True, th='ชื่อค่า เช่น mail.signup_notify'),
+  C('value', 'json', nn=True, th='ค่า (JSON)'),
+], uniq=[('key',)]))
+
 add(T('sys_signup', 'ใบสมัครใช้งานจากหน้าสมัครเอง (ข้อกำหนดเจ้าของ 30/10/2569) — ผู้ให้บริการอนุมัติแล้วสร้างลูกค้าผู้ใช้บริการ + ผู้ดูแลคนแรก', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
   C('business_name', 'str120', nn=True, th='ชื่อกิจการ/ร้านที่สมัคร'),
   C('contact_name', 'str120', nn=True, th='ชื่อผู้สมัคร (ผู้ติดต่อ)'),
@@ -142,6 +147,19 @@ add(T('sys_signup', 'ใบสมัครใช้งานจากหน้�
   C('decided_at', 'ts', th='เวลาที่อนุมัติ/ไม่อนุมัติ'),
   C('reject_reason', 'str200', th='เหตุผลที่ไม่อนุมัติ'),
 ]))
+
+add(T('sys_mail_log', 'อีเมลที่ระบบส่ง (HANDOFF 187): แจ้งผู้ให้บริการเมื่อมีใบสมัคร · แจ้งผู้สมัครว่าได้รับ/อนุมัติ/ไม่อนุมัติ — สถานะต่อใบสมัครและชนิด ส่งใหม่ได้ · ไม่เก็บเนื้อหา (สร้างใหม่จากใบสมัครตอนส่งซ้ำ) · อยู่เฉพาะเซิร์ฟเวอร์', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
+  lk('signup_id', 'sys_signup', 'ใบสมัครที่เกี่ยวข้อง'),
+  lk('tenant_id', 'sys_tenant', 'ลูกค้าผู้ใช้บริการ (เมื่ออนุมัติแล้ว)'),
+  C('kind', 'code20', nn=True, th='ชนิด: SIGNUP_NOTIFY แจ้งผู้ให้บริการ · SIGNUP_RECEIVED ได้รับใบสมัคร · SIGNUP_APPROVED อนุมัติแล้ว · SIGNUP_REJECTED ไม่อนุมัติ'),
+  C('recipients', 'str500', nn=True, th='ผู้รับ (คั่นด้วยจุลภาค)'),
+  C('subject', 'str200', th='หัวเรื่อง'),
+  C('status', 'char1', nn=True, th='S=ส่งแล้ว F=ส่งไม่สำเร็จ K=ไม่ได้ส่ง (ปิดการส่งอีเมล/ไม่มีผู้รับ)', chk="status IN ('S','F','K')"),
+  C('message_id', 'str200', th='รหัสข้อความจากผู้ให้บริการส่งอีเมล'),
+  C('error', 'str500', th='ข้อผิดพลาด (ไม่มีความลับ)'),
+  C('attempts', 'int', nn=True, d='1', th='จำนวนครั้งที่ส่ง'),
+  C('last_attempt_at', 'ts', nn=True, th='ส่งครั้งล่าสุดเมื่อ'),
+], idx=[('signup_id','kind')]))
 
 add(T('sys_company', 'บริษัท (หนึ่งฐานข้อมูลรองรับหลายบริษัท)', 'sys', express='ISINFO + ทะเบียนบริษัท (บทที่ 4)', company=False, cols=[
   lk('tenant_id', 'sys_tenant', 'ลูกค้าผู้ใช้บริการที่เป็นเจ้าของบริษัทนี้', nn=True),

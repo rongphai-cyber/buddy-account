@@ -25,8 +25,12 @@
     { "pattern": "buddy-api.worktruesolution.net", "custom_domain": true },
     { "pattern": "app.worktruesolution.net", "custom_domain": true }
   ],
+  // อีเมล (HANDOFF 187): Cloudflare Email Service — โดเมน worktruesolution.net ต้อง onboard เป็นโดเมนส่งก่อน (tools/cloud/README ข้อ 14)
+  // container เรียกผ่าน Worker ที่ /__wts/mail (cloud/mail-relay.js · ยืนยันด้วย HMAC ของ BUDDY_SECRET_KEY)
+  "send_email": [{ "name": "EMAIL" }],
   "vars": {
     "BUDDY_TRUST_PROXY": "1",
-    "BUDDY_COOKIE_SECURE": "1"
+    "BUDDY_COOKIE_SECURE": "1",
+    "BUDDY_MAIL": "cloudflare"
   }
 }

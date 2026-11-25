@@ -4958,6 +4958,135 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       expect(log[0]!.detail).toMatchObject({ from: 'A', purge_after: in30 });
     } finally { cookie = start; }
   });
+
+  it('HANDOFF 187: signup emails (provider notice, received, approved, rejected) after commit, no secrets, failure does not roll back, resend, settings provider only, Worker relay signature', async () => {
+    const start = cookie;
+    const { memoryMail, setMailDriver, flushMail, relaySignature } = await import('../src/mail/index.js');
+    const { mailRelay } = await import('../../../cloud/mail-relay.js');
+    const signup = async (body: Record<string, unknown>, ip: string) => { const r = await app.inject({ method: 'POST', url: '/api/v1/signup', payload: body, remoteAddress: ip }); return { status: r.statusCode, body: JSON.parse(r.body) }; };
+    const PW = 'MailShop1234';
+    const applicant = (n: string, mail: string) => ({ business_name: `ร้านอีเมล ${n}`, contact_name: `ผู้สมัคร ${n}`, contact_email: mail, contact_phone: '081-234-5678', username: `mail.${n}`, password: PW, accept_terms: true });
+    setMailDriver(memoryMail.driver); memoryMail.outbox = []; memoryMail.failNext = null;
+    appCfg.publicUrl = 'https://app.example.test';
+    const oldMode = appCfg.signup;
+    try {
+      appCfg.signup = 'review';
+      // ค่าตั้ง: ผู้ให้บริการเท่านั้น
+      cookie = admin;
+      expect((await call('PUT', '/api/v1/platform/mail-settings', { notify: ['Owner@Example.test', 'staff@example.test'], reply_to: 'help@example.test' })).body).toMatchObject({ notify: ['owner@example.test', 'staff@example.test'], reply_to: 'help@example.test', from: 'noreply@worktruesolution.net', driver: 'memory' });
+      expect((await call('PUT', '/api/v1/platform/mail-settings', { notify: ['x@example.test'], from: 'noreply@evil.test' })).status).toBe(400);
+      expect((await login('b.admin', 'passB1234')).status).toBe(200);
+      for (const [m, u] of [['GET', '/api/v1/platform/mail-settings'], ['GET', '/api/v1/platform/mail-preview?kind=SIGNUP_APPROVED']] as const) expect((await call(m, u)).status).toBe(403);
+      expect((await call('PUT', '/api/v1/platform/mail-settings', { notify: [] })).status).toBe(403);
+
+      // ก) ข) สมัคร → แจ้งผู้ให้บริการ + ผู้สมัคร (หลัง commit)
+      cookie = '';
+      const s1 = await signup(applicant('one', 'applicant1@example.test'), '10.77.0.1');
+      expect(s1.status, JSON.stringify(s1.body)).toBe(200);
+      await flushMail();
+      expect(memoryMail.outbox.map((m) => `${m.to.join('|')}:${m.subject}`)).toEqual([
+        'owner@example.test|staff@example.test:มีผู้สมัครใช้ Buddy Account: ร้านอีเมล one', 'applicant1@example.test:ได้รับใบสมัคร Buddy Account แล้ว — รอผู้ให้บริการอนุมัติ']);
+      const [notice, received] = memoryMail.outbox as [typeof memoryMail.outbox[0], typeof memoryMail.outbox[0]];
+      expect(notice.html).toContain('https://app.example.test/admin/tenants');
+      expect(notice.text).toMatch(/รหัสผู้ใช้ที่ขอ: mail\.one/);
+      expect([notice.from, received.replyTo]).toEqual(['noreply@worktruesolution.net', 'help@example.test']);
+      expect(received.text).toMatch(/ภายใน 1 วันทำการ/);
+      cookie = admin;
+      const sid = ((await call('GET', '/api/v1/signups?status=P')).body.rows as Array<{ id: string; username: string; mail: Array<{ kind: string; status: string }> }>).find((r) => r.username === 'mail.one')!;
+      expect(sid.mail.map((m) => `${m.kind}:${m.status}`).sort()).toEqual(['SIGNUP_NOTIFY:S', 'SIGNUP_RECEIVED:S']);
+
+      // ค) อนุมัติ — ส่งไม่สำเร็จไม่ย้อนการอนุมัติ · ส่งอีกครั้งได้
+      memoryMail.failNext = 'E_SENDER_DOMAIN_NOT_AVAILABLE';
+      const ap = await call('POST', `/api/v1/signups/${sid.id}/approve`, { expires_on: '2027-01-31', first_company: false });
+      expect(ap.status, JSON.stringify(ap.body)).toBe(200);
+      await flushMail();
+      expect((await sql<{ status: string; tenant_id: string | null }>`SELECT status, tenant_id FROM sys_signup WHERE id = ${sid.id}`.execute(database.db)).rows[0]).toMatchObject({ status: 'A' });
+      const failed = (await sql<{ status: string; error: string; attempts: number }>`SELECT status, error, attempts FROM sys_mail_log WHERE signup_id = ${sid.id} AND kind = 'SIGNUP_APPROVED'`.execute(database.db)).rows[0]!;
+      expect([failed.status, failed.attempts, failed.error]).toEqual(['F', 1, expect.stringMatching(/E_SENDER_DOMAIN_NOT_AVAILABLE/)]);
+      expect((await sql<{ detail: { kind: string; code: string } }>`SELECT detail FROM sys_activity_log WHERE row_id = ${sid.id} AND action = 'MAIL_FAILED'`.execute(database.db)).rows[0]!.detail).toMatchObject({ kind: 'SIGNUP_APPROVED', code: 'E_SENDER_DOMAIN_NOT_AVAILABLE' });
+      const re = await call('POST', `/api/v1/signups/${sid.id}/mail/SIGNUP_APPROVED`);
+      expect(re.body).toEqual({ status: 'S', error: null });
+      const approved = memoryMail.outbox.at(-1)!;
+      expect([approved.to, approved.subject]).toEqual([['applicant1@example.test'], 'อนุมัติแล้ว — เริ่มใช้ Buddy Account ได้เลย']);
+      for (const x of ['mail.one', 'https://app.example.test/', 'Google Authenticator', 'รหัสสำรอง', 'ลิงก์เชิญ', 'ทดลองใช้ถึง', '31/01/2570', '30 วัน', 'พ.ร.บ.การบัญชี']) expect(approved.text, x).toContain(x);
+      expect((await sql<{ attempts: number; status: string }>`SELECT attempts, status FROM sys_mail_log WHERE signup_id = ${sid.id} AND kind = 'SIGNUP_APPROVED'`.execute(database.db)).rows[0]).toEqual({ attempts: 2, status: 'S' });
+      expect((await call('POST', `/api/v1/signups/${sid.id}/mail/SIGNUP_REJECTED`)).status).toBe(400);   // สถานะไม่ตรง
+
+      // ง) ไม่อนุมัติ + เหตุผล
+      cookie = '';
+      expect((await signup(applicant('two', 'applicant2@example.test'), '10.77.0.2')).status).toBe(200);
+      cookie = admin;
+      const s2 = ((await call('GET', '/api/v1/signups?status=P')).body.rows as Array<{ id: string; username: string }>).find((r) => r.username === 'mail.two')!;
+      expect((await call('POST', `/api/v1/signups/${s2.id}/reject`, { reason: 'ข้อมูลกิจการไม่ครบ' })).status).toBe(200);
+      await flushMail();
+      const rejected = memoryMail.outbox.at(-1)!;
+      expect([rejected.to, rejected.subject]).toEqual([['applicant2@example.test'], 'ผลการพิจารณาใบสมัคร Buddy Account']);
+      expect(rejected.text).toContain('เหตุผล: ข้อมูลกิจการไม่ครบ');
+
+      // กันสแปม: อีเมลเดียวกันได้ไม่เกิน 3 ฉบับ/24 ชั่วโมง (ไม่นับแจ้งผู้ให้บริการ) — ผู้ให้บริการกดส่งอีกครั้งได้
+      cookie = '';
+      expect((await signup({ ...applicant('two2', 'applicant2@example.test') }, '10.77.0.12')).status).toBe(200);
+      await flushMail();
+      cookie = admin;
+      const s22 = ((await call('GET', '/api/v1/signups?status=P')).body.rows as Array<{ id: string; username: string; mail: Array<{ kind: string; status: string }> }>).find((r) => r.username === 'mail.two2')!;
+      expect(s22.mail.find((m) => m.kind === 'SIGNUP_RECEIVED')).toMatchObject({ status: 'S' });   // ฉบับที่ 3
+      expect((await call('POST', `/api/v1/signups/${s22.id}/reject`, { reason: 'ทดลองระบบ' })).status).toBe(200);
+      await flushMail();
+      const lim = (await sql<{ status: string; error: string }>`SELECT status, error FROM sys_mail_log WHERE signup_id = ${s22.id} AND kind = 'SIGNUP_REJECTED'`.execute(database.db)).rows[0]!;
+      expect(lim).toEqual({ status: 'K', error: expect.stringContaining('กันสแปม') });
+      expect((await call('POST', `/api/v1/signups/${s22.id}/mail/SIGNUP_REJECTED`)).body).toEqual({ status: 'S', error: null });
+
+      // เปิดบัญชีทันที: แจ้งผู้ให้บริการ + อนุมัติแล้ว (ไม่มี "ได้รับใบสมัคร")
+      appCfg.signup = 'auto';
+      const before = memoryMail.outbox.length;
+      cookie = '';
+      expect((await signup(applicant('three', 'applicant3@example.test'), '10.77.0.3')).body.status).toBe('A');
+      await flushMail();
+      expect(memoryMail.outbox.slice(before).map((m) => m.subject)).toEqual(['มีผู้สมัครใช้ Buddy Account: ร้านอีเมล three', 'อนุมัติแล้ว — เริ่มใช้ Buddy Account ได้เลย']);
+
+      // ไม่มีความลับในอีเมลทุกฉบับ (รหัสผ่าน hash กุญแจ) · ค่าที่ผู้สมัครพิมพ์ถูก escape ใน HTML
+      for (const m of memoryMail.outbox) for (const s of [m.html, m.text]) { expect(s).not.toContain(PW); expect(s).not.toMatch(/\$2[aby]\$/); expect(s).not.toContain(process.env.BUDDY_SECRET_KEY!); expect(s).not.toMatch(/\/invite\//); }
+      appCfg.signup = 'review';
+      cookie = '';
+      expect((await signup({ ...applicant('four', 'applicant4@example.test'), business_name: '<script>alert(1)</script>' }, '10.77.0.4')).status).toBe(200);
+      await flushMail();
+      expect(memoryMail.outbox.at(-2)!.html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+      expect(memoryMail.outbox.at(-2)!.html).not.toContain('<script>');
+
+      // ไม่ได้ตั้งผู้รับแจ้งเตือน = ไม่ส่ง (บันทึกว่าไม่ได้ส่ง) · หน้าจอเตือน
+      cookie = admin;
+      expect((await call('PUT', '/api/v1/platform/mail-settings', { notify: [] })).status).toBe(200);
+      cookie = '';
+      expect((await signup(applicant('five', 'applicant5@example.test'), '10.77.0.5')).status).toBe(200);
+      await flushMail();
+      cookie = admin;
+      const l5 = (await call('GET', '/api/v1/signups?status=P')).body;
+      expect(l5.notify_set).toBe(false);
+      expect(l5.rows.find((r: { username: string }) => r.username === 'mail.five').mail.find((m: { kind: string }) => m.kind === 'SIGNUP_NOTIFY')).toMatchObject({ status: 'K', error: 'ยังไม่ได้ตั้งอีเมลรับแจ้งเตือนใบสมัคร' });
+      // ผู้ที่ไม่ใช่ผู้ให้บริการส่งอีกครั้งไม่ได้
+      expect((await login('b.admin', 'passB1234')).status).toBe(200);
+      expect((await call('POST', `/api/v1/signups/${sid.id}/mail/SIGNUP_APPROVED`)).status).toBe(403);
+
+      // Worker (cloud/mail-relay.js): ลายเซ็นเดียวกับ server · ผิด/หมดเวลา = 401 · ผู้ส่งนอกโดเมน = 400 · ข้อผิดพลาดของ Cloudflare ส่งรหัสกลับ
+      const sent: Array<Record<string, unknown>> = [];
+      const env = { BUDDY_SECRET_KEY: 'relay-test-key', EMAIL: { send: async (m: Record<string, unknown>) => { if (m.subject === 'boom') throw Object.assign(new Error('domain not ready'), { code: 'E_EMAIL_SENDING_NOT_READY' }); sent.push(m); return { messageId: 'cf-1' }; } } };
+      const relay = async (msg: object, opt: { key?: string; ts?: number } = {}) => {
+        const body = JSON.stringify(msg), ts = String(opt.ts ?? Date.now());
+        const r = await mailRelay(new Request('https://app.example.test/__wts/mail', { method: 'POST', body, headers: { 'x-wts-mail-ts': ts, 'x-wts-mail-sig': relaySignature(opt.key ?? env.BUDDY_SECRET_KEY, ts, body) } }), env);
+        return { status: r.status, body: await r.json() as { messageId?: string; error?: { code: string } } };
+      };
+      const ok = { from: 'noreply@worktruesolution.net', to: ['a@example.test'], replyTo: 'help@example.test', subject: 'ทดสอบ', html: '<p>x</p>', text: 'x' };
+      expect(await relay(ok)).toEqual({ status: 200, body: { messageId: 'cf-1' } });
+      expect(sent[0]).toMatchObject({ from: ok.from, to: ok.to, replyTo: ok.replyTo, subject: 'ทดสอบ' });
+      expect((await relay(ok, { key: 'wrong' })).status).toBe(401);
+      expect((await relay(ok, { ts: Date.now() - 10 * 60_000 })).status).toBe(401);
+      expect((await relay({ ...ok, from: 'x@evil.test' })).body.error?.code).toBe('BAD_FROM');
+      expect((await relay({ ...ok, to: [] })).body.error?.code).toBe('BAD_RECIPIENTS');
+      expect(await relay({ ...ok, subject: 'boom' })).toMatchObject({ status: 502, body: { error: { code: 'E_EMAIL_SENDING_NOT_READY' } } });
+    } finally {
+      setMailDriver(null); appCfg.signup = oldMode; appCfg.publicUrl = undefined; cookie = start;
+    }
+  });
 });
 
 describe('นำข้อมูลจาก Express ผ่านหน้าจอ (T0.12) — สิทธิ์และการตรวจ', () => {
@@ -7203,7 +7332,8 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     await sql`UPDATE sys_signup SET decided_at = now() - interval '100 days' WHERE id = ${two.id}`.execute(database.db);
     expect((await call('POST', '/api/v1/auth/login', { username: 'admin', password: 'secret123' })).status).toBe(200);
     expect((await call('GET', '/api/v1/signups?status=R')).body.rows.find((r: { id: string }) => r.id === two.id)).toMatchObject({ contact_email: '-', contact_name: '-', client_ip: null, reject_reason: 'ข้อมูลติดต่อไม่ครบ' });
-    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action IN ('SIGNUP', 'SIGNUP_REJECT')`.execute(database.db)).rows[0]!.n).toBe(7);
+    // HANDOFF 187 test signups (mail.*) excluded
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action IN ('SIGNUP', 'SIGNUP_REJECT') AND row_id NOT IN (SELECT id FROM sys_signup WHERE username LIKE 'mail.%')`.execute(database.db)).rows[0]!.n).toBe(7);
   });
 
   it('read-only viewer of another tenant\'s sample data (HANDOFF 154): staff only, reads and prints to screen, cannot write, sees only that tenant', async () => {

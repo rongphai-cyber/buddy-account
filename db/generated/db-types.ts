@@ -148,6 +148,29 @@ export interface SysTenantModuleTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** ค่าตั้งของผู้ให้บริการ (ทั้งระบบ ไม่ใช่ของบริษัท) เช่น อีเมลรับแจ้งเตือนใบสมัคร Reply-To ผู้ส่ง (HANDOFF 187) — เก็บในฐานข้อมูล ไม่อยู่ใน repo · อยู่เฉพาะเซิร์ฟเวอร์ */
+export interface SysPlatformSettingTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** ชื่อค่า เช่น mail.signup_notify */
+  key: string;
+  /** ค่า (JSON) */
+  value: unknown;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ใบสมัครใช้งานจากหน้าสมัครเอง (ข้อกำหนดเจ้าของ 30/10/2569) — ผู้ให้บริการอนุมัติแล้วสร้างลูกค้าผู้ใช้บริการ + ผู้ดูแลคนแรก */
 export interface SysSignupTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -182,6 +205,45 @@ export interface SysSignupTable {
   decided_at: Gen<string | null>;
   /** เหตุผลที่ไม่อนุมัติ */
   reject_reason: Gen<string | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
+/** อีเมลที่ระบบส่ง (HANDOFF 187): แจ้งผู้ให้บริการเมื่อมีใบสมัคร · แจ้งผู้สมัครว่าได้รับ/อนุมัติ/ไม่อนุมัติ — สถานะต่อใบสมัครและชนิด ส่งใหม่ได้ · ไม่เก็บเนื้อหา (สร้างใหม่จากใบสมัครตอนส่งซ้ำ) · อยู่เฉพาะเซิร์ฟเวอร์ */
+export interface SysMailLogTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** ใบสมัครที่เกี่ยวข้อง */
+  signup_id: Gen<string | null>;
+  /** ลูกค้าผู้ใช้บริการ (เมื่ออนุมัติแล้ว) */
+  tenant_id: Gen<string | null>;
+  /** ชนิด: SIGNUP_NOTIFY แจ้งผู้ให้บริการ · SIGNUP_RECEIVED ได้รับใบสมัคร · SIGNUP_APPROVED อนุมัติแล้ว · SIGNUP_REJECTED ไม่อนุมัติ */
+  kind: string;
+  /** ผู้รับ (คั่นด้วยจุลภาค) */
+  recipients: string;
+  /** หัวเรื่อง */
+  subject: Gen<string | null>;
+  /** S=ส่งแล้ว F=ส่งไม่สำเร็จ K=ไม่ได้ส่ง (ปิดการส่งอีเมล/ไม่มีผู้รับ) */
+  status: string;
+  /** รหัสข้อความจากผู้ให้บริการส่งอีเมล */
+  message_id: Gen<string | null>;
+  /** ข้อผิดพลาด (ไม่มีความลับ) */
+  error: Gen<string | null>;
+  /** จำนวนครั้งที่ส่ง */
+  attempts: Gen<number>;
+  /** ส่งครั้งล่าสุดเมื่อ */
+  last_attempt_at: string;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
@@ -5049,7 +5111,9 @@ export interface DB {
   sys_package: SysPackageTable;
   sys_tenant: SysTenantTable;
   sys_tenant_module: SysTenantModuleTable;
+  sys_platform_setting: SysPlatformSettingTable;
   sys_signup: SysSignupTable;
+  sys_mail_log: SysMailLogTable;
   sys_company: SysCompanyTable;
   sys_branch: SysBranchTable;
   sys_address_history: SysAddressHistoryTable;

@@ -73,6 +73,7 @@ import { masterImportRoutes } from './modules/master-import.js';
 import { importMapRoutes } from './modules/import-map.js';
 import { journalImportRoutes } from './modules/gl/journal-import.js';
 import { signupRoutes } from './modules/signup.js';
+import { signupMailRoutes } from './modules/signup-mail.js';
 import { i18nNameRoutes } from './modules/i18n-names.js';
 import { changeRoutes } from './modules/changes.js';
 import { wtsRoutes } from './modules/wts.js';
@@ -199,6 +200,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   importMapRoutes(app, db);
   journalImportRoutes(app, db);
   signupRoutes(app, database, cfg);
+  signupMailRoutes(app, db, cfg);
   i18nNameRoutes(app, db);
   changeRoutes(app, db);
   wtsRoutes(app, db);

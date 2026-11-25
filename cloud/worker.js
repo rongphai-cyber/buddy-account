@@ -7,13 +7,15 @@
 // - X-Forwarded-For/-Proto/-Host เขียนใหม่ทุกครั้งจากข้อมูลของ Cloudflare (ค่าที่ผู้ใช้ส่งมาเองถูกทิ้ง) — โปรแกรมเชื่อเพราะ *_TRUST_PROXY=1
 // - cron ทุก 5 นาทีปลุก container ให้งานเบื้องหลังทำงาน (ซิงก์ ส่งคิว) · ยังไม่ได้ตั้งความลับ = ตอบ 503 บอกวิธีแก้ ไม่เปิดโปรแกรมด้วยฐานชั่วคราว
 import { DurableObject } from 'cloudflare:workers';
+// ส่งอีเมลผ่าน Cloudflare Email Service (HANDOFF 187 · Buddy เท่านั้น — POS/Living ไม่มีไฟล์นี้ ลบ 2 บรรทัดที่เกี่ยวข้องออกเมื่อคัดลอก)
+import { MAIL_PATH, mailRelay } from './mail-relay.js';
 
 const APP = {
   name: 'Buddy Account',
   port: 4100,
   health: '/api/v1/health',
   /** ตัวแปรที่ส่งเข้า container (มีค่าเท่านั้น) */
-  env: ['DATABASE_URL', 'BUDDY_SECRET_KEY', 'BUDDY_PUBLIC_URL', 'BUDDY_TRUST_PROXY', 'BUDDY_COOKIE_SECURE', 'BUDDY_REQUIRE_ADMIN_2FA', 'BUDDY_SIGNUP', 'LOG_LEVEL', 'TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET'],
+  env: ['DATABASE_URL', 'BUDDY_SECRET_KEY', 'BUDDY_PUBLIC_URL', 'BUDDY_TRUST_PROXY', 'BUDDY_COOKIE_SECURE', 'BUDDY_REQUIRE_ADMIN_2FA', 'BUDDY_SIGNUP', 'LOG_LEVEL', 'TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET', 'BUDDY_MAIL', 'BUDDY_MAIL_FROM'],
   /** ต้องมีก่อนเปิด — ไม่มี = 503 (ไม่ปล่อยให้โปรแกรมเปิดด้วยฐานชั่วคราวในเครื่อง) */
   required: ['DATABASE_URL', 'BUDDY_SECRET_KEY'],
   /**
@@ -182,6 +184,8 @@ export class AppContainer extends DurableObject {
 
 export default {
   fetch: (request, env) => {
+    // โปรแกรมใน container ขอส่งอีเมล (ยืนยันด้วย HMAC ของ BUDDY_SECRET_KEY) — ไม่ผ่าน container
+    if (new URL(request.url).pathname === MAIL_PATH) return mailRelay(request, env);
     const gated = gate(request);
     return gated instanceof Response ? gated : instance(env).fetch(gated);
   },

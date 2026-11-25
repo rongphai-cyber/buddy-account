@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 154,
+"n": 155,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/AddressHistory.tsx",
@@ -75,7 +75,7 @@
 },
 {
 "th": "บันทึก",
-"n": 109,
+"n": 110,
 "files": [
 "apps/web/src/unsaved.tsx",
 "apps/web/src/components/AddressHistory.tsx",
@@ -130,6 +130,7 @@
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/settings/Permissions.tsx",
 "apps/web/src/pages/settings/PrintForms.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
 "apps/web/src/pages/settings/Sync.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
 "apps/web/src/pages/settings/Users.tsx",
@@ -2089,6 +2090,19 @@
 ]
 },
 {
+"th": "ผู้ติดต่อ",
+"n": 15,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/mail/templates.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/master-import.ts"
+]
+},
+{
 "th": "ภาษีซื้อ",
 "n": 15,
 "files": [
@@ -2283,18 +2297,6 @@
 ]
 },
 {
-"th": "ผู้ติดต่อ",
-"n": 14,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/master-import.ts"
-]
-},
-{
 "th": "ภาษีขาย",
 "n": 14,
 "files": [
@@ -2399,6 +2401,22 @@
 ]
 },
 {
+"th": "โทรศัพท์",
+"n": 14,
+"files": [
+"apps/web/src/pages/Signup.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/mail/templates.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/master-import.ts",
+"packages/core/src/payroll-import.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ใหม่ — ยังไม่บันทึก",
 "n": 14,
 "files": [
@@ -2452,17 +2470,20 @@
 ]
 },
 {
-"th": "โทรศัพท์",
+"th": "เลขผู้เสียภาษี",
 "n": 13,
 "files": [
-"apps/web/src/pages/Signup.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/mail/templates.ts",
+"apps/server/src/modules/import-masters.ts",
 "apps/server/src/modules/reports/parties.ts",
+"packages/core/src/doc-import.ts",
+"packages/core/src/journal-import.ts",
 "packages/core/src/master-import.ts",
-"packages/core/src/payroll-import.ts",
 "packages/core/src/trade-import.ts"
 ]
 },
@@ -2568,23 +2589,6 @@
 "apps/server/src/modules/reports/parties.ts",
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts"
-]
-},
-{
-"th": "เลขผู้เสียภาษี",
-"n": 12,
-"files": [
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/import-masters.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/doc-import.ts",
-"packages/core/src/journal-import.ts",
-"packages/core/src/master-import.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -2747,6 +2751,20 @@
 ]
 },
 {
+"th": "อีเมล",
+"n": 11,
+"files": [
+"apps/web/src/pages/Signup.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/server/src/mail/templates.ts",
+"packages/core/src/master-import.ts",
+"packages/core/src/payroll-import.ts"
+]
+},
+{
 "th": "เงินได้",
 "n": 11,
 "files": [
@@ -2885,6 +2903,19 @@
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "รหัสผู้ใช้",
+"n": 10,
+"files": [
+"apps/web/src/pages/Invite.tsx",
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -3146,18 +3177,6 @@
 ]
 },
 {
-"th": "รหัสผู้ใช้",
-"n": 9,
-"files": [
-"apps/web/src/pages/Invite.tsx",
-"apps/web/src/pages/Login.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
 "th": "วันที่จ่าย",
 "n": 9,
 "files": [
@@ -3219,18 +3238,6 @@
 "packages/core/src/payroll-import.ts",
 "packages/core/src/payroll.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "อีเมล",
-"n": 9,
-"files": [
-"apps/web/src/pages/Signup.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"packages/core/src/master-import.ts",
-"packages/core/src/payroll-import.ts"
 ]
 },
 {
@@ -3588,6 +3595,20 @@
 "apps/web/src/pages/settings/DocTypes.tsx",
 "packages/core/src/settings.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
+"n": 8,
+"files": [
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/signup-mail.ts",
+"apps/server/src/modules/signup.ts",
+"apps/server/src/modules/tenant-modules.ts",
+"apps/server/src/modules/tenant-move.ts",
+"apps/server/src/modules/usage.ts"
 ]
 },
 {
@@ -4074,19 +4095,6 @@
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/server/src/modules/pdpa.ts"
-]
-},
-{
-"th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
-"n": 7,
-"files": [
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/signup.ts",
-"apps/server/src/modules/tenant-modules.ts",
-"apps/server/src/modules/tenant-move.ts",
-"apps/server/src/modules/usage.ts"
 ]
 },
 {
@@ -5564,6 +5572,14 @@
 ]
 },
 {
+"th": "ไม่อนุมัติ",
+"n": 5,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "— เลือก —",
 "n": 5,
 "files": [
@@ -5618,6 +5634,15 @@
 "apps/web/src/pages/payroll/Filing.tsx",
 "apps/web/src/pages/tax/Wht50.tsx",
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "กิจการ",
+"n": 4,
+"files": [
+"apps/web/src/pages/Invite.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -6507,6 +6532,14 @@
 ]
 },
 {
+"th": "อนุมัติแล้ว",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "อัตราภาษี",
 "n": 4,
 "files": [
@@ -6595,6 +6628,14 @@
 "apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "เรียน คุณ{0}",
+"n": 4,
+"files": [
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -8626,6 +8667,15 @@
 ]
 },
 {
+"th": "อีเมลไม่ถูกต้อง",
+"n": 3,
+"files": [
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/signup-mail.ts",
+"apps/server/src/modules/signup.ts"
+]
+},
+{
 "th": "อื่น ๆ › นำเข้าข้อมูล",
 "n": 3,
 "files": [
@@ -8934,6 +8984,15 @@
 ]
 },
 {
+"th": "เหตุผล: {0}",
+"n": 3,
+"files": [
+"apps/web/src/components/DocDelete.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "เหตุผลที่ระงับ",
 "n": 3,
 "files": [
@@ -9206,13 +9265,6 @@
 "apps/server/src/modules/doc-import.ts",
 "apps/server/src/modules/master-import.ts",
 "apps/server/src/modules/trade-import.ts"
-]
-},
-{
-"th": "ไม่อนุมัติ",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -9763,6 +9815,14 @@
 ]
 },
 {
+"th": "กำลังส่ง…",
+"n": 2,
+"files": [
+"apps/web/src/pages/Signup.tsx",
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "กำหนดจุดสั่งซื้อ",
 "n": 2,
 "files": [
@@ -9782,14 +9842,6 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/reports/analysis.ts"
-]
-},
-{
-"th": "กิจการ",
-"n": 2,
-"files": [
-"apps/web/src/pages/Invite.tsx",
-"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -14339,13 +14391,6 @@
 ]
 },
 {
-"th": "อนุมัติแล้ว",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/Signups.tsx"
-]
-},
-{
 "th": "ออก",
 "n": 2,
 "files": [
@@ -14490,11 +14535,10 @@
 ]
 },
 {
-"th": "อีเมลไม่ถูกต้อง",
+"th": "อีเมลรับแจ้งเตือนใบสมัคร",
 "n": 2,
 "files": [
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/signup.ts"
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -15282,14 +15326,6 @@
 ]
 },
 {
-"th": "เหตุผล: {0}",
-"n": 2,
-"files": [
-"apps/web/src/components/DocDelete.tsx",
-"apps/web/src/pages/payroll/Runs.tsx"
-]
-},
-{
 "th": "เหตุผลที่ลดหนี้",
 "n": 2,
 "files": [
@@ -15332,6 +15368,14 @@
 "files": [
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "แจ้งผู้ให้บริการ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -15741,6 +15785,14 @@
 ]
 },
 {
+"th": "ใบสมัคร",
+"n": 2,
+"files": [
+"apps/server/src/modules/signup-mail.ts",
+"apps/server/src/modules/signup.ts"
+]
+},
+{
 "th": "ใบเพิ่มหนี้ (ของเจ้าหนี้)",
 "n": 2,
 "files": [
@@ -15791,6 +15843,14 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/doc-import.ts"
+]
+},
+{
+"th": "ได้รับใบสมัคร",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -18320,6 +18380,34 @@
 ]
 },
 {
+"th": "<b>การเก็บข้อมูลเมื่อค้างชำระหรือเลิกใช้บริการ</b>",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "<b>ขั้นตอนถัดไป</b>",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "<b>เข้าระบบครั้งแรก</b>",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "<p style=\"font-size:12px;color:#7a7f99;margin:14px 4px\">อีเมลนี้ส่งอัตโนมัติจาก Buddy Account (WTS Solutions) — ตอบกลับอีเมลนี้เพื่อติดต่อผู้ให้บริการ</p>",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "<บัญชีเครดิต>",
 "n": 1,
 "files": [
@@ -19300,6 +19388,20 @@
 ]
 },
 {
+"th": "[mail:log] ไม่ได้ส่ง (BUDDY_MAIL ไม่ใช่ cloudflare) → {0} ผู้รับ · {1}",
+"n": 1,
+"files": [
+"apps/server/src/mail/index.ts"
+]
+},
+{
+"th": "[mail] งานส่งอีเมลผิดพลาด:",
+"n": 1,
+"files": [
+"apps/server/src/mail/index.ts"
+]
+},
+{
 "th": "[ยกเลิก]",
 "n": 1,
 "files": [
@@ -19836,6 +19938,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx"
+]
+},
+{
+"th": "{0} · ส่ง {1} ครั้ง{2}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -22723,13 +22832,6 @@
 ]
 },
 {
-"th": "กำลังส่ง…",
-"n": 1,
-"files": [
-"apps/web/src/pages/Signup.tsx"
-]
-},
-{
 "th": "กำลังหา…",
 "n": 1,
 "files": [
@@ -23409,6 +23511,20 @@
 ]
 },
 {
+"th": "ขอบคุณที่สนใจ Buddy Account สำหรับ <b>{0}</b> — ขออภัย ครั้งนี้ยังไม่สามารถอนุมัติใบสมัครได้",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "ขอบคุณที่สมัครใช้ Buddy Account สำหรับ <b>{0}</b>",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "ขอลบ",
 "n": 1,
 "files": [
@@ -23861,6 +23977,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
+"th": "ข้อมูลกิจการไม่ครบ กรุณาสมัครใหม่พร้อมเลขผู้เสียภาษี",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
 ]
 },
 {
@@ -27609,6 +27732,13 @@
 ]
 },
 {
+"th": "จำลองส่งไม่สำเร็จ ({0})",
+"n": 1,
+"files": [
+"apps/server/src/mail/index.ts"
+]
+},
+{
 "th": "จำเป็นเพื่อปฏิบัติตามสัญญา (ม.24(3))",
 "n": 1,
 "files": [
@@ -28425,6 +28555,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/items.ts"
+]
+},
+{
+"th": "ชุดทดสอบ (เก็บในหน่วยความจำ)",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
 ]
 },
 {
@@ -29492,6 +29629,13 @@
 ]
 },
 {
+"th": "ตรวจสอบและอนุมัติที่หน้า ลูกค้าผู้ใช้บริการ › ใบสมัครใช้งาน",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "ตรวจอีกครั้ง",
 "n": 1,
 "files": [
@@ -29538,6 +29682,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/sync/branch.ts"
+]
+},
+{
+"th": "ตอบกลับที่ (Reply-To)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -29751,6 +29902,13 @@
 ]
 },
 {
+"th": "ตัวส่งอีเมล:",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ตัวอย่าง (เดิม → ใหม่)",
 "n": 1,
 "files": [
@@ -29804,6 +29962,20 @@
 "n": 1,
 "files": [
 "apps/web/src/components/StarterFill.tsx"
+]
+},
+{
+"th": "ตัวอย่างอีเมล",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ตัวอย่างอีเมล (ข้อมูลสมมุติ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -29965,6 +30137,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/wts-living.ts"
+]
+},
+{
+"th": "ตั้งค่าอีเมลแจ้งเตือน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ตั้งค่าเลย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -30325,6 +30511,13 @@
 ]
 },
 {
+"th": "ตามใบสมัคร (ล้างพร้อมข้อมูลติดต่อของผู้สมัคร)",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
+]
+},
+{
 "th": "ตามใบแจ้งยอดธนาคาร",
 "n": 1,
 "files": [
@@ -30497,6 +30690,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "ติดตั้งแอป Google Authenticator หรือ Microsoft Authenticator ในมือถือ (ฟรี)",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "ติดต่อตัวส่งอีเมล (Worker) ไม่ได้: {0}",
+"n": 1,
+"files": [
+"apps/server/src/mail/index.ts"
 ]
 },
 {
@@ -31172,6 +31379,13 @@
 ]
 },
 {
+"th": "ต้องเป็นอีเมลของโดเมนที่ตั้งส่งอีเมลไว้ (…@worktruesolution.net)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ต้องเลือก{0}ก่อน — พิมพ์รหัส/ชื่อเพื่อค้นหา แล้ว Enter เลือก{1}",
 "n": 1,
 "files": [
@@ -31389,10 +31603,24 @@
 ]
 },
 {
+"th": "ถ้าไม่ได้สมัครด้วยตนเอง ไม่ต้องทำอะไร — ใบสมัครจะไม่ได้รับอนุมัติ",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "ทดลองงาน",
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ทดลองใช้ถึง",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -34504,6 +34732,13 @@
 ]
 },
 {
+"th": "บันทึกค่าตั้งอีเมลแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "บันทึกค่าลดหย่อน",
 "n": 1,
 "files": [
@@ -36135,6 +36370,20 @@
 ]
 },
 {
+"th": "ปิดการส่งอีเมลที่เครื่องนี้ (บันทึกอย่างเดียว)",
+"n": 1,
+"files": [
+"apps/server/src/mail/index.ts"
+]
+},
+{
+"th": "ปิดการส่งอีเมลที่เครื่องนี้ — บันทึกอย่างเดียว (คลาวด์ตั้ง BUDDY_MAIL=cloudflare)",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
+]
+},
+{
 "th": "ปิดการใช้งานบัญชีของตัวเองไม่ได้",
 "n": 1,
 "files": [
@@ -37500,6 +37749,20 @@
 ]
 },
 {
+"th": "ผลการพิจารณาใบสมัคร",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "ผลการพิจารณาใบสมัคร Buddy Account",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "ผลตรวจ",
 "n": 1,
 "files": [
@@ -37962,6 +38225,13 @@
 ]
 },
 {
+"th": "ผู้รับแจ้งเตือนไม่เกิน 10 อีเมล",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
+]
+},
+{
 "th": "ผู้วางบิล",
 "n": 1,
 "files": [
@@ -37969,10 +38239,31 @@
 ]
 },
 {
+"th": "ผู้สมัครกดตอบกลับแล้วถึงอีเมลนี้ · ว่าง = ไม่ตั้ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ผู้สมัครเลือก: {0}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ผู้ส่ง (From)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ผู้ส่งต้องเป็นอีเมลของโดเมนที่ตั้งส่งอีเมลไว้ (…@worktruesolution.net)",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
 ]
 },
 {
@@ -38221,10 +38512,24 @@
 ]
 },
 {
+"th": "ผู้ให้บริการตรวจสอบใบสมัคร — โดยปกติภายใน 1 วันทำการ",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "ผู้ให้บริการตรวจใบสมัครแล้วติดต่อกลับ เมื่ออนุมัติแล้วเข้าระบบด้วยรหัสที่ตั้งไว้",
 "n": 1,
 "files": [
 "apps/web/src/pages/Signup.tsx"
+]
+},
+{
+"th": "ผู้ให้บริการที่จะได้รับอีเมลเมื่อมีผู้สมัครใหม่ — หลายอีเมลคั่นด้วยจุลภาค · ว่าง = ไม่ส่ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -40062,6 +40367,27 @@
 ]
 },
 {
+"th": "มีผู้สมัครใช้ Buddy Account: {0}",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "มีผู้สมัครใช้บริการใหม่",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "มีผู้สมัครใช้บริการใหม่\\n\\n{0}\\n\\nตรวจสอบและอนุมัติ: {1}",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "มีรอบเงินเดือนปกติของเดือนนี้แล้ว ({0}) — เปิดรอบเดิม หรือสร้าง \"รอบเพิ่มเติม/โบนัส\"",
 "n": 1,
 "files": [
@@ -41819,6 +42145,13 @@
 ]
 },
 {
+"th": "ยังส่งไม่ได้: {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ยังอยู่ในบัญชีและรายงานงบ เปิดกลับได้ทุกเมื่อ · ระบบบัญชี ภาษี เริ่มระบบ และรายละเอียดสินค้า/บริการ ปิดไม่ได้",
 "n": 1,
 "files": [
@@ -42589,6 +42922,13 @@
 ]
 },
 {
+"th": "ยังไม่ได้ตั้ง \"อีเมลรับแจ้งเตือนใบสมัคร\" — ผู้ให้บริการจะไม่ได้รับอีเมลเมื่อมีผู้สมัครใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ยังไม่ได้ตั้ง (ตั้งค่าระบบเงินเดือน ข้อ 1)",
 "n": 1,
 "files": [
@@ -42621,6 +42961,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "ยังไม่ได้ตั้งอีเมลรับแจ้งเตือนใบสมัคร",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
 ]
 },
 {
@@ -42670,6 +43017,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Hub.tsx"
+]
+},
+{
+"th": "ยังไม่ได้ส่ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -43951,6 +44305,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Signup.tsx"
+]
+},
+{
+"th": "รหัสผู้ใช้ที่ขอ",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -46744,6 +47105,13 @@
 "n": 1,
 "files": [
 "packages/core/src/starter-data.ts"
+]
+},
+{
+"th": "ร้านตัวอย่าง (ทดลอง)",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
 ]
 },
 {
@@ -49694,6 +50062,13 @@
 ]
 },
 {
+"th": "สมชาย ตัวอย่าง",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
+]
+},
+{
 "th": "สมดุล (Sonnet 5.5)",
 "n": 1,
 "files": [
@@ -51024,6 +51399,13 @@
 ]
 },
 {
+"th": "สแกน QR code ที่หน้าจอด้วยแอป แล้วป้อนรหัส 6 หลักจากแอป (ยืนยันตัวตนสองขั้น — บังคับทุกผู้ใช้)",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "สแกนคิวอาร์โค้ด",
 "n": 1,
 "files": [
@@ -51101,10 +51483,24 @@
 ]
 },
 {
+"th": "ส่งถึงอีเมลนี้ครบ {0} ฉบับใน 24 ชั่วโมงแล้ว (กันสแปม) — ผู้ให้บริการกดส่งอีกครั้งได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
+]
+},
+{
 "th": "ส่งทาง LINE",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ส่งผ่าน Cloudflare Email Service (Worker)",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
 ]
 },
 {
@@ -51171,6 +51567,20 @@
 ]
 },
 {
+"th": "ส่งอีกครั้ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ส่งอีเมล \"{0}\" แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "ส่งเข้าสำนักงานใหญ่แล้วล่าสุด",
 "n": 1,
 "files": [
@@ -51203,6 +51613,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "ส่งแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -51245,6 +51662,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "ส่งไม่สำเร็จ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ส่งไม่สำเร็จ ({0})",
+"n": 1,
+"files": [
+"apps/server/src/mail/index.ts"
 ]
 },
 {
@@ -52270,6 +52701,13 @@
 ]
 },
 {
+"th": "หัวเรื่อง:",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "หัวเรื่องภาษาอังกฤษ",
 "n": 1,
 "files": [
@@ -52288,6 +52726,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "หากมีข้อสงสัย หรือต้องการสมัครใหม่ ตอบกลับอีเมลนี้เพื่อติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -52396,10 +52841,24 @@
 ]
 },
 {
+"th": "อนุมัติแล้ว — เริ่มใช้ Buddy Account ได้เลย",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "อนุมัติใบสมัคร: {0}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "อนุมัติใบสมัครแล้ว — เริ่มใช้งานได้เลย",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -52949,6 +53408,13 @@
 ]
 },
 {
+"th": "อีเมลผู้รับ (ผู้สมัคร / ผู้ให้บริการ)",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
+]
+},
+{
 "th": "อื่น ๆ (ป้อนเอง/สมุดรายวัน)",
 "n": 1,
 "files": [
@@ -53446,6 +53912,13 @@
 ]
 },
 {
+"th": "เก็บรหัสสำรอง 10 ชุดไว้ในที่ปลอดภัย (ใช้แทนมือถือเมื่อมือถือหาย)",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "เก็บรหัสสำรองนี้ไว้ในที่ปลอดภัย (พิมพ์หรือบันทึกไฟล์) — ใช้เข้าระบบแทนรหัสจากแอปเมื่อมือถือหาย รหัสละ 1 ครั้ง และ",
 "n": 1,
 "files": [
@@ -53499,6 +53972,13 @@
 "n": 1,
 "files": [
 "packages/core/src/theme.ts"
+]
+},
+{
+"th": "เข้า Buddy Account",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -53569,6 +54049,13 @@
 "n": 1,
 "files": [
 "apps/server/src/botguard.ts"
+]
+},
+{
+"th": "เข้าระบบด้วยรหัสผู้ใช้ {0} และรหัสผ่านที่ตั้งไว้ตอนสมัคร",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -55217,6 +55704,13 @@
 ]
 },
 {
+"th": "เช่น owner@example.com, staff@example.com",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
 "th": "เช่น wts-living wts-pos — ตั้งแล้วกุญแจนี้ส่งเอกสาร/พิมพ์เอกสารในนามระบบอื่นไม่ได้ · ว่าง = ไม่ผูก",
 "n": 1,
 "files": [
@@ -56211,6 +56705,13 @@
 ]
 },
 {
+"th": "เปิด {0} แล้วเข้าระบบด้วยรหัสผู้ใช้ {1} และรหัสผ่านที่ตั้งไว้ตอนสมัคร",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "เปิด/ปิดระบบได้เฉพาะผู้มีสิทธิ์แก้รายละเอียดกิจการ",
 "n": 1,
 "files": [
@@ -56369,6 +56870,13 @@
 "n": 1,
 "files": [
 "apps/server/src/botguard.ts"
+]
+},
+{
+"th": "เปิดหน้าอนุมัติใบสมัคร",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -56820,6 +57328,13 @@
 ]
 },
 {
+"th": "เพิ่มพนักงาน: เริ่มระบบ › ผู้ใช้งานและสิทธิ์ › เพิ่มผู้ใช้ › \"ให้ผู้ใช้ตั้งรหัสผ่านเองจากลิงก์เชิญ\" แล้วส่งลิงก์ให้พนักงานทาง LINE",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "เพิ่มพนักงานในรอบ",
 "n": 1,
 "files": [
@@ -57191,6 +57706,13 @@
 ]
 },
 {
+"th": "เมื่ออนุมัติแล้วจะได้รับอีเมลแจ้ง พร้อมลิงก์และวิธีเข้าระบบครั้งแรก",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "เริ่ม",
 "n": 1,
 "files": [
@@ -57436,10 +57958,24 @@
 ]
 },
 {
-"th": "เรียน คุณ{0}",
+"th": "เรียน คุณ{0}\\n\\n{1}\\nเข้าใช้งาน: {2}\\n\\nเข้าระบบครั้งแรก\\n{3}\\n\\n{4}\\n\\nการเก็บข้อมูลเมื่อค้างชำระหรือเลิกใช้บริการ\\n{5}",
 "n": 1,
 "files": [
-"apps/web/src/pages/parties/Parties.tsx"
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "เรียน คุณ{0}\\n\\nขอบคุณที่สนใจ Buddy Account สำหรับ {1} — ขออภัย ครั้งนี้ยังไม่สามารถอนุมัติใบสมัครได้{2}\\n\\nหากมีข้อสงสัย หรือต้องการสมัครใหม่ ตอบกลับอีเมลนี้เพื่อติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "เรียน คุณ{0}\\n\\nขอบคุณที่สมัครใช้ Buddy Account สำหรับ {1}\\n\\nขั้นตอนถัดไป\\n{2}\\n\\nถ้าไม่ได้สมัครด้วยตนเอง ไม่ต้องทำอะไร — ใบสมัครจะไม่ได้รับอนุมัติ",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -59445,6 +59981,13 @@
 ]
 },
 {
+"th": "เวลาที่สมัคร",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "เวลาสิ้นสุด",
 "n": 1,
 "files": [
@@ -60513,6 +61056,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "แจ้งสถานะใบสมัครทางอีเมล (HANDOFF 187)",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -63274,17 +63824,17 @@
 ]
 },
 {
-"th": "ใบสมัคร",
+"th": "ใบสมัครนี้พิจารณาไปแล้ว",
 "n": 1,
 "files": [
 "apps/server/src/modules/signup.ts"
 ]
 },
 {
-"th": "ใบสมัครนี้พิจารณาไปแล้ว",
+"th": "ใบสมัครนี้สถานะไม่ตรงกับอีเมล \"{0}\"",
 "n": 1,
 "files": [
-"apps/server/src/modules/signup.ts"
+"apps/server/src/modules/signup-mail.ts"
 ]
 },
 {
@@ -63995,10 +64545,24 @@
 ]
 },
 {
+"th": "ได้รับใบสมัคร Buddy Account แล้ว — รอผู้ให้บริการอนุมัติ",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "ได้รับใบสมัครแล้ว — ผู้ให้บริการจะตรวจสอบและติดต่อกลับทางอีเมล/โทรศัพท์ เมื่ออนุมัติแล้วเข้าระบบด้วยรหัสผู้ใช้และรหัสผ่านที่ตั้งไว้",
 "n": 1,
 "files": [
 "apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "ได้รับใบสมัครแล้ว — รอผู้ให้บริการอนุมัติ",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -64905,6 +65469,13 @@
 ]
 },
 {
+"th": "ไม่พบใบสมัคร",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
+]
+},
+{
 "th": "ไม่พบใบสมัครที่รออนุมัติ",
 "n": 1,
 "files": [
@@ -64944,6 +65515,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/NewCompany.tsx"
+]
+},
+{
+"th": "ไม่มี BUDDY_SECRET_KEY — ส่งผ่าน Worker ไม่ได้",
+"n": 1,
+"files": [
+"apps/server/src/mail/index.ts"
 ]
 },
 {
@@ -65455,6 +66033,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "ไม่มีอีเมลผู้สมัคร (ลบตาม PDPA แล้ว)",
+"n": 1,
+"files": [
+"apps/server/src/modules/signup-mail.ts"
 ]
 },
 {
@@ -66057,6 +66642,13 @@
 "n": 1,
 "files": [
 "packages/core/src/etax.ts"
+]
+},
+{
+"th": "ไม่ได้ส่ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
@@ -66785,6 +67377,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "✉ ตั้งค่าอีเมลแจ้งเตือน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Signups.tsx"
 ]
 },
 {
