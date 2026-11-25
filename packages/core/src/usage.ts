@@ -14,6 +14,24 @@ export const QUOTA_LABEL: Record<QuotaKey, string> = { companies: 'บริษ�
 export const DOCS_DEFINITION = 'เอกสารที่สร้างในเดือนนั้น: เอกสารซื้อ ขาย การเงิน คลัง ทุกชนิด (รวมที่มาจาก API / WTS-POS / WTS-Living / นำเข้า Excel และที่ยกเลิกภายหลัง) + ใบสำคัญที่บันทึกเอง (ไม่นับใบสำคัญที่ระบบสร้างจากเอกสาร ค่าเสื่อม หรือปิดบัญชีสิ้นปี และข้อมูลที่ย้ายมาจาก Express)';
 export const WARN_PCT = 80;
 
+/**
+ * ผู้จ่ายค่า AI ต่อลูกค้า (HANDOFF 190 · เจ้าของ 25/11/2569 "ให้เลือกว่าใครเป็นคนจ่าย ... ลูกค้าบางรายให้เราเป็นจ่ายให้")
+ * C = ลูกค้าจ่ายเอง (ค่าเริ่มต้น): ใช้กุญแจ API ของบริษัท ค่าใช้จ่ายเรียกเก็บกับบัญชี Anthropic ของลูกค้า — ไม่นับโควตา AI ของแพ็กเกจ ไม่คิดส่วนเกิน AI
+ * P = WTS จ่ายให้: ใช้กุญแจของผู้ให้บริการ · เพดานดอลลาร์ต่อเดือนรวมทุกบริษัทของลูกค้า · นับโควตา/ส่วนเกิน AI ตามแพ็กเกจ
+ */
+export type AiPayer = 'C' | 'P';
+export const AI_PAYER_TH: Record<AiPayer, string> = { C: 'ลูกค้าจ่ายเอง', P: 'WTS จ่ายให้' };
+/** เพดานค่า AI ต่อเดือนเริ่มต้นของลูกค้าที่ WTS จ่ายให้ (ดอลลาร์สหรัฐ — ค่าเริ่มต้นของคอลัมน์ sys_tenant.ai_limit_usd) */
+export const PROVIDER_AI_LIMIT_USD = '20';
+/** ขีดจำกัดตามผู้จ่ายค่า AI: ลูกค้าจ่ายเอง = ไม่มีโควตา AI (ไม่เตือน ไม่หยุด ไม่คิดส่วนเกิน) */
+export function limitsForPayer(l: Limits, payer: AiPayer | string | null | undefined): Limits {
+  return payer === 'P' ? l : { ...l, ai: null };
+}
+/** ใช้ครบเพดานดอลลาร์แล้วหรือยัง (ว่าง = ไม่จำกัด) — ข้อความทศนิยม ไม่ใช้ number กับเงิน */
+export function aiCeilingReached(usedUsd: string, limitUsd: string | null | undefined): boolean {
+  return limitUsd !== null && limitUsd !== undefined && limitUsd !== '' && d(usedUsd).gte(limitUsd);
+}
+
 /** ขีดจำกัด (ว่าง = ไม่จำกัด) — ไฟล์เป็น MB */
 export interface Limits { companies: number | null; users: number | null; docs: number | null; file_mb: number | null; ai: number | null }
 export interface Usage { companies: number; users: number; docs: number; file_bytes: number; ai: number }

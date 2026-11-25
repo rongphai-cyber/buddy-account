@@ -3,14 +3,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { SignupsPanel } from './Signups';
+import { PlatformAiKey } from './PlatformAiKey';
 import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, toastError, useHotkeys } from '../../ui';
 import { packageBody, PackageFields, packageValues } from '../../components/PackageFields';
 import { useNavigate } from 'react-router-dom';
-import { SUSPEND_REASON_TH, TENANT_RETENTION_DAYS, tenantCountdown, tenantCountingDown, todayIso, type SuspendReason } from '@buddy/core';
+import { AI_PAYER_TH, SUSPEND_REASON_TH, TENANT_RETENTION_DAYS, tenantCountdown, tenantCountingDown, todayIso, type SuspendReason } from '@buddy/core';
 
 interface Tenant { id: string; code: string; name: string; contact_email: string | null; contact_phone: string | null; plan: string; max_companies: number | null; max_users: number | null; expires_on: string | null; status: string; company_count: number; user_count: number;
   dpa_signed_on: string | null; terminated_on: string | null; purge_after: string | null; purged_at: string | null; moved_to: string | null; single_session?: boolean; suspend_reason?: SuspendReason | null;
-  package_id?: string | null; package_name?: string | null; docs_per_month?: number | null; file_quota_mb?: number | null; ai_per_month?: number | null; over_action?: 'W' | 'S' }
+  package_id?: string | null; package_name?: string | null; docs_per_month?: number | null; file_quota_mb?: number | null; ai_per_month?: number | null; over_action?: 'W' | 'S'; ai_payer?: 'C' | 'P'; ai_limit_usd?: string | null }
 const ST: Record<string, [string, 'n' | 'd' | 'x']> = { A: ['ใช้งาน', 'n'], S: ['ระงับ', 'd'], I: ['เลิกใช้', 'x'] };
 
 /** ลูกค้าผู้ใช้บริการ (tenant) — เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม: ลูกค้าแต่ละรายมีบริษัทและผู้ใช้ของตัวเอง ข้อมูลไม่ปนกัน */
@@ -20,6 +21,7 @@ export function TenantsPage() {
   const q = useQuery({ enabled: !!me?.user.is_platform, queryKey: ['tenants'], queryFn: () => api.get<Tenant[]>('/api/v1/tenants') });
   const [edit, setEdit] = useState<Tenant | 'new' | null>(null);
   const [importing, setImporting] = useState(false);
+  const [aiKey, setAiKey] = useState(false);
   // HANDOFF 186: กรองลูกค้าที่กำลังนับวันลบ / ครบกำหนดลบ
   const [due, setDue] = useState<'' | 'counting' | 'due'>('');
   const today = todayIso();
@@ -29,7 +31,7 @@ export function TenantsPage() {
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › ลูกค้าผู้ใช้บริการ" title="ลูกค้าผู้ใช้บริการ" lead={`ลูกค้าแต่ละรายเห็นเฉพาะบริษัท ผู้ใช้ และข้อมูลของตัวเอง — ระงับแล้วผู้ใช้ทุกคนของลูกค้ารายนั้นออกจากระบบทันที · เลิกใช้บริการ หรือระงับเพราะค้างชำระ เก็บข้อมูล ${TENANT_RETENTION_DAYS} วันแล้วลบได้ (ผู้ให้บริการกดลบเอง)`}
-        actions={<><button onClick={() => setImporting(true)}>⬆ รับลูกค้าที่ย้ายมา…</button><button className="primary" onClick={() => setEdit('new')}>+ เพิ่มลูกค้า <kbd>Ins</kbd></button></>} />
+        actions={<><button onClick={() => setAiKey(true)}>🔑 AI ที่ WTS จ่ายให้…</button><button onClick={() => setImporting(true)}>⬆ รับลูกค้าที่ย้ายมา…</button><button className="primary" onClick={() => setEdit('new')}>+ เพิ่มลูกค้า <kbd>Ins</kbd></button></>} />
       <SignupsPanel onApproved={() => qc.invalidateQueries({ queryKey: ['tenants'] })} />
       <ErrorBox error={q.error} />
       <div className="toolbar"><label className="inline">แสดง <select value={due} onChange={(e) => setDue(e.target.value as typeof due)} aria-label="กรองตามกำหนดลบข้อมูล">
@@ -40,7 +42,7 @@ export function TenantsPage() {
           <tbody>
             {rows.map((t) => (
               <tr key={t.id} className="row-open" onClick={() => setEdit(t)}>
-                <td className="mono">{t.code}</td><td>{t.name}</td><td className="small">{t.contact_email} {t.contact_phone}</td><td>{t.package_name ?? <span className="muted" title={t.plan}>ไม่มีแพ็กเกจ</span>}</td>
+                <td className="mono">{t.code}</td><td>{t.name}</td><td className="small">{t.contact_email} {t.contact_phone}</td><td>{t.package_name ?? <span className="muted" title={t.plan}>ไม่มีแพ็กเกจ</span>}{t.ai_payer === 'P' && <div className="small"><Pill tone="n">AI: {AI_PAYER_TH.P}</Pill></div>}</td>
                 <td className="r">{t.company_count}{t.max_companies ? ` / ${t.max_companies}` : ''}</td><td className="r">{t.user_count}{t.max_users ? ` / ${t.max_users}` : ''}</td>
                 <td><DateText v={t.expires_on} /></td><td>{t.dpa_signed_on ? <DateText v={t.dpa_signed_on} /> : <span className="small muted">ยังไม่ลงนาม</span>}</td>
                 <td><Pill tone={ST[t.status]?.[1]}>{t.purged_at ? 'ลบข้อมูลแล้ว' : t.moved_to ? 'ย้ายแล้ว' : `${ST[t.status]?.[0]}${t.status === 'S' && t.suspend_reason ? ` — ${SUSPEND_REASON_TH[t.suspend_reason]}` : ''}`}</Pill>{t.moved_to && <div className="small muted">{t.moved_to}</div>}{t.purge_after && !t.purged_at && !t.moved_to && <div className={t.purge_after <= today ? 'small bad' : 'small muted'}>ลบได้ตั้งแต่ <DateText v={t.purge_after} />{t.purge_after <= today ? ' (ครบกำหนดแล้ว)' : ''}</div>}</td>
@@ -50,6 +52,7 @@ export function TenantsPage() {
           </tbody>
         </table>
       </div>
+      {aiKey && <PlatformAiKey onClose={() => setAiKey(false)} />}
       {importing && <ImportTenant onClose={() => setImporting(false)} onDone={() => qc.invalidateQueries({ queryKey: ['tenants'] })} />}
       {edit && <TenantForm t={edit === 'new' ? null : edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['tenants'] }); }} />}
     </div>

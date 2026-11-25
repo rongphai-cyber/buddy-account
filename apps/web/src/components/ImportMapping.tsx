@@ -9,7 +9,7 @@ import { cx, ErrorBox, Pill, toast } from '../ui';
  * ยืนยันการจับคู่ → จำไว้กับหัวตารางแบบนี้ → ขั้นตรวจเดิม · แถวที่มีคำอธิบายแต่ไม่มีรหัส → แนะนำรหัสให้ผู้ใช้เลือกยอมรับ
  */
 export type Analysis = { target: ImportMapTarget; label: string; matches: boolean; width: number; total_rows: number; preview: string[][];
-  saved: { mapping: ImportMapping; signature: string; saved_at: string } | null; ai: { available: boolean; has_key: boolean; model: string; monthly_limit_usd: number | null; month_cost_usd: string } };
+  saved: { mapping: ImportMapping; signature: string; saved_at: string } | null; ai: { available: boolean; has_key: boolean; model: string; monthly_limit_usd: number | null; month_cost_usd: string; payer?: 'C' | 'P' } };
 type Usage = { model: string; cost_usd: string; month_cost_usd: string; monthly_limit_usd: number | null };
 type FileIn = { name: string; data: string };
 export type CheckFn = (mapping: ImportMapping | null, codes: Record<string, string>) => Promise<void>;
@@ -75,7 +75,9 @@ export function ImportMapPanel({ im, busy }: { im: ImportMap; busy?: boolean }) 
   const a = im.analysis;
   if (!a) return null;
   const est = aiCost({ input_tokens: 5000, output_tokens: 900 }, a.ai.model).toFixed(4);
-  const aiNote = a.ai.available ? null : a.ai.has_key ? `ใช้ AI เดือนนี้ครบเพดานแล้ว ($${a.ai.month_cost_usd}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือจับคู่เองด้านล่าง` : 'ยังไม่ได้เปิดใช้ AI — ผู้ดูแลเปิดได้ที่ เริ่มระบบ › AI อ่านบิล (ใส่กุญแจ API) หรือจับคู่เองด้านล่าง';
+  // WTS จ่ายให้ (HANDOFF 190): เพดาน/กุญแจเป็นของผู้ให้บริการ — บอกให้ติดต่อผู้ให้บริการ
+  const aiNote = a.ai.available ? null : a.ai.payer === 'P' ? (a.ai.has_key ? `ใช้ AI ที่ WTS ดูแลให้ครบเพดานเดือนนี้แล้ว ($${a.ai.month_cost_usd} รวมทุกบริษัท) — ติดต่อผู้ให้บริการเพื่อเพิ่มเพดาน หรือจับคู่เองด้านล่าง` : 'AI ที่ WTS ดูแลให้ยังไม่พร้อม — แจ้งผู้ให้บริการ หรือจับคู่เองด้านล่าง')
+    : a.ai.has_key ? `ใช้ AI เดือนนี้ครบเพดานแล้ว ($${a.ai.month_cost_usd}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือจับคู่เองด้านล่าง` : 'ยังไม่ได้เปิดใช้ AI — ผู้ดูแลเปิดได้ที่ เริ่มระบบ › AI อ่านบิล (ใส่กุญแจ API) หรือจับคู่เองด้านล่าง';
   if (!im.review) {
     if (a.matches && !im.mapping) return <div className="im-bar muted small">แฟ้มตรงแบบฟอร์มของโปรแกรม <button type="button" className="link" onClick={im.edit}>จับคู่คอลัมน์เอง / ให้ AI จัดรูปแบบ</button></div>;
     if (!im.mapping) return null;

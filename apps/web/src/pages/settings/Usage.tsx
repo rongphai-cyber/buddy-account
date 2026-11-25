@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fmt, periodLabel, QUOTA_LABEL, RETENTION_TERMS, thisMonthTh, type QuotaKey } from '@buddy/core';
+import { AI_PAYER_TH, d, fmt, periodLabel, QUOTA_LABEL, RETENTION_TERMS, thisMonthTh, type QuotaKey } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { cx, ErrorBox, PageHead, Pill, useYearSystem } from '../../ui';
@@ -13,6 +13,8 @@ export interface UsageReport {
   over_action: 'W' | 'S'; limits: { companies: number | null; users: number | null; docs: number | null; file_mb: number | null; ai: number | null };
   usage: { companies: number; users: number; docs: number; file_bytes: number; ai: number }; rows: UsageRow[]; level: UsageRow['level'];
   companies: Array<{ id: string; code: string; name_th: string; docs: number; vouchers: number; file_bytes: number; ai: number; db_bytes?: number }>; docs_definition: string;
+  /** ผู้จ่ายค่า AI (HANDOFF 190) · เพดานดอลลาร์ (เฉพาะ WTS จ่ายให้) · ค่า AI ของเดือน (ดอลลาร์) */
+  ai_payer: 'C' | 'P'; ai_limit_usd: string | null; ai_cost_usd: string;
   overage?: { lines: Array<{ key: QuotaKey; label: string; over: string; unit: string; rate: string; amount: string; note: string }>; total: string };
 }
 export const mbText = (bytes: number) => `${(bytes / 1048576).toLocaleString('en-US', { maximumFractionDigits: 1 })} MB`;
@@ -52,14 +54,22 @@ export function UsageView({ r, provider }: { r: UsageReport; provider?: boolean 
       <div className="usage-head">
         <div><span className="muted small">แพ็กเกจ</span><b>{r.package ? `${r.package.name_th} (${r.package.code})` : 'ไม่มีแพ็กเกจ — ไม่จำกัด'}</b>{r.package && <span className="small">{fmt(r.package.price_year)} บาท/ปี (ไม่รวม VAT)</span>}</div>
         <div><span className="muted small">เมื่อไฟล์/AI ครบ 100%</span><b>{r.over_action === 'S' ? 'หยุด' : 'เตือนและคิดเงินส่วนเกิน'}</b><span className="small">เอกสารไม่หยุดเด็ดขาด</span></div>
+        <div className="usage-ai"><span className="muted small">ค่า AI อ่านบิล</span><b>{AI_PAYER_TH[r.ai_payer ?? 'C']}</b>
+          <span className="small">{r.ai_payer === 'P'
+            ? `ใช้ไป $${d(r.ai_cost_usd ?? '0').toFixed(2)} ${r.ai_limit_usd !== null ? `จากเพดาน $${d(r.ai_limit_usd).toFixed(2)}` : '(ไม่จำกัด)'} ต่อเดือน รวมทุกบริษัท · นับโควตา AI ตามแพ็กเกจ`
+            : 'ใช้กุญแจ API ของกิจการเอง (เรียกเก็บกับบัญชี Anthropic ของกิจการ) · ไม่นับโควตา ไม่คิดส่วนเกิน AI'}</span></div>
       </div>
       <div className="usage-bars">
-        {r.rows.map((x) => (
+        {r.rows.map((x) => {
+          // ลูกค้าจ่ายค่า AI เอง (HANDOFF 190): แสดงจำนวนที่อ่าน ไม่มีขีดจำกัด/ระดับเตือน
+          const own = x.key === 'ai' && r.ai_payer !== 'P';
+          return (
           <div key={x.key} className={cx('usage-bar', `lv-${x.level}`)}>
-            <div className="usage-bar-top"><b>{QUOTA_LABEL[x.key]}</b><span className="num">{usedText(x)} / {limitText(x)}{x.limit !== null && x.key !== 'files' ? ` ${UNIT[x.key]}` : ''}</span><Pill tone={LEVEL[x.level][1]}>{x.pct !== null ? `${x.pct}% · ` : ''}{LEVEL[x.level][0]}</Pill></div>
+            <div className="usage-bar-top"><b>{QUOTA_LABEL[x.key]}</b><span className="num">{own ? `${usedText(x)} ${UNIT.ai}` : <>{usedText(x)} / {limitText(x)}{x.limit !== null && x.key !== 'files' ? ` ${UNIT[x.key]}` : ''}</>}</span>{own ? <Pill tone="x">{AI_PAYER_TH.C}</Pill> : <Pill tone={LEVEL[x.level][1]}>{x.pct !== null ? `${x.pct}% · ` : ''}{LEVEL[x.level][0]}</Pill>}</div>
             <div className="usage-track" role="progressbar" aria-label={QUOTA_LABEL[x.key]} aria-valuenow={x.pct ?? 0} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${Math.min(100, x.pct ?? 0)}%` }} /></div>
           </div>
-        ))}
+          );
+        })}
       </div>
       <p className="small muted">นับเอกสาร: {r.docs_definition} · เอกสารและ AI = ของเดือนที่เลือก · ไฟล์ บริษัท ผู้ใช้ = ณ ตอนนี้</p>
       <h3>แยกตามบริษัท</h3>

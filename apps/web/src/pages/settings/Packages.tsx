@@ -112,7 +112,7 @@ function TenantUsage() {
     return (q.data?.rows ?? []).filter((r) => !overOnly || r.level === 'over').sort((a, b) => { const x = val(a), y = val(b); const c = x < y ? -1 : x > y ? 1 : 0; return sort.desc ? -c : c; });
   }, [q.data, overOnly, sort]);
   const th = (k: SortKey, label: string, r = true) => <th className={cx(r && 'r', 'sortable')} onClick={() => setSort({ k, desc: sort.k === k ? !sort.desc : k !== 'code' })} aria-sort={sort.k === k ? (sort.desc ? 'descending' : 'ascending') : 'none'}>{label}{sort.k === k ? (sort.desc ? ' ▼' : ' ▲') : ''}</th>;
-  const cell = (r: UsageReport, k: 'companies' | 'users' | 'docs' | 'ai') => { const x = r.rows.find((y) => y.key === k)!; return <td className={cx('r num', `lv-${x.level}`)}>{x.used.toLocaleString()}{x.limit !== null ? ` / ${x.limit.toLocaleString()}` : ''}</td>; };
+  const cell = (r: UsageReport, k: 'companies' | 'users' | 'docs' | 'ai') => { const x = r.rows.find((y) => y.key === k)!; return <td className={cx('r num', `lv-${x.level}`)}>{x.used.toLocaleString()}{x.limit !== null ? ` / ${x.limit.toLocaleString()}` : ''}{k === 'ai' && <div className="small muted">{r.ai_payer === 'P' ? `WTS จ่าย · $${d(r.ai_cost_usd).toFixed(2)}${r.ai_limit_usd !== null ? ` / $${d(r.ai_limit_usd).toFixed(2)}` : ''}` : 'ลูกค้าจ่ายเอง'}</div>}</td>; };
   return (
     <div className="tab-body">
       <div className="toolbar"><MonthSelect value={month} onChange={setMonth} /><label className="inline chk"><input type="checkbox" checked={overOnly} onChange={(e) => setOverOnly(e.target.checked)} /> เฉพาะที่เกินโควตา</label>

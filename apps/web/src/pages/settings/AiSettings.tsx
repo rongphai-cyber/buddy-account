@@ -7,7 +7,7 @@ import { DateText, ErrorBox, Field, PageHead, PasswordInput, Pill, toast, useHot
 import { checkOllama, localOcrOn, setLocalOcrOn, type OllamaCheck } from '../../localOcr';
 import { useUnsaved } from '../../unsaved';
 
-type Config = { model: string; has_key: boolean; key_hint: string | null; key_broken: boolean; monthly_limit_usd: number | null; month_cost_usd: string; month_count: number; available: boolean; business_type: string | null; guidance: string | null };
+type Config = { payer: 'C' | 'P'; model: string; has_key: boolean; key_hint: string | null; key_broken: boolean; monthly_limit_usd: number | null; month_cost_usd: string; month_count: number; available: boolean; business_type: string | null; guidance: string | null };
 const GUIDE_EXAMPLE = `ตัวอย่าง:
 - ซื้อสินค้ามาขายต่อ (เสื้อผ้า รองเท้า) ลงเป็นรหัสสินค้า
 - ค่าน้ำมันรถส่งของ ลงรหัส 95-5300-01 ค่าน้ำมัน
@@ -42,7 +42,8 @@ export function AiSettingsPage() {
     if (!c || busy) return;
     setBusy(true); setErr(null);
     try {
-      await api.put('/api/v1/ai/config', { ...body, monthly_limit_usd: lim.trim() === '' ? null : Number(lim), business_type: bt || null, guidance: gd.trim() || null, model: md });
+      // WTS จ่ายให้ (HANDOFF 190): ไม่ส่งกุญแจ/เพดานของบริษัท (ใช้ของผู้ให้บริการ)
+      await api.put('/api/v1/ai/config', { ...(c.payer === 'P' ? {} : { ...body, monthly_limit_usd: lim.trim() === '' ? null : Number(lim) }), business_type: bt || null, guidance: gd.trim() || null, model: md });
       toast(body.api_key === null ? 'ลบกุญแจแล้ว' : body.api_key ? 'บันทึกกุญแจแล้ว' : 'บันทึกแล้ว');
       setKey(''); setLimit(null); setBiz(null); setGuide(null); setMdl(null);
       qc.invalidateQueries({ queryKey: ['ai-config'] }); qc.invalidateQueries({ queryKey: ['ai-status'] });
@@ -59,28 +60,33 @@ export function AiSettingsPage() {
       {c && <>
         <fieldset className="box">
           <legend>สถานะ</legend>
-          <p>{c.has_key ? <Pill tone="n">พร้อมใช้ · กุญแจ {c.key_hint}</Pill> : c.key_broken ? <Pill tone="x">กุญแจที่เก็บไว้ถอดรหัสไม่ได้ — ใส่ใหม่</Pill> : <Pill tone="c">ยังไม่ได้ใส่กุญแจ</Pill>}
-            {' '}เดือนนี้อ่านแล้ว {c.month_count} ใบ · ค่าใช้จ่าย <b>${d(c.month_cost_usd).toFixed(2)}</b>{c.monthly_limit_usd !== null ? ` จากเพดาน $${c.monthly_limit_usd}` : ' (ไม่จำกัด)'} · รุ่น <b>{aiModelLabel(c.model)}</b></p>
+          {c.payer === 'P'
+            ? <p className="ai-wts">{c.has_key ? <Pill tone="m">WTS ดูแลค่า AI ให้ · พร้อมใช้</Pill> : <Pill tone="d">WTS ดูแลค่า AI ให้ · ยังไม่พร้อม — แจ้งผู้ให้บริการ</Pill>}
+              {' '}เดือนนี้บริษัทนี้อ่านแล้ว {c.month_count} ใบ · ใช้ไป <b>${d(c.month_cost_usd).toFixed(2)}</b>{c.monthly_limit_usd !== null ? ` จากเพดาน $${d(String(c.monthly_limit_usd)).toFixed(2)}` : ' (ไม่จำกัด)'} รวมทุกบริษัทของกิจการ · รุ่น <b>{aiModelLabel(c.model)}</b>
+              {c.has_key && !c.available && <span className="bad"> · ครบเพดานเดือนนี้แล้ว — ป้อนเองได้ตามปกติ หรือติดต่อผู้ให้บริการเพื่อเพิ่มเพดาน</span>}</p>
+            : <p>{c.has_key ? <Pill tone="n">พร้อมใช้ · กุญแจ {c.key_hint}</Pill> : c.key_broken ? <Pill tone="x">กุญแจที่เก็บไว้ถอดรหัสไม่ได้ — ใส่ใหม่</Pill> : <Pill tone="c">ยังไม่ได้ใส่กุญแจ</Pill>}
+            {' '}เดือนนี้อ่านแล้ว {c.month_count} ใบ · ค่าใช้จ่าย <b>${d(c.month_cost_usd).toFixed(2)}</b>{c.monthly_limit_usd !== null ? ` จากเพดาน $${c.monthly_limit_usd}` : ' (ไม่จำกัด)'} · รุ่น <b>{aiModelLabel(c.model)}</b></p>}
         </fieldset>
         <fieldset className="box">
-          <legend>กุญแจ API ของ Anthropic</legend>
-          <Field label={c.has_key ? 'เปลี่ยนกุญแจ (ว่าง = ใช้กุญแจเดิม)' : 'กุญแจ API'} hint="สร้างที่ console.anthropic.com › API Keys (ขึ้นต้นด้วย sk-ant-) — ค่าใช้จ่ายเรียกเก็บกับบัญชี Anthropic ของคุณ">
+          <legend>{c.payer === 'P' ? 'AI ที่ WTS ดูแลให้' : 'กุญแจ API ของ Anthropic'}</legend>
+          {c.payer === 'P' && <div className="notebox" role="status">WTS ดูแลค่า AI ให้กิจการนี้ — <b>ไม่ต้องใส่กุญแจ API</b> · ค่าใช้จ่ายอยู่ในค่าบริการ ภายใต้เพดาน{c.monthly_limit_usd !== null ? ` $${d(String(c.monthly_limit_usd)).toFixed(2)}` : ''} ต่อเดือน (รวมทุกบริษัทของกิจการ) · ต้องการเพิ่มเพดานหรือใช้กุญแจของตัวเอง ติดต่อผู้ให้บริการ</div>}
+          {c.payer !== 'P' && <Field label={c.has_key ? 'เปลี่ยนกุญแจ (ว่าง = ใช้กุญแจเดิม)' : 'กุญแจ API'} hint="สร้างที่ console.anthropic.com › API Keys (ขึ้นต้นด้วย sk-ant-) — ค่าใช้จ่ายเรียกเก็บกับบัญชี Anthropic ของคุณ">
             <PasswordInput autoComplete="off" value={key} disabled={!can('edit')} placeholder={c.has_key ? `ใช้อยู่ ${c.key_hint}` : 'sk-ant-…'} onChange={(e) => setKey(e.target.value)} style={{ width: '100%' }} />
-          </Field>
+          </Field>}
           <Field label="รุ่น AI" hint="ใช้ทั้งอ่านบิลและแนะนำรหัส · ค่าใช้จ่ายต่อบิลเป็นค่าประมาณ (ขึ้นกับขนาดรูปและจำนวนรายการ) · รุ่นประหยัดอ่านบิลทั่วไปได้ดี ถ้าอ่านผิดบ่อยค่อยเปลี่ยนเป็นรุ่นที่แม่นกว่า">
             <select value={md} disabled={!can('edit')} onChange={(e) => setMdl(e.target.value)}>
               {AI_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label} · ประมาณ ${aiBillEstimate(m.id).toFixed(4)} ต่อบิล</option>)}
             </select>
           </Field>
-          <Field label="เพดานค่าใช้จ่ายต่อเดือน (ดอลลาร์สหรัฐ)" hint="ครบเพดานแล้วปุ่มอ่านบิลใช้ไม่ได้จนถึงเดือนถัดไป · ว่าง = ไม่จำกัด">
+          {c.payer !== 'P' && <Field label="เพดานค่าใช้จ่ายต่อเดือน (ดอลลาร์สหรัฐ)" hint="ครบเพดานแล้วปุ่มอ่านบิลใช้ไม่ได้จนถึงเดือนถัดไป · ว่าง = ไม่จำกัด">
             <input className="r" inputMode="decimal" value={lim} disabled={!can('edit')} onChange={(e) => setLimit(e.target.value.replace(/[^\d.]/g, ''))} style={{ width: 140 }} />
-          </Field>
+          </Field>}
           <div className="toolbar">
             <button className="primary" disabled={busy || !can('edit')} onClick={() => save(key.trim() ? { api_key: key.trim() } : {})}>บันทึก <kbd>F9</kbd></button>
-            {c.has_key && <button disabled={busy || !can('edit')} onClick={() => { if (window.confirm('ลบกุญแจ API? ปุ่มอ่านบิลจะหายจนกว่าจะใส่ใหม่')) void save({ api_key: null }); }}>ลบกุญแจ</button>}
+            {c.has_key && c.payer !== 'P' && <button disabled={busy || !can('edit')} onClick={() => { if (window.confirm('ลบกุญแจ API? ปุ่มอ่านบิลจะหายจนกว่าจะใส่ใหม่')) void save({ api_key: null }); }}>ลบกุญแจ</button>}
           </div>
-          <p className="hint">กด บันทึก ด้านล่างเพื่อบันทึกทั้งกุญแจ รุ่น เพดาน และข้อมูลสำหรับแนะนำการลงบัญชี</p>
-          <p className="hint">ข้อมูลในบิลถูกส่งไปให้ Anthropic ประมวลผลเพื่ออ่านเท่านั้น (โหมดอ่านในเครื่องนี้ก่อน: ภาพอยู่ในเครื่อง ส่งเฉพาะข้อความที่อ่านได้) · กุญแจเก็บแบบเข้ารหัส เห็นได้เฉพาะ 4 ตัวท้าย และไม่ติดไปกับแฟ้มสำรองข้อมูล (นำข้อมูลไปเครื่องอื่นต้องใส่กุญแจใหม่)</p>
+          <p className="hint">{c.payer === 'P' ? 'กด บันทึก เพื่อบันทึกรุ่น AI และข้อมูลสำหรับแนะนำการลงบัญชี' : 'กด บันทึก ด้านล่างเพื่อบันทึกทั้งกุญแจ รุ่น เพดาน และข้อมูลสำหรับแนะนำการลงบัญชี'}</p>
+          <p className="hint">ข้อมูลในบิลถูกส่งไปให้ Anthropic ประมวลผลเพื่ออ่านเท่านั้น (โหมดอ่านในเครื่องนี้ก่อน: ภาพอยู่ในเครื่อง ส่งเฉพาะข้อความที่อ่านได้){c.payer === 'P' ? '' : ' · กุญแจเก็บแบบเข้ารหัส เห็นได้เฉพาะ 4 ตัวท้าย และไม่ติดไปกับแฟ้มสำรองข้อมูล (นำข้อมูลไปเครื่องอื่นต้องใส่กุญแจใหม่)'}</p>
         </fieldset>
         <LocalOcrBox />
         <fieldset className="box">

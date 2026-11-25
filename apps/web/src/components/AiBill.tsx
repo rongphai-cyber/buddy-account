@@ -54,12 +54,12 @@ const toBase64 = (f: File) => new Promise<string>((ok, bad) => {
  * textLines = เอกสารที่บรรทัดเป็นคำอธิบาย + จำนวนเงิน (มัดจำ) — ไม่เลือกรหัส
  */
 export function AiBillButton({ target, disabled, onApply, party = 'supplier', textLines = false }: { target: string; disabled?: boolean; onApply: (r: AiBillResult) => void; party?: 'supplier' | 'customer' | 'none'; textLines?: boolean }) {
-  const st = useQuery({ queryKey: ['ai-status'], queryFn: () => api.get<{ available: boolean; has_key: boolean; monthly_limit_usd: number | null; month_cost_usd: string }>('/api/v1/ai/status'), staleTime: 60_000 });
+  const st = useQuery({ queryKey: ['ai-status'], queryFn: () => api.get<{ available: boolean; has_key: boolean; monthly_limit_usd: number | null; month_cost_usd: string; payer?: 'C' | 'P' }>('/api/v1/ai/status'), staleTime: 60_000 });
   const [open, setOpen] = useState(false);
   if (!st.data?.has_key) return null;
   return <>
     <button type="button" disabled={disabled || !st.data.available} onClick={() => setOpen(true)}
-      title={!st.data.available ? `ใช้ AI เดือนนี้ครบเพดาน ${st.data.monthly_limit_usd} ดอลลาร์แล้ว` : party === 'none' ? 'อ่านรูปหรือ PDF ของเอกสาร (สลิปธนาคาร ใบเบิก/โอนสินค้า ใบเสร็จ บิล) ด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก' : party === 'customer' ? 'อ่านรูปหรือ PDF ของเอกสารฝั่งขาย (ใบสั่งซื้อของลูกค้า บิลเขียนมือ) ด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก' : 'อ่านรูปหรือ PDF ของบิลผู้จำหน่ายด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก'}>📷 อ่านบิลด้วย AI</button>
+      title={!st.data.available ? (st.data.payer === 'P' ? `ใช้ AI ที่ WTS ดูแลให้ครบเพดานเดือนนี้แล้ว (${st.data.monthly_limit_usd} ดอลลาร์ รวมทุกบริษัท) — ป้อนเอง หรือติดต่อผู้ให้บริการ` : `ใช้ AI เดือนนี้ครบเพดาน ${st.data.monthly_limit_usd} ดอลลาร์แล้ว`) : party === 'none' ? 'อ่านรูปหรือ PDF ของเอกสาร (สลิปธนาคาร ใบเบิก/โอนสินค้า ใบเสร็จ บิล) ด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก' : party === 'customer' ? 'อ่านรูปหรือ PDF ของเอกสารฝั่งขาย (ใบสั่งซื้อของลูกค้า บิลเขียนมือ) ด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก' : 'อ่านรูปหรือ PDF ของบิลผู้จำหน่ายด้วย AI แล้วเติมเป็นร่าง — ตรวจก่อนบันทึก'}>📷 อ่านบิลด้วย AI</button>
     {open && <AiBillDialog target={target} party={party} textLines={textLines} onClose={() => setOpen(false)} onApply={(r) => { setOpen(false); onApply(r); }} />}
   </>;
 }

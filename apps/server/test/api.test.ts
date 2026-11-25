@@ -4789,7 +4789,8 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       expect((await call('POST', '/api/v1/packages', { code: 'TINY', name_th: 'ซ้ำ', price_year: '1', over_company_year: '0', over_user_year: '0', over_doc: '0', over_file_gb_month: '0', over_ai: '0' })).body.error.message).toMatch(/TINY มีอยู่แล้ว/);
       expect((await call('POST', '/api/v1/packages', { code: 'BAD', name_th: 'x', price_year: '-5', over_company_year: '0', over_user_year: '0', over_doc: '0', over_file_gb_month: '0', over_ai: '0' })).status).toBe(400);
       // ลูกค้าใหม่พร้อมแพ็กเกจ · อีกรายไม่มีแพ็กเกจ (= ไม่จำกัด)
-      expect((await call('POST', '/api/v1/tenants', { code: 'PKGA', name: 'ลูกค้าแพ็กเกจ', admin_username: 'pkga.admin', admin_name: 'ผู้ดูแลแพ็กเกจ', admin_password: 'passPkgA1234', package_id: tiny.body.id })).status).toBe(200);
+      // HANDOFF 190: โควตา/ส่วนเกิน AI ของแพ็กเกจใช้เฉพาะลูกค้าที่ WTS จ่ายค่า AI ให้ (P)
+      expect((await call('POST', '/api/v1/tenants', { code: 'PKGA', name: 'ลูกค้าแพ็กเกจ', admin_username: 'pkga.admin', admin_name: 'ผู้ดูแลแพ็กเกจ', admin_password: 'passPkgA1234', package_id: tiny.body.id, ai_payer: 'P' })).status).toBe(200);
       expect((await call('POST', '/api/v1/tenants', { code: 'PKGB', name: 'ลูกค้าไม่มีแพ็กเกจ', admin_username: 'pkgb.admin', admin_name: 'ผู้ดูแลบี', admin_password: 'passPkgB1234' })).status).toBe(200);
       const ta = ((await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; plan: string; package_name: string | null; over_action: string }>).find((t) => t.code === 'PKGA')!;
       expect([ta.plan, ta.package_name, ta.over_action]).toEqual(['TINY', 'ทดลองเล็ก', 'W']);
@@ -4886,6 +4887,128 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       const acts = (await sql<{ action: string }>`SELECT action FROM sys_activity_log WHERE action IN ('ADD_PACKAGE', 'EDIT_TENANT') AND (doc_no = 'TINY' OR row_id = ${ta.id}) ORDER BY seq`.execute(database.db)).rows.map((r) => r.action);
       expect(acts).toEqual(['ADD_PACKAGE', 'EDIT_TENANT', 'EDIT_TENANT', 'EDIT_TENANT']);
     } finally { cookie = start; }
+  });
+
+  it('HANDOFF 190: who pays for AI — WTS-paid tenant uses the platform key + tenant-wide ceiling, customer cannot switch or see the key, other tenants unaffected, AI quota/overage only for WTS-paid', async () => {
+    const start = cookie;
+    const PKEY = 'sk-ant-api03-WTSPLATFORM_' + 'w'.repeat(30) + 'pk77';
+    const used: string[] = [];
+    setAiClientFactory((apiKey) => ({ beta: { messages: { parse: async () => { used.push(apiKey); return { model: 'claude-haiku-5-5', stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 50 },
+      parsed_output: { doc_kind: 'receipt', supplier: { name: 'ร้านทดสอบ', tax_id: null, branch_no: null, address: null }, buyer: { name: 'บริษัท', tax_id: null }, doc_no: 'R-190', doc_date: '2027-01-02', price_type: 'no_vat', vat_rate: null,
+        lines: [{ description: 'น้ำดื่ม', qty: '1', unit: null, unit_price: '20', amount: '20' }], subtotal: '20', discount: null, vat_amount: null, total: '20', notes: [] } }; } } } }) as never);
+    const text = { target: 'purchase-invoices', file_name: 'r.jpg', file_size: 1000, text: 'ใบเสร็จรับเงิน ร้านทดสอบ น้ำดื่ม 1 ขวด 20.00 รวม 20.00' };
+    const noKey = (b: unknown) => expect(JSON.stringify(b)).not.toContain('WTSPLATFORM');
+    try {
+      cookie = admin;
+      // ลูกค้าใหม่ (ค่าเริ่มต้น = ลูกค้าจ่ายเอง · เพดาน 20 ดอลลาร์)
+      expect((await call('POST', '/api/v1/tenants', { code: 'AIP', name: 'ลูกค้า WTS จ่าย AI', admin_username: 'aip.admin', admin_name: 'ผู้ดูแล AIP', admin_password: 'passAip12345' })).status).toBe(200);
+      const tAip = ((await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; ai_payer: string; ai_limit_usd: string | null }>).find((t) => t.code === 'AIP')!;
+      expect([tAip.ai_payer, tAip.ai_limit_usd]).toEqual(['C', '20.00']);
+      expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_tenant WHERE ai_payer <> 'C' AND code IN ('CUSTB', 'DEMO')`.execute(database.db)).rows[0]!.n).toBe(0);   // ลูกค้าเดิม = ลูกค้าจ่ายเอง
+      expect((await login('aip.admin', 'passAip12345')).status).toBe(200);
+      const aipAdmin = cookie;
+      const c1 = (await call('POST', '/api/v1/companies', { code: 'AIP-1', name_th: 'บริษัท AIP หนึ่ง', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+      const c2 = (await call('POST', '/api/v1/companies', { code: 'AIP-2', name_th: 'บริษัท AIP สอง', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+      // ลูกค้าเปลี่ยนผู้จ่ายเองไม่ได้ (หน้าลูกค้าผู้ใช้บริการ = ผู้ให้บริการเท่านั้น)
+      expect((await call('PUT', `/api/v1/tenants/${tAip.id}`, { code: 'AIP', name: 'ลูกค้า WTS จ่าย AI', status: 'A', ai_payer: 'P' })).status).toBe(403);
+      expect((await call('PUT', '/api/v1/tenant/security', { require_mfa: false, ai_payer: 'P', ai_limit_usd: 9999 })).status).toBeLessThan(500);
+      expect((await sql<{ p: string }>`SELECT ai_payer AS p FROM sys_tenant WHERE id = ${tAip.id}`.execute(database.db)).rows[0]!.p).toBe('C');
+
+      // ผู้ให้บริการตั้ง WTS จ่ายให้ + เพดาน 0.30 ดอลลาร์
+      cookie = admin;
+      const put = (b: object) => call('PUT', `/api/v1/tenants/${tAip.id}`, { code: 'AIP', name: 'ลูกค้า WTS จ่าย AI', status: 'A', ...b });
+      expect((await put({ ai_payer: 'X' })).status).toBe(400);
+      expect((await put({ ai_payer: 'P', ai_limit_usd: '-1' })).status).toBe(400);
+      expect((await put({ ai_payer: 'P', ai_limit_usd: '0.30' })).status).toBe(200);
+      const log = (await sql<{ detail: { ai_payer: { from: string; to: string }; ai_limit_usd: { from: string; to: string } } }>`SELECT detail FROM sys_activity_log WHERE action = 'EDIT_TENANT' AND row_id = ${tAip.id} ORDER BY seq DESC LIMIT 1`.execute(database.db)).rows[0]!.detail;
+      expect(log).toMatchObject({ ai_payer: { from: 'C', to: 'P' }, ai_limit_usd: { from: '20.00', to: '0.30' } });
+      expect((await put({})).status).toBe(200);   // ไม่ส่ง = คงค่าเดิม
+      expect((await sql<{ p: string; l: string }>`SELECT ai_payer AS p, ai_limit_usd::text AS l FROM sys_tenant WHERE id = ${tAip.id}`.execute(database.db)).rows[0]).toEqual({ p: 'P', l: '0.30' });
+
+      // ยังไม่มีกุญแจของผู้ให้บริการ → บอกให้แจ้งผู้ให้บริการ (ไม่เรียก AI)
+      cookie = aipAdmin;
+      await call('POST', '/api/v1/auth/select', { company_id: c1 });
+      expect((await call('GET', '/api/v1/ai/status')).body).toMatchObject({ payer: 'P', has_key: false, available: false });
+      expect((await call('POST', '/api/v1/ai/read-bill-text', text)).body.error.message).toMatch(/WTS ดูแลให้ยังไม่พร้อม/);
+      expect(used).toEqual([]);
+
+      // กุญแจของผู้ให้บริการ: ผู้ให้บริการเท่านั้น · เก็บแบบเข้ารหัส · คืนเฉพาะ 4 ตัวท้าย
+      expect((await call('GET', '/api/v1/platform/ai-key')).status).toBe(403);
+      expect((await call('PUT', '/api/v1/platform/ai-key', { api_key: PKEY })).status).toBe(403);
+      cookie = '';
+      expect((await call('GET', '/api/v1/platform/ai-key')).status).toBe(401);
+      cookie = admin;
+      expect((await call('PUT', '/api/v1/platform/ai-key', { api_key: 'not-a-key' })).body.error.message).toMatch(/sk-ant-/);
+      const set = await call('PUT', '/api/v1/platform/ai-key', { api_key: PKEY });
+      expect(set.body).toMatchObject({ has_key: true, key_hint: '…pk77', tenants: expect.arrayContaining([expect.objectContaining({ code: 'AIP', ai_limit_usd: '0.30' })]) });
+      noKey(set.body); noKey((await call('GET', '/api/v1/platform/ai-key')).body); noKey((await call('GET', '/api/v1/tenants')).body);
+      const stored = (await sql<{ v: string }>`SELECT value::text AS v FROM sys_platform_setting WHERE key = 'ai.platform_key' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.v;
+      expect(stored).not.toContain('WTSPLATFORM');
+      const klog = (await sql<{ detail: unknown }>`SELECT detail FROM sys_activity_log WHERE action = 'AI_PLATFORM_KEY_SET' ORDER BY seq DESC LIMIT 1`.execute(database.db)).rows[0]!.detail;
+      expect(klog).toEqual({ hint: '…pk77' }); noKey(klog);
+
+      // ลูกค้า P: ใช้กุญแจของผู้ให้บริการ (ไม่เห็นแม้ 4 ตัวท้าย) · ใส่กุญแจของบริษัทไม่ได้ · เพดานของบริษัทไม่มีผล
+      cookie = aipAdmin;
+      await call('POST', '/api/v1/auth/select', { company_id: c1 });
+      const cfg = (await call('GET', '/api/v1/ai/config')).body;
+      expect(cfg).toMatchObject({ payer: 'P', has_key: true, key_hint: null, monthly_limit_usd: 0.3, available: true, model: 'claude-haiku-5-5' });
+      noKey(cfg); noKey((await call('GET', '/api/v1/ai/status')).body);
+      expect((await call('PUT', '/api/v1/ai/config', { api_key: 'sk-ant-api03-CUSTOMER_' + 'c'.repeat(30) + 'cc11' })).body.error.message).toMatch(/WTS ดูแลค่า AI ให้/);
+      const pc = await call('PUT', '/api/v1/ai/config', { monthly_limit_usd: 999, model: 'claude-haiku-5-5', ai_payer: 'C' });
+      expect(pc.body).toMatchObject({ payer: 'P', monthly_limit_usd: 0.3 });
+      noKey(pc.body);
+      const r1 = await call('POST', '/api/v1/ai/read-bill-text', text);
+      expect(r1.status, JSON.stringify(r1.body)).toBe(200);
+      expect(used).toEqual([PKEY]);
+      noKey(r1.body);
+      // เพดานรวมทุกบริษัทของลูกค้า: ใช้ที่บริษัทที่สองแล้วครบ → บริษัทแรกใช้ไม่ได้ · ค่าใช้ของลูกค้าอื่นไม่นับ
+      const demo = (await sql<{ id: string }>`SELECT c.id FROM sys_company c JOIN sys_tenant t ON t.id = c.tenant_id WHERE t.code <> 'AIP' AND c.deleted_at IS NULL ORDER BY c.code LIMIT 1`.execute(database.db)).rows[0]!.id;
+      await sql`INSERT INTO sys_ai_usage (company_id, purpose, status, file_name, cost_usd) VALUES (${demo}, 'BILL', 'OK', 'other-tenant.jpg', 50)`.execute(database.db);
+      await sql`INSERT INTO sys_ai_usage (company_id, purpose, status, file_name, cost_usd) VALUES (${c2}, 'BILL', 'OK', 'c2.jpg', 0.2)`.execute(database.db);
+      const mid = (await call('GET', '/api/v1/ai/config')).body;
+      expect(Number(mid.month_cost_usd)).toBeGreaterThanOrEqual(0.2);   // รวมบริษัทที่สองของลูกค้าเดียวกัน
+      expect(Number(mid.month_cost_usd)).toBeLessThan(0.3);   // ไม่รวม 50 ดอลลาร์ของลูกค้าอื่น
+      expect(mid.available).toBe(true);
+      await sql`INSERT INTO sys_ai_usage (company_id, purpose, status, file_name, cost_usd) VALUES (${c2}, 'BILL', 'OK', 'c2b.jpg', 0.1)`.execute(database.db);
+      const capped = await call('POST', '/api/v1/ai/read-bill-text', text);
+      expect([capped.status, capped.body.error.message]).toEqual([400, expect.stringMatching(/ครบเพดานเดือนนี้แล้ว \(0\.30 ดอลลาร์ รวมทุกบริษัทของกิจการ/)]);
+      expect(used.length).toBe(1);
+      expect((await call('GET', '/api/v1/ai/status')).body).toMatchObject({ payer: 'P', available: false });
+      // ฟังก์ชันในฐานข้อมูล: ในขอบเขตบริษัทหนึ่ง ถามยอดของบริษัท/ลูกค้าอื่นไม่ได้
+      await expect(database.db.transaction().execute(async (tx) => {
+        await sql`SELECT set_config('app.company_id', ${c1}, true)`.execute(tx);
+        await sql`SELECT sys_tenant_ai_month_cost(${demo}::uuid)`.execute(tx);
+      })).rejects.toThrow(/outside the current scope/);
+
+      // ลูกค้าจ่ายเอง (CUSTB): ยังใช้กุญแจของบริษัทตัวเอง — ไม่ได้ใช้กุญแจของผู้ให้บริการ
+      cookie = '';
+      expect((await call('POST', '/api/v1/auth/login', { username: 'b.admin', password: 'passB1234' })).status).toBe(200);
+      const bCo = (await call('GET', '/api/v1/auth/me')).body.companies[0].id;
+      await call('POST', '/api/v1/auth/select', { company_id: bCo });
+      expect((await call('GET', '/api/v1/ai/config')).body).toMatchObject({ payer: 'C', has_key: false });
+      expect((await call('POST', '/api/v1/ai/read-bill-text', text)).body.error.message).toMatch(/ยังไม่ได้ตั้งค่า AI/);
+      expect(used.length).toBe(1);
+      // การใช้งาน: ลูกค้าจ่ายเอง = AI ไม่นับโควตา (ไม่จำกัด · ไม่เตือน)
+      const ub = (await call('GET', '/api/v1/usage')).body;
+      expect([ub.ai_payer, ub.ai_limit_usd, ub.limits.ai, ub.rows.find((r: { key: string }) => r.key === 'ai').level]).toEqual(['C', null, null, 'none']);
+
+      // ลูกค้า P: เห็นผู้จ่าย เพดาน และค่าใช้รวม
+      cookie = aipAdmin;
+      const ua = (await call('GET', '/api/v1/usage')).body;
+      expect([ua.ai_payer, ua.ai_limit_usd]).toEqual(['P', '0.30']);
+      expect(Number(ua.ai_cost_usd)).toBeGreaterThanOrEqual(0.3);
+      noKey(ua);
+      // PKGA (P ใน HANDOFF 185) ยังคิดส่วนเกิน AI ตามแพ็กเกจ · ลูกค้าจ่ายเองไม่มีบรรทัด AI ในรายงานส่วนเกิน
+      cookie = admin;
+      const all = (await call('GET', '/api/v1/admin/usage')).body.rows as Array<{ tenant: { code: string }; ai_payer: string; overage: { lines: Array<{ key: string }> } }>;
+      expect(all.filter((r) => r.ai_payer === 'C').every((r) => !r.overage.lines.some((x) => x.key === 'ai'))).toBe(true);
+      expect(all.find((r) => r.tenant.code === 'AIP')!.ai_payer).toBe('P');
+    } finally {
+      cookie = admin;
+      await call('PUT', '/api/v1/platform/ai-key', { api_key: null });
+      expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_platform_setting WHERE key = 'ai.platform_key' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(0);
+      cookie = start;
+    }
   });
 
   it('HANDOFF 186: 30-day retention — unpaid suspension and termination count down, other suspension and reactivation do not, no extension, sign-in tells the deletion date, provider can hand over a backup, purge refused before the date, provider only, logged', async () => {

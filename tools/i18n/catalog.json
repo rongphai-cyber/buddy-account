@@ -75,7 +75,7 @@
 },
 {
 "th": "บันทึก",
-"n": 111,
+"n": 112,
 "files": [
 "apps/web/src/unsaved.tsx",
 "apps/web/src/components/AddressHistory.tsx",
@@ -129,6 +129,7 @@
 "apps/web/src/pages/settings/Packages.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx",
 "apps/web/src/pages/settings/PrintForms.tsx",
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/web/src/pages/settings/Sync.tsx",
@@ -189,7 +190,7 @@
 },
 {
 "th": "สถานะ",
-"n": 89,
+"n": 90,
 "files": [
 "apps/web/src/components/AddressHistory.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -227,6 +228,7 @@
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/web/src/pages/settings/Packages.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx",
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/web/src/pages/settings/Sync.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
@@ -333,6 +335,53 @@
 ]
 },
 {
+"th": "รหัส",
+"n": 69,
+"files": [
+"apps/web/src/components/LkSelect.tsx",
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Books.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/settings/DataTables.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Usage.tsx",
+"apps/web/src/pages/tools/MasterImport.tsx",
+"apps/server/src/modules/reports/analysis.ts",
+"apps/server/src/modules/reports/fa.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/doc-import.ts",
+"packages/core/src/master-import.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "แผนก",
 "n": 69,
 "files": [
@@ -380,52 +429,6 @@
 "packages/core/src/payroll-import.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/starter-data.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "รหัส",
-"n": 68,
-"files": [
-"apps/web/src/components/LkSelect.tsx",
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Books.tsx",
-"apps/web/src/pages/gl/Jobs.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/settings/DataTables.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Usage.tsx",
-"apps/web/src/pages/tools/MasterImport.tsx",
-"apps/server/src/modules/reports/analysis.ts",
-"apps/server/src/modules/reports/fa.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/doc-import.ts",
-"packages/core/src/master-import.ts",
-"packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
 ]
 },
@@ -730,6 +733,47 @@
 ]
 },
 {
+"th": "ปิด",
+"n": 46,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/ItemImages.tsx",
+"apps/web/src/components/ModuleSwitches.tsx",
+"apps/web/src/components/SubstituteReceipt.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/ChartTemplate.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Periods.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
+]
+},
+{
 "th": "เลขที่",
 "n": 46,
 "files": [
@@ -765,46 +809,6 @@
 "packages/core/src/payroll-forms.ts",
 "packages/core/src/payroll-import.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ปิด",
-"n": 45,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/ItemImages.tsx",
-"apps/web/src/components/ModuleSwitches.tsx",
-"apps/web/src/components/SubstituteReceipt.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/ChartTemplate.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/settings/CompaniesAdmin.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Periods.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -1134,6 +1138,35 @@
 ]
 },
 {
+"th": "รวม",
+"n": 30,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/DocTaxTabs.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/PostingTab.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx",
+"apps/web/src/pages/settings/Usage.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tools/TradeImport.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/reports.ts",
+"apps/server/src/modules/reports/gl.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/import-mapping.ts"
+]
+},
+{
 "th": "เงินเดือน",
 "n": 30,
 "files": [
@@ -1192,34 +1225,6 @@
 "packages/core/src/posting-desc.ts",
 "packages/core/src/source-totals.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "รวม",
-"n": 29,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/DocTaxTabs.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/PostingTab.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Usage.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tools/TradeImport.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/reports.ts",
-"apps/server/src/modules/reports/gl.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/import-mapping.ts"
 ]
 },
 {
@@ -2488,6 +2493,18 @@
 ]
 },
 {
+"th": "ไม่จำกัด",
+"n": 13,
+"files": [
+"apps/web/src/components/PackageFields.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Usage.tsx"
+]
+},
+{
 "th": "ทรัพย์สิน",
 "n": 12,
 "files": [
@@ -2836,14 +2853,15 @@
 ]
 },
 {
-"th": "ไม่จำกัด",
-"n": 11,
+"th": "ชื่อลูกค้า",
+"n": 10,
 "files": [
-"apps/web/src/components/PackageFields.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Usage.tsx"
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -3115,17 +3133,6 @@
 ]
 },
 {
-"th": "ชื่อลูกค้า",
-"n": 9,
-"files": [
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "ตัวอย่างการลงบัญชี",
 "n": 9,
 "files": [
@@ -3239,6 +3246,21 @@
 "packages/core/src/payroll-import.ts",
 "packages/core/src/payroll.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
+"n": 9,
+"files": [
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/ai.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/signup-mail.ts",
+"apps/server/src/modules/signup.ts",
+"apps/server/src/modules/tenant-modules.ts",
+"apps/server/src/modules/tenant-move.ts",
+"apps/server/src/modules/usage.ts"
 ]
 },
 {
@@ -3596,20 +3618,6 @@
 "apps/web/src/pages/settings/DocTypes.tsx",
 "packages/core/src/settings.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
-"n": 8,
-"files": [
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/signup-mail.ts",
-"apps/server/src/modules/signup.ts",
-"apps/server/src/modules/tenant-modules.ts",
-"apps/server/src/modules/tenant-move.ts",
-"apps/server/src/modules/usage.ts"
 ]
 },
 {
@@ -4762,6 +4770,16 @@
 ]
 },
 {
+"th": "กุญแจ API",
+"n": 5,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx",
+"apps/server/src/modules/apikeys.ts"
+]
+},
+{
 "th": "กุมภาพันธ์",
 "n": 5,
 "files": [
@@ -5644,15 +5662,6 @@
 "apps/web/src/pages/Invite.tsx",
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/server/src/mail/templates.ts"
-]
-},
-{
-"th": "กุญแจ API",
-"n": 4,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/server/src/modules/apikeys.ts"
 ]
 },
 {
@@ -6875,6 +6884,14 @@
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/server/src/modules/print.ts"
+]
+},
+{
+"th": "(ไม่จำกัด)",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Usage.tsx"
 ]
 },
 {
@@ -9861,10 +9878,18 @@
 ]
 },
 {
-"th": "กุญแจ API ที่เก็บไว้ถอดรหัสไม่ได้ (ย้ายเครื่อง?) — ผู้ดูแลใส่กุญแจใหม่ที่ เริ่มระบบ › AI อ่านบิล",
+"th": "กุญแจ API ของ Anthropic ขึ้นต้นด้วย sk-ant- — คัดลอกจาก console.anthropic.com › API Keys",
 "n": 2,
 "files": [
 "apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "กุญแจที่เก็บไว้ถอดรหัสไม่ได้ — ใส่ใหม่",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
 ]
 },
 {
@@ -10447,6 +10472,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/gl/Journals.tsx"
+]
+},
+{
+"th": "จากเพดาน ${0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -12159,6 +12191,13 @@
 ]
 },
 {
+"th": "ผู้จ่ายค่า AI",
+"n": 2,
+"files": [
+"apps/web/src/components/PackageFields.tsx"
+]
+},
+{
 "th": "ผู้จ่ายเงิน (พนักงาน)",
 "n": 2,
 "files": [
@@ -12326,6 +12365,14 @@
 "files": [
 "apps/web/src/pages/tools/DocImport.tsx",
 "apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
+"th": "พร้อมใช้ · กุญแจ {0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
 ]
 },
 {
@@ -12883,18 +12930,19 @@
 ]
 },
 {
-"th": "ยังไม่ได้ตั้งค่า AI อ่านบิล — ผู้ดูแลใส่กุญแจ API ที่ เริ่มระบบ › AI อ่านบิล",
-"n": 2,
-"files": [
-"apps/server/src/modules/ai.ts"
-]
-},
-{
 "th": "ยังไม่ได้บันทึก",
 "n": 2,
 "files": [
 "apps/web/src/pages/docs/PostingTab.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "ยังไม่ได้ใส่กุญแจ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
 ]
 },
 {
@@ -13635,6 +13683,14 @@
 ]
 },
 {
+"th": "ลบกุญแจ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
 "th": "ลบข้อมูลทั้งหมดของลูกค้า…",
 "n": 2,
 "files": [
@@ -13722,6 +13778,14 @@
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "ลูกค้าจ่ายเอง",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Packages.tsx",
+"packages/core/src/usage.ts"
 ]
 },
 {
@@ -14858,6 +14922,14 @@
 ]
 },
 {
+"th": "เปลี่ยนกุญแจ (ว่าง = ใช้กุญแจเดิม)",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
 "th": "เปลี่ยนรหัส",
 "n": 2,
 "files": [
@@ -14941,6 +15013,13 @@
 "files": [
 "apps/web/src/components/CopyChoices.tsx",
 "apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "เพดานค่า AI ต่อเดือน (ดอลลาร์สหรัฐ)",
+"n": 2,
+"files": [
+"apps/web/src/components/PackageFields.tsx"
 ]
 },
 {
@@ -15702,13 +15781,6 @@
 ]
 },
 {
-"th": "ใช้ AI เดือนนี้ครบเพดาน {0} ดอลลาร์แล้ว (ใช้ไป {1}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือป้อนเอง",
-"n": 2,
-"files": [
-"apps/server/src/modules/ai.ts"
-]
-},
-{
 "th": "ใช้งาน (Active)",
 "n": 2,
 "files": [
@@ -15724,6 +15796,14 @@
 ]
 },
 {
+"th": "ใช้อยู่ {0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
 "th": "ใช้แผนก",
 "n": 2,
 "files": [
@@ -15736,6 +15816,14 @@
 "n": 2,
 "files": [
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ใช้ได้",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -16908,13 +16996,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Usage.tsx"
-]
-},
-{
-"th": "(ไม่จำกัด)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -18633,6 +18714,34 @@
 ]
 },
 {
+"th": "AI ที่ WTS จ่ายให้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
+"th": "AI ที่ WTS ดูแลให้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "AI ที่ WTS ดูแลให้ยังไม่พร้อม (ผู้ให้บริการยังไม่ได้ตั้งกุญแจ) — แจ้งผู้ให้บริการ (WTS) หรือป้อนเอง",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "AI ที่ WTS ดูแลให้ยังไม่พร้อม — แจ้งผู้ให้บริการ หรือจับคู่เองด้านล่าง",
+"n": 1,
+"files": [
+"apps/web/src/components/ImportMapping.tsx"
+]
+},
+{
 "th": "AI ปฏิเสธการอ่านแฟ้มนี้ — ป้อนเอง",
 "n": 1,
 "files": [
@@ -19298,6 +19407,48 @@
 ]
 },
 {
+"th": "WTS จ่าย · ${0}{1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Packages.tsx"
+]
+},
+{
+"th": "WTS จ่ายให้",
+"n": 1,
+"files": [
+"packages/core/src/usage.ts"
+]
+},
+{
+"th": "WTS ดูแลค่า AI ให้ · พร้อมใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "WTS ดูแลค่า AI ให้ · ยังไม่พร้อม — แจ้งผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "WTS ดูแลค่า AI ให้กิจการนี้ —",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "WTS ดูแลค่า AI ให้กิจการนี้ — ไม่ต้องใส่กุญแจ API (ระบบใช้กุญแจของผู้ให้บริการ) · ต้องการใช้กุญแจของตัวเอง ติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "WTS-HR (ระบบบุคคลและเงินเดือน)",
 "n": 1,
 "files": [
@@ -19718,10 +19869,24 @@
 ]
 },
 {
+"th": "{0} (ใช้กุญแจของ WTS)",
+"n": 1,
+"files": [
+"apps/web/src/components/PackageFields.tsx"
+]
+},
+{
 "th": "{0} (ใบสำคัญรับรู้ค่าส่วนกลางรายปี · คืนเงินประกันยกมา)",
 "n": 1,
 "files": [
 "apps/server/src/modules/wts-living.ts"
+]
+},
+{
+"th": "{0} (ใส่กุญแจ API ของลูกค้า)",
+"n": 1,
+"files": [
+"apps/web/src/components/PackageFields.tsx"
 ]
 },
 {
@@ -20198,6 +20363,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/year-fix.ts"
+]
+},
+{
+"th": "{0} รวมทุกบริษัทของกิจการ · รุ่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -21391,6 +21563,13 @@
 ]
 },
 {
+"th": "} เดือนนี้บริษัทนี้อ่านแล้ว {0} ใบ · ใช้ไป",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
 "th": "} เดือนนี้อ่านแล้ว {0} ใบ · ค่าใช้จ่าย",
 "n": 1,
 "files": [
@@ -21503,6 +21682,13 @@
 ]
 },
 {
+"th": "· กุญแจเก็บแบบเข้ารหัส เห็นได้เฉพาะ 4 ตัวท้าย และไม่ติดไปกับแฟ้มสำรองข้อมูล (นำข้อมูลไปเครื่องอื่นต้องใส่กุญแจใหม่)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
 "th": "· ข้อมูลเป็น JSON (UTF-8) ·",
 "n": 1,
 "files": [
@@ -21521,6 +21707,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/RepostPanel.tsx"
+]
+},
+{
+"th": "· ครบเพดานเดือนนี้แล้ว — ป้อนเองได้ตามปกติ หรือติดต่อผู้ให้บริการเพื่อเพิ่มเพดาน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -21549,6 +21742,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/Dashboard.tsx"
+]
+},
+{
+"th": "· ค่าใช้จ่ายอยู่ในค่าบริการ ภายใต้เพดาน{0} ต่อเดือน (รวมทุกบริษัทของกิจการ) · ต้องการเพิ่มเพดานหรือใช้กุญแจของตัวเอง ติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -22015,6 +22215,13 @@
 },
 {
 "th": "กด บันทึก ด้านล่างเพื่อบันทึกทั้งกุญแจ รุ่น เพดาน และข้อมูลสำหรับแนะนำการลงบัญชี",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "กด บันทึก เพื่อบันทึกรุ่น AI และข้อมูลสำหรับแนะนำการลงบัญชี",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
@@ -23260,6 +23467,13 @@
 ]
 },
 {
+"th": "กุญแจ AI ของผู้ให้บริการถอดรหัสไม่ได้ — แจ้งผู้ให้บริการ (WTS) ให้ใส่กุญแจใหม่ หรือป้อนเอง",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "กุญแจ API ของ Anthropic",
 "n": 1,
 "files": [
@@ -23267,7 +23481,21 @@
 ]
 },
 {
-"th": "กุญแจ API ของ Anthropic ขึ้นต้นด้วย sk-ant- — คัดลอกจาก console.anthropic.com › API Keys",
+"th": "กุญแจ API ของ Anthropic (ของ WTS)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
+"th": "กุญแจ API ของ WTS",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
+"th": "กุญแจ API ที่เก็บไว้ถอดรหัสไม่ได้ (ย้ายเครื่อง?) — ผู้ดูแลใส่กุญแจใหม่ที่ เริ่มระบบ › AI อ่านบิล",
 "n": 1,
 "files": [
 "apps/server/src/modules/ai.ts"
@@ -23341,13 +23569,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/ApiKeys.tsx"
-]
-},
-{
-"th": "กุญแจที่เก็บไว้ถอดรหัสไม่ได้ — ใส่ใหม่",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -24331,7 +24552,7 @@
 ]
 },
 {
-"th": "ข้อมูลในบิลถูกส่งไปให้ Anthropic ประมวลผลเพื่ออ่านเท่านั้น (โหมดอ่านในเครื่องนี้ก่อน: ภาพอยู่ในเครื่อง ส่งเฉพาะข้อความที่อ่านได้) · กุญแจเก็บแบบเข้ารหัส เห็นได้เฉพาะ 4 ตัวท้าย และไม่ติดไปกับแฟ้มสำรองข้อมูล (นำข้อมูลไปเครื่องอื่นต้องใส่กุญแจใหม่)",
+"th": "ข้อมูลในบิลถูกส่งไปให้ Anthropic ประมวลผลเพื่ออ่านเท่านั้น (โหมดอ่านในเครื่องนี้ก่อน: ภาพอยู่ในเครื่อง ส่งเฉพาะข้อความที่อ่านได้){0}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
@@ -24475,6 +24696,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ครบเพดานแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
 ]
 },
 {
@@ -25679,6 +25907,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll.ts"
+]
+},
+{
+"th": "ค่า AI อ่านบิล",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Usage.tsx"
 ]
 },
 {
@@ -27338,13 +27573,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/ReportCenter.tsx"
-]
-},
-{
-"th": "จากเพดาน ${0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -30390,6 +30618,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/sync/branch.ts"
+]
+},
+{
+"th": "ตั้งเมื่อ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
 ]
 },
 {
@@ -33977,6 +34212,13 @@
 ]
 },
 {
+"th": "บัญชี AI ที่ WTS ดูแลให้ใช้ไม่ได้ชั่วคราว (กุญแจหรือเครดิตของผู้ให้บริการ) — แจ้งผู้ให้บริการ (WTS) หรือป้อนเอง",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "บัญชี Anthropic ไม่มีสิทธิ์ใช้รุ่นนี้ หรือเครดิตหมด — ตรวจที่ console.anthropic.com › Billing",
 "n": 1,
 "files": [
@@ -34772,6 +35014,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/Accounts.tsx"
+]
+},
+{
+"th": "บันทึกกุญแจ AI ของ WTS แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
 ]
 },
 {
@@ -38198,6 +38447,13 @@
 ]
 },
 {
+"th": "ผู้จ่ายค่า AI = WTS จ่ายให้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
 "th": "ผู้ซื้อสินค้า/ผู้รับบริการ",
 "n": 1,
 "files": [
@@ -39018,13 +39274,6 @@
 },
 {
 "th": "พร้อมใช้",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx"
-]
-},
-{
-"th": "พร้อมใช้ · กุญแจ {0}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
@@ -42727,6 +42976,13 @@
 ]
 },
 {
+"th": "ยังไม่มีลูกค้าที่ WTS จ่ายค่า AI ให้ — ตั้งได้ที่ แก้ไขลูกค้า › ผู้จ่ายค่า AI",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
 "th": "ยังไม่มีวิธีชำระ",
 "n": 1,
 "files": [
@@ -43077,6 +43333,13 @@
 ]
 },
 {
+"th": "ยังไม่ได้ตั้งค่า AI อ่านบิล — ผู้ดูแลใส่กุญแจ API ที่ เริ่มระบบ › AI อ่านบิล",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "ยังไม่ได้ตั้งชื่อผู้ใช้ e-Filing ของกรมสรรพากร — ตั้งที่ ตั้งค่าระบบเงินเดือน",
 "n": 1,
 "files": [
@@ -43235,13 +43498,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/CashDocs.tsx"
-]
-},
-{
-"th": "ยังไม่ได้ใส่กุญแจ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -43711,6 +43967,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/inventory/Stock.tsx"
+]
+},
+{
+"th": "รวมทุกบริษัทของลูกค้า · ครบแล้วอ่านบิลด้วย AI ไม่ได้จนถึงเดือนถัดไป (ป้อนเองได้ตามปกติ) · ค่าเริ่มต้น {0} · ว่าง = ไม่จำกัด",
+"n": 1,
+"files": [
+"apps/web/src/components/PackageFields.tsx"
 ]
 },
 {
@@ -47718,10 +47981,17 @@
 ]
 },
 {
-"th": "ลบกุญแจ",
+"th": "ลบกุญแจ AI ของ WTS",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/AiSettings.tsx"
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
+"th": "ลบกุญแจ AI ของ WTS แล้ว — ลูกค้าที่ WTS จ่ายให้ใช้อ่านบิลด้วย AI ไม่ได้จนกว่าจะใส่ใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
 ]
 },
 {
@@ -47736,6 +48006,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "ลบกุญแจ…",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
 ]
 },
 {
@@ -48663,6 +48940,27 @@
 ]
 },
 {
+"th": "ลูกค้าที่ WTS จ่ายค่า AI ให้ — เดือนนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
+"th": "ลูกค้าที่ WTS จ่ายค่า AI ให้จะอ่านบิลด้วย AI ไม่ได้จนกว่าจะใส่กุญแจใหม่ (ป้อนเองได้ตามปกติ) — ลบหรือไม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
+"th": "ลูกค้าที่ตั้ง \"ผู้จ่ายค่า AI = WTS จ่ายให้\" (แก้ไขลูกค้าแต่ละราย) ใช้กุญแจนี้อ่านบิล — ค่าใช้จ่ายเรียกเก็บกับบัญชี Anthropic ของ WTS ภายใต้เพดานต่อเดือนของลูกค้าแต่ละราย (รวมทุกบริษัทของลูกค้า) · ลูกค้าอื่นใช้กุญแจของตัวเองตามเดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
 "th": "ลูกค้าที่ถูกระงับเข้าระบบไม่ได้ — เลือกบริษัทแล้ว \"สำรองข้อมูล\" (ตั้งรหัสผ่านแฟ้ม) ส่งแฟ้มและรหัสผ่านให้ลูกค้าแยกช่องทาง · แฟ้มนำกลับใช้ใน Buddy ได้ · ลูกค้าที่ยังเข้าระบบได้ สำรองเองได้ที่ อื่น ๆ › สำรองข้อมูล และส่งออกรายงานเป็น Excel",
 "n": 1,
 "files": [
@@ -48765,6 +49063,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/WtsConnect.tsx"
+]
+},
+{
+"th": "ลูกค้าใส่กุญแจ API ของตัวเองที่ เริ่มระบบ › AI อ่านบิล · ค่าใช้จ่ายเรียกเก็บกับบัญชี Anthropic ของลูกค้า — ไม่นับโควตา AI ไม่คิดส่วนเกิน AI",
+"n": 1,
+"files": [
+"apps/web/src/components/PackageFields.tsx"
 ]
 },
 {
@@ -49608,6 +49913,13 @@
 ]
 },
 {
+"th": "วางกุญแจ API ของ Anthropic (ขึ้นต้นด้วย sk-ant-) แล้วกดบันทึก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
 "th": "วางบิล นัดรับชำระ รับวางบิล นัดจ่ายชำระ",
 "n": 1,
 "files": [
@@ -50438,6 +50750,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
+]
+},
+{
+"th": "สร้างที่ console.anthropic.com › API Keys (ขึ้นต้นด้วย sk-ant-) · เก็บแบบเข้ารหัส ไม่แสดงกลับ (เห็นเฉพาะ 4 ตัวท้าย) · ลูกค้าไม่เห็นกุญแจนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
 ]
 },
 {
@@ -56720,13 +57039,6 @@
 ]
 },
 {
-"th": "เปลี่ยนกุญแจ (ว่าง = ใช้กุญแจเดิม)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx"
-]
-},
-{
 "th": "เปลี่ยนชื่อสินค้าในบิลขายได้",
 "n": 1,
 "files": [
@@ -57270,6 +57582,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "เพดาน/เดือน (ดอลลาร์)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
+]
+},
+{
+"th": "เพดานค่า AI เป็นดอลลาร์ ไม่ติดลบ ทศนิยมไม่เกิน 2 ตำแหน่ง ไม่เกิน 100,000 (ว่าง = ไม่จำกัด)",
+"n": 1,
+"files": [
+"apps/server/src/modules/usage.ts"
 ]
 },
 {
@@ -59748,6 +60074,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
+"th": "เลือกผู้จ่ายค่า AI: ลูกค้าจ่ายเอง หรือ WTS จ่ายให้",
+"n": 1,
+"files": [
+"apps/server/src/modules/usage.ts"
 ]
 },
 {
@@ -62971,10 +63304,38 @@
 ]
 },
 {
+"th": "ใช้ AI ที่ WTS ดูแลให้ครบเพดานเดือนนี้แล้ว (${0} รวมทุกบริษัท) — ติดต่อผู้ให้บริการเพื่อเพิ่มเพดาน หรือจับคู่เองด้านล่าง",
+"n": 1,
+"files": [
+"apps/web/src/components/ImportMapping.tsx"
+]
+},
+{
+"th": "ใช้ AI ที่ WTS ดูแลให้ครบเพดานเดือนนี้แล้ว ({0} ดอลลาร์ รวมทุกบริษัท) — ป้อนเอง หรือติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "ใช้ AI ที่ WTS ดูแลให้ครบเพดานเดือนนี้แล้ว ({0} ดอลลาร์ รวมทุกบริษัทของกิจการ · ใช้ไป {1}) — ป้อนเอง หรือติดต่อผู้ให้บริการเพื่อเพิ่มเพดาน",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
+]
+},
+{
 "th": "ใช้ AI เดือนนี้ครบเพดาน {0} ดอลลาร์แล้ว",
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "ใช้ AI เดือนนี้ครบเพดาน {0} ดอลลาร์แล้ว (ใช้ไป {1}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือป้อนเอง",
+"n": 1,
+"files": [
+"apps/server/src/modules/ai.ts"
 ]
 },
 {
@@ -63094,6 +63455,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
+]
+},
+{
+"th": "ใช้กุญแจ AI ของ WTS (ตั้งที่ปุ่ม \"AI ที่ WTS จ่ายให้…\") · นับโควตาและคิดส่วนเกิน AI ตามแพ็กเกจ · ลูกค้าไม่ต้องใส่กุญแจ",
+"n": 1,
+"files": [
+"apps/web/src/components/PackageFields.tsx"
+]
+},
+{
+"th": "ใช้กุญแจ API ของกิจการเอง (เรียกเก็บกับบัญชี Anthropic ของกิจการ) · ไม่นับโควตา ไม่คิดส่วนเกิน AI",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Usage.tsx"
 ]
 },
 {
@@ -63321,13 +63696,6 @@
 ]
 },
 {
-"th": "ใช้อยู่ {0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx"
-]
-},
-{
 "th": "ใช้ออกหนังสือรับรองหัก ณ ที่จ่าย",
 "n": 1,
 "files": [
@@ -63367,6 +63735,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/WhtCert.tsx"
+]
+},
+{
+"th": "ใช้เมื่อ WTS จ่ายค่า AI ให้ — ลูกค้าจ่ายเองไม่นับ",
+"n": 1,
+"files": [
+"apps/web/src/components/PackageFields.tsx"
 ]
 },
 {
@@ -63489,13 +63864,6 @@
 ]
 },
 {
-"th": "ใช้ได้",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
 "th": "ใช้ได้ครั้งเดียว ภายใน {0} ชั่วโมง",
 "n": 1,
 "files": [
@@ -63507,6 +63875,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ใช้ไป ${0} {1} ต่อเดือน รวมทุกบริษัท · นับโควตา AI ตามแพ็กเกจ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Usage.tsx"
+]
+},
+{
+"th": "ใช้ไป (ดอลลาร์)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/PlatformAiKey.tsx"
 ]
 },
 {
@@ -64984,6 +65366,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "ไม่ต้องใส่กุญแจ API",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx"
 ]
 },
 {
@@ -67973,6 +68362,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tax/Wht50.tsx"
+]
+},
+{
+"th": "🔑 AI ที่ WTS จ่ายให้…",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {

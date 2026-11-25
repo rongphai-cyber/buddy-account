@@ -485,7 +485,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     requirePlatform(req);
     return db.selectFrom('sys_tenant as t').select(['t.id', 't.code', 't.name', 't.contact_email', 't.contact_phone', 't.plan', 't.max_companies', 't.max_users', 't.expires_on', 't.status',
       't.dpa_signed_on', 't.terminated_on', 't.purge_after', 't.purged_at', 't.moved_to', 't.single_session',
-      't.suspend_reason', 't.package_id', 't.docs_per_month', 't.file_quota_mb', 't.ai_per_month', 't.over_action',
+      't.suspend_reason', 't.package_id', 't.docs_per_month', 't.file_quota_mb', 't.ai_per_month', 't.over_action', 't.ai_payer', 't.ai_limit_usd',
       sql<string | null>`(SELECT p.name_th FROM sys_package p WHERE p.id = t.package_id)`.as('package_name'),
       sql<number>`(SELECT count(*) FROM sys_company c WHERE c.tenant_id = t.id AND c.deleted_at IS NULL)`.as('company_count'),
       sql<number>`(SELECT count(*) FROM sys_user u WHERE u.tenant_id = t.id AND u.deleted_at IS NULL)`.as('user_count')])
@@ -570,7 +570,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const a = requirePlatform(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(tenantBody, req.body);
-    const cur = await db.selectFrom('sys_tenant').select(['status', 'suspend_reason', 'terminated_on', 'purge_after', 'purged_at']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
+    const cur = await db.selectFrom('sys_tenant').select(['status', 'suspend_reason', 'terminated_on', 'purge_after', 'purged_at', 'ai_payer', 'ai_limit_usd']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!cur) throw notFound('ลูกค้าผู้ใช้บริการ');
     if (cur.purged_at) throw badRequest('ลบข้อมูลของลูกค้ารายนี้ไปแล้ว (เลิกใช้บริการ) — แก้ไขหรือเปิดใช้อีกไม่ได้ สร้างลูกค้ารายใหม่แทน');
     if (b.moved_to && b.status !== 'I') throw badRequest('ลูกค้าที่ย้ายไปเซิร์ฟเวอร์แยกแล้วต้องมีสถานะ "เลิกใช้" ที่เครื่องนี้');
@@ -582,7 +582,10 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     await db.updateTable('sys_tenant').set({ ...b, ...end, ...pkg, suspend_reason, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, dpa_signed_on: b.dpa_signed_on ?? null, moved_to: b.moved_to ?? null, updated_by: a.userId }).where('id', '=', id).execute();
     if (b.status !== 'A') await db.updateTable('sys_session').set({ ended_at: sql`now()` as never }).where('ended_at', 'is', null).where('user_id', 'in', db.selectFrom('sys_user').select('id').where('tenant_id', '=', id)).execute();
     await logActivity(db, a, { module: 'SYS', action: 'EDIT_TENANT', table: 'sys_tenant', rowId: id, detail: { status: b.status, ...(cur.status !== b.status || cur.suspend_reason !== suspend_reason || cur.purge_after !== end.purge_after ? { from: cur.status, suspend_reason, purge_after: end.purge_after } : {}), ...(b.single_session !== undefined ? { single_session: b.single_session } : {}),
-      ...(b.package_id !== undefined ? { package: pkg.plan ?? null, docs_per_month: b.docs_per_month, file_quota_mb: b.file_quota_mb, ai_per_month: b.ai_per_month, over_action: b.over_action } : {}) } });
+      ...(b.package_id !== undefined ? { package: pkg.plan ?? null, docs_per_month: b.docs_per_month, file_quota_mb: b.file_quota_mb, ai_per_month: b.ai_per_month, over_action: b.over_action } : {}),
+      // HANDOFF 190: ผู้จ่ายค่า AI / เพดาน — บันทึกเมื่อเปลี่ยน (จาก → เป็น)
+      ...((b.ai_payer !== undefined && b.ai_payer !== cur.ai_payer) || (b.ai_limit_usd !== undefined && (b.ai_limit_usd === null ? null : Number(b.ai_limit_usd)) !== (cur.ai_limit_usd === null ? null : Number(cur.ai_limit_usd)))
+        ? { ai_payer: { from: cur.ai_payer, to: b.ai_payer ?? cur.ai_payer }, ai_limit_usd: { from: cur.ai_limit_usd, to: b.ai_limit_usd === undefined ? cur.ai_limit_usd : b.ai_limit_usd } } : {}) } });
     return { id };
   });
   /** T0.17 + HANDOFF 186: ลบข้อมูลทั้งหมดของลูกค้าที่เลิกใช้/ค้างชำระครบ TENANT_RETENTION_DAYS วันแล้ว — ผู้ให้บริการกดเอง พิมพ์รหัสลูกค้ายืนยัน · ไม่ลบอัตโนมัติ · ย้อนกลับไม่ได้ */

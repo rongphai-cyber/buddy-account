@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql, type RawBuilder } from 'kysely';
 import { z } from 'zod';
-import { DOCS_DEFINITION, effectiveLimits, monthRange, overageLines, quotaBlocked, quotaRows, thisMonthTh, worstLevel, type Limits, type OverageRates, type PackageLimits, type Usage } from '@buddy/core';
+import { DOCS_DEFINITION, effectiveLimits, limitsForPayer, monthRange, overageLines, quotaBlocked, quotaRows, thisMonthTh, worstLevel, type Limits, type OverageRates, type PackageLimits, type Usage } from '@buddy/core';
 import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -13,7 +13,7 @@ import { logActivity } from '../audit.js';
  * ไฟล์/AI ครบ 100% และลูกค้าตั้ง "หยุด": ตรวจก่อนเปิดทรานแซกชันของบริษัท (preHandler) แล้วปฏิเสธพร้อมบอกทางแก้ · เอกสารไม่หยุดเด็ดขาด
  */
 type PkgRow = PackageLimits & OverageRates & { id: string; code: string; name_th: string; price_year: string; status: string; sort_order: number; remark: string | null };
-type TenantRow = { id: string; code: string; name: string; status: string; package_id: string | null; over_action: string; max_companies: number | null; max_users: number | null; docs_per_month: number | null; file_quota_mb: number | null; ai_per_month: number | null };
+type TenantRow = { id: string; code: string; name: string; status: string; package_id: string | null; over_action: string; max_companies: number | null; max_users: number | null; docs_per_month: number | null; file_quota_mb: number | null; ai_per_month: number | null; ai_payer: string; ai_limit_usd: string | null };
 const PKG_COLS = ['id', 'code', 'name_th', 'price_year', 'max_companies', 'max_users', 'docs_per_month', 'file_quota_mb', 'ai_per_month', 'over_company_year', 'over_user_year', 'over_doc', 'over_file_gb_month', 'over_ai', 'status', 'sort_order', 'remark'] as const;
 
 async function packageOf(db: Db, id: string | null): Promise<PkgRow | null> {
@@ -21,20 +21,20 @@ async function packageOf(db: Db, id: string | null): Promise<PkgRow | null> {
   return (await db.selectFrom('sys_package').select([...PKG_COLS]).where('id', '=', id).executeTakeFirst() as PkgRow | undefined) ?? null;
 }
 async function tenantRow(db: Db, tenantId: string): Promise<TenantRow | undefined> {
-  return db.selectFrom('sys_tenant').select(['id', 'code', 'name', 'status', 'package_id', 'over_action', 'max_companies', 'max_users', 'docs_per_month', 'file_quota_mb', 'ai_per_month'])
+  return db.selectFrom('sys_tenant').select(['id', 'code', 'name', 'status', 'package_id', 'over_action', 'max_companies', 'max_users', 'docs_per_month', 'file_quota_mb', 'ai_per_month', 'ai_payer', 'ai_limit_usd'])
     .where('id', '=', tenantId).where('deleted_at', 'is', null).executeTakeFirst() as Promise<TenantRow | undefined>;
 }
-/** ขีดจำกัดที่ใช้จริงของลูกค้า (ค่าของลูกค้าทับแพ็กเกจ · ไม่มีแพ็กเกจและไม่ตั้ง = ไม่จำกัด) */
+/** ขีดจำกัดที่ใช้จริงของลูกค้า (ค่าของลูกค้าทับแพ็กเกจ · ไม่มีแพ็กเกจและไม่ตั้ง = ไม่จำกัด) · ลูกค้าจ่ายค่า AI เอง = ไม่มีโควตา AI (HANDOFF 190) */
 export async function tenantLimits(db: Db, tenantId: string): Promise<{ tenant: TenantRow; pkg: PkgRow | null; limits: Limits } | null> {
   const tenant = await tenantRow(db, tenantId);
   if (!tenant) return null;
   const pkg = await packageOf(db, tenant.package_id);
-  return { tenant, pkg, limits: effectiveLimits(pkg, tenant) };
+  return { tenant, pkg, limits: limitsForPayer(effectiveLimits(pkg, tenant), tenant.ai_payer) };
 }
 
 type CompanyUse = { id: string; code: string; name_th: string; docs: number; vouchers: number; file_bytes: number; ai: number; db_bytes?: number };
 /** การใช้งานของเดือน (เวลาไทย) ทุกบริษัทของลูกค้า + รวม */
-export async function tenantUsage(db: Db, tenantId: string, month: string, opts: { dbSize?: boolean } = {}): Promise<{ usage: Usage; companies: CompanyUse[] }> {
+export async function tenantUsage(db: Db, tenantId: string, month: string, opts: { dbSize?: boolean } = {}): Promise<{ usage: Usage; companies: CompanyUse[]; ai_cost_usd: string }> {
   const { from, to } = monthRange(month);
   const cos = await db.selectFrom('sys_company').select(['id', 'code', 'name_th']).where('tenant_id', '=', tenantId).where('deleted_at', 'is', null).orderBy('code').execute();
   const ids = cos.map((c) => c.id);
@@ -53,11 +53,14 @@ export async function tenantUsage(db: Db, tenantId: string, month: string, opts:
       UNION ALL SELECT company_id::text, bytes::bigint FROM md_item_image WHERE company_id = ANY(${idList}::uuid[]) AND deleted_at IS NULL) x GROUP BY c`);
   const ai = await by(sql<{ c: string; n: string }>`SELECT company_id::text AS c, count(*)::text AS n FROM sys_ai_usage
       WHERE company_id = ANY(${idList}::uuid[]) AND created_at >= ${from}::timestamptz AND created_at < ${to}::timestamptz AND status = 'OK' AND deleted_at IS NULL GROUP BY 1`);
+  // ค่า AI (ดอลลาร์ตามโทเคนจริง ทุกสถานะ) — ลูกค้าที่ WTS จ่ายให้ = ต้นทุนของผู้ให้บริการ (HANDOFF 190)
+  const aiCost = (await sql<{ v: string }>`SELECT coalesce(sum(cost_usd), 0)::text AS v FROM sys_ai_usage
+      WHERE company_id = ANY(${idList}::uuid[]) AND created_at >= ${from}::timestamptz AND created_at < ${to}::timestamptz AND deleted_at IS NULL`.execute(db)).rows[0]!.v;
   const dbBytes = opts.dbSize && ids.length ? await dbEstimate(db, ids) : null;
   const companies: CompanyUse[] = cos.map((c) => ({ id: c.id, code: c.code, name_th: c.name_th, docs: (docs.get(c.id) ?? 0) + (vouchers.get(c.id) ?? 0), vouchers: vouchers.get(c.id) ?? 0,
     file_bytes: files.get(c.id) ?? 0, ai: ai.get(c.id) ?? 0, ...(dbBytes ? { db_bytes: dbBytes.get(c.id) ?? 0 } : {}) }));
   const sum = (k: 'docs' | 'file_bytes' | 'ai') => companies.reduce((s, c) => s + c[k], 0);
-  return { usage: { companies: cos.length, users, docs: sum('docs'), file_bytes: sum('file_bytes'), ai: sum('ai') }, companies };
+  return { usage: { companies: cos.length, users, docs: sum('docs'), file_bytes: sum('file_bytes'), ai: sum('ai') }, companies, ai_cost_usd: aiCost };
 }
 /** ขนาดข้อมูลโดยประมาณต่อบริษัท (ผู้ให้บริการดูต้นทุน — ไม่ใช้คิดเงิน) จากตารางที่ใหญ่ที่สุด */
 const BIG_TABLES = ['doc_header', 'doc_line', 'gl_journal', 'gl_journal_line', 'tax_vat_entry', 'inv_stock_ledger', 'sys_activity_log', 'md_item', 'md_customer', 'md_supplier', 'sys_company_image', 'md_item_image'];
@@ -77,11 +80,13 @@ const pkgOut = (p: PkgRow | null) => p ? { id: p.id, code: p.code, name_th: p.na
 export async function tenantReport(db: Db, tenantId: string, month: string, provider: boolean) {
   const plan = await tenantLimits(db, tenantId);
   if (!plan) throw notFound('ลูกค้าผู้ใช้บริการ');
-  const { usage, companies } = await tenantUsage(db, tenantId, month, { dbSize: provider });
+  const { usage, companies, ai_cost_usd } = await tenantUsage(db, tenantId, month, { dbSize: provider });
   const rows = quotaRows(plan.limits, usage);
   const base = {
     month, tenant: { id: plan.tenant.id, code: plan.tenant.code, name: plan.tenant.name, status: plan.tenant.status }, package: pkgOut(plan.pkg),
     over_action: plan.tenant.over_action, limits: plan.limits, usage, rows, level: worstLevel(rows), companies, docs_definition: DOCS_DEFINITION,
+    // ผู้จ่ายค่า AI (HANDOFF 190): C = ลูกค้าจ่ายเอง (AI ไม่นับโควตา ไม่คิดส่วนเกิน) · P = WTS จ่ายให้ (เพดานดอลลาร์ต่อเดือน)
+    ai_payer: plan.tenant.ai_payer, ai_limit_usd: plan.tenant.ai_payer === 'P' ? plan.tenant.ai_limit_usd : null, ai_cost_usd,
   };
   return provider ? { ...base, overage: overageLines(plan.pkg, plan.limits, usage, rates(plan.pkg)) } : base;
 }
@@ -117,6 +122,16 @@ export const TENANT_PACKAGE_FIELDS = {
   package_id: z.string().uuid().nullable().optional().or(z.literal('').transform(() => null)),
   docs_per_month: intKeep, file_quota_mb: intKeep, ai_per_month: intKeep,
   over_action: z.enum(['W', 'S']).optional(),
+  /** ผู้จ่ายค่า AI (HANDOFF 190) — ผู้ให้บริการตั้งเท่านั้น · ไม่ส่ง = คงค่าเดิม */
+  ai_payer: z.enum(['C', 'P'], { message: 'เลือกผู้จ่ายค่า AI: ลูกค้าจ่ายเอง หรือ WTS จ่ายให้' }).optional(),
+  /** เพดานค่า AI ต่อเดือน (ดอลลาร์สหรัฐ) เมื่อ WTS จ่ายให้ · ว่าง = ไม่จำกัด · ไม่ส่ง = คงค่าเดิม */
+  ai_limit_usd: z.union([z.number(), z.string(), z.null()]).optional().transform((v, ctx) => {
+    if (v === undefined) return undefined;
+    const t = v === null ? '' : String(v).replace(/,/g, '').trim();
+    if (t === '') return null;
+    if (!/^\d+(\.\d{1,2})?$/.test(t) || Number(t) > 100000) { ctx.addIssue({ code: 'custom', message: 'เพดานค่า AI เป็นดอลลาร์ ไม่ติดลบ ทศนิยมไม่เกิน 2 ตำแหน่ง ไม่เกิน 100,000 (ว่าง = ไม่จำกัด)' }); return z.NEVER; }
+    return t;
+  }),
 };
 /** แพ็กเกจที่เลือก → ตรวจว่ามีจริง + plan = รหัสแพ็กเกจ (ไม่ส่ง = ไม่เปลี่ยน) */
 export async function packagePlan(db: Db, b: { package_id?: string | null }): Promise<{ package_id?: string | null; plan?: string }> {

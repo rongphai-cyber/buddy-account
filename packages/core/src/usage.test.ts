@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { effectiveLimits, monthRange, overageLines, quotaBlocked, quotaRows, thisMonthTh, usageLevel, usagePct, worstLevel, type PackageLimits } from './usage.js';
+import { aiCeilingReached, AI_PAYER_TH, effectiveLimits, limitsForPayer, monthRange, overageLines, quotaBlocked, quotaRows, thisMonthTh, usageLevel, usagePct, worstLevel, type PackageLimits } from './usage.js';
 
 const STD: PackageLimits = { max_companies: 1, max_users: 5, docs_per_month: 2000, file_quota_mb: 5120, ai_per_month: 100 };
 const RATES = { over_company_year: '900', over_user_year: '600', over_doc: '0.50', over_file_gb_month: '20', over_ai: '2.00' };
@@ -54,5 +54,34 @@ describe('packages and usage (HANDOFF 185)', () => {
     expect(monthRange('2026-11')).toEqual({ from: '2026-11-01T00:00:00+07:00', to: '2026-12-01T00:00:00+07:00' });
     expect(monthRange('2026-12')).toEqual({ from: '2026-12-01T00:00:00+07:00', to: '2027-01-01T00:00:00+07:00' });
     expect(thisMonthTh(Date.UTC(2026, 10, 30, 18, 0))).toBe('2026-12');   // 01:00 ของ 1 ธ.ค. เวลาไทย
+  });
+});
+
+describe('who pays for AI (HANDOFF 190)', () => {
+  const L = effectiveLimits(STD, {});
+  it('customer pays: AI is not a package quota (no warning, no stop, no overage)', () => {
+    const c = limitsForPayer(L, 'C');
+    expect(c).toEqual({ ...L, ai: null });
+    expect(limitsForPayer(L, null).ai).toBeNull();
+    const u = { companies: 1, users: 1, docs: 0, file_bytes: 0, ai: 500 };
+    expect(quotaRows(c, u).find((r) => r.key === 'ai')).toMatchObject({ used: 500, limit: null, level: 'none' });
+    expect(quotaBlocked('ai', c, u)).toBe(false);
+    expect(overageLines(STD, c, u, RATES).lines.some((x) => x.key === 'ai')).toBe(false);
+  });
+  it('WTS pays: package AI quota and overage apply', () => {
+    const p = limitsForPayer(L, 'P');
+    const u = { companies: 1, users: 1, docs: 0, file_bytes: 0, ai: 120 };
+    expect(p.ai).toBe(100);
+    expect(quotaRows(p, u).find((r) => r.key === 'ai')!.level).toBe('over');
+    expect(quotaBlocked('ai', p, u)).toBe(true);
+    expect(overageLines(STD, p, u, RATES).lines.find((x) => x.key === 'ai')).toMatchObject({ over: '20', amount: '40.00' });
+  });
+  it('dollar ceiling: reached at or above · blank = unlimited · decimal text', () => {
+    expect(aiCeilingReached('19.9999', '20.00')).toBe(false);
+    expect(aiCeilingReached('20.0000', '20.00')).toBe(true);
+    expect(aiCeilingReached('0.1', '0.10')).toBe(true);
+    expect(aiCeilingReached('999', null)).toBe(false);
+    expect(aiCeilingReached('999', '')).toBe(false);
+    expect(AI_PAYER_TH).toEqual({ C: 'ลูกค้าจ่ายเอง', P: 'WTS จ่ายให้' });
   });
 });

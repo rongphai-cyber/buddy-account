@@ -48,10 +48,12 @@ export async function createTenantWithAdmin(tx: Kysely<DB>, actor: string | null
   expires_on?: string | null; status?: string; dpa_signed_on?: string | null; single_session?: boolean; admin_username: string; admin_name: string; password_hash: string;
   // แพ็กเกจ (HANDOFF 185) — ว่าง = ไม่มีแพ็กเกจ/ตามแพ็กเกจ
   package_id?: string | null; docs_per_month?: number | null; file_quota_mb?: number | null; ai_per_month?: number | null; over_action?: 'W' | 'S';
+  // ผู้จ่ายค่า AI (HANDOFF 190) — ไม่ส่ง = ลูกค้าจ่ายเอง · เพดานไม่ส่ง = ค่าเริ่มต้นของคอลัมน์ (20 ดอลลาร์)
+  ai_payer?: 'C' | 'P'; ai_limit_usd?: string | null;
 }) {
   const row = await tx.insertInto('sys_tenant').values({ code: t.code, name: t.name, contact_email: t.contact_email ?? null, contact_phone: t.contact_phone ?? null, plan: t.plan ?? 'standard',
     max_companies: t.max_companies ?? null, max_users: t.max_users ?? null, expires_on: t.expires_on ?? null, status: t.status ?? 'A', dpa_signed_on: t.dpa_signed_on ?? null, single_session: t.single_session ?? false,
-    package_id: t.package_id ?? null, docs_per_month: t.docs_per_month ?? null, file_quota_mb: t.file_quota_mb ?? null, ai_per_month: t.ai_per_month ?? null, over_action: t.over_action ?? 'W', created_by: actor }).returning('id').executeTakeFirstOrThrow();
+    package_id: t.package_id ?? null, docs_per_month: t.docs_per_month ?? null, file_quota_mb: t.file_quota_mb ?? null, ai_per_month: t.ai_per_month ?? null, over_action: t.over_action ?? 'W', ai_payer: t.ai_payer ?? 'C', ...(t.ai_limit_usd !== undefined ? { ai_limit_usd: t.ai_limit_usd } : {}), created_by: actor }).returning('id').executeTakeFirstOrThrow();
   const g = await tx.insertInto('sys_user_group').values({ tenant_id: row.id, code: 'ADMIN', name: 'ผู้ดูแลระบบของลูกค้า', created_by: actor }).returning('id').executeTakeFirstOrThrow();
   await tx.insertInto('sys_user').values({ tenant_id: row.id, username: t.admin_username, display_name: t.admin_name, password_hash: t.password_hash, user_group_id: g.id, approval_level: 9, created_by: actor }).execute();
   // กลุ่มตั้งต้น ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ดูอย่างเดียว (HANDOFF 159) — สิทธิ์รายเมนูใส่ตอนสร้างบริษัท
@@ -78,7 +80,7 @@ const thisYearStart = () => `${new Date(Date.now() + 7 * 3600_000).getUTCFullYea
  * กฎการลงบัญชีของบริษัทใหม่ (company_id) ให้ผู้เรียกใช้ applyPostingTemplate หลัง commit
  */
 async function approve(db: Kysely<DB>, id: string, actor: string | null, o: { code?: string; plan?: string; max_companies?: number | null; max_users?: number | null; expires_on?: string | null;
-  package_id?: string | null; docs_per_month?: number | null; file_quota_mb?: number | null; ai_per_month?: number | null; over_action?: 'W' | 'S'; first_company?: boolean; starter?: StarterKey; fiscal_start?: string } = {}) {
+  package_id?: string | null; docs_per_month?: number | null; file_quota_mb?: number | null; ai_per_month?: number | null; over_action?: 'W' | 'S'; ai_payer?: 'C' | 'P'; ai_limit_usd?: string | null; first_company?: boolean; starter?: StarterKey; fiscal_start?: string } = {}) {
   const s = await db.selectFrom('sys_signup').selectAll().where('id', '=', id).where('deleted_at', 'is', null).forUpdate().executeTakeFirst();
   if (!s) throw notFound('ใบสมัคร');
   if (s.status !== 'P' || !s.password_hash) throw badRequest('ใบสมัครนี้พิจารณาไปแล้ว');
@@ -86,7 +88,7 @@ async function approve(db: Kysely<DB>, id: string, actor: string | null, o: { co
   const code = o.code ?? await newTenantCode(db, s.username);
   if (o.code && await db.selectFrom('sys_tenant').select('id').where('code', '=', o.code).executeTakeFirst()) throw conflict(`รหัสลูกค้า ${o.code} มีอยู่แล้ว`);
   const t = await createTenantWithAdmin(db, actor, { code, name: s.business_name, contact_email: s.contact_email, contact_phone: s.contact_phone, plan: o.plan, max_companies: o.max_companies,
-    max_users: o.max_users, expires_on: o.expires_on, ...(await packagePlan(db, o)), docs_per_month: o.docs_per_month, file_quota_mb: o.file_quota_mb, ai_per_month: o.ai_per_month, over_action: o.over_action, dpa_signed_on: String(new Date(s.accepted_terms_at as unknown as string).toISOString()).slice(0, 10), admin_username: s.username, admin_name: s.contact_name, password_hash: s.password_hash });
+    max_users: o.max_users, expires_on: o.expires_on, ...(await packagePlan(db, o)), docs_per_month: o.docs_per_month, file_quota_mb: o.file_quota_mb, ai_per_month: o.ai_per_month, over_action: o.over_action, ai_payer: o.ai_payer, ai_limit_usd: o.ai_limit_usd, dpa_signed_on: String(new Date(s.accepted_terms_at as unknown as string).toISOString()).slice(0, 10), admin_username: s.username, admin_name: s.contact_name, password_hash: s.password_hash });
   await db.updateTable('sys_signup').set({ status: 'A', tenant_id: t.id, password_hash: null, decided_by: actor, decided_at: sql`now()` as never, updated_by: actor }).where('id', '=', id).execute();
   await logActivity(db, { companyId: null, userId: actor }, { module: 'SYS', action: 'NEW_TENANT', docNo: code, table: 'sys_tenant', rowId: t.id, detail: { code, signup: id, auto: !actor } });
   let company: { id: string; code: string } | null = null;

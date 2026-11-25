@@ -3,11 +3,12 @@ import Anthropic from '@anthropic-ai/sdk';
 import { jsonSchemaOutputFormat } from '@anthropic-ai/sdk/helpers/json-schema';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, AI_BUSINESS_TYPES, AI_MODELS, aiCost, aiModelOf, aiRequestOptions, type AiModelId, BILL_SCHEMA, buyerTaxCheck, BILL_SYSTEM_PROMPT, BILL_SYSTEM_PROMPT_OTHER, BILL_SYSTEM_PROMPT_SALES, aiBillSide, checkTaxId, d, normalizeBill, SUGGEST_SCHEMA, SUGGEST_SYSTEM_PROMPT, suggestPrompt, textSim, type BillDraft, type RawBill, type SuggestCandidate } from '@buddy/core';
+import { AI_BILL_TARGETS, AI_BUSINESS_TYPES, AI_MODELS, aiCeilingReached, aiCost, aiModelOf, aiRequestOptions, type AiModelId, BILL_SCHEMA, buyerTaxCheck, BILL_SYSTEM_PROMPT, BILL_SYSTEM_PROMPT_OTHER, BILL_SYSTEM_PROMPT_SALES, aiBillSide, checkTaxId, d, normalizeBill, SUGGEST_SCHEMA, SUGGEST_SYSTEM_PROMPT, suggestPrompt, textSim, type BillDraft, type RawBill, type SuggestCandidate } from '@buddy/core';
 import type { Db } from '../db.js';
-import { badRequest, parse, requireCompany, type AuthContext } from '../http.js';
+import { badRequest, forbidden, parse, requireAuth, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
 import { companySettings, setSetting } from '../company-template.js';
+import { setSetting as setPlatformSetting } from './signup-mail.js';
 import { decryptSecret, encryptSecret } from '../secret.js';
 
 /**
@@ -31,6 +32,21 @@ async function apiKeyOf(db: Db, companyId: string) {
   const r = await db.selectFrom('sys_secret').select(['value_enc', 'hint']).where('company_id', '=', companyId).where('code', '=', SECRET).where('deleted_at', 'is', null).executeTakeFirst();
   return r ? { key: decryptSecret(r.value_enc), hint: r.hint } : null;
 }
+/**
+ * กุญแจ API ของผู้ให้บริการ (WTS) สำหรับลูกค้าที่ WTS จ่ายค่า AI ให้ (HANDOFF 190) — เจ้าของใส่เองที่หน้า ลูกค้าผู้ใช้บริการ
+ * เข้ารหัสด้วย encryptSecret เก็บใน sys_platform_setting · ไม่ส่งกลับหน้าจอใด ๆ (ผู้ให้บริการเห็นเฉพาะ 4 ตัวท้าย · ลูกค้าไม่เห็นแม้แต่ 4 ตัวท้าย)
+ */
+const PLATFORM_KEY = 'ai.platform_key';
+async function platformKey(db: Db) {
+  const r = await db.selectFrom('sys_platform_setting').select(['value', 'updated_at']).where('key', '=', PLATFORM_KEY).where('deleted_at', 'is', null).executeTakeFirst();
+  const v = r?.value as { enc?: string; hint?: string } | null | undefined;
+  return v?.enc ? { key: decryptSecret(v.enc), hint: v.hint ?? null, updated_at: r!.updated_at } : null;
+}
+/** ผู้จ่ายค่า AI ของบริษัท (ตามลูกค้าเจ้าของบริษัท) · P = WTS จ่ายให้ + เพดานดอลลาร์ต่อเดือนรวมทุกบริษัทของลูกค้า */
+async function payerOf(db: Db, companyId: string): Promise<{ payer: 'C' } | { payer: 'P'; limit: string | null }> {
+  const r = await db.selectFrom('sys_company as c').innerJoin('sys_tenant as t', 't.id', 'c.tenant_id').select(['t.ai_payer', 't.ai_limit_usd']).where('c.id', '=', companyId).executeTakeFirst();
+  return r?.ai_payer === 'P' ? { payer: 'P', limit: r.ai_limit_usd } : { payer: 'C' };
+}
 async function limitOf(db: Db, companyId: string): Promise<number | null> {
   const v = (await companySettings(db, companyId))[LIMIT_KEY];
   return v === undefined ? DEFAULT_LIMIT : v === null || v === '' ? null : Number(v);
@@ -40,14 +56,33 @@ async function monthUsage(db: Db, companyId: string) {
       WHERE company_id = ${companyId} AND deleted_at IS NULL AND created_at >= date_trunc('month', now())`.execute(db)).rows[0]!;
   return { cost: d(r.cost), count: r.n };
 }
+/** ค่า AI เดือนนี้รวมทุกบริษัทของลูกค้า (ฟังก์ชันในฐานข้อมูล — อ่านข้ามบริษัทของลูกค้าเดียวกันได้ ข้ามลูกค้าไม่ได้ · migration 0079) */
+async function tenantMonthCost(db: Db, companyId: string) {
+  return d((await sql<{ v: string }>`SELECT sys_tenant_ai_month_cost(${companyId}::uuid)::text AS v`.execute(db)).rows[0]!.v);
+}
 async function modelOf(db: Db, companyId: string): Promise<AiModelId> {
   return aiModelOf((await companySettings(db, companyId))[MODEL_KEY]);
 }
+/**
+ * กุญแจ เพดาน และยอดใช้ที่ใช้จริง (HANDOFF 190):
+ * ลูกค้าจ่ายเอง (C) = กุญแจของบริษัท + เพดานของบริษัท + ยอดของบริษัท (เหมือนเดิม)
+ * WTS จ่ายให้ (P) = กุญแจของผู้ให้บริการ + เพดานของลูกค้า + ยอดรวมทุกบริษัทของลูกค้า (ไม่ใช้กุญแจ/เพดานของบริษัท)
+ */
+async function plan(db: Db, companyId: string) {
+  const p = await payerOf(db, companyId);
+  const u = await monthUsage(db, companyId);
+  if (p.payer === 'P') {
+    const k = await platformKey(db);
+    return { payer: 'P' as const, key: k?.key ?? null, hint: null, broken: !!k && !k.key, has: !!k, limit: p.limit, used: await tenantMonthCost(db, companyId), count: u.count };
+  }
+  const [k, limit] = await Promise.all([apiKeyOf(db, companyId), limitOf(db, companyId)]);
+  return { payer: 'C' as const, key: k?.key ?? null, hint: k?.hint ?? null, broken: !!k && !k.key, has: !!k, limit: limit === null ? null : String(limit), used: u.cost, count: u.count };
+}
+const limitNum = (v: string | null) => (v === null ? null : Number(v));
 async function status(db: Db, companyId: string) {
-  const [k, limit, u] = await Promise.all([apiKeyOf(db, companyId), limitOf(db, companyId), monthUsage(db, companyId)]);
-  const st = await companySettings(db, companyId);
-  return { model: aiModelOf(st[MODEL_KEY]), has_key: !!k?.key, key_hint: k?.hint ?? null, key_broken: !!k && !k.key, monthly_limit_usd: limit, month_cost_usd: u.cost.toFixed(4), month_count: u.count,
-    available: !!k?.key && (limit === null || u.cost.lt(limit)), business_type: (st['ai.business_type'] as string | null) ?? null, guidance: (st['ai.guidance'] as string | null) ?? null };
+  const [p, st] = await Promise.all([plan(db, companyId), companySettings(db, companyId)]);
+  return { payer: p.payer, model: aiModelOf(st[MODEL_KEY]), has_key: !!p.key, key_hint: p.hint, key_broken: p.broken, monthly_limit_usd: limitNum(p.limit), month_cost_usd: p.used.toFixed(4), month_count: p.count,
+    available: !!p.key && !aiCeilingReached(p.used.toFixed(4), p.limit), business_type: (st['ai.business_type'] as string | null) ?? null, guidance: (st['ai.guidance'] as string | null) ?? null };
 }
 
 async function record(db: Db, a: AuthContext & { companyId: string }, v: { model?: string | null; usage?: Anthropic.Beta.BetaUsage | null; cost?: string; status: 'OK' | 'ERROR' | 'REFUSED'; file_name: string; file_size: number; message?: string | null; purpose?: 'BILL' | 'SUGGEST' | 'MAP' }) {
@@ -62,10 +97,11 @@ async function record(db: Db, a: AuthContext & { companyId: string }, v: { model
 /** เปิดใช้ AI ได้ไหม (มีกุญแจ ยังไม่ถึงเพดาน) — หน้านำเข้า Excel ซ่อนปุ่ม AI เมื่อใช้ไม่ได้ */
 export async function aiAvailability(db: Db, companyId: string) {
   const s = await status(db, companyId);
-  return { available: s.available, has_key: s.has_key, model: s.model, monthly_limit_usd: s.monthly_limit_usd, month_cost_usd: s.month_cost_usd };
+  return { available: s.available, has_key: s.has_key, model: s.model, monthly_limit_usd: s.monthly_limit_usd, month_cost_usd: s.month_cost_usd, payer: s.payer };
 }
-/** ข้อผิดพลาดจาก Anthropic → ข้อความไทยบอกวิธีแก้ */
-function aiErrorMessage(e: unknown) {
+/** ข้อผิดพลาดจาก Anthropic → ข้อความไทยบอกวิธีแก้ · WTS จ่ายให้ = กุญแจ/บัญชีของผู้ให้บริการ → แจ้งผู้ให้บริการ */
+function aiErrorMessage(e: unknown, payer: 'C' | 'P' = 'C') {
+  if (payer === 'P' && (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError)) return 'บัญชี AI ที่ WTS ดูแลให้ใช้ไม่ได้ชั่วคราว (กุญแจหรือเครดิตของผู้ให้บริการ) — แจ้งผู้ให้บริการ (WTS) หรือป้อนเอง';
   return e instanceof Anthropic.AuthenticationError ? 'กุญแจ API ไม่ถูกต้องหรือถูกยกเลิก — ผู้ดูแลตรวจที่ console.anthropic.com แล้วใส่ใหม่'
     : e instanceof Anthropic.PermissionDeniedError ? 'บัญชี Anthropic ไม่มีสิทธิ์ใช้รุ่นนี้ หรือเครดิตหมด — ตรวจที่ console.anthropic.com › Billing'
     : e instanceof Anthropic.RateLimitError ? 'เรียกใช้ถี่เกินกำหนดของบัญชี Anthropic — รอสักครู่แล้วลองใหม่'
@@ -73,13 +109,17 @@ function aiErrorMessage(e: unknown) {
     : e instanceof Anthropic.APIError ? `บริการ Anthropic ขัดข้อง (${e.status ?? 'เชื่อมต่อไม่ได้'}) — ลองใหม่ภายหลัง`
     : `เชื่อมต่อ Anthropic ไม่ได้: ${(e as Error).message.slice(0, 200)}`;
 }
-/** กุญแจและเพดานรายเดือน (ก่อนเรียก AI ทุกครั้ง) */
+/** กุญแจและเพดานรายเดือน (ก่อนเรียก AI ทุกครั้ง) — ตามผู้จ่ายค่า AI ของลูกค้า (HANDOFF 190) */
 async function aiPrecheck(db: Db, companyId: string) {
-  const key = await apiKeyOf(db, companyId);
-  if (!key?.key) throw badRequest(key ? 'กุญแจ API ที่เก็บไว้ถอดรหัสไม่ได้ (ย้ายเครื่อง?) — ผู้ดูแลใส่กุญแจใหม่ที่ เริ่มระบบ › AI อ่านบิล' : 'ยังไม่ได้ตั้งค่า AI อ่านบิล — ผู้ดูแลใส่กุญแจ API ที่ เริ่มระบบ › AI อ่านบิล');
-  const limit = await limitOf(db, companyId), used = await monthUsage(db, companyId);
-  if (limit !== null && used.cost.gte(limit)) throw badRequest(`ใช้ AI เดือนนี้ครบเพดาน ${limit} ดอลลาร์แล้ว (ใช้ไป ${used.cost.toFixed(2)}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือป้อนเอง`);
-  return { key: key.key, limit, used: used.cost, model: await modelOf(db, companyId) };
+  const p = await plan(db, companyId);
+  if (p.payer === 'P') {
+    if (!p.key) throw badRequest(p.broken ? 'กุญแจ AI ของผู้ให้บริการถอดรหัสไม่ได้ — แจ้งผู้ให้บริการ (WTS) ให้ใส่กุญแจใหม่ หรือป้อนเอง' : 'AI ที่ WTS ดูแลให้ยังไม่พร้อม (ผู้ให้บริการยังไม่ได้ตั้งกุญแจ) — แจ้งผู้ให้บริการ (WTS) หรือป้อนเอง');
+    if (aiCeilingReached(p.used.toFixed(4), p.limit)) throw badRequest(`ใช้ AI ที่ WTS ดูแลให้ครบเพดานเดือนนี้แล้ว (${d(p.limit!).toFixed(2)} ดอลลาร์ รวมทุกบริษัทของกิจการ · ใช้ไป ${p.used.toFixed(2)}) — ป้อนเอง หรือติดต่อผู้ให้บริการเพื่อเพิ่มเพดาน`);
+  } else {
+    if (!p.key) throw badRequest(p.broken ? 'กุญแจ API ที่เก็บไว้ถอดรหัสไม่ได้ (ย้ายเครื่อง?) — ผู้ดูแลใส่กุญแจใหม่ที่ เริ่มระบบ › AI อ่านบิล' : 'ยังไม่ได้ตั้งค่า AI อ่านบิล — ผู้ดูแลใส่กุญแจ API ที่ เริ่มระบบ › AI อ่านบิล');
+    if (aiCeilingReached(p.used.toFixed(4), p.limit)) throw badRequest(`ใช้ AI เดือนนี้ครบเพดาน ${limitNum(p.limit)} ดอลลาร์แล้ว (ใช้ไป ${p.used.toFixed(2)}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือป้อนเอง`);
+  }
+  return { key: p.key as string, limit: limitNum(p.limit), used: p.used, payer: p.payer, model: await modelOf(db, companyId) };
 }
 /**
  * เรียก Claude ตอบตามโครงข้อมูล (structured outputs) — นำเข้า Excel: จับคู่คอลัมน์ / แนะนำรหัส (HANDOFF 168)
@@ -96,7 +136,7 @@ export async function aiStructured(db: Db, a: AuthContext & { companyId: string 
       system: o.system, messages: [{ role: 'user', content: o.prompt }],
     });
   } catch (e) {
-    const message = aiErrorMessage(e);
+    const message = aiErrorMessage(e, pre.payer);
     await record(db, a, { status: 'ERROR', file_name: o.file_name, file_size: o.file_size, purpose: o.purpose, message });
     return { ok: false as const, status: 502, code: 'AI_FAILED', message };
   }
@@ -110,11 +150,38 @@ export async function aiStructured(db: Db, a: AuthContext & { companyId: string 
 }
 
 export function aiRoutes(app: FastifyInstance, db: Db) {
+  /* ---------------------------------------------------------------- ผู้ให้บริการ (HANDOFF 190): กุญแจ AI ของ WTS สำหรับลูกค้าที่ WTS จ่ายให้ */
+  const platform = (req: Parameters<typeof requireAuth>[0]) => { const a = requireAuth(req); if (!a.isPlatform) throw forbidden('เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม'); return a; };
+  const platformView = async () => {
+    const k = await platformKey(db);
+    const tenants = (await sql<{ id: string; code: string; name: string; status: string; ai_limit_usd: string | null; month_cost_usd: string }>`SELECT t.id, t.code, t.name, t.status, t.ai_limit_usd,
+        coalesce((SELECT sum(g.cost_usd) FROM sys_ai_usage g JOIN sys_company c ON c.id = g.company_id WHERE c.tenant_id = t.id AND g.deleted_at IS NULL AND g.created_at >= date_trunc('month', now())), 0)::text AS month_cost_usd
+       FROM sys_tenant t WHERE t.deleted_at IS NULL AND t.purged_at IS NULL AND t.ai_payer = 'P' ORDER BY t.code`.execute(db)).rows;
+    return { has_key: !!k?.key, key_broken: !!k && !k.key, key_hint: k?.hint ?? null, updated_at: k?.updated_at ?? null, tenants,
+      month_cost_usd: tenants.reduce((s, t) => s.plus(t.month_cost_usd), d(0)).toFixed(4) };
+  };
+  /** สถานะกุญแจ (เฉพาะ 4 ตัวท้าย — ไม่ส่งกุญแจกลับ) + ลูกค้าที่ WTS จ่ายให้และยอดใช้เดือนนี้ */
+  app.get('/api/v1/platform/ai-key', async (req) => { platform(req); return platformView(); });
+  /** เจ้าของใส่กุญแจเอง (null = ลบ) — เข้ารหัสก่อนเก็บ · บันทึกเหตุการณ์ (ไม่มีกุญแจในบันทึก) */
+  app.put('/api/v1/platform/ai-key', async (req) => {
+    const a = platform(req);
+    const b = parse(z.object({
+      api_key: z.string().trim().regex(/^sk-ant-[A-Za-z0-9_-]{20,}$/, 'กุญแจ API ของ Anthropic ขึ้นต้นด้วย sk-ant- — คัดลอกจาก console.anthropic.com › API Keys').nullable(),
+    }), req.body);
+    const hint = b.api_key ? `…${b.api_key.slice(-4)}` : null;
+    await db.transaction().execute(async (tx) => {
+      if (b.api_key) await setPlatformSetting(tx, PLATFORM_KEY, { enc: encryptSecret(b.api_key), hint }, a.userId);
+      else await tx.updateTable('sys_platform_setting').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('key', '=', PLATFORM_KEY).where('deleted_at', 'is', null).execute();
+      await logActivity(tx, { companyId: null, userId: a.userId }, { module: 'SYS', action: b.api_key ? 'AI_PLATFORM_KEY_SET' : 'AI_PLATFORM_KEY_REMOVE', table: 'sys_platform_setting', detail: { hint } });
+    });
+    return platformView();
+  });
+
   /** ทุกผู้ใช้ของบริษัท: เปิดใช้ได้ไหม (แสดงปุ่มอ่านบิล) */
   app.get('/api/v1/ai/status', async (req) => {
     const a = requireCompany(req);
     const s = await status(db, a.companyId);
-    return { available: s.available, has_key: s.has_key, monthly_limit_usd: s.monthly_limit_usd, month_cost_usd: s.month_cost_usd };
+    return { available: s.available, has_key: s.has_key, monthly_limit_usd: s.monthly_limit_usd, month_cost_usd: s.month_cost_usd, payer: s.payer };
   });
 
   app.get('/api/v1/ai/config', async (req) => status(db, requireCompany(req).companyId));
@@ -124,21 +191,25 @@ export function aiRoutes(app: FastifyInstance, db: Db) {
     const b = parse(z.object({
       /** ไม่ส่ง = ไม่เปลี่ยน · null = ลบกุญแจ */
       api_key: z.string().trim().regex(/^sk-ant-[A-Za-z0-9_-]{20,}$/, 'กุญแจ API ของ Anthropic ขึ้นต้นด้วย sk-ant- — คัดลอกจาก console.anthropic.com › API Keys').nullable().optional(),
-      monthly_limit_usd: z.union([z.number().min(0).max(100000), z.null()]),
+      /** ไม่ส่ง = ไม่เปลี่ยน (ลูกค้าที่ WTS จ่ายให้ใช้เพดานของผู้ให้บริการ — ค่านี้ไม่มีผล) */
+      monthly_limit_usd: z.union([z.number().min(0).max(100000), z.null()]).optional(),
       business_type: z.enum(Object.keys(AI_BUSINESS_TYPES) as [string, ...string[]]).nullable().optional(),
       guidance: z.string().max(4000, 'แนวทางยาวได้ไม่เกิน 4,000 ตัวอักษร').nullable().optional(),
       model: z.enum(AI_MODELS.map((m) => m.id) as [AiModelId, ...AiModelId[]], { message: 'เลือกรุ่น AI จากรายการ' }).optional(),
     }), req.body);
+    // HANDOFF 190: WTS จ่ายให้ = ใช้กุญแจของผู้ให้บริการ — ลูกค้าใส่/ลบกุญแจของบริษัทไม่ได้ (ผู้จ่ายค่า AI เปลี่ยนได้ที่ผู้ให้บริการเท่านั้น)
+    const payer = (await payerOf(db, a.companyId)).payer;
+    if (payer === 'P' && b.api_key !== undefined) throw badRequest('WTS ดูแลค่า AI ให้กิจการนี้ — ไม่ต้องใส่กุญแจ API (ระบบใช้กุญแจของผู้ให้บริการ) · ต้องการใช้กุญแจของตัวเอง ติดต่อผู้ให้บริการ');
     await db.transaction().execute(async (tx) => {
       if (b.api_key !== undefined) {
         await tx.updateTable('sys_secret').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('company_id', '=', a.companyId).where('code', '=', SECRET).where('deleted_at', 'is', null).execute();
         if (b.api_key) await tx.insertInto('sys_secret').values({ company_id: a.companyId, code: SECRET, value_enc: encryptSecret(b.api_key), hint: `…${b.api_key.slice(-4)}`, created_by: a.userId, updated_by: a.userId }).execute();
       }
-      await setSetting(tx, a.companyId, LIMIT_KEY, b.monthly_limit_usd, a.userId);
+      if (b.monthly_limit_usd !== undefined && payer === 'C') await setSetting(tx, a.companyId, LIMIT_KEY, b.monthly_limit_usd, a.userId);
       if (b.business_type !== undefined) await setSetting(tx, a.companyId, 'ai.business_type', b.business_type, a.userId);
       if (b.guidance !== undefined) await setSetting(tx, a.companyId, 'ai.guidance', b.guidance?.trim() || null, a.userId);
       if (b.model !== undefined) await setSetting(tx, a.companyId, MODEL_KEY, b.model, a.userId);
-      await logActivity(tx, a, { module: 'SET.AI', action: b.api_key === undefined ? 'AI_CONFIG' : b.api_key ? 'AI_KEY_SET' : 'AI_KEY_REMOVE', table: 'sys_secret', detail: { monthly_limit_usd: b.monthly_limit_usd, ...(b.model ? { model: b.model } : {}) } });
+      await logActivity(tx, a, { module: 'SET.AI', action: b.api_key === undefined ? 'AI_CONFIG' : b.api_key ? 'AI_KEY_SET' : 'AI_KEY_REMOVE', table: 'sys_secret', detail: { payer, ...(payer === 'C' && b.monthly_limit_usd !== undefined ? { monthly_limit_usd: b.monthly_limit_usd } : {}), ...(b.model ? { model: b.model } : {}) } });
     });
     return status(db, a.companyId);
   });
@@ -195,11 +266,8 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
   // ผิดพลาดหลังเรียก AI: ตอบข้อผิดพลาดโดยไม่ throw เพื่อให้บันทึกการใช้ (มีค่าใช้จ่าย) ไม่ถูกย้อนกลับไปกับทรานแซกชันของคำขอ
   const fail = (status: number, code: string, message: string) => reply.code(status).send({ error: { code, message } });
   const size = b.size;
-  const key = await apiKeyOf(db, a.companyId);
-  if (!key?.key) throw badRequest(key ? 'กุญแจ API ที่เก็บไว้ถอดรหัสไม่ได้ (ย้ายเครื่อง?) — ผู้ดูแลใส่กุญแจใหม่ที่ เริ่มระบบ › AI อ่านบิล' : 'ยังไม่ได้ตั้งค่า AI อ่านบิล — ผู้ดูแลใส่กุญแจ API ที่ เริ่มระบบ › AI อ่านบิล');
-  const limit = await limitOf(db, a.companyId), used = await monthUsage(db, a.companyId);
-  if (limit !== null && used.cost.gte(limit)) throw badRequest(`ใช้ AI เดือนนี้ครบเพดาน ${limit} ดอลลาร์แล้ว (ใช้ไป ${used.cost.toFixed(2)}) — ผู้ดูแลเพิ่มเพดานได้ที่ เริ่มระบบ › AI อ่านบิล หรือป้อนเอง`);
-  const model = await modelOf(db, a.companyId);
+  const pre = await aiPrecheck(db, a.companyId);
+  const key = { key: pre.key }, limit = pre.limit, used = { cost: pre.used }, model = pre.model;
   const K = AI_BILL_TARGETS.find((k) => k.path === b.target)!;
   const side = aiBillSide(K);
 
@@ -213,7 +281,7 @@ async function readBill(db: Db, a: AuthContext & { companyId: string }, reply: F
       messages: [{ role: 'user', content: b.content }],
     });
   } catch (e) {
-    const msg = aiErrorMessage(e);
+    const msg = aiErrorMessage(e, pre.payer);
     await record(db, a, { status: 'ERROR', file_name: b.file_name, file_size: size, message: b.note ? `${msg} (${b.note})` : msg });
     return fail(502, 'AI_FAILED', msg);
   }

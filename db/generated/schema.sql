@@ -84,6 +84,8 @@ CREATE TABLE sys_tenant (
   file_quota_mb integer,
   ai_per_month integer,
   over_action char(1) DEFAULT 'W' NOT NULL CHECK (over_action IN ('W','S')),
+  ai_payer char(1) DEFAULT 'C' NOT NULL CHECK (ai_payer IN ('C','P')),
+  ai_limit_usd numeric(18,2) DEFAULT 20,
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -117,6 +119,8 @@ COMMENT ON COLUMN sys_tenant.docs_per_month IS 'เอกสารต่อเ�
 COMMENT ON COLUMN sys_tenant.file_quota_mb IS 'พื้นที่ไฟล์ MB ของลูกค้านี้ (ว่าง = ตามแพ็กเกจ)';
 COMMENT ON COLUMN sys_tenant.ai_per_month IS 'อ่านบิลด้วย AI ต่อเดือนของลูกค้านี้ (ว่าง = ตามแพ็กเกจ)';
 COMMENT ON COLUMN sys_tenant.over_action IS 'ไฟล์/AI ครบ 100%: W=เตือนและคิดเงินส่วนเกิน S=หยุด (เอกสารไม่หยุดเด็ดขาด)';
+COMMENT ON COLUMN sys_tenant.ai_payer IS 'ผู้จ่ายค่า AI (HANDOFF 190): C=ลูกค้าจ่ายเอง ใช้กุญแจ API ของบริษัท (ค่าเริ่มต้น — ไม่นับโควตา AI ของแพ็กเกจ ไม่คิดส่วนเกิน AI) · P=WTS จ่ายให้ ใช้กุญแจของผู้ให้บริการ เพดานต่อเดือนรวมทุกบริษัทของลูกค้า (นับโควตา/ส่วนเกิน AI ตามแพ็กเกจ) — ผู้ให้บริการตั้งเท่านั้น';
+COMMENT ON COLUMN sys_tenant.ai_limit_usd IS 'เพดานค่า AI ต่อเดือน (ดอลลาร์สหรัฐ) เมื่อ WTS จ่ายให้ — รวมทุกบริษัทของลูกค้า · ค่าเริ่มต้น 20 · ว่าง = ไม่จำกัด (HANDOFF 190)';
 COMMENT ON COLUMN sys_tenant.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN sys_tenant.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN sys_tenant.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';
