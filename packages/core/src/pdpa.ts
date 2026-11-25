@@ -160,3 +160,9 @@ export const RETENTION_TERMS: readonly string[] = [
   `ข้อมูลเก็บไว้ ${TENANT_RETENTION_DAYS} วันนับจากวันที่ระงับ/เลิกใช้ จากนั้นลบออกจากเซิร์ฟเวอร์ถาวร กู้คืนไม่ได้ — ระหว่างนี้ติดต่อผู้ให้บริการเพื่อชำระเงิน หรือขอสำเนาข้อมูล`,
   'กิจการต้องเก็บสำเนาข้อมูลบัญชีของตนเอง — พ.ร.บ.การบัญชี พ.ศ. 2543 กำหนดให้เก็บบัญชีและเอกสารประกอบการลงบัญชีไว้อย่างน้อย 5 ปี ซึ่งเป็นหน้าที่ของกิจการ (สำรองข้อมูลได้เองที่ อื่น ๆ › สำรองข้อมูล)',
 ];
+/** RETENTION_TERMS ฉบับภาษาอังกฤษ (อีเมลสองภาษา HANDOFF 188) — เงื่อนไขครบเท่าฉบับไทย */
+export const RETENTION_TERMS_EN: readonly string[] = [
+  'If the service fee is not paid, or the service ends, the account is suspended and no user can sign in.',
+  `Your data is kept for ${TENANT_RETENTION_DAYS} days from the suspension or end date, then permanently deleted from the server and cannot be recovered. During those days, contact the service provider to pay or to request a copy of your data.`,
+  'Your business must keep its own copy of its accounting data. Under the Accounting Act B.E. 2543 (2000), accounts and supporting documents must be kept for at least 5 years, and this is the business\'s duty (back up any time at Others › Backup).',
+];

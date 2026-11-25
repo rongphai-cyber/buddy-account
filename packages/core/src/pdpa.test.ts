@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PDPA_REGISTER, PDPA_COLUMN_PATTERN, pdpaCanFullErase, pdpaPurgeAfter, pdpaRetainUntil, RETENTION_TERMS, TENANT_RETENTION_DAYS, tenantBlockedMessage, tenantCountdown, tenantCountingDown } from './pdpa.js';
+import { PDPA_REGISTER, PDPA_COLUMN_PATTERN, pdpaCanFullErase, pdpaPurgeAfter, pdpaRetainUntil, RETENTION_TERMS, RETENTION_TERMS_EN, TENANT_RETENTION_DAYS, tenantBlockedMessage, tenantCountdown, tenantCountingDown } from './pdpa.js';
 
 describe('PDPA (T0.17)', () => {
   it('keeps documents 5 years after the fiscal year end of the last document', () => {
@@ -21,6 +21,10 @@ describe('PDPA (T0.17)', () => {
     expect(pdpaPurgeAfter('2026-12-01', 31)).toBe('2027-01-01');
     expect(RETENTION_TERMS.join(' ')).toContain(`${TENANT_RETENTION_DAYS} วัน`);
     expect(RETENTION_TERMS.join(' ')).toMatch(/กู้คืนไม่ได้.*5 ปี/);
+    // ฉบับอังกฤษครบทุกเงื่อนไข (HANDOFF 188)
+    expect(RETENTION_TERMS_EN).toHaveLength(RETENTION_TERMS.length);
+    expect(RETENTION_TERMS_EN.join(' ')).toContain(`${TENANT_RETENTION_DAYS} days`);
+    expect(RETENTION_TERMS_EN.join(' ')).toMatch(/suspended.*permanently deleted.*cannot be recovered.*Accounting Act B\.E\. 2543.*5 years/);
   });
   it('countdown: unpaid suspension and termination start 30 days, active or other suspension cancel, no extension', () => {
     const A = { status: 'A', terminated_on: null, purge_after: null };

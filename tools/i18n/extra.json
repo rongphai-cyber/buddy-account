@@ -3415,5 +3415,11 @@
  "ไม่มี BUDDY_SECRET_KEY — ส่งผ่าน Worker ไม่ได้": "No BUDDY_SECRET_KEY — cannot send through the Worker",
  "ไม่มีอีเมลผู้สมัคร (ลบตาม PDPA แล้ว)": "No applicant email (erased under PDPA)",
  "ไม่ได้ส่ง": "Not sent",
- "✉ ตั้งค่าอีเมลแจ้งเตือน": "✉ Email notification settings"
+ "✉ ตั้งค่าอีเมลแจ้งเตือน": "✉ Email notification settings",
+ "ผลการพิจารณาใบสมัคร / Your Buddy Account application": "Your Buddy Account application",
+ "มีผู้สมัครใหม่ / New application: {0}": "New application: {0}",
+ "อนุมัติแล้ว / Approved — start using Buddy Account": "Approved — start using Buddy Account",
+ "อีเมลนี้ส่งอัตโนมัติจาก Buddy Account (WTS Solutions) — ตอบกลับอีเมลนี้เพื่อติดต่อผู้ให้บริการ": "This email was sent automatically by Buddy Account (WTS Solutions) — reply to this email to contact the service provider",
+ "เรียน คุณ{0}\\n\\nขอบคุณที่สมัครใช้ Buddy Account สำหรับ {1}\\n\\nขั้นตอนถัดไป\\n{2}\\n\\n{3}": "Dear {0}\\n\\nThank you for applying for Buddy Account for {1}\\n\\nNext steps\\n{2}\\n\\n{3}",
+ "ได้รับใบสมัครแล้ว / Application received — Buddy Account": "Application received — Buddy Account"
 }

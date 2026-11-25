@@ -4985,12 +4985,14 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       expect(s1.status, JSON.stringify(s1.body)).toBe(200);
       await flushMail();
       expect(memoryMail.outbox.map((m) => `${m.to.join('|')}:${m.subject}`)).toEqual([
-        'owner@example.test|staff@example.test:มีผู้สมัครใช้ Buddy Account: ร้านอีเมล one', 'applicant1@example.test:ได้รับใบสมัคร Buddy Account แล้ว — รอผู้ให้บริการอนุมัติ']);
+        'owner@example.test|staff@example.test:มีผู้สมัครใหม่ / New application: ร้านอีเมล one', 'applicant1@example.test:ได้รับใบสมัครแล้ว / Application received — Buddy Account']);
       const [notice, received] = memoryMail.outbox as [typeof memoryMail.outbox[0], typeof memoryMail.outbox[0]];
       expect(notice.html).toContain('https://app.example.test/admin/tenants');
       expect(notice.text).toMatch(/รหัสผู้ใช้ที่ขอ: mail\.one/);
       expect([notice.from, received.replyTo]).toEqual(['noreply@worktruesolution.net', 'help@example.test']);
       expect(received.text).toMatch(/ภายใน 1 วันทำการ/);
+      expect(received.text).toMatch(/within 1 business day/);
+      expect(notice.text).toMatch(/Requested username: mail\.one/);
       cookie = admin;
       const sid = ((await call('GET', '/api/v1/signups?status=P')).body.rows as Array<{ id: string; username: string; mail: Array<{ kind: string; status: string }> }>).find((r) => r.username === 'mail.one')!;
       expect(sid.mail.map((m) => `${m.kind}:${m.status}`).sort()).toEqual(['SIGNUP_NOTIFY:S', 'SIGNUP_RECEIVED:S']);
@@ -5007,8 +5009,10 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       const re = await call('POST', `/api/v1/signups/${sid.id}/mail/SIGNUP_APPROVED`);
       expect(re.body).toEqual({ status: 'S', error: null });
       const approved = memoryMail.outbox.at(-1)!;
-      expect([approved.to, approved.subject]).toEqual([['applicant1@example.test'], 'อนุมัติแล้ว — เริ่มใช้ Buddy Account ได้เลย']);
+      expect([approved.to, approved.subject]).toEqual([['applicant1@example.test'], 'อนุมัติแล้ว / Approved — start using Buddy Account']);
       for (const x of ['mail.one', 'https://app.example.test/', 'Google Authenticator', 'รหัสสำรอง', 'ลิงก์เชิญ', 'ทดลองใช้ถึง', '31/01/2570', '30 วัน', 'พ.ร.บ.การบัญชี']) expect(approved.text, x).toContain(x);
+      // HANDOFF 188 ภาษาอังกฤษต่อท้าย: ครบทุกเงื่อนไข · วันที่แบบอังกฤษ · ชื่อกิจการไม่แปล
+      for (const x of ['Two-factor authentication', 'authenticator app', 'backup codes', 'invite link', 'Trial until: 31 Jan 2027', '30 days', 'permanently deleted', 'cannot be recovered', 'Accounting Act B.E. 2543', '5 years']) expect(approved.text, x).toContain(x);
       expect((await sql<{ attempts: number; status: string }>`SELECT attempts, status FROM sys_mail_log WHERE signup_id = ${sid.id} AND kind = 'SIGNUP_APPROVED'`.execute(database.db)).rows[0]).toEqual({ attempts: 2, status: 'S' });
       expect((await call('POST', `/api/v1/signups/${sid.id}/mail/SIGNUP_REJECTED`)).status).toBe(400);   // สถานะไม่ตรง
 
@@ -5020,8 +5024,9 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       expect((await call('POST', `/api/v1/signups/${s2.id}/reject`, { reason: 'ข้อมูลกิจการไม่ครบ' })).status).toBe(200);
       await flushMail();
       const rejected = memoryMail.outbox.at(-1)!;
-      expect([rejected.to, rejected.subject]).toEqual([['applicant2@example.test'], 'ผลการพิจารณาใบสมัคร Buddy Account']);
+      expect([rejected.to, rejected.subject]).toEqual([['applicant2@example.test'], 'ผลการพิจารณาใบสมัคร / Your Buddy Account application']);
       expect(rejected.text).toContain('เหตุผล: ข้อมูลกิจการไม่ครบ');
+      expect(rejected.text).toContain('Reason: ข้อมูลกิจการไม่ครบ');   // เหตุผลที่ผู้ให้บริการพิมพ์ไม่แปล
 
       // กันสแปม: อีเมลเดียวกันได้ไม่เกิน 3 ฉบับ/24 ชั่วโมง (ไม่นับแจ้งผู้ให้บริการ) — ผู้ให้บริการกดส่งอีกครั้งได้
       cookie = '';
@@ -5042,10 +5047,18 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       cookie = '';
       expect((await signup(applicant('three', 'applicant3@example.test'), '10.77.0.3')).body.status).toBe('A');
       await flushMail();
-      expect(memoryMail.outbox.slice(before).map((m) => m.subject)).toEqual(['มีผู้สมัครใช้ Buddy Account: ร้านอีเมล three', 'อนุมัติแล้ว — เริ่มใช้ Buddy Account ได้เลย']);
+      expect(memoryMail.outbox.slice(before).map((m) => m.subject)).toEqual(['มีผู้สมัครใหม่ / New application: ร้านอีเมล three', 'อนุมัติแล้ว / Approved — start using Buddy Account']);
 
       // ไม่มีความลับในอีเมลทุกฉบับ (รหัสผ่าน hash กุญแจ) · ค่าที่ผู้สมัครพิมพ์ถูก escape ใน HTML
       for (const m of memoryMail.outbox) for (const s of [m.html, m.text]) { expect(s).not.toContain(PW); expect(s).not.toMatch(/\$2[aby]\$/); expect(s).not.toContain(process.env.BUDDY_SECRET_KEY!); expect(s).not.toMatch(/\/invite\//); }
+      // ทุกฉบับสองภาษา: ไทยก่อน แล้วเส้นคั่น English ตามด้วยภาษาอังกฤษ (HANDOFF 188)
+      for (const m of memoryMail.outbox) {
+        expect(m.subject).toMatch(/[\u0E00-\u0E7F].* \/ [A-Z]/);
+        expect(m.html).toContain('ENGLISH'); expect(m.html).toContain('lang="en"');
+        const [th, en] = m.text.split('──────────── English ────────────');
+        expect(th).toMatch(/เรียน|มีผู้สมัคร/); expect(en).toMatch(/Dear|New service application/);
+        expect(m.html.indexOf('ENGLISH')).toBeGreaterThan(m.html.search(/เรียน|มีผู้สมัคร/));
+      }
       appCfg.signup = 'review';
       cookie = '';
       expect((await signup({ ...applicant('four', 'applicant4@example.test'), business_name: '<script>alert(1)</script>' }, '10.77.0.4')).status).toBe(200);

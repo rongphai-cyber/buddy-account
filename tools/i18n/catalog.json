@@ -18401,13 +18401,6 @@
 ]
 },
 {
-"th": "<p style=\"font-size:12px;color:#7a7f99;margin:14px 4px\">อีเมลนี้ส่งอัตโนมัติจาก Buddy Account (WTS Solutions) — ตอบกลับอีเมลนี้เพื่อติดต่อผู้ให้บริการ</p>",
-"n": 1,
-"files": [
-"apps/server/src/mail/templates.ts"
-]
-},
-{
 "th": "<บัญชีเครดิต>",
 "n": 1,
 "files": [
@@ -37756,7 +37749,7 @@
 ]
 },
 {
-"th": "ผลการพิจารณาใบสมัคร Buddy Account",
+"th": "ผลการพิจารณาใบสมัคร / Your Buddy Account application",
 "n": 1,
 "files": [
 "apps/server/src/mail/templates.ts"
@@ -40367,13 +40360,6 @@
 ]
 },
 {
-"th": "มีผู้สมัครใช้ Buddy Account: {0}",
-"n": 1,
-"files": [
-"apps/server/src/mail/templates.ts"
-]
-},
-{
 "th": "มีผู้สมัครใช้บริการใหม่",
 "n": 1,
 "files": [
@@ -40382,6 +40368,13 @@
 },
 {
 "th": "มีผู้สมัครใช้บริการใหม่\\n\\n{0}\\n\\nตรวจสอบและอนุมัติ: {1}",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "มีผู้สมัครใหม่ / New application: {0}",
 "n": 1,
 "files": [
 "apps/server/src/mail/templates.ts"
@@ -52834,17 +52827,17 @@
 ]
 },
 {
+"th": "อนุมัติแล้ว / Approved — start using Buddy Account",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
+]
+},
+{
 "th": "อนุมัติแล้ว — สร้างลูกค้า {0}{1} · แจ้งผู้สมัครให้เข้าระบบด้วยรหัส {2}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
-]
-},
-{
-"th": "อนุมัติแล้ว — เริ่มใช้ Buddy Account ได้เลย",
-"n": 1,
-"files": [
-"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -53391,6 +53384,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/wts.ts"
+]
+},
+{
+"th": "อีเมลนี้ส่งอัตโนมัติจาก Buddy Account (WTS Solutions) — ตอบกลับอีเมลนี้เพื่อติดต่อผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/mail/templates.ts"
 ]
 },
 {
@@ -57972,7 +57972,7 @@
 ]
 },
 {
-"th": "เรียน คุณ{0}\\n\\nขอบคุณที่สมัครใช้ Buddy Account สำหรับ {1}\\n\\nขั้นตอนถัดไป\\n{2}\\n\\nถ้าไม่ได้สมัครด้วยตนเอง ไม่ต้องทำอะไร — ใบสมัครจะไม่ได้รับอนุมัติ",
+"th": "เรียน คุณ{0}\\n\\nขอบคุณที่สมัครใช้ Buddy Account สำหรับ {1}\\n\\nขั้นตอนถัดไป\\n{2}\\n\\n{3}",
 "n": 1,
 "files": [
 "apps/server/src/mail/templates.ts"
@@ -64545,7 +64545,7 @@
 ]
 },
 {
-"th": "ได้รับใบสมัคร Buddy Account แล้ว — รอผู้ให้บริการอนุมัติ",
+"th": "ได้รับใบสมัครแล้ว / Application received — Buddy Account",
 "n": 1,
 "files": [
 "apps/server/src/mail/templates.ts"
