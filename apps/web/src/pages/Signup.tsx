@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTurnstile } from '../components/Turnstile';
 import { StarterSelect } from '../components/StarterFill';
-import { PASSWORD_RULE } from '@buddy/core';
+import { PASSWORD_RULE, RETENTION_TERMS } from '@buddy/core';
 import { api } from '../api';
 import { ErrorBox, Field, navKey, PasswordInput } from '../ui';
 
@@ -73,7 +73,8 @@ export function SignupPage({ onBack }: { onBack: () => void }) {
             <li>ข้อมูลบัญชีและเอกสารของกิจการเป็นของผู้ใช้บริการ ผู้ให้บริการเก็บรักษาและประมวลผลตามที่จำเป็นต่อการให้บริการเท่านั้น (ผู้ประมวลผลข้อมูลส่วนบุคคลตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562)</li>
             <li>ข้อมูลในใบสมัคร (ชื่อ อีเมล โทรศัพท์ IP) ใช้เพื่อพิจารณาเปิดบัญชีและติดต่อกลับ · ถ้าไม่อนุมัติ ลบข้อมูลติดต่อเมื่อครบ 90 วัน</li>
             <li>ผู้ใช้บริการรับผิดชอบความถูกต้องของข้อมูลที่บันทึก และเก็บรักษารหัสผ่านของตนเอง · ผู้ดูแลระบบอาจต้องเปิดยืนยันตัวตนสองขั้น</li>
-            <li>เมื่อเลิกใช้บริการ ขอส่งออกข้อมูลได้ภายใน 90 วัน จากนั้นข้อมูลจะถูกลบ</li>
+            {/* HANDOFF 186 · เจ้าของ 25/11/2569: ค้างชำระ/เลิกใช้ → ระงับ · เก็บ 30 วันแล้วลบถาวร · กิจการต้องเก็บสำเนาเอง (พ.ร.บ.การบัญชี 5 ปี) */}
+            {RETENTION_TERMS.map((x) => <li key={x}><b>{x}</b></li>)}
           </ul>
         </details>
         <label className="inline chk"><input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} /> ฉันอ่านและยอมรับเงื่อนไขการใช้บริการและการคุ้มครองข้อมูลส่วนบุคคล</label>

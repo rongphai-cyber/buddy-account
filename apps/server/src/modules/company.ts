@@ -1,4 +1,4 @@
-import { formatDate, isTenantModuleKey, normalizeAppAccess, passwordProblem, pdpaPurgeAfter, normalizeUiTheme, MODULE_SWITCHES, TENANT_MODULES } from '@buddy/core';
+import { formatDate, isTenantModuleKey, normalizeAppAccess, passwordProblem, normalizeUiTheme, MODULE_SWITCHES, TENANT_MODULES, TENANT_RETENTION_DAYS, tenantCountdown, tenantCountingDown } from '@buddy/core';
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
@@ -485,7 +485,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     requirePlatform(req);
     return db.selectFrom('sys_tenant as t').select(['t.id', 't.code', 't.name', 't.contact_email', 't.contact_phone', 't.plan', 't.max_companies', 't.max_users', 't.expires_on', 't.status',
       't.dpa_signed_on', 't.terminated_on', 't.purge_after', 't.purged_at', 't.moved_to', 't.single_session',
-      't.package_id', 't.docs_per_month', 't.file_quota_mb', 't.ai_per_month', 't.over_action',
+      't.suspend_reason', 't.package_id', 't.docs_per_month', 't.file_quota_mb', 't.ai_per_month', 't.over_action',
       sql<string | null>`(SELECT p.name_th FROM sys_package p WHERE p.id = t.package_id)`.as('package_name'),
       sql<number>`(SELECT count(*) FROM sys_company c WHERE c.tenant_id = t.id AND c.deleted_at IS NULL)`.as('company_count'),
       sql<number>`(SELECT count(*) FROM sys_user u WHERE u.tenant_id = t.id AND u.deleted_at IS NULL)`.as('user_count')])
@@ -501,6 +501,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     single_session: z.boolean().optional(),
     // แพ็กเกจ (HANDOFF 185): ว่าง = ไม่มีแพ็กเกจ · ขีดจำกัดของลูกค้า ว่าง = ตามแพ็กเกจ · ไม่ส่ง = คงค่าเดิม
     ...TENANT_PACKAGE_FIELDS,
+    // เหตุที่ระงับ (HANDOFF 186): ค้างชำระ = นับ 30 วันแล้วลบข้อมูล · อื่น ๆ = ไม่นับ · ไม่ส่ง (สถานะ S) = อื่น ๆ
+    suspend_reason: z.enum(['UNPAID', 'OTHER']).nullable().optional(),
   });
   /** สร้างลูกค้าใหม่ + กลุ่ม ADMIN ของลูกค้า + ผู้ดูแลคนแรกของลูกค้า */
   app.post('/api/v1/tenants', async (req) => {
@@ -568,32 +570,33 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const a = requirePlatform(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(tenantBody, req.body);
-    const cur = await db.selectFrom('sys_tenant').select(['status', 'terminated_on', 'purged_at']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
+    const cur = await db.selectFrom('sys_tenant').select(['status', 'suspend_reason', 'terminated_on', 'purge_after', 'purged_at']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!cur) throw notFound('ลูกค้าผู้ใช้บริการ');
     if (cur.purged_at) throw badRequest('ลบข้อมูลของลูกค้ารายนี้ไปแล้ว (เลิกใช้บริการ) — แก้ไขหรือเปิดใช้อีกไม่ได้ สร้างลูกค้ารายใหม่แทน');
     if (b.moved_to && b.status !== 'I') throw badRequest('ลูกค้าที่ย้ายไปเซิร์ฟเวอร์แยกแล้วต้องมีสถานะ "เลิกใช้" ที่เครื่องนี้');
-    // T0.17 เลิกใช้บริการ (I): เริ่มนับ 90 วันให้ลูกค้าขอสำเนาข้อมูลก่อนลบ · กลับมาใช้ (A/S) = ยกเลิกกำหนดลบ
+    // T0.17 + HANDOFF 186: เลิกใช้ (I) หรือ ระงับ — ค้างชำระ (S/UNPAID) = นับ TENANT_RETENTION_DAYS วันแล้วลบได้ (นับอยู่แล้ว = วันเดิม) · ใช้งาน / ระงับเหตุอื่น = ยกเลิกการนับ
     const pkg = await packagePlan(db, b);
     const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
-    const end = b.status === 'I' ? (cur.status === 'I' && cur.terminated_on ? { terminated_on: cur.terminated_on } : { terminated_on: today, purge_after: pdpaPurgeAfter(today) }) : { terminated_on: null, purge_after: null };
-    await db.updateTable('sys_tenant').set({ ...b, ...end, ...pkg, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, dpa_signed_on: b.dpa_signed_on ?? null, moved_to: b.moved_to ?? null, updated_by: a.userId }).where('id', '=', id).execute();
+    const suspend_reason = b.status === 'S' ? (b.suspend_reason ?? 'OTHER') : null;
+    const end = tenantCountdown({ status: b.status, suspend_reason }, cur, today);
+    await db.updateTable('sys_tenant').set({ ...b, ...end, ...pkg, suspend_reason, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, dpa_signed_on: b.dpa_signed_on ?? null, moved_to: b.moved_to ?? null, updated_by: a.userId }).where('id', '=', id).execute();
     if (b.status !== 'A') await db.updateTable('sys_session').set({ ended_at: sql`now()` as never }).where('ended_at', 'is', null).where('user_id', 'in', db.selectFrom('sys_user').select('id').where('tenant_id', '=', id)).execute();
-    await logActivity(db, a, { module: 'SYS', action: 'EDIT_TENANT', table: 'sys_tenant', rowId: id, detail: { status: b.status, ...(b.single_session !== undefined ? { single_session: b.single_session } : {}),
+    await logActivity(db, a, { module: 'SYS', action: 'EDIT_TENANT', table: 'sys_tenant', rowId: id, detail: { status: b.status, ...(cur.status !== b.status || cur.suspend_reason !== suspend_reason || cur.purge_after !== end.purge_after ? { from: cur.status, suspend_reason, purge_after: end.purge_after } : {}), ...(b.single_session !== undefined ? { single_session: b.single_session } : {}),
       ...(b.package_id !== undefined ? { package: pkg.plan ?? null, docs_per_month: b.docs_per_month, file_quota_mb: b.file_quota_mb, ai_per_month: b.ai_per_month, over_action: b.over_action } : {}) } });
     return { id };
   });
-  /** T0.17 ลบข้อมูลทั้งหมดของลูกค้าที่เลิกใช้บริการครบ 90 วันแล้ว — พิมพ์รหัสลูกค้ายืนยัน · ย้อนกลับไม่ได้ */
+  /** T0.17 + HANDOFF 186: ลบข้อมูลทั้งหมดของลูกค้าที่เลิกใช้/ค้างชำระครบ TENANT_RETENTION_DAYS วันแล้ว — ผู้ให้บริการกดเอง พิมพ์รหัสลูกค้ายืนยัน · ไม่ลบอัตโนมัติ · ย้อนกลับไม่ได้ */
   app.post('/api/v1/tenants/:id/purge', async (req) => {
     const a = requirePlatform(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(z.object({ confirm: z.string().trim().max(20) }), req.body);
-    const t = await db.selectFrom('sys_tenant').select(['code', 'status', 'purge_after', 'purged_at', 'moved_to']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
+    const t = await db.selectFrom('sys_tenant').select(['code', 'status', 'suspend_reason', 'terminated_on', 'purge_after', 'purged_at', 'moved_to']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!t) throw notFound('ลูกค้าผู้ใช้บริการ');
     if (t.purged_at) throw badRequest('ลบข้อมูลของลูกค้ารายนี้ไปแล้ว');
-    if (t.status !== 'I' || !t.purge_after) throw badRequest('เปลี่ยนสถานะลูกค้าเป็น "เลิกใช้" ก่อน — ระบบให้เวลา 90 วันให้ลูกค้าขอสำเนาข้อมูลก่อนลบ');
+    if (!tenantCountingDown(t)) throw badRequest(`เปลี่ยนสถานะลูกค้าเป็น "เลิกใช้" หรือ "ระงับ — ค้างชำระ" ก่อน — ระบบให้เวลา ${TENANT_RETENTION_DAYS} วันให้ลูกค้าชำระเงินหรือขอสำเนาข้อมูลก่อนลบ`);
     const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
     // ย้ายไปเซิร์ฟเวอร์แยกแล้ว (T0.18): ข้อมูลอยู่ที่เครื่องใหม่ ลบสำเนาเดิมได้ทันที
-    if (!t.moved_to && today < t.purge_after) throw badRequest(`ลบได้ตั้งแต่วันที่ ${formatDate(t.purge_after, 'B')} (เลิกใช้บริการ + 90 วัน) — ระหว่างนี้ลูกค้ายังขอสำเนาข้อมูลได้`);
+    if (!t.moved_to && today < t.purge_after!) throw badRequest(`ลบได้ตั้งแต่วันที่ ${formatDate(t.purge_after!, 'B')} (${t.status === 'I' ? 'เลิกใช้บริการ' : 'ระงับเพราะค้างชำระ'} + ${TENANT_RETENTION_DAYS} วัน) — ระหว่างนี้ลูกค้ายังชำระเงินหรือขอสำเนาข้อมูลได้`);
     if (b.confirm.toUpperCase() !== t.code.toUpperCase()) throw badRequest(`พิมพ์รหัสลูกค้า ${t.code} เพื่อยืนยัน — ข้อมูลทุกบริษัทของลูกค้ารายนี้จะถูกลบถาวร`);
     const r = await purgeTenant(db, id);
     await logActivity(db, a, { module: 'SYS', action: 'PURGE_TENANT', docNo: t.code, table: 'sys_tenant', rowId: id, detail: r });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PDPA_REGISTER, PDPA_COLUMN_PATTERN, pdpaCanFullErase, pdpaPurgeAfter, pdpaRetainUntil } from './pdpa.js';
+import { PDPA_REGISTER, PDPA_COLUMN_PATTERN, pdpaCanFullErase, pdpaPurgeAfter, pdpaRetainUntil, RETENTION_TERMS, TENANT_RETENTION_DAYS, tenantBlockedMessage, tenantCountdown, tenantCountingDown } from './pdpa.js';
 
 describe('PDPA (T0.17)', () => {
   it('keeps documents 5 years after the fiscal year end of the last document', () => {
@@ -15,9 +15,39 @@ describe('PDPA (T0.17)', () => {
     expect(pdpaCanFullErase('2030-01-01', '2029-12-31')).toBe(true);
     expect(pdpaCanFullErase('2026-01-01', null)).toBe(true);
   });
-  it('purges 90 days after the end of service', () => {
-    expect(pdpaPurgeAfter('2026-10-30')).toBe('2027-01-28');
+  it('purges 30 days after the end of service or non-payment suspension (HANDOFF 186, one constant)', () => {
+    expect(TENANT_RETENTION_DAYS).toBe(30);
+    expect(pdpaPurgeAfter('2026-11-25')).toBe('2026-12-25');
     expect(pdpaPurgeAfter('2026-12-01', 31)).toBe('2027-01-01');
+    expect(RETENTION_TERMS.join(' ')).toContain(`${TENANT_RETENTION_DAYS} วัน`);
+    expect(RETENTION_TERMS.join(' ')).toMatch(/กู้คืนไม่ได้.*5 ปี/);
+  });
+  it('countdown: unpaid suspension and termination start 30 days, active or other suspension cancel, no extension', () => {
+    const A = { status: 'A', terminated_on: null, purge_after: null };
+    const today = '2026-11-25';
+    // ระงับ — ค้างชำระ: เริ่มนับ
+    expect(tenantCountdown({ status: 'S', suspend_reason: 'UNPAID' }, A, today)).toEqual({ terminated_on: null, purge_after: '2026-12-25' });
+    // ระงับเหตุอื่น: ไม่นับ
+    expect(tenantCountdown({ status: 'S', suspend_reason: 'OTHER' }, A, today)).toEqual({ terminated_on: null, purge_after: null });
+    expect(tenantCountdown({ status: 'S' }, A, today)).toEqual({ terminated_on: null, purge_after: null });
+    // เลิกใช้: เริ่มนับ
+    expect(tenantCountdown({ status: 'I' }, A, today)).toEqual({ terminated_on: today, purge_after: '2026-12-25' });
+    // ค้างชำระอยู่แล้ว → บันทึกซ้ำ / เปลี่ยนเป็นเลิกใช้ = วันเดิม (ไม่ยืด)
+    const unpaid = { status: 'S', suspend_reason: 'UNPAID', terminated_on: null, purge_after: '2026-12-10' };
+    expect(tenantCountdown({ status: 'S', suspend_reason: 'UNPAID' }, unpaid, today).purge_after).toBe('2026-12-10');
+    expect(tenantCountdown({ status: 'I' }, unpaid, today)).toEqual({ terminated_on: today, purge_after: '2026-12-10' });
+    // เลิกใช้อยู่แล้ว: คงวันเลิกใช้/วันลบเดิม
+    const ended = { status: 'I', terminated_on: '2026-11-01', purge_after: '2026-12-01' };
+    expect(tenantCountdown({ status: 'I' }, ended, today)).toEqual({ terminated_on: '2026-11-01', purge_after: '2026-12-01' });
+    // ชำระแล้ว / กลับมาใช้ = ยกเลิก · ระงับเหตุอื่นหลังค้างชำระ = ยกเลิกการนับ
+    expect(tenantCountdown({ status: 'A' }, unpaid, today)).toEqual({ terminated_on: null, purge_after: null });
+    expect(tenantCountdown({ status: 'S', suspend_reason: 'OTHER' }, unpaid, today)).toEqual({ terminated_on: null, purge_after: null });
+    expect([tenantCountingDown(unpaid), tenantCountingDown(ended), tenantCountingDown({ ...unpaid, suspend_reason: 'OTHER' })]).toEqual([true, true, false]);
+  });
+  it('blocked sign-in message tells the deletion date and what to do', () => {
+    expect(tenantBlockedMessage({ status: 'S', suspend_reason: 'UNPAID', purge_after: '2026-12-25' })).toBe('บัญชีผู้ใช้บริการนี้ถูกระงับ (ค้างชำระค่าบริการ) — ข้อมูลจะถูกลบถาวรวันที่ 25/12/2569 · ติดต่อผู้ให้บริการเพื่อชำระเงิน หรือขอสำเนาข้อมูลก่อนวันนั้น');
+    expect(tenantBlockedMessage({ status: 'I', purge_after: '2026-12-25' })).toMatch(/^บัญชีผู้ใช้บริการนี้เลิกใช้บริการแล้ว — ข้อมูลจะถูกลบถาวรวันที่ 25\/12\/2569/);
+    expect(tenantBlockedMessage({ status: 'S', suspend_reason: 'OTHER', purge_after: null })).toBe('บัญชีผู้ใช้บริการนี้ถูกระงับ — กรุณาติดต่อผู้ให้บริการ');
   });
   it('register lists each column once and matches the personal-data pattern where expected', () => {
     const seen = new Set<string>();

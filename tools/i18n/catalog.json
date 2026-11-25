@@ -966,6 +966,7 @@
 "apps/web/src/pages/settings/Packages.tsx",
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/company.ts",
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/parties.ts",
 "apps/server/src/modules/reports/stock.ts",
@@ -1147,6 +1148,29 @@
 ]
 },
 {
+"th": "ใช้งาน",
+"n": 30,
+"files": [
+"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/settings/DataTables.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/invite.ts",
+"packages/core/src/master-import.ts"
+]
+},
+{
 "th": "ภาษีหัก ณ ที่จ่าย",
 "n": 29,
 "files": [
@@ -1277,29 +1301,6 @@
 "packages/core/src/printforms.ts",
 "packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ใช้งาน",
-"n": 27,
-"files": [
-"apps/web/src/components/MasterBar.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/settings/DataTables.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/server/src/modules/invite.ts",
-"packages/core/src/master-import.ts"
 ]
 },
 {
@@ -4607,6 +4608,17 @@
 ]
 },
 {
+"th": "แสดง",
+"n": 6,
+"files": [
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/reports/TrialBalance.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ใบนำฝากเช็ค",
 "n": 6,
 "files": [
@@ -4775,6 +4787,17 @@
 "files": [
 "packages/core/src/doc-import.ts",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ค้างชำระ",
+"n": 5,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/server/src/modules/reports/register.ts",
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -5463,16 +5486,6 @@
 ]
 },
 {
-"th": "แสดง",
-"n": 5,
-"files": [
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/reports/TrialBalance.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx"
-]
-},
-{
 "th": "โทร.",
 "n": 5,
 "files": [
@@ -5706,16 +5719,6 @@
 "apps/web/src/pages/finance/Banking.tsx",
 "apps/web/src/pages/gl/Opening.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx"
-]
-},
-{
-"th": "ค้างชำระ",
-"n": 4,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/server/src/modules/reports/register.ts"
 ]
 },
 {
@@ -12790,6 +12793,14 @@
 ]
 },
 {
+"th": "ยังไม่มีลูกค้า",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ยังไม่ลงบัญชี",
 "n": 2,
 "files": [
@@ -13120,6 +13131,14 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ระงับ — ค้างชำระ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -14016,6 +14035,14 @@
 "files": [
 "apps/web/src/pages/payroll/Filing.tsx",
 "apps/web/src/pages/payroll/Forms.tsx"
+]
+},
+{
+"th": "สำรองข้อมูล",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -15241,6 +15268,13 @@
 ]
 },
 {
+"th": "เหตุที่ระงับ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "เหตุผล / รายละเอียด",
 "n": 2,
 "files": [
@@ -16256,6 +16290,13 @@
 ]
 },
 {
+"th": "({0} วัน{1}) · ลบจริงเมื่อผู้ให้บริการกด \"ลบข้อมูลทั้งหมดของลูกค้า\" เท่านั้น · กลับเป็น \"ใช้งาน\" = ยกเลิกการลบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "({0} แถว)",
 "n": 1,
 "files": [
@@ -16305,6 +16346,13 @@
 ]
 },
 {
+"th": "(ครบกำหนดแล้ว)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "(คัดลอกลูกค้า รายการสินค้า ราคา ส่วนลด) ลงวันที่ทำงาน",
 "n": 1,
 "files": [
@@ -16316,6 +16364,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
+]
+},
+{
+"th": "(ค้างชำระค่าบริการ)",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -21170,6 +21225,13 @@
 ]
 },
 {
+"th": "} · ลบข้อมูลได้ตั้งแต่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "} · ลองล่าสุด {0} · เอกสารรอส่ง {1}",
 "n": 1,
 "files": [
@@ -21548,13 +21610,6 @@
 ]
 },
 {
-"th": "· ลบข้อมูลได้ตั้งแต่",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
 "th": "· ลิงก์เดิมจะใช้ไม่ได้",
 "n": 1,
 "files": [
@@ -21909,6 +21964,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/FsLayouts.tsx"
+]
+},
+{
+"th": "กรองตามกำหนดลบข้อมูล",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -22437,6 +22499,13 @@
 ]
 },
 {
+"th": "การเก็บข้อมูลเมื่อค้างชำระหรือเลิกใช้บริการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Usage.tsx"
+]
+},
+{
 "th": "การเข้าระบบ",
 "n": 1,
 "files": [
@@ -22581,6 +22650,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Filing.tsx"
+]
+},
+{
+"th": "กำลังนับวันลบข้อมูล (เลิกใช้ / ค้างชำระ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -23001,6 +23077,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/security.ts"
+]
+},
+{
+"th": "กิจการต้องเก็บสำเนาข้อมูลบัญชีของตนเอง — พ.ร.บ.การบัญชี พ.ศ. 2543 กำหนดให้เก็บบัญชีและเอกสารประกอบการลงบัญชีไว้อย่างน้อย 5 ปี ซึ่งเป็นหน้าที่ของกิจการ (สำรองข้อมูลได้เองที่ อื่น ๆ › สำรองข้อมูล)",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -23781,6 +23864,13 @@
 ]
 },
 {
+"th": "ข้อมูลจะถูกลบถาวรวันที่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ข้อมูลซ้ำกับที่มีอยู่แล้ว (อาจมีผู้บันทึกรายการเดียวกันพร้อมกันจากอีกเครื่อง) — ตรวจรหัส/เลขที่ที่ซ้ำ แล้วบันทึกอีกครั้ง",
 "n": 1,
 "files": [
@@ -23998,6 +24088,13 @@
 ]
 },
 {
+"th": "ข้อมูลเก็บไว้ {0} วันนับจากวันที่ระงับ/เลิกใช้ จากนั้นลบออกจากเซิร์ฟเวอร์ถาวร กู้คืนไม่ได้ — ระหว่างนี้ติดต่อผู้ให้บริการเพื่อชำระเงิน หรือขอสำเนาข้อมูล",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
+]
+},
+{
 "th": "ข้อมูลเดิม: ตำบล/แขวง {0} · อำเภอ/เขต {1} · จังหวัด {2} — เลือกตำบลจากรายการ (หรือกรอกรหัสไปรษณีย์) ให้ตรงชื่อทางการ",
 "n": 1,
 "files": [
@@ -24156,6 +24253,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Usage.tsx"
+]
+},
+{
+"th": "ครบกำหนดลบข้อมูลแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -26529,6 +26633,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "ค้างชำระ = เก็บข้อมูล {0} วันแล้วลบได้ · อื่น ๆ (เช่น ความปลอดภัย) = ไม่นับวันลบ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -31215,6 +31326,13 @@
 ]
 },
 {
+"th": "ถูกระงับ{0}",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
+]
+},
+{
 "th": "ถูกหัก ณ ที่จ่าย",
 "n": 1,
 "files": [
@@ -33966,10 +34084,17 @@
 ]
 },
 {
-"th": "บัญชีผู้ใช้บริการนี้ถูกระงับหรือหมดอายุ กรุณาติดต่อผู้ให้บริการ",
+"th": "บัญชีผู้ใช้บริการนี้{0} — กรุณาติดต่อผู้ให้บริการ",
 "n": 1,
 "files": [
-"apps/server/src/modules/auth.ts"
+"packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "บัญชีผู้ใช้บริการนี้{0} — ข้อมูลจะถูกลบถาวรวันที่ {1} · ติดต่อผู้ให้บริการเพื่อชำระเงิน หรือขอสำเนาข้อมูลก่อนวันนั้น",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -34796,13 +34921,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/finance/Banking.tsx"
-]
-},
-{
-"th": "บันทึกสถานะ \"เลิกใช้\" แล้ว ผู้ใช้ของลูกค้าเข้าระบบไม่ได้ และระบบนับ 90 วันก่อนลบข้อมูลได้ (ให้ลูกค้าขอสำเนาข้อมูลก่อน)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -38016,6 +38134,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ผู้ใช้ทุกคนของลูกค้าเข้าระบบไม่ได้ และเห็นข้อความว่า",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -42128,13 +42253,6 @@
 ]
 },
 {
-"th": "ยังไม่มีลูกค้า",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Packages.tsx"
-]
-},
-{
 "th": "ยังไม่มีวิธีชำระ",
 "n": 1,
 "files": [
@@ -44760,6 +44878,20 @@
 ]
 },
 {
+"th": "ระงับเพราะค้างชำระ",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "ระงับโดยไม่นับวันลบข้อมูล — ผู้ใช้ทุกคนของลูกค้าเข้าระบบไม่ได้จนกว่าจะเปลี่ยนเป็น \"ใช้งาน\"",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ระดับ 0–9",
 "n": 1,
 "files": [
@@ -45089,7 +45221,7 @@
 ]
 },
 {
-"th": "ระหว่างใช้บริการ (ลบเมื่อเลิกใช้บริการ + 90 วัน)",
+"th": "ระหว่างใช้บริการ (ลบเมื่อเลิกใช้บริการ/ค้างชำระ + {0} วัน)",
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
@@ -47105,6 +47237,13 @@
 ]
 },
 {
+"th": "ลบข้อมูลทั้งหมดของลูกค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ลบข้อมูลทั้งหมดของลูกค้า {0}",
 "n": 1,
 "files": [
@@ -47644,7 +47783,7 @@
 ]
 },
 {
-"th": "ลบได้ตั้งแต่วันที่ {0} (เลิกใช้บริการ + 90 วัน) — ระหว่างนี้ลูกค้ายังขอสำเนาข้อมูลได้",
+"th": "ลบได้ตั้งแต่วันที่ {0} ({1} + {2} วัน) — ระหว่างนี้ลูกค้ายังชำระเงินหรือขอสำเนาข้อมูลได้",
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
@@ -47959,6 +48098,20 @@
 ]
 },
 {
+"th": "ลูกค้าทั้งหมด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ลูกค้าที่ถูกระงับเข้าระบบไม่ได้ — เลือกบริษัทแล้ว \"สำรองข้อมูล\" (ตั้งรหัสผ่านแฟ้ม) ส่งแฟ้มและรหัสผ่านให้ลูกค้าแยกช่องทาง · แฟ้มนำกลับใช้ใน Buddy ได้ · ลูกค้าที่ยังเข้าระบบได้ สำรองเองได้ที่ อื่น ๆ › สำรองข้อมูล และส่งออกรายงานเป็น Excel",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ลูกค้าที่ย้ายไปเซิร์ฟเวอร์แยกแล้วต้องมีสถานะ \"เลิกใช้\" ที่เครื่องนี้",
 "n": 1,
 "files": [
@@ -48043,7 +48196,7 @@
 ]
 },
 {
-"th": "ลูกค้าแต่ละรายเห็นเฉพาะบริษัท ผู้ใช้ และข้อมูลของตัวเอง — ระงับแล้วผู้ใช้ทุกคนของลูกค้ารายนั้นออกจากระบบทันที · เลิกใช้บริการแล้ว 90 วันลบข้อมูลได้ (PDPA)",
+"th": "ลูกค้าแต่ละรายเห็นเฉพาะบริษัท ผู้ใช้ และข้อมูลของตัวเอง — ระงับแล้วผู้ใช้ทุกคนของลูกค้ารายนั้นออกจากระบบทันที · เลิกใช้บริการ หรือระงับเพราะค้างชำระ เก็บข้อมูล {0} วันแล้วลบได้ (ผู้ให้บริการกดลบเอง)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
@@ -48880,6 +49033,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
+"th": "วันแล้วลบข้อมูลได้ · \"อื่น ๆ\" ไม่นับ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -50297,10 +50457,10 @@
 ]
 },
 {
-"th": "สำรองข้อมูล",
+"th": "สำรองข้อมูล {0} {1}",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/ActivityLog.tsx"
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -50955,6 +51115,13 @@
 ]
 },
 {
+"th": "ส่งสำเนาข้อมูลให้ลูกค้า (ก่อนลบ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ส่งออก e-Tax Invoice",
 "n": 1,
 "files": [
@@ -51505,6 +51672,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "หมดอายุแล้ว",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -52779,6 +52953,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/tax.ts"
+]
+},
+{
+"th": "อื่น ๆ (เช่น ความปลอดภัย)",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -55932,7 +56113,7 @@
 ]
 },
 {
-"th": "เปลี่ยนสถานะลูกค้าเป็น \"เลิกใช้\" ก่อน — ระบบให้เวลา 90 วันให้ลูกค้าขอสำเนาข้อมูลก่อนลบ",
+"th": "เปลี่ยนสถานะลูกค้าเป็น \"เลิกใช้\" หรือ \"ระงับ — ค้างชำระ\" ก่อน — ระบบให้เวลา {0} วันให้ลูกค้าชำระเงินหรือขอสำเนาข้อมูลก่อนลบ",
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
@@ -57007,13 +57188,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/MasterImport.tsx"
-]
-},
-{
-"th": "เมื่อเลิกใช้บริการ ขอส่งออกข้อมูลได้ภายใน 90 วัน จากนั้นข้อมูลจะถูกลบ",
-"n": 1,
-"files": [
-"apps/web/src/pages/Signup.tsx"
 ]
 },
 {
@@ -58396,10 +58570,24 @@
 ]
 },
 {
+"th": "เลิกใช้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "เลิกใช้บริการเมื่อ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เลิกใช้บริการแล้ว",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
 ]
 },
 {
@@ -59065,6 +59253,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "เลือกเหตุที่ระงับ — \"ค้างชำระ\" นับ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -63891,6 +64086,13 @@
 ]
 },
 {
+"th": "ไม่ชำระค่าบริการ หรือเลิกใช้บริการ — บัญชีถูกระงับ ผู้ใช้ทุกคนเข้าระบบไม่ได้",
+"n": 1,
+"files": [
+"packages/core/src/pdpa.ts"
+]
+},
+{
 "th": "ไม่ซ้ำกับสินค้าอื่น",
 "n": 1,
 "files": [
@@ -65081,6 +65283,20 @@
 ]
 },
 {
+"th": "ไม่มีลูกค้าที่กำลังนับวันลบข้อมูล",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ไม่มีลูกค้าที่ครบกำหนดลบข้อมูล",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ไม่มีลูกค้าที่เกินโควตา ✓",
 "n": 1,
 "files": [
@@ -65991,6 +66207,13 @@
 ]
 },
 {
+"th": "— นับต่อจากเดิม ไม่ยืดเวลา",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "— ปิดหน้าต่างนี้แล้วจะดูกุญแจเต็มอีกไม่ได้",
 "n": 1,
 "files": [
@@ -66047,7 +66270,7 @@
 ]
 },
 {
-"th": "— ระหว่างนี้ให้สำรองข้อมูลแต่ละบริษัทส่งให้ลูกค้าถ้าลูกค้าขอ",
+"th": "— ระหว่างนี้ลูกค้าชำระเงิน (เปลี่ยนเป็น \"ใช้งาน\") หรือขอสำเนาข้อมูลได้ (ด้านล่าง)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
@@ -66184,6 +66407,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AddressFields.tsx"
+]
+},
+{
+"th": "— เลือกเหตุ —",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {

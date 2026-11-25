@@ -7,6 +7,8 @@
  *   PURGE   = ลบเมื่อลูกค้าผู้ใช้บริการเลิกใช้บริการ (ผู้ให้บริการลบทั้งลูกค้า)
  *   KEEP    = เก็บตามกฎหมาย ไม่ลบ (แฟ้มบันทึกเหตุการณ์ — เพิ่มได้อย่างเดียว)
  */
+import { formatDate } from './date.js';
+
 export type PdpaSubject = 'CUSTOMER' | 'SUPPLIER' | 'SALESPERSON' | 'CONTACT' | 'PARTY' | 'USER' | 'TENANT' | 'EMPLOYEE';
 export type PdpaBasis = 'CONTRACT' | 'LEGAL' | 'LEGIT';
 export type PdpaErase = 'CONTACT' | 'FULL' | 'PURGE' | 'KEEP';
@@ -36,7 +38,13 @@ export const PDPA_ERASE_TH: Record<PdpaErase, string> = {
 
 const R5 = 'เอกสารล่าสุด + 5 ปีนับจากวันสิ้นปีบัญชี';
 const ACTIVE = 'ระหว่างเป็นคู่ค้า (ลบเมื่อเจ้าของข้อมูลขอ)';
-const SERVICE = 'ระหว่างใช้บริการ (ลบเมื่อเลิกใช้บริการ + 90 วัน)';
+/**
+ * เก็บข้อมูลของลูกค้าหลังเลิกใช้บริการ หรือระงับเพราะค้างชำระ (วัน) แล้วลบถาวร — HANDOFF 186 · เจ้าของ 25/11/2569
+ * "กรณีลูกค้าไม่ชำระเงินหรือ หยุดให้บริการ ข้อมูลบริษัทเราสำรองไว้ให้ 1 เดือน จะลบออกจาก server ถาวร" (เดิม 90 วัน)
+ * ค่าเดียวใช้ทั้งการนับวัน ข้อความเข้าระบบ เงื่อนไขการใช้บริการ และหน้าการใช้งาน — ใบสมัครที่ไม่อนุมัติใช้ระยะของตัวเอง (signup.ts)
+ */
+export const TENANT_RETENTION_DAYS = 30;
+const SERVICE = `ระหว่างใช้บริการ (ลบเมื่อเลิกใช้บริการ/ค้างชำระ + ${TENANT_RETENTION_DAYS} วัน)`;
 
 export const PDPA_REGISTER: PdpaEntry[] = [
   { table: 'md_customer', columns: ['title', 'name', 'name_en', 'address_1', 'address_2', 'address_3', 'zip_code', 'addr_no', 'addr_moo', 'addr_village', 'addr_building', 'addr_room', 'addr_floor', 'addr_soi', 'addr_road', 'addr_geo_code', 'tax_id', 'tax_branch_no'], subject: 'CUSTOMER', category: 'ชื่อ ที่อยู่ เลขประจำตัวผู้เสียภาษี', purpose: 'ออกใบกำกับภาษี/เอกสารขาย ติดตามหนี้', basis: 'LEGAL', retention: R5, erase: 'FULL' },
@@ -94,7 +102,7 @@ export const PDPA_NOT_PERSONAL: Record<string, string> = {
 
 /** ระยะเก็บเอกสารบัญชี/ภาษี (ปี) และระยะผ่อนผันหลังเลิกใช้บริการ (วัน) */
 export const PDPA_RETENTION_YEARS = 5;
-export const PDPA_GRACE_DAYS = 90;
+export const PDPA_GRACE_DAYS = TENANT_RETENTION_DAYS;
 /** ข้อความแทนชื่อที่ถูกปิดบัง */
 export const PDPA_ERASED = 'ลบตาม PDPA';
 
@@ -114,9 +122,40 @@ export function pdpaRetainUntil(lastDocDate: string | null, fiscalYearEnd?: stri
 /** ปิดบังทั้งหมดได้หรือยัง (วันนี้เลยวันที่ต้องเก็บแล้ว) */
 export const pdpaCanFullErase = (today: string, retainUntil: string | null) => !retainUntil || today > retainUntil;
 
-/** วันที่ลบข้อมูลลูกค้าผู้ใช้บริการได้ = วันเลิกใช้บริการ + 90 วัน */
+/** วันที่ลบข้อมูลลูกค้าผู้ใช้บริการได้ = วันที่เริ่มนับ (เลิกใช้ / ระงับเพราะค้างชำระ) + TENANT_RETENTION_DAYS */
 export function pdpaPurgeAfter(terminatedOn: string, days = PDPA_GRACE_DAYS): string {
   const d = new Date(`${terminatedOn}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+/** เหตุที่ระงับลูกค้า: ค้างชำระ (นับถอยหลังลบข้อมูล) · อื่น ๆ เช่น ความปลอดภัย (ไม่นับ) */
+export type SuspendReason = 'UNPAID' | 'OTHER';
+export const SUSPEND_REASON_TH: Record<SuspendReason, string> = { UNPAID: 'ค้างชำระ', OTHER: 'อื่น ๆ (เช่น ความปลอดภัย)' };
+type TenantState = { status: string; suspend_reason?: string | null; terminated_on: string | null; purge_after: string | null };
+/** กำลังนับถอยหลังลบข้อมูลอยู่หรือไม่ (เลิกใช้ หรือ ระงับ — ค้างชำระ) */
+export const tenantCountingDown = (t: TenantState) => !!t.purge_after && (t.status === 'I' || (t.status === 'S' && t.suspend_reason === 'UNPAID'));
+/**
+ * วันเลิกใช้/วันลบได้ หลังเปลี่ยนสถานะลูกค้า (HANDOFF 186):
+ * - ใช้งาน = ยกเลิกการนับ · ระงับเหตุอื่น = ไม่นับ (ยกเลิกถ้านับอยู่)
+ * - ระงับ — ค้างชำระ / เลิกใช้ = เริ่มนับ 30 วัน · นับอยู่แล้ว = ใช้วันเดิม (เปลี่ยนจากค้างชำระเป็นเลิกใช้ไม่ยืดเวลา)
+ */
+export function tenantCountdown(next: { status: string; suspend_reason?: string | null }, cur: TenantState, today: string): { terminated_on: string | null; purge_after: string | null } {
+  const counting = tenantCountingDown(cur);
+  const purge = counting ? cur.purge_after! : pdpaPurgeAfter(today);
+  if (next.status === 'I') return { terminated_on: cur.status === 'I' && cur.terminated_on ? cur.terminated_on : today, purge_after: purge };
+  if (next.status === 'S' && next.suspend_reason === 'UNPAID') return { terminated_on: null, purge_after: purge };
+  return { terminated_on: null, purge_after: null };
+}
+/** ข้อความตอนเข้าระบบไม่ได้ (ระงับ/เลิกใช้/หมดอายุ) — บอกวันลบถาวรและทางแก้ */
+export function tenantBlockedMessage(t: { status: string | null; suspend_reason?: string | null; purge_after?: string | null }): string {
+  const what = t.status === 'I' ? 'เลิกใช้บริการแล้ว' : t.status === 'S' ? `ถูกระงับ${t.suspend_reason === 'UNPAID' ? ' (ค้างชำระค่าบริการ)' : ''}` : 'หมดอายุแล้ว';
+  if (!t.purge_after) return `บัญชีผู้ใช้บริการนี้${what} — กรุณาติดต่อผู้ให้บริการ`;
+  return `บัญชีผู้ใช้บริการนี้${what} — ข้อมูลจะถูกลบถาวรวันที่ ${formatDate(t.purge_after, 'B')} · ติดต่อผู้ให้บริการเพื่อชำระเงิน หรือขอสำเนาข้อมูลก่อนวันนั้น`;
+}
+/** เงื่อนไขการใช้บริการเรื่องการเก็บข้อมูล (หน้าสมัคร · หน้าการใช้งานและแพ็กเกจ · อีเมลอนุมัติ) */
+export const RETENTION_TERMS: readonly string[] = [
+  'ไม่ชำระค่าบริการ หรือเลิกใช้บริการ — บัญชีถูกระงับ ผู้ใช้ทุกคนเข้าระบบไม่ได้',
+  `ข้อมูลเก็บไว้ ${TENANT_RETENTION_DAYS} วันนับจากวันที่ระงับ/เลิกใช้ จากนั้นลบออกจากเซิร์ฟเวอร์ถาวร กู้คืนไม่ได้ — ระหว่างนี้ติดต่อผู้ให้บริการเพื่อชำระเงิน หรือขอสำเนาข้อมูล`,
+  'กิจการต้องเก็บสำเนาข้อมูลบัญชีของตนเอง — พ.ร.บ.การบัญชี พ.ศ. 2543 กำหนดให้เก็บบัญชีและเอกสารประกอบการลงบัญชีไว้อย่างน้อย 5 ปี ซึ่งเป็นหน้าที่ของกิจการ (สำรองข้อมูลได้เองที่ อื่น ๆ › สำรองข้อมูล)',
+];

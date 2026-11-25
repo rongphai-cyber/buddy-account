@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fmt, periodLabel, QUOTA_LABEL, thisMonthTh, type QuotaKey } from '@buddy/core';
+import { fmt, periodLabel, QUOTA_LABEL, RETENTION_TERMS, thisMonthTh, type QuotaKey } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { cx, ErrorBox, PageHead, Pill, useYearSystem } from '../../ui';
@@ -88,6 +88,9 @@ export function UsagePage() {
       {!ok && <div className="notebox">{me?.user.is_platform ? 'เจ้าหน้าที่ผู้ให้บริการ: ดูการใช้งานของลูกค้าที่ แพ็กเกจและการใช้งานลูกค้า (ผู้ให้บริการ)' : 'เฉพาะผู้ดูแลระบบของกิจการ'}</div>}
       <ErrorBox error={q.error} />
       {q.data && <UsageView r={q.data} />}
+      {ok && <fieldset className="box retention-terms"><legend>การเก็บข้อมูลเมื่อค้างชำระหรือเลิกใช้บริการ</legend>
+        <ul>{RETENTION_TERMS.map((x) => <li key={x}>{x}</li>)}</ul>
+      </fieldset>}
     </div>
   );
 }

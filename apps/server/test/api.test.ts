@@ -4887,6 +4887,77 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       expect(acts).toEqual(['ADD_PACKAGE', 'EDIT_TENANT', 'EDIT_TENANT', 'EDIT_TENANT']);
     } finally { cookie = start; }
   });
+
+  it('HANDOFF 186: 30-day retention — unpaid suspension and termination count down, other suspension and reactivation do not, no extension, sign-in tells the deletion date, provider can hand over a backup, purge refused before the date, provider only, logged', async () => {
+    const start = cookie;
+    const { formatDate, pdpaPurgeAfter } = await import('@buddy/core');
+    const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+    const in30 = pdpaPurgeAfter(today);
+    try {
+      cookie = admin;
+      expect((await call('POST', '/api/v1/tenants', { code: 'RETA', name: 'ลูกค้าเก็บข้อมูล', admin_username: 'ret.admin', admin_name: 'ผู้ดูแลเก็บข้อมูล', admin_password: 'passRet1234' })).status).toBe(200);
+      expect((await call('POST', '/api/v1/tenants', { code: 'RETB', name: 'ลูกค้าอื่นเก็บข้อมูล', admin_username: 'retb.admin', admin_name: 'ผู้ดูแลบี', admin_password: 'passRetB1234' })).status).toBe(200);
+      const tid = ((await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string }>).find((t) => t.code === 'RETA')!.id;
+      expect((await login('ret.admin', 'passRet1234')).status).toBe(200);
+      const co = (await call('POST', '/api/v1/companies', { code: 'RET-1', name_th: 'บริษัทเก็บข้อมูล', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
+      cookie = admin;
+      const put = (b: object) => call('PUT', `/api/v1/tenants/${tid}`, { code: 'RETA', name: 'ลูกค้าเก็บข้อมูล', ...b });
+      const row = async () => (await sql<{ status: string; suspend_reason: string | null; terminated_on: string | null; purge_after: string | null }>`SELECT status, suspend_reason, terminated_on::text AS terminated_on, purge_after::text AS purge_after FROM sys_tenant WHERE id = ${tid}`.execute(database.db)).rows[0]!;
+
+      // ระงับ — ค้างชำระ: นับ 30 วัน · ผู้ใช้เข้าระบบไม่ได้ เห็นวันลบ
+      expect((await put({ status: 'S', suspend_reason: 'UNPAID' })).status).toBe(200);
+      expect(await row()).toEqual({ status: 'S', suspend_reason: 'UNPAID', terminated_on: null, purge_after: in30 });
+      expect(((await call('GET', '/api/v1/tenants')).body as Array<{ code: string; suspend_reason: string }>).find((t) => t.code === 'RETA')!.suspend_reason).toBe('UNPAID');
+      const blocked = await login('ret.admin', 'passRet1234');
+      expect([blocked.status, blocked.body.error.code]).toEqual([403, 'TENANT_SUSPENDED']);
+      expect(blocked.body.error.message).toBe(`บัญชีผู้ใช้บริการนี้ถูกระงับ (ค้างชำระค่าบริการ) — ข้อมูลจะถูกลบถาวรวันที่ ${formatDate(in30, 'B')} · ติดต่อผู้ให้บริการเพื่อชำระเงิน หรือขอสำเนาข้อมูลก่อนวันนั้น`);
+      // ลบก่อนครบกำหนดไม่ได้
+      cookie = admin;
+      expect((await call('POST', `/api/v1/tenants/${tid}/purge`, { confirm: 'RETA' })).body.error.message).toMatch(/ลบได้ตั้งแต่วันที่ .*\(ระงับเพราะค้างชำระ \+ 30 วัน\)/);
+      // ผู้ให้บริการทำแฟ้มสำรองของบริษัทลูกค้าให้ได้ (ลูกค้าเข้าระบบไม่ได้)
+      expect((await call('POST', '/api/v1/auth/select', { company_id: co })).status).toBe(200);
+      expect((await call('POST', '/api/v1/backup/company', { password: 'handover-pass-1234' })).status).toBe(200);
+
+      // ระงับเหตุอื่น: ไม่นับ (ยกเลิกการนับ) · ข้อความไม่มีวันลบ · ลบไม่ได้
+      expect((await put({ status: 'S', suspend_reason: 'OTHER' })).status).toBe(200);
+      expect(await row()).toEqual({ status: 'S', suspend_reason: 'OTHER', terminated_on: null, purge_after: null });
+      expect((await login('ret.admin', 'passRet1234')).body.error.message).toBe('บัญชีผู้ใช้บริการนี้ถูกระงับ — กรุณาติดต่อผู้ให้บริการ');
+      cookie = admin;
+      expect((await call('POST', `/api/v1/tenants/${tid}/purge`, { confirm: 'RETA' })).body.error.message).toMatch(/"เลิกใช้" หรือ "ระงับ — ค้างชำระ" ก่อน/);
+      expect((await put({ status: 'S' })).status).toBe(200);   // ไม่ระบุเหตุ = อื่น ๆ
+      expect(await row()).toMatchObject({ suspend_reason: 'OTHER', purge_after: null });
+
+      // ค้างชำระอีกครั้ง → เลิกใช้: วันลบเดิม ไม่ยืด
+      expect((await put({ status: 'S', suspend_reason: 'UNPAID' })).status).toBe(200);
+      await sql`UPDATE sys_tenant SET purge_after = ${pdpaPurgeAfter(today, 20)}::date WHERE id = ${tid}`.execute(database.db);   // จำลองระงับมาแล้ว 10 วัน
+      expect((await put({ status: 'I' })).status).toBe(200);
+      expect(await row()).toEqual({ status: 'I', suspend_reason: null, terminated_on: today, purge_after: pdpaPurgeAfter(today, 20) });
+      expect((await login('ret.admin', 'passRet1234')).body.error.message).toMatch(/^บัญชีผู้ใช้บริการนี้เลิกใช้บริการแล้ว — ข้อมูลจะถูกลบถาวรวันที่/);
+      // ชำระแล้ว = กลับมาใช้งาน ยกเลิกการลบ · เข้าระบบได้
+      cookie = admin;
+      expect((await put({ status: 'A' })).status).toBe(200);
+      expect(await row()).toEqual({ status: 'A', suspend_reason: null, terminated_on: null, purge_after: null });
+      expect((await login('ret.admin', 'passRet1234')).status).toBe(200);
+
+      // ลูกค้าอื่น / ผู้ดูแลของลูกค้า: แก้สถานะ ลบ ดูรายการลูกค้าไม่ได้
+      expect((await login('retb.admin', 'passRetB1234')).status).toBe(200);
+      expect((await put({ status: 'A' })).status).toBe(403);
+      expect((await call('POST', `/api/v1/tenants/${tid}/purge`, { confirm: 'RETA' })).status).toBe(403);
+      expect((await call('GET', '/api/v1/tenants')).status).toBe(403);
+
+      // เลิกใช้ → ครบกำหนด → ผู้ให้บริการลบ (พิมพ์รหัส) · บันทึกเหตุการณ์ทุกครั้ง
+      cookie = admin;
+      expect((await put({ status: 'I' })).status).toBe(200);
+      expect(await row()).toMatchObject({ terminated_on: today, purge_after: in30 });
+      await sql`UPDATE sys_tenant SET purge_after = current_date - 1 WHERE id = ${tid}`.execute(database.db);
+      expect((await call('POST', `/api/v1/tenants/${tid}/purge`, { confirm: 'X' })).body.error.message).toMatch(/พิมพ์รหัสลูกค้า RETA/);
+      expect((await call('POST', `/api/v1/tenants/${tid}/purge`, { confirm: 'reta' })).status).toBe(200);
+      const log = (await sql<{ action: string; detail: { status?: string; suspend_reason?: string | null; purge_after?: string | null } | null }>`SELECT action, detail FROM sys_activity_log WHERE row_id = ${tid} AND action IN ('EDIT_TENANT', 'PURGE_TENANT') ORDER BY seq`.execute(database.db)).rows;
+      expect(log.map((r) => `${r.action}:${r.detail?.status ?? ''}:${r.detail?.suspend_reason ?? ''}`)).toEqual([
+        'EDIT_TENANT:S:UNPAID', 'EDIT_TENANT:S:OTHER', 'EDIT_TENANT:S:', 'EDIT_TENANT:S:UNPAID', 'EDIT_TENANT:I:', 'EDIT_TENANT:A:', 'EDIT_TENANT:I:', 'PURGE_TENANT::']);
+      expect(log[0]!.detail).toMatchObject({ from: 'A', purge_after: in30 });
+    } finally { cookie = start; }
+  });
 });
 
 describe('นำข้อมูลจาก Express ผ่านหน้าจอ (T0.12) — สิทธิ์และการตรวจ', () => {

@@ -71,6 +71,7 @@ CREATE TABLE sys_tenant (
   max_users integer,
   expires_on date,
   status char(1) DEFAULT 'A' NOT NULL CHECK (status IN ('A','S','I')),
+  suspend_reason varchar(10) CHECK (suspend_reason IN ('UNPAID','OTHER')),
   dpa_signed_on date,
   terminated_on date,
   purge_after date,
@@ -103,9 +104,10 @@ COMMENT ON COLUMN sys_tenant.max_companies IS 'จำนวนบริษัท
 COMMENT ON COLUMN sys_tenant.max_users IS 'จำนวนผู้ใช้สูงสุด (ว่าง = ไม่จำกัด)';
 COMMENT ON COLUMN sys_tenant.expires_on IS 'วันหมดอายุการใช้งาน';
 COMMENT ON COLUMN sys_tenant.status IS 'A=ใช้งาน S=ระงับ I=เลิกใช้';
+COMMENT ON COLUMN sys_tenant.suspend_reason IS 'เหตุที่ระงับ (สถานะ S): UNPAID=ค้างชำระ (นับ 30 วันแล้วลบข้อมูล) OTHER=เหตุอื่น เช่น ความปลอดภัย (ไม่นับ) · HANDOFF 186';
 COMMENT ON COLUMN sys_tenant.dpa_signed_on IS 'วันที่ลงนามข้อตกลงการประมวลผลข้อมูลส่วนบุคคล (DPA) กับผู้ให้บริการ (T0.17)';
 COMMENT ON COLUMN sys_tenant.terminated_on IS 'วันที่เลิกใช้บริการ (ตั้งเมื่อเปลี่ยนสถานะเป็น I)';
-COMMENT ON COLUMN sys_tenant.purge_after IS 'ลบข้อมูลได้ตั้งแต่วันนี้ (เลิกใช้บริการ + 90 วัน ให้ลูกค้าขอสำเนาข้อมูลก่อน)';
+COMMENT ON COLUMN sys_tenant.purge_after IS 'ลบข้อมูลได้ตั้งแต่วันนี้ (เลิกใช้บริการ หรือระงับเพราะค้างชำระ + 30 วัน · HANDOFF 186 — ระหว่างนี้ลูกค้าขอสำเนาข้อมูลได้ · ผู้ให้บริการลบเองพร้อมพิมพ์รหัสยืนยัน)';
 COMMENT ON COLUMN sys_tenant.purged_at IS 'ลบข้อมูลทั้งหมดของลูกค้าแล้วเมื่อ (เหลือเฉพาะรหัสและแฟ้มบันทึกเหตุการณ์)';
 COMMENT ON COLUMN sys_tenant.moved_to IS 'ย้ายไปใช้เซิร์ฟเวอร์/ฐานข้อมูลแยกแล้ว: ที่อยู่ใหม่ (T0.18) — ผู้ใช้เข้าระบบที่นี่ไม่ได้ ระบบบอกที่อยู่ใหม่';
 COMMENT ON COLUMN sys_tenant.require_mfa IS 'บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ของลูกค้านี้ (ผู้ดูแลระบบของลูกค้าตั้ง · ค่าเริ่มต้น ปิด — ผู้ดูแลระบบบังคับเสมอ · ไม่ใช้กับเจ้าหน้าที่ผู้ให้บริการ · HANDOFF 146)';

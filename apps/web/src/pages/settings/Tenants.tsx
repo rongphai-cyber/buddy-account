@@ -5,9 +5,11 @@ import { useSession } from '../../session';
 import { SignupsPanel } from './Signups';
 import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, toastError, useHotkeys } from '../../ui';
 import { packageBody, PackageFields, packageValues } from '../../components/PackageFields';
+import { useNavigate } from 'react-router-dom';
+import { SUSPEND_REASON_TH, TENANT_RETENTION_DAYS, tenantCountdown, tenantCountingDown, todayIso, type SuspendReason } from '@buddy/core';
 
 interface Tenant { id: string; code: string; name: string; contact_email: string | null; contact_phone: string | null; plan: string; max_companies: number | null; max_users: number | null; expires_on: string | null; status: string; company_count: number; user_count: number;
-  dpa_signed_on: string | null; terminated_on: string | null; purge_after: string | null; purged_at: string | null; moved_to: string | null; single_session?: boolean;
+  dpa_signed_on: string | null; terminated_on: string | null; purge_after: string | null; purged_at: string | null; moved_to: string | null; single_session?: boolean; suspend_reason?: SuspendReason | null;
   package_id?: string | null; package_name?: string | null; docs_per_month?: number | null; file_quota_mb?: number | null; ai_per_month?: number | null; over_action?: 'W' | 'S' }
 const ST: Record<string, [string, 'n' | 'd' | 'x']> = { A: ['ใช้งาน', 'n'], S: ['ระงับ', 'd'], I: ['เลิกใช้', 'x'] };
 
@@ -18,26 +20,33 @@ export function TenantsPage() {
   const q = useQuery({ enabled: !!me?.user.is_platform, queryKey: ['tenants'], queryFn: () => api.get<Tenant[]>('/api/v1/tenants') });
   const [edit, setEdit] = useState<Tenant | 'new' | null>(null);
   const [importing, setImporting] = useState(false);
+  // HANDOFF 186: กรองลูกค้าที่กำลังนับวันลบ / ครบกำหนดลบ
+  const [due, setDue] = useState<'' | 'counting' | 'due'>('');
+  const today = todayIso();
+  const rows = (q.data ?? []).filter((t) => !due || (!t.purged_at && !t.moved_to && tenantCountingDown(t) && (due === 'counting' || t.purge_after! <= today)));
   useHotkeys({ Insert: () => setEdit('new') }, []);
   if (!me?.user.is_platform) return <div className="page"><div className="notebox">เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม</div></div>;
   return (
     <div className="page" data-tone="setup">
-      <PageHead eyebrow="เริ่มระบบ › ลูกค้าผู้ใช้บริการ" title="ลูกค้าผู้ใช้บริการ" lead="ลูกค้าแต่ละรายเห็นเฉพาะบริษัท ผู้ใช้ และข้อมูลของตัวเอง — ระงับแล้วผู้ใช้ทุกคนของลูกค้ารายนั้นออกจากระบบทันที · เลิกใช้บริการแล้ว 90 วันลบข้อมูลได้ (PDPA)"
+      <PageHead eyebrow="เริ่มระบบ › ลูกค้าผู้ใช้บริการ" title="ลูกค้าผู้ใช้บริการ" lead={`ลูกค้าแต่ละรายเห็นเฉพาะบริษัท ผู้ใช้ และข้อมูลของตัวเอง — ระงับแล้วผู้ใช้ทุกคนของลูกค้ารายนั้นออกจากระบบทันที · เลิกใช้บริการ หรือระงับเพราะค้างชำระ เก็บข้อมูล ${TENANT_RETENTION_DAYS} วันแล้วลบได้ (ผู้ให้บริการกดลบเอง)`}
         actions={<><button onClick={() => setImporting(true)}>⬆ รับลูกค้าที่ย้ายมา…</button><button className="primary" onClick={() => setEdit('new')}>+ เพิ่มลูกค้า <kbd>Ins</kbd></button></>} />
       <SignupsPanel onApproved={() => qc.invalidateQueries({ queryKey: ['tenants'] })} />
       <ErrorBox error={q.error} />
+      <div className="toolbar"><label className="inline">แสดง <select value={due} onChange={(e) => setDue(e.target.value as typeof due)} aria-label="กรองตามกำหนดลบข้อมูล">
+        <option value="">ลูกค้าทั้งหมด</option><option value="counting">กำลังนับวันลบข้อมูล (เลิกใช้ / ค้างชำระ)</option><option value="due">ครบกำหนดลบข้อมูลแล้ว</option></select></label></div>
       <div className="table-wrap">
         <table className="grid">
           <thead><tr><th>รหัส</th><th>ชื่อลูกค้า</th><th>ผู้ติดต่อ</th><th>แพ็กเกจ</th><th className="r">บริษัท</th><th className="r">ผู้ใช้</th><th>หมดอายุ</th><th>ข้อตกลง DPA</th><th>สถานะ</th></tr></thead>
           <tbody>
-            {q.data?.map((t) => (
+            {rows.map((t) => (
               <tr key={t.id} className="row-open" onClick={() => setEdit(t)}>
                 <td className="mono">{t.code}</td><td>{t.name}</td><td className="small">{t.contact_email} {t.contact_phone}</td><td>{t.package_name ?? <span className="muted" title={t.plan}>ไม่มีแพ็กเกจ</span>}</td>
                 <td className="r">{t.company_count}{t.max_companies ? ` / ${t.max_companies}` : ''}</td><td className="r">{t.user_count}{t.max_users ? ` / ${t.max_users}` : ''}</td>
                 <td><DateText v={t.expires_on} /></td><td>{t.dpa_signed_on ? <DateText v={t.dpa_signed_on} /> : <span className="small muted">ยังไม่ลงนาม</span>}</td>
-                <td><Pill tone={ST[t.status]?.[1]}>{t.purged_at ? 'ลบข้อมูลแล้ว' : t.moved_to ? 'ย้ายแล้ว' : ST[t.status]?.[0]}</Pill>{t.moved_to && <div className="small muted">{t.moved_to}</div>}{t.purge_after && !t.purged_at && !t.moved_to && <div className="small muted">ลบได้ตั้งแต่ <DateText v={t.purge_after} /></div>}</td>
+                <td><Pill tone={ST[t.status]?.[1]}>{t.purged_at ? 'ลบข้อมูลแล้ว' : t.moved_to ? 'ย้ายแล้ว' : `${ST[t.status]?.[0]}${t.status === 'S' && t.suspend_reason ? ` — ${SUSPEND_REASON_TH[t.suspend_reason]}` : ''}`}</Pill>{t.moved_to && <div className="small muted">{t.moved_to}</div>}{t.purge_after && !t.purged_at && !t.moved_to && <div className={t.purge_after <= today ? 'small bad' : 'small muted'}>ลบได้ตั้งแต่ <DateText v={t.purge_after} />{t.purge_after <= today ? ' (ครบกำหนดแล้ว)' : ''}</div>}</td>
               </tr>
             ))}
+            {q.data && !rows.length && <tr><td colSpan={9} className="empty">{due === 'due' ? 'ไม่มีลูกค้าที่ครบกำหนดลบข้อมูล' : due ? 'ไม่มีลูกค้าที่กำลังนับวันลบข้อมูล' : 'ยังไม่มีลูกค้า'}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -51,13 +60,23 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
   const [f, setF] = useState({ code: t?.code ?? '', name: t?.name ?? '', contact_email: t?.contact_email ?? '', contact_phone: t?.contact_phone ?? '', plan: t?.plan ?? 'standard',
     expires_on: t?.expires_on ?? '', status: t?.status ?? 'A', dpa_signed_on: t?.dpa_signed_on ?? '', moved_to: t?.moved_to ?? '', single_session: t?.single_session ?? false, admin_username: '', admin_name: '', admin_password: '' });
   const [pk, setPk] = useState(() => packageValues(t));
+  const [reason, setReason] = useState<SuspendReason | ''>(t?.suspend_reason ?? '');
+  const { me, select } = useSession();
+  const nav = useNavigate();
   const [err, setErr] = useState<unknown>(null);
   const [purge, setPurge] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [viewer, setViewer] = useState(false);
-  const body = { ...f, contact_email: f.contact_email || null, contact_phone: f.contact_phone || null, expires_on: f.expires_on || null, dpa_signed_on: f.dpa_signed_on || null, moved_to: f.moved_to || null, ...packageBody(pk) };
-  const save = () => (t ? api.put(`/api/v1/tenants/${t.id}`, body) : api.post('/api/v1/tenants', body)).then(() => { toast('บันทึกลูกค้าแล้ว'); onSaved(); }).catch(setErr);
-  useHotkeys({ F9: save, 'Ctrl+S': save }, [f, pk]);
+  const body = { ...f, suspend_reason: f.status === 'S' ? reason || null : null, contact_email: f.contact_email || null, contact_phone: f.contact_phone || null, expires_on: f.expires_on || null, dpa_signed_on: f.dpa_signed_on || null, moved_to: f.moved_to || null, ...packageBody(pk) };
+  const save = () => {
+    // ช่องบังคับ: ระงับต้องเลือกเหตุ (ค้างชำระ = นับวันลบข้อมูล)
+    if (f.status === 'S' && !reason) { setErr(new Error('เลือกเหตุที่ระงับ — "ค้างชำระ" นับ ' + TENANT_RETENTION_DAYS + ' วันแล้วลบข้อมูลได้ · "อื่น ๆ" ไม่นับ')); return; }
+    (t ? api.put(`/api/v1/tenants/${t.id}`, body) : api.post('/api/v1/tenants', body)).then(() => { toast('บันทึกลูกค้าแล้ว'); onSaved(); }).catch(setErr);
+  };
+  useHotkeys({ F9: save, 'Ctrl+S': save }, [f, pk, reason]);
+  // วันลบข้อมูลหลังบันทึก (แสดงก่อนกดบันทึก)
+  const plan = tenantCountdown({ status: f.status, suspend_reason: f.status === 'S' ? reason || 'OTHER' : null }, t ?? { status: 'A', terminated_on: null, purge_after: null }, todayIso());
+  const companies = t ? (me?.companies ?? []).filter((c) => c.tenant_id === t.id) : [];
   if (t?.purged_at) return (
     <Modal title={`ลูกค้า ${t.code}`} onClose={onClose} footer={<button onClick={onClose}>ปิด</button>}>
       <div className="notebox">ลบข้อมูลทั้งหมดของลูกค้ารายนี้แล้วเมื่อ <DateText v={t.purged_at.slice(0, 10)} /> (เลิกใช้บริการ <DateText v={t.terminated_on} />) — เหลือเฉพาะรหัสลูกค้าและแฟ้มบันทึกเหตุการณ์ แก้ไขหรือเปิดใช้อีกไม่ได้</div>
@@ -69,6 +88,12 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
       <div className="form-grid">
         <Field label="รหัสลูกค้า" req><input value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} readOnly={!!t} /></Field>
         <Field label="สถานะ"><select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="A">ใช้งาน</option><option value="S">ระงับ</option><option value="I">เลิกใช้</option></select></Field>
+        {f.status === 'S' && <Field label="เหตุที่ระงับ" req hint={`ค้างชำระ = เก็บข้อมูล ${TENANT_RETENTION_DAYS} วันแล้วลบได้ · อื่น ๆ (เช่น ความปลอดภัย) = ไม่นับวันลบ`}>
+          <select value={reason} onChange={(e) => setReason(e.target.value as SuspendReason | '')} aria-label="เหตุที่ระงับ" aria-invalid={!reason || undefined}><option value="">— เลือกเหตุ —</option><option value="UNPAID">{SUSPEND_REASON_TH.UNPAID}</option><option value="OTHER">{SUSPEND_REASON_TH.OTHER}</option></select>
+        </Field>}
+        {f.status !== 'A' && !(f.status === 'S' && !reason) && <div className={plan.purge_after ? 'wide notebox warn' : 'wide notebox'} role="status">{plan.purge_after
+          ? <>ผู้ใช้ทุกคนของลูกค้าเข้าระบบไม่ได้ และเห็นข้อความว่า <b>ข้อมูลจะถูกลบถาวรวันที่ <DateText v={plan.purge_after} /></b> ({TENANT_RETENTION_DAYS} วัน{t && tenantCountingDown(t) ? ' — นับต่อจากเดิม ไม่ยืดเวลา' : ''}) · ลบจริงเมื่อผู้ให้บริการกด "ลบข้อมูลทั้งหมดของลูกค้า" เท่านั้น · กลับเป็น "ใช้งาน" = ยกเลิกการลบ</>
+          : <>ระงับโดยไม่นับวันลบข้อมูล — ผู้ใช้ทุกคนของลูกค้าเข้าระบบไม่ได้จนกว่าจะเปลี่ยนเป็น "ใช้งาน"</>}</div>}
         <Field label="ชื่อลูกค้า" req wide><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
         <Field label="อีเมลผู้ติดต่อ"><input value={f.contact_email} onChange={(e) => setF({ ...f, contact_email: e.target.value })} /></Field>
         <Field label="โทรศัพท์"><input value={f.contact_phone} onChange={(e) => setF({ ...f, contact_phone: e.target.value })} /></Field>
@@ -97,12 +122,16 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
           <Field label="ย้ายไปที่ (ที่อยู่ของเครื่องใหม่)" wide><input value={f.moved_to} placeholder="เช่น https://bigco.buddy.example" onChange={(e) => setF({ ...f, moved_to: e.target.value })} /></Field>
           <div className="wide"><button onClick={() => setExporting(true)}>⬇ ส่งออกเพื่อย้าย…</button></div>
         </>}
-        {t && f.status === 'I' && <div className="wide notebox">
-          {t.status === 'I' && t.purge_after
-            ? t.moved_to ? <>ย้ายไปที่ {t.moved_to} แล้ว — ลบสำเนาที่เครื่องนี้ได้ทันที{' '}<button className="danger" onClick={() => setPurge(true)}>ลบข้อมูลทั้งหมดของลูกค้า…</button></> : <>เลิกใช้บริการเมื่อ <DateText v={t.terminated_on} /> · ลบข้อมูลได้ตั้งแต่ <DateText v={t.purge_after} /> — ระหว่างนี้ให้สำรองข้อมูลแต่ละบริษัทส่งให้ลูกค้าถ้าลูกค้าขอ
-              {' '}<button className="danger" onClick={() => setPurge(true)}>ลบข้อมูลทั้งหมดของลูกค้า…</button></>
-            : <>บันทึกสถานะ "เลิกใช้" แล้ว ผู้ใช้ของลูกค้าเข้าระบบไม่ได้ และระบบนับ 90 วันก่อนลบข้อมูลได้ (ให้ลูกค้าขอสำเนาข้อมูลก่อน)</>}
+        {t && tenantCountingDown(t) && <div className="wide notebox">
+          {t.moved_to ? <>ย้ายไปที่ {t.moved_to} แล้ว — ลบสำเนาที่เครื่องนี้ได้ทันที{' '}<button className="danger" onClick={() => setPurge(true)}>ลบข้อมูลทั้งหมดของลูกค้า…</button></>
+            : <>{t.status === 'I' ? <>เลิกใช้บริการเมื่อ <DateText v={t.terminated_on} /></> : <>ระงับ — ค้างชำระ</>} · ลบข้อมูลได้ตั้งแต่ <DateText v={t.purge_after} /> — ระหว่างนี้ลูกค้าชำระเงิน (เปลี่ยนเป็น "ใช้งาน") หรือขอสำเนาข้อมูลได้ (ด้านล่าง)
+              {' '}<button className="danger" onClick={() => setPurge(true)}>ลบข้อมูลทั้งหมดของลูกค้า…</button></>}
         </div>}
+        {t && companies.length > 0 && <>
+          <h3 className="wide">ส่งสำเนาข้อมูลให้ลูกค้า (ก่อนลบ)</h3>
+          <p className="wide small muted">ลูกค้าที่ถูกระงับเข้าระบบไม่ได้ — เลือกบริษัทแล้ว "สำรองข้อมูล" (ตั้งรหัสผ่านแฟ้ม) ส่งแฟ้มและรหัสผ่านให้ลูกค้าแยกช่องทาง · แฟ้มนำกลับใช้ใน Buddy ได้ · ลูกค้าที่ยังเข้าระบบได้ สำรองเองได้ที่ อื่น ๆ › สำรองข้อมูล และส่งออกรายงานเป็น Excel</p>
+          <div className="wide">{companies.map((c) => <button key={c.id} type="button" onClick={() => void select({ company_id: c.id }).then(() => nav('/tools/backup')).catch(toastError)}>สำรองข้อมูล {c.code} {c.name_th}</button>)}</div>
+        </>}
         {!t && <>
           <h3 className="wide">ผู้ดูแลระบบคนแรกของลูกค้า</h3>
           <Field label="รหัสผู้ใช้" req><input value={f.admin_username} onChange={(e) => setF({ ...f, admin_username: e.target.value })} /></Field>
