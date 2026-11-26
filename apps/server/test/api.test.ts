@@ -8765,6 +8765,18 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect(atAll.groups.map((x) => x.code).sort()).toEqual(Object.keys(G).sort());   // ทุกกลุ่ม แม้ไม่มีแถวที่ ALL
     expect(atAll.users.map((u) => [u.code, u.status, u.admin])).toEqual([['t200.admin', 'A', true], ['t200.old', 'I', false], ['t200.sale', 'A', false]]);
     expect(atAll.groups.find((x) => x.code === 'SALE')!.members).toBe(1);
+    // ส่วนที่ 3: เมนูหลัก (ALL · กลุ่มเมนู) — ไม่ได้ตั้งที่นี่แต่เมนูย่อยบางเมนูใช้ได้ = "บางเมนู" (part) · ไม่มีเมนูย่อยใดใช้ได้ = N (ไม่มี part)
+    type PCell = BCell & { part?: { n: number; of: number } };
+    const accAll = atAll.groups.find((x) => x.code === 'ACC')!.cells.read as PCell;
+    expect([accAll.v, accAll.part!.n > 0, accAll.part!.n < accAll.part!.of]).toEqual(['N', true, true]);
+    const emptyG = (await call('POST', '/api/v1/user-groups', { code: 'EMPTY200', name: 'กลุ่มยังไม่มีสิทธิ์' })).body.id as string;
+    const atAll2 = (await call('GET', '/api/v1/permissions/by-menu?menu_code=ALL')).body as BM;
+    const emp = atAll2.groups.find((x) => x.id === emptyG)!.cells.read as PCell;
+    expect([emp.v, emp.part]).toEqual(['N', undefined]);
+    const atSa = (await call('GET', '/api/v1/permissions/by-menu?menu_code=SA')).body as BM;
+    const hrSa = atSa.groups.find((x) => x.code === 'HR')!.cells.read as PCell;
+    expect([hrSa.v, hrSa.part]).toEqual(['N', undefined]);   // ฝ่ายบุคคลไม่มีเมนูขายใดเลย
+    expect((atSa.users.find((u) => u.code === 't200.admin')!.cells.read as PCell).part).toBeUndefined();   // ADMIN ได้ที่เมนูหลักเอง
     const cmp: string[] = [];
     const sale = await login('t200.sale', 'passSale200');
     await call('POST', '/api/v1/auth/select', { company_id: co });

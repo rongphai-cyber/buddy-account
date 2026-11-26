@@ -277,13 +277,15 @@ function CopyRights({ subject, onClose, onDone }: { subject: { type: 'U' | 'G'; 
   );
 }
 
+/** คำอธิบายเครื่องหมาย "บางเมนู" */
+function partTip(n: number, of: number) { return `ใช้ได้ ${n} จาก ${of} เมนูย่อย — เลือกเมนูย่อยเพื่อดูรายละเอียด`; }
 /** กลุ่ม · ระดับ · ซ่อนเมนู ของผู้ใช้ (บรรทัดเล็กใต้ชื่อ) */
 function userLine(u: { group_code: string | null; approval_level: number; check_rights: boolean }) {
   const g = u.group_code ? `กลุ่ม ${u.group_code}` : 'ไม่มีกลุ่ม';
   const hide = u.check_rights ? ' · ซ่อนเมนูที่ไม่มีสิทธิ์' : '';
   return `${g} · ระดับ ${u.approval_level}${hide}`;
 }
-type BCell = { v: 'Y' | 'L' | 'S' | 'N'; src: 'admin' | 'user' | 'group' | 'level' | 'none' | 'block'; at?: string; need?: number; why?: string };
+type BCell = { v: 'Y' | 'L' | 'S' | 'N'; src: 'admin' | 'user' | 'group' | 'level' | 'none' | 'block'; at?: string; need?: number; why?: string; part?: { n: number; of: number } };
 type BGroup = { id: string; code: string; name: string; admin: boolean; members: number; has_rows: boolean; cells: Record<PermAction, BCell> };
 type BUser = { id: string; code: string; name: string; status: string; group_code: string | null; approval_level: number; check_rights: boolean; admin: boolean; table: TableMode; cells: Record<PermAction, BCell> };
 /**
@@ -306,6 +308,8 @@ function ByMenu({ menus, initial, onOpen }: { menus: MenuRow[]; initial: string;
     }
   }
   const cell = (c: BCell, kind: 'G' | 'U', group: string | null, a: PermAction) => {
+    // เมนูหลัก: ที่นี่ไม่ได้ แต่เมนูย่อยบางเมนูได้ = "บางเมนู" (สีกลาง ไม่ใช่แดง · HANDOFF 200 ส่วนที่ 3)
+    if (c.part) return <td key={a} className="c perm-part" title={partTip(c.part.n, c.part.of)}><span className="bm-v">◐</span><span className="bm-src">บางเมนู</span></td>;
     const [w, tip] = where(c, kind, group);
     const ok = c.v !== 'N';
     const own = (c.src === 'group' && kind === 'G' && c.at === code) || (c.src === 'user' && c.at === code);
@@ -321,6 +325,7 @@ function ByMenu({ menus, initial, onOpen }: { menus: MenuRow[]; initial: string;
         <span className="small muted">ดูอย่างเดียว — คลิกแถวเพื่อไปแก้สิทธิ์ของกลุ่ม/ผู้ใช้นั้นที่เมนูนี้</span></div>
       <ErrorBox error={q.error} />
       <p className="perm-legend small"><span className="perm-own">✓ Y</span> ใช้ได้ · <span className="perm-own">✓ L</span> ใช้ได้และบันทึกเหตุการณ์ · <span className="perm-own">S จอ</span> พิมพ์ออกจอเท่านั้น · <span className="perm-own bad">✗ N</span> ใช้ไม่ได้
+        {' · '}<span className="perm-part">◐ บางเมนู</span> = เมนูหลักนี้ไม่ได้ตั้ง แต่ใช้ได้ในเมนูย่อยบางเมนู (ชี้ดูจำนวน)
         {' · '}ใต้เครื่องหมาย = ที่มา: <b>ตั้งที่นี่</b>/<b>ตั้งเฉพาะคน</b> (ตัวหนาสี = ตั้งที่เมนูนี้) · เมนูหลัก · ทุกระบบ · กลุ่ม · ระดับ (ตามระดับอนุมัติ) · ไม่ได้ตั้ง · ปิด (ชี้ดูเหตุ) · ≥5 = สมาชิกต้องระดับ 5 ขึ้นไป</p>
       <div className="table-wrap perm-bymenu">
         <table className="grid">

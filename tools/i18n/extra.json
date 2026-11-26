@@ -3934,5 +3934,10 @@
  "เฉพาะผู้ดูแลระบบ (ADMIN)": "Administrators only (ADMIN)",
  "เมนู {0} เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) — กำหนดสิทธิ์ให้กลุ่ม/ผู้ใช้อื่นไม่ได้": "Menu {0} is for administrators only (ADMIN group) — rights can't be given to other groups/users",
  "เมนู บริษัททั้งหมด / ลบบริษัท เฉพาะผู้ดูแลระบบของกิจการ (กลุ่ม ADMIN)": "The All companies / Delete company menu is for the business's administrators only (ADMIN group)",
- "ใช้ได้ (ผู้ดูแลระบบ)": "Allowed (administrator)"
+ "ใช้ได้ (ผู้ดูแลระบบ)": "Allowed (administrator)",
+ "= เมนูหลักนี้ไม่ได้ตั้ง แต่ใช้ได้ในเมนูย่อยบางเมนู (ชี้ดูจำนวน) · ใต้เครื่องหมาย = ที่มา:": "= not set at this parent menu, but allowed in some sub-menus (hover for the count) · under the mark = where it comes from:",
+ "บางเมนู": "Some menus",
+ "ใช้ได้ {0} จาก {1} เมนูย่อย — เลือกเมนูย่อยเพื่อดูรายละเอียด": "Allowed in {0} of {1} sub-menus — pick a sub-menu to see the details",
+ "ใช้ไม่ได้ ·": "not allowed ·",
+ "◐ บางเมนู": "◐ Some menus"
 }

@@ -19062,6 +19062,13 @@
 ]
 },
 {
+"th": "= เมนูหลักนี้ไม่ได้ตั้ง แต่ใช้ได้ในเมนูย่อยบางเมนู (ชี้ดูจำนวน) · ใต้เครื่องหมาย = ที่มา:",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "= เลขที่เอกสาร",
 "n": 1,
 "files": [
@@ -37154,6 +37161,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/stockcount.ts"
+]
+},
+{
+"th": "บางเมนู",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -66179,6 +66193,13 @@
 ]
 },
 {
+"th": "ใช้ได้ {0} จาก {1} เมนูย่อย — เลือกเมนูย่อยเพื่อดูรายละเอียด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ใช้ได้ครั้งเดียว ภายใน {0} ชั่วโมง",
 "n": 1,
 "files": [
@@ -66214,7 +66235,7 @@
 ]
 },
 {
-"th": "ใช้ไม่ได้ · ใต้เครื่องหมาย = ที่มา:",
+"th": "ใช้ไม่ได้ ·",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -70376,6 +70397,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocTypeTabs.tsx"
+]
+},
+{
+"th": "◐ บางเมนู",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {

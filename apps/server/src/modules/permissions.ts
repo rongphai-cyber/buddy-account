@@ -779,7 +779,11 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
     const bySubject = new Map<string, PermRow[]>();
     for (const r of all) { const k = `${r.subject_type}:${r.subject_id}`; (bySubject.get(k) ?? bySubject.set(k, []).get(k)!).push(r as unknown as PermRow); }
     const off = await modulesOff(db, a.companyId);
-    type Cell = { v: 'Y' | 'L' | 'S' | 'N'; src: 'admin' | 'user' | 'group' | 'level' | 'none' | 'block'; at?: string; need?: number; why?: string };
+    type Cell = { v: 'Y' | 'L' | 'S' | 'N'; src: 'admin' | 'user' | 'group' | 'level' | 'none' | 'block'; at?: string; need?: number; why?: string; part?: { n: number; of: number } };
+    // HANDOFF 200 ส่วนที่ 3: เมนูหลัก (ALL · กลุ่มเมนู) ที่ได้ N แต่มีเมนูย่อยที่ใช้ได้ = "บางเมนู" (part) ไม่ใช่ "ใช้ไม่ได้เลย"
+    // เมนูย่อยปลายทางที่อยู่ในตารางสิทธิ์ของบริษัทนี้ (ไม่นับเมนูผู้ให้บริการ/ที่ลูกค้ายังไม่เปิด) — คิดด้วย decide() ในหน่วยความจำ ไม่ query เพิ่ม
+    const hiddenHere = await hiddenIn(a.companyId);
+    const leaves = FLAT.filter((m) => !m.children?.length && !hiddenHere.has(m.code) && !PERSONAL.has(m.code) && (menu === ALL_MENU || chainOf(m.code).includes(menu)) && m.code !== menu).map((m) => m.code);
     const cellsOf = (ctx: AuthContext, rows: PermRow[], isGroup: boolean) => Object.fromEntries(ACTIONS.map((x) => {
       const r = decide(ctx, rows, menu, x, off);
       const v: Cell['v'] = r.allowed ? (r.screenOnly ? 'S' : r.log ? 'L' : 'Y') : 'N';
@@ -792,6 +796,10 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
       else c = { v, src: 'block', why: whyText(r, ctx, menu, x) };
       // กลุ่ม: สมาชิกยังต้องมีระดับอนุมัติพอ (ยกเลิก ลบ รับรอง กำหนดค่า เงินเดือน ความปลอดภัย)
       if (isGroup && r.allowed && need > 0) c.need = need;
+      if (!r.allowed && leaves.length) {
+        const n = leaves.filter((l) => decide(ctx, rows, l, x, off).allowed).length;
+        if (n) c.part = { n, of: leaves.length };
+      }
       return [x, c];
     })) as Record<Action, Cell>;
     const base = { ...a, apiKeyId: undefined, apiKeyReadOnly: undefined, isPlatform: false } as AuthContext;

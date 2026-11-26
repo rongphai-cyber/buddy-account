@@ -1197,6 +1197,8 @@ select.perm-blocked { outline: 2px dashed var(--warn); outline-offset: -2px; }
 .perm-bymenu .bm-v { display: block; font-weight: 600; }
 .perm-bymenu .bm-src { display: block; font-size: 11px; opacity: .75; overflow: hidden; text-overflow: ellipsis; }
 .perm-bymenu tr.perm-admin-row { cursor: default; }
+.perm-part { color: #4f6fa8; }
+.perm-bymenu td.perm-part { background: color-mix(in srgb, #8fb3e8 14%, transparent); }
 .perm-bymenu tr:focus-visible { outline: 2px solid var(--accent, #7b6cd9); outline-offset: -2px; }
 .perm-grid tr.perm-focus > td { background: color-mix(in srgb, #f5c86a 28%, transparent); }
 .perm-user-head { font-size: 15px; }
