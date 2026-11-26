@@ -503,6 +503,39 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     return db.insertInto('sys_user_group').values({ code: b.code, name: b.name, tenant_id: await tenantFor(a, b.tenant_id), created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
   });
   /**
+   * เปลี่ยนชื่อ / ลบกลุ่ม (HANDOFF 198 · เจ้าของ 26/11/2569 "จะเพิ่มกลุ่มก็ควรอยู่หน้านั้น") — แท็บกลุ่มผู้ใช้ในหน้าผู้ใช้งานระบบ
+   * เฉพาะกลุ่มของลูกค้าเดียวกัน (กลุ่มของลูกค้ารายอื่น = ไม่พบ · ข้อ 7.1) · รหัสกลุ่มเปลี่ยนไม่ได้ (กลุ่มตั้งต้นใช้รหัสตรวจว่ามีแล้ว)
+   * ลบได้เฉพาะกลุ่มที่ไม่มีสมาชิก และไม่ใช่ ADMIN — ตั้ง deleted_at ทั้งกลุ่มและแถวสิทธิ์ของกลุ่มทุกบริษัท (รหัสกลุ่มว่าง ใช้ใหม่ได้)
+   */
+  const groupOf = async (a: AuthContext, id: string) => {
+    const g = await db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!g || (!a.isPlatform && g.tenant_id !== a.tenantId)) throw notFound('กลุ่มผู้ใช้');
+    return g;
+  };
+  app.put('/api/v1/user-groups/:id', async (req) => {
+    const a = requireAdmin(req);
+    const g = await groupOf(a, parse(z.object({ id: uuid }), req.params).id);
+    const b = parse(z.object({ name: z.string().trim().min(1, 'ป้อนชื่อกลุ่ม').max(120) }), req.body);
+    await db.transaction().execute(async (tx) => {
+      await tx.updateTable('sys_user_group').set({ name: b.name, updated_by: a.userId, updated_at: sql`now()` as never, row_version: sql`row_version + 1` as never }).where('id', '=', g.id).execute();
+      await logActivity(tx, a, { module: 'SET.SEC', action: 'EDIT_GROUP', docNo: g.code, table: 'sys_user_group', rowId: g.id, detail: { before: g.name, after: b.name } });
+    });
+    return { id: g.id };
+  });
+  app.delete('/api/v1/user-groups/:id', async (req) => {
+    const a = requireAdmin(req);
+    const g = await groupOf(a, parse(z.object({ id: uuid }), req.params).id);
+    if (g.code === 'ADMIN') throw badRequest('ลบกลุ่ม ADMIN ไม่ได้ — กลุ่มผู้ดูแลระบบต้องมีเสมอ');
+    const n = Number((await db.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).where('user_group_id', '=', g.id).where('deleted_at', 'is', null).executeTakeFirstOrThrow()).n);
+    if (n) throw badRequest(`กลุ่ม ${g.code} มีผู้ใช้ ${n} คน — ย้ายผู้ใช้ไปกลุ่มอื่นก่อน (แท็บผู้ใช้ › แก้ไขผู้ใช้ › กลุ่มผู้ใช้) แล้วจึงลบกลุ่ม`);
+    await db.transaction().execute(async (tx) => {
+      const p = await tx.updateTable('sys_permission').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('subject_type', '=', 'G').where('subject_id', '=', g.id).where('deleted_at', 'is', null).executeTakeFirst();
+      await tx.updateTable('sys_user_group').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('id', '=', g.id).execute();
+      await logActivity(tx, a, { module: 'SET.SEC', action: 'DELETE_GROUP', docNo: g.code, table: 'sys_user_group', rowId: g.id, detail: { name: g.name, permission_rows: Number(p.numUpdatedRows) } });
+    });
+    return { id: g.id };
+  });
+  /**
    * กลุ่มตั้งต้น (ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว) — ผู้ดูแลของลูกค้ากดเอง (HANDOFF 197)
    * ลูกค้า = ของผู้ดูแล (ผู้ให้บริการ = ลูกค้าเจ้าของบริษัทที่เลือกอยู่) · ทำซ้ำได้: สร้างเฉพาะกลุ่มที่ยังไม่มี ใส่สิทธิ์เฉพาะบริษัทที่กลุ่มยังไม่มีแถวสิทธิ์ (ไม่เขียนทับที่แก้เอง)
    */

@@ -13,6 +13,7 @@ import { withSource } from './source.js';
 import { payrollSource } from './wts.js';
 import { withVersion } from '../versions.js';
 import { companiesForUser } from './auth.js';
+import { companySettings } from '../company-template.js';
 
 /**
  * สิทธิ์ 7 ชนิดรายเมนู — คู่มือบทที่ 23 (S-SEC-01/02/03)
@@ -273,7 +274,7 @@ export const API_RULES: Record<string, Rule> = {
   'POST /api/v1/ai/read-bill-text': { kind: 'menu', menu: 'PU.RR', action: 'add', pick: async (req) => AI_BILL_TARGETS.find((k) => k.path === (req.body as { target?: string } | undefined)?.target)?.menu ?? 'PU.RR' },
   'GET /api/v1/etax/docs': M('FI.VAT.ETAX', 'read'), 'GET /api/v1/etax/doc/:id': M('FI.VAT.ETAX', 'print'), 'GET /api/v1/etax/export': M('FI.VAT.ETAX', 'print'),
   'GET /api/v1/api-keys': M('SET.API', 'read'), 'POST /api/v1/api-keys': M('SET.API', 'add'), 'POST /api/v1/api-keys/:id/revoke': M('SET.API', 'cancel'), 'PUT /api/v1/api-keys/:id/scope': M('SET.API', 'edit'), 'GET /api/v1/api-docs': M('SET.API', 'read'),
-  'GET /api/v1/users': SELF, 'POST /api/v1/users': SELF, 'PUT /api/v1/users/:id': SELF, 'POST /api/v1/user-groups': SELF,
+  'GET /api/v1/users': SELF, 'POST /api/v1/users': SELF, 'PUT /api/v1/users/:id': SELF, 'POST /api/v1/user-groups': SELF, 'PUT /api/v1/user-groups/:id': SELF, 'DELETE /api/v1/user-groups/:id': SELF,
   // สมัครใช้งานเอง: หน้าสมัครไม่ต้องเข้าระบบ · พิจารณาใบสมัคร = เจ้าหน้าที่ผู้ให้บริการ (ตรวจในตัว API)
   // ชื่อภาษาอังกฤษของข้อมูลบริษัทนี้ (โหมด EN)
   'GET /api/v1/i18n/names': LOOKUP,
@@ -496,7 +497,7 @@ export const API_RULES: Record<string, Rule> = {
   'PUT /api/v1/salespersons/:id': M('SA.SLM', 'edit'), 'DELETE /api/v1/salespersons/:id': M('SA.SLM', 'delete'),
   // ระบบความปลอดภัย (S-SEC-01/02/03)
   'GET /api/v1/permissions/menus': M('SET.SEC', 'read'), 'GET /api/v1/permissions': M('SET.SEC', 'read'),
-  'GET /api/v1/permissions/by-menu': M('SET.SEC', 'read'), 'PUT /api/v1/permissions': M('SET.SEC', 'edit'),
+  'GET /api/v1/permissions/by-menu': M('SET.SEC', 'read'), 'GET /api/v1/permissions/level-uses': M('SET.SEC', 'read'), 'PUT /api/v1/permissions': M('SET.SEC', 'edit'),
   // คัดลอกสิทธิ์ไปบริษัทอื่นของลูกค้าเดียวกัน (HANDOFF 197): เขียนข้ามบริษัท จึงไม่อยู่ใต้ RLS ของบริษัทเดียว — ตรวจสิทธิ์แก้สิทธิ์ผู้ใช้ทั้งต้นทางและปลายทางในตัว API
   'POST /api/v1/permissions/copy/preview': SELF, 'POST /api/v1/permissions/copy': SELF,
   // กลุ่มตั้งต้นของลูกค้า (HANDOFF 197): ผู้ดูแลของลูกค้าเพิ่มเองได้ (ตรวจในตัว API)
@@ -665,6 +666,26 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
   });
 
   /** ตามเมนู (S-SEC-03): ทุกกลุ่ม/ผู้ใช้ที่ได้ค่าที่เมนูนี้ รายช่อง — from = เมนูที่ให้ค่านั้น (ตัวเอง/เมนูหลัก/ทุกระบบงาน) */
+  /**
+   * ระดับอนุมัติที่บริษัทนี้ใช้จริง (HANDOFF 198 เจ้าของ ข้อ 2 "ระดับอนุมัติ … ใช้งานอย่างไร") — แสดงใต้ช่องระดับอนุมัติในหน้าแก้ไขผู้ใช้
+   * อ่านอย่างเดียว เฉพาะบริษัทที่เลือกอยู่ (session) · ประเภทเอกสาร/สมุดรายวัน: รับรอง · พิมพ์ซ้ำ · ค่าเริ่มต้นระบบขาย/ซื้อ: เกินวงเงิน · ระงับ
+   */
+  app.get('/api/v1/permissions/level-uses', async (req) => {
+    const a = requireCompany(req);
+    const pick = <T extends { approve_level: number | null; reprint_level: number | null }>(r: T[]) => r.filter((x) => (x.approve_level ?? 0) > 0 || (x.reprint_level ?? 0) > 0);
+    const docs = await db.selectFrom('md_doc_type').select(['code', 'name_th as name', 'approve_level', 'reprint_level'])
+      .where('company_id', '=', a.companyId).where('deleted_at', 'is', null).where('status', '=', 'A').orderBy('code').execute();
+    const books = await db.selectFrom('gl_journal_book').select(['code', 'prefix', 'name_th as name', 'approve_level', 'reprint_level'])
+      .where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute();
+    const cs = await companySettings(db, a.companyId);
+    const lv = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
+    return {
+      docs: pick(docs), books: pick(books),
+      over_credit_level: cs['ar.allow_over_credit'] === true ? null : lv(cs['ar.over_credit_level'] ?? 9),
+      ar_hold_level: lv(cs['ar.hold_level']), ap_hold_level: lv(cs['ap.hold_level']),
+    };
+  });
+
   app.get('/api/v1/permissions/by-menu', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ menu_code: z.string().min(1).max(30) }), req.query);

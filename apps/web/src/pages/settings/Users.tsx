@@ -1,18 +1,25 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { flattenMenu, HUB_APPS, PASSWORD_RULE, TENANT_MODULES, type TenantModuleKey } from '@buddy/core';
-import { Confirm, cx, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, toastError, useHotkeys } from '../../ui';
+import { Confirm, cx, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, Tabs, toast, toastError, useHotkeys } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { QrCode } from './TwoFactor';
 
 interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean; rights_in?: string[]; has_password?: boolean; invite_expires_at?: string | null; tenant_id?: string | null }
 type GroupRight = { menu: string; can_read: string; can_add: string; can_edit: string; can_cancel: string; can_delete: string; can_print: string; can_approve: string };
 interface Group { id: string; code: string; name: string; rights_in?: string[]; tenant_id?: string | null; tenant_code?: string | null; rights?: GroupRight[] }
-/** ป้ายระดับอนุมัติ (HANDOFF 191 · 197) — ระดับ = อำนาจอนุมัติ ยิ่งสูงยิ่งอนุมัติได้มาก */
-function levelLabel(i: number) { return `${i} · ${i <= 4 ? 'พนักงาน' : i <= 8 ? 'หัวหน้า (ยกเลิก/ลบ/รับรองได้)' : 'ผู้มีอำนาจสูงสุด (ทุกอย่าง)'}`; }
+/**
+ * ป้ายระดับอนุมัติ (HANDOFF 191 · 197 · 198) — ระดับ = อำนาจอนุมัติ ยิ่งสูงยิ่งอนุมัติได้มาก
+ * ทุกตัวเลือกต่างกัน (เจ้าของ 26/11/2569 "ระดับอนุมัติ ที่ซ้ำๆ กันชื่อเหมือนกันคืออะไร")
+ */
+function levelLabel(i: number) {
+  if (i >= 9) return '9 · ผู้มีอำนาจสูงสุด';
+  if (i >= 5) return `${i} · หัวหน้า ระดับ ${i}`;
+  return `${i} · พนักงาน ระดับ ${i}`;
+}
 /** ระดับอนุมัติในคำของเจ้าของ (HANDOFF 197 ข้อ 4 "ระดับการอนุมัติเรื่องของการอนุมัติการออกเอกสาร … อนุมัติการยกเลิก ลบ ปร้ินต์ เอกสาร อนุมัติวงเงิน ของผุ้มีอำนาจที่สูงกว่า") */
 const LEVEL_HELP = (
   <ul className="small level-help">
@@ -23,6 +30,49 @@ const LEVEL_HELP = (
     <li className="muted">ตั้งเงื่อนไขอนุมัติได้ที่ ประเภทเอกสาร (รับรองก่อนพิมพ์ · พิมพ์ซ้ำ) และค่าเริ่มต้นระบบขาย/ซื้อ (ขายเกินวงเงิน · ลูกค้า/ผู้จำหน่ายถูกระงับ)</li>
   </ul>
 );
+interface LevelUses { docs: Array<{ code: string; name: string; approve_level: number | null; reprint_level: number | null }>; books: Array<{ code: string; prefix: string; name: string; approve_level: number | null; reprint_level: number | null }>; over_credit_level: number | null; ar_hold_level: number | null; ap_hold_level: number | null }
+type LevelUse = { text: string; lv: number };
+/** รหัสเอกสารที่ใช้ระดับเดียวกัน รวมเป็นข้อเดียว เช่น "รับรอง IV RE ต้องระดับ 6" */
+function byLevel(rows: Array<{ code: string; lv: number | null }>, word: string): LevelUse[] {
+  const m = new Map<number, string[]>();
+  for (const r of rows) if (r.lv && r.lv > 0) m.set(r.lv, [...(m.get(r.lv) ?? []), r.code]);
+  return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([lv, codes]) => ({ lv, text: `${word} ${codes.length > 4 ? `${codes.slice(0, 4).join(' ')} …` : codes.join(' ')} ต้องระดับ ${lv}` }));
+}
+/** เรื่องที่บริษัทนี้กำหนดระดับอนุมัติไว้ (HANDOFF 198 · อ่านอย่างเดียว จากบริษัทที่เลือกอยู่) */
+function levelUses(d: LevelUses): LevelUse[] {
+  const out = [
+    ...byLevel(d.docs.map((x) => ({ code: x.code, lv: x.approve_level })), 'รับรอง'),
+    ...byLevel(d.docs.map((x) => ({ code: x.code, lv: x.reprint_level })), 'พิมพ์ซ้ำ'),
+    ...byLevel(d.books.map((x) => ({ code: x.prefix, lv: x.approve_level })), 'รับรองใบสำคัญ'),
+    ...byLevel(d.books.map((x) => ({ code: x.prefix, lv: x.reprint_level })), 'พิมพ์ใบสำคัญซ้ำ'),
+  ];
+  if (d.over_credit_level) out.push({ lv: d.over_credit_level, text: `ขายเกินวงเงินต้องระดับ ${d.over_credit_level}` });
+  if (d.ar_hold_level) out.push({ lv: d.ar_hold_level, text: `ขายให้ลูกค้าที่ถูกระงับต้องระดับ ${d.ar_hold_level}` });
+  if (d.ap_hold_level) out.push({ lv: d.ap_hold_level, text: `จ่ายผู้จำหน่ายที่ถูกระงับต้องระดับ ${d.ap_hold_level}` });
+  return out;
+}
+/**
+ * คำอธิบายใต้ช่องระดับอนุมัติ (HANDOFF 198 เจ้าของ ข้อ 2): เลขยิ่งสูงอนุมัติได้มาก · ตั้งได้ที่ไหน (เปิดแท็บใหม่ — ฟอร์มนี้ไม่หาย)
+ * + เรื่องที่บริษัทนี้กำหนดระดับไว้ — สีแดง = ระดับที่เลือกยังทำเรื่องนั้นไม่ได้
+ */
+function LevelHint({ level }: { level: number }) {
+  const { me } = useSession();
+  const q = useQuery({ enabled: !!me?.company, queryKey: ['level-uses', me?.company?.id], queryFn: () => api.get<LevelUses>('/api/v1/permissions/level-uses') });
+  const uses = q.data ? levelUses(q.data) : [];
+  return (
+    <div className="level-hint">
+      <div>เลขยิ่งสูง อนุมัติได้มากกว่า · กำหนดว่าเรื่องไหนต้องใช้ระดับเท่าไรที่ <a href="/settings/doc-types" target="_blank" rel="noopener">ประเภทเอกสาร</a> (ระดับรับรอง/พิมพ์ซ้ำ) และ ค่าเริ่มต้นระบบ<a href="/settings/defaults?s=AR" target="_blank" rel="noopener">ขาย</a>/<a href="/settings/defaults?s=AP" target="_blank" rel="noopener">ซื้อ</a> (เกินวงเงิน/ลูกค้าระงับ)</div>
+      {uses.length > 0 && <div className="level-uses"><b>ในบริษัทนี้:</b> {uses.map((x, i) => <span key={i} className={cx(x.lv > level && 'bad')} title={x.lv > level ? levelShort(level) : undefined}>{i > 0 && ' · '}{x.text}</span>)}</div>}
+      <details><summary>ระดับทำอะไรได้บ้าง</summary>{LEVEL_HELP}</details>
+    </div>
+  );
+}
+function levelShort(level: number) { return `ระดับ ${level} ที่เลือกยังทำเรื่องนี้ไม่ได้`; }
+/** ป้ายปุ่มสิทธิ์เพิ่มเติมของผู้ใช้ (HANDOFF 198 เจ้าของ ข้อ 4 "เพิ่มเติมอะไรก็คลิกดูชื่อผู้ใช้นั้น") */
+function rightsButton(groupCode?: string) {
+  if (groupCode) return `สิทธิ์เพิ่มเติมของผู้ใช้นี้ (ปรับจากกลุ่ม ${groupCode}) ›`;
+  return 'สิทธิ์เพิ่มเติมของผู้ใช้นี้ (ปรับจากระดับอนุมัติ) ›';
+}
 /** เมนูที่ไม่มีสิทธิ์ (เดิม "ตรวจสอบสิทธิ์" — HANDOFF 197 ข้อ 5): สิทธิ์จริงมาจากกลุ่ม/สิทธิ์รายเมนูเสมอ ตัวเลือกนี้บอกแค่ว่าซ่อนหรือแสดงจาง */
 const RIGHTS_HELP = (
   <ul className="small level-help">
@@ -106,16 +156,28 @@ function TenantMfaBox() {
   );
 }
 
-/** กลุ่มผู้ใช้ + แฟ้มผู้ใช้งานระบบ — คู่มือบทที่ 23 S-SEC-01/02 · สิทธิ์ 7 ชนิดรายเมนูที่หน้า /settings/permissions */
+/** แท็บที่เปิดล่าสุดของหน้าผู้ใช้งานระบบ (จำในเครื่อง · เปิดไม่ได้ = ค่าเริ่มต้น) */
+const TAB_KEY = 'buddy.users.tab';
+const readTab = () => { try { return localStorage.getItem(TAB_KEY); } catch { return null; } };
+const keepTab = (t: string) => { try { localStorage.setItem(TAB_KEY, t); } catch { /* ไม่มีที่เก็บในเครื่อง */ } };
+
+/**
+ * ผู้ใช้งานและสิทธิ์ — คู่มือบทที่ 23 S-SEC-01/02 · HANDOFF 198 (เจ้าของ 26/11/2569 "หน้าผู้ใช้ระบบ ควรจะแสดง เมนูรายการของกลุ่ม … จะเพิ่มกลุ่มก็ควรอยู่หน้านั้น")
+ * 2 แท็บในหน้าเดียว: กลุ่มผู้ใช้ (สิทธิ์ของกลุ่ม = ค่าตั้งต้น) · ผู้ใช้ (สิทธิ์เพิ่มเติมรายคน เปิดจากแฟ้มผู้ใช้)
+ */
 export function UsersPage() {
   const { me } = useSession();
   const qc = useQueryClient();
   const q = useQuery({ enabled: !!me?.user.is_admin, queryKey: ['users'], queryFn: () => api.get<{ users: User[]; groups: Group[]; mfa_all?: boolean }>('/api/v1/users') });
   const nav = useNavigate();
+  const [sp, setSp] = useSearchParams();
+  const urlTab = sp.get('tab');
+  const [tab, setTabState] = useState(urlTab === 'groups' || urlTab === 'users' ? urlTab : readTab() === 'users' ? 'users' : 'groups');
+  const setTab = (t: string) => { setTabState(t); keepTab(t); setSp((x) => { x.set('tab', t); x.delete('edit'); return x; }, { replace: true }); };
   const [edit, setEdit] = useState<User | 'new' | null>(null);
-  const [addGroup, setAddGroup] = useState(false);
-  const [std, setStd] = useState(false);
-  const addStandard = () => { setStd(false); api.post<{ created: string[]; rows: number }>('/api/v1/user-groups/standard').then((r) => { toast(r.created.length ? `เพิ่มกลุ่มตั้งต้น ${r.created.join(' ')} แล้ว (${r.rows} แถวสิทธิ์)` : r.rows ? `เพิ่มสิทธิ์ของกลุ่มตั้งต้นในบริษัทที่ยังไม่มีแล้ว (${r.rows} แถว)` : 'มีกลุ่มตั้งต้นครบแล้ว — ไม่ได้เปลี่ยนอะไร'); qc.invalidateQueries({ queryKey: ['users'] }); }).catch(toastError); };
+  // ?edit=<ผู้ใช้> — กลับจากตารางสิทธิ์เพิ่มเติมของผู้ใช้ เปิดแฟ้มผู้ใช้นั้นต่อ
+  const editId = sp.get('edit');
+  useEffect(() => { if (editId && q.data) { const u = q.data.users.find((x) => x.id === editId); if (u) { setTabState('users'); setEdit(u); } setSp((x) => { x.delete('edit'); return x; }, { replace: true }); } }, [editId, q.data, setSp]);
   const [link, setLink] = useState<InviteLink | null>(null);
   const rs = useRowSelect(q.data?.users);
   const sec = useQuery({ enabled: !!me?.user.is_admin && !!me?.user.tenant_id, queryKey: ['tenant-security'], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
@@ -123,9 +185,12 @@ export function UsersPage() {
   if (!me?.user.is_admin) return <div className="page"><div className="notebox">เฉพาะผู้ดูแลระบบ</div></div>;
   return (
     <div className="page" data-tone="setup">
-      <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="ผู้ใช้งานระบบ" lead="ผู้ใช้ในกลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · ผู้ใช้อื่นเข้าได้เฉพาะบริษัทที่กำหนด ใช้สิทธิ์ของกลุ่มเป็นค่าตั้งต้น ปรับเพิ่มได้ที่สิทธิ์รายเมนู (ไม่มีกลุ่ม = ตามระดับอนุมัติ) · ระดับอนุมัติ = อำนาจอนุมัติ (0–4 พนักงาน · 5–8 หัวหน้า · 9 ผู้มีอำนาจสูงสุด)"
-        actions={<><button onClick={() => nav('/settings/permissions')}>สิทธิ์รายเมนู</button><button onClick={() => setAddGroup(true)}>+ เพิ่มกลุ่ม</button><button onClick={() => setStd(true)} title="ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว — เพิ่มเฉพาะที่ยังไม่มี ไม่เขียนทับสิทธิ์ที่แก้แล้ว">+ กลุ่มตั้งต้น</button></>} />
+      <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="ผู้ใช้งานระบบ" lead="กลุ่มผู้ใช้กำหนดสิทธิ์ตั้งต้น — ผู้ใช้ได้สิทธิ์ของกลุ่ม แล้วปรับเพิ่มเฉพาะคนได้จากแฟ้มผู้ใช้ (ไม่มีกลุ่ม = ตามระดับอนุมัติ) · กลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · สิทธิ์แยกแต่ละบริษัท"
+        actions={<button onClick={() => nav('/settings/permissions?menu=1')} title="ดูว่ากลุ่ม/ผู้ใช้ใดได้สิทธิ์อะไรในแต่ละเมนู">สิทธิ์ตามเมนู</button>} />
       <ErrorBox error={q.error} />
+      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'groups', label: 'กลุ่มผู้ใช้', badge: q.data ? groupsHere(q.data.groups, me).length : undefined }, { key: 'users', label: 'ผู้ใช้', badge: q.data?.users.length }]} />
+      {tab === 'groups' && q.data && <GroupsTab groups={q.data.groups} users={q.data.users} onChanged={() => qc.invalidateQueries({ queryKey: ['users'] })} />}
+      {tab === 'users' && <>
       {me.user.tenant_id && <TenantMfaBox />}
       <MasterBar rs={rs} word="ผู้ใช้" label={(u) => `${u.username} ${u.display_name}`} onAdd={() => setEdit('new')} onEdit={(u) => setEdit(u)} />
       <div className="table-wrap">
@@ -134,7 +199,7 @@ export function UsersPage() {
           <tbody>
             {q.data?.users.map((u, i) => (
               <tr key={u.id} className={cx('row-open', u.status === 'I' && 'void', rs.cls(i))} onClick={() => { rs.setSel(i); setEdit(u); }} onMouseEnter={rs.hover(i)}>
-                <td className="mono">{u.username}</td><td>{u.display_name}</td><td>{u.group_code ? <Pill tone={u.group_code === 'ADMIN' ? 'n' : 'x'}>{u.group_name}</Pill> : ''}</td><td className="c">{u.approval_level}</td><td>{u.group_code === 'ADMIN' ? '' : <RightsCell u={u} onOpen={() => nav(`/settings/permissions?s=U:${u.id}`)} />}</td>
+                <td className="mono">{u.username}</td><td>{u.display_name}</td><td>{u.group_code ? <Pill tone={u.group_code === 'ADMIN' ? 'n' : 'x'}>{u.group_name}</Pill> : ''}</td><td className="c">{u.approval_level}</td><td>{u.group_code === 'ADMIN' ? '' : <RightsCell u={u} onOpen={() => nav(`/settings/permissions?user=${u.id}`)} />}</td>
                 <td className="small">{u.group_code === 'ADMIN' ? 'ทุกบริษัท' : u.companies.map((c) => me.companies.find((x) => x.id === c)?.code ?? '?').join(', ')}</td>
                 <td className="small">{appsText(u)}</td>
                 <td className="small">{u.last_login_at ? new Date(u.last_login_at).toLocaleString('th-TH') : '—'}</td>
@@ -145,13 +210,74 @@ export function UsersPage() {
           </tbody>
         </table>
       </div>
-      {std && <Confirm title="เพิ่มกลุ่มตั้งต้น" onClose={() => setStd(false)} onOk={addStandard}
-        text="เพิ่มกลุ่ม ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว ที่ยังไม่มี พร้อมสิทธิ์ตั้งต้นในทุกบริษัท — กลุ่มและสิทธิ์ที่แก้ไว้แล้วไม่ถูกเขียนทับ" />}
-      {addGroup && <GroupForm onClose={() => setAddGroup(false)} onSaved={() => { setAddGroup(false); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
+      </>}
       {edit && q.data && <UserForm u={edit === 'new' ? null : edit} groups={q.data.groups} tenantOne={!!sec.data?.single_session} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['users'] }); }}
         onLink={(l) => { setEdit(null); setLink(l); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
       {link && <InviteDialog link={link} onClose={() => setLink(null)} />}
     </div>
+  );
+}
+
+/** ข้อความยืนยันลบกลุ่ม */
+function deleteGroupText(g: Group) { return `ลบกลุ่ม ${g.code} ${g.name} พร้อมสิทธิ์ของกลุ่มทุกบริษัท — กลุ่มนี้ไม่มีผู้ใช้`; }
+/** กลุ่มของลูกค้าเจ้าของบริษัทที่เลือกอยู่ (ผู้ให้บริการเห็นทุกลูกค้า — แท็บกลุ่มแสดงเฉพาะลูกค้ารายนี้ ตรงกับตารางสิทธิ์) */
+function groupsHere(groups: Group[], me: ReturnType<typeof useSession>['me']) {
+  const t = me?.companies.find((c) => c.id === me.company?.id)?.tenant_id ?? null;
+  return groups.filter((g) => (g.tenant_id ?? null) === t);
+}
+
+/**
+ * แท็บกลุ่มผู้ใช้ (HANDOFF 198): รหัส ชื่อ จำนวนสมาชิก สิทธิ์ในบริษัทนี้ 1 บรรทัด · คลิกแถว = ตารางสิทธิ์ของกลุ่ม (Esc กลับมาแท็บนี้)
+ * เพิ่มกลุ่ม · กลุ่มตั้งต้น · เปลี่ยนชื่อ · ลบ (เฉพาะกลุ่มที่ไม่มีสมาชิก)
+ */
+function GroupsTab({ groups, users, onChanged }: { groups: Group[]; users: User[]; onChanged: () => void }) {
+  const { me } = useSession();
+  const nav = useNavigate();
+  const list = groupsHere(groups, me);
+  const rs = useRowSelect(list);
+  const [form, setForm] = useState<Group | 'new' | null>(null);
+  const [std, setStd] = useState(false);
+  const members = (g: Group) => users.filter((u) => u.user_group_id === g.id);
+  const open = (g: Group) => {
+    if (g.code === 'ADMIN') { toast('กลุ่ม ADMIN ได้ทุกเมนูทุกบริษัทเสมอ — ไม่ต้องกำหนดสิทธิ์ (เปลี่ยนชื่อได้ที่ปุ่ม "เปลี่ยนชื่อ")', 'warn'); return; }
+    nav(`/settings/permissions?s=G:${g.id}`);
+  };
+  const addStandard = () => { setStd(false); api.post<{ created: string[]; rows: number }>('/api/v1/user-groups/standard').then((r) => { toast(r.created.length ? `เพิ่มกลุ่มตั้งต้น ${r.created.join(' ')} แล้ว (${r.rows} แถวสิทธิ์)` : r.rows ? `เพิ่มสิทธิ์ของกลุ่มตั้งต้นในบริษัทที่ยังไม่มีแล้ว (${r.rows} แถว)` : 'มีกลุ่มตั้งต้นครบแล้ว — ไม่ได้เปลี่ยนอะไร'); onChanged(); }).catch(toastError); };
+  const row = rs.row;
+  const busyGroup = !!row && (row.code === 'ADMIN' || members(row).length > 0);
+  return (
+    <>
+      <MasterBar rs={rs} word="กลุ่ม" label={(g) => `${g.code} ${g.name}`} onAdd={() => setForm('new')} onEdit={open} editWord="สิทธิ์ของกลุ่ม" canDelete={!busyGroup}
+        onDelete={(g) => api.del(`/api/v1/user-groups/${g.id}`).then(onChanged)}
+        deleteText={deleteGroupText}
+        extra={<>
+          <button type="button" disabled={!row} onClick={() => row && setForm(row)}>เปลี่ยนชื่อ</button>
+          <button type="button" onClick={() => setStd(true)} title="ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว — เพิ่มเฉพาะที่ยังไม่มี ไม่เขียนทับสิทธิ์ที่แก้แล้ว">+ กลุ่มตั้งต้น</button>
+        </>} />
+      {row && busyGroup && row.code !== 'ADMIN' && <p className="small muted">ลบกลุ่ม {row.code} ไม่ได้ — มีผู้ใช้ {members(row).length} คน ย้ายผู้ใช้ไปกลุ่มอื่นก่อน</p>}
+      <div className="table-wrap">
+        <table className="grid groups-grid">
+          <thead><tr><th>รหัสกลุ่ม</th><th>ชื่อกลุ่ม</th><th className="r">สมาชิก</th><th>สิทธิ์ในบริษัท <span data-no-i18n>{me?.company?.code}</span> (คลิกเพื่อดู/แก้)</th></tr></thead>
+          <tbody>
+            {list.map((g, i) => {
+              const m = members(g);
+              const text = g.code === 'ADMIN' ? '' : groupSummary(g.rights ?? []);
+              return (
+                <tr key={g.id} className={cx('row-open', rs.cls(i))} onClick={() => { rs.setSel(i); open(g); }} onMouseEnter={rs.hover(i)}>
+                  <td className="mono">{g.code}</td><td>{g.name}</td>
+                  <td className="r" title={m.map((u) => u.username).join(', ')}>{m.length || <span className="muted">0</span>}</td>
+                  <td className="small">{g.code === 'ADMIN' ? <span className="muted">ทุกเมนู ทุกบริษัท</span> : text || <span className="bad">ยังไม่มีสิทธิ์ในบริษัทนี้ — คลิกเพื่อกำหนด</span>}</td>
+                </tr>
+              );
+            })}
+            {!list.length && <tr><td colSpan={4} className="empty">ยังไม่มีกลุ่ม — กด "+ กลุ่มตั้งต้น" เพื่อเพิ่มกลุ่มพร้อมสิทธิ์ หรือ "+ เพิ่ม" เพื่อตั้งกลุ่มเอง</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {std && <Confirm title="เพิ่มกลุ่มตั้งต้น" onClose={() => setStd(false)} onOk={addStandard}
+        text="เพิ่มกลุ่ม ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว ที่ยังไม่มี พร้อมสิทธิ์ตั้งต้นในทุกบริษัท — กลุ่มและสิทธิ์ที่แก้ไว้แล้วไม่ถูกเขียนทับ" />}
+      {form && <GroupForm g={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={(id) => { setForm(null); onChanged(); if (form === 'new' && id) nav(`/settings/permissions?s=G:${id}`); }} />}
+    </>
   );
 }
 
@@ -214,8 +340,17 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
   };
   // (ก) เปลี่ยนเป็นไม่ตรวจสอบสิทธิ์ แล้วบันทึก · (ข) บันทึก แล้วไปกำหนดสิทธิ์รายเมนูของผู้ใช้นี้
   const saveAsLevel = () => { setAskRights(false); const next = { ...f, check_rights: false }; setF(next); send(next).then(done).catch(setErr); };
-  const saveThenRights = () => { setAskRights(false); send(f).then((r) => { toast('บันทึกผู้ใช้แล้ว — กำหนดสิทธิ์รายเมนูของผู้ใช้นี้ต่อ'); onSaved(); nav(`/settings/permissions?s=U:${r.id}`); }).catch(setErr); };
+  const saveThenRights = () => { setAskRights(false); send(f).then((r) => { toast('บันทึกผู้ใช้แล้ว — กำหนดสิทธิ์รายเมนูของผู้ใช้นี้ต่อ'); onSaved(); nav(`/settings/permissions?user=${r.id}`); }).catch(setErr); };
   useHotkeys({ F9: save, 'Ctrl+S': save }, [f]);
+  /** สิทธิ์เพิ่มเติมของผู้ใช้นี้ — ตารางเดียวกับกลุ่ม: ช่องจากกลุ่มจาง · ช่องที่ปรับเพิ่มตัวหนา (แก้ค้างอยู่ = บันทึกก่อน เพื่อให้ตารางใช้กลุ่ม/ระดับล่าสุด) */
+  const [initial] = useState(() => JSON.stringify(f));
+  const dirty = JSON.stringify(f) !== initial;
+  const openRights = () => {
+    if (!u) return;
+    if (!dirty) { onClose(); nav(`/settings/permissions?user=${u.id}`); return; }
+    setErr(null);
+    send(f).then(() => { toast('บันทึกผู้ใช้แล้ว — เปิดสิทธิ์เพิ่มเติมของผู้ใช้นี้'); onSaved(); nav(`/settings/permissions?user=${u.id}`); }).catch(setErr);
+  };
   return (
     <Modal title={u ? `แก้ไขผู้ใช้ ${u.username}` : 'เพิ่มผู้ใช้'} onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button></>}>
       <ErrorBox error={err} />
@@ -227,7 +362,9 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
           <label className="inline chk"><input type="radio" name="pw-mode" checked={!invite} onChange={() => setInvite(false)} /> ตั้งรหัสผ่านเริ่มต้นเอง</label>
           {invite && <p className="hint">บันทึกแล้วจะได้ลิงก์ + QR ให้คัดลอกส่ง · ใช้ได้ครั้งเดียว ภายใน 72 ชั่วโมง · ผู้ใช้ตั้งรหัสผ่านแล้วตั้งยืนยันตัวตนสองขั้นต่อทันที</p>}
         </fieldset>}
-        {(u || !invite) && <Field label={u ? 'ตั้งรหัสผ่านใหม่ (ว่าง = ไม่เปลี่ยน)' : 'รหัสผ่านเริ่มต้น'} hint={PASSWORD_RULE} req={!u}><PasswordInput value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" /></Field>}
+        {!u && !invite && <Field label="รหัสผ่านเริ่มต้น" hint={PASSWORD_RULE} req><PasswordInput value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" /></Field>}
+        {u && <Field label="รีเซ็ตรหัสผ่าน (ผู้ดูแลตั้งให้ใหม่ · ว่าง = ไม่เปลี่ยน)" hint={<>{PASSWORD_RULE}{u.id !== me?.user.id && <ResetLinkHint u={u} onLink={() => setSec('invite')} />}</>}>
+          <PasswordInput value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" aria-label="รีเซ็ตรหัสผ่าน" /></Field>}
         <Field label="กลุ่มผู้ใช้" hint={multiTenant && formTenant === undefined ? 'ติ๊กบริษัทที่เข้าได้ก่อน รายการจะเหลือเฉพาะกลุ่มของลูกค้ารายนั้น' : multiTenant ? `เฉพาะกลุ่มของ ${tenantName(formTenant ?? null)}` : undefined}>
           <select aria-label="กลุ่มผู้ใช้" value={f.user_group_id} onChange={(e) => pickGroup(e.target.value)}><option value="">— ไม่มีกลุ่ม —</option>
             {multiTenant && formTenant === undefined
@@ -235,10 +372,14 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
               : shownGroups.map((g) => <option key={g.id} value={g.id}>{g.code} · {g.name}</option>)}
           </select>
         </Field>
-        <Field label="ระดับอนุมัติ" hint={LEVEL_HELP}>
+        <Field label="ระดับอนุมัติ" hint={<LevelHint level={f.approval_level} />}>
           <select aria-label="ระดับอนุมัติ" value={f.approval_level} onChange={(e) => setF({ ...f, approval_level: Number(e.target.value) })}>{Array.from({ length: 10 }, (_, i) => <option key={i} value={i}>{levelLabel(i)}</option>)}</select>
         </Field>
         {pickedGroup && !isAdminGroup && <GroupSummary g={pickedGroup} level={f.approval_level} onOpen={() => nav(`/settings/permissions?s=G:${pickedGroup.id}`)} onLevel={(n) => setF({ ...f, approval_level: n })} />}
+        {u && !isAdminGroup && <div className="wide user-rights-open">
+          <button type="button" className="primary" onClick={openRights}>{rightsButton(pickedGroup?.code)}</button>
+          {' '}<span className="small muted">{rightsNote(!!u.rights_in?.includes(me?.company?.id ?? ''), dirty)}</span>
+        </div>}
         <Field label="เมนูที่ไม่มีสิทธิ์" hint={RIGHTS_HELP}>
           <select aria-label="เมนูที่ไม่มีสิทธิ์" disabled={isAdminGroup} value={f.check_rights ? '1' : '0'} onChange={(e) => setF({ ...f, check_rights: e.target.value === '1' })}><option value="0">แสดงแบบจาง (กดแล้วบอกเหตุผล)</option><option value="1">ซ่อนเมนูที่ไม่มีสิทธิ์</option></select>
         </Field>
@@ -259,11 +400,11 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
         <AppAccessField value={f.app_access} onChange={(v) => setF({ ...f, app_access: v })} admin={groups.find((g) => g.id === f.user_group_id)?.code === 'ADMIN'} />
         {u && u.id !== me?.user.id && (
           <fieldset className="wide"><span className="lbl">ความปลอดภัยการเข้าระบบ</span>
-            {!u.mfa_enabled && u.status === 'A' && <button type="button" className="primary" onClick={() => setSec('invite')}>{u.invite_expires_at ? 'ออกลิงก์เชิญใหม่' : 'สร้างลิงก์เชิญ (ให้ตั้งรหัสผ่านเอง)'}</button>}{' '}
             {u.invite_expires_at && <button type="button" onClick={() => setSec('revoke')}>ยกเลิกลิงก์เชิญ</button>}{' '}
             {u.locked_until && <button type="button" onClick={() => setSec('unlock')}>ปลดล็อก (ใส่รหัสผิดเกิน 5 ครั้ง)</button>}{' '}
             {u.mfa_enabled && <button type="button" className="danger" onClick={() => setSec('reset-2fa')}>ล้างยืนยันตัวตนสองขั้น (มือถือหาย)</button>}
             {u.invite_expires_at && <p className="small muted">มีลิงก์เชิญที่ยังไม่ใช้ ถึง {when(u.invite_expires_at)}</p>}
+            {!u.invite_expires_at && !u.locked_until && !u.mfa_enabled && <p className="small muted">ยังไม่ได้ตั้งยืนยันตัวตนสองขั้น — ผู้ใช้จะถูกพาไปตั้งเมื่อเข้าระบบ (ถ้าบังคับทุกผู้ใช้)</p>}
           </fieldset>
         )}
       </div>
@@ -291,6 +432,21 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
   );
 }
 
+/** ข้อความข้างปุ่มสิทธิ์เพิ่มเติม */
+function rightsNote(has: boolean, dirty: boolean) {
+  const a = has ? 'มีช่องที่ปรับเพิ่มไว้ในบริษัทนี้' : 'ยังไม่ได้ปรับเพิ่มในบริษัทนี้ — ใช้ตามกลุ่ม';
+  return dirty ? `${a} · กดแล้วบันทึกการแก้ไขก่อนเปิด` : a;
+}
+/**
+ * ส่งลิงก์ให้ผู้ใช้ตั้งรหัสใหม่เอง (HANDOFF 198 เจ้าของ ข้อ 1) — ใช้ลิงก์เชิญเดิม (HANDOFF 184): ใช้ได้ครั้งเดียว 72 ชั่วโมง ผู้ดูแลไม่เห็นรหัสผ่าน
+ * ผู้ใช้ที่เปิดยืนยันตัวตนสองขั้นแล้ว ส่งลิงก์ไม่ได้ (ลิงก์จะข้ามขั้นที่ 2) — ผู้ดูแลตั้งรหัสให้ใหม่ หรือถ้ามือถือหายด้วย ล้างยืนยันสองขั้นก่อน
+ */
+function ResetLinkHint({ u, onLink }: { u: User; onLink: () => void }) {
+  if (u.status !== 'A') return <div className="small muted">ผู้ใช้ถูกระงับ — เปลี่ยนสถานะเป็น "ใช้งาน" ก่อนส่งลิงก์ตั้งรหัสผ่าน</div>;
+  if (u.mfa_enabled) return <div className="small muted">ส่งลิงก์ให้ตั้งรหัสเองไม่ได้ — ผู้ใช้นี้เปิดยืนยันตัวตนสองขั้นแล้ว (ลิงก์จะข้ามขั้นที่ 2) · ตั้งรหัสให้ใหม่ในช่องนี้ หรือถ้ามือถือหายด้วย กด "ล้างยืนยันตัวตนสองขั้น" ก่อน</div>;
+  return <div className="small">หรือ <button type="button" className="linklike" onClick={onLink}>{u.invite_expires_at ? 'ออกลิงก์ใหม่ให้ผู้ใช้ตั้งรหัสเอง' : 'ส่งลิงก์ให้ผู้ใช้ตั้งรหัสใหม่เอง'}</button> <span className="muted">(ส่งทาง LINE · ใช้ได้ครั้งเดียว 72 ชั่วโมง · คุณไม่เห็นรหัสผ่าน)</span></div>;
+}
+
 /** สรุปสิทธิ์ของกลุ่มที่เลือกในบริษัทที่เลือกอยู่ + ลิงก์ไปตารางสิทธิ์ของกลุ่ม + เตือนเมื่อระดับอนุมัติไม่พอ (HANDOFF 197 ข้อ 7) */
 function GroupSummary({ g, level, onOpen, onLevel }: { g: Group; level: number; onOpen: () => void; onLevel: (n: number) => void }) {
   const { me } = useSession();
@@ -313,18 +469,19 @@ function RightsCell({ u, onOpen }: { u: User; onOpen: () => void }) {
   return <><button className="linklike" onClick={(e) => { e.stopPropagation(); onOpen(); }}>{label}</button>{u.check_rights && <span className="muted small"> · ซ่อนเมนู</span>}</>;
 }
 
-/** เพิ่มกลุ่มผู้ใช้ (S-SEC-01) — กำหนดสิทธิ์ของกลุ่มที่หน้าสิทธิ์รายเมนู */
-function GroupForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [f, setF] = useState({ code: '', name: '' });
+/** เพิ่ม / เปลี่ยนชื่อกลุ่มผู้ใช้ (S-SEC-01) — เพิ่มแล้วไปตารางสิทธิ์ของกลุ่มต่อทันที · รหัสกลุ่มเปลี่ยนไม่ได้ */
+function GroupForm({ g, onClose, onSaved }: { g: Group | null; onClose: () => void; onSaved: (id?: string) => void }) {
+  const [f, setF] = useState({ code: g?.code ?? '', name: g?.name ?? '' });
   const [err, setErr] = useState<unknown>(null);
-  const save = () => api.post('/api/v1/user-groups', f).then(() => { toast('เพิ่มกลุ่มแล้ว'); onSaved(); }).catch(setErr);
+  const save = () => (g ? api.put<{ id: string }>(`/api/v1/user-groups/${g.id}`, { name: f.name }) : api.post<{ id: string }>('/api/v1/user-groups', f))
+    .then((r) => { toast(g ? 'เปลี่ยนชื่อกลุ่มแล้ว' : 'เพิ่มกลุ่มแล้ว — กำหนดสิทธิ์ของกลุ่มต่อ'); onSaved(r?.id); }).catch(setErr);
   useHotkeys({ F9: save, 'Ctrl+S': save }, [f]);
   return (
-    <Modal title="เพิ่มกลุ่มผู้ใช้" onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button></>}>
+    <Modal title={g ? `แก้ไขกลุ่ม ${g.code}` : 'เพิ่มกลุ่มผู้ใช้'} onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button></>}>
       <ErrorBox error={err} />
       <div className="form-grid">
-        <Field label="รหัสกลุ่ม" req hint="ภาษาอังกฤษ/ตัวเลข เช่น ACC FIN"><input autoFocus value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} /></Field>
-        <Field label="ชื่อกลุ่ม" req><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="เช่น แผนกบัญชี" /></Field>
+        <Field label="รหัสกลุ่ม" req={!g} hint={g ? 'รหัสกลุ่มเปลี่ยนไม่ได้' : 'ภาษาอังกฤษ/ตัวเลข เช่น ACC FIN'}><input autoFocus={!g} disabled={!!g} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} /></Field>
+        <Field label="ชื่อกลุ่ม" req><input autoFocus={!!g} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="เช่น แผนกบัญชี" /></Field>
       </div>
     </Modal>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Confirm, revealSelectedRow, toast, toastError, useHotkeys } from '../ui';
 import { useReadOnly } from '../readonly';
 
@@ -13,12 +13,14 @@ export function useRowSelect<T>(rows: T[] | undefined) {
   return { sel, setSel, n, row: (rows?.[sel] ?? null) as T | null, cls: (i: number) => (i === sel ? 'sel' : undefined), hover: (i: number) => () => setSel(i) };
 }
 
-export function MasterBar<T>({ rs, word, label, onAdd, onEdit, onToggle, isActive, onDelete, deleteText, canAdd = true, canEdit = true, canDelete = true }: {
+export function MasterBar<T>({ rs, word, label, onAdd, onEdit, onToggle, isActive, onDelete, deleteText, canAdd = true, canEdit = true, canDelete = true, extra, editWord }: {
   rs: ReturnType<typeof useRowSelect<T>>; word: string; label: (r: T) => string;
   onAdd?: () => void; onEdit?: (r: T) => void;
   /** เลิกใช้/ใช้งาน (สลับสถานะ) */ onToggle?: (r: T) => Promise<unknown>; isActive?: (r: T) => boolean;
   onDelete?: (r: T) => Promise<unknown>; deleteText?: (r: T) => string;
   canAdd?: boolean; canEdit?: boolean; canDelete?: boolean;
+  /** ปุ่มเพิ่มเติมของหน้านั้น (ต่อจากปุ่มมาตรฐาน) */ extra?: ReactNode;
+  /** คำบนปุ่มแก้ไข/คลิกแถว เช่น "สิทธิ์" (ค่าเริ่มต้น แก้ไข) */ editWord?: string;
 }) {
   const [ask, setAsk] = useState<T | null>(null);
   const r = rs.row;
@@ -38,10 +40,11 @@ export function MasterBar<T>({ rs, word, label, onAdd, onEdit, onToggle, isActiv
       {onAdd && <button className="primary" disabled={!canAdd} onClick={onAdd}>+ เพิ่ม{word} <kbd>Ins</kbd></button>}
       {onEdit && (view
         ? <button disabled={!r} onClick={() => r && onEdit(r)} title="เปิดดูรายการที่เลือก (ดูอย่างเดียว)">ดู <kbd>Enter</kbd></button>
-        : <button disabled={!r || !canEdit} onClick={() => r && onEdit(r)}>แก้ไข <kbd>Enter</kbd></button>)}
+        : <button disabled={!r || !canEdit} onClick={() => r && onEdit(r)}>{editWord ?? 'แก้ไข'} <kbd>Enter</kbd></button>)}
       {onToggle && <button disabled={!r || !canEdit} onClick={toggle}>{r && isActive && !isActive(r) ? 'ใช้งาน' : 'เลิกใช้'}</button>}
       {onDelete && <button className="danger-outline" disabled={!r || !canDelete} onClick={() => r && setAsk(r)}>ลบ <kbd>Del</kbd></button>}
-      <span className="hint">{r && <>เลือก: <b>{label(r)}</b> · </>}<span>{view ? '↑↓ เลือกแถว · คลิกแถว = ดู' : '↑↓ เลือกแถว · คลิกแถว = แก้ไข'}</span></span>
+      {extra}
+      <span className="hint">{r && <>เลือก: <b>{label(r)}</b> · </>}<span>{view ? '↑↓ เลือกแถว · คลิกแถว = ดู' : editWord ? `↑↓ เลือกแถว · คลิกแถว = ${editWord}` : '↑↓ เลือกแถว · คลิกแถว = แก้ไข'}</span></span>
       {ask && onDelete && <Confirm danger title={`ลบ${word}`} text={deleteText?.(ask) ?? `ลบ${word} ${label(ask)}? ลบได้เฉพาะรายการที่ยังไม่ถูกใช้ — ถ้าใช้แล้วให้เปลี่ยนเป็นเลิกใช้`} okText="ลบ"
         onClose={() => setAsk(null)} onOk={() => { const x = ask; setAsk(null); onDelete(x).then(() => toast(`ลบ${word} ${label(x)} แล้ว`)).catch(toastError); }} />}
     </div>

@@ -8088,6 +8088,72 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     cookie = '';
   });
 
+  it('HANDOFF 198: groups tab — rename/delete groups of the own customer only, delete only groups with no members, level-uses of the session company, user override grid stays per customer', async () => {
+    const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
+    await login('admin', 'secret123');
+    for (const [code, u, pw] of [['H198A', 'h198.a', 'passH198a1'], ['H198B', 'h198.b', 'passH198b1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
+    const adminB = await login('h198.b', 'passH198b1');
+    const coB = (await call('POST', '/api/v1/companies', { code: 'H198B1', name_th: 'บริษัท บี 198 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    const adminA = await login('h198.a', 'passH198a1');
+    const c1 = (await call('POST', '/api/v1/companies', { code: 'H198A1', name_th: 'บริษัท เอ 198 หนึ่ง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    const c2 = (await call('POST', '/api/v1/companies', { code: 'H198A2', name_th: 'บริษัท เอ 198 สอง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    const ul = (await call('GET', '/api/v1/users')).body as { groups: Array<{ id: string; code: string; name: string }> };
+    const G = Object.fromEntries(ul.groups.map((g) => [g.code, g.id]));
+    const sale = (await call('POST', '/api/v1/users', { username: 'h198.sale', display_name: 'พนักงานขาย 198', password: 'Staff-Pass-198', approval_level: 0, check_rights: false, status: 'A', companies: [c1, c2], user_group_id: G.SALE })).body.id as string;
+
+    // เปลี่ยนชื่อกลุ่ม (รหัสคงเดิม) + บันทึกประวัติ
+    const rn = await call('PUT', `/api/v1/user-groups/${G.SALE}`, { name: 'ฝ่ายขายหน้าร้าน' });
+    expect([rn.status, rn.body.id]).toEqual([200, G.SALE]);
+    expect((await call('GET', '/api/v1/users')).body.groups.find((g: { id: string }) => g.id === G.SALE)).toMatchObject({ code: 'SALE', name: 'ฝ่ายขายหน้าร้าน' });
+    expect((await call('PUT', `/api/v1/user-groups/${G.SALE}`, { name: ' ' })).status).toBe(400);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'EDIT_GROUP' AND doc_no = 'SALE' AND detail->>'after' = 'ฝ่ายขายหน้าร้าน'`.execute(database.db)).rows[0]!.n).toBe(1);
+    // ลบ: มีสมาชิก = ไม่ได้ (บอกวิธีแก้) · ADMIN = ไม่ได้ · ไม่มีสมาชิก = ได้ พร้อมแถวสิทธิ์ของกลุ่มทุกบริษัท
+    const busy = await call('DELETE', `/api/v1/user-groups/${G.SALE}`);
+    expect([busy.status, busy.body.error.message]).toEqual([400, expect.stringMatching(/มีผู้ใช้ 1 คน — ย้ายผู้ใช้ไปกลุ่มอื่นก่อน/)]);
+    expect((await call('DELETE', `/api/v1/user-groups/${G.ADMIN}`)).status).toBe(400);
+    const vRows = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE subject_id = ${G.VIEW} AND deleted_at IS NULL AND company_id IN (${c1}, ${c2})`.execute(database.db)).rows[0]!.n;
+    expect(vRows).toBeGreaterThan(0);
+    expect((await call('DELETE', `/api/v1/user-groups/${G.VIEW}`)).status).toBe(200);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE subject_id = ${G.VIEW} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(0);
+    expect((await call('GET', '/api/v1/users')).body.groups.map((g: { code: string }) => g.code)).not.toContain('VIEW');
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'DELETE_GROUP' AND doc_no = 'VIEW' AND company_id = ${c1}`.execute(database.db)).rows[0]!.n).toBe(1);
+    expect((await call('DELETE', `/api/v1/user-groups/${G.VIEW}`)).status).toBe(404);
+    // กลุ่มตั้งต้นสร้างกลุ่มที่ลบไปคืนได้ (รหัสว่างแล้ว)
+    expect((await call('POST', '/api/v1/user-groups/standard')).body.created).toEqual(['VIEW']);
+
+    // ระดับอนุมัติที่บริษัทนี้ใช้ (อ่านอย่างเดียว จากบริษัทใน session)
+    await sql`UPDATE md_doc_type SET approve_level = 6, reprint_level = 3 WHERE company_id = ${c1} AND code = 'IV'`.execute(database.db);
+    expect((await call('PUT', '/api/v1/settings', { values: { 'ar.over_credit_level': 7, 'ar.hold_level': 5 } })).status).toBe(200);
+    const lu = (await call('GET', '/api/v1/permissions/level-uses')).body;
+    expect(lu.docs.filter((d: { code: string }) => d.code === 'IV')).toEqual([{ code: 'IV', name: expect.any(String), approve_level: 6, reprint_level: 3 }]);
+    expect([lu.over_credit_level, lu.ar_hold_level, lu.ap_hold_level]).toEqual([7, 5, 9]);
+    await call('POST', '/api/v1/auth/select', { company_id: c2 });
+    const lu2 = (await call('GET', '/api/v1/permissions/level-uses')).body;
+    expect([lu2.docs.some((d: { code: string }) => d.code === 'IV'), lu2.over_credit_level, lu2.ar_hold_level]).toEqual([false, 9, 9]);
+
+    // ข้ามลูกค้าไม่ได้ (กติกา 7.1): ผู้ดูแลของลูกค้า B แก้/ลบกลุ่ม หรือเปิดตารางสิทธิ์ของผู้ใช้ลูกค้า A = ไม่พบ · ระดับที่ใช้ = ของบริษัท B เท่านั้น
+    cookie = adminB;
+    await call('POST', '/api/v1/auth/select', { company_id: coB });
+    expect((await call('PUT', `/api/v1/user-groups/${G.ACC}`, { name: 'แฮ็ก' })).status).toBe(404);
+    expect((await call('DELETE', `/api/v1/user-groups/${G.FIN}`)).status).toBe(404);
+    expect((await sql<{ name: string; d: string | null }>`SELECT name, deleted_at::text AS d FROM sys_user_group WHERE id = ${G.FIN}`.execute(database.db)).rows[0]!.d).toBeNull();
+    expect((await call('GET', `/api/v1/permissions?subject_type=U&subject_id=${sale}`)).status).toBe(404);
+    expect((await call('GET', '/api/v1/permissions/level-uses')).body.docs.some((d: { code: string; approve_level: number }) => d.code === 'IV' && d.approve_level === 6)).toBe(false);
+    // ผู้ใช้ทั่วไป: แก้/ลบกลุ่ม และดูระดับที่ใช้ไม่ได้
+    await login('h198.sale', 'Staff-Pass-198');
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    expect((await call('PUT', `/api/v1/user-groups/${G.SALE}`, { name: 'x' })).status).toBe(403);
+    expect((await call('DELETE', `/api/v1/user-groups/${G.ACC}`)).status).toBe(403);
+    expect((await call('GET', '/api/v1/permissions/level-uses')).status).toBe(403);
+    // ตารางสิทธิ์เพิ่มเติมของผู้ใช้ (เปิดจากแฟ้มผู้ใช้ ?user=…): ผู้ดูแลลูกค้า A เปิดได้ เห็นกลุ่มเป็นค่าตั้งต้น
+    cookie = adminA;
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    const v = (await call('GET', `/api/v1/permissions?subject_type=U&subject_id=${sale}`)).body;
+    expect([v.subject.code, v.group.code, v.group.name, v.table_applies]).toEqual(['h198.sale', 'SALE', 'ฝ่ายขายหน้าร้าน', 'strict']);
+    cookie = '';
+  });
+
   it('starter data by business type (HANDOFF 160): each template passes normal validation, an invoice saves right away, fill button is idempotent and keeps edits, signup choice, no cross-tenant', async () => {
     const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
     await login('admin', 'secret123');

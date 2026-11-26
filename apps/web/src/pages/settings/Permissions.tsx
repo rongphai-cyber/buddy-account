@@ -38,7 +38,10 @@ export function PermissionsPage() {
   const qc = useQueryClient();
   const [sp, setSp] = useSearchParams();
   const [tab, setTab] = useState(sp.get('menu') ? 'menu' : 'subject');
-  const subject = sp.get('s') ?? '';   // G:<id> หรือ U:<id>
+  // ?user=<id> = สิทธิ์เพิ่มเติมของผู้ใช้ (HANDOFF 198 · เปิดจากแฟ้มผู้ใช้) — ที่อยู่เดิม ?s=U:<id> ยังใช้ได้
+  const userParam = sp.get('user');
+  useEffect(() => { if (userParam) setSp({ s: `U:${userParam}` }, { replace: true }); }, [userParam, setSp]);
+  const subject = sp.get('s') ?? (userParam ? `U:${userParam}` : '');   // G:<id> หรือ U:<id>
   const menus = useQuery({ queryKey: ['perm-menus'], queryFn: () => api.get<MenuRow[]>('/api/v1/permissions/menus') });
   // เฉพาะกลุ่ม/ผู้ใช้ของลูกค้าเจ้าของบริษัทที่เลือกอยู่ — ผู้ให้บริการก็เช่นกัน (HANDOFF 191)
   const subs = useQuery({ queryKey: ['users', 'company', me?.company?.id], queryFn: () => api.get<Subjects>('/api/v1/users', { for: 'company' }) });
@@ -76,7 +79,9 @@ export function PermissionsPage() {
       qc.invalidateQueries({ queryKey: ['perms'] }); qc.invalidateQueries({ queryKey: ['perm-by-menu'] }); qc.invalidateQueries({ queryKey: ['users'] });
     } catch (e) { setErr(e); }
   };
-  useHotkeys({ F9: save, 'Ctrl+S': save, Escape: () => nav('/settings/users') }, [vals, type, id]);
+  // Esc กลับ: กลุ่ม → แท็บกลุ่มผู้ใช้ · ผู้ใช้ → เปิดแฟ้มผู้ใช้นั้นต่อ (HANDOFF 198)
+  const back = () => nav(type === 'U' && id ? `/settings/users?tab=users&edit=${id}` : '/settings/users?tab=groups');
+  useHotkeys({ F9: save, 'Ctrl+S': save, Escape: back }, [vals, type, id]);
   // ถามก่อนออกจากหน้าเมื่อยังไม่บันทึก (HANDOFF 149)
   useUnsaved(dirty, { word: 'ตารางสิทธิ์', save: () => void save() });
   const d = cur.data;
@@ -104,24 +109,26 @@ export function PermissionsPage() {
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="สิทธิ์รายเมนู" lead={<>สิทธิ์ของกลุ่มเป็นค่าตั้งต้นของผู้ใช้ในกลุ่ม · ผู้ใช้ปรับเพิ่มเองได้ทีละช่อง · สิทธิ์แยกแต่ละบริษัท</>}
-        actions={<><button onClick={() => nav('/settings/users')}>ผู้ใช้งาน <kbd>Esc</kbd></button>{tab === 'subject' && <button className="primary" disabled={!id || !dirty} onClick={save}>บันทึก <kbd>F9</kbd></button>}</>} />
+        actions={<><button onClick={back}>{type === 'U' ? 'กลับแฟ้มผู้ใช้' : 'กลุ่มผู้ใช้'} <kbd>Esc</kbd></button>{tab === 'subject' && <button className="primary" disabled={!id || !dirty} onClick={save}>บันทึก <kbd>F9</kbd></button>}</>} />
       {/* แยกบริษัท (เจ้าของ ข้อ 3): บอกชัดว่ากำลังแก้ของบริษัทไหน */}
       <div className="perm-company" role="note">
         <span>กำลังแก้สิทธิ์ของบริษัท <b data-no-i18n>{co?.code} · {co?.name_th}</b></span>
         <span className="small muted">สิทธิ์แยกแต่ละบริษัท — เปลี่ยนบริษัทที่แถบบน</span>
         <button type="button" disabled={dirty} title={dirty ? 'บันทึกก่อน แล้วจึงคัดลอก' : 'ตั้งสิทธิ์ของบริษัทอื่นให้เหมือนบริษัทนี้ (ดูตัวอย่างก่อน)'} onClick={() => setCopy(true)}>คัดลอกสิทธิ์ไปบริษัทอื่น…</button>
       </div>
-      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'subject', label: 'ตามกลุ่ม/ผู้ใช้' }, { key: 'menu', label: 'ตามเมนู (ระบบงานที่อนุญาต)' }]} />
+      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'subject', label: type === 'U' ? 'สิทธิ์เพิ่มเติมของผู้ใช้' : 'ตามกลุ่ม' }, { key: 'menu', label: 'ตามเมนู (ระบบงานที่อนุญาต)' }]} />
       {tab === 'subject' && (
         <>
           <div className="filters">
-            <label className="inline">กำหนดสิทธิ์ให้{' '}
-              <select value={subject} onChange={(e) => setSp({ s: e.target.value }, { replace: true })}>
-                <option value="">— เลือกกลุ่มหรือผู้ใช้ —</option>
-                <optgroup label="กลุ่มผู้ใช้">{subs.data?.groups.filter((g) => g.code !== 'ADMIN').map((g) => <option key={g.id} value={`G:${g.id}`}>{g.code} · {g.name}</option>)}</optgroup>
-                <optgroup label="ผู้ใช้">{subs.data?.users.filter((u) => u.group_code !== 'ADMIN').map((u) => <option key={u.id} value={`U:${u.id}`}>{u.username} · {u.display_name}</option>)}</optgroup>
-              </select>
-            </label>
+            {/* เฉพาะกลุ่ม (เจ้าของ ข้อ 4): สิทธิ์เพิ่มเติมรายคนเปิดจากแฟ้มผู้ใช้ ไม่รวมในรายการนี้ */}
+            {type === 'U'
+              ? <span className="perm-user-head">สิทธิ์เพิ่มเติมของผู้ใช้ <b data-no-i18n>{s ? `${s.code} · ${s.name}` : ''}</b></span>
+              : <label className="inline">กำหนดสิทธิ์ให้กลุ่ม{' '}
+                <select value={type === 'G' ? subject : ''} onChange={(e) => setSp({ s: e.target.value }, { replace: true })} aria-label="กำหนดสิทธิ์ให้กลุ่ม">
+                  <option value="">— เลือกกลุ่มผู้ใช้ —</option>
+                  {subs.data?.groups.filter((g) => g.code !== 'ADMIN').map((g) => <option key={g.id} value={`G:${g.id}`}>{g.code} · {g.name}</option>)}
+                </select>
+              </label>}
             {s && type === 'U' && <span className="perm-subject">ระดับอนุมัติ <b>{s.approval_level}</b>
               {' · '}{d?.group ? <>กลุ่ม <button type="button" className="linklike" onClick={() => setSp({ s: `G:${d.group!.id}` }, { replace: true })} title="เปิดตารางสิทธิ์ของกลุ่ม (ค่าตั้งต้น)">{d.group.code} · {d.group.name}</button></> : <span className="muted">ไม่มีกลุ่ม</span>}
               {' · '}{s.check_rights ? <Pill tone="n">ซ่อนเมนูที่ไม่มีสิทธิ์</Pill> : <Pill tone="x">แสดงเมนูที่ไม่มีสิทธิ์แบบจาง</Pill>}
@@ -131,7 +138,7 @@ export function PermissionsPage() {
             : mode === 'adjust' ? `ไม่มีกลุ่ม (หรือกลุ่มยังไม่มีสิทธิ์ในบริษัทนี้): ใช้ได้ตามระดับอนุมัติ ${level} — ช่องที่ตั้งในตารางนี้ปรับเฉพาะช่องนั้น`
             : 'ระดับอนุมัติ 9 ที่ไม่ได้ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์": ใช้ได้ทุกอย่าง — ตารางนี้ยังไม่มีผล'}</p>}
           <ErrorBox error={err ?? cur.error ?? menus.error} />
-          {!id && <p className="notebox">เลือกกลุ่มหรือผู้ใช้ที่จะกำหนดสิทธิ์ (แสดงเฉพาะกลุ่มและผู้ใช้ของกิจการเจ้าของบริษัทนี้ · กิจการอื่นให้เลือกบริษัทของกิจการนั้นก่อน) · ผู้ใช้ได้สิทธิ์ของกลุ่มเป็นค่าตั้งต้น แล้วปรับเพิ่มเองทีละช่องได้ · ตารางให้สิทธิ์ได้ไม่เกินระดับอนุมัติ (0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/รับรอง/กำหนดค่า/เงินเดือน · 9 ทุกอย่าง)</p>}
+          {!id && <p className="notebox">เลือกกลุ่มที่จะกำหนดสิทธิ์ (เฉพาะกลุ่มของกิจการเจ้าของบริษัทนี้) · ผู้ใช้ได้สิทธิ์ของกลุ่มเป็นค่าตั้งต้น — ปรับเพิ่มเฉพาะคนได้ที่ ผู้ใช้งานระบบ › แท็บผู้ใช้ › แก้ไขผู้ใช้ › "สิทธิ์เพิ่มเติมของผู้ใช้นี้" · ตารางให้สิทธิ์ได้ไม่เกินระดับอนุมัติ (0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/รับรอง/กำหนดค่า/เงินเดือน · 9 ทุกอย่าง)</p>}
           {id && menus.data && <>
             <p className="perm-legend small">
               <span className="perm-own">✓ Y</span> ใช้ได้ · <span className="perm-own">✓ L</span> ใช้ได้และบันทึกเหตุการณ์ · <span className="perm-own bad">✗ N</span> ไม่ให้ใช้ · <span className="perm-own">S จอ</span> พิมพ์ออกจอเท่านั้น
@@ -258,13 +265,18 @@ function ByMenu({ menus, onOpen }: { menus: MenuRow[]; onOpen: (type: string, id
   const [code, setCode] = useState('ALL');
   const q = useQuery({ queryKey: ['perm-by-menu', code], queryFn: () => api.get<ByMenuRow[]>('/api/v1/permissions/by-menu', { menu_code: code }) });
   const labelOf = (c: string) => (c === 'ALL' ? 'ทุกระบบงาน' : menus.find((m) => m.code === c)?.label ?? c);
+  const fromMenu = 'เมนูหลัก';
+  const noneWord = 'ไม่มี';
   return (
     <>
       <div className="filters"><label className="inline">เมนู <select value={code} onChange={(e) => setCode(e.target.value)}>{menus.map((m) => <option key={m.code} value={m.code}>{' '.repeat(m.depth * 2)}{m.label} ({m.code})</option>)}</select></label></div>
       <ErrorBox error={q.error} />
-      <div className="table-wrap">
+      <p className="perm-legend small"><span className="perm-own">✓ Y</span> ใช้ได้ · <span className="perm-own">✓ L</span> ใช้ได้และบันทึกเหตุการณ์ · <span className="perm-own bad">✗ N</span> ไม่ให้ใช้ · <span className="perm-own">S จอ</span> พิมพ์ออกจอเท่านั้น · <b>ตัวหนาสี</b> = ตั้งที่เมนูนี้ · <span className="perm-inh">(✓) เมนูหลัก</span> = ได้จากเมนูหลัก (จาง) · <span className="perm-inh bad">(✗) ไม่มี</span> = ไม่ได้กำหนด</p>
+      {/* หัวคอลัมน์และค่าใช้ความกว้างเดียวกัน (HANDOFF 198 เจ้าของ ข้อ 5 "ให้ตรงกับหัว column") */}
+      <div className="table-wrap perm-bymenu">
         <table className="grid">
-          <thead><tr><th style={{ width: 90 }}>ประเภท</th><th>ผู้ใช้/กลุ่ม</th><th>ชื่อ</th>{ACTS.map(([, th]) => <th key={th} className="c">{th}</th>)}</tr></thead>
+          <colgroup><col className="w-type" /><col className="w-code" /><col />{ACTS.map(([a]) => <col key={a} className="w-act" />)}</colgroup>
+          <thead><tr><th>ประเภท</th><th>ผู้ใช้/กลุ่ม</th><th>ชื่อ</th>{ACTS.map(([, th]) => <th key={th} className="c">{th}</th>)}</tr></thead>
           <tbody>
             {q.data?.map((r) => (
               <tr key={r.subject_type + r.subject_id} className="row-open" onClick={() => onOpen(r.subject_type, r.subject_id)}>
@@ -272,7 +284,7 @@ function ByMenu({ menus, onOpen }: { menus: MenuRow[]; onOpen: (type: string, id
                 {ACTS.map(([, , c]) => {
                   const x = r.cells[c];
                   const inh = !!x && x.from !== code;
-                  return <td key={c} title={x ? (inh ? `ตามเมนูหลัก ${labelOf(x.from)} ${x.from}` : 'ตั้งที่เมนูนี้') : 'ไม่ได้กำหนด'} className={cx('c mono', inh ? 'perm-inh' : x && 'perm-own', (!x || x.v === 'N') && 'bad')}>{x ? (inh ? `(${permMark(x.v)})` : ownLabel(x.v)) : '(✗)'}</td>;
+                  return <td key={c} title={x ? (inh ? `ตามเมนูหลัก ${labelOf(x.from)} ${x.from}` : 'ตั้งที่เมนูนี้') : 'ไม่ได้กำหนด'} className={cx('c', inh || !x ? 'perm-inh' : 'perm-own', (!x || x.v === 'N') && 'bad')}>{x ? (inh ? <>({permMark(x.v)}) {fromMenu}</> : ownLabel(x.v)) : <>(✗) {noneWord}</>}</td>;
                 })}
               </tr>
             ))}

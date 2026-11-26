@@ -1177,6 +1177,22 @@ select.perm-blocked { outline: 2px dashed var(--warn); outline-offset: -2px; }
 .sub .sub-item.no-right:hover, .sub .sub-item.no-right:focus-visible { background: transparent; opacity: .85; }
 .sub .sub-item.no-right .lock { font-size: 11px; }
 @media (max-width: 640px) { .perm-company button { margin-left: 0; width: 100%; } .perm-grid td.c select { min-width: 74px; } }
+/* HANDOFF 198: ตามเมนู — หัวคอลัมน์กับค่าใช้ความกว้างเดียวกัน ค่าอยู่กึ่งกลางใต้หัวเสมอ (เลื่อนซ้าย-ขวาบนมือถือ) */
+.perm-bymenu table { table-layout: fixed; min-width: 860px; }
+.perm-bymenu col.w-type { width: 76px; }
+.perm-bymenu col.w-code { width: 150px; }
+.perm-bymenu col.w-act { width: 92px; }
+.perm-bymenu th.c, .perm-bymenu td.c { text-align: center; padding-left: 2px; padding-right: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.perm-bymenu td.perm-inh { font-size: 12.5px; }
+.perm-user-head { font-size: 15px; }
+.user-rights-open { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.level-hint { line-height: 1.5; }
+.level-hint a { color: var(--accent); text-decoration: underline; }
+.level-hint .level-uses { margin-top: 3px; }
+.level-hint .level-uses .bad { color: var(--bad); }
+.level-hint details { margin-top: 2px; }
+.level-hint summary { cursor: pointer; color: var(--accent); }
+.groups-grid td.small { line-height: 1.45; }
 /* ช่องตรวจว่าไม่ใช่บอท (Cloudflare Turnstile · HANDOFF 165) */
 .bot-check { margin: 4px 0 10px; min-height: 0; }
 /* บริษัททั้งหมด / ลบบริษัท (HANDOFF 181): ชื่อบริษัทไม่ถูกบีบ · ปุ่มเป็นกลุ่มเล็กที่ขึ้นบรรทัดใหม่เอง */
