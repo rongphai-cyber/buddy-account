@@ -21,6 +21,7 @@ import { AddWrap } from '../../components/AddWrap';
 import { DepositPickTable, depositsBody, depositsFrom, refundTotals, savedRefundVat, useOpenDeposits, type DepositPicks } from './DepositPick';
 import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 /**
  * คืนเงินมัดจำ (RD — Buddy เพิ่ม 05/11/2569 · Express ไม่มีเอกสารนี้): คืนยอดคงเหลือของใบรับเงินมัดจำให้ลูกค้า
@@ -33,6 +34,8 @@ const PURPOSE_ROWS: PurposeRow[] = ETAX_CREDIT_PURPOSES.map((p) => ({ ...p, id: 
 
 /* ---------------------------------------------------------------- รายการ */
 interface ListRow { id: string; doc_no: string; doc_date: string; party_name: string | null; party_code: string | null; your_ref: string | null; net_amount: string; cash_amount: string; cheque_amount: string; doc_status: string; deposit_nos: string | null; branch_code?: string | null }
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function statusText(r: ListRow) { return r.doc_status === 'C' ? 'ยกเลิก' : 'ปกติ'; }
 export function DepositRefundListPage() {
   const nav = useNavigate();
   const can = useCan(K.menu);
@@ -43,7 +46,12 @@ export function DepositRefundListPage() {
   const { from, setFrom, to, setTo } = useWorkRangeState();
   const [status, setStatus] = useState<'N' | 'C' | 'all'>('all');
   const tt = useTypeTabs(K.cls);
-  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500 }), placeholderData: (p) => p });
+  const st = useListSort<ListRow>(`list:${K.path}`, [
+    { key: 'branch_code', type: 'text' }, { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' }, { key: 'party_code', type: 'docno' }, { key: 'party_name', type: 'text' }, { key: 'deposit_nos', type: 'docno' },
+    { key: 'net_amount', type: 'money' }, { key: 'doc_status', type: 'label', get: statusText },
+  ] satisfies SortCol<ListRow>[]);
+  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab, st.params], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500, ...st.params }), placeholderData: (p) => p });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab]);
   const total = list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r.net_amount)), d(0));
   const showBr = useShowBranchCol();
@@ -63,10 +71,10 @@ export function DepositRefundListPage() {
       <ErrorBox error={list.error} />
       <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 100 }}>รหัส</th><th>ลูกค้า</th><th style={{ width: 160 }}>ใบมัดจำ</th>
-            <th className="r" style={{ width: 140 }}>ยอดคืน</th><th style={{ width: 80 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && st.th('branch_code', 'สาขา', { style: { width: 70 } })}{st.th('doc_no', 'เลขที่', { style: { width: 130 } })}{st.th('doc_date', 'วันที่', { style: { width: 110 } })}{st.th('party_code', 'รหัส', { style: { width: 100 } })}{st.th('party_name', 'ลูกค้า')}{st.th('deposit_nos', 'ใบมัดจำ', { style: { width: 160 } })}
+            {st.th('net_amount', 'ยอดคืน', { className: 'r', style: { width: 140 } })}{st.th('doc_status', 'สถานะ', { style: { width: 80 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
                 {showBr && <td className="mono small">{r.branch_code}</td>}<td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="mono">{r.party_code}</td><td>{r.party_name}</td><td className="mono small">{r.deposit_nos}</td>
                 <td className="r"><Money v={r.net_amount} /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ปกติ</Pill>}</td>

@@ -12,6 +12,7 @@ import { DocLink } from '../../components/DocLink';
 import { ReasonInput } from '../../components/ReasonInput';
 import { useUnsaved } from '../../unsaved';
 import { PrintJob } from '../../printFrame';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 /** เช็ครับ/เช็คจ่าย (คู่มือบทที่ 13 S-BK-04..13) — ยอดเงินฝากเพิ่มเมื่อผ่านเช็คเท่านั้น */
 type Dir = 'R' | 'P';
@@ -61,7 +62,12 @@ export function ChequeRegisterPage({ direction }: { direction: Dir }) {
   const [inst, setInst] = useState<'CHEQUE' | 'TRANSFER'>('CHEQUE');
   const [open, setOpen] = useState<string | null>(null);
   const [add, setAdd] = useState(false);
-  const list = useCheques({ direction, q, instrument: inst, ...(status ? { status } : {}) });
+  const st = useListSort<Row>(`list:cheques:${direction}`, [
+    { key: 'cheque_date', type: 'date' }, { key: 'cheque_no', type: 'docno' }, { key: 'bank_code', type: 'docno' }, { key: 'party_name', type: 'text' }, { key: 'amount', type: 'money' }, { key: 'account_code', type: 'docno' },
+    { key: 'source_doc_no', type: 'docno', get: (r) => r.source_doc_no ?? r.deposit_doc_no }, { key: 'pass_date', type: 'date' }, { key: 'status', type: 'label', get: (r) => `${r.status} ${ST[r.status]?.[0] ?? ''}` },
+  ] satisfies SortCol<Row>[]);
+  const list = useCheques({ direction, q, instrument: inst, ...(status ? { status } : {}), ...st.params });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') && !open ? () => setAdd(true) : undefined }, []);
   const title = direction === 'R' ? 'ทะเบียนเช็ครับ' : 'ทะเบียนเช็คจ่าย';
   return (
@@ -76,10 +82,10 @@ export function ChequeRegisterPage({ direction }: { direction: Dir }) {
       <ErrorBox error={list.error} />
       <div className="table-wrap tall">
         <table className="grid">
-          <thead><tr><th style={{ width: 100 }}>วันที่เช็ค</th><th style={{ width: 140 }}>เลขที่เช็ค</th>{direction === 'R' && <th style={{ width: 150 }}>ธนาคาร</th>}<th>{direction === 'R' ? 'ลูกค้า/ผู้สั่งจ่าย' : 'จ่ายให้'}</th><th className="r" style={{ width: 130 }}>จำนวนเงิน</th>
-            <th style={{ width: 110 }}>บัญชีเงินฝาก</th><th style={{ width: 130 }}>เอกสาร</th><th style={{ width: 100 }}>วันที่ผ่าน</th><th style={{ width: 140 }}>สถานะ</th></tr></thead>
+          <thead><tr>{st.th('cheque_date', 'วันที่เช็ค', { style: { width: 100 } })}{st.th('cheque_no', 'เลขที่เช็ค', { style: { width: 140 } })}{direction === 'R' && st.th('bank_code', 'ธนาคาร', { style: { width: 150 } })}{st.th('party_name', direction === 'R' ? 'ลูกค้า/ผู้สั่งจ่าย' : 'จ่ายให้')}{st.th('amount', 'จำนวนเงิน', { className: 'r', style: { width: 130 } })}
+            {st.th('account_code', 'บัญชีเงินฝาก', { style: { width: 110 } })}{st.th('source_doc_no', 'เอกสาร', { style: { width: 130 } })}{st.th('pass_date', 'วันที่ผ่าน', { style: { width: 100 } })}{st.th('status', 'สถานะ', { style: { width: 140 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className="row-open" tabIndex={0} onClick={() => setOpen(r.id)} onKeyDown={(e) => e.key === 'Enter' && setOpen(r.id)}>
                 <td><DateText v={r.cheque_date} /></td><td className="mono">{r.cheque_no}</td>{direction === 'R' && <td>{r.bank_code} {r.bank_name}</td>}<td>{r.party_code ? `${r.party_code} ` : ''}{r.party_name}</td>
                 <td className="r"><Money v={r.amount} /></td><td>{r.account_code}</td><td>{r.source_doc_no ? <DocLink id={r.source_header_id} no={r.source_doc_no} cls={r.source_doc_class} /> : <DocLink id={r.deposit_header_id} no={r.deposit_doc_no} cls="BQ" />}</td><td><DateText v={r.pass_date} /></td><td><StatusPill s={r.status} /></td>
@@ -262,7 +268,14 @@ export function ChequeSlipListPage() {
   const nav = useNavigate();
   const can = useCan('FI.BK.DQ');
   const [q, setQ] = useState('');
-  const list = useQuery({ queryKey: ['cheque-deposits', q], placeholderData: (p) => p, queryFn: () => api.get<{ rows: Array<{ id: string; doc_no: string; doc_date: string; remark: string | null; amount: string; net_amount: string; doc_status: string; account_code: string; account_name: string; voucher_no: string | null; cheques: number; pass_date: string | null; discount: boolean }> }>('/api/v1/cheque-deposits', { q }) });
+  type Slip = { id: string; doc_no: string; doc_date: string; remark: string | null; amount: string; net_amount: string; doc_status: string; account_code: string; account_name: string; voucher_no: string | null; cheques: number; pass_date: string | null; discount: boolean };
+  function slipStatus(r: Slip) { return r.doc_status === 'C' ? 'ยกเลิก' : r.voucher_no ? 'เช็คผ่าน' : 'รอเรียกเก็บ'; }
+  const st = useListSort<Slip>('list:cheque-deposits', [
+    { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' }, { key: 'account_code', type: 'docno' }, { key: 'remark', type: 'text' }, { key: 'cheques', type: 'num' }, { key: 'amount', type: 'money' },
+    { key: 'pass_date', type: 'date', get: (r) => (r.voucher_no ? r.pass_date : null) }, { key: 'doc_status', type: 'label', get: slipStatus },
+  ] satisfies SortCol<Slip>[]);
+  const list = useQuery({ queryKey: ['cheque-deposits', q, st.params], placeholderData: (p) => p, queryFn: () => api.get<{ rows: Slip[] }>('/api/v1/cheque-deposits', { q, ...st.params }) });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') ? () => nav('/fi/cheques/slips/new') : undefined }, []);
   return (
     <div className="page" data-tone="finance">
@@ -271,9 +284,9 @@ export function ChequeSlipListPage() {
       <div className="toolbar"><input type="search" autoFocus placeholder="ค้นหาเลขที่ หรือหมายเหตุ" value={q} onChange={(e) => setQ(e.target.value)} aria-label="ค้นหา" /></div>
       <ErrorBox error={list.error} />
       <div className="table-wrap"><table className="grid">
-        <thead><tr><th style={{ width: 140 }}>เลขที่</th><th style={{ width: 110 }}>วันที่นำฝาก</th><th style={{ width: 200 }}>เข้าบัญชี</th><th>หมายเหตุ</th><th className="r" style={{ width: 80 }}>เช็ค</th><th className="r" style={{ width: 140 }}>ยอดรวม</th><th style={{ width: 110 }}>วันที่ผ่าน</th><th style={{ width: 110 }}>สถานะ</th></tr></thead>
+        <thead><tr>{st.th('doc_no', 'เลขที่', { style: { width: 140 } })}{st.th('doc_date', 'วันที่นำฝาก', { style: { width: 110 } })}{st.th('account_code', 'เข้าบัญชี', { style: { width: 200 } })}{st.th('remark', 'หมายเหตุ')}{st.th('cheques', 'เช็ค', { className: 'r', style: { width: 80 } })}{st.th('amount', 'ยอดรวม', { className: 'r', style: { width: 140 } })}{st.th('pass_date', 'วันที่ผ่าน', { style: { width: 110 } })}{st.th('doc_status', 'สถานะ', { style: { width: 110 } })}</tr></thead>
         <tbody>
-          {list.data?.rows.map((r) => <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`/fi/cheques/slips/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`/fi/cheques/slips/${r.id}`)}>
+          {rows.map((r) => <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`/fi/cheques/slips/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`/fi/cheques/slips/${r.id}`)}>
             <td className="mono">{r.doc_no}{r.discount && <> <Pill tone="d">ขายลด</Pill></>}</td><td><DateText v={r.doc_date} /></td><td>{r.account_code} {r.account_name}</td><td>{r.remark}</td><td className="r">{r.cheques}</td><td className="r"><Money v={r.amount} /></td><td><DateText v={r.voucher_no ? r.pass_date : null} /></td>
             <td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : r.voucher_no ? <Pill tone="n">เช็คผ่าน</Pill> : <Pill tone="c">รอเรียกเก็บ</Pill>}</td></tr>)}
           {list.data && !list.data.rows.length && <tr><td colSpan={8} className="empty">ยังไม่มีใบนำฝาก — กด Ins เพื่อเพิ่ม</td></tr>}

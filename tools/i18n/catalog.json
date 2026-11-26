@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 157,
+"n": 169,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/AddressHistory.tsx",
@@ -1047,6 +1047,29 @@
 ]
 },
 {
+"th": "ปกติ",
+"n": 33,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/Usage.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/payroll/files.ts"
+]
+},
+{
 "th": "เครดิต",
 "n": 32,
 "files": [
@@ -1424,29 +1447,6 @@
 ]
 },
 {
-"th": "ปกติ",
-"n": 24,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/Journals.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/Usage.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/payroll/files.ts"
-]
-},
-{
 "th": "ลบบรรทัด",
 "n": 24,
 "files": [
@@ -1605,6 +1605,23 @@
 ]
 },
 {
+"th": "คงเหลือ",
+"n": 22,
+"files": [
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositPick.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/reports/Ledger.tsx",
+"apps/server/src/modules/reports/parties.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "ผู้ใช้",
 "n": 22,
 "files": [
@@ -1644,23 +1661,6 @@
 "packages/core/src/menu.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "คงเหลือ",
-"n": 21,
-"files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/DepositPick.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/reports/Ledger.tsx",
-"apps/server/src/modules/reports/parties.ts",
-"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -2744,6 +2744,20 @@
 ]
 },
 {
+"th": "ลงบัญชีแล้ว",
+"n": 11,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
 "th": "ส่วนลด",
 "n": 11,
 "files": [
@@ -2970,20 +2984,6 @@
 "apps/server/src/modules/reports/gl.ts",
 "apps/server/src/modules/reports/stock.ts",
 "apps/server/src/modules/reports/tax.ts"
-]
-},
-{
-"th": "ลงบัญชีแล้ว",
-"n": 10,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx"
 ]
 },
 {
@@ -4452,6 +4452,15 @@
 ]
 },
 {
+"th": "รอเรียกเก็บ",
+"n": 6,
+"files": [
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/server/src/modules/cheques.ts",
+"apps/server/src/modules/reports/stock.ts"
+]
+},
+{
 "th": "รับรอง",
 "n": 6,
 "files": [
@@ -5185,15 +5194,6 @@
 "packages/core/src/journal-import.ts",
 "packages/core/src/payroll-import.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "รอเรียกเก็บ",
-"n": 5,
-"files": [
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/server/src/modules/cheques.ts",
-"apps/server/src/modules/reports/stock.ts"
 ]
 },
 {
@@ -6672,6 +6672,14 @@
 ]
 },
 {
+"th": "เช็คผ่าน",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/server/src/modules/cheques.ts"
+]
+},
+{
 "th": "เดือนภาษี {0}{1}",
 "n": 4,
 "files": [
@@ -7349,6 +7357,13 @@
 ]
 },
 {
+"th": "จากระบบอื่น",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/Journals.tsx"
+]
+},
+{
 "th": "จำนวนภาษี",
 "n": 3,
 "files": [
@@ -8018,6 +8033,14 @@
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "packages/core/src/trade-import.ts"
+]
+},
+{
+"th": "ภาษีเกณฑ์เงินสด",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx"
 ]
 },
 {
@@ -8836,14 +8859,6 @@
 ]
 },
 {
-"th": "เช็คผ่าน",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/server/src/modules/cheques.ts"
-]
-},
-{
 "th": "เช็คในมือ",
 "n": 3,
 "files": [
@@ -9341,6 +9356,14 @@
 "apps/server/src/modules/doc-import.ts",
 "apps/server/src/modules/master-import.ts",
 "apps/server/src/modules/trade-import.ts"
+]
+},
+{
+"th": "ไม่ลงบัญชี",
+"n": 3,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -10516,13 +10539,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/docs/StockDocs.tsx"
-]
-},
-{
-"th": "จากระบบอื่น",
-"n": 2,
-"files": [
-"apps/web/src/pages/gl/Journals.tsx"
 ]
 },
 {
@@ -12592,14 +12608,6 @@
 ]
 },
 {
-"th": "ภาษีเกณฑ์เงินสด",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx"
-]
-},
-{
 "th": "ภาษีและบัญชี",
 "n": 2,
 "files": [
@@ -13321,6 +13329,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "รอเบิก",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/PettyCash.tsx"
 ]
 },
 {
@@ -15895,6 +15910,13 @@
 ]
 },
 {
+"th": "ใช้หมดแล้ว",
+"n": 2,
+"files": [
+"apps/web/src/pages/docs/DepositOpening.tsx"
+]
+},
+{
 "th": "ใช้อยู่ {0}",
 "n": 2,
 "files": [
@@ -16291,14 +16313,6 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/items/Items.tsx"
-]
-},
-{
-"th": "ไม่ลงบัญชี",
-"n": 2,
-"files": [
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx"
 ]
 },
 {
@@ -25157,7 +25171,7 @@
 "th": "คลิกเพื่อเรียง",
 "n": 1,
 "files": [
-"apps/web/src/pages/gl/Journals.tsx"
+"apps/web/src/components/SortHeader.tsx"
 ]
 },
 {
@@ -28833,6 +28847,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/ai.ts"
+]
+},
+{
+"th": "ชื่อคอลัมน์ที่จะเรียงไม่ถูกต้อง",
+"n": 1,
+"files": [
+"apps/server/src/list-sort.ts"
 ]
 },
 {
@@ -46035,13 +46056,6 @@
 ]
 },
 {
-"th": "รอเบิก",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/PettyCash.tsx"
-]
-},
-{
 "th": "รอเบิกชดเชย",
 "n": 1,
 "files": [
@@ -59006,6 +59020,13 @@
 ]
 },
 {
+"th": "เรียงตามคอลัมน์ \"{0}\" ไม่ได้ — คลิกหัวคอลัมน์อื่น หรือกลับไปลำดับเดิม",
+"n": 1,
+"files": [
+"apps/server/src/list-sort.ts"
+]
+},
+{
 "th": "เรียงตามชั้นเก็บ + รหัส",
 "n": 1,
 "files": [
@@ -64267,13 +64288,6 @@
 "n": 1,
 "files": [
 "packages/core/src/settings.ts"
-]
-},
-{
-"th": "ใช้หมดแล้ว",
-"n": 1,
-"files": [
-"apps/web/src/pages/docs/DepositOpening.tsx"
 ]
 },
 {

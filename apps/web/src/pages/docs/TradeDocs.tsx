@@ -16,6 +16,7 @@ import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
 import { DocBranch, useDocBranch } from '../../components/DocBranch';
 import { DiscountInput, LineAmountInput } from '../../components/DiscountInput';
 import { DocLink } from '../../components/DocLink';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 import { BranchPick } from '../../components/BranchPick';
 import { LineNoteButton, LineNotePreview, useLineNoteHotkey } from '../../components/Notes';
 import { useDocEdit } from '../../components/DocEdit';
@@ -43,6 +44,8 @@ const DEPOSIT_CLASSES = ['IV', 'HS', 'RR', 'HP'];
 
 /* ---------------------------------------------------------------- รายการเอกสาร */
 interface ListRow { id: string; doc_no: string; doc_date: string; due_date: string | null; delivery_date: string | null; party_name: string; party_code: string | null; net_amount: string; vat_amount: string; doc_status: string; gl_posted: string; ref_no: string | null; outstanding: string | null }
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function statusText(r: ListRow) { return r.doc_status === 'C' ? 'ยกเลิก' : 'ปกติ'; }
 export function TradeListPage({ path }: { path: string }) {
   const K = kindOf(path);
   /** ซื้อเชื่อ/ซื้อสด: แสดงเลขที่บิล/ใบกำกับของผู้จำหน่าย (ค้นหาได้) */
@@ -56,7 +59,13 @@ export function TradeListPage({ path }: { path: string }) {
   const { from, setFrom, to, setTo } = useWorkRangeState();
   const [status, setStatus] = useState<'N' | 'C' | 'all'>('all');
   const tt = useTypeTabs(K.cls);
-  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500 }), placeholderData: (p) => p });
+  const dueKey = K.cls === 'QT' ? 'due_date' : 'delivery_date';
+  const st = useListSort<ListRow>(`list:${K.path}`, [
+    { key: 'branch_code', type: 'text' }, { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' }, { key: 'party_code', type: 'docno' }, { key: 'party_name', type: 'text' }, { key: 'ref_no', type: 'docno' },
+    { key: 'vat_amount', type: 'money' }, { key: 'net_amount', type: 'money' }, { key: dueKey, type: 'date' }, { key: 'outstanding', type: 'money' }, { key: 'doc_status', type: 'label', get: statusText },
+  ] satisfies SortCol<ListRow>[]);
+  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab, st.params], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500, ...st.params }), placeholderData: (p) => p });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, ]);
   const total = list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r.net_amount)), d(0));
   const showBr = useShowBranchCol();
@@ -77,9 +86,9 @@ export function TradeListPage({ path }: { path: string }) {
       <ErrorBox error={list.error} />
       <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 100 }}>รหัส</th><th>{partyWord(K)}</th>{K.refInvoice && <th style={{ width: 120 }}>อ้างใบกำกับ</th>}{supBillCol && <th style={{ width: 130 }}>เลขที่บิลผู้จำหน่าย</th>}<th className="r" style={{ width: 120 }}>ภาษี</th><th className="r" style={{ width: 140 }}>ยอดรวมทั้งสิ้น</th>{K.order ? <th style={{ width: 120 }}>{K.cls === 'QT' ? 'ยืนราคาถึง' : 'กำหนดส่ง'}</th> : !K.payments && <th className="r" style={{ width: 130 }}>ค้างชำระ</th>}<th style={{ width: 90 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && st.th('branch_code', 'สาขา', { style: { width: 70 } })}{st.th('doc_no', 'เลขที่', { style: { width: 130 } })}{st.th('doc_date', 'วันที่', { style: { width: 110 } })}{st.th('party_code', 'รหัส', { style: { width: 100 } })}{st.th('party_name', partyWord(K))}{K.refInvoice && st.th('ref_no', 'อ้างใบกำกับ', { style: { width: 120 } })}{supBillCol && st.th('ref_no', 'เลขที่บิลผู้จำหน่าย', { style: { width: 130 } })}{st.th('vat_amount', 'ภาษี', { className: 'r', style: { width: 120 } })}{st.th('net_amount', 'ยอดรวมทั้งสิ้น', { className: 'r', style: { width: 140 } })}{K.order ? st.th(dueKey, K.cls === 'QT' ? 'ยืนราคาถึง' : 'กำหนดส่ง', { style: { width: 120 } }) : !K.payments && st.th('outstanding', 'ค้างชำระ', { className: 'r', style: { width: 130 } })}{st.th('doc_status', 'สถานะ', { style: { width: 90 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
                 {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="mono">{r.party_code}</td><td>{r.party_name}</td>{(K.refInvoice || supBillCol) && <td className="mono">{r.ref_no}</td>}
                 <td className="r"><Money v={r.vat_amount} blankZero /></td><td className="r"><Money v={r.net_amount} /></td>{K.order ? <td><DateText v={K.cls === 'QT' ? r.due_date : r.delivery_date} /></td> : !K.payments && <td className="r"><Money v={r.outstanding} blankZero /></td>}

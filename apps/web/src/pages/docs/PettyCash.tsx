@@ -27,6 +27,7 @@ import { accountNoOf, AiBillButton, type AiBillResult } from '../../components/A
 import { JobSelect, showJob, useJobs } from '../../components/JobSelect';
 import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 /**
  * เงินสดย่อย (คู่มือบทที่ 15 S-GL-11/12/13): DP บันทึกการจ่าย (ยังไม่ลงบัญชี) → VR เบิกชดเชย (รวม DP แล้วลงบัญชี)
@@ -38,6 +39,8 @@ type Kind = keyof typeof KINDS;
 
 const WAIT_VR = 'รอเบิกชดเชย (ยังไม่ลงบัญชี)';
 interface Row { id: string; doc_no: string; doc_date: string; remark: string | null; net_amount: string; doc_status: string; vr_no?: string | null; vr_id?: string | null; lines?: number; dps?: number; cash_amount?: string; cheque_amount?: string }
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function pettyStatus(r: Row, kind: Kind) { return r.doc_status === 'C' ? 'ยกเลิก' : kind === 'dp' && !r.vr_no ? 'รอเบิก' : 'ปกติ'; }
 export function PettyListPage({ kind }: { kind: Kind }) {
   const K = KINDS[kind];
   const nav = useNavigate();
@@ -49,7 +52,13 @@ export function PettyListPage({ kind }: { kind: Kind }) {
   const { from, setFrom, to, setTo } = useWorkRangeState();
   const [open, setOpen] = useState(false);
   const tt = useTypeTabs(K.cls);
-  const list = useQuery({ queryKey: [K.api, q, from, to, open, tt.tab], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.api}`, { type_id: tt.tab || undefined, q, from, to, ...(open ? { open: 'true' } : {}) }), placeholderData: (p) => p });
+  const st = useListSort<Row>(`list:${K.api}`, [
+    { key: 'branch_code', type: 'text' }, { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' }, { key: 'remark', type: 'text' }, { key: 'lines', type: 'num' }, { key: 'vr_no', type: 'docno' },
+    { key: 'dps', type: 'num' }, { key: 'cash_amount', type: 'money' }, { key: 'cheque_amount', type: 'money' }, { key: 'net_amount', type: 'money' },
+    { key: 'doc_status', type: 'label', get: (r) => pettyStatus(r, kind) },
+  ] satisfies SortCol<Row>[]);
+  const list = useQuery({ queryKey: [K.api, q, from, to, open, tt.tab, st.params], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.api}`, { type_id: tt.tab || undefined, q, from, to, ...(open ? { open: 'true' } : {}), ...st.params }), placeholderData: (p) => p });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${BASE}/${kind}/new`)) : undefined }, [tt.tab, ]);
   const total = list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r.net_amount)), d(0));
   const showBr = useShowBranchCol();
@@ -69,9 +78,9 @@ export function PettyListPage({ kind }: { kind: Kind }) {
       <ErrorBox error={list.error} />
       <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th>คำอธิบาย</th>{kind === 'dp' ? <><th className="r" style={{ width: 70 }}>รายการ</th><th style={{ width: 130 }}>เบิกชดเชยใน</th></> : <><th className="r" style={{ width: 70 }}>ใบจ่าย</th><th className="r" style={{ width: 120 }}>เงินสด</th><th className="r" style={{ width: 130 }}>เช็ค/โอน</th></>}<th className="r" style={{ width: 140 }}>จำนวนเงิน</th><th style={{ width: 80 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && st.th('branch_code', 'สาขา', { style: { width: 70 } })}{st.th('doc_no', 'เลขที่', { style: { width: 130 } })}{st.th('doc_date', 'วันที่', { style: { width: 110 } })}{st.th('remark', 'คำอธิบาย')}{kind === 'dp' ? <>{st.th('lines', 'รายการ', { className: 'r', style: { width: 70 } })}{st.th('vr_no', 'เบิกชดเชยใน', { style: { width: 130 } })}</> : <>{st.th('dps', 'ใบจ่าย', { className: 'r', style: { width: 70 } })}{st.th('cash_amount', 'เงินสด', { className: 'r', style: { width: 120 } })}{st.th('cheque_amount', 'เช็ค/โอน', { className: 'r', style: { width: 130 } })}</>}{st.th('net_amount', 'จำนวนเงิน', { className: 'r', style: { width: 140 } })}{st.th('doc_status', 'สถานะ', { style: { width: 80 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${BASE}/${kind}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${BASE}/${kind}/${r.id}`)}>
                 {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td>{r.remark}</td>
                 {kind === 'dp' ? <><td className="r">{r.lines}</td><td><DocLink id={r.vr_id} no={r.vr_no} cls="VR" /></td></> : <><td className="r">{r.dps}</td><td className="r"><Money v={r.cash_amount} blankZero /></td><td className="r"><Money v={r.cheque_amount} blankZero /></td></>}

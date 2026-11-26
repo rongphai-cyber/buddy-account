@@ -14,6 +14,7 @@ import { checkJobs, jobsOfDoc } from '../projects.js';
 import { checkWht, clearMoneyParts, loadMethods, num, paymentsSchema, readMoneyParts, releaseCheques, saveBranch, whtSchema, writePayments, writeWht } from './payments.js';
 import { apTaxRules, payerOf } from './substitute.js';
 import { partyNameSql } from './party-name.js';
+import { sortedList, sortShape } from '../../list-sort.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -160,7 +161,7 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
     app.get(base, async (req) => {
       const a = requireCompany(req);
       const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), party_id: uuid.optional(), status: z.enum(['N', 'C', 'all']).default('all'), type_id: uuid.optional(),
-        limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0) }), req.query);
+        ...sortShape, limit: z.coerce.number().int().min(1).max(1000).default(200), offset: z.coerce.number().int().min(0).default(0) }), req.query);
       const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
       const where = sql.join([
         sql`h.company_id = ${a.companyId}`, sql`h.doc_class = ${K.cls}`, sql`h.deleted_at IS NULL`, ...(a.branchId ? [sql`h.branch_id = ${a.branchId}`] : []),
@@ -170,8 +171,8 @@ export function cashDocRoutes(app: FastifyInstance, db: Db) {
       ], sql` AND `);
       const from = sql`FROM doc_header h LEFT JOIN ${sql.table(partyTbl)} p ON p.id = h.${sql.ref(partyCol)} WHERE ${where}`;
       const total = (await sql<{ n: number }>`SELECT count(*) AS n ${from}`.execute(db)).rows[0]!.n;
-      const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.due_date, ${partyNameSql('h', 'p')} AS party_name, p.code AS party_code, h.ref_no, h.amount, h.vat_amount, h.net_amount, h.wht_amount, h.doc_status,
-          ${K.deposit ? sql`(SELECT o.outstanding FROM v_deposit_outstanding o WHERE o.header_id = h.id)` : sql`NULL`} AS remaining ${from} ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT ${q.limit} OFFSET ${q.offset}`.execute(db)).rows;
+      const rows = (await sortedList(sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.due_date, ${partyNameSql('h', 'p')} AS party_name, p.code AS party_code, h.ref_no, h.amount, h.vat_amount, h.net_amount, h.wht_amount, h.doc_status,
+          ${K.deposit ? sql`(SELECT o.outstanding FROM v_deposit_outstanding o WHERE o.header_id = h.id)` : sql`NULL`} AS remaining ${from}`, q, ['branch_code', 'doc_no', 'doc_date', 'due_date', 'party_code', 'party_name', 'ref_no', 'amount', 'vat_amount', 'net_amount', 'wht_amount', 'remaining', 'doc_status'], sql`h.doc_date DESC, h.doc_no DESC`, sql`LIMIT ${q.limit} OFFSET ${q.offset}`).execute(db)).rows;
       return { total: Number(total), rows };
     });
     app.get(`${base}/:id`, async (req) => {

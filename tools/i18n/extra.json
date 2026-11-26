@@ -3613,5 +3613,7 @@
  "ที่อยู่สำนักงานใหญ่ (พิมพ์บนใบกำกับภาษี)": "Head Office address (printed on tax invoices)",
  "ยังไม่มีที่อยู่ — ป้อนที่ เริ่มระบบ › รายละเอียดกิจการ": "No address yet — enter it at Setup › Company Profile",
  "ยังไม่มีที่อยู่ของกิจการ — ป้อนที่ เริ่มระบบ › รายละเอียดกิจการ": "No company address yet — enter it at Setup › Company Profile",
- "แก้ที่อยู่ / ย้ายที่อยู่สำนักงานใหญ่ ที่ เริ่มระบบ › รายละเอียดกิจการ": "Edit / move the Head Office address at Setup › Company Profile"
+ "แก้ที่อยู่ / ย้ายที่อยู่สำนักงานใหญ่ ที่ เริ่มระบบ › รายละเอียดกิจการ": "Edit / move the Head Office address at Setup › Company Profile",
+ "ชื่อคอลัมน์ที่จะเรียงไม่ถูกต้อง": "The column to sort by is not valid",
+ "เรียงตามคอลัมน์ \"{0}\" ไม่ได้ — คลิกหัวคอลัมน์อื่น หรือกลับไปลำดับเดิม": "Cannot sort by column \"{0}\" — click another column header, or go back to the default order"
 }

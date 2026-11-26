@@ -25,6 +25,7 @@ import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { JobSelect, followHeadJob, showJob, useJobs } from '../../components/JobSelect';
 import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 /** รายการประจำวันสินค้า (คู่มือบทที่ 14 S-IC-06/08/10 + เพิ่ม/ลดต้นทุน) — สต๊อกคำนวณสดจากเอกสาร */
 const MENU = 'IC.TRN';
@@ -37,13 +38,20 @@ const LEAD: Record<StockKind['cls'], string> = {
 };
 
 interface Row { id: string; doc_no: string; doc_date: string; remark: string | null; net_amount: string; doc_status: string; warehouse_code: string | null; to_warehouse_code: string | null; type_code: string | null; lines: number }
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function statusText(r: Row) { return r.doc_status === 'C' ? 'ยกเลิก' : 'ปกติ'; }
 export function StockDocListPage({ cls }: { cls: StockKind['cls'] }) {
   const K = kindOf(cls);
   const nav = useNavigate();
   const can = useCan(MENU);
   const [q, setQ] = useState('');
   const tt = useTypeTabs(cls);
-  const list = useQuery({ queryKey: [K.path, q, tt.tab], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { q, type_id: tt.tab || undefined }), placeholderData: (p) => p });
+  const st = useListSort<Row>(`list:${K.path}`, [
+    { key: 'branch_code', type: 'text' }, { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' }, { key: 'warehouse_code', type: 'docno' }, { key: 'remark', type: 'text' }, { key: 'lines', type: 'num' }, { key: 'net_amount', type: 'money' },
+    { key: 'doc_status', type: 'label', get: statusText },
+  ] satisfies SortCol<Row>[]);
+  const list = useQuery({ queryKey: [K.path, q, tt.tab, st.params], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { q, type_id: tt.tab || undefined, ...st.params }), placeholderData: (p) => p });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, K.route]);
   const showBr = useShowBranchCol();
   return (
@@ -56,9 +64,9 @@ export function StockDocListPage({ cls }: { cls: StockKind['cls'] }) {
       <ErrorBox error={list.error} />
       <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 140 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th>{cls === 'RL' && <th style={{ width: 150 }}>จากคลัง → คลัง</th>}<th>หมายเหตุ</th><th className="r" style={{ width: 80 }}>รายการ</th><th className="r" style={{ width: 140 }}>มูลค่าต้นทุน</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && st.th('branch_code', 'สาขา', { style: { width: 70 } })}{st.th('doc_no', 'เลขที่', { style: { width: 140 } })}{st.th('doc_date', 'วันที่', { style: { width: 110 } })}{cls === 'RL' && st.th('warehouse_code', 'จากคลัง → คลัง', { style: { width: 150 } })}{st.th('remark', 'หมายเหตุ')}{st.th('lines', 'รายการ', { className: 'r', style: { width: 80 } })}{st.th('net_amount', 'มูลค่าต้นทุน', { className: 'r', style: { width: 140 } })}{st.th('doc_status', 'สถานะ', { style: { width: 90 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
                 {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono" title={r.type_code ? `ประเภทเอกสาร ${r.type_code}` : undefined}>{r.doc_no}</td><td><DateText v={r.doc_date} /></td>{cls === 'RL' && <td className="mono">{r.warehouse_code} → {r.to_warehouse_code}</td>}<td>{r.remark}</td>
                 <td className="r">{r.lines}</td><td className="r"><Money v={r.net_amount} /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ปกติ</Pill>}</td>

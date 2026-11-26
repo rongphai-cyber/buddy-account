@@ -5170,6 +5170,80 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     }
   });
 
+  it('HANDOFF 195: document lists sort the whole result on the server by a whitelisted column before the limit — money as numbers, every list and column works, bad column refused, other customer unaffected', async () => {
+    const start = cookie;
+    try {
+      cookie = admin;
+      expect((await call('POST', '/api/v1/tenants', { code: 'SRT195', name: 'ลูกค้าเรียงรายการ 195', admin_username: 's195.admin', admin_name: 'ผู้ดูแล 195', admin_password: 'passS19512345' })).status).toBe(200);
+      expect((await login('s195.admin', 'passS19512345')).status).toBe(200);
+      const co = (await call('POST', '/api/v1/companies', { code: 'S195-1', name_th: 'บริษัท เรียงรายการ 195 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+      expect((await call('POST', '/api/v1/auth/select', { company_id: co })).status).toBe(200);
+      const br = (await sql<{ id: string }>`SELECT id FROM sys_branch WHERE company_id = ${co} LIMIT 1`.execute(database.db)).rows[0]!.id;
+      const dt = (await sql<{ id: string }>`SELECT id FROM md_doc_type WHERE company_id = ${co} AND doc_class = 'IV' AND deleted_at IS NULL LIMIT 1`.execute(database.db)).rows[0]!.id;
+      const ids: string[] = [];
+      // ยอดเงิน 9.50 / 1000.00 / 20.00 / 100.00 — เรียงแบบข้อความจะได้ 1000 < 100 < 20 < 9.50 (ผิด)
+      for (const [no, date, amt, st] of [['S195-0002', '2026-02-01', '9.50', 'N'], ['S195-0010', '2026-01-15', '1000.00', 'N'], ['S195-0003', '2026-03-01', '20.00', 'C'], ['S195-0001', '2026-01-01', '100.00', 'N']] as const) {
+        ids.push((await sql<{ id: string }>`INSERT INTO doc_header (company_id, branch_id, doc_type_id, doc_class, module, doc_no, doc_date, net_amount, doc_status)
+          VALUES (${co}, ${br}, ${dt}, 'IV', 'AR', ${no}, ${date}, ${amt}, ${st}) RETURNING id`.execute(database.db)).rows[0]!.id);
+      }
+      type L = { total: number; rows: Array<{ id: string; doc_no: string; net_amount: string }> };
+      const list = async (qs: string) => (await call('GET', `/api/v1/sales-invoices?${qs}`)).body as L;
+      // ไม่เลือกการเรียง = ลำดับเดิม (วันที่ล่าสุดก่อน)
+      expect((await list('limit=1')).rows.map((r) => r.doc_no)).toEqual(['S195-0003']);
+      // เรียงทั้งชุดก่อนตัด: ใบที่ยอดสูงสุดมาแม้ขอแค่ 1 ใบ · ยอดรวมทั้งหมดยังเป็น 4
+      const top = await list('sort=net_amount&dir=desc&limit=1');
+      expect([top.total, top.rows.map((r) => r.doc_no)]).toEqual([4, ['S195-0010']]);
+      expect((await list('sort=net_amount&dir=asc')).rows.map((r) => r.doc_no)).toEqual(['S195-0002', 'S195-0003', 'S195-0001', 'S195-0010']);
+      expect((await list('sort=doc_no&dir=asc')).rows.map((r) => r.doc_no)).toEqual(['S195-0001', 'S195-0002', 'S195-0003', 'S195-0010']);
+      expect((await list('sort=doc_date&dir=asc&limit=2&offset=1')).rows.map((r) => r.doc_no)).toEqual(['S195-0010', 'S195-0002']);
+      // สถานะเรียงตามข้อความ: ปกติ ก่อน ยกเลิก
+      expect((await list('sort=doc_status&dir=asc')).rows.at(-1)!.doc_no).toBe('S195-0003');
+      // ชื่อคอลัมน์นอกรายการ/รูปแบบแปลก = 400 (ไม่ส่ง SQL จากหน้าจอ)
+      for (const qs of ['sort=id', 'sort=company_id', 'sort=net_amount;drop', 'sort=NET_AMOUNT', 'sort=net_amount&dir=up']) {
+        const r = await call('GET', `/api/v1/sales-invoices?${qs}`);
+        expect(r.status, qs).toBe(400);
+      }
+      expect((await call('GET', '/api/v1/sales-invoices?sort=id')).body.error.message).toMatch(/เรียงตามคอลัมน์ "id" ไม่ได้/);
+
+      // ทุกรายการ × ทุกคอลัมน์ที่อนุญาต ทำงานได้ (PGlite)
+      const TRADE = ['branch_code', 'doc_no', 'doc_date', 'party_code', 'party_name', 'ref_no', 'vat_amount', 'net_amount', 'outstanding', 'due_date', 'delivery_date', 'doc_status'];
+      const ALL: Array<[string, string[]]> = [
+        ['sales-invoices', TRADE], ['quotations', TRADE], ['purchase-orders', TRADE], ['ar-credit-notes', TRADE],
+        ['ar-deposits', ['branch_code', 'doc_no', 'doc_date', 'due_date', 'party_code', 'party_name', 'ref_no', 'amount', 'vat_amount', 'net_amount', 'wht_amount', 'remaining', 'doc_status']],
+        ['other-expense-docs', ['net_amount', 'wht_amount', 'remaining', 'party_name']],
+        ['ar-receipts', ['branch_code', 'doc_no', 'doc_date', 'payment_date', 'party_code', 'party_name', 'bills', 'net_amount', 'wht_amount', 'cash_amount', 'cheque_amount', 'doc_status']],
+        ['ap-payments', ['payment_date', 'bills', 'cheque_amount']],
+        ['ar-deposit-refunds', ['branch_code', 'doc_no', 'doc_date', 'party_code', 'party_name', 'your_ref', 'deposit_nos', 'net_amount', 'cash_amount', 'cheque_amount', 'doc_status']],
+        ['ar-bills', ['branch_code', 'doc_no', 'doc_date', 'visit_date', 'appointment_date', 'party_code', 'party_name', 'bills', 'net_amount', 'doc_status']],
+        ['bank-deposits', ['branch_code', 'doc_no', 'doc_date', 'remark', 'bank_code', 'to_bank_code', 'amount', 'wht_amount', 'net_amount', 'voucher_no', 'doc_status']],
+        ['bank-transfers', ['bank_code', 'to_bank_code']],
+        ['stock-issues', ['branch_code', 'doc_no', 'doc_date', 'type_code', 'remark', 'warehouse_code', 'to_warehouse_code', 'lines', 'net_amount', 'doc_status']],
+        ['stock-transfers', ['warehouse_code', 'lines']],
+        ['petty-payments', ['branch_code', 'doc_no', 'doc_date', 'remark', 'vr_no', 'lines', 'net_amount', 'doc_status']],
+        ['petty-reimbursements', ['branch_code', 'doc_no', 'doc_date', 'remark', 'dps', 'net_amount', 'cash_amount', 'cheque_amount', 'doc_status']],
+        ['cheques?direction=R', ['cheque_no', 'cheque_date', 'received_date', 'deposit_date', 'pass_date', 'party_code', 'party_name', 'bank_code', 'account_code', 'source_doc_no', 'deposit_doc_no', 'amount', 'net_amount', 'remaining_amount', 'status']],
+        ['cheques?direction=P', ['cheque_no', 'status']],
+        ['cheque-deposits', ['doc_no', 'doc_date', 'remark', 'account_code', 'cheques', 'amount', 'net_amount', 'pass_date', 'voucher_no', 'doc_status']],
+        ['ar-opening', ['branch_code', 'doc_no', 'doc_date', 'due_date', 'ref_no', 'party_code', 'party_name', 'net_amount', 'outstanding', 'used', 'doc_status']],
+        ['ap-opening', ['outstanding', 'party_name']], ['ar-deposit-opening', ['used', 'outstanding']],
+      ];
+      for (const [path, keys] of ALL) {
+        for (const k of keys) {
+          const r = await call('GET', `/api/v1/${path}${path.includes('?') ? '&' : '?'}sort=${k}&dir=desc`);
+          expect(r.status, `${path} ${k} ${JSON.stringify(r.body?.error)}`).toBe(200);
+        }
+      }
+      expect((await call('GET', '/api/v1/ar-bills?order=appointment&sort=net_amount')).status).toBe(200);
+
+      // ลูกค้ารายอื่น (ข้อ 7.1): เรียงแล้วก็ยังไม่เห็นเอกสารของบริษัทนี้
+      cookie = start;
+      const other = (await call('GET', '/api/v1/sales-invoices?sort=net_amount&dir=desc&limit=1000')).body as L;
+      expect(other.rows.some((r) => ids.includes(r.id))).toBe(false);
+    } finally {
+      cookie = start;
+    }
+  });
+
   it('HANDOFF 186: 30-day retention — unpaid suspension and termination count down, other suspension and reactivation do not, no extension, sign-in tells the deletion date, provider can hand over a backup, purge refused before the date, provider only, logged', async () => {
     const start = cookie;
     const { formatDate, pdpaPurgeAfter } = await import('@buddy/core');

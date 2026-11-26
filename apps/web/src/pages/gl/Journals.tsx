@@ -9,9 +9,12 @@ import { DocLink } from '../../components/DocLink';
 import { cx, DateInput, DateText, ErrorBox, KeyHints, Money, PageHead, Pill, revealSelectedRow, Tabs, useHotkeys } from '../../ui';
 import { useWorkYear } from '../../workRange';
 import { BranchScope, useShowBranchCol } from '../../components/BranchCol';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 interface Row { id: string; voucher_no: string; voucher_date: string; description: string | null; reference: string | null; total_debit: string; doc_status: string; source_module: string | null; source_header_id: string | null; book_code: string; source_doc_no: string | null; source_doc_class: string | null }
 
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function statusText(r: Row) { return r.doc_status === 'C' ? 'ยกเลิก' : r.source_header_id ? 'จากระบบอื่น' : 'ปกติ'; }
 /** ลงประจำวัน — รายการใบสำคัญ (คู่มือบทที่ 15: เลือกสมุด → รายการที่บันทึกแล้ว) */
 export function JournalsPage() {
   const { me } = useSession();
@@ -24,14 +27,18 @@ export function JournalsPage() {
   const wKey = useRef(`${w.from}|${w.to}`);
   useEffect(() => { const k = `${w.from}|${w.to}`; if (wKey.current !== k) { wKey.current = k; setF((x) => ({ ...x, from: w.from, to: w.to })); setSp((p) => { const n = new URLSearchParams(p); n.set('from', w.from); n.set('to', w.to); return n; }, { replace: true }); } }, [w.from, w.to, setSp]);
   const [page, setPage] = useState(0);
-  // เรียงตามคอลัมน์ที่คลิก (คลิกซ้ำ = กลับทิศ) · ค่าเริ่มต้น วันที่ล่าสุดก่อน
-  const [sort, setSort] = useState<{ k: string; dir: 'asc' | 'desc' }>({ k: 'date', dir: 'desc' });
-  const th = (k: string, label: string, cls?: string) => <th className={cx('sortable', cls, sort.k === k && 'on')} onClick={() => { setSort((x) => ({ k, dir: x.k === k && x.dir === 'desc' ? 'asc' : x.k === k ? 'desc' : k === 'date' || k === 'amount' ? 'desc' : 'asc' })); setPage(0); setSel(0); }} title="คลิกเพื่อเรียง">{label}{sort.k === k ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}</th>;
   const [sel, setSel] = useState(0);
+  // เรียงตามคอลัมน์ที่คลิก (HANDOFF 195 — มาตรฐานเดียวกับทุกรายการเอกสาร): ▲ → ▼ → ลำดับเดิม (วันที่ล่าสุดก่อน) · เซิร์ฟเวอร์เรียงทั้งชุดก่อนแบ่งหน้า
+  const st = useListSort<Row>('list:gl-journals', [
+    { key: 'branch', type: 'text', get: (r) => (r as { branch_code?: string | null }).branch_code }, { key: 'date', type: 'date', get: (r) => r.voucher_date }, { key: 'no', type: 'docno', get: (r) => r.voucher_no },
+    { key: 'book', type: 'docno', get: (r) => r.book_code }, { key: 'desc', type: 'text', get: (r) => r.description }, { key: 'ref', type: 'docno', get: (r) => r.source_doc_no ?? r.reference },
+    { key: 'amount', type: 'money', get: (r) => r.total_debit }, { key: 'status', type: 'label', get: statusText },
+  ] satisfies SortCol<Row>[], () => { setPage(0); setSel(0); });
+  const th = (k: string, label: string, cls?: string) => st.th(k, label, { className: cls });
   const books = useQuery({ queryKey: ['books'], queryFn: () => api.get<Book[]>('/api/v1/gl/books') });
-  const params = { ...f, sort: sort.k, dir: sort.dir, limit: 200, offset: page * 200 };
+  const params = { ...f, ...st.params, limit: 200, offset: page * 200 };
   const list = useQuery({ queryKey: ['journals', params], queryFn: () => api.get<{ total: number; rows: Row[] }>('/api/v1/gl/journals', params) });
-  const rows = list.data?.rows ?? [];
+  const rows = useMemo(() => st.sorted(list.data?.rows), [list.data, st.sort]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (p: Partial<typeof f>) => { const n = { ...f, ...p }; setF(n); setPage(0); setSel(0); setSp({ book: n.book_id, from: n.from, to: n.to }, { replace: true }); };
   const newUrl = `/gl/journals/new${f.book_id ? `?book=${f.book_id}` : ''}`;
   const curBook = books.data?.find((b) => b.id === f.book_id);

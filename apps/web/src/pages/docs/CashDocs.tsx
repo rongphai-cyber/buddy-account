@@ -32,6 +32,7 @@ import { AddWrap } from '../../components/AddWrap';
 import { JobSelect, followHeadJob, showJob, useJobs } from '../../components/JobSelect';
 import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 const kindOf = (path: string) => CASH_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: CashKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -42,6 +43,8 @@ const num = (v: unknown) => (v === null || v === undefined || v === '' ? '' : d(
 
 /* ---------------------------------------------------------------- รายการเอกสาร */
 interface ListRow { id: string; doc_no: string; doc_date: string; due_date: string | null; party_name: string | null; party_code: string | null; ref_no: string | null; amount: string; vat_amount: string; net_amount: string; wht_amount: string; doc_status: string; remaining: string | null }
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function statusText(r: ListRow) { return r.doc_status === 'C' ? 'ยกเลิก' : 'ปกติ'; }
 export function CashListPage({ path }: { path: string }) {
   const K = kindOf(path);
   const nav = useNavigate();
@@ -53,7 +56,12 @@ export function CashListPage({ path }: { path: string }) {
   const { from, setFrom, to, setTo } = useWorkRangeState();
   const [status, setStatus] = useState<'N' | 'C' | 'all'>('all');
   const tt = useTypeTabs(K.cls);
-  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500 }), placeholderData: (p) => p });
+  const st = useListSort<ListRow>(`list:${K.path}`, [
+    { key: 'branch_code', type: 'text' }, { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' }, { key: 'party_code', type: 'docno' }, { key: 'party_name', type: 'text' }, { key: 'ref_no', type: 'docno' },
+    { key: 'vat_amount', type: 'money' }, { key: 'net_amount', type: 'money' }, { key: 'remaining', type: 'money' }, { key: 'wht_amount', type: 'money' }, { key: 'doc_status', type: 'label', get: statusText },
+  ] satisfies SortCol<ListRow>[]);
+  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab, st.params], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500, ...st.params }), placeholderData: (p) => p });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, ]);
   const total = list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r.net_amount)), d(0));
   const showBr = useShowBranchCol();
@@ -74,10 +82,10 @@ export function CashListPage({ path }: { path: string }) {
       <ErrorBox error={list.error} />
       <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 100 }}>รหัส</th><th>{partyWord(K)}</th>{K.module === 'AP' && <th style={{ width: 120 }}>เลขที่บิล</th>}
-            <th className="r" style={{ width: 120 }}>ภาษี</th><th className="r" style={{ width: 140 }}>ยอดรวมทั้งสิ้น</th>{K.deposit ? <th className="r" style={{ width: 130 }}>มัดจำคงเหลือ</th> : <th className="r" style={{ width: 120 }}>ภาษีหัก ณ ที่จ่าย</th>}<th style={{ width: 80 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && st.th('branch_code', 'สาขา', { style: { width: 70 } })}{st.th('doc_no', 'เลขที่', { style: { width: 130 } })}{st.th('doc_date', 'วันที่', { style: { width: 110 } })}{st.th('party_code', 'รหัส', { style: { width: 100 } })}{st.th('party_name', partyWord(K))}{K.module === 'AP' && st.th('ref_no', 'เลขที่บิล', { style: { width: 120 } })}
+            {st.th('vat_amount', 'ภาษี', { className: 'r', style: { width: 120 } })}{st.th('net_amount', 'ยอดรวมทั้งสิ้น', { className: 'r', style: { width: 140 } })}{K.deposit ? st.th('remaining', 'มัดจำคงเหลือ', { className: 'r', style: { width: 130 } }) : st.th('wht_amount', 'ภาษีหัก ณ ที่จ่าย', { className: 'r', style: { width: 120 } })}{st.th('doc_status', 'สถานะ', { style: { width: 80 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
                 {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="mono">{r.party_code}</td><td>{r.party_name}</td>{K.module === 'AP' && <td className="mono">{r.ref_no}</td>}
                 <td className="r"><Money v={r.vat_amount} blankZero /></td><td className="r"><Money v={r.net_amount} /></td>

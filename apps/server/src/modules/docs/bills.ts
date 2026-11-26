@@ -9,6 +9,7 @@ import { logActivity } from '../../audit.js';
 import { cancelDocument, docNoFor, docNoInput } from './engine.js';
 import { saveBranch } from './payments.js';
 import { partyNameSql } from './party-name.js';
+import { sortedList, sortShape } from '../../list-sort.js';
 
 type Ctx = AuthContext & { companyId: string };
 const uuid = z.string().uuid();
@@ -90,7 +91,7 @@ export function billRoutes(app: FastifyInstance, db: Db) {
     app.get(base, async (req) => {
       const a = requireCompany(req);
       const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), status: z.enum(['N', 'C', 'all']).default('all'), type_id: uuid.optional(), order: z.enum(['date', 'appointment']).default('date'),
-        limit: z.coerce.number().int().min(1).max(1000).default(200) }), req.query);
+        ...sortShape, limit: z.coerce.number().int().min(1).max(1000).default(200) }), req.query);
       const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
       const where = sql.join([
         sql`h.company_id = ${a.companyId}`, sql`h.doc_class = ${K.cls}`, sql`h.deleted_at IS NULL`, ...(a.branchId ? [sql`h.branch_id = ${a.branchId}`] : []),
@@ -99,9 +100,8 @@ export function billRoutes(app: FastifyInstance, db: Db) {
       ], sql` AND `);
       const from = sql`FROM doc_header h LEFT JOIN ${sql.table(partyTbl)} p ON p.id = h.${sql.ref(partyCol)} WHERE ${where}`;
       const total = (await sql<{ n: number }>`SELECT count(*) AS n ${from}`.execute(db)).rows[0]!.n;
-      const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.ref_date AS visit_date, h.appointment_date, ${partyNameSql('h', 'p')} AS party_name, p.code AS party_code, h.net_amount, h.doc_status,
-          (SELECT count(*) FROM doc_bill_item bi WHERE bi.bill_header_id = h.id AND bi.deleted_at IS NULL)::int AS bills ${from}
-          ORDER BY ${q.order === 'appointment' ? sql`h.appointment_date NULLS LAST, h.doc_no` : sql`h.doc_date DESC, h.doc_no DESC`} LIMIT ${q.limit}`.execute(db)).rows;
+      const rows = (await sortedList(sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.ref_date AS visit_date, h.appointment_date, ${partyNameSql('h', 'p')} AS party_name, p.code AS party_code, h.net_amount, h.doc_status,
+          (SELECT count(*) FROM doc_bill_item bi WHERE bi.bill_header_id = h.id AND bi.deleted_at IS NULL)::int AS bills ${from}`, q, ['branch_code', 'doc_no', 'doc_date', 'visit_date', 'appointment_date', 'party_code', 'party_name', 'bills', 'net_amount', 'doc_status'], q.order === 'appointment' ? sql`h.appointment_date NULLS LAST, h.doc_no` : sql`h.doc_date DESC, h.doc_no DESC`, sql`LIMIT ${q.limit}`).execute(db)).rows;
       return { total: Number(total), rows };
     });
     app.get(`${base}/open-items`, async (req) => {

@@ -11,6 +11,7 @@ import { periodFor } from '../gl/journals.js';
 import { ledgerOf } from '../gl/reports.js';
 import { cancelDocument, postDocument, docNoFor, docNoInput } from './engine.js';
 import { saveBranch } from './payments.js';
+import { sortedList, sortShape } from '../../list-sort.js';
 
 /**
  * การเคลื่อนไหวบัญชีเงินฝาก (คู่มือบทที่ 13 S-BK-02/03 + รายได้/ค่าใช้จ่ายธนาคาร) — module BK
@@ -93,14 +94,13 @@ export function bankDocRoutes(app: FastifyInstance, db: Db) {
     const base = `/api/v1/${K.path}`;
     app.get(base, async (req) => {
       const a = requireCompany(req);
-      const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), bank_account_id: uuid.optional(), type_id: uuid.optional(), limit: z.coerce.number().int().min(1).max(2000).default(300) }), req.query);
+      const q = parse(z.object({ q: z.string().optional(), from: isoDate.optional(), to: isoDate.optional(), bank_account_id: uuid.optional(), type_id: uuid.optional(), ...sortShape, limit: z.coerce.number().int().min(1).max(2000).default(300) }), req.query);
       const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
-      const rows = (await sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.remark, h.amount, h.wht_amount, h.net_amount, h.doc_status, b.code AS bank_code, b.name AS bank_name, tb.code AS to_bank_code, tb.name AS to_bank_name, j.voucher_no, j.id AS journal_id
+      const rows = (await sortedList(sql`SELECT h.id, (SELECT b.code FROM sys_branch b WHERE b.id = h.branch_id) AS branch_code, h.doc_no, h.doc_date, h.remark, h.amount, h.wht_amount, h.net_amount, h.doc_status, b.code AS bank_code, b.name AS bank_name, tb.code AS to_bank_code, tb.name AS to_bank_name, j.voucher_no, j.id AS journal_id
           FROM doc_header h LEFT JOIN md_bank_account b ON b.id = h.bank_account_id LEFT JOIN md_bank_account tb ON tb.id = h.to_bank_account_id
           LEFT JOIN gl_journal j ON j.id = h.journal_id
          WHERE h.company_id = ${a.companyId} AND h.doc_class = ${K.cls} AND h.deleted_at IS NULL ${a.branchId ? sql`AND h.branch_id = ${a.branchId}` : sql``} ${q.from ? sql`AND h.doc_date >= ${q.from}` : sql``} ${q.to ? sql`AND h.doc_date <= ${q.to}` : sql``}
-           ${q.bank_account_id ? sql`AND (h.bank_account_id = ${q.bank_account_id} OR h.to_bank_account_id = ${q.bank_account_id})` : sql``} ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})` : sql``} ${q.type_id ? sql`AND h.doc_type_id = ${q.type_id}` : sql``}
-         ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT ${q.limit}`.execute(db)).rows;
+           ${q.bank_account_id ? sql`AND (h.bank_account_id = ${q.bank_account_id} OR h.to_bank_account_id = ${q.bank_account_id})` : sql``} ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})` : sql``} ${q.type_id ? sql`AND h.doc_type_id = ${q.type_id}` : sql``}`, q, ['branch_code', 'doc_no', 'doc_date', 'remark', 'bank_code', 'to_bank_code', 'amount', 'wht_amount', 'net_amount', 'voucher_no', 'doc_status'], sql`h.doc_date DESC, h.doc_no DESC`, sql`LIMIT ${q.limit}`).execute(db)).rows;
       return { rows };
     });
     app.get(`${base}/:id`, async (req) => {

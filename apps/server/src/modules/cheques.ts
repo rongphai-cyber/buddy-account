@@ -9,6 +9,7 @@ import { logActivity } from '../audit.js';
 import { createJournal, periodFor } from './gl/journals.js';
 import { docNoFor, docNoInput } from './docs/engine.js';
 import { branchOf } from './docs/payments.js';
+import { sortedList, sortShape } from '../list-sort.js';
 
 /**
  * เช็ครับ/เช็คจ่าย (คู่มือบทที่ 13 S-BK-04..13) — fin_cheque + ประวัติสถานะ fin_cheque_event
@@ -127,10 +128,10 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/cheques', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ direction: z.enum(['R', 'P']), status: z.string().regex(/^[0-9]{2}(,[0-9]{2})*$/).optional(), q: z.string().optional(), bank_account_id: uuid.optional(),
-      instrument: z.enum(['CHEQUE', 'TRANSFER', 'all']).default('CHEQUE'), journal_id: uuid.optional(), header_id: uuid.optional(), from: isoDate.optional(), to: isoDate.optional(), loose: z.enum(['Y', 'N']).default('N'), remaining: z.enum(['Y', 'N']).default('N'), party_id: uuid.optional(), limit: z.coerce.number().int().min(1).max(5000).default(1000) }), req.query);
+      instrument: z.enum(['CHEQUE', 'TRANSFER', 'all']).default('CHEQUE'), journal_id: uuid.optional(), header_id: uuid.optional(), from: isoDate.optional(), to: isoDate.optional(), loose: z.enum(['Y', 'N']).default('N'), remaining: z.enum(['Y', 'N']).default('N'), party_id: uuid.optional(), ...sortShape, limit: z.coerce.number().int().min(1).max(5000).default(1000) }), req.query);
     const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
     const st = q.status?.split(',');
-    const rows = (await sql`SELECT f.id, f.direction, f.instrument, f.cheque_no, f.cheque_date, f.received_date, f.deposit_date, f.pass_date, f.amount, f.charge, f.net_amount, f.remaining_amount, f.written_off_amount, f.status,
+    const rows = (await sortedList(sql`SELECT f.id, f.direction, f.instrument, f.cheque_no, f.cheque_date, f.received_date, f.deposit_date, f.pass_date, f.amount, f.charge, f.net_amount, f.remaining_amount, f.written_off_amount, f.status,
           f.bank_branch, bk.code AS bank_code, bk.name_th AS bank_name, ba.code AS account_code, ba.short_name AS account_short, coalesce(f.payee_name, c.name, s.name) AS party_name, coalesce(c.code, s.code) AS party_code,
           h.id AS source_header_id, h.doc_no AS source_doc_no, h.doc_class AS source_doc_class, (SELECT p.payment_method_id FROM doc_payment p WHERE p.cheque_id = f.id AND p.deleted_at IS NULL ORDER BY p.created_at LIMIT 1) AS method_id, dh.doc_no AS deposit_doc_no, dh.id AS deposit_header_id, j.voucher_no AS pass_voucher_no, f.remark
         FROM fin_cheque f LEFT JOIN md_bank bk ON bk.id = f.bank_id LEFT JOIN md_bank_account ba ON ba.id = f.bank_account_id LEFT JOIN md_customer c ON c.id = f.customer_id LEFT JOIN md_supplier s ON s.id = f.supplier_id
@@ -139,8 +140,7 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
          ${st ? sql`AND f.status IN (${sql.join(st)})` : sql``} ${q.bank_account_id ? sql`AND f.bank_account_id = ${q.bank_account_id}` : sql``}
          ${q.loose === 'Y' ? sql`AND f.deposit_header_id IS NULL` : sql``} ${q.remaining === 'Y' ? sql`AND f.remaining_amount - f.written_off_amount > 0` : sql``}
          ${q.party_id ? sql`AND (f.customer_id = ${q.party_id} OR f.supplier_id = ${q.party_id})` : sql``} ${q.journal_id ? sql`AND f.source_journal_id = ${q.journal_id}` : sql``} ${q.header_id ? sql`AND f.source_header_id = ${q.header_id}` : sql``} ${q.from ? sql`AND f.cheque_date >= ${q.from}` : sql``} ${q.to ? sql`AND f.cheque_date <= ${q.to}` : sql``}
-         ${like ? sql`AND (f.cheque_no ILIKE ${like} OR f.payee_name ILIKE ${like} OR c.name ILIKE ${like} OR s.name ILIKE ${like} OR c.code ILIKE ${like} OR s.code ILIKE ${like} OR h.doc_no ILIKE ${like})` : sql``}
-       ORDER BY f.cheque_date DESC, f.cheque_no LIMIT ${q.limit}`.execute(db)).rows;
+         ${like ? sql`AND (f.cheque_no ILIKE ${like} OR f.payee_name ILIKE ${like} OR c.name ILIKE ${like} OR s.name ILIKE ${like} OR c.code ILIKE ${like} OR s.code ILIKE ${like} OR h.doc_no ILIKE ${like})` : sql``}`, q, ['cheque_no', 'cheque_date', 'received_date', 'deposit_date', 'pass_date', 'party_code', 'party_name', 'bank_code', 'account_code', 'source_doc_no', 'deposit_doc_no', 'amount', 'net_amount', 'remaining_amount', 'status'], sql`f.cheque_date DESC, f.cheque_no`, sql`LIMIT ${q.limit}`, ['cheque_date', 'cheque_no']).execute(db)).rows;
     const sum = (await sql<{ status: string; n: number; amount: string }>`SELECT status, count(*)::int AS n, sum(amount) AS amount FROM fin_cheque WHERE company_id = ${a.companyId} AND deleted_at IS NULL AND direction = ${q.direction}
         ${q.instrument !== 'all' ? sql`AND instrument = ${q.instrument}` : sql``} GROUP BY status ORDER BY status`.execute(db)).rows;
     return { rows, by_status: sum.map((s) => ({ ...s, label: CHEQUE_STATUS[s.status] ?? s.status })) };
@@ -402,13 +402,12 @@ export function chequeRoutes(app: FastifyInstance, db: Db) {
   };
   app.get('/api/v1/cheque-deposits', async (req) => {
     const a = requireCompany(req);
-    const q = parse(z.object({ q: z.string().optional(), limit: z.coerce.number().int().min(1).max(2000).default(300) }), req.query);
+    const q = parse(z.object({ q: z.string().optional(), ...sortShape, limit: z.coerce.number().int().min(1).max(2000).default(300) }), req.query);
     const like = q.q?.trim() ? `%${q.q.trim()}%` : null;
-    const rows = (await sql`SELECT h.id, h.doc_no, h.doc_date, h.remark, h.amount, h.net_amount, h.doc_status, h.express_rectype = 'S' AS discount, ba.code AS account_code, ba.name AS account_name, j.voucher_no,
+    const rows = (await sortedList(sql`SELECT h.id, h.doc_no, h.doc_date, h.remark, h.amount, h.net_amount, h.doc_status, h.express_rectype = 'S' AS discount, ba.code AS account_code, ba.name AS account_name, j.voucher_no,
           (SELECT count(*) FROM fin_cheque f WHERE f.deposit_header_id = h.id AND f.deleted_at IS NULL)::int AS cheques, (SELECT max(f.pass_date) FROM fin_cheque f WHERE f.deposit_header_id = h.id AND f.deleted_at IS NULL) AS pass_date
         FROM doc_header h LEFT JOIN md_bank_account ba ON ba.id = h.bank_account_id LEFT JOIN gl_journal j ON j.id = h.journal_id AND j.doc_status <> 'C'
-       WHERE h.company_id = ${a.companyId} AND h.doc_class = 'BQ' AND h.deleted_at IS NULL ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})` : sql``}
-       ORDER BY h.doc_date DESC, h.doc_no DESC LIMIT ${q.limit}`.execute(db)).rows;
+       WHERE h.company_id = ${a.companyId} AND h.doc_class = 'BQ' AND h.deleted_at IS NULL ${like ? sql`AND (h.doc_no ILIKE ${like} OR h.remark ILIKE ${like})` : sql``}`, q, ['doc_no', 'doc_date', 'remark', 'account_code', 'cheques', 'amount', 'net_amount', 'pass_date', 'voucher_no', 'doc_status'], sql`h.doc_date DESC, h.doc_no DESC`, sql`LIMIT ${q.limit}`).execute(db)).rows;
     return { rows };
   });
   app.get('/api/v1/cheque-deposits/:id', async (req) => {

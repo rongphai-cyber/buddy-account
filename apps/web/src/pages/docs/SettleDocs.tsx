@@ -29,6 +29,7 @@ import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { DepositPickTable, depositsBody, depositsFrom, depositTotal, usableDeposits, useOpenDeposits, type DepositPicks } from './DepositPick';
 import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 const kindOf = (path: string) => SETTLE_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: SettleKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -41,6 +42,8 @@ const CLASS_TH: Record<string, string> = { IV: 'บิลขาย', DR: 'เพ
 
 /* ---------------------------------------------------------------- รายการใบเสร็จ/ใบสำคัญจ่าย */
 interface ListRow { id: string; doc_no: string; doc_date: string; payment_date: string | null; party_name: string; party_code: string | null; net_amount: string; wht_amount: string; cash_amount: string; cheque_amount: string; doc_status: string; bills: number }
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function statusText(r: ListRow) { return r.doc_status === 'C' ? 'ยกเลิก' : 'ปกติ'; }
 export function SettleListPage({ path }: { path: string }) {
   const K = kindOf(path);
   const nav = useNavigate();
@@ -52,7 +55,12 @@ export function SettleListPage({ path }: { path: string }) {
   const { from, setFrom, to, setTo } = useWorkRangeState();
   const [status, setStatus] = useState<'N' | 'C' | 'all'>('all');
   const tt = useTypeTabs(K.cls);
-  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500 }), placeholderData: (p) => p });
+  const st = useListSort<ListRow>(`list:${K.path}`, [
+    { key: 'branch_code', type: 'text' }, { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' }, { key: 'payment_date', type: 'date' }, { key: 'party_code', type: 'docno' }, { key: 'party_name', type: 'text' }, { key: 'bills', type: 'num' },
+    { key: 'net_amount', type: 'money' }, { key: 'wht_amount', type: 'money' }, { key: 'cash_amount', type: 'money' }, { key: 'cheque_amount', type: 'money' }, { key: 'doc_status', type: 'label', get: statusText },
+  ] satisfies SortCol<ListRow>[]);
+  const list = useQuery({ queryKey: [K.path, q, from, to, status, tt.tab, st.params], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status, limit: 500, ...st.params }), placeholderData: (p) => p });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, ]);
   const sum = (k: 'net_amount' | 'wht_amount') => list.data?.rows.filter((r) => r.doc_status !== 'C').reduce((s, r) => s.plus(d(r[k])), d(0)).toFixed(2);
   const showBr = useShowBranchCol();
@@ -72,10 +80,10 @@ export function SettleListPage({ path }: { path: string }) {
       <ErrorBox error={list.error} />
       <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 110 }}>วันที่{rp(K)}เงิน</th><th style={{ width: 100 }}>รหัส</th><th>{partyWord(K)}</th><th className="r" style={{ width: 60 }}>บิล</th>
-            <th className="r" style={{ width: 140 }}>ยอดตามใบกำกับ</th><th className="r" style={{ width: 110 }}>ภาษีหัก ณ ที่จ่าย</th><th className="r" style={{ width: 120 }}>เงินสด</th><th className="r" style={{ width: 130 }}>เช็ค/อื่น ๆ</th><th style={{ width: 80 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && st.th('branch_code', 'สาขา', { style: { width: 70 } })}{st.th('doc_no', 'เลขที่', { style: { width: 130 } })}{st.th('doc_date', 'วันที่', { style: { width: 110 } })}{st.th('payment_date', <>วันที่{rp(K)}เงิน</>, { style: { width: 110 } })}{st.th('party_code', 'รหัส', { style: { width: 100 } })}{st.th('party_name', partyWord(K))}{st.th('bills', 'บิล', { className: 'r', style: { width: 60 } })}
+            {st.th('net_amount', 'ยอดตามใบกำกับ', { className: 'r', style: { width: 140 } })}{st.th('wht_amount', 'ภาษีหัก ณ ที่จ่าย', { className: 'r', style: { width: 110 } })}{st.th('cash_amount', 'เงินสด', { className: 'r', style: { width: 120 } })}{st.th('cheque_amount', 'เช็ค/อื่น ๆ', { className: 'r', style: { width: 130 } })}{st.th('doc_status', 'สถานะ', { style: { width: 80 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
                 {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td><DateText v={r.payment_date} /></td><td className="mono">{r.party_code}</td><td>{r.party_name}</td><td className="r">{r.bills}</td>
                 <td className="r"><Money v={r.net_amount} /></td><td className="r"><Money v={r.wht_amount} blankZero /></td><td className="r"><Money v={r.cash_amount} blankZero /></td><td className="r"><Money v={r.cheque_amount} blankZero /></td>

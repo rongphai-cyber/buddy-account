@@ -17,6 +17,7 @@ import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { PostingTab } from './PostingTab';
 import { confirmLeave } from '../../unsaved';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 /**
  * เงินมัดจำยกมา (HANDOFF ข้อ 86 91 — Express ไม่มีหน้าจอนี้): ใบรับเงินมัดจำ AI ที่ is_opening
@@ -32,12 +33,20 @@ interface Row { id: string; branch_code?: string | null; doc_no: string; doc_dat
 /** ป้ายที่มา: ระบบต้นทาง หรือคีย์ที่ Buddy */
 const SourcePill = ({ sys }: { sys: string | null }) => (sys ? <Pill tone="c">{sourceSystemLabel(sys)}</Pill> : <Pill tone="n">คีย์ที่ Buddy</Pill>);
 
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function statusText(r: Row) { return r.doc_status === 'C' ? 'ยกเลิก' : d(r.outstanding ?? 0).isZero() ? 'ใช้หมดแล้ว' : !r.posted ? 'ไม่ลงบัญชี' : 'คงเหลือ'; }
 export function DepositOpeningListPage() {
   const nav = useNavigate();
   const can = useCan(K.menu);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'N' | 'C' | 'all'>('all');
-  const list = useQuery({ queryKey: [K.api, q, status], queryFn: () => api.get<{ rows: Row[]; total: string } & Meta>(`/api/v1/${K.api}`, { q, status }), placeholderData: (p) => p });
+  const st = useListSort<Row>(`list:${K.api}`, [
+    { key: 'branch_code', type: 'text' }, { key: 'party_code', type: 'docno' }, { key: 'party_name', type: 'text' }, { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' },
+    { key: 'net_amount', type: 'money' }, { key: 'used', type: 'money' }, { key: 'outstanding', type: 'money' }, { key: 'source_system', type: 'text', server: false },
+    { key: 'doc_status', type: 'label', get: statusText },
+  ] satisfies SortCol<Row>[]);
+  const list = useQuery({ queryKey: [K.api, q, status, st.params], queryFn: () => api.get<{ rows: Row[]; total: string } & Meta>(`/api/v1/${K.api}`, { q, status, ...st.params }), placeholderData: (p) => p });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, []);
   const showBr = useShowBranchCol();
   const live = list.data?.rows.filter((r) => r.doc_status !== 'C') ?? [];
@@ -57,10 +66,10 @@ export function DepositOpeningListPage() {
       <ErrorBox error={list.error} />
       <BranchScope /><div className="table-wrap dob-list">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 100 }}>รหัส</th><th>ลูกค้า</th><th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th>
-            <th className="r" style={{ width: 130 }}>จำนวนเงิน</th><th className="r" style={{ width: 120 }}>ใช้แล้ว</th><th className="r" style={{ width: 130 }}>คงเหลือ</th><th style={{ width: 120 }}>ที่มา</th><th style={{ width: 100 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && st.th('branch_code', 'สาขา', { style: { width: 70 } })}{st.th('party_code', 'รหัส', { style: { width: 100 } })}{st.th('party_name', 'ลูกค้า')}{st.th('doc_no', 'เลขที่', { style: { width: 130 } })}{st.th('doc_date', 'วันที่', { style: { width: 110 } })}
+            {st.th('net_amount', 'จำนวนเงิน', { className: 'r', style: { width: 130 } })}{st.th('used', 'ใช้แล้ว', { className: 'r', style: { width: 120 } })}{st.th('outstanding', 'คงเหลือ', { className: 'r', style: { width: 130 } })}{st.th('source_system', 'ที่มา', { style: { width: 120 } })}{st.th('doc_status', 'สถานะ', { style: { width: 100 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => open(r.id)} onKeyDown={(e) => e.key === 'Enter' && open(r.id)}>
                 {showBr && <td data-label="สาขา" className="mono small">{r.branch_code}</td>}<td data-label="รหัส" className="mono">{r.party_code}</td><td data-label="ลูกค้า">{r.party_name}</td><td data-label="เลขที่" className="mono">{r.doc_no}</td><td data-label="วันที่"><DateText v={r.doc_date} /></td>
                 <td data-label="จำนวนเงิน" className="r"><Money v={r.net_amount} /></td><td data-label="ใช้แล้ว" className="r"><Money v={r.used} blankZero /></td><td data-label="คงเหลือ" className="r"><Money v={r.outstanding} blankZero /></td>

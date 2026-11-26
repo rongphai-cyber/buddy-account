@@ -20,6 +20,7 @@ import { bookStyle, typeColorIn } from '../../bookColor';
 import { ReasonInput } from '../../components/ReasonInput';
 import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 const kindOf = (path: string) => BILL_KINDS.find((k) => k.path === path)!;
 const partyEndpoint = (K: BillKind) => (K.party === 'customer' ? '/api/v1/customers' : '/api/v1/suppliers');
@@ -28,6 +29,8 @@ const rp = (K: BillKind) => (K.module === 'AR' ? 'รับ' : 'จ่าย');
 const CLASS_TH: Record<string, string> = { IV: 'บิลขาย', DR: 'เพิ่มหนี้', CN: 'ลดหนี้', RR: 'บิลซื้อ', CP: 'เพิ่มหนี้', DN: 'ลดหนี้' };
 
 interface ListRow { id: string; doc_no: string; doc_date: string; visit_date: string | null; appointment_date: string | null; party_name: string; party_code: string | null; net_amount: string; doc_status: string; bills: number }
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function statusText(r: ListRow) { return r.doc_status === 'C' ? 'ยกเลิก' : 'ปกติ'; }
 /** รายการใบวางบิล/ใบรับวางบิล · appointments = หน้าบันทึกวันนัดรับชำระ (S-BI-02) เรียงตามวันนัด แก้วันนัดได้ในแถว */
 export function BillListPage({ path, appointments }: { path: string; appointments?: boolean }) {
   const K = kindOf(path);
@@ -42,7 +45,12 @@ export function BillListPage({ path, appointments }: { path: string; appointment
   const { from, setFrom, to, setTo } = useWorkRangeState();
   const [err, setErr] = useState<unknown>(null);
   const tt = useTypeTabs(K.cls);
-  const list = useQuery({ queryKey: [K.path, q, from, to, appointments, tt.tab], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status: appointments ? 'N' : 'all', order: appointments ? 'appointment' : 'date', limit: 500 }), placeholderData: (p) => p });
+  const st = useListSort<ListRow>(`list:${K.path}${appointments ? ':appt' : ''}`, [
+    { key: 'branch_code', type: 'text' }, { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' }, { key: 'party_code', type: 'docno' }, { key: 'party_name', type: 'text' }, { key: 'bills', type: 'num' },
+    { key: 'net_amount', type: 'money' }, { key: 'appointment_date', type: 'date' }, { key: 'doc_status', type: 'label', get: statusText },
+  ] satisfies SortCol<ListRow>[]);
+  const list = useQuery({ queryKey: [K.path, q, from, to, appointments, tt.tab, st.params], queryFn: () => api.get<{ total: number; rows: ListRow[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, from, to, status: appointments ? 'N' : 'all', order: appointments ? 'appointment' : 'date', limit: 500, ...st.params }), placeholderData: (p) => p });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') && !appointments ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, ]);
   const appoint = async (r: ListRow, date: string) => {
     setErr(null);
@@ -65,9 +73,9 @@ export function BillListPage({ path, appointments }: { path: string; appointment
       <ErrorBox error={err ?? list.error} />
       <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 100 }}>รหัส</th><th>{partyWord(K)}</th><th className="r" style={{ width: 60 }}>บิล</th><th className="r" style={{ width: 140 }}>จำนวนเงินรวม</th><th style={{ width: appointments ? 170 : 120 }}>วันนัด{rp(K)}เงิน</th>{!appointments && <th style={{ width: 80 }}>สถานะ</th>}</tr></thead>
+          <thead><tr>{showBr && st.th('branch_code', 'สาขา', { style: { width: 70 } })}{st.th('doc_no', 'เลขที่', { style: { width: 130 } })}{st.th('doc_date', 'วันที่', { style: { width: 110 } })}{st.th('party_code', 'รหัส', { style: { width: 100 } })}{st.th('party_name', partyWord(K))}{st.th('bills', 'บิล', { className: 'r', style: { width: 60 } })}{st.th('net_amount', 'จำนวนเงินรวม', { className: 'r', style: { width: 140 } })}{st.th('appointment_date', <>วันนัด{rp(K)}เงิน</>, { style: { width: appointments ? 170 : 120 } })}{!appointments && st.th('doc_status', 'สถานะ', { style: { width: 80 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={(e) => { if (!(e.target as HTMLElement).closest('.date-in')) nav(`${K.route}/${r.id}`); }} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLElement).tagName === 'TR' && nav(`${K.route}/${r.id}`)}>
                 {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td className="mono">{r.party_code}</td><td>{r.party_name}</td><td className="r">{r.bills}</td><td className="r"><Money v={r.net_amount} /></td>
                 <td>{appointments ? <DateInput value={r.appointment_date ? String(r.appointment_date).slice(0, 10) : ''} disabled={!canAppoint} onChange={(v) => { if (v !== (r.appointment_date ? String(r.appointment_date).slice(0, 10) : '')) appoint(r, v); }} /> : <DateText v={r.appointment_date} />}</td>

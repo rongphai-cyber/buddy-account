@@ -22,6 +22,7 @@ import { ImportExcelButton } from '../../components/ImportExcelButton';
 import { AiBillButton, type AiBillResult } from '../../components/AiBill';
 import { useWorkRangeState } from '../../workRange';
 import { confirmLeave } from '../../unsaved';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 /** การเคลื่อนไหวบัญชีเงินฝาก (คู่มือบทที่ 13 S-BK-02/03 + รายได้/ค่าใช้จ่ายธนาคาร) — ลงบัญชีทันทีเมื่อบันทึก */
 const MENU = 'FI.BK.TX';
@@ -42,6 +43,8 @@ function BankSelect({ value, onChange, disabled, label, exclude }: { value: stri
 }
 
 interface Row { id: string; doc_no: string; doc_date: string; remark: string | null; amount: string; wht_amount: string; net_amount: string; doc_status: string; bank_code: string; bank_name: string; to_bank_code: string | null; voucher_no: string | null; journal_id: string | null }
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function statusText(r: Row) { return r.doc_status === 'C' ? 'ยกเลิก' : 'ลงบัญชีแล้ว'; }
 export function BankDocListPage({ cls }: { cls: BankKind['cls'] }) {
   const K = kindOf(cls);
   const nav = useNavigate();
@@ -49,7 +52,12 @@ export function BankDocListPage({ cls }: { cls: BankKind['cls'] }) {
   const [q, setQ] = useState('');
   const [bank, setBank] = useState('');
   const tt = useTypeTabs(cls);
-  const list = useQuery({ queryKey: [K.path, q, bank, tt.tab], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, ...(bank ? { bank_account_id: bank } : {}) }), placeholderData: (p) => p });
+  const st = useListSort<Row>(`list:${K.path}`, [
+    { key: 'branch_code', type: 'text' }, { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' }, { key: 'bank_code', type: 'docno' }, { key: 'remark', type: 'text' }, { key: 'amount', type: 'money' }, { key: 'voucher_no', type: 'docno' },
+    { key: 'doc_status', type: 'label', get: statusText },
+  ] satisfies SortCol<Row>[]);
+  const list = useQuery({ queryKey: [K.path, q, bank, tt.tab, st.params], queryFn: () => api.get<{ rows: Row[] }>(`/api/v1/${K.path}`, { type_id: tt.tab || undefined, q, ...(bank ? { bank_account_id: bank } : {}), ...st.params }), placeholderData: (p) => p });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') ? () => nav(tt.newUrl(`${K.route}/new`)) : undefined }, [tt.tab, K.route]);
   const showBr = useShowBranchCol();
   return (
@@ -65,9 +73,9 @@ export function BankDocListPage({ cls }: { cls: BankKind['cls'] }) {
       <ErrorBox error={list.error} />
       <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 140 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 220 }}>{cls === 'BT' ? 'โอนจาก → เข้า' : 'บัญชีเงินฝาก'}</th><th>หมายเหตุ</th><th className="r" style={{ width: 140 }}>จำนวนเงิน</th><th style={{ width: 130 }}>ใบสำคัญ</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && st.th('branch_code', 'สาขา', { style: { width: 70 } })}{st.th('doc_no', 'เลขที่', { style: { width: 140 } })}{st.th('doc_date', 'วันที่', { style: { width: 110 } })}{st.th('bank_code', cls === 'BT' ? 'โอนจาก → เข้า' : 'บัญชีเงินฝาก', { style: { width: 220 } })}{st.th('remark', 'หมายเหตุ')}{st.th('amount', 'จำนวนเงิน', { className: 'r', style: { width: 140 } })}{st.th('voucher_no', 'ใบสำคัญ', { style: { width: 130 } })}{st.th('doc_status', 'สถานะ', { style: { width: 90 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
                 {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td>{r.bank_code} {cls === 'BT' ? `→ ${r.to_bank_code}` : r.bank_name}</td><td>{r.remark}</td>
                 <td className="r"><Money v={r.amount} /></td><td><DocLink id={r.journal_id} no={r.voucher_no} cls="GL" /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : <Pill tone="n">ลงบัญชีแล้ว</Pill>}</td>

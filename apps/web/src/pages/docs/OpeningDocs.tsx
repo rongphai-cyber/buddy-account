@@ -16,6 +16,7 @@ import { CancelStamp, SourceStamp } from '../../components/DocDelete';
 import { ReasonInput } from '../../components/ReasonInput';
 import { AddWrap } from '../../components/AddWrap';
 import { confirmLeave } from '../../unsaved';
+import { useListSort, type SortCol } from '../../components/SortHeader';
 
 /** ลูกหนี้/เจ้าหนี้คงค้างยกมา (คู่มือ S-OB-03/04) — บิลค้าง ณ วันเริ่มใช้ ไม่ลงบัญชี (ยอดบัญชีป้อนที่ บันทึกยอดยกมา) */
 const KINDS = {
@@ -25,12 +26,20 @@ const KINDS = {
 type Kind = keyof typeof KINDS;
 
 interface Row { id: string; doc_no: string; doc_date: string; due_date: string | null; ref_no: string | null; party_name: string; party_code: string | null; net_amount: string; vat_basis: string | null; doc_status: string; outstanding: string | null }
+/** ข้อความสถานะที่แสดง — ใช้เรียงคอลัมน์สถานะ (HANDOFF 195) */
+function statusText(r: Row) { return r.doc_status === 'C' ? 'ยกเลิก' : r.vat_basis === '2' ? 'ภาษีเกณฑ์เงินสด' : 'ปกติ'; }
 export function OpeningListPage({ kind }: { kind: Kind }) {
   const K = KINDS[kind];
   const nav = useNavigate();
   const can = useCan(K.menu);
   const [q, setQ] = useState('');
-  const list = useQuery({ queryKey: [K.api, q], queryFn: () => api.get<{ rows: Row[]; total: string; start_date: string | null }>(`/api/v1/${K.api}`, { q }), placeholderData: (p) => p });
+  const st = useListSort<Row>(`list:${K.api}`, [
+    { key: 'branch_code', type: 'text' }, { key: 'party_code', type: 'docno' }, { key: 'party_name', type: 'text' }, { key: 'doc_no', type: 'docno' }, { key: 'doc_date', type: 'date' }, { key: 'due_date', type: 'date' }, { key: 'ref_no', type: 'docno' },
+    { key: 'net_amount', type: 'money' }, { key: 'outstanding', type: 'money' },
+    { key: 'doc_status', type: 'label', get: statusText },
+  ] satisfies SortCol<Row>[]);
+  const list = useQuery({ queryKey: [K.api, q, st.params], queryFn: () => api.get<{ rows: Row[]; total: string; start_date: string | null }>(`/api/v1/${K.api}`, { q, ...st.params }), placeholderData: (p) => p });
+  const rows = st.sorted(list.data?.rows);
   useHotkeys({ Insert: can('add') ? () => nav(`${K.route}/new`) : undefined }, []);
   const showBr = useShowBranchCol();
   return (
@@ -42,9 +51,9 @@ export function OpeningListPage({ kind }: { kind: Kind }) {
       <ErrorBox error={list.error} />
       <BranchScope /><div className="table-wrap">
         <table className="grid">
-          <thead><tr>{showBr && <th style={{ width: 70 }}>สาขา</th>}<th style={{ width: 100 }}>รหัส</th><th>{K.party}</th><th style={{ width: 130 }}>เลขที่</th><th style={{ width: 110 }}>วันที่</th><th style={{ width: 110 }}>ครบกำหนด</th>{kind === 'ap' && <th style={{ width: 120 }}>เลขที่บิล</th>}<th className="r" style={{ width: 140 }}>จำนวนเงินรวม</th><th className="r" style={{ width: 140 }}>ค้างชำระ</th><th style={{ width: 90 }}>สถานะ</th></tr></thead>
+          <thead><tr>{showBr && st.th('branch_code', 'สาขา', { style: { width: 70 } })}{st.th('party_code', 'รหัส', { style: { width: 100 } })}{st.th('party_name', K.party)}{st.th('doc_no', 'เลขที่', { style: { width: 130 } })}{st.th('doc_date', 'วันที่', { style: { width: 110 } })}{st.th('due_date', 'ครบกำหนด', { style: { width: 110 } })}{kind === 'ap' && st.th('ref_no', 'เลขที่บิล', { style: { width: 120 } })}{st.th('net_amount', 'จำนวนเงินรวม', { className: 'r', style: { width: 140 } })}{st.th('outstanding', 'ค้างชำระ', { className: 'r', style: { width: 140 } })}{st.th('doc_status', 'สถานะ', { style: { width: 90 } })}</tr></thead>
           <tbody>
-            {list.data?.rows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className={cx('row-open', r.doc_status === 'C' && 'cancelled')} tabIndex={0} onClick={() => nav(`${K.route}/${r.id}`)} onKeyDown={(e) => e.key === 'Enter' && nav(`${K.route}/${r.id}`)}>
                 {showBr && <td className="mono small">{(r as { branch_code?: string | null }).branch_code}</td>}<td className="mono">{r.party_code}</td><td>{r.party_name}</td><td className="mono">{r.doc_no}</td><td><DateText v={r.doc_date} /></td><td><DateText v={r.due_date} /></td>{kind === 'ap' && <td className="mono">{r.ref_no}</td>}
                 <td className="r"><Money v={r.net_amount} /></td><td className="r"><Money v={r.outstanding} blankZero /></td><td>{r.doc_status === 'C' ? <Pill tone="x">ยกเลิก</Pill> : r.vat_basis === '2' ? <Pill tone="c">ภาษีเกณฑ์เงินสด</Pill> : <Pill tone="n">ปกติ</Pill>}</td>

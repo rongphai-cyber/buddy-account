@@ -1060,6 +1060,9 @@ button.danger-outline:not(:disabled) { color: var(--bad); border-color: color-mi
 th.sortable { cursor: pointer; user-select: none; }
 th.sortable:hover { color: var(--tone); }
 th.sortable.on { color: var(--tone); }
+/* HANDOFF 195: เลือกหัวคอลัมน์ด้วย Tab แล้ว Enter/Space เรียง · ลูกศรไม่ตัดบรรทัดแยกจากชื่อ */
+th.sortable:focus-visible { outline: 2px solid var(--tone); outline-offset: -2px; }
+th.sortable .sort-ind { white-space: nowrap; font-size: .85em; }
 /* แถบเครื่องมือหน้ากำหนดข้อมูล (MasterBar) */
 .master-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 10px; }
 .master-bar .hint { margin-left: auto; }
