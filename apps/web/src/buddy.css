@@ -170,6 +170,11 @@ tr.row-late td { color: var(--muted); cursor: not-allowed; }
 .addr-box { grid-column: 1 / -1; border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 .addr-title { font-weight: 600; font-size: 13.5px; }
 .addr-title small { font-weight: 400; margin-left: 6px; }
+/* HANDOFF 194: สาขาสำนักงานใหญ่ = ที่อยู่จากรายละเอียดกิจการ (อ่านอย่างเดียว) */
+.ho-addr { border-style: solid; background: var(--surface-2, #f7f8fb); }
+.ho-addr-text { line-height: 1.6; }
+.ho-addr .hint { margin: 0; }
+.branch-addr-help { grid-column: 1 / -1; margin: 0; }
 .addr-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .addr-out { display: flex; flex-direction: column; gap: 4px; }
 .addr-out-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }

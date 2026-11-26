@@ -334,7 +334,12 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   /* ---------------------------------------------------------------- สาขา */
   app.get('/api/v1/branches', async (req) => {
     const a = requireCompany(req);
-    return db.selectFrom('sys_branch').select(['id', 'code', 'name', 'tax_branch_no', 'address', 'zip_code', ...ADDR_COLS, 'is_head_office', 'status']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute();
+    const rows = await db.selectFrom('sys_branch').select(['id', 'code', 'name', 'tax_branch_no', 'address', 'zip_code', ...ADDR_COLS, 'is_head_office', 'status']).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).orderBy('code').execute();
+    // สาขาสำนักงานใหญ่ = ที่อยู่ของกิจการที่มีผลวันนี้ (รายละเอียดกิจการ · HANDOFF 194) — ช่องที่อยู่ในแฟ้มสาขาสำนักงานใหญ่ไม่ได้ใช้พิมพ์
+    if (!rows.some((r) => r.is_head_office)) return rows;
+    const ho = await companyAddressAt(db, a.companyId, null, null);
+    const text = [ho.address_th.replace(/\s*\n\s*/g, ' ').trim(), ho.zip_code && !ho.address_th.includes(ho.zip_code) ? ho.zip_code : ''].filter(Boolean).join(' ');
+    return rows.map((r) => (r.is_head_office ? { ...r, company_address: text, company_address_from: ho.effective_from } : r));
   });
   const branchBody = z.object({ code: z.string().trim().min(1, 'ป้อนรหัสสาขา').max(10), name: z.string().trim().min(1, 'ป้อนชื่อสาขา').max(120), tax_branch_no: z.string().trim().regex(/^\d{5}$/, 'เลขที่สาขา 5 หลัก เช่น 00001'), address: z.string().max(500).nullable().optional(),
     zip_code: z.string().trim().regex(/^(\d{5})?$/, 'รหัสไปรษณีย์ 5 หลัก').nullable().optional().transform((v) => v || null), ...addrShape, status: z.enum(['A', 'I']).default('A') });
@@ -350,10 +355,14 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const a = requireCompany(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(branchBody, req.body);
-    const r = await db.updateTable('sys_branch').set({ ...b, address: b.address ?? null, updated_by: a.userId }).where('id', '=', id).where('company_id', '=', a.companyId).executeTakeFirst();
-    if (!Number(r.numUpdatedRows)) throw notFound('สาขา');
+    const cur = await db.selectFrom('sys_branch').select('is_head_office').where('id', '=', id).where('company_id', '=', a.companyId).where('deleted_at', 'is', null).executeTakeFirst();
+    if (!cur) throw notFound('สาขา');
+    const hq = cur.is_head_office;
+    // สาขาสำนักงานใหญ่: ที่อยู่มาจากรายละเอียดกิจการ (HANDOFF 194) — บันทึกเฉพาะรหัส ชื่อ เลขที่สาขา สถานะ ไม่แตะช่องที่อยู่
+    const set = hq ? { code: b.code, name: b.name, tax_branch_no: b.tax_branch_no, status: b.status } : { ...b, address: b.address ?? null };
+    await db.updateTable('sys_branch').set({ ...set, updated_by: a.userId }).where('id', '=', id).where('company_id', '=', a.companyId).execute();
+    await logActivity(db, a, { module: 'SYS', action: 'EDIT', docNo: b.code, table: 'sys_branch', rowId: id });
     // ที่อยู่สาขา = แถวที่มีผลวันนี้ในประวัติที่อยู่ (HANDOFF 180) · สาขาสำนักงานใหญ่ใช้ที่อยู่ของบริษัท
-    const hq = (await db.selectFrom('sys_branch').select('is_head_office').where('id', '=', id).executeTakeFirst())?.is_head_office;
     if (!hq) await saveCurrentAddress(db, a, id, { address_th: b.address ?? null, address_en: null, zip_code: b.zip_code ?? null, ...Object.fromEntries(ADDR_COLS.map((k) => [k, b[k] ?? null])) });
     return { id };
   });

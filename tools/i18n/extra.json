@@ -3605,5 +3605,13 @@
  "— เลือกลูกค้าปลายทาง —": "— choose the target tenant —",
  "— ใช้งานไม่ได้": "— not available",
  "✅ ย้าย": "✅ Moved",
- "ทำเครื่องหมายใบสำคัญที่ย้ายมาจาก Express": "Mark vouchers migrated from Express"
+ "ทำเครื่องหมายใบสำคัญที่ย้ายมาจาก Express": "Mark vouchers migrated from Express",
+ "(จากรายละเอียดกิจการ)": "(from Company Profile)",
+ "(ใช้ที่อยู่สำนักงานใหญ่)": "(uses the Head Office address)",
+ "ดึงจาก เริ่มระบบ › รายละเอียดกิจการ (ที่อยู่ที่มีผลวันนี้) — ไม่ต้องกรอกซ้ำที่นี่ · เอกสารพิมพ์ที่อยู่ที่มีผล ณ วันที่ของเอกสาร": "Taken from Setup › Company Profile (the address in effect today) — no need to enter it again here · Documents print the address in effect on the document date",
+ "ที่อยู่นี้พิมพ์บนใบกำกับภาษีที่ออกในนามสาขานี้ · ย้ายที่อยู่สาขา = กด เพิ่มที่อยู่ใหม่ ด้านล่าง": "This address is printed on tax invoices issued in this branch's name · Branch moved = press Add a new address below",
+ "ที่อยู่สำนักงานใหญ่ (พิมพ์บนใบกำกับภาษี)": "Head Office address (printed on tax invoices)",
+ "ยังไม่มีที่อยู่ — ป้อนที่ เริ่มระบบ › รายละเอียดกิจการ": "No address yet — enter it at Setup › Company Profile",
+ "ยังไม่มีที่อยู่ของกิจการ — ป้อนที่ เริ่มระบบ › รายละเอียดกิจการ": "No company address yet — enter it at Setup › Company Profile",
+ "แก้ที่อยู่ / ย้ายที่อยู่สำนักงานใหญ่ ที่ เริ่มระบบ › รายละเอียดกิจการ": "Edit / move the Head Office address at Setup › Company Profile"
 }

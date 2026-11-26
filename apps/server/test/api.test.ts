@@ -6765,6 +6765,19 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect((await call('POST', '/api/v1/company/addresses', { branch_id: b1, effective_from: '2026-07-01', address_th_1: '9 ถนนห้วยแก้ว' })).status).toBe(200);
     expect([(await at('2026-06-30', b1)).address_th, (await at('2026-07-01', b1)).address_th]).toEqual(['1 ถนนนิมมานเหมินท์', '9 ถนนห้วยแก้ว']);
     expect((await call('GET', `/api/v1/company/addresses?branch_id=${b1}`)).body.rows).toHaveLength(2);
+    // HANDOFF 194: สาขาสำนักงานใหญ่ในรายการ = ที่อยู่ของกิจการที่มีผลวันนี้ · บันทึกสาขาสำนักงานใหญ่ไม่แตะช่องที่อยู่/ประวัติ
+    type BrRow = { id: string; code: string; is_head_office: boolean; address: string | null; company_address?: string; company_address_from?: string | null };
+    const brs = (await call('GET', '/api/v1/branches')).body as BrRow[];
+    const hob = brs.find((x) => x.is_head_office)!;
+    expect(hob).toMatchObject({ company_address: '340 ถนนใหม่ เมืองเชียงใหม่ 50300', company_address_from: '2025-01-01' });
+    expect(brs.find((x) => x.id === b1)!.company_address).toBeUndefined();
+    await sql`UPDATE sys_branch SET address = 'ค่าเดิมในแฟ้ม', zip_code = '50000' WHERE id = ${hob.id}`.execute(database.db);
+    const hoPut = await call('PUT', `/api/v1/branches/${hob.id}`, { code: hob.code, name: 'สำนักงานใหญ่ (แก้ชื่อ)', tax_branch_no: '00000', status: 'A', address: 'ไม่ควรถูกเก็บ', zip_code: '10110' });
+    expect(hoPut.status, JSON.stringify(hoPut.body)).toBe(200);
+    expect((await sql<{ name: string; address: string; zip_code: string }>`SELECT name, address, zip_code FROM sys_branch WHERE id = ${hob.id}`.execute(database.db)).rows[0]).toEqual({ name: 'สำนักงานใหญ่ (แก้ชื่อ)', address: 'ค่าเดิมในแฟ้ม', zip_code: '50000' });
+    expect((await call('GET', '/api/v1/company/addresses')).body.rows).toHaveLength(2);
+    expect((await call('GET', '/api/v1/company')).body.address_th_1).toBe('340 ถนนใหม่');
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE company_id = ${co} AND table_name = 'sys_branch' AND action = 'EDIT' AND row_id = ${hob.id}`.execute(database.db)).rows[0]!.n).toBe(1);
     // เอกสารพิมพ์ที่อยู่ ณ วันที่เอกสาร (ใบสำคัญ ปี 2567 / 2568 · สาขา 2569)
     const accs = (await call('GET', '/api/v1/gl/accounts')).body.filter((x: { is_control: boolean }) => !x.is_control);
     const book = (await call('GET', '/api/v1/gl/books')).body[0].id;
@@ -6787,6 +6800,9 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     expect((await call('DELETE', `/api/v1/company/addresses/${oldId}`)).status).toBe(404);
     expect((await call('POST', '/api/v1/company/addresses', { branch_id: b1, effective_from: '2027-01-01', address_th_1: 'x' })).status).toBe(404);
     expect((await call('GET', '/api/v1/company/addresses')).body.rows.some((r: { id: string }) => r.id === oldId)).toBe(false);
+    // HANDOFF 194 (ข้อ 7.1): ลูกค้าอื่นไม่เห็นที่อยู่สำนักงานใหญ่ของบริษัทนี้ในรายการสาขา และแก้สาขาสำนักงานใหญ่ของบริษัทนี้ไม่ได้
+    expect(((await call('GET', '/api/v1/branches')).body as BrRow[]).some((x) => x.id === hob.id || (x.company_address ?? '').includes('ถนนใหม่'))).toBe(false);
+    expect((await call('PUT', `/api/v1/branches/${hob.id}`, { code: hob.code, name: 'ข้ามลูกค้า', tax_branch_no: '00000', status: 'A' })).status).toBe(404);
   });
 
   it('HANDOFF 183: dates stored 543 years late (BE typed in an AD company) — scan every company date column, fix in one transaction (closed periods, fiscal year code, month ends), trial balance unchanged, log, overlap refused, admin only, other company/tenant untouched', async () => {

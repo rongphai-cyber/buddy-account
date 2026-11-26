@@ -4414,6 +4414,16 @@
 ]
 },
 {
+"th": "มีผลตั้งแต่",
+"n": 6,
+"files": [
+"apps/web/src/components/AddressHistory.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/settings/Branches.tsx"
+]
+},
+{
 "th": "ยกเลิกการผ่าน",
 "n": 6,
 "files": [
@@ -5088,15 +5098,6 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/date.ts"
-]
-},
-{
-"th": "มีผลตั้งแต่",
-"n": 5,
-"files": [
-"apps/web/src/components/AddressHistory.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx"
 ]
 },
 {
@@ -11377,6 +11378,14 @@
 ]
 },
 {
+"th": "ที่อยู่สำนักงานใหญ่",
+"n": 2,
+"files": [
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/settings/Branches.tsx"
+]
+},
+{
 "th": "ที่อยู่แยกช่อง — กรอกรหัสไปรษณีย์แล้วเติมจังหวัด อำเภอ ตำบลให้",
 "n": 2,
 "files": [
@@ -14235,6 +14244,13 @@
 ]
 },
 {
+"th": "สำนักงานใหญ่เลิกใช้ไม่ได้",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Branches.tsx"
+]
+},
+{
 "th": "สำรองข้อมูล",
 "n": 2,
 "files": [
@@ -16640,6 +16656,13 @@
 ]
 },
 {
+"th": "(จากรายละเอียดกิจการ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Branches.tsx"
+]
+},
+{
 "th": "(ชั่วโมง)",
 "n": 1,
 "files": [
@@ -17071,6 +17094,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "(ใช้ที่อยู่สำนักงานใหญ่)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Branches.tsx"
 ]
 },
 {
@@ -29856,6 +29886,13 @@
 ]
 },
 {
+"th": "ดึงจาก เริ่มระบบ › รายละเอียดกิจการ (ที่อยู่ที่มีผลวันนี้) — ไม่ต้องกรอกซ้ำที่นี่ · เอกสารพิมพ์ที่อยู่ที่มีผล ณ วันที่ของเอกสาร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Branches.tsx"
+]
+},
+{
 "th": "ดึงพนักงานของสาขานี้",
 "n": 1,
 "files": [
@@ -32649,6 +32686,13 @@
 ]
 },
 {
+"th": "ที่อยู่นี้พิมพ์บนใบกำกับภาษีที่ออกในนามสาขานี้ · ย้ายที่อยู่สาขา = กด เพิ่มที่อยู่ใหม่ ด้านล่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Branches.tsx"
+]
+},
+{
 "th": "ที่อยู่ปัจจุบัน บัญชีธนาคาร",
 "n": 1,
 "files": [
@@ -32719,10 +32763,10 @@
 ]
 },
 {
-"th": "ที่อยู่สำนักงานใหญ่",
+"th": "ที่อยู่สำนักงานใหญ่ (พิมพ์บนใบกำกับภาษี)",
 "n": 1,
 "files": [
-"apps/web/src/pages/Login.tsx"
+"apps/web/src/pages/settings/Branches.tsx"
 ]
 },
 {
@@ -32730,13 +32774,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
-]
-},
-{
-"th": "ที่อยู่สำนักงานใหญ่และประวัติที่อยู่ แก้ที่ เริ่มระบบ › รายละเอียดกิจการ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Branches.tsx"
 ]
 },
 {
@@ -43065,6 +43102,20 @@
 ]
 },
 {
+"th": "ยังไม่มีที่อยู่ — ป้อนที่ เริ่มระบบ › รายละเอียดกิจการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Branches.tsx"
+]
+},
+{
+"th": "ยังไม่มีที่อยู่ของกิจการ — ป้อนที่ เริ่มระบบ › รายละเอียดกิจการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Branches.tsx"
+]
+},
+{
 "th": "ยังไม่มีบัญชี? สมัครใช้งาน",
 "n": 1,
 "files": [
@@ -51763,13 +51814,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/sync/branch.ts"
-]
-},
-{
-"th": "สำนักงานใหญ่เลิกใช้ไม่ได้",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Branches.tsx"
 ]
 },
 {
@@ -61703,6 +61747,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "แก้ที่อยู่ / ย้ายที่อยู่สำนักงานใหญ่ ที่ เริ่มระบบ › รายละเอียดกิจการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Branches.tsx"
 ]
 },
 {
