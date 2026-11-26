@@ -194,8 +194,13 @@ export function flattenMenu(items: MenuItem[] = MENU, parent?: string): Array<Me
 /**
  * เมนูของเจ้าหน้าที่ผู้ให้บริการเท่านั้น (ADMIN ที่ไม่สังกัดลูกค้า) — ผู้ดูแลของลูกค้าไม่เห็นในแถบเมนู/ค้นหาเมนู และสิทธิ์ทุกชนิด = ไม่ได้ (HANDOFF 159.1)
  * ลูกค้าผู้ใช้บริการ: ใบสมัคร · โปรแกรมของลูกค้า · ย้ายลูกค้า · ผู้ใช้ดูอย่างเดียว · กลุ่มตั้งต้น อยู่ในหน้านี้ทั้งหมด
+ * HANDOFF 199 (เจ้าของ 26/11/2569 "ลูกค้าไม่ควรเห็น หรือเปิดข้อมูลเหล่านี้ได้ที่ admin ระบบจะต้องเห็นเท่านั้น … ต้องไม่แสดงให้เห็นในตารางสิทธิ"):
+ * + กุญแจ API · การใช้งานและแพ็กเกจ — ไม่อยู่ในตารางสิทธิ์ทุกแบบ (กลุ่ม รายผู้ใช้ ตามเมนู สรุปกลุ่ม) แถบเมนู หน้าแรก ค้นหาเมนู · API ตอบ 403 · เปิดที่อยู่ตรง = บอกว่าเฉพาะผู้ให้บริการ
+ * ที่เดียวที่กำหนด — หน้าจอและ server ใช้ชุดนี้ (providerOnly)
  */
-export const PLATFORM_MENUS: ReadonlySet<string> = new Set(['SET.TENANT', 'SET.PKG']);
+export const PLATFORM_MENUS: ReadonlySet<string> = new Set(['SET.API', 'SET.TENANT', 'SET.USAGE', 'SET.PKG']);
+/** เมนูนี้เฉพาะเจ้าหน้าที่ผู้ให้บริการ (HANDOFF 199) */
+export const providerOnly = (code: string) => PLATFORM_MENUS.has(code);
 export const ACTION_MENUS: ReadonlySet<string> = new Set(['SET.NEWCO', 'SET.LINK', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'OT.IMPTRADE', 'OT.IMPJNL', 'FA.DEPR']);
 /** เมนูที่เป็นการอ่านอยู่แล้ว (รายงาน แฟ้มบันทึกเหตุการณ์ บัญชีของตัวเอง) — ไม่เข้าโหมดดูอย่างเดียว ช่องเงื่อนไขใช้ได้ตามปกติ */
 export const readOnlyExempt = (code: string) => code === 'RP' || code.startsWith('RP.') || ['OT.CHECK', 'OT.LOG', 'OT.PASS', 'OT.HUB'].includes(code);

@@ -4423,10 +4423,19 @@ describe('Buddy Account API (PGlite)', () => {
     const aFy = (await call('GET', '/api/v1/gl/periods')).body[0].id;
     const aCus = (await call('POST', '/api/v1/customers', { code: 'A-C1', name: 'ลูกค้าของ A', tax_id: tid(7) })).body.id;
     expect(aCus).toBeTruthy();
-    // กุญแจ API (T7.5): ลูกค้า A ผูกผู้ใช้ของลูกค้าอื่นไม่ได้ · กุญแจของ A เห็นเฉพาะข้อมูลของ A
+    // กุญแจ API (T7.5): กุญแจของ A เห็นเฉพาะข้อมูลของ A
+    // HANDOFF 199: กุญแจ API = เมนูผู้ให้บริการ — ผู้ดูแลของลูกค้าสร้าง/ดู/ยกเลิกไม่ได้ · ผู้ให้บริการสร้างให้ (ผูกผู้ใช้ของลูกค้าอื่นไม่ได้)
     const otherUser = (await sql<{ id: string }>`SELECT id FROM sys_user WHERE username = 'clerk0'`.execute(database.db)).rows[0]!.id;
-    expect((await call('POST', '/api/v1/api-keys', { name: 'ข้ามลูกค้า', user_id: otherUser })).status).toBe(404);
-    const aKey = (await call('POST', '/api/v1/api-keys', { name: 'ระบบของ A', user_id: (await call('GET', '/api/v1/auth/me')).body.user.id, read_only: true })).body.key as string;
+    const aAdminId = (await call('GET', '/api/v1/auth/me')).body.user.id as string;
+    for (const [m, url] of [['GET', '/api/v1/api-keys'], ['POST', '/api/v1/api-keys'], ['GET', '/api/v1/api-docs'], ['PUT', '/api/v1/api-keys/00000000-0000-4000-8000-000000000000/scope'], ['POST', '/api/v1/api-keys/00000000-0000-4000-8000-000000000000/revoke']] as const)
+      expect([url, (await call(m, url, m === 'GET' ? undefined : { name: 'ของ A', user_id: aAdminId })).status]).toEqual([url, 403]);
+    const aCookie = cookie;
+    cookie = platform;
+    await call('POST', '/api/v1/auth/select', { company_id: ca });
+    expect((await call('POST', '/api/v1/api-keys', { name: 'ข้ามลูกค้า', user_id: otherUser })).body.error.message).toMatch(/ต่างลูกค้ากับบริษัท/);
+    const aKey = (await call('POST', '/api/v1/api-keys', { name: 'ระบบของ A', user_id: aAdminId, read_only: true })).body.key as string;
+    await call('POST', '/api/v1/auth/select', { company_id: companyId });
+    cookie = aCookie;
     expect((await keyCall(aKey, 'GET', `/api/v1/customers/${aCus}`)).status).toBe(200);
     expect((await keyCall(aKey, 'GET', '/api/v1/customers?q=C520')).body.rows).toHaveLength(0);
     expect((await keyCall(aKey, 'GET', '/api/v1/auth/me')).body.companies.map((c: { code: string }) => c.code)).toEqual(['A-CO1']);
@@ -4824,15 +4833,18 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       // ไฟล์ (เตือนและคิดเงินส่วนเกิน = อัปโหลดได้แม้ครบ)
       expect((await call('PUT', '/api/v1/company-images/logo', { data: PNG })).status).toBe(200);
       await sql`INSERT INTO sys_ai_usage (company_id, purpose, status, file_name) VALUES (${co}, 'BILL', 'OK', 'bill.jpg'), (${co}, 'BILL', 'ERROR', 'bad.jpg')`.execute(database.db);
-      const u = (await call('GET', '/api/v1/usage')).body;
+      // HANDOFF 199: หน้าการใช้งานและแพ็กเกจ = เมนูผู้ให้บริการ — ผู้ดูแลของลูกค้าเปิดไม่ได้ (แถบเตือนยังอยู่) · ตัวเลขเดียวกันดูจากรายงานของผู้ให้บริการ
+      const cu = await call('GET', '/api/v1/usage');
+      expect([cu.status, cu.body.error.message]).toEqual([403, expect.stringMatching(/เฉพาะเจ้าหน้าที่ผู้ให้บริการ/)]);
+      cookie = admin;
+      const u = (await call('GET', `/api/v1/admin/usage/${ta.id}`)).body;
+      cookie = pkgaAdmin;
       expect(u.tenant.code).toBe('PKGA');
       expect(u.package).toMatchObject({ code: 'TINY', price_year: '1200.00' });
       expect(u.usage).toMatchObject({ companies: 1, users: 2, docs: 5, ai: 1 });
       expect(u.usage.file_bytes).toBeGreaterThan(0);
       expect(u.rows.map((r: { key: string; pct: number; level: string }) => `${r.key}:${r.pct}:${r.level}`)).toEqual(['companies:100:ok', 'users:100:ok', 'docs:166:over', `files:${Math.floor(u.usage.file_bytes * 100 / 1048576)}:ok`, 'ai:100:over']);
       expect(u.companies).toEqual([expect.objectContaining({ code: 'PKA-1', docs: 5, vouchers: 4, ai: 1 })]);
-      expect(u.companies[0].db_bytes).toBeUndefined();   // ขนาดข้อมูลโดยประมาณ = ผู้ให้บริการเท่านั้น
-      expect(u.overage).toBeUndefined();
       expect(u.docs_definition).toMatch(/ใบสำคัญที่บันทึกเอง/);
       expect((await call('GET', '/api/v1/usage/alert')).body).toMatchObject({ level: 'over' });
       // ลูกค้าเรียกหน้าของผู้ให้บริการไม่ได้
@@ -4865,8 +4877,8 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       expect((await call('GET', '/api/v1/usage/alert')).body.level).toBe('none');
       // ลูกค้าอื่น (ข้อ 7.1): เห็นเฉพาะของตัวเอง ไม่มีแพ็กเกจ = ไม่จำกัด
       expect((await login('pkgb.admin', 'passPkgB1234')).status).toBe(200);
-      const ub = (await call('GET', '/api/v1/usage?month=2026-06')).body;
-      expect([ub.tenant.code, ub.package, ub.level, ub.usage.docs, ub.companies.length]).toEqual(['PKGB', null, 'none', 0, 0]);
+      expect((await call('GET', '/api/v1/usage?month=2026-06')).status).toBeGreaterThanOrEqual(400);   // ยังไม่มีบริษัท = 400 · มีบริษัท = 403
+      expect((await call('GET', '/api/v1/usage/alert')).body.level).toBe('none');   // ไม่มีแพ็กเกจ = ไม่จำกัด ไม่เตือน
       expect((await call('GET', `/api/v1/admin/usage/${ta.id}`)).status).toBe(403);
 
       // ผู้ให้บริการ: ทุกลูกค้า + ขนาดข้อมูลโดยประมาณ + ส่วนเกิน (Decimal)
@@ -4992,12 +5004,15 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       expect((await call('POST', '/api/v1/ai/read-bill-text', text)).body.error.message).toMatch(/ยังไม่ได้ตั้งค่า AI/);
       expect(used.length).toBe(1);
       // การใช้งาน: ลูกค้าจ่ายเอง = AI ไม่นับโควตา (ไม่จำกัด · ไม่เตือน)
-      const ub = (await call('GET', '/api/v1/usage')).body;
+      // HANDOFF 199: รายงานการใช้งาน = ผู้ให้บริการ (ลูกค้า 403)
+      expect((await call('GET', '/api/v1/usage')).status).toBe(403);
+      const custB = (await sql<{ id: string }>`SELECT id FROM sys_tenant WHERE code = 'CUSTB'`.execute(database.db)).rows[0]!.id;
+      cookie = admin;
+      const ub = (await call('GET', `/api/v1/admin/usage/${custB}`)).body;
       expect([ub.ai_payer, ub.ai_limit_usd, ub.limits.ai, ub.rows.find((r: { key: string }) => r.key === 'ai').level]).toEqual(['C', null, null, 'none']);
 
-      // ลูกค้า P: เห็นผู้จ่าย เพดาน และค่าใช้รวม
-      cookie = aipAdmin;
-      const ua = (await call('GET', '/api/v1/usage')).body;
+      // ลูกค้า P: ผู้จ่าย เพดาน และค่าใช้รวม (รายงานของผู้ให้บริการ)
+      const ua = (await call('GET', `/api/v1/admin/usage/${tAip.id}`)).body;
       expect([ua.ai_payer, ua.ai_limit_usd]).toEqual(['P', '0.30']);
       expect(Number(ua.ai_cost_usd)).toBeGreaterThanOrEqual(0.3);
       noKey(ua);
@@ -5094,8 +5109,13 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       const accG = srcGroups.find((g) => g.code === 'ACC')!.id;
       const only = (await call('POST', '/api/v1/users', { username: 'mv.only', display_name: 'เฉพาะบริษัทที่ย้าย', password: 'passOnly19212', companies: [m1, m2], user_group_id: accG, check_rights: true })).body.id as string;
       const both = (await call('POST', '/api/v1/users', { username: 'mv.both', display_name: 'มีบริษัทที่ไม่ย้าย', password: 'passBoth19212', companies: [m1, k1] })).body.id as string;
+      // HANDOFF 199: customer admin cannot manage API keys -> the provider creates it in the customer's company
+      expect((await call('POST', '/api/v1/api-keys', { name: 'x', user_id: both, read_only: true })).status).toBe(403);
+      cookie = admin;
+      await call('POST', '/api/v1/auth/select', { company_id: m1 });
       const key = await call('POST', '/api/v1/api-keys', { name: 'ระบบของ mv.both', user_id: both, read_only: true });
       expect(key.status).toBe(200);
+      cookie = srcAdmin;
       const body = { target_tenant_id: dst.id, company_ids: [m1, m2] };
 
       // ผู้ดูแลของลูกค้าเรียกไม่ได้
@@ -8177,8 +8197,13 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     // ── ข้อ 1: กุญแจ API ของระบบอื่น — ผู้ใช้ของกุญแจอยู่ในกลุ่มฝ่ายขาย/ฝ่ายบุคคล (แสดงจาง) ยังเรียก API ที่ WTS-POS / WTS-Living / WTS-HR ใช้ได้ (ตามระดับ เหมือนก่อน 197)
     const posUser = await mk('h198x.pos', { approval_level: 5, user_group_id: G.SALE });
     const hrUser = await mk('h198x.sop', { approval_level: 5, user_group_id: G.HR });
+    // HANDOFF 199: กุญแจ API = เมนูผู้ให้บริการ — ผู้ให้บริการสร้างในบริษัทของลูกค้า
+    const provider = await login('admin', 'secret123');
+    await call('POST', '/api/v1/auth/select', { company_id: co });
     const posKey = (await call('POST', '/api/v1/api-keys', { name: 'WTS-POS', user_id: posUser })).body.key as string;
     const hrKey = (await call('POST', '/api/v1/api-keys', { name: 'WTS-HR', user_id: hrUser })).body.key as string;
+    expect([posKey, hrKey].every((k) => /^bk_/.test(k ?? ''))).toBe(true);
+    cookie = adminX;
     // POST เอกสารด้วยข้อมูลว่าง = ผ่านด่านสิทธิ์แล้วติดตรวจข้อมูล (400) ไม่ใช่ 403 · ยกเลิกเอกสารที่ไม่มี = 404
     const POS_POST = ['/api/v1/cash-sales', '/api/v1/sales-invoices', '/api/v1/ar-deposits', '/api/v1/ar-receipts', '/api/v1/ar-deposit-refunds', '/api/v1/ar-credit-notes', '/api/v1/sales-orders',
       '/api/v1/purchase-invoices', '/api/v1/ap-credit-notes', '/api/v1/cash-purchases', '/api/v1/purchase-orders', '/api/v1/stock-issues', '/api/v1/stock-adjustments', '/api/v1/stock-transfers',
@@ -8204,9 +8229,12 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await keyCall(posKey, 'POST', '/api/v1/gl/journals', {})).status).toBe(403);
     expect((await keyCall(posKey, 'POST', '/api/v1/sales-invoices', {})).status).toBe(400);
     // หน้ากุญแจ API บอกว่ากุญแจได้สิทธิ์แบบไหน · รายการผู้ใช้บอกจำนวนกุญแจ
+    cookie = provider;   // หน้ากุญแจ API + จำนวนกุญแจในรายการผู้ใช้ = ผู้ให้บริการ (HANDOFF 199)
     const keys = (await call('GET', '/api/v1/api-keys')).body as Array<{ name: string; check_rights: boolean; group_code: string; approval_level: number; has_table: boolean }>;
     expect(keys.map((k) => [k.name, k.check_rights, k.group_code, k.approval_level, k.has_table]).sort()).toEqual([['WTS-HR', false, 'HR', 5, true], ['WTS-POS', true, 'SALE', 5, true]]);
     expect((await call('GET', '/api/v1/users')).body.users.find((u: { username: string }) => u.username === 'h198x.pos').api_keys).toBe(1);
+    cookie = adminX;
+    expect((await call('GET', '/api/v1/users')).body.users.find((u: { username: string }) => u.username === 'h198x.pos').api_keys).toBe(0);
     // หน้าจอ (ไม่ใช่กุญแจ) ของผู้ใช้เดียวกัน: ตามกลุ่ม
     const webUser = await mk('h198x.web', { approval_level: 5, user_group_id: G.SALE });
     await login('h198x.web', 'Staff-Pass-198x');
@@ -8529,6 +8557,90 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await call('PUT', `/api/v1/users/${me.id}`, { username: me.username, display_name: me.display_name, user_group_id: me.user_group_id, approval_level: me.approval_level, check_rights: me.check_rights, status: me.status, companies: me.companies, single_session: false })).status).toBe(200);
     await login('admin', 'secret123');
     expect((await call('PUT', `/api/v1/tenants/${A.id}`, { code: A.code, name: A.name, status: A.status, single_session: false })).status).toBe(200);
+    cookie = '';
+  });
+
+  it('HANDOFF 199: provider-only menus (API keys, usage & package, tenants, packages) are out of every rights table and menu for customer admin and level 9, their APIs 403, old rows ignored and kept, provider unchanged, existing keys keep working, no cross-tenant', async () => {
+    const P = ['SET.API', 'SET.TENANT', 'SET.USAGE', 'SET.PKG'];
+    const login = async (u: string, p: string) => { cookie = ''; expect([u, (await call('POST', '/api/v1/auth/login', { username: u, password: p })).status]).toEqual([u, 200]); };
+    await login('admin', 'secret123');
+    expect((await call('POST', '/api/v1/tenants', { code: 'P199', name: 'ลูกค้า 199', admin_username: 'p199.admin', admin_name: 'ผู้ดูแล 199', admin_password: 'passP199x1' })).status).toBe(200);
+    await login('p199.admin', 'passP199x1');
+    const aAdminId = (await call('GET', '/api/v1/auth/me')).body.user.id as string;
+    const ca = (await call('POST', '/api/v1/companies', { code: 'P199-1', name_th: 'บริษัท 199 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    await call('POST', '/api/v1/auth/select', { company_id: ca });
+    const lv9 = await call('POST', '/api/v1/users', { username: 'p199.lv9', display_name: 'ระดับ 9 ของลูกค้า 199', password: 'passLv9x1234', companies: [ca], approval_level: 9 });
+    expect(lv9.status).toBe(200);
+    type G = { id: string; code: string; rights: Array<{ menu: string }> };
+    const accG = ((await call('GET', '/api/v1/users')).body.groups as G[]).find((g) => g.code === 'ACC')!;
+    // แถวสิทธิ์เก่าของเมนูผู้ให้บริการที่ค้างในฐานข้อมูล (เช่น ตั้งไว้ก่อน 199)
+    const menuId = async (c: string) => (await sql<{ id: string }>`SELECT id FROM sys_menu WHERE code = ${c} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.id;
+    await sql`INSERT INTO sys_permission (company_id, subject_type, subject_id, menu_id, can_read, can_add, can_edit, can_cancel, can_delete, can_print, can_approve)
+      VALUES (${ca}, 'G', ${accG.id}, ${await menuId('SET.API')}, 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y')`.execute(database.db);
+    const stale = async () => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE company_id = ${ca} AND subject_id = ${accG.id} AND menu_id = ${await menuId('SET.API')} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n;
+
+    // ผู้ดูแลของลูกค้า + ระดับ 9 ของลูกค้า: ไม่เห็นเมนู (ไม่จาง ไม่มีเหตุผล = ซ่อน) · API 403
+    for (const [u, pw] of [['p199.admin', 'passP199x1'], ['p199.lv9', 'passLv9x1234']] as const) {
+      await login(u, pw); await call('POST', '/api/v1/auth/select', { company_id: ca });
+      const me = (await call('GET', '/api/v1/auth/me')).body;
+      for (const m of P) expect([u, m, Object.values(me.perms[m]).some((v) => v !== false), me.perm_why[m] ?? null]).toEqual([u, m, false, null]);
+      for (const url of ['/api/v1/api-keys', '/api/v1/api-docs', '/api/v1/usage', '/api/v1/packages', '/api/v1/admin/usage', '/api/v1/tenants']) expect([u, url, (await call('GET', url)).status]).toEqual([u, url, 403]);
+      expect((await call('POST', '/api/v1/api-keys', { name: 'x', user_id: aAdminId })).status).toBe(403);
+      expect((await call('GET', '/api/v1/usage')).body.error.message).toMatch(/เฉพาะเจ้าหน้าที่ผู้ให้บริการ/);
+    }
+
+    // ตารางสิทธิ์ทุกแบบ (ผู้ดูแลของลูกค้า): รายการเมนู · กลุ่ม · รายผู้ใช้ (ที่ได้จริง/ระดับที่ต้องมี) · สรุปกลุ่ม · ตามเมนู · บันทึก
+    await login('p199.admin', 'passP199x1'); await call('POST', '/api/v1/auth/select', { company_id: ca });
+    // กุญแจเดิมของลูกค้า (สร้างไว้ก่อน 199 เช่น WTS-POS/WTS-Living ของ DEMO ผูก demo.admin) — ใส่ตรงในฐานข้อมูลเหมือนแถวที่มีอยู่แล้ว
+    const oldKey = 'bk_199a199a199a_' + 'o'.repeat(32);
+    await sql`INSERT INTO sys_api_key (company_id, user_id, name, key_prefix, key_hash, read_only, created_by, updated_by)
+      VALUES (${ca}, ${aAdminId}, 'ระบบของ A', '199a199a199a', ${(await import('node:crypto')).createHash('sha256').update('o'.repeat(32)).digest('hex')}, false, ${aAdminId}, ${aAdminId})`.execute(database.db);
+    expect((await keyCall(oldKey, 'POST', '/api/v1/customers', {})).status).toBe(400);   // ผ่านด่านสิทธิ์ ติดตรวจข้อมูล (ไม่ใช่ 401/403)
+    const inP = (codes: string[]) => codes.filter((c) => P.includes(c));
+    const menus = (await call('GET', '/api/v1/permissions/menus')).body.map((m: { code: string }) => m.code) as string[];
+    expect(inP(menus)).toEqual([]);
+    expect(menus).toEqual(expect.arrayContaining(['SET.SEC', 'SET.NEWCO', 'SET.YEARFIX', 'SET.DEVICE', 'OT.BACKUP']));   // ผู้สมัครอื่นยังไม่ย้าย (รอเจ้าของ)
+    const g = (await call('GET', `/api/v1/permissions?subject_type=G&subject_id=${accG.id}`)).body;
+    expect(inP(Object.keys(g.rows))).toEqual([]);
+    const ur = (await call('GET', `/api/v1/permissions?subject_type=U&subject_id=${lv9.body.id}`)).body;
+    expect(inP([...Object.keys(ur.effective), ...Object.keys(ur.need)])).toEqual([]);
+    expect(inP(((await call('GET', '/api/v1/users')).body.groups as G[]).find((x) => x.id === accG.id)!.rights.map((r) => r.menu))).toEqual([]);
+    expect((await call('GET', '/api/v1/permissions/by-menu?menu_code=SET.API')).status).toBe(400);
+    const cell = { can_read: 'Y', can_add: '', can_edit: '', can_cancel: '', can_delete: '', can_print: '', can_approve: '' };
+    const bad = await call('PUT', '/api/v1/permissions', { subject_type: 'G', subject_id: accG.id, rows: [{ menu_code: 'SET.USAGE', ...cell }] });
+    expect([bad.status, bad.body.error.message]).toEqual([400, expect.stringMatching(/ผู้ให้บริการ/)]);
+    // บันทึกตารางของกลุ่มตามที่หน้าจอเห็น → แถวเก่าของเมนูผู้ให้บริการไม่ถูกแตะ (ไม่มีผล ไม่แสดง)
+    const back = Object.entries(g.rows as Record<string, typeof cell>).map(([menu_code, c]) => ({ menu_code, ...c }));
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'G', subject_id: accG.id, rows: back })).status).toBe(200);
+    expect(await stale()).toBe(1);
+    expect(inP(Object.keys((await call('GET', `/api/v1/permissions?subject_type=G&subject_id=${accG.id}`)).body.rows))).toEqual([]);
+    // จำนวนกุญแจ API ของผู้ใช้ไม่แสดงให้ลูกค้า
+    expect(((await call('GET', '/api/v1/users')).body.users as Array<{ id: string; api_keys: number }>).every((x) => x.api_keys === 0)).toBe(true);
+
+    // ลูกค้าอื่น (ข้อ 7.1): เช่นกัน
+    await login('b.admin', 'passB1234');
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    for (const url of ['/api/v1/api-keys', '/api/v1/usage']) expect([url, (await call('GET', url)).status]).toEqual([url, 403]);
+    expect((await call('GET', `/api/v1/permissions?subject_type=G&subject_id=${accG.id}`)).status).toBe(404);
+
+    // ผู้ให้บริการ: เหมือนเดิม — เห็นเมนู สร้างกุญแจในบริษัทของลูกค้าได้ · กุญแจเดิม/ใหม่ใช้งานได้ (ไม่ขึ้นกับสิทธิ์เมนูของผู้ใช้)
+    await login('admin', 'secret123');
+    await call('POST', '/api/v1/auth/select', { company_id: ca });
+    const pm = (await call('GET', '/api/v1/auth/me')).body;
+    expect(pm.user.is_platform).toBe(true);
+    for (const m of P) expect([m, pm.perms[m].read]).toEqual([m, true]);
+    const keys = (await call('GET', '/api/v1/api-keys')).body as Array<{ name: string }>;
+    expect(keys.map((k) => k.name)).toContain('ระบบของ A');
+    const k = await call('POST', '/api/v1/api-keys', { name: 'WTS-POS ของ A', user_id: aAdminId });
+    expect(k.status).toBe(200);
+    expect((await keyCall(k.body.key, 'GET', '/api/v1/auth/me')).status).toBe(200);
+    expect((await keyCall(k.body.key, 'GET', '/api/v1/customers')).status).toBe(200);
+    expect(((await call('GET', '/api/v1/users')).body.users as Array<{ id: string; api_keys: number }>).find((x) => x.id === aAdminId)!.api_keys).toBeGreaterThanOrEqual(2);
+    expect((await call('GET', '/api/v1/packages')).status).toBe(200);
+    expect((await call('GET', '/api/v1/usage')).status).toBe(400);   // ผู้ให้บริการดูที่ แพ็กเกจและการใช้งานลูกค้า (เดิม)
+    expect(inP((await call('GET', '/api/v1/permissions/menus')).body.map((m: { code: string }) => m.code))).toEqual([]);   // ตารางสิทธิ์ไม่มีเมนูนี้ทุกคน (ผู้ให้บริการ = ADMIN ได้ทุกอย่างอยู่แล้ว)
+    // กุญแจของลูกค้าเรียกเมนูผู้ให้บริการไม่ได้
+    expect((await keyCall(k.body.key, 'GET', '/api/v1/api-keys')).status).toBe(403);
     cookie = '';
   });
 });

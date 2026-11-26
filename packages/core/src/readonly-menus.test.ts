@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTION_MENUS, PLATFORM_MENUS, flattenMenu, menuForPath, readOnlyExempt } from './menu.js';
+import { ACTION_MENUS, PLATFORM_MENUS, flattenMenu, menuForPath, providerOnly, readOnlyExempt } from './menu.js';
 
 describe('read-only viewer menus (HANDOFF 157)', () => {
   it('maps a screen address to its menu (longest route wins, sub-pages included)', () => {
@@ -23,5 +23,10 @@ describe('read-only viewer menus (HANDOFF 157)', () => {
     expect(readOnlyExempt('OT.PASS')).toBe(true);
     expect(readOnlyExempt('SET.TBL')).toBe(false);
     expect(readOnlyExempt('SA.IV')).toBe(false);
+  });
+  it('provider-only menus (HANDOFF 199): owner-confirmed 4, found from their screen address', () => {
+    expect([...PLATFORM_MENUS].sort()).toEqual(['SET.API', 'SET.PKG', 'SET.TENANT', 'SET.USAGE']);
+    expect(['/settings/api-keys', '/settings/usage', '/admin/tenants', '/admin/packages'].map((p) => providerOnly(menuForPath(p) ?? ''))).toEqual([true, true, true, true]);
+    expect(['SET.SEC', 'SET.NEWCO', 'SET.YEARFIX', 'SET.DEVICE', 'OT.BACKUP', 'SA.IV'].some(providerOnly)).toBe(false);
   });
 });

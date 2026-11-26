@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, PLATFORM_MENUS, docMenuOf, findReport, HUB_ONLY_MENUS, hubOnly, menuOffBy, normalizeAppAccess, BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { AI_BILL_TARGETS, PLATFORM_MENUS, providerOnly, docMenuOf, findReport, HUB_ONLY_MENUS, hubOnly, menuOffBy, normalizeAppAccess, BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -63,6 +63,8 @@ async function loadRows(db: Db, a: AuthContext): Promise<PermRow[]> {
   const rows = await db.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id')
     .select(['p.subject_type', 'm.code', 'p.can_read', 'p.can_add', 'p.can_edit', 'p.can_cancel', 'p.can_delete', 'p.can_print', 'p.can_approve'])
     .where('p.company_id', '=', a.companyId).where('p.deleted_at', 'is', null)
+    // แถวสิทธิ์ของเมนูผู้ให้บริการ (ถ้ามีค้างในฐานข้อมูล) ไม่มีผลกับใครเลย — ไม่นับว่า "กลุ่มมีแถวในบริษัทนี้" ด้วย (HANDOFF 199)
+    .where('m.code', 'not in', [...PLATFORM_MENUS])
     .where((eb) => eb.or([eb.and([eb('p.subject_type', '=', 'U'), eb('p.subject_id', '=', a.userId)]), ...(a.groupId ? [eb.and([eb('p.subject_type', '=', 'G'), eb('p.subject_id', '=', a.groupId)])] : [])]))
     .execute();
   return rows as PermRow[];
@@ -166,6 +168,7 @@ export function whyText(d: { why?: Why }, a: Pick<AuthContext, 'approvalLevel'>,
     case 'module': return 'ระบบนี้ปิดอยู่ในบริษัทนี้';
     case 'admin': return 'เมนูนี้เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN)';
     case 'hub': return 'คุณได้รับสิทธิ์เปิดเฉพาะโปรแกรมอื่นจากหน้าเปิดโปรแกรม';
+    case 'platform': return 'เมนูนี้เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม — ติดต่อผู้ให้บริการ';
     default: return 'เมนูนี้ไม่เปิดให้บัญชีนี้';
   }
 }
@@ -280,7 +283,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/platform/mail-settings': SELF, 'PUT /api/v1/platform/mail-settings': SELF, 'GET /api/v1/platform/mail-preview': SELF, 'POST /api/v1/signups/:id/mail/:kind': SELF, 'GET /api/v1/platform/signup-settings': SELF, 'PUT /api/v1/platform/signup-settings': SELF,
   // HANDOFF 190: กุญแจ AI ของผู้ให้บริการ (ตรวจ isPlatform ในตัวจัดการ)
   'GET /api/v1/platform/ai-key': SELF, 'PUT /api/v1/platform/ai-key': SELF,
-  'GET /api/v1/usage': SELF, 'GET /api/v1/usage/alert': SELF, 'GET /api/v1/packages': SELF, 'POST /api/v1/packages': SELF, 'PUT /api/v1/packages/:id': SELF,
+  'GET /api/v1/usage': M('SET.USAGE', 'read'), 'GET /api/v1/usage/alert': SELF, 'GET /api/v1/packages': SELF, 'POST /api/v1/packages': SELF, 'PUT /api/v1/packages/:id': SELF,
   'GET /api/v1/admin/usage': SELF, 'GET /api/v1/admin/usage/:tenantId': SELF,
   'POST /api/v1/users/:id/invite': SELF, 'DELETE /api/v1/users/:id/invite': SELF, 'GET /api/v1/invite/:token': OPEN, 'POST /api/v1/invite/:token/accept': OPEN,
   // T0.12 นำข้อมูลจาก Express (ผู้ดูแลระบบ — ตรวจในตัว API)
@@ -651,13 +654,14 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
   async function rowsOf(companyId: string, type: string, id: string): Promise<Record<string, Cells>> {
     const rows = await db.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id').select(['m.code', ...CELLS])
       .where('p.company_id', '=', companyId).where('p.subject_type', '=', type).where('p.subject_id', '=', id).where('p.deleted_at', 'is', null).execute();
-    return Object.fromEntries(rows.map((r) => [r.code, Object.fromEntries(ACTIONS.map((x) => [COL[x], (r[COL[x]] ?? '').trim()])) as Cells]));
+    return Object.fromEntries(rows.filter((r) => !providerOnly(r.code)).map((r) => [r.code, Object.fromEntries(ACTIONS.map((x) => [COL[x], (r[COL[x]] ?? '').trim()])) as Cells]));
   }
 
   app.get('/api/v1/permissions/menus', async (req) => {
     requireCompany(req);
     const depth = (c: string) => { let n = 0, p = PARENT.get(c); while (p) { n++; p = PARENT.get(p); } return n; };
-    return [{ code: ALL_MENU, label: 'ทุกระบบงาน', depth: 0, group: true }, ...FLAT.map((m) => ({ code: m.code, label: m.label, depth: depth(m.code) + 1, group: !!m.children?.length }))];
+    // เมนูของผู้ให้บริการไม่อยู่ในตารางสิทธิ์ (HANDOFF 199) — ลูกค้าใช้ไม่ได้ทุกกรณี · ผู้ให้บริการ = ADMIN ได้ทุกอย่างอยู่แล้ว
+    return [{ code: ALL_MENU, label: 'ทุกระบบงาน', depth: 0, group: true }, ...FLAT.filter((m) => !providerOnly(m.code)).map((m) => ({ code: m.code, label: m.label, depth: depth(m.code) + 1, group: !!m.children?.length }))];
   });
 
   /**
@@ -677,8 +681,8 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
       if (g) group = { ...g, admin: g.code === 'ADMIN', rows: await rowsOf(a.companyId, 'G', g.id) };
       const as: AuthContext = { ...a, apiKeyId: undefined, apiKeyReadOnly: undefined, userId: s.id, approvalLevel: s.approval_level, checkRights: s.check_rights, groupId: s.user_group_id, isAdmin: g?.code === 'ADMIN', isPlatform: false, apps: normalizeAppAccess(s.app_access) };
       const v = await permissionView(db, as);
-      effective = v.perms; table = v.table;
-      if (!as.isAdmin) for (const m of FLAT) for (const x of ACTIONS) { const n = levelNeeded(m.code, x); if (n > s.approval_level) (need[m.code] ??= {})[x] = n; }
+      effective = Object.fromEntries(Object.entries(v.perms).filter(([c]) => !providerOnly(c))); table = v.table;
+      if (!as.isAdmin) for (const m of FLAT) if (!providerOnly(m.code)) for (const x of ACTIONS) { const n = levelNeeded(m.code, x); if (n > s.approval_level) (need[m.code] ??= {})[x] = n; }
     }
     return { subject: { type: q.subject_type, id: s.id, code: s.code, name: s.name, approval_level: q.subject_type === 'U' ? s.approval_level : null, check_rights: q.subject_type === 'U' ? s.check_rights : null },
       company: { id: a.companyId, ...(await db.selectFrom('sys_company').select(['code', 'name_th']).where('id', '=', a.companyId).executeTakeFirst()) },
@@ -709,6 +713,7 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/permissions/by-menu', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ menu_code: z.string().min(1).max(30) }), req.query);
+    if (providerOnly(q.menu_code)) throw badRequest(`เมนู ${q.menu_code} เป็นของเจ้าหน้าที่ผู้ให้บริการ — ไม่อยู่ในตารางสิทธิ์`);
     // แถวของเมนูนี้ + เมนูหลักทุกชั้น + ทุกระบบงาน (HANDOFF 161) — menu_code บอกว่ามาจากเมนูไหน
     const chain = chainOf(q.menu_code);
     // เฉพาะผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทนี้ — ผู้ให้บริการก็เช่นกัน (HANDOFF 191)
@@ -751,13 +756,17 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
     const ids = await menuIds();
     for (const r of b.rows) {
       if (!ids.has(r.menu_code)) throw badRequest(`ไม่พบเมนู ${r.menu_code}`);
+      if (providerOnly(r.menu_code)) throw badRequest(`เมนู ${r.menu_code} เป็นของเจ้าหน้าที่ผู้ให้บริการ — กำหนดสิทธิ์ไม่ได้ (ลูกค้าใช้ไม่ได้ทุกกรณี)`);
       const bad = ACTIONS.find((x) => x !== 'print' && r[COL[x]] === 'S');
       if (bad) throw badRequest(`ค่า S ใช้ได้เฉพาะช่องพิมพ์ (เมนู ${r.menu_code} ช่อง${ACTION_TH[bad]})`);
     }
     return db.transaction().execute(async (tx) => {
       const before = await tx.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id').select(['m.code', ...CELLS])
         .where('p.company_id', '=', a.companyId).where('p.subject_type', '=', b.subject_type).where('p.subject_id', '=', b.subject_id).where('p.deleted_at', 'is', null).execute();
-      await tx.updateTable('sys_permission').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('company_id', '=', a.companyId).where('subject_type', '=', b.subject_type).where('subject_id', '=', b.subject_id).where('deleted_at', 'is', null).execute();
+      // แถวเดิมของเมนูผู้ให้บริการ (ถ้ามี) ไม่แตะ — ไม่มีผลและไม่แสดงอยู่แล้ว (HANDOFF 199)
+      const keep = [...PLATFORM_MENUS].map((c) => ids.get(c)).filter((x): x is string => !!x);
+      await tx.updateTable('sys_permission').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('company_id', '=', a.companyId).where('subject_type', '=', b.subject_type).where('subject_id', '=', b.subject_id).where('deleted_at', 'is', null)
+        .$if(keep.length > 0, (q) => q.where('menu_id', 'not in', keep)).execute();
       // ช่องว่าง = ไม่ได้ตั้ง (NULL — ได้ค่าจากเมนูหลัก/กลุ่ม) · แถวที่ว่างทุกช่องไม่เก็บ (HANDOFF 197)
       const rows = b.rows.filter((r) => ACTIONS.some((x) => r[COL[x]]))
         .map((r) => ({ company_id: a.companyId, subject_type: b.subject_type, subject_id: b.subject_id, menu_id: ids.get(r.menu_code)!, created_by: a.userId,

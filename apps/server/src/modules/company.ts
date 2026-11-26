@@ -1,4 +1,4 @@
-import { formatDate, isTenantModuleKey, normalizeAppAccess, passwordProblem, normalizeUiTheme, MODULE_SWITCHES, TENANT_MODULES, TENANT_RETENTION_DAYS, tenantCountdown, tenantCountingDown } from '@buddy/core';
+import { formatDate, isTenantModuleKey, normalizeAppAccess, PLATFORM_MENUS, passwordProblem, normalizeUiTheme, MODULE_SWITCHES, TENANT_MODULES, TENANT_RETENTION_DAYS, tenantCountdown, tenantCountingDown } from '@buddy/core';
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
@@ -409,14 +409,16 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const rowsIn = await permissionCompanies(db, [...users.map((u) => u.id), ...groups.map((g) => g.id)]);
     // ลิงก์เชิญที่ยังใช้ได้ (HANDOFF 184) — แสดงสถานะ "รอตั้งรหัสผ่าน ถึง …"
     // กุญแจ API ที่ใช้งานอยู่ของผู้ใช้ (HANDOFF 198 ตรวจทาน — แสดงว่ากุญแจได้สิทธิ์แบบไหน)
-    const keyCount = new Map((users.length ? await db.selectFrom('sys_api_key').select(['user_id', sql<number>`count(*)::int`.as('n')]).where('user_id', 'in', users.map((u) => u.id))
+    // กุญแจ API = เมนูผู้ให้บริการ (HANDOFF 199) — ผู้ดูแลของลูกค้าไม่เห็นจำนวนกุญแจ
+    const keyCount = new Map((users.length && a.isPlatform ? await db.selectFrom('sys_api_key').select(['user_id', sql<number>`count(*)::int`.as('n')]).where('user_id', 'in', users.map((u) => u.id))
       .where('status', '=', 'A').where('deleted_at', 'is', null).groupBy('user_id').execute() : []).map((r) => [r.user_id, Number(r.n)]));
     const invites = users.length ? await db.selectFrom('sys_user_invite').select(['user_id', 'expires_at']).where('user_id', 'in', users.map((u) => u.id))
       .where('used_at', 'is', null).where('revoked_at', 'is', null).where('deleted_at', 'is', null).where('expires_at', '>', sql<string>`now()`).execute() : [];
     // สิทธิ์ของแต่ละกลุ่มในบริษัทที่เลือกอยู่ — หน้าเพิ่มผู้ใช้สรุปว่ากลุ่มทำอะไรได้ (HANDOFF 197) · ช่องว่าง = ''
     const gRights = a.companyId && groups.length ? await db.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id')
       .select(['p.subject_id', 'm.code as menu', 'p.can_read', 'p.can_add', 'p.can_edit', 'p.can_cancel', 'p.can_delete', 'p.can_print', 'p.can_approve'])
-      .where('p.company_id', '=', a.companyId).where('p.subject_type', '=', 'G').where('p.subject_id', 'in', groups.map((g) => g.id)).where('p.deleted_at', 'is', null).execute() : [];
+      .where('p.company_id', '=', a.companyId).where('p.subject_type', '=', 'G').where('p.subject_id', 'in', groups.map((g) => g.id)).where('p.deleted_at', 'is', null)
+      .where('m.code', 'not in', [...PLATFORM_MENUS]).execute() : [];   // เมนูผู้ให้บริการไม่อยู่ในสรุปสิทธิ์ (HANDOFF 199)
     const cell = (v: string | null) => (v ?? '').trim();
     return { users: users.map((u) => { const sc = secs.find((x) => x.user_id === u.id); return { ...u, app_access: normalizeAppAccess(u.app_access), companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id), rights_in: rowsIn.get(u.id) ?? [], mfa_enabled: !!sc?.totp_enabled, locked_until: sc?.locked_until && new Date(sc.locked_until).getTime() > Date.now() ? sc.locked_until : null,
       invite_expires_at: invites.find((x) => x.user_id === u.id)?.expires_at ?? null, api_keys: keyCount.get(u.id) ?? 0 }; }),

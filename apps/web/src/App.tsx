@@ -2,7 +2,7 @@ import { ConflictHost, confirmLeave, UnsavedHost } from './unsaved';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PrintPage } from './components/DocPrint';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { MENU, flattenMenu, fiscalYearLabel, formatDate, staleOpenYears, todayIso, workDateForYear, type MenuItem } from '@buddy/core';
+import { MENU, flattenMenu, fiscalYearLabel, formatDate, menuForPath, providerOnly, staleOpenYears, todayIso, workDateForYear, type MenuItem } from '@buddy/core';
 import { OpenYearsWarning } from './components/OpenYearsWarning';
 import { useWorkYear } from './workRange';
 import { menuState, ReadOnlyGuard } from './readonly';
@@ -230,8 +230,8 @@ function Shell() {
       {search && <MenuSearch me={me} onClose={() => setSearch(false)} />}
       <main className="main" id="main">
         <ReadOnlyGuard />
-        <UsageAlert onOpen={() => nav('/settings/usage')} />
-        <Routes>
+        <UsageAlert />
+        {providerOnly(menuForPath(loc.pathname) ?? '') && !me.user.is_platform ? <ProviderOnlyPage /> : <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/gl/accounts" element={<AccountsPage />} />
           <Route path="/gl/journals" element={<JournalsPage />} />
@@ -350,7 +350,7 @@ function Shell() {
           <Route path="/fs/layouts" element={<FsLayoutsPage />} />
           <Route path="/planned/:code" element={<PlannedPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        </Routes>}
       </main>
       {workDateOpen && <WorkDateDialog onClose={() => setWorkDateOpen(false)} />}
     </div>
@@ -358,6 +358,20 @@ function Shell() {
 }
 
 /** เมนูที่เปิดใช้แล้วแสดงเฉพาะที่มีสิทธิ์อ่าน (คู่มือบทที่ 23) · เมนูที่อยู่ในแผนแสดงเสมอ */
+/**
+ * เปิดที่อยู่ของเมนูผู้ให้บริการตรง ๆ (กุญแจ API · การใช้งานและแพ็กเกจ · ลูกค้าผู้ใช้บริการ · แพ็กเกจ) โดยไม่ใช่เจ้าหน้าที่ผู้ให้บริการ (HANDOFF 199)
+ * — ไม่เปิดหน้า ไม่เรียก API · บอกว่าต้องทำอย่างไร
+ */
+function ProviderOnlyPage() {
+  return (
+    <div className="page" data-tone="setup">
+      <h1>เฉพาะเจ้าหน้าที่ผู้ให้บริการ</h1>
+      <div className="notebox">หน้านี้เปิดได้เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม — ต้องการเชื่อมต่อระบบอื่น (กุญแจ API) หรือสอบถามแพ็กเกจและการใช้งาน ติดต่อผู้ให้บริการ</div>
+      <p><NavLink to="/">กลับหน้าแรก</NavLink></p>
+    </div>
+  );
+}
+
 /** ย้ายที่อยู่หน้าจอ: ส่งต่อไปที่อยู่ใหม่ (คงส่วนท้ายและ query) */
 function MovedTo({ from, to }: { from: string; to: string }) {
   const loc = useLocation();

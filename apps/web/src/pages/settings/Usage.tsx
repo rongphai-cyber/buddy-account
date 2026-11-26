@@ -105,8 +105,11 @@ export function UsagePage() {
   );
 }
 
-/** แถบเตือนในโปรแกรม (ทุกหน้า) สำหรับผู้ดูแลของลูกค้า เมื่อใช้งาน 80% ขึ้นไป */
-export function UsageAlert({ onOpen }: { onOpen: () => void }) {
+/**
+ * แถบเตือนในโปรแกรม (ทุกหน้า) สำหรับผู้ดูแลของลูกค้า เมื่อใช้งาน 80% ขึ้นไป
+ * HANDOFF 199: หน้าการใช้งานและแพ็กเกจเป็นของผู้ให้บริการแล้ว — แถบเตือนคงไว้ (ไฟล์/AI หยุดได้เมื่อครบ) แต่ไม่มีลิงก์ไปหน้านั้น บอกให้ติดต่อผู้ให้บริการ
+ */
+export function UsageAlert() {
   const { me } = useSession();
   const on = !!me?.user.is_admin && !!me.user.tenant_id;
   const q = useQuery({ enabled: on, queryKey: ['usage-alert'], queryFn: () => api.get<{ level: UsageRow['level']; rows: UsageRow[]; over_action?: 'W' | 'S' }>('/api/v1/usage/alert'), staleTime: 10 * 60_000, retry: false });
@@ -116,7 +119,7 @@ export function UsageAlert({ onOpen }: { onOpen: () => void }) {
   return (
     <div className={cx('usage-alert no-print', q.data.level === 'over' ? 'bad' : 'warn')} role="status">
       <span>{q.data.level === 'over' ? 'ใช้งานครบขีดจำกัดของแพ็กเกจแล้ว' : 'ใช้งานใกล้ครบขีดจำกัดของแพ็กเกจ'}: {list}</span>
-      <button type="button" className="linklike" onClick={onOpen}>ดูการใช้งาน</button>
+      <span className="muted">ติดต่อผู้ให้บริการเพื่อเปลี่ยนแพ็กเกจ</span>
       <button type="button" className="linklike" aria-label="ซ่อน" onClick={() => setHide(true)}>✕</button>
     </div>
   );
