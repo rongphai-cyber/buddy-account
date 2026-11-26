@@ -3,6 +3,7 @@
  * ค่าที่คาดหวังของ uuid5/round/repr/sum มาจาก Python 3.12 (migrate_express.py ต้นฉบับ)
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { sql } from 'kysely';
 import { openDatabase, type Database } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
@@ -238,5 +239,97 @@ describe('importExpress on PGlite', () => {
     expect(v).toEqual([{ party_name: 'บริษัท โอซีไอโอ ฮอสพิทาลิตี้ จำกัด', party_tax_id: '0505566016991', party_tax_branch_no: '00000' }]);
     // บริษัทอื่นไม่ถูกแตะ
     expect((await database.db.selectFrom('doc_header').select('id').where('company_id', '<>', rep.company_id).where('party_name', 'is not', null).execute())).toHaveLength(0);
+  });
+
+  it('HANDOFF 196: one-off OCIO fix — Express docs numbered letters+NN move to branch 000NN with their journal/VAT/WHT/cheque; HO numbers, Buddy-keyed docs and other companies stay; missing branch aborts; totals unchanged; re-run = 0; migration file = same SQL; restore step only for OCIO', async () => {
+    const { OCIO_BRANCH_FIX_SQL } = await import('../src/data-fixes/ocio-express-branch.js');
+    const file = readFileSync(new URL('../../../db/migrations/0081_ocio_express_branch_fix.sql', import.meta.url), 'utf8');
+    expect(file.endsWith(OCIO_BRANCH_FIX_SQL + '\n')).toBe(true);
+    const step = COMPANY_STEPS.find((s) => s.n === 81)!;
+    const rep = await importExpress(database.db, memSource(files), { code: 'OCIO-0505566016991', tenantId: null });
+    const co = rep.company_id;
+    const other = uuid5(uuid5(NAMESPACE_URL, 'express-migration/TESTCO'), 'company');
+    class Rollback extends Error {}
+    await database.db.transaction().execute(async (tx) => {
+      await sql`SELECT set_config('app.allow_locked_period', 'on', true)`.execute(tx);
+      const q1 = async <T,>(s: { execute: (db: typeof tx) => Promise<{ rows: T[] }> }) => (await s.execute(tx)).rows[0]!;
+      const mk = async (company: string, no: string, rectype: string | null, express = true) => {
+        const t = await q1(sql<{ id: string; branch_id: string; journal_book_id: string; period_id: string; voucher_date: string }>`SELECT id, branch_id, journal_book_id, period_id, voucher_date::text FROM gl_journal WHERE company_id = ${company} AND voucher_no = 'JV001'`);
+        const dt = await q1(sql<{ id: string }>`INSERT INTO md_doc_type (company_id, code, doc_class, module, name_th) VALUES (${company}, ${'T' + no.slice(-5)}, 'IV', 'AR', 'ขายเงินเชื่อ (ทดสอบ)') RETURNING id`);
+        const h = (await q1(sql<{ id: string }>`INSERT INTO doc_header (company_id, branch_id, doc_type_id, doc_class, module, doc_no, doc_date, net_amount, vat_amount, express_rectype)
+          VALUES (${company}, ${t.branch_id}, ${dt.id}, 'IV', 'AR', ${no}, ${t.voucher_date}, 107, 7, ${rectype}) RETURNING id`)).id;
+        const j = (await q1(sql<{ id: string }>`INSERT INTO gl_journal (company_id, branch_id, journal_book_id, voucher_no, voucher_date, period_id, source_header_id, from_express)
+          VALUES (${company}, ${t.branch_id}, ${t.journal_book_id}, ${no}, ${t.voucher_date}, ${t.period_id}, ${h}, ${express}) RETURNING id`)).id;
+        await sql`INSERT INTO gl_journal_line (company_id, journal_id, line_no, account_id, debit, credit) SELECT company_id, ${j}, line_no, account_id, debit, credit FROM gl_journal_line WHERE journal_id = ${t.id}`.execute(tx);
+        await sql`UPDATE doc_header SET journal_id = ${j} WHERE id = ${h}`.execute(tx);
+        await sql`INSERT INTO tax_vat_entry (company_id, vat_kind, header_id, journal_id, branch_id, doc_no, doc_date, tax_invoice_date, vat_period_id, base_amount, vat_amount)
+          VALUES (${company}, 'S', ${h}, ${j}, ${t.branch_id}, ${no}, ${t.voucher_date}, ${t.voucher_date}, ${t.period_id}, 100, 7)`.execute(tx);
+        await sql`INSERT INTO tax_wht_entry (company_id, form_type, header_id, branch_id, certificate_date, tax_period_id, payee_name, paid_amount, rate, tax_amount) VALUES (${company}, 'S03', ${h}, ${t.branch_id}, ${t.voucher_date}, ${t.period_id}, 'ผู้ถูกหัก', 100, 3, 3)`.execute(tx);
+        await sql`INSERT INTO fin_cheque (company_id, branch_id, direction, instrument, cheque_no, cheque_date, amount, net_amount, status, source_header_id) VALUES (${company}, ${t.branch_id}, 'R', 'CHEQUE', ${'C' + no}, ${t.voucher_date}, 107, 107, '10', ${h})`.execute(tx);
+        return h;
+      };
+      await mk(co, 'IV01-0039', '1'); await mk(co, 'INV03-006', '1'); await mk(co, 'IV02-0049', null);   // ไม่มี rectype แต่ใบสำคัญ from_express = ย้ายมา
+      await mk(co, 'IV00-0045', '1'); await mk(co, 'IVBK-001', '1'); await mk(co, 'IVEX-0-109', '1'); await mk(co, 'IV6801001', '1');
+      await mk(co, 'IV01-0100', null, false);   // คีย์ใน Buddy เอง (ไม่ใช่ Express) — ไม่แตะแม้เลขชุดตรง
+      await mk(other, 'IV01-0001', '1');        // บริษัทอื่น — ไม่แตะ
+      // ใบสำคัญ GL ที่ย้ายมา ไม่มีเอกสาร เลขชุดบอกสาขา
+      await sql`INSERT INTO gl_journal (company_id, branch_id, journal_book_id, voucher_no, voucher_date, period_id, from_express)
+        SELECT company_id, branch_id, journal_book_id, 'JV02-0007', voucher_date, period_id, true FROM gl_journal WHERE company_id = ${co} AND voucher_no = 'JV000'`.execute(tx);
+      await sql`INSERT INTO gl_journal_line (company_id, journal_id, line_no, account_id, debit, credit)
+        SELECT l.company_id, (SELECT id FROM gl_journal WHERE company_id = ${co} AND voucher_no = 'JV02-0007'), l.line_no, l.account_id, l.debit, l.credit FROM gl_journal_line l JOIN gl_journal j ON j.id = l.journal_id WHERE j.company_id = ${co} AND j.voucher_no = 'JV001'`.execute(tx);
+
+      const branchOf = async (company: string) => (await sql<{ t: string; no: string; br: string }>`
+          SELECT 'doc' t, h.doc_no no, b.tax_branch_no br FROM doc_header h JOIN sys_branch b ON b.id = h.branch_id WHERE h.company_id = ${company}
+          UNION ALL SELECT 'jnl', j.voucher_no, b.tax_branch_no FROM gl_journal j JOIN sys_branch b ON b.id = j.branch_id WHERE j.company_id = ${company}
+          UNION ALL SELECT 'vat', v.doc_no, b.tax_branch_no FROM tax_vat_entry v JOIN sys_branch b ON b.id = v.branch_id WHERE v.company_id = ${company}
+          UNION ALL SELECT 'wht', h.doc_no, b.tax_branch_no FROM tax_wht_entry w JOIN doc_header h ON h.id = w.header_id JOIN sys_branch b ON b.id = w.branch_id WHERE w.company_id = ${company}
+          UNION ALL SELECT 'chq', f.cheque_no, b.tax_branch_no FROM fin_cheque f JOIN sys_branch b ON b.id = f.branch_id WHERE f.company_id = ${company}
+          ORDER BY 1, 2`.execute(tx)).rows.map((r) => `${r.t}:${r.no}=${r.br}`);
+      const totals = async () => (await sql`SELECT (SELECT sum(l.debit)::text || '/' || sum(l.credit)::text FROM gl_journal_line l WHERE l.company_id = ${co}) tb,
+          (SELECT sum(vat_amount)::text FROM tax_vat_entry WHERE company_id = ${co}) vat, (SELECT sum(net_amount)::text FROM doc_header WHERE company_id = ${co}) net,
+          (SELECT md5(string_agg(id::text || doc_no || doc_date::text || row_version::text || updated_at::text, ',' ORDER BY id)) FROM doc_header WHERE company_id = ${co}) fp`.execute(tx)).rows[0];
+      const otherBefore = await branchOf(other);
+
+      // ยังไม่มีสาขา 00001–00003 → ยกเลิกทั้งหมด ไม่เดา (savepoint)
+      await sql`SAVEPOINT s196`.execute(tx);
+      await expect(sql.raw(OCIO_BRANCH_FIX_SQL).execute(tx)).rejects.toThrow(/no branch with tax branch no 00001, 00002, 00003/);
+      await sql`ROLLBACK TO SAVEPOINT s196`.execute(tx);
+      expect((await branchOf(co)).every((x) => x.endsWith('=00000'))).toBe(true);
+
+      for (const [code, no] of [['P01', '00001'], ['W02', '00002'], ['W03', '00003']]) await sql`INSERT INTO sys_branch (company_id, code, name, tax_branch_no, is_head_office) VALUES (${co}, ${code}, ${'สาขา ' + no}, ${no}, false)`.execute(tx);
+      const before = await totals();
+      await sql.raw(OCIO_BRANCH_FIX_SQL).execute(tx);
+      const moved = Object.fromEntries((await branchOf(co)).map((x) => x.split('=') as [string, string]));
+      for (const t of ['doc', 'jnl', 'vat', 'wht']) {
+        expect([moved[`${t}:IV01-0039`], moved[`${t}:IV02-0049`], moved[`${t}:INV03-006`]], t).toEqual(['00001', '00002', '00003']);
+        expect(['IV00-0045', 'IVBK-001', 'IVEX-0-109', 'IV6801001', 'IV01-0100'].map((n) => moved[`${t}:${n}`]), t).toEqual(Array(5).fill('00000'));
+      }
+      expect([moved['chq:CIV01-0039'], moved['chq:CIV01-0100'], moved['jnl:JV02-0007'], moved['jnl:JV001']]).toEqual(['00001', '00000', '00002', '00000']);
+      expect(await totals()).toEqual(before);   // ยอด เลขที่ วันที่ รุ่นแถว เวลาแก้ไข เท่าเดิม
+      expect(await branchOf(other)).toEqual(otherBefore);
+      const log = (await sql<{ detail: { docs: number; journals: number; vat: number; by_branch: Record<string, { docs: number; prefixes: Record<string, number> }> } }>`SELECT detail FROM sys_activity_log WHERE company_id = ${co} AND action = 'BRANCH_FIX'`.execute(tx)).rows;
+      expect(log).toHaveLength(1);
+      expect([log[0]!.detail.docs, log[0]!.detail.journals, log[0]!.detail.vat, log[0]!.detail.by_branch['00003']!.prefixes]).toEqual([3, 4, 3, { INV03: 1 }]);
+      const trig = (await sql<{ n: number }>`SELECT count(*)::int n FROM pg_trigger WHERE tgrelid IN ('doc_header'::regclass, 'gl_journal'::regclass, 'tax_vat_entry'::regclass, 'tax_wht_entry'::regclass, 'fin_cheque'::regclass) AND NOT tgisinternal AND tgenabled = 'D'`.execute(tx)).rows[0]!.n;
+      expect(trig).toBe(0);
+
+      // รันซ้ำ / ขั้นนำแฟ้มสำรองกลับ = 0 แถว ไม่บันทึกซ้ำ · บริษัทอื่นไม่ทำอะไร
+      const snap = await branchOf(co);
+      await sql.raw(OCIO_BRANCH_FIX_SQL).execute(tx);
+      await step.run(tx, co); await step.run(tx, other);
+      expect(await branchOf(co)).toEqual(snap);
+      expect(await branchOf(other)).toEqual(otherBefore);
+      expect((await sql<{ n: number }>`SELECT count(*)::int n FROM sys_activity_log WHERE action = 'BRANCH_FIX'`.execute(tx)).rows[0]!.n).toBe(1);
+      // แฟ้มสำรองเก่าของ OCIO (สาขากลับเป็นสำนักงานใหญ่) → ขั้น n:81 แก้ให้เหมือนกัน
+      await sql`SET CONSTRAINTS ALL IMMEDIATE`.execute(tx);
+      await sql`ALTER TABLE doc_header DISABLE TRIGGER USER`.execute(tx);
+      await sql`UPDATE doc_header SET branch_id = (SELECT id FROM sys_branch WHERE company_id = ${co} AND is_head_office) WHERE company_id = ${co} AND doc_no = 'IV01-0039'`.execute(tx);
+      await sql`SET CONSTRAINTS ALL IMMEDIATE`.execute(tx);
+      await sql`ALTER TABLE doc_header ENABLE TRIGGER USER`.execute(tx);
+      await sql`SET CONSTRAINTS ALL DEFERRED`.execute(tx);
+      await step.run(tx, co);
+      expect(await branchOf(co)).toEqual(snap);
+      throw new Rollback();
+    }).catch((e) => { if (!(e instanceof Rollback)) throw e; });
   });
 });
