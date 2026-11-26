@@ -132,6 +132,19 @@ export async function totalsOf(db: Db, companyId: string): Promise<Totals> {
   return (await sql<Totals>`SELECT (SELECT count(*)::int FROM gl_journal WHERE company_id = ${companyId} AND deleted_at IS NULL) AS journals,
       coalesce(sum(debit), 0)::text AS debit, coalesce(sum(credit), 0)::text AS credit FROM gl_journal_line WHERE company_id = ${companyId} AND deleted_at IS NULL`.execute(db)).rows[0]!;
 }
+/**
+ * ข้อมูลปัจจุบันของบริษัท (HANDOFF 200 · หน้าต่างเตือนก่อนนำข้อมูลสำรองมาใช้): บันทึกล่าสุด (เอกสาร/ใบสำคัญ) · วันที่เอกสารล่าสุด · ยอดใบสำคัญ · สำรองครั้งล่าสุด
+ */
+export async function currentState(db: Db, companyId: string) {
+  const r = (await sql<{ code: string; name: string; last_entry_at: string | null; last_doc_date: string | null; last_backup_at: string | null; last_backup_by: string | null }>`
+    SELECT c.code, c.name_th AS name,
+      greatest((SELECT max(greatest(created_at, updated_at)) FROM gl_journal WHERE company_id = c.id), (SELECT max(greatest(created_at, updated_at)) FROM doc_header WHERE company_id = c.id))::text AS last_entry_at,
+      greatest((SELECT max(voucher_date) FROM gl_journal WHERE company_id = c.id AND deleted_at IS NULL), (SELECT max(doc_date) FROM doc_header WHERE company_id = c.id AND deleted_at IS NULL))::text AS last_doc_date,
+      (SELECT max(l.occurred_at) FROM sys_activity_log l WHERE l.company_id = c.id AND l.action = 'BACKUP')::text AS last_backup_at,
+      (SELECT u.display_name FROM sys_activity_log l JOIN sys_user u ON u.id = l.user_id WHERE l.company_id = c.id AND l.action = 'BACKUP' ORDER BY l.seq DESC LIMIT 1) AS last_backup_by
+      FROM sys_company c WHERE c.id = ${companyId}`.execute(db)).rows[0]!;
+  return { ...r, totals: await totalsOf(db, companyId) };
+}
 export function totalsOfRows(rows: Map<string, string[]>): Totals {
   let journals = 0, debit = d(0), credit = d(0);
   for (const r of rows.get('gl_journal') ?? []) if (JSON.parse(r).deleted_at == null) journals++;
@@ -335,14 +348,16 @@ export function backupRoutes(app: FastifyInstance, database: Database) {
     const totals = header.totals ?? totalsOfRows(rows);
     return { company: header.company, created_at: header.created_at, schema: header.schema, current_schema: plan.current, schema_status: plan.status,
       schema_ok: plan.ok && !cols, schema_message: cols ?? plan.message, steps: plan.steps.map((s) => s.name), same_company: header.company.id === a.companyId,
-      encrypted, rows: sumRows(rows), tables: header.tables, totals };
+      encrypted, rows: sumRows(rows), tables: header.tables, totals, current: await currentState(db, a.companyId) };
   });
 
   /** นำข้อมูลสำรองมาใช้ (S-DM-04): แทนที่ข้อมูลทั้งหมดของบริษัทปัจจุบันด้วยแฟ้มสำรองของบริษัทเดียวกัน */
   app.post('/api/v1/backup/restore', { bodyLimit: MAX_UPLOAD }, async (req) => {
     const a = requireCompany(req);
     const q = req.query as { confirm?: string };
-    if ((q.confirm ?? '').toUpperCase() !== 'YES') throw badRequest('ป้อน YES เพื่อยืนยันการนำข้อมูลสำรองมาใช้ (ข้อมูลปัจจุบันของบริษัทนี้จะถูกแทนที่ทั้งหมด)');
+    // HANDOFF 200 (เจ้าของ 26/11/2569 "ต้องมีการเตือนการนำเข้าไว้"): ยืนยันด้วยรหัสบริษัทที่จะถูกแทนที่ (เดิม YES)
+    const co = await db.selectFrom('sys_company').select(['code']).where('id', '=', a.companyId).executeTakeFirstOrThrow();
+    if ((q.confirm ?? '').trim().toUpperCase() !== co.code.toUpperCase()) throw badRequest(`ป้อนรหัสบริษัท ${co.code} เพื่อยืนยันการนำข้อมูลสำรองมาใช้ — ข้อมูลปัจจุบันทั้งหมดของบริษัท ${co.code} จะถูกแทนที่ด้วยข้อมูลในแฟ้ม`);
     const { header, rows, encrypted } = openBackup(bufferBody(req), passOf(req), FORMAT);
     if (header.company.id !== a.companyId) throw badRequest(`แฟ้มสำรองนี้เป็นของบริษัท ${header.company.code} ${header.company.name} — เลือกบริษัทนั้นก่อนนำข้อมูลกลับ (นำข้อมูลข้ามบริษัทไม่ได้)`);
     const plan = await schemaPlan(db, header.schema, COMPANY_STEPS);

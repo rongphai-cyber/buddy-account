@@ -3244,8 +3244,12 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('PUT', `/api/v1/departments/${dept}`, { code: 'D1', name_th: 'ฝ่ายขายใหม่' })).status).toBe(200);
     expect((await call('POST', '/api/v1/departments', { code: 'D2', name_th: 'ฝ่ายบัญชี' })).status).toBe(200);
     expect((await jv('99')).status).toBe(200);
-    expect((await raw('POST', '/api/v1/backup/restore', b.buf, withPw(PW))).json.error.message).toMatch(/ป้อน YES/);
-    const r = await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf, withPw(PW, '20261119-X1.buddy'));
+    expect((await raw('POST', '/api/v1/backup/restore', b.buf, withPw(PW))).json.error.message).toMatch(/ป้อนรหัสบริษัท X1/);
+    // HANDOFF 200: ยืนยันด้วยรหัสบริษัท (YES ใช้ไม่ได้แล้ว) · ทดสอบแฟ้มบอกข้อมูลปัจจุบัน (บันทึกล่าสุด ยอดใบสำคัญ สำรองครั้งล่าสุด) ให้หน้าต่างเตือน
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf, withPw(PW))).json.error.message).toMatch(/ป้อนรหัสบริษัท X1/);
+    const cur = (await raw('POST', '/api/v1/backup/verify', b.buf, withPw(PW))).json.current;
+    expect([cur.code, cur.totals.journals, !!cur.last_entry_at, !!cur.last_doc_date, !!cur.last_backup_at, !!cur.last_backup_by]).toEqual(['X1', 2, true, true, true, true]);
+    const r = await raw('POST', '/api/v1/backup/restore?confirm=x1', b.buf, withPw(PW, '20261119-X1.buddy'));
     expect([r.status, r.json.restored, r.json.upgraded_from, r.json.checks.journals, r.json.checks.debit, r.json.checks.balanced]).toEqual([200, 'X1', null, 1, '10.25', true]);
     const depts = (await call('GET', '/api/v1/departments')).body as Array<{ code: string; name_th: string }>;
     expect(depts.map((x) => `${x.code}:${x.name_th}`).filter((x) => x.startsWith('D'))).toEqual(['D1:ฝ่ายขาย']);
@@ -3267,7 +3271,7 @@ describe('Buddy Account API (PGlite)', () => {
     const ov = (await raw('POST', '/api/v1/backup/verify', old)).json;
     expect([ov.schema_status, ov.schema_ok, ov.schema_message, ov.steps.length >= 3]).toEqual(['older', true, 'รุ่นเก่ากว่า — นำกลับได้ ระบบจะปรับให้อัตโนมัติ', true]);
     expect((await jv('5')).status).toBe(200);
-    const ro = await raw('POST', '/api/v1/backup/restore?confirm=YES', old);
+    const ro = await raw('POST', '/api/v1/backup/restore?confirm=X1', old);
     expect([ro.status, ro.json.upgraded_from, ro.json.checks?.journals, ro.json.checks?.balanced], JSON.stringify(ro.json)).toEqual([200, '0052_address_parts.sql', 1, true]);
     expect(ro.json.steps).toEqual(expect.arrayContaining(['ประเภทเอกสาร คืนเงินมัดจำ (RD)', 'ตารางข้อมูลตั้งต้น (คำนำหน้าชื่อ ตำแหน่ง …)']));
     expect(await tb()).toEqual(before);
@@ -3279,9 +3283,9 @@ describe('Buddy Account API (PGlite)', () => {
     // รุ่นใหม่กว่า = อัปเดตโปรแกรมก่อน · ช่องที่ระบบไม่มีแล้ว = นำกลับไม่ได้ · รุ่นที่ระบบไม่รู้จัก = ปฏิเสธ
     const newer = rebuild(text, (h, rows) => { h.schema = '0999_future.sql'; return rows; });
     expect((await raw('POST', '/api/v1/backup/verify', newer)).json).toMatchObject({ schema_status: 'newer', schema_ok: false });
-    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', newer)).json.error.message).toMatch(/อัปเดตโปรแกรมก่อน/);
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=X1', newer)).json.error.message).toMatch(/อัปเดตโปรแกรมก่อน/);
     const gone = rebuild(text, (h, rows) => rows.map(([t, x]) => [t, t === 'md_department' ? { ...x, old_column_x: 1 } : x]));
-    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', gone)).json.error.message).toMatch(/md_department: old_column_x/);
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=X1', gone)).json.error.message).toMatch(/md_department: old_column_x/);
     const wrongTotals = rebuild(text, (h, rows) => { h.totals = { journals: 1, debit: '10.24', credit: '10.25' }; return rows; });
     expect((await raw('POST', '/api/v1/backup/verify', wrongTotals)).json.error.message).toMatch(/ยอดใบสำคัญในแฟ้มไม่ตรง/);
     expect((await raw('POST', '/api/v1/backup/verify', sealBackup(newer, PW), withPw(PW))).json.schema_status).toBe('newer');
@@ -3307,7 +3311,7 @@ describe('Buddy Account API (PGlite)', () => {
     await login('bx.acct5', 'acct51234');
     await call('POST', '/api/v1/auth/select', { company_id: x1 });
     expect((await raw('POST', '/api/v1/backup/company', { password: PW })).status).toBe(403);
-    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf, withPw(PW))).status).toBe(403);
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=X1', b.buf, withPw(PW))).status).toBe(403);
     expect((await raw('POST', '/api/v1/backup/verify', b.buf, withPw(PW))).status).toBe(200);   // ทดสอบแฟ้มยังทำได้ (ไม่เปิดข้อมูล ไม่เปลี่ยนข้อมูล)
     const m0068 = await readFile(new URL('../../../db/migrations/0068_backup_rights_explicit.sql', import.meta.url), 'utf8');
     await database.execScript(m0068);   // ผู้ใช้ที่มีอยู่ก่อนอัปเกรด → ได้แถวสิทธิ์ที่เมนูโดยตรง ใช้ได้เหมือนเดิม
@@ -3319,10 +3323,10 @@ describe('Buddy Account API (PGlite)', () => {
     await login('by.admin', 'passY1234');
     const y1 = (await call('POST', '/api/v1/companies', { code: 'Y1', name_th: 'บริษัท วาย จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
     await call('POST', '/api/v1/auth/select', { company_id: y1 });
-    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', b.buf, withPw(PW))).json.error.message).toMatch(/เป็นของบริษัท X1/);
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=Y1', b.buf, withPw(PW))).json.error.message).toMatch(/เป็นของบริษัท X1/);
     const nl = text.indexOf('\n'), head = JSON.parse(text.slice(0, nl));
     const forged = gzipSync(Buffer.from(JSON.stringify({ ...head, company: { ...head.company, id: y1 } }) + '\n' + text.slice(nl + 1)));
-    expect((await raw('POST', '/api/v1/backup/restore?confirm=YES', forged)).status).not.toBe(200);
+    expect((await raw('POST', '/api/v1/backup/restore?confirm=Y1', forged)).status).not.toBe(200);
     expect((await raw('POST', '/api/v1/backup/users/restore?confirm=YES', ub.buf, withPw(PW))).json.error.message).toMatch(/ลูกค้ารายอื่น/);
     await login('bx.admin', 'passX1234');
     await call('POST', '/api/v1/auth/select', { company_id: x1 });
@@ -5496,10 +5500,18 @@ describe('นำข้อมูลจาก Express ผ่านหน้าจ�
     expect((await call('POST', `/api/v1/express-import/jobs/${j.id}/run`)).body.error.message).toMatch(/ISPRD\.DBF, GLACC\.DBF, ISRUN\.DBF/);
     // ผู้ดูแลของลูกค้าอื่นมองไม่เห็นงานนี้
     const admin = cookie;
+    // HANDOFF 200: นำข้อมูลจาก Express เปิดให้รายลูกค้า — ปิดอยู่ = 403 · เปิดให้แล้วก็ยังไม่เห็นงานของลูกค้าอื่น (404)
+    const custB = ((await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string }>).find((t) => t.code === 'CUSTB')!.id;
+    expect((await login('b.admin', 'passB1234')).status).toBe(200);
+    expect((await call('GET', `/api/v1/express-import/jobs/${j.id}`)).status).toBe(403);
+    cookie = admin;
+    expect((await call('PUT', `/api/v1/tenants/${custB}/modules`, { modules: [{ key: 'express_import', enabled: true }] })).status).toBe(200);
     expect((await login('b.admin', 'passB1234')).status).toBe(200);
     expect((await call('GET', `/api/v1/express-import/jobs/${j.id}`)).status).toBe(404);
     expect((await put(`/api/v1/express-import/jobs/${j.id}/files/ISPRD`, Buffer.alloc(64))).status).toBe(404);
     expect((await call('DELETE', `/api/v1/express-import/jobs/${j.id}`)).status).toBe(404);
+    cookie = admin;
+    expect((await call('PUT', `/api/v1/tenants/${custB}/modules`, { modules: [{ key: 'express_import', enabled: false }] })).status).toBe(200);
     cookie = admin;
     expect((await call('DELETE', `/api/v1/express-import/jobs/${j.id}`)).status).toBe(200);
     expect((await call('GET', `/api/v1/express-import/jobs/${j.id}`)).status).toBe(404);
@@ -7923,7 +7935,8 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     await call('POST', '/api/v1/auth/select', { company_id: co1 });
     const tenantPerms = (await call('GET', '/api/v1/auth/me')).body.perms as Record<string, Record<string, unknown>>;
     for (const m of PLATFORM_MENUS) expect([m, Object.values(tenantPerms[m]!).some((v) => v !== false)]).toEqual([m, false]);
-    expect([tenantPerms['SET.NEWCO']!.add, tenantPerms['SET.DEVICE']!.read, tenantPerms['OT.IMPORT']!.add]).toEqual([true, true, true]);
+    // HANDOFF 200: เครื่องสาขา · นำข้อมูลจาก Express = เปิดให้รายลูกค้า (ลูกค้าใหม่ยังไม่เปิด)
+    expect([tenantPerms['SET.NEWCO']!.add, tenantPerms['SET.DEVICE']!.read, tenantPerms['OT.IMPORT']!.add]).toEqual([true, false, false]);
     let ul = (await call('GET', '/api/v1/users')).body as { users: Array<{ id: string; username: string; rights_in: string[] }>; groups: Array<{ id: string; code: string; rights_in: string[] }> };
     expect(ul.groups.map((g) => g.code).sort()).toEqual(['ADMIN', ...STD].sort());
     for (const c of STD) expect(ul.groups.find((g) => g.code === c)!.rights_in.sort()).toEqual([co1, co2].sort());
@@ -8599,7 +8612,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     const inP = (codes: string[]) => codes.filter((c) => P.includes(c));
     const menus = (await call('GET', '/api/v1/permissions/menus')).body.map((m: { code: string }) => m.code) as string[];
     expect(inP(menus)).toEqual([]);
-    expect(menus).toEqual(expect.arrayContaining(['SET.SEC', 'SET.NEWCO', 'SET.YEARFIX', 'SET.DEVICE', 'OT.BACKUP']));   // ผู้สมัครอื่นยังไม่ย้าย (รอเจ้าของ)
+    expect(menus).toEqual(expect.arrayContaining(['SET.SEC', 'SET.NEWCO', 'SET.YEARFIX', 'OT.BACKUP']));   // เจ้าของ 26/11: ลูกค้าใช้ต่อ (SET.DEVICE OT.IMPORT = เปิดให้รายลูกค้า HANDOFF 200)
     const g = (await call('GET', `/api/v1/permissions?subject_type=G&subject_id=${accG.id}`)).body;
     expect(inP(Object.keys(g.rows))).toEqual([]);
     const ur = (await call('GET', `/api/v1/permissions?subject_type=U&subject_id=${lv9.body.id}`)).body;
@@ -8641,6 +8654,92 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect(inP((await call('GET', '/api/v1/permissions/menus')).body.map((m: { code: string }) => m.code))).toEqual([]);   // ตารางสิทธิ์ไม่มีเมนูนี้ทุกคน (ผู้ให้บริการ = ADMIN ได้ทุกอย่างอยู่แล้ว)
     // กุญแจของลูกค้าเรียกเมนูผู้ให้บริการไม่ได้
     expect((await keyCall(k.body.key, 'GET', '/api/v1/api-keys')).status).toBe(403);
+    cookie = '';
+  });
+
+  it('HANDOFF 200: Express import and branch devices hidden from customers until the provider opens them per customer (devices open by themselves with WTS-POS or registered devices); old rows kept; provider always; no cross-tenant', async () => {
+    const login = async (u: string, p: string) => { cookie = ''; expect([u, (await call('POST', '/api/v1/auth/login', { username: u, password: p })).status]).toEqual([u, 200]); return cookie; };
+    const provider = await login('admin', 'secret123');
+    const t = await call('POST', '/api/v1/tenants', { code: 'T200', name: 'ลูกค้า 200', admin_username: 't200.admin', admin_name: 'ผู้ดูแล 200', admin_password: 'passT200x1' });
+    expect(t.status).toBe(200);
+    const tid = t.body.id as string;
+    const cust = await login('t200.admin', 'passT200x1');
+    const co = (await call('POST', '/api/v1/companies', { code: 'T200-1', name_th: 'บริษัท 200 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    type Me = { tenant_off: string[]; perms: Record<string, Record<string, boolean | 'S'>>; perm_why: Record<string, string> };
+    const me = async () => (await call('GET', '/api/v1/auth/me')).body as Me;
+    const menus = async () => ((await call('GET', '/api/v1/permissions/menus')).body as Array<{ code: string }>).map((m) => m.code);
+    const T = ['OT.IMPORT', 'SET.DEVICE'];
+    // แถวสิทธิ์เดิมของเมนูที่ยังไม่เปิด (ตั้งไว้ก่อน 200) — ไม่แสดง ไม่ถูกลบตอนบันทึก
+    const accG = ((await call('GET', '/api/v1/users')).body.groups as Array<{ id: string; code: string }>).find((g) => g.code === 'ACC')!.id;
+    const devMenu = (await sql<{ id: string }>`SELECT id FROM sys_menu WHERE code = 'SET.DEVICE' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.id;
+    await sql`INSERT INTO sys_permission (company_id, subject_type, subject_id, menu_id, can_read) VALUES (${co}, 'G', ${accG}, ${devMenu}, 'Y')`.execute(database.db);
+    const stale = async () => (await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE company_id = ${co} AND subject_id = ${accG} AND menu_id = ${devMenu} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n;
+
+    // ── ปิดอยู่ (ค่าเริ่มต้น): ผู้ดูแลของลูกค้าไม่เห็น (ไม่จาง ไม่มีเหตุผล) · ไม่อยู่ในตารางสิทธิ์ · API 403
+    let m = await me();
+    expect([...m.tenant_off].sort()).toEqual(T);
+    for (const c of T) expect([c, Object.values(m.perms[c]!).some((v) => v !== false), m.perm_why[c] ?? null]).toEqual([c, false, null]);
+    expect((await menus()).filter((c) => T.includes(c))).toEqual([]);
+    expect((await call('GET', '/api/v1/devices')).status).toBe(403);
+    const imp = await call('GET', '/api/v1/express-import/files');
+    expect([imp.status, imp.body.error.message]).toEqual([403, expect.stringMatching(/ยังไม่เปิดให้กิจการของคุณ/)]);
+    expect((await call('POST', '/api/v1/express-import/jobs', { code: 'EXP200' })).status).toBe(403);
+    expect((await call('GET', '/api/v1/permissions/by-menu?menu_code=OT.IMPORT')).status).toBe(400);
+    const cell = { can_read: 'Y', can_add: '', can_edit: '', can_cancel: '', can_delete: '', can_print: '', can_approve: '' };
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'G', subject_id: accG, rows: [{ menu_code: 'SET.DEVICE', ...cell }] })).status).toBe(400);
+    const g = (await call('GET', `/api/v1/permissions?subject_type=G&subject_id=${accG}`)).body;
+    expect(Object.keys(g.rows).filter((c) => T.includes(c))).toEqual([]);
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'G', subject_id: accG, rows: Object.entries(g.rows as Record<string, typeof cell>).map(([menu_code, c]) => ({ menu_code, ...c })) })).status).toBe(200);
+    expect(await stale()).toBe(1);
+    // ลูกค้าตั้งเปิดเองไม่ได้
+    expect((await call('GET', `/api/v1/tenants/${tid}/features`)).status).toBe(403);
+    expect((await call('PUT', `/api/v1/tenants/${tid}/modules`, { modules: [{ key: 'express_import', enabled: true }] })).status).toBe(403);
+
+    // ── ผู้ให้บริการ: ใช้ได้เสมอ (แม้ลูกค้ายังไม่เปิด) · เปิด "นำข้อมูลจาก Express" ให้ลูกค้ารายนี้
+    cookie = provider;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const pm = await me();
+    expect([pm.tenant_off, pm.perms['SET.DEVICE']!.read, pm.perms['OT.IMPORT']!.read]).toEqual([[], true, true]);
+    expect((await call('GET', '/api/v1/devices')).status).toBe(200);
+    const feats = async () => (await call('GET', `/api/v1/tenants/${tid}/features`)).body as Array<{ key: string; active: boolean; enabled: boolean; auto: string[] }>;
+    expect((await feats()).map((f) => [f.key, f.active])).toEqual([['express_import', false], ['devices', false]]);
+    expect((await call('PUT', `/api/v1/tenants/${tid}/modules`, { modules: [{ key: 'nope', enabled: true }] })).status).toBe(400);
+    expect((await call('PUT', `/api/v1/tenants/${tid}/modules`, { modules: [{ key: 'express_import', enabled: true, remark: 'ลูกค้าขอนำเข้าเอง' }] })).status).toBe(200);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'TENANT_MODULES' AND row_id = ${tid}`.execute(database.db)).rows[0]!.n).toBe(1);
+    expect((await call('GET', '/api/v1/tenant/modules')).body.modules.map((x: { key: string }) => x.key)).not.toContain('express_import');   // ไม่ใช่ไทล์ใน Hub
+
+    cookie = cust;
+    m = await me();
+    expect(m.tenant_off).toEqual(['SET.DEVICE']);
+    expect(m.perms['OT.IMPORT']!.read).toBe(true);
+    expect((await menus())).toContain('OT.IMPORT');
+    expect((await call('GET', '/api/v1/express-import/files')).status).toBe(200);
+    // ลูกค้าอื่นไม่ได้ตามไปด้วย (ข้อ 7.1)
+    const other = await login('b.admin', 'passB1234');
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    expect([...(await me()).tenant_off].sort()).toEqual(T);
+    expect((await call('GET', '/api/v1/express-import/files')).status).toBe(403);
+    expect((await call('GET', `/api/v1/tenants/${tid}/features`)).status).toBe(403);
+    expect(other).toBeTruthy();
+
+    // ── เครื่องสาขา: เปิดเองเมื่อลูกค้าใช้ WTS-POS · ปิด POS = ซ่อนอีก · มีเครื่องที่ลงทะเบียนแล้ว = เปิดเอง (เครื่องเดิมจัดการต่อได้)
+    cookie = provider;
+    expect((await call('PUT', `/api/v1/tenants/${tid}/modules`, { modules: [{ key: 'pos', enabled: true }] })).status).toBe(200);
+    expect((await feats()).find((f) => f.key === 'devices')).toMatchObject({ enabled: false, active: true, auto: [expect.stringMatching(/WTS-POS/)] });
+    cookie = cust;
+    expect((await me()).tenant_off).toEqual([]);
+    expect((await call('GET', '/api/v1/devices')).status).toBe(200);
+    expect((await menus())).toEqual(expect.arrayContaining(T));
+    expect(Object.keys((await call('GET', `/api/v1/permissions?subject_type=G&subject_id=${accG}`)).body.rows)).toContain('SET.DEVICE');   // แถวเดิมกลับมา
+    cookie = provider;
+    expect((await call('PUT', `/api/v1/tenants/${tid}/modules`, { modules: [{ key: 'pos', enabled: false }] })).status).toBe(200);
+    cookie = cust;
+    expect((await me()).tenant_off).toEqual(['SET.DEVICE']);
+    const branch = (await sql<{ id: string }>`SELECT id FROM sys_branch WHERE company_id = ${co} AND deleted_at IS NULL LIMIT 1`.execute(database.db)).rows[0]!.id;
+    await sql`INSERT INTO sys_device (company_id, branch_id, code, name) VALUES (${co}, ${branch}, 'POS1', 'เครื่องหน้าร้าน 1')`.execute(database.db);
+    expect((await me()).tenant_off).toEqual([]);
+    expect(((await call('GET', '/api/v1/devices')).body as Array<{ code: string }>).map((x) => x.code)).toEqual(['POS1']);
     cookie = '';
   });
 });

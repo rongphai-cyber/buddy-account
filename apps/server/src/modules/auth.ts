@@ -3,7 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { permissionView } from './permissions.js';
+import { companyTenantOff, permissionView, tenantOffMenus } from './permissions.js';
 import type { Db } from '../db.js';
 import { AppError, badRequest, parse, requireAuth, unauthorized, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -218,6 +218,8 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const branches = company ? await db.selectFrom('sys_branch').select(['id', 'code', 'name', 'tax_branch_no', 'is_head_office']).where('company_id', '=', company.id).where('deleted_at', 'is', null).orderBy('code').execute() : [];
     const branch = branches.find((b) => b.id === branchId) ?? null;
     const view = company ? await permissionView(db, { ...a, companyId: company.id }) : null;
+    // HANDOFF 200: เมนูที่ลูกค้ายังไม่ได้เปิด (หน้าจอแสดง "ยังไม่เปิดให้กิจการของคุณ" เมื่อเปิดที่อยู่ตรง) · ผู้ให้บริการ = []
+    const tenantOff = a.isPlatform ? [] : company ? await companyTenantOff(db, company.id) : await tenantOffMenus(db, a.tenantId);
     return {
       user: { id: a.userId, username: a.username, display_name: a.displayName, is_admin: a.isAdmin, is_platform: a.isPlatform, tenant_id: a.tenantId, approval_level: a.approvalLevel, check_rights: a.checkRights, mfa_setup_required: !!a.mfaSetupRequired,
         // โปรแกรมที่เปิดได้ (null = ทุกโปรแกรมของลูกค้า) · hub_only = ไม่มีสิทธิ์ Buddy → หน้าจอพาไปหน้าเปิดโปรแกรม
@@ -231,7 +233,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
       // สิทธิ์รายเมนูของบริษัทนี้ — หน้าจอใช้ซ่อนเมนู/ปุ่ม (ด่านจริงอยู่ที่ API)
       perms: view?.perms ?? {},
       // HANDOFF 197 (เจ้าของ ข้อ 5): เมนูที่ไม่มีสิทธิ์ — hide = ซ่อน (ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์") · disable = แสดงจาง กดแล้วบอกเหตุผล (perm_why)
-      menu_mode: a.checkRights || a.isAdmin ? 'hide' : 'disable', perm_why: view?.why ?? {}, perm_deny: view?.deny ?? {}, rights_table: view?.table ?? 'off',
+      menu_mode: a.checkRights || a.isAdmin ? 'hide' : 'disable', perm_why: view?.why ?? {}, perm_deny: view?.deny ?? {}, rights_table: view?.table ?? 'off', tenant_off: tenantOff,
     };
   });
 

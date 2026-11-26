@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
 import { z } from 'zod';
-import { checkAppUrl, isTenantModuleKey, tenantModuleStatus, TENANT_MODULES } from '@buddy/core';
+import { checkAppUrl, isTenantFeatureKey, isTenantModuleKey, tenantFeatureStatus, tenantModuleStatus, TENANT_FEATURES, TENANT_MODULES } from '@buddy/core';
 import type { Db } from '../db.js';
 import { forbidden, notFound, parse, requireAuth } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -20,14 +20,15 @@ async function rowsOf(db: Db, tenantId: string) {
 
 const putBody = z.object({
   modules: z.array(z.object({
-    key: z.string().refine(isTenantModuleKey, `ไม่รู้จักโมดูล — ใช้ได้: ${TENANT_MODULES.map((m) => m.key).join(' ')}`),
+    // HANDOFF 200: + เมนูที่เปิดให้รายลูกค้า (TENANT_FEATURES) เก็บในตารางเดียวกัน
+    key: z.string().refine((k) => isTenantModuleKey(k) || isTenantFeatureKey(k), `ไม่รู้จักโมดูล — ใช้ได้: ${[...TENANT_MODULES, ...TENANT_FEATURES].map((m) => m.key).join(' ')}`),
     enabled: z.boolean(),
     valid_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ใช้ได้ถึงต้องเป็น YYYY-MM-DD').nullable().optional().transform((v) => v || null),
     seats: z.coerce.number().int().min(1, 'จำนวนผู้ใช้/เครื่องต้องอย่างน้อย 1').max(100000).nullable().optional().transform((v) => v ?? null),
     remark: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
     // ที่อยู่โปรแกรมของลูกค้านี้ (Hub เปิดพร้อมบัตรผ่าน · docs/17 B6) — ไม่ส่งช่องนี้ = คงค่าเดิม
     app_url: z.string().trim().max(200).nullable().optional().superRefine((v, ctx) => { const m = v ? checkAppUrl(v) : null; if (m) ctx.addIssue({ code: 'custom', message: m }); }),
-  })).max(TENANT_MODULES.length),
+  })).max(TENANT_MODULES.length + TENANT_FEATURES.length),
 });
 
 export function tenantModuleRoutes(app: FastifyInstance, db: Db) {
@@ -51,6 +52,18 @@ export function tenantModuleRoutes(app: FastifyInstance, db: Db) {
     const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
     await tenantOf(id);
     return tenantModuleStatus(await rowsOf(db, id), today());
+  });
+  /** เมนูที่เปิดให้รายลูกค้า (HANDOFF 200): นำข้อมูลจาก Express · เครื่องสาขา (เปิดเองเมื่อใช้ WTS-POS/มีเครื่องแล้ว) — บันทึกด้วย PUT …/modules */
+  const featuresOf = async (id: string) => {
+    const dev = (await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_device d JOIN sys_company c ON c.id = d.company_id
+      WHERE c.tenant_id = ${id} AND c.deleted_at IS NULL AND d.status = 'A' AND d.deleted_at IS NULL`.execute(db)).rows[0]!.n;
+    return tenantFeatureStatus(await rowsOf(db, id), today(), { hasDevices: dev > 0 });
+  };
+  app.get('/api/v1/tenants/:id/features', async (req) => {
+    platform(req);
+    const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
+    await tenantOf(id);
+    return featuresOf(id);
   });
   app.put('/api/v1/tenants/:id/modules', async (req) => {
     const a = platform(req);

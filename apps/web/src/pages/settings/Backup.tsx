@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCan, useSession } from '../../session';
-import { ErrorBox, Field, Modal, PageHead, PasswordInput, toast } from '../../ui';
+import { ErrorBox, Field, Modal, PageHead, PasswordInput, toast, useYearSystem } from '../../ui';
+import { formatDate } from '@buddy/core';
 
 type Totals = { journals: number; debit: string; credit: string };
 type Verify = { company: { id: string; code: string; name: string }; created_at: string; schema: string; current_schema: string; schema_status: 'same' | 'older' | 'newer' | 'unknown' | 'too_old';
-  schema_ok: boolean; schema_message: string | null; steps: string[]; same_company: boolean; encrypted: boolean; rows: number; tables: Record<string, number>; totals: Totals };
+  schema_ok: boolean; schema_message: string | null; steps: string[]; same_company: boolean; encrypted: boolean; rows: number; tables: Record<string, number>; totals: Totals;
+  /** ข้อมูลปัจจุบันของบริษัท (HANDOFF 200) — หน้าต่างเตือนก่อนนำข้อมูลสำรองมาใช้ */
+  current?: { code: string; name: string; last_entry_at: string | null; last_doc_date: string | null; last_backup_at: string | null; last_backup_by: string | null; totals: Totals } };
 type Restored = { restored: string; rows: number; seconds: number; encrypted: boolean; upgraded_from: string | null; steps: string[];
   checks: { tables: number; rows: number; journals: number; debit: string; credit: string; balanced: boolean } };
 const kb = (n: number) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+const when = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }) : '—');
 const money = (s: string) => Number(s).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const BACKUP_PASSWORD_MIN = 8;
 
@@ -65,7 +69,7 @@ export function BackupPage() {
   const [file, setFile] = useState<File | null>(null);
   const [filePw, setFilePw] = useState('');
   const [info, setInfo] = useState<Verify | null>(null);
-  const [ask, setAsk] = useState<{ kind: 'company' | 'users'; text: string } | null>(null);
+  const [ask, setAsk] = useState<{ kind: 'company' | 'users'; text: string; saved?: boolean } | null>(null);
   const [done, setDone] = useState<Restored | null>(null);
   const [upw, setUpw] = useState<[string, string]>(['', '']);
   const [ufile, setUfile] = useState<File | null>(null);
@@ -90,7 +94,7 @@ export function BackupPage() {
     <div className="page" data-tone="setup">
       <PageHead eyebrow="อื่น ๆ › จัดการแฟ้มข้อมูล" title="สำรองข้อมูล / นำข้อมูลสำรองมาใช้" lead={`บริษัท ${me?.company?.code ?? ''} ${me?.company?.name_th ?? ''} — แฟ้มสำรองเข้ารหัสด้วยรหัสผ่านที่ตั้ง ตรวจความสมบูรณ์ได้ · นำกลับได้เฉพาะบริษัทเดียวกันกับที่สำรอง ไม่กระทบบริษัทอื่น · แฟ้มจากโปรแกรมรุ่นเก่ากว่าก็นำกลับได้`} />
       <ErrorBox error={err} />
-      <fieldset className="box"><legend>1. สำรองข้อมูล</legend>
+      <fieldset className="box" id="backup-now"><legend>1. สำรองข้อมูล</legend>
         <p className="small muted">ดาวน์โหลดแฟ้ม <span className="mono">ปปปปดดวว-รหัสบริษัท.buddy</span> ข้อมูลทั้งหมดของบริษัทนี้ (เอกสาร ใบสำคัญ แฟ้มหลัก ค่าเริ่มต้น) เข้ารหัสด้วยรหัสผ่านที่ตั้ง — สำรองทุกวันหลังเลิกงาน เก็บไว้หลายชุด</p>
         {!can('add') && <p className="small bad">สำรองข้อมูลทั้งบริษัทได้เฉพาะผู้ดูแลระบบ หรือผู้ที่ผู้ดูแลให้สิทธิ์ "เพิ่ม" ที่เมนูนี้</p>}
         {can('add') && <NewPassword label="แฟ้มสำรองบริษัท" value={pw} onChange={setPw} />}
@@ -104,7 +108,9 @@ export function BackupPage() {
         </div>
         <div className="toolbar">
           <button disabled={!file || !can('read') || !!busy} onClick={() => run('verify', async () => setInfo(await upload<Verify>('/api/v1/backup/verify', file!, filePw)))}>{busy === 'verify' ? 'กำลังตรวจ…' : 'ทดสอบข้อมูลสำรอง'}</button>
-          <button className="danger" disabled={!file || !can('edit') || !!busy || (info !== null && (!info.same_company || !info.schema_ok))} onClick={() => setAsk({ kind: 'company', text: '' })}>นำข้อมูลสำรองมาใช้…</button>
+          {/* HANDOFF 200: ทดสอบแฟ้มก่อนเสมอ — หน้าต่างเตือนแสดงบริษัท/วันที่ของแฟ้มเทียบกับข้อมูลปัจจุบัน */}
+          <button className="danger" disabled={!file || !can('edit') || !!busy || (info !== null && (!info.same_company || !info.schema_ok))}
+            onClick={() => run('verify', async () => { const v = info ?? await upload<Verify>('/api/v1/backup/verify', file!, filePw); setInfo(v); if (v.same_company && v.schema_ok) setAsk({ kind: 'company', text: '' }); })}>นำข้อมูลสำรองมาใช้…</button>
         </div>
         {info && <div className="note-box">
           <p>✔ แฟ้มสมบูรณ์ — บริษัท <b>{info.company.code} {info.company.name}</b> · สำรองเมื่อ {new Date(info.created_at).toLocaleString('th-TH')} · {info.rows.toLocaleString()} แถว {Object.keys(info.tables).length} ตาราง</p>
@@ -135,11 +141,53 @@ export function BackupPage() {
           <button className="danger" disabled={!ufile || !canSec('edit') || !!busy} onClick={() => setAsk({ kind: 'users', text: '' })}>นำข้อมูลผู้ใช้ที่สำรองไว้กลับ…</button>
         </div>
       </fieldset>}
-      {ask && <Modal title={ask.kind === 'company' ? 'นำข้อมูลสำรองมาใช้' : 'นำข้อมูลผู้ใช้กลับ'} size="confirm" onClose={() => setAsk(null)}
+      {ask?.kind === 'company' && info && <RestoreWarning info={info} text={ask.text} saved={!!ask.saved} lastFile={last} busy={busy === 'restore'}
+        onText={(text) => setAsk({ ...ask, text })} onSaved={(saved) => setAsk({ ...ask, saved })} onClose={() => setAsk(null)} onRestore={restore}
+        onBackupFirst={() => { setAsk(null); document.getElementById('backup-now')?.scrollIntoView({ block: 'center' }); (document.querySelector('#backup-now input') as HTMLInputElement | null)?.focus(); }} />}
+      {ask?.kind === 'users' && <Modal title="นำข้อมูลผู้ใช้กลับ" size="confirm" onClose={() => setAsk(null)}
         footer={<><button onClick={() => setAsk(null)}>ยกเลิก</button><button className="danger" disabled={ask.text.trim().toUpperCase() !== 'YES' || !!busy} onClick={restore}>{busy === 'restore' ? 'กำลังคลายข้อมูล…' : 'คลายข้อมูล'}</button></>}>
-        <p><b>*** คำเตือน ***</b> {ask.kind === 'company' ? `ข้อมูลปัจจุบันทั้งหมดของบริษัท ${me?.company?.code} จะถูกแทนที่ด้วยข้อมูลในแฟ้มสำรอง — รายการที่ทำหลังวันสำรองจะหายไป ควรสำรองข้อมูลปัจจุบันเก็บไว้ก่อน · ระบบตรวจจำนวนแถวและยอดใบสำคัญให้ ไม่ตรง = ยกเลิกทั้งหมด ข้อมูลเดิมไม่หาย` : 'ผู้ใช้ กลุ่ม รหัสผ่าน และสิทธิ์จะกลับเป็นตามแฟ้มสำรอง'}</p>
+        <p><b>*** คำเตือน ***</b> ผู้ใช้ กลุ่ม รหัสผ่าน และสิทธิ์จะกลับเป็นตามแฟ้มสำรอง</p>
         <Field label="ป้อน YES เพื่อยืนยัน" req><input autoFocus value={ask.text} onChange={(e) => setAsk({ ...ask, text: e.target.value })} /></Field>
       </Modal>}
     </div>
+  );
+}
+
+/**
+ * หน้าต่างเตือนก่อนนำข้อมูลสำรองมาใช้ (HANDOFF 200 · เจ้าของ 26/11/2569 "ต้องมีการเตือนการนำเข้าไว้")
+ * แฟ้มสำรอง ↔ ข้อมูลปัจจุบัน (บริษัท วันที่ ใบสำคัญ) · รายการหลังวันสำรองจะหาย · แนะนำสำรองข้อมูลปัจจุบันก่อน · ยืนยันด้วยรหัสบริษัท
+ */
+function RestoreWarning({ info, text, saved, lastFile, busy, onText, onSaved, onClose, onRestore, onBackupFirst }: {
+  info: Verify; text: string; saved: boolean; lastFile: string | null; busy: boolean; onText: (t: string) => void; onSaved: (v: boolean) => void; onClose: () => void; onRestore: () => void; onBackupFirst: () => void }) {
+  const cur = info.current;
+  const ys = useYearSystem();
+  const code = cur?.code ?? info.company.code;
+  const newer = !!cur?.last_entry_at && new Date(cur.last_entry_at).getTime() > new Date(info.created_at).getTime();
+  const ok = text.trim().toUpperCase() === code.toUpperCase() && saved && !busy;
+  return (
+    <Modal title="นำข้อมูลสำรองมาใช้ — เขียนทับข้อมูลปัจจุบัน" onClose={onClose}
+      footer={<><button autoFocus onClick={onClose}>ยกเลิก (ไม่เปลี่ยนข้อมูล)</button><button className="danger" disabled={!ok} onClick={onRestore}>{busy ? 'กำลังคลายข้อมูล…' : `แทนที่ข้อมูลของ ${code}`}</button></>}>
+      <div className="errbox restore-warn" role="alert">
+        <b>*** คำเตือน ***</b> ข้อมูลปัจจุบันทั้งหมดของบริษัท <b data-no-i18n>{code} {cur?.name ?? ''}</b> จะถูก<b>แทนที่</b>ด้วยข้อมูลในแฟ้มสำรอง — ย้อนกลับไม่ได้ นอกจากนำแฟ้มสำรองที่ทำไว้ก่อนหน้านี้มาใช้อีกครั้ง
+      </div>
+      <table className="grid restore-compare">
+        <thead><tr><th></th><th>แฟ้มสำรอง (ข้อมูลที่จะได้)</th><th>ข้อมูลปัจจุบัน (จะถูกแทนที่)</th></tr></thead>
+        <tbody>
+          <tr><th>บริษัท</th><td data-no-i18n>{info.company.code} {info.company.name}</td><td data-no-i18n>{code} {cur?.name ?? ''}</td></tr>
+          <tr><th>ข้อมูล ณ</th><td>สำรองเมื่อ {when(info.created_at)}</td><td>บันทึกล่าสุด {when(cur?.last_entry_at)}{cur?.last_doc_date ? ` · เอกสารวันที่ล่าสุด ${formatDate(cur.last_doc_date.slice(0, 10), ys)}` : ''}</td></tr>
+          <tr><th>ใบสำคัญ</th><td className="num">{info.totals.journals.toLocaleString()} ใบ · เดบิต {money(info.totals.debit)}</td><td className="num">{cur ? `${cur.totals.journals.toLocaleString()} ใบ · เดบิต ${money(cur.totals.debit)}` : '—'}</td></tr>
+        </tbody>
+      </table>
+      {newer && <p className="bad">⚠ มีรายการที่บันทึกหลังวันสำรอง (ล่าสุด {when(cur?.last_entry_at)}) — รายการเหล่านั้นจะหายไปทั้งหมด</p>}
+      <div className="note-box">
+        <p><b>สำรองข้อมูลปัจจุบันก่อน (แนะนำ)</b> — ถ้านำกลับผิดแฟ้ม จะได้ใช้แฟ้มนี้กู้คืน</p>
+        <p className="small">{lastFile ? `✔ สำรองในหน้านี้แล้ว: ${lastFile}` : cur?.last_backup_at ? `สำรองครั้งล่าสุด ${when(cur.last_backup_at)}${cur.last_backup_by ? ` โดย ${cur.last_backup_by}` : ''}${newer && new Date(cur.last_backup_at).getTime() < new Date(cur.last_entry_at!).getTime() ? ' — เก่ากว่ารายการล่าสุด' : ''}` : 'ยังไม่เคยสำรองข้อมูลของบริษัทนี้'}</p>
+        {!lastFile && <button type="button" onClick={onBackupFirst}>ไปสำรองข้อมูลปัจจุบันก่อน</button>}
+        <label className="inline"><input type="checkbox" checked={saved} onChange={(e) => onSaved(e.target.checked)} /> สำรองข้อมูลปัจจุบันไว้แล้ว หรือไม่ต้องการเก็บข้อมูลปัจจุบัน</label>
+      </div>
+      <Field label={`ป้อนรหัสบริษัท ${code} เพื่อยืนยัน`} req hint="ระบบตรวจจำนวนแถวและยอดใบสำคัญให้ — ไม่ตรงกับแฟ้ม = ยกเลิกทั้งหมด ข้อมูลเดิมไม่หาย">
+        <input value={text} onChange={(e) => onText(e.target.value)} aria-label="รหัสบริษัทเพื่อยืนยัน" autoComplete="off" />
+      </Field>
+    </Modal>
   );
 }

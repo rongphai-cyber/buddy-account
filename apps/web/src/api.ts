@@ -83,6 +83,8 @@ export interface Me {
   perm_why?: Record<string, string>;
   /** HANDOFF 198: เหตุที่ปุ่มใช้ไม่ได้ในเมนูที่เปิดได้ — ตัวเลข = ระดับอนุมัติที่ต้องการ · 't' = กลุ่ม/สิทธิ์รายเมนูไม่ให้ */
   perm_deny?: Record<string, Partial<Record<PermAction, number | 't'>>>;
+  /** HANDOFF 200: เมนูที่ลูกค้ายังไม่ได้เปิด (นำข้อมูลจาก Express · เครื่องสาขา) — ผู้ให้บริการ = [] */
+  tenant_off?: string[];
   /** ตารางสิทธิ์ใช้กับผู้ใช้นี้อย่างไร: strict = เฉพาะที่กลุ่ม/ตารางให้ · adjust = ตามระดับอนุมัติ ปรับเฉพาะช่องที่ตั้ง · off = ไม่ใช้ตาราง */
   rights_table?: 'strict' | 'adjust' | 'off';
 }

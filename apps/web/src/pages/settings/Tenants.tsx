@@ -109,6 +109,7 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
         </Field>
         <Field label="ลงนามข้อตกลงประมวลผลข้อมูล (DPA)" hint="ดูแบบข้อตกลงใน docs/10_PDPA.md"><DateInput value={f.dpa_signed_on} onChange={(v) => setF({ ...f, dpa_signed_on: v })} /></Field>
         {t && <TenantModules tenantId={t.id} />}
+        {t && <TenantFeatures tenantId={t.id} />}
         {t && !t.purged_at && <>
           <h3 className="wide">กลุ่มผู้ใช้ตั้งต้น</h3>
           <p className="wide small muted">ฝ่ายขาย · ฝ่ายจัดซื้อ · ฝ่ายบัญชี · ดูอย่างเดียว พร้อมสิทธิ์รายเมนูทุกบริษัทของลูกค้านี้ — ลูกค้าใหม่ได้อัตโนมัติ · ลูกค้าเดิมกดเพิ่มได้ (กดซ้ำได้ สร้างเฉพาะที่ยังไม่มี ไม่เขียนทับสิทธิ์ที่ลูกค้าแก้เอง)</p>
@@ -272,6 +273,46 @@ function ImportTenant({ onClose, onDone }: { onClose: () => void; onDone: () => 
         <p className="small">ผู้ใช้ของลูกค้าเข้าเครื่องนี้ได้ด้วยรหัสผู้ใช้ รหัสผ่าน และ 2FA เดิม — กลับไปที่เครื่องเดิมแล้วใส่ "ย้ายไปที่" และเปลี่ยนสถานะเป็นเลิกใช้</p>
       </>}
     </Modal>
+  );
+}
+
+type TFeat = { key: string; label: string; hint: string; menus: string[]; enabled: boolean; valid_to: string | null; remark: string | null; expired: boolean; auto: string[]; active: boolean };
+/**
+ * เมนูที่เปิดให้รายลูกค้า (HANDOFF 200 · TENANT_FEATURES) — ปิดอยู่ = ลูกค้าทุกคน (รวมผู้ดูแลของลูกค้า) ไม่เห็นในเมนู/ตารางสิทธิ์ และ API ตอบ 403
+ * เครื่องสาขาเปิดเองเมื่อลูกค้าใช้ WTS-POS หรือมีเครื่องที่ลงทะเบียนไว้แล้ว · เจ้าหน้าที่ผู้ให้บริการใช้ได้เสมอ
+ */
+function TenantFeatures({ tenantId }: { tenantId: string }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['tenant-features', tenantId], queryFn: () => api.get<TFeat[]>(`/api/v1/tenants/${tenantId}/features`) });
+  const [rows, setRows] = useState<TFeat[]>([]);
+  const [err, setErr] = useState<unknown>(null);
+  useEffect(() => { if (q.data) setRows(q.data); }, [q.data]);
+  const set = (k: string, p: Partial<TFeat>) => setRows((xs) => xs.map((x) => (x.key === k ? { ...x, ...p } : x)));
+  const save = async () => {
+    setErr(null);
+    try {
+      await api.put(`/api/v1/tenants/${tenantId}/modules`, { modules: rows.map((x) => ({ key: x.key, enabled: x.enabled, valid_to: x.valid_to || null, seats: null, remark: x.remark || null })) });
+      toast('บันทึกเมนูที่เปิดให้ลูกค้าแล้ว');
+      await qc.invalidateQueries({ queryKey: ['tenant-features', tenantId] });
+    } catch (e) { setErr(e); }
+  };
+  return (
+    <div className="wide">
+      <h3>เมนูที่เปิดให้เฉพาะราย</h3>
+      <p className="small muted">ปิดอยู่ = ลูกค้าไม่เห็นเมนูนี้ (รวมผู้ดูแลของลูกค้า) ไม่อยู่ในตารางสิทธิ์ และเปิดไม่ได้ · เจ้าหน้าที่ผู้ให้บริการใช้ได้เสมอ</p>
+      <ErrorBox error={err ?? q.error} />
+      <table className="grid tenant-mods tenant-feats">
+        <thead><tr><th>เมนู</th><th className="c">เปิดให้</th><th>สถานะ</th><th>ใช้ได้ถึง</th><th>หมายเหตุ</th></tr></thead>
+        <tbody>{rows.map((x) => <tr key={x.key}>
+          <td>{x.label}<div className="small muted">{x.hint}</div></td>
+          <td className="c"><input type="checkbox" checked={x.enabled} onChange={(e) => set(x.key, { enabled: e.target.checked })} aria-label={`เปิดให้ ${x.label}`} /></td>
+          <td>{x.active ? <Pill tone="n">{x.auto.length && !(x.enabled && !x.expired) ? `เปิดเอง — ${x.auto.join(' · ')}` : 'เปิดให้แล้ว'}</Pill> : x.expired ? <Pill tone="d">หมดอายุ</Pill> : <Pill tone="x">ปิด (ลูกค้าไม่เห็น)</Pill>}</td>
+          <td><DateInput value={x.valid_to ?? ''} onChange={(v) => set(x.key, { valid_to: v || null })} /></td>
+          <td><input value={x.remark ?? ''} maxLength={200} onChange={(e) => set(x.key, { remark: e.target.value })} aria-label="หมายเหตุ" /></td>
+        </tr>)}</tbody>
+      </table>
+      <div className="theme-acts"><button type="button" onClick={save} disabled={!q.data}>บันทึกเมนูที่เปิดให้</button></div>
+    </div>
   );
 }
 

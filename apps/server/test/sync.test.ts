@@ -56,6 +56,9 @@ describe('ออฟไลน์สาขา (T7.8)', () => {
   it('head office registers a branch device; the branch installs from it with the same users', async () => {
     expect((await H('POST', '/api/v1/setup', { username: 'ops', display_name: 'ผู้ให้บริการ', password: 'opsPass123' })).status).toBe(200);
     expect((await H('POST', '/api/v1/tenants', { code: 'SHOP', name: 'ร้านค้า', admin_username: 'shop.admin', admin_name: 'ผู้ดูแลร้าน', admin_password: 'shopPass123' })).status).toBe(200);
+    // HANDOFF 200: เครื่องสาขาเปิดให้รายลูกค้า — ผู้ให้บริการเปิดให้ร้านนี้ (ยังไม่มี WTS-POS/เครื่องที่ลงทะเบียน)
+    const shopT = ((await H('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string }>).find((t) => t.code === 'SHOP')!.id;
+    expect((await H('PUT', `/api/v1/tenants/${shopT}/modules`, { modules: [{ key: 'devices', enabled: true }] })).status).toBe(200);
     H.logout(); expect((await H('POST', '/api/v1/auth/login', { username: 'shop.admin', password: 'shopPass123' })).status).toBe(200);
     co = (await H('POST', '/api/v1/companies', { code: 'SHOP', name_th: 'บริษัท ร้านค้า จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
     await H('POST', '/api/v1/auth/select', { company_id: co });

@@ -192,7 +192,7 @@
 },
 {
 "th": "สถานะ",
-"n": 90,
+"n": 91,
 "files": [
 "apps/web/src/components/AddressHistory.tsx",
 "apps/web/src/components/DocPrint.tsx",
@@ -521,6 +521,44 @@
 ]
 },
 {
+"th": "หมายเหตุ",
+"n": 56,
+"files": [
+"apps/web/src/components/AddressHistory.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/DepositOpening.tsx",
+"apps/web/src/pages/docs/DepositRefunds.tsx",
+"apps/web/src/pages/docs/OpeningDocs.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/gl/Jobs.tsx",
+"apps/web/src/pages/gl/JvLinks.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/StockOpening.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"packages/core/src/doc-import.ts",
+"packages/core/src/master-import.ts",
+"packages/core/src/printforms.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "ลบ",
 "n": 55,
 "files": [
@@ -556,44 +594,6 @@
 "apps/server/src/modules/permissions.ts",
 "apps/server/src/modules/reports/gl.ts",
 "packages/core/src/baht.ts"
-]
-},
-{
-"th": "หมายเหตุ",
-"n": 54,
-"files": [
-"apps/web/src/components/AddressHistory.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/DepositOpening.tsx",
-"apps/web/src/pages/docs/DepositRefunds.tsx",
-"apps/web/src/pages/docs/OpeningDocs.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/gl/Jobs.tsx",
-"apps/web/src/pages/gl/JvLinks.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/StockOpening.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"packages/core/src/doc-import.ts",
-"packages/core/src/master-import.ts",
-"packages/core/src/printforms.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1453,6 +1453,28 @@
 ]
 },
 {
+"th": "บริษัท",
+"n": 24,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/Invite.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/Backup.tsx",
+"apps/web/src/pages/settings/MoveCompanies.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Usage.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/wht.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/usage.ts"
+]
+},
+{
 "th": "ผู้ใช้",
 "n": 24,
 "files": [
@@ -1538,27 +1560,6 @@
 "apps/server/src/modules/reports/parties.ts",
 "packages/core/src/journal-import.ts",
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "บริษัท",
-"n": 23,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/Hub.tsx",
-"apps/web/src/pages/Invite.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/MoveCompanies.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Usage.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/wht.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/usage.ts"
 ]
 },
 {
@@ -1903,6 +1904,26 @@
 ]
 },
 {
+"th": "ใบสำคัญ",
+"n": 18,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/BankRecon.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/gl/Books.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/Backup.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"apps/web/src/pages/settings/MoveCompanies.tsx",
+"apps/server/src/owned.ts",
+"apps/server/src/modules/neighbors.ts",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/gl/journals.ts"
+]
+},
+{
 "th": "ชนิด",
 "n": 17,
 "files": [
@@ -1953,25 +1974,6 @@
 "apps/server/src/modules/reports/analysis.ts",
 "packages/core/src/reports.ts",
 "packages/core/src/starter-data.ts"
-]
-},
-{
-"th": "ใบสำคัญ",
-"n": 17,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/BankRecon.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/gl/Books.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/settings/CompaniesAdmin.tsx",
-"apps/web/src/pages/settings/MoveCompanies.tsx",
-"apps/server/src/owned.ts",
-"apps/server/src/modules/neighbors.ts",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/gl/journals.ts"
 ]
 },
 {
@@ -3304,6 +3306,16 @@
 ]
 },
 {
+"th": "หมดอายุ",
+"n": 9,
+"files": [
+"apps/web/src/pages/Hub.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Signups.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "หมวดสินค้า",
 "n": 9,
 "files": [
@@ -3652,16 +3664,6 @@
 "apps/web/src/pages/tax/VatRegister.tsx",
 "apps/web/src/pages/tax/Wht50.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx"
-]
-},
-{
-"th": "หมดอายุ",
-"n": 8,
-"files": [
-"apps/web/src/pages/Hub.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Signups.tsx",
-"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -6763,6 +6765,15 @@
 ]
 },
 {
+"th": "เมนู",
+"n": 4,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "เรียน คุณ{0}",
 "n": 4,
 "files": [
@@ -7007,6 +7018,14 @@
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx",
 "apps/web/src/pages/settings/Usage.tsx"
+]
+},
+{
+"th": "*** คำเตือน ***",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/YearEnd.tsx",
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -8896,6 +8915,15 @@
 ]
 },
 {
+"th": "เครื่องสาขา (ออฟไลน์)",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/Sync.tsx",
+"packages/core/src/menu.ts",
+"packages/core/src/tenant-modules.ts"
+]
+},
+{
 "th": "เงื่อนไขการชำระ",
 "n": 3,
 "files": [
@@ -9003,14 +9031,6 @@
 "apps/web/src/pages/payroll/Employees.tsx",
 "packages/core/src/date.ts",
 "packages/core/src/i18n.ts"
-]
-},
-{
-"th": "เมนู",
-"n": 3,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -9583,14 +9603,6 @@
 ]
 },
 {
-"th": "*** คำเตือน ***",
-"n": 2,
-"files": [
-"apps/web/src/pages/gl/YearEnd.tsx",
-"apps/web/src/pages/settings/Backup.tsx"
-]
-},
-{
 "th": "+ กลุ่มตั้งต้น",
 "n": 2,
 "files": [
@@ -9906,6 +9918,13 @@
 ]
 },
 {
+"th": "{0} ใบ · เดบิต {1}",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "{0}ไม่มีภาษีหัก ณ ที่จ่ายในเอกสาร — ป้อนตอนรับ/จ่ายชำระ",
 "n": 2,
 "files": [
@@ -9980,6 +9999,13 @@
 "files": [
 "apps/web/src/pages/settings/Usage.tsx",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "กำลังคลายข้อมูล…",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -11602,15 +11628,15 @@
 ]
 },
 {
-"th": "นำข้อมูลผู้ใช้กลับ",
+"th": "นำข้อมูลจาก Express",
 "n": 2,
 "files": [
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/Backup.tsx"
+"packages/core/src/menu.ts",
+"packages/core/src/tenant-modules.ts"
 ]
 },
 {
-"th": "นำข้อมูลสำรองมาใช้",
+"th": "นำข้อมูลผู้ใช้กลับ",
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/ActivityLog.tsx",
@@ -13275,6 +13301,14 @@
 ]
 },
 {
+"th": "รหัสบริษัทเพื่อยืนยัน",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "รหัสบริษัทใช้ตัวอักษรอังกฤษ ตัวเลข _ -",
 "n": 2,
 "files": [
@@ -14892,14 +14926,6 @@
 ]
 },
 {
-"th": "เครื่องสาขา (ออฟไลน์)",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/Sync.tsx",
-"packages/core/src/menu.ts"
-]
-},
-{
 "th": "เงินมัดจำรับ",
 "n": 2,
 "files": [
@@ -16057,6 +16083,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "ใช้ได้ถึง",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -22629,6 +22662,13 @@
 ]
 },
 {
+"th": "· เอกสารวันที่ล่าสุด {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "· แก้",
 "n": 1,
 "files": [
@@ -23616,13 +23656,6 @@
 ]
 },
 {
-"th": "กำลังคลายข้อมูล…",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Backup.tsx"
-]
-},
-{
 "th": "กำลังคัดลอก…",
 "n": 1,
 "files": [
@@ -24299,13 +24332,6 @@
 "n": 1,
 "files": [
 "apps/web/src/components/AiBill.tsx"
-]
-},
-{
-"th": "ก่อนรุ่น 2569.11.24-4 บริษัทที่ใช้ระบบปี ค.ศ. ถ้าพิมพ์ปี พ.ศ. (เช่น 17/07/2566) ระบบเก็บเป็นปี ค.ศ. 2566 — วันที่เลื่อนไป 543 ปี · หน้านี้ตรวจทุกข้อมูลของบริษัทนี้ (เอกสาร ใบสำคัญ ปีบัญชี/งวด ที่อยู่ ทะเบียนต่าง ๆ) หาวันที่ตั้งแต่ปี 2400 ขึ้นไป แล้วแก้ให้โดยลบ 543 ปี เมื่อผู้ดูแลระบบยืนยัน",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -25009,6 +25035,13 @@
 ]
 },
 {
+"th": "ข้อมูล ณ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "ข้อมูลกิจการ",
 "n": 1,
 "files": [
@@ -25170,7 +25203,14 @@
 ]
 },
 {
-"th": "ข้อมูลปัจจุบันทั้งหมดของบริษัท {0} จะถูกแทนที่ด้วยข้อมูลในแฟ้มสำรอง — รายการที่ทำหลังวันสำรองจะหายไป ควรสำรองข้อมูลปัจจุบันเก็บไว้ก่อน · ระบบตรวจจำนวนแถวและยอดใบสำคัญให้ ไม่ตรง = ยกเลิกทั้งหมด ข้อมูลเดิมไม่หาย",
+"th": "ข้อมูลปัจจุบัน (จะถูกแทนที่)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "ข้อมูลปัจจุบันทั้งหมดของบริษัท",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
@@ -28229,6 +28269,13 @@
 ]
 },
 {
+"th": "จะถูก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "จะสร้าง",
 "n": 1,
 "files": [
@@ -30651,6 +30698,13 @@
 ]
 },
 {
+"th": "ด้วยข้อมูลในแฟ้มสำรอง — ย้อนกลับไม่ได้ นอกจากนำแฟ้มสำรองที่ทำไว้ก่อนหน้านี้มาใช้อีกครั้ง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "ตกลง — โหลดหน้าจอใหม่",
 "n": 1,
 "files": [
@@ -30760,6 +30814,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Runs.tsx"
+]
+},
+{
+"th": "ตรวจว่ามีวันที่ที่บันทึกด้วยปีผิดระบบหรือไม่ (เช่น บริษัทใช้ ค.ศ. แต่วันที่เก็บเป็นปี 2566 — เลื่อนไป 543 ปี) · ตรวจทุกข้อมูลของบริษัทนี้ (เอกสาร ใบสำคัญ ปีบัญชี/งวด ที่อยู่ ทะเบียนต่าง ๆ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -32443,6 +32504,13 @@
 ]
 },
 {
+"th": "ต้องมีการเตือนการนำเข้าไว้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "ต้องมีถ้า{0}",
 "n": 1,
 "files": [
@@ -33969,10 +34037,10 @@
 ]
 },
 {
-"th": "นำข้อมูลจาก Express",
+"th": "นำข้อมูลจาก Express ยังไม่เปิดให้กิจการของคุณ — ติดต่อผู้ให้บริการให้ย้ายข้อมูลให้ หรือขอเปิดใช้",
 "n": 1,
 "files": [
-"packages/core/src/menu.ts"
+"apps/server/src/modules/express-import.ts"
 ]
 },
 {
@@ -34005,6 +34073,20 @@
 },
 {
 "th": "นำข้อมูลสำรองของ {0} กลับแล้ว {1} แถว ({2} วินาที)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "นำข้อมูลสำรองมาใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/ActivityLog.tsx"
+]
+},
+{
+"th": "นำข้อมูลสำรองมาใช้ — เขียนทับข้อมูลปัจจุบัน",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
@@ -36489,6 +36571,13 @@
 ]
 },
 {
+"th": "บันทึกล่าสุด {0}{1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "บันทึกวันนัด{0}ชำระเงิน",
 "n": 1,
 "files": [
@@ -36661,6 +36750,20 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "บันทึกเมนูที่เปิดให้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "บันทึกเมนูที่เปิดให้ลูกค้าแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -37144,6 +37247,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Signups.tsx"
+]
+},
+{
+"th": "ปกติผู้ให้บริการย้ายข้อมูลให้ — เปิดเมื่อลูกค้าต้องการนำเข้าเอง",
+"n": 1,
+"files": [
+"packages/core/src/tenant-modules.ts"
 ]
 },
 {
@@ -37728,6 +37838,13 @@
 ]
 },
 {
+"th": "ปิด (ลูกค้าไม่เห็น)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ปิด (เปลี่ยนมือถือ)",
 "n": 1,
 "files": [
@@ -37935,6 +38052,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/ModuleSwitches.tsx"
+]
+},
+{
+"th": "ปิดอยู่ = ลูกค้าไม่เห็นเมนูนี้ (รวมผู้ดูแลของลูกค้า) ไม่อยู่ในตารางสิทธิ์ และเปิดไม่ได้ · เจ้าหน้าที่ผู้ให้บริการใช้ได้เสมอ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -38233,13 +38357,6 @@
 },
 {
 "th": "ป้อน YES เพื่อยืนยัน — ข้อมูลผู้ใช้และรหัสผ่านจะกลับเป็นตามแฟ้มสำรอง",
-"n": 1,
-"files": [
-"apps/server/src/modules/backup.ts"
-]
-},
-{
-"th": "ป้อน YES เพื่อยืนยันการนำข้อมูลสำรองมาใช้ (ข้อมูลปัจจุบันของบริษัทนี้จะถูกแทนที่ทั้งหมด)",
 "n": 1,
 "files": [
 "apps/server/src/modules/backup.ts"
@@ -38656,6 +38773,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/fa.ts"
+]
+},
+{
+"th": "ป้อนรหัสบริษัท {0} เพื่อยืนยัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "ป้อนรหัสบริษัท {0} เพื่อยืนยันการนำข้อมูลสำรองมาใช้ — ข้อมูลปัจจุบันทั้งหมดของบริษัท {1} จะถูกแทนที่ด้วยข้อมูลในแฟ้ม",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
 ]
 },
 {
@@ -40238,6 +40369,13 @@
 "n": 1,
 "files": [
 "packages/core/src/payroll-import.ts"
+]
+},
+{
+"th": "พนักงานพิมพ์ปีผิดระบบที่หน้าจอ (เช่น บริษัท ค.ศ. พิมพ์ 02/04/2568) ตั้งแต่รุ่น 2569.11.24-4 ระบบแปลงเป็นปีที่ถูกให้ทันทีก่อนบันทึก (→ 02/04/2025) จึงไม่ค้างในข้อมูลและไม่แสดงในหน้านี้ · ที่พบในหน้านี้ = วันที่ที่ยังผิดอยู่ในข้อมูลจริง ต้องแก้ · ไม่ตรวจปีที่พิมพ์ผิดแบบอื่น (เช่น 2567 แทน 2568) — ตรวจจากรายงานตามช่วงวันที่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
 ]
 },
 {
@@ -41991,6 +42129,13 @@
 ]
 },
 {
+"th": "มีเครื่องสาขาที่ลงทะเบียนไว้",
+"n": 1,
+"files": [
+"packages/core/src/tenant-modules.ts"
+]
+},
+{
 "th": "มีเงินมัดจำคงเหลือ — เลือกใบที่จะหักในบิลนี้",
 "n": 1,
 "files": [
@@ -42261,6 +42406,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/CopyChoices.tsx"
+]
+},
+{
+"th": "ยกเลิก (ไม่เปลี่ยนข้อมูล)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -44357,6 +44509,13 @@
 ]
 },
 {
+"th": "ยังไม่เคยสำรองข้อมูลของบริษัทนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "ยังไม่เคยใช้",
 "n": 1,
 "files": [
@@ -44393,6 +44552,13 @@
 },
 {
 "th": "ยังไม่เปิดใช้งานในรุ่นนี้",
+"n": 1,
+"files": [
+"apps/web/src/App.tsx"
+]
+},
+{
+"th": "ยังไม่เปิดให้กิจการของคุณ",
 "n": 1,
 "files": [
 "apps/web/src/App.tsx"
@@ -45904,13 +46070,6 @@
 ]
 },
 {
-"th": "รหัสบริษัทเพื่อยืนยัน",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/CompaniesAdmin.tsx"
-]
-},
-{
 "th": "รหัสบัญชีเงินฝาก",
 "n": 1,
 "files": [
@@ -47070,6 +47229,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/ImportMapping.tsx"
+]
+},
+{
+"th": "ระบบตรวจจำนวนแถวและยอดใบสำคัญให้ — ไม่ตรงกับแฟ้ม = ยกเลิกทั้งหมด ข้อมูลเดิมไม่หาย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -52792,6 +52958,20 @@
 ]
 },
 {
+"th": "สำรองข้อมูลปัจจุบันก่อน (แนะนำ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "สำรองข้อมูลปัจจุบันไว้แล้ว หรือไม่ต้องการเก็บข้อมูลปัจจุบัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "สำรองข้อมูลผู้ใช้",
 "n": 1,
 "files": [
@@ -52821,6 +53001,20 @@
 },
 {
 "th": "สำรองข้อมูลไม่สำเร็จ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "สำรองครั้งล่าสุด {0}{1}{2}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "สำรองเมื่อ {0}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
@@ -59064,6 +59258,20 @@
 ]
 },
 {
+"th": "เปิดเอง — {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เปิดเองเมื่อลูกค้าใช้ WTS-POS หรือมีเครื่องสาขาที่ลงทะเบียนไว้แล้ว — ติ๊กเพื่อเปิดให้แม้ไม่มี",
+"n": 1,
+"files": [
+"packages/core/src/tenant-modules.ts"
+]
+},
+{
 "th": "เปิดแฟ้ม .xlsx ไม่ได้ (แฟ้มเสียหาย) — บันทึกใหม่จาก Excel",
 "n": 1,
 "files": [
@@ -59141,10 +59349,31 @@
 ]
 },
 {
+"th": "เปิดให้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เปิดให้ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "เปิดให้แก้ไข{0}นี้",
 "n": 1,
 "files": [
 "apps/web/src/components/DocEdit.tsx"
+]
+},
+{
+"th": "เปิดให้แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -59827,6 +60056,20 @@
 ]
 },
 {
+"th": "เมนู {0} ยังไม่เปิดให้ลูกค้าเจ้าของบริษัทนี้ — กำหนดสิทธิ์ไม่ได้จนกว่าผู้ให้บริการจะเปิดให้",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
+"th": "เมนู {0} ยังไม่เปิดให้ลูกค้าเจ้าของบริษัทนี้ — ไม่อยู่ในตารางสิทธิ์ (ผู้ให้บริการเปิดได้ที่ ลูกค้าผู้ใช้บริการ)",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "เมนู {0} เป็นของเจ้าหน้าที่ผู้ให้บริการ — กำหนดสิทธิ์ไม่ได้ (ลูกค้าใช้ไม่ได้ทุกกรณี)",
 "n": 1,
 "files": [
@@ -59862,6 +60105,20 @@
 ]
 },
 {
+"th": "เมนูที่เปิดให้เฉพาะราย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เมนูนี้ยังไม่เปิดให้กิจการของคุณ — ติดต่อผู้ให้บริการเพื่อขอเปิดใช้",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "เมนูนี้อยู่ในแผนพัฒนา",
 "n": 1,
 "files": [
@@ -59880,6 +60137,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/permissions.ts"
+]
+},
+{
+"th": "เมนูนี้เปิดให้เฉพาะรายเมื่อต้องการใช้ (นำข้อมูลจาก Express · เครื่องสาขาออฟไลน์) — ติดต่อผู้ให้บริการเพื่อขอเปิดใช้ หรือให้ผู้ให้บริการทำให้",
+"n": 1,
+"files": [
+"apps/web/src/App.tsx"
 ]
 },
 {
@@ -63579,6 +63843,20 @@
 ]
 },
 {
+"th": "แทนที่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "แทนที่ข้อมูลของ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "แทรกบรรทัดถัดไป",
 "n": 1,
 "files": [
@@ -64199,6 +64477,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "แฟ้มสำรอง (ข้อมูลที่จะได้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -65693,13 +65978,6 @@
 ]
 },
 {
-"th": "ใช้ได้ถึง",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
 "th": "ใช้ได้เฉพาะที่ตั้งในตารางนี้ — ช่องที่ไม่ได้กำหนด = ใช้ไม่ได้",
 "n": 1,
 "files": [
@@ -67027,6 +67305,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "ไปสำรองข้อมูลปัจจุบันก่อน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -68850,6 +69135,13 @@
 ]
 },
 {
+"th": "ไม่ว่าบันทึกเมื่อใดหรือมาจากทางไหน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "ไม่สำเร็จ",
 "n": 1,
 "files": [
@@ -69235,6 +69527,13 @@
 ]
 },
 {
+"th": "— คีย์ที่หน้าจอ โปรแกรมอื่นที่ส่งเข้ามา (WTS-POS · WTS-Living · WTS-HR) หรือนำเข้า · พบแล้วแก้ให้โดยลบ 543 ปี เมื่อผู้ดูแลระบบยืนยัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx"
+]
+},
+{
 "th": "— ดูทุกสาขาให้เลือก \"ทุกสาขา\" ที่แถบด้านบน",
 "n": 1,
 "files": [
@@ -69274,6 +69573,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx"
+]
+},
+{
+"th": "— ถ้านำกลับผิดแฟ้ม จะได้ใช้แฟ้มนี้กู้คืน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -69414,6 +69720,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/DocTypes.tsx"
+]
+},
+{
+"th": "— เก่ากว่ารายการล่าสุด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {
@@ -69844,6 +70157,13 @@
 ]
 },
 {
+"th": "⚠ มีรายการที่บันทึกหลังวันสำรอง (ล่าสุด {0}) — รายการเหล่านั้นจะหายไปทั้งหมด",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
 "th": "⚠ ยอดเปลี่ยน",
 "n": 1,
 "files": [
@@ -70058,6 +70378,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "✔ สำรองในหน้านี้แล้ว: {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Backup.tsx"
 ]
 },
 {

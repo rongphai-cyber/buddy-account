@@ -12,6 +12,7 @@ import { applyPostingTemplate } from '../company-template.js';
 import { importExpress, validateExpress, folderSource, type ImportReport } from '../import/express/migrate.js';
 import { ensureStandardGroups } from '../standard-groups.js';
 import { defaultTenant } from './company.js';
+import { tenantOffMenus } from './permissions.js';
 
 /**
  * T0.12 นำข้อมูลจากโปรแกรม Express ผ่านหน้าจอ: อัปโหลดแฟ้ม .DBF ของบริษัท → ย้ายข้อมูลเป็นบริษัทใหม่ (ทรานแซกชันเดียว)
@@ -40,9 +41,11 @@ function jobOf(a: AuthContext, id: string) {
   if (!j || (!a.isPlatform && j.tenantId !== a.tenantId)) throw notFound('งานนำเข้า');
   return j;
 }
-function admin(a: AuthContext) {
+async function admin(db: Db, a: AuthContext) {
   if (!a.isAdmin) throw forbidden('เฉพาะผู้ดูแลระบบนำข้อมูลจาก Express ได้');
   if (a.apiKeyId) throw forbidden('กุญแจ API นำเข้าข้อมูลไม่ได้');
+  // HANDOFF 200: ปกติผู้ให้บริการย้ายข้อมูลให้ — ลูกค้าใช้ได้เมื่อผู้ให้บริการเปิด "นำข้อมูลจาก Express" ให้รายลูกค้า (TENANT_FEATURES)
+  if (!a.isPlatform && (await tenantOffMenus(db, a.tenantId)).includes('OT.IMPORT')) throw forbidden('นำข้อมูลจาก Express ยังไม่เปิดให้กิจการของคุณ — ติดต่อผู้ให้บริการให้ย้ายข้อมูลให้ หรือขอเปิดใช้');
 }
 const codeSchema = z.string().trim().min(1, 'ป้อนรหัสบริษัท').max(20).regex(/^[A-Za-z0-9_-]+$/, 'รหัสบริษัทใช้ตัวอักษรอังกฤษ ตัวเลข _ -');
 
@@ -84,7 +87,7 @@ export function expressImportRoutes(app: FastifyInstance, database: Database) {
   const { db } = database;
   /** เริ่มงาน: ตรวจรหัสบริษัทและโควตาก่อนอัปโหลด */
   app.post('/api/v1/express-import/jobs', async (req) => {
-    const a = requireAuth(req); admin(a);
+    const a = requireAuth(req); await admin(db, a);
     const b = parse(z.object({ code: codeSchema, tenant_id: z.string().uuid().optional() }), req.body);
     const tenantId = a.isPlatform ? (b.tenant_id ?? (await defaultTenant(db))) : a.tenantId!;
     await checkCompany(db, tenantId, b.code);
@@ -98,7 +101,7 @@ export function expressImportRoutes(app: FastifyInstance, database: Database) {
   });
   /** อัปโหลดทีละแฟ้ม (เนื้อแฟ้มดิบ) — รับเฉพาะชื่อแฟ้มที่ผู้นำเข้าใช้ */
   app.put('/api/v1/express-import/jobs/:id/files/:name', { bodyLimit: MAX_FILE }, async (req) => {
-    const a = requireAuth(req); admin(a);
+    const a = requireAuth(req); await admin(db, a);
     const p = parse(z.object({ id: z.string().uuid(), name: z.string().regex(/^[A-Za-z0-9_]{1,12}$/, 'ชื่อแฟ้มไม่ถูกต้อง') }), req.params);
     const j = jobOf(a, p.id);
     if (j.status !== 'upload') throw badRequest('งานนี้เริ่มนำเข้าแล้ว — เริ่มงานใหม่ถ้าต้องการอัปโหลดอีกครั้ง');
@@ -111,7 +114,7 @@ export function expressImportRoutes(app: FastifyInstance, database: Database) {
     return view(j);
   });
   app.post('/api/v1/express-import/jobs/:id/run', async (req) => {
-    const a = requireAuth(req); admin(a);
+    const a = requireAuth(req); await admin(db, a);
     const j = jobOf(a, parse(z.object({ id: z.string().uuid() }), req.params).id);
     if (j.status !== 'upload') throw badRequest('งานนี้เริ่มไปแล้ว');
     const missing = EXPRESS_REQUIRED.filter((f) => !(f in j.files));
@@ -123,17 +126,17 @@ export function expressImportRoutes(app: FastifyInstance, database: Database) {
     return view(j);
   });
   app.get('/api/v1/express-import/jobs/:id', async (req) => {
-    const a = requireAuth(req); admin(a);
+    const a = requireAuth(req); await admin(db, a);
     return view(jobOf(a, parse(z.object({ id: z.string().uuid() }), req.params).id));
   });
   /** ยกเลิกก่อนเริ่ม: ลบแฟ้มที่อัปโหลด */
   app.delete('/api/v1/express-import/jobs/:id', async (req) => {
-    const a = requireAuth(req); admin(a);
+    const a = requireAuth(req); await admin(db, a);
     const j = jobOf(a, parse(z.object({ id: z.string().uuid() }), req.params).id);
     if (j.status === 'running') throw badRequest('กำลังนำเข้า — ยกเลิกระหว่างทางไม่ได้ (ถ้าไม่สำเร็จ ระบบจะไม่บันทึกข้อมูลใดเลย)');
     rmSync(j.dir, { recursive: true, force: true });
     jobs.delete(j.id);
     return { ok: true };
   });
-  app.get('/api/v1/express-import/files', async (req) => { const a = requireAuth(req); admin(a); return { required: EXPRESS_REQUIRED, files: EXPRESS_FILES }; });
+  app.get('/api/v1/express-import/files', async (req) => { const a = requireAuth(req); await admin(db, a); return { required: EXPRESS_REQUIRED, files: EXPRESS_FILES }; });
 }

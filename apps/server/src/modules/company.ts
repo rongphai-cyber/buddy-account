@@ -12,7 +12,7 @@ import { logActivity } from '../audit.js';
 import { confirmSecondFactor, markPasswordChanged, mfaForAll, setSec } from './security.js';
 import { addrShape, ADDR_COLS } from '../address.js';
 import { purgeTenant } from './pdpa.js';
-import { modulesOffRaw } from './permissions.js';
+import { companyTenantOff, modulesOffRaw } from './permissions.js';
 import { payrollSource } from './wts.js';
 import { createTenantWithAdmin } from './signup.js';
 import { packagePlan, tenantLimits, TENANT_PACKAGE_FIELDS } from './usage.js';
@@ -418,7 +418,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const gRights = a.companyId && groups.length ? await db.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id')
       .select(['p.subject_id', 'm.code as menu', 'p.can_read', 'p.can_add', 'p.can_edit', 'p.can_cancel', 'p.can_delete', 'p.can_print', 'p.can_approve'])
       .where('p.company_id', '=', a.companyId).where('p.subject_type', '=', 'G').where('p.subject_id', 'in', groups.map((g) => g.id)).where('p.deleted_at', 'is', null)
-      .where('m.code', 'not in', [...PLATFORM_MENUS]).execute() : [];   // เมนูผู้ให้บริการไม่อยู่ในสรุปสิทธิ์ (HANDOFF 199)
+      .where('m.code', 'not in', [...PLATFORM_MENUS, ...(await companyTenantOff(db, a.companyId))]).execute() : [];   // เมนูผู้ให้บริการ (HANDOFF 199) + ที่ลูกค้ายังไม่ได้เปิด (HANDOFF 200) ไม่อยู่ในสรุปสิทธิ์
     const cell = (v: string | null) => (v ?? '').trim();
     return { users: users.map((u) => { const sc = secs.find((x) => x.user_id === u.id); return { ...u, app_access: normalizeAppAccess(u.app_access), companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id), rights_in: rowsIn.get(u.id) ?? [], mfa_enabled: !!sc?.totp_enabled, locked_until: sc?.locked_until && new Date(sc.locked_until).getTime() > Date.now() ? sc.locked_until : null,
       invite_expires_at: invites.find((x) => x.user_id === u.id)?.expires_at ?? null, api_keys: keyCount.get(u.id) ?? 0 }; }),

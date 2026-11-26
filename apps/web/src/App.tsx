@@ -137,6 +137,9 @@ function Shell() {
   const { me, select, logout } = useSession();
   const nav = useNavigate();
   const loc = useLocation();
+  // เปิดที่อยู่ตรงของเมนูที่ลูกค้าใช้ไม่ได้: ของผู้ให้บริการ (HANDOFF 199) · ที่ลูกค้ายังไม่ได้เปิด (HANDOFF 200)
+  const pathMenu = menuForPath(loc.pathname) ?? '';
+  const gate: 'provider' | 'tenant' | null = !me || me.user.is_platform ? null : providerOnly(pathMenu) ? 'provider' : me.tenant_off?.includes(pathMenu) ? 'tenant' : null;
   // อยู่ใน Buddy แล้ว (กดการ์ด Buddy หรือเปิดลิงก์หน้าใดของ Buddy) — กลับหน้าแรก "/" ในแท็บนี้ = หน้าแรกของ Buddy ไม่ใช่หน้าเลือกโปรแกรม
   useEffect(() => markEntered(), []);
   const [open, setOpen] = useState<string | null>(() => MENU.find((g) => flattenMenu(g.children).some((i) => i.route && loc.pathname.startsWith(i.route)))?.code ?? 'GL');
@@ -231,7 +234,7 @@ function Shell() {
       <main className="main" id="main">
         <ReadOnlyGuard />
         <UsageAlert />
-        {providerOnly(menuForPath(loc.pathname) ?? '') && !me.user.is_platform ? <ProviderOnlyPage /> : <Routes>
+        {gate ? <ProviderOnlyPage kind={gate} /> : <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/gl/accounts" element={<AccountsPage />} />
           <Route path="/gl/journals" element={<JournalsPage />} />
@@ -362,11 +365,16 @@ function Shell() {
  * เปิดที่อยู่ของเมนูผู้ให้บริการตรง ๆ (กุญแจ API · การใช้งานและแพ็กเกจ · ลูกค้าผู้ใช้บริการ · แพ็กเกจ) โดยไม่ใช่เจ้าหน้าที่ผู้ให้บริการ (HANDOFF 199)
  * — ไม่เปิดหน้า ไม่เรียก API · บอกว่าต้องทำอย่างไร
  */
-function ProviderOnlyPage() {
+function ProviderOnlyPage({ kind }: { kind: 'provider' | 'tenant' }) {
   return (
     <div className="page" data-tone="setup">
-      <h1>เฉพาะเจ้าหน้าที่ผู้ให้บริการ</h1>
-      <div className="notebox">หน้านี้เปิดได้เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม — ต้องการเชื่อมต่อระบบอื่น (กุญแจ API) หรือสอบถามแพ็กเกจและการใช้งาน ติดต่อผู้ให้บริการ</div>
+      {kind === 'provider' ? <>
+        <h1>เฉพาะเจ้าหน้าที่ผู้ให้บริการ</h1>
+        <div className="notebox">หน้านี้เปิดได้เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม — ต้องการเชื่อมต่อระบบอื่น (กุญแจ API) หรือสอบถามแพ็กเกจและการใช้งาน ติดต่อผู้ให้บริการ</div>
+      </> : <>
+        <h1>ยังไม่เปิดให้กิจการของคุณ</h1>
+        <div className="notebox">เมนูนี้เปิดให้เฉพาะรายเมื่อต้องการใช้ (นำข้อมูลจาก Express · เครื่องสาขาออฟไลน์) — ติดต่อผู้ให้บริการเพื่อขอเปิดใช้ หรือให้ผู้ให้บริการทำให้</div>
+      </>}
       <p><NavLink to="/">กลับหน้าแรก</NavLink></p>
     </div>
   );
