@@ -377,11 +377,22 @@ describe('Buddy Account API (PGlite)', () => {
     expect((await call('PUT', '/api/v1/permissions', { subject_type: 'U', subject_id: ctl, rows: [R('RP.TB', { can_read: 'S' })] })).body.error.message).toMatch(/S ใช้ได้เฉพาะช่องพิมพ์/);
     const eff = (await call('GET', `/api/v1/permissions?subject_type=U&subject_id=${ctl}`)).body;
     expect([eff.effective['GL.JNL'].read, eff.effective['GL.JNL'].edit, eff.effective['GL.JNL'].print, eff.effective['RP.TB'].read, eff.effective['RP.LEDGER'].read]).toEqual([true, false, 'S', false, true]);
-    const byMenu = (await call('GET', '/api/v1/permissions/by-menu?menu_code=GL.JNL')).body;
-    expect(byMenu.map((r: { code: string; can_add: string }) => [r.code, r.can_add])).toEqual([['ACC', 'L']]);
-    // ตามเมนู: กลุ่มที่ได้สิทธิ์จากเมนูหลัก (RP) แสดงด้วย พร้อมบอกว่ามาจากเมนูไหน (HANDOFF 161)
-    const inh = (await call('GET', '/api/v1/permissions/by-menu?menu_code=RP.LEDGER')).body as Array<{ code: string; menu_code: string; can_read: string }>;
-    expect(inh.map((r) => [r.code, r.menu_code, r.can_read])).toEqual([['ACC', 'RP', 'Y']]);
+    // ใครใช้เมนูนี้ได้ (HANDOFF 200 ส่วนที่ 2): ทุกกลุ่ม/ผู้ใช้ · ผลที่ได้จริง (decide ตัวเดียวกับตอนใช้งาน) + ที่มา
+    type BCell = { v: string; src: string; at?: string; need?: number; why?: string };
+    type BM = { groups: Array<{ code: string; admin: boolean; has_rows: boolean; cells: Record<string, BCell> }>; users: Array<{ code: string; admin: boolean; cells: Record<string, BCell> }> };
+    const byMenu = (await call('GET', '/api/v1/permissions/by-menu?menu_code=GL.JNL')).body as BM;
+    const accRow = byMenu.groups.find((g) => g.code === 'ACC')!;
+    expect([accRow.cells.add, accRow.cells.edit, accRow.cells.print, accRow.cells.cancel]).toEqual([{ v: 'L', src: 'group', at: 'GL.JNL' }, { v: 'N', src: 'group', at: 'GL.JNL' }, { v: 'S', src: 'group', at: 'GL.JNL' }, { v: 'Y', src: 'group', at: 'GL.JNL', need: 5 }]);
+    expect(byMenu.groups.filter((g) => g.admin).map((g) => g.cells.read)).toEqual(byMenu.groups.some((g) => g.admin) ? [{ v: 'Y', src: 'admin' }] : []);
+    expect(byMenu.users.filter((u) => u.admin).every((u) => u.cells.read!.src === 'admin')).toBe(true);
+    // ผู้ใช้: ctl5 (กลุ่ม ACC ระดับ 5) ได้ตามกลุ่ม · clerk0 (ไม่มีกลุ่ม ระดับ 0) ตามระดับ — ยกเลิกต้องระดับ 5 · ตรงกับ /auth/me ของแต่ละคน
+    const uc = (code: string) => byMenu.users.find((u) => u.code === code)!.cells;
+    expect([uc('ctl5').add, uc('ctl5').cancel]).toEqual([{ v: 'L', src: 'group', at: 'GL.JNL' }, { v: 'Y', src: 'group', at: 'GL.JNL' }]);
+    expect([uc('clerk0').add, uc('clerk0').cancel!.v, uc('clerk0').cancel!.src, uc('clerk0').cancel!.why]).toEqual([{ v: 'Y', src: 'level' }, 'N', 'block', expect.stringMatching(/ระดับอนุมัติ 5/)]);
+    // ตามเมนู: ได้สิทธิ์จากเมนูหลัก (RP) บอกว่ามาจากเมนูไหน (HANDOFF 161) · ผู้ใช้ตั้งเอง (ctl5 RP.TB N) ชนะกลุ่ม
+    const inh = (await call('GET', '/api/v1/permissions/by-menu?menu_code=RP.LEDGER')).body as BM;
+    expect(inh.groups.find((g) => g.code === 'ACC')!.cells.read).toEqual({ v: 'Y', src: 'group', at: 'RP' });
+    expect(((await call('GET', '/api/v1/permissions/by-menu?menu_code=RP.TB')).body as BM).users.find((u) => u.code === 'ctl5')!.cells.read).toEqual({ v: 'N', src: 'user', at: 'RP.TB' });
     me = await as('ctl5', 'ctl5pass');
     expect((await call('GET', '/api/v1/gl/journals')).status).toBe(200);
     const jv1 = (await call('POST', '/api/v1/gl/journals', jvBody)).body.id;
@@ -5076,10 +5087,12 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       const allMenu = (await sql<{ id: string }>`SELECT id FROM sys_menu WHERE code = 'ALL'`.execute(database.db)).rows[0]!.id;
       await sql`INSERT INTO sys_permission (company_id, subject_type, subject_id, menu_id, can_read, can_add, can_edit, can_cancel, can_delete, can_print, can_approve)
                 VALUES (${co}, 'G', ${foreignG.id}, ${allMenu}, 'Y', 'N', 'N', 'N', 'N', 'N', 'N')`.execute(database.db);
-      const by = (await call('GET', '/api/v1/permissions/by-menu?menu_code=GL.JNL')).body as Array<{ subject_id: string }>;
+      const by = (await call('GET', '/api/v1/permissions/by-menu?menu_code=GL.JNL')).body as { groups: Array<{ id: string }>; users: Array<{ id: string }> };
       const ownIds = [...own.groups, ...own.users].map((x: { id: string }) => x.id);
-      expect(by.map((r) => r.subject_id)).toContain(ownG);
-      expect(by.every((r) => ownIds.includes(r.subject_id))).toBe(true);   // ไม่มีกลุ่มของลูกค้ารายอื่น
+      const byIds = [...by.groups, ...by.users].map((r) => r.id);
+      expect(byIds).toContain(ownG);
+      expect(byIds.every((x) => ownIds.includes(x))).toBe(true);   // ไม่มีกลุ่ม/ผู้ใช้ของลูกค้ารายอื่น
+      expect(byIds).not.toContain(foreignG.id);
       await sql`DELETE FROM sys_permission WHERE company_id = ${co} AND subject_id = ${foreignG.id}`.execute(database.db);
     } finally {
       cookie = start;
@@ -8740,6 +8753,42 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     await sql`INSERT INTO sys_device (company_id, branch_id, code, name) VALUES (${co}, ${branch}, 'POS1', 'เครื่องหน้าร้าน 1')`.execute(database.db);
     expect((await me()).tenant_off).toEqual([]);
     expect(((await call('GET', '/api/v1/devices')).body as Array<{ code: string }>).map((x) => x.code)).toEqual(['POS1']);
+
+    // ── HANDOFF 200 ส่วนที่ 2: ใครใช้เมนูนี้ได้ — ทุกกลุ่ม/ผู้ใช้ทุกครั้ง · ผลตรงกับที่ผู้ใช้ได้จริง (/auth/me) · ผู้ใช้ถูกระงับบอกสถานะ · ข้ามลูกค้าไม่ได้
+    type BCell = { v: string; src: string; at?: string };
+    type BM = { groups: Array<{ id: string; code: string; admin: boolean; has_rows: boolean; members: number; cells: Record<string, BCell> }>; users: Array<{ id: string; code: string; status: string; admin: boolean; cells: Record<string, BCell> }> };
+    const G = Object.fromEntries(((await call('GET', '/api/v1/users')).body.groups as Array<{ id: string; code: string }>).map((x) => [x.code, x.id]));
+    const staff = await call('POST', '/api/v1/users', { username: 't200.sale', display_name: 'ขาย 200', password: 'passSale200', companies: [co], user_group_id: G.SALE, approval_level: 2 });
+    const gone = await call('POST', '/api/v1/users', { username: 't200.old', display_name: 'ลาออก 200', password: 'passOld2000', companies: [co], approval_level: 0, status: 'I' });
+    expect([staff.status, gone.status]).toEqual([200, 200]);
+    const atAll = (await call('GET', '/api/v1/permissions/by-menu?menu_code=ALL')).body as BM;
+    expect(atAll.groups.map((x) => x.code).sort()).toEqual(Object.keys(G).sort());   // ทุกกลุ่ม แม้ไม่มีแถวที่ ALL
+    expect(atAll.users.map((u) => [u.code, u.status, u.admin])).toEqual([['t200.admin', 'A', true], ['t200.old', 'I', false], ['t200.sale', 'A', false]]);
+    expect(atAll.groups.find((x) => x.code === 'SALE')!.members).toBe(1);
+    const cmp: string[] = [];
+    const sale = await login('t200.sale', 'passSale200');
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const perms = (await me()).perms;
+    cookie = cust;
+    for (const menu of ['SA.IV', 'SA.QT', 'GL.JNL', 'RP.CENTER', 'SET.SEC', 'IC.STOCK', 'PU.RR']) {
+      const bm = (await call('GET', `/api/v1/permissions/by-menu?menu_code=${menu}`)).body as BM;
+      const c = bm.users.find((u) => u.code === 't200.sale')!.cells;
+      for (const x of ['read', 'add', 'edit', 'cancel', 'delete', 'print', 'approve']) {
+        const want = perms[menu]![x] === 'S' ? 'S' : perms[menu]![x] ? ['Y', 'L'] : ['N'];
+        if (!(Array.isArray(want) ? want.includes(c[x]!.v) : want === c[x]!.v)) cmp.push(`${menu}.${x} me=${String(perms[menu]![x])} by-menu=${c[x]!.v}`);
+      }
+    }
+    expect(cmp).toEqual([]);
+    expect(sale).toBeTruthy();
+    // ลูกค้าอื่นเห็นเฉพาะของตัวเอง · ผู้ให้บริการในบริษัทของ T200 เห็นของ T200 เท่านั้น
+    await login('b.admin', 'passB1234');
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    const bView = (await call('GET', '/api/v1/permissions/by-menu?menu_code=ALL')).body as BM;
+    expect([...bView.groups, ...bView.users].some((x) => [...Object.values(G), staff.body.id].includes(x.id))).toBe(false);
+    cookie = provider;
+    await call('POST', '/api/v1/auth/select', { company_id: co });
+    const pView = (await call('GET', '/api/v1/permissions/by-menu?menu_code=ALL')).body as BM;
+    expect(pView.users.map((u) => u.code)).toEqual(['t200.admin', 't200.old', 't200.sale']);
     cookie = '';
   });
 });

@@ -243,8 +243,9 @@ require('fs').mkdirSync(OUT, { recursive: true });
       await page.waitForSelector('table.grid tbody tr:nth-child(40)', { timeout: 15000 });
     } else await page.waitForSelector('.notebox', { timeout: 15000 });   // ยังไม่มีกลุ่ม/ผู้ใช้อื่นนอกจากผู้ดูแล
     await shot('15j-permissions');
-    await page.getByRole('tab', { name: 'ตามเมนู (ระบบงานที่อนุญาต)' }).click();
-    await page.waitForSelector('table.grid thead', { timeout: 15000 });
+    // HANDOFF 200 ส่วนที่ 2: แท็บ "ใครใช้เมนูนี้ได้" — ทุกกลุ่ม/ผู้ใช้ของกิจการ
+    await page.getByRole('tab', { name: 'ใครใช้เมนูนี้ได้ (ดูอย่างเดียว)' }).click();
+    await page.waitForSelector('.perm-bymenu tbody tr.row-open', { timeout: 15000 });
   });
   await step('system defaults (S-SET-02…11)', async () => {
     // ดูอย่างเดียว ไม่บันทึก: เปิดทุกหมวด ต้องเห็นรายการค่าเริ่มต้นตามคู่มือบทที่ 5

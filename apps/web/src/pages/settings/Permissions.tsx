@@ -40,7 +40,9 @@ export function PermissionsPage() {
   const [tab, setTab] = useState(sp.get('menu') ? 'menu' : 'subject');
   // ?user=<id> = สิทธิ์เพิ่มเติมของผู้ใช้ (HANDOFF 198 · เปิดจากแฟ้มผู้ใช้) — ที่อยู่เดิม ?s=U:<id> ยังใช้ได้
   const userParam = sp.get('user');
-  useEffect(() => { if (userParam) setSp({ s: `U:${userParam}` }, { replace: true }); }, [userParam, setSp]);
+  useEffect(() => { if (userParam) setSp({ s: `U:${userParam}`, ...(sp.get('m') ? { m: sp.get('m')! } : {}) }, { replace: true }); }, [userParam, setSp]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ?m=<เมนู> = เลื่อนไปที่เมนูนั้นในตาราง (เปิดจากแท็บ "ใครใช้เมนูนี้ได้" · HANDOFF 200)
+  const focusMenu = sp.get('m');
   const subject = sp.get('s') ?? (userParam ? `U:${userParam}` : '');   // G:<id> หรือ U:<id>
   const menus = useQuery({ queryKey: ['perm-menus'], queryFn: () => api.get<MenuRow[]>('/api/v1/permissions/menus') });
   // เฉพาะกลุ่ม/ผู้ใช้ของลูกค้าเจ้าของบริษัทที่เลือกอยู่ — ผู้ให้บริการก็เช่นกัน (HANDOFF 191)
@@ -54,6 +56,14 @@ export function PermissionsPage() {
   const [dirty, setDirty] = useState(false);
   const [err, setErr] = useState<unknown>(null);
   useEffect(() => { if (cur.data) { setVals(compactRows(cur.data.rows)); setDirty(false); } }, [cur.data]);
+  useEffect(() => {
+    if (!focusMenu || !cur.data || tab !== 'subject') return;
+    const t = setTimeout(() => {
+      const row = document.querySelector<HTMLElement>(`.perm-grid tr[data-menu="${CSS.escape(focusMenu)}"]`);
+      row?.scrollIntoView({ block: 'center' }); row?.querySelector<HTMLElement>('select')?.focus();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [focusMenu, cur.data, tab]);
   const groupRows = useMemo(() => (cur.data?.group && !cur.data.group.admin ? compactRows(cur.data.group.rows) : null), [cur.data]);
   const apply = (code: string, set: PermRowVals) => {
     const conflicts = permConflicts(vals, code, set);
@@ -108,7 +118,7 @@ export function PermissionsPage() {
   }
   return (
     <div className="page" data-tone="setup">
-      <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="สิทธิ์รายเมนู" lead={<>สิทธิ์ของกลุ่มเป็นค่าตั้งต้นของผู้ใช้ในกลุ่ม · ผู้ใช้ปรับเพิ่มเองได้ทีละช่อง · สิทธิ์แยกแต่ละบริษัท</>}
+      <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="สิทธิ์รายเมนู" lead={<><b>ตั้งสิทธิ์ของกลุ่ม</b> = กลุ่มใช้เมนูใดได้ (ค่าตั้งต้นของสมาชิก) · <b>สิทธิ์เพิ่มเติมของผู้ใช้</b> = ปรับเฉพาะคน · <b>ใครใช้เมนูนี้ได้</b> = ดูว่าทุกกลุ่ม/ผู้ใช้ใช้เมนูหนึ่งได้จริงอย่างไร (ดูอย่างเดียว) · สิทธิ์แยกแต่ละบริษัท</>}
         actions={<><button onClick={back}>{type === 'U' ? 'กลับแฟ้มผู้ใช้' : 'กลุ่มผู้ใช้'} <kbd>Esc</kbd></button>{tab === 'subject' && <button className="primary" disabled={!id || !dirty} onClick={save}>บันทึก <kbd>F9</kbd></button>}</>} />
       {/* แยกบริษัท (เจ้าของ ข้อ 3): บอกชัดว่ากำลังแก้ของบริษัทไหน */}
       <div className="perm-company" role="note">
@@ -116,7 +126,7 @@ export function PermissionsPage() {
         <span className="small muted">สิทธิ์แยกแต่ละบริษัท — เปลี่ยนบริษัทที่แถบบน</span>
         <button type="button" disabled={dirty} title={dirty ? 'บันทึกก่อน แล้วจึงคัดลอก' : 'ตั้งสิทธิ์ของบริษัทอื่นให้เหมือนบริษัทนี้ (ดูตัวอย่างก่อน)'} onClick={() => setCopy(true)}>คัดลอกสิทธิ์ไปบริษัทอื่น…</button>
       </div>
-      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'subject', label: type === 'U' ? 'สิทธิ์เพิ่มเติมของผู้ใช้' : 'ตามกลุ่ม' }, { key: 'menu', label: 'ตามเมนู (ระบบงานที่อนุญาต)' }]} />
+      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'subject', label: type === 'U' ? 'สิทธิ์เพิ่มเติมของผู้ใช้' : 'ตั้งสิทธิ์ของกลุ่ม' }, { key: 'menu', label: 'ใครใช้เมนูนี้ได้ (ดูอย่างเดียว)' }]} />
       {tab === 'subject' && (
         <>
           <div className="filters">
@@ -156,7 +166,7 @@ export function PermissionsPage() {
                     const has = !!vals[m.code];
                     const e = eff?.[m.code];
                     return (
-                      <tr key={m.code} className={cx(m.group && 'ctl')}>
+                      <tr key={m.code} data-menu={m.code} className={cx(m.group && 'ctl', focusMenu === m.code && 'perm-focus')}>
                         <td style={{ paddingLeft: 8 + m.depth * 14 }}>{m.group ? <b>{m.label}</b> : m.label} <span className="muted mono small">{m.code}</span></td>
                         <td><select value="" onChange={(x) => x.target.value && setRow(m.code, x.target.value === '-' ? '' : x.target.value)} aria-label={`${m.label} ตั้งทั้งแถว`}><option value="">…</option><option value="Y">✓ Y ทั้งแถว</option><option value="N">✗ N ทั้งแถว</option><option value="L">✓ L ทั้งแถว</option>{has && <option value="-">ล้าง ({type === 'U' && d?.group ? 'ตามกลุ่ม' : m.code === 'ALL' ? 'ไม่ได้กำหนด' : 'ตามเมนูหลัก'})</option>}</select></td>
                         {ACTS.map(([a, th, c]) => {
@@ -198,7 +208,7 @@ export function PermissionsPage() {
         <p className="small muted">เมนูย่อยที่ไม่ได้ตั้งเองได้ค่าใหม่จากเมนูหลักทันที</p>
       </Modal>}
       {copy && <CopyRights subject={type && id && s ? { type, id, code: s.code } : null} onClose={() => setCopy(false)} onDone={() => { setCopy(false); qc.invalidateQueries({ queryKey: ['perms'] }); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
-      {tab === 'menu' && <ByMenu menus={menus.data ?? []} onOpen={(st, sid) => { setSp({ s: `${st}:${sid}` }, { replace: true }); setTab('subject'); }} />}
+      {tab === 'menu' && <ByMenu menus={menus.data ?? []} initial={sp.get('menu') ?? focusMenu ?? 'ALL'} onOpen={(st, sid, m) => { setSp({ s: `${st}:${sid}`, m }, { replace: true }); setTab('subject'); }} />}
       <KeyHints keys={[['F9', 'บันทึก'], ['Esc', 'กลับหน้าผู้ใช้']]} />
     </div>
   );
@@ -259,36 +269,74 @@ function CopyRights({ subject, onClose, onDone }: { subject: { type: 'U' | 'G'; 
   );
 }
 
-type ByMenuRow = { subject_type: string; subject_id: string; code: string; name: string; menu_code: string; cells: Record<string, { v: string; from: string }> };
-/** ระบบงานที่อนุญาตให้ใช้ (S-SEC-03): มุมมองกลับด้าน — เลือกเมนูแล้วดูว่ากลุ่ม/ผู้ใช้ใดได้สิทธิ์อะไร (รายช่อง · ได้จากเมนูหลักแสดงจาง) */
-function ByMenu({ menus, onOpen }: { menus: MenuRow[]; onOpen: (type: string, id: string) => void }) {
-  const [code, setCode] = useState('ALL');
-  const q = useQuery({ queryKey: ['perm-by-menu', code], queryFn: () => api.get<ByMenuRow[]>('/api/v1/permissions/by-menu', { menu_code: code }) });
+/** กลุ่ม · ระดับ · ซ่อนเมนู ของผู้ใช้ (บรรทัดเล็กใต้ชื่อ) */
+function userLine(u: { group_code: string | null; approval_level: number; check_rights: boolean }) {
+  const g = u.group_code ? `กลุ่ม ${u.group_code}` : 'ไม่มีกลุ่ม';
+  const hide = u.check_rights ? ' · ซ่อนเมนูที่ไม่มีสิทธิ์' : '';
+  return `${g} · ระดับ ${u.approval_level}${hide}`;
+}
+type BCell = { v: 'Y' | 'L' | 'S' | 'N'; src: 'admin' | 'user' | 'group' | 'level' | 'none' | 'block'; at?: string; need?: number; why?: string };
+type BGroup = { id: string; code: string; name: string; admin: boolean; members: number; has_rows: boolean; cells: Record<PermAction, BCell> };
+type BUser = { id: string; code: string; name: string; status: string; group_code: string | null; approval_level: number; check_rights: boolean; admin: boolean; table: TableMode; cells: Record<PermAction, BCell> };
+/**
+ * ใครใช้เมนูนี้ได้ (S-SEC-03 · HANDOFF 200 ส่วนที่ 2 · เจ้าของ "เมนูตามกลุ่ม และ ตามเมนู นี้ต่างกันอย่างไร … สับสน"):
+ * ทุกกลุ่มและทุกผู้ใช้ของกิจการนี้ทุกครั้ง · ผลที่ได้จริงรายช่อง (server คิดด้วยกฎเดียวกับตอนใช้งาน) + ที่มา · ดูอย่างเดียว — คลิกแถวเพื่อไปแก้
+ */
+function ByMenu({ menus, initial, onOpen }: { menus: MenuRow[]; initial: string; onOpen: (type: 'G' | 'U', id: string, menu: string) => void }) {
+  const [code, setCode] = useState(initial);
+  const q = useQuery({ queryKey: ['perm-by-menu', code], queryFn: () => api.get<{ groups: BGroup[]; users: BUser[] }>('/api/v1/permissions/by-menu', { menu_code: code }) });
   const labelOf = (c: string) => (c === 'ALL' ? 'ทุกระบบงาน' : menus.find((m) => m.code === c)?.label ?? c);
-  const fromMenu = 'เมนูหลัก';
-  const noneWord = 'ไม่มี';
+  function where(c: BCell, kind: 'G' | 'U', group: string | null): [string, string] {
+    const at = c.at === code ? '' : c.at === 'ALL' ? 'ทุกระบบงาน' : c.at ? `เมนูหลัก ${labelOf(c.at)}` : '';
+    switch (c.src) {
+      case 'admin': return ['ADMIN', 'กลุ่ม ADMIN ได้ทุกอย่าง'];
+      case 'group': return kind === 'G' ? [at ? (c.at === 'ALL' ? 'ทุกระบบ' : 'เมนูหลัก') : 'ตั้งที่นี่', at ? `ได้จาก${at} (${c.at})` : 'ตั้งที่เมนูนี้'] : ['กลุ่ม', `จากกลุ่ม ${group ?? ''}${at ? ` ที่${at}` : ''}`];
+      case 'user': return [kind === 'U' && !at ? 'ตั้งเฉพาะคน' : 'เฉพาะคน', `ตั้งเฉพาะผู้ใช้นี้${at ? ` ที่${at}` : 'ที่เมนูนี้'}`];
+      case 'level': return ['ระดับ', 'ตามระดับอนุมัติ (ไม่ได้ตั้งในตารางสิทธิ์)'];
+      case 'none': return ['ไม่ได้ตั้ง', kind === 'G' ? 'กลุ่มนี้ไม่ได้ให้สิทธิ์ที่เมนูนี้ เมนูหลัก หรือทุกระบบงาน' : 'ไม่ได้ตั้งที่ใดเลย = ใช้ไม่ได้'];
+      default: return ['ปิด', c.why ?? ''];
+    }
+  }
+  const cell = (c: BCell, kind: 'G' | 'U', group: string | null, a: PermAction) => {
+    const [w, tip] = where(c, kind, group);
+    const ok = c.v !== 'N';
+    const own = (c.src === 'group' && kind === 'G' && c.at === code) || (c.src === 'user' && c.at === code);
+    return <td key={a} className={cx('c', own ? 'perm-own' : 'perm-inh', !ok && 'bad')} title={[tip, c.need ? `สมาชิกต้องระดับอนุมัติ ${c.need} ขึ้นไป` : ''].filter(Boolean).join(' · ')}>
+      <span className="bm-v">{c.v === 'S' ? 'S จอ' : `${permMark(c.v)} ${c.v}`}</span><span className="bm-src">{w}{c.need ? ` ≥${c.need}` : ''}</span>
+    </td>;
+  };
+  const go = (e: React.KeyboardEvent, fn: () => void) => { if (e.key === 'Enter') { e.preventDefault(); fn(); } };
+  const d = q.data;
   return (
     <>
-      <div className="filters"><label className="inline">เมนู <select value={code} onChange={(e) => setCode(e.target.value)}>{menus.map((m) => <option key={m.code} value={m.code}>{' '.repeat(m.depth * 2)}{m.label} ({m.code})</option>)}</select></label></div>
+      <div className="filters"><label className="inline">เมนู <select value={code} onChange={(e) => setCode(e.target.value)} aria-label="เมนู">{menus.map((m) => <option key={m.code} value={m.code}>{' '.repeat(m.depth * 2)}{m.label} ({m.code})</option>)}</select></label>
+        <span className="small muted">ดูอย่างเดียว — คลิกแถวเพื่อไปแก้สิทธิ์ของกลุ่ม/ผู้ใช้นั้นที่เมนูนี้</span></div>
       <ErrorBox error={q.error} />
-      <p className="perm-legend small"><span className="perm-own">✓ Y</span> ใช้ได้ · <span className="perm-own">✓ L</span> ใช้ได้และบันทึกเหตุการณ์ · <span className="perm-own bad">✗ N</span> ไม่ให้ใช้ · <span className="perm-own">S จอ</span> พิมพ์ออกจอเท่านั้น · <b>ตัวหนาสี</b> = ตั้งที่เมนูนี้ · <span className="perm-inh">(✓) เมนูหลัก</span> = ได้จากเมนูหลัก (จาง) · <span className="perm-inh bad">(✗) ไม่มี</span> = ไม่ได้กำหนด</p>
-      {/* หัวคอลัมน์และค่าใช้ความกว้างเดียวกัน (HANDOFF 198 เจ้าของ ข้อ 5 "ให้ตรงกับหัว column") */}
+      <p className="perm-legend small"><span className="perm-own">✓ Y</span> ใช้ได้ · <span className="perm-own">✓ L</span> ใช้ได้และบันทึกเหตุการณ์ · <span className="perm-own">S จอ</span> พิมพ์ออกจอเท่านั้น · <span className="perm-own bad">✗ N</span> ใช้ไม่ได้
+        {' · '}ใต้เครื่องหมาย = ที่มา: <b>ตั้งที่นี่</b>/<b>ตั้งเฉพาะคน</b> (ตัวหนาสี = ตั้งที่เมนูนี้) · เมนูหลัก · ทุกระบบ · กลุ่ม · ระดับ (ตามระดับอนุมัติ) · ไม่ได้ตั้ง · ปิด (ชี้ดูเหตุ) · ≥5 = สมาชิกต้องระดับ 5 ขึ้นไป</p>
       <div className="table-wrap perm-bymenu">
         <table className="grid">
           <colgroup><col className="w-type" /><col className="w-code" /><col />{ACTS.map(([a]) => <col key={a} className="w-act" />)}</colgroup>
-          <thead><tr><th>ประเภท</th><th>ผู้ใช้/กลุ่ม</th><th>ชื่อ</th>{ACTS.map(([, th]) => <th key={th} className="c">{th}</th>)}</tr></thead>
+          <thead><tr><th>ประเภท</th><th>รหัส</th><th>ชื่อ</th>{ACTS.map(([, th]) => <th key={th} className="c">{th}</th>)}</tr></thead>
           <tbody>
-            {q.data?.map((r) => (
-              <tr key={r.subject_type + r.subject_id} className="row-open" onClick={() => onOpen(r.subject_type, r.subject_id)}>
-                <td>{r.subject_type === 'G' ? 'กลุ่ม' : 'ผู้ใช้'}</td><td className="mono">{r.code}</td><td>{r.name}</td>
-                {ACTS.map(([, , c]) => {
-                  const x = r.cells[c];
-                  const inh = !!x && x.from !== code;
-                  return <td key={c} title={x ? (inh ? `ตามเมนูหลัก ${labelOf(x.from)} ${x.from}` : 'ตั้งที่เมนูนี้') : 'ไม่ได้กำหนด'} className={cx('c', inh || !x ? 'perm-inh' : 'perm-own', (!x || x.v === 'N') && 'bad')}>{x ? (inh ? <>({permMark(x.v)}) {fromMenu}</> : ownLabel(x.v)) : <>(✗) {noneWord}</>}</td>;
-                })}
+            {d?.groups.map((g) => (
+              <tr key={g.id} className={cx('row-open', g.admin && 'perm-admin-row')} tabIndex={0} title={g.admin ? 'กลุ่ม ADMIN ได้ทุกอย่าง — ไม่ต้องตั้งสิทธิ์' : `คลิกเพื่อตั้งสิทธิ์ของกลุ่ม ${g.code} ที่เมนูนี้`}
+                onClick={() => !g.admin && onOpen('G', g.id, code)} onKeyDown={(e) => !g.admin && go(e, () => onOpen('G', g.id, code))}>
+                <td>กลุ่ม</td><td className="mono" data-no-i18n>{g.code}</td>
+                <td><span data-no-i18n>{g.name}</span> <span className="small muted">· {g.members} คน</span>{!g.admin && !g.has_rows && <div className="small warn-text">ยังไม่ได้ตั้งสิทธิ์ของกลุ่มในบริษัทนี้</div>}</td>
+                {g.admin ? <td colSpan={ACTS.length} className="c perm-own">ได้ทุกอย่าง (ADMIN)</td> : ACTS.map(([a]) => cell(g.cells[a], 'G', g.code, a))}
               </tr>
             ))}
-            {q.data && !q.data.length && <tr><td colSpan={10} className="empty">ยังไม่มีกลุ่มหรือผู้ใช้ที่กำหนดสิทธิ์ในเมนูนี้ เมนูหลัก หรือ "ทุกระบบงาน"</td></tr>}
+            {d?.users.map((u) => (
+              <tr key={u.id} className={cx('row-open', u.status !== 'A' && 'muted')} tabIndex={0} title={`คลิกเพื่อดู/ปรับสิทธิ์เพิ่มเติมของ ${u.code} ที่เมนูนี้`}
+                onClick={() => onOpen('U', u.id, code)} onKeyDown={(e) => go(e, () => onOpen('U', u.id, code))}>
+                <td>ผู้ใช้</td><td className="mono" data-no-i18n>{u.code}</td>
+                <td><span data-no-i18n>{u.name}</span>
+                  <div className="small muted">{userLine(u)}{u.status !== 'A' && <> · <Pill tone="d">ระงับ — เข้าระบบไม่ได้</Pill></>}</div></td>
+                {u.admin ? <td colSpan={ACTS.length} className="c perm-own">ได้ทุกอย่าง (ADMIN)</td> : ACTS.map(([a]) => cell(u.cells[a], 'U', u.group_code, a))}
+              </tr>
+            ))}
+            {d && !d.groups.length && !d.users.length && <tr><td colSpan={10} className="empty">ยังไม่มีกลุ่มหรือผู้ใช้ในบริษัทนี้</td></tr>}
           </tbody>
         </table>
       </div>

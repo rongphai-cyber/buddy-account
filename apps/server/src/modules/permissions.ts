@@ -744,41 +744,72 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
     };
   });
 
+  /**
+   * ใครใช้เมนูนี้ได้ (S-SEC-03 · HANDOFF 200 ส่วนที่ 2 · เจ้าของ "เมนูตามกลุ่ม และ ตามเมนู นี้ต่างกันอย่างไร … สับสน"):
+   * ทุกกลุ่มและทุกผู้ใช้ของลูกค้าเจ้าของบริษัทนี้ (ผู้ให้บริการก็เช่นกัน · HANDOFF 191) — ผลที่ได้จริงรายช่องจาก decide() ตัวเดียวกับตอนใช้งานจริง
+   * อ่านแถวสิทธิ์ของทั้งบริษัทครั้งเดียว แล้วคิดในหน่วยความจำ (ไม่ query ต่อคน)
+   * src: admin = กลุ่ม ADMIN · user/group = ตารางสิทธิ์ (at = เมนูที่ตั้ง: เมนูนี้/เมนูหลัก/ALL) · level = ตามระดับอนุมัติ · none = ไม่ได้กำหนด (ใช้ไม่ได้) · block = ปิดด้วยเหตุอื่น (why)
+   */
   app.get('/api/v1/permissions/by-menu', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ menu_code: z.string().min(1).max(30) }), req.query);
     if (providerOnly(q.menu_code)) throw badRequest(`เมนู ${q.menu_code} เป็นของเจ้าหน้าที่ผู้ให้บริการ — ไม่อยู่ในตารางสิทธิ์`);
     if ((await companyTenantOff(db, a.companyId)).includes(q.menu_code)) throw badRequest(`เมนู ${q.menu_code} ยังไม่เปิดให้ลูกค้าเจ้าของบริษัทนี้ — ไม่อยู่ในตารางสิทธิ์ (ผู้ให้บริการเปิดได้ที่ ลูกค้าผู้ใช้บริการ)`);
-    // แถวของเมนูนี้ + เมนูหลักทุกชั้น + ทุกระบบงาน (HANDOFF 161) — menu_code บอกว่ามาจากเมนูไหน
-    const chain = chainOf(q.menu_code);
-    // เฉพาะผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทนี้ — ผู้ให้บริการก็เช่นกัน (HANDOFF 191)
+    const menu = q.menu_code;
+    if (menu !== ALL_MENU && !LABEL.has(menu)) throw badRequest(`ไม่พบเมนู ${menu}`);
     const ct = await companyTenant(a.companyId);
-    const rows = await sql<{ subject_type: string; subject_id: string; code: string | null; name: string | null; menu_code: string } & Record<string, string | null>>`
-      SELECT p.subject_type, p.subject_id, COALESCE(u.username, g.code) AS code, COALESCE(u.display_name, g.name) AS name, m.code AS menu_code,
-             p.can_read, p.can_add, p.can_edit, p.can_cancel, p.can_delete, p.can_print, p.can_approve
-        FROM sys_permission p JOIN sys_menu m ON m.id = p.menu_id
-        LEFT JOIN sys_user u ON p.subject_type = 'U' AND u.id = p.subject_id
-        LEFT JOIN sys_user_group g ON p.subject_type = 'G' AND g.id = p.subject_id AND g.deleted_at IS NULL
-       WHERE p.company_id = ${a.companyId} AND p.deleted_at IS NULL AND m.code = ANY(${chain}::text[])
-         AND (${a.isPlatform} OR COALESCE(u.tenant_id, g.tenant_id) IS NOT DISTINCT FROM ${a.tenantId ?? null}::uuid)
-         AND COALESCE(u.tenant_id, g.tenant_id) IS NOT DISTINCT FROM ${ct}::uuid
-         AND (u.id IS NOT NULL OR g.id IS NOT NULL)
-       ORDER BY p.subject_type DESC, 3`.execute(db);
-    // ต่อผู้ใช้/กลุ่ม ต่อช่อง: ค่าของเมนูที่ใกล้ที่สุดในสายที่ตั้งช่องนั้นไว้ (ตัวเอง → เมนูหลัก → ALL) · HANDOFF 197
-    const out = new Map<string, { subject_type: string; subject_id: string; code: string | null; name: string | null; cells: Record<string, { v: string; from: string }> }>();
-    for (const r of rows.rows) {
-      const k = `${r.subject_type}:${r.subject_id}`;
-      const o = out.get(k) ?? { subject_type: r.subject_type, subject_id: r.subject_id, code: r.code, name: r.name, cells: {} };
-      for (const x of ACTIONS) {
-        const v = (r[COL[x]] ?? '').trim(), cur = o.cells[COL[x]];
-        if (v && (!cur || chain.indexOf(r.menu_code) < chain.indexOf(cur.from))) o.cells[COL[x]] = { v, from: r.menu_code };
-      }
-      out.set(k, o);
-    }
-    // can_* = ค่าที่ได้ของแต่ละช่อง · menu_code = เมนูที่ใกล้ที่สุดที่ให้ค่า (ตัวเอง/เมนูหลัก/ทุกระบบงาน)
-    return [...out.values()].filter((o) => Object.keys(o.cells).length).map((o) => ({ ...o,
-      menu_code: Object.values(o.cells).map((c) => c.from).sort((x, y) => chain.indexOf(x) - chain.indexOf(y))[0]!,
-      ...Object.fromEntries(ACTIONS.map((x) => [COL[x], o.cells[COL[x]]?.v ?? ''])) }));
+    if (!a.isPlatform && (ct ?? null) !== (a.tenantId ?? null)) throw notFound('บริษัท');
+    const groups = await db.selectFrom('sys_user_group').select(['id', 'code', 'name']).where('deleted_at', 'is', null)
+      .where(sql<boolean>`tenant_id IS NOT DISTINCT FROM ${ct}::uuid`).orderBy('code').execute();
+    const admins = new Set(groups.filter((g) => g.code === 'ADMIN').map((g) => g.id));
+    // ผู้ใช้ที่เข้าบริษัทนี้ได้: ผูกบริษัทนี้ หรืออยู่กลุ่ม ADMIN ของลูกค้า (เข้าได้ทุกบริษัทของลูกค้า)
+    const users = (await sql<{ id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; user_group_id: string | null; app_access: unknown }>`
+      SELECT u.id, u.username, u.display_name, u.status, u.approval_level, u.check_rights, u.user_group_id, u.app_access FROM sys_user u
+       WHERE u.deleted_at IS NULL AND u.tenant_id IS NOT DISTINCT FROM ${ct}::uuid
+         AND (EXISTS (SELECT 1 FROM sys_user_company uc WHERE uc.user_id = u.id AND uc.company_id = ${a.companyId} AND uc.deleted_at IS NULL)
+              OR u.user_group_id = ANY(${[...admins]}::uuid[]))
+       ORDER BY u.username`.execute(db)).rows;
+    // แถวสิทธิ์ทั้งบริษัท (เหมือน loadRows: ไม่นับเมนูผู้ให้บริการ)
+    const all = await db.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id')
+      .select(['p.subject_type', 'p.subject_id', 'm.code', 'p.can_read', 'p.can_add', 'p.can_edit', 'p.can_cancel', 'p.can_delete', 'p.can_print', 'p.can_approve'])
+      .where('p.company_id', '=', a.companyId).where('p.deleted_at', 'is', null).where('m.code', 'not in', [...PLATFORM_MENUS]).execute();
+    const bySubject = new Map<string, PermRow[]>();
+    for (const r of all) { const k = `${r.subject_type}:${r.subject_id}`; (bySubject.get(k) ?? bySubject.set(k, []).get(k)!).push(r as unknown as PermRow); }
+    const off = await modulesOff(db, a.companyId);
+    type Cell = { v: 'Y' | 'L' | 'S' | 'N'; src: 'admin' | 'user' | 'group' | 'level' | 'none' | 'block'; at?: string; need?: number; why?: string };
+    const cellsOf = (ctx: AuthContext, rows: PermRow[], isGroup: boolean) => Object.fromEntries(ACTIONS.map((x) => {
+      const r = decide(ctx, rows, menu, x, off);
+      const v: Cell['v'] = r.allowed ? (r.screenOnly ? 'S' : r.log ? 'L' : 'Y') : 'N';
+      if (ctx.isAdmin && r.allowed) return [x, { v, src: 'admin' } as Cell];
+      const tc = tableCell(rows, menu, x), mode = tableMode(ctx, rows);
+      const need = levelNeeded(menu, x);
+      let c: Cell;
+      if (r.allowed) c = tc && mode !== 'off' ? { v, src: tc.subject === 'U' ? 'user' : 'group', at: tc.menu } : { v, src: 'level' };
+      else if (r.why === 'table') c = tc ? { v, src: tc.subject === 'U' ? 'user' : 'group', at: tc.menu } : { v, src: 'none' };
+      else c = { v, src: 'block', why: whyText(r, ctx, menu, x) };
+      // กลุ่ม: สมาชิกยังต้องมีระดับอนุมัติพอ (ยกเลิก ลบ รับรอง กำหนดค่า เงินเดือน ความปลอดภัย)
+      if (isGroup && r.allowed && need > 0) c.need = need;
+      return [x, c];
+    })) as Record<Action, Cell>;
+    const base = { ...a, apiKeyId: undefined, apiKeyReadOnly: undefined, isPlatform: false } as AuthContext;
+    const members = new Map<string, number>();
+    for (const u of users) if (u.user_group_id) members.set(u.user_group_id, (members.get(u.user_group_id) ?? 0) + 1);
+    return {
+      menu,
+      groups: groups.map((g) => {
+        const rows = bySubject.get(`G:${g.id}`) ?? [];
+        // กลุ่ม = ค่าตั้งต้นของสมาชิก: คิดเหมือนสมาชิกระดับ 9 ที่ใช้ตาราง (ระดับไม่จำกัด → ช่อง need บอกระดับที่สมาชิกต้องมี)
+        const ctx: AuthContext = { ...base, userId: g.id, groupId: g.id, approvalLevel: 9, checkRights: true, isAdmin: g.code === 'ADMIN', apps: undefined };
+        return { id: g.id, code: g.code, name: g.name, admin: g.code === 'ADMIN', members: members.get(g.id) ?? 0, has_rows: rows.length > 0, cells: cellsOf(ctx, rows, true) };
+      }),
+      users: users.map((u) => {
+        const g = groups.find((x) => x.id === u.user_group_id) ?? null;
+        const rows = [...(bySubject.get(`U:${u.id}`) ?? []), ...(g ? bySubject.get(`G:${g.id}`) ?? [] : [])];
+        const ctx: AuthContext = { ...base, userId: u.id, groupId: g?.id ?? null, approvalLevel: u.approval_level, checkRights: u.check_rights, isAdmin: !!g && admins.has(g.id), apps: normalizeAppAccess(u.app_access) };
+        return { id: u.id, code: u.username, name: u.display_name, status: u.status, group_code: g?.code ?? null, approval_level: u.approval_level, check_rights: u.check_rights,
+          admin: ctx.isAdmin, table: ctx.isAdmin ? 'off' : tableMode(ctx, rows), cells: cellsOf(ctx, rows, false) };
+      }),
+    };
   });
 
   app.put('/api/v1/permissions', async (req) => {

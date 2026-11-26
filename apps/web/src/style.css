@@ -1193,6 +1193,12 @@ select.perm-blocked { outline: 2px dashed var(--warn); outline-offset: -2px; }
 .perm-bymenu col.w-act { width: 92px; }
 .perm-bymenu th.c, .perm-bymenu td.c { text-align: center; padding-left: 2px; padding-right: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .perm-bymenu td.perm-inh { font-size: 12.5px; }
+/* HANDOFF 200 ส่วนที่ 2: ใครใช้เมนูนี้ได้ — ค่า + ที่มาในช่อง · แถวที่เปิดมาจากแท็บนี้ */
+.perm-bymenu .bm-v { display: block; font-weight: 600; }
+.perm-bymenu .bm-src { display: block; font-size: 11px; opacity: .75; overflow: hidden; text-overflow: ellipsis; }
+.perm-bymenu tr.perm-admin-row { cursor: default; }
+.perm-bymenu tr:focus-visible { outline: 2px solid var(--accent, #7b6cd9); outline-offset: -2px; }
+.perm-grid tr.perm-focus > td { background: color-mix(in srgb, #f5c86a 28%, transparent); }
 .perm-user-head { font-size: 15px; }
 .user-rights-open { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .level-hint { line-height: 1.5; }
