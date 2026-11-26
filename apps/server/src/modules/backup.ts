@@ -11,7 +11,7 @@ import { applyPostingTemplate, seedLookups } from '../company-template.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { REPO_ROOT } from '../config.js';
-import { OCIO_BRANCH_FIX_SQL, OCIO_COMPANY_CODE } from '../data-fixes/ocio-express-branch.js';
+import { OCIO_BRANCH_FIX_CALL, OCIO_BRANCH_FIX_FUNCTION, OCIO_COMPANY_CODE } from '../data-fixes/ocio-express-branch.js';
 
 /**
  * สำรอง / ทดสอบ / นำข้อมูลสำรองมาใช้ รายบริษัท (คู่มือบทที่ 20 S-DM-02/03/04 · T0.15 รายลูกค้า) และข้อมูลผู้ใช้ (บทที่ 23 S-SEC-07/08)
@@ -217,7 +217,9 @@ export const COMPANY_STEPS: Step[] = [
   // แก้ข้อมูลครั้งเดียวของ OCIO (HANDOFF 196) — นำแฟ้มสำรองของ OCIO ที่ทำก่อนรุ่นนี้กลับ ต้องได้สาขาที่แก้แล้วเหมือนกัน · บริษัทอื่นไม่ทำอะไร
   { n: 81, name: 'สาขาของเอกสาร OCIO ที่ย้ายมาจาก Express ตามเลขชุด', run: async (tx, id) => {
     const code = (await sql<{ code: string }>`SELECT code FROM sys_company WHERE id = ${id}`.execute(tx)).rows[0]?.code;
-    if (code === OCIO_COMPANY_CODE) await sql.raw(OCIO_BRANCH_FIX_SQL).execute(tx);
+    if (code !== OCIO_COMPANY_CODE) return;
+    await sql.raw(OCIO_BRANCH_FIX_FUNCTION).execute(tx);
+    await sql.raw(OCIO_BRANCH_FIX_CALL).execute(tx);
   } },
 ];
 /** แฟ้มสำรองผู้ใช้: 0060 คัดลอกสิทธิ์ ยอดยกมาลูกหนี้ → เงินมัดจำยกมา (ทำกับบริษัทของลูกค้ารายนี้) */

@@ -241,10 +241,11 @@ describe('importExpress on PGlite', () => {
     expect((await database.db.selectFrom('doc_header').select('id').where('company_id', '<>', rep.company_id).where('party_name', 'is not', null).execute())).toHaveLength(0);
   });
 
-  it('HANDOFF 196: one-off OCIO fix — Express docs numbered letters+NN move to branch 000NN with their journal/VAT/WHT/cheque; HO numbers, Buddy-keyed docs and other companies stay; missing branch aborts; totals unchanged; re-run = 0; migration file = same SQL; restore step only for OCIO', async () => {
-    const { OCIO_BRANCH_FIX_SQL } = await import('../src/data-fixes/ocio-express-branch.js');
+  it('HANDOFF 196: one-off OCIO fix — Express docs numbered letters+NN move to branch 000NN with their journal/VAT/WHT/cheque; receipts follow invoices on one branch, cheque slips follow their cheques; HO numbers, Buddy-keyed docs and other companies stay; missing branch = skip + log (no abort); totals unchanged; re-run = 0; migration file = same SQL; restore step only for OCIO', async () => {
+    const { OCIO_BRANCH_FIX_FUNCTION, OCIO_BRANCH_FIX_MIGRATION } = await import('../src/data-fixes/ocio-express-branch.js');
+    const OCIO_BRANCH_FIX_SQL = OCIO_BRANCH_FIX_FUNCTION;   // สร้างฟังก์ชัน · fx() = เรียก
     const file = readFileSync(new URL('../../../db/migrations/0081_ocio_express_branch_fix.sql', import.meta.url), 'utf8');
-    expect(file.endsWith(OCIO_BRANCH_FIX_SQL + '\n')).toBe(true);
+    expect(file.endsWith(OCIO_BRANCH_FIX_MIGRATION)).toBe(true);
     const step = COMPANY_STEPS.find((s) => s.n === 81)!;
     const rep = await importExpress(database.db, memSource(files), { code: 'OCIO-0505566016991', tenantId: null });
     const co = rep.company_id;
@@ -268,8 +269,25 @@ describe('importExpress on PGlite', () => {
         await sql`INSERT INTO fin_cheque (company_id, branch_id, direction, instrument, cheque_no, cheque_date, amount, net_amount, status, source_header_id) VALUES (${company}, ${t.branch_id}, 'R', 'CHEQUE', ${'C' + no}, ${t.voucher_date}, 107, 107, '10', ${h})`.execute(tx);
         return h;
       };
-      await mk(co, 'IV01-0039', '1'); await mk(co, 'INV03-006', '1'); await mk(co, 'IV02-0049', null);   // ไม่มี rectype แต่ใบสำคัญ from_express = ย้ายมา
-      await mk(co, 'IV00-0045', '1'); await mk(co, 'IVBK-001', '1'); await mk(co, 'IVEX-0-109', '1'); await mk(co, 'IV6801001', '1');
+      // ใบเสร็จที่ย้ายมา: ตัดชำระใบกำกับ → "ย้ายตามใบขาย" เมื่อใบที่ตัดอยู่สาขาเดียว
+      const rcpt = async (no: string, invoices: string[]) => {
+        const h = await mk(co, no, '1');
+        await sql`UPDATE doc_header SET doc_class = 'RE' WHERE id = ${h}`.execute(tx);
+        await sql`DELETE FROM tax_vat_entry WHERE header_id = ${h}`.execute(tx);
+        for (const i of invoices) await sql`INSERT INTO doc_settlement (company_id, payment_header_id, invoice_header_id, amount) VALUES (${co}, ${h}, ${i}, 10)`.execute(tx);
+        return h;
+      };
+      const iv01 = await mk(co, 'IV01-0039', '1'); await mk(co, 'INV03-006', '1'); const iv02 = await mk(co, 'IV02-0049', null);   // ไม่มี rectype แต่ใบสำคัญ from_express = ย้ายมา
+      const iv00 = await mk(co, 'IV00-0045', '1'); await mk(co, 'IVBK-001', '1'); await mk(co, 'IVEX-0-109', '1'); await mk(co, 'IV6801001', '1');
+      const re1 = await rcpt('RE0001', [iv01]); const re2 = await rcpt('RE0002', [iv01, iv02]); await rcpt('RE0003', [iv00]); await rcpt('RE0004', []);
+      // ใบนำฝากเช็คที่ย้ายมา: เช็คของ RE0001 อย่างเดียว → ตาม · ปนกับ RE0002 (สำนักงานใหญ่) → อยู่สำนักงานใหญ่
+      const slip = async (no: string, from: string[]) => {
+        const q = await mk(co, no, '1');
+        await sql`UPDATE doc_header SET doc_class = 'BQ' WHERE id = ${q}`.execute(tx);
+        await sql`DELETE FROM tax_vat_entry WHERE header_id = ${q}`.execute(tx); await sql`DELETE FROM tax_wht_entry WHERE header_id = ${q}`.execute(tx); await sql`DELETE FROM fin_cheque WHERE source_header_id = ${q}`.execute(tx);
+        await sql`UPDATE fin_cheque SET deposit_header_id = ${q} WHERE source_header_id = ANY(${from}::uuid[])`.execute(tx);
+      };
+      await slip('BQ0001', [re1]);
       await mk(co, 'IV01-0100', null, false);   // คีย์ใน Buddy เอง (ไม่ใช่ Express) — ไม่แตะแม้เลขชุดตรง
       await mk(other, 'IV01-0001', '1');        // บริษัทอื่น — ไม่แตะ
       // ใบสำคัญ GL ที่ย้ายมา ไม่มีเอกสาร เลขชุดบอกสาขา
@@ -290,32 +308,41 @@ describe('importExpress on PGlite', () => {
           (SELECT md5(string_agg(id::text || doc_no || doc_date::text || row_version::text || updated_at::text, ',' ORDER BY id)) FROM doc_header WHERE company_id = ${co}) fp`.execute(tx)).rows[0];
       const otherBefore = await branchOf(other);
 
-      // ยังไม่มีสาขา 00001–00003 → ยกเลิกทั้งหมด ไม่เดา (savepoint)
-      await sql`SAVEPOINT s196`.execute(tx);
-      await expect(sql.raw(OCIO_BRANCH_FIX_SQL).execute(tx)).rejects.toThrow(/no branch with tax branch no 00001, 00002, 00003/);
-      await sql`ROLLBACK TO SAVEPOINT s196`.execute(tx);
+      // ยังไม่มีสาขา 00001–00003 → ไม่แก้อะไร + บันทึก BRANCH_FIX_SKIPPED (ไม่ล้ม deploy) · ทำซ้ำภายหลังได้ด้วย SELECT ocio196_branch_fix()
+      const fx = async () => (await sql<{ r: string }>`SELECT ocio196_branch_fix() AS r`.execute(tx)).rows[0]!.r;
+      await sql.raw(OCIO_BRANCH_FIX_SQL).execute(tx);
+      expect(await fx()).toMatch(/^skipped: /);
       expect((await branchOf(co)).every((x) => x.endsWith('=00000'))).toBe(true);
+      const skipped = (await sql<{ detail: { reason: string } }>`SELECT detail FROM sys_activity_log WHERE company_id = ${co} AND action = 'BRANCH_FIX_SKIPPED'`.execute(tx)).rows;
+      expect(skipped.map((r) => r.detail.reason)).toEqual(['missing branch 00001; missing branch 00002; missing branch 00003']);
 
       for (const [code, no] of [['P01', '00001'], ['W02', '00002'], ['W03', '00003']]) await sql`INSERT INTO sys_branch (company_id, code, name, tax_branch_no, is_head_office) VALUES (${co}, ${code}, ${'สาขา ' + no}, ${no}, false)`.execute(tx);
+      // สาขาซ้ำ = ข้ามเช่นกัน
+      await sql`INSERT INTO sys_branch (company_id, code, name, tax_branch_no, is_head_office) VALUES (${co}, 'P01B', 'สาขาซ้ำ', '00001', false)`.execute(tx);
+      expect(await fx()).toBe('skipped: duplicate branch 00001');
+      await sql`UPDATE sys_branch SET deleted_at = now() WHERE company_id = ${co} AND code = 'P01B'`.execute(tx);
       const before = await totals();
-      await sql.raw(OCIO_BRANCH_FIX_SQL).execute(tx);
+      expect(await fx()).toBe('moved docs 5, journals 6, vat 3, wht 4, cheques 4');
       const moved = Object.fromEntries((await branchOf(co)).map((x) => x.split('=') as [string, string]));
       for (const t of ['doc', 'jnl', 'vat', 'wht']) {
         expect([moved[`${t}:IV01-0039`], moved[`${t}:IV02-0049`], moved[`${t}:INV03-006`]], t).toEqual(['00001', '00002', '00003']);
         expect(['IV00-0045', 'IVBK-001', 'IVEX-0-109', 'IV6801001', 'IV01-0100'].map((n) => moved[`${t}:${n}`]), t).toEqual(Array(5).fill('00000'));
       }
       expect([moved['chq:CIV01-0039'], moved['chq:CIV01-0100'], moved['jnl:JV02-0007'], moved['jnl:JV001']]).toEqual(['00001', '00000', '00002', '00000']);
+      // ใบเสร็จ: ตัดใบสาขา 00001 อย่างเดียว → 00001 (พร้อมใบสำคัญ/WHT/เช็ค) · ตัดหลายสาขา/สำนักงานใหญ่/ไม่ได้ตัด → 00000 · ใบนำฝากเช็คตามเช็ค
+      expect(['doc', 'jnl', 'wht'].map((t) => moved[`${t}:RE0001`])).toEqual(['00001', '00001', '00001']);
+      expect([moved['chq:CRE0001'], moved['doc:RE0002'], moved['jnl:RE0002'], moved['doc:RE0003'], moved['doc:RE0004'], moved['doc:BQ0001'], moved['jnl:BQ0001']]).toEqual(['00001', '00000', '00000', '00000', '00000', '00001', '00001']);
       expect(await totals()).toEqual(before);   // ยอด เลขที่ วันที่ รุ่นแถว เวลาแก้ไข เท่าเดิม
       expect(await branchOf(other)).toEqual(otherBefore);
-      const log = (await sql<{ detail: { docs: number; journals: number; vat: number; by_branch: Record<string, { docs: number; prefixes: Record<string, number> }> } }>`SELECT detail FROM sys_activity_log WHERE company_id = ${co} AND action = 'BRANCH_FIX'`.execute(tx)).rows;
+      const log = (await sql<{ detail: { docs: number; journals: number; vat: number; by_branch: Record<string, { docs: number; by_prefix: Record<string, number> }> } }>`SELECT detail FROM sys_activity_log WHERE company_id = ${co} AND action = 'BRANCH_FIX'`.execute(tx)).rows;
       expect(log).toHaveLength(1);
-      expect([log[0]!.detail.docs, log[0]!.detail.journals, log[0]!.detail.vat, log[0]!.detail.by_branch['00003']!.prefixes]).toEqual([3, 4, 3, { INV03: 1 }]);
+      expect([log[0]!.detail.docs, log[0]!.detail.journals, log[0]!.detail.vat, log[0]!.detail.by_branch['00003']!.by_prefix, log[0]!.detail.by_branch['00001']!.by_prefix]).toEqual([5, 6, 3, { INV03: 1 }, { IV01: 1, RE: 1, BQ: 1 }]);
       const trig = (await sql<{ n: number }>`SELECT count(*)::int n FROM pg_trigger WHERE tgrelid IN ('doc_header'::regclass, 'gl_journal'::regclass, 'tax_vat_entry'::regclass, 'tax_wht_entry'::regclass, 'fin_cheque'::regclass) AND NOT tgisinternal AND tgenabled = 'D'`.execute(tx)).rows[0]!.n;
       expect(trig).toBe(0);
 
       // รันซ้ำ / ขั้นนำแฟ้มสำรองกลับ = 0 แถว ไม่บันทึกซ้ำ · บริษัทอื่นไม่ทำอะไร
       const snap = await branchOf(co);
-      await sql.raw(OCIO_BRANCH_FIX_SQL).execute(tx);
+      expect(await fx()).toBe('moved docs 0, journals 0, vat 0, wht 0, cheques 0');
       await step.run(tx, co); await step.run(tx, other);
       expect(await branchOf(co)).toEqual(snap);
       expect(await branchOf(other)).toEqual(otherBefore);
