@@ -22,7 +22,7 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
   const row = await db
     .selectFrom('sys_session as s')
     .innerJoin('sys_user as u', 'u.id', 's.user_id')
-    .leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id')
+    .leftJoin('sys_user_group as g', (j) => j.onRef('g.id', '=', 'u.user_group_id').on('g.deleted_at', 'is', null))
     .leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
     .leftJoin('sys_user_security as sec', (j) => j.onRef('sec.user_id', '=', 'u.id').on('sec.deleted_at', 'is', null))
     .select(['sec.totp_enabled', 's.id', 's.user_id', 's.current_company_id', 's.current_branch_id', 's.work_date', 'u.username', 'u.display_name', 'u.status', 'u.tenant_id', 'u.approval_level', 'u.check_rights', 'u.user_group_id', 'u.app_access',

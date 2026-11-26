@@ -41,7 +41,7 @@ export async function loadApiKey(db: Db, header: string, ip: string | undefined)
   if (!m) throw bad('กุญแจ API ไม่ถูกรูปแบบ — ใช้ Authorization: Bearer bk_…');
   const row = await db.selectFrom('sys_api_key as k')
     .innerJoin('sys_user as u', 'u.id', 'k.user_id').innerJoin('sys_company as c', 'c.id', 'k.company_id')
-    .leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id').leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
+    .leftJoin('sys_user_group as g', (j) => j.onRef('g.id', '=', 'u.user_group_id').on('g.deleted_at', 'is', null)).leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
     .select(['k.id', 'k.key_hash', 'k.company_id', 'k.read_only', 'k.expires_on', 'k.status', 'k.last_used_at', 'c.status as company_status', 'c.tenant_id as company_tenant_id',
       'u.id as user_id', 'u.username', 'u.display_name', 'u.status as user_status', 'u.tenant_id', 'u.approval_level', 'u.check_rights', 'u.user_group_id',
       'g.code as group_code', 'g.tenant_id as group_tenant_id', 't.status as tenant_status', 't.expires_on as tenant_expires'])
@@ -93,7 +93,7 @@ export function apiKeyRoutes(app: FastifyInstance, db: Db) {
         u.approval_level, u.check_rights, g.code AS group_code,
         EXISTS (SELECT 1 FROM sys_permission p WHERE p.company_id = k.company_id AND p.deleted_at IS NULL
                  AND ((p.subject_type = 'U' AND p.subject_id = u.id) OR (p.subject_type = 'G' AND p.subject_id = u.user_group_id))) AS has_table
-        FROM sys_api_key k JOIN sys_user u ON u.id = k.user_id LEFT JOIN sys_user_group g ON g.id = u.user_group_id LEFT JOIN sys_user cu ON cu.id = k.created_by
+        FROM sys_api_key k JOIN sys_user u ON u.id = k.user_id LEFT JOIN sys_user_group g ON g.id = u.user_group_id AND g.deleted_at IS NULL LEFT JOIN sys_user cu ON cu.id = k.created_by
        WHERE k.company_id = ${a.companyId} AND k.deleted_at IS NULL ORDER BY k.status, k.created_at DESC`.execute(db)).rows;
   });
 
@@ -108,7 +108,7 @@ export function apiKeyRoutes(app: FastifyInstance, db: Db) {
     }), req.body);
     if (b.expires_on && b.expires_on < new Date().toISOString().slice(0, 10)) throw badRequest('วันหมดอายุต้องไม่ก่อนวันนี้');
     // ผู้ใช้ต้องอยู่ลูกค้า (tenant) เดียวกับบริษัทและเข้าบริษัทนี้ได้
-    const u = await db.selectFrom('sys_user as u').leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id')
+    const u = await db.selectFrom('sys_user as u').leftJoin('sys_user_group as g', (j) => j.onRef('g.id', '=', 'u.user_group_id').on('g.deleted_at', 'is', null))
       .select(['u.id', 'u.username', 'u.status', 'u.tenant_id', 'g.code as group_code', 'g.tenant_id as group_tenant_id']).where('u.id', '=', b.user_id).where('u.deleted_at', 'is', null).executeTakeFirst();
     const co = await db.selectFrom('sys_company').select(['tenant_id']).where('id', '=', a.companyId).executeTakeFirstOrThrow();
     if (!u || (!a.isPlatform && (u.tenant_id ?? null) !== (a.tenantId ?? null))) throw notFound('ผู้ใช้');

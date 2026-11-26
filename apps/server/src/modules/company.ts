@@ -386,7 +386,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
 
   app.get('/api/v1/users', async (req) => {
     const a = requireAdmin(req);
-    let uq = db.selectFrom('sys_user as u').leftJoin('sys_user_group as g', 'g.id', 'u.user_group_id').leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
+    let uq = db.selectFrom('sys_user as u').leftJoin('sys_user_group as g', (j) => j.onRef('g.id', '=', 'u.user_group_id').on('g.deleted_at', 'is', null)).leftJoin('sys_tenant as t', 't.id', 'u.tenant_id')
       .select(['u.id', 'u.username', 'u.display_name', 'u.status', 'u.approval_level', 'u.check_rights', 'u.single_session', 'u.app_access', 'u.last_login_at', 'u.user_group_id', 'u.tenant_id', 't.code as tenant_code', 'g.code as group_code', 'g.name as group_name',
         sql<boolean>`u.password_hash IS NOT NULL`.as('has_password')])
       .where('u.deleted_at', 'is', null);
@@ -440,11 +440,20 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   });
   const NO_COMPANY = 'ยังไม่ได้เลือกบริษัทที่เข้าได้ — ผู้ใช้นี้จะเข้าบริษัทใดไม่ได้ ติ๊กบริษัทอย่างน้อย 1 บริษัท (หรือเลือกกลุ่ม ADMIN ซึ่งเข้าได้ทุกบริษัท)';
   /** ตรวจว่ากลุ่มและบริษัทที่กำหนดให้ผู้ใช้อยู่ใน tenant เดียวกับผู้ใช้ — กันการให้สิทธิ์ข้ามลูกค้า */
+  const groupGone = (code: string) => badRequest(`กลุ่มผู้ใช้ ${code} ถูกลบไปแล้ว — ปิดหน้าต่างนี้ แล้วเปิดผู้ใช้ใหม่เพื่อเลือกกลุ่มอื่น (หรือ "— ไม่มีกลุ่ม —")`, [{ field: 'user_group_id', message: 'เลือกกลุ่มอื่น' }]);
+  /** ล็อกแถวกลุ่มในทรานแซกชันที่บันทึกผู้ใช้ — กันลบกลุ่มพร้อมกับบันทึกผู้ใช้เข้ากลุ่มนั้น (ลบกลุ่มล็อก FOR UPDATE แล้วนับสมาชิกในทรานแซกชันเดียวกัน) */
+  async function lockGroup(tx: Db, groupId: string | null | undefined) {
+    if (!groupId) return;
+    const g = await tx.selectFrom('sys_user_group').select(['code', 'deleted_at']).where('id', '=', groupId).forShare().executeTakeFirst();
+    if (!g || g.deleted_at) throw groupGone(g?.code ?? '');
+  }
   async function checkUserScope(tenantId: string | null, b: z.infer<typeof userBody>) {
     let admin = false;
     if (b.user_group_id) {
-      const g = await db.selectFrom('sys_user_group').select(['tenant_id', 'code']).where('id', '=', b.user_group_id).executeTakeFirst();
+      const g = await db.selectFrom('sys_user_group').select(['tenant_id', 'code', 'deleted_at']).where('id', '=', b.user_group_id).executeTakeFirst();
       if (!g || (g.tenant_id ?? null) !== tenantId) throw badRequest('กลุ่มผู้ใช้ต้องเป็นของลูกค้ารายเดียวกับผู้ใช้');
+      // กลุ่มถูกลบไปแล้ว (HANDOFF 198 · ผู้ดูแลอีกคนลบระหว่างที่หน้าต่างนี้เปิดอยู่) — ไม่ให้บันทึกผู้ใช้เข้ากลุ่มที่ไม่มีแล้ว
+      if (g.deleted_at) throw groupGone(g.code);
       admin = g.code === 'ADMIN';
     }
     // ผู้ใช้ที่ไม่ใช่กลุ่ม ADMIN ต้องเข้าได้อย่างน้อย 1 บริษัท — ไม่งั้นบันทึกได้แต่ใช้อะไรไม่ได้เลย (HANDOFF 159 · ข้อกำหนดเจ้าของ: ช่องบังคับเตือน)
@@ -469,6 +478,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       }
     }
     return db.transaction().execute(async (tx) => {
+      await lockGroup(tx, b.user_group_id);
       const u = await tx.insertInto('sys_user').values({ tenant_id: tenantId, username: b.username, display_name: b.display_name, password_hash: b.password ? await bcrypt.hash(b.password, 10) : null, user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, single_session: b.single_session ?? false, app_access: appAccessValue(b.app_access), status: b.status, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
       for (const c of b.companies) await tx.insertInto('sys_user_company').values({ company_id: c, user_id: u.id, created_by: a.userId }).execute();
       if (b.password) await markPasswordChanged(tx, u.id);
@@ -485,6 +495,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     if (id === a.userId && b.status === 'I') throw badRequest('ปิดการใช้งานบัญชีของตัวเองไม่ได้');
     await checkUserScope(cur.tenant_id, b);
     await db.transaction().execute(async (tx) => {
+      await lockGroup(tx, b.user_group_id);
       const patch: Record<string, unknown> = { username: b.username, display_name: b.display_name, user_group_id: b.user_group_id ?? null, approval_level: b.approval_level, check_rights: b.check_rights, status: b.status, updated_by: a.userId };
       if (b.password) patch.password_hash = await bcrypt.hash(b.password, 10);
       if (b.app_access !== undefined) patch.app_access = appAccessValue(b.app_access);
@@ -529,9 +540,11 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const a = requireAdmin(req);
     const g = await groupOf(a, parse(z.object({ id: uuid }), req.params).id);
     if (g.code === 'ADMIN') throw badRequest('ลบกลุ่ม ADMIN ไม่ได้ — กลุ่มผู้ดูแลระบบต้องมีเสมอ');
-    const n = Number((await db.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).where('user_group_id', '=', g.id).where('deleted_at', 'is', null).executeTakeFirstOrThrow()).n);
-    if (n) throw badRequest(`กลุ่ม ${g.code} มีผู้ใช้ ${n} คน — ย้ายผู้ใช้ไปกลุ่มอื่นก่อน (แท็บผู้ใช้ › แก้ไขผู้ใช้ › กลุ่มผู้ใช้) แล้วจึงลบกลุ่ม`);
     await db.transaction().execute(async (tx) => {
+      // ล็อกแถวกลุ่มก่อนนับสมาชิก — ผู้ดูแลอีกคนที่กำลังบันทึกผู้ใช้เข้ากลุ่มนี้ต้องรอ แล้วได้ "กลุ่มถูกลบไปแล้ว"
+      await tx.selectFrom('sys_user_group').select('id').where('id', '=', g.id).forUpdate().execute();
+      const n = Number((await tx.selectFrom('sys_user').select(sql<number>`count(*)`.as('n')).where('user_group_id', '=', g.id).where('deleted_at', 'is', null).executeTakeFirstOrThrow()).n);
+      if (n) throw badRequest(`กลุ่ม ${g.code} มีผู้ใช้ ${n} คน — ย้ายผู้ใช้ไปกลุ่มอื่นก่อน (แท็บผู้ใช้ › แก้ไขผู้ใช้ › กลุ่มผู้ใช้) แล้วจึงลบกลุ่ม`);
       const p = await tx.updateTable('sys_permission').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('subject_type', '=', 'G').where('subject_id', '=', g.id).where('deleted_at', 'is', null).executeTakeFirst();
       await tx.updateTable('sys_user_group').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('id', '=', g.id).execute();
       await logActivity(tx, a, { module: 'SET.SEC', action: 'DELETE_GROUP', docNo: g.code, table: 'sys_user_group', rowId: g.id, detail: { name: g.name, permission_rows: Number(p.numUpdatedRows) } });

@@ -16519,6 +16519,14 @@
 ]
 },
 {
+"th": "— ไม่มีกลุ่ม —",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "↻ คำนวณใหม่",
 "n": 2,
 "files": [
@@ -23185,6 +23193,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/fa.ts"
+]
+},
+{
+"th": "กลุ่มผู้ใช้ {0} ถูกลบไปแล้ว — ปิดหน้าต่างนี้ แล้วเปิดผู้ใช้ใหม่เพื่อเลือกกลุ่มอื่น (หรือ \"— ไม่มีกลุ่ม —\")",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -61443,6 +61458,13 @@
 ]
 },
 {
+"th": "เลือกกลุ่มอื่น",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "เลือกขอบเขตทั้งหมดแล้ว",
 "n": 1,
 "files": [
@@ -69539,13 +69561,6 @@
 "n": 1,
 "files": [
 "apps/web/src/components/ImportMapping.tsx"
-]
-},
-{
-"th": "— ไม่มีกลุ่ม —",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {

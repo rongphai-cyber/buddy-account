@@ -3833,5 +3833,7 @@
  "เมนูนี้เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN)": "This menu is for administrators only (ADMIN group)",
  "⚠ ตามตารางสิทธิ์{0}": "⚠ By rights table{0}",
  "🔑 กุญแจ API: ตามตารางสิทธิ์ ⚠": "🔑 API key: by rights table ⚠",
- "🔑 กุญแจ API: ตามระดับอนุมัติ": "🔑 API key: by approval level"
+ "🔑 กุญแจ API: ตามระดับอนุมัติ": "🔑 API key: by approval level",
+ "กลุ่มผู้ใช้ {0} ถูกลบไปแล้ว — ปิดหน้าต่างนี้ แล้วเปิดผู้ใช้ใหม่เพื่อเลือกกลุ่มอื่น (หรือ \"— ไม่มีกลุ่ม —\")": "User group {0} has been deleted — close this window and reopen the user to pick another group (or \"— No group —\")",
+ "เลือกกลุ่มอื่น": "Pick another group"
 }

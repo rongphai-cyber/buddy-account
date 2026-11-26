@@ -33,7 +33,7 @@ export const STANDARD_GROUPS: Array<{ code: string; name: string; rows: Row[] }>
     { menu: 'FI', ...FULL }, { menu: 'FI.BK', ...FULL }, { menu: 'TX.WHT', ...FULL }, { menu: 'FI.VAT', ...SEE }, { menu: 'SA', ...SEE }, { menu: 'PU', ...SEE },
     { menu: 'RP.DASH', read: 'Y' }, { menu: 'RP.SA', ...SEE }, { menu: 'RP.PU', ...SEE }, { menu: 'RP.CHQ', ...SEE },
     // HANDOFF 198: สมุดเงินฝากเปิดใบสำคัญ (ดู) · ดูสินค้าคงเหลือ
-    { menu: 'GL.JNL', ...SEE }, { menu: 'IC.STOCK', ...SEE } ] },
+    { menu: 'GL.JNL', ...SEE }, { menu: 'IC.STOCK', ...SEE }, { menu: 'RP.CENTER', ...SEE } ] },
   // ฝ่ายธุรการ (ใหม่ 197): ข้อมูลหลัก (ลูกค้า ผู้จำหน่าย สินค้า บริการ ชุดสินค้า พนักงานขาย) · ดู/พิมพ์ใบเสนอราคา ใบสั่งขาย/ซื้อ และเอกสารขาย/ซื้อ — ไม่ลงเงิน
   { code: 'GA', name: 'ฝ่ายธุรการ', rows: [
     { menu: 'SA', ...SEE }, { menu: 'PU', ...SEE }, { menu: 'SA.CUS', read: 'Y', add: 'Y', edit: 'Y', print: 'Y' }, { menu: 'PU.SUP', read: 'Y', add: 'Y', edit: 'Y', print: 'Y' },

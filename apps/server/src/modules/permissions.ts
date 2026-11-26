@@ -718,7 +718,7 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
              p.can_read, p.can_add, p.can_edit, p.can_cancel, p.can_delete, p.can_print, p.can_approve
         FROM sys_permission p JOIN sys_menu m ON m.id = p.menu_id
         LEFT JOIN sys_user u ON p.subject_type = 'U' AND u.id = p.subject_id
-        LEFT JOIN sys_user_group g ON p.subject_type = 'G' AND g.id = p.subject_id
+        LEFT JOIN sys_user_group g ON p.subject_type = 'G' AND g.id = p.subject_id AND g.deleted_at IS NULL
        WHERE p.company_id = ${a.companyId} AND p.deleted_at IS NULL AND m.code = ANY(${chain}::text[])
          AND (${a.isPlatform} OR COALESCE(u.tenant_id, g.tenant_id) IS NOT DISTINCT FROM ${a.tenantId ?? null}::uuid)
          AND COALESCE(u.tenant_id, g.tenant_id) IS NOT DISTINCT FROM ${ct}::uuid

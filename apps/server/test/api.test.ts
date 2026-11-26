@@ -8119,6 +8119,12 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await call('GET', '/api/v1/users')).body.groups.map((g: { code: string }) => g.code)).not.toContain('VIEW');
     expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'DELETE_GROUP' AND doc_no = 'VIEW' AND company_id = ${c1}`.execute(database.db)).rows[0]!.n).toBe(1);
     expect((await call('DELETE', `/api/v1/user-groups/${G.VIEW}`)).status).toBe(404);
+    // หน้าต่างของผู้ดูแลอีกคนที่เปิดค้างไว้ บันทึกผู้ใช้เข้ากลุ่มที่ถูกลบแล้ว = 400 บอกให้เลือกกลุ่มอื่น (ไม่ตกไปใช้สิทธิ์ตามระดับ)
+    const gone = await call('POST', '/api/v1/users', { username: 'h198.late', display_name: 'มาช้า', password: 'Staff-Pass-198', approval_level: 0, check_rights: false, status: 'A', companies: [c1], user_group_id: G.VIEW });
+    expect([gone.status, gone.body.error.message]).toEqual([400, expect.stringMatching(/กลุ่มผู้ใช้ VIEW ถูกลบไปแล้ว — .*เลือกกลุ่มอื่น/)]);
+    const gone2 = await call('PUT', `/api/v1/users/${sale}`, { username: 'h198.sale', display_name: 'พนักงานขาย 198', approval_level: 0, check_rights: false, status: 'A', companies: [c1, c2], user_group_id: G.VIEW });
+    expect([gone2.status, gone2.body.error.message]).toEqual([400, expect.stringMatching(/ถูกลบไปแล้ว/)]);
+    expect((await sql<{ g: string }>`SELECT user_group_id AS g FROM sys_user WHERE id = ${sale}`.execute(database.db)).rows[0]!.g).toBe(G.SALE);
     // กลุ่มตั้งต้นสร้างกลุ่มที่ลบไปคืนได้ (รหัสว่างแล้ว)
     expect((await call('POST', '/api/v1/user-groups/standard')).body.created).toEqual(['VIEW']);
 
@@ -8242,7 +8248,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
       SALE: { level: 0, list: ['/api/v1/sales-invoices?limit=1', '/api/v1/quotations?limit=1', '/api/v1/ar-receipts?limit=1'], report: '1.4.1', menus: ['RP.CENTER', 'IC.PRICE'] },
       PURCH: { level: 0, list: ['/api/v1/purchase-invoices?limit=1', '/api/v1/purchase-orders?limit=1', '/api/v1/ap-payments?limit=1'], report: '2.4.1', menus: ['RP.CENTER'] },
       ACC: { level: 5, list: ['/api/v1/gl/journals?limit=1', '/api/v1/gl/accounts', '/api/v1/sales-invoices?limit=1'], report: '1.4.1', menus: ['OT.LOCK', 'OT.YE', 'OT.CHECK', 'SET.DEF', 'SET.DOCNO', 'RP.TB'] },
-      FIN: { level: 0, list: ['/api/v1/ar-receipts?limit=1', '/api/v1/ap-payments?limit=1', '/api/v1/gl/journals?limit=1'], report: '1.4.1', menus: ['GL.JNL', 'IC.STOCK'] },
+      FIN: { level: 0, list: ['/api/v1/ar-receipts?limit=1', '/api/v1/ap-payments?limit=1', '/api/v1/gl/journals?limit=1'], report: '1.4.1', menus: ['GL.JNL', 'IC.STOCK', 'RP.CENTER'] },
       GA: { level: 0, list: ['/api/v1/customers?q=a', '/api/v1/suppliers?q=a'], menus: ['IC.PRICE', 'RP.CENTER'] },
       HR: { level: 5, list: ['/api/v1/pay/employees'], menus: ['RP.CENTER', 'PAY.RUN'] },
       VIEW: { level: 0, list: ['/api/v1/sales-invoices?limit=1', '/api/v1/gl/journals?limit=1'], report: '1.4.1', menus: ['RP.TB'] },

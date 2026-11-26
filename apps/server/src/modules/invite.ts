@@ -30,7 +30,7 @@ type InviteRow = { id: string; user_id: string; expires_at: string; used_at: str
 async function inviteOf(db: Db, token: string): Promise<InviteRow | undefined> {
   return (await sql<InviteRow>`SELECT i.id, i.user_id, i.expires_at::text AS expires_at, i.used_at::text AS used_at, i.revoked_at::text AS revoked_at, u.username, u.display_name, u.status, u.tenant_id,
       t.name AS tenant_name, t.status AS tenant_status, t.expires_on::text AS tenant_expires, t.moved_to, g.code AS group_code
-    FROM sys_user_invite i JOIN sys_user u ON u.id = i.user_id AND u.deleted_at IS NULL LEFT JOIN sys_tenant t ON t.id = u.tenant_id LEFT JOIN sys_user_group g ON g.id = u.user_group_id
+    FROM sys_user_invite i JOIN sys_user u ON u.id = i.user_id AND u.deleted_at IS NULL LEFT JOIN sys_tenant t ON t.id = u.tenant_id LEFT JOIN sys_user_group g ON g.id = u.user_group_id AND g.deleted_at IS NULL
     WHERE i.token_hash = ${sha(token)} AND i.deleted_at IS NULL`.execute(db)).rows[0];
 }
 /** ลิงก์ยังใช้ได้ไหม — ไม่ได้ = ข้อความบอกเหตุและทางแก้ (410) */
