@@ -1,4 +1,4 @@
-import { formatDate, isTenantModuleKey, normalizeAppAccess, PLATFORM_MENUS, passwordProblem, normalizeUiTheme, MODULE_SWITCHES, TENANT_MODULES, TENANT_RETENTION_DAYS, tenantCountdown, tenantCountingDown } from '@buddy/core';
+import { ADMIN_MENUS, formatDate, isTenantModuleKey, normalizeAppAccess, PLATFORM_MENUS, passwordProblem, normalizeUiTheme, MODULE_SWITCHES, TENANT_MODULES, TENANT_RETENTION_DAYS, tenantCountdown, tenantCountingDown } from '@buddy/core';
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { sql } from 'kysely';
@@ -12,7 +12,7 @@ import { logActivity } from '../audit.js';
 import { confirmSecondFactor, markPasswordChanged, mfaForAll, setSec } from './security.js';
 import { addrShape, ADDR_COLS } from '../address.js';
 import { purgeTenant } from './pdpa.js';
-import { companyTenantOff, modulesOffRaw } from './permissions.js';
+import { allowedFor, companyTenantOff, modulesOffRaw } from './permissions.js';
 import { payrollSource } from './wts.js';
 import { createTenantWithAdmin } from './signup.js';
 import { packagePlan, tenantLimits, TENANT_PACKAGE_FIELDS } from './usage.js';
@@ -120,9 +120,14 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
    * ผู้ดูแลระบบของลูกค้า (บริษัทของลูกค้าตัวเอง) หรือเจ้าหน้าที่ผู้ให้บริการเท่านั้น · ลบ = ตั้ง deleted_at ของบริษัทและสิทธิ์ผู้ใช้ในบริษัทนั้น (ไม่ลบข้อมูลจริง)
    * หายจากรายการเลือกบริษัทและจำนวนบริษัทของลูกค้า · กู้คืนได้จากรายการ "บริษัทที่ลบแล้ว" · บันทึก sys_activity_log ทั้งลบและกู้คืน
    */
-  const manager = (req: Parameters<typeof requireAuth>[0]) => {
+  /**
+   * HANDOFF 201: เมนู บริษัททั้งหมด / ลบบริษัท (SET.COS · ADMIN_MENUS) — ผู้ดูแลระบบของลูกค้า/เจ้าหน้าที่ผู้ให้บริการ และตรวจด้วย decide() ตัวเดียวกับเมนู
+   * (สิทธิ์รวม ALL/เริ่มระบบ/รายละเอียดกิจการ/ระดับ 9 ไม่ให้เมนูนี้) · action = การทำงานของปุ่ม
+   */
+  const manager = async (req: Parameters<typeof requireAuth>[0], action: 'read' | 'add' | 'edit' | 'delete' = 'read') => {
     const a = requireAuth(req);
     if (!a.isPlatform && !(a.isAdmin && a.tenantId)) throw forbidden('เฉพาะผู้ดูแลระบบของลูกค้า หรือเจ้าหน้าที่ผู้ให้บริการ ลบ/กู้คืนบริษัทได้');
+    if (a.companyId && !(await allowedFor(db, a, 'SET.COS', action)).allowed) throw forbidden('เมนู บริษัททั้งหมด / ลบบริษัท เฉพาะผู้ดูแลระบบของกิจการ (กลุ่ม ADMIN)');
     return a;
   };
   const companyOf = async (a: AuthContext, id: string) => {
@@ -132,7 +137,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     return c;
   };
   app.get('/api/v1/companies/manage', async (req) => {
-    const a = manager(req);
+    const a = await manager(req);
     const rows = (await sql<{ id: string; code: string; name_th: string; tenant_code: string | null; deleted_at: string | null; deleted_by: string | null; doc_count: number; journal_count: number; last_date: string | null; next_start: string | null }>`
       SELECT c.id, c.code, c.name_th, t.code AS tenant_code, c.deleted_at::text AS deleted_at, u.display_name AS deleted_by,
              -- เปิดแฟ้มข้อมูลใหม่: วันเริ่มปีบัญชีที่แนะนำ = วันถัดจากสิ้นปีบัญชีที่ทำงานอยู่ (ปีที่เริ่มแล้วล่าสุด)
@@ -151,7 +156,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
    * ระบบอ้างบริษัทด้วยรหัสแถว (id) ทุกที่ (การเชื่อม POS/Living กุญแจ API แฟ้มสำรอง e-Tax เครื่องสาขา) — รหัสบริษัทใช้แสดงและตั้งชื่อแฟ้มเท่านั้น
    */
   app.put('/api/v1/companies/:id/code', async (req) => {
-    const a = manager(req);
+    const a = await manager(req, 'edit');
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(z.object({ code: codeRule }), req.body);
     const c = await companyOf(a, id);
@@ -171,7 +176,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
    * mode full = ทั้งหมด (ตรวจจำนวนแถว/ใบสำคัญ/เดบิต/เครดิตเท่าเดิม ไม่เท่า = ยกเลิก) · new = เปิดแฟ้มข้อมูลใหม่ (ค่าตั้งระบบ + ข้อมูลหลักที่เลือก + ปีบัญชีใหม่)
    */
   app.post('/api/v1/companies/:id/copy', async (req) => {
-    const a = manager(req);
+    const a = await manager(req, 'add');
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(z.object({
       code: codeRule, name_th: z.string().trim().min(1, 'ป้อนชื่อบริษัท').max(120), mode: z.enum(['full', 'new']),
@@ -184,7 +189,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   });
 
   app.post('/api/v1/companies/:id/delete', async (req) => {
-    const a = manager(req);
+    const a = await manager(req, 'delete');
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(z.object({ confirm_code: z.string().trim().min(1, 'พิมพ์รหัสบริษัทเพื่อยืนยัน'), totp_code: z.string().trim().max(20).nullable().optional() }), req.body);
     const c = await companyOf(a, id);
@@ -205,7 +210,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     return { ok: true, code: c.code };
   });
   app.post('/api/v1/companies/:id/restore', async (req) => {
-    const a = manager(req);
+    const a = await manager(req, 'edit');
     const { id } = parse(z.object({ id: uuid }), req.params);
     const c = await companyOf(a, id);
     if (!c.deleted_at) throw badRequest(`บริษัท ${c.code} ยังใช้งานอยู่`);
@@ -418,7 +423,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const gRights = a.companyId && groups.length ? await db.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id')
       .select(['p.subject_id', 'm.code as menu', 'p.can_read', 'p.can_add', 'p.can_edit', 'p.can_cancel', 'p.can_delete', 'p.can_print', 'p.can_approve'])
       .where('p.company_id', '=', a.companyId).where('p.subject_type', '=', 'G').where('p.subject_id', 'in', groups.map((g) => g.id)).where('p.deleted_at', 'is', null)
-      .where('m.code', 'not in', [...PLATFORM_MENUS, ...(await companyTenantOff(db, a.companyId))]).execute() : [];   // เมนูผู้ให้บริการ (HANDOFF 199) + ที่ลูกค้ายังไม่ได้เปิด (HANDOFF 200) ไม่อยู่ในสรุปสิทธิ์
+      .where('m.code', 'not in', [...PLATFORM_MENUS, ...Object.keys(ADMIN_MENUS), ...(await companyTenantOff(db, a.companyId))]).execute() : [];   // เมนูผู้ให้บริการ (HANDOFF 199) + ที่ลูกค้ายังไม่ได้เปิด (HANDOFF 200) ไม่อยู่ในสรุปสิทธิ์
     const cell = (v: string | null) => (v ?? '').trim();
     return { users: users.map((u) => { const sc = secs.find((x) => x.user_id === u.id); return { ...u, app_access: normalizeAppAccess(u.app_access), companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id), rights_in: rowsIn.get(u.id) ?? [], mfa_enabled: !!sc?.totp_enabled, locked_until: sc?.locked_until && new Date(sc.locked_until).getTime() > Date.now() ? sc.locked_until : null,
       invite_expires_at: invites.find((x) => x.user_id === u.id)?.expires_at ?? null, api_keys: keyCount.get(u.id) ?? 0 }; }),

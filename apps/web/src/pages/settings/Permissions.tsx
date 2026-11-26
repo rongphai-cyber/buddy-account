@@ -7,7 +7,7 @@ import { cx, ErrorBox, KeyHints, Modal, PageHead, Pill, Tabs, toast, useHotkeys 
 import { PERM_COLS, permClear, permCompact, permConflicts, permInheritedCell, permMark, permOwn, permSet, type PermCol, type PermRowVals, type PermRows, type PermSource } from '@buddy/core';
 import { useUnsaved } from '../../unsaved';
 
-interface MenuRow { code: string; label: string; depth: number; group: boolean }
+interface MenuRow { code: string; label: string; depth: number; group: boolean; admin_only?: boolean }
 interface Subjects { users: Array<{ id: string; username: string; display_name: string; approval_level: number; check_rights: boolean; group_code: string | null }>; groups: Array<{ id: string; code: string; name: string }> }
 type Vals = Record<string, string>;
 type TableMode = 'strict' | 'adjust' | 'off';
@@ -165,6 +165,14 @@ export function PermissionsPage() {
                   {menus.data.map((m) => {
                     const has = !!vals[m.code];
                     const e = eff?.[m.code];
+                    // เมนูเฉพาะผู้ดูแลระบบ (HANDOFF 201): แถวคงที่ ตั้งไม่ได้ — สิทธิ์รวม (ALL/เมนูหลัก) ไม่ให้เมนูนี้
+                    if (m.admin_only) return (
+                      <tr key={m.code} data-menu={m.code} className="perm-fixed">
+                        <td style={{ paddingLeft: 8 + m.depth * 14 }}>{m.label} <span className="muted mono small">{m.code}</span></td>
+                        <td colSpan={ACTS.length + 1} className="c"><Pill tone="x">เฉพาะผู้ดูแลระบบ (ADMIN)</Pill> <span className="small muted">ตั้งสิทธิ์ไม่ได้ · ทุกระบบงาน/เมนูหลักไม่รวมเมนูนี้</span></td>
+                        {eff && <td className="small">{e && Object.values(e).some(Boolean) ? 'ใช้ได้ (ผู้ดูแลระบบ)' : <span className="bad">ใช้ไม่ได้</span>}</td>}
+                      </tr>
+                    );
                     return (
                       <tr key={m.code} data-menu={m.code} className={cx(m.group && 'ctl', focusMenu === m.code && 'perm-focus')}>
                         <td style={{ paddingLeft: 8 + m.depth * 14 }}>{m.group ? <b>{m.label}</b> : m.label} <span className="muted mono small">{m.code}</span></td>

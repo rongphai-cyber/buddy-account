@@ -8791,6 +8791,64 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect(pView.users.map((u) => u.code)).toEqual(['t200.admin', 't200.old', 't200.sale']);
     cookie = '';
   });
+
+  it('HANDOFF 201: company list / rename / copy / delete / restore is its own admin-only menu (SET.COS) — staff with ALL = Y and level 9 get 403 and never see it; fixed row in the rights grid; provider unchanged; no cross-tenant', async () => {
+    const login = async (u: string, p: string) => { cookie = ''; expect([u, (await call('POST', '/api/v1/auth/login', { username: u, password: p })).status]).toEqual([u, 200]); return cookie; };
+    const provider = await login('admin', 'secret123');
+    expect((await call('POST', '/api/v1/tenants', { code: 'C201', name: 'ลูกค้า 201', admin_username: 'c201.admin', admin_name: 'ผู้ดูแล 201', admin_password: 'passC201x1', max_companies: 3 })).status).toBe(200);
+    const adm = await login('c201.admin', 'passC201x1');
+    const co1 = (await call('POST', '/api/v1/companies', { code: 'C201-1', name_th: 'บริษัท 201 หนึ่ง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    const co2 = (await call('POST', '/api/v1/companies', { code: 'C201-2', name_th: 'บริษัท 201 สอง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    await call('POST', '/api/v1/auth/select', { company_id: co1 });
+    const G = Object.fromEntries(((await call('GET', '/api/v1/users')).body.groups as Array<{ id: string; code: string }>).map((g) => [g.code, g.id]));
+    const R = (menu_code: string, v: string) => ({ menu_code, can_read: v, can_add: v, can_edit: v, can_cancel: v, can_delete: v, can_print: v, can_approve: v });
+    // พนักงานที่ได้สิทธิ์รวมทุกอย่าง: กลุ่ม ACC ที่ ALL = Y · ผู้ใช้เองที่ ALL/เริ่มระบบ/รายละเอียดกิจการ = Y · ระดับ 9
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'G', subject_id: G.ACC, rows: [R('ALL', 'Y')] })).status).toBe(200);
+    const staff = (await call('POST', '/api/v1/users', { username: 'c201.staff', display_name: 'พนักงาน 201', password: 'passStaff201', companies: [co1, co2], user_group_id: G.ACC, approval_level: 9 })).body.id as string;
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'U', subject_id: staff, rows: [R('ALL', 'Y'), R('SET', 'Y'), R('SET.CO', 'Y')] })).status).toBe(200);
+    // ตั้งที่เมนูนี้เองไม่ได้ (แถวคงที่)
+    const no = await call('PUT', '/api/v1/permissions', { subject_type: 'U', subject_id: staff, rows: [R('SET.COS', 'Y')] });
+    expect([no.status, no.body.error.message]).toEqual([400, expect.stringMatching(/เฉพาะผู้ดูแลระบบ/)]);
+    const menus = (await call('GET', '/api/v1/permissions/menus')).body as Array<{ code: string; admin_only?: boolean }>;
+    expect(menus.find((m) => m.code === 'SET.COS')).toMatchObject({ admin_only: true });
+    expect(menus.find((m) => m.code === 'SET.YEARFIX')).toMatchObject({ admin_only: true });
+    expect(menus.find((m) => m.code === 'SET.CO')!.admin_only).toBeUndefined();
+    // ใครใช้เมนูนี้ได้: ADMIN ได้ · พนักงาน (แม้ ALL = Y) ปิด เพราะเฉพาะผู้ดูแลระบบ — ตรงกับการตรวจจริง
+    type C = { v: string; src: string; why?: string };
+    const bm = (await call('GET', '/api/v1/permissions/by-menu?menu_code=SET.COS')).body as { groups: Array<{ code: string; cells: Record<string, C> }>; users: Array<{ code: string; cells: Record<string, C> }> };
+    expect(bm.groups.find((g) => g.code === 'ADMIN')!.cells.read).toEqual({ v: 'Y', src: 'admin' });
+    expect(bm.groups.find((g) => g.code === 'ACC')!.cells.read).toMatchObject({ v: 'N', src: 'block', why: expect.stringMatching(/เฉพาะผู้ดูแลระบบ/) });
+    expect(bm.users.find((u) => u.code === 'c201.staff')!.cells.delete).toMatchObject({ v: 'N', src: 'block' });
+    expect((await call('GET', '/api/v1/companies/manage')).body.rows.map((r: { code: string }) => r.code).sort()).toEqual(['C201-1', 'C201-2']);
+    expect((await call('GET', '/api/v1/auth/me')).body.perms['SET.COS'].delete).toBe(true);
+
+    // ── พนักงาน: ไม่เห็นเมนู (ไม่จาง) · ทุก API ของหน้านั้น 403 · รายละเอียดกิจการยังใช้ได้ตามเดิม
+    await login('c201.staff', 'passStaff201');
+    await call('POST', '/api/v1/auth/select', { company_id: co1 });
+    const m = (await call('GET', '/api/v1/auth/me')).body as { perms: Record<string, Record<string, boolean>>; perm_why: Record<string, string> };
+    expect([Object.values(m.perms['SET.COS']!).some(Boolean), m.perm_why['SET.COS'] ?? null, m.perms['SET.CO']!.edit]).toEqual([false, null, true]);
+    expect(m.perm_why['SET.YEARFIX']).toMatch(/เฉพาะผู้ดูแลระบบ/);   // ตรวจวันที่ปีผิดระบบ ยังแสดงจาง (HANDOFF 198)
+    const calls: Array<['GET' | 'PUT' | 'POST', string, unknown]> = [['GET', '/api/v1/companies/manage', undefined], ['PUT', `/api/v1/companies/${co2}/code`, { code: 'C201-X' }],
+      ['POST', `/api/v1/companies/${co2}/copy`, { code: 'C201-3', name_th: 'สำเนา', mode: 'new' }], ['POST', `/api/v1/companies/${co2}/delete`, { confirm_code: 'C201-2' }], ['POST', `/api/v1/companies/${co2}/restore`, {}]];
+    for (const [mt, url, body] of calls) expect([url, (await call(mt, url, body)).status]).toEqual([url, 403]);
+    expect((await call('GET', '/api/v1/company')).status).toBe(200);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_company WHERE id = ${co2} AND code = 'C201-2' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(1);
+
+    // ── ข้ามลูกค้า (ข้อ 7.1): ผู้ดูแลของลูกค้าอื่นไม่เห็น/แก้บริษัทของ C201
+    await login('b.admin', 'passB1234');
+    await call('POST', '/api/v1/auth/select', { company_id: (await call('GET', '/api/v1/auth/me')).body.companies[0].id });
+    expect((await call('GET', '/api/v1/companies/manage')).body.rows.some((r: { code: string }) => r.code.startsWith('C201'))).toBe(false);
+    expect((await call('PUT', `/api/v1/companies/${co2}/code`, { code: 'HACK' })).status).toBe(404);
+    expect((await call('POST', `/api/v1/companies/${co2}/delete`, { confirm_code: 'C201-2' })).status).toBe(404);
+
+    // ── ผู้ดูแลของลูกค้า + ผู้ให้บริการ: ใช้ได้ตามเดิม
+    cookie = adm;
+    expect((await call('PUT', `/api/v1/companies/${co2}/code`, { code: 'C201-B' })).status).toBe(200);
+    cookie = provider;
+    await call('POST', '/api/v1/auth/select', { company_id: co1 });
+    expect((await call('GET', '/api/v1/companies/manage')).body.rows.map((r: { code: string }) => r.code)).toEqual(expect.arrayContaining(['C201-1', 'C201-B']));
+    cookie = '';
+  });
 });
 
 describe('ชื่อภาษาอังกฤษของข้อมูล (โหมด EN)', () => {

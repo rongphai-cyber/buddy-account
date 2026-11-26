@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sql, type RawBuilder } from 'kysely';
 import { z } from 'zod';
-import { AI_BILL_TARGETS, PLATFORM_MENUS, providerOnly, tenantMenusOff, type TenantModuleRow, docMenuOf, findReport, HUB_ONLY_MENUS, hubOnly, menuOffBy, normalizeAppAccess, BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
+import { ADMIN_MENUS, adminOnlyMenu, AI_BILL_TARGETS, PLATFORM_MENUS, providerOnly, tenantMenusOff, type TenantModuleRow, docMenuOf, findReport, HUB_ONLY_MENUS, hubOnly, menuOffBy, normalizeAppAccess, BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, ITEM_KINDS, MENU, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS, flattenMenu } from '@buddy/core';
 import { runInCompanyScope, type Database, type Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireCompany, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -154,7 +154,7 @@ export async function tenantOffMenus(db: Db, tenantId: string | null | undefined
 /** เหตุที่ใช้ไม่ได้: module ระบบปิดทั้งบริษัท · platform เมนูผู้ให้บริการ · hub เปิดเฉพาะโปรแกรมอื่น · level ระดับอนุมัติไม่พอ · backup ต้องได้สิทธิ์โดยตรง · table ตารางสิทธิ์ไม่ให้ */
 export type Why = 'module' | 'platform' | 'tenant' | 'hub' | 'level' | 'backup' | 'table' | 'admin';
 /** เมนูที่ API ให้เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) — ผู้ใช้อื่นเห็นจาง พร้อมเหตุผล ไม่ใช่เปิดแล้วเจอ 403 (HANDOFF 198 ตรวจทาน) */
-const ADMIN_ONLY = new Set(['SET.YEARFIX']);
+const ADMIN_ONLY = new Set(Object.keys(ADMIN_MENUS));   // HANDOFF 201: ที่เดียวที่กำหนดอยู่ใน @buddy/core (ADMIN_MENUS)
 type Decision = { allowed: boolean; log: boolean; screenOnly: boolean; why?: Why };
 const NO = (why: Why): Decision => ({ allowed: false, log: false, screenOnly: false, why });
 /** เมนูส่วนตัว (หน้าเปิดโปรแกรม เปลี่ยนรหัสผ่าน): ทุกคนใช้ได้ ไม่ขึ้นกับตารางสิทธิ์ */
@@ -233,7 +233,7 @@ export async function permissionView(db: Db, a: AuthContext) {
     const ds = ACTIONS.map((x) => [x, decide(a, rows, m.code, x, off)] as const);
     perms[m.code] = Object.fromEntries(ds.map(([x, r]) => [x, r.allowed ? (r.screenOnly ? 'S' : true) : false])) as Record<Action, boolean | 'S'>;
     const first = ds.find(([x, r]) => x === 'read' && !r.allowed) ?? ds.find(([x, r]) => x === 'add' && !r.allowed);
-    if (first && (first[1].why === 'level' || first[1].why === 'table' || first[1].why === 'backup' || first[1].why === 'admin')) why[m.code] = whyText(first[1], a, m.code, first[0]);
+    if (first && (first[1].why === 'level' || first[1].why === 'table' || first[1].why === 'backup' || (first[1].why === 'admin' && adminOnlyMenu(m.code) === 'fade'))) why[m.code] = whyText(first[1], a, m.code, first[0]);
     if (perms[m.code]!.read) for (const [x, r] of ds) {
       if (r.allowed) continue;
       if (r.why === 'level') (deny[m.code] ??= {})[x] = levelNeeded(m.code, x);
@@ -392,6 +392,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/trade-import/:path/template': M('OT.IMPTRADE', 'read'), 'POST /api/v1/trade-import/:path': M('OT.IMPTRADE', 'add'),
   // นำเข้าเอกสารอื่นที่ลงบัญชี (HANDOFF 171): สิทธิ์นำเข้า + สิทธิ์เพิ่มที่เมนูของเอกสารนั้น (ตรวจใน route)
   // ลบ/กู้คืนบริษัท (HANDOFF 175): ตรวจผู้ดูแลของลูกค้า/เจ้าหน้าที่ผู้ให้บริการใน route
+  // HANDOFF 201: เมนู บริษัททั้งหมด / ลบบริษัท (SET.COS) — SELF เพราะทำข้ามบริษัทของลูกค้า (ไม่อยู่ในขอบเขตบริษัทเดียว/RLS) · ตัวจัดการตรวจ manager() = เฉพาะผู้ดูแลระบบ + decide(SET.COS)
   'GET /api/v1/companies/manage': SELF, 'PUT /api/v1/companies/:id/code': SELF, 'POST /api/v1/companies/:id/copy': SELF, 'POST /api/v1/companies/:id/delete': SELF, 'POST /api/v1/companies/:id/restore': SELF,
   'GET /api/v1/doc-import/:path/template': M('OT.IMPTRADE', 'read'), 'POST /api/v1/doc-import/:path': M('OT.IMPTRADE', 'add'),
   // นำเข้าข้อมูลหลัก (HANDOFF 173): สิทธิ์นำเข้า + เพิ่ม (และแก้เมื่อติ๊ก) ที่เมนูของแฟ้มนั้น (ตรวจใน route)
@@ -682,8 +683,10 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
   /** แถวสิทธิ์ของผู้ใช้/กลุ่มหนึ่งในบริษัทหนึ่ง → { เมนู: ช่อง } · ช่องว่าง (NULL) = '' (ตามเมนูหลัก/กลุ่ม) */
   /** เมนูที่ไม่อยู่ในตารางสิทธิ์ของบริษัทนี้: ของผู้ให้บริการ (HANDOFF 199) + ที่ลูกค้าเจ้าของบริษัทยังไม่ได้เปิด (HANDOFF 200) */
   const hiddenIn = async (companyId: string) => new Set([...PLATFORM_MENUS, ...(await companyTenantOff(db, companyId))]);
+  /** แถวในตาราง: + เมนูเฉพาะผู้ดูแลระบบ (HANDOFF 201 — แสดงเป็นแถวคงที่ ตั้งไม่ได้ · แถวเดิมไม่แสดง ไม่แตะ) */
+  const rowHiddenIn = async (companyId: string) => new Set([...(await hiddenIn(companyId)), ...Object.keys(ADMIN_MENUS)]);
   async function rowsOf(companyId: string, type: string, id: string, hidden?: Set<string>): Promise<Record<string, Cells>> {
-    const hide = hidden ?? (await hiddenIn(companyId));
+    const hide = hidden ?? (await rowHiddenIn(companyId));
     const rows = await db.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id').select(['m.code', ...CELLS])
       .where('p.company_id', '=', companyId).where('p.subject_type', '=', type).where('p.subject_id', '=', id).where('p.deleted_at', 'is', null).execute();
     return Object.fromEntries(rows.filter((r) => !hide.has(r.code)).map((r) => [r.code, Object.fromEntries(ACTIONS.map((x) => [COL[x], (r[COL[x]] ?? '').trim()])) as Cells]));
@@ -694,7 +697,7 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
     const hide = await hiddenIn(a.companyId);
     const depth = (c: string) => { let n = 0, p = PARENT.get(c); while (p) { n++; p = PARENT.get(p); } return n; };
     // เมนูของผู้ให้บริการไม่อยู่ในตารางสิทธิ์ (HANDOFF 199) — ลูกค้าใช้ไม่ได้ทุกกรณี · ผู้ให้บริการ = ADMIN ได้ทุกอย่างอยู่แล้ว
-    return [{ code: ALL_MENU, label: 'ทุกระบบงาน', depth: 0, group: true }, ...FLAT.filter((m) => !hide.has(m.code)).map((m) => ({ code: m.code, label: m.label, depth: depth(m.code) + 1, group: !!m.children?.length }))];
+    return [{ code: ALL_MENU, label: 'ทุกระบบงาน', depth: 0, group: true }, ...FLAT.filter((m) => !hide.has(m.code)).map((m) => ({ code: m.code, label: m.label, depth: depth(m.code) + 1, group: !!m.children?.length, ...(adminOnlyMenu(m.code) ? { admin_only: true } : {}) }))];
   });
 
   /**
@@ -706,17 +709,17 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
     const q = parse(z.object({ subject_type: z.enum(['U', 'G']), subject_id: z.string().uuid() }), req.query);
     const s = await subjectOf(a, q.subject_type, q.subject_id);
     const hide = await hiddenIn(a.companyId);
-    const rows = await rowsOf(a.companyId, q.subject_type, q.subject_id, hide);
+    const rows = await rowsOf(a.companyId, q.subject_type, q.subject_id, await rowHiddenIn(a.companyId));
     let effective: Awaited<ReturnType<typeof permissionMatrix>> | null = null, table: TableMode | null = null;
     let group: { id: string; code: string; name: string; admin: boolean; rows: Record<string, Cells> } | null = null;
     const need: Record<string, Partial<Record<Action, number>>> = {};
     if (q.subject_type === 'U') {
       const g = s.user_group_id ? await db.selectFrom('sys_user_group').select(['id', 'code', 'name']).where('id', '=', s.user_group_id).where('deleted_at', 'is', null).executeTakeFirst() : null;
-      if (g) group = { ...g, admin: g.code === 'ADMIN', rows: await rowsOf(a.companyId, 'G', g.id, hide) };
+      if (g) group = { ...g, admin: g.code === 'ADMIN', rows: await rowsOf(a.companyId, 'G', g.id, await rowHiddenIn(a.companyId)) };
       const as: AuthContext = { ...a, apiKeyId: undefined, apiKeyReadOnly: undefined, userId: s.id, approvalLevel: s.approval_level, checkRights: s.check_rights, groupId: s.user_group_id, isAdmin: g?.code === 'ADMIN', isPlatform: false, apps: normalizeAppAccess(s.app_access) };
       const v = await permissionView(db, as);
       effective = Object.fromEntries(Object.entries(v.perms).filter(([c]) => !hide.has(c))); table = v.table;
-      if (!as.isAdmin) for (const m of FLAT) if (!hide.has(m.code)) for (const x of ACTIONS) { const n = levelNeeded(m.code, x); if (n > s.approval_level) (need[m.code] ??= {})[x] = n; }
+      if (!as.isAdmin) for (const m of FLAT) if (!hide.has(m.code) && !adminOnlyMenu(m.code)) for (const x of ACTIONS) { const n = levelNeeded(m.code, x); if (n > s.approval_level) (need[m.code] ??= {})[x] = n; }
     }
     return { subject: { type: q.subject_type, id: s.id, code: s.code, name: s.name, approval_level: q.subject_type === 'U' ? s.approval_level : null, check_rights: q.subject_type === 'U' ? s.check_rights : null },
       company: { id: a.companyId, ...(await db.selectFrom('sys_company').select(['code', 'name_th']).where('id', '=', a.companyId).executeTakeFirst()) },
@@ -822,6 +825,7 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
     const ids = await menuIds();
     const tOff = await companyTenantOff(db, a.companyId);
     for (const r of b.rows) {
+      if (adminOnlyMenu(r.menu_code)) throw badRequest(`เมนู ${r.menu_code} เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) — กำหนดสิทธิ์ให้กลุ่ม/ผู้ใช้อื่นไม่ได้`);
       if (tOff.includes(r.menu_code)) throw badRequest(`เมนู ${r.menu_code} ยังไม่เปิดให้ลูกค้าเจ้าของบริษัทนี้ — กำหนดสิทธิ์ไม่ได้จนกว่าผู้ให้บริการจะเปิดให้`);
       if (!ids.has(r.menu_code)) throw badRequest(`ไม่พบเมนู ${r.menu_code}`);
       if (providerOnly(r.menu_code)) throw badRequest(`เมนู ${r.menu_code} เป็นของเจ้าหน้าที่ผู้ให้บริการ — กำหนดสิทธิ์ไม่ได้ (ลูกค้าใช้ไม่ได้ทุกกรณี)`);
@@ -833,7 +837,7 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
         .where('p.company_id', '=', a.companyId).where('p.subject_type', '=', b.subject_type).where('p.subject_id', '=', b.subject_id).where('p.deleted_at', 'is', null).execute();
       // แถวเดิมของเมนูผู้ให้บริการ (ถ้ามี) ไม่แตะ — ไม่มีผลและไม่แสดงอยู่แล้ว (HANDOFF 199)
       // HANDOFF 200: แถวของเมนูที่ลูกค้ายังไม่ได้เปิดก็ไม่แตะ — เปิดให้ภายหลังแล้วกลับมาเหมือนเดิม
-      const keep = [...PLATFORM_MENUS, ...tOff].map((c) => ids.get(c)).filter((x): x is string => !!x);
+      const keep = [...PLATFORM_MENUS, ...tOff, ...Object.keys(ADMIN_MENUS)].map((c) => ids.get(c)).filter((x): x is string => !!x);
       await tx.updateTable('sys_permission').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('company_id', '=', a.companyId).where('subject_type', '=', b.subject_type).where('subject_id', '=', b.subject_id).where('deleted_at', 'is', null)
         .$if(keep.length > 0, (q) => q.where('menu_id', 'not in', keep)).execute();
       // ช่องว่าง = ไม่ได้ตั้ง (NULL — ได้ค่าจากเมนูหลัก/กลุ่ม) · แถวที่ว่างทุกช่องไม่เก็บ (HANDOFF 197)

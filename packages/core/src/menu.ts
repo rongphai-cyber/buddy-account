@@ -158,6 +158,8 @@ export const MENU: MenuItem[] = [
     // HANDOFF 183: แก้วันที่ที่พิมพ์ปี พ.ศ. ในบริษัท ค.ศ. ก่อนรุ่น 182 (เก็บเป็นปี 2400 ขึ้นไป) — เฉพาะผู้ดูแลระบบ
     m('SET.YEARFIX', 'ตรวจวันที่ปีผิดระบบ (พ.ศ./ค.ศ.)', 'P0', '/settings/year-fix'),
     m('SET.NEWCO', 'กำหนดบริษัทใหม่', 'P0', '/companies/new', ['ch04:S-CO-03']),
+    // HANDOFF 201 (เจ้าของ 26/11/2569): แยกจากรายละเอียดกิจการ — เฉพาะผู้ดูแลระบบ (ADMIN_MENUS) ไม่ได้ผ่านสิทธิ์รวม (ALL/เริ่มระบบ/กลุ่ม/ระดับ)
+    m('SET.COS', 'บริษัททั้งหมด / ลบบริษัท', 'P0', '/settings/companies', ['ch04:S-CO-07']),
     m('SET.TENANT', 'ลูกค้าผู้ใช้บริการ (ผู้ให้บริการ)', 'P0', '/admin/tenants'),
     // HANDOFF 185: แพ็กเกจบริการ + การใช้งาน — ลูกค้า (ผู้ดูแลของกิจการ อ่านอย่างเดียว) · ผู้ให้บริการ (แค็ตตาล็อก ทุกลูกค้า ส่วนเกินรายเดือน)
     m('SET.USAGE', 'การใช้งานและแพ็กเกจ', 'P0', '/settings/usage'),
@@ -199,6 +201,13 @@ export function flattenMenu(items: MenuItem[] = MENU, parent?: string): Array<Me
  * ที่เดียวที่กำหนด — หน้าจอและ server ใช้ชุดนี้ (providerOnly)
  */
 export const PLATFORM_MENUS: ReadonlySet<string> = new Set(['SET.API', 'SET.TENANT', 'SET.USAGE', 'SET.PKG']);
+/**
+ * เมนูเฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN ของลูกค้า · เจ้าหน้าที่ผู้ให้บริการ) — ตั้งให้ผ่านตารางสิทธิ์/สิทธิ์รวม (ALL · เมนูหลัก · กลุ่ม · ระดับ 9) ไม่ได้
+ * ที่เดียวที่กำหนด (server: decide → 'admin' · หน้าจอ: แถวคงที่ในตารางสิทธิ์ · เปิดที่อยู่ตรง)
+ * fade = ผู้อื่นเห็นจางพร้อมเหตุผล (ตรวจวันที่ปีผิดระบบ HANDOFF 198) · hide = ผู้อื่นไม่เห็นเลย (บริษัททั้งหมด/ลบบริษัท HANDOFF 201 "ไม่รวมให้พนักงานเห็น")
+ */
+export const ADMIN_MENUS: Readonly<Record<string, 'fade' | 'hide'>> = { 'SET.YEARFIX': 'fade', 'SET.COS': 'hide' };
+export const adminOnlyMenu = (code: string): 'fade' | 'hide' | null => ADMIN_MENUS[code] ?? null;
 /** เมนูนี้เฉพาะเจ้าหน้าที่ผู้ให้บริการ (HANDOFF 199) */
 export const providerOnly = (code: string) => PLATFORM_MENUS.has(code);
 export const ACTION_MENUS: ReadonlySet<string> = new Set(['SET.NEWCO', 'SET.LINK', 'OT.LOCK', 'OT.YE', 'OT.BACKUP', 'OT.IMPORT', 'OT.IMPTRADE', 'OT.IMPJNL', 'FA.DEPR']);

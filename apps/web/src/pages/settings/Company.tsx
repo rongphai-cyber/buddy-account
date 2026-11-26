@@ -10,7 +10,7 @@ import { ModuleSwitches } from '../../components/ModuleSwitches';
 import { WtsLivingSetup, WtsPosSetup } from '../../components/WtsConnect';
 import { useUnsaved } from '../../unsaved';
 import { StarterFillButton } from '../../components/StarterFill';
-import { CompaniesAdmin } from './CompaniesAdmin';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AddressHistory, useAddressHistory } from '../../components/AddressHistory';
 
 type Co = {
@@ -24,8 +24,10 @@ type Co = {
 export function CompanyPage() {
   const qc = useQueryClient();
   const { refresh, me } = useSession();
-  /** ลบ/กู้คืนบริษัท: ผู้ดูแลระบบของลูกค้า/เจ้าหน้าที่ผู้ให้บริการ (HANDOFF 175) */
-  const canManage = !!me && (me.user.is_platform || (me.user.is_admin && !!me.user.tenant_id));
+  const nav = useNavigate();
+  // HANDOFF 201: แท็บ "บริษัททั้งหมด / ลบบริษัท" ย้ายไปเมนู เริ่มระบบ › บริษัททั้งหมด / ลบบริษัท (เฉพาะผู้ดูแลระบบ) — ลิงก์เดิม #companies ไปที่ใหม่
+  const { hash } = useLocation();
+  useEffect(() => { if (hash === '#companies') nav('/settings/companies', { replace: true }); }, [hash, nav]);
   const q = useQuery({ queryKey: ['company'], queryFn: () => api.get<Co>('/api/v1/company') });
   const curAddr = useAddressHistory(null).data?.rows.find((r) => r.in_effect);
   const [f, setF] = useState<Co | null>(null);
@@ -57,7 +59,7 @@ export function CompanyPage() {
       <PageHead eyebrow="เริ่มระบบ › รายละเอียดกิจการ" title="รายละเอียดกิจการ" lead={`รหัสบริษัท ${f.code} — ชื่อและที่อยู่ใช้พิมพ์บนหัวรายงานและแบบฟอร์ม`}
         actions={edit ? <><button onClick={() => { setEdit(false); setF(q.data ? { ...q.data, tax_branch_no: String(Number(q.data.tax_branch_no)) } : null); }}>ยกเลิก</button><button className="primary" onClick={save}>บันทึก <kbd>F9</kbd></button></> : <><StarterFillButton /><button className="primary" onClick={() => setEdit(true)}>แก้ไข <kbd>Alt+E</kbd></button></>} />
       <ErrorBox error={err} />
-      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'info', label: 'ข้อมูลกิจการ' }, { key: 'tax', label: 'ภาษีและทะเบียน' }, { key: 'gen', label: 'เรื่องทั่วไป' }, { key: 'modules', label: 'ระบบที่ใช้งาน' }, { key: 'pos', label: 'เชื่อมต่อ WTS POS' }, ...(living ? [{ key: 'living', label: 'เชื่อมต่อ WTS-Living' }] : []), { key: 'theme', label: 'ธีมและแบบอักษร' }, ...(canManage ? [{ key: 'companies', label: 'บริษัททั้งหมด / ลบบริษัท' }] : [])]} />
+      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'info', label: 'ข้อมูลกิจการ' }, { key: 'tax', label: 'ภาษีและทะเบียน' }, { key: 'gen', label: 'เรื่องทั่วไป' }, { key: 'modules', label: 'ระบบที่ใช้งาน' }, { key: 'pos', label: 'เชื่อมต่อ WTS POS' }, ...(living ? [{ key: 'living', label: 'เชื่อมต่อ WTS-Living' }] : []), { key: 'theme', label: 'ธีมและแบบอักษร' }]} />
       {['info', 'tax', 'gen'].includes(tab) && <fieldset disabled={!edit} onKeyDown={(e) => navKey(e, nextTab)}>
         {tab === 'info' && <div className="card form-grid three tab-flow">
           <Field label="1. ชื่อบริษัท" req wide><input value={f.name_th} onChange={(e) => set('name_th', e.target.value)} /></Field>
@@ -90,7 +92,6 @@ export function CompanyPage() {
       {tab === 'pos' && <WtsPosSetup />}
       {tab === 'living' && living && <WtsLivingSetup />}
       {tab === 'theme' && <ThemePicker />}
-      {tab === 'companies' && canManage && <CompaniesAdmin />}
       <p className="hint">ค่าเริ่มต้นของระบบซื้อ ขาย สินค้า การเงิน และทรัพย์สิน (คู่มือบทที่ 5 ข้อ 1.2–1.12) อยู่ในแผนเฟส P2</p>
     </div>
   );

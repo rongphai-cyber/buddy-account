@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatDate } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
-import { DateInput, ErrorBox, Field, Modal, Pill, toast } from '../../ui';
+import { DateInput, ErrorBox, Field, Modal, PageHead, Pill, toast, useHotkeys } from '../../ui';
 import { ALL_COPY_GROUPS, CopyGroupsPicker, type CopyGroup } from '../../components/CopyChoices';
 
 type Row = { id: string; code: string; name_th: string; tenant_code: string | null; deleted_at: string | null; deleted_by: string | null; doc_count: number; journal_count: number; last_date: string | null; current: boolean; next_start: string | null };
@@ -14,6 +14,19 @@ type Row = { id: string; code: string; name_th: string; tenant_code: string | nu
  * ผู้ดูแลระบบของลูกค้า/เจ้าหน้าที่ผู้ให้บริการ · ลบ = ซ่อนจากตัวเลือกบริษัท (ไม่ลบข้อมูลจริง) กู้คืนได้ · ก่อนลบแสดงจำนวนเอกสาร/วันที่ล่าสุด สำรองข้อมูลก่อนได้
  * ยืนยันด้วยรหัสบริษัท + รหัสยืนยันตัวตน (ถ้าเปิดสองขั้น) · บริษัทที่เลือกอยู่และบริษัทสุดท้ายลบไม่ได้
  */
+/** เริ่มระบบ › บริษัททั้งหมด / ลบบริษัท (SET.COS · HANDOFF 201) — เฉพาะผู้ดูแลระบบของลูกค้าและเจ้าหน้าที่ผู้ให้บริการ */
+export function CompaniesPage() {
+  const nav = useNavigate();
+  useHotkeys({ Escape: () => nav(-1) }, []);
+  return (
+    <div className="page" data-tone="setup">
+      <PageHead eyebrow="เริ่มระบบ" title="บริษัททั้งหมด / ลบบริษัท" lead="บริษัททั้งหมดของกิจการ — แก้รหัส คัดลอกบริษัท สำรองข้อมูลก่อนลบ ลบ/กู้คืนบริษัท · เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ให้สิทธิ์ผู้อื่นไม่ได้"
+        actions={<button onClick={() => nav('/companies/new')}>+ กำหนดบริษัทใหม่</button>} />
+      <CompaniesAdmin />
+    </div>
+  );
+}
+
 export function CompaniesAdmin() {
   const { me, select, refresh } = useSession();
   const nav = useNavigate();

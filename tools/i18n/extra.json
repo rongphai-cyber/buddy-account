@@ -3926,5 +3926,13 @@
  "ใช้ไม่ได้ · ใต้เครื่องหมาย = ที่มา:": "not allowed · under the mark = where it comes from:",
  "ได้จาก{0} ({1})": "From {0} ({1})",
  "ไม่ได้ตั้ง": "Not set",
- "ไม่ได้ตั้งที่ใดเลย = ใช้ไม่ได้": "Not set anywhere = can't use"
+ "ไม่ได้ตั้งที่ใดเลย = ใช้ไม่ได้": "Not set anywhere = can't use",
+ "+ กำหนดบริษัทใหม่": "+ New company",
+ "ตั้งสิทธิ์ไม่ได้ · ทุกระบบงาน/เมนูหลักไม่รวมเมนูนี้": "Rights can't be set · all systems/parent menus don't include this menu",
+ "บริษัททั้งหมดของกิจการ — แก้รหัส คัดลอกบริษัท สำรองข้อมูลก่อนลบ ลบ/กู้คืนบริษัท · เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ให้สิทธิ์ผู้อื่นไม่ได้": "All companies of the business — edit code, copy company, back up before deleting, delete/restore companies · administrators only (ADMIN group), can't be granted to others",
+ "หน้านี้เปิดได้เฉพาะผู้ดูแลระบบของกิจการ (กลุ่ม ADMIN) — ให้สิทธิ์ผู้อื่นไม่ได้ · ติดต่อผู้ดูแลระบบของกิจการ": "This page is for the business's administrators only (ADMIN group) — it can't be granted to others · contact your administrator",
+ "เฉพาะผู้ดูแลระบบ (ADMIN)": "Administrators only (ADMIN)",
+ "เมนู {0} เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) — กำหนดสิทธิ์ให้กลุ่ม/ผู้ใช้อื่นไม่ได้": "Menu {0} is for administrators only (ADMIN group) — rights can't be given to other groups/users",
+ "เมนู บริษัททั้งหมด / ลบบริษัท เฉพาะผู้ดูแลระบบของกิจการ (กลุ่ม ADMIN)": "The All companies / Delete company menu is for the business's administrators only (ADMIN group)",
+ "ใช้ได้ (ผู้ดูแลระบบ)": "Allowed (administrator)"
 }

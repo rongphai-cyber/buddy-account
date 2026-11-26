@@ -4611,6 +4611,18 @@
 ]
 },
 {
+"th": "เฉพาะผู้ดูแลระบบ",
+"n": 6,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/settings/Import.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/web/src/pages/settings/YearFix.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/security.ts"
+]
+},
+{
 "th": "เบิกชดเชยเงินสดย่อย",
 "n": 6,
 "files": [
@@ -5441,17 +5453,6 @@
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/payroll/Forms.tsx",
 "apps/server/src/modules/reports/tax.ts"
-]
-},
-{
-"th": "เฉพาะผู้ดูแลระบบ",
-"n": 5,
-"files": [
-"apps/web/src/pages/settings/Import.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/web/src/pages/settings/YearFix.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/security.ts"
 ]
 },
 {
@@ -6788,6 +6789,16 @@
 "apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "เริ่มระบบ",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"apps/web/src/pages/settings/Usage.tsx",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -9041,15 +9052,6 @@
 "files": [
 "apps/web/src/components/PackageFields.tsx",
 "apps/web/src/pages/settings/Usage.tsx"
-]
-},
-{
-"th": "เริ่มระบบ",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Usage.tsx",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -11804,6 +11806,14 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "บริษัททั้งหมด / ลบบริษัท",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -16117,6 +16127,13 @@
 ]
 },
 {
+"th": "ใช้ไม่ได้",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ในครั้งนี้",
 "n": 2,
 "files": [
@@ -17523,6 +17540,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/AccountDetail.tsx"
+]
+},
+{
+"th": "+ กำหนดบริษัทใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -31596,6 +31620,13 @@
 ]
 },
 {
+"th": "ตั้งสิทธิ์ไม่ได้ · ทุกระบบงาน/เมนูหลักไม่รวมเมนูนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ตั้งเงื่อนไขอนุมัติได้ที่ ประเภทเอกสาร (รับรองก่อนพิมพ์ · พิมพ์ซ้ำ) และค่าเริ่มต้นระบบขาย/ซื้อ (ขายเกินวงเงิน · ลูกค้า/ผู้จำหน่ายถูกระงับ)",
 "n": 1,
 "files": [
@@ -35187,10 +35218,10 @@
 ]
 },
 {
-"th": "บริษัททั้งหมด / ลบบริษัท",
+"th": "บริษัททั้งหมดของกิจการ — แก้รหัส คัดลอกบริษัท สำรองข้อมูลก่อนลบ ลบ/กู้คืนบริษัท · เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ให้สิทธิ์ผู้อื่นไม่ได้",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/Company.tsx"
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -54430,6 +54461,13 @@
 ]
 },
 {
+"th": "หน้านี้เปิดได้เฉพาะผู้ดูแลระบบของกิจการ (กลุ่ม ADMIN) — ให้สิทธิ์ผู้อื่นไม่ได้ · ติดต่อผู้ดูแลระบบของกิจการ",
+"n": 1,
+"files": [
+"apps/web/src/App.tsx"
+]
+},
+{
 "th": "หน้านี้เปิดได้เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม — ต้องการเชื่อมต่อระบบอื่น (กุญแจ API) หรือสอบถามแพ็กเกจและการใช้งาน ติดต่อผู้ให้บริการ",
 "n": 1,
 "files": [
@@ -57412,6 +57450,13 @@
 ]
 },
 {
+"th": "เฉพาะผู้ดูแลระบบ (ADMIN)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ของบริษัทนี้ — ให้ผู้ดูแลระบบเป็นผู้กด \"ตั้งค่าสำหรับ WTS-Living\"",
 "n": 1,
 "files": [
@@ -60198,6 +60243,13 @@
 ]
 },
 {
+"th": "เมนู {0} เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) — กำหนดสิทธิ์ให้กลุ่ม/ผู้ใช้อื่นไม่ได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "เมนู {0} เป็นของเจ้าหน้าที่ผู้ให้บริการ — กำหนดสิทธิ์ไม่ได้ (ลูกค้าใช้ไม่ได้ทุกกรณี)",
 "n": 1,
 "files": [
@@ -60209,6 +60261,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/permissions.ts"
+]
+},
+{
+"th": "เมนู บริษัททั้งหมด / ลบบริษัท เฉพาะผู้ดูแลระบบของกิจการ (กลุ่ม ADMIN)",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -66113,6 +66172,13 @@
 ]
 },
 {
+"th": "ใช้ได้ (ผู้ดูแลระบบ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ใช้ได้ครั้งเดียว ภายใน {0} ชั่วโมง",
 "n": 1,
 "files": [
@@ -66145,13 +66211,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/PlatformAiKey.tsx"
-]
-},
-{
-"th": "ใช้ไม่ได้",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {

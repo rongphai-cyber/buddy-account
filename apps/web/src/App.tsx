@@ -2,7 +2,7 @@ import { ConflictHost, confirmLeave, UnsavedHost } from './unsaved';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PrintPage } from './components/DocPrint';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { MENU, flattenMenu, fiscalYearLabel, formatDate, menuForPath, providerOnly, staleOpenYears, todayIso, workDateForYear, type MenuItem } from '@buddy/core';
+import { adminOnlyMenu, MENU, flattenMenu, fiscalYearLabel, formatDate, menuForPath, providerOnly, staleOpenYears, todayIso, workDateForYear, type MenuItem } from '@buddy/core';
 import { OpenYearsWarning } from './components/OpenYearsWarning';
 import { useWorkYear } from './workRange';
 import { menuState, ReadOnlyGuard } from './readonly';
@@ -29,6 +29,7 @@ import { JobCostPage } from './pages/reports/JobCost';
 import { AccountDetailPage } from './pages/reports/AccountDetail';
 import { OpeningPage } from './pages/gl/Opening';
 import { CompanyPage } from './pages/settings/Company';
+import { CompaniesPage } from './pages/settings/CompaniesAdmin';
 import { PeriodsPage } from './pages/settings/Periods';
 import { DepartmentsPage } from './pages/settings/Departments';
 import { BranchesPage } from './pages/settings/Branches';
@@ -139,7 +140,8 @@ function Shell() {
   const loc = useLocation();
   // เปิดที่อยู่ตรงของเมนูที่ลูกค้าใช้ไม่ได้: ของผู้ให้บริการ (HANDOFF 199) · ที่ลูกค้ายังไม่ได้เปิด (HANDOFF 200)
   const pathMenu = menuForPath(loc.pathname) ?? '';
-  const gate: 'provider' | 'tenant' | null = !me || me.user.is_platform ? null : providerOnly(pathMenu) ? 'provider' : me.tenant_off?.includes(pathMenu) ? 'tenant' : null;
+  // + เมนูเฉพาะผู้ดูแลระบบที่ซ่อนจากผู้อื่น (HANDOFF 201 บริษัททั้งหมด / ลบบริษัท)
+  const gate: 'provider' | 'tenant' | 'admin' | null = !me || me.user.is_platform ? null : providerOnly(pathMenu) ? 'provider' : me.tenant_off?.includes(pathMenu) ? 'tenant' : adminOnlyMenu(pathMenu) === 'hide' && !me.user.is_admin ? 'admin' : null;
   // อยู่ใน Buddy แล้ว (กดการ์ด Buddy หรือเปิดลิงก์หน้าใดของ Buddy) — กลับหน้าแรก "/" ในแท็บนี้ = หน้าแรกของ Buddy ไม่ใช่หน้าเลือกโปรแกรม
   useEffect(() => markEntered(), []);
   const [open, setOpen] = useState<string | null>(() => MENU.find((g) => flattenMenu(g.children).some((i) => i.route && loc.pathname.startsWith(i.route)))?.code ?? 'GL');
@@ -316,6 +318,7 @@ function Shell() {
           <Route path="/settings/gl-link" element={<GlLinkPage />} />
           <Route path="/settings/data-tables" element={<DataTablesPage />} />
           <Route path="/settings/year-fix" element={<YearFixPage />} />
+          <Route path="/settings/companies" element={<CompaniesPage />} />
           {TRADE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<TradeListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<TradeFormPage key={k.path} path={k.path} />} />])}
           {SETTLE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<SettleListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<SettleFormPage key={k.path} path={k.path} />} />])}
           {CASH_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<CashListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<CashFormPage key={k.path} path={k.path} />} />])}
@@ -365,12 +368,15 @@ function Shell() {
  * เปิดที่อยู่ของเมนูผู้ให้บริการตรง ๆ (กุญแจ API · การใช้งานและแพ็กเกจ · ลูกค้าผู้ใช้บริการ · แพ็กเกจ) โดยไม่ใช่เจ้าหน้าที่ผู้ให้บริการ (HANDOFF 199)
  * — ไม่เปิดหน้า ไม่เรียก API · บอกว่าต้องทำอย่างไร
  */
-function ProviderOnlyPage({ kind }: { kind: 'provider' | 'tenant' }) {
+function ProviderOnlyPage({ kind }: { kind: 'provider' | 'tenant' | 'admin' }) {
   return (
     <div className="page" data-tone="setup">
       {kind === 'provider' ? <>
         <h1>เฉพาะเจ้าหน้าที่ผู้ให้บริการ</h1>
         <div className="notebox">หน้านี้เปิดได้เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม — ต้องการเชื่อมต่อระบบอื่น (กุญแจ API) หรือสอบถามแพ็กเกจและการใช้งาน ติดต่อผู้ให้บริการ</div>
+      </> : kind === 'admin' ? <>
+        <h1>เฉพาะผู้ดูแลระบบ</h1>
+        <div className="notebox">หน้านี้เปิดได้เฉพาะผู้ดูแลระบบของกิจการ (กลุ่ม ADMIN) — ให้สิทธิ์ผู้อื่นไม่ได้ · ติดต่อผู้ดูแลระบบของกิจการ</div>
       </> : <>
         <h1>ยังไม่เปิดให้กิจการของคุณ</h1>
         <div className="notebox">เมนูนี้เปิดให้เฉพาะรายเมื่อต้องการใช้ (นำข้อมูลจาก Express · เครื่องสาขาออฟไลน์) — ติดต่อผู้ให้บริการเพื่อขอเปิดใช้ หรือให้ผู้ให้บริการทำให้</div>

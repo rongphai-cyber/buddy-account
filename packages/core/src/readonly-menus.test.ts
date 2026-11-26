@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTION_MENUS, PLATFORM_MENUS, flattenMenu, menuForPath, providerOnly, readOnlyExempt } from './menu.js';
+import { ACTION_MENUS, ADMIN_MENUS, PLATFORM_MENUS, adminOnlyMenu, flattenMenu, menuForPath, providerOnly, readOnlyExempt } from './menu.js';
 
 describe('read-only viewer menus (HANDOFF 157)', () => {
   it('maps a screen address to its menu (longest route wins, sub-pages included)', () => {
@@ -28,5 +28,12 @@ describe('read-only viewer menus (HANDOFF 157)', () => {
     expect([...PLATFORM_MENUS].sort()).toEqual(['SET.API', 'SET.PKG', 'SET.TENANT', 'SET.USAGE']);
     expect(['/settings/api-keys', '/settings/usage', '/admin/tenants', '/admin/packages'].map((p) => providerOnly(menuForPath(p) ?? ''))).toEqual([true, true, true, true]);
     expect(['SET.SEC', 'SET.NEWCO', 'SET.YEARFIX', 'SET.DEVICE', 'OT.BACKUP', 'SA.IV'].some(providerOnly)).toBe(false);
+  });
+  it('admin-only menus (HANDOFF 201): company list/delete is its own menu, hidden from staff; year-fix stays faded', () => {
+    const codes = new Set(flattenMenu().map((m) => m.code));
+    for (const c of Object.keys(ADMIN_MENUS)) { expect(codes.has(c)).toBe(true); expect(PLATFORM_MENUS.has(c)).toBe(false); }
+    expect(menuForPath('/settings/companies')).toBe('SET.COS');
+    expect(menuForPath('/settings/company')).toBe('SET.CO');
+    expect([adminOnlyMenu('SET.COS'), adminOnlyMenu('SET.YEARFIX'), adminOnlyMenu('SET.CO')]).toEqual(['hide', 'fade', null]);
   });
 });
