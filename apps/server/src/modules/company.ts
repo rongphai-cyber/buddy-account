@@ -410,9 +410,16 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     // ลิงก์เชิญที่ยังใช้ได้ (HANDOFF 184) — แสดงสถานะ "รอตั้งรหัสผ่าน ถึง …"
     const invites = users.length ? await db.selectFrom('sys_user_invite').select(['user_id', 'expires_at']).where('user_id', 'in', users.map((u) => u.id))
       .where('used_at', 'is', null).where('revoked_at', 'is', null).where('deleted_at', 'is', null).where('expires_at', '>', sql<string>`now()`).execute() : [];
+    // สิทธิ์ของแต่ละกลุ่มในบริษัทที่เลือกอยู่ — หน้าเพิ่มผู้ใช้สรุปว่ากลุ่มทำอะไรได้ (HANDOFF 197) · ช่องว่าง = ''
+    const gRights = a.companyId && groups.length ? await db.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id')
+      .select(['p.subject_id', 'm.code as menu', 'p.can_read', 'p.can_add', 'p.can_edit', 'p.can_cancel', 'p.can_delete', 'p.can_print', 'p.can_approve'])
+      .where('p.company_id', '=', a.companyId).where('p.subject_type', '=', 'G').where('p.subject_id', 'in', groups.map((g) => g.id)).where('p.deleted_at', 'is', null).execute() : [];
+    const cell = (v: string | null) => (v ?? '').trim();
     return { users: users.map((u) => { const sc = secs.find((x) => x.user_id === u.id); return { ...u, app_access: normalizeAppAccess(u.app_access), companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id), rights_in: rowsIn.get(u.id) ?? [], mfa_enabled: !!sc?.totp_enabled, locked_until: sc?.locked_until && new Date(sc.locked_until).getTime() > Date.now() ? sc.locked_until : null,
       invite_expires_at: invites.find((x) => x.user_id === u.id)?.expires_at ?? null }; }),
-      groups: groups.map((g) => ({ ...g, rights_in: rowsIn.get(g.id) ?? [] })), mfa_all: mfaForAll() };
+      groups: groups.map((g) => ({ ...g, rights_in: rowsIn.get(g.id) ?? [],
+        rights: gRights.filter((r) => r.subject_id === g.id).map((r) => ({ menu: r.menu, can_read: cell(r.can_read), can_add: cell(r.can_add), can_edit: cell(r.can_edit), can_cancel: cell(r.can_cancel), can_delete: cell(r.can_delete), can_print: cell(r.can_print), can_approve: cell(r.can_approve) })) })),
+      mfa_all: mfaForAll() };
   });
   /** ค่าที่เก็บใน sys_user.app_access (jsonb): null = ทุกโปรแกรมของลูกค้า · รายการเรียงตาม TENANT_MODULES ไม่ซ้ำ */
   const appAccessValue = (v: string[] | null | undefined) => { const n = normalizeAppAccess(v ?? null); return n === null ? null : (JSON.stringify(n) as never); };
@@ -494,6 +501,20 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const a = requireAdmin(req);
     const b = parse(z.object({ code: z.string().trim().min(1).max(20).regex(/^[A-Za-z0-9_-]+$/), name: z.string().trim().min(1).max(120), tenant_id: uuid.nullable().optional() }), req.body);
     return db.insertInto('sys_user_group').values({ code: b.code, name: b.name, tenant_id: await tenantFor(a, b.tenant_id), created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+  });
+  /**
+   * กลุ่มตั้งต้น (ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว) — ผู้ดูแลของลูกค้ากดเอง (HANDOFF 197)
+   * ลูกค้า = ของผู้ดูแล (ผู้ให้บริการ = ลูกค้าเจ้าของบริษัทที่เลือกอยู่) · ทำซ้ำได้: สร้างเฉพาะกลุ่มที่ยังไม่มี ใส่สิทธิ์เฉพาะบริษัทที่กลุ่มยังไม่มีแถวสิทธิ์ (ไม่เขียนทับที่แก้เอง)
+   */
+  app.post('/api/v1/user-groups/standard', async (req) => {
+    const a = requireAdmin(req);
+    const tenantId = a.isPlatform ? (a.companyId ? (await db.selectFrom('sys_company').select('tenant_id').where('id', '=', a.companyId).executeTakeFirst())?.tenant_id ?? null : null) : a.tenantId;
+    if (!tenantId) throw badRequest('เลือกบริษัทของลูกค้าก่อน — กลุ่มตั้งต้นเป็นของลูกค้าแต่ละราย');
+    return db.transaction().execute(async (tx) => {
+      const r = await ensureStandardGroups(tx, tenantId, a.userId, { createGroups: true });
+      await logActivity(tx, a, { module: 'SYS', action: 'STANDARD_GROUPS', table: 'sys_user_group', detail: r });
+      return r;
+    });
   });
 
   /* ---------------------------------------------------------------- ลูกค้าผู้ใช้บริการ (tenant) — เฉพาะเจ้าหน้าที่ผู้ให้บริการ */

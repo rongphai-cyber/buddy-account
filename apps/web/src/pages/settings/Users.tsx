@@ -3,28 +3,51 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api';
 import { useSession } from '../../session';
-import { HUB_APPS, PASSWORD_RULE, TENANT_MODULES, type TenantModuleKey } from '@buddy/core';
-import { Confirm, cx, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, useHotkeys } from '../../ui';
+import { flattenMenu, HUB_APPS, PASSWORD_RULE, TENANT_MODULES, type TenantModuleKey } from '@buddy/core';
+import { Confirm, cx, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, toast, toastError, useHotkeys } from '../../ui';
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { QrCode } from './TwoFactor';
 
 interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean; rights_in?: string[]; has_password?: boolean; invite_expires_at?: string | null; tenant_id?: string | null }
-interface Group { id: string; code: string; name: string; rights_in?: string[]; tenant_id?: string | null; tenant_code?: string | null }
-/** ป้ายระดับอนุมัติ (HANDOFF 191) — 0–4 สิทธิ์พื้นฐานเท่ากัน ตัวเลขใช้กับเงื่อนไขอนุมัติ */
-const levelLabel = (i: number) => `${i} · ${i <= 4 ? 'พนักงาน' : i <= 8 ? 'หัวหน้าแผนก (ยกเลิก/อนุมัติได้)' : 'ผู้จัดการระบบ (ทุกอย่าง)'}`;
+type GroupRight = { menu: string; can_read: string; can_add: string; can_edit: string; can_cancel: string; can_delete: string; can_print: string; can_approve: string };
+interface Group { id: string; code: string; name: string; rights_in?: string[]; tenant_id?: string | null; tenant_code?: string | null; rights?: GroupRight[] }
+/** ป้ายระดับอนุมัติ (HANDOFF 191 · 197) — ระดับ = อำนาจอนุมัติ ยิ่งสูงยิ่งอนุมัติได้มาก */
+function levelLabel(i: number) { return `${i} · ${i <= 4 ? 'พนักงาน' : i <= 8 ? 'หัวหน้า (ยกเลิก/ลบ/รับรองได้)' : 'ผู้มีอำนาจสูงสุด (ทุกอย่าง)'}`; }
+/** ระดับอนุมัติในคำของเจ้าของ (HANDOFF 197 ข้อ 4 "ระดับการอนุมัติเรื่องของการอนุมัติการออกเอกสาร … อนุมัติการยกเลิก ลบ ปร้ินต์ เอกสาร อนุมัติวงเงิน ของผุ้มีอำนาจที่สูงกว่า") */
 const LEVEL_HELP = (
   <ul className="small level-help">
-    <li><b>0–4</b> อ่าน/เพิ่ม/แก้ไข/พิมพ์ — สิทธิ์พื้นฐานเท่ากัน ตัวเลขใช้กับเงื่อนไขอนุมัติ เช่น ขายเกินวงเงินเครดิต ขายให้ลูกค้าที่ระงับไว้</li>
-    <li><b>5–8</b> + ยกเลิก/ลบ/อนุมัติ กำหนดค่าโปรแกรม ปิดงวด และระบบเงินเดือน</li>
+    <li>ระดับอนุมัติ = <b>อำนาจอนุมัติ</b> ของผู้ใช้ — สิทธิ์รายเมนู (กลุ่ม) บอกว่า<b>ทำอะไรได้</b> · ระดับบอกว่า<b>อนุมัติได้แค่ไหน</b> เรื่องที่ต้องให้ผู้มีอำนาจสูงกว่าอนุมัติ</li>
+    <li><b>0–4</b> อ่าน เพิ่ม แก้ไข พิมพ์ — ตัวเลขใช้กับเงื่อนไขอนุมัติที่ตั้งไว้ เช่น รับรองเอกสารก่อนพิมพ์ พิมพ์ซ้ำ ขายเกินวงเงิน ขายให้ลูกค้าที่ระงับ</li>
+    <li><b>5–8</b> + ยกเลิก ลบ รับรองเอกสาร กำหนดค่าโปรแกรม ปิดงวด ระบบเงินเดือน</li>
     <li><b>9</b> ทุกอย่าง รวมระบบความปลอดภัย (ผู้ใช้/สิทธิ์ AI อ่านบิล PDPA บันทึกการใช้งาน แบบฟอร์ม)</li>
+    <li className="muted">ตั้งเงื่อนไขอนุมัติได้ที่ ประเภทเอกสาร (รับรองก่อนพิมพ์ · พิมพ์ซ้ำ) และค่าเริ่มต้นระบบขาย/ซื้อ (ขายเกินวงเงิน · ลูกค้า/ผู้จำหน่ายถูกระงับ)</li>
   </ul>
 );
+/** เมนูที่ไม่มีสิทธิ์ (เดิม "ตรวจสอบสิทธิ์" — HANDOFF 197 ข้อ 5): สิทธิ์จริงมาจากกลุ่ม/สิทธิ์รายเมนูเสมอ ตัวเลือกนี้บอกแค่ว่าซ่อนหรือแสดงจาง */
 const RIGHTS_HELP = (
   <ul className="small level-help">
-    <li><b>ไม่ตรวจ</b> = ใช้ได้ทุกเมนูตามระดับอนุมัติ — กลุ่มผู้ใช้ไม่มีผล</li>
-    <li><b>ตรวจก่อนใช้งาน</b> = ใช้ได้เฉพาะเมนูที่กำหนดในสิทธิ์รายเมนูของผู้ใช้หรือกลุ่ม</li>
+    <li>สิทธิ์ที่ใช้ได้จริง = สิทธิ์ของ<b>กลุ่ม</b> + ช่องที่ปรับเพิ่มใน<b>สิทธิ์รายเมนู</b>ของผู้ใช้ (ไม่มีกลุ่ม = ตามระดับอนุมัติ)</li>
+    <li><b>แสดงแบบจาง</b> = เห็นทุกเมนู เมนูที่ไม่มีสิทธิ์เป็นสีจาง กดแล้วบอกเหตุผล</li>
+    <li><b>ซ่อน</b> = ไม่เห็นเมนูที่ไม่มีสิทธิ์ · ไม่มีกลุ่มและไม่ได้ตั้งสิทธิ์รายเมนู = ใช้อะไรไม่ได้</li>
   </ul>
 );
+const MENU_LABEL = new Map<string, string>([['ALL', 'ทุกระบบงาน'], ...flattenMenu().map((m) => [m.code, m.label] as [string, string])]);
+const ACT_TH: Array<[keyof GroupRight, string]> = [['can_read', 'อ่าน'], ['can_add', 'เพิ่ม'], ['can_edit', 'แก้ไข'], ['can_cancel', 'ยกเลิก'], ['can_delete', 'ลบ'], ['can_print', 'พิมพ์'], ['can_approve', 'รับรอง']];
+/** สิทธิ์ของกลุ่มในบริษัทที่เลือก บรรทัดเดียว (HANDOFF 197 ข้อ 7) เช่น "ขาย: อ่าน เพิ่ม แก้ไข ยกเลิก พิมพ์ · สินค้าคงเหลือ: อ่าน พิมพ์" */
+function groupSummary(rights: GroupRight[]) {
+  const parts = rights.map((r) => {
+    const acts = ACT_TH.filter(([c]) => r[c] === 'Y' || r[c] === 'L' || r[c] === 'S').map(([c, th]) => (r[c] === 'S' ? `${th}ออกจอ` : th));
+    return acts.length ? `${MENU_LABEL.get(r.menu) ?? r.menu}: ${acts.join(' ')}` : null;
+  }).filter(Boolean) as string[];
+  return parts.length > 6 ? `${parts.slice(0, 6).join(' · ')} · และอีก ${parts.length - 6} เมนู` : parts.join(' · ');
+}
+/** ระดับอนุมัติที่กลุ่มต้องใช้ (เงินเดือน 5 · ยกเลิก/ลบ/รับรอง 5) — เตือนเมื่อระดับของผู้ใช้ต่ำกว่า */
+function groupNeedsLevel(rights: GroupRight[]) {
+  const on = (v: string) => v === 'Y' || v === 'L';
+  const pay = rights.some((r) => (r.menu === 'PAY' || r.menu.startsWith('PAY.')) && on(r.can_read));
+  const high = rights.some((r) => on(r.can_cancel) || on(r.can_delete) || on(r.can_approve));
+  return { pay, high };
+}
 interface TenantSecurity { require_mfa: boolean; service_requires_mfa?: boolean; single_session?: boolean; users: number; without_mfa: number }
 type InviteLink = { url: string; expires_at: string; hours: number; username: string; display_name: string; reissued?: boolean };
 const when = (iso: string) => new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' });
@@ -91,6 +114,8 @@ export function UsersPage() {
   const nav = useNavigate();
   const [edit, setEdit] = useState<User | 'new' | null>(null);
   const [addGroup, setAddGroup] = useState(false);
+  const [std, setStd] = useState(false);
+  const addStandard = () => { setStd(false); api.post<{ created: string[]; rows: number }>('/api/v1/user-groups/standard').then((r) => { toast(r.created.length ? `เพิ่มกลุ่มตั้งต้น ${r.created.join(' ')} แล้ว (${r.rows} แถวสิทธิ์)` : r.rows ? `เพิ่มสิทธิ์ของกลุ่มตั้งต้นในบริษัทที่ยังไม่มีแล้ว (${r.rows} แถว)` : 'มีกลุ่มตั้งต้นครบแล้ว — ไม่ได้เปลี่ยนอะไร'); qc.invalidateQueries({ queryKey: ['users'] }); }).catch(toastError); };
   const [link, setLink] = useState<InviteLink | null>(null);
   const rs = useRowSelect(q.data?.users);
   const sec = useQuery({ enabled: !!me?.user.is_admin && !!me?.user.tenant_id, queryKey: ['tenant-security'], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
@@ -98,18 +123,18 @@ export function UsersPage() {
   if (!me?.user.is_admin) return <div className="page"><div className="notebox">เฉพาะผู้ดูแลระบบ</div></div>;
   return (
     <div className="page" data-tone="setup">
-      <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="ผู้ใช้งานระบบ" lead="ผู้ใช้ในกลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · ผู้ใช้อื่นเข้าได้เฉพาะบริษัทที่กำหนด ตามระดับอนุมัติ (0–4 พนักงาน · 5–8 หัวหน้าแผนก · 9 ผู้จัดการระบบ) และจำกัดเพิ่มด้วยสิทธิ์รายเมนูถ้าเปิดตรวจสอบสิทธิ์"
-        actions={<><button onClick={() => nav('/settings/permissions')}>สิทธิ์รายเมนู</button><button onClick={() => setAddGroup(true)}>+ เพิ่มกลุ่ม</button></>} />
+      <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="ผู้ใช้งานระบบ" lead="ผู้ใช้ในกลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · ผู้ใช้อื่นเข้าได้เฉพาะบริษัทที่กำหนด ใช้สิทธิ์ของกลุ่มเป็นค่าตั้งต้น ปรับเพิ่มได้ที่สิทธิ์รายเมนู (ไม่มีกลุ่ม = ตามระดับอนุมัติ) · ระดับอนุมัติ = อำนาจอนุมัติ (0–4 พนักงาน · 5–8 หัวหน้า · 9 ผู้มีอำนาจสูงสุด)"
+        actions={<><button onClick={() => nav('/settings/permissions')}>สิทธิ์รายเมนู</button><button onClick={() => setAddGroup(true)}>+ เพิ่มกลุ่ม</button><button onClick={() => setStd(true)} title="ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว — เพิ่มเฉพาะที่ยังไม่มี ไม่เขียนทับสิทธิ์ที่แก้แล้ว">+ กลุ่มตั้งต้น</button></>} />
       <ErrorBox error={q.error} />
       {me.user.tenant_id && <TenantMfaBox />}
       <MasterBar rs={rs} word="ผู้ใช้" label={(u) => `${u.username} ${u.display_name}`} onAdd={() => setEdit('new')} onEdit={(u) => setEdit(u)} />
       <div className="table-wrap">
         <table className="grid">
-          <thead><tr><th>รหัสผู้ใช้</th><th>ชื่อ</th><th>กลุ่ม</th><th className="c">ระดับอนุมัติ</th><th>ตรวจสอบสิทธิ์</th><th>บริษัทที่เข้าได้</th><th>โปรแกรมที่เปิดได้</th><th>เข้าระบบล่าสุด</th><th>ยืนยันสองขั้น</th><th>สถานะ</th></tr></thead>
+          <thead><tr><th>รหัสผู้ใช้</th><th>ชื่อ</th><th>กลุ่ม</th><th className="c">ระดับอนุมัติ</th><th>สิทธิ์รายเมนู</th><th>บริษัทที่เข้าได้</th><th>โปรแกรมที่เปิดได้</th><th>เข้าระบบล่าสุด</th><th>ยืนยันสองขั้น</th><th>สถานะ</th></tr></thead>
           <tbody>
             {q.data?.users.map((u, i) => (
               <tr key={u.id} className={cx('row-open', u.status === 'I' && 'void', rs.cls(i))} onClick={() => { rs.setSel(i); setEdit(u); }} onMouseEnter={rs.hover(i)}>
-                <td className="mono">{u.username}</td><td>{u.display_name}</td><td>{u.group_code ? <Pill tone={u.group_code === 'ADMIN' ? 'n' : 'x'}>{u.group_name}</Pill> : ''}</td><td className="c">{u.approval_level}</td><td>{u.group_code === 'ADMIN' ? '' : u.check_rights ? <button className="linklike" onClick={(e) => { e.stopPropagation(); nav(`/settings/permissions?s=U:${u.id}`); }}>ตามตารางสิทธิ์</button> : <span className="muted">ตามระดับ</span>}</td>
+                <td className="mono">{u.username}</td><td>{u.display_name}</td><td>{u.group_code ? <Pill tone={u.group_code === 'ADMIN' ? 'n' : 'x'}>{u.group_name}</Pill> : ''}</td><td className="c">{u.approval_level}</td><td>{u.group_code === 'ADMIN' ? '' : <RightsCell u={u} onOpen={() => nav(`/settings/permissions?s=U:${u.id}`)} />}</td>
                 <td className="small">{u.group_code === 'ADMIN' ? 'ทุกบริษัท' : u.companies.map((c) => me.companies.find((x) => x.id === c)?.code ?? '?').join(', ')}</td>
                 <td className="small">{appsText(u)}</td>
                 <td className="small">{u.last_login_at ? new Date(u.last_login_at).toLocaleString('th-TH') : '—'}</td>
@@ -120,6 +145,8 @@ export function UsersPage() {
           </tbody>
         </table>
       </div>
+      {std && <Confirm title="เพิ่มกลุ่มตั้งต้น" onClose={() => setStd(false)} onOk={addStandard}
+        text="เพิ่มกลุ่ม ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว ที่ยังไม่มี พร้อมสิทธิ์ตั้งต้นในทุกบริษัท — กลุ่มและสิทธิ์ที่แก้ไว้แล้วไม่ถูกเขียนทับ" />}
       {addGroup && <GroupForm onClose={() => setAddGroup(false)} onSaved={() => { setAddGroup(false); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
       {edit && q.data && <UserForm u={edit === 'new' ? null : edit} groups={q.data.groups} tenantOne={!!sec.data?.single_session} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['users'] }); }}
         onLink={(l) => { setEdit(null); setLink(l); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
@@ -153,11 +180,9 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
   const tenantName = (t: string | null) => (t ? groups.find((g) => g.tenant_id === t)?.tenant_code ?? 'ลูกค้า' : 'ผู้ให้บริการ');
   const shownGroups = formTenant === undefined ? groups : groups.filter((g) => (g.tenant_id ?? null) === formTenant);
   const tenantGroups = [...new Set(groups.map((g) => g.tenant_id ?? null))];
-  /** เลือกกลุ่ม: กลุ่มที่ไม่ใช่ ADMIN มีผลเฉพาะเมื่อตรวจสอบสิทธิ์ก่อนใช้งาน → เปิดให้อัตโนมัติ */
-  const pickGroup = (id: string) => {
-    const g = groups.find((x) => x.id === id);
-    setF({ ...f, user_group_id: id, ...(g && g.code !== 'ADMIN' && !f.check_rights ? { check_rights: true } : {}) });
-  };
+  /** เลือกกลุ่ม: สิทธิ์ของกลุ่มเป็นค่าตั้งต้นของผู้ใช้ทันที (HANDOFF 197 — ไม่ต้องเปิด "ตรวจสอบสิทธิ์" อีก) */
+  const pickGroup = (id: string) => setF({ ...f, user_group_id: id });
+  const pickedGroup = groups.find((g) => g.id === f.user_group_id);
   /** ติ๊กบริษัท: กลุ่มที่เลือกไว้เป็นของลูกค้ารายอื่น → ล้างกลุ่ม */
   const tickCompany = (id: string, on: boolean) => {
     const companies = on ? [...f.companies, id] : f.companies.filter((x) => x !== id);
@@ -167,7 +192,6 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
     if (clear) toast(`ล้างกลุ่ม ${g!.code} — เป็นกลุ่มของ ${tenantName(g!.tenant_id ?? null)} ไม่ใช่ลูกค้าของบริษัทที่ติ๊ก · เลือกกลุ่มใหม่`, 'warn');
     setF({ ...f, companies, ...(clear ? { user_group_id: '' } : {}) });
   };
-  const groupNoEffect = !!f.user_group_id && !isAdminGroup && !f.check_rights;
   const runSec = () => {
     const k = sec; setSec(null);
     if (k === 'invite') { api.post<InviteLink>(`/api/v1/users/${u!.id}/invite`).then(onLink).catch(setErr); return; }
@@ -214,13 +238,10 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
         <Field label="ระดับอนุมัติ" hint={LEVEL_HELP}>
           <select aria-label="ระดับอนุมัติ" value={f.approval_level} onChange={(e) => setF({ ...f, approval_level: Number(e.target.value) })}>{Array.from({ length: 10 }, (_, i) => <option key={i} value={i}>{levelLabel(i)}</option>)}</select>
         </Field>
-        <Field label="ตรวจสอบสิทธิ์" hint={RIGHTS_HELP}>
-          <select aria-label="ตรวจสอบสิทธิ์" value={f.check_rights ? '1' : '0'} onChange={(e) => setF({ ...f, check_rights: e.target.value === '1' })}><option value="0">ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ)</option><option value="1">ตรวจสอบสิทธิ์ก่อนใช้งาน</option></select>
+        {pickedGroup && !isAdminGroup && <GroupSummary g={pickedGroup} level={f.approval_level} onOpen={() => nav(`/settings/permissions?s=G:${pickedGroup.id}`)} onLevel={(n) => setF({ ...f, approval_level: n })} />}
+        <Field label="เมนูที่ไม่มีสิทธิ์" hint={RIGHTS_HELP}>
+          <select aria-label="เมนูที่ไม่มีสิทธิ์" disabled={isAdminGroup} value={f.check_rights ? '1' : '0'} onChange={(e) => setF({ ...f, check_rights: e.target.value === '1' })}><option value="0">แสดงแบบจาง (กดแล้วบอกเหตุผล)</option><option value="1">ซ่อนเมนูที่ไม่มีสิทธิ์</option></select>
         </Field>
-        {groupNoEffect && <div className="wide notebox warn group-no-effect" role="alert">
-          ⚠ เลือกกลุ่ม <b>{groups.find((g) => g.id === f.user_group_id)?.code}</b> ไว้ แต่ตั้ง "ไม่ตรวจสอบสิทธิ์" — กลุ่มจะไม่มีผล ผู้ใช้ใช้ได้ทุกเมนูตามระดับอนุมัติ {f.approval_level}
-          {' '}<button type="button" className="primary" onClick={() => setF({ ...f, check_rights: true })}>เปลี่ยนเป็นตรวจสอบสิทธิ์ก่อนใช้งาน</button>
-        </div>}
         <Field label="สถานะ"><select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="A">ใช้งาน</option><option value="I">ระงับ</option></select></Field>
         <Field label="เข้าระบบพร้อมกัน" hint={tenantOne ? 'ลูกค้านี้ตั้งไว้ 1 เครื่องทุกผู้ใช้ (ผู้ให้บริการตั้ง)' : '1 เครื่อง = เข้าระบบจากเครื่องใหม่ เครื่องเดิมออกจากระบบ (มีผลครั้งถัดไปที่เข้าระบบ)'}>
           <select value={tenantOne || f.single_session ? '1' : '0'} disabled={tenantOne} onChange={(e) => setF({ ...f, single_session: e.target.value === '1' })}><option value="0">หลายเครื่องพร้อมกันได้</option><option value="1">1 รหัสเข้าได้ทีละ 1 เครื่อง</option></select>
@@ -248,13 +269,13 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
       </div>
       {askRights && <Modal title="ยังไม่ได้กำหนดสิทธิ์รายเมนู" size="confirm" onClose={() => setAskRights(false)} footer={<>
         <button onClick={() => setAskRights(false)}>กลับไปแก้ <kbd>Esc</kbd></button>
-        <button onClick={saveAsLevel}>ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ) แล้วบันทึก</button>
+        <button onClick={saveAsLevel}>แสดงเมนูแบบจาง (ตามระดับอนุมัติ) แล้วบันทึก</button>
         <button className="primary" autoFocus onClick={saveThenRights}>บันทึก แล้วไปกำหนดสิทธิ์รายเมนู</button>
       </>}>
-        <p>เลือก "ตรวจสอบสิทธิ์ก่อนใช้งาน" แต่ทั้งผู้ใช้นี้{f.user_group_id ? 'และกลุ่มที่เลือก' : ''}ยังไม่มีสิทธิ์รายเมนูในบริษัทที่ติ๊กไว้ — ถ้าบันทึกเลย ผู้ใช้จะเปิดเมนูใดไม่ได้</p>
+        <p>เลือก "ซ่อนเมนูที่ไม่มีสิทธิ์" แต่ทั้งผู้ใช้นี้{f.user_group_id ? 'และกลุ่มที่เลือก' : ''}ยังไม่มีสิทธิ์รายเมนูในบริษัทที่ติ๊กไว้ — ถ้าบันทึกเลย ผู้ใช้จะเปิดเมนูใดไม่ได้</p>
         <ul className="small">
-          <li>เลือกกลุ่มตั้งต้น (ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ดูอย่างเดียว) ซึ่งมีสิทธิ์รายเมนูพร้อมใช้ — กด "กลับไปแก้"</li>
-          <li>หรือไม่ตรวจสอบสิทธิ์ ใช้สิทธิ์ตามระดับอนุมัติ</li>
+          <li>เลือกกลุ่มตั้งต้น (ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว) ซึ่งมีสิทธิ์รายเมนูพร้อมใช้ — กด "กลับไปแก้"</li>
+          <li>หรือแสดงเมนูแบบจาง ใช้สิทธิ์ตามระดับอนุมัติ</li>
           <li>หรือบันทึก แล้วกำหนดสิทธิ์รายเมนูของผู้ใช้นี้ต่อทันที</li>
         </ul>
       </Modal>}
@@ -268,6 +289,28 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
         }[sec]} />}
     </Modal>
   );
+}
+
+/** สรุปสิทธิ์ของกลุ่มที่เลือกในบริษัทที่เลือกอยู่ + ลิงก์ไปตารางสิทธิ์ของกลุ่ม + เตือนเมื่อระดับอนุมัติไม่พอ (HANDOFF 197 ข้อ 7) */
+function GroupSummary({ g, level, onOpen, onLevel }: { g: Group; level: number; onOpen: () => void; onLevel: (n: number) => void }) {
+  const { me } = useSession();
+  const rights = g.rights ?? [];
+  const text = groupSummary(rights);
+  const need = groupNeedsLevel(rights);
+  return (
+    <div className="wide group-summary" role="note">
+      <div><b>กลุ่ม {g.code} ทำได้</b> <span className="muted small">(บริษัท {me?.company?.code})</span>: {text || <span className="bad">ยังไม่มีสิทธิ์ในบริษัทนี้ — ผู้ใช้ใช้ได้ตามระดับอนุมัติ หรือกำหนดสิทธิ์ของกลุ่มก่อน</span>}
+        {' '}<button type="button" className="linklike" onClick={onOpen}>ดู/แก้สิทธิ์ของกลุ่ม ›</button></div>
+      {need.pay && level < 5 && <div className="warn-line small">⚠ ระบบเงินเดือนต้องระดับอนุมัติ 5 ขึ้นไป — ระดับ {level} จะเปิดเมนูเงินเดือนไม่ได้ <button type="button" className="linklike" onClick={() => onLevel(5)}>ตั้งระดับ 5</button></div>}
+      {!need.pay && need.high && level < 5 && <div className="muted small">ยกเลิก/ลบ/รับรอง ที่กลุ่มให้ไว้ ใช้ได้เมื่อระดับอนุมัติ 5 ขึ้นไป</div>}
+    </div>
+  );
+}
+
+/** คอลัมน์ "สิทธิ์รายเมนู" ในรายการผู้ใช้: ได้สิทธิ์จากไหน + ซ่อนหรือแสดงจางเมนูที่ไม่มีสิทธิ์ */
+function RightsCell({ u, onOpen }: { u: User; onOpen: () => void }) {
+  const label = u.approval_level >= 9 && !u.check_rights ? 'ทุกอย่าง (ระดับ 9)' : u.group_code ? `ตามกลุ่ม ${u.group_code}` : u.rights_in?.length || u.check_rights ? 'ตามตารางสิทธิ์' : 'ตามระดับ';
+  return <><button className="linklike" onClick={(e) => { e.stopPropagation(); onOpen(); }}>{label}</button>{u.check_rights && <span className="muted small"> · ซ่อนเมนู</span>}</>;
 }
 
 /** เพิ่มกลุ่มผู้ใช้ (S-SEC-01) — กำหนดสิทธิ์ของกลุ่มที่หน้าสิทธิ์รายเมนู */

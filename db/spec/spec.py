@@ -272,17 +272,17 @@ add(T('sys_menu', 'รายการเมนู/ฟังก์ชันที
   C('sort_order', 'int', nn=True, d='0', th='ลำดับ'),
 ], uniq=[('code',)]))
 
-add(T('sys_permission', 'สิทธิ์ 7 ชนิดต่อ ผู้ใช้/กลุ่ม × บริษัท × เมนู', 'sys', express='SCACCLV (บทที่ 23)', cols=[
+add(T('sys_permission', 'สิทธิ์ 7 ชนิดต่อ ผู้ใช้/กลุ่ม × บริษัท × เมนู — รายช่อง: ช่องว่างได้ค่าจากเมนูหลัก แล้วจากกลุ่มของผู้ใช้ (HANDOFF 197)', 'sys', express='SCACCLV (บทที่ 23)', cols=[
   C('subject_type', 'char1', nn=True, th='U=ผู้ใช้ G=กลุ่ม', chk="subject_type IN ('U','G')"),
   C('subject_id', 'uuid', nn=True, th='id ของผู้ใช้หรือกลุ่ม'),
   lk('menu_id', 'sys_menu', 'เมนู', nn=True),
-  C('can_read', 'char1', nn=True, d="'N'", th='อ่าน Y/L/N/S'),
-  C('can_add', 'char1', nn=True, d="'N'", th='เพิ่ม'),
-  C('can_edit', 'char1', nn=True, d="'N'", th='แก้ไข'),
-  C('can_cancel', 'char1', nn=True, d="'N'", th='ยกเลิกเอกสาร'),
-  C('can_delete', 'char1', nn=True, d="'N'", th='ลบ'),
-  C('can_print', 'char1', nn=True, d="'N'", th='พิมพ์'),
-  C('can_approve', 'char1', nn=True, d="'N'", th='อนุมัติ'),
+  C('can_read', 'char1', th='อ่าน Y/L/N/S · ว่าง = ตามเมนูหลัก/กลุ่ม (HANDOFF 197)'),
+  C('can_add', 'char1', th='เพิ่ม · ว่าง = ตามเมนูหลัก/กลุ่ม'),
+  C('can_edit', 'char1', th='แก้ไข · ว่าง = ตามเมนูหลัก/กลุ่ม'),
+  C('can_cancel', 'char1', th='ยกเลิกเอกสาร · ว่าง = ตามเมนูหลัก/กลุ่ม'),
+  C('can_delete', 'char1', th='ลบ · ว่าง = ตามเมนูหลัก/กลุ่ม'),
+  C('can_print', 'char1', th='พิมพ์ · ว่าง = ตามเมนูหลัก/กลุ่ม'),
+  C('can_approve', 'char1', th='อนุมัติ · ว่าง = ตามเมนูหลัก/กลุ่ม'),
 ], uniq=[('company_id','subject_type','subject_id','menu_id')]))
 
 add(T('sys_device', 'เครื่อง/อุปกรณ์ที่ลงทะเบียนใช้งานออฟไลน์', 'sync', express='(ใหม่)', cols=[

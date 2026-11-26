@@ -5,10 +5,10 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams }
 import { MENU, flattenMenu, fiscalYearLabel, formatDate, staleOpenYears, todayIso, workDateForYear, type MenuItem } from '@buddy/core';
 import { OpenYearsWarning } from './components/OpenYearsWarning';
 import { useWorkYear } from './workRange';
-import { menuVisible, ReadOnlyGuard } from './readonly';
+import { menuState, ReadOnlyGuard } from './readonly';
 import { useSession } from './session';
 import type { Me } from './api';
-import { cx, DateInput, focusStart, Modal, Toasts, toastError, useHotkeys } from './ui';
+import { cx, DateInput, focusStart, Modal, toast, Toasts, toastError, useHotkeys } from './ui';
 import { MenuSearch } from './components/MenuSearch';
 import { LoginPage, SetupPage } from './pages/Login';
 import { SignupPage } from './pages/Signup';
@@ -217,17 +217,17 @@ function Shell() {
         <button className="mini-btn" onClick={() => { if (mini) { userWide.current = true; autoMini.current = false; } setMini((x) => !x); }} title={mini ? 'ขยายเมนู' : 'ย่อเมนู'}>{mini ? '»' : '«'}</button>
         <button className="menu-search-btn" onClick={() => setSearch(true)} title="ค้นหาเมนู (Ctrl+K)"><span className="hot">🔍</span><span className="lbl">ค้นหาเมนู</span><kbd className="lbl">Ctrl+K</kbd></button>
         <NavLink to="/" end className={({ isActive }) => cx('menu-home', isActive && 'on')} data-tone="home" title="หน้าแรก (Alt+H)"><span className="hot">🏠</span><span className="lbl">หน้าแรก</span></NavLink>
-        {MENU.filter((g) => canSee(g, me.perms)).map((g) => (
+        {MENU.filter((g) => canSee(g, me)).map((g) => (
           <div key={g.code} id={`menu-${g.code}`} className={cx('menu', open === g.code && 'open')} data-tone={TONE[g.code]}>
             <button className="menu-head" onClick={() => { setOpen(open === g.code ? null : g.code); if (mini) { userWide.current = true; autoMini.current = false; } setMini(false); }} aria-expanded={open === g.code} title={g.label}>
               <span className="hot">{ICON[g.code] ?? '•'}</span><span className="lbl">{g.label}</span>
             </button>
-            {open === g.code && !mini && <div className="sub">{g.children!.filter((it) => canSee(it, me.perms)).map((it) => <MenuEntry key={it.code} it={it} perms={me.perms} />)}</div>}
+            {open === g.code && !mini && <div className="sub">{g.children!.filter((it) => canSee(it, me)).map((it) => <MenuEntry key={it.code} it={it} me={me} />)}</div>}
           </div>
         ))}
         <div className="app-version side-version lbl" title="รุ่นของโปรแกรม — ใช้เทียบว่าเป็นรุ่นล่าสุด">รุ่น <span data-no-i18n>{APP_VERSION}</span></div>
       </nav>
-      {search && <MenuSearch perms={me.perms} onClose={() => setSearch(false)} />}
+      {search && <MenuSearch me={me} onClose={() => setSearch(false)} />}
       <main className="main" id="main">
         <ReadOnlyGuard />
         <UsageAlert onOpen={() => nav('/settings/usage')} />
@@ -364,14 +364,22 @@ function MovedTo({ from, to }: { from: string; to: string }) {
   return <Navigate to={loc.pathname.replace(from, to) + loc.search} replace />;
 }
 
-function canSee(it: MenuItem, perms: Me['perms'] | undefined): boolean {
+/** เมนูที่แสดง: เปิดได้ หรือแสดงจาง (ไม่มีสิทธิ์ — ผู้ใช้ที่ไม่ได้ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์" · HANDOFF 197) */
+function canSee(it: MenuItem, me: Me | null | undefined): boolean {
   if (it.nav === false) return false;
-  if (it.children) return it.children.some((c) => canSee(c, perms));
-  return !it.route || menuVisible(it.code, perms);
+  if (it.children) return it.children.some((c) => canSee(c, me));
+  return !it.route || menuState(it.code, me).state !== 'hide';
 }
 
-function MenuEntry({ it, perms }: { it: MenuItem; perms: Me['perms'] | undefined }) {
-  if (it.children) return <div className="sub-group"><div className="sub-title">{it.label}</div>{it.children.filter((c) => canSee(c, perms)).map((c) => <MenuEntry key={c.code} it={c} perms={perms} />)}</div>;
+function MenuEntry({ it, me }: { it: MenuItem; me: Me | null | undefined }) {
+  if (it.children) return <div className="sub-group"><div className="sub-title">{it.label}</div>{it.children.filter((c) => canSee(c, me)).map((c) => <MenuEntry key={c.code} it={c} me={me} />)}</div>;
+  const st = it.route ? menuState(it.code, me) : null;
+  // ไม่มีสิทธิ์: แสดงจาง ชี้/กดแล้วบอกเหตุผล (ไม่เปิดหน้า)
+  if (st?.state === 'off') {
+    const tell = (el: HTMLElement) => toast(`${it.label}: ${st.why} — ขอสิทธิ์จากผู้ดูแลระบบ (อื่น ๆ › ผู้ใช้งานและสิทธิ์)`, 'warn', el);
+    return <span className="sub-item no-right" role="link" aria-disabled="true" tabIndex={0} title={st.why} onClick={(e) => tell(e.currentTarget)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tell(e.currentTarget); } }}>{it.label}<span className="lock" aria-hidden="true">🔒</span></span>;
+  }
   if (it.route) return <NavLink to={it.route} className={({ isActive }) => cx('sub-item', isActive && 'on')}>{it.label}</NavLink>;
   return <NavLink to={`/planned/${it.code}`} className={({ isActive }) => cx('sub-item', 'planned', isActive && 'on')} title={`อยู่ในแผน เฟส ${it.phase}`}>{it.label}<span className="phase">{it.phase}</span></NavLink>;
 }

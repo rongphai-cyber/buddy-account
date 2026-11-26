@@ -265,7 +265,8 @@ describe('สิทธิ์เดิม FI.AR.OB ใช้กับเงิน
         FROM sys_permission o JOIN sys_menu om ON om.id = o.menu_id AND om.code = 'FI.AR.OB'
         JOIN sys_permission n ON n.company_id = o.company_id AND n.subject_id = o.subject_id AND n.deleted_at IS NULL JOIN sys_menu nm ON nm.id = n.menu_id AND nm.code = 'FI.AR.DOB'
        WHERE o.company_id = ${co.A!} AND o.subject_id = ${g} AND o.deleted_at IS NULL`.execute(database.db);
-    expect(same.rows).toEqual([{ a: 'YYYYNYN', b: 'YYYYNYN' }]);
+    // ช่องรับรองส่งว่าง = ไม่ได้ตั้ง (NULL — ตามเมนูหลัก/กลุ่ม · HANDOFF 197) ทั้งแถวเดิมและแถวที่ migration คัดลอก
+    expect(same.rows).toEqual([{ a: 'YYYYNY', b: 'YYYYNY' }]);
     await migration();
     expect(await dobRows('A')).toBe(1);
   });

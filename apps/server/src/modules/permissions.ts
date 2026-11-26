@@ -12,12 +12,16 @@ import { branchCapture, branchStateOf, checkBranchWrite } from './sync/branch.js
 import { withSource } from './source.js';
 import { payrollSource } from './wts.js';
 import { withVersion } from '../versions.js';
+import { companiesForUser } from './auth.js';
 
 /**
  * สิทธิ์ 7 ชนิดรายเมนู — คู่มือบทที่ 23 (S-SEC-01/02/03)
  * 1) สิทธิ์พื้นฐานตามระดับอนุมัติ (แก้ไม่ได้): 0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/รับรอง และกำหนดค่าโปรแกรม · 9 ทุกอย่างรวมระบบความปลอดภัย
- * 2) ผู้ใช้ที่ "ตรวจสอบสิทธิ์ก่อนใช้งาน" ถูกจำกัดเพิ่มด้วยตารางสิทธิ์ (รายผู้ใช้ก่อน แล้วรายกลุ่ม; เมนูที่ตรงที่สุดก่อน แล้วเมนูหลัก แล้ว "ทุกระบบ")
- *    Y = ใช้ได้ · L = ใช้ได้และบันทึกเหตุการณ์ · N = ไม่ให้ใช้ · S = (ช่องพิมพ์) พิมพ์ออกจอเท่านั้น · ไม่มีแถวเลย = ไม่ให้ใช้
+ * 2) ตารางสิทธิ์ (กลุ่ม + ผู้ใช้) จำกัดเพิ่ม — รายช่อง (HANDOFF 197): ช่องของผู้ใช้ที่เมนูนี้ → เมนูหลักของผู้ใช้ → "ทุกระบบ" ของผู้ใช้ → ช่องของกลุ่มตามลำดับเดียวกัน
+ *    (ช่องว่าง = ไม่ได้ตั้ง ใช้ค่าถัดไป) · Y = ใช้ได้ · L = ใช้ได้และบันทึกเหตุการณ์ · N = ไม่ให้ใช้ · S = (ช่องพิมพ์) พิมพ์ออกจอเท่านั้น · ไม่มีค่าเลย = ไม่ให้ใช้
+ *    ช่องที่ไม่มีค่าเลย (tableMode): มีกลุ่มที่มีสิทธิ์ในบริษัทนี้ หรือตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์" = ไม่ได้รับ · ไม่มีกลุ่ม = ตามระดับอนุมัติ
+ *    ระดับ 9 ที่ไม่ได้ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์" = ทุกอย่างเหมือนเดิม · ผู้ใช้ที่ไม่มีกลุ่มและไม่มีแถวสิทธิ์ = ตามระดับอนุมัติอย่างเดียว (เหมือนเดิม)
+ *    check_rights = ทำอย่างไรกับเมนูที่ไม่มีสิทธิ์: true ซ่อน · false แสดงจาง กดแล้วบอกเหตุผล (เจ้าของ 26/11/2569 ข้อ 5)
  * 3) ผู้ดูแลระบบ (กลุ่ม ADMIN) ใช้ได้ทุกอย่าง
  */
 export const ACTIONS = ['read', 'add', 'edit', 'cancel', 'delete', 'print', 'approve'] as const;
@@ -36,17 +40,20 @@ const SECURITY = new Set(['SET.SEC', 'SET.TENANT', 'SET.API', 'SET.AI', 'SET.PDP
 /** ระบบเงินเดือน (ข้อมูลลับ): ระดับ 5 ขึ้นไปทุกการทำงานรวมการอ่าน · ตั้งค่ารายการ/อัตรา = เมนูกำหนดค่า */
 export const PAYROLL = new Set(['PAY', 'PAY.RUN', 'PAY.EMP', 'PAY.ITEM', 'PAY.LAW', 'PAY.CALC', 'PAY.SET', 'PAY.TAX', 'PAY.RPT']);
 
-export function baseAllowed(level: number, menu: string, action: Action) {
-  if (level >= 9) return true;
-  if (SECURITY.has(menu)) return false;
-  if (PAYROLL.has(menu)) return level >= 5;
+/** ระดับอนุมัติขั้นต่ำของ (เมนู, การทำงาน) ตามสิทธิ์พื้นฐาน — 0 = ทุกระดับ */
+export function levelNeeded(menu: string, action: Action) {
+  if (SECURITY.has(menu)) return 9;
+  if (PAYROLL.has(menu)) return 5;
   const write = action !== 'read' && action !== 'print';
-  if (CONFIG.has(menu) && write) return level >= 5;
-  if (action === 'cancel' || action === 'delete' || action === 'approve') return level >= 5;
-  return true;
+  if (CONFIG.has(menu) && write) return 5;
+  if (action === 'cancel' || action === 'delete' || action === 'approve') return 5;
+  return 0;
+}
+export function baseAllowed(level: number, menu: string, action: Action) {
+  return level >= levelNeeded(menu, action);
 }
 
-type PermRow = { subject_type: string; code: string } & Record<(typeof COL)[Action], string>;
+type PermRow = { subject_type: string; code: string } & Record<(typeof COL)[Action], string | null>;
 const chainOf = (menu: string) => { const out: string[] = []; let c: string | null | undefined = menu; while (c) { out.push(c); c = PARENT.get(c); } out.push(ALL_MENU); return out; };
 
 /** แถวสิทธิ์ของผู้ใช้และกลุ่มของผู้ใช้ในบริษัทปัจจุบัน (อ่านครั้งเดียวต่อคำขอ) */
@@ -60,24 +67,40 @@ async function loadRows(db: Db, a: AuthContext): Promise<PermRow[]> {
   return rows as PermRow[];
 }
 
-/** ค่าในตารางสิทธิ์ที่ใช้กับ (เมนู, การทำงาน) — null = ไม่มีแถวเลย */
-function tableValue(rows: PermRow[], menu: string, action: Action): string | null {
-  const chain = chainOf(menu);
-  for (const st of ['U', 'G']) {
+/**
+ * ค่าในตารางสิทธิ์ที่ใช้กับ (เมนู, การทำงาน) รายช่อง (HANDOFF 197) — ผู้ใช้ก่อน (เมนูนี้ → เมนูหลัก → ALL) แล้วกลุ่ม · null = ไม่มีค่าเลย
+ * แถวเดิมก่อน 0082 มีค่าครบทุกช่อง → ผลเท่าเดิม (แถวของผู้ใช้ที่ใกล้ที่สุดชนะทั้งแถว)
+ */
+export function tableCell(rows: PermRow[], menu: string, action: Action): { v: string; subject: 'U' | 'G'; menu: string } | null {
+  const chain = chainOf(menu), col = COL[action];
+  for (const st of ['U', 'G'] as const) {
     for (const code of chain) {
-      const r = rows.find((x) => x.subject_type === st && x.code === code);
-      if (r) return r[COL[action]] || 'N';
+      const v = rows.find((x) => x.subject_type === st && x.code === code)?.[col];
+      if (v && v.trim()) return { v: v.trim(), subject: st, menu: code };
     }
   }
   return null;
+}
+const tableValue = (rows: PermRow[], menu: string, action: Action) => tableCell(rows, menu, action)?.v ?? null;
+/**
+ * ตารางสิทธิ์ใช้กับผู้ใช้นี้ในบริษัทนี้อย่างไร (HANDOFF 197) — ช่องที่ไม่มีค่าในตารางของผู้ใช้และกลุ่มเลย:
+ * - strict = ไม่ได้รับ: ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์" (check_rights) หรือ กลุ่มของผู้ใช้มีสิทธิ์ในบริษัทนี้ (สิทธิ์ของกลุ่ม = ค่าตั้งต้น)
+ * - adjust = ตามระดับอนุมัติ: ไม่มีกลุ่ม (หรือกลุ่มยังไม่มีสิทธิ์ในบริษัทนี้) — ช่องที่ตั้งไว้ในตารางของผู้ใช้ปรับเฉพาะช่องนั้น
+ * - off = ไม่ใช้ตาราง: ระดับ 9 ที่ไม่ได้ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์" (ทุกอย่างเหมือนเดิม)
+ */
+export type TableMode = 'strict' | 'adjust' | 'off';
+export function tableMode(a: Pick<AuthContext, 'checkRights' | 'approvalLevel'>, rows: Array<{ subject_type: string }>): TableMode {
+  if (a.checkRights) return 'strict';
+  if (a.approvalLevel >= 9) return 'off';
+  return rows.some((r) => r.subject_type === 'G') ? 'strict' : 'adjust';
 }
 
 /** การทำงานที่ต้องเป็นผู้ดูแล/ระดับ 9 หรือได้รับสิทธิ์โดยตรง: ดาวน์โหลดแฟ้มสำรองทั้งบริษัท · นำข้อมูลสำรองกลับ */
 export const BACKUP_ADMIN_ONLY = new Set(['OT.BACKUP:add', 'OT.BACKUP:edit']);
 /** แถวสิทธิ์ที่เมนูนี้โดยตรง (ไม่นับ "ทุกระบบ"/เมนูหลัก) ของผู้ใช้ก่อน แล้วของกลุ่ม */
 function explicitGrant(rows: PermRow[], menu: string, action: Action) {
-  const r = rows.find((x) => x.subject_type === 'U' && x.code === menu) ?? rows.find((x) => x.subject_type === 'G' && x.code === menu);
-  return !!r && (r[COL[action]] === 'Y' || r[COL[action]] === 'L');
+  const v = rows.find((x) => x.subject_type === 'U' && x.code === menu)?.[COL[action]] || rows.find((x) => x.subject_type === 'G' && x.code === menu)?.[COL[action]];
+  return v === 'Y' || v === 'L';
 }
 
 /** ระบบที่บริษัทปิดไว้ (ข้อกำหนดเจ้าของ: ปิดบางระบบทั้งบริษัท) — รหัสใน MODULE_SWITCHES */
@@ -94,22 +117,46 @@ export async function modulesOff(db: Db, companyId: string | null): Promise<stri
   return off;
 }
 
-function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action, off: string[] = []): { allowed: boolean; log: boolean; screenOnly: boolean } {
+/** เหตุที่ใช้ไม่ได้: module ระบบปิดทั้งบริษัท · platform เมนูผู้ให้บริการ · hub เปิดเฉพาะโปรแกรมอื่น · level ระดับอนุมัติไม่พอ · backup ต้องได้สิทธิ์โดยตรง · table ตารางสิทธิ์ไม่ให้ */
+export type Why = 'module' | 'platform' | 'hub' | 'level' | 'backup' | 'table';
+type Decision = { allowed: boolean; log: boolean; screenOnly: boolean; why?: Why };
+const NO = (why: Why): Decision => ({ allowed: false, log: false, screenOnly: false, why });
+/** เมนูส่วนตัว (หน้าเปิดโปรแกรม เปลี่ยนรหัสผ่าน): ทุกคนใช้ได้ ไม่ขึ้นกับตารางสิทธิ์ */
+const PERSONAL = new Set(HUB_ONLY_MENUS);
+
+function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action, off: string[] = []): Decision {
   // ระบบที่ปิดทั้งบริษัท: ไม่มีใครใช้ได้ (รวมผู้ดูแลระบบ) จนกว่าจะเปิดกลับ
-  if (off.length && menuOffBy(menu, off)) return { allowed: false, log: false, screenOnly: false };
+  if (off.length && menuOffBy(menu, off)) return NO('module');
   // เมนูของผู้ให้บริการ: ผู้ดูแลของลูกค้า (ADMIN ใน tenant) ก็ไม่ได้ — ไม่แสดงในเมนู (HANDOFF 159.1)
-  if (PLATFORM_MENUS.has(menu) && !a.isPlatform) return { allowed: false, log: false, screenOnly: false };
+  if (PLATFORM_MENUS.has(menu) && !a.isPlatform) return NO('platform');
   if (a.isAdmin) return { allowed: true, log: false, screenOnly: false };
   // ผู้ใช้ที่ผู้ดูแลไม่ให้เปิด Buddy (เปิดได้เฉพาะโปรแกรมอื่นจาก Hub · sys_user.app_access): เหลือหน้าเปิดโปรแกรม + รหัสผ่าน
-  if (hubOnly(a.apps) && !HUB_ONLY_MENUS.includes(menu)) return { allowed: false, log: false, screenOnly: false };
-  if (!baseAllowed(a.approvalLevel, menu, action)) return { allowed: false, log: false, screenOnly: false };
+  if (hubOnly(a.apps) && !HUB_ONLY_MENUS.includes(menu)) return NO('hub');
+  if (!baseAllowed(a.approvalLevel, menu, action)) return NO('level');
   // สำรอง (ดาวน์โหลดข้อมูลทั้งบริษัท) / นำข้อมูลสำรองกลับ: ผู้ดูแลระบบหรือระดับ 9 — ระดับต่ำกว่าต้องได้รับสิทธิ์ที่เมนูนี้โดยตรง (แถวสิทธิ์ของผู้ใช้/กลุ่มที่เมนู OT.BACKUP เป็น Y/L) แม้ไม่ได้ตรวจสิทธิ์ก่อนใช้งาน (HANDOFF 146)
-  if (BACKUP_ADMIN_ONLY.has(`${menu}:${action}`) && a.approvalLevel < 9 && !explicitGrant(rows, menu, action)) return { allowed: false, log: false, screenOnly: false };
-  if (!a.checkRights) return { allowed: true, log: false, screenOnly: false };
+  if (BACKUP_ADMIN_ONLY.has(`${menu}:${action}`) && a.approvalLevel < 9 && !explicitGrant(rows, menu, action)) return NO('backup');
+  // เมนูส่วนตัวใช้ได้เสมอ · ไม่ใช้ตาราง = ตามระดับอนุมัติ
+  const mode = tableMode(a, rows);
+  if (PERSONAL.has(menu) || mode === 'off') return { allowed: true, log: false, screenOnly: false };
   const v = tableValue(rows, menu, action);
   if (v === 'Y' || v === 'L') return { allowed: true, log: v === 'L', screenOnly: false };
   if (v === 'S' && action === 'print') return { allowed: true, log: false, screenOnly: true };
-  return { allowed: false, log: false, screenOnly: false };
+  // ไม่มีค่าในตารางเลย: ไม่มีกลุ่ม (adjust) = ตามระดับอนุมัติ · มีกลุ่ม/ซ่อนเมนู (strict) = ไม่ได้รับ
+  if (!v && mode === 'adjust') return { allowed: true, log: false, screenOnly: false };
+  return NO('table');
+}
+
+/** ข้อความเหตุผลที่ใช้ไม่ได้ (หน้าจอแสดงเมื่อชี้/กดเมนูที่จาง · ข้อความ 403) */
+export function whyText(d: { why?: Why }, a: Pick<AuthContext, 'approvalLevel'>, menu: string, action: Action) {
+  const act = ACTION_TH[action];
+  switch (d.why) {
+    case 'level': return `${act}ในเมนูนี้ต้องระดับอนุมัติ ${levelNeeded(menu, action)} ขึ้นไป (ระดับของคุณ ${a.approvalLevel})`;
+    case 'backup': return 'สำรอง/นำข้อมูลกลับทั้งบริษัท เฉพาะผู้ดูแลระบบ ระดับอนุมัติ 9 หรือผู้ที่ได้รับสิทธิ์ที่เมนูนี้โดยตรง';
+    case 'table': return `กลุ่มผู้ใช้/สิทธิ์รายเมนูของคุณไม่ได้ให้สิทธิ์${act}ในเมนูนี้`;
+    case 'module': return 'ระบบนี้ปิดอยู่ในบริษัทนี้';
+    case 'hub': return 'คุณได้รับสิทธิ์เปิดเฉพาะโปรแกรมอื่นจากหน้าเปิดโปรแกรม';
+    default: return 'เมนูนี้ไม่เปิดให้บัญชีนี้';
+  }
 }
 
 /** ผลการตรวจสิทธิ์ (เมนู, การทำงาน) ของผู้ใช้ปัจจุบัน — ใช้ใน API ที่ต้องรู้รายละเอียด เช่น สิทธิ์พิมพ์ออกจอเท่านั้น */
@@ -118,18 +165,30 @@ export async function allowedFor(db: Db, a: AuthContext, menu: string, action: A
 export async function readOnlyUser(db: Db, a: AuthContext) {
   if (a.isAdmin) return false;
   const rows = await loadRows(db, a), off = await modulesOff(db, a.companyId);
-  return !FLAT.some((m) => decide(a, rows, m.code, 'add', off).allowed || decide(a, rows, m.code, 'edit', off).allowed);
+  // เมนูส่วนตัว (เปลี่ยนรหัสผ่าน หน้าเปิดโปรแกรม) ไม่นับ — ไม่ใช่ข้อมูลของบริษัท
+  return !FLAT.some((m) => !PERSONAL.has(m.code) && (decide(a, rows, m.code, 'add', off).allowed || decide(a, rows, m.code, 'edit', off).allowed));
 }
 
-/** สิทธิ์ทุกเมนูของผู้ใช้ในบริษัทปัจจุบัน — หน้าจอใช้ซ่อนเมนู/ปุ่ม (ด่านจริงอยู่ที่ API) */
+/** สิทธิ์ทุกเมนูของผู้ใช้ในบริษัทปัจจุบัน — หน้าจอใช้ซ่อน/จางเมนูและปุ่ม (ด่านจริงอยู่ที่ API) */
 export async function permissionMatrix(db: Db, a: AuthContext) {
+  return (await permissionView(db, a)).perms;
+}
+/**
+ * สิทธิ์ทุกเมนู + เหตุผลของเมนูที่เปิดไม่ได้ (HANDOFF 197)
+ * why[เมนู] = เหตุที่อ่านไม่ได้ (หรือเพิ่มไม่ได้) เฉพาะเหตุที่ผู้ใช้ควรเห็นเมนูแบบจาง (ระดับ/ตารางสิทธิ์/สำรอง) · table = ตารางสิทธิ์มีผลกับผู้ใช้นี้ในบริษัทนี้
+ */
+export async function permissionView(db: Db, a: AuthContext) {
   const rows = await loadRows(db, a);
   const off = await modulesOff(db, a.companyId);
-  const out: Record<string, Record<Action, boolean | 'S'>> = {};
+  const perms: Record<string, Record<Action, boolean | 'S'>> = {};
+  const why: Record<string, string> = {};
   for (const m of FLAT) {
-    out[m.code] = Object.fromEntries(ACTIONS.map((x) => { const r = decide(a, rows, m.code, x, off); return [x, r.allowed ? (r.screenOnly ? 'S' : true) : false]; })) as Record<Action, boolean | 'S'>;
+    const ds = ACTIONS.map((x) => [x, decide(a, rows, m.code, x, off)] as const);
+    perms[m.code] = Object.fromEntries(ds.map(([x, r]) => [x, r.allowed ? (r.screenOnly ? 'S' : true) : false])) as Record<Action, boolean | 'S'>;
+    const deny = ds.find(([x, r]) => x === 'read' && !r.allowed) ?? ds.find(([x, r]) => x === 'add' && !r.allowed);
+    if (deny && (deny[1].why === 'level' || deny[1].why === 'table' || deny[1].why === 'backup')) why[m.code] = whyText(deny[1], a, m.code, deny[0]);
   }
-  return out;
+  return { perms, why, table: (a.isAdmin ? 'off' : tableMode(a, rows)) as TableMode };
 }
 
 /**
@@ -438,6 +497,10 @@ export const API_RULES: Record<string, Rule> = {
   // ระบบความปลอดภัย (S-SEC-01/02/03)
   'GET /api/v1/permissions/menus': M('SET.SEC', 'read'), 'GET /api/v1/permissions': M('SET.SEC', 'read'),
   'GET /api/v1/permissions/by-menu': M('SET.SEC', 'read'), 'PUT /api/v1/permissions': M('SET.SEC', 'edit'),
+  // คัดลอกสิทธิ์ไปบริษัทอื่นของลูกค้าเดียวกัน (HANDOFF 197): เขียนข้ามบริษัท จึงไม่อยู่ใต้ RLS ของบริษัทเดียว — ตรวจสิทธิ์แก้สิทธิ์ผู้ใช้ทั้งต้นทางและปลายทางในตัว API
+  'POST /api/v1/permissions/copy/preview': SELF, 'POST /api/v1/permissions/copy': SELF,
+  // กลุ่มตั้งต้นของลูกค้า (HANDOFF 197): ผู้ดูแลของลูกค้าเพิ่มเองได้ (ตรวจในตัว API)
+  'POST /api/v1/user-groups/standard': SELF,
 };
 
 /** API ที่ลงทะเบียนแล้วทั้งหมด (ชุดทดสอบใช้ตรวจว่าทุกเส้นมีกฎสิทธิ์) */
@@ -508,7 +571,7 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
     // พิมพ์ออกจอเท่านั้น (S): ดูตัวอย่างได้ แต่คำขอที่บันทึกการพิมพ์ (นับครั้งที่พิมพ์ · POST …/printed) ไม่ได้ — HANDOFF 157
     if (r.allowed && r.screenOnly && method !== 'GET') throw forbidden('สิทธิ์ของคุณพิมพ์ได้เฉพาะแสดงทางจอภาพ — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์พิมพ์ออกเครื่องพิมพ์');
     if (!r.allowed) {
-      throw forbidden(`ไม่มีสิทธิ์${ACTION_TH[rule.action]}ในเมนู "${LABEL.get(menu) ?? menu}" — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ (เมนู อื่น ๆ › ผู้ใช้งานและสิทธิ์)`);
+      throw forbidden(`ไม่มีสิทธิ์${ACTION_TH[rule.action]}ในเมนู "${LABEL.get(menu) ?? menu}" (${whyText(r, a, menu, rule.action)}) — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ (เมนู อื่น ๆ › ผู้ใช้งานและสิทธิ์)`);
     }
     if (r.log) await logActivity(db, a, { module: menu, action: `USE_${rule.action.toUpperCase()}`, detail: { method, url: req.url.split('?')[0] } });
   }
@@ -561,37 +624,55 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
   }
   const menuIds = async () => new Map((await db.selectFrom('sys_menu').select(['id', 'code']).where('deleted_at', 'is', null).execute()).map((r) => [r.code, r.id]));
 
+  const CELLS = ['p.can_read', 'p.can_add', 'p.can_edit', 'p.can_cancel', 'p.can_delete', 'p.can_print', 'p.can_approve'] as const;
+  type Cells = Record<(typeof COL)[Action], string>;
+  /** แถวสิทธิ์ของผู้ใช้/กลุ่มหนึ่งในบริษัทหนึ่ง → { เมนู: ช่อง } · ช่องว่าง (NULL) = '' (ตามเมนูหลัก/กลุ่ม) */
+  async function rowsOf(companyId: string, type: string, id: string): Promise<Record<string, Cells>> {
+    const rows = await db.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id').select(['m.code', ...CELLS])
+      .where('p.company_id', '=', companyId).where('p.subject_type', '=', type).where('p.subject_id', '=', id).where('p.deleted_at', 'is', null).execute();
+    return Object.fromEntries(rows.map((r) => [r.code, Object.fromEntries(ACTIONS.map((x) => [COL[x], (r[COL[x]] ?? '').trim()])) as Cells]));
+  }
+
   app.get('/api/v1/permissions/menus', async (req) => {
     requireCompany(req);
     const depth = (c: string) => { let n = 0, p = PARENT.get(c); while (p) { n++; p = PARENT.get(p); } return n; };
     return [{ code: ALL_MENU, label: 'ทุกระบบงาน', depth: 0, group: true }, ...FLAT.map((m) => ({ code: m.code, label: m.label, depth: depth(m.code) + 1, group: !!m.children?.length }))];
   });
 
+  /**
+   * ตารางสิทธิ์ของกลุ่ม/ผู้ใช้ในบริษัทที่เลือก (HANDOFF 197): rows = ช่องที่ตั้งเอง ('' = ตามเมนูหลัก/กลุ่ม)
+   * ผู้ใช้: group = ช่องของกลุ่ม (ค่าตั้งต้นของผู้ใช้) · effective = สิทธิ์ที่ได้จริง · table_applies = ตารางมีผลกับผู้ใช้นี้ · need = ระดับอนุมัติที่ต้องมี (เฉพาะช่องที่ระดับของผู้ใช้ไม่พอ)
+   */
   app.get('/api/v1/permissions', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ subject_type: z.enum(['U', 'G']), subject_id: z.string().uuid() }), req.query);
     const s = await subjectOf(a, q.subject_type, q.subject_id);
-    const rows = await db.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id')
-      .select(['m.code', 'p.can_read', 'p.can_add', 'p.can_edit', 'p.can_cancel', 'p.can_delete', 'p.can_print', 'p.can_approve'])
-      .where('p.company_id', '=', a.companyId).where('p.subject_type', '=', q.subject_type).where('p.subject_id', '=', q.subject_id).where('p.deleted_at', 'is', null).execute();
-    let effective: Awaited<ReturnType<typeof permissionMatrix>> | null = null;
+    const rows = await rowsOf(a.companyId, q.subject_type, q.subject_id);
+    let effective: Awaited<ReturnType<typeof permissionMatrix>> | null = null, table: TableMode | null = null;
+    let group: { id: string; code: string; name: string; admin: boolean; rows: Record<string, Cells> } | null = null;
+    const need: Record<string, Partial<Record<Action, number>>> = {};
     if (q.subject_type === 'U') {
-      const g = s.user_group_id ? await db.selectFrom('sys_user_group').select('code').where('id', '=', s.user_group_id).executeTakeFirst() : null;
+      const g = s.user_group_id ? await db.selectFrom('sys_user_group').select(['id', 'code', 'name']).where('id', '=', s.user_group_id).where('deleted_at', 'is', null).executeTakeFirst() : null;
+      if (g) group = { ...g, admin: g.code === 'ADMIN', rows: await rowsOf(a.companyId, 'G', g.id) };
       const as: AuthContext = { ...a, userId: s.id, approvalLevel: s.approval_level, checkRights: s.check_rights, groupId: s.user_group_id, isAdmin: g?.code === 'ADMIN', isPlatform: false, apps: normalizeAppAccess(s.app_access) };
-      effective = await permissionMatrix(db, as);
+      const v = await permissionView(db, as);
+      effective = v.perms; table = v.table;
+      if (!as.isAdmin) for (const m of FLAT) for (const x of ACTIONS) { const n = levelNeeded(m.code, x); if (n > s.approval_level) (need[m.code] ??= {})[x] = n; }
     }
     return { subject: { type: q.subject_type, id: s.id, code: s.code, name: s.name, approval_level: q.subject_type === 'U' ? s.approval_level : null, check_rights: q.subject_type === 'U' ? s.check_rights : null },
-      rows: Object.fromEntries(rows.map((r) => [r.code, r])), effective };
+      company: { id: a.companyId, ...(await db.selectFrom('sys_company').select(['code', 'name_th']).where('id', '=', a.companyId).executeTakeFirst()) },
+      rows, group, effective, table_applies: table, need };
   });
 
+  /** ตามเมนู (S-SEC-03): ทุกกลุ่ม/ผู้ใช้ที่ได้ค่าที่เมนูนี้ รายช่อง — from = เมนูที่ให้ค่านั้น (ตัวเอง/เมนูหลัก/ทุกระบบงาน) */
   app.get('/api/v1/permissions/by-menu', async (req) => {
     const a = requireCompany(req);
     const q = parse(z.object({ menu_code: z.string().min(1).max(30) }), req.query);
-    // แถวของเมนูนี้ + เมนูหลักทุกชั้น + ทุกระบบงาน (HANDOFF 161: หน้าจอแสดงสิทธิ์ที่ได้จากเมนูหลักแบบจาง) — menu_code บอกว่ามาจากเมนูไหน
+    // แถวของเมนูนี้ + เมนูหลักทุกชั้น + ทุกระบบงาน (HANDOFF 161) — menu_code บอกว่ามาจากเมนูไหน
     const chain = chainOf(q.menu_code);
     // เฉพาะผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทนี้ — ผู้ให้บริการก็เช่นกัน (HANDOFF 191)
     const ct = await companyTenant(a.companyId);
-    const rows = await sql<{ subject_type: string; subject_id: string; code: string | null; name: string | null; menu_code: string } & Record<string, string>>`
+    const rows = await sql<{ subject_type: string; subject_id: string; code: string | null; name: string | null; menu_code: string } & Record<string, string | null>>`
       SELECT p.subject_type, p.subject_id, COALESCE(u.username, g.code) AS code, COALESCE(u.display_name, g.name) AS name, m.code AS menu_code,
              p.can_read, p.can_add, p.can_edit, p.can_cancel, p.can_delete, p.can_print, p.can_approve
         FROM sys_permission p JOIN sys_menu m ON m.id = p.menu_id
@@ -602,13 +683,21 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
          AND COALESCE(u.tenant_id, g.tenant_id) IS NOT DISTINCT FROM ${ct}::uuid
          AND (u.id IS NOT NULL OR g.id IS NOT NULL)
        ORDER BY p.subject_type DESC, 3`.execute(db);
-    // ต่อผู้ใช้/กลุ่ม: แถวของเมนูที่ใกล้ที่สุดในสาย (ตัวเอง → เมนูหลัก → ALL)
-    const best = new Map<string, (typeof rows.rows)[number]>();
+    // ต่อผู้ใช้/กลุ่ม ต่อช่อง: ค่าของเมนูที่ใกล้ที่สุดในสายที่ตั้งช่องนั้นไว้ (ตัวเอง → เมนูหลัก → ALL) · HANDOFF 197
+    const out = new Map<string, { subject_type: string; subject_id: string; code: string | null; name: string | null; cells: Record<string, { v: string; from: string }> }>();
     for (const r of rows.rows) {
-      const k = `${r.subject_type}:${r.subject_id}`, b = best.get(k);
-      if (!b || chain.indexOf(r.menu_code) < chain.indexOf(b.menu_code)) best.set(k, r);
+      const k = `${r.subject_type}:${r.subject_id}`;
+      const o = out.get(k) ?? { subject_type: r.subject_type, subject_id: r.subject_id, code: r.code, name: r.name, cells: {} };
+      for (const x of ACTIONS) {
+        const v = (r[COL[x]] ?? '').trim(), cur = o.cells[COL[x]];
+        if (v && (!cur || chain.indexOf(r.menu_code) < chain.indexOf(cur.from))) o.cells[COL[x]] = { v, from: r.menu_code };
+      }
+      out.set(k, o);
     }
-    return rows.rows.filter((r) => best.get(`${r.subject_type}:${r.subject_id}`) === r);
+    // can_* = ค่าที่ได้ของแต่ละช่อง · menu_code = เมนูที่ใกล้ที่สุดที่ให้ค่า (ตัวเอง/เมนูหลัก/ทุกระบบงาน)
+    return [...out.values()].filter((o) => Object.keys(o.cells).length).map((o) => ({ ...o,
+      menu_code: Object.values(o.cells).map((c) => c.from).sort((x, y) => chain.indexOf(x) - chain.indexOf(y))[0]!,
+      ...Object.fromEntries(ACTIONS.map((x) => [COL[x], o.cells[COL[x]]?.v ?? ''])) }));
   });
 
   app.put('/api/v1/permissions', async (req) => {
@@ -625,16 +714,100 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
       if (bad) throw badRequest(`ค่า S ใช้ได้เฉพาะช่องพิมพ์ (เมนู ${r.menu_code} ช่อง${ACTION_TH[bad]})`);
     }
     return db.transaction().execute(async (tx) => {
-      const before = await tx.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id').select(['m.code', 'p.can_read', 'p.can_add', 'p.can_edit', 'p.can_cancel', 'p.can_delete', 'p.can_print', 'p.can_approve'])
+      const before = await tx.selectFrom('sys_permission as p').innerJoin('sys_menu as m', 'm.id', 'p.menu_id').select(['m.code', ...CELLS])
         .where('p.company_id', '=', a.companyId).where('p.subject_type', '=', b.subject_type).where('p.subject_id', '=', b.subject_id).where('p.deleted_at', 'is', null).execute();
       await tx.updateTable('sys_permission').set({ deleted_at: sql`now()` as never, updated_by: a.userId }).where('company_id', '=', a.companyId).where('subject_type', '=', b.subject_type).where('subject_id', '=', b.subject_id).where('deleted_at', 'is', null).execute();
+      // ช่องว่าง = ไม่ได้ตั้ง (NULL — ได้ค่าจากเมนูหลัก/กลุ่ม) · แถวที่ว่างทุกช่องไม่เก็บ (HANDOFF 197)
       const rows = b.rows.filter((r) => ACTIONS.some((x) => r[COL[x]]))
         .map((r) => ({ company_id: a.companyId, subject_type: b.subject_type, subject_id: b.subject_id, menu_id: ids.get(r.menu_code)!, created_by: a.userId,
-          ...Object.fromEntries(ACTIONS.map((x) => [COL[x], r[COL[x]] || 'N'])) as Record<(typeof COL)[Action], string> }));
+          ...Object.fromEntries(ACTIONS.map((x) => [COL[x], r[COL[x]] || null])) as Record<(typeof COL)[Action], string | null> }));
       if (rows.length) await tx.insertInto('sys_permission').values(rows).execute();
       await logActivity(tx, a, { module: 'SEC', action: 'PERMISSION', docNo: s.code, table: 'sys_permission', rowId: b.subject_id, detail: { subject_type: b.subject_type, before, rows: rows.length } });
       return { rows: rows.length };
     });
   });
-}
 
+  /**
+   * คัดลอกสิทธิ์ของบริษัทนี้ไปบริษัทอื่นของลูกค้าเดียวกัน (HANDOFF 197 · เจ้าของ ข้อ 3 "แต่ละบริษัทเริ่มต้นเหมือนสิทธิที่ตั้งให้ แต่สามารถแก้ไขเพิ่มแต่ละสิทธิ แยกบริษัทได้")
+   * scope subject = เฉพาะกลุ่ม/ผู้ใช้ที่เลือก · all = ทุกกลุ่มและผู้ใช้ของลูกค้า (บริษัทปลายทางได้ตารางสิทธิ์เหมือนบริษัทนี้ทุกช่อง)
+   * ปลายทาง = บริษัทที่ผู้ใช้เข้าได้ ของลูกค้าเจ้าของบริษัทนี้เท่านั้น + ต้องมีสิทธิ์แก้สิทธิ์ผู้ใช้ (SET.SEC แก้ไข) ทั้งบริษัทนี้และปลายทาง
+   */
+  const copyBody = z.object({ scope: z.enum(['subject', 'all']), subject_type: z.enum(['U', 'G']).optional(), subject_id: z.string().uuid().optional(), company_ids: z.array(z.string().uuid()).min(1, 'เลือกบริษัทปลายทางอย่างน้อย 1 บริษัท').max(200) });
+  async function canEditSecurity(a: AuthContext, companyId: string) {
+    const as = { ...a, companyId };
+    return decide(as, await loadRows(db, as), 'SET.SEC', 'edit', await modulesOff(db, companyId)).allowed;
+  }
+  async function copyPlan(req: FastifyRequest) {
+    const a = requireCompany(req);
+    // ตรวจสิทธิ์ก่อนอ่านคำขอ (ผู้ใช้ดูอย่างเดียวต้องได้ 403 — HANDOFF 157)
+    if (!(await canEditSecurity(a, a.companyId))) throw forbidden('ไม่มีสิทธิ์แก้ไขในเมนู "ผู้ใช้งานและสิทธิ์" — ติดต่อผู้ดูแลระบบ');
+    const b = parse(copyBody, req.body);
+    const ct = await companyTenant(a.companyId);
+    let subject: { type: 'U' | 'G'; id: string; code: string } | null = null;
+    if (b.scope === 'subject') {
+      if (!b.subject_type || !b.subject_id) throw badRequest('เลือกกลุ่มหรือผู้ใช้ที่จะคัดลอกสิทธิ์');
+      const s = await subjectOf(a, b.subject_type, b.subject_id);
+      subject = { type: b.subject_type, id: s.id, code: s.code };
+    }
+    const mine = (await companiesForUser(db, a)).filter((c) => (c.tenant_id ?? null) === ct);
+    const want = [...new Set(b.company_ids)];
+    if (want.includes(a.companyId)) throw badRequest('บริษัทปลายทางต้องไม่ใช่บริษัทที่เลือกอยู่ (ต้นทาง)');
+    const targets = want.map((id) => mine.find((c) => c.id === id));
+    // บริษัทของลูกค้ารายอื่น / บริษัทที่ผู้ใช้เข้าไม่ได้ = ไม่พบ (ไม่บอกว่ามีอยู่)
+    if (targets.some((t) => !t)) throw notFound('บริษัทปลายทาง');
+    for (const t of targets) if (!(await canEditSecurity(a, t!.id))) throw forbidden(`ไม่มีสิทธิ์แก้สิทธิ์ผู้ใช้ในบริษัท ${t!.code} — ติดต่อผู้ดูแลระบบ`);
+    // ผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทนี้ (ไม่รวมกลุ่ม ADMIN ซึ่งได้ทุกอย่างอยู่แล้ว)
+    const subjectsSql = (companyId: string) => sql<{ subject_type: string; subject_id: string; code: string; menu_code: string } & Record<string, string | null>>`
+      SELECT p.subject_type, p.subject_id, COALESCE(u.username, g.code) AS code, m.code AS menu_code, p.can_read, p.can_add, p.can_edit, p.can_cancel, p.can_delete, p.can_print, p.can_approve
+        FROM sys_permission p JOIN sys_menu m ON m.id = p.menu_id AND m.deleted_at IS NULL
+        LEFT JOIN sys_user u ON p.subject_type = 'U' AND u.id = p.subject_id AND u.deleted_at IS NULL
+        LEFT JOIN sys_user_group g ON p.subject_type = 'G' AND g.id = p.subject_id AND g.deleted_at IS NULL
+       WHERE p.company_id = ${companyId} AND p.deleted_at IS NULL AND (u.id IS NOT NULL OR g.id IS NOT NULL)
+         AND COALESCE(u.tenant_id, g.tenant_id) IS NOT DISTINCT FROM ${ct}::uuid
+         AND (${subject ? subject.type : null}::text IS NULL OR (p.subject_type = ${subject?.type ?? null} AND p.subject_id = ${subject?.id ?? null}::uuid))`.execute(db).then((r) => r.rows);
+    const key = (r: { subject_type: string; subject_id: string }) => `${r.subject_type}:${r.subject_id}`;
+    const cellsOf = (r: Record<string, string | null>) => ACTIONS.map((x) => (r[COL[x]] ?? '').trim()).join('|');
+    const source = await subjectsSql(a.companyId);
+    const plan = [];
+    for (const t of targets) {
+      const cur = await subjectsSql(t!.id);
+      const subs = new Map<string, { type: string; id: string; code: string }>();
+      for (const r of [...source, ...cur]) subs.set(key(r), { type: r.subject_type, id: r.subject_id, code: r.code });
+      if (subject) subs.set(`${subject.type}:${subject.id}`, { type: subject.type, id: subject.id, code: subject.code });
+      const list = [...subs.entries()].map(([k, s]) => {
+        const src = new Map(source.filter((r) => key(r) === k).map((r) => [r.menu_code, cellsOf(r)]));
+        const now = new Map(cur.filter((r) => key(r) === k).map((r) => [r.menu_code, cellsOf(r)]));
+        const changed = [...new Set([...src.keys(), ...now.keys()])].filter((m) => src.get(m) !== now.get(m)).length;
+        return { subject_type: s.type, subject_id: s.id, code: s.code, before: now.size, after: src.size, changed };
+      }).sort((x, y) => (x.subject_type === y.subject_type ? x.code.localeCompare(y.code) : x.subject_type < y.subject_type ? -1 : 1));
+      plan.push({ company_id: t!.id, code: t!.code, name: t!.name_th, subjects: list, changed: list.reduce((n, s) => n + s.changed, 0) });
+    }
+    return { a, b, subject, source, plan };
+  }
+  app.post('/api/v1/permissions/copy/preview', async (req) => {
+    const p = await copyPlan(req);
+    return { scope: p.b.scope, subject: p.subject, source_rows: p.source.length, companies: p.plan };
+  });
+  app.post('/api/v1/permissions/copy', async (req) => {
+    const p = await copyPlan(req);
+    const ids = await menuIds();
+    const from = await db.selectFrom('sys_company').select('code').where('id', '=', p.a.companyId).executeTakeFirst();
+    return db.transaction().execute(async (tx) => {
+      let rows = 0;
+      for (const t of p.plan) {
+        for (const s of t.subjects) {
+          await tx.updateTable('sys_permission').set({ deleted_at: sql`now()` as never, updated_by: p.a.userId })
+            .where('company_id', '=', t.company_id).where('subject_type', '=', s.subject_type).where('subject_id', '=', s.subject_id).where('deleted_at', 'is', null).execute();
+          const vals = p.source.filter((r) => r.subject_type === s.subject_type && r.subject_id === s.subject_id && ids.has(r.menu_code)).map((r) => ({
+            company_id: t.company_id, subject_type: r.subject_type, subject_id: r.subject_id, menu_id: ids.get(r.menu_code)!, created_by: p.a.userId,
+            ...Object.fromEntries(ACTIONS.map((x) => [COL[x], (r[COL[x]] ?? '').trim() || null])) as Record<(typeof COL)[Action], string | null> }));
+          if (vals.length) { await tx.insertInto('sys_permission').values(vals).execute(); rows += vals.length; }
+        }
+        await logActivity(tx, { companyId: t.company_id, userId: p.a.userId }, { module: 'SEC', action: 'PERMISSION_COPY', docNo: from?.code ?? null, table: 'sys_permission',
+          detail: { from_company: p.a.companyId, from_code: from?.code, scope: p.b.scope, subject: p.subject, subjects: t.subjects.map((s) => `${s.subject_type}:${s.code}`), changed: t.changed } });
+      }
+      await logActivity(tx, p.a, { module: 'SEC', action: 'PERMISSION_COPY', table: 'sys_permission', detail: { to: p.plan.map((t) => t.code), scope: p.b.scope, subject: p.subject, rows } });
+      return { companies: p.plan.length, rows };
+    });
+  });
+}

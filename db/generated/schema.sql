@@ -731,20 +731,20 @@ COMMENT ON COLUMN sys_menu.deleted_at IS 'ลบแบบ soft delete (Express �
 COMMENT ON COLUMN sys_menu.origin_device_id IS 'เครื่องที่สร้างแถวนี้';
 CREATE UNIQUE INDEX uq_sys_menu_code ON sys_menu (code) WHERE deleted_at IS NULL;
 
--- sys_permission: สิทธิ์ 7 ชนิดต่อ ผู้ใช้/กลุ่ม × บริษัท × เมนู  [Express: SCACCLV (บทที่ 23)]
+-- sys_permission: สิทธิ์ 7 ชนิดต่อ ผู้ใช้/กลุ่ม × บริษัท × เมนู — รายช่อง: ช่องว่างได้ค่าจากเมนูหลัก แล้วจากกลุ่มของผู้ใช้ (HANDOFF 197)  [Express: SCACCLV (บทที่ 23)]
 CREATE TABLE sys_permission (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
   company_id uuid NOT NULL,
   subject_type char(1) NOT NULL CHECK (subject_type IN ('U','G')),
   subject_id uuid NOT NULL,
   menu_id uuid NOT NULL,
-  can_read char(1) DEFAULT 'N' NOT NULL,
-  can_add char(1) DEFAULT 'N' NOT NULL,
-  can_edit char(1) DEFAULT 'N' NOT NULL,
-  can_cancel char(1) DEFAULT 'N' NOT NULL,
-  can_delete char(1) DEFAULT 'N' NOT NULL,
-  can_print char(1) DEFAULT 'N' NOT NULL,
-  can_approve char(1) DEFAULT 'N' NOT NULL,
+  can_read char(1),
+  can_add char(1),
+  can_edit char(1),
+  can_cancel char(1),
+  can_delete char(1),
+  can_print char(1),
+  can_approve char(1),
   created_at timestamptz DEFAULT now() NOT NULL,
   created_by uuid,
   updated_at timestamptz DEFAULT now() NOT NULL,
@@ -754,19 +754,19 @@ CREATE TABLE sys_permission (
   origin_device_id uuid,
   PRIMARY KEY (id)
 );
-COMMENT ON TABLE sys_permission IS 'สิทธิ์ 7 ชนิดต่อ ผู้ใช้/กลุ่ม × บริษัท × เมนู | Express: SCACCLV (บทที่ 23)';
+COMMENT ON TABLE sys_permission IS 'สิทธิ์ 7 ชนิดต่อ ผู้ใช้/กลุ่ม × บริษัท × เมนู — รายช่อง: ช่องว่างได้ค่าจากเมนูหลัก แล้วจากกลุ่มของผู้ใช้ (HANDOFF 197) | Express: SCACCLV (บทที่ 23)';
 COMMENT ON COLUMN sys_permission.id IS 'รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน)';
 COMMENT ON COLUMN sys_permission.company_id IS 'บริษัท';
 COMMENT ON COLUMN sys_permission.subject_type IS 'U=ผู้ใช้ G=กลุ่ม';
 COMMENT ON COLUMN sys_permission.subject_id IS 'id ของผู้ใช้หรือกลุ่ม';
 COMMENT ON COLUMN sys_permission.menu_id IS 'เมนู';
-COMMENT ON COLUMN sys_permission.can_read IS 'อ่าน Y/L/N/S';
-COMMENT ON COLUMN sys_permission.can_add IS 'เพิ่ม';
-COMMENT ON COLUMN sys_permission.can_edit IS 'แก้ไข';
-COMMENT ON COLUMN sys_permission.can_cancel IS 'ยกเลิกเอกสาร';
-COMMENT ON COLUMN sys_permission.can_delete IS 'ลบ';
-COMMENT ON COLUMN sys_permission.can_print IS 'พิมพ์';
-COMMENT ON COLUMN sys_permission.can_approve IS 'อนุมัติ';
+COMMENT ON COLUMN sys_permission.can_read IS 'อ่าน Y/L/N/S · ว่าง = ตามเมนูหลัก/กลุ่ม (HANDOFF 197)';
+COMMENT ON COLUMN sys_permission.can_add IS 'เพิ่ม · ว่าง = ตามเมนูหลัก/กลุ่ม';
+COMMENT ON COLUMN sys_permission.can_edit IS 'แก้ไข · ว่าง = ตามเมนูหลัก/กลุ่ม';
+COMMENT ON COLUMN sys_permission.can_cancel IS 'ยกเลิกเอกสาร · ว่าง = ตามเมนูหลัก/กลุ่ม';
+COMMENT ON COLUMN sys_permission.can_delete IS 'ลบ · ว่าง = ตามเมนูหลัก/กลุ่ม';
+COMMENT ON COLUMN sys_permission.can_print IS 'พิมพ์ · ว่าง = ตามเมนูหลัก/กลุ่ม';
+COMMENT ON COLUMN sys_permission.can_approve IS 'อนุมัติ · ว่าง = ตามเมนูหลัก/กลุ่ม';
 COMMENT ON COLUMN sys_permission.created_at IS 'เวลาสร้าง';
 COMMENT ON COLUMN sys_permission.created_by IS 'ผู้สร้าง [Express: CREBY]';
 COMMENT ON COLUMN sys_permission.updated_at IS 'เวลาแก้ไขล่าสุด [Express: CHGDAT]';

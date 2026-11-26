@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MENU, textSim, type MenuItem } from '@buddy/core';
-import { menuVisible } from '../readonly';
+import { menuState } from '../readonly';
 import type { Me } from '../api';
-import { cx, keepInList, Modal } from '../ui';
+import { cx, keepInList, Modal, toast } from '../ui';
 
-type Row = { code: string; label: string; path: string[]; route: string };
+type Row = { code: string; label: string; path: string[]; route: string; why?: string };
 const lower = (s: string) => s.toLowerCase().normalize('NFC');
 
 /**
  * ค้นหาเมนู (Ctrl+K) — แทนปุ่มลัด Alt+ตัวเลขของเมนูหลัก: พิมพ์ชื่อหน้า (บางส่วนก็ได้ หลายคำคั่นด้วยเว้นวรรค) แล้ว Enter
- * ใช้ได้กับทุกหน้าย่อยและมีเมนูเพิ่มเท่าไรก็ได้ · แสดงเฉพาะเมนูที่ผู้ใช้มีสิทธิ์อ่าน
+ * ใช้ได้กับทุกหน้าย่อยและมีเมนูเพิ่มเท่าไรก็ได้ · แสดงเฉพาะเมนูที่ผู้ใช้มีสิทธิ์อ่าน (ผู้ใช้ที่ไม่ได้ซ่อนเมนู: เมนูที่ไม่มีสิทธิ์แสดง 🔒 เลือกแล้วบอกเหตุผล · HANDOFF 197)
  */
-export function MenuSearch({ perms, onClose }: { perms: Me['perms'] | undefined; onClose: () => void }) {
+export function MenuSearch({ me, onClose }: { me: Me | null | undefined; onClose: () => void }) {
   const nav = useNavigate();
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
@@ -21,11 +21,11 @@ export function MenuSearch({ perms, onClose }: { perms: Me['perms'] | undefined;
     const walk = (items: MenuItem[], path: string[]) => items.forEach((it) => {
       if (it.nav === false) return;
       if (it.children) walk(it.children, [...path, it.label]);
-      else if (it.route && menuVisible(it.code, perms)) out.push({ code: it.code, label: it.label, path, route: it.route });
+      else if (it.route) { const st = menuState(it.code, me); if (st.state !== 'hide') out.push({ code: it.code, label: it.label, path, route: it.route, why: st.why }); }
     });
     walk(MENU, []);
     return out;
-  }, [perms]);
+  }, [me]);
   const rows = useMemo(() => {
     const words = lower(q).split(/\s+/).filter(Boolean);
     if (!words.length) return all.slice(0, 12);
@@ -37,7 +37,7 @@ export function MenuSearch({ perms, onClose }: { perms: Me['perms'] | undefined;
       return { r, score };
     }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score || a.r.label.length - b.r.label.length).slice(0, 15).map((x) => x.r);
   }, [all, q]);
-  const go = (r: Row | undefined) => { if (!r) return; onClose(); nav(r.route); };
+  const go = (r: Row | undefined) => { if (!r) return; if (r.why) { toast(`${r.label}: ${r.why} — ขอสิทธิ์จากผู้ดูแลระบบ`, 'warn'); return; } onClose(); nav(r.route); };
   const cur = Math.min(sel, Math.max(0, rows.length - 1));
   const list = useRef<HTMLUListElement>(null);
   useEffect(() => keepInList(list.current), [cur, q]);   // ลูกศรขึ้น/ลงเลื่อนรายการตามแถวที่เลือก (HANDOFF 147)
@@ -53,7 +53,7 @@ export function MenuSearch({ perms, onClose }: { perms: Me['perms'] | undefined;
       <ul ref={list} className="menu-search-list" role="listbox" aria-label="ผลการค้นหาเมนู">
         {rows.map((r, i) => (
           <li key={r.code} role="option" aria-selected={i === cur} className={cx(i === cur && 'on')} onMouseEnter={() => setSel(i)} onClick={() => go(r)}>
-            <b>{r.label}</b>{r.path.length > 0 && <span className="muted small"> · {r.path.join(' › ')}</span>}
+            <b className={cx(r.why && 'muted')}>{r.label}</b>{r.why && <span className="small" title={r.why}> 🔒 ไม่มีสิทธิ์</span>}{r.path.length > 0 && <span className="muted small"> · {r.path.join(' › ')}</span>}
           </li>
         ))}
         {!rows.length && <li className="muted">ไม่พบเมนู "{q}" — ลองคำที่สั้นลง</li>}

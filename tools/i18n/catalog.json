@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 169,
+"n": 170,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/components/AddressHistory.tsx",
@@ -520,6 +520,43 @@
 ]
 },
 {
+"th": "ลบ",
+"n": 54,
+"files": [
+"apps/web/src/components/AddressHistory.tsx",
+"apps/web/src/components/CompanyImages.tsx",
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/ItemImages.tsx",
+"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/items/Items.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/PrintForms.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/baht.ts"
+]
+},
+{
 "th": "หมายเหตุ",
 "n": 54,
 "files": [
@@ -558,39 +595,46 @@
 ]
 },
 {
-"th": "ลบ",
-"n": 53,
+"th": "ปิด",
+"n": 49,
 "files": [
-"apps/web/src/components/AddressHistory.tsx",
-"apps/web/src/components/CompanyImages.tsx",
+"apps/web/src/ui.tsx",
+"apps/web/src/components/AiBill.tsx",
+"apps/web/src/components/AuxTools.tsx",
 "apps/web/src/components/DocPrint.tsx",
 "apps/web/src/components/ItemImages.tsx",
-"apps/web/src/components/MasterBar.tsx",
+"apps/web/src/components/ModuleSwitches.tsx",
+"apps/web/src/components/SubstituteReceipt.tsx",
 "apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/StockDocs.tsx",
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/gl/Budget.tsx",
+"apps/web/src/pages/gl/ChartTemplate.tsx",
+"apps/web/src/pages/gl/PriorYear.tsx",
+"apps/web/src/pages/gl/Templates.tsx",
 "apps/web/src/pages/inventory/Counts.tsx",
 "apps/web/src/pages/inventory/Serials.tsx",
+"apps/web/src/pages/inventory/Stock.tsx",
 "apps/web/src/pages/items/Items.tsx",
 "apps/web/src/pages/items/ItemTables.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/payroll/Filing.tsx",
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
 "apps/web/src/pages/settings/CompaniesAdmin.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/MoveCompanies.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Periods.tsx",
 "apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/PrintForms.tsx",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/baht.ts"
+"apps/web/src/pages/settings/PlatformAiKey.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/web/src/pages/tax/VatRegister.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -633,48 +677,6 @@
 "packages/core/src/menu.ts",
 "packages/core/src/payroll-import.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ปิด",
-"n": 48,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/components/AiBill.tsx",
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/ItemImages.tsx",
-"apps/web/src/components/ModuleSwitches.tsx",
-"apps/web/src/components/SubstituteReceipt.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Budget.tsx",
-"apps/web/src/pages/gl/ChartTemplate.tsx",
-"apps/web/src/pages/gl/PriorYear.tsx",
-"apps/web/src/pages/gl/Templates.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/inventory/Serials.tsx",
-"apps/web/src/pages/inventory/Stock.tsx",
-"apps/web/src/pages/items/Items.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Filing.tsx",
-"apps/web/src/pages/payroll/Runs.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/settings/CompaniesAdmin.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/MoveCompanies.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Periods.tsx",
-"apps/web/src/pages/settings/PlatformAiKey.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/web/src/pages/tax/VatRegister.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx"
 ]
 },
 {
@@ -1234,31 +1236,8 @@
 ]
 },
 {
-"th": "ภาษีหัก ณ ที่จ่าย",
-"n": 29,
-"files": [
-"apps/web/src/pages/docs/BankDocs.tsx",
-"apps/web/src/pages/docs/CashDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/docs/TradeDocs.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/tax/WhtRegister.tsx",
-"apps/server/src/modules/print.ts",
-"apps/server/src/modules/docs/settle.ts",
-"packages/core/src/doc-import.ts",
-"packages/core/src/menu.ts",
-"packages/core/src/payroll.ts",
-"packages/core/src/posting-desc.ts",
-"packages/core/src/source-totals.ts",
-"packages/core/src/trade-import.ts"
-]
-},
-{
 "th": "แก้ไข",
-"n": 29,
+"n": 30,
 "files": [
 "apps/web/src/ui.tsx",
 "apps/web/src/components/DocEdit.tsx",
@@ -1283,10 +1262,34 @@
 "apps/web/src/pages/settings/Company.tsx",
 "apps/web/src/pages/settings/Defaults.tsx",
 "apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx",
 "apps/server/src/modules/permissions.ts",
 "apps/server/src/modules/payroll/files.ts",
 "apps/server/src/modules/payroll/runs.ts",
 "apps/server/src/modules/reports/gl.ts"
+]
+},
+{
+"th": "ภาษีหัก ณ ที่จ่าย",
+"n": 29,
+"files": [
+"apps/web/src/pages/docs/BankDocs.tsx",
+"apps/web/src/pages/docs/CashDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/docs/TradeDocs.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/tax/WhtRegister.tsx",
+"apps/server/src/modules/print.ts",
+"apps/server/src/modules/docs/settle.ts",
+"packages/core/src/doc-import.ts",
+"packages/core/src/menu.ts",
+"packages/core/src/payroll.ts",
+"packages/core/src/posting-desc.ts",
+"packages/core/src/source-totals.ts",
+"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -1444,6 +1447,27 @@
 "packages/core/src/gl-link.ts",
 "packages/core/src/journal-import.ts",
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ผู้ใช้",
+"n": 24,
+"files": [
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/apikeys.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/invite.ts",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/security.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/usage.ts"
 ]
 },
 {
@@ -1622,27 +1646,6 @@
 ]
 },
 {
-"th": "ผู้ใช้",
-"n": 22,
-"files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/server/src/modules/apikeys.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/invite.ts",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/security.ts",
-"apps/server/src/modules/reports/gl.ts",
-"packages/core/src/usage.ts"
-]
-},
-{
 "th": "เลขที่เอกสาร",
 "n": 22,
 "files": [
@@ -1739,6 +1742,49 @@
 ]
 },
 {
+"th": "พิมพ์",
+"n": 20,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/SubstituteReceipt.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/reports/FsLayouts.tsx",
+"apps/web/src/pages/reports/ReportCenter.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/web/src/pages/tax/Wht50.tsx",
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
+"th": "เพิ่ม",
+"n": 20,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/components/StarterFill.tsx",
+"apps/web/src/pages/fa/Assets.tsx",
+"apps/web/src/pages/finance/Banking.tsx",
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/inventory/Counts.tsx",
+"apps/web/src/pages/items/ItemTables.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Backup.tsx",
+"apps/web/src/pages/settings/DocTypes.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/web/src/pages/tools/MasterImport.tsx",
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "ค้นหา",
 "n": 19,
 "files": [
@@ -1783,24 +1829,6 @@
 ]
 },
 {
-"th": "พิมพ์",
-"n": 19,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/SubstituteReceipt.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/reports/FsLayouts.tsx",
-"apps/web/src/pages/reports/ReportCenter.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/tax/Wht50.tsx",
-"apps/server/src/modules/permissions.ts"
-]
-},
-{
 "th": "สำนักงานใหญ่",
 "n": 19,
 "files": [
@@ -1820,29 +1848,6 @@
 "packages/core/src/payroll-files.ts",
 "packages/core/src/printforms.ts",
 "packages/core/src/taxid.ts"
-]
-},
-{
-"th": "เพิ่ม",
-"n": 19,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/components/StarterFill.tsx",
-"apps/web/src/pages/fa/Assets.tsx",
-"apps/web/src/pages/finance/Banking.tsx",
-"apps/web/src/pages/gl/Accounts.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/inventory/Counts.tsx",
-"apps/web/src/pages/items/ItemTables.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/payroll/PaySetup.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Backup.tsx",
-"apps/web/src/pages/settings/DocTypes.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/tools/MasterImport.tsx",
-"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -2515,6 +2520,17 @@
 ]
 },
 {
+"th": "กลุ่ม",
+"n": 12,
+"files": [
+"apps/web/src/components/WtsConnect.tsx",
+"apps/web/src/pages/gl/JournalImport.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"packages/core/src/journal-import.ts"
+]
+},
+{
 "th": "ทรัพย์สิน",
 "n": 12,
 "files": [
@@ -2653,6 +2669,20 @@
 "apps/web/src/pages/payroll/Runs.tsx",
 "apps/web/src/pages/settings/Signups.tsx",
 "apps/server/src/modules/reports/stock.ts"
+]
+},
+{
+"th": "ไม่มี",
+"n": 12,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"apps/web/src/pages/settings/MoveCompanies.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/server/src/modules/ai.ts",
+"apps/server/src/modules/docs/deposits.ts",
+"packages/core/src/payroll-import.ts",
+"packages/core/src/reports.ts"
 ]
 },
 {
@@ -2889,19 +2919,6 @@
 "apps/web/src/pages/docs/TradeDocs.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
-"th": "ไม่มี",
-"n": 11,
-"files": [
-"apps/web/src/pages/settings/CompaniesAdmin.tsx",
-"apps/web/src/pages/settings/MoveCompanies.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/server/src/modules/ai.ts",
-"apps/server/src/modules/docs/deposits.ts",
-"packages/core/src/payroll-import.ts",
-"packages/core/src/reports.ts"
 ]
 },
 {
@@ -3783,17 +3800,6 @@
 ]
 },
 {
-"th": "กลุ่ม",
-"n": 7,
-"files": [
-"apps/web/src/components/WtsConnect.tsx",
-"apps/web/src/pages/gl/JournalImport.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"packages/core/src/journal-import.ts"
-]
-},
-{
 "th": "คอลัมน์",
 "n": 7,
 "files": [
@@ -4047,6 +4053,18 @@
 ]
 },
 {
+"th": "รับรอง",
+"n": 7,
+"files": [
+"apps/web/src/components/DocPrint.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "ราคาขาย",
 "n": 7,
 "files": [
@@ -4142,6 +4160,19 @@
 "apps/web/src/pages/gl/JvLinks.tsx",
 "apps/web/src/pages/tax/WhtRegister.tsx",
 "packages/core/src/journal-import.ts"
+]
+},
+{
+"th": "เลือกทั้งหมด",
+"n": 7,
+"files": [
+"apps/web/src/pages/docs/BillDocs.tsx",
+"apps/web/src/pages/docs/Cheques.tsx",
+"apps/web/src/pages/docs/PettyCash.tsx",
+"apps/web/src/pages/docs/SettleDocs.tsx",
+"apps/web/src/pages/payroll/Forms.tsx",
+"apps/web/src/pages/payroll/Runs.tsx",
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -4323,6 +4354,7 @@
 "n": 6,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx",
 "apps/server/src/modules/permissions.ts"
 ]
 },
@@ -4461,17 +4493,6 @@
 ]
 },
 {
-"th": "รับรอง",
-"n": 6,
-"files": [
-"apps/web/src/components/DocPrint.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/server/src/modules/permissions.ts"
-]
-},
-{
 "th": "รายการภาษีหัก ณ ที่จ่าย",
 "n": 6,
 "files": [
@@ -4600,18 +4621,6 @@
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/journal-import.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เลือกทั้งหมด",
-"n": 6,
-"files": [
-"apps/web/src/pages/docs/BillDocs.tsx",
-"apps/web/src/pages/docs/Cheques.tsx",
-"apps/web/src/pages/docs/PettyCash.tsx",
-"apps/web/src/pages/docs/SettleDocs.tsx",
-"apps/web/src/pages/payroll/Forms.tsx",
-"apps/web/src/pages/payroll/Runs.tsx"
 ]
 },
 {
@@ -5908,14 +5917,6 @@
 ]
 },
 {
-"th": "ตรวจสอบสิทธิ์ก่อนใช้งาน",
-"n": 4,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
 "th": "ตัวคูณ",
 "n": 4,
 "files": [
@@ -6544,6 +6545,14 @@
 ]
 },
 {
+"th": "สิทธิ์รายเมนู",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ส่วนลดเงินสด",
 "n": 4,
 "files": [
@@ -6627,6 +6636,16 @@
 ]
 },
 {
+"th": "อ่าน",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/ApiKeys.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "อ้างใบกำกับ",
 "n": 4,
 "files": [
@@ -6704,6 +6723,15 @@
 "apps/web/src/pages/docs/DepositOpening.tsx",
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
+]
+},
+{
+"th": "เมนูหลัก",
+"n": 4,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/gl/Journals.tsx",
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -7528,6 +7556,14 @@
 ]
 },
 {
+"th": "ซ่อนเมนูที่ไม่มีสิทธิ์",
+"n": 3,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ซ้ำ",
 "n": 3,
 "files": [
@@ -7565,13 +7601,6 @@
 "apps/web/src/pages/payroll/Employees.tsx",
 "packages/core/src/date.ts",
 "packages/core/src/i18n.ts"
-]
-},
-{
-"th": "ตรวจสอบสิทธิ์",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -8286,6 +8315,14 @@
 ]
 },
 {
+"th": "ระดับ",
+"n": 3,
+"files": [
+"apps/web/src/pages/gl/Accounts.tsx",
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ระบบเงินเดือน",
 "n": 3,
 "files": [
@@ -8780,15 +8817,6 @@
 "apps/web/src/pages/tools/DocImport.tsx",
 "apps/web/src/pages/tools/MasterImport.tsx",
 "apps/web/src/pages/tools/TradeImport.tsx"
-]
-},
-{
-"th": "อ่าน",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/ApiKeys.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -9756,6 +9784,13 @@
 "files": [
 "apps/web/src/pages/docs/PettyCash.tsx",
 "apps/web/src/pages/gl/JournalForm.tsx"
+]
+},
+{
+"th": "S จอ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -10907,6 +10942,14 @@
 ]
 },
 {
+"th": "ซ่อน",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Usage.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ซ้าย",
 "n": 2,
 "files": [
@@ -11112,6 +11155,13 @@
 ]
 },
 {
+"th": "ตามกลุ่ม",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ตามต้นแบบ",
 "n": 2,
 "files": [
@@ -11119,7 +11169,7 @@
 ]
 },
 {
-"th": "ตามเมนูหลัก {0} {1}",
+"th": "ตามเมนูหลัก",
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -11662,6 +11712,14 @@
 "files": [
 "apps/web/src/pages/Hub.tsx",
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "บริษัทปลายทาง",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -12364,6 +12422,14 @@
 "files": [
 "packages/core/src/doc-calc.ts",
 "packages/core/src/gl-link.ts"
+]
+},
+{
+"th": "ฝ่ายการเงิน",
+"n": 2,
+"files": [
+"apps/server/src/standard-groups.ts",
+"packages/core/src/menu.ts"
 ]
 },
 {
@@ -13363,13 +13429,6 @@
 ]
 },
 {
-"th": "ระดับ",
-"n": 2,
-"files": [
-"apps/web/src/pages/gl/Accounts.tsx"
-]
-},
-{
 "th": "ระบบขายและลูกหนี้",
 "n": 2,
 "files": [
@@ -13895,14 +13954,6 @@
 ]
 },
 {
-"th": "ล้าง",
-"n": 2,
-"files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/settings/Permissions.tsx"
-]
-},
-{
 "th": "วงเงินอนุมัติ",
 "n": 2,
 "files": [
@@ -14287,14 +14338,6 @@
 "files": [
 "apps/server/src/modules/permissions.ts",
 "apps/server/src/modules/print.ts"
-]
-},
-{
-"th": "สิทธิ์รายเมนู",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -15161,6 +15204,14 @@
 ]
 },
 {
+"th": "เพิ่มกลุ่มตั้งต้น",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "เพิ่มข้อมูลหลักที่ยังไม่มีให้อัตโนมัติ",
 "n": 2,
 "files": [
@@ -15246,11 +15297,10 @@
 ]
 },
 {
-"th": "เมนูหลัก",
+"th": "เมนูที่ไม่มีสิทธิ์",
 "n": 2,
 "files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/gl/Journals.tsx"
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -16239,6 +16289,14 @@
 ]
 },
 {
+"th": "ไม่มีกลุ่ม",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/MoveCompanies.tsx",
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ไม่มีความเคลื่อนไหวในช่วงนี้",
 "n": 2,
 "files": [
@@ -16351,6 +16409,13 @@
 "files": [
 "apps/web/src/pages/settings/PrintForms.tsx",
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "ไม่ได้กำหนด",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -16765,6 +16830,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/payroll/files.ts"
+]
+},
+{
+"th": "(บริษัท {0})",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -17202,6 +17274,34 @@
 ]
 },
 {
+"th": "(✓) กลุ่ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "(✓) ระดับ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "(✓) เมนูหลัก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "(✗) ไม่มี",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": ") — ปิดบังชื่อ ที่อยู่ เลขผู้เสียภาษีได้ทั้งหมด",
 "n": 1,
 "files": [
@@ -17258,6 +17358,13 @@
 ]
 },
 {
+"th": "+ กลุ่มตั้งต้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "+ ขายเงินเชื่อ",
 "n": 1,
 "files": [
@@ -17276,6 +17383,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/Home.tsx"
+]
+},
+{
+"th": "+ ช่องที่ปรับเพิ่มใน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -17335,7 +17449,7 @@
 ]
 },
 {
-"th": "+ ยกเลิก/ลบ/อนุมัติ กำหนดค่าโปรแกรม ปิดงวด และระบบเงินเดือน",
+"th": "+ ยกเลิก ลบ รับรองเอกสาร กำหนดค่าโปรแกรม ปิดงวด ระบบเงินเดือน",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -18693,6 +18807,20 @@
 ]
 },
 {
+"th": "= ตั้งเฉพาะที่นี่ ·",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "= ตารางให้ แต่ระดับอนุมัติยังไม่พอ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "= เลขที่เอกสาร",
 "n": 1,
 "files": [
@@ -18700,17 +18828,31 @@
 ]
 },
 {
-"th": "= ใช้ได้ทุกเมนูตามระดับอนุมัติ — กลุ่มผู้ใช้ไม่มีผล",
+"th": "= เห็นทุกเมนู เมนูที่ไม่มีสิทธิ์เป็นสีจาง กดแล้วบอกเหตุผล",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
-"th": "= ใช้ได้เฉพาะเมนูที่กำหนดในสิทธิ์รายเมนูของผู้ใช้หรือกลุ่ม",
+"th": "= ได้จาก{0} (จาง · ชี้ดูที่มา · เลือก \"{1}\" เพื่อล้าง) ·",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "= ไม่เห็นเมนูที่ไม่มีสิทธิ์ · ไม่มีกลุ่มและไม่ได้ตั้งสิทธิ์รายเมนู = ใช้อะไรไม่ได้",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "= ไม่ได้ตั้งไว้ที่ใดเลย = ไม่มีสิทธิ์ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -19344,20 +19486,6 @@
 ]
 },
 {
-"th": "L ทั้งแถว",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx"
-]
-},
-{
-"th": "N ทั้งแถว",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx"
-]
-},
-{
 "th": "N ไม่ยอม",
 "n": 1,
 "files": [
@@ -19649,13 +19777,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/source.ts"
-]
-},
-{
-"th": "Y ทั้งแถว",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -20324,6 +20445,13 @@
 ]
 },
 {
+"th": "{0} · และอีก {1} เมนู",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "{0} · ใช้แอป Google/Microsoft Authenticator บนมือถือ",
 "n": 1,
 "files": [
@@ -20433,6 +20561,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "{0} ตั้งทั้งแถว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -20923,6 +21058,20 @@
 "n": 1,
 "files": [
 "apps/server/src/storage/migrate-files.ts"
+]
+},
+{
+"th": "{0}: {1} — ขอสิทธิ์จากผู้ดูแลระบบ",
+"n": 1,
+"files": [
+"apps/web/src/components/MenuSearch.tsx"
+]
+},
+{
+"th": "{0}: {1} — ขอสิทธิ์จากผู้ดูแลระบบ (อื่น ๆ › ผู้ใช้งานและสิทธิ์)",
+"n": 1,
+"files": [
+"apps/web/src/App.tsx"
 ]
 },
 {
@@ -21542,6 +21691,13 @@
 ]
 },
 {
+"th": "{0}ออกจอ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "{0}อ้างใบสั่งไม่ได้",
 "n": 1,
 "files": [
@@ -21623,6 +21779,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
+"th": "{0}ในเมนูนี้ต้องระดับอนุมัติ {1} ขึ้นไป (ระดับของคุณ {2})",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -21756,13 +21919,6 @@
 "n": 1,
 "files": [
 "apps/web/src/ui.tsx"
-]
-},
-{
-"th": "· Y = ใช้ได้ · L = ใช้ได้และบันทึกเหตุการณ์ · N = ไม่ให้ใช้ · S = (ช่องพิมพ์) พิมพ์ออกจอเท่านั้น · ค่าจาง ← รหัส = ได้จากเมนูหลักหรือ \"ทุกระบบงาน\" (ตั้งที่เมนูหลักแล้วเมนูย่อยได้ค่าเดียวกัน · เลือกค่าที่เมนูย่อยเพื่อตั้งเฉพาะเมนูนั้น)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -21941,6 +22097,13 @@
 ]
 },
 {
+"th": "· ซ่อนเมนู",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "· ตรวจแล้ว ใบสำคัญ {0} ใบ ยอดเดบิต/เครดิตเท่าบริษัทเดิม",
 "n": 1,
 "files": [
@@ -22092,6 +22255,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Sync.tsx"
+]
+},
+{
+"th": "· ระดับบอกว่า",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -22351,6 +22521,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/PaySetup.tsx"
+]
+},
+{
+"th": "กด \"คัดลอก\" เพื่อเปลี่ยนตามตาราง — บันทึกในประวัติการใช้งานของทุกบริษัทที่เปลี่ยน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -22739,6 +22916,34 @@
 ]
 },
 {
+"th": "กลุ่ม {0} ทำได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "กลุ่ม เมนูหลัก หรือระดับอนุมัติ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "กลุ่ม/ผู้ใช้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "กลุ่มนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "กลุ่มบัญชี {0}",
 "n": 1,
 "files": [
@@ -22764,6 +22969,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/fa.ts"
+]
+},
+{
+"th": "กลุ่มผู้ใช้/สิทธิ์รายเมนูของคุณไม่ได้ให้สิทธิ์{0}ในเมนูนี้",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -23369,6 +23581,13 @@
 ]
 },
 {
+"th": "กำลังแก้สิทธิ์ของบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "กำลังแก้…",
 "n": 1,
 "files": [
@@ -23950,6 +24169,20 @@
 ]
 },
 {
+"th": "ของผู้ใช้ (ไม่มีกลุ่ม = ตามระดับอนุมัติ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ของผู้ใช้ — สิทธิ์รายเมนู (กลุ่ม) บอกว่า",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ของยอดขาย",
 "n": 1,
 "files": [
@@ -24017,6 +24250,13 @@
 "n": 1,
 "files": [
 "apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "ขอบส้ม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -25518,6 +25758,34 @@
 ]
 },
 {
+"th": "คัดลอกสิทธิ์ไป {0} บริษัทแล้ว ({1} แถว)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "คัดลอกสิทธิ์ไปบริษัทอื่น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "คัดลอกสิทธิ์ไปบริษัทอื่น…",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "คัดลอกอะไร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "คัดลอกเก็บไว้ตอนนี้",
 "n": 1,
 "files": [
@@ -25550,6 +25818,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/Employees.tsx"
+]
+},
+{
+"th": "คัดลอกไป {0} บริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -26103,6 +26378,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/import-map.ts"
+]
+},
+{
+"th": "คุณได้รับสิทธิ์เปิดเฉพาะโปรแกรมอื่นจากหน้าเปิดโปรแกรม",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -27758,6 +28040,13 @@
 ]
 },
 {
+"th": "จากกลุ่ม {0}{1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "จากคลัง → คลัง",
 "n": 1,
 "files": [
@@ -27776,6 +28065,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/BankDocs.tsx"
+]
+},
+{
+"th": "จากระดับอนุมัติ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -27804,6 +28100,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/ReportCenter.tsx"
+]
+},
+{
+"th": "จากเมนูหลัก {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -29648,13 +29951,6 @@
 ]
 },
 {
-"th": "ซ่อน",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Usage.tsx"
-]
-},
-{
 "th": "ซ่อนรหัสผ่าน",
 "n": 1,
 "files": [
@@ -29949,6 +30245,13 @@
 ]
 },
 {
+"th": "ดู/แก้สิทธิ์ของกลุ่ม ›",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ดูการใช้งาน",
 "n": 1,
 "files": [
@@ -29967,6 +30270,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/ImportMapping.tsx"
+]
+},
+{
+"th": "ดูตัวอย่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -30121,13 +30431,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/MoveCompanies.tsx"
-]
-},
-{
-"th": "ตรวจก่อนใช้งาน",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -30495,6 +30798,13 @@
 ]
 },
 {
+"th": "ตัวหนาสี",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ตัวอย่าง (เดิม → ใหม่)",
 "n": 1,
 "files": [
@@ -30768,7 +31078,7 @@
 ]
 },
 {
-"th": "ตั้งทั้งแถว",
+"th": "ตั้งที่เมนูนี้",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -30831,6 +31141,13 @@
 ]
 },
 {
+"th": "ตั้งระดับ 5",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ตั้งรายการหักประจำ (ค่า GP ค่าการตลาด ค่าโฆษณา ค่าธรรมเนียม …) พร้อมบัญชีและผู้ให้บริการได้ที่ เริ่มระบบ › ประเภทเอกสาร (ใบเสร็จแต่ละแพลตฟอร์ม) — ใบใหม่ดึงมาให้ป้อนเฉพาะยอด รายการที่ไม่มียอดไม่บันทึก",
 "n": 1,
 "files": [
@@ -30842,6 +31159,27 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/PettyCash.tsx"
+]
+},
+{
+"th": "ตั้งสิทธิ์ของบริษัทอื่นให้เหมือนบริษัทนี้ (ดูตัวอย่างก่อน)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "ตั้งเงื่อนไขอนุมัติได้ที่ ประเภทเอกสาร (รับรองก่อนพิมพ์ · พิมพ์ซ้ำ) และค่าเริ่มต้นระบบขาย/ซื้อ (ขายเกินวงเงิน · ลูกค้า/ผู้จำหน่ายถูกระงับ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ตั้งเฉพาะ{0}ที่เมนูนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -30905,6 +31243,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/payroll/PaySetup.tsx"
+]
+},
+{
+"th": "ตามกลุ่ม {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -31062,7 +31407,7 @@
 ]
 },
 {
-"th": "ตามเมนูหลัก {0} {1} — เลือกค่าเพื่อตั้งเฉพาะเมนูนี้",
+"th": "ตามเมนูหลัก {0} {1}",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -31584,6 +31929,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/source.ts"
+]
+},
+{
+"th": "ต้นทาง: บริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -32567,6 +32919,13 @@
 ]
 },
 {
+"th": "ทำอะไรได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ทำเครื่องหมายของแถม {0} แล้ว — กดบันทึกอีกครั้ง",
 "n": 1,
 "files": [
@@ -32889,6 +33248,13 @@
 ]
 },
 {
+"th": "ทุกกลุ่มและผู้ใช้ของบริษัทนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ทุกคนมีเลขที่แล้ว",
 "n": 1,
 "files": [
@@ -32970,6 +33336,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/index.ts"
+]
+},
+{
+"th": "ทุกอย่าง (ระดับ 9)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -34415,6 +34788,20 @@
 ]
 },
 {
+"th": "บริษัทปลายทางต้องไม่ใช่บริษัทที่เลือกอยู่ (ต้นทาง)",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
+"th": "บริษัทปลายทางมีสิทธิ์เหมือนบริษัทนี้อยู่แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "บริษัทมหาชน",
 "n": 1,
 "files": [
@@ -35343,6 +35730,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/AiSettings.tsx"
+]
+},
+{
+"th": "บันทึกก่อน แล้วจึงคัดลอก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -38643,13 +39037,6 @@
 ]
 },
 {
-"th": "ผู้จัดการระบบ (ทุกอย่าง)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
 "th": "ผู้จำหน่าย (ดึงชื่อ ที่อยู่)",
 "n": 1,
 "files": [
@@ -38930,6 +39317,13 @@
 ]
 },
 {
+"th": "ผู้มีอำนาจสูงสุด (ทุกอย่าง)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ผู้รับผิดชอบ",
 "n": 1,
 "files": [
@@ -39189,6 +39583,13 @@
 ]
 },
 {
+"th": "ผู้ใช้นี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ผู้ใช้นี้ถูกระงับ — ติดต่อผู้ดูแลระบบของกิจการ",
 "n": 1,
 "files": [
@@ -39245,7 +39646,7 @@
 ]
 },
 {
-"th": "ผู้ใช้ในกลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · ผู้ใช้อื่นเข้าได้เฉพาะบริษัทที่กำหนด ตามระดับอนุมัติ (0–4 พนักงาน · 5–8 หัวหน้าแผนก · 9 ผู้จัดการระบบ) และจำกัดเพิ่มด้วยสิทธิ์รายเมนูถ้าเปิดตรวจสอบสิทธิ์",
+"th": "ผู้ใช้ในกลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · ผู้ใช้อื่นเข้าได้เฉพาะบริษัทที่กำหนด ใช้สิทธิ์ของกลุ่มเป็นค่าตั้งต้น ปรับเพิ่มได้ที่สิทธิ์รายเมนู (ไม่มีกลุ่ม = ตามระดับอนุมัติ) · ระดับอนุมัติ = อำนาจอนุมัติ (0–4 พนักงาน · 5–8 หัวหน้า · 9 ผู้มีอำนาจสูงสุด)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -39392,13 +39793,6 @@
 ]
 },
 {
-"th": "ฝ่ายการเงิน",
-"n": 1,
-"files": [
-"packages/core/src/menu.ts"
-]
-},
-{
 "th": "ฝ่ายขาย · ฝ่ายจัดซื้อ · ฝ่ายบัญชี · ดูอย่างเดียว พร้อมสิทธิ์รายเมนูทุกบริษัทของลูกค้านี้ — ลูกค้าใหม่ได้อัตโนมัติ · ลูกค้าเดิมกดเพิ่มได้ (กดซ้ำได้ สร้างเฉพาะที่ยังไม่มี ไม่เขียนทับสิทธิ์ที่ลูกค้าแก้เอง)",
 "n": 1,
 "files": [
@@ -39406,10 +39800,31 @@
 ]
 },
 {
+"th": "ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว — เพิ่มเฉพาะที่ยังไม่มี ไม่เขียนทับสิทธิ์ที่แก้แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ฝ่ายธุรการ",
+"n": 1,
+"files": [
+"apps/server/src/standard-groups.ts"
+]
+},
+{
 "th": "ฝ่ายบริการ/ปฏิบัติการ",
 "n": 1,
 "files": [
 "packages/core/src/starter-data.ts"
+]
+},
+{
+"th": "ฝ่ายบุคคล",
+"n": 1,
+"files": [
+"apps/server/src/standard-groups.ts"
 ]
 },
 {
@@ -39865,6 +40280,13 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "พิมพ์ออกจอเท่านั้น ·",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -41023,6 +41445,13 @@
 ]
 },
 {
+"th": "มีกลุ่มตั้งต้นครบแล้ว — ไม่ได้เปลี่ยนอะไร",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "มีกลุ่มตั้งต้นและสิทธิ์ครบแล้ว — ไม่ได้เพิ่มอะไร",
 "n": 1,
 "files": [
@@ -41538,6 +41967,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/docs/engine.ts"
+]
+},
+{
+"th": "ยกเลิก/ลบ/รับรอง ที่กลุ่มให้ไว้ ใช้ได้เมื่อระดับอนุมัติ 5 ขึ้นไป",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -42948,13 +43384,6 @@
 ]
 },
 {
-"th": "ยังไม่กำหนด (ไม่มีเมนูหลักที่ตั้งไว้) = ใช้ไม่ได้",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx"
-]
-},
-{
 "th": "ยังไม่คิด",
 "n": 1,
 "files": [
@@ -43393,6 +43822,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/parties/Parties.tsx"
+]
+},
+{
+"th": "ยังไม่มีสิทธิ์ในบริษัทนี้ — ผู้ใช้ใช้ได้ตามระดับอนุมัติ หรือกำหนดสิทธิ์ของกลุ่มก่อน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -44100,6 +44536,13 @@
 "n": 1,
 "files": [
 "apps/server/src/storage/migrate-files.ts"
+]
+},
+{
+"th": "ย้ายตามใบขาย",
+"n": 1,
+"files": [
+"apps/server/src/data-fixes/ocio-express-branch.ts"
 ]
 },
 {
@@ -46182,6 +46625,20 @@
 ]
 },
 {
+"th": "ระดับอนุมัติ 9 ที่ไม่ได้ตั้ง \"ซ่อนเมนูที่ไม่มีสิทธิ์\": ใช้ได้ทุกอย่าง — ตารางนี้ยังไม่มีผล",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "ระดับอนุมัติ =",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ระบบ · พิมพ์เอกสาร",
 "n": 1,
 "files": [
@@ -46277,6 +46734,13 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "ระบบนี้ปิดอยู่ในบริษัทนี้",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -49724,7 +50188,14 @@
 ]
 },
 {
-"th": "ล้าง (ตามเมนูหลัก)",
+"th": "ล้าง",
+"n": 1,
+"files": [
+"apps/web/src/components/AuxTools.tsx"
+]
+},
+{
+"th": "ล้าง ({0})",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -51691,6 +52162,13 @@
 ]
 },
 {
+"th": "สาขาของเอกสาร OCIO ที่ย้ายมาจาก Express ตามเลขชุด",
+"n": 1,
+"files": [
+"apps/server/src/modules/backup.ts"
+]
+},
+{
 "th": "สาขาคู่ค้า",
 "n": 1,
 "files": [
@@ -51845,6 +52323,13 @@
 ]
 },
 {
+"th": "สำรอง/นำข้อมูลกลับทั้งบริษัท เฉพาะผู้ดูแลระบบ ระดับอนุมัติ 9 หรือผู้ที่ได้รับสิทธิ์ที่เมนูนี้โดยตรง",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "สำรอง/นำข้อมูลผู้ใช้กลับได้เฉพาะผู้ดูแลระบบ",
 "n": 1,
 "files": [
@@ -51985,6 +52470,13 @@
 ]
 },
 {
+"th": "สิทธิ์ของกลุ่มเป็นค่าตั้งต้นของผู้ใช้ในกลุ่ม · ผู้ใช้ปรับเพิ่มเองได้ทีละช่อง · สิทธิ์แยกแต่ละบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "สิทธิ์ของคุณพิมพ์ได้เฉพาะแสดงทางจอภาพ",
 "n": 1,
 "files": [
@@ -51992,7 +52484,14 @@
 ]
 },
 {
-"th": "สิทธิ์ที่ได้จริง",
+"th": "สิทธิ์ที่ใช้ได้จริง = สิทธิ์ของ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "สิทธิ์ที่ได้จริง (ที่บันทึกแล้ว)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -52017,6 +52516,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/backup.ts"
+]
+},
+{
+"th": "สิทธิ์แยกแต่ละบริษัท — เปลี่ยนบริษัทที่แถบบน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -53371,14 +53877,14 @@
 ]
 },
 {
-"th": "หรือให้พนักงานสแกน QR นี้ด้วยกล้องมือถือ",
+"th": "หรือแสดงเมนูแบบจาง ใช้สิทธิ์ตามระดับอนุมัติ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
-"th": "หรือไม่ตรวจสอบสิทธิ์ ใช้สิทธิ์ตามระดับอนุมัติ",
+"th": "หรือให้พนักงานสแกน QR นี้ด้วยกล้องมือถือ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -53721,7 +54227,7 @@
 ]
 },
 {
-"th": "หัวหน้าแผนก (ยกเลิก/อนุมัติได้)",
+"th": "หัวหน้า (ยกเลิก/ลบ/รับรองได้)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -53893,6 +54399,13 @@
 "n": 1,
 "files": [
 "apps/server/src/mail/templates.ts"
+]
+},
+{
+"th": "อนุมัติได้แค่ไหน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -54428,6 +54941,13 @@
 ]
 },
 {
+"th": "อำนาจอนุมัติ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "อีเมลนี้ส่งอัตโนมัติจาก Buddy Account (WTS Solutions) — ตอบกลับอีเมลนี้เพื่อติดต่อผู้ให้บริการ",
 "n": 1,
 "files": [
@@ -54533,7 +55053,7 @@
 ]
 },
 {
-"th": "อ่าน/เพิ่ม/แก้ไข/พิมพ์ — สิทธิ์พื้นฐานเท่ากัน ตัวเลขใช้กับเงื่อนไขอนุมัติ เช่น ขายเกินวงเงินเครดิต ขายให้ลูกค้าที่ระงับไว้",
+"th": "อ่าน เพิ่ม แก้ไข พิมพ์ — ตัวเลขใช้กับเงื่อนไขอนุมัติที่ตั้งไว้ เช่น รับรองเอกสารก่อนพิมพ์ พิมพ์ซ้ำ ขายเกินวงเงิน ขายให้ลูกค้าที่ระงับ",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -55944,6 +56464,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/reports/JobCost.tsx"
+]
+},
+{
+"th": "เฉพาะ{0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -57704,13 +58231,6 @@
 ]
 },
 {
-"th": "เปลี่ยนเป็นตรวจสอบสิทธิ์ก่อนใช้งาน",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
 "th": "เปลี่ยนเป็นภาษาไทย",
 "n": 1,
 "files": [
@@ -57820,6 +58340,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "เปิดตารางสิทธิ์ของกลุ่ม (ค่าตั้งต้น)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -58250,10 +58777,17 @@
 ]
 },
 {
-"th": "เพิ่มกลุ่มตั้งต้น",
+"th": "เพิ่มกลุ่ม ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว ที่ยังไม่มี พร้อมสิทธิ์ตั้งต้นในทุกบริษัท — กลุ่มและสิทธิ์ที่แก้ไว้แล้วไม่ถูกเขียนทับ",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/Tenants.tsx"
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "เพิ่มกลุ่มตั้งต้น {0} แล้ว ({1} แถวสิทธิ์)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -58558,6 +59092,13 @@
 ]
 },
 {
+"th": "เพิ่มสิทธิ์ของกลุ่มตั้งต้นในบริษัทที่ยังไม่มีแล้ว ({0} แถว)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "เพิ่มสินค้าในรายการนับแล้ว",
 "n": 1,
 "files": [
@@ -58754,6 +59295,20 @@
 ]
 },
 {
+"th": "เมนูที่มีสิทธิ์ เดิม → ใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "เมนูที่เปลี่ยน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "เมนูนี้อยู่ในแผนพัฒนา",
 "n": 1,
 "files": [
@@ -58761,7 +59316,14 @@
 ]
 },
 {
-"th": "เมนูย่อย {0} รายการตั้งไว้ต่างจากนี้ — ใช้ค่าเดียวกันทั้งหมด หรือคงค่าเดิมของเมนูย่อยเหล่านี้ไว้",
+"th": "เมนูนี้ไม่เปิดให้บัญชีนี้",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
+"th": "เมนูย่อย {0} รายการตั้งช่องนี้ไว้ต่างจากนี้ — ใช้ค่าเดียวกันทั้งหมด (ล้างค่าที่ตั้งไว้ที่เมนูย่อย) หรือคงค่าเดิมของเมนูย่อยเหล่านี้ไว้",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
@@ -59087,6 +59649,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/reports/parties.ts"
+]
+},
+{
+"th": "เรื่องที่ต้องให้ผู้มีอำนาจสูงกว่าอนุมัติ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -60238,7 +60807,7 @@
 ]
 },
 {
-"th": "เลือก \"ตรวจสอบสิทธิ์ก่อนใช้งาน\" แต่ทั้งผู้ใช้นี้{0}ยังไม่มีสิทธิ์รายเมนูในบริษัทที่ติ๊กไว้ — ถ้าบันทึกเลย ผู้ใช้จะเปิดเมนูใดไม่ได้",
+"th": "เลือก \"ซ่อนเมนูที่ไม่มีสิทธิ์\" แต่ทั้งผู้ใช้นี้{0}ยังไม่มีสิทธิ์รายเมนูในบริษัทที่ติ๊กไว้ — ถ้าบันทึกเลย ผู้ใช้จะเปิดเมนูใดไม่ได้",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
@@ -60329,17 +60898,24 @@
 ]
 },
 {
-"th": "เลือกกลุ่มตั้งต้น (ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ดูอย่างเดียว) ซึ่งมีสิทธิ์รายเมนูพร้อมใช้ — กด \"กลับไปแก้\"",
+"th": "เลือกกลุ่มตั้งต้น (ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว) ซึ่งมีสิทธิ์รายเมนูพร้อมใช้ — กด \"กลับไปแก้\"",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
-"th": "เลือกกลุ่มหรือผู้ใช้ที่จะกำหนดสิทธิ์ (แสดงเฉพาะกลุ่มและผู้ใช้ของกิจการเจ้าของบริษัทนี้ · กิจการอื่นให้เลือกบริษัทของกิจการนั้นก่อน) · ตารางนี้มีผลเฉพาะผู้ใช้ที่ตั้ง \"ตรวจสอบสิทธิ์ก่อนใช้งาน\" · ผู้ใช้ได้สิทธิ์จากแถวของตัวเองก่อน ถ้าไม่มีจึงใช้ของกลุ่ม · สิทธิ์ในตารางจำกัดได้ไม่เกินสิทธิ์พื้นฐานตามระดับอนุมัติ (0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/รับรอง/กำหนดค่า · 9 ทุกอย่าง)",
+"th": "เลือกกลุ่มหรือผู้ใช้ที่จะกำหนดสิทธิ์ (แสดงเฉพาะกลุ่มและผู้ใช้ของกิจการเจ้าของบริษัทนี้ · กิจการอื่นให้เลือกบริษัทของกิจการนั้นก่อน) · ผู้ใช้ได้สิทธิ์ของกลุ่มเป็นค่าตั้งต้น แล้วปรับเพิ่มเองทีละช่องได้ · ตารางให้สิทธิ์ได้ไม่เกินระดับอนุมัติ (0–4 อ่าน/เพิ่ม/แก้ไข/พิมพ์ · 5–8 + ยกเลิก/ลบ/รับรอง/กำหนดค่า/เงินเดือน · 9 ทุกอย่าง)",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "เลือกกลุ่มหรือผู้ใช้ที่จะคัดลอกสิทธิ์",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -60441,6 +61017,13 @@
 ]
 },
 {
+"th": "เลือกบริษัทของลูกค้าก่อน — กลุ่มตั้งต้นเป็นของลูกค้าแต่ละราย",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "เลือกบริษัทต้นแบบที่จะคัดลอก",
 "n": 1,
 "files": [
@@ -60452,6 +61035,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/company-move.ts"
+]
+},
+{
+"th": "เลือกบริษัทปลายทางอย่างน้อย 1 บริษัท",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -61243,6 +61833,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/gl/JournalImport.tsx"
+]
+},
+{
+"th": "เหมือนเดิม",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -62188,6 +62785,13 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "แต่ระดับอนุมัติ {0} ยังไม่พอ (ต้อง {1} ขึ้นไป)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -63514,10 +64118,38 @@
 ]
 },
 {
+"th": "แสดงเมนูที่ไม่มีสิทธิ์แบบจาง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "แสดงเมนูแบบจาง (ตามระดับอนุมัติ) แล้วบันทึก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "แสดงเลขที่บิลที่ชำระเป็นแถวในตาราง",
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
+]
+},
+{
+"th": "แสดงแบบจาง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "แสดงแบบจาง (กดแล้วบอกเหตุผล)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -64459,6 +65091,13 @@
 ]
 },
 {
+"th": "ใช้ได้ ·",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ใช้ได้ครั้งเดียว ภายใน {0} ชั่วโมง",
 "n": 1,
 "files": [
@@ -64466,10 +65105,31 @@
 ]
 },
 {
+"th": "ใช้ได้ตามสิทธิ์ของกลุ่ม {0} และช่องที่ตั้งเพิ่มในตารางนี้ — ช่องที่ไม่ได้กำหนดเลย = ใช้ไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ใช้ได้ถึง",
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ใช้ได้เฉพาะที่ตั้งในตารางนี้ — ช่องที่ไม่ได้กำหนด = ใช้ไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "ใช้ได้และบันทึกเหตุการณ์ ·",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -65887,41 +66547,6 @@
 ]
 },
 {
-"th": "ไม่ตรวจ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
-"th": "ไม่ตรวจสอบสิทธิ์",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
-"th": "ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
-"th": "ไม่ตรวจสอบสิทธิ์ (ตามระดับอนุมัติ) แล้วบันทึก",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
-"th": "ไม่ตรวจสอบสิทธิ์ — ตารางนี้ยังไม่มีผล (เปิดที่หน้าผู้ใช้)",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx"
-]
-},
-{
 "th": "ไม่ติดลบ",
 "n": 1,
 "files": [
@@ -66790,10 +67415,10 @@
 ]
 },
 {
-"th": "ไม่มีกลุ่ม",
+"th": "ไม่มีกลุ่ม (หรือกลุ่มยังไม่มีสิทธิ์ในบริษัทนี้): ใช้ได้ตามระดับอนุมัติ {0} — ช่องที่ตั้งในตารางนี้ปรับเฉพาะช่องนั้น",
 "n": 1,
 "files": [
-"apps/web/src/pages/settings/MoveCompanies.tsx"
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -66927,6 +67552,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/PartyAddress.tsx"
+]
+},
+{
+"th": "ไม่มีบริษัทอื่นของกิจการนี้ที่คุณเข้าได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -67161,7 +67793,7 @@
 ]
 },
 {
-"th": "ไม่มีสิทธิ์{0}ในเมนู \"{1}\" — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ (เมนู อื่น ๆ › ผู้ใช้งานและสิทธิ์)",
+"th": "ไม่มีสิทธิ์{0}ในเมนู \"{1}\" ({2}) — ติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ (เมนู อื่น ๆ › ผู้ใช้งานและสิทธิ์)",
 "n": 1,
 "files": [
 "apps/server/src/modules/permissions.ts"
@@ -67172,6 +67804,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "ไม่มีสิทธิ์ที่จะคัดลอก",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -67235,6 +67874,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Defaults.tsx"
+]
+},
+{
+"th": "ไม่มีสิทธิ์แก้สิทธิ์ผู้ใช้ในบริษัท {0} — ติดต่อผู้ดูแลระบบ",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
+"th": "ไม่มีสิทธิ์แก้ไขในเมนู \"ผู้ใช้งานและสิทธิ์\" — ติดต่อผู้ดูแลระบบ",
+"n": 1,
+"files": [
+"apps/server/src/modules/permissions.ts"
 ]
 },
 {
@@ -67868,6 +68521,20 @@
 ]
 },
 {
+"th": "ไม่ให้ใช้ ·",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "ไม่ได้กำหนด = ไม่มีสิทธิ์",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
 "th": "ไม่ได้กำหนดบัญชีรายได้ — ใช้บัญชีขายเชื่อตามการเชื่อมต่อบัญชี",
 "n": 1,
 "files": [
@@ -67921,13 +68588,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/CashDocs.tsx"
-]
-},
-{
-"th": "ไว้ แต่ตั้ง \"ไม่ตรวจสอบสิทธิ์\" — กลุ่มจะไม่มีผล ผู้ใช้ใช้ได้ทุกเมนูตามระดับอนุมัติ {0}",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -68068,6 +68728,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "— บริษัทปลายทางจะได้สิทธิ์เหมือนบริษัทนี้ทุกช่อง แล้วยังแก้แยกแต่ละบริษัทได้ภายหลัง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -68603,6 +69270,13 @@
 ]
 },
 {
+"th": "⚠ ระบบเงินเดือนต้องระดับอนุมัติ 5 ขึ้นไป — ระดับ {0} จะเปิดเมนูเงินเดือนไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "⚠ ส่งไม่ผ่าน",
 "n": 1,
 "files": [
@@ -68614,13 +69288,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/SettleDocs.tsx"
-]
-},
-{
-"th": "⚠ เลือกกลุ่ม",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -68705,6 +69372,20 @@
 "n": 1,
 "files": [
 "apps/web/src/components/DocPrint.tsx"
+]
+},
+{
+"th": "✓ L ทั้งแถว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
+]
+},
+{
+"th": "✓ Y ทั้งแถว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -68810,6 +69491,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "✗ N ทั้งแถว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx"
 ]
 },
 {
@@ -69090,6 +69778,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Backup.tsx"
+]
+},
+{
+"th": "🔒 ไม่มีสิทธิ์",
+"n": 1,
+"files": [
+"apps/web/src/components/MenuSearch.tsx"
 ]
 },
 {

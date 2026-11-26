@@ -1158,6 +1158,25 @@ fieldset.invalid { border: 1px solid var(--bad); border-radius: 8px; padding: 6p
 select.perm-inh, td.perm-inh { color: #9a9aa6; font-style: italic; background: #f7f7fa; }
 select.perm-inh.bad, td.perm-inh.bad { color: #c99a9a; }
 .perm-from { color: #9a9aa6; font-style: italic; margin-left: 4px; }
+/* HANDOFF 197: ทุกช่องแสดงเครื่องหมาย — ตั้งเอง = ตัวหนาสี · ได้รับ = จาง (perm-inh) · ตารางให้แต่ระดับไม่พอ = ขอบส้ม */
+select.perm-own, td.perm-own, span.perm-own { color: var(--accent); font-weight: 700; }
+select.perm-own.bad, td.perm-own.bad, span.perm-own.bad { color: var(--bad); }
+select.perm-blocked { outline: 2px dashed var(--warn); outline-offset: -2px; }
+.perm-blocked-key { outline: 2px dashed var(--warn); outline-offset: 1px; padding: 0 3px; border-radius: 3px; }
+.perm-grid td.c select { width: 100%; min-width: 96px; padding-left: 6px; padding-right: 18px; font-size: 12.5px; }
+.perm-legend { margin: 6px 0; line-height: 1.6; }
+.perm-legend .perm-inh { padding: 0 3px; border-radius: 3px; }
+.perm-company { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--line); border-left: 4px solid var(--tone); border-radius: 8px; background: var(--tone-soft); }
+.perm-company button { margin-left: auto; }
+.perm-subject { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.perm-mode { margin: 2px 0 6px; color: var(--muted); }
+.group-summary { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); line-height: 1.5; }
+.group-summary .warn-line { color: var(--warn); margin-top: 4px; }
+/* เมนูที่ไม่มีสิทธิ์ (ผู้ใช้ที่ไม่ได้ซ่อนเมนู): จาง กดแล้วบอกเหตุผล */
+.sub .sub-item.no-right { color: var(--muted); opacity: .62; cursor: not-allowed; }
+.sub .sub-item.no-right:hover, .sub .sub-item.no-right:focus-visible { background: transparent; opacity: .85; }
+.sub .sub-item.no-right .lock { font-size: 11px; }
+@media (max-width: 640px) { .perm-company button { margin-left: 0; width: 100%; } .perm-grid td.c select { min-width: 74px; } }
 /* ช่องตรวจว่าไม่ใช่บอท (Cloudflare Turnstile · HANDOFF 165) */
 .bot-check { margin: 4px 0 10px; min-height: 0; }
 /* บริษัททั้งหมด / ลบบริษัท (HANDOFF 181): ชื่อบริษัทไม่ถูกบีบ · ปุ่มเป็นกลุ่มเล็กที่ขึ้นบรรทัดใหม่เอง */
@@ -1211,7 +1230,6 @@ select.perm-inh.bad, td.perm-inh.bad { color: #c99a9a; }
 /* HANDOFF 191: level / permission-check help under the user dialog fields */
 .level-help { margin: 4px 0 0; padding-left: 18px; line-height: 1.45; }
 .level-help li { margin: 1px 0; }
-.group-no-effect button { margin-left: 6px; }
 /* HANDOFF 192: move companies to another customer — preview */
 .move-preview h3 { margin: 12px 0 6px; }
 .move-preview h4 { margin: 10px 0 4px; font-size: 14px; }

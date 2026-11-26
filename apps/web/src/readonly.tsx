@@ -30,6 +30,16 @@ export function menuVisible(code: string, perms: Me['perms'] | undefined): boole
   if (p?.read === false) return false;
   return !ACTION_MENUS.has(code) || !p || p.add !== false || p.edit !== false;
 }
+/**
+ * สถานะเมนูของผู้ใช้ (HANDOFF 197 · เจ้าของ 26/11/2569 ข้อ 5 "ถ้าไม่ตรวจสอบสิทธิหมายถึงผู้ใช้สามารถเห็นเมนูต่างๆ แต่จะใช้งานได้หรือไม่ได้ขึ้นอยู๋กับสิทธิ")
+ * show = เปิดได้ · off = แสดงจาง กดแล้วบอกเหตุผล (ผู้ใช้ที่ไม่ได้ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์") · hide = ไม่แสดง (ซ่อนเมนู · ระบบที่ปิด · เมนูผู้ให้บริการ)
+ */
+export function menuState(code: string, me: Pick<Me, 'perms' | 'menu_mode' | 'perm_why'> | null | undefined): { state: 'show' | 'off' | 'hide'; why?: string } {
+  if (menuVisible(code, me?.perms)) return { state: 'show' };
+  const why = me?.perm_why?.[code];
+  if (me?.menu_mode === 'disable' && why) return { state: 'off', why };
+  return { state: 'hide' };
+}
 export function useReadOnly() { const { me } = useSession(); return readOnlyFor(me, useLocation().pathname); }
 
 /** ช่องค้นหา/เงื่อนไขของรายการ แถบบน แถบเมนู หน้าต่างค้นหา — ใช้ได้เสมอ */

@@ -179,20 +179,20 @@ CREATE TABLE IF NOT EXISTS sys_menu (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_sys_menu_code ON sys_menu (code) WHERE deleted_at IS NULL;
 
--- sys_permission: สิทธิ์ 7 ชนิดต่อ ผู้ใช้/กลุ่ม × บริษัท × เมนู
+-- sys_permission: สิทธิ์ 7 ชนิดต่อ ผู้ใช้/กลุ่ม × บริษัท × เมนู — รายช่อง: ช่องว่างได้ค่าจากเมนูหลัก แล้วจากกลุ่มของผู้ใช้ (HANDOFF 197)
 CREATE TABLE IF NOT EXISTS sys_permission (
   id TEXT PRIMARY KEY,
   company_id TEXT NOT NULL REFERENCES sys_company(id) DEFERRABLE INITIALLY DEFERRED,
   subject_type TEXT NOT NULL CHECK (subject_type IN ('U','G')),
   subject_id TEXT NOT NULL,
   menu_id TEXT NOT NULL REFERENCES sys_menu(id) DEFERRABLE INITIALLY DEFERRED,
-  can_read TEXT NOT NULL DEFAULT 'N',
-  can_add TEXT NOT NULL DEFAULT 'N',
-  can_edit TEXT NOT NULL DEFAULT 'N',
-  can_cancel TEXT NOT NULL DEFAULT 'N',
-  can_delete TEXT NOT NULL DEFAULT 'N',
-  can_print TEXT NOT NULL DEFAULT 'N',
-  can_approve TEXT NOT NULL DEFAULT 'N',
+  can_read TEXT,
+  can_add TEXT,
+  can_edit TEXT,
+  can_cancel TEXT,
+  can_delete TEXT,
+  can_print TEXT,
+  can_approve TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   created_by TEXT REFERENCES sys_user(id) DEFERRABLE INITIALLY DEFERRED,
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),

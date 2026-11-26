@@ -78,6 +78,11 @@ export interface Me {
   ui_theme?: import('@buddy/core').UiTheme;
   /** สิทธิ์รายเมนูของบริษัทปัจจุบัน: true = ใช้ได้, 'S' = พิมพ์ออกจอเท่านั้น, false = ไม่มีสิทธิ์ */
   perms: Record<string, Record<PermAction, boolean | 'S'>>;
+  /** HANDOFF 197: เมนูที่ไม่มีสิทธิ์ — hide = ซ่อน · disable = แสดงจาง กดแล้วบอกเหตุผล (perm_why[เมนู]) */
+  menu_mode?: 'hide' | 'disable';
+  perm_why?: Record<string, string>;
+  /** ตารางสิทธิ์ใช้กับผู้ใช้นี้อย่างไร: strict = เฉพาะที่กลุ่ม/ตารางให้ · adjust = ตามระดับอนุมัติ ปรับเฉพาะช่องที่ตั้ง · off = ไม่ใช้ตาราง */
+  rights_table?: 'strict' | 'adjust' | 'off';
 }
 export type PermAction = 'read' | 'add' | 'edit' | 'cancel' | 'delete' | 'print' | 'approve';
 export interface Account {

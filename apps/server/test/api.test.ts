@@ -7890,7 +7890,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
 
   it('standard user groups for customers + a user must get a company (HANDOFF 159): new tenant/company/signup get SALE PURCH ACC VIEW with rights, provider button is idempotent, no cross-tenant', async () => {
     const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
-    const STD = ['ACC', 'PURCH', 'SALE', 'VIEW'];
+    const STD = ['ACC', 'FIN', 'GA', 'HR', 'PURCH', 'SALE', 'VIEW'];   // HANDOFF 197: + ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล
     const platform = await login('admin', 'secret123');
     for (const [code, u, pw] of [['GRP-A', 'grp.a', 'passGrpA1'], ['GRP-B', 'grp.b', 'passGrpB1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
     const tenants = (await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; name: string; status: string }>;
@@ -7936,7 +7936,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await call('POST', '/api/v1/users', { ...base, username: 'grp.cross2', user_group_id: ulB.groups.find((g) => g.code === 'SALE')!.id, companies: [co1] })).status).toBe(400);
     expect((await call('POST', `/api/v1/tenants/${A.id}/standard-groups`)).status).toBe(403);
     // ปุ่มผู้ให้บริการ: ลูกค้าเดิมที่ยังไม่มีกลุ่มตั้งต้น → สร้างครบ · กดซ้ำ = ไม่เพิ่มอะไร · สิทธิ์ที่ลูกค้าแก้เองไม่ถูกเขียนทับ
-    await sql`UPDATE sys_user_group SET deleted_at = now() WHERE tenant_id = ${B.id} AND code IN ('SALE', 'PURCH', 'ACC', 'VIEW')`.execute(database.db);
+    await sql`UPDATE sys_user_group SET deleted_at = now() WHERE tenant_id = ${B.id} AND code IN ('SALE', 'PURCH', 'ACC', 'FIN', 'GA', 'HR', 'VIEW')`.execute(database.db);
     cookie = platform;
     expect((await call('GET', '/api/v1/auth/me')).body.perms['SET.TENANT'].read).toBe(true);
     const r1 = await call('POST', `/api/v1/tenants/${B.id}/standard-groups`);
@@ -7952,6 +7952,139 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
         JOIN sys_company c ON c.id = p.company_id AND c.tenant_id = g.tenant_id WHERE p.deleted_at IS NULL AND c.code = 'SUAUTO' ORDER BY 1`.execute(database.db)).rows.map((x) => x.code);
     expect(su).toEqual([...STD].sort());
     void adminA;
+    cookie = '';
+  });
+
+  it('HANDOFF 197: group rights are the default, user cells override per cell, no-group users keep level rights, hide vs disable menus, ADMIN/level 9 unaffected, copy rights to other companies of the same customer only, standard groups idempotent', async () => {
+    const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
+    const me = async () => (await call('GET', '/api/v1/auth/me')).body as { perms: Record<string, Record<string, boolean | 'S'>>; menu_mode: string; perm_why: Record<string, string>; rights_table: string };
+    const platform = await login('admin', 'secret123');
+    for (const [code, u, pw] of [['H197A', 'h197.a', 'passH197a1'], ['H197B', 'h197.b', 'passH197b1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
+    const tenants = (await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string }>;
+    const TA = tenants.find((t) => t.code === 'H197A')!.id;
+    await login('h197.b', 'passH197b1');
+    const coB = (await call('POST', '/api/v1/companies', { code: 'H197B1', name_th: 'บริษัท บี 197 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    const adminA = await login('h197.a', 'passH197a1');
+    const c1 = (await call('POST', '/api/v1/companies', { code: 'H197A1', name_th: 'บริษัท เอ 197 หนึ่ง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    const c2 = (await call('POST', '/api/v1/companies', { code: 'H197A2', name_th: 'บริษัท เอ 197 สอง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+
+    // กลุ่มตั้งต้นใหม่ (ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล) มีสิทธิ์ทุกบริษัท · หน้าเพิ่มผู้ใช้ได้สิทธิ์ของกลุ่มในบริษัทที่เลือก
+    let ul = (await call('GET', '/api/v1/users')).body as { groups: Array<{ id: string; code: string; rights_in: string[]; rights: Array<{ menu: string; can_read: string; can_add: string; can_delete: string }> }> };
+    for (const c of ['FIN', 'GA', 'HR']) expect([c, ul.groups.find((g) => g.code === c)?.rights_in.sort()]).toEqual([c, [c1, c2].sort()]);
+    const G = Object.fromEntries(ul.groups.map((g) => [g.code, g.id]));
+    expect(ul.groups.find((g) => g.code === 'HR')!.rights).toEqual([{ menu: 'PAY', can_read: 'Y', can_add: 'Y', can_edit: 'Y', can_cancel: 'Y', can_delete: '', can_print: 'Y', can_approve: '' }]);
+    expect(ul.groups.find((g) => g.code === 'GA')!.rights.find((r) => r.menu === 'SA.CUS')).toMatchObject({ can_read: 'Y', can_add: 'Y', can_delete: '' });
+    // ช่องที่กลุ่มตั้งต้นไม่ได้ระบุ = ว่าง (NULL) ไม่ใช่ N
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE subject_id = ${G.HR} AND company_id = ${c1} AND deleted_at IS NULL AND can_delete IS NULL`.execute(database.db)).rows[0]!.n).toBe(1);
+    // ผู้ดูแลของลูกค้ากดเพิ่มกลุ่มตั้งต้นเอง: ซ้ำ = ไม่เพิ่ม · กลุ่มที่หายไปสร้างคืน · สิทธิ์ที่แก้เองไม่ถูกเขียนทับ
+    expect((await call('POST', '/api/v1/user-groups/standard')).body).toMatchObject({ created: [], rows: 0, companies: 2 });
+    await sql`UPDATE sys_user_group SET deleted_at = now() WHERE tenant_id = ${TA} AND code = 'FIN'`.execute(database.db);
+    await sql`UPDATE sys_permission SET can_add = 'N' WHERE subject_id = ${G.ACC} AND deleted_at IS NULL`.execute(database.db);
+    const std = await call('POST', '/api/v1/user-groups/standard');
+    expect([std.status, std.body.created]).toEqual([200, ['FIN']]);
+    expect(std.body.rows).toBeGreaterThan(10);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE subject_id = ${G.ACC} AND deleted_at IS NULL AND can_add = 'Y'`.execute(database.db)).rows[0]!.n).toBe(0);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'STANDARD_GROUPS' AND company_id = ${c1}`.execute(database.db)).rows[0]!.n).toBe(2);
+    ul = (await call('GET', '/api/v1/users')).body;
+    G.FIN = ul.groups.find((g) => g.code === 'FIN')!.id;
+
+    const base = { display_name: 'พนักงาน 197', approval_level: 0, check_rights: false, status: 'A', companies: [c1, c2] };
+    const mk = async (username: string, over: Record<string, unknown>) => { const r = await call('POST', '/api/v1/users', { ...base, username, password: 'Staff-Pass-197', ...over }); expect([username, r.status, r.body.error?.message]).toEqual([username, 200, undefined]); return r.body.id as string; };
+    const sale = await mk('h197.sale', { user_group_id: G.SALE });
+    const solo = await mk('h197.solo', { approval_level: 5 });
+    const top = await mk('h197.top', { approval_level: 9, user_group_id: G.SALE });
+    const hr0 = await mk('h197.hr0', { user_group_id: G.HR });
+    // ผู้ใช้ฝ่ายขายปรับเพิ่มเองรายช่อง: ใบเสนอราคา "เพิ่ม" = N (ช่องอื่นตามกลุ่ม) · สมุดรายวัน "อ่าน" = Y (นอกกลุ่ม)
+    const R = (menu_code: string, v: Record<string, string>) => ({ menu_code, can_read: '', can_add: '', can_edit: '', can_cancel: '', can_delete: '', can_print: '', can_approve: '', ...v });
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'U', subject_id: sale, rows: [R('SA.QT', { can_add: 'N' }), R('GL.JNL', { can_read: 'Y' })] })).body).toEqual({ rows: 2 });
+    expect((await sql<{ r: string | null; a: string | null }>`SELECT p.can_read AS r, p.can_add AS a FROM sys_permission p JOIN sys_menu m ON m.id = p.menu_id AND m.code = 'SA.QT'
+        WHERE p.subject_id = ${sale} AND p.company_id = ${c1} AND p.deleted_at IS NULL`.execute(database.db)).rows).toEqual([{ r: null, a: 'N' }]);
+    expect((await call('PUT', '/api/v1/permissions', { subject_type: 'U', subject_id: solo, rows: [R('SA.IV', { can_add: 'N' })] })).status).toBe(200);
+    // หน้าตารางสิทธิ์ของผู้ใช้: ช่องที่ตั้งเอง + ค่าตั้งต้นของกลุ่ม + สิทธิ์ที่ได้จริง + บริษัทที่กำลังแก้
+    const view = (await call('GET', `/api/v1/permissions?subject_type=U&subject_id=${sale}`)).body;
+    expect([view.group.code, view.rows['SA.QT'], view.group.rows.SA.can_add, view.table_applies, view.company.code]).toEqual(['SALE', { can_read: '', can_add: 'N', can_edit: '', can_cancel: '', can_delete: '', can_print: '', can_approve: '' }, 'Y', 'strict', 'H197A1']);
+    expect([view.effective['SA.QT'].add, view.effective['SA.QT'].read, view.need['SA.QT'].cancel]).toEqual([false, true, 5]);
+    expect((await call('GET', `/api/v1/permissions?subject_type=U&subject_id=${solo}`)).body.table_applies).toBe('adjust');
+
+    // แสดงเมนูจาง (ไม่ได้ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์"): ใช้ได้ตามกลุ่ม + ช่องของตัวเอง · ที่เหลือใช้ไม่ได้พร้อมเหตุผล
+    await login('h197.sale', 'Staff-Pass-197');
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    let m = await me();
+    expect([m.menu_mode, m.rights_table]).toEqual(['disable', 'strict']);
+    const P = m.perms;
+    expect([P['SA.QT']!.add, P['SA.QT']!.read, P['SA.IV']!.add, P['GL.JNL']!.read, P['GL.JNL']!.add, P['PU.PO']!.read, P['SA.IV']!.cancel, P['OT.PASS']!.read]).toEqual([false, true, true, true, false, false, false, true]);
+    expect(m.perm_why['PU.PO']).toMatch(/กลุ่มผู้ใช้\/สิทธิ์รายเมนูของคุณไม่ได้ให้สิทธิ์อ่าน/);
+    expect(m.perm_why['SET.SEC']).toMatch(/ระดับอนุมัติ 9 ขึ้นไป \(ระดับของคุณ 0\)/);
+    expect(m.perm_why['SA.IV']).toBeUndefined();
+    expect((await call('GET', '/api/v1/purchase-orders')).status).toBe(403);
+    expect((await call('GET', '/api/v1/gl/journals')).status).toBe(200);
+    const deny = await call('POST', '/api/v1/quotations', {});
+    expect([deny.status, deny.body.error.message]).toEqual([403, expect.stringMatching(/ไม่มีสิทธิ์เพิ่มในเมนู "ใบเสนอราคา" \(กลุ่มผู้ใช้/)]);
+    // บริษัทที่สองยังไม่ได้ปรับ = ตามกลุ่มทั้งหมด
+    await call('POST', '/api/v1/auth/select', { company_id: c2 });
+    m = await me();
+    expect([m.perms['SA.QT']!.add, m.perms['GL.JNL']!.read]).toEqual([true, false]);
+    // ไม่มีกลุ่ม: ตามระดับอนุมัติ ช่องที่ตั้งปรับเฉพาะช่องนั้น (ไม่เสียสิทธิ์เมนูอื่น)
+    await login('h197.solo', 'Staff-Pass-197');
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    m = await me();
+    expect([m.rights_table, m.perms['SA.IV']!.add, m.perms['SA.IV']!.read, m.perms['GL.JNL']!.add, m.perms['GL.JNL']!.cancel, m.perms['PU.PO']!.read]).toEqual(['adjust', false, true, true, true, true]);
+    // ระดับ 9 ที่ไม่ได้ซ่อนเมนู: ทุกอย่างเหมือนเดิม แม้อยู่กลุ่มฝ่ายขาย
+    await login('h197.top', 'Staff-Pass-197');
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    m = await me();
+    expect([m.rights_table, m.perms['GL.JNL']!.add, m.perms['SET.SEC']!.edit, Object.keys(m.perm_why).length]).toEqual(['off', true, true, 0]);
+    // ฝ่ายบุคคลระดับ 0: กลุ่มให้เงินเดือน แต่ระดับไม่พอ (ต้อง 5) → เหตุผลบอกระดับ
+    await login('h197.hr0', 'Staff-Pass-197');
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    m = await me();
+    expect([m.perms['PAY.RUN']!.read, m.perm_why['PAY.RUN']]).toEqual([false, expect.stringMatching(/ระดับอนุมัติ 5 ขึ้นไป/)]);
+    // ซ่อนเมนูที่ไม่มีสิทธิ์ (check_rights): สิทธิ์เท่าเดิม หน้าจอซ่อนแทนจาง
+    cookie = adminA;
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    expect((await call('PUT', `/api/v1/users/${sale}`, { ...base, username: 'h197.sale', user_group_id: G.SALE, check_rights: true })).status).toBe(200);
+    await login('h197.sale', 'Staff-Pass-197');
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    m = await me();
+    expect([m.menu_mode, m.perms['SA.QT']!.add, m.perms['SA.IV']!.add, m.perms['GL.JNL']!.read, m.perms['PU.PO']!.read]).toEqual(['hide', false, true, true, false]);
+    // ผู้ใช้ทั่วไปคัดลอกสิทธิ์/เพิ่มกลุ่มตั้งต้นไม่ได้
+    expect((await call('POST', '/api/v1/permissions/copy/preview', { scope: 'all', company_ids: [c2] })).status).toBe(403);
+    expect((await call('POST', '/api/v1/user-groups/standard')).status).toBe(403);
+    // ADMIN ของลูกค้าไม่เปลี่ยน: ทุกเมนู ซ่อนเมนู (ไม่มีเมนูที่ใช้ไม่ได้)
+    cookie = adminA;
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    m = await me();
+    expect([m.menu_mode, m.rights_table, m.perms['PAY.RUN']!.add, m.perms['GL.JNL']!.cancel, Object.keys(m.perm_why).length]).toEqual(['hide', 'off', true, true, 0]);
+
+    // คัดลอกสิทธิ์ของผู้ใช้ไปบริษัทที่สอง: ดูตัวอย่างก่อน (ไม่บันทึก) แล้วคัดลอก
+    const pv = await call('POST', '/api/v1/permissions/copy/preview', { scope: 'subject', subject_type: 'U', subject_id: sale, company_ids: [c2] });
+    expect([pv.status, pv.body.companies.map((c: { code: string; changed: number }) => [c.code, c.changed]), pv.body.companies[0].subjects]).toEqual([200, [['H197A2', 2]],
+      [{ subject_type: 'U', subject_id: sale, code: 'h197.sale', before: 0, after: 2, changed: 2 }]]);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE subject_id = ${sale} AND company_id = ${c2} AND deleted_at IS NULL`.execute(database.db)).rows[0]!.n).toBe(0);
+    expect((await call('POST', '/api/v1/permissions/copy', { scope: 'subject', subject_type: 'U', subject_id: sale, company_ids: [c2] })).body).toEqual({ companies: 1, rows: 2 });
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE subject_id = ${sale} AND company_id = ${c2} AND deleted_at IS NULL AND can_read IS NULL AND can_add = 'N'`.execute(database.db)).rows[0]!.n).toBe(1);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'PERMISSION_COPY' AND company_id = ${c2}`.execute(database.db)).rows[0]!.n).toBe(1);
+    // ทั้งบริษัท: บริษัทปลายทางเหมือนบริษัทนี้ทุกช่อง → ดูตัวอย่างซ้ำ = ไม่มีอะไรเปลี่ยน
+    expect((await call('POST', '/api/v1/permissions/copy', { scope: 'all', company_ids: [c2] })).status).toBe(200);
+    expect((await call('POST', '/api/v1/permissions/copy/preview', { scope: 'all', company_ids: [c2] })).body.companies[0].changed).toBe(0);
+    // ข้ามลูกค้าไม่ได้ (กติกา 7.1): บริษัทของลูกค้าอื่น = ไม่พบ · บริษัทเดียวกับต้นทาง = ผิด · ผู้ใช้ของลูกค้าอื่น = ไม่พบ
+    expect((await call('POST', '/api/v1/permissions/copy/preview', { scope: 'all', company_ids: [coB] })).status).toBe(404);
+    expect((await call('POST', '/api/v1/permissions/copy', { scope: 'all', company_ids: [c2, coB] })).status).toBe(404);
+    expect((await call('POST', '/api/v1/permissions/copy', { scope: 'all', company_ids: [c1] })).status).toBe(400);
+    expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission p WHERE p.company_id = ${coB} AND p.subject_id IN (SELECT id FROM sys_user WHERE tenant_id = ${TA} UNION SELECT id FROM sys_user_group WHERE tenant_id = ${TA})`.execute(database.db)).rows[0]!.n).toBe(0);
+    await login('h197.b', 'passH197b1');
+    await call('POST', '/api/v1/auth/select', { company_id: coB });
+    expect((await call('POST', '/api/v1/permissions/copy/preview', { scope: 'all', company_ids: [c2] })).status).toBe(404);
+    expect((await call('POST', '/api/v1/permissions/copy/preview', { scope: 'subject', subject_type: 'U', subject_id: sale, company_ids: [c2] })).status).toBe(404);
+    expect((await call('POST', '/api/v1/user-groups/standard')).body).toMatchObject({ created: [], rows: 0, companies: 1 });
+    expect((await call('GET', `/api/v1/permissions?subject_type=U&subject_id=${sale}`)).status).toBe(404);
+    // ผู้ให้บริการที่เลือกบริษัทของลูกค้า A ก็คัดลอกไปบริษัทของลูกค้า B ไม่ได้
+    cookie = platform;
+    await call('POST', '/api/v1/auth/select', { company_id: c1 });
+    expect((await call('POST', '/api/v1/permissions/copy/preview', { scope: 'all', company_ids: [coB] })).status).toBe(404);
+    expect((await call('POST', '/api/v1/permissions/copy/preview', { scope: 'all', company_ids: [c2] })).status).toBe(200);
+    void solo; void top; void hr0;
     cookie = '';
   });
 

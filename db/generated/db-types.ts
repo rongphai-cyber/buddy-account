@@ -665,7 +665,7 @@ export interface SysMenuTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
-/** สิทธิ์ 7 ชนิดต่อ ผู้ใช้/กลุ่ม × บริษัท × เมนู */
+/** สิทธิ์ 7 ชนิดต่อ ผู้ใช้/กลุ่ม × บริษัท × เมนู — รายช่อง: ช่องว่างได้ค่าจากเมนูหลัก แล้วจากกลุ่มของผู้ใช้ (HANDOFF 197) */
 export interface SysPermissionTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
   id: Gen<string>;
@@ -677,20 +677,20 @@ export interface SysPermissionTable {
   subject_id: string;
   /** เมนู */
   menu_id: string;
-  /** อ่าน Y/L/N/S */
-  can_read: Gen<string>;
-  /** เพิ่ม */
-  can_add: Gen<string>;
-  /** แก้ไข */
-  can_edit: Gen<string>;
-  /** ยกเลิกเอกสาร */
-  can_cancel: Gen<string>;
-  /** ลบ */
-  can_delete: Gen<string>;
-  /** พิมพ์ */
-  can_print: Gen<string>;
-  /** อนุมัติ */
-  can_approve: Gen<string>;
+  /** อ่าน Y/L/N/S · ว่าง = ตามเมนูหลัก/กลุ่ม (HANDOFF 197) */
+  can_read: Gen<string | null>;
+  /** เพิ่ม · ว่าง = ตามเมนูหลัก/กลุ่ม */
+  can_add: Gen<string | null>;
+  /** แก้ไข · ว่าง = ตามเมนูหลัก/กลุ่ม */
+  can_edit: Gen<string | null>;
+  /** ยกเลิกเอกสาร · ว่าง = ตามเมนูหลัก/กลุ่ม */
+  can_cancel: Gen<string | null>;
+  /** ลบ · ว่าง = ตามเมนูหลัก/กลุ่ม */
+  can_delete: Gen<string | null>;
+  /** พิมพ์ · ว่าง = ตามเมนูหลัก/กลุ่ม */
+  can_print: Gen<string | null>;
+  /** อนุมัติ · ว่าง = ตามเมนูหลัก/กลุ่ม */
+  can_approve: Gen<string | null>;
   /** เวลาสร้าง */
   created_at: Gen<string>;
   /** ผู้สร้าง */
