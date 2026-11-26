@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDenyText } from '../../readonly';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { computeDoc, d, dueDate, fmt } from '@buddy/core';
@@ -76,6 +77,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan(K.menu);
+  const denyWhy = useDenyText(K.menu);
   const cur = useQuery({ enabled: !!id, queryKey: [K.api, 'one', id], queryFn: () => api.get<Record<string, string | null> & { editable: boolean; settlements: Array<{ id: string; doc_class: string; doc_no: string; doc_date: string; amount: string; doc_status: string }> }>(`/api/v1/${K.api}/${id}`), staleTime: 0 });
   const br = useDocBranch(id, cur.data?.branch_id);
   // พนักงานขาย (ลูกหนี้ยกมา — รายงานลูกหนี้แยกพนักงานขาย/ค่าคอมมิชชั่นเหมือนบิลขาย) · แผนก (ทั้งสองฝั่ง)
@@ -142,7 +144,7 @@ export function OpeningFormPage({ kind }: { kind: Kind }) {
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
-        <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกรายการ</button>
+        <button disabled={!id || cancelled || !can('cancel')} title={denyWhy('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกรายการ</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.api}/${id}/cancel`, listPath: K.route }} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>

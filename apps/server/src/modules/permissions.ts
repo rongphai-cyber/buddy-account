@@ -84,16 +84,22 @@ export function tableCell(rows: PermRow[], menu: string, action: Action): { v: s
 }
 const tableValue = (rows: PermRow[], menu: string, action: Action) => tableCell(rows, menu, action)?.v ?? null;
 /**
- * ตารางสิทธิ์ใช้กับผู้ใช้นี้ในบริษัทนี้อย่างไร (HANDOFF 197) — ช่องที่ไม่มีค่าในตารางของผู้ใช้และกลุ่มเลย:
- * - strict = ไม่ได้รับ: ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์" (check_rights) หรือ กลุ่มของผู้ใช้มีสิทธิ์ในบริษัทนี้ (สิทธิ์ของกลุ่ม = ค่าตั้งต้น)
- * - adjust = ตามระดับอนุมัติ: ไม่มีกลุ่ม (หรือกลุ่มยังไม่มีสิทธิ์ในบริษัทนี้) — ช่องที่ตั้งไว้ในตารางของผู้ใช้ปรับเฉพาะช่องนั้น
- * - off = ไม่ใช้ตาราง: ระดับ 9 ที่ไม่ได้ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์" (ทุกอย่างเหมือนเดิม)
+ * ตารางสิทธิ์ใช้กับผู้ใช้นี้ในบริษัทนี้อย่างไร (HANDOFF 197 · 198) — ช่องที่ไม่มีค่าในตารางของผู้ใช้และกลุ่ม แปลว่าอะไร
+ * - strict = ไม่ได้รับ: กลุ่มของผู้ใช้มีสิทธิ์ในบริษัทนี้ (ทุกระดับ รวมระดับ 9 — ระดับบอกอำนาจอนุมัติ กลุ่มบอกเมนู · HANDOFF 198 ข้อ 3)
+ *   หรือ ไม่มีกลุ่มแต่ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์" (ตรวจสอบสิทธิ์แบบ Express = ใช้เฉพาะที่ตั้งในตาราง — เหมือนก่อน 197)
+ * - adjust = ตามระดับอนุมัติ: ไม่มีกลุ่ม (หรือกลุ่มยังไม่มีสิทธิ์ในบริษัทนี้) — ช่องที่ตั้งในตารางของผู้ใช้ปรับเฉพาะช่องนั้น
+ * - off = ไม่ใช้ตาราง (ตามระดับอนุมัติล้วน):
+ *   · ระดับ 9 ที่ไม่มีกลุ่ม (หรือกลุ่มไม่มีสิทธิ์ในบริษัทนี้) และไม่ได้ตั้งซ่อนเมนู
+ *   · คำขอด้วยกุญแจ API ของผู้ใช้ที่ไม่ได้ตั้งซ่อนเมนู (HANDOFF 198 ข้อ 1) — โปรแกรมอื่น (WTS-POS · WTS-Living · WTS-HR) ใช้กฎเดิมก่อน 197:
+ *     กลุ่มไม่มีผลกับกุญแจ ไม่งั้นการวางผู้ใช้ของกุญแจไว้ในกลุ่มทำให้อีกโปรแกรมส่งข้อมูลเข้าไม่ได้ · ตั้งซ่อนเมนู = ใช้ตาราง (เหมือนก่อน 197)
+ * "ซ่อน/แสดงจาง" ของผู้ใช้ที่มีกลุ่ม = เรื่องการแสดงผลเท่านั้น (สิทธิ์เท่ากัน)
  */
 export type TableMode = 'strict' | 'adjust' | 'off';
-export function tableMode(a: Pick<AuthContext, 'checkRights' | 'approvalLevel'>, rows: Array<{ subject_type: string }>): TableMode {
+export function tableMode(a: Pick<AuthContext, 'checkRights' | 'approvalLevel' | 'apiKeyId'>, rows: Array<{ subject_type: string }>): TableMode {
+  if (rows.some((r) => r.subject_type === 'G')) return a.apiKeyId && !a.checkRights ? 'off' : 'strict';
   if (a.checkRights) return 'strict';
-  if (a.approvalLevel >= 9) return 'off';
-  return rows.some((r) => r.subject_type === 'G') ? 'strict' : 'adjust';
+  if (a.apiKeyId || a.approvalLevel >= 9) return 'off';
+  return 'adjust';
 }
 
 /** การทำงานที่ต้องเป็นผู้ดูแล/ระดับ 9 หรือได้รับสิทธิ์โดยตรง: ดาวน์โหลดแฟ้มสำรองทั้งบริษัท · นำข้อมูลสำรองกลับ */
@@ -119,7 +125,9 @@ export async function modulesOff(db: Db, companyId: string | null): Promise<stri
 }
 
 /** เหตุที่ใช้ไม่ได้: module ระบบปิดทั้งบริษัท · platform เมนูผู้ให้บริการ · hub เปิดเฉพาะโปรแกรมอื่น · level ระดับอนุมัติไม่พอ · backup ต้องได้สิทธิ์โดยตรง · table ตารางสิทธิ์ไม่ให้ */
-export type Why = 'module' | 'platform' | 'hub' | 'level' | 'backup' | 'table';
+export type Why = 'module' | 'platform' | 'hub' | 'level' | 'backup' | 'table' | 'admin';
+/** เมนูที่ API ให้เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) — ผู้ใช้อื่นเห็นจาง พร้อมเหตุผล ไม่ใช่เปิดแล้วเจอ 403 (HANDOFF 198 ตรวจทาน) */
+const ADMIN_ONLY = new Set(['SET.YEARFIX']);
 type Decision = { allowed: boolean; log: boolean; screenOnly: boolean; why?: Why };
 const NO = (why: Why): Decision => ({ allowed: false, log: false, screenOnly: false, why });
 /** เมนูส่วนตัว (หน้าเปิดโปรแกรม เปลี่ยนรหัสผ่าน): ทุกคนใช้ได้ ไม่ขึ้นกับตารางสิทธิ์ */
@@ -131,6 +139,7 @@ function decide(a: AuthContext, rows: PermRow[], menu: string, action: Action, o
   // เมนูของผู้ให้บริการ: ผู้ดูแลของลูกค้า (ADMIN ใน tenant) ก็ไม่ได้ — ไม่แสดงในเมนู (HANDOFF 159.1)
   if (PLATFORM_MENUS.has(menu) && !a.isPlatform) return NO('platform');
   if (a.isAdmin) return { allowed: true, log: false, screenOnly: false };
+  if (ADMIN_ONLY.has(menu)) return NO('admin');
   // ผู้ใช้ที่ผู้ดูแลไม่ให้เปิด Buddy (เปิดได้เฉพาะโปรแกรมอื่นจาก Hub · sys_user.app_access): เหลือหน้าเปิดโปรแกรม + รหัสผ่าน
   if (hubOnly(a.apps) && !HUB_ONLY_MENUS.includes(menu)) return NO('hub');
   if (!baseAllowed(a.approvalLevel, menu, action)) return NO('level');
@@ -155,6 +164,7 @@ export function whyText(d: { why?: Why }, a: Pick<AuthContext, 'approvalLevel'>,
     case 'backup': return 'สำรอง/นำข้อมูลกลับทั้งบริษัท เฉพาะผู้ดูแลระบบ ระดับอนุมัติ 9 หรือผู้ที่ได้รับสิทธิ์ที่เมนูนี้โดยตรง';
     case 'table': return `กลุ่มผู้ใช้/สิทธิ์รายเมนูของคุณไม่ได้ให้สิทธิ์${act}ในเมนูนี้`;
     case 'module': return 'ระบบนี้ปิดอยู่ในบริษัทนี้';
+    case 'admin': return 'เมนูนี้เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN)';
     case 'hub': return 'คุณได้รับสิทธิ์เปิดเฉพาะโปรแกรมอื่นจากหน้าเปิดโปรแกรม';
     default: return 'เมนูนี้ไม่เปิดให้บัญชีนี้';
   }
@@ -183,13 +193,23 @@ export async function permissionView(db: Db, a: AuthContext) {
   const off = await modulesOff(db, a.companyId);
   const perms: Record<string, Record<Action, boolean | 'S'>> = {};
   const why: Record<string, string> = {};
+  /**
+   * เหตุที่ปุ่มใช้ไม่ได้ในเมนูที่เปิดได้ (HANDOFF 198 ข้อ 6): ตัวเลข = ระดับอนุมัติที่ต้องการ · 't' = กลุ่ม/สิทธิ์รายเมนูไม่ให้
+   * เฉพาะเมนูที่อ่านได้ (ปุ่ม ยกเลิก ลบ รับรอง พิมพ์ … อยู่ในหน้านั้น) — หน้าจอแสดงเมื่อชี้ปุ่มที่จาง
+   */
+  const deny: Record<string, Partial<Record<Action, number | 't'>>> = {};
   for (const m of FLAT) {
     const ds = ACTIONS.map((x) => [x, decide(a, rows, m.code, x, off)] as const);
     perms[m.code] = Object.fromEntries(ds.map(([x, r]) => [x, r.allowed ? (r.screenOnly ? 'S' : true) : false])) as Record<Action, boolean | 'S'>;
-    const deny = ds.find(([x, r]) => x === 'read' && !r.allowed) ?? ds.find(([x, r]) => x === 'add' && !r.allowed);
-    if (deny && (deny[1].why === 'level' || deny[1].why === 'table' || deny[1].why === 'backup')) why[m.code] = whyText(deny[1], a, m.code, deny[0]);
+    const first = ds.find(([x, r]) => x === 'read' && !r.allowed) ?? ds.find(([x, r]) => x === 'add' && !r.allowed);
+    if (first && (first[1].why === 'level' || first[1].why === 'table' || first[1].why === 'backup' || first[1].why === 'admin')) why[m.code] = whyText(first[1], a, m.code, first[0]);
+    if (perms[m.code]!.read) for (const [x, r] of ds) {
+      if (r.allowed) continue;
+      if (r.why === 'level') (deny[m.code] ??= {})[x] = levelNeeded(m.code, x);
+      else if (r.why === 'table') (deny[m.code] ??= {})[x] = 't';
+    }
   }
-  return { perms, why, table: (a.isAdmin ? 'off' : tableMode(a, rows)) as TableMode };
+  return { perms, why, deny, table: (a.isAdmin ? 'off' : tableMode(a, rows)) as TableMode };
 }
 
 /**
@@ -655,7 +675,7 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
     if (q.subject_type === 'U') {
       const g = s.user_group_id ? await db.selectFrom('sys_user_group').select(['id', 'code', 'name']).where('id', '=', s.user_group_id).where('deleted_at', 'is', null).executeTakeFirst() : null;
       if (g) group = { ...g, admin: g.code === 'ADMIN', rows: await rowsOf(a.companyId, 'G', g.id) };
-      const as: AuthContext = { ...a, userId: s.id, approvalLevel: s.approval_level, checkRights: s.check_rights, groupId: s.user_group_id, isAdmin: g?.code === 'ADMIN', isPlatform: false, apps: normalizeAppAccess(s.app_access) };
+      const as: AuthContext = { ...a, apiKeyId: undefined, apiKeyReadOnly: undefined, userId: s.id, approvalLevel: s.approval_level, checkRights: s.check_rights, groupId: s.user_group_id, isAdmin: g?.code === 'ADMIN', isPlatform: false, apps: normalizeAppAccess(s.app_access) };
       const v = await permissionView(db, as);
       effective = v.perms; table = v.table;
       if (!as.isAdmin) for (const m of FLAT) for (const x of ACTIONS) { const n = levelNeeded(m.code, x); if (n > s.approval_level) (need[m.code] ??= {})[x] = n; }

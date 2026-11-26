@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ACTION_MENUS, menuForPath, readOnlyExempt } from '@buddy/core';
-import type { Me } from './api';
+import type { Me, PermAction } from './api';
 import { useSession } from './session';
 import { toast } from './ui';
 import { isReadOnlyNow, setReadOnlyNow } from './roflag';
@@ -40,6 +40,21 @@ export function menuState(code: string, me: Pick<Me, 'perms' | 'menu_mode' | 'pe
   if (me?.menu_mode === 'disable' && why) return { state: 'off', why };
   return { state: 'hide' };
 }
+const ACT_TH: Record<PermAction, string> = { read: 'อ่าน', add: 'เพิ่ม', edit: 'แก้ไข', cancel: 'ยกเลิก', delete: 'ลบ', print: 'พิมพ์', approve: 'รับรอง' };
+/**
+ * เหตุที่ปุ่ม (ยกเลิก ลบ รับรอง พิมพ์ …) ใช้ไม่ได้ — ชี้ปุ่มที่จางแล้วเห็น (HANDOFF 198 ข้อ 6)
+ * เช่น "ยกเลิกต้องระดับอนุมัติ 5 ขึ้นไป (คุณระดับ 0)" · ไม่มีเหตุ (ใช้ได้ / ไม่รู้) = undefined
+ */
+export function denyText(me: Pick<Me, 'perm_deny' | 'user'> | null | undefined, menu: string, action: PermAction): string | undefined {
+  const d = me?.perm_deny?.[menu]?.[action];
+  if (d === undefined) return undefined;
+  if (d === 't') return tableDeny(ACT_TH[action]);
+  return levelDeny(ACT_TH[action], d, me?.user.approval_level ?? 0);
+}
+function tableDeny(act: string) { return `กลุ่มผู้ใช้/สิทธิ์รายเมนูของคุณไม่ได้ให้สิทธิ์${act}ในเมนูนี้ — ขอสิทธิ์จากผู้ดูแลระบบ`; }
+export function levelDeny(act: string, need: number, mine: number) { return `${act}ต้องระดับอนุมัติ ${need} ขึ้นไป (คุณระดับ ${mine})`; }
+export function useDenyText(menu: string) { const { me } = useSession(); return (action: PermAction) => denyText(me, menu, action); }
+
 export function useReadOnly() { const { me } = useSession(); return readOnlyFor(me, useLocation().pathname); }
 
 /** ช่องค้นหา/เงื่อนไขของรายการ แถบบน แถบเมนู หน้าต่างค้นหา — ใช้ได้เสมอ */

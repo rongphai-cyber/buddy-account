@@ -88,8 +88,12 @@ export function apiKeyRoutes(app: FastifyInstance, db: Db) {
   app.get('/api/v1/api-keys', async (req) => {
     const a = requireCompany(req);
     return (await sql<Record<string, unknown>>`SELECT k.id, k.name, k.key_prefix, k.read_only, k.source_system, k.doc_scope, k.expires_on, k.status, k.last_used_at, k.last_used_ip, k.created_at,
-        u.username, u.display_name, cu.display_name AS created_by_name
-        FROM sys_api_key k JOIN sys_user u ON u.id = k.user_id LEFT JOIN sys_user cu ON cu.id = k.created_by
+        u.username, u.display_name, cu.display_name AS created_by_name,
+        -- HANDOFF 198: สิทธิ์ของกุญแจ — ตั้งซ่อนเมนู = ตามตารางสิทธิ์ (กลุ่ม + ของผู้ใช้) · ไม่ตั้ง = ตามระดับอนุมัติ (กลุ่มไม่มีผลกับกุญแจ)
+        u.approval_level, u.check_rights, g.code AS group_code,
+        EXISTS (SELECT 1 FROM sys_permission p WHERE p.company_id = k.company_id AND p.deleted_at IS NULL
+                 AND ((p.subject_type = 'U' AND p.subject_id = u.id) OR (p.subject_type = 'G' AND p.subject_id = u.user_group_id))) AS has_table
+        FROM sys_api_key k JOIN sys_user u ON u.id = k.user_id LEFT JOIN sys_user_group g ON g.id = u.user_group_id LEFT JOIN sys_user cu ON cu.id = k.created_by
        WHERE k.company_id = ${a.companyId} AND k.deleted_at IS NULL ORDER BY k.status, k.created_at DESC`.execute(db)).rows;
   });
 

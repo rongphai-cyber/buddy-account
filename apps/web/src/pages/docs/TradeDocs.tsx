@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDenyText } from '../../readonly';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { billAsExpense, billWhtRow, computeDoc, d, descriptionAfterPick, dueDate, fillRowCount, fmt, isStockItemType, requiredLineIssues, TRADE_KINDS, todayIso, wht50FormOf, type TradeKind } from '@buddy/core';
@@ -260,6 +261,7 @@ export function TradeFormPage({ path }: { path: string }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan(K.menu);
+  const denyWhy = useDenyText(K.menu);
   const { me } = useSession();
   const lk = useLookups('40,41,UNIT,WH');
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; next_no: string; price_type: string | null; vat_rate: string | null; vat_basis: string | null; warehouse_id?: string | null }>; main_warehouse_id?: string | null; vat_rate: number; price_type: string ; service_vat_basis?: string; vat_registered?: boolean; central_supplier_id?: string | null }>(`/api/v1/trade-defaults/${K.cls}`) });
@@ -531,7 +533,7 @@ export function TradeFormPage({ path }: { path: string }) {
         <button className="primary" disabled={busy || readOnly} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || readOnly} onClick={() => save(true)}>บันทึก+ใหม่</button>
-        <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
+        <button disabled={!id || cancelled || !can('cancel')} title={denyWhy('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         {K.cls === 'QT' && id && !cancelled && <button disabled={!canSO('add')} onClick={() => setAskConvert(true)}>แปลงเป็นใบสั่งขาย</button>}
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} typeId={h?.doc_type_id} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         {/* ใบเสนอราคา/ใบสั่งขาย/ใบสั่งซื้อไม่ลงบัญชี — ไม่มีปุ่มอ่านบิล/นำเข้า (เจ้าของ 22/11/2569 "เอาออก") */}

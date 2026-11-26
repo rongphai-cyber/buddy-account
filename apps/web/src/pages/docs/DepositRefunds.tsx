@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDenyText } from '../../readonly';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, DEPOSIT_REFUND as K, ETAX_CREDIT_PURPOSES, ETAX_DEPOSIT_REFUND_PURPOSE, fmt, settlementTotals, todayIso } from '@buddy/core';
@@ -102,6 +103,7 @@ export function DepositRefundFormPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan(K.menu);
+  const denyWhy = useDenyText(K.menu);
   const { me } = useSession();
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; next_no?: string | null }> }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
@@ -222,7 +224,7 @@ export function DepositRefundFormPage() {
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
-        <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
+        <button disabled={!id || cancelled || !can('cancel')} title={denyWhy('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>
       </div>

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { levelDeny, useDenyText } from '../readonly';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { bahtTextEn, COPY_ORIGINAL, defaultLayout, fmt, formatDate, formatDateEn, PRINT_HEAD_FIELDS, PRINT_WORDS_EN as EN, printLabelEn, printPartyLabel, printTextEn, sheetCopies, type PrintAlign, type PrintFamily, type PrintFormEntry, type PrintVAlign, type YearSystem } from '@buddy/core';
@@ -206,6 +207,8 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
   const nav = useNavigate();
   const ys = useYearSystem();
   const can = useCan(menu);
+  const denyWhy = useDenyText(menu);
+  const myLevel = useSession().me?.user.approval_level ?? 0;
   const canForm = useCan('RP.FORM');
   const { me } = useSession();
   const q = useQuery({ enabled: !!id, queryKey: ['print', kind, id], queryFn: () => api.get<PrintResp>(`/api/v1/print/${kind}/${id}`), staleTime: 0 });
@@ -266,10 +269,10 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
   };
   return (
     <>
-      {del && <DocDelete kind={kind} id={id} docNo={del.docNo ?? r?.data.doc_no} cancelled={del.cancelled} cancelUrl={del.cancelUrl} listPath={del.listPath} canDelete={can('delete')} canCancel={can('cancel')} />}
+      {del && <DocDelete kind={kind} id={id} docNo={del.docNo ?? r?.data.doc_no} cancelled={del.cancelled} cancelUrl={del.cancelUrl} listPath={del.listPath} canDelete={can('delete')} canCancel={can('cancel')} deleteWhy={denyWhy('delete') ?? denyWhy('cancel')} />}
       {id && <span className="doc-nav">{navBtn('first', '⏮', 'เอกสารแรก')}{navBtn('prev', '◀', 'ก่อนหน้า')}{navBtn('next', '▶', 'ถัดไป')}{navBtn('last', '⏭', 'เอกสารสุดท้าย')}</span>}
       <span className="split-btn" onClick={(e) => e.stopPropagation()}>
-        <button disabled={!id || !r || !can('print')} onClick={() => doPrint(1)} title={r?.block ?? `พิมพ์แบบฟอร์ม 1 (Alt+P)${r && r.data.print_count > 0 ? ` · พิมพ์แล้ว ${r.data.print_count} ครั้ง` : ''}`}>🖨 พิมพ์ <kbd>Alt+P</kbd>{r && r.data.print_count > 0 && <span className="badge" aria-label={`พิมพ์แล้ว ${r.data.print_count} ครั้ง`}>{r.data.print_count}</span>}</button>
+        <button disabled={!id || !r || !can('print')} onClick={() => doPrint(1)} title={denyWhy('print') ?? r?.block ?? `พิมพ์แบบฟอร์ม 1 (Alt+P)${r && r.data.print_count > 0 ? ` · พิมพ์แล้ว ${r.data.print_count} ครั้ง` : ''}`}>🖨 พิมพ์ <kbd>Alt+P</kbd>{r && r.data.print_count > 0 && <span className="badge" aria-label={`พิมพ์แล้ว ${r.data.print_count} ครั้ง`}>{r.data.print_count}</span>}</button>
         <button className="caret" disabled={!id || !r || !can('print')} onClick={() => setOpen((x) => !x)} title="เลือกแบบฟอร์ม (Shift+Alt+P)" aria-haspopup="menu" aria-expanded={open}>▾</button>
         {open && r && <ul className="pop-menu" role="menu">
           {r.forms.map((f) => <li key={f.slot} role="none"><button role="menuitem" onClick={() => doPrint(f.slot)}><b>{f.slot}</b> {f.name}{f.custom && <span className="muted small"> (ของบริษัท)</span>}</button>
@@ -277,8 +280,8 @@ export function DocActions({ kind, id: rawId, menu, typeId, dirty, del }: { kind
           {canForm('edit') && <li role="none"><button role="menuitem" onClick={() => nav(`/settings/print-forms?scope=${r.data.scope}`)}>✎ แก้ไขแบบฟอร์ม…</button></li>}
         </ul>}
       </span>
-      {id && r && (approved ? <button disabled={!can('approve')} onClick={() => approve(true)} title="ยกเลิกการรับรอง (Ctrl+O)">✔ รับรองแล้ว · ยกเลิก</button>
-        : r.rule.approveLevel > 0 && <button disabled={!can('approve')} onClick={() => approve(false)} title={`รับรองเอกสาร — ต้องระดับ ${r.rule.approveLevel} ขึ้นไป (Alt+O)`}>✔ รับรอง <kbd>Alt+O</kbd></button>)}
+      {id && r && (approved ? <button disabled={!can('approve')} onClick={() => approve(true)} title={denyWhy('approve') ?? 'ยกเลิกการรับรอง (Ctrl+O)'}>✔ รับรองแล้ว · ยกเลิก</button>
+        : r.rule.approveLevel > 0 && <button disabled={!can('approve') || myLevel < r.rule.approveLevel} onClick={() => approve(false)} title={denyWhy('approve') ?? (myLevel < r.rule.approveLevel ? levelDeny('รับรอง', r.rule.approveLevel, myLevel) : `รับรองเอกสาร — ต้องระดับ ${r.rule.approveLevel} ขึ้นไป (Alt+O)`)}>✔ รับรอง <kbd>Alt+O</kbd></button>)}
       {kind === 'doc' && id && r && ['QT', 'DP', 'VR'].includes(r.data.scope) && <StatusCodeSelect id={id} canEdit={can('edit')} />}
       {kind === 'doc' && <button disabled={!id} onClick={() => setNotes(true)} title={id ? 'หมายเหตุของทั้งเอกสาร — พิมพ์ในกล่องหมายเหตุด้านล่างของเอกสาร (Alt+R) · หมายเหตุรายการ คีย์ที่ปุ่ม 📝 ในบรรทัด (Alt+M)' : 'บันทึกเอกสารก่อนจึงเพิ่มหมายเหตุเอกสารได้'}>📄<span className="tb-txt"> หมายเหตุเอกสาร</span> <kbd>Alt+R</kbd></button>}
       <button disabled={!id} onClick={() => setInfo(true)} title="รายละเอียดแฟ้มข้อมูล (Ctrl+I)">ℹ</button>

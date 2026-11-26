@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useDenyText } from '../../readonly';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, Decimal, fmt, formatDate, SETTLE_KINDS, settlementTotals, todayIso, wht50FormOf, type SettleKind } from '@buddy/core';
@@ -120,6 +121,7 @@ export function SettleFormPage({ path }: { path: string }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan(K.menu);
+  const denyWhy = useDenyText(K.menu);
   const { me } = useSession();
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string }> }>(`/api/v1/trade-defaults/${K.cls}`) });
   const depts = useQuery({ queryKey: ['departments'], queryFn: () => api.get<Array<{ id: string; code: string; name_th: string; status: string }>>('/api/v1/departments') });
@@ -306,7 +308,7 @@ export function SettleFormPage({ path }: { path: string }) {
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
-        <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
+        <button disabled={!id || cancelled || !can('cancel')} title={denyWhy('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         {!ro && h && <AiBillButton target={K.path} party={K.party} textLines onApply={(r) => void applyBill(r)} />}
         <button onClick={() => nav(K.route)}>รายการ <kbd>Esc</kbd></button>

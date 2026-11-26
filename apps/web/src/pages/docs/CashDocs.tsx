@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDenyText } from '../../readonly';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { billAsExpense, billWhtRow, CASH_KINDS, type CashKind, computeDoc, d, descriptionAfterPick, DEPOSIT_REFUND, DOC_CLASSES, dueDate, fillRowCount, fmt, isBlankTextLine, isCompleteTextLine, settlementTotals, textLineIssues, todayIso, wht50FormOf } from '@buddy/core';
@@ -118,6 +119,7 @@ export function CashFormPage({ path }: { path: string }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan(K.menu);
+  const denyWhy = useDenyText(K.menu);
   const canRefund = useCan(DEPOSIT_REFUND.menu);
   const { me } = useSession();
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; price_type: string | null; vat_rate: string | null }>; vat_rate: number; price_type: string; vat_registered?: boolean; central_supplier_id?: string | null }>(`/api/v1/trade-defaults/${K.cls}`) });
@@ -321,7 +323,7 @@ export function CashFormPage({ path }: { path: string }) {
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่</button>
-        <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
+        <button disabled={!id || cancelled || !can('cancel')} title={denyWhy('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={K.menu} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         {!ro && h && <AiBillButton target={K.path} party={K.party} textLines={K.lines === 'text'} onApply={applyBill} />}
         {id && (cur.data as { receipt_substitute?: boolean } | undefined)?.receipt_substitute && <SubstituteReceiptButton id={id} />}

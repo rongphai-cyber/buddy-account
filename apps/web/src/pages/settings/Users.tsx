@@ -8,7 +8,7 @@ import { Confirm, cx, ErrorBox, Field, Modal, PageHead, PasswordInput, Pill, Tab
 import { MasterBar, useRowSelect } from '../../components/MasterBar';
 import { QrCode } from './TwoFactor';
 
-interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean; rights_in?: string[]; has_password?: boolean; invite_expires_at?: string | null; tenant_id?: string | null }
+interface User { id: string; username: string; display_name: string; status: string; approval_level: number; check_rights: boolean; last_login_at: string | null; user_group_id: string | null; group_code: string | null; group_name: string | null; companies: string[]; mfa_enabled?: boolean; locked_until?: string | null; app_access?: TenantModuleKey[] | null; single_session?: boolean; rights_in?: string[]; has_password?: boolean; invite_expires_at?: string | null; tenant_id?: string | null; api_keys?: number }
 type GroupRight = { menu: string; can_read: string; can_add: string; can_edit: string; can_cancel: string; can_delete: string; can_print: string; can_approve: string };
 interface Group { id: string; code: string; name: string; rights_in?: string[]; tenant_id?: string | null; tenant_code?: string | null; rights?: GroupRight[] }
 /**
@@ -463,10 +463,20 @@ function GroupSummary({ g, level, onOpen, onLevel }: { g: Group; level: number; 
   );
 }
 
+/**
+ * ป้ายสิทธิ์ (HANDOFF 198 ข้อ 3): กลุ่มกำหนดเมนูทุกระดับ — ระดับ 9 ในกลุ่ม = "ระดับ 9 · ตามกลุ่ม ACC" · ระดับ 9 ไม่มีกลุ่ม = ทุกอย่าง
+ */
+function rightsLabel(u: User) {
+  if (u.group_code) return u.approval_level >= 9 ? `ระดับ 9 · ตามกลุ่ม ${u.group_code}` : `ตามกลุ่ม ${u.group_code}`;
+  if (u.check_rights) return 'ตามตารางสิทธิ์';
+  if (u.approval_level >= 9) return 'ทุกอย่าง (ระดับ 9)';
+  return u.rights_in?.length ? 'ตามระดับ + ที่ปรับ' : 'ตามระดับ';
+}
+function keyNote(hide: boolean) { return hide ? '🔑 กุญแจ API: ตามตารางสิทธิ์ ⚠' : '🔑 กุญแจ API: ตามระดับอนุมัติ'; }
 /** คอลัมน์ "สิทธิ์รายเมนู" ในรายการผู้ใช้: ได้สิทธิ์จากไหน + ซ่อนหรือแสดงจางเมนูที่ไม่มีสิทธิ์ */
 function RightsCell({ u, onOpen }: { u: User; onOpen: () => void }) {
-  const label = u.approval_level >= 9 && !u.check_rights ? 'ทุกอย่าง (ระดับ 9)' : u.group_code ? `ตามกลุ่ม ${u.group_code}` : u.rights_in?.length || u.check_rights ? 'ตามตารางสิทธิ์' : 'ตามระดับ';
-  return <><button className="linklike" onClick={(e) => { e.stopPropagation(); onOpen(); }}>{label}</button>{u.check_rights && <span className="muted small"> · ซ่อนเมนู</span>}</>;
+  return <><button className="linklike" onClick={(e) => { e.stopPropagation(); onOpen(); }}>{rightsLabel(u)}</button>{u.check_rights && <span className="muted small"> · ซ่อนเมนู</span>}
+    {!!u.api_keys && <div className={cx('small', u.check_rights ? 'bad' : 'muted')} title={u.check_rights ? 'กุญแจ API ของผู้ใช้นี้ทำได้เฉพาะที่ตารางสิทธิ์ให้ — ระบบอื่นอาจส่งเอกสารบางชนิดไม่ได้' : 'กุญแจ API ใช้ได้ตามระดับอนุมัติ กลุ่มไม่จำกัดกุญแจ (ระบบอื่นส่งเอกสารได้เหมือนเดิม)'}>{keyNote(u.check_rights)}</div>}</>;
 }
 
 /** เพิ่ม / เปลี่ยนชื่อกลุ่มผู้ใช้ (S-SEC-01) — เพิ่มแล้วไปตารางสิทธิ์ของกลุ่มต่อทันที · รหัสกลุ่มเปลี่ยนไม่ได้ */

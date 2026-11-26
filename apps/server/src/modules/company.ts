@@ -408,6 +408,9 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     // บริษัทที่ผู้ใช้/กลุ่มมีแถวสิทธิ์รายเมนู — หน้าจอเตือนเมื่อ "ตรวจสอบสิทธิ์ก่อนใช้งาน" แต่ไม่มีสิทธิ์ในบริษัทที่เลือก (HANDOFF 159)
     const rowsIn = await permissionCompanies(db, [...users.map((u) => u.id), ...groups.map((g) => g.id)]);
     // ลิงก์เชิญที่ยังใช้ได้ (HANDOFF 184) — แสดงสถานะ "รอตั้งรหัสผ่าน ถึง …"
+    // กุญแจ API ที่ใช้งานอยู่ของผู้ใช้ (HANDOFF 198 ตรวจทาน — แสดงว่ากุญแจได้สิทธิ์แบบไหน)
+    const keyCount = new Map((users.length ? await db.selectFrom('sys_api_key').select(['user_id', sql<number>`count(*)::int`.as('n')]).where('user_id', 'in', users.map((u) => u.id))
+      .where('status', '=', 'A').where('deleted_at', 'is', null).groupBy('user_id').execute() : []).map((r) => [r.user_id, Number(r.n)]));
     const invites = users.length ? await db.selectFrom('sys_user_invite').select(['user_id', 'expires_at']).where('user_id', 'in', users.map((u) => u.id))
       .where('used_at', 'is', null).where('revoked_at', 'is', null).where('deleted_at', 'is', null).where('expires_at', '>', sql<string>`now()`).execute() : [];
     // สิทธิ์ของแต่ละกลุ่มในบริษัทที่เลือกอยู่ — หน้าเพิ่มผู้ใช้สรุปว่ากลุ่มทำอะไรได้ (HANDOFF 197) · ช่องว่าง = ''
@@ -416,7 +419,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       .where('p.company_id', '=', a.companyId).where('p.subject_type', '=', 'G').where('p.subject_id', 'in', groups.map((g) => g.id)).where('p.deleted_at', 'is', null).execute() : [];
     const cell = (v: string | null) => (v ?? '').trim();
     return { users: users.map((u) => { const sc = secs.find((x) => x.user_id === u.id); return { ...u, app_access: normalizeAppAccess(u.app_access), companies: links.filter((l) => l.user_id === u.id).map((l) => l.company_id), rights_in: rowsIn.get(u.id) ?? [], mfa_enabled: !!sc?.totp_enabled, locked_until: sc?.locked_until && new Date(sc.locked_until).getTime() > Date.now() ? sc.locked_until : null,
-      invite_expires_at: invites.find((x) => x.user_id === u.id)?.expires_at ?? null }; }),
+      invite_expires_at: invites.find((x) => x.user_id === u.id)?.expires_at ?? null, api_keys: keyCount.get(u.id) ?? 0 }; }),
       groups: groups.map((g) => ({ ...g, rights_in: rowsIn.get(g.id) ?? [],
         rights: gRights.filter((r) => r.subject_id === g.id).map((r) => ({ menu: r.menu, can_read: cell(r.can_read), can_add: cell(r.can_add), can_edit: cell(r.can_edit), can_cancel: cell(r.can_cancel), can_delete: cell(r.can_delete), can_print: cell(r.can_print), can_approve: cell(r.can_approve) })) })),
       mfa_all: mfaForAll() };

@@ -231,7 +231,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
       // สิทธิ์รายเมนูของบริษัทนี้ — หน้าจอใช้ซ่อนเมนู/ปุ่ม (ด่านจริงอยู่ที่ API)
       perms: view?.perms ?? {},
       // HANDOFF 197 (เจ้าของ ข้อ 5): เมนูที่ไม่มีสิทธิ์ — hide = ซ่อน (ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์") · disable = แสดงจาง กดแล้วบอกเหตุผล (perm_why)
-      menu_mode: a.checkRights || a.isAdmin ? 'hide' : 'disable', perm_why: view?.why ?? {}, rights_table: view?.table ?? 'off',
+      menu_mode: a.checkRights || a.isAdmin ? 'hide' : 'disable', perm_why: view?.why ?? {}, perm_deny: view?.deny ?? {}, rights_table: view?.table ?? 'off',
     };
   });
 

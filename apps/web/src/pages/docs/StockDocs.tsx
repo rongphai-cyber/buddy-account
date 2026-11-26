@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDenyText } from '../../readonly';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, descriptionAfterPick, fillRowCount, fmt, requiredLineIssues, STOCK_KINDS, todayIso, type StockKind } from '@buddy/core';
@@ -105,6 +106,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan(MENU);
+  const denyWhy = useDenyText(MENU);
   const { me } = useSession();
   const lk = useLookups('UNIT,WH');
   const defs = useQuery({ queryKey: ['trade-defaults', cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string; warehouse_id: string | null; department_id: string | null }> }>(`/api/v1/trade-defaults/${cls}`) });
@@ -221,7 +223,7 @@ export function StockDocFormPage({ cls }: { cls: StockKind['cls'] }) {
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
-        <button disabled={!id || cancelled || !(cur.data?.editable || cur.data?.from_count) || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร <kbd>Alt+C</kbd></button>
+        <button disabled={!id || cancelled || !(cur.data?.editable || cur.data?.from_count) || !can('cancel')} title={denyWhy('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร <kbd>Alt+C</kbd></button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={MENU} del={{ cancelled, cancelUrl: `/api/v1/${K.path}/${id}/cancel`, listPath: K.route }} />
         {cls === 'JU' && !ro && <button disabled={!used.some((l) => d(l.qty || 0).gt(0))} onClick={() => setProdCost(true)} title="รวมต้นทุนจากการเบิกวัตถุดิบและค่าแรง/โสหุ้ย แล้วกระจายเป็นทุนต่อหน่วยของสินค้าที่รับเข้า (บทที่ 26)">🏭 ต้นทุนการผลิต</button>}
         {!ro && h && <AiBillButton target={K.path} party="none" onApply={applyBill} />}

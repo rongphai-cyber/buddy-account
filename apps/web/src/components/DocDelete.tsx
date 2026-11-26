@@ -34,8 +34,9 @@ export function SourceStamp({ doc }: { doc?: { source_system?: string | null; so
  */
 const DEL_NOTE = 'เอกสารจะไม่แสดงในรายการ รายงาน และบัญชีแยกประเภทอีก · เลขที่นี้ว่างให้ใช้ใหม่ได้ · ประวัติการลบเก็บไว้ในบันทึกการทำงาน';
 const NOT_CANCELLED = 'เอกสารนี้ยังไม่ได้ยกเลิก — ระบบจะยกเลิกให้ก่อน (ยกเลิกใบสำคัญ คืนสต๊อก ฯลฯ) แล้วจึงลบ';
-export function DocDelete({ kind, id, docNo, cancelled, cancelUrl, listPath, canDelete, canCancel }: {
+export function DocDelete({ kind, id, docNo, cancelled, cancelUrl, listPath, canDelete, canCancel, deleteWhy }: {
   kind: 'doc' | 'journal'; id: string | null | undefined; docNo?: string | null; cancelled: boolean; cancelUrl: string; listPath: string; canDelete: boolean; canCancel: boolean;
+  /** เหตุที่ลบไม่ได้ (ระดับอนุมัติ/กลุ่ม — HANDOFF 198) */ deleteWhy?: string;
 }) {
   const nav = useNavigate();
   const qc = useQueryClient();
@@ -56,7 +57,7 @@ export function DocDelete({ kind, id, docNo, cancelled, cancelUrl, listPath, can
   };
   return <>
     <button className="danger-outline" disabled={!allowed} onClick={() => setAsk(true)}
-      title={!id ? 'บันทึกเอกสารก่อน' : !canDelete ? 'ไม่มีสิทธิ์ลบ' : 'ลบเอกสารนี้ออกจากระบบ — เลขที่ว่างให้ใช้ใหม่ (Alt+D)'}>🗑 ลบ <kbd>Alt+D</kbd></button>
+      title={!id ? 'บันทึกเอกสารก่อน' : !canDelete || (!cancelled && !canCancel) ? deleteWhy ?? 'ไม่มีสิทธิ์ลบ' : 'ลบเอกสารนี้ออกจากระบบ — เลขที่ว่างให้ใช้ใหม่ (Alt+D)'}>🗑 ลบ <kbd>Alt+D</kbd></button>
     {ask && <Confirm danger title="ลบเอกสาร" okText={cancelled ? 'ลบเอกสาร' : 'ยกเลิกและลบเอกสาร'} onClose={() => setAsk(false)} onOk={run}
       text={<><b>{`ลบ ${docNo ?? ''} ออกจากระบบ?`}</b><br /><span>{DEL_NOTE}</span>
         {!cancelled && <><br /><span className="bad">{NOT_CANCELLED}</span></>}</>}>

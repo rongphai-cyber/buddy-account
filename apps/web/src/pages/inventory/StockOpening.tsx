@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDenyText } from '../../readonly';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fillRowCount, fmt, requiredLineIssues } from '@buddy/core';
@@ -63,6 +64,7 @@ export function StockOpeningFormPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan(MENU);
+  const denyWhy = useDenyText(MENU);
   const lk = useLookups('WH');
   const meta = useQuery({ enabled: !id, queryKey: ['stock-opening', 'meta'], queryFn: () => api.get<{ start_date: string | null }>('/api/v1/stock-opening', { limit: 1 }) });
   const cur = useQuery({ enabled: !!id, queryKey: ['stock-opening', 'one', id], staleTime: 0, queryFn: () => api.get<{ doc_no: string; doc_date: string; remark: string | null; doc_status: string; editable: boolean;
@@ -141,7 +143,7 @@ export function StockOpeningFormPage() {
         <button className="primary" disabled={busy || ro} onClick={() => save()}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
         <button disabled={busy || ro} onClick={() => save(true)}>บันทึก+ใหม่ <kbd>Ctrl+Enter</kbd></button>
-        <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกล็อต <kbd>Alt+C</kbd></button>
+        <button disabled={!id || cancelled || !can('cancel')} title={denyWhy('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกล็อต <kbd>Alt+C</kbd></button>
         <DocDelete kind="doc" id={id} docNo={cur.data?.doc_no} cancelled={cancelled} cancelUrl={`/api/v1/stock-opening/${id}/cancel`} listPath={ROUTE} canDelete={can('delete')} canCancel={can('cancel')} />
         <CloseScreen dirty={dirty} />
         <button onClick={() => nav(ROUTE)}>รายการ <kbd>Esc</kbd></button>

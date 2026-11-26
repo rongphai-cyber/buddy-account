@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDenyText } from '../../readonly';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { d, fillRowCount, fmt, settlementTotals, todayIso } from '@buddy/core';
@@ -105,6 +106,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const can = useCan('GL.PC');
+  const denyWhy = useDenyText('GL.PC');
   const { me } = useSession();
   const accts = useAccounts();
   const defs = useQuery({ queryKey: ['trade-defaults', K.cls], queryFn: () => api.get<{ types: Array<{ id: string; code: string; name_th: string }> }>(`/api/v1/trade-defaults/${K.cls}`) });
@@ -231,7 +233,7 @@ export function PettyFormPage({ kind }: { kind: Kind }) {
         <button onClick={() => { void confirmLeave().then((ok) => { if (ok) { setH(null); setLines([]); setPick(new Set()); setPays([]); nav(`${BASE}/${kind}/new`); } }) }}>+ ใหม่</button>
         <button className="primary" disabled={busy || ro} onClick={save}>บันทึก <kbd>F9</kbd></button>
         {ed.editButton}
-        <button disabled={!id || cancelled || !can('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
+        <button disabled={!id || cancelled || !can('cancel')} title={denyWhy('cancel')} onClick={() => setAskCancel(true)}>ยกเลิกเอกสาร</button>
         <DocActions kind="doc" id={id} dirty={dirty} menu={'GL.PC'} del={{ cancelled, cancelUrl: `/api/v1/${K.api}/${id}/cancel`, listPath: kind === 'dp' ? BASE : `${BASE}/vr` }} />
         {kind === 'dp' && !ro && h && <AiBillButton target="petty-payments" party="none" onApply={applyBill} />}
         <button onClick={() => nav(kind === 'dp' ? BASE : `${BASE}/vr`)}>รายการ <kbd>Esc</kbd></button>

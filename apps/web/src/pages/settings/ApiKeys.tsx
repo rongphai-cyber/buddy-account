@@ -4,7 +4,7 @@ import { api } from '../../api';
 import { useCan, useSession } from '../../session';
 import { Confirm, cx, DateInput, DateText, ErrorBox, Field, KeyHints, Modal, PageHead, Pill, Tabs, toast, useHotkeys } from '../../ui';
 
-type Key = { id: string; name: string; key_prefix: string; read_only: boolean; source_system: string | null; doc_scope: 'S' | 'A'; expires_on: string | null; status: string; last_used_at: string | null; last_used_ip: string | null; created_at: string; username: string; display_name: string; created_by_name: string | null };
+type Key = { id: string; name: string; key_prefix: string; read_only: boolean; source_system: string | null; doc_scope: 'S' | 'A'; expires_on: string | null; status: string; last_used_at: string | null; last_used_ip: string | null; created_at: string; username: string; display_name: string; created_by_name: string | null; approval_level: number; check_rights: boolean; group_code: string | null; has_table: boolean };
 type User = { id: string; username: string; display_name: string; status: string; group_code: string | null; companies: string[] };
 type Doc = { method: string; path: string; kind: string; menu: string | null; menu_label: string | null; action: string | null };
 const ACT: Record<string, string> = { read: 'อ่าน', add: 'เพิ่ม', edit: 'แก้ไข', cancel: 'ยกเลิก', delete: 'ลบ', print: 'พิมพ์', approve: 'รับรอง' };
@@ -13,6 +13,21 @@ const ACT: Record<string, string> = { read: 'อ่าน', add: 'เพิ่�
  * กุญแจ API ให้ระบบอื่นเชื่อมต่อ (T7.5) — ผูกกับบริษัทนี้ + ผู้ใช้หนึ่งคน สิทธิ์ตามผู้ใช้นั้น
  * กุญแจแสดงครั้งเดียวตอนสร้าง · ยกเลิกแล้วใช้ไม่ได้ทันที · รายการ API สร้างจากตารางสิทธิ์ของโปรแกรม
  */
+/**
+ * สิทธิ์ที่กุญแจได้จริง (HANDOFF 198 ข้อ 1): ระบบอื่น (WTS-POS · WTS-Living · WTS-HR) ใช้กฎเดิม — ผู้ใช้ไม่ได้ตั้งซ่อนเมนู = ตามระดับอนุมัติ กลุ่มไม่มีผล
+ * ตั้งซ่อนเมนู = ใช้ได้เฉพาะที่กลุ่ม/สิทธิ์รายเมนูให้ → เตือน (ระบบอื่นอาจส่งเอกสารบางชนิดไม่ได้)
+ */
+function KeyRights({ k }: { k: Key }) {
+  if (k.group_code === 'ADMIN') return <span>ทุกอย่าง (ADMIN)</span>;
+  if (k.check_rights) return <span className="bad" title={keyTableTip(k.group_code)}>⚠ ตามตารางสิทธิ์{k.has_table ? '' : ' (ยังไม่ได้ตั้ง)'}</span>;
+  return <span title={'ผู้ใช้ของกุญแจไม่ได้ตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์" — กุญแจใช้ได้ตามระดับอนุมัติ กลุ่มผู้ใช้ไม่จำกัดกุญแจ'}>{keyLevel(k.approval_level)}</span>;
+}
+function keyLevel(n: number) { return `ตามระดับอนุมัติ ${n}`; }
+function keyTableTip(g: string | null) {
+  const who = g ? `กลุ่ม ${g} และสิทธิ์รายเมนูของผู้ใช้` : 'สิทธิ์รายเมนูของผู้ใช้';
+  return `ผู้ใช้ของกุญแจตั้ง "ซ่อนเมนูที่ไม่มีสิทธิ์" — กุญแจทำได้เฉพาะที่${who}ให้ · ถ้าระบบอื่นส่งเอกสารบางชนิดไม่ได้ (403) ให้เพิ่มสิทธิ์เมนูนั้น หรือเปลี่ยนผู้ใช้เป็น "แสดงแบบจาง"`;
+}
+
 export function ApiKeysPage() {
   const can = useCan('SET.API');
   const { me } = useSession();
@@ -47,7 +62,7 @@ export function ApiKeysPage() {
                   <td>{k.name}<div className="muted small">สร้าง <DateText v={k.created_at} /> {k.created_by_name ? `โดย ${k.created_by_name}` : ''}</div></td>
                   <td className="mono">bk_{k.key_prefix}_…</td>
                   <td>{k.username} <span className="muted">{k.display_name}</span></td>
-                  <td>{k.read_only ? 'อ่านอย่างเดียว' : 'ตามสิทธิ์ผู้ใช้'}</td>
+                  <td>{k.read_only ? 'อ่านอย่างเดียว' : <KeyRights k={k} />}</td>
                   <td><span className="mono">{k.source_system ?? '—'}</span><div className="muted small">{k.doc_scope === 'A' ? 'ทุกเอกสารของบริษัท' : 'เฉพาะที่ระบบนี้ส่งเข้ามา'}</div></td>
                   <td>{k.expires_on ? <DateText v={k.expires_on} /> : <span className="muted">ไม่หมดอายุ</span>}</td>
                   <td>{k.last_used_at ? <><DateText v={k.last_used_at} /> <span className="muted small">{new Date(k.last_used_at).toLocaleTimeString('th-TH')} {k.last_used_ip}</span></> : <span className="muted">ยังไม่เคยใช้</span>}</td>

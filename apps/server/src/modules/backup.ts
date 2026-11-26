@@ -230,7 +230,28 @@ export const USER_STEPS: Step[] = [
        WHERE p.deleted_at IS NULL AND p.company_id IN (SELECT id FROM sys_company WHERE tenant_id = ${tid})
          AND NOT EXISTS (SELECT 1 FROM sys_permission q WHERE q.company_id = p.company_id AND q.subject_type = p.subject_type AND q.subject_id = p.subject_id AND q.menu_id = dm.id AND q.deleted_at IS NULL)`.execute(tx) },
   { n: 68, name: 'คงสิทธิ์สำรองข้อมูลของผู้ใช้ระดับ 5–8', run: (tx, tid) => backupRightsStep(tx, tid) },
+  // HANDOFF 198 (ตรวจทาน 197): ใช้คำสั่งในไฟล์ migration เดียวกัน จำกัดเฉพาะลูกค้ารายนี้
+  { n: 83, name: 'ล้างช่องสิทธิ์รายผู้ใช้ที่ไม่มีผลก่อน 197 (N ที่ไม่ได้ติ๊ก)', run: (tx, tid) => tenantMigrationStep(tx, tid, '0083_dormant_user_permission_cells.sql', [
+    ['JOIN sys_user u ON u.id = p.subject_id AND u.deleted_at IS NULL AND NOT u.check_rights', (t) => ` AND u.tenant_id = '${t}'`],
+    [" WHERE subject_type = 'U' AND deleted_at IS NULL", (t) => ` AND subject_id IN (SELECT id FROM sys_user WHERE tenant_id = '${t}')`],
+  ]) },
+  { n: 84, name: 'เติมสิทธิ์ที่ขาดของกลุ่มตั้งต้น', run: (tx, tid) => tenantMigrationStep(tx, tid, '0084_standard_group_topup.sql', [
+    ['g.tenant_id IS NOT NULL', (t) => ` AND g.tenant_id = '${t}'`],
+  ]) },
 ];
+/**
+ * ทำ migration แก้ข้อมูลซ้ำเฉพาะลูกค้ารายนี้ (นำแฟ้มสำรองผู้ใช้รุ่นเก่ากลับ) — ใช้คำสั่งในไฟล์ migration เดียวกัน ต่อเงื่อนไขลูกค้าหลังข้อความที่กำหนด
+ * ข้อความที่กำหนดต้องพบครั้งเดียวพอดี (ไฟล์เปลี่ยนรูปแบบ = หยุด ไม่เดา)
+ */
+async function tenantMigrationStep(tx: Db, tid: string, file: string, marks: Array<[string, (t: string) => string]>) {
+  if (!/^[0-9a-f-]{36}$/i.test(tid)) throw badRequest('รหัสลูกค้าไม่ถูกต้อง');
+  let text = (await readFile(resolve(REPO_ROOT, 'db/migrations', file), 'utf8')).split(/\r?\n/).filter((l) => !l.trim().startsWith('--')).join('\n');
+  for (const [mark, add] of marks) {
+    if (text.split(mark).length !== 2) throw new Error(`${file}: รูปแบบคำสั่งเปลี่ยน`);
+    text = text.replace(mark, mark + add(tid));
+  }
+  for (const st of text.split(/;\s*(?:\n|$)/).map((x) => x.trim()).filter(Boolean)) await sql.raw(st).execute(tx);
+}
 /** migration 0068 (คงสิทธิ์สำรอง/นำกลับของผู้ใช้เดิม) ทำซ้ำเฉพาะผู้ใช้ของลูกค้ารายนี้ — ใช้คำสั่งเดียวกับไฟล์ migration เพิ่มเงื่อนไขลูกค้า */
 async function backupRightsStep(tx: Db, tid: string) {
   if (!/^[0-9a-f-]{36}$/i.test(tid)) throw badRequest('รหัสลูกค้าไม่ถูกต้อง');
