@@ -218,6 +218,8 @@ export function UsersPage() {
   );
 }
 
+/** เหตุผลที่ลบกลุ่มไม่ได้ (คำแนะนำของปุ่มลบ — HANDOFF 203: ไม่เป็นบรรทัดเหนือตาราง ซึ่งดันตารางเมื่อชี้เมาส์จนจอสั่น) */
+function groupDeleteWhy(g: Group, n: number) { return g.code === 'ADMIN' ? 'กลุ่ม ADMIN ลบไม่ได้ — เป็นกลุ่มผู้ดูแลระบบ' : `ลบกลุ่ม ${g.code} ไม่ได้ — มีผู้ใช้ ${n} คน ย้ายผู้ใช้ไปกลุ่มอื่นก่อน`; }
 /** ข้อความยืนยันลบกลุ่ม */
 function deleteGroupText(g: Group) { return `ลบกลุ่ม ${g.code} ${g.name} พร้อมสิทธิ์ของกลุ่มทุกบริษัท — กลุ่มนี้ไม่มีผู้ใช้`; }
 /** กลุ่มของลูกค้าเจ้าของบริษัทที่เลือกอยู่ (ผู้ให้บริการเห็นทุกลูกค้า — แท็บกลุ่มแสดงเฉพาะลูกค้ารายนี้ ตรงกับตารางสิทธิ์) */
@@ -249,12 +251,11 @@ function GroupsTab({ groups, users, onChanged }: { groups: Group[]; users: User[
     <>
       <MasterBar rs={rs} word="กลุ่ม" label={(g) => `${g.code} ${g.name}`} onAdd={() => setForm('new')} onEdit={open} editWord="สิทธิ์ของกลุ่ม" canDelete={!busyGroup}
         onDelete={(g) => api.del(`/api/v1/user-groups/${g.id}`).then(onChanged)}
-        deleteText={deleteGroupText}
+        deleteText={deleteGroupText} deleteWhy={row && busyGroup ? groupDeleteWhy(row, members(row).length) : null}
         extra={<>
           <button type="button" disabled={!row} onClick={() => row && setForm(row)}>เปลี่ยนชื่อ</button>
           <button type="button" onClick={() => setStd(true)} title="ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว — เพิ่มเฉพาะที่ยังไม่มี ไม่เขียนทับสิทธิ์ที่แก้แล้ว">+ กลุ่มตั้งต้น</button>
         </>} />
-      {row && busyGroup && row.code !== 'ADMIN' && <p className="small muted">ลบกลุ่ม {row.code} ไม่ได้ — มีผู้ใช้ {members(row).length} คน ย้ายผู้ใช้ไปกลุ่มอื่นก่อน</p>}
       <div className="table-wrap">
         <table className="grid groups-grid">
           <thead><tr><th>รหัสกลุ่ม</th><th>ชื่อกลุ่ม</th><th className="r">สมาชิก</th><th>สิทธิ์ในบริษัท <span data-no-i18n>{me?.company?.code}</span> (คลิกเพื่อดู/แก้)</th></tr></thead>

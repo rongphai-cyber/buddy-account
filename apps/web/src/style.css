@@ -1066,6 +1066,12 @@ th.sortable .sort-ind { white-space: nowrap; font-size: .85em; }
 /* แถบเครื่องมือหน้ากำหนดข้อมูล (MasterBar) */
 .master-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 10px; }
 .master-bar .hint { margin-left: auto; }
+/* HANDOFF 203: ชี้เมาส์ = เลือกแถว — คำบอกแถวที่เลือกยาวไม่เท่ากันห้ามทำให้แถบเครื่องมือขึ้นบรรทัดใหม่ (ตารางเลื่อน แถวอื่นมาใต้เมาส์ จอสั่น)
+   กว้างตามที่เหลือในแถว (ไม่ขึ้นกับข้อความ) บรรทัดเดียว ตัดท้าย … ชี้ดูเต็ม */
+.master-bar .hint { flex: 1 1 260px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.stable-label { display: inline-grid; }
+.stable-label > span { grid-area: 1 / 1; }
+.stable-label > .off { visibility: hidden; }
 button.danger-outline { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
 button.danger-outline:not(:disabled):hover { background: var(--bad-soft); }
 tr.sel > td { background: color-mix(in srgb, var(--tone) 10%, transparent); }

@@ -3939,5 +3939,6 @@
  "บางเมนู": "Some menus",
  "ใช้ได้ {0} จาก {1} เมนูย่อย — เลือกเมนูย่อยเพื่อดูรายละเอียด": "Allowed in {0} of {1} sub-menus — pick a sub-menu to see the details",
  "ใช้ไม่ได้ ·": "not allowed ·",
- "◐ บางเมนู": "◐ Some menus"
+ "◐ บางเมนู": "◐ Some menus",
+ "กลุ่ม ADMIN ลบไม่ได้ — เป็นกลุ่มผู้ดูแลระบบ": "The ADMIN group can't be deleted — it is the system administrators' group"
 }

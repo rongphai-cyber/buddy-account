@@ -1135,6 +1135,7 @@
 "กลางเดือน = คิดตามวันแต่ละช่วง": "Mid-month = prorated by days in each part",
 "กลุ่ม": "Group",
 "กลุ่ม ADMIN ของลูกค้าเดิม": "ADMIN group of the original tenant",
+"กลุ่ม ADMIN ลบไม่ได้ — เป็นกลุ่มผู้ดูแลระบบ": "The ADMIN group can't be deleted — it is the system administrators' group",
 "กลุ่ม ADMIN เข้าได้ทุกบริษัทของกิจการ": "The ADMIN group can open every company of the business",
 "กลุ่ม ADMIN ได้ทุกอย่าง": "ADMIN group can do everything",
 "กลุ่ม ADMIN ได้ทุกอย่าง — ไม่ต้องตั้งสิทธิ์": "ADMIN group can do everything — no rights to set",
