@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Navigate } from 'react-router-dom';
 import { AI_PAYER_TH, d, fmt, periodLabel, QUOTA_LABEL, RETENTION_TERMS, thisMonthTh, type QuotaKey } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
@@ -91,11 +92,13 @@ export function UsagePage() {
   const [month, setMonth] = useState(thisMonthTh());
   const ok = !!me?.user.is_admin && !!me.user.tenant_id;
   const q = useQuery({ enabled: ok, queryKey: ['usage', month], queryFn: () => api.get<UsageReport>(`/api/v1/usage?month=${month}`) });
+  // HANDOFF 205: เจ้าหน้าที่ผู้ให้บริการไม่มีการใช้งานของตัวเอง — ไปหน้าแพ็กเกจและการใช้งานลูกค้า (ดูรายลูกค้า รวมลูกค้าข้อมูลตัวอย่าง)
+  if (me?.user.is_platform) return <Navigate to="/admin/packages" replace />;
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ" title="การใช้งานและแพ็กเกจ" lead="แพ็กเกจบริการและการใช้งานของกิจการ (ทุกบริษัทรวมกัน) — ราคาต่อปีไม่รวม VAT · ต้องการเปลี่ยนแพ็กเกจ ติดต่อผู้ให้บริการ"
         actions={<MonthSelect value={month} onChange={setMonth} />} />
-      {!ok && <div className="notebox">{me?.user.is_platform ? 'เจ้าหน้าที่ผู้ให้บริการ: ดูการใช้งานของลูกค้าที่ แพ็กเกจและการใช้งานลูกค้า (ผู้ให้บริการ)' : 'เฉพาะผู้ดูแลระบบของกิจการ'}</div>}
+      {!ok && <div className="notebox">เฉพาะผู้ดูแลระบบของกิจการ</div>}
       <ErrorBox error={q.error} />
       {q.data && <UsageView r={q.data} />}
       {ok && <fieldset className="box retention-terms"><legend>การเก็บข้อมูลเมื่อค้างชำระหรือเลิกใช้บริการ</legend>

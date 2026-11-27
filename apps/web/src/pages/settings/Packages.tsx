@@ -19,7 +19,7 @@ export function PackagesPage() {
   if (!me?.user.is_platform) return <div className="page"><div className="notebox">เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม</div></div>;
   return (
     <div className="page" data-tone="setup">
-      <PageHead eyebrow="เริ่มระบบ › ผู้ให้บริการ" title="แพ็กเกจและการใช้งานลูกค้า" lead="แพ็กเกจต่อปี (ไม่รวม VAT) จำกัดบริษัท ผู้ใช้ เอกสาร/เดือน พื้นที่ไฟล์ และอ่านบิลด้วย AI/เดือน · การใช้งานคำนวณสดจากข้อมูล · เอกสารไม่หยุดเด็ดขาด เกินแล้วคิดส่วนเกิน" />
+      <PageHead eyebrow="ศูนย์ผู้ให้บริการ" title="แพ็กเกจและการใช้งานลูกค้า" lead="แพ็กเกจต่อปี (ไม่รวม VAT) จำกัดบริษัท ผู้ใช้ เอกสาร/เดือน พื้นที่ไฟล์ และอ่านบิลด้วย AI/เดือน · การใช้งานคำนวณสดจากข้อมูล · เอกสารไม่หยุดเด็ดขาด เกินแล้วคิดส่วนเกิน" />
       <Tabs tabs={[{ key: 'pkg', label: 'แพ็กเกจ' }, { key: 'usage', label: 'การใช้งานลูกค้า' }, { key: 'over', label: 'ค่าใช้ส่วนเกินรายเดือน' }]} active={tab} onChange={pick} />
       {tab === 'pkg' && <Catalog />}
       {tab === 'usage' && <TenantUsage />}

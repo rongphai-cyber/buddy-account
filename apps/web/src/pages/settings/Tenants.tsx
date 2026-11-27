@@ -31,7 +31,7 @@ export function TenantsPage() {
   if (!me?.user.is_platform) return <div className="page"><div className="notebox">เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม</div></div>;
   return (
     <div className="page" data-tone="setup">
-      <PageHead eyebrow="เริ่มระบบ › ลูกค้าผู้ใช้บริการ" title="ลูกค้าผู้ใช้บริการ" lead={`ลูกค้าแต่ละรายเห็นเฉพาะบริษัท ผู้ใช้ และข้อมูลของตัวเอง — ระงับแล้วผู้ใช้ทุกคนของลูกค้ารายนั้นออกจากระบบทันที · เลิกใช้บริการ หรือระงับเพราะค้างชำระ เก็บข้อมูล ${TENANT_RETENTION_DAYS} วันแล้วลบได้ (ผู้ให้บริการกดลบเอง)`}
+      <PageHead eyebrow="ศูนย์ผู้ให้บริการ" title="ลูกค้าผู้ใช้บริการ" lead={`ลูกค้าแต่ละรายเห็นเฉพาะบริษัท ผู้ใช้ และข้อมูลของตัวเอง — ระงับแล้วผู้ใช้ทุกคนของลูกค้ารายนั้นออกจากระบบทันที · เลิกใช้บริการ หรือระงับเพราะค้างชำระ เก็บข้อมูล ${TENANT_RETENTION_DAYS} วันแล้วลบได้ (ผู้ให้บริการกดลบเอง)`}
         actions={<><button onClick={() => setAiKey(true)}>🔑 AI ที่ WTS จ่ายให้…</button><button onClick={() => setImporting(true)}>⬆ รับลูกค้าที่ย้ายมา…</button><button className="primary" onClick={() => setEdit('new')}>+ เพิ่มลูกค้า <kbd>Ins</kbd></button></>} />
       <SignupsPanel onApproved={() => qc.invalidateQueries({ queryKey: ['tenants'] })} />
       <ErrorBox error={q.error} />

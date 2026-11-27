@@ -4612,6 +4612,17 @@
 ]
 },
 {
+"th": "ศูนย์ผู้ให้บริการ",
+"n": 6,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/provider/ProviderConsole.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "สมุด",
 "n": 6,
 "files": [
@@ -6662,15 +6673,6 @@
 ]
 },
 {
-"th": "ศูนย์ผู้ให้บริการ",
-"n": 4,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"packages/core/src/menu.ts"
-]
-},
-{
 "th": "สร้างเป็นเอกสารใหม่",
 "n": 4,
 "files": [
@@ -7307,15 +7309,6 @@
 "apps/web/src/pages/payroll/Filing.tsx",
 "apps/web/src/pages/payroll/Forms.tsx",
 "packages/core/src/reports.ts"
-]
-},
-{
-"th": "การใช้งานและแพ็กเกจ",
-"n": 3,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/settings/Usage.tsx",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -10202,6 +10195,14 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/doc-types.ts",
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "การใช้งานและแพ็กเกจ",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/Usage.tsx",
 "packages/core/src/menu.ts"
 ]
 },
@@ -15288,14 +15289,6 @@
 "files": [
 "apps/web/src/pages/docs/OpeningDocs.tsx",
 "apps/server/src/modules/docs/opening.ts"
-]
-},
-{
-"th": "เจ้าหน้าที่ผู้ให้บริการ: ดูการใช้งานของลูกค้าที่ แพ็กเกจและการใช้งานลูกค้า (ผู้ให้บริการ)",
-"n": 2,
-"files": [
-"apps/web/src/pages/settings/Usage.tsx",
-"apps/server/src/modules/usage.ts"
 ]
 },
 {
@@ -58293,6 +58286,13 @@
 ]
 },
 {
+"th": "เจ้าหน้าที่ผู้ให้บริการ: ดูการใช้งานของลูกค้าที่ แพ็กเกจและการใช้งานลูกค้า (ผู้ให้บริการ)",
+"n": 1,
+"files": [
+"apps/server/src/modules/usage.ts"
+]
+},
+{
 "th": "เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลบัญชีของลูกค้าไม่ได้ — ข้อมูลของลูกค้าเป็นความลับ (เปิดได้เฉพาะลูกค้าข้อมูลตัวอย่าง) · ดูภาพรวมลูกค้าที่ ศูนย์ผู้ให้บริการ · ลูกค้าต้องการให้ช่วย: ให้ผู้ดูแลของลูกค้าสร้างผู้ใช้ให้ในกิจการของลูกค้าเอง",
 "n": 1,
 "files": [
@@ -61562,13 +61562,6 @@
 ]
 },
 {
-"th": "เริ่มระบบ › ผู้ให้บริการ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Packages.tsx"
-]
-},
-{
 "th": "เริ่มระบบ › รอบบัญชี",
 "n": 1,
 "files": [
@@ -61580,13 +61573,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Company.tsx"
-]
-},
-{
-"th": "เริ่มระบบ › ลูกค้าผู้ใช้บริการ",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {

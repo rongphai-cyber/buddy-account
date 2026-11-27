@@ -493,7 +493,7 @@ function ProviderShell() {
   const { me, logout } = useSession();
   const nav = useNavigate();
   const loc = useLocation();
-  const items: Array<[string, string]> = [['/provider', 'ลูกค้าทั้งหมด (ภาพรวม)'], ['/admin/tenants', 'ใบสมัคร / เพิ่ม-แก้ไขลูกค้า'], ['/admin/packages', 'แพ็กเกจและการใช้งานลูกค้า'], ['/settings/usage', 'การใช้งานและแพ็กเกจ']];
+  const items: Array<[string, string]> = [['/provider', 'ลูกค้าทั้งหมด (ภาพรวม)'], ['/admin/tenants', 'ใบสมัคร / เพิ่ม-แก้ไขลูกค้า'], ['/admin/packages', 'แพ็กเกจและการใช้งานลูกค้า']];
   return (
     <div className="provider-shell">
       <header className="topbar provider-top">
