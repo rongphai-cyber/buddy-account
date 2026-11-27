@@ -12,7 +12,7 @@ import { branchCapture, branchStateOf, checkBranchWrite } from './sync/branch.js
 import { withSource } from './source.js';
 import { payrollSource } from './wts.js';
 import { withVersion } from '../versions.js';
-import { companiesForUser, requireDemoForProvider } from './auth.js';
+import { companiesForUser, requireDemoForProvider, tenantIsDemo } from './auth.js';
 import { companySettings } from '../company-template.js';
 
 /**
@@ -332,7 +332,7 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/i18n/names': LOOKUP,
   'GET /api/v1/signup/config': OPEN, 'POST /api/v1/signup': OPEN, 'GET /api/v1/signups': SELF, 'POST /api/v1/signups/:id/approve': SELF, 'POST /api/v1/signups/:id/reject': SELF,
   // HANDOFF 204 ศูนย์ผู้ให้บริการ (ตรวจผู้ให้บริการในตัวจัดการ)
-  'GET /api/v1/provider/customers': SELF, 'GET /api/v1/provider/customers/:id': SELF, 'PUT /api/v1/provider/customers/:id/demo': SELF, 'POST /api/v1/provider/users/:id/email-invite': SELF,
+  'GET /api/v1/provider/customers': SELF, 'GET /api/v1/provider/customers/:id': SELF, 'PUT /api/v1/provider/customers/:id/demo': SELF, 'POST /api/v1/provider/users/:id/email-invite': SELF, 'POST /api/v1/provider/users/:id/unlock': SELF, 'POST /api/v1/provider/users/:id/reset-2fa': SELF,
   // HANDOFF 204 C2/C3: คำขอย้ายบริษัท (ผู้ดูแลของลูกค้าเดิมยืนยัน) · อีเมลผู้ติดต่อ (ผู้ดูแลของลูกค้า)
   'GET /api/v1/company-move-requests': SELF, 'POST /api/v1/company-move-requests/:id/confirm': SELF, 'POST /api/v1/company-move-requests/:id/reject': SELF, 'POST /api/v1/company-move-requests/:id/cancel': SELF, 'GET /api/v1/tenants/:id/move-requests': SELF,
   'GET /api/v1/tenant/contact': SELF, 'PUT /api/v1/tenant/contact': SELF,
@@ -685,6 +685,8 @@ export function permissionRoutes(app: FastifyInstance, db: Db) {
       : db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id', sql<number>`9`.as('approval_level'), sql<boolean>`true`.as('check_rights'), sql<string | null>`NULL::uuid`.as('user_group_id'), sql<unknown>`NULL::jsonb`.as('app_access')]).where('id', '=', id).where('deleted_at', 'is', null);
     const s = await q.executeTakeFirst();
     if (!s || (!a.isPlatform && (s.tenant_id ?? null) !== (a.tenantId ?? null))) throw notFound(type === 'U' ? 'ผู้ใช้' : 'กลุ่มผู้ใช้');
+    // HANDOFF 206: ผู้ให้บริการ — ผู้ใช้/กลุ่มของลูกค้าจริง = ไม่พบ (ไม่บอกรหัส)
+    if (a.isPlatform && s.tenant_id && !(await tenantIsDemo(db, s.tenant_id))) throw notFound(type === 'U' ? 'ผู้ใช้' : 'กลุ่มผู้ใช้');
     if ((s.tenant_id ?? null) !== (await companyTenant(a.companyId))) {
       throw badRequest(`${type === 'U' ? 'ผู้ใช้' : 'กลุ่มผู้ใช้'} ${s.code} เป็นของลูกค้ารายอื่น ไม่ใช่เจ้าของบริษัทที่เลือกอยู่ — เลือกบริษัทของลูกค้ารายนั้นก่อน แล้วจึงกำหนดสิทธิ์รายเมนู`);
     }

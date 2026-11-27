@@ -145,10 +145,10 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
   it('password help only by email to the customer: invite link never shown to the provider, 2FA reset notifies the customer, 7-day cool-down after a contact-email change', async () => {
     cookie = provider;
     // N3: อีเมลผู้ติดต่อที่ผู้ให้บริการพิมพ์ตอนสร้างลูกค้า = "เพิ่งตั้ง" — ลิงก์จากผู้ให้บริการได้หลัง 7 วัน (ยกเว้นลิงก์ผู้ดูแลคนแรกตอนสร้าง)
-    expect((await call('POST', `/api/v1/users/${ids.clerk}/invite`)).body.error.message).toMatch(/เพิ่งเปลี่ยน/);
+    expect((await call('POST', `/api/v1/provider/users/${ids.clerk}/email-invite`)).body.error.message).toMatch(/เพิ่งเปลี่ยน/);
     await sql`UPDATE sys_tenant SET contact_email_changed_at = now() - interval '8 days' WHERE id = ${ids.tenant}`.execute(database.db);
     memoryMail.outbox = [];
-    const inv = await call('POST', `/api/v1/users/${ids.clerk}/invite`);
+    const inv = await call('POST', `/api/v1/provider/users/${ids.clerk}/email-invite`);
     expect(inv.status, inv.raw).toBe(200);
     expect(inv.raw).not.toMatch(/\/invite\//);
     expect(inv.body).toMatchObject({ emailed_to: 'ow***@cust1.example', username: 'c1.clerk' });
@@ -159,7 +159,7 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
     expect(viaConsole.raw).not.toMatch(/\/invite\//);
     // ล้าง 2FA ได้ (บัญชี) + แจ้งลูกค้า
     memoryMail.outbox = [];
-    expect((await call('POST', `/api/v1/users/${ids.clerk}/reset-2fa`)).status).toBe(200);
+    expect((await call('POST', `/api/v1/provider/users/${ids.clerk}/reset-2fa`)).status).toBe(200);   // HANDOFF 206: ศูนย์ผู้ให้บริการ
     await flushMail();
     expect(memoryMail.outbox.map((m) => m.subject).join('|')).toMatch(/ล้างการยืนยันตัวตนสองขั้นของ c1\.clerk/);
     // C3: ผู้ให้บริการเปลี่ยนอีเมล/โทรผู้ติดต่อของลูกค้าจริงไม่ได้ (ค่าที่เห็นเป็นแบบปิดบัง — ส่งคืนเดิม = ไม่เปลี่ยน)
@@ -178,17 +178,68 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
     await flushMail();
     expect(memoryMail.outbox.map((m) => m.to.join()).sort()).toEqual(['finance@cust1.example', 'owner@cust1.example']);
     cookie = provider;
-    const blocked = await call('POST', `/api/v1/users/${ids.clerk}/invite`);
+    const blocked = await call('POST', `/api/v1/provider/users/${ids.clerk}/email-invite`);
     expect(blocked.status).toBe(400);
     expect(blocked.body.error.message).toMatch(/เพิ่งเปลี่ยน/);
     await sql`UPDATE sys_tenant SET contact_email_changed_at = now() - interval '8 days' WHERE id = ${ids.tenant}`.execute(database.db);
     memoryMail.outbox = [];
-    expect((await call('POST', `/api/v1/users/${ids.clerk}/invite`)).body).toMatchObject({ emailed_to: 'fi***@cust1.example' });
+    expect((await call('POST', `/api/v1/provider/users/${ids.clerk}/email-invite`)).body).toMatchObject({ emailed_to: 'fi***@cust1.example' });
     expect(memoryMail.outbox.at(-1)!.to).toEqual(['finance@cust1.example']);
     // ลูกค้าไม่มีอีเมล = ปฏิเสธ (ไม่ส่งที่อื่น)
     await sql`UPDATE sys_tenant SET contact_email = NULL WHERE id = ${ids.tenant}`.execute(database.db);
-    expect((await call('POST', `/api/v1/users/${ids.clerk}/invite`)).body.error.message).toMatch(/ยังไม่มีอีเมลผู้ติดต่อ/);
+    expect((await call('POST', `/api/v1/provider/users/${ids.clerk}/email-invite`)).body.error.message).toMatch(/ยังไม่มีอีเมลผู้ติดต่อ/);
     await sql`UPDATE sys_tenant SET contact_email = 'owner@cust1.example', contact_email_changed_at = now() - interval '8 days' WHERE id = ${ids.tenant}`.execute(database.db);
+  });
+
+  it('HANDOFF 206: users page — provider (sample company selected) lists only that customer + provider staff; a real customer\'s users/groups cannot be read, edited, invited, unlocked or reset there (403 PROVIDER_LOCKED / 404) — only via the provider console · customer admin unchanged', async () => {
+    cookie = provider;
+    const dClerk = await call('POST', '/api/v1/users', { username: 'demo.clerk', display_name: 'พนักงานทดลอง', password: 'demoClerk123', companies: [ids.demoCo] });
+    expect(dClerk.status, dClerk.raw).toBe(200);
+    const cGroup = (await sql<{ id: string }>`SELECT id FROM sys_user_group WHERE tenant_id = ${ids.tenant} AND code = 'ADMIN' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.id;
+    // ยังไม่เลือกบริษัท = เฉพาะเจ้าหน้าที่ผู้ให้บริการ
+    await sql`UPDATE sys_session SET current_company_id = NULL WHERE ended_at IS NULL AND user_id = (SELECT id FROM sys_user WHERE username = 'admin')`.execute(database.db);
+    const none = (await call('GET', '/api/v1/users')).body;
+    expect(none.users.map((u: { username: string }) => u.username)).toEqual(['admin']);
+    expect(none.groups.every((g: { tenant_id: string | null }) => g.tenant_id === null)).toBe(true);
+    // เลือกบริษัทข้อมูลตัวอย่าง = ผู้ใช้/กลุ่มของลูกค้าตัวอย่างนั้น + เจ้าหน้าที่ — ไม่มีของลูกค้าจริง
+    expect((await call('POST', '/api/v1/auth/select', { company_id: ids.demoCo })).status).toBe(200);
+    const list = await call('GET', '/api/v1/users');
+    expect(list.status).toBe(200);
+    expect(list.body.users.map((u: { username: string }) => u.username).sort()).toEqual(['admin', 'demo.clerk']);
+    expect(list.body.groups.some((g: { tenant_id: string | null }) => g.tenant_id === ids.tenant)).toBe(false);
+    expect(list.raw).not.toMatch(/c1\.(admin|clerk)|CUST1/);
+    expect((await call('GET', '/api/v1/users?for=company')).raw).not.toMatch(/c1\.(admin|clerk)/);
+    // อ่าน/แก้/เชิญ/ปลดล็อก/ล้าง 2FA ผู้ใช้หรือกลุ่มของลูกค้าจริงจากหน้านี้ไม่ได้
+    const locked = [
+      ['PUT', `/api/v1/users/${ids.clerk}`, { username: 'c1.clerk', display_name: 'x', companies: [ids.co] }],
+      ['PUT', `/api/v1/user-groups/${cGroup}`, { name: 'x' }], ['DELETE', `/api/v1/user-groups/${cGroup}`],
+      ['POST', `/api/v1/users/${ids.clerk}/invite`], ['DELETE', `/api/v1/users/${ids.clerk}/invite`],
+      ['POST', `/api/v1/users/${ids.clerk}/unlock`], ['POST', `/api/v1/users/${ids.clerk}/reset-2fa`],
+    ] as Array<[string, string, unknown?]>;
+    for (const [m, url, b] of locked) {
+      const r = await call(m as 'POST', url, b);
+      expect([m, url, r.status, r.body?.error?.code]).toEqual([m, url, 403, 'PROVIDER_LOCKED']);
+    }
+    for (const [type, id] of [['U', ids.clerk], ['G', cGroup]]) {
+      const r = await call('GET', `/api/v1/permissions?subject_type=${type}&subject_id=${id}`);
+      expect(r.status).toBe(404);
+      expect(r.raw).not.toMatch(/c1\.clerk|ADMIN/);
+      expect((await call('PUT', '/api/v1/permissions', { subject_type: type, subject_id: id, rows: [] })).status).toBe(404);
+    }
+    const key = await call('POST', '/api/v1/api-keys', { name: 'x', user_id: ids.clerk });
+    expect(key.status).toBe(404);
+    // ผู้ใช้ของลูกค้าตัวอย่าง = ทำได้ตามปกติ
+    expect((await call('POST', `/api/v1/users/${dClerk.body.id}/unlock`)).status).toBe(200);
+    // ศูนย์ผู้ให้บริการ: ปลดล็อกผู้ใช้ของลูกค้าจริงได้ (ช่วยเหลือ — ไม่เห็นข้อมูล)
+    expect((await call('POST', `/api/v1/provider/users/${ids.clerk}/unlock`)).status).toBe(200);
+    // ผู้ดูแลของลูกค้า: เห็นผู้ใช้ของตัวเองเหมือนเดิม · ไม่เห็นเจ้าหน้าที่/ลูกค้าอื่น · ทางของผู้ให้บริการใช้ไม่ได้
+    cookie = custAdmin;
+    const mine = (await call('GET', '/api/v1/users')).body;
+    expect(mine.users.map((u: { username: string }) => u.username).sort()).toEqual(['c1.admin', 'c1.clerk']);
+    expect(mine.groups.every((g: { tenant_id: string }) => g.tenant_id === ids.tenant)).toBe(true);
+    expect((await call('POST', `/api/v1/users/${ids.clerk}/unlock`)).status).toBe(200);
+    expect((await call('POST', `/api/v1/provider/users/${ids.clerk}/unlock`)).status).toBe(403);
+    expect((await call('POST', `/api/v1/users/${dClerk.body.id}/unlock`)).status).toBe(404);
   });
 
   it('provider console: grouped customers with metadata only (companies code/name, users, package, usage, switches, API keys) — no amounts, no party names', async () => {

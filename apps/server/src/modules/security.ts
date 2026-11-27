@@ -7,7 +7,7 @@ import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
 import { decryptSecret, encryptSecret } from '../secret.js';
-import { tenantIsDemo } from './auth.js';
+import { requireDemoForProvider, tenantIsDemo } from './auth.js';
 import { noticeCustomer, publicBase } from './provider.js';
 
 /**
@@ -270,22 +270,27 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
   });
 
   /** ผู้ดูแล: ปลดล็อก / ล้างยืนยันตัวตนสองขั้นของผู้ใช้ในลูกค้าเดียวกัน (ผู้ให้บริการทำได้ทุกราย) */
-  const target = async (a: AuthContext, id: string) => {
+  // HANDOFF 206: หน้าผู้ใช้งาน (/users/...) — ผู้ให้บริการทำกับผู้ใช้ของลูกค้าจริงไม่ได้ (403) · ศูนย์ผู้ให้บริการใช้ /provider/users/... (ลูกค้าจริง + แจ้งลูกค้าทางอีเมล)
+  const target = async (a: AuthContext, id: string, provider: boolean) => {
     if (!a.isAdmin) throw forbidden('เฉพาะผู้ดูแลระบบ');
+    if (provider && (!a.isPlatform || a.apiKeyId)) throw forbidden('เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม');
     const u = await db.selectFrom('sys_user').select(['id', 'username', 'tenant_id']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
-    if (!u || (!a.isPlatform && u.tenant_id !== a.tenantId)) throw notFound('ผู้ใช้');
+    if (!u || (!a.isPlatform && u.tenant_id !== a.tenantId) || (provider && !u.tenant_id)) throw notFound('ผู้ใช้');
+    if (!provider && u.tenant_id) await requireDemoForProvider(db, a, u.tenant_id);
     return u;
   };
-  app.post('/api/v1/users/:id/unlock', async (req) => {
+  for (const base of ['/api/v1/users', '/api/v1/provider/users']) {
+  const provider = base.includes('/provider/');
+  app.post(`${base}/:id/unlock`, async (req) => {
     const a = requireAuth(req);
-    const u = await target(a, parse(z.object({ id: z.string().uuid() }), req.params).id);
+    const u = await target(a, parse(z.object({ id: z.string().uuid() }), req.params).id, provider);
     await setSec(db, u.id, { failed_logins: 0, locked_until: null });
     await logActivity(db, a, { module: 'SET.SEC', action: 'USER_UNLOCK', docNo: u.username, table: 'sys_user', rowId: u.id });
     return { ok: true };
   });
-  app.post('/api/v1/users/:id/reset-2fa', async (req) => {
+  app.post(`${base}/:id/reset-2fa`, async (req) => {
     const a = requireAuth(req);
-    const u = await target(a, parse(z.object({ id: z.string().uuid() }), req.params).id);
+    const u = await target(a, parse(z.object({ id: z.string().uuid() }), req.params).id, provider);
     if (u.id === a.userId) throw badRequest('ล้างของตัวเองไม่ได้ — ใช้ บัญชีของฉัน › ยืนยันตัวตนสองขั้น');
     await setSec(db, u.id, { totp_secret_enc: null, totp_enabled: false, totp_enabled_at: null, totp_last_step: null, totp_recovery: null });
     await sql`UPDATE sys_session SET ended_at = now() WHERE user_id = ${u.id} AND ended_at IS NULL`.execute(db);
@@ -296,4 +301,5 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
       'ผู้ใช้ต้องตั้ง 2FA ใหม่เมื่อเข้าระบบครั้งถัดไป — ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที']);
     return { ok: true };
   });
+  }
 }

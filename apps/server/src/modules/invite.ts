@@ -9,8 +9,7 @@ import type { Config } from '../config.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
 import { rateLimit, requireHuman } from '../botguard.js';
-import { newSession, SESSION_COOKIE, sessionCookieOptions, tenantActive, tenantIsDemo } from './auth.js';
-import { emailInvite } from './provider.js';
+import { newSession, requireDemoForProvider, SESSION_COOKIE, sessionCookieOptions, tenantActive } from './auth.js';
 import { secOf, setSec } from './security.js';
 
 /**
@@ -58,6 +57,8 @@ export function inviteRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     if (!a.isAdmin) throw forbidden('เฉพาะผู้ดูแลระบบสร้าง/ยกเลิกลิงก์เชิญได้');
     const u = await db.selectFrom('sys_user').select(['id', 'username', 'display_name', 'tenant_id', 'status']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!u || (!a.isPlatform && u.tenant_id !== a.tenantId)) throw notFound('ผู้ใช้');
+    // HANDOFF 206: ผู้ใช้ของลูกค้าจริง — ผู้ให้บริการสร้าง/ยกเลิกลิงก์ที่หน้านี้ไม่ได้ (ส่งลิงก์ทางอีเมลของลูกค้าที่ศูนย์ผู้ให้บริการ)
+    if (u.tenant_id) await requireDemoForProvider(db, a, u.tenant_id);
     return u;
   };
   const revokeAll = (tx: Db, userId: string, by: string) => tx.updateTable('sys_user_invite').set({ revoked_at: sql`now()` as never, updated_by: by })
@@ -69,10 +70,8 @@ export function inviteRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const u = await target(a, parse(z.object({ id: z.string().uuid() }), req.params).id);
     if (u.id === a.userId) throw badRequest('สร้างลิงก์เชิญให้ตัวเองไม่ได้ — เปลี่ยนรหัสผ่านที่ บัญชีของฉัน');
     if (u.status !== 'A') throw badRequest(`ผู้ใช้ ${u.username} ถูกระงับอยู่ — เปลี่ยนสถานะเป็น "ใช้งาน" ก่อนสร้างลิงก์เชิญ`);
-    // HANDOFF 204 ข้อ d1: ผู้ใช้ของลูกค้าจริงที่ผู้ให้บริการสั่ง = ส่งลิงก์ไปอีเมลผู้ติดต่อของลูกค้า ไม่แสดงลิงก์ให้ผู้ให้บริการ
-    const viaEmail = a.isPlatform && !!u.tenant_id && !(await tenantIsDemo(db, u.tenant_id));
+    // HANDOFF 204 ข้อ d1 → 206: ผู้ใช้ของลูกค้าจริง = 403 ที่ target แล้ว (ศูนย์ผู้ให้บริการใช้ POST /provider/users/:id/email-invite)ค้า ไม่แสดงลิงก์ให้ผู้ให้บริการ
     if ((await secOf(db, u.id))?.totp_enabled) throw badRequest(`${u.username} เปิดยืนยันตัวตนสองขั้นแล้ว — ลิงก์เชิญใช้กับผู้ใช้ที่ยังไม่ได้ตั้ง · ถ้าลืมรหัสผ่าน ให้ตั้งรหัสผ่านใหม่ที่หน้าแก้ไขผู้ใช้ · ถ้ามือถือหาย ให้ "ล้างยืนยันตัวตนสองขั้น" ก่อน แล้วสร้างลิงก์ใหม่`);
-    if (viaEmail) return emailInvite(db, originOf(req, cfg), a, { ...u, tenant_id: u.tenant_id! });
     const token = randomBytes(32).toString('base64url');
     const expires = new Date(Date.now() + INVITE_HOURS * 3600_000).toISOString();
     const reissued = await db.transaction().execute(async (tx) => {

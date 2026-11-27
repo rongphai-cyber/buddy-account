@@ -64,7 +64,7 @@ export async function tenantIsDemo(db: Db, tenantId: string | null | undefined) 
 }
 /** ผู้ให้บริการทำกับลูกค้า/บริษัท/ผู้ใช้ของลูกค้านี้ได้ไหม (ลูกค้าเอง = ได้เสมอ) — ไม่ได้ = 403 */
 export async function requireDemoForProvider(db: Db, a: Pick<AuthContext, 'isPlatform'>, tenantId: string | null | undefined) {
-  if (a.isPlatform && !(await tenantIsDemo(db, tenantId))) throw forbidden(PROVIDER_LOCKED);
+  if (a.isPlatform && !(await tenantIsDemo(db, tenantId))) throw new AppError(403, 'PROVIDER_LOCKED', PROVIDER_LOCKED);
 }
 
 /**

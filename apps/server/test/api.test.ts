@@ -4425,7 +4425,8 @@ describe('Buddy Account API (PGlite)', () => {
     expect(ta.status).toBe(200); expect(tb.status).toBe(200);
     const login = async (u: string, p: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: p }); return r; };
 
-    const bGroup = (await call('GET', '/api/v1/users')).body.groups.find((g: { tenant_id: string | null }) => g.tenant_id === tb.body.id).id;
+    // HANDOFF 206: ผู้ให้บริการเห็นเฉพาะผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทที่เลือกอยู่ — อ่านรหัสกลุ่มของ B จากฐานข้อมูลตรง
+    const bGroup = (await sql<{ id: string }>`SELECT id FROM sys_user_group WHERE tenant_id = ${tb.body.id} AND code = 'ADMIN' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.id;
     // ลูกค้า A สร้างบริษัทของตัวเอง
     expect((await login('a.admin', 'passA1234')).status).toBe(200);
     expect((await call('GET', '/api/v1/auth/me')).body.companies).toHaveLength(0);   // ไม่เห็นบริษัทของผู้ให้บริการ/ลูกค้าอื่น

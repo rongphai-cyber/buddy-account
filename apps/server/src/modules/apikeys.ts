@@ -112,6 +112,8 @@ export function apiKeyRoutes(app: FastifyInstance, db: Db) {
       .select(['u.id', 'u.username', 'u.status', 'u.tenant_id', 'g.code as group_code', 'g.tenant_id as group_tenant_id']).where('u.id', '=', b.user_id).where('u.deleted_at', 'is', null).executeTakeFirst();
     const co = await db.selectFrom('sys_company').select(['tenant_id']).where('id', '=', a.companyId).executeTakeFirstOrThrow();
     if (!u || (!a.isPlatform && (u.tenant_id ?? null) !== (a.tenantId ?? null))) throw notFound('ผู้ใช้');
+    // HANDOFF 206: ผู้ให้บริการ — ผู้ใช้ของลูกค้ารายอื่น = ไม่พบ (ไม่ยืนยันว่ามีผู้ใช้นี้)
+    if (a.isPlatform && u.tenant_id && u.tenant_id !== co.tenant_id) throw notFound('ผู้ใช้');
     if (u.status !== 'A') throw badRequest('ผู้ใช้นี้ถูกระงับ — เลือกผู้ใช้ที่ใช้งานอยู่');
     const uAdmin = u.group_code === 'ADMIN' && (u.group_tenant_id ?? null) === (u.tenant_id ?? null);
     if ((u.tenant_id ?? null) !== (co.tenant_id ?? null) && !(uAdmin && !u.tenant_id)) throw badRequest('ผู้ใช้นี้อยู่ต่างลูกค้ากับบริษัท');

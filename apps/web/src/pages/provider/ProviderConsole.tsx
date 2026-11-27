@@ -129,8 +129,8 @@ export function ProviderCustomerPage() {
               <td>{u.last_login_at ? <DateText v={u.last_login_at.slice(0, 10)} /> : <span className="muted">—</span>}</td>
               <td>{u.status !== 'A' ? <Pill tone="x">ระงับ</Pill> : locked ? <Pill tone="d">ล็อก ({u.failed_logins} ครั้ง)</Pill> : <Pill tone="n">ใช้งาน</Pill>}{u.invite_open && <> <Pill tone="c">รอตั้งรหัส</Pill></>}</td>
               <td className="row-actions">
-                {locked && <button type="button" onClick={() => act(api.post(`/api/v1/users/${u.id}/unlock`), `ปลดล็อก ${u.username} แล้ว`)}>ปลดล็อก</button>}
-                {u.totp_enabled && <button type="button" onClick={() => window.confirm(`ล้างยืนยันตัวตนสองขั้นของ ${u.username}? ระบบแจ้งลูกค้าทางอีเมลผู้ติดต่อ`) && act(api.post(`/api/v1/users/${u.id}/reset-2fa`), `ล้าง 2FA ของ ${u.username} แล้ว · แจ้งลูกค้าทางอีเมลแล้ว`)}>ล้าง 2FA</button>}
+                {locked && <button type="button" onClick={() => act(api.post(`/api/v1/provider/users/${u.id}/unlock`), `ปลดล็อก ${u.username} แล้ว`)}>ปลดล็อก</button>}
+                {u.totp_enabled && <button type="button" onClick={() => window.confirm(`ล้างยืนยันตัวตนสองขั้นของ ${u.username}? ระบบแจ้งลูกค้าทางอีเมลผู้ติดต่อ`) && act(api.post(`/api/v1/provider/users/${u.id}/reset-2fa`), `ล้าง 2FA ของ ${u.username} แล้ว · แจ้งลูกค้าทางอีเมลแล้ว`)}>ล้าง 2FA</button>}
                 {!u.totp_enabled && u.status === 'A' && <button type="button" onClick={() => void sendLink(u)} title="ลิงก์ส่งไปอีเมลผู้ติดต่อของลูกค้าเท่านั้น — ผู้ให้บริการไม่เห็นลิงก์">ส่งลิงก์ตั้งรหัสผ่านทางอีเมล</button>}
               </td></tr>;
           })}</tbody>

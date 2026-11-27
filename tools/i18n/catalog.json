@@ -1304,6 +1304,28 @@
 ]
 },
 {
+"th": "ผู้ใช้",
+"n": 29,
+"files": [
+"apps/web/src/components/AuxTools.tsx",
+"apps/web/src/pages/gl/JournalForm.tsx",
+"apps/web/src/pages/provider/ProviderConsole.tsx",
+"apps/web/src/pages/settings/ActivityLog.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/apikeys.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/invite.ts",
+"apps/server/src/modules/permissions.ts",
+"apps/server/src/modules/security.ts",
+"apps/server/src/modules/reports/gl.ts",
+"packages/core/src/usage.ts"
+]
+},
+{
 "th": "ภาษีหัก ณ ที่จ่าย",
 "n": 29,
 "files": [
@@ -1347,28 +1369,6 @@
 "apps/server/src/modules/permissions.ts",
 "apps/server/src/modules/wht.ts",
 "packages/core/src/menu.ts",
-"packages/core/src/usage.ts"
-]
-},
-{
-"th": "ผู้ใช้",
-"n": 27,
-"files": [
-"apps/web/src/components/AuxTools.tsx",
-"apps/web/src/pages/gl/JournalForm.tsx",
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"apps/web/src/pages/settings/ActivityLog.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/server/src/modules/apikeys.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/invite.ts",
-"apps/server/src/modules/permissions.ts",
-"apps/server/src/modules/security.ts",
-"apps/server/src/modules/reports/gl.ts",
 "packages/core/src/usage.ts"
 ]
 },
@@ -2478,6 +2478,25 @@
 ]
 },
 {
+"th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
+"n": 14,
+"files": [
+"apps/web/src/pages/provider/ProviderConsole.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/server/src/modules/ai.ts",
+"apps/server/src/modules/company-move.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/provider.ts",
+"apps/server/src/modules/security.ts",
+"apps/server/src/modules/signup-mail.ts",
+"apps/server/src/modules/signup.ts",
+"apps/server/src/modules/tenant-modules.ts",
+"apps/server/src/modules/tenant-move.ts",
+"apps/server/src/modules/usage.ts"
+]
+},
+{
 "th": "เหตุผลที่ยกเลิก",
 "n": 14,
 "files": [
@@ -2548,24 +2567,6 @@
 "apps/web/src/pages/settings/Tenants.tsx",
 "packages/core/src/reports.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
-"n": 13,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/ai.ts",
-"apps/server/src/modules/company-move.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/provider.ts",
-"apps/server/src/modules/signup-mail.ts",
-"apps/server/src/modules/signup.ts",
-"apps/server/src/modules/tenant-modules.ts",
-"apps/server/src/modules/tenant-move.ts",
-"apps/server/src/modules/usage.ts"
 ]
 },
 {
@@ -3459,6 +3460,16 @@
 ]
 },
 {
+"th": "กลุ่มผู้ใช้",
+"n": 8,
+"files": [
+"apps/web/src/pages/settings/Permissions.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/permissions.ts"
+]
+},
+{
 "th": "กำลังบันทึก:",
 "n": 8,
 "files": [
@@ -3861,16 +3872,6 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/settings/DocTypes.tsx",
 "apps/web/src/pages/tools/TradeImport.tsx"
-]
-},
-{
-"th": "กลุ่มผู้ใช้",
-"n": 7,
-"files": [
-"apps/web/src/pages/settings/Permissions.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/permissions.ts"
 ]
 },
 {
