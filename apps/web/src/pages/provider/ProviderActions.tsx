@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { formatDate } from '@buddy/core';
+import { formatDate, TENANT_FEATURES, TENANT_MODULES } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { DateInput, ErrorBox, Field, KeyHints, Modal, PageHead, Pill, useHotkeys, useYearSystem } from '../../ui';
@@ -28,13 +28,50 @@ export const PV_ACTION_TH: Record<string, string> = {
 };
 const RESULT: Record<string, [string, 'n' | 'm' | 'd' | 'x']> = { ok: ['ทำแล้ว', 'm'], sent: ['ทำแล้ว · ส่งอีเมลแล้ว', 'm'], failed: ['ทำแล้ว · ส่งอีเมลไม่สำเร็จ', 'd'], skipped: ['ทำแล้ว · ไม่ได้ส่งอีเมล', 'x'] };
 const actText = (a: string) => PV_ACTION_TH[a] ?? a;
-const detailText = (v: unknown) => (v === null || v === undefined ? '' : typeof v === 'string' ? v : JSON.stringify(v));
+/** ชื่อโปรแกรม/เมนูที่เปิดให้เฉพาะราย (ตัดคำอธิบายในวงเล็บ) */
+const MOD_LABEL = new Map<string, string>([...TENANT_MODULES, ...TENANT_FEATURES].map((m) => [m.key, m.label.replace(/\s*\(.*\)$/, '')]));
+const modName = (k: string) => MOD_LABEL.get(k) ?? k;
+const TST: Record<string, string> = { A: 'ใช้งาน', S: 'ระงับ', I: 'เลิกใช้' };
+type Info = { on?: string[]; off?: string[]; until?: Array<{ key: string; to: string | null }>; status_from?: string | null; status_to?: string | null; package?: string | null;
+  user?: string | null; mail?: string; key?: string | null; companies?: string | null; count?: number | null; minutes?: number | null } | null;
+/**
+ * สรุปเป็นข้อความไทยสั้น ๆ ต่อเหตุการณ์ (HANDOFF 207b) — จากค่าที่ปลอดภัยที่เซิร์ฟเวอร์ส่งมา (info) ไม่ใช่รายละเอียดดิบ
+ * ลูกค้าเห็นเฉพาะสรุปนี้ · ผู้ให้บริการเห็นรายละเอียดเต็มในหน้าต่างเมื่อคลิกแถว
+ */
+function summaryOf(action: string, i: Info, fmt: (iso: string) => string): string {
+  if (action === 'PV_VIEW') return 'ดูภาพรวมการใช้งาน (ไม่เห็นข้อมูลบัญชี)';
+  if (action === 'TENANT_DEMO_ON') return 'ตั้งเป็นข้อมูลตัวอย่าง (เจ้าหน้าที่เปิดข้อมูลได้)';
+  if (action === 'TENANT_DEMO_OFF') return 'เลิกเป็นข้อมูลตัวอย่าง (เจ้าหน้าที่เปิดข้อมูลไม่ได้แล้ว)';
+  if (!i) return '';
+  switch (action) {
+    case 'TENANT_MODULES': {
+      const p: string[] = [];
+      if (i.on?.length) p.push(`เปิด: ${i.on.map(modName).join(', ')}`);
+      if (i.off?.length) p.push(`ปิด: ${i.off.map(modName).join(', ')}`);
+      for (const u of i.until ?? []) p.push(u.to ? `${modName(u.key)} ใช้ได้ถึง ${fmt(u.to)}` : `${modName(u.key)} ไม่กำหนดวันสิ้นสุด`);
+      return p.join(' · ') || 'บันทึกโดยไม่เปลี่ยนการเปิด/ปิด';
+    }
+    case 'EDIT_TENANT': {
+      const p: string[] = [];
+      if (i.status_to) p.push(`สถานะ ${TST[i.status_from ?? ''] ?? i.status_from ?? '-'} → ${TST[i.status_to] ?? i.status_to}`);
+      if (i.package !== undefined) p.push(i.package ? `แพ็กเกจ ${i.package}` : 'ไม่มีแพ็กเกจ');
+      return p.join(' · ') || 'แก้ข้อมูลลูกค้า';
+    }
+    case 'INVITE_EMAIL': return `ส่งลิงก์ตั้งรหัสผ่านของ ${i.user ?? '-'} ไปที่อีเมลผู้ติดต่อ`;
+    case 'USER_UNLOCK': case 'USER_RESET_2FA': case 'USER_RESET_PASSWORD': case 'INVITE_CREATE': case 'INVITE_REVOKE': return `ผู้ใช้ ${i.user ?? '-'}`;
+    case 'API_KEY_CREATE': case 'API_KEY_REVOKE': case 'API_KEY_SCOPE': return `กุญแจ ${i.key ?? '-'}`;
+    case 'MOVE_REQUEST': case 'MOVE_REJECT': case 'EXPORT_TENANT': case 'IMPORT_TENANT': return i.companies ? `บริษัท ${i.companies}` : '';
+    case 'ALERT_LOCKED': case 'ALERT_LOGIN_FAIL': case 'ALERT_BURST': return `${i.count ?? '-'} ครั้งใน ${i.minutes ?? '-'} นาที`;
+    default: return '';
+  }
+}
 
-type Base = { id: string; occurred_at: string; action: string; doc_no: string | null; company_code: string | null; staff_name: string | null; detail: unknown; result: keyof typeof RESULT };
+type Base = { id: string; occurred_at: string; action: string; doc_no: string | null; company_code: string | null; staff_name: string | null; info: Info; detail?: unknown; result: keyof typeof RESULT };
 type PvRow = Base & { tenant_id: string | null; tenant_code: string | null; tenant_name: string | null; is_demo: boolean | null; staff_username: string | null; module: string | null };
 type PvResp = { rows: PvRow[]; total: number; page: number; page_size: number; tenants: Array<{ id: string; code: string; name: string; is_demo: boolean }>; staff: Array<{ id: string; username: string; display_name: string }> };
 type MineResp = { rows: Base[]; total: number; page: number; page_size: number };
 
+function useDay() { const ys = useYearSystem(); return (iso: string) => formatDate(iso.slice(0, 10), ys); }
 function useWhen() {
   const ys = useYearSystem();
   return (iso: string) => { const t = new Date(iso); return `${formatDate(t.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' }), ys)} ${t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })}`; };
@@ -56,8 +93,9 @@ function Pager({ page, total, size, onPage }: { page: number; total: number; siz
   );
 }
 function DetailModal({ row, onClose, extra }: { row: Base; onClose: () => void; extra?: ReactNode }) {
-  const when = useWhen();
+  const when = useWhen(), day = useDay();
   const [label, tone] = RESULT[row.result] ?? RESULT.ok!;
+  const sum = summaryOf(row.action, row.info, day);
   return (
     <Modal title={actText(row.action)} onClose={onClose} footer={<button className="primary" onClick={onClose} autoFocus>ปิด <kbd>Esc</kbd></button>}>
       <dl className="kv">
@@ -67,7 +105,8 @@ function DetailModal({ row, onClose, extra }: { row: Base; onClose: () => void; 
         <dt>รายการ</dt><dd className="mono">{row.doc_no ?? '—'}</dd>
         <dt>บริษัท</dt><dd className="mono">{row.company_code ?? '—'}</dd>
         <dt>ผล</dt><dd><Pill tone={tone}>{label}</Pill></dd>
-        <dt>รายละเอียด</dt><dd><pre className="small" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{row.detail ? JSON.stringify(row.detail, null, 2) : '—'}</pre></dd>
+        <dt>สรุป</dt><dd>{sum || '—'}</dd>
+        {row.detail !== undefined && <><dt>รายละเอียดเต็ม (เฉพาะผู้ให้บริการ)</dt><dd><pre className="small" style={{ whiteSpace: 'pre-wrap', margin: 0, maxHeight: 320, overflow: 'auto' }}>{row.detail ? JSON.stringify(row.detail, null, 2) : '—'}</pre></dd></>}
       </dl>
     </Modal>
   );
@@ -76,12 +115,12 @@ function DetailModal({ row, onClose, extra }: { row: Base; onClose: () => void; 
 const PV_COLS: readonly SortCol<PvRow>[] = [
   { key: 'occurred_at', type: 'date' }, { key: 'tenant_code', type: 'text' }, { key: 'company_code', type: 'text' }, { key: 'staff_name', type: 'text' }, { key: 'action', type: 'text', get: (r) => actText(r.action) },
 ];
-const EMPTY = { tenant: '', staff: '', action: '' };
+const EMPTY = { tenant: '', staff: '', action: '', demo_work: '0' };
 
 export function ProviderActionsPage() {
   const { me } = useSession();
   const nav = useNavigate();
-  const when = useWhen();
+  const when = useWhen(), day = useDay();
   const range = useWorkRangeState();
   const [f, setF] = useState(EMPTY);
   const [applied, setApplied] = useState({ ...EMPTY, from: range.from, to: range.to });
@@ -96,7 +135,7 @@ export function ProviderActionsPage() {
   const rows = st.sorted(list.data?.rows);
   const tenants = list.data?.tenants ?? [];
   const csv = () => csvDownload('provider-actions.csv', ['วันเวลา', 'ลูกค้า', 'บริษัท', 'เจ้าหน้าที่', 'เหตุการณ์', 'รายการ', 'ผล', 'รายละเอียด'],
-    rows.map((r) => [when(r.occurred_at), r.tenant_code ?? 'ทั้งระบบ', r.company_code ?? '', r.staff_username ?? 'ผู้ดูแลเซิร์ฟเวอร์', actText(r.action), r.doc_no ?? '', RESULT[r.result]?.[0] ?? '', detailText(r.detail)]));
+    rows.map((r) => [when(r.occurred_at), r.tenant_code ?? 'ทั้งระบบ', r.company_code ?? '', r.staff_username ?? 'ผู้ดูแลเซิร์ฟเวอร์', actText(r.action), r.doc_no ?? '', RESULT[r.result]?.[0] ?? '', summaryOf(r.action, r.info, day)]));
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="ศูนย์ผู้ให้บริการ" title="สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า"
@@ -114,6 +153,7 @@ export function ProviderActionsPage() {
           <Field label="ถึง"><DateInput value={range.to} onChange={range.setTo} /></Field>
           <Field label="เหตุการณ์"><select value={f.action} onChange={(e) => setF({ ...f, action: e.target.value })}><option value="">ทั้งหมด</option>
             {Object.entries(PV_ACTION_TH).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+          <Field label="งานในบริษัทตัวอย่าง" hint="ค่าเริ่มต้นแสดงเฉพาะงานระดับบัญชีลูกค้า — ติ๊กเพื่อรวมเอกสาร/ข้อมูลที่เจ้าหน้าที่คีย์ในบริษัทข้อมูลตัวอย่าง"><label className="check"><input type="checkbox" checked={f.demo_work === '1'} onChange={(e) => { const v = { ...f, demo_work: e.target.checked ? '1' : '0' }; setF(v); setApplied({ ...v, from: range.from, to: range.to }); setPage(1); }} /> รวมงานในบริษัทตัวอย่าง</label></Field>
         </div>
         <div className="toolbar"><button className="primary" onClick={apply}>เรียกดู <kbd>F5</kbd></button>
           <button onClick={() => { setF(EMPTY); range.setFrom(range.work.from); range.setTo(range.work.to); setApplied({ ...EMPTY, from: range.work.from, to: range.work.to }); setPage(1); }}>ล้างเงื่อนไข</button>
@@ -122,7 +162,7 @@ export function ProviderActionsPage() {
       <ErrorBox error={list.error} />
       <div className="table-wrap tall">
         <table className="grid report">
-          <thead><tr>{st.th('occurred_at', 'วันเวลา', { style: { width: 130 } })}{st.th('tenant_code', 'ลูกค้า')}{st.th('company_code', 'บริษัท', { style: { width: 80 } })}{st.th('staff_name', 'เจ้าหน้าที่')}{st.th('action', 'เหตุการณ์')}<th>รายการ</th><th>ผล</th><th>รายละเอียด</th></tr></thead>
+          <thead><tr>{st.th('occurred_at', 'วันเวลา', { style: { width: 130 } })}{st.th('tenant_code', 'ลูกค้า')}{st.th('company_code', 'บริษัท', { style: { width: 80 } })}{st.th('staff_name', 'เจ้าหน้าที่')}{st.th('action', 'เหตุการณ์')}<th>รายการ</th><th>ผล</th><th>สรุป</th></tr></thead>
           <tbody>
             {rows.map((r) => { const [label, tone] = RESULT[r.result] ?? RESULT.ok!; return (
               <tr key={r.id} className="row-open" onClick={() => setOpen(r)} title="คลิกเพื่อดูรายละเอียด">
@@ -131,7 +171,7 @@ export function ProviderActionsPage() {
                 <td className="mono">{r.company_code}</td>
                 <td title={r.staff_username ?? ''}>{r.staff_name ?? <span className="muted">ผู้ดูแลเซิร์ฟเวอร์</span>}</td>
                 <td>{actText(r.action)}</td><td className="mono">{r.doc_no}</td><td><Pill tone={tone}>{label}</Pill></td>
-                <td className="small muted" style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detailText(r.detail).slice(0, 160)}</td>
+                <td className="small muted" style={{ maxWidth: 360 }}>{summaryOf(r.action, r.info, day)}</td>
               </tr>); })}
             {list.data && !rows.length && <tr><td colSpan={8} className="empty">ไม่มีรายการตามเงื่อนไข</td></tr>}
           </tbody>
@@ -149,7 +189,7 @@ const MINE_COLS: readonly SortCol<Base>[] = [{ key: 'occurred_at', type: 'date' 
 
 export function MyProviderActionsPage() {
   const { me } = useSession();
-  const when = useWhen();
+  const when = useWhen(), day = useDay();
   const range = useWorkRangeState();
   const [applied, setApplied] = useState({ from: range.from, to: range.to });
   const [page, setPage] = useState(1);
@@ -164,7 +204,7 @@ export function MyProviderActionsPage() {
   if (!ok) return <div className="page"><div className="notebox">เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ของกิจการ</div></div>;
   const rows = st.sorted(list.data?.rows);
   const csv = () => csvDownload('provider-actions.csv', ['วันเวลา', 'เจ้าหน้าที่', 'เหตุการณ์', 'รายการ', 'บริษัท', 'ผล', 'รายละเอียด'],
-    rows.map((r) => [when(r.occurred_at), r.staff_name ?? '', actText(r.action), r.doc_no ?? '', r.company_code ?? '', RESULT[r.result]?.[0] ?? '', detailText(r.detail)]));
+    rows.map((r) => [when(r.occurred_at), r.staff_name ?? '', actText(r.action), r.doc_no ?? '', r.company_code ?? '', RESULT[r.result]?.[0] ?? '', summaryOf(r.action, r.info, day)]));
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ" title="สิ่งที่ผู้ให้บริการทำกับบัญชีของท่าน"
@@ -179,12 +219,12 @@ export function MyProviderActionsPage() {
       <ErrorBox error={list.error} />
       <div className="table-wrap tall">
         <table className="grid report">
-          <thead><tr>{st.th('occurred_at', 'วันเวลา', { style: { width: 130 } })}{st.th('staff_name', 'เจ้าหน้าที่')}{st.th('action', 'เหตุการณ์')}<th>รายการ</th>{st.th('company_code', 'บริษัท', { style: { width: 80 } })}<th>ผล</th><th>รายละเอียด</th></tr></thead>
+          <thead><tr>{st.th('occurred_at', 'วันเวลา', { style: { width: 130 } })}{st.th('staff_name', 'เจ้าหน้าที่')}{st.th('action', 'เหตุการณ์')}<th>รายการ</th>{st.th('company_code', 'บริษัท', { style: { width: 80 } })}<th>ผล</th><th>สรุป</th></tr></thead>
           <tbody>
             {rows.map((r) => { const [label, tone] = RESULT[r.result] ?? RESULT.ok!; return (
               <tr key={r.id} className="row-open" onClick={() => setOpen(r)} title="คลิกเพื่อดูรายละเอียด">
                 <td>{when(r.occurred_at)}</td><td>{r.staff_name}</td><td>{actText(r.action)}</td><td className="mono">{r.doc_no}</td><td className="mono">{r.company_code}</td>
-                <td><Pill tone={tone}>{label}</Pill></td><td className="small muted" style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detailText(r.detail).slice(0, 160)}</td>
+                <td><Pill tone={tone}>{label}</Pill></td><td className="small muted" style={{ maxWidth: 360 }}>{summaryOf(r.action, r.info, day)}</td>
               </tr>); })}
             {list.data && !rows.length && <tr><td colSpan={7} className="empty">ยังไม่มีรายการที่ผู้ให้บริการทำกับบัญชีของท่านในช่วงนี้</td></tr>}
           </tbody>

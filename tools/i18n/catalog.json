@@ -864,7 +864,7 @@
 },
 {
 "th": "รายละเอียด",
-"n": 42,
+"n": 39,
 "files": [
 "apps/web/src/components/JournalPicker.tsx",
 "apps/web/src/pages/docs/BankDocs.tsx",
@@ -975,7 +975,7 @@
 },
 {
 "th": "ใช้งาน",
-"n": 36,
+"n": 37,
 "files": [
 "apps/web/src/components/MasterBar.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
@@ -983,6 +983,7 @@
 "apps/web/src/pages/items/Items.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/provider/ProviderActions.tsx",
 "apps/web/src/pages/provider/ProviderConsole.tsx",
 "apps/web/src/pages/settings/ApiKeys.tsx",
 "apps/web/src/pages/settings/Branches.tsx",
@@ -1000,7 +1001,7 @@
 },
 {
 "th": "เลิกใช้",
-"n": 35,
+"n": 36,
 "files": [
 "apps/web/src/components/MasterBar.tsx",
 "apps/web/src/pages/finance/Banking.tsx",
@@ -1010,6 +1011,7 @@
 "apps/web/src/pages/parties/Parties.tsx",
 "apps/web/src/pages/payroll/Employees.tsx",
 "apps/web/src/pages/payroll/PaySetup.tsx",
+"apps/web/src/pages/provider/ProviderActions.tsx",
 "apps/web/src/pages/provider/ProviderConsole.tsx",
 "apps/web/src/pages/settings/Branches.tsx",
 "apps/web/src/pages/settings/DataTables.tsx",
@@ -3116,6 +3118,18 @@
 ]
 },
 {
+"th": "ระงับ",
+"n": 10,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx",
+"apps/web/src/pages/provider/ProviderConsole.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Sync.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "รับรอง",
 "n": 10,
 "files": [
@@ -3337,17 +3351,6 @@
 "apps/server/src/modules/reports/register.ts",
 "apps/server/src/modules/reports/tax.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "ระงับ",
-"n": 9,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Sync.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -8949,6 +8952,13 @@
 ]
 },
 {
+"th": "สรุป",
+"n": 3,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "สรุปยอด",
 "n": 3,
 "files": [
@@ -9779,6 +9789,15 @@
 "apps/server/src/modules/doc-import.ts",
 "apps/server/src/modules/master-import.ts",
 "apps/server/src/modules/trade-import.ts"
+]
+},
+{
+"th": "ไม่มีแพ็กเกจ",
+"n": 3,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx",
+"apps/web/src/pages/provider/ProviderConsole.tsx",
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -12112,6 +12131,14 @@
 ]
 },
 {
+"th": "บริษัท {0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx",
+"apps/server/src/modules/tenant-move.ts"
+]
+},
+{
 "th": "บริษัท ตัวอย่าง จำกัด",
 "n": 2,
 "files": [
@@ -12823,6 +12850,14 @@
 "n": 2,
 "files": [
 "apps/server/src/modules/signup-mail.ts"
+]
+},
+{
+"th": "ผู้ใช้ {0}",
+"n": 2,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx",
+"apps/server/src/modules/tenant-move.ts"
 ]
 },
 {
@@ -16995,14 +17030,6 @@
 "files": [
 "apps/web/src/pages/tax/Etax.tsx",
 "apps/server/src/modules/etax.ts"
-]
-},
-{
-"th": "ไม่มีแพ็กเกจ",
-"n": 2,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -21309,6 +21336,13 @@
 ]
 },
 {
+"th": "{0} ครั้งใน {1} นาที",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "{0} ครั้งใน {1} นาที (เกณฑ์ {2} ครั้ง) · เวลา {3}{4}",
 "n": 1,
 "files": [
@@ -21659,6 +21693,13 @@
 ]
 },
 {
+"th": "{0} ใช้ได้ถึง {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "{0} ใบ รวม",
 "n": 1,
 "files": [
@@ -21670,6 +21711,13 @@
 "n": 1,
 "files": [
 "apps/server/src/cli.ts"
+]
+},
+{
+"th": "{0} ไม่กำหนดวันสิ้นสุด",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
 ]
 },
 {
@@ -24998,6 +25046,13 @@
 ]
 },
 {
+"th": "กุญแจ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "กุญแจยืนยันตัวตนสองขั้น (เข้ารหัส)",
 "n": 1,
 "files": [
@@ -28246,6 +28301,13 @@
 ]
 },
 {
+"th": "ค่าเริ่มต้นแสดงเฉพาะงานระดับบัญชีลูกค้า — ติ๊กเพื่อรวมเอกสาร/ข้อมูลที่เจ้าหน้าที่คีย์ในบริษัทข้อมูลตัวอย่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "ค่าเริ่มต้นในเอกสารขาย — ว่าง = ตามประเภทเอกสาร",
 "n": 1,
 "files": [
@@ -29055,6 +29117,13 @@
 "n": 1,
 "files": [
 "packages/core/src/starter-data.ts"
+]
+},
+{
+"th": "งานในบริษัทตัวอย่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
 ]
 },
 {
@@ -31431,6 +31500,13 @@
 ]
 },
 {
+"th": "ดูภาพรวมการใช้งาน (ไม่เห็นข้อมูลบัญชี)",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "ดูรายการ",
 "n": 1,
 "files": [
@@ -32405,6 +32481,13 @@
 },
 {
 "th": "ตั้งเป็นข้อมูลตัวอย่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
+"th": "ตั้งเป็นข้อมูลตัวอย่าง (เจ้าหน้าที่เปิดข้อมูลได้)",
 "n": 1,
 "files": [
 "apps/web/src/pages/provider/ProviderActions.tsx"
@@ -36009,13 +36092,6 @@
 ]
 },
 {
-"th": "บริษัท {0}",
-"n": 1,
-"files": [
-"apps/server/src/modules/tenant-move.ts"
-]
-},
-{
 "th": "บริษัท {0} {1} — แฟ้มสำรองเข้ารหัสด้วยรหัสผ่านที่ตั้ง ตรวจความสมบูรณ์ได้ · นำกลับได้เฉพาะบริษัทเดียวกันกับที่สำรอง ไม่กระทบบริษัทอื่น · แฟ้มจากโปรแกรมรุ่นเก่ากว่าก็นำกลับได้",
 "n": 1,
 "files": [
@@ -38004,6 +38080,13 @@
 ]
 },
 {
+"th": "บันทึกโดยไม่เปลี่ยนการเปิด/ปิด",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "บันทึกโปรแกรมที่ลูกค้าใช้ได้แล้ว",
 "n": 1,
 "files": [
@@ -38967,6 +39050,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/TwoFactor.tsx"
+]
+},
+{
+"th": "ปิด: {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
 ]
 },
 {
@@ -41018,13 +41108,6 @@
 "n": 1,
 "files": [
 "packages/core/src/printforms.ts"
-]
-},
-{
-"th": "ผู้ใช้ {0}",
-"n": 1,
-"files": [
-"apps/server/src/modules/tenant-move.ts"
 ]
 },
 {
@@ -46635,6 +46718,13 @@
 ]
 },
 {
+"th": "รวมงานในบริษัทตัวอย่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "รวมตามใบแจ้งหนี้",
 "n": 1,
 "files": [
@@ -50041,6 +50131,13 @@
 "n": 1,
 "files": [
 "packages/core/src/menu.ts"
+]
+},
+{
+"th": "รายละเอียดเต็ม (เฉพาะผู้ให้บริการ)",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
 ]
 },
 {
@@ -53572,6 +53669,13 @@
 ]
 },
 {
+"th": "สถานะ {0} → {1}",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "สถานะลูกหนี้",
 "n": 1,
 "files": [
@@ -55221,6 +55325,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/provider/ProviderConsole.tsx"
+]
+},
+{
+"th": "ส่งลิงก์ตั้งรหัสผ่านของ {0} ไปที่อีเมลผู้ติดต่อ",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
 ]
 },
 {
@@ -60719,6 +60830,13 @@
 ]
 },
 {
+"th": "เปิด: {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "เปิดกลับเป็นร่าง — ใบสำคัญเดิมเป็นสถานะยกเลิกจนกว่าจะบันทึกใหม่ (เลขที่เดิม)",
 "n": 1,
 "files": [
@@ -63365,6 +63483,13 @@
 ]
 },
 {
+"th": "เลิกเป็นข้อมูลตัวอย่าง (เจ้าหน้าที่เปิดข้อมูลไม่ได้แล้ว)",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "เลิกเป็นข้อมูลตัวอย่าง? ตั้งกลับที่หน้าจอไม่ได้",
 "n": 1,
 "files": [
@@ -65003,6 +65128,13 @@
 ]
 },
 {
+"th": "แก้ข้อมูลลูกค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "แก้ช่องลงชื่อ ข้อความท้ายเอกสาร และพื้นที่ว่างในตาราง ของแบบฟอร์มนี้",
 "n": 1,
 "files": [
@@ -66043,6 +66175,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/MoneyParts.tsx"
+]
+},
+{
+"th": "แพ็กเกจ {0}",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
 ]
 },
 {

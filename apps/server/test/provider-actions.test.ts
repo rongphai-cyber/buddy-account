@@ -83,7 +83,11 @@ describe('HANDOFF 207: สิ่งที่เจ้าหน้าที่ท
     expect((await call('GET', `/api/v1/provider/customers/${ids.t1}`)).status).toBe(200);   // ซ้ำใน 30 นาที = บันทึกครั้งเดียว
     expect((await call('GET', `/api/v1/provider/customers/${ids.t2}`)).status).toBe(200);
     expect((await call('POST', `/api/v1/provider/users/${ids.clerk}/unlock`)).status).toBe(200);
-    expect((await call('PUT', `/api/v1/tenants/${ids.t1}/modules`, { modules: [{ key: 'pos', enabled: true }] })).status).toBe(200);
+    expect((await call('PUT', `/api/v1/tenants/${ids.t1}/modules`, { modules: [{ key: 'pos', enabled: true, seats: 3, remark: 'หมายเหตุภายใน-ลับ207', app_url: 'https://pos.worktruesolution.net/c1/' }] })).status).toBe(200);
+    // งานเอกสาร/ข้อมูลหลักในบริษัทข้อมูลตัวอย่าง (ไม่ใช่งานกับบัญชีลูกค้า)
+    expect((await call('PUT', '/api/v1/settings', { values: { 'gen.allow_blank_party_tax_id': true } })).status).toBe(200);
+    const dc = await call('POST', '/api/v1/customers', { code: 'DQ207', name: 'ลูกค้าทดลอง 207' });
+    expect(dc.status, dc.raw).toBe(200);
     await sql`UPDATE sys_tenant SET contact_email_changed_at = NULL WHERE id = ${ids.t1}`.execute(database.db);
     memoryMail.outbox = [];
     const inv = await call('POST', `/api/v1/provider/users/${ids.clerk}/email-invite`);
@@ -96,13 +100,21 @@ describe('HANDOFF 207: สิ่งที่เจ้าหน้าที่ท
     cookie = provider;
     const all = await call('GET', '/api/v1/provider/actions');
     expect(all.status, all.raw).toBe(200);
-    const rows = all.body.rows as Array<{ action: string; tenant_code: string | null; company_code: string | null; staff_username: string; staff_name: string; result: string }>;
+    const rows = all.body.rows as Array<{ action: string; tenant_code: string | null; company_code: string | null; staff_username: string; staff_name: string; result: string; info: unknown }>;
     expect(rows.filter((r) => r.action === 'PV_VIEW').map((r) => r.tenant_code).sort()).toEqual(['CUST1', 'CUST2']);
     const unlock = rows.find((r) => r.action === 'USER_UNLOCK')!;
     expect(unlock).toMatchObject({ tenant_code: 'CUST1', company_code: null, staff_username: 'admin', staff_name: 'ผู้ดูแลผู้ให้บริการ', result: 'ok' });
-    expect(rows.find((r) => r.action === 'TENANT_MODULES')).toMatchObject({ tenant_code: 'CUST1' });
+    expect(rows.find((r) => r.action === 'TENANT_MODULES')).toMatchObject({ tenant_code: 'CUST1', info: { on: ['pos'], off: [], until: [] } });
+    // ผู้ให้บริการ: รายละเอียดเต็มยังอยู่ (หน้าต่างเมื่อคลิกแถว)
+    expect(JSON.stringify(rows.find((r) => r.action === 'TENANT_MODULES'))).toContain('หมายเหตุภายใน-ลับ207');
+    // HANDOFF 207b: ค่าเริ่มต้น = งานระดับบัญชีลูกค้า — งานเอกสาร/ข้อมูลหลักในบริษัทตัวอย่างไม่ปน
+    expect(rows.some((r) => r.action === 'ADD')).toBe(false);
+    const withDemo = (await call('GET', '/api/v1/provider/actions?demo_work=1')).body.rows as typeof rows;
+    expect(withDemo.find((r) => r.action === 'ADD')).toMatchObject({ tenant_code: 'DEFAULT', company_code: 'DEMOCO' });
+    expect((await call('GET', '/api/v1/provider/actions?action=ADD')).body.total).toBeGreaterThan(0);
     // ลิงก์ผู้ดูแลคนแรกตอนสร้างลูกค้า (CUST1 CUST2) + ลิงก์ของ c1.clerk
     expect(rows.filter((r) => r.action === 'INVITE_EMAIL').map((r) => `${r.tenant_code}:${r.result}`).sort()).toEqual(['CUST1:sent', 'CUST1:sent', 'CUST2:sent']);
+    expect(rows.find((r) => r.action === 'USER_UNLOCK')!.info).toEqual({ user: 'c1.clerk' });
     // เหตุการณ์ส่วนตัวของเจ้าหน้าที่ (เข้าระบบ) ไม่อยู่ในรายการ · งานของผู้ดูแลลูกค้าเองไม่อยู่
     expect(rows.some((r) => r.action === 'LOGIN')).toBe(false);
     expect(rows.some((r) => r.staff_username === 'c1.admin')).toBe(false);
@@ -145,7 +157,11 @@ describe('HANDOFF 207: สิ่งที่เจ้าหน้าที่ท
     expect(mine.body.rows.every((r: { staff_name: string }) => r.staff_name === 'ผู้ดูแลผู้ให้บริการ')).toBe(true);
     // DEMOCO = บริษัทข้อมูลตัวอย่างที่ผู้ให้บริการเลือกค้างไว้ตอนทำกับ CUST1 — ไม่แสดงให้ลูกค้า
     expect(mine.raw).not.toMatch(/CUST2|c2\.|"admin"|staff_username|tenant_id|user_id|"ip"|DEMOCO|DEFAULT/);
-    expect(Object.keys(mine.body.rows[0]).sort()).toEqual(['action', 'company_code', 'detail', 'doc_no', 'id', 'occurred_at', 'result', 'staff_name']);
+    expect(Object.keys(mine.body.rows[0]).sort()).toEqual(['action', 'company_code', 'doc_no', 'id', 'info', 'occurred_at', 'result', 'staff_name']);
+    // HANDOFF 207b: ไม่มีรายละเอียดดิบ — หมายเหตุภายใน ที่อยู่โปรแกรม จำนวนที่นั่ง ค่าก่อน/หลังทั้งแถว
+    expect(mine.raw).not.toMatch(/remark|หมายเหตุภายใน-ลับ207|"before"|"after"|app_url|worktruesolution|seats|"detail"/);
+    expect(mine.body.rows.find((r: { action: string }) => r.action === 'TENANT_MODULES').info).toEqual({ on: ['pos'], off: [], until: [] });
+    expect(mine.body.rows.find((r: { action: string }) => r.action === 'INVITE_EMAIL').info).toEqual({ user: 'c1.clerk', mail: 'sent' });
     // ส่ง tenant ของคนอื่นมา = ไม่สนใจ (กรองจาก session)
     expect((await call('GET', `/api/v1/provider-actions/mine?tenant=${ids.t2}`)).raw).not.toMatch(/CUST2/);
     cookie = c2Admin;

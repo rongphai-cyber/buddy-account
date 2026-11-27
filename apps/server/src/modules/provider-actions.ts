@@ -4,6 +4,9 @@ import { z } from 'zod';
 import type { Db } from '../db.js';
 import { forbidden, parse, requireAuth } from '../http.js';
 import { sortedList, sortShape } from '../list-sort.js';
+import { TENANT_MODULES } from '@buddy/core';
+
+const DEFAULT_ON = new Set<string>(TENANT_MODULES.filter((m) => m.default_on).map((m) => m.key));
 
 /**
  * สิ่งที่เจ้าหน้าที่ผู้ให้บริการทำกับบัญชีลูกค้า (HANDOFF 207 · ต่อจาก 204 P3) — อ่านจาก sys_activity_log อย่างเดียว (ไม่มีตารางใหม่ ไม่แก้ log)
@@ -34,7 +37,7 @@ export const subjectTenant = sql<string | null>`CASE
     ELSE (SELECT x.tenant_id FROM sys_company x WHERE x.id = l.company_id)
   END`;
 
-type Filter = { tenant?: string | 'none'; staff?: string; from?: string; to?: string; action?: string };
+type Filter = { tenant?: string | 'none'; staff?: string; from?: string; to?: string; action?: string; accountOnly?: boolean };
 /** แถวของเจ้าหน้าที่ (ตัดเหตุการณ์ส่วนตัว เช่น เข้าระบบ) + ลูกค้าที่เกี่ยวข้อง + ตัดแถวซ้ำ — SELECT ที่ยังไม่เรียง */
 function actionsSelect(f: Filter): RawBuilder<unknown> {
   const w: RawBuilder<unknown>[] = [
@@ -45,6 +48,7 @@ function actionsSelect(f: Filter): RawBuilder<unknown> {
   if (f.from) w.push(sql`(l.occurred_at AT TIME ZONE 'Asia/Bangkok')::date >= ${f.from}::date`);
   if (f.to) w.push(sql`(l.occurred_at AT TIME ZONE 'Asia/Bangkok')::date <= ${f.to}::date`);
   if (f.action) w.push(sql`l.action = ${f.action}`);
+  else if (f.accountOnly) w.push(sql`l.action IN (${sql.join(ACCOUNT_ACTIONS.map((x) => sql`${x}`))})`);
   const tw = f.tenant === 'none' ? sql`WHERE b.tenant_id IS NULL` : f.tenant ? sql`WHERE b.tenant_id = ${f.tenant}::uuid` : sql``;
   const key = sql`coalesce(b.user_id::text, ''), b.action, coalesce(b.row_id::text, ''), coalesce(b.doc_no, ''), date_trunc('second', b.occurred_at), coalesce(b.tenant_id::text, '')`;
   return sql`SELECT d.seq::text AS id, d.occurred_at, d.user_id, d.module, d.action, d.doc_no, d.table_name, d.detail, d.tenant_id,
@@ -66,17 +70,55 @@ export function resultOf(detail: unknown): 'ok' | 'sent' | 'failed' | 'skipped' 
   return m === 'S' ? 'sent' : m.startsWith('F') ? 'failed' : 'skipped';
 }
 /**
- * รายละเอียดที่ลูกค้าเห็น: เฉพาะค่าของบัญชีตัวเอง (สถานะ แพ็กเกจ โมดูลก่อน/หลัง ชื่อกุญแจ) — ไม่มีข้อมูลของลูกค้ารายอื่น (คำขอย้าย = รหัสบริษัทเท่านั้น)
- * ไม่มี IP หมายเหตุภายใน รหัสอ้างอิงภายใน
+ * งานระดับบัญชีลูกค้า (HANDOFF 207b · ค่าเริ่มต้นของรายการผู้ให้บริการ): งานที่ศูนย์ผู้ให้บริการ + เปิดดูภาพรวม + การแจ้งเตือน
+ * ไม่รวมงานเอกสาร/ข้อมูลหลักที่เจ้าหน้าที่คีย์ในบริษัทข้อมูลตัวอย่าง (ติ๊ก "รวมงานในบริษัทตัวอย่าง" เพื่อดู)
  */
-const CUSTOMER_KEYS = ['status', 'from', 'to', 'package', 'before', 'after', 'name', 'read_only', 'expires_at', 'expires_on', 'is_demo', 'companies', 'docs_per_month', 'file_quota_mb', 'ai_per_month'];
-export function customerDetail(action: string, detail: unknown): Record<string, unknown> | null {
-  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return null;
-  const d = detail as Record<string, unknown>;
-  if (action.startsWith('MOVE_')) return d.companies ? { companies: d.companies } : null;
-  const out: Record<string, unknown> = {};
-  for (const k of CUSTOMER_KEYS) if (d[k] !== undefined && (typeof d[k] !== 'object' || d[k] === null || Array.isArray(d[k]) || k === 'before' || k === 'after')) out[k] = d[k];
-  return Object.keys(out).length ? out : null;
+export const ACCOUNT_ACTIONS = ['NEW_TENANT', 'EDIT_TENANT', 'PURGE_TENANT', 'TENANT_MODULES', 'TENANT_STANDARD_GROUPS', 'TENANT_DEMO_ON', 'TENANT_DEMO_OFF', 'PV_VIEW',
+  'EXPORT_TENANT', 'IMPORT_TENANT', 'MOVE_REQUEST', 'MOVE_REJECT', 'INVITE_EMAIL', 'INVITE_CREATE', 'INVITE_REVOKE', 'USER_UNLOCK', 'USER_RESET_2FA', 'USER_RESET_PASSWORD',
+  'API_KEY_CREATE', 'API_KEY_REVOKE', 'API_KEY_SCOPE', 'SIGNUP_REJECT', 'MAIL_SENT', 'MAIL_FAILED', 'MAIL_SKIPPED', 'ADD_PACKAGE', 'EDIT_PACKAGE', 'MAIL_SETTINGS',
+  'SIGNUP_SETTINGS', 'AI_PLATFORM_KEY_SET', 'AI_PLATFORM_KEY_REMOVE', 'ALERT_LOCKED', 'ALERT_LOGIN_FAIL', 'ALERT_BURST'] as const;
+
+type Obj = Record<string, unknown>;
+const isObj = (v: unknown): v is Obj => !!v && typeof v === 'object' && !Array.isArray(v);
+const str = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v) : null);
+/** เปิด/ปิด/วันหมดอายุของโปรแกรม-เมนูที่เปลี่ยน (ไม่มีหมายเหตุภายใน ที่อยู่โปรแกรม จำนวนที่นั่ง) */
+function moduleChanges(d: Obj) {
+  const before = Array.isArray(d.before) ? (d.before as Obj[]) : [], after = Array.isArray(d.after) ? (d.after as Obj[]) : [];
+  const on: string[] = [], off: string[] = [], until: Array<{ key: string; to: string | null }> = [];
+  for (const m of after) {
+    const key = str(m.key ?? m.module_key);
+    if (!key) continue;
+    const prev = before.find((b) => (b.module_key ?? b.key) === key);
+    const wasOn = prev ? prev.enabled === true : DEFAULT_ON.has(key);
+    if (m.enabled === true && !wasOn) on.push(key);
+    if (m.enabled === false && wasOn) off.push(key);
+    const to = str(m.valid_to), was = prev ? str(prev.valid_to) : null;
+    if (m.enabled === true && wasOn && (to ?? null) !== (was ?? null)) until.push({ key, to });
+  }
+  return { on, off, until };
+}
+/**
+ * สรุปของแต่ละเหตุการณ์ (HANDOFF 207b) — ค่าที่ลูกค้าเห็นได้อยู่แล้วเท่านั้น หน้าจอแปลงเป็นข้อความไทย
+ * ไม่ส่งรายละเอียดดิบให้ลูกค้า (หมายเหตุภายใน remark ที่อยู่โปรแกรม จำนวนที่นั่ง ค่าก่อน/หลังทั้งแถว IP ลูกค้ารายอื่น)
+ */
+export function actionInfo(action: string, detail: unknown, docNo: string | null): Obj | null {
+  const d = isObj(detail) ? detail : {};
+  switch (action) {
+    case 'TENANT_MODULES': return moduleChanges(d);
+    case 'EDIT_TENANT': return {
+      ...(d.from !== undefined && d.from !== d.status ? { status_from: str(d.from), status_to: str(d.status) } : {}),
+      ...(d.package !== undefined ? { package: str(d.package) } : {}),
+    };
+    case 'TENANT_DEMO_ON': case 'TENANT_DEMO_OFF': return {};
+    case 'USER_UNLOCK': case 'USER_RESET_2FA': case 'USER_RESET_PASSWORD': case 'INVITE_CREATE': case 'INVITE_REVOKE':
+      return { user: docNo ?? str(d.username) };
+    case 'INVITE_EMAIL': return { user: docNo, mail: resultOf(detail) };
+    case 'API_KEY_CREATE': case 'API_KEY_REVOKE': case 'API_KEY_SCOPE': return { key: str(d.name) ?? docNo };
+    case 'MOVE_REQUEST': case 'MOVE_REJECT': return { companies: str(d.companies) ?? docNo };
+    case 'EXPORT_TENANT': case 'IMPORT_TENANT': return { companies: Array.isArray(d.companies) ? d.companies.map(String).join(' ') : null };
+    case 'ALERT_LOCKED': case 'ALERT_LOGIN_FAIL': case 'ALERT_BURST': return { count: d.count ?? null, minutes: d.minutes ?? null };
+    default: return null;
+  }
 }
 
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'วันที่ต้องเป็น ปปปป-ดด-วว').optional();
@@ -97,11 +139,13 @@ export function providerActionRoutes(app: FastifyInstance, db: Db) {
     platform(req);
     const q = parse(z.object({ tenant: z.union([z.string().uuid(), z.literal('none')]).optional().or(z.literal('').transform(() => undefined)),
       staff: z.string().uuid().optional().or(z.literal('').transform(() => undefined)), from: day.or(z.literal('').transform(() => undefined)), to: day.or(z.literal('').transform(() => undefined)),
-      action: z.string().trim().regex(/^[A-Z0-9_]{1,20}$/).optional().or(z.literal('').transform(() => undefined)), page: z.coerce.number().int().min(1).max(10_000).default(1), ...sortShape }), req.query);
-    const r = await list(q, q);
+      action: z.string().trim().regex(/^[A-Z0-9_]{1,20}$/).optional().or(z.literal('').transform(() => undefined)), page: z.coerce.number().int().min(1).max(10_000).default(1),
+      // HANDOFF 207b: 1 = รวมงานเอกสาร/ข้อมูลหลักในบริษัทข้อมูลตัวอย่าง (ค่าเริ่มต้น = เฉพาะงานระดับบัญชีลูกค้า)
+      demo_work: z.enum(['0', '1']).default('0'), ...sortShape }), req.query);
+    const r = await list({ ...q, accountOnly: q.demo_work !== '1' }, q);
     const tenants = await db.selectFrom('sys_tenant').select(['id', 'code', 'name', 'is_demo']).where('deleted_at', 'is', null).orderBy('is_demo', 'desc').orderBy('code').execute();
     const staff = await db.selectFrom('sys_user').select(['id', 'username', 'display_name']).where('tenant_id', 'is', null).where('deleted_at', 'is', null).orderBy('username').execute();
-    return { ...r, rows: r.rows.map(({ total: _t, ...x }) => ({ ...x, result: resultOf(x.detail) })), tenants, staff };
+    return { ...r, rows: r.rows.map(({ total: _t, ...x }) => ({ ...x, info: actionInfo(x.action, x.detail, x.doc_no), result: resultOf(x.detail) })), tenants, staff };
   });
 
   /** ลูกค้า (ผู้ดูแลระบบของกิจการ): สิ่งที่ผู้ให้บริการทำกับบัญชีของท่าน — เฉพาะบัญชีของตัวเอง อ่านอย่างเดียว */
@@ -113,6 +157,6 @@ export function providerActionRoutes(app: FastifyInstance, db: Db) {
     const q = parse(z.object({ from: day.or(z.literal('').transform(() => undefined)), to: day.or(z.literal('').transform(() => undefined)), page: z.coerce.number().int().min(1).max(10_000).default(1), ...sortShape }), req.query);
     const r = await list({ tenant: a.tenantId, from: q.from, to: q.to }, q);
     return { ...r, rows: r.rows.map((x) => ({ id: x.id, occurred_at: x.occurred_at, action: x.action, doc_no: x.doc_no, company_code: x.company_code,
-      staff_name: x.staff_name ?? (x.user_id ? null : 'ผู้ดูแลเซิร์ฟเวอร์'), detail: customerDetail(x.action, x.detail), result: resultOf(x.detail) })) };
+      staff_name: x.staff_name ?? (x.user_id ? null : 'ผู้ดูแลเซิร์ฟเวอร์'), info: actionInfo(x.action, x.detail, x.doc_no), result: resultOf(x.detail) })) };
   });
 }
