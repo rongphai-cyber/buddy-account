@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { Db } from '../db.js';
 import { forbidden, parse, requireAuth } from '../http.js';
 import { sortedList, sortShape } from '../list-sort.js';
-import { TENANT_MODULES } from '@buddy/core';
+import { storedAction, TENANT_MODULES } from '@buddy/core';
 
 const DEFAULT_ON = new Set<string>(TENANT_MODULES.filter((m) => m.default_on).map((m) => m.key));
 
@@ -73,10 +73,16 @@ export function resultOf(detail: unknown): 'ok' | 'sent' | 'failed' | 'skipped' 
  * งานระดับบัญชีลูกค้า (HANDOFF 207b · ค่าเริ่มต้นของรายการผู้ให้บริการ): งานที่ศูนย์ผู้ให้บริการ + เปิดดูภาพรวม + การแจ้งเตือน
  * ไม่รวมงานเอกสาร/ข้อมูลหลักที่เจ้าหน้าที่คีย์ในบริษัทข้อมูลตัวอย่าง (ติ๊ก "รวมงานในบริษัทตัวอย่าง" เพื่อดู)
  */
-export const ACCOUNT_ACTIONS = ['NEW_TENANT', 'EDIT_TENANT', 'PURGE_TENANT', 'TENANT_MODULES', 'TENANT_STANDARD_GROUPS', 'TENANT_DEMO_ON', 'TENANT_DEMO_OFF', 'PV_VIEW',
-  'EXPORT_TENANT', 'IMPORT_TENANT', 'MOVE_REQUEST', 'MOVE_REJECT', 'INVITE_EMAIL', 'INVITE_CREATE', 'INVITE_REVOKE', 'USER_UNLOCK', 'USER_RESET_2FA', 'USER_RESET_PASSWORD',
+export const ACCOUNT_ACTIONS: readonly string[] = [
+  // ศูนย์ผู้ให้บริการ + เปิดดูภาพรวม + การแจ้งเตือน
+  'NEW_TENANT', 'EDIT_TENANT', 'PURGE_TENANT', 'TENANT_MODULES', 'TENANT_STANDARD_GROUPS', 'TENANT_DEMO_ON', 'TENANT_DEMO_OFF', 'PV_VIEW',
+  'EXPORT_TENANT', 'IMPORT_TENANT', 'MOVE_REQUEST', 'MOVE_REJECT', 'MOVE_COMPANY', 'INVITE_EMAIL', 'INVITE_CREATE', 'INVITE_REVOKE', 'USER_UNLOCK', 'USER_RESET_2FA', 'USER_RESET_PASSWORD',
   'API_KEY_CREATE', 'API_KEY_REVOKE', 'API_KEY_SCOPE', 'SIGNUP_REJECT', 'MAIL_SENT', 'MAIL_FAILED', 'MAIL_SKIPPED', 'ADD_PACKAGE', 'EDIT_PACKAGE', 'MAIL_SETTINGS',
-  'SIGNUP_SETTINGS', 'AI_PLATFORM_KEY_SET', 'AI_PLATFORM_KEY_REMOVE', 'ALERT_LOCKED', 'ALERT_LOGIN_FAIL', 'ALERT_BURST'] as const;
+  'SIGNUP_SETTINGS', 'AI_PLATFORM_KEY_SET', 'AI_PLATFORM_KEY_REMOVE', 'ALERT_LOCKED', 'ALERT_LOGIN_FAIL', 'ALERT_BURST',
+  // HANDOFF 207c: งานระดับบริษัท/ผู้ใช้ทั้งชุด (รวมรายการเก่าก่อน HANDOFF 204 เช่น สำรองข้อมูล ข้อมูลตั้งต้น ย้ายบริษัท) — ไม่ใช่งานเอกสาร
+  'NEW_COMPANY', 'COPY_COMPANY', 'DELETE_COMPANY', 'RESTORE_COMPANY', 'STARTER_DATA', 'BACKUP', 'RESTORE', 'BACKUP_USERS', 'RESTORE_USERS', 'IMPORT_EXPRESS',
+  'ADD_USER', 'EDIT_USER', 'RESET_PASSWORD', 'EDIT_GROUP', 'DELETE_GROUP', 'STANDARD_GROUPS', 'PERMISSION', 'PERMISSION_COPY', 'SET_MODULES', 'TENANT_MFA_ON', 'TENANT_MFA_OFF', 'TENANT_CONTACT',
+].map(storedAction);
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -117,6 +123,9 @@ export function actionInfo(action: string, detail: unknown, docNo: string | null
     case 'MOVE_REQUEST': case 'MOVE_REJECT': return { companies: str(d.companies) ?? docNo };
     case 'EXPORT_TENANT': case 'IMPORT_TENANT': return { companies: Array.isArray(d.companies) ? d.companies.map(String).join(' ') : null };
     case 'ALERT_LOCKED': case 'ALERT_LOGIN_FAIL': case 'ALERT_BURST': return { count: d.count ?? null, minutes: d.minutes ?? null };
+    // HANDOFF 207c: งานระดับบริษัท — บริษัทอยู่ในคอลัมน์บริษัท/รายการแล้ว (รหัสบริษัทของลูกค้านี้เท่านั้น ไม่มีชื่อลูกค้ารายอื่น)
+    case 'MOVE_COMPANY': case 'BACKUP': case 'RESTORE': case 'DELETE_COMPANY': case 'RESTORE_COMPANY': return { company: docNo };
+    case 'STARTER_DATA': return { template: str(d.template) };
     default: return null;
   }
 }

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { formatDate, TENANT_FEATURES, TENANT_MODULES } from '@buddy/core';
+import { actionLabel, formatDate, TENANT_FEATURES, TENANT_MODULES } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
 import { DateInput, ErrorBox, Field, KeyHints, Modal, PageHead, Pill, useHotkeys, useYearSystem } from '../../ui';
@@ -13,35 +13,28 @@ import { useWorkRangeState } from '../../workRange';
  *  - ศูนย์ผู้ให้บริการ (/provider/actions): ทุกลูกค้า กรองลูกค้า เจ้าหน้าที่ ช่วงวันที่ เหตุการณ์ · คลิกแถว = ดูรายละเอียด
  *  - ลูกค้า (/settings/provider-actions · ผู้ดูแลระบบของกิจการ): เฉพาะบัญชีของตัวเอง — ตรวจได้ว่าเจ้าหน้าที่ทำอะไรกับบัญชีบ้าง
  */
-export const PV_ACTION_TH: Record<string, string> = {
-  NEW_TENANT: 'เพิ่มลูกค้า', EDIT_TENANT: 'แก้ไขลูกค้า (สถานะ แพ็กเกจ วันหมดอายุ)', PURGE_TENANT: 'ลบข้อมูลลูกค้าตามกำหนด', TENANT_MODULES: 'เปิด/ปิดโปรแกรมและเมนูของลูกค้า',
-  TENANT_STANDARD_GROUPS: 'สร้างกลุ่มผู้ใช้ตั้งต้น', TENANT_DEMO_ON: 'ตั้งเป็นข้อมูลตัวอย่าง', TENANT_DEMO_OFF: 'เลิกเป็นข้อมูลตัวอย่าง', PV_VIEW: 'เปิดดูภาพรวมของลูกค้า',
-  EXPORT_TENANT: 'ส่งออกแฟ้มย้ายลูกค้า', IMPORT_TENANT: 'นำเข้าแฟ้มย้ายลูกค้า', MOVE_REQUEST: 'ขอย้ายบริษัทข้ามลูกค้า', MOVE_REJECT: 'ปฏิเสธการย้ายบริษัท',
-  INVITE_EMAIL: 'ส่งลิงก์ตั้งรหัสผ่านทางอีเมลของลูกค้า', INVITE_CREATE: 'สร้างลิงก์เชิญ', INVITE_REVOKE: 'ยกเลิกลิงก์เชิญ', USER_UNLOCK: 'ปลดล็อกผู้ใช้',
-  USER_RESET_2FA: 'ล้างการยืนยันตัวตนสองขั้น (2FA)', USER_RESET_PASSWORD: 'ตั้งรหัสผ่านใหม่ (ผู้ดูแลเซิร์ฟเวอร์)', API_KEY_CREATE: 'สร้างกุญแจ API', API_KEY_REVOKE: 'ยกเลิกกุญแจ API',
-  API_KEY_SCOPE: 'แก้ขอบเขตกุญแจ API', SIGNUP_REJECT: 'ไม่อนุมัติใบสมัคร', MAIL_SENT: 'ส่งอีเมลเรื่องใบสมัคร', MAIL_FAILED: 'ส่งอีเมลเรื่องใบสมัครไม่สำเร็จ', MAIL_SKIPPED: 'ไม่ได้ส่งอีเมลเรื่องใบสมัคร',
-  ADD_PACKAGE: 'เพิ่มแพ็กเกจ', EDIT_PACKAGE: 'แก้ไขแพ็กเกจ', MAIL_SETTINGS: 'ตั้งค่าอีเมลของผู้ให้บริการ', SIGNUP_SETTINGS: 'ตั้งค่าหน้าสมัครใช้งาน',
-  AI_PLATFORM_KEY_SET: 'ตั้งกุญแจ AI ของผู้ให้บริการ', AI_PLATFORM_KEY_REMOVE: 'ลบกุญแจ AI ของผู้ให้บริการ',
-  ALERT_LOCKED: '⚠ แจ้งเตือน: พยายามเปิดข้อมูลของลูกค้าจริงซ้ำ ๆ', ALERT_LOGIN_FAIL: '⚠ แจ้งเตือน: ใส่รหัสผิดซ้ำ ๆ', ALERT_BURST: '⚠ แจ้งเตือน: ทำรายการถี่ผิดปกติ',
-  ADD: 'เพิ่ม', EDIT: 'แก้ไข', CANCEL: 'ยกเลิก', DELETE: 'ลบ', PRINT: 'พิมพ์', ADD_USER: 'เพิ่มผู้ใช้', EDIT_USER: 'แก้ไขผู้ใช้', EDIT_GROUP: 'แก้ไขกลุ่มผู้ใช้',
-  DELETE_GROUP: 'ลบกลุ่มผู้ใช้', PERMISSION: 'แก้สิทธิ์', NEW_COMPANY: 'เพิ่มบริษัท', HUB_LAUNCH: 'เปิดโปรแกรมจาก Hub',
-};
+/** ชื่อไทยของรหัสเหตุการณ์ (ที่เดียว packages/core/src/activity-actions.ts · HANDOFF 207c) — ตัวเลือกกรอง = งานระดับบัญชีลูกค้า */
+const FILTER_ACTIONS = ['NEW_TENANT', 'EDIT_TENANT', 'TENANT_MODULES', 'PV_VIEW', 'TENANT_DEMO_OFF', 'INVITE_EMAIL', 'USER_UNLOCK', 'USER_RESET_2FA', 'API_KEY_CREATE', 'API_KEY_REVOKE',
+  'MOVE_REQUEST', 'MOVE_COMPANY', 'NEW_COMPANY', 'BACKUP', 'RESTORE', 'STARTER_DATA', 'ADD_USER', 'EDIT_USER', 'PERMISSION', 'EXPORT_TENANT', 'IMPORT_TENANT', 'PURGE_TENANT',
+  'ADD_PACKAGE', 'EDIT_PACKAGE', 'MAIL_SETTINGS', 'ALERT_LOCKED', 'ALERT_LOGIN_FAIL', 'ALERT_BURST'];
 const RESULT: Record<string, [string, 'n' | 'm' | 'd' | 'x']> = { ok: ['ทำแล้ว', 'm'], sent: ['ทำแล้ว · ส่งอีเมลแล้ว', 'm'], failed: ['ทำแล้ว · ส่งอีเมลไม่สำเร็จ', 'd'], skipped: ['ทำแล้ว · ไม่ได้ส่งอีเมล', 'x'] };
-const actText = (a: string) => PV_ACTION_TH[a] ?? a;
+const actText = actionLabel;
 /** ชื่อโปรแกรม/เมนูที่เปิดให้เฉพาะราย (ตัดคำอธิบายในวงเล็บ) */
 const MOD_LABEL = new Map<string, string>([...TENANT_MODULES, ...TENANT_FEATURES].map((m) => [m.key, m.label.replace(/\s*\(.*\)$/, '')]));
 const modName = (k: string) => MOD_LABEL.get(k) ?? k;
 const TST: Record<string, string> = { A: 'ใช้งาน', S: 'ระงับ', I: 'เลิกใช้' };
 type Info = { on?: string[]; off?: string[]; until?: Array<{ key: string; to: string | null }>; status_from?: string | null; status_to?: string | null; package?: string | null;
-  user?: string | null; mail?: string; key?: string | null; companies?: string | null; count?: number | null; minutes?: number | null } | null;
+  user?: string | null; mail?: string; key?: string | null; companies?: string | null; count?: number | null; minutes?: number | null; company?: string | null; template?: string | null } | null;
 /**
  * สรุปเป็นข้อความไทยสั้น ๆ ต่อเหตุการณ์ (HANDOFF 207b) — จากค่าที่ปลอดภัยที่เซิร์ฟเวอร์ส่งมา (info) ไม่ใช่รายละเอียดดิบ
  * ลูกค้าเห็นเฉพาะสรุปนี้ · ผู้ให้บริการเห็นรายละเอียดเต็มในหน้าต่างเมื่อคลิกแถว
  */
-function summaryOf(action: string, i: Info, fmt: (iso: string) => string): string {
+function summaryOf(action: string, i: Info, fmt: (iso: string) => string, companyCode?: string | null): string {
+  const co = i?.company ?? companyCode ?? null;
   if (action === 'PV_VIEW') return 'ดูภาพรวมการใช้งาน (ไม่เห็นข้อมูลบัญชี)';
   if (action === 'TENANT_DEMO_ON') return 'ตั้งเป็นข้อมูลตัวอย่าง (เจ้าหน้าที่เปิดข้อมูลได้)';
   if (action === 'TENANT_DEMO_OFF') return 'เลิกเป็นข้อมูลตัวอย่าง (เจ้าหน้าที่เปิดข้อมูลไม่ได้แล้ว)';
+  if (action === 'NEW_COMPANY' || action === 'COPY_COMPANY') return co ? `เพิ่มบริษัท ${co}` : '';
   if (!i) return '';
   switch (action) {
     case 'TENANT_MODULES': {
@@ -62,6 +55,12 @@ function summaryOf(action: string, i: Info, fmt: (iso: string) => string): strin
     case 'API_KEY_CREATE': case 'API_KEY_REVOKE': case 'API_KEY_SCOPE': return `กุญแจ ${i.key ?? '-'}`;
     case 'MOVE_REQUEST': case 'MOVE_REJECT': case 'EXPORT_TENANT': case 'IMPORT_TENANT': return i.companies ? `บริษัท ${i.companies}` : '';
     case 'ALERT_LOCKED': case 'ALERT_LOGIN_FAIL': case 'ALERT_BURST': return `${i.count ?? '-'} ครั้งใน ${i.minutes ?? '-'} นาที`;
+    case 'MOVE_COMPANY': return co ? `ย้ายบริษัท ${co} เข้าบัญชีลูกค้านี้` : 'ย้ายบริษัทเข้าบัญชีลูกค้านี้';
+    case 'BACKUP': return co ? `สำรองข้อมูลบริษัท ${co}` : '';
+    case 'RESTORE': return co ? `นำข้อมูลสำรองมาใช้กับบริษัท ${co}` : '';
+    case 'DELETE_COMPANY': return co ? `ลบบริษัท ${co}` : '';
+    case 'RESTORE_COMPANY': return co ? `กู้บริษัท ${co}` : '';
+    case 'STARTER_DATA': return co ? `ใส่ข้อมูลตั้งต้นให้บริษัท ${co}` : 'ใส่ข้อมูลตั้งต้นของบริษัท';
     default: return '';
   }
 }
@@ -95,7 +94,7 @@ function Pager({ page, total, size, onPage }: { page: number; total: number; siz
 function DetailModal({ row, onClose, extra }: { row: Base; onClose: () => void; extra?: ReactNode }) {
   const when = useWhen(), day = useDay();
   const [label, tone] = RESULT[row.result] ?? RESULT.ok!;
-  const sum = summaryOf(row.action, row.info, day);
+  const sum = summaryOf(row.action, row.info, day, row.company_code);
   return (
     <Modal title={actText(row.action)} onClose={onClose} footer={<button className="primary" onClick={onClose} autoFocus>ปิด <kbd>Esc</kbd></button>}>
       <dl className="kv">
@@ -135,7 +134,7 @@ export function ProviderActionsPage() {
   const rows = st.sorted(list.data?.rows);
   const tenants = list.data?.tenants ?? [];
   const csv = () => csvDownload('provider-actions.csv', ['วันเวลา', 'ลูกค้า', 'บริษัท', 'เจ้าหน้าที่', 'เหตุการณ์', 'รายการ', 'ผล', 'รายละเอียด'],
-    rows.map((r) => [when(r.occurred_at), r.tenant_code ?? 'ทั้งระบบ', r.company_code ?? '', r.staff_username ?? 'ผู้ดูแลเซิร์ฟเวอร์', actText(r.action), r.doc_no ?? '', RESULT[r.result]?.[0] ?? '', summaryOf(r.action, r.info, day)]));
+    rows.map((r) => [when(r.occurred_at), r.tenant_code ?? 'ทั้งระบบ', r.company_code ?? '', r.staff_username ?? 'ผู้ดูแลเซิร์ฟเวอร์', actText(r.action), r.doc_no ?? '', RESULT[r.result]?.[0] ?? '', summaryOf(r.action, r.info, day, r.company_code)]));
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="ศูนย์ผู้ให้บริการ" title="สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า"
@@ -152,7 +151,7 @@ export function ProviderActionsPage() {
           <Field label="วันที่ จาก"><DateInput value={range.from} onChange={range.setFrom} /></Field>
           <Field label="ถึง"><DateInput value={range.to} onChange={range.setTo} /></Field>
           <Field label="เหตุการณ์"><select value={f.action} onChange={(e) => setF({ ...f, action: e.target.value })}><option value="">ทั้งหมด</option>
-            {Object.entries(PV_ACTION_TH).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+            {FILTER_ACTIONS.map((k) => <option key={k} value={k}>{actionLabel(k)}</option>)}</select></Field>
           <Field label="งานในบริษัทตัวอย่าง" hint="ค่าเริ่มต้นแสดงเฉพาะงานระดับบัญชีลูกค้า — ติ๊กเพื่อรวมเอกสาร/ข้อมูลที่เจ้าหน้าที่คีย์ในบริษัทข้อมูลตัวอย่าง"><label className="check"><input type="checkbox" checked={f.demo_work === '1'} onChange={(e) => { const v = { ...f, demo_work: e.target.checked ? '1' : '0' }; setF(v); setApplied({ ...v, from: range.from, to: range.to }); setPage(1); }} /> รวมงานในบริษัทตัวอย่าง</label></Field>
         </div>
         <div className="toolbar"><button className="primary" onClick={apply}>เรียกดู <kbd>F5</kbd></button>
@@ -171,7 +170,7 @@ export function ProviderActionsPage() {
                 <td className="mono">{r.company_code}</td>
                 <td title={r.staff_username ?? ''}>{r.staff_name ?? <span className="muted">ผู้ดูแลเซิร์ฟเวอร์</span>}</td>
                 <td>{actText(r.action)}</td><td className="mono">{r.doc_no}</td><td><Pill tone={tone}>{label}</Pill></td>
-                <td className="small muted" style={{ maxWidth: 360 }}>{summaryOf(r.action, r.info, day)}</td>
+                <td className="small muted" style={{ maxWidth: 360 }}>{summaryOf(r.action, r.info, day, r.company_code)}</td>
               </tr>); })}
             {list.data && !rows.length && <tr><td colSpan={8} className="empty">ไม่มีรายการตามเงื่อนไข</td></tr>}
           </tbody>
@@ -204,7 +203,7 @@ export function MyProviderActionsPage() {
   if (!ok) return <div className="page"><div className="notebox">เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ของกิจการ</div></div>;
   const rows = st.sorted(list.data?.rows);
   const csv = () => csvDownload('provider-actions.csv', ['วันเวลา', 'เจ้าหน้าที่', 'เหตุการณ์', 'รายการ', 'บริษัท', 'ผล', 'รายละเอียด'],
-    rows.map((r) => [when(r.occurred_at), r.staff_name ?? '', actText(r.action), r.doc_no ?? '', r.company_code ?? '', RESULT[r.result]?.[0] ?? '', summaryOf(r.action, r.info, day)]));
+    rows.map((r) => [when(r.occurred_at), r.staff_name ?? '', actText(r.action), r.doc_no ?? '', r.company_code ?? '', RESULT[r.result]?.[0] ?? '', summaryOf(r.action, r.info, day, r.company_code)]));
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ" title="สิ่งที่ผู้ให้บริการทำกับบัญชีของท่าน"
@@ -224,7 +223,7 @@ export function MyProviderActionsPage() {
             {rows.map((r) => { const [label, tone] = RESULT[r.result] ?? RESULT.ok!; return (
               <tr key={r.id} className="row-open" onClick={() => setOpen(r)} title="คลิกเพื่อดูรายละเอียด">
                 <td>{when(r.occurred_at)}</td><td>{r.staff_name}</td><td>{actText(r.action)}</td><td className="mono">{r.doc_no}</td><td className="mono">{r.company_code}</td>
-                <td><Pill tone={tone}>{label}</Pill></td><td className="small muted" style={{ maxWidth: 360 }}>{summaryOf(r.action, r.info, day)}</td>
+                <td><Pill tone={tone}>{label}</Pill></td><td className="small muted" style={{ maxWidth: 360 }}>{summaryOf(r.action, r.info, day, r.company_code)}</td>
               </tr>); })}
             {list.data && !rows.length && <tr><td colSpan={7} className="empty">ยังไม่มีรายการที่ผู้ให้บริการทำกับบัญชีของท่านในช่วงนี้</td></tr>}
           </tbody>

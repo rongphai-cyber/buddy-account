@@ -3,6 +3,7 @@ export * from './date.js';
 export * from './taxid.js';
 export * from './journal.js';
 export * from './menu.js';
+export * from './activity-actions.js';
 export * from './starter-data.js';
 export * from './perm-tree.js';
 export * from './fs-layout.js';
