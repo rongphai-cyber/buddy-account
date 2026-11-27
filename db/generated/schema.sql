@@ -79,6 +79,8 @@ CREATE TABLE sys_tenant (
   moved_to varchar(200),
   require_mfa boolean DEFAULT false NOT NULL,
   single_session boolean DEFAULT false NOT NULL,
+  is_demo boolean DEFAULT false NOT NULL,
+  contact_email_changed_at timestamptz,
   package_id uuid,
   docs_per_month integer,
   file_quota_mb integer,
@@ -114,6 +116,8 @@ COMMENT ON COLUMN sys_tenant.purged_at IS 'ลบข้อมูลทั้ง�
 COMMENT ON COLUMN sys_tenant.moved_to IS 'ย้ายไปใช้เซิร์ฟเวอร์/ฐานข้อมูลแยกแล้ว: ที่อยู่ใหม่ (T0.18) — ผู้ใช้เข้าระบบที่นี่ไม่ได้ ระบบบอกที่อยู่ใหม่';
 COMMENT ON COLUMN sys_tenant.require_mfa IS 'บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ของลูกค้านี้ (ผู้ดูแลระบบของลูกค้าตั้ง · ค่าเริ่มต้น ปิด — ผู้ดูแลระบบบังคับเสมอ · ไม่ใช้กับเจ้าหน้าที่ผู้ให้บริการ · HANDOFF 146)';
 COMMENT ON COLUMN sys_tenant.single_session IS '1 รหัสเข้าได้ทีละ 1 เครื่อง ทุกผู้ใช้ของลูกค้านี้ (ผู้ให้บริการตั้งที่หน้า ลูกค้าผู้ใช้บริการ · ค่าเริ่มต้น ปิด) — เข้าระบบจากเครื่องใหม่ = เครื่องเดิมออกจากระบบ · HANDOFF 156';
+COMMENT ON COLUMN sys_tenant.is_demo IS 'ข้อมูลตัวอย่าง/ทดลอง (HANDOFF 204): เจ้าหน้าที่ผู้ให้บริการเข้าบริษัทของลูกค้านี้ได้ · ไม่ใช่ = ผู้ให้บริการเห็นเฉพาะข้อมูลภาพรวม (บริษัท ผู้ใช้ การใช้งาน) ไม่เห็น/ไม่แก้ข้อมูลบัญชี · ผู้ให้บริการตั้งที่ศูนย์ผู้ให้บริการเท่านั้น (บันทึกเหตุการณ์)';
+COMMENT ON COLUMN sys_tenant.contact_email_changed_at IS 'เวลาที่เปลี่ยนอีเมลผู้ติดต่อครั้งล่าสุด (HANDOFF 204): ลิงก์ตั้งรหัสผ่านที่ผู้ให้บริการสั่งส่งไปอีเมลนี้ไม่ได้ภายใน 7 วันหลังเปลี่ยน — กันเปลี่ยนเป็นอีเมลตัวเองแล้วยึดบัญชีลูกค้า';
 COMMENT ON COLUMN sys_tenant.package_id IS 'แพ็กเกจบริการ (HANDOFF 185 · ว่าง = ไม่มีแพ็กเกจ ไม่จำกัด · max_companies/max_users ของลูกค้า = ค่าที่ทับแพ็กเกจ)';
 COMMENT ON COLUMN sys_tenant.docs_per_month IS 'เอกสารต่อเดือนของลูกค้านี้ (ว่าง = ตามแพ็กเกจ)';
 COMMENT ON COLUMN sys_tenant.file_quota_mb IS 'พื้นที่ไฟล์ MB ของลูกค้านี้ (ว่าง = ตามแพ็กเกจ)';

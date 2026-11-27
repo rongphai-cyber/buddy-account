@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { checkTaxId, d, todayIso } from '@buddy/core';
 import type { Database, Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth, requireCompany, type AuthContext } from '../http.js';
-import { canAccessCompany, companiesForUser } from './auth.js';
+import { canAccessCompany, companiesForUser, requireDemoForProvider } from './auth.js';
 import { cloneCompanyFull, copyCompanyData, copyProfile, COPY_GROUP_KEYS, LEGACY_SCOPE_GROUPS, type CopyGroup } from '../company-copy.js';
 import { logActivity } from '../audit.js';
 import { confirmSecondFactor, markPasswordChanged, mfaForAll, setSec } from './security.js';
@@ -15,6 +15,7 @@ import { purgeTenant } from './pdpa.js';
 import { allowedFor, companyTenantOff, modulesOffRaw } from './permissions.js';
 import { payrollSource } from './wts.js';
 import { createTenantWithAdmin } from './signup.js';
+import { emailInvite, noticeCustomer, publicBase } from './provider.js';
 import { packagePlan, tenantLimits, TENANT_PACKAGE_FIELDS } from './usage.js';
 import { ensureStandardGroups, permissionCompanies } from '../standard-groups.js';
 import { applyStarter, lastStarter } from '../starter.js';
@@ -134,6 +135,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const c = await db.selectFrom('sys_company').select(['id', 'code', 'name_th', 'tenant_id', 'deleted_at']).where('id', '=', id).executeTakeFirst();
     // ข้ามลูกค้าไม่ได้ (ข้อ 7.1): บริษัทของลูกค้าอื่น = ไม่พบ
     if (!c || (!a.isPlatform && c.tenant_id !== a.tenantId)) throw notFound('บริษัท');
+    // HANDOFF 204: ผู้ให้บริการแก้รหัส/คัดลอก/ลบ/กู้คืนได้เฉพาะบริษัทของลูกค้าข้อมูลตัวอย่าง (ลูกค้าจริง = ผู้ดูแลของลูกค้าทำเอง)
+    await requireDemoForProvider(db, a, c.tenant_id);
     return c;
   };
   app.get('/api/v1/companies/manage', async (req) => {
@@ -147,7 +150,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
              to_char(greatest((SELECT max(h.doc_date) FROM doc_header h WHERE h.company_id = c.id AND h.deleted_at IS NULL),
                               (SELECT max(j.voucher_date) FROM gl_journal j WHERE j.company_id = c.id AND j.deleted_at IS NULL)), 'YYYY-MM-DD') AS last_date
         FROM sys_company c LEFT JOIN sys_tenant t ON t.id = c.tenant_id LEFT JOIN sys_user u ON u.id = c.updated_by AND c.deleted_at IS NOT NULL
-       WHERE ${a.isPlatform ? sql`true` : sql`c.tenant_id = ${a.tenantId}`}
+       WHERE ${a.isPlatform ? sql`t.is_demo` : sql`c.tenant_id = ${a.tenantId}`}
        ORDER BY c.deleted_at NULLS FIRST, c.code LIMIT 1000`.execute(db)).rows;
     return { rows: rows.map((r) => ({ ...r, current: r.id === a.companyId })) };
   });
@@ -243,6 +246,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
    */
   async function createCompany(a: AuthContext, b: NewCompany) {
     const tenantId = b.tenantId;
+    await requireDemoForProvider(db, a, tenantId);   // HANDOFF 204 ข้อ d6
     if (!(b.chart === 'copy' && b.copy_scope === 'full') && !b.fiscal_start) throw badRequest('ป้อนวันเริ่มรอบบัญชี', [{ field: 'fiscal_start', message: 'ป้อนวันที่' }]);
     const t = await db.selectFrom('sys_tenant').select(['id', 'max_companies', 'status']).where('id', '=', tenantId).where('deleted_at', 'is', null).executeTakeFirst();
     if (!t) throw badRequest('ไม่พบลูกค้าผู้ใช้บริการ');
@@ -476,6 +480,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     // ไม่ตั้งรหัสผ่าน = เชิญด้วยลิงก์ (HANDOFF 184) — ผู้ใช้ตั้งรหัสผ่านเองจากลิงก์ เข้าระบบไม่ได้จนกว่าจะตั้ง
     if (!b.password && !b.invite) throw badRequest('ป้อนรหัสผ่านเริ่มต้น หรือเลือก "ให้ผู้ใช้ตั้งรหัสผ่านเองจากลิงก์เชิญ"', [{ field: 'password', message: 'ป้อนรหัสผ่าน' }]);
     const tenantId = await tenantFor(a, b.tenant_id, b.companies);
+    if (tenantId) await requireDemoForProvider(db, a, tenantId);   // HANDOFF 204 ข้อ d2: ลูกค้าจริงสร้างผู้ใช้เองเท่านั้น
     await checkUserScope(tenantId, b);
     if (tenantId) {
       const maxU = await maxOf(tenantId, 'users');
@@ -499,6 +504,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const b = parse(userBody, req.body);
     const cur = await db.selectFrom('sys_user').select(['tenant_id', 'app_access']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!cur || (!a.isPlatform && cur.tenant_id !== a.tenantId)) throw notFound('ผู้ใช้');
+    // HANDOFF 204 ข้อ d1/d2: ผู้ให้บริการแก้ผู้ใช้ของลูกค้าจริงไม่ได้ (รวมตั้งรหัสผ่าน) — ปลดล็อก/ล้าง 2FA/ส่งลิงก์ทางอีเมลที่ศูนย์ผู้ให้บริการ
+    if (cur.tenant_id) await requireDemoForProvider(db, a, cur.tenant_id);
     if (id === a.userId && b.status === 'I') throw badRequest('ปิดการใช้งานบัญชีของตัวเองไม่ได้');
     await checkUserScope(cur.tenant_id, b);
     await db.transaction().execute(async (tx) => {
@@ -521,7 +528,9 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   app.post('/api/v1/user-groups', async (req) => {
     const a = requireAdmin(req);
     const b = parse(z.object({ code: z.string().trim().min(1).max(20).regex(/^[A-Za-z0-9_-]+$/), name: z.string().trim().min(1).max(120), tenant_id: uuid.nullable().optional() }), req.body);
-    return db.insertInto('sys_user_group').values({ code: b.code, name: b.name, tenant_id: await tenantFor(a, b.tenant_id), created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
+    const tenantId = await tenantFor(a, b.tenant_id);
+    if (tenantId) await requireDemoForProvider(db, a, tenantId);   // HANDOFF 204
+    return db.insertInto('sys_user_group').values({ code: b.code, name: b.name, tenant_id: tenantId, created_by: a.userId }).returning('id').executeTakeFirstOrThrow();
   });
   /**
    * เปลี่ยนชื่อ / ลบกลุ่ม (HANDOFF 198 · เจ้าของ 26/11/2569 "จะเพิ่มกลุ่มก็ควรอยู่หน้านั้น") — แท็บกลุ่มผู้ใช้ในหน้าผู้ใช้งานระบบ
@@ -531,6 +540,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   const groupOf = async (a: AuthContext, id: string) => {
     const g = await db.selectFrom('sys_user_group').select(['id', 'code', 'name', 'tenant_id']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!g || (!a.isPlatform && g.tenant_id !== a.tenantId)) throw notFound('กลุ่มผู้ใช้');
+    if (g.tenant_id) await requireDemoForProvider(db, a, g.tenant_id);   // HANDOFF 204
     return g;
   };
   app.put('/api/v1/user-groups/:id', async (req) => {
@@ -578,7 +588,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
   app.get('/api/v1/tenants', async (req) => {
     requirePlatform(req);
     return db.selectFrom('sys_tenant as t').select(['t.id', 't.code', 't.name', 't.contact_email', 't.contact_phone', 't.plan', 't.max_companies', 't.max_users', 't.expires_on', 't.status',
-      't.dpa_signed_on', 't.terminated_on', 't.purge_after', 't.purged_at', 't.moved_to', 't.single_session',
+      't.dpa_signed_on', 't.is_demo', 't.terminated_on', 't.purge_after', 't.purged_at', 't.moved_to', 't.single_session',
       't.suspend_reason', 't.package_id', 't.docs_per_month', 't.file_quota_mb', 't.ai_per_month', 't.over_action', 't.ai_payer', 't.ai_limit_usd',
       sql<string | null>`(SELECT p.name_th FROM sys_package p WHERE p.id = t.package_id)`.as('package_name'),
       sql<number>`(SELECT count(*) FROM sys_company c WHERE c.tenant_id = t.id AND c.deleted_at IS NULL)`.as('company_count'),
@@ -599,14 +609,27 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     suspend_reason: z.enum(['UNPAID', 'OTHER']).nullable().optional(),
   });
   /** สร้างลูกค้าใหม่ + กลุ่ม ADMIN ของลูกค้า + ผู้ดูแลคนแรกของลูกค้า */
+  /**
+   * สร้างลูกค้าใหม่ + กลุ่ม ADMIN ของลูกค้า + ผู้ดูแลคนแรกของลูกค้า
+   * HANDOFF 204 ข้อ d1/d2: ลูกค้าจริง = ผู้ให้บริการไม่ตั้งรหัสผ่าน — ระบบส่งลิงก์ตั้งรหัสผ่านไปอีเมลผู้ติดต่อของลูกค้า (ผู้ให้บริการไม่เห็นลิงก์)
+   * ลูกค้าข้อมูลตัวอย่าง (is_demo) = ตั้งรหัสผ่านเริ่มต้นได้เหมือนเดิม (ให้ลูกค้าทดลองใช้)
+   */
   app.post('/api/v1/tenants', async (req) => {
     const a = requirePlatform(req);
-    const b = parse(tenantBody.extend({ admin_username: userBody.shape.username, admin_name: userBody.shape.display_name, admin_password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })) }), req.body);
-    return db.transaction().execute(async (tx) => {
-      const t = await createTenantWithAdmin(tx, a.userId, { ...b, ...(await packagePlan(tx, b)), admin_username: b.admin_username, admin_name: b.admin_name, password_hash: await bcrypt.hash(b.admin_password, 10) });
-      await logActivity(tx, a, { module: 'SYS', action: 'NEW_TENANT', table: 'sys_tenant', rowId: t.id, detail: { code: b.code } });
+    const b = parse(tenantBody.extend({ admin_username: userBody.shape.username, admin_name: userBody.shape.display_name, is_demo: z.boolean().default(false),
+      admin_password: z.string().max(200).optional().transform((v) => v || undefined).refine((p) => !p || !passwordProblem(p), (p) => ({ message: (p && passwordProblem(p)) ?? '' })) }), req.body);
+    if (b.is_demo && !b.admin_password) throw badRequest('ป้อนรหัสผ่านเริ่มต้นของผู้ดูแล (ลูกค้าข้อมูลตัวอย่าง)', [{ field: 'admin_password', message: 'ป้อนรหัสผ่าน' }]);
+    if (!b.is_demo && b.admin_password) throw badRequest('ลูกค้าจริง: ผู้ให้บริการตั้งรหัสผ่านให้ผู้ดูแลของลูกค้าไม่ได้ (ข้อมูลของลูกค้าเป็นความลับ) — เว้นช่องรหัสผ่าน ระบบส่งลิงก์ตั้งรหัสผ่านไปที่อีเมลผู้ติดต่อของลูกค้า', [{ field: 'admin_password', message: 'เว้นว่าง' }]);
+    if (!b.is_demo && !b.contact_email) throw badRequest('ป้อนอีเมลผู้ติดต่อของลูกค้า — ลิงก์ตั้งรหัสผ่านของผู้ดูแลคนแรกส่งไปที่อีเมลนี้', [{ field: 'contact_email', message: 'ป้อนอีเมล' }]);
+    const t = await db.transaction().execute(async (tx) => {
+      const t = await createTenantWithAdmin(tx, a.userId, { ...b, ...(await packagePlan(tx, b)), admin_username: b.admin_username, admin_name: b.admin_name, password_hash: b.admin_password ? await bcrypt.hash(b.admin_password, 10) : null });
+      if (b.is_demo) await tx.updateTable('sys_tenant').set({ is_demo: true }).where('id', '=', t.id).execute();
+      await logActivity(tx, a, { module: 'SYS', action: 'NEW_TENANT', table: 'sys_tenant', rowId: t.id, detail: { code: b.code, is_demo: b.is_demo } });
       return t;
     });
+    if (b.is_demo) return t;
+    const admin = await db.selectFrom('sys_user').select(['id', 'username', 'display_name']).where('tenant_id', '=', t.id).where('username', '=', b.admin_username).executeTakeFirstOrThrow();
+    return { ...t, invite: await emailInvite(db, publicBase(req), a, { ...admin, tenant_id: t.id }) };
   });
   /**
    * ผู้ใช้ดูอย่างเดียว (HANDOFF 154 · เจ้าของ "เชิญลูกค้าทดลองก่อน"): ให้ลูกค้าทดลองดูข้อมูลตัวอย่างทั้งปี (ลูกค้า DEMO) โดยแก้ไม่ได้
@@ -620,6 +643,8 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       password: z.string().max(200).refine((p) => !passwordProblem(p), (p) => ({ message: passwordProblem(p) ?? '' })) }), req.body);
     const t = await db.selectFrom('sys_tenant').select(['id', 'code', 'max_users', 'status']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!t) throw notFound('ลูกค้าผู้ใช้บริการ');
+    // HANDOFF 204 ข้อ d2: ผู้ใช้ดูอย่างเดียว (รหัสผ่านที่ผู้ให้บริการตั้ง) = เข้าดูข้อมูลลูกค้าได้ — ทำได้เฉพาะลูกค้าข้อมูลตัวอย่าง
+    await requireDemoForProvider(db, a, id);
     if (await db.selectFrom('sys_user').select('id').where(sql`lower(username)`, '=', b.username.toLowerCase()).where('deleted_at', 'is', null).executeTakeFirst()) throw badRequest(`รหัสผู้ใช้ ${b.username} มีผู้ใช้แล้ว — เลือกรหัสอื่น`);
     const maxU = await maxOf(id, 'users');
     if (maxU != null) {
@@ -664,7 +689,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const a = requirePlatform(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(tenantBody, req.body);
-    const cur = await db.selectFrom('sys_tenant').select(['status', 'suspend_reason', 'terminated_on', 'purge_after', 'purged_at', 'ai_payer', 'ai_limit_usd']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
+    const cur = await db.selectFrom('sys_tenant').select(['status', 'suspend_reason', 'terminated_on', 'purge_after', 'purged_at', 'ai_payer', 'ai_limit_usd', 'contact_email', 'code']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!cur) throw notFound('ลูกค้าผู้ใช้บริการ');
     if (cur.purged_at) throw badRequest('ลบข้อมูลของลูกค้ารายนี้ไปแล้ว (เลิกใช้บริการ) — แก้ไขหรือเปิดใช้อีกไม่ได้ สร้างลูกค้ารายใหม่แทน');
     if (b.moved_to && b.status !== 'I') throw badRequest('ลูกค้าที่ย้ายไปเซิร์ฟเวอร์แยกแล้วต้องมีสถานะ "เลิกใช้" ที่เครื่องนี้');
@@ -673,7 +698,12 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
     const suspend_reason = b.status === 'S' ? (b.suspend_reason ?? 'OTHER') : null;
     const end = tenantCountdown({ status: b.status, suspend_reason }, cur, today);
-    await db.updateTable('sys_tenant').set({ ...b, ...end, ...pkg, suspend_reason, contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, dpa_signed_on: b.dpa_signed_on ?? null, moved_to: b.moved_to ?? null, updated_by: a.userId }).where('id', '=', id).execute();
+    // HANDOFF 204: เปลี่ยนอีเมลผู้ติดต่อ = จดเวลา (ลิงก์ตั้งรหัสผ่านไปอีเมลใหม่ได้หลัง 7 วัน) + แจ้งอีเมลเดิม
+    const emailChanged = (cur.contact_email ?? '').toLowerCase() !== (b.contact_email ?? '').toLowerCase();
+    await db.updateTable('sys_tenant').set({ ...b, ...end, ...pkg, suspend_reason, ...(emailChanged ? { contact_email_changed_at: sql`now()` as never } : {}), contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, dpa_signed_on: b.dpa_signed_on ?? null, moved_to: b.moved_to ?? null, updated_by: a.userId }).where('id', '=', id).execute();
+    if (emailChanged && cur.contact_email) noticeCustomer(db, publicBase(req), id, `แจ้งเตือน: เปลี่ยนอีเมลผู้ติดต่อของบัญชี ${cur.code}`, [
+      `ผู้ให้บริการ Buddy Account เปลี่ยนอีเมลผู้ติดต่อของบัญชีท่านจาก ${cur.contact_email} เป็น ${b.contact_email ?? '(ไม่มี)'} เมื่อ ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`,
+      'ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที'], cur.contact_email);
     if (b.status !== 'A') await db.updateTable('sys_session').set({ ended_at: sql`now()` as never }).where('ended_at', 'is', null).where('user_id', 'in', db.selectFrom('sys_user').select('id').where('tenant_id', '=', id)).execute();
     await logActivity(db, a, { module: 'SYS', action: 'EDIT_TENANT', table: 'sys_tenant', rowId: id, detail: { status: b.status, ...(cur.status !== b.status || cur.suspend_reason !== suspend_reason || cur.purge_after !== end.purge_after ? { from: cur.status, suspend_reason, purge_after: end.purge_after } : {}), ...(b.single_session !== undefined ? { single_session: b.single_session } : {}),
       ...(b.package_id !== undefined ? { package: pkg.plan ?? null, docs_per_month: b.docs_per_month, file_quota_mb: b.file_quota_mb, ai_per_month: b.ai_per_month, over_action: b.over_action } : {}),
@@ -696,10 +726,15 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     if (!t.moved_to && today < t.purge_after!) throw badRequest(`ลบได้ตั้งแต่วันที่ ${formatDate(t.purge_after!, 'B')} (${t.status === 'I' ? 'เลิกใช้บริการ' : 'ระงับเพราะค้างชำระ'} + ${TENANT_RETENTION_DAYS} วัน) — ระหว่างนี้ลูกค้ายังชำระเงินหรือขอสำเนาข้อมูลได้`);
     if (b.confirm.toUpperCase() !== t.code.toUpperCase()) throw badRequest(`พิมพ์รหัสลูกค้า ${t.code} เพื่อยืนยัน — ข้อมูลทุกบริษัทของลูกค้ารายนี้จะถูกลบถาวร`);
     const r = await purgeTenant(db, id);
+    // HANDOFF 204 ข้อ d5: แจ้งลูกค้าว่าลบข้อมูลแล้ว (อีเมลผู้ติดต่อ — ลูกค้าเลิกใช้แล้ว)
+    noticeCustomer(db, publicBase(req), id, `แจ้ง: ลบข้อมูลบัญชี ${t.code} ตามกำหนดแล้ว`, [`ผู้ให้บริการ Buddy Account ลบข้อมูลทั้งหมดของบัญชี ${t.code} ตามกำหนดเวลาเก็บรักษาข้อมูลหลังเลิกใช้บริการ เมื่อ ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`]);
     await logActivity(db, a, { module: 'SYS', action: 'PURGE_TENANT', docNo: t.code, table: 'sys_tenant', rowId: id, detail: r });
     return r;
   });
 
+  /** แฟ้มบันทึกเหตุการณ์ที่ผู้ใช้นี้ดูได้: บริษัทที่เข้าได้ + เหตุการณ์ระบบ (ไม่มีบริษัท) ของผู้ใช้ในลูกค้าเดียวกัน — ผู้ให้บริการ = ของเจ้าหน้าที่ผู้ให้บริการ */
+  const logScope = (companies: Array<{ id: string }>, a: AuthContext) =>
+    sql<boolean>`(l.company_id = ANY(${companies.map((c) => c.id)}::uuid[]) OR (l.company_id IS NULL AND ${a.tenantId ? sql`u.tenant_id = ${a.tenantId}` : sql`u.tenant_id IS NULL`}))`;
   /* ---------------------------------------------------------------- แฟ้มบันทึกเหตุการณ์ (บทที่ 23 S-SEC-04) — อ่านอย่างเดียว */
   app.get('/api/v1/activity-log', async (req) => {
     const a = requireAuth(req);
@@ -707,10 +742,10 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     let s = db.selectFrom('sys_activity_log as l').leftJoin('sys_user as u', 'u.id', 'l.user_id')
       .select(['l.seq', 'l.occurred_at', 'l.module', 'l.action', 'l.doc_no', 'l.table_name', 'l.row_id', 'l.detail', 'u.username', 'u.display_name']);
     if (!a.isAdmin) s = s.where('l.user_id', '=', a.userId);
-    if (!a.isPlatform) {
-      // ลูกค้าเห็นเฉพาะเหตุการณ์ของบริษัทใน tenant ตัวเอง และเหตุการณ์ของผู้ใช้ใน tenant ตัวเอง
-      const ids = (await companiesForUser(db, a)).map((c) => c.id);
-      s = s.where((eb) => eb.or([eb('l.company_id', 'in', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']), eb.and([eb('l.company_id', 'is', null), eb('u.tenant_id', '=', a.tenantId)])]));
+    {
+      // ลูกค้าเห็นเฉพาะเหตุการณ์ของบริษัทใน tenant ตัวเอง และเหตุการณ์ระบบของผู้ใช้ใน tenant ตัวเอง
+      // HANDOFF 204: ผู้ให้บริการเห็นเฉพาะบริษัทของลูกค้าข้อมูลตัวอย่าง + เหตุการณ์ระบบของเจ้าหน้าที่ผู้ให้บริการ (ไม่เห็นเลขที่เอกสาร/รายละเอียดของลูกค้าจริง)
+      s = s.where(logScope(await companiesForUser(db, a), a));
     }
     if (a.companyId) s = s.where((eb) => eb.or([eb('l.company_id', '=', a.companyId), eb('l.company_id', 'is', null)]));
     if (q.table) s = s.where('l.table_name', '=', q.table);
@@ -732,10 +767,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       module: z.string().trim().max(10).optional(), doc_no: z.string().trim().max(30).optional(), q: z.string().trim().max(100).optional(), limit: z.coerce.number().int().min(1).max(5000).default(1000) }), req.query);
     let s = db.selectFrom('sys_activity_log as l').leftJoin('sys_user as u', 'u.id', 'l.user_id').leftJoin('sys_user as au', 'au.id', 'l.auth_user_id').leftJoin('sys_company as c', 'c.id', 'l.company_id')
       .select(['l.seq', 'l.occurred_at', 'l.module', 'l.action', 'l.doc_no', 'l.table_name', 'l.row_id', 'l.detail', 'u.username', 'u.display_name', 'au.username as auth_username', 'c.code as company_code']);
-    if (!a.isPlatform) {
-      const ids = (await companiesForUser(db, a)).map((c) => c.id);
-      s = s.where((eb) => eb.or([eb('l.company_id', 'in', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']), eb.and([eb('l.company_id', 'is', null), eb('u.tenant_id', '=', a.tenantId)])]));
-    }
+    s = s.where(logScope(await companiesForUser(db, a), a));   // HANDOFF 204
     if (a.companyId) s = s.where((eb) => eb.or([eb('l.company_id', '=', a.companyId), eb('l.company_id', 'is', null)]));
     if (q.kind === 'password') s = s.where('l.action', 'in', PASSWORD_ACTS);
     else if (q.kind === 'restore') s = s.where('l.action', 'in', RESTORE_ACTS);

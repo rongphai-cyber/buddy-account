@@ -27,6 +27,7 @@ import { dataTableRoutes } from './modules/data-tables.js';
 import { docRoutes } from './modules/docs/routes.js';
 import { repostBatchRoutes } from './modules/docs/repost-batch.js';
 import { yearFixRoutes } from './modules/year-fix.js';
+import { providerRoutes } from './modules/provider.js';
 import { inviteRoutes } from './modules/invite.js';
 import { usageRoutes } from './modules/usage.js';
 import { projectRoutes } from './modules/projects.js';
@@ -133,6 +134,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   app.get('/api/v1/menu', async () => MENU);
   authRoutes(app, db, cfg);
   inviteRoutes(app, db, cfg);
+  providerRoutes(app, db);
   usageRoutes(app, db);
   companyRoutes(app, database);
   companyAddressRoutes(app, db);

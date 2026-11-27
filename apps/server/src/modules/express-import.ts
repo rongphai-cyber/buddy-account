@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sql } from 'kysely';
 import { z } from 'zod';
+import { requireDemoForProvider } from './auth.js';
 import type { Database, Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
@@ -90,6 +91,8 @@ export function expressImportRoutes(app: FastifyInstance, database: Database) {
     const a = requireAuth(req); await admin(db, a);
     const b = parse(z.object({ code: codeSchema, tenant_id: z.string().uuid().optional() }), req.body);
     const tenantId = a.isPlatform ? (b.tenant_id ?? (await defaultTenant(db))) : a.tenantId!;
+    // HANDOFF 204: ผู้ให้บริการนำเข้าได้เฉพาะลูกค้าข้อมูลตัวอย่าง — ลูกค้าจริงให้ผู้ดูแลของลูกค้านำเข้าเอง (ผู้ให้บริการเปิดเมนูให้ — HANDOFF 200)
+    await requireDemoForProvider(db, a, tenantId);
     await checkCompany(db, tenantId, b.code);
     if ([...jobs.values()].some((x) => x.status === 'running')) throw new AppError(409, 'IMPORT_BUSY', 'มีงานนำเข้ากำลังทำอยู่ — รอให้เสร็จก่อน');
     const id = randomUUID();

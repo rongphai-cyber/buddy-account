@@ -8,6 +8,7 @@ import { AppError, badRequest, forbidden, notFound, parse, requireAuth } from '.
 import { logActivity } from '../audit.js';
 import { decryptSecret, encryptSecret } from '../secret.js';
 import { insertJson, readBackup, schemaVersion, writeBackup, type Header } from './backup.js';
+import { requireDemoForProvider } from './auth.js';
 
 /**
  * T0.18 ย้ายลูกค้าผู้ใช้บริการไปเซิร์ฟเวอร์/ฐานข้อมูลแยก (ลูกค้ารายใหญ่)
@@ -106,7 +107,7 @@ export async function exportTenant(db: Db, tenantId: string, pass: string, opt: 
 }
 
 /** นำเข้าแฟ้มย้ายลูกค้า (ฐานข้อมูลปลายทาง) — ทรานแซกชันเดียว · ซ้ำกับข้อมูลที่มีอยู่ = ไม่นำเข้าเลย */
-export async function importTenant(db: Db, buf: Buffer, pass: string, userId: string | null) {
+export async function importTenant(db: Db, buf: Buffer, pass: string, userId: string | null, opts: { demoOnly?: boolean } = {}) {
   const { header: h0, rows: data } = readBackup(unseal(buf, pass), FORMAT);
   const h = h0 as unknown as TenantHeader;
   const current = await schemaVersion(db);
@@ -119,6 +120,8 @@ export async function importTenant(db: Db, buf: Buffer, pass: string, userId: st
   for (const t of get('sys_user')) if (t.tenant_id !== h.tenant.id) throw badRequest('แฟ้มมีผู้ใช้ของลูกค้ารายอื่น');
   for (const t of get('sys_tenant_module')) if (t.tenant_id !== h.tenant.id) throw badRequest('แฟ้มมีสิทธิ์โมดูลของลูกค้ารายอื่น');
   for (const c of get('sys_company')) if (c.tenant_id !== h.tenant.id) throw badRequest('แฟ้มมีบริษัทของลูกค้ารายอื่น');
+  // HANDOFF 204 ข้อ d3: เจ้าหน้าที่ผู้ให้บริการนำเข้าได้เฉพาะแฟ้มของลูกค้าข้อมูลตัวอย่าง
+  if (opts.demoOnly && !get('sys_tenant').some((t) => t.is_demo === true)) throw forbidden(`แฟ้มนี้เป็นข้อมูลของลูกค้าจริง (${h.tenant.code}) — เจ้าหน้าที่ผู้ให้บริการนำเข้าไม่ได้ (ข้อมูลของลูกค้าเป็นความลับ) · ให้ผู้ดูแลของลูกค้านำเข้าเองที่เซิร์ฟเวอร์ใหม่`);
   const cids = get('sys_company').map((c) => String(c.id));
   for (const [t, rs] of parsed) if (tables.has(t)) for (const r of rs) if (!cids.includes(String(r.company_id))) throw badRequest(`แฟ้มมีข้อมูลของบริษัทที่ไม่อยู่ในลูกค้ารายนี้ (${t})`);
 
@@ -184,8 +187,13 @@ export function tenantMoveRoutes(app: FastifyInstance, db: Db) {
   const requirePlatform = (req: Parameters<typeof requireAuth>[0]) => { const a = requireAuth(req); if (!a.isPlatform) throw forbidden('เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม'); return a; };
   /** ส่งออกลูกค้าเป็นแฟ้มย้าย (ดาวน์โหลด) */
   app.post('/api/v1/tenants/:id/export', async (req, reply) => {
-    const a = requirePlatform(req);
+    // HANDOFF 204 ข้อ d3 (เจ้าของ 27/11/2569): แฟ้มย้าย = ข้อมูลทั้งหมดของลูกค้า — ผู้ดูแลของลูกค้าส่งออกเองด้วยรหัสผ่านของตัวเอง
+    // ผู้ให้บริการส่งออกได้เฉพาะลูกค้าข้อมูลตัวอย่าง
+    const a = requireAuth(req);
     const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
+    if (a.apiKeyId) throw forbidden('กุญแจ API ส่งออกแฟ้มย้ายลูกค้าไม่ได้');
+    if (a.isPlatform) await requireDemoForProvider(db, a, id);
+    else if (!(a.isAdmin && a.tenantId === id)) throw forbidden('เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ของกิจการนี้ส่งออกแฟ้มย้ายได้');
     const { passphrase } = parse(z.object({ passphrase: passSchema }), req.body);
     const r = await exportTenant(db, id, passphrase);
     await logActivity(db, a, { module: 'SYS', action: 'EXPORT_TENANT', docNo: r.header.tenant.code, table: 'sys_tenant', rowId: id, detail: { rows: r.rows, bytes: r.file.length, companies: r.header.companies.map((c) => c.code) } });
@@ -198,6 +206,7 @@ export function tenantMoveRoutes(app: FastifyInstance, db: Db) {
     const a = requirePlatform(req);
     if (!Buffer.isBuffer(req.body) || !req.body.length) throw badRequest('เลือกแฟ้ม .buddy-tenant ที่จะนำเข้า');
     const pass = parse(passSchema, req.headers['x-buddy-passphrase'] ? decodeURIComponent(String(req.headers['x-buddy-passphrase'])) : '');
-    return importTenant(db, req.body, pass, a.userId);
+    // HANDOFF 204 ข้อ d3: ผู้ให้บริการนำเข้าได้เฉพาะแฟ้มของลูกค้าข้อมูลตัวอย่าง — ลูกค้าจริงให้ผู้ดูแลของลูกค้านำเข้าเองที่เครื่องใหม่ (ยังไม่เปิด — ติดต่อผู้พัฒนา)
+    return importTenant(db, req.body, pass, a.userId, { demoOnly: true });
   });
 }

@@ -402,7 +402,7 @@ describe('ระบบเงินเดือน', () => {
 
   it('another customer (tenant) cannot reach this payroll at all', async () => {
     const platform = cookie;
-    expect((await call('POST', '/api/v1/tenants', { code: 'PAYT2', name: 'ลูกค้าอื่น', admin_username: 't2.admin', admin_name: 'ผู้ดูแลอื่น', admin_password: 'passT2pay1' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'PAYT2', name: 'ลูกค้าอื่น', admin_username: 't2.admin', admin_name: 'ผู้ดูแลอื่น', admin_password: 'passT2pay1' })).status).toBe(200);
     cookie = '';
     await call('POST', '/api/v1/auth/login', { username: 't2.admin', password: 'passT2pay1' });
     const t2co = (await call('POST', '/api/v1/companies', { code: 'T2CO', name_th: 'บริษัทลูกค้าอื่น', fiscal_start: '2026-01-01', chart: 'th_en' })).body.id;

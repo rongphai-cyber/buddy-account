@@ -1274,3 +1274,23 @@ select.perm-blocked { outline: 2px dashed var(--warn); outline-offset: -2px; }
 .move-preview h4 { margin: 10px 0 4px; font-size: 14px; }
 .move-list { margin: 8px 0; padding-left: 18px; line-height: 1.5; }
 .move-result ul { margin: 6px 0; padding-left: 18px; }
+
+/* HANDOFF 204: ศูนย์ผู้ให้บริการ (ไม่ต้องเลือกบริษัท) */
+.provider-shell { min-height: 100vh; display: grid; grid-template-columns: 230px minmax(0, 1fr); grid-template-rows: auto 1fr; background: var(--bg); }
+.provider-top { grid-column: 1 / -1; }
+.provider-top .provider-title { font-size: 16px; }
+.provider-top .provider-user { margin-left: auto; color: var(--bar-ink); opacity: .8; }
+.provider-nav { display: flex; flex-direction: column; gap: 4px; padding: 12px 10px; border-right: 1px solid var(--line); background: var(--surface); }
+.provider-nav a { padding: 8px 10px; border-radius: 8px; color: var(--ink); text-decoration: none; }
+.provider-nav a:hover { background: color-mix(in srgb, var(--tone, #b9a5e0) 14%, transparent); }
+.provider-nav a.active { background: color-mix(in srgb, var(--tone, #b9a5e0) 26%, transparent); font-weight: 600; }
+.provider-main { min-width: 0; }
+.provider-grid td { vertical-align: top; }
+.section-title { font-size: 15px; margin: 14px 0 6px; }
+td.row-actions { white-space: nowrap; }
+td.row-actions button { margin-right: 4px; }
+@media (max-width: 760px) {
+  .provider-shell { grid-template-columns: minmax(0, 1fr); }
+  .provider-nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); }
+  td.row-actions { white-space: normal; }
+}

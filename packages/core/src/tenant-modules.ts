@@ -58,6 +58,8 @@ export const sourceSystemLabel = (code: string) => SOURCE_NAMES[code.toLowerCase
 export const TENANT_FEATURES: ReadonlyArray<{ key: string; label: string; menus: readonly string[]; auto: readonly TenantModuleKey[]; autoDevices?: boolean; hint: string }> = [
   { key: 'express_import', label: 'นำข้อมูลจาก Express', menus: ['OT.IMPORT'], auto: [], hint: 'ปกติผู้ให้บริการย้ายข้อมูลให้ — เปิดเมื่อลูกค้าต้องการนำเข้าเอง' },
   { key: 'devices', label: 'เครื่องสาขา (ออฟไลน์)', menus: ['SET.DEVICE'], auto: ['pos'], autoDevices: true, hint: 'เปิดเองเมื่อลูกค้าใช้ WTS-POS หรือมีเครื่องสาขาที่ลงทะเบียนไว้แล้ว — ติ๊กเพื่อเปิดให้แม้ไม่มี' },
+  // HANDOFF 204 (เจ้าของ 27/11/2569 ข้อ d4): ผู้ให้บริการเปิดให้รายลูกค้า แล้วผู้ดูแลของลูกค้าสร้างกุญแจเอง — ผู้ให้บริการไม่เห็นรหัสกุญแจ (รหัสกุญแจ = เข้าถึงข้อมูลบัญชี)
+  { key: 'api_keys', label: 'กุญแจ API (เชื่อมต่อระบบอื่น)', menus: ['SET.API'], auto: [], hint: 'เปิดเมื่อลูกค้าเชื่อมโปรแกรมอื่นกับ Buddy (เช่น WTS-POS WTS-Living ระบบของลูกค้า) — ผู้ดูแลของลูกค้าสร้าง/ยกเลิกกุญแจเองที่ เริ่มระบบ › กุญแจ API · กุญแจเดิมใช้ได้ตามเดิม' },
 ];
 export const isTenantFeatureKey = (k: string) => TENANT_FEATURES.some((f) => f.key === k);
 /** เมนูที่ต้องเปิดให้รายลูกค้า */

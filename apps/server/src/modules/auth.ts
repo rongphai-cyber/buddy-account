@@ -5,7 +5,7 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import { companyTenantOff, permissionView, tenantOffMenus } from './permissions.js';
 import type { Db } from '../db.js';
-import { AppError, badRequest, parse, requireAuth, unauthorized, type AuthContext } from '../http.js';
+import { AppError, badRequest, forbidden, parse, PROVIDER_LOCKED, requireAuth, unauthorized, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
 import { rateLimit, requireHuman, turnstileSiteKey } from '../botguard.js';
 import type { Config } from '../config.js';
@@ -46,7 +46,7 @@ export async function loadSession(db: Db, token: string | undefined): Promise<Au
     mfaSetupRequired: !row.totp_enabled && (mfaForAll() || (!!row.tenant_id && !!row.tenant_require_mfa)),
   };
   // บริษัทที่ค้างใน session ต้องยังเข้าได้ (เช่น ถูกถอนสิทธิ์ หรือเป็นของ tenant อื่น)
-  if (a.companyId && !(await canAccessCompany(db, a, a.companyId))) { a.companyId = null; a.branchId = null; }
+  if (a.companyId && !(await canAccessCompany(db, a, a.companyId))) { a.providerLocked = a.isPlatform; a.companyId = null; a.branchId = null; }
   return a;
 }
 
@@ -55,20 +55,36 @@ export function tenantActive(status: string | null | undefined, expires: string 
   return !expires || expires >= new Date().toISOString().slice(0, 10);
 }
 
+/** ข้อความเมื่อเจ้าหน้าที่ผู้ให้บริการเรียกข้อมูลของลูกค้าที่ไม่ใช่ข้อมูลตัวอย่าง (HANDOFF 204) */
+export { PROVIDER_LOCKED };
+/** ลูกค้านี้เป็นข้อมูลตัวอย่าง (ผู้ให้บริการเข้าได้) — ไม่มีลูกค้า = ไม่ใช่ */
+export async function tenantIsDemo(db: Db, tenantId: string | null | undefined) {
+  if (!tenantId) return false;
+  return !!(await db.selectFrom('sys_tenant').select('is_demo').where('id', '=', tenantId).where('deleted_at', 'is', null).executeTakeFirst())?.is_demo;
+}
+/** ผู้ให้บริการทำกับลูกค้า/บริษัท/ผู้ใช้ของลูกค้านี้ได้ไหม (ลูกค้าเอง = ได้เสมอ) — ไม่ได้ = 403 */
+export async function requireDemoForProvider(db: Db, a: Pick<AuthContext, 'isPlatform'>, tenantId: string | null | undefined) {
+  if (a.isPlatform && !(await tenantIsDemo(db, tenantId))) throw forbidden(PROVIDER_LOCKED);
+}
+
 /**
  * บริษัทที่ผู้ใช้เข้าได้ — หลักแยกข้อมูลลูกค้า:
- * - เจ้าหน้าที่ผู้ให้บริการ (ADMIN ไม่มี tenant): ทุกบริษัท
+ * - เจ้าหน้าที่ผู้ให้บริการ (ADMIN ไม่มี tenant): เฉพาะบริษัทของลูกค้าข้อมูลตัวอย่าง (is_demo — HANDOFF 204 เจ้าของ 27/11/2569
+ *   "Admin จะทำได้กรณีข้อมูลตัวอย่างเพื่อให้ลูกค้าทดลองใช้ Demo แค่นั้น") — ลูกค้าจริงดูได้เฉพาะภาพรวมที่ศูนย์ผู้ให้บริการ
  * - ผู้ดูแลของลูกค้า (ADMIN ใน tenant): ทุกบริษัทของ tenant ตัวเองเท่านั้น
  * - ผู้ใช้ทั่วไป: เฉพาะบริษัทที่ได้รับสิทธิ์ และต้องอยู่ใน tenant ตัวเอง
  */
 export async function companiesForUser(db: Db, a: Pick<AuthContext, 'userId' | 'isAdmin' | 'isPlatform' | 'tenantId'>) {
-  let q = db.selectFrom('sys_company as c').select(['c.id', 'c.code', 'c.name_th', 'c.name_en', 'c.year_system', 'c.tenant_id']).where('c.deleted_at', 'is', null).where('c.status', '=', 'A');
-  if (!a.isPlatform) {
+  let q = db.selectFrom('sys_company as c').leftJoin('sys_tenant as t', 't.id', 'c.tenant_id')
+    .select(['c.id', 'c.code', 'c.name_th', 'c.name_en', 'c.year_system', 'c.tenant_id', 't.code as tenant_code', 't.name as tenant_name'])
+    .where('c.deleted_at', 'is', null).where('c.status', '=', 'A');
+  if (a.isPlatform) q = q.where('t.is_demo', '=', true).where('t.deleted_at', 'is', null);
+  else {
     if (!a.tenantId) return [];
     q = q.where('c.tenant_id', '=', a.tenantId);
     if (!a.isAdmin) q = q.where((eb) => eb.exists(eb.selectFrom('sys_user_company as uc').select('uc.id').whereRef('uc.company_id', '=', 'c.id').where('uc.user_id', '=', a.userId).where('uc.deleted_at', 'is', null)));
   }
-  return q.orderBy('c.code').execute();
+  return q.orderBy('t.code').orderBy('c.code').execute();
 }
 
 export async function canAccessCompany(db: Db, a: Pick<AuthContext, 'userId' | 'isAdmin' | 'isPlatform' | 'tenantId'>, companyId: string) {
@@ -130,6 +146,10 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
       // ผู้ใช้คนแรก = ผู้ดูแลระบบของผู้ให้บริการ (ไม่สังกัด tenant)
       let grp = await tx.selectFrom('sys_user_group').select('id').where('code', '=', ADMIN_GROUP).where('tenant_id', 'is', null).executeTakeFirst();
       if (!grp) grp = await tx.insertInto('sys_user_group').values({ code: ADMIN_GROUP, name: 'ผู้ดูแลระบบ' }).returning('id').executeTakeFirstOrThrow();
+      // เซิร์ฟเวอร์ใหม่ (HANDOFF 204): ลูกค้าเริ่มต้น DEFAULT = ข้อมูลทดลองของผู้ติดตั้ง (ผู้ดูแลคนแรกสร้างบริษัททดลองได้)
+      // ลูกค้าจริงสร้างที่ ศูนย์ผู้ให้บริการ / ใบสมัคร — ผู้ดูแลของลูกค้าตั้งรหัสผ่านเองจากลิงก์ทางอีเมล · ยกเลิกติ๊กได้ที่ศูนย์ผู้ให้บริการ
+      if (!(await tx.selectFrom('sys_tenant').select('id').where('code', '=', 'DEFAULT').where('deleted_at', 'is', null).executeTakeFirst()))
+        await tx.insertInto('sys_tenant').values({ code: 'DEFAULT', name: 'ลูกค้าเริ่มต้น (ข้อมูลทดลอง)', is_demo: true }).execute();
       const u = await tx.insertInto('sys_user').values({
         username: body.username, display_name: body.display_name, password_hash: await bcrypt.hash(body.password, 10),
         user_group_id: grp.id, approval_level: 9,
@@ -243,7 +263,10 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const patch: Record<string, unknown> = {};
     const companyId = body.company_id ?? a.companyId;
     if (body.company_id && body.company_id !== a.companyId) {
-      if (!(await canAccessCompany(db, a, body.company_id))) throw badRequest('ไม่มีสิทธิ์เข้าบริษัทนี้');
+      if (!(await canAccessCompany(db, a, body.company_id))) {
+        if (a.isPlatform) throw forbidden(PROVIDER_LOCKED);
+        throw badRequest('ไม่มีสิทธิ์เข้าบริษัทนี้');
+      }
       patch.current_company_id = body.company_id;
       patch.current_branch_id = null;
     }

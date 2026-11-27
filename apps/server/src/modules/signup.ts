@@ -45,7 +45,7 @@ const closedText = (s: SignupState) => `ขณะนี้ปิดรับส�
 /** สร้างลูกค้าผู้ใช้บริการ + กลุ่ม ADMIN + ผู้ดูแลคนแรก (ใช้ทั้งเจ้าหน้าที่สร้างเองและอนุมัติใบสมัคร) */
 export async function createTenantWithAdmin(tx: Kysely<DB>, actor: string | null, t: {
   code: string; name: string; contact_email?: string | null; contact_phone?: string | null; plan?: string; max_companies?: number | null; max_users?: number | null;
-  expires_on?: string | null; status?: string; dpa_signed_on?: string | null; single_session?: boolean; admin_username: string; admin_name: string; password_hash: string;
+  expires_on?: string | null; status?: string; dpa_signed_on?: string | null; single_session?: boolean; admin_username: string; admin_name: string; password_hash: string | null;
   // แพ็กเกจ (HANDOFF 185) — ว่าง = ไม่มีแพ็กเกจ/ตามแพ็กเกจ
   package_id?: string | null; docs_per_month?: number | null; file_quota_mb?: number | null; ai_per_month?: number | null; over_action?: 'W' | 'S';
   // ผู้จ่ายค่า AI (HANDOFF 190) — ไม่ส่ง = ลูกค้าจ่ายเอง · เพดานไม่ส่ง = ค่าเริ่มต้นของคอลัมน์ (20 ดอลลาร์)

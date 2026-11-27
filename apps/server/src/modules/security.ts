@@ -7,6 +7,8 @@ import type { Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth, type AuthContext } from '../http.js';
 import { logActivity } from '../audit.js';
 import { decryptSecret, encryptSecret } from '../secret.js';
+import { tenantIsDemo } from './auth.js';
+import { noticeCustomer, publicBase } from './provider.js';
 
 /**
  * ความปลอดภัยการเข้าระบบ (T0.16) — ใส่รหัสผิด 5 ครั้งล็อก 15 นาที · ไม่บังคับเปลี่ยนรหัสตามรอบ
@@ -260,6 +262,10 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
     await setSec(db, u.id, { totp_secret_enc: null, totp_enabled: false, totp_enabled_at: null, totp_last_step: null, totp_recovery: null });
     await sql`UPDATE sys_session SET ended_at = now() WHERE user_id = ${u.id} AND ended_at IS NULL`.execute(db);
     await logActivity(db, a, { module: 'SET.SEC', action: 'USER_RESET_2FA', docNo: u.username, table: 'sys_user', rowId: u.id });
+    // HANDOFF 204 ข้อ d1: ผู้ให้บริการล้าง 2FA ของผู้ใช้ลูกค้าจริง → แจ้งลูกค้าทางอีเมลผู้ติดต่อ
+    if (a.isPlatform && u.tenant_id && !(await tenantIsDemo(db, u.tenant_id))) noticeCustomer(db, publicBase(req), u.tenant_id, `แจ้งเตือน: ล้างการยืนยันตัวตนสองขั้นของ ${u.username}`, [
+      `เจ้าหน้าที่ผู้ให้บริการ Buddy Account ล้างการยืนยันตัวตนสองขั้น (2FA) ของผู้ใช้ ${u.username} เมื่อ ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`,
+      'ผู้ใช้ต้องตั้ง 2FA ใหม่เมื่อเข้าระบบครั้งถัดไป — ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที']);
     return { ok: true };
   });
 }

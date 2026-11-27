@@ -80,7 +80,11 @@ export interface AuthContext {
   groupId: string | null;
   /** โปรแกรมที่ผู้ใช้เปิดได้ (sys_user.app_access) — null = ทุกโปรแกรมของลูกค้า · ไม่มี (กุญแจ API) = ไม่จำกัดตามนี้ */
   apps?: TenantModuleKey[] | null;
+  /** HANDOFF 204: เจ้าหน้าที่ผู้ให้บริการที่ session ค้างบริษัทของลูกค้าจริง (ถูกตัดออก) — คำขอข้อมูลบริษัท = 403 พร้อมเหตุผล */
+  providerLocked?: boolean;
 }
+/** ข้อความเมื่อเจ้าหน้าที่ผู้ให้บริการเรียกข้อมูลของลูกค้าที่ไม่ใช่ข้อมูลตัวอย่าง (HANDOFF 204) */
+export const PROVIDER_LOCKED = 'เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลบัญชีของลูกค้าไม่ได้ — ข้อมูลของลูกค้าเป็นความลับ (เปิดได้เฉพาะลูกค้าข้อมูลตัวอย่าง) · ดูภาพรวมลูกค้าที่ ศูนย์ผู้ให้บริการ · ลูกค้าต้องการให้ช่วย: ให้ผู้ดูแลของลูกค้าสร้างผู้ใช้ให้ในกิจการของลูกค้าเอง';
 
 declare module 'fastify' {
   interface FastifyRequest { auth?: AuthContext }
@@ -93,6 +97,7 @@ export function requireAuth(req: FastifyRequest): AuthContext {
 
 export function requireCompany(req: FastifyRequest): AuthContext & { companyId: string } {
   const a = requireAuth(req);
+  if (!a.companyId && a.providerLocked) throw new AppError(403, 'PROVIDER_LOCKED', PROVIDER_LOCKED);
   if (!a.companyId) throw new AppError(400, 'NO_COMPANY', 'กรุณาเลือกบริษัทก่อน');
   return a as AuthContext & { companyId: string };
 }

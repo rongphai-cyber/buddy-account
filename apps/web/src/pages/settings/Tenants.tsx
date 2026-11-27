@@ -10,7 +10,7 @@ import { packageBody, PackageFields, packageValues } from '../../components/Pack
 import { useNavigate } from 'react-router-dom';
 import { AI_PAYER_TH, SUSPEND_REASON_TH, TENANT_RETENTION_DAYS, tenantCountdown, tenantCountingDown, todayIso, type SuspendReason } from '@buddy/core';
 
-interface Tenant { id: string; code: string; name: string; contact_email: string | null; contact_phone: string | null; plan: string; max_companies: number | null; max_users: number | null; expires_on: string | null; status: string; company_count: number; user_count: number;
+interface Tenant { id: string; code: string; name: string; is_demo?: boolean; contact_email: string | null; contact_phone: string | null; plan: string; max_companies: number | null; max_users: number | null; expires_on: string | null; status: string; company_count: number; user_count: number;
   dpa_signed_on: string | null; terminated_on: string | null; purge_after: string | null; purged_at: string | null; moved_to: string | null; single_session?: boolean; suspend_reason?: SuspendReason | null;
   package_id?: string | null; package_name?: string | null; docs_per_month?: number | null; file_quota_mb?: number | null; ai_per_month?: number | null; over_action?: 'W' | 'S'; ai_payer?: 'C' | 'P'; ai_limit_usd?: string | null }
 const ST: Record<string, [string, 'n' | 'd' | 'x']> = { A: ['ใช้งาน', 'n'], S: ['ระงับ', 'd'], I: ['เลิกใช้', 'x'] };
@@ -43,7 +43,7 @@ export function TenantsPage() {
           <tbody>
             {rows.map((t) => (
               <tr key={t.id} className="row-open" onClick={() => setEdit(t)}>
-                <td className="mono">{t.code}</td><td>{t.name}</td><td className="small">{t.contact_email} {t.contact_phone}</td><td>{t.package_name ?? <span className="muted" title={t.plan}>ไม่มีแพ็กเกจ</span>}{t.ai_payer === 'P' && <div className="small"><Pill tone="n">AI: {AI_PAYER_TH.P}</Pill></div>}</td>
+                <td className="mono">{t.code}{t.is_demo && <> <Pill tone="d">ตัวอย่าง</Pill></>}</td><td>{t.name}</td><td className="small">{t.contact_email} {t.contact_phone}</td><td>{t.package_name ?? <span className="muted" title={t.plan}>ไม่มีแพ็กเกจ</span>}{t.ai_payer === 'P' && <div className="small"><Pill tone="n">AI: {AI_PAYER_TH.P}</Pill></div>}</td>
                 <td className="r">{t.company_count}{t.max_companies ? ` / ${t.max_companies}` : ''}</td><td className="r">{t.user_count}{t.max_users ? ` / ${t.max_users}` : ''}</td>
                 <td><DateText v={t.expires_on} /></td><td>{t.dpa_signed_on ? <DateText v={t.dpa_signed_on} /> : <span className="small muted">ยังไม่ลงนาม</span>}</td>
                 <td><Pill tone={ST[t.status]?.[1]}>{t.purged_at ? 'ลบข้อมูลแล้ว' : t.moved_to ? 'ย้ายแล้ว' : `${ST[t.status]?.[0]}${t.status === 'S' && t.suspend_reason ? ` — ${SUSPEND_REASON_TH[t.suspend_reason]}` : ''}`}</Pill>{t.moved_to && <div className="small muted">{t.moved_to}</div>}{t.purge_after && !t.purged_at && !t.moved_to && <div className={t.purge_after <= today ? 'small bad' : 'small muted'}>ลบได้ตั้งแต่ <DateText v={t.purge_after} />{t.purge_after <= today ? ' (ครบกำหนดแล้ว)' : ''}</div>}</td>
@@ -62,7 +62,7 @@ export function TenantsPage() {
 
 function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({ code: t?.code ?? '', name: t?.name ?? '', contact_email: t?.contact_email ?? '', contact_phone: t?.contact_phone ?? '', plan: t?.plan ?? 'standard',
-    expires_on: t?.expires_on ?? '', status: t?.status ?? 'A', dpa_signed_on: t?.dpa_signed_on ?? '', moved_to: t?.moved_to ?? '', single_session: t?.single_session ?? false, admin_username: '', admin_name: '', admin_password: '' });
+    expires_on: t?.expires_on ?? '', status: t?.status ?? 'A', dpa_signed_on: t?.dpa_signed_on ?? '', moved_to: t?.moved_to ?? '', single_session: t?.single_session ?? false, admin_username: '', admin_name: '', admin_password: '', is_demo: false });
   const [pk, setPk] = useState(() => packageValues(t));
   const [reason, setReason] = useState<SuspendReason | ''>(t?.suspend_reason ?? '');
   const { me, select } = useSession();
@@ -76,7 +76,13 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
   const save = () => {
     // ช่องบังคับ: ระงับต้องเลือกเหตุ (ค้างชำระ = นับวันลบข้อมูล)
     if (f.status === 'S' && !reason) { setErr(new Error('เลือกเหตุที่ระงับ — "ค้างชำระ" นับ ' + TENANT_RETENTION_DAYS + ' วันแล้วลบข้อมูลได้ · "อื่น ๆ" ไม่นับ')); return; }
-    (t ? api.put(`/api/v1/tenants/${t.id}`, body) : api.post('/api/v1/tenants', body)).then(() => { toast('บันทึกลูกค้าแล้ว'); onSaved(); }).catch(setErr);
+    // HANDOFF 204: ลูกค้าจริง = ไม่ส่งรหัสผ่าน (ระบบส่งลิงก์ไปอีเมลของลูกค้า) · ข้อมูลตัวอย่าง = ตั้งรหัสผ่านเริ่มต้นได้
+    const { admin_password, is_demo, ...rest } = body;
+    const create = { ...rest, is_demo, ...(is_demo ? { admin_password } : {}) };
+    (t ? api.put(`/api/v1/tenants/${t.id}`, rest) : api.post<{ invite?: { emailed_to: string; mail_status: string } }>('/api/v1/tenants', create)).then((r) => {
+      const inv = (r as { invite?: { emailed_to: string; mail_status: string } } | undefined)?.invite;
+      toast(inv ? `บันทึกลูกค้าแล้ว · ส่งลิงก์ตั้งรหัสผ่านของผู้ดูแลไปที่ ${inv.emailed_to}${inv.mail_status === 'S' ? '' : ' (เครื่องนี้ไม่ได้ส่งอีเมลจริง)'}` : 'บันทึกลูกค้าแล้ว'); onSaved();
+    }).catch(setErr);
   };
   useHotkeys({ F9: save, 'Ctrl+S': save }, [f, pk, reason]);
   // วันลบข้อมูลหลังบันทึก (แสดงก่อนกดบันทึก)
@@ -117,7 +123,7 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
             .then((r) => toast(r.created.length || r.rows ? `เพิ่มกลุ่ม ${r.created.join(' ') || '—'} · สิทธิ์รายเมนู ${r.rows} แถว (${r.companies} บริษัท)` : 'มีกลุ่มตั้งต้นและสิทธิ์ครบแล้ว — ไม่ได้เพิ่มอะไร'))
             .catch(toastError)}>เพิ่มกลุ่มตั้งต้น</button></div>
         </>}
-        {t && t.status === 'A' && <>
+        {t && t.status === 'A' && t.is_demo && <>
           <h3 className="wide">ผู้ใช้ดูอย่างเดียว (ให้ลูกค้าทดลองดูข้อมูลตัวอย่าง)</h3>
           <p className="wide small muted">อ่านและดูตัวอย่างพิมพ์ทางจอได้ทุกบริษัทของลูกค้านี้ — เพิ่ม แก้ไข ยกเลิก ลบ รับรอง ไม่ได้ · เห็นเฉพาะข้อมูลของลูกค้านี้ · แนะนำหนึ่งรหัสต่อลูกค้าทดลองหนึ่งราย (ปิดเฉพาะรายได้ที่หน้า ผู้ใช้งานและสิทธิ์)</p>
           <div className="wide"><button type="button" onClick={() => setViewer(true)}>+ เพิ่มผู้ใช้ดูอย่างเดียว…</button></div>
@@ -131,7 +137,8 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
           <h3 className="wide">ย้ายไปเซิร์ฟเวอร์/ฐานข้อมูลแยก (ลูกค้ารายใหญ่)</h3>
           <p className="wide small muted">1) ส่งออกแฟ้มย้ายลูกค้า 2) ที่เครื่องใหม่กด "รับลูกค้าที่ย้ายมา" 3) ตรวจผลแล้วกลับมาใส่ที่อยู่ใหม่ และเปลี่ยนสถานะเป็น "เลิกใช้" — ผู้ใช้จะถูกบอกให้ไปเข้าที่อยู่ใหม่ และลบสำเนาที่เครื่องนี้ได้ทันที</p>
           <Field label="ย้ายไปที่ (ที่อยู่ของเครื่องใหม่)" wide><input value={f.moved_to} placeholder="เช่น https://bigco.buddy.example" onChange={(e) => setF({ ...f, moved_to: e.target.value })} /></Field>
-          <div className="wide"><button onClick={() => setExporting(true)}>⬇ ส่งออกเพื่อย้าย…</button></div>
+          {t.is_demo ? <div className="wide"><button onClick={() => setExporting(true)}>⬇ ส่งออกเพื่อย้าย…</button></div>
+            : <p className="wide small muted">ลูกค้าจริง: ผู้ดูแลของลูกค้าส่งออกแฟ้มย้ายเองด้วยรหัสผ่านของตัวเอง (ผู้ให้บริการเปิดข้อมูลของลูกค้าไม่ได้ — HANDOFF 204)</p>}
         </>}
         {t && tenantCountingDown(t) && <div className="wide notebox">
           {t.moved_to ? <>ย้ายไปที่ {t.moved_to} แล้ว — ลบสำเนาที่เครื่องนี้ได้ทันที{' '}<button className="danger" onClick={() => setPurge(true)}>ลบข้อมูลทั้งหมดของลูกค้า…</button></>
@@ -147,7 +154,10 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
           <h3 className="wide">ผู้ดูแลระบบคนแรกของลูกค้า</h3>
           <Field label="รหัสผู้ใช้" req><input value={f.admin_username} onChange={(e) => setF({ ...f, admin_username: e.target.value })} /></Field>
           <Field label="ชื่อ" req><input value={f.admin_name} onChange={(e) => setF({ ...f, admin_name: e.target.value })} /></Field>
-          <Field label="รหัสผ่านเริ่มต้น (อย่างน้อย 8 ตัว)" req wide><PasswordInput autoComplete="new-password" value={f.admin_password} onChange={(e) => setF({ ...f, admin_password: e.target.value })} /></Field>
+          <Field label="ข้อมูลตัวอย่าง / ทดลอง" wide hint="ติ๊ก = เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลบัญชีของลูกค้านี้ได้ (ใช้กับข้อมูลทดลองเท่านั้น) · ไม่ติ๊ก = ลูกค้าจริง ผู้ให้บริการเห็นเฉพาะภาพรวม">
+            <label className="check"><input type="checkbox" checked={f.is_demo} onChange={(e) => setF({ ...f, is_demo: e.target.checked })} /> ลูกค้าข้อมูลตัวอย่าง (ทดลองใช้)</label></Field>
+          {!f.is_demo && <p className="wide notebox">ลูกค้าจริง: ระบบส่งลิงก์ตั้งรหัสผ่านของผู้ดูแลคนแรกไปที่ <b>อีเมลผู้ติดต่อ</b> ด้านบน (ต้องใส่) — ผู้ให้บริการไม่เห็นลิงก์และรหัสผ่าน</p>}
+          {f.is_demo && <Field label="รหัสผ่านเริ่มต้น (อย่างน้อย 8 ตัว)" req wide><PasswordInput autoComplete="new-password" value={f.admin_password} onChange={(e) => setF({ ...f, admin_password: e.target.value })} /></Field>}
         </>}
       </div>
       {purge && t && <PurgeTenant t={t} onClose={() => setPurge(false)} onDone={onSaved} />}
@@ -281,7 +291,7 @@ type TFeat = { key: string; label: string; hint: string; menus: string[]; enable
  * เมนูที่เปิดให้รายลูกค้า (HANDOFF 200 · TENANT_FEATURES) — ปิดอยู่ = ลูกค้าทุกคน (รวมผู้ดูแลของลูกค้า) ไม่เห็นในเมนู/ตารางสิทธิ์ และ API ตอบ 403
  * เครื่องสาขาเปิดเองเมื่อลูกค้าใช้ WTS-POS หรือมีเครื่องที่ลงทะเบียนไว้แล้ว · เจ้าหน้าที่ผู้ให้บริการใช้ได้เสมอ
  */
-function TenantFeatures({ tenantId }: { tenantId: string }) {
+export function TenantFeatures({ tenantId }: { tenantId: string }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['tenant-features', tenantId], queryFn: () => api.get<TFeat[]>(`/api/v1/tenants/${tenantId}/features`) });
   const [rows, setRows] = useState<TFeat[]>([]);
@@ -318,7 +328,7 @@ function TenantFeatures({ tenantId }: { tenantId: string }) {
 
 type TMod = { key: string; label: string; enabled: boolean; valid_to: string | null; seats: number | null; remark: string | null; app_url: string | null; active: boolean; expired: boolean };
 /** โปรแกรมที่ลูกค้าใช้ได้ (docs/17 B0.6) — Hub แสดงไทล์ตามนี้ · โปรแกรมอื่นตรวจสิทธิ์ที่ GET /api/v1/tenant/modules */
-function TenantModules({ tenantId }: { tenantId: string }) {
+export function TenantModules({ tenantId }: { tenantId: string }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['tenant-modules', tenantId], queryFn: () => api.get<TMod[]>(`/api/v1/tenants/${tenantId}/modules`) });
   const [rows, setRows] = useState<TMod[]>([]);

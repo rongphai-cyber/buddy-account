@@ -5,6 +5,7 @@ import { AI_PAYER_TH, TENANT_MODULES, tenantModuleStatus, type AiPayer } from '@
 import type { Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireAuth } from '../http.js';
 import { logActivity } from '../audit.js';
+import { noticeCustomer, publicBase } from './provider.js';
 import { tenantActive } from './auth.js';
 import { confirmSecondFactor } from './security.js';
 import { tenantLimits } from './usage.js';
@@ -184,6 +185,11 @@ export function companyMoveRoutes(app: FastifyInstance, db: Db) {
       }
       return { ...counts, source: p.source, target: p.target, companies: p.companies.map((c) => ({ id: c.id, code: c.code, name_th: c.name_th })) };
     });
+    // HANDOFF 204 ข้อ d5: แจ้งลูกค้าทั้งสองราย (อีเมลผู้ติดต่อ)
+    const list = res.companies.map((c) => `${c.code} ${c.name_th}`).join(', ');
+    const when = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+    noticeCustomer(db, publicBase(req), res.source.id, `แจ้งเตือน: ย้ายบริษัทออกจากบัญชีของท่าน`, [`ผู้ให้บริการ Buddy Account ย้ายบริษัท ${list} ไปอยู่ในบัญชีลูกค้า ${res.target.code} เมื่อ ${when}`, 'ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที']);
+    noticeCustomer(db, publicBase(req), res.target.id, `แจ้งเตือน: ย้ายบริษัทเข้าบัญชีของท่าน`, [`ผู้ให้บริการ Buddy Account ย้ายบริษัท ${list} จากบัญชีลูกค้า ${res.source.code} เข้ามาในบัญชีของท่าน เมื่อ ${when}`, 'ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที']);
     return res;
   });
 }

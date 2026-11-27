@@ -138,7 +138,7 @@ describe('สิทธิ์เปิดโปรแกรมรายผู้�
 
   it('ข้ามลูกค้าไม่ได้: ผู้ดูแลของลูกค้าอื่นแก้สิทธิ์โปรแกรมของผู้ใช้ลูกค้านี้ไม่ได้', async () => {
     await as('admin', 'secret123');
-    expect((await call('POST', '/api/v1/tenants', { code: 'HUBB', name: 'ลูกค้า B', admin_username: 'b.admin', admin_name: 'ผู้ดูแล B', admin_password: 'passB1234' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'HUBB', name: 'ลูกค้า B', admin_username: 'b.admin', admin_name: 'ผู้ดูแล B', admin_password: 'passB1234' })).status).toBe(200);
     await as('b.admin', 'passB1234');
     const r = await call('PUT', `/api/v1/users/${ids.pos}`, { username: 'u.pos', display_name: 'x', approval_level: 9, companies: [], app_access: null });
     expect(r.status).toBe(404);

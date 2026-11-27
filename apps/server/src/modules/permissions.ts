@@ -12,7 +12,7 @@ import { branchCapture, branchStateOf, checkBranchWrite } from './sync/branch.js
 import { withSource } from './source.js';
 import { payrollSource } from './wts.js';
 import { withVersion } from '../versions.js';
-import { companiesForUser } from './auth.js';
+import { companiesForUser, requireDemoForProvider } from './auth.js';
 import { companySettings } from '../company-template.js';
 
 /**
@@ -331,6 +331,8 @@ export const API_RULES: Record<string, Rule> = {
   // ชื่อภาษาอังกฤษของข้อมูลบริษัทนี้ (โหมด EN)
   'GET /api/v1/i18n/names': LOOKUP,
   'GET /api/v1/signup/config': OPEN, 'POST /api/v1/signup': OPEN, 'GET /api/v1/signups': SELF, 'POST /api/v1/signups/:id/approve': SELF, 'POST /api/v1/signups/:id/reject': SELF,
+  // HANDOFF 204 ศูนย์ผู้ให้บริการ (ตรวจผู้ให้บริการในตัวจัดการ)
+  'GET /api/v1/provider/customers': SELF, 'GET /api/v1/provider/customers/:id': SELF, 'PUT /api/v1/provider/customers/:id/demo': SELF, 'POST /api/v1/provider/users/:id/email-invite': SELF,
   'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/tenants/:id/purge': SELF, 'POST /api/v1/tenants/:id/viewers': SELF, 'POST /api/v1/tenants/:id/standard-groups': SELF, 'POST /api/v1/tenants/:id/move-companies/preview': SELF, 'POST /api/v1/tenants/:id/move-companies': SELF, 'POST /api/v1/tenants/:id/export': SELF, 'POST /api/v1/tenants/import': SELF, 'POST /api/v1/companies': SELF,
   // T7.8 ออฟไลน์สาขา: เครื่องสาขา (ผู้ดูแลบริษัท) · API ของเครื่องสาขายืนยันด้วยรหัสเครื่อง (OPEN + ตรวจในตัว) · สถานะ/ส่งใหม่ของเครื่องสาขา (SELF)
   'GET /api/v1/devices': M('SET.DEVICE', 'read'), 'POST /api/v1/devices': M('SET.DEVICE', 'add'), 'POST /api/v1/devices/:id/new-code': M('SET.DEVICE', 'edit'),
@@ -582,8 +584,17 @@ export function attachPermissions(app: FastifyInstance, database: Database, rls:
       const a = req.auth;
       if (!a?.companyId) return handler.call(this, req, reply);
       // WTS Connect (docs/17 B0.1): เอกสารจากระบบอื่น ส่งซ้ำไม่ลงซ้ำ + แก้ที่หน้าจอไม่ได้
-      const run = () => runInCompanyScope(database, { companyId: a.companyId!, tenantId: a.tenantId, isPlatform: a.isPlatform, rls },
-        async () => withSource(database, req, reply, routeKey, () => withVersion(db, r.url, req, reply, a.companyId!, () => handler.call(this, req, reply)), handlers, authorize));
+      // HANDOFF 204: เจ้าหน้าที่ผู้ให้บริการทำงานในบริษัทได้เฉพาะลูกค้าข้อมูลตัวอย่าง (ด่านที่สอง — session เลือกบริษัทลูกค้าจริงไม่ได้อยู่แล้ว)
+      // และทำงานในขอบเขตแบบผู้ใช้ของลูกค้านั้น (RLS ไม่ใช้ทางผ่านของผู้ให้บริการ — เห็นผู้ใช้/บริษัทของลูกค้านั้นเท่านั้น)
+      const run = async () => {
+        let tenantId = a.tenantId;
+        if (a.isPlatform) {
+          tenantId = (await db.selectFrom('sys_company').select('tenant_id').where('id', '=', a.companyId!).executeTakeFirst())?.tenant_id ?? null;
+          await requireDemoForProvider(db, a, tenantId);
+        }
+        return runInCompanyScope(database, { companyId: a.companyId!, tenantId, isPlatform: false, rls },
+          async () => withSource(database, req, reply, routeKey, () => withVersion(db, r.url, req, reply, a.companyId!, () => handler.call(this, req, reply)), handlers, authorize));
+      };
       // ออฟไลน์สาขา (T7.8): สำนักงานใหญ่รับเอกสารจากสาขา (replay) / เครื่องสาขาจดเอกสารลงคิว (capture)
       const rk = req.headers['x-buddy-replay'];
       const replay = typeof rk === 'string' ? replays.get(rk) : undefined;

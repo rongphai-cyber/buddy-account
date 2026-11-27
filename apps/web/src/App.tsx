@@ -14,6 +14,7 @@ import { LoginPage, SetupPage } from './pages/Login';
 import { SignupPage } from './pages/Signup';
 import { LangSwitch } from './components/LangSwitch';
 import { HomePage } from './pages/Home';
+import { ProviderCustomerPage, ProviderCustomersPage } from './pages/provider/ProviderConsole';
 import { AccountsPage } from './pages/gl/Accounts';
 import { JournalsPage } from './pages/gl/Journals';
 import { JournalImportPage } from './pages/gl/JournalImport';
@@ -183,6 +184,8 @@ function Shell() {
   // เปิดเอกสารใหม่ (+ ใหม่ · + เพิ่ม · Insert · บันทึก+ใหม่) → เคอร์เซอร์ช่องแรกของเอกสาร
   useEffect(() => { if (/\/new$/.test(loc.pathname)) focusStart(); }, [loc.key]);
   const ys = me?.company?.year_system ?? 'B';
+  // HANDOFF 204: เจ้าหน้าที่ผู้ให้บริการไม่มีบริษัทให้เลือก (เข้าได้เฉพาะลูกค้าข้อมูลตัวอย่าง) = ศูนย์ผู้ให้บริการ
+  if (!me?.company && me?.user.is_platform) return <ProviderShell />;
   if (!me?.company) {
     return (
       <div className="page narrow">
@@ -201,7 +204,7 @@ function Shell() {
         <button className="burger" onClick={() => setMobileMenu((x) => !x)} aria-label="เมนู">☰</button>
         <button className="brand" onClick={() => nav('/')} title="หน้าแรก (Alt+H)" aria-label="Buddy Account — หน้าแรก"><picture><source media="(max-width: 480px)" srcSet="/brand/wts-icon-64.png" /><img src="/brand/buddy-logo-40.png" srcSet="/brand/buddy-logo-80.png 2x, /brand/buddy-logo-160.png 4x" alt="Buddy Account" /></picture></button>
         <select className="company-sel" value={me.company.id} aria-label="บริษัท" onChange={(e) => { const v = e.target.value; void confirmLeave().then((ok) => { if (ok) select({ company_id: v }).then(() => nav('/')).catch(toastError); }); }}>
-          {me.companies.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name_th}</option>)}
+          {companyOptions(me.companies)}
         </select>
         <div className="scope">
           {me.branches.length > 1 && (
@@ -342,6 +345,8 @@ function Shell() {
           <Route path="/account/password" element={<PasswordPage />} />
           <Route path="/admin/import" element={<ImportPage />} />
           <Route path="/admin/tenants" element={<TenantsPage />} />
+          <Route path="/provider" element={<ProviderCustomersPage />} />
+          <Route path="/provider/customers/:id" element={<ProviderCustomerPage />} />
           <Route path="/admin/packages" element={<PackagesPage />} />
           <Route path="/settings/usage" element={<UsagePage />} />
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
@@ -464,5 +469,56 @@ function WorkDateDialog({ onClose }: { onClose: () => void }) {
       <DateInput value={v} onChange={setV} autoFocus />
       {cur && <p className="small">ทำงานปี <b>{fiscalYearLabel(cur, ys)}</b> ({formatDate(cur.start_date, ys)} – {formatDate(cur.end_date, ys)})</p>}
     </Modal>
+  );
+}
+
+/** ตัวเลือกบริษัท: หลายลูกค้า = จัดกลุ่มตามลูกค้า (HANDOFF 204 — เจ้าของ "ควรจัดเป็นหมวดหมู่ตามลูกค้าแต่ละราย") */
+function companyOptions(companies: Me['companies']) {
+  const tenants = [...new Set(companies.map((c) => c.tenant_code ?? ''))];
+  const opt = (c: Me['companies'][number]) => <option key={c.id} value={c.id}>{c.code} · {c.name_th}</option>;
+  if (tenants.length <= 1) return companies.map(opt);
+  return tenants.map((t) => {
+    const cs = companies.filter((c) => (c.tenant_code ?? '') === t);
+    return <optgroup key={t || '-'} label={`ลูกค้า ${t || '-'}${cs[0]?.tenant_name ? ` · ${cs[0].tenant_name}` : ''}`}>{cs.map(opt)}</optgroup>;
+  });
+}
+
+/**
+ * ศูนย์ผู้ให้บริการแบบไม่มีบริษัท (HANDOFF 204): เจ้าหน้าที่ผู้ให้บริการเข้าบริษัทของลูกค้าจริงไม่ได้ — ใช้หน้านี้ดูแลลูกค้า
+ * บริษัทข้อมูลตัวอย่าง (ถ้ามี) เลือกจากแถบบนได้
+ */
+function ProviderShell() {
+  const { me, logout } = useSession();
+  const nav = useNavigate();
+  const loc = useLocation();
+  const items: Array<[string, string]> = [['/provider', 'ลูกค้าทั้งหมด (ภาพรวม)'], ['/admin/tenants', 'ใบสมัคร / เพิ่ม-แก้ไขลูกค้า'], ['/admin/packages', 'แพ็กเกจและการใช้งานลูกค้า'], ['/settings/usage', 'การใช้งานและแพ็กเกจ']];
+  return (
+    <div className="provider-shell">
+      <header className="topbar provider-top">
+        <button className="brand" onClick={() => nav('/provider')} aria-label="ศูนย์ผู้ให้บริการ"><img src="/brand/buddy-logo-40.png" alt="Buddy Account" height={32} /></button>
+        <b className="provider-title">ศูนย์ผู้ให้บริการ</b>
+        <span className="provider-user small">{me?.user.display_name}</span>
+        <LangSwitch />
+        <button onClick={() => void logout()}>ออก</button>
+      </header>
+      <nav className="provider-nav" aria-label="เมนูศูนย์ผู้ให้บริการ">
+        {items.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => cx(isActive && 'active')} end={to === '/provider' ? false : undefined}>{label}</NavLink>)}
+        <NavLink to="/account/password">รหัสผ่านและยืนยันตัวตน</NavLink>
+      </nav>
+      <main className="provider-main">
+        <Routes>
+          <Route path="/provider" element={<ProviderCustomersPage />} />
+          <Route path="/provider/customers/:id" element={<ProviderCustomerPage />} />
+          <Route path="/admin/tenants" element={<TenantsPage />} />
+          <Route path="/admin/packages" element={<PackagesPage />} />
+          <Route path="/settings/usage" element={<UsagePage />} />
+          <Route path="/account/password" element={<PasswordPage />} />
+          <Route path="/companies/new" element={<NewCompanyPage />} />
+          <Route path="*" element={<Navigate to="/provider" replace />} />
+        </Routes>
+      </main>
+      <Toasts />
+      {loc.pathname === '/' && <Navigate to="/provider" replace />}
+    </div>
   );
 }

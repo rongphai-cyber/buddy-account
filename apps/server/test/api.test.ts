@@ -3220,8 +3220,8 @@ describe('Buddy Account API (PGlite)', () => {
     };
     const login = async (u: string, p: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: p })).status).toBe(200); };
     expect((await raw('POST', '/api/v1/backup/users', { password: PW })).json.error.message).toMatch(/ผู้ดูแลของลูกค้า/);
-    expect((await call('POST', '/api/v1/tenants', { code: 'BKUPX', name: 'ลูกค้าสำรอง X', admin_username: 'bx.admin', admin_name: 'ผู้ดูแล X', admin_password: 'passX1234' })).status).toBe(200);
-    expect((await call('POST', '/api/v1/tenants', { code: 'BKUPY', name: 'ลูกค้าสำรอง Y', admin_username: 'by.admin', admin_name: 'ผู้ดูแล Y', admin_password: 'passY1234' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'BKUPX', name: 'ลูกค้าสำรอง X', admin_username: 'bx.admin', admin_name: 'ผู้ดูแล X', admin_password: 'passX1234' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'BKUPY', name: 'ลูกค้าสำรอง Y', admin_username: 'by.admin', admin_name: 'ผู้ดูแล Y', admin_password: 'passY1234' })).status).toBe(200);
     await login('bx.admin', 'passX1234');
     const x1 = (await call('POST', '/api/v1/companies', { code: 'X1', name_th: 'บริษัท เอ็กซ์ จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
     await call('POST', '/api/v1/auth/select', { company_id: x1 });
@@ -3352,7 +3352,8 @@ describe('Buddy Account API (PGlite)', () => {
     const dir = new URL('../../../db/migrations/', import.meta.url);
     const covered = new Set([...COMPANY_STEPS, ...USER_STEPS].map((s) => s.n));
     // ตรวจแล้วว่าไม่ต้องทำซ้ำตอนนำกลับ: แก้เฉพาะตารางกลาง (ไม่อยู่ในแฟ้มสำรอง)
-    const GLOBAL = new Set(['sys_menu', 'md_lookup_type', 'sys_setting_def', 'sys_doc_class', 'sys_schema_migration', 'sync_change_log', 'sys_package']);   // sys_package = แพ็กเกจตั้งต้นของผู้ให้บริการ (0076)   // sync_change_log = ในฟังก์ชันทริกเกอร์ 0032 (คิวซิงก์ไม่อยู่ในแฟ้มสำรอง)
+    // sys_tenant = ข้อมูลลูกค้าผู้ใช้บริการ (ไม่อยู่ในแฟ้มสำรองบริษัท/ผู้ใช้ — 0085 ติ๊ก DEMO เป็นข้อมูลตัวอย่าง HANDOFF 204)
+    const GLOBAL = new Set(['sys_menu', 'md_lookup_type', 'sys_setting_def', 'sys_doc_class', 'sys_schema_migration', 'sync_change_log', 'sys_package', 'sys_tenant']);   // sys_package = แพ็กเกจตั้งต้นของผู้ให้บริการ (0076)   // sync_change_log = ในฟังก์ชันทริกเกอร์ 0032 (คิวซิงก์ไม่อยู่ในแฟ้มสำรอง)
     const missing: string[] = [];
     for (const f of (await readdir(dir)).filter((x) => /^\d{4}_.*\.sql$/.test(x)).sort()) {
       const n = Number(f.slice(0, 4));
@@ -4418,8 +4419,8 @@ describe('Buddy Account API (PGlite)', () => {
   it('separates customer tenants completely (หลายลูกค้า ข้อมูลไม่ปนกัน)', async () => {
     const platform = cookie;
     // เจ้าหน้าที่ผู้ให้บริการสร้างลูกค้า 2 ราย
-    const ta = await call('POST', '/api/v1/tenants', { code: 'CUSTA', name: 'ลูกค้า A', admin_username: 'a.admin', admin_name: 'ผู้ดูแล A', admin_password: 'passA1234', max_companies: 2 });
-    const tb = await call('POST', '/api/v1/tenants', { code: 'CUSTB', name: 'ลูกค้า B', admin_username: 'b.admin', admin_name: 'ผู้ดูแล B', admin_password: 'passB1234' });
+    const ta = await call('POST', '/api/v1/tenants', { is_demo: true, code: 'CUSTA', name: 'ลูกค้า A', admin_username: 'a.admin', admin_name: 'ผู้ดูแล A', admin_password: 'passA1234', max_companies: 2 });
+    const tb = await call('POST', '/api/v1/tenants', { is_demo: true, code: 'CUSTB', name: 'ลูกค้า B', admin_username: 'b.admin', admin_name: 'ผู้ดูแล B', admin_password: 'passB1234' });
     expect(ta.status).toBe(200); expect(tb.status).toBe(200);
     const login = async (u: string, p: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: p }); return r; };
 
@@ -4447,7 +4448,8 @@ describe('Buddy Account API (PGlite)', () => {
     const aCookie = cookie;
     cookie = platform;
     await call('POST', '/api/v1/auth/select', { company_id: ca });
-    expect((await call('POST', '/api/v1/api-keys', { name: 'ข้ามลูกค้า', user_id: otherUser })).body.error.message).toMatch(/ต่างลูกค้ากับบริษัท/);
+    // HANDOFF 204: ผู้ให้บริการทำงานในบริษัทแบบผู้ใช้ของลูกค้านั้น (RLS) — ผู้ใช้ของลูกค้ารายอื่น = ไม่พบ
+    expect((await call('POST', '/api/v1/api-keys', { name: 'ข้ามลูกค้า', user_id: otherUser })).body.error.message).toMatch(/ต่างลูกค้ากับบริษัท|ไม่พบผู้ใช้/);
     const aKey = (await call('POST', '/api/v1/api-keys', { name: 'ระบบของ A', user_id: aAdminId, read_only: true })).body.key as string;
     await call('POST', '/api/v1/auth/select', { company_id: companyId });
     cookie = aCookie;
@@ -4728,7 +4730,7 @@ describe('ความปลอดภัยการเข้าระบบ (T0
 
       // ลูกค้าอื่น (ข้อ 7.1): เชิญ/ยกเลิก/ล้าง 2FA ผู้ใช้ของลูกค้า B ไม่ได้ · ผู้ใช้ทั่วไปสร้างลิงก์ไม่ได้
       cookie = admin;
-      expect((await call('POST', '/api/v1/tenants', { code: 'INVX', name: 'ลูกค้าเชิญอื่น', admin_username: 'inv.admin', admin_name: 'ผู้ดูแลอื่น', admin_password: 'passInv1234' })).status).toBe(200);
+      expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'INVX', name: 'ลูกค้าเชิญอื่น', admin_username: 'inv.admin', admin_name: 'ผู้ดูแลอื่น', admin_password: 'passInv1234' })).status).toBe(200);
       expect((await login('inv.admin', 'passInv1234')).status).toBe(200);
       expect((await call('POST', `/api/v1/users/${uid}/invite`)).status).toBe(404);
       expect((await call('DELETE', `/api/v1/users/${uid}/invite`)).status).toBe(404);
@@ -4814,8 +4816,8 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       expect((await call('POST', '/api/v1/packages', { code: 'BAD', name_th: 'x', price_year: '-5', over_company_year: '0', over_user_year: '0', over_doc: '0', over_file_gb_month: '0', over_ai: '0' })).status).toBe(400);
       // ลูกค้าใหม่พร้อมแพ็กเกจ · อีกรายไม่มีแพ็กเกจ (= ไม่จำกัด)
       // HANDOFF 190: โควตา/ส่วนเกิน AI ของแพ็กเกจใช้เฉพาะลูกค้าที่ WTS จ่ายค่า AI ให้ (P)
-      expect((await call('POST', '/api/v1/tenants', { code: 'PKGA', name: 'ลูกค้าแพ็กเกจ', admin_username: 'pkga.admin', admin_name: 'ผู้ดูแลแพ็กเกจ', admin_password: 'passPkgA1234', package_id: tiny.body.id, ai_payer: 'P' })).status).toBe(200);
-      expect((await call('POST', '/api/v1/tenants', { code: 'PKGB', name: 'ลูกค้าไม่มีแพ็กเกจ', admin_username: 'pkgb.admin', admin_name: 'ผู้ดูแลบี', admin_password: 'passPkgB1234' })).status).toBe(200);
+      expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'PKGA', name: 'ลูกค้าแพ็กเกจ', admin_username: 'pkga.admin', admin_name: 'ผู้ดูแลแพ็กเกจ', admin_password: 'passPkgA1234', package_id: tiny.body.id, ai_payer: 'P' })).status).toBe(200);
+      expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'PKGB', name: 'ลูกค้าไม่มีแพ็กเกจ', admin_username: 'pkgb.admin', admin_name: 'ผู้ดูแลบี', admin_password: 'passPkgB1234' })).status).toBe(200);
       const ta = ((await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; plan: string; package_name: string | null; over_action: string }>).find((t) => t.code === 'PKGA')!;
       expect([ta.plan, ta.package_name, ta.over_action]).toEqual(['TINY', 'ทดลองเล็ก', 'W']);
       // ลูกค้าเดิม (ก่อนมีแพ็กเกจ) ไม่เปลี่ยน
@@ -4931,7 +4933,7 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     try {
       cookie = admin;
       // ลูกค้าใหม่ (ค่าเริ่มต้น = ลูกค้าจ่ายเอง · เพดาน 20 ดอลลาร์)
-      expect((await call('POST', '/api/v1/tenants', { code: 'AIP', name: 'ลูกค้า WTS จ่าย AI', admin_username: 'aip.admin', admin_name: 'ผู้ดูแล AIP', admin_password: 'passAip12345' })).status).toBe(200);
+      expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'AIP', name: 'ลูกค้า WTS จ่าย AI', admin_username: 'aip.admin', admin_name: 'ผู้ดูแล AIP', admin_password: 'passAip12345' })).status).toBe(200);
       const tAip = ((await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; ai_payer: string; ai_limit_usd: string | null }>).find((t) => t.code === 'AIP')!;
       expect([tAip.ai_payer, tAip.ai_limit_usd]).toEqual(['C', '20.00']);
       expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_tenant WHERE ai_payer <> 'C' AND code IN ('CUSTB', 'DEMO')`.execute(database.db)).rows[0]!.n).toBe(0);   // ลูกค้าเดิม = ลูกค้าจ่ายเอง
@@ -5049,7 +5051,7 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     const R = (menu_code: string, v: Partial<Record<string, string>>) => ({ menu_code, can_read: '', can_add: '', can_edit: '', can_cancel: '', can_delete: '', can_print: '', can_approve: '', ...v });
     try {
       cookie = admin;
-      expect((await call('POST', '/api/v1/tenants', { code: 'GRP191', name: 'ลูกค้ากลุ่มผู้ใช้ 191', admin_username: 'g191.admin', admin_name: 'ผู้ดูแล 191', admin_password: 'passG19112345' })).status).toBe(200);
+      expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'GRP191', name: 'ลูกค้ากลุ่มผู้ใช้ 191', admin_username: 'g191.admin', admin_name: 'ผู้ดูแล 191', admin_password: 'passG19112345' })).status).toBe(200);
       const tid191 = ((await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string }>).find((t) => t.code === 'GRP191')!.id;
       expect((await login('g191.admin', 'passG19112345')).status).toBe(200);
       const co = (await call('POST', '/api/v1/companies', { code: 'G191-1', name_th: 'บริษัท กลุ่ม 191 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
@@ -5075,9 +5077,10 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       // เขียน/อ่านสิทธิ์ของกลุ่ม/ผู้ใช้ลูกค้ารายอื่นในบริษัทนี้ไม่ได้ แม้เป็นผู้ให้บริการ
       for (const [t, id] of [['G', foreignG.id], ['U', foreignU.id]] as const) {
         const w = await call('PUT', '/api/v1/permissions', { subject_type: t, subject_id: id, rows: [R('GL.JNL', { can_read: 'Y' })] });
-        expect(w.status).toBe(400);
-        expect(w.body.error.message).toMatch(/เป็นของลูกค้ารายอื่น.*เลือกบริษัทของลูกค้ารายนั้นก่อน/);
-        expect((await call('GET', `/api/v1/permissions?subject_type=${t}&subject_id=${id}`)).status).toBe(400);
+        // HANDOFF 204: ในบริษัท ผู้ให้บริการอยู่ใต้ RLS ของลูกค้านั้น — กลุ่ม/ผู้ใช้ของลูกค้าอื่น = ไม่พบ (404) หรือ 400 เดิม
+        expect([400, 404]).toContain(w.status);
+        if (w.status === 400) expect(w.body.error.message).toMatch(/เป็นของลูกค้ารายอื่น.*เลือกบริษัทของลูกค้ารายนั้นก่อน/);
+        expect([400, 404]).toContain((await call('GET', `/api/v1/permissions?subject_type=${t}&subject_id=${id}`)).status);
       }
       expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_permission WHERE company_id = ${co} AND subject_id IN (${foreignG.id}, ${foreignU.id})`.execute(database.db)).rows[0]!.n).toBe(0);
       // กลุ่มของลูกค้าเจ้าของบริษัท: ได้ตามเดิม
@@ -5104,7 +5107,7 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     try {
       cookie = admin;
       for (const [code, user] of [['SRC192', 'src192.admin'], ['DST192', 'dst192.admin']]) {
-        expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: user, admin_name: `ผู้ดูแล ${code}`, admin_password: 'passMove19212' })).status).toBe(200);
+        expect((await call('POST', '/api/v1/tenants', { is_demo: true, code, name: `ลูกค้า ${code}`, admin_username: user, admin_name: `ผู้ดูแล ${code}`, admin_password: 'passMove19212' })).status).toBe(200);
       }
       const ts = (await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; name: string }>;
       const src = ts.find((t) => t.code === 'SRC192')!, dst = ts.find((t) => t.code === 'DST192')!;
@@ -5211,7 +5214,7 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     const start = cookie;
     try {
       cookie = admin;
-      expect((await call('POST', '/api/v1/tenants', { code: 'SRT195', name: 'ลูกค้าเรียงรายการ 195', admin_username: 's195.admin', admin_name: 'ผู้ดูแล 195', admin_password: 'passS19512345' })).status).toBe(200);
+      expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'SRT195', name: 'ลูกค้าเรียงรายการ 195', admin_username: 's195.admin', admin_name: 'ผู้ดูแล 195', admin_password: 'passS19512345' })).status).toBe(200);
       expect((await login('s195.admin', 'passS19512345')).status).toBe(200);
       const co = (await call('POST', '/api/v1/companies', { code: 'S195-1', name_th: 'บริษัท เรียงรายการ 195 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
       expect((await call('POST', '/api/v1/auth/select', { company_id: co })).status).toBe(200);
@@ -5288,8 +5291,8 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     const in30 = pdpaPurgeAfter(today);
     try {
       cookie = admin;
-      expect((await call('POST', '/api/v1/tenants', { code: 'RETA', name: 'ลูกค้าเก็บข้อมูล', admin_username: 'ret.admin', admin_name: 'ผู้ดูแลเก็บข้อมูล', admin_password: 'passRet1234' })).status).toBe(200);
-      expect((await call('POST', '/api/v1/tenants', { code: 'RETB', name: 'ลูกค้าอื่นเก็บข้อมูล', admin_username: 'retb.admin', admin_name: 'ผู้ดูแลบี', admin_password: 'passRetB1234' })).status).toBe(200);
+      expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'RETA', name: 'ลูกค้าเก็บข้อมูล', admin_username: 'ret.admin', admin_name: 'ผู้ดูแลเก็บข้อมูล', admin_password: 'passRet1234' })).status).toBe(200);
+      expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'RETB', name: 'ลูกค้าอื่นเก็บข้อมูล', admin_username: 'retb.admin', admin_name: 'ผู้ดูแลบี', admin_password: 'passRetB1234' })).status).toBe(200);
       const tid = ((await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string }>).find((t) => t.code === 'RETA')!.id;
       expect((await login('ret.admin', 'passRet1234')).status).toBe(200);
       const co = (await call('POST', '/api/v1/companies', { code: 'RET-1', name_th: 'บริษัทเก็บข้อมูล', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
@@ -5549,7 +5552,7 @@ describe('ข้อมูลส่วนบุคคล PDPA (T0.17)', () => {
 
   it('register, subject search/report, contact erase anytime, full erase only after 5-year retention, request register', async () => {
     expect((await login('admin', 'secret123')).status).toBe(200);
-    const t = await call('POST', '/api/v1/tenants', { code: 'CUSTP', name: 'ลูกค้า P', admin_username: 'p.admin', admin_name: 'ผู้ดูแล P', admin_password: 'passP1234', dpa_signed_on: '2026-01-15' });
+    const t = await call('POST', '/api/v1/tenants', { is_demo: true, code: 'CUSTP', name: 'ลูกค้า P', admin_username: 'p.admin', admin_name: 'ผู้ดูแล P', admin_password: 'passP1234', dpa_signed_on: '2026-01-15' });
     expect(t.status).toBe(200); tenantId = t.body.id;
     expect((await call('GET', '/api/v1/tenants')).body.find((x: { code: string }) => x.code === 'CUSTP').dpa_signed_on).toBe('2026-01-15');
     expect((await login('p.admin', 'passP1234')).status).toBe(200);
@@ -5699,7 +5702,7 @@ describe('ย้ายลูกค้าไปเซิร์ฟเวอร์/
   it('exports a whole tenant to an encrypted file, imports it on another database, users/2FA/rights/balances intact, source closed', async () => {
     // ต้นทาง: ลูกค้า M มีบริษัท ใบสำคัญ (งวดปิดแล้ว) ลูกค้า สิทธิ์รายเมนู ผู้ใช้เปิด 2FA และข้อมูลที่เจ้าหน้าที่ผู้ให้บริการเคยบันทึก
     expect((await login('admin', 'secret123')).status).toBe(200);
-    const t = (await call('POST', '/api/v1/tenants', { code: 'CUSTM', name: 'ลูกค้ารายใหญ่ M', admin_username: 'm.admin', admin_name: 'ผู้ดูแล M', admin_password: 'passM1234' })).body.id as string;
+    const t = (await call('POST', '/api/v1/tenants', { is_demo: true, code: 'CUSTM', name: 'ลูกค้ารายใหญ่ M', admin_username: 'm.admin', admin_name: 'ผู้ดูแล M', admin_password: 'passM1234' })).body.id as string;
     expect((await login('m.admin', 'passM1234')).status).toBe(200);
     const co = (await call('POST', '/api/v1/companies', { code: 'M-CO1', name_th: 'บริษัท เอ็ม จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
     await call('POST', '/api/v1/auth/select', { company_id: co });
@@ -6767,8 +6770,8 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const start = cookie;
     const login = async (u: string, pw: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: pw }); };
     expect((await login('admin', 'secret123')).status).toBe(200);
-    expect((await call('POST', '/api/v1/tenants', { code: 'CPYT', name: 'ลูกค้าคัดลอกบริษัท', admin_username: 'cpy.admin', admin_name: 'ผู้ดูแลคัดลอก', admin_password: 'passCopy1234', max_companies: 4 })).status).toBe(200);
-    expect((await call('POST', '/api/v1/tenants', { code: 'CPYB', name: 'ลูกค้าอีกราย', admin_username: 'cpyb.admin', admin_name: 'ผู้ดูแลอีกราย', admin_password: 'passCopyB1234' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'CPYT', name: 'ลูกค้าคัดลอกบริษัท', admin_username: 'cpy.admin', admin_name: 'ผู้ดูแลคัดลอก', admin_password: 'passCopy1234', max_companies: 4 })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'CPYB', name: 'ลูกค้าอีกราย', admin_username: 'cpyb.admin', admin_name: 'ผู้ดูแลอีกราย', admin_password: 'passCopyB1234' })).status).toBe(200);
     expect((await login('cpy.admin', 'passCopy1234')).status).toBe(200);
     const src = (await call('POST', '/api/v1/companies', { code: 'CPY-SRC', name_th: 'บริษัทต้นฉบับ', fiscal_start: '2025-01-01', chart: 'express' })).body.id;
     await call('POST', '/api/v1/auth/select', { company_id: src });
@@ -6854,7 +6857,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const start = cookie;
     const login = async (u: string, pw: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: pw }); };
     expect((await login('admin', 'secret123')).status).toBe(200);
-    expect((await call('POST', '/api/v1/tenants', { code: 'ADRT', name: 'ลูกค้าย้ายที่อยู่', admin_username: 'adr.admin', admin_name: 'ผู้ดูแลที่อยู่', admin_password: 'passAddr1234', max_companies: 2 })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'ADRT', name: 'ลูกค้าย้ายที่อยู่', admin_username: 'adr.admin', admin_name: 'ผู้ดูแลที่อยู่', admin_password: 'passAddr1234', max_companies: 2 })).status).toBe(200);
     expect((await login('adr.admin', 'passAddr1234')).status).toBe(200);
     const co = (await call('POST', '/api/v1/companies', { code: 'ADR-CO1', name_th: 'บริษัทย้ายที่อยู่', fiscal_start: '2024-01-01', chart: 'express' })).body.id;
     await call('POST', '/api/v1/auth/select', { company_id: co });
@@ -6928,8 +6931,8 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const start = cookie;
     const login = async (u: string, pw: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: pw }); };
     expect((await login('admin', 'secret123')).status).toBe(200);
-    expect((await call('POST', '/api/v1/tenants', { code: 'YFXT', name: 'ลูกค้าวันที่ผิดปี', admin_username: 'yfx.admin', admin_name: 'ผู้ดูแลวันที่', admin_password: 'passYear1234', max_companies: 3 })).status).toBe(200);
-    expect((await call('POST', '/api/v1/tenants', { code: 'YFXB', name: 'ลูกค้าอีกรายวันที่', admin_username: 'yfxb.admin', admin_name: 'ผู้ดูแลอีกราย', admin_password: 'passYearB1234' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'YFXT', name: 'ลูกค้าวันที่ผิดปี', admin_username: 'yfx.admin', admin_name: 'ผู้ดูแลวันที่', admin_password: 'passYear1234', max_companies: 3 })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'YFXB', name: 'ลูกค้าอีกรายวันที่', admin_username: 'yfxb.admin', admin_name: 'ผู้ดูแลอีกราย', admin_password: 'passYearB1234' })).status).toBe(200);
     expect((await login('yfx.admin', 'passYear1234')).status).toBe(200);
     const co = (await call('POST', '/api/v1/companies', { code: 'YF-A', name_th: 'บริษัทวันที่ผิดปี', fiscal_start: '2025-01-01', chart: 'express' })).body.id;
     await call('POST', '/api/v1/auth/select', { company_id: co });
@@ -7030,7 +7033,7 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const start = cookie;
     const login = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };
     expect((await login('admin', 'secret123')).status).toBe(200);
-    expect((await call('POST', '/api/v1/tenants', { code: 'YRLK', name: 'ลูกค้าปิดปี', admin_username: 'yr.admin', admin_name: 'ผู้ดูแลปิดปี', admin_password: 'passYear1234', max_companies: 3 })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'YRLK', name: 'ลูกค้าปิดปี', admin_username: 'yr.admin', admin_name: 'ผู้ดูแลปิดปี', admin_password: 'passYear1234', max_companies: 3 })).status).toBe(200);
     expect((await login('yr.admin', 'passYear1234')).status).toBe(200);
     const co = (await call('POST', '/api/v1/companies', { code: 'YR-CO1', name_th: 'บริษัทสามปี', fiscal_start: '2024-01-01', chart: 'express' })).body.id;
     const co2 = (await call('POST', '/api/v1/companies', { code: 'YR-CO2', name_th: 'บริษัทยอดสองปีก่อน', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
@@ -7120,8 +7123,8 @@ describe('นำเข้ารายการขาย/ซื้อจากแ
     const call2 = async (u: string, p: string) => { cookie = ''; return call('POST', '/api/v1/auth/login', { username: u, password: p }); };
     expect((await call2('admin', 'secret123')).status).toBe(200);
     const platform = cookie;
-    expect((await call('POST', '/api/v1/tenants', { code: 'DELTA', name: 'ลูกค้าลบบริษัท', admin_username: 'del.admin', admin_name: 'ผู้ดูแลลบ', admin_password: 'passDel1234', max_companies: 3 })).status).toBe(200);
-    expect((await call('POST', '/api/v1/tenants', { code: 'DELTB', name: 'ลูกค้าอีกราย', admin_username: 'delb.admin', admin_name: 'ผู้ดูแลอีกราย', admin_password: 'passDelB1234' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'DELTA', name: 'ลูกค้าลบบริษัท', admin_username: 'del.admin', admin_name: 'ผู้ดูแลลบ', admin_password: 'passDel1234', max_companies: 3 })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'DELTB', name: 'ลูกค้าอีกราย', admin_username: 'delb.admin', admin_name: 'ผู้ดูแลอีกราย', admin_password: 'passDelB1234' })).status).toBe(200);
     expect((await call2('del.admin', 'passDel1234')).status).toBe(200);
     const c1 = (await call('POST', '/api/v1/companies', { code: 'DEL-CO1', name_th: 'บริษัทใช้งาน', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
     const c2 = (await call('POST', '/api/v1/companies', { code: 'DEL-CO2', name_th: 'บริษัทสร้างผิด', fiscal_start: '2026-01-01', chart: 'express' })).body.id;
@@ -7937,7 +7940,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
     const STD = ['ACC', 'FIN', 'GA', 'HR', 'PURCH', 'SALE', 'VIEW'];   // HANDOFF 197: + ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล
     const platform = await login('admin', 'secret123');
-    for (const [code, u, pw] of [['GRP-A', 'grp.a', 'passGrpA1'], ['GRP-B', 'grp.b', 'passGrpB1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
+    for (const [code, u, pw] of [['GRP-A', 'grp.a', 'passGrpA1'], ['GRP-B', 'grp.b', 'passGrpB1']]) expect((await call('POST', '/api/v1/tenants', { is_demo: true, code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
     const tenants = (await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; name: string; status: string }>;
     const A = tenants.find((t) => t.code === 'GRP-A')!, B = tenants.find((t) => t.code === 'GRP-B')!;
     // ลูกค้าใหม่ได้กลุ่มตั้งต้นทันที · บริษัทแรกและบริษัทที่สองได้สิทธิ์ของกลุ่มเหล่านั้น
@@ -8005,7 +8008,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
     const me = async () => (await call('GET', '/api/v1/auth/me')).body as { perms: Record<string, Record<string, boolean | 'S'>>; menu_mode: string; perm_why: Record<string, string>; rights_table: string };
     const platform = await login('admin', 'secret123');
-    for (const [code, u, pw] of [['H197A', 'h197.a', 'passH197a1'], ['H197B', 'h197.b', 'passH197b1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
+    for (const [code, u, pw] of [['H197A', 'h197.a', 'passH197a1'], ['H197B', 'h197.b', 'passH197b1']]) expect((await call('POST', '/api/v1/tenants', { is_demo: true, code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
     const tenants = (await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string }>;
     const TA = tenants.find((t) => t.code === 'H197A')!.id;
     await login('h197.b', 'passH197b1');
@@ -8137,7 +8140,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
   it('HANDOFF 198: groups tab — rename/delete groups of the own customer only, delete only groups with no members, level-uses of the session company, user override grid stays per customer', async () => {
     const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
     await login('admin', 'secret123');
-    for (const [code, u, pw] of [['H198A', 'h198.a', 'passH198a1'], ['H198B', 'h198.b', 'passH198b1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
+    for (const [code, u, pw] of [['H198A', 'h198.a', 'passH198a1'], ['H198B', 'h198.b', 'passH198b1']]) expect((await call('POST', '/api/v1/tenants', { is_demo: true, code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
     const adminB = await login('h198.b', 'passH198b1');
     const coB = (await call('POST', '/api/v1/companies', { code: 'H198B1', name_th: 'บริษัท บี 198 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
     const adminA = await login('h198.a', 'passH198a1');
@@ -8210,7 +8213,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
     const me = async () => (await call('GET', '/api/v1/auth/me')).body as { perms: Record<string, Record<string, boolean | 'S'>>; perm_why: Record<string, string>; perm_deny: Record<string, Record<string, number | 't'>>; rights_table: string };
     await login('admin', 'secret123');
-    expect((await call('POST', '/api/v1/tenants', { code: 'H198X', name: 'ลูกค้า 198 ตรวจทาน', admin_username: 'h198x.a', admin_name: 'ผู้ดูแล 198X', admin_password: 'passH198x1' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'H198X', name: 'ลูกค้า 198 ตรวจทาน', admin_username: 'h198x.a', admin_name: 'ผู้ดูแล 198X', admin_password: 'passH198x1' })).status).toBe(200);
     const adminX = await login('h198x.a', 'passH198x1');
     const co = (await call('POST', '/api/v1/companies', { code: 'H198X1', name_th: 'บริษัท ตรวจทาน 198 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
     await call('POST', '/api/v1/auth/select', { company_id: co });
@@ -8370,7 +8373,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
   it('starter data by business type (HANDOFF 160): each template passes normal validation, an invoice saves right away, fill button is idempotent and keeps edits, signup choice, no cross-tenant', async () => {
     const login = async (u: string, pw: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: pw }); expect([u, r.status]).toEqual([u, 200]); return cookie; };
     await login('admin', 'secret123');
-    for (const [code, u, pw] of [['ST-A', 'st.a', 'passStA1'], ['ST-B', 'st.b', 'passStB1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
+    for (const [code, u, pw] of [['ST-A', 'st.a', 'passStA1'], ['ST-B', 'st.b', 'passStB1']]) expect((await call('POST', '/api/v1/tenants', { is_demo: true, code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
     await login('st.a', 'passStA1');
     const co: Record<string, string> = {};
     for (const t of ['TRADE', 'SERVICE', 'MFG', 'BLANK']) {
@@ -8538,7 +8541,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     const as = async (c: string, url: string) => { cookie = c; return call('GET', url); };
     await login('admin', 'secret123');
     // ลูกค้าใหม่ 2 ราย (CUSTA/CUSTB ถูกระงับ/ย้ายในชุดก่อนหน้า)
-    for (const [code, u, pw] of [['ONE-A', 'one.a', 'passOneA1'], ['ONE-B', 'one.b', 'passOneB1']]) expect((await call('POST', '/api/v1/tenants', { code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
+    for (const [code, u, pw] of [['ONE-A', 'one.a', 'passOneA1'], ['ONE-B', 'one.b', 'passOneB1']]) expect((await call('POST', '/api/v1/tenants', { is_demo: true, code, name: `ลูกค้า ${code}`, admin_username: u, admin_name: `ผู้ดูแล ${code}`, admin_password: pw })).status).toBe(200);
     const tenants = (await call('GET', '/api/v1/tenants')).body as Array<{ id: string; code: string; name: string; status: string; single_session: boolean }>;
     const A = tenants.find((t) => t.code === 'ONE-A')!, B = tenants.find((t) => t.code === 'ONE-B')!;
     expect(A.single_session).toBe(false); expect(B.single_session).toBe(false);   // ค่าเริ่มต้น ปิด
@@ -8590,7 +8593,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     const P = ['SET.API', 'SET.TENANT', 'SET.USAGE', 'SET.PKG'];
     const login = async (u: string, p: string) => { cookie = ''; expect([u, (await call('POST', '/api/v1/auth/login', { username: u, password: p })).status]).toEqual([u, 200]); };
     await login('admin', 'secret123');
-    expect((await call('POST', '/api/v1/tenants', { code: 'P199', name: 'ลูกค้า 199', admin_username: 'p199.admin', admin_name: 'ผู้ดูแล 199', admin_password: 'passP199x1' })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'P199', name: 'ลูกค้า 199', admin_username: 'p199.admin', admin_name: 'ผู้ดูแล 199', admin_password: 'passP199x1' })).status).toBe(200);
     await login('p199.admin', 'passP199x1');
     const aAdminId = (await call('GET', '/api/v1/auth/me')).body.user.id as string;
     const ca = (await call('POST', '/api/v1/companies', { code: 'P199-1', name_th: 'บริษัท 199 จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
@@ -8673,7 +8676,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
   it('HANDOFF 200: Express import and branch devices hidden from customers until the provider opens them per customer (devices open by themselves with WTS-POS or registered devices); old rows kept; provider always; no cross-tenant', async () => {
     const login = async (u: string, p: string) => { cookie = ''; expect([u, (await call('POST', '/api/v1/auth/login', { username: u, password: p })).status]).toEqual([u, 200]); return cookie; };
     const provider = await login('admin', 'secret123');
-    const t = await call('POST', '/api/v1/tenants', { code: 'T200', name: 'ลูกค้า 200', admin_username: 't200.admin', admin_name: 'ผู้ดูแล 200', admin_password: 'passT200x1' });
+    const t = await call('POST', '/api/v1/tenants', { is_demo: true, code: 'T200', name: 'ลูกค้า 200', admin_username: 't200.admin', admin_name: 'ผู้ดูแล 200', admin_password: 'passT200x1' });
     expect(t.status).toBe(200);
     const tid = t.body.id as string;
     const cust = await login('t200.admin', 'passT200x1');
@@ -8682,7 +8685,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     type Me = { tenant_off: string[]; perms: Record<string, Record<string, boolean | 'S'>>; perm_why: Record<string, string> };
     const me = async () => (await call('GET', '/api/v1/auth/me')).body as Me;
     const menus = async () => ((await call('GET', '/api/v1/permissions/menus')).body as Array<{ code: string }>).map((m) => m.code);
-    const T = ['OT.IMPORT', 'SET.DEVICE'];
+    const T = ['OT.IMPORT', 'SET.API', 'SET.DEVICE'];   // HANDOFF 204: กุญแจ API เปิดรายลูกค้า
     // แถวสิทธิ์เดิมของเมนูที่ยังไม่เปิด (ตั้งไว้ก่อน 200) — ไม่แสดง ไม่ถูกลบตอนบันทึก
     const accG = ((await call('GET', '/api/v1/users')).body.groups as Array<{ id: string; code: string }>).find((g) => g.code === 'ACC')!.id;
     const devMenu = (await sql<{ id: string }>`SELECT id FROM sys_menu WHERE code = 'SET.DEVICE' AND deleted_at IS NULL`.execute(database.db)).rows[0]!.id;
@@ -8716,7 +8719,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect([pm.tenant_off, pm.perms['SET.DEVICE']!.read, pm.perms['OT.IMPORT']!.read]).toEqual([[], true, true]);
     expect((await call('GET', '/api/v1/devices')).status).toBe(200);
     const feats = async () => (await call('GET', `/api/v1/tenants/${tid}/features`)).body as Array<{ key: string; active: boolean; enabled: boolean; auto: string[] }>;
-    expect((await feats()).map((f) => [f.key, f.active])).toEqual([['express_import', false], ['devices', false]]);
+    expect((await feats()).map((f) => [f.key, f.active])).toEqual([['express_import', false], ['devices', false], ['api_keys', false]]);   // HANDOFF 204: กุญแจ API
     expect((await call('PUT', `/api/v1/tenants/${tid}/modules`, { modules: [{ key: 'nope', enabled: true }] })).status).toBe(400);
     expect((await call('PUT', `/api/v1/tenants/${tid}/modules`, { modules: [{ key: 'express_import', enabled: true, remark: 'ลูกค้าขอนำเข้าเอง' }] })).status).toBe(200);
     expect((await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_activity_log WHERE action = 'TENANT_MODULES' AND row_id = ${tid}`.execute(database.db)).rows[0]!.n).toBe(1);
@@ -8724,7 +8727,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
 
     cookie = cust;
     m = await me();
-    expect(m.tenant_off).toEqual(['SET.DEVICE']);
+    expect([...m.tenant_off].sort()).toEqual(['SET.API', 'SET.DEVICE']);
     expect(m.perms['OT.IMPORT']!.read).toBe(true);
     expect((await menus())).toContain('OT.IMPORT');
     expect((await call('GET', '/api/v1/express-import/files')).status).toBe(200);
@@ -8741,17 +8744,17 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
     expect((await call('PUT', `/api/v1/tenants/${tid}/modules`, { modules: [{ key: 'pos', enabled: true }] })).status).toBe(200);
     expect((await feats()).find((f) => f.key === 'devices')).toMatchObject({ enabled: false, active: true, auto: [expect.stringMatching(/WTS-POS/)] });
     cookie = cust;
-    expect((await me()).tenant_off).toEqual([]);
+    expect((await me()).tenant_off).toEqual(['SET.API']);
     expect((await call('GET', '/api/v1/devices')).status).toBe(200);
-    expect((await menus())).toEqual(expect.arrayContaining(T));
+    expect((await menus())).toEqual(expect.arrayContaining(['OT.IMPORT', 'SET.DEVICE']));
     expect(Object.keys((await call('GET', `/api/v1/permissions?subject_type=G&subject_id=${accG}`)).body.rows)).toContain('SET.DEVICE');   // แถวเดิมกลับมา
     cookie = provider;
     expect((await call('PUT', `/api/v1/tenants/${tid}/modules`, { modules: [{ key: 'pos', enabled: false }] })).status).toBe(200);
     cookie = cust;
-    expect((await me()).tenant_off).toEqual(['SET.DEVICE']);
+    expect([...(await me()).tenant_off].sort()).toEqual(['SET.API', 'SET.DEVICE']);
     const branch = (await sql<{ id: string }>`SELECT id FROM sys_branch WHERE company_id = ${co} AND deleted_at IS NULL LIMIT 1`.execute(database.db)).rows[0]!.id;
     await sql`INSERT INTO sys_device (company_id, branch_id, code, name) VALUES (${co}, ${branch}, 'POS1', 'เครื่องหน้าร้าน 1')`.execute(database.db);
-    expect((await me()).tenant_off).toEqual([]);
+    expect((await me()).tenant_off).toEqual(['SET.API']);
     expect(((await call('GET', '/api/v1/devices')).body as Array<{ code: string }>).map((x) => x.code)).toEqual(['POS1']);
 
     // ── HANDOFF 200 ส่วนที่ 2: ใครใช้เมนูนี้ได้ — ทุกกลุ่ม/ผู้ใช้ทุกครั้ง · ผลตรงกับที่ผู้ใช้ได้จริง (/auth/me) · ผู้ใช้ถูกระงับบอกสถานะ · ข้ามลูกค้าไม่ได้
@@ -8807,7 +8810,7 @@ describe('สมัครใช้งานเอง (ข้อกำหนด�
   it('HANDOFF 201: company list / rename / copy / delete / restore is its own admin-only menu (SET.COS) — staff with ALL = Y and level 9 get 403 and never see it; fixed row in the rights grid; provider unchanged; no cross-tenant', async () => {
     const login = async (u: string, p: string) => { cookie = ''; expect([u, (await call('POST', '/api/v1/auth/login', { username: u, password: p })).status]).toEqual([u, 200]); return cookie; };
     const provider = await login('admin', 'secret123');
-    expect((await call('POST', '/api/v1/tenants', { code: 'C201', name: 'ลูกค้า 201', admin_username: 'c201.admin', admin_name: 'ผู้ดูแล 201', admin_password: 'passC201x1', max_companies: 3 })).status).toBe(200);
+    expect((await call('POST', '/api/v1/tenants', { is_demo: true, code: 'C201', name: 'ลูกค้า 201', admin_username: 'c201.admin', admin_name: 'ผู้ดูแล 201', admin_password: 'passC201x1', max_companies: 3 })).status).toBe(200);
     const adm = await login('c201.admin', 'passC201x1');
     const co1 = (await call('POST', '/api/v1/companies', { code: 'C201-1', name_th: 'บริษัท 201 หนึ่ง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
     const co2 = (await call('POST', '/api/v1/companies', { code: 'C201-2', name_th: 'บริษัท 201 สอง จำกัด', fiscal_start: '2026-01-01', chart: 'express' })).body.id as string;
