@@ -632,7 +632,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     });
     if (b.is_demo) return t;
     const admin = await db.selectFrom('sys_user').select(['id', 'username', 'display_name']).where('tenant_id', '=', t.id).where('username', '=', b.admin_username).executeTakeFirstOrThrow();
-    return { ...t, invite: await emailInvite(db, publicBase(req), a, { ...admin, tenant_id: t.id }) };
+    return { ...t, invite: await emailInvite(db, publicBase(req), a, { ...admin, tenant_id: t.id }, { bootstrap: true }) };
   });
   /**
    * ผู้ใช้ดูอย่างเดียว (HANDOFF 154 · เจ้าของ "เชิญลูกค้าทดลองก่อน"): ให้ลูกค้าทดลองดูข้อมูลตัวอย่างทั้งปี (ลูกค้า DEMO) โดยแก้ไม่ได้

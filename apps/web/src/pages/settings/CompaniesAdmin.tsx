@@ -34,7 +34,8 @@ export function CompaniesPage() {
 function MoveRequests() {
   const { me, refresh } = useSession();
   const qc = useQueryClient();
-  const q = useQuery({ enabled: !!me?.user.is_admin && !me.user.is_platform && !!me.user.tenant_id, queryKey: ['move-requests'], queryFn: () => api.get<Array<{ id: string; company_codes: string; target_code: string; target_name: string; expires_at: string }>>('/api/v1/company-move-requests') });
+  type Target = { code: string; name: string; admins: string[]; contact_email: string | null; created_at: string };
+  const q = useQuery({ enabled: !!me?.user.is_admin && !me.user.is_platform && !!me.user.tenant_id, queryKey: ['move-requests'], queryFn: () => api.get<Array<{ id: string; company_codes: string; target_code: string; target_name: string; expires_at: string; target: Target; blocked: string | null }>>('/api/v1/company-move-requests') });
   const [ask, setAsk] = useState<{ id: string; codes: string } | null>(null);
   const [typed, setTyped] = useState(''), [totp, setTotp] = useState('');
   const [err, setErr] = useState<unknown>(null);
@@ -46,7 +47,11 @@ function MoveRequests() {
       {q.data.map((r) => (
         <div key={r.id} className="move-request">
           ย้าย <b className="mono">{r.company_codes}</b> ไปอยู่ในบัญชีลูกค้า <b>{r.target_code} {r.target_name}</b> · หมดอายุ <DateText v={r.expires_at.slice(0, 10)} />
-          {' '}<button className="danger" onClick={() => { setAsk({ id: r.id, codes: r.company_codes }); setTyped(''); setTotp(''); setErr(null); }}>ยืนยันย้าย…</button>
+          {/* HANDOFF 204 N3: ใครดูแลลูกค้าปลายทาง */}
+          <div className="small">ผู้ดูแลระบบของลูกค้าปลายทาง: <b>{r.target.admins.join(', ') || '-'}</b> · อีเมลผู้ติดต่อ: {r.target.contact_email ?? '-'} · สร้างเมื่อ <DateText v={r.target.created_at.slice(0, 10)} /></div>
+          <div className="small bad">บริษัทจะย้ายไปอยู่ภายใต้ลูกค้า {r.target_code} — ผู้ดูแลของลูกค้า {r.target_code} จะเห็นข้อมูลทั้งหมด</div>
+          {r.blocked && <div className="small bad">{r.blocked}</div>}
+          {' '}<button className="danger" disabled={!!r.blocked} onClick={() => { setAsk({ id: r.id, codes: r.company_codes }); setTyped(''); setTotp(''); setErr(null); }}>ยืนยันย้าย…</button>
           {' '}<button onClick={() => window.confirm('ปฏิเสธคำขอนี้? บริษัทไม่ย้าย') && api.post(`/api/v1/company-move-requests/${r.id}/reject`).then(() => { toast('ปฏิเสธคำขอแล้ว — บริษัทไม่ย้าย'); return reload(); }).catch(toastError)}>ปฏิเสธ</button>
         </div>
       ))}

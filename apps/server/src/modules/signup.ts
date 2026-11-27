@@ -52,7 +52,7 @@ export async function createTenantWithAdmin(tx: Kysely<DB>, actor: string | null
   ai_payer?: 'C' | 'P'; ai_limit_usd?: string | null;
 }) {
   const row = await tx.insertInto('sys_tenant').values({ code: t.code, name: t.name, contact_email: t.contact_email ?? null, contact_phone: t.contact_phone ?? null, plan: t.plan ?? 'standard',
-    max_companies: t.max_companies ?? null, max_users: t.max_users ?? null, expires_on: t.expires_on ?? null, status: t.status ?? 'A', dpa_signed_on: t.dpa_signed_on ?? null, single_session: t.single_session ?? false,
+    max_companies: t.max_companies ?? null, max_users: t.max_users ?? null, expires_on: t.expires_on ?? null, status: t.status ?? 'A', dpa_signed_on: t.dpa_signed_on ?? null, single_session: t.single_session ?? false, is_demo: false, contact_email_changed_at: t.contact_email ? sql`now()` as never : null,
     package_id: t.package_id ?? null, docs_per_month: t.docs_per_month ?? null, file_quota_mb: t.file_quota_mb ?? null, ai_per_month: t.ai_per_month ?? null, over_action: t.over_action ?? 'W', ai_payer: t.ai_payer ?? 'C', ...(t.ai_limit_usd !== undefined ? { ai_limit_usd: t.ai_limit_usd } : {}), created_by: actor }).returning('id').executeTakeFirstOrThrow();
   const g = await tx.insertInto('sys_user_group').values({ tenant_id: row.id, code: 'ADMIN', name: 'ผู้ดูแลระบบของลูกค้า', created_by: actor }).returning('id').executeTakeFirstOrThrow();
   await tx.insertInto('sys_user').values({ tenant_id: row.id, username: t.admin_username, display_name: t.admin_name, password_hash: t.password_hash, user_group_id: g.id, approval_level: 9, created_by: actor }).execute();

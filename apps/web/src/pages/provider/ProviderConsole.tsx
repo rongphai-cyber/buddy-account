@@ -84,7 +84,6 @@ export function ProviderCustomerPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState('overview');
-  const [demoAsk, setDemoAsk] = useState(false);
   const q = useQuery({ enabled: !!me?.user.is_platform && !!id, queryKey: ['provider-customer', id], queryFn: () => api.get<Detail>(`/api/v1/provider/customers/${id}`) });
   const reload = () => { void qc.invalidateQueries({ queryKey: ['provider-customer', id] }); void qc.invalidateQueries({ queryKey: ['provider-customers'] }); };
   useHotkeys({ Escape: () => nav('/provider') }, []);
@@ -108,10 +107,10 @@ export function ProviderCustomerPage() {
           <Field label="ลงนาม DPA">{t.dpa_signed_on ? <DateText v={t.dpa_signed_on} /> : <span className="muted">ยังไม่ลงนาม</span>}</Field>
           <Field label="อีเมลผู้ติดต่อ" hint="แสดงแบบปิดบัง — ลิงก์ตั้งรหัสผ่านส่งไปอีเมลนี้">{t.contact_email ?? <span className="bad">ยังไม่มี</span>}</Field>
           <Field label="ยืนยันตัวตนสองขั้นทุกผู้ใช้">{t.require_mfa ? 'บังคับ' : 'ไม่บังคับ'}{t.single_session ? ' · 1 เครื่อง' : ''}</Field>
-          <Field label="ข้อมูลตัวอย่าง" wide hint="ติ๊ก = เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลบัญชีของลูกค้านี้ได้ — ใช้กับข้อมูลทดลองเท่านั้น (บันทึกเหตุการณ์ทุกครั้ง)">
+          {/* HANDOFF 204 N1: ข้อมูลตัวอย่างเกิดได้ตอนสร้างลูกค้าตัวอย่าง หรือด้วย migration ที่เจ้าของอนุมัติเท่านั้น — เลิกได้ ตั้งกลับไม่ได้ */}
+          <Field label="ข้อมูลตัวอย่าง" wide hint="ลูกค้าที่มีอยู่แล้วตั้งเป็นข้อมูลตัวอย่างไม่ได้ (สร้างได้ตอนเพิ่มลูกค้าตัวอย่าง หรือ migration ที่เจ้าของอนุมัติ) · ลูกค้าตัวอย่างเปลี่ยนเป็นลูกค้าจริงไม่ได้ — ใช้งานจริง = สร้างลูกค้าใหม่">
             <span>{t.is_demo ? <Pill tone="d">ข้อมูลตัวอย่าง — เจ้าหน้าที่เปิดข้อมูลได้</Pill> : <Pill tone="n">ลูกค้าจริง — ข้อมูลเป็นความลับ</Pill>}{' '}
-              <button type="button" onClick={() => (t.is_demo ? act(api.put(`/api/v1/provider/customers/${t.id}/demo`, { is_demo: false }), 'เลิกเป็นข้อมูลตัวอย่างแล้ว') : setDemoAsk(true))}>
-                {t.is_demo ? 'เลิกเป็นข้อมูลตัวอย่าง' : 'ตั้งเป็นข้อมูลตัวอย่าง…'}</button></span>
+              {t.is_demo && <button type="button" onClick={() => window.confirm(`เลิกเป็นข้อมูลตัวอย่าง? ตั้งกลับที่หน้าจอไม่ได้`) && act(api.put(`/api/v1/provider/customers/${t.id}/demo`, { is_demo: false }), 'เลิกเป็นข้อมูลตัวอย่างแล้ว')}>เลิกเป็นข้อมูลตัวอย่าง</button>}</span>
           </Field>
         </div>}
         {tab === 'companies' && <div className="table-wrap"><table className="grid">
@@ -148,18 +147,7 @@ export function ProviderCustomerPage() {
           <tbody>{d.usage.rows.map((r) => <tr key={r.key}><td>{QUOTA_LABEL[r.key] ?? r.key}{r.key === 'files' ? ' (MB)' : ''}</td><td className="r">{String(r.used)}</td><td className="r">{r.limit == null ? 'ไม่จำกัด' : String(r.limit)}</td><td className="r">{r.pct == null ? '—' : `${r.pct}%`}</td></tr>)}</tbody>
         </table><p className="small muted">นับจำนวนเท่านั้น (เอกสาร ใบสำคัญ ไฟล์ AI) — ไม่มีเนื้อหาเอกสารหรือยอดเงิน</p></div>}
       </>}
-      {demoAsk && t && <DemoConfirm code={t.code} onClose={() => setDemoAsk(false)} onOk={(confirm) => api.put(`/api/v1/provider/customers/${t.id}/demo`, { is_demo: true, confirm })
-        .then(() => { setDemoAsk(false); toast(`ตั้ง ${t.code} เป็นข้อมูลตัวอย่างแล้ว`); reload(); }).catch(toastError)} />}
     </div>
   );
 }
 
-function DemoConfirm({ code, onClose, onOk }: { code: string; onClose: () => void; onOk: (confirm: string) => void }) {
-  const [v, setV] = useState('');
-  return (
-    <Modal title="ตั้งเป็นลูกค้าข้อมูลตัวอย่าง" size="confirm" onClose={onClose} footer={<><button onClick={onClose}>ยกเลิก</button><button className="danger" disabled={v.trim().toUpperCase() !== code.toUpperCase()} onClick={() => onOk(v.trim())}>ยืนยัน</button></>}>
-      <div className="notebox warn">เจ้าหน้าที่ผู้ให้บริการจะเปิดข้อมูลบัญชีทั้งหมดของลูกค้านี้ได้ — ใช้กับข้อมูลทดลอง/ตัวอย่างเท่านั้น ห้ามใช้กับลูกค้าจริง</div>
-      <Field label={`พิมพ์รหัสลูกค้า ${code} เพื่อยืนยัน`}><input autoFocus value={v} onChange={(e) => setV(e.target.value)} /></Field>
-    </Modal>
-  );
-}

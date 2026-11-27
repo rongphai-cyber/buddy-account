@@ -41,11 +41,6 @@ export async function companiesWithData(db: Db, companyIds: string[]): Promise<A
       JOIN sys_company c ON c.id = x.company_id GROUP BY c.id, c.code HAVING sum(x.n) > 0 ORDER BY c.code`.execute(db)).rows;
   return rows;
 }
-/** ลูกค้านี้มีข้อมูลธุรกิจแล้วหรือยัง (ทุกบริษัท รวมบริษัทที่ลบแล้ว) */
-export async function tenantWithData(db: Db, tenantId: string) {
-  const ids = (await db.selectFrom('sys_company').select('id').where('tenant_id', '=', tenantId).execute()).map((c) => c.id);
-  return companiesWithData(db, ids);
-}
 
 type MailOut = { status: 'S' | 'K' | 'F'; note: string | null };
 /** ส่งอีเมลหนึ่งฉบับถึงลูกค้า (ไม่ throw) */
@@ -73,12 +68,13 @@ export function noticeCustomer(db: Db, base: string, tenantId: string, subject: 
  * ลิงก์ตั้งรหัสผ่านของผู้ใช้ลูกค้าจริงที่ผู้ให้บริการสั่ง (ข้อ d1): ส่งไปอีเมลผู้ติดต่อของลูกค้าเท่านั้น — ผู้ให้บริการไม่เห็นลิงก์
  * ปฏิเสธ: ลูกค้าไม่มีอีเมล · เพิ่งเปลี่ยนอีเมลไม่ถึง 7 วัน · ผู้ใช้เปิด 2FA อยู่ (ล้าง 2FA ก่อน)
  */
-export async function emailInvite(db: Db, base: string, a: Pick<AuthContext, 'userId' | 'companyId'>, u: { id: string; username: string; display_name: string; tenant_id: string }) {
+export async function emailInvite(db: Db, base: string, a: Pick<AuthContext, 'userId' | 'companyId'>, u: { id: string; username: string; display_name: string; tenant_id: string }, opts: { bootstrap?: boolean } = {}) {
   const t = await db.selectFrom('sys_tenant').select(['code', 'name', 'contact_email', 'contact_email_changed_at']).where('id', '=', u.tenant_id).executeTakeFirst();
   if (!t) throw notFound('ลูกค้าผู้ใช้บริการ');
   if (!t.contact_email) throw badRequest(`ลูกค้า ${t.code} ยังไม่มีอีเมลผู้ติดต่อ — ลิงก์ตั้งรหัสผ่านส่งไปที่อีเมลของลูกค้าเท่านั้น (ผู้ให้บริการไม่เห็นลิงก์) · ใส่อีเมลของลูกค้าที่หน้า แก้ไขลูกค้า แล้วรอ ${CONTACT_EMAIL_COOLDOWN_DAYS} วัน หรือให้ผู้ดูแลของลูกค้าสร้างลิงก์เอง`);
   const changed = t.contact_email_changed_at ? new Date(String(t.contact_email_changed_at)).getTime() : 0;
-  if (changed && Date.now() - changed < CONTACT_EMAIL_COOLDOWN_DAYS * 86400_000) {
+  // bootstrap = ลิงก์ของผู้ดูแลคนแรกตอนสร้างลูกค้าใหม่ (อีเมลที่เพิ่งใส่ตอนสร้าง — ยังไม่มีข้อมูล)
+  if (!opts.bootstrap && changed && Date.now() - changed < CONTACT_EMAIL_COOLDOWN_DAYS * 86400_000) {
     throw badRequest(`อีเมลผู้ติดต่อของลูกค้า ${t.code} เพิ่งเปลี่ยน — ส่งลิงก์ตั้งรหัสผ่านไปอีเมลใหม่ได้หลังเปลี่ยนครบ ${CONTACT_EMAIL_COOLDOWN_DAYS} วัน (กันการยึดบัญชีลูกค้า) · ให้ผู้ดูแลของลูกค้าสร้างลิงก์เองได้ทันที`);
   }
   const token = randomBytes(32).toString('base64url');
@@ -140,7 +136,7 @@ export function providerRoutes(app: FastifyInstance, db: Db) {
     const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
     const hasDevices = !!(await sql<{ n: number }>`SELECT count(*)::int AS n FROM sys_device d JOIN sys_company c ON c.id = d.company_id WHERE c.tenant_id = ${id} AND d.deleted_at IS NULL AND d.status = 'A'`.execute(db)).rows[0]?.n;
     return {
-      tenant: { ...t, contact_email: t.contact_email ? maskEmail(t.contact_email) : null },
+      tenant: { ...t, contact_email: t.contact_email ? maskEmail(t.contact_email) : null, contact_phone: t.contact_phone ? maskPhone(t.contact_phone) : null },
       companies, users, api_keys: keys,
       modules: tenantModuleStatus(mods, today), features: tenantFeatureStatus(mods, today, { hasDevices }),
       // การใช้งานเดือนนี้ (จำนวนเอกสาร พื้นที่ไฟล์ AI) — ตัวเลขรวม ไม่มีเนื้อหาเอกสาร
@@ -152,16 +148,12 @@ export function providerRoutes(app: FastifyInstance, db: Db) {
   app.put('/api/v1/provider/customers/:id/demo', async (req) => {
     const a = platform(req);
     const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
-    const b = parse(z.object({ is_demo: z.boolean(), confirm: z.string().trim().max(20).default('') }), req.body);
+    const b = parse(z.object({ is_demo: z.boolean() }), req.body);
     const t = await db.selectFrom('sys_tenant').select(['code', 'is_demo']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!t) throw notFound('ลูกค้าผู้ใช้บริการ');
-    // ติ๊กเป็นข้อมูลตัวอย่าง = เจ้าหน้าที่เปิดข้อมูลบัญชีของลูกค้านี้ได้ — ยืนยันด้วยรหัสลูกค้า
-    if (b.is_demo && !t.is_demo && b.confirm.toUpperCase() !== t.code.toUpperCase()) throw badRequest(`พิมพ์รหัสลูกค้า ${t.code} เพื่อยืนยันว่าเป็นข้อมูลตัวอย่าง/ทดลอง (เจ้าหน้าที่ผู้ให้บริการจะเปิดข้อมูลบัญชีของลูกค้านี้ได้)`);
-    // HANDOFF 204 C1: ตั้งเป็นข้อมูลตัวอย่างได้เฉพาะลูกค้าที่ยังไม่มีข้อมูลธุรกิจเลย — มีข้อมูลแล้ว = ต้องผ่าน migration ที่เจ้าของอนุมัติ (แบบ DEMO) เท่านั้น
-    if (b.is_demo && !t.is_demo) {
-      const busy = await tenantWithData(db, id);
-      if (busy.length) throw forbidden(`ลูกค้า ${t.code} มีข้อมูลธุรกิจแล้ว (${busy.map((c) => c.code).join(', ')}) — ตั้งเป็นข้อมูลตัวอย่างที่หน้าจอไม่ได้ (จะเปิดข้อมูลของลูกค้าจริง) · ถ้าเป็นข้อมูลทดลองจริง ให้เจ้าของอนุมัติแล้วตั้งด้วย migration แบบ DEMO`);
-    }
+    // HANDOFF 204 N1: เปิด "ข้อมูลตัวอย่าง" ให้ลูกค้าที่มีอยู่แล้วไม่ได้เลย (ลูกค้าว่างวันนี้อาจใส่ข้อมูลจริงพรุ่งนี้ — เป็นทางเข้าถาวร)
+    // ข้อมูลตัวอย่างเกิดได้ 2 ทางเท่านั้น: สร้างลูกค้าตัวอย่างของผู้ให้บริการ (POST /tenants is_demo) หรือ migration ที่เจ้าของอนุมัติ (แบบ DEMO) · เลิกได้เสมอ
+    if (b.is_demo && !t.is_demo) throw forbidden(`ตั้งลูกค้าที่มีอยู่แล้ว (${t.code}) เป็นข้อมูลตัวอย่างไม่ได้ — ข้อมูลตัวอย่างสร้างได้ตอนเพิ่มลูกค้าตัวอย่างใหม่ หรือด้วย migration ที่เจ้าของอนุมัติเท่านั้น (HANDOFF 204)`);
     if (t.is_demo !== b.is_demo) {
       await db.updateTable('sys_tenant').set({ is_demo: b.is_demo, updated_by: a.userId }).where('id', '=', id).execute();
       const detail = { tenant: t.code, from: t.is_demo, to: b.is_demo };

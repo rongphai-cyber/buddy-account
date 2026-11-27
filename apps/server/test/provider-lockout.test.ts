@@ -144,6 +144,9 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
 
   it('password help only by email to the customer: invite link never shown to the provider, 2FA reset notifies the customer, 7-day cool-down after a contact-email change', async () => {
     cookie = provider;
+    // N3: อีเมลผู้ติดต่อที่ผู้ให้บริการพิมพ์ตอนสร้างลูกค้า = "เพิ่งตั้ง" — ลิงก์จากผู้ให้บริการได้หลัง 7 วัน (ยกเว้นลิงก์ผู้ดูแลคนแรกตอนสร้าง)
+    expect((await call('POST', `/api/v1/users/${ids.clerk}/invite`)).body.error.message).toMatch(/เพิ่งเปลี่ยน/);
+    await sql`UPDATE sys_tenant SET contact_email_changed_at = now() - interval '8 days' WHERE id = ${ids.tenant}`.execute(database.db);
     memoryMail.outbox = [];
     const inv = await call('POST', `/api/v1/users/${ids.clerk}/invite`);
     expect(inv.status, inv.raw).toBe(200);
@@ -213,29 +216,42 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
     expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant}/demo`, { is_demo: true, confirm: 'CUST1' })).status).toBe(403);
   });
 
-  it('demo flag (C1): a real customer with any business data can never be switched to demo on screen; an empty tenant can (typed code); every change is logged in the customer\'s own log and emailed', async () => {
+  it('demo flag (N1): never switched ON for an existing tenant (403, even empty); only created as a provider sample (shown with the banner flag) or by migration; OFF works, is logged in the customer\'s own log and emailed; signup can never be demo', async () => {
     cookie = provider;
-    expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant}/demo`, { is_demo: true })).body.error.message).toMatch(/พิมพ์รหัสลูกค้า CUST1/);
-    const flip = await call('PUT', `/api/v1/provider/customers/${ids.tenant}/demo`, { is_demo: true, confirm: 'cust1' });
-    expect(flip.status).toBe(403);
-    expect(flip.body.error.message).toMatch(/มีข้อมูลธุรกิจแล้ว \(C1CO\).*migration/);
-    expect((await call('POST', '/api/v1/auth/select', { company_id: ids.co })).status).toBe(403);
-    // ลูกค้าว่าง (ยังไม่มีข้อมูล) ตั้งได้ → เปิดได้ → เลิก → ล็อกอีก · บันทึกในแฟ้มของบริษัทลูกค้า + อีเมล
-    memoryMail.outbox = [];
+    // ลูกค้าจริงที่มีข้อมูล และลูกค้าว่างที่เพิ่งสร้าง — เปิดเป็นข้อมูลตัวอย่างไม่ได้ทั้งคู่
+    expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant}/demo`, { is_demo: true })).status).toBe(403);
     const t2 = await call('POST', '/api/v1/tenants', { code: 'CUST2', name: 'ลูกค้าว่าง 2', contact_email: 'owner@cust2.example', admin_username: 'c2.admin', admin_name: 'ผู้ดูแล C2' });
     expect(t2.status, t2.raw).toBe(200);
     ids.tenant2 = t2.body.id;
-    expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant2}/demo`, { is_demo: true, confirm: 'CUST2' })).status).toBe(200);
-    const c2 = await call('POST', '/api/v1/companies', { code: 'C2CO', name_th: 'บริษัท ลูกค้าสอง จำกัด', fiscal_start: '2026-01-01', chart: 'express', tenant_id: ids.tenant2 });
-    expect(c2.status, c2.raw).toBe(200);
-    ids.co2 = c2.body.id;
-    expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant2}/demo`, { is_demo: false })).status).toBe(200);
-    expect((await call('POST', '/api/v1/auth/select', { company_id: ids.co2 })).status).toBe(403);
-    const acts = (await sql<{ action: string; company_id: string | null }>`SELECT action, company_id::text AS company_id FROM sys_activity_log WHERE row_id = ${ids.tenant2} AND action LIKE 'TENANT_DEMO_%' ORDER BY seq`.execute(database.db)).rows;
-    expect(acts.map((x) => x.action)).toEqual(['TENANT_DEMO_ON', 'TENANT_DEMO_OFF', 'TENANT_DEMO_OFF']);   // ระบบ + แฟ้มของบริษัท C2CO
-    expect(acts.some((x) => x.company_id === ids.co2)).toBe(true);
+    const on = await call('PUT', `/api/v1/provider/customers/${ids.tenant2}/demo`, { is_demo: true });
+    expect(on.status).toBe(403);
+    expect(on.body.error.message).toMatch(/ตั้งลูกค้าที่มีอยู่แล้ว \(CUST2\) เป็นข้อมูลตัวอย่างไม่ได้/);
+    expect((await sql<{ d: boolean }>`SELECT is_demo AS d FROM sys_tenant WHERE id = ${ids.tenant2}`.execute(database.db)).rows[0]!.d).toBe(false);
+    // สร้างเป็นลูกค้าตัวอย่างของผู้ให้บริการได้ → บริษัทในนั้นมีเครื่องหมายข้อมูลตัวอย่าง (ป้ายทุกหน้า)
+    const s3 = await call('POST', '/api/v1/tenants', { is_demo: true, code: 'SAMPLE3', name: 'ตัวอย่าง 3', contact_email: 'sample3@provider.example', admin_username: 's3.admin', admin_name: 'ผู้ดูแลตัวอย่าง', admin_password: 'sampleS3pass' });
+    expect(s3.status, s3.raw).toBe(200);
+    const s3co = await call('POST', '/api/v1/companies', { code: 'S3CO', name_th: 'บริษัทตัวอย่างสาม', fiscal_start: '2026-01-01', chart: 'express', tenant_id: s3.body.id });
+    expect(s3co.status, s3co.raw).toBe(200);
+    const me = (await call('GET', '/api/v1/auth/me')).body;
+    expect(me.companies.find((c: { code: string }) => c.code === 'S3CO')).toMatchObject({ tenant_demo: true });
+    const sAdmin = await as('s3.admin', 'sampleS3pass');
+    expect((await call('GET', '/api/v1/auth/me')).body.companies[0]).toMatchObject({ code: 'S3CO', tenant_demo: true });   // ผู้ใช้ในลูกค้าตัวอย่างเห็นป้าย
+    expect(sAdmin).toBeTruthy();
+    // เลิกเป็นข้อมูลตัวอย่างได้ → ผู้ให้บริการเข้าไม่ได้อีก · บันทึกในแฟ้มของบริษัท + อีเมล · ตั้งกลับไม่ได้
+    cookie = provider;
+    memoryMail.outbox = [];
+    expect((await call('PUT', `/api/v1/provider/customers/${s3.body.id}/demo`, { is_demo: false })).status).toBe(200);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: s3co.body.id })).status).toBe(403);
+    expect((await call('PUT', `/api/v1/provider/customers/${s3.body.id}/demo`, { is_demo: true })).status).toBe(403);
+    const acts = (await sql<{ action: string; company_id: string | null }>`SELECT action, company_id::text AS company_id FROM sys_activity_log WHERE row_id = ${s3.body.id} AND action LIKE 'TENANT_DEMO_%' ORDER BY seq`.execute(database.db)).rows;
+    expect(acts.map((x) => x.action)).toEqual(['TENANT_DEMO_OFF', 'TENANT_DEMO_OFF']);   // ระบบ + แฟ้มของบริษัท S3CO
+    expect(acts.some((x) => x.company_id === s3co.body.id)).toBe(true);
     await flushMail();
-    expect(memoryMail.outbox.filter((m) => m.to.includes('owner@cust2.example')).map((m) => m.subject).join('|')).toMatch(/ข้อมูลตัวอย่าง/);
+    expect(memoryMail.outbox.filter((m) => m.to.includes('sample3@provider.example')).map((m) => m.subject).join('|')).toMatch(/เลิกเป็นข้อมูลตัวอย่าง/);
+    // ทางสร้างลูกค้าจริง (อนุมัติใบสมัคร ใช้ createTenantWithAdmin) ไม่มีทางเป็นข้อมูลตัวอย่าง + จดเวลาอีเมลผู้ติดต่อ
+    const { createTenantWithAdmin } = await import('../src/modules/signup.js');
+    const viaSignup = await database.db.transaction().execute((tx) => createTenantWithAdmin(tx, null, { code: 'SIGNUP4', name: 'สมัครเอง 4', contact_email: 'own@signup4.example', admin_username: 'sg4.admin', admin_name: 'ผู้สมัคร', password_hash: null }));
+    expect((await sql<{ d: boolean; c: string | null }>`SELECT is_demo AS d, contact_email_changed_at::text AS c FROM sys_tenant WHERE id = ${viaSignup.id}`.execute(database.db)).rows[0]).toMatchObject({ d: false, c: expect.any(String) });
     // 0085: DEMO = ข้อมูลตัวอย่าง (ชุดทดสอบไม่มี DEMO — ตรวจว่ากติกาในแฟ้มตั้งเฉพาะ DEMO)
     const { readFile } = await import('node:fs/promises');
     const m = await readFile(new URL('../../../db/migrations/0085_provider_lockout.sql', import.meta.url), 'utf8');
@@ -273,6 +289,13 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
     const outBusy = await call('POST', `/api/v1/tenants/${demoT}/move-companies`, { target_tenant_id: ids.tenant2, company_ids: [ids.demoCo], confirm: 'DEMOCO' });
     expect(outBusy.status).toBe(403);
     expect(outBusy.body.error.message).toMatch(/มีข้อมูลแล้ว/);
+    // N3: ลูกค้าปลายทางที่เพิ่งสร้าง (อีเมลผู้ติดต่อที่ผู้ให้บริการพิมพ์) ย้ายเข้าไม่ได้ 7 วัน
+    const fresh = await call('POST', `/api/v1/tenants/${ids.tenant}/move-companies`, { target_tenant_id: ids.tenant2, company_ids: [ids.co], confirm: 'C1CO' });
+    expect(fresh.status).toBe(403);
+    expect(fresh.body.error.message).toMatch(/เพิ่งสร้างไม่ถึง 7 วัน/);
+    await sql`UPDATE sys_tenant SET created_at = now() - interval '8 days' WHERE id = ${ids.tenant2}`.execute(database.db);
+    expect((await call('POST', `/api/v1/tenants/${ids.tenant}/move-companies`, { target_tenant_id: ids.tenant2, company_ids: [ids.co], confirm: 'C1CO' })).body.error.message).toMatch(/อีเมลผู้ติดต่อของลูกค้าปลายทาง CUST2 เพิ่งตั้ง/);
+    await sql`UPDATE sys_tenant SET contact_email_changed_at = now() - interval '8 days' WHERE id = ${ids.tenant2}`.execute(database.db);
     // ลูกค้าจริง → ลูกค้าจริง: คำขอ (ยังไม่ย้าย) · ผู้ให้บริการยืนยันเองไม่ได้ · ผู้ดูแลลูกค้าเดิมปฏิเสธ = ไม่ย้าย
     memoryMail.outbox = [];
     const rq = await call('POST', `/api/v1/tenants/${ids.tenant}/move-companies`, { target_tenant_id: ids.tenant2, company_ids: [ids.co], confirm: 'C1CO' });
@@ -280,11 +303,18 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
     expect(rq.body).toMatchObject({ pending: true });
     await flushMail();
     expect(memoryMail.outbox.map((m) => `${m.to.join()}:${m.subject}`).join('|')).toMatch(/owner@cust1\.example:คำขอย้ายบริษัท C1CO/);
+    const reqMail = memoryMail.outbox.find((m) => m.subject.includes('คำขอย้ายบริษัท'))!.text;
+    expect(reqMail).toMatch(/ผู้ดูแลระบบ: c2\.admin/);
+    expect(reqMail).toMatch(/ow\*\*\*@cust2\.example/);
+    expect(reqMail).toMatch(/ผู้ดูแลของลูกค้า CUST2 จะเห็นข้อมูลทั้งหมด/);
     expect((await call('POST', `/api/v1/company-move-requests/${rq.body.request_id}/confirm`, { confirm: 'C1CO' })).status).toBe(403);
     expect((await call('POST', `/api/v1/tenants/${ids.tenant}/move-companies`, { target_tenant_id: ids.tenant2, company_ids: [ids.co], confirm: 'C1CO' })).body.error.message).toMatch(/รอยืนยันอยู่แล้ว/);
     expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${ids.co}`.execute(database.db)).rows[0]!.t).toBe(ids.tenant);
     cookie = custAdmin;
-    expect((await call('GET', '/api/v1/company-move-requests')).body.map((x: { company_codes: string; target_code: string }) => `${x.company_codes}>${x.target_code}`)).toEqual(['C1CO>CUST2']);
+    const pend = (await call('GET', '/api/v1/company-move-requests')).body;
+    expect(pend.map((x: { company_codes: string; target_code: string }) => `${x.company_codes}>${x.target_code}`)).toEqual(['C1CO>CUST2']);
+    expect(pend[0].target).toMatchObject({ code: 'CUST2', admins: ['c2.admin'], contact_email: 'ow***@cust2.example' });
+    expect(pend[0].blocked).toBeNull();
     expect((await call('POST', `/api/v1/company-move-requests/${rq.body.request_id}/reject`)).status).toBe(200);
     expect((await call('GET', '/api/v1/company-move-requests')).body).toEqual([]);
     expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${ids.co}`.execute(database.db)).rows[0]!.t).toBe(ids.tenant);
@@ -293,6 +323,11 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
     const rq2 = await call('POST', `/api/v1/tenants/${ids.tenant}/move-companies`, { target_tenant_id: ids.tenant2, company_ids: [ids.co], confirm: 'C1CO' });
     expect(rq2.body.pending).toBe(true);
     cookie = custAdmin;
+    // N4: ปลายทางกลายเป็นข้อมูลตัวอย่างหลังส่งคำขอ = ยืนยันไม่ได้ ไม่ย้าย
+    await sql`UPDATE sys_tenant SET is_demo = true WHERE id = ${ids.tenant2}`.execute(database.db);
+    expect((await call('POST', `/api/v1/company-move-requests/${rq2.body.request_id}/confirm`, { confirm: 'c1co' })).status).toBe(403);
+    expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${ids.co}`.execute(database.db)).rows[0]!.t).toBe(ids.tenant);
+    await sql`UPDATE sys_tenant SET is_demo = false WHERE id = ${ids.tenant2}`.execute(database.db);
     const done = await call('POST', `/api/v1/company-move-requests/${rq2.body.request_id}/confirm`, { confirm: 'c1co' });
     expect(done.status, done.raw).toBe(200);
     expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${ids.co}`.execute(database.db)).rows[0]!.t).toBe(ids.tenant2);

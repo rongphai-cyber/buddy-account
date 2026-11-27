@@ -76,7 +76,7 @@ export async function requireDemoForProvider(db: Db, a: Pick<AuthContext, 'isPla
  */
 export async function companiesForUser(db: Db, a: Pick<AuthContext, 'userId' | 'isAdmin' | 'isPlatform' | 'tenantId'>) {
   let q = db.selectFrom('sys_company as c').leftJoin('sys_tenant as t', 't.id', 'c.tenant_id')
-    .select(['c.id', 'c.code', 'c.name_th', 'c.name_en', 'c.year_system', 'c.tenant_id', 't.code as tenant_code', 't.name as tenant_name'])
+    .select(['c.id', 'c.code', 'c.name_th', 'c.name_en', 'c.year_system', 'c.tenant_id', 't.code as tenant_code', 't.name as tenant_name', 't.is_demo as tenant_demo'])
     .where('c.deleted_at', 'is', null).where('c.status', '=', 'A');
   if (a.isPlatform) q = q.where('t.is_demo', '=', true).where('t.deleted_at', 'is', null);
   else {

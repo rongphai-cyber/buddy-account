@@ -238,6 +238,8 @@ function Shell() {
       {search && <MenuSearch me={me} onClose={() => setSearch(false)} />}
       <main className="main" id="main">
         <ReadOnlyGuard />
+        {/* HANDOFF 204 N1: บริษัทของลูกค้าข้อมูลตัวอย่าง — เห็นชัดทุกหน้า ห้ามใส่ข้อมูลจริง */}
+        {me.companies.find((c) => c.id === me.company?.id)?.tenant_demo && <div className="demo-banner" role="alert">ข้อมูลตัวอย่าง — เจ้าหน้าที่ผู้ให้บริการเปิดดูและแก้ไขได้ ห้ามใส่ข้อมูลจริง</div>}
         <UsageAlert />
         {gate ? <ProviderOnlyPage kind={gate} /> : <Routes>
           <Route path="/" element={<HomePage />} />

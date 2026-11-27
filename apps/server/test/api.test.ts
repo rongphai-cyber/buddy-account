@@ -5171,6 +5171,7 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${m1}`.execute(database.db)).rows[0]!.t).toBe(src.id);
       // HANDOFF 204 C2: ลูกค้าจริง → ลูกค้าจริง = คำขอ แล้วผู้ดูแลของลูกค้าเดิมยืนยันในบัญชีของตัวเอง
       await sql`UPDATE sys_tenant SET is_demo = false WHERE id IN (${src.id}, ${dst.id})`.execute(database.db);
+      await sql`UPDATE sys_tenant SET created_at = now() - interval '8 days' WHERE id = ${dst.id}`.execute(database.db);   // N3: ปลายทางต้องสร้างมาแล้ว 7 วัน
       const req192 = await call('POST', move, { ...body, confirm: 'm192-2, m192-1' });
       expect(req192.status, JSON.stringify(req192.body)).toBe(200);
       expect(req192.body).toMatchObject({ pending: true });

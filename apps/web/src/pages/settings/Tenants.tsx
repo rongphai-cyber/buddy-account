@@ -158,6 +158,7 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
           <Field label="ชื่อ" req><input value={f.admin_name} onChange={(e) => setF({ ...f, admin_name: e.target.value })} /></Field>
           <Field label="ข้อมูลตัวอย่าง / ทดลอง" wide hint="ติ๊ก = เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลบัญชีของลูกค้านี้ได้ (ใช้กับข้อมูลทดลองเท่านั้น) · ไม่ติ๊ก = ลูกค้าจริง ผู้ให้บริการเห็นเฉพาะภาพรวม">
             <label className="check"><input type="checkbox" checked={f.is_demo} onChange={(e) => setF({ ...f, is_demo: e.target.checked })} /> ลูกค้าข้อมูลตัวอย่าง (ทดลองใช้)</label></Field>
+          {f.is_demo && <p className="wide notebox warn">ลูกค้าตัวอย่างของผู้ให้บริการ — ทุกหน้ามีป้าย "ข้อมูลตัวอย่าง ห้ามใส่ข้อมูลจริง" · เปลี่ยนเป็นลูกค้าจริงไม่ได้ (ใช้งานจริง = สร้างลูกค้าใหม่) · ห้ามใช้กับลูกค้าจริง</p>}
           {!f.is_demo && <p className="wide notebox">ลูกค้าจริง: ระบบส่งลิงก์ตั้งรหัสผ่านของผู้ดูแลคนแรกไปที่ <b>อีเมลผู้ติดต่อ</b> ด้านบน (ต้องใส่) — ผู้ให้บริการไม่เห็นลิงก์และรหัสผ่าน</p>}
           {f.is_demo && <Field label="รหัสผ่านเริ่มต้น (อย่างน้อย 8 ตัว)" req wide><PasswordInput autoComplete="new-password" value={f.admin_password} onChange={(e) => setF({ ...f, admin_password: e.target.value })} /></Field>}
         </>}

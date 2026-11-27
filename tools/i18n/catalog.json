@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 175,
+"n": 174,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/readonly.tsx",
@@ -5206,17 +5206,6 @@
 ]
 },
 {
-"th": "ยืนยัน",
-"n": 5,
-"files": [
-"apps/web/src/ui.tsx",
-"apps/web/src/pages/Login.tsx",
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"apps/web/src/pages/settings/TwoFactor.tsx",
-"apps/web/src/pages/settings/Users.tsx"
-]
-},
-{
 "th": "รวม {0} บัญชี",
 "n": 5,
 "files": [
@@ -6370,6 +6359,16 @@
 "apps/web/src/App.tsx",
 "apps/web/src/pages/provider/ProviderConsole.tsx",
 "apps/web/src/pages/settings/Usage.tsx"
+]
+},
+{
+"th": "ยืนยัน",
+"n": 4,
+"files": [
+"apps/web/src/ui.tsx",
+"apps/web/src/pages/Login.tsx",
+"apps/web/src/pages/settings/TwoFactor.tsx",
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -11985,6 +11984,14 @@
 ]
 },
 {
+"th": "บริษัทจะย้ายไปอยู่ภายใต้ลูกค้า {0} — ผู้ดูแลของลูกค้า {1} จะเห็นข้อมูลทั้งหมด",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
 "th": "บริษัทต้นแบบไม่มีผังบัญชี",
 "n": 2,
 "files": [
@@ -12828,14 +12835,6 @@
 "files": [
 "apps/web/src/pages/settings/MoveCompanies.tsx",
 "apps/server/src/modules/company.ts"
-]
-},
-{
-"th": "พิมพ์รหัสลูกค้า {0} เพื่อยืนยัน",
-"n": 2,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -14317,6 +14316,13 @@
 "n": 2,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "ลูกค้าปลายทางเป็นข้อมูลตัวอย่าง — ย้ายไม่ได้",
+"n": 2,
+"files": [
+"apps/server/src/modules/company-move.ts"
 ]
 },
 {
@@ -23007,6 +23013,13 @@
 ]
 },
 {
+"th": "· อีเมลผู้ติดต่อ: {0} · สร้างเมื่อ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "· เดบิต = เครดิต ✔",
 "n": 1,
 "files": [
@@ -25552,6 +25565,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ข้อมูลตัวอย่าง ห้ามใส่ข้อมูลจริง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ข้อมูลตัวอย่าง — เจ้าหน้าที่ผู้ให้บริการเปิดดูและแก้ไขได้ ห้ามใส่ข้อมูลจริง",
+"n": 1,
+"files": [
+"apps/web/src/App.tsx"
 ]
 },
 {
@@ -31890,13 +31917,6 @@
 ]
 },
 {
-"th": "ตั้ง {0} เป็นข้อมูลตัวอย่างแล้ว",
-"n": 1,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx"
-]
-},
-{
 "th": "ตั้งค่า R2 ไม่ครบ (R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)",
 "n": 1,
 "files": [
@@ -32044,6 +32064,13 @@
 ]
 },
 {
+"th": "ตั้งลูกค้าที่มีอยู่แล้ว ({0}) เป็นข้อมูลตัวอย่างไม่ได้ — ข้อมูลตัวอย่างสร้างได้ตอนเพิ่มลูกค้าตัวอย่างใหม่ หรือด้วย migration ที่เจ้าของอนุมัติเท่านั้น (HANDOFF 204)",
+"n": 1,
+"files": [
+"apps/server/src/modules/provider.ts"
+]
+},
+{
 "th": "ตั้งวงเงิน: ใช้บัญชีเงินสดย่อย · จ่ายค่าใช้จ่าย: ใช้บัญชีค่าใช้จ่าย · บันทึกแล้วลงบัญชีทันที Dr บัญชีตามรายการ / Cr เงินสดย่อย",
 "n": 1,
 "files": [
@@ -32086,13 +32113,6 @@
 ]
 },
 {
-"th": "ตั้งเป็นข้อมูลตัวอย่าง…",
-"n": 1,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx"
-]
-},
-{
 "th": "ตั้งเป็นรูปหลัก",
 "n": 1,
 "files": [
@@ -32104,13 +32124,6 @@
 "n": 1,
 "files": [
 "apps/web/src/components/ItemImages.tsx"
-]
-},
-{
-"th": "ตั้งเป็นลูกค้าข้อมูลตัวอย่าง",
-"n": 1,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx"
 ]
 },
 {
@@ -32657,13 +32670,6 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
-"th": "ติ๊ก = เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลบัญชีของลูกค้านี้ได้ — ใช้กับข้อมูลทดลองเท่านั้น (บันทึกเหตุการณ์ทุกครั้ง)",
-"n": 1,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx"
 ]
 },
 {
@@ -40388,6 +40394,13 @@
 ]
 },
 {
+"th": "ผู้ดูแลระบบของลูกค้าปลายทาง:",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "ผู้ดูแลระบบของลูกค้าเปลี่ยนเองที่ เริ่มระบบ › ผู้ใช้งานและสิทธิ์ — ผู้ให้บริการเปลี่ยนไม่ได้",
 "n": 1,
 "files": [
@@ -41459,17 +41472,17 @@
 ]
 },
 {
+"th": "พิมพ์รหัสลูกค้า {0} เพื่อยืนยัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "พิมพ์รหัสลูกค้า {0} เพื่อยืนยัน — ข้อมูลทุกบริษัทของลูกค้ารายนี้จะถูกลบถาวร",
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
-]
-},
-{
-"th": "พิมพ์รหัสลูกค้า {0} เพื่อยืนยันว่าเป็นข้อมูลตัวอย่าง/ทดลอง (เจ้าหน้าที่ผู้ให้บริการจะเปิดข้อมูลบัญชีของลูกค้านี้ได้)",
-"n": 1,
-"files": [
-"apps/server/src/modules/provider.ts"
 ]
 },
 {
@@ -51315,13 +51328,6 @@
 ]
 },
 {
-"th": "ลูกค้า {0} มีข้อมูลธุรกิจแล้ว ({1}) — ตั้งเป็นข้อมูลตัวอย่างที่หน้าจอไม่ได้ (จะเปิดข้อมูลของลูกค้าจริง) · ถ้าเป็นข้อมูลทดลองจริง ให้เจ้าของอนุมัติแล้วตั้งด้วย migration แบบ DEMO",
-"n": 1,
-"files": [
-"apps/server/src/modules/provider.ts"
-]
-},
-{
 "th": "ลูกค้า {0} มีคำขอย้ายบริษัทที่รอยืนยันอยู่แล้ว — ยกเลิกคำขอเดิมก่อน",
 "n": 1,
 "files": [
@@ -51455,6 +51461,13 @@
 ]
 },
 {
+"th": "ลูกค้าตัวอย่างของผู้ให้บริการ — ทุกหน้ามีป้าย \"ข้อมูลตัวอย่าง ห้ามใส่ข้อมูลจริง\" · เปลี่ยนเป็นลูกค้าจริงไม่ได้ (ใช้งานจริง = สร้างลูกค้าใหม่) · ห้ามใช้กับลูกค้าจริง",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ลูกค้าต่างประเทศ",
 "n": 1,
 "files": [
@@ -51497,6 +51510,13 @@
 ]
 },
 {
+"th": "ลูกค้าที่มีอยู่แล้วตั้งเป็นข้อมูลตัวอย่างไม่ได้ (สร้างได้ตอนเพิ่มลูกค้าตัวอย่าง หรือ migration ที่เจ้าของอนุมัติ) · ลูกค้าตัวอย่างเปลี่ยนเป็นลูกค้าจริงไม่ได้ — ใช้งานจริง = สร้างลูกค้าใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderConsole.tsx"
+]
+},
+{
 "th": "ลูกค้าที่ย้ายไปเซิร์ฟเวอร์แยกแล้วต้องมีสถานะ \"เลิกใช้\" ที่เครื่องนี้",
 "n": 1,
 "files": [
@@ -51525,14 +51545,21 @@
 ]
 },
 {
-"th": "ลูกค้าปลายทางต้องเป็นคนละรายกับลูกค้าเดิม",
+"th": "ลูกค้าปลายทาง {0} เพิ่งสร้างไม่ถึง {1} วัน — ย้ายบริษัทของลูกค้าจริงเข้าได้หลังสร้างครบ {2} วัน (กันการสร้างลูกค้าใหม่เพื่อรับข้อมูล)",
 "n": 1,
 "files": [
 "apps/server/src/modules/company-move.ts"
 ]
 },
 {
-"th": "ลูกค้าปลายทางเป็นข้อมูลตัวอย่าง — ย้ายไม่ได้",
+"th": "ลูกค้าปลายทาง: {0} {1} · ผู้ดูแลระบบ: {2} · อีเมลผู้ติดต่อ: {3} · สร้างเมื่อ {4}",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
+"th": "ลูกค้าปลายทางต้องเป็นคนละรายกับลูกค้าเดิม",
 "n": 1,
 "files": [
 "apps/server/src/modules/company-move.ts"
@@ -56789,6 +56816,13 @@
 ]
 },
 {
+"th": "อีเมลผู้ติดต่อของลูกค้าปลายทาง {0} เพิ่งตั้ง/เปลี่ยนไม่ถึง {1} วัน — ย้ายเข้าได้หลังครบ {2} วัน",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
 "th": "อีเมลผู้รับ (ผู้สมัคร / ผู้ให้บริการ)",
 "n": 1,
 "files": [
@@ -58256,13 +58290,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/security.ts"
-]
-},
-{
-"th": "เจ้าหน้าที่ผู้ให้บริการจะเปิดข้อมูลบัญชีทั้งหมดของลูกค้านี้ได้ — ใช้กับข้อมูลทดลอง/ตัวอย่างเท่านั้น ห้ามใช้กับลูกค้าจริง",
-"n": 1,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx"
 ]
 },
 {
@@ -62838,6 +62865,13 @@
 },
 {
 "th": "เลิกเป็นข้อมูลตัวอย่าง",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderConsole.tsx"
+]
+},
+{
+"th": "เลิกเป็นข้อมูลตัวอย่าง? ตั้งกลับที่หน้าจอไม่ได้",
 "n": 1,
 "files": [
 "apps/web/src/pages/provider/ProviderConsole.tsx"

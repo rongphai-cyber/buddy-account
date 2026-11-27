@@ -4094,5 +4094,17 @@
  "แจ้ง: บัญชี {0} เลิกเป็นข้อมูลตัวอย่าง": "Notice: account {0} no longer sample data",
  "ใช้รับการแจ้งเตือนของบัญชี และลิงก์ตั้งรหัสผ่านเมื่อท่านขอให้ผู้ให้บริการช่วย — ผู้ให้บริการเปลี่ยนอีเมลนี้ไม่ได้ (ผู้ดูแลระบบของกิจการเปลี่ยนเองเท่านั้น)": "Used for account notices and for password links when you ask the provider for help — the provider cannot change this email (only your administrators can)",
  "ไปลูกค้า": "to customer",
- "ไปอยู่ในบัญชีลูกค้า": "into customer account"
+ "ไปอยู่ในบัญชีลูกค้า": "into customer account",
+ "บริษัทจะย้ายไปอยู่ภายใต้ลูกค้า {0} — ผู้ดูแลของลูกค้า {1} จะเห็นข้อมูลทั้งหมด": "The company will move under customer {0} — the administrators of customer {1} will see all its data",
+ "· อีเมลผู้ติดต่อ: {0} · สร้างเมื่อ": "· contact email: {0} · created",
+ "ข้อมูลตัวอย่าง ห้ามใส่ข้อมูลจริง": "Sample data, do not enter real data",
+ "ข้อมูลตัวอย่าง — เจ้าหน้าที่ผู้ให้บริการเปิดดูและแก้ไขได้ ห้ามใส่ข้อมูลจริง": "Sample data — provider staff can view and change it. Do not enter real data",
+ "ตั้งลูกค้าที่มีอยู่แล้ว ({0}) เป็นข้อมูลตัวอย่างไม่ได้ — ข้อมูลตัวอย่างสร้างได้ตอนเพิ่มลูกค้าตัวอย่างใหม่ หรือด้วย migration ที่เจ้าของอนุมัติเท่านั้น (HANDOFF 204)": "An existing customer ({0}) cannot be marked as sample data — sample data is created only when adding a new sample customer, or by an owner-approved migration (HANDOFF 204)",
+ "ผู้ดูแลระบบของลูกค้าปลายทาง:": "Administrators of the target customer:",
+ "ลูกค้าตัวอย่างของผู้ให้บริการ — ทุกหน้ามีป้าย \"ข้อมูลตัวอย่าง ห้ามใส่ข้อมูลจริง\" · เปลี่ยนเป็นลูกค้าจริงไม่ได้ (ใช้งานจริง = สร้างลูกค้าใหม่) · ห้ามใช้กับลูกค้าจริง": "A provider sample customer — every page shows a \"Sample data, do not enter real data\" banner · it cannot become a real customer (going live = a new customer) · never use it for a real customer",
+ "ลูกค้าที่มีอยู่แล้วตั้งเป็นข้อมูลตัวอย่างไม่ได้ (สร้างได้ตอนเพิ่มลูกค้าตัวอย่าง หรือ migration ที่เจ้าของอนุมัติ) · ลูกค้าตัวอย่างเปลี่ยนเป็นลูกค้าจริงไม่ได้ — ใช้งานจริง = สร้างลูกค้าใหม่": "An existing customer cannot be marked as sample data (only when adding a sample customer, or by an owner-approved migration) · a sample customer cannot become a real customer — going live = a new customer",
+ "ลูกค้าปลายทาง {0} เพิ่งสร้างไม่ถึง {1} วัน — ย้ายบริษัทของลูกค้าจริงเข้าได้หลังสร้างครบ {2} วัน (กันการสร้างลูกค้าใหม่เพื่อรับข้อมูล)": "Target customer {0} was created less than {1} days ago — a real customer's companies can move in only {2} days after it was created (prevents creating a customer just to receive data)",
+ "ลูกค้าปลายทาง: {0} {1} · ผู้ดูแลระบบ: {2} · อีเมลผู้ติดต่อ: {3} · สร้างเมื่อ {4}": "Target customer: {0} {1} · administrators: {2} · contact email: {3} · created {4}",
+ "อีเมลผู้ติดต่อของลูกค้าปลายทาง {0} เพิ่งตั้ง/เปลี่ยนไม่ถึง {1} วัน — ย้ายเข้าได้หลังครบ {2} วัน": "The target customer {0}'s contact email was set/changed less than {1} days ago — moving in is possible after {2} days",
+ "เลิกเป็นข้อมูลตัวอย่าง? ตั้งกลับที่หน้าจอไม่ได้": "Stop being sample data? It cannot be turned back on from the screen"
 }

@@ -5,7 +5,7 @@ import { AI_PAYER_TH, TENANT_MODULES, tenantModuleStatus, type AiPayer } from '@
 import type { Db } from '../db.js';
 import { badRequest, forbidden, notFound, parse, requireAuth } from '../http.js';
 import { logActivity } from '../audit.js';
-import { companiesWithData, noticeCustomer, publicBase } from './provider.js';
+import { companiesWithData, maskEmail, noticeCustomer, publicBase } from './provider.js';
 import { tenantActive, tenantIsDemo } from './auth.js';
 import { confirmSecondFactor } from './security.js';
 import { tenantLimits } from './usage.js';
@@ -31,6 +31,28 @@ const MOVE_BODY = z.object({
 const STANDARD_CODES = new Set(STANDARD_GROUPS.map((g) => g.code));
 /** คำขอย้ายบริษัทข้ามลูกค้าจริง ต้องยืนยันภายในกี่วัน (HANDOFF 204 C2) */
 const REQUEST_DAYS = 7;
+/** ลูกค้าปลายทางต้องสร้างและตั้งอีเมลผู้ติดต่อมาแล้วกี่วัน (HANDOFF 204 N3 — กันสร้างลูกค้าใหม่ด้วยอีเมลของผู้ให้บริการแล้วขอย้ายเข้า) */
+const TARGET_MIN_DAYS = 7;
+
+/** ใครดูแลลูกค้าปลายทาง (แสดงให้ลูกค้าเดิมดูก่อนยืนยัน — HANDOFF 204 N3) */
+async function targetInfo(db: Db, tenantId: string) {
+  const t = await db.selectFrom('sys_tenant').select(['id', 'code', 'name', 'contact_email', sql<string>`created_at::text`.as('created_at'), sql<string | null>`contact_email_changed_at::text`.as('email_changed_at')])
+    .where('id', '=', tenantId).executeTakeFirstOrThrow();
+  const admins = (await db.selectFrom('sys_user as u').innerJoin('sys_user_group as g', 'g.id', 'u.user_group_id').select('u.username')
+    .where('u.tenant_id', '=', tenantId).where('g.code', '=', 'ADMIN').where('g.tenant_id', '=', tenantId).where('u.deleted_at', 'is', null).orderBy('u.username').execute()).map((x) => x.username);
+  return { id: t.id, code: t.code, name: t.name, contact_email: t.contact_email ? maskEmail(t.contact_email) : null, created_at: t.created_at, email_changed_at: t.email_changed_at, admins };
+}
+/** ลูกค้าปลายทางที่เพิ่งสร้าง/เพิ่งเปลี่ยนอีเมลผู้ติดต่อ = ย้ายเข้าไม่ได้ */
+function targetTooNew(t: Awaited<ReturnType<typeof targetInfo>>) {
+  const days = (iso: string | null) => (iso ? (Date.now() - new Date(iso).getTime()) / 86400_000 : Infinity);
+  if (days(t.created_at) < TARGET_MIN_DAYS) return `ลูกค้าปลายทาง ${t.code} เพิ่งสร้างไม่ถึง ${TARGET_MIN_DAYS} วัน — ย้ายบริษัทของลูกค้าจริงเข้าได้หลังสร้างครบ ${TARGET_MIN_DAYS} วัน (กันการสร้างลูกค้าใหม่เพื่อรับข้อมูล)`;
+  if (days(t.email_changed_at) < TARGET_MIN_DAYS) return `อีเมลผู้ติดต่อของลูกค้าปลายทาง ${t.code} เพิ่งตั้ง/เปลี่ยนไม่ถึง ${TARGET_MIN_DAYS} วัน — ย้ายเข้าได้หลังครบ ${TARGET_MIN_DAYS} วัน`;
+  return null;
+}
+const targetLines = (t: Awaited<ReturnType<typeof targetInfo>>) => [
+  `ลูกค้าปลายทาง: ${t.code} ${t.name} · ผู้ดูแลระบบ: ${t.admins.join(', ') || '-'} · อีเมลผู้ติดต่อ: ${t.contact_email ?? '-'} · สร้างเมื่อ ${new Date(t.created_at).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })}`,
+  `บริษัทจะย้ายไปอยู่ภายใต้ลูกค้า ${t.code} — ผู้ดูแลของลูกค้า ${t.code} จะเห็นข้อมูลทั้งหมด`,
+];
 
 type TenantInfo = { id: string; code: string; name: string; status: string; expires_on: string | null; purged_at: string | null; moved_to: string | null; ai_payer: string; ai_limit_usd: string | null; single_session: boolean; require_mfa: boolean };
 
@@ -175,6 +197,9 @@ export function companyMoveRoutes(app: FastifyInstance, db: Db) {
     const admins = await db.selectFrom('sys_user as u').innerJoin('sys_user_group as g', 'g.id', 'u.user_group_id').select('u.id')
       .where('u.tenant_id', '=', pre.source.id).where('g.code', '=', 'ADMIN').where('g.tenant_id', '=', pre.source.id).where('u.status', '=', 'A').where('u.deleted_at', 'is', null).execute();
     if (!admins.length) throw badRequest(`ลูกค้า ${pre.source.code} ไม่มีผู้ดูแลระบบ (ADMIN) ที่ใช้งานอยู่ — ย้ายบริษัทของลูกค้าจริงได้เมื่อผู้ดูแลของลูกค้ายืนยันเท่านั้น`);
+    const tgt = await targetInfo(db, pre.target.id);
+    const young = targetTooNew(tgt);
+    if (young) throw forbidden(young);
     const open = await db.selectFrom('sys_company_move_request').select('id').where('source_tenant_id', '=', pre.source.id).where('status', '=', 'P').where('expires_at', '>', sql<string>`now()`).where('deleted_at', 'is', null).executeTakeFirst();
     if (open) throw badRequest(`ลูกค้า ${pre.source.code} มีคำขอย้ายบริษัทที่รอยืนยันอยู่แล้ว — ยกเลิกคำขอเดิมก่อน`);
     const expires = new Date(Date.now() + REQUEST_DAYS * 86400_000).toISOString();
@@ -185,10 +210,10 @@ export function companyMoveRoutes(app: FastifyInstance, db: Db) {
     await logActivity(db, { companyId: null, userId: a.userId }, { module: 'SYS', action: 'MOVE_REQUEST', docNo: codes, table: 'sys_company_move_request', rowId: r.id, detail });
     for (const cid of ids) await logActivity(db, { companyId: cid, userId: a.userId }, { module: 'SYS', action: 'MOVE_REQUEST', docNo: codes, table: 'sys_company_move_request', rowId: r.id, detail });
     noticeCustomer(db, publicBase(req), pre.source.id, `คำขอย้ายบริษัท ${codes} — รอท่านยืนยัน`, [
-      `ผู้ให้บริการ Buddy Account ขอย้ายบริษัท ${codes} ไปอยู่ในบัญชีลูกค้า ${pre.target.code} ${pre.target.name}`,
+      `ผู้ให้บริการ Buddy Account ขอย้ายบริษัท ${codes} ไปอยู่ในบัญชีลูกค้า ${pre.target.code} ${pre.target.name}`, ...targetLines(tgt),
       `บริษัทจะย้ายเมื่อผู้ดูแลระบบของท่านยืนยันที่ เริ่มระบบ › บริษัททั้งหมด / ลบบริษัท ภายใน ${REQUEST_DAYS} วัน — ไม่ยืนยัน = ไม่ย้าย`,
       'ถ้าท่านไม่ได้ขอ ให้กด "ปฏิเสธ" และแจ้งผู้ให้บริการ']);
-    return { pending: true, request_id: r.id, expires_at: expires, source: pre.source, target: pre.target, companies: pre.companies.map((c) => ({ id: c.id, code: c.code, name_th: c.name_th })) };
+    return { pending: true, request_id: r.id, expires_at: expires, source: pre.source, target: pre.target, target_info: tgt, companies: pre.companies.map((c) => ({ id: c.id, code: c.code, name_th: c.name_th })) };
   });
 
   /** แจ้งลูกค้าทั้งสองรายหลังย้าย (อีเมลผู้ติดต่อ — ข้อ d5) */
@@ -214,9 +239,13 @@ export function companyMoveRoutes(app: FastifyInstance, db: Db) {
   };
   app.get('/api/v1/company-move-requests', async (req) => {
     const a = sourceAdmin(req);
-    return (await db.selectFrom('sys_company_move_request as r').innerJoin('sys_tenant as t', 't.id', 'r.target_tenant_id')
-      .select(['r.id', 'r.company_codes', 'r.status', sql<string>`r.expires_at::text`.as('expires_at'), sql<string>`r.created_at::text`.as('created_at'), 't.code as target_code', 't.name as target_name'])
-      .where('r.source_tenant_id', '=', a.tenantId).where('r.status', '=', 'P').where('r.expires_at', '>', sql<string>`now()`).where('r.deleted_at', 'is', null).orderBy('r.created_at', 'desc').execute());
+    const rows = await db.selectFrom('sys_company_move_request as r').innerJoin('sys_tenant as t', 't.id', 'r.target_tenant_id')
+      .select(['r.id', 'r.target_tenant_id', 'r.company_codes', 'r.status', sql<string>`r.expires_at::text`.as('expires_at'), sql<string>`r.created_at::text`.as('created_at'), 't.code as target_code', 't.name as target_name'])
+      .where('r.source_tenant_id', '=', a.tenantId).where('r.status', '=', 'P').where('r.expires_at', '>', sql<string>`now()`).where('r.deleted_at', 'is', null).orderBy('r.created_at', 'desc').execute();
+    // HANDOFF 204 N3: ใครดูแลลูกค้าปลายทาง (ผู้ดูแล อีเมลแบบปิดบัง วันที่สร้าง) + ยังย้ายได้ไหม
+    const out = [];
+    for (const { target_tenant_id, ...r } of rows) { const t = await targetInfo(db, target_tenant_id); out.push({ ...r, target: t, blocked: targetTooNew(t) }); }
+    return out;
   });
   app.post('/api/v1/company-move-requests/:id/confirm', async (req) => {
     const a = sourceAdmin(req);
@@ -229,6 +258,8 @@ export function companyMoveRoutes(app: FastifyInstance, db: Db) {
     const pre = await movePlan(db, r.source_tenant_id, body);
     if (!sameCodes(b.confirm, pre.companies.map((c) => c.code))) throw badRequest(`พิมพ์รหัสบริษัทที่จะย้ายให้ครบและตรง: ${pre.confirm_text}`, [{ field: 'confirm', message: 'ไม่ตรง' }]);
     if (await tenantIsDemo(db, r.target_tenant_id)) throw forbidden('ลูกค้าปลายทางเป็นข้อมูลตัวอย่าง — ย้ายไม่ได้');
+    const young = targetTooNew(await targetInfo(db, r.target_tenant_id));
+    if (young) throw forbidden(young);
     await confirmSecondFactor(db, a.userId, b.totp_code);
     const upd = await db.updateTable('sys_company_move_request').set({ status: 'A', decided_by: a.userId, decided_at: sql`now()` as never, updated_by: a.userId })
       .where('id', '=', r.id).where('status', '=', 'P').executeTakeFirst();
@@ -268,6 +299,9 @@ export function companyMoveRoutes(app: FastifyInstance, db: Db) {
     return dbx.transaction().execute(async (tx) => {
       // คำนวณใหม่ในทรานแซกชัน (กันข้อมูลเปลี่ยนระหว่างดูตัวอย่างกับกดยืนยัน) · ล็อกแถวบริษัท
       await sql`SELECT id FROM sys_company WHERE id = ANY(${b.company_ids}::uuid[]) FOR UPDATE`.execute(tx);
+      // HANDOFF 204 N4: ล็อกแถวลูกค้าปลายทาง แล้วตรวจซ้ำในทรานแซกชัน — ปลายทางต้องไม่ใช่ข้อมูลตัวอย่าง
+      const dst = (await sql<{ is_demo: boolean }>`SELECT is_demo FROM sys_tenant WHERE id = ${b.target_tenant_id} FOR UPDATE`.execute(tx)).rows[0];
+      if (!dst || dst.is_demo) throw forbidden('ลูกค้าปลายทางเป็นข้อมูลตัวอย่าง — ย้ายไม่ได้');
       const p = await movePlan(tx, sourceId, b);
       const ids = p.companies.map((c) => c.id);
       const now = sql`now()` as never;
