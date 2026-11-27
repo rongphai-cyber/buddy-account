@@ -70,7 +70,7 @@ export function inviteRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const u = await target(a, parse(z.object({ id: z.string().uuid() }), req.params).id);
     if (u.id === a.userId) throw badRequest('สร้างลิงก์เชิญให้ตัวเองไม่ได้ — เปลี่ยนรหัสผ่านที่ บัญชีของฉัน');
     if (u.status !== 'A') throw badRequest(`ผู้ใช้ ${u.username} ถูกระงับอยู่ — เปลี่ยนสถานะเป็น "ใช้งาน" ก่อนสร้างลิงก์เชิญ`);
-    // HANDOFF 204 ข้อ d1 → 206: ผู้ใช้ของลูกค้าจริง = 403 ที่ target แล้ว (ศูนย์ผู้ให้บริการใช้ POST /provider/users/:id/email-invite)ค้า ไม่แสดงลิงก์ให้ผู้ให้บริการ
+    // HANDOFF 204 ข้อ d1 → 206: ผู้ใช้ของลูกค้าจริง = 403 ที่ target แล้ว (ศูนย์ผู้ให้บริการใช้ POST /provider/users/:id/email-invite — ส่งลิงก์ไปอีเมลผู้ติดต่อของลูกค้า ไม่แสดงลิงก์ให้ผู้ให้บริการ)
     if ((await secOf(db, u.id))?.totp_enabled) throw badRequest(`${u.username} เปิดยืนยันตัวตนสองขั้นแล้ว — ลิงก์เชิญใช้กับผู้ใช้ที่ยังไม่ได้ตั้ง · ถ้าลืมรหัสผ่าน ให้ตั้งรหัสผ่านใหม่ที่หน้าแก้ไขผู้ใช้ · ถ้ามือถือหาย ให้ "ล้างยืนยันตัวตนสองขั้น" ก่อน แล้วสร้างลิงก์ใหม่`);
     const token = randomBytes(32).toString('base64url');
     const expires = new Date(Date.now() + INVITE_HOURS * 3600_000).toISOString();

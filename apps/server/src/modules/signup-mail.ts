@@ -15,13 +15,13 @@ import { renderSignupMail, SIGNUP_MAIL_KINDS, SIGNUP_MAIL_LABEL, type SignupMail
  */
 export const MAIL_FROM_DEFAULT = 'noreply@worktruesolution.net';
 const PER_ADDRESS_DAY = 3;
-type Settings = { notify: string[]; reply_to: string | null; from: string };
+type Settings = { notify: string[]; alert_notify: string[]; reply_to: string | null; from: string };
 
 export async function mailSettings(db: Db): Promise<Settings> {
-  const rows = await db.selectFrom('sys_platform_setting').select(['key', 'value']).where('key', 'in', ['mail.signup_notify', 'mail.reply_to', 'mail.from']).where('deleted_at', 'is', null).execute();
+  const rows = await db.selectFrom('sys_platform_setting').select(['key', 'value']).where('key', 'in', ['mail.signup_notify', 'mail.alert_notify', 'mail.reply_to', 'mail.from']).where('deleted_at', 'is', null).execute();
   const v = (k: string) => rows.find((r) => r.key === k)?.value as unknown;
-  const notify = v('mail.signup_notify');
-  return { notify: Array.isArray(notify) ? notify.filter((x): x is string => typeof x === 'string') : [], reply_to: (v('mail.reply_to') as string | null) ?? null, from: (v('mail.from') as string) || process.env.BUDDY_MAIL_FROM || MAIL_FROM_DEFAULT };
+  const list = (x: unknown) => (Array.isArray(x) ? x.filter((y): y is string => typeof y === 'string') : []);
+  return { notify: list(v('mail.signup_notify')), alert_notify: list(v('mail.alert_notify')), reply_to: (v('mail.reply_to') as string | null) ?? null, from: (v('mail.from') as string) || process.env.BUDDY_MAIL_FROM || MAIL_FROM_DEFAULT };
 }
 export async function setSetting(db: Db, key: string, value: unknown, by: string) {
   const cur = await db.selectFrom('sys_platform_setting').select('id').where('key', '=', key).where('deleted_at', 'is', null).executeTakeFirst();
@@ -99,13 +99,16 @@ export function signupMailRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const email = z.string().trim().toLowerCase().email('อีเมลไม่ถูกต้อง').max(120);
     const b = parse(z.object({
       notify: z.array(email).max(10, 'ผู้รับแจ้งเตือนไม่เกิน 10 อีเมล'),
+      // HANDOFF 207: ผู้รับแจ้งเตือนการใช้งานผิดปกติของเจ้าหน้าที่ (ว่าง = ใช้ผู้รับแจ้งเตือนใบสมัคร) · ไม่ส่ง = ไม่เปลี่ยน
+      alert_notify: z.array(email).max(10, 'ผู้รับแจ้งเตือนไม่เกิน 10 อีเมล').optional(),
       reply_to: email.nullable().optional().or(z.literal('').transform(() => null)),
       from: email.refine((v) => v.endsWith('@worktruesolution.net') || !!process.env.BUDDY_MAIL_FROM_DOMAIN && v.endsWith(`@${process.env.BUDDY_MAIL_FROM_DOMAIN}`), 'ผู้ส่งต้องเป็นอีเมลของโดเมนที่ตั้งส่งอีเมลไว้ (…@worktruesolution.net)').optional(),
     }), req.body);
     await setSetting(db, 'mail.signup_notify', [...new Set(b.notify)], a.userId);
+    if (b.alert_notify) await setSetting(db, 'mail.alert_notify', [...new Set(b.alert_notify)], a.userId);
     await setSetting(db, 'mail.reply_to', b.reply_to ?? null, a.userId);
     if (b.from) await setSetting(db, 'mail.from', b.from, a.userId);
-    await logActivity(db, a, { module: 'SYS', action: 'MAIL_SETTINGS', table: 'sys_platform_setting', detail: { notify: b.notify.length, reply_to: !!b.reply_to, from: b.from ?? null } });
+    await logActivity(db, a, { module: 'SYS', action: 'MAIL_SETTINGS', table: 'sys_platform_setting', detail: { notify: b.notify.length, ...(b.alert_notify ? { alert_notify: b.alert_notify.length } : {}), reply_to: !!b.reply_to, from: b.from ?? null } });
     return { ...(await mailSettings(db)), ...driverInfo(req) };
   });
   /** ตัวอย่างอีเมล (ข้อมูลสมมุติ) — ผู้ให้บริการดูก่อนใช้จริง */

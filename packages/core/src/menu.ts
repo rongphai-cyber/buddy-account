@@ -160,6 +160,8 @@ export const MENU: MenuItem[] = [
     m('SET.NEWCO', 'กำหนดบริษัทใหม่', 'P0', '/companies/new', ['ch04:S-CO-03']),
     // HANDOFF 201 (เจ้าของ 26/11/2569): แยกจากรายละเอียดกิจการ — เฉพาะผู้ดูแลระบบ (ADMIN_MENUS) ไม่ได้ผ่านสิทธิ์รวม (ALL/เริ่มระบบ/กลุ่ม/ระดับ)
     m('SET.COS', 'บริษัททั้งหมด / ลบบริษัท', 'P0', '/settings/companies', ['ch04:S-CO-07']),
+    // HANDOFF 207: ลูกค้าตรวจได้ว่าเจ้าหน้าที่ผู้ให้บริการทำอะไรกับบัญชีบ้าง (อ่านอย่างเดียว) — เฉพาะผู้ดูแลระบบของกิจการ
+    m('SET.PVLOG', 'สิ่งที่ผู้ให้บริการทำกับบัญชีของท่าน', 'P0', '/settings/provider-actions'),
     // HANDOFF 185: แพ็กเกจบริการ + การใช้งาน — ลูกค้า (ผู้ดูแลของกิจการ อ่านอย่างเดียว) · ผู้ให้บริการ (แค็ตตาล็อก ทุกลูกค้า ส่วนเกินรายเดือน)
   ]),
   g('OT', 'อื่น ๆ', 'P1', [
@@ -181,6 +183,8 @@ export const MENU: MenuItem[] = [
     m('PV.CUS', 'ลูกค้าทั้งหมด (ภาพรวม)', 'P0', '/provider'),
     m('SET.TENANT', 'ใบสมัคร / เพิ่ม-แก้ไขลูกค้า', 'P0', '/admin/tenants'),
     m('SET.PKG', 'แพ็กเกจและการใช้งานลูกค้า', 'P0', '/admin/packages'),
+    // HANDOFF 207: สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า (อ่านจากแฟ้มบันทึกเหตุการณ์) + การแจ้งเตือนการใช้งานผิดปกติ
+    m('PV.ACT', 'สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า', 'P0', '/provider/actions'),
     // HANDOFF 205: หน้าการใช้งานของกิจการ (มุมลูกค้า) — ผู้ให้บริการดูการใช้งานรายลูกค้าที่ แพ็กเกจและการใช้งานลูกค้า แทน
     // ไม่อยู่ในแถบเมนู/ค้นหาเมนู (ลูกค้าไม่เห็นอยู่แล้วตั้งแต่ HANDOFF 199) · รหัสคงไว้ (ตารางสิทธิ์ API) · เปิดที่อยู่ตรง = ชี้ไปหน้าของผู้ให้บริการ
     { ...m('SET.USAGE', 'การใช้งานและแพ็กเกจ', 'P0', '/settings/usage'), nav: false },
@@ -208,15 +212,15 @@ export function flattenMenu(items: MenuItem[] = MENU, parent?: string): Array<Me
  * ที่เดียวที่กำหนด — หน้าจอและ server ใช้ชุดนี้ (providerOnly)
  * HANDOFF 204: ย้ายไปกลุ่ม ศูนย์ผู้ให้บริการ (PV) · กุญแจ API (SET.API) ออกจากชุดนี้ — ผู้ให้บริการเปิดให้รายลูกค้า แล้วผู้ดูแลของลูกค้าสร้างกุญแจเอง (tenant-modules)
  */
-export const PLATFORM_MENUS: ReadonlySet<string> = new Set(['PV', 'PV.CUS', 'SET.TENANT', 'SET.USAGE', 'SET.PKG']);
+export const PLATFORM_MENUS: ReadonlySet<string> = new Set(['PV', 'PV.CUS', 'PV.ACT', 'SET.TENANT', 'SET.USAGE', 'SET.PKG']);
 /** หน้าของศูนย์ผู้ให้บริการ (ใช้ได้โดยไม่ต้องเลือกบริษัท) */
-export const PROVIDER_ROUTES: readonly string[] = ['/provider', '/admin/tenants', '/admin/packages', '/settings/usage'];
+export const PROVIDER_ROUTES: readonly string[] = ['/provider', '/provider/actions', '/admin/tenants', '/admin/packages', '/settings/usage'];
 /**
  * เมนูเฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN ของลูกค้า · เจ้าหน้าที่ผู้ให้บริการ) — ตั้งให้ผ่านตารางสิทธิ์/สิทธิ์รวม (ALL · เมนูหลัก · กลุ่ม · ระดับ 9) ไม่ได้
  * ที่เดียวที่กำหนด (server: decide → 'admin' · หน้าจอ: แถวคงที่ในตารางสิทธิ์ · เปิดที่อยู่ตรง)
  * fade = ผู้อื่นเห็นจางพร้อมเหตุผล (ตรวจวันที่ปีผิดระบบ HANDOFF 198) · hide = ผู้อื่นไม่เห็นเลย (บริษัททั้งหมด/ลบบริษัท HANDOFF 201 "ไม่รวมให้พนักงานเห็น")
  */
-export const ADMIN_MENUS: Readonly<Record<string, 'fade' | 'hide'>> = { 'SET.YEARFIX': 'fade', 'SET.COS': 'hide' };
+export const ADMIN_MENUS: Readonly<Record<string, 'fade' | 'hide'>> = { 'SET.YEARFIX': 'fade', 'SET.COS': 'hide', 'SET.PVLOG': 'hide' };
 export const adminOnlyMenu = (code: string): 'fade' | 'hide' | null => ADMIN_MENUS[code] ?? null;
 /** เมนูนี้เฉพาะเจ้าหน้าที่ผู้ให้บริการ (HANDOFF 199) */
 export const providerOnly = (code: string) => PLATFORM_MENUS.has(code);

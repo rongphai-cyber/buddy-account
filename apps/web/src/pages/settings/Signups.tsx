@@ -140,16 +140,16 @@ export function SignupsPanel({ onApproved }: { onApproved: () => void }) {
   );
 }
 
-type MailSettingsData = { notify: string[]; reply_to: string | null; from: string; driver: string; sending: boolean; note: string };
+type MailSettingsData = { notify: string[]; alert_notify: string[]; reply_to: string | null; from: string; driver: string; sending: boolean; note: string };
 /** ค่าตั้งอีเมลของผู้ให้บริการ (HANDOFF 187): ผู้รับแจ้งเตือนใบสมัคร · Reply-To · ผู้ส่ง · ดูตัวอย่างอีเมล */
 function MailSettings({ onClose }: { onClose: () => void }) {
   const q = useQuery({ queryKey: ['mail-settings'], queryFn: () => api.get<MailSettingsData>('/api/v1/platform/mail-settings') });
-  const [f, setF] = useState<{ notify: string; reply_to: string; from: string } | null>(null);
-  const v = f ?? (q.data ? { notify: q.data.notify.join(', '), reply_to: q.data.reply_to ?? '', from: q.data.from } : null);
+  const [f, setF] = useState<{ notify: string; alert_notify: string; reply_to: string; from: string } | null>(null);
+  const v = f ?? (q.data ? { notify: q.data.notify.join(', '), alert_notify: (q.data.alert_notify ?? []).join(', '), reply_to: q.data.reply_to ?? '', from: q.data.from } : null);
   const [err, setErr] = useState<unknown>(null);
   const [preview, setPreview] = useState<MailKind | null>(null);
   const pv = useQuery({ enabled: !!preview, queryKey: ['mail-preview', preview], queryFn: () => api.get<{ subject: string; html: string; label: string }>('/api/v1/platform/mail-preview', { kind: preview! }) });
-  const save = () => { if (!v) return; setErr(null); api.put('/api/v1/platform/mail-settings', { notify: v.notify.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean), reply_to: v.reply_to.trim() || null, from: v.from.trim() })
+  const save = () => { if (!v) return; setErr(null); api.put('/api/v1/platform/mail-settings', { notify: v.notify.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean), alert_notify: v.alert_notify.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean), reply_to: v.reply_to.trim() || null, from: v.from.trim() })
     .then(() => { toast('บันทึกค่าตั้งอีเมลแล้ว'); onClose(); }).catch(setErr); };
   useHotkeys({ F9: save, 'Ctrl+S': save }, [v]);
   return (
@@ -158,6 +158,8 @@ function MailSettings({ onClose }: { onClose: () => void }) {
       {q.data && <p className={q.data.sending ? 'notebox ok-box' : 'notebox warn'}>ตัวส่งอีเมล: <b>{q.data.note}</b></p>}
       {v && <div className="form-grid">
         <Field label="อีเมลรับแจ้งเตือนใบสมัคร" wide hint="ผู้ให้บริการที่จะได้รับอีเมลเมื่อมีผู้สมัครใหม่ — หลายอีเมลคั่นด้วยจุลภาค · ว่าง = ไม่ส่ง"><input value={v.notify} placeholder="เช่น owner@example.com, staff@example.com" onChange={(e) => setF({ ...v, notify: e.target.value })} /></Field>
+        {/* HANDOFF 207: ผู้รับแจ้งเตือนการใช้งานผิดปกติของเจ้าหน้าที่ผู้ให้บริการ */}
+        <Field label="อีเมลรับแจ้งเตือนการใช้งานผิดปกติ" wide hint="เมื่อบัญชีเจ้าหน้าที่ผู้ให้บริการพยายามเปิดข้อมูลของลูกค้าจริงซ้ำ ๆ ใส่รหัสผิดซ้ำ ๆ หรือทำรายการที่ศูนย์ผู้ให้บริการถี่ผิดปกติ — หลายอีเมลคั่นด้วยจุลภาค · ว่าง = ใช้อีเมลรับแจ้งเตือนใบสมัคร · ไม่ส่งถึงลูกค้า"><input value={v.alert_notify} placeholder="เช่น owner@example.com" onChange={(e) => setF({ ...v, alert_notify: e.target.value })} /></Field>
         <Field label="ตอบกลับที่ (Reply-To)" hint="ผู้สมัครกดตอบกลับแล้วถึงอีเมลนี้ · ว่าง = ไม่ตั้ง"><input value={v.reply_to} onChange={(e) => setF({ ...v, reply_to: e.target.value })} /></Field>
         <Field label="ผู้ส่ง (From)" hint="ต้องเป็นอีเมลของโดเมนที่ตั้งส่งอีเมลไว้ (…@worktruesolution.net)"><input value={v.from} onChange={(e) => setF({ ...v, from: e.target.value })} /></Field>
       </div>}

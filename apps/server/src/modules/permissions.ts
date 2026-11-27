@@ -333,6 +333,8 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/signup/config': OPEN, 'POST /api/v1/signup': OPEN, 'GET /api/v1/signups': SELF, 'POST /api/v1/signups/:id/approve': SELF, 'POST /api/v1/signups/:id/reject': SELF,
   // HANDOFF 204 ศูนย์ผู้ให้บริการ (ตรวจผู้ให้บริการในตัวจัดการ)
   'GET /api/v1/provider/customers': SELF, 'GET /api/v1/provider/customers/:id': SELF, 'PUT /api/v1/provider/customers/:id/demo': SELF, 'POST /api/v1/provider/users/:id/email-invite': SELF, 'POST /api/v1/provider/users/:id/unlock': SELF, 'POST /api/v1/provider/users/:id/reset-2fa': SELF,
+  // HANDOFF 207: สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า — ตรวจในตัวจัดการ (ผู้ให้บริการ / ผู้ดูแลของกิจการ)
+  'GET /api/v1/provider/actions': SELF, 'GET /api/v1/provider-actions/mine': SELF,
   // HANDOFF 204 C2/C3: คำขอย้ายบริษัท (ผู้ดูแลของลูกค้าเดิมยืนยัน) · อีเมลผู้ติดต่อ (ผู้ดูแลของลูกค้า)
   'GET /api/v1/company-move-requests': SELF, 'POST /api/v1/company-move-requests/:id/confirm': SELF, 'POST /api/v1/company-move-requests/:id/reject': SELF, 'POST /api/v1/company-move-requests/:id/cancel': SELF, 'GET /api/v1/tenants/:id/move-requests': SELF,
   'GET /api/v1/tenant/contact': SELF, 'PUT /api/v1/tenant/contact': SELF,

@@ -15,6 +15,7 @@ import { SignupPage } from './pages/Signup';
 import { LangSwitch } from './components/LangSwitch';
 import { HomePage } from './pages/Home';
 import { ProviderCustomerPage, ProviderCustomersPage } from './pages/provider/ProviderConsole';
+import { MyProviderActionsPage, ProviderActionsPage } from './pages/provider/ProviderActions';
 import { AccountsPage } from './pages/gl/Accounts';
 import { JournalsPage } from './pages/gl/Journals';
 import { JournalImportPage } from './pages/gl/JournalImport';
@@ -324,6 +325,7 @@ function Shell() {
           <Route path="/settings/data-tables" element={<DataTablesPage />} />
           <Route path="/settings/year-fix" element={<YearFixPage />} />
           <Route path="/settings/companies" element={<CompaniesPage />} />
+          <Route path="/settings/provider-actions" element={<MyProviderActionsPage />} />
           {TRADE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<TradeListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<TradeFormPage key={k.path} path={k.path} />} />])}
           {SETTLE_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<SettleListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<SettleFormPage key={k.path} path={k.path} />} />])}
           {CASH_KINDS.map((k) => [<Route key={k.path} path={k.route} element={<CashListPage key={k.path} path={k.path} />} />, <Route key={k.path + '-f'} path={`${k.route}/:id`} element={<CashFormPage key={k.path} path={k.path} />} />])}
@@ -349,6 +351,7 @@ function Shell() {
           <Route path="/admin/tenants" element={<TenantsPage />} />
           <Route path="/provider" element={<ProviderCustomersPage />} />
           <Route path="/provider/customers/:id" element={<ProviderCustomerPage />} />
+          <Route path="/provider/actions" element={<ProviderActionsPage />} />
           <Route path="/admin/packages" element={<PackagesPage />} />
           <Route path="/settings/usage" element={<UsagePage />} />
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
@@ -415,7 +418,8 @@ function MenuEntry({ it, me }: { it: MenuItem; me: Me | null | undefined }) {
     return <span className="sub-item no-right" role="link" aria-disabled="true" tabIndex={0} title={st.why} onClick={(e) => tell(e.currentTarget)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tell(e.currentTarget); } }}>{it.label}<span className="lock" aria-hidden="true">🔒</span></span>;
   }
-  if (it.route) return <NavLink to={it.route} className={({ isActive }) => cx('sub-item', isActive && 'on')}>{it.label}</NavLink>;
+  // HANDOFF 207: /provider ครอบ /provider/customers/… แต่ไม่ครอบ /provider/actions (เมนูของตัวเอง)
+  if (it.route) return <NavLink to={it.route} className={({ isActive }) => cx('sub-item', isActive && !(it.route === '/provider' && window.location.pathname.startsWith('/provider/actions')) && 'on')}>{it.label}</NavLink>;
   return <NavLink to={`/planned/${it.code}`} className={({ isActive }) => cx('sub-item', 'planned', isActive && 'on')} title={`อยู่ในแผน เฟส ${it.phase}`}>{it.label}<span className="phase">{it.phase}</span></NavLink>;
 }
 
@@ -493,7 +497,7 @@ function ProviderShell() {
   const { me, logout } = useSession();
   const nav = useNavigate();
   const loc = useLocation();
-  const items: Array<[string, string]> = [['/provider', 'ลูกค้าทั้งหมด (ภาพรวม)'], ['/admin/tenants', 'ใบสมัคร / เพิ่ม-แก้ไขลูกค้า'], ['/admin/packages', 'แพ็กเกจและการใช้งานลูกค้า']];
+  const items: Array<[string, string]> = [['/provider', 'ลูกค้าทั้งหมด (ภาพรวม)'], ['/admin/tenants', 'ใบสมัคร / เพิ่ม-แก้ไขลูกค้า'], ['/admin/packages', 'แพ็กเกจและการใช้งานลูกค้า'], ['/provider/actions', 'สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า']];
   return (
     <div className="provider-shell">
       <header className="topbar provider-top">
@@ -504,13 +508,14 @@ function ProviderShell() {
         <button onClick={() => void logout()}>ออก</button>
       </header>
       <nav className="provider-nav" aria-label="เมนูศูนย์ผู้ให้บริการ">
-        {items.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => cx(isActive && 'active')} end={to === '/provider' ? false : undefined}>{label}</NavLink>)}
+        {items.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => cx(isActive && !(to === '/provider' && loc.pathname.startsWith('/provider/actions')) && 'active')} end={to === '/provider' ? false : undefined}>{label}</NavLink>)}
         <NavLink to="/account/password">รหัสผ่านและยืนยันตัวตน</NavLink>
       </nav>
       <main className="provider-main">
         <Routes>
           <Route path="/provider" element={<ProviderCustomersPage />} />
           <Route path="/provider/customers/:id" element={<ProviderCustomerPage />} />
+          <Route path="/provider/actions" element={<ProviderActionsPage />} />
           <Route path="/admin/tenants" element={<TenantsPage />} />
           <Route path="/admin/packages" element={<PackagesPage />} />
           <Route path="/settings/usage" element={<UsagePage />} />

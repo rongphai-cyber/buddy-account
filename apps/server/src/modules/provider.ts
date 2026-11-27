@@ -94,6 +94,9 @@ export async function emailInvite(db: Db, base: string, a: Pick<AuthContext, 'us
   return { emailed_to: maskEmail(t.contact_email), mail_status: out.status, mail_note: out.note, expires_at: expires, hours: INVITE_MAIL_HOURS, username: u.username };
 }
 
+/** เปิดดูรายละเอียดลูกค้า: บันทึกครั้งเดียวต่อเจ้าหน้าที่ต่อลูกค้าใน 30 นาที (ลูกค้าเห็นใน สิ่งที่ผู้ให้บริการทำกับบัญชีของท่าน · HANDOFF 207) */
+const viewed = new Map<string, number>();
+const VIEW_LOG_MINUTES = 30;
 export function providerRoutes(app: FastifyInstance, db: Db) {
   const platform = (req: FastifyRequest) => { const a = requireAuth(req); if (!a.isPlatform || a.apiKeyId) throw forbidden('เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม'); return a; };
 
@@ -113,13 +116,18 @@ export function providerRoutes(app: FastifyInstance, db: Db) {
 
   /** รายละเอียดลูกค้าหนึ่งราย — บริษัท ผู้ใช้ แพ็กเกจ เมนูที่เปิด กุญแจ API การใช้งาน (ไม่มีข้อมูลบัญชี) */
   app.get('/api/v1/provider/customers/:id', async (req) => {
-    platform(req);
+    const a = platform(req);
     const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
     const t = await db.selectFrom('sys_tenant').select(['id', 'code', 'name', 'status', 'suspend_reason', 'is_demo', 'plan', 'contact_email', 'contact_phone', 'expires_on', 'dpa_signed_on', 'terminated_on', 'purge_after',
       'purged_at', 'moved_to', 'require_mfa', 'single_session', 'max_companies', 'max_users', 'created_at', 'contact_email_changed_at'])
       .select(sql<string | null>`(SELECT p.name_th FROM sys_package p WHERE p.id = sys_tenant.package_id)`.as('package_name'))
       .where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!t) throw notFound('ลูกค้าผู้ใช้บริการ');
+    const vk = `${a.userId}:${id}`, last = viewed.get(vk) ?? 0;
+    if (Date.now() - last > VIEW_LOG_MINUTES * 60_000) {
+      viewed.set(vk, Date.now());
+      await logActivity(db, { companyId: null, userId: a.userId }, { module: 'SYS', action: 'PV_VIEW', docNo: t.code, table: 'sys_tenant', rowId: id });
+    }
     const companies = await db.selectFrom('sys_company').select(['id', 'code', 'name_th', 'status', 'created_at', 'deleted_at']).where('tenant_id', '=', id).orderBy('code').execute();
     const users = (await sql<Record<string, unknown>>`
       SELECT u.id, u.username, u.display_name, u.status, u.last_login_at::text AS last_login_at, g.code AS group_code, g.name AS group_name,

@@ -106,6 +106,27 @@ export async function exportTenant(db: Db, tenantId: string, pass: string, opt: 
   });
 }
 
+/**
+ * แฟ้มย้ายลูกค้าต้องมีข้อมูลของลูกค้าในหัวแฟ้มรายเดียว (HANDOFF 207 · ตรวจจาก 204) — ปฏิเสธทั้งแฟ้มเมื่อพบแถวที่ไม่ใช่ของลูกค้านี้:
+ * ลูกค้า 1 แถว = หัวแฟ้ม · กลุ่มผู้ใช้ของลูกค้านี้ (ไม่ใช่กลุ่มของผู้ให้บริการ) · ค่าความปลอดภัย (2FA) ของผู้ใช้ในแฟ้มเท่านั้น
+ * แฟ้มบันทึกเหตุการณ์ของบริษัทในแฟ้ม หรือของผู้ใช้ในแฟ้ม · ทุกช่องที่อ้างลูกค้า/บริษัท/กลุ่มผู้ใช้ ต้องชี้ไปที่ของในแฟ้ม (ช่องที่อ้างผู้ใช้นอกแฟ้ม = ว่าง ตามเดิม)
+ */
+export async function bindToTenant(db: Db, parsed: Map<string, Obj[]>, tenantId: string, cids: string[]) {
+  const get = (t: string) => parsed.get(t) ?? [];
+  const bad = (what: string) => badRequest(`แฟ้มย้ายลูกค้ามี${what} — นำเข้าไม่ได้ (แฟ้มต้องมีข้อมูลของลูกค้าในหัวแฟ้มรายเดียว · ส่งออกใหม่จากเครื่องต้นทาง)`);
+  const ts = get('sys_tenant');
+  if (ts.length !== 1 || String(ts[0]!.id) !== tenantId) throw bad('ข้อมูลลูกค้าไม่ตรงกับหัวแฟ้ม (ต้องมีลูกค้าหนึ่งราย)');
+  for (const g of get('sys_user_group')) if (g.tenant_id !== tenantId) throw bad('กลุ่มผู้ใช้ของลูกค้ารายอื่นหรือของผู้ให้บริการ');
+  const users = new Set(get('sys_user').map((u) => String(u.id)));
+  for (const s of get('sys_user_security')) if (!users.has(String(s.user_id))) throw bad('ค่าความปลอดภัย (2FA) ของผู้ใช้ที่ไม่อยู่ในแฟ้ม');
+  for (const l of get('sys_activity_log')) if (l.company_id ? !cids.includes(String(l.company_id)) : !users.has(String(l.user_id))) throw bad('แฟ้มบันทึกเหตุการณ์ของบริษัทหรือผู้ใช้นอกแฟ้ม');
+  const allow: Record<string, Set<string>> = { sys_tenant: new Set([tenantId]), sys_company: new Set(cids), sys_user_group: new Set(get('sys_user_group').map((g) => String(g.id))) };
+  const fks = await rows<{ t: string; c: string; dst: string }>(db, sql`SELECT src.relname AS t, a.attname AS c, dst.relname AS dst FROM pg_constraint k JOIN pg_class src ON src.oid = k.conrelid
+      JOIN pg_class dst ON dst.oid = k.confrelid JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = k.conkey[1]
+     WHERE k.contype = 'f' AND dst.relname IN ('sys_tenant', 'sys_company', 'sys_user_group')`);
+  for (const { t, c, dst } of fks) for (const r of get(t)) if (r[c] != null && !allow[dst]!.has(String(r[c]))) throw bad(`ข้อมูลที่อ้างถึง${dst === 'sys_tenant' ? 'ลูกค้า' : dst === 'sys_company' ? 'บริษัท' : 'กลุ่มผู้ใช้'}นอกแฟ้ม (${t}.${c})`);
+}
+
 /** นำเข้าแฟ้มย้ายลูกค้า (ฐานข้อมูลปลายทาง) — ทรานแซกชันเดียว · ซ้ำกับข้อมูลที่มีอยู่ = ไม่นำเข้าเลย */
 export async function importTenant(db: Db, buf: Buffer, pass: string, userId: string | null, opts: { demoOnly?: boolean } = {}) {
   const { header: h0, rows: data } = readBackup(unseal(buf, pass), FORMAT);
@@ -124,6 +145,8 @@ export async function importTenant(db: Db, buf: Buffer, pass: string, userId: st
   if (opts.demoOnly && !get('sys_tenant').some((t) => t.is_demo === true)) throw forbidden(`แฟ้มนี้เป็นข้อมูลของลูกค้าจริง (${h.tenant.code}) — เจ้าหน้าที่ผู้ให้บริการนำเข้าไม่ได้ (ข้อมูลของลูกค้าเป็นความลับ) · ให้ผู้ดูแลของลูกค้านำเข้าเองที่เซิร์ฟเวอร์ใหม่`);
   const cids = get('sys_company').map((c) => String(c.id));
   for (const [t, rs] of parsed) if (tables.has(t)) for (const r of rs) if (!cids.includes(String(r.company_id))) throw badRequest(`แฟ้มมีข้อมูลของบริษัทที่ไม่อยู่ในลูกค้ารายนี้ (${t})`);
+  // HANDOFF 207 (ตรวจจาก 204): ทุกแถวในแฟ้มต้องผูกกับลูกค้าในหัวแฟ้มเท่านั้น — แฟ้มที่แต่งมาเขียนข้อมูลเข้าลูกค้า/ผู้ใช้/บริษัทอื่นในเครื่องนี้ไม่ได้
+  await bindToTenant(db, parsed, h.tenant.id, cids);
 
   // ซ้ำกับที่มีอยู่ในเครื่องนี้
   const users = get('sys_user');

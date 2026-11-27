@@ -6,6 +6,7 @@ import { MENU } from '@buddy/core';
 import { rlsAvailable, type Database } from './db.js';
 import type { Config } from './config.js';
 import { AppError, pgToAppError, sendError, zodToAppError } from './http.js';
+import { isConsoleAction, noteAlert } from './alerts.js';
 import { ZodError } from 'zod';
 import { sql } from 'kysely';
 import { attachAuth, authRoutes } from './modules/auth.js';
@@ -81,6 +82,7 @@ import { wtsRoutes } from './modules/wts.js';
 import { wtsLivingRoutes } from './modules/wts-living.js';
 import { tenantModuleRoutes } from './modules/tenant-modules.js';
 import { companyMoveRoutes } from './modules/company-move.js';
+import { providerActionRoutes } from './modules/provider-actions.js';
 import { hubRoutes } from './modules/hub.js';
 import { inventoryAccountRoutes } from './modules/gl/inventory.js';
 import { payrollMasterRoutes } from './modules/payroll/master.js';
@@ -100,7 +102,11 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   const { db } = database;
 
   app.setErrorHandler((err, req, reply) => {
-    if (err instanceof AppError) return sendError(reply, err);
+    if (err instanceof AppError) {
+      // HANDOFF 207: เจ้าหน้าที่ผู้ให้บริการโดนปฏิเสธข้อมูลของลูกค้าจริง — นับเพื่อแจ้งเตือนเมื่อซ้ำ ๆ
+      if (err.code === 'PROVIDER_LOCKED' && req.auth?.isPlatform) noteAlert(db, 'LOCKED', { userId: req.auth.userId, username: req.auth.username }, { method: req.method, url: req.url, ip: req.ip, base: cfg.publicUrl });
+      return sendError(reply, err);
+    }
     if (err instanceof ZodError) return sendError(reply, zodToAppError(err));
     const pgErr = pgToAppError(err);
     if (pgErr) return sendError(reply, pgErr);
@@ -111,6 +117,11 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   });
 
   attachAuth(app, db);
+  // HANDOFF 207: รายการที่ศูนย์ผู้ให้บริการถี่ผิดปกติ (ต่อบัญชีเจ้าหน้าที่) → แจ้งเตือน
+  app.addHook('onResponse', async (req, reply) => {
+    const a = req.auth;
+    if (a?.isPlatform && !a.apiKeyId && reply.statusCode < 500 && isConsoleAction(req.method, req.url)) noteAlert(db, 'BURST', { userId: a.userId, username: a.username }, { method: req.method, url: req.url, ip: req.ip, base: cfg.publicUrl });
+  });
   await syncMenus(db);
   await syncSettingDefs(db);
   const rls = await rlsAvailable(database);
@@ -135,6 +146,7 @@ export async function buildApp(database: Database, cfg: Config, opts: { files?: 
   authRoutes(app, db, cfg);
   inviteRoutes(app, db, cfg);
   providerRoutes(app, db);
+  providerActionRoutes(app, db);
   usageRoutes(app, db);
   companyRoutes(app, database);
   companyAddressRoutes(app, db);

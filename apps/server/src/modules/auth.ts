@@ -12,6 +12,7 @@ import type { Config } from '../config.js';
 import { loadApiKey } from './apikeys.js';
 import { hubOnly, normalizeAppAccess, passwordProblem, normalizeUiTheme, tenantBlockedMessage } from '@buddy/core';
 import { mfaForAll, clearFails, finishSecondStep, lockedError, lockedUntil, markPasswordChanged, registerFail, secOf, startSecondStep } from './security.js';
+import { noteLoginFail } from '../alerts.js';
 
 export const SESSION_COOKIE = 'buddy_session';
 const ADMIN_GROUP = 'ADMIN';
@@ -180,6 +181,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const until = lockedUntil(sec);
     if (u && until) {
       await logActivity(db, { companyId: null, userId: u.id }, { module: 'SYS', action: 'LOGIN_FAIL', detail: { username: body.username, ip: req.ip, locked: true } });
+      await noteLoginFail(db, u.id, req.ip);
       throw lockedError(until);
     }
     const ok = u && u.status === 'A' && u.password_hash && (await bcrypt.compare(body.password, u.password_hash));
@@ -264,7 +266,7 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     const companyId = body.company_id ?? a.companyId;
     if (body.company_id && body.company_id !== a.companyId) {
       if (!(await canAccessCompany(db, a, body.company_id))) {
-        if (a.isPlatform) throw forbidden(PROVIDER_LOCKED);
+        if (a.isPlatform) throw new AppError(403, 'PROVIDER_LOCKED', PROVIDER_LOCKED);   // HANDOFF 207: รหัสเดียวกับที่อื่น (นับแจ้งเตือน)
         throw badRequest('ไม่มีสิทธิ์เข้าบริษัทนี้');
       }
       patch.current_company_id = body.company_id;

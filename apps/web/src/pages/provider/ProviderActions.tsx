@@ -1,0 +1,198 @@
+import { useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { formatDate } from '@buddy/core';
+import { api } from '../../api';
+import { useSession } from '../../session';
+import { DateInput, ErrorBox, Field, KeyHints, Modal, PageHead, Pill, useHotkeys, useYearSystem } from '../../ui';
+import { useListSort, type SortCol } from '../../components/SortHeader';
+import { useWorkRangeState } from '../../workRange';
+
+/**
+ * สิ่งที่เจ้าหน้าที่ผู้ให้บริการทำกับบัญชีลูกค้า (HANDOFF 207 · ต่อจาก 204 P3) — อ่านอย่างเดียวจากแฟ้มบันทึกเหตุการณ์
+ *  - ศูนย์ผู้ให้บริการ (/provider/actions): ทุกลูกค้า กรองลูกค้า เจ้าหน้าที่ ช่วงวันที่ เหตุการณ์ · คลิกแถว = ดูรายละเอียด
+ *  - ลูกค้า (/settings/provider-actions · ผู้ดูแลระบบของกิจการ): เฉพาะบัญชีของตัวเอง — ตรวจได้ว่าเจ้าหน้าที่ทำอะไรกับบัญชีบ้าง
+ */
+export const PV_ACTION_TH: Record<string, string> = {
+  NEW_TENANT: 'เพิ่มลูกค้า', EDIT_TENANT: 'แก้ไขลูกค้า (สถานะ แพ็กเกจ วันหมดอายุ)', PURGE_TENANT: 'ลบข้อมูลลูกค้าตามกำหนด', TENANT_MODULES: 'เปิด/ปิดโปรแกรมและเมนูของลูกค้า',
+  TENANT_STANDARD_GROUPS: 'สร้างกลุ่มผู้ใช้ตั้งต้น', TENANT_DEMO_ON: 'ตั้งเป็นข้อมูลตัวอย่าง', TENANT_DEMO_OFF: 'เลิกเป็นข้อมูลตัวอย่าง', PV_VIEW: 'เปิดดูภาพรวมของลูกค้า',
+  EXPORT_TENANT: 'ส่งออกแฟ้มย้ายลูกค้า', IMPORT_TENANT: 'นำเข้าแฟ้มย้ายลูกค้า', MOVE_REQUEST: 'ขอย้ายบริษัทข้ามลูกค้า', MOVE_REJECT: 'ปฏิเสธการย้ายบริษัท',
+  INVITE_EMAIL: 'ส่งลิงก์ตั้งรหัสผ่านทางอีเมลของลูกค้า', INVITE_CREATE: 'สร้างลิงก์เชิญ', INVITE_REVOKE: 'ยกเลิกลิงก์เชิญ', USER_UNLOCK: 'ปลดล็อกผู้ใช้',
+  USER_RESET_2FA: 'ล้างการยืนยันตัวตนสองขั้น (2FA)', USER_RESET_PASSWORD: 'ตั้งรหัสผ่านใหม่ (ผู้ดูแลเซิร์ฟเวอร์)', API_KEY_CREATE: 'สร้างกุญแจ API', API_KEY_REVOKE: 'ยกเลิกกุญแจ API',
+  API_KEY_SCOPE: 'แก้ขอบเขตกุญแจ API', SIGNUP_REJECT: 'ไม่อนุมัติใบสมัคร', MAIL_SENT: 'ส่งอีเมลเรื่องใบสมัคร', MAIL_FAILED: 'ส่งอีเมลเรื่องใบสมัครไม่สำเร็จ', MAIL_SKIPPED: 'ไม่ได้ส่งอีเมลเรื่องใบสมัคร',
+  ADD_PACKAGE: 'เพิ่มแพ็กเกจ', EDIT_PACKAGE: 'แก้ไขแพ็กเกจ', MAIL_SETTINGS: 'ตั้งค่าอีเมลของผู้ให้บริการ', SIGNUP_SETTINGS: 'ตั้งค่าหน้าสมัครใช้งาน',
+  AI_PLATFORM_KEY_SET: 'ตั้งกุญแจ AI ของผู้ให้บริการ', AI_PLATFORM_KEY_REMOVE: 'ลบกุญแจ AI ของผู้ให้บริการ',
+  ALERT_LOCKED: '⚠ แจ้งเตือน: พยายามเปิดข้อมูลของลูกค้าจริงซ้ำ ๆ', ALERT_LOGIN_FAIL: '⚠ แจ้งเตือน: ใส่รหัสผิดซ้ำ ๆ', ALERT_BURST: '⚠ แจ้งเตือน: ทำรายการถี่ผิดปกติ',
+  ADD: 'เพิ่ม', EDIT: 'แก้ไข', CANCEL: 'ยกเลิก', DELETE: 'ลบ', PRINT: 'พิมพ์', ADD_USER: 'เพิ่มผู้ใช้', EDIT_USER: 'แก้ไขผู้ใช้', EDIT_GROUP: 'แก้ไขกลุ่มผู้ใช้',
+  DELETE_GROUP: 'ลบกลุ่มผู้ใช้', PERMISSION: 'แก้สิทธิ์', NEW_COMPANY: 'เพิ่มบริษัท', HUB_LAUNCH: 'เปิดโปรแกรมจาก Hub',
+};
+const RESULT: Record<string, [string, 'n' | 'm' | 'd' | 'x']> = { ok: ['ทำแล้ว', 'm'], sent: ['ทำแล้ว · ส่งอีเมลแล้ว', 'm'], failed: ['ทำแล้ว · ส่งอีเมลไม่สำเร็จ', 'd'], skipped: ['ทำแล้ว · ไม่ได้ส่งอีเมล', 'x'] };
+const actText = (a: string) => PV_ACTION_TH[a] ?? a;
+const detailText = (v: unknown) => (v === null || v === undefined ? '' : typeof v === 'string' ? v : JSON.stringify(v));
+
+type Base = { id: string; occurred_at: string; action: string; doc_no: string | null; company_code: string | null; staff_name: string | null; detail: unknown; result: keyof typeof RESULT };
+type PvRow = Base & { tenant_id: string | null; tenant_code: string | null; tenant_name: string | null; is_demo: boolean | null; staff_username: string | null; module: string | null };
+type PvResp = { rows: PvRow[]; total: number; page: number; page_size: number; tenants: Array<{ id: string; code: string; name: string; is_demo: boolean }>; staff: Array<{ id: string; username: string; display_name: string }> };
+type MineResp = { rows: Base[]; total: number; page: number; page_size: number };
+
+function useWhen() {
+  const ys = useYearSystem();
+  return (iso: string) => { const t = new Date(iso); return `${formatDate(t.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' }), ys)} ${t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })}`; };
+}
+function csvDownload(name: string, head: string[], lines: string[][]) {
+  const txt = [head, ...lines].map((l) => l.map((x) => (/[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x)).join(',')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function Pager({ page, total, size, onPage }: { page: number; total: number; size: number; onPage: (p: number) => void }) {
+  const last = Math.max(1, Math.ceil(total / size));
+  return (
+    <div className="toolbar pager">
+      <button onClick={() => onPage(1)} disabled={page <= 1} title="หน้าแรก">⏮</button>
+      <button onClick={() => onPage(page - 1)} disabled={page <= 1} title="หน้าก่อน (PageUp)">◀ ก่อนหน้า</button>
+      <span className="summary">หน้า <b>{page.toLocaleString()}</b> / {last.toLocaleString()} · ทั้งหมด <b>{total.toLocaleString()}</b> รายการ</span>
+      <button onClick={() => onPage(page + 1)} disabled={page >= last} title="หน้าถัดไป (PageDown)">ถัดไป ▶</button>
+      <button onClick={() => onPage(last)} disabled={page >= last} title="หน้าสุดท้าย">⏭</button>
+    </div>
+  );
+}
+function DetailModal({ row, onClose, extra }: { row: Base; onClose: () => void; extra?: ReactNode }) {
+  const when = useWhen();
+  const [label, tone] = RESULT[row.result] ?? RESULT.ok!;
+  return (
+    <Modal title={actText(row.action)} onClose={onClose} footer={<button className="primary" onClick={onClose} autoFocus>ปิด <kbd>Esc</kbd></button>}>
+      <dl className="kv">
+        <dt>วันเวลา</dt><dd>{when(row.occurred_at)}</dd>
+        {extra}
+        <dt>เจ้าหน้าที่</dt><dd>{row.staff_name ?? '—'}</dd>
+        <dt>รายการ</dt><dd className="mono">{row.doc_no ?? '—'}</dd>
+        <dt>บริษัท</dt><dd className="mono">{row.company_code ?? '—'}</dd>
+        <dt>ผล</dt><dd><Pill tone={tone}>{label}</Pill></dd>
+        <dt>รายละเอียด</dt><dd><pre className="small" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{row.detail ? JSON.stringify(row.detail, null, 2) : '—'}</pre></dd>
+      </dl>
+    </Modal>
+  );
+}
+
+const PV_COLS: readonly SortCol<PvRow>[] = [
+  { key: 'occurred_at', type: 'date' }, { key: 'tenant_code', type: 'text' }, { key: 'company_code', type: 'text' }, { key: 'staff_name', type: 'text' }, { key: 'action', type: 'text', get: (r) => actText(r.action) },
+];
+const EMPTY = { tenant: '', staff: '', action: '' };
+
+export function ProviderActionsPage() {
+  const { me } = useSession();
+  const nav = useNavigate();
+  const when = useWhen();
+  const range = useWorkRangeState();
+  const [f, setF] = useState(EMPTY);
+  const [applied, setApplied] = useState({ ...EMPTY, from: range.from, to: range.to });
+  const [page, setPage] = useState(1);
+  const [open, setOpen] = useState<PvRow | null>(null);
+  const st = useListSort<PvRow>('provider-actions', PV_COLS, () => setPage(1));
+  const list = useQuery({ enabled: !!me?.user.is_platform, queryKey: ['provider-actions', applied, page, st.params], queryFn: () => api.get<PvResp>('/api/v1/provider/actions', { ...applied, page: String(page), ...st.params }) });
+  const apply = () => { setApplied({ ...f, from: range.from, to: range.to }); setPage(1); };
+  const last = Math.max(1, Math.ceil((list.data?.total ?? 0) / (list.data?.page_size ?? 50)));
+  useHotkeys({ F5: apply, PageDown: () => setPage((p) => Math.min(last, p + 1)), PageUp: () => setPage((p) => Math.max(1, p - 1)) });
+  if (!me?.user.is_platform) return <div className="page"><div className="notebox">เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม</div></div>;
+  const rows = st.sorted(list.data?.rows);
+  const tenants = list.data?.tenants ?? [];
+  const csv = () => csvDownload('provider-actions.csv', ['วันเวลา', 'ลูกค้า', 'บริษัท', 'เจ้าหน้าที่', 'เหตุการณ์', 'รายการ', 'ผล', 'รายละเอียด'],
+    rows.map((r) => [when(r.occurred_at), r.tenant_code ?? 'ทั้งระบบ', r.company_code ?? '', r.staff_username ?? 'ผู้ดูแลเซิร์ฟเวอร์', actText(r.action), r.doc_no ?? '', RESULT[r.result]?.[0] ?? '', detailText(r.detail)]));
+  return (
+    <div className="page" data-tone="setup">
+      <PageHead eyebrow="ศูนย์ผู้ให้บริการ" title="สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า"
+        lead="ทุกครั้งที่เจ้าหน้าที่ผู้ให้บริการทำกับบัญชีของลูกค้า (เปิด/ระงับ แพ็กเกจ เมนูที่เปิด ข้อมูลตัวอย่าง อีเมลแจ้งลูกค้า ลิงก์ตั้งรหัสผ่าน ปลดล็อก ล้าง 2FA กุญแจ API ย้ายบริษัท เพิ่ม/แก้ไขลูกค้า เปิดดูภาพรวม) และการแจ้งเตือนการใช้งานผิดปกติ — อ่านอย่างเดียว แก้หรือลบไม่ได้ · ลูกค้าเห็นรายการของบัญชีตัวเองที่ เริ่มระบบ › สิ่งที่ผู้ให้บริการทำกับบัญชีของท่าน" />
+      <fieldset className="box no-print"><legend>เงื่อนไข</legend>
+        <div className="form-grid">
+          <Field label="ลูกค้า"><select value={f.tenant} onChange={(e) => setF({ ...f, tenant: e.target.value })}>
+            <option value="">ทุกลูกค้า + ทั้งระบบ</option><option value="none">ทั้งระบบ (แพ็กเกจ ค่าตั้ง การแจ้งเตือน)</option>
+            <optgroup label="ลูกค้า">{tenants.filter((t) => !t.is_demo).map((t) => <option key={t.id} value={t.id}>{t.code} · {t.name}</option>)}</optgroup>
+            <optgroup label="ข้อมูลตัวอย่าง">{tenants.filter((t) => t.is_demo).map((t) => <option key={t.id} value={t.id}>{t.code} · {t.name}</option>)}</optgroup>
+          </select></Field>
+          <Field label="เจ้าหน้าที่"><select value={f.staff} onChange={(e) => setF({ ...f, staff: e.target.value })}><option value="">ทุกคน</option>
+            {(list.data?.staff ?? []).map((s) => <option key={s.id} value={s.id}>{s.username} · {s.display_name}</option>)}</select></Field>
+          <Field label="วันที่ จาก"><DateInput value={range.from} onChange={range.setFrom} /></Field>
+          <Field label="ถึง"><DateInput value={range.to} onChange={range.setTo} /></Field>
+          <Field label="เหตุการณ์"><select value={f.action} onChange={(e) => setF({ ...f, action: e.target.value })}><option value="">ทั้งหมด</option>
+            {Object.entries(PV_ACTION_TH).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+        </div>
+        <div className="toolbar"><button className="primary" onClick={apply}>เรียกดู <kbd>F5</kbd></button>
+          <button onClick={() => { setF(EMPTY); range.setFrom(range.work.from); range.setTo(range.work.to); setApplied({ ...EMPTY, from: range.work.from, to: range.work.to }); setPage(1); }}>ล้างเงื่อนไข</button>
+          <button onClick={csv} disabled={!rows.length}>CSV (หน้านี้)</button></div>
+      </fieldset>
+      <ErrorBox error={list.error} />
+      <div className="table-wrap tall">
+        <table className="grid report">
+          <thead><tr>{st.th('occurred_at', 'วันเวลา', { style: { width: 130 } })}{st.th('tenant_code', 'ลูกค้า')}{st.th('company_code', 'บริษัท', { style: { width: 80 } })}{st.th('staff_name', 'เจ้าหน้าที่')}{st.th('action', 'เหตุการณ์')}<th>รายการ</th><th>ผล</th><th>รายละเอียด</th></tr></thead>
+          <tbody>
+            {rows.map((r) => { const [label, tone] = RESULT[r.result] ?? RESULT.ok!; return (
+              <tr key={r.id} className="row-open" onClick={() => setOpen(r)} title="คลิกเพื่อดูรายละเอียด">
+                <td>{when(r.occurred_at)}</td>
+                <td>{r.tenant_code ? <><b className="mono">{r.tenant_code}</b> <span className="small">{r.tenant_name}</span>{r.is_demo && <> <Pill tone="d">ข้อมูลตัวอย่าง</Pill></>}</> : <span className="muted">ทั้งระบบ</span>}</td>
+                <td className="mono">{r.company_code}</td>
+                <td title={r.staff_username ?? ''}>{r.staff_name ?? <span className="muted">ผู้ดูแลเซิร์ฟเวอร์</span>}</td>
+                <td>{actText(r.action)}</td><td className="mono">{r.doc_no}</td><td><Pill tone={tone}>{label}</Pill></td>
+                <td className="small muted" style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detailText(r.detail).slice(0, 160)}</td>
+              </tr>); })}
+            {list.data && !rows.length && <tr><td colSpan={8} className="empty">ไม่มีรายการตามเงื่อนไข</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {list.data && <Pager page={page} total={list.data.total} size={list.data.page_size} onPage={setPage} />}
+      <KeyHints keys={[['F5', 'เรียกดู'], ['PageUp/PageDown', 'หน้าก่อน/ถัดไป'], ['Esc', 'ปิดรายละเอียด']]} />
+      {open && <DetailModal row={open} onClose={() => setOpen(null)} extra={<>
+        <dt>ลูกค้า</dt><dd>{open.tenant_code ? <>{open.tenant_code} · {open.tenant_name} {open.tenant_id && <button className="link" onClick={() => nav(`/provider/customers/${open.tenant_id}`)}>เปิดภาพรวมลูกค้า</button>}</> : <span>ทั้งระบบ</span>}</dd></>} />}
+    </div>
+  );
+}
+
+const MINE_COLS: readonly SortCol<Base>[] = [{ key: 'occurred_at', type: 'date' }, { key: 'company_code', type: 'text' }, { key: 'staff_name', type: 'text' }, { key: 'action', type: 'text', get: (r) => actText(r.action) }];
+
+export function MyProviderActionsPage() {
+  const { me } = useSession();
+  const when = useWhen();
+  const range = useWorkRangeState();
+  const [applied, setApplied] = useState({ from: range.from, to: range.to });
+  const [page, setPage] = useState(1);
+  const [open, setOpen] = useState<Base | null>(null);
+  const st = useListSort<Base>('my-provider-actions', MINE_COLS, () => setPage(1));
+  const ok = !!me && !me.user.is_platform && !!me.user.is_admin;
+  const list = useQuery({ enabled: ok, queryKey: ['my-provider-actions', applied, page, st.params], queryFn: () => api.get<MineResp>('/api/v1/provider-actions/mine', { ...applied, page: String(page), ...st.params }) });
+  const apply = () => { setApplied({ from: range.from, to: range.to }); setPage(1); };
+  const last = Math.max(1, Math.ceil((list.data?.total ?? 0) / (list.data?.page_size ?? 50)));
+  useHotkeys({ F5: apply, PageDown: () => setPage((p) => Math.min(last, p + 1)), PageUp: () => setPage((p) => Math.max(1, p - 1)) });
+  if (me?.user.is_platform) return <div className="page"><div className="notebox">เจ้าหน้าที่ผู้ให้บริการดูได้ที่ ศูนย์ผู้ให้บริการ › สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า</div></div>;
+  if (!ok) return <div className="page"><div className="notebox">เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ของกิจการ</div></div>;
+  const rows = st.sorted(list.data?.rows);
+  const csv = () => csvDownload('provider-actions.csv', ['วันเวลา', 'เจ้าหน้าที่', 'เหตุการณ์', 'รายการ', 'บริษัท', 'ผล', 'รายละเอียด'],
+    rows.map((r) => [when(r.occurred_at), r.staff_name ?? '', actText(r.action), r.doc_no ?? '', r.company_code ?? '', RESULT[r.result]?.[0] ?? '', detailText(r.detail)]));
+  return (
+    <div className="page" data-tone="setup">
+      <PageHead eyebrow="เริ่มระบบ" title="สิ่งที่ผู้ให้บริการทำกับบัญชีของท่าน"
+        lead="ทุกครั้งที่เจ้าหน้าที่ผู้ให้บริการ Buddy Account ทำกับบัญชีของกิจการ (เช่น เปิด/ปิดโปรแกรม แพ็กเกจ วันหมดอายุ ปลดล็อกผู้ใช้ ล้าง 2FA ส่งลิงก์ตั้งรหัสผ่าน เปิดดูภาพรวมการใช้งาน) — เจ้าหน้าที่เปิดดูหรือแก้ข้อมูลบัญชี เอกสาร และรายงานของกิจการไม่ได้ · ถ้าพบรายการที่ท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที" />
+      <fieldset className="box no-print"><legend>เงื่อนไข</legend>
+        <div className="form-grid">
+          <Field label="วันที่ จาก"><DateInput value={range.from} onChange={range.setFrom} /></Field>
+          <Field label="ถึง"><DateInput value={range.to} onChange={range.setTo} /></Field>
+        </div>
+        <div className="toolbar"><button className="primary" onClick={apply}>เรียกดู <kbd>F5</kbd></button><button onClick={csv} disabled={!rows.length}>CSV (หน้านี้)</button></div>
+      </fieldset>
+      <ErrorBox error={list.error} />
+      <div className="table-wrap tall">
+        <table className="grid report">
+          <thead><tr>{st.th('occurred_at', 'วันเวลา', { style: { width: 130 } })}{st.th('staff_name', 'เจ้าหน้าที่')}{st.th('action', 'เหตุการณ์')}<th>รายการ</th>{st.th('company_code', 'บริษัท', { style: { width: 80 } })}<th>ผล</th><th>รายละเอียด</th></tr></thead>
+          <tbody>
+            {rows.map((r) => { const [label, tone] = RESULT[r.result] ?? RESULT.ok!; return (
+              <tr key={r.id} className="row-open" onClick={() => setOpen(r)} title="คลิกเพื่อดูรายละเอียด">
+                <td>{when(r.occurred_at)}</td><td>{r.staff_name}</td><td>{actText(r.action)}</td><td className="mono">{r.doc_no}</td><td className="mono">{r.company_code}</td>
+                <td><Pill tone={tone}>{label}</Pill></td><td className="small muted" style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detailText(r.detail).slice(0, 160)}</td>
+              </tr>); })}
+            {list.data && !rows.length && <tr><td colSpan={7} className="empty">ยังไม่มีรายการที่ผู้ให้บริการทำกับบัญชีของท่านในช่วงนี้</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {list.data && <Pager page={page} total={list.data.total} size={list.data.page_size} onPage={setPage} />}
+      <KeyHints keys={[['F5', 'เรียกดู'], ['PageUp/PageDown', 'หน้าก่อน/ถัดไป'], ['Esc', 'ปิดรายละเอียด']]} />
+      {open && <DetailModal row={open} onClose={() => setOpen(null)} />}
+    </div>
+  );
+}

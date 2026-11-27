@@ -9,6 +9,7 @@ import { logActivity } from '../audit.js';
 import { decryptSecret, encryptSecret } from '../secret.js';
 import { requireDemoForProvider, tenantIsDemo } from './auth.js';
 import { noticeCustomer, publicBase } from './provider.js';
+import { noteLoginFail } from '../alerts.js';
 
 /**
  * ความปลอดภัยการเข้าระบบ (T0.16) — ใส่รหัสผิด 5 ครั้งล็อก 15 นาที · ไม่บังคับเปลี่ยนรหัสตามรอบ
@@ -96,6 +97,7 @@ export function lockedError(until: Date) {
 }
 /** นับครั้งที่ผิด · ครบ 5 ครั้งล็อก 15 นาที (คืนเวลาที่ล็อก) */
 export async function registerFail(db: Db, userId: string, ip: string | undefined): Promise<Date | null> {
+  await noteLoginFail(db, userId, ip);   // HANDOFF 207: บัญชีผู้ให้บริการใส่ผิดซ้ำ ๆ → แจ้งเตือน
   const cur = await secOf(db, userId);
   const n = (cur?.failed_logins ?? 0) + 1;
   if (n >= MAX_FAILS) {

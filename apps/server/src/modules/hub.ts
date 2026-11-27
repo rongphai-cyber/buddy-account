@@ -21,6 +21,9 @@ export function appUrlProblem(url: string): string | null {
   const ok = allow.some((p) => (p.startsWith('*.') ? host === p.slice(2) || host.endsWith(p.slice(1)) : host === p));
   const local = (host === 'localhost' || host === '127.0.0.1') && allow.includes(host);
   if (u.protocol !== 'https:' && !local) return `ที่อยู่โปรแกรม ${u.host} ต้องเป็น https:// (ความปลอดภัยของบัตรผ่านเข้าระบบ)`;
+  // HANDOFF 207: ห้ามมีชื่อผู้ใช้/รหัสผ่านในที่อยู่ (https://a@b) และห้ามมี # (Hub ต่อท้าย #buddy_sso=…) — กันหลอกตาและบัตรผ่านปนกับ fragment เดิม
+  if (u.username || u.password) return `ที่อยู่โปรแกรมต้องไม่มีชื่อผู้ใช้/รหัสผ่าน (ส่วนก่อน @) — ใช้แบบ https://${u.host}/`;
+  if (u.hash || url.includes('#')) return 'ที่อยู่โปรแกรมต้องไม่มี # (Hub ต่อท้ายด้วยบัตรผ่าน #buddy_sso=…)';
   if (!ok) return `ที่อยู่โปรแกรม ${u.host} ไม่อยู่ในรายชื่อเครื่องของ WTS (*.worktruesolution.net หรือ BUDDY_APP_HOSTS) — เปิดไม่ได้ เพื่อกันส่งบัตรผ่านเข้าระบบไปเครื่องอื่น · ให้ผู้ให้บริการแก้ที่อยู่ของโปรแกรม`;
   return null;
 }
