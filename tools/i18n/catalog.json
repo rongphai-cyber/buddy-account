@@ -1,7 +1,7 @@
 [
 {
 "th": "ยกเลิก",
-"n": 173,
+"n": 175,
 "files": [
 "apps/web/src/App.tsx",
 "apps/web/src/readonly.tsx",
@@ -78,7 +78,7 @@
 },
 {
 "th": "บันทึก",
-"n": 112,
+"n": 113,
 "files": [
 "apps/web/src/unsaved.tsx",
 "apps/web/src/components/AddressHistory.tsx",
@@ -602,7 +602,7 @@
 },
 {
 "th": "ปิด",
-"n": 50,
+"n": 51,
 "files": [
 "apps/web/src/ui.tsx",
 "apps/web/src/components/AiBill.tsx",
@@ -2250,6 +2250,23 @@
 ]
 },
 {
+"th": "โทรศัพท์",
+"n": 15,
+"files": [
+"apps/web/src/pages/Signup.tsx",
+"apps/web/src/pages/parties/Parties.tsx",
+"apps/web/src/pages/payroll/Employees.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/mail/templates.ts",
+"apps/server/src/modules/reports/parties.ts",
+"packages/core/src/master-import.ts",
+"packages/core/src/payroll-import.ts",
+"packages/core/src/trade-import.ts"
+]
+},
+{
 "th": "+ ใหม่",
 "n": 14,
 "files": [
@@ -2478,22 +2495,6 @@
 "apps/web/src/pages/gl/JournalForm.tsx",
 "apps/web/src/pages/inventory/Counts.tsx",
 "apps/web/src/pages/inventory/StockOpening.tsx"
-]
-},
-{
-"th": "โทรศัพท์",
-"n": 14,
-"files": [
-"apps/web/src/pages/Signup.tsx",
-"apps/web/src/pages/parties/Parties.tsx",
-"apps/web/src/pages/payroll/Employees.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/mail/templates.ts",
-"apps/server/src/modules/reports/parties.ts",
-"packages/core/src/master-import.ts",
-"packages/core/src/payroll-import.ts",
-"packages/core/src/trade-import.ts"
 ]
 },
 {
@@ -3582,6 +3583,16 @@
 ]
 },
 {
+"th": "ปฏิเสธ",
+"n": 8,
+"files": [
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/CompaniesAdmin.tsx",
+"apps/web/src/pages/settings/Pdpa.tsx",
+"apps/server/src/modules/pdpa.ts"
+]
+},
+{
 "th": "ประกันสังคม",
 "n": 8,
 "files": [
@@ -3972,6 +3983,19 @@
 "apps/web/src/pages/gl/Opening.tsx",
 "apps/web/src/pages/gl/PriorYear.tsx",
 "apps/web/src/pages/reports/TrialBalance.tsx"
+]
+},
+{
+"th": "บันทึกแล้ว",
+"n": 7,
+"files": [
+"apps/web/src/pages/docs/StockDocs.tsx",
+"apps/web/src/pages/gl/Books.tsx",
+"apps/web/src/pages/settings/AiSettings.tsx",
+"apps/web/src/pages/settings/Branches.tsx",
+"apps/web/src/pages/settings/Departments.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/payroll/runs.ts"
 ]
 },
 {
@@ -4394,27 +4418,6 @@
 "apps/server/src/owned.ts",
 "packages/core/src/doc-import.ts",
 "packages/core/src/pdpa.ts"
-]
-},
-{
-"th": "บันทึกแล้ว",
-"n": 6,
-"files": [
-"apps/web/src/pages/docs/StockDocs.tsx",
-"apps/web/src/pages/gl/Books.tsx",
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Branches.tsx",
-"apps/web/src/pages/settings/Departments.tsx",
-"apps/server/src/modules/payroll/runs.ts"
-]
-},
-{
-"th": "ปฏิเสธ",
-"n": 6,
-"files": [
-"apps/web/src/pages/settings/AiSettings.tsx",
-"apps/web/src/pages/settings/Pdpa.tsx",
-"apps/server/src/modules/pdpa.ts"
 ]
 },
 {
@@ -5827,6 +5830,13 @@
 ]
 },
 {
+"th": "คำขอนี้ตัดสินแล้ว",
+"n": 4,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
 "th": "คำอธิบายอังกฤษ",
 "n": 4,
 "files": [
@@ -6063,6 +6073,15 @@
 ]
 },
 {
+"th": "ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที",
+"n": 4,
+"files": [
+"apps/server/src/modules/company-move.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/provider.ts"
+]
+},
+{
 "th": "ทะเบียนพนักงาน",
 "n": 4,
 "files": [
@@ -6247,6 +6266,16 @@
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/web/src/pages/gl/JvLinks.tsx"
+]
+},
+{
+"th": "ผู้ให้บริการ",
+"n": 4,
+"files": [
+"apps/web/src/pages/docs/MoneyParts.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/company-move.ts",
+"packages/core/src/starter-data.ts"
 ]
 },
 {
@@ -6744,6 +6773,25 @@
 ]
 },
 {
+"th": "อีเมลผู้ติดต่อ",
+"n": 4,
+"files": [
+"apps/web/src/pages/provider/ProviderConsole.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "อีเมลไม่ถูกต้อง",
+"n": 4,
+"files": [
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/security.ts",
+"apps/server/src/modules/signup-mail.ts",
+"apps/server/src/modules/signup.ts"
+]
+},
+{
 "th": "อื่น ๆ",
 "n": 4,
 "files": [
@@ -7021,6 +7069,15 @@
 "files": [
 "apps/web/src/pages/parties/Parties.tsx",
 "packages/core/src/master-import.ts"
+]
+},
+{
+"th": "ไม่ตรง",
+"n": 4,
+"files": [
+"apps/web/src/pages/settings/YearFix.tsx",
+"apps/server/src/modules/company-move.ts",
+"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -7403,6 +7460,13 @@
 "files": [
 "apps/web/src/pages/settings/Pdpa.tsx",
 "apps/server/src/modules/pdpa.ts"
+]
+},
+{
+"th": "คำขอย้ายบริษัท",
+"n": 3,
+"files": [
+"apps/server/src/modules/company-move.ts"
 ]
 },
 {
@@ -7831,14 +7895,6 @@
 ]
 },
 {
-"th": "ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที",
-"n": 3,
-"files": [
-"apps/server/src/modules/company-move.ts",
-"apps/server/src/modules/company.ts"
-]
-},
-{
 "th": "ทะเบียนหมายเลขสินค้า",
 "n": 3,
 "files": [
@@ -8123,15 +8179,6 @@
 ]
 },
 {
-"th": "ผู้ให้บริการ",
-"n": 3,
-"files": [
-"apps/web/src/pages/docs/MoneyParts.tsx",
-"apps/web/src/pages/settings/Users.tsx",
-"packages/core/src/starter-data.ts"
-]
-},
-{
 "th": "ฝ่ายจัดซื้อ",
 "n": 3,
 "files": [
@@ -8387,6 +8434,15 @@
 "n": 3,
 "files": [
 "apps/web/src/pages/inventory/Counts.tsx"
+]
+},
+{
+"th": "ยังไม่มี",
+"n": 3,
+"files": [
+"apps/web/src/pages/provider/ProviderConsole.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/wts-living.ts"
 ]
 },
 {
@@ -9004,23 +9060,6 @@
 ]
 },
 {
-"th": "อีเมลผู้ติดต่อ",
-"n": 3,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"apps/web/src/pages/settings/Tenants.tsx"
-]
-},
-{
-"th": "อีเมลไม่ถูกต้อง",
-"n": 3,
-"files": [
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/signup-mail.ts",
-"apps/server/src/modules/signup.ts"
-]
-},
-{
 "th": "อื่น ๆ › นำเข้าข้อมูล",
 "n": 3,
 "files": [
@@ -9338,6 +9377,14 @@
 ]
 },
 {
+"th": "แจ้งเตือน: เปลี่ยนอีเมลผู้ติดต่อของบัญชี {0}",
+"n": 3,
+"files": [
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/security.ts"
+]
+},
+{
 "th": "แถบเครื่องมือ",
 "n": 3,
 "files": [
@@ -9562,15 +9609,6 @@
 "apps/web/src/pages/fa/Assets.tsx",
 "apps/server/src/modules/reports/fa.ts",
 "packages/core/src/master-import.ts"
-]
-},
-{
-"th": "ไม่ตรง",
-"n": 3,
-"files": [
-"apps/web/src/pages/settings/YearFix.tsx",
-"apps/server/src/modules/company-move.ts",
-"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -12764,6 +12802,27 @@
 ]
 },
 {
+"th": "พิมพ์รหัสบริษัท {0} เพื่อยืนยัน",
+"n": 2,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "พิมพ์รหัสบริษัทที่จะย้ายเพื่อยืนยัน",
+"n": 2,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
+"th": "พิมพ์รหัสบริษัทที่จะย้ายให้ครบและตรง: {0}",
+"n": 2,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
 "th": "พิมพ์รหัสบริษัทเพื่อยืนยัน",
 "n": 2,
 "files": [
@@ -13298,14 +13357,6 @@
 "files": [
 "apps/server/src/modules/reports/dashboard.ts",
 "apps/server/src/modules/reports/parties.ts"
-]
-},
-{
-"th": "ยังไม่มี",
-"n": 2,
-"files": [
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"apps/server/src/modules/wts-living.ts"
 ]
 },
 {
@@ -22578,6 +22629,13 @@
 ]
 },
 {
+"th": "· ข้อมูลของลูกค้าจริงย้ายได้เมื่อลูกค้ายินยอมเท่านั้น",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/MoveCompanies.tsx"
+]
+},
+{
 "th": "· ข้อมูลเป็น JSON (UTF-8) ·",
 "n": 1,
 "files": [
@@ -22911,6 +22969,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/tools/TradeImport.tsx"
+]
+},
+{
+"th": "· หมดอายุ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -24647,6 +24712,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/apikeys.ts"
+]
+},
+{
+"th": "กุญแจ API เปลี่ยนอีเมลผู้ติดต่อไม่ได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/security.ts"
 ]
 },
 {
@@ -26614,6 +26686,27 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/pdpa.ts"
+]
+},
+{
+"th": "คำขอนี้หมดอายุแล้ว — ให้ผู้ให้บริการขอใหม่",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
+"th": "คำขอย้าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/MoveCompanies.tsx"
+]
+},
+{
+"th": "คำขอย้ายบริษัท {0} — รอท่านยืนยัน",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
 ]
 },
 {
@@ -33386,6 +33479,13 @@
 ]
 },
 {
+"th": "ถ้าท่านไม่ได้ขอ ให้กด \"ปฏิเสธ\" และแจ้งผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
 "th": "ถ้าธนาคารหักค่าธรรมเนียมจากบัญชีต้นทาง",
 "n": 1,
 "files": [
@@ -34051,10 +34151,31 @@
 ]
 },
 {
+"th": "ที่อยู่โปรแกรม {0} ต้องเป็น https:// (ความปลอดภัยของบัตรผ่านเข้าระบบ)",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
+]
+},
+{
+"th": "ที่อยู่โปรแกรม {0} ไม่อยู่ในรายชื่อเครื่องของ WTS (*.worktruesolution.net หรือ BUDDY_APP_HOSTS) — เปิดไม่ได้ เพื่อกันส่งบัตรผ่านเข้าระบบไปเครื่องอื่น · ให้ผู้ให้บริการแก้ที่อยู่ของโปรแกรม",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
+]
+},
+{
 "th": "ที่อยู่โปรแกรมต้องขึ้นต้นด้วย https:// หรือ http:// และไม่มีช่องว่างหรือ # เช่น https://wtspos.example.com/office/",
 "n": 1,
 "files": [
 "packages/core/src/hub.ts"
+]
+},
+{
+"th": "ที่อยู่โปรแกรมไม่ถูกต้อง",
+"n": 1,
+"files": [
+"apps/server/src/modules/hub.ts"
 ]
 },
 {
@@ -35507,6 +35628,13 @@
 ]
 },
 {
+"th": "บริษัท {0} ของลูกค้าข้อมูลตัวอย่างมีข้อมูลแล้ว — ย้ายไปลูกค้าจริงได้เฉพาะบริษัทที่ยังไม่มีข้อมูล",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
 "th": "บริษัท {0} ถูกลบไปแล้ว",
 "n": 1,
 "files": [
@@ -35588,6 +35716,20 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Company.tsx"
+]
+},
+{
+"th": "บริษัทจะย้ายเมื่อผู้ดูแลระบบ (ADMIN) ของลูกค้า {0} ยืนยันในบัญชีของตัวเองที่ เริ่มระบบ › บริษัททั้งหมด / ลบบริษัท (แจ้งทางอีเมลผู้ติดต่อแล้ว) · หมดอายุ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/MoveCompanies.tsx"
+]
+},
+{
+"th": "บริษัทจะย้ายเมื่อผู้ดูแลระบบของท่านยืนยันที่ เริ่มระบบ › บริษัททั้งหมด / ลบบริษัท ภายใน {0} วัน — ไม่ยืนยัน = ไม่ย้าย",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
 ]
 },
 {
@@ -37821,6 +37963,20 @@
 "n": 1,
 "files": [
 "packages/core/src/pdpa.ts"
+]
+},
+{
+"th": "ปฏิเสธคำขอนี้? บริษัทไม่ย้าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "ปฏิเสธคำขอแล้ว — บริษัทไม่ย้าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -40197,6 +40353,13 @@
 ]
 },
 {
+"th": "ผู้ดูแลระบบ {0} เปลี่ยนอีเมลผู้ติดต่อของบัญชี {1} เป็น {2} เมื่อ {3}",
+"n": 1,
+"files": [
+"apps/server/src/modules/security.ts"
+]
+},
+{
 "th": "ผู้ดูแลระบบกำหนดว่าแต่ละคนเปิดโปรแกรมไหนได้ที่",
 "n": 1,
 "files": [
@@ -40211,10 +40374,24 @@
 ]
 },
 {
+"th": "ผู้ดูแลระบบของท่าน ({0})",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
 "th": "ผู้ดูแลระบบของลูกค้า",
 "n": 1,
 "files": [
 "apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "ผู้ดูแลระบบของลูกค้าเปลี่ยนเองที่ เริ่มระบบ › ผู้ใช้งานและสิทธิ์ — ผู้ให้บริการเปลี่ยนไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
 ]
 },
 {
@@ -40694,17 +40871,17 @@
 ]
 },
 {
-"th": "ผู้ให้บริการ Buddy Account ย้ายบริษัท {0} จากบัญชีลูกค้า {1} เข้ามาในบัญชีของท่าน เมื่อ {2}",
+"th": "ผู้ให้บริการ Buddy Account ขอย้ายบริษัท {0} ไปอยู่ในบัญชีลูกค้า {1} {2}",
 "n": 1,
 "files": [
 "apps/server/src/modules/company-move.ts"
 ]
 },
 {
-"th": "ผู้ให้บริการ Buddy Account ย้ายบริษัท {0} ไปอยู่ในบัญชีลูกค้า {1} เมื่อ {2}",
+"th": "ผู้ให้บริการ Buddy Account ตั้งบัญชี {0} เป็นข้อมูลตัวอย่าง/ทดลอง เมื่อ {1} — เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลในบัญชีนี้ได้ (ใช้กับบัญชีทดลองที่ยังไม่มีข้อมูลเท่านั้น)",
 "n": 1,
 "files": [
-"apps/server/src/modules/company-move.ts"
+"apps/server/src/modules/provider.ts"
 ]
 },
 {
@@ -40726,6 +40903,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
+]
+},
+{
+"th": "ผู้ให้บริการ Buddy Account เลิกตั้งบัญชี {0} เป็นข้อมูลตัวอย่าง เมื่อ {1} — เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลในบัญชีนี้ไม่ได้แล้ว",
+"n": 1,
+"files": [
+"apps/server/src/modules/provider.ts"
 ]
 },
 {
@@ -41265,27 +41449,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/company.ts"
-]
-},
-{
-"th": "พิมพ์รหัสบริษัท {0} เพื่อยืนยัน",
-"n": 1,
-"files": [
-"apps/web/src/pages/settings/CompaniesAdmin.tsx"
-]
-},
-{
-"th": "พิมพ์รหัสบริษัทที่จะย้ายเพื่อยืนยัน",
-"n": 1,
-"files": [
-"apps/server/src/modules/company-move.ts"
-]
-},
-{
-"th": "พิมพ์รหัสบริษัทที่จะย้ายให้ครบและตรง: {0}",
-"n": 1,
-"files": [
-"apps/server/src/modules/company-move.ts"
 ]
 },
 {
@@ -42595,6 +42758,13 @@
 "n": 1,
 "files": [
 "apps/web/src/unsaved.tsx"
+]
+},
+{
+"th": "มีคำขอย้ายบริษัทจากผู้ให้บริการ — รอท่านยืนยัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -45097,6 +45267,13 @@
 ]
 },
 {
+"th": "ยังไม่ย้าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/MoveCompanies.tsx"
+]
+},
+{
 "th": "ยังไม่รับรอง",
 "n": 1,
 "files": [
@@ -45566,6 +45743,27 @@
 ]
 },
 {
+"th": "ยืนยันย้าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "ยืนยันย้ายบริษัท",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "ยืนยันย้าย…",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "ยืนยันรหัสผ่านใหม่",
 "n": 1,
 "files": [
@@ -45706,6 +45904,20 @@
 ]
 },
 {
+"th": "ย้าย",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "ย้าย {0} แล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
 "th": "ย้าย {0} ไปลูกค้า {1} แล้ว",
 "n": 1,
 "files": [
@@ -45741,6 +45953,20 @@
 ]
 },
 {
+"th": "ย้ายบริษัท {0} จากบัญชีลูกค้า {1} เข้ามาในบัญชีของท่าน เมื่อ {2}",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
+"th": "ย้ายบริษัท {0} ไปอยู่ในบัญชีลูกค้า {1} เมื่อ {2} (ยืนยันโดย{3})",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
 "th": "ย้ายบริษัทของลูกค้า {0} ไปลูกค้ารายอื่น",
 "n": 1,
 "files": [
@@ -45752,6 +45978,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
+"th": "ย้ายบริษัทเข้าลูกค้าข้อมูลตัวอย่าง ({0}) ไม่ได้ — เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลของลูกค้าข้อมูลตัวอย่างได้ (HANDOFF 204)",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
 ]
 },
 {
@@ -45801,6 +46034,13 @@
 "n": 1,
 "files": [
 "apps/server/src/storage/migrate-files.ts"
+]
+},
+{
+"th": "ย้ายแล้วบริษัทและข้อมูลทั้งหมดไปอยู่กับลูกค้าปลายทาง ผู้ใช้ของท่านที่เข้าได้เฉพาะบริษัทนั้นย้ายตาม — ถ้าท่านไม่ได้ขอ ให้กด \"ปฏิเสธ\" และแจ้งผู้ให้บริการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {
@@ -46998,6 +47238,20 @@
 "n": 1,
 "files": [
 "packages/core/src/items.ts"
+]
+},
+{
+"th": "รหัสยืนยันตัวตนสองขั้น (ถ้าเปิดไว้)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
+]
+},
+{
+"th": "รหัสยืนยันตัวตนสองขั้น (เมื่อเปลี่ยนอีเมล)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -50928,6 +51182,13 @@
 ]
 },
 {
+"th": "ลิงก์ตั้งรหัสผ่านของผู้ดูแลคนแรกส่งไปที่อีเมลนี้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Tenants.tsx"
+]
+},
+{
 "th": "ลิงก์นี้แสดงครั้งเดียว — ระบบไม่เก็บลิงก์ไว้ ปิดหน้าต่างแล้วถ้าต้องการอีกให้กด \"ออกลิงก์ใหม่\" (ลิงก์เดิมจะใช้ไม่ได้) · คุณไม่เห็นรหัสผ่านที่พนักงานตั้ง",
 "n": 1,
 "files": [
@@ -51054,6 +51315,20 @@
 ]
 },
 {
+"th": "ลูกค้า {0} มีข้อมูลธุรกิจแล้ว ({1}) — ตั้งเป็นข้อมูลตัวอย่างที่หน้าจอไม่ได้ (จะเปิดข้อมูลของลูกค้าจริง) · ถ้าเป็นข้อมูลทดลองจริง ให้เจ้าของอนุมัติแล้วตั้งด้วย migration แบบ DEMO",
+"n": 1,
+"files": [
+"apps/server/src/modules/provider.ts"
+]
+},
+{
+"th": "ลูกค้า {0} มีคำขอย้ายบริษัทที่รอยืนยันอยู่แล้ว — ยกเลิกคำขอเดิมก่อน",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
 "th": "ลูกค้า {0} มีบริษัทรหัส {1} อยู่แล้ว — เปลี่ยนรหัสบริษัทก่อนย้าย",
 "n": 1,
 "files": [
@@ -51072,6 +51347,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/provider.ts"
+]
+},
+{
+"th": "ลูกค้า {0} ไม่มีผู้ดูแลระบบ (ADMIN) ที่ใช้งานอยู่ — ย้ายบริษัทของลูกค้าจริงได้เมื่อผู้ดูแลของลูกค้ายืนยันเท่านั้น",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
 ]
 },
 {
@@ -51244,6 +51526,13 @@
 },
 {
 "th": "ลูกค้าปลายทางต้องเป็นคนละรายกับลูกค้าเดิม",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
+]
+},
+{
+"th": "ลูกค้าปลายทางเป็นข้อมูลตัวอย่าง — ย้ายไม่ได้",
 "n": 1,
 "files": [
 "apps/server/src/modules/company-move.ts"
@@ -54428,6 +54717,20 @@
 ]
 },
 {
+"th": "ส่งคำขอย้าย {0} แล้ว — รอผู้ดูแลระบบของลูกค้า {1} ยืนยัน",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/MoveCompanies.tsx"
+]
+},
+{
+"th": "ส่งคำขอย้ายบริษัทแล้ว",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/MoveCompanies.tsx"
+]
+},
+{
 "th": "ส่งคืน",
 "n": 1,
 "files": [
@@ -54635,6 +54938,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "ส่งแล้ว —",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/MoveCompanies.tsx"
 ]
 },
 {
@@ -56437,6 +56747,13 @@
 ]
 },
 {
+"th": "อีเมล/โทรศัพท์ผู้ติดต่อของลูกค้าจริง ({0}) ผู้ให้บริการเปลี่ยนไม่ได้ — ผู้ดูแลระบบของลูกค้าเปลี่ยนเองที่ เริ่มระบบ › ผู้ใช้งานและสิทธิ์ (HANDOFF 204)",
+"n": 1,
+"files": [
+"apps/server/src/modules/company.ts"
+]
+},
+{
 "th": "อีเมลนี้ส่งอัตโนมัติจาก Buddy Account (WTS Solutions) — ตอบกลับอีเมลนี้เพื่อติดต่อผู้ให้บริการ",
 "n": 1,
 "files": [
@@ -56448,6 +56765,20 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/signup.ts"
+]
+},
+{
+"th": "อีเมลนี้ใช้รับลิงก์ตั้งรหัสผ่านและการแจ้งเตือนของบัญชี — ถ้าท่านไม่ได้เปลี่ยน โปรดแจ้งผู้ให้บริการทันที",
+"n": 1,
+"files": [
+"apps/server/src/modules/security.ts"
+]
+},
+{
+"th": "อีเมลผู้ติดต่อของกิจการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -58093,6 +58424,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/tenant-move.ts"
+]
+},
+{
+"th": "เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ของกิจการเจ้าของบริษัทยืนยันการย้ายได้",
+"n": 1,
+"files": [
+"apps/server/src/modules/company-move.ts"
 ]
 },
 {
@@ -59748,6 +60086,20 @@
 ]
 },
 {
+"th": "เปลี่ยนอีเมลผู้ติดต่อของกิจการ",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "เปลี่ยนอีเมลผู้ติดต่อแล้ว — แจ้งทั้งอีเมลเดิมและอีเมลใหม่",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "เปลี่ยนเฉพาะวันที่ ยอดเงินไม่เปลี่ยน — ระบบตรวจงบทดลองรายบัญชีก่อน/หลัง ไม่เท่า = ยกเลิกทั้งหมด · งวดที่ปิดอยู่ยังปิด · ทุกช่องที่แก้บันทึกในแฟ้มบันทึกเหตุการณ์ทำงาน (FIX_YEAR) · แนะนำสำรองข้อมูลก่อน (อื่น ๆ › สำรองข้อมูล)",
 "n": 1,
 "files": [
@@ -59815,6 +60167,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/CompanyImages.tsx"
+]
+},
+{
+"th": "เปลี่ยน…",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
@@ -64536,6 +64895,20 @@
 ]
 },
 {
+"th": "แจ้ง: บัญชี {0} ถูกตั้งเป็นข้อมูลตัวอย่าง",
+"n": 1,
+"files": [
+"apps/server/src/modules/provider.ts"
+]
+},
+{
+"th": "แจ้ง: บัญชี {0} เลิกเป็นข้อมูลตัวอย่าง",
+"n": 1,
+"files": [
+"apps/server/src/modules/provider.ts"
+]
+},
+{
 "th": "แจ้ง: ลบข้อมูลบัญชี {0} ตามกำหนดแล้ว",
 "n": 1,
 "files": [
@@ -64575,13 +64948,6 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/security.ts"
-]
-},
-{
-"th": "แจ้งเตือน: เปลี่ยนอีเมลผู้ติดต่อของบัญชี {0}",
-"n": 1,
-"files": [
-"apps/server/src/modules/company.ts"
 ]
 },
 {
@@ -66706,6 +67072,13 @@
 ]
 },
 {
+"th": "ใช้รับการแจ้งเตือนของบัญชี และลิงก์ตั้งรหัสผ่านเมื่อท่านขอให้ผู้ให้บริการช่วย — ผู้ให้บริการเปลี่ยนอีเมลนี้ไม่ได้ (ผู้ดูแลระบบของกิจการเปลี่ยนเองเท่านั้น)",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ใช้รายนี้",
 "n": 1,
 "files": [
@@ -68281,6 +68654,13 @@
 ]
 },
 {
+"th": "ไปลูกค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/MoveCompanies.tsx"
+]
+},
+{
 "th": "ไปสำรองข้อมูลปัจจุบันก่อน",
 "n": 1,
 "files": [
@@ -68292,6 +68672,13 @@
 "n": 1,
 "files": [
 "apps/web/src/components/LineEndPrompt.tsx"
+]
+},
+{
+"th": "ไปอยู่ในบัญชีลูกค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/CompaniesAdmin.tsx"
 ]
 },
 {

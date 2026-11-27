@@ -159,16 +159,33 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
     expect((await call('POST', `/api/v1/users/${ids.clerk}/reset-2fa`)).status).toBe(200);
     await flushMail();
     expect(memoryMail.outbox.map((m) => m.subject).join('|')).toMatch(/ล้างการยืนยันตัวตนสองขั้นของ c1\.clerk/);
-    // เปลี่ยนอีเมลลูกค้าเป็นของตัวเอง → แจ้งอีเมลเดิม · ส่งลิงก์ไปอีเมลใหม่ไม่ได้ 7 วัน
+    // C3: ผู้ให้บริการเปลี่ยนอีเมล/โทรผู้ติดต่อของลูกค้าจริงไม่ได้ (ค่าที่เห็นเป็นแบบปิดบัง — ส่งคืนเดิม = ไม่เปลี่ยน)
     const t = (await call('GET', '/api/v1/tenants')).body.find((x: { id: string }) => x.id === ids.tenant);
+    expect(t.contact_email).toBe('ow***@cust1.example');   // M2: ปิดบัง
+    const hijack = await call('PUT', `/api/v1/tenants/${ids.tenant}`, { ...t, contact_email: 'attacker@provider.example', package_id: undefined });
+    expect(hijack.status).toBe(403);
+    expect(hijack.body.error.message).toMatch(/ผู้ให้บริการเปลี่ยนไม่ได้/);
+    expect((await call('PUT', `/api/v1/tenants/${ids.tenant}`, { ...t, package_id: undefined })).status).toBe(200);   // ค่าแบบปิดบังเดิม = ไม่เปลี่ยน
+    expect((await sql<{ e: string }>`SELECT contact_email AS e FROM sys_tenant WHERE id = ${ids.tenant}`.execute(database.db)).rows[0]!.e).toBe('owner@cust1.example');
+    expect((await call('PUT', '/api/v1/tenant/contact', { contact_email: 'attacker@provider.example' })).status).toBe(403);   // ผู้ให้บริการใช้ทางของลูกค้าไม่ได้
+    // ผู้ดูแลของลูกค้าเปลี่ยนเอง → แจ้งอีเมลเดิมและใหม่ · ลิงก์จากผู้ให้บริการไปอีเมลใหม่ได้หลัง 7 วัน
+    cookie = custAdmin;
     memoryMail.outbox = [];
-    expect((await call('PUT', `/api/v1/tenants/${ids.tenant}`, { ...t, contact_email: 'attacker@provider.example', package_id: undefined })).status).toBe(200);
+    expect((await call('PUT', '/api/v1/tenant/contact', { contact_email: 'finance@cust1.example' })).status).toBe(200);
     await flushMail();
-    expect(memoryMail.outbox.map((m) => m.to.join()).join('|')).toContain('owner@cust1.example');
+    expect(memoryMail.outbox.map((m) => m.to.join()).sort()).toEqual(['finance@cust1.example', 'owner@cust1.example']);
+    cookie = provider;
     const blocked = await call('POST', `/api/v1/users/${ids.clerk}/invite`);
     expect(blocked.status).toBe(400);
     expect(blocked.body.error.message).toMatch(/เพิ่งเปลี่ยน/);
-    expect(memoryMail.outbox.some((m) => m.to.includes('attacker@provider.example') && /\/invite\//.test(m.text))).toBe(false);
+    await sql`UPDATE sys_tenant SET contact_email_changed_at = now() - interval '8 days' WHERE id = ${ids.tenant}`.execute(database.db);
+    memoryMail.outbox = [];
+    expect((await call('POST', `/api/v1/users/${ids.clerk}/invite`)).body).toMatchObject({ emailed_to: 'fi***@cust1.example' });
+    expect(memoryMail.outbox.at(-1)!.to).toEqual(['finance@cust1.example']);
+    // ลูกค้าไม่มีอีเมล = ปฏิเสธ (ไม่ส่งที่อื่น)
+    await sql`UPDATE sys_tenant SET contact_email = NULL WHERE id = ${ids.tenant}`.execute(database.db);
+    expect((await call('POST', `/api/v1/users/${ids.clerk}/invite`)).body.error.message).toMatch(/ยังไม่มีอีเมลผู้ติดต่อ/);
+    await sql`UPDATE sys_tenant SET contact_email = 'owner@cust1.example', contact_email_changed_at = now() - interval '8 days' WHERE id = ${ids.tenant}`.execute(database.db);
   });
 
   it('provider console: grouped customers with metadata only (companies code/name, users, package, usage, switches, API keys) — no amounts, no party names', async () => {
@@ -196,16 +213,29 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
     expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant}/demo`, { is_demo: true, confirm: 'CUST1' })).status).toBe(403);
   });
 
-  it('demo flag: provider only, typed-code confirm, logged — on = provider may open that customer, off = locked again; DEMO is flagged by the migration', async () => {
+  it('demo flag (C1): a real customer with any business data can never be switched to demo on screen; an empty tenant can (typed code); every change is logged in the customer\'s own log and emailed', async () => {
     cookie = provider;
     expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant}/demo`, { is_demo: true })).body.error.message).toMatch(/พิมพ์รหัสลูกค้า CUST1/);
-    expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant}/demo`, { is_demo: true, confirm: 'cust1' })).status).toBe(200);
-    expect((await call('POST', '/api/v1/auth/select', { company_id: ids.co })).status).toBe(200);
-    expect((await call('GET', '/api/v1/customers')).status).toBe(200);
-    expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant}/demo`, { is_demo: false })).status).toBe(200);
-    expect((await call('GET', '/api/v1/customers')).status).toBe(403);
-    const acts = (await sql<{ action: string }>`SELECT action FROM sys_activity_log WHERE row_id = ${ids.tenant} AND action LIKE 'TENANT_DEMO_%' ORDER BY seq`.execute(database.db)).rows.map((x) => x.action);
-    expect(acts).toEqual(['TENANT_DEMO_ON', 'TENANT_DEMO_OFF']);
+    const flip = await call('PUT', `/api/v1/provider/customers/${ids.tenant}/demo`, { is_demo: true, confirm: 'cust1' });
+    expect(flip.status).toBe(403);
+    expect(flip.body.error.message).toMatch(/มีข้อมูลธุรกิจแล้ว \(C1CO\).*migration/);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: ids.co })).status).toBe(403);
+    // ลูกค้าว่าง (ยังไม่มีข้อมูล) ตั้งได้ → เปิดได้ → เลิก → ล็อกอีก · บันทึกในแฟ้มของบริษัทลูกค้า + อีเมล
+    memoryMail.outbox = [];
+    const t2 = await call('POST', '/api/v1/tenants', { code: 'CUST2', name: 'ลูกค้าว่าง 2', contact_email: 'owner@cust2.example', admin_username: 'c2.admin', admin_name: 'ผู้ดูแล C2' });
+    expect(t2.status, t2.raw).toBe(200);
+    ids.tenant2 = t2.body.id;
+    expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant2}/demo`, { is_demo: true, confirm: 'CUST2' })).status).toBe(200);
+    const c2 = await call('POST', '/api/v1/companies', { code: 'C2CO', name_th: 'บริษัท ลูกค้าสอง จำกัด', fiscal_start: '2026-01-01', chart: 'express', tenant_id: ids.tenant2 });
+    expect(c2.status, c2.raw).toBe(200);
+    ids.co2 = c2.body.id;
+    expect((await call('PUT', `/api/v1/provider/customers/${ids.tenant2}/demo`, { is_demo: false })).status).toBe(200);
+    expect((await call('POST', '/api/v1/auth/select', { company_id: ids.co2 })).status).toBe(403);
+    const acts = (await sql<{ action: string; company_id: string | null }>`SELECT action, company_id::text AS company_id FROM sys_activity_log WHERE row_id = ${ids.tenant2} AND action LIKE 'TENANT_DEMO_%' ORDER BY seq`.execute(database.db)).rows;
+    expect(acts.map((x) => x.action)).toEqual(['TENANT_DEMO_ON', 'TENANT_DEMO_OFF', 'TENANT_DEMO_OFF']);   // ระบบ + แฟ้มของบริษัท C2CO
+    expect(acts.some((x) => x.company_id === ids.co2)).toBe(true);
+    await flushMail();
+    expect(memoryMail.outbox.filter((m) => m.to.includes('owner@cust2.example')).map((m) => m.subject).join('|')).toMatch(/ข้อมูลตัวอย่าง/);
     // 0085: DEMO = ข้อมูลตัวอย่าง (ชุดทดสอบไม่มี DEMO — ตรวจว่ากติกาในแฟ้มตั้งเฉพาะ DEMO)
     const { readFile } = await import('node:fs/promises');
     const m = await readFile(new URL('../../../db/migrations/0085_provider_lockout.sql', import.meta.url), 'utf8');
@@ -230,5 +260,79 @@ describe('HANDOFF 204: ผู้ให้บริการไม่เห็น
     const d = (await call('GET', `/api/v1/provider/customers/${ids.tenant}`)).raw;
     expect(d).toContain('"name":"POS"');
     expect(d).not.toContain(k.body.key);
+  });
+
+  it('company move (C2): never into a demo tenant; out of demo only if empty; real → real only after the SOURCE customer ADMIN confirms in their own session', async () => {
+    cookie = provider;
+    const into = await call('POST', `/api/v1/tenants/${ids.tenant}/move-companies`, { target_tenant_id: (await call('GET', '/api/v1/provider/customers')).body.rows.find((x: { code: string }) => x.code === 'DEFAULT').id, company_ids: [ids.co], confirm: 'C1CO' });
+    expect(into.status).toBe(403);
+    expect(into.body.error.message).toMatch(/เข้าลูกค้าข้อมูลตัวอย่าง/);
+    // ออกจากข้อมูลตัวอย่าง: บริษัทที่มีข้อมูล (DEMOCO มีแผนก D1) — ย้ายไม่ได้
+    const demoT = (await sql<{ id: string }>`SELECT tenant_id::text AS id FROM sys_company WHERE id = ${ids.demoCo}`.execute(database.db)).rows[0]!.id;
+    await sql`INSERT INTO md_customer (company_id, code, name) VALUES (${ids.demoCo}, 'DX', 'ลูกค้าทดลอง')`.execute(database.db);
+    const outBusy = await call('POST', `/api/v1/tenants/${demoT}/move-companies`, { target_tenant_id: ids.tenant2, company_ids: [ids.demoCo], confirm: 'DEMOCO' });
+    expect(outBusy.status).toBe(403);
+    expect(outBusy.body.error.message).toMatch(/มีข้อมูลแล้ว/);
+    // ลูกค้าจริง → ลูกค้าจริง: คำขอ (ยังไม่ย้าย) · ผู้ให้บริการยืนยันเองไม่ได้ · ผู้ดูแลลูกค้าเดิมปฏิเสธ = ไม่ย้าย
+    memoryMail.outbox = [];
+    const rq = await call('POST', `/api/v1/tenants/${ids.tenant}/move-companies`, { target_tenant_id: ids.tenant2, company_ids: [ids.co], confirm: 'C1CO' });
+    expect(rq.status, rq.raw).toBe(200);
+    expect(rq.body).toMatchObject({ pending: true });
+    await flushMail();
+    expect(memoryMail.outbox.map((m) => `${m.to.join()}:${m.subject}`).join('|')).toMatch(/owner@cust1\.example:คำขอย้ายบริษัท C1CO/);
+    expect((await call('POST', `/api/v1/company-move-requests/${rq.body.request_id}/confirm`, { confirm: 'C1CO' })).status).toBe(403);
+    expect((await call('POST', `/api/v1/tenants/${ids.tenant}/move-companies`, { target_tenant_id: ids.tenant2, company_ids: [ids.co], confirm: 'C1CO' })).body.error.message).toMatch(/รอยืนยันอยู่แล้ว/);
+    expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${ids.co}`.execute(database.db)).rows[0]!.t).toBe(ids.tenant);
+    cookie = custAdmin;
+    expect((await call('GET', '/api/v1/company-move-requests')).body.map((x: { company_codes: string; target_code: string }) => `${x.company_codes}>${x.target_code}`)).toEqual(['C1CO>CUST2']);
+    expect((await call('POST', `/api/v1/company-move-requests/${rq.body.request_id}/reject`)).status).toBe(200);
+    expect((await call('GET', '/api/v1/company-move-requests')).body).toEqual([]);
+    expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${ids.co}`.execute(database.db)).rows[0]!.t).toBe(ids.tenant);
+    // ลูกค้าอื่นเห็น/ยืนยันคำขอนี้ไม่ได้ · คำขอใหม่ → ยืนยัน = ย้าย
+    cookie = provider;
+    const rq2 = await call('POST', `/api/v1/tenants/${ids.tenant}/move-companies`, { target_tenant_id: ids.tenant2, company_ids: [ids.co], confirm: 'C1CO' });
+    expect(rq2.body.pending).toBe(true);
+    cookie = custAdmin;
+    const done = await call('POST', `/api/v1/company-move-requests/${rq2.body.request_id}/confirm`, { confirm: 'c1co' });
+    expect(done.status, done.raw).toBe(200);
+    expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${ids.co}`.execute(database.db)).rows[0]!.t).toBe(ids.tenant2);
+    // คืนสภาพ (ลูกค้า 2 ยืนยันย้ายกลับ) — ไม่ให้ชุดทดสอบถัดไปเปลี่ยน
+    await sql`UPDATE sys_company SET tenant_id = ${ids.tenant} WHERE id = ${ids.co}`.execute(database.db);
+  });
+
+  it('app addresses (C4): only WTS hosts — saving another host is refused, an old row pointing elsewhere cannot be launched and its tile is locked', async () => {
+    cookie = provider;
+    const bad = await call('PUT', `/api/v1/tenants/${ids.tenant}/modules`, { modules: [{ key: 'pos', enabled: true, app_url: 'https://evil.example.com/office/' }] });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.message).toMatch(/ไม่อยู่ในรายชื่อเครื่องของ WTS/);
+    expect((await call('PUT', `/api/v1/tenants/${ids.tenant}/modules`, { modules: [{ key: 'pos', enabled: true, app_url: 'http://pos.worktruesolution.net/office/' }] })).status).toBe(400);   // ต้อง https
+    expect((await call('PUT', `/api/v1/tenants/${ids.tenant}/modules`, { modules: [{ key: 'pos', enabled: true, app_url: 'https://pos.worktruesolution.net/office/' }] })).status).toBe(200);
+    // แถวเดิมที่ชี้ไปเครื่องอื่น
+    await sql`UPDATE sys_tenant_module SET app_url = 'https://evil.example.com/office/' WHERE tenant_id = ${ids.tenant} AND module_key = 'pos'`.execute(database.db);
+    cookie = custAdmin;
+    await call('POST', '/api/v1/auth/select', { company_id: ids.co });
+    const launch = await call('POST', '/api/v1/hub/launch', { module: 'pos' });
+    expect(launch.status).toBe(409);
+    expect(launch.body.error.code).toBe('APP_URL_NOT_ALLOWED');
+    expect(launch.raw).not.toContain('buddy_sso');
+    const tile = (await call('GET', '/api/v1/hub')).body.apps.find((x: { key: string }) => x.key === 'pos');
+    expect(tile).toMatchObject({ status: 'locked', url: null });
+    expect(tile.reason).toMatch(/ไม่อยู่ในรายชื่อเครื่องของ WTS/);
+    await sql`UPDATE sys_tenant_module SET app_url = NULL WHERE tenant_id = ${ids.tenant} AND module_key = 'pos'`.execute(database.db);
+  });
+
+  it('Express import jobs (M1): the provider cannot see, run or cancel a real customer\'s job', async () => {
+    cookie = provider;
+    expect((await call('PUT', `/api/v1/tenants/${ids.tenant}/modules`, { modules: [{ key: 'express_import', enabled: true }] })).status).toBe(200);
+    cookie = custAdmin;
+    const job = await call('POST', '/api/v1/express-import/jobs', { code: 'C1EXP' });
+    expect(job.status, job.raw).toBe(200);
+    cookie = provider;
+    expect((await call('GET', `/api/v1/express-import/jobs/${job.body.id}`)).status).toBe(403);
+    expect((await call('POST', `/api/v1/express-import/jobs/${job.body.id}/run`, {})).status).toBe(403);
+    expect((await call('DELETE', `/api/v1/express-import/jobs/${job.body.id}`)).status).toBe(403);
+    cookie = custAdmin;
+    expect((await call('GET', `/api/v1/express-import/jobs/${job.body.id}`)).status).toBe(200);
+    expect((await call('DELETE', `/api/v1/express-import/jobs/${job.body.id}`)).status).toBe(200);
   });
 });

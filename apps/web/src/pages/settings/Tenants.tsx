@@ -106,8 +106,10 @@ function TenantForm({ t, onClose, onSaved }: { t: Tenant | null; onClose: () => 
           ? <>ผู้ใช้ทุกคนของลูกค้าเข้าระบบไม่ได้ และเห็นข้อความว่า <b>ข้อมูลจะถูกลบถาวรวันที่ <DateText v={plan.purge_after} /></b> ({TENANT_RETENTION_DAYS} วัน{t && tenantCountingDown(t) ? ' — นับต่อจากเดิม ไม่ยืดเวลา' : ''}) · ลบจริงเมื่อผู้ให้บริการกด "ลบข้อมูลทั้งหมดของลูกค้า" เท่านั้น · กลับเป็น "ใช้งาน" = ยกเลิกการลบ</>
           : <>ระงับโดยไม่นับวันลบข้อมูล — ผู้ใช้ทุกคนของลูกค้าเข้าระบบไม่ได้จนกว่าจะเปลี่ยนเป็น "ใช้งาน"</>}</div>}
         <Field label="ชื่อลูกค้า" req wide><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label="อีเมลผู้ติดต่อ"><input value={f.contact_email} onChange={(e) => setF({ ...f, contact_email: e.target.value })} /></Field>
-        <Field label="โทรศัพท์"><input value={f.contact_phone} onChange={(e) => setF({ ...f, contact_phone: e.target.value })} /></Field>
+        {/* HANDOFF 204 C3: ลูกค้าจริงที่สร้างแล้ว = ผู้ให้บริการเปลี่ยนอีเมล/โทรผู้ติดต่อไม่ได้ (แสดงแบบปิดบัง) */}
+        <Field label="อีเมลผู้ติดต่อ" req={!t && !f.is_demo} hint={t && !t.is_demo ? 'ผู้ดูแลระบบของลูกค้าเปลี่ยนเองที่ เริ่มระบบ › ผู้ใช้งานและสิทธิ์ — ผู้ให้บริการเปลี่ยนไม่ได้' : !t ? 'ลิงก์ตั้งรหัสผ่านของผู้ดูแลคนแรกส่งไปที่อีเมลนี้' : undefined}>
+          <input value={f.contact_email} readOnly={!!t && !t.is_demo} onChange={(e) => setF({ ...f, contact_email: e.target.value })} /></Field>
+        <Field label="โทรศัพท์"><input value={f.contact_phone} readOnly={!!t && !t.is_demo} onChange={(e) => setF({ ...f, contact_phone: e.target.value })} /></Field>
         <Field label="หมดอายุ"><DateInput value={f.expires_on} onChange={(v) => setF({ ...f, expires_on: v })} /></Field>
         <PackageFields value={pk} onChange={setPk} />
         <Field label="เข้าระบบพร้อมกัน" hint="1 เครื่อง = ทุกผู้ใช้ของลูกค้านี้ เข้าระบบจากเครื่องใหม่แล้วเครื่องเดิมออกจากระบบ (กันใช้รหัสเดียวกันหลายคน) · มีผลตั้งแต่การเข้าระบบครั้งถัดไป">

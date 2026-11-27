@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { checkTaxId, d, todayIso } from '@buddy/core';
 import type { Database, Db } from '../db.js';
 import { AppError, badRequest, forbidden, notFound, parse, requireAuth, requireCompany, type AuthContext } from '../http.js';
-import { canAccessCompany, companiesForUser, requireDemoForProvider } from './auth.js';
+import { canAccessCompany, companiesForUser, requireDemoForProvider, tenantIsDemo } from './auth.js';
 import { cloneCompanyFull, copyCompanyData, copyProfile, COPY_GROUP_KEYS, LEGACY_SCOPE_GROUPS, type CopyGroup } from '../company-copy.js';
 import { logActivity } from '../audit.js';
 import { confirmSecondFactor, markPasswordChanged, mfaForAll, setSec } from './security.js';
@@ -15,7 +15,7 @@ import { purgeTenant } from './pdpa.js';
 import { allowedFor, companyTenantOff, modulesOffRaw } from './permissions.js';
 import { payrollSource } from './wts.js';
 import { createTenantWithAdmin } from './signup.js';
-import { emailInvite, noticeCustomer, publicBase } from './provider.js';
+import { emailInvite, maskEmail, maskPhone, noticeCustomer, publicBase } from './provider.js';
 import { packagePlan, tenantLimits, TENANT_PACKAGE_FIELDS } from './usage.js';
 import { ensureStandardGroups, permissionCompanies } from '../standard-groups.js';
 import { applyStarter, lastStarter } from '../starter.js';
@@ -593,11 +593,14 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
       sql<string | null>`(SELECT p.name_th FROM sys_package p WHERE p.id = t.package_id)`.as('package_name'),
       sql<number>`(SELECT count(*) FROM sys_company c WHERE c.tenant_id = t.id AND c.deleted_at IS NULL)`.as('company_count'),
       sql<number>`(SELECT count(*) FROM sys_user u WHERE u.tenant_id = t.id AND u.deleted_at IS NULL)`.as('user_count')])
-      .where('t.deleted_at', 'is', null).orderBy('t.code').execute();
+      .where('t.deleted_at', 'is', null).orderBy('t.code').execute()
+      // HANDOFF 204 M2: ผู้ติดต่อของลูกค้าจริงแสดงแบบปิดบัง (ผู้ให้บริการเปลี่ยนไม่ได้ — C3)
+      .then((rows) => rows.map((r) => (r.is_demo ? r : { ...r, contact_email: r.contact_email ? maskEmail(r.contact_email) : null, contact_phone: r.contact_phone ? maskPhone(r.contact_phone) : null })));
   });
   const tenantBody = z.object({
     code: z.string().trim().min(1, 'ป้อนรหัสลูกค้า').max(20).regex(/^[A-Za-z0-9_-]+$/), name: z.string().trim().min(1, 'ป้อนชื่อลูกค้า').max(120),
-    contact_email: z.string().trim().email('อีเมลไม่ถูกต้อง').nullable().optional(), contact_phone: opt(60), plan: z.string().trim().max(20).default('standard'),
+    // HANDOFF 204 M2/C3: ลูกค้าจริงแสดงแบบปิดบัง (ab***@x) — ส่งคืนค่าปิดบัง = ไม่เปลี่ยน
+    contact_email: z.string().trim().refine((v) => !v || /^[^@\s]{0,2}\*\*\*@\S+$/.test(v) || z.string().email().safeParse(v).success, 'อีเมลไม่ถูกต้อง').nullable().optional(), contact_phone: opt(60), plan: z.string().trim().max(20).default('standard'),
     max_companies: z.coerce.number().int().min(1).nullable().optional(), max_users: z.coerce.number().int().min(1).nullable().optional(),
     expires_on: isoDate.nullable().optional(), status: z.enum(['A', 'S', 'I']).default('A'), dpa_signed_on: isoDate.nullable().optional(),
     moved_to: z.string().trim().max(200).nullable().optional().transform((v) => v || null),
@@ -689,7 +692,7 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const a = requirePlatform(req);
     const { id } = parse(z.object({ id: uuid }), req.params);
     const b = parse(tenantBody, req.body);
-    const cur = await db.selectFrom('sys_tenant').select(['status', 'suspend_reason', 'terminated_on', 'purge_after', 'purged_at', 'ai_payer', 'ai_limit_usd', 'contact_email', 'code']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
+    const cur = await db.selectFrom('sys_tenant').select(['status', 'suspend_reason', 'terminated_on', 'purge_after', 'purged_at', 'ai_payer', 'ai_limit_usd', 'contact_email', 'contact_phone', 'code']).where('id', '=', id).where('deleted_at', 'is', null).executeTakeFirst();
     if (!cur) throw notFound('ลูกค้าผู้ใช้บริการ');
     if (cur.purged_at) throw badRequest('ลบข้อมูลของลูกค้ารายนี้ไปแล้ว (เลิกใช้บริการ) — แก้ไขหรือเปิดใช้อีกไม่ได้ สร้างลูกค้ารายใหม่แทน');
     if (b.moved_to && b.status !== 'I') throw badRequest('ลูกค้าที่ย้ายไปเซิร์ฟเวอร์แยกแล้วต้องมีสถานะ "เลิกใช้" ที่เครื่องนี้');
@@ -698,7 +701,13 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
     const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
     const suspend_reason = b.status === 'S' ? (b.suspend_reason ?? 'OTHER') : null;
     const end = tenantCountdown({ status: b.status, suspend_reason }, cur, today);
-    // HANDOFF 204: เปลี่ยนอีเมลผู้ติดต่อ = จดเวลา (ลิงก์ตั้งรหัสผ่านไปอีเมลใหม่ได้หลัง 7 วัน) + แจ้งอีเมลเดิม
+    // HANDOFF 204 C3: อีเมลผู้ติดต่อของลูกค้าจริง ผู้ให้บริการเปลี่ยนไม่ได้ (ผู้ดูแลของลูกค้าเปลี่ยนเองในบัญชีของตัวเอง) — ค่าที่ส่งมาแบบปิดบัง = ไม่เปลี่ยน
+    const demo = await tenantIsDemo(db, id);
+    const sameOrMasked = (v: string | null | undefined) => !v || v.toLowerCase() === (cur.contact_email ?? '').toLowerCase() || (!!cur.contact_email && v === maskEmail(cur.contact_email));
+    const samePhone = (v: string | null | undefined) => !v || v === (cur.contact_phone ?? '') || (!!cur.contact_phone && v === maskPhone(cur.contact_phone));
+    if (!demo && (!sameOrMasked(b.contact_email) || !samePhone(b.contact_phone))) throw forbidden(`อีเมล/โทรศัพท์ผู้ติดต่อของลูกค้าจริง (${cur.code}) ผู้ให้บริการเปลี่ยนไม่ได้ — ผู้ดูแลระบบของลูกค้าเปลี่ยนเองที่ เริ่มระบบ › ผู้ใช้งานและสิทธิ์ (HANDOFF 204)`);
+    if (!demo) { b.contact_email = cur.contact_email; b.contact_phone = cur.contact_phone; }
+    // ลูกค้าข้อมูลตัวอย่าง: เปลี่ยน = จดเวลา + แจ้งอีเมลเดิม
     const emailChanged = (cur.contact_email ?? '').toLowerCase() !== (b.contact_email ?? '').toLowerCase();
     await db.updateTable('sys_tenant').set({ ...b, ...end, ...pkg, suspend_reason, ...(emailChanged ? { contact_email_changed_at: sql`now()` as never } : {}), contact_email: b.contact_email ?? null, contact_phone: b.contact_phone ?? null, max_companies: b.max_companies ?? null, max_users: b.max_users ?? null, expires_on: b.expires_on ?? null, dpa_signed_on: b.dpa_signed_on ?? null, moved_to: b.moved_to ?? null, updated_by: a.userId }).where('id', '=', id).execute();
     if (emailChanged && cur.contact_email) noticeCustomer(db, publicBase(req), id, `แจ้งเตือน: เปลี่ยนอีเมลผู้ติดต่อของบัญชี ${cur.code}`, [

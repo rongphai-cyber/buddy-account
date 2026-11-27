@@ -128,6 +128,17 @@ add(T('sys_tenant_module', 'โมดูล/โปรแกรมที่ลู
   C('remark', 'str200', th='หมายเหตุ (เลขที่สัญญา/ใบเสนอราคา)'),
   C('app_url', 'str200', th='ที่อยู่หน้าเว็บของโปรแกรมสำหรับลูกค้านี้ — Hub เปิดพร้อมบัตรผ่าน (docs/17 B6) เช่น https://wtspos.example.com/office/'),
 ], uniq=[('tenant_id','module_key')]))
+add(T('sys_company_move_request', 'คำขอย้ายบริษัทข้ามลูกค้า (HANDOFF 204 C2) — ผู้ให้บริการขอ แล้วผู้ดูแลระบบ (ADMIN) ของลูกค้าเดิมยืนยันในบัญชีของตัวเองก่อนย้าย', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
+  lk('source_tenant_id', 'sys_tenant', 'ลูกค้าเดิม (ผู้ยืนยัน)', nn=True),
+  lk('target_tenant_id', 'sys_tenant', 'ลูกค้าปลายทาง', nn=True),
+  C('company_ids', 'json', nn=True, th='บริษัทที่จะย้าย (รหัสแถว)'),
+  C('company_codes', 'str200', nn=True, th='รหัสบริษัทที่จะย้าย (แสดงผล)'),
+  C('status', 'char1', nn=True, d="'P'", th='P=รอผู้ดูแลของลูกค้าเดิมยืนยัน A=ยืนยันและย้ายแล้ว R=ลูกค้าปฏิเสธ X=ผู้ให้บริการยกเลิก', chk="status IN ('P','A','R','X')"),
+  C('expires_at', 'ts', nn=True, th='หมดอายุคำขอ (ยังไม่ยืนยัน = ใช้ไม่ได้)'),
+  lk('decided_by', 'sys_user', 'ผู้ยืนยัน/ปฏิเสธ (ผู้ดูแลของลูกค้าเดิม)'),
+  C('decided_at', 'ts', th='เวลาที่ยืนยัน/ปฏิเสธ'),
+  C('result', 'json', th='ผลการย้าย (จำนวนผู้ใช้ สิทธิ์ กุญแจ API ที่เปลี่ยน)'),
+]))
 
 add(T('sys_platform_setting', 'ค่าตั้งของผู้ให้บริการ (ทั้งระบบ ไม่ใช่ของบริษัท) เช่น อีเมลรับแจ้งเตือนใบสมัคร Reply-To ผู้ส่ง (HANDOFF 187) — เก็บในฐานข้อมูล ไม่อยู่ใน repo · อยู่เฉพาะเซิร์ฟเวอร์', 'sys', sync='server', express='(ใหม่)', company=False, cols=[
   C('key', 'code40', nn=True, th='ชื่อค่า เช่น mail.signup_notify'),

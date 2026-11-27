@@ -25,6 +25,27 @@ export const CONTACT_EMAIL_COOLDOWN_DAYS = 7;
 export const publicBase = (req: FastifyRequest) => process.env.BUDDY_PUBLIC_URL?.replace(/\/+$/, '') || `${req.protocol}://${req.host}`;
 /** ปิดบังอีเมลบนหน้าจอผู้ให้บริการ: ab***@domain */
 export const maskEmail = (e: string) => { const [u = '', d = ''] = e.split('@'); return `${u.slice(0, 2)}***@${d}`; };
+/** ปิดบังเบอร์โทร: 08x***xx */
+export const maskPhone = (p: string) => (p.length <= 5 ? '***' : `${p.slice(0, 3)}***${p.slice(-2)}`);
+
+/**
+ * บริษัทที่มีข้อมูลธุรกิจแล้ว (HANDOFF 204 C1/C2): เอกสาร ใบสำคัญ ยอดยกมา ลูกค้า ผู้จำหน่าย สินค้า ทรัพย์สิน บัญชีเงินฝาก พนักงาน/เงินเดือน
+ * ข้อมูลตั้งต้น (ผังบัญชี เลขที่เอกสาร หน่วยนับ คลัง แผนก กลุ่มบัญชี วิธีชำระ ค่าตั้ง) ไม่นับ — นับจำนวนอย่างเดียว ไม่อ่านเนื้อหา
+ */
+export const BUSINESS_TABLES = ['doc_header', 'gl_journal', 'md_customer', 'md_supplier', 'md_item', 'fa_asset', 'md_bank_account', 'pay_employee', 'pay_run'] as const;
+export async function companiesWithData(db: Db, companyIds: string[]): Promise<Array<{ id: string; code: string; rows: number }>> {
+  if (!companyIds.length) return [];
+  const parts = BUSINESS_TABLES.map((t) => sql`SELECT company_id, count(*)::int AS n FROM ${sql.table(t)} WHERE company_id = ANY(${companyIds}::uuid[]) AND deleted_at IS NULL GROUP BY company_id`);
+  parts.push(sql`SELECT company_id, count(*)::int AS n FROM gl_balance WHERE company_id = ANY(${companyIds}::uuid[]) AND deleted_at IS NULL AND opening <> 0 GROUP BY company_id`);
+  const rows = (await sql<{ id: string; code: string; rows: number }>`SELECT c.id, c.code, sum(x.n)::int AS rows FROM (${sql.join(parts, sql` UNION ALL `)}) x
+      JOIN sys_company c ON c.id = x.company_id GROUP BY c.id, c.code HAVING sum(x.n) > 0 ORDER BY c.code`.execute(db)).rows;
+  return rows;
+}
+/** ลูกค้านี้มีข้อมูลธุรกิจแล้วหรือยัง (ทุกบริษัท รวมบริษัทที่ลบแล้ว) */
+export async function tenantWithData(db: Db, tenantId: string) {
+  const ids = (await db.selectFrom('sys_company').select('id').where('tenant_id', '=', tenantId).execute()).map((c) => c.id);
+  return companiesWithData(db, ids);
+}
 
 type MailOut = { status: 'S' | 'K' | 'F'; note: string | null };
 /** ส่งอีเมลหนึ่งฉบับถึงลูกค้า (ไม่ throw) */
@@ -136,9 +157,23 @@ export function providerRoutes(app: FastifyInstance, db: Db) {
     if (!t) throw notFound('ลูกค้าผู้ใช้บริการ');
     // ติ๊กเป็นข้อมูลตัวอย่าง = เจ้าหน้าที่เปิดข้อมูลบัญชีของลูกค้านี้ได้ — ยืนยันด้วยรหัสลูกค้า
     if (b.is_demo && !t.is_demo && b.confirm.toUpperCase() !== t.code.toUpperCase()) throw badRequest(`พิมพ์รหัสลูกค้า ${t.code} เพื่อยืนยันว่าเป็นข้อมูลตัวอย่าง/ทดลอง (เจ้าหน้าที่ผู้ให้บริการจะเปิดข้อมูลบัญชีของลูกค้านี้ได้)`);
+    // HANDOFF 204 C1: ตั้งเป็นข้อมูลตัวอย่างได้เฉพาะลูกค้าที่ยังไม่มีข้อมูลธุรกิจเลย — มีข้อมูลแล้ว = ต้องผ่าน migration ที่เจ้าของอนุมัติ (แบบ DEMO) เท่านั้น
+    if (b.is_demo && !t.is_demo) {
+      const busy = await tenantWithData(db, id);
+      if (busy.length) throw forbidden(`ลูกค้า ${t.code} มีข้อมูลธุรกิจแล้ว (${busy.map((c) => c.code).join(', ')}) — ตั้งเป็นข้อมูลตัวอย่างที่หน้าจอไม่ได้ (จะเปิดข้อมูลของลูกค้าจริง) · ถ้าเป็นข้อมูลทดลองจริง ให้เจ้าของอนุมัติแล้วตั้งด้วย migration แบบ DEMO`);
+    }
     if (t.is_demo !== b.is_demo) {
       await db.updateTable('sys_tenant').set({ is_demo: b.is_demo, updated_by: a.userId }).where('id', '=', id).execute();
-      await logActivity(db, { companyId: null, userId: a.userId }, { module: 'SYS', action: b.is_demo ? 'TENANT_DEMO_ON' : 'TENANT_DEMO_OFF', docNo: t.code, table: 'sys_tenant', rowId: id, detail: { from: t.is_demo, to: b.is_demo } });
+      const detail = { tenant: t.code, from: t.is_demo, to: b.is_demo };
+      const action = b.is_demo ? 'TENANT_DEMO_ON' : 'TENANT_DEMO_OFF';
+      await logActivity(db, { companyId: null, userId: a.userId }, { module: 'SYS', action, docNo: t.code, table: 'sys_tenant', rowId: id, detail });
+      // ลูกค้าเห็นในแฟ้มบันทึกเหตุการณ์ของบริษัทตัวเอง + อีเมลแจ้ง
+      for (const c of await db.selectFrom('sys_company').select('id').where('tenant_id', '=', id).where('deleted_at', 'is', null).execute())
+        await logActivity(db, { companyId: c.id, userId: a.userId }, { module: 'SYS', action, docNo: t.code, table: 'sys_tenant', rowId: id, detail });
+      noticeCustomer(db, publicBase(req), id, b.is_demo ? `แจ้ง: บัญชี ${t.code} ถูกตั้งเป็นข้อมูลตัวอย่าง` : `แจ้ง: บัญชี ${t.code} เลิกเป็นข้อมูลตัวอย่าง`, [
+        b.is_demo ? `ผู้ให้บริการ Buddy Account ตั้งบัญชี ${t.code} เป็นข้อมูลตัวอย่าง/ทดลอง เมื่อ ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })} — เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลในบัญชีนี้ได้ (ใช้กับบัญชีทดลองที่ยังไม่มีข้อมูลเท่านั้น)`
+          : `ผู้ให้บริการ Buddy Account เลิกตั้งบัญชี ${t.code} เป็นข้อมูลตัวอย่าง เมื่อ ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })} — เจ้าหน้าที่ผู้ให้บริการเปิดข้อมูลในบัญชีนี้ไม่ได้แล้ว`,
+        'ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที']);
     }
     return { id, is_demo: b.is_demo };
   });

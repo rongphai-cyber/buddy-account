@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AI_PAYER_TH, TENANT_MODULES, type AiPayer } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
-import { cx, ErrorBox, Field, Modal, Pill, toast } from '../../ui';
+import { cx, ErrorBox, Field, Modal, Pill, toast, DateText } from '../../ui';
 
 interface TenantLite { id: string; code: string; name: string; status: string; purged_at: string | null; moved_to: string | null; company_count: number; max_companies: number | null }
 interface Preview {
@@ -15,7 +15,7 @@ interface Preview {
   tenant_settings: { modules: { source: string[]; target: string[] }; ai_payer: { source: AiPayer; target: AiPayer; target_limit_usd: string | null }; single_session: { source: boolean; target: boolean }; require_mfa: { source: boolean; target: boolean } };
   target_groups: string[]; warnings: string[]; confirm_text: string;
 }
-interface Result { users_moved: number; links_removed: number; permissions_removed: number; standard_rights_added: number; api_keys_disabled: number; sessions_ended: number; target: { code: string; name: string }; companies: Array<{ code: string; name_th: string }> }
+interface Result { pending?: boolean; request_id?: string; expires_at?: string; source?: { code: string; name: string }; users_moved: number; links_removed: number; permissions_removed: number; standard_rights_added: number; api_keys_disabled: number; sessions_ended: number; target: { code: string; name: string }; companies: Array<{ code: string; name_th: string }> }
 
 const modName = (k: string) => TENANT_MODULES.find((m) => m.key === k)?.label ?? k;
 const yesNo = (v: boolean) => (v ? 'เปิด' : 'ปิด');
@@ -57,11 +57,20 @@ export function MoveCompanies({ source, onClose, onDone }: { source: { id: strin
     setBusy(true); setErr(null);
     try {
       const r = await api.post<Result>(`/api/v1/tenants/${source.id}/move-companies`, { target_tenant_id: target, company_ids: ids, confirm, totp_code: totp || null });
-      setDone(r); toast(`ย้าย ${r.companies.map((c) => c.code).join(', ')} ไปลูกค้า ${r.target.code} แล้ว`);
+      setDone(r); toast(r.pending ? `ส่งคำขอย้าย ${r.companies.map((c) => c.code).join(', ')} แล้ว — รอผู้ดูแลระบบของลูกค้า ${source.code} ยืนยัน` : `ย้าย ${r.companies.map((c) => c.code).join(', ')} ไปลูกค้า ${r.target.code} แล้ว`);
       qc.invalidateQueries({ queryKey: ['tenants'] }); qc.invalidateQueries({ queryKey: ['me'] }); qc.invalidateQueries({ queryKey: ['users'] });
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
 
+  // HANDOFF 204 C2: ลูกค้าจริง → ลูกค้าจริง = คำขอ รอผู้ดูแลของลูกค้าเดิมยืนยันในบัญชีของตัวเอง
+  if (done?.pending) return (
+    <Modal title="ส่งคำขอย้ายบริษัทแล้ว" onClose={onDone} footer={<button className="primary" autoFocus onClick={onDone}>ปิด</button>}>
+      <div className="notebox move-result" role="status">
+        <p>คำขอย้าย <b>{done.companies.map((c) => `${c.code} ${c.name_th}`).join(' · ')}</b> ไปลูกค้า <b>{done.target.code} {done.target.name}</b> ส่งแล้ว — <b>ยังไม่ย้าย</b></p>
+        <p className="small">บริษัทจะย้ายเมื่อผู้ดูแลระบบ (ADMIN) ของลูกค้า {source.code} ยืนยันในบัญชีของตัวเองที่ เริ่มระบบ › บริษัททั้งหมด / ลบบริษัท (แจ้งทางอีเมลผู้ติดต่อแล้ว) · หมดอายุ <DateText v={done.expires_at?.slice(0, 10) ?? null} /> · ข้อมูลของลูกค้าจริงย้ายได้เมื่อลูกค้ายินยอมเท่านั้น</p>
+      </div>
+    </Modal>
+  );
   if (done) return (
     <Modal title="ย้ายบริษัทเรียบร้อย" onClose={onDone} footer={<button className="primary" autoFocus onClick={onDone}>ปิด</button>}>
       <div className="notebox ok move-result" role="status">

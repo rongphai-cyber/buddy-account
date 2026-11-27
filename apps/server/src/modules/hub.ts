@@ -9,6 +9,23 @@ import { logActivity } from '../audit.js';
 import { jwks, signSsoToken, SSO_TTL_SECONDS } from '../sso.js';
 
 /**
+ * ที่อยู่โปรแกรมที่ Hub เปิดได้ (HANDOFF 204 C4 — กันตั้งไทล์ของลูกค้าให้ชี้ไปเครื่องของผู้อื่นแล้วดักบัตรผ่าน buddy_sso):
+ * https เท่านั้น · โดเมนของ WTS (*.worktruesolution.net) + รายการเพิ่มใน BUDDY_APP_HOSTS (คั่นด้วยจุลภาค เช่น pos.example.com,*.wts.example)
+ * ไม่ผ่าน = บันทึกไม่ได้ และเปิด/แสดงลิงก์ไม่ได้ (แถวเดิมที่ไม่ผ่าน)
+ */
+export function appUrlProblem(url: string): string | null {
+  let u: URL;
+  try { u = new URL(url); } catch { return 'ที่อยู่โปรแกรมไม่ถูกต้อง'; }
+  const host = u.hostname.toLowerCase();
+  const allow = ['*.worktruesolution.net', ...(process.env.BUDDY_APP_HOSTS ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean)];
+  const ok = allow.some((p) => (p.startsWith('*.') ? host === p.slice(2) || host.endsWith(p.slice(1)) : host === p));
+  const local = (host === 'localhost' || host === '127.0.0.1') && allow.includes(host);
+  if (u.protocol !== 'https:' && !local) return `ที่อยู่โปรแกรม ${u.host} ต้องเป็น https:// (ความปลอดภัยของบัตรผ่านเข้าระบบ)`;
+  if (!ok) return `ที่อยู่โปรแกรม ${u.host} ไม่อยู่ในรายชื่อเครื่องของ WTS (*.worktruesolution.net หรือ BUDDY_APP_HOSTS) — เปิดไม่ได้ เพื่อกันส่งบัตรผ่านเข้าระบบไปเครื่องอื่น · ให้ผู้ให้บริการแก้ที่อยู่ของโปรแกรม`;
+  return null;
+}
+
+/**
  * WTS Solutions Hub + ล็อกอินกลาง (docs/17 B6.1/B6.2 · ข้อ 5.8)
  *  - GET  /.well-known/jwks.json (และ /api/v1/sso/jwks) — กุญแจสาธารณะให้โปรแกรมอื่นตรวจบัตรผ่าน (ไม่ต้องเข้าระบบ)
  *  - GET  /api/v1/hub — ไทล์ของบริษัทที่เลือก: สิทธิ์โมดูลของลูกค้า + ตัวเลขสำคัญ + สถานะคิวส่งเอกสาร (SyncStatus รวม)
@@ -69,7 +86,8 @@ export function hubRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     // ไทล์เฉพาะโปรแกรมที่ผู้ดูแลให้ผู้ใช้คนนี้เปิดได้ (sys_user.app_access · 09/11/2569) — ไม่ให้ = ไม่แสดง
     const apps = HUB_ORDER.filter((key) => userCanOpen(a.apps, key, a.isAdmin)).map((key) => {
       const hub = HUB_APPS[key], m = mods.find((x) => x.key === key)!, url = rows.find((r) => r.module_key === key)?.app_url ?? null;
-      const tile = hubTileState(key, m, url);
+      const bad = url ? appUrlProblem(url) : null;
+      const tile = bad ? { status: 'locked' as const, reason: bad } : hubTileState(key, m, url);
       const st = hub.source ? status.find((s) => s.source_system === hub.source) : undefined;
       const state = st ? syncStateOf(st, now) : null;
       return {
@@ -111,6 +129,8 @@ export function hubRoutes(app: FastifyInstance, db: Db, cfg: Config) {
     if (!userCanOpen(a.apps, key, a.isAdmin)) throw forbidden(`ผู้ดูแลระบบยังไม่ให้สิทธิ์คุณเปิด ${hub.name} — ขอสิทธิ์จากผู้ดูแลระบบของบริษัท (อื่น ๆ › ผู้ใช้งานและสิทธิ์ › โปรแกรมที่เปิดได้)`);
     if (tile.status !== 'active') throw forbidden(tile.reason ?? `เปิด ${hub.name} ไม่ได้`);
     if (!url) throw new AppError(409, 'APP_URL_MISSING', tile.reason!);
+    const bad = appUrlProblem(url);
+    if (bad) throw new AppError(409, 'APP_URL_NOT_ALLOWED', bad);
     const branch = a.branchId ? await db.selectFrom('sys_branch').select(['id', 'code', 'name']).where('id', '=', a.branchId).where('company_id', '=', a.companyId).executeTakeFirst() : undefined;
     const { token, claims } = signSsoToken({
       iss: originOf(req, cfg), aud: hub.audience, sub: a.userId, name: a.displayName, preferred_username: a.username,

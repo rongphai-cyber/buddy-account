@@ -241,6 +241,34 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
     return tenantSecurity(a.tenantId);
   });
 
+  /**
+   * อีเมลผู้ติดต่อของบัญชี (HANDOFF 204 C3): ผู้ดูแลระบบของลูกค้าเปลี่ยนเอง — ผู้ให้บริการเปลี่ยนไม่ได้ (ลิงก์ตั้งรหัสผ่านที่ผู้ให้บริการสั่งส่งไปอีเมลนี้)
+   * เปลี่ยน = แจ้งอีเมลเดิมและอีเมลใหม่ + จดเวลา (ลิงก์จากผู้ให้บริการไปอีเมลใหม่ได้หลัง 7 วัน)
+   */
+  app.get('/api/v1/tenant/contact', async (req) => {
+    const a = tenantAdmin(req);
+    const t = await db.selectFrom('sys_tenant').select(['code', 'name', 'contact_email', 'contact_phone', sql<string | null>`contact_email_changed_at::text`.as('changed_at')]).where('id', '=', a.tenantId).executeTakeFirstOrThrow();
+    return t;
+  });
+  app.put('/api/v1/tenant/contact', async (req) => {
+    const a = tenantAdmin(req);
+    if (a.apiKeyId) throw forbidden('กุญแจ API เปลี่ยนอีเมลผู้ติดต่อไม่ได้');
+    const b = parse(z.object({ contact_email: z.string().trim().email('อีเมลไม่ถูกต้อง').max(120), contact_phone: z.string().trim().max(60).nullable().optional().transform((v) => v || null), totp_code: z.string().trim().max(20).nullable().optional() }), req.body);
+    const cur = await db.selectFrom('sys_tenant').select(['code', 'contact_email']).where('id', '=', a.tenantId).executeTakeFirstOrThrow();
+    const changed = (cur.contact_email ?? '').toLowerCase() !== b.contact_email.toLowerCase();
+    if (changed) await confirmSecondFactor(db, a.userId, b.totp_code);
+    await db.updateTable('sys_tenant').set({ contact_email: b.contact_email, contact_phone: b.contact_phone ?? null, updated_by: a.userId, ...(changed ? { contact_email_changed_at: sql`now()` as never } : {}) }).where('id', '=', a.tenantId).execute();
+    await logActivity(db, a, { module: 'SET.SEC', action: 'TENANT_CONTACT', table: 'sys_tenant', rowId: a.tenantId, detail: { email_changed: changed } });
+    if (changed) {
+      const when = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+      const lines = [`ผู้ดูแลระบบ ${a.username} เปลี่ยนอีเมลผู้ติดต่อของบัญชี ${cur.code} เป็น ${b.contact_email} เมื่อ ${when}`, 'อีเมลนี้ใช้รับลิงก์ตั้งรหัสผ่านและการแจ้งเตือนของบัญชี — ถ้าท่านไม่ได้เปลี่ยน โปรดแจ้งผู้ให้บริการทันที'];
+      const base = publicBase(req);
+      if (cur.contact_email) noticeCustomer(db, base, a.tenantId, `แจ้งเตือน: เปลี่ยนอีเมลผู้ติดต่อของบัญชี ${cur.code}`, lines, cur.contact_email);
+      noticeCustomer(db, base, a.tenantId, `แจ้งเตือน: เปลี่ยนอีเมลผู้ติดต่อของบัญชี ${cur.code}`, lines, b.contact_email);
+    }
+    return { ok: true, changed };
+  });
+
   /** ผู้ดูแล: ปลดล็อก / ล้างยืนยันตัวตนสองขั้นของผู้ใช้ในลูกค้าเดียวกัน (ผู้ให้บริการทำได้ทุกราย) */
   const target = async (a: AuthContext, id: string) => {
     if (!a.isAdmin) throw forbidden('เฉพาะผู้ดูแลระบบ');

@@ -3,7 +3,8 @@ import { sql } from 'kysely';
 import { z } from 'zod';
 import { checkAppUrl, isTenantFeatureKey, isTenantModuleKey, tenantFeatureStatus, tenantModuleStatus, TENANT_FEATURES, TENANT_MODULES } from '@buddy/core';
 import type { Db } from '../db.js';
-import { forbidden, notFound, parse, requireAuth } from '../http.js';
+import { badRequest, forbidden, notFound, parse, requireAuth } from '../http.js';
+import { appUrlProblem } from './hub.js';
 import { logActivity } from '../audit.js';
 
 /**
@@ -69,6 +70,8 @@ export function tenantModuleRoutes(app: FastifyInstance, db: Db) {
     const a = platform(req);
     const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
     const b = parse(putBody, req.body);
+    // HANDOFF 204 C4: ที่อยู่โปรแกรมต้องเป็นเครื่องของ WTS
+    for (const m of b.modules) { const bad = m.app_url ? appUrlProblem(m.app_url) : null; if (bad) throw badRequest(bad, [{ field: `modules.${m.key}.app_url`, message: bad }]); }
     const t = await tenantOf(id);
     const before = await rowsOf(db, id);
     for (const m of b.modules) {

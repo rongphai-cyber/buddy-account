@@ -44,6 +44,7 @@ async function keyCall(key: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE', u
 }
 
 beforeAll(async () => {
+  process.env.BUDDY_APP_HOSTS = '*.example.test';   // HANDOFF 204 C4: test hosts
   process.env.NODE_ENV = 'test';
   process.env.BUDDY_REQUIRE_ADMIN_2FA = '0';   // ทดสอบบังคับ 2FA แยกในชุด T0.16
   process.env.BUDDY_CHANGES_HOLDBACK_MS = '0';   // ฟีดข้อมูลหลัก (B0.3) ไม่ต้องรอ
@@ -5168,9 +5169,20 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       // ยืนยันผิด = ไม่ย้าย
       expect((await call('POST', move, { ...body, confirm: 'M192-1' })).status).toBe(400);
       expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${m1}`.execute(database.db)).rows[0]!.t).toBe(src.id);
-      const r = await call('POST', move, { ...body, confirm: 'm192-2, m192-1' });
-      expect(r.status).toBe(200);
+      // HANDOFF 204 C2: ลูกค้าจริง → ลูกค้าจริง = คำขอ แล้วผู้ดูแลของลูกค้าเดิมยืนยันในบัญชีของตัวเอง
+      await sql`UPDATE sys_tenant SET is_demo = false WHERE id IN (${src.id}, ${dst.id})`.execute(database.db);
+      const req192 = await call('POST', move, { ...body, confirm: 'm192-2, m192-1' });
+      expect(req192.status, JSON.stringify(req192.body)).toBe(200);
+      expect(req192.body).toMatchObject({ pending: true });
+      expect((await sql<{ t: string }>`SELECT tenant_id::text AS t FROM sys_company WHERE id = ${m1}`.execute(database.db)).rows[0]!.t).toBe(src.id);   // ยังไม่ย้าย
+      expect((await call('POST', `/api/v1/company-move-requests/${req192.body.request_id}/confirm`, { confirm: 'M192-1 M192-2' })).status).toBe(403);   // ผู้ให้บริการยืนยันเองไม่ได้
+      cookie = srcAdmin;
+      expect(((await call('GET', '/api/v1/company-move-requests')).body as Array<{ id: string }>).map((x) => x.id)).toEqual([req192.body.request_id]);
+      expect((await call('POST', `/api/v1/company-move-requests/${req192.body.request_id}/confirm`, { confirm: 'M192-1' })).status).toBe(400);
+      const r = await call('POST', `/api/v1/company-move-requests/${req192.body.request_id}/confirm`, { confirm: 'm192-2, m192-1' });
+      expect(r.status, JSON.stringify(r.body)).toBe(200);
       expect(r.body).toMatchObject({ users_moved: 1, links_removed: 1, api_keys_disabled: 1 });
+      cookie = admin;
       expect(r.body.standard_rights_added).toBeGreaterThan(0);
 
       // ฐานข้อมูล: บริษัท/ผู้ใช้/กลุ่ม/สิทธิ์/กุญแจ

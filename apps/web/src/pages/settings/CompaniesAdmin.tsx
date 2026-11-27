@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatDate } from '@buddy/core';
 import { api } from '../../api';
 import { useSession } from '../../session';
-import { DateInput, ErrorBox, Field, Modal, PageHead, Pill, toast, useHotkeys } from '../../ui';
+import { DateInput, DateText, ErrorBox, Field, Modal, PageHead, Pill, toast, toastError, useHotkeys } from '../../ui';
 import { ALL_COPY_GROUPS, CopyGroupsPicker, type CopyGroup } from '../../components/CopyChoices';
 
 type Row = { id: string; code: string; name_th: string; tenant_code: string | null; deleted_at: string | null; deleted_by: string | null; doc_count: number; journal_count: number; last_date: string | null; current: boolean; next_start: string | null };
@@ -22,7 +22,41 @@ export function CompaniesPage() {
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ" title="บริษัททั้งหมด / ลบบริษัท" lead="บริษัททั้งหมดของกิจการ — แก้รหัส คัดลอกบริษัท สำรองข้อมูลก่อนลบ ลบ/กู้คืนบริษัท · เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ให้สิทธิ์ผู้อื่นไม่ได้"
         actions={<button onClick={() => nav('/companies/new')}>+ กำหนดบริษัทใหม่</button>} />
+      <MoveRequests />
       <CompaniesAdmin />
+    </div>
+  );
+}
+
+/**
+ * คำขอย้ายบริษัทจากผู้ให้บริการ (HANDOFF 204 C2) — ผู้ดูแลระบบของกิจการยืนยัน (พิมพ์รหัสบริษัท + รหัส 2FA) หรือปฏิเสธ · ไม่ยืนยัน = ไม่ย้าย
+ */
+function MoveRequests() {
+  const { me, refresh } = useSession();
+  const qc = useQueryClient();
+  const q = useQuery({ enabled: !!me?.user.is_admin && !me.user.is_platform && !!me.user.tenant_id, queryKey: ['move-requests'], queryFn: () => api.get<Array<{ id: string; company_codes: string; target_code: string; target_name: string; expires_at: string }>>('/api/v1/company-move-requests') });
+  const [ask, setAsk] = useState<{ id: string; codes: string } | null>(null);
+  const [typed, setTyped] = useState(''), [totp, setTotp] = useState('');
+  const [err, setErr] = useState<unknown>(null);
+  const reload = async () => { await qc.invalidateQueries({ queryKey: ['move-requests'] }); await qc.invalidateQueries({ queryKey: ['companies-manage'] }); await refresh(); };
+  if (!q.data?.length) return null;
+  return (
+    <div className="notebox warn move-requests" role="status">
+      <b>มีคำขอย้ายบริษัทจากผู้ให้บริการ — รอท่านยืนยัน</b>
+      {q.data.map((r) => (
+        <div key={r.id} className="move-request">
+          ย้าย <b className="mono">{r.company_codes}</b> ไปอยู่ในบัญชีลูกค้า <b>{r.target_code} {r.target_name}</b> · หมดอายุ <DateText v={r.expires_at.slice(0, 10)} />
+          {' '}<button className="danger" onClick={() => { setAsk({ id: r.id, codes: r.company_codes }); setTyped(''); setTotp(''); setErr(null); }}>ยืนยันย้าย…</button>
+          {' '}<button onClick={() => window.confirm('ปฏิเสธคำขอนี้? บริษัทไม่ย้าย') && api.post(`/api/v1/company-move-requests/${r.id}/reject`).then(() => { toast('ปฏิเสธคำขอแล้ว — บริษัทไม่ย้าย'); return reload(); }).catch(toastError)}>ปฏิเสธ</button>
+        </div>
+      ))}
+      <p className="small">ย้ายแล้วบริษัทและข้อมูลทั้งหมดไปอยู่กับลูกค้าปลายทาง ผู้ใช้ของท่านที่เข้าได้เฉพาะบริษัทนั้นย้ายตาม — ถ้าท่านไม่ได้ขอ ให้กด "ปฏิเสธ" และแจ้งผู้ให้บริการ</p>
+      {ask && <Modal title="ยืนยันย้ายบริษัท" size="confirm" onClose={() => setAsk(null)} footer={<><button onClick={() => setAsk(null)}>ยกเลิก</button>
+        <button className="danger" onClick={() => api.post(`/api/v1/company-move-requests/${ask.id}/confirm`, { confirm: typed, totp_code: totp || null }).then(() => { toast(`ย้าย ${ask.codes} แล้ว`); setAsk(null); return reload(); }).catch(setErr)}>ยืนยันย้าย</button></>}>
+        <ErrorBox error={err} />
+        <Field label={`พิมพ์รหัสบริษัท ${ask.codes} เพื่อยืนยัน`}><input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} /></Field>
+        <Field label="รหัสยืนยันตัวตนสองขั้น (ถ้าเปิดไว้)"><input inputMode="numeric" autoComplete="one-time-code" value={totp} onChange={(e) => setTotp(e.target.value)} /></Field>
+      </Modal>}
     </div>
   );
 }

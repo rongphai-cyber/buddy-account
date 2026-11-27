@@ -22,6 +22,7 @@ async function call(method: 'GET' | 'POST' | 'PUT', url: string, body?: unknown)
 const as = async (u: string, p: string) => { cookie = ''; const r = await call('POST', '/api/v1/auth/login', { username: u, password: p }); expect(r.status, JSON.stringify(r.body)).toBe(200); };
 
 beforeAll(async () => {
+  process.env.BUDDY_APP_HOSTS = '*.example.test';   // HANDOFF 204 C4
   process.env.NODE_ENV = 'test';
   process.env.BUDDY_REQUIRE_ADMIN_2FA = '0';
   process.env.BUDDY_SECRET_KEY ??= Buffer.alloc(32, 7).toString('base64');

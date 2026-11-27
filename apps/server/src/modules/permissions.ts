@@ -333,6 +333,9 @@ export const API_RULES: Record<string, Rule> = {
   'GET /api/v1/signup/config': OPEN, 'POST /api/v1/signup': OPEN, 'GET /api/v1/signups': SELF, 'POST /api/v1/signups/:id/approve': SELF, 'POST /api/v1/signups/:id/reject': SELF,
   // HANDOFF 204 ศูนย์ผู้ให้บริการ (ตรวจผู้ให้บริการในตัวจัดการ)
   'GET /api/v1/provider/customers': SELF, 'GET /api/v1/provider/customers/:id': SELF, 'PUT /api/v1/provider/customers/:id/demo': SELF, 'POST /api/v1/provider/users/:id/email-invite': SELF,
+  // HANDOFF 204 C2/C3: คำขอย้ายบริษัท (ผู้ดูแลของลูกค้าเดิมยืนยัน) · อีเมลผู้ติดต่อ (ผู้ดูแลของลูกค้า)
+  'GET /api/v1/company-move-requests': SELF, 'POST /api/v1/company-move-requests/:id/confirm': SELF, 'POST /api/v1/company-move-requests/:id/reject': SELF, 'POST /api/v1/company-move-requests/:id/cancel': SELF, 'GET /api/v1/tenants/:id/move-requests': SELF,
+  'GET /api/v1/tenant/contact': SELF, 'PUT /api/v1/tenant/contact': SELF,
   'GET /api/v1/tenants': SELF, 'POST /api/v1/tenants': SELF, 'PUT /api/v1/tenants/:id': SELF, 'POST /api/v1/tenants/:id/purge': SELF, 'POST /api/v1/tenants/:id/viewers': SELF, 'POST /api/v1/tenants/:id/standard-groups': SELF, 'POST /api/v1/tenants/:id/move-companies/preview': SELF, 'POST /api/v1/tenants/:id/move-companies': SELF, 'POST /api/v1/tenants/:id/export': SELF, 'POST /api/v1/tenants/import': SELF, 'POST /api/v1/companies': SELF,
   // T7.8 ออฟไลน์สาขา: เครื่องสาขา (ผู้ดูแลบริษัท) · API ของเครื่องสาขายืนยันด้วยรหัสเครื่อง (OPEN + ตรวจในตัว) · สถานะ/ส่งใหม่ของเครื่องสาขา (SELF)
   'GET /api/v1/devices': M('SET.DEVICE', 'read'), 'POST /api/v1/devices': M('SET.DEVICE', 'add'), 'POST /api/v1/devices/:id/new-code': M('SET.DEVICE', 'edit'),

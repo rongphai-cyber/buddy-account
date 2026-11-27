@@ -124,6 +124,33 @@ function InviteDialog({ link, onClose }: { link: InviteLink; onClose: () => void
 }
 
 /** ผู้ดูแลระบบของลูกค้า: บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้ (HANDOFF 146 · ค่าเริ่มต้น ปิด · HANDOFF 184: ผู้ให้บริการบังคับทุกผู้ใช้แล้ว) */
+/**
+ * อีเมลผู้ติดต่อของบัญชี (HANDOFF 204 C3): ผู้ดูแลระบบของกิจการเปลี่ยนเอง — ผู้ให้บริการเปลี่ยนไม่ได้
+ * ลิงก์ตั้งรหัสผ่านที่ผู้ให้บริการสั่ง (เมื่อท่านขอให้ช่วย) ส่งไปอีเมลนี้เท่านั้น · เปลี่ยน = แจ้งทั้งอีเมลเดิมและใหม่
+ */
+function TenantContactBox() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['tenant-contact'], queryFn: () => api.get<{ code: string; contact_email: string | null; contact_phone: string | null; changed_at: string | null }>('/api/v1/tenant/contact') });
+  const [edit, setEdit] = useState<{ email: string; phone: string; totp: string } | null>(null);
+  const [err, setErr] = useState<unknown>(null);
+  if (!q.data) return null;
+  const save = () => edit && api.put<{ changed: boolean }>('/api/v1/tenant/contact', { contact_email: edit.email.trim(), contact_phone: edit.phone.trim() || null, totp_code: edit.totp || null })
+    .then((r) => { toast(r.changed ? 'เปลี่ยนอีเมลผู้ติดต่อแล้ว — แจ้งทั้งอีเมลเดิมและอีเมลใหม่' : 'บันทึกแล้ว'); setEdit(null); return qc.invalidateQueries({ queryKey: ['tenant-contact'] }); }).catch(setErr);
+  return (
+    <fieldset className="box"><legend>อีเมลผู้ติดต่อของกิจการ</legend>
+      <p><b>{q.data.contact_email ?? 'ยังไม่มี'}</b>{q.data.contact_phone ? ` · ${q.data.contact_phone}` : ''}{' '}
+        <button type="button" onClick={() => { setErr(null); setEdit({ email: q.data!.contact_email ?? '', phone: q.data!.contact_phone ?? '', totp: '' }); }}>เปลี่ยน…</button></p>
+      <p className="small muted">ใช้รับการแจ้งเตือนของบัญชี และลิงก์ตั้งรหัสผ่านเมื่อท่านขอให้ผู้ให้บริการช่วย — ผู้ให้บริการเปลี่ยนอีเมลนี้ไม่ได้ (ผู้ดูแลระบบของกิจการเปลี่ยนเองเท่านั้น)</p>
+      {edit && <Modal title="เปลี่ยนอีเมลผู้ติดต่อของกิจการ" size="confirm" onClose={() => setEdit(null)} footer={<><button onClick={() => setEdit(null)}>ยกเลิก</button><button className="primary" onClick={() => void save()}>บันทึก <kbd>F9</kbd></button></>}>
+        <ErrorBox error={err} />
+        <Field label="อีเมลผู้ติดต่อ" req><input type="email" autoFocus value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></Field>
+        <Field label="โทรศัพท์"><input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></Field>
+        <Field label="รหัสยืนยันตัวตนสองขั้น (เมื่อเปลี่ยนอีเมล)"><input inputMode="numeric" autoComplete="one-time-code" value={edit.totp} onChange={(e) => setEdit({ ...edit, totp: e.target.value })} /></Field>
+      </Modal>}
+    </fieldset>
+  );
+}
+
 function TenantMfaBox() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['tenant-security'], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
@@ -192,6 +219,7 @@ export function UsersPage() {
       {tab === 'groups' && q.data && <GroupsTab groups={q.data.groups} users={q.data.users} onChanged={() => qc.invalidateQueries({ queryKey: ['users'] })} />}
       {tab === 'users' && <>
       {me.user.tenant_id && <TenantMfaBox />}
+      {me.user.tenant_id && <TenantContactBox />}
       <MasterBar rs={rs} word="ผู้ใช้" label={(u) => `${u.username} ${u.display_name}`} onAdd={() => setEdit('new')} onEdit={(u) => setEdit(u)} />
       <div className="table-wrap">
         <table className="grid">

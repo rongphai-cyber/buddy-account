@@ -37,9 +37,11 @@ const view = (j: Job) => ({ id: j.id, code: j.code, files: j.files, status: j.st
   seconds: j.startedAt ? Math.round(((j.finishedAt ?? Date.now()) - j.startedAt) / 1000) : null, missing: EXPRESS_REQUIRED.filter((f) => !(f in j.files)) });
 
 /** ผู้นำเข้าต้องเป็นผู้ดูแลระบบ เห็นได้เฉพาะงานของลูกค้าตัวเอง (ผู้ให้บริการเห็นทุกงาน) */
-function jobOf(a: AuthContext, id: string) {
+async function jobOf(db: Db, a: AuthContext, id: string) {
   const j = jobs.get(id);
   if (!j || (!a.isPlatform && j.tenantId !== a.tenantId)) throw notFound('งานนำเข้า');
+  // HANDOFF 204 M1: ผู้ให้บริการดู/อัปโหลด/รัน/ยกเลิกได้เฉพาะงานของลูกค้าข้อมูลตัวอย่าง
+  await requireDemoForProvider(db, a, j.tenantId);
   return j;
 }
 async function admin(db: Db, a: AuthContext) {
@@ -106,7 +108,7 @@ export function expressImportRoutes(app: FastifyInstance, database: Database) {
   app.put('/api/v1/express-import/jobs/:id/files/:name', { bodyLimit: MAX_FILE }, async (req) => {
     const a = requireAuth(req); await admin(db, a);
     const p = parse(z.object({ id: z.string().uuid(), name: z.string().regex(/^[A-Za-z0-9_]{1,12}$/, 'ชื่อแฟ้มไม่ถูกต้อง') }), req.params);
-    const j = jobOf(a, p.id);
+    const j = await jobOf(db, a, p.id);
     if (j.status !== 'upload') throw badRequest('งานนี้เริ่มนำเข้าแล้ว — เริ่มงานใหม่ถ้าต้องการอัปโหลดอีกครั้ง');
     const name = p.name.toUpperCase();
     if (!EXPRESS_FILES.includes(name)) throw badRequest(`${name}.DBF ไม่ใช่แฟ้มที่ใช้นำเข้า`);
@@ -118,7 +120,7 @@ export function expressImportRoutes(app: FastifyInstance, database: Database) {
   });
   app.post('/api/v1/express-import/jobs/:id/run', async (req) => {
     const a = requireAuth(req); await admin(db, a);
-    const j = jobOf(a, parse(z.object({ id: z.string().uuid() }), req.params).id);
+    const j = await jobOf(db, a, parse(z.object({ id: z.string().uuid() }), req.params).id);
     if (j.status !== 'upload') throw badRequest('งานนี้เริ่มไปแล้ว');
     const missing = EXPRESS_REQUIRED.filter((f) => !(f in j.files));
     if (missing.length) throw badRequest(`ยังไม่ได้อัปโหลด ${missing.map((m) => m + '.DBF').join(', ')} — เลือกโฟลเดอร์ข้อมูลบริษัทของ Express ให้ครบ`);
@@ -130,12 +132,12 @@ export function expressImportRoutes(app: FastifyInstance, database: Database) {
   });
   app.get('/api/v1/express-import/jobs/:id', async (req) => {
     const a = requireAuth(req); await admin(db, a);
-    return view(jobOf(a, parse(z.object({ id: z.string().uuid() }), req.params).id));
+    return view(await jobOf(db, a, parse(z.object({ id: z.string().uuid() }), req.params).id));
   });
   /** ยกเลิกก่อนเริ่ม: ลบแฟ้มที่อัปโหลด */
   app.delete('/api/v1/express-import/jobs/:id', async (req) => {
     const a = requireAuth(req); await admin(db, a);
-    const j = jobOf(a, parse(z.object({ id: z.string().uuid() }), req.params).id);
+    const j = await jobOf(db, a, parse(z.object({ id: z.string().uuid() }), req.params).id);
     if (j.status === 'running') throw badRequest('กำลังนำเข้า — ยกเลิกระหว่างทางไม่ได้ (ถ้าไม่สำเร็จ ระบบจะไม่บันทึกข้อมูลใดเลย)');
     rmSync(j.dir, { recursive: true, force: true });
     jobs.delete(j.id);

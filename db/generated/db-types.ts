@@ -156,6 +156,43 @@ export interface SysTenantModuleTable {
   /** เครื่องที่สร้างแถวนี้ */
   origin_device_id: Gen<string | null>;
 }
+/** คำขอย้ายบริษัทข้ามลูกค้า (HANDOFF 204 C2) — ผู้ให้บริการขอ แล้วผู้ดูแลระบบ (ADMIN) ของลูกค้าเดิมยืนยันในบัญชีของตัวเองก่อนย้าย */
+export interface SysCompanyMoveRequestTable {
+  /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
+  id: Gen<string>;
+  /** ลูกค้าเดิม (ผู้ยืนยัน) */
+  source_tenant_id: string;
+  /** ลูกค้าปลายทาง */
+  target_tenant_id: string;
+  /** บริษัทที่จะย้าย (รหัสแถว) */
+  company_ids: unknown;
+  /** รหัสบริษัทที่จะย้าย (แสดงผล) */
+  company_codes: string;
+  /** P=รอผู้ดูแลของลูกค้าเดิมยืนยัน A=ยืนยันและย้ายแล้ว R=ลูกค้าปฏิเสธ X=ผู้ให้บริการยกเลิก */
+  status: Gen<string>;
+  /** หมดอายุคำขอ (ยังไม่ยืนยัน = ใช้ไม่ได้) */
+  expires_at: string;
+  /** ผู้ยืนยัน/ปฏิเสธ (ผู้ดูแลของลูกค้าเดิม) */
+  decided_by: Gen<string | null>;
+  /** เวลาที่ยืนยัน/ปฏิเสธ */
+  decided_at: Gen<string | null>;
+  /** ผลการย้าย (จำนวนผู้ใช้ สิทธิ์ กุญแจ API ที่เปลี่ยน) */
+  result: Gen<unknown | null>;
+  /** เวลาสร้าง */
+  created_at: Gen<string>;
+  /** ผู้สร้าง */
+  created_by: Gen<string | null>;
+  /** เวลาแก้ไขล่าสุด */
+  updated_at: Gen<string>;
+  /** ผู้แก้ไขล่าสุด */
+  updated_by: Gen<string | null>;
+  /** เวอร์ชันของแถว (เพิ่มทุกครั้งที่แก้ ใช้ตรวจ conflict) */
+  row_version: Gen<number>;
+  /** ลบแบบ soft delete (Express ใช้เครื่องหมาย * ลบ) */
+  deleted_at: Gen<string | null>;
+  /** เครื่องที่สร้างแถวนี้ */
+  origin_device_id: Gen<string | null>;
+}
 /** ค่าตั้งของผู้ให้บริการ (ทั้งระบบ ไม่ใช่ของบริษัท) เช่น อีเมลรับแจ้งเตือนใบสมัคร Reply-To ผู้ส่ง (HANDOFF 187) — เก็บในฐานข้อมูล ไม่อยู่ใน repo · อยู่เฉพาะเซิร์ฟเวอร์ */
 export interface SysPlatformSettingTable {
   /** รหัสแถว UUIDv7 (สร้างได้ทั้งบนเซิร์ฟเวอร์และเครื่องลูกโดยไม่ชนกัน) */
@@ -5121,6 +5158,7 @@ export interface DB {
   sys_package: SysPackageTable;
   sys_tenant: SysTenantTable;
   sys_tenant_module: SysTenantModuleTable;
+  sys_company_move_request: SysCompanyMoveRequestTable;
   sys_platform_setting: SysPlatformSettingTable;
   sys_signup: SysSignupTable;
   sys_mail_log: SysMailLogTable;

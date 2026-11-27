@@ -1294,3 +1294,6 @@ td.row-actions button { margin-right: 4px; }
   .provider-nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); }
   td.row-actions { white-space: normal; }
 }
+
+/* HANDOFF 204 C2: move requests waiting for the customer admin */
+.move-requests .move-request { margin: 6px 0; }
