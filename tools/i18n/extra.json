@@ -4278,5 +4278,11 @@
  "ใช้งานเมนูที่ตั้งให้บันทึก": "Used a logged menu",
  "ใช้รหัสสำรอง 2FA": "Used a 2FA recovery code",
  "ใส่ข้อมูลตั้งต้นให้บริษัท {0}": "Added starter data to company {0}",
- "⚠ แจ้งเตือนการใช้งานผิดปกติ": "⚠ Unusual-usage alert"
+ "⚠ แจ้งเตือนการใช้งานผิดปกติ": "⚠ Unusual-usage alert",
+ "ทุกครั้งที่เจ้าหน้าที่ผู้ให้บริการ Buddy Account ทำกับบัญชีของกิจการ (เช่น เปิด/ปิดโปรแกรม แพ็กเกจ วันหมดอายุ ปลดล็อกผู้ใช้ ล้างการยืนยันตัวตนสองขั้น (รหัส 6 หลักจากแอปในมือถือ) ส่งลิงก์ตั้งรหัสผ่าน เปิดดูภาพรวมการใช้งาน) — เจ้าหน้าที่เปิดดูหรือแก้ข้อมูลบัญชี เอกสาร และรายงานของกิจการไม่ได้ · ถ้าพบรายการที่ท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที": "Every action Buddy Account provider staff took on your business account (e.g. enabling/disabling programs, package, expiry date, unlocking users, resetting two-factor sign-in (the 6-digit code from your phone app), sending password links, viewing the usage overview) — staff cannot open or edit your accounts, documents or reports · If you see an action you did not request, tell the provider immediately",
+ "ผู้ใช้ต้องตั้งการยืนยันตัวตนสองขั้นใหม่เมื่อเข้าระบบครั้งถัดไป — ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที": "The user must set up two-factor sign-in again at the next sign-in — if you did not request this, please tell the provider immediately",
+ "ล้างการยืนยันตัวตนสองขั้น (รหัส 6 หลักจากแอปในมือถือ)": "Reset two-factor sign-in (the 6-digit code from your phone app)",
+ "สร้างรหัสสำรองของการยืนยันตัวตนสองขั้นใหม่": "Generate new two-factor sign-in recovery codes",
+ "ใช้รหัสสำรองของการยืนยันตัวตนสองขั้น": "Used a two-factor sign-in recovery code",
+ "เจ้าหน้าที่ผู้ให้บริการ Buddy Account ล้างการยืนยันตัวตนสองขั้น (รหัส 6 หลักจากแอปในมือถือ) ของผู้ใช้ {0} เมื่อ {1}": "Buddy Account provider staff reset two-factor sign-in (the 6-digit code from your phone app) of user {0} on {1}"
 }

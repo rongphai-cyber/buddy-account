@@ -16,13 +16,13 @@ export const ACTION_LABEL: Readonly<Record<string, string>> = {
   TENANT_MFA_ON: 'บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้', TENANT_MFA_OFF: 'เลิกบังคับยืนยันตัวตนสองขั้น', TENANT_CONTACT: 'แก้ไขผู้ติดต่อของกิจการ', SET_MODULES: 'ตั้งโปรแกรมที่ผู้ใช้เปิดได้',
   // ผู้ใช้และสิทธิ์
   ADD_USER: 'เพิ่มผู้ใช้', EDIT_USER: 'แก้ไขผู้ใช้', RESET_PASSWORD: 'ตั้งรหัสผ่านให้ผู้ใช้', USER_RESET_PASSWORD: 'ตั้งรหัสผ่านใหม่ (ผู้ดูแลเซิร์ฟเวอร์)', USER_UNLOCK: 'ปลดล็อกผู้ใช้',
-  USER_RESET_2FA: 'ล้างการยืนยันตัวตนสองขั้น (2FA)', INVITE_EMAIL: 'ส่งลิงก์ตั้งรหัสผ่านทางอีเมลของลูกค้า', INVITE_CREATE: 'สร้างลิงก์เชิญ', INVITE_REVOKE: 'ยกเลิกลิงก์เชิญ', INVITE_ACCEPT: 'ตั้งรหัสผ่านจากลิงก์เชิญ',
+  USER_RESET_2FA: 'ล้างการยืนยันตัวตนสองขั้น (รหัส 6 หลักจากแอปในมือถือ)', INVITE_EMAIL: 'ส่งลิงก์ตั้งรหัสผ่านทางอีเมลของลูกค้า', INVITE_CREATE: 'สร้างลิงก์เชิญ', INVITE_REVOKE: 'ยกเลิกลิงก์เชิญ', INVITE_ACCEPT: 'ตั้งรหัสผ่านจากลิงก์เชิญ',
   EDIT_GROUP: 'แก้ไขกลุ่มผู้ใช้', DELETE_GROUP: 'ลบกลุ่มผู้ใช้', STANDARD_GROUPS: 'สร้างกลุ่มผู้ใช้ตั้งต้น', PERMISSION: 'แก้สิทธิ์', PERMISSION_COPY: 'คัดลอกสิทธิ์',
   API_KEY_CREATE: 'สร้างกุญแจ API', API_KEY_REVOKE: 'ยกเลิกกุญแจ API', API_KEY_SCOPE: 'แก้ขอบเขตกุญแจ API',
   // เข้าระบบและความปลอดภัย
   LOGIN: 'เข้าระบบ', LOGOUT: 'ออกจากระบบ', LOGIN_FAIL: 'ป้อนรหัสผ่านผิด', LOGIN_LOCKED: 'บัญชีถูกล็อกชั่วคราว', SESSION_REPLACED: 'เข้าระบบจากเครื่องอื่น (ตัดการใช้งานเดิม)', PASSWORD: 'เปลี่ยนรหัสผ่าน',
-  SETUP: 'ตั้งผู้ดูแลระบบคนแรก', SET_THEME: 'เปลี่ยนสไตล์หน้าจอ', MFA_ENABLE: 'เปิดยืนยันตัวตนสองขั้น', MFA_DISABLE: 'ปิดยืนยันตัวตนสองขั้น', MFA_RECOVERY_NEW: 'สร้างรหัสสำรอง 2FA ใหม่',
-  MFA_RECOVERY_USED: 'ใช้รหัสสำรอง 2FA', REVEAL: 'เปิดดูข้อมูลที่ปิดบัง',
+  SETUP: 'ตั้งผู้ดูแลระบบคนแรก', SET_THEME: 'เปลี่ยนสไตล์หน้าจอ', MFA_ENABLE: 'เปิดยืนยันตัวตนสองขั้น', MFA_DISABLE: 'ปิดยืนยันตัวตนสองขั้น', MFA_RECOVERY_NEW: 'สร้างรหัสสำรองของการยืนยันตัวตนสองขั้นใหม่',
+  MFA_RECOVERY_USED: 'ใช้รหัสสำรองของการยืนยันตัวตนสองขั้น', REVEAL: 'เปิดดูข้อมูลที่ปิดบัง',
   // บริษัทและข้อมูลทั้งบริษัท
   NEW_COMPANY: 'เพิ่มบริษัท', COPY_COMPANY: 'สร้างบริษัทโดยคัดลอกจากบริษัทเดิม', DELETE_COMPANY: 'ลบบริษัท', RESTORE_COMPANY: 'กู้บริษัทที่ลบ', STARTER_DATA: 'ใส่ข้อมูลตั้งต้นของบริษัท',
   CHART_TEMPLATE: 'ผังบัญชีตั้งต้น', SET_LOGO: 'ตั้งโลโก้บริษัท', BRANCH_SETUP: 'ตั้งสาขา', SETTINGS: 'แก้ค่าตั้งของบริษัท', BACKUP: 'สำรองข้อมูลบริษัท', RESTORE: 'นำข้อมูลสำรองมาใช้',

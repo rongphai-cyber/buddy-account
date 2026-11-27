@@ -299,8 +299,8 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
     await logActivity(db, a, { module: 'SET.SEC', action: 'USER_RESET_2FA', docNo: u.username, table: 'sys_user', rowId: u.id });
     // HANDOFF 204 ข้อ d1: ผู้ให้บริการล้าง 2FA ของผู้ใช้ลูกค้าจริง → แจ้งลูกค้าทางอีเมลผู้ติดต่อ
     if (a.isPlatform && u.tenant_id && !(await tenantIsDemo(db, u.tenant_id))) noticeCustomer(db, publicBase(req), u.tenant_id, `แจ้งเตือน: ล้างการยืนยันตัวตนสองขั้นของ ${u.username}`, [
-      `เจ้าหน้าที่ผู้ให้บริการ Buddy Account ล้างการยืนยันตัวตนสองขั้น (2FA) ของผู้ใช้ ${u.username} เมื่อ ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`,
-      'ผู้ใช้ต้องตั้ง 2FA ใหม่เมื่อเข้าระบบครั้งถัดไป — ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที']);
+      `เจ้าหน้าที่ผู้ให้บริการ Buddy Account ล้างการยืนยันตัวตนสองขั้น (รหัส 6 หลักจากแอปในมือถือ) ของผู้ใช้ ${u.username} เมื่อ ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`,
+      'ผู้ใช้ต้องตั้งการยืนยันตัวตนสองขั้นใหม่เมื่อเข้าระบบครั้งถัดไป — ถ้าท่านไม่ได้ขอ โปรดแจ้งผู้ให้บริการทันที']);
     return { ok: true };
   });
   }
