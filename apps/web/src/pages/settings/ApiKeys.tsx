@@ -91,7 +91,8 @@ export function ApiKeysPage() {
 
 function AddKey({ onClose, onDone }: { onClose: () => void; onDone: (name: string, key: string) => void }) {
   const { me } = useSession();
-  const users = useQuery({ queryKey: ['users'], queryFn: () => api.get<{ users: User[] }>('/api/v1/users') });
+  // ผู้ใช้ของลูกค้าเจ้าของบริษัท + เจ้าหน้าที่ ADMIN (HANDOFF 208: หน้าผู้ใช้งานไม่ปนเจ้าหน้าที่แล้ว)
+  const users = useQuery({ queryKey: ['users', 'with_staff'], queryFn: () => api.get<{ users: User[] }>('/api/v1/users', { for: 'with_staff' }) });
   const cid = me?.company?.id;
   const pick = (users.data?.users ?? []).filter((u) => u.status === 'A' && (u.group_code === 'ADMIN' || (cid && u.companies.includes(cid))));
   const [f, setF] = useState({ name: '', user_id: '', read_only: true, expires_on: '', source_system: '', doc_all: false });

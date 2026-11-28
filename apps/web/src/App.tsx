@@ -35,7 +35,7 @@ import { CompaniesPage } from './pages/settings/CompaniesAdmin';
 import { PeriodsPage } from './pages/settings/Periods';
 import { DepartmentsPage } from './pages/settings/Departments';
 import { BranchesPage } from './pages/settings/Branches';
-import { UsersPage } from './pages/settings/Users';
+import { ProviderStaffPage, UsersPage } from './pages/settings/Users';
 import { NewCompanyPage } from './pages/settings/NewCompany';
 import { PasswordPage } from './pages/settings/Password';
 import { MfaRequiredPage } from './pages/settings/TwoFactor';
@@ -98,6 +98,9 @@ import { InventoryAccountPage } from './pages/gl/InventoryAccount';
 import { StockDocFormPage, StockDocListPage } from './pages/docs/StockDocs';
 import { BANK_KINDS, BILL_KINDS, CASH_KINDS, DEPOSIT_REFUND, SETTLE_KINDS, STOCK_KINDS, TRADE_KINDS } from '@buddy/core';
 import { APP_VERSION } from './version';
+
+/** หน้าในศูนย์ผู้ให้บริการที่มีเมนูของตัวเอง — ลิงก์ "ลูกค้าทั้งหมด" (/provider) ไม่ติดสถานะเลือก */
+const ownProviderPage = (p: string) => p.startsWith('/provider/actions') || p.startsWith('/provider/staff');
 
 export const TONE: Record<string, string> = { PU: 'purchase', SA: 'sales', FI: 'finance', 'FI.BK': 'bank', TX: 'tax', IC: 'inventory', GL: 'gl', RP: 'reports', SET: 'setup', OT: 'home' };
 /** ไอคอนเมนูหลัก (แทนตัวเลขปุ่มลัดเดิม — เห็นได้แม้ย่อแถบเมนู) */
@@ -352,6 +355,7 @@ function Shell() {
           <Route path="/provider" element={<ProviderCustomersPage />} />
           <Route path="/provider/customers/:id" element={<ProviderCustomerPage />} />
           <Route path="/provider/actions" element={<ProviderActionsPage />} />
+          <Route path="/provider/staff" element={<ProviderStaffPage />} />
           <Route path="/admin/packages" element={<PackagesPage />} />
           <Route path="/settings/usage" element={<UsagePage />} />
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
@@ -418,8 +422,8 @@ function MenuEntry({ it, me }: { it: MenuItem; me: Me | null | undefined }) {
     return <span className="sub-item no-right" role="link" aria-disabled="true" tabIndex={0} title={st.why} onClick={(e) => tell(e.currentTarget)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tell(e.currentTarget); } }}>{it.label}<span className="lock" aria-hidden="true">🔒</span></span>;
   }
-  // HANDOFF 207: /provider ครอบ /provider/customers/… แต่ไม่ครอบ /provider/actions (เมนูของตัวเอง)
-  if (it.route) return <NavLink to={it.route} className={({ isActive }) => cx('sub-item', isActive && !(it.route === '/provider' && window.location.pathname.startsWith('/provider/actions')) && 'on')}>{it.label}</NavLink>;
+  // HANDOFF 207/208: /provider ครอบ /provider/customers/… แต่ไม่ครอบ /provider/actions /provider/staff (เมนูของตัวเอง)
+  if (it.route) return <NavLink to={it.route} className={({ isActive }) => cx('sub-item', isActive && !(it.route === '/provider' && ownProviderPage(window.location.pathname)) && 'on')}>{it.label}</NavLink>;
   return <NavLink to={`/planned/${it.code}`} className={({ isActive }) => cx('sub-item', 'planned', isActive && 'on')} title={`อยู่ในแผน เฟส ${it.phase}`}>{it.label}<span className="phase">{it.phase}</span></NavLink>;
 }
 
@@ -497,7 +501,7 @@ function ProviderShell() {
   const { me, logout } = useSession();
   const nav = useNavigate();
   const loc = useLocation();
-  const items: Array<[string, string]> = [['/provider', 'ลูกค้าทั้งหมด (ภาพรวม)'], ['/admin/tenants', 'ใบสมัคร / เพิ่ม-แก้ไขลูกค้า'], ['/admin/packages', 'แพ็กเกจและการใช้งานลูกค้า'], ['/provider/actions', 'สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า']];
+  const items: Array<[string, string]> = [['/provider', 'ลูกค้าทั้งหมด (ภาพรวม)'], ['/admin/tenants', 'ใบสมัคร / เพิ่ม-แก้ไขลูกค้า'], ['/admin/packages', 'แพ็กเกจและการใช้งานลูกค้า'], ['/provider/actions', 'สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า'], ['/provider/staff', 'เจ้าหน้าที่ผู้ให้บริการ']];
   return (
     <div className="provider-shell">
       <header className="topbar provider-top">
@@ -508,7 +512,7 @@ function ProviderShell() {
         <button onClick={() => void logout()}>ออก</button>
       </header>
       <nav className="provider-nav" aria-label="เมนูศูนย์ผู้ให้บริการ">
-        {items.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => cx(isActive && !(to === '/provider' && loc.pathname.startsWith('/provider/actions')) && 'active')} end={to === '/provider' ? false : undefined}>{label}</NavLink>)}
+        {items.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => cx(isActive && !(to === '/provider' && ownProviderPage(loc.pathname)) && 'active')} end={to === '/provider' ? false : undefined}>{label}</NavLink>)}
         <NavLink to="/account/password">รหัสผ่านและยืนยันตัวตน</NavLink>
       </nav>
       <main className="provider-main">
@@ -516,6 +520,7 @@ function ProviderShell() {
           <Route path="/provider" element={<ProviderCustomersPage />} />
           <Route path="/provider/customers/:id" element={<ProviderCustomerPage />} />
           <Route path="/provider/actions" element={<ProviderActionsPage />} />
+          <Route path="/provider/staff" element={<ProviderStaffPage />} />
           <Route path="/admin/tenants" element={<TenantsPage />} />
           <Route path="/admin/packages" element={<PackagesPage />} />
           <Route path="/settings/usage" element={<UsagePage />} />

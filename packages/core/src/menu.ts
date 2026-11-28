@@ -185,6 +185,8 @@ export const MENU: MenuItem[] = [
     m('SET.PKG', 'แพ็กเกจและการใช้งานลูกค้า', 'P0', '/admin/packages'),
     // HANDOFF 207: สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า (อ่านจากแฟ้มบันทึกเหตุการณ์) + การแจ้งเตือนการใช้งานผิดปกติ
     m('PV.ACT', 'สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า', 'P0', '/provider/actions'),
+    // HANDOFF 208: ผู้ใช้ของผู้ให้บริการ (ไม่สังกัดลูกค้า) — หน้าผู้ใช้งานระบบของบริษัทแสดงเฉพาะผู้ใช้ของลูกค้า (เหมือนที่ผู้ดูแลของลูกค้าเห็น)
+    m('PV.STAFF', 'เจ้าหน้าที่ผู้ให้บริการ', 'P0', '/provider/staff'),
     // HANDOFF 205: หน้าการใช้งานของกิจการ (มุมลูกค้า) — ผู้ให้บริการดูการใช้งานรายลูกค้าที่ แพ็กเกจและการใช้งานลูกค้า แทน
     // ไม่อยู่ในแถบเมนู/ค้นหาเมนู (ลูกค้าไม่เห็นอยู่แล้วตั้งแต่ HANDOFF 199) · รหัสคงไว้ (ตารางสิทธิ์ API) · เปิดที่อยู่ตรง = ชี้ไปหน้าของผู้ให้บริการ
     { ...m('SET.USAGE', 'การใช้งานและแพ็กเกจ', 'P0', '/settings/usage'), nav: false },
@@ -212,9 +214,9 @@ export function flattenMenu(items: MenuItem[] = MENU, parent?: string): Array<Me
  * ที่เดียวที่กำหนด — หน้าจอและ server ใช้ชุดนี้ (providerOnly)
  * HANDOFF 204: ย้ายไปกลุ่ม ศูนย์ผู้ให้บริการ (PV) · กุญแจ API (SET.API) ออกจากชุดนี้ — ผู้ให้บริการเปิดให้รายลูกค้า แล้วผู้ดูแลของลูกค้าสร้างกุญแจเอง (tenant-modules)
  */
-export const PLATFORM_MENUS: ReadonlySet<string> = new Set(['PV', 'PV.CUS', 'PV.ACT', 'SET.TENANT', 'SET.USAGE', 'SET.PKG']);
+export const PLATFORM_MENUS: ReadonlySet<string> = new Set(['PV', 'PV.CUS', 'PV.ACT', 'PV.STAFF', 'SET.TENANT', 'SET.USAGE', 'SET.PKG']);
 /** หน้าของศูนย์ผู้ให้บริการ (ใช้ได้โดยไม่ต้องเลือกบริษัท) */
-export const PROVIDER_ROUTES: readonly string[] = ['/provider', '/provider/actions', '/admin/tenants', '/admin/packages', '/settings/usage'];
+export const PROVIDER_ROUTES: readonly string[] = ['/provider', '/provider/actions', '/provider/staff', '/admin/tenants', '/admin/packages', '/settings/usage'];
 /**
  * เมนูเฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN ของลูกค้า · เจ้าหน้าที่ผู้ให้บริการ) — ตั้งให้ผ่านตารางสิทธิ์/สิทธิ์รวม (ALL · เมนูหลัก · กลุ่ม · ระดับ 9) ไม่ได้
  * ที่เดียวที่กำหนด (server: decide → 'admin' · หน้าจอ: แถวคงที่ในตารางสิทธิ์ · เปิดที่อยู่ตรง)

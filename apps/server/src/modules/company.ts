@@ -400,16 +400,24 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
         sql<boolean>`u.password_hash IS NOT NULL`.as('has_password')])
       .where('u.deleted_at', 'is', null);
     let gq = db.selectFrom('sys_user_group as g').leftJoin('sys_tenant as t', 't.id', 'g.tenant_id').select(['g.id', 'g.code', 'g.name', 'g.tenant_id', 't.code as tenant_code']).where('g.deleted_at', 'is', null);
+    /**
+     * ?for=company: เฉพาะผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทที่เลือกอยู่ — หน้าสิทธิ์รายเมนู (HANDOFF 191 · ผู้ให้บริการก็เห็นเฉพาะลูกค้ารายนี้)
+     * ?for=staff: เจ้าหน้าที่ผู้ให้บริการ (ศูนย์ผู้ให้บริการ › เจ้าหน้าที่ผู้ให้บริการ · HANDOFF 208) — เฉพาะผู้ให้บริการ
+     * ?for=with_staff: ลูกค้าของบริษัทที่เลือกอยู่ + เจ้าหน้าที่ (เลือกผู้ใช้ของกุญแจ API — กุญแจในนามเจ้าหน้าที่ ADMIN ได้)
+     */
+    const { for: forScope } = parse(z.object({ for: z.enum(['company', 'staff', 'with_staff']).optional() }), req.query ?? {});
+    if (forScope === 'staff' && !a.isPlatform) throw forbidden('เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม');
     if (!a.isPlatform) { uq = uq.where('u.tenant_id', '=', a.tenantId!); gq = gq.where('g.tenant_id', '=', a.tenantId!); }
     else {
-      // HANDOFF 206: ผู้ให้บริการเห็นเฉพาะผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทที่เลือกอยู่ (ข้อมูลตัวอย่างเท่านั้น) + เจ้าหน้าที่ผู้ให้บริการ — ไม่เห็นผู้ใช้ของลูกค้าจริง (ใช้ศูนย์ผู้ให้บริการ)
+      // HANDOFF 206/208: ผู้ให้บริการเห็นเฉพาะผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทที่เลือกอยู่ (ข้อมูลตัวอย่างเท่านั้น) — เหมือนที่ผู้ดูแลของลูกค้าเห็น
+      // ไม่ปนเจ้าหน้าที่ผู้ให้บริการ (จัดการที่ ศูนย์ผู้ให้บริการ › เจ้าหน้าที่ผู้ให้บริการ) · ไม่เห็นผู้ใช้ของลูกค้าจริง (ใช้ศูนย์ผู้ให้บริการ)
+      // ยังไม่ได้เลือกบริษัทข้อมูลตัวอย่าง = เจ้าหน้าที่
       const ct = a.companyId ? (await db.selectFrom('sys_company').select('tenant_id').where('id', '=', a.companyId).executeTakeFirst())?.tenant_id ?? null : null;
-      const shown = ct && (await tenantIsDemo(db, ct)) ? ct : null;
-      uq = uq.where((eb) => (shown ? eb.or([eb('u.tenant_id', 'is', null), eb('u.tenant_id', '=', shown)]) : eb('u.tenant_id', 'is', null)));
-      gq = gq.where((eb) => (shown ? eb.or([eb('g.tenant_id', 'is', null), eb('g.tenant_id', '=', shown)]) : eb('g.tenant_id', 'is', null)));
+      const shown = forScope !== 'staff' && ct && (await tenantIsDemo(db, ct)) ? ct : null;
+      const staffToo = forScope === 'with_staff' || !shown;
+      uq = uq.where((eb) => (shown ? (staffToo ? eb.or([eb('u.tenant_id', 'is', null), eb('u.tenant_id', '=', shown)]) : eb('u.tenant_id', '=', shown)) : eb('u.tenant_id', 'is', null)));
+      gq = gq.where((eb) => (shown ? (staffToo ? eb.or([eb('g.tenant_id', 'is', null), eb('g.tenant_id', '=', shown)]) : eb('g.tenant_id', '=', shown)) : eb('g.tenant_id', 'is', null)));
     }
-    // ?for=company: เฉพาะผู้ใช้/กลุ่มของลูกค้าเจ้าของบริษัทที่เลือกอยู่ — หน้าสิทธิ์รายเมนู (HANDOFF 191 · ผู้ให้บริการก็เห็นเฉพาะลูกค้ารายนี้)
-    const { for: forScope } = parse(z.object({ for: z.enum(['company']).optional() }), req.query ?? {});
     if (forScope === 'company') {
       if (!a.companyId) throw badRequest('ยังไม่ได้เลือกบริษัท — เลือกบริษัทก่อนกำหนดสิทธิ์รายเมนู');
       const ct = (await db.selectFrom('sys_company').select('tenant_id').where('id', '=', a.companyId).executeTakeFirst())?.tenant_id ?? null;

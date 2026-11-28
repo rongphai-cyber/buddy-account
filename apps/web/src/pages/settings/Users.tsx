@@ -130,7 +130,8 @@ function InviteDialog({ link, onClose }: { link: InviteLink; onClose: () => void
  */
 function TenantContactBox() {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ['tenant-contact'], queryFn: () => api.get<{ code: string; contact_email: string | null; contact_phone: string | null; changed_at: string | null }>('/api/v1/tenant/contact') });
+  const { me } = useSession();
+  const q = useQuery({ queryKey: ['tenant-contact', me?.company?.id], queryFn: () => api.get<{ code: string; contact_email: string | null; contact_phone: string | null; changed_at: string | null }>('/api/v1/tenant/contact') });
   const [edit, setEdit] = useState<{ email: string; phone: string; totp: string } | null>(null);
   const [err, setErr] = useState<unknown>(null);
   if (!q.data) return null;
@@ -153,7 +154,8 @@ function TenantContactBox() {
 
 function TenantMfaBox() {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ['tenant-security'], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
+  const { me } = useSession();
+  const q = useQuery({ queryKey: ['tenant-security', me?.company?.id], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
   const [ask, setAsk] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
@@ -192,10 +194,11 @@ const keepTab = (t: string) => { try { localStorage.setItem(TAB_KEY, t); } catch
  * ผู้ใช้งานและสิทธิ์ — คู่มือบทที่ 23 S-SEC-01/02 · HANDOFF 198 (เจ้าของ 26/11/2569 "หน้าผู้ใช้ระบบ ควรจะแสดง เมนูรายการของกลุ่ม … จะเพิ่มกลุ่มก็ควรอยู่หน้านั้น")
  * 2 แท็บในหน้าเดียว: กลุ่มผู้ใช้ (สิทธิ์ของกลุ่ม = ค่าตั้งต้น) · ผู้ใช้ (สิทธิ์เพิ่มเติมรายคน เปิดจากแฟ้มผู้ใช้)
  */
-export function UsersPage() {
+export function UsersPage({ staff = false }: { staff?: boolean } = {}) {
   const { me } = useSession();
   const qc = useQueryClient();
-  const q = useQuery({ enabled: !!me?.user.is_admin, queryKey: ['users'], queryFn: () => api.get<{ users: User[]; groups: Group[]; mfa_all?: boolean }>('/api/v1/users') });
+  const q = useQuery({ enabled: !!me?.user.is_admin && (!staff || !!me?.user.is_platform), queryKey: staff ? ['users', 'staff'] : ['users'],
+    queryFn: () => api.get<{ users: User[]; groups: Group[]; mfa_all?: boolean }>('/api/v1/users', staff ? { for: 'staff' } : undefined) });
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
   const urlTab = sp.get('tab');
@@ -207,19 +210,22 @@ export function UsersPage() {
   useEffect(() => { if (editId && q.data) { const u = q.data.users.find((x) => x.id === editId); if (u) { setTabState('users'); setEdit(u); } setSp((x) => { x.delete('edit'); return x; }, { replace: true }); } }, [editId, q.data, setSp]);
   const [link, setLink] = useState<InviteLink | null>(null);
   const rs = useRowSelect(q.data?.users);
-  const sec = useQuery({ enabled: !!me?.user.is_admin && !!me?.user.tenant_id, queryKey: ['tenant-security'], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
+  // HANDOFF 208: ผู้ให้บริการในบริษัทข้อมูลตัวอย่าง (ผู้ให้บริการเลือกได้เฉพาะบริษัทข้อมูลตัวอย่าง) เห็นกล่องเดียวกับผู้ดูแลของลูกค้า
+  const tenantBoxes = !staff && !!me?.user.is_admin && (!!me.user.tenant_id || (!!me.user.is_platform && !!me.company));
+  const sec = useQuery({ enabled: tenantBoxes, queryKey: ['tenant-security', me?.company?.id], queryFn: () => api.get<TenantSecurity>('/api/v1/tenant/security') });
   const mfaAll = !!sec.data?.require_mfa || !!q.data?.mfa_all;
-  if (!me?.user.is_admin) return <div className="page"><div className="notebox">เฉพาะผู้ดูแลระบบ</div></div>;
+  if (!me?.user.is_admin || (staff && !me.user.is_platform)) return <div className="page"><div className="notebox">{staff ? 'เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม' : 'เฉพาะผู้ดูแลระบบ'}</div></div>;
   return (
     <div className="page" data-tone="setup">
-      <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="ผู้ใช้งานระบบ" lead="กลุ่มผู้ใช้กำหนดสิทธิ์ตั้งต้น — ผู้ใช้ได้สิทธิ์ของกลุ่ม แล้วปรับเพิ่มเฉพาะคนได้จากแฟ้มผู้ใช้ (ไม่มีกลุ่ม = ตามระดับอนุมัติ) · กลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · สิทธิ์แยกแต่ละบริษัท"
-        actions={<button onClick={() => nav('/settings/permissions?menu=1')} title="ดูว่ากลุ่ม/ผู้ใช้ใดได้สิทธิ์อะไรในแต่ละเมนู">สิทธิ์ตามเมนู</button>} />
+      {staff ? <PageHead eyebrow="ศูนย์ผู้ให้บริการ" title="เจ้าหน้าที่ผู้ให้บริการ" lead="ผู้ใช้ของผู้ให้บริการ (ไม่สังกัดลูกค้า) — เพิ่ม แก้ไข ระงับ ส่งลิงก์ตั้งรหัสผ่าน ปลดล็อก ล้างการยืนยันตัวตนสองขั้น · กลุ่ม ADMIN เข้าได้ทุกบริษัทข้อมูลตัวอย่าง ลูกค้าจริงดูได้เฉพาะภาพรวมที่ศูนย์ผู้ให้บริการ · หน้าผู้ใช้งานระบบของบริษัทแสดงเฉพาะผู้ใช้ของลูกค้า" />
+      : <PageHead eyebrow="เริ่มระบบ › ผู้ใช้งานและสิทธิ์" title="ผู้ใช้งานระบบ" lead="กลุ่มผู้ใช้กำหนดสิทธิ์ตั้งต้น — ผู้ใช้ได้สิทธิ์ของกลุ่ม แล้วปรับเพิ่มเฉพาะคนได้จากแฟ้มผู้ใช้ (ไม่มีกลุ่ม = ตามระดับอนุมัติ) · กลุ่ม ADMIN เข้าได้ทุกบริษัทและทุกเมนู · สิทธิ์แยกแต่ละบริษัท"
+        actions={<button onClick={() => nav('/settings/permissions?menu=1')} title="ดูว่ากลุ่ม/ผู้ใช้ใดได้สิทธิ์อะไรในแต่ละเมนู">สิทธิ์ตามเมนู</button>} />}
       <ErrorBox error={q.error} />
-      <Tabs active={tab} onChange={setTab} tabs={[{ key: 'groups', label: 'กลุ่มผู้ใช้', badge: q.data ? groupsHere(q.data.groups, me).length : undefined }, { key: 'users', label: 'ผู้ใช้', badge: q.data?.users.length }]} />
-      {tab === 'groups' && q.data && <GroupsTab groups={q.data.groups} users={q.data.users} onChanged={() => qc.invalidateQueries({ queryKey: ['users'] })} />}
-      {tab === 'users' && <>
-      {me.user.tenant_id && <TenantMfaBox />}
-      {me.user.tenant_id && <TenantContactBox />}
+      {!staff && <Tabs active={tab} onChange={setTab} tabs={[{ key: 'groups', label: 'กลุ่มผู้ใช้', badge: q.data ? groupsHere(q.data.groups, me).length : undefined }, { key: 'users', label: 'ผู้ใช้', badge: q.data?.users.length }]} />}
+      {!staff && tab === 'groups' && q.data && <GroupsTab groups={q.data.groups} users={q.data.users} onChanged={() => qc.invalidateQueries({ queryKey: ['users'] })} />}
+      {(staff || tab === 'users') && <>
+      {tenantBoxes && <TenantMfaBox />}
+      {tenantBoxes && <TenantContactBox />}
       <MasterBar rs={rs} word="ผู้ใช้" label={(u) => `${u.username} ${u.display_name}`} onAdd={() => setEdit('new')} onEdit={(u) => setEdit(u)} />
       <div className="table-wrap">
         <table className="grid">
@@ -239,12 +245,15 @@ export function UsersPage() {
         </table>
       </div>
       </>}
-      {edit && q.data && <UserForm u={edit === 'new' ? null : edit} groups={q.data.groups} tenantOne={!!sec.data?.single_session} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['users'] }); }}
+      {edit && q.data && <UserForm u={edit === 'new' ? null : edit} groups={q.data.groups} staff={staff} tenantOne={!!sec.data?.single_session} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); qc.invalidateQueries({ queryKey: ['users'] }); }}
         onLink={(l) => { setEdit(null); setLink(l); qc.invalidateQueries({ queryKey: ['users'] }); }} />}
       {link && <InviteDialog link={link} onClose={() => setLink(null)} />}
     </div>
   );
 }
+
+/** ศูนย์ผู้ให้บริการ › เจ้าหน้าที่ผู้ให้บริการ (HANDOFF 208) — ผู้ใช้ไม่สังกัดลูกค้า · หน้าผู้ใช้งานระบบของบริษัทไม่ปนเจ้าหน้าที่แล้ว */
+export function ProviderStaffPage() { return <UsersPage staff />; }
 
 /** เหตุผลที่ลบกลุ่มไม่ได้ (คำแนะนำของปุ่มลบ — HANDOFF 203: ไม่เป็นบรรทัดเหนือตาราง ซึ่งดันตารางเมื่อชี้เมาส์จนจอสั่น) */
 function groupDeleteWhy(g: Group, n: number) { return g.code === 'ADMIN' ? 'กลุ่ม ADMIN ลบไม่ได้ — เป็นกลุ่มผู้ดูแลระบบ' : `ลบกลุ่ม ${g.code} ไม่ได้ — มีผู้ใช้ ${n} คน ย้ายผู้ใช้ไปกลุ่มอื่นก่อน`; }
@@ -310,11 +319,11 @@ function GroupsTab({ groups, users, onChanged }: { groups: Group[]; users: User[
   );
 }
 
-function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User | null; groups: Group[]; tenantOne?: boolean; onClose: () => void; onSaved: () => void; onLink: (l: InviteLink) => void }) {
+function UserForm({ u, groups, staff, tenantOne, onClose, onSaved, onLink }: { u: User | null; groups: Group[]; staff?: boolean; tenantOne?: boolean; onClose: () => void; onSaved: () => void; onLink: (l: InviteLink) => void }) {
   // ผู้ใช้ใหม่: ค่าเริ่มต้น = ให้ตั้งรหัสผ่านเองจากลิงก์เชิญ (HANDOFF 184 — ผู้ดูแลไม่ต้องรู้รหัสผ่าน)
   const [invite, setInvite] = useState(!u);
   const { me } = useSession();
-  const [f, setF] = useState({ username: u?.username ?? '', display_name: u?.display_name ?? '', password: '', user_group_id: u?.user_group_id ?? '', approval_level: u?.approval_level ?? 0, check_rights: u?.check_rights ?? false, status: u?.status ?? 'A', companies: u?.companies ?? [] as string[], single_session: u?.single_session ?? false,
+  const [f, setF] = useState({ username: u?.username ?? '', display_name: u?.display_name ?? '', password: '', user_group_id: u ? u.user_group_id ?? '' : staff ? groups.find((g) => g.code === 'ADMIN' && !g.tenant_id)?.id ?? '' : '', approval_level: u?.approval_level ?? 0, check_rights: u?.check_rights ?? false, status: u?.status ?? 'A', companies: u?.companies ?? [] as string[], single_session: u?.single_session ?? false,
     app_access: (u?.app_access ?? null) as TenantModuleKey[] | null });
   const [err, setErr] = useState<unknown>(null);
   const [sec, setSec] = useState<null | 'unlock' | 'reset-2fa' | 'invite' | 'revoke'>(null);
@@ -354,7 +363,7 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
     api.post(`/api/v1/users/${u!.id}/${k}`).then(() => { toast(k === 'unlock' ? 'ปลดล็อกแล้ว' : 'ล้างยืนยันตัวตนสองขั้นแล้ว — ผู้ใช้ต้องเข้าระบบใหม่และตั้งใหม่'); onSaved(); }).catch(setErr);
   };
   const send = (body: typeof f) => (u ? api.put<{ id: string }>(`/api/v1/users/${u.id}`, { ...body, password: body.password || undefined, user_group_id: body.user_group_id || null })
-    : api.post<{ id: string }>('/api/v1/users', { ...body, password: invite ? undefined : body.password, invite, user_group_id: body.user_group_id || null }));
+    : api.post<{ id: string }>('/api/v1/users', { ...body, password: invite ? undefined : body.password, invite, user_group_id: body.user_group_id || null, ...(staff ? { tenant_id: null, companies: [] } : {}) }));
   const done = (r?: { id: string }) => {
     if (!u && invite && r?.id) { api.post<InviteLink>(`/api/v1/users/${r.id}/invite`).then((l) => { toast('เพิ่มผู้ใช้แล้ว — ส่งลิงก์เชิญให้ผู้ใช้'); onLink(l); }).catch((e) => { setErr(e); onSaved(); }); return; }
     toast('บันทึกผู้ใช้แล้ว'); onSaved();
@@ -416,7 +425,7 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
         <Field label="เข้าระบบพร้อมกัน" hint={tenantOne ? 'ลูกค้านี้ตั้งไว้ 1 เครื่องทุกผู้ใช้ (ผู้ให้บริการตั้ง)' : '1 เครื่อง = เข้าระบบจากเครื่องใหม่ เครื่องเดิมออกจากระบบ (มีผลครั้งถัดไปที่เข้าระบบ)'}>
           <select value={tenantOne || f.single_session ? '1' : '0'} disabled={tenantOne} onChange={(e) => setF({ ...f, single_session: e.target.value === '1' })}><option value="0">หลายเครื่องพร้อมกันได้</option><option value="1">1 รหัสเข้าได้ทีละ 1 เครื่อง</option></select>
         </Field>
-        <fieldset className={cx('wide', noCompany && !f.companies.length && !isAdminGroup && 'invalid')}><span className="lbl">บริษัทที่เข้าได้{!isAdminGroup && <b className="req" aria-hidden="true">*</b>}</span>
+        {staff ? <p className="wide small muted">เจ้าหน้าที่ผู้ให้บริการกลุ่ม ADMIN เข้าได้ทุกบริษัทข้อมูลตัวอย่าง — เปิดข้อมูลบัญชีของลูกค้าจริงไม่ได้</p> : <fieldset className={cx('wide', noCompany && !f.companies.length && !isAdminGroup && 'invalid')}><span className="lbl">บริษัทที่เข้าได้{!isAdminGroup && <b className="req" aria-hidden="true">*</b>}</span>
           {me?.companies.map((c) => {
             // บริษัทของลูกค้ารายอื่น (ผู้ให้บริการเห็นทุกราย): ติ๊กไม่ได้ — ผู้ใช้หนึ่งคนอยู่ได้ลูกค้ารายเดียว
             const other = formTenant !== undefined && (c.tenant_id ?? null) !== formTenant && !f.companies.includes(c.id);
@@ -425,7 +434,7 @@ function UserForm({ u, groups, tenantOne, onClose, onSaved, onLink }: { u: User 
           })}
           {isAdminGroup ? <p className="small muted">กลุ่ม ADMIN เข้าได้ทุกบริษัทของกิจการ</p>
             : noCompany && !f.companies.length && <p className="bad small" role="alert">ยังไม่ได้เลือกบริษัทที่เข้าได้ — ผู้ใช้นี้จะเข้าบริษัทใดไม่ได้ ติ๊กบริษัทอย่างน้อย 1 บริษัท</p>}
-        </fieldset>
+        </fieldset>}
         <AppAccessField value={f.app_access} onChange={(v) => setF({ ...f, app_access: v })} admin={groups.find((g) => g.id === f.user_group_id)?.code === 'ADMIN'} />
         {u && u.id !== me?.user.id && (
           <fieldset className="wide"><span className="lbl">ความปลอดภัยการเข้าระบบ</span>

@@ -4661,10 +4661,15 @@ describe('ความปลอดภัยการเข้าระบบ (T0
     expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(false);
     expect((await call('PUT', '/api/v1/tenant/security', { require_mfa: true })).status).toBe(403);   // ผู้ใช้ทั่วไปตั้งไม่ได้
     cookie = admin;
-    expect((await call('GET', '/api/v1/tenant/security')).status).toBe(403);   // เจ้าหน้าที่ผู้ให้บริการไม่มีค่าของลูกค้า
+    // HANDOFF 208: เจ้าหน้าที่ผู้ให้บริการ = ค่าของลูกค้าข้อมูลตัวอย่างเจ้าของบริษัทที่เลือกอยู่ (ไม่ใช่ลูกค้า B)
+    const pvSec = await call('GET', '/api/v1/tenant/security');
+    expect(pvSec.status).toBe(200);
     cookie = bAdmin;
     const on = await call('PUT', '/api/v1/tenant/security', { require_mfa: true });
     expect([on.status, on.body.require_mfa, on.body.without_mfa >= 2]).toEqual([200, true, true]);
+    cookie = admin;
+    expect((await call('GET', '/api/v1/tenant/security')).body.require_mfa).toBe(pvSec.body.require_mfa);   // ลูกค้า B ไม่กระทบค่าที่ผู้ให้บริการเห็น
+    cookie = bAdmin;
     // session ที่เปิดอยู่ถูกบังคับตั้งแต่คำขอถัดไป · หน้าตั้งค่ายังใช้ได้
     cookie = staff;
     expect((await call('GET', '/api/v1/auth/me')).body.user.mfa_setup_required).toBe(true);
@@ -5064,9 +5069,9 @@ describe('ความปลอดภัยการเข้าระบบ (T0
       expect(own.groups.every((g: { tenant_id: string; tenant_code: string }) => g.tenant_id === tid191 && g.tenant_code === 'GRP191')).toBe(true);
       expect(own.users.map((u: { username: string }) => u.username)).toEqual(['g191.admin']);
 
-      // ผู้ให้บริการ: หน้าผู้ใช้เห็นทุกลูกค้า (มีรหัสลูกค้าของกลุ่ม) · หน้าสิทธิ์รายเมนู (?for=company) เห็นเฉพาะลูกค้าเจ้าของบริษัทที่เลือกอยู่
+      // ผู้ให้บริการ: ลูกค้าของบริษัทที่เลือกอยู่ + เจ้าหน้าที่ (?for=with_staff · HANDOFF 208 หน้าผู้ใช้ไม่ปนเจ้าหน้าที่แล้ว) · หน้าสิทธิ์รายเมนู (?for=company) เห็นเฉพาะลูกค้าเจ้าของบริษัทที่เลือกอยู่
       cookie = admin;
-      const all = (await call('GET', '/api/v1/users')).body as { users: Array<{ id: string; tenant_id: string | null }>; groups: Array<{ id: string; code: string; tenant_id: string | null; tenant_code: string | null }> };
+      const all = (await call('GET', '/api/v1/users?for=with_staff')).body as { users: Array<{ id: string; tenant_id: string | null }>; groups: Array<{ id: string; code: string; tenant_id: string | null; tenant_code: string | null }> };
       expect(new Set(all.groups.map((g) => g.tenant_id)).size).toBeGreaterThan(1);
       const foreignG = all.groups.find((g) => g.tenant_id !== tid191 && g.code !== 'ADMIN')!;
       const foreignU = all.users.find((u) => u.tenant_id !== tid191)!;

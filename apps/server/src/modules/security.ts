@@ -223,8 +223,14 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
    * ผู้ดูแลระบบของลูกค้า: "บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้" (HANDOFF 146 · ค่าเริ่มต้น ปิด) — ตั้งที่ระดับลูกค้า (ผู้ใช้หนึ่งคนเข้าได้หลายบริษัทของลูกค้าเดียวกัน)
    * เปิดแล้ว: ผู้ใช้ที่ยังไม่ตั้งถูกพาไปหน้าตั้งค่าทันทีหลังเข้าระบบ (และคำขอถัดไปของ session ที่เปิดอยู่) · ไม่กระทบลูกค้ารายอื่นและเจ้าหน้าที่ผู้ให้บริการ
    */
-  const tenantAdmin = (req: FastifyRequest) => {
+  // HANDOFF 208: เจ้าหน้าที่ผู้ให้บริการ = ลูกค้าเจ้าของบริษัทที่เลือกอยู่ เฉพาะข้อมูลตัวอย่าง (is_demo) — หน้าผู้ใช้งานเหมือนที่ผู้ดูแลของลูกค้าเห็น · ลูกค้าจริง/ไม่ได้เลือกบริษัท = 403 PROVIDER_LOCKED
+  const tenantAdmin = async (req: FastifyRequest) => {
     const a = requireAuth(req);
+    if (a.isAdmin && a.isPlatform && !a.tenantId && !a.apiKeyId) {
+      const tid = a.companyId ? (await db.selectFrom('sys_company').select('tenant_id').where('id', '=', a.companyId).executeTakeFirst())?.tenant_id ?? null : null;
+      await requireDemoForProvider(db, a, tid);
+      return { ...a, tenantId: tid! };
+    }
     if (!a.isAdmin || !a.tenantId) throw forbidden('ตั้งได้เฉพาะผู้ดูแลระบบของลูกค้า — เข้าระบบด้วยผู้ดูแลของกิจการ');
     return { ...a, tenantId: a.tenantId };
   };
@@ -234,9 +240,9 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
         FROM sys_user x LEFT JOIN sys_user_security s ON s.user_id = x.id AND s.deleted_at IS NULL WHERE x.tenant_id = ${tid} AND x.deleted_at IS NULL AND x.status = 'A'`.execute(db)).rows[0]!;
     return { require_mfa: t.require_mfa, service_requires_mfa: mfaForAll(), single_session: t.single_session, users: u.users, without_mfa: u.without };
   };
-  app.get('/api/v1/tenant/security', async (req) => tenantSecurity(tenantAdmin(req).tenantId));
+  app.get('/api/v1/tenant/security', async (req) => tenantSecurity((await tenantAdmin(req)).tenantId));
   app.put('/api/v1/tenant/security', async (req) => {
-    const a = tenantAdmin(req);
+    const a = await tenantAdmin(req);
     const { require_mfa } = parse(z.object({ require_mfa: z.boolean() }), req.body);
     await db.updateTable('sys_tenant').set({ require_mfa, updated_by: a.userId }).where('id', '=', a.tenantId).execute();
     await logActivity(db, a, { module: 'SET.SEC', action: require_mfa ? 'TENANT_MFA_ON' : 'TENANT_MFA_OFF', table: 'sys_tenant', rowId: a.tenantId });
@@ -248,12 +254,12 @@ export function securityRoutes(app: FastifyInstance, db: Db) {
    * เปลี่ยน = แจ้งอีเมลเดิมและอีเมลใหม่ + จดเวลา (ลิงก์จากผู้ให้บริการไปอีเมลใหม่ได้หลัง 7 วัน)
    */
   app.get('/api/v1/tenant/contact', async (req) => {
-    const a = tenantAdmin(req);
+    const a = await tenantAdmin(req);
     const t = await db.selectFrom('sys_tenant').select(['code', 'name', 'contact_email', 'contact_phone', sql<string | null>`contact_email_changed_at::text`.as('changed_at')]).where('id', '=', a.tenantId).executeTakeFirstOrThrow();
     return t;
   });
   app.put('/api/v1/tenant/contact', async (req) => {
-    const a = tenantAdmin(req);
+    const a = await tenantAdmin(req);
     if (a.apiKeyId) throw forbidden('กุญแจ API เปลี่ยนอีเมลผู้ติดต่อไม่ได้');
     const b = parse(z.object({ contact_email: z.string().trim().email('อีเมลไม่ถูกต้อง').max(120), contact_phone: z.string().trim().max(60).nullable().optional().transform((v) => v || null), totp_code: z.string().trim().max(20).nullable().optional() }), req.body);
     const cur = await db.selectFrom('sys_tenant').select(['code', 'contact_email']).where('id', '=', a.tenantId).executeTakeFirstOrThrow();

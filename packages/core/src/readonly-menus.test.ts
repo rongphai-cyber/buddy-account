@@ -25,8 +25,8 @@ describe('read-only viewer menus (HANDOFF 157)', () => {
     expect(readOnlyExempt('SA.IV')).toBe(false);
   });
   it('provider-only menus (HANDOFF 199 → 204): the provider console group, found from their screen address; API keys moved to a per-customer switch', () => {
-    expect([...PLATFORM_MENUS].sort()).toEqual(['PV', 'PV.ACT', 'PV.CUS', 'SET.PKG', 'SET.TENANT', 'SET.USAGE']);
-    expect(['/provider', '/settings/usage', '/admin/tenants', '/admin/packages', '/provider/actions'].map((p) => providerOnly(menuForPath(p) ?? ''))).toEqual([true, true, true, true, true]);
+    expect([...PLATFORM_MENUS].sort()).toEqual(['PV', 'PV.ACT', 'PV.CUS', 'PV.STAFF', 'SET.PKG', 'SET.TENANT', 'SET.USAGE']);
+    expect(['/provider', '/settings/usage', '/admin/tenants', '/admin/packages', '/provider/actions', '/provider/staff'].map((p) => providerOnly(menuForPath(p) ?? ''))).toEqual([true, true, true, true, true, true]);
     // ทุกเมนูผู้ให้บริการอยู่ในกลุ่ม ศูนย์ผู้ให้บริการ (PV)
     expect(flattenMenu().filter((m) => PLATFORM_MENUS.has(m.code) && m.code !== 'PV').every((m) => m.parent === 'PV')).toBe(true);
     expect(['SET.API', 'SET.SEC', 'SET.NEWCO', 'SET.YEARFIX', 'SET.DEVICE', 'OT.BACKUP', 'SA.IV'].some(providerOnly)).toBe(false);

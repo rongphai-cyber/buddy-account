@@ -1932,6 +1932,28 @@
 ]
 },
 {
+"th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
+"n": 18,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx",
+"apps/web/src/pages/provider/ProviderConsole.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"apps/server/src/modules/ai.ts",
+"apps/server/src/modules/company-move.ts",
+"apps/server/src/modules/company.ts",
+"apps/server/src/modules/provider-actions.ts",
+"apps/server/src/modules/provider.ts",
+"apps/server/src/modules/security.ts",
+"apps/server/src/modules/signup-mail.ts",
+"apps/server/src/modules/signup.ts",
+"apps/server/src/modules/tenant-modules.ts",
+"apps/server/src/modules/tenant-move.ts",
+"apps/server/src/modules/usage.ts"
+]
+},
+{
 "th": "ใบสำคัญ",
 "n": 18,
 "files": [
@@ -2080,27 +2102,6 @@
 "packages/core/src/gl-link.ts",
 "packages/core/src/menu.ts",
 "packages/core/src/trade-import.ts"
-]
-},
-{
-"th": "เฉพาะเจ้าหน้าที่ผู้ให้บริการโปรแกรม",
-"n": 16,
-"files": [
-"apps/web/src/pages/provider/ProviderActions.tsx",
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"apps/server/src/modules/ai.ts",
-"apps/server/src/modules/company-move.ts",
-"apps/server/src/modules/company.ts",
-"apps/server/src/modules/provider-actions.ts",
-"apps/server/src/modules/provider.ts",
-"apps/server/src/modules/security.ts",
-"apps/server/src/modules/signup-mail.ts",
-"apps/server/src/modules/signup.ts",
-"apps/server/src/modules/tenant-modules.ts",
-"apps/server/src/modules/tenant-move.ts",
-"apps/server/src/modules/usage.ts"
 ]
 },
 {
@@ -3722,6 +3723,19 @@
 ]
 },
 {
+"th": "ศูนย์ผู้ให้บริการ",
+"n": 8,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/provider/ProviderActions.tsx",
+"apps/web/src/pages/provider/ProviderConsole.tsx",
+"apps/web/src/pages/settings/Packages.tsx",
+"apps/web/src/pages/settings/Tenants.tsx",
+"apps/web/src/pages/settings/Users.tsx",
+"packages/core/src/menu.ts"
+]
+},
+{
 "th": "สถานที่ส่งของ",
 "n": 8,
 "files": [
@@ -4165,18 +4179,6 @@
 "files": [
 "apps/web/src/pages/docs/Cheques.tsx",
 "apps/server/src/modules/reports/stock.ts"
-]
-},
-{
-"th": "ศูนย์ผู้ให้บริการ",
-"n": 7,
-"files": [
-"apps/web/src/App.tsx",
-"apps/web/src/pages/provider/ProviderActions.tsx",
-"apps/web/src/pages/provider/ProviderConsole.tsx",
-"apps/web/src/pages/settings/Packages.tsx",
-"apps/web/src/pages/settings/Tenants.tsx",
-"packages/core/src/menu.ts"
 ]
 },
 {
@@ -9313,6 +9315,15 @@
 "files": [
 "apps/web/src/pages/docs/BillDocs.tsx",
 "apps/web/src/pages/parties/Parties.tsx",
+"packages/core/src/menu.ts"
+]
+},
+{
+"th": "เจ้าหน้าที่ผู้ให้บริการ",
+"n": 3,
+"files": [
+"apps/web/src/App.tsx",
+"apps/web/src/pages/settings/Users.tsx",
 "packages/core/src/menu.ts"
 ]
 },
@@ -41480,6 +41491,13 @@
 ]
 },
 {
+"th": "ผู้ใช้ของผู้ให้บริการ (ไม่สังกัดลูกค้า) — เพิ่ม แก้ไข ระงับ ส่งลิงก์ตั้งรหัสผ่าน ปลดล็อก ล้างการยืนยันตัวตนสองขั้น · กลุ่ม ADMIN เข้าได้ทุกบริษัทข้อมูลตัวอย่าง ลูกค้าจริงดูได้เฉพาะภาพรวมที่ศูนย์ผู้ให้บริการ · หน้าผู้ใช้งานระบบของบริษัทแสดงเฉพาะผู้ใช้ของลูกค้า",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
 "th": "ผู้ใช้ของลูกค้า",
 "n": 1,
 "files": [
@@ -59355,6 +59373,13 @@
 "n": 1,
 "files": [
 "apps/server/src/modules/usage.ts"
+]
+},
+{
+"th": "เจ้าหน้าที่ผู้ให้บริการกลุ่ม ADMIN เข้าได้ทุกบริษัทข้อมูลตัวอย่าง — เปิดข้อมูลบัญชีของลูกค้าจริงไม่ได้",
+"n": 1,
+"files": [
+"apps/web/src/pages/settings/Users.tsx"
 ]
 },
 {
