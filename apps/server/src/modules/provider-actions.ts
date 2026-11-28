@@ -41,7 +41,7 @@ type Filter = { tenant?: string | 'none'; staff?: string; from?: string; to?: st
 /** แถวของเจ้าหน้าที่ (ตัดเหตุการณ์ส่วนตัว เช่น เข้าระบบ) + ลูกค้าที่เกี่ยวข้อง + ตัดแถวซ้ำ — SELECT ที่ยังไม่เรียง */
 function actionsSelect(f: Filter): RawBuilder<unknown> {
   const w: RawBuilder<unknown>[] = [
-    sql`(l.user_id IN (SELECT s.id FROM sys_user s WHERE s.tenant_id IS NULL) OR (l.user_id IS NULL AND l.detail->>'via' = 'cli'))`,
+    sql`(l.user_id IN (SELECT s.id FROM sys_user s WHERE s.tenant_id IS NULL) OR (l.user_id IS NULL AND l.detail->>'via' IN ('cli', 'migration')))`,   // migration = ปรับปรุงโปรแกรม (HANDOFF 208 · 0087)
     sql`l.action NOT IN (${sql.join(PERSONAL_ACTIONS.map((a) => sql`${a}`))})`,
   ];
   if (f.staff) w.push(sql`l.user_id = ${f.staff}::uuid`);
@@ -75,7 +75,7 @@ export function resultOf(detail: unknown): 'ok' | 'sent' | 'failed' | 'skipped' 
  */
 export const ACCOUNT_ACTIONS: readonly string[] = [
   // ศูนย์ผู้ให้บริการ + เปิดดูภาพรวม + การแจ้งเตือน
-  'NEW_TENANT', 'EDIT_TENANT', 'PURGE_TENANT', 'TENANT_MODULES', 'TENANT_STANDARD_GROUPS', 'TENANT_DEMO_ON', 'TENANT_DEMO_OFF', 'PV_VIEW',
+  'NEW_TENANT', 'EDIT_TENANT', 'PURGE_TENANT', 'TENANT_MODULES', 'TENANT_STANDARD_GROUPS', 'STD_GROUPS_ADDED', 'TENANT_DEMO_ON', 'TENANT_DEMO_OFF', 'PV_VIEW',
   'EXPORT_TENANT', 'IMPORT_TENANT', 'MOVE_REQUEST', 'MOVE_REJECT', 'MOVE_COMPANY', 'INVITE_EMAIL', 'INVITE_CREATE', 'INVITE_REVOKE', 'USER_UNLOCK', 'USER_RESET_2FA', 'USER_RESET_PASSWORD',
   'API_KEY_CREATE', 'API_KEY_REVOKE', 'API_KEY_SCOPE', 'SIGNUP_REJECT', 'MAIL_SENT', 'MAIL_FAILED', 'MAIL_SKIPPED', 'ADD_PACKAGE', 'EDIT_PACKAGE', 'MAIL_SETTINGS',
   'SIGNUP_SETTINGS', 'AI_PLATFORM_KEY_SET', 'AI_PLATFORM_KEY_REMOVE', 'ALERT_LOCKED', 'ALERT_LOGIN_FAIL', 'ALERT_BURST',
@@ -126,6 +126,8 @@ export function actionInfo(action: string, detail: unknown, docNo: string | null
     // HANDOFF 207c: งานระดับบริษัท — บริษัทอยู่ในคอลัมน์บริษัท/รายการแล้ว (รหัสบริษัทของลูกค้านี้เท่านั้น ไม่มีชื่อลูกค้ารายอื่น)
     case 'MOVE_COMPANY': case 'BACKUP': case 'RESTORE': case 'DELETE_COMPANY': case 'RESTORE_COMPANY': return { company: docNo };
     case 'STARTER_DATA': return { template: str(d.template) };
+    // HANDOFF 208: กลุ่มตั้งต้นที่เพิ่มให้ (รหัสกลุ่ม จำนวนแถวสิทธิ์) · via = migration (ปรับปรุงโปรแกรม) / cli
+    case 'STD_GROUPS_ADDED': return { groups: Array.isArray(d.created) ? d.created.map(String).join(' ') : null, rows: typeof d.rows === 'number' ? d.rows : null, via: str(d.via) };
     default: return null;
   }
 }
@@ -166,6 +168,6 @@ export function providerActionRoutes(app: FastifyInstance, db: Db) {
     const q = parse(z.object({ from: day.or(z.literal('').transform(() => undefined)), to: day.or(z.literal('').transform(() => undefined)), page: z.coerce.number().int().min(1).max(10_000).default(1), ...sortShape }), req.query);
     const r = await list({ tenant: a.tenantId, from: q.from, to: q.to }, q);
     return { ...r, rows: r.rows.map((x) => ({ id: x.id, occurred_at: x.occurred_at, action: x.action, doc_no: x.doc_no, company_code: x.company_code,
-      staff_name: x.staff_name ?? (x.user_id ? null : 'ผู้ดูแลเซิร์ฟเวอร์'), info: actionInfo(x.action, x.detail, x.doc_no), result: resultOf(x.detail) })) };
+      staff_name: x.staff_name ?? (x.user_id ? null : (x.detail as { via?: string } | null)?.via === 'migration' ? 'ปรับปรุงโปรแกรม' : 'ผู้ดูแลเซิร์ฟเวอร์'), info: actionInfo(x.action, x.detail, x.doc_no), result: resultOf(x.detail) })) };
   });
 }

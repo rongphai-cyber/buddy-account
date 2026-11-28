@@ -813,7 +813,9 @@ export function companyRoutes(app: FastifyInstance, database: Database) {
 export async function defaultTenant(db: Db) {
   const t = await db.selectFrom('sys_tenant').select('id').where('code', '=', 'DEFAULT').where('deleted_at', 'is', null).executeTakeFirst();
   if (t) return t.id;
-  return (await db.insertInto('sys_tenant').values({ code: 'DEFAULT', name: 'ลูกค้าเริ่มต้น' }).returning('id').executeTakeFirstOrThrow()).id;
+  const id = (await db.insertInto('sys_tenant').values({ code: 'DEFAULT', name: 'ลูกค้าเริ่มต้น' }).returning('id').executeTakeFirstOrThrow()).id;
+  await ensureStandardGroups(db, id, null, { createGroups: true });   // HANDOFF 208 ข้อ C1
+  return id;
 }
 
 async function copyChart(tx: Db, fromId: string, toId: string) {

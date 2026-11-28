@@ -1,5 +1,6 @@
 import { sql, type Kysely } from 'kysely';
 import type { DB } from './db.js';
+import { logActivity } from './audit.js';
 
 /**
  * กลุ่มผู้ใช้ตั้งต้นของลูกค้า (HANDOFF 159 · เจ้าของ 20/11/2569 "ทำทั้ง 2 อย่าง") — แบบเดียวกับ ฝ่ายขาย/ฝ่ายบัญชี ของบริษัททดลอง (tools/demo-check/seed-year.mjs)
@@ -52,8 +53,9 @@ const COLS = { read: 'can_read', add: 'can_add', edit: 'can_edit', cancel: 'can_
  * กลุ่มตั้งต้นของลูกค้า (ไม่ซ้ำ ทำซ้ำได้):
  * - createGroups = สร้างกลุ่มที่ยังไม่มี (สร้างลูกค้าใหม่ · ปุ่ม "เพิ่มกลุ่มตั้งต้น" ของผู้ให้บริการ) · false = ใช้เฉพาะกลุ่มตั้งต้นที่ลูกค้ามีอยู่ (เพิ่มบริษัทใหม่)
  * - ใส่สิทธิ์ให้เฉพาะบริษัทที่กลุ่มนั้นยังไม่มีแถวสิทธิ์เลย — สิทธิ์ที่ลูกค้าแก้เองไม่ถูกเขียนทับ (กลุ่มที่ลูกค้าตั้งรหัสเดียวกันไว้เองก็ไม่แตะ ถ้ามีแถวแล้ว)
+ * - skipDeleted = ไม่สร้างคืนกลุ่มที่ลูกค้าลบไปแล้ว (ตั้งต้นอัตโนมัติ HANDOFF 208 · ปุ่ม "+ กลุ่มตั้งต้น" สร้างคืนได้)
  */
-export async function ensureStandardGroups(tx: Kysely<DB>, tenantId: string, actor: string | null, opts: { createGroups: boolean; companyIds?: string[] }) {
+export async function ensureStandardGroups(tx: Kysely<DB>, tenantId: string, actor: string | null, opts: { createGroups: boolean; companyIds?: string[]; skipDeleted?: boolean }) {
   const menus = new Map((await tx.selectFrom('sys_menu').select(['id', 'code']).where('deleted_at', 'is', null).execute()).map((m) => [m.code, m.id]));
   let companies = (await tx.selectFrom('sys_company').select('id').where('tenant_id', '=', tenantId).where('deleted_at', 'is', null).execute()).map((c) => c.id);
   if (opts.companyIds) companies = companies.filter((c) => opts.companyIds!.includes(c));
@@ -63,6 +65,7 @@ export async function ensureStandardGroups(tx: Kysely<DB>, tenantId: string, act
     let grp = await tx.selectFrom('sys_user_group').select('id').where('tenant_id', '=', tenantId).where('code', '=', g.code).where('deleted_at', 'is', null).executeTakeFirst();
     if (!grp) {
       if (!opts.createGroups) continue;
+      if (opts.skipDeleted && (await tx.selectFrom('sys_user_group').select('id').where('tenant_id', '=', tenantId).where('code', '=', g.code).executeTakeFirst())) continue;
       grp = await tx.insertInto('sys_user_group').values({ tenant_id: tenantId, code: g.code, name: g.name, created_by: actor }).returning('id').executeTakeFirstOrThrow();
       created.push(g.code);
     }
@@ -77,6 +80,17 @@ export async function ensureStandardGroups(tx: Kysely<DB>, tenantId: string, act
     }
   }
   return { created, rows, companies: companies.length };
+}
+
+/**
+ * กลุ่มตั้งต้นอัตโนมัติของลูกค้าที่ไม่ได้สร้างผ่าน createTenantWithAdmin (HANDOFF 208 ข้อ C1: DEFAULT ตอนตั้งเครื่องใหม่ · นำเข้าแฟ้มลูกค้าตัวอย่าง)
+ * เพิ่มเฉพาะกลุ่มที่ยังไม่เคยมี (ไม่สร้างคืนที่ลบแล้ว) + สิทธิ์ในทุกบริษัทที่กลุ่มยังไม่มีแถว · มีกลุ่มเพิ่ม = บันทึก STD_GROUPS_ADDED (ลูกค้าเห็นในสิ่งที่ผู้ให้บริการทำ)
+ */
+export async function addStandardGroups(tx: Kysely<DB>, tenant: { id: string; code: string }, actor: string | null) {
+  const r = await ensureStandardGroups(tx, tenant.id, actor, { createGroups: true, skipDeleted: true });
+  if (r.created.length) await logActivity(tx, { companyId: null, userId: actor }, { module: 'SYS', action: 'STD_GROUPS_ADDED', docNo: tenant.code, table: 'sys_tenant', rowId: tenant.id,
+    detail: { created: r.created, rows: r.rows, companies: r.companies, ...(actor ? {} : { via: 'cli' }) } });
+  return r;
 }
 
 /** บริษัทที่ผู้ใช้/กลุ่มแต่ละรายมีแถวสิทธิ์ (หน้าผู้ใช้งาน: เตือนเมื่อ "ตรวจสอบสิทธิ์ก่อนใช้งาน" แต่ไม่มีสิทธิ์ในบริษัทที่เลือก) */

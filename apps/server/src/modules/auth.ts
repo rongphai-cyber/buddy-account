@@ -13,6 +13,7 @@ import { loadApiKey } from './apikeys.js';
 import { hubOnly, normalizeAppAccess, passwordProblem, normalizeUiTheme, tenantBlockedMessage } from '@buddy/core';
 import { mfaForAll, clearFails, finishSecondStep, lockedError, lockedUntil, markPasswordChanged, registerFail, secOf, startSecondStep } from './security.js';
 import { noteLoginFail } from '../alerts.js';
+import { ensureStandardGroups } from '../standard-groups.js';
 
 export const SESSION_COOKIE = 'buddy_session';
 const ADMIN_GROUP = 'ADMIN';
@@ -149,8 +150,10 @@ export function authRoutes(app: FastifyInstance, db: Db, cfg: Config) {
       if (!grp) grp = await tx.insertInto('sys_user_group').values({ code: ADMIN_GROUP, name: 'ผู้ดูแลระบบ' }).returning('id').executeTakeFirstOrThrow();
       // เซิร์ฟเวอร์ใหม่ (HANDOFF 204): ลูกค้าเริ่มต้น DEFAULT = ข้อมูลทดลองของผู้ติดตั้ง (ผู้ดูแลคนแรกสร้างบริษัททดลองได้)
       // ลูกค้าจริงสร้างที่ ศูนย์ผู้ให้บริการ / ใบสมัคร — ผู้ดูแลของลูกค้าตั้งรหัสผ่านเองจากลิงก์ทางอีเมล · ยกเลิกติ๊กได้ที่ศูนย์ผู้ให้บริการ
-      if (!(await tx.selectFrom('sys_tenant').select('id').where('code', '=', 'DEFAULT').where('deleted_at', 'is', null).executeTakeFirst()))
-        await tx.insertInto('sys_tenant').values({ code: 'DEFAULT', name: 'ลูกค้าเริ่มต้น (ข้อมูลทดลอง)', is_demo: true }).execute();
+      if (!(await tx.selectFrom('sys_tenant').select('id').where('code', '=', 'DEFAULT').where('deleted_at', 'is', null).executeTakeFirst())) {
+        const d = await tx.insertInto('sys_tenant').values({ code: 'DEFAULT', name: 'ลูกค้าเริ่มต้น (ข้อมูลทดลอง)', is_demo: true }).returning('id').executeTakeFirstOrThrow();
+        await ensureStandardGroups(tx, d.id, null, { createGroups: true });   // HANDOFF 208 ข้อ C1: กลุ่มตั้งต้นทุกลูกค้า (สิทธิ์ใส่ตอนสร้างบริษัท)
+      }
       const u = await tx.insertInto('sys_user').values({
         username: body.username, display_name: body.display_name, password_hash: await bcrypt.hash(body.password, 10),
         user_group_id: grp.id, approval_level: 9,

@@ -24,11 +24,13 @@ const MOD_LABEL = new Map<string, string>([...TENANT_MODULES, ...TENANT_FEATURES
 const modName = (k: string) => MOD_LABEL.get(k) ?? k;
 const TST: Record<string, string> = { A: 'ใช้งาน', S: 'ระงับ', I: 'เลิกใช้' };
 type Info = { on?: string[]; off?: string[]; until?: Array<{ key: string; to: string | null }>; status_from?: string | null; status_to?: string | null; package?: string | null;
-  user?: string | null; mail?: string; key?: string | null; companies?: string | null; count?: number | null; minutes?: number | null; company?: string | null; template?: string | null } | null;
+  user?: string | null; mail?: string; key?: string | null; companies?: string | null; count?: number | null; minutes?: number | null; company?: string | null; template?: string | null; groups?: string | null; rows?: number | null; via?: string | null } | null;
 /**
  * สรุปเป็นข้อความไทยสั้น ๆ ต่อเหตุการณ์ (HANDOFF 207b) — จากค่าที่ปลอดภัยที่เซิร์ฟเวอร์ส่งมา (info) ไม่ใช่รายละเอียดดิบ
  * ลูกค้าเห็นเฉพาะสรุปนี้ · ผู้ให้บริการเห็นรายละเอียดเต็มในหน้าต่างเมื่อคลิกแถว
  */
+/** แถวที่ไม่มีเจ้าหน้าที่: ปรับปรุงโปรแกรม (migration · HANDOFF 208) หรือคำสั่งบนเครื่องแม่ข่าย */
+const systemName = (i: Info) => (i?.via === 'migration' ? 'ปรับปรุงโปรแกรม' : 'ผู้ดูแลเซิร์ฟเวอร์');
 function summaryOf(action: string, i: Info, fmt: (iso: string) => string, companyCode?: string | null): string {
   const co = i?.company ?? companyCode ?? null;
   if (action === 'PV_VIEW') return 'ดูภาพรวมการใช้งาน (ไม่เห็นข้อมูลบัญชี)';
@@ -61,6 +63,7 @@ function summaryOf(action: string, i: Info, fmt: (iso: string) => string, compan
     case 'DELETE_COMPANY': return co ? `ลบบริษัท ${co}` : '';
     case 'RESTORE_COMPANY': return co ? `กู้บริษัท ${co}` : '';
     case 'STARTER_DATA': return co ? `ใส่ข้อมูลตั้งต้นให้บริษัท ${co}` : 'ใส่ข้อมูลตั้งต้นของบริษัท';
+    case 'STD_GROUPS_ADDED': return `เพิ่มกลุ่ม ${i.groups ?? '-'} พร้อมสิทธิ์ตั้งต้น ${i.rows ?? 0} แถว — กลุ่มและสิทธิ์เดิมไม่เปลี่ยน`;
     default: return '';
   }
 }
@@ -134,7 +137,7 @@ export function ProviderActionsPage() {
   const rows = st.sorted(list.data?.rows);
   const tenants = list.data?.tenants ?? [];
   const csv = () => csvDownload('provider-actions.csv', ['วันเวลา', 'ลูกค้า', 'บริษัท', 'เจ้าหน้าที่', 'เหตุการณ์', 'รายการ', 'ผล', 'รายละเอียด'],
-    rows.map((r) => [when(r.occurred_at), r.tenant_code ?? 'ทั้งระบบ', r.company_code ?? '', r.staff_username ?? 'ผู้ดูแลเซิร์ฟเวอร์', actText(r.action), r.doc_no ?? '', RESULT[r.result]?.[0] ?? '', summaryOf(r.action, r.info, day, r.company_code)]));
+    rows.map((r) => [when(r.occurred_at), r.tenant_code ?? 'ทั้งระบบ', r.company_code ?? '', r.staff_username ?? systemName(r.info), actText(r.action), r.doc_no ?? '', RESULT[r.result]?.[0] ?? '', summaryOf(r.action, r.info, day, r.company_code)]));
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="ศูนย์ผู้ให้บริการ" title="สิ่งที่เจ้าหน้าที่ทำกับบัญชีลูกค้า"
@@ -168,7 +171,7 @@ export function ProviderActionsPage() {
                 <td>{when(r.occurred_at)}</td>
                 <td>{r.tenant_code ? <><b className="mono">{r.tenant_code}</b> <span className="small">{r.tenant_name}</span>{r.is_demo && <> <Pill tone="d">ข้อมูลตัวอย่าง</Pill></>}</> : <span className="muted">ทั้งระบบ</span>}</td>
                 <td className="mono">{r.company_code}</td>
-                <td title={r.staff_username ?? ''}>{r.staff_name ?? <span className="muted">ผู้ดูแลเซิร์ฟเวอร์</span>}</td>
+                <td title={r.staff_username ?? ''}>{r.staff_name ?? <span className="muted">{systemName(r.info)}</span>}</td>
                 <td>{actText(r.action)}</td><td className="mono">{r.doc_no}</td><td><Pill tone={tone}>{label}</Pill></td>
                 <td className="small muted" style={{ maxWidth: 360 }}>{summaryOf(r.action, r.info, day, r.company_code)}</td>
               </tr>); })}
@@ -203,7 +206,7 @@ export function MyProviderActionsPage() {
   if (!ok) return <div className="page"><div className="notebox">เฉพาะผู้ดูแลระบบ (กลุ่ม ADMIN) ของกิจการ</div></div>;
   const rows = st.sorted(list.data?.rows);
   const csv = () => csvDownload('provider-actions.csv', ['วันเวลา', 'เจ้าหน้าที่', 'เหตุการณ์', 'รายการ', 'บริษัท', 'ผล', 'รายละเอียด'],
-    rows.map((r) => [when(r.occurred_at), r.staff_name ?? '', actText(r.action), r.doc_no ?? '', r.company_code ?? '', RESULT[r.result]?.[0] ?? '', summaryOf(r.action, r.info, day, r.company_code)]));
+    rows.map((r) => [when(r.occurred_at), r.staff_name ?? systemName(r.info), actText(r.action), r.doc_no ?? '', r.company_code ?? '', RESULT[r.result]?.[0] ?? '', summaryOf(r.action, r.info, day, r.company_code)]));
   return (
     <div className="page" data-tone="setup">
       <PageHead eyebrow="เริ่มระบบ" title="สิ่งที่ผู้ให้บริการทำกับบัญชีของท่าน"
@@ -222,7 +225,7 @@ export function MyProviderActionsPage() {
           <tbody>
             {rows.map((r) => { const [label, tone] = RESULT[r.result] ?? RESULT.ok!; return (
               <tr key={r.id} className="row-open" onClick={() => setOpen(r)} title="คลิกเพื่อดูรายละเอียด">
-                <td>{when(r.occurred_at)}</td><td>{r.staff_name}</td><td>{actText(r.action)}</td><td className="mono">{r.doc_no}</td><td className="mono">{r.company_code}</td>
+                <td>{when(r.occurred_at)}</td><td>{r.staff_name ?? systemName(r.info)}</td><td>{actText(r.action)}</td><td className="mono">{r.doc_no}</td><td className="mono">{r.company_code}</td>
                 <td><Pill tone={tone}>{label}</Pill></td><td className="small muted" style={{ maxWidth: 360 }}>{summaryOf(r.action, r.info, day, r.company_code)}</td>
               </tr>); })}
             {list.data && !rows.length && <tr><td colSpan={7} className="empty">ยังไม่มีรายการที่ผู้ให้บริการทำกับบัญชีของท่านในช่วงนี้</td></tr>}

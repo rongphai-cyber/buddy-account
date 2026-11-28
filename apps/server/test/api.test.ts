@@ -335,6 +335,9 @@ describe('Buddy Account API (PGlite)', () => {
     const admin = cookie;
     const as = async (u: string, p: string) => { cookie = ''; expect((await call('POST', '/api/v1/auth/login', { username: u, password: p })).status).toBe(200); return (await call('GET', '/api/v1/auth/me')).body; };
     const tenant_id = (await call('GET', '/api/v1/tenants')).body.find((t: { code: string }) => t.code === 'DEFAULT').id;   // บริษัททดสอบอยู่ในลูกค้าเริ่มต้น
+    // HANDOFF 208 ข้อ C1: ตั้งเครื่องใหม่ = DEFAULT ได้กลุ่มตั้งต้น — ชุดนี้ (และชุดถัดไปในแฟ้มนี้) สร้างกลุ่มเองตั้งแต่ศูนย์ จึงเลิกใช้กลุ่มตั้งต้นของ DEFAULT ก่อน
+    await sql`UPDATE sys_permission SET deleted_at = now() WHERE subject_type = 'G' AND subject_id IN (SELECT id FROM sys_user_group WHERE tenant_id = ${tenant_id} AND created_by IS NULL AND code IN ('SALE', 'PURCH', 'ACC', 'FIN', 'GA', 'HR', 'VIEW'))`.execute(database.db);
+    await sql`UPDATE sys_user_group SET deleted_at = now() WHERE tenant_id = ${tenant_id} AND created_by IS NULL AND code IN ('SALE', 'PURCH', 'ACC', 'FIN', 'GA', 'HR', 'VIEW') AND deleted_at IS NULL`.execute(database.db);
     const grp = (await call('POST', '/api/v1/user-groups', { code: 'ACC', name: 'แผนกบัญชี', tenant_id })).body.id;
     expect((await call('POST', '/api/v1/users', { tenant_id, username: 'clerk0', display_name: 'พนักงาน ระดับ 0', password: 'clerk0pass', approval_level: 0, companies: [companyId] })).status).toBe(200);
     expect((await call('POST', '/api/v1/users', { tenant_id, username: 'boss5', display_name: 'หัวหน้า ระดับ 5', password: 'boss5pass', approval_level: 5, companies: [companyId] })).status).toBe(200);

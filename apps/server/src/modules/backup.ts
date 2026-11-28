@@ -251,6 +251,10 @@ export const USER_STEPS: Step[] = [
   { n: 84, name: 'เติมสิทธิ์ที่ขาดของกลุ่มตั้งต้น', run: (tx, tid) => tenantMigrationStep(tx, tid, '0084_standard_group_topup.sql', [
     ['g.tenant_id IS NOT NULL', (t) => ` AND g.tenant_id = '${t}'`],
   ]) },
+  // HANDOFF 208 ข้อ C3: แฟ้มสำรองผู้ใช้ก่อนรุ่นนี้ = ยังไม่มีกลุ่มตั้งต้นครบ — เพิ่มเฉพาะที่ขาดให้ลูกค้ารายนี้ (คำสั่งเดียวกับ migration)
+  { n: 87, name: 'กลุ่มผู้ใช้ตั้งต้นที่ขาด', run: (tx, tid) => tenantMigrationStep(tx, tid, '0087_standard_groups_every_tenant.sql', [
+    ['SELECT id, code FROM sys_tenant WHERE deleted_at IS NULL AND purged_at IS NULL AND moved_to IS NULL', (t) => ` AND id = '${t}'`],
+  ]) },
 ];
 /**
  * ทำ migration แก้ข้อมูลซ้ำเฉพาะลูกค้ารายนี้ (นำแฟ้มสำรองผู้ใช้รุ่นเก่ากลับ) — ใช้คำสั่งในไฟล์ migration เดียวกัน ต่อเงื่อนไขลูกค้าหลังข้อความที่กำหนด

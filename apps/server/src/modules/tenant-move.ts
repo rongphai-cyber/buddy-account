@@ -9,6 +9,7 @@ import { logActivity } from '../audit.js';
 import { decryptSecret, encryptSecret } from '../secret.js';
 import { insertJson, readBackup, schemaVersion, writeBackup, type Header } from './backup.js';
 import { requireDemoForProvider } from './auth.js';
+import { addStandardGroups } from '../standard-groups.js';
 
 /**
  * T0.18 ย้ายลูกค้าผู้ใช้บริการไปเซิร์ฟเวอร์/ฐานข้อมูลแยก (ลูกค้ารายใหญ่)
@@ -196,6 +197,8 @@ export async function importTenant(db: Db, buf: Buffer, pass: string, userId: st
     await sql`SELECT set_config('app.allow_locked_period', 'off', true)`.execute(tx);
     await logActivity(tx, { companyId: null, userId }, { module: 'SYS', action: 'IMPORT_TENANT', docNo: h.tenant.code, table: 'sys_tenant', rowId: h.tenant.id,
       detail: { exported_at: h.created_at, companies: h.companies.map((c) => c.code), rows: Object.values(counts).reduce((s, n) => s + n, 0) } });
+    // HANDOFF 208 ข้อ C1: แฟ้มลูกค้าตัวอย่างที่ผู้ให้บริการนำเข้า ได้กลุ่มตั้งต้นที่ยังไม่มี (ไม่สร้างคืนกลุ่มที่ลบแล้ว · ไม่แตะกลุ่ม/สิทธิ์ที่มาในแฟ้ม)
+    if (opts.demoOnly) await addStandardGroups(tx, h.tenant, userId);
   });
   // ตรวจหลังนำเข้า: ใบสำคัญและยอดเดบิต/เครดิตรายบริษัทต้องเท่าต้นทาง
   const checks = await Promise.all(h.companies.map(async (c) => {

@@ -8292,14 +8292,6 @@
 ]
 },
 {
-"th": "ผู้ดูแลเซิร์ฟเวอร์",
-"n": 3,
-"files": [
-"apps/web/src/pages/provider/ProviderActions.tsx",
-"apps/server/src/modules/provider-actions.ts"
-]
-},
-{
 "th": "ผู้ถูกหัก",
 "n": 3,
 "files": [
@@ -12662,6 +12654,14 @@
 ]
 },
 {
+"th": "ปรับปรุงโปรแกรม",
+"n": 2,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx",
+"apps/server/src/modules/provider-actions.ts"
+]
+},
+{
 "th": "ปลดล็อก {0} แล้ว",
 "n": 2,
 "files": [
@@ -12943,6 +12943,14 @@
 "files": [
 "apps/web/src/pages/docs/CashDocs.tsx",
 "apps/web/src/pages/docs/TradeDocs.tsx"
+]
+},
+{
+"th": "ผู้ดูแลเซิร์ฟเวอร์",
+"n": 2,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx",
+"apps/server/src/modules/provider-actions.ts"
 ]
 },
 {
@@ -61917,6 +61925,13 @@
 ]
 },
 {
+"th": "เพิ่มกลุ่ม {0} พร้อมสิทธิ์ตั้งต้น {1} แถว — กลุ่มและสิทธิ์เดิมไม่เปลี่ยน",
+"n": 1,
+"files": [
+"apps/web/src/pages/provider/ProviderActions.tsx"
+]
+},
+{
 "th": "เพิ่มกลุ่ม ฝ่ายขาย ฝ่ายจัดซื้อ ฝ่ายบัญชี ฝ่ายการเงิน ฝ่ายธุรการ ฝ่ายบุคคล ดูอย่างเดียว ที่ยังไม่มี พร้อมสิทธิ์ตั้งต้นในทุกบริษัท — กลุ่มและสิทธิ์ที่แก้ไว้แล้วไม่ถูกเขียนทับ",
 "n": 1,
 "files": [
@@ -61949,6 +61964,13 @@
 "n": 1,
 "files": [
 "apps/web/src/pages/settings/Users.tsx"
+]
+},
+{
+"th": "เพิ่มกลุ่มผู้ใช้ตั้งต้นให้อัตโนมัติ",
+"n": 1,
+"files": [
+"packages/core/src/activity-actions.ts"
 ]
 },
 {

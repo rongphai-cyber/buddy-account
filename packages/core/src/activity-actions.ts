@@ -11,7 +11,7 @@ export const storedAction = (code: string) => code.slice(0, ACTION_CODE_MAX);
 export const ACTION_LABEL: Readonly<Record<string, string>> = {
   // ลูกค้าผู้ใช้บริการ (ศูนย์ผู้ให้บริการ)
   NEW_TENANT: 'เพิ่มลูกค้า', EDIT_TENANT: 'แก้ไขลูกค้า (สถานะ แพ็กเกจ วันหมดอายุ)', PURGE_TENANT: 'ลบข้อมูลลูกค้าตามกำหนด', TENANT_MODULES: 'เปิด/ปิดโปรแกรมและเมนูของลูกค้า',
-  TENANT_STANDARD_GROU: 'สร้างกลุ่มผู้ใช้ตั้งต้น', TENANT_DEMO_ON: 'ตั้งเป็นข้อมูลตัวอย่าง', TENANT_DEMO_OFF: 'เลิกเป็นข้อมูลตัวอย่าง', PV_VIEW: 'เปิดดูภาพรวมของลูกค้า',
+  TENANT_STANDARD_GROU: 'สร้างกลุ่มผู้ใช้ตั้งต้น', STD_GROUPS_ADDED: 'เพิ่มกลุ่มผู้ใช้ตั้งต้นให้อัตโนมัติ', TENANT_DEMO_ON: 'ตั้งเป็นข้อมูลตัวอย่าง', TENANT_DEMO_OFF: 'เลิกเป็นข้อมูลตัวอย่าง', PV_VIEW: 'เปิดดูภาพรวมของลูกค้า',
   EXPORT_TENANT: 'ส่งออกแฟ้มย้ายลูกค้า', IMPORT_TENANT: 'นำเข้าแฟ้มย้ายลูกค้า', MOVE_REQUEST: 'ขอย้ายบริษัทข้ามลูกค้า', MOVE_REJECT: 'ปฏิเสธการย้ายบริษัท', MOVE_COMPANY: 'ย้ายบริษัทข้ามลูกค้า',
   TENANT_MFA_ON: 'บังคับยืนยันตัวตนสองขั้นทุกผู้ใช้', TENANT_MFA_OFF: 'เลิกบังคับยืนยันตัวตนสองขั้น', TENANT_CONTACT: 'แก้ไขผู้ติดต่อของกิจการ', SET_MODULES: 'ตั้งโปรแกรมที่ผู้ใช้เปิดได้',
   // ผู้ใช้และสิทธิ์

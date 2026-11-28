@@ -4287,5 +4287,8 @@
  "เจ้าหน้าที่ผู้ให้บริการ Buddy Account ล้างการยืนยันตัวตนสองขั้น (รหัส 6 หลักจากแอปในมือถือ) ของผู้ใช้ {0} เมื่อ {1}": "Buddy Account provider staff reset two-factor sign-in (the 6-digit code from your phone app) of user {0} on {1}",
  "เจ้าหน้าที่ผู้ให้บริการ": "Provider staff",
  "ผู้ใช้ของผู้ให้บริการ (ไม่สังกัดลูกค้า) — เพิ่ม แก้ไข ระงับ ส่งลิงก์ตั้งรหัสผ่าน ปลดล็อก ล้างการยืนยันตัวตนสองขั้น · กลุ่ม ADMIN เข้าได้ทุกบริษัทข้อมูลตัวอย่าง ลูกค้าจริงดูได้เฉพาะภาพรวมที่ศูนย์ผู้ให้บริการ · หน้าผู้ใช้งานระบบของบริษัทแสดงเฉพาะผู้ใช้ของลูกค้า": "The provider's own users (not under any customer) — add, edit, suspend, send password links, unlock, reset two-factor sign-in · The ADMIN group can open every sample-data company; real customers can be viewed only as an overview in the Provider console · A company's Users page shows only that customer's users",
- "เจ้าหน้าที่ผู้ให้บริการกลุ่ม ADMIN เข้าได้ทุกบริษัทข้อมูลตัวอย่าง — เปิดข้อมูลบัญชีของลูกค้าจริงไม่ได้": "Provider staff in the ADMIN group can open every sample-data company — they cannot open real customers' books"
+ "เจ้าหน้าที่ผู้ให้บริการกลุ่ม ADMIN เข้าได้ทุกบริษัทข้อมูลตัวอย่าง — เปิดข้อมูลบัญชีของลูกค้าจริงไม่ได้": "Provider staff in the ADMIN group can open every sample-data company — they cannot open real customers' books",
+ "ปรับปรุงโปรแกรม": "Program update",
+ "เพิ่มกลุ่ม {0} พร้อมสิทธิ์ตั้งต้น {1} แถว — กลุ่มและสิทธิ์เดิมไม่เปลี่ยน": "Added groups {0} with {1} standard rights rows — existing groups and rights unchanged",
+ "เพิ่มกลุ่มผู้ใช้ตั้งต้นให้อัตโนมัติ": "Standard user groups added automatically"
 }
